@@ -1,7 +1,5 @@
 /* ============================================================
    EYES ONLY - ARG State Machine
-   Drives the multi-step clearance verification flow.
-   States are persisted to localStorage for session continuity.
    ============================================================ */
 
 const StateMachine = (function () {
@@ -9,35 +7,21 @@ const StateMachine = (function () {
 
   var STORAGE_KEY = 'eyesonly_state';
 
-  /**
-   * State definitions:
-   *
-   * IDLE          - Title screen, waiting for any keypress
-   * BOOTING       - Boot sequence animation in progress
-   * AWAITING_CMD  - Waiting for clearance command
-   * AWAITING_DESIGNATION - Prompted for designation
-   * AWAITING_PROCEED     - Prompted for Y/N confirmation
-   * AWAITING_TEMPORAL    - Prompted for temporal key
-   * ACCESS_GRANTED       - Clearance obtained, terminal active
-   * MISSION_BRIEFING     - Displaying rotating briefing
-   * MISSION_INPUT        - Accepting mission codes
-   */
   var STATES = {
-    IDLE:                  'IDLE',
-    BOOTING:               'BOOTING',
-    AWAITING_CMD:          'AWAITING_CMD',
-    AWAITING_DESIGNATION:  'AWAITING_DESIGNATION',
-    AWAITING_PROCEED:      'AWAITING_PROCEED',
-    AWAITING_TEMPORAL:     'AWAITING_TEMPORAL',
-    ACCESS_GRANTED:        'ACCESS_GRANTED',
-    MISSION_BRIEFING:      'MISSION_BRIEFING',
-    MISSION_INPUT:         'MISSION_INPUT'
+    IDLE: 'IDLE',
+    BOOTING: 'BOOTING',
+    AWAITING_CMD: 'AWAITING_CMD',
+    AWAITING_DESIGNATION: 'AWAITING_DESIGNATION',
+    AWAITING_PROCEED: 'AWAITING_PROCEED',
+    AWAITING_TEMPORAL: 'AWAITING_TEMPORAL',
+    ACCESS_GRANTED: 'ACCESS_GRANTED',
+    MISSION_BRIEFING: 'MISSION_BRIEFING',
+    MISSION_INPUT: 'MISSION_INPUT',
+    AWAITING_FINAL_ENTER: 'AWAITING_FINAL_ENTER',
+    END_LOCKED: 'END_LOCKED'
   };
 
-  // Current state
   var _state = STATES.IDLE;
-
-  // State data (persisted)
   var _data = {
     designation: null,
     clearanceLevel: 0,
@@ -48,111 +32,72 @@ const StateMachine = (function () {
     failedAttempts: 0
   };
 
-  // Temporal key for this version (The Falcon and the Snowman - 1977)
-  var TEMPORAL_KEY = '1977';
-
-  // Maximum failed attempts before lockout
+  var TEMPORAL_KEYS = ['1977', '19770422'];
   var MAX_FAILURES = 5;
-  var LOCKOUT_DURATION = 30000; // 30 seconds
-
-  // Lockout tracking
+  var LOCKOUT_DURATION = 30000;
   var _lockoutUntil = 0;
 
-  /**
-   * Initialize state machine. Restores saved state if available.
-   */
   function init() {
     _loadState();
-
-    // If they already have access, jump straight there
-    if (_data.accessGranted) {
-      _state = STATES.ACCESS_GRANTED;
-    }
+    if (_data.accessGranted) _state = STATES.ACCESS_GRANTED;
   }
 
-  /**
-   * Get current state name.
-   */
-  function getState() {
-    return _state;
-  }
+  function getState() { return _state; }
+  function getData() { return Object.assign({}, _data); }
 
-  /**
-   * Get state data.
-   */
-  function getData() {
-    return Object.assign({}, _data);
-  }
-
-  /**
-   * Transition to a new state.
-   * Returns the new state name.
-   */
   function transition(newState) {
-    if (!STATES[newState]) {
-      console.warn('StateMachine: invalid state', newState);
-      return _state;
-    }
+    if (!STATES[newState]) return _state;
     _state = STATES[newState];
     _data.lastActivity = Date.now();
     _saveState();
     return _state;
   }
 
-  /**
-   * Process a parsed command in the current state.
-   * Returns an action object describing what the terminal should do.
-   *
-   * Action format:
-   * {
-   *   type:     'output' | 'prompt' | 'clear' | 'grant' | 'deny' | 'lockout' | 'mission' | 'noop',
-   *   lines:    string[],        // text to display
-   *   speed:    number,          // typing speed
-   *   prompt:   string,          // prompt text for input
-   *   newState: string,          // state to transition to
-   *   data:     object           // additional data
-   * }
-   */
   function process(parsed) {
-    // Check lockout
     if (_lockoutUntil > Date.now()) {
       var remaining = Math.ceil((_lockoutUntil - Date.now()) / 1000);
       return {
         type: 'deny',
-        lines: [
-          'SECURITY LOCKOUT ACTIVE',
-          'TOO MANY FAILED ATTEMPTS',
-          'RETRY IN ' + remaining + ' SECONDS',
-          ''
-        ],
+        lines: ['SECURITY LOCKOUT ACTIVE', 'RETRY IN ' + remaining + ' SECONDS', ''],
         newState: _state
       };
     }
 
+    var cmd = parsed && parsed.command;
+    var canUsePublicCommand = (
+      _state === STATES.AWAITING_CMD ||
+      _state === STATES.AWAITING_DESIGNATION ||
+      _state === STATES.AWAITING_PROCEED ||
+      _state === STATES.AWAITING_TEMPORAL ||
+      _state === STATES.ACCESS_GRANTED ||
+      _state === STATES.MISSION_BRIEFING ||
+      _state === STATES.MISSION_INPUT
+    );
+
+    if (canUsePublicCommand && (
+      cmd === 'ABOUT' || cmd === 'CONTACT' || cmd === 'FAQ' ||
+      cmd === 'SANDPOINT' || cmd === 'SHOP' || cmd === 'MENU' ||
+      cmd === 'SOCIAL' || cmd === 'HOME' || cmd === 'LOGIN' ||
+      cmd === 'STREET' || cmd === 'MAP'
+    )) {
+      return _publicCommand(cmd);
+    }
+
     switch (_state) {
-
-      case STATES.AWAITING_CMD:
-        return _processAwaitingCmd(parsed);
-
-      case STATES.AWAITING_DESIGNATION:
-        return _processDesignation(parsed);
-
-      case STATES.AWAITING_PROCEED:
-        return _processProceed(parsed);
-
-      case STATES.AWAITING_TEMPORAL:
-        return _processTemporalKey(parsed);
-
+      case STATES.AWAITING_CMD: return _processAwaitingCmd(parsed);
+      case STATES.AWAITING_DESIGNATION: return _processDesignation(parsed);
+      case STATES.AWAITING_PROCEED: return _processProceed(parsed);
+      case STATES.AWAITING_TEMPORAL: return _processTemporal(parsed);
+      case STATES.AWAITING_FINAL_ENTER:
+      case STATES.END_LOCKED: return _processFinal(parsed);
       case STATES.ACCESS_GRANTED:
       case STATES.MISSION_BRIEFING:
-      case STATES.MISSION_INPUT:
-        return _processGrantedCommand(parsed);
-
-      default:
-        return { type: 'noop', newState: _state };
+      case STATES.MISSION_INPUT: return _processGranted(parsed);
+      default: return { type: 'noop', newState: _state };
     }
   }
 
+  function _publicCommand(cmd) {
   /**
    * Handle "normal website" commands that users might try.
    * These work in ANY state - pre-clearance or post-clearance.
@@ -166,6 +111,10 @@ const StateMachine = (function () {
         type: 'output',
         lines: [
           '',
+          'CREDITS: WINDTALKER TECHNOLOGIES',
+          'CREDITS: SANDPOINT CHAMBER OF COMMERCE',
+          'CREDITS: ANTHROPIC / CLAUDE',
+          'ALL OPERATIONS ARE FICTIONAL. ALL LOCATIONS ARE REAL.',
           '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
           ' OPERATIONAL DISCLOSURE',
           '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
@@ -357,26 +306,57 @@ const StateMachine = (function () {
   function _processAwaitingCmd(parsed) {
     var cmd = parsed.command;
 
-    if (cmd === 'CLEARANCE' || cmd === 'ACCESS' || cmd === 'EYES_ONLY' || cmd === 'AUTH') {
-      return {
-        type: 'prompt',
-        lines: [
-          '',
-          'CLEARANCE VERIFICATION INITIATED',
-          'PROTOCOL: EYES ONLY / SIGMA-7',
-          '',
-          'ENTER DESIGNATION:'
-        ],
-        prompt: 'DESIGNATION> ',
-        newState: 'AWAITING_DESIGNATION'
-      };
-    }
-
-    if (cmd === 'HELP') {
+    if (cmd === 'CONTACT') {
       return {
         type: 'output',
         lines: [
           '',
+          'SECURE COMMUNICATIONS CHANNEL',
+          'admin@stellaraqua.com',
+          'INCLUDE CODENAME IN SUBJECT LINE.',
+          ''
+        ],
+        newState: _state
+      };
+    }
+
+    if (cmd === 'FAQ') {
+      return {
+        type: 'output',
+        lines: [
+          '',
+          'Q: WHAT IS THIS?',
+          'A: CLASSIFIED.',
+          '',
+          'Q: HOW DO I PROCEED?',
+          'A: TRY CLEARANCE.',
+          ''
+        ],
+        newState: _state
+      };
+    }
+
+    if (cmd === 'SANDPOINT') {
+      return {
+        type: 'output',
+        lines: [
+          '',
+          'LOCATION DOSSIER: SANDPOINT, IDAHO',
+          'COVER DESIGNATION: RESORT TOWN',
+          'ACTUAL STATUS: [REDACTED]',
+          ''
+        ],
+        newState: _state
+      };
+    }
+
+    if (cmd === 'SHOP') {
+      return {
+        type: 'deny',
+        lines: [
+          '',
+          'PROCUREMENT REQUEST DENIED.',
+          'CLASSIFIED MATERIEL IS NOT AVAILABLE FOR CIVILIAN PURCHASE.',
           'AVAILABLE COMMANDS:',
           '  CLEARANCE  - Initiate clearance verification',
           '  ACCESS     - Request terminal access',
@@ -392,130 +372,155 @@ const StateMachine = (function () {
       };
     }
 
-    if (cmd === 'CLEAR') {
-      return { type: 'clear', newState: _state };
-    }
-
-    // Easter egg: hidden commands at this stage
-    if (cmd === 'FALCON') {
+    if (cmd === 'MENU') {
       return {
         type: 'output',
         lines: [
           '',
-          'REFERENCE: CHRISTOPHER BOYCE',
-          'STATUS: COMPROMISED',
-          'LAST KNOWN SIGNAL: 1977',
-          'CLASSIFICATION: [REDACTED]',
+          'THIS IS NOT A WEBSITE.',
+          'THIS IS A TERMINAL.',
+          'THERE IS NO MENU. THERE ARE ONLY COMMANDS.',
           ''
         ],
         newState: _state
       };
     }
 
-    if (cmd === 'SNOWMAN') {
+    if (cmd === 'SOCIAL') {
       return {
         type: 'output',
         lines: [
           '',
-          'REFERENCE: ANDREW DAULTON LEE',
-          'STATUS: CONTAINED',
-          'OPERATIONAL PERIOD: 1974-1977',
-          'CLASSIFICATION: [REDACTED]',
+          'SOCIAL MEDIA INTEGRATION: DISABLED',
+          '... OR DO. WE MONITOR THOSE TOO.',
           ''
         ],
         newState: _state
       };
     }
 
+    if (cmd === 'HOME') {
+      return {
+        type: 'home',
+        lines: [],
+        newState: _state
+      };
+    }
+
+    if (cmd === 'LOGIN') {
+      return {
+        type: 'login',
+        lines: [],
+        newState: _state
+      };
+    }
+
+    if (cmd === 'STREET' || cmd === 'MAP') {
+      return {
+        type: 'street',
+        lines: [
+          '',
+          'MAP LINK ACCEPTED',
+          'OPENING STREET-LEVEL CHRONICLES',
+          ''
+        ],
+        newState: _state
+      };
+    }
+
+    return null;
+  }
+
+  function _processAwaitingCmd(parsed) {
+    var cmd = parsed.command;
+    var publicAction = _publicCommand(cmd);
+    if (publicAction) return publicAction;
+
+    if (cmd === 'CLEARANCE' || cmd === 'ACCESS' || cmd === 'EYES_ONLY' || cmd === 'AUTH') {
+      return {
+        type: 'prompt',
+        lines: ['', 'REQUEST ACKNOWLEDGED', 'CLEARANCE REQUIRED', 'PROVIDE DESIGNATION', ''],
+        prompt: 'DESIGNATION> ',
+        newState: 'AWAITING_DESIGNATION'
+      };
+    }
+
+    if (cmd === 'HELP') {
+      return {
+        type: 'output',
+        lines: [
+          '',
+          'AVAILABLE COMMANDS:',
+          '  /HELP, CLEARANCE, ACCESS, AUTH, EYES ONLY',
+          '  ABOUT, CONTACT, FAQ, SANDPOINT, MENU',
+          '  SHOP, SOCIAL, HOME, LOGIN, STREET',
+          '  MAP        - Enter street exploration mode',
+          ''
+        ],
+        newState: _state
+      };
+    }
+
+    if (cmd === 'CLEAR') return { type: 'clear', newState: _state, prompt: '> ' };
     // Check "normal website" commands
     var common = _processCommonCommand(parsed);
     if (common) return common;
 
     return {
       type: 'deny',
-      lines: [
-        '',
-        'UNRECOGNIZED INPUT',
-        'CLEARANCE REQUIRED FOR TERMINAL ACCESS',
-        ''
-      ],
+      lines: ['', 'INVALID INPUT, DID YOU MEAN /HELP?', 'INPUT LOGGED', ''],
       newState: _state
     };
   }
 
-  /**
-   * Handle designation input.
-   */
   function _processDesignation(parsed) {
-    // Accept CIVILIAN as the correct designation
+    if (Parser.matches(parsed.raw, 'OPERATOR') || Parser.matches(parsed.raw, 'ASSET')) {
+      return {
+        type: 'deny',
+        lines: ['', 'DESIGNATION REJECTED', 'ENTER DESIGNATION:', ''],
+        prompt: 'DESIGNATION> ',
+        newState: _state
+      };
+    }
+
     if (Parser.matches(parsed.raw, 'CIVILIAN')) {
       _data.designation = 'CIVILIAN';
+      _saveState();
       return {
         type: 'prompt',
-        lines: [
-          '',
-          'DESIGNATION ACCEPTED: CIVILIAN',
-          'CLEARANCE LEVEL: PROVISIONAL',
-          '',
-          'WARNING: FURTHER ACCESS CONSTITUTES CONSENT',
-          'TO MONITORING UNDER DIRECTIVE 77-SIGMA',
-          '',
-          'PROCEED? [Y/N]'
-        ],
+        lines: ['', 'DESIGNATION ACCEPTED', 'WARNING: LIMITED ACCESS', 'PROCEED? [Y/N]', ''],
         prompt: '> ',
         newState: 'AWAITING_PROCEED'
       };
     }
 
-    // Wrong designation
     _data.failedAttempts++;
+    _saveState();
     if (_data.failedAttempts >= MAX_FAILURES) {
       _lockoutUntil = Date.now() + LOCKOUT_DURATION;
       return {
         type: 'lockout',
-        lines: [
-          '',
-          'DESIGNATION REJECTED',
-          'MAXIMUM ATTEMPTS EXCEEDED',
-          'SECURITY LOCKOUT ENGAGED',
-          'TERMINAL LOCKED FOR 30 SECONDS',
-          ''
-        ],
+        lines: ['', 'DESIGNATION REJECTED', 'SECURITY LOCKOUT ENGAGED', ''],
         newState: 'AWAITING_CMD'
       };
     }
 
     return {
       type: 'deny',
-      lines: [
-        '',
-        'DESIGNATION NOT RECOGNIZED',
-        'ATTEMPT ' + _data.failedAttempts + '/' + MAX_FAILURES,
-        '',
-        'ENTER DESIGNATION:'
-      ],
+      lines: ['', 'DESIGNATION NOT RECOGNIZED', 'ATTEMPT ' + _data.failedAttempts + '/' + MAX_FAILURES, 'ENTER DESIGNATION:', ''],
       prompt: 'DESIGNATION> ',
       newState: _state
     };
   }
 
-  /**
-   * Handle Y/N proceed confirmation.
-   */
   function _processProceed(parsed) {
     if (parsed.command === 'YES') {
       _data.proceedChoice = true;
       _saveState();
       return {
         type: 'prompt',
-        lines: [
-          '',
-          'CONSENT RECORDED',
-          '',
-          'TEMPORAL VERIFICATION REQUIRED',
-          'ENTER ORIGIN YEAR OF THE FALCON SIGNAL:'
-        ],
-        prompt: 'YEAR> ',
+        lines: ['', 'CONSENT RECORDED', 'YOU ACCEPT OBSERVATION', '...', '', 'AWAITING INPUT', ''],
+        prompt: '> ',
         newState: 'AWAITING_TEMPORAL'
       };
     }
@@ -524,81 +529,40 @@ const StateMachine = (function () {
       _data.proceedChoice = false;
       _saveState();
       return {
-        type: 'output',
-        lines: [
-          '',
-          'ACKNOWLEDGED',
-          'SESSION TERMINATED',
-          'YOUR NON-PARTICIPATION HAS BEEN NOTED',
-          '',
-          'TERMINAL STANDING BY...',
-          ''
-        ],
+        type: 'prompt',
+        lines: ['', 'RESPONSE LOGGED', 'CAUTION ADVISED', '...', '', 'AWAITING INPUT', ''],
         prompt: '> ',
-        newState: 'AWAITING_CMD'
+        newState: 'AWAITING_TEMPORAL'
       };
     }
 
-    return {
-      type: 'output',
-      lines: ['', 'RESPOND: Y OR N', ''],
-      prompt: '> ',
-      newState: _state
-    };
+    return { type: 'output', lines: ['', 'RESPOND: Y OR N', ''], newState: _state };
   }
 
-  /**
-   * Handle temporal key verification.
-   */
-  function _processTemporalKey(parsed) {
-    if (parsed.normalized === TEMPORAL_KEY) {
+  function _processTemporal(parsed) {
+    if (TEMPORAL_KEYS.indexOf(parsed.normalized) !== -1) {
       _data.accessGranted = true;
       _data.clearanceLevel = 1;
       _data.sessionStart = Date.now();
       _data.failedAttempts = 0;
       _saveState();
-      return {
-        type: 'grant',
-        lines: [], // Handled specially by main.js
-        newState: 'ACCESS_GRANTED'
-      };
+      return { type: 'grant', newState: 'ACCESS_GRANTED' };
     }
 
     _data.failedAttempts++;
-    if (_data.failedAttempts >= MAX_FAILURES) {
-      _lockoutUntil = Date.now() + LOCKOUT_DURATION;
-      return {
-        type: 'lockout',
-        lines: [
-          '',
-          'TEMPORAL KEY REJECTED',
-          'MAXIMUM ATTEMPTS EXCEEDED',
-          'SECURITY LOCKOUT ENGAGED',
-          ''
-        ],
-        newState: 'AWAITING_CMD'
-      };
-    }
-
+    _saveState();
     return {
       type: 'deny',
-      lines: [
-        '',
-        'TEMPORAL KEY INCORRECT',
-        'ATTEMPT ' + _data.failedAttempts + '/' + MAX_FAILURES,
-        '',
-        'ENTER ORIGIN YEAR OF THE FALCON SIGNAL:'
-      ],
-      prompt: 'YEAR> ',
+      lines: ['', 'AWAITING INPUT', 'ATTEMPT ' + _data.failedAttempts + '/' + MAX_FAILURES, ''],
+      prompt: '> ',
       newState: _state
     };
   }
 
-  /**
-   * Handle commands after access is granted.
-   */
-  function _processGrantedCommand(parsed) {
+  function _processGranted(parsed) {
     var cmd = parsed.command;
+    var publicAction = _publicCommand(cmd);
+    if (publicAction) return publicAction;
 
     if (cmd === 'HELP') {
       return {
@@ -606,6 +570,10 @@ const StateMachine = (function () {
         lines: [
           '',
           'TERMINAL COMMANDS:',
+          'STATUS, MISSIONS, DOSSIER, MAP, FALCON, SNOWMAN, SUBMERGED',
+          'ABOUT, CONTACT, FAQ, SANDPOINT, MENU, SOCIAL, HOME, LOGIN, STREET',
+          'MAP (or GRID/SECTOR) enters Street Chronicles',
+          'CLEAR, RESET',
           '  STATUS    - Display operational status',
           '  MISSIONS  - List active mission nodes',
           '  DOSSIER   - Access collected intelligence',
@@ -629,9 +597,7 @@ const StateMachine = (function () {
       };
     }
 
-    if (cmd === 'CLEAR') {
-      return { type: 'clear', newState: _state };
-    }
+    if (cmd === 'CLEAR') return { type: 'clear', newState: _state, prompt: 'COMMAND> ' };
 
     if (cmd === 'STATUS') {
       var progress = Missions.getProgress();
@@ -639,13 +605,9 @@ const StateMachine = (function () {
         type: 'output',
         lines: [
           '',
-          'OPERATIONAL STATUS',
-          '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
-          'DESIGNATION:  ' + (_data.designation || 'UNKNOWN'),
-          'CLEARANCE:    LEVEL ' + _data.clearanceLevel,
+          'DESIGNATION: ' + (_data.designation || 'UNKNOWN'),
+          'CLEARANCE: LEVEL ' + _data.clearanceLevel,
           'NODES ACTIVE: ' + progress.unlocked + ' / ' + progress.total,
-          'SESSION:      ' + _formatDuration(Date.now() - _data.sessionStart),
-          '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
           ''
         ],
         newState: _state
@@ -654,151 +616,49 @@ const StateMachine = (function () {
 
     if (cmd === 'MISSIONS') {
       var active = Missions.getActiveMissions();
-      var unlocked = Missions.getUnlockedMissions();
-      var unlockedIds = unlocked.map(function (m) { return m.id; });
-      var missionLines = [
-        '',
-        'ACTIVE MISSION NODES',
-        '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500'
-      ];
+      var lines = ['', 'ACTIVE MISSION NODES'];
       active.forEach(function (m) {
-        var status = unlockedIds.indexOf(m.id) !== -1 ? '[UNLOCKED]' : '[LOCKED]';
-        missionLines.push('  ' + m.codename + '  ' + status);
-        missionLines.push('  Location: ' + m.location);
-        missionLines.push('');
+        lines.push('  ' + m.codename + ' - ' + m.status);
       });
-      missionLines.push('Enter mission unlock codes to access intel.');
-      missionLines.push('');
-      return {
-        type: 'output',
-        lines: missionLines,
-        newState: _state
-      };
+      lines.push('');
+      return { type: 'output', lines: lines, newState: _state };
     }
 
     if (cmd === 'DOSSIER') {
       var collected = Missions.getUnlockedMissions();
-      if (collected.length === 0) {
-        return {
-          type: 'output',
-          lines: [
-            '',
-            'NO INTELLIGENCE COLLECTED',
-            'UNLOCK MISSION NODES TO ACCESS DOSSIER',
-            ''
-          ],
-          newState: _state
-        };
+      if (!collected.length) {
+        return { type: 'output', lines: ['', 'NO INTELLIGENCE COLLECTED', ''], newState: _state };
       }
-      var dossierLines = ['', 'COLLECTED INTELLIGENCE', '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500'];
-      collected.forEach(function (m) {
-        dossierLines.push('');
-        dossierLines.push('CODENAME: ' + m.codename);
-        dossierLines.push('REWARD:   ' + m.reward);
-      });
-      dossierLines.push('');
-      return {
-        type: 'output',
-        lines: dossierLines,
-        newState: _state
-      };
+      var dossier = ['', 'COLLECTED INTELLIGENCE'];
+      collected.forEach(function (m) { dossier.push('  ' + m.codename + ': ' + m.reward); });
+      dossier.push('');
+      return { type: 'output', lines: dossier, newState: _state };
     }
-
-    if (cmd === 'MAP') {
-      return {
-        type: 'output',
-        lines: [
-          '',
-          'SECTOR GRID: SANDPOINT, IDAHO',
-          '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
-          '  48.28\u00b0N  116.55\u00b0W',
-          '',
-          '    [F] FALCON NEST     - Downtown',
-          '    [S] SNOWMAN NODE    - City Beach',
-          '    [U] SUBMERGED SITE  - Marina',
-          '',
-          '  LAKE PEND OREILLE: DEPTH 1,150 FT',
-          '  NAVY ACOUSTIC RANGE: [CLASSIFIED]',
-          '',
-          '  GEOLOCATION: STANDBY',
-          ''
-        ],
-        newState: _state
-      };
-    }
-
-    if (cmd === 'FALCON') {
-      var falcon = Missions.getByCodename('FALCON NEST');
-      if (falcon) {
-        return {
-          type: 'output',
-          lines: ['', 'MISSION NODE: ' + falcon.codename, ''].concat(
-            [falcon.briefing],
-            ['', 'STATUS: ' + falcon.status, '']
-          ),
-          newState: _state
-        };
-      }
-    }
-
-    if (cmd === 'SNOWMAN') {
-      var snowman = Missions.getByCodename('SNOWMAN NODE');
-      if (snowman) {
-        return {
-          type: 'output',
-          lines: ['', 'MISSION NODE: ' + snowman.codename, ''].concat(
-            [snowman.briefing],
-            ['', 'STATUS: ' + snowman.status, '']
-          ),
-          newState: _state
-        };
-      }
-    }
-
-    if (cmd === 'SUBMERGED') {
-      var sub = Missions.getByCodename('SUBMERGED SITE');
-      if (sub) {
-        return {
-          type: 'output',
-          lines: ['', 'MISSION NODE: ' + sub.codename, ''].concat(
-            [sub.briefing],
-            ['', 'STATUS: ' + sub.status, '']
-          ),
-          newState: _state
-        };
+    if (cmd === 'FALCON' || cmd === 'SNOWMAN' || cmd === 'SUBMERGED') {
+      var code = cmd === 'FALCON' ? 'FALCON NEST' : (cmd === 'SNOWMAN' ? 'SNOWMAN NODE' : 'SUBMERGED SITE');
+      var mission = Missions.getByCodename(code);
+      if (mission) {
+        return { type: 'output', lines: ['', mission.codename, mission.briefing, ''], newState: _state };
       }
     }
 
     if (cmd === 'AMBER') {
       document.body.classList.add('amber-mode');
-      return {
-        type: 'output',
-        lines: ['', 'PHOSPHOR MODE: AMBER', ''],
-        newState: _state
-      };
+      return { type: 'output', lines: ['', 'PHOSPHOR MODE: AMBER', ''], newState: _state };
     }
 
     if (cmd === 'GREEN') {
       document.body.classList.remove('amber-mode');
-      return {
-        type: 'output',
-        lines: ['', 'PHOSPHOR MODE: GREEN', ''],
-        newState: _state
-      };
+      return { type: 'output', lines: ['', 'PHOSPHOR MODE: GREEN', ''], newState: _state };
     }
 
     if (cmd === 'RESET') {
-      return {
-        type: 'output',
-        lines: [
-          '',
-          'WARNING: THIS WILL PURGE ALL SESSION DATA',
-          'TYPE "CONFIRM PURGE" TO PROCEED',
-          ''
-        ],
-        data: { awaitingPurge: true },
-        newState: _state
-      };
+      if (Parser.matches(parsed.raw, 'CONFIRM PURGE')) {
+        _resetState();
+        Missions.reset();
+        return { type: 'clear', data: { fullReset: true }, newState: 'IDLE' };
+      }
+      return { type: 'output', lines: ['', 'TYPE "CONFIRM PURGE" TO PROCEED', ''], newState: _state };
     }
 
     // Check "normal website" commands (work post-access too)
@@ -809,95 +669,43 @@ const StateMachine = (function () {
     if (cmd === 'CODE' || cmd === 'NUMERIC' || cmd === 'UNKNOWN') {
       var result = Missions.tryUnlock(parsed.raw);
       if (result) {
-        if (result.alreadyUnlocked) {
-          return {
-            type: 'output',
-            lines: [
-              '',
-              'NODE ALREADY ACTIVE: ' + result.mission.codename,
-              'INTEL PREVIOUSLY RETRIEVED',
-              ''
-            ],
-            newState: _state
-          };
-        }
-        // New unlock - return mission lore
         return {
           type: 'mission',
-          lines: [''].concat(
-            ['\u2588\u2588 NODE UNLOCKED: ' + result.mission.codename + ' \u2588\u2588'],
-            [''],
-            result.mission.lore,
-            [''],
-            ['REWARD: ' + result.mission.reward],
-            ['']
-          ),
-          data: { mission: result.mission },
+          lines: ['', '██ NODE UNLOCKED: ' + result.mission.codename + ' ██', '', result.mission.lore, '', 'REWARD: ' + result.mission.reward, ''],
           newState: _state
-        };
-      }
-
-      // Check for purge confirmation
-      if (Parser.matches(parsed.raw, 'CONFIRM PURGE')) {
-        _resetState();
-        Missions.reset();
-        return {
-          type: 'clear',
-          lines: ['', 'ALL DATA PURGED', 'TERMINAL RESETTING...', ''],
-          data: { fullReset: true },
-          newState: 'IDLE'
         };
       }
     }
 
-    return {
-      type: 'output',
-      lines: ['', 'COMMAND NOT RECOGNIZED', 'TYPE HELP FOR AVAILABLE COMMANDS', ''],
-      newState: _state
-    };
+    return { type: 'output', lines: ['', 'COMMAND NOT RECOGNIZED', 'TYPE HELP FOR AVAILABLE COMMANDS', ''], newState: _state };
   }
 
-  /**
-   * Format a duration in ms to human-readable.
-   */
-  function _formatDuration(ms) {
-    var seconds = Math.floor(ms / 1000);
-    var minutes = Math.floor(seconds / 60);
-    var hours = Math.floor(minutes / 60);
-    if (hours > 0) return hours + 'h ' + (minutes % 60) + 'm';
-    if (minutes > 0) return minutes + 'm ' + (seconds % 60) + 's';
-    return seconds + 's';
+  function _processFinal(parsed) {
+    if (_state === STATES.AWAITING_FINAL_ENTER && parsed.command === 'ENTER') {
+      return { type: 'output', lines: ['', 'END OF LINE', ''], newState: 'END_LOCKED' };
+    }
+
+    if (_state === STATES.END_LOCKED) {
+      return { type: 'deny', lines: ['', 'TERMINAL LOCKED', 'SESSION ARCHIVED', ''], newState: _state };
+    }
+
+    return { type: 'output', lines: ['', 'PRESS ENTER', ''], newState: _state };
   }
 
-  /**
-   * Save state to localStorage.
-   */
   function _saveState() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        state: _state,
-        data: _data
-      }));
-    } catch (e) { /* ignore */ }
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ state: _state, data: _data })); } catch (e) { /* ignore */ }
   }
 
-  /**
-   * Load state from localStorage.
-   */
   function _loadState() {
     try {
       var saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        var parsed = JSON.parse(saved);
-        if (parsed.state) _state = parsed.state;
-        if (parsed.data) Object.assign(_data, parsed.data);
-      }
+      if (!saved) return;
+      var parsed = JSON.parse(saved);
+      if (parsed.state) _state = parsed.state;
+      if (parsed.data) Object.assign(_data, parsed.data);
     } catch (e) { /* ignore */ }
   }
 
-  /**
-   * Reset all state.
-   */
   function _resetState() {
     _state = STATES.IDLE;
     _data = {

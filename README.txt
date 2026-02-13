@@ -112,3 +112,14 @@ Differences from langterm:
 - State persistence via localStorage instead of sessionStorage
 - Multi-state ARG flow instead of single Inform7 session
 - Mission registry for expandable geocaching content
+
+Cloudflare Wrangler Deploy
+-------------------------
+This repo is configured for static-asset deployment with Wrangler via `wrangler.jsonc`.
+
+Expected deploy command:
+- `npx wrangler deploy`
+
+Notes:
+- Assets are served from the repository root (`index.html`, `css/`, `js/`, `data/`).
+- If you change the project name, update the `name` field in `wrangler.jsonc`.

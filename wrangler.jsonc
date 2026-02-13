@@ -1,0 +1,9 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "eyesonly-cc",
+  "compatibility_date": "2026-02-13",
+  "assets": {
+    "directory": ".",
+    "not_found_handling": "404-page"
+  }
+}
