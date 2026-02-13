@@ -37,6 +37,16 @@ const Parser = (function () {
     { name: 'GREEN',     aliases: ['green', 'phosphor green'],         hidden: true },
     { name: 'RESET',     aliases: ['reset', 'purge', 'wipe'],          hidden: true },
     { name: 'MISSIONS',  aliases: ['missions', 'mission', 'nodes'],    hidden: true },
+
+    // "Normal website" commands - things regular users might try
+    { name: 'ABOUT',     aliases: ['about', 'about us', 'aboutus', 'who', 'who are you', 'info', 'credits'],  hidden: true },
+    { name: 'HOME',      aliases: ['home', 'homepage', 'main', 'start', 'back', 'return', 'exit', 'quit', 'logout', 'logoff', 'log out'],  hidden: true },
+    { name: 'CONTACT',   aliases: ['contact', 'contact us', 'contactus', 'email', 'book', 'book now', 'booknow', 'booking', 'reserve', 'signup', 'sign up', 'register'],  hidden: true },
+    { name: 'MENU',      aliases: ['menu', 'nav', 'navigation', 'sitemap', 'site map', 'links', 'pages'],  hidden: true },
+    { name: 'SHOP',      aliases: ['shop', 'store', 'buy', 'purchase', 'order', 'merch', 'merchandise', 'cart'],  hidden: true },
+    { name: 'SOCIAL',    aliases: ['facebook', 'instagram', 'twitter', 'x', 'tiktok', 'youtube', 'social', 'follow'],  hidden: true },
+    { name: 'FAQ',       aliases: ['faq', 'questions', 'how', 'how does this work', 'what is this', 'explain', 'wtf', 'huh'],  hidden: true },
+    { name: 'SANDPOINT', aliases: ['sandpoint', 'idaho', 'chamber', 'chamber of commerce', 'tourism', 'visit', 'travel'],  hidden: true },
   ];
 
   /**
