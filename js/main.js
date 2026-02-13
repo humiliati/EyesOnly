@@ -263,6 +263,11 @@
       case 'clear':
         Terminal.clear();
         if (action.data && action.data.fullReset) {
+          // Full purge (CONFIRM PURGE) - wipe everything, show title
+          _firstKeyPressed = false;
+          _showTitleScreen();
+        } else if (action.data && action.data.returnHome) {
+          // HOME command - return to title screen, keep session data
           _firstKeyPressed = false;
           _showTitleScreen();
         } else {

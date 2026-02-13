@@ -98,6 +98,14 @@ const StateMachine = (function () {
   }
 
   function _publicCommand(cmd) {
+  /**
+   * Handle "normal website" commands that users might try.
+   * These work in ANY state - pre-clearance or post-clearance.
+   * Returns an action object or null if the command isn't a "normal" one.
+   */
+  function _processCommonCommand(parsed) {
+    var cmd = parsed.command;
+
     if (cmd === 'ABOUT') {
       return {
         type: 'output',
@@ -107,11 +115,196 @@ const StateMachine = (function () {
           'CREDITS: SANDPOINT CHAMBER OF COMMERCE',
           'CREDITS: ANTHROPIC / CLAUDE',
           'ALL OPERATIONS ARE FICTIONAL. ALL LOCATIONS ARE REAL.',
+          '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+          ' OPERATIONAL DISCLOSURE',
+          '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+          '',
+          'THIS TERMINAL IS A JOINT OPERATION OF:',
+          '',
+          '  WINDTALKER TECHNOLOGIES',
+          '  Tactical Systems Division',
+          '',
+          '  SANDPOINT CHAMBER OF COMMERCE',
+          '  Civilian Liaison Office',
+          '',
+          '  ANTHROPIC / CLAUDE',
+          '  Synthetic Intelligence Consultancy',
+          '',
+          'DEVELOPED IN COOPERATION WITH THE',
+          'SMALL BUSINESSES AND COMMUNITY OF',
+          'SANDPOINT, IDAHO',
+          '',
+          'ALL OPERATIONS ARE FICTIONAL.',
+          'ALL LOCATIONS ARE REAL.',
+          '',
+          '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
           ''
         ],
         newState: _state
       };
     }
+
+    if (cmd === 'HOME') {
+      // Return to title screen but preserve session data.
+      // State machine will restore from localStorage on next boot.
+      return {
+        type: 'clear',
+        data: { returnHome: true },
+        newState: 'IDLE'
+      };
+    }
+
+    if (cmd === 'CONTACT') {
+      return {
+        type: 'output',
+        lines: [
+          '',
+          '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+          ' SECURE COMMUNICATIONS CHANNEL',
+          '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+          '',
+          'FOR RECRUITMENT INQUIRIES,',
+          'PARTNERSHIP PROPOSALS, OR',
+          'INTELLIGENCE SUBMISSIONS:',
+          '',
+          '  SIGNAL:  admin@stellaraqua.com',
+          '',
+          'INCLUDE CODENAME IN SUBJECT LINE.',
+          'UNSECURED CHANNELS MONITORED.',
+          '',
+          'RESPONSE TIME: 48-72 HOURS',
+          'PRIORITY GIVEN TO FIELD OPERATIVES',
+          '',
+          '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+          ''
+        ],
+        newState: _state
+      };
+    }
+
+    if (cmd === 'MENU') {
+      return {
+        type: 'output',
+        lines: [
+          '',
+          'THIS IS NOT A WEBSITE.',
+          'THIS IS A TERMINAL.',
+          '',
+          'THERE IS NO MENU.',
+          'THERE ARE ONLY COMMANDS.',
+          '',
+          'TYPE HELP IF YOU ARE LOST.',
+          ''
+        ],
+        newState: _state
+      };
+    }
+
+    if (cmd === 'SHOP') {
+      return {
+        type: 'output',
+        lines: [
+          '',
+          'PROCUREMENT REQUEST DENIED',
+          '',
+          'CLASSIFIED MATERIEL IS NOT',
+          'AVAILABLE FOR CIVILIAN PURCHASE.',
+          '',
+          'VISIT SANDPOINT FIELD STATIONS',
+          'FOR AUTHORIZED SUPPLY DROPS.',
+          ''
+        ],
+        newState: _state
+      };
+    }
+
+    if (cmd === 'SOCIAL') {
+      return {
+        type: 'output',
+        lines: [
+          '',
+          'SOCIAL MEDIA INTEGRATION: DISABLED',
+          '',
+          'OPERATIONAL SECURITY PROHIBITS',
+          'CONNECTION TO CIVILIAN NETWORKS.',
+          '',
+          'DO NOT DISCUSS THIS TERMINAL',
+          'ON UNSECURED CHANNELS.',
+          '',
+          '... OR DO. WE MONITOR THOSE TOO.',
+          ''
+        ],
+        newState: _state
+      };
+    }
+
+    if (cmd === 'FAQ') {
+      return {
+        type: 'output',
+        lines: [
+          '',
+          'FREQUENTLY ASKED QUESTIONS',
+          '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+          '',
+          'Q: WHAT IS THIS?',
+          'A: CLASSIFIED.',
+          '',
+          'Q: NO REALLY, WHAT IS THIS?',
+          'A: A RECRUITMENT TERMINAL FOR',
+          '   SANDPOINT FIELD OPERATIONS.',
+          '   TYPE CLEARANCE TO BEGIN.',
+          '',
+          'Q: IS THIS A GAME?',
+          'A: THAT DEPENDS ON YOUR',
+          '   CLEARANCE LEVEL.',
+          '',
+          'Q: DO I NEED TO GO SOMEWHERE?',
+          'A: SANDPOINT, IDAHO.',
+          '   THE REST IS NEED-TO-KNOW.',
+          ''
+        ],
+        newState: _state
+      };
+    }
+
+    if (cmd === 'SANDPOINT') {
+      return {
+        type: 'output',
+        lines: [
+          '',
+          'SANDPOINT, IDAHO',
+          '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+          '  48.28\u00b0N  116.55\u00b0W',
+          '',
+          'POPULATION: 9,246 (OFFICIAL)',
+          'ELEVATION:  2,090 FT',
+          'LAKE DEPTH: 1,150 FT (PEND OREILLE)',
+          '',
+          'COVER DESIGNATION: RESORT TOWN',
+          'ACTUAL STATUS:     [REDACTED]',
+          '',
+          'THE CHAMBER OF COMMERCE DESCRIBES IT',
+          'AS "A BEAUTIFUL MOUNTAIN COMMUNITY."',
+          '',
+          'THEY ARE NOT WRONG.',
+          'BUT THAT IS NOT THE WHOLE STORY.',
+          '',
+          'TYPE CLEARANCE TO LEARN MORE.',
+          ''
+        ],
+        newState: _state
+      };
+    }
+
+    // Not a common command
+    return null;
+  }
+
+  /**
+   * Handle commands in AWAITING_CMD state.
+   */
+  function _processAwaitingCmd(parsed) {
+    var cmd = parsed.command;
 
     if (cmd === 'CONTACT') {
       return {
@@ -164,6 +357,15 @@ const StateMachine = (function () {
           '',
           'PROCUREMENT REQUEST DENIED.',
           'CLASSIFIED MATERIEL IS NOT AVAILABLE FOR CIVILIAN PURCHASE.',
+          'AVAILABLE COMMANDS:',
+          '  CLEARANCE  - Initiate clearance verification',
+          '  ACCESS     - Request terminal access',
+          '  AUTH       - Authenticate credentials',
+          '  EYES ONLY  - Invoke classification protocol',
+          '',
+          '  ABOUT      - Operational disclosure',
+          '  CONTACT    - Secure communications channel',
+          '  FAQ        - Frequently asked questions',
           ''
         ],
         newState: _state
@@ -260,6 +462,9 @@ const StateMachine = (function () {
     }
 
     if (cmd === 'CLEAR') return { type: 'clear', newState: _state, prompt: '> ' };
+    // Check "normal website" commands
+    var common = _processCommonCommand(parsed);
+    if (common) return common;
 
     return {
       type: 'deny',
@@ -369,6 +574,23 @@ const StateMachine = (function () {
           'ABOUT, CONTACT, FAQ, SANDPOINT, MENU, SOCIAL, HOME, LOGIN, STREET',
           'MAP (or GRID/SECTOR) enters Street Chronicles',
           'CLEAR, RESET',
+          '  STATUS    - Display operational status',
+          '  MISSIONS  - List active mission nodes',
+          '  DOSSIER   - Access collected intelligence',
+          '  MAP       - Display sector grid',
+          '  FALCON    - Query FALCON reference',
+          '  SNOWMAN   - Query SNOWMAN reference',
+          '  SUBMERGED - Query SUBMERGED SITE',
+          '  CLEAR     - Clear terminal',
+          '  RESET     - Purge all session data',
+          '',
+          '  ABOUT     - Operational disclosure',
+          '  CONTACT   - Secure communications channel',
+          '  FAQ       - Frequently asked questions',
+          '  SANDPOINT - Location intelligence',
+          '  HOME      - Return to title screen',
+          '',
+          'Enter a MISSION CODE to unlock nodes.',
           ''
         ],
         newState: _state
@@ -439,6 +661,11 @@ const StateMachine = (function () {
       return { type: 'output', lines: ['', 'TYPE "CONFIRM PURGE" TO PROCEED', ''], newState: _state };
     }
 
+    // Check "normal website" commands (work post-access too)
+    var common = _processCommonCommand(parsed);
+    if (common) return common;
+
+    // Check for mission unlock codes
     if (cmd === 'CODE' || cmd === 'NUMERIC' || cmd === 'UNKNOWN') {
       var result = Missions.tryUnlock(parsed.raw);
       if (result) {
