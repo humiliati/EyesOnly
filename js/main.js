@@ -20,6 +20,8 @@
    */
   function start() {
     Terminal.init();
+    LoginShell.init();
+    StreetChronicles.init();
 
     // Initialize missions (async, loads JSON)
     Missions.init().then(function () {
@@ -79,6 +81,12 @@
     // Flicker effect
     Terminal.flicker();
 
+    var currentState = StateMachine.getState();
+    if (currentState !== StateMachine.STATES.IDLE) {
+      _resumeSession();
+      return;
+    }
+
     // Begin boot sequence
     _runBootSequence();
   }
@@ -91,49 +99,39 @@
 
     var bootLines = [
       'SIGNAL DETECTED',
-      '',
-      'INITIALIZING SECURE SESSION...',
+      'INITIALIZING SECURE SESSION',
+      '...'
     ];
 
-    Terminal.typeLines(bootLines, Terminal.TYPE_SPEED_FAST, 200, 'system-msg')
+    Terminal.typeLines(bootLines, Terminal.TYPE_SPEED_FAST, 180, 'system-msg')
       .then(function () {
-        return Terminal.progressBar('ENCRYPTION', 1200);
+        return _pause(450);
       })
       .then(function () {
-        return _pause(300);
-      })
-      .then(function () {
-        return Terminal.typeLines([
-          '',
-          'VERIFYING CLEARANCE...',
-        ], Terminal.TYPE_SPEED_FAST, 150, 'system-msg');
-      })
-      .then(function () {
-        return Terminal.progressBar('CLEARANCE', 800);
-      })
-      .then(function () {
-        return _pause(200);
-      })
-      .then(function () {
-        Terminal.flicker();
-        return Terminal.typeLines([
-          '',
-          '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
-          ' EYES ONLY TERMINAL v3.77.1',
-          ' CLASSIFICATION: TOP SECRET // SIGMA-7',
-          ' SANDPOINT FIELD STATION',
-          '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
-          '',
-          'TERMINAL READY',
-          'ENTER CLEARANCE COMMAND TO PROCEED',
-          ''
-        ], Terminal.TYPE_SPEED_FAST, 80, 'system-msg');
-      })
-      .then(function () {
-        // Transition to awaiting command
         StateMachine.transition('AWAITING_CMD');
         _enableInput('> ');
       });
+  }
+
+  function _resumeSession() {
+    var state = StateMachine.getState();
+
+    if (state === StateMachine.STATES.END_LOCKED) {
+      Terminal.writeLine('SESSION ARCHIVED', 'system-msg');
+      Terminal.writeLine('');
+      return;
+    }
+
+    Terminal.typeLines(['SESSION RESTORED', ''], Terminal.TYPE_SPEED_FAST, 80, 'system-msg')
+      .then(function () {
+        _enableInput(_promptForState(state));
+      });
+  }
+
+  function _promptForState(state) {
+    if (state === StateMachine.STATES.AWAITING_DESIGNATION) return 'DESIGNATION> ';
+    if (state === StateMachine.STATES.ACCESS_GRANTED || state === StateMachine.STATES.MISSION_BRIEFING || state === StateMachine.STATES.MISSION_INPUT) return 'COMMAND> ';
+    return '> ';
   }
 
   /**
@@ -148,12 +146,48 @@
    * Central command handler - routes through Parser and StateMachine.
    */
   function _handleCommand(rawInput) {
-    if (!rawInput || rawInput.trim().length === 0) return;
+    var currentState = StateMachine.getState();
 
-    var parsed = Parser.parse(rawInput);
+    if (StreetChronicles.isActive()) {
+      _executeStreetAction(StreetChronicles.process(rawInput || ''));
+      return;
+    }
+
+    if (LoginShell.isActive()) {
+      _executeLoginAction(LoginShell.process(rawInput || ''));
+      return;
+    }
+
+    if ((!rawInput || rawInput.trim().length === 0) &&
+        currentState !== StateMachine.STATES.AWAITING_FINAL_ENTER &&
+        currentState !== StateMachine.STATES.END_LOCKED) return;
+
+    var parsed = Parser.parse(rawInput || '');
     var action = StateMachine.process(parsed);
 
     _executeAction(action);
+  }
+
+  function _executeStreetAction(action) {
+    Terminal.hideInput();
+    _displayLines(action.lines || [], function () {
+      if (action.stayActive) {
+        _enableInput(action.prompt || StreetChronicles.getPrompt());
+        return;
+      }
+      _enableInput(_promptForState(StateMachine.getState()));
+    }, 'system-msg');
+  }
+
+  function _executeLoginAction(action) {
+    Terminal.hideInput();
+    _displayLines(action.lines || [], function () {
+      if (action.stayActive) {
+        _enableInput(action.prompt || LoginShell.getPrompt());
+        return;
+      }
+      _enableInput(_promptForState(StateMachine.getState()));
+    }, 'system-msg classified');
   }
 
   /**
@@ -167,6 +201,10 @@
       case 'output':
         _displayLines(action.lines, function () {
           StateMachine.transition(action.newState);
+          if (action.newState === 'END_LOCKED') {
+            Terminal.hideInput();
+            return;
+          }
           _enableInput(action.prompt);
         });
         break;
@@ -200,6 +238,18 @@
 
       case 'grant':
         _runAccessGranted();
+        break;
+
+      case 'login':
+        _executeLoginAction(LoginShell.start());
+        break;
+
+      case 'street':
+        _executeStreetAction(StreetChronicles.start());
+        break;
+
+      case 'home':
+        _returnToTitlePreserveSession();
         break;
 
       case 'mission':
@@ -252,42 +302,41 @@
     Terminal.typeLines([
       '',
       'TEMPORAL KEY VERIFIED',
+      'ACCESS GRANTED',
       ''
     ], Terminal.TYPE_SPEED_FAST, 100, 'system-msg')
       .then(function () {
-        return _pause(500);
+        return _pause(350);
       })
       .then(function () {
         Terminal.flicker();
         Terminal.clear();
-        return _pause(300);
+        return _pause(200);
       })
       .then(function () {
-        // ACCESS GRANTED banner
         return Terminal.typeLines([
+          'EYES ONLY',
           '',
+          'YOU ARE CLEARED FOR EXPOSURE',
           '',
-          '\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588',
-          '\u2588                                      \u2588',
-          '\u2588         ACCESS GRANTED                \u2588',
-          '\u2588         CLEARANCE: LEVEL 1             \u2588',
-          '\u2588         WELCOME, CIVILIAN              \u2588',
-          '\u2588                                      \u2588',
-          '\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588',
-        ], Terminal.TYPE_SPEED_FAST, 50, 'system-msg highlight');
+          'THIS SYSTEM DOES NOT RECRUIT',
+          'IT REMEMBERS',
+          '',
+          '[PRESS ENTER]',
+          ''
+        ], Terminal.TYPE_SPEED_FAST, 70, 'system-msg');
       })
       .then(function () {
-        return _pause(1500);
-      })
-      .then(function () {
-        Terminal.clear();
-        StateMachine.transition('ACCESS_GRANTED');
-        return _showMissionBriefing();
-      })
-      .then(function () {
-        _enableInput('COMMAND> ');
-        _startBriefingRotation();
+        StateMachine.transition('AWAITING_FINAL_ENTER');
+        _enableInput('> ');
       });
+  }
+
+  function _returnToTitlePreserveSession() {
+    Terminal.clear();
+    Terminal.hideInput();
+    _firstKeyPressed = false;
+    _showTitleScreen();
   }
 
   /**

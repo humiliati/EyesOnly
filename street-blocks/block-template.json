@@ -1,0 +1,40 @@
+{
+  "block_id": "TODO_unique_slug",
+  "display_name": "TODO Human-readable street name",
+  "description": "TODO 2-4 sentence sensory scene-setting text.",
+  "connections": {
+    "north": "TODO or null",
+    "east": "TODO or null",
+    "south": "TODO or null",
+    "west": "TODO or null"
+  },
+  "businesses": [
+    {
+      "name": "TODO business name",
+      "type": "TODO category",
+      "bio": "TODO short in-character description",
+      "browser_interaction": "TODO what players can do in browser",
+      "irl_interaction": "TODO optional live interaction"
+    }
+  ],
+  "items": [
+    "TODO collectible item names"
+  ],
+  "event": {
+    "event_id": "TODO optional",
+    "title": "TODO optional",
+    "recap": "TODO optional event recap text"
+  },
+  "irl_activation": {
+    "enabled": false,
+    "actor_needed": false,
+    "actor_role": "TODO optional",
+    "safe_hours": "TODO optional",
+    "public_notes": "TODO optional"
+  },
+  "operations": {
+    "business_contact_name": "TODO",
+    "business_contact_email": "TODO",
+    "approval_status": "draft"
+  }
+}

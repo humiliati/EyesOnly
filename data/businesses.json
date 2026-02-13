@@ -1,0 +1,12 @@
+{
+  "Cedar St": [
+    { "name": "Baker's Brew", "type": "cafe", "bio": "Serves cinnamon rolls and keeps a suspiciously active community corkboard." },
+    { "name": "Cedar Books", "type": "bookstore", "bio": "Stacks of regional history with a locked display case in the back." }
+  ],
+  "First St E": [
+    { "name": "Dockside Cafe", "type": "cafe", "bio": "Late-night coffee and rumors from the marina." }
+  ],
+  "Second St E": [
+    { "name": "Harbor Supply", "type": "outfitter", "bio": "Maps, flashlights, and weatherproof gear for long walks." }
+  ]
+}
