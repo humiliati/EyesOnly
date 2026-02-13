@@ -1,0 +1,435 @@
+/* ============================================================
+   EYES ONLY - CRT Terminal Stylesheet
+   Visual direction: Westwood Studios C&C (1995-98), Red Alert
+   briefing screens, Cold War command terminals, CRT phosphor
+   ============================================================ */
+
+/* --- CSS Custom Properties --- */
+:root {
+  /* Primary phosphor colors - amber CRT */
+  --phosphor:        #33ff33;
+  --phosphor-dim:    #1a9c1a;
+  --phosphor-bright: #66ff66;
+  --phosphor-glow:   rgba(51, 255, 51, 0.15);
+
+  /* Amber mode (alternate, activated by hidden command) */
+  --amber:           #ffb000;
+  --amber-dim:       #996a00;
+  --amber-bright:    #ffc640;
+  --amber-glow:      rgba(255, 176, 0, 0.15);
+
+  /* Background - deep CRT black with slight warmth */
+  --bg:              #0a0a0a;
+  --bg-screen:       #050805;
+
+  /* Timing */
+  --cursor-blink:    1s;
+  --scanline-speed:  8s;
+
+  /* CRT geometry */
+  --barrel-amount:   3px;
+  --scanline-opacity: 0.12;
+  --glow-spread:     4px;
+}
+
+/* --- Reset --- */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* --- Base --- */
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  font-family: 'Courier New', 'Lucida Console', 'Consolas', monospace;
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--phosphor);
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+/* --- CRT Screen Container --- */
+#crt-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-screen);
+  overflow: hidden;
+}
+
+/* --- Barrel Distortion (CSS approximation) --- */
+#crt-screen::before {
+  content: '';
+  position: absolute;
+  top: -2%;
+  left: -2%;
+  width: 104%;
+  height: 104%;
+  border-radius: 50% / 10%;
+  box-shadow:
+    inset 0 0 80px 40px rgba(0, 0, 0, 0.9),
+    inset 0 0 20px 10px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* --- Scanlines Overlay --- */
+#scanlines {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 90;
+  overflow: hidden;
+}
+
+/* Horizontal scanlines */
+#scanlines::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 1px,
+    rgba(0, 0, 0, var(--scanline-opacity)) 1px,
+    rgba(0, 0, 0, var(--scanline-opacity)) 2px
+  );
+  animation: scanline-flicker 0.05s infinite;
+}
+
+/* Rolling scanline bar */
+#scanlines::after {
+  content: '';
+  position: absolute;
+  top: -100%;
+  left: 0;
+  width: 100%;
+  height: 40%;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(51, 255, 51, 0.02) 40%,
+    rgba(51, 255, 51, 0.04) 50%,
+    rgba(51, 255, 51, 0.02) 60%,
+    transparent 100%
+  );
+  animation: scanline-roll var(--scanline-speed) linear infinite;
+}
+
+/* --- Phosphor Glow Layer --- */
+#phosphor-glow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 80;
+  background: radial-gradient(
+    ellipse at center,
+    var(--phosphor-glow) 0%,
+    transparent 70%
+  );
+  opacity: 0.3;
+}
+
+/* --- Vignette --- */
+#vignette {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 95;
+  box-shadow: inset 0 0 150px 60px rgba(0, 0, 0, 0.7);
+}
+
+/* --- Terminal Output Area --- */
+#terminal {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  padding: 5vh 5vw;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  /* Phosphor text glow */
+  text-shadow:
+    0 0 var(--glow-spread) var(--phosphor-glow),
+    0 0 calc(var(--glow-spread) * 2) var(--phosphor-glow);
+}
+
+#terminal::-webkit-scrollbar {
+  display: none;
+}
+
+/* --- Terminal Lines --- */
+.line {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  min-height: 1.4em;
+  opacity: 0;
+  animation: line-appear 0.05s forwards;
+}
+
+.line.instant {
+  opacity: 1;
+  animation: none;
+}
+
+/* --- Title Display --- */
+.title-text {
+  font-size: 1.5em;
+  letter-spacing: 0.15em;
+  font-weight: bold;
+  text-shadow:
+    0 0 8px var(--phosphor-glow),
+    0 0 16px var(--phosphor-glow),
+    0 0 32px var(--phosphor-glow);
+}
+
+/* --- Blinking Cursor --- */
+.cursor {
+  display: inline-block;
+  width: 0.6em;
+  animation: cursor-blink var(--cursor-blink) step-end infinite;
+}
+
+.cursor::after {
+  content: '_';
+}
+
+/* --- Input Line --- */
+#input-line {
+  display: flex;
+  align-items: baseline;
+  min-height: 1.4em;
+}
+
+#input-prompt {
+  white-space: pre;
+  color: var(--phosphor);
+}
+
+#input-buffer {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--phosphor);
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  caret-color: transparent;
+  text-shadow: inherit;
+  -webkit-font-smoothing: none;
+}
+
+#input-cursor {
+  display: inline-block;
+  animation: cursor-blink var(--cursor-blink) step-end infinite;
+}
+
+#input-cursor::after {
+  content: '_';
+}
+
+/* --- System Messages --- */
+.system-msg {
+  color: var(--phosphor-dim);
+}
+
+.system-msg.highlight {
+  color: var(--phosphor-bright);
+  text-shadow:
+    0 0 8px var(--phosphor-glow),
+    0 0 16px var(--phosphor-glow);
+}
+
+.system-msg.error {
+  color: #ff3333;
+  text-shadow: 0 0 8px rgba(255, 50, 50, 0.3);
+}
+
+.system-msg.classified {
+  color: var(--phosphor-bright);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* --- Header / Inverse Text --- */
+.inverse {
+  background: var(--phosphor);
+  color: var(--bg);
+  display: inline;
+  padding: 0 0.3em;
+  text-shadow: none;
+}
+
+/* --- Boot Sequence Specific --- */
+.boot-line {
+  color: var(--phosphor-dim);
+  font-size: 0.85em;
+}
+
+.progress-bar {
+  color: var(--phosphor-dim);
+}
+
+.progress-bar .filled {
+  color: var(--phosphor);
+}
+
+/* --- Classification Banner --- */
+.classification-banner {
+  text-align: center;
+  padding: 0.5em 0;
+  letter-spacing: 0.3em;
+  font-weight: bold;
+  color: var(--phosphor-bright);
+  text-shadow:
+    0 0 10px var(--phosphor-glow),
+    0 0 20px var(--phosphor-glow);
+  border-top: 1px solid var(--phosphor-dim);
+  border-bottom: 1px solid var(--phosphor-dim);
+  margin: 0.5em 0;
+}
+
+/* --- Mission Briefing --- */
+.briefing-header {
+  border-bottom: 1px solid var(--phosphor-dim);
+  padding-bottom: 0.3em;
+  margin-bottom: 0.5em;
+  letter-spacing: 0.2em;
+}
+
+.briefing-body {
+  padding-left: 2em;
+  color: var(--phosphor);
+}
+
+.briefing-codename {
+  color: var(--phosphor-bright);
+  font-weight: bold;
+  letter-spacing: 0.15em;
+}
+
+/* --- Amber Mode (toggled via hidden command) --- */
+body.amber-mode {
+  --phosphor:        var(--amber);
+  --phosphor-dim:    var(--amber-dim);
+  --phosphor-bright: var(--amber-bright);
+  --phosphor-glow:   var(--amber-glow);
+}
+
+body.amber-mode #scanlines::after {
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(255, 176, 0, 0.02) 40%,
+    rgba(255, 176, 0, 0.04) 50%,
+    rgba(255, 176, 0, 0.02) 60%,
+    transparent 100%
+  );
+}
+
+/* --- Screen Flicker Effect (triggered on state transitions) --- */
+.screen-flicker {
+  animation: flicker-burst 0.3s ease-out;
+}
+
+/* --- Animations --- */
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes scanline-roll {
+  0%   { top: -40%; }
+  100% { top: 100%; }
+}
+
+@keyframes scanline-flicker {
+  0%   { opacity: 1; }
+  50%  { opacity: 0.97; }
+  100% { opacity: 1; }
+}
+
+@keyframes line-appear {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes flicker-burst {
+  0%   { opacity: 1; }
+  10%  { opacity: 0.6; }
+  20%  { opacity: 1; }
+  30%  { opacity: 0.8; }
+  50%  { opacity: 1; }
+  70%  { opacity: 0.9; }
+  100% { opacity: 1; }
+}
+
+/* --- Glitch Effect (used during ACCESS GRANTED) --- */
+@keyframes glitch {
+  0%   { transform: translate(0); }
+  20%  { transform: translate(-2px, 1px); }
+  40%  { transform: translate(2px, -1px); }
+  60%  { transform: translate(-1px, 2px); }
+  80%  { transform: translate(1px, -2px); }
+  100% { transform: translate(0); }
+}
+
+.glitch-text {
+  animation: glitch 0.1s ease-in-out 3;
+}
+
+/* --- Responsive --- */
+@media (max-width: 600px) {
+  html, body {
+    font-size: 13px;
+  }
+  #terminal {
+    padding: 3vh 3vw;
+  }
+  .title-text {
+    font-size: 1.2em;
+  }
+}
+
+@media (max-width: 400px) {
+  html, body {
+    font-size: 11px;
+  }
+}
+
+/* --- Print (disable for classified documents) --- */
+@media print {
+  body::before {
+    content: 'CLASSIFIED - UNAUTHORIZED REPRODUCTION PROHIBITED';
+    display: block;
+    text-align: center;
+    font-size: 2em;
+    padding: 2em;
+  }
+  #terminal, #scanlines, #phosphor-glow, #vignette {
+    display: none !important;
+  }
+}

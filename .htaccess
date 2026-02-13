@@ -1,0 +1,43 @@
+# EYES ONLY - Apache Configuration
+# For GoDaddy cPanel / Apache hosting
+
+# --- Force HTTPS ---
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# --- MIME Types ---
+AddType application/json .json
+AddType text/css .css
+AddType application/javascript .js
+
+# --- Caching (static assets, aggressive) ---
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/html "access plus 1 hour"
+  ExpiresByType text/css "access plus 1 week"
+  ExpiresByType application/javascript "access plus 1 week"
+  ExpiresByType application/json "access plus 1 hour"
+</IfModule>
+
+# --- Security Headers ---
+<IfModule mod_headers.c>
+  # No framing (prevent embedding on other sites)
+  Header always set X-Frame-Options "DENY"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "no-referrer"
+
+  # Minimal CSP - only allow self-hosted resources
+  Header always set Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"
+</IfModule>
+
+# --- Compression ---
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json
+</IfModule>
+
+# --- Custom 404 (stay in character) ---
+ErrorDocument 404 /index.html
+
+# --- Block directory listing ---
+Options -Indexes

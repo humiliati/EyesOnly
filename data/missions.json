@@ -1,0 +1,84 @@
+{
+  "missions": {
+    "falcon_nest": {
+      "id": "falcon_nest",
+      "codename": "FALCON NEST",
+      "unlockCode": "boyce77",
+      "location": "Downtown Sandpoint - First Avenue",
+      "coordinates": { "lat": 48.2766, "lng": -116.5535 },
+      "faction": "WESTERN_SIGNALS",
+      "lore": [
+        "DECRYPTED FRAGMENT [1/3]:",
+        "",
+        "In 1977, a signal was intercepted from a source",
+        "the Agency designated FALCON. The transmission",
+        "originated not from Moscow, but from a small town",
+        "in the Idaho panhandle. The implications were",
+        "staggering. Someone in Sandpoint was listening.",
+        "",
+        "The dead drop was a bookshop. It is still there.",
+        "The books have not moved."
+      ],
+      "reward": "DOSSIER FRAGMENT: FALCON PROTOCOL (1/3)",
+      "briefing": "Investigate the FALCON signal origin point. A dead drop has been dormant since 1977. Local assets report unusual activity near First Avenue. Retrieve the fragment.",
+      "status": "ACTIVE"
+    },
+    "snowman_node": {
+      "id": "snowman_node",
+      "codename": "SNOWMAN NODE",
+      "unlockCode": "lee84",
+      "location": "Sandpoint City Beach / Memorial Field",
+      "coordinates": { "lat": 48.2808, "lng": -116.5563 },
+      "faction": "NORTHERN_WATCH",
+      "lore": [
+        "DECRYPTED FRAGMENT [2/3]:",
+        "",
+        "The asset codenamed SNOWMAN operated in plain",
+        "sight. A seminary dropout turned intelligence",
+        "courier. The lake was the channel. In winter,",
+        "when the surface froze, dead drops were placed",
+        "beneath the ice at predetermined coordinates.",
+        "",
+        "Lake Pend Oreille is 1,150 feet deep.",
+        "Some things were never recovered."
+      ],
+      "reward": "DOSSIER FRAGMENT: SNOWMAN NETWORK (2/3)",
+      "briefing": "SNOWMAN operated a courier network through the lake system. The ice drops were seasonal. Verify the coordinates at the memorial. Something was left behind.",
+      "status": "ACTIVE"
+    },
+    "submerged_site": {
+      "id": "submerged_site",
+      "codename": "SUBMERGED SITE",
+      "unlockCode": "navydeep43",
+      "location": "Sandpoint Marina / Lakefront",
+      "coordinates": { "lat": 48.2752, "lng": -116.5521 },
+      "faction": "ABYSSAL_COMMAND",
+      "lore": [
+        "DECRYPTED FRAGMENT [3/3]:",
+        "",
+        "CLASSIFIED: ACOUSTIC RANGE - LAKE PEND OREILLE",
+        "",
+        "The US Navy operated a submarine acoustic research",
+        "station at Bayview, south of Sandpoint, for decades.",
+        "The deepest lake in the Northwest was a perfect",
+        "analog for deep ocean conditions.",
+        "",
+        "But acoustic research was only the surface cover.",
+        "In 1952, sonar technicians reported anomalous returns",
+        "from the lake floor. Objects that should not be there.",
+        "Objects that had been there for a very long time.",
+        "",
+        "PROJECT ABYSSAL was born. It has never been declassified."
+      ],
+      "reward": "DOSSIER FRAGMENT: PROJECT ABYSSAL (3/3)",
+      "briefing": "The Navy's Bayview facility is well documented. What it found is not. Visit the marina. Listen to the lake. The acoustic signature persists.",
+      "status": "ACTIVE"
+    }
+  },
+  "_meta": {
+    "version": "1.0.0",
+    "lastUpdated": "2026-02-12",
+    "region": "Sandpoint, Idaho",
+    "notes": "To add a new mission node, copy one of the entries above and modify all fields. The unlockCode is what players enter at physical locations. Coordinates are used for geolocation proximity checks."
+  }
+}

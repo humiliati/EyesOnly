@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="A classified recruitment terminal. Sandpoint, Idaho.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#000000">
+  <meta property="og:title" content="EYES ONLY">
+  <meta property="og:description" content="A classified recruitment terminal. Sandpoint, Idaho.">
+  <meta property="og:type" content="website">
+  <title>EYES ONLY</title>
+
+  <!-- Preconnect nothing. No external dependencies. -->
+
+  <link rel="stylesheet" href="css/crt.css">
+
+  <!-- Prevent text selection for immersion -->
+  <style>
+    * {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    /* Allow selection in input */
+    #input-buffer {
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- CRT Screen Container -->
+  <div id="crt-screen">
+
+    <!-- CRT Effect Layers -->
+    <div id="phosphor-glow"></div>
+    <div id="scanlines"></div>
+    <div id="vignette"></div>
+
+    <!-- Terminal Output -->
+    <div id="terminal">
+
+      <!-- Input Line (hidden until activated) -->
+      <div id="input-line" style="display: none;">
+        <span id="input-prompt">&gt; </span>
+        <span id="input-buffer"></span>
+        <span id="input-cursor"></span>
+      </div>
+
+    </div>
+  </div>
+
+  <!--
+    Script load order matches langterm pattern:
+    Data/utility modules first, then orchestrator last.
+    No build step. No bundler. No framework.
+  -->
+  <script src="js/terminal.js"></script>
+  <script src="js/parser.js"></script>
+  <script src="js/missions.js"></script>
+  <script src="js/state-machine.js"></script>
+  <script src="js/main.js"></script>
+
+</body>
+</html>
