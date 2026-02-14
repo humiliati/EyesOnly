@@ -1,7 +1,9 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "eyesonly-cc",
+  // EyesOnly - Cloudflare Pages configuration
+  "name": "flapsandseals",
   "compatibility_date": "2026-02-13",
+  "pages_build_output_dir": "./",
   "assets": {
     "directory": ".",
     "not_found_handling": "404-page"
