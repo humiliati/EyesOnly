@@ -98,6 +98,9 @@ const StateMachine = (function () {
   }
 
   function _publicCommand(cmd) {
+    return _processCommonCommand({ command: cmd });
+  }
+
   /**
    * Handle "normal website" commands that users might try.
    * These work in ANY state - pre-clearance or post-clearance.
@@ -297,137 +300,6 @@ const StateMachine = (function () {
     }
 
     // Not a common command
-    return null;
-  }
-
-  /**
-   * Handle commands in AWAITING_CMD state.
-   */
-  function _processAwaitingCmd(parsed) {
-    var cmd = parsed.command;
-
-    if (cmd === 'CONTACT') {
-      return {
-        type: 'output',
-        lines: [
-          '',
-          'SECURE COMMUNICATIONS CHANNEL',
-          'admin@stellaraqua.com',
-          'INCLUDE CODENAME IN SUBJECT LINE.',
-          ''
-        ],
-        newState: _state
-      };
-    }
-
-    if (cmd === 'FAQ') {
-      return {
-        type: 'output',
-        lines: [
-          '',
-          'Q: WHAT IS THIS?',
-          'A: CLASSIFIED.',
-          '',
-          'Q: HOW DO I PROCEED?',
-          'A: TRY CLEARANCE.',
-          ''
-        ],
-        newState: _state
-      };
-    }
-
-    if (cmd === 'SANDPOINT') {
-      return {
-        type: 'output',
-        lines: [
-          '',
-          'LOCATION DOSSIER: SANDPOINT, IDAHO',
-          'COVER DESIGNATION: RESORT TOWN',
-          'ACTUAL STATUS: [REDACTED]',
-          ''
-        ],
-        newState: _state
-      };
-    }
-
-    if (cmd === 'SHOP') {
-      return {
-        type: 'deny',
-        lines: [
-          '',
-          'PROCUREMENT REQUEST DENIED.',
-          'CLASSIFIED MATERIEL IS NOT AVAILABLE FOR CIVILIAN PURCHASE.',
-          'AVAILABLE COMMANDS:',
-          '  CLEARANCE  - Initiate clearance verification',
-          '  ACCESS     - Request terminal access',
-          '  AUTH       - Authenticate credentials',
-          '  EYES ONLY  - Invoke classification protocol',
-          '',
-          '  ABOUT      - Operational disclosure',
-          '  CONTACT    - Secure communications channel',
-          '  FAQ        - Frequently asked questions',
-          ''
-        ],
-        newState: _state
-      };
-    }
-
-    if (cmd === 'MENU') {
-      return {
-        type: 'output',
-        lines: [
-          '',
-          'THIS IS NOT A WEBSITE.',
-          'THIS IS A TERMINAL.',
-          'THERE IS NO MENU. THERE ARE ONLY COMMANDS.',
-          ''
-        ],
-        newState: _state
-      };
-    }
-
-    if (cmd === 'SOCIAL') {
-      return {
-        type: 'output',
-        lines: [
-          '',
-          'SOCIAL MEDIA INTEGRATION: DISABLED',
-          '... OR DO. WE MONITOR THOSE TOO.',
-          ''
-        ],
-        newState: _state
-      };
-    }
-
-    if (cmd === 'HOME') {
-      return {
-        type: 'home',
-        lines: [],
-        newState: _state
-      };
-    }
-
-    if (cmd === 'LOGIN') {
-      return {
-        type: 'login',
-        lines: [],
-        newState: _state
-      };
-    }
-
-    if (cmd === 'STREET' || cmd === 'MAP') {
-      return {
-        type: 'street',
-        lines: [
-          '',
-          'MAP LINK ACCEPTED',
-          'OPENING STREET-LEVEL CHRONICLES',
-          ''
-        ],
-        newState: _state
-      };
-    }
-
     return null;
   }
 
