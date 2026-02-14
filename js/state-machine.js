@@ -354,6 +354,66 @@ const StateMachine = (function () {
   }
 
   function _processDesignation(parsed) {
+    if (parsed.command === 'HELP') {
+      _data.failedAttempts = 0;
+      _saveState();
+      return {
+        type: 'output',
+        lines: [
+          '',
+          'CLEARANCE SEQUENCE ABORTED',
+          '',
+          'AVAILABLE COMMANDS:',
+          '  /HELP, CLEARANCE, ACCESS, AUTH, EYES ONLY',
+          '  ABOUT, CONTACT, FAQ, SANDPOINT, MENU',
+          '  SHOP, SOCIAL, HOME, LOGIN, STREET',
+          '  MAP        - Enter street exploration mode',
+          ''
+        ],
+        prompt: '> ',
+        newState: 'AWAITING_CMD'
+      };
+    }
+
+    // Military enlisted ranks E7-E10
+    var enlistedMatch = parsed.normalized.match(/^e[\- ]?(7|8|9|10)$/);
+    if (enlistedMatch) {
+      var enlistedRanks = { '7': 'SERGEANT FIRST CLASS', '8': 'MASTER SERGEANT', '9': 'SERGEANT MAJOR', '10': 'SERGEANT MAJOR OF THE ARMY' };
+      var enlistedTitle = enlistedRanks[enlistedMatch[1]] || 'SERGEANT';
+      return {
+        type: 'output',
+        lines: ['', 'HELLO, ' + enlistedTitle + '.', '', 'YOUR SERVICE IS NOTED.', 'HOWEVER, THIS TERMINAL REQUIRES CIVILIAN DESIGNATION.', 'ENTER DESIGNATION:', ''],
+        prompt: 'DESIGNATION> ',
+        newState: _state
+      };
+    }
+
+    // Officer ranks O3-O10
+    var officerMatch = parsed.normalized.match(/^o[\- ]?(3|4|5|6|7|8|9|10)$/);
+    if (officerMatch) {
+      var officerRanks = { '3': 'CAPTAIN', '4': 'MAJOR', '5': 'LIEUTENANT COLONEL', '6': 'COLONEL', '7': 'BRIGADIER GENERAL', '8': 'MAJOR GENERAL', '9': 'LIEUTENANT GENERAL', '10': 'GENERAL' };
+      var officerTitle = officerRanks[officerMatch[1]] || 'OFFICER';
+      return {
+        type: 'output',
+        lines: ['', 'SALUTATIONS, ' + officerTitle + '.', '', 'RANK ACKNOWLEDGED.', 'HOWEVER, THIS TERMINAL REQUIRES CIVILIAN DESIGNATION.', 'ENTER DESIGNATION:', ''],
+        prompt: 'DESIGNATION> ',
+        newState: _state
+      };
+    }
+
+    // GS civilian ranks GS1-GS15
+    var gsMatch = parsed.normalized.match(/^gs[\- ]?(1[0-5]?|[2-9])$/);
+    if (gsMatch) {
+      var gsNum = parseInt(gsMatch[1], 10);
+      var gsTitle = gsNum <= 4 ? 'CLERK' : (gsNum <= 9 ? 'ANALYST' : (gsNum <= 12 ? 'SUPERVISOR' : (gsNum <= 14 ? 'DIRECTOR' : 'SENIOR EXECUTIVE')));
+      return {
+        type: 'output',
+        lines: ['', 'GREETINGS, ' + gsTitle + '.', '', 'GS-' + gsNum + ' CLASSIFICATION RECOGNIZED.', 'HOWEVER, THIS TERMINAL REQUIRES CIVILIAN DESIGNATION.', 'ENTER DESIGNATION:', ''],
+        prompt: 'DESIGNATION> ',
+        newState: _state
+      };
+    }
+
     if (Parser.matches(parsed.raw, 'OPERATOR') || Parser.matches(parsed.raw, 'ASSET')) {
       return {
         type: 'deny',
@@ -394,6 +454,25 @@ const StateMachine = (function () {
   }
 
   function _processProceed(parsed) {
+    if (parsed.command === 'HELP') {
+      return {
+        type: 'output',
+        lines: [
+          '',
+          'CLEARANCE SEQUENCE ABORTED',
+          '',
+          'AVAILABLE COMMANDS:',
+          '  /HELP, CLEARANCE, ACCESS, AUTH, EYES ONLY',
+          '  ABOUT, CONTACT, FAQ, SANDPOINT, MENU',
+          '  SHOP, SOCIAL, HOME, LOGIN, STREET',
+          '  MAP        - Enter street exploration mode',
+          ''
+        ],
+        prompt: '> ',
+        newState: 'AWAITING_CMD'
+      };
+    }
+
     if (parsed.command === 'YES') {
       _data.proceedChoice = true;
       _saveState();
@@ -420,6 +499,25 @@ const StateMachine = (function () {
   }
 
   function _processTemporal(parsed) {
+    if (parsed.command === 'HELP') {
+      return {
+        type: 'output',
+        lines: [
+          '',
+          'CLEARANCE SEQUENCE ABORTED',
+          '',
+          'AVAILABLE COMMANDS:',
+          '  /HELP, CLEARANCE, ACCESS, AUTH, EYES ONLY',
+          '  ABOUT, CONTACT, FAQ, SANDPOINT, MENU',
+          '  SHOP, SOCIAL, HOME, LOGIN, STREET',
+          '  MAP        - Enter street exploration mode',
+          ''
+        ],
+        prompt: '> ',
+        newState: 'AWAITING_CMD'
+      };
+    }
+
     if (TEMPORAL_KEYS.indexOf(parsed.normalized) !== -1) {
       _data.accessGranted = true;
       _data.clearanceLevel = 1;

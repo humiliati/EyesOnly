@@ -251,6 +251,25 @@ html, body {
   content: '_';
 }
 
+/* --- Hidden Mobile Input --- */
+#mobile-input {
+  position: fixed;
+  left: -9999px;
+  top: 50%;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  font-size: 16px; /* prevents iOS zoom on focus */
+  border: none;
+  outline: none;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
 /* --- System Messages --- */
 .system-msg {
   color: var(--phosphor-dim);

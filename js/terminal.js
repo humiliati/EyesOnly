@@ -21,6 +21,7 @@ const Terminal = (function () {
   let _inputPromptEl = null;
   let _inputBufferEl = null;
   let _inputCursorEl = null;
+  let _mobileInputEl = null;
 
   // State
   let _inputBuffer = '';
@@ -29,6 +30,7 @@ const Terminal = (function () {
   let _inputEnabled = false;
   let _onCommandCallback = null;
   let _scrollLocked = true;
+  let _isMobile = false;
 
   /**
    * Initialize the terminal, bind to DOM elements.
@@ -39,6 +41,10 @@ const Terminal = (function () {
     _inputPromptEl = document.getElementById('input-prompt');
     _inputBufferEl = document.getElementById('input-buffer');
     _inputCursorEl = document.getElementById('input-cursor');
+    _mobileInputEl = document.getElementById('mobile-input');
+
+    // Detect mobile/touch devices
+    _isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
     // Load command history from localStorage
     try {
@@ -49,14 +55,62 @@ const Terminal = (function () {
     // Global key handler (langterm-style: no visible input element)
     document.addEventListener('keydown', _handleKeydown);
 
-    // Keep input focused if clicked anywhere
+    // Mobile: sync hidden input to terminal buffer
+    if (_mobileInputEl) {
+      _mobileInputEl.addEventListener('input', function () {
+        if (!_inputEnabled) return;
+        _inputBuffer = _mobileInputEl.value;
+        _updateInputDisplay();
+      });
+
+      // Handle Enter on mobile keyboard
+      _mobileInputEl.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (!_inputEnabled) return;
+          var cmd = _inputBuffer.trim();
+          _inputBuffer = '';
+          _mobileInputEl.value = '';
+          _updateInputDisplay();
+
+          if (cmd.length > 0) {
+            _commandHistory.unshift(cmd);
+            if (_commandHistory.length > HISTORY_MAX) _commandHistory.pop();
+            _historyIndex = -1;
+            try {
+              localStorage.setItem('eyesonly_history', JSON.stringify(_commandHistory));
+            } catch (e) { /* ignore */ }
+          }
+
+          _writeLine(_getPromptText() + cmd);
+          if (_onCommandCallback) _onCommandCallback(cmd);
+        }
+      });
+    }
+
+    // Focus hidden input on tap/click for mobile keyboard
     document.addEventListener('click', function () {
-      if (_inputEnabled && _inputBufferEl) {
-        _inputBufferEl.focus();
+      if (_inputEnabled) {
+        _focusMobileInput();
+      }
+    });
+    document.addEventListener('touchstart', function () {
+      if (_inputEnabled) {
+        _focusMobileInput();
       }
     });
 
     _hideInput();
+  }
+
+  /**
+   * Focus the hidden mobile input to trigger keyboard.
+   */
+  function _focusMobileInput() {
+    if (_mobileInputEl && _isMobile) {
+      _mobileInputEl.value = _inputBuffer;
+      _mobileInputEl.focus();
+    }
   }
 
   /**
@@ -71,6 +125,7 @@ const Terminal = (function () {
       e.preventDefault();
       const cmd = _inputBuffer.trim();
       _inputBuffer = '';
+      if (_mobileInputEl) _mobileInputEl.value = '';
       _updateInputDisplay();
 
       // Add to history
@@ -205,6 +260,11 @@ const Terminal = (function () {
     _updateInputDisplay();
     _inputEnabled = true;
     _scrollToBottom();
+    // Focus mobile input for keyboard
+    if (_mobileInputEl) {
+      _mobileInputEl.value = '';
+      if (_isMobile) _mobileInputEl.focus();
+    }
   }
 
   /**
@@ -214,6 +274,7 @@ const Terminal = (function () {
     _inputEnabled = false;
     if (_inputLineEl) _inputLineEl.style.display = 'none';
     if (_inputCursorEl) _inputCursorEl.style.display = 'none';
+    if (_mobileInputEl) _mobileInputEl.blur();
   }
 
   /**
