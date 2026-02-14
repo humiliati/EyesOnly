@@ -77,8 +77,7 @@ const StateMachine = (function () {
     if (canUsePublicCommand && (
       cmd === 'ABOUT' || cmd === 'CONTACT' || cmd === 'FAQ' ||
       cmd === 'SANDPOINT' || cmd === 'SHOP' || cmd === 'MENU' ||
-      cmd === 'SOCIAL' || cmd === 'HOME' || cmd === 'LOGIN' ||
-      cmd === 'STREET' || cmd === 'MAP'
+      cmd === 'SOCIAL' || cmd === 'HOME'
     )) {
       return _publicCommand(cmd);
     }
@@ -334,6 +333,15 @@ const StateMachine = (function () {
     }
 
     if (cmd === 'CLEAR') return { type: 'clear', newState: _state, prompt: '> ' };
+
+    if (cmd === 'LOGIN') {
+      return { type: 'login', lines: [], newState: _state };
+    }
+
+    if (cmd === 'STREET' || cmd === 'MAP') {
+      return { type: 'street', lines: ['', 'MAP LINK ACCEPTED', 'OPENING STREET-LEVEL CHRONICLES', ''], newState: _state };
+    }
+
     // Check "normal website" commands
     var common = _processCommonCommand(parsed);
     if (common) return common;
@@ -531,6 +539,14 @@ const StateMachine = (function () {
         return { type: 'clear', data: { fullReset: true }, newState: 'IDLE' };
       }
       return { type: 'output', lines: ['', 'TYPE "CONFIRM PURGE" TO PROCEED', ''], newState: _state };
+    }
+
+    if (cmd === 'LOGIN') {
+      return { type: 'login', lines: [], newState: _state };
+    }
+
+    if (cmd === 'STREET' || cmd === 'MAP') {
+      return { type: 'street', lines: ['', 'MAP LINK ACCEPTED', 'OPENING STREET-LEVEL CHRONICLES', ''], newState: _state };
     }
 
     // Check "normal website" commands (work post-access too)
