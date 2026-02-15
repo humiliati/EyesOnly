@@ -182,41 +182,6 @@
       <div style="font-size:10px;color:#1a8a1a;">INITIALIZING...</div>
     </div>
   </div>
-  <script>
-    window.onerror = function(msg, src, line, col, err) {
-      var el = document.getElementById('boot-msg') || document.getElementById('app');
-      el.innerHTML = '<div style="color:#ff3333;font-family:monospace;padding:40px;text-align:center;">' +
-        '<div style="font-size:14px;margin-bottom:8px;">SYSTEM FAULT</div>' +
-        '<div style="font-size:11px;color:#aa2222;word-break:break-all;">' + msg + '</div>' +
-        '<div style="font-size:9px;color:#662222;margin-top:8px;">' + (src||'') + ':' + (line||'') + ':' + (col||'') + '</div>' +
-        '</div>';
-    };
-    window.__MMODE_DIAG = { onerror_set: true, time: Date.now() };
-  </script>
-  <script>
-    window.__MMODE_DIAG.pre_app = true;
-    console.log('[MMODE] Pre-app.js executing, #app =', document.getElementById('app'));
-  </script>
-  <script src="app.js" onerror="document.getElementById('boot-msg').innerHTML='<div style=color:#ff3333>FAILED TO LOAD app.js</div>'"></script>
-  <script>
-    window.__MMODE_DIAG.post_app = true;
-    console.log('[MMODE] Post-app.js, #app children =', document.getElementById('app').children.length,
-      'innerHTML length =', document.getElementById('app').innerHTML.length);
-  </script>
-  <script>
-    // Diagnostic: if boot-msg is still visible after app.js, Preact didn't render
-    setTimeout(function() {
-      var boot = document.getElementById('boot-msg');
-      if (boot) {
-        var app = document.getElementById('app');
-        var childCount = app ? app.children.length : '?';
-        boot.innerHTML =
-          '<div style="color:#ffaa33;font-size:14px;margin-bottom:8px;">APP DID NOT RENDER</div>' +
-          '<div style="font-size:11px;color:#886600;">#app children: ' + childCount + '</div>' +
-          '<div style="font-size:11px;color:#886600;">typeof preact: ' + (typeof window.__PREACT_DEVTOOLS__) + '</div>' +
-          '<div style="font-size:11px;color:#886600;">Check Console tab for errors</div>';
-      }
-    }, 2000);
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>

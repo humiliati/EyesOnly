@@ -69,14 +69,55 @@ function Header({ actor, connected, screen }: {
   );
 }
 
-try {
-  render(<App />, document.getElementById('app')!);
-} catch (e) {
-  const el = document.getElementById('app');
-  if (el) {
-    el.innerHTML = `<div style="color:#ff3333;font-family:monospace;padding:40px;text-align:center;">
-      <div style="font-size:14px;margin-bottom:8px;">RENDER FAULT</div>
-      <div style="font-size:11px;color:#aa2222;word-break:break-all;">${e}</div>
-    </div>`;
+const target = document.getElementById('app');
+if (target) {
+  target.innerHTML = '';
+
+  // Test if Preact render works (SES lockdown can silently break it)
+  render(<div id="test-ops">OK</div>, target);
+  if (target.children.length === 0) {
+    console.warn('[OPS] Preact render broken, falling back to DOM');
+    target.innerHTML = '';
+    renderOpsWithDOM(target);
+  } else {
+    target.innerHTML = '';
+    render(<App />, target);
   }
+}
+
+function renderOpsWithDOM(container: HTMLElement) {
+  const screen = document.createElement('div');
+  screen.className = 'join-screen';
+  screen.innerHTML = `
+    <div class="logo">EYES ONLY</div>
+    <div class="subtitle">FIELD OPERATIVE CHECK-IN</div>
+    <div class="field"><label>JOIN CODE</label><input type="text" id="ops-code" placeholder="Enter join code" autocomplete="off" /></div>
+    <div class="field"><label>CALLSIGN</label><input type="text" id="ops-callsign" placeholder="Your callsign" autocomplete="off" /></div>
+    <div id="ops-error" class="error-msg" style="display:none"></div>
+    <button id="ops-btn" class="btn">JOIN OPERATION</button>
+  `;
+  screen.querySelector('#ops-btn')!.addEventListener('click', async () => {
+    const code = (document.getElementById('ops-code') as HTMLInputElement).value;
+    const callsign = (document.getElementById('ops-callsign') as HTMLInputElement).value;
+    const errEl = document.getElementById('ops-error')!;
+    const btn = document.getElementById('ops-btn') as HTMLButtonElement;
+    if (!code || !callsign) { errEl.textContent = 'Enter code and callsign'; errEl.style.display = ''; return; }
+    btn.textContent = 'JOINING...'; btn.disabled = true; errEl.style.display = 'none';
+    try {
+      const res = await fetch('/api/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, callsign }),
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})) as any; throw new Error(d.message || 'Join failed'); }
+      const data = await res.json() as any;
+      localStorage.setItem('eyesonly_ops_session', JSON.stringify({ token: data.token, actor: data.actor }));
+      errEl.textContent = 'JOINED — LOADING...'; errEl.style.display = ''; errEl.style.color = 'var(--accent)';
+      setTimeout(() => window.location.reload(), 500);
+    } catch (err: any) {
+      errEl.textContent = err.message || 'Network error'; errEl.style.display = '';
+      btn.textContent = 'JOIN OPERATION'; btn.disabled = false;
+    }
+  });
+  container.appendChild(screen);
 }
