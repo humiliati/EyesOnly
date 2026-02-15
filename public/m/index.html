@@ -176,7 +176,22 @@
   </style>
 </head>
 <body>
-  <div id="app"></div>
+  <div id="app">
+    <div id="boot-msg" style="color:#33ff33;font-family:monospace;padding:40px;text-align:center;">
+      <div style="font-size:16px;letter-spacing:4px;margin-bottom:12px;">M MODE</div>
+      <div style="font-size:10px;color:#1a8a1a;">INITIALIZING...</div>
+    </div>
+  </div>
+  <script>
+    window.onerror = function(msg, src, line, col, err) {
+      var el = document.getElementById('boot-msg') || document.getElementById('app');
+      el.innerHTML = '<div style="color:#ff3333;font-family:monospace;padding:40px;text-align:center;">' +
+        '<div style="font-size:14px;margin-bottom:8px;">SYSTEM FAULT</div>' +
+        '<div style="font-size:11px;color:#aa2222;word-break:break-all;">' + msg + '</div>' +
+        '<div style="font-size:9px;color:#662222;margin-top:8px;">' + (src||'') + ':' + (line||'') + ':' + (col||'') + '</div>' +
+        '</div>';
+    };
+  </script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -69,4 +69,14 @@ function Header({ actor, connected, screen }: {
   );
 }
 
-render(<App />, document.getElementById('app')!);
+try {
+  render(<App />, document.getElementById('app')!);
+} catch (e) {
+  const el = document.getElementById('app');
+  if (el) {
+    el.innerHTML = `<div style="color:#ff3333;font-family:monospace;padding:40px;text-align:center;">
+      <div style="font-size:14px;margin-bottom:8px;">RENDER FAULT</div>
+      <div style="font-size:11px;color:#aa2222;word-break:break-all;">${e}</div>
+    </div>`;
+  }
+}
