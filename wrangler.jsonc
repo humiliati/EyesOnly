@@ -1,8 +1,49 @@
 {
-  // EyesOnly - Cloudflare Workers (static assets) configuration
+  // EyesOnly — Spec-Ops CTF Engine
+  // Static terminal + Hono API + Durable Objects
   "name": "flapsandseals",
+  "main": "src/worker/index.ts",
   "compatibility_date": "2026-02-13",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Static assets (the original terminal UI)
   "assets": {
-    "directory": "./"
-  }
+    "directory": "public/",
+    "binding": "ASSETS"
+  },
+
+  // D1 SQLite database
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "eyesonly-db",
+      "database_id": "placeholder-create-via-dashboard"
+    }
+  ],
+
+  // Durable Objects for real-time WebSocket state
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SCENARIO_ROOM",
+        "class_name": "ScenarioRoom"
+      }
+    ]
+  },
+
+  // R2 bucket for uploaded assets (dead drop photos, etc.)
+  "r2_buckets": [
+    {
+      "binding": "R2",
+      "bucket_name": "eyesonly-assets"
+    }
+  ],
+
+  // Durable Object migrations
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["ScenarioRoom"]
+    }
+  ]
 }

@@ -37,7 +37,10 @@ const Parser = (function () {
     { name: 'AMBER', aliases: ['amber', 'phosphor amber'], hidden: true },
     { name: 'GREEN', aliases: ['green', 'phosphor green'], hidden: true },
     { name: 'RESET', aliases: ['reset', 'purge', 'wipe'], hidden: true },
-    { name: 'MISSIONS', aliases: ['missions', 'mission', 'nodes'], hidden: true }
+    { name: 'MISSIONS', aliases: ['missions', 'mission', 'nodes'], hidden: true },
+    { name: 'JOIN', aliases: ['join', 'enlist', 'recruit'], hidden: true },
+    { name: 'OPS', aliases: ['ops', 'operations', 'field'], hidden: true },
+    { name: 'DISCONNECT', aliases: ['disconnect', 'dc'], hidden: true }
   ];
 
   function _normalize(raw) {

@@ -342,6 +342,10 @@ const StateMachine = (function () {
       return { type: 'street', lines: ['', 'MAP LINK ACCEPTED', 'OPENING STREET-LEVEL CHRONICLES', ''], newState: _state };
     }
 
+    if (cmd === 'JOIN') {
+      return _handleJoinCommand(parsed);
+    }
+
     // Check "normal website" commands
     var common = _processCommonCommand(parsed);
     if (common) return common;
@@ -568,6 +572,11 @@ const StateMachine = (function () {
           '  SANDPOINT - Location intelligence',
           '  HOME      - Return to title screen',
           '',
+          'FIELD OPERATIONS:',
+          '  JOIN <CODE>  - Join a live scenario',
+          '  OPS          - Field operations status',
+          '  DISCONNECT   - Leave current scenario',
+          '',
           'Enter a MISSION CODE to unlock nodes.',
           ''
         ],
@@ -647,6 +656,18 @@ const StateMachine = (function () {
       return { type: 'street', lines: ['', 'MAP LINK ACCEPTED', 'OPENING STREET-LEVEL CHRONICLES', ''], newState: _state };
     }
 
+    if (cmd === 'JOIN') {
+      return _handleJoinCommand(parsed);
+    }
+
+    if (cmd === 'OPS') {
+      return _handleOpsCommand();
+    }
+
+    if (cmd === 'DISCONNECT') {
+      return _handleDisconnectCommand();
+    }
+
     // Check "normal website" commands (work post-access too)
     var common = _processCommonCommand(parsed);
     if (common) return common;
@@ -664,6 +685,130 @@ const StateMachine = (function () {
     }
 
     return { type: 'output', lines: ['', 'COMMAND NOT RECOGNIZED', 'TYPE HELP FOR AVAILABLE COMMANDS', ''], newState: _state };
+  }
+
+  /**
+   * Handle JOIN command — connect to a live scenario via join code.
+   * Uses ApiClient (graceful fallback if backend unavailable).
+   */
+  function _handleJoinCommand(parsed) {
+    // Check if ApiClient is available
+    if (typeof ApiClient === 'undefined') {
+      return {
+        type: 'output',
+        lines: ['', 'FIELD OPERATIONS MODULE OFFLINE', 'JOIN FUNCTIONALITY UNAVAILABLE', ''],
+        newState: _state
+      };
+    }
+
+    if (ApiClient.isConnected()) {
+      var session = ApiClient.getSession();
+      return {
+        type: 'output',
+        lines: [
+          '',
+          'ALREADY CONNECTED TO FIELD OPERATIONS',
+          'CALLSIGN: ' + (session.actor ? session.actor.callsign : 'UNKNOWN'),
+          'TEAM: ' + (session.actor ? session.actor.team.toUpperCase() : 'UNKNOWN'),
+          '',
+          'TYPE DISCONNECT TO LEAVE CURRENT SESSION',
+          'TYPE OPS TO VIEW OPERATIONAL STATUS',
+          ''
+        ],
+        newState: _state
+      };
+    }
+
+    // Parse join code from args: "join ALPHA7" or just "join"
+    var args = parsed.normalized.split(' ');
+    if (args.length < 2) {
+      return {
+        type: 'output',
+        lines: [
+          '',
+          'JOIN REQUIRES A CODE AND CALLSIGN',
+          'USAGE: JOIN <CODE>',
+          '',
+          'OBTAIN A JOIN CODE FROM YOUR HANDLER',
+          ''
+        ],
+        newState: _state
+      };
+    }
+
+    var code = args[1].toUpperCase();
+    var callsign = _data.designation || 'OPERATIVE-' + Math.floor(Math.random() * 9999);
+
+    // This returns an async action — the terminal will handle it
+    return {
+      type: 'api_join',
+      data: { code: code, callsign: callsign },
+      lines: ['', 'REQUESTING FIELD ACCESS...', 'CODE: ' + code, 'CALLSIGN: ' + callsign, ''],
+      newState: _state
+    };
+  }
+
+  /**
+   * Handle OPS command — show current operational status.
+   */
+  function _handleOpsCommand() {
+    if (typeof ApiClient === 'undefined' || !ApiClient.isConnected()) {
+      return {
+        type: 'output',
+        lines: [
+          '',
+          'FIELD OPERATIONS STATUS: OFFLINE',
+          '',
+          'TYPE JOIN <CODE> TO CONNECT TO A LIVE SCENARIO',
+          ''
+        ],
+        newState: _state
+      };
+    }
+
+    var session = ApiClient.getSession();
+    return {
+      type: 'output',
+      lines: [
+        '',
+        'FIELD OPERATIONS STATUS: CONNECTED',
+        'CALLSIGN: ' + (session.actor ? session.actor.callsign : 'UNKNOWN'),
+        'TEAM: ' + (session.actor ? session.actor.team.toUpperCase() : 'UNKNOWN'),
+        'SCENARIO: #' + (session.actor ? session.actor.scenario_id : '?'),
+        '',
+        'AVAILABLE OPS COMMANDS:',
+        '  OPS           - This status screen',
+        '  JOIN <CODE>   - Join a scenario',
+        '  DISCONNECT    - Leave current scenario',
+        ''
+      ],
+      newState: _state
+    };
+  }
+
+  /**
+   * Handle DISCONNECT command — leave current API session.
+   */
+  function _handleDisconnectCommand() {
+    if (typeof ApiClient === 'undefined' || !ApiClient.isConnected()) {
+      return {
+        type: 'output',
+        lines: ['', 'NO ACTIVE FIELD CONNECTION', ''],
+        newState: _state
+      };
+    }
+
+    ApiClient.disconnect();
+    return {
+      type: 'output',
+      lines: [
+        '',
+        'FIELD CONNECTION TERMINATED',
+        'SESSION DATA PURGED',
+        ''
+      ],
+      newState: _state
+    };
   }
 
   function _processFinal(parsed) {

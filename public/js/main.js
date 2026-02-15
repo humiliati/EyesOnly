@@ -23,6 +23,11 @@
     LoginShell.init();
     StreetChronicles.init();
 
+    // Initialize API client (graceful — does nothing if backend unavailable)
+    if (typeof ApiClient !== 'undefined') {
+      ApiClient.init();
+    }
+
     // Initialize missions (async, loads JSON)
     Missions.init().then(function () {
       StateMachine.init();
@@ -258,6 +263,42 @@
           StateMachine.transition(action.newState);
           _enableInput('COMMAND> ');
         }, 'system-msg classified');
+        break;
+
+      case 'api_join':
+        _displayLines(action.lines, function () {
+          if (typeof ApiClient !== 'undefined' && action.data) {
+            ApiClient.join(action.data.code, action.data.callsign)
+              .then(function (result) {
+                if (result && result.token) {
+                  Terminal.flicker();
+                  _displayLines([
+                    '',
+                    'FIELD ACCESS GRANTED',
+                    'CALLSIGN: ' + result.actor.callsign,
+                    'TEAM: ' + result.actor.team.toUpperCase(),
+                    'SCENARIO: #' + result.actor.scenario_id,
+                    '',
+                    'TYPE OPS FOR OPERATIONAL STATUS',
+                    ''
+                  ], function () {
+                    _enableInput(_promptForState(StateMachine.getState()));
+                  }, 'system-msg highlight');
+                } else {
+                  _displayLines([
+                    '',
+                    'FIELD ACCESS DENIED',
+                    'INVALID OR EXPIRED JOIN CODE',
+                    ''
+                  ], function () {
+                    _enableInput(_promptForState(StateMachine.getState()));
+                  }, 'system-msg error');
+                }
+              });
+          } else {
+            _enableInput(_promptForState(StateMachine.getState()));
+          }
+        }, 'system-msg');
         break;
 
       case 'clear':
