@@ -9,7 +9,8 @@
   // Static assets (the original terminal UI)
   "assets": {
     "directory": "public/",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    "run_worker_first": true
   },
 
   // D1 SQLite database
