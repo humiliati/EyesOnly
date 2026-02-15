@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>EYES ONLY // M MODE</title>
+  <style>
+    :root {
+      --bg:        #0a0a0a;
+      --surface:   #111;
+      --surface2:  #1a1a1a;
+      --border:    #2a2a2a;
+      --text:      #33ff33;
+      --text-dim:  #1a8a1a;
+      --accent:    #33ff33;
+      --red:       #ff3333;
+      --amber:     #ffaa33;
+      --blue:      #3399ff;
+      --radius:    4px;
+      --font:      'Courier New', Courier, monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.4;
+      -webkit-font-smoothing: none;
+    }
+    #app { height: 100vh; display: flex; flex-direction: column; }
+
+    /* --- Header bar --- */
+    .m-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .m-header h1 { font-size: 13px; letter-spacing: 3px; color: var(--accent); }
+    .m-header .meta { font-size: 10px; color: var(--text-dim); display: flex; gap: 12px; align-items: center; }
+    .m-header .ws-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--red); display: inline-block;
+    }
+    .m-header .ws-dot.on { background: var(--accent); }
+
+    /* --- 3-panel layout --- */
+    .panels {
+      flex: 1; display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 280px;
+      gap: 1px;
+      background: var(--border);
+      overflow: hidden;
+    }
+    .panel {
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 6px 12px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--text-dim);
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .panel-body { flex: 1; overflow-y: auto; padding: 8px 12px; }
+    .panel.control { grid-column: 1 / -1; }
+
+    /* --- Grid panel (lane map) --- */
+    .grid-panel svg { width: 100%; height: 100%; }
+
+    /* --- Event feed --- */
+    .feed { display: flex; flex-direction: column; gap: 2px; }
+    .feed-item {
+      padding: 4px 8px;
+      border-left: 2px solid var(--border);
+      font-size: 11px;
+      line-height: 1.3;
+    }
+    .feed-item .ts { color: #444; font-size: 9px; margin-right: 4px; }
+    .feed-item .actor { color: var(--blue); }
+    .feed-item.checkin { border-left-color: var(--accent); }
+    .feed-item.dead_drop_placed, .feed-item.dead_drop_retrieved { border-left-color: var(--amber); }
+    .feed-item.escalation { border-left-color: var(--red); }
+
+    /* --- Control panel --- */
+    .ctrl-grid {
+      display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start;
+    }
+    .ctrl-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      min-width: 200px; flex: 1;
+    }
+    .ctrl-section h3 {
+      font-size: 10px; letter-spacing: 2px; color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+
+    /* --- Forms --- */
+    .ctrl-row { display: flex; gap: 6px; align-items: flex-end; margin-bottom: 6px; }
+    .ctrl-field { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+    .ctrl-field label { font-size: 9px; color: #555; letter-spacing: 1px; }
+    .ctrl-field input, .ctrl-field select {
+      background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--font); font-size: 12px;
+      padding: 4px 8px; border-radius: 3px; outline: none;
+    }
+    .ctrl-field input:focus, .ctrl-field select:focus {
+      border-color: var(--accent);
+    }
+    .ctrl-btn {
+      background: transparent; border: 1px solid var(--accent);
+      color: var(--accent); font-family: var(--font); font-size: 10px;
+      padding: 5px 12px; border-radius: 3px; cursor: pointer;
+      letter-spacing: 1px; white-space: nowrap;
+    }
+    .ctrl-btn:hover { background: rgba(51,255,51,0.1); }
+    .ctrl-btn.danger { border-color: var(--red); color: var(--red); }
+    .ctrl-btn.danger:hover { background: rgba(255,51,51,0.1); }
+    .ctrl-btn.amber { border-color: var(--amber); color: var(--amber); }
+
+    /* --- Login overlay --- */
+    .login-overlay {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100;
+    }
+    .login-box {
+      text-align: center;
+      display: flex; flex-direction: column; gap: 12px; align-items: center;
+    }
+    .login-box h1 { font-size: 16px; letter-spacing: 4px; text-shadow: 0 0 10px var(--accent); }
+    .login-box .sub { font-size: 10px; color: var(--text-dim); }
+    .login-box input {
+      background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--font); font-size: 14px;
+      padding: 8px 12px; border-radius: var(--radius); outline: none;
+      width: 240px; text-align: center;
+    }
+    .login-box input:focus { border-color: var(--accent); }
+    .login-box .error { color: var(--red); font-size: 11px; }
+
+    /* --- Actor list --- */
+    .actor-list { display: flex; flex-direction: column; gap: 2px; }
+    .actor-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 3px 6px; border-radius: 3px;
+      font-size: 11px;
+    }
+    .actor-item:hover { background: var(--surface); }
+    .actor-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+    }
+    .actor-dot.red { background: var(--red); }
+    .actor-dot.blue { background: var(--blue); }
+    .actor-dot.director { background: var(--amber); }
+
+    /* --- Scrollbar --- */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script src="app.js"></script>
+</body>
+</html>
