@@ -16,8 +16,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "eyesonly-db",
-      "database_id": "placeholder-create-via-dashboard"
+      "database_name": "database_id",
+      "database_id": "3777d321-7b41-44fa-b2f3-0413717eea8b"
     }
   ],
 
@@ -43,7 +43,7 @@
   "migrations": [
     {
       "tag": "v1",
-      "new_classes": ["ScenarioRoom"]
+      "new_sqlite_classes": ["ScenarioRoom"]
     }
   ]
 }

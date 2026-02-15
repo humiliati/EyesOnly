@@ -17,6 +17,21 @@ type HonoEnv = { Bindings: Env; Variables: Record<string, unknown> };
 
 const app = new Hono<HonoEnv>();
 
+// --- CSP Fix: relax Content-Security-Policy for our app pages ---
+// Cloudflare's static asset handler injects a restrictive CSP that
+// blocks our bundled Preact JS. This middleware overrides it.
+
+app.use('*', async (c, next) => {
+  await next();
+  // Override restrictive CSP on HTML pages
+  if (c.res.headers.get('content-type')?.includes('text/html')) {
+    c.res.headers.set(
+      'Content-Security-Policy',
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; connect-src 'self' wss: ws: https://*.cloudflareinsights.com; img-src 'self' data: blob:;",
+    );
+  }
+});
+
 // --- Global Middleware ---
 
 app.use('/api/*', cors({
