@@ -190,66 +190,11 @@ html, body {
 
 /* --- Monitor Layout --- */
 #monitor-shell {
-  display: grid;
-  grid-template-rows: auto 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   min-height: 0;
   flex: 1;
-}
-
-#monitor-top {
-  position: relative;
-  min-height: 120px;
-  background: radial-gradient(circle at 50% -10%, rgba(33, 255, 130, 0.08), transparent 42%),
-              linear-gradient(180deg, rgba(8, 16, 10, 0.9), rgba(4, 10, 6, 0.96));
-  border: 1px solid var(--panel-border-soft);
-  border-radius: 10px;
-  overflow: visible;
-  box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.55);
-}
-
-.mok-banner {
-  position: relative;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: visible;
-}
-
-.mok-banner::before,
-.mok-banner::after {
-  content: '';
-  position: absolute;
-  width: 2px;
-  height: 220%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: linear-gradient(
-    to bottom,
-    transparent 5%,
-    rgba(33, 255, 140, 0.3) 30%,
-    rgba(33, 255, 140, 0.18) 70%,
-    transparent 95%
-  );
-  filter: blur(0.3px);
-}
-
-.mok-banner::after {
-  width: 4px;
-  opacity: 0.35;
-  filter: blur(1px);
-}
-
-.mok-banner-svg {
-  width: min(70%, 520px);
-  min-width: 240px;
-  opacity: 0.85;
-  filter: drop-shadow(0 0 12px rgba(0, 255, 120, 0.12));
-}
-
-.mok-banner-core {
-  animation: core-breathe 3.8s ease-in-out infinite;
 }
 
 #monitor-body {
@@ -373,52 +318,19 @@ html, body {
   z-index: 1;
 }
 
-#log-column {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 0;
-}
-
-.log-frame {
-  flex: 1;
-  min-height: 0;
-  background: var(--panel-bg);
-  border: 1px solid var(--panel-border-soft);
-  border-radius: 10px;
-  padding: 10px;
-  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.6);
-  display: flex;
-  flex-direction: column;
-}
-
-#mok-header.monitor-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  background: linear-gradient(90deg, rgba(8, 16, 10, 0.94), rgba(6, 14, 9, 0.9));
-  border: 1px solid var(--panel-border);
-  border-radius: 10px;
-  padding: 10px 12px;
-  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.55), 0 0 16px rgba(0, 255, 90, 0.08);
-}
-
-.mok-header-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
+/* MOK Avatar in debrief screen */
 #mok-avatar {
-  border: 1px solid var(--panel-border);
-  border-radius: 10px;
-  padding: 6px;
-  background: rgba(6, 14, 8, 0.6);
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
   cursor: pointer;
-  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+  transition: transform 120ms ease;
   display: grid;
   place-items: center;
+  padding: 0;
 }
 
 #mok-avatar:focus-visible {
@@ -427,15 +339,14 @@ html, body {
 }
 
 #mok-avatar:hover {
-  border-color: var(--phosphor-bright);
-  box-shadow: 0 0 10px rgba(0, 255, 90, 0.12);
+  transform: scale(1.02);
 }
 
 .mok-avatar-svg {
-  width: min(160px, 28vw);
+  width: 90%;
   height: auto;
   display: block;
-  filter: drop-shadow(0 0 8px rgba(0, 255, 120, 0.08));
+  filter: drop-shadow(0 0 8px rgba(0, 255, 120, 0.12));
 }
 
 .mok-avatar-glyph {
@@ -463,6 +374,37 @@ html, body {
 #mok-avatar.active .mok-avatar-glyph {
   animation: core-rapid-flash 0.2s steps(2,end) infinite;
   transform: scale(1.05);
+}
+
+#log-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.log-frame {
+  flex: 1;
+  min-height: 0;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+}
+
+#mok-header.monitor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: linear-gradient(90deg, rgba(8, 16, 10, 0.94), rgba(6, 14, 9, 0.9));
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.55), 0 0 16px rgba(0, 255, 90, 0.08);
 }
 
 .mok-header-copy {
@@ -815,6 +757,30 @@ body.amber-mode #scanlines::after {
 
 .glitch-text {
   animation: glitch 0.1s ease-in-out 3;
+}
+
+@keyframes core-breathe {
+  0% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
+  100% { opacity: 0.6; transform: scale(1); }
+}
+
+@keyframes glyph-pulse {
+  0% { transform: scale(1); opacity: 0.85; }
+  45% { transform: scale(1.04); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.85; }
+}
+
+@keyframes glyph-urgent {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+@keyframes core-rapid-flash {
+  0%   { opacity: 1; }
+  50%  { opacity: 0.2; }
+  100% { opacity: 1; }
 }
 
 /* --- Responsive --- */
