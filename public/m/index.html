@@ -484,6 +484,144 @@
       border-color: var(--amber) !important;
       border-width: 2px;
     }
+
+    /* ========== MOK HUD MINI ========== */
+    .mok-hud-mini {
+      display: inline-block;
+      position: relative;
+      pointer-events: none;
+      image-rendering: optimizeQuality;
+      -webkit-font-smoothing: antialiased;
+      transition: opacity 220ms ease;
+      width: 80px; height: 32px;
+      vertical-align: middle;
+    }
+    .mok-svg { width: 100%; height: 100%; display: block; }
+
+    /* Glyph animations by state */
+    .mok-glyph { transform-origin: center; will-change: transform, opacity; }
+    .mok-hud-mini.idle .mok-glyph { opacity: 0.55; transform: scale(0.98); }
+    .mok-hud-mini.monitoring .mok-glyph { animation: mok-pulse 3.2s ease-in-out infinite; opacity: 0.85; }
+    .mok-hud-mini.advisory .mok-glyph { animation: mok-pulse 1.6s ease-in-out 1; opacity: 1; }
+    .mok-hud-mini.urgent .mok-glyph { animation: mok-urgent 0.55s linear infinite; opacity: 1; }
+    .mok-hud-mini.engaged .mok-glyph { opacity: 1; filter: drop-shadow(0 0 6px rgba(0,255,170,0.22)); transform: scale(1.03); }
+
+    /* Triangle core states */
+    .mok-hud-mini.idle .mok-triangle-core { opacity: 0.0; }
+    .mok-hud-mini.monitoring .mok-triangle-core { opacity: 0.12; animation: mok-breathe 3s ease-in-out infinite; }
+    .mok-hud-mini.advisory .mok-triangle-core { animation: mok-flash 0.45s ease-in-out 3; opacity: 1; }
+    .mok-hud-mini.urgent .mok-triangle-core { animation: mok-rapid 0.18s steps(2,end) infinite; opacity: 1; }
+    .mok-hud-mini.engaged .mok-triangle-core { opacity: 1; filter: drop-shadow(0 0 6px rgba(0,255,150,0.28)); }
+
+    /* Glow band */
+    .mok-glow-band { will-change: transform, opacity; animation: mok-slide 6s linear infinite; }
+
+    @keyframes mok-pulse {
+      0% { transform: scale(1); opacity: 0.9; }
+      45% { transform: scale(1.03); opacity: 1; }
+      100% { transform: scale(1); opacity: 0.9; }
+    }
+    @keyframes mok-urgent {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+      100% { transform: scale(1); }
+    }
+    @keyframes mok-breathe {
+      0% { opacity: 0.12; transform: scale(1); }
+      50% { opacity: 0.22; transform: scale(1.03); }
+      100% { opacity: 0.12; transform: scale(1); }
+    }
+    @keyframes mok-flash {
+      0% { opacity: 0.0; }
+      30% { opacity: 1; }
+      60% { opacity: 0.0; }
+      100% { opacity: 1; }
+    }
+    @keyframes mok-rapid {
+      0% { opacity: 1; }
+      50% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+    @keyframes mok-slide {
+      0% { transform: translateX(-80px); opacity: 0.06; }
+      50% { transform: translateX(40px); opacity: 0.10; }
+      100% { transform: translateX(220px); opacity: 0.06; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .mok-glow-band, .mok-glyph, .mok-triangle-core { animation: none !important; }
+    }
+
+    /* MOK squelch controls */
+    .mok-squelch {
+      display: flex; gap: 2px; margin-left: 4px;
+      pointer-events: auto;
+    }
+    .mok-squelch button {
+      background: none; border: 1px solid #333;
+      color: #555; font-family: var(--font);
+      font-size: 6px; padding: 1px 4px;
+      cursor: pointer; border-radius: 2px;
+      letter-spacing: 0.5px; line-height: 1.2;
+    }
+    .mok-squelch button:hover { color: var(--accent); border-color: var(--accent); }
+    .mok-squelch button.active { color: var(--accent); border-color: var(--accent); background: rgba(51,255,51,0.08); }
+
+    /* ========== OPERATION BAR ========== */
+    .op-bar {
+      display: flex; align-items: center; gap: 16px;
+      padding: 3px 16px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      font-size: 9px;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      flex-shrink: 0;
+    }
+    .op-bar .op-metric {
+      display: flex; gap: 4px; align-items: center;
+    }
+    .op-bar .op-label { color: #444; }
+    .op-bar .op-value { color: var(--text); }
+    .op-bar .op-value.threat-low { color: var(--accent); }
+    .op-bar .op-value.threat-optimal { color: var(--amber); }
+    .op-bar .op-value.threat-high { color: var(--red); }
+    .op-bar .op-value.threat-critical { color: var(--red); text-shadow: 0 0 6px rgba(255,51,51,0.5); }
+
+    /* ========== MOK FEED ========== */
+    .mok-feed-panel {
+      display: flex; flex-direction: column;
+      max-height: 140px; min-height: 60px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .mok-feed-header {
+      padding: 3px 10px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      font-size: 8px;
+      letter-spacing: 2px;
+      color: #444;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .mok-feed-body {
+      flex: 1; overflow-y: auto;
+      padding: 2px 8px;
+      background: rgba(0,0,0,0.3);
+    }
+    .mok-msg {
+      padding: 2px 0;
+      font-size: 9px;
+      line-height: 1.3;
+      border-bottom: 1px solid rgba(40,40,40,0.3);
+    }
+    .mok-msg .mok-ts { color: #333; font-size: 7px; margin-right: 3px; }
+    .mok-msg .mok-tag { font-weight: bold; margin-right: 3px; }
+    .mok-msg.mok-advisory .mok-tag { color: var(--text-dim); }
+    .mok-msg.mok-warning .mok-tag { color: var(--amber); }
+    .mok-msg.mok-directive .mok-tag { color: var(--accent); }
+    .mok-msg.mok-critical .mok-tag { color: var(--red); }
+    .mok-msg.mok-critical { background: rgba(255,51,51,0.04); }
   </style>
 </head>
 <body>

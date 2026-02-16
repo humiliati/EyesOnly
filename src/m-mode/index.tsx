@@ -88,6 +88,17 @@ const STORAGE_KEY = 'eyesonly_mmode_session';
 const MAP_KEY = 'eyesonly_mmode_map';
 const GRID_CONFIG_KEY = 'eyesonly_mmode_gridcfg';
 
+// ===== MOK System =====
+type MOKVisualState = 'idle' | 'monitoring' | 'advisory' | 'urgent' | 'engaged';
+type MOKMessageType = 'advisory' | 'warning' | 'directive' | 'critical';
+type SquelchMode = 'full' | 'quiet' | 'silent' | 'tactical';
+
+let mokVisualState: MOKVisualState = 'idle';
+let mokSquelch: SquelchMode = 'full';
+let mokAudioCtx: AudioContext | null = null;
+let scenarioStartTime: number = Date.now();
+let opBarInterval: ReturnType<typeof setInterval> | null = null;
+
 interface Session { token: string; callsign: string; scenarioId: number; }
 interface GridCell { cell_id: string; col: number; row: number; lane_id: string | null; status: string; tension: number; notes: string; actors: any[]; dead_drops: any[]; }
 interface GridData { config: any; cells: GridCell[]; frozen: boolean; unassigned_actors: any[]; }
@@ -102,6 +113,130 @@ let moveActorId: number | null = null;
 let cachedGridData: GridData | null = null;
 let cachedSession: Session | null = null;
 let isFrozen = false;
+
+// --- MOK Visual State ---
+function setMokState(state: MOKVisualState) {
+  mokVisualState = state;
+  const el = document.getElementById('mok-hud');
+  if (el) {
+    el.className = `mok-hud-mini ${state}`;
+  }
+}
+
+function mokTickSound(urgent = false) {
+  if (!mokAudioCtx) {
+    try { mokAudioCtx = new (window.AudioContext || (window as any).webkitAudioContext)(); } catch { return; }
+  }
+  const ctx = mokAudioCtx;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = 'sine';
+  o.frequency.value = urgent ? 440 : 280;
+  g.gain.value = urgent ? 0.02 : 0.008;
+  o.connect(g);
+  g.connect(ctx.destination);
+  o.start();
+  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + (urgent ? 0.18 : 0.28));
+  o.stop(ctx.currentTime + (urgent ? 0.2 : 0.3));
+}
+
+function mokTriggerVisual(type: MOKMessageType) {
+  if (type === 'critical') {
+    setMokState('urgent');
+    mokTickSound(true);
+    setTimeout(() => setMokState('monitoring'), 3000);
+  } else if (type === 'advisory' || type === 'warning' || type === 'directive') {
+    setMokState('advisory');
+    if (type === 'warning') mokTickSound(false);
+    setTimeout(() => setMokState('monitoring'), 2200);
+  }
+}
+
+function mokSend(type: MOKMessageType, text: string) {
+  // Always trigger visual (even in silent mode, triangle flashes)
+  mokTriggerVisual(type);
+
+  // Squelch filtering for feed
+  if (mokSquelch === 'silent') return;
+  if (mokSquelch === 'quiet' && type !== 'critical') return;
+  if (mokSquelch === 'tactical' && type !== 'directive' && type !== 'critical') return;
+
+  // Print to MOK feed
+  const feedBody = document.getElementById('mok-feed-body');
+  if (!feedBody) return;
+  const ts = new Date().toLocaleTimeString();
+  const msg = document.createElement('div');
+  msg.className = `mok-msg mok-${type}`;
+  msg.innerHTML = `<span class="mok-ts">${ts}</span><span class="mok-tag">[MOK]</span> ${text}`;
+  feedBody.appendChild(msg);
+  feedBody.scrollTop = feedBody.scrollHeight;
+
+  // Update count
+  const countEl = document.getElementById('mok-feed-count');
+  if (countEl) countEl.textContent = String(feedBody.children.length);
+}
+
+function mokSetSquelch(mode: SquelchMode) {
+  mokSquelch = mode;
+  // Update button states
+  document.querySelectorAll('.mok-squelch button').forEach((btn) => {
+    const el = btn as HTMLElement;
+    el.classList.toggle('active', el.dataset.squelch === mode);
+  });
+}
+
+// --- Operation Bar ---
+function formatElapsed(ms: number): string {
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+}
+
+function updateOpBar() {
+  // Elapsed time
+  const elapsedEl = document.getElementById('op-elapsed');
+  if (elapsedEl) elapsedEl.textContent = formatElapsed(Date.now() - scenarioStartTime);
+
+  // Threat level (derived from grid tension)
+  if (cachedGridData) {
+    const cells = cachedGridData.cells || [];
+    const totalCells = cells.length || 1;
+    const avgTension = Math.round(cells.reduce((sum, c) => sum + c.tension, 0) / totalCells);
+
+    const threatEl = document.getElementById('op-threat');
+    if (threatEl) {
+      let level = 'LOW';
+      let cls = 'threat-low';
+      if (avgTension >= 70) { level = 'CRITICAL'; cls = 'threat-critical'; }
+      else if (avgTension >= 50) { level = 'HIGH'; cls = 'threat-high'; }
+      else if (avgTension >= 25) { level = 'OPTIMAL'; cls = 'threat-optimal'; }
+      threatEl.textContent = level;
+      threatEl.className = `op-value ${cls}`;
+    }
+
+    // Actor counts
+    const allActors = cells.flatMap((c) => c.actors || []);
+    const unassigned = cachedGridData.unassigned_actors || [];
+    const total = allActors.length + unassigned.length;
+    const online = allActors.filter((a: any) => a.status !== 'dark' && a.status !== 'offline').length;
+    const actorEl = document.getElementById('op-actors');
+    if (actorEl) actorEl.textContent = `${online}/${total}`;
+
+    // Tension numeric
+    const tensionEl = document.getElementById('op-tension');
+    if (tensionEl) tensionEl.textContent = `${avgTension}%`;
+  }
+}
+
+// Expose MOK globally for dev/testing and future AI integration
+(window as any)._MOK = {
+  send: mokSend,
+  setSquelch: mokSetSquelch,
+  setState: setMokState,
+  engage: (on: boolean) => setMokState(on ? 'engaged' : 'monitoring'),
+};
 
 function getSession(): Session | null {
   try { const s = localStorage.getItem(STORAGE_KEY); if (s) { const d = JSON.parse(s); if (d.token) return d as Session; } } catch {} return null;
@@ -168,9 +303,55 @@ function renderConsole(container: HTMLElement, session: Session) {
   selectedCellId = null;
   selectedActorId = null;
 
+  scenarioStartTime = Date.now();
+
   container.innerHTML = `
     <header class="m-header" id="m-header">
-      <h1>M MODE</h1>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <h1>M MODE</h1>
+        <div id="mok-hud" class="mok-hud-mini idle" role="img" aria-label="MOK Director indicator. State: idle">
+          <svg viewBox="0 0 220 48" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" class="mok-svg">
+            <defs>
+              <pattern id="mok-grid" width="10" height="10" patternUnits="userSpaceOnUse">
+                <path d="M10 0H0V10" fill="none" stroke="#05260a" stroke-width="0.5"/>
+              </pattern>
+              <linearGradient id="mok-glow" x1="0" x2="1">
+                <stop offset="0" stop-color="#16ff8f" stop-opacity="0.95"/>
+                <stop offset="1" stop-color="#004e2a" stop-opacity="0.6"/>
+              </linearGradient>
+              <filter id="mok-blur" x="-40%" y="-40%" width="180%" height="180%">
+                <feGaussianBlur stdDeviation="1.6" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <rect x="1" y="1" rx="6" ry="6" width="218" height="46" fill="rgba(0,0,0,0.5)" stroke="#083212" stroke-width="1.5"/>
+            <rect x="6" y="6" width="208" height="36" fill="url(#mok-grid)" opacity="0.86"/>
+            <rect x="-80" y="0" width="120" height="48" fill="url(#mok-glow)" opacity="0.06" class="mok-glow-band"/>
+            <g transform="translate(110,24)" class="mok-glyph" aria-hidden="true">
+              <path d="M-42 -2 L-22 -20 L22 -20 L42 -2 L-42 -2 Z" fill="url(#mok-glow)" opacity="0.8" filter="url(#mok-blur)"/>
+              <path class="mok-triangle-core" d="M0 -16 L-10 6 L10 6 Z" fill="#00ff88" opacity="0.98"/>
+              <path d="M-12 8 L12 8 L6 14 L-6 14 Z" fill="#00b36a" opacity="0.95"/>
+            </g>
+            <rect x="4" y="4" rx="5" ry="5" width="212" height="40" fill="none" stroke="rgba(0,255,160,0.06)" stroke-width="1"/>
+            <g opacity="0.06">
+              <rect x="6" y="6" width="208" height="1" fill="#000"/>
+              <rect x="6" y="10" width="208" height="1" fill="#000"/>
+              <rect x="6" y="14" width="208" height="1" fill="#000"/>
+              <rect x="6" y="18" width="208" height="1" fill="#000"/>
+              <rect x="6" y="22" width="208" height="1" fill="#000"/>
+              <rect x="6" y="26" width="208" height="1" fill="#000"/>
+              <rect x="6" y="30" width="208" height="1" fill="#000"/>
+              <rect x="6" y="34" width="208" height="1" fill="#000"/>
+            </g>
+          </svg>
+        </div>
+        <div class="mok-squelch">
+          <button data-squelch="full" class="active" title="All telemetry">F</button>
+          <button data-squelch="quiet" title="Critical only">Q</button>
+          <button data-squelch="tactical" title="Actionable only">T</button>
+          <button data-squelch="silent" title="Silent">S</button>
+        </div>
+      </div>
       <div class="meta">
         <span id="m-scenario-name">LOADING...</span>
         <span>${session.callsign}</span>
@@ -179,14 +360,25 @@ function renderConsole(container: HTMLElement, session: Session) {
         <button id="m-logout" style="background:none;border:1px solid #333;color:#666;font-family:var(--font);font-size:9px;padding:2px 8px;cursor:pointer;border-radius:3px;">LOGOUT</button>
       </div>
     </header>
+    <div class="op-bar" id="op-bar">
+      <div class="op-metric"><span class="op-label">ELAPSED</span><span class="op-value" id="op-elapsed">00:00:00</span></div>
+      <div class="op-metric"><span class="op-label">THREAT</span><span class="op-value threat-low" id="op-threat">LOW</span></div>
+      <div class="op-metric"><span class="op-label">ACTORS</span><span class="op-value" id="op-actors">0/0</span></div>
+      <div class="op-metric"><span class="op-label">TENSION</span><span class="op-value" id="op-tension">0%</span></div>
+      <div class="op-metric"><span class="op-label">CELLS</span><span class="op-value" id="op-cells">0</span></div>
+    </div>
     <div class="panels">
       <div class="panel" style="position:relative;">
         <div class="panel-header"><span>COMMAND MAP</span><span id="m-cell-count">0 CELLS</span></div>
         <div class="panel-body" id="m-grid-body" style="position:relative;"></div>
       </div>
-      <div class="panel">
+      <div class="panel" style="display:flex;flex-direction:column;">
         <div class="panel-header"><span>EVENT FEED</span><span id="m-event-count">0</span></div>
-        <div class="panel-body" id="m-events-body" style="padding:4px 8px;"></div>
+        <div class="panel-body" id="m-events-body" style="padding:4px 8px;flex:1;"></div>
+        <div class="mok-feed-panel" id="mok-feed-panel">
+          <div class="mok-feed-header"><span>MOK FEED</span><span id="mok-feed-count">0</span></div>
+          <div class="mok-feed-body" id="mok-feed-body"></div>
+        </div>
       </div>
       <div class="panel">
         <div class="panel-header"><span id="m-ctrl-title">CONTROLS</span></div>
@@ -197,11 +389,27 @@ function renderConsole(container: HTMLElement, session: Session) {
 
   document.getElementById('m-logout')!.addEventListener('click', () => {
     localStorage.removeItem(STORAGE_KEY);
+    if (opBarInterval) { clearInterval(opBarInterval); opBarInterval = null; }
     container.innerHTML = '';
     renderLogin(container);
   });
 
   document.getElementById('m-freeze-btn')!.addEventListener('click', () => toggleFreeze(session));
+
+  // Squelch buttons
+  document.querySelectorAll('.mok-squelch button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const mode = (btn as HTMLElement).dataset.squelch as SquelchMode;
+      if (mode) mokSetSquelch(mode);
+    });
+  });
+
+  // Start operation bar timer
+  if (opBarInterval) clearInterval(opBarInterval);
+  opBarInterval = setInterval(updateOpBar, 1000);
+
+  // Set MOK to monitoring state after boot
+  setTimeout(() => setMokState('monitoring'), 1500);
 
   // ESC key: go back in panel
   document.addEventListener('keydown', (e) => {
@@ -460,6 +668,11 @@ async function loadGridCells(session: Session) {
     }
 
     renderUGRSGrid(data);
+    updateOpBar();
+
+    // Update op-cells count
+    const cellCountEl = document.getElementById('op-cells');
+    if (cellCountEl) cellCountEl.textContent = String(data.cells.length);
   } catch (err) {
     console.error('[MMODE] loadGridCells error:', err);
     await loadLegacyGrid(session);
@@ -998,9 +1211,23 @@ function connectWS(session: Session) {
       const dot = document.getElementById('m-ws-dot');
       if (dot) { dot.classList.add('on'); dot.title = 'LIVE'; }
     };
-    ws.onmessage = () => {
+    ws.onmessage = (ev) => {
       loadGridCells(session);
       loadEvents(session);
+      // Flash MOK on incoming events
+      try {
+        const data = JSON.parse(ev.data);
+        if (data.type === 'event') {
+          const evType = data.data?.event_type || '';
+          if (evType === 'escalation' || evType === 'dead_drop_compromised') {
+            mokSend('warning', `${evType.replace(/_/g, ' ')} detected.`);
+          } else if (evType === 'checkin') {
+            mokSend('advisory', `Check-in: ${data.data?.payload?.callsign || 'unknown'}`);
+          }
+        } else if (data.type === 'state' && data.data?.frozen !== undefined) {
+          mokSend('critical', data.data.frozen ? 'GAME FROZEN by command.' : 'Game UNFROZEN — resume ops.');
+        }
+      } catch {}
     };
     ws.onclose = () => {
       const dot = document.getElementById('m-ws-dot');
