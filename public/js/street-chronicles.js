@@ -317,11 +317,16 @@ const StreetChronicles = (function () {
     } catch (e) { /* ignore */ }
   }
 
+  function getInventory() {
+    return _state.inventory || [];
+  }
+
   return {
     init: init,
     start: start,
     process: process,
     isActive: isActive,
-    getPrompt: getPrompt
+    getPrompt: getPrompt,
+    getInventory: getInventory
   };
 })();
