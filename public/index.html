@@ -44,33 +44,9 @@
 
     <div id="crt-frame">
       <header id="mok-header" class="monitor-header">
-        <div class="mok-header-left">
-          <button id="mok-avatar" class="mok-avatar idle" type="button" aria-label="MOK avatar; click to ping advisory link">
-            <svg viewBox="0 0 220 120" class="mok-avatar-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <defs>
-                <linearGradient id="mokHeaderGlow" x1="0" x2="1">
-                  <stop offset="0" stop-color="#24ff9e" stop-opacity="0.9"/>
-                  <stop offset="1" stop-color="#0a4428" stop-opacity="0.5"/>
-                </linearGradient>
-                <pattern id="mokHeaderGrid" width="12" height="12" patternUnits="userSpaceOnUse">
-                  <path d="M12 0H0V12" fill="none" stroke="#0a2d14" stroke-width="0.6"/>
-                </pattern>
-              </defs>
-              <rect x="6" y="10" width="208" height="72" rx="12" fill="rgba(0,0,0,0.35)" stroke="#0c3c1e" stroke-width="2"/>
-              <rect x="14" y="20" width="192" height="52" fill="url(#mokHeaderGrid)" opacity="0.82"/>
-              <g transform="translate(110,56)" class="mok-avatar-glyph">
-                <path d="M-60 10 L0 -56 L60 10 Z" fill="none" stroke="url(#mokHeaderGlow)" stroke-width="4" stroke-linejoin="round" />
-                <path d="M0 -56 L-18 10 L18 10 Z" fill="#21ff90" opacity="0.78" class="mok-avatar-core"/>
-                <path d="M-26 22 L26 22 L18 34 L-18 34 Z" fill="#0faa62" opacity="0.8"/>
-                <line x1="0" y1="-64" x2="0" y2="-88" stroke="url(#mokHeaderGlow)" stroke-width="3" opacity="0.6"/>
-                <line x1="0" y1="38" x2="0" y2="62" stroke="url(#mokHeaderGlow)" stroke-width="3" opacity="0.6"/>
-              </g>
-            </svg>
-          </button>
-          <div class="mok-header-copy">
-            <div class="mok-header-title">MOK TRIANGLE LINK</div>
-            <div class="mok-header-sub">Reactive pentagram avatar · live</div>
-          </div>
+        <div class="mok-header-copy">
+          <div class="mok-header-title">MOK TRIANGLE LINK</div>
+          <div class="mok-header-sub">Reactive pentagram avatar · live</div>
         </div>
         <div class="mok-header-right">
           <span class="header-chip">mobile safe zone</span>
@@ -79,25 +55,6 @@
       </header>
 
       <div id="monitor-shell">
-        <div id="monitor-top">
-          <div class="mok-banner">
-            <svg viewBox="0 0 220 120" class="mok-banner-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <defs>
-                <linearGradient id="mokBannerGlow" x1="0" x2="1">
-                  <stop offset="0" stop-color="#1cff9b" stop-opacity="0.8"/>
-                  <stop offset="1" stop-color="#0d3f22" stop-opacity="0.7"/>
-                </linearGradient>
-              </defs>
-              <g transform="translate(110,60)">
-                <path d="M-70 20 L0 -70 L70 20 Z" fill="none" stroke="url(#mokBannerGlow)" stroke-width="4" stroke-linejoin="round" opacity="0.8"/>
-                <path d="M0 -60 L-22 24 L22 24 Z" fill="rgba(0,255,120,0.12)" class="mok-banner-core"/>
-                <line x1="0" y1="-80" x2="0" y2="-118" stroke="url(#mokBannerGlow)" stroke-width="3" opacity="0.5"/>
-                <line x1="0" y1="36" x2="0" y2="96" stroke="url(#mokBannerGlow)" stroke-width="3" opacity="0.5"/>
-              </g>
-            </svg>
-          </div>
-        </div>
-
         <div id="monitor-body">
           <aside id="control-rail">
             <div class="control-buttons">
@@ -109,7 +66,22 @@
             <div class="debrief-window" id="debrief-window" aria-label="Command and Conquer style debrief feed">
               <div class="debrief-label">debrief feed</div>
               <div class="debrief-screen" id="debrief-screen">
-                <span class="debrief-placeholder">4:3 feed standby</span>
+                <button id="mok-avatar" class="mok-avatar idle" type="button" aria-label="MOK avatar; click to ping advisory link">
+                  <svg viewBox="0 0 220 120" class="mok-avatar-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="mokDebriefGlow" x1="0" x2="1">
+                        <stop offset="0" stop-color="#1cff9b" stop-opacity="0.85"/>
+                        <stop offset="1" stop-color="#0d3f22" stop-opacity="0.65"/>
+                      </linearGradient>
+                    </defs>
+                    <g transform="translate(110,60)" class="mok-avatar-glyph">
+                      <path d="M-65 18 L0 -68 L65 18 Z" fill="none" stroke="url(#mokDebriefGlow)" stroke-width="4" stroke-linejoin="round" opacity="0.85"/>
+                      <path d="M0 -58 L-20 22 L20 22 Z" fill="#21ff90" opacity="0.75" class="mok-avatar-core"/>
+                      <line x1="0" y1="-78" x2="0" y2="-108" stroke="url(#mokDebriefGlow)" stroke-width="3" opacity="0.5"/>
+                      <line x1="0" y1="34" x2="0" y2="84" stroke="url(#mokDebriefGlow)" stroke-width="3" opacity="0.5"/>
+                    </g>
+                  </svg>
+                </button>
               </div>
             </div>
           </aside>

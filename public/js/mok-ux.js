@@ -32,7 +32,8 @@
   }
 
   if (avatar) {
-    avatar.addEventListener('click', function () {
+    avatar.addEventListener('click', function (e) {
+      e.stopPropagation(); // Prevent debrief window expansion when clicking MOK
       setAvatarState('active', 'MOK is processing...', 1700);
     });
     avatar.addEventListener('keydown', function (e) {
@@ -45,8 +46,11 @@
 
   var debriefWindow = document.getElementById('debrief-window');
   if (debriefWindow) {
-    debriefWindow.addEventListener('click', function () {
-      debriefWindow.classList.toggle('expanded');
+    debriefWindow.addEventListener('click', function (e) {
+      // Only toggle if clicking the window itself, not MOK
+      if (e.target !== avatar && !avatar.contains(e.target)) {
+        debriefWindow.classList.toggle('expanded');
+      }
     });
   }
 
