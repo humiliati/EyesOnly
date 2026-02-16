@@ -17,7 +17,7 @@ const Parser = (function () {
     { name: 'HELP', aliases: ['help', '/help', '?', 'commands'], hidden: true },
     { name: 'CLEAR', aliases: ['clear', 'cls'], hidden: true },
     { name: 'LOGIN', aliases: ['login', 'sign in'], hidden: true },
-    { name: 'STREET', aliases: ['street', 'streets', 'chronicles', 'adventure', 'travel mode'], hidden: true },
+    { name: 'STREET', aliases: ['street', 'streets', 'street map', 'map', 'grid', 'sector', 'chronicles', 'adventure', 'travel mode'], hidden: true },
 
     { name: 'ABOUT', aliases: ['about', 'about us', 'who', 'credits'], hidden: true },
     { name: 'HOME', aliases: ['home', 'back', 'exit', 'quit', 'logout'], hidden: true },
@@ -33,7 +33,6 @@ const Parser = (function () {
     { name: 'SUBMERGED', aliases: ['submerged', 'submarine', 'sub'], hidden: true },
     { name: 'STATUS', aliases: ['status', 'stat'], hidden: true },
     { name: 'DOSSIER', aliases: ['dossier', 'file', 'files'], hidden: true },
-    { name: 'MAP', aliases: ['map', 'grid', 'sector'], hidden: true },
     { name: 'AMBER', aliases: ['amber', 'phosphor amber'], hidden: true },
     { name: 'GREEN', aliases: ['green', 'phosphor green'], hidden: true },
     { name: 'RESET', aliases: ['reset', 'purge', 'wipe'], hidden: true },

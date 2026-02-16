@@ -86,14 +86,28 @@
         break;
 
       case 'map':
-        printToTerminal([
-          '',
-          'MAP SYSTEM ACCESS',
-          'Loading tactical map overlay...',
-          'Coordinates: 48.2771° N, 116.5533° W',
-          'Sandpoint, Idaho - Field Station Alpha',
-          ''
-        ]);
+        // Exit inventory if active first
+        if (inventoryVisible) {
+          toggleInventory();
+        }
+
+        // Start street-chronicles if available
+        if (typeof StreetChronicles !== 'undefined' && typeof StreetChronicles.start === 'function') {
+          var result = StreetChronicles.start();
+          if (result && result.lines) {
+            printToTerminal(result.lines);
+          }
+        } else {
+          // Fallback message if StreetChronicles not available
+          printToTerminal([
+            '',
+            'MAP SYSTEM ACCESS',
+            'Loading tactical map overlay...',
+            'Coordinates: 48.2771° N, 116.5533° W',
+            'Sandpoint, Idaho - Field Station Alpha',
+            ''
+          ]);
+        }
         break;
 
       case 'login':
