@@ -225,6 +225,69 @@
       font-size: 10px; color: var(--text-dim); margin-top: 2px;
     }
 
+    /* ========== MOK BROADCAST BANNER ========== */
+    .ops-broadcast {
+      position: fixed; top: 0; left: 0; right: 0;
+      background: rgba(0,20,0,0.95);
+      border-bottom: 2px solid var(--accent);
+      padding: 12px 16px;
+      z-index: 150;
+      text-align: center;
+      cursor: pointer;
+      animation: broadcast-in 0.4s ease-out;
+      transition: opacity 0.5s;
+    }
+    @keyframes broadcast-in {
+      0% { transform: translateY(-100%); opacity: 0; }
+      100% { transform: translateY(0); opacity: 1; }
+    }
+    .ops-broadcast .broadcast-label {
+      font-size: 8px; letter-spacing: 3px;
+      color: var(--text-dim); margin-bottom: 4px;
+    }
+    .ops-broadcast .broadcast-msg {
+      font-size: 14px; color: var(--accent);
+      letter-spacing: 1px;
+      text-shadow: 0 0 8px rgba(51,255,51,0.3);
+    }
+
+    /* ========== OPS CONTEXT BAR ========== */
+    .ops-context-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+    }
+    .ops-context-bar .ctx-row {
+      display: flex; gap: 8px; margin-bottom: 4px;
+    }
+    .ops-context-bar .ctx-item {
+      flex: 1;
+      display: flex; flex-direction: column; gap: 1px;
+    }
+    .ops-context-bar .ctx-label {
+      font-size: 8px; letter-spacing: 1px; color: #555;
+    }
+    .ops-context-bar .ctx-val {
+      font-size: 13px; color: var(--accent); font-weight: bold;
+    }
+    .ctx-tension-bar {
+      height: 3px; background: var(--border); border-radius: 2px;
+      margin: 4px 0 2px; overflow: hidden;
+    }
+    .ctx-tension-fill {
+      height: 100%; width: 0%;
+      transition: width 0.5s, background 0.3s;
+      border-radius: 2px;
+      background: var(--accent);
+    }
+    .ctx-last-ping {
+      font-size: 10px; color: var(--text-dim);
+      padding: 4px 0 0;
+      border-top: 1px solid rgba(40,40,40,0.5);
+      margin-top: 4px;
+    }
+
     /* Frozen overlay for ops */
     .ops-frozen-overlay {
       position: fixed; inset: 0;

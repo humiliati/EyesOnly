@@ -822,6 +822,21 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
         <button class="ctrl-btn" id="ctrl-gen-code">GENERATE</button>
         <div id="ctrl-jc-result" style="margin-top:4px;font-size:11px;color:var(--accent);word-break:break-all;"></div>
       </div>
+      <div class="ctrl-section">
+        <h3>ESCALATION PRESETS</h3>
+        <div class="escalation-presets">
+          <button class="ctrl-btn amber" data-esc-preset="surveillance_sweep" title="Inject surveillance sweep event into active lanes">SURVEILLANCE SWEEP</button>
+          <button class="ctrl-btn amber" data-esc-preset="inject_contact" title="Signal approaching contact to all actors">INJECT CONTACT</button>
+          <button class="ctrl-btn danger" data-esc-preset="escalate_zone" title="Raise tension +25 on all non-offline cells">ESCALATE ZONE</button>
+          <button class="ctrl-btn" data-esc-preset="stand_down" title="Reset all cells to working, tension to 0">STAND DOWN</button>
+        </div>
+        <div id="esc-preset-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
+      </div>
+      <div class="ctrl-section">
+        <h3>BROADCAST</h3>
+        <div class="ctrl-field"><label>MESSAGE</label><input type="text" id="ctrl-broadcast-msg" placeholder="Broadcast to all Ops..." /></div>
+        <button class="ctrl-btn amber" id="ctrl-broadcast-send">BROADCAST TO OPS</button>
+      </div>
     </div>
   `;
 
@@ -918,6 +933,85 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
     const team = (document.getElementById('ctrl-jc-team') as HTMLSelectElement).value;
     const res = await mFetch('/m/join-code', session, { method: 'POST', body: JSON.stringify({ scenario_id: session.scenarioId, team }) });
     if (res.ok) { const data = await res.json() as any; document.getElementById('ctrl-jc-result')!.textContent = 'CODE: ' + (data.join_code?.code || 'ERROR'); }
+  });
+
+  // --- Escalation Presets ---
+  ctrl.querySelectorAll('[data-esc-preset]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const preset = (btn as HTMLElement).dataset.escPreset!;
+      const b = btn as HTMLButtonElement;
+      const origText = b.textContent;
+      b.textContent = 'EXECUTING...'; b.disabled = true;
+      const resultEl = document.getElementById('esc-preset-result');
+
+      try {
+        if (preset === 'surveillance_sweep') {
+          await mFetch('/m/event', session, {
+            method: 'POST',
+            body: JSON.stringify({ event_type: 'surveillance_sweep', payload: { message: 'Surveillance sweep — all lanes. Operatives maintain cover.' } }),
+          });
+          mokSend('directive', 'Surveillance sweep deployed across all lanes.');
+          if (resultEl) resultEl.textContent = 'Surveillance sweep injected.';
+
+        } else if (preset === 'inject_contact') {
+          await mFetch('/m/event', session, {
+            method: 'POST',
+            body: JSON.stringify({ event_type: 'contact_injection', payload: { message: 'Approaching contact detected. All actors maintain position.' } }),
+          });
+          mokSend('warning', 'Contact injection deployed. Actors alerted.');
+          if (resultEl) resultEl.textContent = 'Contact injection sent.';
+
+        } else if (preset === 'escalate_zone') {
+          // Raise tension +25 on all non-offline cells
+          const cells = cachedGridData?.cells?.filter((c) => c.status !== 'offline') || [];
+          let updated = 0;
+          for (const cell of cells) {
+            const newTension = Math.min(100, cell.tension + 25);
+            if (newTension !== cell.tension) {
+              await mFetch('/m/cell', session, {
+                method: 'PATCH',
+                body: JSON.stringify({ scenario_id: session.scenarioId, cell_id: cell.cell_id, tension: newTension }),
+              });
+              updated++;
+            }
+          }
+          mokSend('critical', `Zone escalation: +25 tension on ${updated} cells.`);
+          if (resultEl) resultEl.textContent = `Escalated ${updated} cells.`;
+          await loadGridCells(session);
+
+        } else if (preset === 'stand_down') {
+          const cells = cachedGridData?.cells || [];
+          for (const cell of cells) {
+            if (cell.tension > 0 || cell.status !== 'working') {
+              await mFetch('/m/cell', session, {
+                method: 'PATCH',
+                body: JSON.stringify({ scenario_id: session.scenarioId, cell_id: cell.cell_id, status: 'working', tension: 0 }),
+              });
+            }
+          }
+          mokSend('advisory', 'Stand down. All cells reset to working / 0% tension.');
+          if (resultEl) resultEl.textContent = 'All cells reset.';
+          await loadGridCells(session);
+        }
+        loadEvents(session);
+      } catch (err) {
+        if (resultEl) resultEl.textContent = 'Error executing preset.';
+      }
+      b.textContent = origText; b.disabled = false;
+    });
+  });
+
+  // --- Broadcast to Ops ---
+  document.getElementById('ctrl-broadcast-send')?.addEventListener('click', async () => {
+    const msg = (document.getElementById('ctrl-broadcast-msg') as HTMLInputElement).value;
+    if (!msg) return;
+    await mFetch('/m/event', session, {
+      method: 'POST',
+      body: JSON.stringify({ event_type: 'mok_broadcast', payload: { message: msg, from: 'M' } }),
+    });
+    mokSend('directive', `Broadcast sent: ${msg.substring(0, 40)}`);
+    (document.getElementById('ctrl-broadcast-msg') as HTMLInputElement).value = '';
+    loadEvents(session);
   });
 }
 

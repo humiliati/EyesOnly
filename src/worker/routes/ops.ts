@@ -21,6 +21,7 @@ import {
   getDeadDropsByLane,
   listDeadDrops,
   getActor,
+  getGridCell,
 } from '../db/queries';
 
 type HonoEnv = { Bindings: Env; Variables: { auth: AuthContext } };
@@ -165,6 +166,68 @@ opsRoutes.post('/dead-drop', async (c) => {
   }));
 
   return c.json({ ok: true, event_id: event!.id });
+});
+
+/**
+ * GET /api/ops/status
+ * Full context for the authenticated actor: cell, lane, tension, pending pings, frozen state.
+ */
+opsRoutes.get('/status', async (c) => {
+  const auth = c.get('auth');
+  const actor = await getActor(c.env.DB, auth.actor_id);
+  if (!actor) return c.json({ error: 'NOT_FOUND', message: 'Actor not found' }, 404);
+
+  const scenario = await getScenario(c.env.DB, auth.scenario_id);
+  const config = scenario ? JSON.parse(scenario.config) : {};
+
+  // Get cell info if actor is in a cell
+  let cell = null;
+  if (actor.cell_id) {
+    cell = await getGridCell(c.env.DB, auth.scenario_id, actor.cell_id);
+  }
+
+  // Get pending pings
+  const events = await getEvents(c.env.DB, auth.scenario_id, 50);
+  const pings = events
+    .filter((e) => e.event_type === 'mping')
+    .map((e) => ({ ...e, payload: JSON.parse(e.payload) }))
+    .filter((e) => e.payload.target_actor_id === auth.actor_id);
+  const acks = events
+    .filter((e) => e.event_type === 'mping_ack')
+    .map((e) => ({ ...e, payload: JSON.parse(e.payload) }))
+    .filter((e) => e.payload.actor_id === auth.actor_id);
+  const ackedIds = new Set(acks.map((a) => a.payload.ping_event_id));
+  const pendingPings = pings.filter((p) => !ackedIds.has(p.id));
+  const lastPing = pings[0] || null;
+
+  return c.json({
+    actor: {
+      id: actor.id,
+      callsign: actor.callsign,
+      team: actor.team,
+      status: actor.status,
+      cell_id: actor.cell_id || null,
+      lane_id: actor.lane_id || null,
+    },
+    cell: cell ? {
+      cell_id: cell.cell_id,
+      status: cell.status,
+      tension: cell.tension,
+      lane_id: cell.lane_id,
+    } : null,
+    scenario: {
+      name: scenario?.name || 'UNKNOWN',
+      frozen: config.frozen || false,
+    },
+    pending_pings: pendingPings.length,
+    last_ping: lastPing ? {
+      command: lastPing.payload.ping_command,
+      cell_id: lastPing.payload.cell_id,
+      message: lastPing.payload.message,
+      sent_at: lastPing.created_at,
+      acked: ackedIds.has(lastPing.id),
+    } : null,
+  });
 });
 
 /**

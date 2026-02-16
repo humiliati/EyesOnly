@@ -157,6 +157,20 @@ function renderOpsDashboard(container: HTMLElement, session: OpsSession) {
       <span class="status" id="ops-status-badge">${session.actor.callsign} [${session.actor.team.toUpperCase()}]</span>
     </header>
     <div class="screen" id="ops-screen">
+      <div class="ops-context-bar" id="ops-context-bar">
+        <div class="ctx-row">
+          <div class="ctx-item"><span class="ctx-label">STATUS</span><span class="ctx-val" id="ops-ctx-status">—</span></div>
+          <div class="ctx-item"><span class="ctx-label">CELL</span><span class="ctx-val" id="ops-ctx-cell">—</span></div>
+          <div class="ctx-item"><span class="ctx-label">LANE</span><span class="ctx-val" id="ops-ctx-lane">—</span></div>
+        </div>
+        <div class="ctx-row">
+          <div class="ctx-item"><span class="ctx-label">TENSION</span><span class="ctx-val" id="ops-ctx-tension">—</span></div>
+          <div class="ctx-item"><span class="ctx-label">PINGS</span><span class="ctx-val" id="ops-ctx-pings">0</span></div>
+          <div class="ctx-item"><span class="ctx-label">SCENARIO</span><span class="ctx-val" id="ops-ctx-scenario">—</span></div>
+        </div>
+        <div class="ctx-tension-bar" id="ops-ctx-tension-bar"><div class="ctx-tension-fill" id="ops-ctx-tension-fill"></div></div>
+        <div id="ops-ctx-last-ping" class="ctx-last-ping" style="display:none;"></div>
+      </div>
       <div class="stat-row">
         <div class="card"><h2>STATUS</h2><div class="value" style="color:var(--accent);" id="ops-actor-status">ACTIVE</div></div>
         <div class="card"><h2>TEAM</h2><div class="value">${session.actor.team.toUpperCase()}</div></div>
@@ -176,11 +190,13 @@ function renderOpsDashboard(container: HTMLElement, session: OpsSession) {
     </div>
   `;
 
-  // Load events and pings
+  // Load events, pings, and status context
   loadOpsEvents(session);
   loadOpsPings(session);
+  loadOpsStatus(session);
   setInterval(() => loadOpsEvents(session), 10000);
   setInterval(() => loadOpsPings(session), 8000);
+  setInterval(() => loadOpsStatus(session), 12000);
 
   // Check-in handler
   document.getElementById('ops-checkin-btn')!.addEventListener('click', async () => {
@@ -289,6 +305,33 @@ function showPingFlash(ping: any, session: OpsSession) {
   });
 }
 
+// --- MOK Broadcast Notification ---
+function showOpsBroadcast(message: string) {
+  // Remove any existing broadcast
+  document.getElementById('ops-broadcast')?.remove();
+
+  const banner = document.createElement('div');
+  banner.id = 'ops-broadcast';
+  banner.className = 'ops-broadcast';
+  banner.innerHTML = `
+    <div class="broadcast-label">M BROADCAST</div>
+    <div class="broadcast-msg">${message}</div>
+  `;
+  document.body.appendChild(banner);
+
+  // Auto-dismiss after 8 seconds
+  setTimeout(() => {
+    banner.style.opacity = '0';
+    setTimeout(() => banner.remove(), 500);
+  }, 8000);
+
+  // Tap to dismiss
+  banner.addEventListener('click', () => {
+    banner.style.opacity = '0';
+    setTimeout(() => banner.remove(), 300);
+  });
+}
+
 // --- Frozen overlay for ops ---
 function showOpsFrozen(frozen: boolean) {
   const existing = document.getElementById('ops-frozen-overlay');
@@ -324,8 +367,24 @@ function connectOpsWS(session: OpsSession, container: HTMLElement) {
           loadOpsPings(session);
         } else if (data.type === 'state' && data.data?.frozen !== undefined) {
           showOpsFrozen(data.data.frozen);
-        } else if (data.type === 'event' || data.type === 'escalation') {
+        } else if (data.type === 'event') {
+          const evType = data.data?.event_type || '';
+          const payload = typeof data.data?.payload === 'string' ? JSON.parse(data.data.payload) : (data.data?.payload || {});
+
+          // MOK broadcast — show notification banner
+          if (evType === 'mok_broadcast') {
+            showOpsBroadcast(payload.message || 'Directive from M');
+          }
+          // Surveillance / contact events — subtle notification
+          else if (evType === 'surveillance_sweep' || evType === 'contact_injection') {
+            showOpsBroadcast(payload.message || evType.replace(/_/g, ' ').toUpperCase());
+          }
+
           loadOpsEvents(session);
+          loadOpsStatus(session);
+        } else if (data.type === 'escalation') {
+          loadOpsEvents(session);
+          loadOpsStatus(session);
         }
       } catch {}
     };
@@ -335,6 +394,73 @@ function connectOpsWS(session: OpsSession, container: HTMLElement) {
       setTimeout(() => connectOpsWS(session, container), 3000);
     };
     ws.onerror = () => ws.close();
+  } catch {}
+}
+
+// --- Ops Status Context ---
+async function loadOpsStatus(session: OpsSession) {
+  try {
+    const res = await opsFetch('/ops/status', session);
+    if (!res.ok) return;
+    const data = await res.json() as any;
+
+    // Update context bar values
+    const statusEl = document.getElementById('ops-ctx-status');
+    if (statusEl) {
+      statusEl.textContent = (data.actor?.status || 'UNKNOWN').toUpperCase();
+      statusEl.style.color = data.actor?.status === 'active' ? 'var(--accent)' : data.actor?.status === 'dark' ? '#555' : 'var(--amber)';
+    }
+
+    const cellEl = document.getElementById('ops-ctx-cell');
+    if (cellEl) cellEl.textContent = data.actor?.cell_id || '—';
+
+    const laneEl = document.getElementById('ops-ctx-lane');
+    if (laneEl) laneEl.textContent = data.actor?.lane_id || '—';
+
+    const tensionEl = document.getElementById('ops-ctx-tension');
+    const tensionFill = document.getElementById('ops-ctx-tension-fill');
+    if (data.cell) {
+      const t = data.cell.tension || 0;
+      if (tensionEl) {
+        tensionEl.textContent = `${t}%`;
+        tensionEl.style.color = t < 40 ? 'var(--accent)' : t < 70 ? 'var(--amber)' : 'var(--red)';
+      }
+      if (tensionFill) {
+        tensionFill.style.width = `${t}%`;
+        tensionFill.style.background = t < 40 ? 'var(--accent)' : t < 70 ? 'var(--amber)' : 'var(--red)';
+      }
+    } else {
+      if (tensionEl) tensionEl.textContent = '—';
+      if (tensionFill) tensionFill.style.width = '0%';
+    }
+
+    const pingsEl = document.getElementById('ops-ctx-pings');
+    if (pingsEl) {
+      const count = data.pending_pings || 0;
+      pingsEl.textContent = String(count);
+      pingsEl.style.color = count > 0 ? 'var(--red)' : 'var(--accent)';
+    }
+
+    const scenarioEl = document.getElementById('ops-ctx-scenario');
+    if (scenarioEl) scenarioEl.textContent = data.scenario?.name || '—';
+
+    // Update main status card
+    const actorStatusEl = document.getElementById('ops-actor-status');
+    if (actorStatusEl) actorStatusEl.textContent = (data.actor?.status || 'ACTIVE').toUpperCase();
+
+    // Last ping context
+    const lastPingEl = document.getElementById('ops-ctx-last-ping');
+    if (lastPingEl && data.last_ping) {
+      lastPingEl.style.display = '';
+      lastPingEl.innerHTML = `<span class="ctx-label">LAST DIRECTIVE</span> <span style="color:${data.last_ping.acked ? 'var(--accent)' : 'var(--red)'};font-weight:bold;">${data.last_ping.command}${data.last_ping.cell_id ? ' → ' + data.last_ping.cell_id : ''}</span><span style="font-size:9px;color:#555;margin-left:6px;">${data.last_ping.acked ? '✓ ACK' : 'PENDING'}</span>`;
+    } else if (lastPingEl) {
+      lastPingEl.style.display = 'none';
+    }
+
+    // Frozen state check
+    if (data.scenario?.frozen) {
+      showOpsFrozen(true);
+    }
   } catch {}
 }
 
