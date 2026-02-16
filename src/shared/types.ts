@@ -38,6 +38,7 @@ export interface ActorRow {
   callsign: string;
   team: 'red' | 'blue' | 'director';
   lane_id: string | null;
+  cell_id: string | null;
   status: string;
   password_hash: string;
   created_at: number;
@@ -64,8 +65,41 @@ export interface DeadDropRow {
   placed_by: number | null;
   retrieved_by: number | null;
   asset_key: string | null; // R2 object key for photo
+  cell_id: string | null;
   created_at: number;
   updated_at: number;
+}
+
+// --- UGRS Grid Types ---
+
+export type CellStatus = 'working' | 'degraded' | 'compromised' | 'offline' | 'unknown';
+
+export interface GridCellRow {
+  id: number;
+  scenario_id: number;
+  cell_id: string;
+  col: number;
+  row: number;
+  lane_id: string | null;
+  status: CellStatus;
+  tension: number;
+  notes: string;
+}
+
+export interface GridConfig {
+  cols: number;
+  rows: number;
+  origin_px: [number, number];
+  block_w_px: number;
+  block_h_px: number;
+  col_labels: string[];
+  row_labels: string[];
+}
+
+export interface ScenarioConfig {
+  grid?: GridConfig;
+  frozen?: boolean;
+  [key: string]: unknown;
 }
 
 export interface AuthTokenRow {

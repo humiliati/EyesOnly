@@ -11,6 +11,7 @@ import type {
   DeadDropRow,
   AuthTokenRow,
   JoinCodeRow,
+  GridCellRow,
 } from '../../shared/types';
 
 // --- Crypto Utilities ---
@@ -316,4 +317,103 @@ export async function createJoinCode(
     .bind(code, scenarioId, team, maxUses, Date.now())
     .first<JoinCodeRow>();
   return result!;
+}
+
+// --- UGRS Grid Cells ---
+
+export async function getGridCells(db: D1Database, scenarioId: number): Promise<GridCellRow[]> {
+  const result = await db
+    .prepare('SELECT * FROM grid_cells WHERE scenario_id = ? ORDER BY row, col')
+    .bind(scenarioId)
+    .all<GridCellRow>();
+  return result.results;
+}
+
+export async function getGridCell(db: D1Database, scenarioId: number, cellId: string): Promise<GridCellRow | null> {
+  return db
+    .prepare('SELECT * FROM grid_cells WHERE scenario_id = ? AND cell_id = ?')
+    .bind(scenarioId, cellId)
+    .first<GridCellRow>();
+}
+
+export async function upsertGridCell(
+  db: D1Database,
+  scenarioId: number,
+  cellId: string,
+  col: number,
+  row: number,
+  laneId?: string,
+  status: string = 'unknown',
+): Promise<GridCellRow> {
+  const result = await db
+    .prepare(
+      `INSERT INTO grid_cells (scenario_id, cell_id, col, row, lane_id, status)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT (scenario_id, cell_id) DO UPDATE SET col=excluded.col, row=excluded.row, lane_id=excluded.lane_id, status=excluded.status
+       RETURNING *`,
+    )
+    .bind(scenarioId, cellId, col, row, laneId ?? null, status)
+    .first<GridCellRow>();
+  return result!;
+}
+
+export async function updateCellStatus(db: D1Database, scenarioId: number, cellId: string, status: string): Promise<void> {
+  await db
+    .prepare('UPDATE grid_cells SET status = ? WHERE scenario_id = ? AND cell_id = ?')
+    .bind(status, scenarioId, cellId)
+    .run();
+}
+
+export async function updateCellTension(db: D1Database, scenarioId: number, cellId: string, tension: number): Promise<void> {
+  const clamped = Math.max(0, Math.min(100, tension));
+  await db
+    .prepare('UPDATE grid_cells SET tension = ? WHERE scenario_id = ? AND cell_id = ?')
+    .bind(clamped, scenarioId, cellId)
+    .run();
+}
+
+export async function updateCellLane(db: D1Database, scenarioId: number, cellId: string, laneId: string | null): Promise<void> {
+  await db
+    .prepare('UPDATE grid_cells SET lane_id = ? WHERE scenario_id = ? AND cell_id = ?')
+    .bind(laneId, scenarioId, cellId)
+    .run();
+}
+
+export async function updateCellNotes(db: D1Database, scenarioId: number, cellId: string, notes: string): Promise<void> {
+  await db
+    .prepare('UPDATE grid_cells SET notes = ? WHERE scenario_id = ? AND cell_id = ?')
+    .bind(notes, scenarioId, cellId)
+    .run();
+}
+
+export async function deleteGridCells(db: D1Database, scenarioId: number): Promise<void> {
+  await db.prepare('DELETE FROM grid_cells WHERE scenario_id = ?').bind(scenarioId).run();
+}
+
+export async function bulkCreateGridCells(
+  db: D1Database,
+  scenarioId: number,
+  cells: Array<{ cell_id: string; col: number; row: number }>,
+): Promise<void> {
+  // D1 batch: run all inserts in a single batch
+  const stmts = cells.map((c) =>
+    db
+      .prepare('INSERT INTO grid_cells (scenario_id, cell_id, col, row) VALUES (?, ?, ?, ?)')
+      .bind(scenarioId, c.cell_id, c.col, c.row),
+  );
+  await db.batch(stmts);
+}
+
+export async function updateActorCell(db: D1Database, actorId: number, cellId: string | null): Promise<void> {
+  await db
+    .prepare('UPDATE actors SET cell_id = ?, updated_at = ? WHERE id = ?')
+    .bind(cellId, Date.now(), actorId)
+    .run();
+}
+
+export async function updateScenarioConfig(db: D1Database, scenarioId: number, config: object): Promise<void> {
+  await db
+    .prepare('UPDATE scenarios SET config = ?, updated_at = ? WHERE id = ?')
+    .bind(JSON.stringify(config), Date.now(), scenarioId)
+    .run();
 }

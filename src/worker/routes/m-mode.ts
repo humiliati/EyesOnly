@@ -13,18 +13,28 @@ import {
   getScenario,
   createScenario,
   updateScenarioStatus,
+  updateScenarioConfig,
   getLanes,
   createLane,
   listActors,
   createActor,
   updateActorStatus,
   updateActorLane,
+  updateActorCell,
   getActor,
   insertEvent,
   getEvents,
   listDeadDrops,
   createJoinCode,
   hashPassword,
+  getGridCells,
+  getGridCell,
+  deleteGridCells,
+  bulkCreateGridCells,
+  updateCellStatus,
+  updateCellTension,
+  updateCellLane,
+  updateCellNotes,
 } from '../db/queries';
 
 type HonoEnv = { Bindings: Env; Variables: { auth: AuthContext } };
@@ -334,6 +344,279 @@ mModeRoutes.post('/join-code', async (c) => {
 
   const joinCode = await createJoinCode(c.env.DB, code, body.scenario_id, body.team, body.max_uses || 50);
   return c.json({ join_code: joinCode }, 201);
+});
+
+// --- UGRS Grid ---
+
+/**
+ * POST /api/m/grid/calibrate
+ * Save grid config and bulk-create grid cells.
+ */
+mModeRoutes.post('/grid/calibrate', async (c) => {
+  const body = await c.req.json<{
+    scenario_id: number;
+    cols: number;
+    rows: number;
+    origin_px?: [number, number];
+    block_w_px?: number;
+    block_h_px?: number;
+    col_labels?: string[];
+    row_labels?: string[];
+  }>();
+
+  if (!body.scenario_id || !body.cols || !body.rows) {
+    return c.json({ error: 'BAD_REQUEST', message: 'scenario_id, cols, and rows are required' }, 400);
+  }
+
+  const scenario = await getScenario(c.env.DB, body.scenario_id);
+  if (!scenario) return c.json({ error: 'NOT_FOUND', message: 'Scenario not found' }, 404);
+
+  // Generate labels
+  const colLabels = body.col_labels || Array.from({ length: body.cols }, (_, i) => String.fromCharCode(65 + i));
+  const rowLabels = body.row_labels || Array.from({ length: body.rows }, (_, i) => String(i + 1));
+
+  // Save grid config to scenario
+  const config = JSON.parse(scenario.config);
+  config.grid = {
+    cols: body.cols,
+    rows: body.rows,
+    origin_px: body.origin_px || [0, 0],
+    block_w_px: body.block_w_px || 0,
+    block_h_px: body.block_h_px || 0,
+    col_labels: colLabels,
+    row_labels: rowLabels,
+  };
+  await updateScenarioConfig(c.env.DB, body.scenario_id, config);
+
+  // Delete existing cells and create new grid
+  await deleteGridCells(c.env.DB, body.scenario_id);
+  const cells: Array<{ cell_id: string; col: number; row: number }> = [];
+  for (let r = 0; r < body.rows; r++) {
+    for (let ci = 0; ci < body.cols; ci++) {
+      cells.push({ cell_id: `${colLabels[ci]}${rowLabels[r]}`, col: ci, row: r });
+    }
+  }
+  await bulkCreateGridCells(c.env.DB, body.scenario_id, cells);
+
+  const gridCells = await getGridCells(c.env.DB, body.scenario_id);
+  return c.json({ cells: gridCells, config: config.grid });
+});
+
+/**
+ * GET /api/m/grid/:scenarioId/cells
+ * All grid cells with actors and dead drops per cell.
+ */
+mModeRoutes.get('/grid/:scenarioId/cells', async (c) => {
+  const scenarioId = parseInt(c.req.param('scenarioId'), 10);
+  const scenario = await getScenario(c.env.DB, scenarioId);
+  if (!scenario) return c.json({ error: 'NOT_FOUND', message: 'Scenario not found' }, 404);
+
+  const [gridCells, actors, deadDrops] = await Promise.all([
+    getGridCells(c.env.DB, scenarioId),
+    listActors(c.env.DB, scenarioId),
+    listDeadDrops(c.env.DB, scenarioId),
+  ]);
+
+  const config = JSON.parse(scenario.config);
+
+  return c.json({
+    config: config.grid || null,
+    frozen: config.frozen || false,
+    cells: gridCells.map((cell) => ({
+      ...cell,
+      actors: actors.filter((a) => a.cell_id === cell.cell_id).map((a) => ({
+        id: a.id, callsign: a.callsign, team: a.team, status: a.status,
+      })),
+      dead_drops: deadDrops.filter((d) => d.cell_id === cell.cell_id).map((d) => ({
+        id: d.id, label: d.label, status: d.status,
+      })),
+    })),
+    unassigned_actors: actors.filter((a) => !a.cell_id).map((a) => ({
+      id: a.id, callsign: a.callsign, team: a.team, status: a.status, lane_id: a.lane_id,
+    })),
+  });
+});
+
+/**
+ * PATCH /api/m/cell
+ * Update a single grid cell (status, tension, notes, lane_id).
+ */
+mModeRoutes.patch('/cell', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{
+    scenario_id: number;
+    cell_id: string;
+    status?: string;
+    tension?: number;
+    notes?: string;
+    lane_id?: string | null;
+  }>();
+
+  if (!body.scenario_id || !body.cell_id) {
+    return c.json({ error: 'BAD_REQUEST', message: 'scenario_id and cell_id required' }, 400);
+  }
+
+  if (body.status !== undefined) await updateCellStatus(c.env.DB, body.scenario_id, body.cell_id, body.status);
+  if (body.tension !== undefined) await updateCellTension(c.env.DB, body.scenario_id, body.cell_id, body.tension);
+  if (body.notes !== undefined) await updateCellNotes(c.env.DB, body.scenario_id, body.cell_id, body.notes);
+  if (body.lane_id !== undefined) await updateCellLane(c.env.DB, body.scenario_id, body.cell_id, body.lane_id);
+
+  // Log the cell update event
+  await insertEvent(c.env.DB, body.scenario_id, auth.actor_id, 'cell_update', {
+    cell_id: body.cell_id, status: body.status, tension: body.tension, updated_by: auth.callsign,
+  });
+
+  const cell = await getGridCell(c.env.DB, body.scenario_id, body.cell_id);
+  return c.json({ cell });
+});
+
+/**
+ * POST /api/m/cell/batch
+ * Batch update cells — for lane assignment.
+ */
+mModeRoutes.post('/cell/batch', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{
+    scenario_id: number;
+    cell_ids: string[];
+    lane_id: string | null;
+  }>();
+
+  if (!body.scenario_id || !body.cell_ids) {
+    return c.json({ error: 'BAD_REQUEST', message: 'scenario_id and cell_ids required' }, 400);
+  }
+
+  for (const cellId of body.cell_ids) {
+    await updateCellLane(c.env.DB, body.scenario_id, cellId, body.lane_id);
+  }
+
+  await insertEvent(c.env.DB, body.scenario_id, auth.actor_id, 'lane_assign', {
+    cell_ids: body.cell_ids, lane_id: body.lane_id, updated_by: auth.callsign,
+  });
+
+  return c.json({ ok: true, updated: body.cell_ids.length });
+});
+
+/**
+ * POST /api/m/actor/move
+ * Move an actor to a grid cell.
+ */
+mModeRoutes.post('/actor/move', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{
+    actor_id: number;
+    cell_id: string;
+  }>();
+
+  if (!body.actor_id || !body.cell_id) {
+    return c.json({ error: 'BAD_REQUEST', message: 'actor_id and cell_id required' }, 400);
+  }
+
+  const actor = await getActor(c.env.DB, body.actor_id);
+  if (!actor) return c.json({ error: 'NOT_FOUND', message: 'Actor not found' }, 404);
+
+  const fromCell = actor.cell_id || null;
+  await updateActorCell(c.env.DB, body.actor_id, body.cell_id);
+
+  // Also update lane_id if the target cell has a lane
+  const cell = await getGridCell(c.env.DB, actor.scenario_id, body.cell_id);
+  if (cell?.lane_id) {
+    await updateActorLane(c.env.DB, body.actor_id, cell.lane_id);
+  }
+
+  const event = await insertEvent(c.env.DB, actor.scenario_id, auth.actor_id, 'actor_move', {
+    actor_id: body.actor_id, callsign: actor.callsign, from_cell: fromCell, to_cell: body.cell_id,
+    moved_by: auth.callsign,
+  });
+
+  // Broadcast
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${actor.scenario_id}`);
+  const room = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({ type: 'actor_update', data: { actor_id: body.actor_id, cell_id: body.cell_id }, timestamp: Date.now() }),
+  }));
+
+  return c.json({ ok: true, event_id: event.id });
+});
+
+/**
+ * POST /api/m/actor/command
+ * Issue command to an actor: hold, engage, plant_intel, go_dark.
+ */
+mModeRoutes.post('/actor/command', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{
+    actor_id: number;
+    command: string;
+    payload?: Record<string, unknown>;
+  }>();
+
+  if (!body.actor_id || !body.command) {
+    return c.json({ error: 'BAD_REQUEST', message: 'actor_id and command required' }, 400);
+  }
+
+  const validCommands = ['hold', 'engage', 'plant_intel', 'go_dark'];
+  if (!validCommands.includes(body.command)) {
+    return c.json({ error: 'BAD_REQUEST', message: `Invalid command. Must be one of: ${validCommands.join(', ')}` }, 400);
+  }
+
+  const actor = await getActor(c.env.DB, body.actor_id);
+  if (!actor) return c.json({ error: 'NOT_FOUND', message: 'Actor not found' }, 404);
+
+  // Map command to actor status
+  const statusMap: Record<string, string> = { hold: 'holding', engage: 'engaging', plant_intel: 'active', go_dark: 'dark' };
+  const newStatus = statusMap[body.command] || actor.status;
+  await updateActorStatus(c.env.DB, body.actor_id, newStatus);
+
+  const event = await insertEvent(c.env.DB, actor.scenario_id, auth.actor_id, 'actor_command', {
+    actor_id: body.actor_id, callsign: actor.callsign, command: body.command,
+    cell_id: actor.cell_id, commanded_by: auth.callsign, ...body.payload,
+  });
+
+  // Broadcast
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${actor.scenario_id}`);
+  const room = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({ type: 'actor_update', data: { actor_id: body.actor_id, command: body.command, status: newStatus }, timestamp: Date.now() }),
+  }));
+
+  return c.json({ ok: true, event_id: event.id, status: newStatus });
+});
+
+/**
+ * POST /api/m/scenario/freeze
+ * Toggle scenario frozen state.
+ */
+mModeRoutes.post('/scenario/freeze', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{ scenario_id: number; frozen?: boolean }>();
+
+  if (!body.scenario_id) {
+    return c.json({ error: 'BAD_REQUEST', message: 'scenario_id required' }, 400);
+  }
+
+  const scenario = await getScenario(c.env.DB, body.scenario_id);
+  if (!scenario) return c.json({ error: 'NOT_FOUND', message: 'Scenario not found' }, 404);
+
+  const config = JSON.parse(scenario.config);
+  config.frozen = body.frozen !== undefined ? body.frozen : !config.frozen;
+  await updateScenarioConfig(c.env.DB, body.scenario_id, config);
+
+  await insertEvent(c.env.DB, body.scenario_id, auth.actor_id, config.frozen ? 'game_freeze' : 'game_unfreeze', {
+    frozen: config.frozen, triggered_by: auth.callsign,
+  });
+
+  // Broadcast freeze
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${body.scenario_id}`);
+  const room = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({ type: 'state', data: { frozen: config.frozen }, timestamp: Date.now() }),
+  }));
+
+  return c.json({ ok: true, frozen: config.frozen });
 });
 
 // --- WebSocket ---

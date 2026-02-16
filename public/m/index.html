@@ -201,6 +201,289 @@
     }
     .map-dropzone:hover { border-color: var(--accent); }
     .map-dropzone.dragover { border-color: var(--accent); background: rgba(51,255,51,0.05); }
+
+    /* ========== UGRS GRID SYSTEM ========== */
+
+    /* Grid container */
+    .ugrs-grid {
+      display: grid;
+      gap: 1px;
+      padding: 4px;
+      height: 100%;
+      position: relative;
+      z-index: 1;
+    }
+    .ugrs-col-header {
+      font-size: 8px;
+      color: var(--text-dim);
+      text-align: center;
+      padding: 2px 0;
+      letter-spacing: 1px;
+    }
+    .ugrs-row-header {
+      font-size: 8px;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      letter-spacing: 1px;
+    }
+    .ugrs-corner { /* top-left corner spacer */ }
+
+    /* Grid cells */
+    .ugrs-cell {
+      position: relative;
+      border: 1px solid var(--border);
+      padding: 3px 4px;
+      cursor: pointer;
+      min-height: 36px;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .ugrs-cell:hover { border-color: var(--accent); z-index: 2; }
+    .ugrs-cell.selected {
+      border-color: var(--accent);
+      border-width: 2px;
+      box-shadow: 0 0 8px rgba(51,255,51,0.3);
+      z-index: 3;
+    }
+    .ugrs-cell .ugrs-label {
+      font-size: 7px;
+      color: #444;
+      position: absolute;
+      top: 1px;
+      left: 3px;
+      pointer-events: none;
+    }
+    .ugrs-cell .ugrs-cell-content {
+      margin-top: 10px;
+      flex: 1;
+    }
+
+    /* Cell status colors */
+    .ugrs-cell.st-working     { background: rgba(51,255,51,0.06); border-color: rgba(51,255,51,0.25); }
+    .ugrs-cell.st-degraded    { background: rgba(255,170,51,0.10); border-color: rgba(255,170,51,0.35); }
+    .ugrs-cell.st-compromised { background: rgba(255,51,51,0.10); border-color: rgba(255,51,51,0.35); }
+    .ugrs-cell.st-offline     { background: rgba(100,100,100,0.08); border-color: rgba(100,100,100,0.3); }
+    .ugrs-cell.st-unknown     { background: rgba(0,0,0,0.2); border-color: rgba(40,40,40,0.5); }
+
+    /* Cell with actors (blue highlight) */
+    .ugrs-cell.has-actors { box-shadow: inset 0 0 8px rgba(51,153,255,0.1); }
+
+    /* Cell lane indicator */
+    .ugrs-cell .lane-tag {
+      position: absolute;
+      top: 1px; right: 3px;
+      font-size: 6px;
+      color: #555;
+      letter-spacing: 1px;
+    }
+
+    /* Actor badges inside cells */
+    .actor-badge {
+      display: inline-block;
+      font-size: 8px;
+      padding: 0 3px;
+      border-radius: 2px;
+      margin: 1px;
+      line-height: 1.4;
+    }
+    .actor-badge.team-red     { background: rgba(255,51,51,0.15); color: var(--red); }
+    .actor-badge.team-blue    { background: rgba(51,153,255,0.15); color: var(--blue); }
+    .actor-badge.team-director{ background: rgba(255,170,51,0.15); color: var(--amber); }
+
+    /* Dead drop markers */
+    .drop-marker {
+      display: inline-block;
+      font-size: 7px;
+      color: var(--amber);
+      margin: 1px;
+    }
+
+    /* Tension meter bar at cell bottom */
+    .tension-bar {
+      position: absolute;
+      bottom: 0; left: 0;
+      height: 2px;
+      transition: width 0.3s ease;
+    }
+    .tension-bar.t-low  { background: var(--accent); }
+    .tension-bar.t-med  { background: var(--amber); }
+    .tension-bar.t-high { background: var(--red); }
+
+    /* Pulse animation for degraded/compromised cells */
+    @keyframes cell-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    .ugrs-cell.pulse { animation: cell-pulse 2s ease-in-out infinite; }
+
+    /* ========== CALIBRATION UI ========== */
+    .calibration-overlay {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 20;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 12px;
+    }
+    .calibration-overlay .cal-title {
+      font-size: 12px; letter-spacing: 3px; color: var(--accent);
+    }
+    .calibration-overlay .cal-instruction {
+      font-size: 10px; color: var(--text-dim); text-align: center;
+    }
+    .cal-preview-grid {
+      position: absolute; inset: 0;
+      pointer-events: none; z-index: 10;
+    }
+    .cal-preview-grid .cal-line {
+      position: absolute;
+      background: rgba(51,255,51,0.15);
+    }
+
+    /* ========== FROZEN OVERLAY ========== */
+    .frozen-overlay {
+      position: absolute; inset: 0;
+      background: rgba(255,51,51,0.04);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 50;
+      pointer-events: all;
+      cursor: not-allowed;
+    }
+    .frozen-text {
+      font-size: 18px;
+      letter-spacing: 6px;
+      color: var(--red);
+      text-shadow: 0 0 20px rgba(255,51,51,0.4);
+      text-transform: uppercase;
+    }
+    .m-header.frozen { border-bottom: 2px solid var(--red); }
+
+    /* FREEZE button */
+    .freeze-btn {
+      background: none;
+      border: 1px solid var(--red);
+      color: var(--red);
+      font-family: var(--font);
+      font-size: 8px;
+      padding: 2px 8px;
+      cursor: pointer;
+      border-radius: 3px;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+    }
+    .freeze-btn:hover { background: rgba(255,51,51,0.1); }
+    .freeze-btn.active {
+      background: rgba(255,51,51,0.15);
+      border-color: var(--red);
+      text-shadow: 0 0 6px rgba(255,51,51,0.5);
+    }
+
+    /* ========== CONTEXT-SENSITIVE RIGHT PANEL ========== */
+    .ctx-header {
+      font-size: 14px;
+      letter-spacing: 2px;
+      padding: 8px;
+      border-bottom: 1px solid var(--border);
+      color: var(--accent);
+    }
+    .ctx-back {
+      font-size: 8px;
+      color: var(--text-dim);
+      cursor: pointer;
+      letter-spacing: 1px;
+      padding: 4px 8px;
+      display: inline-block;
+    }
+    .ctx-back:hover { color: var(--accent); }
+    .ctx-stat {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 8px;
+      font-size: 10px;
+      color: var(--text-dim);
+    }
+    .ctx-stat .value { color: var(--text); }
+    .ctx-actions {
+      display: flex; flex-direction: column; gap: 2px;
+      padding: 4px 8px;
+    }
+    .ctx-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 4px 0;
+    }
+    .ctx-subtitle {
+      font-size: 8px;
+      letter-spacing: 2px;
+      color: var(--text-dim);
+      padding: 4px 8px 2px;
+    }
+
+    /* Status badge */
+    .status-badge {
+      display: inline-block;
+      font-size: 8px;
+      padding: 1px 6px;
+      border-radius: 2px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .status-badge.st-working     { background: rgba(51,255,51,0.15); color: var(--accent); }
+    .status-badge.st-degraded    { background: rgba(255,170,51,0.15); color: var(--amber); }
+    .status-badge.st-compromised { background: rgba(255,51,51,0.15); color: var(--red); }
+    .status-badge.st-offline     { background: rgba(100,100,100,0.15); color: #888; }
+    .status-badge.st-unknown     { background: rgba(40,40,40,0.3); color: #666; }
+
+    /* Tension display */
+    .tension-display {
+      height: 6px;
+      background: var(--surface2);
+      border-radius: 3px;
+      margin: 4px 8px;
+      overflow: hidden;
+    }
+    .tension-display .tension-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.3s, background 0.3s;
+    }
+
+    /* Notes textarea */
+    .ctx-notes {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 10px;
+      padding: 4px 6px;
+      border-radius: 3px;
+      resize: vertical;
+      min-height: 40px;
+      outline: none;
+    }
+    .ctx-notes:focus { border-color: var(--accent); }
+
+    /* Move mode indicator */
+    .move-mode-banner {
+      background: rgba(51,153,255,0.1);
+      border: 1px solid var(--blue);
+      color: var(--blue);
+      font-size: 9px;
+      padding: 6px 8px;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+
+    /* Assign lane mode */
+    .ugrs-cell.assign-highlight {
+      border-color: var(--amber) !important;
+      border-width: 2px;
+    }
   </style>
 </head>
 <body>
