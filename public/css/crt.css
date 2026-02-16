@@ -437,6 +437,73 @@ html, body {
   justify-content: flex-end;
 }
 
+/* Active item slot in header */
+.mok-header-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.active-item-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.active-item-slot:hover {
+  transform: translateY(-1px);
+}
+
+.active-item-label {
+  font-size: 0.65em;
+  letter-spacing: 0.1em;
+  color: var(--phosphor-dim);
+  text-transform: uppercase;
+}
+
+.active-item-display {
+  width: 50px;
+  height: 50px;
+  border: 2px solid var(--panel-border);
+  border-radius: 8px;
+  background: rgba(8, 24, 12, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8em;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.6);
+}
+
+.active-item-display.has-item {
+  border-color: var(--phosphor-bright);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.6), 0 0 12px rgba(0, 255, 90, 0.2);
+}
+
+.active-item-display .empty-slot-indicator {
+  color: var(--panel-border);
+  font-size: 2em;
+}
+
+.active-item-display.context-live {
+  border-color: rgba(255, 80, 80, 0.8);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.6), 0 0 12px rgba(255, 80, 80, 0.2);
+}
+
+.active-item-display.context-street {
+  border-color: rgba(255, 220, 80, 0.8);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.6), 0 0 12px rgba(255, 220, 80, 0.2);
+}
+
+.active-item-display.context-both {
+  border-color: rgba(80, 255, 140, 0.8);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.6), 0 0 12px rgba(80, 255, 140, 0.2);
+}
+
 .header-chip {
   border: 1px solid var(--panel-border);
   padding: 4px 8px;
@@ -543,6 +610,55 @@ html, body {
   transform: none;
   background: rgba(8, 24, 12, 0.85);
   border-color: var(--panel-border);
+}
+
+/* Context color coding for inventory items */
+.inventory-item.context-live {
+  border-color: rgba(255, 50, 50, 0.6);
+  box-shadow: inset 0 0 8px rgba(255, 50, 50, 0.15);
+}
+
+.inventory-item.context-live:hover,
+.inventory-item.context-live:focus-visible {
+  border-color: rgba(255, 80, 80, 0.9);
+  box-shadow: inset 0 0 12px rgba(255, 50, 50, 0.25), 0 0 18px rgba(255, 80, 80, 0.2);
+}
+
+.inventory-item.context-live.selected {
+  border-color: rgba(255, 80, 80, 0.9);
+  box-shadow: inset 0 0 12px rgba(255, 50, 50, 0.4), 0 0 18px rgba(255, 80, 80, 0.3);
+}
+
+.inventory-item.context-street {
+  border-color: rgba(255, 200, 50, 0.6);
+  box-shadow: inset 0 0 8px rgba(255, 200, 50, 0.15);
+}
+
+.inventory-item.context-street:hover,
+.inventory-item.context-street:focus-visible {
+  border-color: rgba(255, 220, 80, 0.9);
+  box-shadow: inset 0 0 12px rgba(255, 200, 50, 0.25), 0 0 18px rgba(255, 220, 80, 0.2);
+}
+
+.inventory-item.context-street.selected {
+  border-color: rgba(255, 220, 80, 0.9);
+  box-shadow: inset 0 0 12px rgba(255, 200, 50, 0.4), 0 0 18px rgba(255, 220, 80, 0.3);
+}
+
+.inventory-item.context-both {
+  border-color: rgba(50, 255, 120, 0.6);
+  box-shadow: inset 0 0 8px rgba(50, 255, 120, 0.15);
+}
+
+.inventory-item.context-both:hover,
+.inventory-item.context-both:focus-visible {
+  border-color: rgba(80, 255, 140, 0.9);
+  box-shadow: inset 0 0 12px rgba(50, 255, 120, 0.25), 0 0 18px rgba(80, 255, 140, 0.2);
+}
+
+.inventory-item.context-both.selected {
+  border-color: rgba(80, 255, 140, 0.9);
+  box-shadow: inset 0 0 12px rgba(50, 255, 120, 0.4), 0 0 18px rgba(80, 255, 140, 0.3);
 }
 
 

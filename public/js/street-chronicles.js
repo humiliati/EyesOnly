@@ -95,6 +95,12 @@ const StreetChronicles = (function () {
     }
 
     if (normalized === 'inventory' || normalized === 'inv') {
+      // If UI inventory system is available, trigger it
+      if (typeof window.UIControls !== 'undefined' && typeof window.UIControls.showInventory === 'function') {
+        window.UIControls.showInventory();
+        return { lines: [], prompt: getPrompt(), stayActive: true };
+      }
+      // Otherwise show text-based inventory
       return { lines: _inventoryLines(), prompt: getPrompt(), stayActive: true };
     }
 
@@ -317,11 +323,16 @@ const StreetChronicles = (function () {
     } catch (e) { /* ignore */ }
   }
 
+  function getInventory() {
+    return _state.inventory || [];
+  }
+
   return {
     init: init,
     start: start,
     process: process,
     isActive: isActive,
-    getPrompt: getPrompt
+    getPrompt: getPrompt,
+    getInventory: getInventory
   };
 })();

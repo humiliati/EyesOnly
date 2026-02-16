@@ -3,20 +3,22 @@
   'use strict';
 
   // Inventory state
+  // context: 'live' (red), 'street' (yellow), 'both' (green)
   var inventoryItems = [
-    { emoji: '🔑', name: 'Encrypted Key', description: 'A cryptographic key used for secure communications' },
-    { emoji: '📡', name: 'Signal Jammer', description: 'Portable device for blocking radio frequencies' },
-    { emoji: '🎯', name: 'Target Marker', description: 'GPS coordinates for mission objective' },
-    { emoji: '💾', name: 'Data Disc', description: 'Contains classified intelligence reports' },
-    { emoji: '🔦', name: 'Night Vision', description: 'Enhanced visibility in low-light conditions' },
-    { emoji: '📷', name: 'Surveillance Cam', description: 'Compact camera for field reconnaissance' },
-    { emoji: '🎙️', name: 'Wire Tap', description: 'Audio recording device for covert operations' },
-    { emoji: '🧭', name: 'Navigation Unit', description: 'Tactical GPS with terrain mapping' },
-    { emoji: '📻', name: 'Radio Transceiver', description: 'Secure communication device' }
+    { emoji: '🔑', name: 'Encrypted Key', description: 'A cryptographic key used for secure communications', context: 'live' },
+    { emoji: '📡', name: 'Signal Jammer', description: 'Portable device for blocking radio frequencies', context: 'live' },
+    { emoji: '🎯', name: 'Target Marker', description: 'GPS coordinates for mission objective', context: 'live' },
+    { emoji: '💾', name: 'Data Disc', description: 'Contains classified intelligence reports', context: 'both' },
+    { emoji: '🔦', name: 'Night Vision', description: 'Enhanced visibility in low-light conditions', context: 'both' },
+    { emoji: '📷', name: 'Surveillance Cam', description: 'Compact camera for field reconnaissance', context: 'live' },
+    { emoji: '🎙️', name: 'Wire Tap', description: 'Audio recording device for covert operations', context: 'live' },
+    { emoji: '🧭', name: 'Navigation Unit', description: 'Tactical GPS with terrain mapping', context: 'both' },
+    { emoji: '📻', name: 'Radio Transceiver', description: 'Secure communication device', context: 'both' }
   ];
 
   var inventoryVisible = false;
   var selectedItemIndex = -1;
+  var activeItem = null; // Currently active item in header slot
 
   function init() {
     // Wire up control buttons
@@ -27,6 +29,12 @@
 
     // Initialize inventory grid
     populateInventory();
+
+    // Wire up active item slot click handler
+    var activeSlot = document.getElementById('active-item-slot');
+    if (activeSlot) {
+      activeSlot.addEventListener('click', handleActiveItemClick);
+    }
   }
 
   function handleButtonClick(e) {
@@ -86,14 +94,36 @@
         break;
 
       case 'map':
-        printToTerminal([
-          '',
-          'MAP SYSTEM ACCESS',
-          'Loading tactical map overlay...',
-          'Coordinates: 48.2771° N, 116.5533° W',
-          'Sandpoint, Idaho - Field Station Alpha',
-          ''
-        ]);
+        // If inventory is visible, close it
+        if (inventoryVisible) {
+          toggleInventory();
+          // If street-chronicles is active, we've just returned to the terminal view
+          if (typeof StreetChronicles !== 'undefined' && StreetChronicles.isActive()) {
+            // No need to print anything, just closed inventory back to street-chronicles
+            break;
+          }
+        }
+
+        // Start street-chronicles if not already active
+        if (typeof StreetChronicles !== 'undefined' && typeof StreetChronicles.start === 'function') {
+          // Only start if not already active
+          if (!StreetChronicles.isActive()) {
+            var result = StreetChronicles.start();
+            if (result && result.lines) {
+              printToTerminal(result.lines);
+            }
+          }
+        } else {
+          // Fallback message if StreetChronicles not available
+          printToTerminal([
+            '',
+            'MAP SYSTEM ACCESS',
+            'Loading tactical map overlay...',
+            'Coordinates: 48.2771° N, 116.5533° W',
+            'Sandpoint, Idaho - Field Station Alpha',
+            ''
+          ]);
+        }
         break;
 
       case 'login':
@@ -157,7 +187,12 @@
         break;
 
       case 'inventory':
-        toggleInventory();
+        // If in street-chronicles mode, toggle inventory within that context
+        if (typeof StreetChronicles !== 'undefined' && StreetChronicles.isActive()) {
+          toggleInventory();
+        } else {
+          toggleInventory();
+        }
         break;
     }
   }
@@ -174,6 +209,8 @@
     var inventoryGrid = document.getElementById('inventory-grid');
 
     if (inventoryVisible) {
+      // Repopulate inventory to refresh street-chronicles items
+      populateInventory();
       terminal.style.display = 'none';
       inventoryGrid.style.display = 'flex';
       updateMokInterjection('Inventory display active. Select item for details.');
@@ -192,22 +229,51 @@
     // Clear existing
     container.innerHTML = '';
 
+    // Get street-chronicles inventory if available
+    var streetItems = [];
+    if (typeof StreetChronicles !== 'undefined' && typeof StreetChronicles.getInventory === 'function') {
+      streetItems = StreetChronicles.getInventory();
+    }
+
+    // Map street-chronicles items to UI format
+    var streetInventoryItems = streetItems.map(function(itemName) {
+      return {
+        emoji: getEmojiForStreetItem(itemName),
+        name: itemName,
+        description: 'Found in street-chronicles',
+        context: 'street'
+      };
+    });
+
+    // Merge both inventories
+    var allItems = inventoryItems.concat(streetInventoryItems);
+
     // Add inventory items
-    inventoryItems.forEach(function (item, index) {
+    allItems.forEach(function (item, index) {
       var itemEl = document.createElement('button');
       itemEl.className = 'inventory-item';
+
+      // Add context-specific class for color coding
+      if (item.context === 'live') {
+        itemEl.classList.add('context-live');
+      } else if (item.context === 'street') {
+        itemEl.classList.add('context-street');
+      } else if (item.context === 'both') {
+        itemEl.classList.add('context-both');
+      }
+
       itemEl.textContent = item.emoji;
       itemEl.setAttribute('data-index', index);
       itemEl.setAttribute('type', 'button');
       itemEl.setAttribute('aria-label', item.name);
       itemEl.addEventListener('click', function () {
-        selectInventoryItem(index);
+        selectInventoryItem(index, allItems);
       });
       container.appendChild(itemEl);
     });
 
     // Add empty slots to fill grid (up to 12 total)
-    var emptySlots = Math.max(0, 12 - inventoryItems.length);
+    var emptySlots = Math.max(0, 12 - allItems.length);
     for (var i = 0; i < emptySlots; i++) {
       var emptyEl = document.createElement('div');
       emptyEl.className = 'inventory-item inventory-item-empty';
@@ -216,7 +282,17 @@
     }
   }
 
-  function selectInventoryItem(index) {
+  function getEmojiForStreetItem(itemName) {
+    var emojiMap = {
+      'festival flyer': '📄',
+      'folded note': '📝',
+      'hackathon badge': '🏷️',
+      'gull feather': '🪶'
+    };
+    return emojiMap[itemName] || '📦';
+  }
+
+  function selectInventoryItem(index, allItems) {
     // Remove previous selection
     var items = document.querySelectorAll('.inventory-item');
     items.forEach(function (item) {
@@ -227,9 +303,130 @@
     selectedItemIndex = index;
     items[index].classList.add('selected');
 
+    // Get the correct items array
+    var itemsList = allItems || getMergedInventory();
+
     // Display item details in MOK interjection field
-    var item = inventoryItems[index];
-    updateMokInterjection('ITEM: ' + item.name + ' — ' + item.description);
+    var item = itemsList[index];
+    if (item) {
+      var contextLabel = item.context === 'live' ? '[LIVE ARPG]' :
+                         item.context === 'street' ? '[STREET CHRONICLES]' :
+                         item.context === 'both' ? '[BOTH]' : '';
+      updateMokInterjection('ITEM: ' + item.name + ' ' + contextLabel + ' — ' + item.description + ' (Click again to equip)');
+
+      // Set as active item on double-click or second click
+      setActiveItem(item);
+    }
+  }
+
+  function setActiveItem(item) {
+    activeItem = item;
+    var display = document.getElementById('active-item-display');
+    if (!display) return;
+
+    // Clear existing classes and content
+    display.className = 'active-item-display has-item';
+
+    // Add context class
+    if (item.context) {
+      display.classList.add('context-' + item.context);
+    }
+
+    // Set emoji
+    display.innerHTML = item.emoji;
+
+    updateMokInterjection('ACTIVE ITEM SET: ' + item.name + ' — Click active slot in header to use');
+  }
+
+  function clearActiveItem() {
+    activeItem = null;
+    var display = document.getElementById('active-item-display');
+    if (!display) return;
+
+    display.className = 'active-item-display';
+    display.innerHTML = '<span class="empty-slot-indicator">·</span>';
+  }
+
+  function handleActiveItemClick() {
+    if (!activeItem) {
+      updateMokInterjection('No active item equipped. Select an item from inventory first.');
+      return;
+    }
+
+    // Use the active item
+    useActiveItem();
+  }
+
+  function useActiveItem() {
+    if (!activeItem) return;
+
+    var isInStreetChronicles = typeof StreetChronicles !== 'undefined' && StreetChronicles.isActive();
+    var contextLabel = activeItem.context === 'live' ? 'LIVE ARPG' :
+                       activeItem.context === 'street' ? 'STREET CHRONICLES' :
+                       activeItem.context === 'both' ? 'BOTH CONTEXTS' : 'UNKNOWN';
+
+    if (isInStreetChronicles) {
+      // In street-chronicles, check if item is applicable
+      if (activeItem.context === 'live') {
+        printToTerminal([
+          '',
+          'ITEM ACTION UNRECOGNIZED',
+          'Item: ' + activeItem.name,
+          'Context: This item is for LIVE ARPG scenarios only.',
+          'Cannot use in Street Chronicles.',
+          ''
+        ]);
+      } else {
+        // Item is applicable to street-chronicles
+        printToTerminal([
+          '',
+          'ITEM USED: ' + activeItem.name,
+          'Context: ' + contextLabel,
+          'Action: [Street Chronicles interaction would be processed here]',
+          'Event log sent to M Console for review.',
+          ''
+        ]);
+      }
+    } else {
+      // In command terminal (live ARPG context)
+      if (activeItem.context === 'street') {
+        printToTerminal([
+          '',
+          'ITEM ACTION UNRECOGNIZED',
+          'Item: ' + activeItem.name,
+          'Context: This item is for Street Chronicles only.',
+          'Cannot use in Live ARPG context.',
+          ''
+        ]);
+      } else {
+        // Item is applicable to live ARPG
+        printToTerminal([
+          '',
+          'ITEM APPLIED TO LIVE ARPG',
+          'Item: ' + activeItem.name,
+          'Context: ' + contextLabel,
+          'Action processed by field operator.',
+          'Event log transmitted to M Console.',
+          ''
+        ]);
+      }
+    }
+  }
+
+  function getMergedInventory() {
+    var streetItems = [];
+    if (typeof StreetChronicles !== 'undefined' && typeof StreetChronicles.getInventory === 'function') {
+      streetItems = StreetChronicles.getInventory();
+    }
+    var streetInventoryItems = streetItems.map(function(itemName) {
+      return {
+        emoji: getEmojiForStreetItem(itemName),
+        name: itemName,
+        description: 'Found in street-chronicles',
+        context: 'street'
+      };
+    });
+    return inventoryItems.concat(streetInventoryItems);
   }
 
   function updateMokInterjection(text) {
@@ -245,4 +442,13 @@
   } else {
     init();
   }
+
+  // Expose API for other modules
+  window.UIControls = {
+    showInventory: function() {
+      if (!inventoryVisible) {
+        toggleInventory();
+      }
+    }
+  };
 })();
