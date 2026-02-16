@@ -18,6 +18,7 @@
 
   var inventoryVisible = false;
   var selectedItemIndex = -1;
+  var activeItem = null; // Currently active item in header slot
 
   function init() {
     // Wire up control buttons
@@ -28,6 +29,12 @@
 
     // Initialize inventory grid
     populateInventory();
+
+    // Wire up active item slot click handler
+    var activeSlot = document.getElementById('active-item-slot');
+    if (activeSlot) {
+      activeSlot.addEventListener('click', handleActiveItemClick);
+    }
   }
 
   function handleButtonClick(e) {
@@ -305,7 +312,104 @@
       var contextLabel = item.context === 'live' ? '[LIVE ARPG]' :
                          item.context === 'street' ? '[STREET CHRONICLES]' :
                          item.context === 'both' ? '[BOTH]' : '';
-      updateMokInterjection('ITEM: ' + item.name + ' ' + contextLabel + ' — ' + item.description);
+      updateMokInterjection('ITEM: ' + item.name + ' ' + contextLabel + ' — ' + item.description + ' (Click again to equip)');
+
+      // Set as active item on double-click or second click
+      setActiveItem(item);
+    }
+  }
+
+  function setActiveItem(item) {
+    activeItem = item;
+    var display = document.getElementById('active-item-display');
+    if (!display) return;
+
+    // Clear existing classes and content
+    display.className = 'active-item-display has-item';
+
+    // Add context class
+    if (item.context) {
+      display.classList.add('context-' + item.context);
+    }
+
+    // Set emoji
+    display.innerHTML = item.emoji;
+
+    updateMokInterjection('ACTIVE ITEM SET: ' + item.name + ' — Click active slot in header to use');
+  }
+
+  function clearActiveItem() {
+    activeItem = null;
+    var display = document.getElementById('active-item-display');
+    if (!display) return;
+
+    display.className = 'active-item-display';
+    display.innerHTML = '<span class="empty-slot-indicator">·</span>';
+  }
+
+  function handleActiveItemClick() {
+    if (!activeItem) {
+      updateMokInterjection('No active item equipped. Select an item from inventory first.');
+      return;
+    }
+
+    // Use the active item
+    useActiveItem();
+  }
+
+  function useActiveItem() {
+    if (!activeItem) return;
+
+    var isInStreetChronicles = typeof StreetChronicles !== 'undefined' && StreetChronicles.isActive();
+    var contextLabel = activeItem.context === 'live' ? 'LIVE ARPG' :
+                       activeItem.context === 'street' ? 'STREET CHRONICLES' :
+                       activeItem.context === 'both' ? 'BOTH CONTEXTS' : 'UNKNOWN';
+
+    if (isInStreetChronicles) {
+      // In street-chronicles, check if item is applicable
+      if (activeItem.context === 'live') {
+        printToTerminal([
+          '',
+          'ITEM ACTION UNRECOGNIZED',
+          'Item: ' + activeItem.name,
+          'Context: This item is for LIVE ARPG scenarios only.',
+          'Cannot use in Street Chronicles.',
+          ''
+        ]);
+      } else {
+        // Item is applicable to street-chronicles
+        printToTerminal([
+          '',
+          'ITEM USED: ' + activeItem.name,
+          'Context: ' + contextLabel,
+          'Action: [Street Chronicles interaction would be processed here]',
+          'Event log sent to M Console for review.',
+          ''
+        ]);
+      }
+    } else {
+      // In command terminal (live ARPG context)
+      if (activeItem.context === 'street') {
+        printToTerminal([
+          '',
+          'ITEM ACTION UNRECOGNIZED',
+          'Item: ' + activeItem.name,
+          'Context: This item is for Street Chronicles only.',
+          'Cannot use in Live ARPG context.',
+          ''
+        ]);
+      } else {
+        // Item is applicable to live ARPG
+        printToTerminal([
+          '',
+          'ITEM APPLIED TO LIVE ARPG',
+          'Item: ' + activeItem.name,
+          'Context: ' + contextLabel,
+          'Action processed by field operator.',
+          'Event log transmitted to M Console.',
+          ''
+        ]);
+      }
     }
   }
 
@@ -338,4 +442,13 @@
   } else {
     init();
   }
+
+  // Expose API for other modules
+  window.UIControls = {
+    showInventory: function() {
+      if (!inventoryVisible) {
+        toggleInventory();
+      }
+    }
+  };
 })();
