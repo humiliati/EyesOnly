@@ -742,14 +742,34 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
   const unassigned = cachedGridData?.unassigned_actors?.length || 0;
   const avgTension = cellCount ? Math.round((cachedGridData?.cells?.reduce((sum, c) => sum + c.tension, 0) || 0) / cellCount) : 0;
 
+  // Build actor roster
+  const deployedActors = cachedGridData?.cells?.flatMap((c) => (c.actors || []).map((a: any) => ({ ...a, cell_id: c.cell_id }))) || [];
+  const unassignedActors = cachedGridData?.unassigned_actors || [];
+  const allActors = [...deployedActors, ...unassignedActors];
+
+  const actorStatusDot = (status: string) => {
+    const colors: Record<string, string> = { active: 'var(--accent)', holding: 'var(--amber)', engaging: 'var(--blue)', dark: '#555', standby: '#666' };
+    return `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${colors[status] || '#444'};margin-right:3px;"></span>`;
+  };
+
+  const actorRows = allActors.length ? allActors.map((a: any) =>
+    `<div class="ctx-actor-roster-row" data-actor-id="${a.id}" style="display:flex;align-items:center;justify-content:space-between;padding:3px 0;cursor:pointer;border-bottom:1px solid rgba(40,40,40,0.3);">
+      <span>${actorStatusDot(a.status || 'standby')}<span class="actor-badge team-${a.team}">${a.callsign}</span></span>
+      <span style="font-size:8px;color:#555;">${a.cell_id || 'UNASSIGNED'} · ${(a.status || 'standby').toUpperCase()}</span>
+    </div>`
+  ).join('') : '<div style="font-size:9px;color:var(--text-dim);padding:4px 0;">No actors in scenario.</div>';
+
   ctrl.innerHTML = `
     <div class="ctrl-stack">
       <div class="ctrl-section">
         <h3>SCENARIO</h3>
         <div class="ctx-stat"><span>CELLS</span><span class="value">${cellCount}</span></div>
-        <div class="ctx-stat"><span>ACTORS DEPLOYED</span><span class="value">${actorCount}</span></div>
-        <div class="ctx-stat"><span>UNASSIGNED</span><span class="value">${unassigned}</span></div>
+        <div class="ctx-stat"><span>ACTORS</span><span class="value">${actorCount} deployed / ${unassigned} unassigned</span></div>
         <div class="ctx-stat"><span>AVG TENSION</span><span class="value">${avgTension}%</span></div>
+      </div>
+      <div class="ctrl-section">
+        <h3>ACTOR NETWORK</h3>
+        <div id="actor-roster" style="max-height:140px;overflow-y:auto;padding:2px 0;">${actorRows}</div>
       </div>
       <div class="ctrl-section">
         <h3>MAP</h3>
@@ -804,6 +824,17 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
       </div>
     </div>
   `;
+
+  // Actor roster click → actor panel
+  ctrl.querySelectorAll('.ctx-actor-roster-row[data-actor-id]').forEach((row) => {
+    row.addEventListener('click', () => {
+      selectedActorId = parseInt((row as HTMLElement).dataset.actorId!, 10);
+      const actor = allActors.find((a: any) => a.id === selectedActorId);
+      if (actor?.cell_id) selectedCellId = actor.cell_id;
+      panelMode = 'actor';
+      renderRightPanel(session);
+    });
+  });
 
   // Populate lane dropdown for assignment
   populateLaneSelect('ctrl-assign-lane-select', session);
@@ -1060,6 +1091,13 @@ function renderActorPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLElem
   if (!actor) { panelMode = 'cell'; renderRightPanel(session); return; }
   if (titleEl) titleEl.textContent = `ACTOR`;
 
+  // Fetch recent pings for this actor
+  let actorPingsHtml = '<div style="font-size:8px;color:var(--text-dim);">No recent pings.</div>';
+  loadActorPings(session, actor.id).then((pingsHtml) => {
+    const pingsEl = document.getElementById('ctx-actor-pings');
+    if (pingsEl) pingsEl.innerHTML = pingsHtml;
+  });
+
   ctrl.innerHTML = `
     <div class="ctrl-stack">
       <div style="padding:4px 8px;">
@@ -1072,12 +1110,28 @@ function renderActorPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLElem
         <div class="ctx-stat"><span>CELL</span><span class="value">${actor.cell_id || '—'}</span></div>
       </div>
       <div class="ctrl-section">
-        <div class="ctx-subtitle">COMMANDS</div>
+        <div class="ctx-subtitle">M PINGS</div>
         <div class="ctx-actions">
-          <button class="ctrl-btn" id="ctx-actor-move">MOVE</button>
-          <button class="ctrl-btn" id="ctx-actor-hold">HOLD POSITION</button>
-          <button class="ctrl-btn" id="ctx-actor-engage">ENGAGE PLAYERS</button>
-          <button class="ctrl-btn amber" id="ctx-actor-intel">PLANT INTEL</button>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;">
+            <button class="ctrl-btn" data-ping="MOVE">MOVE</button>
+            <button class="ctrl-btn" data-ping="HOLD">HOLD</button>
+            <button class="ctrl-btn" data-ping="ENGAGE">ENGAGE</button>
+            <button class="ctrl-btn" data-ping="SHADOW">SHADOW</button>
+            <button class="ctrl-btn amber" data-ping="DROP">DROP INTEL</button>
+            <button class="ctrl-btn amber" data-ping="ESCALATE">ESCALATE</button>
+            <button class="ctrl-btn danger" data-ping="EXTRACT">EXTRACT</button>
+            <button class="ctrl-btn danger" data-ping="FREEZE">FREEZE</button>
+          </div>
+        </div>
+      </div>
+      <div class="ctrl-section">
+        <div class="ctx-subtitle">PING HISTORY</div>
+        <div id="ctx-actor-pings" style="max-height:80px;overflow-y:auto;padding:2px 0;">${actorPingsHtml}</div>
+      </div>
+      <div class="ctrl-section">
+        <div class="ctx-subtitle">DIRECT COMMANDS</div>
+        <div class="ctx-actions">
+          <button class="ctrl-btn" id="ctx-actor-move">MOVE TO CELL</button>
           <button class="ctrl-btn danger" id="ctx-actor-dark">GO DARK</button>
         </div>
       </div>
@@ -1089,6 +1143,33 @@ function renderActorPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLElem
     renderRightPanel(session);
   });
 
+  // Ping buttons
+  ctrl.querySelectorAll('[data-ping]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const command = (btn as HTMLElement).dataset.ping!;
+      const b = btn as HTMLButtonElement;
+      b.textContent = 'SENDING...'; b.disabled = true;
+      try {
+        await mFetch('/m/ping', session, {
+          method: 'POST',
+          body: JSON.stringify({
+            actor_id: actor.id,
+            command,
+            cell_id: actor.cell_id || selectedCellId || undefined,
+          }),
+        });
+        mokSend('advisory', `Ping ${command} → ${actor.callsign}`);
+        loadEvents(session);
+        // Refresh ping history
+        loadActorPings(session, actor.id).then((html) => {
+          const el = document.getElementById('ctx-actor-pings');
+          if (el) el.innerHTML = html;
+        });
+      } catch {}
+      b.textContent = command; b.disabled = false;
+    });
+  });
+
   // Move: enter move mode
   document.getElementById('ctx-actor-move')!.addEventListener('click', () => {
     moveActorId = actor.id;
@@ -1096,28 +1177,39 @@ function renderActorPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLElem
     renderRightPanel(session);
   });
 
-  // Commands
-  const cmdHandler = (command: string) => async () => {
+  // Go dark
+  document.getElementById('ctx-actor-dark')!.addEventListener('click', async () => {
     await mFetch('/m/actor/command', session, {
       method: 'POST',
-      body: JSON.stringify({ actor_id: actor.id, command }),
+      body: JSON.stringify({ actor_id: actor.id, command: 'go_dark' }),
     });
     await loadGridCells(session);
     loadEvents(session);
     renderRightPanel(session);
-  };
-
-  document.getElementById('ctx-actor-hold')!.addEventListener('click', cmdHandler('hold'));
-  document.getElementById('ctx-actor-engage')!.addEventListener('click', cmdHandler('engage'));
-  document.getElementById('ctx-actor-dark')!.addEventListener('click', cmdHandler('go_dark'));
-
-  document.getElementById('ctx-actor-intel')!.addEventListener('click', async () => {
-    await mFetch('/m/event', session, {
-      method: 'POST',
-      body: JSON.stringify({ event_type: 'intel_drop', payload: { message: `Intel planted by ${actor.callsign}`, cell_id: actor.cell_id, actor_id: actor.id } }),
-    });
-    loadEvents(session);
   });
+}
+
+// --- Load Actor Pings for Ping History ---
+async function loadActorPings(session: Session, actorId: number): Promise<string> {
+  try {
+    const res = await mFetch(`/m/pings/${session.scenarioId}?limit=50`, session);
+    if (!res.ok) return '<div style="font-size:8px;color:var(--text-dim);">Error loading pings.</div>';
+    const data = await res.json() as any;
+    const pings = (data.pings || []).filter((p: any) => p.payload?.target_actor_id === actorId);
+    if (!pings.length) return '<div style="font-size:8px;color:var(--text-dim);">No pings sent.</div>';
+    return pings.slice(0, 8).map((p: any) => {
+      const cmd = p.payload?.ping_command || '?';
+      const ts = new Date(p.created_at).toLocaleTimeString();
+      const acked = p.ack;
+      const ackTime = acked ? Math.round((new Date(acked.created_at).getTime() - new Date(p.created_at).getTime()) / 1000) : null;
+      return `<div style="font-size:8px;padding:1px 0;border-bottom:1px solid rgba(40,40,40,0.3);display:flex;justify-content:space-between;">
+        <span style="color:${acked ? 'var(--accent)' : 'var(--amber)'}">${cmd}</span>
+        <span style="color:#444;">${ts} ${acked ? `ACK ${ackTime}s` : 'PENDING'}</span>
+      </div>`;
+    }).join('');
+  } catch {
+    return '<div style="font-size:8px;color:var(--text-dim);">Error.</div>';
+  }
 }
 
 // --- Move Actor Panel ---
@@ -1224,6 +1316,11 @@ function connectWS(session: Session) {
           } else if (evType === 'checkin') {
             mokSend('advisory', `Check-in: ${data.data?.payload?.callsign || 'unknown'}`);
           }
+        } else if (data.type === 'mping_ack') {
+          const callsign = data.data?.acked_by || 'unknown';
+          mokSend('advisory', `ACK received from ${callsign}.`);
+          // Refresh actor panel if we're looking at that actor
+          if (panelMode === 'actor' && cachedSession) renderRightPanel(cachedSession);
         } else if (data.type === 'state' && data.data?.frozen !== undefined) {
           mokSend('critical', data.data.frozen ? 'GAME FROZEN by command.' : 'Game UNFROZEN — resume ops.');
         }

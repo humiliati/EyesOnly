@@ -619,6 +619,87 @@ mModeRoutes.post('/scenario/freeze', async (c) => {
   return c.json({ ok: true, frozen: config.frozen });
 });
 
+// --- M Pings ---
+
+/**
+ * POST /api/m/ping
+ * Send a structured directive ping to an actor.
+ * Commands: MOVE, HOLD, ENGAGE, SHADOW, DROP, ESCALATE, FREEZE, EXTRACT
+ */
+mModeRoutes.post('/ping', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{
+    actor_id: number;
+    command: string;
+    cell_id?: string;
+    message?: string;
+  }>();
+
+  const validPings = ['MOVE', 'HOLD', 'ENGAGE', 'SHADOW', 'DROP', 'ESCALATE', 'FREEZE', 'EXTRACT'];
+  if (!body.actor_id || !body.command) {
+    return c.json({ error: 'BAD_REQUEST', message: 'actor_id and command required' }, 400);
+  }
+  if (!validPings.includes(body.command.toUpperCase())) {
+    return c.json({ error: 'BAD_REQUEST', message: `Invalid ping. Must be one of: ${validPings.join(', ')}` }, 400);
+  }
+
+  const actor = await getActor(c.env.DB, body.actor_id);
+  if (!actor) return c.json({ error: 'NOT_FOUND', message: 'Actor not found' }, 404);
+
+  const pingPayload = {
+    ping_command: body.command.toUpperCase(),
+    target_actor_id: body.actor_id,
+    target_callsign: actor.callsign,
+    cell_id: body.cell_id || actor.cell_id || null,
+    message: body.message || '',
+    sent_by: auth.callsign,
+    ack_status: 'pending',
+    sent_at: Date.now(),
+  };
+
+  const event = await insertEvent(c.env.DB, actor.scenario_id, auth.actor_id, 'mping', pingPayload);
+
+  // Broadcast ping to all connected clients (actors will filter by their ID)
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${actor.scenario_id}`);
+  const room = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'mping',
+      data: { ...pingPayload, event_id: event.id },
+      timestamp: Date.now(),
+    }),
+  }));
+
+  return c.json({ ok: true, event_id: event.id, ping_command: body.command.toUpperCase() });
+});
+
+/**
+ * GET /api/m/pings/:scenarioId
+ * Get all pings with their ACK status for the scenario.
+ */
+mModeRoutes.get('/pings/:scenarioId', async (c) => {
+  const scenarioId = parseInt(c.req.param('scenarioId'), 10);
+  const limit = parseInt(c.req.query('limit') || '50', 10);
+  const events = await getEvents(c.env.DB, scenarioId, limit);
+  const pings = events
+    .filter((e) => e.event_type === 'mping' || e.event_type === 'mping_ack')
+    .map((e) => ({ ...e, payload: JSON.parse(e.payload) }));
+
+  // Group pings with their acks
+  const pingMap = new Map<number, any>();
+  for (const p of pings) {
+    if (p.event_type === 'mping') {
+      pingMap.set(p.id, { ...p, ack: null });
+    } else if (p.event_type === 'mping_ack' && p.payload.ping_event_id) {
+      const parent = pingMap.get(p.payload.ping_event_id);
+      if (parent) parent.ack = p;
+    }
+  }
+
+  return c.json({ pings: Array.from(pingMap.values()).reverse() });
+});
+
 // --- WebSocket ---
 
 /**

@@ -168,6 +168,71 @@ opsRoutes.post('/dead-drop', async (c) => {
 });
 
 /**
+ * POST /api/ops/ack
+ * Acknowledge an M ping directive. Creates an ack event and broadcasts.
+ */
+opsRoutes.post('/ack', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{ ping_event_id: number; message?: string }>();
+
+  if (!body.ping_event_id) {
+    return c.json({ error: 'BAD_REQUEST', message: 'ping_event_id required' }, 400);
+  }
+
+  const ackPayload = {
+    ping_event_id: body.ping_event_id,
+    acked_by: auth.callsign,
+    actor_id: auth.actor_id,
+    message: body.message || '',
+    acked_at: Date.now(),
+  };
+
+  const event = await insertEvent(c.env.DB, auth.scenario_id, auth.actor_id, 'mping_ack', ackPayload);
+
+  // Broadcast ack to all connected clients (M will see it)
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+  const room = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'mping_ack',
+      data: { ...ackPayload, event_id: event.id },
+      timestamp: Date.now(),
+    }),
+  }));
+
+  return c.json({ ok: true, event_id: event.id });
+});
+
+/**
+ * GET /api/ops/pings
+ * Get pending pings for the authenticated actor.
+ */
+opsRoutes.get('/pings', async (c) => {
+  const auth = c.get('auth');
+  const events = await getEvents(c.env.DB, auth.scenario_id, 100);
+
+  const pings = events
+    .filter((e) => e.event_type === 'mping')
+    .map((e) => ({ ...e, payload: JSON.parse(e.payload) }))
+    .filter((e) => e.payload.target_actor_id === auth.actor_id);
+
+  const acks = events
+    .filter((e) => e.event_type === 'mping_ack')
+    .map((e) => ({ ...e, payload: JSON.parse(e.payload) }))
+    .filter((e) => e.payload.actor_id === auth.actor_id);
+
+  const ackedIds = new Set(acks.map((a) => a.payload.ping_event_id));
+
+  return c.json({
+    pings: pings.map((p) => ({
+      ...p,
+      acked: ackedIds.has(p.id),
+    })).reverse(),
+  });
+});
+
+/**
  * GET /api/ops/events
  * Get recent events for the actor's scenario.
  * Query params: limit, after_id, lane_id

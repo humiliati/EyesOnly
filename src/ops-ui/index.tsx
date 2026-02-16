@@ -87,7 +87,7 @@ if (target) {
 
 const OPS_STORAGE_KEY = 'eyesonly_ops_session';
 
-interface OpsSession { token: string; actor: { callsign: string; team: string; scenario_id: number } }
+interface OpsSession { token: string; actor: { id?: number; callsign: string; team: string; scenario_id: number } }
 
 function getOpsSession(): OpsSession | null {
   try { const s = localStorage.getItem(OPS_STORAGE_KEY); if (s) { const d = JSON.parse(s); if (d.token) return d; } } catch {}
@@ -148,18 +148,24 @@ function renderOpsJoin(container: HTMLElement) {
   container.appendChild(screen);
 }
 
+let opsPingQueue: any[] = [];
+
 function renderOpsDashboard(container: HTMLElement, session: OpsSession) {
   container.innerHTML = `
     <header class="header">
       <h1>EYES ONLY // OPS</h1>
-      <span class="status">${session.actor.callsign} [${session.actor.team.toUpperCase()}]</span>
+      <span class="status" id="ops-status-badge">${session.actor.callsign} [${session.actor.team.toUpperCase()}]</span>
     </header>
     <div class="screen" id="ops-screen">
       <div class="stat-row">
-        <div class="card"><h2>STATUS</h2><div class="value" style="color:var(--accent);">ACTIVE</div></div>
+        <div class="card"><h2>STATUS</h2><div class="value" style="color:var(--accent);" id="ops-actor-status">ACTIVE</div></div>
         <div class="card"><h2>TEAM</h2><div class="value">${session.actor.team.toUpperCase()}</div></div>
       </div>
-      <div class="card"><h2>RECENT EVENTS</h2><div id="ops-events" style="max-height:300px;overflow-y:auto;">Loading...</div></div>
+      <div class="card" id="ops-pings-card">
+        <h2>M DIRECTIVES</h2>
+        <div id="ops-pings" style="max-height:200px;overflow-y:auto;"><div style="color:var(--text-dim);font-size:12px;">No directives.</div></div>
+      </div>
+      <div class="card"><h2>RECENT EVENTS</h2><div id="ops-events" style="max-height:200px;overflow-y:auto;">Loading...</div></div>
       <div class="card">
         <h2>CHECK-IN</h2>
         <div class="field"><label>LANE</label><input type="text" id="ops-checkin-lane" placeholder="Lane ID" /></div>
@@ -170,9 +176,11 @@ function renderOpsDashboard(container: HTMLElement, session: OpsSession) {
     </div>
   `;
 
-  // Load events
+  // Load events and pings
   loadOpsEvents(session);
+  loadOpsPings(session);
   setInterval(() => loadOpsEvents(session), 10000);
+  setInterval(() => loadOpsPings(session), 8000);
 
   // Check-in handler
   document.getElementById('ops-checkin-btn')!.addEventListener('click', async () => {
@@ -190,6 +198,144 @@ function renderOpsDashboard(container: HTMLElement, session: OpsSession) {
     container.innerHTML = '';
     renderOpsJoin(container);
   });
+
+  // Connect WebSocket for real-time pings
+  connectOpsWS(session, container);
+}
+
+// --- Ops Pings ---
+async function loadOpsPings(session: OpsSession) {
+  try {
+    const res = await opsFetch('/ops/pings', session);
+    if (!res.ok) return;
+    const data = await res.json() as any;
+    const pings = data.pings || [];
+    const el = document.getElementById('ops-pings');
+    if (!el) return;
+    if (pings.length === 0) {
+      el.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">No directives.</div>';
+      return;
+    }
+    el.innerHTML = pings.slice(0, 10).map((p: any) => {
+      const cmd = p.payload?.ping_command || '???';
+      const cell = p.payload?.cell_id || '';
+      const msg = p.payload?.message || '';
+      const from = p.payload?.sent_by || 'M';
+      const acked = p.acked;
+      const ts = new Date(p.created_at).toLocaleTimeString();
+      return `<div class="ping-item ${acked ? 'acked' : ''}" data-ping-id="${p.id}">
+        <div class="ping-cmd" style="color:${acked ? 'var(--accent)' : 'var(--red)'}">${cmd}${cell ? ' → ' + cell : ''}</div>
+        <div class="ping-meta">${ts} · from ${from}${msg ? ' · ' + msg : ''}</div>
+        ${!acked ? `<button class="btn" style="padding:6px 12px;font-size:10px;margin-top:4px;max-width:120px;" data-ack-ping="${p.id}">ACK</button>` : '<span style="font-size:9px;color:var(--accent);">✓ ACKNOWLEDGED</span>'}
+      </div>`;
+    }).join('');
+
+    // Wire ACK buttons
+    el.querySelectorAll('[data-ack-ping]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const pingId = parseInt((btn as HTMLElement).dataset.ackPing!, 10);
+        await opsFetch('/ops/ack', session, { method: 'POST', body: JSON.stringify({ ping_event_id: pingId }) });
+        // Dismiss flash if showing for this ping
+        const flash = document.getElementById('ping-flash');
+        if (flash) flash.remove();
+        loadOpsPings(session);
+      });
+    });
+  } catch {}
+}
+
+// --- Ping Flash Overlay ---
+function showPingFlash(ping: any, session: OpsSession) {
+  // Remove any existing flash
+  document.getElementById('ping-flash')?.remove();
+
+  const cmd = ping.ping_command || ping.payload?.ping_command || '???';
+  const cell = ping.cell_id || ping.payload?.cell_id || '';
+  const msg = ping.message || ping.payload?.message || '';
+  const from = ping.sent_by || ping.payload?.sent_by || 'M';
+  const eventId = ping.event_id || ping.id;
+
+  const flash = document.createElement('div');
+  flash.id = 'ping-flash';
+  flash.className = 'ping-flash';
+
+  let countdown = 30;
+  flash.innerHTML = `
+    <div class="ping-label">M DIRECTIVE</div>
+    <div class="ping-command">${cmd}${cell ? ' → ' + cell : ''}</div>
+    <div class="ping-detail">${msg || `Directive from ${from}`}</div>
+    <div class="ping-timer" id="ping-countdown">${countdown}</div>
+    <button class="ping-ack-btn" id="ping-ack-flash">ACKNOWLEDGE</button>
+  `;
+  document.body.appendChild(flash);
+
+  // Countdown timer
+  const timer = setInterval(() => {
+    countdown--;
+    const el = document.getElementById('ping-countdown');
+    if (el) el.textContent = String(countdown);
+    if (countdown <= 0) {
+      clearInterval(timer);
+      flash.remove();
+    }
+  }, 1000);
+
+  // ACK button
+  document.getElementById('ping-ack-flash')!.addEventListener('click', async () => {
+    clearInterval(timer);
+    await opsFetch('/ops/ack', session, { method: 'POST', body: JSON.stringify({ ping_event_id: eventId }) });
+    flash.remove();
+    loadOpsPings(session);
+  });
+}
+
+// --- Frozen overlay for ops ---
+function showOpsFrozen(frozen: boolean) {
+  const existing = document.getElementById('ops-frozen-overlay');
+  if (frozen && !existing) {
+    const overlay = document.createElement('div');
+    overlay.id = 'ops-frozen-overlay';
+    overlay.className = 'ops-frozen-overlay';
+    overlay.innerHTML = '<div class="frozen-msg">GAME FROZEN<br><span style="font-size:12px;letter-spacing:2px;">STAND BY FOR COMMAND</span></div>';
+    document.body.appendChild(overlay);
+  } else if (!frozen && existing) {
+    existing.remove();
+  }
+}
+
+// --- Ops WebSocket ---
+function connectOpsWS(session: OpsSession, container: HTMLElement) {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  try {
+    const ws = new WebSocket(`${proto}//${location.host}/api/ops/ws?token=${session.token}`);
+    ws.onopen = () => {
+      const badge = document.getElementById('ops-status-badge');
+      if (badge) badge.style.borderColor = 'var(--accent)';
+    };
+    ws.onmessage = (ev) => {
+      try {
+        const data = JSON.parse(ev.data);
+        if (data.type === 'mping') {
+          // Check if this ping is for us
+          const targetId = data.data?.target_actor_id;
+          if (!targetId || String(targetId) === String((session.actor as any).id)) {
+            showPingFlash(data.data, session);
+          }
+          loadOpsPings(session);
+        } else if (data.type === 'state' && data.data?.frozen !== undefined) {
+          showOpsFrozen(data.data.frozen);
+        } else if (data.type === 'event' || data.type === 'escalation') {
+          loadOpsEvents(session);
+        }
+      } catch {}
+    };
+    ws.onclose = () => {
+      const badge = document.getElementById('ops-status-badge');
+      if (badge) badge.style.borderColor = 'var(--red)';
+      setTimeout(() => connectOpsWS(session, container), 3000);
+    };
+    ws.onerror = () => ws.close();
+  } catch {}
 }
 
 async function loadOpsEvents(session: OpsSession) {

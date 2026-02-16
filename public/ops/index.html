@@ -156,6 +156,90 @@
     .loading { text-align: center; padding: 40px; color: var(--text-dim); }
     .blink { animation: blink 1s step-end infinite; }
     @keyframes blink { 50% { opacity: 0; } }
+
+    /* ========== M PING DIRECTIVES ========== */
+    .ping-flash {
+      position: fixed; inset: 0;
+      background: rgba(255,51,51,0.08);
+      z-index: 200;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 12px;
+      animation: ping-in 0.3s ease-out;
+    }
+    @keyframes ping-in {
+      0% { opacity: 0; transform: scale(1.05); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    .ping-flash .ping-label {
+      font-size: 10px; letter-spacing: 3px;
+      color: var(--red); text-transform: uppercase;
+    }
+    .ping-flash .ping-command {
+      font-size: 28px; letter-spacing: 6px;
+      color: var(--text);
+      text-shadow: 0 0 20px rgba(51,255,51,0.4);
+    }
+    .ping-flash .ping-detail {
+      font-size: 12px; color: var(--text-dim);
+      text-align: center; max-width: 280px;
+    }
+    .ping-flash .ping-timer {
+      font-size: 24px; color: var(--red);
+      font-variant-numeric: tabular-nums;
+    }
+    .ping-flash .ping-ack-btn {
+      background: transparent;
+      border: 2px solid var(--accent);
+      color: var(--accent);
+      font-family: var(--font);
+      font-size: 16px;
+      padding: 14px 40px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      transition: background 0.2s;
+    }
+    .ping-flash .ping-ack-btn:active {
+      background: var(--accent); color: var(--bg);
+    }
+
+    /* Pending pings list */
+    .ping-item {
+      padding: 8px 12px;
+      border: 1px solid var(--red);
+      border-radius: var(--radius);
+      margin-bottom: 8px;
+      background: rgba(255,51,51,0.04);
+    }
+    .ping-item.acked {
+      border-color: var(--accent);
+      background: rgba(51,255,51,0.04);
+      opacity: 0.6;
+    }
+    .ping-item .ping-cmd {
+      font-size: 14px; letter-spacing: 2px; font-weight: bold;
+    }
+    .ping-item .ping-meta {
+      font-size: 10px; color: var(--text-dim); margin-top: 2px;
+    }
+
+    /* Frozen overlay for ops */
+    .ops-frozen-overlay {
+      position: fixed; inset: 0;
+      background: rgba(255,51,51,0.06);
+      z-index: 300;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: all; cursor: not-allowed;
+    }
+    .ops-frozen-overlay .frozen-msg {
+      font-size: 20px; letter-spacing: 6px;
+      color: var(--red);
+      text-shadow: 0 0 20px rgba(255,51,51,0.4);
+      text-transform: uppercase;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
