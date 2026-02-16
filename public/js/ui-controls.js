@@ -39,107 +39,118 @@
 
   function handleButtonClick(e) {
     var action = e.target.getAttribute('data-action');
+    var isInStreetChronicles = typeof StreetChronicles !== 'undefined' && StreetChronicles.isActive();
+    var isInLoginShell = typeof LoginShell !== 'undefined' && LoginShell.isActive();
 
     switch (action) {
       case 'help':
-        printToTerminal([
-          '',
-          'AVAILABLE COMMANDS:',
-          '/help - Display this help message',
-          'back - Return to previous screen',
-          'map - Display mission map',
-          'login - Access authentication portal',
-          'contact - Contact information',
-          'faq - Frequently asked questions',
-          'inventory - Toggle inventory display',
-          ''
-        ]);
+        if (isInStreetChronicles) {
+          // Street-Chronicles help
+          simulateCommand('help');
+        } else {
+          // Command terminal help
+          printToTerminal([
+            '',
+            'COMMAND TERMINAL HELP:',
+            '————————————————————————————————',
+            'clearance - Begin access protocol',
+            'help - Display this help message',
+            'missions - View mission briefings',
+            'ops - Check operational status',
+            'clear - Clear terminal screen',
+            'home - Return to EYES ONLY title',
+            '',
+            'BUTTON CONTROLS:',
+            '/help - Display help for current context',
+            'back - Return to EYES ONLY home screen',
+            'map - Open Street-Chronicles at last position',
+            'login - Access authentication portal',
+            'contact - Contact information',
+            'faq - Frequently asked questions',
+            'inventory - Toggle inventory display',
+            ''
+          ]);
+        }
         break;
 
       case 'back':
-        // Exit inventory if active
+        // Priority 1: Exit inventory if active
         if (inventoryVisible) {
           toggleInventory();
-          printToTerminal([
-            '',
-            'EXITING INVENTORY',
-            'Returning to terminal...',
-            ''
-          ]);
+          // Don't print anything - just close inventory
+          break;
         }
-        // Exit street mode if active
-        else if (typeof StreetChronicles !== 'undefined' && StreetChronicles.isActive()) {
-          // Process 'exit' command through StreetChronicles
-          var result = StreetChronicles.process('exit');
-          if (result && result.lines) {
-            printToTerminal(result.lines);
-          }
-        }
-        // Exit login shell if active
-        else if (typeof LoginShell !== 'undefined' && LoginShell.isActive()) {
-          var result = LoginShell.process('exit');
-          if (result && result.lines) {
-            printToTerminal(result.lines);
-          }
-        }
-        // Otherwise just show feedback
-        else {
-          printToTerminal([
-            '',
-            'BACK COMMAND EXECUTED',
-            'Already at main terminal',
-            ''
-          ]);
-        }
-        break;
-
-      case 'map':
-        // If inventory is visible, close it
-        if (inventoryVisible) {
-          toggleInventory();
-          // If street-chronicles is active, we've just returned to the terminal view
-          if (typeof StreetChronicles !== 'undefined' && StreetChronicles.isActive()) {
-            // No need to print anything, just closed inventory back to street-chronicles
+        // Priority 2: Exit login shell if in password prompt
+        if (isInLoginShell && typeof LoginShell.getPrompt === 'function') {
+          var prompt = LoginShell.getPrompt();
+          if (prompt === 'PASS> ') {
+            // In password entry - exit to main terminal
+            simulateCommand('exit');
             break;
           }
         }
+        // Priority 3: Exit street-chronicles if active
+        if (isInStreetChronicles) {
+          simulateCommand('exit');
+          break;
+        }
+        // Priority 4: Exit login shell if in session
+        if (isInLoginShell) {
+          simulateCommand('exit');
+          break;
+        }
+        // Priority 5: Return to EYES ONLY home screen
+        simulateCommand('home');
+        break;
 
-        // Start street-chronicles if not already active
-        if (typeof StreetChronicles !== 'undefined' && typeof StreetChronicles.start === 'function') {
-          // Only start if not already active
-          if (!StreetChronicles.isActive()) {
-            var result = StreetChronicles.start();
-            if (result && result.lines) {
-              printToTerminal(result.lines);
+      case 'map':
+        // Close inventory if open
+        if (inventoryVisible) {
+          toggleInventory();
+        }
+
+        if (isInStreetChronicles) {
+          // Already in street-chronicles - recenter to main street
+          if (typeof StreetChronicles !== 'undefined' && typeof StreetChronicles.process === 'function') {
+            var currentLoc = getStreetChroniclesLocation();
+            if (currentLoc !== 'Cedar St') {
+              printToTerminal([
+                '',
+                'MAP RECENTER ACTIVATED',
+                'Returning to Cedar St main node...',
+                ''
+              ]);
+              // Move to Cedar St
+              setStreetChroniclesLocation('Cedar St');
+              simulateCommand('look');
+            } else {
+              printToTerminal([
+                '',
+                'ALREADY AT MAIN STREET NODE',
+                'Position: Cedar St',
+                ''
+              ]);
             }
           }
         } else {
-          // Fallback message if StreetChronicles not available
-          printToTerminal([
-            '',
-            'MAP SYSTEM ACCESS',
-            'Loading tactical map overlay...',
-            'Coordinates: 48.2771° N, 116.5533° W',
-            'Sandpoint, Idaho - Field Station Alpha',
-            ''
-          ]);
+          // Not in street-chronicles - open it
+          simulateCommand('map');
         }
         break;
 
       case 'login':
-        // Exit inventory if active first
+        // Close inventory if open
         if (inventoryVisible) {
           toggleInventory();
         }
 
-        // Start login shell if available
+        // Start login shell (doesn't exit street-chronicles)
         if (typeof LoginShell !== 'undefined' && typeof LoginShell.start === 'function') {
           var result = LoginShell.start();
           if (result && result.lines) {
             printToTerminal(result.lines);
           }
         } else {
-          // Fallback message if LoginShell not available
           printToTerminal([
             '',
             'AUTHENTICATION PORTAL',
@@ -151,49 +162,161 @@
         break;
 
       case 'contact':
-        printToTerminal([
-          '',
-          'CONTACT INFORMATION',
-          'Field Operations: [REDACTED]',
-          'Emergency Line: [REDACTED]',
-          'Secure Relay: MOK-LINK-ALPHA',
-          ''
-        ]);
+        if (isInStreetChronicles) {
+          // Street-Chronicles contact - MOK avatar with hints
+          printToTerminal([
+            '',
+            'MOK AVATAR ACTIVATED',
+            'Analyzing current position and inventory...',
+            '',
+            '[MOK]: "Citizen, I detect you are exploring street-level operations."',
+            '[MOK]: "Hint: Look for interactive locations and items."',
+            '[MOK]: "Try commands: LOOK, EXAMINE, TALK TO, TAKE"',
+            '',
+            'TODO: Full MOK integration with position-aware hints',
+            ''
+          ]);
+        } else {
+          // Command terminal contact - full contact info
+          printToTerminal([
+            '',
+            'CONTACT INFORMATION',
+            '————————————————————————————————',
+            '',
+            'MOK AVATAR: [ACTIVATED]',
+            '[MOK]: "Standing by for ARPG recommendations."',
+            '',
+            'REAL WORLD CONTACT:',
+            '  Email: admin@stellaraqua.com',
+            '  Location: Sandpoint Chamber of Commerce',
+            '  Booking: Call 1-850-SSTELLA',
+            '',
+            'Book your team now to play live!',
+            ''
+          ]);
+        }
         break;
 
       case 'faq':
-        printToTerminal([
-          '',
-          'FREQUENTLY ASKED QUESTIONS',
-          '————————————————————————————————',
-          '',
-          'Q: WHAT IS THIS?',
-          'A: CLASSIFIED.',
-          '',
-          'Q: NO REALLY, WHAT IS THIS?',
-          'A: A RECRUITMENT TERMINAL FOR',
-          '   SANDPOINT FIELD OPERATIONS.',
-          '   TYPE CLEARANCE TO BEGIN.',
-          '',
-          'Q: IS THIS A GAME?',
-          'A: THAT DEPENDS ON YOUR',
-          '   CLEARANCE LEVEL.',
-          '',
-          'Q: DO I NEED TO GO SOMEWHERE?',
-          'A: SANDPOINT, IDAHO.',
-          '   THE REST IS NEED-TO-KNOW.',
-          ''
-        ]);
+        if (isInStreetChronicles) {
+          // Street-Chronicles FAQ - how to play text adventures
+          printToTerminal([
+            '',
+            'STREET-CHRONICLES FAQ',
+            '————————————————————————————————',
+            '',
+            'Q: HOW DO I PLAY THIS TEXT ADVENTURE?',
+            'A: Use commands like LOOK, GO NORTH, EXAMINE,',
+            '   TALK TO, and TAKE to explore and interact.',
+            '',
+            'Q: HOW DO I MOVE AROUND?',
+            'A: Use GO NORTH/SOUTH/EAST/WEST or shortcuts',
+            '   N/S/E/W to navigate streets.',
+            '',
+            'Q: HOW DO I INTERACT WITH OBJECTS?',
+            'A: Use EXAMINE <object> to inspect things,',
+            '   TALK TO <person> to speak with NPCs,',
+            '   TAKE <item> to collect items.',
+            '',
+            'Q: HOW DO I EXIT?',
+            'A: Type EXIT or click the BACK button.',
+            '',
+            'Q: WHAT IS THE GOAL?',
+            'A: Explore Sandpoint, find clues, collect items,',
+            '   and uncover the hidden story.',
+            ''
+          ]);
+        } else {
+          // Command terminal FAQ - platform description
+          printToTerminal([
+            '',
+            'EYES ONLY - FREQUENTLY ASKED QUESTIONS',
+            '————————————————————————————————————————',
+            '',
+            'Q: WHAT IS EYES ONLY?',
+            'A: A platform for SPY vs SPY games set in',
+            '   Sandpoint, Idaho. A blend of ARG, escape room,',
+            '   and Cold War terminal aesthetics.',
+            '',
+            'Q: WHAT IS STREET-CHRONICLES?',
+            'A: A text-based adventure mini-game where you',
+            '   explore Sandpoint at street level, finding',
+            '   clues and items for the larger mission.',
+            '',
+            'Q: DO I NEED TO BE IN SANDPOINT?',
+            'A: For the full LIVE ARPG experience, yes.',
+            '   Street-Chronicles can be played remotely.',
+            '',
+            'Q: HOW DO I GET STARTED?',
+            'A: Type CLEARANCE to begin the access protocol.',
+            '   Type MAP to enter Street-Chronicles.',
+            '',
+            'Q: WHO IS BEHIND THIS?',
+            'A: STELLARAQUA / Sandpoint Field Operations',
+            '   Contact: admin@stellaraqua.com',
+            '',
+            'TUTORIAL NOTES:',
+            '- Use temporal keys for access (format: YYMMDD)',
+            '- Explore commands with HELP in each context',
+            '- Missions unlock based on field intelligence',
+            '- Save your progress with LOGIN',
+            ''
+          ]);
+        }
         break;
 
       case 'inventory':
-        // If in street-chronicles mode, toggle inventory within that context
-        if (typeof StreetChronicles !== 'undefined' && StreetChronicles.isActive()) {
-          toggleInventory();
-        } else {
-          toggleInventory();
-        }
+        // Toggle inventory in any context
+        toggleInventory();
         break;
+    }
+  }
+
+  // Helper function to simulate command input
+  function simulateCommand(cmd) {
+    if (typeof Terminal !== 'undefined' && typeof Terminal.onCommand === 'function') {
+      // Hide input, trigger command through the main handler
+      Terminal.hideInput();
+      // Write the command line to terminal
+      var prompt = '> ';
+      if (typeof StreetChronicles !== 'undefined' && StreetChronicles.isActive()) {
+        prompt = StreetChronicles.getPrompt();
+      } else if (typeof LoginShell !== 'undefined' && LoginShell.isActive() && typeof LoginShell.getPrompt === 'function') {
+        prompt = LoginShell.getPrompt();
+      }
+      Terminal.writeLine(prompt + cmd);
+      // Use a small timeout to ensure the command is processed after the line is written
+      setTimeout(function() {
+        // Get the command callback
+        if (window._mainCommandHandler) {
+          window._mainCommandHandler(cmd);
+        }
+      }, 50);
+    }
+  }
+
+  // Helper to get street-chronicles location
+  function getStreetChroniclesLocation() {
+    try {
+      var raw = localStorage.getItem('eyesonly_street_state');
+      if (!raw) return 'Cedar St';
+      var parsed = JSON.parse(raw);
+      return parsed.state && parsed.state.location ? parsed.state.location : 'Cedar St';
+    } catch (e) {
+      return 'Cedar St';
+    }
+  }
+
+  // Helper to set street-chronicles location
+  function setStreetChroniclesLocation(loc) {
+    try {
+      var raw = localStorage.getItem('eyesonly_street_state');
+      var parsed = raw ? JSON.parse(raw) : { active: true, state: {} };
+      if (!parsed.state) parsed.state = {};
+      parsed.state.location = loc;
+      localStorage.setItem('eyesonly_street_state', JSON.stringify(parsed));
+    } catch (e) {
+      // ignore
     }
   }
 
@@ -368,6 +491,7 @@
     if (isInStreetChronicles) {
       // In street-chronicles, check if item is applicable
       if (activeItem.context === 'live') {
+        // Item not applicable in street-chronicles
         printToTerminal([
           '',
           'ITEM ACTION UNRECOGNIZED',
@@ -377,19 +501,15 @@
           ''
         ]);
       } else {
-        // Item is applicable to street-chronicles
-        printToTerminal([
-          '',
-          'ITEM USED: ' + activeItem.name,
-          'Context: ' + contextLabel,
-          'Action: [Street Chronicles interaction would be processed here]',
-          'Event log sent to M Console for review.',
-          ''
-        ]);
+        // Item is applicable to street-chronicles - don't print to console
+        // Just show feedback in MOK interjection
+        updateMokInterjection('[STREET-CHRONICLES] Item used: ' + activeItem.name + ' — Processing action in current context.');
+        // TODO: Integrate with street-chronicles item system
       }
     } else {
       // In command terminal (live ARPG context)
       if (activeItem.context === 'street') {
+        // Item not applicable in command terminal
         printToTerminal([
           '',
           'ITEM ACTION UNRECOGNIZED',
@@ -399,7 +519,7 @@
           ''
         ]);
       } else {
-        // Item is applicable to live ARPG
+        // Item is applicable to live ARPG - print to console
         printToTerminal([
           '',
           'ITEM APPLIED TO LIVE ARPG',
