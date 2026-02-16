@@ -395,8 +395,9 @@
       container.appendChild(itemEl);
     });
 
-    // Add empty slots to fill grid (up to 12 total)
-    var emptySlots = Math.max(0, 12 - allItems.length);
+    // Add empty slots to fill grid (9 total for street-chronicles, 12 total for persistent)
+    var maxSlots = 9; // Default to 9 for street-chronicles
+    var emptySlots = Math.max(0, maxSlots - allItems.length);
     for (var i = 0; i < emptySlots; i++) {
       var emptyEl = document.createElement('div');
       emptyEl.className = 'inventory-item inventory-item-empty';
