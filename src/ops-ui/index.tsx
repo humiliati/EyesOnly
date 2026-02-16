@@ -85,7 +85,32 @@ if (target) {
   }
 }
 
+const OPS_STORAGE_KEY = 'eyesonly_ops_session';
+
+interface OpsSession { token: string; actor: { callsign: string; team: string; scenario_id: number } }
+
+function getOpsSession(): OpsSession | null {
+  try { const s = localStorage.getItem(OPS_STORAGE_KEY); if (s) { const d = JSON.parse(s); if (d.token) return d; } } catch {}
+  return null;
+}
+
+async function opsFetch(path: string, session: OpsSession, opts: RequestInit = {}): Promise<Response> {
+  return fetch(`/api${path}`, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}`, ...(opts.headers || {}) },
+  });
+}
+
 function renderOpsWithDOM(container: HTMLElement) {
+  const session = getOpsSession();
+  if (session) {
+    renderOpsDashboard(container, session);
+  } else {
+    renderOpsJoin(container);
+  }
+}
+
+function renderOpsJoin(container: HTMLElement) {
   const screen = document.createElement('div');
   screen.className = 'join-screen';
   screen.innerHTML = `
@@ -111,13 +136,74 @@ function renderOpsWithDOM(container: HTMLElement) {
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})) as any; throw new Error(d.message || 'Join failed'); }
       const data = await res.json() as any;
-      localStorage.setItem('eyesonly_ops_session', JSON.stringify({ token: data.token, actor: data.actor }));
-      errEl.textContent = 'JOINED — LOADING...'; errEl.style.display = ''; errEl.style.color = 'var(--accent)';
-      setTimeout(() => window.location.reload(), 500);
+      const session: OpsSession = { token: data.token, actor: data.actor };
+      localStorage.setItem(OPS_STORAGE_KEY, JSON.stringify(session));
+      container.innerHTML = '';
+      renderOpsDashboard(container, session);
     } catch (err: any) {
       errEl.textContent = err.message || 'Network error'; errEl.style.display = '';
       btn.textContent = 'JOIN OPERATION'; btn.disabled = false;
     }
   });
   container.appendChild(screen);
+}
+
+function renderOpsDashboard(container: HTMLElement, session: OpsSession) {
+  container.innerHTML = `
+    <header class="header">
+      <h1>EYES ONLY // OPS</h1>
+      <span class="status">${session.actor.callsign} [${session.actor.team.toUpperCase()}]</span>
+    </header>
+    <div class="screen" id="ops-screen">
+      <div class="stat-row">
+        <div class="card"><h2>STATUS</h2><div class="value" style="color:var(--accent);">ACTIVE</div></div>
+        <div class="card"><h2>TEAM</h2><div class="value">${session.actor.team.toUpperCase()}</div></div>
+      </div>
+      <div class="card"><h2>RECENT EVENTS</h2><div id="ops-events" style="max-height:300px;overflow-y:auto;">Loading...</div></div>
+      <div class="card">
+        <h2>CHECK-IN</h2>
+        <div class="field"><label>LANE</label><input type="text" id="ops-checkin-lane" placeholder="Lane ID" /></div>
+        <div class="field"><label>MESSAGE</label><input type="text" id="ops-checkin-msg" placeholder="Status update" /></div>
+        <button class="btn" id="ops-checkin-btn" style="margin-top:8px;">CHECK IN</button>
+      </div>
+      <button class="btn danger" id="ops-disconnect" style="margin-top:auto;">DISCONNECT</button>
+    </div>
+  `;
+
+  // Load events
+  loadOpsEvents(session);
+  setInterval(() => loadOpsEvents(session), 10000);
+
+  // Check-in handler
+  document.getElementById('ops-checkin-btn')!.addEventListener('click', async () => {
+    const lane = (document.getElementById('ops-checkin-lane') as HTMLInputElement).value;
+    const msg = (document.getElementById('ops-checkin-msg') as HTMLInputElement).value;
+    if (!lane) return;
+    await opsFetch('/ops/checkin', session, { method: 'POST', body: JSON.stringify({ lane_id: lane, message: msg }) });
+    (document.getElementById('ops-checkin-msg') as HTMLInputElement).value = '';
+    loadOpsEvents(session);
+  });
+
+  // Disconnect
+  document.getElementById('ops-disconnect')!.addEventListener('click', () => {
+    localStorage.removeItem(OPS_STORAGE_KEY);
+    container.innerHTML = '';
+    renderOpsJoin(container);
+  });
+}
+
+async function loadOpsEvents(session: OpsSession) {
+  try {
+    const res = await opsFetch('/ops/events', session);
+    if (!res.ok) return;
+    const data = await res.json() as any;
+    const events = data.events || [];
+    const el = document.getElementById('ops-events');
+    if (!el) return;
+    if (events.length === 0) { el.innerHTML = '<div style="color:var(--text-dim);">No events yet.</div>'; return; }
+    el.innerHTML = events.slice(-20).reverse().map((ev: any) => {
+      const ts = new Date(ev.created_at).toLocaleTimeString();
+      return `<div style="padding:3px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="color:var(--text-dim);font-size:10px;">${ts}</span> <strong>${ev.event_type}</strong></div>`;
+    }).join('');
+  } catch {}
 }

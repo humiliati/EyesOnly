@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; connect-src 'self' wss: ws: https://*.cloudflareinsights.com; img-src 'self' data: blob:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; connect-src 'self' wss: ws: https://*.cloudflareinsights.com; img-src 'self' data: blob: https:;">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#0a0a0a">
   <title>EYES ONLY // M MODE</title>
@@ -36,7 +36,7 @@
     /* --- Header bar --- */
     .m-header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 8px 16px;
+      padding: 6px 16px;
       border-bottom: 1px solid var(--border);
       background: var(--surface);
       flex-shrink: 0;
@@ -49,11 +49,10 @@
     }
     .m-header .ws-dot.on { background: var(--accent); }
 
-    /* --- 3-panel layout --- */
+    /* --- 3-column layout: Map | Events | Controls --- */
     .panels {
       flex: 1; display: grid;
-      grid-template-columns: 1fr 1fr;
-      grid-template-rows: 1fr 280px;
+      grid-template-columns: 1fr 280px 240px;
       gap: 1px;
       background: var(--border);
       overflow: hidden;
@@ -64,7 +63,7 @@
       overflow: hidden;
     }
     .panel-header {
-      padding: 6px 12px;
+      padding: 5px 10px;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
       font-size: 10px;
@@ -73,59 +72,93 @@
       flex-shrink: 0;
       display: flex; align-items: center; justify-content: space-between;
     }
-    .panel-body { flex: 1; overflow-y: auto; padding: 8px 12px; }
-    .panel.control { grid-column: 1 / -1; }
+    .panel-body { flex: 1; overflow-y: auto; }
 
-    /* --- Grid panel (lane map) --- */
-    .grid-panel svg { width: 100%; height: 100%; }
+    /* --- Lane Grid / Map --- */
+    .map-container {
+      position: relative; width: 100%; height: 100%;
+      overflow: hidden;
+    }
+    .map-image {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: contain;
+      opacity: 0.35;
+      pointer-events: none;
+    }
+    .lane-grid-overlay {
+      position: relative;
+      display: grid;
+      gap: 2px;
+      padding: 8px;
+      width: 100%; height: 100%;
+    }
+    .lane-cell {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      padding: 6px 8px;
+      display: flex; flex-direction: column;
+      transition: background 0.2s, border-color 0.2s;
+      position: relative;
+      min-height: 60px;
+    }
+    .lane-cell:hover { border-color: var(--accent); }
+    .lane-cell .lane-label {
+      font-size: 9px; letter-spacing: 2px; color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .lane-cell .lane-actors { font-size: 10px; flex: 1; }
+
+    /* Lane color states */
+    .lane-cell.state-green  { background: rgba(51,255,51,0.08); border-color: rgba(51,255,51,0.3); }
+    .lane-cell.state-amber  { background: rgba(255,170,51,0.12); border-color: rgba(255,170,51,0.4); }
+    .lane-cell.state-red    { background: rgba(255,51,51,0.12); border-color: rgba(255,51,51,0.4); }
+    .lane-cell.state-blue   { background: rgba(51,153,255,0.12); border-color: rgba(51,153,255,0.4); }
+    .lane-cell.state-green .lane-label  { color: var(--accent); }
+    .lane-cell.state-amber .lane-label  { color: var(--amber); }
+    .lane-cell.state-red .lane-label    { color: var(--red); }
+    .lane-cell.state-blue .lane-label   { color: var(--blue); }
 
     /* --- Event feed --- */
-    .feed { display: flex; flex-direction: column; gap: 2px; }
+    .feed { display: flex; flex-direction: column; gap: 2px; padding: 4px 8px; }
     .feed-item {
-      padding: 4px 8px;
+      padding: 3px 6px;
       border-left: 2px solid var(--border);
-      font-size: 11px;
+      font-size: 10px;
       line-height: 1.3;
     }
-    .feed-item .ts { color: #444; font-size: 9px; margin-right: 4px; }
+    .feed-item .ts { color: #444; font-size: 8px; margin-right: 3px; }
     .feed-item .actor { color: var(--blue); }
     .feed-item.checkin { border-left-color: var(--accent); }
     .feed-item.dead_drop_placed, .feed-item.dead_drop_retrieved { border-left-color: var(--amber); }
     .feed-item.escalation { border-left-color: var(--red); }
 
-    /* --- Control panel --- */
-    .ctrl-grid {
-      display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start;
-    }
+    /* --- Right column: stacked controls --- */
+    .ctrl-stack { display: flex; flex-direction: column; gap: 1px; height: 100%; }
     .ctrl-section {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 8px 12px;
-      min-width: 200px; flex: 1;
+      background: var(--bg);
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--border);
     }
     .ctrl-section h3 {
-      font-size: 10px; letter-spacing: 2px; color: var(--text-dim);
-      margin-bottom: 8px;
+      font-size: 9px; letter-spacing: 2px; color: var(--text-dim);
+      margin-bottom: 4px;
     }
-
-    /* --- Forms --- */
-    .ctrl-row { display: flex; gap: 6px; align-items: flex-end; margin-bottom: 6px; }
-    .ctrl-field { display: flex; flex-direction: column; gap: 2px; flex: 1; }
-    .ctrl-field label { font-size: 9px; color: #555; letter-spacing: 1px; }
+    .ctrl-field { display: flex; flex-direction: column; gap: 1px; margin-bottom: 4px; }
+    .ctrl-field label { font-size: 8px; color: #555; letter-spacing: 1px; }
     .ctrl-field input, .ctrl-field select {
       background: var(--bg); border: 1px solid var(--border);
-      color: var(--text); font-family: var(--font); font-size: 12px;
-      padding: 4px 8px; border-radius: 3px; outline: none;
+      color: var(--text); font-family: var(--font); font-size: 11px;
+      padding: 3px 6px; border-radius: 3px; outline: none; width: 100%;
     }
-    .ctrl-field input:focus, .ctrl-field select:focus {
-      border-color: var(--accent);
-    }
+    .ctrl-field input:focus, .ctrl-field select:focus { border-color: var(--accent); }
+    .ctrl-row { display: flex; gap: 4px; align-items: flex-end; }
     .ctrl-btn {
       background: transparent; border: 1px solid var(--accent);
-      color: var(--accent); font-family: var(--font); font-size: 10px;
-      padding: 5px 12px; border-radius: 3px; cursor: pointer;
-      letter-spacing: 1px; white-space: nowrap;
+      color: var(--accent); font-family: var(--font); font-size: 9px;
+      padding: 3px 8px; border-radius: 3px; cursor: pointer;
+      letter-spacing: 1px; white-space: nowrap; width: 100%;
     }
     .ctrl-btn:hover { background: rgba(51,255,51,0.1); }
     .ctrl-btn.danger { border-color: var(--red); color: var(--red); }
@@ -154,25 +187,20 @@
     .login-box input:focus { border-color: var(--accent); }
     .login-box .error { color: var(--red); font-size: 11px; }
 
-    /* --- Actor list --- */
-    .actor-list { display: flex; flex-direction: column; gap: 2px; }
-    .actor-item {
-      display: flex; align-items: center; gap: 8px;
-      padding: 3px 6px; border-radius: 3px;
-      font-size: 11px;
-    }
-    .actor-item:hover { background: var(--surface); }
-    .actor-dot {
-      width: 6px; height: 6px; border-radius: 50%;
-    }
-    .actor-dot.red { background: var(--red); }
-    .actor-dot.blue { background: var(--blue); }
-    .actor-dot.director { background: var(--amber); }
-
     /* --- Scrollbar --- */
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: var(--bg); }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* --- Map upload dropzone --- */
+    .map-dropzone {
+      border: 2px dashed var(--border); border-radius: var(--radius);
+      padding: 12px; text-align: center; cursor: pointer;
+      color: var(--text-dim); font-size: 10px;
+      transition: border-color 0.2s;
+    }
+    .map-dropzone:hover { border-color: var(--accent); }
+    .map-dropzone.dragover { border-color: var(--accent); background: rgba(51,255,51,0.05); }
   </style>
 </head>
 <body>

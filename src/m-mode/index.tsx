@@ -227,8 +227,19 @@ function renderLogin(container: HTMLElement) {
   container.appendChild(overlay);
 }
 
-// --- Director Console (DOM-based) ---
+// --- Lane color state tracking ---
+const laneColors: Record<string, string> = {}; // lane_id -> 'green'|'amber'|'red'|'blue'
+const MAP_KEY = 'eyesonly_mmode_map';
+const LANE_COLORS_KEY = 'eyesonly_mmode_lane_colors';
+
+function saveLaneColors() { try { localStorage.setItem(LANE_COLORS_KEY, JSON.stringify(laneColors)); } catch {} }
+function loadLaneColors() {
+  try { const s = localStorage.getItem(LANE_COLORS_KEY); if (s) Object.assign(laneColors, JSON.parse(s)); } catch {}
+}
+
+// --- Director Console (DOM-based) — 3 columns: Map | Events | Controls ---
 function renderConsole(container: HTMLElement, session: Session) {
+  loadLaneColors();
   container.innerHTML = `
     <header class="m-header">
       <h1>M MODE</h1>
@@ -242,36 +253,116 @@ function renderConsole(container: HTMLElement, session: Session) {
     <div class="panels">
       <div class="panel">
         <div class="panel-header"><span>LANE GRID</span><span id="m-lane-count">0 LANES</span></div>
-        <div class="panel-body" id="m-grid-body" style="padding:12px;"></div>
+        <div class="panel-body" id="m-grid-body"></div>
       </div>
       <div class="panel">
         <div class="panel-header"><span>EVENT FEED</span><span id="m-event-count">0</span></div>
-        <div class="panel-body" id="m-events-body" style="padding:4px 8px;"></div>
+        <div class="panel-body" id="m-events-body"></div>
       </div>
-      <div class="panel control">
-        <div class="panel-header"><span>CONTROL PANEL</span></div>
-        <div class="panel-body" id="m-ctrl-body"></div>
+      <div class="panel">
+        <div class="panel-header"><span>CONTROLS</span></div>
+        <div class="panel-body" id="m-ctrl-body" style="padding:0;"></div>
       </div>
     </div>
   `;
 
-  // Logout
   document.getElementById('m-logout')!.addEventListener('click', () => {
     localStorage.removeItem(STORAGE_KEY);
     container.innerHTML = '';
     renderLogin(container);
   });
 
-  // Load grid data
+  initMapGrid(session);
   loadGrid(session);
   loadEvents(session);
   buildControlPanel(session);
-
-  // Connect WebSocket
   connectWS(session);
-
-  // Auto-refresh events every 10s
   setInterval(() => loadEvents(session), 10000);
+}
+
+// --- Map Grid with image overlay ---
+function initMapGrid(session: Session) {
+  const gridBody = document.getElementById('m-grid-body')!;
+  const savedMap = localStorage.getItem(MAP_KEY) || '';
+
+  gridBody.innerHTML = `
+    <div class="map-container">
+      ${savedMap ? '<img class="map-image" id="m-map-img" src="' + savedMap + '" />' : ''}
+      <div class="lane-grid-overlay" id="m-lane-overlay"></div>
+    </div>
+  `;
+
+  // Make map container a drop zone for images
+  gridBody.addEventListener('dragover', (e) => { e.preventDefault(); gridBody.classList.add('dragover'); });
+  gridBody.addEventListener('dragleave', () => gridBody.classList.remove('dragover'));
+  gridBody.addEventListener('drop', (e) => {
+    e.preventDefault();
+    gridBody.classList.remove('dragover');
+    const file = e.dataTransfer?.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        localStorage.setItem(MAP_KEY, dataUrl);
+        let img = document.getElementById('m-map-img') as HTMLImageElement;
+        if (!img) {
+          img = document.createElement('img');
+          img.className = 'map-image';
+          img.id = 'm-map-img';
+          const mapContainer = gridBody.querySelector('.map-container');
+          if (mapContainer) mapContainer.insertBefore(img, mapContainer.firstChild);
+        }
+        img.src = dataUrl;
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+}
+
+function renderLaneGrid(lanes: any[], unassigned: any[]) {
+  const overlay = document.getElementById('m-lane-overlay');
+  if (!overlay) return;
+
+  const count = Math.max(lanes.length, 1);
+  const cols = Math.ceil(Math.sqrt(count));
+  const rows = Math.ceil(count / cols);
+  overlay.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  overlay.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+
+  overlay.innerHTML = lanes.map((lane: any) => {
+    const color = laneColors[lane.lane_id] || 'green';
+    const actors = (lane.actors || []).map((a: any) =>
+      `<span style="color:${a.team === 'red' ? 'var(--red)' : a.team === 'blue' ? 'var(--blue)' : 'var(--amber)'};font-size:9px;">${a.callsign}</span>`
+    ).join(' ');
+    const drops = (lane.dead_drops || []).map((d: any) =>
+      `<span style="color:var(--amber);font-size:8px;">[${d.label}]</span>`
+    ).join(' ');
+    return `<div class="lane-cell state-${color}" data-lane="${lane.lane_id}" title="Click to cycle color">
+      <div class="lane-label">${lane.label || lane.lane_id}</div>
+      <div class="lane-actors">${actors || ''}</div>
+      ${drops ? '<div style="margin-top:2px;">' + drops + '</div>' : ''}
+    </div>`;
+  }).join('');
+
+  // Unassigned actors section
+  if (unassigned.length > 0) {
+    overlay.innerHTML += `<div style="grid-column:1/-1;padding:4px 8px;border-top:1px solid var(--border);font-size:9px;color:var(--text-dim);">
+      UNASSIGNED: ${unassigned.map((a: any) => '<span style="color:' + (a.team === 'red' ? 'var(--red)' : a.team === 'blue' ? 'var(--blue)' : 'var(--amber)') + '">' + a.callsign + '</span>').join(' ')}
+    </div>`;
+  }
+
+  // Click handler: cycle lane color green->amber->red->blue->green
+  overlay.querySelectorAll('.lane-cell[data-lane]').forEach((cell) => {
+    cell.addEventListener('click', () => {
+      const laneId = (cell as HTMLElement).dataset.lane!;
+      const cycle = ['green', 'amber', 'red', 'blue'];
+      const current = laneColors[laneId] || 'green';
+      const next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
+      laneColors[laneId] = next;
+      saveLaneColors();
+      cell.className = `lane-cell state-${next}`;
+    });
+  });
 }
 
 async function loadGrid(session: Session) {
@@ -281,21 +372,15 @@ async function loadGrid(session: Session) {
     const data = await res.json() as any;
     document.getElementById('m-scenario-name')!.textContent = data.scenario?.name || 'UNKNOWN';
     const lanes = data.lanes || [];
+    const unassigned = data.unassigned_actors || [];
     document.getElementById('m-lane-count')!.textContent = lanes.length + ' LANES';
-    const gridBody = document.getElementById('m-grid-body')!;
+
     if (lanes.length === 0) {
-      gridBody.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:20px;">No lanes configured. Use Control Panel to add lanes.</div>';
-      return;
+      const overlay = document.getElementById('m-lane-overlay');
+      if (overlay) overlay.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:40px;grid-column:1/-1;">No lanes. Add lanes in Controls panel.<br><br><span style="font-size:9px;">Drag &amp; drop a map image here.</span></div>';
+    } else {
+      renderLaneGrid(lanes, unassigned);
     }
-    gridBody.innerHTML = lanes.map((lane: any) => {
-      const actors = (lane.actors || []).map((a: any) =>
-        `<div class="actor-item"><span class="actor-dot ${a.team}"></span><span>${a.callsign}</span><span style="color:#555;font-size:9px;margin-left:auto;">${a.status}</span></div>`
-      ).join('');
-      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:8px;margin-bottom:6px;">
-        <div style="font-size:10px;letter-spacing:2px;color:var(--text-dim);margin-bottom:4px;">${lane.label || lane.lane_id}</div>
-        <div class="actor-list">${actors || '<div style="color:#333;font-size:10px;">EMPTY</div>'}</div>
-      </div>`;
-    }).join('');
   } catch { /* offline */ }
 }
 
@@ -315,7 +400,7 @@ async function loadEvents(session: Session) {
       const ts = new Date(ev.created_at).toLocaleTimeString();
       const cls = ev.event_type || '';
       const payload = ev.payload ? (typeof ev.payload === 'string' ? ev.payload : JSON.stringify(ev.payload)) : '';
-      return `<div class="feed-item ${cls}"><span class="ts">${ts}</span> <strong>${ev.event_type}</strong> ${payload.substring(0, 80)}</div>`;
+      return `<div class="feed-item ${cls}"><span class="ts">${ts}</span> <strong>${ev.event_type}</strong> ${payload.substring(0, 60)}</div>`;
     }).join('') + '</div>';
   } catch { /* offline */ }
 }
@@ -323,56 +408,87 @@ async function loadEvents(session: Session) {
 function buildControlPanel(session: Session) {
   const ctrl = document.getElementById('m-ctrl-body')!;
   ctrl.innerHTML = `
-    <div class="ctrl-grid">
+    <div class="ctrl-stack">
+      <div class="ctrl-section">
+        <h3>MAP</h3>
+        <div class="ctrl-field"><label>DRAG IMAGE TO MAP OR</label></div>
+        <input type="file" id="ctrl-map-file" accept="image/*" style="display:none" />
+        <button class="ctrl-btn" id="ctrl-map-upload">UPLOAD MAP</button>
+      </div>
       <div class="ctrl-section">
         <h3>ADD LANE</h3>
-        <div class="ctrl-row">
-          <div class="ctrl-field"><label>LANE ID</label><input type="text" id="ctrl-lane-id" placeholder="e.g. ALPHA" /></div>
-          <div class="ctrl-field"><label>LABEL</label><input type="text" id="ctrl-lane-label" placeholder="e.g. Alpha Lane" /></div>
-          <button class="ctrl-btn" id="ctrl-add-lane">ADD</button>
-        </div>
+        <div class="ctrl-field"><label>ID</label><input type="text" id="ctrl-lane-id" placeholder="ALPHA" /></div>
+        <div class="ctrl-field"><label>LABEL</label><input type="text" id="ctrl-lane-label" placeholder="Alpha Lane" /></div>
+        <button class="ctrl-btn" id="ctrl-add-lane">ADD LANE</button>
       </div>
       <div class="ctrl-section">
         <h3>ADD ACTOR</h3>
+        <div class="ctrl-field"><label>CALLSIGN</label><input type="text" id="ctrl-actor-callsign" /></div>
         <div class="ctrl-row">
-          <div class="ctrl-field"><label>CALLSIGN</label><input type="text" id="ctrl-actor-callsign" /></div>
           <div class="ctrl-field"><label>TEAM</label>
-            <select id="ctrl-actor-team"><option value="red">RED</option><option value="blue">BLUE</option><option value="director">DIRECTOR</option></select>
+            <select id="ctrl-actor-team"><option value="red">RED</option><option value="blue">BLUE</option><option value="director">DIR</option></select>
           </div>
-          <div class="ctrl-field"><label>PASSWORD</label><input type="text" id="ctrl-actor-pw" /></div>
-          <button class="ctrl-btn" id="ctrl-add-actor">ADD</button>
+          <div class="ctrl-field"><label>LANE</label>
+            <select id="ctrl-actor-lane"><option value="">—</option></select>
+          </div>
         </div>
+        <div class="ctrl-field"><label>PASSWORD</label><input type="text" id="ctrl-actor-pw" /></div>
+        <button class="ctrl-btn" id="ctrl-add-actor">ADD ACTOR</button>
       </div>
       <div class="ctrl-section">
         <h3>INJECT EVENT</h3>
-        <div class="ctrl-row">
-          <div class="ctrl-field"><label>TYPE</label><input type="text" id="ctrl-event-type" placeholder="e.g. intel" /></div>
-          <div class="ctrl-field"><label>MESSAGE</label><input type="text" id="ctrl-event-msg" placeholder="Event payload" /></div>
-          <button class="ctrl-btn amber" id="ctrl-inject">INJECT</button>
-        </div>
+        <div class="ctrl-field"><label>TYPE</label><input type="text" id="ctrl-event-type" placeholder="intel" /></div>
+        <div class="ctrl-field"><label>MSG</label><input type="text" id="ctrl-event-msg" placeholder="payload" /></div>
+        <button class="ctrl-btn amber" id="ctrl-inject">INJECT</button>
       </div>
       <div class="ctrl-section">
         <h3>ESCALATION</h3>
         <div class="ctrl-row">
           <div class="ctrl-field"><label>TIER</label>
-            <select id="ctrl-esc-tier"><option value="1">TIER 1</option><option value="2">TIER 2</option><option value="3">TIER 3</option></select>
+            <select id="ctrl-esc-tier"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select>
           </div>
-          <div class="ctrl-field"><label>MESSAGE</label><input type="text" id="ctrl-esc-msg" placeholder="Optional" /></div>
-          <button class="ctrl-btn danger" id="ctrl-escalate">ESCALATE</button>
+          <div class="ctrl-field"><label>MSG</label><input type="text" id="ctrl-esc-msg" /></div>
         </div>
+        <button class="ctrl-btn danger" id="ctrl-escalate">ESCALATE</button>
       </div>
       <div class="ctrl-section">
         <h3>JOIN CODES</h3>
-        <div class="ctrl-row">
-          <div class="ctrl-field"><label>TEAM</label>
-            <select id="ctrl-jc-team"><option value="red">RED</option><option value="blue">BLUE</option></select>
-          </div>
-          <button class="ctrl-btn" id="ctrl-gen-code">GENERATE</button>
+        <div class="ctrl-field"><label>TEAM</label>
+          <select id="ctrl-jc-team"><option value="red">RED</option><option value="blue">BLUE</option></select>
         </div>
-        <div id="ctrl-jc-result" style="margin-top:6px;font-size:12px;color:var(--accent);"></div>
+        <button class="ctrl-btn" id="ctrl-gen-code">GENERATE</button>
+        <div id="ctrl-jc-result" style="margin-top:4px;font-size:11px;color:var(--accent);word-break:break-all;"></div>
       </div>
     </div>
   `;
+
+  // Populate lane dropdown
+  updateLaneDropdown();
+
+  // Map upload
+  document.getElementById('ctrl-map-upload')!.addEventListener('click', () => {
+    document.getElementById('ctrl-map-file')!.click();
+  });
+  document.getElementById('ctrl-map-file')!.addEventListener('change', (e) => {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        localStorage.setItem(MAP_KEY, dataUrl);
+        let img = document.getElementById('m-map-img') as HTMLImageElement;
+        if (!img) {
+          img = document.createElement('img');
+          img.className = 'map-image';
+          img.id = 'm-map-img';
+          const mc = document.querySelector('.map-container');
+          if (mc) mc.insertBefore(img, mc.firstChild);
+        }
+        img.src = dataUrl;
+      };
+      reader.readAsDataURL(file);
+    }
+  });
 
   // Wire up control buttons
   document.getElementById('ctrl-add-lane')!.addEventListener('click', async () => {
@@ -380,15 +496,21 @@ function buildControlPanel(session: Session) {
     const label = (document.getElementById('ctrl-lane-label') as HTMLInputElement).value;
     if (!lid) return;
     await mFetch('/m/lane', session, { method: 'POST', body: JSON.stringify({ scenario_id: session.scenarioId, lane_id: lid, label: label || lid, sort_order: 0 }) });
-    loadGrid(session);
+    (document.getElementById('ctrl-lane-id') as HTMLInputElement).value = '';
+    (document.getElementById('ctrl-lane-label') as HTMLInputElement).value = '';
+    await loadGrid(session);
+    updateLaneDropdown();
   });
 
   document.getElementById('ctrl-add-actor')!.addEventListener('click', async () => {
     const cs = (document.getElementById('ctrl-actor-callsign') as HTMLInputElement).value;
     const team = (document.getElementById('ctrl-actor-team') as HTMLSelectElement).value;
     const pw = (document.getElementById('ctrl-actor-pw') as HTMLInputElement).value;
+    const laneId = (document.getElementById('ctrl-actor-lane') as HTMLSelectElement).value;
     if (!cs) return;
-    await mFetch('/m/actor', session, { method: 'POST', body: JSON.stringify({ scenario_id: session.scenarioId, callsign: cs, team, password: pw || undefined }) });
+    await mFetch('/m/actor', session, { method: 'POST', body: JSON.stringify({ scenario_id: session.scenarioId, callsign: cs, team, password: pw || undefined, lane_id: laneId || undefined }) });
+    (document.getElementById('ctrl-actor-callsign') as HTMLInputElement).value = '';
+    (document.getElementById('ctrl-actor-pw') as HTMLInputElement).value = '';
     loadGrid(session);
   });
 
@@ -397,6 +519,8 @@ function buildControlPanel(session: Session) {
     const msg = (document.getElementById('ctrl-event-msg') as HTMLInputElement).value;
     if (!evType) return;
     await mFetch('/m/event', session, { method: 'POST', body: JSON.stringify({ event_type: evType, payload: { message: msg } }) });
+    (document.getElementById('ctrl-event-type') as HTMLInputElement).value = '';
+    (document.getElementById('ctrl-event-msg') as HTMLInputElement).value = '';
     loadEvents(session);
   });
 
@@ -404,6 +528,7 @@ function buildControlPanel(session: Session) {
     const tier = parseInt((document.getElementById('ctrl-esc-tier') as HTMLSelectElement).value, 10);
     const msg = (document.getElementById('ctrl-esc-msg') as HTMLInputElement).value;
     await mFetch('/m/escalation', session, { method: 'POST', body: JSON.stringify({ scenario_id: session.scenarioId, tier, message: msg || undefined }) });
+    (document.getElementById('ctrl-esc-msg') as HTMLInputElement).value = '';
     loadEvents(session);
   });
 
@@ -415,6 +540,18 @@ function buildControlPanel(session: Session) {
       document.getElementById('ctrl-jc-result')!.textContent = 'CODE: ' + (data.join_code?.code || 'ERROR');
     }
   });
+}
+
+function updateLaneDropdown() {
+  const sel = document.getElementById('ctrl-actor-lane') as HTMLSelectElement;
+  if (!sel) return;
+  const cells = document.querySelectorAll('.lane-cell[data-lane]');
+  const opts = '<option value="">—</option>' + Array.from(cells).map((c) => {
+    const lid = (c as HTMLElement).dataset.lane;
+    const label = c.querySelector('.lane-label')?.textContent || lid;
+    return `<option value="${lid}">${label}</option>`;
+  }).join('');
+  sel.innerHTML = opts;
 }
 
 function connectWS(session: Session) {
