@@ -1,157 +1,257 @@
-EYES ONLY - Classified Recruitment Terminal
-============================================
+EYES ONLY -- Live Urban Espionage ARPG Platform
+=================================================
 
-An ARG-style landing page for the EYES ONLY espionage ARPG.
-Built on langterm architecture (github.com/statico/langterm).
-Frontend-only. No build step. No framework.
+Flaps & Seals: A real-time director-operated live espionage game.
+Players explore urban environments while M (the director) orchestrates
+actors, events, and tension from a command console. Actors receive
+directives on mobile devices and acknowledge in real-time.
 
-    ...     ..      ..                       ..    .                        
-  x*8888x.:*8888: -"888:               x .d88"    @88>                      
- X   48888X `8888H  8888                5888R     %8P                       
-X8x.  8888X  8888X  !888>        u      '888R      .          .        .u   
-X8888 X8888  88888   "*8%-    us888u.    888R    .@88u   .udR88N    ud8888. 
-'*888!X8888> X8888  xH8>   .@88 "8888"   888R   ''888E` <888'888k :888'8888.
-  `?8 `8888  X888X X888>   9888  9888    888R     888E  9888 'Y"  d888 '88%"
-  -^  '888"  X888  8888>   9888  9888    888R     888E  9888      8888.+"   
-   dx '88~x. !88~  8888>   9888  9888    888R     888E  9888      8888L     
- .8888Xf.888x:!    X888X.: 9888  9888   .888B .   888&  ?8888u../ '8888c. .+
-:""888":~"888"     `888*"  "888*""888"  ^*888%    R888"  "8888P'   "88888%  
-    "~'    "~        ""     ^Y"   ^Y'     "%       ""      "P'       "YP'   
-                                                                            
-                                                                            
-                                                                            
-    ...     ..      ..        .                                             
-  x*8888x.:*8888: -"888:     @88>                                           
- X   48888X `8888H  8888     %8P        ..                  .u    .         
-X8x.  8888X  8888X  !888>     .       .@88i        .u     .d88B :@8c        
-X8888 X8888  88888   "*8%-  .@88u    ""%888>    ud8888.  ="8888f8888r       
-'*888!X8888> X8888  xH8>   ''888E`     '88%   :888'8888.   4888>'88"        
-  `?8 `8888  X888X X888>     888E    ..dILr~` d888 '88%"   4888> '          
-  -^  '888"  X888  8888>     888E   '".-%88b  8888.+"      4888>            
-   dx '88~x. !88~  8888>     888E    @  '888k 8888L       .d888L .+         
- .8888Xf.888x:!    X888X.:   888&   8F   8888 '8888c. .+  ^"8888*"          
-:""888":~"888"     `888*"    R888" '8    8888  "88888%       "Y"            
-    "~'    "~        ""       ""   '8    888F    "YP'                       
-                                    %k  <88F                                
-                                     "+:*%`                                 
+Deployed at: flapsandseals.com
+Stack: Cloudflare Workers + D1 + Durable Objects + R2
+Frontend: DOM-based (MetaMask SES-safe, no framework dependency)
 
 
+ARCHITECTURE
+------------
 
+  Cloudflare Worker (Hono.js router)
+    |-- Public routes:    /api/auth/login, /api/join
+    |-- M Mode routes:    /api/m/*  (director-only, grid, pings, freeze)
+    |-- Ops routes:       /api/ops/* (actor check-in, pings, ack)
+    |-- WebSocket:        Durable Objects (ScenarioRoom) with hibernation API
+    |-- Static assets:    Worker-first routing (run_worker_first: true)
+    |-- D1 database:      Scenarios, actors, lanes, grid_cells, events, etc.
+    |-- R2 storage:       Map images and scenario assets
 
-QUICK START
------------
-Serve with any static HTTP server (required for JSON fetch):
-
-  python -m http.server 8080
-  # then open http://localhost:8080
-
-Or use Node:
-
-  npx serve .
+  M Mode Console:     /m/          (director command & control)
+  Ops Portal:         /ops/        (actor field interface)
+  Player Terminal:    / (root)     (ARG recruitment terminal)
 
 
 PROJECT STRUCTURE
 -----------------
-  index.html           - Entry point
-  css/crt.css          - CRT terminal styling (scanlines, phosphor, barrel distortion)
-  js/terminal.js       - Terminal rendering engine (adapted from langterm)
-  js/parser.js         - Command parser with hidden command support
-  js/state-machine.js  - ARG state machine (clearance flow)
-  js/missions.js       - Mission registry & geocaching hooks
-  js/main.js           - Orchestrator (boot sequence, command routing)
-  data/missions.json   - Mission node configuration
+  src/
+    worker/
+      index.ts              - Worker entry point, route mounting
+      routes/
+        public.ts           - Auth, join code endpoints
+        m-mode.ts           - Director API (grid, pings, freeze, actors)
+        ops.ts              - Actor API (check-in, ack, pings, events)
+      middleware/
+        auth.ts             - JWT-like token auth + role checks
+      db/
+        queries.ts          - All D1 query functions
+      durable/
+        scenario-room.ts    - WebSocket Durable Object (hibernation API)
+    m-mode/
+      index.tsx             - M Mode director console (DOM fallback)
+    ops-ui/
+      index.tsx             - Ops actor portal (DOM fallback)
+    shared/
+      types.ts              - Shared TypeScript types
+
+  public/
+    m/
+      index.html            - M Mode HTML + CSS
+      app.js                - Built M Mode bundle
+    ops/
+      index.html            - Ops HTML + CSS
+      app.js                - Built Ops bundle
+    index.html              - Player ARG terminal
+    css/, js/, data/        - Player terminal assets
+
+  migrations/
+    0001_init.sql           - Core schema (scenarios, actors, lanes, events, etc.)
+    0002_ugrs_grid.sql      - UGRS grid cells, cell_id columns on actors/dead_drops
+
+  docs/
+    m-tutorial-alpha.md     - M Mode director tutorial (maps UI to tutorial design)
+    ops-tutorial-alpha.md   - Ops actor field manual (maps UI to tutorial design)
+
+  wrangler.jsonc            - Cloudflare Workers config
 
 
-INTERACTION FLOW
-----------------
-1. Screen shows "EYES ONLY _" with blinking cursor
-2. Any keypress triggers boot sequence
-3. User enters a clearance command: CLEARANCE, ACCESS, AUTH, or EYES ONLY
-4. System prompts for DESIGNATION (answer: CIVILIAN)
-5. System asks PROCEED? [Y/N]
-6. If Y, system asks for temporal key (answer: 1977)
-7. ACCESS GRANTED - terminal reveals classified mission briefings
-8. Post-access commands: STATUS, MISSIONS, DOSSIER, MAP, HELP, etc.
-9. Mission unlock codes can be entered to reveal lore fragments
+BUILD + DEPLOY
+--------------
+  npm run build:mmode       - Build M Mode bundle (esbuild)
+  npm run build:ops         - Build Ops bundle (esbuild)
+  npm run build:ui          - Build both UIs
+
+  npx wrangler deploy       - Deploy to Cloudflare (needs API key + email env vars)
+
+  Auth env vars for non-interactive deploy:
+    CLOUDFLARE_API_KEY=...  CLOUDFLARE_EMAIL=...  npx wrangler deploy
+
+  D1 migrations:
+    npx wrangler d1 execute database_id --remote --file=migrations/0002_ugrs_grid.sql
 
 
-HIDDEN COMMANDS
----------------
-  FALCON    - Reference to Christopher Boyce
-  SNOWMAN   - Reference to Andrew Daulton Lee
-  SUBMERGED - Navy acoustic research / Project Abyssal
-  AMBER     - Switch to amber phosphor mode
-  GREEN     - Switch back to green phosphor mode
-  RESET     - Purge all session data (requires "CONFIRM PURGE")
+DATABASE SCHEMA (D1)
+--------------------
+  scenarios       - id, name, status, config (JSON: grid, frozen state)
+  actors          - id, scenario_id, callsign, team, status, lane_id, cell_id
+  lanes           - id, scenario_id, lane_id, label, sort_order, config
+  grid_cells      - id, scenario_id, cell_id, col, row, lane_id, status, tension, notes
+  events          - id, scenario_id, actor_id, event_type, payload (JSON), created_at
+  dead_drops      - id, scenario_id, lane_id, cell_id, label, status, placed_by, etc.
+  join_codes      - id, code, scenario_id, team, uses_remaining
+  auth_tokens     - id, token_hash, actor_id, scenario_id, expires_at
 
 
-ADDING NEW MISSION NODES
--------------------------
-Edit data/missions.json and add a new entry under "missions":
+KEY SYSTEMS
+-----------
 
-  "your_node_id": {
-    "id":          "your_node_id",
-    "codename":    "YOUR CODENAME",
-    "unlockCode":  "the-code-at-the-location",
-    "location":    "Human readable location",
-    "coordinates": { "lat": 48.0, "lng": -116.0 },
-    "faction":     "FACTION_NAME",
-    "lore":        ["Line 1", "Line 2", "..."],
-    "reward":      "Description of ARPG reward",
-    "briefing":    "Short mission briefing text",
-    "status":      "ACTIVE"
+  UGRS (Urban Grid Reference System)
+    Coordinate grid overlaid on map. Cells have status (working/degraded/
+    compromised/offline/unknown), tension (0-100), lane assignments, and
+    contain actors and dead drops. Calibrated via cols x rows.
+
+  M Ping System
+    M sends structured directives to actors: MOVE, HOLD, ENGAGE, SHADOW,
+    DROP, ESCALATE, FREEZE, EXTRACT. Actors receive full-screen flash
+    notification with 30-second ACK countdown. M tracks ACK times.
+
+  MOK (Director AI Layer)
+    SVG triangle HUD in M header. 5 visual states (idle, monitoring,
+    advisory, urgent, engaged). Private MOK feed with squelch controls.
+    window._MOK API for future AI integration. Currently rule-based:
+    reacts to WebSocket events (check-ins, escalations, ACKs, freezes).
+
+  Operation Bar
+    Persistent metrics: elapsed time, threat level (derived from avg
+    tension), actor counts, tension %, cell count.
+
+  Actor Network
+    Full actor roster with status dots, cell assignments. Click-through
+    to actor panel with ping buttons and ping history.
+
+  Freeze System
+    Global game freeze broadcasts to all connected clients. M Mode shows
+    red overlay on map. Ops shows full-screen freeze notification.
+
+
+SCENARIO ENGINE (NEXT PHASE)
+-----------------------------
+The scenario engine is the authoring and runtime system for live operations.
+Design document: scenarioenginedesign.docx
+
+Planned implementation layers:
+
+  1. Mission Brief Layer
+     - Scenario metadata: team size, playtime, difficulty, briefing text
+     - Stored in scenarios.config JSON
+
+  2. Lane Network Layer
+     - Physical play space divided into lanes with grid cells
+     - Lane statuses: safe, neutral, contested, burned, locked, extraction-only
+     - ALREADY IMPLEMENTED: lanes + UGRS grid cells
+
+  3. Objective Chain Engine
+     - Modular objectives: locate, decode, retrieve, deliver, observe, avoid
+     - Objectives can be skipped, moved, duplicated live by M
+     - Need: objectives table, objective_chains table, objective status tracking
+     - Need: UI for M to manage objective chain in real-time
+
+  4. Escalation Timeline Engine
+     - 6-phase emotional curve: calm -> observation -> contact -> pressure -> collapse -> extraction
+     - Phase triggers: time-based, event-based, M-override
+     - PARTIALLY IMPLEMENTED: tension system + escalation events
+     - Need: phase state machine, auto-escalation timer, phase transition triggers
+
+  5. Actor Script Matrix
+     - Conditional behavior triggers (not fixed scripts)
+     - When [condition] then [actor behavior]
+     - PARTIALLY IMPLEMENTED: M pings define actor behavior directives
+     - Need: script template system, conditional trigger engine
+
+  6. Event Injection Library
+     - Categories: Surveillance, Intel, Pressure, Environmental
+     - Subtle and aggressive variants
+     - PARTIALLY IMPLEMENTED: event injection endpoint
+     - Need: categorized event library, pre-built event templates, quick-fire buttons
+
+  7. Extraction Engine
+     - Convergent extraction with trigger conditions
+     - Multiple extraction modes: clean, hot, emergency
+     - Need: extraction state, extraction trigger conditions, actor rally points
+
+  8. Failure + Recovery Design
+     - Every objective: success path, fail path, recovery path
+     - No hard game-over states
+     - Need: recovery branching logic in objective chain
+
+  9. MOK Intelligence Integration
+     - Rule-based stall detection (no events in N minutes)
+     - Tension curve analysis
+     - Suggestion engine (button-executable actions)
+     - Auto-director mode (MOK can deploy hints, reposition actors)
+     - Need: mok.ts service, periodic assessment endpoint, suggestion UI
+
+
+SCENARIO ENGINE LANGUAGE (SEL)
+-------------------------------
+A declarative authoring format for scenarios. Compiles to scenario config
+stored in D1. Human-readable, version-controllable.
+
+Planned syntax concepts (from scenarioenginedesign.docx):
+
+  SCENARIO "The Dead Letter" {
+    duration: 90min
+    difficulty: moderate
+    teams: 1
+    players: 2-4
+    actors: 3-5
   }
 
-Fields:
-  id          - Unique identifier (lowercase, underscores)
-  codename    - Display name in terminal (UPPERCASE)
-  unlockCode  - Code phrase entered by players at physical locations
-  location    - Human-readable hint (shown in MISSIONS list)
-  coordinates - Lat/lng for geolocation proximity (future feature)
-  faction     - Faction name for reputation tracking
-  lore        - Array of text lines revealed on unlock
-  reward      - ARPG reward description
-  briefing    - Short mission briefing (shown in rotating briefings)
-  status      - "ACTIVE", "DORMANT", or "COMPROMISED"
+  LANE ALPHA {
+    blocks: 3
+    status: safe
+    cells: [A1, A2, A3, A4]
+  }
 
+  OBJECTIVE locate_drop {
+    type: locate
+    lane: ALPHA
+    description: "Find the dead drop at the memorial"
+    success: -> decode_message
+    fail: -> hint_redirect
+    recovery: -> actor_delivers_hint
+  }
 
-CURRENT MISSION NODES (3 fictional Sandpoint businesses)
---------------------------------------------------------
-  FALCON NEST    - Downtown First Avenue   (code: boyce77)
-  SNOWMAN NODE   - City Beach / Memorial   (code: lee84)
-  SUBMERGED SITE - Marina / Lakefront      (code: navydeep43)
+  ESCALATION phase_2 {
+    trigger: after 20min OR objective_complete(locate_drop)
+    tension: +30 on ALPHA
+    actor_behavior: engagement_level 1
+    event: surveillance_sweep
+  }
+
+  ACTOR_SCRIPT watcher_pattern {
+    when: players_in(ALPHA) AND escalation >= 2
+    do: SHADOW nearest_player
+    duration: 10min
+    then: HOLD
+  }
+
+  EXTRACTION convergence {
+    trigger: all_objectives_complete OR escalation >= 5 OR m_override
+    rally: F4
+    mode: clean
+  }
 
 
 PERSISTENCE
 -----------
-All state is stored in localStorage:
-  eyesonly_state    - State machine (clearance progress)
-  eyesonly_missions - Unlocked missions, faction reputation
-  eyesonly_history  - Command history
+  D1 database:        All server state (scenarios, actors, events, grid)
+  localStorage:       Session tokens, map images, grid config (client-side)
+  Durable Objects:    WebSocket rooms per scenario (real-time broadcast)
+  R2:                 Map images, scenario assets (future)
 
 
-ARCHITECTURE NOTES
-------------------
-Adapted from langterm (MIT license):
-- IIFE module pattern (no ES modules, no bundler)
-- Global keydown handler for input (no visible input element)
-- Command history via localStorage (langterm used sessionStorage)
-- Script load order in HTML handles dependencies
-
-Differences from langterm:
-- No WebGL/shader pipeline (CSS-only CRT effects)
-- No backend API (frontend-only state machine)
-- State persistence via localStorage instead of sessionStorage
-- Multi-state ARG flow instead of single Inform7 session
-- Mission registry for expandable geocaching content
-
-Cloudflare Wrangler Deploy
--------------------------
-This repo is configured for static-asset deployment with Wrangler via `wrangler.jsonc`.
-
-Expected deploy command:
-- `npx wrangler deploy`
-
-Notes:
-- Assets are served from the repository root (`index.html`, `css/`, `js/`, `data/`).
-- If you change the project name, update the `name` field in `wrangler.jsonc`.
+KNOWN CONSTRAINTS
+-----------------
+  - MetaMask SES Lockdown: Breaks Preact's render() silently. All UI uses
+    vanilla DOM API fallback. Preact code exists but is bypassed.
+  - D1 database_name in wrangler.jsonc is literally "database_id" (not "eyesonly-db")
+  - Build scripts: npm run build:mmode (not "build")
+  - Non-interactive deploy needs CLOUDFLARE_API_KEY + CLOUDFLARE_EMAIL env vars
+  - Auth tokens are SHA-256 hashed, single-scenario scoped
