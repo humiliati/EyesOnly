@@ -45,12 +45,14 @@
     <div id="crt-frame">
       <header id="mok-header" class="monitor-header">
         <div class="mok-header-copy">
-          <div class="mok-header-title">MOK TRIANGLE LINK</div>
-          <div class="mok-header-sub">Reactive pentagram avatar · live</div>
+          <div class="mok-header-title">MOK LINK ESTABLISHED</div>
+          <div class="mok-header-sub">Spy Games: Red Team <span id="actor-name-display">[actor_name/callsign]</span></div>
         </div>
         <div class="mok-header-right">
-          <span class="header-chip">mobile safe zone</span>
-          <span class="header-chip soft">echo monitor</span>
+          <span class="header-chip accountability-indicator">
+            <span class="accountability-label">[un]accountable:</span>
+            <span class="accountability-icon" id="accountability-icon">●</span>
+          </span>
         </div>
       </header>
 
@@ -62,6 +64,9 @@
               <button type="button" data-action="back">back</button>
               <button type="button" data-action="map">map</button>
               <button type="button" data-action="login">login</button>
+              <button type="button" data-action="contact">contact</button>
+              <button type="button" data-action="faq">faq</button>
+              <button type="button" data-action="inventory">inventory</button>
             </div>
             <div class="debrief-window" id="debrief-window" aria-label="Command and Conquer style debrief feed">
               <div class="debrief-label">debrief feed</div>
@@ -103,6 +108,15 @@
 
               </div>
             </div>
+
+            <!-- Inventory Grid (hidden by default) -->
+            <div id="inventory-grid" class="inventory-grid" style="display: none;">
+              <div class="inventory-label">INVENTORY</div>
+              <div class="inventory-items" id="inventory-items">
+                <!-- Inventory items will be populated here -->
+              </div>
+            </div>
+
             <div id="mok-interjections" aria-live="polite">
               <div class="interject-label">MOK INTERJECTION</div>
               <div class="interject-body" id="mok-interject-body">Standing by for advisories.</div>
@@ -129,6 +143,7 @@
   <script src="js/state-machine.js"></script>
   <script src="js/main.js"></script>
   <script src="js/mok-ux.js"></script>
+  <script src="js/ui-controls.js"></script>
 
 </body>
 </html>
