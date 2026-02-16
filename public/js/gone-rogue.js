@@ -30,6 +30,8 @@ const GoneRogue = (function () {
   var _items = [];
   var _turn = 0;
   var _floor = 1;
+  var _alertLevel = 'safe'; // safe, caution, danger
+  var _useMobileUI = false;
 
   var TILES = {
     EMPTY: '.',
@@ -43,7 +45,24 @@ const GoneRogue = (function () {
 
   function init() {
     _loadState();
+
+    // Detect mobile device
+    _useMobileUI = _isMobileDevice();
+
+    // Initialize mobile UI if on mobile
+    if (_useMobileUI && typeof GoneRogueMobile !== 'undefined') {
+      GoneRogueMobile.init();
+    }
+
     return Promise.resolve();
+  }
+
+  /**
+   * Detect if running on mobile device
+   */
+  function _isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+           (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
   }
 
   function isActive() {
@@ -71,6 +90,18 @@ const GoneRogue = (function () {
 
     // Generate initial floor
     _generateFloor();
+
+    // Use mobile UI if available
+    if (_useMobileUI && typeof GoneRogueMobile !== 'undefined') {
+      GoneRogueMobile.show();
+      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items);
+
+      return {
+        lines: lines,
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
 
     return {
       lines: lines.concat(_renderGrid()),
@@ -301,7 +332,7 @@ const GoneRogue = (function () {
     return lines;
   }
 
-  function _movePlayer(dx, dy) {
+  function _movePlayer(dx, dy, runMode) {
     var newX = _player.x + dx;
     var newY = _player.y + dy;
 
@@ -329,6 +360,15 @@ const GoneRogue = (function () {
     _player.y = newY;
     _turn++;
 
+    // Run mode increases detection
+    if (runMode) {
+      _player.detection += 2;
+      _updateAlertLevel();
+    } else {
+      _player.detection = Math.max(0, _player.detection - 0.5);
+      _updateAlertLevel();
+    }
+
     // Check for enemy collision
     var hitEnemy = _enemies.find(function(e) { return e.x === newX && e.y === newY && e.hp > 0; });
     if (hitEnemy) {
@@ -349,6 +389,19 @@ const GoneRogue = (function () {
       prompt: getPrompt(),
       stayActive: true
     };
+  }
+
+  /**
+   * Update alert level based on detection
+   */
+  function _updateAlertLevel() {
+    if (_player.detection >= 8) {
+      _alertLevel = 'danger';
+    } else if (_player.detection >= 4) {
+      _alertLevel = 'caution';
+    } else {
+      _alertLevel = 'safe';
+    }
   }
 
   function _pickupItem() {
@@ -446,11 +499,225 @@ const GoneRogue = (function () {
     } catch (e) { /* ignore */ }
   }
 
+  /**
+   * Handle tap-to-move from mobile UI
+   */
+  function handleTapMove(targetX, targetY, runMode) {
+    if (!_active) return;
+
+    // Calculate path (simple: move one step towards target)
+    var dx = targetX - _player.x;
+    var dy = targetY - _player.y;
+
+    // Normalize to -1, 0, or 1
+    var stepX = dx === 0 ? 0 : (dx > 0 ? 1 : -1);
+    var stepY = dy === 0 ? 0 : (dy > 0 ? 1 : -1);
+
+    // Execute move
+    var moveResult = _movePlayer(stepX, stepY, runMode);
+
+    // Update mobile UI
+    if (_useMobileUI && typeof GoneRogueMobile !== 'undefined') {
+      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items);
+    }
+
+    return moveResult;
+  }
+
+  /**
+   * Handle card swipe from mobile UI
+   */
+  function handleCardSwipe(cardIndex, direction) {
+    if (!_active) return;
+
+    // Get card from loose inventory
+    var loose = typeof GAMESTATE !== 'undefined' ? GAMESTATE.getLooseInventory() : [];
+    if (cardIndex < 0 || cardIndex >= loose.length) return;
+
+    var card = loose[cardIndex];
+
+    // Execute card action based on swipe direction
+    var action = _getCardAction(card, direction);
+    var result = _executeCardAction(action);
+
+    // Update mobile UI
+    if (_useMobileUI && typeof GoneRogueMobile !== 'undefined') {
+      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items);
+    }
+
+    return result;
+  }
+
+  /**
+   * Map swipe direction to card action
+   */
+  function _getCardAction(card, direction) {
+    // Direction mapping:
+    // up = use/apply
+    // down = discard
+    // left = defensive
+    // right = offensive
+
+    if (card.type === 'attack') {
+      if (direction === 'up' || direction === 'right') {
+        return { type: 'attack', card: card };
+      }
+    } else if (card.type === 'stance') {
+      if (direction === 'up' || direction === 'left') {
+        return { type: 'stance', card: card };
+      }
+    } else if (card.type === 'utility') {
+      if (direction === 'up') {
+        return { type: 'use', card: card };
+      }
+    }
+
+    if (direction === 'down') {
+      return { type: 'discard', card: card };
+    }
+
+    return { type: 'none' };
+  }
+
+  /**
+   * Execute card action
+   */
+  function _executeCardAction(action) {
+    if (!action || action.type === 'none') {
+      return {
+        lines: ['INVALID SWIPE', ''],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    if (action.type === 'attack') {
+      return _performAttack(action.card);
+    } else if (action.type === 'stance') {
+      return _performStance(action.card);
+    } else if (action.type === 'use') {
+      return _useUtility(action.card);
+    } else if (action.type === 'discard') {
+      return _discardCard(action.card);
+    }
+
+    return {
+      lines: [''],
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Perform attack with card
+   */
+  function _performAttack(card) {
+    // Find nearest enemy
+    var nearest = _findNearestEnemy();
+    if (!nearest) {
+      return {
+        lines: ['NO ENEMIES IN RANGE', ''],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var damage = card.stats.damage || 3;
+    nearest.hp -= damage;
+
+    _turn++;
+    _saveState();
+
+    return {
+      lines: ['ATTACK! -' + damage + ' HP TO ENEMY', ''].concat(_renderGrid()),
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Perform stance with card
+   */
+  function _performStance(card) {
+    _player.stealth += (card.stats.stealth || 1);
+    _turn++;
+    _saveState();
+
+    return {
+      lines: ['STANCE: ' + card.name.toUpperCase(), 'STEALTH +' + (card.stats.stealth || 1), ''].concat(_renderGrid()),
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Use utility card
+   */
+  function _useUtility(card) {
+    if (card.stats.hp) {
+      _player.hp = Math.min(_player.maxHp, _player.hp + card.stats.hp);
+    }
+    if (card.stats.energy) {
+      _player.energy = Math.min(_player.maxEnergy, _player.energy + card.stats.energy);
+    }
+
+    _turn++;
+    _saveState();
+
+    return {
+      lines: ['USED: ' + card.name.toUpperCase(), ''].concat(_renderGrid()),
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Discard card
+   */
+  function _discardCard(card) {
+    // Remove from loose inventory (handled by GAMESTATE)
+    return {
+      lines: ['DISCARDED: ' + card.name, ''],
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Find nearest enemy to player
+   */
+  function _findNearestEnemy() {
+    var nearest = null;
+    var minDist = Infinity;
+
+    _enemies.forEach(function(enemy) {
+      if (enemy.hp <= 0) return;
+
+      var dist = Math.abs(enemy.x - _player.x) + Math.abs(enemy.y - _player.y);
+      if (dist < minDist && dist <= 5) {
+        minDist = dist;
+        nearest = enemy;
+      }
+    });
+
+    return nearest;
+  }
+
+  /**
+   * Get player state (for mobile UI)
+   */
+  function getPlayer() {
+    return _player;
+  }
+
   return {
     init: init,
     start: start,
     process: process,
     isActive: isActive,
-    getPrompt: getPrompt
+    getPrompt: getPrompt,
+    handleTapMove: handleTapMove,
+    handleCardSwipe: handleCardSwipe,
+    getPlayer: getPlayer
   };
 })();
