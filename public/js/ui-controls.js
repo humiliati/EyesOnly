@@ -49,12 +49,40 @@
         break;
 
       case 'back':
-        printToTerminal([
-          '',
-          'BACK COMMAND EXECUTED',
-          'Returning to previous context...',
-          ''
-        ]);
+        // Exit inventory if active
+        if (inventoryVisible) {
+          toggleInventory();
+          printToTerminal([
+            '',
+            'EXITING INVENTORY',
+            'Returning to terminal...',
+            ''
+          ]);
+        }
+        // Exit street mode if active
+        else if (typeof StreetChronicles !== 'undefined' && StreetChronicles.isActive()) {
+          // Process 'exit' command through StreetChronicles
+          var result = StreetChronicles.process('exit');
+          if (result && result.lines) {
+            printToTerminal(result.lines);
+          }
+        }
+        // Exit login shell if active
+        else if (typeof LoginShell !== 'undefined' && LoginShell.isActive()) {
+          var result = LoginShell.process('exit');
+          if (result && result.lines) {
+            printToTerminal(result.lines);
+          }
+        }
+        // Otherwise just show feedback
+        else {
+          printToTerminal([
+            '',
+            'BACK COMMAND EXECUTED',
+            'Already at main terminal',
+            ''
+          ]);
+        }
         break;
 
       case 'map':
@@ -69,13 +97,27 @@
         break;
 
       case 'login':
-        printToTerminal([
-          '',
-          'AUTHENTICATION PORTAL',
-          'Please enter credentials...',
-          'AUTH CODE: _____________',
-          ''
-        ]);
+        // Exit inventory if active first
+        if (inventoryVisible) {
+          toggleInventory();
+        }
+
+        // Start login shell if available
+        if (typeof LoginShell !== 'undefined' && typeof LoginShell.start === 'function') {
+          var result = LoginShell.start();
+          if (result && result.lines) {
+            printToTerminal(result.lines);
+          }
+        } else {
+          // Fallback message if LoginShell not available
+          printToTerminal([
+            '',
+            'AUTHENTICATION PORTAL',
+            'Please enter credentials...',
+            'AUTH CODE: _____________',
+            ''
+          ]);
+        }
         break;
 
       case 'contact':
@@ -93,15 +135,23 @@
         printToTerminal([
           '',
           'FREQUENTLY ASKED QUESTIONS',
+          '————————————————————————————————',
           '',
-          'Q: What is MOK?',
-          'A: MOK is your Mission Operations Kernel - an AI advisory system.',
+          'Q: WHAT IS THIS?',
+          'A: CLASSIFIED.',
           '',
-          'Q: How do I access missions?',
-          'A: Use the LOGIN command with your assigned authentication code.',
+          'Q: NO REALLY, WHAT IS THIS?',
+          'A: A RECRUITMENT TERMINAL FOR',
+          '   SANDPOINT FIELD OPERATIONS.',
+          '   TYPE CLEARANCE TO BEGIN.',
           '',
-          'Q: What is the accountability indicator?',
-          'A: Real-time status of your secure connection to M console.',
+          'Q: IS THIS A GAME?',
+          'A: THAT DEPENDS ON YOUR',
+          '   CLEARANCE LEVEL.',
+          '',
+          'Q: DO I NEED TO GO SOMEWHERE?',
+          'A: SANDPOINT, IDAHO.',
+          '   THE REST IS NEED-TO-KNOW.',
           ''
         ]);
         break;

@@ -352,6 +352,8 @@ html, body {
 .mok-avatar-glyph {
   transform-origin: center;
   transition: transform 160ms ease, opacity 160ms ease;
+  transform: translate(0, 0);
+  opacity: 0.75;
 }
 
 .mok-avatar-core {
