@@ -1,0 +1,82 @@
+.mok-hud-mini {
+  display: inline-block;
+  position: relative;
+  pointer-events: none; /* decorative by default; enable pointer-events for interactive controls if desired */
+  image-rendering: optimizeQuality;
+  -webkit-font-smoothing: antialiased;
+  transition: opacity 220ms ease;
+}
+
+/* sizing handled inline; svg fills container */
+.mok-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* glyph animations */
+.mok-glyph {
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
+/* default: idle (dark) - small transparency */
+.mok-hud-mini.idle .mok-glyph { opacity: 0.55; transform: scale(0.98); filter: none; }
+.mok-hud-mini.monitoring .mok-glyph { animation: glyph-pulse 3.2s ease-in-out infinite; opacity: 0.85; }
+.mok-hud-mini.advisory .mok-glyph { animation: glyph-pulse 1.6s ease-in-out 1; opacity: 1; }
+.mok-hud-mini.urgent .mok-glyph { animation: glyph-urgent 0.55s linear infinite; opacity: 1; }
+.mok-hud-mini.engaged .mok-glyph { opacity: 1; filter: drop-shadow(0 0 6px rgba(0,255,170,0.22)); transform: scale(1.03); }
+
+/* triangle core behavior:
+   - by default we render it filled but CSS toggles opacity/visibility to create hollow vs filled look.
+   - when "hollow" we make the core center transparent by lowering opacity.
+*/
+.mok-hud-mini.idle .mok-triangle-core { opacity: 0.0; mix-blend-mode: normal; }
+.mok-hud-mini.monitoring .mok-triangle-core { opacity: 0.12; transform-origin: center; animation: core-breathe 3s ease-in-out infinite; }
+.mok-hud-mini.advisory .mok-triangle-core { animation: core-flash 0.45s ease-in-out 3; opacity: 1; }
+.mok-hud-mini.urgent .mok-triangle-core { animation: core-rapid-flash 0.18s steps(2,end) infinite; opacity: 1; }
+.mok-hud-mini.engaged .mok-triangle-core { opacity: 1; filter: drop-shadow(0 0 6px rgba(0,255,150,0.28)); }
+
+/* glow band sliding */
+.mok-glow-band { will-change: transform, opacity; animation: glow-slide 6s linear infinite; }
+
+/* keyframes */
+@keyframes glyph-pulse {
+  0% { transform: scale(1); opacity: 0.9; }
+  45% { transform: scale(1.03); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.9; }
+}
+@keyframes glyph-urgent {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+@keyframes core-breathe {
+  0% { opacity: 0.12; transform: scale(1); }
+  50% { opacity: 0.22; transform: scale(1.03); }
+  100% { opacity: 0.12; transform: scale(1); }
+}
+@keyframes core-flash {
+  0% { opacity: 0.0; }
+  30% { opacity: 1; }
+  60% { opacity: 0.0; }
+  100% { opacity: 1; }
+}
+@keyframes core-rapid-flash {
+  0%   { opacity: 1; }
+  50%  { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes glow-slide {
+  0% { transform: translateX(-80px); opacity: 0.06; }
+  50% { transform: translateX(40px); opacity: 0.10; }
+  100% { transform: translateX(220px); opacity: 0.06; }
+}
+
+/* reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .mok-glow-band, .mok-glyph, .mok-triangle-core { animation: none !important; }
+}
+
+/* optional visible controls (toggle pointer-events and show as needed) */
+.mok-controls { display:none; pointer-events: auto; position: absolute; right: 4px; bottom: 2px; }
