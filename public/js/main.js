@@ -145,6 +145,8 @@
   function _enableInput(prompt) {
     Terminal.showInput(prompt || '> ');
     Terminal.onCommand(_handleCommand);
+    // Expose command handler for UI buttons
+    window._mainCommandHandler = _handleCommand;
   }
 
   /**
