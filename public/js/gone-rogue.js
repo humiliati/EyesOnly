@@ -33,6 +33,13 @@ const GoneRogue = (function () {
   var _alertLevel = 'safe'; // safe, caution, danger
   var _useInteractiveGrid = false; // Use interactive DOM grid instead of text-only
 
+  // Game loop state
+  var _gameLoopActive = false;
+  var _lastTickTime = 0;
+  var _tickInterval = 100; // ms between ticks (10 ticks per second)
+  var _animationFrameId = null;
+  var _enemyColorCycleTime = 0;
+
   var TILES = {
     EMPTY: '.',
     WALL: '█',
@@ -41,6 +48,22 @@ const GoneRogue = (function () {
     ITEM: '*',
     EXIT: '▼',
     COVER: '▓'
+  };
+
+  // Enemy awareness states
+  var AWARENESS_STATES = {
+    UNAWARE: { min: 0, max: 30, color: '#00ff00', name: 'UNAWARE' },
+    SUSPICIOUS: { min: 31, max: 70, color: '#ffaa00', name: 'SUSPICIOUS' },
+    ALERTED: { min: 71, max: 100, color: '#ff0000', name: 'ALERTED' },
+    ENGAGED: { min: 100, max: 999, color: '#ff00ff', name: 'ENGAGED' }
+  };
+
+  // Enemy path types
+  var PATH_TYPES = {
+    PATROL: 'patrol',        // A→B→C→B (reverse on endpoint)
+    CIRCULAR: 'circular',    // A→B→C→A (loop)
+    ELLIPSE: 'ellipse',      // Elliptical path
+    STATIONARY: 'stationary' // Rotate in place
   };
 
   function init() {
@@ -90,6 +113,9 @@ const GoneRogue = (function () {
 
     // Generate initial floor
     _generateFloor();
+
+    // Start game loop
+    _startGameLoop();
 
     // Use mobile UI if available
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
@@ -276,11 +302,63 @@ const GoneRogue = (function () {
 
     // Place enemies
     _enemies = [];
-    for (var i = 0; i < 3; i++) {
-      var ex = Math.floor(Math.random() * (GRID_WIDTH - 10)) + 10;
-      var ey = Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1;
-      _enemies.push({ x: ex, y: ey, hp: 5 });
-    }
+    
+    // Enemy 1: Patrol path
+    _enemies.push({
+      x: 15,
+      y: 5,
+      hp: 5,
+      awareness: 0,
+      orientation: 'east',
+      sightRange: 5,
+      path: {
+        type: PATH_TYPES.PATROL,
+        points: [
+          { x: 15, y: 5 },
+          { x: 20, y: 5 },
+          { x: 20, y: 10 },
+          { x: 15, y: 10 }
+        ]
+      },
+      pathIndex: 0,
+      pathDirection: 1,
+      pathTimer: 0
+    });
+
+    // Enemy 2: Circular path
+    _enemies.push({
+      x: 25,
+      y: 10,
+      hp: 5,
+      awareness: 0,
+      orientation: 'south',
+      sightRange: 5,
+      path: {
+        type: PATH_TYPES.CIRCULAR,
+        points: [
+          { x: 25, y: 10 },
+          { x: 28, y: 10 },
+          { x: 28, y: 13 },
+          { x: 25, y: 13 }
+        ]
+      },
+      pathIndex: 0,
+      pathTimer: 0
+    });
+
+    // Enemy 3: Stationary rotating sentry
+    _enemies.push({
+      x: 10,
+      y: 15,
+      hp: 5,
+      awareness: 0,
+      orientation: 'north',
+      sightRange: 6,
+      path: {
+        type: PATH_TYPES.STATIONARY
+      },
+      pathTimer: 0
+    });
 
     // Place items
     _items = [];
@@ -360,10 +438,19 @@ const GoneRogue = (function () {
     _player.y = newY;
     _turn++;
 
-    // Run mode increases detection
+    // Run mode increases detection and makes noise
     if (runMode) {
       _player.detection += 2;
       _updateAlertLevel();
+      
+      // Nearby enemies hear player noise when running
+      _enemies.forEach(function(enemy) {
+        if (enemy.hp <= 0) return;
+        var dist = Math.abs(enemy.x - newX) + Math.abs(enemy.y - newY);
+        if (dist <= 5) {
+          _increaseEnemyAwareness(enemy, 15); // Significant awareness increase from noise
+        }
+      });
     } else {
       _player.detection = Math.max(0, _player.detection - 0.5);
       _updateAlertLevel();
@@ -373,6 +460,7 @@ const GoneRogue = (function () {
     var hitEnemy = _enemies.find(function(e) { return e.x === newX && e.y === newY && e.hp > 0; });
     if (hitEnemy) {
       _player.hp -= 2;
+      _increaseEnemyAwareness(hitEnemy, 100); // Max awareness on collision
       if (_player.hp <= 0) {
         return _exitRogue(false); // Death
       }
@@ -451,6 +539,7 @@ const GoneRogue = (function () {
 
   function _exitRogue(success) {
     _active = false;
+    _stopGameLoop();
 
     var result = {
       success: success,
@@ -470,6 +559,270 @@ const GoneRogue = (function () {
       lines: ['', 'EXITING GONE ROGUE', 'RETURNING TO STREET CHRONICLES', ''],
       stayActive: false
     };
+  }
+
+  /**
+   * Start the game loop
+   */
+  function _startGameLoop() {
+    if (_gameLoopActive) return;
+    _gameLoopActive = true;
+    _lastTickTime = Date.now();
+    _enemyColorCycleTime = 0;
+    _gameLoopTick();
+  }
+
+  /**
+   * Stop the game loop
+   */
+  function _stopGameLoop() {
+    _gameLoopActive = false;
+    if (_animationFrameId) {
+      cancelAnimationFrame(_animationFrameId);
+      _animationFrameId = null;
+    }
+  }
+
+  /**
+   * Main game loop tick
+   */
+  function _gameLoopTick() {
+    if (!_gameLoopActive) return;
+
+    var now = Date.now();
+    var delta = now - _lastTickTime;
+
+    // Process game updates if enough time has passed
+    if (delta >= _tickInterval) {
+      _updateGameState(delta);
+      _lastTickTime = now;
+    }
+
+    // Schedule next tick
+    _animationFrameId = requestAnimationFrame(_gameLoopTick);
+  }
+
+  /**
+   * Update all game state (enemies, awareness, etc.)
+   */
+  function _updateGameState(deltaMs) {
+    // Update enemy positions and awareness
+    _enemies.forEach(function(enemy) {
+      if (enemy.hp <= 0) return;
+
+      // Update enemy pathing
+      _updateEnemyPath(enemy, deltaMs);
+
+      // Update awareness decay
+      _updateEnemyAwareness(enemy, deltaMs);
+
+      // Check if player is in sight cone
+      if (_isPlayerInSightCone(enemy)) {
+        _increaseEnemyAwareness(enemy, 10); // Increase awareness when player spotted
+      }
+    });
+
+    // Update color cycle timer for visual feedback
+    _enemyColorCycleTime += deltaMs;
+
+    // Re-render if using interactive grid
+    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime);
+    }
+  }
+
+  /**
+   * Update enemy path movement
+   */
+  function _updateEnemyPath(enemy, deltaMs) {
+    if (!enemy.path) return;
+
+    enemy.pathTimer = (enemy.pathTimer || 0) + deltaMs;
+
+    // Move every 500ms
+    if (enemy.pathTimer >= 500) {
+      enemy.pathTimer = 0;
+
+      if (enemy.path.type === PATH_TYPES.PATROL) {
+        _moveEnemyPatrol(enemy);
+      } else if (enemy.path.type === PATH_TYPES.CIRCULAR) {
+        _moveEnemyCircular(enemy);
+      } else if (enemy.path.type === PATH_TYPES.ELLIPSE) {
+        _moveEnemyEllipse(enemy);
+      } else if (enemy.path.type === PATH_TYPES.STATIONARY) {
+        _rotateEnemyInPlace(enemy);
+      }
+    }
+  }
+
+  /**
+   * Move enemy along patrol path (A→B→C→B)
+   */
+  function _moveEnemyPatrol(enemy) {
+    if (!enemy.path.points || enemy.path.points.length < 2) return;
+
+    var currentIndex = enemy.pathIndex || 0;
+    var direction = enemy.pathDirection || 1;
+
+    // Move to next point
+    currentIndex += direction;
+
+    // Reverse at endpoints
+    if (currentIndex >= enemy.path.points.length) {
+      currentIndex = enemy.path.points.length - 2;
+      direction = -1;
+    } else if (currentIndex < 0) {
+      currentIndex = 1;
+      direction = 1;
+    }
+
+    enemy.pathIndex = currentIndex;
+    enemy.pathDirection = direction;
+
+    var point = enemy.path.points[currentIndex];
+    _moveEnemyToPoint(enemy, point);
+  }
+
+  /**
+   * Move enemy along circular path (A→B→C→A)
+   */
+  function _moveEnemyCircular(enemy) {
+    if (!enemy.path.points || enemy.path.points.length < 2) return;
+
+    var currentIndex = (enemy.pathIndex || 0) + 1;
+    if (currentIndex >= enemy.path.points.length) {
+      currentIndex = 0;
+    }
+
+    enemy.pathIndex = currentIndex;
+    var point = enemy.path.points[currentIndex];
+    _moveEnemyToPoint(enemy, point);
+  }
+
+  /**
+   * Move enemy along ellipse path
+   */
+  function _moveEnemyEllipse(enemy) {
+    if (!enemy.path.ellipse) return;
+
+    var angle = (enemy.pathAngle || 0) + 0.1; // Increment angle
+    if (angle >= Math.PI * 2) angle = 0;
+
+    enemy.pathAngle = angle;
+
+    var cx = enemy.path.ellipse.cx;
+    var cy = enemy.path.ellipse.cy;
+    var rx = enemy.path.ellipse.rx;
+    var ry = enemy.path.ellipse.ry;
+
+    var x = Math.floor(cx + rx * Math.cos(angle));
+    var y = Math.floor(cy + ry * Math.sin(angle));
+
+    _moveEnemyToPoint(enemy, { x: x, y: y });
+  }
+
+  /**
+   * Rotate enemy in place (change orientation)
+   */
+  function _rotateEnemyInPlace(enemy) {
+    // Rotate orientation clockwise
+    var orientations = ['north', 'east', 'south', 'west'];
+    var currentIndex = orientations.indexOf(enemy.orientation || 'north');
+    var nextIndex = (currentIndex + 1) % orientations.length;
+    enemy.orientation = orientations[nextIndex];
+  }
+
+  /**
+   * Move enemy to specific point (if not blocked)
+   */
+  function _moveEnemyToPoint(enemy, point) {
+    // Check if point is valid and not blocked
+    if (point.x < 0 || point.x >= GRID_WIDTH || point.y < 0 || point.y >= GRID_HEIGHT) return;
+    if (_grid[point.y][point.x] === TILES.WALL) return;
+
+    // Update orientation based on movement direction
+    var dx = point.x - enemy.x;
+    var dy = point.y - enemy.y;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      enemy.orientation = dx > 0 ? 'east' : 'west';
+    } else {
+      enemy.orientation = dy > 0 ? 'south' : 'north';
+    }
+
+    enemy.x = point.x;
+    enemy.y = point.y;
+  }
+
+  /**
+   * Update enemy awareness (decay over time)
+   */
+  function _updateEnemyAwareness(enemy, deltaMs) {
+    if (!enemy.awareness) enemy.awareness = 0;
+
+    // Decay awareness by 5 points per second
+    var decay = (5 * deltaMs) / 1000;
+    enemy.awareness = Math.max(0, enemy.awareness - decay);
+  }
+
+  /**
+   * Increase enemy awareness
+   */
+  function _increaseEnemyAwareness(enemy, amount) {
+    enemy.awareness = Math.min(150, (enemy.awareness || 0) + amount);
+  }
+
+  /**
+   * Get enemy awareness state
+   */
+  function _getEnemyAwarenessState(enemy) {
+    var awareness = enemy.awareness || 0;
+
+    if (awareness >= AWARENESS_STATES.ENGAGED.min) return AWARENESS_STATES.ENGAGED;
+    if (awareness >= AWARENESS_STATES.ALERTED.min) return AWARENESS_STATES.ALERTED;
+    if (awareness >= AWARENESS_STATES.SUSPICIOUS.min) return AWARENESS_STATES.SUSPICIOUS;
+    return AWARENESS_STATES.UNAWARE;
+  }
+
+  /**
+   * Get enemy awareness state (exposed for external use)
+   */
+  function getEnemyAwarenessState(enemy) {
+    return _getEnemyAwarenessState(enemy);
+  }
+
+  /**
+   * Check if player is in enemy sight cone
+   */
+  function _isPlayerInSightCone(enemy) {
+    if (!enemy.orientation) return false;
+
+    var dx = _player.x - enemy.x;
+    var dy = _player.y - enemy.y;
+    var distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Sight cone range
+    var sightRange = enemy.sightRange || 5;
+    if (distance > sightRange) return false;
+
+    // Calculate angle to player
+    var angleToPlayer = Math.atan2(dy, dx);
+
+    // Enemy orientation angles
+    var orientationAngles = {
+      'east': 0,
+      'south': Math.PI / 2,
+      'west': Math.PI,
+      'north': -Math.PI / 2
+    };
+
+    var orientationAngle = orientationAngles[enemy.orientation] || 0;
+    var coneAngle = Math.PI / 3; // 60 degree cone
+
+    // Normalize angle difference
+    var angleDiff = Math.abs(angleToPlayer - orientationAngle);
+    while (angleDiff > Math.PI) angleDiff = Math.abs(angleDiff - 2 * Math.PI);
+
+    return angleDiff <= coneAngle / 2;
   }
 
   function _saveState() {
@@ -710,6 +1063,13 @@ const GoneRogue = (function () {
     return _player;
   }
 
+  /**
+   * Get enemies state (for mobile UI)
+   */
+  function getEnemies() {
+    return _enemies;
+  }
+
   return {
     init: init,
     start: start,
@@ -718,6 +1078,8 @@ const GoneRogue = (function () {
     getPrompt: getPrompt,
     handleTapMove: handleTapMove,
     handleCardSwipe: handleCardSwipe,
-    getPlayer: getPlayer
+    getPlayer: getPlayer,
+    getEnemies: getEnemies,
+    getEnemyAwarenessState: getEnemyAwarenessState
   };
 })();

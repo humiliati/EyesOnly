@@ -68,7 +68,7 @@ const GoneRogueMobile = (function () {
   /**
    * Render grid as interactive HTML cells
    */
-  function renderGrid(grid, player, enemies, items) {
+  function renderGrid(grid, player, enemies, items, colorCycleTime) {
     if (!_gridContainer || !grid) return;
 
     _gridContainer.innerHTML = '';
@@ -97,8 +97,15 @@ const GoneRogueMobile = (function () {
           if (enemy) {
             cell.textContent = 'E';
             cell.classList.add('cell-enemy');
+            
+            // Apply awareness color with cycling effect
+            _applyAwarenessColor(cell, enemy, colorCycleTime);
+            
             // Add detection cone visualization
             _addDetectionCone(cell, enemy);
+            
+            // Add sight cone overlay
+            _addSightConeOverlay(cell, enemy, grid);
           } else {
             _setCellTile(cell, tile);
           }
@@ -118,6 +125,115 @@ const GoneRogueMobile = (function () {
 
         _gridContainer.appendChild(cell);
       }
+    }
+
+    // Render sight cone highlights
+    if (enemies) {
+      enemies.forEach(function(enemy) {
+        if (enemy.hp > 0) {
+          _renderSightConeHighlight(grid, enemy);
+        }
+      });
+    }
+  }
+
+  /**
+   * Apply awareness state color to enemy cell
+   */
+  function _applyAwarenessColor(cell, enemy, colorCycleTime) {
+    var state;
+    
+    // Use GoneRogue's awareness state function if available
+    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.getEnemyAwarenessState === 'function') {
+      state = GoneRogue.getEnemyAwarenessState(enemy);
+    } else {
+      // Fallback: determine state locally
+      var awareness = enemy.awareness || 0;
+      if (awareness >= 100) {
+        state = { color: '#ff00ff', name: 'ENGAGED' };
+      } else if (awareness >= 71) {
+        state = { color: '#ff0000', name: 'ALERTED' };
+      } else if (awareness >= 31) {
+        state = { color: '#ffaa00', name: 'SUSPICIOUS' };
+      } else {
+        state = { color: '#00ff00', name: 'UNAWARE' };
+      }
+    }
+
+    // Cycle color opacity every 400ms
+    var cycle = Math.floor((colorCycleTime || 0) / 400) % 2;
+    var opacity = cycle === 0 ? 1.0 : 0.6;
+
+    cell.style.backgroundColor = state.color;
+    cell.style.opacity = opacity;
+    cell.title = state.name + ' (' + Math.floor(enemy.awareness || 0) + ')';
+  }
+
+  /**
+   * Render sight cone highlight overlay
+   */
+  function _renderSightConeHighlight(grid, enemy) {
+    if (!enemy.orientation || !_gridContainer) return;
+
+    var sightRange = enemy.sightRange || 5;
+    var coneAngle = Math.PI / 3; // 60 degrees
+
+    // Orientation angles
+    var orientationAngles = {
+      'east': 0,
+      'south': Math.PI / 2,
+      'west': Math.PI,
+      'north': -Math.PI / 2
+    };
+
+    var orientationAngle = orientationAngles[enemy.orientation] || 0;
+
+    // Highlight cells in sight cone
+    for (var dy = -sightRange; dy <= sightRange; dy++) {
+      for (var dx = -sightRange; dx <= sightRange; dx++) {
+        if (dx === 0 && dy === 0) continue;
+
+        var targetX = enemy.x + dx;
+        var targetY = enemy.y + dy;
+
+        if (targetX < 0 || targetX >= grid[0].length || targetY < 0 || targetY >= grid.length) continue;
+
+        var distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance > sightRange) continue;
+
+        var angleToTarget = Math.atan2(dy, dx);
+        var angleDiff = Math.abs(angleToTarget - orientationAngle);
+        while (angleDiff > Math.PI) angleDiff = Math.abs(angleDiff - 2 * Math.PI);
+
+        if (angleDiff <= coneAngle / 2) {
+          var cellIndex = targetY * grid[0].length + targetX;
+          var cell = _gridContainer.children[cellIndex];
+          if (cell && !cell.classList.contains('cell-player') && !cell.classList.contains('cell-enemy')) {
+            cell.classList.add('in-sight-cone');
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Add sight cone indicator to enemy cell
+   */
+  function _addSightConeOverlay(cell, enemy, grid) {
+    // Add direction arrow based on orientation
+    var arrows = {
+      'north': '↑',
+      'south': '↓',
+      'east': '→',
+      'west': '←'
+    };
+
+    var arrow = arrows[enemy.orientation] || '';
+    if (arrow) {
+      var arrowSpan = document.createElement('span');
+      arrowSpan.className = 'enemy-direction-arrow';
+      arrowSpan.textContent = arrow;
+      cell.appendChild(arrowSpan);
     }
   }
 
