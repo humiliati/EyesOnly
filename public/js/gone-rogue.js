@@ -766,10 +766,38 @@ const GoneRogue = (function () {
       return { playerX: 5, playerY: 10, exitX: GRID_WIDTH - 3, exitY: GRID_HEIGHT - 3 };
     }
 
-    // Place player in first room
+    // Place player in first room - ensure it's on a floor tile
     var firstRoom = rooms[0];
     var playerX = firstRoom.centerX;
     var playerY = firstRoom.centerY;
+
+    // Validate player spawn is on a floor tile, not a wall
+    var maxSpawnAttempts = 10;
+    for (var attempt = 0; attempt < maxSpawnAttempts; attempt++) {
+      if (_grid[playerY] && _grid[playerY][playerX] && _grid[playerY][playerX] === TILES.EMPTY) {
+        // Valid spawn point
+        break;
+      }
+      // Try adjacent tiles if center is blocked
+      var offsets = [
+        {dx: 0, dy: 0}, {dx: 1, dy: 0}, {dx: -1, dy: 0}, {dx: 0, dy: 1}, {dx: 0, dy: -1},
+        {dx: 1, dy: 1}, {dx: -1, dy: -1}, {dx: 1, dy: -1}, {dx: -1, dy: 1}
+      ];
+      for (var i = 0; i < offsets.length; i++) {
+        var testX = firstRoom.centerX + offsets[i].dx;
+        var testY = firstRoom.centerY + offsets[i].dy;
+        if (testX > 0 && testX < GRID_WIDTH - 1 && testY > 0 && testY < GRID_HEIGHT - 1 &&
+            _grid[testY][testX] === TILES.EMPTY) {
+          playerX = testX;
+          playerY = testY;
+          break;
+        }
+      }
+    }
+
+    // Ensure player is within bounds
+    playerX = Math.max(1, Math.min(GRID_WIDTH - 2, playerX));
+    playerY = Math.max(1, Math.min(GRID_HEIGHT - 2, playerY));
 
     // Place exit in last room (opposite quadrant)
     var lastRoom = rooms[rooms.length - 1];
@@ -789,6 +817,27 @@ const GoneRogue = (function () {
           exitX = room.centerX;
           exitY = room.centerY;
           break;
+        }
+      }
+    }
+
+    // Validate exit position is on floor tile
+    if (_grid[exitY] && _grid[exitY][exitX] && _grid[exitY][exitX] !== TILES.EMPTY) {
+      // Find nearest empty tile for exit
+      for (var radius = 1; radius < 5; radius++) {
+        for (var dy = -radius; dy <= radius; dy++) {
+          for (var dx = -radius; dx <= radius; dx++) {
+            var testX = exitX + dx;
+            var testY = exitY + dy;
+            if (testX > 0 && testX < GRID_WIDTH - 1 && testY > 0 && testY < GRID_HEIGHT - 1 &&
+                _grid[testY][testX] === TILES.EMPTY) {
+              exitX = testX;
+              exitY = testY;
+              radius = 999; // Break outer loop
+              break;
+            }
+          }
+          if (radius > 100) break;
         }
       }
     }
