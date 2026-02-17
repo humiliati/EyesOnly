@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phase 5: Advanced Map Generation Tests - EYES ONLY</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      background: #000;
+      color: #0f0;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      color: #0ff;
+      border-bottom: 2px solid #0ff;
+      padding-bottom: 10px;
+    }
+    .test-container {
+      background: #111;
+      border: 1px solid #0f0;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 5px;
+    }
+    .console-output {
+      background: #000;
+      border: 1px solid #333;
+      padding: 15px;
+      margin: 10px 0;
+      height: 400px;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+    button {
+      background: #0f0;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+      border-radius: 3px;
+    }
+    button:hover {
+      background: #0ff;
+    }
+    .grid-display {
+      background: #000;
+      border: 1px solid #0f0;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 11px;
+      line-height: 1.2;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .legend {
+      background: #111;
+      border: 1px solid #0f0;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 11px;
+    }
+    .legend div {
+      margin: 3px 0;
+    }
+    .info {
+      color: #ff0;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎮 PHASE 5: ADVANCED MAP GENERATION 🎮</h1>
+  <p style="text-align: center; color: #0ff;">Testing Multi-Room Layouts, Environmental Tiles, and Tactical Terrain</p>
+
+  <div class="test-container">
+    <h2>🔧 Test Controls</h2>
+    <button onclick="runAutomatedTests()">▶ Run Automated Tests</button>
+    <button onclick="startNewGame()">🗺️ Generate New Map</button>
+    <button onclick="showMapLegend()">📖 Show Legend</button>
+    <button onclick="clearConsole()">🧹 Clear Console</button>
+  </div>
+
+  <div class="test-container">
+    <h2>📊 Current Map Display</h2>
+    <div id="mapDisplay" class="grid-display">Map will appear here after starting a game...</div>
+
+    <div class="info">
+      <div>🎯 Player Position: <span id="playerPos">-</span></div>
+      <div>👾 Enemy Count: <span id="enemyCount">-</span></div>
+      <div>📍 Floor: <span id="floorNum">-</span></div>
+    </div>
+  </div>
+
+  <div class="test-container" id="legendContainer" style="display: none;">
+    <h2>🗺️ Map Legend</h2>
+    <div class="legend">
+      <div><strong>Player & Entities:</strong></div>
+      <div>@ = Player</div>
+      <div>E = Enemy</div>
+      <div>* = Item (Card)</div>
+      <div>▼ = Exit</div>
+      <div></div>
+      <div><strong>Terrain:</strong></div>
+      <div>█ = Wall</div>
+      <div>. = Empty floor</div>
+      <div>▓ = Cover (blocks LOS)</div>
+      <div>░ = Shadow zone (stealth +30%)</div>
+      <div>, = Grass (stealth +20%)</div>
+      <div>≈ = Smoke/fog (stealth +40%)</div>
+      <div>▒ = Hazard (damage 1 HP)</div>
+      <div>~ = Water (slow movement)</div>
+      <div></div>
+      <div><strong>Breakables:</strong></div>
+      <div>☐ = Breakable object</div>
+      <div>░ = Debris (destroyed)</div>
+    </div>
+  </div>
+
+  <div class="test-container">
+    <h2>📋 Console Output</h2>
+    <div id="consoleOutput" class="console-output"></div>
+  </div>
+
+  <!-- Load dependencies -->
+  <script src="../js/card-system.js"></script>
+  <script src="../js/gamestate.js"></script>
+  <script src="../js/gone-rogue.js"></script>
+  <script src="test-phase5-advanced-maps.js"></script>
+
+  <script>
+    // Custom console to capture output
+    var originalLog = console.log;
+    var originalError = console.error;
+    var consoleOutput = document.getElementById('consoleOutput');
+
+    function appendToConsole(message, type) {
+      var div = document.createElement('div');
+      div.style.color = type === 'error' ? '#f00' : '#0f0';
+      div.textContent = message;
+      consoleOutput.appendChild(div);
+      consoleOutput.scrollTop = consoleOutput.scrollHeight;
+    }
+
+    console.log = function() {
+      var msg = Array.prototype.slice.call(arguments).join(' ');
+      appendToConsole(msg, 'log');
+      originalLog.apply(console, arguments);
+    };
+
+    console.error = function() {
+      var msg = Array.prototype.slice.call(arguments).join(' ');
+      appendToConsole(msg, 'error');
+      originalError.apply(console, arguments);
+    };
+
+    function clearConsole() {
+      consoleOutput.innerHTML = '';
+      console.log('Console cleared.');
+    }
+
+    function runAutomatedTests() {
+      clearConsole();
+      console.log('Starting Phase 5 automated tests...');
+      console.log('');
+
+      // The test file runs automatically when loaded
+      // Force re-run by reloading test script
+      var script = document.createElement('script');
+      script.src = 'test-phase5-advanced-maps.js?t=' + Date.now();
+      document.body.appendChild(script);
+    }
+
+    function startNewGame() {
+      clearConsole();
+      console.log('Generating new map...');
+
+      if (typeof GoneRogue !== 'undefined') {
+        // Exit if already active
+        if (GoneRogue.isActive()) {
+          GoneRogue.process('exit');
+        }
+
+        // Start new game
+        var result = GoneRogue.start({});
+        console.log('Map generated successfully!');
+
+        // Display map
+        displayCurrentMap();
+      } else {
+        console.error('GoneRogue module not loaded!');
+      }
+    }
+
+    function displayCurrentMap() {
+      if (typeof GoneRogue === 'undefined' || !GoneRogue.isActive()) {
+        document.getElementById('mapDisplay').textContent = 'No active game. Click "Generate New Map" to start.';
+        return;
+      }
+
+      var player = GoneRogue.getPlayer();
+      var enemies = GoneRogue.getEnemies();
+
+      // Process empty command to get grid render
+      var result = GoneRogue.process('');
+      if (result && result.lines) {
+        var mapLines = result.lines.filter(function(line) {
+          // Filter out status lines
+          return line.length > 0 && line.indexOf('HP:') === -1 && line.indexOf('ROGUE>') === -1;
+        });
+
+        document.getElementById('mapDisplay').textContent = mapLines.join('\n');
+      }
+
+      // Update info
+      document.getElementById('playerPos').textContent = '(' + player.x + ', ' + player.y + ')';
+      document.getElementById('enemyCount').textContent = enemies.length;
+      document.getElementById('floorNum').textContent = '1'; // Default floor
+    }
+
+    function showMapLegend() {
+      var legend = document.getElementById('legendContainer');
+      legend.style.display = legend.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // Auto-start first test on load
+    window.addEventListener('load', function() {
+      console.log('========================================');
+      console.log('PHASE 5 TEST SUITE LOADED');
+      console.log('========================================');
+      console.log('Click "Run Automated Tests" to begin testing.');
+      console.log('Click "Generate New Map" to see map generation in action.');
+      console.log('');
+    });
+  </script>
+</body>
+</html>

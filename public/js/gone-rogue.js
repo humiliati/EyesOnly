@@ -258,12 +258,15 @@ const GoneRogue = (function () {
       '  EXIT               - Return to Street Chronicles',
       '',
       'LEGEND:',
-      '  @ = You',
-      '  E = Enemy',
-      '  * = Item',
-      '  ▼ = Exit',
-      '  █ = Wall',
-      '  ▓ = Cover',
+      '  @ = You        E = Enemy      * = Item',
+      '  ▼ = Exit       █ = Wall       ▓ = Cover',
+      '  ░ = Shadow     , = Grass      ≈ = Smoke',
+      '  ▒ = Hazard     ☐ = Breakable',
+      '',
+      'TERRAIN EFFECTS:',
+      '  Shadow/Grass/Smoke = Stealth bonus',
+      '  Hazard = Damage on contact',
+      '  Cover = Blocks enemy vision',
       ''
     ];
   }
