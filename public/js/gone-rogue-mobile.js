@@ -1244,6 +1244,11 @@ const GoneRogueMobile = (function () {
     if (typeof window.appendLine === 'function') {
       window.appendLine('⚡ EQUIPPED: ' + item.emoji + ' ' + item.name);
     }
+
+    // Tooltip: Item equipped
+    if (typeof TooltipSystem !== 'undefined') {
+      TooltipSystem.showAction('item-equip', { name: item.name });
+    }
   }
 
   function _unequipActiveItem() {
@@ -1271,6 +1276,11 @@ const GoneRogueMobile = (function () {
     // Show feedback message
     if (typeof window.appendLine === 'function') {
       window.appendLine('⚠ UNEQUIPPED: ' + activeItem.emoji + ' ' + activeItem.name);
+    }
+
+    // Tooltip: Item unequipped
+    if (typeof TooltipSystem !== 'undefined') {
+      TooltipSystem.showAction('item-unequip', { name: activeItem.name });
     }
   }
 

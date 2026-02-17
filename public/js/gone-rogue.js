@@ -403,6 +403,10 @@ const GoneRogue = (function () {
 
     // FLEE command during STR combat
     if (cmd === 'flee' && _strCombatActive) {
+      // Tooltip: Fleeing combat
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showAction('flee');
+      }
       return _exitStrCombat('fled');
     }
 
@@ -1615,6 +1619,11 @@ const GoneRogue = (function () {
       }
       // Remove currency from floor
       _currencies = _currencies.filter(function(c) { return c.x !== newX || c.y !== newY; });
+
+      // Tooltip: Currency pickup
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showAction('currency-pickup', { amount: cryptoPickup.amount });
+      }
     }
 
     // Apply tile effects
@@ -1633,9 +1642,19 @@ const GoneRogue = (function () {
           _increaseEnemyAwareness(enemy, 15); // Significant awareness increase from noise
         }
       });
+
+      // Tooltip: Running
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showAction('move', { run: true });
+      }
     } else {
       _player.detection = Math.max(0, _player.detection - 0.5);
       _updateAlertLevel();
+
+      // Tooltip: Walking
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showAction('move', { run: false });
+      }
     }
 
     // Check for enemy collision - trigger STR combat
@@ -1730,6 +1749,16 @@ const GoneRogue = (function () {
 
     // Remove item from floor
     _items = _items.filter(function(i) { return i !== item; });
+
+    // Tooltip: Item pickup
+    if (typeof TooltipSystem !== 'undefined') {
+      var isCard = item.card && (item.card.type === 'attack' || item.card.type === 'support' || item.card.type === 'item');
+      if (isCard) {
+        TooltipSystem.showAction('card-pickup', { name: item.card.name });
+      } else {
+        TooltipSystem.showAction('item-pickup', { name: item.card.name });
+      }
+    }
 
     return {
       lines: ['PICKED UP: ' + item.card.emoji + ' ' + item.card.name + ' [' + item.card.qualityName + ']', ''].concat(_renderGrid()),
@@ -3321,6 +3350,12 @@ const GoneRogue = (function () {
 
     // Execute card action based on swipe direction
     var action = _getCardAction(card, direction);
+
+    // Tooltip: Card deployment (if valid action)
+    if (action.type !== 'none' && action.type !== 'discard' && typeof TooltipSystem !== 'undefined') {
+      TooltipSystem.showAction('card-deploy', { name: card.name });
+    }
+
     var result = _executeCardAction(action);
 
     // Update mobile UI
@@ -3415,6 +3450,11 @@ const GoneRogue = (function () {
    * Perform attack with card
    */
   function _performAttack(card) {
+    // Tooltip: Attacking
+    if (typeof TooltipSystem !== 'undefined') {
+      TooltipSystem.showAction('attack');
+    }
+
     // If already in STR combat, use simultaneous resolution
     if (_strCombatActive) {
       var enemyCard = _getEnemyAICard();
@@ -3572,6 +3612,11 @@ const GoneRogue = (function () {
     _strCombatEnemy = enemy;
     _strCombatRound = 0;
     _strCombatLog = [];
+
+    // Tooltip: Engaging enemy
+    if (typeof TooltipSystem !== 'undefined') {
+      TooltipSystem.showAction('combat-enter');
+    }
 
     // Calculate advantage state
     _strCombatAdvantage = _calculateAdvantage(_player, enemy, trigger);
