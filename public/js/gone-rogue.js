@@ -350,6 +350,15 @@ const GoneRogue = (function () {
       return _gambleCard();
     }
 
+    // Inventory transfer commands (bonfire only)
+    if (cmd.indexOf('stash') === 0) {
+      return _stashCard(cmd);
+    }
+
+    if (cmd.indexOf('retrieve') === 0 || cmd.indexOf('withdraw') === 0) {
+      return _retrieveCard(cmd);
+    }
+
     return {
       lines: ['UNKNOWN COMMAND: ' + cmd, 'TYPE HELP FOR COMMANDS', ''],
       prompt: getPrompt(),
@@ -374,6 +383,8 @@ const GoneRogue = (function () {
       '  BUY <number>       - Purchase item from vendor',
       '  HEAL               - Restore HP for ¢30',
       '  GAMBLE             - Roll random card for ¢100',
+      '  STASH <number>     - Move loose item to persistent storage',
+      '  RETRIEVE <number>  - Move persistent item to loose carry',
       '',
       '  HELP               - This help',
       '  EXIT               - Return to Street Chronicles',
@@ -1735,6 +1746,142 @@ const GoneRogue = (function () {
 
     return {
       lines: ['GAMBLE FAILED', ''],
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Stash card from loose carry to persistent inventory (bonfire only)
+   */
+  function _stashCard(cmd) {
+    var floorType = _getFloorType(_floor);
+    if (floorType !== FLOOR_TYPES.BONFIRE) {
+      return {
+        lines: ['NO BONFIRE HERE', 'Inventory transfer only available at bonfire floors', ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    if (typeof GAMESTATE === 'undefined') {
+      return {
+        lines: ['GAMESTATE UNAVAILABLE', ''],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    // Parse item number from command
+    var parts = cmd.split(' ');
+    if (parts.length < 2) {
+      return {
+        lines: ['USAGE: STASH <number>', 'Example: STASH 1', ''].concat(_inventoryLines()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var itemNum = parseInt(parts[1], 10) - 1; // Convert to 0-indexed
+    var looseInv = GAMESTATE.getLooseInventory();
+
+    if (itemNum < 0 || itemNum >= looseInv.length) {
+      return {
+        lines: ['INVALID ITEM NUMBER', 'Loose carry has ' + looseInv.length + ' items', ''].concat(_inventoryLines()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var item = looseInv[itemNum];
+
+    // Try to add to persistent
+    var addResult = GAMESTATE.addToPersistent(item);
+    if (!addResult.success) {
+      return {
+        lines: [addResult.message, ''].concat(_inventoryLines()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    // Remove from loose
+    GAMESTATE.removeFromLoose(itemNum);
+
+    return {
+      lines: [
+        '📦 STASHED TO PERSISTENT STORAGE',
+        item.emoji + ' ' + item.name,
+        ''
+      ].concat(_inventoryLines()),
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Retrieve card from persistent inventory to loose carry (bonfire only)
+   */
+  function _retrieveCard(cmd) {
+    var floorType = _getFloorType(_floor);
+    if (floorType !== FLOOR_TYPES.BONFIRE) {
+      return {
+        lines: ['NO BONFIRE HERE', 'Inventory transfer only available at bonfire floors', ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    if (typeof GAMESTATE === 'undefined') {
+      return {
+        lines: ['GAMESTATE UNAVAILABLE', ''],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    // Parse item number from command
+    var parts = cmd.split(' ');
+    if (parts.length < 2) {
+      return {
+        lines: ['USAGE: RETRIEVE <number>', 'Example: RETRIEVE 1', ''].concat(_inventoryLines()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var itemNum = parseInt(parts[1], 10) - 1; // Convert to 0-indexed
+    var persistentInv = GAMESTATE.getPersistentInventory();
+
+    if (itemNum < 0 || itemNum >= persistentInv.length) {
+      return {
+        lines: ['INVALID ITEM NUMBER', 'Persistent storage has ' + persistentInv.length + ' items', ''].concat(_inventoryLines()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var item = persistentInv[itemNum];
+
+    // Try to add to loose
+    var addResult = GAMESTATE.addToLoose(item);
+    if (!addResult.success) {
+      return {
+        lines: [addResult.message, ''].concat(_inventoryLines()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    // Remove from persistent
+    GAMESTATE.removeFromPersistent(itemNum);
+
+    return {
+      lines: [
+        '🎒 RETRIEVED TO LOOSE CARRY',
+        item.emoji + ' ' + item.name,
+        ''
+      ].concat(_inventoryLines()),
       prompt: getPrompt(),
       stayActive: true
     };
