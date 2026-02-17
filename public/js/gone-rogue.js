@@ -5235,6 +5235,308 @@ const GoneRogue = (function () {
   // END GROUND EFFECT COMBAT MODIFIERS
   // ============================================================
 
+  // ============================================================
+  // HEADLESS MODE API (for automated testing/agent simulation)
+  // ============================================================
+
+  /**
+   * Get complete game state (for testing/agent simulation)
+   */
+  function getState() {
+    return {
+      active: _active,
+      floor: _floor,
+      turn: _turn,
+      player: {
+        x: _player.x,
+        y: _player.y,
+        hp: _player.hp,
+        maxHp: _player.maxHp,
+        energy: _player.energy,
+        maxEnergy: _player.maxEnergy,
+        stealth: _player.stealth,
+        detection: _player.detection,
+        lastMoveDirection: _player.lastMoveDirection,
+        str: _player.str,
+        dex: _player.dex,
+        credits: _player.credits,
+        deck: _player.deck ? _player.deck.slice() : [],
+        activeItem: _player.activeItem
+      },
+      enemies: _enemies.map(function(e) {
+        return {
+          x: e.x,
+          y: e.y,
+          hp: e.hp,
+          maxHp: e.maxHp,
+          type: e.type,
+          tier: e.tier,
+          emoji: e.emoji,
+          awarenessState: e.awarenessState,
+          orientation: e.orientation,
+          alertLevel: e.alertLevel
+        };
+      }),
+      grid: _grid.map(function(row) { return row.slice(); }),
+      gridWidth: GRID_WIDTH,
+      gridHeight: GRID_HEIGHT,
+      breakables: _breakables.slice(),
+      projectiles: _projectiles.slice(),
+      items: _items.slice(),
+      currencies: _currencies.slice(),
+      strCombatActive: _strCombatActive,
+      alertLevel: _alertLevel,
+      bossFloorActive: _bossFloorActive
+    };
+  }
+
+  /**
+   * Get legal actions from current state
+   */
+  function getLegalActions() {
+    if (!_active) {
+      return [];
+    }
+
+    var actions = [];
+
+    // During STR combat, only card actions are legal
+    if (_strCombatActive) {
+      // Can use cards from deck
+      if (_player.deck && _player.deck.length > 0) {
+        _player.deck.forEach(function(card, index) {
+          actions.push({
+            type: 'useCard',
+            cardIndex: index,
+            card: card
+          });
+        });
+      }
+      
+      // Can flee
+      actions.push({ type: 'flee' });
+      
+      return actions;
+    }
+
+    // Movement actions (check each direction)
+    var directions = [
+      { dx: 0, dy: -1, name: 'north', cmd: 'n' },
+      { dx: 0, dy: 1, name: 'south', cmd: 's' },
+      { dx: 1, dy: 0, name: 'east', cmd: 'e' },
+      { dx: -1, dy: 0, name: 'west', cmd: 'w' }
+    ];
+
+    directions.forEach(function(dir) {
+      var newX = _player.x + dir.dx;
+      var newY = _player.y + dir.dy;
+      
+      // Check bounds
+      if (newX >= 0 && newX < GRID_WIDTH && newY >= 0 && newY < GRID_HEIGHT) {
+        var tile = _grid[newY][newX];
+        
+        // Check if tile is walkable
+        if (tile !== TILES.WALL) {
+          actions.push({
+            type: 'move',
+            direction: dir.name,
+            dx: dir.dx,
+            dy: dir.dy,
+            cmd: dir.cmd,
+            targetX: newX,
+            targetY: newY
+          });
+        }
+      }
+    });
+
+    // Item pickup actions
+    _items.forEach(function(item) {
+      if (item.x === _player.x && item.y === _player.y) {
+        actions.push({
+          type: 'pickup',
+          item: item
+        });
+      }
+    });
+
+    // Currency pickup actions
+    _currencies.forEach(function(currency) {
+      if (currency.x === _player.x && currency.y === _player.y) {
+        actions.push({
+          type: 'pickupCurrency',
+          amount: currency.amount
+        });
+      }
+    });
+
+    // Exit action (if on exit tile)
+    if (_grid[_player.y][_player.x] === TILES.EXIT) {
+      actions.push({ type: 'exit' });
+    }
+
+    // Active item use
+    if (_player.activeItem) {
+      actions.push({
+        type: 'useActiveItem',
+        item: _player.activeItem
+      });
+    }
+
+    // Wait/pass action (always available)
+    actions.push({ type: 'wait' });
+
+    return actions;
+  }
+
+  /**
+   * Apply an action to the game state (headless mode)
+   * @param {Object} action - Action object from getLegalActions()
+   * @returns {Object} Result with success flag and new state
+   */
+  function applyAction(action) {
+    if (!_active) {
+      return {
+        success: false,
+        reason: 'Game not active',
+        state: null
+      };
+    }
+
+    var result = {
+      success: false,
+      reason: '',
+      state: null,
+      messages: []
+    };
+
+    try {
+      if (action.type === 'move') {
+        var moveResult = _movePlayer(action.dx, action.dy, false);
+        result.success = true;
+        result.messages = moveResult.lines || [];
+        result.state = getState();
+      }
+      else if (action.type === 'useCard' && _strCombatActive) {
+        var cardResult = handleCardSwipe(action.cardIndex, 'up');
+        result.success = true;
+        result.messages = cardResult.lines || [];
+        result.state = getState();
+      }
+      else if (action.type === 'flee' && _strCombatActive) {
+        var fleeResult = process('flee');
+        result.success = true;
+        result.messages = fleeResult.lines || [];
+        result.state = getState();
+      }
+      else if (action.type === 'pickup') {
+        var pickupResult = process('pickup');
+        result.success = true;
+        result.messages = pickupResult.lines || [];
+        result.state = getState();
+      }
+      else if (action.type === 'pickupCurrency') {
+        // Auto-pickup currency on move
+        result.success = true;
+        result.messages = ['Picked up ' + action.amount + ' credits'];
+        result.state = getState();
+      }
+      else if (action.type === 'exit') {
+        var exitResult = process('exit');
+        result.success = true;
+        result.messages = exitResult.lines || [];
+        result.state = getState();
+      }
+      else if (action.type === 'useActiveItem') {
+        var itemResult = triggerActiveItem();
+        result.success = itemResult && itemResult.lines;
+        result.messages = itemResult ? itemResult.lines : [];
+        result.state = getState();
+      }
+      else if (action.type === 'wait') {
+        // Just advance turn
+        _turn++;
+        _updateEnemies();
+        result.success = true;
+        result.messages = ['Waited...'];
+        result.state = getState();
+      }
+      else {
+        result.reason = 'Unknown action type: ' + action.type;
+      }
+    } catch (error) {
+      result.success = false;
+      result.reason = 'Error executing action: ' + error.message;
+    }
+
+    return result;
+  }
+
+  /**
+   * Get grid data (for map parsing)
+   */
+  function getGrid() {
+    return {
+      grid: _grid.map(function(row) { return row.slice(); }),
+      width: GRID_WIDTH,
+      height: GRID_HEIGHT,
+      tiles: TILES
+    };
+  }
+
+  /**
+   * Reset game to specific state (for replay testing)
+   */
+  function resetToState(state) {
+    if (!state) return false;
+
+    try {
+      _active = state.active;
+      _floor = state.floor;
+      _turn = state.turn;
+      
+      // Restore player
+      _player.x = state.player.x;
+      _player.y = state.player.y;
+      _player.hp = state.player.hp;
+      _player.maxHp = state.player.maxHp;
+      _player.energy = state.player.energy;
+      _player.maxEnergy = state.player.maxEnergy;
+      _player.stealth = state.player.stealth;
+      _player.detection = state.player.detection;
+      _player.lastMoveDirection = state.player.lastMoveDirection;
+      _player.str = state.player.str;
+      _player.dex = state.player.dex;
+      _player.credits = state.player.credits;
+      _player.deck = state.player.deck ? state.player.deck.slice() : [];
+      _player.activeItem = state.player.activeItem;
+      
+      // Restore grid
+      _grid = state.grid.map(function(row) { return row.slice(); });
+      
+      // Restore enemies
+      _enemies = state.enemies.slice();
+      
+      // Restore other state
+      _breakables = state.breakables ? state.breakables.slice() : [];
+      _projectiles = state.projectiles ? state.projectiles.slice() : [];
+      _items = state.items ? state.items.slice() : [];
+      _currencies = state.currencies ? state.currencies.slice() : [];
+      _strCombatActive = state.strCombatActive;
+      _alertLevel = state.alertLevel;
+      _bossFloorActive = state.bossFloorActive;
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to reset state:', error);
+      return false;
+    }
+  }
+
+  // ============================================================
+  // END HEADLESS MODE API
+  // ============================================================
+
   return {
     init: init,
     start: start,
@@ -5253,6 +5555,15 @@ const GoneRogue = (function () {
     isStrCombatActive: isStrCombatActive,
     getStrCombatState: getStrCombatState,
     triggerActiveItem: triggerActiveItem,
-    updatePlayerLight: _updatePlayerLight
+    updatePlayerLight: _updatePlayerLight,
+    
+    // Headless mode API (for testing/agent simulation)
+    headless: {
+      getState: getState,
+      getLegalActions: getLegalActions,
+      applyAction: applyAction,
+      getGrid: getGrid,
+      resetToState: resetToState
+    }
   };
 })();

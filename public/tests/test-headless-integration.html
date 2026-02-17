@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Headless Integration Test - EYES ONLY</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      background: #0a0a0a;
+      color: #1cff9b;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    h1 {
+      color: #1cff9b;
+      text-align: center;
+      margin-bottom: 30px;
+      text-shadow: 0 0 10px rgba(28, 255, 155, 0.5);
+    }
+
+    .test-section {
+      background: #1a1a1a;
+      border: 2px solid #1cff9b;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 5px;
+    }
+
+    .test-result {
+      padding: 10px;
+      margin: 5px 0;
+      border-left: 3px solid;
+    }
+
+    .test-result.pass {
+      border-color: #00ff00;
+      background: rgba(0, 255, 0, 0.1);
+      color: #00ff00;
+    }
+
+    .test-result.fail {
+      border-color: #ff1c4a;
+      background: rgba(255, 28, 74, 0.1);
+      color: #ff1c4a;
+    }
+
+    button {
+      font-family: 'Courier New', monospace;
+      padding: 10px 20px;
+      border: 1px solid #1cff9b;
+      background: #0a0a0a;
+      color: #1cff9b;
+      border-radius: 3px;
+      cursor: pointer;
+      margin: 5px;
+      transition: all 0.3s;
+    }
+
+    button:hover {
+      background: #1cff9b;
+      color: #0a0a0a;
+    }
+
+    #output {
+      background: #000;
+      border: 2px solid #1cff9b;
+      padding: 15px;
+      min-height: 400px;
+      max-height: 600px;
+      overflow-y: auto;
+      border-radius: 5px;
+      white-space: pre-wrap;
+      font-size: 12px;
+      margin-top: 20px;
+    }
+
+    .summary {
+      padding: 20px;
+      background: rgba(28, 255, 155, 0.1);
+      border: 2px solid #1cff9b;
+      border-radius: 5px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔌 HEADLESS INTEGRATION TEST</h1>
+
+  <div class="test-section">
+    <h2>Test Controls</h2>
+    <button onclick="runAllTests()">▶️ Run All Tests</button>
+    <button onclick="clearOutput()">🗑️ Clear Output</button>
+  </div>
+
+  <div id="output"></div>
+
+  <!-- Load dependencies -->
+  <script src="../js/card-system.js"></script>
+  <script src="../js/lighting-system.js"></script>
+  <script src="../js/ground-effects.js"></script>
+  <script src="../js/boss-encounters.js"></script>
+  <script src="../js/secret-floors.js"></script>
+  <script src="../js/gone-rogue.js"></script>
+  <script src="agent-headless-adapter.js"></script>
+
+  <script>
+    var testResults = [];
+
+    function log(message, type = 'info') {
+      var output = document.getElementById('output');
+      var timestamp = new Date().toLocaleTimeString();
+      var prefix = type === 'error' ? '✗' : type === 'success' ? '✓' : 'ℹ';
+      output.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+      output.scrollTop = output.scrollHeight;
+    }
+
+    function assert(condition, message) {
+      if (condition) {
+        log('PASS: ' + message, 'success');
+        testResults.push({ pass: true, message: message });
+        return true;
+      } else {
+        log('FAIL: ' + message, 'error');
+        testResults.push({ pass: false, message: message });
+        return false;
+      }
+    }
+
+    async function runAllTests() {
+      testResults = [];
+      clearOutput();
+      
+      log('========================================');
+      log('HEADLESS INTEGRATION TESTS');
+      log('========================================\n');
+
+      await test1_HeadlessAPIExists();
+      await test2_AdapterInitialization();
+      await test3_GameStart();
+      await test4_GetState();
+      await test5_GetLegalActions();
+      await test6_ApplyAction();
+      await test7_MapParsing();
+      await test8_ActionConstraints();
+      await test9_ActionHistory();
+      await test10_PathValidation();
+
+      printSummary();
+    }
+
+    async function test1_HeadlessAPIExists() {
+      log('\n--- Test 1: Headless API Exists ---');
+      
+      assert(typeof GoneRogue !== 'undefined', 'GoneRogue module is available');
+      assert(typeof GoneRogue.headless !== 'undefined', 'GoneRogue.headless API exists');
+      assert(typeof GoneRogue.headless.getState === 'function', 'getState() method exists');
+      assert(typeof GoneRogue.headless.getLegalActions === 'function', 'getLegalActions() method exists');
+      assert(typeof GoneRogue.headless.applyAction === 'function', 'applyAction() method exists');
+      assert(typeof GoneRogue.headless.getGrid === 'function', 'getGrid() method exists');
+      assert(typeof GoneRogue.headless.resetToState === 'function', 'resetToState() method exists');
+    }
+
+    async function test2_AdapterInitialization() {
+      log('\n--- Test 2: Adapter Initialization ---');
+      
+      assert(typeof HeadlessAdapter !== 'undefined', 'HeadlessAdapter module available');
+      assert(typeof HeadlessAdapter.HeadlessGameAdapter === 'function', 'HeadlessGameAdapter class exists');
+      
+      var adapter = new HeadlessAdapter.HeadlessGameAdapter({ verbose: false });
+      assert(adapter !== null, 'Adapter instance created');
+      
+      var initResult = adapter.init(GoneRogue);
+      assert(initResult === true, 'Adapter initialized successfully');
+    }
+
+    async function test3_GameStart() {
+      log('\n--- Test 3: Game Start ---');
+      
+      var adapter = new HeadlessAdapter.HeadlessGameAdapter({ verbose: false });
+      adapter.init(GoneRogue);
+      
+      var startResult = adapter.startGame({});
+      assert(startResult.success === true, 'Game started successfully');
+      assert(startResult.state !== null, 'Initial state returned');
+      assert(startResult.state.player !== undefined, 'Player state exists');
+      assert(startResult.state.grid !== undefined, 'Grid state exists');
+      
+      log('  → Floor: ' + startResult.state.floor);
+      log('  → Player HP: ' + startResult.state.player.hp);
+      log('  → Grid size: ' + startResult.state.gridWidth + 'x' + startResult.state.gridHeight);
+    }
+
+    async function test4_GetState() {
+      log('\n--- Test 4: Get State ---');
+      
+      var adapter = new HeadlessAdapter.HeadlessGameAdapter({ verbose: false });
+      adapter.init(GoneRogue);
+      adapter.startGame({});
+      
+      var state = adapter.getState();
+      assert(state !== null, 'State retrieved');
+      assert(state.player !== undefined, 'Player in state');
+      assert(state.enemies !== undefined, 'Enemies in state');
+      assert(state.grid !== undefined, 'Grid in state');
+      assert(Array.isArray(state.grid), 'Grid is array');
+      assert(state.grid.length > 0, 'Grid has rows');
+      
+      log('  → Enemy count: ' + state.enemies.length);
+      log('  → Grid rows: ' + state.grid.length);
+    }
+
+    async function test5_GetLegalActions() {
+      log('\n--- Test 5: Get Legal Actions ---');
+      
+      var adapter = new HeadlessAdapter.HeadlessGameAdapter({ verbose: false });
+      adapter.init(GoneRogue);
+      adapter.startGame({});
+      
+      var actions = adapter.getLegalActions();
+      assert(Array.isArray(actions), 'Legal actions is array');
+      assert(actions.length > 0, 'Has at least one legal action');
+      
+      var hasMove = actions.some(a => a.type === 'move');
+      var hasWait = actions.some(a => a.type === 'wait');
+      
+      assert(hasMove || hasWait, 'Has move or wait action');
+      
+      log('  → Legal action count: ' + actions.length);
+      log('  → Action types: ' + actions.map(a => a.type).join(', '));
+    }
+
+    async function test6_ApplyAction() {
+      log('\n--- Test 6: Apply Action ---');
+      
+      var adapter = new HeadlessAdapter.HeadlessGameAdapter({ 
+        verbose: false,
+        minActionDelay: 10
+      });
+      adapter.init(GoneRogue);
+      adapter.startGame({});
+      
+      var stateBefore = adapter.getState();
+      var actions = adapter.getLegalActions();
+      
+      assert(actions.length > 0, 'Has actions to apply');
+      
+      // Find a move action
+      var moveAction = actions.find(a => a.type === 'move');
+      
+      if (moveAction) {
+        var result = await adapter.applyAction(moveAction);
+        assert(result.success === true, 'Action applied successfully');
+        
+        var stateAfter = adapter.getState();
+        var moved = (stateBefore.player.x !== stateAfter.player.x) || 
+                    (stateBefore.player.y !== stateAfter.player.y);
+        assert(moved, 'Player position changed');
+        
+        log('  → Before: (' + stateBefore.player.x + ',' + stateBefore.player.y + ')');
+        log('  → After: (' + stateAfter.player.x + ',' + stateAfter.player.y + ')');
+      } else {
+        log('  → No move action available (may be blocked)');
+      }
+    }
+
+    async function test7_MapParsing() {
+      log('\n--- Test 7: Map Parsing ---');
+      
+      var adapter = new HeadlessAdapter.HeadlessGameAdapter({ verbose: false });
+      adapter.init(GoneRogue);
+      adapter.startGame({});
+      
+      var gridData = adapter.getGrid();
+      assert(gridData !== null, 'Grid data retrieved');
+      assert(gridData.grid !== undefined, 'Grid array exists');
+      assert(gridData.width > 0, 'Grid has width');
+      assert(gridData.height > 0, 'Grid has height');
+      
+      var mapAnalysis = HeadlessAdapter.MapParser.parseMap(gridData);
+      assert(mapAnalysis !== null, 'Map parsed successfully');
+      assert(mapAnalysis.tiles !== undefined, 'Tile analysis exists');
+      assert(mapAnalysis.walkableTiles > 0, 'Has walkable tiles');
+      
+      log('  → Walkable: ' + mapAnalysis.walkablePercent + '%');
+      log('  → Cover: ' + mapAnalysis.coveragePercent + '%');
+      log('  → Shadow: ' + mapAnalysis.shadowPercent + '%');
+    }
+
+    async function test8_ActionConstraints() {
+      log('\n--- Test 8: Action Constraints ---');
+      
+      var adapter = new HeadlessAdapter.HeadlessGameAdapter({ 
+        verbose: false,
+        strictPathBinding: true,
+        minActionDelay: 50
+      });
+      adapter.init(GoneRogue);
+      adapter.startGame({});
+      
+      var state = adapter.getState();
+      
+      // Try to create an illegal action (teleportation)
+      var illegalAction = {
+        type: 'move',
+        targetX: state.player.x + 10,
+        targetY: state.player.y + 10,
+        dx: 10,
+        dy: 10
+      };
+      
+      var isLegal = adapter.isActionHumanLike(illegalAction);
+      assert(isLegal === false, 'Teleportation rejected as illegal');
+      
+      // Try legal adjacent move
+      var legalAction = {
+        type: 'move',
+        targetX: state.player.x + 1,
+        targetY: state.player.y,
+        dx: 1,
+        dy: 0
+      };
+      
+      var isLegal2 = adapter.isActionHumanLike(legalAction);
+      assert(isLegal2 === true, 'Adjacent move accepted as legal');
+      
+      log('  → Teleportation constraint working');
+      log('  → Path binding enforced');
+    }
+
+    async function test9_ActionHistory() {
+      log('\n--- Test 9: Action History ---');
+      
+      var adapter = new HeadlessAdapter.HeadlessGameAdapter({ 
+        verbose: false,
+        minActionDelay: 10
+      });
+      adapter.init(GoneRogue);
+      adapter.startGame({});
+      
+      // Take a few actions
+      for (var i = 0; i < 3; i++) {
+        var actions = adapter.getLegalActions();
+        if (actions.length > 0) {
+          var action = actions[Math.floor(Math.random() * actions.length)];
+          await adapter.applyAction(action);
+        }
+      }
+      
+      var trace = adapter.exportTrace();
+      assert(trace !== null, 'Trace exported');
+      assert(trace.actionHistory !== undefined, 'Action history exists');
+      assert(trace.actionHistory.length > 0, 'Actions recorded');
+      assert(trace.metadata !== undefined, 'Trace metadata exists');
+      
+      log('  → Actions recorded: ' + trace.actionHistory.length);
+      log('  → State snapshots: ' + trace.stateHistory.length);
+    }
+
+    async function test10_PathValidation() {
+      log('\n--- Test 10: Path Validation ---');
+      
+      var adapter = new HeadlessAdapter.HeadlessGameAdapter({ verbose: false });
+      adapter.init(GoneRogue);
+      adapter.startGame({});
+      
+      var gridData = adapter.getGrid();
+      var state = adapter.getState();
+      
+      // Try to find path from player to nearby point
+      var targetX = state.player.x + 5;
+      var targetY = state.player.y;
+      
+      var pathResult = HeadlessAdapter.MapParser.findPath(
+        gridData,
+        state.player.x,
+        state.player.y,
+        targetX,
+        targetY
+      );
+      
+      assert(pathResult !== null, 'Pathfinding executed');
+      assert(typeof pathResult.found === 'boolean', 'Path result has found flag');
+      
+      if (pathResult.found) {
+        assert(pathResult.path.length > 0, 'Path has steps');
+        log('  → Path found: ' + pathResult.path.length + ' steps');
+      } else {
+        log('  → No path exists (may be blocked by walls)');
+      }
+    }
+
+    function printSummary() {
+      log('\n========================================');
+      log('TEST SUMMARY');
+      log('========================================');
+      
+      var passed = testResults.filter(r => r.pass).length;
+      var failed = testResults.filter(r => !r.pass).length;
+      var total = testResults.length;
+      
+      log('Total Tests: ' + total);
+      log('Passed: ' + passed + ' (' + (passed / total * 100).toFixed(1) + '%)');
+      log('Failed: ' + failed);
+      log('========================================');
+      
+      if (failed === 0) {
+        log('\n✓ ALL TESTS PASSED', 'success');
+        log('\nHeadless integration is working correctly!');
+        log('Ready to integrate with agent testing system.');
+      } else {
+        log('\n✗ SOME TESTS FAILED', 'error');
+        log('\nPlease review failures above.');
+      }
+    }
+
+    function clearOutput() {
+      document.getElementById('output').textContent = '';
+      testResults = [];
+    }
+
+    // Auto-run on load
+    window.addEventListener('load', function() {
+      log('Headless Integration Test loaded');
+      log('Click "Run All Tests" to begin\n');
+    });
+  </script>
+</body>
+</html>
