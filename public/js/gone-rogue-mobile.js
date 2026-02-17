@@ -114,11 +114,16 @@ const GoneRogueMobile = (function () {
     _gridContainer.addEventListener('touchstart', _handleGridTouchStart, { passive: false });
     _gridContainer.addEventListener('click', _handleGridClick);
 
-    // Card swipe
+    // Card swipe (touch)
     if (_cardContainer) {
       _cardContainer.addEventListener('touchstart', _handleCardTouchStart, { passive: false });
       _cardContainer.addEventListener('touchmove', _handleCardTouchMove, { passive: false });
       _cardContainer.addEventListener('touchend', _handleCardTouchEnd, { passive: false });
+
+      // Card interaction (mouse - desktop)
+      _cardContainer.addEventListener('pointerdown', _handleCardPointerDown);
+      _cardContainer.addEventListener('pointermove', _handleCardPointerMove);
+      _cardContainer.addEventListener('pointerup', _handleCardPointerUp);
     }
   }
 
@@ -571,6 +576,117 @@ const GoneRogueMobile = (function () {
     if (overlay) {
       overlay.style.display = 'none';
     }
+  }
+
+  // ============================================================
+  // POINTER/MOUSE EVENT HANDLERS (Desktop card interaction)
+  // ============================================================
+
+  var _pointerStart = { x: 0, y: 0, time: 0 };
+  var _pointerCardIndex = -1;
+  var _isPointerDrag = false;
+
+  /**
+   * Handle pointer down on card (mouse/stylus)
+   */
+  function _handleCardPointerDown(e) {
+    // Only handle mouse/pen, not touch (touch uses separate handlers)
+    if (e.pointerType === 'touch') return;
+
+    var target = e.target.closest('.rogue-card');
+    if (!target) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    _pointerStart = {
+      x: e.clientX,
+      y: e.clientY,
+      time: Date.now()
+    };
+    _pointerCardIndex = parseInt(target.dataset.cardIndex);
+    _activeCard = target;
+    _isPointerDrag = false;
+
+    target.classList.add('card-dragging');
+    target.setPointerCapture(e.pointerId);
+  }
+
+  /**
+   * Handle pointer move (detect drag)
+   */
+  function _handleCardPointerMove(e) {
+    if (!_activeCard || e.pointerType === 'touch') return;
+
+    var deltaX = e.clientX - _pointerStart.x;
+    var deltaY = e.clientY - _pointerStart.y;
+    var distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    if (distance > 10) {
+      _isPointerDrag = true;
+      _activeCard.style.transform = 'translate(' + deltaX + 'px, ' + deltaY + 'px)';
+    }
+  }
+
+  /**
+   * Handle pointer up (click or drag-and-drop)
+   */
+  function _handleCardPointerUp(e) {
+    if (!_activeCard || e.pointerType === 'touch') return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    _activeCard.classList.remove('card-dragging');
+    _activeCard.style.transform = '';
+
+    if (!_isPointerDrag) {
+      // Simple click - show card info or quick-use
+      _handleCardClick(_pointerCardIndex);
+    } else {
+      // Drag - interpret direction as swipe
+      var deltaX = e.clientX - _pointerStart.x;
+      var deltaY = e.clientY - _pointerStart.y;
+
+      var direction = null;
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        direction = deltaX > 0 ? 'right' : 'left';
+      } else {
+        direction = deltaY > 0 ? 'down' : 'up';
+      }
+
+      if (direction && typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleCardSwipe === 'function') {
+        GoneRogue.handleCardSwipe(_pointerCardIndex, direction);
+      }
+    }
+
+    _activeCard = null;
+    _pointerCardIndex = -1;
+    _isPointerDrag = false;
+    _cardContainer.style.display = 'none';
+  }
+
+  /**
+   * Handle card click (select/use card)
+   */
+  function _handleCardClick(cardIndex) {
+    // Get the card
+    var cards = [];
+    if (typeof GAMESTATE !== 'undefined') {
+      var loose = GAMESTATE.getLooseInventory();
+      cards = loose.slice(0, 5);
+    }
+
+    if (cardIndex >= 0 && cardIndex < cards.length) {
+      var card = cards[cardIndex];
+
+      // Quick-use card (simulate swipe up)
+      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleCardSwipe === 'function') {
+        GoneRogue.handleCardSwipe(cardIndex, 'up');
+      }
+    }
+
+    _cardContainer.style.display = 'none';
   }
 
   return {
