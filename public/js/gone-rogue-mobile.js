@@ -68,8 +68,11 @@ const GoneRogueMobile = (function () {
   /**
    * Render grid as interactive HTML cells
    */
-  function renderGrid(grid, player, enemies, items, colorCycleTime) {
+  function renderGrid(grid, player, enemies, items, colorCycleTime, breakables, projectiles) {
     if (!_gridContainer || !grid) return;
+
+    breakables = breakables || [];
+    projectiles = projectiles || [];
 
     _gridContainer.innerHTML = '';
     _gridContainer.style.display = 'grid';
@@ -85,40 +88,35 @@ const GoneRogueMobile = (function () {
         cell.dataset.y = y;
 
         var tile = grid[y][x];
+        var enemy = enemies ? enemies.find(function(e) { return e.x === x && e.y === y && e.hp > 0; }) : null;
+        var projectile = projectiles.find(function(p) { return p.x === x && p.y === y; });
+        var breakable = breakables.find(function(b) { return b.x === x && b.y === y; });
+        var item = items ? items.find(function(i) { return i.x === x && i.y === y; }) : null;
 
-        // Check if player is here
         if (player && player.x === x && player.y === y) {
           cell.textContent = '@';
           cell.classList.add('cell-player');
-        }
-        // Check if enemy is here
-        else if (enemies) {
-          var enemy = enemies.find(function(e) { return e.x === x && e.y === y && e.hp > 0; });
-          if (enemy) {
-            cell.textContent = 'E';
-            cell.classList.add('cell-enemy');
-            
-            // Apply awareness color with cycling effect
-            _applyAwarenessColor(cell, enemy, colorCycleTime);
-            
-            // Add detection cone visualization
-            _addDetectionCone(cell, enemy);
-            
-            // Add sight cone overlay
-            _addSightConeOverlay(cell, enemy, grid);
-          } else {
-            _setCellTile(cell, tile);
-          }
-        }
-        // Check if item is here
-        else if (items) {
-          var item = items.find(function(i) { return i.x === x && i.y === y; });
-          if (item) {
-            cell.textContent = '*';
-            cell.classList.add('cell-item');
-          } else {
-            _setCellTile(cell, tile);
-          }
+        } else if (enemy) {
+          cell.textContent = 'E';
+          cell.classList.add('cell-enemy');
+          
+          // Apply awareness color with cycling effect
+          _applyAwarenessColor(cell, enemy, colorCycleTime);
+          
+          // Add detection cone visualization
+          _addDetectionCone(cell, enemy);
+          
+          // Add sight cone overlay
+          _addSightConeOverlay(cell, enemy, grid);
+        } else if (projectile) {
+          cell.textContent = projectile.glyph || '•';
+          cell.classList.add('cell-projectile');
+        } else if (breakable) {
+          cell.textContent = breakable.hp > 0 ? (breakable.glyph || '☐') : (breakable.destroyedGlyph || '░');
+          cell.classList.add(breakable.hp > 0 ? 'cell-breakable' : 'cell-breakable-broken');
+        } else if (item) {
+          cell.textContent = '*';
+          cell.classList.add('cell-item');
         } else {
           _setCellTile(cell, tile);
         }
@@ -250,6 +248,10 @@ const GoneRogueMobile = (function () {
       cell.classList.add('cell-wall');
     } else if (tile === '▓') {
       cell.classList.add('cell-cover');
+    } else if (tile === '☐') {
+      cell.classList.add('cell-breakable');
+    } else if (tile === '░') {
+      cell.classList.add('cell-breakable-broken');
     } else if (tile === '▼') {
       cell.classList.add('cell-exit');
     } else {

@@ -241,6 +241,67 @@
       'No enemy in STR combat when inactive'
     );
 
+    console.log('\n--- Test 11: Advantage states (ambush vs flanked) ---');
+
+    var p = GoneRogue.getPlayer();
+    var enemiesList = GoneRogue.getEnemies();
+
+    // Ambush: enemy unaware, adjacent, player initiates
+    var ambushEnemy = {
+      x: p.x + 1,
+      y: p.y,
+      hp: 5,
+      awareness: 0,
+      orientation: 'west',
+      sightRange: 2,
+      path: { type: 'stationary' }
+    };
+    enemiesList.push(ambushEnemy);
+    GoneRogue.process('e'); // Move into enemy tile to trigger STR
+
+    var ambushState = GoneRogue.getStrCombatState();
+    assert(
+      ambushState.advantage === 'ambush',
+      'Adjacent unaware enemy yields AMBUSH advantage'
+    );
+
+    // Exit combat for next check
+    if (GoneRogue.isStrCombatActive()) {
+      ambushState.enemy.hp = 0;
+      GoneRogue.process('flee');
+    }
+
+    // Flanked: enemy initiates from behind at melee
+    p = GoneRogue.getPlayer();
+    p.lastMoveDirection = 'south';
+    var flanker = {
+      x: p.x,
+      y: p.y - 1,
+      hp: 5,
+      awareness: 80,
+      orientation: 'south',
+      path: { type: 'stationary' }
+    };
+    enemiesList.push(flanker);
+    GoneRogue.getProjectiles().push({
+      x: flanker.x,
+      y: flanker.y,
+      dx: 0,
+      dy: 1,
+      glyph: '↓',
+      owner: 'enemy',
+      sourceEnemy: flanker,
+      range: 1,
+      power: 1
+    });
+    GoneRogue.stepProjectiles(1);
+
+    var flankedState = GoneRogue.getStrCombatState();
+    assert(
+      flankedState.advantage === 'flanked' || flankedState.advantage === 'disadvantaged',
+      'Enemy initiating from behind marks player flanked/disadvantaged'
+    );
+
     console.log('\n========================================');
     console.log('TEST SUMMARY');
     console.log('========================================');
