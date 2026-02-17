@@ -838,8 +838,18 @@ const GoneRogue = (function () {
 
         var w = Math.floor(Math.random() * (maxWidth - minSize + 1)) + minSize;
         var h = Math.floor(Math.random() * (maxHeight - minSize + 1)) + minSize;
+
+        // Ensure room dimensions fit within grid bounds with padding
+        w = Math.min(w, GRID_WIDTH - 4);
+        h = Math.min(h, GRID_HEIGHT - 4);
+
         var x = Math.floor(Math.random() * (GRID_WIDTH - w - 4)) + 2;
         var y = Math.floor(Math.random() * (GRID_HEIGHT - h - 4)) + 2;
+
+        // Additional validation: ensure room is fully within bounds
+        if (x + w >= GRID_WIDTH - 2 || y + h >= GRID_HEIGHT - 2) {
+          continue; // Skip this attempt
+        }
 
         // Check if room overlaps with existing rooms (including 1-2 tile spacing)
         var spacing = 2;
