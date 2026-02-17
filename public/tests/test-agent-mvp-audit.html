@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MVP Audit Agent Runner - EYES ONLY</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background: #0a0a0a;
+      color: #1cff9b;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #1cff9b;
+      text-align: center;
+      margin-bottom: 10px;
+      text-shadow: 0 0 10px rgba(28, 255, 155, 0.5);
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #ffaa00;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .controls {
+      background: #1a1a1a;
+      border: 2px solid #1cff9b;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 5px;
+    }
+
+    .control-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #1cff9b;
+    }
+
+    input, select, button {
+      font-family: 'Courier New', monospace;
+      padding: 8px 12px;
+      border: 1px solid #1cff9b;
+      background: #0a0a0a;
+      color: #1cff9b;
+      border-radius: 3px;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s;
+    }
+
+    button:hover:not(:disabled) {
+      background: #1cff9b;
+      color: #0a0a0a;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+
+    .status {
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .status.running {
+      background: rgba(255, 170, 0, 0.2);
+      border: 2px solid #ffaa00;
+      color: #ffaa00;
+    }
+
+    .status.complete {
+      background: rgba(28, 255, 155, 0.2);
+      border: 2px solid #1cff9b;
+      color: #1cff9b;
+    }
+
+    .status.error {
+      background: rgba(255, 28, 74, 0.2);
+      border: 2px solid #ff1c4a;
+      color: #ff1c4a;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 25px;
+      background: #1a1a1a;
+      border: 2px solid #1cff9b;
+      border-radius: 5px;
+      overflow: hidden;
+      margin-bottom: 15px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #1cff9b, #0d3f22);
+      width: 0%;
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #0a0a0a;
+      font-weight: bold;
+      font-size: 12px;
+    }
+
+    #output {
+      background: #000;
+      border: 2px solid #1cff9b;
+      padding: 20px;
+      min-height: 300px;
+      max-height: 500px;
+      overflow-y: auto;
+      border-radius: 5px;
+      white-space: pre-wrap;
+      font-size: 11px;
+      margin-bottom: 20px;
+    }
+
+    .mvp-report {
+      background: #1a1a1a;
+      border: 2px solid #ffaa00;
+      padding: 20px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+    }
+
+    .mvp-report h2 {
+      color: #ffaa00;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+
+    .report-section {
+      margin-bottom: 25px;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 5px;
+    }
+
+    .report-section h3 {
+      color: #1cff9b;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #1cff9b;
+      padding-bottom: 5px;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    .metric-card {
+      background: #0a0a0a;
+      border: 1px solid #1cff9b;
+      padding: 15px;
+      border-radius: 5px;
+    }
+
+    .metric-card.warning {
+      border-color: #ffaa00;
+    }
+
+    .metric-card.critical {
+      border-color: #ff1c4a;
+    }
+
+    .metric-card h4 {
+      color: #1cff9b;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    .metric-card.warning h4 {
+      color: #ffaa00;
+    }
+
+    .metric-card.critical h4 {
+      color: #ff1c4a;
+    }
+
+    .stat-line {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px solid #333;
+      font-size: 12px;
+    }
+
+    .stat-label {
+      color: #888;
+    }
+
+    .stat-value {
+      color: #1cff9b;
+      font-weight: bold;
+    }
+
+    .stat-value.warning {
+      color: #ffaa00;
+    }
+
+    .stat-value.critical {
+      color: #ff1c4a;
+    }
+
+    .stat-value.success {
+      color: #00ff00;
+    }
+
+    .score-badge {
+      display: inline-block;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-weight: bold;
+      margin: 5px;
+    }
+
+    .score-badge.pass {
+      background: rgba(0, 255, 0, 0.2);
+      border: 2px solid #00ff00;
+      color: #00ff00;
+    }
+
+    .score-badge.fail {
+      background: rgba(255, 0, 0, 0.2);
+      border: 2px solid #ff1c4a;
+      color: #ff1c4a;
+    }
+
+    .score-badge.warning {
+      background: rgba(255, 170, 0, 0.2);
+      border: 2px solid #ffaa00;
+      color: #ffaa00;
+    }
+
+    .issue-list {
+      margin-top: 10px;
+    }
+
+    .issue-item {
+      padding: 8px;
+      margin: 5px 0;
+      border-left: 3px solid;
+      background: rgba(0, 0, 0, 0.3);
+      font-size: 12px;
+    }
+
+    .issue-item.critical {
+      border-color: #ff1c4a;
+      color: #ff1c4a;
+    }
+
+    .issue-item.warning {
+      border-color: #ffaa00;
+      color: #ffaa00;
+    }
+
+    .issue-item.recommendation {
+      border-color: #1cff9b;
+      color: #1cff9b;
+    }
+
+    .persona-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .persona-card {
+      background: #0a0a0a;
+      border: 1px solid #666;
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 11px;
+    }
+
+    .persona-card .persona-name {
+      color: #ffaa00;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .readiness-indicator {
+      text-align: center;
+      padding: 30px;
+      margin: 20px 0;
+      border-radius: 10px;
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .readiness-indicator.pass {
+      background: rgba(0, 255, 0, 0.1);
+      border: 3px solid #00ff00;
+      color: #00ff00;
+    }
+
+    .readiness-indicator.fail {
+      background: rgba(255, 0, 0, 0.1);
+      border: 3px solid #ff1c4a;
+      color: #ff1c4a;
+    }
+
+    .info-box {
+      background: rgba(28, 255, 155, 0.1);
+      border: 1px solid #1cff9b;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 5px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎯 MVP AUDIT AGENT RUNNER</h1>
+    <div class="subtitle">Comprehensive UX & Balance Testing for MVP Readiness</div>
+
+    <div class="info-box">
+      <strong>🔍 What This Tests:</strong> Lighting utility, ground effects engagement, STR combat balance, 
+      pathfinding quality, and economy balance. Generates a pass/fail MVP readiness report with actionable recommendations.
+    </div>
+
+    <div class="controls">
+      <h2>Audit Parameters</h2>
+
+      <div class="control-group">
+        <label for="numRuns">Number of Runs (Recommended: 100+):</label>
+        <input type="number" id="numRuns" min="10" max="1000" value="100">
+        <small style="color: #888; margin-left: 10px;">Higher = more statistically significant</small>
+      </div>
+
+      <div class="control-group">
+        <label for="maxFloor">Max Floor:</label>
+        <input type="number" id="maxFloor" min="10" max="50" value="30">
+      </div>
+
+      <div class="control-group">
+        <label>
+          <input type="checkbox" id="enableElites" checked>
+          Enable Elite Enemies
+        </label>
+      </div>
+
+      <div class="control-group">
+        <label>
+          <input type="checkbox" id="trackUX" checked>
+          Track UX Metrics (Recommended)
+        </label>
+      </div>
+
+      <div class="control-group">
+        <label>
+          <input type="checkbox" id="verbose">
+          Verbose Output (slows down execution)
+        </label>
+      </div>
+
+      <div class="button-group">
+        <button id="runBtn" onclick="runAudit()">▶️ Run MVP Audit</button>
+        <button id="exportCSV" onclick="exportCSV()" disabled>📊 Export CSV</button>
+        <button id="exportJSON" onclick="exportJSON()" disabled>📄 Export JSON</button>
+        <button onclick="clearOutput()">🗑️ Clear</button>
+      </div>
+    </div>
+
+    <div id="statusContainer"></div>
+    <div class="progress-bar" id="progressBar" style="display: none;">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <div id="mvpReportContainer"></div>
+    <div id="output"></div>
+  </div>
+
+  <script src="agent-mvp-audit.js"></script>
+  <script>
+    var currentEngine = null;
+    var currentReport = null;
+
+    // Redirect console.log to output div
+    var originalLog = console.log;
+    console.log = function(...args) {
+      originalLog.apply(console, args);
+      var output = document.getElementById('output');
+      if (output) {
+        output.textContent += args.join(' ') + '\n';
+        output.scrollTop = output.scrollHeight;
+      }
+    };
+
+    async function runAudit() {
+      var numRuns = parseInt(document.getElementById('numRuns').value);
+      var maxFloor = parseInt(document.getElementById('maxFloor').value);
+      var enableElites = document.getElementById('enableElites').checked;
+      var trackUX = document.getElementById('trackUX').checked;
+      var verbose = document.getElementById('verbose').checked;
+
+      // Clear previous results
+      document.getElementById('output').textContent = '';
+      document.getElementById('mvpReportContainer').innerHTML = '';
+      document.getElementById('statusContainer').innerHTML = '';
+
+      // Show status
+      showStatus('running', `Running ${numRuns} audit simulations...`);
+      showProgress(0);
+
+      // Disable buttons
+      document.getElementById('runBtn').disabled = true;
+      document.getElementById('exportCSV').disabled = true;
+      document.getElementById('exportJSON').disabled = true;
+
+      try {
+        // Create engine
+        currentEngine = new MVPAuditEngine.MVPAuditEngine({
+          verbose: verbose,
+          maxFloor: maxFloor,
+          enableElites: enableElites,
+          trackUX: trackUX
+        });
+
+        // Run audit
+        currentReport = await currentEngine.runAudit(numRuns);
+
+        // Calculate elapsed time
+        var elapsedSeconds = (Date.now() - performance.now()) / 1000;
+        var actualElapsed = currentReport.results.reduce((sum, r) => sum + r.duration, 0) / 1000;
+
+        // Show completion
+        showStatus('complete', `✓ Audit Complete! ${numRuns} runs executed in ${actualElapsed.toFixed(1)}s`);
+        showProgress(100);
+
+        // Display MVP report
+        displayMVPReport(currentReport);
+
+        // Enable export buttons
+        document.getElementById('exportCSV').disabled = false;
+        document.getElementById('exportJSON').disabled = false;
+
+      } catch (error) {
+        showStatus('error', `✗ Error: ${error.message}`);
+        console.error('Audit failed:', error);
+      } finally {
+        // Re-enable run button
+        document.getElementById('runBtn').disabled = false;
+      }
+    }
+
+    function displayMVPReport(report) {
+      var container = document.getElementById('mvpReportContainer');
+      var html = '<div class="mvp-report">';
+      
+      html += '<h2>📋 MVP READINESS AUDIT REPORT</h2>';
+
+      // Overall Readiness Indicator
+      var readinessClass = report.mvpReadiness.passed ? 'pass' : 'fail';
+      var readinessText = report.mvpReadiness.passed ? '✓ MVP READY' : '✗ NOT MVP READY';
+      html += `<div class="readiness-indicator ${readinessClass}">${readinessText}<br><small>Overall Score: ${report.mvpReadiness.overallScore}/100</small></div>`;
+
+      // Summary Stats
+      html += '<div class="report-section">';
+      html += '<h3>📊 Summary Statistics</h3>';
+      html += '<div class="metric-grid">';
+      
+      html += `<div class="metric-card">
+        <h4>Execution</h4>
+        <div class="stat-line"><span class="stat-label">Total Runs:</span><span class="stat-value">${report.summary.totalRuns}</span></div>
+        <div class="stat-line"><span class="stat-label">Survived:</span><span class="stat-value success">${report.summary.survived}</span></div>
+        <div class="stat-line"><span class="stat-label">Died:</span><span class="stat-value warning">${report.summary.died}</span></div>
+        <div class="stat-line"><span class="stat-label">Survival Rate:</span><span class="stat-value">${report.summary.survivalRate}%</span></div>
+      </div>`;
+
+      html += `<div class="metric-card">
+        <h4>Performance</h4>
+        <div class="stat-line"><span class="stat-label">Avg Final Floor:</span><span class="stat-value">${report.summary.avgFinalFloor.toFixed(1)}</span></div>
+        <div class="stat-line"><span class="stat-label">Avg Credits:</span><span class="stat-value">${report.summary.avgFinalCredits.toFixed(0)}</span></div>
+      </div>`;
+      
+      html += '</div></div>';
+
+      // UX Audit Scores
+      html += '<div class="report-section">';
+      html += '<h3>🎮 UX System Scores</h3>';
+      html += '<div class="metric-grid">';
+
+      // Lighting
+      var lightingClass = report.uxAudit.lighting.passed ? '' : 'warning';
+      html += `<div class="metric-card ${lightingClass}">
+        <h4>💡 Lighting System</h4>
+        <div class="stat-line"><span class="stat-label">Score:</span><span class="stat-value">${report.uxAudit.lighting.score}/100</span></div>
+        <div class="stat-line"><span class="stat-label">Utilization:</span><span class="stat-value">${report.uxAudit.lighting.utilizationRate}%</span></div>
+        <div class="stat-line"><span class="stat-label">Status:</span><span class="stat-value ${report.uxAudit.lighting.passed ? 'success' : 'warning'}">${report.uxAudit.lighting.passed ? 'PASS' : 'NEEDS WORK'}</span></div>
+      </div>`;
+
+      // Ground Effects
+      var groundClass = report.uxAudit.groundEffects.passed ? '' : 'warning';
+      html += `<div class="metric-card ${groundClass}">
+        <h4>🌋 Ground Effects</h4>
+        <div class="stat-line"><span class="stat-label">Score:</span><span class="stat-value">${report.uxAudit.groundEffects.score}/100</span></div>
+        <div class="stat-line"><span class="stat-label">Avg Damage/Run:</span><span class="stat-value">${(report.uxAudit.groundEffects.damageDealt / report.summary.totalRuns).toFixed(1)}</span></div>
+        <div class="stat-line"><span class="stat-label">Status:</span><span class="stat-value ${report.uxAudit.groundEffects.passed ? 'success' : 'warning'}">${report.uxAudit.groundEffects.passed ? 'PASS' : 'NEEDS WORK'}</span></div>
+      </div>`;
+
+      // Combat
+      var combatClass = report.uxAudit.combat.passed ? '' : 'warning';
+      html += `<div class="metric-card ${combatClass}">
+        <h4>⚔️ STR Combat</h4>
+        <div class="stat-line"><span class="stat-label">Score:</span><span class="stat-value">${report.uxAudit.combat.score}/100</span></div>
+        <div class="stat-line"><span class="stat-label">Win Rate:</span><span class="stat-value">${report.uxAudit.combat.winRate}%</span></div>
+        <div class="stat-line"><span class="stat-label">Total Combats:</span><span class="stat-value">${report.uxAudit.combat.totalCombats}</span></div>
+        <div class="stat-line"><span class="stat-label">Status:</span><span class="stat-value ${report.uxAudit.combat.passed ? 'success' : 'warning'}">${report.uxAudit.combat.passed ? 'PASS' : 'NEEDS WORK'}</span></div>
+      </div>`;
+
+      // Pathfinding
+      var pathClass = report.uxAudit.pathfinding.passed ? '' : 'critical';
+      html += `<div class="metric-card ${pathClass}">
+        <h4>🗺️ Pathfinding</h4>
+        <div class="stat-line"><span class="stat-label">Score:</span><span class="stat-value">${report.uxAudit.pathfinding.score}/100</span></div>
+        <div class="stat-line"><span class="stat-label">Stuck Count:</span><span class="stat-value ${report.uxAudit.pathfinding.stuckCount > 0 ? 'critical' : 'success'}">${report.uxAudit.pathfinding.stuckCount}</span></div>
+        <div class="stat-line"><span class="stat-label">Status:</span><span class="stat-value ${report.uxAudit.pathfinding.passed ? 'success' : 'critical'}">${report.uxAudit.pathfinding.passed ? 'PASS' : 'CRITICAL'}</span></div>
+      </div>`;
+
+      // Economy
+      var economyClass = report.uxAudit.economy.passed ? '' : 'warning';
+      html += `<div class="metric-card ${economyClass}">
+        <h4>💰 Economy</h4>
+        <div class="stat-line"><span class="stat-label">Score:</span><span class="stat-value">${report.uxAudit.economy.score}/100</span></div>
+        <div class="stat-line"><span class="stat-label">Avg Credits/Floor:</span><span class="stat-value">${report.uxAudit.economy.avgCreditsPerFloor}</span></div>
+        <div class="stat-line"><span class="stat-label">Status:</span><span class="stat-value ${report.uxAudit.economy.passed ? 'success' : 'warning'}">${report.uxAudit.economy.passed ? 'PASS' : 'NEEDS WORK'}</span></div>
+      </div>`;
+
+      html += '</div></div>';
+
+      // Critical Issues
+      if (report.mvpReadiness.criticalIssues.length > 0) {
+        html += '<div class="report-section">';
+        html += '<h3>🚨 Critical Issues (MVP Blockers)</h3>';
+        html += '<div class="issue-list">';
+        report.mvpReadiness.criticalIssues.forEach(issue => {
+          html += `<div class="issue-item critical">
+            <strong>${issue.system}:</strong> ${issue.issue}<br>
+            <small>→ ${issue.recommendation}</small>
+          </div>`;
+        });
+        html += '</div></div>';
+      }
+
+      // Warnings
+      if (report.mvpReadiness.warnings.length > 0) {
+        html += '<div class="report-section">';
+        html += '<h3>⚠️ Warnings</h3>';
+        html += '<div class="issue-list">';
+        report.mvpReadiness.warnings.forEach(warning => {
+          html += `<div class="issue-item warning">
+            <strong>${warning.system}:</strong> ${warning.issue}<br>
+            <small>→ ${warning.recommendation}</small>
+          </div>`;
+        });
+        html += '</div></div>';
+      }
+
+      // Recommendations
+      html += '<div class="report-section">';
+      html += '<h3>💡 Recommendations</h3>';
+      html += '<div class="issue-list">';
+      report.mvpReadiness.recommendations.forEach(rec => {
+        html += `<div class="issue-item recommendation">→ ${rec}</div>`;
+      });
+      html += '</div></div>';
+
+      // Persona Breakdown
+      html += '<div class="report-section">';
+      html += '<h3>👥 Persona Performance</h3>';
+      html += '<div class="persona-grid">';
+      Object.keys(report.personas).forEach(key => {
+        var p = report.personas[key];
+        html += `<div class="persona-card">
+          <div class="persona-name">${key}</div>
+          <div class="stat-line"><span class="stat-label">Runs:</span><span class="stat-value">${p.runs}</span></div>
+          <div class="stat-line"><span class="stat-label">Survival:</span><span class="stat-value">${p.survivalRate}%</span></div>
+          <div class="stat-line"><span class="stat-label">Avg Floor:</span><span class="stat-value">${p.avgFinalFloor}</span></div>
+          <div class="stat-line"><span class="stat-label">Avg Credits:</span><span class="stat-value">${p.avgFinalCredits}</span></div>
+        </div>`;
+      });
+      html += '</div></div>';
+
+      html += '</div>';
+      container.innerHTML = html;
+    }
+
+    function showStatus(type, message) {
+      var statusContainer = document.getElementById('statusContainer');
+      statusContainer.innerHTML = `<div class="status ${type}">${message}</div>`;
+    }
+
+    function showProgress(percent) {
+      var progressBar = document.getElementById('progressBar');
+      var progressFill = document.getElementById('progressFill');
+      progressBar.style.display = 'block';
+      progressFill.style.width = percent + '%';
+      progressFill.textContent = percent + '%';
+    }
+
+    function exportCSV() {
+      if (!currentEngine) return;
+      
+      var csv = currentEngine.exportToCSV();
+      downloadFile('mvp-audit-results.csv', csv, 'text/csv');
+      showStatus('complete', '✓ CSV exported successfully');
+    }
+
+    function exportJSON() {
+      if (!currentEngine) return;
+      
+      var json = currentEngine.exportToJSON();
+      downloadFile('mvp-audit-results.json', json, 'application/json');
+      showStatus('complete', '✓ JSON exported successfully');
+    }
+
+    function downloadFile(filename, content, type) {
+      var blob = new Blob([content], { type: type });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function clearOutput() {
+      document.getElementById('output').textContent = '';
+      document.getElementById('mvpReportContainer').innerHTML = '';
+      document.getElementById('statusContainer').innerHTML = '';
+      document.getElementById('progressBar').style.display = 'none';
+    }
+
+    // Initialize
+    console.log('MVP Audit Agent Runner initialized');
+    console.log('Configure parameters and click "Run MVP Audit" to begin');
+  </script>
+</body>
+</html>

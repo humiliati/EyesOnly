@@ -6,6 +6,10 @@
 const GoneRogueMobile = (function () {
   'use strict';
 
+  // Constants
+  var DOUBLE_TAP_THRESHOLD_MS = 300;
+  var CLICK_FEEDBACK_DURATION_MS = 400;
+
   var _gridContainer = null;
   var _cardContainer = null;
   var _inventoryContainer = null; // New: persistent inventory display
@@ -121,6 +125,7 @@ const GoneRogueMobile = (function () {
 
     // Grid tap/double-tap
     _gridContainer.addEventListener('touchstart', _handleGridTouchStart, { passive: false });
+    _gridContainer.addEventListener('touchend', _handleGridTouchEnd, { passive: false });
     _gridContainer.addEventListener('click', _handleGridClick);
 
     // Card swipe (touch)
@@ -139,7 +144,7 @@ const GoneRogueMobile = (function () {
   /**
    * Render grid as interactive HTML cells
    */
-  function renderGrid(grid, player, enemies, items, colorCycleTime, breakables, projectiles, alertLevel, strCombatActive) {
+  function renderGrid(grid, player, enemies, items, colorCycleTime, breakables, projectiles, alertLevel, strCombatActive, muzzleFlash, impactEffects) {
     if (!_gridContainer || !grid) return;
 
     breakables = breakables || [];
@@ -180,6 +185,12 @@ const GoneRogueMobile = (function () {
         var projectile = projectiles.find(function(p) { return p.x === x && p.y === y; });
         var breakable = breakables.find(function(b) { return b.x === x && b.y === y; });
         var item = items ? items.find(function(i) { return i.x === x && i.y === y; }) : null;
+
+        // Check for muzzle flash at this position
+        var hasMuzzleFlash = muzzleFlash && muzzleFlash.x === x && muzzleFlash.y === y;
+        
+        // Check for impact effects at this position
+        var impact = impactEffects ? impactEffects.find(function(e) { return e.x === x && e.y === y; }) : null;
 
         if (player && player.x === x && player.y === y) {
           cell.textContent = '🥷';
@@ -235,6 +246,11 @@ const GoneRogueMobile = (function () {
             if (gunChar) {
               cell.appendChild(gunSpan);
             }
+          }
+
+          // Add muzzle flash effect
+          if (hasMuzzleFlash) {
+            cell.classList.add('cell-muzzle-flash');
           }
         } else if (enemy) {
           // Check if this is an Elite enemy
@@ -323,10 +339,18 @@ const GoneRogueMobile = (function () {
             cell.classList.add('lit-very-bright');
             cell.setAttribute('data-light-level', '6');
           }
+        }
 
-          // Add cell-darkness class for visual overlay effect
-          if (intensity < 0.6) {
-            cell.classList.add('cell-darkness');
+        // Add impact effect classes
+        if (impact) {
+          if (impact.type === 'breakable') {
+            cell.classList.add('cell-impact-breakable');
+          } else if (impact.type === 'enemy') {
+            cell.classList.add('cell-impact-enemy');
+          } else if (impact.type === 'wall') {
+            cell.classList.add('cell-impact-wall');
+          } else if (impact.type === 'miss') {
+            cell.classList.add('cell-impact-miss');
           }
         }
 
@@ -478,6 +502,48 @@ const GoneRogueMobile = (function () {
   }
 
   /**
+   * Show click/tap feedback animation at coordinates
+   * @param {number} clientX - X coordinate in viewport
+   * @param {number} clientY - Y coordinate in viewport
+   */
+  function _showClickFeedback(clientX, clientY) {
+    var dot = document.createElement('div');
+    dot.className = 'click-feedback-dot';
+    dot.style.left = clientX + 'px';
+    dot.style.top = clientY + 'px';
+    document.body.appendChild(dot);
+
+    // Remove after animation completes
+    setTimeout(function() {
+      if (dot.parentNode) {
+        dot.parentNode.removeChild(dot);
+      }
+    }, CLICK_FEEDBACK_DURATION_MS);
+  }
+
+  /**
+   * Process grid input (shared by touch and click handlers)
+   * @param {number} x - Grid X coordinate
+   * @param {number} y - Grid Y coordinate
+   * @param {boolean} runMode - Whether to run to target
+   */
+  function _processGridInput(x, y, runMode) {
+    // Check if tapping self (show card fan)
+    if (typeof GoneRogue !== 'undefined') {
+      var player = GoneRogue.getPlayer ? GoneRogue.getPlayer() : null;
+      if (player && player.x === x && player.y === y) {
+        _showCardFan();
+        return;
+      }
+    }
+
+    // Send tap-to-move command
+    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleTapMove === 'function') {
+      GoneRogue.handleTapMove(x, y, runMode);
+    }
+  }
+
+  /**
    * Handle grid touch start (for double-tap detection)
    */
   function _handleGridTouchStart(e) {
@@ -492,8 +558,8 @@ const GoneRogueMobile = (function () {
     var now = Date.now();
     var cellKey = target.dataset.x + ',' + target.dataset.y;
 
-    // Check for double-tap (within 300ms)
-    if (_lastTapCell === cellKey && (now - _lastTapTime) < 300) {
+    // Check for double-tap (within threshold)
+    if (_lastTapCell === cellKey && (now - _lastTapTime) < DOUBLE_TAP_THRESHOLD_MS) {
       _runMode = true;
       target.classList.add('run-mode-flash');
       setTimeout(function() {
@@ -508,6 +574,27 @@ const GoneRogueMobile = (function () {
   }
 
   /**
+   * Handle grid touch end (execute movement)
+   */
+  function _handleGridTouchEnd(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    var touch = e.changedTouches[0];
+    var target = document.elementFromPoint(touch.clientX, touch.clientY);
+
+    if (!target || !target.classList.contains('rogue-cell')) return;
+
+    // Show click feedback at touch point
+    _showClickFeedback(touch.clientX, touch.clientY);
+
+    var x = parseInt(target.dataset.x);
+    var y = parseInt(target.dataset.y);
+
+    _processGridInput(x, y, _runMode);
+  }
+
+  /**
    * Handle grid click/tap
    */
   function _handleGridClick(e) {
@@ -517,22 +604,30 @@ const GoneRogueMobile = (function () {
     e.preventDefault(); // Prevent default click behavior
     e.stopPropagation(); // Prevent bubbling to document-level handlers
 
+    // Show click feedback at mouse/pointer position
+    _showClickFeedback(e.clientX, e.clientY);
+
     var x = parseInt(target.dataset.x);
     var y = parseInt(target.dataset.y);
 
-    // Check if tapping self (show card fan)
-    if (typeof GoneRogue !== 'undefined') {
-      var player = GoneRogue.getPlayer ? GoneRogue.getPlayer() : null;
-      if (player && player.x === x && player.y === y) {
-        _showCardFan();
-        return;
-      }
+    var now = Date.now();
+    var cellKey = x + ',' + y;
+
+    // Check for double-click on desktop (within threshold)
+    if (_lastTapCell === cellKey && (now - _lastTapTime) < DOUBLE_TAP_THRESHOLD_MS) {
+      _runMode = true;
+      target.classList.add('run-mode-flash');
+      setTimeout(function() {
+        target.classList.remove('run-mode-flash');
+      }, 200);
+    } else {
+      _runMode = false;
     }
 
-    // Send tap-to-move command
-    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleTapMove === 'function') {
-      GoneRogue.handleTapMove(x, y, _runMode);
-    }
+    _lastTapTime = now;
+    _lastTapCell = cellKey;
+
+    _processGridInput(x, y, _runMode);
   }
 
   /**
@@ -1203,6 +1298,11 @@ const GoneRogueMobile = (function () {
     if (typeof window.appendLine === 'function') {
       window.appendLine('⚡ EQUIPPED: ' + item.emoji + ' ' + item.name);
     }
+
+    // Tooltip: Item equipped
+    if (typeof TooltipSystem !== 'undefined') {
+      TooltipSystem.showAction('item-equip', { name: item.name });
+    }
   }
 
   function _unequipActiveItem() {
@@ -1230,6 +1330,11 @@ const GoneRogueMobile = (function () {
     // Show feedback message
     if (typeof window.appendLine === 'function') {
       window.appendLine('⚠ UNEQUIPPED: ' + activeItem.emoji + ' ' + activeItem.name);
+    }
+
+    // Tooltip: Item unequipped
+    if (typeof TooltipSystem !== 'undefined') {
+      TooltipSystem.showAction('item-unequip', { name: activeItem.name });
     }
   }
 

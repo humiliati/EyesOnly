@@ -44,7 +44,52 @@
 
     switch (action) {
       case 'help':
-        if (isInStreetChronicles) {
+        // Check if in Gone Rogue mode - offer agent takeover
+        var isInGoneRogue = typeof GoneRogue !== 'undefined' && GoneRogue.isActive();
+        
+        if (isInGoneRogue) {
+          // Check if agent is already active
+          if (typeof AgentIntegration !== 'undefined' && AgentIntegration.isActive()) {
+            // Agent is active - show control options
+            printToTerminal([
+              '',
+              'AGENT CONTROL OPTIONS:',
+              '————————————————————————————————',
+              'Type one of the following commands:',
+              '',
+              'AGENT STOP     - Stop agent and return control',
+              'AGENT PAUSE    - Pause/resume agent',
+              'AGENT REPORT   - View current metrics',
+              'AGENT MODE     - Show current mode (natural/developer)',
+              '',
+              'Or press BACK button to exit',
+              ''
+            ]);
+          } else {
+            // Offer agent takeover
+            printToTerminal([
+              '',
+              'MOK AGENT ASSISTANCE AVAILABLE',
+              '————————————————————————————————',
+              '',
+              '[MOK]: "I can take control and play for you."',
+              '[MOK]: "This will generate an MVP audit report."',
+              '',
+              'AGENT MODES:',
+              '  AGENT NATURAL    - Natural human-like play',
+              '                     Explores thoroughly, makes',
+              '                     realistic decisions',
+              '',
+              '  AGENT DEVELOPER  - Fast efficient testing',
+              '                     Optimal pathfinding, quick',
+              '                     completion for validation',
+              '',
+              'Type AGENT NATURAL or AGENT DEVELOPER to begin',
+              'Or press BACK to continue playing manually',
+              ''
+            ]);
+          }
+        } else if (isInStreetChronicles) {
           // Street-Chronicles help
           simulateCommand('help');
         } else {

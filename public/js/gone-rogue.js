@@ -41,6 +41,8 @@ const GoneRogue = (function () {
   var _floor = 1;
   var _alertLevel = 'safe'; // safe, caution, danger
   var _useInteractiveGrid = false; // Use interactive DOM grid instead of text-only
+  var _muzzleFlash = null; // Track muzzle flash {x, y, time}
+  var _impactEffects = []; // Track impact effects {x, y, type, time}
 
   // Game loop state
   var _gameLoopActive = false;
@@ -401,8 +403,17 @@ const GoneRogue = (function () {
       return { lines: [''], prompt: getPrompt(), stayActive: true };
     }
 
+    // AGENT commands - check for agent control
+    if (cmd.indexOf('agent') === 0) {
+      return _handleAgentCommand(cmd);
+    }
+
     // FLEE command during STR combat
     if (cmd === 'flee' && _strCombatActive) {
+      // Tooltip: Fleeing combat
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showAction('flee');
+      }
       return _exitStrCombat('fled');
     }
 
@@ -1539,7 +1550,7 @@ const GoneRogue = (function () {
    */
   function _updateMobileGrid() {
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles, _alertLevel, _strCombatActive);
+      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles, _alertLevel, _strCombatActive, _muzzleFlash, _impactEffects);
     }
   }
 
@@ -1615,6 +1626,11 @@ const GoneRogue = (function () {
       }
       // Remove currency from floor
       _currencies = _currencies.filter(function(c) { return c.x !== newX || c.y !== newY; });
+
+      // Tooltip: Currency pickup
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showAction('currency-pickup', { amount: cryptoPickup.amount });
+      }
     }
 
     // Apply tile effects
@@ -1633,9 +1649,19 @@ const GoneRogue = (function () {
           _increaseEnemyAwareness(enemy, 15); // Significant awareness increase from noise
         }
       });
+
+      // Tooltip: Running
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showAction('move', { run: true });
+      }
     } else {
       _player.detection = Math.max(0, _player.detection - 0.5);
       _updateAlertLevel();
+
+      // Tooltip: Walking
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showAction('move', { run: false });
+      }
     }
 
     // Check for enemy collision - trigger STR combat
@@ -1730,6 +1756,15 @@ const GoneRogue = (function () {
 
     // Remove item from floor
     _items = _items.filter(function(i) { return i !== item; });
+
+    // Tooltip: Item/card pickup (all items use card structure)
+    if (typeof TooltipSystem !== 'undefined') {
+      if (item.card.type === 'attack' || item.card.type === 'support') {
+        TooltipSystem.showAction('card-pickup', { name: item.card.name });
+      } else {
+        TooltipSystem.showAction('item-pickup', { name: item.card.name });
+      }
+    }
 
     return {
       lines: ['PICKED UP: ' + item.card.emoji + ' ' + item.card.name + ' [' + item.card.qualityName + ']', ''].concat(_renderGrid()),
@@ -3100,6 +3135,18 @@ const GoneRogue = (function () {
       owner: 'player'
     };
 
+    // Add muzzle flash at player position
+    _muzzleFlash = {
+      x: _player.x,
+      y: _player.y,
+      time: Date.now()
+    };
+
+    // Auto-clear muzzle flash after 300ms
+    setTimeout(function() {
+      _muzzleFlash = null;
+    }, 300);
+
     _projectiles.push(projectile);
     var action = _updateProjectiles(0, 1);
     _saveState();
@@ -3174,23 +3221,36 @@ const GoneRogue = (function () {
     var nextX = projectile.x + projectile.dx;
     var nextY = projectile.y + projectile.dy;
 
-    if (!_isInsideBounds(nextX, nextY)) return { alive: false };
+    if (!_isInsideBounds(nextX, nextY)) {
+      // Miss - went out of bounds
+      _addImpactEffect(projectile.x, projectile.y, 'miss');
+      return { alive: false };
+    }
 
     var tile = _grid[nextY][nextX];
-    if (tile === TILES.WALL) return { alive: false };
+    if (tile === TILES.WALL) {
+      // Hit wall
+      _addImpactEffect(nextX, nextY, 'wall');
+      return { alive: false };
+    }
 
     var breakable = _getBreakableAt(nextX, nextY);
     if (breakable && breakable.hp > 0) {
       _damageBreakable(breakable, projectile.power || 1);
+      // Hit breakable
+      _addImpactEffect(nextX, nextY, 'breakable');
       return { alive: false };
     }
 
     var enemy = _enemies.find(function(e) { return e.x === nextX && e.y === nextY && e.hp > 0; });
     if (enemy) {
       if (projectile.owner === 'player') {
+        // Hit enemy
+        _addImpactEffect(nextX, nextY, 'enemy');
         return { alive: false, action: _enterStrCombat(enemy, 'player_attack', projectile.card) };
       }
       enemy.hp = Math.max(0, enemy.hp - (projectile.power || 1));
+      _addImpactEffect(nextX, nextY, 'enemy');
       return { alive: false };
     }
 
@@ -3209,7 +3269,35 @@ const GoneRogue = (function () {
     projectile.y = nextY;
     projectile.range = (projectile.range || 1) - 1;
 
-    return { alive: projectile.range > 0 };
+    // Check if projectile expired (ran out of range)
+    if (projectile.range <= 0) {
+      // Miss - expired without hitting anything
+      _addImpactEffect(nextX, nextY, 'miss');
+      return { alive: false };
+    }
+
+    return { alive: true };
+  }
+
+  /**
+   * Add impact effect for rendering
+   */
+  function _addImpactEffect(x, y, type) {
+    var effect = {
+      x: x,
+      y: y,
+      type: type, // 'breakable', 'enemy', 'wall', 'miss'
+      time: Date.now()
+    };
+    _impactEffects.push(effect);
+
+    // Auto-clear this specific impact effect after 400ms
+    setTimeout(function() {
+      var index = _impactEffects.indexOf(effect);
+      if (index > -1) {
+        _impactEffects.splice(index, 1);
+      }
+    }, 400);
   }
 
   function stepProjectiles(steps) {
@@ -3321,6 +3409,12 @@ const GoneRogue = (function () {
 
     // Execute card action based on swipe direction
     var action = _getCardAction(card, direction);
+
+    // Tooltip: Card deployment (if valid action)
+    if (action.type !== 'none' && action.type !== 'discard' && typeof TooltipSystem !== 'undefined') {
+      TooltipSystem.showAction('card-deploy', { name: card.name });
+    }
+
     var result = _executeCardAction(action);
 
     // Update mobile UI
@@ -3415,6 +3509,11 @@ const GoneRogue = (function () {
    * Perform attack with card
    */
   function _performAttack(card) {
+    // Tooltip: Attacking
+    if (typeof TooltipSystem !== 'undefined') {
+      TooltipSystem.showAction('attack');
+    }
+
     // If already in STR combat, use simultaneous resolution
     if (_strCombatActive) {
       var enemyCard = _getEnemyAICard();
@@ -3572,6 +3671,11 @@ const GoneRogue = (function () {
     _strCombatEnemy = enemy;
     _strCombatRound = 0;
     _strCombatLog = [];
+
+    // Tooltip: Engaging enemy
+    if (typeof TooltipSystem !== 'undefined') {
+      TooltipSystem.showAction('combat-enter');
+    }
 
     // Calculate advantage state
     _strCombatAdvantage = _calculateAdvantage(_player, enemy, trigger);
@@ -5132,8 +5236,500 @@ const GoneRogue = (function () {
     }
   }
 
+  /**
+   * Handle agent control commands
+   */
+  function _handleAgentCommand(cmd) {
+    if (typeof AgentIntegration === 'undefined') {
+      return {
+        lines: [
+          '',
+          'AGENT SYSTEM NOT AVAILABLE',
+          'Required modules not loaded',
+          ''
+        ],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var parts = cmd.split(' ');
+    var subCommand = parts[1] ? parts[1].toLowerCase() : '';
+
+    if (subCommand === 'natural') {
+      // Start agent in natural play mode
+      var started = AgentIntegration.startAgentTakeover('natural');
+      if (started) {
+        return {
+          lines: [
+            '',
+            '🤖 MOK AGENT ACTIVATED - NATURAL MODE',
+            '',
+            '[MOK]: "Control transferred. Beginning natural play protocol."',
+            '[MOK]: "I will explore thoroughly and generate MVP report."',
+            '',
+            'The agent will now play for you.',
+            'Watch the MOK interjection field for real-time updates.',
+            '',
+            'Type AGENT STOP to return control',
+            ''
+          ],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      } else {
+        return {
+          lines: ['', 'Failed to start agent', ''],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+    }
+
+    else if (subCommand === 'developer' || subCommand === 'dev') {
+      // Start agent in developer mode
+      var started = AgentIntegration.startAgentTakeover('developer');
+      if (started) {
+        return {
+          lines: [
+            '',
+            '🤖 DEVELOPER AGENT ACTIVATED - FAST MODE',
+            '',
+            '[DEV]: "Control transferred. Running optimal pathfinding."',
+            '[DEV]: "This mode skips exploration for quick testing."',
+            '',
+            'The agent will now play for you.',
+            'This mode is significantly faster than natural play.',
+            '',
+            'Type AGENT STOP to return control',
+            ''
+          ],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      } else {
+        return {
+          lines: ['', 'Failed to start agent', ''],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+    }
+
+    else if (subCommand === 'stop') {
+      // Stop agent
+      AgentIntegration.stopAgentTakeover();
+      return {
+        lines: [
+          '',
+          '🛑 AGENT CONTROL RELEASED',
+          '',
+          'Manual control restored.',
+          'MVP report has been generated (check terminal).',
+          ''
+        ],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    else if (subCommand === 'pause') {
+      // Pause/resume agent
+      AgentIntegration.togglePause();
+      var report = AgentIntegration.getReport();
+      var status = report && report.outcome === 'in_progress' ? 'paused' : 'resumed';
+      return {
+        lines: [
+          '',
+          status === 'paused' ? '⏸️  Agent paused' : '▶️  Agent resumed',
+          ''
+        ],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    else if (subCommand === 'report') {
+      // Show current report
+      var report = AgentIntegration.getReport();
+      if (!report) {
+        return {
+          lines: ['', 'No agent report available', ''],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+
+      var lines = [
+        '',
+        'CURRENT AGENT METRICS:',
+        '————————————————————————————————',
+        'Mode: ' + report.mode.toUpperCase(),
+        'Status: ' + report.outcome.toUpperCase(),
+        'Actions Executed: ' + report.actionsExecuted,
+        'Floors Completed: ' + report.floorsCompleted,
+        'Tiles Visited: ' + report.tilesVisited,
+        'Failed Actions: ' + report.failedActions,
+        ''
+      ];
+
+      return {
+        lines: lines,
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    else if (subCommand === 'mode') {
+      // Show current mode
+      if (AgentIntegration.isActive()) {
+        var mode = AgentIntegration.getMode();
+        return {
+          lines: [
+            '',
+            'AGENT MODE: ' + mode.toUpperCase(),
+            '',
+            mode === 'natural' 
+              ? 'Natural human-like play with thorough exploration'
+              : 'Fast developer mode with optimal pathfinding',
+            ''
+          ],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      } else {
+        return {
+          lines: ['', 'Agent not active', ''],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+    }
+
+    else {
+      // Unknown agent subcommand
+      return {
+        lines: [
+          '',
+          'AGENT COMMANDS:',
+          '  AGENT NATURAL   - Start natural play mode',
+          '  AGENT DEVELOPER - Start fast testing mode',
+          '  AGENT STOP      - Stop agent control',
+          '  AGENT PAUSE     - Pause/resume agent',
+          '  AGENT REPORT    - Show current metrics',
+          '  AGENT MODE      - Show current mode',
+          ''
+        ],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+  }
+
   // ============================================================
   // END GROUND EFFECT COMBAT MODIFIERS
+  // ============================================================
+
+  // ============================================================
+  // HEADLESS MODE API (for automated testing/agent simulation)
+  // ============================================================
+
+  /**
+   * Get complete game state (for testing/agent simulation)
+   */
+  function getState() {
+    return {
+      active: _active,
+      floor: _floor,
+      turn: _turn,
+      player: {
+        x: _player.x,
+        y: _player.y,
+        hp: _player.hp,
+        maxHp: _player.maxHp,
+        energy: _player.energy,
+        maxEnergy: _player.maxEnergy,
+        stealth: _player.stealth,
+        detection: _player.detection,
+        lastMoveDirection: _player.lastMoveDirection,
+        str: _player.str,
+        dex: _player.dex,
+        credits: _player.credits,
+        deck: _player.deck ? _player.deck.slice() : [],
+        activeItem: _player.activeItem
+      },
+      enemies: _enemies.map(function(e) {
+        return {
+          x: e.x,
+          y: e.y,
+          hp: e.hp,
+          maxHp: e.maxHp,
+          type: e.type,
+          tier: e.tier,
+          emoji: e.emoji,
+          awarenessState: e.awarenessState,
+          orientation: e.orientation,
+          alertLevel: e.alertLevel
+        };
+      }),
+      grid: _grid.map(function(row) { return row.slice(); }),
+      gridWidth: GRID_WIDTH,
+      gridHeight: GRID_HEIGHT,
+      breakables: _breakables.slice(),
+      projectiles: _projectiles.slice(),
+      items: _items.slice(),
+      currencies: _currencies.slice(),
+      strCombatActive: _strCombatActive,
+      alertLevel: _alertLevel,
+      bossFloorActive: _bossFloorActive
+    };
+  }
+
+  /**
+   * Get legal actions from current state
+   */
+  function getLegalActions() {
+    if (!_active) {
+      return [];
+    }
+
+    var actions = [];
+
+    // During STR combat, only card actions are legal
+    if (_strCombatActive) {
+      // Can use cards from deck
+      if (_player.deck && _player.deck.length > 0) {
+        _player.deck.forEach(function(card, index) {
+          actions.push({
+            type: 'useCard',
+            cardIndex: index,
+            card: card
+          });
+        });
+      }
+      
+      // Can flee
+      actions.push({ type: 'flee' });
+      
+      return actions;
+    }
+
+    // Movement actions (check each direction)
+    var directions = [
+      { dx: 0, dy: -1, name: 'north', cmd: 'n' },
+      { dx: 0, dy: 1, name: 'south', cmd: 's' },
+      { dx: 1, dy: 0, name: 'east', cmd: 'e' },
+      { dx: -1, dy: 0, name: 'west', cmd: 'w' }
+    ];
+
+    directions.forEach(function(dir) {
+      var newX = _player.x + dir.dx;
+      var newY = _player.y + dir.dy;
+      
+      // Check bounds
+      if (newX >= 0 && newX < GRID_WIDTH && newY >= 0 && newY < GRID_HEIGHT) {
+        var tile = _grid[newY][newX];
+        
+        // Check if tile is walkable
+        if (tile !== TILES.WALL) {
+          actions.push({
+            type: 'move',
+            direction: dir.name,
+            dx: dir.dx,
+            dy: dir.dy,
+            cmd: dir.cmd,
+            targetX: newX,
+            targetY: newY
+          });
+        }
+      }
+    });
+
+    // Item pickup actions
+    _items.forEach(function(item) {
+      if (item.x === _player.x && item.y === _player.y) {
+        actions.push({
+          type: 'pickup',
+          item: item
+        });
+      }
+    });
+
+    // Currency pickup actions
+    _currencies.forEach(function(currency) {
+      if (currency.x === _player.x && currency.y === _player.y) {
+        actions.push({
+          type: 'pickupCurrency',
+          amount: currency.amount
+        });
+      }
+    });
+
+    // Exit action (if on exit tile)
+    if (_grid[_player.y][_player.x] === TILES.EXIT) {
+      actions.push({ type: 'exit' });
+    }
+
+    // Active item use
+    if (_player.activeItem) {
+      actions.push({
+        type: 'useActiveItem',
+        item: _player.activeItem
+      });
+    }
+
+    // Wait/pass action (always available)
+    actions.push({ type: 'wait' });
+
+    return actions;
+  }
+
+  /**
+   * Apply an action to the game state (headless mode)
+   * @param {Object} action - Action object from getLegalActions()
+   * @returns {Object} Result with success flag and new state
+   */
+  function applyAction(action) {
+    if (!_active) {
+      return {
+        success: false,
+        reason: 'Game not active',
+        state: null
+      };
+    }
+
+    var result = {
+      success: false,
+      reason: '',
+      state: null,
+      messages: []
+    };
+
+    try {
+      if (action.type === 'move') {
+        var moveResult = _movePlayer(action.dx, action.dy, false);
+        result.success = true;
+        result.messages = moveResult.lines || [];
+        result.state = getState();
+      }
+      else if (action.type === 'useCard' && _strCombatActive) {
+        var cardResult = handleCardSwipe(action.cardIndex, 'up');
+        result.success = true;
+        result.messages = cardResult.lines || [];
+        result.state = getState();
+      }
+      else if (action.type === 'flee' && _strCombatActive) {
+        var fleeResult = process('flee');
+        result.success = true;
+        result.messages = fleeResult.lines || [];
+        result.state = getState();
+      }
+      else if (action.type === 'pickup') {
+        var pickupResult = process('pickup');
+        result.success = true;
+        result.messages = pickupResult.lines || [];
+        result.state = getState();
+      }
+      else if (action.type === 'pickupCurrency') {
+        // Auto-pickup currency on move
+        result.success = true;
+        result.messages = ['Picked up ' + action.amount + ' credits'];
+        result.state = getState();
+      }
+      else if (action.type === 'exit') {
+        var exitResult = process('exit');
+        result.success = true;
+        result.messages = exitResult.lines || [];
+        result.state = getState();
+      }
+      else if (action.type === 'useActiveItem') {
+        var itemResult = triggerActiveItem();
+        result.success = itemResult && itemResult.lines;
+        result.messages = itemResult ? itemResult.lines : [];
+        result.state = getState();
+      }
+      else if (action.type === 'wait') {
+        // Just advance turn
+        _turn++;
+        _updateEnemies();
+        result.success = true;
+        result.messages = ['Waited...'];
+        result.state = getState();
+      }
+      else {
+        result.reason = 'Unknown action type: ' + action.type;
+      }
+    } catch (error) {
+      result.success = false;
+      result.reason = 'Error executing action: ' + error.message;
+    }
+
+    return result;
+  }
+
+  /**
+   * Get grid data (for map parsing)
+   */
+  function getGrid() {
+    return {
+      grid: _grid.map(function(row) { return row.slice(); }),
+      width: GRID_WIDTH,
+      height: GRID_HEIGHT,
+      tiles: TILES
+    };
+  }
+
+  /**
+   * Reset game to specific state (for replay testing)
+   */
+  function resetToState(state) {
+    if (!state) return false;
+
+    try {
+      _active = state.active;
+      _floor = state.floor;
+      _turn = state.turn;
+      
+      // Restore player
+      _player.x = state.player.x;
+      _player.y = state.player.y;
+      _player.hp = state.player.hp;
+      _player.maxHp = state.player.maxHp;
+      _player.energy = state.player.energy;
+      _player.maxEnergy = state.player.maxEnergy;
+      _player.stealth = state.player.stealth;
+      _player.detection = state.player.detection;
+      _player.lastMoveDirection = state.player.lastMoveDirection;
+      _player.str = state.player.str;
+      _player.dex = state.player.dex;
+      _player.credits = state.player.credits;
+      _player.deck = state.player.deck ? state.player.deck.slice() : [];
+      _player.activeItem = state.player.activeItem;
+      
+      // Restore grid
+      _grid = state.grid.map(function(row) { return row.slice(); });
+      
+      // Restore enemies
+      _enemies = state.enemies.slice();
+      
+      // Restore other state
+      _breakables = state.breakables ? state.breakables.slice() : [];
+      _projectiles = state.projectiles ? state.projectiles.slice() : [];
+      _items = state.items ? state.items.slice() : [];
+      _currencies = state.currencies ? state.currencies.slice() : [];
+      _strCombatActive = state.strCombatActive;
+      _alertLevel = state.alertLevel;
+      _bossFloorActive = state.bossFloorActive;
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to reset state:', error);
+      return false;
+    }
+  }
+
+  // ============================================================
+  // END HEADLESS MODE API
   // ============================================================
 
   return {
@@ -5154,6 +5750,15 @@ const GoneRogue = (function () {
     isStrCombatActive: isStrCombatActive,
     getStrCombatState: getStrCombatState,
     triggerActiveItem: triggerActiveItem,
-    updatePlayerLight: _updatePlayerLight
+    updatePlayerLight: _updatePlayerLight,
+    
+    // Headless mode API (for testing/agent simulation)
+    headless: {
+      getState: getState,
+      getLegalActions: getLegalActions,
+      applyAction: applyAction,
+      getGrid: getGrid,
+      resetToState: resetToState
+    }
   };
 })();
