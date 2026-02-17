@@ -135,6 +135,9 @@ const GoneRogueMobile = (function () {
         }
       });
     }
+
+    // Render STR combat overlay if combat is active
+    _renderStrCombatOverlay();
   }
 
   /**
@@ -442,6 +445,71 @@ const GoneRogueMobile = (function () {
    */
   function show() {
     if (_gridContainer) _gridContainer.style.display = 'grid';
+  }
+
+  /**
+   * Render STR combat overlay (called from renderGrid when combat is active)
+   */
+  function _renderStrCombatOverlay() {
+    if (typeof GoneRogue === 'undefined' || !GoneRogue.isStrCombatActive || !GoneRogue.isStrCombatActive()) {
+      return;
+    }
+
+    var strState = GoneRogue.getStrCombatState();
+    if (!strState || !strState.active) return;
+
+    // Create combat overlay if it doesn't exist
+    var overlayId = 'str-combat-overlay';
+    var overlay = document.getElementById(overlayId);
+
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = overlayId;
+      overlay.className = 'str-combat-overlay';
+      var terminal = document.getElementById('terminal');
+      if (terminal) {
+        terminal.appendChild(overlay);
+      }
+    }
+
+    // Update overlay content
+    var advantageEmoji = {
+      'ambush': '🎯',
+      'neutral': '⚔️',
+      'disadvantaged': '⚠️',
+      'flanked': '❌'
+    };
+
+    var html = '';
+    html += '<div class="str-combat-header">';
+    html += '<span class="str-combat-title">⚔️ STR COMBAT - ROUND ' + strState.round + '</span>';
+    html += '</div>';
+
+    html += '<div class="str-combat-status">';
+    html += '<span class="advantage-indicator">';
+    html += advantageEmoji[strState.advantage] || '⚔️';
+    html += ' ' + (strState.advantage || 'neutral').toUpperCase();
+    html += '</span>';
+    html += '</div>';
+
+    if (strState.enemy) {
+      html += '<div class="str-combat-enemy">';
+      html += '<span>💀 Enemy HP: ' + (strState.enemy.hp || 0) + '/5</span>';
+      html += '</div>';
+    }
+
+    overlay.innerHTML = html;
+    overlay.style.display = 'block';
+  }
+
+  /**
+   * Hide STR combat overlay
+   */
+  function _hideStrCombatOverlay() {
+    var overlay = document.getElementById('str-combat-overlay');
+    if (overlay) {
+      overlay.style.display = 'none';
+    }
   }
 
   return {
