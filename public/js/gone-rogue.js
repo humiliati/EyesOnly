@@ -403,6 +403,11 @@ const GoneRogue = (function () {
       return { lines: [''], prompt: getPrompt(), stayActive: true };
     }
 
+    // AGENT commands - check for agent control
+    if (cmd.indexOf('agent') === 0) {
+      return _handleAgentCommand(cmd);
+    }
+
     // FLEE command during STR combat
     if (cmd === 'flee' && _strCombatActive) {
       // Tooltip: Fleeing combat
@@ -5228,6 +5233,196 @@ const GoneRogue = (function () {
         _strCombatLog.push('└─ Enemy weakened');
         enemy.weakened = true;
       }
+    }
+  }
+
+  /**
+   * Handle agent control commands
+   */
+  function _handleAgentCommand(cmd) {
+    if (typeof AgentIntegration === 'undefined') {
+      return {
+        lines: [
+          '',
+          'AGENT SYSTEM NOT AVAILABLE',
+          'Required modules not loaded',
+          ''
+        ],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var parts = cmd.split(' ');
+    var subCommand = parts[1] ? parts[1].toLowerCase() : '';
+
+    if (subCommand === 'natural') {
+      // Start agent in natural play mode
+      var started = AgentIntegration.startAgentTakeover('natural');
+      if (started) {
+        return {
+          lines: [
+            '',
+            '🤖 MOK AGENT ACTIVATED - NATURAL MODE',
+            '',
+            '[MOK]: "Control transferred. Beginning natural play protocol."',
+            '[MOK]: "I will explore thoroughly and generate MVP report."',
+            '',
+            'The agent will now play for you.',
+            'Watch the MOK interjection field for real-time updates.',
+            '',
+            'Type AGENT STOP to return control',
+            ''
+          ],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      } else {
+        return {
+          lines: ['', 'Failed to start agent', ''],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+    }
+
+    else if (subCommand === 'developer' || subCommand === 'dev') {
+      // Start agent in developer mode
+      var started = AgentIntegration.startAgentTakeover('developer');
+      if (started) {
+        return {
+          lines: [
+            '',
+            '🤖 DEVELOPER AGENT ACTIVATED - FAST MODE',
+            '',
+            '[DEV]: "Control transferred. Running optimal pathfinding."',
+            '[DEV]: "This mode skips exploration for quick testing."',
+            '',
+            'The agent will now play for you.',
+            'This mode is significantly faster than natural play.',
+            '',
+            'Type AGENT STOP to return control',
+            ''
+          ],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      } else {
+        return {
+          lines: ['', 'Failed to start agent', ''],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+    }
+
+    else if (subCommand === 'stop') {
+      // Stop agent
+      AgentIntegration.stopAgentTakeover();
+      return {
+        lines: [
+          '',
+          '🛑 AGENT CONTROL RELEASED',
+          '',
+          'Manual control restored.',
+          'MVP report has been generated (check terminal).',
+          ''
+        ],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    else if (subCommand === 'pause') {
+      // Pause/resume agent
+      AgentIntegration.togglePause();
+      var report = AgentIntegration.getReport();
+      var status = report && report.outcome === 'in_progress' ? 'paused' : 'resumed';
+      return {
+        lines: [
+          '',
+          status === 'paused' ? '⏸️  Agent paused' : '▶️  Agent resumed',
+          ''
+        ],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    else if (subCommand === 'report') {
+      // Show current report
+      var report = AgentIntegration.getReport();
+      if (!report) {
+        return {
+          lines: ['', 'No agent report available', ''],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+
+      var lines = [
+        '',
+        'CURRENT AGENT METRICS:',
+        '————————————————————————————————',
+        'Mode: ' + report.mode.toUpperCase(),
+        'Status: ' + report.outcome.toUpperCase(),
+        'Actions Executed: ' + report.actionsExecuted,
+        'Floors Completed: ' + report.floorsCompleted,
+        'Tiles Visited: ' + report.tilesVisited,
+        'Failed Actions: ' + report.failedActions,
+        ''
+      ];
+
+      return {
+        lines: lines,
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    else if (subCommand === 'mode') {
+      // Show current mode
+      if (AgentIntegration.isActive()) {
+        var mode = AgentIntegration.getMode();
+        return {
+          lines: [
+            '',
+            'AGENT MODE: ' + mode.toUpperCase(),
+            '',
+            mode === 'natural' 
+              ? 'Natural human-like play with thorough exploration'
+              : 'Fast developer mode with optimal pathfinding',
+            ''
+          ],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      } else {
+        return {
+          lines: ['', 'Agent not active', ''],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+    }
+
+    else {
+      // Unknown agent subcommand
+      return {
+        lines: [
+          '',
+          'AGENT COMMANDS:',
+          '  AGENT NATURAL   - Start natural play mode',
+          '  AGENT DEVELOPER - Start fast testing mode',
+          '  AGENT STOP      - Stop agent control',
+          '  AGENT PAUSE     - Pause/resume agent',
+          '  AGENT REPORT    - Show current metrics',
+          '  AGENT MODE      - Show current mode',
+          ''
+        ],
+        prompt: getPrompt(),
+        stayActive: true
+      };
     }
   }
 
