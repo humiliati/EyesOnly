@@ -1009,8 +1009,14 @@ body.amber-mode #scanlines::after {
     align-items: flex-start;
   }
   .control-buttons {
-    grid-auto-flow: column;
-    grid-auto-columns: 1fr;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .control-buttons button {
+    flex: 1 1 auto;
+    min-width: 80px;
+    max-width: calc(50% - 4px); /* Wrap after 2 buttons per row */
   }
   .debrief-window {
     flex: 1;

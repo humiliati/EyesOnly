@@ -21,6 +21,7 @@ const GAMESTATE = (function () {
     persistentSlots: 9,            // Start at 9, expand to 12
     maxPersistentSlots: 12,
     looseSlots: 8,
+    cryptos: 0,                    // Currency (¢) - persistent across death
     rogueRun: null
   };
 
@@ -264,6 +265,7 @@ const GAMESTATE = (function () {
       persistentSlots: 9,
       maxPersistentSlots: 12,
       looseSlots: 8,
+      cryptos: 0,
       rogueRun: null
     };
     _saveState();
@@ -328,6 +330,47 @@ const GAMESTATE = (function () {
     };
   }
 
+  /**
+   * Add cryptos (currency) to player's wallet
+   * @param {number} amount - Amount of cryptos to add
+   */
+  function addCryptos(amount) {
+    _state.cryptos = (_state.cryptos || 0) + amount;
+    _saveState();
+    return {
+      success: true,
+      total: _state.cryptos,
+      message: 'Collected ¢' + amount + ' (Total: ¢' + _state.cryptos + ')'
+    };
+  }
+
+  /**
+   * Remove cryptos (for purchases)
+   * @param {number} amount - Amount of cryptos to spend
+   */
+  function spendCryptos(amount) {
+    if ((_state.cryptos || 0) < amount) {
+      return {
+        success: false,
+        message: 'Insufficient cryptos (Have: ¢' + (_state.cryptos || 0) + ', Need: ¢' + amount + ')'
+      };
+    }
+    _state.cryptos -= amount;
+    _saveState();
+    return {
+      success: true,
+      remaining: _state.cryptos,
+      message: 'Spent ¢' + amount + ' (Remaining: ¢' + _state.cryptos + ')'
+    };
+  }
+
+  /**
+   * Get current crypto balance
+   */
+  function getCryptos() {
+    return _state.cryptos || 0;
+  }
+
   return {
     MODES: MODES,
     init: init,
@@ -342,6 +385,9 @@ const GAMESTATE = (function () {
     clearLooseInventory: clearLooseInventory,
     getPersistentInventory: getPersistentInventory,
     getLooseInventory: getLooseInventory,
+    addCryptos: addCryptos,
+    spendCryptos: spendCryptos,
+    getCryptos: getCryptos,
     reset: reset,
     requestRogue: requestRogue
   };

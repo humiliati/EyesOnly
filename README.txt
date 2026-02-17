@@ -10,6 +10,46 @@ Deployed at: flapsandseals.com
 Stack: Cloudflare Workers + D1 + Durable Objects + R2
 Frontend: DOM-based (MetaMask SES-safe, no framework dependency)
 
+GONE ROGUE - ASCII Stealth Roguelike Minigame
+==============================================
+
+Gone Rogue is an embedded ASCII stealth roguelike minigame accessible through
+the command terminal. It features:
+
+**Core Gameplay:**
+- 40x20 grid tactical stealth gameplay
+- Metal Gear-inspired enemy awareness system with sight cones
+- STR (Simultaneous Turn Resolution) combat with advantage/flanking mechanics
+- Diablo-style loot system with 9 quality tiers and affixes
+- Card-based combat deck (attack, stance, utility, tactical cards)
+
+**Progression Systems:**
+- Currency System: Collect cryptos (¢) from breakables and defeated enemies
+- Card Drops: 30% from breakables, 50% from enemies
+- Persistent Inventory: 9-12 slots safe across death
+- Loose Carry: 8 slots lost on death
+- Starter Deck: 5 cards provided at game start
+
+**Features:**
+- Procedural dungeon generation with room/corridor layouts
+- Environmental tiles: shadows, cover, hazards, smoke
+- Breakable objects with physics-based projectile system
+- Enemy AI with patrol patterns (stationary, patrol, circular, ellipse)
+- Mobile-optimized touch controls with tap-to-move and card swipe
+- Real-time game loop (10 FPS) with awareness decay
+
+**Combat:**
+- Turn-based STR combat triggered on enemy collision
+- Advantage states: ambush, neutral, disadvantaged, flanked
+- Card-powered attacks and defensive stances
+- Critical hits, damage multipliers, and timing mechanics
+
+**Future Features:**
+- Bonfire/vendor system every 3-5 floors
+- Emoji sprite combat scenes with timing-based blocks
+- Status ailments (poison, shock, freeze, fear, rage)
+- Emoticon face system for combatants
+
 
 ARCHITECTURE
 ------------
@@ -25,7 +65,8 @@ ARCHITECTURE
 
   M Mode Console:     /m/          (director command & control)
   Ops Portal:         /ops/        (actor field interface)
-  Player Terminal:    / (root)     (ARG recruitment terminal)
+  Player Terminal:    / (root)     (ARG recruitment terminal + Gone Rogue)
+
 
 
 PROJECT STRUCTURE
