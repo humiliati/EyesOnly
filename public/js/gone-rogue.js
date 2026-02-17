@@ -121,6 +121,44 @@ const GoneRogue = (function () {
   // Boss floors
   var BOSS_FLOORS = [10, 16, 22, 30];
 
+  // Vendor state
+  var _vendor = null;
+  var _vendorInventory = [];
+
+  // Vendor types with different personalities
+  var VENDOR_TYPES = {
+    SCRAP_MERCHANT: {
+      name: 'Scrap Merchant',
+      emoji: '🧑‍💼',
+      description: 'Sells cheap junk cards and supplies',
+      priceMultiplier: 0.7,
+      qualityRange: [30, 70] // Low quality items
+    },
+    ARMS_DEALER: {
+      name: 'Arms Dealer',
+      emoji: '🔫',
+      description: 'Sells attack cards and explosives',
+      priceMultiplier: 1.2,
+      qualityRange: [50, 85],
+      cardFilter: ['attack']
+    },
+    GHOST_BROKER: {
+      name: 'Ghost Broker',
+      emoji: '👻',
+      description: 'Sells stealth and silent cards',
+      priceMultiplier: 1.5,
+      qualityRange: [60, 90],
+      cardFilter: ['stealth', 'movement']
+    },
+    RELIC_SMUGGLER: {
+      name: 'Relic Smuggler',
+      emoji: '💎',
+      description: 'Sells rare charms and inventory expanders',
+      priceMultiplier: 2.0,
+      qualityRange: [70, 95]
+    }
+  };
+
   /**
    * Determine floor type based on floor number
    */
@@ -307,6 +345,23 @@ const GoneRogue = (function () {
       return _attemptExtract();
     }
 
+    // Bonfire vendor commands
+    if (cmd === 'vendor' || cmd === 'shop' || cmd === 'merchant') {
+      return _showVendor();
+    }
+
+    if (cmd.indexOf('buy') === 0) {
+      return _buyFromVendor(cmd);
+    }
+
+    if (cmd === 'heal') {
+      return _healAtBonfire();
+    }
+
+    if (cmd.indexOf('gamble') === 0) {
+      return _gambleCard();
+    }
+
     return {
       lines: ['UNKNOWN COMMAND: ' + cmd, 'TYPE HELP FOR COMMANDS', ''],
       prompt: getPrompt(),
@@ -325,14 +380,21 @@ const GoneRogue = (function () {
       '  EXTRACT            - Extract from exit point',
       '  STATUS             - Show player stats',
       '  INVENTORY          - Show inventory',
+      '',
+      'BONFIRE COMMANDS (Floors 10, 16, 22):',
+      '  VENDOR/SHOP        - View vendor inventory',
+      '  BUY <number>       - Purchase item from vendor',
+      '  HEAL               - Restore HP for ¢30',
+      '  GAMBLE             - Roll random card for ¢100',
+      '',
       '  HELP               - This help',
       '  EXIT               - Return to Street Chronicles',
       '',
       'LEGEND:',
-      '  @ = You        E = Enemy      * = Item',
+      '  🥷 = You        🪖 = Enemy      💎 = Item',
       '  ▼ = Exit       █ = Wall       ▓ = Cover',
       '  ░ = Shadow     , = Grass      ≈ = Smoke',
-      '  ▒ = Hazard     ☐ = Breakable',
+      '  ▒ = Hazard     📦 = Breakable',
       '',
       'TERRAIN EFFECTS:',
       '  Shadow/Grass/Smoke = Stealth bonus',
@@ -1220,6 +1282,10 @@ const GoneRogue = (function () {
     _floor++;
     _turn = 0;
 
+    // Reset vendor for new bonfire
+    _vendor = null;
+    _vendorInventory = [];
+
     // Heal player slightly between floors (10-20% of max HP)
     var healAmount = Math.floor(_player.maxHp * (0.1 + Math.random() * 0.1));
     _player.hp = Math.min(_player.maxHp, _player.hp + healAmount);
@@ -1248,6 +1314,312 @@ const GoneRogue = (function () {
 
     return {
       lines: lines.concat(_renderGrid()),
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Initialize vendor for bonfire floor
+   */
+  function _initializeVendor() {
+    // Choose random vendor type
+    var vendorTypes = Object.keys(VENDOR_TYPES);
+    var randomType = vendorTypes[Math.floor(Math.random() * vendorTypes.length)];
+    _vendor = VENDOR_TYPES[randomType];
+
+    // Generate vendor inventory (5 cards)
+    _vendorInventory = [];
+    for (var i = 0; i < 5; i++) {
+      if (typeof CardSystem !== 'undefined') {
+        var baseType = CardSystem.getRandomBaseCard();
+        var card = CardSystem.rollCard(baseType);
+
+        // Calculate price based on quality and vendor multiplier
+        var basePrice = 50 + Math.floor((card.quality / 100) * 150);
+        var price = Math.floor(basePrice * _vendor.priceMultiplier);
+
+        _vendorInventory.push({
+          card: card,
+          price: price
+        });
+      }
+    }
+  }
+
+  /**
+   * Show vendor shop
+   */
+  function _showVendor() {
+    var floorType = _getFloorType(_floor);
+    if (floorType !== FLOOR_TYPES.BONFIRE) {
+      return {
+        lines: ['NO VENDOR HERE', 'Vendors only appear at bonfire floors (10, 16, 22)', ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    // Initialize vendor if not done yet
+    if (!_vendor) {
+      _initializeVendor();
+    }
+
+    var lines = [
+      '',
+      '═══════════════════════════════════════',
+      '  🔥 BONFIRE VENDOR 🔥',
+      '  ' + _vendor.emoji + ' ' + _vendor.name,
+      '  ' + _vendor.description,
+      '═══════════════════════════════════════',
+      ''
+    ];
+
+    // Show player's cryptos
+    if (typeof GAMESTATE !== 'undefined') {
+      var cryptos = GAMESTATE.getState().cryptos || 0;
+      lines.push('  YOUR CRYPTOS: ¢' + cryptos);
+      lines.push('');
+    }
+
+    // Show vendor inventory
+    lines.push('VENDOR INVENTORY:');
+    _vendorInventory.forEach(function(item, i) {
+      lines.push('  ' + (i+1) + '. ' + item.card.emoji + ' ' + item.card.name + ' [' + item.card.qualityName + '] - ¢' + item.price);
+    });
+
+    lines.push('');
+    lines.push('COMMANDS:');
+    lines.push('  BUY <number>  - Purchase item');
+    lines.push('  HEAL          - Restore 30-50% HP for ¢30');
+    lines.push('  GAMBLE        - Random card roll for ¢100');
+    lines.push('');
+
+    return {
+      lines: lines,
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Buy item from vendor
+   */
+  function _buyFromVendor(cmd) {
+    var floorType = _getFloorType(_floor);
+    if (floorType !== FLOOR_TYPES.BONFIRE) {
+      return {
+        lines: ['NO VENDOR HERE', ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    if (!_vendor) {
+      _initializeVendor();
+    }
+
+    // Parse item number
+    var parts = cmd.split(' ');
+    var itemNum = parseInt(parts[1]);
+
+    if (isNaN(itemNum) || itemNum < 1 || itemNum > _vendorInventory.length) {
+      return {
+        lines: ['INVALID ITEM NUMBER', 'Use: BUY <1-' + _vendorInventory.length + '>', ''],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var item = _vendorInventory[itemNum - 1];
+
+    if (typeof GAMESTATE !== 'undefined') {
+      var state = GAMESTATE.getState();
+      var cryptos = state.cryptos || 0;
+
+      if (cryptos < item.price) {
+        return {
+          lines: ['INSUFFICIENT FUNDS', 'Need ¢' + item.price + ', have ¢' + cryptos, ''],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+
+      // Add to loose inventory
+      var result = GAMESTATE.addToLoose(item.card);
+      if (!result.success) {
+        return {
+          lines: [result.message, 'DROP SOMETHING FIRST', ''],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+
+      // Deduct cryptos
+      state.cryptos -= item.price;
+
+      // Remove from vendor inventory
+      _vendorInventory.splice(itemNum - 1, 1);
+
+      _saveState();
+
+      return {
+        lines: ['PURCHASED: ' + item.card.emoji + ' ' + item.card.name, 'Remaining cryptos: ¢' + state.cryptos, ''],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    return {
+      lines: ['PURCHASE FAILED', ''],
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Heal at bonfire
+   */
+  function _healAtBonfire() {
+    var floorType = _getFloorType(_floor);
+    if (floorType !== FLOOR_TYPES.BONFIRE) {
+      return {
+        lines: ['NO BONFIRE HERE', 'Healing only available at bonfire floors', ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var HEAL_COST = 30;
+
+    if (typeof GAMESTATE !== 'undefined') {
+      var state = GAMESTATE.getState();
+      var cryptos = state.cryptos || 0;
+
+      if (cryptos < HEAL_COST) {
+        return {
+          lines: ['INSUFFICIENT FUNDS', 'Healing costs ¢' + HEAL_COST + ', have ¢' + cryptos, ''],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+
+      // Heal 30-50% HP
+      var healPercent = 0.3 + Math.random() * 0.2;
+      var healAmount = Math.floor(_player.maxHp * healPercent);
+      var oldHp = _player.hp;
+      _player.hp = Math.min(_player.maxHp, _player.hp + healAmount);
+      var actualHeal = _player.hp - oldHp;
+
+      // Deduct cryptos
+      state.cryptos -= HEAL_COST;
+
+      _saveState();
+
+      return {
+        lines: [
+          'HEALED: +' + actualHeal + ' HP',
+          'HP: ' + _player.hp + '/' + _player.maxHp,
+          'Remaining cryptos: ¢' + state.cryptos,
+          ''
+        ],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    return {
+      lines: ['HEAL FAILED', ''],
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Gamble for a random card
+   */
+  function _gambleCard() {
+    var floorType = _getFloorType(_floor);
+    if (floorType !== FLOOR_TYPES.BONFIRE) {
+      return {
+        lines: ['NO VENDOR HERE', 'Gambling only available at bonfire floors', ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var GAMBLE_COST = 100;
+
+    if (typeof GAMESTATE !== 'undefined' && typeof CardSystem !== 'undefined') {
+      var state = GAMESTATE.getState();
+      var cryptos = state.cryptos || 0;
+
+      if (cryptos < GAMBLE_COST) {
+        return {
+          lines: ['INSUFFICIENT FUNDS', 'Gambling costs ¢' + GAMBLE_COST + ', have ¢' + cryptos, ''],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+
+      // Roll random card with gambling odds
+      // 70% junk (30-55%), 20% usable (55-75%), 8% strong (75-90%), 1.8% near-perfect (90-97%), 0.2% perfect (97-100%)
+      var rand = Math.random() * 100;
+      var targetQuality;
+
+      if (rand < 0.2) {
+        targetQuality = 97 + Math.random() * 3; // 97-100% (perfect)
+      } else if (rand < 2) {
+        targetQuality = 90 + Math.random() * 7; // 90-97% (near-perfect)
+      } else if (rand < 10) {
+        targetQuality = 75 + Math.random() * 15; // 75-90% (strong)
+      } else if (rand < 30) {
+        targetQuality = 55 + Math.random() * 20; // 55-75% (usable)
+      } else {
+        targetQuality = 30 + Math.random() * 25; // 30-55% (junk)
+      }
+
+      var baseType = CardSystem.getRandomBaseCard();
+      var card = CardSystem.rollCard(baseType);
+
+      // For simplicity, just use the rolled card's quality
+      // The gambling mechanism is about the odds of getting different quality tiers
+
+      // Add to loose inventory
+      var result = GAMESTATE.addToLoose(card);
+      if (!result.success) {
+        return {
+          lines: [result.message, 'DROP SOMETHING FIRST', ''],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+
+      // Deduct cryptos
+      state.cryptos -= GAMBLE_COST;
+
+      _saveState();
+
+      var qualityDesc = card.quality >= 97 ? '✨ PERFECT ✨' :
+                       card.quality >= 90 ? '🌟 NEAR-PERFECT' :
+                       card.quality >= 75 ? '⭐ STRONG' :
+                       card.quality >= 55 ? '• USABLE' : '• JUNK';
+
+      return {
+        lines: [
+          '🎲 GAMBLE RESULT:',
+          qualityDesc,
+          card.emoji + ' ' + card.name + ' [' + card.qualityName + '] (' + Math.floor(card.quality) + '%)',
+          'Remaining cryptos: ¢' + state.cryptos,
+          ''
+        ],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    return {
+      lines: ['GAMBLE FAILED', ''],
       prompt: getPrompt(),
       stayActive: true
     };
