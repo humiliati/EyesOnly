@@ -514,31 +514,71 @@ const GoneRogueMobile = (function () {
   }
 
   /**
+   * Get face expression based on state
+   */
+  function _getFaceExpression(isPlayer, state) {
+    if (!state) state = 'neutral';
+
+    var expressions = {
+      player: {
+        neutral: '(   )',
+        charging: '(>_<)',
+        hurt: '(T_T)',
+        defending: '(=_=)',
+        victory: '(^__^)',
+        defeated: '(x__x)'
+      },
+      enemy: {
+        neutral: '(^__^)',
+        charging: '(ಠ_ಠ)',
+        hurt: '(x__x)',
+        defending: '(=_=)',
+        attacking: '(>__<)',
+        defeated: '(x__x)'
+      }
+    };
+
+    return isPlayer ? expressions.player[state] : expressions.enemy[state];
+  }
+
+  /**
    * Render STR combat overlay (called from renderGrid when combat is active)
    */
   function _renderStrCombatOverlay() {
     if (typeof GoneRogue === 'undefined' || !GoneRogue.isStrCombatActive || !GoneRogue.isStrCombatActive()) {
+      _hideCombatBubble();
       return;
     }
 
     var strState = GoneRogue.getStrCombatState();
-    if (!strState || !strState.active) return;
-
-    // Create combat overlay if it doesn't exist
-    var overlayId = 'str-combat-overlay';
-    var overlay = document.getElementById(overlayId);
-
-    if (!overlay) {
-      overlay = document.createElement('div');
-      overlay.id = overlayId;
-      overlay.className = 'str-combat-overlay';
-      var terminal = document.getElementById('terminal');
-      if (terminal) {
-        terminal.appendChild(overlay);
-      }
+    if (!strState || !strState.active) {
+      _hideCombatBubble();
+      return;
     }
 
-    // Update overlay content
+    // Show combat bubble instead of just overlay
+    _renderCombatBubble(strState);
+  }
+
+  /**
+   * Render combat bubble with face animations
+   */
+  function _renderCombatBubble(strState) {
+    var bubbleId = 'combat-bubble';
+    var bubble = document.getElementById(bubbleId);
+
+    if (!bubble) {
+      bubble = document.createElement('div');
+      bubble.id = bubbleId;
+      bubble.className = 'combat-bubble';
+      document.body.appendChild(bubble);
+    }
+
+    // Determine player and enemy states
+    var playerState = 'neutral';
+    var enemyState = 'neutral';
+
+    // Get advantage emoji
     var advantageEmoji = {
       'ambush': '🎯',
       'neutral': '⚔️',
@@ -546,35 +586,106 @@ const GoneRogueMobile = (function () {
       'flanked': '❌'
     };
 
+    // Build combat arena visual
     var html = '';
-    html += '<div class="str-combat-header">';
-    html += '<span class="str-combat-title">⚔️ STR COMBAT - ROUND ' + strState.round + '</span>';
+
+    // Header
+    html += '<div class="combat-bubble-header">';
+    html += '<span style="color: #ffaa00; font-weight: bold; font-size: 18px;">⚔️ STR COMBAT - ROUND ' + strState.round + '</span>';
     html += '</div>';
 
-    html += '<div class="str-combat-status">';
-    html += '<span class="advantage-indicator">';
+    // Combat arena with combatants
+    html += '<div class="combat-arena">';
+
+    // Enemy (top)
+    html += '<div class="combatant">';
+    html += '<div class="combatant-glyph glyph-' + enemyState + '" style="color: #ff1c4a;">';
+    html += '🔫' + _getFaceExpression(false, enemyState) + 'p';
+    html += '</div>';
+    html += '<div class="hp-bar-container">';
+    html += '<div class="hp-bar low" style="width: ' + ((strState.enemy ? (strState.enemy.hp || 0) / 5 : 0) * 100) + '%"></div>';
+    html += '<div class="hp-text">' + (strState.enemy ? (strState.enemy.hp || 0) : 0) + ' / 5 HP</div>';
+    html += '</div>';
+    html += '</div>';
+
+    // Spacing
+    html += '<div style="text-align: center; font-size: 32px; margin: 20px 0;">';
     html += advantageEmoji[strState.advantage] || '⚔️';
-    html += ' ' + (strState.advantage || 'neutral').toUpperCase();
-    html += '</span>';
     html += '</div>';
 
-    if (strState.enemy) {
-      html += '<div class="str-combat-enemy">';
-      html += '<span>💀 Enemy HP: ' + (strState.enemy.hp || 0) + '/5</span>';
+    // Player (bottom)
+    var player = typeof GoneRogue !== 'undefined' && GoneRogue.getPlayer ? GoneRogue.getPlayer() : { hp: 10, maxHp: 10 };
+    html += '<div class="combatant">';
+    html += '<div class="hp-bar-container">';
+    html += '<div class="hp-bar high" style="width: ' + ((player.hp / player.maxHp) * 100) + '%"></div>';
+    html += '<div class="hp-text">' + player.hp + ' / ' + player.maxHp + ' HP</div>';
+    html += '</div>';
+    html += '<div class="combatant-glyph glyph-' + playerState + '" style="color: #1cff9b;">';
+    html += 'd' + _getFaceExpression(true, playerState) + '🔫';
+    html += '</div>';
+    html += '</div>';
+
+    html += '</div>'; // end combat-arena
+
+    // Combat log
+    if (strState.log && strState.log.length > 0) {
+      html += '<div class="combat-log">';
+      var recentLog = strState.log.slice(-5); // Last 5 messages
+      recentLog.forEach(function(msg) {
+        html += '<div class="combat-log-line">' + msg + '</div>';
+      });
       html += '</div>';
     }
 
-    overlay.innerHTML = html;
-    overlay.style.display = 'block';
+    bubble.innerHTML = html;
+    bubble.style.display = 'block';
   }
 
   /**
-   * Hide STR combat overlay
+   * Show floating damage number
    */
-  function _hideStrCombatOverlay() {
-    var overlay = document.getElementById('str-combat-overlay');
-    if (overlay) {
-      overlay.style.display = 'none';
+  function showFloatingDamage(damage, isPlayer) {
+    var bubble = document.getElementById('combat-bubble');
+    if (!bubble) return;
+
+    var floater = document.createElement('div');
+    floater.className = 'floating-damage';
+    floater.textContent = '-' + damage + ' HP';
+    floater.style.color = isPlayer ? '#ff1c4a' : '#ffaa00';
+    floater.style.position = 'absolute';
+    floater.style.fontSize = '24px';
+    floater.style.fontWeight = 'bold';
+    floater.style.pointerEvents = 'none';
+    floater.style.animation = 'float-up 1s ease-out forwards';
+
+    // Position based on target
+    if (isPlayer) {
+      floater.style.bottom = '80px';
+      floater.style.left = '50%';
+      floater.style.transform = 'translateX(-50%)';
+    } else {
+      floater.style.top = '80px';
+      floater.style.left = '50%';
+      floater.style.transform = 'translateX(-50%)';
+    }
+
+    bubble.appendChild(floater);
+
+    // Remove after animation
+    setTimeout(function() {
+      if (floater.parentNode) {
+        floater.parentNode.removeChild(floater);
+      }
+    }, 1000);
+  }
+
+  /**
+   * Hide combat bubble
+   */
+  function _hideCombatBubble() {
+    var bubble = document.getElementById('combat-bubble');
+    if (bubble) {
+      bubble.style.display = 'none';
     }
   }
 
@@ -693,6 +804,7 @@ const GoneRogueMobile = (function () {
     init: init,
     renderGrid: renderGrid,
     hide: hide,
-    show: show
+    show: show,
+    showFloatingDamage: showFloatingDamage
   };
 })();

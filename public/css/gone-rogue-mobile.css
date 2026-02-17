@@ -446,6 +446,31 @@
   }
 }
 
+.combat-bubble-header {
+  text-align: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #ffaa00;
+}
+
+/* Floating damage numbers */
+.floating-damage {
+  font-family: 'Courier New', monospace;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  z-index: 2000;
+}
+
+@keyframes float-up {
+  0% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-40px);
+  }
+}
+
 /* Combat Arena - Visual representation */
 .combat-arena {
   display: grid;
