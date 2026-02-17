@@ -81,6 +81,27 @@ const StreetChronicles = (function () {
       return { lines: _hintIfNeeded(), prompt: getPrompt(), stayActive: true };
     }
 
+    // Check for ROGUE command to trigger Gone Rogue mode
+    if (normalized === 'rogue' || normalized === 'gone rogue' || normalized === 'gone_rogue' || normalized === 'gonerogue') {
+      console.debug('[StreetChronicles] ROGUE command detected, triggering Gone Rogue mode');
+      _active = false;
+      _save();
+
+      // Trigger requestRogue if GAMESTATE is available
+      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.requestRogue === 'function') {
+        return GAMESTATE.requestRogue({
+          reason: 'manual',
+          carryInventory: true
+        });
+      } else {
+        console.warn('[StreetChronicles] GAMESTATE.requestRogue not available');
+        return {
+          lines: ['EXITING STREET-LEVEL CHRONICLES', 'ENTERING GONE ROGUE MODE', ''],
+          stayActive: false
+        };
+      }
+    }
+
     if (_isExit(normalized)) {
       _active = false;
       _save();
@@ -153,6 +174,7 @@ const StreetChronicles = (function () {
       '  TAKE <ITEM>               collect an item',
       '  INVENTORY                 list collected items',
       '  QUESTS                    show active quest flags',
+      '  ROGUE                     enter Gone Rogue mode',
       '  EXIT STREET               return to main terminal',
       ''
     ];
