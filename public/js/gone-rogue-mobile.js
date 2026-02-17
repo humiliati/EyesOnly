@@ -529,12 +529,28 @@ const GoneRogueMobile = (function () {
    * @param {boolean} runMode - Whether to run to target
    */
   function _processGridInput(x, y, runMode) {
-    // Check if tapping self (show card fan)
     if (typeof GoneRogue !== 'undefined') {
       var player = GoneRogue.getPlayer ? GoneRogue.getPlayer() : null;
+
+      // Check if tapping self (show card fan)
+      // BUT NOT if in STR combat or if clicking on a breakable
       if (player && player.x === x && player.y === y) {
-        _showCardFan();
-        return;
+        // Don't show card fan if in STR combat
+        var inStrCombat = GoneRogue.isStrCombatActive && GoneRogue.isStrCombatActive();
+        if (inStrCombat) {
+          console.log('[GoneRogueMobile] Card fan suppressed: in STR combat');
+          return;
+        }
+
+        // Don't show card fan if there's a breakable at this position (shouldn't happen, but defensive)
+        var hasBreakable = GoneRogue.getBreakableAt && GoneRogue.getBreakableAt(x, y);
+        if (hasBreakable && hasBreakable.hp > 0) {
+          console.log('[GoneRogueMobile] Card fan suppressed: breakable at player position');
+          // Fall through to handleTapMove which will handle the breakable
+        } else {
+          _showCardFan();
+          return;
+        }
       }
 
       // Validate tap distance from player

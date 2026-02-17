@@ -5755,6 +5755,7 @@ const GoneRogue = (function () {
     getEnemies: getEnemies,
     getEnemyAwarenessState: getEnemyAwarenessState,
     getBreakables: function() { return _breakables; },
+    getBreakableAt: _getBreakableAt,
     getProjectiles: function() { return _projectiles; },
     fireProjectile: _fireProjectile,
     stepProjectiles: stepProjectiles,
@@ -5762,7 +5763,7 @@ const GoneRogue = (function () {
     getStrCombatState: getStrCombatState,
     triggerActiveItem: triggerActiveItem,
     updatePlayerLight: _updatePlayerLight,
-    
+
     // Headless mode API (for testing/agent simulation)
     headless: {
       getState: getState,
