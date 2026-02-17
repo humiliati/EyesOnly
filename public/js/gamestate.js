@@ -269,6 +269,55 @@ const GAMESTATE = (function () {
     _saveState();
   }
 
+  /**
+   * Central transition helper for entering Gone Rogue mode.
+   * Handles Street Chronicles deactivation, inventory transfer, and mode switching.
+   * @param {Object} context - {reason, seed, difficulty, carryInventory}
+   * @returns {Object} Action object for main.js with lines, prompt, and stayActive
+   */
+  function requestRogue(context) {
+    context = context || {};
+    console.debug('[GAMESTATE.requestRogue] Initiating Gone Rogue transition', context);
+
+    // Step 1: If StreetChronicles is active and carryInventory requested, collect inventory
+    if (typeof StreetChronicles !== 'undefined' && StreetChronicles.isActive && StreetChronicles.isActive()) {
+      console.debug('[GAMESTATE.requestRogue] StreetChronicles is active');
+      
+      if (context.carryInventory && typeof StreetChronicles.getInventory === 'function') {
+        var streetInv = StreetChronicles.getInventory();
+        console.debug('[GAMESTATE.requestRogue] Carrying street inventory:', streetInv.length, 'items');
+        context._streetInventory = streetInv;
+        context.carryInventory = true;
+      }
+
+      // Step 2: Signal StreetChronicles to deactivate/yield control
+      if (typeof StreetChronicles.deactivate === 'function') {
+        console.debug('[GAMESTATE.requestRogue] Calling StreetChronicles.deactivate()');
+        StreetChronicles.deactivate();
+      } else {
+        console.debug('[GAMESTATE.requestRogue] StreetChronicles.deactivate() not available');
+      }
+    }
+
+    // Step 3: Update persisted state via enterRogueMode
+    var intro = enterRogueMode(context);
+    console.debug('[GAMESTATE.requestRogue] enterRogueMode completed');
+
+    // Step 4: Start GoneRogue module and return its action object
+    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.start === 'function') {
+      console.debug('[GAMESTATE.requestRogue] Starting GoneRogue module');
+      return GoneRogue.start(context);
+    }
+
+    // Fallback if GoneRogue module is missing
+    console.warn('[GAMESTATE.requestRogue] GoneRogue module not available, returning fallback');
+    return {
+      lines: intro.lines || ['GONE ROGUE MODE UNAVAILABLE'],
+      prompt: 'ROGUE> ',
+      stayActive: false
+    };
+  }
+
   return {
     MODES: MODES,
     init: init,
@@ -283,6 +332,7 @@ const GAMESTATE = (function () {
     clearLooseInventory: clearLooseInventory,
     getPersistentInventory: getPersistentInventory,
     getLooseInventory: getLooseInventory,
-    reset: reset
+    reset: reset,
+    requestRogue: requestRogue
   };
 })();

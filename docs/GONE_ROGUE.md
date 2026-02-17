@@ -299,6 +299,9 @@ Each successful Gone Rogue completion:
    - [ ] Verify transition messages display
    - [ ] Confirm Gone Rogue grid renders
    - [ ] Type `EXIT` to return to Street
+   - [ ] Type `ROGUE` while in Street Chronicles mode
+   - [ ] Verify transition occurs without "UNRECOGNIZED FIELD ACTION" error
+   - [ ] Confirm Street Chronicles is properly deactivated before Gone Rogue starts
 
 3. **Card Generation**
    - [ ] Pick up items in Gone Rogue
