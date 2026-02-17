@@ -820,6 +820,27 @@ const GoneRogue = (function () {
       return;
     }
 
+    // Boss floors: place boss enemy only
+    if (floorType === FLOOR_TYPES.BOSS && _activeBoss) {
+      var bossPos = _activeBoss.bossPosition || { x: 20, y: 10 };
+      var bossEnemy = _createEnemy(bossPos.x, bossPos.y, 'STATIONARY', rooms[0]);
+
+      // Enhance boss enemy stats
+      bossEnemy.hp = _activeBoss.hp;
+      bossEnemy.maxHp = _activeBoss.maxHp;
+      bossEnemy.isBoss = true;
+      bossEnemy.bossType = _activeBoss.type;
+      bossEnemy.str = 8 + Math.floor(_floor * 0.5);
+      bossEnemy.dex = 8 + Math.floor(_floor * 0.5);
+      bossEnemy.awareness = 100; // Boss is always alert
+
+      // Link boss enemy to boss instance
+      _activeBoss.bossEntity = bossEnemy;
+
+      _enemies.push(bossEnemy);
+      return;
+    }
+
     // Ghost floors (3-4): only cameras/surveillance, no lethal enemies
     if (floorType === FLOOR_TYPES.GHOST) {
       // TODO: Implement camera/drone surveillance system
@@ -827,12 +848,12 @@ const GoneRogue = (function () {
     }
 
     // Exploration floors: very few enemies
+    var enemyCount;
     if (floorType === FLOOR_TYPES.EXPLORATION) {
       enemyCount = 1 + Math.floor(Math.random() * 2); // 1-2 enemies max
     } else {
       // Enemy density based on difficulty
       var difficulty = _floor;
-      var enemyCount;
 
       if (difficulty <= 3) {
         enemyCount = 4 + Math.floor(Math.random() * 3); // 4-6
@@ -1105,7 +1126,16 @@ const GoneRogue = (function () {
     }
 
     lines.push('');
-    lines.push('HP: ' + _player.hp + '/' + _player.maxHp + ' | Floor: ' + _floor + ' | Turn: ' + _turn);
+    var floorLabel = 'Floor: ' + _floor;
+    if (_bossFloorActive && !_bossDefeated) {
+      floorLabel += ' 👹 BOSS FLOOR';
+    } else if (_bossFloorActive && _bossDefeated) {
+      floorLabel += ' ✅ BOSS DEFEATED';
+    }
+    lines.push('HP: ' + _player.hp + '/' + _player.maxHp + ' | ' + floorLabel + ' | Turn: ' + _turn);
+    if (_bossFloorActive && _activeBoss && !_bossDefeated) {
+      lines.push('⚠️  Boss: ' + _activeBoss.type + ' | Phase: ' + _activeBoss.phase);
+    }
     lines.push('');
 
     return lines;
