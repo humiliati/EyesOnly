@@ -454,6 +454,16 @@ const GoneRogue = (function () {
       return _retrieveCard(cmd);
     }
 
+    // Equip item to active slot
+    if (cmd.indexOf('equip') === 0) {
+      return _equipItem(cmd);
+    }
+
+    // Unequip active item
+    if (cmd === 'unequip') {
+      return _unequipItem();
+    }
+
     return {
       lines: ['UNKNOWN COMMAND: ' + cmd, 'TYPE HELP FOR COMMANDS', ''],
       prompt: getPrompt(),
@@ -480,6 +490,8 @@ const GoneRogue = (function () {
       '  GAMBLE             - Roll random card for ¢100',
       '  STASH <number>     - Move loose item to persistent storage',
       '  RETRIEVE <number>  - Move persistent item to loose carry',
+      '  EQUIP <number>     - Equip persistent item to active slot',
+      '  UNEQUIP            - Unequip active item',
       '',
       '  HELP               - This help',
       '  EXIT               - Return to Street Chronicles',
@@ -518,6 +530,16 @@ const GoneRogue = (function () {
     if (typeof GAMESTATE !== 'undefined') {
       var persistent = GAMESTATE.getPersistentInventory();
       var loose = GAMESTATE.getLooseInventory();
+      var activeItem = GAMESTATE.getActiveItem();
+
+      // Show active item slot
+      lines.push('');
+      lines.push('ACTIVE SLOT:');
+      if (activeItem) {
+        lines.push('  ⚡ ' + activeItem.emoji + ' ' + activeItem.name + ' [EQUIPPED]');
+      } else {
+        lines.push('  [EMPTY - Use EQUIP command]');
+      }
 
       lines.push('');
       lines.push('PERSISTENT (' + persistent.length + '/' + GAMESTATE.getState().persistentSlots + '):');
@@ -2320,6 +2342,95 @@ const GoneRogue = (function () {
     };
   }
 
+  /**
+   * Equip item from persistent inventory to active slot
+   */
+  function _equipItem(cmd) {
+    if (typeof GAMESTATE === 'undefined') {
+      return {
+        lines: ['GAMESTATE UNAVAILABLE', ''],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    // Parse item number from command
+    var parts = cmd.split(' ');
+    if (parts.length < 2) {
+      return {
+        lines: ['USAGE: EQUIP <number>', 'Example: EQUIP 1', ''].concat(_inventoryLines()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var itemNum = parseInt(parts[1], 10) - 1; // Convert to 0-indexed
+    var persistentInv = GAMESTATE.getPersistentInventory();
+
+    if (itemNum < 0 || itemNum >= persistentInv.length) {
+      return {
+        lines: ['INVALID ITEM NUMBER', 'Persistent inventory has ' + persistentInv.length + ' items', ''].concat(_inventoryLines()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var item = persistentInv[itemNum];
+
+    // Set as active item (doesn't remove from inventory)
+    GAMESTATE.setActiveItem(item);
+
+    // Update player light if it's a lighting item
+    _updatePlayerLight();
+
+    return {
+      lines: [
+        '⚡ EQUIPPED TO ACTIVE SLOT',
+        item.emoji + ' ' + item.name,
+        ''
+      ].concat(_inventoryLines()),
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Unequip active item
+   */
+  function _unequipItem() {
+    if (typeof GAMESTATE === 'undefined') {
+      return {
+        lines: ['GAMESTATE UNAVAILABLE', ''],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var activeItem = GAMESTATE.getActiveItem();
+    if (!activeItem) {
+      return {
+        lines: ['NO ITEM EQUIPPED', ''],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    GAMESTATE.clearActiveItem();
+
+    // Update player light (will clear it)
+    _updatePlayerLight();
+
+    return {
+      lines: [
+        '⚪ UNEQUIPPED',
+        'Active slot cleared',
+        ''
+      ].concat(_inventoryLines()),
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
   function _exitRogue(success) {
     _active = false;
     _stopGameLoop();
@@ -2687,19 +2798,24 @@ const GoneRogue = (function () {
   function _updatePlayerLight() {
     if (typeof LightingSystem === 'undefined') return;
 
-    // Check persistent inventory for light items
+    // Check active item slot for light items (not inventory)
     var lightItem = null;
 
     if (typeof GAMESTATE !== 'undefined') {
-      var persistent = GAMESTATE.getPersistentInventory();
+      var activeItem = GAMESTATE.getActiveItem();
 
-      // Check for light items in inventory (priority order)
-      if (persistent.some(function(item) { return item && item.indexOf && item.indexOf('night vision') !== -1; })) {
-        lightItem = 'NIGHT_VISION';
-      } else if (persistent.some(function(item) { return item && item.indexOf && item.indexOf('flashlight') !== -1; })) {
-        lightItem = 'FLASHLIGHT';
-      } else if (persistent.some(function(item) { return item && item.indexOf && item.indexOf('lighter') !== -1; })) {
-        lightItem = 'LIGHTER';
+      // Only check active item slot for lighting items
+      if (activeItem) {
+        var itemName = activeItem.name ? activeItem.name.toLowerCase() : '';
+
+        // Check for light items in active slot (priority order)
+        if (itemName.indexOf('night vision') !== -1) {
+          lightItem = 'NIGHT_VISION';
+        } else if (itemName.indexOf('flashlight') !== -1) {
+          lightItem = 'FLASHLIGHT';
+        } else if (itemName.indexOf('lighter') !== -1) {
+          lightItem = 'LIGHTER';
+        }
       }
     }
 

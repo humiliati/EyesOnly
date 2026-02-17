@@ -22,7 +22,8 @@ const GAMESTATE = (function () {
     maxPersistentSlots: 12,
     looseSlots: 8,
     cryptos: 0,                    // Currency (¢) - persistent across death
-    rogueRun: null
+    rogueRun: null,
+    activeItemSlot: null           // Active item slot (for lighting items, etc.)
   };
 
   function init() {
@@ -264,6 +265,29 @@ const GAMESTATE = (function () {
     return _state.inventoryLoose.slice(); // Return copy
   }
 
+  /**
+   * Set active item slot (for equipment that needs to be "equipped")
+   */
+  function setActiveItem(item) {
+    _state.activeItemSlot = item;
+    _saveState();
+  }
+
+  /**
+   * Get active item slot
+   */
+  function getActiveItem() {
+    return _state.activeItemSlot;
+  }
+
+  /**
+   * Clear active item slot
+   */
+  function clearActiveItem() {
+    _state.activeItemSlot = null;
+    _saveState();
+  }
+
   function _saveState() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(_state));
@@ -325,7 +349,8 @@ const GAMESTATE = (function () {
       maxPersistentSlots: 12,
       looseSlots: 8,
       cryptos: 0,
-      rogueRun: null
+      rogueRun: null,
+      activeItemSlot: null
     };
     _saveState();
   }
@@ -456,6 +481,9 @@ const GAMESTATE = (function () {
     clearLooseInventory: clearLooseInventory,
     getPersistentInventory: getPersistentInventory,
     getLooseInventory: getLooseInventory,
+    setActiveItem: setActiveItem,
+    getActiveItem: getActiveItem,
+    clearActiveItem: clearActiveItem,
     addCryptos: addCryptos,
     spendCryptos: spendCryptos,
     getCryptos: getCryptos,
