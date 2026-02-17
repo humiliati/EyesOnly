@@ -63,8 +63,28 @@ const GoneRogue = (function () {
     COVER: '▓',
     BREAKABLE: '☐',
     DEBRIS: '░',
-    PROJECTILE: '•'
+    PROJECTILE: '•',
+    DOOR: 'D',
+    VENT: 'V',
+    SHADOW: '░',
+    SMOKE: '≈',
+    GRASS: ',',
+    HAZARD: '▒',
+    WATER: '~'
   };
+
+  // Tile metadata and effects
+  var TILE_EFFECTS = {
+    SHADOW: { stealthBonus: 30, emoji: '⬛' }, // -30% enemy detection range
+    SMOKE: { stealthBonus: 40, movePenalty: 0, emoji: '🌫️' }, // Fog/smoke
+    GRASS: { stealthBonus: 20, emoji: '🟩' }, // Grass/vegetation
+    HAZARD: { damage: 1, emoji: '🟥' }, // Fire/acid/toxic
+    WATER: { movePenalty: 1, emoji: '🟦' }, // Slow movement
+    COVER: { blocksLOS: true, emoji: '▓' } // Full cover
+  };
+
+  // Map generation config
+  var _tileMetadata = {}; // Stores tile-specific data (e.g., which tiles are shadow zones)
 
   // Enemy awareness states
   var AWARENESS_STATES = {
@@ -238,12 +258,15 @@ const GoneRogue = (function () {
       '  EXIT               - Return to Street Chronicles',
       '',
       'LEGEND:',
-      '  @ = You',
-      '  E = Enemy',
-      '  * = Item',
-      '  ▼ = Exit',
-      '  █ = Wall',
-      '  ▓ = Cover',
+      '  @ = You        E = Enemy      * = Item',
+      '  ▼ = Exit       █ = Wall       ▓ = Cover',
+      '  ░ = Shadow     , = Grass      ≈ = Smoke',
+      '  ▒ = Hazard     ☐ = Breakable',
+      '',
+      'TERRAIN EFFECTS:',
+      '  Shadow/Grass/Smoke = Stealth bonus',
+      '  Hazard = Damage on contact',
+      '  Cover = Blocks enemy vision',
       ''
     ];
   }
@@ -295,118 +318,430 @@ const GoneRogue = (function () {
   }
 
   function _generateFloor() {
-    // Initialize empty grid
-    _grid = [];
+    // Initialize generation state
     _projectiles = [];
     _breakables = [];
-    for (var y = 0; y < GRID_HEIGHT; y++) {
-      var row = [];
-      for (var x = 0; x < GRID_WIDTH; x++) {
-        row.push(TILES.EMPTY);
+    _items = [];
+    _enemies = [];
+    _tileMetadata = {};
+
+    var maxAttempts = 10;
+    var attempt = 0;
+    var validMap = false;
+
+    // Try to generate a valid map (with stealth path validation)
+    while (!validMap && attempt < maxAttempts) {
+      attempt++;
+
+      // Step 1: Create empty grid
+      _grid = _createEmptyGrid();
+
+      // Step 2: Generate rooms
+      var rooms = _generateRooms();
+
+      // Step 3: Connect rooms with corridors
+      _connectRooms(rooms);
+
+      // Step 4: Add branch connections for loops
+      _addBranchConnections(rooms);
+
+      // Step 5: Place cover
+      _placeCover();
+
+      // Step 6: Place shadow zones
+      _placeShadowZones();
+
+      // Step 7: Place environmental tiles
+      _placeEnvironmentalTiles();
+
+      // Step 8: Place player and exit
+      var spawnData = _placePlayerAndExit(rooms);
+      _player.x = spawnData.playerX;
+      _player.y = spawnData.playerY;
+      var exitX = spawnData.exitX;
+      var exitY = spawnData.exitY;
+
+      // Step 9: Place enemies
+      _placeEnemies(rooms);
+
+      // Step 10: Validate stealth path
+      validMap = _validateStealthPath(_player.x, _player.y, exitX, exitY);
+
+      if (!validMap && attempt < maxAttempts) {
+        console.log('Map validation failed, regenerating... (attempt ' + attempt + ')');
       }
-      _grid.push(row);
     }
 
-    // Add walls (border)
-    for (var x = 0; x < GRID_WIDTH; x++) {
-      _grid[0][x] = TILES.WALL;
-      _grid[GRID_HEIGHT - 1][x] = TILES.WALL;
+    if (!validMap) {
+      console.warn('Could not generate fully valid map after ' + maxAttempts + ' attempts. Using current map.');
     }
-    for (var y = 0; y < GRID_HEIGHT; y++) {
-      _grid[y][0] = TILES.WALL;
-      _grid[y][GRID_WIDTH - 1] = TILES.WALL;
-    }
-
-    // Add some random walls and cover
-    for (var i = 0; i < 20; i++) {
-      var rx = Math.floor(Math.random() * (GRID_WIDTH - 2)) + 1;
-      var ry = Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1;
-      _grid[ry][rx] = Math.random() > 0.5 ? TILES.WALL : TILES.COVER;
-    }
-
-    // Place player
-    _player.x = 5;
-    _player.y = 10;
-
-    // Place exit
-    var exitX = GRID_WIDTH - 3;
-    var exitY = GRID_HEIGHT - 3;
-    _grid[exitY][exitX] = TILES.EXIT;
 
     // Place breakables (deterministic for tests)
     _spawnBreakables();
 
-    // Place enemies
-    _enemies = [];
-    
-    // Enemy 1: Patrol path
-    _enemies.push({
-      x: 15,
-      y: 5,
-      hp: 5,
-      awareness: 0,
-      orientation: 'east',
-      sightRange: 5,
-      path: {
-        type: PATH_TYPES.PATROL,
-        points: [
-          { x: 15, y: 5 },
-          { x: 20, y: 5 },
-          { x: 20, y: 10 },
-          { x: 15, y: 10 }
-        ]
-      },
-      pathIndex: 0,
-      pathDirection: 1,
-      pathTimer: 0
-    });
-
-    // Enemy 2: Circular path
-    _enemies.push({
-      x: 25,
-      y: 10,
-      hp: 5,
-      awareness: 0,
-      orientation: 'south',
-      sightRange: 5,
-      path: {
-        type: PATH_TYPES.CIRCULAR,
-        points: [
-          { x: 25, y: 10 },
-          { x: 28, y: 10 },
-          { x: 28, y: 13 },
-          { x: 25, y: 13 }
-        ]
-      },
-      pathIndex: 0,
-      pathTimer: 0
-    });
-
-    // Enemy 3: Stationary rotating sentry
-    _enemies.push({
-      x: 10,
-      y: 15,
-      hp: 5,
-      awareness: 0,
-      orientation: 'north',
-      sightRange: 6,
-      path: {
-        type: PATH_TYPES.STATIONARY
-      },
-      pathTimer: 0
-    });
-
     // Place items
-    _items = [];
-    for (var i = 0; i < 5; i++) {
+    _placeItems();
+
+    _turn = 0;
+  }
+
+  function _createEmptyGrid() {
+    var grid = [];
+    for (var y = 0; y < GRID_HEIGHT; y++) {
+      var row = [];
+      for (var x = 0; x < GRID_WIDTH; x++) {
+        // Fill with walls initially
+        row.push(TILES.WALL);
+      }
+      grid.push(row);
+    }
+    return grid;
+  }
+
+  function _generateRooms() {
+    // Difficulty affects room count and size
+    var difficulty = _floor;
+    var numRooms = Math.min(4 + Math.floor(difficulty / 2), 8);
+
+    var rooms = [];
+    var maxAttempts = 50;
+
+    for (var i = 0; i < numRooms; i++) {
+      var attempts = 0;
+      var room = null;
+
+      while (attempts < maxAttempts && !room) {
+        attempts++;
+
+        // Room dimensions
+        var minSize = 4;
+        var maxWidth = difficulty > 5 ? 12 : 10;
+        var maxHeight = difficulty > 5 ? 10 : 8;
+
+        var w = Math.floor(Math.random() * (maxWidth - minSize + 1)) + minSize;
+        var h = Math.floor(Math.random() * (maxHeight - minSize + 1)) + minSize;
+        var x = Math.floor(Math.random() * (GRID_WIDTH - w - 4)) + 2;
+        var y = Math.floor(Math.random() * (GRID_HEIGHT - h - 4)) + 2;
+
+        // Check if room overlaps with existing rooms (including 1-2 tile spacing)
+        var spacing = 2;
+        var overlaps = false;
+
+        for (var j = 0; j < rooms.length; j++) {
+          var r = rooms[j];
+          if (!(x + w + spacing < r.x || x > r.x + r.w + spacing ||
+                y + h + spacing < r.y || y > r.y + r.h + spacing)) {
+            overlaps = true;
+            break;
+          }
+        }
+
+        if (!overlaps) {
+          room = { x: x, y: y, w: w, h: h, centerX: Math.floor(x + w / 2), centerY: Math.floor(y + h / 2) };
+        }
+      }
+
+      if (room) {
+        rooms.push(room);
+
+        // Carve out room
+        for (var ry = room.y; ry < room.y + room.h; ry++) {
+          for (var rx = room.x; rx < room.x + room.w; rx++) {
+            if (rx >= 0 && rx < GRID_WIDTH && ry >= 0 && ry < GRID_HEIGHT) {
+              _grid[ry][rx] = TILES.EMPTY;
+            }
+          }
+        }
+      }
+    }
+
+    return rooms;
+  }
+
+  function _connectRooms(rooms) {
+    // Connect each room to the next one (guarantees full traversal)
+    for (var i = 0; i < rooms.length - 1; i++) {
+      var room1 = rooms[i];
+      var room2 = rooms[i + 1];
+
+      _carveCorridor(room1.centerX, room1.centerY, room2.centerX, room2.centerY);
+    }
+  }
+
+  function _carveCorridor(x1, y1, x2, y2) {
+    // Create L-shaped corridor: horizontal first, then vertical
+    var x = x1;
+    var y = y1;
+
+    // Horizontal segment
+    while (x !== x2) {
+      if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
+        _grid[y][x] = TILES.EMPTY;
+        // Make corridors 2 tiles wide for better flow
+        if (y + 1 < GRID_HEIGHT) {
+          _grid[y + 1][x] = TILES.EMPTY;
+        }
+      }
+      x += (x < x2) ? 1 : -1;
+    }
+
+    // Vertical segment
+    while (y !== y2) {
+      if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
+        _grid[y][x] = TILES.EMPTY;
+        // Make corridors 2 tiles wide
+        if (x + 1 < GRID_WIDTH) {
+          _grid[y][x + 1] = TILES.EMPTY;
+        }
+      }
+      y += (y < y2) ? 1 : -1;
+    }
+  }
+
+  function _addBranchConnections(rooms) {
+    // Add 2-4 extra connections to create loops
+    var extraConnections = Math.min(2 + Math.floor(_floor / 3), 4);
+
+    for (var i = 0; i < extraConnections && rooms.length > 2; i++) {
+      var idx1 = Math.floor(Math.random() * rooms.length);
+      var idx2 = Math.floor(Math.random() * rooms.length);
+
+      if (idx1 !== idx2 && Math.abs(idx1 - idx2) > 1) {
+        var room1 = rooms[idx1];
+        var room2 = rooms[idx2];
+        _carveCorridor(room1.centerX, room1.centerY, room2.centerX, room2.centerY);
+      }
+    }
+  }
+
+  function _placeCover() {
+    // Place cover on 6-10% of floor tiles
+    var coverChance = 0.06 + Math.random() * 0.04;
+
+    for (var y = 1; y < GRID_HEIGHT - 1; y++) {
+      for (var x = 1; x < GRID_WIDTH - 1; x++) {
+        if (_grid[y][x] === TILES.EMPTY && Math.random() < coverChance) {
+          _grid[y][x] = TILES.COVER;
+        }
+      }
+    }
+  }
+
+  function _placeShadowZones() {
+    // Mark ~15% of floor tiles as shadow zones (stored in metadata)
+    var shadowChance = 0.15;
+
+    for (var y = 1; y < GRID_HEIGHT - 1; y++) {
+      for (var x = 1; x < GRID_WIDTH - 1; x++) {
+        if (_grid[y][x] === TILES.EMPTY && Math.random() < shadowChance) {
+          var key = x + ',' + y;
+          _tileMetadata[key] = { type: 'shadow', stealthBonus: 30 };
+          // Visual indicator: change tile to shadow tile
+          _grid[y][x] = TILES.SHADOW;
+        }
+      }
+    }
+  }
+
+  function _placeEnvironmentalTiles() {
+    // Add environmental tiles based on difficulty
+    var difficulty = _floor;
+
+    // Late game: add hazards and difficult terrain
+    if (difficulty >= 5) {
+      var hazardCount = Math.floor(difficulty / 2);
+      for (var i = 0; i < hazardCount; i++) {
+        var x = Math.floor(Math.random() * (GRID_WIDTH - 2)) + 1;
+        var y = Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1;
+
+        if (_grid[y][x] === TILES.EMPTY) {
+          _grid[y][x] = TILES.HAZARD;
+          var key = x + ',' + y;
+          _tileMetadata[key] = { type: 'hazard', damage: 1 };
+        }
+      }
+    }
+
+    // Add some grass/vegetation for stealth
+    if (difficulty < 5) {
+      var grassCount = 8 + Math.floor(Math.random() * 5);
+      for (var i = 0; i < grassCount; i++) {
+        var x = Math.floor(Math.random() * (GRID_WIDTH - 2)) + 1;
+        var y = Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1;
+
+        if (_grid[y][x] === TILES.EMPTY) {
+          _grid[y][x] = TILES.GRASS;
+          var key = x + ',' + y;
+          _tileMetadata[key] = { type: 'grass', stealthBonus: 20 };
+        }
+      }
+    }
+  }
+
+  function _placePlayerAndExit(rooms) {
+    if (rooms.length === 0) {
+      // Fallback if no rooms generated
+      return { playerX: 5, playerY: 10, exitX: GRID_WIDTH - 3, exitY: GRID_HEIGHT - 3 };
+    }
+
+    // Place player in first room
+    var firstRoom = rooms[0];
+    var playerX = firstRoom.centerX;
+    var playerY = firstRoom.centerY;
+
+    // Place exit in last room (opposite quadrant)
+    var lastRoom = rooms[rooms.length - 1];
+    var exitX = lastRoom.centerX;
+    var exitY = lastRoom.centerY;
+
+    // Ensure minimum distance
+    var distance = Math.abs(exitX - playerX) + Math.abs(exitY - playerY);
+    var minDistance = Math.floor((GRID_WIDTH + GRID_HEIGHT) * 0.6);
+
+    if (distance < minDistance && rooms.length > 1) {
+      // Try to find a more distant room
+      for (var i = rooms.length - 1; i >= 0; i--) {
+        var room = rooms[i];
+        var dist = Math.abs(room.centerX - playerX) + Math.abs(room.centerY - playerY);
+        if (dist >= minDistance) {
+          exitX = room.centerX;
+          exitY = room.centerY;
+          break;
+        }
+      }
+    }
+
+    // Place exit tile
+    _grid[exitY][exitX] = TILES.EXIT;
+
+    return { playerX: playerX, playerY: playerY, exitX: exitX, exitY: exitY };
+  }
+
+  function _placeEnemies(rooms) {
+    // Enemy density based on difficulty
+    var difficulty = _floor;
+    var enemyCount;
+
+    if (difficulty <= 3) {
+      enemyCount = 4 + Math.floor(Math.random() * 3); // 4-6
+    } else if (difficulty <= 7) {
+      enemyCount = 7 + Math.floor(Math.random() * 4); // 7-10
+    } else {
+      enemyCount = 12 + Math.floor(Math.random() * 7); // 12-18
+    }
+
+    enemyCount = Math.min(enemyCount, rooms.length * 3); // Don't overcrowd
+
+    for (var i = 0; i < enemyCount && rooms.length > 0; i++) {
+      var roomIdx = Math.floor(Math.random() * rooms.length);
+      var room = rooms[roomIdx];
+
+      // Random position within room (avoid edges)
+      var x = room.x + 1 + Math.floor(Math.random() * Math.max(1, room.w - 2));
+      var y = room.y + 1 + Math.floor(Math.random() * Math.max(1, room.h - 2));
+
+      // Check minimum separation from player and other enemies
+      var tooClose = false;
+      var minSep = 5;
+
+      if (Math.abs(x - _player.x) + Math.abs(y - _player.y) < minSep) {
+        tooClose = true;
+      }
+
+      for (var j = 0; j < _enemies.length; j++) {
+        var sep = Math.abs(x - _enemies[j].x) + Math.abs(y - _enemies[j].y);
+        if (sep < 3) {
+          tooClose = true;
+          break;
+        }
+      }
+
+      if (tooClose) {
+        i--;
+        continue;
+      }
+
+      // Determine patrol type
+      var patrolType = _choosePatrolType(difficulty, room);
+      var enemy = _createEnemy(x, y, patrolType, room);
+
+      _enemies.push(enemy);
+    }
+  }
+
+  function _choosePatrolType(difficulty, room) {
+    var rand = Math.random();
+
+    if (difficulty <= 3) {
+      // Early game: more stationary sentries
+      if (rand < 0.4) return PATH_TYPES.STATIONARY;
+      if (rand < 0.7) return PATH_TYPES.PATROL;
+      return PATH_TYPES.CIRCULAR;
+    } else {
+      // Late game: more patrols
+      if (rand < 0.2) return PATH_TYPES.STATIONARY;
+      if (rand < 0.6) return PATH_TYPES.PATROL;
+      return PATH_TYPES.CIRCULAR;
+    }
+  }
+
+  function _createEnemy(x, y, patrolType, room) {
+    var enemy = {
+      x: x,
+      y: y,
+      hp: 5,
+      awareness: 0,
+      orientation: ['north', 'south', 'east', 'west'][Math.floor(Math.random() * 4)],
+      sightRange: _floor > 5 ? 7 : 5, // Increased range on late floors
+      pathTimer: 0
+    };
+
+    if (patrolType === PATH_TYPES.STATIONARY) {
+      enemy.path = { type: PATH_TYPES.STATIONARY };
+    } else if (patrolType === PATH_TYPES.PATROL) {
+      // Create patrol path within room
+      var points = [
+        { x: room.x + 1, y: room.y + 1 },
+        { x: room.x + room.w - 2, y: room.y + 1 },
+        { x: room.x + room.w - 2, y: room.y + room.h - 2 },
+        { x: room.x + 1, y: room.y + room.h - 2 }
+      ];
+      enemy.path = { type: PATH_TYPES.PATROL, points: points };
+      enemy.pathIndex = 0;
+      enemy.pathDirection = 1;
+    } else if (patrolType === PATH_TYPES.CIRCULAR) {
+      // Circular patrol around room center
+      var cx = room.centerX;
+      var cy = room.centerY;
+      var radius = Math.min(room.w, room.h) / 3;
+      var points = [
+        { x: Math.floor(cx + radius), y: cy },
+        { x: cx, y: Math.floor(cy + radius) },
+        { x: Math.floor(cx - radius), y: cy },
+        { x: cx, y: Math.floor(cy - radius) }
+      ];
+      enemy.path = { type: PATH_TYPES.CIRCULAR, points: points };
+      enemy.pathIndex = 0;
+    }
+
+    return enemy;
+  }
+
+  function _placeItems() {
+    var itemCount = 5;
+    var attempts = 0;
+    var maxAttempts = 50;
+
+    for (var i = 0; i < itemCount && attempts < maxAttempts; i++) {
+      attempts++;
+
       var ix = Math.floor(Math.random() * (GRID_WIDTH - 2)) + 1;
       var iy = Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1;
 
-      var occupied = _grid[iy][ix] === TILES.WALL ||
+      var occupied = _grid[iy][ix] !== TILES.EMPTY ||
         (_breakables.some(function(b) { return b.x === ix && b.y === iy && b.hp > 0; })) ||
         _enemies.some(function(e) { return e.x === ix && e.y === iy; }) ||
-        (ix === _player.x && iy === _player.y) ||
-        (ix === exitX && iy === exitY);
+        (ix === _player.x && iy === _player.y);
 
       if (occupied) {
         i--;
@@ -420,8 +755,48 @@ const GoneRogue = (function () {
         _items.push({ x: ix, y: iy, card: card });
       }
     }
+  }
 
-    _turn = 0;
+  function _validateStealthPath(startX, startY, endX, endY) {
+    // Simple BFS pathfinding to check if path exists
+    // Count how many enemy vision cones the path crosses
+
+    var queue = [{ x: startX, y: startY, steps: 0 }];
+    var visited = {};
+    visited[startX + ',' + startY] = true;
+
+    var found = false;
+    var minVisionCrosses = Infinity;
+
+    while (queue.length > 0 && queue[0].steps < 100) {
+      var current = queue.shift();
+
+      if (current.x === endX && current.y === endY) {
+        found = true;
+        break;
+      }
+
+      var neighbors = [
+        { x: current.x + 1, y: current.y },
+        { x: current.x - 1, y: current.y },
+        { x: current.x, y: current.y + 1 },
+        { x: current.x, y: current.y - 1 }
+      ];
+
+      for (var i = 0; i < neighbors.length; i++) {
+        var n = neighbors[i];
+        var key = n.x + ',' + n.y;
+
+        if (n.x >= 0 && n.x < GRID_WIDTH && n.y >= 0 && n.y < GRID_HEIGHT &&
+            !visited[key] && _grid[n.y][n.x] !== TILES.WALL) {
+          visited[key] = true;
+          queue.push({ x: n.x, y: n.y, steps: current.steps + 1 });
+        }
+      }
+    }
+
+    // Map is valid if path exists
+    return found;
   }
 
   function _spawnBreakables() {
@@ -537,6 +912,9 @@ const GoneRogue = (function () {
     _player.y = newY;
     _turn++;
 
+    // Apply tile effects
+    var tileEffectMessage = _applyTileEffects(newX, newY);
+
     // Run mode increases detection and makes noise
     if (runMode) {
       _player.detection += 2;
@@ -563,11 +941,48 @@ const GoneRogue = (function () {
     }
 
     _saveState();
+
+    var lines = tileEffectMessage ? [tileEffectMessage, ''].concat(_renderGrid()) : _renderGrid();
+
     return {
-      lines: _renderGrid(),
+      lines: lines,
       prompt: getPrompt(),
       stayActive: true
     };
+  }
+
+  /**
+   * Apply tile effects when player enters a tile
+   */
+  function _applyTileEffects(x, y) {
+    var tile = _grid[y][x];
+    var key = x + ',' + y;
+    var metadata = _tileMetadata[key];
+    var message = null;
+
+    // Hazard damage
+    if (tile === TILES.HAZARD || (metadata && metadata.type === 'hazard')) {
+      var damage = metadata ? metadata.damage : 1;
+      _player.hp -= damage;
+      message = '🟥 HAZARD! -' + damage + ' HP';
+
+      if (_player.hp <= 0) {
+        return _exitRogue(false);
+      }
+    }
+
+    // Stealth bonuses (applied passively during detection checks)
+    if (tile === TILES.SHADOW || tile === TILES.GRASS || tile === TILES.SMOKE) {
+      if (tile === TILES.SHADOW) {
+        message = '⬛ Entered shadow (stealth +30%)';
+      } else if (tile === TILES.GRASS) {
+        message = '🟩 Grass cover (stealth +20%)';
+      } else if (tile === TILES.SMOKE) {
+        message = '🌫️  Smoke/fog (stealth +40%)';
+      }
+    }
+
+    return message;
   }
 
   /**
@@ -896,9 +1311,17 @@ const GoneRogue = (function () {
     var dy = _player.y - enemy.y;
     var distance = Math.sqrt(dx * dx + dy * dy);
 
-    // Sight cone range
-    var sightRange = enemy.sightRange || 5;
-    if (distance > sightRange) return false;
+    // Sight cone range (modified by player's tile stealth bonus)
+    var baseSightRange = enemy.sightRange || 5;
+    var stealthBonus = _getPlayerStealthBonus();
+    var effectiveSightRange = baseSightRange * (1 - stealthBonus / 100);
+
+    if (distance > effectiveSightRange) return false;
+
+    // Check if cover blocks line of sight
+    if (_checkLineOfSight(enemy.x, enemy.y, _player.x, _player.y)) {
+      return false; // LOS blocked by cover
+    }
 
     // Calculate angle to player
     var angleToPlayer = Math.atan2(dy, dx);
@@ -919,6 +1342,63 @@ const GoneRogue = (function () {
     while (angleDiff > Math.PI) angleDiff = Math.abs(angleDiff - 2 * Math.PI);
 
     return angleDiff <= coneAngle / 2;
+  }
+
+  /**
+   * Get player stealth bonus from current tile
+   */
+  function _getPlayerStealthBonus() {
+    var tile = _grid[_player.y][_player.x];
+    var key = _player.x + ',' + _player.y;
+    var metadata = _tileMetadata[key];
+
+    if (tile === TILES.SHADOW && metadata && metadata.stealthBonus) {
+      return metadata.stealthBonus; // 30%
+    } else if (tile === TILES.GRASS && metadata && metadata.stealthBonus) {
+      return metadata.stealthBonus; // 20%
+    } else if (tile === TILES.SMOKE && metadata && metadata.stealthBonus) {
+      return metadata.stealthBonus; // 40%
+    }
+
+    return 0;
+  }
+
+  /**
+   * Check if line of sight is blocked by cover
+   * Returns true if blocked, false if clear
+   */
+  function _checkLineOfSight(x1, y1, x2, y2) {
+    // Simple raycast to check for cover
+    var dx = Math.abs(x2 - x1);
+    var dy = Math.abs(y2 - y1);
+    var sx = x1 < x2 ? 1 : -1;
+    var sy = y1 < y2 ? 1 : -1;
+    var err = dx - dy;
+
+    var x = x1;
+    var y = y1;
+
+    while (!(x === x2 && y === y2)) {
+      // Check if this tile blocks LOS
+      if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
+        var tile = _grid[y][x];
+        if (tile === TILES.COVER || tile === TILES.WALL) {
+          return true; // LOS blocked
+        }
+      }
+
+      var e2 = 2 * err;
+      if (e2 > -dy) {
+        err -= dy;
+        x += sx;
+      }
+      if (e2 < dx) {
+        err += dx;
+        y += sy;
+      }
+    }
+
+    return false; // LOS clear
   }
 
   function _isInsideBounds(x, y) {
