@@ -1846,6 +1846,18 @@ const GoneRogue = (function () {
       var healAmount = Math.floor(_player.maxHp * (0.1 + Math.random() * 0.1));
       _player.hp = Math.min(_player.maxHp, _player.hp + healAmount);
 
+      // Generate next floor (moved BEFORE card delivery logic)
+      if (isSecretFloor) {
+        _generateFloor(secretFloorData);
+      } else {
+        _generateFloor();
+      }
+      _startGameLoop();
+      _saveState();
+
+      // Initialize lines array for messaging
+      var lines = [];
+
       // After floor 1, give random 3 starter cards if player has 0 cards
       if (_floor === 2 && typeof GAMESTATE !== 'undefined' && typeof CardSystem !== 'undefined') {
         var looseInventory = GAMESTATE.getLooseInventory();
@@ -1877,17 +1889,6 @@ const GoneRogue = (function () {
           lines.push('');
         }
       }
-
-      // Generate next floor
-      if (isSecretFloor) {
-        _generateFloor(secretFloorData);
-      } else {
-        _generateFloor();
-      }
-      _startGameLoop();
-      _saveState();
-
-      var lines = [];
 
       if (isSecretFloor) {
         // Secret floor messaging
