@@ -31,7 +31,7 @@ const GoneRogue = (function () {
   var _turn = 0;
   var _floor = 1;
   var _alertLevel = 'safe'; // safe, caution, danger
-  var _useMobileUI = false;
+  var _useInteractiveGrid = false; // Use interactive DOM grid instead of text-only
 
   var TILES = {
     EMPTY: '.',
@@ -46,11 +46,11 @@ const GoneRogue = (function () {
   function init() {
     _loadState();
 
-    // Detect mobile device
-    _useMobileUI = _isMobileDevice();
+    // Enable interactive grid UI for all platforms (desktop and mobile)
+    _useInteractiveGrid = (typeof GoneRogueMobile !== 'undefined');
 
-    // Initialize mobile UI if on mobile
-    if (_useMobileUI && typeof GoneRogueMobile !== 'undefined') {
+    // Initialize interactive grid UI if available
+    if (_useInteractiveGrid) {
       GoneRogueMobile.init();
     }
 
@@ -92,7 +92,7 @@ const GoneRogue = (function () {
     _generateFloor();
 
     // Use mobile UI if available
-    if (_useMobileUI && typeof GoneRogueMobile !== 'undefined') {
+    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
       GoneRogueMobile.show();
       GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items);
 
@@ -517,7 +517,7 @@ const GoneRogue = (function () {
     var moveResult = _movePlayer(stepX, stepY, runMode);
 
     // Update mobile UI
-    if (_useMobileUI && typeof GoneRogueMobile !== 'undefined') {
+    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
       GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items);
     }
 
@@ -541,7 +541,7 @@ const GoneRogue = (function () {
     var result = _executeCardAction(action);
 
     // Update mobile UI
-    if (_useMobileUI && typeof GoneRogueMobile !== 'undefined') {
+    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
       GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items);
     }
 
