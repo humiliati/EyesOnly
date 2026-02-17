@@ -225,6 +225,36 @@
   50% { background: rgba(255, 255, 0, 0.5); }
 }
 
+/* Click/Tap Feedback Dot */
+.click-feedback-dot {
+  position: fixed;
+  pointer-events: none;
+  border-radius: 50%;
+  background: #1cff9b;
+  box-shadow: 0 0 8px #1cff9b, 0 0 12px rgba(28, 255, 155, 0.6);
+  z-index: 9999;
+  animation: click-expand-fade 0.4s ease-out forwards;
+  transform: translate(-50%, -50%);
+}
+
+@keyframes click-expand-fade {
+  0% {
+    width: 2px;
+    height: 2px;
+    opacity: 1;
+  }
+  50% {
+    width: 10px;
+    height: 10px;
+    opacity: 0.8;
+  }
+  100% {
+    width: 5px;
+    height: 5px;
+    opacity: 0;
+  }
+}
+
 /* Card Container */
 .rogue-cards-mobile {
   display: none;

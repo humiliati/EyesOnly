@@ -477,6 +477,26 @@ const GoneRogueMobile = (function () {
   }
 
   /**
+   * Show click/tap feedback animation at coordinates
+   * @param {number} clientX - X coordinate in viewport
+   * @param {number} clientY - Y coordinate in viewport
+   */
+  function _showClickFeedback(clientX, clientY) {
+    var dot = document.createElement('div');
+    dot.className = 'click-feedback-dot';
+    dot.style.left = clientX + 'px';
+    dot.style.top = clientY + 'px';
+    document.body.appendChild(dot);
+
+    // Remove after animation completes
+    setTimeout(function() {
+      if (dot.parentNode) {
+        dot.parentNode.removeChild(dot);
+      }
+    }, 400);
+  }
+
+  /**
    * Process grid input (shared by touch and click handlers)
    * @param {number} x - Grid X coordinate
    * @param {number} y - Grid Y coordinate
@@ -540,6 +560,9 @@ const GoneRogueMobile = (function () {
 
     if (!target || !target.classList.contains('rogue-cell')) return;
 
+    // Show click feedback at touch point
+    _showClickFeedback(touch.clientX, touch.clientY);
+
     var x = parseInt(target.dataset.x);
     var y = parseInt(target.dataset.y);
 
@@ -555,6 +578,9 @@ const GoneRogueMobile = (function () {
 
     e.preventDefault(); // Prevent default click behavior
     e.stopPropagation(); // Prevent bubbling to document-level handlers
+
+    // Show click feedback at mouse/pointer position
+    _showClickFeedback(e.clientX, e.clientY);
 
     var x = parseInt(target.dataset.x);
     var y = parseInt(target.dataset.y);
