@@ -174,8 +174,24 @@ const GoneRogueMobile = (function () {
           cell.textContent = projectile.emoji || projectile.glyph || '💥';
           cell.classList.add('cell-projectile');
         } else if (breakable) {
-          cell.textContent = breakable.hp > 0 ? (breakable.emoji || breakable.glyph || '📦') : (breakable.destroyedGlyph || '░');
-          cell.classList.add(breakable.hp > 0 ? 'cell-breakable' : 'cell-breakable-broken');
+          // Show impact animation when destroying (blink twice)
+          if (breakable.hp === 0 && breakable.destroying) {
+            var elapsed = Date.now() - (breakable.destroyStartTime || 0);
+            var blinkPhase = Math.floor(elapsed / 200) % 2; // Blink every 200ms
+            if (blinkPhase === 0) {
+              cell.textContent = '💥'; // Show impact emoji
+              cell.classList.add('cell-projectile-impact');
+            } else {
+              cell.textContent = breakable.emoji || breakable.glyph || '📦';
+              cell.classList.add('cell-breakable-destroying');
+            }
+          } else if (breakable.hp > 0) {
+            cell.textContent = breakable.emoji || breakable.glyph || '📦';
+            cell.classList.add('cell-breakable');
+          } else {
+            cell.textContent = breakable.destroyedGlyph || '░';
+            cell.classList.add('cell-breakable-broken');
+          }
         } else if (item) {
           cell.textContent = item.emoji || '💎';
           cell.classList.add('cell-item');
@@ -314,7 +330,7 @@ const GoneRogueMobile = (function () {
       cell.classList.add('cell-breakable');
     } else if (tile === '░') {
       cell.classList.add('cell-breakable-broken');
-    } else if (tile === '▼') {
+    } else if (tile === '🚪' || tile === '▼') {
       cell.classList.add('cell-exit');
     } else {
       cell.classList.add('cell-empty');

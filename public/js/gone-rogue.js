@@ -69,7 +69,7 @@ const GoneRogue = (function () {
     PLAYER: '🥷',
     ENEMY: '🪖',
     ITEM: '💎',
-    EXIT: '▼',
+    EXIT: '🚪',
     COVER: '▓',
     BREAKABLE: '📦',
     DEBRIS: '░',
@@ -401,7 +401,7 @@ const GoneRogue = (function () {
       '',
       'LEGEND:',
       '  🥷 = You        🪖 = Enemy      💎 = Item',
-      '  ▼ = Exit       █ = Wall       ▓ = Cover',
+      '  🚪 = Exit       █ = Wall       ▓ = Cover',
       '  ░ = Shadow     , = Grass      ≈ = Smoke',
       '  ▒ = Hazard     📦 = Breakable',
       '',
@@ -1198,6 +1198,11 @@ const GoneRogue = (function () {
     _player.y = newY;
     _turn++;
 
+    // Check if player walked onto EXIT tile - trigger level transition
+    if (tile === TILES.EXIT) {
+      return _attemptExtract();
+    }
+
     // Check for currency pickup
     var cryptoPickup = _currencies.find(function(c) { return c.x === newX && c.y === newY; });
     var cryptoMessage = null;
@@ -1335,7 +1340,7 @@ const GoneRogue = (function () {
     var tile = _grid[_player.y][_player.x];
     if (tile !== TILES.EXIT) {
       return {
-        lines: ['NO EXIT HERE', 'FIND THE EXTRACTION POINT (▼)', ''].concat(_renderGrid()),
+        lines: ['NO EXIT HERE', 'FIND THE EXTRACTION POINT (🚪)', ''].concat(_renderGrid()),
         prompt: getPrompt(),
         stayActive: true
       };
@@ -1352,41 +1357,72 @@ const GoneRogue = (function () {
   }
 
   function _advanceFloor() {
-    _floor++;
-    _turn = 0;
-
-    // Reset vendor for new bonfire
-    _vendor = null;
-    _vendorInventory = [];
-
-    // Heal player slightly between floors (10-20% of max HP)
-    var healAmount = Math.floor(_player.maxHp * (0.1 + Math.random() * 0.1));
-    _player.hp = Math.min(_player.maxHp, _player.hp + healAmount);
-
-    // Generate next floor
-    _generateFloor();
-    _startGameLoop();
-    _saveState();
-
-    var lines = [
-      '',
-      '═══════════════════════════════════════',
-      '  FLOOR ' + _floor + ' - EXTRACTION SUCCESSFUL',
-      '═══════════════════════════════════════',
-      '',
-      '  HP RESTORED: +' + healAmount,
-      '  INFILTRATING DEEPER...',
-      ''
-    ];
-
-    // Show mobile UI
+    // Apply fade-out effect before transitioning
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      GoneRogueMobile.show();
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+      var gridContainer = document.getElementById('rogue-grid-mobile');
+      if (gridContainer) {
+        gridContainer.style.opacity = '0';
+        gridContainer.style.transition = 'opacity 0.3s ease-out';
+      }
     }
 
+    // Wait for fade-out to complete before generating new floor
+    setTimeout(function() {
+      _floor++;
+      _turn = 0;
+
+      // Reset vendor for new bonfire
+      _vendor = null;
+      _vendorInventory = [];
+
+      // Heal player slightly between floors (10-20% of max HP)
+      var healAmount = Math.floor(_player.maxHp * (0.1 + Math.random() * 0.1));
+      _player.hp = Math.min(_player.maxHp, _player.hp + healAmount);
+
+      // Generate next floor
+      _generateFloor();
+      _startGameLoop();
+      _saveState();
+
+      var lines = [
+        '',
+        '═══════════════════════════════════════',
+        '  FLOOR ' + _floor + ' - EXTRACTION SUCCESSFUL',
+        '═══════════════════════════════════════',
+        '',
+        '  HP RESTORED: +' + healAmount,
+        '  INFILTRATING DEEPER...',
+        ''
+      ];
+
+      // Show mobile UI with fade-in effect
+      if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+        GoneRogueMobile.show();
+        GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+
+        var gridContainer = document.getElementById('rogue-grid-mobile');
+        if (gridContainer) {
+          // Fade in the new floor
+          setTimeout(function() {
+            gridContainer.style.opacity = '1';
+            gridContainer.style.transition = 'opacity 0.3s ease-in';
+          }, 50);
+        }
+      }
+
+      // Return result for text-based mode
+      if (!_useInteractiveGrid) {
+        return {
+          lines: lines.concat(_renderGrid()),
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+    }, 300); // Match fade-out duration
+
+    // Immediately return for interactive mode
     return {
-      lines: lines.concat(_renderGrid()),
+      lines: ['EXTRACTING...'],
       prompt: getPrompt(),
       stayActive: true
     };
@@ -2095,31 +2131,51 @@ const GoneRogue = (function () {
 
   function _damageBreakable(breakable, amount) {
     breakable.hp = Math.max(0, (breakable.hp || 0) - amount);
+
+    // Add hit animation state
+    breakable.hitTime = Date.now();
+    breakable.blinkCount = 0;
+
     if (breakable.hp === 0) {
-      _grid[breakable.y][breakable.x] = breakable.destroyedGlyph || TILES.DEBRIS;
+      // Mark for destruction but delay it for animation
+      breakable.destroying = true;
+      breakable.destroyStartTime = Date.now();
 
-      // Drop currency (cryptos) when breakable is destroyed
-      var dropChance = Math.random();
-      if (dropChance < 0.7) { // 70% chance to drop currency
-        var cryptoAmount = Math.floor(Math.random() * 3) + 1; // 1-3 cryptos
-        _spawnCurrency(breakable.x, breakable.y, cryptoAmount);
-      }
+      // Schedule the actual destruction after animation completes (2 blinks * 200ms each = 400ms)
+      setTimeout(function() {
+        if (breakable.destroying) {
+          _grid[breakable.y][breakable.x] = breakable.destroyedGlyph || TILES.DEBRIS;
+          breakable.destroying = false;
 
-      // 30% chance to drop a card
-      if (Math.random() < 0.3 && typeof CardSystem !== 'undefined') {
-        var baseType = CardSystem.getRandomBaseCard();
-        var card = CardSystem.rollCard(baseType);
-        if (card) {
-          _items.push({
-            x: breakable.x,
-            y: breakable.y,
-            type: 'card',
-            card: card,
-            spawnTime: Date.now(),
-            decayTime: 30000 // 30 second decay
-          });
+          // Drop currency (cryptos) when breakable is destroyed
+          var dropChance = Math.random();
+          if (dropChance < 0.7) { // 70% chance to drop currency
+            var cryptoAmount = Math.floor(Math.random() * 3) + 1; // 1-3 cryptos
+            _spawnCurrency(breakable.x, breakable.y, cryptoAmount);
+          }
+
+          // 30% chance to drop a card
+          if (Math.random() < 0.3 && typeof CardSystem !== 'undefined') {
+            var baseType = CardSystem.getRandomBaseCard();
+            var card = CardSystem.rollCard(baseType);
+            if (card) {
+              _items.push({
+                x: breakable.x,
+                y: breakable.y,
+                type: 'card',
+                card: card,
+                spawnTime: Date.now(),
+                decayTime: 30000 // 30 second decay
+              });
+            }
+          }
+
+          // Trigger re-render
+          if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+            GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+          }
         }
-      }
+      }, 400); // 2 blinks at 200ms each
     }
   }
 
