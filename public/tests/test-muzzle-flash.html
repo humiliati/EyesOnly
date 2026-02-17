@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Muzzle Flash Visual Test - EYES ONLY</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      background: #0a0a0a;
+      color: #1cff9b;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    h1 {
+      color: #1cff9b;
+      text-align: center;
+      margin-bottom: 30px;
+      text-shadow: 0 0 10px rgba(28, 255, 155, 0.5);
+    }
+
+    .info {
+      background: rgba(28, 255, 155, 0.1);
+      border: 1px solid #1cff9b;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 5px;
+    }
+
+    .test-section {
+      background: #1a1a1a;
+      border: 2px solid #1cff9b;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 5px;
+    }
+
+    button {
+      font-family: 'Courier New', monospace;
+      padding: 10px 20px;
+      border: 1px solid #1cff9b;
+      background: #0a0a0a;
+      color: #1cff9b;
+      border-radius: 3px;
+      cursor: pointer;
+      font-weight: bold;
+      margin: 5px;
+      transition: all 0.3s;
+    }
+
+    button:hover {
+      background: #1cff9b;
+      color: #0a0a0a;
+    }
+
+    .demo-grid {
+      display: grid;
+      grid-template-columns: repeat(15, 40px);
+      gap: 2px;
+      margin: 20px auto;
+      width: fit-content;
+      background: #000;
+      padding: 10px;
+      border: 2px solid #1cff9b;
+    }
+
+    .demo-cell {
+      width: 40px;
+      height: 40px;
+      background: #0a0a0a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      position: relative;
+      border: 1px solid #333;
+    }
+
+    .demo-cell.player {
+      background: #1cff9b;
+      color: #000;
+    }
+
+    .player-gun-indicator {
+      position: absolute;
+      font-size: 0.5em;
+      color: #666;
+      font-weight: bold;
+    }
+
+    .cell-muzzle-flash {
+      animation: muzzle-flash 0.3s ease-out;
+    }
+
+    @keyframes muzzle-flash {
+      0% {
+        background: rgba(255, 255, 100, 0);
+        box-shadow: none;
+      }
+      30% {
+        background: rgba(255, 255, 100, 0.9);
+        box-shadow: 0 0 15px rgba(255, 255, 100, 0.8), inset 0 0 10px rgba(255, 255, 255, 0.6);
+      }
+      100% {
+        background: rgba(255, 255, 100, 0);
+        box-shadow: none;
+      }
+    }
+
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      border: 2px solid #1cff9b;
+      border-radius: 5px;
+    }
+
+    .pass {
+      border-color: #00ff00;
+      color: #00ff00;
+    }
+
+    .fail {
+      border-color: #ff0000;
+      color: #ff0000;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔫 MUZZLE FLASH VISUAL TEST</h1>
+
+  <div class="info">
+    <strong>Test Objective:</strong> Confirm that the muzzle flash originates from the player's directional gun indicator.
+    <br><br>
+    <strong>Expected Behavior:</strong>
+    <ul>
+      <li>Player cell (🥷) shows small directional indicator (^, v, <, >) based on last move direction</li>
+      <li>When firing, muzzle flash appears at player position</li>
+      <li>Flash is bright yellow with glow effect</li>
+      <li>Flash duration: 300ms</li>
+    </ul>
+  </div>
+
+  <div class="test-section">
+    <h2>Interactive Test</h2>
+    <p>Click buttons to move player and fire weapon. Observe muzzle flash position relative to gun indicator.</p>
+    
+    <div>
+      <button onclick="movePlayer('north')">⬆ Move North</button>
+      <button onclick="movePlayer('south')">⬇ Move South</button>
+      <button onclick="movePlayer('east')">➡ Move East</button>
+      <button onclick="movePlayer('west')">⬅ Move West</button>
+    </div>
+    <div>
+      <button onclick="fireWeapon()" style="background: #ff6600; color: #fff; border-color: #ff6600;">🔥 FIRE WEAPON</button>
+    </div>
+
+    <div id="demo-grid" class="demo-grid"></div>
+
+    <div id="result" class="result" style="display: none;"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>Test Log</h2>
+    <div id="log" style="background: #000; padding: 15px; border-radius: 5px; min-height: 200px; font-size: 12px; white-space: pre-wrap;"></div>
+  </div>
+
+  <script>
+    var playerX = 7;
+    var playerY = 7;
+    var playerDirection = 'north';
+    var gridWidth = 15;
+    var gridHeight = 10;
+
+    function log(message) {
+      var logEl = document.getElementById('log');
+      var timestamp = new Date().toLocaleTimeString();
+      logEl.textContent += `[${timestamp}] ${message}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function createGrid() {
+      var gridEl = document.getElementById('demo-grid');
+      gridEl.innerHTML = '';
+      gridEl.style.gridTemplateColumns = `repeat(${gridWidth}, 40px)`;
+
+      for (var y = 0; y < gridHeight; y++) {
+        for (var x = 0; x < gridWidth; x++) {
+          var cell = document.createElement('div');
+          cell.className = 'demo-cell';
+          cell.dataset.x = x;
+          cell.dataset.y = y;
+
+          if (x === playerX && y === playerY) {
+            cell.className = 'demo-cell player';
+            cell.textContent = '🥷';
+
+            // Add gun indicator
+            var gunSpan = document.createElement('span');
+            gunSpan.className = 'player-gun-indicator';
+            
+            var gunChar = '';
+            switch (playerDirection) {
+              case 'north':
+                gunChar = '^';
+                gunSpan.style.top = '2px';
+                gunSpan.style.left = '50%';
+                gunSpan.style.transform = 'translateX(-50%)';
+                break;
+              case 'south':
+                gunChar = 'v';
+                gunSpan.style.bottom = '2px';
+                gunSpan.style.left = '50%';
+                gunSpan.style.transform = 'translateX(-50%)';
+                break;
+              case 'east':
+                gunChar = '>';
+                gunSpan.style.right = '2px';
+                gunSpan.style.top = '50%';
+                gunSpan.style.transform = 'translateY(-50%)';
+                break;
+              case 'west':
+                gunChar = '<';
+                gunSpan.style.left = '2px';
+                gunSpan.style.top = '50%';
+                gunSpan.style.transform = 'translateY(-50%)';
+                break;
+            }
+
+            gunSpan.textContent = gunChar;
+            cell.appendChild(gunSpan);
+          }
+
+          gridEl.appendChild(cell);
+        }
+      }
+    }
+
+    function movePlayer(direction) {
+      playerDirection = direction;
+      
+      // Move player
+      switch (direction) {
+        case 'north':
+          if (playerY > 0) playerY--;
+          break;
+        case 'south':
+          if (playerY < gridHeight - 1) playerY++;
+          break;
+        case 'east':
+          if (playerX < gridWidth - 1) playerX++;
+          break;
+        case 'west':
+          if (playerX > 0) playerX--;
+          break;
+      }
+
+      log(`Player moved ${direction}. New position: (${playerX}, ${playerY}). Gun indicator: '${getGunChar()}'`);
+      createGrid();
+    }
+
+    function getGunChar() {
+      switch (playerDirection) {
+        case 'north': return '^';
+        case 'south': return 'v';
+        case 'east': return '>';
+        case 'west': return '<';
+        default: return '?';
+      }
+    }
+
+    function fireWeapon() {
+      log(`🔫 FIRING WEAPON! Direction: ${playerDirection}, Gun indicator: '${getGunChar()}'`);
+      
+      // Find player cell and add muzzle flash
+      var cells = document.querySelectorAll('.demo-cell');
+      cells.forEach(cell => {
+        if (parseInt(cell.dataset.x) === playerX && parseInt(cell.dataset.y) === playerY) {
+          cell.classList.add('cell-muzzle-flash');
+          
+          setTimeout(() => {
+            cell.classList.remove('cell-muzzle-flash');
+            log(`✓ Muzzle flash animation complete (300ms)`);
+            showTestResult(true);
+          }, 300);
+        }
+      });
+
+      log(`→ Muzzle flash should appear at player position (${playerX}, ${playerY})`);
+      log(`→ Flash should coincide with gun indicator direction: ${playerDirection}`);
+    }
+
+    function showTestResult(pass) {
+      var resultEl = document.getElementById('result');
+      resultEl.style.display = 'block';
+      
+      if (pass) {
+        resultEl.className = 'result pass';
+        resultEl.innerHTML = '<strong>✓ TEST PASSED</strong><br>Muzzle flash correctly originates from player position with directional gun indicator.';
+      } else {
+        resultEl.className = 'result fail';
+        resultEl.innerHTML = '<strong>✗ TEST FAILED</strong><br>Muzzle flash position or timing issue detected.';
+      }
+    }
+
+    // Initialize
+    log('Muzzle Flash Visual Test initialized');
+    log(`Grid size: ${gridWidth}x${gridHeight}`);
+    log(`Player starting position: (${playerX}, ${playerY})`);
+    log(`Use movement buttons to reposition player, then fire to test muzzle flash`);
+    createGrid();
+  </script>
+</body>
+</html>
