@@ -1717,7 +1717,8 @@ const GoneRogue = (function () {
       if (parsed.breakables) _breakables = parsed.breakables;
       if (parsed.turn) _turn = parsed.turn;
       if (parsed.floor) _floor = parsed.floor;
-      _active = !!parsed.active;
+      // DO NOT restore active state - user must explicitly enter rogue mode
+      _active = false;
     } catch (e) { /* ignore */ }
   }
 

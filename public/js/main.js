@@ -135,10 +135,29 @@
       return;
     }
 
-    Terminal.typeLines(['SESSION RESTORED', ''], Terminal.TYPE_SPEED_FAST, 80, 'system-msg')
-      .then(function () {
-        _enableInput(_promptForState(state));
-      });
+    // Check if Gone Rogue was previously active
+    var rogueWasActive = false;
+    try {
+      var rogueState = localStorage.getItem('eyesonly_rogue_state');
+      if (rogueState) {
+        var parsed = JSON.parse(rogueState);
+        rogueWasActive = parsed.active === true;
+      }
+    } catch (e) { /* ignore */ }
+
+    if (rogueWasActive) {
+      // Restore to normal state, not rogue mode
+      // User can re-enter rogue mode with "rogue" command
+      Terminal.typeLines(['SESSION RESTORED', 'TYPE HELP FOR AVAILABLE COMMANDS', ''], Terminal.TYPE_SPEED_FAST, 80, 'system-msg')
+        .then(function () {
+          _enableInput(_promptForState(state));
+        });
+    } else {
+      Terminal.typeLines(['SESSION RESTORED', ''], Terminal.TYPE_SPEED_FAST, 80, 'system-msg')
+        .then(function () {
+          _enableInput(_promptForState(state));
+        });
+    }
   }
 
   function _promptForState(state) {
