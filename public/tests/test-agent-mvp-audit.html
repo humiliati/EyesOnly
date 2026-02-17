@@ -459,8 +459,12 @@
         // Run audit
         currentReport = await currentEngine.runAudit(numRuns);
 
+        // Calculate elapsed time
+        var elapsedSeconds = (Date.now() - performance.now()) / 1000;
+        var actualElapsed = currentReport.results.reduce((sum, r) => sum + r.duration, 0) / 1000;
+
         // Show completion
-        showStatus('complete', `✓ Audit Complete! ${numRuns} runs executed in ${(currentReport.metadata.totalRuns / 10).toFixed(1)}s`);
+        showStatus('complete', `✓ Audit Complete! ${numRuns} runs executed in ${actualElapsed.toFixed(1)}s`);
         showProgress(100);
 
         // Display MVP report

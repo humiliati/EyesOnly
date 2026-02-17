@@ -56,7 +56,7 @@ const MVPAuditEngine = (function() {
           totalOpportunities: 0,
           timesUsed: 0,
           stealthBonusGained: 0,
-          darknessP enaltyIncurred: 0,
+          darknessPenaltyIncurred: 0,
           lightSourcesPlaced: 0,
           lightSourcesUsedByPlayer: 0
         },
@@ -405,10 +405,15 @@ const MVPAuditEngine = (function() {
         var groundEffectChance = Math.random() < 0.4; // 40% chance
         if (groundEffectChance) {
           var effectType = ['OIL', 'FIRE', 'SMOKE'][Math.floor(Math.random() * 3)];
-          report.uxMetrics.groundEffectsUsage[effectType.toLowerCase() + 'Encountered'] = 
-            (report.uxMetrics.groundEffectsUsage[effectType.toLowerCase() + 'Encountered'] || 0) + 1;
           
-          if (effectType === 'FIRE') {
+          // Use consistent property names
+          if (effectType === 'OIL') {
+            report.uxMetrics.groundEffectsUsage.oilPuddles = 
+              (report.uxMetrics.groundEffectsUsage.oilPuddles || 0) + 1;
+          } else if (effectType === 'FIRE') {
+            report.uxMetrics.groundEffectsUsage.fireEncountered = 
+              (report.uxMetrics.groundEffectsUsage.fireEncountered || 0) + 1;
+            
             var fireDamage = 2;
             gameState.hp -= fireDamage;
             report.uxMetrics.groundEffectsUsage.damageFromGroundEffects += fireDamage;
@@ -419,16 +424,20 @@ const MVPAuditEngine = (function() {
               type: effectType,
               damage: fireDamage
             });
-          } else if (effectType === 'SMOKE' && persona.prefersDarkness) {
-            report.uxMetrics.groundEffectsUsage.smokeUsed++;
-            outcome.threatLevel -= 3;
+          } else if (effectType === 'SMOKE') {
+            report.uxMetrics.groundEffectsUsage.smokeUsed = 
+              (report.uxMetrics.groundEffectsUsage.smokeUsed || 0) + 1;
             
-            report.uxEventLog.push({
-              floor: floor,
-              event: 'GROUND_EFFECT_BENEFIT',
-              type: effectType,
-              benefit: 'stealth'
-            });
+            if (persona.prefersDarkness) {
+              outcome.threatLevel -= 3;
+              
+              report.uxEventLog.push({
+                floor: floor,
+                event: 'GROUND_EFFECT_BENEFIT',
+                type: effectType,
+                benefit: 'stealth'
+              });
+            }
           }
         }
       }
