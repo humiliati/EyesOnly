@@ -41,6 +41,8 @@ const GoneRogue = (function () {
   var _floor = 1;
   var _alertLevel = 'safe'; // safe, caution, danger
   var _useInteractiveGrid = false; // Use interactive DOM grid instead of text-only
+  var _muzzleFlash = null; // Track muzzle flash {x, y, time}
+  var _impactEffects = []; // Track impact effects {x, y, type, time}
 
   // Game loop state
   var _gameLoopActive = false;
@@ -1543,7 +1545,7 @@ const GoneRogue = (function () {
    */
   function _updateMobileGrid() {
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles, _alertLevel, _strCombatActive);
+      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles, _alertLevel, _strCombatActive, _muzzleFlash, _impactEffects);
     }
   }
 
@@ -3128,6 +3130,18 @@ const GoneRogue = (function () {
       owner: 'player'
     };
 
+    // Add muzzle flash at player position
+    _muzzleFlash = {
+      x: _player.x,
+      y: _player.y,
+      time: Date.now()
+    };
+
+    // Auto-clear muzzle flash after 300ms
+    setTimeout(function() {
+      _muzzleFlash = null;
+    }, 300);
+
     _projectiles.push(projectile);
     var action = _updateProjectiles(0, 1);
     _saveState();
@@ -3202,23 +3216,36 @@ const GoneRogue = (function () {
     var nextX = projectile.x + projectile.dx;
     var nextY = projectile.y + projectile.dy;
 
-    if (!_isInsideBounds(nextX, nextY)) return { alive: false };
+    if (!_isInsideBounds(nextX, nextY)) {
+      // Miss - went out of bounds
+      _addImpactEffect(projectile.x, projectile.y, 'miss');
+      return { alive: false };
+    }
 
     var tile = _grid[nextY][nextX];
-    if (tile === TILES.WALL) return { alive: false };
+    if (tile === TILES.WALL) {
+      // Hit wall
+      _addImpactEffect(nextX, nextY, 'wall');
+      return { alive: false };
+    }
 
     var breakable = _getBreakableAt(nextX, nextY);
     if (breakable && breakable.hp > 0) {
       _damageBreakable(breakable, projectile.power || 1);
+      // Hit breakable
+      _addImpactEffect(nextX, nextY, 'breakable');
       return { alive: false };
     }
 
     var enemy = _enemies.find(function(e) { return e.x === nextX && e.y === nextY && e.hp > 0; });
     if (enemy) {
       if (projectile.owner === 'player') {
+        // Hit enemy
+        _addImpactEffect(nextX, nextY, 'enemy');
         return { alive: false, action: _enterStrCombat(enemy, 'player_attack', projectile.card) };
       }
       enemy.hp = Math.max(0, enemy.hp - (projectile.power || 1));
+      _addImpactEffect(nextX, nextY, 'enemy');
       return { alive: false };
     }
 
@@ -3237,7 +3264,33 @@ const GoneRogue = (function () {
     projectile.y = nextY;
     projectile.range = (projectile.range || 1) - 1;
 
+    // Check if projectile expired (ran out of range)
+    if (projectile.range <= 0) {
+      // Miss - expired without hitting anything
+      _addImpactEffect(nextX, nextY, 'miss');
+      return { alive: false };
+    }
+
     return { alive: projectile.range > 0 };
+  }
+
+  /**
+   * Add impact effect for rendering
+   */
+  function _addImpactEffect(x, y, type) {
+    _impactEffects.push({
+      x: x,
+      y: y,
+      type: type, // 'breakable', 'enemy', 'wall', 'miss'
+      time: Date.now()
+    });
+
+    // Auto-clear impact effect after 400ms
+    setTimeout(function() {
+      _impactEffects = _impactEffects.filter(function(effect) {
+        return Date.now() - effect.time < 400;
+      });
+    }, 400);
   }
 
   function stepProjectiles(steps) {

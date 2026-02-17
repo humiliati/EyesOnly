@@ -182,6 +182,103 @@
   animation: impact-flash 0.2s ease-in-out;
 }
 
+/* Muzzle Flash Animation */
+.cell-muzzle-flash {
+  animation: muzzle-flash 0.3s ease-out;
+}
+
+@keyframes muzzle-flash {
+  0% {
+    background: rgba(255, 255, 100, 0);
+    box-shadow: none;
+  }
+  30% {
+    background: rgba(255, 255, 100, 0.9);
+    box-shadow: 0 0 15px rgba(255, 255, 100, 0.8), inset 0 0 10px rgba(255, 255, 255, 0.6);
+  }
+  100% {
+    background: rgba(255, 255, 100, 0);
+    box-shadow: none;
+  }
+}
+
+/* Impact Splash Types */
+.cell-impact-breakable {
+  animation: impact-splash-breakable 0.4s ease-out;
+}
+
+.cell-impact-enemy {
+  animation: impact-splash-enemy 0.4s ease-out;
+}
+
+.cell-impact-wall {
+  animation: impact-splash-wall 0.3s ease-out;
+}
+
+.cell-impact-miss {
+  animation: impact-fizzle 0.3s ease-out;
+}
+
+@keyframes impact-splash-breakable {
+  0% {
+    box-shadow: none;
+    filter: brightness(1);
+  }
+  40% {
+    box-shadow: 0 0 20px rgba(255, 152, 0, 0.9), inset 0 0 15px rgba(255, 200, 100, 0.6);
+    filter: brightness(2);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(255, 152, 0, 0.3);
+    filter: brightness(1);
+  }
+}
+
+@keyframes impact-splash-enemy {
+  0% {
+    box-shadow: none;
+    filter: brightness(1);
+  }
+  40% {
+    box-shadow: 0 0 20px rgba(255, 28, 74, 0.9), inset 0 0 15px rgba(255, 100, 120, 0.6);
+    filter: brightness(2);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(255, 28, 74, 0.3);
+    filter: brightness(1);
+  }
+}
+
+@keyframes impact-splash-wall {
+  0% {
+    box-shadow: none;
+    filter: brightness(1);
+  }
+  40% {
+    box-shadow: 0 0 15px rgba(200, 200, 200, 0.7), inset 0 0 10px rgba(255, 255, 255, 0.4);
+    filter: brightness(1.5);
+  }
+  100% {
+    box-shadow: none;
+    filter: brightness(1);
+  }
+}
+
+@keyframes impact-fizzle {
+  0% {
+    opacity: 1;
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 0.6;
+    filter: brightness(0.7);
+  }
+  100% {
+    opacity: 0.3;
+    filter: brightness(0.5);
+  }
+}
+
 @keyframes breakable-blink {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.5; transform: scale(0.9); }

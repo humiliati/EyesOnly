@@ -143,7 +143,7 @@ const GoneRogueMobile = (function () {
   /**
    * Render grid as interactive HTML cells
    */
-  function renderGrid(grid, player, enemies, items, colorCycleTime, breakables, projectiles, alertLevel, strCombatActive) {
+  function renderGrid(grid, player, enemies, items, colorCycleTime, breakables, projectiles, alertLevel, strCombatActive, muzzleFlash, impactEffects) {
     if (!_gridContainer || !grid) return;
 
     breakables = breakables || [];
@@ -184,6 +184,12 @@ const GoneRogueMobile = (function () {
         var projectile = projectiles.find(function(p) { return p.x === x && p.y === y; });
         var breakable = breakables.find(function(b) { return b.x === x && b.y === y; });
         var item = items ? items.find(function(i) { return i.x === x && i.y === y; }) : null;
+
+        // Check for muzzle flash at this position
+        var hasMuzzleFlash = muzzleFlash && muzzleFlash.x === x && muzzleFlash.y === y;
+        
+        // Check for impact effects at this position
+        var impact = impactEffects ? impactEffects.find(function(e) { return e.x === x && e.y === y; }) : null;
 
         if (player && player.x === x && player.y === y) {
           cell.textContent = '🥷';
@@ -239,6 +245,11 @@ const GoneRogueMobile = (function () {
             if (gunChar) {
               cell.appendChild(gunSpan);
             }
+          }
+
+          // Add muzzle flash effect
+          if (hasMuzzleFlash) {
+            cell.classList.add('cell-muzzle-flash');
           }
         } else if (enemy) {
           // Check if this is an Elite enemy
@@ -326,6 +337,19 @@ const GoneRogueMobile = (function () {
           } else {
             cell.classList.add('lit-very-bright');
             cell.setAttribute('data-light-level', '6');
+          }
+        }
+
+        // Add impact effect classes
+        if (impact) {
+          if (impact.type === 'breakable') {
+            cell.classList.add('cell-impact-breakable');
+          } else if (impact.type === 'enemy') {
+            cell.classList.add('cell-impact-enemy');
+          } else if (impact.type === 'wall') {
+            cell.classList.add('cell-impact-wall');
+          } else if (impact.type === 'miss') {
+            cell.classList.add('cell-impact-miss');
           }
         }
 
