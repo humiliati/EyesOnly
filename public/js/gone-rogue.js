@@ -4813,6 +4813,223 @@ const GoneRogue = (function () {
     }
   }
 
+  // ============================================================
+  // ACTIVE ITEM USAGE & GROUND INTERACTION SYSTEM
+  // ============================================================
+
+  /**
+   * Trigger active item usage (called when clicking active slot with inventory closed)
+   * Implements ground effects, buffs, healing, etc.
+   */
+  function triggerActiveItem() {
+    if (typeof GAMESTATE === 'undefined') {
+      return {
+        lines: ['GAMESTATE UNAVAILABLE'],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var activeItem = GAMESTATE.getActiveItem();
+    if (!activeItem) {
+      return {
+        lines: ['NO ACTIVE ITEM', 'Equip an item from inventory first'],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    // Determine targeting: player tile + adjacent tiles
+    var targetTiles = [
+      { x: _player.x, y: _player.y }, // Player tile
+      { x: _player.x + 1, y: _player.y }, // Right
+      { x: _player.x - 1, y: _player.y }, // Left
+      { x: _player.x, y: _player.y + 1 }, // Down
+      { x: _player.x, y: _player.y - 1 }  // Up
+    ];
+
+    // Resolve item-to-ground interaction
+    var result = _resolveGroundInteraction(activeItem, targetTiles);
+
+    // Update mobile grid if active
+    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+      _updateMobileGrid();
+    }
+
+    return result;
+  }
+
+  /**
+   * Resolve interaction between active item and ground tiles
+   * @param {Object} item - Active item
+   * @param {Array} tiles - Array of {x, y} target tiles
+   * @returns {Object} - Command result
+   */
+  function _resolveGroundInteraction(item, tiles) {
+    if (!item || !tiles || typeof GroundEffects === 'undefined') {
+      return {
+        lines: ['CANNOT USE ITEM HERE'],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var itemName = item.name ? item.name.toLowerCase() : '';
+    var messages = [];
+    var effectApplied = false;
+
+    // LIGHTER: Ignite flammable surfaces (oil)
+    if (itemName.indexOf('lighter') !== -1 || itemName.indexOf('🔥') !== -1) {
+      for (var i = 0; i < tiles.length; i++) {
+        var tile = tiles[i];
+        if (tile.x < 0 || tile.x >= GRID_WIDTH || tile.y < 0 || tile.y >= GRID_HEIGHT) continue;
+
+        var groundEffect = GroundEffects.getGroundEffect(tile.x, tile.y);
+        if (groundEffect && groundEffect.canIgnite) {
+          // Ignite oil
+          GroundEffects.igniteOil(tile.x, tile.y);
+          messages.push('🔥 IGNITED OIL at (' + tile.x + ',' + tile.y + ')');
+          effectApplied = true;
+        } else if (!groundEffect || groundEffect.type === 'normal') {
+          // Create small fire on empty tile
+          GroundEffects.setGroundEffect(tile.x, tile.y, 'FIRE');
+          messages.push('🔥 LIT FIRE at (' + tile.x + ',' + tile.y + ')');
+          effectApplied = true;
+        }
+      }
+
+      if (!effectApplied) {
+        messages.push('💡 LIGHTER: No flammable surfaces nearby');
+      }
+    }
+    // WATER BOTTLE: Extinguish fire, create water
+    else if (itemName.indexOf('water') !== -1 || itemName.indexOf('bottle') !== -1 || itemName.indexOf('💧') !== -1) {
+      for (var i = 0; i < tiles.length; i++) {
+        var tile = tiles[i];
+        if (tile.x < 0 || tile.x >= GRID_WIDTH || tile.y < 0 || tile.y >= GRID_HEIGHT) continue;
+
+        var groundEffect = GroundEffects.getGroundEffect(tile.x, tile.y);
+        if (groundEffect && (groundEffect.type === 'FIRE' || groundEffect.type === 'OIL_IGNITED')) {
+          // Extinguish fire
+          GroundEffects.extinguishFire(tile.x, tile.y);
+          messages.push('💧 EXTINGUISHED FIRE at (' + tile.x + ',' + tile.y + ')');
+          effectApplied = true;
+        } else if (!groundEffect || groundEffect.type === 'normal') {
+          // Create water
+          GroundEffects.setGroundEffect(tile.x, tile.y, 'WATER');
+          messages.push('💧 WATER SPILLED at (' + tile.x + ',' + tile.y + ')');
+          effectApplied = true;
+        }
+      }
+
+      if (!effectApplied) {
+        messages.push('💧 WATER: No fires to extinguish');
+      }
+    }
+    // TAZER/SHOCK: Electrify conductive surfaces (water, rail)
+    else if (itemName.indexOf('tazer') !== -1 || itemName.indexOf('taser') !== -1 ||
+             itemName.indexOf('shock') !== -1 || itemName.indexOf('⚡') !== -1) {
+      for (var i = 0; i < tiles.length; i++) {
+        var tile = tiles[i];
+        if (tile.x < 0 || tile.x >= GRID_WIDTH || tile.y < 0 || tile.y >= GRID_HEIGHT) continue;
+
+        var groundEffect = GroundEffects.getGroundEffect(tile.x, tile.y);
+        if (groundEffect && (groundEffect.type === 'WATER' || groundEffect.conductive)) {
+          // Electrify water (spread to adjacent water tiles)
+          _electrifyWater(tile.x, tile.y, 2); // 2 tile radius spread
+          messages.push('⚡ ELECTRIFIED WATER at (' + tile.x + ',' + tile.y + ')');
+          effectApplied = true;
+        }
+      }
+
+      if (!effectApplied) {
+        messages.push('⚡ TAZER: No conductive surfaces nearby');
+      }
+    }
+    // HEALING ITEMS: Restore HP
+    else if (itemName.indexOf('medkit') !== -1 || itemName.indexOf('bandage') !== -1 ||
+             itemName.indexOf('heal') !== -1 || itemName.indexOf('💊') !== -1) {
+      var healAmount = 20 + Math.floor(Math.random() * 11); // 20-30 HP
+      _player.hp = Math.min(_player.hp + healAmount, _player.maxHp);
+      messages.push('💊 HEALED: +' + healAmount + ' HP');
+      messages.push('HP: ' + _player.hp + '/' + _player.maxHp);
+      effectApplied = true;
+    }
+    // DEFAULT: Item has passive effect or no ground interaction
+    else {
+      messages.push('📦 ' + item.emoji + ' ' + item.name);
+      messages.push('This item provides passive benefits while equipped');
+      effectApplied = true;
+    }
+
+    if (messages.length === 0) {
+      messages.push('ITEM USED: ' + item.name);
+    }
+
+    return {
+      lines: messages.concat(['']).concat(_renderGrid()),
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Electrify water tiles in radius (for tazer effect)
+   * @param {number} x - Center X
+   * @param {number} y - Center Y
+   * @param {number} radius - Spread radius
+   */
+  function _electrifyWater(x, y, radius) {
+    if (typeof GroundEffects === 'undefined') return;
+
+    var queue = [{x: x, y: y, dist: 0}];
+    var visited = {};
+    visited[x + ',' + y] = true;
+
+    while (queue.length > 0) {
+      var current = queue.shift();
+
+      // Apply electrified effect
+      var groundEffect = GroundEffects.getGroundEffect(current.x, current.y);
+      if (groundEffect && groundEffect.type === 'WATER') {
+        // Add electrified property to water
+        GroundEffects.setGroundEffect(current.x, current.y, 'WATER', {
+          electrified: true,
+          electrifiedTime: Date.now(),
+          electrifiedDuration: 6000 // 6 seconds
+        });
+      }
+
+      // Spread to adjacent tiles within radius
+      if (current.dist < radius) {
+        var neighbors = [
+          {x: current.x + 1, y: current.y},
+          {x: current.x - 1, y: current.y},
+          {x: current.x, y: current.y + 1},
+          {x: current.x, y: current.y - 1}
+        ];
+
+        for (var i = 0; i < neighbors.length; i++) {
+          var n = neighbors[i];
+          var key = n.x + ',' + n.y;
+
+          if (n.x >= 0 && n.x < GRID_WIDTH && n.y >= 0 && n.y < GRID_HEIGHT && !visited[key]) {
+            visited[key] = true;
+
+            var neighborEffect = GroundEffects.getGroundEffect(n.x, n.y);
+            if (neighborEffect && (neighborEffect.type === 'WATER' || neighborEffect.conductive)) {
+              queue.push({x: n.x, y: n.y, dist: current.dist + 1});
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // ============================================================
+  // END ACTIVE ITEM USAGE SYSTEM
+  // ============================================================
+
   return {
     init: init,
     start: start,
@@ -4829,6 +5046,8 @@ const GoneRogue = (function () {
     fireProjectile: _fireProjectile,
     stepProjectiles: stepProjectiles,
     isStrCombatActive: isStrCombatActive,
-    getStrCombatState: getStrCombatState
+    getStrCombatState: getStrCombatState,
+    triggerActiveItem: triggerActiveItem,
+    updatePlayerLight: _updatePlayerLight
   };
 })();

@@ -513,31 +513,41 @@
       if (typeof GAMESTATE !== 'undefined') {
         var goneRogueActiveItem = GAMESTATE.getActiveItem();
         if (goneRogueActiveItem) {
-          // Unequip the item
-          GAMESTATE.clearActiveItem();
+          // Check if inventory is open
+          if (inventoryVisible) {
+            // Inventory open: UNEQUIP the item
+            GAMESTATE.clearActiveItem();
 
-          // Update active item display in header
-          var activeDisplay = document.getElementById('active-item-display');
-          if (activeDisplay) {
-            activeDisplay.innerHTML = '<span class="empty-slot-indicator">·</span>';
-            activeDisplay.classList.remove('has-item');
-          }
+            // Update active item display in header
+            var activeDisplay = document.getElementById('active-item-display');
+            if (activeDisplay) {
+              activeDisplay.innerHTML = '<span class="empty-slot-indicator">·</span>';
+              activeDisplay.classList.remove('has-item');
+            }
 
-          // Update player lighting
-          if (typeof GoneRogue.updatePlayerLight === 'function') {
-            GoneRogue.updatePlayerLight();
-          }
+            // Update player lighting
+            if (typeof GoneRogue.updatePlayerLight === 'function') {
+              GoneRogue.updatePlayerLight();
+            }
 
-          // Show feedback message
-          if (typeof window.appendLine === 'function') {
-            window.appendLine('⚠ UNEQUIPPED: ' + goneRogueActiveItem.emoji + ' ' + goneRogueActiveItem.name);
-          }
+            // Show feedback message
+            if (typeof window.appendLine === 'function') {
+              window.appendLine('⚠ UNEQUIPPED: ' + goneRogueActiveItem.emoji + ' ' + goneRogueActiveItem.name);
+            }
 
-          updateMokInterjection('Item unequipped: ' + goneRogueActiveItem.name);
+            updateMokInterjection('Item unequipped: ' + goneRogueActiveItem.name);
 
-          // Refresh inventory display if visible
-          if (inventoryVisible && typeof GoneRogueMobile !== 'undefined' && typeof GoneRogueMobile.showInventory === 'function') {
-            GoneRogueMobile.showInventory();
+            // Refresh inventory display
+            if (typeof GoneRogueMobile !== 'undefined' && typeof GoneRogueMobile.showInventory === 'function') {
+              GoneRogueMobile.showInventory();
+            }
+          } else {
+            // Inventory closed: USE the item for ground effects/buffs/healing
+            if (typeof GoneRogue.triggerActiveItem === 'function') {
+              GoneRogue.triggerActiveItem();
+            } else {
+              updateMokInterjection('Active item usage: ' + goneRogueActiveItem.name + ' - Feature coming soon.');
+            }
           }
         } else {
           updateMokInterjection('No active item equipped. Select an item from inventory first.');
