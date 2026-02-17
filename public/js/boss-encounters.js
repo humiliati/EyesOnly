@@ -625,13 +625,261 @@ const BossEncounters = (function () {
     }
   }
 
+  /**
+   * Treasure Goblin King Boss (Secret Floor - Goblin Vault)
+   * Fast chaotic fight with insane loot
+   */
+  class TreasureGoblinKingBoss extends BossEncounter {
+    constructor(floorDepth) {
+      super('TREASURE_GOBLIN_KING', floorDepth);
+      this.hp = 30;
+      this.maxHp = 30;
+      this.mythicTrigger = 'CATCH_ALL_GOBLINS';
+      this.mythicHint = 'RUMOR: Not a single coin should escape your grasp...';
+      this.whisperItem = 'Goblin Crown';
+      this.mythicDrop = 'Infinite Loot Charm';
+
+      this.portals = [];
+      this.stolenItems = [];
+      this.clones = 1;
+      this.teleportTimer = 2;
+      this.speed = 2; // Moves twice per turn
+    }
+
+    initialize(grid, player) {
+      // Spawn at random position
+      this.bossPosition = {
+        x: Math.floor(Math.random() * 30) + 5,
+        y: Math.floor(Math.random() * 15) + 3
+      };
+
+      // Create initial portals
+      for (let i = 0; i < 4; i++) {
+        this.portals.push({
+          x: Math.floor(Math.random() * 40),
+          y: Math.floor(Math.random() * 20),
+          active: true
+        });
+      }
+
+      return { success: true, portals: this.portals };
+    }
+
+    update(gameState) {
+      super.update(gameState);
+
+      // Teleport frequently
+      this.teleportTimer--;
+      if (this.teleportTimer <= 0) {
+        this.teleportTimer = 2;
+
+        // Pick random portal
+        var activePortals = this.portals.filter(p => p.active);
+        if (activePortals.length > 0) {
+          var portal = activePortals[Math.floor(Math.random() * activePortals.length)];
+          this.bossPosition = { x: portal.x, y: portal.y };
+        }
+
+        // Maybe steal an item
+        if (Math.random() < 0.3 && gameState.player && gameState.player.inventory) {
+          var items = gameState.player.inventory;
+          if (items.length > 0) {
+            var stolen = items[Math.floor(Math.random() * items.length)];
+            this.stolenItems.push(stolen);
+            return {
+              phase: BOSS_PHASES.PATTERN,
+              attack: 'STEAL',
+              stolenItem: stolen
+            };
+          }
+        }
+      }
+
+      // Multiply if ignored (low HP)
+      if (this.hp < this.maxHp * 0.5 && this.clones < 3) {
+        this.clones++;
+        return {
+          phase: BOSS_PHASES.PATTERN,
+          attack: 'MULTIPLY',
+          clones: this.clones
+        };
+      }
+
+      return { phase: this.phase };
+    }
+
+    checkExploit(playerAction, gameState) {
+      // Exploit: Close portals to trap him
+      if (playerAction.type === 'JAMMER' || playerAction.type === 'LOGIC_HACK') {
+        this.portals.forEach(p => p.active = false);
+        this.teleportTimer = 99; // Can't teleport
+        return {
+          exploited: true,
+          message: '🚫 PORTALS SEALED! The goblin is trapped!',
+          trappedGoblin: true
+        };
+      }
+
+      return { exploited: false };
+    }
+
+    onDefeat(source) {
+      // Always drops insane loot
+      var lootMultiplier = 5 + this.clones;
+
+      // Return stolen items
+      return {
+        ...super.onDefeat(source),
+        stolenItems: this.stolenItems,
+        lootMultiplier: lootMultiplier,
+        specialDrop: 'Goblin Hoard'
+      };
+    }
+  }
+
+  /**
+   * Uber Mega Hidden Boss (Secret Floor - Reality Breaker)
+   * System-breaking difficulty that feels like you weren't meant to be here
+   */
+  class UberMegaBoss extends BossEncounter {
+    constructor(floorDepth) {
+      super('UBER_MEGA', floorDepth);
+      this.hp = 100;
+      this.maxHp = 100;
+      this.mythicTrigger = 'SURVIVE_WITHOUT_SAVES';
+      this.mythicHint = 'RUMOR: Those who face the void with nothing... may become everything...';
+      this.whisperItem = 'Fragment of Reality';
+      this.mythicDrop = 'Impossible Binary Charm';
+
+      this.realityPhase = 0;
+      this.rulesBroken = [];
+      this.controlsReversed = false;
+      this.lootEnemies = [];
+      this.goldStolen = 0;
+      this.dimensionShift = false;
+    }
+
+    initialize(grid, player) {
+      this.bossPosition = { x: 20, y: 10 };
+
+      // Start reality breaking effects
+      this.rulesBroken.push('UI_FLICKER');
+      this.rulesBroken.push('SAVE_DISABLED');
+      this.rulesBroken.push('VENDOR_HOSTILE');
+
+      return {
+        success: true,
+        realityBreak: true,
+        warnings: [
+          '⚠️⚠️⚠️ REALITY INTEGRITY: 12%',
+          '⚠️⚠️⚠️ SAVE FUNCTIONS: OFFLINE',
+          '⚠️⚠️⚠️ YOU SHOULD NOT BE HERE',
+          ''
+        ]
+      };
+    }
+
+    update(gameState) {
+      super.update(gameState);
+
+      this.realityPhase++;
+
+      // Reality breaking attacks
+      if (this.realityPhase % 3 === 0) {
+        // Reverse controls temporarily
+        if (!this.controlsReversed && Math.random() < 0.3) {
+          this.controlsReversed = true;
+          setTimeout(() => { this.controlsReversed = false; }, 3000);
+          return {
+            phase: BOSS_PHASES.PATTERN,
+            attack: 'REVERSE_CONTROLS',
+            duration: 3000
+          };
+        }
+      }
+
+      if (this.realityPhase % 5 === 0) {
+        // Turn loot into enemies
+        if (gameState.items && gameState.items.length > 0) {
+          var item = gameState.items[0];
+          this.lootEnemies.push({
+            x: item.x,
+            y: item.y,
+            corrupted: true
+          });
+          return {
+            phase: BOSS_PHASES.PATTERN,
+            attack: 'CORRUPT_LOOT',
+            position: { x: item.x, y: item.y }
+          };
+        }
+      }
+
+      if (this.realityPhase % 7 === 0) {
+        // Steal gold to heal
+        if (gameState.player && gameState.player.gold > 0) {
+          var stolen = Math.min(500, gameState.player.gold);
+          this.goldStolen += stolen;
+          this.hp = Math.min(this.maxHp, this.hp + Math.floor(stolen / 50));
+          return {
+            phase: BOSS_PHASES.PATTERN,
+            attack: 'GOLD_DRAIN',
+            goldStolen: stolen,
+            hpHealed: Math.floor(stolen / 50)
+          };
+        }
+      }
+
+      // Shift between real-time and STR
+      if (this.realityPhase % 10 === 0) {
+        this.dimensionShift = !this.dimensionShift;
+        return {
+          phase: BOSS_PHASES.PATTERN,
+          attack: 'DIMENSION_SHIFT',
+          toSTR: this.dimensionShift
+        };
+      }
+
+      return { phase: this.phase };
+    }
+
+    checkExploit(playerAction, gameState) {
+      // THE ONLY EXPLOIT: Accept the chaos and don't fight it
+      // Using certain "acceptance" cards
+      if (playerAction.type === 'DIVE_COVER' || playerAction.type === 'PRONE') {
+        // "Accepting" the reality break makes you invulnerable briefly
+        return {
+          exploited: true,
+          message: '⚡ REALITY ACCEPTED... YOU PHASE THROUGH ATTACKS',
+          invulnerable: true,
+          duration: 2
+        };
+      }
+
+      return { exploited: false };
+    }
+
+    onDefeat(source) {
+      return {
+        ...super.onDefeat(source),
+        realityRestored: true,
+        impossibleDrop: 'Impossible Binary Charm',
+        permanentUnlock: 'UBER_SURVIVOR',
+        worldStateChange: true,
+        message: '⚡⚡⚡ REALITY STABILIZING... WHAT HAVE YOU DONE?'
+      };
+    }
+  }
+
   // Boss type registry
   var BOSS_TYPES = {
     DEPOT_CROSSING: DepotCrossingBoss,
     SENTRY_NEST: SentryNestBoss,
     BUNKER_COMMANDANT: BunkerCommandantBoss,
     MAINFRAME_CORE: MainframeCoreBoss,
-    ORBITAL_CARRIER: OrbitalCarrierBoss
+    ORBITAL_CARRIER: OrbitalCarrierBoss,
+    TREASURE_GOBLIN_KING: TreasureGoblinKingBoss,
+    UBER_MEGA: UberMegaBoss
   };
 
   /**
@@ -661,8 +909,10 @@ const BossEncounters = (function () {
     DepotCrossingBoss: DepotCrossingBoss,
     SentryNestBoss: SentryNestBoss,
     BunkerCommandantBoss: BunkerCommandantBoss,
-    MainframeCoreB: MainframeCoreBoss,
-    OrbitalCarrierBoss: OrbitalCarrierBoss
+    MainframeCoreBoss: MainframeCoreBoss,
+    OrbitalCarrierBoss: OrbitalCarrierBoss,
+    TreasureGoblinKingBoss: TreasureGoblinKingBoss,
+    UberMegaBoss: UberMegaBoss
   };
 })();
 
