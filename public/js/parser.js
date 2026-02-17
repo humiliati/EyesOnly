@@ -18,6 +18,7 @@ const Parser = (function () {
     { name: 'CLEAR', aliases: ['clear', 'cls'], hidden: true },
     { name: 'LOGIN', aliases: ['login', 'sign in'], hidden: true },
     { name: 'STREET', aliases: ['street', 'streets', 'street map', 'map', 'grid', 'sector', 'chronicles', 'adventure', 'travel mode'], hidden: true },
+    { name: 'ROGUE', aliases: ['rogue', 'gone rogue', 'gone_rogue', 'gonerogue'], hidden: true },
 
     { name: 'ABOUT', aliases: ['about', 'about us', 'who', 'credits'], hidden: true },
     { name: 'HOME', aliases: ['home', 'back', 'exit', 'quit', 'logout'], hidden: true },

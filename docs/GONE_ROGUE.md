@@ -128,7 +128,7 @@ Affixes provide unique bonuses beyond stat rolls:
 **Trigger Methods:**
 1. Manual: Type `ROGUE` command
 2. Story Event: Scripted narrative triggers
-3. Out of Bounds: Wandering beyond street boundaries
+3. Out of Bounds: Wandering beyond street boundaries (2 repeated invalid directions)
 
 **Transition Flow:**
 ```
@@ -303,11 +303,13 @@ Each successful Gone Rogue completion:
    - [ ] Verify transition occurs without "UNRECOGNIZED FIELD ACTION" error
    - [ ] Confirm Street Chronicles is properly deactivated before Gone Rogue starts
 
-3. **Card Generation**
-   - [ ] Pick up items in Gone Rogue
-   - [ ] Check quality distribution
-   - [ ] Verify affixes on high-quality cards
-   - [ ] Test inventory charm drops
+3. **Repeated Invalid Direction Trigger**
+   - [ ] Enter Street Chronicles mode (type `STREET` or `MAP`)
+   - [ ] Note available exits (e.g., "EXITS -> NORTH: Main St | EAST: 3rd Ave")
+   - [ ] Try an invalid direction twice in a row (e.g., type `SOUTH` then `SOUTH` again)
+   - [ ] Verify Gone Rogue mode automatically triggers after second attempt
+   - [ ] Confirm Street inventory is carried over to loose inventory
+   - [ ] Verify transition message includes "out_of_bounds" reason in debug console
 
 4. **Dual Inventory**
    - [ ] Add cards to persistent inventory
