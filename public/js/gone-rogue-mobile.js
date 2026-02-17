@@ -159,11 +159,32 @@ const GoneRogueMobile = (function () {
           cell.textContent = '🥷';
           cell.classList.add('cell-player');
         } else if (enemy) {
-          cell.textContent = '🪖';
-          cell.classList.add('cell-enemy');
+          // Check if this is an Elite enemy
+          if (enemy.isElite) {
+            cell.textContent = enemy.emoji || '🪖';
+            cell.classList.add('cell-enemy', 'cell-elite');
 
-          // Apply awareness color with cycling effect
-          _applyAwarenessColor(cell, enemy, colorCycleTime);
+            // Add pulsing glow effect for elites
+            var glowIntensity = Math.sin(enemy.glowPhase * Math.PI / 180) * 0.5 + 0.5;
+            cell.style.background = 'rgba(255, 0, 255, ' + (0.2 + glowIntensity * 0.3) + ')';
+            cell.style.boxShadow = '0 0 10px rgba(255, 0, 255, ' + (0.5 + glowIntensity * 0.5) + ')';
+
+            // Add intent icon overlay
+            if (enemy.intentIcon) {
+              var intentSpan = document.createElement('span');
+              intentSpan.className = 'enemy-intent-icon';
+              intentSpan.textContent = enemy.intentIcon;
+              intentSpan.title = enemy.intent || 'UNKNOWN';
+              cell.appendChild(intentSpan);
+            }
+          } else {
+            // Normal enemy
+            cell.textContent = '🪖';
+            cell.classList.add('cell-enemy');
+
+            // Apply awareness color with cycling effect
+            _applyAwarenessColor(cell, enemy, colorCycleTime);
+          }
 
           // Add detection cone visualization
           _addDetectionCone(cell, enemy);

@@ -868,6 +868,33 @@ const GoneRogue = (function () {
 
     enemyCount = Math.min(enemyCount, rooms.length * 3); // Don't overcrowd
 
+    // Check if an Elite enemy should spawn on this floor
+    var eliteSpawned = false;
+    if (typeof EliteEnemies !== 'undefined' && EliteEnemies.shouldSpawnElite(_floor)) {
+      var eliteType = EliteEnemies.getRandomEliteForFloor(_floor);
+      if (eliteType && rooms.length > 0) {
+        // Place elite in a random room, away from player
+        var eliteRoomIdx = Math.floor(Math.random() * rooms.length);
+        var eliteRoom = rooms[eliteRoomIdx];
+        var eliteX = eliteRoom.x + 1 + Math.floor(Math.random() * Math.max(1, eliteRoom.w - 2));
+        var eliteY = eliteRoom.y + 1 + Math.floor(Math.random() * Math.max(1, eliteRoom.h - 2));
+
+        // Ensure elite is far from player
+        if (Math.abs(eliteX - _player.x) + Math.abs(eliteY - _player.y) >= 8) {
+          var elite = EliteEnemies.createElite(eliteType, eliteX, eliteY, _floor);
+          if (elite) {
+            // Add basic enemy properties for compatibility
+            elite.path = { type: PATH_TYPES.PATROL, waypoints: [] };
+            elite.pathIndex = 0;
+            elite.str = 6 + Math.floor(_floor * 0.3);
+            elite.dex = 6 + Math.floor(_floor * 0.3);
+            _enemies.push(elite);
+            eliteSpawned = true;
+          }
+        }
+      }
+    }
+
     for (var i = 0; i < enemyCount && rooms.length > 0; i++) {
       var roomIdx = Math.floor(Math.random() * rooms.length);
       var room = rooms[roomIdx];
@@ -1816,6 +1843,11 @@ const GoneRogue = (function () {
     // Update enemy positions and awareness
     _enemies.forEach(function(enemy) {
       if (enemy.hp <= 0) return;
+
+      // Update Elite enemies with special behavior
+      if (enemy.isElite && typeof EliteEnemies !== 'undefined') {
+        EliteEnemies.updateElite(enemy, _player, _grid, deltaMs);
+      }
 
       // Update enemy pathing
       _updateEnemyPath(enemy, deltaMs);
