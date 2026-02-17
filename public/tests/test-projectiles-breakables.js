@@ -85,6 +85,54 @@
     var projectiles = GoneRogue.getProjectiles();
     assert(Array.isArray(projectiles), 'Projectiles list available for inspection');
 
+    console.log('\n--- Test 2: Projectile triggers STR combat on enemy ---');
+
+    // Clear breakables so path is open
+    GoneRogue.getBreakables().forEach(function(b) { b.hp = 0; });
+
+    var player = GoneRogue.getPlayer();
+    var enemies = GoneRogue.getEnemies();
+    var testEnemy = {
+      x: player.x + 4,
+      y: player.y,
+      hp: 5,
+      awareness: 0,
+      orientation: 'west',
+      sightRange: 3,
+      path: { type: 'stationary' }
+    };
+    enemies.push(testEnemy);
+
+    GoneRogue.fireProjectile('shoot east');
+    GoneRogue.stepProjectiles(4);
+
+    assert(GoneRogue.isStrCombatActive(), 'Projectile impact enters STR combat');
+
+    console.log('\n--- Test 3: Hostile projectile triggers STR combat on player ---');
+
+    // Reset combat state for next check
+    if (GoneRogue.isStrCombatActive() && typeof GoneRogue.getStrCombatState === 'function') {
+      var enemyInCombat = GoneRogue.getStrCombatState().enemy;
+      if (enemyInCombat) { enemyInCombat.hp = 0; }
+      GoneRogue.process('flee');
+    }
+
+    var hostile = {
+      x: player.x + 2,
+      y: player.y,
+      dx: -1,
+      dy: 0,
+      glyph: '←',
+      owner: 'enemy',
+      sourceEnemy: testEnemy,
+      range: 2,
+      power: 1
+    };
+    GoneRogue.getProjectiles().push(hostile);
+    GoneRogue.stepProjectiles(2);
+
+    assert(GoneRogue.isStrCombatActive(), 'Hostile projectile entering player tile starts STR combat');
+
     console.log('\n========================================');
     console.log('TEST SUMMARY');
     console.log('========================================');

@@ -985,15 +985,20 @@ const GoneRogue = (function () {
       glyph: _getProjectileGlyph(dir.direction),
       emoji: '💥',
       range: 10,
-      power: 2
+      power: 2,
+      owner: 'player'
     };
 
     _projectiles.push(projectile);
-    _updateProjectiles(0, 1);
+    var action = _updateProjectiles(0, 1);
     _saveState();
 
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
       GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+    }
+
+    if (action) {
+      return action;
     }
 
     return {
@@ -1033,46 +1038,71 @@ const GoneRogue = (function () {
 
   function _updateProjectiles(deltaMs, steps) {
     var iterations = steps || 1;
+    var action = null;
 
     for (var i = 0; i < iterations; i++) {
-      _projectiles = _projectiles.filter(function(projectile) {
-        return _advanceProjectile(projectile);
-      });
+      var survivors = [];
+      for (var j = 0; j < _projectiles.length; j++) {
+        var result = _advanceProjectile(_projectiles[j]);
+        if (result && result.action && !action) {
+          action = result.action;
+        }
+        if (result && result.alive) {
+          survivors.push(_projectiles[j]);
+        }
+      }
+      _projectiles = survivors;
     }
+
+    return action;
   }
 
   function _advanceProjectile(projectile) {
-    if (!projectile) return false;
+    if (!projectile) return { alive: false };
 
     var nextX = projectile.x + projectile.dx;
     var nextY = projectile.y + projectile.dy;
 
-    if (!_isInsideBounds(nextX, nextY)) return false;
+    if (!_isInsideBounds(nextX, nextY)) return { alive: false };
 
     var tile = _grid[nextY][nextX];
-    if (tile === TILES.WALL) return false;
+    if (tile === TILES.WALL) return { alive: false };
 
     var breakable = _getBreakableAt(nextX, nextY);
     if (breakable && breakable.hp > 0) {
       _damageBreakable(breakable, projectile.power || 1);
-      return false;
+      return { alive: false };
     }
 
     var enemy = _enemies.find(function(e) { return e.x === nextX && e.y === nextY && e.hp > 0; });
     if (enemy) {
+      if (projectile.owner === 'player') {
+        return { alive: false, action: _enterStrCombat(enemy, 'player_attack', projectile.card) };
+      }
       enemy.hp = Math.max(0, enemy.hp - (projectile.power || 1));
-      return false;
+      return { alive: false };
+    }
+
+    var hitsPlayer = (_player.x === nextX && _player.y === nextY);
+    if (hitsPlayer) {
+      if (projectile.owner !== 'player') {
+        var sourceEnemy = projectile.sourceEnemy || _enemies.find(function(e) { return e.hp > 0; });
+        if (sourceEnemy) {
+          return { alive: false, action: _enterStrCombat(sourceEnemy, 'enemy_attack') };
+        }
+      }
+      return { alive: false };
     }
 
     projectile.x = nextX;
     projectile.y = nextY;
     projectile.range = (projectile.range || 1) - 1;
 
-    return projectile.range > 0;
+    return { alive: projectile.range > 0 };
   }
 
   function stepProjectiles(steps) {
-    _updateProjectiles(0, steps || 1);
+    var action = _updateProjectiles(0, steps || 1);
 
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
       GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
@@ -1080,7 +1110,8 @@ const GoneRogue = (function () {
 
     return {
       projectiles: _projectiles,
-      breakables: _breakables
+      breakables: _breakables,
+      action: action
     };
   }
 
