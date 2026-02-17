@@ -368,6 +368,18 @@ const StateMachine = (function () {
   }
 
   function _processDesignation(parsed) {
+    // Support [BACK]/[EXIT] to abort clearance sequence
+    if (parsed.command === 'BACK' || parsed.command === 'EXIT' || parsed.command === 'HOME') {
+      _data.failedAttempts = 0;
+      _saveState();
+      return {
+        type: 'output',
+        lines: ['', 'CLEARANCE SEQUENCE ABORTED', 'RETURNING TO MAIN TERMINAL', ''],
+        prompt: '> ',
+        newState: 'AWAITING_CMD'
+      };
+    }
+
     if (parsed.command === 'HELP') {
       _data.failedAttempts = 0;
       _saveState();
@@ -468,6 +480,18 @@ const StateMachine = (function () {
   }
 
   function _processProceed(parsed) {
+    // Support [BACK]/[EXIT] to abort clearance sequence
+    if (parsed.command === 'BACK' || parsed.command === 'EXIT' || parsed.command === 'HOME') {
+      _data.failedAttempts = 0;
+      _saveState();
+      return {
+        type: 'output',
+        lines: ['', 'CLEARANCE SEQUENCE ABORTED', 'RETURNING TO MAIN TERMINAL', ''],
+        prompt: '> ',
+        newState: 'AWAITING_CMD'
+      };
+    }
+
     if (parsed.command === 'HELP') {
       return {
         type: 'output',
@@ -513,6 +537,18 @@ const StateMachine = (function () {
   }
 
   function _processTemporal(parsed) {
+    // Support [BACK]/[EXIT] to abort clearance sequence
+    if (parsed.command === 'BACK' || parsed.command === 'EXIT' || parsed.command === 'HOME') {
+      _data.failedAttempts = 0;
+      _saveState();
+      return {
+        type: 'output',
+        lines: ['', 'CLEARANCE SEQUENCE ABORTED', 'RETURNING TO MAIN TERMINAL', ''],
+        prompt: '> ',
+        newState: 'AWAITING_CMD'
+      };
+    }
+
     if (parsed.command === 'HELP') {
       return {
         type: 'output',
@@ -532,6 +568,16 @@ const StateMachine = (function () {
       };
     }
 
+    // Allow pressing Enter to continue (skip temporal key requirement)
+    if (!parsed.raw || parsed.raw.trim() === '') {
+      _data.accessGranted = true;
+      _data.clearanceLevel = 1;
+      _data.sessionStart = Date.now();
+      _data.failedAttempts = 0;
+      _saveState();
+      return { type: 'grant', newState: 'ACCESS_GRANTED' };
+    }
+
     if (TEMPORAL_KEYS.indexOf(parsed.normalized) !== -1) {
       _data.accessGranted = true;
       _data.clearanceLevel = 1;
@@ -545,7 +591,7 @@ const StateMachine = (function () {
     _saveState();
     return {
       type: 'deny',
-      lines: ['', 'AWAITING INPUT', 'ATTEMPT ' + _data.failedAttempts + '/' + MAX_FAILURES, ''],
+      lines: ['', 'TEMPORAL KEY INVALID', 'HINT: Press Enter to continue, or type BACK to exit', 'ATTEMPT ' + _data.failedAttempts + '/' + MAX_FAILURES, ''],
       prompt: '> ',
       newState: _state
     };
