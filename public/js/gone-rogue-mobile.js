@@ -9,6 +9,7 @@ const GoneRogueMobile = (function () {
   // Constants
   var DOUBLE_TAP_THRESHOLD_MS = 300;
   var CLICK_FEEDBACK_DURATION_MS = 400;
+  var TAP_TO_MOVE_MAX_RADIUS = 12; // Maximum distance (in tiles) from player for tap-to-move (extended by ~15% from original ~10.4)
 
   var _gridContainer = null;
   var _cardContainer = null;
@@ -534,6 +535,19 @@ const GoneRogueMobile = (function () {
       if (player && player.x === x && player.y === y) {
         _showCardFan();
         return;
+      }
+
+      // Validate tap distance from player
+      if (player) {
+        var dx = x - player.x;
+        var dy = y - player.y;
+        var distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Reject taps beyond maximum radius
+        if (distance > TAP_TO_MOVE_MAX_RADIUS) {
+          console.log('[GoneRogueMobile] Tap rejected: distance ' + distance.toFixed(1) + ' exceeds max radius ' + TAP_TO_MOVE_MAX_RADIUS);
+          return;
+        }
       }
     }
 
