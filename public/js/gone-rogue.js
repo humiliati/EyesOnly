@@ -710,6 +710,9 @@ const GoneRogue = (function () {
       // Check if player is in sight cone
       if (_isPlayerInSightCone(enemy)) {
         _increaseEnemyAwareness(enemy, 10); // Increase awareness when player spotted
+        if (!_strCombatActive) {
+          _enterStrCombat(enemy, 'enemy_sighting');
+        }
       }
     });
 
@@ -1401,25 +1404,31 @@ const GoneRogue = (function () {
    * Calculate advantage state based on positioning and awareness
    */
   function _calculateAdvantage(player, enemy, trigger) {
-    // Player Ambush: attacking from stealth or behind
-    if (trigger === 'player_attack' && enemy.awareness < 30) {
+    var distance = _distanceBetween(player, enemy);
+    var bracket = _getDistanceBracket(distance);
+    var enemyAware = (enemy.awareness || 0) >= AWARENESS_STATES.SUSPICIOUS.min;
+    var playerInitiated = trigger === 'player_attack' || trigger === 'collision';
+    var enemyInitiated = trigger === 'enemy_attack' || trigger === 'enemy_sighting' || trigger === 'enemy_projectile';
+
+    // Player Ambush: attacking from stealth or behind at melee
+    if (playerInitiated && bracket === 'melee' && !enemyAware) {
       return 'ambush';
     }
 
     // Check if player is attacking from behind (flanking)
     var isFlanking = _checkFlanking(player, enemy);
-    if (trigger === 'player_attack' && isFlanking) {
+    if (playerInitiated && isFlanking) {
       return 'ambush';
     }
 
     // Check if player is flanked/disadvantaged
     var playerFlanked = _checkFlanking(enemy, player);
-    if (playerFlanked) {
+    if (enemyInitiated && bracket === 'melee' && playerFlanked) {
       return 'flanked';
     }
 
     // Enemy alerted = player disadvantaged
-    if (enemy.awareness >= 70) {
+    if (enemyInitiated && enemy.awareness >= 70) {
       return 'disadvantaged';
     }
 
@@ -1431,11 +1440,6 @@ const GoneRogue = (function () {
    * Check if attacker is flanking target based on facing and approach direction
    */
   function _checkFlanking(attacker, target) {
-    if (!attacker.lastMoveDirection || !target.orientation) {
-      return false;
-    }
-
-    // Get opposite direction of target's facing
     var opposites = {
       'north': 'south',
       'south': 'north',
@@ -1443,11 +1447,25 @@ const GoneRogue = (function () {
       'west': 'east'
     };
 
-    var targetFacing = target.orientation;
-    var attackerApproach = attacker.lastMoveDirection;
+    var targetFacing = target.orientation || target.lastMoveDirection;
+    if (!targetFacing) return false;
 
-    // Flanking = attacking from behind (opposite of facing)
-    return attackerApproach === opposites[targetFacing];
+    // Approach direction: use attacker last move if present, otherwise relative position
+    var approachDirection = attacker.lastMoveDirection;
+    if (!approachDirection && typeof attacker.x === 'number' && typeof target.x === 'number') {
+      var dx = target.x - attacker.x;
+      var dy = target.y - attacker.y;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        approachDirection = dx > 0 ? 'east' : 'west';
+      } else if (Math.abs(dy) > 0) {
+        approachDirection = dy > 0 ? 'south' : 'north';
+      }
+    }
+
+    if (!approachDirection) return false;
+
+    var opposite = opposites[targetFacing];
+    return approachDirection === opposite;
   }
 
   /**
@@ -1461,6 +1479,17 @@ const GoneRogue = (function () {
       case 'flanked': return '❌';
       default: return '⚔️';
     }
+  }
+
+  function _distanceBetween(a, b) {
+    return Math.abs((a.x || 0) - (b.x || 0)) + Math.abs((a.y || 0) - (b.y || 0));
+  }
+
+  function _getDistanceBracket(distance) {
+    if (distance <= 1) return 'melee';
+    if (distance <= 3) return 'close';
+    if (distance <= 6) return 'mid';
+    return 'far';
   }
 
   /**
@@ -1497,7 +1526,7 @@ const GoneRogue = (function () {
     }
 
     // Calculate damage
-    var damageResult = _calculateDamage(_player, enemy, _strCombatAdvantage, card);
+    var damageResult = _calculateDamage(_player, enemy, _strCombatAdvantage, card, hitResult.crit);
     enemy.hp -= damageResult.damage;
 
     // Log attack
@@ -1541,7 +1570,7 @@ const GoneRogue = (function () {
     }
 
     // Calculate damage
-    var damageResult = _calculateDamage(enemy, _player, reverseAdvantage, null);
+    var damageResult = _calculateDamage(enemy, _player, reverseAdvantage, null, hitResult.crit);
     _player.hp -= damageResult.damage;
 
     // Log attack
@@ -1568,22 +1597,31 @@ const GoneRogue = (function () {
     var baseHitChance = 70; // Base 70% hit chance
     var attackerDex = attacker.dex || 5;
     var defenderDex = defender.dex || 5;
+    var distance = _distanceBetween(attacker, defender);
+    var bracket = _getDistanceBracket(distance);
 
     // Advantage modifiers
     var advantageBonus = 0;
     var critThreshold = 95; // Base crit on 95+
 
     if (advantage === 'ambush') {
-      advantageBonus = 20;
-      critThreshold = 85; // Easier crits when ambushing
+      advantageBonus = 40;
+      critThreshold = Math.max(5, critThreshold - 30); // Easier crits when ambushing
     } else if (advantage === 'flanked' || advantage === 'disadvantaged') {
-      advantageBonus = -20;
+      advantageBonus = -25;
       critThreshold = 98; // Harder crits when disadvantaged
     }
 
+    var distancePenalty = {
+      melee: 0,
+      close: 5,
+      mid: 15,
+      far: 35
+    }[bracket] || 0;
+
     // Calculate hit chance
-    var hitChance = baseHitChance + (attackerDex - defenderDex) * 2 + advantageBonus;
-    hitChance = Math.max(10, Math.min(95, hitChance)); // Clamp between 10-95%
+    var hitChance = baseHitChance + (attackerDex - defenderDex) * 2 + advantageBonus - distancePenalty;
+    hitChance = Math.max(5, Math.min(95, hitChance)); // Clamp between 5-95%
 
     // Roll d100
     var roll = Math.floor(Math.random() * 100) + 1;
@@ -1599,7 +1637,7 @@ const GoneRogue = (function () {
   /**
    * Calculate damage dealt
    */
-  function _calculateDamage(attacker, defender, advantage, card) {
+  function _calculateDamage(attacker, defender, advantage, card, isCrit) {
     var baseDamage = 2;
     var attackerStr = attacker.str || 5;
     var defenderStr = defender.str || 5;
@@ -1629,6 +1667,11 @@ const GoneRogue = (function () {
 
     // Minimum 1 damage
     baseDamage = Math.max(1, baseDamage);
+
+    if (isCrit) {
+      baseDamage = Math.ceil(baseDamage * 1.75);
+      bonuses.push('CRIT x1.75');
+    }
 
     return {
       damage: baseDamage,
