@@ -181,6 +181,16 @@ const GoneRogue = (function () {
       GoneRogueMobile.show();
       GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
 
+      // Suppress mobile keyboard when interactive grid is active
+      if (typeof Terminal !== 'undefined' && typeof Terminal.suppressMobileKeyboard === 'function') {
+        Terminal.suppressMobileKeyboard();
+      }
+
+      // Hide input line since grid is the input mechanism
+      if (typeof Terminal !== 'undefined' && typeof Terminal.hideInput === 'function') {
+        Terminal.hideInput();
+      }
+
       return {
         lines: lines,
         prompt: getPrompt(),
@@ -1097,6 +1107,16 @@ const GoneRogue = (function () {
   function _exitRogue(success) {
     _active = false;
     _stopGameLoop();
+
+    // Restore mobile keyboard behavior when exiting
+    if (typeof Terminal !== 'undefined' && typeof Terminal.restoreMobileKeyboard === 'function') {
+      Terminal.restoreMobileKeyboard();
+    }
+
+    // Hide mobile UI
+    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+      GoneRogueMobile.hide();
+    }
 
     var result = {
       success: success,

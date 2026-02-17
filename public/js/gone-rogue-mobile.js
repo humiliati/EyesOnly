@@ -273,6 +273,7 @@ const GoneRogueMobile = (function () {
    */
   function _handleGridTouchStart(e) {
     e.preventDefault();
+    e.stopPropagation(); // Prevent document-level listeners
 
     var touch = e.touches[0];
     var target = document.elementFromPoint(touch.clientX, touch.clientY);
@@ -304,7 +305,8 @@ const GoneRogueMobile = (function () {
     var target = e.target;
     if (!target || !target.classList.contains('rogue-cell')) return;
 
-    e.stopPropagation(); // Prevent bubbling to parent handlers
+    e.preventDefault(); // Prevent default click behavior
+    e.stopPropagation(); // Prevent bubbling to document-level handlers
 
     var x = parseInt(target.dataset.x);
     var y = parseInt(target.dataset.y);
@@ -370,7 +372,7 @@ const GoneRogueMobile = (function () {
     if (!target) return;
 
     e.preventDefault();
-    e.stopPropagation(); // Prevent event from bubbling to grid
+    e.stopPropagation(); // Prevent event from bubbling to grid and document
 
     var touch = e.touches[0];
     _touchStart = {
@@ -388,7 +390,7 @@ const GoneRogueMobile = (function () {
   function _handleCardTouchMove(e) {
     if (!_activeCard) return;
     e.preventDefault();
-    e.stopPropagation(); // Prevent event from bubbling to grid
+    e.stopPropagation(); // Prevent event from bubbling to grid and document
 
     var touch = e.touches[0];
     var deltaX = touch.clientX - _touchStart.x;
@@ -404,7 +406,7 @@ const GoneRogueMobile = (function () {
   function _handleCardTouchEnd(e) {
     if (!_activeCard) return;
     e.preventDefault();
-    e.stopPropagation(); // Prevent event from bubbling to grid
+    e.stopPropagation(); // Prevent event from bubbling to grid and document
 
     var touch = e.changedTouches[0];
     var deltaX = touch.clientX - _touchStart.x;

@@ -31,6 +31,7 @@ const Terminal = (function () {
   let _onCommandCallback = null;
   let _scrollLocked = true;
   let _isMobile = false;
+  let _mobileKeyboardSuppressed = false;
 
   /**
    * Initialize the terminal, bind to DOM elements.
@@ -89,13 +90,17 @@ const Terminal = (function () {
     }
 
     // Focus hidden input on tap/click for mobile keyboard
-    document.addEventListener('click', function () {
-      if (_inputEnabled) {
+    document.addEventListener('click', function (e) {
+      if (_inputEnabled && !_mobileKeyboardSuppressed) {
+        // Don't focus keyboard if tapping on Gone Rogue grid or cards
+        if (_isEventInRogueUI(e)) return;
         _focusMobileInput();
       }
     });
-    document.addEventListener('touchstart', function () {
-      if (_inputEnabled) {
+    document.addEventListener('touchstart', function (e) {
+      if (_inputEnabled && !_mobileKeyboardSuppressed) {
+        // Don't focus keyboard if tapping on Gone Rogue grid or cards
+        if (_isEventInRogueUI(e)) return;
         _focusMobileInput();
       }
     });
@@ -104,13 +109,53 @@ const Terminal = (function () {
   }
 
   /**
+   * Check if event target is within Gone Rogue UI
+   */
+  function _isEventInRogueUI(e) {
+    var target = e.target;
+    if (!target) return false;
+    
+    // Check if target or any parent is the rogue grid or cards container
+    while (target) {
+      if (target.id === 'rogue-grid-mobile' || 
+          target.id === 'rogue-cards-mobile' ||
+          target.classList && (target.classList.contains('rogue-grid-mobile') || 
+                               target.classList.contains('rogue-cards-mobile'))) {
+        return true;
+      }
+      target = target.parentElement;
+    }
+    return false;
+  }
+
+  /**
    * Focus the hidden mobile input to trigger keyboard.
    */
   function _focusMobileInput() {
-    if (_mobileInputEl && _isMobile) {
+    if (_mobileInputEl && _isMobile && !_mobileKeyboardSuppressed) {
       _mobileInputEl.value = _inputBuffer;
       _mobileInputEl.focus();
     }
+  }
+
+  /**
+   * Suppress mobile keyboard from appearing on taps.
+   * Called when interactive grid UI takes over input.
+   */
+  function _suppressMobileKeyboard() {
+    _mobileKeyboardSuppressed = true;
+    // Blur the mobile input to hide keyboard
+    if (_mobileInputEl) {
+      _mobileInputEl.blur();
+    }
+  }
+
+  /**
+   * Restore mobile keyboard behavior.
+   * Called when returning to text input mode.
+   */
+  function _restoreMobileKeyboard() {
+    _mobileKeyboardSuppressed = false;
   }
 
   /**
@@ -396,6 +441,8 @@ const Terminal = (function () {
     flicker: _flicker,
     scrollToBottom: _scrollToBottom,
     onCommand: function (cb) { _onCommandCallback = cb; },
+    suppressMobileKeyboard: _suppressMobileKeyboard,
+    restoreMobileKeyboard: _restoreMobileKeyboard,
 
     // Constants exposed for external use
     TYPE_SPEED_FAST: TYPE_SPEED_FAST,

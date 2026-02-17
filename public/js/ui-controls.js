@@ -99,17 +99,22 @@
             break;
           }
         }
-        // Priority 4: Exit street-chronicles if active
+        // Priority 4: Exit Gone Rogue mode if active
+        if (typeof GoneRogue !== 'undefined' && GoneRogue.isActive()) {
+          simulateCommand('exit');
+          break;
+        }
+        // Priority 5: Exit street-chronicles if active
         if (isInStreetChronicles) {
           simulateCommand('exit');
           break;
         }
-        // Priority 5: Exit login shell if in session
+        // Priority 6: Exit login shell if in session
         if (isInLoginShell) {
           simulateCommand('exit');
           break;
         }
-        // Priority 6: Return to EYES ONLY home screen
+        // Priority 7: Return to EYES ONLY home screen
         simulateCommand('home');
         break;
 
