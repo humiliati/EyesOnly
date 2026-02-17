@@ -325,6 +325,31 @@ const GoneRogue = (function () {
     if (typeof GAMESTATE !== 'undefined') {
       var result = GAMESTATE.enterRogueMode(context);
       lines = result.lines || [];
+
+      // Apply charm bonuses to player stats (charms work from inventory)
+      var persistent = GAMESTATE.getPersistentInventory();
+      var loose = GAMESTATE.getLooseInventory();
+      var allItems = persistent.concat(loose);
+
+      var hpBonus = 0;
+      var energyBonus = 0;
+
+      allItems.forEach(function(item) {
+        if (item && item.category === 'charm' && item.stats) {
+          if (item.stats.hp) hpBonus += item.stats.hp;
+          if (item.stats.energy) energyBonus += item.stats.energy;
+        }
+      });
+
+      // Apply bonuses to max HP and energy
+      if (hpBonus > 0) {
+        _player.maxHp += hpBonus;
+        _player.hp += hpBonus; // Also heal
+      }
+      if (energyBonus > 0) {
+        _player.maxEnergy += energyBonus;
+        _player.energy += energyBonus; // Also restore
+      }
     } else {
       lines = ['', 'GONE ROGUE MODE ACTIVATED', ''];
     }
@@ -2892,6 +2917,19 @@ const GoneRogue = (function () {
       bonus += darknessBonus; // 0-50% based on darkness
     }
 
+    // Charm bonuses from inventory (charms work from inventory, not active slot)
+    if (typeof GAMESTATE !== 'undefined') {
+      var persistent = GAMESTATE.getPersistentInventory();
+      var loose = GAMESTATE.getLooseInventory();
+      var allItems = persistent.concat(loose);
+
+      allItems.forEach(function(item) {
+        if (item && item.category === 'charm' && item.stats && item.stats.stealth) {
+          bonus += item.stats.stealth;
+        }
+      });
+    }
+
     return bonus;
   }
 
@@ -2976,6 +3014,21 @@ const GoneRogue = (function () {
                 y: breakable.y,
                 type: 'card',
                 card: card,
+                spawnTime: Date.now(),
+                decayTime: 30000 // 30 second decay
+              });
+            }
+          }
+
+          // 25% chance to drop a charm (similar frequency to cards)
+          if (Math.random() < 0.25 && typeof CardSystem !== 'undefined') {
+            var charm = CardSystem.rollCommonCharm();
+            if (charm) {
+              _items.push({
+                x: breakable.x,
+                y: breakable.y,
+                type: 'charm',
+                card: charm, // Reuse card structure for charms
                 spawnTime: Date.now(),
                 decayTime: 30000 // 30 second decay
               });
@@ -4543,6 +4596,35 @@ const GoneRogue = (function () {
         var bossReward = 25 + Math.floor(Math.random() * 26); // 25-50 cryptos
         _spawnCurrency(_strCombatEnemy.x, _strCombatEnemy.y, bossReward);
         lines.push('💰 Boss dropped ¢' + bossReward);
+
+        // Check for Impossible Charm drop (very rare)
+        if (_activeBoss && typeof CardSystem !== 'undefined') {
+          var isUberMega = _activeBoss.type === 'UBER_MEGA';
+          var isFinalBoss = _floor === 30;
+          var impossibleCharmChance = 0;
+
+          if (isUberMega) {
+            impossibleCharmChance = 0.05; // 5% chance from Uber Mega
+          } else if (isFinalBoss) {
+            impossibleCharmChance = 0.10; // 10% chance from final boss
+          }
+
+          if (impossibleCharmChance > 0 && Math.random() < impossibleCharmChance) {
+            var impossibleCharm = CardSystem.rollImpossibleCharm();
+            _items.push({
+              x: _strCombatEnemy.x,
+              y: _strCombatEnemy.y,
+              type: 'charm',
+              card: impossibleCharm,
+              spawnTime: Date.now(),
+              decayTime: 120000 // 2 minutes to pick up
+            });
+            lines.push('');
+            lines.push('💠💠💠 IMPOSSIBLE BINARY CHARM DROPPED! 💠💠💠');
+            lines.push('└─ A legendary artifact materializes...');
+            lines.push('');
+          }
+        }
       } else {
         // Regular enemy loot
         var cryptoAmount = Math.floor(Math.random() * 5) + 2; // 2-6 cryptos
@@ -4563,6 +4645,22 @@ const GoneRogue = (function () {
               decayTime: 30000 // 30 second decay
             });
             lines.push('🎴 Enemy dropped a card!');
+          }
+        }
+
+        // 30% chance to drop a common charm
+        if (Math.random() < 0.30 && typeof CardSystem !== 'undefined') {
+          var charm = CardSystem.rollCommonCharm();
+          if (charm) {
+            _items.push({
+              x: _strCombatEnemy.x,
+              y: _strCombatEnemy.y,
+              type: 'charm',
+              card: charm,
+              spawnTime: Date.now(),
+              decayTime: 30000 // 30 second decay
+            });
+            lines.push('✨ Enemy dropped a charm!');
           }
         }
       }
