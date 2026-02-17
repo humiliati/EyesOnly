@@ -289,6 +289,38 @@ const GoneRogueMobile = (function () {
           _setCellTile(cell, tile);
         }
 
+        // Apply lighting effects if lighting system is available
+        if (typeof LightingSystem !== 'undefined') {
+          var light = LightingSystem.getLightAt(x, y);
+          var intensity = light.intensity;
+
+          // Apply darkness classes based on light intensity
+          if (intensity < 0.15) {
+            cell.classList.add('lit-very-dark');
+            cell.setAttribute('data-light-level', '1');
+          } else if (intensity < 0.3) {
+            cell.classList.add('lit-dark');
+            cell.setAttribute('data-light-level', '2');
+          } else if (intensity < 0.5) {
+            cell.classList.add('lit-dim');
+            cell.setAttribute('data-light-level', '3');
+          } else if (intensity < 0.7) {
+            cell.classList.add('lit-normal');
+            cell.setAttribute('data-light-level', '4');
+          } else if (intensity < 0.9) {
+            cell.classList.add('lit-bright');
+            cell.setAttribute('data-light-level', '5');
+          } else {
+            cell.classList.add('lit-very-bright');
+            cell.setAttribute('data-light-level', '6');
+          }
+
+          // Add cell-darkness class for visual overlay effect
+          if (intensity < 0.6) {
+            cell.classList.add('cell-darkness');
+          }
+        }
+
         _gridContainer.appendChild(cell);
       }
     }

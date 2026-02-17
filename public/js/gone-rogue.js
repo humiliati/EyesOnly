@@ -299,6 +299,12 @@ const GoneRogue = (function () {
     _active = true;
     _loaded = true;
 
+    // Initialize lighting system if available
+    if (typeof LightingSystem !== 'undefined') {
+      LightingSystem.init();
+      console.log('[GoneRogue] Lighting system initialized');
+    }
+
     // Initialize from GAMESTATE if available
     var lines = [];
     if (typeof GAMESTATE !== 'undefined') {
@@ -611,6 +617,43 @@ const GoneRogue = (function () {
 
     // Place items (increased loot for exploration floors)
     _placeItems(floorType);
+
+    // Generate lighting for this floor
+    if (typeof LightingSystem !== 'undefined') {
+      // Set biome for lighting
+      var biome = _getBiome(_floor);
+      var biomeName = biome.name.toUpperCase().replace(/ /g, '_');
+      LightingSystem.setBiome(biomeName);
+
+      // Apply darkness multiplier for uber mega boss (floor 30)
+      if (_floor === 30 && _bossFloorActive) {
+        LightingSystem.setDarknessMultiplier(0.5); // Nerf light by 50%
+      } else {
+        LightingSystem.setDarknessMultiplier(1.0);
+      }
+
+      // Collect wall positions for light blocking
+      var walls = [];
+      for (var y = 0; y < GRID_HEIGHT; y++) {
+        for (var x = 0; x < GRID_WIDTH; x++) {
+          if (_grid[y][x] === TILES.WALL) {
+            walls.push({ x: x, y: y });
+          }
+        }
+      }
+
+      // Generate biome-specific light sources
+      LightingSystem.generateBiomeLights(GRID_WIDTH, GRID_HEIGHT, rooms, walls);
+
+      // Update player light based on inventory
+      _updatePlayerLight();
+
+      // Update enemy lights
+      LightingSystem.updateEnemyLights(_enemies);
+
+      // Calculate initial light map
+      LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, walls);
+    }
 
     _turn = 0;
   }
@@ -2217,6 +2260,28 @@ const GoneRogue = (function () {
     // Update color cycle timer for visual feedback
     _enemyColorCycleTime += deltaMs;
 
+    // Update lighting system
+    if (typeof LightingSystem !== 'undefined') {
+      // Update player light position
+      _updatePlayerLight();
+
+      // Update enemy lights
+      LightingSystem.updateEnemyLights(_enemies);
+
+      // Collect wall positions for light blocking
+      var walls = [];
+      for (var y = 0; y < GRID_HEIGHT; y++) {
+        for (var x = 0; x < GRID_WIDTH; x++) {
+          if (_grid[y][x] === TILES.WALL) {
+            walls.push({ x: x, y: y });
+          }
+        }
+      }
+
+      // Recalculate light map with animation
+      LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, walls);
+    }
+
     // Re-render if using interactive grid
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
       _updateMobileGrid();
@@ -2383,6 +2448,33 @@ const GoneRogue = (function () {
   }
 
   /**
+   * Update player light based on inventory
+   */
+  function _updatePlayerLight() {
+    if (typeof LightingSystem === 'undefined') return;
+
+    // Check persistent inventory for light items
+    var lightItem = null;
+
+    if (typeof GAMESTATE !== 'undefined') {
+      var persistent = GAMESTATE.getPersistentInventory();
+
+      // Check for light items in inventory (priority order)
+      if (persistent.some(function(item) { return item && item.indexOf && item.indexOf('night vision') !== -1; })) {
+        lightItem = 'NIGHT_VISION';
+      } else if (persistent.some(function(item) { return item && item.indexOf && item.indexOf('flashlight') !== -1; })) {
+        lightItem = 'FLASHLIGHT';
+      } else if (persistent.some(function(item) { return item && item.indexOf && item.indexOf('lighter') !== -1; })) {
+        lightItem = 'LIGHTER';
+      }
+    }
+
+    // Update lighting system
+    LightingSystem.setPlayerLight(lightItem);
+    LightingSystem.updatePlayerLight(_player.x, _player.y, _player.lastMoveDirection || 'north');
+  }
+
+  /**
    * Check if player is in enemy sight cone
    */
   function _isPlayerInSightCone(enemy) {
@@ -2433,15 +2525,24 @@ const GoneRogue = (function () {
     var key = _player.x + ',' + _player.y;
     var metadata = _tileMetadata[key];
 
+    var bonus = 0;
+
+    // Tile-based stealth bonuses
     if (tile === TILES.SHADOW && metadata && metadata.stealthBonus) {
-      return metadata.stealthBonus; // 30%
+      bonus += metadata.stealthBonus; // 30%
     } else if (tile === TILES.GRASS && metadata && metadata.stealthBonus) {
-      return metadata.stealthBonus; // 20%
+      bonus += metadata.stealthBonus; // 20%
     } else if (tile === TILES.SMOKE && metadata && metadata.stealthBonus) {
-      return metadata.stealthBonus; // 40%
+      bonus += metadata.stealthBonus; // 40%
     }
 
-    return 0;
+    // Darkness-based stealth bonus (from lighting system)
+    if (typeof LightingSystem !== 'undefined') {
+      var darknessBonus = LightingSystem.getDarknessStealthBonus(_player.x, _player.y);
+      bonus += darknessBonus; // 0-50% based on darkness
+    }
+
+    return bonus;
   }
 
   /**
