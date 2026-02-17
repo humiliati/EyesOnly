@@ -323,11 +323,6 @@ const GoneRogueMobile = (function () {
             cell.classList.add('lit-very-bright');
             cell.setAttribute('data-light-level', '6');
           }
-
-          // Add cell-darkness class for visual overlay effect
-          if (intensity < 0.6) {
-            cell.classList.add('cell-darkness');
-          }
         }
 
         _gridContainer.appendChild(cell);

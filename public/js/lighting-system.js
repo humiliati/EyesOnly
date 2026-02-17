@@ -120,27 +120,27 @@ const LightingSystem = (function() {
   // Biome-specific ambient light levels and light source types
   const BIOME_LIGHTING = {
     GREY_CAVE: {
-      ambientLight: 0.1, // Very dark
+      ambientLight: 0.25, // Raised from 0.1
       lightRatio: 0.5, // 50% lit areas, 50% dark areas
       lightSources: ['LAVA_LAMP', 'CAMPFIRE', 'LAVA_FLOOR']
     },
     OFFICE: {
-      ambientLight: 0.15,
+      ambientLight: 0.35, // Raised from 0.15
       lightRatio: 0.5, // 50/50 mix
       lightSources: ['MONITOR']
     },
     MALL: {
-      ambientLight: 0.25,
+      ambientLight: 0.3, // Raised from 0.25
       lightRatio: 0.8, // 80% lit, 20% dark (power out)
       lightSources: ['LIGHT_BULB']
     },
     INDUSTRIAL: {
-      ambientLight: 0.12,
+      ambientLight: 0.22, // Raised from 0.12
       lightRatio: 0.4, // 40% lit, 60% dark
       lightSources: ['FIRE', 'LAVA_FLOOR'] // Fire and acid spills
     },
     AEROSPACE: {
-      ambientLight: 0.3, // Mostly bright
+      ambientLight: 0.35, // Raised from 0.3
       lightRatio: 0.9, // 90% lit, 10% dark
       lightSources: ['LIGHT_BULB']
     }

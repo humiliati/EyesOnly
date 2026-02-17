@@ -810,19 +810,19 @@
 
 /* Lighting intensity classes */
 .lit-very-dark {
-  filter: brightness(0.2) saturate(0.6);
+  filter: brightness(0.45) saturate(0.7);
 }
 
 .lit-dark {
-  filter: brightness(0.4) saturate(0.7);
-}
-
-.lit-dim {
   filter: brightness(0.6) saturate(0.8);
 }
 
+.lit-dim {
+  filter: brightness(0.75) saturate(0.85);
+}
+
 .lit-normal {
-  filter: brightness(0.8) saturate(0.9);
+  filter: brightness(0.9) saturate(0.95);
 }
 
 .lit-bright {
@@ -919,48 +919,6 @@
     opacity: 0.7;
     transform: translate(-50%, -50%) scale(1.05);
   }
-}
-
-/* Darkness overlay for unlit tiles */
-.cell-darkness {
-  position: relative;
-}
-
-.cell-darkness::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* Reduce darkness overlay strength based on lighting */
-.cell-darkness[data-light-level="1"]::before {
-  background: rgba(0, 0, 0, 0.85); /* Very dark */
-}
-
-.cell-darkness[data-light-level="2"]::before {
-  background: rgba(0, 0, 0, 0.7); /* Dark */
-}
-
-.cell-darkness[data-light-level="3"]::before {
-  background: rgba(0, 0, 0, 0.5); /* Dim */
-}
-
-.cell-darkness[data-light-level="4"]::before {
-  background: rgba(0, 0, 0, 0.3); /* Normal */
-}
-
-.cell-darkness[data-light-level="5"]::before {
-  background: rgba(0, 0, 0, 0.1); /* Bright */
-}
-
-.cell-darkness[data-light-level="6"]::before {
-  background: rgba(0, 0, 0, 0); /* Very bright - no overlay */
 }
 
 /* ============================================================
