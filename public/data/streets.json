@@ -1,13 +1,13 @@
 {
   "Cedar St": {
-    "description": "You are on Cedar Street, where the evening crowd flows between warm storefront light and the hiss of passing tires. A brass placard reads: CEDAR ST — HOME OF THE ANNUAL SANDPOINT SUMMER FEST.",
+    "description": "You are on Cedar Street, where the evening crowd flows between warm storefront light and the hiss of passing tires. A brass placard reads: CEDAR ST — HOME OF THE ANNUAL SANDPOINT SUMMER FEST. A suspicious cardboard box sits near the corner with 'TRAINING DECK' scrawled on it.",
     "north": "Main St",
     "east": "First St E",
     "south": null,
     "west": null,
     "businesses": ["Baker's Brew", "Cedar Books"],
     "event_id": null,
-    "items": ["festival flyer"]
+    "items": ["festival flyer", "🎯 SINGLE_SHOT card", "🛡️ PRONE card", "🍅 KATCHUP card", "💨 DODGE card", "💥 BURST_SHOT card"]
   },
   "Main St": {
     "description": "Main Street rises gently with amber storefronts, a violinist at the corner, and reflections in old glass. People pass by as if this were any ordinary night.",

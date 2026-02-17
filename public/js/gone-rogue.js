@@ -226,31 +226,10 @@ const GoneRogue = (function () {
     _loaded = true;
 
     // Initialize from GAMESTATE if available
+    var lines = [];
     if (typeof GAMESTATE !== 'undefined') {
       var result = GAMESTATE.enterRogueMode(context);
-      var lines = result.lines || [];
-
-      // Give player starter cards if they have no cards in loose inventory
-      var looseInventory = GAMESTATE.getLooseInventory();
-      if (looseInventory.length === 0 && typeof CardSystem !== 'undefined') {
-        // Give 5 starter cards: mix of attack, stance, and utility
-        var starterCards = [
-          CardSystem.rollCard('SINGLE_SHOT'),     // Basic attack
-          CardSystem.rollCard('PRONE'),           // Basic stance
-          CardSystem.rollCard('KATCHUP'),         // Basic healing
-          CardSystem.rollCard('DODGE'),           // Defensive stance
-          CardSystem.rollCard('BURST_SHOT')       // Stronger attack
-        ];
-
-        for (var i = 0; i < starterCards.length; i++) {
-          if (starterCards[i]) {
-            GAMESTATE.addToLoose(starterCards[i]);
-          }
-        }
-
-        lines.push('STARTER DECK LOADED: 5 CARDS');
-        lines.push('');
-      }
+      lines = result.lines || [];
     } else {
       lines = ['', 'GONE ROGUE MODE ACTIVATED', ''];
     }

@@ -27,6 +27,22 @@ const GAMESTATE = (function () {
 
   function init() {
     _loadState();
+    _ensureDefaultPersistentInventory();
+  }
+
+  /**
+   * Ensure player has default persistent inventory items on first run
+   */
+  function _ensureDefaultPersistentInventory() {
+    // If persistent inventory is empty, add the 3 core items
+    if (_state.inventoryPersistent.length === 0) {
+      _state.inventoryPersistent = [
+        { name: 'Radio Transceiver', emoji: '📻', type: 'equipment', description: 'Encrypted communication device' },
+        { name: 'Surveillance Cam', emoji: '📷', type: 'equipment', description: 'Compact surveillance camera' },
+        { name: 'Personal Journal', emoji: '📓', type: 'equipment', description: 'Your operational notes and observations' }
+      ];
+      _saveState();
+    }
   }
 
   function getMode() {
@@ -59,8 +75,16 @@ const GAMESTATE = (function () {
     // Transfer street inventory to loose carry if specified
     if (context.carryInventory && typeof StreetChronicles !== 'undefined') {
       var streetInv = StreetChronicles.getInventory() || [];
-      // Take up to looseSlots items from street inventory
-      _state.inventoryLoose = streetInv.slice(0, _state.looseSlots);
+      // Convert card name strings to actual card objects
+      var convertedInv = [];
+      for (var i = 0; i < streetInv.length && i < _state.looseSlots; i++) {
+        var itemStr = streetInv[i];
+        var convertedItem = _convertStreetItemToCard(itemStr);
+        if (convertedItem) {
+          convertedInv.push(convertedItem);
+        }
+      }
+      _state.inventoryLoose = convertedInv;
     }
 
     _saveState();
@@ -254,6 +278,36 @@ const GAMESTATE = (function () {
     } catch (e) {
       console.error('Failed to load gamestate:', e);
     }
+  }
+
+  /**
+   * Convert street inventory item string to card object
+   * @param {String} itemStr - Item string from Street Chronicles
+   * @returns {Object|null} Card object or null if not a card
+   */
+  function _convertStreetItemToCard(itemStr) {
+    if (!itemStr) return null;
+
+    // Map street item names to CardSystem card types
+    var cardMapping = {
+      'SINGLE_SHOT card': 'SINGLE_SHOT',
+      'PRONE card': 'PRONE',
+      'KATCHUP card': 'KATCHUP',
+      'DODGE card': 'DODGE',
+      'BURST_SHOT card': 'BURST_SHOT'
+    };
+
+    // Check if item is a card
+    for (var key in cardMapping) {
+      if (itemStr.indexOf(key) !== -1) {
+        if (typeof CardSystem !== 'undefined' && typeof CardSystem.rollCard === 'function') {
+          return CardSystem.rollCard(cardMapping[key]);
+        }
+      }
+    }
+
+    // Not a card - return as-is (for non-card items like festival flyer)
+    return { name: itemStr, type: 'misc' };
   }
 
   function reset() {
