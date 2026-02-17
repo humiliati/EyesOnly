@@ -963,3 +963,138 @@
   background: rgba(0, 0, 0, 0); /* Very bright - no overlay */
 }
 
+/* ============================================================
+   INVENTORY DISPLAY FOR EQUIP/UNEQUIP
+   Persistent inventory grid for tap/drag to active slot
+   ============================================================ */
+
+.rogue-inventory-mobile {
+  display: none;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.95);
+  border: 2px solid #1cff9b;
+  border-radius: 8px;
+  box-shadow: 0 0 20px rgba(28, 255, 155, 0.4);
+  margin: 15px auto;
+  max-width: 90vw;
+  font-family: 'Courier New', monospace;
+}
+
+.rogue-inventory-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+  border: 2px solid #1cff9b;
+  border-radius: 6px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.rogue-inventory-item:hover {
+  border-color: #ffeb3b;
+  box-shadow: 0 0 15px rgba(255, 235, 59, 0.5);
+  transform: translateY(-3px);
+}
+
+.rogue-inventory-item:active {
+  cursor: grabbing;
+}
+
+.rogue-inventory-item.dragging {
+  opacity: 0.8;
+  box-shadow: 0 0 25px rgba(28, 255, 155, 0.7);
+  z-index: 1001;
+  cursor: grabbing;
+  pointer-events: none;
+}
+
+.rogue-inventory-item.equipped {
+  border-color: #ffaa00;
+  background: linear-gradient(135deg, #1a1a0a 0%, #2a2a1a 100%);
+  box-shadow: 0 0 15px rgba(255, 170, 0, 0.4);
+}
+
+.rogue-inventory-item.equipped::after {
+  content: '⚡';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 14px;
+  color: #ffaa00;
+  animation: equip-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes equip-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+.rogue-inventory-item .item-emoji {
+  font-size: 32px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.rogue-inventory-item .item-name {
+  color: #1cff9b;
+  font-size: 11px;
+  font-weight: bold;
+  text-align: center;
+  word-break: break-word;
+}
+
+.rogue-inventory-item.equipped .item-name {
+  color: #ffaa00;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 480px) {
+  .rogue-inventory-mobile {
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .rogue-inventory-item {
+    padding: 8px;
+  }
+
+  .rogue-inventory-item .item-emoji {
+    font-size: 24px;
+    margin-bottom: 4px;
+  }
+
+  .rogue-inventory-item .item-name {
+    font-size: 9px;
+  }
+}
+
+/* Active slot highlight when dragging over */
+#active-item-slot.drag-over {
+  border-color: #ffeb3b;
+  box-shadow: 0 0 20px rgba(255, 235, 59, 0.6);
+  animation: slot-highlight 0.5s ease-in-out infinite;
+}
+
+@keyframes slot-highlight {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 235, 59, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 235, 59, 0.8);
+  }
+}
+

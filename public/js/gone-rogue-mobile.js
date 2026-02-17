@@ -8,6 +8,7 @@ const GoneRogueMobile = (function () {
 
   var _gridContainer = null;
   var _cardContainer = null;
+  var _inventoryContainer = null; // New: persistent inventory display
   var _lastTapTime = 0;
   var _lastTapCell = null;
   var _runMode = false;
@@ -15,6 +16,7 @@ const GoneRogueMobile = (function () {
   // Touch tracking for swipes
   var _touchStart = { x: 0, y: 0, time: 0 };
   var _activeCard = null;
+  var _activeDragItem = null; // New: for inventory drag tracking
 
   /**
    * Initialize mobile UI
@@ -100,8 +102,15 @@ const GoneRogueMobile = (function () {
     _cardContainer.className = 'rogue-cards-mobile';
     _cardContainer.style.display = 'none';
 
+    // Create inventory container (persistent inventory for equipping)
+    _inventoryContainer = document.createElement('div');
+    _inventoryContainer.id = 'rogue-inventory-mobile';
+    _inventoryContainer.className = 'rogue-inventory-mobile';
+    _inventoryContainer.style.display = 'none';
+
     terminal.appendChild(_gridContainer);
     terminal.appendChild(_cardContainer);
+    terminal.appendChild(_inventoryContainer);
   }
 
   /**
@@ -938,11 +947,298 @@ const GoneRogueMobile = (function () {
     _cardContainer.style.display = 'none';
   }
 
+  function showInventory() {
+    if (!_inventoryContainer) {
+      return;
+    }
+
+    // Get persistent inventory from GAMESTATE
+    var persistentInv = [];
+    var activeItem = null;
+
+    if (typeof GAMESTATE !== 'undefined') {
+      persistentInv = GAMESTATE.getPersistentInventory() || [];
+      activeItem = GAMESTATE.getActiveItem();
+    }
+
+    // Clear existing inventory display
+    _inventoryContainer.innerHTML = '';
+
+    if (persistentInv.length === 0) {
+      _inventoryContainer.style.display = 'none';
+      return;
+    }
+
+    // Create inventory grid
+    persistentInv.forEach(function(item, index) {
+      if (!item) return;
+
+      var itemDiv = document.createElement('div');
+      itemDiv.className = 'rogue-inventory-item';
+      itemDiv.dataset.index = index;
+
+      // Check if this item is currently equipped
+      var isEquipped = activeItem && activeItem.name === item.name;
+      if (isEquipped) {
+        itemDiv.classList.add('equipped');
+      }
+
+      // Item emoji and name
+      var emojiSpan = document.createElement('span');
+      emojiSpan.className = 'item-emoji';
+      emojiSpan.textContent = item.emoji || '📦';
+
+      var nameSpan = document.createElement('span');
+      nameSpan.className = 'item-name';
+      nameSpan.textContent = item.name || 'Unknown';
+
+      itemDiv.appendChild(emojiSpan);
+      itemDiv.appendChild(nameSpan);
+
+      // Add touch handlers for mobile
+      itemDiv.addEventListener('touchstart', _handleInventoryTouchStart, { passive: false });
+      itemDiv.addEventListener('touchmove', _handleInventoryTouchMove, { passive: false });
+      itemDiv.addEventListener('touchend', _handleInventoryTouchEnd, { passive: false });
+
+      // Add pointer handlers for desktop
+      itemDiv.addEventListener('pointerdown', _handleInventoryPointerDown);
+      itemDiv.addEventListener('click', _handleInventoryClick);
+
+      _inventoryContainer.appendChild(itemDiv);
+    });
+
+    _inventoryContainer.style.display = 'grid';
+  }
+
+  function _handleInventoryTouchStart(e) {
+    e.preventDefault();
+
+    var itemDiv = e.currentTarget;
+    var index = parseInt(itemDiv.dataset.index, 10);
+
+    if (typeof GAMESTATE === 'undefined') return;
+
+    var persistentInv = GAMESTATE.getPersistentInventory();
+    var item = persistentInv[index];
+
+    if (!item) return;
+
+    _activeDragItem = {
+      element: itemDiv,
+      item: item,
+      startX: e.touches[0].clientX,
+      startY: e.touches[0].clientY,
+      originalTransform: itemDiv.style.transform
+    };
+
+    itemDiv.classList.add('dragging');
+  }
+
+  function _handleInventoryTouchMove(e) {
+    if (!_activeDragItem) return;
+
+    e.preventDefault();
+
+    var touch = e.touches[0];
+    var deltaX = touch.clientX - _activeDragItem.startX;
+    var deltaY = touch.clientY - _activeDragItem.startY;
+
+    // Apply visual feedback
+    _activeDragItem.element.style.transform = 'translate(' + deltaX + 'px, ' + deltaY + 'px) scale(1.1)';
+  }
+
+  function _handleInventoryTouchEnd(e) {
+    if (!_activeDragItem) return;
+
+    e.preventDefault();
+
+    var touch = e.changedTouches[0];
+    var element = document.elementFromPoint(touch.clientX, touch.clientY);
+
+    // Check if dropped on active item slot
+    var activeSlot = document.getElementById('active-item-slot');
+    var activeDisplay = document.getElementById('active-item-display');
+
+    var droppedOnActiveSlot = false;
+    if (element) {
+      if (element === activeSlot || element === activeDisplay ||
+          activeSlot.contains(element) || activeDisplay.contains(element)) {
+        droppedOnActiveSlot = true;
+      }
+    }
+
+    if (droppedOnActiveSlot) {
+      // Equip the item
+      _equipItemToActiveSlot(_activeDragItem.item);
+    }
+
+    // Reset visual state
+    _activeDragItem.element.style.transform = _activeDragItem.originalTransform || '';
+    _activeDragItem.element.classList.remove('dragging');
+    _activeDragItem = null;
+
+    // Refresh inventory display
+    showInventory();
+  }
+
+  function _handleInventoryPointerDown(e) {
+    // Only handle mouse/pen, not touch (touch uses separate handlers)
+    if (e.pointerType === 'touch') return;
+
+    var itemDiv = e.currentTarget;
+    var index = parseInt(itemDiv.dataset.index, 10);
+
+    if (typeof GAMESTATE === 'undefined') return;
+
+    var persistentInv = GAMESTATE.getPersistentInventory();
+    var item = persistentInv[index];
+
+    if (!item) return;
+
+    _activeDragItem = {
+      element: itemDiv,
+      item: item,
+      startX: e.clientX,
+      startY: e.clientY,
+      originalTransform: itemDiv.style.transform
+    };
+
+    itemDiv.classList.add('dragging');
+
+    // Add move and up handlers to document
+    var handleMove = function(moveE) {
+      if (!_activeDragItem) return;
+
+      var deltaX = moveE.clientX - _activeDragItem.startX;
+      var deltaY = moveE.clientY - _activeDragItem.startY;
+
+      _activeDragItem.element.style.transform = 'translate(' + deltaX + 'px, ' + deltaY + 'px) scale(1.1)';
+    };
+
+    var handleUp = function(upE) {
+      if (!_activeDragItem) return;
+
+      var element = document.elementFromPoint(upE.clientX, upE.clientY);
+
+      // Check if dropped on active item slot
+      var activeSlot = document.getElementById('active-item-slot');
+      var activeDisplay = document.getElementById('active-item-display');
+
+      var droppedOnActiveSlot = false;
+      if (element) {
+        if (element === activeSlot || element === activeDisplay ||
+            activeSlot.contains(element) || activeDisplay.contains(element)) {
+          droppedOnActiveSlot = true;
+        }
+      }
+
+      if (droppedOnActiveSlot) {
+        // Equip the item
+        _equipItemToActiveSlot(_activeDragItem.item);
+      }
+
+      // Reset visual state
+      _activeDragItem.element.style.transform = _activeDragItem.originalTransform || '';
+      _activeDragItem.element.classList.remove('dragging');
+      _activeDragItem = null;
+
+      // Refresh inventory display
+      showInventory();
+
+      // Remove event listeners
+      document.removeEventListener('pointermove', handleMove);
+      document.removeEventListener('pointerup', handleUp);
+    };
+
+    document.addEventListener('pointermove', handleMove);
+    document.addEventListener('pointerup', handleUp);
+  }
+
+  function _handleInventoryClick(e) {
+    // Quick tap/click to equip (for users who don't want to drag)
+    var itemDiv = e.currentTarget;
+    var index = parseInt(itemDiv.dataset.index, 10);
+
+    if (typeof GAMESTATE === 'undefined') return;
+
+    var persistentInv = GAMESTATE.getPersistentInventory();
+    var item = persistentInv[index];
+
+    if (!item) return;
+
+    // Check if already equipped
+    var activeItem = GAMESTATE.getActiveItem();
+    if (activeItem && activeItem.name === item.name) {
+      // Unequip
+      _unequipActiveItem();
+    } else {
+      // Equip
+      _equipItemToActiveSlot(item);
+    }
+
+    // Refresh inventory display
+    showInventory();
+  }
+
+  function _equipItemToActiveSlot(item) {
+    if (typeof GAMESTATE === 'undefined') return;
+
+    GAMESTATE.setActiveItem(item);
+
+    // Update active item display in header
+    var activeDisplay = document.getElementById('active-item-display');
+    if (activeDisplay) {
+      activeDisplay.innerHTML = '<span class="item-emoji">' + (item.emoji || '📦') + '</span>';
+      activeDisplay.classList.add('has-item');
+    }
+
+    // Update player lighting if this is a lighting item
+    if (typeof _updatePlayerLight === 'function') {
+      _updatePlayerLight();
+    } else if (typeof window.GoneRogue !== 'undefined' && typeof window.GoneRogue.updatePlayerLight === 'function') {
+      window.GoneRogue.updatePlayerLight();
+    }
+
+    // Show feedback message
+    if (typeof window.appendLine === 'function') {
+      window.appendLine('⚡ EQUIPPED: ' + item.emoji + ' ' + item.name);
+    }
+  }
+
+  function _unequipActiveItem() {
+    if (typeof GAMESTATE === 'undefined') return;
+
+    var activeItem = GAMESTATE.getActiveItem();
+    if (!activeItem) return;
+
+    GAMESTATE.clearActiveItem();
+
+    // Update active item display in header
+    var activeDisplay = document.getElementById('active-item-display');
+    if (activeDisplay) {
+      activeDisplay.innerHTML = '<span class="empty-slot-indicator">·</span>';
+      activeDisplay.classList.remove('has-item');
+    }
+
+    // Update player lighting
+    if (typeof _updatePlayerLight === 'function') {
+      _updatePlayerLight();
+    } else if (typeof window.GoneRogue !== 'undefined' && typeof window.GoneRogue.updatePlayerLight === 'function') {
+      window.GoneRogue.updatePlayerLight();
+    }
+
+    // Show feedback message
+    if (typeof window.appendLine === 'function') {
+      window.appendLine('⚠ UNEQUIPPED: ' + activeItem.emoji + ' ' + activeItem.name);
+    }
+  }
+
   return {
     init: init,
     renderGrid: renderGrid,
     hide: hide,
     show: show,
-    showFloatingDamage: showFloatingDamage
+    showFloatingDamage: showFloatingDamage,
+    showInventory: showInventory
   };
 })();
