@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Engine Test Runner - EYES ONLY</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background: #0a0a0a;
+      color: #1cff9b;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #1cff9b;
+      text-align: center;
+      margin-bottom: 30px;
+      text-shadow: 0 0 10px rgba(28, 255, 155, 0.5);
+    }
+
+    .controls {
+      background: #1a1a1a;
+      border: 2px solid #1cff9b;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 5px;
+    }
+
+    .control-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #1cff9b;
+    }
+
+    input, select, button {
+      font-family: 'Courier New', monospace;
+      padding: 8px 12px;
+      border: 1px solid #1cff9b;
+      background: #0a0a0a;
+      color: #1cff9b;
+      border-radius: 3px;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s;
+    }
+
+    button:hover {
+      background: #1cff9b;
+      color: #0a0a0a;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    #output {
+      background: #000;
+      border: 2px solid #1cff9b;
+      padding: 20px;
+      min-height: 400px;
+      max-height: 600px;
+      overflow-y: auto;
+      border-radius: 5px;
+      white-space: pre-wrap;
+      font-size: 12px;
+    }
+
+    .status {
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 3px;
+      text-align: center;
+    }
+
+    .status.running {
+      background: rgba(255, 170, 0, 0.2);
+      border: 1px solid #ffaa00;
+      color: #ffaa00;
+    }
+
+    .status.complete {
+      background: rgba(28, 255, 155, 0.2);
+      border: 1px solid #1cff9b;
+      color: #1cff9b;
+    }
+
+    .status.error {
+      background: rgba(255, 28, 74, 0.2);
+      border: 1px solid #ff1c4a;
+      color: #ff1c4a;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 20px;
+      background: #1a1a1a;
+      border: 1px solid #1cff9b;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 15px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #1cff9b, #0d3f22);
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .result-card {
+      background: #1a1a1a;
+      border: 1px solid #1cff9b;
+      padding: 15px;
+      border-radius: 5px;
+    }
+
+    .result-card h3 {
+      color: #ffaa00;
+      margin-bottom: 10px;
+    }
+
+    .stat-line {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px solid #333;
+    }
+
+    .warning {
+      color: #ffaa00;
+      font-weight: bold;
+    }
+
+    .critical {
+      color: #ff1c4a;
+      font-weight: bold;
+    }
+
+    .success {
+      color: #1cff9b;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⚙️ AGENT ENGINE TEST RUNNER</h1>
+
+    <div class="controls">
+      <h2>Simulation Parameters</h2>
+
+      <div class="control-group">
+        <label for="numRuns">Number of Runs:</label>
+        <input type="number" id="numRuns" min="1" max="1000" value="50">
+      </div>
+
+      <div class="control-group">
+        <label for="persona">Persona Filter:</label>
+        <select id="persona">
+          <option value="ALL">All Personas (Round-Robin)</option>
+          <option value="GREEDY_LOOTER">GREEDY_LOOTER</option>
+          <option value="SPEEDRUNNER">SPEEDRUNNER</option>
+          <option value="RISKY_GAMBLER">RISKY_GAMBLER</option>
+          <option value="SAVER_HOARDER">SAVER_HOARDER</option>
+          <option value="MINMAXER">MINMAXER</option>
+          <option value="DUMB_RANDOM">DUMB_RANDOM</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label for="maxFloor">Max Floor:</label>
+        <input type="number" id="maxFloor" min="1" max="50" value="30">
+      </div>
+
+      <div class="control-group">
+        <label>
+          <input type="checkbox" id="enableElites" checked>
+          Enable Elite Enemies
+        </label>
+      </div>
+
+      <div class="control-group">
+        <label>
+          <input type="checkbox" id="verbose" checked>
+          Verbose Output
+        </label>
+      </div>
+
+      <div class="button-group">
+        <button id="runBtn" onclick="runSimulation()">▶️ Run Simulation</button>
+        <button id="exportCSV" onclick="exportCSV()" disabled>📊 Export CSV</button>
+        <button id="exportJSON" onclick="exportJSON()" disabled>📄 Export JSON</button>
+        <button onclick="clearOutput()">🗑️ Clear Output</button>
+      </div>
+    </div>
+
+    <div id="statusContainer"></div>
+    <div class="progress-bar" id="progressBar" style="display: none;">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <div id="output"></div>
+    <div id="resultsGrid" class="results-grid"></div>
+  </div>
+
+  <script src="agent-engine.js"></script>
+  <script>
+    var currentEngine = null;
+    var currentReport = null;
+
+    // Redirect console.log to output div
+    var originalLog = console.log;
+    console.log = function(...args) {
+      originalLog.apply(console, args);
+      var output = document.getElementById('output');
+      if (output) {
+        output.textContent += args.join(' ') + '\n';
+        output.scrollTop = output.scrollHeight;
+      }
+    };
+
+    async function runSimulation() {
+      var numRuns = parseInt(document.getElementById('numRuns').value);
+      var personaFilter = document.getElementById('persona').value;
+      var maxFloor = parseInt(document.getElementById('maxFloor').value);
+      var enableElites = document.getElementById('enableElites').checked;
+      var verbose = document.getElementById('verbose').checked;
+
+      // Clear previous results
+      document.getElementById('output').textContent = '';
+      document.getElementById('resultsGrid').innerHTML = '';
+
+      // Show status
+      showStatus('running', 'Simulation running...');
+
+      // Disable controls
+      document.getElementById('runBtn').disabled = true;
+      document.getElementById('exportCSV').disabled = true;
+      document.getElementById('exportJSON').disabled = true;
+
+      // Show progress bar
+      document.getElementById('progressBar').style.display = 'block';
+      document.getElementById('progressFill').style.width = '0%';
+
+      try {
+        // Create engine
+        currentEngine = new AgentEngine.AgentEngine({
+          verbose: verbose,
+          maxFloor: maxFloor,
+          enableElites: enableElites
+        });
+
+        // Run simulations
+        var persona = personaFilter === 'ALL' ? null : personaFilter;
+
+        // Simulate progress for visual feedback
+        var progressInterval = setInterval(() => {
+          var currentWidth = parseFloat(document.getElementById('progressFill').style.width);
+          if (currentWidth < 90) {
+            document.getElementById('progressFill').style.width = (currentWidth + 2) + '%';
+          }
+        }, 100);
+
+        currentReport = await currentEngine.runSimulations(numRuns, persona);
+
+        clearInterval(progressInterval);
+        document.getElementById('progressFill').style.width = '100%';
+
+        // Display results
+        displayResults(currentReport);
+
+        showStatus('complete', `✓ Simulation complete! ${numRuns} runs finished.`);
+
+        // Enable export buttons
+        document.getElementById('exportCSV').disabled = false;
+        document.getElementById('exportJSON').disabled = false;
+
+      } catch (error) {
+        console.error('Error running simulation:', error);
+        showStatus('error', '✗ Simulation failed: ' + error.message);
+      } finally {
+        document.getElementById('runBtn').disabled = false;
+        setTimeout(() => {
+          document.getElementById('progressBar').style.display = 'none';
+        }, 2000);
+      }
+    }
+
+    function displayResults(report) {
+      var grid = document.getElementById('resultsGrid');
+      grid.innerHTML = '';
+
+      // Summary card
+      var summaryCard = document.createElement('div');
+      summaryCard.className = 'result-card';
+      summaryCard.innerHTML = `
+        <h3>📊 Summary</h3>
+        <div class="stat-line">
+          <span>Total Runs:</span>
+          <span class="success">${report.summary.totalRuns}</span>
+        </div>
+        <div class="stat-line">
+          <span>Survived:</span>
+          <span class="success">${report.summary.survived} (${(report.summary.survived / report.summary.totalRuns * 100).toFixed(1)}%)</span>
+        </div>
+        <div class="stat-line">
+          <span>Died:</span>
+          <span class="critical">${report.summary.died} (${(report.summary.died / report.summary.totalRuns * 100).toFixed(1)}%)</span>
+        </div>
+      `;
+      grid.appendChild(summaryCard);
+
+      // Per-persona cards
+      Object.keys(report.personas).forEach(name => {
+        var p = report.personas[name];
+        var card = document.createElement('div');
+        card.className = 'result-card';
+
+        var survivalRate = (p.survived / p.runs * 100).toFixed(1);
+        var survivalClass = survivalRate > 70 ? 'success' : survivalRate > 40 ? 'warning' : 'critical';
+
+        card.innerHTML = `
+          <h3>${name}</h3>
+          <div class="stat-line">
+            <span>Survival Rate:</span>
+            <span class="${survivalClass}">${survivalRate}%</span>
+          </div>
+          <div class="stat-line">
+            <span>Avg Final Floor:</span>
+            <span>${(p.avgFloor / p.runs).toFixed(1)}</span>
+          </div>
+          <div class="stat-line">
+            <span>Avg Final Credits:</span>
+            <span>${Math.floor(p.avgCredits / p.runs)}</span>
+          </div>
+          <div class="stat-line">
+            <span>Avg Deck Size:</span>
+            <span>${(p.avgDeckSize / p.runs).toFixed(1)}</span>
+          </div>
+          <div class="stat-line">
+            <span>Mythics Found:</span>
+            <span class="success">${p.mythicsFound}</span>
+          </div>
+          <div class="stat-line">
+            <span>Elites Found:</span>
+            <span class="warning">${p.elitesFound}</span>
+          </div>
+          ${p.stuck > 0 ? `<div class="stat-line"><span>Times Stuck:</span><span class="critical">${p.stuck}</span></div>` : ''}
+        `;
+        grid.appendChild(card);
+      });
+
+      // Economy card
+      var economyCard = document.createElement('div');
+      economyCard.className = 'result-card';
+      economyCard.innerHTML = `
+        <h3>💰 Economy</h3>
+        <div class="stat-line">
+          <span>Mythic Rate:</span>
+          <span>${report.mythicRate}% per run</span>
+        </div>
+        <div class="stat-line">
+          <span>Avg Final Credits:</span>
+          <span>${report.avgFinalCredits}</span>
+        </div>
+        ${report.avgFinalCredits > 5000 ? '<div class="warning">⚠ Too much currency!</div>' : ''}
+        ${report.avgFinalCredits < 100 ? '<div class="critical">⚠ Currency starvation!</div>' : ''}
+      `;
+      grid.appendChild(economyCard);
+    }
+
+    function showStatus(type, message) {
+      var container = document.getElementById('statusContainer');
+      container.innerHTML = `<div class="status ${type}">${message}</div>`;
+    }
+
+    function exportCSV() {
+      if (!currentEngine) return;
+
+      var csv = currentEngine.exportToCSV();
+      downloadFile('agent-engine-results.csv', csv, 'text/csv');
+    }
+
+    function exportJSON() {
+      if (!currentEngine) return;
+
+      var json = currentEngine.exportToJSON();
+      downloadFile('agent-engine-results.json', json, 'application/json');
+    }
+
+    function downloadFile(filename, content, mimeType) {
+      var blob = new Blob([content], { type: mimeType });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function clearOutput() {
+      document.getElementById('output').textContent = '';
+      document.getElementById('resultsGrid').innerHTML = '';
+      document.getElementById('statusContainer').innerHTML = '';
+      currentEngine = null;
+      currentReport = null;
+      document.getElementById('exportCSV').disabled = true;
+      document.getElementById('exportJSON').disabled = true;
+    }
+
+    // Show initial message
+    console.log('Agent Engine Test Runner loaded successfully.');
+    console.log('Configure parameters and click "Run Simulation" to start.');
+  </script>
+</body>
+</html>

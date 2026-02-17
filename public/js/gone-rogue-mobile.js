@@ -159,11 +159,32 @@ const GoneRogueMobile = (function () {
           cell.textContent = '🥷';
           cell.classList.add('cell-player');
         } else if (enemy) {
-          cell.textContent = '🪖';
-          cell.classList.add('cell-enemy');
+          // Check if this is an Elite enemy
+          if (enemy.isElite) {
+            cell.textContent = enemy.emoji || '🪖';
+            cell.classList.add('cell-enemy', 'cell-elite');
 
-          // Apply awareness color with cycling effect
-          _applyAwarenessColor(cell, enemy, colorCycleTime);
+            // Add pulsing glow effect for elites
+            var glowIntensity = Math.sin(enemy.glowPhase * Math.PI / 180) * 0.5 + 0.5;
+            cell.style.background = 'rgba(255, 0, 255, ' + (0.2 + glowIntensity * 0.3) + ')';
+            cell.style.boxShadow = '0 0 10px rgba(255, 0, 255, ' + (0.5 + glowIntensity * 0.5) + ')';
+
+            // Add intent icon overlay
+            if (enemy.intentIcon) {
+              var intentSpan = document.createElement('span');
+              intentSpan.className = 'enemy-intent-icon';
+              intentSpan.textContent = enemy.intentIcon;
+              intentSpan.title = enemy.intent || 'UNKNOWN';
+              cell.appendChild(intentSpan);
+            }
+          } else {
+            // Normal enemy
+            cell.textContent = '🪖';
+            cell.classList.add('cell-enemy');
+
+            // Apply awareness color with cycling effect
+            _applyAwarenessColor(cell, enemy, colorCycleTime);
+          }
 
           // Add detection cone visualization
           _addDetectionCone(cell, enemy);
@@ -174,8 +195,24 @@ const GoneRogueMobile = (function () {
           cell.textContent = projectile.emoji || projectile.glyph || '💥';
           cell.classList.add('cell-projectile');
         } else if (breakable) {
-          cell.textContent = breakable.hp > 0 ? (breakable.emoji || breakable.glyph || '📦') : (breakable.destroyedGlyph || '░');
-          cell.classList.add(breakable.hp > 0 ? 'cell-breakable' : 'cell-breakable-broken');
+          // Show impact animation when destroying (blink twice)
+          if (breakable.hp === 0 && breakable.destroying) {
+            var elapsed = Date.now() - (breakable.destroyStartTime || 0);
+            var blinkPhase = Math.floor(elapsed / 200) % 2; // Blink every 200ms
+            if (blinkPhase === 0) {
+              cell.textContent = '💥'; // Show impact emoji
+              cell.classList.add('cell-projectile-impact');
+            } else {
+              cell.textContent = breakable.emoji || breakable.glyph || '📦';
+              cell.classList.add('cell-breakable-destroying');
+            }
+          } else if (breakable.hp > 0) {
+            cell.textContent = breakable.emoji || breakable.glyph || '📦';
+            cell.classList.add('cell-breakable');
+          } else {
+            cell.textContent = breakable.destroyedGlyph || '░';
+            cell.classList.add('cell-breakable-broken');
+          }
         } else if (item) {
           cell.textContent = item.emoji || '💎';
           cell.classList.add('cell-item');
@@ -314,7 +351,7 @@ const GoneRogueMobile = (function () {
       cell.classList.add('cell-breakable');
     } else if (tile === '░') {
       cell.classList.add('cell-breakable-broken');
-    } else if (tile === '▼') {
+    } else if (tile === '🚪' || tile === '▼') {
       cell.classList.add('cell-exit');
     } else {
       cell.classList.add('cell-empty');
