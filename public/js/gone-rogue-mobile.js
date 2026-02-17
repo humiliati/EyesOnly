@@ -156,28 +156,28 @@ const GoneRogueMobile = (function () {
         var item = items ? items.find(function(i) { return i.x === x && i.y === y; }) : null;
 
         if (player && player.x === x && player.y === y) {
-          cell.textContent = '@';
+          cell.textContent = '🥷';
           cell.classList.add('cell-player');
         } else if (enemy) {
-          cell.textContent = 'E';
+          cell.textContent = '🪖';
           cell.classList.add('cell-enemy');
-          
+
           // Apply awareness color with cycling effect
           _applyAwarenessColor(cell, enemy, colorCycleTime);
-          
+
           // Add detection cone visualization
           _addDetectionCone(cell, enemy);
-          
+
           // Add sight cone overlay
           _addSightConeOverlay(cell, enemy, grid);
         } else if (projectile) {
-          cell.textContent = projectile.glyph || '•';
+          cell.textContent = projectile.emoji || projectile.glyph || '💥';
           cell.classList.add('cell-projectile');
         } else if (breakable) {
-          cell.textContent = breakable.hp > 0 ? (breakable.glyph || '☐') : (breakable.destroyedGlyph || '░');
+          cell.textContent = breakable.hp > 0 ? (breakable.emoji || breakable.glyph || '📦') : (breakable.destroyedGlyph || '░');
           cell.classList.add(breakable.hp > 0 ? 'cell-breakable' : 'cell-breakable-broken');
         } else if (item) {
-          cell.textContent = '*';
+          cell.textContent = item.emoji || '💎';
           cell.classList.add('cell-item');
         } else {
           _setCellTile(cell, tile);

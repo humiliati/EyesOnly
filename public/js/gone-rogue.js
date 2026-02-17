@@ -57,14 +57,14 @@ const GoneRogue = (function () {
   var TILES = {
     EMPTY: '.',
     WALL: '█',
-    PLAYER: '@',
-    ENEMY: 'E',
-    ITEM: '*',
+    PLAYER: '🥷',
+    ENEMY: '🪖',
+    ITEM: '💎',
     EXIT: '▼',
     COVER: '▓',
-    BREAKABLE: '☐',
+    BREAKABLE: '📦',
     DEBRIS: '░',
-    PROJECTILE: '•',
+    PROJECTILE: '💥',
     DOOR: 'D',
     VENT: 'V',
     SHADOW: '░',
@@ -785,7 +785,7 @@ const GoneRogue = (function () {
       if (typeof CardSystem !== 'undefined') {
         var baseType = CardSystem.getRandomBaseCard();
         var card = CardSystem.rollCard(baseType);
-        _items.push({ x: ix, y: iy, card: card });
+        _items.push({ x: ix, y: iy, card: card, spawnTime: Date.now(), decayTime: 30000 }); // 30 second decay
       }
     }
   }
@@ -859,7 +859,9 @@ const GoneRogue = (function () {
       y: y,
       amount: amount,
       glyph: '¢',
-      emoji: '💰'
+      emoji: '💰',
+      spawnTime: Date.now(),
+      decayTime: 20000 // 20 second decay for currency
     });
   }
 
@@ -1213,6 +1215,25 @@ const GoneRogue = (function () {
 
     _updateProjectiles(deltaMs);
 
+    // Update item decay timers
+    var now = Date.now();
+    _items = _items.filter(function(item) {
+      if (item.spawnTime && item.decayTime) {
+        var age = now - item.spawnTime;
+        return age < item.decayTime;
+      }
+      return true; // Keep items without decay timers
+    });
+
+    // Update currency decay timers
+    _currencies = _currencies.filter(function(currency) {
+      if (currency.spawnTime && currency.decayTime) {
+        var age = now - currency.spawnTime;
+        return age < currency.decayTime;
+      }
+      return true; // Keep currency without decay timers
+    });
+
     // Update color cycle timer for visual feedback
     _enemyColorCycleTime += deltaMs;
 
@@ -1510,7 +1531,9 @@ const GoneRogue = (function () {
             x: breakable.x,
             y: breakable.y,
             type: 'card',
-            card: card
+            card: card,
+            spawnTime: Date.now(),
+            decayTime: 30000 // 30 second decay
           });
         }
       }
@@ -1736,6 +1759,30 @@ const GoneRogue = (function () {
    */
   function handleTapMove(targetX, targetY, runMode) {
     if (!_active) return;
+
+    // Check if clicking on a breakable - kick it instead of moving
+    var breakableAtTarget = _getBreakableAt(targetX, targetY);
+    if (breakableAtTarget && breakableAtTarget.hp > 0) {
+      // Calculate direction to breakable
+      var dx = targetX - _player.x;
+      var dy = targetY - _player.y;
+
+      // Only kick if adjacent (1 tile away)
+      if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 && (dx !== 0 || dy !== 0)) {
+        _damageBreakable(breakableAtTarget, 2);
+        _saveState();
+
+        if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+          GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+        }
+
+        return {
+          lines: ['🥾 BOOTED ' + (breakableAtTarget.emoji || '📦') + ' (HP ' + breakableAtTarget.hp + ')', ''].concat(_renderGrid()),
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+    }
 
     // Calculate path (simple: move one step towards target)
     var dx = targetX - _player.x;
@@ -2736,7 +2783,9 @@ const GoneRogue = (function () {
             x: _strCombatEnemy.x,
             y: _strCombatEnemy.y,
             type: 'card',
-            card: card
+            card: card,
+            spawnTime: Date.now(),
+            decayTime: 30000 // 30 second decay
           });
           lines.push('🎴 Enemy dropped a card!');
         }
