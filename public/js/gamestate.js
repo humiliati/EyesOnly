@@ -28,6 +28,11 @@ const GAMESTATE = (function () {
   function init() {
     _loadState();
     _ensureDefaultPersistentInventory();
+
+    // Initialize UI currency display
+    if (typeof UIControls !== 'undefined' && UIControls.updateCurrency) {
+      UIControls.updateCurrency(_state.cryptos || 0);
+    }
   }
 
   /**
@@ -391,6 +396,12 @@ const GAMESTATE = (function () {
   function addCryptos(amount) {
     _state.cryptos = (_state.cryptos || 0) + amount;
     _saveState();
+
+    // Update UI display if available
+    if (typeof UIControls !== 'undefined' && UIControls.updateCurrency) {
+      UIControls.updateCurrency(_state.cryptos);
+    }
+
     return {
       success: true,
       total: _state.cryptos,
@@ -411,6 +422,12 @@ const GAMESTATE = (function () {
     }
     _state.cryptos -= amount;
     _saveState();
+
+    // Update UI display if available
+    if (typeof UIControls !== 'undefined' && UIControls.updateCurrency) {
+      UIControls.updateCurrency(_state.cryptos);
+    }
+
     return {
       success: true,
       remaining: _state.cryptos,

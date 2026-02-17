@@ -579,12 +579,26 @@
     init();
   }
 
+  /**
+   * Update currency display in header
+   * @param {number} amount - Current crypto balance
+   */
+  function updateCurrencyDisplay(amount) {
+    var currencyValueEl = document.getElementById('currency-value');
+    if (currencyValueEl) {
+      // Format with leading zeros (8 digits)
+      var formatted = String(amount || 0).padStart(8, '0');
+      currencyValueEl.textContent = formatted;
+    }
+  }
+
   // Expose API for other modules
   window.UIControls = {
     showInventory: function() {
       if (!inventoryVisible) {
         toggleInventory();
       }
-    }
+    },
+    updateCurrency: updateCurrencyDisplay
   };
 })();

@@ -1567,6 +1567,38 @@ const GoneRogue = (function () {
       var healAmount = Math.floor(_player.maxHp * (0.1 + Math.random() * 0.1));
       _player.hp = Math.min(_player.maxHp, _player.hp + healAmount);
 
+      // After floor 1, give random 3 starter cards if player has 0 cards
+      if (_floor === 2 && typeof GAMESTATE !== 'undefined' && typeof CardSystem !== 'undefined') {
+        var looseInventory = GAMESTATE.getLooseInventory();
+        if (looseInventory.length === 0) {
+          // Define all 5 starter cards
+          var allStarterCards = ['SINGLE_SHOT', 'PRONE', 'KATCHUP', 'DODGE', 'BURST_SHOT'];
+
+          // Shuffle and pick 3 random cards
+          var shuffled = allStarterCards.slice();
+          for (var i = shuffled.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var temp = shuffled[i];
+            shuffled[i] = shuffled[j];
+            shuffled[j] = temp;
+          }
+          var selectedCards = shuffled.slice(0, 3);
+
+          // Add the 3 selected cards to loose inventory
+          for (var c = 0; c < selectedCards.length; c++) {
+            var card = CardSystem.rollCard(selectedCards[c]);
+            if (card) {
+              GAMESTATE.addToLoose(card);
+            }
+          }
+
+          lines.push('');
+          lines.push('  📦 SUPPLY DROP RECEIVED');
+          lines.push('  3 STARTER CARDS ADDED TO INVENTORY');
+          lines.push('');
+        }
+      }
+
       // Generate next floor
       _generateFloor();
       _startGameLoop();

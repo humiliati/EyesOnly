@@ -181,40 +181,44 @@ const GoneRogueMobile = (function () {
             var gunSpan = document.createElement('span');
             gunSpan.className = 'player-gun-indicator';
 
-            // Set gun emoji/character based on direction
+            // Set gun caret based on direction
             var gunChar = '';
             switch (player.lastMoveDirection) {
               case 'north':
-                // Gun hidden behind player when facing north
-                gunChar = '';
+                gunChar = '^';
                 break;
               case 'south':
-                gunChar = '▼';
+                gunChar = 'v';
                 break;
               case 'east':
-                gunChar = '▶';
+                gunChar = '>';
                 break;
               case 'west':
-                gunChar = '◀';
+                gunChar = '<';
                 break;
             }
 
             gunSpan.textContent = gunChar;
             gunSpan.style.position = 'absolute';
-            gunSpan.style.fontSize = '0.6em';
-            gunSpan.style.color = '#888';
+            gunSpan.style.fontSize = '0.5em';
+            gunSpan.style.color = '#666';
+            gunSpan.style.fontWeight = 'bold';
 
             // Position gun based on direction
             if (player.lastMoveDirection === 'east') {
-              gunSpan.style.right = '2px';
+              gunSpan.style.right = '1px';
               gunSpan.style.top = '50%';
               gunSpan.style.transform = 'translateY(-50%)';
             } else if (player.lastMoveDirection === 'west') {
-              gunSpan.style.left = '2px';
+              gunSpan.style.left = '1px';
               gunSpan.style.top = '50%';
               gunSpan.style.transform = 'translateY(-50%)';
             } else if (player.lastMoveDirection === 'south') {
-              gunSpan.style.bottom = '2px';
+              gunSpan.style.bottom = '1px';
+              gunSpan.style.left = '50%';
+              gunSpan.style.transform = 'translateX(-50%)';
+            } else if (player.lastMoveDirection === 'north') {
+              gunSpan.style.top = '1px';
               gunSpan.style.left = '50%';
               gunSpan.style.transform = 'translateX(-50%)';
             }
