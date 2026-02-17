@@ -280,7 +280,7 @@ const GAMESTATE = (function () {
     console.debug('[GAMESTATE.requestRogue] Initiating Gone Rogue transition', context);
 
     // Step 1: If StreetChronicles is active and carryInventory requested, collect inventory
-    if (typeof StreetChronicles !== 'undefined' && StreetChronicles.isActive && StreetChronicles.isActive()) {
+    if (typeof StreetChronicles !== 'undefined' && typeof StreetChronicles.isActive === 'function' && StreetChronicles.isActive()) {
       console.debug('[GAMESTATE.requestRogue] StreetChronicles is active');
       
       if (context.carryInventory && typeof StreetChronicles.getInventory === 'function') {
