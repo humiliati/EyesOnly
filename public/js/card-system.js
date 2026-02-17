@@ -6,6 +6,16 @@
 const CardSystem = (function () {
   'use strict';
 
+  // STR Combat Priority System
+  // Lower number = executes first in simultaneous resolution
+  var CARD_PRIORITIES = {
+    interrupt: 1,  // Interrupt actions (dive for cover, jam weapon, overwatch)
+    defense: 2,    // Defense actions (block, dodge)
+    movement: 3,   // Movement actions (close distance, retreat, strafe)
+    attack: 4,     // Attack actions (fire weapon)
+    setup: 5       // Setup/utility actions (next-round buffs, items)
+  };
+
   var QUALITIES = {
     CRACKED: { name: 'Cracked', color: 'gray', roll: 18 },
     WORN: { name: 'Worn', color: 'lightgray', roll: 22 },
@@ -19,104 +29,193 @@ const CardSystem = (function () {
   };
 
   var BASE_CARDS = {
-    // Attack cards
+    // ========== INTERRUPT CARDS (Priority 1) ==========
+    DIVE_COVER: {
+      category: 'interrupt',
+      type: 'interrupt',
+      name: 'Dive for Cover',
+      emoji: '🤸',
+      baseStats: { defense: 5, evasion: 3, energy: 2, speed: 5 }
+    },
+    JAM_WEAPON: {
+      category: 'interrupt',
+      type: 'interrupt',
+      name: 'Jam Weapon',
+      emoji: '🔧',
+      baseStats: { disrupt: 1, energy: 2, speed: 5 }
+    },
+    OVERWATCH: {
+      category: 'interrupt',
+      type: 'interrupt',
+      name: 'Overwatch Shot',
+      emoji: '👁️',
+      baseStats: { damage: 3, accuracy: 85, energy: 3, speed: 5 }
+    },
+
+    // ========== DEFENSE CARDS (Priority 2) ==========
+    BLOCK: {
+      category: 'defense',
+      type: 'defense',
+      name: 'Block',
+      emoji: '🛡️',
+      baseStats: { defense: 4, energy: 2, speed: 4 }
+    },
+    DODGE: {
+      category: 'defense',
+      type: 'defense',
+      name: 'Dodge',
+      emoji: '💨',
+      baseStats: { evasion: 3, energy: 2, speed: 4 }
+    },
+    PRONE: {
+      category: 'defense',
+      type: 'defense',
+      name: 'Prone',
+      emoji: '🛡️',
+      baseStats: { defense: 3, stealth: 2, mobility: -1, energy: 1, speed: 3 }
+    },
+    KNEEL: {
+      category: 'defense',
+      type: 'defense',
+      name: 'Kneel',
+      emoji: '🧎',
+      baseStats: { defense: 2, accuracy: 1, mobility: 0, energy: 1, speed: 3 }
+    },
+
+    // ========== MOVEMENT CARDS (Priority 3) ==========
+    CLOSE_DISTANCE: {
+      category: 'movement',
+      type: 'movement',
+      name: 'Close Distance',
+      emoji: '⏩',
+      baseStats: { distance: 2, risk: 1, energy: 2, speed: 3 }
+    },
+    RETREAT: {
+      category: 'movement',
+      type: 'movement',
+      name: 'Retreat',
+      emoji: '↩️',
+      baseStats: { distance: -2, safety: 2, energy: 1, speed: 3 }
+    },
+    STRAFE: {
+      category: 'movement',
+      type: 'movement',
+      name: 'Strafe',
+      emoji: '↔️',
+      baseStats: { evasion: 2, distance: 1, energy: 2, speed: 3 }
+    },
+    ROLL: {
+      category: 'movement',
+      type: 'movement',
+      name: 'Combat Roll',
+      emoji: '🔄',
+      baseStats: { evasion: 4, distance: 1, energy: 3, speed: 4 }
+    },
+
+    // ========== ATTACK CARDS (Priority 4) ==========
     SINGLE_SHOT: {
+      category: 'attack',
       type: 'attack',
       name: 'Single Shot',
       emoji: '🎯',
-      baseStats: { damage: 3, noise: 1, accuracy: 80, energy: 2 }
+      baseStats: { damage: 3, noise: 1, accuracy: 80, energy: 2, speed: 3 }
     },
     BURST_SHOT: {
+      category: 'attack',
       type: 'attack',
       name: 'Burst Shot',
       emoji: '💥',
-      baseStats: { damage: 5, noise: 3, accuracy: 70, energy: 3 }
+      baseStats: { damage: 5, noise: 3, accuracy: 70, energy: 3, speed: 2 }
     },
     SILENT_SHOT: {
+      category: 'attack',
       type: 'attack',
       name: 'Silent Shot',
       emoji: '🔇',
-      baseStats: { damage: 3, noise: 1, accuracy: 80, energy: 2 }
+      baseStats: { damage: 3, noise: 1, accuracy: 80, energy: 2, speed: 3 }
     },
     EXPLOSIVE_SHOT: {
+      category: 'attack',
       type: 'attack',
       name: 'Explosive Shot',
       emoji: '💣',
-      baseStats: { damage: 8, noise: 5, accuracy: 60, energy: 4 }
+      baseStats: { damage: 8, noise: 5, accuracy: 60, energy: 4, speed: 1 }
+    },
+    SUPPRESSIVE_FIRE: {
+      category: 'attack',
+      type: 'attack',
+      name: 'Suppressive Fire',
+      emoji: '🔥',
+      baseStats: { damage: 2, accuracy: 50, suppress: 3, energy: 3, speed: 2 }
     },
 
-    // Defense/Stance cards
-    PRONE: {
-      type: 'stance',
-      name: 'Prone',
-      emoji: '🛡️',
-      baseStats: { defense: 3, stealth: 2, mobility: -1, energy: 1 }
-    },
-    KNEEL: {
-      type: 'stance',
-      name: 'Kneel',
-      emoji: '🧎',
-      baseStats: { defense: 2, accuracy: 1, mobility: 0, energy: 1 }
-    },
-    DODGE: {
-      type: 'stance',
-      name: 'Dodge',
-      emoji: '💨',
-      baseStats: { evasion: 3, energy: 2 }
-    },
-    BLOCK: {
-      type: 'stance',
-      name: 'Block',
-      emoji: '🛡️',
-      baseStats: { defense: 4, energy: 2 }
-    },
-
-    // Utility cards
+    // ========== SETUP/UTILITY CARDS (Priority 5) ==========
     CIGARETTES: {
-      type: 'utility',
+      category: 'setup',
+      type: 'setup',
       name: 'Cigarettes',
       emoji: '🚬',
-      baseStats: { stress: -2, detection: 1, hp: -1 }
+      baseStats: { 
+        stress: -2, 
+        attackBoost: 2,  // Renamed from attack_boost for camelCase consistency
+        speedBoost: 1,   // Renamed from speed_boost for camelCase consistency
+        hpDrain: 1,      // Renamed from hp_drain for camelCase consistency
+        duration: 1, 
+        energy: 1, 
+        speed: 2 
+      }
     },
     KATCHUP: {
-      type: 'utility',
+      category: 'setup',
+      type: 'setup',
       name: 'Katchup',
       emoji: '🩹',
-      baseStats: { hp: 3 }
+      baseStats: { hp: 3, energy: 1, speed: 2 }
     },
     RATIONS: {
-      type: 'utility',
+      category: 'setup',
+      type: 'setup',
       name: 'Rations',
       emoji: '🍖',
-      baseStats: { hp: 2, energy: 1 }
-    },
-
-    // Tactical cards
-    RETREAT: {
-      type: 'tactical',
-      name: 'Retreat',
-      emoji: '↩️',
-      baseStats: { distance: -2, safety: 2, energy: 1 }
-    },
-    CLOSE_DISTANCE: {
-      type: 'tactical',
-      name: 'Close Distance',
-      emoji: '⏩',
-      baseStats: { distance: 2, risk: 1, energy: 2 }
+      baseStats: { hp: 4, duration: 2, energy: 2, speed: 2 }
     },
     TOTAL_EVASION: {
-      type: 'tactical',
+      category: 'setup',
+      type: 'setup',
       name: 'Total Evasion',
       emoji: '🌫️',
-      baseStats: { evasion: 5, energy: 3 }
+      baseStats: { 
+        evasion: 5, 
+        exhaust: true, // This card can only be used once per combat (exhausts after use)
+        energy: 3, 
+        speed: 2 
+      }
     },
+    AIM: {
+      category: 'setup',
+      type: 'setup',
+      name: 'Aim',
+      emoji: '🎯',
+      baseStats: { 
+        accuracyBoost: 20,  // Renamed from accuracy_boost for camelCase consistency
+        nextTurn: true,     // Renamed from next_turn for camelCase consistency
+        energy: 1, 
+        speed: 2 
+      }
+    },
+
+    // ========== DEPRECATED/LEGACY CARDS (for backward compatibility) ==========
+    // Defense/Stance cards (now in defense category)
+
+    // Tactical cards (now split into movement/interrupt categories)
 
     // Special: Inventory Charm (rare)
     INVENTORY_CHARM: {
+      category: 'charm',
       type: 'charm',
       name: 'Inventory Charm',
       emoji: '🪬',
-      baseStats: { slots: 0 }
+      baseStats: { slots: 0, speed: 1 }
     }
   };
 
@@ -232,6 +331,7 @@ const CardSystem = (function () {
       name: baseCard.name,
       emoji: baseCard.emoji,
       type: baseCard.type,
+      category: baseCard.category || baseCard.type, // Include category for priority system
       quality: quality,
       qualityName: QUALITIES[quality].name,
       qualityColor: QUALITIES[quality].color,
@@ -295,16 +395,51 @@ const CardSystem = (function () {
     return lines.join('\n');
   }
 
+  /**
+   * Get priority value for a card type
+   * @param {String} cardType - Card type (interrupt, defense, movement, attack, setup)
+   * @returns {Number} Priority value (1-5, lower executes first)
+   */
+  function getCardPriority(cardType) {
+    return CARD_PRIORITIES[cardType] || 5; // Default to setup priority
+  }
+
+  /**
+   * Get card category from a card object
+   * @param {Object} card - Card object
+   * @returns {String} Category (interrupt, defense, movement, attack, setup)
+   */
+  function getCardCategory(card) {
+    if (!card) return 'setup';
+    
+    // Check if card has category field
+    if (card.category) return card.category;
+    
+    // Fallback to type field
+    if (card.type) {
+      // Map legacy types to new categories
+      if (card.type === 'stance') return 'defense';
+      if (card.type === 'utility') return 'setup';
+      if (card.type === 'tactical') return 'movement';
+      return card.type;
+    }
+    
+    return 'setup';
+  }
+
   return {
     QUALITIES: QUALITIES,
     BASE_CARDS: BASE_CARDS,
     AFFIXES: AFFIXES,
+    CARD_PRIORITIES: CARD_PRIORITIES,
     rollQuality: rollQuality,
     rollStats: rollStats,
     rollAffixes: rollAffixes,
     rollCard: rollCard,
     rollInventoryCharm: rollInventoryCharm,
     getRandomBaseCard: getRandomBaseCard,
-    formatCard: formatCard
+    formatCard: formatCard,
+    getCardPriority: getCardPriority,
+    getCardCategory: getCardCategory
   };
 })();

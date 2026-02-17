@@ -2,6 +2,12 @@
    EYES ONLY - Gone Rogue Mobile Touch Interface Styles
    ============================================================ */
 
+/* CSS Variables */
+:root {
+  --combat-bubble-min-width: 320px;
+  --str-overlay-min-width: 300px;
+}
+
 /* Grid Container */
 .rogue-grid-mobile {
   display: none;
@@ -338,6 +344,14 @@
   font-family: 'Courier New', monospace;
   text-align: center;
   animation: combat-pulse 1s infinite;
+  min-width: var(--str-overlay-min-width);
+  max-width: 90vw;
+}
+
+/* Amber HUD color when in combat */
+.str-combat-overlay.combat-active {
+  border-color: #ffaa00;
+  box-shadow: 0 0 30px rgba(255, 170, 0, 0.6), inset 0 0 20px rgba(255, 170, 0, 0.2);
 }
 
 @keyframes combat-pulse {
@@ -376,4 +390,305 @@
   color: #ffeb3b;
   font-size: 13px;
   margin-top: 10px;
+}
+
+/* Combat Bubble - Zoomed combat view */
+.combat-bubble {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+  border: 4px solid #ffaa00;
+  border-radius: 12px;
+  padding: 30px;
+  z-index: 1500;
+  box-shadow: 0 0 50px rgba(255, 170, 0, 0.8), inset 0 0 30px rgba(255, 170, 0, 0.1);
+  font-family: 'Courier New', monospace;
+  min-width: var(--combat-bubble-min-width);
+  max-width: 90vw;
+  animation: bubble-appear 0.3s ease-out;
+}
+
+@keyframes bubble-appear {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* Combat Arena - Visual representation */
+.combat-arena {
+  display: grid;
+  grid-template-rows: repeat(3, 1fr);
+  grid-template-columns: 1fr;
+  gap: 20px;
+  margin: 20px 0;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid #333;
+  border-radius: 8px;
+}
+
+.combatant {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 48px;
+  position: relative;
+}
+
+.combatant-glyph {
+  font-family: 'Courier New', monospace;
+  font-size: 64px;
+  text-shadow: 0 0 10px currentColor;
+  animation: combatant-idle 2s ease-in-out infinite;
+  position: relative;
+}
+
+@keyframes combatant-idle {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+}
+
+/* Glyph Expressions */
+.glyph-confident { /* ^__^ - Normal state */
+  color: #1cff9b;
+}
+
+.glyph-charging { /* >_< - Preparing attack */
+  color: #ffaa00;
+  animation: glyph-charge 0.5s ease-in-out infinite;
+}
+
+@keyframes glyph-charge {
+  0%, 100% { 
+    transform: scale(1); 
+    text-shadow: 0 0 10px #ffaa00;
+  }
+  50% { 
+    transform: scale(1.1); 
+    text-shadow: 0 0 20px #ffaa00, 0 0 30px #ffaa00;
+  }
+}
+
+.glyph-hurt { /* T__T - Taking damage */
+  color: #ff1c4a;
+  animation: glyph-hurt 0.6s ease-out;
+}
+
+@keyframes glyph-hurt {
+  0% { 
+    transform: translateX(0); 
+    opacity: 1;
+  }
+  25% { 
+    transform: translateX(-10px); 
+    opacity: 0.7;
+  }
+  50% { 
+    transform: translateX(5px); 
+    opacity: 0.5;
+  }
+  75% { 
+    transform: translateX(-3px); 
+    opacity: 0.8;
+  }
+  100% { 
+    transform: translateX(0); 
+    opacity: 1;
+  }
+}
+
+.glyph-guarding { /* =_= - Defensive stance */
+  color: #4fc3f7;
+  animation: glyph-guard 1s ease-in-out infinite;
+}
+
+@keyframes glyph-guard {
+  0%, 100% { 
+    transform: scale(1); 
+    filter: brightness(1);
+  }
+  50% { 
+    transform: scale(0.95); 
+    filter: brightness(1.2);
+  }
+}
+
+.glyph-defeated { /* x__x - Knocked out */
+  color: #666;
+  animation: glyph-defeated 1s ease-out forwards;
+}
+
+@keyframes glyph-defeated {
+  0% { 
+    transform: scale(1) rotate(0deg); 
+    opacity: 1;
+  }
+  50% { 
+    transform: scale(0.9) rotate(5deg); 
+    opacity: 0.5;
+  }
+  100% { 
+    transform: scale(0.8) rotate(0deg); 
+    opacity: 0.3;
+  }
+}
+
+/* Impact Effects */
+.impact-effect {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 72px;
+  animation: impact-burst 0.6s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes impact-burst {
+  0% { 
+    opacity: 1; 
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+  50% { 
+    opacity: 0.8; 
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+  100% { 
+    opacity: 0; 
+    transform: translate(-50%, -50%) scale(1.5);
+  }
+}
+
+/* Planning Phase Timer */
+.planning-timer {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 80px;
+  height: 80px;
+  background: rgba(0, 0, 0, 0.9);
+  border: 3px solid #ffaa00;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: bold;
+  color: #ffaa00;
+  font-family: 'Courier New', monospace;
+  z-index: 2000;
+  box-shadow: 0 0 30px rgba(255, 170, 0, 0.6);
+  animation: timer-pulse 1s ease-in-out infinite;
+}
+
+.planning-timer.time-critical {
+  border-color: #ff1c4a;
+  color: #ff1c4a;
+  animation: timer-critical 0.5s ease-in-out infinite;
+}
+
+@keyframes timer-pulse {
+  0%, 100% { 
+    transform: scale(1);
+    box-shadow: 0 0 30px rgba(255, 170, 0, 0.6);
+  }
+  50% { 
+    transform: scale(1.05);
+    box-shadow: 0 0 40px rgba(255, 170, 0, 0.8);
+  }
+}
+
+@keyframes timer-critical {
+  0%, 100% { 
+    transform: scale(1);
+    box-shadow: 0 0 40px rgba(255, 28, 74, 0.8);
+  }
+  50% { 
+    transform: scale(1.1);
+    box-shadow: 0 0 50px rgba(255, 28, 74, 1);
+  }
+}
+
+/* Combat Log in Bubble */
+.combat-log {
+  max-height: 150px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 10px;
+  margin: 15px 0;
+  font-size: 12px;
+  color: #1cff9b;
+  text-align: left;
+  font-family: 'Courier New', monospace;
+}
+
+.combat-log-line {
+  margin: 2px 0;
+  animation: log-line-appear 0.3s ease-out;
+}
+
+@keyframes log-line-appear {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* HP Bars */
+.hp-bar-container {
+  width: 100%;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid #333;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+  margin: 5px 0;
+}
+
+.hp-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ff1c4a 0%, #ff6b9d 100%);
+  transition: width 0.5s ease-out;
+  position: relative;
+}
+
+.hp-bar.high {
+  background: linear-gradient(90deg, #1cff9b 0%, #6bffc8 100%);
+}
+
+.hp-bar.medium {
+  background: linear-gradient(90deg, #ffeb3b 0%, #ffd54f 100%);
+}
+
+.hp-bar.low {
+  background: linear-gradient(90deg, #ff1c4a 0%, #ff6b9d 100%);
+}
+
+.hp-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  font-family: 'Courier New', monospace;
+  text-shadow: 1px 1px 2px #000;
+  z-index: 1;
 }
