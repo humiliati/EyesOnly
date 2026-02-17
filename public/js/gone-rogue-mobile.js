@@ -6,6 +6,9 @@
 const GoneRogueMobile = (function () {
   'use strict';
 
+  // Constants
+  var DOUBLE_TAP_THRESHOLD_MS = 300;
+
   var _gridContainer = null;
   var _cardContainer = null;
   var _inventoryContainer = null; // New: persistent inventory display
@@ -510,8 +513,8 @@ const GoneRogueMobile = (function () {
     var now = Date.now();
     var cellKey = target.dataset.x + ',' + target.dataset.y;
 
-    // Check for double-tap (within 300ms)
-    if (_lastTapCell === cellKey && (now - _lastTapTime) < 300) {
+    // Check for double-tap (within threshold)
+    if (_lastTapCell === cellKey && (now - _lastTapTime) < DOUBLE_TAP_THRESHOLD_MS) {
       _runMode = true;
       target.classList.add('run-mode-flash');
       setTimeout(function() {
@@ -559,8 +562,8 @@ const GoneRogueMobile = (function () {
     var now = Date.now();
     var cellKey = x + ',' + y;
 
-    // Check for double-click on desktop (within 300ms)
-    if (_lastTapCell === cellKey && (now - _lastTapTime) < 300) {
+    // Check for double-click on desktop (within threshold)
+    if (_lastTapCell === cellKey && (now - _lastTapTime) < DOUBLE_TAP_THRESHOLD_MS) {
       _runMode = true;
       target.classList.add('run-mode-flash');
       setTimeout(function() {

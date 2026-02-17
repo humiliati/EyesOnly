@@ -1750,10 +1750,9 @@ const GoneRogue = (function () {
     // Remove item from floor
     _items = _items.filter(function(i) { return i !== item; });
 
-    // Tooltip: Item pickup
+    // Tooltip: Item/card pickup (all items use card structure)
     if (typeof TooltipSystem !== 'undefined') {
-      var isCard = item.card && (item.card.type === 'attack' || item.card.type === 'support' || item.card.type === 'item');
-      if (isCard) {
+      if (item.card.type === 'attack' || item.card.type === 'support') {
         TooltipSystem.showAction('card-pickup', { name: item.card.name });
       } else {
         TooltipSystem.showAction('item-pickup', { name: item.card.name });

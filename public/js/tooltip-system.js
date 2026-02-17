@@ -8,6 +8,7 @@ const TooltipSystem = (function() {
 
   var _currentTimer = null;
   var _mokInterjectionElement = null;
+  var DEFAULT_MESSAGE = 'Standing by for advisories.';
 
   /**
    * Initialize tooltip system
@@ -69,7 +70,7 @@ const TooltipSystem = (function() {
     // Set auto-clear timer
     var duration = durationMs || 2500;
     _currentTimer = setTimeout(function() {
-      _mokInterjectionElement.textContent = 'Standing by for advisories.';
+      _mokInterjectionElement.textContent = DEFAULT_MESSAGE;
       _currentTimer = null;
     }, duration);
   }
@@ -107,7 +108,7 @@ const TooltipSystem = (function() {
     }
 
     // Reset to default message
-    _mokInterjectionElement.textContent = 'Standing by for advisories.';
+    _mokInterjectionElement.textContent = DEFAULT_MESSAGE;
   }
 
   /**
