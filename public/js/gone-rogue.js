@@ -55,7 +55,7 @@ const GoneRogue = (function () {
     UNAWARE: { min: 0, max: 30, color: '#00ff00', name: 'UNAWARE' },
     SUSPICIOUS: { min: 31, max: 70, color: '#ffaa00', name: 'SUSPICIOUS' },
     ALERTED: { min: 71, max: 100, color: '#ff0000', name: 'ALERTED' },
-    ENGAGED: { min: 101, max: 999, color: '#ff00ff', name: 'ENGAGED' }
+    ENGAGED: { min: 100, max: 999, color: '#ff00ff', name: 'ENGAGED' }
   };
 
   // Enemy path types
@@ -768,7 +768,7 @@ const GoneRogue = (function () {
    * Increase enemy awareness
    */
   function _increaseEnemyAwareness(enemy, amount) {
-    enemy.awareness = Math.min(100, (enemy.awareness || 0) + amount);
+    enemy.awareness = Math.min(150, (enemy.awareness || 0) + amount);
   }
 
   /**
@@ -777,10 +777,17 @@ const GoneRogue = (function () {
   function _getEnemyAwarenessState(enemy) {
     var awareness = enemy.awareness || 0;
 
-    if (awareness <= AWARENESS_STATES.UNAWARE.max) return AWARENESS_STATES.UNAWARE;
-    if (awareness <= AWARENESS_STATES.SUSPICIOUS.max) return AWARENESS_STATES.SUSPICIOUS;
-    if (awareness <= AWARENESS_STATES.ALERTED.max) return AWARENESS_STATES.ALERTED;
-    return AWARENESS_STATES.ENGAGED;
+    if (awareness >= AWARENESS_STATES.ENGAGED.min) return AWARENESS_STATES.ENGAGED;
+    if (awareness >= AWARENESS_STATES.ALERTED.min) return AWARENESS_STATES.ALERTED;
+    if (awareness >= AWARENESS_STATES.SUSPICIOUS.min) return AWARENESS_STATES.SUSPICIOUS;
+    return AWARENESS_STATES.UNAWARE;
+  }
+
+  /**
+   * Get enemy awareness state (exposed for external use)
+   */
+  function getEnemyAwarenessState(enemy) {
+    return _getEnemyAwarenessState(enemy);
   }
 
   /**
@@ -1072,6 +1079,7 @@ const GoneRogue = (function () {
     handleTapMove: handleTapMove,
     handleCardSwipe: handleCardSwipe,
     getPlayer: getPlayer,
-    getEnemies: getEnemies
+    getEnemies: getEnemies,
+    getEnemyAwarenessState: getEnemyAwarenessState
   };
 })();

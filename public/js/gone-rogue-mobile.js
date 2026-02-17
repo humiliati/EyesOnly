@@ -141,18 +141,23 @@ const GoneRogueMobile = (function () {
    * Apply awareness state color to enemy cell
    */
   function _applyAwarenessColor(cell, enemy, colorCycleTime) {
-    var awareness = enemy.awareness || 0;
     var state;
-
-    // Determine awareness state
-    if (awareness <= 30) {
-      state = { color: '#00ff00', name: 'UNAWARE' };
-    } else if (awareness <= 70) {
-      state = { color: '#ffaa00', name: 'SUSPICIOUS' };
-    } else if (awareness <= 100) {
-      state = { color: '#ff0000', name: 'ALERTED' };
+    
+    // Use GoneRogue's awareness state function if available
+    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.getEnemyAwarenessState === 'function') {
+      state = GoneRogue.getEnemyAwarenessState(enemy);
     } else {
-      state = { color: '#ff00ff', name: 'ENGAGED' };
+      // Fallback: determine state locally
+      var awareness = enemy.awareness || 0;
+      if (awareness >= 100) {
+        state = { color: '#ff00ff', name: 'ENGAGED' };
+      } else if (awareness >= 71) {
+        state = { color: '#ff0000', name: 'ALERTED' };
+      } else if (awareness >= 31) {
+        state = { color: '#ffaa00', name: 'SUSPICIOUS' };
+      } else {
+        state = { color: '#00ff00', name: 'UNAWARE' };
+      }
     }
 
     // Cycle color opacity every 400ms
@@ -161,7 +166,7 @@ const GoneRogueMobile = (function () {
 
     cell.style.backgroundColor = state.color;
     cell.style.opacity = opacity;
-    cell.title = state.name + ' (' + Math.floor(awareness) + ')';
+    cell.title = state.name + ' (' + Math.floor(enemy.awareness || 0) + ')';
   }
 
   /**
