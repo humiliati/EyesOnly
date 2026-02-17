@@ -23,7 +23,11 @@ const GoneRogue = (function () {
     energy: 5,
     maxEnergy: 5,
     stealth: 3,
-    detection: 0
+    detection: 0,
+    lastMoveDirection: null, // Track last move direction for flanking logic (north, south, east, west)
+    str: 5, // Strength for combat
+    dex: 5, // Dexterity for hit/dodge
+    initiative: 0 // Initiative bonus
   };
 
   var _enemies = [];
@@ -39,6 +43,13 @@ const GoneRogue = (function () {
   var _tickInterval = 100; // ms between ticks (10 ticks per second)
   var _animationFrameId = null;
   var _enemyColorCycleTime = 0;
+
+  // STR Combat state (Simultaneous Turn Resolution)
+  var _strCombatActive = false;
+  var _strCombatEnemy = null; // Enemy in current STR combat
+  var _strCombatAdvantage = 'neutral'; // 'ambush', 'neutral', 'disadvantaged', 'flanked'
+  var _strCombatRound = 0;
+  var _strCombatLog = []; // Combat log messages
 
   var TILES = {
     EMPTY: '.',
@@ -146,6 +157,11 @@ const GoneRogue = (function () {
 
     if (!cmd) {
       return { lines: [''], prompt: getPrompt(), stayActive: true };
+    }
+
+    // FLEE command during STR combat
+    if (cmd === 'flee' && _strCombatActive) {
+      return _exitStrCombat('fled');
     }
 
     if (cmd === 'exit' || cmd === 'quit') {
@@ -414,6 +430,17 @@ const GoneRogue = (function () {
     var newX = _player.x + dx;
     var newY = _player.y + dy;
 
+    // Track last move direction for flanking logic
+    if (dx === 1) {
+      _player.lastMoveDirection = 'east';
+    } else if (dx === -1) {
+      _player.lastMoveDirection = 'west';
+    } else if (dy === 1) {
+      _player.lastMoveDirection = 'south';
+    } else if (dy === -1) {
+      _player.lastMoveDirection = 'north';
+    }
+
     // Check bounds
     if (newX < 0 || newX >= GRID_WIDTH || newY < 0 || newY >= GRID_HEIGHT) {
       return {
@@ -442,7 +469,7 @@ const GoneRogue = (function () {
     if (runMode) {
       _player.detection += 2;
       _updateAlertLevel();
-      
+
       // Nearby enemies hear player noise when running
       _enemies.forEach(function(enemy) {
         if (enemy.hp <= 0) return;
@@ -456,19 +483,11 @@ const GoneRogue = (function () {
       _updateAlertLevel();
     }
 
-    // Check for enemy collision
+    // Check for enemy collision - trigger STR combat
     var hitEnemy = _enemies.find(function(e) { return e.x === newX && e.y === newY && e.hp > 0; });
     if (hitEnemy) {
-      _player.hp -= 2;
-      _increaseEnemyAwareness(hitEnemy, 100); // Max awareness on collision
-      if (_player.hp <= 0) {
-        return _exitRogue(false); // Death
-      }
-      return {
-        lines: ['ENEMY ATTACK! -2 HP', ''].concat(_renderGrid()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
+      // Enter STR combat mode
+      return _enterStrCombat(hitEnemy, 'collision');
     }
 
     _saveState();
@@ -975,17 +994,8 @@ const GoneRogue = (function () {
       };
     }
 
-    var damage = card.stats.damage || 3;
-    nearest.hp -= damage;
-
-    _turn++;
-    _saveState();
-
-    return {
-      lines: ['ATTACK! -' + damage + ' HP TO ENEMY', ''].concat(_renderGrid()),
-      prompt: getPrompt(),
-      stayActive: true
-    };
+    // Trigger STR combat mode with player-initiated attack
+    return _enterStrCombat(nearest, 'player_attack', card);
   }
 
   /**
@@ -1056,6 +1066,449 @@ const GoneRogue = (function () {
     return nearest;
   }
 
+  // ============================================================
+  // STR COMBAT SYSTEM (Simultaneous Turn Resolution)
+  // ============================================================
+
+  /**
+   * Enter STR combat mode
+   * @param {Object} enemy - Enemy to engage in combat
+   * @param {String} trigger - How combat was triggered ('collision', 'player_attack', 'enemy_attack')
+   * @param {Object} card - Optional card used to initiate combat
+   */
+  function _enterStrCombat(enemy, trigger, card) {
+    // Freeze realtime game loop
+    if (_gameLoopActive) {
+      _pauseGameLoop();
+    }
+
+    // Initialize combat state
+    _strCombatActive = true;
+    _strCombatEnemy = enemy;
+    _strCombatRound = 0;
+    _strCombatLog = [];
+
+    // Calculate advantage state
+    _strCombatAdvantage = _calculateAdvantage(_player, enemy, trigger);
+
+    // Add combat entry message with emoji
+    var advantageEmoji = _getAdvantageEmoji(_strCombatAdvantage);
+    _strCombatLog.push('⚔️  STR COMBAT INITIATED ' + advantageEmoji);
+    _strCombatLog.push('└─ Advantage: ' + _strCombatAdvantage.toUpperCase());
+    _strCombatLog.push('');
+
+    // Apply initiative rules
+    var playerGoesFirst = false;
+    if (_strCombatAdvantage === 'ambush') {
+      _strCombatLog.push('🎯 PLAYER AMBUSH! Free opening attack!');
+      playerGoesFirst = true;
+    } else if (_strCombatAdvantage === 'flanked' || _strCombatAdvantage === 'disadvantaged') {
+      _strCombatLog.push('⚠️  ENEMY HAS ADVANTAGE! They attack first!');
+      playerGoesFirst = false;
+    } else {
+      playerGoesFirst = _player.initiative >= (enemy.initiative || 0);
+    }
+
+    // Execute first round
+    if (playerGoesFirst && trigger === 'player_attack' && card) {
+      // Player initiated with attack card
+      return _executeStrRound('player', card);
+    } else if (!playerGoesFirst) {
+      // Enemy goes first
+      return _executeStrRound('enemy');
+    } else {
+      // Show combat UI and wait for player action
+      return _showStrCombatUI();
+    }
+  }
+
+  /**
+   * Calculate advantage state based on positioning and awareness
+   */
+  function _calculateAdvantage(player, enemy, trigger) {
+    // Player Ambush: attacking from stealth or behind
+    if (trigger === 'player_attack' && enemy.awareness < 30) {
+      return 'ambush';
+    }
+
+    // Check if player is attacking from behind (flanking)
+    var isFlanking = _checkFlanking(player, enemy);
+    if (trigger === 'player_attack' && isFlanking) {
+      return 'ambush';
+    }
+
+    // Check if player is flanked/disadvantaged
+    var playerFlanked = _checkFlanking(enemy, player);
+    if (playerFlanked) {
+      return 'flanked';
+    }
+
+    // Enemy alerted = player disadvantaged
+    if (enemy.awareness >= 70) {
+      return 'disadvantaged';
+    }
+
+    // Default: neutral
+    return 'neutral';
+  }
+
+  /**
+   * Check if attacker is flanking target based on facing and approach direction
+   */
+  function _checkFlanking(attacker, target) {
+    if (!attacker.lastMoveDirection || !target.orientation) {
+      return false;
+    }
+
+    // Get opposite direction of target's facing
+    var opposites = {
+      'north': 'south',
+      'south': 'north',
+      'east': 'west',
+      'west': 'east'
+    };
+
+    var targetFacing = target.orientation;
+    var attackerApproach = attacker.lastMoveDirection;
+
+    // Flanking = attacking from behind (opposite of facing)
+    return attackerApproach === opposites[targetFacing];
+  }
+
+  /**
+   * Get emoji for advantage state
+   */
+  function _getAdvantageEmoji(advantage) {
+    switch (advantage) {
+      case 'ambush': return '🎯';
+      case 'neutral': return '⚔️';
+      case 'disadvantaged': return '⚠️';
+      case 'flanked': return '❌';
+      default: return '⚔️';
+    }
+  }
+
+  /**
+   * Execute a round of STR combat
+   */
+  function _executeStrRound(initiator, card) {
+    _strCombatRound++;
+
+    if (initiator === 'player') {
+      return _playerStrAttack(card);
+    } else {
+      return _enemyStrAttack();
+    }
+  }
+
+  /**
+   * Player attack in STR combat
+   */
+  function _playerStrAttack(card) {
+    var enemy = _strCombatEnemy;
+    if (!enemy || enemy.hp <= 0) {
+      return _exitStrCombat('player_victory');
+    }
+
+    // Calculate hit
+    var hitResult = _calculateHit(_player, enemy, _strCombatAdvantage);
+
+    if (!hitResult.hit) {
+      _strCombatLog.push('💨 PLAYER MISS!');
+      _strCombatLog.push('');
+
+      // Enemy counter-attack
+      return _enemyStrAttack();
+    }
+
+    // Calculate damage
+    var damageResult = _calculateDamage(_player, enemy, _strCombatAdvantage, card);
+    enemy.hp -= damageResult.damage;
+
+    // Log attack
+    var critEmoji = hitResult.crit ? ' 💥 CRIT!' : '';
+    _strCombatLog.push('⚡ PLAYER ATTACK' + critEmoji);
+    _strCombatLog.push('├─ Hit: ' + (hitResult.roll || 0) + ' vs ' + (hitResult.target || 0));
+    _strCombatLog.push('└─ Damage: ' + damageResult.damage + ' HP');
+    if (damageResult.bonuses.length > 0) {
+      _strCombatLog.push('   └─ Bonuses: ' + damageResult.bonuses.join(', '));
+    }
+    _strCombatLog.push('');
+
+    // Check if enemy defeated
+    if (enemy.hp <= 0) {
+      _strCombatLog.push('💀 ENEMY DEFEATED!');
+      return _exitStrCombat('player_victory');
+    }
+
+    // Enemy counter-attack
+    return _enemyStrAttack();
+  }
+
+  /**
+   * Enemy attack in STR combat
+   */
+  function _enemyStrAttack() {
+    var enemy = _strCombatEnemy;
+    if (!enemy || enemy.hp <= 0) {
+      return _exitStrCombat('player_victory');
+    }
+
+    // Calculate hit (reverse advantage for enemy)
+    var reverseAdvantage = _strCombatAdvantage === 'flanked' ? 'ambush' :
+                          _strCombatAdvantage === 'ambush' ? 'flanked' : 'neutral';
+    var hitResult = _calculateHit(enemy, _player, reverseAdvantage);
+
+    if (!hitResult.hit) {
+      _strCombatLog.push('💨 ENEMY MISS!');
+      _strCombatLog.push('');
+      return _showStrCombatUI();
+    }
+
+    // Calculate damage
+    var damageResult = _calculateDamage(enemy, _player, reverseAdvantage, null);
+    _player.hp -= damageResult.damage;
+
+    // Log attack
+    var critEmoji = hitResult.crit ? ' 💥 CRIT!' : '';
+    _strCombatLog.push('🗡️  ENEMY ATTACK' + critEmoji);
+    _strCombatLog.push('├─ Hit: ' + (hitResult.roll || 0) + ' vs ' + (hitResult.target || 0));
+    _strCombatLog.push('└─ Damage: ' + damageResult.damage + ' HP');
+    _strCombatLog.push('');
+
+    // Check if player defeated
+    if (_player.hp <= 0) {
+      _strCombatLog.push('💀 YOU HAVE BEEN DEFEATED...');
+      return _exitRogue(false); // Player death
+    }
+
+    // Continue combat - show UI for player's turn
+    return _showStrCombatUI();
+  }
+
+  /**
+   * Calculate hit chance and roll
+   */
+  function _calculateHit(attacker, defender, advantage) {
+    var baseHitChance = 70; // Base 70% hit chance
+    var attackerDex = attacker.dex || 5;
+    var defenderDex = defender.dex || 5;
+
+    // Advantage modifiers
+    var advantageBonus = 0;
+    var critThreshold = 95; // Base crit on 95+
+
+    if (advantage === 'ambush') {
+      advantageBonus = 20;
+      critThreshold = 85; // Easier crits when ambushing
+    } else if (advantage === 'flanked' || advantage === 'disadvantaged') {
+      advantageBonus = -20;
+      critThreshold = 98; // Harder crits when disadvantaged
+    }
+
+    // Calculate hit chance
+    var hitChance = baseHitChance + (attackerDex - defenderDex) * 2 + advantageBonus;
+    hitChance = Math.max(10, Math.min(95, hitChance)); // Clamp between 10-95%
+
+    // Roll d100
+    var roll = Math.floor(Math.random() * 100) + 1;
+
+    return {
+      hit: roll <= hitChance,
+      crit: roll >= critThreshold,
+      roll: roll,
+      target: hitChance
+    };
+  }
+
+  /**
+   * Calculate damage dealt
+   */
+  function _calculateDamage(attacker, defender, advantage, card) {
+    var baseDamage = 2;
+    var attackerStr = attacker.str || 5;
+    var defenderStr = defender.str || 5;
+    var bonuses = [];
+
+    // Card damage
+    if (card && card.stats && card.stats.damage) {
+      baseDamage = card.stats.damage;
+      bonuses.push('Card: ' + card.stats.damage);
+    }
+
+    // Strength modifier
+    var strMod = Math.floor((attackerStr - defenderStr) / 2);
+    baseDamage += strMod;
+    if (strMod > 0) {
+      bonuses.push('STR: +' + strMod);
+    }
+
+    // Advantage damage modifiers
+    if (advantage === 'ambush') {
+      baseDamage += 2;
+      bonuses.push('Ambush: +2');
+    } else if (advantage === 'flanked') {
+      baseDamage -= 1;
+      bonuses.push('Flanked: -1');
+    }
+
+    // Minimum 1 damage
+    baseDamage = Math.max(1, baseDamage);
+
+    return {
+      damage: baseDamage,
+      bonuses: bonuses
+    };
+  }
+
+  /**
+   * Show STR combat UI and wait for player action
+   */
+  function _showStrCombatUI() {
+    var lines = [];
+    lines.push('═══════════════════════════════════════');
+    lines.push('⚔️  STR COMBAT - ROUND ' + _strCombatRound);
+    lines.push('═══════════════════════════════════════');
+    lines.push('');
+
+    // Combat log
+    _strCombatLog.forEach(function(logLine) {
+      lines.push(logLine);
+    });
+
+    lines.push('───────────────────────────────────────');
+    lines.push('PLAYER HP: ' + _player.hp + '/' + _player.maxHp + ' ❤️   |   ENEMY HP: ' + _strCombatEnemy.hp + '/5 💀');
+    lines.push('Advantage: ' + _strCombatAdvantage.toUpperCase() + ' ' + _getAdvantageEmoji(_strCombatAdvantage));
+    lines.push('───────────────────────────────────────');
+    lines.push('');
+    lines.push('🃏 Use attack card (swipe/click) to strike');
+    lines.push('🛡️  Use stance card to defend (+stealth)');
+    lines.push('🏃 Type FLEE to attempt escape');
+    lines.push('');
+
+    // Show grid underneath
+    lines = lines.concat(_renderGrid());
+
+    // Trigger header flash if UI exists
+    _triggerCombatFlash();
+
+    return {
+      lines: lines,
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Exit STR combat and return to realtime
+   */
+  function _exitStrCombat(reason) {
+    var lines = [];
+
+    if (reason === 'player_victory') {
+      lines.push('✅ COMBAT VICTORY!');
+      lines.push('└─ Enemy neutralized');
+
+      // Remove defeated enemy from map
+      var enemyIndex = _enemies.indexOf(_strCombatEnemy);
+      if (enemyIndex > -1) {
+        _enemies[enemyIndex].hp = 0;
+      }
+    } else if (reason === 'fled') {
+      lines.push('🏃 FLED COMBAT!');
+      lines.push('└─ Repositioned to safety');
+
+      // Move player back one space
+      if (_player.lastMoveDirection) {
+        var reverseDir = {
+          'north': { dx: 0, dy: 1 },
+          'south': { dx: 0, dy: -1 },
+          'east': { dx: -1, dy: 0 },
+          'west': { dx: 1, dy: 0 }
+        };
+        var move = reverseDir[_player.lastMoveDirection];
+        if (move) {
+          _player.x += move.dx;
+          _player.y += move.dy;
+        }
+      }
+    }
+
+    lines.push('');
+    lines.push('Returning to realtime grid...');
+    lines.push('');
+
+    // Reset combat state
+    _strCombatActive = false;
+    _strCombatEnemy = null;
+    _strCombatAdvantage = 'neutral';
+    _strCombatRound = 0;
+    _strCombatLog = [];
+
+    // Resume game loop
+    if (!_gameLoopActive) {
+      _startGameLoop();
+    }
+
+    _saveState();
+
+    return {
+      lines: lines.concat(_renderGrid()),
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Trigger combat flash effect on header
+   */
+  function _triggerCombatFlash() {
+    if (typeof document === 'undefined') return;
+
+    var header = document.querySelector('.monitor-header') || document.querySelector('#mok-header');
+    if (header) {
+      header.classList.add('attackFlash');
+      setTimeout(function() {
+        header.classList.remove('attackFlash');
+      }, 500);
+    }
+  }
+
+  /**
+   * Pause game loop (for STR combat)
+   */
+  function _pauseGameLoop() {
+    if (_animationFrameId) {
+      cancelAnimationFrame(_animationFrameId);
+      _animationFrameId = null;
+    }
+    _gameLoopActive = false;
+  }
+
+  /**
+   * Check if STR combat is active
+   */
+  function isStrCombatActive() {
+    return _strCombatActive;
+  }
+
+  /**
+   * Get STR combat state (for mobile UI)
+   */
+  function getStrCombatState() {
+    return {
+      active: _strCombatActive,
+      enemy: _strCombatEnemy,
+      advantage: _strCombatAdvantage,
+      round: _strCombatRound,
+      log: _strCombatLog
+    };
+  }
+
+  // ============================================================
+  // END STR COMBAT SYSTEM
+  // ============================================================
+
   /**
    * Get player state (for mobile UI)
    */
@@ -1080,6 +1533,8 @@ const GoneRogue = (function () {
     handleCardSwipe: handleCardSwipe,
     getPlayer: getPlayer,
     getEnemies: getEnemies,
-    getEnemyAwarenessState: getEnemyAwarenessState
+    getEnemyAwarenessState: getEnemyAwarenessState,
+    isStrCombatActive: isStrCombatActive,
+    getStrCombatState: getStrCombatState
   };
 })();
