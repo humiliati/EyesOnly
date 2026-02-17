@@ -346,13 +346,31 @@
     var terminal = document.querySelector('.log-frame');
     var inventoryGrid = document.getElementById('inventory-grid');
 
+    // Check if Gone Rogue is active
+    var isInGoneRogue = typeof GoneRogue !== 'undefined' && GoneRogue.isActive();
+
     if (inventoryVisible) {
-      // Repopulate inventory to refresh street-chronicles items
-      populateInventory();
-      terminal.style.display = 'none';
-      inventoryGrid.style.display = 'flex';
-      updateMokInterjection('Inventory display active. Select item for details.');
+      if (isInGoneRogue) {
+        // Show Gone Rogue mobile inventory instead of Street Chronicles inventory
+        if (typeof GoneRogueMobile !== 'undefined' && typeof GoneRogueMobile.showInventory === 'function') {
+          GoneRogueMobile.showInventory();
+        }
+        updateMokInterjection('Inventory display active. Tap/drag items to ACTIVE SLOT in header to equip.');
+      } else {
+        // Repopulate inventory to refresh street-chronicles items
+        populateInventory();
+        terminal.style.display = 'none';
+        inventoryGrid.style.display = 'flex';
+        updateMokInterjection('Inventory display active. Select item for details.');
+      }
     } else {
+      if (isInGoneRogue) {
+        // Hide Gone Rogue mobile inventory
+        var mobileInventory = document.getElementById('rogue-inventory-mobile');
+        if (mobileInventory) {
+          mobileInventory.style.display = 'none';
+        }
+      }
       terminal.style.display = 'flex';
       inventoryGrid.style.display = 'none';
       updateMokInterjection('Standing by for advisories.');
@@ -487,6 +505,58 @@
   }
 
   function handleActiveItemClick() {
+    // Check if Gone Rogue is active
+    var isInGoneRogue = typeof GoneRogue !== 'undefined' && GoneRogue.isActive();
+
+    if (isInGoneRogue) {
+      // In Gone Rogue mode, check GAMESTATE for active item
+      if (typeof GAMESTATE !== 'undefined') {
+        var goneRogueActiveItem = GAMESTATE.getActiveItem();
+        if (goneRogueActiveItem) {
+          // Check if inventory is open
+          if (inventoryVisible) {
+            // Inventory open: UNEQUIP the item
+            GAMESTATE.clearActiveItem();
+
+            // Update active item display in header
+            var activeDisplay = document.getElementById('active-item-display');
+            if (activeDisplay) {
+              activeDisplay.innerHTML = '<span class="empty-slot-indicator">·</span>';
+              activeDisplay.classList.remove('has-item');
+            }
+
+            // Update player lighting
+            if (typeof GoneRogue.updatePlayerLight === 'function') {
+              GoneRogue.updatePlayerLight();
+            }
+
+            // Show feedback message
+            if (typeof window.appendLine === 'function') {
+              window.appendLine('⚠ UNEQUIPPED: ' + goneRogueActiveItem.emoji + ' ' + goneRogueActiveItem.name);
+            }
+
+            updateMokInterjection('Item unequipped: ' + goneRogueActiveItem.name);
+
+            // Refresh inventory display
+            if (typeof GoneRogueMobile !== 'undefined' && typeof GoneRogueMobile.showInventory === 'function') {
+              GoneRogueMobile.showInventory();
+            }
+          } else {
+            // Inventory closed: USE the item for ground effects/buffs/healing
+            if (typeof GoneRogue.triggerActiveItem === 'function') {
+              GoneRogue.triggerActiveItem();
+            } else {
+              updateMokInterjection('Active item usage: ' + goneRogueActiveItem.name + ' - Feature coming soon.');
+            }
+          }
+        } else {
+          updateMokInterjection('No active item equipped. Select an item from inventory first.');
+        }
+      }
+      return;
+    }
+
+    // Street Chronicles / original behavior
     if (!activeItem) {
       updateMokInterjection('No active item equipped. Select an item from inventory first.');
       return;
@@ -579,12 +649,26 @@
     init();
   }
 
+  /**
+   * Update currency display in header
+   * @param {number} amount - Current crypto balance
+   */
+  function updateCurrencyDisplay(amount) {
+    var currencyValueEl = document.getElementById('currency-value');
+    if (currencyValueEl) {
+      // Format with leading zeros (8 digits)
+      var formatted = String(amount || 0).padStart(8, '0');
+      currencyValueEl.textContent = formatted;
+    }
+  }
+
   // Expose API for other modules
   window.UIControls = {
     showInventory: function() {
       if (!inventoryVisible) {
         toggleInventory();
       }
-    }
+    },
+    updateCurrency: updateCurrencyDisplay
   };
 })();

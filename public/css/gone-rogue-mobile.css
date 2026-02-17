@@ -802,3 +802,299 @@
   text-shadow: 1px 1px 2px #000;
   z-index: 1;
 }
+
+/* ============================================================
+   LIGHTING SYSTEM STYLES
+   Dynamic per-tile illumination based on light sources
+   ============================================================ */
+
+/* Lighting intensity classes */
+.lit-very-dark {
+  filter: brightness(0.2) saturate(0.6);
+}
+
+.lit-dark {
+  filter: brightness(0.4) saturate(0.7);
+}
+
+.lit-dim {
+  filter: brightness(0.6) saturate(0.8);
+}
+
+.lit-normal {
+  filter: brightness(0.8) saturate(0.9);
+}
+
+.lit-bright {
+  filter: brightness(1.0) saturate(1.0);
+}
+
+.lit-very-bright {
+  filter: brightness(1.2) saturate(1.1);
+}
+
+/* Light source indicators */
+.cell-light-source {
+  position: relative;
+}
+
+.cell-light-source::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 150%;
+  height: 150%;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.6;
+  animation: light-pulse 2s ease-in-out infinite;
+}
+
+/* Biome-specific light colors */
+.light-monitor::after {
+  background: radial-gradient(circle, rgba(74, 144, 226, 0.4) 0%, transparent 70%);
+}
+
+.light-bulb::after {
+  background: radial-gradient(circle, rgba(255, 255, 221, 0.5) 0%, transparent 70%);
+}
+
+.light-fire::after {
+  background: radial-gradient(circle, rgba(255, 102, 0, 0.5) 0%, transparent 70%);
+  animation: fire-flicker 0.3s ease-in-out infinite;
+}
+
+.light-lava::after {
+  background: radial-gradient(circle, rgba(255, 51, 0, 0.6) 0%, transparent 70%);
+  animation: lava-pulse 1.5s ease-in-out infinite;
+}
+
+.light-purple::after {
+  background: radial-gradient(circle, rgba(153, 51, 255, 0.4) 0%, transparent 70%);
+}
+
+.light-robot::after {
+  background: radial-gradient(circle, rgba(0, 255, 170, 0.4) 0%, transparent 70%);
+}
+
+@keyframes light-pulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+}
+
+@keyframes fire-flicker {
+  0%, 100% {
+    opacity: 0.4;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  25% {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+  50% {
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  75% {
+    opacity: 0.6;
+    transform: translate(-50%, -50%) scale(1.02);
+  }
+}
+
+@keyframes lava-pulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+}
+
+/* Darkness overlay for unlit tiles */
+.cell-darkness {
+  position: relative;
+}
+
+.cell-darkness::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Reduce darkness overlay strength based on lighting */
+.cell-darkness[data-light-level="1"]::before {
+  background: rgba(0, 0, 0, 0.85); /* Very dark */
+}
+
+.cell-darkness[data-light-level="2"]::before {
+  background: rgba(0, 0, 0, 0.7); /* Dark */
+}
+
+.cell-darkness[data-light-level="3"]::before {
+  background: rgba(0, 0, 0, 0.5); /* Dim */
+}
+
+.cell-darkness[data-light-level="4"]::before {
+  background: rgba(0, 0, 0, 0.3); /* Normal */
+}
+
+.cell-darkness[data-light-level="5"]::before {
+  background: rgba(0, 0, 0, 0.1); /* Bright */
+}
+
+.cell-darkness[data-light-level="6"]::before {
+  background: rgba(0, 0, 0, 0); /* Very bright - no overlay */
+}
+
+/* ============================================================
+   INVENTORY DISPLAY FOR EQUIP/UNEQUIP
+   Persistent inventory grid for tap/drag to active slot
+   ============================================================ */
+
+.rogue-inventory-mobile {
+  display: none;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.95);
+  border: 2px solid #1cff9b;
+  border-radius: 8px;
+  box-shadow: 0 0 20px rgba(28, 255, 155, 0.4);
+  margin: 15px auto;
+  max-width: 90vw;
+  font-family: 'Courier New', monospace;
+}
+
+.rogue-inventory-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+  border: 2px solid #1cff9b;
+  border-radius: 6px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.rogue-inventory-item:hover {
+  border-color: #ffeb3b;
+  box-shadow: 0 0 15px rgba(255, 235, 59, 0.5);
+  transform: translateY(-3px);
+}
+
+.rogue-inventory-item:active {
+  cursor: grabbing;
+}
+
+.rogue-inventory-item.dragging {
+  opacity: 0.8;
+  box-shadow: 0 0 25px rgba(28, 255, 155, 0.7);
+  z-index: 1001;
+  cursor: grabbing;
+  pointer-events: none;
+}
+
+.rogue-inventory-item.equipped {
+  border-color: #ffaa00;
+  background: linear-gradient(135deg, #1a1a0a 0%, #2a2a1a 100%);
+  box-shadow: 0 0 15px rgba(255, 170, 0, 0.4);
+}
+
+.rogue-inventory-item.equipped::after {
+  content: '⚡';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 14px;
+  color: #ffaa00;
+  animation: equip-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes equip-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+.rogue-inventory-item .item-emoji {
+  font-size: 32px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.rogue-inventory-item .item-name {
+  color: #1cff9b;
+  font-size: 11px;
+  font-weight: bold;
+  text-align: center;
+  word-break: break-word;
+}
+
+.rogue-inventory-item.equipped .item-name {
+  color: #ffaa00;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 480px) {
+  .rogue-inventory-mobile {
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .rogue-inventory-item {
+    padding: 8px;
+  }
+
+  .rogue-inventory-item .item-emoji {
+    font-size: 24px;
+    margin-bottom: 4px;
+  }
+
+  .rogue-inventory-item .item-name {
+    font-size: 9px;
+  }
+}
+
+/* Active slot highlight when dragging over */
+#active-item-slot.drag-over {
+  border-color: #ffeb3b;
+  box-shadow: 0 0 20px rgba(255, 235, 59, 0.6);
+  animation: slot-highlight 0.5s ease-in-out infinite;
+}
+
+@keyframes slot-highlight {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 235, 59, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 235, 59, 0.8);
+  }
+}
+

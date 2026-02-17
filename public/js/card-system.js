@@ -316,6 +316,50 @@ const CardSystem = (function () {
       name: 'Inventory Charm',
       emoji: '🪬',
       baseStats: { slots: 0, speed: 1 }
+    },
+
+    // Common Charms (low utility, meant for early game)
+    LUCKY_CHARM: {
+      category: 'charm',
+      type: 'charm',
+      name: 'Lucky Charm',
+      emoji: '🍀',
+      baseStats: { luck: 1 }
+    },
+    SPEED_CHARM: {
+      category: 'charm',
+      type: 'charm',
+      name: 'Speed Charm',
+      emoji: '⚡',
+      baseStats: { speed: 1 }
+    },
+    STEALTH_CHARM: {
+      category: 'charm',
+      type: 'charm',
+      name: 'Stealth Charm',
+      emoji: '🌙',
+      baseStats: { stealth: 1 }
+    },
+    HEALTH_CHARM: {
+      category: 'charm',
+      type: 'charm',
+      name: 'Health Charm',
+      emoji: '❤️',
+      baseStats: { hp: 2 }
+    },
+    ENERGY_CHARM: {
+      category: 'charm',
+      type: 'charm',
+      name: 'Energy Charm',
+      emoji: '⭐',
+      baseStats: { energy: 1 }
+    },
+    IMPOSSIBLE_CHARM: {
+      category: 'charm',
+      type: 'charm',
+      name: 'Impossible Binary Charm',
+      emoji: '💠',
+      baseStats: { impossible: 1 } // Permanent unlock, grants special ability
     }
   };
 
@@ -465,11 +509,64 @@ const CardSystem = (function () {
   }
 
   /**
+   * Roll a common charm (low utility, for early game)
+   * These are always CRACKED or WORN quality
+   */
+  function rollCommonCharm() {
+    var commonCharmTypes = ['LUCKY_CHARM', 'SPEED_CHARM', 'STEALTH_CHARM', 'HEALTH_CHARM', 'ENERGY_CHARM'];
+    var charmType = commonCharmTypes[Math.floor(Math.random() * commonCharmTypes.length)];
+    var baseCharm = BASE_CARDS[charmType];
+
+    // Common charms are always poor quality (97% cracked, 3% worn)
+    var roll = Math.random() * 100;
+    var quality = roll <= 97 ? 'CRACKED' : 'WORN';
+
+    var charm = {
+      base: charmType,
+      name: baseCharm.name,
+      emoji: baseCharm.emoji,
+      type: 'charm',
+      category: 'charm',
+      quality: quality,
+      qualityName: QUALITIES[quality].name,
+      qualityColor: QUALITIES[quality].color,
+      stats: rollStats(baseCharm.baseStats, quality),
+      affixes: [],
+      id: 'charm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+    };
+
+    return charm;
+  }
+
+  /**
+   * Roll the Impossible Binary Charm (permanent unlock)
+   * Only drops from Uber Mega or final boss
+   */
+  function rollImpossibleCharm() {
+    var charm = {
+      base: 'IMPOSSIBLE_CHARM',
+      name: 'Impossible Binary Charm',
+      emoji: '💠',
+      type: 'charm',
+      category: 'charm',
+      quality: 'PERFECT',
+      qualityName: QUALITIES.PERFECT.name,
+      qualityColor: QUALITIES.PERFECT.color,
+      stats: { impossible: 1 },
+      affixes: [],
+      id: 'impossible_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+    };
+
+    return charm;
+  }
+
+  /**
    * Get a random base card type
    */
   function getRandomBaseCard() {
     var keys = Object.keys(BASE_CARDS).filter(function(k) {
-      return k !== 'INVENTORY_CHARM'; // Exclude charm from normal drops
+      // Exclude all charms from normal card drops
+      return BASE_CARDS[k].category !== 'charm';
     });
     return keys[Math.floor(Math.random() * keys.length)];
   }
@@ -537,6 +634,8 @@ const CardSystem = (function () {
     rollAffixes: rollAffixes,
     rollCard: rollCard,
     rollInventoryCharm: rollInventoryCharm,
+    rollCommonCharm: rollCommonCharm,
+    rollImpossibleCharm: rollImpossibleCharm,
     getRandomBaseCard: getRandomBaseCard,
     formatCard: formatCard,
     getCardPriority: getCardPriority,

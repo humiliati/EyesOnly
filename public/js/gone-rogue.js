@@ -63,6 +63,9 @@ const GoneRogue = (function () {
   var _bossHazards = []; // Boss-specific hazards (trains, drones, etc.)
   var _bossEnvironment = {}; // Boss-specific environment data
 
+  // Secret floor state
+  var _activeSecretFloor = null; // Current secret floor type (if any)
+
   var TILES = {
     EMPTY: '.',
     WALL: '█',
@@ -122,6 +125,69 @@ const GoneRogue = (function () {
     EXPLORATION: 'exploration',     // High loot, few/no enemies
     BOSS: 'boss',                   // Boss encounter floors
     FINAL: 'final'                  // Floor 30: final boss
+  };
+
+  // Biome types for environmental variety
+  var BIOMES = {
+    GREY_CAVE: {
+      name: 'Grey Cave',
+      wallChar: '█',
+      floorChar: '.',
+      description: 'Dark underground tunnels',
+      floorRange: [1, 4], // Used for early floors and secret areas
+      props: [
+        { emoji: '🪨', name: 'Boulder', breakable: true, hp: 2 },
+        { emoji: '💧', name: 'Water Drip', breakable: false }
+      ]
+    },
+    OFFICE: {
+      name: 'Commercial Office',
+      wallChar: '█',
+      floorChar: '.',
+      description: 'Corporate cubicles and conference rooms',
+      floorRange: [5, 9],
+      props: [
+        { emoji: '📂', name: 'Filing Cabinet', breakable: true, hp: 1 },
+        { emoji: '🖨️', name: 'Printer', breakable: true, hp: 1 },
+        { emoji: '🪑', name: 'Office Chair', breakable: false },
+        { emoji: '💼', name: 'Briefcase', breakable: false }
+      ]
+    },
+    MALL: {
+      name: 'Shopping Mall',
+      wallChar: '█',
+      floorChar: '.',
+      description: 'Abandoned retail stores',
+      floorRange: [11, 15],
+      props: [
+        { emoji: '🛍️', name: 'Shopping Bag', breakable: true, hp: 1 },
+        { emoji: '🧸', name: 'Toy', breakable: true, hp: 1 },
+        { emoji: '🥫', name: 'Canned Food', breakable: true, hp: 1 }
+      ]
+    },
+    INDUSTRIAL: {
+      name: 'Industrial Complex',
+      wallChar: '█',
+      floorChar: '.',
+      description: 'Hazardous factory floor',
+      floorRange: [17, 21],
+      props: [
+        { emoji: '🛢️', name: 'Oil Drum', breakable: true, hp: 2 },
+        { emoji: '⚡', name: 'Exposed Wiring', breakable: false },
+        { emoji: '🔥', name: 'Vent Steam', breakable: false }
+      ]
+    },
+    AEROSPACE: {
+      name: 'Aerospace Museum',
+      wallChar: '█',
+      floorChar: '.',
+      description: 'Vast halls with missile displays',
+      floorRange: [23, 30],
+      props: [
+        { emoji: '🚀', name: 'Rocket Scaffold', breakable: false },
+        { emoji: '✈️', name: 'Hanging Plane', breakable: false }
+      ]
+    }
   };
 
   // Bonfire floors (safe hubs with vendors)
@@ -188,6 +254,17 @@ const GoneRogue = (function () {
     return FLOOR_TYPES.COMBAT;
   }
 
+  /**
+   * Determine biome based on floor number
+   */
+  function _getBiome(floorNum) {
+    if (floorNum >= 23) return BIOMES.AEROSPACE;
+    if (floorNum >= 17) return BIOMES.INDUSTRIAL;
+    if (floorNum >= 11) return BIOMES.MALL;
+    if (floorNum >= 5) return BIOMES.OFFICE;
+    return BIOMES.GREY_CAVE;
+  }
+
   function init() {
     _loadState();
 
@@ -225,31 +302,53 @@ const GoneRogue = (function () {
     _active = true;
     _loaded = true;
 
+    // Initialize lighting system if available
+    if (typeof LightingSystem !== 'undefined') {
+      LightingSystem.init();
+      console.log('[GoneRogue] Lighting system initialized');
+    }
+
+    // Initialize secret floors system if available
+    if (typeof SecretFloors !== 'undefined') {
+      SecretFloors.init();
+      console.log('[GoneRogue] Secret floors system initialized');
+    }
+
+    // Initialize ground effects system if available
+    if (typeof GroundEffects !== 'undefined') {
+      GroundEffects.init();
+      console.log('[GoneRogue] Ground effects system initialized');
+    }
+
     // Initialize from GAMESTATE if available
+    var lines = [];
     if (typeof GAMESTATE !== 'undefined') {
       var result = GAMESTATE.enterRogueMode(context);
-      var lines = result.lines || [];
+      lines = result.lines || [];
 
-      // Give player starter cards if they have no cards in loose inventory
-      var looseInventory = GAMESTATE.getLooseInventory();
-      if (looseInventory.length === 0 && typeof CardSystem !== 'undefined') {
-        // Give 5 starter cards: mix of attack, stance, and utility
-        var starterCards = [
-          CardSystem.rollCard('SINGLE_SHOT'),     // Basic attack
-          CardSystem.rollCard('PRONE'),           // Basic stance
-          CardSystem.rollCard('KATCHUP'),         // Basic healing
-          CardSystem.rollCard('DODGE'),           // Defensive stance
-          CardSystem.rollCard('BURST_SHOT')       // Stronger attack
-        ];
+      // Apply charm bonuses to player stats (charms work from inventory)
+      var persistent = GAMESTATE.getPersistentInventory();
+      var loose = GAMESTATE.getLooseInventory();
+      var allItems = persistent.concat(loose);
 
-        for (var i = 0; i < starterCards.length; i++) {
-          if (starterCards[i]) {
-            GAMESTATE.addToLoose(starterCards[i]);
-          }
+      var hpBonus = 0;
+      var energyBonus = 0;
+
+      allItems.forEach(function(item) {
+        if (item && item.category === 'charm' && item.stats) {
+          if (item.stats.hp) hpBonus += item.stats.hp;
+          if (item.stats.energy) energyBonus += item.stats.energy;
         }
+      });
 
-        lines.push('STARTER DECK LOADED: 5 CARDS');
-        lines.push('');
+      // Apply bonuses to max HP and energy
+      if (hpBonus > 0) {
+        _player.maxHp += hpBonus;
+        _player.hp += hpBonus; // Also heal
+      }
+      if (energyBonus > 0) {
+        _player.maxEnergy += energyBonus;
+        _player.energy += energyBonus; // Also restore
       }
     } else {
       lines = ['', 'GONE ROGUE MODE ACTIVATED', ''];
@@ -264,7 +363,7 @@ const GoneRogue = (function () {
     // Use mobile UI if available
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
       GoneRogueMobile.show();
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+      _updateMobileGrid();
 
       // Suppress mobile keyboard when interactive grid is active
       if (typeof Terminal !== 'undefined' && typeof Terminal.suppressMobileKeyboard === 'function') {
@@ -371,6 +470,25 @@ const GoneRogue = (function () {
       return _gambleCard();
     }
 
+    // Inventory transfer commands (bonfire only)
+    if (cmd.indexOf('stash') === 0) {
+      return _stashCard(cmd);
+    }
+
+    if (cmd.indexOf('retrieve') === 0 || cmd.indexOf('withdraw') === 0) {
+      return _retrieveCard(cmd);
+    }
+
+    // Equip item to active slot
+    if (cmd.indexOf('equip') === 0) {
+      return _equipItem(cmd);
+    }
+
+    // Unequip active item
+    if (cmd === 'unequip') {
+      return _unequipItem();
+    }
+
     return {
       lines: ['UNKNOWN COMMAND: ' + cmd, 'TYPE HELP FOR COMMANDS', ''],
       prompt: getPrompt(),
@@ -395,6 +513,10 @@ const GoneRogue = (function () {
       '  BUY <number>       - Purchase item from vendor',
       '  HEAL               - Restore HP for ¢30',
       '  GAMBLE             - Roll random card for ¢100',
+      '  STASH <number>     - Move loose item to persistent storage',
+      '  RETRIEVE <number>  - Move persistent item to loose carry',
+      '  EQUIP <number>     - Equip persistent item to active slot',
+      '  UNEQUIP            - Unequip active item',
       '',
       '  HELP               - This help',
       '  EXIT               - Return to Street Chronicles',
@@ -433,6 +555,16 @@ const GoneRogue = (function () {
     if (typeof GAMESTATE !== 'undefined') {
       var persistent = GAMESTATE.getPersistentInventory();
       var loose = GAMESTATE.getLooseInventory();
+      var activeItem = GAMESTATE.getActiveItem();
+
+      // Show active item slot
+      lines.push('');
+      lines.push('ACTIVE SLOT:');
+      if (activeItem) {
+        lines.push('  ⚡ ' + activeItem.emoji + ' ' + activeItem.name + ' [EQUIPPED]');
+      } else {
+        lines.push('  [EMPTY - Use EQUIP command]');
+      }
 
       lines.push('');
       lines.push('PERSISTENT (' + persistent.length + '/' + GAMESTATE.getState().persistentSlots + '):');
@@ -459,7 +591,7 @@ const GoneRogue = (function () {
     return lines;
   }
 
-  function _generateFloor() {
+  function _generateFloor(secretFloorData) {
     // Initialize generation state
     _projectiles = [];
     _breakables = [];
@@ -471,14 +603,43 @@ const GoneRogue = (function () {
     _bossDefeated = false;
     _bossHazards = [];
     _bossEnvironment = {};
+    _activeSecretFloor = null;
 
     // Determine floor type
-    var floorType = _getFloorType(_floor);
+    var floorType;
+    var isSecretFloor = !!secretFloorData;
 
-    // Check if this is a boss floor
+    if (isSecretFloor) {
+      // Set active secret floor
+      _activeSecretFloor = secretFloorData.type;
+
+      // Secret floors use special type based on secret floor data
+      if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.UBER_MEGA) {
+        floorType = FLOOR_TYPES.BOSS; // Uber Mega is boss-like
+      } else if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.GOBLIN_VAULT) {
+        floorType = FLOOR_TYPES.EXPLORATION; // Goblin vault is maze-like
+      } else if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.GRAY_CAVE_HIDDEN) {
+        floorType = FLOOR_TYPES.EXPLORATION; // Gray cave is safe exploration
+      }
+    } else {
+      floorType = _getFloorType(_floor);
+    }
+
+    // Check if this is a boss floor (or secret boss floor)
     if (floorType === FLOOR_TYPES.BOSS && typeof BossEncounters !== 'undefined') {
       _bossFloorActive = true;
-      _activeBoss = BossEncounters.createBossForFloor(_floor);
+
+      // Spawn hidden boss for secret floors
+      if (isSecretFloor) {
+        if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.UBER_MEGA) {
+          _activeBoss = new BossEncounters.UberMegaBoss(_floor);
+        } else if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.GOBLIN_VAULT) {
+          _activeBoss = new BossEncounters.TreasureGoblinKingBoss(_floor);
+        }
+      } else {
+        // Normal boss for regular boss floors
+        _activeBoss = BossEncounters.createBossForFloor(_floor);
+      }
     }
 
     var maxAttempts = 10;
@@ -547,6 +708,60 @@ const GoneRogue = (function () {
 
     // Place items (increased loot for exploration floors)
     _placeItems(floorType);
+
+    // Generate lighting for this floor
+    if (typeof LightingSystem !== 'undefined') {
+      // Set biome for lighting
+      var biome;
+      var biomeName;
+
+      if (isSecretFloor) {
+        // Secret floors have special biomes
+        if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.UBER_MEGA) {
+          biomeName = 'UBER_MEGA'; // Reality-breaking dark
+        } else if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.GOBLIN_VAULT) {
+          biomeName = 'GOBLIN_VAULT'; // Golden treasure lighting
+        } else if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.GRAY_CAVE_HIDDEN) {
+          biomeName = 'GRAY_CAVE'; // Faint violet
+        }
+      } else {
+        biome = _getBiome(_floor);
+        biomeName = biome.name.toUpperCase().replace(/ /g, '_');
+      }
+
+      LightingSystem.setBiome(biomeName);
+
+      // Apply darkness multiplier for uber mega
+      if (isSecretFloor && secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.UBER_MEGA) {
+        LightingSystem.setDarknessMultiplier(0.3); // Extreme darkness (70% darker)
+      } else if (_floor === 30 && _bossFloorActive) {
+        LightingSystem.setDarknessMultiplier(0.5); // Nerf light by 50%
+      } else {
+        LightingSystem.setDarknessMultiplier(1.0);
+      }
+
+      // Collect wall positions for light blocking
+      var walls = [];
+      for (var y = 0; y < GRID_HEIGHT; y++) {
+        for (var x = 0; x < GRID_WIDTH; x++) {
+          if (_grid[y][x] === TILES.WALL) {
+            walls.push({ x: x, y: y });
+          }
+        }
+      }
+
+      // Generate biome-specific light sources
+      LightingSystem.generateBiomeLights(GRID_WIDTH, GRID_HEIGHT, rooms, walls);
+
+      // Update player light based on inventory
+      _updatePlayerLight();
+
+      // Update enemy lights
+      LightingSystem.updateEnemyLights(_enemies);
+
+      // Calculate initial light map
+      LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, walls);
+    }
 
     _turn = 0;
   }
@@ -736,8 +951,41 @@ const GoneRogue = (function () {
   }
 
   function _placeEnvironmentalTiles() {
-    // Add environmental tiles based on difficulty
+    // Add environmental tiles based on difficulty and biome
     var difficulty = _floor;
+    var biome = _getBiome(_floor);
+
+    // Place biome-specific ground effects if system available
+    if (typeof GroundEffects !== 'undefined') {
+      var effectCount = 5 + Math.floor(difficulty / 3);
+
+      // Determine ground effects by biome
+      var biomeEffects = [];
+      if (biome.name === 'Shopping Mall') {
+        biomeEffects = ['GLASS', 'SODA_SPILL', 'WATER'];
+      } else if (biome.name === 'Industrial Plant') {
+        biomeEffects = ['OIL', 'FIRE', 'INDUSTRIAL_WASTE', 'STEAM'];
+      } else if (biome.name === 'Commercial Office') {
+        biomeEffects = ['WATER', 'GLASS'];
+      } else if (biome.name === 'Grey Cave') {
+        biomeEffects = ['WATER'];
+      }
+
+      // Place ground effects
+      for (var i = 0; i < effectCount && biomeEffects.length > 0; i++) {
+        var x = Math.floor(Math.random() * (GRID_WIDTH - 2)) + 1;
+        var y = Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1;
+
+        if (_grid[y][x] === TILES.EMPTY) {
+          var effectType = biomeEffects[Math.floor(Math.random() * biomeEffects.length)];
+          GroundEffects.setGroundEffect(x, y, effectType);
+
+          // Mark in tile metadata for rendering
+          var key = x + ',' + y;
+          _tileMetadata[key] = { type: 'ground_effect', groundType: effectType };
+        }
+      }
+    }
 
     // Late game: add hazards and difficult terrain
     if (difficulty >= 5) {
@@ -750,6 +998,11 @@ const GoneRogue = (function () {
           _grid[y][x] = TILES.HAZARD;
           var key = x + ',' + y;
           _tileMetadata[key] = { type: 'hazard', damage: 1 };
+
+          // Also add fire ground effect if available
+          if (typeof GroundEffects !== 'undefined') {
+            GroundEffects.setGroundEffect(x, y, 'FIRE');
+          }
         }
       }
     }
@@ -776,10 +1029,38 @@ const GoneRogue = (function () {
       return { playerX: 5, playerY: 10, exitX: GRID_WIDTH - 3, exitY: GRID_HEIGHT - 3 };
     }
 
-    // Place player in first room
+    // Place player in first room - ensure it's on a floor tile
     var firstRoom = rooms[0];
     var playerX = firstRoom.centerX;
     var playerY = firstRoom.centerY;
+
+    // Validate player spawn is on a floor tile, not a wall
+    var maxSpawnAttempts = 10;
+    for (var attempt = 0; attempt < maxSpawnAttempts; attempt++) {
+      if (_grid[playerY] && _grid[playerY][playerX] && _grid[playerY][playerX] === TILES.EMPTY) {
+        // Valid spawn point
+        break;
+      }
+      // Try adjacent tiles if center is blocked
+      var offsets = [
+        {dx: 0, dy: 0}, {dx: 1, dy: 0}, {dx: -1, dy: 0}, {dx: 0, dy: 1}, {dx: 0, dy: -1},
+        {dx: 1, dy: 1}, {dx: -1, dy: -1}, {dx: 1, dy: -1}, {dx: -1, dy: 1}
+      ];
+      for (var i = 0; i < offsets.length; i++) {
+        var testX = firstRoom.centerX + offsets[i].dx;
+        var testY = firstRoom.centerY + offsets[i].dy;
+        if (testX > 0 && testX < GRID_WIDTH - 1 && testY > 0 && testY < GRID_HEIGHT - 1 &&
+            _grid[testY][testX] === TILES.EMPTY) {
+          playerX = testX;
+          playerY = testY;
+          break;
+        }
+      }
+    }
+
+    // Ensure player is within bounds
+    playerX = Math.max(1, Math.min(GRID_WIDTH - 2, playerX));
+    playerY = Math.max(1, Math.min(GRID_HEIGHT - 2, playerY));
 
     // Place exit in last room (opposite quadrant)
     var lastRoom = rooms[rooms.length - 1];
@@ -799,6 +1080,27 @@ const GoneRogue = (function () {
           exitX = room.centerX;
           exitY = room.centerY;
           break;
+        }
+      }
+    }
+
+    // Validate exit position is on floor tile
+    if (_grid[exitY] && _grid[exitY][exitX] && _grid[exitY][exitX] !== TILES.EMPTY) {
+      // Find nearest empty tile for exit
+      for (var radius = 1; radius < 5; radius++) {
+        for (var dy = -radius; dy <= radius; dy++) {
+          for (var dx = -radius; dx <= radius; dx++) {
+            var testX = exitX + dx;
+            var testY = exitY + dy;
+            if (testX > 0 && testX < GRID_WIDTH - 1 && testY > 0 && testY < GRID_HEIGHT - 1 &&
+                _grid[testY][testX] === TILES.EMPTY) {
+              exitX = testX;
+              exitY = testY;
+              radius = 999; // Break outer loop
+              break;
+            }
+          }
+          if (radius > 100) break;
         }
       }
     }
@@ -956,8 +1258,19 @@ const GoneRogue = (function () {
       awareness: 0,
       orientation: ['north', 'south', 'east', 'west'][Math.floor(Math.random() * 4)],
       sightRange: _floor > 5 ? 7 : 5, // Increased range on late floors
-      pathTimer: 0
+      pathTimer: 0,
+      isTreasureGoblin: false, // Special enemy type
+      goblinSpawnTime: null // For timeout tracking
     };
+
+    // 2% chance to spawn a treasure goblin after floor 5
+    if (_floor > 5 && Math.random() < 0.02) {
+      enemy.isTreasureGoblin = true;
+      enemy.goblinSpawnTime = Date.now();
+      enemy.hp = 3; // Low HP, must kill fast
+      enemy.sightRange = 10; // Goblins see player from far
+      enemy.awareness = 5; // Always aware, always fleeing
+    }
 
     if (patrolType === PATH_TYPES.STATIONARY) {
       enemy.path = { type: PATH_TYPES.STATIONARY };
@@ -1080,20 +1393,58 @@ const GoneRogue = (function () {
   }
 
   function _spawnBreakables() {
-    // Clear path in front of player for deterministic projectile tests
-    if (_isInsideBounds(_player.x + 1, _player.y)) _grid[_player.y][_player.x + 1] = TILES.EMPTY;
-    if (_isInsideBounds(_player.x + 2, _player.y)) _grid[_player.y][_player.x + 2] = TILES.EMPTY;
-    if (_isInsideBounds(_player.x + 3, _player.y)) _grid[_player.y][_player.x + 3] = TILES.EMPTY;
+    // Get current biome
+    var biome = _getBiome(_floor);
 
-    _breakables = [
-      { x: _player.x + 1, y: _player.y, hp: 3, glyph: TILES.BREAKABLE, destroyedGlyph: TILES.DEBRIS, emoji: '📦', tag: 'close_crate' },
-      { x: _player.x + 6, y: _player.y - 2, hp: 2, glyph: TILES.BREAKABLE, destroyedGlyph: TILES.DEBRIS, emoji: '🧱', tag: 'far_crate' }
-    ].filter(function(b) {
-      return b.x > 0 && b.x < GRID_WIDTH - 1 && b.y > 0 && b.y < GRID_HEIGHT - 1;
-    });
+    // Spawn biome-specific breakables
+    _breakables = [];
 
+    // Spawn 8-12 random breakables from the biome's prop list
+    var breakableCount = 8 + Math.floor(Math.random() * 5);
+    var breakableProps = biome.props.filter(function(p) { return p.breakable; });
+
+    if (breakableProps.length === 0) {
+      // Fallback to generic crates if biome has no breakable props
+      breakableProps = [{ emoji: '📦', name: 'Crate', breakable: true, hp: 2 }];
+    }
+
+    for (var i = 0; i < breakableCount; i++) {
+      var attempts = 0;
+      var placed = false;
+
+      while (!placed && attempts < 50) {
+        var x = 2 + Math.floor(Math.random() * (GRID_WIDTH - 4));
+        var y = 2 + Math.floor(Math.random() * (GRID_HEIGHT - 4));
+
+        // Check if position is valid (floor tile, not player, not exit, not occupied)
+        if (_grid[y] && _grid[y][x] === TILES.EMPTY &&
+            !(x === _player.x && y === _player.y) &&
+            !_breakables.find(function(b) { return b.x === x && b.y === y; })) {
+
+          var propTemplate = breakableProps[Math.floor(Math.random() * breakableProps.length)];
+          _breakables.push({
+            x: x,
+            y: y,
+            hp: propTemplate.hp,
+            maxHp: propTemplate.hp,
+            glyph: TILES.BREAKABLE,
+            destroyedGlyph: TILES.DEBRIS,
+            emoji: propTemplate.emoji,
+            name: propTemplate.name,
+            tag: 'biome_prop_' + i
+          });
+
+          placed = true;
+        }
+        attempts++;
+      }
+    }
+
+    // Place on grid
     _breakables.forEach(function(breakable) {
-      _grid[breakable.y][breakable.x] = TILES.BREAKABLE;
+      if (_grid[breakable.y] && _grid[breakable.y][breakable.x]) {
+        _grid[breakable.y][breakable.x] = TILES.BREAKABLE;
+      }
     });
   }
 
@@ -1153,7 +1504,22 @@ const GoneRogue = (function () {
     }
 
     lines.push('');
-    var floorLabel = 'Floor: ' + _floor;
+    var biome = _getBiome(_floor);
+    var floorLabel;
+
+    // Show secret floor name if active
+    if (_activeSecretFloor) {
+      if (_activeSecretFloor === SecretFloors.SECRET_FLOOR_TYPES.UBER_MEGA) {
+        floorLabel = 'SECRET: ⚠️ UBER MEGA ⚠️';
+      } else if (_activeSecretFloor === SecretFloors.SECRET_FLOOR_TYPES.GOBLIN_VAULT) {
+        floorLabel = 'SECRET: 💰 Goblin Vault 💰';
+      } else if (_activeSecretFloor === SecretFloors.SECRET_FLOOR_TYPES.GRAY_CAVE_HIDDEN) {
+        floorLabel = 'SECRET: 🌫️ Gray Cave 🌫️';
+      }
+    } else {
+      floorLabel = 'Floor: ' + _floor + ' | ' + biome.name;
+    }
+
     if (_bossFloorActive && !_bossDefeated) {
       floorLabel += ' 👹 BOSS FLOOR';
     } else if (_bossFloorActive && _bossDefeated) {
@@ -1166,6 +1532,15 @@ const GoneRogue = (function () {
     lines.push('');
 
     return lines;
+  }
+
+  /**
+   * Helper to update mobile grid rendering with state
+   */
+  function _updateMobileGrid() {
+    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles, _alertLevel, _strCombatActive);
+    }
   }
 
   function _movePlayer(dx, dy, runMode) {
@@ -1384,6 +1759,30 @@ const GoneRogue = (function () {
   }
 
   function _advanceFloor() {
+    // Check for queued secret floor BEFORE normal floor generation
+    var secretFloorData = null;
+    if (typeof SecretFloors !== 'undefined' && SecretFloors.hasQueuedSecretFloor()) {
+      secretFloorData = SecretFloors.popSecretFloor();
+      console.log('[GoneRogue] Secret floor triggered:', secretFloorData.type);
+    }
+
+    // Check for low HP + high gold trigger (15% chance when conditions met)
+    if (!secretFloorData && typeof SecretFloors !== 'undefined') {
+      var triggerResult = SecretFloors.triggerSecretFloor(
+        SecretFloors.TRIGGER_TYPES.LOW_HP_HIGH_GOLD,
+        {
+          playerHp: _player.hp,
+          playerMaxHp: _player.maxHp,
+          playerGold: _player.cryptos
+        }
+      );
+
+      if (triggerResult.success) {
+        secretFloorData = SecretFloors.popSecretFloor();
+        console.log('[GoneRogue] Low HP + High Gold secret floor triggered:', secretFloorData.type);
+      }
+    }
+
     // Apply fade-out effect before transitioning
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
       var gridContainer = document.getElementById('rogue-grid-mobile');
@@ -1395,7 +1794,13 @@ const GoneRogue = (function () {
 
     // Wait for fade-out to complete before generating new floor
     setTimeout(function() {
-      _floor++;
+      var isSecretFloor = !!secretFloorData;
+      var secretFloorType = isSecretFloor ? secretFloorData.type : null;
+
+      // Only advance floor number if NOT a secret floor
+      if (!isSecretFloor) {
+        _floor++;
+      }
       _turn = 0;
 
       // Reset vendor for new bonfire
@@ -1406,26 +1811,91 @@ const GoneRogue = (function () {
       var healAmount = Math.floor(_player.maxHp * (0.1 + Math.random() * 0.1));
       _player.hp = Math.min(_player.maxHp, _player.hp + healAmount);
 
+      // After floor 1, give random 3 starter cards if player has 0 cards
+      if (_floor === 2 && typeof GAMESTATE !== 'undefined' && typeof CardSystem !== 'undefined') {
+        var looseInventory = GAMESTATE.getLooseInventory();
+        if (looseInventory.length === 0) {
+          // Define all 5 starter cards
+          var allStarterCards = ['SINGLE_SHOT', 'PRONE', 'KATCHUP', 'DODGE', 'BURST_SHOT'];
+
+          // Shuffle and pick 3 random cards
+          var shuffled = allStarterCards.slice();
+          for (var i = shuffled.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var temp = shuffled[i];
+            shuffled[i] = shuffled[j];
+            shuffled[j] = temp;
+          }
+          var selectedCards = shuffled.slice(0, 3);
+
+          // Add the 3 selected cards to loose inventory
+          for (var c = 0; c < selectedCards.length; c++) {
+            var card = CardSystem.rollCard(selectedCards[c]);
+            if (card) {
+              GAMESTATE.addToLoose(card);
+            }
+          }
+
+          lines.push('');
+          lines.push('  📦 SUPPLY DROP RECEIVED');
+          lines.push('  3 STARTER CARDS ADDED TO INVENTORY');
+          lines.push('');
+        }
+      }
+
       // Generate next floor
-      _generateFloor();
+      if (isSecretFloor) {
+        _generateFloor(secretFloorData);
+      } else {
+        _generateFloor();
+      }
       _startGameLoop();
       _saveState();
 
-      var lines = [
-        '',
-        '═══════════════════════════════════════',
-        '  FLOOR ' + _floor + ' - EXTRACTION SUCCESSFUL',
-        '═══════════════════════════════════════',
-        '',
-        '  HP RESTORED: +' + healAmount,
-        '  INFILTRATING DEEPER...',
-        ''
-      ];
+      var lines = [];
+
+      if (isSecretFloor) {
+        // Secret floor messaging
+        lines.push('');
+        lines.push('⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️');
+
+        if (secretFloorType === SecretFloors.SECRET_FLOOR_TYPES.UBER_MEGA) {
+          lines.push('  REALITY BREACH DETECTED');
+          lines.push('  YOU SHOULD NOT BE HERE');
+          lines.push('  SYSTEM INTEGRITY: 12%');
+        } else if (secretFloorType === SecretFloors.SECRET_FLOOR_TYPES.GOBLIN_VAULT) {
+          lines.push('  ANOMALY DETECTED');
+          lines.push('  SPACE WARPING...');
+          lines.push('  TREASURE VAULT MANIFESTED');
+        } else if (secretFloorType === SecretFloors.SECRET_FLOOR_TYPES.GRAY_CAVE_HIDDEN) {
+          lines.push('  HIDDEN PATH REVEALED');
+          lines.push('  GRAY CAVE PASSAGE');
+        }
+
+        lines.push('⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️');
+        lines.push('');
+        lines.push('  HP RESTORED: +' + healAmount);
+        lines.push('');
+
+        // Mark that we've entered a secret floor
+        SecretFloors.clearCurrentSecretFloor();
+
+      } else {
+        // Normal floor messaging
+        lines.push('');
+        lines.push('═══════════════════════════════════════');
+        lines.push('  FLOOR ' + _floor + ' - EXTRACTION SUCCESSFUL');
+        lines.push('═══════════════════════════════════════');
+        lines.push('');
+        lines.push('  HP RESTORED: +' + healAmount);
+        lines.push('  INFILTRATING DEEPER...');
+        lines.push('');
+      }
 
       // Show mobile UI with fade-in effect
       if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
         GoneRogueMobile.show();
-        GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+        _updateMobileGrid();
 
         var gridContainer = document.getElementById('rogue-grid-mobile');
         if (gridContainer) {
@@ -1761,6 +2231,231 @@ const GoneRogue = (function () {
     };
   }
 
+  /**
+   * Stash card from loose carry to persistent inventory (bonfire only)
+   */
+  function _stashCard(cmd) {
+    var floorType = _getFloorType(_floor);
+    if (floorType !== FLOOR_TYPES.BONFIRE) {
+      return {
+        lines: ['NO BONFIRE HERE', 'Inventory transfer only available at bonfire floors', ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    if (typeof GAMESTATE === 'undefined') {
+      return {
+        lines: ['GAMESTATE UNAVAILABLE', ''],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    // Parse item number from command
+    var parts = cmd.split(' ');
+    if (parts.length < 2) {
+      return {
+        lines: ['USAGE: STASH <number>', 'Example: STASH 1', ''].concat(_inventoryLines()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var itemNum = parseInt(parts[1], 10) - 1; // Convert to 0-indexed
+    var looseInv = GAMESTATE.getLooseInventory();
+
+    if (itemNum < 0 || itemNum >= looseInv.length) {
+      return {
+        lines: ['INVALID ITEM NUMBER', 'Loose carry has ' + looseInv.length + ' items', ''].concat(_inventoryLines()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var item = looseInv[itemNum];
+
+    // Try to add to persistent
+    var addResult = GAMESTATE.addToPersistent(item);
+    if (!addResult.success) {
+      return {
+        lines: [addResult.message, ''].concat(_inventoryLines()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    // Remove from loose
+    GAMESTATE.removeFromLoose(itemNum);
+
+    return {
+      lines: [
+        '📦 STASHED TO PERSISTENT STORAGE',
+        item.emoji + ' ' + item.name,
+        ''
+      ].concat(_inventoryLines()),
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Retrieve card from persistent inventory to loose carry (bonfire only)
+   */
+  function _retrieveCard(cmd) {
+    var floorType = _getFloorType(_floor);
+    if (floorType !== FLOOR_TYPES.BONFIRE) {
+      return {
+        lines: ['NO BONFIRE HERE', 'Inventory transfer only available at bonfire floors', ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    if (typeof GAMESTATE === 'undefined') {
+      return {
+        lines: ['GAMESTATE UNAVAILABLE', ''],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    // Parse item number from command
+    var parts = cmd.split(' ');
+    if (parts.length < 2) {
+      return {
+        lines: ['USAGE: RETRIEVE <number>', 'Example: RETRIEVE 1', ''].concat(_inventoryLines()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var itemNum = parseInt(parts[1], 10) - 1; // Convert to 0-indexed
+    var persistentInv = GAMESTATE.getPersistentInventory();
+
+    if (itemNum < 0 || itemNum >= persistentInv.length) {
+      return {
+        lines: ['INVALID ITEM NUMBER', 'Persistent storage has ' + persistentInv.length + ' items', ''].concat(_inventoryLines()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var item = persistentInv[itemNum];
+
+    // Try to add to loose
+    var addResult = GAMESTATE.addToLoose(item);
+    if (!addResult.success) {
+      return {
+        lines: [addResult.message, ''].concat(_inventoryLines()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    // Remove from persistent
+    GAMESTATE.removeFromPersistent(itemNum);
+
+    return {
+      lines: [
+        '🎒 RETRIEVED TO LOOSE CARRY',
+        item.emoji + ' ' + item.name,
+        ''
+      ].concat(_inventoryLines()),
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Equip item from persistent inventory to active slot
+   */
+  function _equipItem(cmd) {
+    if (typeof GAMESTATE === 'undefined') {
+      return {
+        lines: ['GAMESTATE UNAVAILABLE', ''],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    // Parse item number from command
+    var parts = cmd.split(' ');
+    if (parts.length < 2) {
+      return {
+        lines: ['USAGE: EQUIP <number>', 'Example: EQUIP 1', ''].concat(_inventoryLines()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var itemNum = parseInt(parts[1], 10) - 1; // Convert to 0-indexed
+    var persistentInv = GAMESTATE.getPersistentInventory();
+
+    if (itemNum < 0 || itemNum >= persistentInv.length) {
+      return {
+        lines: ['INVALID ITEM NUMBER', 'Persistent inventory has ' + persistentInv.length + ' items', ''].concat(_inventoryLines()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var item = persistentInv[itemNum];
+
+    // Set as active item (doesn't remove from inventory)
+    GAMESTATE.setActiveItem(item);
+
+    // Update player light if it's a lighting item
+    _updatePlayerLight();
+
+    return {
+      lines: [
+        '⚡ EQUIPPED TO ACTIVE SLOT',
+        item.emoji + ' ' + item.name,
+        ''
+      ].concat(_inventoryLines()),
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Unequip active item
+   */
+  function _unequipItem() {
+    if (typeof GAMESTATE === 'undefined') {
+      return {
+        lines: ['GAMESTATE UNAVAILABLE', ''],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var activeItem = GAMESTATE.getActiveItem();
+    if (!activeItem) {
+      return {
+        lines: ['NO ITEM EQUIPPED', ''],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    GAMESTATE.clearActiveItem();
+
+    // Update player light (will clear it)
+    _updatePlayerLight();
+
+    return {
+      lines: [
+        '⚪ UNEQUIPPED',
+        'Active slot cleared',
+        ''
+      ].concat(_inventoryLines()),
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
   function _exitRogue(success) {
     _active = false;
     _stopGameLoop();
@@ -1844,6 +2539,29 @@ const GoneRogue = (function () {
     _enemies.forEach(function(enemy) {
       if (enemy.hp <= 0) return;
 
+      // Check treasure goblin timeout (15 seconds to kill)
+      if (enemy.isTreasureGoblin && enemy.goblinSpawnTime && typeof SecretFloors !== 'undefined') {
+        var goblinAge = (Date.now() - enemy.goblinSpawnTime) / 1000; // Age in seconds
+        var goblinTimeout = 15; // 15 seconds to kill
+
+        if (goblinAge > goblinTimeout) {
+          // Goblin escaped! Trigger secret floor
+          var triggerResult = SecretFloors.triggerSecretFloor(
+            SecretFloors.TRIGGER_TYPES.GOBLIN_TIMEOUT,
+            {
+              goblinTimeExpired: true
+            }
+          );
+
+          if (triggerResult.success) {
+            console.log('[GoneRogue] Treasure goblin escaped - secret floor triggered!');
+          }
+
+          // Remove the goblin (it escaped)
+          enemy.hp = 0;
+        }
+      }
+
       // Update Elite enemies with special behavior
       if (enemy.isElite && typeof EliteEnemies !== 'undefined') {
         EliteEnemies.updateElite(enemy, _player, _grid, deltaMs);
@@ -1888,9 +2606,55 @@ const GoneRogue = (function () {
     // Update color cycle timer for visual feedback
     _enemyColorCycleTime += deltaMs;
 
+    // Update ground effects system (spreading fire, dissipating steam, etc.)
+    if (typeof GroundEffects !== 'undefined') {
+      GroundEffects.update(deltaMs, GRID_WIDTH, GRID_HEIGHT);
+
+      // Apply ground effect damage to player
+      var playerGroundDamage = GroundEffects.getDamage(_player.x, _player.y);
+      if (playerGroundDamage > 0) {
+        _player.hp = Math.max(0, _player.hp - playerGroundDamage);
+        if (_player.hp <= 0) {
+          // Player died from ground effect
+          return _handlePlayerDeath('environmental_hazard');
+        }
+      }
+
+      // Apply ground effect damage to enemies
+      _enemies.forEach(function(enemy) {
+        if (enemy.hp <= 0) return;
+        var enemyGroundDamage = GroundEffects.getDamage(enemy.x, enemy.y);
+        if (enemyGroundDamage > 0) {
+          enemy.hp = Math.max(0, enemy.hp - enemyGroundDamage);
+        }
+      });
+    }
+
+    // Update lighting system
+    if (typeof LightingSystem !== 'undefined') {
+      // Update player light position
+      _updatePlayerLight();
+
+      // Update enemy lights
+      LightingSystem.updateEnemyLights(_enemies);
+
+      // Collect wall positions for light blocking
+      var walls = [];
+      for (var y = 0; y < GRID_HEIGHT; y++) {
+        for (var x = 0; x < GRID_WIDTH; x++) {
+          if (_grid[y][x] === TILES.WALL) {
+            walls.push({ x: x, y: y });
+          }
+        }
+      }
+
+      // Recalculate light map with animation
+      LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, walls);
+    }
+
     // Re-render if using interactive grid
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+      _updateMobileGrid();
     }
   }
 
@@ -2054,6 +2818,38 @@ const GoneRogue = (function () {
   }
 
   /**
+   * Update player light based on inventory
+   */
+  function _updatePlayerLight() {
+    if (typeof LightingSystem === 'undefined') return;
+
+    // Check active item slot for light items (not inventory)
+    var lightItem = null;
+
+    if (typeof GAMESTATE !== 'undefined') {
+      var activeItem = GAMESTATE.getActiveItem();
+
+      // Only check active item slot for lighting items
+      if (activeItem) {
+        var itemName = activeItem.name ? activeItem.name.toLowerCase() : '';
+
+        // Check for light items in active slot (priority order)
+        if (itemName.indexOf('night vision') !== -1) {
+          lightItem = 'NIGHT_VISION';
+        } else if (itemName.indexOf('flashlight') !== -1) {
+          lightItem = 'FLASHLIGHT';
+        } else if (itemName.indexOf('lighter') !== -1) {
+          lightItem = 'LIGHTER';
+        }
+      }
+    }
+
+    // Update lighting system
+    LightingSystem.setPlayerLight(lightItem);
+    LightingSystem.updatePlayerLight(_player.x, _player.y, _player.lastMoveDirection || 'north');
+  }
+
+  /**
    * Check if player is in enemy sight cone
    */
   function _isPlayerInSightCone(enemy) {
@@ -2104,15 +2900,37 @@ const GoneRogue = (function () {
     var key = _player.x + ',' + _player.y;
     var metadata = _tileMetadata[key];
 
+    var bonus = 0;
+
+    // Tile-based stealth bonuses
     if (tile === TILES.SHADOW && metadata && metadata.stealthBonus) {
-      return metadata.stealthBonus; // 30%
+      bonus += metadata.stealthBonus; // 30%
     } else if (tile === TILES.GRASS && metadata && metadata.stealthBonus) {
-      return metadata.stealthBonus; // 20%
+      bonus += metadata.stealthBonus; // 20%
     } else if (tile === TILES.SMOKE && metadata && metadata.stealthBonus) {
-      return metadata.stealthBonus; // 40%
+      bonus += metadata.stealthBonus; // 40%
     }
 
-    return 0;
+    // Darkness-based stealth bonus (from lighting system)
+    if (typeof LightingSystem !== 'undefined') {
+      var darknessBonus = LightingSystem.getDarknessStealthBonus(_player.x, _player.y);
+      bonus += darknessBonus; // 0-50% based on darkness
+    }
+
+    // Charm bonuses from inventory (charms work from inventory, not active slot)
+    if (typeof GAMESTATE !== 'undefined') {
+      var persistent = GAMESTATE.getPersistentInventory();
+      var loose = GAMESTATE.getLooseInventory();
+      var allItems = persistent.concat(loose);
+
+      allItems.forEach(function(item) {
+        if (item && item.category === 'charm' && item.stats && item.stats.stealth) {
+          bonus += item.stats.stealth;
+        }
+      });
+    }
+
+    return bonus;
   }
 
   /**
@@ -2202,9 +3020,24 @@ const GoneRogue = (function () {
             }
           }
 
+          // 25% chance to drop a charm (similar frequency to cards)
+          if (Math.random() < 0.25 && typeof CardSystem !== 'undefined') {
+            var charm = CardSystem.rollCommonCharm();
+            if (charm) {
+              _items.push({
+                x: breakable.x,
+                y: breakable.y,
+                type: 'charm',
+                card: charm, // Reuse card structure for charms
+                spawnTime: Date.now(),
+                decayTime: 30000 // 30 second decay
+              });
+            }
+          }
+
           // Trigger re-render
           if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-            GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+            _updateMobileGrid();
           }
         }
       }, 400); // 2 blinks at 200ms each
@@ -2272,7 +3105,7 @@ const GoneRogue = (function () {
     _saveState();
 
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+      _updateMobileGrid();
     }
 
     if (action) {
@@ -2304,7 +3137,7 @@ const GoneRogue = (function () {
     _saveState();
 
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+      _updateMobileGrid();
     }
 
     return {
@@ -2383,7 +3216,7 @@ const GoneRogue = (function () {
     var action = _updateProjectiles(0, steps || 1);
 
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+      _updateMobileGrid();
     }
 
     return {
@@ -2444,7 +3277,7 @@ const GoneRogue = (function () {
         _saveState();
 
         if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-          GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+          _updateMobileGrid();
         }
 
         return {
@@ -2468,7 +3301,7 @@ const GoneRogue = (function () {
 
     // Update mobile UI
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+      _updateMobileGrid();
     }
 
     return moveResult;
@@ -2492,7 +3325,7 @@ const GoneRogue = (function () {
 
     // Update mobile UI
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+      _updateMobileGrid();
     }
 
     return result;
@@ -2635,6 +3468,28 @@ const GoneRogue = (function () {
       _player.energy = Math.min(_player.maxEnergy, _player.energy + card.stats.energy);
     }
 
+    // Check for wrong item in safe zone trigger
+    var floorType = _getFloorType(_floor);
+    if (floorType === FLOOR_TYPES.BONFIRE && typeof SecretFloors !== 'undefined') {
+      // Using combat cards or certain items in safe zones can trigger secret floors
+      var hasSecretTag = card.category === 'attack' || card.category === 'interrupt' || card.type === 'attack';
+
+      if (hasSecretTag) {
+        var triggerResult = SecretFloors.triggerSecretFloor(
+          SecretFloors.TRIGGER_TYPES.WRONG_ITEM_SAFE_ZONE,
+          {
+            inSafeZone: true,
+            itemHasSecretTag: true
+          }
+        );
+
+        if (triggerResult.success) {
+          // Secret floor will trigger on next elevator use
+          console.log('[GoneRogue] Wrong item in safe zone triggered secret floor');
+        }
+      }
+    }
+
     _turn++;
     _saveState();
 
@@ -2693,6 +3548,22 @@ const GoneRogue = (function () {
       _pauseGameLoop();
     }
 
+    // Check for combat in no-combat zone trigger (bonfire floors)
+    var floorType = _getFloorType(_floor);
+    if (floorType === FLOOR_TYPES.BONFIRE && typeof SecretFloors !== 'undefined') {
+      var triggerResult = SecretFloors.triggerSecretFloor(
+        SecretFloors.TRIGGER_TYPES.COMBAT_NO_COMBAT_ZONE,
+        {
+          inNoCombatZone: true
+        }
+      );
+
+      if (triggerResult.success) {
+        // Secret floor will trigger on next elevator use
+        console.log('[GoneRogue] Combat in no-combat zone triggered secret floor');
+      }
+    }
+
     // Track combat entry for mythic conditions
     _player.combatEntries++;
 
@@ -2704,6 +3575,9 @@ const GoneRogue = (function () {
 
     // Calculate advantage state
     _strCombatAdvantage = _calculateAdvantage(_player, enemy, trigger);
+
+    // Scan 3x3 tiles around player for ground effects and apply combat modifiers
+    _applyGroundEffectModifiers();
 
     // Add combat entry message with emoji
     var advantageEmoji = _getAdvantageEmoji(_strCombatAdvantage);
@@ -3640,6 +4514,30 @@ const GoneRogue = (function () {
         lines.push('');
         lines.push('🏆 BOSS DEFEATED!');
 
+        // Check for boss overkill (200%+ damage) for secret floor trigger
+        if (typeof SecretFloors !== 'undefined' && _strCombatEnemy) {
+          var totalDamageDealt = _activeBoss.maxHp; // Boss HP that was depleted
+          var overkillThreshold = _activeBoss.maxHp * 2; // 200% of max HP
+
+          if (totalDamageDealt >= overkillThreshold) {
+            var triggerResult = SecretFloors.triggerSecretFloor(
+              SecretFloors.TRIGGER_TYPES.BOSS_OVERKILL,
+              {
+                damageDealt: totalDamageDealt,
+                bossMaxHp: _activeBoss.maxHp
+              }
+            );
+
+            if (triggerResult.success) {
+              lines.push('');
+              lines.push(triggerResult.message);
+              lines.push('└─ Reality feels unstable...');
+            } else if (triggerResult.suspicion) {
+              lines.push('└─ Something feels... wrong. [' + triggerResult.suspicion + '/' + triggerResult.threshold + ']');
+            }
+          }
+        }
+
         // Generate boss loot
         var bossLoot = _activeBoss.onDefeat(_player);
         lines.push('');
@@ -3701,6 +4599,35 @@ const GoneRogue = (function () {
         var bossReward = 25 + Math.floor(Math.random() * 26); // 25-50 cryptos
         _spawnCurrency(_strCombatEnemy.x, _strCombatEnemy.y, bossReward);
         lines.push('💰 Boss dropped ¢' + bossReward);
+
+        // Check for Impossible Charm drop (very rare)
+        if (_activeBoss && typeof CardSystem !== 'undefined') {
+          var isUberMega = _activeBoss.type === 'UBER_MEGA';
+          var isFinalBoss = _floor === 30;
+          var impossibleCharmChance = 0;
+
+          if (isUberMega) {
+            impossibleCharmChance = 0.05; // 5% chance from Uber Mega
+          } else if (isFinalBoss) {
+            impossibleCharmChance = 0.10; // 10% chance from final boss
+          }
+
+          if (impossibleCharmChance > 0 && Math.random() < impossibleCharmChance) {
+            var impossibleCharm = CardSystem.rollImpossibleCharm();
+            _items.push({
+              x: _strCombatEnemy.x,
+              y: _strCombatEnemy.y,
+              type: 'charm',
+              card: impossibleCharm,
+              spawnTime: Date.now(),
+              decayTime: 120000 // 2 minutes to pick up
+            });
+            lines.push('');
+            lines.push('💠💠💠 IMPOSSIBLE BINARY CHARM DROPPED! 💠💠💠');
+            lines.push('└─ A legendary artifact materializes...');
+            lines.push('');
+          }
+        }
       } else {
         // Regular enemy loot
         var cryptoAmount = Math.floor(Math.random() * 5) + 2; // 2-6 cryptos
@@ -3721,6 +4648,22 @@ const GoneRogue = (function () {
               decayTime: 30000 // 30 second decay
             });
             lines.push('🎴 Enemy dropped a card!');
+          }
+        }
+
+        // 30% chance to drop a common charm
+        if (Math.random() < 0.30 && typeof CardSystem !== 'undefined') {
+          var charm = CardSystem.rollCommonCharm();
+          if (charm) {
+            _items.push({
+              x: _strCombatEnemy.x,
+              y: _strCombatEnemy.y,
+              type: 'charm',
+              card: charm,
+              spawnTime: Date.now(),
+              decayTime: 30000 // 30 second decay
+            });
+            lines.push('✨ Enemy dropped a charm!');
           }
         }
       }
@@ -3873,6 +4816,326 @@ const GoneRogue = (function () {
     }
   }
 
+  // ============================================================
+  // ACTIVE ITEM USAGE & GROUND INTERACTION SYSTEM
+  // ============================================================
+
+  /**
+   * Trigger active item usage (called when clicking active slot with inventory closed)
+   * Implements ground effects, buffs, healing, etc.
+   */
+  function triggerActiveItem() {
+    if (typeof GAMESTATE === 'undefined') {
+      return {
+        lines: ['GAMESTATE UNAVAILABLE'],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var activeItem = GAMESTATE.getActiveItem();
+    if (!activeItem) {
+      return {
+        lines: ['NO ACTIVE ITEM', 'Equip an item from inventory first'],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    // Determine targeting: player tile + adjacent tiles
+    var targetTiles = [
+      { x: _player.x, y: _player.y }, // Player tile
+      { x: _player.x + 1, y: _player.y }, // Right
+      { x: _player.x - 1, y: _player.y }, // Left
+      { x: _player.x, y: _player.y + 1 }, // Down
+      { x: _player.x, y: _player.y - 1 }  // Up
+    ];
+
+    // Resolve item-to-ground interaction
+    var result = _resolveGroundInteraction(activeItem, targetTiles);
+
+    // Update mobile grid if active
+    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+      _updateMobileGrid();
+    }
+
+    return result;
+  }
+
+  /**
+   * Resolve interaction between active item and ground tiles
+   * @param {Object} item - Active item
+   * @param {Array} tiles - Array of {x, y} target tiles
+   * @returns {Object} - Command result
+   */
+  function _resolveGroundInteraction(item, tiles) {
+    if (!item || !tiles || typeof GroundEffects === 'undefined') {
+      return {
+        lines: ['CANNOT USE ITEM HERE'],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var itemName = item.name ? item.name.toLowerCase() : '';
+    var messages = [];
+    var effectApplied = false;
+
+    // LIGHTER: Ignite flammable surfaces (oil)
+    if (itemName.indexOf('lighter') !== -1 || itemName.indexOf('🔥') !== -1) {
+      for (var i = 0; i < tiles.length; i++) {
+        var tile = tiles[i];
+        if (tile.x < 0 || tile.x >= GRID_WIDTH || tile.y < 0 || tile.y >= GRID_HEIGHT) continue;
+
+        var groundEffect = GroundEffects.getGroundEffect(tile.x, tile.y);
+        if (groundEffect && groundEffect.canIgnite) {
+          // Ignite oil
+          GroundEffects.igniteOil(tile.x, tile.y);
+          messages.push('🔥 IGNITED OIL at (' + tile.x + ',' + tile.y + ')');
+          effectApplied = true;
+        } else if (!groundEffect || groundEffect.type === 'normal') {
+          // Create small fire on empty tile
+          GroundEffects.setGroundEffect(tile.x, tile.y, 'FIRE');
+          messages.push('🔥 LIT FIRE at (' + tile.x + ',' + tile.y + ')');
+          effectApplied = true;
+        }
+      }
+
+      if (!effectApplied) {
+        messages.push('💡 LIGHTER: No flammable surfaces nearby');
+      }
+    }
+    // WATER BOTTLE: Extinguish fire, create water
+    else if (itemName.indexOf('water') !== -1 || itemName.indexOf('bottle') !== -1 || itemName.indexOf('💧') !== -1) {
+      for (var i = 0; i < tiles.length; i++) {
+        var tile = tiles[i];
+        if (tile.x < 0 || tile.x >= GRID_WIDTH || tile.y < 0 || tile.y >= GRID_HEIGHT) continue;
+
+        var groundEffect = GroundEffects.getGroundEffect(tile.x, tile.y);
+        if (groundEffect && (groundEffect.type === 'FIRE' || groundEffect.type === 'OIL_IGNITED')) {
+          // Extinguish fire
+          GroundEffects.extinguishFire(tile.x, tile.y);
+          messages.push('💧 EXTINGUISHED FIRE at (' + tile.x + ',' + tile.y + ')');
+          effectApplied = true;
+        } else if (!groundEffect || groundEffect.type === 'normal') {
+          // Create water
+          GroundEffects.setGroundEffect(tile.x, tile.y, 'WATER');
+          messages.push('💧 WATER SPILLED at (' + tile.x + ',' + tile.y + ')');
+          effectApplied = true;
+        }
+      }
+
+      if (!effectApplied) {
+        messages.push('💧 WATER: No fires to extinguish');
+      }
+    }
+    // TAZER/SHOCK: Electrify conductive surfaces (water, rail)
+    else if (itemName.indexOf('tazer') !== -1 || itemName.indexOf('taser') !== -1 ||
+             itemName.indexOf('shock') !== -1 || itemName.indexOf('⚡') !== -1) {
+      for (var i = 0; i < tiles.length; i++) {
+        var tile = tiles[i];
+        if (tile.x < 0 || tile.x >= GRID_WIDTH || tile.y < 0 || tile.y >= GRID_HEIGHT) continue;
+
+        var groundEffect = GroundEffects.getGroundEffect(tile.x, tile.y);
+        if (groundEffect && (groundEffect.type === 'WATER' || groundEffect.conductive)) {
+          // Electrify water (spread to adjacent water tiles)
+          _electrifyWater(tile.x, tile.y, 2); // 2 tile radius spread
+          messages.push('⚡ ELECTRIFIED WATER at (' + tile.x + ',' + tile.y + ')');
+          effectApplied = true;
+        }
+      }
+
+      if (!effectApplied) {
+        messages.push('⚡ TAZER: No conductive surfaces nearby');
+      }
+    }
+    // HEALING ITEMS: Restore HP
+    else if (itemName.indexOf('medkit') !== -1 || itemName.indexOf('bandage') !== -1 ||
+             itemName.indexOf('heal') !== -1 || itemName.indexOf('💊') !== -1) {
+      var healAmount = 20 + Math.floor(Math.random() * 11); // 20-30 HP
+      _player.hp = Math.min(_player.hp + healAmount, _player.maxHp);
+      messages.push('💊 HEALED: +' + healAmount + ' HP');
+      messages.push('HP: ' + _player.hp + '/' + _player.maxHp);
+      effectApplied = true;
+    }
+    // DEFAULT: Item has passive effect or no ground interaction
+    else {
+      messages.push('📦 ' + item.emoji + ' ' + item.name);
+      messages.push('This item provides passive benefits while equipped');
+      effectApplied = true;
+    }
+
+    if (messages.length === 0) {
+      messages.push('ITEM USED: ' + item.name);
+    }
+
+    return {
+      lines: messages.concat(['']).concat(_renderGrid()),
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Electrify water tiles in radius (for tazer effect)
+   * @param {number} x - Center X
+   * @param {number} y - Center Y
+   * @param {number} radius - Spread radius
+   */
+  function _electrifyWater(x, y, radius) {
+    if (typeof GroundEffects === 'undefined') return;
+
+    var queue = [{x: x, y: y, dist: 0}];
+    var visited = {};
+    visited[x + ',' + y] = true;
+
+    while (queue.length > 0) {
+      var current = queue.shift();
+
+      // Apply electrified effect
+      var groundEffect = GroundEffects.getGroundEffect(current.x, current.y);
+      if (groundEffect && groundEffect.type === 'WATER') {
+        // Add electrified property to water
+        GroundEffects.setGroundEffect(current.x, current.y, 'WATER', {
+          electrified: true,
+          electrifiedTime: Date.now(),
+          electrifiedDuration: 6000 // 6 seconds
+        });
+      }
+
+      // Spread to adjacent tiles within radius
+      if (current.dist < radius) {
+        var neighbors = [
+          {x: current.x + 1, y: current.y},
+          {x: current.x - 1, y: current.y},
+          {x: current.x, y: current.y + 1},
+          {x: current.x, y: current.y - 1}
+        ];
+
+        for (var i = 0; i < neighbors.length; i++) {
+          var n = neighbors[i];
+          var key = n.x + ',' + n.y;
+
+          if (n.x >= 0 && n.x < GRID_WIDTH && n.y >= 0 && n.y < GRID_HEIGHT && !visited[key]) {
+            visited[key] = true;
+
+            var neighborEffect = GroundEffects.getGroundEffect(n.x, n.y);
+            if (neighborEffect && (neighborEffect.type === 'WATER' || neighborEffect.conductive)) {
+              queue.push({x: n.x, y: n.y, dist: current.dist + 1});
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // ============================================================
+  // END ACTIVE ITEM USAGE SYSTEM
+  // ============================================================
+
+  // ============================================================
+  // GROUND EFFECT COMBAT MODIFIERS
+  // ============================================================
+
+  /**
+   * Apply ground effect modifiers when STR combat starts
+   * Scans 3x3 tiles around player and enemy, applies status effects
+   */
+  function _applyGroundEffectModifiers() {
+    if (typeof GroundEffects === 'undefined') return;
+
+    var playerGroundEffect = GroundEffects.getGroundEffect(_player.x, _player.y);
+    var enemyGroundEffect = null;
+
+    if (_strCombatEnemy) {
+      enemyGroundEffect = GroundEffects.getGroundEffect(_strCombatEnemy.x, _strCombatEnemy.y);
+    }
+
+    // Apply player ground effect modifiers
+    if (playerGroundEffect) {
+      _applyPlayerGroundModifier(playerGroundEffect);
+    }
+
+    // Apply enemy ground effect modifiers
+    if (enemyGroundEffect && _strCombatEnemy) {
+      _applyEnemyGroundModifier(enemyGroundEffect, _strCombatEnemy);
+    }
+  }
+
+  /**
+   * Apply ground effect modifier to player
+   * @param {Object} effect - Ground effect
+   */
+  function _applyPlayerGroundModifier(effect) {
+    if (!effect) return;
+
+    // FIRE / OIL_IGNITED: Start combat with reduced HP and burn status
+    if (effect.type === 'FIRE' || effect.type === 'OIL_IGNITED') {
+      var burnDamage = Math.floor(_player.maxHp * 0.1); // 10% HP
+      _player.hp = Math.max(1, _player.hp - burnDamage);
+      _strCombatLog.push('🔥 STANDING IN FIRE! -' + burnDamage + ' HP');
+      _strCombatLog.push('└─ Burn status applied');
+    }
+    // ELECTRIFIED WATER: Shock risk, reduced evasion
+    else if (effect.type === 'WATER' && effect.electrified) {
+      _strCombatLog.push('⚡ STANDING IN ELECTRIFIED WATER!');
+      _strCombatLog.push('└─ Shock risk, -20% evasion');
+      // Modifier will be checked during damage calculation
+    }
+    // INDUSTRIAL_WASTE: Random mutation or debuff
+    else if (effect.type === 'INDUSTRIAL_WASTE') {
+      if (Math.random() < 0.3) {
+        _strCombatLog.push('☢️  TOXIC WASTE EXPOSURE!');
+        _strCombatLog.push('└─ Random debuff applied');
+        // Could implement specific debuffs here
+      }
+    }
+    // WATER: Movement penalty, reduced evasion
+    else if (effect.type === 'WATER') {
+      _strCombatLog.push('💧 Standing in water: -10% evasion');
+    }
+  }
+
+  /**
+   * Apply ground effect modifier to enemy
+   * @param {Object} effect - Ground effect
+   * @param {Object} enemy - Enemy object
+   */
+  function _applyEnemyGroundModifier(effect, enemy) {
+    if (!effect || !enemy) return;
+
+    // FIRE / OIL_IGNITED: Enemy takes damage, may be stunned
+    if (effect.type === 'FIRE' || effect.type === 'OIL_IGNITED') {
+      var burnDamage = Math.floor(enemy.maxHp * 0.15); // 15% HP for enemies
+      enemy.hp = Math.max(1, enemy.hp - burnDamage);
+      _strCombatLog.push('🔥 ENEMY IN FIRE! -' + burnDamage + ' HP');
+
+      // Weak enemies may be KO'd immediately
+      if (enemy.hp <= burnDamage && enemy.tier === 'SCOUT') {
+        enemy.hp = 0;
+        _strCombatLog.push('└─ Enemy KO\'d by fire!');
+      }
+    }
+    // ELECTRIFIED WATER: Stun enemy for first turn
+    else if (effect.type === 'WATER' && effect.electrified) {
+      _strCombatLog.push('⚡ ENEMY IN ELECTRIFIED WATER!');
+      _strCombatLog.push('└─ Enemy stunned turn 1');
+      enemy.stunnedTurns = 1;
+    }
+    // INDUSTRIAL_WASTE: Random debuff
+    else if (effect.type === 'INDUSTRIAL_WASTE') {
+      if (Math.random() < 0.3) {
+        _strCombatLog.push('☢️  Enemy exposed to toxic waste');
+        _strCombatLog.push('└─ Enemy weakened');
+        enemy.weakened = true;
+      }
+    }
+  }
+
+  // ============================================================
+  // END GROUND EFFECT COMBAT MODIFIERS
+  // ============================================================
+
   return {
     init: init,
     start: start,
@@ -3889,6 +5152,8 @@ const GoneRogue = (function () {
     fireProjectile: _fireProjectile,
     stepProjectiles: stepProjectiles,
     isStrCombatActive: isStrCombatActive,
-    getStrCombatState: getStrCombatState
+    getStrCombatState: getStrCombatState,
+    triggerActiveItem: triggerActiveItem,
+    updatePlayerLight: _updatePlayerLight
   };
 })();

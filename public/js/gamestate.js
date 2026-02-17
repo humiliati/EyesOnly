@@ -22,11 +22,33 @@ const GAMESTATE = (function () {
     maxPersistentSlots: 12,
     looseSlots: 8,
     cryptos: 0,                    // Currency (¢) - persistent across death
-    rogueRun: null
+    rogueRun: null,
+    activeItemSlot: null           // Active item slot (for lighting items, etc.)
   };
 
   function init() {
     _loadState();
+    _ensureDefaultPersistentInventory();
+
+    // Initialize UI currency display
+    if (typeof UIControls !== 'undefined' && UIControls.updateCurrency) {
+      UIControls.updateCurrency(_state.cryptos || 0);
+    }
+  }
+
+  /**
+   * Ensure player has default persistent inventory items on first run
+   */
+  function _ensureDefaultPersistentInventory() {
+    // If persistent inventory is empty, add the 3 core items
+    if (_state.inventoryPersistent.length === 0) {
+      _state.inventoryPersistent = [
+        { name: 'Radio Transceiver', emoji: '📻', type: 'equipment', description: 'Encrypted communication device' },
+        { name: 'Surveillance Cam', emoji: '📷', type: 'equipment', description: 'Compact surveillance camera' },
+        { name: 'Personal Journal', emoji: '📓', type: 'equipment', description: 'Your operational notes and observations' }
+      ];
+      _saveState();
+    }
   }
 
   function getMode() {
@@ -59,8 +81,16 @@ const GAMESTATE = (function () {
     // Transfer street inventory to loose carry if specified
     if (context.carryInventory && typeof StreetChronicles !== 'undefined') {
       var streetInv = StreetChronicles.getInventory() || [];
-      // Take up to looseSlots items from street inventory
-      _state.inventoryLoose = streetInv.slice(0, _state.looseSlots);
+      // Convert card name strings to actual card objects
+      var convertedInv = [];
+      for (var i = 0; i < streetInv.length && i < _state.looseSlots; i++) {
+        var itemStr = streetInv[i];
+        var convertedItem = _convertStreetItemToCard(itemStr);
+        if (convertedItem) {
+          convertedInv.push(convertedItem);
+        }
+      }
+      _state.inventoryLoose = convertedInv;
     }
 
     _saveState();
@@ -235,6 +265,29 @@ const GAMESTATE = (function () {
     return _state.inventoryLoose.slice(); // Return copy
   }
 
+  /**
+   * Set active item slot (for equipment that needs to be "equipped")
+   */
+  function setActiveItem(item) {
+    _state.activeItemSlot = item;
+    _saveState();
+  }
+
+  /**
+   * Get active item slot
+   */
+  function getActiveItem() {
+    return _state.activeItemSlot;
+  }
+
+  /**
+   * Clear active item slot
+   */
+  function clearActiveItem() {
+    _state.activeItemSlot = null;
+    _saveState();
+  }
+
   function _saveState() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(_state));
@@ -256,6 +309,36 @@ const GAMESTATE = (function () {
     }
   }
 
+  /**
+   * Convert street inventory item string to card object
+   * @param {String} itemStr - Item string from Street Chronicles
+   * @returns {Object|null} Card object or null if not a card
+   */
+  function _convertStreetItemToCard(itemStr) {
+    if (!itemStr) return null;
+
+    // Map street item names to CardSystem card types
+    var cardMapping = {
+      'SINGLE_SHOT card': 'SINGLE_SHOT',
+      'PRONE card': 'PRONE',
+      'KATCHUP card': 'KATCHUP',
+      'DODGE card': 'DODGE',
+      'BURST_SHOT card': 'BURST_SHOT'
+    };
+
+    // Check if item is a card
+    for (var key in cardMapping) {
+      if (itemStr.indexOf(key) !== -1) {
+        if (typeof CardSystem !== 'undefined' && typeof CardSystem.rollCard === 'function') {
+          return CardSystem.rollCard(cardMapping[key]);
+        }
+      }
+    }
+
+    // Not a card - return as-is (for non-card items like festival flyer)
+    return { name: itemStr, type: 'misc' };
+  }
+
   function reset() {
     _state = {
       mode: MODES.STREET,
@@ -266,7 +349,8 @@ const GAMESTATE = (function () {
       maxPersistentSlots: 12,
       looseSlots: 8,
       cryptos: 0,
-      rogueRun: null
+      rogueRun: null,
+      activeItemSlot: null
     };
     _saveState();
   }
@@ -337,6 +421,12 @@ const GAMESTATE = (function () {
   function addCryptos(amount) {
     _state.cryptos = (_state.cryptos || 0) + amount;
     _saveState();
+
+    // Update UI display if available
+    if (typeof UIControls !== 'undefined' && UIControls.updateCurrency) {
+      UIControls.updateCurrency(_state.cryptos);
+    }
+
     return {
       success: true,
       total: _state.cryptos,
@@ -357,6 +447,12 @@ const GAMESTATE = (function () {
     }
     _state.cryptos -= amount;
     _saveState();
+
+    // Update UI display if available
+    if (typeof UIControls !== 'undefined' && UIControls.updateCurrency) {
+      UIControls.updateCurrency(_state.cryptos);
+    }
+
     return {
       success: true,
       remaining: _state.cryptos,
@@ -385,6 +481,9 @@ const GAMESTATE = (function () {
     clearLooseInventory: clearLooseInventory,
     getPersistentInventory: getPersistentInventory,
     getLooseInventory: getLooseInventory,
+    setActiveItem: setActiveItem,
+    getActiveItem: getActiveItem,
+    clearActiveItem: clearActiveItem,
     addCryptos: addCryptos,
     spendCryptos: spendCryptos,
     getCryptos: getCryptos,

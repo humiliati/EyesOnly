@@ -1,23 +1,23 @@
 {
   "Cedar St": {
-    "description": "You are on Cedar Street, where the evening crowd flows between warm storefront light and the hiss of passing tires. A brass placard reads: CEDAR ST — HOME OF THE ANNUAL SANDPOINT SUMMER FEST.",
+    "description": "You are on Cedar Street, where the evening crowd flows between warm storefront light and the hiss of passing tires. A brass placard reads: CEDAR ST — HOME OF THE ANNUAL SANDPOINT SUMMER FEST. A suspicious cardboard box sits near the corner with 'TRAINING DECK' scrawled on it.",
     "north": "Main St",
     "east": "First St E",
     "south": null,
     "west": null,
     "businesses": ["Baker's Brew", "Cedar Books"],
     "event_id": null,
-    "items": ["festival flyer"]
+    "items": ["festival flyer", "🎯 SINGLE_SHOT card", "🛡️ PRONE card", "🍅 KATCHUP card", "💨 DODGE card", "💥 BURST_SHOT card"]
   },
   "Main St": {
-    "description": "Main Street rises gently with amber storefronts, a violinist at the corner, and reflections in old glass. People pass by as if this were any ordinary night.",
+    "description": "Main Street rises gently with amber storefronts, a violinist at the corner, and reflections in old glass. People pass by as if this were any ordinary night. Something metallic glints near a storefront.",
     "north": "North 3rd St",
     "east": "Second St E",
     "south": "Cedar St",
     "west": null,
     "businesses": ["Sandpoint Outfitters"],
     "event_id": null,
-    "items": []
+    "items": ["🔦 flashlight"]
   },
   "First St E": {
     "description": "First Street East curves beside the waterfront. The Statue of Liberty replica stands ahead, torch trembling in a wind rolling off the lake.",
@@ -40,23 +40,23 @@
     "items": ["hackathon badge"]
   },
   "North 3rd St": {
-    "description": "North 3rd Street climbs toward a lookout where the lake opens wide. A bronze gull statue watches the avenue from a small park bench.",
+    "description": "North 3rd Street climbs toward a lookout where the lake opens wide. A bronze gull statue watches the avenue from a small park bench. Military surplus gear is scattered nearby.",
     "north": null,
     "east": null,
     "south": "Second St E",
     "west": null,
     "businesses": [],
     "event_id": "lakeview_token",
-    "items": ["gull feather"]
+    "items": ["gull feather", "🥽 night vision goggles"]
   },
   "Waterfront Ave": {
-    "description": "Waterfront Avenue hums with dock lights and low engine rumble. The boardwalk creaks beneath your steps as signs flicker over late-night kiosks.",
+    "description": "Waterfront Avenue hums with dock lights and low engine rumble. The boardwalk creaks beneath your steps as signs flicker over late-night kiosks. A discarded lighter sits on a bench.",
     "north": null,
     "east": null,
     "south": null,
     "west": "Second St E",
     "businesses": ["Marina Kiosk"],
     "event_id": null,
-    "items": []
+    "items": ["🔥 lighter"]
   }
 }
