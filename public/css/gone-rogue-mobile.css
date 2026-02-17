@@ -310,3 +310,58 @@
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.7; transform: scale(1.05); }
 }
+
+/* STR Combat Overlay */
+.str-combat-overlay {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 10, 10, 0.95);
+  border: 3px solid #ff1c4a;
+  border-radius: 8px;
+  padding: 15px 20px;
+  z-index: 1000;
+  box-shadow: 0 0 30px rgba(255, 28, 74, 0.6), inset 0 0 20px rgba(255, 28, 74, 0.2);
+  font-family: 'Courier New', monospace;
+  text-align: center;
+  animation: combat-pulse 1s infinite;
+}
+
+@keyframes combat-pulse {
+  0%, 100% {
+    box-shadow: 0 0 30px rgba(255, 28, 74, 0.6), inset 0 0 20px rgba(255, 28, 74, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(255, 28, 74, 0.8), inset 0 0 25px rgba(255, 28, 74, 0.3);
+  }
+}
+
+.str-combat-header {
+  color: #ff1c4a;
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.str-combat-status {
+  color: #1cff9b;
+  font-size: 14px;
+  margin: 8px 0;
+}
+
+.advantage-indicator {
+  display: inline-block;
+  padding: 5px 10px;
+  background: rgba(28, 255, 155, 0.1);
+  border: 1px solid #1cff9b;
+  border-radius: 4px;
+}
+
+.str-combat-enemy {
+  color: #ffeb3b;
+  font-size: 13px;
+  margin-top: 10px;
+}

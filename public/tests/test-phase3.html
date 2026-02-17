@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phase 3 STR Combat Tests - EYES ONLY</title>
+  <style>
+    body {
+      background: #0a0a0a;
+      color: #33ff33;
+      font-family: 'Courier New', monospace;
+      padding: 20px;
+    }
+    h1 {
+      color: #1cff9b;
+      text-align: center;
+      border-bottom: 2px solid #1cff9b;
+      padding-bottom: 10px;
+    }
+    .info {
+      background: rgba(28, 255, 155, 0.1);
+      border: 1px solid #1cff9b;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>⚔️ PHASE 3 - STR COMBAT SYSTEM TESTS</h1>
+
+  <div class="info">
+    <p><strong>Test Status:</strong> Running automated tests...</p>
+    <p><strong>Open Console:</strong> F12 or Right-click → Inspect → Console</p>
+    <p><strong>Note:</strong> Some tests require manual verification during gameplay</p>
+  </div>
+
+  <!-- Load dependencies -->
+  <script src="../js/card-system.js"></script>
+  <script src="../js/gamestate.js"></script>
+  <script src="../js/gone-rogue.js"></script>
+  <script src="../js/gone-rogue-mobile.js"></script>
+
+  <!-- Load Phase 3 tests -->
+  <script src="test-phase3-str-combat.js"></script>
+
+  <script>
+    // Display results in page after tests run
+    setTimeout(function() {
+      var info = document.querySelector('.info');
+      info.innerHTML += '<p style="color: #1cff9b; font-weight: bold; margin-top: 15px;">✓ Automated tests complete. Check console for results.</p>';
+    }, 100);
+  </script>
+</body>
+</html>
