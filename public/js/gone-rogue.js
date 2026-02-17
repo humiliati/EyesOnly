@@ -305,6 +305,18 @@ const GoneRogue = (function () {
       console.log('[GoneRogue] Lighting system initialized');
     }
 
+    // Initialize secret floors system if available
+    if (typeof SecretFloors !== 'undefined') {
+      SecretFloors.init();
+      console.log('[GoneRogue] Secret floors system initialized');
+    }
+
+    // Initialize ground effects system if available
+    if (typeof GroundEffects !== 'undefined') {
+      GroundEffects.init();
+      console.log('[GoneRogue] Ground effects system initialized');
+    }
+
     // Initialize from GAMESTATE if available
     var lines = [];
     if (typeof GAMESTATE !== 'undefined') {
@@ -843,8 +855,41 @@ const GoneRogue = (function () {
   }
 
   function _placeEnvironmentalTiles() {
-    // Add environmental tiles based on difficulty
+    // Add environmental tiles based on difficulty and biome
     var difficulty = _floor;
+    var biome = _getBiome(_floor);
+
+    // Place biome-specific ground effects if system available
+    if (typeof GroundEffects !== 'undefined') {
+      var effectCount = 5 + Math.floor(difficulty / 3);
+
+      // Determine ground effects by biome
+      var biomeEffects = [];
+      if (biome.name === 'Shopping Mall') {
+        biomeEffects = ['GLASS', 'SODA_SPILL', 'WATER'];
+      } else if (biome.name === 'Industrial Plant') {
+        biomeEffects = ['OIL', 'FIRE', 'INDUSTRIAL_WASTE', 'STEAM'];
+      } else if (biome.name === 'Commercial Office') {
+        biomeEffects = ['WATER', 'GLASS'];
+      } else if (biome.name === 'Grey Cave') {
+        biomeEffects = ['WATER'];
+      }
+
+      // Place ground effects
+      for (var i = 0; i < effectCount && biomeEffects.length > 0; i++) {
+        var x = Math.floor(Math.random() * (GRID_WIDTH - 2)) + 1;
+        var y = Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1;
+
+        if (_grid[y][x] === TILES.EMPTY) {
+          var effectType = biomeEffects[Math.floor(Math.random() * biomeEffects.length)];
+          GroundEffects.setGroundEffect(x, y, effectType);
+
+          // Mark in tile metadata for rendering
+          var key = x + ',' + y;
+          _tileMetadata[key] = { type: 'ground_effect', groundType: effectType };
+        }
+      }
+    }
 
     // Late game: add hazards and difficult terrain
     if (difficulty >= 5) {
@@ -857,6 +902,11 @@ const GoneRogue = (function () {
           _grid[y][x] = TILES.HAZARD;
           var key = x + ',' + y;
           _tileMetadata[key] = { type: 'hazard', damage: 1 };
+
+          // Also add fire ground effect if available
+          if (typeof GroundEffects !== 'undefined') {
+            GroundEffects.setGroundEffect(x, y, 'FIRE');
+          }
         }
       }
     }
@@ -2259,6 +2309,30 @@ const GoneRogue = (function () {
 
     // Update color cycle timer for visual feedback
     _enemyColorCycleTime += deltaMs;
+
+    // Update ground effects system (spreading fire, dissipating steam, etc.)
+    if (typeof GroundEffects !== 'undefined') {
+      GroundEffects.update(deltaMs, GRID_WIDTH, GRID_HEIGHT);
+
+      // Apply ground effect damage to player
+      var playerGroundDamage = GroundEffects.getDamage(_player.x, _player.y);
+      if (playerGroundDamage > 0) {
+        _player.hp = Math.max(0, _player.hp - playerGroundDamage);
+        if (_player.hp <= 0) {
+          // Player died from ground effect
+          return _handlePlayerDeath('environmental_hazard');
+        }
+      }
+
+      // Apply ground effect damage to enemies
+      _enemies.forEach(function(enemy) {
+        if (enemy.hp <= 0) return;
+        var enemyGroundDamage = GroundEffects.getDamage(enemy.x, enemy.y);
+        if (enemyGroundDamage > 0) {
+          enemy.hp = Math.max(0, enemy.hp - enemyGroundDamage);
+        }
+      });
+    }
 
     // Update lighting system
     if (typeof LightingSystem !== 'undefined') {
