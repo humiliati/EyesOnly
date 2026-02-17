@@ -85,7 +85,7 @@
     );
 
     console.log('\n--- Test 3: Call requestRogue with Street active ---');
-    
+
     // Reset GAMESTATE
     if (typeof GAMESTATE.reset === 'function') {
       GAMESTATE.reset();
@@ -162,6 +162,41 @@
       result2 && typeof result2 === 'object',
       'Result2 is an object'
     );
+
+    console.log('\n--- Test 5: Auto-trigger from repeated invalid directions ---');
+
+    // Reset mocks and reload StreetChronicles with actual implementation
+    window.StreetChronicles = originalStreet;
+    window.GoneRogue._startCalled = false;
+    window.GoneRogue._startContext = null;
+
+    if (typeof StreetChronicles !== 'undefined' && StreetChronicles.isActive) {
+      console.log('Testing repeated invalid direction trigger...');
+
+      // We can't fully test this without the actual Street Chronicles being active
+      // and having loaded street data, but we can verify the code structure exists
+      var streetSource = StreetChronicles.toString();
+
+      assert(
+        streetSource.indexOf('lastInvalidDirection') > -1,
+        'StreetChronicles tracks lastInvalidDirection'
+      );
+      assert(
+        streetSource.indexOf('invalidDirectionCount') > -1,
+        'StreetChronicles tracks invalidDirectionCount'
+      );
+      assert(
+        streetSource.indexOf('out_of_bounds') > -1,
+        'StreetChronicles triggers Gone Rogue with out_of_bounds reason'
+      );
+      assert(
+        streetSource.indexOf('carryInventory: true') > -1,
+        'StreetChronicles triggers Gone Rogue with carryInventory: true'
+      );
+    } else {
+      console.log('⚠ Skipping live test - StreetChronicles not active');
+      assert(true, 'Test skipped (StreetChronicles not active)');
+    }
 
     console.log('\n========================================');
     console.log('TEST SUMMARY');

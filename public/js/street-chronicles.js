@@ -21,7 +21,9 @@ const StreetChronicles = (function () {
     quests: {},
     visited: {},
     idleTurns: 0,
-    weather: 'A crisp breeze cuts between streetlights, carrying the scent of lake water and espresso.'
+    weather: 'A crisp breeze cuts between streetlights, carrying the scent of lake water and espresso.',
+    lastInvalidDirection: null,
+    invalidDirectionCount: 0
   };
 
   function init() {
@@ -195,15 +197,62 @@ const StreetChronicles = (function () {
     var street = _streets[_state.location];
     var next = street ? street[direction] : null;
     if (!next) {
+      // Track repeated invalid direction attempts
+      if (_state.lastInvalidDirection === direction) {
+        _state.invalidDirectionCount++;
+        console.debug('[StreetChronicles] Repeated invalid direction:', direction, 'count:', _state.invalidDirectionCount);
+
+        // Trigger Gone Rogue after 2 repeated attempts (threshold = 2)
+        if (_state.invalidDirectionCount >= 2) {
+          console.debug('[StreetChronicles] Triggering Gone Rogue from repeated invalid directions');
+
+          // Reset tracking
+          _state.lastInvalidDirection = null;
+          _state.invalidDirectionCount = 0;
+          _save();
+
+          // Trigger requestRogue if GAMESTATE is available
+          if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.requestRogue === 'function') {
+            return GAMESTATE.requestRogue({
+              reason: 'out_of_bounds',
+              carryInventory: true
+            });
+          } else {
+            console.warn('[StreetChronicles] GAMESTATE.requestRogue not available, cannot trigger Gone Rogue');
+          }
+        }
+      } else {
+        // New invalid direction, reset counter
+        _state.lastInvalidDirection = direction;
+        _state.invalidDirectionCount = 1;
+      }
+
       _state.idleTurns++;
       _save();
+
+      // Build hint based on available exits
+      var availableExits = [];
+      if (street) {
+        if (street.north) availableExits.push('NORTH');
+        if (street.east) availableExits.push('EAST');
+        if (street.south) availableExits.push('SOUTH');
+        if (street.west) availableExits.push('WEST');
+      }
+
+      var hintLine = availableExits.length > 0
+        ? 'TRY: ' + availableExits.join(' OR ')
+        : 'NO CLEAR EXITS';
+
       return {
-        lines: ['THAT ROUTE IS BLOCKED', 'YOU REMAIN ON ' + _state.location, ''],
+        lines: ['THAT ROUTE IS BLOCKED', 'YOU REMAIN ON ' + _state.location, hintLine, ''],
         prompt: getPrompt(),
         stayActive: true
       };
     }
 
+    // Valid move - reset invalid direction tracking
+    _state.lastInvalidDirection = null;
+    _state.invalidDirectionCount = 0;
     _state.location = next;
     _state.idleTurns = 0;
     _save();
