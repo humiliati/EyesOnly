@@ -22,6 +22,63 @@ const GoneRogueMobile = (function () {
   function init() {
     _createMobileUI();
     _setupTouchHandlers();
+    _setupKeyboardHandlers(); // Add keyboard support for desktop
+  }
+
+  /**
+   * Setup keyboard event handlers for desktop WASD navigation
+   */
+  function _setupKeyboardHandlers() {
+    document.addEventListener('keydown', function(e) {
+      // Only handle keyboard if Gone Rogue is active
+      if (typeof GoneRogue === 'undefined' || !GoneRogue.isActive()) return;
+
+      // Check if we're in STR combat - allow card selection but not movement
+      var inStrCombat = GoneRogue.isStrCombatActive && GoneRogue.isStrCombatActive();
+
+      var key = e.key.toLowerCase();
+      var handled = false;
+
+      // WASD movement (only if not in STR combat)
+      if (!inStrCombat) {
+        if (key === 'w' || key === 'arrowup') {
+          e.preventDefault();
+          GoneRogue.process('n');
+          handled = true;
+        } else if (key === 's' || key === 'arrowdown') {
+          e.preventDefault();
+          GoneRogue.process('s');
+          handled = true;
+        } else if (key === 'a' || key === 'arrowleft') {
+          e.preventDefault();
+          GoneRogue.process('a');
+          handled = true;
+        } else if (key === 'd' || key === 'arrowright') {
+          e.preventDefault();
+          GoneRogue.process('d');
+          handled = true;
+        }
+      }
+
+      // Number keys 1-5 for card selection (works in and out of combat)
+      if (key >= '1' && key <= '5') {
+        var cardIndex = parseInt(key) - 1;
+        // Get loose inventory and use card
+        if (typeof GAMESTATE !== 'undefined') {
+          var loose = GAMESTATE.getLooseInventory();
+          if (cardIndex < loose.length) {
+            // Simulate card swipe up (use card)
+            GoneRogue.handleCardSwipe(cardIndex, 'up');
+            handled = true;
+          }
+        }
+      }
+
+      // If we handled a key, prevent the terminal from also processing it
+      if (handled) {
+        e.stopPropagation();
+      }
+    });
   }
 
   /**

@@ -911,6 +911,15 @@ const GoneRogue = (function () {
   }
 
   function _movePlayer(dx, dy, runMode) {
+    // Block movement during STR combat
+    if (_strCombatActive) {
+      return {
+        lines: ['⚔️  MOVEMENT LOCKED - STR COMBAT IN PROGRESS', 'Use cards to fight or type FLEE to retreat', ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
     var newX = _player.x + dx;
     var newY = _player.y + dy;
 
@@ -1993,6 +2002,9 @@ const GoneRogue = (function () {
       playerGoesFirst = _player.initiative >= (enemy.initiative || 0);
     }
 
+    // Enable combat zoom/focus for both desktop and mobile
+    _enableCombatZoom();
+
     // Execute first round
     if (playerGoesFirst && trigger === 'player_attack' && card) {
       // Player initiated with attack card
@@ -2756,7 +2768,7 @@ const GoneRogue = (function () {
     }
 
     lines.push('');
-    lines.push('Returning to realtime grid...');
+    lines.push('Movement unlocked. Returning to realtime grid...');
     lines.push('');
 
     // Reset combat state
@@ -2765,6 +2777,9 @@ const GoneRogue = (function () {
     _strCombatAdvantage = 'neutral';
     _strCombatRound = 0;
     _strCombatLog = [];
+
+    // Disable combat zoom
+    _disableCombatZoom();
 
     // Resume game loop
     if (!_gameLoopActive) {
@@ -2842,6 +2857,37 @@ const GoneRogue = (function () {
    */
   function getEnemies() {
     return _enemies;
+  }
+
+  /**
+   * Enable combat zoom/focus (for desktop STR combat visual feedback)
+   */
+  function _enableCombatZoom() {
+    if (typeof document === 'undefined') return;
+
+    // Add combat-active class to grid for CSS zoom effect
+    var gridContainer = document.getElementById('rogue-grid-mobile');
+    if (gridContainer) {
+      gridContainer.classList.add('combat-zoom-active');
+    }
+
+    // Flash the header to indicate combat start
+    _triggerCombatFlash();
+
+    // For desktop: optionally center view on player and enemy
+    // This could be enhanced with CSS transforms or scrollIntoView
+  }
+
+  /**
+   * Disable combat zoom (return to normal view)
+   */
+  function _disableCombatZoom() {
+    if (typeof document === 'undefined') return;
+
+    var gridContainer = document.getElementById('rogue-grid-mobile');
+    if (gridContainer) {
+      gridContainer.classList.remove('combat-zoom-active');
+    }
   }
 
   return {
