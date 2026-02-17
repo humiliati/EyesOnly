@@ -109,6 +109,18 @@
   color: #888;
 }
 
+.cell-breakable {
+  color: #ff9800;
+}
+
+.cell-breakable-broken {
+  color: #6b4c3b;
+}
+
+.cell-projectile {
+  color: #1cff9b;
+}
+
 .cell-exit {
   color: #00ff00;
   animation: exit-glow 1s infinite alternate;

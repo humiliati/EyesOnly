@@ -32,6 +32,8 @@ const GoneRogue = (function () {
 
   var _enemies = [];
   var _items = [];
+  var _projectiles = [];
+  var _breakables = [];
   var _turn = 0;
   var _floor = 1;
   var _alertLevel = 'safe'; // safe, caution, danger
@@ -58,7 +60,10 @@ const GoneRogue = (function () {
     ENEMY: 'E',
     ITEM: '*',
     EXIT: '▼',
-    COVER: '▓'
+    COVER: '▓',
+    BREAKABLE: '☐',
+    DEBRIS: '░',
+    PROJECTILE: '•'
   };
 
   // Enemy awareness states
@@ -131,7 +136,7 @@ const GoneRogue = (function () {
     // Use mobile UI if available
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
       GoneRogueMobile.show();
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items);
+      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
 
       return {
         lines: lines,
@@ -180,6 +185,14 @@ const GoneRogue = (function () {
       return { lines: _inventoryLines(), prompt: getPrompt(), stayActive: true };
     }
 
+    if (cmd.indexOf('shoot') === 0 || cmd.indexOf('fire') === 0) {
+      return _fireProjectile(cmd);
+    }
+
+    if (cmd.indexOf('kick') === 0 || cmd.indexOf('boot') === 0) {
+      return _kickBreakable(cmd);
+    }
+
     // Movement commands
     if (cmd === 'n' || cmd === 'north' || cmd === 'w') {
       return _movePlayer(0, -1);
@@ -215,6 +228,8 @@ const GoneRogue = (function () {
       '',
       'GONE ROGUE COMMANDS:',
       '  N/S/E/W (or WASD)  - Move',
+      '  SHOOT <dir>        - Fire projectile (ascii/emoji)',
+      '  KICK <dir>         - Boot adjacent breakable',
       '  TAKE/PICKUP        - Pick up item',
       '  EXTRACT            - Extract from exit point',
       '  STATUS             - Show player stats',
@@ -282,6 +297,8 @@ const GoneRogue = (function () {
   function _generateFloor() {
     // Initialize empty grid
     _grid = [];
+    _projectiles = [];
+    _breakables = [];
     for (var y = 0; y < GRID_HEIGHT; y++) {
       var row = [];
       for (var x = 0; x < GRID_WIDTH; x++) {
@@ -315,6 +332,9 @@ const GoneRogue = (function () {
     var exitX = GRID_WIDTH - 3;
     var exitY = GRID_HEIGHT - 3;
     _grid[exitY][exitX] = TILES.EXIT;
+
+    // Place breakables (deterministic for tests)
+    _spawnBreakables();
 
     // Place enemies
     _enemies = [];
@@ -382,6 +402,17 @@ const GoneRogue = (function () {
       var ix = Math.floor(Math.random() * (GRID_WIDTH - 2)) + 1;
       var iy = Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1;
 
+      var occupied = _grid[iy][ix] === TILES.WALL ||
+        (_breakables.some(function(b) { return b.x === ix && b.y === iy && b.hp > 0; })) ||
+        _enemies.some(function(e) { return e.x === ix && e.y === iy; }) ||
+        (ix === _player.x && iy === _player.y) ||
+        (ix === exitX && iy === exitY);
+
+      if (occupied) {
+        i--;
+        continue;
+      }
+
       // Generate random card
       if (typeof CardSystem !== 'undefined') {
         var baseType = CardSystem.getRandomBaseCard();
@@ -393,11 +424,38 @@ const GoneRogue = (function () {
     _turn = 0;
   }
 
+  function _spawnBreakables() {
+    // Clear path in front of player for deterministic projectile tests
+    if (_isInsideBounds(_player.x + 1, _player.y)) _grid[_player.y][_player.x + 1] = TILES.EMPTY;
+    if (_isInsideBounds(_player.x + 2, _player.y)) _grid[_player.y][_player.x + 2] = TILES.EMPTY;
+    if (_isInsideBounds(_player.x + 3, _player.y)) _grid[_player.y][_player.x + 3] = TILES.EMPTY;
+
+    _breakables = [
+      { x: _player.x + 1, y: _player.y, hp: 3, glyph: TILES.BREAKABLE, destroyedGlyph: TILES.DEBRIS, emoji: '📦', tag: 'close_crate' },
+      { x: _player.x + 6, y: _player.y - 2, hp: 2, glyph: TILES.BREAKABLE, destroyedGlyph: TILES.DEBRIS, emoji: '🧱', tag: 'far_crate' }
+    ].filter(function(b) {
+      return b.x > 0 && b.x < GRID_WIDTH - 1 && b.y > 0 && b.y < GRID_HEIGHT - 1;
+    });
+
+    _breakables.forEach(function(breakable) {
+      _grid[breakable.y][breakable.x] = TILES.BREAKABLE;
+    });
+  }
+
   function _renderGrid() {
     var lines = [''];
 
     // Copy grid for rendering
     var display = _grid.map(function(row) { return row.slice(); });
+
+    // Place breakables
+    _breakables.forEach(function(breakable) {
+      if (breakable.hp > 0) {
+        display[breakable.y][breakable.x] = breakable.glyph || TILES.BREAKABLE;
+      } else if (breakable.destroyedGlyph) {
+        display[breakable.y][breakable.x] = breakable.destroyedGlyph;
+      }
+    });
 
     // Place enemies
     _enemies.forEach(function(enemy) {
@@ -409,6 +467,11 @@ const GoneRogue = (function () {
     // Place items
     _items.forEach(function(item) {
       display[item.y][item.x] = TILES.ITEM;
+    });
+
+    // Place projectiles
+    _projectiles.forEach(function(projectile) {
+      display[projectile.y][projectile.x] = projectile.glyph || TILES.PROJECTILE;
     });
 
     // Place player
@@ -455,6 +518,15 @@ const GoneRogue = (function () {
     if (tile === TILES.WALL) {
       return {
         lines: ['WALL BLOCKS PATH', ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var blockingBreakable = _getBreakableAt(newX, newY);
+    if (blockingBreakable && blockingBreakable.hp > 0) {
+      return {
+        lines: [blockingBreakable.emoji + ' BREAKABLE BLOCKS PATH', 'USE SHOOT OR KICK TO CLEAR', ''].concat(_renderGrid()),
         prompt: getPrompt(),
         stayActive: true
       };
@@ -641,12 +713,14 @@ const GoneRogue = (function () {
       }
     });
 
+    _updateProjectiles(deltaMs);
+
     // Update color cycle timer for visual feedback
     _enemyColorCycleTime += deltaMs;
 
     // Re-render if using interactive grid
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime);
+      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
     }
   }
 
@@ -844,6 +918,172 @@ const GoneRogue = (function () {
     return angleDiff <= coneAngle / 2;
   }
 
+  function _isInsideBounds(x, y) {
+    return x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT;
+  }
+
+  function _getBreakableAt(x, y) {
+    return _breakables.find(function(b) { return b.x === x && b.y === y; });
+  }
+
+  function _damageBreakable(breakable, amount) {
+    breakable.hp = Math.max(0, (breakable.hp || 0) - amount);
+    if (breakable.hp === 0) {
+      _grid[breakable.y][breakable.x] = breakable.destroyedGlyph || TILES.DEBRIS;
+    }
+  }
+
+  function _parseDirection(input) {
+    var raw = (input || '').trim().split(/\s+/);
+    var token = raw.length > 1 ? raw[1] : raw[0];
+
+    var directions = {
+      'n': { dx: 0, dy: -1, direction: 'north' },
+      'north': { dx: 0, dy: -1, direction: 'north' },
+      'u': { dx: 0, dy: -1, direction: 'north' },
+      's': { dx: 0, dy: 1, direction: 'south' },
+      'south': { dx: 0, dy: 1, direction: 'south' },
+      'd': { dx: 0, dy: 1, direction: 'south' },
+      'e': { dx: 1, dy: 0, direction: 'east' },
+      'east': { dx: 1, dy: 0, direction: 'east' },
+      'r': { dx: 1, dy: 0, direction: 'east' },
+      'w': { dx: -1, dy: 0, direction: 'west' },
+      'west': { dx: -1, dy: 0, direction: 'west' },
+      'a': { dx: -1, dy: 0, direction: 'west' }
+    };
+
+    if (token && directions[token]) {
+      return directions[token];
+    }
+
+    if (_player.lastMoveDirection && directions[_player.lastMoveDirection]) {
+      return directions[_player.lastMoveDirection];
+    }
+
+    return directions['east'];
+  }
+
+  function _getProjectileGlyph(direction) {
+    var glyphs = {
+      'north': '↑',
+      'south': '↓',
+      'east': '→',
+      'west': '←'
+    };
+
+    return glyphs[direction] || TILES.PROJECTILE;
+  }
+
+  function _fireProjectile(cmd) {
+    var dir = _parseDirection(cmd);
+
+    var projectile = {
+      x: _player.x,
+      y: _player.y,
+      dx: dir.dx,
+      dy: dir.dy,
+      glyph: _getProjectileGlyph(dir.direction),
+      emoji: '💥',
+      range: 10,
+      power: 2
+    };
+
+    _projectiles.push(projectile);
+    _updateProjectiles(0, 1);
+    _saveState();
+
+    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+    }
+
+    return {
+      lines: ['FIRING ' + projectile.glyph + ' ' + dir.direction.toUpperCase(), ''].concat(_renderGrid()),
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  function _kickBreakable(cmd) {
+    var dir = _parseDirection(cmd);
+    var targetX = _player.x + dir.dx;
+    var targetY = _player.y + dir.dy;
+    var target = _getBreakableAt(targetX, targetY);
+
+    if (!target || target.hp <= 0) {
+      return {
+        lines: ['NOTHING TO KICK THAT WAY', ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    _damageBreakable(target, 2);
+    _saveState();
+
+    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+    }
+
+    return {
+      lines: ['🥾 BOOTED ' + target.emoji + ' (HP ' + target.hp + ')', ''].concat(_renderGrid()),
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  function _updateProjectiles(deltaMs, steps) {
+    var iterations = steps || 1;
+
+    for (var i = 0; i < iterations; i++) {
+      _projectiles = _projectiles.filter(function(projectile) {
+        return _advanceProjectile(projectile);
+      });
+    }
+  }
+
+  function _advanceProjectile(projectile) {
+    if (!projectile) return false;
+
+    var nextX = projectile.x + projectile.dx;
+    var nextY = projectile.y + projectile.dy;
+
+    if (!_isInsideBounds(nextX, nextY)) return false;
+
+    var tile = _grid[nextY][nextX];
+    if (tile === TILES.WALL) return false;
+
+    var breakable = _getBreakableAt(nextX, nextY);
+    if (breakable && breakable.hp > 0) {
+      _damageBreakable(breakable, projectile.power || 1);
+      return false;
+    }
+
+    var enemy = _enemies.find(function(e) { return e.x === nextX && e.y === nextY && e.hp > 0; });
+    if (enemy) {
+      enemy.hp = Math.max(0, enemy.hp - (projectile.power || 1));
+      return false;
+    }
+
+    projectile.x = nextX;
+    projectile.y = nextY;
+    projectile.range = (projectile.range || 1) - 1;
+
+    return projectile.range > 0;
+  }
+
+  function stepProjectiles(steps) {
+    _updateProjectiles(0, steps || 1);
+
+    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+    }
+
+    return {
+      projectiles: _projectiles,
+      breakables: _breakables
+    };
+  }
+
   function _saveState() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -851,6 +1091,8 @@ const GoneRogue = (function () {
         player: _player,
         enemies: _enemies,
         items: _items,
+        projectiles: _projectiles,
+        breakables: _breakables,
         turn: _turn,
         floor: _floor
       }));
@@ -865,6 +1107,8 @@ const GoneRogue = (function () {
       if (parsed.player) _player = parsed.player;
       if (parsed.enemies) _enemies = parsed.enemies;
       if (parsed.items) _items = parsed.items;
+      if (parsed.projectiles) _projectiles = parsed.projectiles;
+      if (parsed.breakables) _breakables = parsed.breakables;
       if (parsed.turn) _turn = parsed.turn;
       if (parsed.floor) _floor = parsed.floor;
       _active = !!parsed.active;
@@ -890,7 +1134,7 @@ const GoneRogue = (function () {
 
     // Update mobile UI
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items);
+      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
     }
 
     return moveResult;
@@ -914,7 +1158,7 @@ const GoneRogue = (function () {
 
     // Update mobile UI
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items);
+      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
     }
 
     return result;
@@ -1534,6 +1778,10 @@ const GoneRogue = (function () {
     getPlayer: getPlayer,
     getEnemies: getEnemies,
     getEnemyAwarenessState: getEnemyAwarenessState,
+    getBreakables: function() { return _breakables; },
+    getProjectiles: function() { return _projectiles; },
+    fireProjectile: _fireProjectile,
+    stepProjectiles: stepProjectiles,
     isStrCombatActive: isStrCombatActive,
     getStrCombatState: getStrCombatState
   };
