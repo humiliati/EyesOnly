@@ -124,6 +124,69 @@ const GoneRogue = (function () {
     FINAL: 'final'                  // Floor 30: final boss
   };
 
+  // Biome types for environmental variety
+  var BIOMES = {
+    GREY_CAVE: {
+      name: 'Grey Cave',
+      wallChar: '█',
+      floorChar: '.',
+      description: 'Dark underground tunnels',
+      floorRange: [1, 4], // Used for early floors and secret areas
+      props: [
+        { emoji: '🪨', name: 'Boulder', breakable: true, hp: 2 },
+        { emoji: '💧', name: 'Water Drip', breakable: false }
+      ]
+    },
+    OFFICE: {
+      name: 'Commercial Office',
+      wallChar: '█',
+      floorChar: '.',
+      description: 'Corporate cubicles and conference rooms',
+      floorRange: [5, 9],
+      props: [
+        { emoji: '📂', name: 'Filing Cabinet', breakable: true, hp: 1 },
+        { emoji: '🖨️', name: 'Printer', breakable: true, hp: 1 },
+        { emoji: '🪑', name: 'Office Chair', breakable: false },
+        { emoji: '💼', name: 'Briefcase', breakable: false }
+      ]
+    },
+    MALL: {
+      name: 'Shopping Mall',
+      wallChar: '█',
+      floorChar: '.',
+      description: 'Abandoned retail stores',
+      floorRange: [11, 15],
+      props: [
+        { emoji: '🛍️', name: 'Shopping Bag', breakable: true, hp: 1 },
+        { emoji: '🧸', name: 'Toy', breakable: true, hp: 1 },
+        { emoji: '🥫', name: 'Canned Food', breakable: true, hp: 1 }
+      ]
+    },
+    INDUSTRIAL: {
+      name: 'Industrial Complex',
+      wallChar: '█',
+      floorChar: '.',
+      description: 'Hazardous factory floor',
+      floorRange: [17, 21],
+      props: [
+        { emoji: '🛢️', name: 'Oil Drum', breakable: true, hp: 2 },
+        { emoji: '⚡', name: 'Exposed Wiring', breakable: false },
+        { emoji: '🔥', name: 'Vent Steam', breakable: false }
+      ]
+    },
+    AEROSPACE: {
+      name: 'Aerospace Museum',
+      wallChar: '█',
+      floorChar: '.',
+      description: 'Vast halls with missile displays',
+      floorRange: [23, 30],
+      props: [
+        { emoji: '🚀', name: 'Rocket Scaffold', breakable: false },
+        { emoji: '✈️', name: 'Hanging Plane', breakable: false }
+      ]
+    }
+  };
+
   // Bonfire floors (safe hubs with vendors)
   var BONFIRE_FLOORS = [10, 16, 22];
 
@@ -186,6 +249,17 @@ const GoneRogue = (function () {
 
     // Standard combat floors
     return FLOOR_TYPES.COMBAT;
+  }
+
+  /**
+   * Determine biome based on floor number
+   */
+  function _getBiome(floorNum) {
+    if (floorNum >= 23) return BIOMES.AEROSPACE;
+    if (floorNum >= 17) return BIOMES.INDUSTRIAL;
+    if (floorNum >= 11) return BIOMES.MALL;
+    if (floorNum >= 5) return BIOMES.OFFICE;
+    return BIOMES.GREY_CAVE;
   }
 
   function init() {
@@ -1119,20 +1193,58 @@ const GoneRogue = (function () {
   }
 
   function _spawnBreakables() {
-    // Clear path in front of player for deterministic projectile tests
-    if (_isInsideBounds(_player.x + 1, _player.y)) _grid[_player.y][_player.x + 1] = TILES.EMPTY;
-    if (_isInsideBounds(_player.x + 2, _player.y)) _grid[_player.y][_player.x + 2] = TILES.EMPTY;
-    if (_isInsideBounds(_player.x + 3, _player.y)) _grid[_player.y][_player.x + 3] = TILES.EMPTY;
+    // Get current biome
+    var biome = _getBiome(_floor);
 
-    _breakables = [
-      { x: _player.x + 1, y: _player.y, hp: 3, glyph: TILES.BREAKABLE, destroyedGlyph: TILES.DEBRIS, emoji: '📦', tag: 'close_crate' },
-      { x: _player.x + 6, y: _player.y - 2, hp: 2, glyph: TILES.BREAKABLE, destroyedGlyph: TILES.DEBRIS, emoji: '🧱', tag: 'far_crate' }
-    ].filter(function(b) {
-      return b.x > 0 && b.x < GRID_WIDTH - 1 && b.y > 0 && b.y < GRID_HEIGHT - 1;
-    });
+    // Spawn biome-specific breakables
+    _breakables = [];
 
+    // Spawn 8-12 random breakables from the biome's prop list
+    var breakableCount = 8 + Math.floor(Math.random() * 5);
+    var breakableProps = biome.props.filter(function(p) { return p.breakable; });
+
+    if (breakableProps.length === 0) {
+      // Fallback to generic crates if biome has no breakable props
+      breakableProps = [{ emoji: '📦', name: 'Crate', breakable: true, hp: 2 }];
+    }
+
+    for (var i = 0; i < breakableCount; i++) {
+      var attempts = 0;
+      var placed = false;
+
+      while (!placed && attempts < 50) {
+        var x = 2 + Math.floor(Math.random() * (GRID_WIDTH - 4));
+        var y = 2 + Math.floor(Math.random() * (GRID_HEIGHT - 4));
+
+        // Check if position is valid (floor tile, not player, not exit, not occupied)
+        if (_grid[y] && _grid[y][x] === TILES.EMPTY &&
+            !(x === _player.x && y === _player.y) &&
+            !_breakables.find(function(b) { return b.x === x && b.y === y; })) {
+
+          var propTemplate = breakableProps[Math.floor(Math.random() * breakableProps.length)];
+          _breakables.push({
+            x: x,
+            y: y,
+            hp: propTemplate.hp,
+            maxHp: propTemplate.hp,
+            glyph: TILES.BREAKABLE,
+            destroyedGlyph: TILES.DEBRIS,
+            emoji: propTemplate.emoji,
+            name: propTemplate.name,
+            tag: 'biome_prop_' + i
+          });
+
+          placed = true;
+        }
+        attempts++;
+      }
+    }
+
+    // Place on grid
     _breakables.forEach(function(breakable) {
-      _grid[breakable.y][breakable.x] = TILES.BREAKABLE;
+      if (_grid[breakable.y] && _grid[breakable.y][breakable.x]) {
+        _grid[breakable.y][breakable.x] = TILES.BREAKABLE;
+      }
     });
   }
 
@@ -1192,7 +1304,8 @@ const GoneRogue = (function () {
     }
 
     lines.push('');
-    var floorLabel = 'Floor: ' + _floor;
+    var biome = _getBiome(_floor);
+    var floorLabel = 'Floor: ' + _floor + ' | ' + biome.name;
     if (_bossFloorActive && !_bossDefeated) {
       floorLabel += ' 👹 BOSS FLOOR';
     } else if (_bossFloorActive && _bossDefeated) {
