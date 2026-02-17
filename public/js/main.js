@@ -283,10 +283,16 @@
         break;
 
       case 'rogue':
-        if (typeof GoneRogue !== 'undefined') {
+        console.debug('[main.js] Handling rogue action via GAMESTATE.requestRogue');
+        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.requestRogue === 'function') {
+          Terminal.flicker();
+          _executeRogueAction(GAMESTATE.requestRogue(action.data || {}));
+        } else if (typeof GoneRogue !== 'undefined') {
+          console.debug('[main.js] Fallback to direct GoneRogue.start (GAMESTATE.requestRogue not available)');
           Terminal.flicker();
           _executeRogueAction(GoneRogue.start(action.data || {}));
         } else {
+          console.warn('[main.js] Gone Rogue mode unavailable');
           _displayLines(['', 'GONE ROGUE MODE UNAVAILABLE', ''], function () {
             _enableInput(_promptForState(StateMachine.getState()));
           });

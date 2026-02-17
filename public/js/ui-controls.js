@@ -80,7 +80,17 @@
           // Don't print anything - just close inventory
           break;
         }
-        // Priority 2: Exit login shell if in password prompt
+        // Priority 2: Check if in authorization/clearance sequence
+        if (typeof StateMachine !== 'undefined') {
+          var currentState = StateMachine.getState();
+          if (currentState === 'AWAITING_DESIGNATION' || 
+              currentState === 'AWAITING_PROCEED' || 
+              currentState === 'AWAITING_TEMPORAL') {
+            simulateCommand('back');
+            break;
+          }
+        }
+        // Priority 3: Exit login shell if in password prompt
         if (isInLoginShell && typeof LoginShell.getPrompt === 'function') {
           var prompt = LoginShell.getPrompt();
           if (prompt === 'PASS> ') {
@@ -89,17 +99,17 @@
             break;
           }
         }
-        // Priority 3: Exit street-chronicles if active
+        // Priority 4: Exit street-chronicles if active
         if (isInStreetChronicles) {
           simulateCommand('exit');
           break;
         }
-        // Priority 4: Exit login shell if in session
+        // Priority 5: Exit login shell if in session
         if (isInLoginShell) {
           simulateCommand('exit');
           break;
         }
-        // Priority 5: Return to EYES ONLY home screen
+        // Priority 6: Return to EYES ONLY home screen
         simulateCommand('home');
         break;
 

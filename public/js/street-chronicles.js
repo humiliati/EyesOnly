@@ -343,12 +343,24 @@ const StreetChronicles = (function () {
     return _state.inventory || [];
   }
 
+  /**
+   * Deactivate Street Chronicles mode (yield control)
+   * Called when transitioning to other modes (e.g., Gone Rogue)
+   */
+  function deactivate() {
+    console.debug('[StreetChronicles.deactivate] Yielding control');
+    _active = false;
+    _save();
+    return true;
+  }
+
   return {
     init: init,
     start: start,
     process: process,
     isActive: isActive,
     getPrompt: getPrompt,
-    getInventory: getInventory
+    getInventory: getInventory,
+    deactivate: deactivate
   };
 })();
