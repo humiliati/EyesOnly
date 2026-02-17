@@ -1,33 +1,51 @@
-# Gone Rogue - Mobile Touch Controls
+# Gone Rogue - Interactive Grid Controls (Mobile & Desktop)
 
 ## Overview
 
-Gone Rogue now features full mobile touch support with tap-to-move navigation and swipeable card combat system, inspired by Metal Gear Solid's stealth mechanics and mobile deckbuilders.
+Gone Rogue now features unified interactive grid controls for both mobile and desktop platforms. The DOM-based interactive grid replaces text-only rendering, with tap/click-to-move navigation and swipeable card combat system, inspired by Metal Gear Solid's stealth mechanics and mobile deckbuilders.
 
-## Mobile Detection
+## Platform Support (Updated Phase 1)
 
-The system automatically detects mobile devices and switches from keyboard commands to touch controls. Detection triggers when:
-- User agent matches mobile device patterns
-- Touch points > 2 detected
+The interactive grid UI is now **platform-agnostic** and available on all platforms:
+- **Desktop**: Click-to-move grid with keyboard fallback (WASD/NSEW)
+- **Mobile**: Touch-based grid with swipe gestures
+- **Both**: Share identical movement logic and visual feedback
 
-## Touch Controls
+**Previous Behavior**: Mobile-only touch controls with desktop text-only rendering
+**Current Behavior**: Interactive grid enabled for all platforms when `GoneRogueMobile` module is loaded
 
-### Grid Navigation
+## Input Controls (Desktop & Mobile)
 
-**Tap Cell** - Move one step towards tapped cell
+### Grid Navigation (Click/Tap)
+
+**Click/Tap Cell** - Move one step towards clicked cell
+- Works on both desktop (mouse click) and mobile (touch tap)
 - Pathfinding: Simple one-step movement towards target
-- Visual feedback: Cell highlights on tap
+- Visual feedback: Cell highlights on click/tap
+- Clicking enemy: Approaches enemy, initiates combat on collision
 
-**Double-Tap Cell** - Run mode (2x speed)
+**Double-Tap Cell (Mobile)** - Run mode (2x speed)
 - Faster movement
 - **Trade-off**: +2 detection per move
 - Visual indicator: Yellow flash on double-tap
 - Time window: 300ms between taps
 
-**Tap Player (@)** - Open card fan
+**Click/Tap Player (@)** - Open card fan
 - Shows up to 5 cards from loose inventory
 - Cards appear at bottom of screen
 - Auto-closes after swipe or 2s timeout
+- Works on both desktop and mobile
+
+### Keyboard Controls (Desktop Fallback/Accessibility)
+
+Traditional text commands still work as accessibility fallback:
+- **WASD** or **N/S/E/W** - Movement
+- **TAKE** - Pick up item
+- **EXTRACT** - Extract from exit point
+- **STATUS** - Show player stats
+- **INVENTORY** - Show dual inventory
+- **HELP** - Command list
+- **EXIT** - Return to Street Chronicles
 
 ### Card Swipe System
 
@@ -185,10 +203,23 @@ Duration: 500ms infinite
 
 ## Performance Optimizations
 
-### Touch Event Handling
-- `passive: false` on necessary events only
-- Prevents default to avoid scroll conflicts
-- Debouncing for double-tap detection
+### Touch Event Handling (Phase 1 Bug Fix)
+
+**Event Bubbling Prevention**:
+- All card touch handlers use `e.stopPropagation()` to prevent event bubbling
+- Prevents ghost clicks on grid after card swipe
+- Grid click handler also uses `stopPropagation()` to isolate interaction
+- **Fixed Issue**: Card swipe `touchend` events were bubbling to grid, causing unintended movement
+
+**Implementation**:
+```javascript
+// Card handlers
+e.preventDefault();
+e.stopPropagation(); // Prevents bubbling to grid
+
+// Grid click handler
+e.stopPropagation(); // Prevents bubbling to parent handlers
+```
 
 ### Grid Rendering
 - DOM manipulation instead of canvas
@@ -282,12 +313,14 @@ Duration: 500ms infinite
 - Mobile UI overlays terminal
 - Both can coexist
 
-## Testing Checklist
+### Testing Checklist
 
-### Desktop
-- [ ] Keyboard controls still work
-- [ ] Text grid renders correctly
-- [ ] No mobile UI elements shown
+### Desktop (Phase 1 Complete)
+- [x] Interactive grid renders on desktop
+- [x] Click-to-move functional
+- [x] Keyboard controls still work
+- [x] Card fan works with mouse clicks
+- [x] No event bubbling issues
 
 ### Mobile (Touch Device)
 - [x] Grid renders as HTML cells
@@ -296,6 +329,7 @@ Duration: 500ms infinite
 - [x] Card fan appears on player tap
 - [x] Swipe gestures recognized
 - [x] Visual feedback on actions
+- [x] No ghost clicks after card swipe
 - [ ] Tested on iOS Safari
 - [ ] Tested on Android Chrome
 - [ ] Tested on tablet (iPad)
@@ -375,6 +409,25 @@ Duration: 500ms infinite
 
 ---
 
-**Last Updated**: February 2026
-**Version**: 1.1.0 (Mobile)
+**Last Updated**: February 2026 (Phase 1 Complete)
+**Version**: 2.0.0 (Unified Desktop/Mobile)
 **Author**: Claude Sonnet 4.5
+
+## Phase 1 Changes (February 2026)
+
+### Unified Grid UI
+- Interactive grid now enabled for **all platforms** (desktop + mobile)
+- Removed mobile-only restriction on DOM-based grid
+- Desktop users can now click grid cells to move (not just type commands)
+- Both platforms share identical rendering and input handling
+
+### Bug Fixes
+- Fixed touch event bubbling causing ghost grid clicks after card swipe
+- Added `stopPropagation()` to all touch/click handlers
+- Improved event isolation for modal/overlay interactions
+
+### Technical Changes
+- Renamed `_useMobileUI` → `_useInteractiveGrid` for clarity
+- Interactive grid enabled when `GoneRogueMobile` module is available (platform-agnostic)
+- Keyboard commands preserved as accessibility fallback
+- Text-only rendering still available when interactive grid unavailable
