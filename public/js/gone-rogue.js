@@ -103,6 +103,44 @@ const GoneRogue = (function () {
     STATIONARY: 'stationary' // Rotate in place
   };
 
+  // Floor types for run structure
+  var FLOOR_TYPES = {
+    TUTORIAL: 'tutorial',           // Floors 1-2: no enemies, learn movement
+    GHOST: 'ghost',                 // Floors 3-4: cameras only, no combat
+    STEALTH: 'stealth',             // Floors 5-9: light stealth
+    BONFIRE: 'bonfire',             // Floors 10, 16, 22: safe hub with vendor
+    COMBAT: 'combat',               // Standard combat floors
+    EXPLORATION: 'exploration',     // High loot, few/no enemies
+    BOSS: 'boss',                   // Boss encounter floors
+    FINAL: 'final'                  // Floor 30: final boss
+  };
+
+  // Bonfire floors (safe hubs with vendors)
+  var BONFIRE_FLOORS = [10, 16, 22];
+
+  // Boss floors
+  var BOSS_FLOORS = [10, 16, 22, 30];
+
+  /**
+   * Determine floor type based on floor number
+   */
+  function _getFloorType(floorNum) {
+    if (floorNum <= 2) return FLOOR_TYPES.TUTORIAL;
+    if (floorNum <= 4) return FLOOR_TYPES.GHOST;
+    if (BONFIRE_FLOORS.indexOf(floorNum) !== -1) return FLOOR_TYPES.BONFIRE;
+    if (floorNum === 30) return FLOOR_TYPES.FINAL;
+    if (BOSS_FLOORS.indexOf(floorNum) !== -1) return FLOOR_TYPES.BOSS;
+
+    // Random exploration floors (5% chance on floors 15+)
+    if (floorNum >= 15 && Math.random() < 0.05) return FLOOR_TYPES.EXPLORATION;
+
+    // Light stealth early
+    if (floorNum <= 9) return FLOOR_TYPES.STEALTH;
+
+    // Standard combat floors
+    return FLOOR_TYPES.COMBAT;
+  }
+
   function init() {
     _loadState();
 
@@ -358,6 +396,9 @@ const GoneRogue = (function () {
     _enemies = [];
     _tileMetadata = {};
 
+    // Determine floor type
+    var floorType = _getFloorType(_floor);
+
     var maxAttempts = 10;
     var attempt = 0;
     var validMap = false;
@@ -369,8 +410,8 @@ const GoneRogue = (function () {
       // Step 1: Create empty grid
       _grid = _createEmptyGrid();
 
-      // Step 2: Generate rooms
-      var rooms = _generateRooms();
+      // Step 2: Generate rooms (varies by floor type)
+      var rooms = _generateRooms(floorType);
 
       // Step 3: Connect rooms with corridors
       _connectRooms(rooms);
@@ -394,8 +435,8 @@ const GoneRogue = (function () {
       var exitX = spawnData.exitX;
       var exitY = spawnData.exitY;
 
-      // Step 9: Place enemies
-      _placeEnemies(rooms);
+      // Step 9: Place enemies (based on floor type)
+      _placeEnemies(rooms, floorType);
 
       // Step 10: Validate stealth path
       validMap = _validateStealthPath(_player.x, _player.y, exitX, exitY);
@@ -412,8 +453,8 @@ const GoneRogue = (function () {
     // Place breakables (deterministic for tests)
     _spawnBreakables();
 
-    // Place items
-    _placeItems();
+    // Place items (increased loot for exploration floors)
+    _placeItems(floorType);
 
     _turn = 0;
   }
@@ -431,9 +472,22 @@ const GoneRogue = (function () {
     return grid;
   }
 
-  function _generateRooms() {
+  function _generateRooms(floorType) {
     // Difficulty affects room count and size
     var difficulty = _floor;
+
+    // Bonfire floors have one large room
+    if (floorType === FLOOR_TYPES.BONFIRE) {
+      return [{
+        x: Math.floor(GRID_WIDTH / 4),
+        y: Math.floor(GRID_HEIGHT / 4),
+        w: Math.floor(GRID_WIDTH / 2),
+        h: Math.floor(GRID_HEIGHT / 2),
+        centerX: Math.floor(GRID_WIDTH / 2),
+        centerY: Math.floor(GRID_HEIGHT / 2)
+      }];
+    }
+
     var numRooms = Math.min(4 + Math.floor(difficulty / 2), 8);
 
     var rooms = [];
@@ -650,17 +704,40 @@ const GoneRogue = (function () {
     return { playerX: playerX, playerY: playerY, exitX: exitX, exitY: exitY };
   }
 
-  function _placeEnemies(rooms) {
-    // Enemy density based on difficulty
-    var difficulty = _floor;
-    var enemyCount;
+  function _placeEnemies(rooms, floorType) {
+    // No enemies on tutorial floors (1-2)
+    if (floorType === FLOOR_TYPES.TUTORIAL) {
+      return;
+    }
 
-    if (difficulty <= 3) {
-      enemyCount = 4 + Math.floor(Math.random() * 3); // 4-6
-    } else if (difficulty <= 7) {
-      enemyCount = 7 + Math.floor(Math.random() * 4); // 7-10
+    // No enemies on bonfire floors (safe zones)
+    if (floorType === FLOOR_TYPES.BONFIRE) {
+      return;
+    }
+
+    // Ghost floors (3-4): only cameras/surveillance, no lethal enemies
+    if (floorType === FLOOR_TYPES.GHOST) {
+      // TODO: Implement camera/drone surveillance system
+      return;
+    }
+
+    // Exploration floors: very few enemies
+    if (floorType === FLOOR_TYPES.EXPLORATION) {
+      enemyCount = 1 + Math.floor(Math.random() * 2); // 1-2 enemies max
     } else {
-      enemyCount = 12 + Math.floor(Math.random() * 7); // 12-18
+      // Enemy density based on difficulty
+      var difficulty = _floor;
+      var enemyCount;
+
+      if (difficulty <= 3) {
+        enemyCount = 4 + Math.floor(Math.random() * 3); // 4-6
+      } else if (difficulty <= 7) {
+        enemyCount = 7 + Math.floor(Math.random() * 4); // 7-10
+      } else if (difficulty <= 15) {
+        enemyCount = 10 + Math.floor(Math.random() * 6); // 10-15
+      } else {
+        enemyCount = 12 + Math.floor(Math.random() * 7); // 12-18
+      }
     }
 
     enemyCount = Math.min(enemyCount, rooms.length * 3); // Don't overcrowd
@@ -760,8 +837,25 @@ const GoneRogue = (function () {
     return enemy;
   }
 
-  function _placeItems() {
+  function _placeItems(floorType) {
+    // Base item count
     var itemCount = 5;
+
+    // Increased loot on tutorial floors
+    if (floorType === FLOOR_TYPES.TUTORIAL) {
+      itemCount = 8;
+    }
+
+    // High loot on exploration floors
+    if (floorType === FLOOR_TYPES.EXPLORATION) {
+      itemCount = 12;
+    }
+
+    // Some loot on bonfire floors
+    if (floorType === FLOOR_TYPES.BONFIRE) {
+      itemCount = 3;
+    }
+
     var attempts = 0;
     var maxAttempts = 50;
 
@@ -1112,7 +1206,51 @@ const GoneRogue = (function () {
       };
     }
 
-    return _exitRogue(true);
+    // Check if this is the final floor (30) or if player wants to extract early
+    var MAX_FLOORS = 30;
+    if (_floor >= MAX_FLOORS) {
+      return _exitRogue(true);
+    }
+
+    // Advance to next floor
+    return _advanceFloor();
+  }
+
+  function _advanceFloor() {
+    _floor++;
+    _turn = 0;
+
+    // Heal player slightly between floors (10-20% of max HP)
+    var healAmount = Math.floor(_player.maxHp * (0.1 + Math.random() * 0.1));
+    _player.hp = Math.min(_player.maxHp, _player.hp + healAmount);
+
+    // Generate next floor
+    _generateFloor();
+    _startGameLoop();
+    _saveState();
+
+    var lines = [
+      '',
+      '═══════════════════════════════════════',
+      '  FLOOR ' + _floor + ' - EXTRACTION SUCCESSFUL',
+      '═══════════════════════════════════════',
+      '',
+      '  HP RESTORED: +' + healAmount,
+      '  INFILTRATING DEEPER...',
+      ''
+    ];
+
+    // Show mobile UI
+    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+      GoneRogueMobile.show();
+      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+    }
+
+    return {
+      lines: lines.concat(_renderGrid()),
+      prompt: getPrompt(),
+      stayActive: true
+    };
   }
 
   function _exitRogue(success) {
