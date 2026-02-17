@@ -121,6 +121,7 @@ const GoneRogueMobile = (function () {
 
     // Grid tap/double-tap
     _gridContainer.addEventListener('touchstart', _handleGridTouchStart, { passive: false });
+    _gridContainer.addEventListener('touchend', _handleGridTouchEnd, { passive: false });
     _gridContainer.addEventListener('click', _handleGridClick);
 
     // Card swipe (touch)
@@ -473,6 +474,28 @@ const GoneRogueMobile = (function () {
   }
 
   /**
+   * Process grid input (shared by touch and click handlers)
+   * @param {number} x - Grid X coordinate
+   * @param {number} y - Grid Y coordinate
+   * @param {boolean} runMode - Whether to run to target
+   */
+  function _processGridInput(x, y, runMode) {
+    // Check if tapping self (show card fan)
+    if (typeof GoneRogue !== 'undefined') {
+      var player = GoneRogue.getPlayer ? GoneRogue.getPlayer() : null;
+      if (player && player.x === x && player.y === y) {
+        _showCardFan();
+        return;
+      }
+    }
+
+    // Send tap-to-move command
+    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleTapMove === 'function') {
+      GoneRogue.handleTapMove(x, y, runMode);
+    }
+  }
+
+  /**
    * Handle grid touch start (for double-tap detection)
    */
   function _handleGridTouchStart(e) {
@@ -503,6 +526,24 @@ const GoneRogueMobile = (function () {
   }
 
   /**
+   * Handle grid touch end (execute movement)
+   */
+  function _handleGridTouchEnd(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    var touch = e.changedTouches[0];
+    var target = document.elementFromPoint(touch.clientX, touch.clientY);
+
+    if (!target || !target.classList.contains('rogue-cell')) return;
+
+    var x = parseInt(target.dataset.x);
+    var y = parseInt(target.dataset.y);
+
+    _processGridInput(x, y, _runMode);
+  }
+
+  /**
    * Handle grid click/tap
    */
   function _handleGridClick(e) {
@@ -515,19 +556,24 @@ const GoneRogueMobile = (function () {
     var x = parseInt(target.dataset.x);
     var y = parseInt(target.dataset.y);
 
-    // Check if tapping self (show card fan)
-    if (typeof GoneRogue !== 'undefined') {
-      var player = GoneRogue.getPlayer ? GoneRogue.getPlayer() : null;
-      if (player && player.x === x && player.y === y) {
-        _showCardFan();
-        return;
-      }
+    var now = Date.now();
+    var cellKey = x + ',' + y;
+
+    // Check for double-click on desktop (within 300ms)
+    if (_lastTapCell === cellKey && (now - _lastTapTime) < 300) {
+      _runMode = true;
+      target.classList.add('run-mode-flash');
+      setTimeout(function() {
+        target.classList.remove('run-mode-flash');
+      }, 200);
+    } else {
+      _runMode = false;
     }
 
-    // Send tap-to-move command
-    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleTapMove === 'function') {
-      GoneRogue.handleTapMove(x, y, _runMode);
-    }
+    _lastTapTime = now;
+    _lastTapCell = cellKey;
+
+    _processGridInput(x, y, _runMode);
   }
 
   /**
