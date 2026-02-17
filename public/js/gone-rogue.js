@@ -57,14 +57,14 @@ const GoneRogue = (function () {
   var TILES = {
     EMPTY: '.',
     WALL: '█',
-    PLAYER: '@',
-    ENEMY: 'E',
-    ITEM: '*',
+    PLAYER: '🥷',
+    ENEMY: '🪖',
+    ITEM: '💎',
     EXIT: '▼',
     COVER: '▓',
-    BREAKABLE: '☐',
+    BREAKABLE: '📦',
     DEBRIS: '░',
-    PROJECTILE: '•',
+    PROJECTILE: '💥',
     DOOR: 'D',
     VENT: 'V',
     SHADOW: '░',
@@ -102,6 +102,82 @@ const GoneRogue = (function () {
     ELLIPSE: 'ellipse',      // Elliptical path
     STATIONARY: 'stationary' // Rotate in place
   };
+
+  // Floor types for run structure
+  var FLOOR_TYPES = {
+    TUTORIAL: 'tutorial',           // Floors 1-2: no enemies, learn movement
+    GHOST: 'ghost',                 // Floors 3-4: cameras only, no combat
+    STEALTH: 'stealth',             // Floors 5-9: light stealth
+    BONFIRE: 'bonfire',             // Floors 10, 16, 22: safe hub with vendor
+    COMBAT: 'combat',               // Standard combat floors
+    EXPLORATION: 'exploration',     // High loot, few/no enemies
+    BOSS: 'boss',                   // Boss encounter floors
+    FINAL: 'final'                  // Floor 30: final boss
+  };
+
+  // Bonfire floors (safe hubs with vendors)
+  var BONFIRE_FLOORS = [10, 16, 22];
+
+  // Boss floors
+  var BOSS_FLOORS = [10, 16, 22, 30];
+
+  // Vendor state
+  var _vendor = null;
+  var _vendorInventory = [];
+
+  // Vendor types with different personalities
+  var VENDOR_TYPES = {
+    SCRAP_MERCHANT: {
+      name: 'Scrap Merchant',
+      emoji: '🧑‍💼',
+      description: 'Sells cheap junk cards and supplies',
+      priceMultiplier: 0.7,
+      qualityRange: [30, 70] // Low quality items
+    },
+    ARMS_DEALER: {
+      name: 'Arms Dealer',
+      emoji: '🔫',
+      description: 'Sells attack cards and explosives',
+      priceMultiplier: 1.2,
+      qualityRange: [50, 85],
+      cardFilter: ['attack']
+    },
+    GHOST_BROKER: {
+      name: 'Ghost Broker',
+      emoji: '👻',
+      description: 'Sells stealth and silent cards',
+      priceMultiplier: 1.5,
+      qualityRange: [60, 90],
+      cardFilter: ['stealth', 'movement']
+    },
+    RELIC_SMUGGLER: {
+      name: 'Relic Smuggler',
+      emoji: '💎',
+      description: 'Sells rare charms and inventory expanders',
+      priceMultiplier: 2.0,
+      qualityRange: [70, 95]
+    }
+  };
+
+  /**
+   * Determine floor type based on floor number
+   */
+  function _getFloorType(floorNum) {
+    if (floorNum <= 2) return FLOOR_TYPES.TUTORIAL;
+    if (floorNum <= 4) return FLOOR_TYPES.GHOST;
+    if (BONFIRE_FLOORS.indexOf(floorNum) !== -1) return FLOOR_TYPES.BONFIRE;
+    if (floorNum === 30) return FLOOR_TYPES.FINAL;
+    if (BOSS_FLOORS.indexOf(floorNum) !== -1) return FLOOR_TYPES.BOSS;
+
+    // Random exploration floors (5% chance on floors 15+)
+    if (floorNum >= 15 && Math.random() < 0.05) return FLOOR_TYPES.EXPLORATION;
+
+    // Light stealth early
+    if (floorNum <= 9) return FLOOR_TYPES.STEALTH;
+
+    // Standard combat floors
+    return FLOOR_TYPES.COMBAT;
+  }
 
   function init() {
     _loadState();
@@ -269,6 +345,23 @@ const GoneRogue = (function () {
       return _attemptExtract();
     }
 
+    // Bonfire vendor commands
+    if (cmd === 'vendor' || cmd === 'shop' || cmd === 'merchant') {
+      return _showVendor();
+    }
+
+    if (cmd.indexOf('buy') === 0) {
+      return _buyFromVendor(cmd);
+    }
+
+    if (cmd === 'heal') {
+      return _healAtBonfire();
+    }
+
+    if (cmd.indexOf('gamble') === 0) {
+      return _gambleCard();
+    }
+
     return {
       lines: ['UNKNOWN COMMAND: ' + cmd, 'TYPE HELP FOR COMMANDS', ''],
       prompt: getPrompt(),
@@ -287,14 +380,21 @@ const GoneRogue = (function () {
       '  EXTRACT            - Extract from exit point',
       '  STATUS             - Show player stats',
       '  INVENTORY          - Show inventory',
+      '',
+      'BONFIRE COMMANDS (Floors 10, 16, 22):',
+      '  VENDOR/SHOP        - View vendor inventory',
+      '  BUY <number>       - Purchase item from vendor',
+      '  HEAL               - Restore HP for ¢30',
+      '  GAMBLE             - Roll random card for ¢100',
+      '',
       '  HELP               - This help',
       '  EXIT               - Return to Street Chronicles',
       '',
       'LEGEND:',
-      '  @ = You        E = Enemy      * = Item',
+      '  🥷 = You        🪖 = Enemy      💎 = Item',
       '  ▼ = Exit       █ = Wall       ▓ = Cover',
       '  ░ = Shadow     , = Grass      ≈ = Smoke',
-      '  ▒ = Hazard     ☐ = Breakable',
+      '  ▒ = Hazard     📦 = Breakable',
       '',
       'TERRAIN EFFECTS:',
       '  Shadow/Grass/Smoke = Stealth bonus',
@@ -358,6 +458,9 @@ const GoneRogue = (function () {
     _enemies = [];
     _tileMetadata = {};
 
+    // Determine floor type
+    var floorType = _getFloorType(_floor);
+
     var maxAttempts = 10;
     var attempt = 0;
     var validMap = false;
@@ -369,8 +472,8 @@ const GoneRogue = (function () {
       // Step 1: Create empty grid
       _grid = _createEmptyGrid();
 
-      // Step 2: Generate rooms
-      var rooms = _generateRooms();
+      // Step 2: Generate rooms (varies by floor type)
+      var rooms = _generateRooms(floorType);
 
       // Step 3: Connect rooms with corridors
       _connectRooms(rooms);
@@ -394,8 +497,8 @@ const GoneRogue = (function () {
       var exitX = spawnData.exitX;
       var exitY = spawnData.exitY;
 
-      // Step 9: Place enemies
-      _placeEnemies(rooms);
+      // Step 9: Place enemies (based on floor type)
+      _placeEnemies(rooms, floorType);
 
       // Step 10: Validate stealth path
       validMap = _validateStealthPath(_player.x, _player.y, exitX, exitY);
@@ -412,8 +515,8 @@ const GoneRogue = (function () {
     // Place breakables (deterministic for tests)
     _spawnBreakables();
 
-    // Place items
-    _placeItems();
+    // Place items (increased loot for exploration floors)
+    _placeItems(floorType);
 
     _turn = 0;
   }
@@ -431,9 +534,22 @@ const GoneRogue = (function () {
     return grid;
   }
 
-  function _generateRooms() {
+  function _generateRooms(floorType) {
     // Difficulty affects room count and size
     var difficulty = _floor;
+
+    // Bonfire floors have one large room
+    if (floorType === FLOOR_TYPES.BONFIRE) {
+      return [{
+        x: Math.floor(GRID_WIDTH / 4),
+        y: Math.floor(GRID_HEIGHT / 4),
+        w: Math.floor(GRID_WIDTH / 2),
+        h: Math.floor(GRID_HEIGHT / 2),
+        centerX: Math.floor(GRID_WIDTH / 2),
+        centerY: Math.floor(GRID_HEIGHT / 2)
+      }];
+    }
+
     var numRooms = Math.min(4 + Math.floor(difficulty / 2), 8);
 
     var rooms = [];
@@ -650,17 +766,40 @@ const GoneRogue = (function () {
     return { playerX: playerX, playerY: playerY, exitX: exitX, exitY: exitY };
   }
 
-  function _placeEnemies(rooms) {
-    // Enemy density based on difficulty
-    var difficulty = _floor;
-    var enemyCount;
+  function _placeEnemies(rooms, floorType) {
+    // No enemies on tutorial floors (1-2)
+    if (floorType === FLOOR_TYPES.TUTORIAL) {
+      return;
+    }
 
-    if (difficulty <= 3) {
-      enemyCount = 4 + Math.floor(Math.random() * 3); // 4-6
-    } else if (difficulty <= 7) {
-      enemyCount = 7 + Math.floor(Math.random() * 4); // 7-10
+    // No enemies on bonfire floors (safe zones)
+    if (floorType === FLOOR_TYPES.BONFIRE) {
+      return;
+    }
+
+    // Ghost floors (3-4): only cameras/surveillance, no lethal enemies
+    if (floorType === FLOOR_TYPES.GHOST) {
+      // TODO: Implement camera/drone surveillance system
+      return;
+    }
+
+    // Exploration floors: very few enemies
+    if (floorType === FLOOR_TYPES.EXPLORATION) {
+      enemyCount = 1 + Math.floor(Math.random() * 2); // 1-2 enemies max
     } else {
-      enemyCount = 12 + Math.floor(Math.random() * 7); // 12-18
+      // Enemy density based on difficulty
+      var difficulty = _floor;
+      var enemyCount;
+
+      if (difficulty <= 3) {
+        enemyCount = 4 + Math.floor(Math.random() * 3); // 4-6
+      } else if (difficulty <= 7) {
+        enemyCount = 7 + Math.floor(Math.random() * 4); // 7-10
+      } else if (difficulty <= 15) {
+        enemyCount = 10 + Math.floor(Math.random() * 6); // 10-15
+      } else {
+        enemyCount = 12 + Math.floor(Math.random() * 7); // 12-18
+      }
     }
 
     enemyCount = Math.min(enemyCount, rooms.length * 3); // Don't overcrowd
@@ -760,8 +899,25 @@ const GoneRogue = (function () {
     return enemy;
   }
 
-  function _placeItems() {
+  function _placeItems(floorType) {
+    // Base item count
     var itemCount = 5;
+
+    // Increased loot on tutorial floors
+    if (floorType === FLOOR_TYPES.TUTORIAL) {
+      itemCount = 8;
+    }
+
+    // High loot on exploration floors
+    if (floorType === FLOOR_TYPES.EXPLORATION) {
+      itemCount = 12;
+    }
+
+    // Some loot on bonfire floors
+    if (floorType === FLOOR_TYPES.BONFIRE) {
+      itemCount = 3;
+    }
+
     var attempts = 0;
     var maxAttempts = 50;
 
@@ -785,7 +941,7 @@ const GoneRogue = (function () {
       if (typeof CardSystem !== 'undefined') {
         var baseType = CardSystem.getRandomBaseCard();
         var card = CardSystem.rollCard(baseType);
-        _items.push({ x: ix, y: iy, card: card });
+        _items.push({ x: ix, y: iy, card: card, spawnTime: Date.now(), decayTime: 30000 }); // 30 second decay
       }
     }
   }
@@ -859,7 +1015,9 @@ const GoneRogue = (function () {
       y: y,
       amount: amount,
       glyph: '¢',
-      emoji: '💰'
+      emoji: '💰',
+      spawnTime: Date.now(),
+      decayTime: 20000 // 20 second decay for currency
     });
   }
 
@@ -911,6 +1069,15 @@ const GoneRogue = (function () {
   }
 
   function _movePlayer(dx, dy, runMode) {
+    // Block movement during STR combat
+    if (_strCombatActive) {
+      return {
+        lines: ['⚔️  MOVEMENT LOCKED - STR COMBAT IN PROGRESS', 'Use cards to fight or type FLEE to retreat', ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
     var newX = _player.x + dx;
     var newY = _player.y + dy;
 
@@ -1101,7 +1268,361 @@ const GoneRogue = (function () {
       };
     }
 
-    return _exitRogue(true);
+    // Check if this is the final floor (30) or if player wants to extract early
+    var MAX_FLOORS = 30;
+    if (_floor >= MAX_FLOORS) {
+      return _exitRogue(true);
+    }
+
+    // Advance to next floor
+    return _advanceFloor();
+  }
+
+  function _advanceFloor() {
+    _floor++;
+    _turn = 0;
+
+    // Reset vendor for new bonfire
+    _vendor = null;
+    _vendorInventory = [];
+
+    // Heal player slightly between floors (10-20% of max HP)
+    var healAmount = Math.floor(_player.maxHp * (0.1 + Math.random() * 0.1));
+    _player.hp = Math.min(_player.maxHp, _player.hp + healAmount);
+
+    // Generate next floor
+    _generateFloor();
+    _startGameLoop();
+    _saveState();
+
+    var lines = [
+      '',
+      '═══════════════════════════════════════',
+      '  FLOOR ' + _floor + ' - EXTRACTION SUCCESSFUL',
+      '═══════════════════════════════════════',
+      '',
+      '  HP RESTORED: +' + healAmount,
+      '  INFILTRATING DEEPER...',
+      ''
+    ];
+
+    // Show mobile UI
+    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+      GoneRogueMobile.show();
+      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+    }
+
+    return {
+      lines: lines.concat(_renderGrid()),
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Initialize vendor for bonfire floor
+   */
+  function _initializeVendor() {
+    // Choose random vendor type
+    var vendorTypes = Object.keys(VENDOR_TYPES);
+    var randomType = vendorTypes[Math.floor(Math.random() * vendorTypes.length)];
+    _vendor = VENDOR_TYPES[randomType];
+
+    // Generate vendor inventory (5 cards)
+    _vendorInventory = [];
+    for (var i = 0; i < 5; i++) {
+      if (typeof CardSystem !== 'undefined') {
+        var baseType = CardSystem.getRandomBaseCard();
+        var card = CardSystem.rollCard(baseType);
+
+        // Calculate price based on quality and vendor multiplier
+        var basePrice = 50 + Math.floor((card.quality / 100) * 150);
+        var price = Math.floor(basePrice * _vendor.priceMultiplier);
+
+        _vendorInventory.push({
+          card: card,
+          price: price
+        });
+      }
+    }
+  }
+
+  /**
+   * Show vendor shop
+   */
+  function _showVendor() {
+    var floorType = _getFloorType(_floor);
+    if (floorType !== FLOOR_TYPES.BONFIRE) {
+      return {
+        lines: ['NO VENDOR HERE', 'Vendors only appear at bonfire floors (10, 16, 22)', ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    // Initialize vendor if not done yet
+    if (!_vendor) {
+      _initializeVendor();
+    }
+
+    var lines = [
+      '',
+      '═══════════════════════════════════════',
+      '  🔥 BONFIRE VENDOR 🔥',
+      '  ' + _vendor.emoji + ' ' + _vendor.name,
+      '  ' + _vendor.description,
+      '═══════════════════════════════════════',
+      ''
+    ];
+
+    // Show player's cryptos
+    if (typeof GAMESTATE !== 'undefined') {
+      var cryptos = GAMESTATE.getState().cryptos || 0;
+      lines.push('  YOUR CRYPTOS: ¢' + cryptos);
+      lines.push('');
+    }
+
+    // Show vendor inventory
+    lines.push('VENDOR INVENTORY:');
+    _vendorInventory.forEach(function(item, i) {
+      lines.push('  ' + (i+1) + '. ' + item.card.emoji + ' ' + item.card.name + ' [' + item.card.qualityName + '] - ¢' + item.price);
+    });
+
+    lines.push('');
+    lines.push('COMMANDS:');
+    lines.push('  BUY <number>  - Purchase item');
+    lines.push('  HEAL          - Restore 30-50% HP for ¢30');
+    lines.push('  GAMBLE        - Random card roll for ¢100');
+    lines.push('');
+
+    return {
+      lines: lines,
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Buy item from vendor
+   */
+  function _buyFromVendor(cmd) {
+    var floorType = _getFloorType(_floor);
+    if (floorType !== FLOOR_TYPES.BONFIRE) {
+      return {
+        lines: ['NO VENDOR HERE', ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    if (!_vendor) {
+      _initializeVendor();
+    }
+
+    // Parse item number
+    var parts = cmd.split(' ');
+    var itemNum = parseInt(parts[1]);
+
+    if (isNaN(itemNum) || itemNum < 1 || itemNum > _vendorInventory.length) {
+      return {
+        lines: ['INVALID ITEM NUMBER', 'Use: BUY <1-' + _vendorInventory.length + '>', ''],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var item = _vendorInventory[itemNum - 1];
+
+    if (typeof GAMESTATE !== 'undefined') {
+      var state = GAMESTATE.getState();
+      var cryptos = state.cryptos || 0;
+
+      if (cryptos < item.price) {
+        return {
+          lines: ['INSUFFICIENT FUNDS', 'Need ¢' + item.price + ', have ¢' + cryptos, ''],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+
+      // Add to loose inventory
+      var result = GAMESTATE.addToLoose(item.card);
+      if (!result.success) {
+        return {
+          lines: [result.message, 'DROP SOMETHING FIRST', ''],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+
+      // Deduct cryptos
+      state.cryptos -= item.price;
+
+      // Remove from vendor inventory
+      _vendorInventory.splice(itemNum - 1, 1);
+
+      _saveState();
+
+      return {
+        lines: ['PURCHASED: ' + item.card.emoji + ' ' + item.card.name, 'Remaining cryptos: ¢' + state.cryptos, ''],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    return {
+      lines: ['PURCHASE FAILED', ''],
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Heal at bonfire
+   */
+  function _healAtBonfire() {
+    var floorType = _getFloorType(_floor);
+    if (floorType !== FLOOR_TYPES.BONFIRE) {
+      return {
+        lines: ['NO BONFIRE HERE', 'Healing only available at bonfire floors', ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var HEAL_COST = 30;
+
+    if (typeof GAMESTATE !== 'undefined') {
+      var state = GAMESTATE.getState();
+      var cryptos = state.cryptos || 0;
+
+      if (cryptos < HEAL_COST) {
+        return {
+          lines: ['INSUFFICIENT FUNDS', 'Healing costs ¢' + HEAL_COST + ', have ¢' + cryptos, ''],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+
+      // Heal 30-50% HP
+      var healPercent = 0.3 + Math.random() * 0.2;
+      var healAmount = Math.floor(_player.maxHp * healPercent);
+      var oldHp = _player.hp;
+      _player.hp = Math.min(_player.maxHp, _player.hp + healAmount);
+      var actualHeal = _player.hp - oldHp;
+
+      // Deduct cryptos
+      state.cryptos -= HEAL_COST;
+
+      _saveState();
+
+      return {
+        lines: [
+          'HEALED: +' + actualHeal + ' HP',
+          'HP: ' + _player.hp + '/' + _player.maxHp,
+          'Remaining cryptos: ¢' + state.cryptos,
+          ''
+        ],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    return {
+      lines: ['HEAL FAILED', ''],
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Gamble for a random card
+   */
+  function _gambleCard() {
+    var floorType = _getFloorType(_floor);
+    if (floorType !== FLOOR_TYPES.BONFIRE) {
+      return {
+        lines: ['NO VENDOR HERE', 'Gambling only available at bonfire floors', ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    var GAMBLE_COST = 100;
+
+    if (typeof GAMESTATE !== 'undefined' && typeof CardSystem !== 'undefined') {
+      var state = GAMESTATE.getState();
+      var cryptos = state.cryptos || 0;
+
+      if (cryptos < GAMBLE_COST) {
+        return {
+          lines: ['INSUFFICIENT FUNDS', 'Gambling costs ¢' + GAMBLE_COST + ', have ¢' + cryptos, ''],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+
+      // Roll random card with gambling odds
+      // 70% junk (30-55%), 20% usable (55-75%), 8% strong (75-90%), 1.8% near-perfect (90-97%), 0.2% perfect (97-100%)
+      var rand = Math.random() * 100;
+      var targetQuality;
+
+      if (rand < 0.2) {
+        targetQuality = 97 + Math.random() * 3; // 97-100% (perfect)
+      } else if (rand < 2) {
+        targetQuality = 90 + Math.random() * 7; // 90-97% (near-perfect)
+      } else if (rand < 10) {
+        targetQuality = 75 + Math.random() * 15; // 75-90% (strong)
+      } else if (rand < 30) {
+        targetQuality = 55 + Math.random() * 20; // 55-75% (usable)
+      } else {
+        targetQuality = 30 + Math.random() * 25; // 30-55% (junk)
+      }
+
+      var baseType = CardSystem.getRandomBaseCard();
+      var card = CardSystem.rollCard(baseType);
+
+      // For simplicity, just use the rolled card's quality
+      // The gambling mechanism is about the odds of getting different quality tiers
+
+      // Add to loose inventory
+      var result = GAMESTATE.addToLoose(card);
+      if (!result.success) {
+        return {
+          lines: [result.message, 'DROP SOMETHING FIRST', ''],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+
+      // Deduct cryptos
+      state.cryptos -= GAMBLE_COST;
+
+      _saveState();
+
+      var qualityDesc = card.quality >= 97 ? '✨ PERFECT ✨' :
+                       card.quality >= 90 ? '🌟 NEAR-PERFECT' :
+                       card.quality >= 75 ? '⭐ STRONG' :
+                       card.quality >= 55 ? '• USABLE' : '• JUNK';
+
+      return {
+        lines: [
+          '🎲 GAMBLE RESULT:',
+          qualityDesc,
+          card.emoji + ' ' + card.name + ' [' + card.qualityName + '] (' + Math.floor(card.quality) + '%)',
+          'Remaining cryptos: ¢' + state.cryptos,
+          ''
+        ],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    return {
+      lines: ['GAMBLE FAILED', ''],
+      prompt: getPrompt(),
+      stayActive: true
+    };
   }
 
   function _exitRogue(success) {
@@ -1203,6 +1724,25 @@ const GoneRogue = (function () {
     });
 
     _updateProjectiles(deltaMs);
+
+    // Update item decay timers
+    var now = Date.now();
+    _items = _items.filter(function(item) {
+      if (item.spawnTime && item.decayTime) {
+        var age = now - item.spawnTime;
+        return age < item.decayTime;
+      }
+      return true; // Keep items without decay timers
+    });
+
+    // Update currency decay timers
+    _currencies = _currencies.filter(function(currency) {
+      if (currency.spawnTime && currency.decayTime) {
+        var age = now - currency.spawnTime;
+        return age < currency.decayTime;
+      }
+      return true; // Keep currency without decay timers
+    });
 
     // Update color cycle timer for visual feedback
     _enemyColorCycleTime += deltaMs;
@@ -1501,7 +2041,9 @@ const GoneRogue = (function () {
             x: breakable.x,
             y: breakable.y,
             type: 'card',
-            card: card
+            card: card,
+            spawnTime: Date.now(),
+            decayTime: 30000 // 30 second decay
           });
         }
       }
@@ -1717,7 +2259,8 @@ const GoneRogue = (function () {
       if (parsed.breakables) _breakables = parsed.breakables;
       if (parsed.turn) _turn = parsed.turn;
       if (parsed.floor) _floor = parsed.floor;
-      _active = !!parsed.active;
+      // DO NOT restore active state - user must explicitly enter rogue mode
+      _active = false;
     } catch (e) { /* ignore */ }
   }
 
@@ -1726,6 +2269,30 @@ const GoneRogue = (function () {
    */
   function handleTapMove(targetX, targetY, runMode) {
     if (!_active) return;
+
+    // Check if clicking on a breakable - kick it instead of moving
+    var breakableAtTarget = _getBreakableAt(targetX, targetY);
+    if (breakableAtTarget && breakableAtTarget.hp > 0) {
+      // Calculate direction to breakable
+      var dx = targetX - _player.x;
+      var dy = targetY - _player.y;
+
+      // Only kick if adjacent (1 tile away)
+      if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 && (dx !== 0 || dy !== 0)) {
+        _damageBreakable(breakableAtTarget, 2);
+        _saveState();
+
+        if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+          GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+        }
+
+        return {
+          lines: ['🥾 BOOTED ' + (breakableAtTarget.emoji || '📦') + ' (HP ' + breakableAtTarget.hp + ')', ''].concat(_renderGrid()),
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+    }
 
     // Calculate path (simple: move one step towards target)
     var dx = targetX - _player.x;
@@ -1991,6 +2558,9 @@ const GoneRogue = (function () {
     } else {
       playerGoesFirst = _player.initiative >= (enemy.initiative || 0);
     }
+
+    // Enable combat zoom/focus for both desktop and mobile
+    _enableCombatZoom();
 
     // Execute first round
     if (playerGoesFirst && trigger === 'player_attack' && card) {
@@ -2723,7 +3293,9 @@ const GoneRogue = (function () {
             x: _strCombatEnemy.x,
             y: _strCombatEnemy.y,
             type: 'card',
-            card: card
+            card: card,
+            spawnTime: Date.now(),
+            decayTime: 30000 // 30 second decay
           });
           lines.push('🎴 Enemy dropped a card!');
         }
@@ -2755,7 +3327,7 @@ const GoneRogue = (function () {
     }
 
     lines.push('');
-    lines.push('Returning to realtime grid...');
+    lines.push('Movement unlocked. Returning to realtime grid...');
     lines.push('');
 
     // Reset combat state
@@ -2764,6 +3336,9 @@ const GoneRogue = (function () {
     _strCombatAdvantage = 'neutral';
     _strCombatRound = 0;
     _strCombatLog = [];
+
+    // Disable combat zoom
+    _disableCombatZoom();
 
     // Resume game loop
     if (!_gameLoopActive) {
@@ -2841,6 +3416,37 @@ const GoneRogue = (function () {
    */
   function getEnemies() {
     return _enemies;
+  }
+
+  /**
+   * Enable combat zoom/focus (for desktop STR combat visual feedback)
+   */
+  function _enableCombatZoom() {
+    if (typeof document === 'undefined') return;
+
+    // Add combat-active class to grid for CSS zoom effect
+    var gridContainer = document.getElementById('rogue-grid-mobile');
+    if (gridContainer) {
+      gridContainer.classList.add('combat-zoom-active');
+    }
+
+    // Flash the header to indicate combat start
+    _triggerCombatFlash();
+
+    // For desktop: optionally center view on player and enemy
+    // This could be enhanced with CSS transforms or scrollIntoView
+  }
+
+  /**
+   * Disable combat zoom (return to normal view)
+   */
+  function _disableCombatZoom() {
+    if (typeof document === 'undefined') return;
+
+    var gridContainer = document.getElementById('rogue-grid-mobile');
+    if (gridContainer) {
+      gridContainer.classList.remove('combat-zoom-active');
+    }
   }
 
   return {

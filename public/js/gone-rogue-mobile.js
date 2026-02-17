@@ -22,6 +22,63 @@ const GoneRogueMobile = (function () {
   function init() {
     _createMobileUI();
     _setupTouchHandlers();
+    _setupKeyboardHandlers(); // Add keyboard support for desktop
+  }
+
+  /**
+   * Setup keyboard event handlers for desktop WASD navigation
+   */
+  function _setupKeyboardHandlers() {
+    document.addEventListener('keydown', function(e) {
+      // Only handle keyboard if Gone Rogue is active
+      if (typeof GoneRogue === 'undefined' || !GoneRogue.isActive()) return;
+
+      // Check if we're in STR combat - allow card selection but not movement
+      var inStrCombat = GoneRogue.isStrCombatActive && GoneRogue.isStrCombatActive();
+
+      var key = e.key.toLowerCase();
+      var handled = false;
+
+      // WASD movement (only if not in STR combat)
+      if (!inStrCombat) {
+        if (key === 'w' || key === 'arrowup') {
+          e.preventDefault();
+          GoneRogue.process('n');
+          handled = true;
+        } else if (key === 's' || key === 'arrowdown') {
+          e.preventDefault();
+          GoneRogue.process('s');
+          handled = true;
+        } else if (key === 'a' || key === 'arrowleft') {
+          e.preventDefault();
+          GoneRogue.process('a');
+          handled = true;
+        } else if (key === 'd' || key === 'arrowright') {
+          e.preventDefault();
+          GoneRogue.process('d');
+          handled = true;
+        }
+      }
+
+      // Number keys 1-5 for card selection (works in and out of combat)
+      if (key >= '1' && key <= '5') {
+        var cardIndex = parseInt(key) - 1;
+        // Get loose inventory and use card
+        if (typeof GAMESTATE !== 'undefined') {
+          var loose = GAMESTATE.getLooseInventory();
+          if (cardIndex < loose.length) {
+            // Simulate card swipe up (use card)
+            GoneRogue.handleCardSwipe(cardIndex, 'up');
+            handled = true;
+          }
+        }
+      }
+
+      // If we handled a key, prevent the terminal from also processing it
+      if (handled) {
+        e.stopPropagation();
+      }
+    });
   }
 
   /**
@@ -57,11 +114,16 @@ const GoneRogueMobile = (function () {
     _gridContainer.addEventListener('touchstart', _handleGridTouchStart, { passive: false });
     _gridContainer.addEventListener('click', _handleGridClick);
 
-    // Card swipe
+    // Card swipe (touch)
     if (_cardContainer) {
       _cardContainer.addEventListener('touchstart', _handleCardTouchStart, { passive: false });
       _cardContainer.addEventListener('touchmove', _handleCardTouchMove, { passive: false });
       _cardContainer.addEventListener('touchend', _handleCardTouchEnd, { passive: false });
+
+      // Card interaction (mouse - desktop)
+      _cardContainer.addEventListener('pointerdown', _handleCardPointerDown);
+      _cardContainer.addEventListener('pointermove', _handleCardPointerMove);
+      _cardContainer.addEventListener('pointerup', _handleCardPointerUp);
     }
   }
 
@@ -94,28 +156,28 @@ const GoneRogueMobile = (function () {
         var item = items ? items.find(function(i) { return i.x === x && i.y === y; }) : null;
 
         if (player && player.x === x && player.y === y) {
-          cell.textContent = '@';
+          cell.textContent = '🥷';
           cell.classList.add('cell-player');
         } else if (enemy) {
-          cell.textContent = 'E';
+          cell.textContent = '🪖';
           cell.classList.add('cell-enemy');
-          
+
           // Apply awareness color with cycling effect
           _applyAwarenessColor(cell, enemy, colorCycleTime);
-          
+
           // Add detection cone visualization
           _addDetectionCone(cell, enemy);
-          
+
           // Add sight cone overlay
           _addSightConeOverlay(cell, enemy, grid);
         } else if (projectile) {
-          cell.textContent = projectile.glyph || '•';
+          cell.textContent = projectile.emoji || projectile.glyph || '💥';
           cell.classList.add('cell-projectile');
         } else if (breakable) {
-          cell.textContent = breakable.hp > 0 ? (breakable.glyph || '☐') : (breakable.destroyedGlyph || '░');
+          cell.textContent = breakable.hp > 0 ? (breakable.emoji || breakable.glyph || '📦') : (breakable.destroyedGlyph || '░');
           cell.classList.add(breakable.hp > 0 ? 'cell-breakable' : 'cell-breakable-broken');
         } else if (item) {
-          cell.textContent = '*';
+          cell.textContent = item.emoji || '💎';
           cell.classList.add('cell-item');
         } else {
           _setCellTile(cell, tile);
@@ -452,31 +514,71 @@ const GoneRogueMobile = (function () {
   }
 
   /**
+   * Get face expression based on state
+   */
+  function _getFaceExpression(isPlayer, state) {
+    if (!state) state = 'neutral';
+
+    var expressions = {
+      player: {
+        neutral: '(   )',
+        charging: '(>_<)',
+        hurt: '(T_T)',
+        defending: '(=_=)',
+        victory: '(^__^)',
+        defeated: '(x__x)'
+      },
+      enemy: {
+        neutral: '(^__^)',
+        charging: '(ಠ_ಠ)',
+        hurt: '(x__x)',
+        defending: '(=_=)',
+        attacking: '(>__<)',
+        defeated: '(x__x)'
+      }
+    };
+
+    return isPlayer ? expressions.player[state] : expressions.enemy[state];
+  }
+
+  /**
    * Render STR combat overlay (called from renderGrid when combat is active)
    */
   function _renderStrCombatOverlay() {
     if (typeof GoneRogue === 'undefined' || !GoneRogue.isStrCombatActive || !GoneRogue.isStrCombatActive()) {
+      _hideCombatBubble();
       return;
     }
 
     var strState = GoneRogue.getStrCombatState();
-    if (!strState || !strState.active) return;
-
-    // Create combat overlay if it doesn't exist
-    var overlayId = 'str-combat-overlay';
-    var overlay = document.getElementById(overlayId);
-
-    if (!overlay) {
-      overlay = document.createElement('div');
-      overlay.id = overlayId;
-      overlay.className = 'str-combat-overlay';
-      var terminal = document.getElementById('terminal');
-      if (terminal) {
-        terminal.appendChild(overlay);
-      }
+    if (!strState || !strState.active) {
+      _hideCombatBubble();
+      return;
     }
 
-    // Update overlay content
+    // Show combat bubble instead of just overlay
+    _renderCombatBubble(strState);
+  }
+
+  /**
+   * Render combat bubble with face animations
+   */
+  function _renderCombatBubble(strState) {
+    var bubbleId = 'combat-bubble';
+    var bubble = document.getElementById(bubbleId);
+
+    if (!bubble) {
+      bubble = document.createElement('div');
+      bubble.id = bubbleId;
+      bubble.className = 'combat-bubble';
+      document.body.appendChild(bubble);
+    }
+
+    // Determine player and enemy states
+    var playerState = 'neutral';
+    var enemyState = 'neutral';
+
+    // Get advantage emoji
     var advantageEmoji = {
       'ambush': '🎯',
       'neutral': '⚔️',
@@ -484,42 +586,225 @@ const GoneRogueMobile = (function () {
       'flanked': '❌'
     };
 
+    // Build combat arena visual
     var html = '';
-    html += '<div class="str-combat-header">';
-    html += '<span class="str-combat-title">⚔️ STR COMBAT - ROUND ' + strState.round + '</span>';
+
+    // Header
+    html += '<div class="combat-bubble-header">';
+    html += '<span style="color: #ffaa00; font-weight: bold; font-size: 18px;">⚔️ STR COMBAT - ROUND ' + strState.round + '</span>';
     html += '</div>';
 
-    html += '<div class="str-combat-status">';
-    html += '<span class="advantage-indicator">';
+    // Combat arena with combatants
+    html += '<div class="combat-arena">';
+
+    // Enemy (top)
+    html += '<div class="combatant">';
+    html += '<div class="combatant-glyph glyph-' + enemyState + '" style="color: #ff1c4a;">';
+    html += '🔫' + _getFaceExpression(false, enemyState) + 'p';
+    html += '</div>';
+    html += '<div class="hp-bar-container">';
+    html += '<div class="hp-bar low" style="width: ' + ((strState.enemy ? (strState.enemy.hp || 0) / 5 : 0) * 100) + '%"></div>';
+    html += '<div class="hp-text">' + (strState.enemy ? (strState.enemy.hp || 0) : 0) + ' / 5 HP</div>';
+    html += '</div>';
+    html += '</div>';
+
+    // Spacing
+    html += '<div style="text-align: center; font-size: 32px; margin: 20px 0;">';
     html += advantageEmoji[strState.advantage] || '⚔️';
-    html += ' ' + (strState.advantage || 'neutral').toUpperCase();
-    html += '</span>';
     html += '</div>';
 
-    if (strState.enemy) {
-      html += '<div class="str-combat-enemy">';
-      html += '<span>💀 Enemy HP: ' + (strState.enemy.hp || 0) + '/5</span>';
+    // Player (bottom)
+    var player = typeof GoneRogue !== 'undefined' && GoneRogue.getPlayer ? GoneRogue.getPlayer() : { hp: 10, maxHp: 10 };
+    html += '<div class="combatant">';
+    html += '<div class="hp-bar-container">';
+    html += '<div class="hp-bar high" style="width: ' + ((player.hp / player.maxHp) * 100) + '%"></div>';
+    html += '<div class="hp-text">' + player.hp + ' / ' + player.maxHp + ' HP</div>';
+    html += '</div>';
+    html += '<div class="combatant-glyph glyph-' + playerState + '" style="color: #1cff9b;">';
+    html += 'd' + _getFaceExpression(true, playerState) + '🔫';
+    html += '</div>';
+    html += '</div>';
+
+    html += '</div>'; // end combat-arena
+
+    // Combat log
+    if (strState.log && strState.log.length > 0) {
+      html += '<div class="combat-log">';
+      var recentLog = strState.log.slice(-5); // Last 5 messages
+      recentLog.forEach(function(msg) {
+        html += '<div class="combat-log-line">' + msg + '</div>';
+      });
       html += '</div>';
     }
 
-    overlay.innerHTML = html;
-    overlay.style.display = 'block';
+    bubble.innerHTML = html;
+    bubble.style.display = 'block';
   }
 
   /**
-   * Hide STR combat overlay
+   * Show floating damage number
    */
-  function _hideStrCombatOverlay() {
-    var overlay = document.getElementById('str-combat-overlay');
-    if (overlay) {
-      overlay.style.display = 'none';
+  function showFloatingDamage(damage, isPlayer) {
+    var bubble = document.getElementById('combat-bubble');
+    if (!bubble) return;
+
+    var floater = document.createElement('div');
+    floater.className = 'floating-damage';
+    floater.textContent = '-' + damage + ' HP';
+    floater.style.color = isPlayer ? '#ff1c4a' : '#ffaa00';
+    floater.style.position = 'absolute';
+    floater.style.fontSize = '24px';
+    floater.style.fontWeight = 'bold';
+    floater.style.pointerEvents = 'none';
+    floater.style.animation = 'float-up 1s ease-out forwards';
+
+    // Position based on target
+    if (isPlayer) {
+      floater.style.bottom = '80px';
+      floater.style.left = '50%';
+      floater.style.transform = 'translateX(-50%)';
+    } else {
+      floater.style.top = '80px';
+      floater.style.left = '50%';
+      floater.style.transform = 'translateX(-50%)';
     }
+
+    bubble.appendChild(floater);
+
+    // Remove after animation
+    setTimeout(function() {
+      if (floater.parentNode) {
+        floater.parentNode.removeChild(floater);
+      }
+    }, 1000);
+  }
+
+  /**
+   * Hide combat bubble
+   */
+  function _hideCombatBubble() {
+    var bubble = document.getElementById('combat-bubble');
+    if (bubble) {
+      bubble.style.display = 'none';
+    }
+  }
+
+  // ============================================================
+  // POINTER/MOUSE EVENT HANDLERS (Desktop card interaction)
+  // ============================================================
+
+  var _pointerStart = { x: 0, y: 0, time: 0 };
+  var _pointerCardIndex = -1;
+  var _isPointerDrag = false;
+
+  /**
+   * Handle pointer down on card (mouse/stylus)
+   */
+  function _handleCardPointerDown(e) {
+    // Only handle mouse/pen, not touch (touch uses separate handlers)
+    if (e.pointerType === 'touch') return;
+
+    var target = e.target.closest('.rogue-card');
+    if (!target) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    _pointerStart = {
+      x: e.clientX,
+      y: e.clientY,
+      time: Date.now()
+    };
+    _pointerCardIndex = parseInt(target.dataset.cardIndex);
+    _activeCard = target;
+    _isPointerDrag = false;
+
+    target.classList.add('card-dragging');
+    target.setPointerCapture(e.pointerId);
+  }
+
+  /**
+   * Handle pointer move (detect drag)
+   */
+  function _handleCardPointerMove(e) {
+    if (!_activeCard || e.pointerType === 'touch') return;
+
+    var deltaX = e.clientX - _pointerStart.x;
+    var deltaY = e.clientY - _pointerStart.y;
+    var distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    if (distance > 10) {
+      _isPointerDrag = true;
+      _activeCard.style.transform = 'translate(' + deltaX + 'px, ' + deltaY + 'px)';
+    }
+  }
+
+  /**
+   * Handle pointer up (click or drag-and-drop)
+   */
+  function _handleCardPointerUp(e) {
+    if (!_activeCard || e.pointerType === 'touch') return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    _activeCard.classList.remove('card-dragging');
+    _activeCard.style.transform = '';
+
+    if (!_isPointerDrag) {
+      // Simple click - show card info or quick-use
+      _handleCardClick(_pointerCardIndex);
+    } else {
+      // Drag - interpret direction as swipe
+      var deltaX = e.clientX - _pointerStart.x;
+      var deltaY = e.clientY - _pointerStart.y;
+
+      var direction = null;
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        direction = deltaX > 0 ? 'right' : 'left';
+      } else {
+        direction = deltaY > 0 ? 'down' : 'up';
+      }
+
+      if (direction && typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleCardSwipe === 'function') {
+        GoneRogue.handleCardSwipe(_pointerCardIndex, direction);
+      }
+    }
+
+    _activeCard = null;
+    _pointerCardIndex = -1;
+    _isPointerDrag = false;
+    _cardContainer.style.display = 'none';
+  }
+
+  /**
+   * Handle card click (select/use card)
+   */
+  function _handleCardClick(cardIndex) {
+    // Get the card
+    var cards = [];
+    if (typeof GAMESTATE !== 'undefined') {
+      var loose = GAMESTATE.getLooseInventory();
+      cards = loose.slice(0, 5);
+    }
+
+    if (cardIndex >= 0 && cardIndex < cards.length) {
+      var card = cards[cardIndex];
+
+      // Quick-use card (simulate swipe up)
+      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleCardSwipe === 'function') {
+        GoneRogue.handleCardSwipe(cardIndex, 'up');
+      }
+    }
+
+    _cardContainer.style.display = 'none';
   }
 
   return {
     init: init,
     renderGrid: renderGrid,
     hide: hide,
-    show: show
+    show: show,
+    showFloatingDamage: showFloatingDamage
   };
 })();
