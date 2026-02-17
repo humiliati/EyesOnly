@@ -317,7 +317,7 @@ const GoneRogue = (function () {
     // Use mobile UI if available
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
       GoneRogueMobile.show();
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+      _updateMobileGrid();
 
       // Suppress mobile keyboard when interactive grid is active
       if (typeof Terminal !== 'undefined' && typeof Terminal.suppressMobileKeyboard === 'function') {
@@ -1320,6 +1320,15 @@ const GoneRogue = (function () {
     return lines;
   }
 
+  /**
+   * Helper to update mobile grid rendering with state
+   */
+  function _updateMobileGrid() {
+    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles, _alertLevel, _strCombatActive);
+    }
+  }
+
   function _movePlayer(dx, dy, runMode) {
     // Block movement during STR combat
     if (_strCombatActive) {
@@ -1577,7 +1586,7 @@ const GoneRogue = (function () {
       // Show mobile UI with fade-in effect
       if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
         GoneRogueMobile.show();
-        GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+        _updateMobileGrid();
 
         var gridContainer = document.getElementById('rogue-grid-mobile');
         if (gridContainer) {
@@ -2178,7 +2187,7 @@ const GoneRogue = (function () {
 
     // Re-render if using interactive grid
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+      _updateMobileGrid();
     }
   }
 
@@ -2492,7 +2501,7 @@ const GoneRogue = (function () {
 
           // Trigger re-render
           if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-            GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+            _updateMobileGrid();
           }
         }
       }, 400); // 2 blinks at 200ms each
@@ -2560,7 +2569,7 @@ const GoneRogue = (function () {
     _saveState();
 
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+      _updateMobileGrid();
     }
 
     if (action) {
@@ -2592,7 +2601,7 @@ const GoneRogue = (function () {
     _saveState();
 
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+      _updateMobileGrid();
     }
 
     return {
@@ -2671,7 +2680,7 @@ const GoneRogue = (function () {
     var action = _updateProjectiles(0, steps || 1);
 
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+      _updateMobileGrid();
     }
 
     return {
@@ -2732,7 +2741,7 @@ const GoneRogue = (function () {
         _saveState();
 
         if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-          GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+          _updateMobileGrid();
         }
 
         return {
@@ -2756,7 +2765,7 @@ const GoneRogue = (function () {
 
     // Update mobile UI
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+      _updateMobileGrid();
     }
 
     return moveResult;
@@ -2780,7 +2789,7 @@ const GoneRogue = (function () {
 
     // Update mobile UI
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles);
+      _updateMobileGrid();
     }
 
     return result;

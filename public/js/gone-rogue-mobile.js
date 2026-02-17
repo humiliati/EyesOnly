@@ -130,11 +130,28 @@ const GoneRogueMobile = (function () {
   /**
    * Render grid as interactive HTML cells
    */
-  function renderGrid(grid, player, enemies, items, colorCycleTime, breakables, projectiles) {
+  function renderGrid(grid, player, enemies, items, colorCycleTime, breakables, projectiles, alertLevel, strCombatActive) {
     if (!_gridContainer || !grid) return;
 
     breakables = breakables || [];
     projectiles = projectiles || [];
+    alertLevel = alertLevel || 'safe';
+    strCombatActive = strCombatActive || false;
+
+    // Update grid border based on alert level
+    if (strCombatActive) {
+      _gridContainer.style.borderColor = '#ff0000';
+      _gridContainer.style.boxShadow = '0 0 20px rgba(255, 0, 0, 0.5)';
+    } else if (alertLevel === 'danger') {
+      _gridContainer.style.borderColor = '#ff0000';
+      _gridContainer.style.boxShadow = '0 0 20px rgba(255, 0, 0, 0.3)';
+    } else if (alertLevel === 'caution') {
+      _gridContainer.style.borderColor = '#ffff00';
+      _gridContainer.style.boxShadow = '0 0 20px rgba(255, 255, 0, 0.3)';
+    } else {
+      _gridContainer.style.borderColor = '#1cff9b';
+      _gridContainer.style.boxShadow = '0 0 20px rgba(28, 255, 155, 0.3)';
+    }
 
     _gridContainer.innerHTML = '';
     _gridContainer.style.display = 'grid';
@@ -158,6 +175,54 @@ const GoneRogueMobile = (function () {
         if (player && player.x === x && player.y === y) {
           cell.textContent = '🥷';
           cell.classList.add('cell-player');
+
+          // Add directional gun indicator
+          if (player.lastMoveDirection) {
+            var gunSpan = document.createElement('span');
+            gunSpan.className = 'player-gun-indicator';
+
+            // Set gun emoji/character based on direction
+            var gunChar = '';
+            switch (player.lastMoveDirection) {
+              case 'north':
+                // Gun hidden behind player when facing north
+                gunChar = '';
+                break;
+              case 'south':
+                gunChar = '▼';
+                break;
+              case 'east':
+                gunChar = '▶';
+                break;
+              case 'west':
+                gunChar = '◀';
+                break;
+            }
+
+            gunSpan.textContent = gunChar;
+            gunSpan.style.position = 'absolute';
+            gunSpan.style.fontSize = '0.6em';
+            gunSpan.style.color = '#888';
+
+            // Position gun based on direction
+            if (player.lastMoveDirection === 'east') {
+              gunSpan.style.right = '2px';
+              gunSpan.style.top = '50%';
+              gunSpan.style.transform = 'translateY(-50%)';
+            } else if (player.lastMoveDirection === 'west') {
+              gunSpan.style.left = '2px';
+              gunSpan.style.top = '50%';
+              gunSpan.style.transform = 'translateY(-50%)';
+            } else if (player.lastMoveDirection === 'south') {
+              gunSpan.style.bottom = '2px';
+              gunSpan.style.left = '50%';
+              gunSpan.style.transform = 'translateX(-50%)';
+            }
+
+            if (gunChar) {
+              cell.appendChild(gunSpan);
+            }
+          }
         } else if (enemy) {
           // Check if this is an Elite enemy
           if (enemy.isElite) {
