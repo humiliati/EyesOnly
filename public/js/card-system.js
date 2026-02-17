@@ -196,11 +196,111 @@ const CardSystem = (function () {
       type: 'setup',
       name: 'Aim',
       emoji: '🎯',
-      baseStats: { 
+      baseStats: {
         accuracyBoost: 20,  // Renamed from accuracy_boost for camelCase consistency
         nextTurn: true,     // Renamed from next_turn for camelCase consistency
-        energy: 1, 
-        speed: 2 
+        energy: 1,
+        speed: 2
+      }
+    },
+
+    // ========== BOSS ENCOUNTER CARDS (Special tactical cards for boss fights) ==========
+    LURE: {
+      category: 'setup',
+      type: 'setup',
+      name: 'Lure',
+      emoji: '🥩',
+      baseStats: {
+        range: 3,
+        duration: 2,
+        energy: 2,
+        speed: 2,
+        bossInteraction: true // Special flag for boss mechanics
+      }
+    },
+    GRENADE: {
+      category: 'attack',
+      type: 'attack',
+      name: 'Grenade',
+      emoji: '💣',
+      baseStats: {
+        damage: 6,
+        aoe: 2, // Area of effect radius
+        noise: 5,
+        accuracy: 75,
+        energy: 3,
+        speed: 2,
+        destroysEnvironment: true
+      }
+    },
+    JAMMER: {
+      category: 'interrupt',
+      type: 'interrupt',
+      name: 'Jammer',
+      emoji: '📡',
+      baseStats: {
+        disrupt: 2,
+        range: 5,
+        duration: 3,
+        energy: 3,
+        speed: 4,
+        affectsElectronics: true
+      }
+    },
+    VIRUS: {
+      category: 'attack',
+      type: 'attack',
+      name: 'Virus',
+      emoji: '🦠',
+      baseStats: {
+        damage: 2, // Initial damage
+        dot: 3, // Damage over time per turn
+        duration: 3,
+        accuracy: 85,
+        energy: 3,
+        speed: 3,
+        affectsMachines: true
+      }
+    },
+    HIGH_GROUND: {
+      category: 'attack',
+      type: 'attack',
+      name: 'High Ground',
+      emoji: '🎯',
+      baseStats: {
+        damage: 4,
+        piercing: true, // Ignores cover/shields
+        accuracy: 90,
+        range: 8,
+        energy: 3,
+        speed: 2
+      }
+    },
+    MELEE_STRIKE: {
+      category: 'attack',
+      type: 'attack',
+      name: 'Melee Strike',
+      emoji: '⚔️',
+      baseStats: {
+        damage: 5,
+        accuracy: 85,
+        range: 1, // Must be adjacent
+        energy: 2,
+        speed: 3,
+        isMelee: true
+      }
+    },
+    LOGIC_HACK: {
+      category: 'interrupt',
+      type: 'interrupt',
+      name: 'Logic Hack',
+      emoji: '💻',
+      baseStats: {
+        manipulation: 1, // Can flip/invert target state
+        range: 3,
+        energy: 2,
+        speed: 5,
+        affectsSystems: true
       }
     },
 

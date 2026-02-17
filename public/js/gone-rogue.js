@@ -27,7 +27,9 @@ const GoneRogue = (function () {
     lastMoveDirection: null, // Track last move direction for flanking logic (north, south, east, west)
     str: 5, // Strength for combat
     dex: 5, // Dexterity for hit/dodge
-    initiative: 0 // Initiative bonus
+    initiative: 0, // Initiative bonus
+    combatEntries: 0, // Track total combat entries (for boss mythic conditions)
+    lastCardType: null // Track last card used (for boss mythic conditions)
   };
 
   var _enemies = [];
@@ -53,6 +55,13 @@ const GoneRogue = (function () {
   var _strCombatAdvantage = 'neutral'; // 'ambush', 'neutral', 'disadvantaged', 'flanked'
   var _strCombatRound = 0;
   var _strCombatLog = []; // Combat log messages
+
+  // Boss encounter state
+  var _activeBoss = null; // Current boss instance (from BossEncounters module)
+  var _bossFloorActive = false; // Is this a boss floor
+  var _bossDefeated = false; // Has boss been defeated this floor
+  var _bossHazards = []; // Boss-specific hazards (trains, drones, etc.)
+  var _bossEnvironment = {}; // Boss-specific environment data
 
   var TILES = {
     EMPTY: '.',
@@ -457,9 +466,20 @@ const GoneRogue = (function () {
     _items = [];
     _enemies = [];
     _tileMetadata = {};
+    _activeBoss = null;
+    _bossFloorActive = false;
+    _bossDefeated = false;
+    _bossHazards = [];
+    _bossEnvironment = {};
 
     // Determine floor type
     var floorType = _getFloorType(_floor);
+
+    // Check if this is a boss floor
+    if (floorType === FLOOR_TYPES.BOSS && typeof BossEncounters !== 'undefined') {
+      _bossFloorActive = true;
+      _activeBoss = BossEncounters.createBossForFloor(_floor);
+    }
 
     var maxAttempts = 10;
     var attempt = 0;
@@ -500,8 +520,18 @@ const GoneRogue = (function () {
       // Step 9: Place enemies (based on floor type)
       _placeEnemies(rooms, floorType);
 
-      // Step 10: Validate stealth path
-      validMap = _validateStealthPath(_player.x, _player.y, exitX, exitY);
+      // Step 9b: Initialize boss if this is a boss floor
+      if (_bossFloorActive && _activeBoss) {
+        var bossInit = _activeBoss.initialize(_grid, _player);
+        if (bossInit.success) {
+          _bossEnvironment = bossInit;
+          // Boss floor skips normal stealth validation
+          validMap = true;
+        }
+      } else {
+        // Step 10: Validate stealth path (non-boss floors only)
+        validMap = _validateStealthPath(_player.x, _player.y, exitX, exitY);
+      }
 
       if (!validMap && attempt < maxAttempts) {
         console.log('Map validation failed, regenerating... (attempt ' + attempt + ')');
@@ -547,6 +577,19 @@ const GoneRogue = (function () {
         h: Math.floor(GRID_HEIGHT / 2),
         centerX: Math.floor(GRID_WIDTH / 2),
         centerY: Math.floor(GRID_HEIGHT / 2)
+      }];
+    }
+
+    // Boss floors have one large arena room
+    if (floorType === FLOOR_TYPES.BOSS) {
+      return [{
+        x: 5,
+        y: 3,
+        w: 30,
+        h: 14,
+        centerX: 20,
+        centerY: 10,
+        isBossArena: true
       }];
     }
 
@@ -2531,6 +2574,9 @@ const GoneRogue = (function () {
     if (_gameLoopActive) {
       _pauseGameLoop();
     }
+
+    // Track combat entry for mythic conditions
+    _player.combatEntries++;
 
     // Initialize combat state
     _strCombatActive = true;
