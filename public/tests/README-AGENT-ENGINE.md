@@ -290,6 +290,258 @@ The engine is designed for fast batch simulation:
 - **Memory**: Efficiently handles 1000+ runs
 - **Browser Compatibility**: Works in all modern browsers
 
+## MVP Audit System
+
+### Overview
+
+The **MVP Audit System** is an enhanced testing framework built on top of the base Agent Engine, specifically designed to validate game readiness for human playtesters. It provides comprehensive UX metrics tracking and automated pass/fail assessment.
+
+### Files
+
+- **agent-mvp-audit.js** - Enhanced engine with UX tracking (~35KB)
+- **test-agent-mvp-audit.html** - Interactive MVP audit runner (~21KB)
+- **validate-mvp-audit.js** - Automated validation suite (60+ tests)
+- **test-muzzle-flash.html** - Visual test for weapon firing effects
+
+### Quick Start - MVP Audit
+
+1. Open `public/tests/test-agent-mvp-audit.html` in a web browser
+2. Configure audit parameters:
+   - Number of Runs: **100+** recommended for statistical significance
+   - Max Floor: 30 (default)
+   - Enable Elite Enemies: ✓
+   - Track UX Metrics: ✓ (required for MVP assessment)
+3. Click "Run MVP Audit"
+4. Review comprehensive MVP readiness report
+5. Export detailed results as CSV or JSON
+
+### What MVP Audit Tests
+
+#### 1. **Lighting System Utility** 💡
+- **Metrics Tracked**:
+  - Stealth bonus opportunity count
+  - Stealth bonus utilization rate
+  - Shadow usage frequency
+  - Darkness encounter rate
+  - Light source placement value
+
+- **Scoring Criteria**:
+  - ✓ PASS: >40% utilization rate
+  - ⚠ WARNING: 20-40% utilization rate  
+  - ✗ FAIL: <20% utilization rate
+
+- **Pass Requirement**: Players must engage with lighting mechanics >40% of opportunities
+
+#### 2. **Ground Effects Engagement** 🌋
+- **Metrics Tracked**:
+  - Total ground effects encountered
+  - Damage taken from effects
+  - Benefits gained from effects
+  - Strategic usage (oil ignition, smoke cover)
+  - Effect spread patterns
+
+- **Scoring Criteria**:
+  - ✓ PASS: 2-20 damage per run average
+  - ⚠ WARNING: <2 (too rare) or >20 (too punishing)
+  - ✗ FAIL: Effects not encountered or game-breaking damage
+
+- **Pass Requirement**: Ground effects must be balanced (present but not overwhelming)
+
+#### 3. **STR Combat Balance** ⚔️
+- **Metrics Tracked**:
+  - Combat initiation count
+  - Win/loss ratio
+  - Average damage dealt per combat
+  - Average damage taken per combat
+  - Card usage patterns by type
+  - Combat round duration
+
+- **Scoring Criteria**:
+  - ✓ PASS: 40-80% win rate
+  - ⚠ WARNING: 30-40% or 80-90% win rate
+  - ✗ FAIL: <30% (too hard) or >90% (too easy)
+
+- **Pass Requirement**: Combat must be challenging but fair (50-70% win rate ideal)
+
+#### 4. **Boss Encounters** 👹
+- **Mathematical Defeat Calculation**: Boss HP vs Player Deck Power
+- **Metrics Tracked**:
+  - Boss encounter count
+  - Boss defeat rate
+  - Impossible boss detection (mathematically unbeatable)
+
+- **Scoring Criteria**:
+  - ✓ PASS: 30-70% boss defeat rate
+  - ⚠ WARNING: <30% or >70%
+  - ✗ CRITICAL: Any mathematically impossible bosses
+
+- **Pass Requirement**: Bosses must be beatable with proper preparation
+
+#### 5. **Pathfinding Quality** 🗺️
+- **Metrics Tracked**:
+  - Stuck situations (no valid moves)
+  - Backtracking frequency
+  - Optimal path following rate
+  - Map exploration coverage
+  - Exit finding efficiency
+
+- **Scoring Criteria**:
+  - ✓ PASS: 0 stuck situations
+  - ✗ CRITICAL: Any stuck situations detected
+
+- **Pass Requirement**: **Zero tolerance for stuck/blocked situations** (game-breaking bugs)
+
+#### 6. **Economy Balance** 💰
+- **Metrics Tracked**:
+  - Average credits per floor
+  - Spending patterns
+  - Resource starvation events
+  - Excess currency events
+  - Vendor interaction frequency
+
+- **Scoring Criteria**:
+  - ✓ PASS: 50-500 credits per floor
+  - ⚠ WARNING: <50 (starvation) or >500 (overabundance)
+  - ✗ FAIL: Extreme imbalances
+
+- **Pass Requirement**: Economy must feel tight but not punishing
+
+### Enhanced Personas
+
+In addition to base personas, MVP Audit includes specialized test personas:
+
+#### STEALTH_SPECIALIST
+- **Purpose**: Validate lighting system utility
+- **Behavior**: Actively seeks shadows and darkness
+- **Strategy**: Prioritizes stealth bonuses over direct combat
+- **Vendor**: Buys light-related items
+- **Expected Outcome**: High lighting utilization rate
+
+#### GROUND_EFFECTS_TESTER
+- **Purpose**: Validate ground effects engagement
+- **Behavior**: Intentionally interacts with all ground effects
+- **Strategy**: Tests oil ignition, smoke cover, fire damage
+- **Expected Outcome**: High ground effects encounter rate
+
+### MVP Readiness Report
+
+The audit generates a comprehensive report with:
+
+#### Overall Score (0-100)
+- Weighted average of all system scores
+- **Pass Threshold: ≥70** with no critical issues
+
+#### Critical Issues (MVP Blockers)
+- Game-breaking bugs (stuck situations, impossible bosses)
+- Severity: **CRITICAL** - Must fix before MVP
+- Example: "Pathfinding: 3 stuck situations detected"
+
+#### Warnings (Balance Concerns)
+- Systems that need tuning but aren't blockers
+- Severity: **WARNING** - Should address for better UX
+- Example: "Lighting: 25% utilization - increase incentives"
+
+#### Recommendations
+- Actionable suggestions for improvement
+- Based on aggregate data analysis
+- Prioritized by impact on player experience
+
+### Example MVP Report
+
+```
+📋 MVP READINESS AUDIT REPORT
+========================================
+✓ MVP READY
+Overall Score: 82/100
+========================================
+
+UX SYSTEM SCORES:
+💡 Lighting System:        85/100  ✓ PASS
+🌋 Ground Effects:         80/100  ✓ PASS
+⚔️  STR Combat:            90/100  ✓ PASS
+🗺️  Pathfinding:          100/100  ✓ PASS
+💰 Economy:                85/100  ✓ PASS
+
+CRITICAL ISSUES: 0
+
+WARNINGS: 1
+⚠ Lighting: Moderate utilization (35%) - Make benefits more obvious
+
+RECOMMENDATIONS:
+→ Run 500+ simulations for statistical confidence
+→ Test with human playtesters for UX validation
+→ Monitor for edge cases and rare bugs
+```
+
+### Interpreting MVP Results
+
+#### MVP Ready ✓
+- Overall Score ≥ 70
+- Zero critical issues
+- All core systems functional
+- Balance within acceptable ranges
+- **Action**: Proceed to human playtesting
+
+#### Not MVP Ready ✗
+- Overall Score < 70 or critical issues present
+- Game-breaking bugs detected
+- Major balance issues
+- **Action**: Address critical issues before playtesting
+
+### Export Formats
+
+#### CSV Export
+```csv
+Run ID,Persona,End Floor,Survived,Final Credits,Mythics,STR Combat Wins,Stuck Count,Lighting Util %
+1,MINMAXER,30,true,542,2,8,0,45.2
+2,STEALTH_SPECIALIST,25,true,389,1,6,0,78.5
+```
+
+#### JSON Export
+```json
+{
+  "metadata": {
+    "timestamp": "2026-02-17T22:00:00Z",
+    "totalRuns": 100,
+    "maxFloor": 30
+  },
+  "summary": {
+    "survivalRate": "45.0",
+    "avgFinalFloor": 18.5
+  },
+  "mvpReadiness": {
+    "overallScore": "82",
+    "passed": true,
+    "criticalIssues": [],
+    "warnings": [...]
+  },
+  "uxAudit": {
+    "lighting": {...},
+    "groundEffects": {...},
+    "combat": {...},
+    "pathfinding": {...},
+    "economy": {...}
+  }
+}
+```
+
+### Command-Line Validation
+
+```bash
+cd public/tests
+node validate-mvp-audit.js
+```
+
+Expected output: **60+/60+ tests passing**
+
+### Visual Tests
+
+#### Muzzle Flash Test
+- **File**: `test-muzzle-flash.html`
+- **Purpose**: Confirm muzzle flash originates from player's directional gun indicator
+- **Interactive**: Move player with arrow buttons, fire weapon to see flash
+- **Validates**: Visual effect positioning and timing
+
 ## Future Enhancements
 
 Potential improvements not yet implemented:
