@@ -3576,6 +3576,9 @@ const GoneRogue = (function () {
     // Calculate advantage state
     _strCombatAdvantage = _calculateAdvantage(_player, enemy, trigger);
 
+    // Scan 3x3 tiles around player for ground effects and apply combat modifiers
+    _applyGroundEffectModifiers();
+
     // Add combat entry message with emoji
     var advantageEmoji = _getAdvantageEmoji(_strCombatAdvantage);
     _strCombatLog.push('⚔️  STR COMBAT INITIATED ' + advantageEmoji);
@@ -5028,6 +5031,109 @@ const GoneRogue = (function () {
 
   // ============================================================
   // END ACTIVE ITEM USAGE SYSTEM
+  // ============================================================
+
+  // ============================================================
+  // GROUND EFFECT COMBAT MODIFIERS
+  // ============================================================
+
+  /**
+   * Apply ground effect modifiers when STR combat starts
+   * Scans 3x3 tiles around player and enemy, applies status effects
+   */
+  function _applyGroundEffectModifiers() {
+    if (typeof GroundEffects === 'undefined') return;
+
+    var playerGroundEffect = GroundEffects.getGroundEffect(_player.x, _player.y);
+    var enemyGroundEffect = null;
+
+    if (_strCombatEnemy) {
+      enemyGroundEffect = GroundEffects.getGroundEffect(_strCombatEnemy.x, _strCombatEnemy.y);
+    }
+
+    // Apply player ground effect modifiers
+    if (playerGroundEffect) {
+      _applyPlayerGroundModifier(playerGroundEffect);
+    }
+
+    // Apply enemy ground effect modifiers
+    if (enemyGroundEffect && _strCombatEnemy) {
+      _applyEnemyGroundModifier(enemyGroundEffect, _strCombatEnemy);
+    }
+  }
+
+  /**
+   * Apply ground effect modifier to player
+   * @param {Object} effect - Ground effect
+   */
+  function _applyPlayerGroundModifier(effect) {
+    if (!effect) return;
+
+    // FIRE / OIL_IGNITED: Start combat with reduced HP and burn status
+    if (effect.type === 'FIRE' || effect.type === 'OIL_IGNITED') {
+      var burnDamage = Math.floor(_player.maxHp * 0.1); // 10% HP
+      _player.hp = Math.max(1, _player.hp - burnDamage);
+      _strCombatLog.push('🔥 STANDING IN FIRE! -' + burnDamage + ' HP');
+      _strCombatLog.push('└─ Burn status applied');
+    }
+    // ELECTRIFIED WATER: Shock risk, reduced evasion
+    else if (effect.type === 'WATER' && effect.electrified) {
+      _strCombatLog.push('⚡ STANDING IN ELECTRIFIED WATER!');
+      _strCombatLog.push('└─ Shock risk, -20% evasion');
+      // Modifier will be checked during damage calculation
+    }
+    // INDUSTRIAL_WASTE: Random mutation or debuff
+    else if (effect.type === 'INDUSTRIAL_WASTE') {
+      if (Math.random() < 0.3) {
+        _strCombatLog.push('☢️  TOXIC WASTE EXPOSURE!');
+        _strCombatLog.push('└─ Random debuff applied');
+        // Could implement specific debuffs here
+      }
+    }
+    // WATER: Movement penalty, reduced evasion
+    else if (effect.type === 'WATER') {
+      _strCombatLog.push('💧 Standing in water: -10% evasion');
+    }
+  }
+
+  /**
+   * Apply ground effect modifier to enemy
+   * @param {Object} effect - Ground effect
+   * @param {Object} enemy - Enemy object
+   */
+  function _applyEnemyGroundModifier(effect, enemy) {
+    if (!effect || !enemy) return;
+
+    // FIRE / OIL_IGNITED: Enemy takes damage, may be stunned
+    if (effect.type === 'FIRE' || effect.type === 'OIL_IGNITED') {
+      var burnDamage = Math.floor(enemy.maxHp * 0.15); // 15% HP for enemies
+      enemy.hp = Math.max(1, enemy.hp - burnDamage);
+      _strCombatLog.push('🔥 ENEMY IN FIRE! -' + burnDamage + ' HP');
+
+      // Weak enemies may be KO'd immediately
+      if (enemy.hp <= burnDamage && enemy.tier === 'SCOUT') {
+        enemy.hp = 0;
+        _strCombatLog.push('└─ Enemy KO\'d by fire!');
+      }
+    }
+    // ELECTRIFIED WATER: Stun enemy for first turn
+    else if (effect.type === 'WATER' && effect.electrified) {
+      _strCombatLog.push('⚡ ENEMY IN ELECTRIFIED WATER!');
+      _strCombatLog.push('└─ Enemy stunned turn 1');
+      enemy.stunnedTurns = 1;
+    }
+    // INDUSTRIAL_WASTE: Random debuff
+    else if (effect.type === 'INDUSTRIAL_WASTE') {
+      if (Math.random() < 0.3) {
+        _strCombatLog.push('☢️  Enemy exposed to toxic waste');
+        _strCombatLog.push('└─ Enemy weakened');
+        enemy.weakened = true;
+      }
+    }
+  }
+
+  // ============================================================
+  // END GROUND EFFECT COMBAT MODIFIERS
   // ============================================================
 
   return {
