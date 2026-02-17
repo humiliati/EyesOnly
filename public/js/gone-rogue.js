@@ -1780,15 +1780,34 @@ const GoneRogue = (function () {
     // left = defensive
     // right = offensive
 
-    if (card.type === 'attack') {
+    var category = typeof CardSystem !== 'undefined' ? CardSystem.getCardCategory(card) : card.type;
+
+    // Interrupt cards (up/right/left)
+    if (category === 'interrupt') {
+      if (direction === 'up' || direction === 'right' || direction === 'left') {
+        return { type: 'interrupt', card: card };
+      }
+    }
+    // Defense cards (up/left)
+    else if (category === 'defense' || card.type === 'stance') {
+      if (direction === 'up' || direction === 'left') {
+        return { type: 'defense', card: card };
+      }
+    }
+    // Movement cards (up/left/right)
+    else if (category === 'movement') {
+      if (direction === 'up' || direction === 'left' || direction === 'right') {
+        return { type: 'movement', card: card };
+      }
+    }
+    // Attack cards (up/right)
+    else if (category === 'attack' || card.type === 'attack') {
       if (direction === 'up' || direction === 'right') {
         return { type: 'attack', card: card };
       }
-    } else if (card.type === 'stance') {
-      if (direction === 'up' || direction === 'left') {
-        return { type: 'stance', card: card };
-      }
-    } else if (card.type === 'utility') {
+    }
+    // Setup/Utility cards (up)
+    else if (category === 'setup' || card.type === 'utility') {
       if (direction === 'up') {
         return { type: 'use', card: card };
       }
@@ -1813,9 +1832,10 @@ const GoneRogue = (function () {
       };
     }
 
-    if (action.type === 'attack') {
+    // All combat actions now route through the same handlers
+    if (action.type === 'attack' || action.type === 'interrupt') {
       return _performAttack(action.card);
-    } else if (action.type === 'stance') {
+    } else if (action.type === 'defense' || action.type === 'stance' || action.type === 'movement') {
       return _performStance(action.card);
     } else if (action.type === 'use') {
       return _useUtility(action.card);
@@ -1834,6 +1854,12 @@ const GoneRogue = (function () {
    * Perform attack with card
    */
   function _performAttack(card) {
+    // If already in STR combat, use simultaneous resolution
+    if (_strCombatActive) {
+      var enemyCard = _getEnemyAICard();
+      return _executeSimultaneousRound(card, enemyCard);
+    }
+
     // Find nearest enemy
     var nearest = _findNearestEnemy();
     if (!nearest) {
@@ -1852,6 +1878,13 @@ const GoneRogue = (function () {
    * Perform stance with card
    */
   function _performStance(card) {
+    // If in STR combat, use simultaneous resolution
+    if (_strCombatActive) {
+      var enemyCard = _getEnemyAICard();
+      return _executeSimultaneousRound(card, enemyCard);
+    }
+
+    // Outside combat: apply stance benefits
     _player.stealth += (card.stats.stealth || 1);
     _turn++;
     _saveState();
@@ -2065,7 +2098,382 @@ const GoneRogue = (function () {
   }
 
   /**
-   * Execute a round of STR combat
+   * Execute a round of STR combat with simultaneous resolution
+   * @param {Object} playerCard - Card player is using
+   * @param {Object} enemyCard - Card enemy is using (from AI)
+   */
+  function _executeSimultaneousRound(playerCard, enemyCard) {
+    _strCombatRound++;
+
+    var actions = [];
+
+    // Create player action
+    if (playerCard) {
+      var category = typeof CardSystem !== 'undefined' ? CardSystem.getCardCategory(playerCard) : 'attack';
+      var priority = typeof CardSystem !== 'undefined' ? CardSystem.getCardPriority(category) : 4;
+      var speed = (playerCard.stats && playerCard.stats.speed) || _player.initiative || 0;
+      
+      actions.push({
+        actor: 'player',
+        card: playerCard,
+        category: category,
+        priority: priority,
+        speed: speed
+      });
+    }
+
+    // Create enemy action (simplified AI)
+    if (enemyCard) {
+      var enemyCategory = typeof CardSystem !== 'undefined' ? CardSystem.getCardCategory(enemyCard) : 'attack';
+      var enemyPriority = typeof CardSystem !== 'undefined' ? CardSystem.getCardPriority(enemyCategory) : 4;
+      var enemySpeed = (enemyCard.stats && enemyCard.stats.speed) || _strCombatEnemy.initiative || 0;
+      
+      actions.push({
+        actor: 'enemy',
+        card: enemyCard,
+        category: enemyCategory,
+        priority: enemyPriority,
+        speed: enemySpeed
+      });
+    }
+
+    // Sort by priority (lower priority number executes first), then by speed (higher speed breaks ties)
+    actions.sort(function(a, b) {
+      if (a.priority !== b.priority) {
+        return a.priority - b.priority; // Lower priority executes first
+      }
+      return b.speed - a.speed; // Higher speed breaks ties
+    });
+
+    // Execute actions in order
+    var lines = [];
+    lines.push('═══ ROUND ' + _strCombatRound + ' RESOLUTION ═══');
+    lines.push('');
+
+    for (var i = 0; i < actions.length; i++) {
+      var action = actions[i];
+      var result = _resolveAction(action);
+      
+      if (result && result.lines) {
+        lines = lines.concat(result.lines);
+      }
+
+      // Check for combat end conditions
+      if (_strCombatEnemy.hp <= 0) {
+        lines.push('');
+        lines.push('💀 ENEMY DEFEATED!');
+        var exitResult = _exitStrCombat('player_victory');
+        return {
+          lines: lines.concat(exitResult.lines || []),
+          stayActive: exitResult.stayActive
+        };
+      }
+
+      if (_player.hp <= 0) {
+        lines.push('');
+        lines.push('💀 YOU HAVE BEEN DEFEATED...');
+        return _exitRogue(false); // Player death
+      }
+    }
+
+    // Continue combat
+    lines.push('');
+    lines.push('═══════════════════════════');
+    lines.push('');
+    return _showStrCombatUIWithLog(lines);
+  }
+
+  /**
+   * Resolve a single action in the priority queue
+   * @param {Object} action - Action object with actor, card, category, priority, speed
+   */
+  function _resolveAction(action) {
+    var lines = [];
+    var actor = action.actor === 'player' ? _player : _strCombatEnemy;
+    var target = action.actor === 'player' ? _strCombatEnemy : _player;
+    var card = action.card;
+    var category = action.category;
+
+    // Display action header with priority indicator
+    var priorityLabel = {
+      interrupt: '🚨 INTERRUPT',
+      defense: '🛡️  DEFENSE',
+      movement: '🏃 MOVEMENT',
+      attack: '⚔️  ATTACK',
+      setup: '🔧 SETUP'
+    }[category] || '❓ ACTION';
+
+    var actorName = action.actor === 'player' ? 'PLAYER' : 'ENEMY';
+    lines.push(priorityLabel + ' — ' + actorName + ': ' + card.emoji + ' ' + card.name);
+
+    // Resolve based on category
+    switch (category) {
+      case 'interrupt':
+        lines = lines.concat(_resolveInterruptAction(actor, target, card));
+        break;
+      case 'defense':
+        lines = lines.concat(_resolveDefenseAction(actor, target, card));
+        break;
+      case 'movement':
+        lines = lines.concat(_resolveMovementAction(actor, target, card));
+        break;
+      case 'attack':
+        lines = lines.concat(_resolveAttackAction(actor, target, card));
+        break;
+      case 'setup':
+        lines = lines.concat(_resolveSetupAction(actor, target, card));
+        break;
+      default:
+        lines.push('└─ Unknown action type');
+    }
+
+    lines.push('');
+    return { lines: lines };
+  }
+
+  /**
+   * Resolve interrupt action
+   */
+  function _resolveInterruptAction(actor, target, card) {
+    var lines = [];
+    
+    // Interrupt actions execute before other actions
+    if (card.name === 'Dive for Cover') {
+      var defense = card.stats.defense || 5;
+      var evasion = card.stats.evasion || 3;
+      actor.tempDefense = (actor.tempDefense || 0) + defense;
+      actor.tempEvasion = (actor.tempEvasion || 0) + evasion;
+      lines.push('├─ Gained +' + defense + ' defense, +' + evasion + ' evasion');
+    } else if (card.name === 'Jam Weapon') {
+      target.weaponJammed = true;
+      lines.push('├─ Target\'s weapon jammed! Next attack canceled');
+    } else if (card.name === 'Overwatch Shot') {
+      // Immediate attack with bonus
+      var damage = card.stats.damage || 3;
+      target.hp -= damage;
+      lines.push('├─ Dealt ' + damage + ' damage (preemptive strike)');
+      lines.push('└─ Target HP: ' + Math.max(0, target.hp) + '/' + (target.maxHp || 5));
+    } else {
+      lines.push('└─ Interrupt executed');
+    }
+    
+    return lines;
+  }
+
+  /**
+   * Resolve defense action
+   */
+  function _resolveDefenseAction(actor, target, card) {
+    var lines = [];
+    
+    var defense = card.stats.defense || 0;
+    var evasion = card.stats.evasion || 0;
+    
+    if (defense > 0) {
+      actor.tempDefense = (actor.tempDefense || 0) + defense;
+      lines.push('├─ Gained +' + defense + ' defense');
+    }
+    if (evasion > 0) {
+      actor.tempEvasion = (actor.tempEvasion || 0) + evasion;
+      lines.push('├─ Gained +' + evasion + ' evasion');
+    }
+    
+    var stealth = card.stats.stealth || 0;
+    if (stealth > 0) {
+      actor.stealth = Math.min((actor.maxStealth || 5), (actor.stealth || 0) + stealth);
+      lines.push('└─ Stealth increased');
+    }
+    
+    return lines;
+  }
+
+  /**
+   * Resolve movement action
+   */
+  function _resolveMovementAction(actor, target, card) {
+    var lines = [];
+    
+    var distance = card.stats.distance || 0;
+    var evasion = card.stats.evasion || 0;
+    
+    if (distance !== 0) {
+      // Movement affects distance (abstracted in STR combat)
+      lines.push('├─ Position adjusted (' + (distance > 0 ? 'closing' : 'retreating') + ')');
+    }
+    
+    if (evasion > 0) {
+      actor.tempEvasion = (actor.tempEvasion || 0) + evasion;
+      lines.push('└─ Gained +' + evasion + ' evasion from movement');
+    }
+    
+    return lines;
+  }
+
+  /**
+   * Resolve attack action
+   */
+  function _resolveAttackAction(actor, target, card) {
+    var lines = [];
+    
+    // Check if weapon is jammed
+    if (actor.weaponJammed) {
+      lines.push('└─ Attack failed! Weapon is jammed');
+      actor.weaponJammed = false; // Clear jam
+      return lines;
+    }
+    
+    // Calculate hit with target's temp evasion
+    var advantage = actor === _player ? _strCombatAdvantage : 
+                    (_strCombatAdvantage === 'ambush' ? 'flanked' : 
+                     _strCombatAdvantage === 'flanked' ? 'ambush' : 'neutral');
+    
+    var hitResult = _calculateHit(actor, target, advantage);
+    var evasionBonus = (target.tempEvasion || 0) * 5; // Each evasion point = 5% miss chance
+    hitResult.target += evasionBonus;
+    
+    if (!hitResult.hit || hitResult.roll < hitResult.target - evasionBonus) {
+      lines.push('├─ MISS! (Roll: ' + hitResult.roll + ' vs ' + hitResult.target + ')');
+      if (evasionBonus > 0) {
+        lines.push('└─ Target evaded with +' + evasionBonus + '% evasion bonus');
+      }
+      return lines;
+    }
+    
+    // Calculate damage reduced by defense
+    var damageResult = _calculateDamage(actor, target, advantage, card, hitResult.crit);
+    var defenseReduction = (target.tempDefense || 0);
+    var finalDamage = Math.max(1, damageResult.damage - defenseReduction);
+    
+    target.hp -= finalDamage;
+    
+    var critEmoji = hitResult.crit ? ' 💥 CRIT!' : '';
+    lines.push('├─ HIT!' + critEmoji + ' (Roll: ' + hitResult.roll + ' vs ' + hitResult.target + ')');
+    lines.push('├─ Damage: ' + damageResult.damage + (defenseReduction > 0 ? ' - ' + defenseReduction + ' defense' : ''));
+    lines.push('└─ Final: ' + finalDamage + ' damage → Target HP: ' + Math.max(0, target.hp) + '/' + (target.maxHp || 5));
+    
+    return lines;
+  }
+
+  /**
+   * Resolve setup/utility action
+   */
+  function _resolveSetupAction(actor, target, card) {
+    var lines = [];
+    
+    var hp = card.stats.hp || 0;
+    if (hp > 0) {
+      actor.hp = Math.min((actor.maxHp || 10), actor.hp + hp);
+      lines.push('├─ Healed ' + hp + ' HP → ' + actor.hp + '/' + (actor.maxHp || 10));
+    }
+    
+    var attackBoost = card.stats.attack_boost || 0;
+    if (attackBoost > 0) {
+      actor.tempAttackBoost = (actor.tempAttackBoost || 0) + attackBoost;
+      lines.push('├─ Gained +' + attackBoost + ' attack power (next turn)');
+    }
+    
+    var speedBoost = card.stats.speed_boost || 0;
+    if (speedBoost > 0) {
+      actor.tempSpeedBoost = (actor.tempSpeedBoost || 0) + speedBoost;
+      lines.push('├─ Gained +' + speedBoost + ' speed (next turn)');
+    }
+    
+    var accuracyBoost = card.stats.accuracy_boost || 0;
+    if (accuracyBoost > 0) {
+      actor.tempAccuracyBoost = (actor.tempAccuracyBoost || 0) + accuracyBoost;
+      lines.push('└─ Gained +' + accuracyBoost + '% accuracy (next turn)');
+    }
+    
+    return lines;
+  }
+
+  /**
+   * Show STR combat UI with additional log lines
+   */
+  function _showStrCombatUIWithLog(logLines) {
+    var lines = logLines || [];
+    
+    // Add current combat state
+    lines.push('╔═══════════════════════════╗');
+    lines.push('║  PLAYER: ' + _player.hp + '/' + (_player.maxHp || 10) + ' HP         ║');
+    lines.push('║  ENEMY:  ' + _strCombatEnemy.hp + '/' + (_strCombatEnemy.maxHp || 5) + ' HP         ║');
+    lines.push('╚═══════════════════════════╝');
+    lines.push('');
+    lines.push('🃏 Use attack card (swipe/click) to strike');
+    lines.push('🛡️  Use defense card to defend');
+    lines.push('🏃 Type FLEE to attempt escape');
+    lines.push('');
+
+    // Clear temp effects for next round
+    _player.tempDefense = 0;
+    _player.tempEvasion = 0;
+    _strCombatEnemy.tempDefense = 0;
+    _strCombatEnemy.tempEvasion = 0;
+
+    // Show grid underneath
+    lines = lines.concat(_renderGrid());
+
+    // Trigger header flash if UI exists
+    _triggerCombatFlash();
+
+    return {
+      lines: lines,
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Simple enemy AI: select a card to use
+   * @returns {Object} Simulated enemy card
+   */
+  function _getEnemyAICard() {
+    // Simple AI: choose based on HP and situation
+    var enemy = _strCombatEnemy;
+    var enemyHpPercent = (enemy.hp / (enemy.maxHp || 5)) * 100;
+    
+    // If low HP, prefer defense/healing
+    if (enemyHpPercent < 30) {
+      var roll = Math.random();
+      if (roll < 0.4 && typeof CardSystem !== 'undefined') {
+        // Try to defend
+        return CardSystem.rollCard('DODGE');
+      } else if (roll < 0.7 && typeof CardSystem !== 'undefined') {
+        return CardSystem.rollCard('PRONE');
+      }
+    }
+    
+    // If healthy, prefer attacks
+    if (enemyHpPercent > 50) {
+      var attackRoll = Math.random();
+      if (typeof CardSystem !== 'undefined') {
+        if (attackRoll < 0.5) {
+          return CardSystem.rollCard('SINGLE_SHOT');
+        } else if (attackRoll < 0.8) {
+          return CardSystem.rollCard('BURST_SHOT');
+        } else {
+          return CardSystem.rollCard('OVERWATCH');
+        }
+      }
+    }
+    
+    // Default: basic attack
+    if (typeof CardSystem !== 'undefined') {
+      return CardSystem.rollCard('SINGLE_SHOT');
+    }
+    
+    // Fallback: create a basic attack card
+    return {
+      name: 'Basic Attack',
+      emoji: '🔫',
+      type: 'attack',
+      category: 'attack',
+      stats: { damage: 2, accuracy: 70, energy: 1, speed: 2 }
+    };
+  }
+
+  /**
+   * Execute a round of STR combat (legacy single-action system)
    */
   function _executeStrRound(initiator, card) {
     _strCombatRound++;
