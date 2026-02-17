@@ -34,6 +34,7 @@ const GoneRogue = (function () {
   var _items = [];
   var _projectiles = [];
   var _breakables = [];
+  var _currencies = []; // Currency drops on floor (yellow dots ¢)
   var _turn = 0;
   var _floor = 1;
   var _alertLevel = 'safe'; // safe, caution, danger
@@ -839,6 +840,19 @@ const GoneRogue = (function () {
     });
   }
 
+  /**
+   * Spawn currency (cryptos ¢) at a location
+   */
+  function _spawnCurrency(x, y, amount) {
+    _currencies.push({
+      x: x,
+      y: y,
+      amount: amount,
+      glyph: '¢',
+      emoji: '💰'
+    });
+  }
+
   function _renderGrid() {
     var lines = [''];
 
@@ -934,6 +948,18 @@ const GoneRogue = (function () {
     _player.y = newY;
     _turn++;
 
+    // Check for currency pickup
+    var cryptoPickup = _currencies.find(function(c) { return c.x === newX && c.y === newY; });
+    var cryptoMessage = null;
+    if (cryptoPickup) {
+      if (typeof GAMESTATE !== 'undefined') {
+        var result = GAMESTATE.addCryptos(cryptoPickup.amount);
+        cryptoMessage = result.message;
+      }
+      // Remove currency from floor
+      _currencies = _currencies.filter(function(c) { return c.x !== newX || c.y !== newY; });
+    }
+
     // Apply tile effects
     var tileEffectMessage = _applyTileEffects(newX, newY);
 
@@ -964,7 +990,10 @@ const GoneRogue = (function () {
 
     _saveState();
 
-    var lines = tileEffectMessage ? [tileEffectMessage, ''].concat(_renderGrid()) : _renderGrid();
+    var messageLines = [];
+    if (cryptoMessage) messageLines.push(cryptoMessage);
+    if (tileEffectMessage) messageLines.push(tileEffectMessage);
+    var lines = messageLines.length > 0 ? messageLines.concat(['']).concat(_renderGrid()) : _renderGrid();
 
     return {
       lines: lines,
@@ -1435,6 +1464,27 @@ const GoneRogue = (function () {
     breakable.hp = Math.max(0, (breakable.hp || 0) - amount);
     if (breakable.hp === 0) {
       _grid[breakable.y][breakable.x] = breakable.destroyedGlyph || TILES.DEBRIS;
+
+      // Drop currency (cryptos) when breakable is destroyed
+      var dropChance = Math.random();
+      if (dropChance < 0.7) { // 70% chance to drop currency
+        var cryptoAmount = Math.floor(Math.random() * 3) + 1; // 1-3 cryptos
+        _spawnCurrency(breakable.x, breakable.y, cryptoAmount);
+      }
+
+      // 30% chance to drop a card
+      if (Math.random() < 0.3 && typeof CardSystem !== 'undefined') {
+        var baseType = CardSystem.getRandomBaseCard();
+        var card = CardSystem.rollCard(baseType);
+        if (card) {
+          _items.push({
+            x: breakable.x,
+            y: breakable.y,
+            type: 'card',
+            card: card
+          });
+        }
+      }
     }
   }
 
@@ -2228,6 +2278,26 @@ const GoneRogue = (function () {
     if (reason === 'player_victory') {
       lines.push('✅ COMBAT VICTORY!');
       lines.push('└─ Enemy neutralized');
+
+      // Drop currency and cards from defeated enemy
+      var cryptoAmount = Math.floor(Math.random() * 5) + 2; // 2-6 cryptos
+      _spawnCurrency(_strCombatEnemy.x, _strCombatEnemy.y, cryptoAmount);
+      lines.push('💰 Enemy dropped ¢' + cryptoAmount);
+
+      // 50% chance to drop a card
+      if (Math.random() < 0.5 && typeof CardSystem !== 'undefined') {
+        var baseType = CardSystem.getRandomBaseCard();
+        var card = CardSystem.rollCard(baseType);
+        if (card) {
+          _items.push({
+            x: _strCombatEnemy.x,
+            y: _strCombatEnemy.y,
+            type: 'card',
+            card: card
+          });
+          lines.push('🎴 Enemy dropped a card!');
+        }
+      }
 
       // Remove defeated enemy from map
       var enemyIndex = _enemies.indexOf(_strCombatEnemy);
