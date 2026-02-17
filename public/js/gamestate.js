@@ -270,6 +270,16 @@ const GAMESTATE = (function () {
   }
 
   /**
+   * Helper to check if StreetChronicles is available and active
+   * @returns {boolean}
+   */
+  function _isStreetChroniclesActive() {
+    return typeof StreetChronicles !== 'undefined' && 
+           typeof StreetChronicles.isActive === 'function' && 
+           StreetChronicles.isActive();
+  }
+
+  /**
    * Central transition helper for entering Gone Rogue mode.
    * Handles Street Chronicles deactivation, inventory transfer, and mode switching.
    * @param {Object} context - {reason, seed, difficulty, carryInventory}
@@ -280,7 +290,7 @@ const GAMESTATE = (function () {
     console.debug('[GAMESTATE.requestRogue] Initiating Gone Rogue transition', context);
 
     // Step 1: If StreetChronicles is active and carryInventory requested, collect inventory
-    if (typeof StreetChronicles !== 'undefined' && typeof StreetChronicles.isActive === 'function' && StreetChronicles.isActive()) {
+    if (_isStreetChroniclesActive()) {
       console.debug('[GAMESTATE.requestRogue] StreetChronicles is active');
       
       if (context.carryInventory && typeof StreetChronicles.getInventory === 'function') {

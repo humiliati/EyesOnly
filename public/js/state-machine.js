@@ -591,7 +591,13 @@ const StateMachine = (function () {
     _saveState();
     return {
       type: 'deny',
-      lines: ['', 'TEMPORAL KEY INVALID', 'HINT: Press Enter to continue, or type BACK to exit', 'ATTEMPT ' + _data.failedAttempts + '/' + MAX_FAILURES, ''],
+      lines: [
+        '',
+        'TEMPORAL KEY INVALID',
+        'HINT: Press Enter to continue, or type BACK to exit',
+        'ATTEMPT ' + _data.failedAttempts + '/' + MAX_FAILURES,
+        ''
+      ],
       prompt: '> ',
       newState: _state
     };
