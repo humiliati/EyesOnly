@@ -63,6 +63,9 @@ const GoneRogue = (function () {
   var _bossHazards = []; // Boss-specific hazards (trains, drones, etc.)
   var _bossEnvironment = {}; // Boss-specific environment data
 
+  // Secret floor state
+  var _activeSecretFloor = null; // Current secret floor type (if any)
+
   var TILES = {
     EMPTY: '.',
     WALL: '█',
@@ -541,7 +544,7 @@ const GoneRogue = (function () {
     return lines;
   }
 
-  function _generateFloor() {
+  function _generateFloor(secretFloorData) {
     // Initialize generation state
     _projectiles = [];
     _breakables = [];
@@ -553,14 +556,43 @@ const GoneRogue = (function () {
     _bossDefeated = false;
     _bossHazards = [];
     _bossEnvironment = {};
+    _activeSecretFloor = null;
 
     // Determine floor type
-    var floorType = _getFloorType(_floor);
+    var floorType;
+    var isSecretFloor = !!secretFloorData;
 
-    // Check if this is a boss floor
+    if (isSecretFloor) {
+      // Set active secret floor
+      _activeSecretFloor = secretFloorData.type;
+
+      // Secret floors use special type based on secret floor data
+      if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.UBER_MEGA) {
+        floorType = FLOOR_TYPES.BOSS; // Uber Mega is boss-like
+      } else if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.GOBLIN_VAULT) {
+        floorType = FLOOR_TYPES.EXPLORATION; // Goblin vault is maze-like
+      } else if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.GRAY_CAVE_HIDDEN) {
+        floorType = FLOOR_TYPES.EXPLORATION; // Gray cave is safe exploration
+      }
+    } else {
+      floorType = _getFloorType(_floor);
+    }
+
+    // Check if this is a boss floor (or secret boss floor)
     if (floorType === FLOOR_TYPES.BOSS && typeof BossEncounters !== 'undefined') {
       _bossFloorActive = true;
-      _activeBoss = BossEncounters.createBossForFloor(_floor);
+
+      // Spawn hidden boss for secret floors
+      if (isSecretFloor) {
+        if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.UBER_MEGA) {
+          _activeBoss = new BossEncounters.UberMegaBoss(_floor);
+        } else if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.GOBLIN_VAULT) {
+          _activeBoss = new BossEncounters.TreasureGoblinKingBoss(_floor);
+        }
+      } else {
+        // Normal boss for regular boss floors
+        _activeBoss = BossEncounters.createBossForFloor(_floor);
+      }
     }
 
     var maxAttempts = 10;
@@ -633,12 +665,29 @@ const GoneRogue = (function () {
     // Generate lighting for this floor
     if (typeof LightingSystem !== 'undefined') {
       // Set biome for lighting
-      var biome = _getBiome(_floor);
-      var biomeName = biome.name.toUpperCase().replace(/ /g, '_');
+      var biome;
+      var biomeName;
+
+      if (isSecretFloor) {
+        // Secret floors have special biomes
+        if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.UBER_MEGA) {
+          biomeName = 'UBER_MEGA'; // Reality-breaking dark
+        } else if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.GOBLIN_VAULT) {
+          biomeName = 'GOBLIN_VAULT'; // Golden treasure lighting
+        } else if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.GRAY_CAVE_HIDDEN) {
+          biomeName = 'GRAY_CAVE'; // Faint violet
+        }
+      } else {
+        biome = _getBiome(_floor);
+        biomeName = biome.name.toUpperCase().replace(/ /g, '_');
+      }
+
       LightingSystem.setBiome(biomeName);
 
-      // Apply darkness multiplier for uber mega boss (floor 30)
-      if (_floor === 30 && _bossFloorActive) {
+      // Apply darkness multiplier for uber mega
+      if (isSecretFloor && secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.UBER_MEGA) {
+        LightingSystem.setDarknessMultiplier(0.3); // Extreme darkness (70% darker)
+      } else if (_floor === 30 && _bossFloorActive) {
         LightingSystem.setDarknessMultiplier(0.5); // Nerf light by 50%
       } else {
         LightingSystem.setDarknessMultiplier(1.0);
@@ -1409,7 +1458,21 @@ const GoneRogue = (function () {
 
     lines.push('');
     var biome = _getBiome(_floor);
-    var floorLabel = 'Floor: ' + _floor + ' | ' + biome.name;
+    var floorLabel;
+
+    // Show secret floor name if active
+    if (_activeSecretFloor) {
+      if (_activeSecretFloor === SecretFloors.SECRET_FLOOR_TYPES.UBER_MEGA) {
+        floorLabel = 'SECRET: ⚠️ UBER MEGA ⚠️';
+      } else if (_activeSecretFloor === SecretFloors.SECRET_FLOOR_TYPES.GOBLIN_VAULT) {
+        floorLabel = 'SECRET: 💰 Goblin Vault 💰';
+      } else if (_activeSecretFloor === SecretFloors.SECRET_FLOOR_TYPES.GRAY_CAVE_HIDDEN) {
+        floorLabel = 'SECRET: 🌫️ Gray Cave 🌫️';
+      }
+    } else {
+      floorLabel = 'Floor: ' + _floor + ' | ' + biome.name;
+    }
+
     if (_bossFloorActive && !_bossDefeated) {
       floorLabel += ' 👹 BOSS FLOOR';
     } else if (_bossFloorActive && _bossDefeated) {
@@ -1734,7 +1797,11 @@ const GoneRogue = (function () {
       }
 
       // Generate next floor
-      _generateFloor();
+      if (isSecretFloor) {
+        _generateFloor(secretFloorData);
+      } else {
+        _generateFloor();
+      }
       _startGameLoop();
       _saveState();
 
