@@ -8,6 +8,7 @@ const GoneRogueMobile = (function () {
 
   // Constants
   var DOUBLE_TAP_THRESHOLD_MS = 300;
+  var CLICK_FEEDBACK_DURATION_MS = 400;
 
   var _gridContainer = null;
   var _cardContainer = null;
@@ -517,7 +518,7 @@ const GoneRogueMobile = (function () {
       if (dot.parentNode) {
         dot.parentNode.removeChild(dot);
       }
-    }, 400);
+    }, CLICK_FEEDBACK_DURATION_MS);
   }
 
   /**

@@ -3271,25 +3271,27 @@ const GoneRogue = (function () {
       return { alive: false };
     }
 
-    return { alive: projectile.range > 0 };
+    return { alive: true };
   }
 
   /**
    * Add impact effect for rendering
    */
   function _addImpactEffect(x, y, type) {
-    _impactEffects.push({
+    var effect = {
       x: x,
       y: y,
       type: type, // 'breakable', 'enemy', 'wall', 'miss'
       time: Date.now()
-    });
+    };
+    _impactEffects.push(effect);
 
-    // Auto-clear impact effect after 400ms
+    // Auto-clear this specific impact effect after 400ms
     setTimeout(function() {
-      _impactEffects = _impactEffects.filter(function(effect) {
-        return Date.now() - effect.time < 400;
-      });
+      var index = _impactEffects.indexOf(effect);
+      if (index > -1) {
+        _impactEffects.splice(index, 1);
+      }
     }, 400);
   }
 
