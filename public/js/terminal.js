@@ -118,8 +118,10 @@ const Terminal = (function () {
     // Check if target or any parent is the rogue grid or cards container
     while (target) {
       if (target.id === 'rogue-grid-mobile' || 
-          target.id === 'rogue-cards-mobile' ||
-          target.classList && (target.classList.contains('rogue-grid-mobile') || 
+          target.id === 'rogue-cards-mobile') {
+        return true;
+      }
+      if (target.classList && (target.classList.contains('rogue-grid-mobile') || 
                                target.classList.contains('rogue-cards-mobile'))) {
         return true;
       }

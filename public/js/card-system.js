@@ -155,7 +155,15 @@ const CardSystem = (function () {
       type: 'setup',
       name: 'Cigarettes',
       emoji: '🚬',
-      baseStats: { stress: -2, attack_boost: 2, speed_boost: 1, hp_drain: 1, duration: 1, energy: 1, speed: 2 }
+      baseStats: { 
+        stress: -2, 
+        attackBoost: 2,  // Renamed from attack_boost for camelCase consistency
+        speedBoost: 1,   // Renamed from speed_boost for camelCase consistency
+        hpDrain: 1,      // Renamed from hp_drain for camelCase consistency
+        duration: 1, 
+        energy: 1, 
+        speed: 2 
+      }
     },
     KATCHUP: {
       category: 'setup',
@@ -176,14 +184,24 @@ const CardSystem = (function () {
       type: 'setup',
       name: 'Total Evasion',
       emoji: '🌫️',
-      baseStats: { evasion: 5, exhaust: true, energy: 3, speed: 2 }
+      baseStats: { 
+        evasion: 5, 
+        exhaust: true, // This card can only be used once per combat (exhausts after use)
+        energy: 3, 
+        speed: 2 
+      }
     },
     AIM: {
       category: 'setup',
       type: 'setup',
       name: 'Aim',
       emoji: '🎯',
-      baseStats: { accuracy_boost: 20, next_turn: true, energy: 1, speed: 2 }
+      baseStats: { 
+        accuracyBoost: 20,  // Renamed from accuracy_boost for camelCase consistency
+        nextTurn: true,     // Renamed from next_turn for camelCase consistency
+        energy: 1, 
+        speed: 2 
+      }
     },
 
     // ========== DEPRECATED/LEGACY CARDS (for backward compatibility) ==========

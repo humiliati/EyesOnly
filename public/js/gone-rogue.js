@@ -2331,7 +2331,8 @@ const GoneRogue = (function () {
     var evasionBonus = (target.tempEvasion || 0) * 5; // Each evasion point = 5% miss chance
     hitResult.target += evasionBonus;
     
-    if (!hitResult.hit || hitResult.roll < hitResult.target - evasionBonus) {
+    // Check if attack hit (considering evasion)
+    if (!hitResult.hit || hitResult.roll < hitResult.target) {
       lines.push('├─ MISS! (Roll: ' + hitResult.roll + ' vs ' + hitResult.target + ')');
       if (evasionBonus > 0) {
         lines.push('└─ Target evaded with +' + evasionBonus + '% evasion bonus');
@@ -2366,19 +2367,20 @@ const GoneRogue = (function () {
       lines.push('├─ Healed ' + hp + ' HP → ' + actor.hp + '/' + (actor.maxHp || 10));
     }
     
-    var attackBoost = card.stats.attack_boost || 0;
+    // Use camelCase stat names
+    var attackBoost = card.stats.attackBoost || card.stats.attack_boost || 0;
     if (attackBoost > 0) {
       actor.tempAttackBoost = (actor.tempAttackBoost || 0) + attackBoost;
       lines.push('├─ Gained +' + attackBoost + ' attack power (next turn)');
     }
     
-    var speedBoost = card.stats.speed_boost || 0;
+    var speedBoost = card.stats.speedBoost || card.stats.speed_boost || 0;
     if (speedBoost > 0) {
       actor.tempSpeedBoost = (actor.tempSpeedBoost || 0) + speedBoost;
       lines.push('├─ Gained +' + speedBoost + ' speed (next turn)');
     }
     
-    var accuracyBoost = card.stats.accuracy_boost || 0;
+    var accuracyBoost = card.stats.accuracyBoost || card.stats.accuracy_boost || 0;
     if (accuracyBoost > 0) {
       actor.tempAccuracyBoost = (actor.tempAccuracyBoost || 0) + accuracyBoost;
       lines.push('└─ Gained +' + accuracyBoost + '% accuracy (next turn)');

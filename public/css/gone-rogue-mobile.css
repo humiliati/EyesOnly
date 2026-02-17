@@ -2,6 +2,12 @@
    EYES ONLY - Gone Rogue Mobile Touch Interface Styles
    ============================================================ */
 
+/* CSS Variables */
+:root {
+  --combat-bubble-min-width: 320px;
+  --str-overlay-min-width: 300px;
+}
+
 /* Grid Container */
 .rogue-grid-mobile {
   display: none;
@@ -338,7 +344,7 @@
   font-family: 'Courier New', monospace;
   text-align: center;
   animation: combat-pulse 1s infinite;
-  min-width: 300px;
+  min-width: var(--str-overlay-min-width);
   max-width: 90vw;
 }
 
@@ -399,7 +405,7 @@
   z-index: 1500;
   box-shadow: 0 0 50px rgba(255, 170, 0, 0.8), inset 0 0 30px rgba(255, 170, 0, 0.1);
   font-family: 'Courier New', monospace;
-  min-width: 320px;
+  min-width: var(--combat-bubble-min-width);
   max-width: 90vw;
   animation: bubble-appear 0.3s ease-out;
 }
