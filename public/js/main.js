@@ -23,6 +23,14 @@
     LoginShell.init();
     StreetChronicles.init();
 
+    // Initialize GAMESTATE and subsystems
+    if (typeof GAMESTATE !== 'undefined') {
+      GAMESTATE.init();
+    }
+    if (typeof GoneRogue !== 'undefined') {
+      GoneRogue.init();
+    }
+
     // Initialize API client (graceful — does nothing if backend unavailable)
     if (typeof ApiClient !== 'undefined') {
       ApiClient.init();
@@ -155,11 +163,19 @@
   function _handleCommand(rawInput) {
     var currentState = StateMachine.getState();
 
+    // Priority 1: Check if Gone Rogue mode is active
+    if (typeof GoneRogue !== 'undefined' && GoneRogue.isActive()) {
+      _executeRogueAction(GoneRogue.process(rawInput || ''));
+      return;
+    }
+
+    // Priority 2: Check if Street Chronicles is active
     if (StreetChronicles.isActive()) {
       _executeStreetAction(StreetChronicles.process(rawInput || ''));
       return;
     }
 
+    // Priority 3: Check if Login Shell is active
     if (LoginShell.isActive()) {
       _executeLoginAction(LoginShell.process(rawInput || ''));
       return;
@@ -184,6 +200,17 @@
       }
       _enableInput(_promptForState(StateMachine.getState()));
     }, 'system-msg');
+  }
+
+  function _executeRogueAction(action) {
+    Terminal.hideInput();
+    _displayLines(action.lines || [], function () {
+      if (action.stayActive) {
+        _enableInput(action.prompt || GoneRogue.getPrompt());
+        return;
+      }
+      _enableInput(_promptForState(StateMachine.getState()));
+    }, 'system-msg highlight');
   }
 
   function _executeLoginAction(action) {
@@ -253,6 +280,17 @@
 
       case 'street':
         _executeStreetAction(StreetChronicles.start());
+        break;
+
+      case 'rogue':
+        if (typeof GoneRogue !== 'undefined') {
+          Terminal.flicker();
+          _executeRogueAction(GoneRogue.start(action.data || {}));
+        } else {
+          _displayLines(['', 'GONE ROGUE MODE UNAVAILABLE', ''], function () {
+            _enableInput(_promptForState(StateMachine.getState()));
+          });
+        }
         break;
 
       case 'home':

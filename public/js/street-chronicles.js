@@ -17,6 +17,7 @@ const StreetChronicles = (function () {
   var _state = {
     location: 'Cedar St',
     inventory: [],
+    maxInventory: 9,
     quests: {},
     visited: {},
     idleTurns: 0,
@@ -251,6 +252,15 @@ const StreetChronicles = (function () {
   }
 
   function _take(item) {
+    // Check inventory capacity
+    if (_state.inventory.length >= _state.maxInventory) {
+      return [
+        'INVENTORY FULL (' + _state.inventory.length + '/' + _state.maxInventory + ')',
+        'DROP AN ITEM FIRST OR EXPAND CAPACITY',
+        ''
+      ];
+    }
+
     var street = _streets[_state.location];
     var items = street && street.items ? street.items : [];
     var idx = -1;
@@ -270,11 +280,17 @@ const StreetChronicles = (function () {
     if (picked === 'gull feather') _state.quests['lakeview_token'] = true;
 
     _save();
-    return ['ITEM ACQUIRED: ' + picked.toUpperCase(), ''];
+    return [
+      'ITEM ACQUIRED: ' + picked.toUpperCase(),
+      'INVENTORY: ' + _state.inventory.length + '/' + _state.maxInventory,
+      ''
+    ];
   }
 
   function _inventoryLines() {
-    var lines = ['INVENTORY:'];
+    var lines = [
+      'INVENTORY (' + _state.inventory.length + '/' + _state.maxInventory + '):'
+    ];
     if (!_state.inventory.length) lines.push('  [EMPTY]');
     else _state.inventory.forEach(function (i) { lines.push('  - ' + i); });
     lines.push('');

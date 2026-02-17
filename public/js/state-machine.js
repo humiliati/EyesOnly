@@ -326,6 +326,7 @@ const StateMachine = (function () {
           '  ABOUT, CONTACT, FAQ, SANDPOINT, MENU',
           '  SHOP, SOCIAL, HOME, LOGIN, STREET',
           '  MAP        - Enter street exploration mode',
+          '  ROGUE      - Enter Gone Rogue survival mode',
           ''
         ],
         newState: _state
@@ -340,6 +341,15 @@ const StateMachine = (function () {
 
     if (cmd === 'STREET' || cmd === 'MAP') {
       return { type: 'street', lines: ['', 'MAP LINK ACCEPTED', 'OPENING STREET-LEVEL CHRONICLES', ''], newState: _state };
+    }
+
+    if (cmd === 'ROGUE' || cmd === 'GONE_ROGUE') {
+      return {
+        type: 'rogue',
+        lines: ['', 'ENTERING GONE ROGUE MODE', 'EXPERIMENTAL SUBSYSTEM', ''],
+        data: { reason: 'command', difficulty: 1 },
+        newState: _state
+      };
     }
 
     if (cmd === 'JOIN') {
@@ -552,14 +562,16 @@ const StateMachine = (function () {
         lines: [
           '',
           'TERMINAL COMMANDS:',
-          'STATUS, MISSIONS, DOSSIER, MAP, FALCON, SNOWMAN, SUBMERGED',
+          'STATUS, MISSIONS, DOSSIER, MAP, ROGUE, FALCON, SNOWMAN, SUBMERGED',
           'ABOUT, CONTACT, FAQ, SANDPOINT, MENU, SOCIAL, HOME, LOGIN, STREET',
           'MAP (or GRID/SECTOR) enters Street Chronicles',
+          'ROGUE enters Gone Rogue survival mode',
           'CLEAR, RESET',
           '  STATUS    - Display operational status',
           '  MISSIONS  - List active mission nodes',
           '  DOSSIER   - Access collected intelligence',
           '  MAP       - Display sector grid',
+          '  ROGUE     - Enter Gone Rogue subsystem',
           '  FALCON    - Query FALCON reference',
           '  SNOWMAN   - Query SNOWMAN reference',
           '  SUBMERGED - Query SUBMERGED SITE',
@@ -654,6 +666,15 @@ const StateMachine = (function () {
 
     if (cmd === 'STREET' || cmd === 'MAP') {
       return { type: 'street', lines: ['', 'MAP LINK ACCEPTED', 'OPENING STREET-LEVEL CHRONICLES', ''], newState: _state };
+    }
+
+    if (cmd === 'ROGUE' || cmd === 'GONE_ROGUE') {
+      return {
+        type: 'rogue',
+        lines: ['', 'ENTERING GONE ROGUE MODE', 'EXPERIMENTAL SUBSYSTEM', ''],
+        data: { reason: 'command', difficulty: 1 },
+        newState: _state
+      };
     }
 
     if (cmd === 'JOIN') {
