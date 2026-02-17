@@ -27,7 +27,9 @@ const GoneRogue = (function () {
     lastMoveDirection: null, // Track last move direction for flanking logic (north, south, east, west)
     str: 5, // Strength for combat
     dex: 5, // Dexterity for hit/dodge
-    initiative: 0 // Initiative bonus
+    initiative: 0, // Initiative bonus
+    combatEntries: 0, // Track total combat entries (for boss mythic conditions)
+    lastCardType: null // Track last card used (for boss mythic conditions)
   };
 
   var _enemies = [];
@@ -53,6 +55,13 @@ const GoneRogue = (function () {
   var _strCombatAdvantage = 'neutral'; // 'ambush', 'neutral', 'disadvantaged', 'flanked'
   var _strCombatRound = 0;
   var _strCombatLog = []; // Combat log messages
+
+  // Boss encounter state
+  var _activeBoss = null; // Current boss instance (from BossEncounters module)
+  var _bossFloorActive = false; // Is this a boss floor
+  var _bossDefeated = false; // Has boss been defeated this floor
+  var _bossHazards = []; // Boss-specific hazards (trains, drones, etc.)
+  var _bossEnvironment = {}; // Boss-specific environment data
 
   var TILES = {
     EMPTY: '.',
@@ -457,9 +466,20 @@ const GoneRogue = (function () {
     _items = [];
     _enemies = [];
     _tileMetadata = {};
+    _activeBoss = null;
+    _bossFloorActive = false;
+    _bossDefeated = false;
+    _bossHazards = [];
+    _bossEnvironment = {};
 
     // Determine floor type
     var floorType = _getFloorType(_floor);
+
+    // Check if this is a boss floor
+    if (floorType === FLOOR_TYPES.BOSS && typeof BossEncounters !== 'undefined') {
+      _bossFloorActive = true;
+      _activeBoss = BossEncounters.createBossForFloor(_floor);
+    }
 
     var maxAttempts = 10;
     var attempt = 0;
@@ -500,8 +520,18 @@ const GoneRogue = (function () {
       // Step 9: Place enemies (based on floor type)
       _placeEnemies(rooms, floorType);
 
-      // Step 10: Validate stealth path
-      validMap = _validateStealthPath(_player.x, _player.y, exitX, exitY);
+      // Step 9b: Initialize boss if this is a boss floor
+      if (_bossFloorActive && _activeBoss) {
+        var bossInit = _activeBoss.initialize(_grid, _player);
+        if (bossInit.success) {
+          _bossEnvironment = bossInit;
+          // Boss floor skips normal stealth validation
+          validMap = true;
+        }
+      } else {
+        // Step 10: Validate stealth path (non-boss floors only)
+        validMap = _validateStealthPath(_player.x, _player.y, exitX, exitY);
+      }
 
       if (!validMap && attempt < maxAttempts) {
         console.log('Map validation failed, regenerating... (attempt ' + attempt + ')');
@@ -547,6 +577,19 @@ const GoneRogue = (function () {
         h: Math.floor(GRID_HEIGHT / 2),
         centerX: Math.floor(GRID_WIDTH / 2),
         centerY: Math.floor(GRID_HEIGHT / 2)
+      }];
+    }
+
+    // Boss floors have one large arena room
+    if (floorType === FLOOR_TYPES.BOSS) {
+      return [{
+        x: 5,
+        y: 3,
+        w: 30,
+        h: 14,
+        centerX: 20,
+        centerY: 10,
+        isBossArena: true
       }];
     }
 
@@ -777,6 +820,27 @@ const GoneRogue = (function () {
       return;
     }
 
+    // Boss floors: place boss enemy only
+    if (floorType === FLOOR_TYPES.BOSS && _activeBoss) {
+      var bossPos = _activeBoss.bossPosition || { x: 20, y: 10 };
+      var bossEnemy = _createEnemy(bossPos.x, bossPos.y, 'STATIONARY', rooms[0]);
+
+      // Enhance boss enemy stats
+      bossEnemy.hp = _activeBoss.hp;
+      bossEnemy.maxHp = _activeBoss.maxHp;
+      bossEnemy.isBoss = true;
+      bossEnemy.bossType = _activeBoss.type;
+      bossEnemy.str = 8 + Math.floor(_floor * 0.5);
+      bossEnemy.dex = 8 + Math.floor(_floor * 0.5);
+      bossEnemy.awareness = 100; // Boss is always alert
+
+      // Link boss enemy to boss instance
+      _activeBoss.bossEntity = bossEnemy;
+
+      _enemies.push(bossEnemy);
+      return;
+    }
+
     // Ghost floors (3-4): only cameras/surveillance, no lethal enemies
     if (floorType === FLOOR_TYPES.GHOST) {
       // TODO: Implement camera/drone surveillance system
@@ -784,12 +848,12 @@ const GoneRogue = (function () {
     }
 
     // Exploration floors: very few enemies
+    var enemyCount;
     if (floorType === FLOOR_TYPES.EXPLORATION) {
       enemyCount = 1 + Math.floor(Math.random() * 2); // 1-2 enemies max
     } else {
       // Enemy density based on difficulty
       var difficulty = _floor;
-      var enemyCount;
 
       if (difficulty <= 3) {
         enemyCount = 4 + Math.floor(Math.random() * 3); // 4-6
@@ -1062,7 +1126,16 @@ const GoneRogue = (function () {
     }
 
     lines.push('');
-    lines.push('HP: ' + _player.hp + '/' + _player.maxHp + ' | Floor: ' + _floor + ' | Turn: ' + _turn);
+    var floorLabel = 'Floor: ' + _floor;
+    if (_bossFloorActive && !_bossDefeated) {
+      floorLabel += ' 👹 BOSS FLOOR';
+    } else if (_bossFloorActive && _bossDefeated) {
+      floorLabel += ' ✅ BOSS DEFEATED';
+    }
+    lines.push('HP: ' + _player.hp + '/' + _player.maxHp + ' | ' + floorLabel + ' | Turn: ' + _turn);
+    if (_bossFloorActive && _activeBoss && !_bossDefeated) {
+      lines.push('⚠️  Boss: ' + _activeBoss.type + ' | Phase: ' + _activeBoss.phase);
+    }
     lines.push('');
 
     return lines;
@@ -2532,6 +2605,9 @@ const GoneRogue = (function () {
       _pauseGameLoop();
     }
 
+    // Track combat entry for mythic conditions
+    _player.combatEntries++;
+
     // Initialize combat state
     _strCombatActive = true;
     _strCombatEnemy = enemy;
@@ -2806,7 +2882,20 @@ const GoneRogue = (function () {
    */
   function _resolveInterruptAction(actor, target, card) {
     var lines = [];
-    
+
+    // Track last card type for boss mythic conditions
+    if (actor === _player) {
+      _player.lastCardType = card.type || card.name;
+    }
+
+    // Boss-specific card interactions for interrupt cards
+    if (_bossFloorActive && _activeBoss && actor === _player) {
+      var bossInteraction = _handleBossCardInteraction(card, target);
+      if (bossInteraction.handled) {
+        return bossInteraction.lines;
+      }
+    }
+
     // Interrupt actions execute before other actions
     if (card.name === 'Dive for Cover') {
       var defense = card.stats.defense || 5;
@@ -2826,7 +2915,7 @@ const GoneRogue = (function () {
     } else {
       lines.push('└─ Interrupt executed');
     }
-    
+
     return lines;
   }
 
@@ -2884,23 +2973,36 @@ const GoneRogue = (function () {
    */
   function _resolveAttackAction(actor, target, card) {
     var lines = [];
-    
+
+    // Track last card type for boss mythic conditions
+    if (actor === _player) {
+      _player.lastCardType = card.type || card.name;
+    }
+
     // Check if weapon is jammed
     if (actor.weaponJammed) {
       lines.push('└─ Attack failed! Weapon is jammed');
       actor.weaponJammed = false; // Clear jam
       return lines;
     }
-    
+
+    // Boss-specific card interactions
+    if (_bossFloorActive && _activeBoss && actor === _player) {
+      var bossInteraction = _handleBossCardInteraction(card, target);
+      if (bossInteraction.handled) {
+        return bossInteraction.lines;
+      }
+    }
+
     // Calculate hit with target's temp evasion
-    var advantage = actor === _player ? _strCombatAdvantage : 
-                    (_strCombatAdvantage === 'ambush' ? 'flanked' : 
+    var advantage = actor === _player ? _strCombatAdvantage :
+                    (_strCombatAdvantage === 'ambush' ? 'flanked' :
                      _strCombatAdvantage === 'flanked' ? 'ambush' : 'neutral');
-    
+
     var hitResult = _calculateHit(actor, target, advantage);
     var evasionBonus = (target.tempEvasion || 0) * 5; // Each evasion point = 5% miss chance
     hitResult.target += evasionBonus;
-    
+
     // Check if attack hit (considering evasion)
     if (!hitResult.hit || hitResult.roll < hitResult.target) {
       lines.push('├─ MISS! (Roll: ' + hitResult.roll + ' vs ' + hitResult.target + ')');
@@ -2909,19 +3011,19 @@ const GoneRogue = (function () {
       }
       return lines;
     }
-    
+
     // Calculate damage reduced by defense
     var damageResult = _calculateDamage(actor, target, advantage, card, hitResult.crit);
     var defenseReduction = (target.tempDefense || 0);
     var finalDamage = Math.max(1, damageResult.damage - defenseReduction);
-    
+
     target.hp -= finalDamage;
-    
+
     var critEmoji = hitResult.crit ? ' 💥 CRIT!' : '';
     lines.push('├─ HIT!' + critEmoji + ' (Roll: ' + hitResult.roll + ' vs ' + hitResult.target + ')');
     lines.push('├─ Damage: ' + damageResult.damage + (defenseReduction > 0 ? ' - ' + defenseReduction + ' defense' : ''));
     lines.push('└─ Final: ' + finalDamage + ' damage → Target HP: ' + Math.max(0, target.hp) + '/' + (target.maxHp || 5));
-    
+
     return lines;
   }
 
@@ -2930,33 +3032,198 @@ const GoneRogue = (function () {
    */
   function _resolveSetupAction(actor, target, card) {
     var lines = [];
-    
+
+    // Track last card type for boss mythic conditions
+    if (actor === _player) {
+      _player.lastCardType = card.type || card.name;
+    }
+
+    // Boss-specific card interactions for setup cards
+    if (_bossFloorActive && _activeBoss && actor === _player) {
+      var bossInteraction = _handleBossCardInteraction(card, target);
+      if (bossInteraction.handled) {
+        return bossInteraction.lines;
+      }
+    }
+
     var hp = card.stats.hp || 0;
     if (hp > 0) {
       actor.hp = Math.min((actor.maxHp || 10), actor.hp + hp);
       lines.push('├─ Healed ' + hp + ' HP → ' + actor.hp + '/' + (actor.maxHp || 10));
     }
-    
+
     // Use camelCase stat names
     var attackBoost = card.stats.attackBoost || card.stats.attack_boost || 0;
     if (attackBoost > 0) {
       actor.tempAttackBoost = (actor.tempAttackBoost || 0) + attackBoost;
       lines.push('├─ Gained +' + attackBoost + ' attack power (next turn)');
     }
-    
+
     var speedBoost = card.stats.speedBoost || card.stats.speed_boost || 0;
     if (speedBoost > 0) {
       actor.tempSpeedBoost = (actor.tempSpeedBoost || 0) + speedBoost;
       lines.push('├─ Gained +' + speedBoost + ' speed (next turn)');
     }
-    
+
     var accuracyBoost = card.stats.accuracyBoost || card.stats.accuracy_boost || 0;
     if (accuracyBoost > 0) {
       actor.tempAccuracyBoost = (actor.tempAccuracyBoost || 0) + accuracyBoost;
       lines.push('└─ Gained +' + accuracyBoost + '% accuracy (next turn)');
     }
-    
+
     return lines;
+  }
+
+  /**
+   * Handle boss-specific card interactions
+   */
+  function _handleBossCardInteraction(card, target) {
+    var lines = [];
+    var handled = false;
+
+    if (!_activeBoss) {
+      return { handled: false, lines: [] };
+    }
+
+    var cardName = card.name;
+    var gameState = {
+      player: _player,
+      enemy: target,
+      grid: _grid,
+      bossEnvironment: _bossEnvironment
+    };
+
+    // LURE card interaction
+    if (cardName === 'Lure') {
+      handled = true;
+      lines.push('├─ Using LURE on boss...');
+      var playerAction = {
+        type: 'LURE',
+        target: 'TRAIN_PATH',
+        card: card
+      };
+      var exploitResult = _activeBoss.checkExploit(playerAction, gameState);
+      if (exploitResult.exploited) {
+        lines.push('├─ ' + exploitResult.message);
+        if (exploitResult.damage) {
+          target.hp = Math.max(0, target.hp - exploitResult.damage);
+          lines.push('└─ Boss HP: ' + target.hp + '/' + _activeBoss.maxHp);
+        }
+      } else {
+        lines.push('└─ Lure had no effect (boss not in position)');
+      }
+    }
+
+    // GRENADE card interaction
+    else if (cardName === 'Grenade') {
+      handled = true;
+      lines.push('├─ Throwing GRENADE at boss environment...');
+      var playerAction = {
+        type: 'GRENADE',
+        targetX: target.x || 20,
+        targetY: target.y || 10,
+        card: card
+      };
+      var exploitResult = _activeBoss.checkExploit(playerAction, gameState);
+      if (exploitResult.exploited) {
+        lines.push('├─ ' + exploitResult.message);
+        if (exploitResult.shieldDown || exploitResult.bunkerDown) {
+          // Environmental damage - apply some damage to boss
+          var damage = card.stats.damage || 6;
+          target.hp = Math.max(0, target.hp - damage);
+          lines.push('└─ Boss HP: ' + target.hp + '/' + _activeBoss.maxHp);
+        }
+      } else {
+        // Standard grenade damage
+        var damage = card.stats.damage || 6;
+        target.hp = Math.max(0, target.hp - damage);
+        lines.push('├─ Grenade explodes! ' + damage + ' damage');
+        lines.push('└─ Boss HP: ' + target.hp + '/' + _activeBoss.maxHp);
+      }
+    }
+
+    // JAMMER card interaction
+    else if (cardName === 'Jammer') {
+      handled = true;
+      lines.push('├─ Activating JAMMER on boss systems...');
+      var playerAction = {
+        type: 'JAMMER',
+        card: card
+      };
+      var exploitResult = _activeBoss.checkExploit(playerAction, gameState);
+      if (exploitResult.exploited) {
+        lines.push('├─ ' + exploitResult.message);
+        lines.push('└─ Boss systems disrupted!');
+      } else {
+        target.weaponJammed = true;
+        lines.push('└─ Boss weapon systems jammed for 1 turn');
+      }
+    }
+
+    // VIRUS card interaction
+    else if (cardName === 'Virus') {
+      handled = true;
+      lines.push('├─ Uploading VIRUS to boss systems...');
+      var damage = card.stats.damage || 2;
+      target.hp = Math.max(0, target.hp - damage);
+      target.virusDOT = (card.stats.dot || 3);
+      target.virusDuration = (card.stats.duration || 3);
+      lines.push('├─ Initial damage: ' + damage);
+      lines.push('├─ Virus will deal ' + target.virusDOT + ' damage for ' + target.virusDuration + ' turns');
+      lines.push('└─ Boss HP: ' + target.hp + '/' + _activeBoss.maxHp);
+    }
+
+    // HIGH_GROUND card interaction
+    else if (cardName === 'High Ground') {
+      handled = true;
+      lines.push('├─ Taking HIGH GROUND position...');
+      var playerAction = {
+        type: 'HIGH_GROUND',
+        target: 'CARRIER',
+        card: card
+      };
+      var exploitResult = _activeBoss.checkExploit(playerAction, gameState);
+      if (exploitResult.exploited && exploitResult.bypassShield) {
+        lines.push('├─ ' + exploitResult.message);
+        var damage = exploitResult.damage || (card.stats.damage || 4) * 2;
+        target.hp = Math.max(0, target.hp - damage);
+        lines.push('└─ Piercing damage: ' + damage + ' → Boss HP: ' + target.hp + '/' + _activeBoss.maxHp);
+      } else {
+        var damage = card.stats.damage || 4;
+        target.hp = Math.max(0, target.hp - damage);
+        lines.push('├─ Piercing shot: ' + damage + ' damage');
+        lines.push('└─ Boss HP: ' + target.hp + '/' + _activeBoss.maxHp);
+      }
+    }
+
+    // LOGIC_HACK card interaction
+    else if (cardName === 'Logic Hack') {
+      handled = true;
+      lines.push('├─ Executing LOGIC HACK on boss systems...');
+      var targetNode = Math.floor(Math.random() * 8); // Random node 0-7
+      var playerAction = {
+        type: 'LOGIC_HACK',
+        targetNode: targetNode,
+        card: card
+      };
+      var exploitResult = _activeBoss.checkExploit(playerAction, gameState);
+      if (exploitResult.exploited) {
+        lines.push('├─ ' + exploitResult.message);
+        lines.push('└─ Boss defenses manipulated!');
+      } else {
+        lines.push('└─ Hack had no effect (wrong boss type)');
+      }
+    }
+
+    // MELEE_STRIKE card interaction
+    else if (cardName === 'Melee Strike') {
+      // Track as melee for mythic conditions
+      _player.lastCardType = 'MELEE';
+      // Let it fall through to standard attack resolution
+      return { handled: false, lines: [] };
+    }
+
+    return { handled: handled, lines: lines };
   }
 
   /**
@@ -3279,25 +3546,94 @@ const GoneRogue = (function () {
       lines.push('✅ COMBAT VICTORY!');
       lines.push('└─ Enemy neutralized');
 
-      // Drop currency and cards from defeated enemy
-      var cryptoAmount = Math.floor(Math.random() * 5) + 2; // 2-6 cryptos
-      _spawnCurrency(_strCombatEnemy.x, _strCombatEnemy.y, cryptoAmount);
-      lines.push('💰 Enemy dropped ¢' + cryptoAmount);
+      // Check if this was a boss fight
+      if (_bossFloorActive && _activeBoss && !_bossDefeated) {
+        _bossDefeated = true;
+        lines.push('');
+        lines.push('🏆 BOSS DEFEATED!');
 
-      // 50% chance to drop a card
-      if (Math.random() < 0.5 && typeof CardSystem !== 'undefined') {
-        var baseType = CardSystem.getRandomBaseCard();
-        var card = CardSystem.rollCard(baseType);
-        if (card) {
-          _items.push({
-            x: _strCombatEnemy.x,
-            y: _strCombatEnemy.y,
-            type: 'card',
-            card: card,
-            spawnTime: Date.now(),
-            decayTime: 30000 // 30 second decay
+        // Generate boss loot
+        var bossLoot = _activeBoss.onDefeat(_player);
+        lines.push('');
+
+        // Process boss loot
+        if (bossLoot.loot && bossLoot.loot.length > 0) {
+          bossLoot.loot.forEach(function(lootItem) {
+            if (lootItem.type === 'card') {
+              var card;
+              if (typeof CardSystem !== 'undefined') {
+                var baseType = CardSystem.getRandomBaseCard();
+                card = CardSystem.rollCard(baseType);
+                // Force quality if specified
+                if (lootItem.quality) {
+                  card.quality = lootItem.quality;
+                }
+              }
+              if (card) {
+                _items.push({
+                  x: _strCombatEnemy.x,
+                  y: _strCombatEnemy.y,
+                  type: 'card',
+                  card: card,
+                  spawnTime: Date.now(),
+                  decayTime: 60000 // Boss loot lasts 60 seconds
+                });
+                lines.push('🎴 Boss dropped: ' + card.emoji + ' ' + card.name + ' (' + card.quality + ')');
+              }
+            } else if (lootItem.type === 'whisper') {
+              lines.push('✨ WHISPER ITEM: ' + lootItem.item);
+              // Spawn as special loot
+              _spawnCurrency(_strCombatEnemy.x, _strCombatEnemy.y, 50); // Extra cryptos for whisper
+            } else if (lootItem.type === 'mythic') {
+              lines.push('');
+              lines.push('⚡⚡⚡ MYTHIC CONDITION MET! ⚡⚡⚡');
+              lines.push('💎 MYTHIC DROP: ' + lootItem.item);
+              lines.push('');
+              // Spawn legendary card
+              if (typeof CardSystem !== 'undefined') {
+                var legendaryCard = CardSystem.rollCard('INVENTORY_CHARM'); // Guaranteed inventory charm
+                _items.push({
+                  x: _strCombatEnemy.x,
+                  y: _strCombatEnemy.y,
+                  type: 'card',
+                  card: legendaryCard,
+                  spawnTime: Date.now(),
+                  decayTime: 120000 // Mythic loot lasts 2 minutes
+                });
+              }
+            } else if (lootItem.type === 'rumor') {
+              lines.push('');
+              lines.push('📜 ' + lootItem.message);
+              lines.push('');
+            }
           });
-          lines.push('🎴 Enemy dropped a card!');
+        }
+
+        // Boss always drops significant cryptos
+        var bossReward = 25 + Math.floor(Math.random() * 26); // 25-50 cryptos
+        _spawnCurrency(_strCombatEnemy.x, _strCombatEnemy.y, bossReward);
+        lines.push('💰 Boss dropped ¢' + bossReward);
+      } else {
+        // Regular enemy loot
+        var cryptoAmount = Math.floor(Math.random() * 5) + 2; // 2-6 cryptos
+        _spawnCurrency(_strCombatEnemy.x, _strCombatEnemy.y, cryptoAmount);
+        lines.push('💰 Enemy dropped ¢' + cryptoAmount);
+
+        // 50% chance to drop a card
+        if (Math.random() < 0.5 && typeof CardSystem !== 'undefined') {
+          var baseType = CardSystem.getRandomBaseCard();
+          var card = CardSystem.rollCard(baseType);
+          if (card) {
+            _items.push({
+              x: _strCombatEnemy.x,
+              y: _strCombatEnemy.y,
+              type: 'card',
+              card: card,
+              spawnTime: Date.now(),
+              decayTime: 30000 // 30 second decay
+            });
+            lines.push('🎴 Enemy dropped a card!');
+          }
         }
       }
 
