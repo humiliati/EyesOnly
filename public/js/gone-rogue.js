@@ -1162,8 +1162,19 @@ const GoneRogue = (function () {
       awareness: 0,
       orientation: ['north', 'south', 'east', 'west'][Math.floor(Math.random() * 4)],
       sightRange: _floor > 5 ? 7 : 5, // Increased range on late floors
-      pathTimer: 0
+      pathTimer: 0,
+      isTreasureGoblin: false, // Special enemy type
+      goblinSpawnTime: null // For timeout tracking
     };
+
+    // 2% chance to spawn a treasure goblin after floor 5
+    if (_floor > 5 && Math.random() < 0.02) {
+      enemy.isTreasureGoblin = true;
+      enemy.goblinSpawnTime = Date.now();
+      enemy.hp = 3; // Low HP, must kill fast
+      enemy.sightRange = 10; // Goblins see player from far
+      enemy.awareness = 5; // Always aware, always fleeing
+    }
 
     if (patrolType === PATH_TYPES.STATIONARY) {
       enemy.path = { type: PATH_TYPES.STATIONARY };
@@ -1638,6 +1649,30 @@ const GoneRogue = (function () {
   }
 
   function _advanceFloor() {
+    // Check for queued secret floor BEFORE normal floor generation
+    var secretFloorData = null;
+    if (typeof SecretFloors !== 'undefined' && SecretFloors.hasQueuedSecretFloor()) {
+      secretFloorData = SecretFloors.popSecretFloor();
+      console.log('[GoneRogue] Secret floor triggered:', secretFloorData.type);
+    }
+
+    // Check for low HP + high gold trigger (15% chance when conditions met)
+    if (!secretFloorData && typeof SecretFloors !== 'undefined') {
+      var triggerResult = SecretFloors.triggerSecretFloor(
+        SecretFloors.TRIGGER_TYPES.LOW_HP_HIGH_GOLD,
+        {
+          playerHp: _player.hp,
+          playerMaxHp: _player.maxHp,
+          playerGold: _player.cryptos
+        }
+      );
+
+      if (triggerResult.success) {
+        secretFloorData = SecretFloors.popSecretFloor();
+        console.log('[GoneRogue] Low HP + High Gold secret floor triggered:', secretFloorData.type);
+      }
+    }
+
     // Apply fade-out effect before transitioning
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
       var gridContainer = document.getElementById('rogue-grid-mobile');
@@ -1649,7 +1684,13 @@ const GoneRogue = (function () {
 
     // Wait for fade-out to complete before generating new floor
     setTimeout(function() {
-      _floor++;
+      var isSecretFloor = !!secretFloorData;
+      var secretFloorType = isSecretFloor ? secretFloorData.type : null;
+
+      // Only advance floor number if NOT a secret floor
+      if (!isSecretFloor) {
+        _floor++;
+      }
       _turn = 0;
 
       // Reset vendor for new bonfire
@@ -1697,16 +1738,45 @@ const GoneRogue = (function () {
       _startGameLoop();
       _saveState();
 
-      var lines = [
-        '',
-        '═══════════════════════════════════════',
-        '  FLOOR ' + _floor + ' - EXTRACTION SUCCESSFUL',
-        '═══════════════════════════════════════',
-        '',
-        '  HP RESTORED: +' + healAmount,
-        '  INFILTRATING DEEPER...',
-        ''
-      ];
+      var lines = [];
+
+      if (isSecretFloor) {
+        // Secret floor messaging
+        lines.push('');
+        lines.push('⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️');
+
+        if (secretFloorType === SecretFloors.SECRET_FLOOR_TYPES.UBER_MEGA) {
+          lines.push('  REALITY BREACH DETECTED');
+          lines.push('  YOU SHOULD NOT BE HERE');
+          lines.push('  SYSTEM INTEGRITY: 12%');
+        } else if (secretFloorType === SecretFloors.SECRET_FLOOR_TYPES.GOBLIN_VAULT) {
+          lines.push('  ANOMALY DETECTED');
+          lines.push('  SPACE WARPING...');
+          lines.push('  TREASURE VAULT MANIFESTED');
+        } else if (secretFloorType === SecretFloors.SECRET_FLOOR_TYPES.GRAY_CAVE_HIDDEN) {
+          lines.push('  HIDDEN PATH REVEALED');
+          lines.push('  GRAY CAVE PASSAGE');
+        }
+
+        lines.push('⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️');
+        lines.push('');
+        lines.push('  HP RESTORED: +' + healAmount);
+        lines.push('');
+
+        // Mark that we've entered a secret floor
+        SecretFloors.clearCurrentSecretFloor();
+
+      } else {
+        // Normal floor messaging
+        lines.push('');
+        lines.push('═══════════════════════════════════════');
+        lines.push('  FLOOR ' + _floor + ' - EXTRACTION SUCCESSFUL');
+        lines.push('═══════════════════════════════════════');
+        lines.push('');
+        lines.push('  HP RESTORED: +' + healAmount);
+        lines.push('  INFILTRATING DEEPER...');
+        lines.push('');
+      }
 
       // Show mobile UI with fade-in effect
       if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
@@ -2265,6 +2335,29 @@ const GoneRogue = (function () {
     // Update enemy positions and awareness
     _enemies.forEach(function(enemy) {
       if (enemy.hp <= 0) return;
+
+      // Check treasure goblin timeout (15 seconds to kill)
+      if (enemy.isTreasureGoblin && enemy.goblinSpawnTime && typeof SecretFloors !== 'undefined') {
+        var goblinAge = (Date.now() - enemy.goblinSpawnTime) / 1000; // Age in seconds
+        var goblinTimeout = 15; // 15 seconds to kill
+
+        if (goblinAge > goblinTimeout) {
+          // Goblin escaped! Trigger secret floor
+          var triggerResult = SecretFloors.triggerSecretFloor(
+            SecretFloors.TRIGGER_TYPES.GOBLIN_TIMEOUT,
+            {
+              goblinTimeExpired: true
+            }
+          );
+
+          if (triggerResult.success) {
+            console.log('[GoneRogue] Treasure goblin escaped - secret floor triggered!');
+          }
+
+          // Remove the goblin (it escaped)
+          enemy.hp = 0;
+        }
+      }
 
       // Update Elite enemies with special behavior
       if (enemy.isElite && typeof EliteEnemies !== 'undefined') {
@@ -3139,6 +3232,28 @@ const GoneRogue = (function () {
       _player.energy = Math.min(_player.maxEnergy, _player.energy + card.stats.energy);
     }
 
+    // Check for wrong item in safe zone trigger
+    var floorType = _getFloorType(_floor);
+    if (floorType === FLOOR_TYPES.BONFIRE && typeof SecretFloors !== 'undefined') {
+      // Using combat cards or certain items in safe zones can trigger secret floors
+      var hasSecretTag = card.category === 'attack' || card.category === 'interrupt' || card.type === 'attack';
+
+      if (hasSecretTag) {
+        var triggerResult = SecretFloors.triggerSecretFloor(
+          SecretFloors.TRIGGER_TYPES.WRONG_ITEM_SAFE_ZONE,
+          {
+            inSafeZone: true,
+            itemHasSecretTag: true
+          }
+        );
+
+        if (triggerResult.success) {
+          // Secret floor will trigger on next elevator use
+          console.log('[GoneRogue] Wrong item in safe zone triggered secret floor');
+        }
+      }
+    }
+
     _turn++;
     _saveState();
 
@@ -3195,6 +3310,22 @@ const GoneRogue = (function () {
     // Freeze realtime game loop
     if (_gameLoopActive) {
       _pauseGameLoop();
+    }
+
+    // Check for combat in no-combat zone trigger (bonfire floors)
+    var floorType = _getFloorType(_floor);
+    if (floorType === FLOOR_TYPES.BONFIRE && typeof SecretFloors !== 'undefined') {
+      var triggerResult = SecretFloors.triggerSecretFloor(
+        SecretFloors.TRIGGER_TYPES.COMBAT_NO_COMBAT_ZONE,
+        {
+          inNoCombatZone: true
+        }
+      );
+
+      if (triggerResult.success) {
+        // Secret floor will trigger on next elevator use
+        console.log('[GoneRogue] Combat in no-combat zone triggered secret floor');
+      }
     }
 
     // Track combat entry for mythic conditions
@@ -4143,6 +4274,30 @@ const GoneRogue = (function () {
         _bossDefeated = true;
         lines.push('');
         lines.push('🏆 BOSS DEFEATED!');
+
+        // Check for boss overkill (200%+ damage) for secret floor trigger
+        if (typeof SecretFloors !== 'undefined' && _strCombatEnemy) {
+          var totalDamageDealt = _activeBoss.maxHp; // Boss HP that was depleted
+          var overkillThreshold = _activeBoss.maxHp * 2; // 200% of max HP
+
+          if (totalDamageDealt >= overkillThreshold) {
+            var triggerResult = SecretFloors.triggerSecretFloor(
+              SecretFloors.TRIGGER_TYPES.BOSS_OVERKILL,
+              {
+                damageDealt: totalDamageDealt,
+                bossMaxHp: _activeBoss.maxHp
+              }
+            );
+
+            if (triggerResult.success) {
+              lines.push('');
+              lines.push(triggerResult.message);
+              lines.push('└─ Reality feels unstable...');
+            } else if (triggerResult.suspicion) {
+              lines.push('└─ Something feels... wrong. [' + triggerResult.suspicion + '/' + triggerResult.threshold + ']');
+            }
+          }
+        }
 
         // Generate boss loot
         var bossLoot = _activeBoss.onDefeat(_player);
