@@ -1892,7 +1892,10 @@ const GoneRogue = (function () {
       message = '🟥 HAZARD! -' + damage + ' HP';
 
       if (_player.hp <= 0) {
-        return _exitRogue(false);
+        return _handlePlayerDeath('environmental_hazard', {
+          damage: damage,
+          location: { x: _player.x, y: _player.y }
+        });
       }
     }
 
@@ -3087,7 +3090,20 @@ const GoneRogue = (function () {
         if (enemy.hp <= 0) return;
         var enemyGroundDamage = GroundEffects.getDamage(enemy.x, enemy.y);
         if (enemyGroundDamage > 0) {
+          var hpBefore = enemy.hp;
           enemy.hp = Math.max(0, enemy.hp - enemyGroundDamage);
+
+          // Check if enemy died from ground effect
+          if (enemy.hp <= 0 && hpBefore > 0) {
+            // Determine if player gets credit for this death
+            // For now, assume ground effects are passive (no player credit)
+            // Future: track player-triggered ground effects (fire spread, etc.)
+            _handleEnemyDeath(enemy, 'environment', {
+              location: { x: enemy.x, y: enemy.y },
+              hazardType: 'ground_effect',
+              damage: enemyGroundDamage
+            });
+          }
         }
       });
     }
@@ -4456,7 +4472,7 @@ const GoneRogue = (function () {
       if (_player.hp <= 0) {
         lines.push('');
         lines.push('💀 YOU HAVE BEEN DEFEATED...');
-        return _exitRogue(false);
+        return _handlePlayerDeath('combat_damage', { enemy: _strCombatEnemy });
       }
     }
 
@@ -5196,7 +5212,67 @@ const GoneRogue = (function () {
       lines.push('✅ COMBAT VICTORY!');
       lines.push('└─ Enemy neutralized');
 
-      // Check if this was a boss fight
+      // Handle enemy death through centralized death system
+      var deathResult = _handleEnemyDeath(_strCombatEnemy, 'player', {
+        player: _player,
+        location: { x: _strCombatEnemy.x, y: _strCombatEnemy.y }
+      });
+
+      // Add standard loot messages from death handler
+      if (deathResult && deathResult.messages && deathResult.messages.length > 0) {
+        deathResult.messages.forEach(function(msg) {
+          if (msg) lines.push(msg);
+        });
+      }
+
+      // Spawn standard loot (currency, cards, charms)
+      if (deathResult && deathResult.loot) {
+        // Currency
+        if (deathResult.loot.currency > 0) {
+          _spawnCurrency(_strCombatEnemy.x, _strCombatEnemy.y, deathResult.loot.currency);
+        }
+
+        // Cards
+        if (deathResult.loot.cards && deathResult.loot.cards.length > 0) {
+          deathResult.loot.cards.forEach(function(cardDrop) {
+            if (cardDrop.shouldDrop && typeof CardSystem !== 'undefined') {
+              var baseType = CardSystem.getRandomBaseCard();
+              var card = CardSystem.rollCard(baseType);
+              if (card) {
+                _items.push({
+                  x: _strCombatEnemy.x,
+                  y: _strCombatEnemy.y,
+                  type: 'card',
+                  card: card,
+                  spawnTime: Date.now(),
+                  decayTime: 30000 // 30 second decay
+                });
+              }
+            }
+          });
+        }
+
+        // Charms
+        if (deathResult.loot.charms && deathResult.loot.charms.length > 0) {
+          deathResult.loot.charms.forEach(function(charmDrop) {
+            if (charmDrop.shouldDrop && typeof CardSystem !== 'undefined') {
+              var charm = CardSystem.rollCommonCharm();
+              if (charm) {
+                _items.push({
+                  x: _strCombatEnemy.x,
+                  y: _strCombatEnemy.y,
+                  type: 'charm',
+                  card: charm,
+                  spawnTime: Date.now(),
+                  decayTime: 30000 // 30 second decay
+                });
+              }
+            }
+          });
+        }
+      }
+
+      // Check if this was a boss fight (special boss loot handling)
       if (_bossFloorActive && _activeBoss && !_bossDefeated) {
         _bossDefeated = true;
         lines.push('');
@@ -5226,11 +5302,11 @@ const GoneRogue = (function () {
           }
         }
 
-        // Generate boss loot
+        // Generate boss special loot (narrative drops)
         var bossLoot = _activeBoss.onDefeat(_player);
         lines.push('');
 
-        // Process boss loot
+        // Process boss narrative loot (whispers, mythic, rumors)
         if (bossLoot.loot && bossLoot.loot.length > 0) {
           bossLoot.loot.forEach(function(lootItem) {
             if (lootItem.type === 'card') {
@@ -5283,11 +5359,6 @@ const GoneRogue = (function () {
           });
         }
 
-        // Boss always drops significant cryptos
-        var bossReward = 25 + Math.floor(Math.random() * 26); // 25-50 cryptos
-        _spawnCurrency(_strCombatEnemy.x, _strCombatEnemy.y, bossReward);
-        lines.push('💰 Boss dropped ¢' + bossReward);
-
         // Check for Impossible Charm drop (very rare)
         if (_activeBoss && typeof CardSystem !== 'undefined') {
           var isUberMega = _activeBoss.type === 'UBER_MEGA';
@@ -5314,44 +5385,6 @@ const GoneRogue = (function () {
             lines.push('💠💠💠 IMPOSSIBLE BINARY CHARM DROPPED! 💠💠💠');
             lines.push('└─ A legendary artifact materializes...');
             lines.push('');
-          }
-        }
-      } else {
-        // Regular enemy loot
-        var cryptoAmount = Math.floor(Math.random() * 5) + 2; // 2-6 cryptos
-        _spawnCurrency(_strCombatEnemy.x, _strCombatEnemy.y, cryptoAmount);
-        lines.push('💰 Enemy dropped ¢' + cryptoAmount);
-
-        // 50% chance to drop a card
-        if (Math.random() < 0.5 && typeof CardSystem !== 'undefined') {
-          var baseType = CardSystem.getRandomBaseCard();
-          var card = CardSystem.rollCard(baseType);
-          if (card) {
-            _items.push({
-              x: _strCombatEnemy.x,
-              y: _strCombatEnemy.y,
-              type: 'card',
-              card: card,
-              spawnTime: Date.now(),
-              decayTime: 30000 // 30 second decay
-            });
-            lines.push('🎴 Enemy dropped a card!');
-          }
-        }
-
-        // 30% chance to drop a common charm
-        if (Math.random() < 0.30 && typeof CardSystem !== 'undefined') {
-          var charm = CardSystem.rollCommonCharm();
-          if (charm) {
-            _items.push({
-              x: _strCombatEnemy.x,
-              y: _strCombatEnemy.y,
-              type: 'charm',
-              card: charm,
-              spawnTime: Date.now(),
-              decayTime: 30000 // 30 second decay
-            });
-            lines.push('✨ Enemy dropped a charm!');
           }
         }
       }
