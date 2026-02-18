@@ -78,6 +78,7 @@ const GoneRogue = (function () {
   var _maxSingleHit = 0;           // Highest single attack damage
   var _damageMitigated = 0;        // Damage avoided/blocked in STR combat
   var _runCompleted = false;       // Whether run reached floor 30
+  var _playerDeaths = 0;           // Number of player deaths in this run
 
   var TILES = {
     EMPTY: '.',
@@ -325,6 +326,12 @@ const GoneRogue = (function () {
     _maxSingleHit = 0;
     _damageMitigated = 0;
     _runCompleted = false;
+    _playerDeaths = 0;
+
+    // Initialize death handler if available
+    if (typeof DeathHandler !== 'undefined') {
+      DeathHandler.resetStats();
+    }
 
     // Initialize lighting system if available
     if (typeof LightingSystem !== 'undefined') {
@@ -2736,7 +2743,7 @@ const GoneRogue = (function () {
       metadata: {
         completions: _runCompleted ? 1 : 0,
         final_floor: _floor,
-        player_deaths: 0, // Currently tracking only in-run state
+        player_deaths: _playerDeaths,
         enemies_killed: _enemiesKilled,
         enemies_avoided: enemiesAvoided,
         currency_collected: _currencyCollected,
@@ -2756,6 +2763,149 @@ const GoneRogue = (function () {
     } else {
       console.error('[GoneRogue] Failed to submit highscore:', result.error);
     }
+  }
+
+  /**
+   * Handle player death
+   * @param {string} reason - Death reason (environmental_hazard, combat_damage, etc.)
+   * @param {Object} context - Additional context {enemy, damage}
+   * @returns {Object} Action object with death screen
+   */
+  function _handlePlayerDeath(reason, context) {
+    context = context || {};
+
+    // Increment player death counter
+    _playerDeaths++;
+
+    // Use DeathHandler if available
+    var deathResult;
+    if (typeof DeathHandler !== 'undefined') {
+      deathResult = DeathHandler.handlePlayerDeath(
+        _player,
+        reason,
+        {
+          enemy: context.enemy,
+          floor: _floor,
+          damage: context.damage,
+          location: { x: _player.x, y: _player.y }
+        }
+      );
+    } else {
+      // Fallback death handling
+      deathResult = {
+        messages: [
+          '',
+          '═══════════════════════════════════',
+          '        💀 SIGNAL LOST 💀',
+          '═══════════════════════════════════',
+          '',
+          'You have been defeated.',
+          'Floor reached: ' + _floor,
+          ''
+        ]
+      };
+    }
+
+    // Submit highscore on death
+    if (typeof HighscoreState !== 'undefined') {
+      _submitHighscore();
+    }
+
+    // Exit rogue mode
+    return _exitRogue(false);
+  }
+
+  /**
+   * Handle enemy death
+   * @param {Object} enemy - Enemy that died
+   * @param {string} source - Death source ('player', 'environment', 'player_environment')
+   * @param {Object} context - Additional context {hazardType, damage}
+   * @returns {Object} Death result with loot info
+   */
+  function _handleEnemyDeath(enemy, source, context) {
+    context = context || {};
+
+    // Use DeathHandler if available
+    var deathResult;
+    if (typeof DeathHandler !== 'undefined') {
+      deathResult = DeathHandler.handleEnemyDeath(
+        enemy,
+        source,
+        {
+          player: _player,
+          damage: context.damage,
+          location: { x: enemy.x, y: enemy.y },
+          hazardType: context.hazardType,
+          bossLoot: context.bossLoot
+        }
+      );
+    } else {
+      // Fallback death handling
+      deathResult = {
+        playerCredit: source === 'player' || source === 'player_environment',
+        loot: {
+          cards: [],
+          charms: [],
+          currency: 0,
+          xp: 0
+        },
+        messages: []
+      };
+    }
+
+    // Update kill counter if player gets credit
+    if (deathResult.playerCredit) {
+      _enemiesKilled++;
+    }
+
+    // Spawn loot
+    if (deathResult.loot) {
+      // Spawn currency
+      if (deathResult.loot.currency > 0) {
+        _spawnCurrency(enemy.x, enemy.y, deathResult.loot.currency);
+      }
+
+      // Spawn cards
+      if (deathResult.loot.cards && deathResult.loot.cards.length > 0 && typeof CardSystem !== 'undefined') {
+        for (var i = 0; i < deathResult.loot.cards.length; i++) {
+          if (deathResult.loot.cards[i].shouldDrop) {
+            var baseType = CardSystem.getRandomBaseCard();
+            var card = CardSystem.rollCard(baseType);
+            if (card) {
+              _items.push({
+                x: enemy.x,
+                y: enemy.y,
+                type: 'card',
+                card: card,
+                spawnTime: Date.now(),
+                decayTime: 30000
+              });
+            }
+          }
+        }
+      }
+
+      // Spawn charms
+      if (deathResult.loot.charms && deathResult.loot.charms.length > 0 && typeof CardSystem !== 'undefined') {
+        for (var j = 0; j < deathResult.loot.charms.length; j++) {
+          if (deathResult.loot.charms[j].shouldDrop) {
+            var charm = CardSystem.rollCommonCharm();
+            if (charm) {
+              _items.push({
+                x: enemy.x,
+                y: enemy.y,
+                type: 'charm',
+                card: charm,
+                spawnTime: Date.now(),
+                decayTime: 30000
+              });
+            }
+          }
+        }
+      }
+    }
+
+    return deathResult;
   }
 
   function _exitRogue(success) {
@@ -4217,7 +4367,7 @@ const GoneRogue = (function () {
       if (_player.hp <= 0) {
         lines.push('');
         lines.push('💀 YOU HAVE BEEN DEFEATED...');
-        return _exitRogue(false); // Player death
+        return _handlePlayerDeath('combat_damage', { enemy: _strCombatEnemy });
       }
     }
 
@@ -4902,7 +5052,7 @@ const GoneRogue = (function () {
     // Check if player defeated
     if (_player.hp <= 0) {
       _strCombatLog.push('💀 YOU HAVE BEEN DEFEATED...');
-      return _exitRogue(false); // Player death
+      return _handlePlayerDeath('combat_damage', { enemy: _strCombatEnemy });
     }
 
     // Continue combat - show UI for player's turn
