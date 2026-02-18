@@ -3,18 +3,8 @@
   'use strict';
 
   // Inventory state
-  // context: 'live' (red), 'street' (yellow), 'both' (green)
-  var inventoryItems = [
-    { emoji: '🔑', name: 'Encrypted Key', description: 'A cryptographic key used for secure communications', context: 'live' },
-    { emoji: '📡', name: 'Signal Jammer', description: 'Portable device for blocking radio frequencies', context: 'live' },
-    { emoji: '🎯', name: 'Target Marker', description: 'GPS coordinates for mission objective', context: 'live' },
-    { emoji: '💾', name: 'Data Disc', description: 'Contains classified intelligence reports', context: 'both' },
-    { emoji: '🔦', name: 'Night Vision', description: 'Enhanced visibility in low-light conditions', context: 'both' },
-    { emoji: '📷', name: 'Surveillance Cam', description: 'Compact camera for field reconnaissance', context: 'live' },
-    { emoji: '🎙️', name: 'Wire Tap', description: 'Audio recording device for covert operations', context: 'live' },
-    { emoji: '🧭', name: 'Navigation Unit', description: 'Tactical GPS with terrain mapping', context: 'both' },
-    { emoji: '📻', name: 'Radio Transceiver', description: 'Secure communication device', context: 'both' }
-  ];
+  // Get actual persistent inventory from GAMESTATE instead of hardcoded test items
+  var inventoryItems = [];  // Will be populated from GAMESTATE.getPersistentInventory()
 
   var inventoryVisible = false;
   var selectedItemIndex = -1;
@@ -511,6 +501,23 @@
     // Clear existing
     container.innerHTML = '';
 
+    // Get persistent inventory from GAMESTATE (3 starter items)
+    var persistentItems = [];
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getPersistentInventory === 'function') {
+      persistentItems = GAMESTATE.getPersistentInventory();
+    }
+
+    // Map persistent inventory to UI format
+    var persistentInventoryItems = persistentItems.map(function(item) {
+      return {
+        emoji: item.emoji || '📦',
+        name: item.name || 'Unknown Item',
+        description: item.description || 'No description',
+        context: 'both',  // Persistent items are available in both contexts
+        type: item.type || 'item'
+      };
+    });
+
     // Get street-chronicles inventory if available
     var streetItems = [];
     if (typeof StreetChronicles !== 'undefined' && typeof StreetChronicles.getInventory === 'function') {
@@ -527,8 +534,8 @@
       };
     });
 
-    // Merge both inventories
-    var allItems = inventoryItems.concat(streetInventoryItems);
+    // Merge inventories: persistent items first, then street items
+    var allItems = persistentInventoryItems.concat(streetInventoryItems);
 
     // Add inventory items
     allItems.forEach(function (item, index) {

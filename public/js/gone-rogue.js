@@ -803,6 +803,15 @@ const GoneRogue = (function () {
     // Place items (increased loot for exploration floors)
     _placeItems(floorType);
 
+    // Step 13: Spawn interactive items
+    if (typeof ItemSpawner !== 'undefined' && typeof InteractiveItems !== 'undefined') {
+      var spawnedItems = ItemSpawner.spawnItemsForFloor(_floor, rooms, _grid);
+      spawnedItems.forEach(function(item) {
+        InteractiveItems.addItem(item);
+      });
+      console.log('[GoneRogue] Spawned', spawnedItems.length, 'interactive items');
+    }
+
     // Generate lighting for this floor
     if (typeof LightingSystem !== 'undefined') {
       // Set biome for lighting

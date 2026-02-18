@@ -86,17 +86,42 @@ When you collide with an enemy, you enter **STR combat** - a tactical turn-based
 
 Cards are your primary combat tools. You start with 5 **Starter Deck** cards:
 
-1. **Single Shot** 🎯 - Basic ranged attack (3 dmg, 2 energy)
-2. **Burst Shot** 💥 - Multi-hit attack (5 dmg, 3 energy)
-3. **Prone** 🛡️ - Defensive stance (+3 defense, +2 stealth)
+1. **Single Shot** 🎯 - Basic ranged attack (3 dmg, 2 energy, 1 ammo)
+2. **Burst Shot** 💥 - Multi-hit attack (5 dmg, 3 energy, 5 ammo)
+3. **Prone** 🛡️ - Defensive stance (+3 defense, +2 stealth, 1 fatigue)
 4. **Dodge** 💨 - Evasion stance (+3 evasion, 2 energy)
-5. **Katchup** 🩹 - Heal 3 HP
+5. **Katchup** 🩹 - Heal 3 HP (consumable)
 
 **Card Types:**
-- **Attack Cards**: Deal damage to enemies
-- **Stance Cards**: Defensive/evasive positioning
+- **Attack Cards**: Deal damage to enemies (costs ammo + fatigue)
+- **Stance Cards**: Defensive/evasive positioning (costs fatigue)
 - **Utility Cards**: Healing, stress relief, buffs
 - **Tactical Cards**: Movement and escape options
+- **Consumable Cards**: One-time use items (marked with ⚠️)
+
+**Resource Management:**
+
+**Ammo (🔫):**
+- Pooled resource (0-50 max)
+- Required for all shooting attacks
+- Refill with Ammo Clip consumables (+10 ammo)
+- Displayed in top HUD
+
+**Fatigue (😓):**
+- Accumulates from card use (0-100 scale)
+- Movement and attack cards cost 1-4 fatigue
+- Above 70 fatigue: cards become less effective
+- Recovery: 5 points per turn naturally, or use Energy Drink/Stim Pack
+
+**Energy (⚡):** (Planned)
+- 0-5 scale per STR combat round
+- Resets fully at start of each round
+- Limits card plays per turn
+
+**Focus (🎯):** (Planned)
+- 0-10 scale for stealth/precision
+- Increases with silent actions, decreases with loud actions
+- Enables critical hits at high focus
 
 **Card Quality Tiers:**
 1. Cracked (Gray) - 0.7x stats
@@ -161,14 +186,52 @@ Cryptos are persistent currency that survive death.
 - Break with: `kick north` or `shoot east`
 - **Drops**: 70% currency, 30% cards
 
-### Hazards
+**Equipped Item Button Interactions:**
+- Some breakables can be **interacted with** using the Active Item slot (top right HUD)
+- Click the Active Item button or type `interact` / `examine` / `read` when near interactive items
+- Examples:
+  - **Terminals (💻)**: Read intel or lore text
+  - **Signs (🪧)**: Display location information
+  - **Posters (📜)**: Flavor text and world-building
+
+### Hazards & Ground Effects
 
 **Fire/Acid (🟥):**
 - Deals 1 HP damage per turn
 - Avoid or use for tactical positioning
+- **Status Effect**: Standing in fire applies BURNING (🔥)
+  - 2-3 rounds of HP drain
+  - Reduces focus/accuracy
+  - Counter: Roll through water tiles or use water bottle
 
 **Water (🟦):**
 - Movement penalty: -1 energy cost
+- **Status Effect**: Walking through water applies WET (💧)
+  - 2 rounds duration
+  - Shock vulnerability (tazer attacks do double damage)
+  - Fire resistance (removes BURNING status)
+  - Counter: Wait for drying or move to dry tiles
+
+**Oil Slicks (🛢️)** (Rare):
+- Slippery terrain: movement costs +1 fatigue
+- **Status Effect**: Standing on oil applies OILED
+  - Fire vulnerability: igniting oil causes explosive spread
+  - Can be lit with lighter cards for tactical area denial
+  - Spreads to adjacent tiles when burning
+
+**Electrified Water (⚡💧)** (Special):
+- Created when tazer/battery attacks hit water tiles
+- Chain stun effect: all entities in connected water are stunned
+- 1 round duration
+- Dangerous for both player and enemies
+
+### Ground Effect Interactions
+
+**Interactive Items & Ground Effects:**
+- **Oil Slick Card** + **Lighter Card**: Create fire barriers to funnel enemies
+- **Water Bottle Card** + **Tazer Card**: Chain-stun multiple enemies in water
+- **Fire Tiles** + **Oiled Enemy**: Massive damage burst
+- Overhead animations (!, ?, 💭) appear above entities to show status changes
 
 ### Projectiles
 
@@ -405,6 +468,59 @@ EXIT/QUIT - Leave Gone Rogue
 - **Freeze** (❄️): Reduced speed
 - **Fear** (😱): Accuracy penalty
 - **Rage** (🔥): Damage boost, defense penalty
+
+**Status Effect System:**
+
+**DOT (Damage Over Time):**
+- **Burning (🔥)**: 2-3 rounds, HP drain, focus reduction
+  - Source: Fire tiles, explosions, ignited oil
+  - Counter: Water tiles, rolling, water bottle
+- **Bleeding (💉)**: 2-4 rounds, HP drain, fatigue on movement
+  - Source: Knife attacks, critical hits
+  - Counter: Bandage card, medical kit
+
+**Control Effects:**
+- **Stunned (⚡)**: 1 round, skip next action
+  - Source: Tazer shots, electrified water
+  - Counter: Wait it out
+- **Suppressed (💥)**: 2 rounds, accuracy down, focus disabled
+  - Source: Burst fire, explosions, suppressive fire
+  - Counter: Take quiet actions
+- **Knocked Down (🧱)**: 1 round, lose movement, defense down
+  - Source: Explosions, knockback effects
+  - Counter: Stand up action
+
+**Mental States:**
+- **Panic (😱)**: Variable, misplay chance, discard cards, accuracy down
+  - Source: Explosions, low HP, being surrounded, fire
+  - Counter: Stealth actions, cigarettes, calm cards
+- **Calm (🎯)**: Variable, accuracy up, crit chance up, better card draws
+  - Source: Prone stance, stealth kills, cigarettes
+  - Counter: Loud actions, taking damage
+
+**Stealth States:**
+- **Hidden (👁️)**: Until broken, enemy cannot target you
+  - Source: Stealth stance, hiding in shadows
+  - Counter: Loud shots, movement in light
+- **Exposed (💡)**: 1 round, enemy accuracy up
+  - Source: Stealth break, getting spotted
+  - Counter: Reposition to cover
+
+**Environmental Statuses:**
+- **Oiled (🛢️)**: Until cleaned, slippery, fire vulnerable
+  - Source: Oil slick tiles
+  - Interaction: Lighter ignites for explosive damage
+- **Wet (💧)**: 2 rounds, shock vulnerable, burn resistant
+  - Source: Water tiles, water bottle
+  - Interaction: Tazer causes chain stun
+- **Electrified (⚡)**: 1 round, stun risk, slow movement
+  - Source: Water + battery/tazer
+  - Counter: Exit water tiles
+
+**Status Display:**
+- Up to 3 status icons shown above player/enemies
+- Overhead animator shows status changes with emoji feedback
+- Check `status` command to see all active effects
 
 ### Emoticon Combat (Planned)
 

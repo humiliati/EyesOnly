@@ -260,6 +260,9 @@ const KernelManager = (function () {
     _save();
     _syncButton();
 
+    // Persist disconnection to server (best-effort)
+    persistDisconnect();
+
     Terminal.writeLine('');
     Terminal.writeLine('KERNEL DISCONNECTED', 'system-msg');
     Terminal.writeLine('');
@@ -447,6 +450,104 @@ const KernelManager = (function () {
       _lastError = data.lastError || null;
     } catch (e) {
       // ignore
+    }
+  }
+
+  async function persistConnect() {
+    if (!isAuthenticated()) return;
+
+    const token = UserAccount.getSessionToken();
+    if (!token) return;
+
+    try {
+      const res = await fetch('/api/kernel/connect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-Token': token
+        },
+        body: JSON.stringify({
+          agent_url: _agentUrl,
+          agent_name: _agentName
+        })
+      });
+
+      if (!res.ok) {
+        console.warn('Failed to persist kernel connection to server');
+      }
+    } catch (e) {
+      console.warn('Failed to persist kernel connection:', e);
+    }
+  }
+
+  async function persistDisconnect() {
+    if (!isAuthenticated()) return;
+
+    const token = UserAccount.getSessionToken();
+    if (!token) return;
+
+    try {
+      const res = await fetch('/api/kernel/disconnect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-Token': token
+        }
+      });
+
+      if (!res.ok) {
+        console.warn('Failed to persist kernel disconnection to server');
+      }
+    } catch (e) {
+      console.warn('Failed to persist kernel disconnection:', e);
+    }
+  }
+
+  async function syncFromServer() {
+    if (!isAuthenticated()) return;
+
+    const token = UserAccount.getSessionToken();
+    if (!token) return;
+
+    try {
+      const res = await fetch('/api/kernel/me', {
+        method: 'GET',
+        headers: {
+          'X-Session-Token': token
+        }
+      });
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+      const kernel = data && data.kernel;
+
+      if (!kernel) return;
+
+      if (kernel.status === 'CONNECTED' || kernel.status === 'ACTIVE_RUN') {
+        if (kernel.agent) {
+          _agentUrl = kernel.agent.url;
+          _agentName = kernel.agent.name || 'Agent';
+          _agentVersion = null;
+          _state = kernel.status;
+          _lastError = kernel.last_error || null;
+          _save();
+          _syncButton();
+        }
+      } else if (kernel.status === 'DISCONNECTED') {
+        // Server says disconnected, clear local state if it differs
+        if (_state !== STATES.DISCONNECTED) {
+          _state = STATES.DISCONNECTED;
+          _agentUrl = null;
+          _agentName = null;
+          _agentVersion = null;
+          _lastError = null;
+          _save();
+          _syncButton();
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to sync kernel state from server:', e);
     }
   }
 

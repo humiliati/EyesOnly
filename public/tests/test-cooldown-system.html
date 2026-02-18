@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cooldown System Test</title>
+  <style>
+    :root {
+      --bg: #07080b;
+      --panel: #0e1220;
+      --text: #e7e7ee;
+      --muted: #a7a7b6;
+      --accent: #7bd7ff;
+      --ok: #7bffb6;
+      --warn: #ffd36b;
+      --danger: #ff6b6b;
+      --border: rgba(255,255,255,0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, Monaco, 'Courier New', monospace;
+      background: radial-gradient(1200px 600px at 20% 0%, rgba(123,215,255,0.10), transparent 60%),
+                  radial-gradient(800px 400px at 90% 20%, rgba(255,211,107,0.10), transparent 55%),
+                  var(--bg);
+      color: var(--text);
+      padding: 20px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: rgba(14,18,32,0.75);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+    }
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      color: var(--accent);
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+    .status-bar {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+      padding: 12px;
+      background: rgba(7,8,11,0.6);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    .status-item {
+      flex: 1;
+      text-align: center;
+    }
+    .status-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .status-value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .status-value.pass { color: var(--ok); }
+    .status-value.fail { color: var(--danger); }
+    .btn {
+      display: inline-block;
+      padding: 10px 18px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(7,8,11,0.45);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .btn:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(123,215,255,0.12) inset;
+    }
+    .btn.primary {
+      border-color: rgba(123,215,255,0.45);
+      box-shadow: 0 0 0 1px rgba(123,215,255,0.12) inset;
+    }
+    #console {
+      margin-top: 20px;
+      padding: 16px;
+      background: rgba(7,8,11,0.8);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      min-height: 400px;
+      max-height: 600px;
+      overflow-y: auto;
+      font-size: 13px;
+    }
+    .log-line {
+      margin: 4px 0;
+      padding: 2px 0;
+    }
+    .section-header {
+      color: var(--accent);
+      font-weight: 700;
+      margin-top: 12px;
+    }
+    .pass-line {
+      color: var(--ok);
+    }
+    .fail-line {
+      color: var(--danger);
+    }
+    .info-line {
+      color: var(--text);
+    }
+    .warning-line {
+      color: var(--warn);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Cooldown System Test</h1>
+    <div class="subtitle">Comprehensive test suite for multi-combat cooldown tracking</div>
+
+    <div class="status-bar">
+      <div class="status-item">
+        <div class="status-label">Total Tests</div>
+        <div class="status-value" id="total-tests">0</div>
+      </div>
+      <div class="status-item">
+        <div class="status-label">Passed</div>
+        <div class="status-value pass" id="passed-tests">0</div>
+      </div>
+      <div class="status-item">
+        <div class="status-label">Failed</div>
+        <div class="status-value fail" id="failed-tests">0</div>
+      </div>
+      <div class="status-item">
+        <div class="status-label">Status</div>
+        <div class="status-value" id="test-status">Pending</div>
+      </div>
+    </div>
+
+    <button class="btn primary" id="run-tests">Run Tests</button>
+    <button class="btn" id="clear-console">Clear Console</button>
+
+    <div id="console"></div>
+  </div>
+
+  <!-- Load game modules -->
+  <script src="../js/gamestate.js"></script>
+  <script src="../js/card-system.js"></script>
+  <script src="../js/cooldown-tracker.js"></script>
+
+  <!-- Load test -->
+  <script>
+    // Capture console.log and console.error
+    const consoleDiv = document.getElementById('console');
+    const originalLog = console.log;
+    const originalError = console.error;
+
+    function addLogLine(message, type = 'info') {
+      const line = document.createElement('div');
+      line.className = 'log-line ' + type + '-line';
+
+      // Parse styled console output
+      if (typeof message === 'string' && message.includes('✓')) {
+        line.className = 'log-line pass-line';
+        message = message.replace(/%c/g, '');
+      } else if (typeof message === 'string' && message.includes('✗')) {
+        line.className = 'log-line fail-line';
+        message = message.replace(/%c/g, '');
+      } else if (typeof message === 'string' && message.includes('---')) {
+        line.className = 'log-line section-header';
+      }
+
+      line.textContent = message;
+      consoleDiv.appendChild(line);
+      consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    }
+
+    console.log = function(...args) {
+      originalLog.apply(console, args);
+      addLogLine(args.join(' '), 'info');
+    };
+
+    console.error = function(...args) {
+      originalError.apply(console, args);
+      addLogLine(args.join(' '), 'fail');
+    };
+
+    // Update status display
+    function updateStatus(results) {
+      document.getElementById('total-tests').textContent = results.total || 0;
+      document.getElementById('passed-tests').textContent = results.passed || 0;
+      document.getElementById('failed-tests').textContent = results.failed || 0;
+
+      const statusEl = document.getElementById('test-status');
+      if (results.success) {
+        statusEl.textContent = '✓ PASS';
+        statusEl.className = 'status-value pass';
+      } else {
+        statusEl.textContent = '✗ FAIL';
+        statusEl.className = 'status-value fail';
+      }
+    }
+
+    // Button handlers
+    document.getElementById('run-tests').addEventListener('click', function() {
+      consoleDiv.innerHTML = '';
+      document.getElementById('test-status').textContent = 'Running...';
+      document.getElementById('test-status').className = 'status-value';
+
+      // Small delay to allow UI update
+      setTimeout(function() {
+        const script = document.createElement('script');
+        script.src = './test-cooldown-system.js';
+        script.onload = function() {
+          if (window.TestCooldownSystem) {
+            const results = window.TestCooldownSystem.run();
+            updateStatus(results);
+          }
+        };
+        document.body.appendChild(script);
+      }, 50);
+    });
+
+    document.getElementById('clear-console').addEventListener('click', function() {
+      consoleDiv.innerHTML = '';
+      document.getElementById('total-tests').textContent = '0';
+      document.getElementById('passed-tests').textContent = '0';
+      document.getElementById('failed-tests').textContent = '0';
+      document.getElementById('test-status').textContent = 'Pending';
+      document.getElementById('test-status').className = 'status-value';
+    });
+
+    // Initialize gamestate
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.init === 'function') {
+      GAMESTATE.init();
+    }
+
+    console.log('Test harness ready. Click "Run Tests" to begin.');
+  </script>
+</body>
+</html>
