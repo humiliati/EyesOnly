@@ -29,7 +29,9 @@ const GoneRogue = (function () {
     dex: 5, // Dexterity for hit/dodge
     initiative: 0, // Initiative bonus
     combatEntries: 0, // Track total combat entries (for boss mythic conditions)
-    lastCardType: null // Track last card used (for boss mythic conditions)
+    lastCardType: null, // Track last card used (for boss mythic conditions)
+    collectingCurrency: false, // Track currency collection for animation
+    currencyCollectTime: 0 // Timestamp of last currency collection
   };
 
   var _enemies = [];
@@ -1813,9 +1815,19 @@ const GoneRogue = (function () {
       // Remove currency from floor
       _currencies = _currencies.filter(function(c) { return c.x !== newX || c.y !== newY; });
 
+      // Set player currency collection state for animation
+      _player.collectingCurrency = true;
+      _player.currencyCollectTime = Date.now();
+
       // Show overhead currency animation
       if (typeof OverheadAnimator !== 'undefined') {
         OverheadAnimator.showCurrencyPickup(_player.x, _player.y, cryptoPickup.amount);
+      }
+
+      // MOK interjection for currency pickup
+      if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+        var cryptoMsg = cryptoPickup.amount === 1 ? '¢1 Collected' : '¢' + cryptoPickup.amount + ' Collected';
+        UIControls.updateMokInterjection(cryptoMsg);
       }
 
       // Tooltip: Currency pickup

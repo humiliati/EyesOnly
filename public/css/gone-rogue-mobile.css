@@ -73,6 +73,21 @@
   animation: pulse-player 1s infinite;
 }
 
+/* Player collecting currency animation - subtle bobbing */
+.cell-player.currency-collecting {
+  animation: player-currency-bob 0.6s ease-out, pulse-player 1s infinite;
+}
+
+@keyframes player-currency-bob {
+  0% { transform: translateY(0) scale(1); }
+  15% { transform: translateY(-3px) scale(1.05); }
+  30% { transform: translateY(-2px) scale(1.04); }
+  45% { transform: translateY(-3px) scale(1.05); }
+  60% { transform: translateY(-1px) scale(1.02); }
+  75% { transform: translateY(-2px) scale(1.03); }
+  100% { transform: translateY(0) scale(1); }
+}
+
 @keyframes pulse-player {
   0%, 100% { box-shadow: 0 0 5px #1cff9b; }
   50% { box-shadow: 0 0 15px #1cff9b, 0 0 25px #1cff9b; }

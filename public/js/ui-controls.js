@@ -1242,13 +1242,60 @@
    * Update currency display in header
    * @param {number} amount - Current crypto balance
    */
+  /**
+   * Update currency display with animated ticker effect
+   * @param {number} amount - New currency amount
+   */
   function updateCurrencyDisplay(amount) {
     var currencyValueEl = document.getElementById('currency-value');
-    if (currencyValueEl) {
-      // Format with leading zeros (8 digits)
-      var formatted = String(amount || 0).padStart(8, '0');
+    if (!currencyValueEl) return;
+
+    // Get current displayed value
+    var currentText = currencyValueEl.textContent || '00000000';
+    var currentValue = parseInt(currentText, 10) || 0;
+    var targetValue = amount || 0;
+
+    // If no change, just update without animation
+    if (currentValue === targetValue) {
+      var formatted = String(targetValue).padStart(8, '0');
       currencyValueEl.textContent = formatted;
+      return;
     }
+
+    // Animate from current to target value (ticker/slot machine effect)
+    var duration = 600; // 600ms animation
+    var startTime = Date.now();
+    var difference = targetValue - currentValue;
+
+    // Add ticker animation class for CSS effects
+    currencyValueEl.classList.add('currency-ticker-active');
+
+    function animateTicker() {
+      var elapsed = Date.now() - startTime;
+      var progress = Math.min(elapsed / duration, 1);
+      
+      // Easing function for smooth deceleration
+      var eased = 1 - Math.pow(1 - progress, 3); // Cubic ease-out
+      
+      var currentDisplayValue = Math.round(currentValue + (difference * eased));
+      var formatted = String(currentDisplayValue).padStart(8, '0');
+      currencyValueEl.textContent = formatted;
+
+      if (progress < 1) {
+        requestAnimationFrame(animateTicker);
+      } else {
+        // Ensure final value is exact
+        var finalFormatted = String(targetValue).padStart(8, '0');
+        currencyValueEl.textContent = finalFormatted;
+        
+        // Remove animation class after a brief moment
+        setTimeout(function() {
+          currencyValueEl.classList.remove('currency-ticker-active');
+        }, 100);
+      }
+    }
+
+    animateTicker();
   }
 
   // Expose API for other modules
@@ -1259,6 +1306,7 @@
       }
     },
     updateCurrency: updateCurrencyDisplay,
+    updateMokInterjection: updateMokInterjection,
     enableKernelButton: enableKernelButton,
     disableKernelButton: disableKernelButton
   };
