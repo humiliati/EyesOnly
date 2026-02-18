@@ -32,8 +32,21 @@ const AgentIntegration = (function() {
       showTooltips: false,
       showCommentary: false,
       exploreThresholdPercent: 0  // Skip exploration, go to exit
+    },
+    kernel: {
+      // External decision API (Kernel)
+      minActionDelay: 200,
+      maxActionDelay: 500,
+      enableJitter: true,
+      showTooltips: true,
+      showCommentary: true,
+      exploreThresholdPercent: 70
     }
   };
+
+  // External agent (kernel decision API)
+  var kernelAgentUrl = null;
+  var kernelAgentName = null;
 
   /**
    * Initialize agent system
@@ -43,7 +56,7 @@ const AgentIntegration = (function() {
   }
 
   /**
-   * Start agent takeover (called from UI)
+   * Start built-in agent takeover (called from UI or terminal)
    */
   function startAgentTakeover(mode = 'natural') {
     if (agentActive) {
@@ -82,13 +95,17 @@ const AgentIntegration = (function() {
     // Start agent loop
     currentReport = initializeReport(mode);
     
-    var modeLabel = mode === 'natural' ? 'MOK AGENT' : 'DEVELOPER AGENT';
+    var modeLabel = (mode === 'natural') ? 'MOK AGENT' :
+                    (mode === 'developer') ? 'DEVELOPER AGENT' :
+                    'KERNEL AGENT';
     updateMOK(`🤖 ${modeLabel} ACTIVATED`, true);
     
     if (mode === 'natural') {
       updateMOK('[MOK]: "Taking control. Proceeding with standard protocol."');
-    } else {
+    } else if (mode === 'developer') {
       updateMOK('[DEV]: Fast testing mode enabled');
+    } else {
+      updateMOK('[KERNEL]: External decision API connected');
     }
 
     // Start agent action loop
@@ -97,6 +114,37 @@ const AgentIntegration = (function() {
     }, 1000);
 
     return true;
+  }
+
+  /**
+   * Start Kernel external decision agent takeover.
+   * @param {{agentUrl:string, agentName?:string}} opts
+   */
+  function startKernelDecisionTakeover(opts) {
+    opts = opts || {};
+    kernelAgentUrl = opts.agentUrl || null;
+    kernelAgentName = opts.agentName || null;
+
+    if (!kernelAgentUrl) {
+      updateMOK('❌ Kernel agent URL not set');
+      return false;
+    }
+
+    return startAgentTakeover('kernel');
+  }
+
+  /**
+   * Start Kernel decision takeover (external agent by URL)
+   * @param {{agentUrl:string, agentName?:string}} options
+   */
+  function startKernelDecisionTakeover(options) {
+    if (!options || !options.agentUrl) {
+      updateMOK('❌ Kernel agent URL required');
+      return false;
+    }
+    kernelAgentUrl = String(options.agentUrl || '').replace(/\/$/, '');
+    kernelAgentName = options.agentName ? String(options.agentName) : 'KernelAgent';
+    return startAgentTakeover('kernel');
   }
 
   /**
@@ -180,7 +228,12 @@ const AgentIntegration = (function() {
       }
 
       // Choose action based on mode
-      var action = chooseAction(actions, state);
+      var action = null;
+      if (agentMode === 'kernel') {
+        action = await chooseKernelActionAsync(actions, state);
+      } else {
+        action = chooseAction(actions, state);
+      }
       
       if (!action) {
         log('No valid action chosen, stopping');
@@ -188,8 +241,8 @@ const AgentIntegration = (function() {
         return;
       }
 
-      // Show action via MOK interjection (natural mode only)
-      if (agentMode === 'natural' && CONFIG.natural.showCommentary) {
+      // Show action via MOK interjection (natural/kernel mode only)
+      if ((agentMode === 'natural' || agentMode === 'kernel') && CONFIG[agentMode].showCommentary) {
         announceAction(action, state);
       }
 
@@ -234,6 +287,96 @@ const AgentIntegration = (function() {
       return chooseDeveloperAction(actions, state);
     } else {
       return chooseNaturalAction(actions, state);
+    }
+  }
+
+  /**
+   * Kernel mode: external decision API chooses from legal actions.
+   */
+  async function chooseKernelActionAsync(actions, state) {
+    if (!kernelAgentUrl) {
+      return actions.find(a => a.type === 'wait') || actions[0];
+    }
+
+    // Build minimal observation payload (do not leak more than needed)
+    var obs = {
+      floor: state.floor,
+      hp: state.player ? state.player.hp : null,
+      position: state.player ? { x: state.player.x, y: state.player.y } : null,
+      legal_actions: actions.map(function (a) {
+        // Keep action objects small and serializable
+        var out = { type: a.type };
+        if (a.direction) out.direction = a.direction;
+        if (typeof a.dx === 'number') out.dx = a.dx;
+        if (typeof a.dy === 'number') out.dy = a.dy;
+        if (typeof a.cardIndex === 'number') out.cardIndex = a.cardIndex;
+        if (typeof a.itemId !== 'undefined') out.itemId = a.itemId;
+        return out;
+      }),
+      ux_hints: {
+        lighting: state.lightingLevel || 'unknown',
+        ground_effect: state.groundEffect || 'unknown'
+      }
+    };
+
+    var payload = {
+      protocol_version: 'kernel-decision-v1',
+      session: {
+        username: (typeof UserAccount !== 'undefined' && UserAccount.getCurrentUser) ? (UserAccount.getCurrentUser() || {}).username : null,
+        callsign: (typeof UserAccount !== 'undefined' && UserAccount.getCurrentUser) ? (UserAccount.getCurrentUser() || {}).callsign : null,
+        agent_name: kernelAgentName || 'KernelAgent',
+        run_id: currentReport ? (currentReport.runId || null) : null,
+        tick: currentReport ? (currentReport.actionsExecuted || 0) : 0
+      },
+      observation: obs
+    };
+
+    try {
+      var controller = new AbortController();
+      var t = setTimeout(function () { controller.abort(); }, 5000);
+      var res = await fetch(kernelAgentUrl.replace(/\/$/, '') + '/next_action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+      clearTimeout(t);
+
+      if (!res.ok) {
+        throw new Error('agent http ' + res.status);
+      }
+
+      var data = await res.json().catch(function () { return null; });
+      if (!data || !data.action) {
+        return actions.find(a => a.type === 'wait') || actions[0];
+      }
+
+      // Find a matching legal action
+      var chosen = null;
+      for (var i = 0; i < actions.length; i++) {
+        var a = actions[i];
+        if (a.type !== data.action.type) continue;
+        if (data.action.direction && a.direction !== data.action.direction) continue;
+        if (typeof data.action.dx === 'number' && a.dx !== data.action.dx) continue;
+        if (typeof data.action.dy === 'number' && a.dy !== data.action.dy) continue;
+        if (typeof data.action.cardIndex === 'number' && a.cardIndex !== data.action.cardIndex) continue;
+        chosen = a;
+        break;
+      }
+
+      if (!chosen) {
+        return actions.find(a => a.type === 'wait') || actions[0];
+      }
+
+      if (data.commentary && typeof data.commentary === 'string') {
+        updateMOK('[KERNEL]: ' + data.commentary);
+      }
+
+      return chosen;
+
+    } catch (e) {
+      updateMOK('⚠️ Kernel agent error: ' + (e && e.message ? e.message : 'unknown'));
+      return actions.find(a => a.type === 'wait') || actions[0];
     }
   }
 
@@ -540,6 +683,7 @@ const AgentIntegration = (function() {
   return {
     init: init,
     startAgentTakeover: startAgentTakeover,
+    startKernelDecisionTakeover: startKernelDecisionTakeover,
     stopAgentTakeover: stopAgentTakeover,
     togglePause: togglePause,
     isActive: isActive,

@@ -788,7 +788,13 @@
       return;
     }
 
-    // User is logged in - show kernel interface
+    // User is logged in - open kernel interface via command handler if available
+    if (typeof window !== 'undefined' && typeof window._mainCommandHandler === 'function') {
+      window._mainCommandHandler('kernel');
+      return;
+    }
+
+    // Fallback: show kernel interface (legacy)
     printToTerminal([
       '',
       'KERNEL AGENT INTEGRATION',
@@ -798,23 +804,10 @@
       '[MOK]: "Connect your own AI agent to play alongside me."',
       '',
       'AVAILABLE COMMANDS:',
-      '  KERNEL CONNECT <api_key>  - Connect agent API',
-      '  KERNEL DISCONNECT         - Disconnect agent',
-      '  KERNEL STATUS             - View connection status',
-      '  KERNEL HELP               - Show detailed help',
-      '',
-      'SUPPORTED AGENTS:',
-      '  • OpenClaw-compatible APIs',
-      '  • Custom API endpoints (with auth token)',
-      '  • Local agent runners',
-      '',
-      'Agent capabilities:',
-      '  - Real-time game assistance and tooltips',
-      '  - Full gameplay takeover for speedruns',
-      '  - Performance benchmarking and analytics',
-      '  - Compete on highscore leaderboards',
-      '',
-      'Type KERNEL HELP for detailed documentation.',
+      '  KERNEL CONNECT <agent_url>  - Connect agent URL',
+      '  KERNEL DISCONNECT           - Disconnect agent',
+      '  KERNEL STATUS               - View connection status',
+      '  KERNEL HELP                 - Show help',
       ''
     ]);
   }

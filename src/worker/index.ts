@@ -11,6 +11,7 @@ import { publicRoutes } from './routes/public';
 import { opsRoutes } from './routes/ops';
 import { mModeRoutes } from './routes/m-mode';
 import { userAuthRoutes } from './routes/user-auth';
+import { kernelRoutes } from './routes/kernel';
 
 export { ScenarioRoom } from './durable-objects/scenario-room';
 
@@ -47,6 +48,7 @@ app.route('/api', publicRoutes);
 app.route('/api/ops', opsRoutes);
 app.route('/api/m', mModeRoutes);
 app.route('/api/user', userAuthRoutes);
+app.route('/api/kernel', kernelRoutes);
 
 // --- Health Check ---
 

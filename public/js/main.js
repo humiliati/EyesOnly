@@ -190,6 +190,12 @@
   function _handleCommand(rawInput) {
     var currentState = StateMachine.getState();
 
+    // Priority 0: Kernel commands (available anywhere once logged in)
+    if (typeof KernelManager !== 'undefined' && KernelManager.isKernelCommand && KernelManager.isKernelCommand(rawInput || '')) {
+      _executeKernelAction(KernelManager.process(rawInput || ''));
+      return;
+    }
+
     // Priority 1: Check if Gone Rogue mode is active
     if (typeof GoneRogue !== 'undefined' && GoneRogue.isActive()) {
       _executeRogueAction(GoneRogue.process(rawInput || ''));
@@ -256,6 +262,17 @@
       }
       _enableInput(_promptForState(StateMachine.getState()));
     }, 'system-msg highlight');
+  }
+
+  function _executeKernelAction(action) {
+    Terminal.hideInput();
+    _displayLines(action.lines || [], function () {
+      if (action.stayActive) {
+        _enableInput(action.prompt || _promptForState(StateMachine.getState()));
+        return;
+      }
+      _enableInput(_promptForState(StateMachine.getState()));
+    }, 'system-msg');
   }
 
   function _executeLoginAction(action) {
