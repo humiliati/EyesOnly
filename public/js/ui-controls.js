@@ -952,15 +952,41 @@
     }
 
     // Check if using test account via LoginShell
+    // Note: test accounts 'user' and 'admin' use the LoginShell system (terminal-within-terminal)
+    // This is separate from the real UserAccount authentication system
     if (typeof LoginShell !== 'undefined' && (username === 'user' || username === 'admin')) {
-      // Use LoginShell for test accounts (backwards compatible)
+      // Close overlay first
       toggleLoginOverlay();
+      
+      // Show message in terminal that we're entering LoginShell mode
+      printToTerminal([
+        '',
+        'TEST ACCOUNT DETECTED: ' + username.toUpperCase(),
+        'Entering LoginShell subsystem...',
+        'This is a demo authentication system.',
+        ''
+      ]);
+      
+      // Start the LoginShell subsystem (terminal-within-terminal)
       if (typeof LoginShell.start === 'function') {
-        var result = LoginShell.start();
-        if (result && result.lines) {
-          printToTerminal(result.lines);
-        }
+        // Small delay to let overlay close animation complete
+        setTimeout(function() {
+          var result = LoginShell.start();
+          if (result && result.lines) {
+            result.lines.forEach(function(line) {
+              if (typeof Terminal !== 'undefined' && Terminal.writeLine) {
+                Terminal.writeLine(line, 'system-msg');
+              }
+            });
+          }
+          // Update prompt if needed
+          if (result && result.prompt && typeof Terminal !== 'undefined' && Terminal.showInput) {
+            Terminal.showInput(result.prompt);
+          }
+        }, 150);
       }
+      
+      // Re-enable button
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.textContent = 'LOGIN';
