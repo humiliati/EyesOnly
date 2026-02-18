@@ -255,8 +255,11 @@ const ReserveSlots = (function () {
 
     // Calculate which card to show based on cycle offset
     // With cycling, we rotate through all cards
-    var cardIndex = (_cycleOffset + slotIndex) % _actionButtonCards.length;
-    var card = _actionButtonCards[cardIndex];
+    // Guard against empty array to prevent NaN from modulo operation
+    var cardIndex = _actionButtonCards.length > 0 
+      ? (_cycleOffset + slotIndex) % _actionButtonCards.length 
+      : -1;
+    var card = cardIndex >= 0 ? _actionButtonCards[cardIndex] : null;
 
     if (card) {
       // Card exists - show emoji and abbreviated name
@@ -296,8 +299,10 @@ const ReserveSlots = (function () {
         _hideCardTooltip();
       });
     } else {
-      // Empty slot (shouldn't happen with proper slot counting)
+      // Empty slot - this can occur during initialization or if render is called
+      // before cards are loaded
       btn.innerHTML = '<span class="card-empty">·</span>';
+      btn.classList.add('empty-slot');
       btn.disabled = true;
     }
 
