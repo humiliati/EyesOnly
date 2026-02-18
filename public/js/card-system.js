@@ -503,6 +503,75 @@ const CardSystem = (function () {
       }
     },
 
+    // ========== COOLDOWN CARDS (Multi-combat powerful abilities) ==========
+    THERMAL_VISION: {
+      category: 'setup',
+      type: 'power',
+      name: 'Thermal Vision',
+      emoji: '🔥',
+      lifecycleType: 'power',
+      baseStats: {
+        visionBonus: 3,
+        seeThroughWalls: true,
+        detectHidden: true,
+        battery: 1,
+        energy: 2,
+        speed: 2,
+        cooldownCombat: 3,  // Usable once every 3 combats
+        combatPersistent: true
+      }
+    },
+    ADRENALINE_SURGE: {
+      category: 'setup',
+      type: 'power',
+      name: 'Adrenaline Surge',
+      emoji: '💉',
+      lifecycleType: 'power',
+      baseStats: {
+        attackBoost: 5,
+        speedBoost: 3,
+        accuracyBonus: 20,
+        energy: 3,
+        speed: 1,
+        cooldownCombat: 2,  // Usable once every 2 combats
+        combatPersistent: true
+      }
+    },
+    SMOKE_SCREEN: {
+      category: 'setup',
+      type: 'setup',
+      name: 'Smoke Screen',
+      emoji: '💨',
+      lifecycleType: 'exhaust',
+      baseStats: {
+        aoe: 3,
+        concealment: true,
+        enemyAccuracyPenalty: -40,
+        duration: 2,
+        battery: 1,
+        energy: 2,
+        speed: 2,
+        cooldownFloor: 1,  // Usable once per floor
+        exhaust: true
+      }
+    },
+    PERFECT_AMBUSH: {
+      category: 'setup',
+      type: 'power',
+      name: 'Perfect Ambush',
+      emoji: '🎯',
+      lifecycleType: 'power',
+      baseStats: {
+        guaranteedCrit: true,
+        damageMultiplier: 2.0,
+        stealthBonus: 5,
+        energy: 3,
+        speed: 3,
+        oncePerRun: true,  // Usable once per entire run
+        combatPersistent: true
+      }
+    },
+
     // ========== DEPRECATED/LEGACY CARDS (for backward compatibility) ==========
     // Defense/Stance cards (now in defense category)
 

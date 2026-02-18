@@ -98,6 +98,7 @@ const GAMESTATE = (function () {
       startTime: Date.now(),
       turnsElapsed: 0,
       floor: 1,
+      combatsCompleted: 0,        // Track combats for cooldown system
       enemiesKilled: 0,
       cardsFound: 0
     };
@@ -807,6 +808,46 @@ const GAMESTATE = (function () {
     _saveState();
   }
 
+  // ========== COOLDOWN TRACKING ==========
+
+  /**
+   * Increment combat counter (call after each combat completion)
+   */
+  function incrementCombatCounter() {
+    if (_state.rogueRun) {
+      _state.rogueRun.combatsCompleted = (_state.rogueRun.combatsCompleted || 0) + 1;
+      _saveState();
+      return _state.rogueRun.combatsCompleted;
+    }
+    return 0;
+  }
+
+  /**
+   * Increment floor counter (call after ascending to next floor)
+   */
+  function incrementFloorCounter() {
+    if (_state.rogueRun) {
+      _state.rogueRun.floor = (_state.rogueRun.floor || 1) + 1;
+      _saveState();
+      return _state.rogueRun.floor;
+    }
+    return 1;
+  }
+
+  /**
+   * Get current combat count
+   */
+  function getCombatCount() {
+    return _state.rogueRun ? (_state.rogueRun.combatsCompleted || 0) : 0;
+  }
+
+  /**
+   * Get current floor count
+   */
+  function getFloorCount() {
+    return _state.rogueRun ? (_state.rogueRun.floor || 1) : 1;
+  }
+
   return {
     MODES: MODES,
     init: init,
@@ -860,6 +901,11 @@ const GAMESTATE = (function () {
     loseStability: loseStability,
     restoreStability: restoreStability,
     // User data management
-    loadUserData: loadUserData
+    loadUserData: loadUserData,
+    // Cooldown tracking
+    incrementCombatCounter: incrementCombatCounter,
+    incrementFloorCounter: incrementFloorCounter,
+    getCombatCount: getCombatCount,
+    getFloorCount: getFloorCount
   };
 })();
