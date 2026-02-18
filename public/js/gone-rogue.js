@@ -81,6 +81,7 @@ const GoneRogue = (function () {
   var _damageMitigated = 0;        // Damage avoided/blocked in STR combat
   var _runCompleted = false;       // Whether run reached floor 30
   var _playerDeaths = 0;           // Number of player deaths in this run
+  var _lastPickupMessage = null;   // Track last item pickup message for display
 
   var TILES = {
     EMPTY: '.',
@@ -1948,15 +1949,33 @@ const GoneRogue = (function () {
       };
     }
 
-    // Add to loose carry
+    // Check if item is a card (attack/support) or regular item
+    var isCard = item.card && (item.card.type === 'attack' || item.card.type === 'support');
+    
+    // Add to appropriate inventory
     if (typeof GAMESTATE !== 'undefined') {
-      var result = GAMESTATE.addToLoose(item.card);
+      var result;
+      
+      if (isCard) {
+        // NEW LOOT FLOW: Cards go to hand first, then action buttons
+        result = GAMESTATE.addCard(item.card);
+      } else {
+        // Non-card items go to loose inventory (legacy behavior)
+        result = GAMESTATE.addToLoose(item.card);
+      }
+      
       if (!result.success) {
         return {
           lines: [result.message, 'DROP SOMETHING FIRST', ''].concat(_renderGrid()),
           prompt: getPrompt(),
           stayActive: true
         };
+      }
+      
+      // Show where card was added (hand vs action buttons)
+      if (isCard && result.location) {
+        var locationMsg = result.location === 'hand' ? '[Added to HAND]' : '[Added to ACTION BUTTONS]';
+        _lastPickupMessage = locationMsg;
       }
     }
 
@@ -1970,6 +1989,13 @@ const GoneRogue = (function () {
       } else {
         TooltipSystem.showAction('item-pickup', { name: item.card.name });
       }
+    }
+    
+    // MOK interjection for card/item pickup
+    if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+      var pickupType = isCard ? 'Card' : 'Item';
+      var locationInfo = (isCard && result && result.location) ? ' → ' + result.location.toUpperCase() : '';
+      UIControls.updateMokInterjection(pickupType + ': ' + item.card.name + locationInfo);
     }
 
     return {
