@@ -3644,6 +3644,32 @@ const GoneRogue = (function () {
   }
 
   /**
+   * Handle multiple card selection from mobile UI in STR combat
+   * Executes all selected cards as player actions in a single combat round
+   */
+  function handleMultiCardCombat(cardIndices) {
+    if (!_active || !_strCombatActive) return;
+    if (!cardIndices || cardIndices.length === 0) return;
+
+    // Get all cards from loose inventory
+    var loose = typeof GAMESTATE !== 'undefined' ? GAMESTATE.getLooseInventory() : [];
+
+    // Filter valid card indices and get card objects
+    var playerCards = [];
+    for (var i = 0; i < cardIndices.length; i++) {
+      var idx = cardIndices[i];
+      if (idx >= 0 && idx < loose.length) {
+        playerCards.push(loose[idx]);
+      }
+    }
+
+    if (playerCards.length === 0) return;
+
+    // Execute multi-card combat round
+    return _executeMultiCardRound(playerCards);
+  }
+
+  /**
    * Map swipe direction to card action
    */
   function _getCardAction(card, direction) {
@@ -4104,6 +4130,95 @@ const GoneRogue = (function () {
         lines.push('');
         lines.push('💀 YOU HAVE BEEN DEFEATED...');
         return _exitRogue(false); // Player death
+      }
+    }
+
+    // Continue combat
+    lines.push('');
+    lines.push('═══════════════════════════');
+    lines.push('');
+    return _showStrCombatUIWithLog(lines);
+  }
+
+  /**
+   * Execute a multi-card combat round (player plays multiple cards, enemy plays one)
+   * @param {Array} playerCards - Array of cards player is using
+   */
+  function _executeMultiCardRound(playerCards) {
+    _strCombatRound++;
+
+    var actions = [];
+
+    // Create player actions for each selected card
+    for (var i = 0; i < playerCards.length; i++) {
+      var card = playerCards[i];
+      var category = typeof CardSystem !== 'undefined' ? CardSystem.getCardCategory(card) : 'attack';
+      var priority = typeof CardSystem !== 'undefined' ? CardSystem.getCardPriority(category) : 4;
+      var speed = (card.stats && card.stats.speed) || _player.initiative || 0;
+
+      actions.push({
+        actor: 'player',
+        card: card,
+        category: category,
+        priority: priority,
+        speed: speed
+      });
+    }
+
+    // Get enemy AI card
+    var enemyCard = _getEnemyAICard();
+    if (enemyCard) {
+      var enemyCategory = typeof CardSystem !== 'undefined' ? CardSystem.getCardCategory(enemyCard) : 'attack';
+      var enemyPriority = typeof CardSystem !== 'undefined' ? CardSystem.getCardPriority(enemyCategory) : 4;
+      var enemySpeed = (enemyCard.stats && enemyCard.stats.speed) || _strCombatEnemy.initiative || 0;
+
+      actions.push({
+        actor: 'enemy',
+        card: enemyCard,
+        category: enemyCategory,
+        priority: enemyPriority,
+        speed: enemySpeed
+      });
+    }
+
+    // Sort by priority (lower executes first), then by speed (higher breaks ties)
+    actions.sort(function(a, b) {
+      if (a.priority !== b.priority) {
+        return a.priority - b.priority;
+      }
+      return b.speed - a.speed;
+    });
+
+    // Execute actions in order
+    var lines = [];
+    lines.push('═══ ROUND ' + _strCombatRound + ' RESOLUTION ═══');
+    lines.push('💥 MULTI-CARD COMBO: ' + playerCards.length + ' cards');
+    lines.push('');
+
+    for (var j = 0; j < actions.length; j++) {
+      var action = actions[j];
+      var result = _resolveAction(action);
+
+      if (result && result.lines) {
+        lines = lines.concat(result.lines);
+      }
+
+      // Check for combat end conditions
+      if (_strCombatEnemy.hp <= 0) {
+        lines.push('');
+        lines.push('💀 ENEMY DEFEATED!');
+        _enemiesKilled++;
+        var exitResult = _exitStrCombat('player_victory');
+        return {
+          lines: lines.concat(exitResult.lines || []),
+          stayActive: exitResult.stayActive
+        };
+      }
+
+      if (_player.hp <= 0) {
+        lines.push('');
+        lines.push('💀 YOU HAVE BEEN DEFEATED...');
+        return _exitRogue(false);
       }
     }
 
@@ -5971,6 +6086,7 @@ const GoneRogue = (function () {
     getPrompt: getPrompt,
     handleTapMove: handleTapMove,
     handleCardSwipe: handleCardSwipe,
+    handleMultiCardCombat: handleMultiCardCombat,
     getPlayer: getPlayer,
     getEnemies: getEnemies,
     getEnemyAwarenessState: getEnemyAwarenessState,

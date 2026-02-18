@@ -373,6 +373,7 @@
 
 /* Individual Card */
 .rogue-card {
+  position: relative; /* For badge positioning */
   min-width: 100px;
   padding: 15px;
   background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
@@ -454,6 +455,53 @@
 @keyframes arrow-pulse {
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.2); opacity: 0.7; }
+}
+
+/* Card Selection Styles */
+.rogue-card.card-selected {
+  border-color: #ff9800;
+  background: linear-gradient(135deg, #1a1506 0%, #2a1a0a 100%);
+  box-shadow: 0 0 20px rgba(255, 152, 0, 0.6);
+  transform: translateY(-8px);
+}
+
+.card-selection-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  background: #ff9800;
+  border: 2px solid #000;
+  border-radius: 50%;
+  color: #000;
+  font-size: 14px;
+  font-weight: bold;
+  font-family: 'Courier New', monospace;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  box-shadow: 0 0 10px rgba(255, 152, 0, 0.8);
+}
+
+/* Play Selected Button */
+.rogue-card.card-play-selected {
+  background: linear-gradient(135deg, #0a4a0a 0%, #0d6a0d 100%);
+  border-color: #1cff9b;
+  cursor: pointer;
+  touch-action: auto;
+  animation: play-button-pulse 2s ease-in-out infinite;
+}
+
+.rogue-card.card-play-selected:hover {
+  transform: translateY(-5px) scale(1.1);
+  box-shadow: 0 0 30px rgba(28, 255, 155, 0.8);
+}
+
+@keyframes play-button-pulse {
+  0%, 100% { box-shadow: 0 0 15px rgba(28, 255, 155, 0.5); }
+  50% { box-shadow: 0 0 25px rgba(28, 255, 155, 0.8); }
 }
 
 /* No Cards Message */
