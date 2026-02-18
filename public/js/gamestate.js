@@ -297,10 +297,16 @@ const GAMESTATE = (function () {
    * @param {Object} card - Card object to add
    */
   function addToActionButtons(card) {
-    if (_state.actionButtonCards.length >= _state.actionButtonSlots) {
+    // Get capacity from CardZoneManager if available, otherwise use default
+    var maxSlots = _state.actionButtonSlots;
+    if (typeof CardZoneManager !== 'undefined' && typeof CardZoneManager.getActionButtonCapacity === 'function') {
+      maxSlots = CardZoneManager.getActionButtonCapacity();
+    }
+
+    if (_state.actionButtonCards.length >= maxSlots) {
       return {
         success: false,
-        message: 'ACTION BUTTON SLOTS FULL (' + _state.actionButtonCards.length + '/' + _state.actionButtonSlots + ')'
+        message: 'ACTION BUTTON SLOTS FULL (' + _state.actionButtonCards.length + '/' + maxSlots + ')'
       };
     }
 
@@ -952,6 +958,16 @@ const GAMESTATE = (function () {
     return _state.rogueRun ? (_state.rogueRun.floor || 1) : 1;
   }
 
+  /**
+   * Get current action button capacity (base + equipment bonuses)
+   */
+  function getActionButtonCapacity() {
+    if (typeof CardZoneManager !== 'undefined' && typeof CardZoneManager.getActionButtonCapacity === 'function') {
+      return CardZoneManager.getActionButtonCapacity();
+    }
+    return _state.actionButtonSlots || 4;
+  }
+
   return {
     MODES: MODES,
     init: init,
@@ -972,6 +988,7 @@ const GAMESTATE = (function () {
     getActionButtonCards: getActionButtonCards,
     setActionButtonCards: setActionButtonCards,
     clearActionButtonCards: clearActionButtonCards,
+    getActionButtonCapacity: getActionButtonCapacity,
     setActiveItem: setActiveItem,
     getActiveItem: getActiveItem,
     clearActiveItem: clearActiveItem,

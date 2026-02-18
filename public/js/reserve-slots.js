@@ -7,11 +7,21 @@ const ReserveSlots = (function () {
   'use strict';
 
   var _actionButtonCards = []; // Array of up to 4 card objects in action buttons
-  var _maxActionButtonSlots = 4; // Fixed at 4 card slots for Gone Rogue mode
+  var _maxActionButtonSlots = 4; // Default capacity (can be increased by equipment)
   var _cycleOffset = 0; // Current pagination offset for card cycling
   var _slotsContainer = null;
   var _longPressTimer = null;
   var _longPressThreshold = 500; // ms to trigger long-press tooltip
+
+  /**
+   * Get current action button capacity (including equipment bonuses)
+   */
+  function _getMaxSlots() {
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getActionButtonCapacity === 'function') {
+      return GAMESTATE.getActionButtonCapacity();
+    }
+    return _maxActionButtonSlots;
+  }
 
   /**
    * Abbreviate card name by removing vowels and spaces
@@ -128,7 +138,8 @@ const ReserveSlots = (function () {
    */
   function addCard(card) {
     if (!card) return;
-    if (_actionButtonCards.length < _maxActionButtonSlots) {
+    var maxSlots = _getMaxSlots();
+    if (_actionButtonCards.length < maxSlots) {
       _actionButtonCards.push(card);
       render();
     }
@@ -157,7 +168,8 @@ const ReserveSlots = (function () {
    * Cycle to next set of cards (for sort button)
    */
   function cycleCards() {
-    if (_actionButtonCards.length > _maxActionButtonSlots) {
+    var maxSlots = _getMaxSlots();
+    if (_actionButtonCards.length > maxSlots) {
       _cycleOffset = (_cycleOffset + 1) % _actionButtonCards.length;
       render();
     }
@@ -209,8 +221,9 @@ const ReserveSlots = (function () {
     });
     _slotsContainer.appendChild(sortBtn);
 
-    // Buttons 3-6: 4 card slots
-    for (var i = 0; i < _maxActionButtonSlots; i++) {
+    // Buttons 3-N: Card slots (dynamic based on equipment)
+    var maxSlots = _getMaxSlots();
+    for (var i = 0; i < maxSlots; i++) {
       var slotBtn = _createCardSlotButton(i);
       _slotsContainer.appendChild(slotBtn);
     }
@@ -221,7 +234,7 @@ const ReserveSlots = (function () {
 
   /**
    * Create a card slot button
-   * @param {number} slotIndex - Index of the slot (0-3)
+   * @param {number} slotIndex - Index of the slot (0-N)
    * @returns {HTMLElement} Button element
    */
   function _createCardSlotButton(slotIndex) {
@@ -231,7 +244,8 @@ const ReserveSlots = (function () {
     btn.dataset.slotIndex = slotIndex;
 
     // Calculate which card to show based on cycle offset
-    var cardIndex = (_cycleOffset + slotIndex) % Math.max(_actionButtonCards.length, _maxActionButtonSlots);
+    var maxSlots = _getMaxSlots();
+    var cardIndex = (_cycleOffset + slotIndex) % Math.max(_actionButtonCards.length, maxSlots);
     var card = _actionButtonCards[cardIndex];
 
     if (card) {

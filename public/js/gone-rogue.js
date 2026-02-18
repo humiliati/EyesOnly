@@ -1447,6 +1447,34 @@ const GoneRogue = (function () {
       itemCount = 3;
     }
 
+    // ========== GUARANTEED TRENCH COAT DROP IN GREY BIOME ==========
+    // Spawn trench coat on grey cave floors (1-4) if player doesn't have one
+    var biome = _getBiome(_floor);
+    var shouldSpawnTrenchCoat = false;
+
+    if (biome.name === 'Grey Cave') {
+      // Check if player already has trench coat
+      var hasTrenchCoat = false;
+
+      if (typeof GAMESTATE !== 'undefined') {
+        var looseInv = GAMESTATE.getLooseInventory();
+        var persistentInv = GAMESTATE.getPersistentInventory();
+        var activeItem = GAMESTATE.getActiveItem();
+
+        // Check all inventories for trench coat
+        hasTrenchCoat = looseInv.some(function(item) {
+          return item.id && item.id.indexOf('trench_coat') !== -1;
+        }) || persistentInv.some(function(item) {
+          return item.id && item.id.indexOf('trench_coat') !== -1;
+        }) || (activeItem && activeItem.id && activeItem.id.indexOf('trench_coat') !== -1);
+      }
+
+      // Spawn trench coat if player doesn't have one
+      if (!hasTrenchCoat) {
+        shouldSpawnTrenchCoat = true;
+      }
+    }
+
     var attempts = 0;
     var maxAttempts = 50;
 
@@ -1468,8 +1496,17 @@ const GoneRogue = (function () {
 
       // Generate random card
       if (typeof CardSystem !== 'undefined') {
-        var baseType = CardSystem.getRandomBaseCard();
-        var card = CardSystem.rollCard(baseType);
+        var card;
+
+        // First item spawned in grey cave is trench coat if needed
+        if (shouldSpawnTrenchCoat && i === 0) {
+          card = CardSystem.rollTrenchCoat();
+          shouldSpawnTrenchCoat = false; // Only spawn once
+        } else {
+          var baseType = CardSystem.getRandomBaseCard();
+          card = CardSystem.rollCard(baseType);
+        }
+
         _items.push({ x: ix, y: iy, card: card, spawnTime: Date.now(), decayTime: 30000 }); // 30 second decay
       }
     }

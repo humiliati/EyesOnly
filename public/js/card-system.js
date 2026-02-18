@@ -628,6 +628,19 @@ const CardSystem = (function () {
       name: 'Impossible Binary Charm',
       emoji: '💠',
       baseStats: { impossible: 1 } // Permanent unlock, grants special ability
+    },
+
+    // ========== EQUIPMENT CARDS (Equipable items) ==========
+    TRENCH_COAT: {
+      category: 'equipment',
+      type: 'equipment',
+      name: 'Trench Coat',
+      emoji: '🧥',
+      baseStats: {
+        actionButtonSlots: 2,  // Provides +2 action button slots when equipped
+        defense: 1,            // Minor defense bonus
+        stealth: 1             // Helps blend in urban environments
+      }
     }
   };
 
@@ -829,6 +842,43 @@ const CardSystem = (function () {
   }
 
   /**
+   * Roll trench coat equipment (guaranteed drop in grey biome)
+   * Quality range: WORN to FINE (early game equipment)
+   */
+  function rollTrenchCoat() {
+    var baseEquipment = BASE_CARDS.TRENCH_COAT;
+
+    // Trench coat quality: 60% WORN, 30% STANDARD, 10% FINE
+    var roll = Math.random() * 100;
+    var quality;
+    if (roll <= 60) {
+      quality = 'WORN';
+    } else if (roll <= 90) {
+      quality = 'STANDARD';
+    } else {
+      quality = 'FINE';
+    }
+
+    var stats = rollStats(baseEquipment, quality);
+
+    var trenchCoat = {
+      base: 'TRENCH_COAT',
+      name: baseEquipment.name,
+      emoji: baseEquipment.emoji,
+      type: 'equipment',
+      category: 'equipment',
+      quality: quality,
+      qualityName: QUALITIES[quality].name,
+      qualityColor: QUALITIES[quality].color,
+      stats: stats,
+      affixes: [],
+      id: 'trench_coat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+    };
+
+    return trenchCoat;
+  }
+
+  /**
    * Get a random base card type
    */
   function getRandomBaseCard() {
@@ -905,6 +955,7 @@ const CardSystem = (function () {
     rollInventoryCharm: rollInventoryCharm,
     rollCommonCharm: rollCommonCharm,
     rollImpossibleCharm: rollImpossibleCharm,
+    rollTrenchCoat: rollTrenchCoat,
     getRandomBaseCard: getRandomBaseCard,
     formatCard: formatCard,
     getCardPriority: getCardPriority,
