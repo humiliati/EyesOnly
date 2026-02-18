@@ -1416,11 +1416,14 @@ body.amber-mode #scanlines::after {
    Transform left column buttons into card management interface
    ============================================================ */
 
-/* Reserve card slots - desktop and mobile */
+/* Reserve card slots - maintain natural grid behavior for collapsing
+   against debrief feed, just like in normal mode */
 body.mode-gone-rogue .control-buttons,
 body.in-gone-rogue .control-buttons {
-  display: flex;
-  flex-direction: column;
+  /* Keep the default grid display from line 220-224 */
+  /* This allows natural collapsing behavior against debrief feed */
+  display: grid;
+  grid-auto-rows: minmax(32px, 1fr);
   gap: 8px;
 }
 
