@@ -1,0 +1,523 @@
+/* ============================================================
+   STR Combat Window - Hearthstone-Style UI
+   ============================================================ */
+
+/* Background tint when combat is minimized */
+body.str-combat-minimized-state {
+  background: rgba(255, 28, 74, 0.08);
+}
+
+body.str-combat-minimized-state::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 28, 74, 0.08);
+  pointer-events: none;
+  z-index: 999;
+}
+
+/* Main STR Combat Window */
+.str-combat-window {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(85vw, 500px);
+  background: rgba(10, 10, 10, 0.95);
+  backdrop-filter: blur(10px);
+  border: 3px solid #ffaa00;
+  border-radius: 12px;
+  box-shadow:
+    0 0 30px rgba(255, 170, 0, 0.6),
+    inset 0 0 20px rgba(255, 170, 0, 0.08);
+  z-index: 2000;
+  font-family: 'Courier New', monospace;
+  overflow: hidden;
+}
+
+/* Window appear animation */
+.str-combat-window.str-window-appear {
+  animation: str-window-appear 0.3s ease-out;
+}
+
+@keyframes str-window-appear {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* Window minimizing animation */
+.str-combat-window.str-window-minimizing {
+  animation: str-window-minimize 0.3s ease-out forwards;
+}
+
+@keyframes str-window-minimize {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(50vw - 100%), calc(-50vh + 50px)) scale(0.4);
+  }
+}
+
+/* Window maximizing animation */
+.str-combat-window.str-window-maximizing {
+  animation: str-window-maximize 0.3s ease-in;
+}
+
+@keyframes str-window-maximize {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* Window Header */
+.str-window-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #1a1506 0%, #2a1a0a 100%);
+  border-bottom: 2px solid #ffaa00;
+}
+
+.str-window-title {
+  color: #ffaa00;
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.str-minimize-btn {
+  background: rgba(255, 170, 0, 0.1);
+  border: 2px solid #ffaa00;
+  border-radius: 4px;
+  color: #ffaa00;
+  font-size: 20px;
+  font-weight: bold;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.str-minimize-btn:hover {
+  background: rgba(255, 170, 0, 0.2);
+  transform: scale(1.1);
+  box-shadow: 0 0 10px rgba(255, 170, 0, 0.5);
+}
+
+.str-minimize-btn:active {
+  transform: scale(0.95);
+}
+
+/* Window Body */
+.str-window-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+}
+
+/* Combatant Display */
+.str-combatant {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.str-combatant-emoji {
+  font-size: 48px;
+  line-height: 1;
+  filter: drop-shadow(0 0 10px rgba(255, 170, 0, 0.5));
+}
+
+.str-enemy .str-combatant-emoji {
+  animation: enemy-pulse 2s ease-in-out infinite;
+}
+
+@keyframes enemy-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 10px rgba(255, 28, 74, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(255, 28, 74, 0.8));
+  }
+}
+
+.str-player .str-combatant-emoji {
+  animation: player-pulse 1s ease-in-out infinite;
+}
+
+@keyframes player-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 10px rgba(28, 255, 155, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 15px rgba(28, 255, 155, 0.7));
+  }
+}
+
+/* HP Bar */
+.str-hp-bar-container {
+  width: 100%;
+  max-width: 300px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid #333;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  height: 28px;
+}
+
+.str-hp-bar {
+  height: 100%;
+  transition: width 0.3s ease;
+  background: linear-gradient(90deg, #1cff9b 0%, #00d580 100%);
+}
+
+.str-hp-bar.enemy-hp {
+  background: linear-gradient(90deg, #ff1c4a 0%, #d00030 100%);
+}
+
+.str-hp-bar.player-hp {
+  background: linear-gradient(90deg, #1cff9b 0%, #00d580 100%);
+}
+
+.str-hp-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+  text-shadow:
+    1px 1px 2px rgba(0, 0, 0, 0.8),
+    -1px -1px 2px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
+/* Advantage Indicator */
+.str-advantage-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 15px;
+  background: rgba(255, 170, 0, 0.1);
+  border: 2px solid #ffaa00;
+  border-radius: 8px;
+}
+
+.str-advantage-emoji {
+  font-size: 40px;
+  line-height: 1;
+}
+
+.str-advantage-text {
+  color: #ffaa00;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+/* Window Footer */
+.str-window-footer {
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border-top: 2px solid #ffaa00;
+  display: flex;
+  justify-content: center;
+}
+
+.str-timer-display {
+  color: #1cff9b;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.str-timer-label {
+  color: #999;
+  margin-right: 8px;
+}
+
+.str-timer-value {
+  color: #1cff9b;
+  font-size: 18px;
+  transition: color 0.3s ease;
+}
+
+/* Timer warning state */
+.str-timer-value[style*="color: #ff1c4a"] {
+  animation: timer-warning 0.5s ease-in-out infinite;
+}
+
+@keyframes timer-warning {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* ============================================================
+   Minimized Indicator
+   ============================================================ */
+
+.str-combat-minimized {
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  width: 48px;
+  height: 48px;
+  background: rgba(10, 10, 10, 0.95);
+  backdrop-filter: blur(5px);
+  border: 2px solid #ffaa00;
+  border-radius: 8px;
+  box-shadow:
+    0 0 15px rgba(255, 170, 0, 0.5),
+    inset 0 0 10px rgba(255, 170, 0, 0.1);
+  z-index: 1900;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.str-combat-minimized:hover {
+  transform: scale(1.1);
+  box-shadow:
+    0 0 20px rgba(255, 170, 0, 0.7),
+    inset 0 0 15px rgba(255, 170, 0, 0.15);
+}
+
+.str-combat-minimized:active {
+  transform: scale(0.95);
+}
+
+/* Minimized indicator appear animation */
+.str-combat-minimized.str-indicator-appear {
+  animation: indicator-appear 0.3s ease-out;
+}
+
+@keyframes indicator-appear {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Minimized indicator maximizing animation */
+.str-combat-minimized.str-indicator-maximizing {
+  animation: indicator-maximize 0.3s ease-out forwards;
+}
+
+@keyframes indicator-maximize {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(3);
+  }
+}
+
+/* Minimized content */
+.str-mini-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 2px;
+}
+
+.str-mini-emoji {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.str-mini-timer {
+  font-size: 8px;
+  color: #1cff9b;
+  font-weight: bold;
+}
+
+.str-mini-expand {
+  font-size: 10px;
+  color: #ffaa00;
+  line-height: 1;
+}
+
+/* Bounce attention animation */
+.str-combat-minimized.bounce-attention {
+  animation: bounce-indicator 0.8s ease-out;
+}
+
+@keyframes bounce-indicator {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(-8px);
+  }
+  50% {
+    transform: translateY(0);
+  }
+  75% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Pulsing indicator when at low time */
+.str-combat-minimized[data-time-critical="true"] {
+  animation: indicator-pulse 0.5s ease-in-out infinite;
+}
+
+@keyframes indicator-pulse {
+  0%, 100% {
+    border-color: #ffaa00;
+    box-shadow: 0 0 15px rgba(255, 170, 0, 0.5);
+  }
+  50% {
+    border-color: #ff1c4a;
+    box-shadow: 0 0 25px rgba(255, 28, 74, 0.7);
+  }
+}
+
+/* ============================================================
+   Responsive Design
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .str-combat-window {
+    width: 90vw;
+    max-width: none;
+  }
+
+  .str-window-title {
+    font-size: 14px;
+  }
+
+  .str-combatant-emoji {
+    font-size: 40px;
+  }
+
+  .str-hp-bar-container {
+    max-width: 250px;
+    height: 24px;
+  }
+
+  .str-hp-text {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .str-combat-window {
+    width: 95vw;
+  }
+
+  .str-window-header {
+    padding: 10px 12px;
+  }
+
+  .str-window-title {
+    font-size: 12px;
+  }
+
+  .str-minimize-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 18px;
+  }
+
+  .str-window-body {
+    padding: 15px;
+    gap: 15px;
+  }
+
+  .str-combatant-emoji {
+    font-size: 36px;
+  }
+
+  .str-hp-bar-container {
+    max-width: 200px;
+    height: 22px;
+  }
+
+  .str-advantage-emoji {
+    font-size: 32px;
+  }
+
+  .str-advantage-text {
+    font-size: 10px;
+  }
+}
+
+/* ============================================================
+   Accessibility
+   ============================================================ */
+
+.str-minimize-btn:focus,
+.str-combat-minimized:focus {
+  outline: 2px solid #1cff9b;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .str-combat-window,
+  .str-combat-minimized,
+  .str-hp-bar,
+  .str-timer-value {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .str-combat-window {
+    border-width: 4px;
+  }
+
+  .str-hp-bar {
+    border: 2px solid #fff;
+  }
+
+  .str-minimize-btn {
+    border-width: 3px;
+  }
+}

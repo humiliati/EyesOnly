@@ -1,0 +1,527 @@
+/* ============================================================
+   Hand Fan Component - Hearthstone-Style Card Display
+   ============================================================ */
+
+/* Fan Container */
+.hand-fan-container {
+  display: none;
+  position: fixed;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0;
+  padding: 20px;
+  z-index: 2100;
+  pointer-events: auto;
+}
+
+/* Combat mode - centered over STR window */
+.hand-fan-container.hand-fan-combat {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90vw;
+  max-width: 700px;
+}
+
+/* Contextual mode - bottom of screen */
+.hand-fan-container.hand-fan-contextual {
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90vw;
+  max-width: 600px;
+  background: rgba(0, 0, 0, 0.95);
+  border: 2px solid #1cff9b;
+  border-radius: 12px;
+  padding: 15px;
+  box-shadow: 0 0 30px rgba(28, 255, 155, 0.5);
+}
+
+/* Contextual mode overlay dimming */
+.hand-fan-container.hand-fan-contextual::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Fan appear animation */
+.hand-fan-container.hand-fan-appear {
+  animation: hand-fan-appear 0.3s ease-out;
+}
+
+@keyframes hand-fan-appear {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* Fan disappear animation */
+.hand-fan-container.hand-fan-disappear {
+  animation: hand-fan-disappear 0.3s ease-in forwards;
+}
+
+@keyframes hand-fan-disappear {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+}
+
+/* Empty message */
+.hand-fan-empty {
+  color: #999;
+  font-size: 18px;
+  font-family: 'Courier New', monospace;
+  text-align: center;
+  padding: 40px;
+}
+
+/* ============================================================
+   Card Wrapper (for fan transformation)
+   ============================================================ */
+
+.hand-card-wrapper {
+  position: relative;
+  transition: transform 0.3s ease, z-index 0s;
+  cursor: pointer;
+}
+
+/* ============================================================
+   Hand Card Element
+   ============================================================ */
+
+.hand-card {
+  width: 120px;
+  height: 168px;
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Card background layers with lifecycle-based transparency */
+
+/* Consumable - 15% opacity (almost transparent) */
+.hand-card.hand-card-consumable {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.10) 100%
+  );
+  backdrop-filter: blur(2px);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+/* Exhaust - 35% opacity (semi-transparent) */
+.hand-card.hand-card-exhaust {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.20) 0%,
+    rgba(255, 255, 255, 0.30) 100%
+  );
+  backdrop-filter: blur(4px);
+  border: 2px solid rgba(255, 255, 255, 0.30);
+}
+
+/* Power - 55% opacity (moderately transparent) */
+.hand-card.hand-card-power {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.40) 0%,
+    rgba(255, 255, 255, 0.55) 100%
+  );
+  backdrop-filter: blur(6px);
+  border: 2px solid rgba(255, 255, 255, 0.45);
+}
+
+/* Gated (Ammo/Fatigue) - 45% opacity */
+.hand-card.hand-card-gated {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.35) 0%,
+    rgba(255, 255, 255, 0.45) 100%
+  );
+  backdrop-filter: blur(5px);
+  border: 2px solid rgba(255, 255, 255, 0.40);
+}
+
+/* Persistent Core - 85% opacity (nearly opaque) */
+.hand-card.hand-card-core {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.75) 0%,
+    rgba(255, 255, 255, 0.90) 100%
+  );
+  backdrop-filter: blur(8px);
+  border: 2px solid rgba(255, 255, 255, 0.80);
+}
+
+/* Card hover effect */
+.hand-card:hover {
+  box-shadow: 0 4px 20px rgba(28, 255, 155, 0.5);
+}
+
+/* Card selected state */
+.hand-card.hand-card-selected {
+  border-color: #ff9800 !important;
+  box-shadow: 0 0 20px rgba(255, 152, 0, 0.7) !important;
+}
+
+/* Quality border colors (overrides transparency borders) */
+.hand-card[data-quality="cracked"] {
+  border-color: #666 !important;
+}
+
+.hand-card[data-quality="worn"] {
+  border-color: #999 !important;
+}
+
+.hand-card[data-quality="standard"] {
+  border-color: #fff !important;
+}
+
+.hand-card[data-quality="fine"] {
+  border-color: #4fc3f7 !important;
+}
+
+.hand-card[data-quality="superior"] {
+  border-color: #ffeb3b !important;
+}
+
+.hand-card[data-quality="elite"] {
+  border-color: #ff9800 !important;
+}
+
+.hand-card[data-quality="masterwork"] {
+  border-color: #ffd700 !important;
+}
+
+.hand-card[data-quality="near_perfect"] {
+  border-color: #8bc34a !important;
+}
+
+.hand-card[data-quality="perfect"] {
+  border-color: #9c27b0 !important;
+}
+
+/* ============================================================
+   Card Content Elements
+   ============================================================ */
+
+/* Cost badge (top-left corner) */
+.hand-card-cost {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 24px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.8);
+  border: 2px solid #1cff9b;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+  color: #1cff9b;
+  font-family: 'Courier New', monospace;
+  z-index: 10;
+}
+
+/* Card artwork area (80% of card height) */
+.hand-card-artwork {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 10px;
+}
+
+.hand-card-emoji {
+  font-size: 48px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+
+/* Card name (bottom) */
+.hand-card-name {
+  background: rgba(0, 0, 0, 0.8);
+  color: #1cff9b;
+  font-size: 12px;
+  font-weight: bold;
+  text-align: center;
+  padding: 6px 4px;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Effect icons */
+.hand-card-effects {
+  position: absolute;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+}
+
+.hand-card-effect-icon {
+  width: 16px;
+  height: 16px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid #ffaa00;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+}
+
+/* Selection badge */
+.hand-card-selection-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 28px;
+  height: 28px;
+  background: #ff9800;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: bold;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  z-index: 20;
+}
+
+/* ============================================================
+   Card Animations
+   ============================================================ */
+
+/* Commit animation - lift selected cards */
+.hand-fan-container.hand-fan-commit .hand-card.hand-card-selected {
+  animation: card-lift 0.2s ease-out forwards;
+}
+
+@keyframes card-lift {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-20px) scale(1.05);
+  }
+}
+
+/* Resolve animation - cards fly to center */
+.hand-fan-container.hand-fan-resolve .hand-card-wrapper {
+  animation: card-to-center 0.4s ease-in forwards;
+}
+
+@keyframes card-to-center {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-50px) rotate(0deg) scale(0.9);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-100px) rotate(0deg) scale(0.3);
+    opacity: 0;
+  }
+}
+
+/* Repopulate animation - cards fade in from center */
+.hand-fan-container.hand-fan-repopulate .hand-card-wrapper {
+  animation: card-from-center 0.3s ease-out forwards;
+  animation-delay: calc(var(--card-index, 0) * 50ms);
+}
+
+@keyframes card-from-center {
+  from {
+    transform: translateY(-50px) scale(0.5);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* ============================================================
+   Card Tooltip
+   ============================================================ */
+
+.hand-card-tooltip {
+  position: fixed;
+  background: rgba(10, 10, 10, 0.98);
+  border: 2px solid #1cff9b;
+  border-radius: 8px;
+  padding: 12px 16px;
+  max-width: 280px;
+  z-index: 3000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8), 0 0 20px rgba(28, 255, 155, 0.3);
+  pointer-events: none;
+  font-family: 'Courier New', monospace;
+}
+
+.tooltip-title {
+  font-size: 14px;
+  font-weight: bold;
+  color: #1cff9b;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tooltip-description {
+  font-size: 12px;
+  color: #fff;
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+
+.tooltip-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px solid rgba(28, 255, 155, 0.3);
+  padding-top: 8px;
+}
+
+.tooltip-stat {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #999;
+}
+
+.tooltip-stat span {
+  color: #1cff9b;
+  font-weight: bold;
+}
+
+/* ============================================================
+   Responsive Design
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .hand-card {
+    width: 100px;
+    height: 140px;
+  }
+
+  .hand-card-emoji {
+    font-size: 40px;
+  }
+
+  .hand-card-name {
+    font-size: 10px;
+    padding: 4px 2px;
+  }
+
+  .hand-card-cost {
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+  }
+
+  .hand-fan-container.hand-fan-contextual {
+    width: 95vw;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .hand-card {
+    width: 80px;
+    height: 112px;
+  }
+
+  .hand-card-emoji {
+    font-size: 32px;
+  }
+
+  .hand-card-name {
+    font-size: 9px;
+    padding: 3px 2px;
+  }
+
+  .hand-card-cost {
+    width: 18px;
+    height: 18px;
+    font-size: 10px;
+    top: 2px;
+    left: 2px;
+  }
+
+  .hand-card-selection-badge {
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+    top: -6px;
+    right: -6px;
+  }
+
+  .hand-fan-container.hand-fan-contextual {
+    bottom: 10px;
+    padding: 8px;
+  }
+}
+
+/* ============================================================
+   Accessibility
+   ============================================================ */
+
+.hand-card:focus {
+  outline: 2px solid #1cff9b;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hand-card-wrapper,
+  .hand-card,
+  .hand-fan-container {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .hand-card {
+    border-width: 3px !important;
+  }
+
+  .hand-card-cost {
+    border-width: 3px;
+  }
+}
