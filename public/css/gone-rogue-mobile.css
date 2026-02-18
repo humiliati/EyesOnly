@@ -1463,7 +1463,7 @@
     position: sticky; /* Stick to top when scrolling */
     top: 0;
     background: #0a0a0a; /* Ensure it has a background when sticky */
-    z-index: 20; /* Ensure it's above terminal content */
+    /* z-index not needed - flexbox order handles layout */
   }
 
   /* Rogue cards should also be prioritized */
@@ -1475,7 +1475,7 @@
     /* Don't use sticky on cards to avoid overlap with grid */
     position: relative;
     background: #0a0a0a;
-    z-index: 21; /* Above the grid */
+    /* z-index not needed - flexbox order handles layout */
   }
 
   /* Ensure input line appears at bottom if shown */

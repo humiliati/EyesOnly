@@ -951,6 +951,9 @@
       submitBtn.textContent = 'AUTHENTICATING...';
     }
 
+    // Animation delay to allow smooth overlay close
+    var OVERLAY_CLOSE_ANIMATION_DELAY = 150; // ms
+
     // Check if using test account via LoginShell
     // Note: test accounts 'user' and 'admin' use the LoginShell system (terminal-within-terminal)
     // This is separate from the real UserAccount authentication system
@@ -969,7 +972,7 @@
       
       // Start the LoginShell subsystem (terminal-within-terminal)
       if (typeof LoginShell.start === 'function') {
-        // Small delay to let overlay close animation complete
+        // Delay to let overlay close animation complete
         setTimeout(function() {
           var result = LoginShell.start();
           if (result && result.lines) {
@@ -983,7 +986,7 @@
           if (result && result.prompt && typeof Terminal !== 'undefined' && Terminal.showInput) {
             Terminal.showInput(result.prompt);
           }
-        }, 150);
+        }, OVERLAY_CLOSE_ANIMATION_DELAY);
       }
       
       // Re-enable button
