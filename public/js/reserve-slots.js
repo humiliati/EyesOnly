@@ -429,6 +429,7 @@ const ReserveSlots = (function () {
     show: show,
     hide: hide,
     setActionButtonCards: setActionButtonCards,
+    setReserveCards: setActionButtonCards, // Alias for backward compatibility
     addCard: addCard,
     removeCard: removeCard,
     getCards: getCards,
