@@ -88,28 +88,28 @@ const CardSystem = (function () {
       type: 'movement',
       name: 'Close Distance',
       emoji: '⏩',
-      baseStats: { distance: 2, risk: 1, energy: 2, speed: 3 }
+      baseStats: { distance: 2, risk: 1, energy: 2, speed: 3, fatigue: 2 }
     },
     RETREAT: {
       category: 'movement',
       type: 'movement',
       name: 'Retreat',
       emoji: '↩️',
-      baseStats: { distance: -2, safety: 2, energy: 1, speed: 3 }
+      baseStats: { distance: -2, safety: 2, energy: 1, speed: 3, fatigue: 1 }
     },
     STRAFE: {
       category: 'movement',
       type: 'movement',
       name: 'Strafe',
       emoji: '↔️',
-      baseStats: { evasion: 2, distance: 1, energy: 2, speed: 3 }
+      baseStats: { evasion: 2, distance: 1, energy: 2, speed: 3, fatigue: 2 }
     },
     ROLL: {
       category: 'movement',
       type: 'movement',
       name: 'Combat Roll',
       emoji: '🔄',
-      baseStats: { evasion: 4, distance: 1, energy: 3, speed: 4 }
+      baseStats: { evasion: 4, distance: 1, energy: 3, speed: 4, fatigue: 4 }
     },
 
     // ========== ATTACK CARDS (Priority 4) ==========
@@ -118,35 +118,35 @@ const CardSystem = (function () {
       type: 'attack',
       name: 'Single Shot',
       emoji: '🎯',
-      baseStats: { damage: 3, noise: 1, accuracy: 80, energy: 2, speed: 3 }
+      baseStats: { damage: 3, noise: 1, accuracy: 80, energy: 2, speed: 3, ammo: 1, fatigue: 1 }
     },
     BURST_SHOT: {
       category: 'attack',
       type: 'attack',
       name: 'Burst Shot',
       emoji: '💥',
-      baseStats: { damage: 5, noise: 3, accuracy: 70, energy: 3, speed: 2 }
+      baseStats: { damage: 5, noise: 3, accuracy: 70, energy: 3, speed: 2, ammo: 3, fatigue: 2 }
     },
     SILENT_SHOT: {
       category: 'attack',
       type: 'attack',
       name: 'Silent Shot',
       emoji: '🔇',
-      baseStats: { damage: 3, noise: 1, accuracy: 80, energy: 2, speed: 3 }
+      baseStats: { damage: 3, noise: 1, accuracy: 80, energy: 2, speed: 3, ammo: 1, fatigue: 1 }
     },
     EXPLOSIVE_SHOT: {
       category: 'attack',
       type: 'attack',
       name: 'Explosive Shot',
       emoji: '💣',
-      baseStats: { damage: 8, noise: 5, accuracy: 60, energy: 4, speed: 1 }
+      baseStats: { damage: 8, noise: 5, accuracy: 60, energy: 4, speed: 1, ammo: 1, fatigue: 3, consumable: true }
     },
     SUPPRESSIVE_FIRE: {
       category: 'attack',
       type: 'attack',
       name: 'Suppressive Fire',
       emoji: '🔥',
-      baseStats: { damage: 2, accuracy: 50, suppress: 3, energy: 3, speed: 2 }
+      baseStats: { damage: 2, accuracy: 50, suppress: 3, energy: 3, speed: 2, ammo: 5, fatigue: 3 }
     },
 
     // ========== SETUP/UTILITY CARDS (Priority 5) ==========
@@ -155,14 +155,16 @@ const CardSystem = (function () {
       type: 'setup',
       name: 'Cigarettes',
       emoji: '🚬',
-      baseStats: { 
-        stress: -2, 
+      baseStats: {
+        stress: -2,
         attackBoost: 2,  // Renamed from attack_boost for camelCase consistency
         speedBoost: 1,   // Renamed from speed_boost for camelCase consistency
         hpDrain: 1,      // Renamed from hp_drain for camelCase consistency
-        duration: 1, 
-        energy: 1, 
-        speed: 2 
+        duration: 1,
+        energy: 1,
+        speed: 2,
+        consumable: true,  // Single use item
+        fatigueReduction: 3  // Reduces fatigue when used
       }
     },
     KATCHUP: {
@@ -170,25 +172,26 @@ const CardSystem = (function () {
       type: 'setup',
       name: 'Katchup',
       emoji: '🩹',
-      baseStats: { hp: 3, energy: 1, speed: 2 }
+      baseStats: { hp: 3, energy: 1, speed: 2, consumable: true }
     },
     RATIONS: {
       category: 'setup',
       type: 'setup',
       name: 'Rations',
       emoji: '🍖',
-      baseStats: { hp: 4, duration: 2, energy: 2, speed: 2 }
+      baseStats: { hp: 4, duration: 2, energy: 2, speed: 2, consumable: true, fatigueReduction: 5 }
     },
     TOTAL_EVASION: {
       category: 'setup',
       type: 'setup',
       name: 'Total Evasion',
       emoji: '🌫️',
-      baseStats: { 
-        evasion: 5, 
+      baseStats: {
+        evasion: 5,
         exhaust: true, // This card can only be used once per combat (exhausts after use)
-        energy: 3, 
-        speed: 2 
+        energy: 3,
+        speed: 2,
+        fatigue: 2
       }
     },
     AIM: {
@@ -301,6 +304,75 @@ const CardSystem = (function () {
         energy: 2,
         speed: 5,
         affectsSystems: true
+      }
+    },
+
+    // ========== CONSUMABLE CARDS (Single-use tactical items) ==========
+    ENERGY_DRINK: {
+      category: 'consumable',
+      type: 'consumable',
+      name: 'Energy Drink',
+      emoji: '⚡',
+      baseStats: {
+        fatigueReduction: 20,
+        energyBoost: 2,
+        duration: 2,
+        speed: 2,
+        consumable: true
+      }
+    },
+    MEDICAL_KIT: {
+      category: 'consumable',
+      type: 'consumable',
+      name: 'Medical Kit',
+      emoji: '🏥',
+      baseStats: {
+        hp: 30,
+        energy: 0,
+        speed: 2,
+        consumable: true
+      }
+    },
+    AMMO_CLIP: {
+      category: 'consumable',
+      type: 'consumable',
+      name: 'Ammo Clip',
+      emoji: '📎',
+      baseStats: {
+        ammoRestore: 10,
+        energy: 0,
+        speed: 1,
+        consumable: true
+      }
+    },
+    STIM_PACK: {
+      category: 'consumable',
+      type: 'consumable',
+      name: 'Stim Pack',
+      emoji: '💉',
+      baseStats: {
+        hp: 15,
+        fatigueReduction: 10,
+        speedBoost: 2,
+        duration: 1,
+        energy: 1,
+        speed: 2,
+        consumable: true
+      }
+    },
+    ADRENALINE: {
+      category: 'consumable',
+      type: 'consumable',
+      name: 'Adrenaline',
+      emoji: '💪',
+      baseStats: {
+        attackBoost: 3,
+        speedBoost: 3,
+        fatigueReduction: 15,
+        duration: 2,
+        energy: 1,
+        speed: 1,
+        consumable: true
       }
     },
 
