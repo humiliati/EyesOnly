@@ -322,6 +322,24 @@ const GoneRogue = (function () {
       console.log('[GoneRogue] Ground effects system initialized');
     }
 
+    // Initialize overhead animator
+    if (typeof OverheadAnimator !== 'undefined') {
+      OverheadAnimator.init();
+      console.log('[GoneRogue] Overhead animator initialized');
+    }
+
+    // Initialize interactive items
+    if (typeof InteractiveItems !== 'undefined') {
+      InteractiveItems.init();
+      console.log('[GoneRogue] Interactive items initialized');
+    }
+
+    // Initialize item spawner
+    if (typeof ItemSpawner !== 'undefined') {
+      ItemSpawner.init();
+      console.log('[GoneRogue] Item spawner initialized');
+    }
+
     // Initialize from GAMESTATE if available
     var lines = [];
     if (typeof GAMESTATE !== 'undefined') {
@@ -494,6 +512,11 @@ const GoneRogue = (function () {
 
     if (cmd === 'extract') {
       return _attemptExtract();
+    }
+
+    // Interactive item commands
+    if (cmd === 'interact' || cmd === 'examine' || cmd === 'read') {
+      return _handleInteraction();
     }
 
     // Bonfire vendor commands
@@ -804,6 +827,15 @@ const GoneRogue = (function () {
 
       // Calculate initial light map
       LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, walls);
+    }
+
+    // Spawn interactive items
+    if (typeof ItemSpawner !== 'undefined' && typeof InteractiveItems !== 'undefined') {
+      var spawnedItems = ItemSpawner.spawnItemsForFloor(_floor, rooms, _grid);
+      spawnedItems.forEach(function(item) {
+        InteractiveItems.addItem(item);
+      });
+      console.log('[GoneRogue] Spawned', spawnedItems.length, 'interactive items');
     }
 
     _turn = 0;
@@ -1669,6 +1701,11 @@ const GoneRogue = (function () {
       // Remove currency from floor
       _currencies = _currencies.filter(function(c) { return c.x !== newX || c.y !== newY; });
 
+      // Show overhead currency animation
+      if (typeof OverheadAnimator !== 'undefined') {
+        OverheadAnimator.showCurrencyPickup(_player.x, _player.y, cryptoPickup.amount);
+      }
+
       // Tooltip: Currency pickup
       if (typeof TooltipSystem !== 'undefined') {
         TooltipSystem.showAction('currency-pickup', { amount: cryptoPickup.amount });
@@ -1833,6 +1870,54 @@ const GoneRogue = (function () {
 
     // Advance to next floor
     return _advanceFloor();
+  }
+
+  /**
+   * Handle interaction with interactive items
+   */
+  function _handleInteraction() {
+    if (typeof InteractiveItems === 'undefined') {
+      return { lines: ['Nothing to interact with'], prompt: getPrompt(), stayActive: true };
+    }
+
+    // Find nearest interactive item
+    var nearestItem = InteractiveItems.getNearestItem(_player.x, _player.y);
+
+    if (!nearestItem) {
+      return { lines: ['Nothing nearby to interact with'], prompt: getPrompt(), stayActive: true };
+    }
+
+    if (!InteractiveItems.canInteractWith(_player.x, _player.y, nearestItem)) {
+      return { lines: ['Too far away to interact'], prompt: getPrompt(), stayActive: true };
+    }
+
+    // Perform interaction
+    var result = InteractiveItems.interact(nearestItem, _player);
+
+    if (result.success) {
+      // Show overhead animation
+      if (result.animation && typeof OverheadAnimator !== 'undefined') {
+        OverheadAnimator.showExpression(
+          _player.x,
+          _player.y,
+          result.animation.expressionKey,
+          result.animation.duration
+        );
+      }
+
+      // Show tooltip
+      if (result.tooltip && typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.show(result.tooltip.message, result.tooltip.duration);
+      }
+
+      return {
+        lines: ['Interacted with ' + nearestItem.name, '', nearestItem.text],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    return { lines: ['Cannot interact with that'], prompt: getPrompt(), stayActive: true };
   }
 
   function _advanceFloor() {
@@ -2841,7 +2926,15 @@ const GoneRogue = (function () {
    * Increase enemy awareness
    */
   function _increaseEnemyAwareness(enemy, amount) {
-    enemy.awareness = Math.min(150, (enemy.awareness || 0) + amount);
+    var previousAwareness = enemy.awareness || 0;
+    enemy.awareness = Math.min(150, previousAwareness + amount);
+
+    // Show alert expression when crossing into ALERTED state
+    if (previousAwareness < AWARENESS_STATES.ALERTED.min && enemy.awareness >= AWARENESS_STATES.ALERTED.min) {
+      if (typeof OverheadAnimator !== 'undefined') {
+        OverheadAnimator.showExpression(enemy.x, enemy.y, 'ALERT', 1000);
+      }
+    }
   }
 
   /**
@@ -3327,7 +3420,7 @@ const GoneRogue = (function () {
 
   function _saveState() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      var state = {
         active: _active,
         player: _player,
         enemies: _enemies,
@@ -3336,7 +3429,14 @@ const GoneRogue = (function () {
         breakables: _breakables,
         turn: _turn,
         floor: _floor
-      }));
+      };
+
+      // Save interactive items
+      if (typeof InteractiveItems !== 'undefined') {
+        state.interactiveItems = InteractiveItems.serialize();
+      }
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (e) { /* ignore */ }
   }
 
@@ -3352,6 +3452,12 @@ const GoneRogue = (function () {
       if (parsed.breakables) _breakables = parsed.breakables;
       if (parsed.turn) _turn = parsed.turn;
       if (parsed.floor) _floor = parsed.floor;
+
+      // Restore interactive items
+      if (parsed.interactiveItems && typeof InteractiveItems !== 'undefined') {
+        InteractiveItems.deserialize(parsed.interactiveItems);
+      }
+
       // DO NOT restore active state - user must explicitly enter rogue mode
       _active = false;
     } catch (e) { /* ignore */ }

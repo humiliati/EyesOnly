@@ -335,7 +335,25 @@ const GoneRogueMobile = (function () {
           cell.style.filter = 'brightness(' + brightness + ')';
           cell.style.color = '#ffff00'; // Yellow for currency
         } else {
-          _setCellTile(cell, tile);
+          // Check for interactive items
+          var interactiveItem = null;
+          if (typeof InteractiveItems !== 'undefined') {
+            interactiveItem = InteractiveItems.getItemAt(x, y);
+          }
+
+          if (interactiveItem) {
+            cell.textContent = interactiveItem.emoji;
+            cell.classList.add('cell-interactive-item');
+
+            // Add interaction indicator if player is in range
+            if (player && typeof InteractiveItems !== 'undefined') {
+              if (InteractiveItems.canInteractWith(player.x, player.y, interactiveItem)) {
+                cell.classList.add('interactive-in-range');
+              }
+            }
+          } else {
+            _setCellTile(cell, tile);
+          }
         }
 
         // Apply lighting effects if lighting system is available
@@ -389,6 +407,38 @@ const GoneRogueMobile = (function () {
           _renderSightConeHighlight(grid, enemy);
         }
       });
+    }
+
+    // Render overhead animations
+    if (typeof OverheadAnimator !== 'undefined') {
+      var currentTime = Date.now();
+      OverheadAnimator.update(currentTime);
+
+      var animations = OverheadAnimator.getAllAnimations();
+      for (var key in animations) {
+        var parts = key.split(',');
+        var animX = parseInt(parts[0]);
+        var animY = parseInt(parts[1]);
+        var anim = animations[key];
+
+        // Find corresponding cell
+        var cellIndex = animY * grid[0].length + animX;
+        var cell = _gridContainer.children[cellIndex];
+
+        if (cell) {
+          var transform = OverheadAnimator.calculateAnimationTransform(anim, currentTime);
+
+          // Create animation element
+          var animEl = document.createElement('div');
+          animEl.className = 'overhead-animation ' + anim.type.toLowerCase().replace(/_/g, '-');
+          animEl.textContent = anim.text || anim.emoji;
+          animEl.style.color = anim.color;
+          animEl.style.opacity = transform.opacity;
+          animEl.style.transform = 'translate(' + transform.x + 'px, ' + transform.y + 'px) scale(' + transform.scale + ')';
+
+          cell.appendChild(animEl);
+        }
+      }
     }
 
     // Render STR combat overlay if combat is active
@@ -586,6 +636,16 @@ const GoneRogueMobile = (function () {
         if (distance > TAP_TO_MOVE_MAX_RADIUS) {
           console.log('[GoneRogueMobile] Tap rejected: distance ' + distance.toFixed(1) + ' exceeds max radius ' + TAP_TO_MOVE_MAX_RADIUS);
           return;
+        }
+
+        // Check if tapping interactive item
+        if (typeof InteractiveItems !== 'undefined') {
+          var item = InteractiveItems.getItemAt(x, y);
+          if (item && InteractiveItems.canInteractWith(player.x, player.y, item)) {
+            // Trigger interaction
+            GoneRogue.process('interact');
+            return;
+          }
         }
       }
     }
