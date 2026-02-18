@@ -10,8 +10,12 @@
   var selectedItemIndex = -1;
   var activeItem = null; // Currently active item in header slot
 
+  // Login overlay state
+  var loginOverlayVisible = false;
+  var loginOverlayMode = 'login'; // 'login' or 'register'
+
   /**
-   * Update login button text based on authentication state
+   * Update login button text based on authentication state and overlay state
    */
   function _updateLoginButton() {
     var loginBtn = document.querySelector('button[data-action="login"]');
@@ -21,6 +25,10 @@
       loginBtn.textContent = 'logout';
       loginBtn.classList.add('auth-logged-in');
       loginBtn.setAttribute('aria-label', 'Log out of current session');
+    } else if (loginOverlayVisible && loginOverlayMode === 'login') {
+      loginBtn.textContent = 'register';
+      loginBtn.classList.remove('auth-logged-in');
+      loginBtn.setAttribute('aria-label', 'Switch to registration form');
     } else {
       loginBtn.textContent = 'login';
       loginBtn.classList.remove('auth-logged-in');
@@ -43,6 +51,9 @@
     if (activeSlot) {
       activeSlot.addEventListener('click', handleActiveItemClick);
     }
+
+    // Initialize login overlay handlers
+    initLoginOverlay();
 
     // Update login button based on auth state
     _updateLoginButton();
@@ -135,13 +146,22 @@
         break;
 
       case 'back':
-        // Priority 1: Exit inventory if active
+        // Priority 1: Exit login overlay if active
+        if (loginOverlayVisible) {
+          toggleLoginOverlay();
+          // Also exit login shell if in session
+          if (typeof LoginShell !== 'undefined' && LoginShell.isActive()) {
+            simulateCommand('exit');
+          }
+          break;
+        }
+        // Priority 2: Exit inventory if active
         if (inventoryVisible) {
           toggleInventory();
           // Don't print anything - just close inventory
           break;
         }
-        // Priority 2: Check if in authorization/clearance sequence
+        // Priority 3: Check if in authorization/clearance sequence
         if (typeof StateMachine !== 'undefined') {
           var currentState = StateMachine.getState();
           if (currentState === 'AWAITING_DESIGNATION' || 
@@ -262,23 +282,21 @@
               window.dispatchEvent(new CustomEvent('auth-state-changed'));
             }
           });
+        } else if (loginOverlayVisible && loginOverlayMode === 'login') {
+          // Login overlay is open, button shows "register" - switch to register mode
+          switchToRegisterMode();
         } else {
-          // User not logged in - start login shell
-          if (typeof LoginShell !== 'undefined' && typeof LoginShell.start === 'function') {
-            var result = LoginShell.start();
-            if (result && result.lines) {
-              printToTerminal(result.lines);
-            }
-            _updateLoginButton();
-          } else {
-            printToTerminal([
-              '',
-              'AUTHENTICATION PORTAL',
-              'Please enter credentials...',
-              'AUTH CODE: _____________',
-              ''
-            ]);
-          }
+          // User not logged in - open login overlay
+          toggleLoginOverlay();
+          // Also print test account info to terminal
+          printToTerminal([
+            '',
+            'AUTHENTICATION PORTAL ACTIVATED',
+            '',
+            'AUTHORIZED TEST ACCOUNTS: user, admin',
+            'Login overlay displayed.',
+            ''
+          ]);
         }
         break;
 
@@ -772,6 +790,347 @@
     var interjection = document.getElementById('mok-interject-body');
     if (interjection) {
       interjection.textContent = text;
+    }
+  }
+
+  /**
+   * Initialize login overlay event handlers
+   */
+  function initLoginOverlay() {
+    // Login submit button
+    var loginSubmitBtn = document.getElementById('login-submit-btn');
+    if (loginSubmitBtn) {
+      loginSubmitBtn.addEventListener('click', handleLoginSubmit);
+    }
+
+    // Register submit button
+    var registerSubmitBtn = document.getElementById('register-submit-btn');
+    if (registerSubmitBtn) {
+      registerSubmitBtn.addEventListener('click', handleRegisterSubmit);
+    }
+
+    // Add Enter key support for forms
+    var loginUsername = document.getElementById('login-username');
+    if (loginUsername) {
+      loginUsername.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') handleLoginSubmit();
+      });
+    }
+
+    // Add validation for registration fields
+    var registerUsername = document.getElementById('register-username');
+    if (registerUsername) {
+      registerUsername.addEventListener('input', validateUsername);
+      registerUsername.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          var callsignInput = document.getElementById('register-callsign');
+          if (callsignInput) callsignInput.focus();
+        }
+      });
+    }
+
+    var registerEmail = document.getElementById('register-email');
+    if (registerEmail) {
+      registerEmail.addEventListener('input', validateEmail);
+      registerEmail.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') handleRegisterSubmit();
+      });
+    }
+  }
+
+  /**
+   * Toggle login overlay visibility
+   */
+  function toggleLoginOverlay() {
+    loginOverlayVisible = !loginOverlayVisible;
+    var terminal = document.querySelector('.log-frame');
+    var loginOverlay = document.getElementById('login-overlay');
+
+    if (loginOverlayVisible) {
+      terminal.style.display = 'none';
+      loginOverlay.style.display = 'flex';
+      loginOverlayMode = 'login';
+      showLoginForm();
+      // Focus username field
+      setTimeout(function() {
+        var usernameInput = document.getElementById('login-username');
+        if (usernameInput) usernameInput.focus();
+      }, 100);
+    } else {
+      terminal.style.display = 'flex';
+      loginOverlay.style.display = 'none';
+      // Clear form fields
+      clearLoginForms();
+    }
+    _updateLoginButton();
+  }
+
+  /**
+   * Switch to register mode
+   */
+  function switchToRegisterMode() {
+    loginOverlayMode = 'register';
+    showRegisterForm();
+    _updateLoginButton();
+    // Focus username field
+    setTimeout(function() {
+      var usernameInput = document.getElementById('register-username');
+      if (usernameInput) usernameInput.focus();
+    }, 100);
+  }
+
+  /**
+   * Show login form
+   */
+  function showLoginForm() {
+    var loginForm = document.getElementById('login-form');
+    var registerForm = document.getElementById('register-form');
+    var title = document.getElementById('login-overlay-title');
+
+    if (loginForm) loginForm.style.display = 'block';
+    if (registerForm) registerForm.style.display = 'none';
+    if (title) title.textContent = 'AUTHENTICATION PORTAL';
+    loginOverlayMode = 'login';
+  }
+
+  /**
+   * Show register form
+   */
+  function showRegisterForm() {
+    var loginForm = document.getElementById('login-form');
+    var registerForm = document.getElementById('register-form');
+    var title = document.getElementById('login-overlay-title');
+
+    if (loginForm) loginForm.style.display = 'none';
+    if (registerForm) registerForm.style.display = 'block';
+    if (title) title.textContent = 'NEW USER REGISTRATION';
+    loginOverlayMode = 'register';
+  }
+
+  /**
+   * Clear all form fields
+   */
+  function clearLoginForms() {
+    var loginUsername = document.getElementById('login-username');
+    if (loginUsername) loginUsername.value = '';
+
+    var registerUsername = document.getElementById('register-username');
+    if (registerUsername) registerUsername.value = '';
+
+    var registerCallsign = document.getElementById('register-callsign');
+    if (registerCallsign) registerCallsign.value = '';
+
+    var registerEmail = document.getElementById('register-email');
+    if (registerEmail) registerEmail.value = '';
+
+    // Clear validation messages
+    var usernameValidation = document.getElementById('username-validation');
+    if (usernameValidation) usernameValidation.textContent = '';
+
+    var emailValidation = document.getElementById('email-validation');
+    if (emailValidation) emailValidation.textContent = '';
+  }
+
+  /**
+   * Handle login form submission
+   */
+  function handleLoginSubmit() {
+    var usernameInput = document.getElementById('login-username');
+    if (!usernameInput) return;
+
+    var username = usernameInput.value.trim().toLowerCase();
+    if (!username) {
+      updateMokInterjection('Username is required.');
+      return;
+    }
+
+    // Disable button during request
+    var submitBtn = document.getElementById('login-submit-btn');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'AUTHENTICATING...';
+    }
+
+    // Check if using test account via LoginShell
+    if (typeof LoginShell !== 'undefined' && (username === 'user' || username === 'admin')) {
+      // Use LoginShell for test accounts (backwards compatible)
+      toggleLoginOverlay();
+      if (typeof LoginShell.start === 'function') {
+        var result = LoginShell.start();
+        if (result && result.lines) {
+          printToTerminal(result.lines);
+        }
+      }
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'LOGIN';
+      }
+      return;
+    }
+
+    // Use UserAccount API for real accounts
+    if (typeof UserAccount !== 'undefined' && typeof UserAccount.login === 'function') {
+      UserAccount.login(username)
+        .then(function(data) {
+          toggleLoginOverlay();
+          printToTerminal([
+            '',
+            'LOGIN SUCCESSFUL',
+            'Welcome back, ' + data.user.callsign + '.',
+            ''
+          ]);
+          _updateLoginButton();
+          // Dispatch auth state change event
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('auth-state-changed'));
+          }
+        })
+        .catch(function(err) {
+          updateMokInterjection('Login failed: ' + err.message);
+        })
+        .finally(function() {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'LOGIN';
+          }
+        });
+    } else {
+      updateMokInterjection('UserAccount system not available.');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'LOGIN';
+      }
+    }
+  }
+
+  /**
+   * Handle register form submission
+   */
+  function handleRegisterSubmit() {
+    var usernameInput = document.getElementById('register-username');
+    var callsignInput = document.getElementById('register-callsign');
+    var emailInput = document.getElementById('register-email');
+
+    if (!usernameInput) return;
+
+    var username = usernameInput.value.trim().toLowerCase();
+    var callsign = callsignInput ? callsignInput.value.trim() : '';
+    var email = emailInput ? emailInput.value.trim() : '';
+
+    // Validate username
+    if (!username || username.length < 3 || username.length > 20) {
+      updateMokInterjection('Username must be 3-20 characters.');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      updateMokInterjection('Username can only contain letters, numbers, and underscores.');
+      return;
+    }
+
+    // Validate email if provided
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      updateMokInterjection('Invalid email format.');
+      return;
+    }
+
+    // Use username as callsign if not provided
+    if (!callsign) {
+      callsign = username;
+    }
+
+    // Disable button during request
+    var submitBtn = document.getElementById('register-submit-btn');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'CREATING ACCOUNT...';
+    }
+
+    // Use UserAccount API for registration
+    if (typeof UserAccount !== 'undefined' && typeof UserAccount.register === 'function') {
+      UserAccount.register(username, callsign, email || null)
+        .then(function(data) {
+          toggleLoginOverlay();
+          printToTerminal([
+            '',
+            'REGISTRATION SUCCESSFUL',
+            'Welcome, ' + data.user.callsign + '.',
+            'Your account has been created.',
+            ''
+          ]);
+          _updateLoginButton();
+          // Dispatch auth state change event
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('auth-state-changed'));
+          }
+        })
+        .catch(function(err) {
+          updateMokInterjection('Registration failed: ' + err.message);
+        })
+        .finally(function() {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'CREATE ACCOUNT';
+          }
+        });
+    } else {
+      updateMokInterjection('UserAccount system not available.');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'CREATE ACCOUNT';
+      }
+    }
+  }
+
+  /**
+   * Validate username field
+   */
+  function validateUsername() {
+    var usernameInput = document.getElementById('register-username');
+    var validation = document.getElementById('username-validation');
+    if (!usernameInput || !validation) return;
+
+    var username = usernameInput.value.trim();
+    if (!username) {
+      validation.textContent = '';
+      return;
+    }
+
+    if (username.length < 3) {
+      validation.textContent = 'Too short (min 3 characters)';
+      validation.classList.remove('valid');
+    } else if (username.length > 20) {
+      validation.textContent = 'Too long (max 20 characters)';
+      validation.classList.remove('valid');
+    } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      validation.textContent = 'Only letters, numbers, and underscores';
+      validation.classList.remove('valid');
+    } else {
+      validation.textContent = 'Valid username format';
+      validation.classList.add('valid');
+    }
+  }
+
+  /**
+   * Validate email field
+   */
+  function validateEmail() {
+    var emailInput = document.getElementById('register-email');
+    var validation = document.getElementById('email-validation');
+    if (!emailInput || !validation) return;
+
+    var email = emailInput.value.trim();
+    if (!email) {
+      validation.textContent = '';
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      validation.textContent = 'Invalid email format';
+      validation.classList.remove('valid');
+    } else {
+      validation.textContent = 'Valid email format';
+      validation.classList.add('valid');
     }
   }
 

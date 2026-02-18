@@ -6,12 +6,55 @@
 const ReserveSlots = (function () {
   'use strict';
 
-  var _reserveCards = []; // Array of card objects in reserve
-  var _maxReserveSlots = 4; // 4 card slots + 1 cycle/action slot
-  var _cycleOffset = 0; // Current pagination offset for reserve
+  var _actionButtonCards = []; // Array of up to 4 card objects in action buttons
+  var _maxActionButtonSlots = 4; // Fixed at 4 card slots for Gone Rogue mode
+  var _cycleOffset = 0; // Current pagination offset for card cycling
   var _slotsContainer = null;
   var _longPressTimer = null;
   var _longPressThreshold = 500; // ms to trigger long-press tooltip
+
+  /**
+   * Abbreviate card name by removing vowels and spaces
+   * Takes first letter + consonants only
+   * @param {string} name - Full card name
+   * @returns {string} Abbreviated name
+   */
+  function _abbreviateCardName(name) {
+    if (!name) return '';
+
+    // Remove spaces and convert to uppercase
+    var cleaned = name.replace(/\s+/g, '').toUpperCase();
+
+    // Take first character
+    var firstChar = cleaned.charAt(0);
+
+    // Remove vowels from remaining characters
+    var consonants = cleaned.slice(1).replace(/[AEIOU]/g, '');
+
+    // Combine first character + consonants
+    return firstChar + consonants;
+  }
+
+  /**
+   * Get quality color for card display
+   * @param {string} quality - Quality tier name
+   * @returns {string} CSS color value
+   */
+  function _getQualityColor(quality) {
+    var qualityColors = {
+      'cracked': '#666',
+      'worn': '#999',
+      'standard': '#fff',
+      'fine': '#4fc3f7',
+      'superior': '#ffeb3b',
+      'elite': '#ff9800',
+      'masterwork': '#ffd700',
+      'near_perfect': '#8bc34a',
+      'perfect': '#9c27b0'
+    };
+
+    return qualityColors[quality] || '#fff';
+  }
 
   /**
    * Initialize reserve slots system
@@ -45,15 +88,15 @@ const ReserveSlots = (function () {
    */
   function show() {
     if (!_slotsContainer) _createSlotsContainer();
-    
-    // Add Gone Rogue mode class to body
-    document.body.classList.add('mode-gone-rogue');
-    
+
+    // Don't add Gone Rogue mode class - keep normal button visibility
+    // We'll replace buttons dynamically
+
     // Show slots container
     if (_slotsContainer) {
       _slotsContainer.style.display = 'flex';
     }
-    
+
     // Render slots
     render();
   }
@@ -62,45 +105,69 @@ const ReserveSlots = (function () {
    * Hide reserve slots (called when exiting Gone Rogue)
    */
   function hide() {
-    document.body.classList.remove('mode-gone-rogue');
-    
     if (_slotsContainer) {
       _slotsContainer.style.display = 'none';
     }
+
+    // Reset cycle offset
+    _cycleOffset = 0;
   }
 
   /**
-   * Set reserve cards
-   * @param {Array} cards - Array of card objects to display in reserve
+   * Set action button cards
+   * @param {Array} cards - Array of card objects to display in action buttons
    */
-  function setReserveCards(cards) {
-    _reserveCards = cards || [];
+  function setActionButtonCards(cards) {
+    _actionButtonCards = cards || [];
     render();
   }
 
   /**
-   * Add a card to the reserve
+   * Add a card to the action buttons
    * @param {Object} card - Card object to add
    */
   function addCard(card) {
     if (!card) return;
-    _reserveCards.push(card);
-    render();
-  }
-
-  /**
-   * Remove a card from the reserve by index
-   * @param {number} index - Index of card to remove
-   */
-  function removeCard(index) {
-    if (index >= 0 && index < _reserveCards.length) {
-      _reserveCards.splice(index, 1);
+    if (_actionButtonCards.length < _maxActionButtonSlots) {
+      _actionButtonCards.push(card);
       render();
     }
   }
 
   /**
-   * Render reserve slots
+   * Remove a card from the action buttons by index
+   * @param {number} index - Index of card to remove
+   */
+  function removeCard(index) {
+    if (index >= 0 && index < _actionButtonCards.length) {
+      _actionButtonCards.splice(index, 1);
+      render();
+    }
+  }
+
+  /**
+   * Get action button cards
+   * @returns {Array} Copy of action button cards array
+   */
+  function getCards() {
+    return _actionButtonCards.slice();
+  }
+
+  /**
+   * Cycle to next set of cards (for sort button)
+   */
+  function cycleCards() {
+    if (_actionButtonCards.length > _maxActionButtonSlots) {
+      _cycleOffset = (_cycleOffset + 1) % _actionButtonCards.length;
+      render();
+    }
+  }
+
+  /**
+   * Render reserve slots - creates 6 buttons total
+   * Button 1: back
+   * Button 2: sort (cycle cards)
+   * Buttons 3-6: 4 card slots
    */
   function render() {
     if (!_slotsContainer) return;
@@ -108,180 +175,135 @@ const ReserveSlots = (function () {
     var controlButtons = document.querySelector('.control-buttons');
     if (!controlButtons) return;
 
-    // Clear existing slots
+    // Clear existing content
     _slotsContainer.innerHTML = '';
 
-    // Insert slots container after action button
-    var actionBtn = controlButtons.querySelector('button[data-action="action"]');
-    if (actionBtn && actionBtn.parentNode === controlButtons) {
-      controlButtons.insertBefore(_slotsContainer, actionBtn.nextSibling);
+    // Hide default control buttons when in Gone Rogue mode
+    var defaultButtons = controlButtons.querySelectorAll('button');
+    defaultButtons.forEach(function(btn) {
+      btn.style.display = 'none';
+    });
+
+    // Create 6 buttons for Gone Rogue mode
+
+    // Button 1: Back
+    var backBtn = document.createElement('button');
+    backBtn.type = 'button';
+    backBtn.className = 'control-button gone-rogue-btn';
+    backBtn.dataset.action = 'back';
+    backBtn.textContent = 'back';
+    backBtn.addEventListener('click', function() {
+      _handleBackClick();
+    });
+    _slotsContainer.appendChild(backBtn);
+
+    // Button 2: Sort/Cycle
+    var sortBtn = document.createElement('button');
+    sortBtn.type = 'button';
+    sortBtn.className = 'control-button gone-rogue-btn sort-btn';
+    sortBtn.dataset.action = 'sort';
+    sortBtn.innerHTML = '↑↓'; // Two arrows
+    sortBtn.title = 'Cycle cards';
+    sortBtn.addEventListener('click', function() {
+      cycleCards();
+    });
+    _slotsContainer.appendChild(sortBtn);
+
+    // Buttons 3-6: 4 card slots
+    for (var i = 0; i < _maxActionButtonSlots; i++) {
+      var slotBtn = _createCardSlotButton(i);
+      _slotsContainer.appendChild(slotBtn);
+    }
+
+    // Position the container at the top of control buttons
+    controlButtons.insertBefore(_slotsContainer, controlButtons.firstChild);
+  }
+
+  /**
+   * Create a card slot button
+   * @param {number} slotIndex - Index of the slot (0-3)
+   * @returns {HTMLElement} Button element
+   */
+  function _createCardSlotButton(slotIndex) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'control-button gone-rogue-btn card-slot-btn';
+    btn.dataset.slotIndex = slotIndex;
+
+    // Calculate which card to show based on cycle offset
+    var cardIndex = (_cycleOffset + slotIndex) % Math.max(_actionButtonCards.length, _maxActionButtonSlots);
+    var card = _actionButtonCards[cardIndex];
+
+    if (card) {
+      // Card exists - show emoji and abbreviated name
+      var emoji = card.emoji || '🃏';
+      var abbrevName = _abbreviateCardName(card.name);
+      var quality = card.quality || card.qualityName || 'standard';
+      var color = _getQualityColor(quality.toLowerCase());
+
+      btn.innerHTML = '<span class="card-emoji">' + emoji + '</span><span class="card-abbrev" style="color: ' + color + ';">' + abbrevName + '</span>';
+      btn.title = card.name; // Full name on hover
+
+      // Click handler - use the card
+      btn.addEventListener('click', function() {
+        _handleCardSlotClick(cardIndex, card);
+      });
+
+      // Long-press for tooltip
+      var touchTimer = null;
+      btn.addEventListener('touchstart', function(e) {
+        touchTimer = setTimeout(function() {
+          _showCardTooltip(card, e.touches[0].clientX, e.touches[0].clientY);
+        }, _longPressThreshold);
+      });
+
+      btn.addEventListener('touchend', function() {
+        if (touchTimer) clearTimeout(touchTimer);
+      });
+
+      btn.addEventListener('mouseenter', function(e) {
+        touchTimer = setTimeout(function() {
+          _showCardTooltip(card, e.clientX, e.clientY);
+        }, _longPressThreshold);
+      });
+
+      btn.addEventListener('mouseleave', function() {
+        if (touchTimer) clearTimeout(touchTimer);
+        _hideCardTooltip();
+      });
     } else {
-      controlButtons.appendChild(_slotsContainer);
+      // Empty slot
+      btn.innerHTML = '<span class="card-empty">·</span>';
+      btn.disabled = true;
     }
 
-    // Calculate visible cards based on pagination
-    var visibleCards = _getVisibleCards();
-    var needsPagination = _reserveCards.length > _maxReserveSlots;
+    return btn;
+  }
 
-    // Render each slot
-    for (var i = 0; i < _maxReserveSlots; i++) {
-      var card = visibleCards[i];
-      var slot;
-
-      // Last slot is cycle button if pagination needed
-      if (i === _maxReserveSlots - 1 && needsPagination) {
-        slot = _createCycleSlot();
-      } else if (card) {
-        slot = _createCardSlot(card, i + _cycleOffset);
-      } else {
-        slot = _createEmptySlot(i);
-      }
-
-      _slotsContainer.appendChild(slot);
+  /**
+   * Handle back button click
+   */
+  function _handleBackClick() {
+    // Trigger the back action through GoneRogue or main UI
+    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.process === 'function') {
+      GoneRogue.process('exit');
+    } else if (typeof UIControls !== 'undefined') {
+      // Fallback to UI controls
+      var backBtn = document.querySelector('button[data-action="back"]');
+      if (backBtn) backBtn.click();
     }
   }
 
   /**
-   * Get visible cards based on pagination offset
+   * Handle card slot click - use the card
    */
-  function _getVisibleCards() {
-    if (_reserveCards.length <= _maxReserveSlots) {
-      return _reserveCards;
-    }
-
-    // Show 3 cards when pagination is needed (leaving room for cycle button in slot 4)
-    var visibleCount = _maxReserveSlots - 1;
-    var endIndex = _cycleOffset + visibleCount;
-    return _reserveCards.slice(_cycleOffset, endIndex);
-  }
-
-  /**
-   * Create a card slot element
-   * @param {Object} card - Card data
-   * @param {number} globalIndex - Global index in reserve array
-   */
-  function _createCardSlot(card, globalIndex) {
-    var slot = document.createElement('div');
-    slot.className = 'reserve-card-slot';
-    slot.dataset.cardIndex = globalIndex;
-
-    // Card thumbnail (emoji or icon)
-    var thumbnail = document.createElement('div');
-    thumbnail.className = 'reserve-card-thumbnail';
-    thumbnail.textContent = card.icon || card.emoji || '🃏';
-    slot.appendChild(thumbnail);
-
-    // Card name
-    var name = document.createElement('div');
-    name.className = 'reserve-card-name';
-    name.textContent = card.name || 'Card';
-    slot.appendChild(name);
-
-    // Card cost (if applicable)
-    if (card.cost !== undefined && card.cost !== null) {
-      var cost = document.createElement('div');
-      cost.className = 'reserve-card-cost';
-      cost.textContent = card.cost;
-      slot.appendChild(cost);
-    }
-
-    // Click handler - instant play
-    slot.addEventListener('click', function () {
-      _handleCardClick(globalIndex, card);
-    });
-
-    // Touch handlers for long-press tooltip
-    var touchTimer = null;
-    
-    slot.addEventListener('touchstart', function (e) {
-      touchTimer = setTimeout(function () {
-        _showCardTooltip(card, e.touches[0].clientX, e.touches[0].clientY);
-      }, _longPressThreshold);
-    });
-
-    slot.addEventListener('touchend', function () {
-      if (touchTimer) {
-        clearTimeout(touchTimer);
-        touchTimer = null;
-      }
-      _hideCardTooltip();
-    });
-
-    slot.addEventListener('touchmove', function () {
-      if (touchTimer) {
-        clearTimeout(touchTimer);
-        touchTimer = null;
-      }
-    });
-
-    // Mouse handlers for desktop hover tooltip
-    slot.addEventListener('mouseenter', function (e) {
-      _longPressTimer = setTimeout(function () {
-        _showCardTooltip(card, e.clientX, e.clientY);
-      }, _longPressThreshold);
-    });
-
-    slot.addEventListener('mouseleave', function () {
-      if (_longPressTimer) {
-        clearTimeout(_longPressTimer);
-        _longPressTimer = null;
-      }
-      _hideCardTooltip();
-    });
-
-    return slot;
-  }
-
-  /**
-   * Create an empty slot element
-   */
-  function _createEmptySlot(index) {
-    var slot = document.createElement('div');
-    slot.className = 'reserve-card-slot empty';
-    slot.dataset.slotIndex = index;
-
-    var placeholder = document.createElement('div');
-    placeholder.className = 'reserve-card-thumbnail';
-    placeholder.textContent = '·';
-    placeholder.style.opacity = '0.3';
-    slot.appendChild(placeholder);
-
-    var label = document.createElement('div');
-    label.className = 'reserve-card-name';
-    label.textContent = 'empty';
-    slot.appendChild(label);
-
-    return slot;
-  }
-
-  /**
-   * Create cycle control button
-   */
-  function _createCycleSlot() {
-    var slot = document.createElement('div');
-    slot.className = 'reserve-cycle-btn';
-
-    var icon = document.createElement('div');
-    icon.className = 'reserve-cycle-icon';
-    icon.innerHTML = '&#9650; &#9660;'; // Up/down arrows
-    slot.appendChild(icon);
-
-    slot.addEventListener('click', function () {
-      _handleCycleClick();
-    });
-
-    return slot;
-  }
-
-  /**
-   * Handle card click - instant play
-   */
-  function _handleCardClick(index, card) {
-    console.log('[ReserveSlots] Playing card:', card.name || 'Unknown', 'at index', index);
+  function _handleCardSlotClick(index, card) {
+    console.log('[ReserveSlots] Using card from action button:', card.name || 'Unknown', 'at index', index);
 
     // Integrate with GoneRogue system
     if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleCardSwipe === 'function') {
-      // Simulate "swipe up" to use the card
+      // Simulate "swipe up" to use the card from loose inventory
+      // The index needs to map to the loose inventory index
       GoneRogue.handleCardSwipe(index, 'up');
     } else {
       console.warn('[ReserveSlots] GoneRogue.handleCardSwipe not available');
@@ -289,22 +311,6 @@ const ReserveSlots = (function () {
 
     // Hide tooltip if showing
     _hideCardTooltip();
-  }
-
-  /**
-   * Handle cycle button click
-   */
-  function _handleCycleClick() {
-    // Cycle forward one card at a time for smooth experience
-    _cycleOffset += 1;
-    
-    // Wrap around if exceeded (ensure we can show full page)
-    var maxOffset = _reserveCards.length - (_maxReserveSlots - 1);
-    if (_cycleOffset >= maxOffset) {
-      _cycleOffset = 0;
-    }
-
-    render();
   }
 
   /**
@@ -378,17 +384,18 @@ const ReserveSlots = (function () {
   }
 
   /**
-   * Get current reserve cards
+   * Get current action button cards
    */
-  function getReserveCards() {
-    return _reserveCards;
+  function getActionButtonCards() {
+    return _actionButtonCards;
   }
 
   /**
-   * Clear all reserve cards
+   * Clear all action button cards
    */
   function clear() {
-    _reserveCards = [];
+    _actionButtonCards = [];
+    _cycleOffset = 0;
     render();
   }
 
@@ -397,10 +404,12 @@ const ReserveSlots = (function () {
     init: init,
     show: show,
     hide: hide,
-    setReserveCards: setReserveCards,
+    setActionButtonCards: setActionButtonCards,
     addCard: addCard,
     removeCard: removeCard,
-    getReserveCards: getReserveCards,
+    getCards: getCards,
+    getActionButtonCards: getActionButtonCards,
+    cycleCards: cycleCards,
     clear: clear,
     render: render
   };

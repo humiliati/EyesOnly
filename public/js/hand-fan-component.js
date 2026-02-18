@@ -1,0 +1,524 @@
+/* ============================================================
+   EYES ONLY - Hand Fan Component (Hearthstone-Style)
+   Card display with transparency based on lifecycle
+   ============================================================ */
+
+const HandFanComponent = (function () {
+  'use strict';
+
+  // State
+  var _mode = 'hidden'; // 'hidden', 'combat', 'contextual'
+  var _position = 'centered'; // 'centered', 'bottom'
+  var _cards = [];
+  var _selectedCards = [];
+  var _animationPhase = 'idle'; // 'idle', 'commit', 'resolve', 'repopulate'
+  var _isAnimating = false;
+
+  // DOM elements
+  var _fanContainer = null;
+
+  // Configuration
+  var _maxVisibleCards = 5;
+  var _cardOverlapPercent = 30; // 30% overlap for fan effect
+
+  /**
+   * Initialize the Hand Fan Component
+   */
+  function init() {
+    _createFanContainer();
+    _attachEventListeners();
+  }
+
+  /**
+   * Create fan container element
+   */
+  function _createFanContainer() {
+    _fanContainer = document.createElement('div');
+    _fanContainer.id = 'hand-fan-container';
+    _fanContainer.className = 'hand-fan-container';
+    _fanContainer.style.display = 'none';
+    document.body.appendChild(_fanContainer);
+  }
+
+  /**
+   * Attach event listeners
+   */
+  function _attachEventListeners() {
+    // Card selection handlers will be added to individual cards
+  }
+
+  /**
+   * Set mode and position
+   * @param {string} mode - 'combat' or 'contextual'
+   * @param {string} position - 'centered' or 'bottom'
+   */
+  function setMode(mode, position) {
+    _mode = mode;
+    _position = position;
+
+    if (_mode === 'hidden') {
+      hide();
+      return;
+    }
+
+    _updateFanPosition();
+    _renderCards();
+  }
+
+  /**
+   * Show the hand fan
+   * @param {Array} cards - Array of card objects
+   */
+  function show(cards) {
+    _cards = cards || [];
+    _mode = 'combat';
+    _position = 'centered';
+
+    _renderCards();
+    _fanContainer.style.display = 'flex';
+    _fanContainer.classList.add('hand-fan-appear');
+
+    setTimeout(function() {
+      _fanContainer.classList.remove('hand-fan-appear');
+    }, 300);
+  }
+
+  /**
+   * Hide the hand fan
+   */
+  function hide() {
+    _fanContainer.classList.add('hand-fan-disappear');
+
+    setTimeout(function() {
+      _fanContainer.style.display = 'none';
+      _fanContainer.classList.remove('hand-fan-disappear');
+    }, 300);
+  }
+
+  /**
+   * Update cards in the fan
+   * @param {Array} cards - New card array
+   */
+  function updateCards(cards) {
+    _cards = cards || [];
+    _renderCards();
+  }
+
+  /**
+   * Update fan position based on mode and position
+   */
+  function _updateFanPosition() {
+    _fanContainer.className = 'hand-fan-container';
+
+    if (_mode === 'combat' && _position === 'centered') {
+      _fanContainer.classList.add('hand-fan-combat');
+    } else if (_mode === 'contextual' && _position === 'bottom') {
+      _fanContainer.classList.add('hand-fan-contextual');
+    }
+  }
+
+  /**
+   * Render cards in the fan
+   */
+  function _renderCards() {
+    if (!_fanContainer) return;
+
+    _fanContainer.innerHTML = '';
+    _updateFanPosition();
+
+    if (_cards.length === 0) {
+      var emptyMsg = document.createElement('div');
+      emptyMsg.className = 'hand-fan-empty';
+      emptyMsg.textContent = 'NO CARDS';
+      _fanContainer.appendChild(emptyMsg);
+      return;
+    }
+
+    // Limit visible cards
+    var visibleCards = _cards.slice(0, _maxVisibleCards);
+
+    visibleCards.forEach(function(card, index) {
+      var cardEl = _createCardElement(card, index);
+      _fanContainer.appendChild(cardEl);
+    });
+  }
+
+  /**
+   * Create a single card element
+   * @param {Object} card - Card data
+   * @param {number} index - Index in hand
+   */
+  function _createCardElement(card, index) {
+    var cardWrapper = document.createElement('div');
+    cardWrapper.className = 'hand-card-wrapper';
+    cardWrapper.dataset.cardIndex = index;
+
+    // Apply fan transformation
+    _applyFanTransform(cardWrapper, index, _cards.length);
+
+    // Create card element
+    var cardEl = document.createElement('div');
+    cardEl.className = 'hand-card';
+
+    // Apply lifecycle-based transparency
+    var lifecycle = _getCardLifecycle(card);
+    cardEl.classList.add('hand-card-' + lifecycle);
+
+    // Check if selected
+    if (_selectedCards.indexOf(index) !== -1) {
+      cardEl.classList.add('hand-card-selected');
+    }
+
+    // Apply quality border color
+    if (card.quality || card.qualityName) {
+      var quality = (card.quality || card.qualityName).toLowerCase().replace(/ /g, '_');
+      cardEl.dataset.quality = quality;
+    }
+
+    // Card content
+    var html = '';
+
+    // Cost badge (top-left)
+    if (card.cost !== undefined && card.cost !== null) {
+      html += '<div class="hand-card-cost">' + card.cost + '</div>';
+    }
+
+    // Card artwork/emoji (80% of card height)
+    html += '<div class="hand-card-artwork">';
+    html += '<div class="hand-card-emoji">' + (card.emoji || '🃏') + '</div>';
+    html += '</div>';
+
+    // Card name (bottom)
+    html += '<div class="hand-card-name">' + (card.name || 'Unknown Card') + '</div>';
+
+    // Effect icons (if any)
+    if (card.effects && card.effects.length > 0) {
+      html += '<div class="hand-card-effects">';
+      card.effects.slice(0, 3).forEach(function(effect) {
+        html += '<span class="hand-card-effect-icon">' + (effect.icon || '•') + '</span>';
+      });
+      html += '</div>';
+    }
+
+    cardEl.innerHTML = html;
+
+    // Selection badge (if selected)
+    var selectionIndex = _selectedCards.indexOf(index);
+    if (selectionIndex !== -1) {
+      var badge = document.createElement('div');
+      badge.className = 'hand-card-selection-badge';
+      badge.textContent = selectionIndex + 1;
+      cardEl.appendChild(badge);
+    }
+
+    // Attach event handlers
+    _attachCardHandlers(cardEl, card, index);
+
+    cardWrapper.appendChild(cardEl);
+    return cardWrapper;
+  }
+
+  /**
+   * Apply fan transformation to card wrapper
+   * @param {HTMLElement} wrapper - Card wrapper element
+   * @param {number} index - Card index
+   * @param {number} total - Total number of cards
+   */
+  function _applyFanTransform(wrapper, index, total) {
+    // Calculate fan spread
+    var centerIndex = (total - 1) / 2;
+    var offset = index - centerIndex;
+
+    // Rotation angle (degrees)
+    var maxRotation = 8; // Maximum rotation at edges
+    var rotation = offset * (maxRotation / centerIndex);
+
+    // Vertical offset (pixels) - creates arc
+    var maxVerticalOffset = 15;
+    var verticalOffset = Math.abs(offset) * (maxVerticalOffset / centerIndex);
+
+    // Horizontal offset for overlap
+    var baseWidth = 120; // Card width in px
+    var overlapWidth = baseWidth * (_cardOverlapPercent / 100);
+    var horizontalSpacing = baseWidth - overlapWidth;
+
+    // Z-index (center cards on top)
+    var zIndex = 100 - Math.abs(offset * 10);
+
+    // Apply transforms
+    wrapper.style.transform = 'translateY(' + verticalOffset + 'px) rotate(' + rotation + 'deg)';
+    wrapper.style.marginLeft = (index === 0 ? 0 : -overlapWidth) + 'px';
+    wrapper.style.zIndex = zIndex;
+
+    // Add hover lift effect
+    wrapper.addEventListener('mouseenter', function() {
+      if (!_isAnimating) {
+        wrapper.style.transform = 'translateY(' + (verticalOffset - 20) + 'px) rotate(' + rotation + 'deg) scale(1.05)';
+        wrapper.style.zIndex = 200;
+      }
+    });
+
+    wrapper.addEventListener('mouseleave', function() {
+      if (!_isAnimating) {
+        wrapper.style.transform = 'translateY(' + verticalOffset + 'px) rotate(' + rotation + 'deg)';
+        wrapper.style.zIndex = zIndex;
+      }
+    });
+  }
+
+  /**
+   * Get card lifecycle type for transparency
+   * @param {Object} card - Card data
+   * @returns {string} Lifecycle type
+   */
+  function _getCardLifecycle(card) {
+    // Map card types to lifecycle categories
+    var lifecycle = card.lifecycle || card.consumable || 'core';
+
+    var lifecycleMap = {
+      'disposable': 'consumable',
+      'LIFE_001': 'consumable',
+      'exhaust': 'exhaust',
+      'LIFE_002': 'exhaust',
+      'power': 'power',
+      'LIFE_003': 'power',
+      'gated': 'gated',
+      'LIFE_004': 'gated',
+      'persistent': 'core',
+      'LIFE_005': 'core',
+      'core': 'core'
+    };
+
+    return lifecycleMap[lifecycle] || 'core';
+  }
+
+  /**
+   * Attach event handlers to card
+   * @param {HTMLElement} cardEl - Card element
+   * @param {Object} card - Card data
+   * @param {number} index - Card index
+   */
+  function _attachCardHandlers(cardEl, card, index) {
+    // Click to select/deselect
+    cardEl.addEventListener('click', function() {
+      _toggleCardSelection(index);
+    });
+
+    // Touch handlers
+    cardEl.addEventListener('touchend', function(e) {
+      e.preventDefault();
+      _toggleCardSelection(index);
+    });
+
+    // Long-press for tooltip
+    var longPressTimer = null;
+    cardEl.addEventListener('mousedown', function() {
+      longPressTimer = setTimeout(function() {
+        _showCardTooltip(card, cardEl);
+      }, 500);
+    });
+
+    cardEl.addEventListener('mouseup', function() {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    });
+
+    cardEl.addEventListener('mouseleave', function() {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+      _hideCardTooltip();
+    });
+  }
+
+  /**
+   * Toggle card selection
+   * @param {number} index - Card index
+   */
+  function _toggleCardSelection(index) {
+    var selectedIndex = _selectedCards.indexOf(index);
+
+    if (selectedIndex !== -1) {
+      // Deselect
+      _selectedCards.splice(selectedIndex, 1);
+    } else {
+      // Select (max 5 cards)
+      if (_selectedCards.length < 5) {
+        _selectedCards.push(index);
+      }
+    }
+
+    _renderCards();
+  }
+
+  /**
+   * Show card tooltip
+   * @param {Object} card - Card data
+   * @param {HTMLElement} cardEl - Card element
+   */
+  function _showCardTooltip(card, cardEl) {
+    // Create tooltip element if it doesn't exist
+    var tooltip = document.getElementById('hand-card-tooltip');
+    if (!tooltip) {
+      tooltip = document.createElement('div');
+      tooltip.id = 'hand-card-tooltip';
+      tooltip.className = 'hand-card-tooltip';
+      document.body.appendChild(tooltip);
+    }
+
+    // Build tooltip content
+    var html = '';
+    html += '<div class="tooltip-title">' + (card.name || 'Unknown Card') + '</div>';
+
+    if (card.description) {
+      html += '<div class="tooltip-description">' + card.description + '</div>';
+    }
+
+    html += '<div class="tooltip-stats">';
+    if (card.cost !== undefined) {
+      html += '<div class="tooltip-stat">Cost: <span>' + card.cost + '</span></div>';
+    }
+    if (card.damage !== undefined) {
+      html += '<div class="tooltip-stat">Damage: <span>' + card.damage + '</span></div>';
+    }
+    if (card.qualityName) {
+      html += '<div class="tooltip-stat">Quality: <span>' + card.qualityName + '</span></div>';
+    }
+    html += '</div>';
+
+    tooltip.innerHTML = html;
+
+    // Position tooltip near card
+    var rect = cardEl.getBoundingClientRect();
+    tooltip.style.left = (rect.left + rect.width / 2) + 'px';
+    tooltip.style.top = (rect.top - 10) + 'px';
+    tooltip.style.transform = 'translate(-50%, -100%)';
+    tooltip.style.display = 'block';
+  }
+
+  /**
+   * Hide card tooltip
+   */
+  function _hideCardTooltip() {
+    var tooltip = document.getElementById('hand-card-tooltip');
+    if (tooltip) {
+      tooltip.style.display = 'none';
+    }
+  }
+
+  /**
+   * Play selected cards (commit animation)
+   */
+  function playSelectedCards() {
+    if (_selectedCards.length === 0) return;
+
+    _animationPhase = 'commit';
+    _isAnimating = true;
+
+    // Commit animation: lift selected cards
+    _animateCommit(function() {
+      // Resolve animation: fly to center
+      _animateResolve(function() {
+        // Notify game logic
+        if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.executeMultiCardRound === 'function') {
+          var selectedCardObjects = _selectedCards.map(function(index) {
+            return _cards[index];
+          });
+          GoneRogue.executeMultiCardRound(selectedCardObjects);
+        }
+
+        // Repopulate animation will be triggered by updateCards call
+        _selectedCards = [];
+      });
+    });
+  }
+
+  /**
+   * Commit animation - lift selected cards
+   * @param {Function} callback - Callback when animation completes
+   */
+  function _animateCommit(callback) {
+    _fanContainer.classList.add('hand-fan-commit');
+
+    setTimeout(function() {
+      _fanContainer.classList.remove('hand-fan-commit');
+      _animationPhase = 'resolve';
+      if (callback) callback();
+    }, 200);
+  }
+
+  /**
+   * Resolve animation - cards fly to center and fade
+   * @param {Function} callback - Callback when animation completes
+   */
+  function _animateResolve(callback) {
+    _fanContainer.classList.add('hand-fan-resolve');
+
+    // Duration varies by card count (800-1500ms)
+    var duration = 800 + (_selectedCards.length * 140);
+
+    setTimeout(function() {
+      _fanContainer.classList.remove('hand-fan-resolve');
+      _animationPhase = 'repopulate';
+      _isAnimating = false;
+      if (callback) callback();
+    }, duration);
+  }
+
+  /**
+   * Repopulate animation - new cards fade in from center
+   */
+  function repopulateCards(newCards) {
+    _cards = newCards || [];
+    _animationPhase = 'repopulate';
+
+    _fanContainer.classList.add('hand-fan-repopulate');
+    _renderCards();
+
+    setTimeout(function() {
+      _fanContainer.classList.remove('hand-fan-repopulate');
+      _animationPhase = 'idle';
+    }, 300);
+  }
+
+  /**
+   * Get selected card indices
+   * @returns {Array} Selected card indices
+   */
+  function getSelectedCards() {
+    return _selectedCards.slice();
+  }
+
+  /**
+   * Clear card selection
+   */
+  function clearSelection() {
+    _selectedCards = [];
+    _renderCards();
+  }
+
+  // Public API
+  return {
+    init: init,
+    show: show,
+    hide: hide,
+    setMode: setMode,
+    updateCards: updateCards,
+    playSelectedCards: playSelectedCards,
+    repopulateCards: repopulateCards,
+    getSelectedCards: getSelectedCards,
+    clearSelection: clearSelection
+  };
+})();
+
+// Auto-initialize when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() {
+    HandFanComponent.init();
+  });
+} else {
+  HandFanComponent.init();
+}
