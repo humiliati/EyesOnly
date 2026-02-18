@@ -10,6 +10,7 @@ import type { Env } from '../shared/types';
 import { publicRoutes } from './routes/public';
 import { opsRoutes } from './routes/ops';
 import { mModeRoutes } from './routes/m-mode';
+import { userAuthRoutes } from './routes/user-auth';
 
 export { ScenarioRoom } from './durable-objects/scenario-room';
 
@@ -37,7 +38,7 @@ app.use('*', async (c, next) => {
 app.use('/api/*', cors({
   origin: '*',
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Session-Token'],
 }));
 
 // --- Route Groups ---
@@ -45,6 +46,7 @@ app.use('/api/*', cors({
 app.route('/api', publicRoutes);
 app.route('/api/ops', opsRoutes);
 app.route('/api/m', mModeRoutes);
+app.route('/api/user', userAuthRoutes);
 
 // --- Health Check ---
 

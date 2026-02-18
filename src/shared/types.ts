@@ -196,3 +196,132 @@ export interface AuthContext {
   role: 'red' | 'blue' | 'director';
   scenario_id: number;
 }
+
+// --- User Account Types ---
+
+export interface UserAccountRow {
+  id: number;
+  username: string;
+  email: string | null;
+  email_verified: number;
+  callsign: string;
+  created_at: number;
+  last_login: number;
+  cryptos: number;
+  preferences: string; // JSON blob
+}
+
+export interface WebAuthnCredentialRow {
+  id: number;
+  user_id: number;
+  credential_id: string;
+  public_key: string;
+  counter: number;
+  transports: string | null;
+  device_name: string | null;
+  created_at: number;
+  last_used_at: number;
+}
+
+export interface UserSessionRow {
+  id: number;
+  session_token: string;
+  user_id: number;
+  expires_at: number;
+  created_at: number;
+  last_activity: number;
+}
+
+export interface UserInventoryRow {
+  id: number;
+  user_id: number;
+  item_id: string;
+  item_type: 'persistent' | 'loose';
+  quantity: number;
+  metadata: string; // JSON blob
+  acquired_at: number;
+}
+
+export interface UserHighscoreRow {
+  id: number;
+  user_id: number;
+  game_id: string;
+  mode: 'human' | 'agent';
+  score: number;
+  metadata: string; // JSON blob
+  achieved_at: number;
+}
+
+export interface EmailTokenRow {
+  id: number;
+  user_id: number;
+  token_hash: string;
+  purpose: 'verify_email' | 'recover_account';
+  expires_at: number;
+  used_at: number | null;
+  created_at: number;
+}
+
+// --- User Auth API Types ---
+
+export interface UserRegisterRequest {
+  username: string;
+  callsign?: string; // Optional, defaults to username
+  email?: string;    // Optional, for recovery
+}
+
+export interface UserRegisterResponse {
+  user_id: number;
+  username: string;
+  challenge: string; // WebAuthn challenge (base64url)
+}
+
+export interface UserRegisterCompleteRequest {
+  user_id: number;
+  challenge: string;
+  credential: PublicKeyCredential; // WebAuthn credential
+  device_name?: string;
+}
+
+export interface UserLoginStartRequest {
+  username: string;
+}
+
+export interface UserLoginStartResponse {
+  user_id: number;
+  challenge: string; // WebAuthn challenge (base64url)
+  credentials: Array<{
+    id: string;
+    transports?: AuthenticatorTransport[];
+  }>;
+}
+
+export interface UserLoginCompleteRequest {
+  user_id: number;
+  challenge: string;
+  credential: PublicKeyCredential; // WebAuthn assertion
+}
+
+export interface UserLoginCompleteResponse {
+  session_token: string;
+  user: {
+    id: number;
+    username: string;
+    callsign: string;
+    cryptos: number;
+  };
+}
+
+export interface UserSessionContext {
+  user_id: number;
+  username: string;
+  callsign: string;
+}
+
+// --- WebAuthn Types ---
+
+export interface WebAuthnChallenge {
+  challenge: string;
+  user_id: number;
+  expires_at: number;
+}
