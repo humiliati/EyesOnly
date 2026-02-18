@@ -1640,3 +1640,168 @@ body.in-gone-rogue #log-column {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
+
+/* ============================================================
+   MOBILE KEYBOARD VISIBILITY HANDLING
+   Squash header, control rail, and debrief when keyboard is active
+   to keep terminal input visible
+   ============================================================ */
+
+@media (max-width: 767px) {
+  /* When keyboard is visible on mobile */
+  body.keyboard-visible {
+    /* Ensure layout doesn't overflow */
+    overflow: hidden;
+  }
+
+  /* Drastically reduce header size when keyboard is visible */
+  body.keyboard-visible #mok-header.monitor-header {
+    padding: 2px 6px;
+    min-height: 24px;
+    gap: 4px;
+    transition: all 0.2s ease;
+  }
+
+  body.keyboard-visible .mok-header-title {
+    font-size: 0.65em;
+  }
+
+  body.keyboard-visible .mok-header-sub {
+    display: none; /* Hide subtitle to save space */
+  }
+
+  body.keyboard-visible .currency-display {
+    font-size: 0.5em;
+    padding: 1px 3px;
+  }
+
+  body.keyboard-visible .active-item-display {
+    width: 28px;
+    height: 28px;
+    font-size: 1em;
+  }
+
+  body.keyboard-visible .active-item-label {
+    display: none; /* Hide label to save space */
+  }
+
+  body.keyboard-visible .accountability-indicator {
+    width: 10px;
+    height: 10px;
+  }
+
+  /* Minimize control rail when keyboard visible */
+  body.keyboard-visible #control-rail {
+    padding: 4px;
+    gap: 4px;
+    min-height: auto;
+  }
+
+  body.keyboard-visible .control-buttons {
+    gap: 3px;
+  }
+
+  body.keyboard-visible .control-buttons button {
+    font-size: 0.65em;
+    padding: 3px 2px;
+    min-height: 24px;
+  }
+
+  /* Minimize or hide debrief window when keyboard visible */
+  body.keyboard-visible .debrief-window {
+    display: none; /* Hide completely to maximize terminal space */
+  }
+
+  /* Alternatively, if we want to keep it but minimize: */
+  /*
+  body.keyboard-visible .debrief-window {
+    padding: 4px;
+    gap: 2px;
+    min-height: auto;
+  }
+
+  body.keyboard-visible .debrief-label {
+    font-size: 0.6em;
+  }
+
+  body.keyboard-visible .debrief-screen {
+    min-height: 40px;
+  }
+
+  body.keyboard-visible #mok-avatar {
+    width: 30px;
+    height: 30px;
+  }
+  */
+
+  /* Maximize terminal space when keyboard visible */
+  body.keyboard-visible #monitor-shell {
+    max-height: calc(100vh - 30px); /* Account for tiny header */
+    overflow: hidden;
+  }
+
+  body.keyboard-visible #monitor-body {
+    gap: 6px;
+    min-height: 0;
+  }
+
+  body.keyboard-visible #log-column {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.keyboard-visible .log-frame {
+    padding: 6px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  body.keyboard-visible #terminal {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Ensure input line is visible at bottom */
+  body.keyboard-visible #input-line {
+    position: sticky;
+    bottom: 0;
+    background: var(--panel-bg);
+    padding: 4px 0;
+    margin-top: auto;
+  }
+
+  /* Make sure #crt-frame adjusts properly */
+  body.keyboard-visible #crt-frame {
+    max-height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Reduce padding on crt-screen */
+  body.keyboard-visible #crt-screen {
+    padding: 4px;
+  }
+}
+
+/* Additional adjustments for very small viewports when keyboard is visible */
+@media (max-width: 767px) and (max-height: 500px) {
+  body.keyboard-visible #mok-header.monitor-header {
+    padding: 1px 4px;
+    min-height: 20px;
+  }
+
+  body.keyboard-visible .mok-header-title {
+    font-size: 0.6em;
+  }
+
+  body.keyboard-visible .control-buttons button {
+    font-size: 0.6em;
+    padding: 2px 1px;
+    min-height: 20px;
+  }
+}
