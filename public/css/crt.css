@@ -273,6 +273,18 @@ html, body {
   box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5), 0 0 16px rgba(255, 100, 255, 0.3);
 }
 
+/* Authentication button - logged in state */
+.control-buttons button[data-action="login"].auth-logged-in {
+  border-color: rgba(255, 170, 0, 0.6);
+  color: var(--amber);
+}
+
+.control-buttons button[data-action="login"].auth-logged-in:hover {
+  border-color: var(--amber);
+  background: rgba(40, 30, 12, 0.95);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5), 0 0 12px rgba(255, 170, 0, 0.2);
+}
+
 .debrief-window {
   background: linear-gradient(160deg, rgba(10, 18, 12, 0.9), rgba(4, 8, 6, 0.95));
   border: 1px solid var(--panel-border-soft);
@@ -1159,5 +1171,615 @@ body.amber-mode #scanlines::after {
   100% {
     background: rgba(255, 0, 0, 0);
     box-shadow: none;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE LAYOUT & MOBILE VIEWPORT PRIORITY
+   Requirements: Currency/ticker collision fix + header squash
+   ============================================================ */
+
+/* --- Tablet Breakpoint (768px - 1023px) --- */
+@media (max-width: 1023px) {
+  /* Accountability ticker collapses to icon-only */
+  .accountability-indicator {
+    position: relative;
+  }
+  
+  .accountability-label {
+    display: none; /* Hide label text on tablet */
+  }
+  
+  .accountability-icon {
+    font-size: 1.4em;
+    cursor: help; /* Indicate tooltip available */
+  }
+  
+  /* Add tooltip on hover for collapsed state */
+  .accountability-indicator:hover::after {
+    content: '[un]accountable';
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    padding: 4px 8px;
+    background: rgba(8, 24, 12, 0.95);
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    font-size: 0.7em;
+    white-space: nowrap;
+    z-index: 200;
+    pointer-events: none;
+    animation: tooltip-in 0.2s ease-out;
+  }
+  
+  @keyframes tooltip-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* --- Mobile Breakpoint (< 768px) --- */
+@media (max-width: 767px) {
+  /* Header padding reduction */
+  #mok-header.monitor-header {
+    padding: 6px 10px;
+    gap: 8px;
+  }
+  
+  .mok-header-title {
+    font-size: 0.85em;
+  }
+  
+  .mok-header-sub {
+    font-size: 0.72em;
+  }
+  
+  /* Currency display size reduction */
+  .currency-display {
+    font-size: 0.6em;
+    padding: 2px 4px;
+  }
+  
+  .currency-symbol {
+    font-size: 1em;
+  }
+  
+  /* Accountability ticker becomes nested indicator */
+  .accountability-indicator {
+    position: absolute;
+    right: -4px;
+    top: -4px;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--bg);
+    border-radius: 50%;
+    padding: 0;
+    background: rgba(6, 14, 8, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .mok-header-right {
+    position: relative;
+  }
+  
+  .accountability-label {
+    display: none;
+  }
+  
+  .accountability-icon {
+    font-size: 0.9em;
+  }
+  
+  /* Active item slot reduction */
+  .active-item-display {
+    width: 42px;
+    height: 42px;
+    font-size: 1.5em;
+  }
+  
+  .active-item-label {
+    font-size: 0.6em;
+  }
+}
+
+/* --- Gone Rogue Mode Header Squash (Mobile) --- */
+@media (max-width: 767px) {
+  body.mode-gone-rogue #mok-header.monitor-header,
+  body.in-gone-rogue #mok-header.monitor-header {
+    padding: 4px 8px;
+    min-height: 32px;
+  }
+  
+  body.mode-gone-rogue .mok-header-title,
+  body.in-gone-rogue .mok-header-title {
+    font-size: 0.75em;
+  }
+  
+  body.mode-gone-rogue .mok-header-sub,
+  body.in-gone-rogue .mok-header-sub {
+    font-size: 0.65em;
+  }
+  
+  body.mode-gone-rogue .currency-display,
+  body.in-gone-rogue .currency-display {
+    font-size: 0.55em;
+  }
+  
+  body.mode-gone-rogue .active-item-display,
+  body.in-gone-rogue .active-item-display {
+    width: 36px;
+    height: 36px;
+    font-size: 1.3em;
+    border-width: 1px;
+  }
+  
+  body.mode-gone-rogue .active-item-label,
+  body.in-gone-rogue .active-item-label {
+    font-size: 0.55em;
+  }
+  
+  body.mode-gone-rogue .accountability-indicator,
+  body.in-gone-rogue .accountability-indicator {
+    width: 12px;
+    height: 12px;
+    right: -2px;
+    top: -2px;
+  }
+  
+  body.mode-gone-rogue .accountability-icon,
+  body.in-gone-rogue .accountability-icon {
+    font-size: 0.7em;
+  }
+}
+
+/* --- Landscape Mobile (height < 500px) --- */
+@media (max-height: 500px) and (orientation: landscape) {
+  /* Aggressive header squashing for landscape */
+  #mok-header.monitor-header {
+    padding: 2px 6px;
+    min-height: 28px;
+    gap: 6px;
+  }
+  
+  .mok-header-title {
+    font-size: 0.7em;
+  }
+  
+  .mok-header-sub {
+    font-size: 0.6em;
+  }
+  
+  .active-item-display {
+    width: 32px;
+    height: 32px;
+    font-size: 1.2em;
+  }
+  
+  .active-item-label {
+    display: none; /* Hide label in landscape */
+  }
+  
+  .currency-display {
+    font-size: 0.5em;
+  }
+  
+  /* Ensure game screen is scrollable */
+  #log-column {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .log-frame {
+    max-height: calc(100vh - 40px); /* 40px = estimated header height in landscape */
+    overflow-y: auto;
+  }
+}
+
+/* --- Terminal/Game Screen Touch Scrolling --- */
+@media (max-width: 767px) {
+  #log-column {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  
+  .log-frame {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  #terminal {
+    min-height: 100%;
+  }
+}
+
+/* --- Control Rail Button Transformation for Gone Rogue --- */
+@media (max-width: 767px) {
+  body.mode-gone-rogue .control-buttons button,
+  body.in-gone-rogue .control-buttons button {
+    font-size: 0.7em;
+    padding: 6px 8px;
+  }
+}
+
+/* ============================================================
+   GONE ROGUE MODE: RESERVE CARD SLOTS
+   Transform left column buttons into card management interface
+   ============================================================ */
+
+/* Reserve card slots - desktop and mobile */
+body.mode-gone-rogue .control-buttons,
+body.in-gone-rogue .control-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Reserve card slot styling */
+.reserve-card-slot {
+  position: relative;
+  width: 100%;
+  min-height: 60px;
+  background: rgba(8, 24, 12, 0.85);
+  border: 2px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5), 0 0 10px rgba(0, 255, 90, 0.08);
+}
+
+.reserve-card-slot:hover {
+  border-color: var(--phosphor-bright);
+  background: rgba(14, 42, 24, 0.95);
+  transform: translateY(-2px);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5), 0 0 16px rgba(0, 255, 90, 0.2);
+}
+
+.reserve-card-slot.empty {
+  opacity: 0.5;
+  border-style: dashed;
+}
+
+.reserve-card-slot.empty:hover {
+  opacity: 0.7;
+}
+
+/* Card thumbnail in reserve slot */
+.reserve-card-thumbnail {
+  font-size: 1.5em;
+  margin-bottom: 4px;
+}
+
+.reserve-card-name {
+  font-size: 0.65em;
+  text-align: center;
+  color: var(--phosphor-dim);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.reserve-card-cost {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 0.6em;
+  padding: 2px 4px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 3px;
+  color: var(--amber);
+}
+
+/* Cycle control button */
+.reserve-cycle-btn {
+  background: rgba(8, 24, 12, 0.9);
+  border: 2px solid var(--panel-border-soft);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 44px;
+}
+
+.reserve-cycle-btn:hover {
+  border-color: var(--phosphor);
+  background: rgba(14, 42, 24, 0.95);
+  transform: scale(1.05);
+}
+
+.reserve-cycle-icon {
+  font-size: 1.2em;
+  color: var(--phosphor-dim);
+}
+
+.reserve-cycle-btn:hover .reserve-cycle-icon {
+  color: var(--phosphor-bright);
+}
+
+/* Action button in Gone Rogue mode */
+body.mode-gone-rogue .control-buttons button[data-action="action"],
+body.in-gone-rogue .control-buttons button[data-action="action"] {
+  background: rgba(28, 255, 155, 0.15);
+  border: 2px solid rgba(28, 255, 155, 0.6);
+  color: #1cff9b;
+  font-weight: bold;
+  letter-spacing: 0.15em;
+  min-height: 50px;
+  font-size: 1em;
+}
+
+body.mode-gone-rogue .control-buttons button[data-action="action"]:hover,
+body.in-gone-rogue .control-buttons button[data-action="action"]:hover {
+  background: rgba(28, 255, 155, 0.25);
+  border-color: #1cff9b;
+  box-shadow: 0 0 20px rgba(28, 255, 155, 0.4);
+}
+
+/* Hide non-Gone Rogue buttons when in Gone Rogue mode (except back button) */
+body.mode-gone-rogue .control-buttons button[data-action="map"],
+body.mode-gone-rogue .control-buttons button[data-action="login"],
+body.mode-gone-rogue .control-buttons button[data-action="inventory"],
+body.mode-gone-rogue .control-buttons button[data-action="highscore"],
+body.in-gone-rogue .control-buttons button[data-action="map"],
+body.in-gone-rogue .control-buttons button[data-action="login"],
+body.in-gone-rogue .control-buttons button[data-action="inventory"],
+body.in-gone-rogue .control-buttons button[data-action="highscore"] {
+  display: none;
+}
+
+/* Keep back button visible for exiting Gone Rogue */
+body.mode-gone-rogue .control-buttons button[data-action="back"],
+body.in-gone-rogue .control-buttons button[data-action="back"] {
+  display: block;
+  order: -1; /* Show first */
+  background: rgba(255, 51, 51, 0.15);
+  border-color: rgba(255, 51, 51, 0.5);
+  color: #ff6666;
+}
+
+/* Reserve card slot container */
+#reserve-slots-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+/* Long-press tooltip */
+.reserve-card-tooltip {
+  position: fixed;
+  z-index: 300;
+  background: rgba(8, 24, 12, 0.98);
+  border: 2px solid var(--phosphor-bright);
+  border-radius: 8px;
+  padding: 12px;
+  max-width: 280px;
+  box-shadow: 0 0 20px rgba(0, 255, 90, 0.3);
+  animation: tooltip-in 0.2s ease-out;
+  pointer-events: none;
+}
+
+.reserve-card-tooltip-title {
+  font-size: 1em;
+  font-weight: bold;
+  color: var(--phosphor-bright);
+  margin-bottom: 6px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.reserve-card-tooltip-description {
+  font-size: 0.85em;
+  color: var(--phosphor-dim);
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+
+.reserve-card-tooltip-stats {
+  font-size: 0.75em;
+  color: var(--phosphor);
+  border-top: 1px solid var(--panel-border);
+  padding-top: 6px;
+}
+
+.reserve-card-tooltip-stat {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+/* Mobile adjustments for reserve slots */
+@media (max-width: 767px) {
+  .reserve-card-slot {
+    min-height: 50px;
+  }
+  
+  .reserve-card-thumbnail {
+    font-size: 1.3em;
+  }
+  
+  .reserve-card-name {
+    font-size: 0.6em;
+  }
+  
+  body.mode-gone-rogue .control-buttons button[data-action="action"],
+  body.in-gone-rogue .control-buttons button[data-action="action"] {
+    min-height: 44px;
+    font-size: 0.9em;
+  }
+}
+
+/* --- Priority: Game Screen Must Always Be Accessible --- */
+body.mode-gone-rogue #monitor-body,
+body.in-gone-rogue #monitor-body {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+body.mode-gone-rogue #log-column,
+body.in-gone-rogue #log-column {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ============================================================
+   MOBILE KEYBOARD VISIBILITY HANDLING
+   Squash header, control rail, and debrief when keyboard is active
+   to keep terminal input visible
+   ============================================================ */
+
+@media (max-width: 767px) {
+  /* When keyboard is visible on mobile */
+  body.keyboard-visible {
+    /* Ensure layout doesn't overflow */
+    overflow: hidden;
+  }
+
+  /* Drastically reduce header size when keyboard is visible */
+  body.keyboard-visible #mok-header.monitor-header {
+    padding: 2px 6px;
+    min-height: 24px;
+    gap: 4px;
+    transition: all 0.2s ease;
+  }
+
+  body.keyboard-visible .mok-header-title {
+    font-size: 0.65em;
+  }
+
+  body.keyboard-visible .mok-header-sub {
+    display: none; /* Hide subtitle to save space */
+  }
+
+  body.keyboard-visible .currency-display {
+    font-size: 0.5em;
+    padding: 1px 3px;
+  }
+
+  body.keyboard-visible .active-item-display {
+    width: 28px;
+    height: 28px;
+    font-size: 1em;
+  }
+
+  body.keyboard-visible .active-item-label {
+    display: none; /* Hide label to save space */
+  }
+
+  body.keyboard-visible .accountability-indicator {
+    width: 10px;
+    height: 10px;
+  }
+
+  /* Minimize control rail when keyboard visible */
+  body.keyboard-visible #control-rail {
+    padding: 4px;
+    gap: 4px;
+    min-height: auto;
+  }
+
+  body.keyboard-visible .control-buttons {
+    gap: 3px;
+  }
+
+  body.keyboard-visible .control-buttons button {
+    font-size: 0.65em;
+    padding: 3px 2px;
+    min-height: 24px;
+  }
+
+  /* Hide debrief window when keyboard visible to maximize terminal space */
+  body.keyboard-visible .debrief-window {
+    display: none;
+  }
+
+  /* Maximize terminal space when keyboard visible */
+  body.keyboard-visible #monitor-shell {
+    max-height: calc(100vh - 30px); /* Account for tiny header */
+    overflow: hidden;
+  }
+
+  body.keyboard-visible #monitor-body {
+    gap: 6px;
+    min-height: 0;
+  }
+
+  body.keyboard-visible #log-column {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.keyboard-visible .log-frame {
+    padding: 6px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  body.keyboard-visible #terminal {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Ensure input line is visible at bottom */
+  body.keyboard-visible #input-line {
+    position: sticky;
+    bottom: 0;
+    background: var(--panel-bg);
+    padding: 4px 0;
+    margin-top: auto;
+  }
+
+  /* Make sure #crt-frame adjusts properly */
+  body.keyboard-visible #crt-frame {
+    max-height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Reduce padding on crt-screen */
+  body.keyboard-visible #crt-screen {
+    padding: 4px;
+  }
+}
+
+/* Additional adjustments for very small viewports when keyboard is visible */
+@media (max-width: 767px) and (max-height: 500px) {
+  body.keyboard-visible #mok-header.monitor-header {
+    padding: 1px 4px;
+    min-height: 20px;
+  }
+
+  body.keyboard-visible .mok-header-title {
+    font-size: 0.6em;
+  }
+
+  body.keyboard-visible .control-buttons button {
+    font-size: 0.6em;
+    padding: 2px 1px;
+    min-height: 20px;
   }
 }

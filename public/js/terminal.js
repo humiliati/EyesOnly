@@ -15,6 +15,11 @@ const Terminal = (function () {
   const TYPE_SPEED_SLOW = 55;    // ms per char for dramatic typing
   const LINE_DELAY = 150;        // ms between lines in sequences
 
+  // Mobile keyboard detection constants
+  const KEYBOARD_HEIGHT_THRESHOLD = 150; // pixels - minimum height difference to detect keyboard
+  const KEYBOARD_ANIMATION_DELAY = 300;  // ms - wait for keyboard animation before checking state
+  const KEYBOARD_DISMISS_DELAY = 100;    // ms - wait for keyboard dismiss animation
+
   // DOM references
   let _terminalEl = null;
   let _inputLineEl = null;
@@ -32,6 +37,8 @@ const Terminal = (function () {
   let _scrollLocked = true;
   let _isMobile = false;
   let _mobileKeyboardSuppressed = false;
+  let _keyboardVisible = false;
+  let _originalViewportHeight = null;
 
   /**
    * Initialize the terminal, bind to DOM elements.
@@ -105,6 +112,11 @@ const Terminal = (function () {
       }
     });
 
+    // Setup mobile keyboard visibility detection
+    if (_isMobile) {
+      _setupKeyboardDetection();
+    }
+
     _hideInput();
   }
 
@@ -128,6 +140,145 @@ const Terminal = (function () {
       target = target.parentElement;
     }
     return false;
+  }
+
+  /**
+   * Setup mobile keyboard visibility detection
+   */
+  function _setupKeyboardDetection() {
+    // Store initial viewport height
+    _originalViewportHeight = window.innerHeight;
+
+    // Use visualViewport API if available (modern browsers)
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', _handleViewportResize);
+      window.visualViewport.addEventListener('scroll', _handleViewportScroll);
+    } else {
+      // Fallback for older browsers
+      window.addEventListener('resize', _handleWindowResize);
+    }
+
+    // Also listen to focus/blur on mobile input
+    if (_mobileInputEl) {
+      _mobileInputEl.addEventListener('focus', _handleInputFocus);
+      _mobileInputEl.addEventListener('blur', _handleInputBlur);
+    }
+  }
+
+  /**
+   * Handle visualViewport resize (keyboard show/hide)
+   */
+  function _handleViewportResize() {
+    if (!window.visualViewport) return;
+
+    var viewportHeight = window.visualViewport.height;
+    var windowHeight = window.innerHeight;
+
+    // Keyboard is visible if viewport height is significantly less than window height
+    var isKeyboardVisible = (windowHeight - viewportHeight) > KEYBOARD_HEIGHT_THRESHOLD;
+
+    _updateKeyboardState(isKeyboardVisible);
+  }
+
+  /**
+   * Handle visualViewport scroll (when keyboard pushes content up)
+   */
+  function _handleViewportScroll() {
+    // Ensure input stays visible when keyboard scrolls viewport
+    if (_keyboardVisible && _inputLineEl && _inputLineEl.style.display !== 'none') {
+      _scrollTerminalInputIntoView();
+    }
+  }
+
+  /**
+   * Handle window resize (fallback for older browsers)
+   */
+  function _handleWindowResize() {
+    if (!_originalViewportHeight) {
+      _originalViewportHeight = window.innerHeight;
+      return;
+    }
+
+    var currentHeight = window.innerHeight;
+    var heightDifference = _originalViewportHeight - currentHeight;
+
+    // Keyboard is likely visible if height decreased significantly
+    var isKeyboardVisible = heightDifference > KEYBOARD_HEIGHT_THRESHOLD;
+
+    _updateKeyboardState(isKeyboardVisible);
+
+    // Update original height when keyboard closes
+    if (!isKeyboardVisible) {
+      _originalViewportHeight = currentHeight;
+    }
+  }
+
+  /**
+   * Handle mobile input focus
+   */
+  function _handleInputFocus() {
+    // Delay to allow keyboard animation to complete before checking state
+    setTimeout(function() {
+      if (document.activeElement === _mobileInputEl) {
+        _updateKeyboardState(true);
+        _scrollTerminalInputIntoView();
+      }
+    }, KEYBOARD_ANIMATION_DELAY);
+  }
+
+  /**
+   * Handle mobile input blur
+   */
+  function _handleInputBlur() {
+    // Brief delay to handle quick focus changes without flicker
+    setTimeout(function() {
+      if (document.activeElement !== _mobileInputEl) {
+        _updateKeyboardState(false);
+      }
+    }, KEYBOARD_DISMISS_DELAY);
+  }
+  }
+
+  /**
+   * Update keyboard visibility state
+   */
+  function _updateKeyboardState(isVisible) {
+    if (_keyboardVisible === isVisible) return;
+    
+    _keyboardVisible = isVisible;
+
+    // Don't apply keyboard styles in Gone Rogue mode (it has its own input handling)
+    var isInGoneRogue = document.body.classList.contains('mode-gone-rogue') || 
+                        document.body.classList.contains('in-gone-rogue');
+    
+    if (isInGoneRogue) return;
+
+    // Toggle body class for CSS styling
+    if (isVisible) {
+      document.body.classList.add('keyboard-visible');
+    } else {
+      document.body.classList.remove('keyboard-visible');
+    }
+  }
+
+  /**
+   * Scroll terminal input into view
+   */
+  function _scrollTerminalInputIntoView() {
+    if (!_inputLineEl || _inputLineEl.style.display === 'none') return;
+
+    // Scroll the input line into view
+    _inputLineEl.scrollIntoView({ 
+      behavior: 'smooth', 
+      block: 'end',
+      inline: 'nearest'
+    });
+
+    // Also ensure the log frame is scrolled to bottom
+    var logFrame = document.querySelector('.log-frame');
+    if (logFrame) {
+      logFrame.scrollTop = logFrame.scrollHeight;
+    }
   }
 
   /**

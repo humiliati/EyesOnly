@@ -439,6 +439,12 @@ const GoneRogue = (function () {
       GoneRogueMobile.show();
       _updateMobileGrid();
 
+      // Show reserve card slots
+      if (typeof ReserveSlots !== 'undefined') {
+        ReserveSlots.show();
+        _updateReserveSlots();
+      }
+
       // Suppress mobile keyboard when interactive grid is active
       if (typeof Terminal !== 'undefined' && typeof Terminal.suppressMobileKeyboard === 'function') {
         Terminal.suppressMobileKeyboard();
@@ -1653,6 +1659,32 @@ const GoneRogue = (function () {
     }
   }
 
+  /**
+   * Update reserve card slots with current hand
+   */
+  function _updateReserveSlots() {
+    if (typeof ReserveSlots === 'undefined' || typeof GAMESTATE === 'undefined') return;
+
+    // Get loose inventory (current hand)
+    var loose = GAMESTATE.getLooseInventory();
+    
+    // Convert to card format for reserve slots
+    var cards = loose.map(function(item) {
+      return {
+        id: item.id,
+        name: item.name || 'Card',
+        icon: item.emoji || item.icon || '🃏',
+        emoji: item.emoji || item.icon || '🃏',
+        description: item.description || '',
+        cost: item.cost || null,
+        damage: item.damage || null,
+        range: item.range || null
+      };
+    });
+
+    ReserveSlots.setReserveCards(cards);
+  }
+
   function _movePlayer(dx, dy, runMode) {
     // Block movement during STR combat
     if (_strCombatActive) {
@@ -2699,6 +2731,11 @@ const GoneRogue = (function () {
       GoneRogueMobile.hide();
     }
 
+    // Hide reserve card slots
+    if (typeof ReserveSlots !== 'undefined') {
+      ReserveSlots.hide();
+    }
+
     var result = {
       success: success,
       unlockedSlot: success,
@@ -3638,6 +3675,11 @@ const GoneRogue = (function () {
     // Update mobile UI
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
       _updateMobileGrid();
+    }
+
+    // Update reserve slots (hand may have changed)
+    if (typeof ReserveSlots !== 'undefined') {
+      _updateReserveSlots();
     }
 
     return result;
