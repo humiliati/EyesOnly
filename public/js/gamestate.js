@@ -23,7 +23,21 @@ const GAMESTATE = (function () {
     looseSlots: 8,
     cryptos: 0,                    // Currency (¢) - persistent across death
     rogueRun: null,
-    activeItemSlot: null           // Active item slot (for lighting items, etc.)
+    activeItemSlot: null,          // Active item slot (for lighting items, etc.)
+
+    // Resource tracking (for STR combat and card system)
+    playerFatigue: 0,              // 0-100 scale (0 = no fatigue, 100 = exhausted)
+    maxFatigue: 100,
+    fatigueRecovery: 5,            // Per turn baseline recovery
+    fatigueThreshold: 70,          // Above this, cards cost more/become less effective
+
+    playerAmmo: 30,                // Pooled ammunition resource
+    maxAmmo: 50,                   // Maximum ammo capacity
+
+    // Consumables inventory (separate from card inventory)
+    consumables: [],               // Array of consumable items with counts: {type, count}
+    consumableSlots: 3,            // How many different types can be carried
+    maxConsumableSlots: 5          // Can be upgraded
   };
 
   function init() {
@@ -467,6 +481,160 @@ const GAMESTATE = (function () {
     return _state.cryptos || 0;
   }
 
+  // ========== FATIGUE MANAGEMENT ==========
+
+  /**
+   * Get current fatigue level
+   */
+  function getFatigue() {
+    return _state.playerFatigue || 0;
+  }
+
+  /**
+   * Add fatigue (from actions like combat, movement)
+   * @param {number} amount - Amount of fatigue to add
+   */
+  function addFatigue(amount) {
+    _state.playerFatigue = Math.min(_state.maxFatigue, (_state.playerFatigue || 0) + amount);
+    _saveState();
+    return _state.playerFatigue;
+  }
+
+  /**
+   * Reduce fatigue (from rest, items, etc.)
+   * @param {number} amount - Amount of fatigue to remove
+   */
+  function reduceFatigue(amount) {
+    _state.playerFatigue = Math.max(0, (_state.playerFatigue || 0) - amount);
+    _saveState();
+    return _state.playerFatigue;
+  }
+
+  /**
+   * Reset fatigue (after combat or rest)
+   */
+  function resetFatigue() {
+    _state.playerFatigue = 0;
+    _saveState();
+  }
+
+  // ========== AMMO MANAGEMENT ==========
+
+  /**
+   * Get current ammo count
+   */
+  function getAmmo() {
+    return _state.playerAmmo || 0;
+  }
+
+  /**
+   * Use ammo (for shooting cards)
+   * @param {number} amount - Amount of ammo to use
+   */
+  function useAmmo(amount) {
+    if ((_state.playerAmmo || 0) < amount) {
+      return {
+        success: false,
+        message: 'Insufficient ammo (Have: ' + (_state.playerAmmo || 0) + ', Need: ' + amount + ')'
+      };
+    }
+    _state.playerAmmo -= amount;
+    _saveState();
+    return {
+      success: true,
+      remaining: _state.playerAmmo
+    };
+  }
+
+  /**
+   * Add ammo (from pickups, purchases)
+   * @param {number} amount - Amount of ammo to add
+   */
+  function addAmmo(amount) {
+    _state.playerAmmo = Math.min(_state.maxAmmo, (_state.playerAmmo || 0) + amount);
+    _saveState();
+    return _state.playerAmmo;
+  }
+
+  // ========== CONSUMABLES MANAGEMENT ==========
+
+  /**
+   * Get all consumables
+   */
+  function getConsumables() {
+    return _state.consumables || [];
+  }
+
+  /**
+   * Add a consumable item
+   * @param {string} type - Type of consumable (e.g., 'ENERGY_DRINK')
+   * @param {number} count - How many to add (default 1)
+   */
+  function addConsumable(type, count) {
+    count = count || 1;
+    var consumables = _state.consumables || [];
+
+    // Check if we already have this consumable type
+    var existing = consumables.find(function(c) { return c.type === type; });
+    if (existing) {
+      existing.count += count;
+    } else {
+      // Check if we have room for a new type
+      if (consumables.length >= (_state.consumableSlots || 3)) {
+        return {
+          success: false,
+          message: 'Consumable slots full (' + consumables.length + '/' + (_state.consumableSlots || 3) + ')'
+        };
+      }
+      consumables.push({ type: type, count: count });
+    }
+
+    _state.consumables = consumables;
+    _saveState();
+    return {
+      success: true,
+      consumables: consumables
+    };
+  }
+
+  /**
+   * Use a consumable item
+   * @param {string} type - Type of consumable to use
+   */
+  function useConsumable(type) {
+    var consumables = _state.consumables || [];
+    var consumable = consumables.find(function(c) { return c.type === type; });
+
+    if (!consumable || consumable.count <= 0) {
+      return {
+        success: false,
+        message: 'No ' + type + ' available'
+      };
+    }
+
+    consumable.count--;
+    if (consumable.count === 0) {
+      // Remove from array if count reaches 0
+      _state.consumables = consumables.filter(function(c) { return c.type !== type; });
+    }
+
+    _saveState();
+    return {
+      success: true,
+      remaining: consumable.count
+    };
+  }
+
+  /**
+   * Get count of a specific consumable
+   * @param {string} type - Type of consumable
+   */
+  function getConsumableCount(type) {
+    var consumables = _state.consumables || [];
+    var consumable = consumables.find(function(c) { return c.type === type; });
+    return consumable ? consumable.count : 0;
+  }
+
   return {
     MODES: MODES,
     init: init,
@@ -488,6 +656,20 @@ const GAMESTATE = (function () {
     spendCryptos: spendCryptos,
     getCryptos: getCryptos,
     reset: reset,
-    requestRogue: requestRogue
+    requestRogue: requestRogue,
+    // Fatigue management
+    getFatigue: getFatigue,
+    addFatigue: addFatigue,
+    reduceFatigue: reduceFatigue,
+    resetFatigue: resetFatigue,
+    // Ammo management
+    getAmmo: getAmmo,
+    useAmmo: useAmmo,
+    addAmmo: addAmmo,
+    // Consumables management
+    getConsumables: getConsumables,
+    addConsumable: addConsumable,
+    useConsumable: useConsumable,
+    getConsumableCount: getConsumableCount
   };
 })();

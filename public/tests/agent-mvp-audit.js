@@ -9,11 +9,41 @@ const MVPAuditEngine = (function() {
   'use strict';
 
   // Import base personas from agent-engine.js if available
-  var BASE_PERSONAS = typeof AgentEngine !== 'undefined' ? AgentEngine.PERSONAS : {};
+  var BASE_PERSONAS = {};
 
-  // Extended personas with additional UX-focused behavior
-  var PERSONAS = {
-    ...BASE_PERSONAS,
+  // In Node.js context, try to load AgentEngine
+  if (typeof AgentEngine === 'undefined' && typeof require !== 'undefined') {
+    try {
+      var AgentEngineModule = require('./agent-engine.js');
+      BASE_PERSONAS = AgentEngineModule.PERSONAS || {};
+    } catch (e) {
+      console.warn('Could not load agent-engine.js in Node.js context:', e.message);
+    }
+  } else if (typeof AgentEngine !== 'undefined') {
+    BASE_PERSONAS = AgentEngine.PERSONAS || {};
+  }
+
+  // Helper function to ensure persona has all required properties
+  function ensurePersonaProperties(persona) {
+    var defaults = {
+      name: 'UNKNOWN',
+      description: 'Unknown persona',
+      vendorStrategy: 'OPTIMAL',
+      combatStrategy: 'CALCULATED',
+      riskTolerance: 0.4,
+      healThreshold: 0.6,
+      spendingRate: 0.5,
+      prefersDarkness: false,
+      usesLightSources: false,
+      seeksGroundEffects: false
+    };
+
+    // Merge persona with defaults, keeping persona's values
+    return Object.assign({}, defaults, persona);
+  }
+
+  // Create extended personas with base personas as foundation
+  var extendedPersonas = {
     // Add specific test personas for UX auditing
     STEALTH_SPECIALIST: {
       name: 'STEALTH_SPECIALIST',
@@ -37,6 +67,19 @@ const MVPAuditEngine = (function() {
       seeksGroundEffects: true
     }
   };
+
+  // Merge base personas with extended personas, ensuring all have required properties
+  var PERSONAS = {};
+
+  // Add all base personas with property validation
+  for (var key in BASE_PERSONAS) {
+    PERSONAS[key] = ensurePersonaProperties(BASE_PERSONAS[key]);
+  }
+
+  // Add extended personas with property validation
+  for (var key in extendedPersonas) {
+    PERSONAS[key] = ensurePersonaProperties(extendedPersonas[key]);
+  }
 
   /**
    * MVP Audit Engine Class
@@ -76,7 +119,11 @@ const MVPAuditEngine = (function() {
           totalDamageTaken: 0,
           cardsPlayedByType: {},
           bossEncounters: 0,
-          bossDefeats: 0
+          bossDefeats: 0,
+          // Fatigue tracking
+          averageFatigueAtEndOfCombat: 0,
+          timesCardUnavailableDueToFatigue: 0,
+          fatigueManagementScore: 0
         },
         pathfinding: {
           totalMoves: 0,
@@ -90,7 +137,27 @@ const MVPAuditEngine = (function() {
           creditsPerFloor: [],
           vendorInteractionsByType: {},
           resourceStarvationEvents: 0,
-          excessCurrencyEvents: 0
+          excessCurrencyEvents: 0,
+          // Shop tracking
+          totalShopVisits: 0,
+          averageSpendPerVisit: 0,
+          itemsPurchased: {},
+          itemsSold: {}
+        },
+        // Consumables tracking
+        consumables: {
+          totalConsumablesFound: 0,
+          totalConsumablesUsed: 0,
+          consumablesByType: {},
+          consumableUsagePerFloor: [],
+          consumableWasteEvents: 0
+        },
+        // Deck management tracking
+        deckMetrics: {
+          averageDeckSizeByFloor: [],
+          cardsLostToFatigue: 0,
+          cardsWithZeroAmmo: 0,
+          looseInventoryUtilization: 0
         }
       };
     }
@@ -141,6 +208,14 @@ const MVPAuditEngine = (function() {
      * Execute a single audit run with enhanced UX tracking
      */
     async executeAuditRun(persona, runId) {
+      // Validate persona parameter
+      if (!persona || typeof persona !== 'object') {
+        throw new Error('Invalid persona: persona parameter is required and must be an object');
+      }
+
+      // Ensure persona has all required properties
+      persona = ensurePersonaProperties(persona);
+
       var report = {
         runId: runId,
         persona: persona.name,
@@ -187,7 +262,10 @@ const MVPAuditEngine = (function() {
             averageCombatLength: 0,
             cardTypesUsed: {},
             damageDealtPerCombat: [],
-            damageTakenPerCombat: []
+            damageTakenPerCombat: [],
+            // Fatigue tracking per run
+            fatigueAtEndOfCombat: [],
+            timesCardUnavailableDueToFatigue: 0
           },
           pathfindingMetrics: {
             averagePathOptimality: 0,
@@ -198,7 +276,22 @@ const MVPAuditEngine = (function() {
           economyMetrics: {
             creditsPerFloor: [],
             spendingPattern: [],
-            vendorChoices: []
+            vendorChoices: [],
+            // Shop visit tracking
+            shopVisits: []
+          },
+          // Consumables tracking per run
+          consumablesMetrics: {
+            consumablesFound: 0,
+            consumablesUsed: 0,
+            consumablesByType: {},
+            consumableUsageByFloor: []
+          },
+          // Deck tracking per run
+          deckMetrics: {
+            deckSizeByFloor: [],
+            cardsLostToFatigue: 0,
+            cardsWithZeroAmmo: 0
           }
         },
         
@@ -300,11 +393,14 @@ const MVPAuditEngine = (function() {
 
         // Log economy state per floor
         report.uxMetrics.economyMetrics.creditsPerFloor.push(gameState.credits);
+        report.uxMetrics.deckMetrics.deckSizeByFloor.push(gameState.deck.length);
         report.economyLog.push({
           floor: currentFloor,
           credits: gameState.credits,
           deckSize: gameState.deck.length,
-          hp: gameState.hp
+          hp: gameState.hp,
+          fatigue: gameState.fatigue || 0,
+          ammo: gameState.ammo || 0
         });
 
         report.floorsCleared++;
@@ -338,7 +434,13 @@ const MVPAuditEngine = (function() {
         facing: 'north',
         stealthBonus: 0,
         lightSourceEquipped: null,
-        groundEffectsSteppedOn: []
+        groundEffectsSteppedOn: [],
+        // New resource tracking
+        fatigue: 0,
+        maxFatigue: 100,
+        ammo: 30,
+        maxAmmo: 50,
+        consumables: []
       };
     }
 
@@ -362,6 +464,12 @@ const MVPAuditEngine = (function() {
      * Resolve floor with comprehensive UX tracking
      */
     async resolveFloorWithUXTracking(gameState, floor, persona, report) {
+      // Validate persona parameter
+      if (!persona || typeof persona !== 'object') {
+        throw new Error('Invalid persona in resolveFloorWithUXTracking: persona parameter is required');
+      }
+      persona = ensurePersonaProperties(persona);
+
       var outcome = {
         survived: true,
         stuck: false,
@@ -494,6 +602,12 @@ const MVPAuditEngine = (function() {
      * Simulate STR Combat (Lite version)
      */
     simulateSTRCombatLite(gameState, floor, persona, report) {
+      // Validate persona parameter
+      if (!persona || typeof persona !== 'object') {
+        throw new Error('Invalid persona in simulateSTRCombatLite: persona parameter is required');
+      }
+      persona = ensurePersonaProperties(persona);
+
       var result = {
         playerWon: false,
         roundsPlayed: 0,
@@ -556,6 +670,12 @@ const MVPAuditEngine = (function() {
     selectBestCard(deck, persona) {
       if (!deck || deck.length === 0) return null;
 
+      // Validate and ensure persona has required properties
+      if (!persona || typeof persona !== 'object') {
+        persona = { name: 'UNKNOWN' };
+      }
+      persona = ensurePersonaProperties(persona);
+
       if (persona.name === 'MINMAXER') {
         // Pick highest power card
         return deck.reduce((best, card) => 
@@ -574,6 +694,12 @@ const MVPAuditEngine = (function() {
      * Resolve boss with enhanced tracking
      */
     async resolveBossWithTracking(gameState, floor, persona, report) {
+      // Validate persona parameter
+      if (!persona || typeof persona !== 'object') {
+        throw new Error('Invalid persona in resolveBossWithTracking: persona parameter is required');
+      }
+      persona = ensurePersonaProperties(persona);
+
       var bossHP = floor * 15; // Boss is nearly 2x normal threat
       var deckPower = this.calculateDeckPower(gameState.deck);
 
@@ -617,9 +743,16 @@ const MVPAuditEngine = (function() {
      * Handle vendor stop with tracking
      */
     handleVendorStopWithTracking(gameState, persona, report, floor) {
+      // Validate persona parameter
+      if (!persona || typeof persona !== 'object') {
+        throw new Error('Invalid persona in handleVendorStopWithTracking: persona parameter is required');
+      }
+      persona = ensurePersonaProperties(persona);
+
       report.vendorInteractions++;
-      
+
       var choices = [];
+      var spentThisVisit = 0;
 
       // Healing
       if (gameState.hp < gameState.maxHp * persona.healThreshold && gameState.credits >= 50) {
@@ -627,6 +760,7 @@ const MVPAuditEngine = (function() {
         gameState.credits -= 50;
         report.healingPurchases++;
         report.creditsSpent += 50;
+        spentThisVisit += 50;
         choices.push('HEAL');
       }
 
@@ -637,6 +771,7 @@ const MVPAuditEngine = (function() {
         gameState.credits -= 150;
         report.cardsPurchased++;
         report.creditsSpent += 150;
+        spentThisVisit += 150;
         choices.push('BUY_RARE');
       } else if (persona.vendorStrategy === 'GAMBLE_ALL') {
         while (gameState.credits >= 100) {
@@ -646,13 +781,16 @@ const MVPAuditEngine = (function() {
           }
           gameState.credits += gambleResult.creditsWon - 100;
           report.creditsSpent += 100;
+          spentThisVisit += 100;
           choices.push('GAMBLE');
         }
       }
 
-      report.uxMetrics.economyMetrics.vendorChoices.push({
+      // Track shop visit
+      report.uxMetrics.economyMetrics.shopVisits.push({
         floor: floor,
         choices: choices,
+        spent: spentThisVisit,
         creditsRemaining: gameState.credits
       });
     }
