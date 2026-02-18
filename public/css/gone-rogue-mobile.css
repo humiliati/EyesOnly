@@ -433,6 +433,29 @@
 .rogue-card[data-quality="near_perfect"] { border-color: #8bc34a; }
 .rogue-card[data-quality="perfect"] { border-color: #9c27b0; }
 
+/* Card Navigation Arrow */
+.rogue-card.card-nav {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-color: #ffeb3b;
+  cursor: pointer;
+  touch-action: auto;
+  opacity: 0.9;
+}
+
+.rogue-card.card-nav:hover {
+  opacity: 1;
+  transform: translateY(-5px) scale(1.05);
+}
+
+.rogue-card.card-nav .card-nav-arrow {
+  animation: arrow-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes arrow-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.7; }
+}
+
 /* No Cards Message */
 .no-cards {
   color: #ff1c4a;

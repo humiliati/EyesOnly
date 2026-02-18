@@ -39,6 +39,11 @@ const GoneRogueMobile = (function () {
   var _cardFanCooldown = 800; // ms cooldown after movement before allowing card fan
   var _touchMoveThreshold = 10; // px - if touch moves more than this, it's a swipe not a tap
 
+  // Card pagination
+  var _cardPageIndex = 0;
+  var _cardsPerPage = 4; // 4 cards + 1 navigation slot when paginating
+  var _maxCardsWithoutPagination = 5;
+
   /**
    * Initialize mobile UI
    */
@@ -882,14 +887,13 @@ const GoneRogueMobile = (function () {
     _cardContainer.style.display = 'flex';
     _cardContainer.innerHTML = '';
 
-    // Get cards from GAMESTATE
-    var cards = [];
+    // Get all cards from GAMESTATE
+    var allCards = [];
     if (typeof GAMESTATE !== 'undefined') {
-      var loose = GAMESTATE.getLooseInventory();
-      cards = loose.slice(0, 5); // Show up to 5 cards
+      allCards = GAMESTATE.getLooseInventory();
     }
 
-    if (cards.length === 0) {
+    if (allCards.length === 0) {
       _cardContainer.innerHTML = '<div class="no-cards">NO CARDS AVAILABLE</div>';
       setTimeout(function() {
         _cardContainer.style.display = 'none';
@@ -897,11 +901,30 @@ const GoneRogueMobile = (function () {
       return;
     }
 
+    // Determine if pagination is needed
+    var needsPagination = allCards.length > _maxCardsWithoutPagination;
+    var totalPages = needsPagination ? Math.ceil(allCards.length / _cardsPerPage) : 1;
+
+    // Clamp page index to valid range
+    _cardPageIndex = Math.max(0, Math.min(_cardPageIndex, totalPages - 1));
+
+    // Calculate slice range for current page
+    var startIndex, endIndex, cardsToShow;
+    if (needsPagination) {
+      startIndex = _cardPageIndex * _cardsPerPage;
+      endIndex = Math.min(startIndex + _cardsPerPage, allCards.length);
+      cardsToShow = allCards.slice(startIndex, endIndex);
+    } else {
+      cardsToShow = allCards;
+      startIndex = 0;
+    }
+
     // Create card elements
-    cards.forEach(function(card, index) {
+    cardsToShow.forEach(function(card, localIndex) {
+      var globalIndex = startIndex + localIndex;
       var cardEl = document.createElement('div');
       cardEl.className = 'rogue-card';
-      cardEl.dataset.cardIndex = index;
+      cardEl.dataset.cardIndex = globalIndex;
       cardEl.innerHTML =
         '<div class="card-emoji">' + card.emoji + '</div>' +
         '<div class="card-name">' + card.name + '</div>' +
@@ -909,6 +932,54 @@ const GoneRogueMobile = (function () {
 
       _cardContainer.appendChild(cardEl);
     });
+
+    // Add navigation arrow if pagination is needed
+    if (needsPagination) {
+      var navEl = document.createElement('div');
+      navEl.className = 'rogue-card card-nav';
+
+      // Determine if we should show "next" or "prev" arrow
+      var isLastPage = _cardPageIndex === totalPages - 1;
+      var arrow = isLastPage ? '←' : '→';
+      var label = isLastPage ? 'PREV' : 'NEXT';
+
+      navEl.innerHTML =
+        '<div class="card-emoji card-nav-arrow">' + arrow + '</div>' +
+        '<div class="card-name">' + label + '</div>' +
+        '<div class="card-quality">Page ' + (_cardPageIndex + 1) + '/' + totalPages + '</div>';
+
+      navEl.addEventListener('click', _handleCardNavClick);
+      navEl.addEventListener('touchend', _handleCardNavClick);
+
+      _cardContainer.appendChild(navEl);
+    }
+  }
+
+  /**
+   * Handle card navigation arrow click/tap
+   */
+  function _handleCardNavClick(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Get all cards to determine total pages
+    var allCards = [];
+    if (typeof GAMESTATE !== 'undefined') {
+      allCards = GAMESTATE.getLooseInventory();
+    }
+
+    var totalPages = Math.ceil(allCards.length / _cardsPerPage);
+    var isLastPage = _cardPageIndex === totalPages - 1;
+
+    // Cycle page index
+    if (isLastPage) {
+      _cardPageIndex = Math.max(0, _cardPageIndex - 1);
+    } else {
+      _cardPageIndex = Math.min(totalPages - 1, _cardPageIndex + 1);
+    }
+
+    // Re-render card fan with new page
+    _showCardFan();
   }
 
   /**
@@ -977,10 +1048,25 @@ const GoneRogueMobile = (function () {
     if (direction && typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleCardSwipe === 'function') {
       var cardIndex = parseInt(_activeCard.dataset.cardIndex);
       GoneRogue.handleCardSwipe(cardIndex, direction);
+
+      // Check if STR combat is still active after card use
+      // If so, re-show card fan after a delay for next round
+      setTimeout(function() {
+        if (typeof GoneRogue !== 'undefined' && GoneRogue.isStrCombatActive && GoneRogue.isStrCombatActive()) {
+          // Combat still active - re-show card fan for next round
+          // Keep current page index so player doesn't have to navigate back
+          _showCardFan();
+        } else {
+          // Combat ended - hide card container and reset page index
+          _cardContainer.style.display = 'none';
+          _cardPageIndex = 0;
+        }
+      }, 500); // 500ms delay to allow combat log animation to complete
+    } else {
+      _cardContainer.style.display = 'none';
     }
 
     _activeCard = null;
-    _cardContainer.style.display = 'none';
   }
 
   /**
@@ -1587,14 +1673,16 @@ const GoneRogueMobile = (function () {
   function toggleActionMenu() {
     if (!_cardContainer) return;
 
-    // If action menu is currently visible, hide it
+    // If action menu is currently visible, hide it and reset page index
     if (_cardContainer.style.display !== 'none' && _cardContainer.innerHTML !== '') {
       _cardContainer.style.display = 'none';
       _cardContainer.innerHTML = '';
+      _cardPageIndex = 0; // Reset to first page
       return;
     }
 
-    // Show action menu with card fan
+    // Show action menu with card fan (starting from page 0)
+    _cardPageIndex = 0; // Reset to first page
     _showCardFan();
   }
 
