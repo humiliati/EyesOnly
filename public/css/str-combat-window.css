@@ -185,6 +185,27 @@ body.str-combat-minimized-state::before {
   }
 }
 
+/* Intent Display */
+.str-intent-display {
+  font-size: 24px;
+  line-height: 1;
+  color: #ffaa00;
+  text-shadow: 0 0 10px rgba(255, 170, 0, 0.8);
+  margin-top: -5px;
+  margin-bottom: 5px;
+  letter-spacing: 4px;
+  animation: intent-shimmer 3s ease-in-out infinite;
+}
+
+@keyframes intent-shimmer {
+  0%, 100% {
+    text-shadow: 0 0 10px rgba(255, 170, 0, 0.8);
+  }
+  50% {
+    text-shadow: 0 0 20px rgba(255, 170, 0, 1);
+  }
+}
+
 /* HP Bar */
 .str-hp-bar-container {
   width: 100%;
@@ -367,6 +388,13 @@ body.str-combat-minimized-state::before {
 .str-mini-emoji {
   font-size: 18px;
   line-height: 1;
+}
+
+.str-mini-intent {
+  font-size: 10px;
+  line-height: 1;
+  color: #ffaa00;
+  text-shadow: 0 0 5px rgba(255, 170, 0, 0.8);
 }
 
 .str-mini-timer {

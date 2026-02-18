@@ -226,6 +226,13 @@ const STRCombatWindow = (function () {
     var enemy = _combatState.enemy || {};
     html += '<div class="str-combatant str-enemy">';
     html += '<div class="str-combatant-emoji">' + (enemy.emoji || '👾') + '</div>';
+
+    // Enemy intent display (if available)
+    if (typeof EnemyIntentSystem !== 'undefined' && enemy.intentState) {
+      var intentDisplay = EnemyIntentSystem.formatIntentDisplay(enemy.intentState);
+      html += '<div class="str-intent-display" title="Enemy Intent">' + intentDisplay + '</div>';
+    }
+
     html += '<div class="str-hp-bar-container">';
     var enemyHpPercent = enemy.maxHp ? ((enemy.hp || 0) / enemy.maxHp * 100) : 0;
     html += '<div class="str-hp-bar enemy-hp" style="width: ' + enemyHpPercent + '%"></div>';
@@ -290,6 +297,12 @@ const STRCombatWindow = (function () {
     var html = '';
     html += '<div class="str-mini-content">';
     html += '<div class="str-mini-emoji">' + (enemy.emoji || '👾') + '</div>';
+
+    // Enemy intent in minimized view (expression only for space)
+    if (typeof EnemyIntentSystem !== 'undefined' && enemy.intentState && enemy.intentState.expression) {
+      html += '<div class="str-mini-intent">' + enemy.intentState.expression.glyph + '</div>';
+    }
+
     html += '<div class="str-mini-timer">⏱️ ' + (_timeRemaining / 1000).toFixed(1) + 's</div>';
     html += '<div class="str-mini-expand">↑</div>';
     html += '</div>';

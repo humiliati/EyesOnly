@@ -14,11 +14,19 @@ This implementation provides a Hearthstone-style card display system for STR (Si
 
 A centered combat popup that displays:
 - Enemy and player HP bars
+- **Enemy Intent Display** - Face expression + weapon icon (NEW)
 - Advantage indicator (Ambush, Neutral, Disadvantaged, Flanked)
 - Round-based timer with enemy-type specific durations
 - Minimize/maximize functionality
 
 #### Features
+
+**Enemy Intent System (NEW):**
+- Displays enemy face expression (^_^, >__<, O_O, etc.) and weapon icon (🔫, 💣, 🎯, etc.)
+- Shows below enemy emoji with golden shimmer effect
+- Updates dynamically based on enemy state and planned action
+- Minimized view shows expression glyph only
+- Gracefully handles when intent system is unavailable
 
 **Timer System:**
 - Standard enemies: 2.0 seconds
@@ -48,7 +56,12 @@ STRCombatWindow.init();
 // Show combat window
 STRCombatWindow.show({
   round: 1,
-  enemy: { emoji: '👾', hp: 5, maxHp: 5 },
+  enemy: {
+    emoji: '👾',
+    hp: 5,
+    maxHp: 5,
+    intentState: { /* enemy intent state from EnemyIntentSystem */ }
+  },
   player: { hp: 10, maxHp: 10 },
   advantage: 'neutral',
   enemyType: 'standard'
@@ -308,6 +321,112 @@ Uses modern CSS features:
 - Verify enemy type is valid (standard/elite/boss/quick/puzzle)
 - Check timer interval is running (console should show updates)
 - Ensure STR window is visible (not hidden)
+
+### Intent not displaying
+- Ensure `enemy-intent-system.js` is loaded before `str-combat-window.js`
+- Verify enemy object has `intentState` property
+- Check `EnemyIntentSystem.formatIntentDisplay()` returns valid string
+- See ENEMY_INTENT_SYSTEM_GUIDE.md for troubleshooting
+
+## Enemy Intent System Integration
+
+### Overview
+
+The STR Combat Window now displays enemy intent information, providing Metal Gear Solid-style tactical feedback to players.
+
+### Features
+
+**Main Window Display:**
+- Enemy face expression (e.g., ^_^, >__<, O_O)
+- Weapon icon (e.g., 🔫, 💣, 🎯)
+- Golden shimmer animation effect
+- Updates each combat round
+- Positioned below enemy emoji
+
+**Minimized View:**
+- Shows expression glyph only (space-efficient)
+- Displayed between enemy emoji and timer
+- Maintains golden glow effect
+
+### Implementation
+
+The intent display integrates seamlessly with existing systems:
+
+```javascript
+// Integration layer automatically passes intent state
+var windowState = {
+  enemy: {
+    emoji: '👾',
+    hp: 5,
+    maxHp: 5,
+    intentState: combatState.enemy.intentState // From EnemyIntentSystem
+  }
+};
+
+STRCombatWindow.show(windowState);
+```
+
+**Rendering:**
+```javascript
+// In _renderWindow()
+if (typeof EnemyIntentSystem !== 'undefined' && enemy.intentState) {
+  var intentDisplay = EnemyIntentSystem.formatIntentDisplay(enemy.intentState);
+  html += '<div class="str-intent-display">' + intentDisplay + '</div>';
+}
+```
+
+**Styling:**
+```css
+.str-intent-display {
+  font-size: 24px;
+  color: #ffaa00;
+  text-shadow: 0 0 10px rgba(255, 170, 0, 0.8);
+  animation: intent-shimmer 3s ease-in-out infinite;
+}
+```
+
+### Visual Examples
+
+**Main Window with Intent:**
+```
+┌─────────────────────┐
+│  ⚔️ STR COMBAT - R2 │
+├─────────────────────┤
+│       👾           │ ← Enemy emoji
+│     >__< 🎯        │ ← Intent (angry + aimed shot)
+│  ████████ 3/5 HP   │ ← HP bar
+│                    │
+│        ⚔️          │ ← Advantage
+│      NEUTRAL       │
+│                    │
+│   █████████ 7/10   │ ← Player HP
+│        🧑          │ ← Player emoji
+│                    │
+│  TIME: 1.8s        │ ← Timer
+└─────────────────────┘
+```
+
+**Minimized with Intent:**
+```
+┌──────┐
+│  👾  │ ← Enemy emoji
+│ >__< │ ← Expression only
+│⏱️1.2s│ ← Timer
+│  ↑   │ ← Expand button
+└──────┘
+```
+
+### Dependencies
+
+- **enemy-intent-system.js** - Must be loaded before str-combat-window.js
+- **gone-rogue.js** - Must initialize enemy.intentState on combat entry
+- **EnemyIntentSystem.formatIntentDisplay()** - Formats intent for display
+
+### Related Documentation
+
+- `ENEMY_INTENT_SYSTEM_GUIDE.md` - Complete intent system documentation
+- `INTENT_VISUAL_EXAMPLES.md` - Visual examples of intent in combat
+- Enemy intent updates automatically via `str-combat-integration.js`
 
 ## Future Enhancements
 

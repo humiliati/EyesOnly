@@ -80,7 +80,8 @@
         enemy: {
           emoji: combatState.enemy ? combatState.enemy.emoji : '👾',
           hp: combatState.enemy ? combatState.enemy.hp : 0,
-          maxHp: combatState.enemy ? combatState.enemy.maxHp : 5
+          maxHp: combatState.enemy ? combatState.enemy.maxHp : 5,
+          intentState: combatState.enemy ? combatState.enemy.intentState : null
         },
         player: {
           hp: combatState.player ? combatState.player.hp : 10,
@@ -98,7 +99,8 @@
         enemy: {
           emoji: combatState.enemy ? combatState.enemy.emoji : '👾',
           hp: combatState.enemy ? combatState.enemy.hp : 0,
-          maxHp: combatState.enemy ? combatState.enemy.maxHp : 5
+          maxHp: combatState.enemy ? combatState.enemy.maxHp : 5,
+          intentState: combatState.enemy ? combatState.enemy.intentState : null
         },
         player: {
           hp: combatState.player ? combatState.player.hp : 10,
