@@ -1161,3 +1161,254 @@ body.amber-mode #scanlines::after {
     box-shadow: none;
   }
 }
+
+/* ============================================================
+   RESPONSIVE LAYOUT & MOBILE VIEWPORT PRIORITY
+   Requirements: Currency/ticker collision fix + header squash
+   ============================================================ */
+
+/* --- Tablet Breakpoint (768px - 1023px) --- */
+@media (max-width: 1023px) {
+  /* Accountability ticker collapses to icon-only */
+  .accountability-indicator {
+    position: relative;
+  }
+  
+  .accountability-label {
+    display: none; /* Hide label text on tablet */
+  }
+  
+  .accountability-icon {
+    font-size: 1.4em;
+    cursor: help; /* Indicate tooltip available */
+  }
+  
+  /* Add tooltip on hover for collapsed state */
+  .accountability-indicator:hover::after {
+    content: '[un]accountable';
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    padding: 4px 8px;
+    background: rgba(8, 24, 12, 0.95);
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    font-size: 0.7em;
+    white-space: nowrap;
+    z-index: 200;
+    pointer-events: none;
+    animation: tooltip-in 0.2s ease-out;
+  }
+  
+  @keyframes tooltip-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* --- Mobile Breakpoint (< 768px) --- */
+@media (max-width: 767px) {
+  /* Header padding reduction */
+  #mok-header.monitor-header {
+    padding: 6px 10px;
+    gap: 8px;
+  }
+  
+  .mok-header-title {
+    font-size: 0.85em;
+  }
+  
+  .mok-header-sub {
+    font-size: 0.72em;
+  }
+  
+  /* Currency display size reduction */
+  .currency-display {
+    font-size: 0.6em;
+    padding: 2px 4px;
+  }
+  
+  .currency-symbol {
+    font-size: 1em;
+  }
+  
+  /* Accountability ticker becomes nested indicator */
+  .accountability-indicator {
+    position: absolute;
+    right: -4px;
+    top: -4px;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--bg);
+    border-radius: 50%;
+    padding: 0;
+    background: rgba(6, 14, 8, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .mok-header-right {
+    position: relative;
+  }
+  
+  .accountability-label {
+    display: none;
+  }
+  
+  .accountability-icon {
+    font-size: 0.9em;
+  }
+  
+  /* Active item slot reduction */
+  .active-item-display {
+    width: 42px;
+    height: 42px;
+    font-size: 1.5em;
+  }
+  
+  .active-item-label {
+    font-size: 0.6em;
+  }
+}
+
+/* --- Gone Rogue Mode Header Squash (Mobile) --- */
+@media (max-width: 767px) {
+  body.mode-gone-rogue #mok-header.monitor-header,
+  body.in-gone-rogue #mok-header.monitor-header {
+    padding: 4px 8px;
+    min-height: 32px;
+  }
+  
+  body.mode-gone-rogue .mok-header-title,
+  body.in-gone-rogue .mok-header-title {
+    font-size: 0.75em;
+  }
+  
+  body.mode-gone-rogue .mok-header-sub,
+  body.in-gone-rogue .mok-header-sub {
+    font-size: 0.65em;
+  }
+  
+  body.mode-gone-rogue .currency-display,
+  body.in-gone-rogue .currency-display {
+    font-size: 0.55em;
+  }
+  
+  body.mode-gone-rogue .active-item-display,
+  body.in-gone-rogue .active-item-display {
+    width: 36px;
+    height: 36px;
+    font-size: 1.3em;
+    border-width: 1px;
+  }
+  
+  body.mode-gone-rogue .active-item-label,
+  body.in-gone-rogue .active-item-label {
+    font-size: 0.55em;
+  }
+  
+  body.mode-gone-rogue .accountability-indicator,
+  body.in-gone-rogue .accountability-indicator {
+    width: 12px;
+    height: 12px;
+    right: -2px;
+    top: -2px;
+  }
+  
+  body.mode-gone-rogue .accountability-icon,
+  body.in-gone-rogue .accountability-icon {
+    font-size: 0.7em;
+  }
+}
+
+/* --- Landscape Mobile (height < 500px) --- */
+@media (max-height: 500px) and (orientation: landscape) {
+  /* Aggressive header squashing for landscape */
+  #mok-header.monitor-header {
+    padding: 2px 6px;
+    min-height: 28px;
+    gap: 6px;
+  }
+  
+  .mok-header-title {
+    font-size: 0.7em;
+  }
+  
+  .mok-header-sub {
+    font-size: 0.6em;
+  }
+  
+  .active-item-display {
+    width: 32px;
+    height: 32px;
+    font-size: 1.2em;
+  }
+  
+  .active-item-label {
+    display: none; /* Hide label in landscape */
+  }
+  
+  .currency-display {
+    font-size: 0.5em;
+  }
+  
+  /* Ensure game screen is scrollable */
+  #log-column {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .log-frame {
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+  }
+}
+
+/* --- Terminal/Game Screen Touch Scrolling --- */
+@media (max-width: 767px) {
+  #log-column {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  
+  .log-frame {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  #terminal {
+    min-height: 100%;
+  }
+}
+
+/* --- Control Rail Button Transformation for Gone Rogue --- */
+@media (max-width: 767px) {
+  body.mode-gone-rogue .control-buttons button,
+  body.in-gone-rogue .control-buttons button {
+    font-size: 0.7em;
+    padding: 6px 8px;
+  }
+}
+
+/* --- Priority: Game Screen Must Always Be Accessible --- */
+body.mode-gone-rogue #monitor-body,
+body.in-gone-rogue #monitor-body {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+body.mode-gone-rogue #log-column,
+body.in-gone-rogue #log-column {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
