@@ -237,7 +237,6 @@ const Terminal = (function () {
       }
     }, KEYBOARD_DISMISS_DELAY);
   }
-  }
 
   /**
    * Update keyboard visibility state
