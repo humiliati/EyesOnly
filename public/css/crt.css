@@ -1707,32 +1707,10 @@ body.in-gone-rogue #log-column {
     min-height: 24px;
   }
 
-  /* Minimize or hide debrief window when keyboard visible */
+  /* Hide debrief window when keyboard visible to maximize terminal space */
   body.keyboard-visible .debrief-window {
-    display: none; /* Hide completely to maximize terminal space */
+    display: none;
   }
-
-  /* Alternatively, if we want to keep it but minimize: */
-  /*
-  body.keyboard-visible .debrief-window {
-    padding: 4px;
-    gap: 2px;
-    min-height: auto;
-  }
-
-  body.keyboard-visible .debrief-label {
-    font-size: 0.6em;
-  }
-
-  body.keyboard-visible .debrief-screen {
-    min-height: 40px;
-  }
-
-  body.keyboard-visible #mok-avatar {
-    width: 30px;
-    height: 30px;
-  }
-  */
 
   /* Maximize terminal space when keyboard visible */
   body.keyboard-visible #monitor-shell {

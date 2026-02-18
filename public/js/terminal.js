@@ -15,6 +15,11 @@ const Terminal = (function () {
   const TYPE_SPEED_SLOW = 55;    // ms per char for dramatic typing
   const LINE_DELAY = 150;        // ms between lines in sequences
 
+  // Mobile keyboard detection constants
+  const KEYBOARD_HEIGHT_THRESHOLD = 150; // pixels - minimum height difference to detect keyboard
+  const KEYBOARD_ANIMATION_DELAY = 300;  // ms - wait for keyboard animation before checking state
+  const KEYBOARD_DISMISS_DELAY = 100;    // ms - wait for keyboard dismiss animation
+
   // DOM references
   let _terminalEl = null;
   let _inputLineEl = null;
@@ -170,8 +175,7 @@ const Terminal = (function () {
     var windowHeight = window.innerHeight;
 
     // Keyboard is visible if viewport height is significantly less than window height
-    var keyboardThreshold = 150; // pixels
-    var isKeyboardVisible = (windowHeight - viewportHeight) > keyboardThreshold;
+    var isKeyboardVisible = (windowHeight - viewportHeight) > KEYBOARD_HEIGHT_THRESHOLD;
 
     _updateKeyboardState(isKeyboardVisible);
   }
@@ -199,8 +203,7 @@ const Terminal = (function () {
     var heightDifference = _originalViewportHeight - currentHeight;
 
     // Keyboard is likely visible if height decreased significantly
-    var keyboardThreshold = 150;
-    var isKeyboardVisible = heightDifference > keyboardThreshold;
+    var isKeyboardVisible = heightDifference > KEYBOARD_HEIGHT_THRESHOLD;
 
     _updateKeyboardState(isKeyboardVisible);
 
@@ -214,25 +217,26 @@ const Terminal = (function () {
    * Handle mobile input focus
    */
   function _handleInputFocus() {
-    // Small delay to allow keyboard to animate in
+    // Delay to allow keyboard animation to complete before checking state
     setTimeout(function() {
       if (document.activeElement === _mobileInputEl) {
         _updateKeyboardState(true);
         _scrollTerminalInputIntoView();
       }
-    }, 300);
+    }, KEYBOARD_ANIMATION_DELAY);
   }
 
   /**
    * Handle mobile input blur
    */
   function _handleInputBlur() {
-    // Small delay to handle quick focus changes
+    // Brief delay to handle quick focus changes without flicker
     setTimeout(function() {
       if (document.activeElement !== _mobileInputEl) {
         _updateKeyboardState(false);
       }
-    }, 100);
+    }, KEYBOARD_DISMISS_DELAY);
+  }
   }
 
   /**

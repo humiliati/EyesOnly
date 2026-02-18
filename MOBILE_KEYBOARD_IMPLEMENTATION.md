@@ -365,15 +365,31 @@ Change to `0.3s` for slower, smoother transitions, or `0.1s` for snappier respon
 ### Optional Configurations
 
 #### Keep Debrief Visible (Minimized)
-Uncomment alternative CSS in crt.css:
+
+If you prefer to minimize the debrief window instead of hiding it completely, add this CSS:
+
 ```css
 body.keyboard-visible .debrief-window {
   padding: 4px;
   gap: 2px;
   min-height: auto;
 }
-/* ... more minimization styles ... */
+
+body.keyboard-visible .debrief-label {
+  font-size: 0.6em;
+}
+
+body.keyboard-visible .debrief-screen {
+  min-height: 40px;
+}
+
+body.keyboard-visible #mok-avatar {
+  width: 30px;
+  height: 30px;
+}
 ```
+
+Replace the existing `body.keyboard-visible .debrief-window { display: none; }` rule with the above styles.
 
 #### Adjust Header Squash Amount
 Modify min-height in CSS:
