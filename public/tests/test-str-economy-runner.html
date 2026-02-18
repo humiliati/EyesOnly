@@ -418,7 +418,14 @@
 
       try {
         // Create engine with STR-focused configuration
-        const engine = new MVPAuditEngine({
+        // Access the MVPAuditEngine class from the module
+        const MVPAuditEngineClass = (typeof MVPAuditEngine !== 'undefined' && MVPAuditEngine.MVPAuditEngine) || MVPAuditEngine;
+
+        if (!MVPAuditEngineClass) {
+          throw new Error('MVPAuditEngine not loaded. Make sure agent-mvp-audit.js is included.');
+        }
+
+        const engine = new MVPAuditEngineClass({
           verbose: false,
           maxFloor: maxFloor,
           enableElites: true,
@@ -497,7 +504,12 @@
       const strHeavyPersonas = ['GREEDY_LOOTER', 'RISKY_GAMBLER', 'MINMAXER'];
       const strBalancedPersonas = ['MINMAXER', 'GREEDY_LOOTER', 'SPEEDRUNNER'];
       const strEconomyPersonas = ['SAVER_HOARDER', 'MINMAXER', 'RISKY_GAMBLER'];
-      const allPersonas = Object.keys(MVPAuditEngine.PERSONAS || {});
+
+      // Access PERSONAS from the module export
+      const PERSONAS = (typeof MVPAuditEngine !== 'undefined' && MVPAuditEngine.PERSONAS) ||
+                       (typeof AgentEngine !== 'undefined' && AgentEngine.PERSONAS) ||
+                       {};
+      const allPersonas = Object.keys(PERSONAS);
 
       let personaList;
       switch(focus) {
@@ -515,7 +527,7 @@
       }
 
       const personaName = personaList[index % personaList.length];
-      return MVPAuditEngine.PERSONAS?.[personaName] || {name: personaName};
+      return PERSONAS[personaName] || {name: personaName};
     }
 
     // Helper: Generate STR-focused report
