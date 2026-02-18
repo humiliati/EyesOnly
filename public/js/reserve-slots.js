@@ -35,6 +35,9 @@ const ReserveSlots = (function () {
     _slotsContainer = document.createElement('div');
     _slotsContainer.id = 'reserve-slots-container';
     _slotsContainer.style.display = 'none'; // Hidden until Gone Rogue active
+
+    // Append to control buttons area (will be positioned properly in render())
+    controlButtons.appendChild(_slotsContainer);
   }
 
   /**
@@ -146,8 +149,9 @@ const ReserveSlots = (function () {
       return _reserveCards;
     }
 
-    // Show 4 cards (leaving room for cycle button)
-    var endIndex = _cycleOffset + _maxReserveSlots - 1;
+    // Show 3 cards when pagination is needed (leaving room for cycle button in slot 4)
+    var visibleCount = _maxReserveSlots - 1;
+    var endIndex = _cycleOffset + visibleCount;
     return _reserveCards.slice(_cycleOffset, endIndex);
   }
 
@@ -291,11 +295,12 @@ const ReserveSlots = (function () {
    * Handle cycle button click
    */
   function _handleCycleClick() {
-    // Cycle forward through cards
-    _cycleOffset += _maxReserveSlots - 1;
+    // Cycle forward one card at a time for smooth experience
+    _cycleOffset += 1;
     
-    // Wrap around if exceeded
-    if (_cycleOffset >= _reserveCards.length) {
+    // Wrap around if exceeded (ensure we can show full page)
+    var maxOffset = _reserveCards.length - (_maxReserveSlots - 1);
+    if (_cycleOffset >= maxOffset) {
       _cycleOffset = 0;
     }
 

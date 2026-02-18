@@ -1379,7 +1379,7 @@ body.amber-mode #scanlines::after {
   }
   
   .log-frame {
-    max-height: calc(100vh - 40px);
+    max-height: calc(100vh - 40px); /* 40px = estimated header height in landscape */
     overflow-y: auto;
   }
 }
@@ -1533,13 +1533,11 @@ body.in-gone-rogue .control-buttons button[data-action="action"]:hover {
   box-shadow: 0 0 20px rgba(28, 255, 155, 0.4);
 }
 
-/* Hide non-Gone Rogue buttons when in Gone Rogue mode */
-body.mode-gone-rogue .control-buttons button[data-action="back"],
+/* Hide non-Gone Rogue buttons when in Gone Rogue mode (except back button) */
 body.mode-gone-rogue .control-buttons button[data-action="map"],
 body.mode-gone-rogue .control-buttons button[data-action="login"],
 body.mode-gone-rogue .control-buttons button[data-action="inventory"],
 body.mode-gone-rogue .control-buttons button[data-action="highscore"],
-body.in-gone-rogue .control-buttons button[data-action="back"],
 body.in-gone-rogue .control-buttons button[data-action="map"],
 body.in-gone-rogue .control-buttons button[data-action="login"],
 body.in-gone-rogue .control-buttons button[data-action="inventory"],

@@ -57,8 +57,10 @@
     // Update login button based on auth state
     _updateLoginButton();
 
-    // Check for login state changes periodically
-    setInterval(_updateLoginButton, 1000);
+    // Listen for custom auth events instead of polling
+    if (typeof window !== 'undefined') {
+      window.addEventListener('auth-state-changed', _updateLoginButton);
+    }
   }
 
   function handleButtonClick(e) {
@@ -253,6 +255,10 @@
               ''
             ]);
             _updateLoginButton();
+            // Dispatch auth state change event
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('auth-state-changed'));
+            }
           }).catch(function() {
             printToTerminal([
               '',
@@ -261,6 +267,10 @@
               ''
             ]);
             _updateLoginButton();
+            // Dispatch auth state change event
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('auth-state-changed'));
+            }
           });
         } else {
           // User not logged in - start login shell
