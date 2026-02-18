@@ -273,6 +273,18 @@ html, body {
   box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5), 0 0 16px rgba(255, 100, 255, 0.3);
 }
 
+/* Authentication button - logged in state */
+.control-buttons button[data-action="login"].auth-logged-in {
+  border-color: rgba(255, 170, 0, 0.6);
+  color: var(--amber);
+}
+
+.control-buttons button[data-action="login"].auth-logged-in:hover {
+  border-color: var(--amber);
+  background: rgba(40, 30, 12, 0.95);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5), 0 0 12px rgba(255, 170, 0, 0.2);
+}
+
 .debrief-window {
   background: linear-gradient(160deg, rgba(10, 18, 12, 0.9), rgba(4, 8, 6, 0.95));
   border: 1px solid var(--panel-border-soft);

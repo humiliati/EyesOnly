@@ -20,6 +20,24 @@
   var selectedItemIndex = -1;
   var activeItem = null; // Currently active item in header slot
 
+  /**
+   * Update login button text based on authentication state
+   */
+  function _updateLoginButton() {
+    var loginBtn = document.querySelector('button[data-action="login"]');
+    if (!loginBtn) return;
+
+    if (typeof UserAccount !== 'undefined' && UserAccount.isLoggedIn()) {
+      loginBtn.textContent = 'logout';
+      loginBtn.classList.add('auth-logged-in');
+      loginBtn.setAttribute('aria-label', 'Log out of current session');
+    } else {
+      loginBtn.textContent = 'login';
+      loginBtn.classList.remove('auth-logged-in');
+      loginBtn.setAttribute('aria-label', 'Log in to account');
+    }
+  }
+
   function init() {
     // Wire up control buttons
     var buttons = document.querySelectorAll('.control-buttons button');
@@ -35,6 +53,12 @@
     if (activeSlot) {
       activeSlot.addEventListener('click', handleActiveItemClick);
     }
+
+    // Update login button based on auth state
+    _updateLoginButton();
+
+    // Check for login state changes periodically
+    setInterval(_updateLoginButton, 1000);
   }
 
   function handleButtonClick(e) {
@@ -217,20 +241,44 @@
           toggleInventory();
         }
 
-        // Start login shell (doesn't exit street-chronicles)
-        if (typeof LoginShell !== 'undefined' && typeof LoginShell.start === 'function') {
-          var result = LoginShell.start();
-          if (result && result.lines) {
-            printToTerminal(result.lines);
-          }
+        // Context-aware authentication button behavior
+        if (typeof UserAccount !== 'undefined' && UserAccount.isLoggedIn()) {
+          // User is logged in - show LOGOUT action
+          UserAccount.logout().then(function() {
+            printToTerminal([
+              '',
+              'LOGOUT SUCCESSFUL',
+              'Session terminated.',
+              'User data preserved locally.',
+              ''
+            ]);
+            _updateLoginButton();
+          }).catch(function() {
+            printToTerminal([
+              '',
+              'LOGOUT COMPLETED',
+              'Local session cleared.',
+              ''
+            ]);
+            _updateLoginButton();
+          });
         } else {
-          printToTerminal([
-            '',
-            'AUTHENTICATION PORTAL',
-            'Please enter credentials...',
-            'AUTH CODE: _____________',
-            ''
-          ]);
+          // User not logged in - start login shell
+          if (typeof LoginShell !== 'undefined' && typeof LoginShell.start === 'function') {
+            var result = LoginShell.start();
+            if (result && result.lines) {
+              printToTerminal(result.lines);
+            }
+            _updateLoginButton();
+          } else {
+            printToTerminal([
+              '',
+              'AUTHENTICATION PORTAL',
+              'Please enter credentials...',
+              'AUTH CODE: _____________',
+              ''
+            ]);
+          }
         }
         break;
 
