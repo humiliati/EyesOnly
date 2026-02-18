@@ -129,6 +129,56 @@
               </div>
             </div>
 
+            <!-- Login/Register Overlay (hidden by default) -->
+            <div id="login-overlay" class="login-overlay" style="display: none;">
+              <div class="login-overlay-content">
+                <div class="login-overlay-header">
+                  <div class="login-overlay-title" id="login-overlay-title">AUTHENTICATION PORTAL</div>
+                </div>
+
+                <!-- Login Form -->
+                <div id="login-form" class="auth-form" style="display: block;">
+                  <div class="form-field">
+                    <label for="login-username">USERNAME</label>
+                    <input type="text" id="login-username" placeholder="Enter username" autocomplete="username" />
+                  </div>
+                  <div class="form-actions">
+                    <button type="button" id="login-submit-btn" class="form-btn primary">LOGIN</button>
+                  </div>
+
+                  <div class="test-accounts-section">
+                    <div class="test-accounts-label">Test accounts available (for experimentation):</div>
+                    <div class="test-accounts-list">
+                      <div class="test-account-item">• Username: <span class="test-account-value">user</span> | Password: <span class="test-account-value">password</span></div>
+                      <div class="test-account-item">• Username: <span class="test-account-value">admin</span> | Password: <span class="test-account-value">admin</span></div>
+                    </div>
+                    <div class="test-accounts-note">These accounts provide access to demonstration content and testing environments. Not recommended for production use or storing sensitive progress.</div>
+                  </div>
+                </div>
+
+                <!-- Register Form -->
+                <div id="register-form" class="auth-form" style="display: none;">
+                  <div class="form-field">
+                    <label for="register-username">USERNAME</label>
+                    <input type="text" id="register-username" placeholder="3-20 characters, alphanumeric" autocomplete="off" />
+                    <span class="field-validation" id="username-validation"></span>
+                  </div>
+                  <div class="form-field">
+                    <label for="register-callsign">CALLSIGN (optional)</label>
+                    <input type="text" id="register-callsign" placeholder="Display name (defaults to username)" autocomplete="off" />
+                  </div>
+                  <div class="form-field">
+                    <label for="register-email">EMAIL (optional)</label>
+                    <input type="email" id="register-email" placeholder="For account recovery" autocomplete="email" />
+                    <span class="field-validation" id="email-validation"></span>
+                  </div>
+                  <div class="form-actions">
+                    <button type="button" id="register-submit-btn" class="form-btn primary">CREATE ACCOUNT</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div id="mok-interjections" aria-live="polite">
               <div class="interject-label">MOK INTERJECTION</div>
               <div class="interject-body" id="mok-interject-body">Standing by for advisories.</div>

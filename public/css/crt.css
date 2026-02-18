@@ -1783,3 +1783,184 @@ body.in-gone-rogue #log-column {
     min-height: 20px;
   }
 }
+
+/* ============================================================
+   LOGIN/REGISTER OVERLAY STYLES
+   ============================================================ */
+
+.login-overlay {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 260px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.login-overlay-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.login-overlay-header {
+  text-align: center;
+  border-bottom: 1px solid var(--panel-border-soft);
+  padding-bottom: 12px;
+}
+
+.login-overlay-title {
+  font-size: 1.1em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--phosphor);
+  font-weight: bold;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field label {
+  font-size: 0.82em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--phosphor-dim);
+}
+
+.form-field input {
+  background: rgba(8, 24, 12, 0.85);
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  padding: 8px 12px;
+  color: var(--phosphor);
+  font-family: 'Courier New', monospace;
+  font-size: 1em;
+  transition: all 150ms ease;
+}
+
+.form-field input:focus {
+  outline: none;
+  border-color: var(--phosphor);
+  box-shadow: 0 0 8px rgba(51, 255, 51, 0.3);
+  background: rgba(8, 24, 12, 0.95);
+}
+
+.form-field input::placeholder {
+  color: var(--phosphor-dim);
+  opacity: 0.5;
+}
+
+.field-validation {
+  font-size: 0.75em;
+  color: #ff6666;
+  min-height: 1.2em;
+  letter-spacing: 0.05em;
+}
+
+.field-validation.valid {
+  color: var(--phosphor);
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.form-btn {
+  flex: 1;
+  padding: 10px 16px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  background: rgba(8, 24, 12, 0.85);
+  color: var(--phosphor-dim);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.form-btn:hover {
+  border-color: var(--phosphor);
+  color: var(--phosphor);
+  background: rgba(12, 32, 16, 0.95);
+}
+
+.form-btn.primary {
+  border-color: var(--phosphor);
+  color: var(--phosphor);
+  background: rgba(12, 32, 16, 0.95);
+}
+
+.form-btn.primary:hover {
+  box-shadow: 0 0 12px rgba(51, 255, 51, 0.3);
+  background: rgba(16, 40, 20, 1);
+}
+
+.form-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.test-accounts-section {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 6px;
+}
+
+.test-accounts-label {
+  font-size: 0.85em;
+  letter-spacing: 0.05em;
+  color: var(--phosphor-dim);
+  margin-bottom: 8px;
+}
+
+.test-accounts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.test-account-item {
+  font-size: 0.8em;
+  color: var(--phosphor);
+  font-family: 'Courier New', monospace;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+  border-left: 2px solid var(--panel-border);
+}
+
+.test-account-value {
+  color: var(--phosphor-bright);
+  font-weight: bold;
+}
+
+.test-accounts-note {
+  font-size: 0.72em;
+  color: var(--phosphor-dim);
+  line-height: 1.4;
+  letter-spacing: 0.03em;
+}
