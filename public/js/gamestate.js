@@ -18,9 +18,11 @@ const GAMESTATE = (function () {
     submode: null,
     inventoryPersistent: [],      // 9-12 slots (safe across death)
     inventoryLoose: [],            // 8 slots (lost on death)
+    actionButtonCards: [],         // 4 slots - separate from loose inventory for Gone Rogue mode
     persistentSlots: 9,            // Start at 9, expand to 12
     maxPersistentSlots: 12,
     looseSlots: 8,
+    actionButtonSlots: 4,          // Fixed at 4 for Gone Rogue mode
     cryptos: 0,                    // Currency (¢) - persistent across death
     rogueRun: null,
     activeItemSlot: null,          // Active item slot (for lighting items, etc.)
@@ -291,6 +293,89 @@ const GAMESTATE = (function () {
   }
 
   /**
+   * Add card to action button slots (Gone Rogue mode)
+   * @param {Object} card - Card object to add
+   */
+  function addToActionButtons(card) {
+    if (_state.actionButtonCards.length >= _state.actionButtonSlots) {
+      return {
+        success: false,
+        message: 'ACTION BUTTON SLOTS FULL (' + _state.actionButtonCards.length + '/' + _state.actionButtonSlots + ')'
+      };
+    }
+
+    _state.actionButtonCards.push(card);
+    _saveState();
+
+    // Update ReserveSlots UI if available
+    if (typeof ReserveSlots !== 'undefined' && typeof ReserveSlots.setActionButtonCards === 'function') {
+      ReserveSlots.setActionButtonCards(_state.actionButtonCards);
+    }
+
+    return {
+      success: true,
+      message: 'Card added to action buttons: ' + card.name
+    };
+  }
+
+  /**
+   * Remove card from action button slots by index
+   * @param {number} index - Index of card to remove
+   */
+  function removeFromActionButtons(index) {
+    if (index < 0 || index >= _state.actionButtonCards.length) {
+      return { success: false };
+    }
+
+    var removed = _state.actionButtonCards.splice(index, 1)[0];
+    _saveState();
+
+    // Update ReserveSlots UI if available
+    if (typeof ReserveSlots !== 'undefined' && typeof ReserveSlots.setActionButtonCards === 'function') {
+      ReserveSlots.setActionButtonCards(_state.actionButtonCards);
+    }
+
+    return {
+      success: true,
+      item: removed
+    };
+  }
+
+  /**
+   * Get action button cards
+   */
+  function getActionButtonCards() {
+    return _state.actionButtonCards.slice(); // Return copy
+  }
+
+  /**
+   * Set action button cards (replaces entire array)
+   * @param {Array} cards - Array of card objects
+   */
+  function setActionButtonCards(cards) {
+    _state.actionButtonCards = cards.slice(0, _state.actionButtonSlots);
+    _saveState();
+
+    // Update ReserveSlots UI if available
+    if (typeof ReserveSlots !== 'undefined' && typeof ReserveSlots.setActionButtonCards === 'function') {
+      ReserveSlots.setActionButtonCards(_state.actionButtonCards);
+    }
+  }
+
+  /**
+   * Clear action button cards
+   */
+  function clearActionButtonCards() {
+    _state.actionButtonCards = [];
+    _saveState();
+
+    // Update ReserveSlots UI if available
+    if (typeof ReserveSlots !== 'undefined' && typeof ReserveSlots.setActionButtonCards === 'function') {
+      ReserveSlots.setActionButtonCards(_state.actionButtonCards);
+    }
+  }
+
+  /**
    * Set active item slot (for equipment that needs to be "equipped")
    */
   function setActiveItem(item) {
@@ -370,12 +455,31 @@ const GAMESTATE = (function () {
       submode: null,
       inventoryPersistent: [],
       inventoryLoose: [],
+      actionButtonCards: [],
       persistentSlots: 9,
       maxPersistentSlots: 12,
       looseSlots: 8,
+      actionButtonSlots: 4,
       cryptos: 0,
       rogueRun: null,
-      activeItemSlot: null
+      activeItemSlot: null,
+      playerFatigue: 0,
+      maxFatigue: 100,
+      fatigueRecovery: 5,
+      fatigueThreshold: 70,
+      playerAmmo: 30,
+      maxAmmo: 50,
+      playerEnergy: 5,
+      maxEnergy: 5,
+      playerFocus: 10,
+      maxFocus: 10,
+      playerBattery: 5,
+      maxBattery: 5,
+      playerStability: 10,
+      maxStability: 10,
+      consumables: [],
+      consumableSlots: 3,
+      maxConsumableSlots: 5
     };
     _saveState();
   }
@@ -862,6 +966,12 @@ const GAMESTATE = (function () {
     clearLooseInventory: clearLooseInventory,
     getPersistentInventory: getPersistentInventory,
     getLooseInventory: getLooseInventory,
+    // Action button cards management (Gone Rogue mode)
+    addToActionButtons: addToActionButtons,
+    removeFromActionButtons: removeFromActionButtons,
+    getActionButtonCards: getActionButtonCards,
+    setActionButtonCards: setActionButtonCards,
+    clearActionButtonCards: clearActionButtonCards,
     setActiveItem: setActiveItem,
     getActiveItem: getActiveItem,
     clearActiveItem: clearActiveItem,
