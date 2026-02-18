@@ -336,7 +336,15 @@ const StateMachine = (function () {
     if (cmd === 'CLEAR') return { type: 'clear', newState: _state, prompt: '> ' };
 
     if (cmd === 'LOGIN') {
-      return { type: 'login', lines: [], newState: _state };
+      return { type: 'user_login', lines: [], newState: _state };
+    }
+
+    if (cmd === 'REGISTER') {
+      return { type: 'user_register', lines: [], newState: _state };
+    }
+
+    if (cmd === 'LOGOUT') {
+      return { type: 'user_logout', lines: [], newState: _state };
     }
 
     if (cmd === 'STREET' || cmd === 'MAP') {
@@ -713,7 +721,15 @@ const StateMachine = (function () {
     }
 
     if (cmd === 'LOGIN') {
-      return { type: 'login', lines: [], newState: _state };
+      return { type: 'user_login', lines: [], newState: _state };
+    }
+
+    if (cmd === 'REGISTER') {
+      return { type: 'user_register', lines: [], newState: _state };
+    }
+
+    if (cmd === 'LOGOUT') {
+      return { type: 'user_logout', lines: [], newState: _state };
     }
 
     if (cmd === 'STREET' || cmd === 'MAP') {

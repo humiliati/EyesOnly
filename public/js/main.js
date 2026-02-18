@@ -23,6 +23,14 @@
     LoginShell.init();
     StreetChronicles.init();
 
+    // Initialize user account system
+    if (typeof UserAccount !== 'undefined') {
+      UserAccount.init();
+    }
+    if (typeof LoginUI !== 'undefined') {
+      LoginUI.init();
+    }
+
     // Initialize GAMESTATE and subsystems
     if (typeof GAMESTATE !== 'undefined') {
       GAMESTATE.init();
@@ -194,7 +202,13 @@
       return;
     }
 
-    // Priority 3: Check if Login Shell is active
+    // Priority 3: Check if Login UI is active
+    if (typeof LoginUI !== 'undefined' && LoginUI.isActive()) {
+      LoginUI.processInput(rawInput || '');
+      return;
+    }
+
+    // Priority 4: Check if Login Shell is active
     if (LoginShell.isActive()) {
       _executeLoginAction(LoginShell.process(rawInput || ''));
       return;
@@ -307,6 +321,32 @@
 
       case 'login':
         _executeLoginAction(LoginShell.start());
+        break;
+
+      case 'user_login':
+        if (typeof LoginUI !== 'undefined') {
+          LoginUI.showLoginPrompt();
+        }
+        _enableInput('> ');
+        break;
+
+      case 'user_register':
+        if (typeof LoginUI !== 'undefined') {
+          LoginUI.showRegisterPrompt();
+        }
+        _enableInput('> ');
+        break;
+
+      case 'user_logout':
+        if (typeof LoginUI !== 'undefined') {
+          LoginUI.logout().then(function () {
+            _enableInput('> ');
+          }).catch(function () {
+            _enableInput('> ');
+          });
+        } else {
+          _enableInput('> ');
+        }
         break;
 
       case 'street':
