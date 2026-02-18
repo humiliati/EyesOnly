@@ -253,12 +253,23 @@
         Terminal.writeLine('Logged out successfully.', 'success-msg');
         Terminal.writeLine('');
         _updateHeaderDisplay();
+        _notifyLogout();
       })
       .catch(function (err) {
         Terminal.writeLine('Logout failed: ' + err.message, 'error-msg');
         Terminal.writeLine('');
       });
   };
+
+  /**
+   * Notify other systems of logout.
+   */
+  function _notifyLogout() {
+    // Clear kernel state
+    if (typeof KernelManager !== 'undefined' && typeof KernelManager.disconnect === 'function') {
+      KernelManager.disconnect();
+    }
+  }
 
   /**
    * Update header display with user info.
@@ -292,6 +303,11 @@
     // Enable kernel button if available
     if (typeof UIControls !== 'undefined' && typeof UIControls.enableKernelButton === 'function') {
       UIControls.enableKernelButton();
+    }
+
+    // Re-init KernelManager to sync state from server
+    if (typeof KernelManager !== 'undefined' && typeof KernelManager.init === 'function') {
+      KernelManager.init();
     }
 
     // Load user data into GAMESTATE if available
