@@ -9,11 +9,41 @@ const MVPAuditEngine = (function() {
   'use strict';
 
   // Import base personas from agent-engine.js if available
-  var BASE_PERSONAS = typeof AgentEngine !== 'undefined' ? AgentEngine.PERSONAS : {};
+  var BASE_PERSONAS = {};
 
-  // Extended personas with additional UX-focused behavior
-  var PERSONAS = {
-    ...BASE_PERSONAS,
+  // In Node.js context, try to load AgentEngine
+  if (typeof AgentEngine === 'undefined' && typeof require !== 'undefined') {
+    try {
+      var AgentEngineModule = require('./agent-engine.js');
+      BASE_PERSONAS = AgentEngineModule.PERSONAS || {};
+    } catch (e) {
+      console.warn('Could not load agent-engine.js in Node.js context:', e.message);
+    }
+  } else if (typeof AgentEngine !== 'undefined') {
+    BASE_PERSONAS = AgentEngine.PERSONAS || {};
+  }
+
+  // Helper function to ensure persona has all required properties
+  function ensurePersonaProperties(persona) {
+    var defaults = {
+      name: 'UNKNOWN',
+      description: 'Unknown persona',
+      vendorStrategy: 'OPTIMAL',
+      combatStrategy: 'CALCULATED',
+      riskTolerance: 0.4,
+      healThreshold: 0.6,
+      spendingRate: 0.5,
+      prefersDarkness: false,
+      usesLightSources: false,
+      seeksGroundEffects: false
+    };
+
+    // Merge persona with defaults, keeping persona's values
+    return Object.assign({}, defaults, persona);
+  }
+
+  // Create extended personas with base personas as foundation
+  var extendedPersonas = {
     // Add specific test personas for UX auditing
     STEALTH_SPECIALIST: {
       name: 'STEALTH_SPECIALIST',
@@ -37,6 +67,19 @@ const MVPAuditEngine = (function() {
       seeksGroundEffects: true
     }
   };
+
+  // Merge base personas with extended personas, ensuring all have required properties
+  var PERSONAS = {};
+
+  // Add all base personas with property validation
+  for (var key in BASE_PERSONAS) {
+    PERSONAS[key] = ensurePersonaProperties(BASE_PERSONAS[key]);
+  }
+
+  // Add extended personas with property validation
+  for (var key in extendedPersonas) {
+    PERSONAS[key] = ensurePersonaProperties(extendedPersonas[key]);
+  }
 
   /**
    * MVP Audit Engine Class
@@ -141,6 +184,14 @@ const MVPAuditEngine = (function() {
      * Execute a single audit run with enhanced UX tracking
      */
     async executeAuditRun(persona, runId) {
+      // Validate persona parameter
+      if (!persona || typeof persona !== 'object') {
+        throw new Error('Invalid persona: persona parameter is required and must be an object');
+      }
+
+      // Ensure persona has all required properties
+      persona = ensurePersonaProperties(persona);
+
       var report = {
         runId: runId,
         persona: persona.name,
@@ -362,6 +413,12 @@ const MVPAuditEngine = (function() {
      * Resolve floor with comprehensive UX tracking
      */
     async resolveFloorWithUXTracking(gameState, floor, persona, report) {
+      // Validate persona parameter
+      if (!persona || typeof persona !== 'object') {
+        throw new Error('Invalid persona in resolveFloorWithUXTracking: persona parameter is required');
+      }
+      persona = ensurePersonaProperties(persona);
+
       var outcome = {
         survived: true,
         stuck: false,
@@ -494,6 +551,12 @@ const MVPAuditEngine = (function() {
      * Simulate STR Combat (Lite version)
      */
     simulateSTRCombatLite(gameState, floor, persona, report) {
+      // Validate persona parameter
+      if (!persona || typeof persona !== 'object') {
+        throw new Error('Invalid persona in simulateSTRCombatLite: persona parameter is required');
+      }
+      persona = ensurePersonaProperties(persona);
+
       var result = {
         playerWon: false,
         roundsPlayed: 0,
@@ -556,6 +619,12 @@ const MVPAuditEngine = (function() {
     selectBestCard(deck, persona) {
       if (!deck || deck.length === 0) return null;
 
+      // Validate and ensure persona has required properties
+      if (!persona || typeof persona !== 'object') {
+        persona = { name: 'UNKNOWN' };
+      }
+      persona = ensurePersonaProperties(persona);
+
       if (persona.name === 'MINMAXER') {
         // Pick highest power card
         return deck.reduce((best, card) => 
@@ -574,6 +643,12 @@ const MVPAuditEngine = (function() {
      * Resolve boss with enhanced tracking
      */
     async resolveBossWithTracking(gameState, floor, persona, report) {
+      // Validate persona parameter
+      if (!persona || typeof persona !== 'object') {
+        throw new Error('Invalid persona in resolveBossWithTracking: persona parameter is required');
+      }
+      persona = ensurePersonaProperties(persona);
+
       var bossHP = floor * 15; // Boss is nearly 2x normal threat
       var deckPower = this.calculateDeckPower(gameState.deck);
 
@@ -617,6 +692,12 @@ const MVPAuditEngine = (function() {
      * Handle vendor stop with tracking
      */
     handleVendorStopWithTracking(gameState, persona, report, floor) {
+      // Validate persona parameter
+      if (!persona || typeof persona !== 'object') {
+        throw new Error('Invalid persona in handleVendorStopWithTracking: persona parameter is required');
+      }
+      persona = ensurePersonaProperties(persona);
+
       report.vendorInteractions++;
       
       var choices = [];
