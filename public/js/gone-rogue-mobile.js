@@ -34,6 +34,11 @@ const GoneRogueMobile = (function () {
   var _activeCard = null;
   var _activeDragItem = null; // New: for inventory drag tracking
 
+  // Touch cooldowns and thresholds
+  var _lastMovementTime = 0;
+  var _cardFanCooldown = 800; // ms cooldown after movement before allowing card fan
+  var _touchMoveThreshold = 10; // px - if touch moves more than this, it's a swipe not a tap
+
   /**
    * Initialize mobile UI
    */
@@ -609,10 +614,18 @@ const GoneRogueMobile = (function () {
   function _processGridInput(x, y, runMode) {
     if (typeof GoneRogue !== 'undefined') {
       var player = GoneRogue.getPlayer ? GoneRogue.getPlayer() : null;
+      var now = Date.now();
 
       // Check if tapping self (show card fan)
-      // BUT NOT if in STR combat or if clicking on a breakable
+      // BUT NOT if in STR combat, if clicking on a breakable, or within cooldown after movement
       if (player && player.x === x && player.y === y) {
+        // Check cooldown to prevent accidental card fan during rapid movement
+        var timeSinceLastMovement = now - _lastMovementTime;
+        if (timeSinceLastMovement < _cardFanCooldown) {
+          console.log('[GoneRogueMobile] Card fan suppressed: within cooldown after movement (' + timeSinceLastMovement + 'ms < ' + _cardFanCooldown + 'ms)');
+          return;
+        }
+
         // Don't show card fan if in STR combat
         var inStrCombat = GoneRogue.isStrCombatActive && GoneRogue.isStrCombatActive();
         if (inStrCombat) {
@@ -649,15 +662,17 @@ const GoneRogueMobile = (function () {
           if (item && InteractiveItems.canInteractWith(player.x, player.y, item)) {
             // Trigger interaction
             GoneRogue.process('interact');
+            _lastMovementTime = now; // Track as movement-like action
             return;
           }
         }
       }
     }
 
-    // Send tap-to-move command
+    // Send tap-to-move command and track movement time
     if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleTapMove === 'function') {
       GoneRogue.handleTapMove(x, y, runMode);
+      _lastMovementTime = Date.now(); // Track movement time to prevent immediate card fan
     }
   }
 
@@ -1091,7 +1106,7 @@ const GoneRogueMobile = (function () {
     html += '<div class="hp-text">' + player.hp + ' / ' + player.maxHp + ' HP</div>';
     html += '</div>';
     html += '<div class="combatant-glyph glyph-' + playerState + '" style="color: #1cff9b;">';
-    html += 'd' + _getFaceExpression(true, playerState) + '🔫';
+    html += '🔫' + _getFaceExpression(true, playerState) + 'p';
     html += '</div>';
     html += '</div>';
 
