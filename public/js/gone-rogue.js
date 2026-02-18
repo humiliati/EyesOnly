@@ -68,6 +68,17 @@ const GoneRogue = (function () {
   // Secret floor state
   var _activeSecretFloor = null; // Current secret floor type (if any)
 
+  // Highscore tracking variables
+  var _runStartTime = null;        // Run start timestamp
+  var _currencyCollected = 0;      // Total currency collected this run (excludes starting balance)
+  var _totalEnemiesSpawned = 0;    // Total enemies that spawned
+  var _enemiesKilled = 0;          // Enemies defeated
+  var _totalBreakableDamage = 0;   // HP dealt to breakables
+  var _totalDamageDealt = 0;       // Total damage player dealt
+  var _maxSingleHit = 0;           // Highest single attack damage
+  var _damageMitigated = 0;        // Damage avoided/blocked in STR combat
+  var _runCompleted = false;       // Whether run reached floor 30
+
   var TILES = {
     EMPTY: '.',
     WALL: '█',
@@ -303,6 +314,17 @@ const GoneRogue = (function () {
   function start(context) {
     _active = true;
     _loaded = true;
+
+    // Initialize highscore tracking
+    _runStartTime = Date.now();
+    _currencyCollected = 0;
+    _totalEnemiesSpawned = 0;
+    _enemiesKilled = 0;
+    _totalBreakableDamage = 0;
+    _totalDamageDealt = 0;
+    _maxSingleHit = 0;
+    _damageMitigated = 0;
+    _runCompleted = false;
 
     // Initialize lighting system if available
     if (typeof LightingSystem !== 'undefined') {
@@ -1225,6 +1247,7 @@ const GoneRogue = (function () {
       _activeBoss.bossEntity = bossEnemy;
 
       _enemies.push(bossEnemy);
+      _totalEnemiesSpawned++; // Track for highscore
       return;
     }
 
@@ -1276,6 +1299,7 @@ const GoneRogue = (function () {
             elite.str = 6 + Math.floor(_floor * 0.3);
             elite.dex = 6 + Math.floor(_floor * 0.3);
             _enemies.push(elite);
+            _totalEnemiesSpawned++; // Track for highscore
             eliteSpawned = true;
           }
         }
@@ -1316,6 +1340,7 @@ const GoneRogue = (function () {
       var enemy = _createEnemy(x, y, patrolType, room);
 
       _enemies.push(enemy);
+      _totalEnemiesSpawned++; // Track for highscore
     }
   }
 
@@ -1698,6 +1723,8 @@ const GoneRogue = (function () {
         var result = GAMESTATE.addCryptos(cryptoPickup.amount);
         cryptoMessage = result.message;
       }
+      // Track for highscore
+      _currencyCollected += cryptoPickup.amount;
       // Remove currency from floor
       _currencies = _currencies.filter(function(c) { return c.x !== newX || c.y !== newY; });
 
@@ -1865,6 +1892,7 @@ const GoneRogue = (function () {
     // Check if this is the final floor (30) or if player wants to extract early
     var MAX_FLOORS = 30;
     if (_floor >= MAX_FLOORS) {
+      _runCompleted = true; // Mark run as completed for highscore
       return _exitRogue(true);
     }
 
@@ -2587,9 +2615,79 @@ const GoneRogue = (function () {
     };
   }
 
+  /**
+   * Submit highscore at end of run
+   */
+  function _submitHighscore() {
+    // Determine if this is an agent or human run
+    var mode = 'human';
+    if (typeof AgentIntegration !== 'undefined' && AgentIntegration.isActive()) {
+      mode = 'agent';
+    }
+
+    // Get display name
+    var displayName = 'Anonymous';
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getAccount === 'function') {
+      var account = GAMESTATE.getAccount();
+      if (account && account.username) {
+        displayName = account.username;
+      }
+    }
+
+    // Calculate enemies avoided (spawned but not killed)
+    var enemiesAvoided = Math.max(0, _totalEnemiesSpawned - _enemiesKilled);
+
+    // Prepare run data for score calculation
+    var runData = {
+      currencyFound: _currencyCollected,
+      interactivesFound: 0, // TODO: Track interactive items in future
+      enemiesAvoided: enemiesAvoided,
+      breakableDamage: _totalBreakableDamage,
+      damageMitigated: _damageMitigated
+    };
+
+    // Calculate score
+    var score = HighscoreState.calculateGoneRogueScore(runData);
+
+    // Prepare entry
+    var entry = {
+      game_id: 'gone_rogue',
+      mode: mode,
+      display_name: displayName,
+      score: score,
+      metadata: {
+        completions: _runCompleted ? 1 : 0,
+        final_floor: _floor,
+        player_deaths: 0, // Currently tracking only in-run state
+        enemies_killed: _enemiesKilled,
+        enemies_avoided: enemiesAvoided,
+        currency_collected: _currencyCollected,
+        total_damage_dealt: _totalDamageDealt,
+        most_damage_dealt_single_action: _maxSingleHit,
+        damage_mitigated: _damageMitigated,
+        breakables_destroyed: _totalBreakableDamage,
+        run_duration_ms: _runStartTime ? (Date.now() - _runStartTime) : 0
+      }
+    };
+
+    // Submit to HighscoreState
+    var result = HighscoreState.submitHighscore(entry);
+
+    if (result.success) {
+      console.log('[GoneRogue] Highscore submitted:', score, 'Entry ID:', result.entry_id);
+    } else {
+      console.error('[GoneRogue] Failed to submit highscore:', result.error);
+    }
+  }
+
   function _exitRogue(success) {
     _active = false;
     _stopGameLoop();
+
+    // Submit highscore if extraction was successful
+    if (success && typeof HighscoreState !== 'undefined') {
+      _submitHighscore();
+    }
 
     // Restore mobile keyboard behavior when exiting
     if (typeof Terminal !== 'undefined' && typeof Terminal.restoreMobileKeyboard === 'function') {
@@ -3120,6 +3218,9 @@ const GoneRogue = (function () {
 
   function _damageBreakable(breakable, amount) {
     breakable.hp = Math.max(0, (breakable.hp || 0) - amount);
+
+    // Track for highscore
+    _totalBreakableDamage += amount;
 
     // Add hit animation state
     breakable.hitTime = Date.now();
@@ -3991,6 +4092,7 @@ const GoneRogue = (function () {
       if (_strCombatEnemy.hp <= 0) {
         lines.push('');
         lines.push('💀 ENEMY DEFEATED!');
+        _enemiesKilled++; // Track for highscore
         var exitResult = _exitStrCombat('player_victory');
         return {
           lines: lines.concat(exitResult.lines || []),
@@ -4201,6 +4303,18 @@ const GoneRogue = (function () {
     var finalDamage = Math.max(1, damageResult.damage - defenseReduction);
 
     target.hp -= finalDamage;
+
+    // Track damage for highscore (only player damage to enemies)
+    if (actor === _player && target === _strCombatEnemy) {
+      _totalDamageDealt += finalDamage;
+      if (finalDamage > _maxSingleHit) {
+        _maxSingleHit = finalDamage;
+      }
+    }
+    // Track damage mitigation (only enemy attacks on player)
+    if (actor === _strCombatEnemy && target === _player && defenseReduction > 0) {
+      _damageMitigated += defenseReduction;
+    }
 
     var critEmoji = hitResult.crit ? ' 💥 CRIT!' : '';
     lines.push('├─ HIT!' + critEmoji + ' (Roll: ' + hitResult.roll + ' vs ' + hitResult.target + ')');
