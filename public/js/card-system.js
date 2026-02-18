@@ -16,6 +16,15 @@ const CardSystem = (function () {
     setup: 5       // Setup/utility actions (next-round buffs, items)
   };
 
+  // Card Lifecycle Types (spec section 7.4)
+  var LIFECYCLE_TYPES = {
+    DISPOSABLE: 'disposable',   // Single use, consumed on play (consumables)
+    EXHAUST: 'exhaust',         // Removed from deck after first use (powerful abilities)
+    POWER: 'power',             // Activated once, persists entire combat
+    GATED: 'gated',             // Requires resource, not consumed (ammo/fatigue gated)
+    PERSISTENT: 'persistent'    // Always available, never consumed (basic actions)
+  };
+
   var QUALITIES = {
     CRACKED: { name: 'Cracked', color: 'gray', roll: 18 },
     WORN: { name: 'Worn', color: 'lightgray', roll: 22 },
@@ -313,6 +322,7 @@ const CardSystem = (function () {
       type: 'consumable',
       name: 'Energy Drink',
       emoji: '⚡',
+      lifecycleType: 'disposable',
       baseStats: {
         fatigueReduction: 20,
         energyBoost: 2,
@@ -326,6 +336,7 @@ const CardSystem = (function () {
       type: 'consumable',
       name: 'Medical Kit',
       emoji: '🏥',
+      lifecycleType: 'disposable',
       baseStats: {
         hp: 30,
         energy: 0,
@@ -338,6 +349,7 @@ const CardSystem = (function () {
       type: 'consumable',
       name: 'Ammo Clip',
       emoji: '📎',
+      lifecycleType: 'disposable',
       baseStats: {
         ammoRestore: 10,
         energy: 0,
@@ -350,6 +362,7 @@ const CardSystem = (function () {
       type: 'consumable',
       name: 'Stim Pack',
       emoji: '💉',
+      lifecycleType: 'disposable',
       baseStats: {
         hp: 15,
         fatigueReduction: 10,
@@ -365,6 +378,7 @@ const CardSystem = (function () {
       type: 'consumable',
       name: 'Adrenaline',
       emoji: '💪',
+      lifecycleType: 'disposable',
       baseStats: {
         attackBoost: 3,
         speedBoost: 3,
@@ -373,6 +387,119 @@ const CardSystem = (function () {
         energy: 1,
         speed: 1,
         consumable: true
+      }
+    },
+
+    // ========== ENVIRONMENTAL CARDS (Interact with tiles and status effects) ==========
+    OIL_SLICK: {
+      category: 'setup',
+      type: 'setup',
+      name: 'Oil Slick',
+      emoji: '🛢️',
+      lifecycleType: 'disposable',
+      baseStats: {
+        range: 2,
+        duration: 99, // Until ignited or cleaned
+        energy: 2,
+        speed: 2,
+        createsTile: 'oil',
+        consumable: true
+      }
+    },
+    LIGHTER: {
+      category: 'setup',
+      type: 'setup',
+      name: 'Lighter',
+      emoji: '🔥',
+      lifecycleType: 'disposable',
+      baseStats: {
+        range: 1,
+        ignitesOil: true,
+        applyStatus: 'BURNING',
+        energy: 1,
+        speed: 2,
+        consumable: true
+      }
+    },
+    WATER_BOTTLE: {
+      category: 'setup',
+      type: 'setup',
+      name: 'Water Bottle',
+      emoji: '💧',
+      lifecycleType: 'disposable',
+      baseStats: {
+        range: 3,
+        extinguishesFire: true,
+        createsTile: 'water',
+        applyStatus: 'WET',
+        duration: 2,
+        energy: 1,
+        speed: 2,
+        consumable: true
+      }
+    },
+
+    // ========== POWER CARDS (Persistent combat-long buffs) ==========
+    PREDATOR_FOCUS: {
+      category: 'setup',
+      type: 'power',
+      name: 'Predator Focus',
+      emoji: '👁️',
+      lifecycleType: 'power',
+      baseStats: {
+        accuracyBonus: 15,
+        critBonus: 10,
+        stealthBonus: 2,
+        energy: 2,
+        speed: 2,
+        combatPersistent: true
+      }
+    },
+    GHOST_PROTOCOL: {
+      category: 'setup',
+      type: 'power',
+      name: 'Ghost Protocol',
+      emoji: '👻',
+      lifecycleType: 'power',
+      baseStats: {
+        stealthBonus: 3,
+        noiseReduction: -2,
+        detectionReduction: -3,
+        energy: 3,
+        speed: 2,
+        combatPersistent: true
+      }
+    },
+
+    // ========== EXHAUST CARDS (Powerful one-time abilities) ==========
+    LAST_STAND: {
+      category: 'defense',
+      type: 'defense',
+      name: 'Last Stand',
+      emoji: '🛡️',
+      lifecycleType: 'exhaust',
+      baseStats: {
+        defense: 8,
+        damageReduction: 50,
+        cannotDie: true, // Prevents HP from dropping below 1 this turn
+        energy: 2,
+        speed: 4,
+        exhaust: true
+      }
+    },
+    PANIC_DODGE: {
+      category: 'defense',
+      type: 'defense',
+      name: 'Panic Dodge',
+      emoji: '😱',
+      lifecycleType: 'exhaust',
+      baseStats: {
+        evasion: 5,
+        triggersPanic: true,
+        fatigueCost: 4,
+        energy: 1,
+        speed: 5,
+        exhaust: true
       }
     },
 
@@ -701,6 +828,7 @@ const CardSystem = (function () {
     BASE_CARDS: BASE_CARDS,
     AFFIXES: AFFIXES,
     CARD_PRIORITIES: CARD_PRIORITIES,
+    LIFECYCLE_TYPES: LIFECYCLE_TYPES,
     rollQuality: rollQuality,
     rollStats: rollStats,
     rollAffixes: rollAffixes,

@@ -34,6 +34,16 @@ const GAMESTATE = (function () {
     playerAmmo: 30,                // Pooled ammunition resource
     maxAmmo: 50,                   // Maximum ammo capacity
 
+    // Additional resources (planned for full card system integration)
+    playerEnergy: 5,               // 0-5 scale (powers special abilities)
+    maxEnergy: 5,
+    playerFocus: 10,               // 0-10 scale (improves accuracy)
+    maxFocus: 10,
+    playerBattery: 5,              // 0-5 scale (powers equipment)
+    maxBattery: 5,
+    playerStability: 10,           // 0-10 scale (prevents panic)
+    maxStability: 10,
+
     // Consumables inventory (separate from card inventory)
     consumables: [],               // Array of consumable items with counts: {type, count}
     consumableSlots: 3,            // How many different types can be carried
@@ -635,6 +645,168 @@ const GAMESTATE = (function () {
     return consumable ? consumable.count : 0;
   }
 
+  // ========== ENERGY MANAGEMENT ==========
+
+  /**
+   * Get current energy level
+   */
+  function getEnergy() {
+    return _state.playerEnergy !== undefined ? _state.playerEnergy : _state.maxEnergy;
+  }
+
+  /**
+   * Use energy (for special abilities)
+   * @param {number} amount - Amount of energy to use
+   */
+  function useEnergy(amount) {
+    var current = getEnergy();
+    if (current < amount) {
+      return {
+        success: false,
+        message: 'Insufficient energy (Have: ' + current + ', Need: ' + amount + ')'
+      };
+    }
+    _state.playerEnergy = current - amount;
+    _saveState();
+    return {
+      success: true,
+      remaining: _state.playerEnergy
+    };
+  }
+
+  /**
+   * Restore energy
+   * @param {number} amount - Amount of energy to restore
+   */
+  function restoreEnergy(amount) {
+    var current = getEnergy();
+    _state.playerEnergy = Math.min(_state.maxEnergy, current + amount);
+    _saveState();
+    return _state.playerEnergy;
+  }
+
+  // ========== FOCUS MANAGEMENT ==========
+
+  /**
+   * Get current focus level
+   */
+  function getFocus() {
+    return _state.playerFocus !== undefined ? _state.playerFocus : _state.maxFocus;
+  }
+
+  /**
+   * Lose focus (from distractions, panic)
+   * @param {number} amount - Amount of focus to lose
+   */
+  function loseFocus(amount) {
+    var current = getFocus();
+    _state.playerFocus = Math.max(0, current - amount);
+    _saveState();
+    return _state.playerFocus;
+  }
+
+  /**
+   * Restore focus
+   * @param {number} amount - Amount of focus to restore
+   */
+  function restoreFocus(amount) {
+    var current = getFocus();
+    _state.playerFocus = Math.min(_state.maxFocus, current + amount);
+    _saveState();
+    return _state.playerFocus;
+  }
+
+  // ========== BATTERY MANAGEMENT ==========
+
+  /**
+   * Get current battery level
+   */
+  function getBattery() {
+    return _state.playerBattery !== undefined ? _state.playerBattery : _state.maxBattery;
+  }
+
+  /**
+   * Use battery (for equipment)
+   * @param {number} amount - Amount of battery to use
+   */
+  function useBattery(amount) {
+    var current = getBattery();
+    if (current < amount) {
+      return {
+        success: false,
+        message: 'Insufficient battery (Have: ' + current + ', Need: ' + amount + ')'
+      };
+    }
+    _state.playerBattery = current - amount;
+    _saveState();
+    return {
+      success: true,
+      remaining: _state.playerBattery
+    };
+  }
+
+  /**
+   * Recharge battery
+   * @param {number} amount - Amount of battery to recharge
+   */
+  function rechargeBattery(amount) {
+    var current = getBattery();
+    _state.playerBattery = Math.min(_state.maxBattery, current + amount);
+    _saveState();
+    return _state.playerBattery;
+  }
+
+  // ========== STABILITY MANAGEMENT ==========
+
+  /**
+   * Get current stability level
+   */
+  function getStability() {
+    return _state.playerStability !== undefined ? _state.playerStability : _state.maxStability;
+  }
+
+  /**
+   * Lose stability (from fear, panic)
+   * @param {number} amount - Amount of stability to lose
+   */
+  function loseStability(amount) {
+    var current = getStability();
+    _state.playerStability = Math.max(0, current - amount);
+    _saveState();
+    return _state.playerStability;
+  }
+
+  /**
+   * Restore stability
+   * @param {number} amount - Amount of stability to restore
+   */
+  function restoreStability(amount) {
+    var current = getStability();
+    _state.playerStability = Math.min(_state.maxStability, current + amount);
+    _saveState();
+    return _state.playerStability;
+  }
+
+  // ========== USER DATA MANAGEMENT ==========
+
+  /**
+   * Load user data from server (called after login)
+   * @param {Object} userData - User data from server
+   */
+  function loadUserData(userData) {
+    if (!userData) return;
+
+    // Update crypto balance from server
+    if (userData.cryptos !== undefined) {
+      _state.cryptos = userData.cryptos;
+      if (typeof UIControls !== 'undefined' && UIControls.updateCurrency) {
+        UIControls.updateCurrency(_state.cryptos);
+      }
+    }
+
+    _saveState();
+  }
+
   return {
     MODES: MODES,
     init: init,
@@ -670,6 +842,24 @@ const GAMESTATE = (function () {
     getConsumables: getConsumables,
     addConsumable: addConsumable,
     useConsumable: useConsumable,
-    getConsumableCount: getConsumableCount
+    getConsumableCount: getConsumableCount,
+    // Energy management
+    getEnergy: getEnergy,
+    useEnergy: useEnergy,
+    restoreEnergy: restoreEnergy,
+    // Focus management
+    getFocus: getFocus,
+    loseFocus: loseFocus,
+    restoreFocus: restoreFocus,
+    // Battery management
+    getBattery: getBattery,
+    useBattery: useBattery,
+    rechargeBattery: rechargeBattery,
+    // Stability management
+    getStability: getStability,
+    loseStability: loseStability,
+    restoreStability: restoreStability,
+    // User data management
+    loadUserData: loadUserData
   };
 })();
