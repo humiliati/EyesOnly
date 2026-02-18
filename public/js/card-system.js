@@ -44,21 +44,27 @@ const CardSystem = (function () {
       type: 'interrupt',
       name: 'Dive for Cover',
       emoji: '🤸',
-      baseStats: { defense: 5, evasion: 3, energy: 2, speed: 5 }
+      lifecycleType: 'persistent',
+      baseStats: { defense: 5, evasion: 3, energy: 2, speed: 5 },
+      resourceCost: { energy: 2, fatigue: 1 }
     },
     JAM_WEAPON: {
       category: 'interrupt',
       type: 'interrupt',
       name: 'Jam Weapon',
       emoji: '🔧',
-      baseStats: { disrupt: 1, energy: 2, speed: 5 }
+      lifecycleType: 'disposable',
+      baseStats: { disrupt: 1, energy: 2, speed: 5 },
+      resourceCost: { energy: 2, focus: 1 }
     },
     OVERWATCH: {
       category: 'interrupt',
       type: 'interrupt',
       name: 'Overwatch Shot',
       emoji: '👁️',
-      baseStats: { damage: 3, accuracy: 85, energy: 3, speed: 5 }
+      lifecycleType: 'gated',
+      baseStats: { damage: 3, accuracy: 85, energy: 3, speed: 5 },
+      resourceCost: { ammo: 1, energy: 3, focus: 2 }
     },
 
     // ========== DEFENSE CARDS (Priority 2) ==========
@@ -67,28 +73,36 @@ const CardSystem = (function () {
       type: 'defense',
       name: 'Block',
       emoji: '🛡️',
-      baseStats: { defense: 4, energy: 2, speed: 4 }
+      lifecycleType: 'persistent',
+      baseStats: { defense: 4, energy: 2, speed: 4 },
+      resourceCost: { energy: 2 }
     },
     DODGE: {
       category: 'defense',
       type: 'defense',
       name: 'Dodge',
       emoji: '💨',
-      baseStats: { evasion: 3, energy: 2, speed: 4 }
+      lifecycleType: 'persistent',
+      baseStats: { evasion: 3, energy: 2, speed: 4 },
+      resourceCost: { energy: 2, focus: 1 }
     },
     PRONE: {
       category: 'defense',
       type: 'defense',
       name: 'Prone',
       emoji: '🛡️',
-      baseStats: { defense: 3, stealth: 2, mobility: -1, energy: 1, speed: 3 }
+      lifecycleType: 'persistent',
+      baseStats: { defense: 3, stealth: 2, mobility: -1, energy: 1, speed: 3 },
+      resourceCost: { energy: 1 }
     },
     KNEEL: {
       category: 'defense',
       type: 'defense',
       name: 'Kneel',
       emoji: '🧎',
-      baseStats: { defense: 2, accuracy: 1, mobility: 0, energy: 1, speed: 3 }
+      lifecycleType: 'persistent',
+      baseStats: { defense: 2, accuracy: 1, mobility: 0, energy: 1, speed: 3 },
+      resourceCost: { energy: 1 }
     },
 
     // ========== MOVEMENT CARDS (Priority 3) ==========
@@ -97,7 +111,9 @@ const CardSystem = (function () {
       type: 'movement',
       name: 'Close Distance',
       emoji: '⏩',
-      baseStats: { distance: 2, risk: 1, energy: 2, speed: 3, fatigue: 2 }
+      lifecycleType: 'persistent',
+      baseStats: { distance: 2, risk: 1, energy: 2, speed: 3, fatigue: 2 },
+      resourceCost: { energy: 2, fatigue: 2 }
     },
     RETREAT: {
       category: 'movement',

@@ -2128,3 +2128,262 @@ body.in-gone-rogue #log-column {
   color: var(--phosphor-bright);
   font-weight: bold;
 }
+
+/* ============================================================
+   CARD RESOURCE VALIDATION AND DISPOSAL SYSTEM
+   ============================================================ */
+
+/* Grey-out state for cards with insufficient resources */
+.card-insufficient-resources {
+  opacity: 0.4;
+  filter: grayscale(0.8);
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+
+.card-insufficient-resources::after {
+  content: '🚫';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+  opacity: 0.6;
+}
+
+/* Shake animation for invalid actions */
+@keyframes card-shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+.card-shake {
+  animation: card-shake 0.4s ease-out;
+}
+
+/* Incinerator animation for card disposal */
+@keyframes incinerator-flash {
+  0% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+  10% {
+    background-color: rgba(255, 165, 0, 0.8);
+    box-shadow: 0 0 20px rgba(255, 165, 0, 0.6);
+  }
+  30% {
+    background-color: rgba(255, 69, 0, 0.9);
+    box-shadow: 0 0 30px rgba(255, 69, 0, 0.8);
+  }
+  60% {
+    background-color: rgba(139, 0, 0, 0.6);
+    box-shadow: 0 0 15px rgba(139, 0, 0, 0.5);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+@keyframes burn-away {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+.incinerator-active {
+  animation: incinerator-flash 0.4s ease-out forwards;
+  position: relative;
+}
+
+.incinerator-active::after {
+  content: '♻️';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 32px;
+  animation: burn-away 0.3s ease-out 0.2s forwards;
+  pointer-events: none;
+}
+
+/* Intensity variants */
+.incinerator-single {
+  filter: brightness(1.2);
+}
+
+.incinerator-combat {
+  filter: brightness(1.4);
+}
+
+.incinerator-batch {
+  filter: brightness(1.6);
+  animation-duration: 0.6s;
+}
+
+/* Drag preview for disposal */
+.drag-preview-recycling {
+  opacity: 0.7;
+  transform: scale(0.8);
+  filter: brightness(1.2);
+}
+
+.drag-preview-recycling::after {
+  content: '♻️';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 48px;
+}
+
+/* ============================================================
+   DEBRIEF FEED RESOURCE DISPLAY
+   ============================================================ */
+
+.debrief-feed-resources {
+  font-family: 'Courier New', monospace;
+  font-size: 0.85em;
+  line-height: 1.6;
+  padding: 8px;
+}
+
+.resource-section {
+  margin-bottom: 8px;
+}
+
+.resource-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+.resource-icon {
+  font-size: 1.2em;
+  width: 20px;
+  text-align: center;
+}
+
+.resource-name {
+  color: var(--phosphor-dim);
+  min-width: 60px;
+  font-size: 0.9em;
+}
+
+.resource-bar-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  font-family: monospace;
+  letter-spacing: 0.05em;
+}
+
+.resource-bar-filled {
+  color: var(--phosphor);
+  text-shadow: 0 0 4px var(--phosphor-glow);
+}
+
+.resource-value {
+  color: var(--phosphor-bright);
+  margin-left: 6px;
+  font-weight: bold;
+  min-width: 45px;
+  text-align: right;
+}
+
+.resource-divider {
+  height: 1px;
+  background: var(--panel-border-soft);
+  margin: 6px 0;
+}
+
+/* Cycle button for secondary resources */
+.resource-cycle-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 8px;
+  margin: 6px 0;
+  background: rgba(8, 20, 12, 0.5);
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 4px;
+  color: var(--phosphor-dim);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.85em;
+}
+
+.resource-cycle-button:hover {
+  background: rgba(14, 30, 18, 0.7);
+  border-color: var(--phosphor);
+  color: var(--phosphor-bright);
+}
+
+.cycle-icon {
+  font-weight: bold;
+}
+
+/* Debrief feed states */
+.debrief-feed.minimized {
+  flex: 0 0 auto;
+  max-height: 100px;
+  overflow: hidden;
+}
+
+.debrief-feed.expanded {
+  flex: 1 1 auto;
+  min-height: 200px;
+}
+
+/* Status effects display */
+.status-effects-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.status-effect {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  background: rgba(8, 20, 12, 0.6);
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 3px;
+  font-size: 0.85em;
+}
+
+.status-effect.buff {
+  border-color: rgba(0, 255, 0, 0.3);
+  color: var(--phosphor-bright);
+}
+
+.status-effect.debuff {
+  border-color: rgba(255, 0, 0, 0.3);
+  color: #ff6b6b;
+}
+
+.effect-icon {
+  font-size: 1.1em;
+}
+
+.effect-duration {
+  color: var(--phosphor-dim);
+  margin-left: 2px;
+  font-size: 0.9em;
+}
+
+.stack-count {
+  color: var(--phosphor-bright);
+  font-weight: bold;
+  margin-left: 2px;
+}
