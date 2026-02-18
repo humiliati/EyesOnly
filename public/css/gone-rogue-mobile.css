@@ -1472,8 +1472,8 @@
     order: 0; /* Cards appear before grid */
     flex-shrink: 0;
     margin-bottom: 4px;
-    position: sticky;
-    top: 0;
+    /* Don't use sticky on cards to avoid overlap with grid */
+    position: relative;
     background: #0a0a0a;
     z-index: 21; /* Above the grid */
   }
