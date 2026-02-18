@@ -24,10 +24,29 @@ const GoneRogueMobile = (function () {
   var _minZoom = 0.5;
   var _maxZoom = 2.0;
 
+  // Pan state
+  var _panOffset = { x: 0, y: 0 };
+  var _initialPinchCenter = { x: 0, y: 0 };
+  var _isPanning = false;
+
   // Touch tracking for swipes
   var _touchStart = { x: 0, y: 0, time: 0 };
   var _activeCard = null;
   var _activeDragItem = null; // New: for inventory drag tracking
+
+  // Touch cooldowns and thresholds
+  var _lastMovementTime = 0;
+  var _cardFanCooldown = 800; // ms cooldown after movement before allowing card fan
+  var _touchMoveThreshold = 10; // px - if touch moves more than this, it's a swipe not a tap
+
+  // Card pagination
+  var _cardPageIndex = 0;
+  var _cardsPerPage = 4; // 4 cards + 1 navigation slot when paginating
+  var _maxCardsWithoutPagination = 5;
+
+  // Multi-card selection for combat
+  var _selectedCards = []; // Array of card indices
+  var _maxSelectedCards = 5; // Maximum cards that can be selected per round
 
   /**
    * Initialize mobile UI
@@ -604,10 +623,18 @@ const GoneRogueMobile = (function () {
   function _processGridInput(x, y, runMode) {
     if (typeof GoneRogue !== 'undefined') {
       var player = GoneRogue.getPlayer ? GoneRogue.getPlayer() : null;
+      var now = Date.now();
 
       // Check if tapping self (show card fan)
-      // BUT NOT if in STR combat or if clicking on a breakable
+      // BUT NOT if in STR combat, if clicking on a breakable, or within cooldown after movement
       if (player && player.x === x && player.y === y) {
+        // Check cooldown to prevent accidental card fan during rapid movement
+        var timeSinceLastMovement = now - _lastMovementTime;
+        if (timeSinceLastMovement < _cardFanCooldown) {
+          console.log('[GoneRogueMobile] Card fan suppressed: within cooldown after movement (' + timeSinceLastMovement + 'ms < ' + _cardFanCooldown + 'ms)');
+          return;
+        }
+
         // Don't show card fan if in STR combat
         var inStrCombat = GoneRogue.isStrCombatActive && GoneRogue.isStrCombatActive();
         if (inStrCombat) {
@@ -644,15 +671,17 @@ const GoneRogueMobile = (function () {
           if (item && InteractiveItems.canInteractWith(player.x, player.y, item)) {
             // Trigger interaction
             GoneRogue.process('interact');
+            _lastMovementTime = now; // Track as movement-like action
             return;
           }
         }
       }
     }
 
-    // Send tap-to-move command
+    // Send tap-to-move command and track movement time
     if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleTapMove === 'function') {
       GoneRogue.handleTapMove(x, y, runMode);
+      _lastMovementTime = Date.now(); // Track movement time to prevent immediate card fan
     }
   }
 
@@ -667,29 +696,73 @@ const GoneRogueMobile = (function () {
   }
 
   /**
-   * Handle grid touch move (for pinch-to-zoom)
+   * Get center point between two touches
+   */
+  function _getTouchCenter(touches) {
+    if (touches.length < 2) return { x: 0, y: 0 };
+    return {
+      x: (touches[0].clientX + touches[1].clientX) / 2,
+      y: (touches[0].clientY + touches[1].clientY) / 2
+    };
+  }
+
+  /**
+   * Handle grid touch move (for pinch-to-zoom and pan)
    */
   function _handleGridTouchMove(e) {
-    // Handle pinch-to-zoom with two fingers
+    // Handle pinch-to-zoom and pan with two fingers
     if (e.touches.length === 2) {
       e.preventDefault();
       e.stopPropagation();
 
       var currentDistance = _getTouchDistance(e.touches);
+      var currentCenter = _getTouchCenter(e.touches);
 
       if (_initialPinchDistance === 0) {
         _initialPinchDistance = currentDistance;
+        _initialPinchCenter = currentCenter;
+        _isPanning = false;
       } else {
+        // Calculate zoom scale
         var scale = currentDistance / _initialPinchDistance;
         var newZoom = _currentZoom * scale;
 
         // Clamp zoom level
         newZoom = Math.max(_minZoom, Math.min(_maxZoom, newZoom));
 
-        // Apply zoom to grid container
+        // Calculate pan delta
+        var panDeltaX = currentCenter.x - _initialPinchCenter.x;
+        var panDeltaY = currentCenter.y - _initialPinchCenter.y;
+
+        // Apply pan sensitivity based on zoom level (higher zoom = lower sensitivity)
+        var panSensitivity = 0.5 - (newZoom - _minZoom) / (_maxZoom - _minZoom) * 0.3;
+        panSensitivity = Math.max(0.2, Math.min(0.5, panSensitivity));
+
+        var newPanX = _panOffset.x + panDeltaX * panSensitivity;
+        var newPanY = _panOffset.y + panDeltaY * panSensitivity;
+
+        // Calculate bounds based on zoom level and container size
         if (_gridContainer) {
-          _gridContainer.style.transform = 'scale(' + newZoom + ')';
+          var containerRect = _gridContainer.getBoundingClientRect();
+          var parentRect = _gridContainer.parentElement.getBoundingClientRect();
+
+          // Maximum pan distance (prevent showing void beyond map)
+          var scaledWidth = containerRect.width * newZoom;
+          var scaledHeight = containerRect.height * newZoom;
+          var maxPanX = Math.max(0, (scaledWidth - parentRect.width) / 2);
+          var maxPanY = Math.max(0, (scaledHeight - parentRect.height) / 2);
+
+          // Clamp pan offsets
+          newPanX = Math.max(-maxPanX, Math.min(maxPanX, newPanX));
+          newPanY = Math.max(-maxPanY, Math.min(maxPanY, newPanY));
+
+          // Apply zoom and pan to grid container
+          _gridContainer.style.transform = 'scale(' + newZoom + ') translate(' + newPanX + 'px, ' + newPanY + 'px)';
           _gridContainer.style.transformOrigin = 'center center';
+
+          // Update initial center for continuous panning
+          _initialPinchCenter = currentCenter;
+          _isPanning = true;
         }
       }
     }
@@ -738,7 +811,7 @@ const GoneRogueMobile = (function () {
     e.preventDefault();
     e.stopPropagation();
 
-    // If pinch gesture ended, save current zoom and reset pinch distance
+    // If pinch gesture ended, save current zoom and pan state, reset pinch distance
     if (_initialPinchDistance > 0) {
       var currentTransform = _gridContainer ? window.getComputedStyle(_gridContainer).transform : 'none';
       if (currentTransform && currentTransform !== 'none') {
@@ -746,9 +819,16 @@ const GoneRogueMobile = (function () {
         if (matrix) {
           var values = matrix[1].split(', ');
           _currentZoom = parseFloat(values[0]) || 1.0;
+          // Extract translate values if present (matrix includes translate)
+          if (values.length >= 6) {
+            _panOffset.x = parseFloat(values[4]) || 0;
+            _panOffset.y = parseFloat(values[5]) || 0;
+          }
         }
       }
       _initialPinchDistance = 0;
+      _initialPinchCenter = { x: 0, y: 0 };
+      _isPanning = false;
       return; // Don't process as tap
     }
 
@@ -811,14 +891,13 @@ const GoneRogueMobile = (function () {
     _cardContainer.style.display = 'flex';
     _cardContainer.innerHTML = '';
 
-    // Get cards from GAMESTATE
-    var cards = [];
+    // Get all cards from GAMESTATE
+    var allCards = [];
     if (typeof GAMESTATE !== 'undefined') {
-      var loose = GAMESTATE.getLooseInventory();
-      cards = loose.slice(0, 5); // Show up to 5 cards
+      allCards = GAMESTATE.getLooseInventory();
     }
 
-    if (cards.length === 0) {
+    if (allCards.length === 0) {
       _cardContainer.innerHTML = '<div class="no-cards">NO CARDS AVAILABLE</div>';
       setTimeout(function() {
         _cardContainer.style.display = 'none';
@@ -826,18 +905,184 @@ const GoneRogueMobile = (function () {
       return;
     }
 
+    // Check if in STR combat (enables multi-card selection)
+    var inStrCombat = typeof GoneRogue !== 'undefined' && GoneRogue.isStrCombatActive && GoneRogue.isStrCombatActive();
+
+    // Determine if pagination is needed
+    var needsPagination = allCards.length > _maxCardsWithoutPagination;
+    var totalPages = needsPagination ? Math.ceil(allCards.length / _cardsPerPage) : 1;
+
+    // Clamp page index to valid range
+    _cardPageIndex = Math.max(0, Math.min(_cardPageIndex, totalPages - 1));
+
+    // Calculate slice range for current page
+    var startIndex, endIndex, cardsToShow;
+    if (needsPagination) {
+      startIndex = _cardPageIndex * _cardsPerPage;
+      endIndex = Math.min(startIndex + _cardsPerPage, allCards.length);
+      cardsToShow = allCards.slice(startIndex, endIndex);
+    } else {
+      cardsToShow = allCards;
+      startIndex = 0;
+    }
+
     // Create card elements
-    cards.forEach(function(card, index) {
+    cardsToShow.forEach(function(card, localIndex) {
+      var globalIndex = startIndex + localIndex;
       var cardEl = document.createElement('div');
       cardEl.className = 'rogue-card';
-      cardEl.dataset.cardIndex = index;
+      cardEl.dataset.cardIndex = globalIndex;
+
+      // Check if this card is selected
+      var isSelected = _selectedCards.indexOf(globalIndex) !== -1;
+      if (isSelected) {
+        cardEl.classList.add('card-selected');
+      }
+
+      // Add selection indicator if in combat
+      var selectionIndicator = '';
+      if (inStrCombat) {
+        var selectionNumber = _selectedCards.indexOf(globalIndex);
+        if (selectionNumber !== -1) {
+          selectionIndicator = '<div class="card-selection-badge">' + (selectionNumber + 1) + '</div>';
+        }
+      }
+
       cardEl.innerHTML =
+        selectionIndicator +
         '<div class="card-emoji">' + card.emoji + '</div>' +
         '<div class="card-name">' + card.name + '</div>' +
         '<div class="card-quality">' + card.qualityName + '</div>';
 
       _cardContainer.appendChild(cardEl);
     });
+
+    // Add navigation arrow if pagination is needed
+    if (needsPagination) {
+      var navEl = document.createElement('div');
+      navEl.className = 'rogue-card card-nav';
+
+      // Determine if we should show "next" or "prev" arrow
+      var isLastPage = _cardPageIndex === totalPages - 1;
+      var arrow = isLastPage ? '←' : '→';
+      var label = isLastPage ? 'PREV' : 'NEXT';
+
+      navEl.innerHTML =
+        '<div class="card-emoji card-nav-arrow">' + arrow + '</div>' +
+        '<div class="card-name">' + label + '</div>' +
+        '<div class="card-quality">Page ' + (_cardPageIndex + 1) + '/' + totalPages + '</div>';
+
+      navEl.addEventListener('click', _handleCardNavClick);
+      navEl.addEventListener('touchend', _handleCardNavClick);
+
+      _cardContainer.appendChild(navEl);
+    }
+
+    // Add "Play Selected" button if in STR combat and cards are selected
+    if (inStrCombat && _selectedCards.length > 0) {
+      var playBtn = document.createElement('div');
+      playBtn.className = 'rogue-card card-play-selected';
+      playBtn.innerHTML =
+        '<div class="card-emoji">⚔</div>' +
+        '<div class="card-name">PLAY</div>' +
+        '<div class="card-quality">' + _selectedCards.length + ' selected</div>';
+
+      playBtn.addEventListener('click', _handlePlaySelectedCards);
+      playBtn.addEventListener('touchend', _handlePlaySelectedCards);
+
+      _cardContainer.appendChild(playBtn);
+    }
+  }
+
+  /**
+   * Handle card navigation arrow click/tap
+   */
+  function _handleCardNavClick(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Get all cards to determine total pages
+    var allCards = [];
+    if (typeof GAMESTATE !== 'undefined') {
+      allCards = GAMESTATE.getLooseInventory();
+    }
+
+    var totalPages = Math.ceil(allCards.length / _cardsPerPage);
+    var isLastPage = _cardPageIndex === totalPages - 1;
+
+    // Cycle page index
+    if (isLastPage) {
+      _cardPageIndex = Math.max(0, _cardPageIndex - 1);
+    } else {
+      _cardPageIndex = Math.min(totalPages - 1, _cardPageIndex + 1);
+    }
+
+    // Re-render card fan with new page
+    _showCardFan();
+  }
+
+  /**
+   * Toggle card selection (add/remove from selected array)
+   */
+  function _toggleCardSelection(cardIndex) {
+    var idx = _selectedCards.indexOf(cardIndex);
+
+    if (idx !== -1) {
+      // Card is already selected - remove it
+      _selectedCards.splice(idx, 1);
+    } else {
+      // Card not selected - add it (if under max)
+      if (_selectedCards.length < _maxSelectedCards) {
+        _selectedCards.push(cardIndex);
+      } else {
+        // Max cards selected - show feedback via console
+        console.log('[GoneRogueMobile] Maximum ' + _maxSelectedCards + ' cards can be selected per round');
+      }
+    }
+
+    // Re-render card fan to update selection state
+    _showCardFan();
+  }
+
+  /**
+   * Handle "Play Selected" button click - execute all selected cards
+   */
+  function _handlePlaySelectedCards(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (_selectedCards.length === 0) return;
+
+    // Check if we're still in STR combat
+    var inStrCombat = typeof GoneRogue !== 'undefined' && GoneRogue.isStrCombatActive && GoneRogue.isStrCombatActive();
+    if (!inStrCombat) {
+      _selectedCards = [];
+      _cardContainer.style.display = 'none';
+      return;
+    }
+
+    // Execute multi-card combat round
+    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleMultiCardCombat === 'function') {
+      // Pass selected card indices to GoneRogue for execution
+      GoneRogue.handleMultiCardCombat(_selectedCards.slice()); // Pass a copy
+
+      // Clear selection
+      _selectedCards = [];
+
+      // Hide card fan temporarily - it will reappear after combat round resolves
+      _cardContainer.style.display = 'none';
+
+      // Check if combat is still active after a delay
+      setTimeout(function() {
+        if (typeof GoneRogue !== 'undefined' && GoneRogue.isStrCombatActive && GoneRogue.isStrCombatActive()) {
+          // Combat still active - re-show card fan for next round
+          _showCardFan();
+        } else {
+          // Combat ended - reset page index
+          _cardPageIndex = 0;
+        }
+      }, 500);
+    }
   }
 
   /**
@@ -877,7 +1122,7 @@ const GoneRogueMobile = (function () {
   }
 
   /**
-   * Handle card touch end (execute swipe action)
+   * Handle card touch end (execute swipe action or toggle selection)
    */
   function _handleCardTouchEnd(e) {
     if (!_activeCard) return;
@@ -894,8 +1139,21 @@ const GoneRogueMobile = (function () {
 
     // Detect swipe direction
     var swipeThreshold = 50;
-    var swipeSpeed = Math.sqrt(deltaX * deltaX + deltaY * deltaY) / deltaTime;
+    var tapThreshold = 10; // If movement < 10px, it's a tap
+    var distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
+    // Check if in STR combat
+    var inStrCombat = typeof GoneRogue !== 'undefined' && GoneRogue.isStrCombatActive && GoneRogue.isStrCombatActive();
+
+    // If tap (not swipe) and in STR combat → toggle selection
+    if (distance < tapThreshold && inStrCombat) {
+      var cardIndex = parseInt(_activeCard.dataset.cardIndex);
+      _toggleCardSelection(cardIndex);
+      _activeCard = null;
+      return;
+    }
+
+    // Swipe detected - execute card action immediately
     var direction = null;
     if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > swipeThreshold) {
       direction = deltaX > 0 ? 'right' : 'left';
@@ -906,10 +1164,31 @@ const GoneRogueMobile = (function () {
     if (direction && typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleCardSwipe === 'function') {
       var cardIndex = parseInt(_activeCard.dataset.cardIndex);
       GoneRogue.handleCardSwipe(cardIndex, direction);
+
+      // Clear selection after immediate use
+      _selectedCards = [];
+
+      // Check if STR combat is still active after card use
+      // If so, re-show card fan after a delay for next round
+      setTimeout(function() {
+        if (typeof GoneRogue !== 'undefined' && GoneRogue.isStrCombatActive && GoneRogue.isStrCombatActive()) {
+          // Combat still active - re-show card fan for next round
+          // Keep current page index so player doesn't have to navigate back
+          _showCardFan();
+        } else {
+          // Combat ended - hide card container and reset page index
+          _cardContainer.style.display = 'none';
+          _cardPageIndex = 0;
+        }
+      }, 500); // 500ms delay to allow combat log animation to complete
+    } else {
+      // No valid swipe - just hide card fan (unless in combat with selections)
+      if (!inStrCombat || _selectedCards.length === 0) {
+        _cardContainer.style.display = 'none';
+      }
     }
 
     _activeCard = null;
-    _cardContainer.style.display = 'none';
   }
 
   /**
@@ -1035,7 +1314,7 @@ const GoneRogueMobile = (function () {
     html += '<div class="hp-text">' + player.hp + ' / ' + player.maxHp + ' HP</div>';
     html += '</div>';
     html += '<div class="combatant-glyph glyph-' + playerState + '" style="color: #1cff9b;">';
-    html += 'd' + _getFaceExpression(true, playerState) + '🔫';
+    html += '🔫' + _getFaceExpression(true, playerState) + 'p';
     html += '</div>';
     html += '</div>';
 
@@ -1510,12 +1789,32 @@ const GoneRogueMobile = (function () {
     }
   }
 
+  /**
+   * Toggle action menu (card fan) for Gone Rogue action button
+   */
+  function toggleActionMenu() {
+    if (!_cardContainer) return;
+
+    // If action menu is currently visible, hide it and reset page index
+    if (_cardContainer.style.display !== 'none' && _cardContainer.innerHTML !== '') {
+      _cardContainer.style.display = 'none';
+      _cardContainer.innerHTML = '';
+      _cardPageIndex = 0; // Reset to first page
+      return;
+    }
+
+    // Show action menu with card fan (starting from page 0)
+    _cardPageIndex = 0; // Reset to first page
+    _showCardFan();
+  }
+
   return {
     init: init,
     renderGrid: renderGrid,
     hide: hide,
     show: show,
     showFloatingDamage: showFloatingDamage,
-    showInventory: showInventory
+    showInventory: showInventory,
+    toggleActionMenu: toggleActionMenu
   };
 })();

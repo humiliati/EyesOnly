@@ -373,6 +373,7 @@
 
 /* Individual Card */
 .rogue-card {
+  position: relative; /* For badge positioning */
   min-width: 100px;
   padding: 15px;
   background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
@@ -432,6 +433,76 @@
 .rogue-card[data-quality="masterwork"] { border-color: #ffd700; }
 .rogue-card[data-quality="near_perfect"] { border-color: #8bc34a; }
 .rogue-card[data-quality="perfect"] { border-color: #9c27b0; }
+
+/* Card Navigation Arrow */
+.rogue-card.card-nav {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-color: #ffeb3b;
+  cursor: pointer;
+  touch-action: auto;
+  opacity: 0.9;
+}
+
+.rogue-card.card-nav:hover {
+  opacity: 1;
+  transform: translateY(-5px) scale(1.05);
+}
+
+.rogue-card.card-nav .card-nav-arrow {
+  animation: arrow-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes arrow-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.7; }
+}
+
+/* Card Selection Styles */
+.rogue-card.card-selected {
+  border-color: #ff9800;
+  background: linear-gradient(135deg, #1a1506 0%, #2a1a0a 100%);
+  box-shadow: 0 0 20px rgba(255, 152, 0, 0.6);
+  transform: translateY(-8px);
+}
+
+.card-selection-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  background: #ff9800;
+  border: 2px solid #000;
+  border-radius: 50%;
+  color: #000;
+  font-size: 14px;
+  font-weight: bold;
+  font-family: 'Courier New', monospace;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  box-shadow: 0 0 10px rgba(255, 152, 0, 0.8);
+}
+
+/* Play Selected Button */
+.rogue-card.card-play-selected {
+  background: linear-gradient(135deg, #0a4a0a 0%, #0d6a0d 100%);
+  border-color: #1cff9b;
+  cursor: pointer;
+  touch-action: auto;
+  animation: play-button-pulse 2s ease-in-out infinite;
+}
+
+.rogue-card.card-play-selected:hover {
+  transform: translateY(-5px) scale(1.1);
+  box-shadow: 0 0 30px rgba(28, 255, 155, 0.8);
+}
+
+@keyframes play-button-pulse {
+  0%, 100% { box-shadow: 0 0 15px rgba(28, 255, 155, 0.5); }
+  50% { box-shadow: 0 0 25px rgba(28, 255, 155, 0.8); }
+}
 
 /* No Cards Message */
 .no-cards {
@@ -610,16 +681,17 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
-  border: 4px solid #ffaa00;
-  border-radius: 12px;
-  padding: 30px;
+  background: rgba(10, 10, 10, 0.85);
+  backdrop-filter: blur(4px);
+  border: 3px solid #ffaa00;
+  border-radius: 8px;
+  padding: 12px 16px;
   z-index: 1500;
-  box-shadow: 0 0 50px rgba(255, 170, 0, 0.8), inset 0 0 30px rgba(255, 170, 0, 0.1);
+  box-shadow: 0 0 30px rgba(255, 170, 0, 0.6), inset 0 0 20px rgba(255, 170, 0, 0.08);
   font-family: 'Courier New', monospace;
-  min-width: var(--combat-bubble-min-width);
+  min-width: 280px;
   max-width: 90vw;
-  animation: bubble-appear 0.3s ease-out;
+  animation: bubble-appear 0.2s ease-out;
 }
 
 @keyframes bubble-appear {
@@ -661,14 +733,14 @@
 /* Combat Arena - Visual representation */
 .combat-arena {
   display: grid;
-  grid-template-rows: repeat(3, 1fr);
+  grid-template-rows: repeat(3, auto);
   grid-template-columns: 1fr;
-  gap: 20px;
-  margin: 20px 0;
-  padding: 20px;
-  background: rgba(0, 0, 0, 0.5);
+  gap: 12px;
+  margin: 10px 0;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
   border: 2px solid #333;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 .combatant {
@@ -676,17 +748,18 @@
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   font-size: 48px;
   position: relative;
 }
 
 .combatant-glyph {
   font-family: 'Courier New', monospace;
-  font-size: 64px;
+  font-size: 48px;
   text-shadow: 0 0 10px currentColor;
   animation: combatant-idle 2s ease-in-out infinite;
   position: relative;
+  line-height: 1;
 }
 
 @keyframes combatant-idle {

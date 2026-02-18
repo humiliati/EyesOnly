@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STR Economy Test Runner - EYES ONLY</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background: #0a0a0a;
+      color: #1cff9b;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #1cff9b;
+      text-align: center;
+      margin-bottom: 10px;
+      text-shadow: 0 0 10px rgba(28, 255, 155, 0.5);
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #ffaa00;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .test-section {
+      background: #1a1a1a;
+      border: 2px solid #1cff9b;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 5px;
+    }
+
+    .test-section h2 {
+      color: #ffaa00;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+
+    .test-section p {
+      color: #999;
+      margin-bottom: 15px;
+      font-size: 13px;
+    }
+
+    .control-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #1cff9b;
+      font-size: 13px;
+    }
+
+    input, select, button {
+      font-family: 'Courier New', monospace;
+      padding: 8px 12px;
+      border: 1px solid #1cff9b;
+      background: #0a0a0a;
+      color: #1cff9b;
+      border-radius: 3px;
+      font-size: 13px;
+    }
+
+    input[type="number"] {
+      width: 150px;
+    }
+
+    select {
+      width: 200px;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s;
+      padding: 10px 20px;
+    }
+
+    button:hover:not(:disabled) {
+      background: #1cff9b;
+      color: #0a0a0a;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+
+    .status {
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+      text-align: center;
+      font-weight: bold;
+      display: none;
+    }
+
+    .status.show {
+      display: block;
+    }
+
+    .status.running {
+      background: rgba(255, 170, 0, 0.2);
+      border: 2px solid #ffaa00;
+      color: #ffaa00;
+    }
+
+    .status.complete {
+      background: rgba(28, 255, 155, 0.2);
+      border: 2px solid #1cff9b;
+      color: #1cff9b;
+    }
+
+    .status.error {
+      background: rgba(255, 28, 74, 0.2);
+      border: 2px solid #ff1c4a;
+      color: #ff1c4a;
+    }
+
+    #output {
+      background: #000;
+      border: 2px solid #1cff9b;
+      padding: 20px;
+      min-height: 400px;
+      max-height: 600px;
+      overflow-y: auto;
+      border-radius: 5px;
+      white-space: pre-wrap;
+      font-size: 11px;
+      margin-top: 20px;
+    }
+
+    .instruction {
+      background: rgba(255, 170, 0, 0.1);
+      border-left: 4px solid #ffaa00;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 3px;
+    }
+
+    .instruction h3 {
+      color: #ffaa00;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    .instruction ul {
+      list-style-position: inside;
+      color: #999;
+      font-size: 12px;
+    }
+
+    .instruction li {
+      margin-bottom: 5px;
+    }
+
+    .link-button {
+      display: inline-block;
+      padding: 8px 16px;
+      background: #0a0a0a;
+      border: 1px solid #1cff9b;
+      color: #1cff9b;
+      text-decoration: none;
+      border-radius: 3px;
+      font-size: 13px;
+      transition: all 0.3s;
+    }
+
+    .link-button:hover {
+      background: #1cff9b;
+      color: #0a0a0a;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 25px;
+      background: #1a1a1a;
+      border: 2px solid #1cff9b;
+      border-radius: 5px;
+      overflow: hidden;
+      margin: 15px 0;
+      display: none;
+    }
+
+    .progress-bar.show {
+      display: block;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #1cff9b, #0d3f22);
+      width: 0%;
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #0a0a0a;
+      font-weight: bold;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⚔️ STR ECONOMY TEST RUNNER ⚔️</h1>
+    <div class="subtitle">Comprehensive STR Combat & Economy Testing Suite</div>
+
+    <div class="instruction">
+      <h3>📋 Instructions</h3>
+      <ul>
+        <li><strong>Test 1 (UI Required):</strong> Runs agent through actual Gone Rogue UI - requires you to be in Gone Rogue mode</li>
+        <li><strong>Test 2 (Headless Math):</strong> Runs pure mathematical economy tests focused on STR combat</li>
+        <li><strong>STR Focus:</strong> Both tests emphasize STR combat scenarios to validate economy during combat-heavy gameplay</li>
+        <li><strong>Run Time:</strong> Test 1: 2-5 minutes | Test 2: 5-10 minutes (depending on iterations)</li>
+      </ul>
+    </div>
+
+    <!-- Test 1: Human UI Required -->
+    <div class="test-section">
+      <h2>🎮 Test 1: Human UI Required (Agent Integration)</h2>
+      <p>This test runs an AI agent through the actual Gone Rogue UI, simulating human interactions. Requires Gone Rogue mode to be active.</p>
+
+      <div class="control-group">
+        <label>Agent Mode:</label>
+        <select id="uiAgentMode">
+          <option value="natural">NATURAL - Human-like play (2-5 min)</option>
+          <option value="developer">DEVELOPER - Fast testing (1-2 min)</option>
+        </select>
+      </div>
+
+      <div class="button-group">
+        <button id="runUITest" onclick="runUITest()">▶️ Run UI Test</button>
+        <a href="../../index.html" class="link-button" target="_blank">🎯 Open Game (Required)</a>
+      </div>
+
+      <div id="uiStatus" class="status"></div>
+    </div>
+
+    <!-- Test 2: Headless Math Tests -->
+    <div class="test-section">
+      <h2>🧮 Test 2: Headless Math Economy Tests</h2>
+      <p>Pure mathematical simulations focused on STR combat economy. Tests multiple combat-heavy scenarios.</p>
+
+      <div class="control-group">
+        <label>Number of Runs (recommended 100+):</label>
+        <input type="number" id="mathRuns" value="100" min="10" max="1000">
+      </div>
+
+      <div class="control-group">
+        <label>Test Focus:</label>
+        <select id="mathFocus">
+          <option value="str-heavy">STR Combat Heavy (Most Combat)</option>
+          <option value="str-balanced">STR Balanced (Mixed Playstyle)</option>
+          <option value="str-economy">STR Economy Focus (Resource Management)</option>
+          <option value="all">All Personas (Comprehensive)</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label>Max Floor:</label>
+        <input type="number" id="mathMaxFloor" value="30" min="5" max="50">
+      </div>
+
+      <div class="button-group">
+        <button id="runMathTest" onclick="runMathTest()">▶️ Run Math Tests</button>
+        <button id="stopMathTest" onclick="stopMathTest()" disabled>⏹️ Stop</button>
+      </div>
+
+      <div id="mathStatus" class="status"></div>
+      <div id="mathProgress" class="progress-bar">
+        <div id="mathProgressFill" class="progress-fill">0%</div>
+      </div>
+    </div>
+
+    <!-- Output Console -->
+    <div id="output"></div>
+  </div>
+
+  <!-- Load dependencies -->
+  <script src="../js/gamestate.js"></script>
+  <script src="../js/card-system.js"></script>
+  <script src="agent-engine.js"></script>
+  <script src="agent-mvp-audit.js"></script>
+
+  <script>
+    // Global state
+    let mathTestRunning = false;
+    let mathTestAborted = false;
+
+    // Utility functions
+    function log(message) {
+      const output = document.getElementById('output');
+      const timestamp = new Date().toLocaleTimeString();
+      output.textContent += `[${timestamp}] ${message}\n`;
+      output.scrollTop = output.scrollHeight;
+    }
+
+    function showStatus(elementId, type, message) {
+      const el = document.getElementById(elementId);
+      el.className = `status ${type} show`;
+      el.textContent = message;
+    }
+
+    function hideStatus(elementId) {
+      const el = document.getElementById(elementId);
+      el.classList.remove('show');
+    }
+
+    function updateProgress(percent, text) {
+      const bar = document.getElementById('mathProgress');
+      const fill = document.getElementById('mathProgressFill');
+      bar.classList.add('show');
+      fill.style.width = percent + '%';
+      fill.textContent = text || percent + '%';
+    }
+
+    function hideProgress() {
+      document.getElementById('mathProgress').classList.remove('show');
+    }
+
+    // Test 1: UI Test
+    async function runUITest() {
+      log('\n════════════════════════════════════════════');
+      log('🎮 STARTING UI TEST (Agent Integration)');
+      log('════════════════════════════════════════════\n');
+
+      // Check if in Gone Rogue mode
+      if (typeof GoneRogue === 'undefined') {
+        showStatus('uiStatus', 'error', '❌ ERROR: GoneRogue not loaded');
+        log('ERROR: GoneRogue module not loaded. Make sure the game is running.');
+        log('→ Open the game in another tab: ../../index.html');
+        log('→ Enter Gone Rogue mode: type "rogue" in terminal\n');
+        return;
+      }
+
+      if (!GoneRogue.isActive()) {
+        showStatus('uiStatus', 'error', '❌ ERROR: Not in Gone Rogue mode');
+        log('ERROR: You must be in Gone Rogue mode to run this test.');
+        log('→ In the game terminal, type: rogue\n');
+        return;
+      }
+
+      // Check if agent integration is loaded
+      if (typeof AgentIntegration === 'undefined') {
+        showStatus('uiStatus', 'error', '❌ ERROR: AgentIntegration not loaded');
+        log('ERROR: AgentIntegration module not loaded.');
+        log('→ Make sure agent-integration.js is included in the main game page\n');
+        return;
+      }
+
+      const mode = document.getElementById('uiAgentMode').value;
+      showStatus('uiStatus', 'running', `🤖 Running ${mode.toUpperCase()} agent...`);
+      log(`Starting agent in ${mode} mode...`);
+      log('→ The agent will control the game through the UI');
+      log('→ Watch the game window for real-time gameplay');
+      log('→ Agent will stop automatically when complete\n');
+
+      // Start the agent
+      const success = AgentIntegration.startAgentTakeover(mode);
+
+      if (success) {
+        log('✓ Agent successfully started');
+        log('→ Monitor the game window for progress');
+        log('→ Agent will generate report when finished\n');
+        showStatus('uiStatus', 'complete', '✓ Agent running - check game window');
+      } else {
+        log('✗ Failed to start agent');
+        showStatus('uiStatus', 'error', '❌ Failed to start agent');
+      }
+    }
+
+    // Test 2: Math Tests
+    async function runMathTest() {
+      log('\n════════════════════════════════════════════');
+      log('🧮 STARTING MATH ECONOMY TESTS');
+      log('════════════════════════════════════════════\n');
+
+      mathTestRunning = true;
+      mathTestAborted = false;
+      document.getElementById('runMathTest').disabled = true;
+      document.getElementById('stopMathTest').disabled = false;
+
+      const runs = parseInt(document.getElementById('mathRuns').value);
+      const maxFloor = parseInt(document.getElementById('mathMaxFloor').value);
+      const focus = document.getElementById('mathFocus').value;
+
+      showStatus('mathStatus', 'running', `🔄 Running ${runs} simulations...`);
+      log(`Configuration:`);
+      log(`  Runs: ${runs}`);
+      log(`  Max Floor: ${maxFloor}`);
+      log(`  Focus: ${focus}`);
+      log(`  STR Combat: HEAVY EMPHASIS\n`);
+
+      try {
+        // Create engine with STR-focused configuration
+        // Access the MVPAuditEngine class from the module
+        const MVPAuditEngineClass = (typeof MVPAuditEngine !== 'undefined' && MVPAuditEngine.MVPAuditEngine) || MVPAuditEngine;
+
+        if (!MVPAuditEngineClass) {
+          throw new Error('MVPAuditEngine not loaded. Make sure agent-mvp-audit.js is included.');
+        }
+
+        const engine = new MVPAuditEngineClass({
+          verbose: false,
+          maxFloor: maxFloor,
+          enableElites: true,
+          trackUX: true
+        });
+
+        log('Engine initialized. Starting simulations...\n');
+
+        // Run simulations with progress updates
+        let completed = 0;
+        const results = [];
+
+        for (let i = 0; i < runs; i++) {
+          if (mathTestAborted) {
+            log('\n⚠️ Test aborted by user');
+            break;
+          }
+
+          // Select persona based on focus
+          const persona = selectPersonaForSTRTest(focus, i);
+
+          if (i % 10 === 0) {
+            log(`Progress: ${i}/${runs} runs completed...`);
+          }
+
+          // Run single simulation
+          const result = await engine.executeAuditRun(persona, i + 1);
+          results.push(result);
+
+          completed++;
+          updateProgress(Math.floor((completed / runs) * 100), `${completed}/${runs}`);
+
+          // Small delay to prevent browser freeze
+          if (i % 20 === 0) {
+            await new Promise(resolve => setTimeout(resolve, 10));
+          }
+        }
+
+        hideProgress();
+
+        if (!mathTestAborted) {
+          // Generate report
+          log('\n════════════════════════════════════════════');
+          log('📊 TEST RESULTS');
+          log('════════════════════════════════════════════\n');
+
+          const report = generateSTRFocusedReport(results);
+          log(report);
+
+          showStatus('mathStatus', 'complete', `✓ Completed ${completed}/${runs} tests`);
+        } else {
+          showStatus('mathStatus', 'error', `⚠️ Aborted after ${completed} tests`);
+        }
+
+      } catch (error) {
+        log(`\n❌ ERROR: ${error.message}`);
+        console.error(error);
+        showStatus('mathStatus', 'error', '❌ Test failed - see console');
+      } finally {
+        mathTestRunning = false;
+        document.getElementById('runMathTest').disabled = false;
+        document.getElementById('stopMathTest').disabled = true;
+        hideProgress();
+      }
+    }
+
+    function stopMathTest() {
+      if (mathTestRunning) {
+        mathTestAborted = true;
+        log('\n⚠️ Stopping test after current run...');
+      }
+    }
+
+    // Helper: Select persona based on STR focus
+    function selectPersonaForSTRTest(focus, index) {
+      const strHeavyPersonas = ['GREEDY_LOOTER', 'RISKY_GAMBLER', 'MINMAXER'];
+      const strBalancedPersonas = ['MINMAXER', 'GREEDY_LOOTER', 'SPEEDRUNNER'];
+      const strEconomyPersonas = ['SAVER_HOARDER', 'MINMAXER', 'RISKY_GAMBLER'];
+
+      // Access PERSONAS from the module export
+      const PERSONAS = (typeof MVPAuditEngine !== 'undefined' && MVPAuditEngine.PERSONAS) ||
+                       (typeof AgentEngine !== 'undefined' && AgentEngine.PERSONAS) ||
+                       {};
+      const allPersonas = Object.keys(PERSONAS);
+
+      let personaList;
+      switch(focus) {
+        case 'str-heavy':
+          personaList = strHeavyPersonas;
+          break;
+        case 'str-balanced':
+          personaList = strBalancedPersonas;
+          break;
+        case 'str-economy':
+          personaList = strEconomyPersonas;
+          break;
+        default:
+          personaList = allPersonas.length > 0 ? allPersonas : strHeavyPersonas;
+      }
+
+      const personaName = personaList[index % personaList.length];
+      return PERSONAS[personaName] || {name: personaName};
+    }
+
+    // Helper: Generate STR-focused report
+    function generateSTRFocusedReport(results) {
+      if (!results || results.length === 0) {
+        return 'No results to report.';
+      }
+
+      let report = '';
+
+      // Summary stats
+      const survived = results.filter(r => r.survived).length;
+      const survivalRate = ((survived / results.length) * 100).toFixed(1);
+
+      report += `SUMMARY:\n`;
+      report += `  Total Runs: ${results.length}\n`;
+      report += `  Survived: ${survived} (${survivalRate}%)\n`;
+      report += `  Deaths: ${results.length - survived}\n\n`;
+
+      // STR Combat stats
+      let totalSTRCombat = 0;
+      let totalSTRWins = 0;
+      let totalDamageDealt = 0;
+      let totalDamageTaken = 0;
+
+      results.forEach(r => {
+        if (r.strCombatStats) {
+          totalSTRCombat += r.strCombatStats.initiated || 0;
+          totalSTRWins += r.strCombatStats.wins || 0;
+          totalDamageDealt += r.strCombatStats.damageDealt || 0;
+          totalDamageTaken += r.strCombatStats.damageTaken || 0;
+        }
+      });
+
+      const avgSTRCombat = (totalSTRCombat / results.length).toFixed(1);
+      const strWinRate = totalSTRCombat > 0 ? ((totalSTRWins / totalSTRCombat) * 100).toFixed(1) : 0;
+      const avgDamageDealt = (totalDamageDealt / results.length).toFixed(1);
+      const avgDamageTaken = (totalDamageTaken / results.length).toFixed(1);
+
+      report += `STR COMBAT METRICS:\n`;
+      report += `  Avg Combats/Run: ${avgSTRCombat}\n`;
+      report += `  Win Rate: ${strWinRate}%\n`;
+      report += `  Avg Damage Dealt: ${avgDamageDealt}\n`;
+      report += `  Avg Damage Taken: ${avgDamageTaken}\n\n`;
+
+      // Economy stats
+      let totalCredits = 0;
+      let totalMythics = 0;
+
+      results.forEach(r => {
+        totalCredits += r.finalCredits || 0;
+        totalMythics += r.mythicItemsFound || 0;
+      });
+
+      const avgCredits = (totalCredits / results.length).toFixed(0);
+      const mythicRate = ((totalMythics / results.length) * 100).toFixed(1);
+
+      report += `ECONOMY METRICS:\n`;
+      report += `  Avg Final Credits: ${avgCredits}\n`;
+      report += `  Mythic Find Rate: ${mythicRate}%\n`;
+      report += `  Total Mythics Found: ${totalMythics}\n\n`;
+
+      // Per-persona breakdown
+      const personaStats = {};
+      results.forEach(r => {
+        if (!personaStats[r.persona]) {
+          personaStats[r.persona] = {runs: 0, survived: 0, combats: 0, credits: 0};
+        }
+        personaStats[r.persona].runs++;
+        if (r.survived) personaStats[r.persona].survived++;
+        if (r.strCombatStats) personaStats[r.persona].combats += r.strCombatStats.initiated || 0;
+        personaStats[r.persona].credits += r.finalCredits || 0;
+      });
+
+      report += `PER-PERSONA BREAKDOWN:\n`;
+      Object.keys(personaStats).forEach(persona => {
+        const stats = personaStats[persona];
+        const pSurvivalRate = ((stats.survived / stats.runs) * 100).toFixed(1);
+        const pAvgCombats = (stats.combats / stats.runs).toFixed(1);
+        const pAvgCredits = (stats.credits / stats.runs).toFixed(0);
+
+        report += `  ${persona}:\n`;
+        report += `    Runs: ${stats.runs} | Survival: ${pSurvivalRate}%\n`;
+        report += `    Avg STR Combats: ${pAvgCombats} | Avg Credits: ${pAvgCredits}\n`;
+      });
+
+      report += `\n════════════════════════════════════════════\n`;
+      report += `STR ECONOMY VALIDATION: ${strWinRate}% win rate suggests `;
+
+      if (strWinRate < 30) {
+        report += `⚠️ COMBAT TOO DIFFICULT`;
+      } else if (strWinRate > 80) {
+        report += `⚠️ COMBAT TOO EASY`;
+      } else {
+        report += `✓ BALANCED`;
+      }
+
+      report += `\nECONOMY STATUS: `;
+      if (avgCredits < 100) {
+        report += `⚠️ CURRENCY STARVATION`;
+      } else if (avgCredits > 5000) {
+        report += `⚠️ EXCESS CURRENCY`;
+      } else {
+        report += `✓ HEALTHY`;
+      }
+      report += `\n`;
+
+      return report;
+    }
+
+    // Initialize
+    log('STR Economy Test Runner initialized.');
+    log('Select a test above to begin.\n');
+  </script>
+</body>
+</html>
