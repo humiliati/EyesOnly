@@ -316,8 +316,14 @@ const GAMESTATE = (function () {
     _state.actionButtonCards.push(card);
     _saveState();
 
+    // Update ReserveSlots UI if available
+    if (typeof ReserveSlots !== 'undefined' && typeof ReserveSlots.setActionButtonCards === 'function') {
+      ReserveSlots.setActionButtonCards(_state.actionButtonCards);
+    }
+
     return {
       success: true,
+      location: 'action_buttons',
       message: 'Card added to action buttons: ' + card.name
     };
   }
@@ -426,21 +432,6 @@ const GAMESTATE = (function () {
    */
   function getCardDrawRate() {
     return _state.cardDrawPerTurn || 1;
-  }
-    }
-
-    _state.actionButtonCards.push(card);
-    _saveState();
-
-    // Update ReserveSlots UI if available
-    if (typeof ReserveSlots !== 'undefined' && typeof ReserveSlots.setActionButtonCards === 'function') {
-      ReserveSlots.setActionButtonCards(_state.actionButtonCards);
-    }
-
-    return {
-      success: true,
-      message: 'Card added to action buttons: ' + card.name
-    };
   }
 
   /**
