@@ -18,6 +18,12 @@ const GoneRogueMobile = (function () {
   var _lastTapCell = null;
   var _runMode = false;
 
+  // Pinch-to-zoom state
+  var _initialPinchDistance = 0;
+  var _currentZoom = 1.0;
+  var _minZoom = 0.5;
+  var _maxZoom = 2.0;
+
   // Touch tracking for swipes
   var _touchStart = { x: 0, y: 0, time: 0 };
   var _activeCard = null;
@@ -126,6 +132,7 @@ const GoneRogueMobile = (function () {
 
     // Grid tap/double-tap
     _gridContainer.addEventListener('touchstart', _handleGridTouchStart, { passive: false });
+    _gridContainer.addEventListener('touchmove', _handleGridTouchMove, { passive: false });
     _gridContainer.addEventListener('touchend', _handleGridTouchEnd, { passive: false });
     _gridContainer.addEventListener('click', _handleGridClick);
 
@@ -590,11 +597,56 @@ const GoneRogueMobile = (function () {
   }
 
   /**
+   * Calculate distance between two touch points
+   */
+  function _getTouchDistance(touches) {
+    if (touches.length < 2) return 0;
+    var dx = touches[0].clientX - touches[1].clientX;
+    var dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  /**
+   * Handle grid touch move (for pinch-to-zoom)
+   */
+  function _handleGridTouchMove(e) {
+    // Handle pinch-to-zoom with two fingers
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      var currentDistance = _getTouchDistance(e.touches);
+
+      if (_initialPinchDistance === 0) {
+        _initialPinchDistance = currentDistance;
+      } else {
+        var scale = currentDistance / _initialPinchDistance;
+        var newZoom = _currentZoom * scale;
+
+        // Clamp zoom level
+        newZoom = Math.max(_minZoom, Math.min(_maxZoom, newZoom));
+
+        // Apply zoom to grid container
+        if (_gridContainer) {
+          _gridContainer.style.transform = 'scale(' + newZoom + ')';
+          _gridContainer.style.transformOrigin = 'center center';
+        }
+      }
+    }
+  }
+
+  /**
    * Handle grid touch start (for double-tap detection)
    */
   function _handleGridTouchStart(e) {
     e.preventDefault();
     e.stopPropagation(); // Prevent document-level listeners
+
+    // Initialize pinch distance for two-finger gestures
+    if (e.touches.length === 2) {
+      _initialPinchDistance = _getTouchDistance(e.touches);
+      return; // Don't process as tap
+    }
 
     var touch = e.touches[0];
     var target = document.elementFromPoint(touch.clientX, touch.clientY);
@@ -625,6 +677,20 @@ const GoneRogueMobile = (function () {
   function _handleGridTouchEnd(e) {
     e.preventDefault();
     e.stopPropagation();
+
+    // If pinch gesture ended, save current zoom and reset pinch distance
+    if (_initialPinchDistance > 0) {
+      var currentTransform = _gridContainer ? window.getComputedStyle(_gridContainer).transform : 'none';
+      if (currentTransform && currentTransform !== 'none') {
+        var matrix = currentTransform.match(/matrix\(([^)]+)\)/);
+        if (matrix) {
+          var values = matrix[1].split(', ');
+          _currentZoom = parseFloat(values[0]) || 1.0;
+        }
+      }
+      _initialPinchDistance = 0;
+      return; // Don't process as tap
+    }
 
     var touch = e.changedTouches[0];
     var target = document.elementFromPoint(touch.clientX, touch.clientY);
