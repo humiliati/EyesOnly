@@ -119,7 +119,11 @@ const MVPAuditEngine = (function() {
           totalDamageTaken: 0,
           cardsPlayedByType: {},
           bossEncounters: 0,
-          bossDefeats: 0
+          bossDefeats: 0,
+          // Fatigue tracking
+          averageFatigueAtEndOfCombat: 0,
+          timesCardUnavailableDueToFatigue: 0,
+          fatigueManagementScore: 0
         },
         pathfinding: {
           totalMoves: 0,
@@ -133,7 +137,27 @@ const MVPAuditEngine = (function() {
           creditsPerFloor: [],
           vendorInteractionsByType: {},
           resourceStarvationEvents: 0,
-          excessCurrencyEvents: 0
+          excessCurrencyEvents: 0,
+          // Shop tracking
+          totalShopVisits: 0,
+          averageSpendPerVisit: 0,
+          itemsPurchased: {},
+          itemsSold: {}
+        },
+        // Consumables tracking
+        consumables: {
+          totalConsumablesFound: 0,
+          totalConsumablesUsed: 0,
+          consumablesByType: {},
+          consumableUsagePerFloor: [],
+          consumableWasteEvents: 0
+        },
+        // Deck management tracking
+        deckMetrics: {
+          averageDeckSizeByFloor: [],
+          cardsLostToFatigue: 0,
+          cardsWithZeroAmmo: 0,
+          looseInventoryUtilization: 0
         }
       };
     }
@@ -238,7 +262,10 @@ const MVPAuditEngine = (function() {
             averageCombatLength: 0,
             cardTypesUsed: {},
             damageDealtPerCombat: [],
-            damageTakenPerCombat: []
+            damageTakenPerCombat: [],
+            // Fatigue tracking per run
+            fatigueAtEndOfCombat: [],
+            timesCardUnavailableDueToFatigue: 0
           },
           pathfindingMetrics: {
             averagePathOptimality: 0,
@@ -249,7 +276,22 @@ const MVPAuditEngine = (function() {
           economyMetrics: {
             creditsPerFloor: [],
             spendingPattern: [],
-            vendorChoices: []
+            vendorChoices: [],
+            // Shop visit tracking
+            shopVisits: []
+          },
+          // Consumables tracking per run
+          consumablesMetrics: {
+            consumablesFound: 0,
+            consumablesUsed: 0,
+            consumablesByType: {},
+            consumableUsageByFloor: []
+          },
+          // Deck tracking per run
+          deckMetrics: {
+            deckSizeByFloor: [],
+            cardsLostToFatigue: 0,
+            cardsWithZeroAmmo: 0
           }
         },
         
@@ -351,11 +393,14 @@ const MVPAuditEngine = (function() {
 
         // Log economy state per floor
         report.uxMetrics.economyMetrics.creditsPerFloor.push(gameState.credits);
+        report.uxMetrics.deckMetrics.deckSizeByFloor.push(gameState.deck.length);
         report.economyLog.push({
           floor: currentFloor,
           credits: gameState.credits,
           deckSize: gameState.deck.length,
-          hp: gameState.hp
+          hp: gameState.hp,
+          fatigue: gameState.fatigue || 0,
+          ammo: gameState.ammo || 0
         });
 
         report.floorsCleared++;
@@ -389,7 +434,13 @@ const MVPAuditEngine = (function() {
         facing: 'north',
         stealthBonus: 0,
         lightSourceEquipped: null,
-        groundEffectsSteppedOn: []
+        groundEffectsSteppedOn: [],
+        // New resource tracking
+        fatigue: 0,
+        maxFatigue: 100,
+        ammo: 30,
+        maxAmmo: 50,
+        consumables: []
       };
     }
 
@@ -699,8 +750,9 @@ const MVPAuditEngine = (function() {
       persona = ensurePersonaProperties(persona);
 
       report.vendorInteractions++;
-      
+
       var choices = [];
+      var spentThisVisit = 0;
 
       // Healing
       if (gameState.hp < gameState.maxHp * persona.healThreshold && gameState.credits >= 50) {
@@ -708,6 +760,7 @@ const MVPAuditEngine = (function() {
         gameState.credits -= 50;
         report.healingPurchases++;
         report.creditsSpent += 50;
+        spentThisVisit += 50;
         choices.push('HEAL');
       }
 
@@ -718,6 +771,7 @@ const MVPAuditEngine = (function() {
         gameState.credits -= 150;
         report.cardsPurchased++;
         report.creditsSpent += 150;
+        spentThisVisit += 150;
         choices.push('BUY_RARE');
       } else if (persona.vendorStrategy === 'GAMBLE_ALL') {
         while (gameState.credits >= 100) {
@@ -727,13 +781,16 @@ const MVPAuditEngine = (function() {
           }
           gameState.credits += gambleResult.creditsWon - 100;
           report.creditsSpent += 100;
+          spentThisVisit += 100;
           choices.push('GAMBLE');
         }
       }
 
-      report.uxMetrics.economyMetrics.vendorChoices.push({
+      // Track shop visit
+      report.uxMetrics.economyMetrics.shopVisits.push({
         floor: floor,
         choices: choices,
+        spent: spentThisVisit,
         creditsRemaining: gameState.credits
       });
     }
