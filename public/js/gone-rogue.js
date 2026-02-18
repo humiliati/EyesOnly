@@ -68,6 +68,17 @@ const GoneRogue = (function () {
   // Secret floor state
   var _activeSecretFloor = null; // Current secret floor type (if any)
 
+  // Highscore tracking variables
+  var _runStartTime = null;        // Run start timestamp
+  var _currencyCollected = 0;      // Total currency collected this run (excludes starting balance)
+  var _totalEnemiesSpawned = 0;    // Total enemies that spawned
+  var _enemiesKilled = 0;          // Enemies defeated
+  var _totalBreakableDamage = 0;   // HP dealt to breakables
+  var _totalDamageDealt = 0;       // Total damage player dealt
+  var _maxSingleHit = 0;           // Highest single attack damage
+  var _damageMitigated = 0;        // Damage avoided/blocked in STR combat
+  var _runCompleted = false;       // Whether run reached floor 30
+
   var TILES = {
     EMPTY: '.',
     WALL: '█',
@@ -304,6 +315,17 @@ const GoneRogue = (function () {
     _active = true;
     _loaded = true;
 
+    // Initialize highscore tracking
+    _runStartTime = Date.now();
+    _currencyCollected = 0;
+    _totalEnemiesSpawned = 0;
+    _enemiesKilled = 0;
+    _totalBreakableDamage = 0;
+    _totalDamageDealt = 0;
+    _maxSingleHit = 0;
+    _damageMitigated = 0;
+    _runCompleted = false;
+
     // Initialize lighting system if available
     if (typeof LightingSystem !== 'undefined') {
       LightingSystem.init();
@@ -320,6 +342,24 @@ const GoneRogue = (function () {
     if (typeof GroundEffects !== 'undefined') {
       GroundEffects.init();
       console.log('[GoneRogue] Ground effects system initialized');
+    }
+
+    // Initialize overhead animator
+    if (typeof OverheadAnimator !== 'undefined') {
+      OverheadAnimator.init();
+      console.log('[GoneRogue] Overhead animator initialized');
+    }
+
+    // Initialize interactive items
+    if (typeof InteractiveItems !== 'undefined') {
+      InteractiveItems.init();
+      console.log('[GoneRogue] Interactive items initialized');
+    }
+
+    // Initialize item spawner
+    if (typeof ItemSpawner !== 'undefined') {
+      ItemSpawner.init();
+      console.log('[GoneRogue] Item spawner initialized');
     }
 
     // Initialize from GAMESTATE if available
@@ -351,6 +391,38 @@ const GoneRogue = (function () {
       if (energyBonus > 0) {
         _player.maxEnergy += energyBonus;
         _player.energy += energyBonus; // Also restore
+      }
+
+      // Give random 3 starter cards if player has 0 cards (at game start, not floor transition)
+      if (typeof CardSystem !== 'undefined') {
+        var looseInventory = GAMESTATE.getLooseInventory();
+        if (looseInventory.length === 0) {
+          // Define all 5 starter cards
+          var allStarterCards = ['SINGLE_SHOT', 'PRONE', 'KATCHUP', 'DODGE', 'BURST_SHOT'];
+
+          // Shuffle and pick 3 random cards
+          var shuffled = allStarterCards.slice();
+          for (var i = shuffled.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var temp = shuffled[i];
+            shuffled[i] = shuffled[j];
+            shuffled[j] = temp;
+          }
+          var selectedCards = shuffled.slice(0, 3);
+
+          // Add the 3 selected cards to loose inventory
+          for (var c = 0; c < selectedCards.length; c++) {
+            var card = CardSystem.rollCard(selectedCards[c]);
+            if (card) {
+              GAMESTATE.addToLoose(card);
+            }
+          }
+
+          lines.push('');
+          lines.push('  📦 STARTER LOADOUT DEPLOYED');
+          lines.push('  3 COMBAT CARDS ADDED TO INVENTORY');
+          lines.push('');
+        }
       }
     } else {
       lines = ['', 'GONE ROGUE MODE ACTIVATED', ''];
@@ -462,6 +534,11 @@ const GoneRogue = (function () {
 
     if (cmd === 'extract') {
       return _attemptExtract();
+    }
+
+    // Interactive item commands
+    if (cmd === 'interact' || cmd === 'examine' || cmd === 'read') {
+      return _handleInteraction();
     }
 
     // Bonfire vendor commands
@@ -774,6 +851,15 @@ const GoneRogue = (function () {
       LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, walls);
     }
 
+    // Spawn interactive items
+    if (typeof ItemSpawner !== 'undefined' && typeof InteractiveItems !== 'undefined') {
+      var spawnedItems = ItemSpawner.spawnItemsForFloor(_floor, rooms, _grid);
+      spawnedItems.forEach(function(item) {
+        InteractiveItems.addItem(item);
+      });
+      console.log('[GoneRogue] Spawned', spawnedItems.length, 'interactive items');
+    }
+
     _turn = 0;
   }
 
@@ -838,8 +924,18 @@ const GoneRogue = (function () {
 
         var w = Math.floor(Math.random() * (maxWidth - minSize + 1)) + minSize;
         var h = Math.floor(Math.random() * (maxHeight - minSize + 1)) + minSize;
+
+        // Ensure room dimensions fit within grid bounds with padding
+        w = Math.min(w, GRID_WIDTH - 4);
+        h = Math.min(h, GRID_HEIGHT - 4);
+
         var x = Math.floor(Math.random() * (GRID_WIDTH - w - 4)) + 2;
         var y = Math.floor(Math.random() * (GRID_HEIGHT - h - 4)) + 2;
+
+        // Additional validation: ensure room is fully within bounds
+        if (x + w >= GRID_WIDTH - 2 || y + h >= GRID_HEIGHT - 2) {
+          continue; // Skip this attempt
+        }
 
         // Check if room overlaps with existing rooms (including 1-2 tile spacing)
         var spacing = 2;
@@ -1151,6 +1247,7 @@ const GoneRogue = (function () {
       _activeBoss.bossEntity = bossEnemy;
 
       _enemies.push(bossEnemy);
+      _totalEnemiesSpawned++; // Track for highscore
       return;
     }
 
@@ -1202,6 +1299,7 @@ const GoneRogue = (function () {
             elite.str = 6 + Math.floor(_floor * 0.3);
             elite.dex = 6 + Math.floor(_floor * 0.3);
             _enemies.push(elite);
+            _totalEnemiesSpawned++; // Track for highscore
             eliteSpawned = true;
           }
         }
@@ -1242,6 +1340,7 @@ const GoneRogue = (function () {
       var enemy = _createEnemy(x, y, patrolType, room);
 
       _enemies.push(enemy);
+      _totalEnemiesSpawned++; // Track for highscore
     }
   }
 
@@ -1550,7 +1649,7 @@ const GoneRogue = (function () {
    */
   function _updateMobileGrid() {
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles, _alertLevel, _strCombatActive, _muzzleFlash, _impactEffects);
+      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles, _alertLevel, _strCombatActive, _muzzleFlash, _impactEffects, _currencies);
     }
   }
 
@@ -1624,8 +1723,15 @@ const GoneRogue = (function () {
         var result = GAMESTATE.addCryptos(cryptoPickup.amount);
         cryptoMessage = result.message;
       }
+      // Track for highscore
+      _currencyCollected += cryptoPickup.amount;
       // Remove currency from floor
       _currencies = _currencies.filter(function(c) { return c.x !== newX || c.y !== newY; });
+
+      // Show overhead currency animation
+      if (typeof OverheadAnimator !== 'undefined') {
+        OverheadAnimator.showCurrencyPickup(_player.x, _player.y, cryptoPickup.amount);
+      }
 
       // Tooltip: Currency pickup
       if (typeof TooltipSystem !== 'undefined') {
@@ -1786,11 +1892,60 @@ const GoneRogue = (function () {
     // Check if this is the final floor (30) or if player wants to extract early
     var MAX_FLOORS = 30;
     if (_floor >= MAX_FLOORS) {
+      _runCompleted = true; // Mark run as completed for highscore
       return _exitRogue(true);
     }
 
     // Advance to next floor
     return _advanceFloor();
+  }
+
+  /**
+   * Handle interaction with interactive items
+   */
+  function _handleInteraction() {
+    if (typeof InteractiveItems === 'undefined') {
+      return { lines: ['Nothing to interact with'], prompt: getPrompt(), stayActive: true };
+    }
+
+    // Find nearest interactive item
+    var nearestItem = InteractiveItems.getNearestItem(_player.x, _player.y);
+
+    if (!nearestItem) {
+      return { lines: ['Nothing nearby to interact with'], prompt: getPrompt(), stayActive: true };
+    }
+
+    if (!InteractiveItems.canInteractWith(_player.x, _player.y, nearestItem)) {
+      return { lines: ['Too far away to interact'], prompt: getPrompt(), stayActive: true };
+    }
+
+    // Perform interaction
+    var result = InteractiveItems.interact(nearestItem, _player);
+
+    if (result.success) {
+      // Show overhead animation
+      if (result.animation && typeof OverheadAnimator !== 'undefined') {
+        OverheadAnimator.showExpression(
+          _player.x,
+          _player.y,
+          result.animation.expressionKey,
+          result.animation.duration
+        );
+      }
+
+      // Show tooltip
+      if (result.tooltip && typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.show(result.tooltip.message, result.tooltip.duration);
+      }
+
+      return {
+        lines: ['Interacted with ' + nearestItem.name, '', nearestItem.text],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    return { lines: ['Cannot interact with that'], prompt: getPrompt(), stayActive: true };
   }
 
   function _advanceFloor() {
@@ -1846,39 +2001,7 @@ const GoneRogue = (function () {
       var healAmount = Math.floor(_player.maxHp * (0.1 + Math.random() * 0.1));
       _player.hp = Math.min(_player.maxHp, _player.hp + healAmount);
 
-      // After floor 1, give random 3 starter cards if player has 0 cards
-      if (_floor === 2 && typeof GAMESTATE !== 'undefined' && typeof CardSystem !== 'undefined') {
-        var looseInventory = GAMESTATE.getLooseInventory();
-        if (looseInventory.length === 0) {
-          // Define all 5 starter cards
-          var allStarterCards = ['SINGLE_SHOT', 'PRONE', 'KATCHUP', 'DODGE', 'BURST_SHOT'];
-
-          // Shuffle and pick 3 random cards
-          var shuffled = allStarterCards.slice();
-          for (var i = shuffled.length - 1; i > 0; i--) {
-            var j = Math.floor(Math.random() * (i + 1));
-            var temp = shuffled[i];
-            shuffled[i] = shuffled[j];
-            shuffled[j] = temp;
-          }
-          var selectedCards = shuffled.slice(0, 3);
-
-          // Add the 3 selected cards to loose inventory
-          for (var c = 0; c < selectedCards.length; c++) {
-            var card = CardSystem.rollCard(selectedCards[c]);
-            if (card) {
-              GAMESTATE.addToLoose(card);
-            }
-          }
-
-          lines.push('');
-          lines.push('  📦 SUPPLY DROP RECEIVED');
-          lines.push('  3 STARTER CARDS ADDED TO INVENTORY');
-          lines.push('');
-        }
-      }
-
-      // Generate next floor
+      // Generate next floor (moved BEFORE card delivery logic)
       if (isSecretFloor) {
         _generateFloor(secretFloorData);
       } else {
@@ -1887,6 +2010,7 @@ const GoneRogue = (function () {
       _startGameLoop();
       _saveState();
 
+      // Initialize lines array for messaging
       var lines = [];
 
       if (isSecretFloor) {
@@ -2491,9 +2615,79 @@ const GoneRogue = (function () {
     };
   }
 
+  /**
+   * Submit highscore at end of run
+   */
+  function _submitHighscore() {
+    // Determine if this is an agent or human run
+    var mode = 'human';
+    if (typeof AgentIntegration !== 'undefined' && AgentIntegration.isActive()) {
+      mode = 'agent';
+    }
+
+    // Get display name
+    var displayName = 'Anonymous';
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getAccount === 'function') {
+      var account = GAMESTATE.getAccount();
+      if (account && account.username) {
+        displayName = account.username;
+      }
+    }
+
+    // Calculate enemies avoided (spawned but not killed)
+    var enemiesAvoided = Math.max(0, _totalEnemiesSpawned - _enemiesKilled);
+
+    // Prepare run data for score calculation
+    var runData = {
+      currencyFound: _currencyCollected,
+      interactivesFound: 0, // TODO: Track interactive items in future
+      enemiesAvoided: enemiesAvoided,
+      breakableDamage: _totalBreakableDamage,
+      damageMitigated: _damageMitigated
+    };
+
+    // Calculate score
+    var score = HighscoreState.calculateGoneRogueScore(runData);
+
+    // Prepare entry
+    var entry = {
+      game_id: 'gone_rogue',
+      mode: mode,
+      display_name: displayName,
+      score: score,
+      metadata: {
+        completions: _runCompleted ? 1 : 0,
+        final_floor: _floor,
+        player_deaths: 0, // Currently tracking only in-run state
+        enemies_killed: _enemiesKilled,
+        enemies_avoided: enemiesAvoided,
+        currency_collected: _currencyCollected,
+        total_damage_dealt: _totalDamageDealt,
+        most_damage_dealt_single_action: _maxSingleHit,
+        damage_mitigated: _damageMitigated,
+        breakables_destroyed: _totalBreakableDamage,
+        run_duration_ms: _runStartTime ? (Date.now() - _runStartTime) : 0
+      }
+    };
+
+    // Submit to HighscoreState
+    var result = HighscoreState.submitHighscore(entry);
+
+    if (result.success) {
+      console.log('[GoneRogue] Highscore submitted:', score, 'Entry ID:', result.entry_id);
+    } else {
+      console.error('[GoneRogue] Failed to submit highscore:', result.error);
+    }
+  }
+
   function _exitRogue(success) {
     _active = false;
     _stopGameLoop();
+
+    // Submit highscore if extraction was successful
+    if (success && typeof HighscoreState !== 'undefined') {
+      _submitHighscore();
+    }
 
     // Restore mobile keyboard behavior when exiting
     if (typeof Terminal !== 'undefined' && typeof Terminal.restoreMobileKeyboard === 'function') {
@@ -2830,7 +3024,15 @@ const GoneRogue = (function () {
    * Increase enemy awareness
    */
   function _increaseEnemyAwareness(enemy, amount) {
-    enemy.awareness = Math.min(150, (enemy.awareness || 0) + amount);
+    var previousAwareness = enemy.awareness || 0;
+    enemy.awareness = Math.min(150, previousAwareness + amount);
+
+    // Show alert expression when crossing into ALERTED state
+    if (previousAwareness < AWARENESS_STATES.ALERTED.min && enemy.awareness >= AWARENESS_STATES.ALERTED.min) {
+      if (typeof OverheadAnimator !== 'undefined') {
+        OverheadAnimator.showExpression(enemy.x, enemy.y, 'ALERT', 1000);
+      }
+    }
   }
 
   /**
@@ -3016,6 +3218,9 @@ const GoneRogue = (function () {
 
   function _damageBreakable(breakable, amount) {
     breakable.hp = Math.max(0, (breakable.hp || 0) - amount);
+
+    // Track for highscore
+    _totalBreakableDamage += amount;
 
     // Add hit animation state
     breakable.hitTime = Date.now();
@@ -3316,7 +3521,7 @@ const GoneRogue = (function () {
 
   function _saveState() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      var state = {
         active: _active,
         player: _player,
         enemies: _enemies,
@@ -3325,7 +3530,14 @@ const GoneRogue = (function () {
         breakables: _breakables,
         turn: _turn,
         floor: _floor
-      }));
+      };
+
+      // Save interactive items
+      if (typeof InteractiveItems !== 'undefined') {
+        state.interactiveItems = InteractiveItems.serialize();
+      }
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (e) { /* ignore */ }
   }
 
@@ -3341,6 +3553,12 @@ const GoneRogue = (function () {
       if (parsed.breakables) _breakables = parsed.breakables;
       if (parsed.turn) _turn = parsed.turn;
       if (parsed.floor) _floor = parsed.floor;
+
+      // Restore interactive items
+      if (parsed.interactiveItems && typeof InteractiveItems !== 'undefined') {
+        InteractiveItems.deserialize(parsed.interactiveItems);
+      }
+
       // DO NOT restore active state - user must explicitly enter rogue mode
       _active = false;
     } catch (e) { /* ignore */ }
@@ -3874,6 +4092,7 @@ const GoneRogue = (function () {
       if (_strCombatEnemy.hp <= 0) {
         lines.push('');
         lines.push('💀 ENEMY DEFEATED!');
+        _enemiesKilled++; // Track for highscore
         var exitResult = _exitStrCombat('player_victory');
         return {
           lines: lines.concat(exitResult.lines || []),
@@ -4084,6 +4303,18 @@ const GoneRogue = (function () {
     var finalDamage = Math.max(1, damageResult.damage - defenseReduction);
 
     target.hp -= finalDamage;
+
+    // Track damage for highscore (only player damage to enemies)
+    if (actor === _player && target === _strCombatEnemy) {
+      _totalDamageDealt += finalDamage;
+      if (finalDamage > _maxSingleHit) {
+        _maxSingleHit = finalDamage;
+      }
+    }
+    // Track damage mitigation (only enemy attacks on player)
+    if (actor === _strCombatEnemy && target === _player && defenseReduction > 0) {
+      _damageMitigated += defenseReduction;
+    }
 
     var critEmoji = hitResult.crit ? ' 💥 CRIT!' : '';
     lines.push('├─ HIT!' + critEmoji + ' (Roll: ' + hitResult.roll + ' vs ' + hitResult.target + ')');
@@ -5744,6 +5975,7 @@ const GoneRogue = (function () {
     getEnemies: getEnemies,
     getEnemyAwarenessState: getEnemyAwarenessState,
     getBreakables: function() { return _breakables; },
+    getBreakableAt: _getBreakableAt,
     getProjectiles: function() { return _projectiles; },
     fireProjectile: _fireProjectile,
     stepProjectiles: stepProjectiles,
@@ -5751,7 +5983,7 @@ const GoneRogue = (function () {
     getStrCombatState: getStrCombatState,
     triggerActiveItem: triggerActiveItem,
     updatePlayerLight: _updatePlayerLight,
-    
+
     // Headless mode API (for testing/agent simulation)
     headless: {
       getState: getState,

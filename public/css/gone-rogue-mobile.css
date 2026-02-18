@@ -1183,3 +1183,175 @@
   }
 }
 
+/* ============================================================
+   OVERHEAD ANIMATOR SYSTEM
+   ============================================================ */
+
+/* Overhead animation container */
+.overhead-animation {
+  position: absolute;
+  pointer-events: none;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  text-align: center;
+  white-space: nowrap;
+  z-index: 1000;
+  text-shadow:
+    0 0 3px rgba(0, 0, 0, 0.8),
+    0 0 6px rgba(0, 0, 0, 0.6),
+    1px 1px 2px rgba(0, 0, 0, 1);
+  animation: overhead-appear 0.2s ease-out;
+}
+
+@keyframes overhead-appear {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Currency pickup animation */
+.overhead-animation.currency-pickup {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* Expression animations */
+.overhead-animation.expression {
+  font-size: 20px;
+}
+
+/* Status effect indicators */
+.overhead-animation.status-persistent {
+  font-size: 18px;
+  animation: overhead-bob 1s ease-in-out infinite;
+}
+
+@keyframes overhead-bob {
+  0%, 100% {
+    transform: translateY(-2px);
+  }
+  50% {
+    transform: translateY(2px);
+  }
+}
+
+/* Speech/thought bubbles */
+.overhead-animation.speech {
+  font-size: 14px;
+  max-width: 150px;
+  white-space: normal;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 4px 8px;
+  line-height: 1.2;
+}
+
+.overhead-animation.speech::before {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid rgba(0, 0, 0, 0.8);
+}
+
+/* Speech bubble emoji prefix */
+.overhead-animation.speech .bubble-emoji {
+  display: inline-block;
+  margin-right: 4px;
+  font-size: 16px;
+}
+
+/* Alert indicator pulse */
+.overhead-animation.alert {
+  animation: overhead-alert-pulse 0.5s ease-in-out infinite;
+}
+
+@keyframes overhead-alert-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+}
+
+/* Emoji glow effects for status */
+.overhead-animation.burning {
+  animation: overhead-fire-flicker 0.3s ease-in-out infinite;
+}
+
+@keyframes overhead-fire-flicker {
+  0%, 100% {
+    filter: brightness(1) hue-rotate(0deg);
+  }
+  50% {
+    filter: brightness(1.3) hue-rotate(10deg);
+  }
+}
+
+.overhead-animation.frozen {
+  animation: overhead-ice-shimmer 2s ease-in-out infinite;
+}
+
+@keyframes overhead-ice-shimmer {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.5) drop-shadow(0 0 4px cyan);
+  }
+}
+
+.overhead-animation.shocked {
+  animation: overhead-shock-zap 0.2s ease-in-out infinite;
+}
+
+@keyframes overhead-shock-zap {
+  0%, 100% {
+    transform: translateX(0) scale(1);
+  }
+  25% {
+    transform: translateX(-2px) scale(1.1);
+  }
+  75% {
+    transform: translateX(2px) scale(1.1);
+  }
+}
+
+/* Interactive item indicator */
+.interactive-item-indicator {
+  position: absolute;
+  pointer-events: none;
+  font-size: 14px;
+  color: #ffff00;
+  text-shadow:
+    0 0 3px rgba(0, 0, 0, 0.8),
+    0 0 6px rgba(255, 255, 0, 0.6);
+  z-index: 999;
+  animation: interactive-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes interactive-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+

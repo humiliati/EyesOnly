@@ -9,6 +9,7 @@ const GoneRogueMobile = (function () {
   // Constants
   var DOUBLE_TAP_THRESHOLD_MS = 300;
   var CLICK_FEEDBACK_DURATION_MS = 400;
+  var TAP_TO_MOVE_MAX_RADIUS = 12; // Maximum distance (in tiles) from player for tap-to-move (extended by ~15% from original ~10.4)
 
   var _gridContainer = null;
   var _cardContainer = null;
@@ -16,6 +17,12 @@ const GoneRogueMobile = (function () {
   var _lastTapTime = 0;
   var _lastTapCell = null;
   var _runMode = false;
+
+  // Pinch-to-zoom state
+  var _initialPinchDistance = 0;
+  var _currentZoom = 1.0;
+  var _minZoom = 0.5;
+  var _maxZoom = 2.0;
 
   // Touch tracking for swipes
   var _touchStart = { x: 0, y: 0, time: 0 };
@@ -125,6 +132,7 @@ const GoneRogueMobile = (function () {
 
     // Grid tap/double-tap
     _gridContainer.addEventListener('touchstart', _handleGridTouchStart, { passive: false });
+    _gridContainer.addEventListener('touchmove', _handleGridTouchMove, { passive: false });
     _gridContainer.addEventListener('touchend', _handleGridTouchEnd, { passive: false });
     _gridContainer.addEventListener('click', _handleGridClick);
 
@@ -144,11 +152,12 @@ const GoneRogueMobile = (function () {
   /**
    * Render grid as interactive HTML cells
    */
-  function renderGrid(grid, player, enemies, items, colorCycleTime, breakables, projectiles, alertLevel, strCombatActive, muzzleFlash, impactEffects) {
+  function renderGrid(grid, player, enemies, items, colorCycleTime, breakables, projectiles, alertLevel, strCombatActive, muzzleFlash, impactEffects, currencies) {
     if (!_gridContainer || !grid) return;
 
     breakables = breakables || [];
     projectiles = projectiles || [];
+    currencies = currencies || [];
     alertLevel = alertLevel || 'safe';
     strCombatActive = strCombatActive || false;
 
@@ -185,6 +194,7 @@ const GoneRogueMobile = (function () {
         var projectile = projectiles.find(function(p) { return p.x === x && p.y === y; });
         var breakable = breakables.find(function(b) { return b.x === x && b.y === y; });
         var item = items ? items.find(function(i) { return i.x === x && i.y === y; }) : null;
+        var currency = currencies.find(function(c) { return c.x === x && c.y === y; });
 
         // Check for muzzle flash at this position
         var hasMuzzleFlash = muzzleFlash && muzzleFlash.x === x && muzzleFlash.y === y;
@@ -310,8 +320,40 @@ const GoneRogueMobile = (function () {
         } else if (item) {
           cell.textContent = item.emoji || '💎';
           cell.classList.add('cell-item');
+        } else if (currency) {
+          // Render currency with twinkle animation
+          // Use a simple text representation with CSS animation for twinkle effect
+          cell.textContent = currency.glyph || '¢';
+          cell.classList.add('cell-currency');
+
+          // Calculate twinkle phase based on time (cycle every 1000ms)
+          var elapsed = Date.now() - (currency.spawnTime || Date.now());
+          var twinklePhase = (elapsed % 1000) / 1000; // 0 to 1
+
+          // Brightness cycles: 0 -> 1 -> 0 (using sine wave)
+          var brightness = 0.7 + 0.3 * Math.sin(twinklePhase * Math.PI * 2);
+          cell.style.filter = 'brightness(' + brightness + ')';
+          cell.style.color = '#ffff00'; // Yellow for currency
         } else {
-          _setCellTile(cell, tile);
+          // Check for interactive items
+          var interactiveItem = null;
+          if (typeof InteractiveItems !== 'undefined') {
+            interactiveItem = InteractiveItems.getItemAt(x, y);
+          }
+
+          if (interactiveItem) {
+            cell.textContent = interactiveItem.emoji;
+            cell.classList.add('cell-interactive-item');
+
+            // Add interaction indicator if player is in range
+            if (player && typeof InteractiveItems !== 'undefined') {
+              if (InteractiveItems.canInteractWith(player.x, player.y, interactiveItem)) {
+                cell.classList.add('interactive-in-range');
+              }
+            }
+          } else {
+            _setCellTile(cell, tile);
+          }
         }
 
         // Apply lighting effects if lighting system is available
@@ -365,6 +407,38 @@ const GoneRogueMobile = (function () {
           _renderSightConeHighlight(grid, enemy);
         }
       });
+    }
+
+    // Render overhead animations
+    if (typeof OverheadAnimator !== 'undefined') {
+      var currentTime = Date.now();
+      OverheadAnimator.update(currentTime);
+
+      var animations = OverheadAnimator.getAllAnimations();
+      for (var key in animations) {
+        var parts = key.split(',');
+        var animX = parseInt(parts[0]);
+        var animY = parseInt(parts[1]);
+        var anim = animations[key];
+
+        // Find corresponding cell
+        var cellIndex = animY * grid[0].length + animX;
+        var cell = _gridContainer.children[cellIndex];
+
+        if (cell) {
+          var transform = OverheadAnimator.calculateAnimationTransform(anim, currentTime);
+
+          // Create animation element
+          var animEl = document.createElement('div');
+          animEl.className = 'overhead-animation ' + anim.type.toLowerCase().replace(/_/g, '-');
+          animEl.textContent = anim.text || anim.emoji;
+          animEl.style.color = anim.color;
+          animEl.style.opacity = transform.opacity;
+          animEl.style.transform = 'translate(' + transform.x + 'px, ' + transform.y + 'px) scale(' + transform.scale + ')';
+
+          cell.appendChild(animEl);
+        }
+      }
     }
 
     // Render STR combat overlay if combat is active
@@ -528,12 +602,51 @@ const GoneRogueMobile = (function () {
    * @param {boolean} runMode - Whether to run to target
    */
   function _processGridInput(x, y, runMode) {
-    // Check if tapping self (show card fan)
     if (typeof GoneRogue !== 'undefined') {
       var player = GoneRogue.getPlayer ? GoneRogue.getPlayer() : null;
+
+      // Check if tapping self (show card fan)
+      // BUT NOT if in STR combat or if clicking on a breakable
       if (player && player.x === x && player.y === y) {
-        _showCardFan();
-        return;
+        // Don't show card fan if in STR combat
+        var inStrCombat = GoneRogue.isStrCombatActive && GoneRogue.isStrCombatActive();
+        if (inStrCombat) {
+          console.log('[GoneRogueMobile] Card fan suppressed: in STR combat');
+          return;
+        }
+
+        // Don't show card fan if there's a breakable at this position (shouldn't happen, but defensive)
+        var hasBreakable = GoneRogue.getBreakableAt && GoneRogue.getBreakableAt(x, y);
+        if (hasBreakable && hasBreakable.hp > 0) {
+          console.log('[GoneRogueMobile] Card fan suppressed: breakable at player position');
+          // Fall through to handleTapMove which will handle the breakable
+        } else {
+          _showCardFan();
+          return;
+        }
+      }
+
+      // Validate tap distance from player
+      if (player) {
+        var dx = x - player.x;
+        var dy = y - player.y;
+        var distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Reject taps beyond maximum radius
+        if (distance > TAP_TO_MOVE_MAX_RADIUS) {
+          console.log('[GoneRogueMobile] Tap rejected: distance ' + distance.toFixed(1) + ' exceeds max radius ' + TAP_TO_MOVE_MAX_RADIUS);
+          return;
+        }
+
+        // Check if tapping interactive item
+        if (typeof InteractiveItems !== 'undefined') {
+          var item = InteractiveItems.getItemAt(x, y);
+          if (item && InteractiveItems.canInteractWith(player.x, player.y, item)) {
+            // Trigger interaction
+            GoneRogue.process('interact');
+            return;
+          }
+        }
       }
     }
 
@@ -544,11 +657,56 @@ const GoneRogueMobile = (function () {
   }
 
   /**
+   * Calculate distance between two touch points
+   */
+  function _getTouchDistance(touches) {
+    if (touches.length < 2) return 0;
+    var dx = touches[0].clientX - touches[1].clientX;
+    var dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  /**
+   * Handle grid touch move (for pinch-to-zoom)
+   */
+  function _handleGridTouchMove(e) {
+    // Handle pinch-to-zoom with two fingers
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      var currentDistance = _getTouchDistance(e.touches);
+
+      if (_initialPinchDistance === 0) {
+        _initialPinchDistance = currentDistance;
+      } else {
+        var scale = currentDistance / _initialPinchDistance;
+        var newZoom = _currentZoom * scale;
+
+        // Clamp zoom level
+        newZoom = Math.max(_minZoom, Math.min(_maxZoom, newZoom));
+
+        // Apply zoom to grid container
+        if (_gridContainer) {
+          _gridContainer.style.transform = 'scale(' + newZoom + ')';
+          _gridContainer.style.transformOrigin = 'center center';
+        }
+      }
+    }
+  }
+
+  /**
    * Handle grid touch start (for double-tap detection)
    */
   function _handleGridTouchStart(e) {
     e.preventDefault();
     e.stopPropagation(); // Prevent document-level listeners
+
+    // Initialize pinch distance for two-finger gestures
+    if (e.touches.length === 2) {
+      _initialPinchDistance = _getTouchDistance(e.touches);
+      return; // Don't process as tap
+    }
 
     var touch = e.touches[0];
     var target = document.elementFromPoint(touch.clientX, touch.clientY);
@@ -579,6 +737,20 @@ const GoneRogueMobile = (function () {
   function _handleGridTouchEnd(e) {
     e.preventDefault();
     e.stopPropagation();
+
+    // If pinch gesture ended, save current zoom and reset pinch distance
+    if (_initialPinchDistance > 0) {
+      var currentTransform = _gridContainer ? window.getComputedStyle(_gridContainer).transform : 'none';
+      if (currentTransform && currentTransform !== 'none') {
+        var matrix = currentTransform.match(/matrix\(([^)]+)\)/);
+        if (matrix) {
+          var values = matrix[1].split(', ');
+          _currentZoom = parseFloat(values[0]) || 1.0;
+        }
+      }
+      _initialPinchDistance = 0;
+      return; // Don't process as tap
+    }
 
     var touch = e.changedTouches[0];
     var target = document.elementFromPoint(touch.clientX, touch.clientY);
