@@ -24,6 +24,11 @@ const GoneRogueMobile = (function () {
   var _minZoom = 0.5;
   var _maxZoom = 2.0;
 
+  // Pan state
+  var _panOffset = { x: 0, y: 0 };
+  var _initialPinchCenter = { x: 0, y: 0 };
+  var _isPanning = false;
+
   // Touch tracking for swipes
   var _touchStart = { x: 0, y: 0, time: 0 };
   var _activeCard = null;
@@ -667,29 +672,73 @@ const GoneRogueMobile = (function () {
   }
 
   /**
-   * Handle grid touch move (for pinch-to-zoom)
+   * Get center point between two touches
+   */
+  function _getTouchCenter(touches) {
+    if (touches.length < 2) return { x: 0, y: 0 };
+    return {
+      x: (touches[0].clientX + touches[1].clientX) / 2,
+      y: (touches[0].clientY + touches[1].clientY) / 2
+    };
+  }
+
+  /**
+   * Handle grid touch move (for pinch-to-zoom and pan)
    */
   function _handleGridTouchMove(e) {
-    // Handle pinch-to-zoom with two fingers
+    // Handle pinch-to-zoom and pan with two fingers
     if (e.touches.length === 2) {
       e.preventDefault();
       e.stopPropagation();
 
       var currentDistance = _getTouchDistance(e.touches);
+      var currentCenter = _getTouchCenter(e.touches);
 
       if (_initialPinchDistance === 0) {
         _initialPinchDistance = currentDistance;
+        _initialPinchCenter = currentCenter;
+        _isPanning = false;
       } else {
+        // Calculate zoom scale
         var scale = currentDistance / _initialPinchDistance;
         var newZoom = _currentZoom * scale;
 
         // Clamp zoom level
         newZoom = Math.max(_minZoom, Math.min(_maxZoom, newZoom));
 
-        // Apply zoom to grid container
+        // Calculate pan delta
+        var panDeltaX = currentCenter.x - _initialPinchCenter.x;
+        var panDeltaY = currentCenter.y - _initialPinchCenter.y;
+
+        // Apply pan sensitivity based on zoom level (higher zoom = lower sensitivity)
+        var panSensitivity = 0.5 - (newZoom - _minZoom) / (_maxZoom - _minZoom) * 0.3;
+        panSensitivity = Math.max(0.2, Math.min(0.5, panSensitivity));
+
+        var newPanX = _panOffset.x + panDeltaX * panSensitivity;
+        var newPanY = _panOffset.y + panDeltaY * panSensitivity;
+
+        // Calculate bounds based on zoom level and container size
         if (_gridContainer) {
-          _gridContainer.style.transform = 'scale(' + newZoom + ')';
+          var containerRect = _gridContainer.getBoundingClientRect();
+          var parentRect = _gridContainer.parentElement.getBoundingClientRect();
+
+          // Maximum pan distance (prevent showing void beyond map)
+          var scaledWidth = containerRect.width * newZoom;
+          var scaledHeight = containerRect.height * newZoom;
+          var maxPanX = Math.max(0, (scaledWidth - parentRect.width) / 2);
+          var maxPanY = Math.max(0, (scaledHeight - parentRect.height) / 2);
+
+          // Clamp pan offsets
+          newPanX = Math.max(-maxPanX, Math.min(maxPanX, newPanX));
+          newPanY = Math.max(-maxPanY, Math.min(maxPanY, newPanY));
+
+          // Apply zoom and pan to grid container
+          _gridContainer.style.transform = 'scale(' + newZoom + ') translate(' + newPanX + 'px, ' + newPanY + 'px)';
           _gridContainer.style.transformOrigin = 'center center';
+
+          // Update initial center for continuous panning
+          _initialPinchCenter = currentCenter;
+          _isPanning = true;
         }
       }
     }
@@ -738,7 +787,7 @@ const GoneRogueMobile = (function () {
     e.preventDefault();
     e.stopPropagation();
 
-    // If pinch gesture ended, save current zoom and reset pinch distance
+    // If pinch gesture ended, save current zoom and pan state, reset pinch distance
     if (_initialPinchDistance > 0) {
       var currentTransform = _gridContainer ? window.getComputedStyle(_gridContainer).transform : 'none';
       if (currentTransform && currentTransform !== 'none') {
@@ -746,9 +795,16 @@ const GoneRogueMobile = (function () {
         if (matrix) {
           var values = matrix[1].split(', ');
           _currentZoom = parseFloat(values[0]) || 1.0;
+          // Extract translate values if present (matrix includes translate)
+          if (values.length >= 6) {
+            _panOffset.x = parseFloat(values[4]) || 0;
+            _panOffset.y = parseFloat(values[5]) || 0;
+          }
         }
       }
       _initialPinchDistance = 0;
+      _initialPinchCenter = { x: 0, y: 0 };
+      _isPanning = false;
       return; // Don't process as tap
     }
 
@@ -1510,12 +1566,30 @@ const GoneRogueMobile = (function () {
     }
   }
 
+  /**
+   * Toggle action menu (card fan) for Gone Rogue action button
+   */
+  function toggleActionMenu() {
+    if (!_cardContainer) return;
+
+    // If action menu is currently visible, hide it
+    if (_cardContainer.style.display !== 'none' && _cardContainer.innerHTML !== '') {
+      _cardContainer.style.display = 'none';
+      _cardContainer.innerHTML = '';
+      return;
+    }
+
+    // Show action menu with card fan
+    _showCardFan();
+  }
+
   return {
     init: init,
     renderGrid: renderGrid,
     hide: hide,
     show: show,
     showFloatingDamage: showFloatingDamage,
-    showInventory: showInventory
+    showInventory: showInventory,
+    toggleActionMenu: toggleActionMenu
   };
 })();

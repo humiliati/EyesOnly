@@ -163,14 +163,27 @@
         simulateCommand('home');
         break;
 
-      case 'map':
+      case 'action':
         // Close inventory if open
         if (inventoryVisible) {
           toggleInventory();
         }
 
-        if (isInStreetChronicles) {
-          // Already in street-chronicles - recenter to main street
+        // Context-aware action button
+        var isInGoneRogue = typeof GoneRogue !== 'undefined' && GoneRogue.isActive();
+
+        if (isInGoneRogue) {
+          // In Gone Rogue: Toggle action menu (card fan)
+          if (typeof GoneRogueMobile !== 'undefined' && typeof GoneRogueMobile.toggleActionMenu === 'function') {
+            GoneRogueMobile.toggleActionMenu();
+          } else {
+            // Fallback: Show card fan via tap on self
+            if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleTapSelf === 'function') {
+              GoneRogue.handleTapSelf();
+            }
+          }
+        } else if (isInStreetChronicles) {
+          // In Street Chronicles: Show map/recenter to main street
           if (typeof StreetChronicles !== 'undefined' && typeof StreetChronicles.process === 'function') {
             var currentLoc = getStreetChroniclesLocation();
             if (currentLoc !== 'Cedar St') {
@@ -193,7 +206,7 @@
             }
           }
         } else {
-          // Not in street-chronicles - open it
+          // In command terminal: Show context menu or default to map command
           simulateCommand('map');
         }
         break;
