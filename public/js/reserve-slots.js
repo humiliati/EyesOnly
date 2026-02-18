@@ -300,7 +300,8 @@ const ReserveSlots = (function () {
       });
     } else {
       // Empty slot - this can occur during initialization or if render is called
-      // before cards are loaded
+      // before cards are loaded. The empty-slot class can be used for custom styling
+      // if needed (e.g., different appearance for truly empty vs uninitialized slots)
       btn.innerHTML = '<span class="card-empty">·</span>';
       btn.classList.add('empty-slot');
       btn.disabled = true;
