@@ -329,6 +329,16 @@
         // Toggle inventory in any context
         toggleInventory();
         break;
+
+      case 'kernel':
+        // Kernel button - agent integration (requires login)
+        handleKernelClick();
+        break;
+
+      case 'highscore':
+        // Open highscore page in new window
+        window.open('highscore/', '_blank');
+        break;
     }
   }
 
@@ -687,6 +697,81 @@
     }
   }
 
+  /**
+   * Handle Kernel button click - Agent integration
+   */
+  function handleKernelClick() {
+    // Check if user is logged in
+    if (typeof LoginShell === 'undefined' || !LoginShell.isAuthenticated || !LoginShell.isAuthenticated()) {
+      printToTerminal([
+        '',
+        'KERNEL ACCESS DENIED',
+        '————————————————————————————————',
+        '',
+        '[SYSTEM]: Authentication required.',
+        '[SYSTEM]: Please login to access agent integration.',
+        '',
+        'Use the LOGIN button to authenticate.',
+        ''
+      ]);
+      return;
+    }
+
+    // User is logged in - show kernel interface
+    printToTerminal([
+      '',
+      'KERNEL AGENT INTEGRATION',
+      '————————————————————————————————',
+      '',
+      '[MOK]: "Agent API integration portal."',
+      '[MOK]: "Connect your own AI agent to play alongside me."',
+      '',
+      'AVAILABLE COMMANDS:',
+      '  KERNEL CONNECT <api_key>  - Connect agent API',
+      '  KERNEL DISCONNECT         - Disconnect agent',
+      '  KERNEL STATUS             - View connection status',
+      '  KERNEL HELP               - Show detailed help',
+      '',
+      'SUPPORTED AGENTS:',
+      '  • OpenClaw-compatible APIs',
+      '  • Custom API endpoints (with auth token)',
+      '  • Local agent runners',
+      '',
+      'Agent capabilities:',
+      '  - Real-time game assistance and tooltips',
+      '  - Full gameplay takeover for speedruns',
+      '  - Performance benchmarking and analytics',
+      '  - Compete on highscore leaderboards',
+      '',
+      'Type KERNEL HELP for detailed documentation.',
+      ''
+    ]);
+  }
+
+  /**
+   * Enable kernel button when user logs in
+   */
+  function enableKernelButton() {
+    var kernelBtn = document.querySelector('button[data-action="kernel"]');
+    if (kernelBtn) {
+      kernelBtn.disabled = false;
+      kernelBtn.classList.add('enabled');
+      console.log('[UIControls] Kernel button enabled');
+    }
+  }
+
+  /**
+   * Disable kernel button when user logs out
+   */
+  function disableKernelButton() {
+    var kernelBtn = document.querySelector('button[data-action="kernel"]');
+    if (kernelBtn) {
+      kernelBtn.disabled = true;
+      kernelBtn.classList.remove('enabled');
+      console.log('[UIControls] Kernel button disabled');
+    }
+  }
+
   // Initialize on DOM ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
@@ -714,6 +799,8 @@
         toggleInventory();
       }
     },
-    updateCurrency: updateCurrencyDisplay
+    updateCurrency: updateCurrencyDisplay,
+    enableKernelButton: enableKernelButton,
+    disableKernelButton: disableKernelButton
   };
 })();

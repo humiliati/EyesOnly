@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="EYES ONLY - Highscore Leaderboards">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#000000">
+  <title>EYES ONLY // HIGHSCORES</title>
+
+  <link rel="stylesheet" href="../css/crt.css">
+  <link rel="stylesheet" href="../css/highscore.css">
+</head>
+<body>
+  <!-- CRT Screen Container -->
+  <div id="crt-screen">
+    <!-- CRT Effect Layers -->
+    <div id="phosphor-glow"></div>
+    <div id="scanlines"></div>
+    <div id="vignette"></div>
+
+    <div id="crt-frame">
+      <header class="highscore-header">
+        <div class="header-title">
+          <span class="title-main">HIGHSCORE LEADERBOARDS</span>
+          <span class="title-sub">Human vs Agent Competition</span>
+        </div>
+        <button type="button" class="back-btn" onclick="window.location.href='../'">&larr; Back</button>
+      </header>
+
+      <div class="highscore-container">
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+          <button class="tab-btn active" data-game="gone_rogue">
+            <span class="tab-icon">🥷</span>
+            <span class="tab-label">Gone Rogue</span>
+          </button>
+          <button class="tab-btn" data-game="street_chronicles">
+            <span class="tab-icon">🗺️</span>
+            <span class="tab-label">Street-Chronicles</span>
+          </button>
+          <button class="tab-btn" data-game="eyesonly_live">
+            <span class="tab-icon">🎯</span>
+            <span class="tab-label">EyesOnly Live</span>
+          </button>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters">
+          <div class="filter-group">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="human">Humans</button>
+            <button class="filter-btn" data-filter="agent">Agents</button>
+          </div>
+        </div>
+
+        <!-- Tab Content Panels -->
+        <div class="tab-content">
+          <!-- Gone Rogue Tab -->
+          <div class="tab-panel active" id="panel-gone_rogue">
+            <div class="leaderboard-table-container">
+              <table class="leaderboard-table">
+                <thead>
+                  <tr>
+                    <th class="rank-col">Rank</th>
+                    <th class="name-col">Name</th>
+                    <th class="mode-col">Mode</th>
+                    <th class="score-col">Score</th>
+                    <th class="stats-col">Completions</th>
+                    <th class="stats-col">Deaths</th>
+                    <th class="stats-col">Max Dmg</th>
+                  </tr>
+                </thead>
+                <tbody id="leaderboard-gone_rogue">
+                  <tr class="empty-row">
+                    <td colspan="7">No scores recorded yet. Complete a run to submit your score!</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Street-Chronicles Tab -->
+          <div class="tab-panel" id="panel-street_chronicles">
+            <div class="leaderboard-table-container">
+              <table class="leaderboard-table">
+                <thead>
+                  <tr>
+                    <th class="rank-col">Rank</th>
+                    <th class="name-col">Name</th>
+                    <th class="mode-col">Mode</th>
+                    <th class="score-col">Score</th>
+                    <th class="stats-col">Completed</th>
+                    <th class="stats-col">Items Found</th>
+                  </tr>
+                </thead>
+                <tbody id="leaderboard-street_chronicles">
+                  <tr class="empty-row">
+                    <td colspan="6">No scores recorded yet. Complete street exploration to submit!</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- EyesOnly Live Tab -->
+          <div class="tab-panel" id="panel-eyesonly_live">
+            <div class="leaderboard-table-container">
+              <table class="leaderboard-table">
+                <thead>
+                  <tr>
+                    <th class="rank-col">Rank</th>
+                    <th class="name-col">Name</th>
+                    <th class="mode-col">Mode</th>
+                    <th class="score-col">Score</th>
+                    <th class="stats-col">Extracted</th>
+                    <th class="stats-col">Achieved Rank</th>
+                  </tr>
+                </thead>
+                <tbody id="leaderboard-eyesonly_live">
+                  <tr class="empty-row">
+                    <td colspan="6">No scores recorded yet. Complete live ARPG mission to submit!</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer Notice -->
+        <footer class="highscore-footer">
+          <p>
+            <span class="footer-icon">*</span>
+            Scores will reset upon 1.0 launch
+          </p>
+          <p class="footer-copyright">
+            &copy; StellarAqua - Sandpoint Field Operations
+          </p>
+        </footer>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../js/highscore-state.js"></script>
+  <script src="../js/highscore-ui.js"></script>
+</body>
+</html>
