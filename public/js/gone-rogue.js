@@ -4170,6 +4170,12 @@ const GoneRogue = (function () {
     _strCombatRound = 0;
     _strCombatLog = [];
 
+    // Initialize enemy intent state if system available
+    if (typeof EnemyIntentSystem !== 'undefined') {
+      var enemyNextCard = _getEnemyAICard();
+      enemy.intentState = EnemyIntentSystem.createIntentState(enemy, enemyNextCard);
+    }
+
     // Tooltip: Engaging enemy
     if (typeof TooltipSystem !== 'undefined') {
       TooltipSystem.showAction('combat-enter');
@@ -4177,6 +4183,11 @@ const GoneRogue = (function () {
 
     // Calculate advantage state
     _strCombatAdvantage = _calculateAdvantage(_player, enemy, trigger);
+
+    // Update intent based on advantage (ambush reaction)
+    if (typeof EnemyIntentSystem !== 'undefined' && _strCombatAdvantage === 'ambush') {
+      enemy.intentState.expression = EnemyIntentSystem.onCombatEvent(enemy, 'ambushed');
+    }
 
     // Scan 3x3 tiles around player for ground effects and apply combat modifiers
     _applyGroundEffectModifiers();
@@ -4391,6 +4402,13 @@ const GoneRogue = (function () {
     lines.push('');
     lines.push('═══════════════════════════');
     lines.push('');
+
+    // Update enemy intent for next round
+    if (typeof EnemyIntentSystem !== 'undefined' && _strCombatEnemy.intentState) {
+      var nextEnemyCard = _getEnemyAICard();
+      _strCombatEnemy.intentState = EnemyIntentSystem.createIntentState(_strCombatEnemy, nextEnemyCard);
+    }
+
     return _showStrCombatUIWithLog(lines);
   }
 
@@ -4480,6 +4498,13 @@ const GoneRogue = (function () {
     lines.push('');
     lines.push('═══════════════════════════');
     lines.push('');
+
+    // Update enemy intent for next round
+    if (typeof EnemyIntentSystem !== 'undefined' && _strCombatEnemy.intentState) {
+      var nextEnemyCard = _getEnemyAICard();
+      _strCombatEnemy.intentState = EnemyIntentSystem.createIntentState(_strCombatEnemy, nextEnemyCard);
+    }
+
     return _showStrCombatUIWithLog(lines);
   }
 
@@ -4504,7 +4529,14 @@ const GoneRogue = (function () {
     }[category] || '❓ ACTION';
 
     var actorName = action.actor === 'player' ? 'PLAYER' : 'ENEMY';
-    lines.push(priorityLabel + ' — ' + actorName + ': ' + card.emoji + ' ' + card.name);
+
+    // Add enemy intent expression if available
+    var expressionGlyph = '';
+    if (action.actor === 'enemy' && typeof EnemyIntentSystem !== 'undefined' && _strCombatEnemy.intentState) {
+      expressionGlyph = ' [' + _strCombatEnemy.intentState.expression.glyph + ']';
+    }
+
+    lines.push(priorityLabel + ' — ' + actorName + expressionGlyph + ': ' + card.emoji + ' ' + card.name);
 
     // Resolve based on category
     switch (category) {
@@ -4672,6 +4704,11 @@ const GoneRogue = (function () {
     var finalDamage = Math.max(1, damageResult.damage - defenseReduction);
 
     target.hp -= finalDamage;
+
+    // Update enemy intent expression when taking damage
+    if (target === _strCombatEnemy && typeof EnemyIntentSystem !== 'undefined' && _strCombatEnemy.intentState) {
+      _strCombatEnemy.intentState.expression = EnemyIntentSystem.onCombatEvent(_strCombatEnemy, 'took_damage');
+    }
 
     // Track damage for highscore (only player damage to enemies)
     if (actor === _player && target === _strCombatEnemy) {
@@ -5180,7 +5217,14 @@ const GoneRogue = (function () {
     });
 
     lines.push('───────────────────────────────────────');
-    lines.push('PLAYER HP: ' + _player.hp + '/' + _player.maxHp + ' ❤️   |   ENEMY HP: ' + _strCombatEnemy.hp + '/5 💀');
+
+    // Display enemy intent if system available
+    var intentDisplay = '';
+    if (typeof EnemyIntentSystem !== 'undefined' && _strCombatEnemy.intentState) {
+      intentDisplay = '  ' + EnemyIntentSystem.formatIntentDisplay(_strCombatEnemy.intentState);
+    }
+
+    lines.push('PLAYER HP: ' + _player.hp + '/' + _player.maxHp + ' ❤️   |   ENEMY HP: ' + _strCombatEnemy.hp + '/5 💀' + intentDisplay);
     lines.push('Advantage: ' + _strCombatAdvantage.toUpperCase() + ' ' + _getAdvantageEmoji(_strCombatAdvantage));
     lines.push('───────────────────────────────────────');
     lines.push('');
