@@ -145,11 +145,12 @@ const GoneRogueMobile = (function () {
   /**
    * Render grid as interactive HTML cells
    */
-  function renderGrid(grid, player, enemies, items, colorCycleTime, breakables, projectiles, alertLevel, strCombatActive, muzzleFlash, impactEffects) {
+  function renderGrid(grid, player, enemies, items, colorCycleTime, breakables, projectiles, alertLevel, strCombatActive, muzzleFlash, impactEffects, currencies) {
     if (!_gridContainer || !grid) return;
 
     breakables = breakables || [];
     projectiles = projectiles || [];
+    currencies = currencies || [];
     alertLevel = alertLevel || 'safe';
     strCombatActive = strCombatActive || false;
 
@@ -186,6 +187,7 @@ const GoneRogueMobile = (function () {
         var projectile = projectiles.find(function(p) { return p.x === x && p.y === y; });
         var breakable = breakables.find(function(b) { return b.x === x && b.y === y; });
         var item = items ? items.find(function(i) { return i.x === x && i.y === y; }) : null;
+        var currency = currencies.find(function(c) { return c.x === x && c.y === y; });
 
         // Check for muzzle flash at this position
         var hasMuzzleFlash = muzzleFlash && muzzleFlash.x === x && muzzleFlash.y === y;
@@ -311,6 +313,20 @@ const GoneRogueMobile = (function () {
         } else if (item) {
           cell.textContent = item.emoji || '💎';
           cell.classList.add('cell-item');
+        } else if (currency) {
+          // Render currency with twinkle animation
+          // Use a simple text representation with CSS animation for twinkle effect
+          cell.textContent = currency.glyph || '¢';
+          cell.classList.add('cell-currency');
+
+          // Calculate twinkle phase based on time (cycle every 1000ms)
+          var elapsed = Date.now() - (currency.spawnTime || Date.now());
+          var twinklePhase = (elapsed % 1000) / 1000; // 0 to 1
+
+          // Brightness cycles: 0 -> 1 -> 0 (using sine wave)
+          var brightness = 0.7 + 0.3 * Math.sin(twinklePhase * Math.PI * 2);
+          cell.style.filter = 'brightness(' + brightness + ')';
+          cell.style.color = '#ffff00'; // Yellow for currency
         } else {
           _setCellTile(cell, tile);
         }
