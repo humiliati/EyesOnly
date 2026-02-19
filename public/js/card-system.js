@@ -640,22 +640,6 @@ const CardSystem = (function () {
     },
 
     // ========== CHARM CARDS (Passive Bonuses) ==========
-      lifecycleType: 'power',
-      baseStats: {
-        guaranteedCrit: true,
-        damageMultiplier: 2.0,
-        stealthBonus: 5,
-        energy: 3,
-        speed: 3,
-        oncePerRun: true,  // Usable once per entire run
-        combatPersistent: true
-      }
-    },
-
-    // ========== DEPRECATED/LEGACY CARDS (for backward compatibility) ==========
-    // Defense/Stance cards (now in defense category)
-
-    // Tactical cards (now split into movement/interrupt categories)
 
     // Special: Inventory Charm (rare)
     INVENTORY_CHARM: {

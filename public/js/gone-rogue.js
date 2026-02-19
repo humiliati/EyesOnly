@@ -4208,11 +4208,10 @@ const GoneRogue = (function () {
     }
     
     // Energy restoration
-    if (card.stats.energy || card.stats.energyBoost) {
-      var energyGain = card.stats.energyBoost || card.stats.energy || 0;
+    if (card.stats.energyBoost) {
       if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addEnergy) {
-        GAMESTATE.addEnergy(energyGain);
-        effects.push('ENERGY +' + energyGain);
+        GAMESTATE.addEnergy(card.stats.energyBoost);
+        effects.push('ENERGY +' + card.stats.energyBoost);
       }
     }
     
