@@ -311,8 +311,8 @@ const ReserveSlots = (function () {
         _hideCardTooltip();
       });
     } else {
-      // Empty slot - show placeholder with "xhstd" (exhausted - vowel drop)
-      btn.innerHTML = '<span class="card-empty">xhstd</span>';
+      // Empty slot - show placeholder with "Exhstd" (exhausted - vowel drop)
+      btn.innerHTML = '<span class="card-empty">Exhstd</span>';
       btn.classList.add('empty-slot');
       btn.disabled = true;
       btn.title = 'Empty Slot';

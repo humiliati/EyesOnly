@@ -654,12 +654,22 @@ const ShopSystem = (function () {
 
   /**
    * Abbreviate card name (vowel-dropped)
+   * Keeps first letter regardless of vowel/consonant, removes vowels from rest
    */
   function _abbreviateName(name) {
-    return name
-      .replace(/[aeiouAEIOU]/g, '')
-      .substring(0, 6)
-      .toLowerCase();
+    if (!name) return '';
+
+    // Remove spaces and convert to uppercase
+    var cleaned = name.replace(/\s+/g, '').toUpperCase();
+
+    // Take first character
+    var firstChar = cleaned.charAt(0);
+
+    // Remove vowels from remaining characters
+    var consonants = cleaned.slice(1).replace(/[AEIOU]/g, '');
+
+    // Combine first character + consonants, limit to 6 chars, lowercase
+    return (firstChar + consonants).substring(0, 6).toLowerCase();
   }
 
   /**

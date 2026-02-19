@@ -53,7 +53,7 @@ This document summarizes the drag-and-drop commerce system enhancements and Gone
 - Added inventory button to Gone Rogue layout
 - New button order: back → inventory → (cycle) → card slots
 - Added `_handleInventoryClick()` function
-- Enhanced empty slot rendering with "xhstd" label (vowel-drop for "exhausted")
+- Enhanced empty slot rendering with "Exhstd" label (vowel-drop for "exhausted")
 - Updated documentation comments
 
 **Current Button Structure:**
@@ -61,10 +61,10 @@ This document summarizes the drag-and-drop commerce system enhancements and Gone
 1. [back]      ← Exits Gone Rogue to terminal
 2. [inventory] ← Opens inventory overlay (NEW!)
 3. [↑↓]        ← Cycle button (only if >4 cards)
-4. [🃏 CARD1]  ← Card slot 1 (or "xhstd" if empty)
-5. [🃏 CARD2]  ← Card slot 2 (or "xhstd" if empty)
-6. [🃏 CARD3]  ← Card slot 3 (or "xhstd" if empty)
-7. [🃏 CARD4]  ← Card slot 4 (or "xhstd" if empty)
+4. [🃏 CARD1]  ← Card slot 1 (or "Exhstd" if empty)
+5. [🃏 CARD2]  ← Card slot 2 (or "Exhstd" if empty)
+6. [🃏 CARD3]  ← Card slot 3 (or "Exhstd" if empty)
+7. [🃏 CARD4]  ← Card slot 4 (or "Exhstd" if empty)
 ```
 
 ### 4. Enhanced CSS for Drop Zones (`commerce-drag-drop.css`)
@@ -155,7 +155,7 @@ for (var i = 0; i < slotsToShow; i++) {
 ### Vowel-Drop Convention
 Following EyesOnly's existing pattern of removing vowels for abbreviations:
 - "SOLD OUT" → "SldOt"
-- "exhausted" → "xhstd"
+- "exhausted" → "Exhstd"
 
 ### Color Coding
 Each drop zone has a distinct color to guide players:
@@ -197,7 +197,7 @@ Drop zones only glow if they have capacity:
 - [ ] Purchase items until shop shows "SldOt" placeholders
 - [ ] Enter Gone Rogue mode and verify button order
 - [ ] Click inventory button in Gone Rogue (should open overlay)
-- [ ] Use cards until action bar shows "xhstd" placeholders
+- [ ] Use cards until action bar shows "Exhstd" placeholders
 - [ ] Verify cycle button appears when >4 cards
 - [ ] Test on mobile viewport (portrait and landscape)
 
