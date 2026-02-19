@@ -534,31 +534,56 @@ const ShopSystem = (function () {
    */
   function _renderShopItemsRow(shop, playerCurrency, playerInventory, playerActionBar) {
     var html = '<div class="shop-items-row">';
-    
+
+    // Check if shop is depleting (less than 5 items total)
+    var isDepleting = shop.inventory.length < 5;
+    var arrowsDisabled = isDepleting;
+
     // Cycle arrows
     html += '<div class="cycle-arrow-container">';
     html += '<button class="cycle-btn cycle-left" data-action="cycle-left"' +
-      (shop.visibleStart === 0 ? ' disabled' : '') + '>◀</button>';
+      (shop.visibleStart === 0 || arrowsDisabled ? ' disabled' : '') + '>◀</button>';
     html += '<button class="cycle-btn cycle-right" data-action="cycle-right"' +
-      (shop.visibleStart + shop.visibleCount >= shop.inventory.length ? ' disabled' : '') + '>▶</button>';
+      (shop.visibleStart + shop.visibleCount >= shop.inventory.length || arrowsDisabled ? ' disabled' : '') + '>▶</button>';
     html += '</div>';
 
     // Card container
     html += '<div class="shop-card-container">';
-    
+
     var visibleItems = shop.inventory.slice(shop.visibleStart, shop.visibleStart + shop.visibleCount);
-    var spaceState = _checkSpaceAvailability(playerInventory, playerActionBar, 
+    var spaceState = _checkSpaceAvailability(playerInventory, playerActionBar,
       (typeof GAMESTATE !== 'undefined' ? GAMESTATE.getState().cardHand : []));
 
+    // Render visible items
     for (var i = 0; i < visibleItems.length; i++) {
       var item = visibleItems[i];
       html += _renderShopCard(item, playerCurrency, spaceState);
+    }
+
+    // Add empty placeholders if shop is depleting
+    if (isDepleting) {
+      var emptySlots = shop.visibleCount - visibleItems.length;
+      for (var j = 0; j < emptySlots; j++) {
+        html += _renderEmptySlot();
+      }
     }
 
     html += '</div>'; // shop-card-container
     html += '</div>'; // shop-items-row
 
     return html;
+  }
+
+  /**
+   * Render empty shop slot placeholder
+   */
+  function _renderEmptySlot() {
+    return '<div class="shop-card empty-slot" title="SOLD OUT">' +
+      '<div class="empty-slot-content">' +
+        '<div class="sold-out-label">SldOt</div>' +
+        '<div class="sold-out-icon">📦</div>' +
+      '</div>' +
+    '</div>';
   }
 
   /**
