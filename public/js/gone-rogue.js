@@ -150,12 +150,25 @@ const GoneRogue = (function () {
 
   // Biome types for environmental variety
   var BIOMES = {
+    FOREST: {
+      name: 'Cozy Forest',
+      wallChar: '█',
+      floorChar: '.',
+      description: 'Welcoming woodland with tall grass',
+      floorRange: [1, 3], // Starting biome for new players
+      props: [
+        { emoji: '🚧', name: 'Wooden Gate', breakable: true, hp: 2 },
+        { emoji: '🌳', name: 'Tree', breakable: false },
+        { emoji: '🪵', name: 'Log', breakable: true, hp: 1 },
+        { emoji: '🌿', name: 'Bush', breakable: true, hp: 1 }
+      ]
+    },
     GREY_CAVE: {
       name: 'Grey Cave',
       wallChar: '█',
       floorChar: '.',
       description: 'Dark underground tunnels',
-      floorRange: [1, 4], // Used for early floors and secret areas
+      floorRange: [4, 4], // Used for floor 4 and secret areas
       props: [
         { emoji: '🪨', name: 'Boulder', breakable: true, hp: 2 },
         { emoji: '💧', name: 'Water Drip', breakable: false }
@@ -283,7 +296,8 @@ const GoneRogue = (function () {
     if (floorNum >= 17) return BIOMES.INDUSTRIAL;
     if (floorNum >= 11) return BIOMES.MALL;
     if (floorNum >= 5) return BIOMES.OFFICE;
-    return BIOMES.GREY_CAVE;
+    if (floorNum === 4) return BIOMES.GREY_CAVE;
+    return BIOMES.FOREST; // Floors 1-3 use forest starting biome
   }
 
   function init() {
@@ -745,6 +759,7 @@ const GoneRogue = (function () {
     var maxAttempts = 10;
     var attempt = 0;
     var validMap = false;
+    var exitX, exitY; // Store exit location for tutorial gate placement
 
     // Try to generate a valid map (with stealth path validation)
     while (!validMap && attempt < maxAttempts) {
@@ -775,8 +790,8 @@ const GoneRogue = (function () {
       var spawnData = _placePlayerAndExit(rooms);
       _player.x = spawnData.playerX;
       _player.y = spawnData.playerY;
-      var exitX = spawnData.exitX;
-      var exitY = spawnData.exitY;
+      exitX = spawnData.exitX;
+      exitY = spawnData.exitY;
 
       // Step 9: Place enemies (based on floor type)
       _placeEnemies(rooms, floorType);
@@ -805,6 +820,11 @@ const GoneRogue = (function () {
 
     // Place breakables (deterministic for tests)
     _spawnBreakables();
+
+    // Tutorial floors: Place guaranteed gate with tutorial pickups
+    if (floorType === FLOOR_TYPES.TUTORIAL) {
+      _placeTutorialGate(exitX, exitY);
+    }
 
     // Place items (increased loot for exploration floors)
     _placeItems(floorType);
@@ -1670,6 +1690,109 @@ const GoneRogue = (function () {
         _grid[breakable.y][breakable.x] = TILES.BREAKABLE;
       }
     });
+  }
+
+  /**
+   * Place guaranteed tutorial gate blocking path to exit
+   * Ensures gate is on a direct path between player and exit
+   * Spawns tutorial pickups (currency, ammo, card) behind the gate
+   */
+  function _placeTutorialGate(exitX, exitY) {
+    // Find a position on the path to the exit (roughly 60-70% of the way there)
+    var dx = exitX - _player.x;
+    var dy = exitY - _player.y;
+    var gateX = Math.floor(_player.x + dx * 0.65);
+    var gateY = Math.floor(_player.y + dy * 0.65);
+
+    // Ensure gate is on a floor tile and not too close to player or exit
+    var minDistFromPlayer = 5;
+    var minDistFromExit = 5;
+    var validPosition = false;
+    var attempts = 0;
+
+    while (!validPosition && attempts < 50) {
+      if (_grid[gateY] && _grid[gateY][gateX] === TILES.EMPTY) {
+        var distToPlayer = Math.abs(gateX - _player.x) + Math.abs(gateY - _player.y);
+        var distToExit = Math.abs(gateX - exitX) + Math.abs(gateY - exitY);
+
+        if (distToPlayer >= minDistFromPlayer && distToExit >= minDistFromExit) {
+          validPosition = true;
+        }
+      }
+
+      if (!validPosition) {
+        // Try a nearby position
+        gateX = Math.floor(_player.x + dx * (0.5 + Math.random() * 0.3));
+        gateY = Math.floor(_player.y + dy * (0.5 + Math.random() * 0.3));
+        gateX = Math.max(2, Math.min(GRID_WIDTH - 3, gateX));
+        gateY = Math.max(2, Math.min(GRID_HEIGHT - 3, gateY));
+      }
+
+      attempts++;
+    }
+
+    // Place the gate (wooden gate from forest biome)
+    var gateBreakable = {
+      x: gateX,
+      y: gateY,
+      hp: 2,
+      maxHp: 2,
+      glyph: TILES.BREAKABLE,
+      destroyedGlyph: TILES.DEBRIS,
+      emoji: '🚧',
+      name: 'Wooden Gate',
+      tag: 'tutorial_gate',
+      isTutorialGate: true
+    };
+
+    _breakables.push(gateBreakable);
+    _grid[gateY][gateX] = TILES.BREAKABLE;
+
+    // Spawn tutorial pickups behind the gate (towards the exit)
+    var pickupX = gateX + Math.sign(dx);
+    var pickupY = gateY + Math.sign(dy);
+
+    // Ensure pickup position is valid
+    if (pickupX < 1 || pickupX >= GRID_WIDTH - 1) pickupX = gateX;
+    if (pickupY < 1 || pickupY >= GRID_HEIGHT - 1) pickupY = gateY;
+
+    // Spawn currency (50 cryptos)
+    _spawnCurrency(pickupX, pickupY, 50);
+
+    // Spawn ammo pickup (add to items array)
+    // We'll create the ammo item similar to how items are placed
+    var ammoOffsetX = Math.sign(dx) !== 0 ? Math.sign(dx) : 1;
+    var ammoX = pickupX + ammoOffsetX;
+    var ammoY = pickupY;
+
+    if (ammoX >= 1 && ammoX < GRID_WIDTH - 1 && _grid[ammoY] && _grid[ammoY][ammoX] === TILES.EMPTY) {
+      _items.push({
+        x: ammoX,
+        y: ammoY,
+        type: 'ammo',
+        name: 'Ammo Box',
+        emoji: '📦',
+        amount: 10,
+        tag: 'tutorial_ammo'
+      });
+    }
+
+    // Spawn card pickup
+    var cardOffsetY = Math.sign(dy) !== 0 ? Math.sign(dy) : 1;
+    var cardX = pickupX;
+    var cardY = pickupY + cardOffsetY;
+
+    if (cardY >= 1 && cardY < GRID_HEIGHT - 1 && _grid[cardY] && _grid[cardY][cardX] === TILES.EMPTY) {
+      _items.push({
+        x: cardX,
+        y: cardY,
+        type: 'card',
+        name: 'Card',
+        emoji: '🃏',
+        tag: 'tutorial_card',
+        cardQuality: 50 // Medium quality for tutorial
+      });
+    }
   }
 
   /**
