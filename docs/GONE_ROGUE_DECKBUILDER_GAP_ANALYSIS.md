@@ -80,6 +80,9 @@ The project has reached an inflection point. Performance bottlenecks (800 DOM el
 ---
 
 ### Option B — Paper Mario Emoji Pivot (Locomotion + Visual Upgrade)
+
+> Implementation note: the lowest-impact path that preserves grid logic while achieving free-move *feel* is documented here:
+> `docs/UNIFIED_MOVEMENT_LIGHTING_VISION.md`
 **Philosophy**: Break free from the grid. Create a billboarded emoji world with free movement, visual charm, and accessible one-button gameplay.
 
 **Goal**: Free locomotion into emoji exploration with turn-based combat triggered from the map (one-button confirm/cancel). Think Paper Mario meets classic JRPG with mobile-first design.

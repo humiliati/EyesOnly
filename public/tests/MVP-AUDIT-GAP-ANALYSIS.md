@@ -63,6 +63,9 @@ Based on team feedback (Basil, 2/17/2026), the current MVP audit system needs si
 
 ## Enhancement Plan
 
+> NOTE (2026-02-19): Movement+lighting UX upgrades are now tracked in a unified plan.
+> See: `docs/UNIFIED_MOVEMENT_LIGHTING_VISION.md` (low-impact free-move animation + drag-to-continue + lighting occlusion).
+
 ### Phase 1: MVP Blockers (Must Have Before Launch)
 
 #### 1.1 Mathematical Boss Viability Checker

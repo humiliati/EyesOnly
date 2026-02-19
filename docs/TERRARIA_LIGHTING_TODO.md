@@ -1,5 +1,8 @@
 # Terraria-Style Lighting & Paper Mario Mobile Enhancement TODO
 
+> NOTE (2026-02-19): This document is now part of a unified movement+lighting plan.
+> See: `docs/UNIFIED_MOVEMENT_LIGHTING_VISION.md` (canonical for lowest-impact free-move + occlusion).
+
 ## Vision Statement
 
 Transform Gone Rogue's lighting system from simple 2D overlays into a Terraria-inspired volumetric lighting engine with true 3D collision detection, treating emoji tiles as opaque cubes in forced perspective. Add Paper Mario-style visual polish with emanating light orbs, item twinkle effects, and single-input mobile controls optimized for portrait-first high-fidelity movement.
