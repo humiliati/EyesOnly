@@ -61,29 +61,33 @@ const CardDisposalSystem = (function() {
   }
 
   /**
-   * Handle drag start from card
-   * @param {HTMLElement} cardElement - Card DOM element
-   * @param {Object} card - Card data
-   * @param {number} index - Card index in hand
+   * Handle drag start from card or inventory item
+   * @param {HTMLElement} element - Card or item DOM element
+   * @param {Object} data - Card or item data
+   * @param {number} index - Index in hand or inventory
+   * @param {string} source - 'hand' or 'inventory'
    */
-  function handleDragStart(cardElement, card, index) {
+  function handleDragStart(element, data, index, source) {
+    source = source || 'hand';  // Default to hand for backward compatibility
+    
     _draggedCard = {
-      element: cardElement,
-      card: card,
-      index: index
+      element: element,
+      card: data,  // Can be card or item
+      index: index,
+      source: source  // Track where it came from
     };
 
     // Set drag data
     var event = window.event;
     if (event && event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'move';
-      event.dataTransfer.setData('text/html', cardElement.innerHTML);
+      event.dataTransfer.setData('text/html', element.innerHTML);
     }
 
     // Add dragging class
-    cardElement.classList.add('card-dragging');
+    element.classList.add('card-dragging');
 
-    console.log('[CardDisposalSystem] Drag started:', card.name);
+    console.log('[CardDisposalSystem] Drag started from ' + source + ':', data.name);
   }
 
   /**
@@ -141,22 +145,23 @@ const CardDisposalSystem = (function() {
       return;
     }
 
-    var card = _draggedCard.card;
-    var cardElement = _draggedCard.element;
+    var data = _draggedCard.card;
+    var element = _draggedCard.element;
+    var source = _draggedCard.source || 'hand';
 
-    // Check if card type allows disposal
-    var lifecycle = _getCardLifecycle(card);
+    // Check if card/item type allows disposal
+    var lifecycle = _getCardLifecycle(data);
     var isDisposable = DISPOSAL_CONFIG.validCardTypes.indexOf(lifecycle) !== -1;
 
     if (!isDisposable) {
-      _handleInvalidDisposal(card, cardElement, lifecycle);
+      _handleInvalidDisposal(data, element, lifecycle);
       _draggedCard = null;
       _handleDragOverDebrief(false);
       return;
     }
 
-    // Valid disposal - destroy card
-    _destroyCard(_draggedCard.card, _draggedCard.index, 'manual_disposal');
+    // Valid disposal - destroy card or item
+    _destroyCard(_draggedCard.card, _draggedCard.index, 'manual_disposal', source);
     _draggedCard = null;
     _handleDragOverDebrief(false);
   }
@@ -194,35 +199,48 @@ const CardDisposalSystem = (function() {
   }
 
   /**
-   * Destroy card and trigger animation
-   * @param {Object} card - Card data
-   * @param {number} index - Card index
+   * Destroy card or item and trigger animation
+   * @param {Object} data - Card or item data
+   * @param {number} index - Index
    * @param {string} reason - Destruction reason
+   * @param {string} source - 'hand' or 'inventory'
    */
-  function _destroyCard(card, index, reason) {
-    console.log('[CardDisposalSystem] Destroying card:', card.name, 'reason:', reason);
+  function _destroyCard(data, index, reason, source) {
+    source = source || 'hand';
+    console.log('[CardDisposalSystem] Destroying from ' + source + ':', data.name, 'reason:', reason);
 
     // Trigger incinerator animation
     _triggerIncineratorAnimation();
 
-    // Remove from hand via HandFanComponent
-    if (typeof HandFanComponent !== 'undefined') {
-      // Get current cards
-      var currentCards = HandFanComponent._cards || [];
-      
-      // Remove the card
-      currentCards.splice(index, 1);
-      
-      // Update hand display
-      HandFanComponent.updateCards(currentCards);
-    }
+    if (source === 'hand') {
+      // Remove from hand via HandFanComponent
+      if (typeof HandFanComponent !== 'undefined') {
+        // Get current cards
+        var currentCards = HandFanComponent._cards || [];
+        
+        // Remove the card
+        currentCards.splice(index, 1);
+        
+        // Update hand display
+        HandFanComponent.updateCards(currentCards);
+      }
 
-    // Remove from GAMESTATE hand if available
-    if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getCardHand) {
-      var hand = GAMESTATE.getCardHand();
-      if (hand && hand[index]) {
-        hand.splice(index, 1);
-        // Note: GAMESTATE manages its own state, this is just cleanup
+      // Remove from GAMESTATE hand if available
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getCardHand) {
+        var hand = GAMESTATE.getCardHand();
+        if (hand && hand[index]) {
+          hand.splice(index, 1);
+        }
+      }
+    } else if (source === 'inventory') {
+      // Remove from inventory
+      if (typeof UIControls !== 'undefined' && UIControls.removeInventoryItem) {
+        UIControls.removeInventoryItem(index);
+      }
+      
+      // Repopulate inventory to refresh display
+      if (typeof UIControls !== 'undefined' && UIControls.populateInventory) {
+        UIControls.populateInventory();
       }
     }
 
