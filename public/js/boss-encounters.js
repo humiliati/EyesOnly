@@ -133,9 +133,106 @@ const BossEncounters = (function () {
     }
 
     /**
-     * Generate boss loot
+     * Generate boss loot using LootTableManager
      */
     generateLoot() {
+      // Use LootTableManager if available
+      if (typeof LootTableManager !== 'undefined' && LootTableManager.rollEnemyLoot) {
+        var rollContext = {
+          source: 'player',
+          mythicKill: this.mythicConditionMet
+        };
+
+        var rolledLoot = LootTableManager.rollEnemyLoot('boss', rollContext);
+
+        // Convert to legacy boss loot format
+        var loot = [];
+
+        // Add currency
+        if (rolledLoot.currency > 0) {
+          loot.push({
+            type: 'currency',
+            amount: rolledLoot.currency
+          });
+        }
+
+        // Add XP
+        if (rolledLoot.xp > 0) {
+          loot.push({
+            type: 'xp',
+            amount: rolledLoot.xp
+          });
+        }
+
+        // Add cards
+        if (rolledLoot.cards && rolledLoot.cards.length > 0) {
+          rolledLoot.cards.forEach(function(card) {
+            if (card.mythic) {
+              loot.push({
+                type: 'synergy_card',
+                quality: 'MASTERWORK',
+                guaranteed: true,
+                card: card,
+                message: '⚡⚡ LEGENDARY SYNERGY CARD! ⚡⚡'
+              });
+            } else if (card.synergyTags && card.synergyTags.length > 0) {
+              loot.push({
+                type: 'synergy_card',
+                quality: card.quality || 'SUPERIOR',
+                guaranteed: true,
+                card: card,
+                message: '⚡ Synergy Card Dropped!'
+              });
+            } else {
+              loot.push({
+                type: 'card',
+                quality: card.quality || 'ELITE',
+                guaranteed: true,
+                card: card
+              });
+            }
+          });
+        }
+
+        // Add items (charms)
+        if (rolledLoot.items && rolledLoot.items.length > 0) {
+          rolledLoot.items.forEach(function(item) {
+            loot.push({
+              type: item.type,
+              item: item
+            });
+          });
+        }
+
+        // Add whisper drop hint (5% chance)
+        if (Math.random() < 0.05 && this.whisperItem) {
+          loot.push({
+            type: 'whisper',
+            item: this.whisperItem
+          });
+        }
+
+        // Add mythic specific loot
+        if (this.mythicConditionMet && this.mythicDrop) {
+          loot.push({
+            type: 'mythic',
+            item: this.mythicDrop,
+            guaranteed: true
+          });
+        }
+
+        // Add rumor hint if mythic condition not met
+        if (!this.mythicConditionMet && Math.random() < 0.10 && this.mythicHint) {
+          loot.push({
+            type: 'rumor',
+            message: this.mythicHint
+          });
+        }
+
+        return loot;
+      }
+
+      // Fallback to hardcoded loot if LootTableManager not available
       var loot = [];
 
       // Guaranteed rare card drop
