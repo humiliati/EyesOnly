@@ -1,0 +1,449 @@
+{
+  "version": "1.0.0",
+  "description": "Centralized loot table configuration for Gone Rogue",
+
+  "enemy_loot": {
+    "standard": {
+      "currency": {
+        "enabled": true,
+        "chance": 1.0,
+        "min": 2,
+        "max": 8
+      },
+      "card": {
+        "enabled": true,
+        "chance": 0.5,
+        "quality_weights": {
+          "CRACKED": 18,
+          "WORN": 22,
+          "STANDARD": 25,
+          "FINE": 15,
+          "SUPERIOR": 10,
+          "ELITE": 6,
+          "MASTERWORK": 3,
+          "NEAR_PERFECT": 0.9,
+          "PERFECT": 0.1
+        }
+      },
+      "charm": {
+        "enabled": true,
+        "chance": 0.3,
+        "type": "common"
+      },
+      "xp": 10
+    },
+    "elite": {
+      "currency": {
+        "enabled": true,
+        "chance": 1.0,
+        "min": 10,
+        "max": 25
+      },
+      "card": {
+        "enabled": true,
+        "chance": 0.75,
+        "quality_weights": {
+          "CRACKED": 10,
+          "WORN": 15,
+          "STANDARD": 20,
+          "FINE": 20,
+          "SUPERIOR": 15,
+          "ELITE": 10,
+          "MASTERWORK": 7,
+          "NEAR_PERFECT": 2.5,
+          "PERFECT": 0.5
+        }
+      },
+      "charm": {
+        "enabled": true,
+        "chance": 0.3,
+        "type": "common"
+      },
+      "xp": 30
+    },
+    "boss": {
+      "currency": {
+        "enabled": true,
+        "chance": 1.0,
+        "min": 50,
+        "max": 100
+      },
+      "card": {
+        "enabled": true,
+        "chance": 1.0,
+        "quality": "ELITE",
+        "guaranteed": true
+      },
+      "synergy_card": {
+        "enabled": true,
+        "chance": 0.5,
+        "quality": "SUPERIOR"
+      },
+      "whisper_item": {
+        "enabled": true,
+        "chance": 0.04
+      },
+      "mythic_synergy_card": {
+        "enabled": true,
+        "quality": "MASTERWORK",
+        "condition": "mythic_kill"
+      },
+      "xp": 100
+    },
+    "scout": {
+      "currency": {
+        "enabled": true,
+        "chance": 1.0,
+        "min": 2,
+        "max": 8
+      },
+      "card": {
+        "enabled": true,
+        "chance": 0.5,
+        "quality_weights": {
+          "CRACKED": 25,
+          "WORN": 30,
+          "STANDARD": 25,
+          "FINE": 10,
+          "SUPERIOR": 5,
+          "ELITE": 3,
+          "MASTERWORK": 1.5,
+          "NEAR_PERFECT": 0.4,
+          "PERFECT": 0.1
+        }
+      },
+      "charm": {
+        "enabled": true,
+        "chance": 0.3,
+        "type": "common"
+      },
+      "xp": 5
+    }
+  },
+
+  "breakable_loot": {
+    "default": {
+      "currency": {
+        "enabled": true,
+        "chance": 0.7,
+        "min": 1,
+        "max": 5
+      },
+      "ammo": {
+        "enabled": true,
+        "chance": 0.6,
+        "min": 1,
+        "max": 2
+      },
+      "item": {
+        "enabled": true,
+        "chance": 0.3
+      }
+    },
+    "biomes": {
+      "COZY_FOREST": {
+        "types": {
+          "wooden_gate": {
+            "hp": 3,
+            "drops": ["wood", "coins"],
+            "currency_bonus": 0.2
+          },
+          "tree_trunk": {
+            "hp": 4,
+            "drops": ["wood", "apples"],
+            "item_chance": 0.4
+          },
+          "tree_canopy": {
+            "hp": 6,
+            "drops": ["wood", "sap"],
+            "item_chance": 0.35
+          },
+          "bush": {
+            "hp": 2,
+            "drops": ["berries", "sticks"],
+            "item_chance": 0.5
+          },
+          "boulder": {
+            "hp": 5,
+            "drops": ["stone", "gems"],
+            "currency_bonus": 0.3
+          }
+        }
+      },
+      "OFFICE": {
+        "types": {
+          "filing_cabinet": {
+            "hp": 2,
+            "drops": ["documents", "items"],
+            "item_chance": 0.4
+          },
+          "photocopier": {
+            "hp": 3,
+            "drops": ["toner"],
+            "explodes": true,
+            "item_chance": 0.2
+          },
+          "briefcase": {
+            "hp": 1,
+            "drops": ["papers"],
+            "currency_bonus": 0.4
+          },
+          "vending_machine": {
+            "hp": 4,
+            "drops": ["drinks", "snacks"],
+            "item_chance": 0.6
+          },
+          "desk": {
+            "hp": 3,
+            "drops": ["supplies"],
+            "item_chance": 0.35
+          }
+        }
+      },
+      "SHOPPING_MALL": {
+        "types": {
+          "shopping_bag": {
+            "hp": 1,
+            "drops": ["random"],
+            "item_chance": 0.5
+          },
+          "toy": {
+            "hp": 1,
+            "drops": ["toys"],
+            "loot_table": "toy_loot"
+          },
+          "jewelry_display": {
+            "hp": 1,
+            "drops": ["gems", "coins"],
+            "currency_bonus": 0.8
+          },
+          "shoe_rack": {
+            "hp": 2,
+            "drops": ["shoes", "coins"],
+            "currency_bonus": 0.3
+          },
+          "gift_wrap_station": {
+            "hp": 2,
+            "drops": ["wrapped_gifts"],
+            "item_chance": 0.7
+          }
+        }
+      },
+      "INDUSTRIAL": {
+        "types": {
+          "oil_drum": {
+            "hp": 2,
+            "drops": ["oil"],
+            "explodes": true,
+            "currency_bonus": 0.1
+          },
+          "chemical_tank": {
+            "hp": 3,
+            "drops": ["acid"],
+            "hazard": true,
+            "currency_bonus": 0.15
+          },
+          "robot_wreckage": {
+            "hp": 4,
+            "drops": ["scrap", "parts"],
+            "item_chance": 0.5
+          }
+        }
+      }
+    }
+  },
+
+  "item_loot_tables": {
+    "toy_loot": [
+      {
+        "emoji": "🎎",
+        "name": "Toy Figure",
+        "weight": 50,
+        "quantity": 1
+      },
+      {
+        "emoji": "🧸",
+        "name": "Rare Toy",
+        "weight": 15,
+        "quantity": 1
+      },
+      {
+        "emoji": "🥤",
+        "name": "Soda Can",
+        "weight": 35,
+        "quantity": 2
+      }
+    ],
+    "office_loot": [
+      {
+        "emoji": "📎",
+        "name": "Paperclip",
+        "weight": 80,
+        "quantity": 3
+      },
+      {
+        "emoji": "💾",
+        "name": "USB Drive",
+        "weight": 40,
+        "quantity": 1
+      },
+      {
+        "emoji": "🔑",
+        "name": "Office Key",
+        "weight": 20,
+        "quantity": 1
+      }
+    ],
+    "food_loot": [
+      {
+        "emoji": "🍎",
+        "name": "Apple",
+        "weight": 60,
+        "quantity": 1
+      },
+      {
+        "emoji": "🥤",
+        "name": "Energy Drink",
+        "weight": 30,
+        "quantity": 1
+      },
+      {
+        "emoji": "🍖",
+        "name": "Rations",
+        "weight": 10,
+        "quantity": 1
+      }
+    ],
+    "tech_loot": [
+      {
+        "emoji": "🔋",
+        "name": "Battery Pack",
+        "weight": 40,
+        "quantity": 1
+      },
+      {
+        "emoji": "💾",
+        "name": "Data Chip",
+        "weight": 30,
+        "quantity": 1
+      },
+      {
+        "emoji": "📱",
+        "name": "Tech Device",
+        "weight": 20,
+        "quantity": 1
+      },
+      {
+        "emoji": "⚡",
+        "name": "Power Cell",
+        "weight": 10,
+        "quantity": 1
+      }
+    ]
+  },
+
+  "card_drop_modifiers": {
+    "combat_source": {
+      "player": 1.0,
+      "environmental": 0.3
+    },
+    "floor_scaling": {
+      "early_floors": {
+        "range": [1, 5],
+        "basic_card_weight": 1.5,
+        "advanced_card_weight": 0.5
+      },
+      "mid_floors": {
+        "range": [6, 15],
+        "basic_card_weight": 1.0,
+        "advanced_card_weight": 1.0
+      },
+      "late_floors": {
+        "range": [16, 30],
+        "basic_card_weight": 0.5,
+        "advanced_card_weight": 1.5
+      }
+    },
+    "biome_weights": {
+      "GREY_CAVE": {
+        "Silent Shot": 2.0,
+        "Prone": 1.5,
+        "Kneel": 1.5,
+        "Dive Cover": 1.3,
+        "Aim": 1.3,
+        "Lure": 1.2
+      },
+      "COZY_FOREST": {
+        "Single Shot": 1.5,
+        "Katchup": 1.8,
+        "Rations": 1.8,
+        "Dodge": 1.3,
+        "Retreat": 1.3
+      },
+      "SHOPPING_MALL": {
+        "Burst Shot": 1.5,
+        "Suppressive Fire": 1.4,
+        "Energy Drink": 1.8,
+        "Medical Kit": 1.5,
+        "Jam Weapon": 1.3
+      },
+      "OFFICE": {
+        "Jammer": 1.8,
+        "Virus": 1.8,
+        "Logic Hack": 1.5,
+        "Overwatch": 1.4,
+        "Stim Pack": 1.3
+      },
+      "INDUSTRIAL": {
+        "Explosive Shot": 1.8,
+        "Grenade": 1.8,
+        "Burst Shot": 1.5,
+        "Suppressive Fire": 1.5
+      },
+      "AEROSPACE": {
+        "Aim": 1.8,
+        "Overwatch": 1.8,
+        "High Ground": 1.8,
+        "Jammer": 1.5,
+        "Virus": 1.4
+      }
+    }
+  },
+
+  "special_drops": {
+    "charm_types": {
+      "common": {
+        "types": ["LUCKY_CHARM", "SPEED_CHARM", "STEALTH_CHARM", "HEALTH_CHARM", "ENERGY_CHARM"],
+        "quality_distribution": {
+          "CRACKED": 0.97,
+          "WORN": 0.03
+        }
+      },
+      "inventory": {
+        "quality_distribution": {
+          "CRACKED": 0.97,
+          "PERFECT": 0.03
+        }
+      },
+      "impossible": {
+        "source": "uber_mega_boss",
+        "quality": "PERFECT"
+      }
+    }
+  },
+
+  "decay_times": {
+    "currency": 20,
+    "card": 30,
+    "item": 30,
+    "consumable": 30
+  },
+
+  "economy_settings": {
+    "shop_spawn_chance": 0.18,
+    "guaranteed_shop_floor": 6,
+    "shop_floors": [10, 16, 22],
+    "price_markup": 1.4,
+    "starting_currency": 0
+  }
+}
