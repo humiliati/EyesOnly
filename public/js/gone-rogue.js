@@ -190,28 +190,60 @@ const GoneRogue = (function () {
         { char: '🌿', weight: 5 }
       ],
 
-      // Floor tile variety
+      // Floor tile variety (expanded with new tiles)
       floorTiles: [
-        { char: ',', weight: 82 },
-        { char: '·', weight: 10 },
-        { char: '🍂', weight: 5 },
-        { char: '🌸', weight: 3 }
+        { char: ',', weight: 60 },        // Grass (standard)
+        { char: '🌿', weight: 15 },       // Dense grass (stealth high)
+        { char: '🟫', weight: 10 },       // Grass path (clear)
+        { char: '·', weight: 5 },         // Dirt patch
+        { char: '🍂', weight: 5 },        // Fallen leaves
+        { char: '🌸', weight: 3 },        // Flower clearing
+        { char: '🍄', weight: 2 }         // Mushroom circle
       ],
 
+      // Expanded props with breakable gates and obstacles
       props: [
-        { emoji: '🚧', name: 'Wooden Gate', breakable: true, hp: 2, blocksPath: true },
-        { emoji: '🌳', name: 'Tree', breakable: false },
-        { emoji: '🪵', name: 'Log', breakable: true, hp: 1, blocksPath: true },
-        { emoji: '🌿', name: 'Bush', breakable: true, hp: 1, blocksPath: false },
-        { emoji: '📦', name: 'Wooden Box', breakable: true, hp: 2, blocksPath: true }
+        { emoji: '🚧', name: 'Wooden Gate', breakable: true, hp: 3, blocksPath: true, drops: ['wood', 'coins'] },
+        { emoji: '🌳', name: 'Tree Trunk', breakable: true, hp: 4, blocksPath: true, drops: ['wood', 'apples'] },
+        { emoji: '🌲', name: 'Tree Canopy', breakable: true, hp: 6, blocksPath: true, drops: ['wood', 'sap'] },
+        { emoji: '🌿', name: 'Bush', breakable: true, hp: 2, blocksPath: false, drops: ['berries', 'sticks'] },
+        { emoji: '🪵', name: 'Hollow Log', breakable: true, hp: 2, blocksPath: true, drops: ['wood', 'insects'] },
+        { emoji: '🪨', name: 'Boulder', breakable: true, hp: 5, blocksPath: true, drops: ['stone', 'gems'] },
+        { emoji: '⛰️', name: 'Ridge', breakable: false, blocksPath: true },
+        { emoji: '📦', name: 'Wooden Box', breakable: true, hp: 2, blocksPath: true, drops: ['supplies'] }
       ],
+
+      // Interactive objects (non-breakable interactions)
+      interactiveObjects: [
+        { emoji: '🪧', name: 'Sign Post', interact: 'read', effect: 'shows_direction' },
+        { emoji: '🚧', name: 'Ruined Fence', breakable: true, hp: 1, drops: ['wood'] },
+        { emoji: '🐾', name: 'Deer Trail', interact: 'follow', effect: 'reveals_shortcut' },
+        { emoji: '🫐', name: 'Berry Bush', interact: 'harvest', effect: 'gives_berries' },
+        { emoji: '🍎', name: 'Apple Tree', interact: 'shake', effect: 'drops_apples' }
+      ],
+
+      // Tile effects for environmental interaction
+      tileEffects: {
+        ',': { stealth: 20, name: 'Grass' },              // Medium stealth
+        '🌿': { stealth: 40, name: 'Dense Grass' },       // High stealth, hides items
+        '🟫': { stealth: 0, name: 'Grass Path' },         // Clear path, no stealth
+        '·': { stealth: 10, name: 'Dirt Patch' },         // Slight stealth
+        '🍂': { stealth: 15, name: 'Fallen Leaves' },     // Cracking sounds
+        '🌸': { stealth: 20, healing: 1, name: 'Flower Clearing' }, // Restorative
+        '🍄': { stealth: 20, random: true, name: 'Mushroom Circle' } // Random effects
+      },
 
       // Village features (no threats)
       spawnFeatures: {
         villageCluster: true,
         buildings: ['🏠', '⛪', '🏪', '🏡'],
         friendlyNPCs: ['👨', '👩', '🧓', '👶'],
-        decorations: ['🪧', '📬', '🏮', '⛲', '🪑']
+        decorations: ['🪧', '📬', '🏮', '⛲', '🪑'],
+        landmarks: [
+          { emoji: '🏔️', name: 'Mountain Tower', visibility: 15 },
+          { emoji: '🌳', name: 'Giant Tree', visibility: 12 },
+          { emoji: '🏛️', name: 'Ruin', visibility: 10 }
+        ]
       },
 
       // No real combat threats
@@ -235,12 +267,58 @@ const GoneRogue = (function () {
       floorChar: '.',
       description: 'Corporate cubicles and conference rooms',
       floorRange: [5, 9],
+
+      // Floor tile variety for office environments
+      floorTiles: [
+        { char: '.', weight: 70 },        // Standard floor
+        { char: '🟫', weight: 15 },       // Office carpet
+        { char: '⬜', weight: 10 },       // Tile floor
+        { char: '▬', weight: 5 }          // Walkway
+      ],
+
+      // Wall variations for office areas
+      wallTiles: [
+        { char: '█', weight: 60 },        // Solid wall
+        { char: '▓', weight: 20 },        // Cubicle wall (low)
+        { char: '🪟', weight: 15 },       // Glass wall (transparent)
+        { char: '🚪', weight: 5 }         // Office door
+      ],
+
+      // Expanded props with office furniture and equipment
       props: [
-        { emoji: '📂', name: 'Filing Cabinet', breakable: true, hp: 1 },
-        { emoji: '🖨️', name: 'Printer', breakable: true, hp: 1 },
-        { emoji: '🪑', name: 'Office Chair', breakable: false },
-        { emoji: '💼', name: 'Briefcase', breakable: false }
-      ]
+        { emoji: '📂', name: 'Filing Cabinet', breakable: true, hp: 2, drops: ['documents', 'items'] },
+        { emoji: '🖨️', name: 'Photocopier', breakable: true, hp: 3, drops: ['toner'], explodes: true },
+        { emoji: '🪑', name: 'Office Chair', breakable: false, provides: 'cover' },
+        { emoji: '💼', name: 'Briefcase', breakable: true, hp: 1, drops: ['papers'] },
+        { emoji: '🖥️', name: 'Desk', breakable: true, hp: 3, provides: 'cover', drops: ['supplies'] },
+        { emoji: '💧', name: 'Water Cooler', interact: 'drink', healing: 5 },
+        { emoji: '🥤', name: 'Vending Machine', breakable: true, hp: 4, drops: ['drinks', 'snacks'] },
+        { emoji: '🖥️', name: 'Server Rack', interact: 'hack', effect: 'reveals_map' }
+      ],
+
+      // Interactive objects for office exploration
+      interactiveObjects: [
+        { emoji: '💻', name: 'Terminal', interact: 'hack', effects: ['map_reveal', 'enemy_intel', 'door_unlock', 'transmission'] },
+        { emoji: '🚪', name: 'Locked Door', interact: 'unlock', requires: 'keycard' },
+        { emoji: '🪟', name: 'Glass Window', transparent: true, blocks: 'projectiles' },
+        { emoji: '▓', name: 'Cubicle Cluster', provides: 'cover', slowsMovement: true }
+      ],
+
+      // Tile effects for office stealth gameplay
+      tileEffects: {
+        '.': { stealth: 5, name: 'Office Floor' },
+        '🟫': { stealth: 15, name: 'Cubicle Carpet' },    // Acoustic dampening
+        '⬜': { stealth: -5, name: 'Tile Floor' },         // Reflects light
+        '▬': { stealth: 0, name: 'Walkway' }              // Clear path
+      },
+
+      // Special office features
+      spawnFeatures: {
+        unreachableRooms: true,          // Visible through glass
+        terminals: 3,                     // Hackable terminals per floor
+        lockedDoors: 2,                   // Requires keycards
+        coverClusters: true               // Desk arrangements
+      }
     },
     MALL: {
       name: 'Shopping Mall',
@@ -248,11 +326,56 @@ const GoneRogue = (function () {
       floorChar: '.',
       description: 'Abandoned retail stores',
       floorRange: [11, 15],
+
+      // Floor tile variety for mall environments
+      floorTiles: [
+        { char: '.', weight: 60 },        // Standard mall floor
+        { char: '⬜', weight: 25 },       // Tile floor
+        { char: '🟫', weight: 10 },       // Carpet (stores)
+        { char: '🛍️', weight: 5 }         // Display area
+      ],
+
+      // Expanded props with breakable-rich environment
       props: [
-        { emoji: '🛍️', name: 'Shopping Bag', breakable: true, hp: 1 },
-        { emoji: '🧸', name: 'Toy', breakable: true, hp: 1 },
-        { emoji: '🥫', name: 'Canned Food', breakable: true, hp: 1 }
-      ]
+        { emoji: '🛍️', name: 'Shopping Bag', breakable: true, hp: 1, drops: ['random'] },
+        { emoji: '🧸', name: 'Toy', breakable: true, hp: 1, drops: ['toys'] },
+        { emoji: '🥫', name: 'Canned Food', breakable: true, hp: 1, drops: ['food'] },
+        { emoji: '👗', name: 'Clothing Display', breakable: true, hp: 1, drops: ['clothes'] },
+        { emoji: '👟', name: 'Shoe Rack', breakable: true, hp: 2, drops: ['shoes', 'coins'] },
+        { emoji: '💍', name: 'Jewelry Display', breakable: true, hp: 1, drops: ['gems', 'coins'], rare: true },
+        { emoji: '🛒', name: 'Shopping Cart', breakable: true, hp: 2, provides: 'mobile_cover', drops: ['items'] },
+        { emoji: '📰', name: 'Magazine Rack', breakable: true, hp: 1, drops: ['hints'] },
+        { emoji: '🎁', name: 'Gift Wrap Station', breakable: true, hp: 2, drops: ['wrapped_gifts'], surprise: true }
+      ],
+
+      // Interactive objects for mall navigation
+      interactiveObjects: [
+        { emoji: '🏪', name: 'Storefront', type: 'various', contains: 'multiple_displays' },
+        { emoji: '🛍️', name: 'Display Rack', contains: 'breakables' },
+        { emoji: '👕', name: 'Clothing Rack', provides: 'concealment' },
+        { emoji: '🧍', name: 'Mannequin', decorative: true, sometimes: 'hostile' },
+        { emoji: '🪧', name: 'Sign', provides: 'navigation_hints' },
+        { emoji: '📋', name: 'Directory', interact: 'read', shows: 'local_map' },
+        { emoji: '🔼', name: 'Escalator', vertical: true, bidirectional: true }
+      ],
+
+      // Tile effects for mall chaos
+      tileEffects: {
+        '.': { stealth: 5, name: 'Mall Floor' },
+        '⬜': { stealth: -5, name: 'Tile Floor' },
+        '🟫': { stealth: 15, name: 'Store Carpet' },
+        '🛍️': { stealth: 10, name: 'Display Area' }      // Cluttered
+      },
+
+      // Special mall features
+      spawnFeatures: {
+        mazeLayout: true,                 // Dead ends and detours
+        stores: 8,                        // Store count per floor
+        deadEnds: 5,                      // Intentional dead ends
+        escapeRoutes: 3,                  // Guaranteed exits
+        directories: 2,                   // Navigation aids
+        escalators: 2                     // Vertical movement
+      }
     },
     INDUSTRIAL: {
       name: 'Industrial Complex',
@@ -260,11 +383,68 @@ const GoneRogue = (function () {
       floorChar: '.',
       description: 'Hazardous factory floor',
       floorRange: [17, 21],
+
+      // Floor tile variety with hazards
+      floorTiles: [
+        { char: '.', weight: 40 },        // Standard industrial floor
+        { char: '⬜', weight: 20 },       // Metal floor
+        { char: '#️⃣', weight: 10 },      // Grate (see-through)
+        { char: '▪', weight: 10 },        // Metal walkway
+        { char: '🛢️', weight: 8 },       // Oil slick (ignitable)
+        { char: '🟢', weight: 5 },       // Acid pool (damage)
+        { char: '🔥', weight: 4 },       // Lava flow (damage)
+        { char: '⚫', weight: 3 }         // Cooled lava (fragile)
+      ],
+
+      // Hazardous environment props
       props: [
-        { emoji: '🛢️', name: 'Oil Drum', breakable: true, hp: 2 },
-        { emoji: '⚡', name: 'Exposed Wiring', breakable: false },
-        { emoji: '🔥', name: 'Vent Steam', breakable: false }
-      ]
+        { emoji: '🛢️', name: 'Oil Drum', breakable: true, hp: 2, drops: ['oil'], explodes: 'fire', ignitable: true },
+        { emoji: '⚡', name: 'Exposed Wiring', breakable: false, hazard: 'electric' },
+        { emoji: '🔥', name: 'Vent Steam', breakable: false, hazard: 'heat', areadenial: true },
+        { emoji: '🧪', name: 'Chemical Tank', breakable: true, hp: 3, drops: ['acid'], hazard: 'acid' },
+        { emoji: '🛤️', name: 'Pipeline', interact: 'damage', effect: 'releases_steam' },
+        { emoji: '🤖', name: 'Robot Wreckage', breakable: true, hp: 4, drops: ['scrap', 'parts'], sometimes: 'hostile' },
+        { emoji: '⏩', name: 'Conveyor Belt', interact: 'walk', effect: 'speed_boost', reversible: true }
+      ],
+
+      // Interactive hazard objects
+      interactiveObjects: [
+        { emoji: '🎛️', name: 'Valve', interact: 'turn', effect: 'controls_flow' },
+        { emoji: '🎚️', name: 'Control Panel', interact: 'activate', effect: 'activates_deactivates' },
+        { emoji: '🔥', name: 'Furnace', interact: 'ignite', effect: 'creates_fire', provides: 'light' }
+      ],
+
+      // Tile effects with hazards
+      tileEffects: {
+        '.': { stealth: 5, name: 'Industrial Floor' },
+        '⬜': { stealth: -10, name: 'Metal Floor' },      // Reflective, loud
+        '#️⃣': { stealth: 10, name: 'Grate', seeThrough: true },
+        '▪': { stealth: 0, name: 'Metal Walkway' },
+        '🛢️': { stealth: 5, name: 'Oil Slick', slip: true, ignitable: true },
+        '🟢': { stealth: 0, name: 'Acid Pool', damage: 2, corrosive: true, walkable: false },
+        '🔥': { stealth: 0, name: 'Lava Flow', damage: 5, burning: true, walkable: false },
+        '⚫': { stealth: 0, name: 'Cooled Lava', fragile: true }
+      },
+
+      // Ignition system properties
+      ignitionSystem: {
+        enabled: true,
+        spreadChance: 0.3,
+        burnDuration: 10,
+        damagePerTurn: 2,
+        lightRadius: 4,
+        smokeRadius: 6,
+        spreadTargets: ['🛢️', '🪵', '📦']  // What fire spreads to
+      },
+
+      // Special industrial features
+      spawnFeatures: {
+        hazardZones: true,               // Lava/acid hazard areas
+        narrowWalkways: true,            // 1-tile wide paths
+        ignitionChains: true,            // Oil spill fire spreads
+        verticalHazards: true,           // Collapsing tiles
+        controlPanels: 3                 // Hackable environmental controls
+      }
     },
     AEROSPACE: {
       name: 'Aerospace Museum',
@@ -322,6 +502,360 @@ const GoneRogue = (function () {
       qualityRange: [70, 95]
     }
   };
+
+  // ============================================================
+  // EXPLORATION FRAMEWORK
+  // Core exploration mechanics with discovery tiers and rewards
+  // ============================================================
+
+  /**
+   * Discovery tier definitions following the visibility spectrum
+   */
+  var DISCOVERY_TIERS = {
+    SURFACE: {
+      name: 'Surface',
+      frequency: 0.40,
+      visibility: 'immediate',
+      rewardTypes: ['currency', 'consumable'],
+      description: 'Immediately visible, modest rewards'
+    },
+    SEMI_HIDDEN: {
+      name: 'Semi-Hidden',
+      frequency: 0.30,
+      visibility: 'minimal_investigation',
+      rewardTypes: ['cards', 'equipment', 'currency'],
+      description: 'Requires minimal investigation'
+    },
+    CONCEALED: {
+      name: 'Concealed',
+      frequency: 0.20,
+      visibility: 'deliberate_action',
+      rewardTypes: ['rare_cards', 'equipment'],
+      description: 'Requires deliberate action to uncover'
+    },
+    HIDDEN: {
+      name: 'Hidden',
+      frequency: 0.08,
+      visibility: 'outside_context',
+      rewardTypes: ['legendary_items', 'secrets'],
+      description: 'Requires outside-context knowledge'
+    },
+    META: {
+      name: 'Meta',
+      frequency: 0.02,
+      visibility: 'multi_run',
+      rewardTypes: ['narrative', 'achievements'],
+      description: 'Multi-run discoveries'
+    }
+  };
+
+  /**
+   * Discovery placement state for current floor
+   */
+  var _discoveries = []; // { x, y, tier, revealed, contents, type }
+  var _metaDiscoveries = []; // Persistent cross-run discoveries
+
+  /**
+   * Environmental detail layer system
+   */
+  var DETAIL_LAYERS = {
+    STRUCTURAL: 'structural',    // Walls, floor, doors, major features
+    FUNCTIONAL: 'functional',    // Purpose-specific details (desks, displays, equipment)
+    NARRATIVE: 'narrative'       // Story-specific details (struggle evidence, personal items)
+  };
+
+  var _environmentalDetails = {}; // Stores details by layer
+
+  /**
+   * Generate discoveries for current floor based on tier distribution
+   */
+  function _generateDiscoveries(rooms, biome) {
+    _discoveries = [];
+
+    // Calculate total discoveries based on floor size and difficulty
+    var totalDiscoveries = Math.floor(rooms.length * 1.5) + Math.floor(_difficultyTier * 0.5);
+
+    for (var i = 0; i < totalDiscoveries; i++) {
+      var tier = _selectDiscoveryTier();
+      var room = rooms[Math.floor(Math.random() * rooms.length)];
+      var pos = _findDiscoveryPosition(room, tier);
+
+      if (pos) {
+        _discoveries.push({
+          x: pos.x,
+          y: pos.y,
+          tier: tier,
+          revealed: tier.visibility === 'immediate',
+          contents: _generateDiscoveryContents(tier, biome),
+          type: _selectDiscoveryType(tier, biome),
+          interacted: false
+        });
+      }
+    }
+  }
+
+  /**
+   * Select discovery tier based on frequency distribution
+   */
+  function _selectDiscoveryTier() {
+    var roll = Math.random();
+    var cumulative = 0;
+
+    var tiers = [
+      DISCOVERY_TIERS.SURFACE,
+      DISCOVERY_TIERS.SEMI_HIDDEN,
+      DISCOVERY_TIERS.CONCEALED,
+      DISCOVERY_TIERS.HIDDEN,
+      DISCOVERY_TIERS.META
+    ];
+
+    for (var i = 0; i < tiers.length; i++) {
+      cumulative += tiers[i].frequency;
+      if (roll <= cumulative) {
+        return tiers[i];
+      }
+    }
+
+    return DISCOVERY_TIERS.SURFACE;
+  }
+
+  /**
+   * Find appropriate position for discovery based on tier
+   */
+  function _findDiscoveryPosition(room, tier) {
+    var attempts = 0;
+    var maxAttempts = 20;
+
+    while (attempts < maxAttempts) {
+      var x = room.x + Math.floor(Math.random() * room.width);
+      var y = room.y + Math.floor(Math.random() * room.height);
+
+      // Check if position is valid (walkable, not occupied)
+      if (_grid[y] && _grid[y][x] === TILES.EMPTY) {
+        // For concealed/hidden discoveries, prefer corners or edges
+        if (tier === DISCOVERY_TIERS.CONCEALED || tier === DISCOVERY_TIERS.HIDDEN) {
+          var isEdge = (x === room.x || x === room.x + room.width - 1 ||
+                       y === room.y || y === room.y + room.height - 1);
+          if (isEdge || attempts > 10) {
+            return { x: x, y: y };
+          }
+        } else {
+          return { x: x, y: y };
+        }
+      }
+      attempts++;
+    }
+
+    return null;
+  }
+
+  /**
+   * Generate discovery contents based on tier and biome
+   */
+  function _generateDiscoveryContents(tier, biome) {
+    var contents = {
+      currency: 0,
+      items: [],
+      cards: [],
+      narrative: null
+    };
+
+    switch (tier) {
+      case DISCOVERY_TIERS.SURFACE:
+        contents.currency = Math.floor(Math.random() * 20) + 5;
+        break;
+      case DISCOVERY_TIERS.SEMI_HIDDEN:
+        contents.currency = Math.floor(Math.random() * 40) + 15;
+        if (Math.random() < 0.3) {
+          contents.cards.push('random_card');
+        }
+        break;
+      case DISCOVERY_TIERS.CONCEALED:
+        contents.currency = Math.floor(Math.random() * 80) + 30;
+        if (Math.random() < 0.5) {
+          contents.cards.push('rare_card');
+        }
+        break;
+      case DISCOVERY_TIERS.HIDDEN:
+        contents.currency = Math.floor(Math.random() * 150) + 50;
+        contents.cards.push('legendary_card');
+        break;
+      case DISCOVERY_TIERS.META:
+        contents.narrative = _generateMetaNarrative(biome);
+        break;
+    }
+
+    return contents;
+  }
+
+  /**
+   * Select discovery type based on tier and biome
+   */
+  function _selectDiscoveryType(tier, biome) {
+    var types = {
+      SURFACE: ['breakable_container', 'visible_treasure', 'obvious_crate'],
+      SEMI_HIDDEN: ['locked_door', 'debris_pile', 'dark_corner'],
+      CONCEALED: ['fake_wall', 'terminal_secret', 'breakable_pattern'],
+      HIDDEN: ['puzzle_solution', 'secret_room', 'environmental_hint'],
+      META: ['lore_fragment', 'achievement_unlock', 'cross_run_hint']
+    };
+
+    var tierTypes = types[tier.name.toUpperCase().replace('-', '_')];
+    if (tierTypes && tierTypes.length > 0) {
+      return tierTypes[Math.floor(Math.random() * tierTypes.length)];
+    }
+
+    return 'breakable_container';
+  }
+
+  /**
+   * Generate meta-narrative content for cross-run discoveries
+   */
+  function _generateMetaNarrative(biome) {
+    var narratives = [
+      'You notice a pattern in the wall structure...',
+      'A faded message hints at something deeper...',
+      'The environment suggests a hidden connection...',
+      'Something about this place feels familiar...'
+    ];
+
+    return narratives[Math.floor(Math.random() * narratives.length)];
+  }
+
+  /**
+   * Initialize environmental detail layers for a room
+   */
+  function _initializeEnvironmentalDetails(room, biome) {
+    var roomKey = room.x + '_' + room.y;
+
+    _environmentalDetails[roomKey] = {
+      structural: _generateStructuralLayer(room, biome),
+      functional: _generateFunctionalLayer(room, biome),
+      narrative: _generateNarrativeLayer(room, biome)
+    };
+  }
+
+  /**
+   * Generate structural layer details (always present)
+   */
+  function _generateStructuralLayer(room, biome) {
+    return {
+      walls: true,
+      floor: true,
+      ceiling: true,
+      doors: room.doors || [],
+      majorFeatures: []
+    };
+  }
+
+  /**
+   * Generate functional layer details (purpose-specific)
+   */
+  function _generateFunctionalLayer(room, biome) {
+    var functional = {
+      furniture: [],
+      equipment: [],
+      storage: []
+    };
+
+    // Biome-specific functional details
+    if (biome === BIOMES.OFFICE) {
+      functional.furniture = ['desks', 'chairs', 'cubicles'];
+      functional.equipment = ['terminals', 'printers', 'phones'];
+    } else if (biome === BIOMES.MALL) {
+      functional.furniture = ['displays', 'racks', 'counters'];
+      functional.equipment = ['registers', 'mannequins'];
+    } else if (biome === BIOMES.INDUSTRIAL) {
+      functional.equipment = ['machinery', 'conveyors', 'pipes'];
+    }
+
+    return functional;
+  }
+
+  /**
+   * Generate narrative layer details (story-specific)
+   */
+  function _generateNarrativeLayer(room, biome) {
+    var narrative = {
+      evidence: [],
+      personalItems: [],
+      environmentalChanges: []
+    };
+
+    // Random chance for narrative elements
+    if (Math.random() < 0.3) {
+      narrative.evidence.push('struggle_marks');
+    }
+    if (Math.random() < 0.2) {
+      narrative.personalItems.push('abandoned_photo');
+    }
+    if (Math.random() < 0.25) {
+      narrative.environmentalChanges.push('water_damage');
+    }
+
+    return narrative;
+  }
+
+  /**
+   * Reveal discovery when player interacts with it
+   */
+  function _revealDiscovery(x, y) {
+    for (var i = 0; i < _discoveries.length; i++) {
+      var discovery = _discoveries[i];
+      if (discovery.x === x && discovery.y === y && !discovery.revealed) {
+        discovery.revealed = true;
+        discovery.interacted = true;
+        _grantDiscoveryRewards(discovery);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Grant rewards from discovered content
+   */
+  function _grantDiscoveryRewards(discovery) {
+    var contents = discovery.contents;
+
+    if (contents.currency > 0) {
+      _spawnCurrency(discovery.x, discovery.y, contents.currency);
+    }
+
+    if (contents.cards && contents.cards.length > 0) {
+      // Spawn card items at discovery location
+      for (var i = 0; i < contents.cards.length; i++) {
+        _spawnDiscoveryCard(discovery.x, discovery.y);
+      }
+    }
+
+    if (contents.narrative) {
+      _displayNarrative(contents.narrative);
+    }
+  }
+
+  /**
+   * Spawn a card from discovery
+   */
+  function _spawnDiscoveryCard(x, y) {
+    // Integrate with existing item spawning system
+    var offset = _items.length % 2 === 0 ? 1 : -1;
+    var spawnX = Math.max(1, Math.min(GRID_WIDTH - 2, x + offset));
+    _items.push({ x: spawnX, y: y, quality: Math.random() });
+  }
+
+  /**
+   * Display narrative message to player
+   */
+  function _displayNarrative(narrative) {
+    if (typeof Terminal !== 'undefined' && Terminal.print) {
+      Terminal.print(narrative, 'narrative');
+    }
+  }
+
+  // ============================================================
+  // END EXPLORATION FRAMEWORK
+  // ============================================================
 
   /**
    * Determine floor type based on floor number
@@ -1179,6 +1713,12 @@ const GoneRogue = (function () {
         _placeVillageCluster(floorBiome);
       }
       _buildBiomeVisualGrid(floorBiome);
+
+      // Generate discoveries and environmental details for exploration framework
+      _generateDiscoveries(rooms, floorBiome);
+      for (var i = 0; i < rooms.length; i++) {
+        _initializeEnvironmentalDetails(rooms[i], floorBiome);
+      }
     }
 
     // Place breakables (deterministic for tests)
@@ -1934,7 +2474,13 @@ const GoneRogue = (function () {
           card = CardSystem.rollTrenchCoat();
           shouldSpawnTrenchCoat = false; // Only spawn once
         } else {
-          var baseType = CardSystem.getRandomBaseCard();
+          // Use biome-aware card selection if available
+          var baseType;
+          if (CardSystem.getRandomBaseCardByBiome) {
+            baseType = CardSystem.getRandomBaseCardByBiome(biome.name, _floor);
+          } else {
+            baseType = CardSystem.getRandomBaseCard();
+          }
           card = CardSystem.rollCard(baseType);
         }
 
@@ -2380,8 +2926,15 @@ const GoneRogue = (function () {
       display[projectile.y][projectile.x] = projectile.glyph || TILES.PROJECTILE;
     });
 
-    // Place player
-    display[_player.y][_player.x] = TILES.PLAYER;
+    // Place player (check for avatar override from passive items)
+    var playerAvatar = TILES.PLAYER;
+    if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.getPlayerAvatarOverride) {
+      var override = PassiveItemsSystem.getPlayerAvatarOverride();
+      if (override) {
+        playerAvatar = override;
+      }
+    }
+    display[_player.y][_player.x] = playerAvatar;
 
     // Render grid
     for (var y = 0; y < GRID_HEIGHT; y++) {
@@ -2567,11 +3120,25 @@ const GoneRogue = (function () {
       }
     }
 
+    // Check for discovery reveal when player walks onto discovery tile
+    var discoveryRevealed = _revealDiscovery(newX, newY);
+    if (discoveryRevealed) {
+      // Discovery found, rewards already granted by _revealDiscovery
+      if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+        UIControls.updateMokInterjection('Discovery Found!');
+      }
+    }
+
     // Apply tile effects
     var tileEffectMessage = _applyTileEffects(newX, newY);
 
     // Run mode increases detection and makes noise
     if (runMode) {
+      // Break passive items that break on running
+      if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.checkAndBreakItems) {
+        PassiveItemsSystem.checkAndBreakItems('run');
+      }
+
       _player.detection += 2;
       _updateAlertLevel();
 
@@ -4401,6 +4968,12 @@ const GoneRogue = (function () {
       });
     }
 
+    // Passive item bonuses (e.g., Cardboard Box)
+    if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.getEquippedStealthBonus) {
+      var passiveBonus = PassiveItemsSystem.getEquippedStealthBonus(_player.quality || 50);
+      bonus += passiveBonus;
+    }
+
     // Cache result for this player position
     _stealthBonusCache = { bonus: bonus, px: _player.x, py: _player.y };
 
@@ -5186,6 +5759,11 @@ const GoneRogue = (function () {
    * @param {Object} card - Optional card used to initiate combat
    */
   function _enterStrCombat(enemy, trigger, card) {
+    // Break passive items that break on combat
+    if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.checkAndBreakItems) {
+      PassiveItemsSystem.checkAndBreakItems('combat');
+    }
+
     // Freeze realtime game loop
     if (_gameLoopActive) {
       _pauseGameLoop();
@@ -7665,6 +8243,13 @@ const GoneRogue = (function () {
     createBordersForest: createBordersForest,
     generateForestOpenSpace: generateForestOpenSpace,
     placeVillageCluster: placeVillageCluster,
+
+    // Exploration framework API (for testing)
+    DISCOVERY_TIERS: DISCOVERY_TIERS,
+    DETAIL_LAYERS: DETAIL_LAYERS,
+    _generateDiscoveries: _generateDiscoveries,
+    _revealDiscovery: _revealDiscovery,
+    _initializeEnvironmentalDetails: _initializeEnvironmentalDetails,
 
     // Headless mode API (for testing/agent simulation)
     headless: {

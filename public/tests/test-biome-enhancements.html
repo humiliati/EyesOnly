@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Biome Enhancement Test Suite</title>
+  <style>
+    body {
+      font-family: monospace;
+      background: #0a0a0a;
+      color: #00ff00;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #00aaff;
+      border-bottom: 2px solid #00aaff;
+      padding-bottom: 10px;
+    }
+    h2 {
+      color: #ffaa00;
+      margin-top: 30px;
+      border-left: 4px solid #ffaa00;
+      padding-left: 10px;
+    }
+    h3 {
+      color: #00ff88;
+      margin-top: 20px;
+    }
+    .test-result {
+      margin: 5px 0;
+      padding: 3px 5px;
+    }
+    .pass {
+      color: #00ff00;
+      font-weight: bold;
+    }
+    .fail {
+      color: #ff0000;
+      font-weight: bold;
+    }
+    .info {
+      color: #00aaff;
+      font-style: italic;
+    }
+    pre {
+      background: #1a1a1a;
+      padding: 10px;
+      border-left: 3px solid #00aaff;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+    #run-button {
+      background: #00aaff;
+      color: #000;
+      border: none;
+      padding: 15px 30px;
+      font-family: monospace;
+      font-size: 18px;
+      cursor: pointer;
+      margin: 20px 0;
+      font-weight: bold;
+    }
+    #run-button:hover {
+      background: #00ccff;
+    }
+    .section {
+      border: 1px solid #333;
+      padding: 15px;
+      margin: 20px 0;
+      background: #111;
+    }
+    .summary {
+      background: #1a3a1a;
+      padding: 15px;
+      margin: 20px 0;
+      border: 2px solid #00ff00;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌳 Biome Enhancement Test Suite</h1>
+  <p>Comprehensive tests for the enhanced procedural generation system</p>
+
+  <button id="run-button" onclick="runAllTests()">▶ Run All Tests</button>
+
+  <div id="test-output"></div>
+
+  <script src="../js/gone-rogue.js"></script>
+  <script>
+    // Test infrastructure
+    var tests = {
+      total: 0,
+      passed: 0,
+      failed: 0,
+      sections: {}
+    };
+
+    function startSection(name) {
+      var output = document.getElementById('test-output');
+      var section = document.createElement('div');
+      section.className = 'section';
+      section.id = 'section-' + name.replace(/\s+/g, '-');
+      section.innerHTML = '<h2>' + name + '</h2>';
+      output.appendChild(section);
+      tests.sections[name] = section;
+      return section;
+    }
+
+    function assert(condition, message, section) {
+      tests.total++;
+      var sectionDiv = tests.sections[section] || document.getElementById('test-output');
+      var resultDiv = document.createElement('div');
+      resultDiv.className = 'test-result';
+
+      if (condition) {
+        tests.passed++;
+        resultDiv.innerHTML = '<span class="pass">✓</span> ' + message;
+        console.log('%c✓ PASS: ' + message, 'color: green; font-weight: bold');
+      } else {
+        tests.failed++;
+        resultDiv.innerHTML = '<span class="fail">✗</span> ' + message;
+        console.error('%c✗ FAIL: ' + message, 'color: red; font-weight: bold');
+      }
+
+      sectionDiv.appendChild(resultDiv);
+    }
+
+    function assertEqual(actual, expected, message, section) {
+      assert(actual === expected, message + ' (expected: ' + expected + ', got: ' + actual + ')', section);
+    }
+
+    function info(message, section) {
+      var sectionDiv = tests.sections[section] || document.getElementById('test-output');
+      var infoDiv = document.createElement('div');
+      infoDiv.className = 'test-result info';
+      infoDiv.innerHTML = '💡 ' + message;
+      sectionDiv.appendChild(infoDiv);
+    }
+
+    function runAllTests() {
+      // Clear previous results
+      document.getElementById('test-output').innerHTML = '';
+      tests = { total: 0, passed: 0, failed: 0, sections: {} };
+
+      console.log('=== Biome Enhancement Test Suite ===');
+
+      // Test Forest Biome Enhancements
+      testForestBiome();
+
+      // Test Office Biome Enhancements
+      testOfficeBiome();
+
+      // Test Mall Biome Enhancements
+      testMallBiome();
+
+      // Test Industrial Biome Enhancements
+      testIndustrialBiome();
+
+      // Test Exploration Framework Integration
+      testExplorationFramework();
+
+      // Display Summary
+      displaySummary();
+    }
+
+    function testForestBiome() {
+      var section = 'Forest Biome Enhancement';
+      startSection(section);
+
+      var forest = GoneRogue.BIOMES ? GoneRogue.BIOMES.FOREST : null;
+
+      if (!forest) {
+        assert(false, 'Forest biome not accessible', section);
+        return;
+      }
+
+      info('Testing expanded Forest tile registry...', section);
+
+      // Test floor tiles
+      assert(Array.isArray(forest.floorTiles), 'Forest has floorTiles array', section);
+      assert(forest.floorTiles.length >= 7, 'Forest has at least 7 floor tile types (got ' + forest.floorTiles.length + ')', section);
+
+      // Check for specific new tiles
+      var hasDenseGrass = forest.floorTiles.some(t => t.char === '🌿');
+      var hasFlowerClearing = forest.floorTiles.some(t => t.char === '🌸');
+      var hasMushroomCircle = forest.floorTiles.some(t => t.char === '🍄');
+
+      assert(hasDenseGrass, 'Forest has Dense Grass tile (🌿)', section);
+      assert(hasFlowerClearing, 'Forest has Flower Clearing tile (🌸)', section);
+      assert(hasMushroomCircle, 'Forest has Mushroom Circle tile (🍄)', section);
+
+      // Test props expansion
+      assert(Array.isArray(forest.props), 'Forest has props array', section);
+      assert(forest.props.length >= 8, 'Forest has at least 8 prop types (got ' + forest.props.length + ')', section);
+
+      // Check for breakable gates
+      var hasGate = forest.props.some(p => p.name && p.name.toLowerCase().includes('gate'));
+      assert(hasGate, 'Forest has breakable gate', section);
+
+      // Test interactive objects
+      if (forest.interactiveObjects) {
+        assert(Array.isArray(forest.interactiveObjects), 'Forest has interactiveObjects array', section);
+        assert(forest.interactiveObjects.length >= 5, 'Forest has at least 5 interactive objects', section);
+      }
+
+      // Test landmarks
+      if (forest.spawnFeatures && forest.spawnFeatures.landmarks) {
+        assert(Array.isArray(forest.spawnFeatures.landmarks), 'Forest has landmarks array', section);
+        assert(forest.spawnFeatures.landmarks.length >= 3, 'Forest has at least 3 landmarks', section);
+
+        var landmarkNames = forest.spawnFeatures.landmarks.map(l => l.name).join(', ');
+        info('Landmarks: ' + landmarkNames, section);
+      }
+
+      // Test tile effects
+      if (forest.tileEffects) {
+        assert(typeof forest.tileEffects === 'object', 'Forest has tileEffects object', section);
+        var effectCount = Object.keys(forest.tileEffects).length;
+        assert(effectCount >= 5, 'Forest has at least 5 tile effects (got ' + effectCount + ')', section);
+      }
+    }
+
+    function testOfficeBiome() {
+      var section = 'Office Biome Enhancement';
+      startSection(section);
+
+      var office = GoneRogue.BIOMES ? GoneRogue.BIOMES.OFFICE : null;
+
+      if (!office) {
+        assert(false, 'Office biome not accessible', section);
+        return;
+      }
+
+      info('Testing expanded Office tile registry...', section);
+
+      // Test floor tiles
+      if (office.floorTiles) {
+        assert(Array.isArray(office.floorTiles), 'Office has floorTiles array', section);
+        assert(office.floorTiles.length >= 4, 'Office has at least 4 floor tile types', section);
+      }
+
+      // Test wall tiles
+      if (office.wallTiles) {
+        assert(Array.isArray(office.wallTiles), 'Office has wallTiles array', section);
+        assert(office.wallTiles.length >= 4, 'Office has at least 4 wall tile types', section);
+
+        // Check for glass walls
+        var hasGlassWall = office.wallTiles.some(w => w.char === '🪟');
+        assert(hasGlassWall, 'Office has Glass Wall tile (🪟)', section);
+      }
+
+      // Test props
+      assert(Array.isArray(office.props), 'Office has props array', section);
+      assert(office.props.length >= 8, 'Office has at least 8 prop types (got ' + office.props.length + ')', section);
+
+      // Test for specific office items
+      var hasDesk = office.props.some(p => p.name && p.name.toLowerCase().includes('desk'));
+      var hasVendingMachine = office.props.some(p => p.name && p.name.toLowerCase().includes('vending'));
+
+      assert(hasDesk, 'Office has Desk prop', section);
+      assert(hasVendingMachine, 'Office has Vending Machine prop', section);
+
+      // Test spawn features
+      if (office.spawnFeatures) {
+        assert(typeof office.spawnFeatures === 'object', 'Office has spawnFeatures object', section);
+
+        if (office.spawnFeatures.unreachableRooms) {
+          assert(office.spawnFeatures.unreachableRooms === true, 'Office has unreachable rooms feature', section);
+        }
+
+        if (office.spawnFeatures.terminals) {
+          assert(office.spawnFeatures.terminals >= 3, 'Office has at least 3 terminals per floor', section);
+        }
+      }
+    }
+
+    function testMallBiome() {
+      var section = 'Mall Biome Enhancement';
+      startSection(section);
+
+      var mall = GoneRogue.BIOMES ? GoneRogue.BIOMES.MALL : null;
+
+      if (!mall) {
+        assert(false, 'Mall biome not accessible', section);
+        return;
+      }
+
+      info('Testing expanded Mall tile registry (breakable-rich)...', section);
+
+      // Test floor tiles
+      if (mall.floorTiles) {
+        assert(Array.isArray(mall.floorTiles), 'Mall has floorTiles array', section);
+        assert(mall.floorTiles.length >= 4, 'Mall has at least 4 floor tile types', section);
+      }
+
+      // Test props (breakable-rich)
+      assert(Array.isArray(mall.props), 'Mall has props array', section);
+      assert(mall.props.length >= 9, 'Mall has at least 9 prop types (got ' + mall.props.length + ')', section);
+
+      // Count breakable props
+      var breakableCount = mall.props.filter(p => p.breakable === true).length;
+      info('Breakable props: ' + breakableCount + ' out of ' + mall.props.length, section);
+
+      // Test for specific mall items
+      var hasJewelry = mall.props.some(p => p.name && p.name.toLowerCase().includes('jewelry'));
+      var hasShoppingCart = mall.props.some(p => p.name && p.name.toLowerCase().includes('cart'));
+
+      assert(hasJewelry, 'Mall has Jewelry Display prop', section);
+      assert(hasShoppingCart, 'Mall has Shopping Cart prop', section);
+
+      // Test spawn features
+      if (mall.spawnFeatures) {
+        assert(typeof mall.spawnFeatures === 'object', 'Mall has spawnFeatures object', section);
+
+        if (mall.spawnFeatures.mazeLayout) {
+          assert(mall.spawnFeatures.mazeLayout === true, 'Mall has maze layout feature', section);
+        }
+
+        if (mall.spawnFeatures.directories) {
+          assert(mall.spawnFeatures.directories >= 2, 'Mall has at least 2 directories', section);
+        }
+
+        if (mall.spawnFeatures.escalators) {
+          assert(mall.spawnFeatures.escalators >= 2, 'Mall has at least 2 escalators', section);
+        }
+      }
+    }
+
+    function testIndustrialBiome() {
+      var section = 'Industrial Biome Enhancement';
+      startSection(section);
+
+      var industrial = GoneRogue.BIOMES ? GoneRogue.BIOMES.INDUSTRIAL : null;
+
+      if (!industrial) {
+        assert(false, 'Industrial biome not accessible', section);
+        return;
+      }
+
+      info('Testing expanded Industrial hazard system...', section);
+
+      // Test floor tiles with hazards
+      if (industrial.floorTiles) {
+        assert(Array.isArray(industrial.floorTiles), 'Industrial has floorTiles array', section);
+        assert(industrial.floorTiles.length >= 8, 'Industrial has at least 8 floor tile types (got ' + industrial.floorTiles.length + ')', section);
+
+        // Check for hazard tiles
+        var hasOilSlick = industrial.floorTiles.some(t => t.char === '🛢️');
+        var hasAcidPool = industrial.floorTiles.some(t => t.char === '🟢');
+        var hasLavaFlow = industrial.floorTiles.some(t => t.char === '🔥');
+
+        assert(hasOilSlick, 'Industrial has Oil Slick tile (🛢️)', section);
+        assert(hasAcidPool, 'Industrial has Acid Pool tile (🟢)', section);
+        assert(hasLavaFlow, 'Industrial has Lava Flow tile (🔥)', section);
+      }
+
+      // Test props
+      assert(Array.isArray(industrial.props), 'Industrial has props array', section);
+      assert(industrial.props.length >= 7, 'Industrial has at least 7 prop types', section);
+
+      // Test for hazardous props
+      var hasOilDrum = industrial.props.some(p => p.name && p.name.toLowerCase().includes('oil'));
+      var hasChemicalTank = industrial.props.some(p => p.name && p.name.toLowerCase().includes('chemical'));
+
+      assert(hasOilDrum, 'Industrial has Oil Drum prop', section);
+      assert(hasChemicalTank, 'Industrial has Chemical Tank prop', section);
+
+      // Test ignition system
+      if (industrial.ignitionSystem) {
+        assert(typeof industrial.ignitionSystem === 'object', 'Industrial has ignitionSystem object', section);
+        assert(industrial.ignitionSystem.enabled === true, 'Ignition system is enabled', section);
+        assert(industrial.ignitionSystem.spreadChance > 0, 'Fire has spread chance configured', section);
+        assert(industrial.ignitionSystem.burnDuration > 0, 'Fire has burn duration configured', section);
+        assert(Array.isArray(industrial.ignitionSystem.spreadTargets), 'Fire has spread targets array', section);
+
+        info('Ignition spread chance: ' + (industrial.ignitionSystem.spreadChance * 100) + '%', section);
+        info('Burn duration: ' + industrial.ignitionSystem.burnDuration + ' turns', section);
+      }
+
+      // Test spawn features
+      if (industrial.spawnFeatures) {
+        assert(typeof industrial.spawnFeatures === 'object', 'Industrial has spawnFeatures object', section);
+
+        if (industrial.spawnFeatures.hazardZones) {
+          assert(industrial.spawnFeatures.hazardZones === true, 'Industrial has hazard zones', section);
+        }
+
+        if (industrial.spawnFeatures.narrowWalkways) {
+          assert(industrial.spawnFeatures.narrowWalkways === true, 'Industrial has narrow walkways', section);
+        }
+
+        if (industrial.spawnFeatures.controlPanels) {
+          assert(industrial.spawnFeatures.controlPanels >= 3, 'Industrial has at least 3 control panels', section);
+        }
+      }
+    }
+
+    function testExplorationFramework() {
+      var section = 'Exploration Framework Integration';
+      startSection(section);
+
+      info('Testing discovery tier system...', section);
+
+      // Test discovery tiers
+      assert(typeof GoneRogue.DISCOVERY_TIERS !== 'undefined', 'DISCOVERY_TIERS is defined', section);
+
+      if (GoneRogue.DISCOVERY_TIERS) {
+        var tiers = GoneRogue.DISCOVERY_TIERS;
+        assert(typeof tiers.SURFACE !== 'undefined', 'SURFACE tier exists', section);
+        assert(typeof tiers.SEMI_HIDDEN !== 'undefined', 'SEMI_HIDDEN tier exists', section);
+        assert(typeof tiers.CONCEALED !== 'undefined', 'CONCEALED tier exists', section);
+        assert(typeof tiers.HIDDEN !== 'undefined', 'HIDDEN tier exists', section);
+        assert(typeof tiers.META !== 'undefined', 'META tier exists', section);
+
+        // Verify frequency distribution
+        var totalFreq = tiers.SURFACE.frequency + tiers.SEMI_HIDDEN.frequency +
+                        tiers.CONCEALED.frequency + tiers.HIDDEN.frequency +
+                        tiers.META.frequency;
+        assert(Math.abs(totalFreq - 1.0) < 0.01, 'Discovery tier frequencies sum to 1.0 (got ' + totalFreq.toFixed(2) + ')', section);
+
+        info('Frequency distribution: Surface ' + (tiers.SURFACE.frequency * 100) + '%, Semi-Hidden ' +
+             (tiers.SEMI_HIDDEN.frequency * 100) + '%, Concealed ' + (tiers.CONCEALED.frequency * 100) +
+             '%, Hidden ' + (tiers.HIDDEN.frequency * 100) + '%, Meta ' + (tiers.META.frequency * 100) + '%', section);
+      }
+
+      // Test detail layers
+      assert(typeof GoneRogue.DETAIL_LAYERS !== 'undefined', 'DETAIL_LAYERS is defined', section);
+
+      if (GoneRogue.DETAIL_LAYERS) {
+        var layers = GoneRogue.DETAIL_LAYERS;
+        assertEqual(layers.STRUCTURAL, 'structural', 'STRUCTURAL layer defined', section);
+        assertEqual(layers.FUNCTIONAL, 'functional', 'FUNCTIONAL layer defined', section);
+        assertEqual(layers.NARRATIVE, 'narrative', 'NARRATIVE layer defined', section);
+      }
+
+      // Test function availability
+      assert(typeof GoneRogue._generateDiscoveries === 'function', '_generateDiscoveries is a function', section);
+      assert(typeof GoneRogue._revealDiscovery === 'function', '_revealDiscovery is a function', section);
+      assert(typeof GoneRogue._initializeEnvironmentalDetails === 'function', '_initializeEnvironmentalDetails is a function', section);
+    }
+
+    function displaySummary() {
+      var output = document.getElementById('test-output');
+      var summaryDiv = document.createElement('div');
+      summaryDiv.className = 'summary';
+
+      var passRate = tests.total > 0 ? ((tests.passed / tests.total) * 100).toFixed(1) : 0;
+
+      summaryDiv.innerHTML = '<h2>📊 Test Summary</h2>' +
+        '<p><strong>Total Tests:</strong> ' + tests.total + '</p>' +
+        '<p class="pass"><strong>Passed:</strong> ' + tests.passed + ' (' + passRate + '%)</p>' +
+        '<p class="fail"><strong>Failed:</strong> ' + tests.failed + '</p>' +
+        '<p><strong>Status:</strong> ' + (tests.failed === 0 ? '<span class="pass">✓ ALL TESTS PASSED</span>' : '<span class="fail">✗ SOME TESTS FAILED</span>') + '</p>';
+
+      output.appendChild(summaryDiv);
+
+      console.log('=== Test Summary ===');
+      console.log('Total: ' + tests.total);
+      console.log('Passed: ' + tests.passed + ' (' + passRate + '%)');
+      console.log('Failed: ' + tests.failed);
+    }
+
+    // Auto-run tests on load
+    window.addEventListener('load', function() {
+      setTimeout(runAllTests, 500);
+    });
+  </script>
+</body>
+</html>

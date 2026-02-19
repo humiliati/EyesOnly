@@ -12,7 +12,10 @@ const PassiveItemsSystem = (function() {
     ON_SELL: 'on_sell',
     ON_PURCHASE: 'on_purchase',
     ON_GAMBLE_WIN: 'on_gamble_win',
-    ON_EXHAUST: 'on_exhaust'
+    ON_EXHAUST: 'on_exhaust',
+    ON_EQUIP: 'on_equip',      // Continuous effect while equipped
+    ON_COMBAT: 'on_combat',     // Breaks on combat entry
+    ON_RUN: 'on_run'            // Breaks on running
   };
 
   // Passive items database
@@ -93,6 +96,46 @@ const PassiveItemsSystem = (function() {
       slot: 'passive_equipment',
       perfect_echo_chance: 0.07,  // 7% chance for upgraded duplicate
       triple_chance: 0.10  // 10% chance for triple instead of double
+    },
+    CARDBOARD_BOX: {
+      id: 'cardboard_box',
+      name: 'Cardboard Box',
+      emoji: '📦',
+      description: 'Perfect camouflage when still. Breaks when running or fighting.',
+      trigger_event: TRIGGER_EVENTS.ON_EQUIP,
+      // Stealth properties
+      stealth_bonus: 75,  // High stealth bonus (perfect sight line)
+      stealth_bonus_min_quality: 45,  // Still high at mid quality
+      // Avatar transformation
+      player_avatar_override: '📦',
+      // Breaking conditions
+      breaks_on_run: true,
+      breaks_on_combat: true,
+      // Equipment properties
+      upgrade_path: 'cardboard_box_plus',
+      stackable: false,
+      slot: 'passive_equipment',
+      is_active_effect: true  // Continuous effect while equipped
+    },
+    CARDBOARD_BOX_PLUS: {
+      id: 'cardboard_box_plus',
+      name: 'Cardboard Box+',
+      emoji: '📦',
+      description: 'Enhanced camouflage. Doesn\'t break on running. [UPGRADED]',
+      trigger_event: TRIGGER_EVENTS.ON_EQUIP,
+      // Stealth properties
+      stealth_bonus: 90,  // Even higher stealth bonus
+      stealth_bonus_min_quality: 60,  // Higher floor at mid quality
+      // Avatar transformation
+      player_avatar_override: '📦',
+      // Breaking conditions
+      breaks_on_run: false,  // Upgrade: doesn't break when running
+      breaks_on_combat: true,  // Still breaks on combat
+      // Equipment properties
+      upgrade_path: null,
+      stackable: false,
+      slot: 'passive_equipment',
+      is_active_effect: true
     }
   };
 
@@ -558,6 +601,86 @@ const PassiveItemsSystem = (function() {
     return PASSIVE_ITEMS_DB;
   }
 
+  /**
+   * Get total stealth bonus from equipped passive items
+   * @param {number} currentQuality - Current item quality (0-100)
+   * @returns {number} Total stealth bonus
+   */
+  function getEquippedStealthBonus(currentQuality) {
+    var totalBonus = 0;
+
+    for (var i = 0; i < _equippedPassives.length; i++) {
+      var itemId = _equippedPassives[i];
+      var item = PASSIVE_ITEMS_DB[itemId];
+
+      if (item && item.stealth_bonus) {
+        // Check if quality meets minimum requirement
+        var minQuality = item.stealth_bonus_min_quality || 0;
+        if (currentQuality >= minQuality) {
+          totalBonus += item.stealth_bonus;
+        }
+      }
+    }
+
+    return totalBonus;
+  }
+
+  /**
+   * Get player avatar override from equipped items
+   * @returns {string|null} Avatar emoji or null if no override
+   */
+  function getPlayerAvatarOverride() {
+    for (var i = 0; i < _equippedPassives.length; i++) {
+      var itemId = _equippedPassives[i];
+      var item = PASSIVE_ITEMS_DB[itemId];
+
+      if (item && item.player_avatar_override && item.is_active_effect) {
+        return item.player_avatar_override;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Check and break items based on trigger reason
+   * @param {string} reason - Break reason ('combat' or 'run')
+   * @returns {Array} Array of broken item IDs
+   */
+  function checkAndBreakItems(reason) {
+    var brokenItems = [];
+
+    for (var i = _equippedPassives.length - 1; i >= 0; i--) {
+      var itemId = _equippedPassives[i];
+      var item = PASSIVE_ITEMS_DB[itemId];
+
+      if (!item) continue;
+
+      var shouldBreak = false;
+
+      if (reason === 'combat' && item.breaks_on_combat) {
+        shouldBreak = true;
+      } else if (reason === 'run' && item.breaks_on_run) {
+        shouldBreak = true;
+      }
+
+      if (shouldBreak) {
+        // Remove from equipped
+        _equippedPassives.splice(i, 1);
+        brokenItems.push(itemId);
+
+        console.log('[PassiveItemsSystem] Item broken:', item.name, 'Reason:', reason);
+
+        // Visual feedback
+        if (typeof MokUX !== 'undefined') {
+          MokUX.speak('💥 ' + item.name + ' broke!', 'WARNING');
+        }
+      }
+    }
+
+    return brokenItems;
+  }
+
   // Public API
   return {
     init: init,
@@ -570,6 +693,9 @@ const PassiveItemsSystem = (function() {
     increasePassiveSlots: increasePassiveSlots,
     getPassiveItem: getPassiveItem,
     getAllPassiveItems: getAllPassiveItems,
+    getEquippedStealthBonus: getEquippedStealthBonus,
+    getPlayerAvatarOverride: getPlayerAvatarOverride,
+    checkAndBreakItems: checkAndBreakItems,
     TRIGGER_EVENTS: TRIGGER_EVENTS,
     PASSIVE_ITEMS_DB: PASSIVE_ITEMS_DB
   };

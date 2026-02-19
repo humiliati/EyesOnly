@@ -954,6 +954,110 @@ const CardSystem = (function () {
   }
 
   /**
+   * Get random base card weighted by biome
+   * @param {string} biomeName - Name of the biome (e.g., 'Grey Cave', 'Shopping Mall')
+   * @param {number} floorNum - Current floor number for rarity scaling
+   * @returns {string} Base card key
+   */
+  function getRandomBaseCardByBiome(biomeName, floorNum) {
+    // Biome-specific card weights
+    // Higher weights = more likely to drop
+    var biomeWeights = {
+      'Grey Cave': {
+        // Stealth and tactical cards favored
+        'SILENT_SHOT': 2.0,
+        'PRONE': 1.5,
+        'KNEEL': 1.5,
+        'CIGARETTES': 1.8,
+        'DIVE_COVER': 1.5,
+        'AIM': 1.3,
+        'LURE': 1.5
+      },
+      'Cozy Forest': {
+        // Basic survival and stealth
+        'SINGLE_SHOT': 1.5,
+        'KATCHUP': 1.8,
+        'RATIONS': 1.8,
+        'DODGE': 1.3,
+        'RETREAT': 1.3,
+        'CIGARETTES': 1.5
+      },
+      'Shopping Mall': {
+        // Urban tactical, varied equipment
+        'BURST_SHOT': 1.5,
+        'SUPPRESSIVE_FIRE': 1.3,
+        'ENERGY_DRINK': 1.8,
+        'MEDICAL_KIT': 1.5,
+        'JAM_WEAPON': 1.3,
+        'STRAFE': 1.5
+      },
+      'Commercial Office': {
+        // Tech and precision cards
+        'SINGLE_SHOT': 1.3,
+        'JAMMER': 1.8,
+        'VIRUS': 1.8,
+        'LOGIC_HACK': 1.5,
+        'OVERWATCH': 1.5,
+        'STIM_PACK': 1.3
+      },
+      'Industrial Complex': {
+        // Heavy firepower and hazards
+        'EXPLOSIVE_SHOT': 1.8,
+        'GRENADE': 1.8,
+        'BURST_SHOT': 1.5,
+        'SUPPRESSIVE_FIRE': 1.5,
+        'BLOCK': 1.3,
+        'MEDICAL_KIT': 1.3
+      },
+      'Aerospace Museum': {
+        // High-tech and precision
+        'EXPLOSIVE_SHOT': 1.5,
+        'AIM': 1.8,
+        'OVERWATCH': 1.8,
+        'HIGH_GROUND': 1.8,
+        'JAMMER': 1.5,
+        'VIRUS': 1.5
+      }
+    };
+
+    // Get biome-specific weights, or use default
+    var weights = biomeWeights[biomeName] || {};
+
+    // Build weighted card pool
+    var cardPool = [];
+    var keys = Object.keys(BASE_CARDS).filter(function(k) {
+      // Exclude charms from normal drops
+      return BASE_CARDS[k].category !== 'charm';
+    });
+
+    keys.forEach(function(cardKey) {
+      var weight = weights[cardKey] || 1.0; // Default weight of 1.0
+
+      // Scale weights by floor progression
+      // Early floors (1-5): Favor common cards
+      // Mid floors (6-15): Balanced
+      // Late floors (16+): Favor rare/powerful cards
+      var isBasic = ['SINGLE_SHOT', 'DODGE', 'KATCHUP', 'CIGARETTES', 'RETREAT'].indexOf(cardKey) !== -1;
+      var isAdvanced = ['EXPLOSIVE_SHOT', 'GRENADE', 'SUPPRESSIVE_FIRE', 'OVERWATCH', 'HIGH_GROUND'].indexOf(cardKey) !== -1;
+
+      if (floorNum <= 5 && isBasic) {
+        weight *= 1.5; // Boost basic cards early
+      } else if (floorNum >= 16 && isAdvanced) {
+        weight *= 1.5; // Boost advanced cards late
+      }
+
+      // Add card to pool based on weight
+      var count = Math.ceil(weight * 10); // Convert weight to count
+      for (var i = 0; i < count; i++) {
+        cardPool.push(cardKey);
+      }
+    });
+
+    // Return random card from weighted pool
+    return cardPool[Math.floor(Math.random() * cardPool.length)];
+  }
+
+  /**
    * Format card for display
    */
   function formatCard(card) {
@@ -1021,6 +1125,7 @@ const CardSystem = (function () {
     rollImpossibleCharm: rollImpossibleCharm,
     rollTrenchCoat: rollTrenchCoat,
     getRandomBaseCard: getRandomBaseCard,
+    getRandomBaseCardByBiome: getRandomBaseCardByBiome,
     formatCard: formatCard,
     getCardPriority: getCardPriority,
     getCardCategory: getCardCategory
