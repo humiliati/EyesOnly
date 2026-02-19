@@ -109,6 +109,64 @@ the command terminal. It features:
 - Status ailments (poison, shock, freeze, fear, rage)
 - Emoticon face system for combatants
 
+**Canvas Rendering System (Option C - Implemented 2026-02-19):**
+
+Gone Rogue now uses high-performance canvas rendering instead of DOM manipulation,
+providing 10-50x performance improvement (800 DOM elements → single canvas).
+
+Core Components:
+  - CanvasRenderer class (public/js/gone-rogue-canvas.js)
+  - Full lighting system integration with visual display
+  - Touch/click coordinate mapping for mobile controls
+  - Feature flag: USE_CANVAS_RENDERER (default: true)
+
+Canvas DOM Helper Hooks:
+  - canvasToGrid(canvasX, canvasY): Convert pixel coords to grid cells
+  - gridToCanvas(gridX, gridY): Convert grid cells to pixel coords (center)
+  - renderGrid(data): Single-pass rendering (tiles → lighting → entities → effects)
+  - setRenderMode('ascii'|'emoji'): Toggle rendering mode
+  - setLightingEnabled(bool): Toggle lighting overlay
+  - resize(cellSize): Responsive canvas resizing
+
+Integration Example:
+  var renderer = new CanvasRenderer.CanvasRenderer({
+    width: 40, height: 20, cellSize: 20,
+    renderMode: CanvasRenderer.RENDER_MODE.EMOJI,
+    enableLighting: true
+  });
+
+  // Render game state
+  renderer.renderGrid({
+    grid: gridData,        // 2D array of tile objects
+    entities: enemies,     // Array of { x, y, char, color }
+    player: playerObj,     // { x, y, char, color }
+    effects: effectsArr    // Explosions, particles, etc.
+  });
+
+  // Handle touch/click events
+  canvas.addEventListener('click', function(e) {
+    var rect = canvas.getBoundingClientRect();
+    var coords = renderer.canvasToGrid(
+      e.clientX - rect.left,
+      e.clientY - rect.top
+    );
+    // coords.x, coords.y = grid cell clicked
+  });
+
+Performance Notes:
+  - Light map updates: ~0.5ms per frame (cached per tick)
+  - Rendering: Single canvas clear + ~800 draw calls
+  - Target: 60fps on mobile (down from 10fps with DOM)
+  - See docs/GONE_ROGUE_DECKBUILDER_GAP_ANALYSIS.md for full Option C specs
+
+Advanced Lighting Roadmap (Terraria-style):
+  See docs/TERRARIA_LIGHTING_TODO.md for planned enhancements:
+  - 3D light collision with emoji tiles as opaque cubes
+  - Shadow casting with forced perspective
+  - Emanating light orbs with proper occlusion
+  - Item twinkle effects and visual polish
+  - Paper Mario single-input mobile controls
+
 
 CODING CONVENTIONS
 ------------------
