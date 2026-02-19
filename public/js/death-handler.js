@@ -152,7 +152,7 @@ const DeathHandler = (function () {
       playerCredit = false;
     }
 
-    // Calculate loot and XP
+    // Calculate loot and XP using LootTableManager
     var loot = {
       cards: [],
       charms: [],
@@ -161,46 +161,54 @@ const DeathHandler = (function () {
     };
 
     if (playerCredit) {
-      // Base XP based on enemy tier
-      var baseXP = 10;
+      // Determine enemy tier for loot table
+      var enemyTier = 'standard';
       if (enemy.tier === 'ELITE') {
-        baseXP = 30;
+        enemyTier = 'elite';
       } else if (enemy.tier === 'BOSS') {
-        baseXP = 100;
+        enemyTier = 'boss';
       } else if (enemy.tier === 'SCOUT') {
-        baseXP = 5;
+        enemyTier = 'scout';
       }
 
-      loot.xp = baseXP;
+      // Roll loot from loot table manager
+      if (typeof LootTableManager !== 'undefined' && LootTableManager.rollEnemyLoot) {
+        var rollContext = {
+          source: source,
+          mythicKill: context.mythicKill || false
+        };
 
-      // Currency drop (guaranteed for player-caused deaths)
-      var currencyRange = enemy.tier === 'BOSS' ? [50, 100] :
-                          enemy.tier === 'ELITE' ? [10, 25] :
-                          [2, 8];
-      loot.currency = Math.floor(Math.random() * (currencyRange[1] - currencyRange[0] + 1)) + currencyRange[0];
+        var rolledLoot = LootTableManager.rollEnemyLoot(enemyTier, rollContext);
 
-      // Card drop chance
-      var cardDropChance = source === 'player' ? 0.5 : 0.3;  // 50% for combat, 30% for environmental
-      if (enemy.tier === 'BOSS') {
-        cardDropChance = 1.0;  // Bosses always drop cards
-      } else if (enemy.tier === 'ELITE') {
-        cardDropChance = 0.75;  // Elites have high drop chance
-      }
+        if (rolledLoot) {
+          loot.currency = rolledLoot.currency || 0;
+          loot.xp = rolledLoot.xp || 0;
 
-      // Roll for card drop
-      if (Math.random() < cardDropChance) {
-        loot.cards.push({
-          shouldDrop: true,
-          tier: enemy.tier || 'STANDARD'
-        });
-      }
+          // Convert rolled cards to legacy format
+          if (rolledLoot.cards && rolledLoot.cards.length > 0) {
+            rolledLoot.cards.forEach(function(card) {
+              loot.cards.push({
+                shouldDrop: true,
+                tier: enemy.tier || 'STANDARD',
+                card: card,
+                mythic: card.mythic || false
+              });
+            });
+          }
 
-      // Charm drop chance (30% for all enemy types)
-      if (Math.random() < 0.30) {
-        loot.charms.push({
-          shouldDrop: true,
-          type: 'common'
-        });
+          // Convert rolled items (charms) to legacy format
+          if (rolledLoot.items && rolledLoot.items.length > 0) {
+            rolledLoot.items.forEach(function(item) {
+              if (item.type === 'charm') {
+                loot.charms.push({
+                  shouldDrop: true,
+                  type: item.rarity || 'common',
+                  item: item
+                });
+              }
+            });
+          }
+        }
       }
 
       // Boss special loot

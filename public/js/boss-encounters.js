@@ -133,9 +133,106 @@ const BossEncounters = (function () {
     }
 
     /**
-     * Generate boss loot
+     * Generate boss loot using LootTableManager
      */
     generateLoot() {
+      // Use LootTableManager if available
+      if (typeof LootTableManager !== 'undefined' && LootTableManager.rollEnemyLoot) {
+        var rollContext = {
+          source: 'player',
+          mythicKill: this.mythicConditionMet
+        };
+
+        var rolledLoot = LootTableManager.rollEnemyLoot('boss', rollContext);
+
+        // Convert to legacy boss loot format
+        var loot = [];
+
+        // Add currency
+        if (rolledLoot.currency > 0) {
+          loot.push({
+            type: 'currency',
+            amount: rolledLoot.currency
+          });
+        }
+
+        // Add XP
+        if (rolledLoot.xp > 0) {
+          loot.push({
+            type: 'xp',
+            amount: rolledLoot.xp
+          });
+        }
+
+        // Add cards
+        if (rolledLoot.cards && rolledLoot.cards.length > 0) {
+          rolledLoot.cards.forEach(function(card) {
+            if (card.mythic) {
+              loot.push({
+                type: 'synergy_card',
+                quality: 'MASTERWORK',
+                guaranteed: true,
+                card: card,
+                message: '⚡⚡ LEGENDARY SYNERGY CARD! ⚡⚡'
+              });
+            } else if (card.synergyTags && card.synergyTags.length > 0) {
+              loot.push({
+                type: 'synergy_card',
+                quality: card.quality || 'SUPERIOR',
+                guaranteed: true,
+                card: card,
+                message: '⚡ Synergy Card Dropped!'
+              });
+            } else {
+              loot.push({
+                type: 'card',
+                quality: card.quality || 'ELITE',
+                guaranteed: true,
+                card: card
+              });
+            }
+          });
+        }
+
+        // Add items (charms)
+        if (rolledLoot.items && rolledLoot.items.length > 0) {
+          rolledLoot.items.forEach(function(item) {
+            loot.push({
+              type: item.type,
+              item: item
+            });
+          });
+        }
+
+        // Add whisper drop hint (5% chance)
+        if (Math.random() < 0.05 && this.whisperItem) {
+          loot.push({
+            type: 'whisper',
+            item: this.whisperItem
+          });
+        }
+
+        // Add mythic specific loot
+        if (this.mythicConditionMet && this.mythicDrop) {
+          loot.push({
+            type: 'mythic',
+            item: this.mythicDrop,
+            guaranteed: true
+          });
+        }
+
+        // Add rumor hint if mythic condition not met
+        if (!this.mythicConditionMet && Math.random() < 0.10 && this.mythicHint) {
+          loot.push({
+            type: 'rumor',
+            message: this.mythicHint
+          });
+        }
+
+        return loot;
+      }
+
+      // Fallback to hardcoded loot if LootTableManager not available
       var loot = [];
 
       // Guaranteed rare card drop
@@ -144,6 +241,16 @@ const BossEncounters = (function () {
         quality: 'ELITE',
         guaranteed: true
       });
+
+      // Synergy card bonus (50% chance for synergy-tagged card)
+      if (Math.random() < 0.5) {
+        loot.push({
+          type: 'synergy_card',
+          quality: 'SUPERIOR',
+          guaranteed: true,
+          message: '⚡ Synergy Card Dropped!'
+        });
+      }
 
       // Whisper drop (3-5% chance)
       if (Math.random() < 0.05) {
@@ -159,6 +266,13 @@ const BossEncounters = (function () {
           type: 'mythic',
           item: this.mythicDrop,
           guaranteed: true
+        });
+        // Bonus synergy card on mythic kill
+        loot.push({
+          type: 'synergy_card',
+          quality: 'MASTERWORK',
+          guaranteed: true,
+          message: '⚡⚡ LEGENDARY SYNERGY CARD! ⚡⚡'
         });
       } else {
         // Rumor hint (10% chance if mythic condition not met)
@@ -1211,10 +1325,61 @@ const BossEncounters = (function () {
     return Object.keys(BOSS_TYPES);
   }
 
+  /**
+   * Get synergy card pool (cards with synergy tags)
+   * @returns {Array} - Array of synergy card base types
+   */
+  function getSynergyCardPool() {
+    if (typeof CardSystem === 'undefined' || !CardSystem.BASE_CARDS) {
+      return [];
+    }
+
+    var synergyCards = [];
+    for (var cardKey in CardSystem.BASE_CARDS) {
+      var card = CardSystem.BASE_CARDS[cardKey];
+      if (card.synergyTags && card.synergyTags.length > 0) {
+        synergyCards.push(cardKey);
+      }
+    }
+
+    return synergyCards;
+  }
+
+  /**
+   * Roll a random synergy card
+   * @param {String} quality - Quality tier to roll (optional)
+   * @returns {Object} - Rolled synergy card
+   */
+  function rollSynergyCard(quality) {
+    var pool = getSynergyCardPool();
+    if (pool.length === 0) {
+      return null;
+    }
+
+    var randomCard = pool[Math.floor(Math.random() * pool.length)];
+
+    if (typeof CardSystem !== 'undefined' && CardSystem.rollCard) {
+      var card = CardSystem.rollCard(randomCard);
+
+      // Override quality if specified
+      if (quality && card) {
+        card.quality = quality;
+        card.qualityName = CardSystem.QUALITIES[quality] ? CardSystem.QUALITIES[quality].name : quality;
+        card.qualityColor = CardSystem.QUALITIES[quality] ? CardSystem.QUALITIES[quality].color : 'white';
+      }
+
+      return card;
+    }
+
+    return null;
+  }
+
   // Public API
   return {
     createBossForFloor: createBossForFloor,
     getBossTypes: getBossTypes,
+    getSynergyCardPool: getSynergyCardPool,
+    rollSynergyCard: rollSynergyCard,
     BOSS_PHASES: BOSS_PHASES,
     // Export classes for testing
     BossEncounter: BossEncounter,

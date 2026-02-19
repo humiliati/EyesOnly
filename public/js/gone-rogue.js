@@ -5067,57 +5067,124 @@ const GoneRogue = (function () {
           _grid[breakable.y][breakable.x] = breakable.destroyedGlyph || TILES.DEBRIS;
           breakable.destroying = false;
 
-          // Drop currency (cryptos) when breakable is destroyed
-          var dropChance = Math.random();
-          if (dropChance < 0.7) { // 70% chance to drop currency
-            var cryptoAmount = Math.floor(Math.random() * 3) + 1; // 1-3 cryptos
-            _spawnCurrency(breakable.x, breakable.y, cryptoAmount);
-          }
+          // Use LootTableManager if available
+          if (typeof LootTableManager !== 'undefined' && LootTableManager.rollBreakableLoot) {
+            var breakableType = breakable.type || 'default';
+            var currentBiome = _biome || 'COZY_FOREST';
 
-          // 60% chance to drop ammo (3/5 or 6/10 breakables contain ammo)
-          // Average of 1.2 ammo per drop (1 or 2 ammo with weighted distribution)
-          if (Math.random() < 0.6) {
-            var ammoAmount = Math.random() < 0.8 ? 1 : 2; // 80% chance 1 ammo, 20% chance 2 ammo = 1.2 avg
-            _items.push({
-              x: breakable.x,
-              y: breakable.y,
-              type: 'ammo',
-              amount: ammoAmount,
-              spawnTime: Date.now(),
-              decayTime: 60000, // 60 second decay for resources
-              emoji: '🔫',
-              name: 'Ammo (' + ammoAmount + ')'
-            });
-          }
+            var rolledLoot = LootTableManager.rollBreakableLoot(breakableType, currentBiome);
 
-          // 30% chance to drop a card
-          if (Math.random() < 0.3 && typeof CardSystem !== 'undefined') {
-            var baseType = CardSystem.getRandomBaseCard();
-            var card = CardSystem.rollCard(baseType);
-            if (card) {
+            if (rolledLoot) {
+              // Spawn currency
+              if (rolledLoot.currency > 0) {
+                _spawnCurrency(breakable.x, breakable.y, rolledLoot.currency);
+              }
+
+              // Spawn ammo
+              if (rolledLoot.ammo > 0) {
+                _items.push({
+                  x: breakable.x,
+                  y: breakable.y,
+                  type: 'ammo',
+                  amount: rolledLoot.ammo,
+                  spawnTime: Date.now(),
+                  decayTime: LootTableManager.getDecayTime('ammo') * 1000 || 60000,
+                  emoji: '🔫',
+                  name: 'Ammo (' + rolledLoot.ammo + ')'
+                });
+              }
+
+              // Spawn items (cards, charms, etc.)
+              if (rolledLoot.items && rolledLoot.items.length > 0) {
+                rolledLoot.items.forEach(function(item) {
+                  if (item.type === 'card' && item.card) {
+                    _items.push({
+                      x: breakable.x,
+                      y: breakable.y,
+                      type: 'card',
+                      card: item.card,
+                      spawnTime: Date.now(),
+                      decayTime: LootTableManager.getDecayTime('card') * 1000 || 30000
+                    });
+                  } else if (item.type === 'charm' && item.card) {
+                    _items.push({
+                      x: breakable.x,
+                      y: breakable.y,
+                      type: 'charm',
+                      card: item.card,
+                      spawnTime: Date.now(),
+                      decayTime: LootTableManager.getDecayTime('charm') * 1000 || 30000
+                    });
+                  } else {
+                    // Generic item
+                    _items.push({
+                      x: breakable.x,
+                      y: breakable.y,
+                      type: item.type || 'item',
+                      item: item,
+                      emoji: item.emoji || '📦',
+                      name: item.name || 'Item',
+                      spawnTime: Date.now(),
+                      decayTime: 60000
+                    });
+                  }
+                });
+              }
+            }
+          } else {
+            // Fallback to hardcoded loot if LootTableManager not available
+            // Drop currency (cryptos) when breakable is destroyed
+            var dropChance = Math.random();
+            if (dropChance < 0.7) { // 70% chance to drop currency
+              var cryptoAmount = Math.floor(Math.random() * 3) + 1; // 1-3 cryptos
+              _spawnCurrency(breakable.x, breakable.y, cryptoAmount);
+            }
+
+            // 60% chance to drop ammo (3/5 or 6/10 breakables contain ammo)
+            // Average of 1.2 ammo per drop (1 or 2 ammo with weighted distribution)
+            if (Math.random() < 0.6) {
+              var ammoAmount = Math.random() < 0.8 ? 1 : 2; // 80% chance 1 ammo, 20% chance 2 ammo = 1.2 avg
               _items.push({
                 x: breakable.x,
                 y: breakable.y,
-                type: 'card',
-                card: card,
+                type: 'ammo',
+                amount: ammoAmount,
                 spawnTime: Date.now(),
-                decayTime: 30000 // 30 second decay
+                decayTime: 60000, // 60 second decay for resources
+                emoji: '🔫',
+                name: 'Ammo (' + ammoAmount + ')'
               });
             }
-          }
 
-          // 25% chance to drop a charm (similar frequency to cards)
-          if (Math.random() < 0.25 && typeof CardSystem !== 'undefined') {
-            var charm = CardSystem.rollCommonCharm();
-            if (charm) {
-              _items.push({
-                x: breakable.x,
-                y: breakable.y,
-                type: 'charm',
-                card: charm, // Reuse card structure for charms
-                spawnTime: Date.now(),
-                decayTime: 30000 // 30 second decay
-              });
+            // 30% chance to drop a card
+            if (Math.random() < 0.3 && typeof CardSystem !== 'undefined') {
+              var baseType = CardSystem.getRandomBaseCard();
+              var card = CardSystem.rollCard(baseType);
+              if (card) {
+                _items.push({
+                  x: breakable.x,
+                  y: breakable.y,
+                  type: 'card',
+                  card: card,
+                  spawnTime: Date.now(),
+                  decayTime: 30000 // 30 second decay
+                });
+              }
+            }
+
+            // 25% chance to drop a charm (similar frequency to cards)
+            if (Math.random() < 0.25 && typeof CardSystem !== 'undefined') {
+              var charm = CardSystem.rollCommonCharm();
+              if (charm) {
+                _items.push({
+                  x: breakable.x,
+                  y: breakable.y,
+                  type: 'charm',
+                  card: charm, // Reuse card structure for charms
+                  spawnTime: Date.now(),
+                  decayTime: 30000 // 30 second decay
+                });
+              }
             }
           }
 

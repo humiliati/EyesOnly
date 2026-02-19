@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gone Rogue - Loot Table Editor</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background: #0a0a0a;
+      color: #00ff00;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      padding: 20px;
+      border-bottom: 2px solid #00ff00;
+      margin-bottom: 30px;
+    }
+
+    h1 {
+      font-size: 32px;
+      color: #00ff00;
+      text-shadow: 0 0 10px #00ff00;
+    }
+
+    .subtitle {
+      color: #888;
+      margin-top: 10px;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      background: #003300;
+      color: #00ff00;
+      border: 2px solid #00ff00;
+      padding: 10px 20px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      transition: all 0.3s;
+    }
+
+    button:hover {
+      background: #00ff00;
+      color: #000;
+    }
+
+    button:active {
+      transform: scale(0.95);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #00ff00;
+    }
+
+    .tab {
+      padding: 10px 20px;
+      background: #001100;
+      border: 2px solid #003300;
+      border-bottom: none;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .tab.active {
+      background: #003300;
+      border-color: #00ff00;
+      color: #00ff00;
+    }
+
+    .tab-content {
+      display: none;
+      padding: 20px;
+      background: #001100;
+      border: 2px solid #003300;
+      border-radius: 5px;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .section {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #000;
+      border: 2px solid #003300;
+      border-radius: 5px;
+    }
+
+    .section-title {
+      font-size: 20px;
+      color: #00ff00;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #003300;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #00ff00;
+      font-weight: bold;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 8px;
+      background: #000;
+      color: #00ff00;
+      border: 2px solid #003300;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: #00ff00;
+      box-shadow: 0 0 5px #00ff00;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border: 1px solid #003300;
+    }
+
+    th {
+      background: #003300;
+      color: #00ff00;
+      font-weight: bold;
+    }
+
+    td {
+      background: #000;
+    }
+
+    .json-editor {
+      width: 100%;
+      min-height: 400px;
+      padding: 15px;
+      background: #000;
+      color: #00ff00;
+      border: 2px solid #003300;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      resize: vertical;
+    }
+
+    .status-message {
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 5px;
+      display: none;
+    }
+
+    .status-message.success {
+      background: #003300;
+      border: 2px solid #00ff00;
+      color: #00ff00;
+    }
+
+    .status-message.error {
+      background: #330000;
+      border: 2px solid #ff0000;
+      color: #ff0000;
+    }
+
+    .stat-card {
+      background: #000;
+      border: 2px solid #003300;
+      padding: 15px;
+      text-align: center;
+      border-radius: 5px;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      color: #00ff00;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .stat-label {
+      color: #888;
+      font-size: 14px;
+    }
+
+    .help-text {
+      color: #666;
+      font-size: 12px;
+      margin-top: 5px;
+    }
+
+    .danger-zone {
+      border-color: #ff0000;
+    }
+
+    .danger-zone .section-title {
+      color: #ff0000;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🎲 LOOT TABLE EDITOR 🎲</h1>
+      <div class="subtitle">Gone Rogue - Designer Portal</div>
+    </header>
+
+    <div class="status-message" id="statusMessage"></div>
+
+    <div class="toolbar">
+      <button onclick="loadLootTables()">📂 Load Tables</button>
+      <button onclick="saveLootTables()">💾 Save Changes</button>
+      <button onclick="exportTables()">📤 Export JSON</button>
+      <button onclick="importTables()">📥 Import JSON</button>
+      <button onclick="validateTables()">✅ Validate</button>
+      <button onclick="resetToDefaults()">🔄 Reset to Defaults</button>
+      <button onclick="window.location.href='/'">🏠 Back to Game</button>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="showTab('overview')">📊 Overview</div>
+      <div class="tab" onclick="showTab('enemies')">👾 Enemy Loot</div>
+      <div class="tab" onclick="showTab('breakables')">💥 Breakables</div>
+      <div class="tab" onclick="showTab('items')">🎁 Item Tables</div>
+      <div class="tab" onclick="showTab('cards')">🃏 Card Modifiers</div>
+      <div class="tab" onclick="showTab('json')">📝 Raw JSON</div>
+    </div>
+
+    <!-- Overview Tab -->
+    <div id="overview" class="tab-content active">
+      <div class="section">
+        <div class="section-title">System Statistics</div>
+        <div class="grid">
+          <div class="stat-card">
+            <div class="stat-value" id="statEnemyTiers">0</div>
+            <div class="stat-label">Enemy Tiers</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statBreakableTypes">0</div>
+            <div class="stat-label">Breakable Types</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statItemTables">0</div>
+            <div class="stat-label">Item Tables</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statBiomes">0</div>
+            <div class="stat-label">Biomes</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Economy Settings</div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Shop Spawn Chance (0-1)</label>
+            <input type="number" id="economyShopSpawn" step="0.01" min="0" max="1" value="0.18">
+            <div class="help-text">Probability of shop spawning per floor</div>
+          </div>
+          <div class="form-group">
+            <label>Guaranteed Shop Floor</label>
+            <input type="number" id="economyGuaranteedFloor" min="1" max="30" value="6">
+            <div class="help-text">Floor that always has a shop</div>
+          </div>
+          <div class="form-group">
+            <label>Price Markup Multiplier</label>
+            <input type="number" id="economyPriceMarkup" step="0.1" min="1" max="5" value="1.4">
+            <div class="help-text">Multiplier for shop prices</div>
+          </div>
+          <div class="form-group">
+            <label>Starting Currency</label>
+            <input type="number" id="economyStartingCurrency" min="0" max="1000" value="0">
+            <div class="help-text">Player starting cryptos</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Enemy Loot Tab -->
+    <div id="enemies" class="tab-content">
+      <div class="section">
+        <div class="section-title">Enemy Tier: Standard</div>
+        <div id="enemyStandard"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Enemy Tier: Elite</div>
+        <div id="enemyElite"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Enemy Tier: Boss</div>
+        <div id="enemyBoss"></div>
+      </div>
+    </div>
+
+    <!-- Breakables Tab -->
+    <div id="breakables" class="tab-content">
+      <div class="section">
+        <div class="section-title">Default Breakable Configuration</div>
+        <div id="breakableDefault"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Biome-Specific Breakables</div>
+        <div id="breakableBiomes"></div>
+      </div>
+    </div>
+
+    <!-- Item Tables Tab -->
+    <div id="items" class="tab-content">
+      <div class="section">
+        <div class="section-title">Item Loot Tables</div>
+        <div id="itemTables"></div>
+      </div>
+    </div>
+
+    <!-- Card Modifiers Tab -->
+    <div id="cards" class="tab-content">
+      <div class="section">
+        <div class="section-title">Card Drop Modifiers</div>
+        <div id="cardModifiers"></div>
+      </div>
+    </div>
+
+    <!-- JSON Editor Tab -->
+    <div id="json" class="tab-content">
+      <div class="section danger-zone">
+        <div class="section-title">⚠️ Raw JSON Editor</div>
+        <p style="color: #ff0000; margin-bottom: 15px;">
+          WARNING: Direct editing of JSON. Invalid JSON will break the system.
+        </p>
+        <textarea id="jsonEditor" class="json-editor"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/loot-table-manager.js"></script>
+  <script>
+    let currentTables = null;
+
+    // Tab switching
+    function showTab(tabName) {
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+      event.target.classList.add('active');
+      document.getElementById(tabName).classList.add('active');
+    }
+
+    // Status messages
+    function showStatus(message, type = 'success') {
+      const statusEl = document.getElementById('statusMessage');
+      statusEl.textContent = message;
+      statusEl.className = `status-message ${type}`;
+      statusEl.style.display = 'block';
+
+      setTimeout(() => {
+        statusEl.style.display = 'none';
+      }, 5000);
+    }
+
+    // Load loot tables
+    async function loadLootTables() {
+      try {
+        await LootTableManager.loadLootTables();
+        currentTables = LootTableManager.getLootTables();
+
+        updateOverviewStats();
+        populateEnemyForms();
+        populateBreakableForms();
+        populateItemTables();
+        populateCardModifiers();
+        updateJSONEditor();
+
+        showStatus('Loot tables loaded successfully!', 'success');
+      } catch (error) {
+        showStatus('Error loading loot tables: ' + error.message, 'error');
+      }
+    }
+
+    // Update overview statistics
+    function updateOverviewStats() {
+      if (!currentTables) return;
+
+      document.getElementById('statEnemyTiers').textContent =
+        Object.keys(currentTables.enemy_loot || {}).length;
+
+      document.getElementById('statItemTables').textContent =
+        Object.keys(currentTables.item_loot_tables || {}).length;
+
+      let breakableCount = 0;
+      const biomes = currentTables.breakable_loot?.biomes || {};
+      for (let biome in biomes) {
+        breakableCount += Object.keys(biomes[biome].types || {}).length;
+      }
+      document.getElementById('statBreakableTypes').textContent = breakableCount;
+
+      document.getElementById('statBiomes').textContent =
+        Object.keys(biomes).length;
+
+      // Load economy settings
+      const economy = currentTables.economy_settings || {};
+      document.getElementById('economyShopSpawn').value = economy.shop_spawn_chance || 0.18;
+      document.getElementById('economyGuaranteedFloor').value = economy.guaranteed_shop_floor || 6;
+      document.getElementById('economyPriceMarkup').value = economy.price_markup || 1.4;
+      document.getElementById('economyStartingCurrency').value = economy.starting_currency || 0;
+    }
+
+    // Populate enemy forms
+    function populateEnemyForms() {
+      // Simplified - just show that it's loaded
+      const tiers = ['standard', 'elite', 'boss'];
+      tiers.forEach(tier => {
+        const container = document.getElementById('enemy' + tier.charAt(0).toUpperCase() + tier.slice(1));
+        if (container && currentTables.enemy_loot[tier]) {
+          container.innerHTML = `<pre>${JSON.stringify(currentTables.enemy_loot[tier], null, 2)}</pre>`;
+        }
+      });
+    }
+
+    // Populate breakable forms
+    function populateBreakableForms() {
+      const defaultContainer = document.getElementById('breakableDefault');
+      if (defaultContainer && currentTables.breakable_loot.default) {
+        defaultContainer.innerHTML = `<pre>${JSON.stringify(currentTables.breakable_loot.default, null, 2)}</pre>`;
+      }
+
+      const biomesContainer = document.getElementById('breakableBiomes');
+      if (biomesContainer && currentTables.breakable_loot.biomes) {
+        biomesContainer.innerHTML = `<pre>${JSON.stringify(currentTables.breakable_loot.biomes, null, 2)}</pre>`;
+      }
+    }
+
+    // Populate item tables
+    function populateItemTables() {
+      const container = document.getElementById('itemTables');
+      if (container && currentTables.item_loot_tables) {
+        container.innerHTML = `<pre>${JSON.stringify(currentTables.item_loot_tables, null, 2)}</pre>`;
+      }
+    }
+
+    // Populate card modifiers
+    function populateCardModifiers() {
+      const container = document.getElementById('cardModifiers');
+      if (container && currentTables.card_drop_modifiers) {
+        container.innerHTML = `<pre>${JSON.stringify(currentTables.card_drop_modifiers, null, 2)}</pre>`;
+      }
+    }
+
+    // Update JSON editor
+    function updateJSONEditor() {
+      const editor = document.getElementById('jsonEditor');
+      if (editor && currentTables) {
+        editor.value = JSON.stringify(currentTables, null, 2);
+      }
+    }
+
+    // Save loot tables
+    function saveLootTables() {
+      try {
+        // Gather data from economy form
+        const economySettings = {
+          shop_spawn_chance: parseFloat(document.getElementById('economyShopSpawn').value),
+          guaranteed_shop_floor: parseInt(document.getElementById('economyGuaranteedFloor').value),
+          price_markup: parseFloat(document.getElementById('economyPriceMarkup').value),
+          starting_currency: parseInt(document.getElementById('economyStartingCurrency').value),
+          shop_floors: currentTables.economy_settings.shop_floors
+        };
+
+        currentTables.economy_settings = economySettings;
+
+        // Update from JSON editor if on that tab
+        const jsonTab = document.getElementById('json');
+        if (jsonTab.classList.contains('active')) {
+          const jsonEditor = document.getElementById('jsonEditor');
+          try {
+            currentTables = JSON.parse(jsonEditor.value);
+          } catch (e) {
+            showStatus('Invalid JSON in editor: ' + e.message, 'error');
+            return;
+          }
+        }
+
+        LootTableManager.updateLootTables(currentTables);
+
+        // Save to localStorage
+        localStorage.setItem('loot_tables', JSON.stringify(currentTables));
+
+        showStatus('Loot tables saved successfully!', 'success');
+      } catch (error) {
+        showStatus('Error saving loot tables: ' + error.message, 'error');
+      }
+    }
+
+    // Export tables
+    function exportTables() {
+      try {
+        const json = LootTableManager.exportLootTables();
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'loot-tables-' + Date.now() + '.json';
+        a.click();
+        URL.revokeObjectURL(url);
+
+        showStatus('Loot tables exported successfully!', 'success');
+      } catch (error) {
+        showStatus('Error exporting: ' + error.message, 'error');
+      }
+    }
+
+    // Import tables
+    function importTables() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.onchange = (e) => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const result = LootTableManager.importLootTables(event.target.result);
+            if (result.success) {
+              currentTables = LootTableManager.getLootTables();
+              loadLootTables();
+              showStatus('Loot tables imported successfully!', 'success');
+            } else {
+              showStatus('Import failed: ' + result.error, 'error');
+            }
+          } catch (error) {
+            showStatus('Error importing: ' + error.message, 'error');
+          }
+        };
+        reader.readAsText(file);
+      };
+      input.click();
+    }
+
+    // Validate tables
+    function validateTables() {
+      try {
+        const validation = LootTableManager.validateLootTables(currentTables);
+        if (validation.valid) {
+          showStatus('✅ Loot tables are valid!', 'success');
+        } else {
+          showStatus('❌ Validation errors: ' + validation.errors.join(', '), 'error');
+        }
+      } catch (error) {
+        showStatus('Error validating: ' + error.message, 'error');
+      }
+    }
+
+    // Reset to defaults
+    function resetToDefaults() {
+      if (confirm('Are you sure you want to reset to default loot tables? This cannot be undone.')) {
+        loadLootTables();
+        showStatus('Reset to default loot tables', 'success');
+      }
+    }
+
+    // Initialize on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      loadLootTables();
+    });
+  </script>
+</body>
+</html>

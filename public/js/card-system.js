@@ -75,7 +75,8 @@ const CardSystem = (function () {
       emoji: '🛡️',
       lifecycleType: 'persistent',
       baseStats: { defense: 4, energy: 2, speed: 4 },
-      resourceCost: { energy: 2 }
+      resourceCost: { energy: 2 },
+      synergyTags: ['defensive']
     },
     Dodge: {
       category: 'defense',
@@ -84,7 +85,8 @@ const CardSystem = (function () {
       emoji: '💨',
       lifecycleType: 'persistent',
       baseStats: { evasion: 3, energy: 2, speed: 4 },
-      resourceCost: { energy: 2, focus: 1 }
+      resourceCost: { energy: 2, focus: 1 },
+      synergyTags: ['defensive', 'mobile']
     },
     Prone: {
       category: 'defense',
@@ -93,7 +95,8 @@ const CardSystem = (function () {
       emoji: '🛡️',
       lifecycleType: 'persistent',
       baseStats: { defense: 3, stealth: 2, mobility: -1, energy: 1, speed: 3 },
-      resourceCost: { energy: 1 }
+      resourceCost: { energy: 1 },
+      synergyTags: ['defensive', 'stealth']
     },
     Kneel: {
       category: 'defense',
@@ -102,7 +105,8 @@ const CardSystem = (function () {
       emoji: '🧎',
       lifecycleType: 'persistent',
       baseStats: { defense: 2, accuracy: 1, mobility: 0, energy: 1, speed: 3 },
-      resourceCost: { energy: 1 }
+      resourceCost: { energy: 1 },
+      synergyTags: ['defensive', 'precision']
     },
 
     // ========== MOVEMENT CARDS (Priority 3) ==========
@@ -143,35 +147,40 @@ const CardSystem = (function () {
       type: 'attack',
       name: 'Single Shot',
       emoji: '🎯',
-      baseStats: { damage: 3, noise: 1, accuracy: 80, energy: 2, speed: 3, ammo: 1, fatigue: 1 }
+      baseStats: { damage: 3, noise: 1, accuracy: 80, energy: 2, speed: 3, ammo: 1, fatigue: 1 },
+      synergyTags: ['ranged', 'precision']
     },
     'Burst Shot': {
       category: 'attack',
       type: 'attack',
       name: 'Burst Shot',
       emoji: '💥',
-      baseStats: { damage: 5, noise: 3, accuracy: 70, energy: 3, speed: 2, ammo: 3, fatigue: 2 }
+      baseStats: { damage: 5, noise: 3, accuracy: 70, energy: 3, speed: 2, ammo: 3, fatigue: 2 },
+      synergyTags: ['ranged', 'burst', 'aggressive']
     },
     'Silent Shot': {
       category: 'attack',
       type: 'attack',
       name: 'Silent Shot',
       emoji: '🔇',
-      baseStats: { damage: 3, noise: 1, accuracy: 80, energy: 2, speed: 3, ammo: 1, fatigue: 1 }
+      baseStats: { damage: 3, noise: 1, accuracy: 80, energy: 2, speed: 3, ammo: 1, fatigue: 1 },
+      synergyTags: ['ranged', 'stealth', 'precision']
     },
     'Explosive Shot': {
       category: 'attack',
       type: 'attack',
       name: 'Explosive Shot',
       emoji: '💣',
-      baseStats: { damage: 8, noise: 5, accuracy: 60, energy: 4, speed: 1, ammo: 1, fatigue: 3, consumable: true }
+      baseStats: { damage: 8, noise: 5, accuracy: 60, energy: 4, speed: 1, ammo: 1, fatigue: 3, consumable: true },
+      synergyTags: ['explosive', 'burst', 'aoe', 'aggressive']
     },
     'Suppressive Fire': {
       category: 'attack',
       type: 'attack',
       name: 'Suppressive Fire',
       emoji: '🔥',
-      baseStats: { damage: 2, accuracy: 50, suppress: 3, energy: 3, speed: 2, ammo: 5, fatigue: 3 }
+      baseStats: { damage: 2, accuracy: 50, suppress: 3, energy: 3, speed: 2, ammo: 5, fatigue: 3 },
+      synergyTags: ['sustained', 'control', 'ranged']
     },
 
     // ========== SETUP/UTILITY CARDS (Priority 5) ==========
@@ -261,7 +270,8 @@ const CardSystem = (function () {
         speed: 2,
         destroysEnvironment: true
       },
-      resourceCost: { ammo: 2 }  // Costs 2 ammo to use
+      resourceCost: { ammo: 2 },  // Costs 2 ammo to use
+      synergyTags: ['explosive', 'aoe', 'burst']
     },
     'Jammer': {
       category: 'interrupt',
@@ -275,7 +285,8 @@ const CardSystem = (function () {
         energy: 3,
         speed: 4,
         affectsElectronics: true
-      }
+      },
+      synergyTags: ['tech', 'control']
     },
     'Virus': {
       category: 'attack',
@@ -290,7 +301,8 @@ const CardSystem = (function () {
         energy: 3,
         speed: 3,
         affectsMachines: true
-      }
+      },
+      synergyTags: ['tech', 'fire', 'sustained']
     },
     'High Ground': {
       category: 'attack',
@@ -304,7 +316,8 @@ const CardSystem = (function () {
         range: 8,
         energy: 3,
         speed: 2
-      }
+      },
+      synergyTags: ['ranged', 'precision']
     },
     'Melee Strike': {
       category: 'attack',
@@ -318,7 +331,8 @@ const CardSystem = (function () {
         energy: 2,
         speed: 3,
         isMelee: true
-      }
+      },
+      synergyTags: ['melee', 'aggressive']
     },
     'Logic Hack': {
       category: 'interrupt',
@@ -690,6 +704,343 @@ const CardSystem = (function () {
       },
       resourceCost: {},
       description: 'Hot coffee reduces fatigue and sharpens focus'
+    },
+
+    // ========== SYNERGY CARDS (Game-Breaking Combos) ==========
+
+    // Energy Generation Enablers
+    'Overcharge': {
+      category: 'setup',
+      type: 'setup',
+      name: 'Overcharge',
+      emoji: '⚡',
+      lifecycleType: 'gated',
+      baseStats: {
+        energyGeneration: 3,
+        batteryCharge: 1,
+        energy: 1,
+        speed: 2
+      },
+      resourceCost: { energy: 1 },
+      synergyTags: ['energy_gen', 'battery_gen', 'combo_starter'],
+      description: 'Generate 3 energy immediately. Gain 1 battery charge. Enables devastating combos.'
+    },
+    'Adrenaline Surge': {
+      category: 'setup',
+      type: 'setup',
+      name: 'Adrenaline Surge',
+      emoji: '💪',
+      lifecycleType: 'exhaust',
+      baseStats: {
+        energyGeneration: 5,
+        speedBoost: 2,
+        energy: 0,
+        speed: 1,
+        exhaust: true
+      },
+      resourceCost: {},
+      synergyTags: ['energy_gen', 'aggressive', 'combo_starter'],
+      description: 'Generate 5 energy. Gain +2 speed. One use per combat. Ultimate combo enabler.'
+    },
+
+    // Massive Damage Payoffs
+    'Thunder Strike': {
+      category: 'attack',
+      type: 'attack',
+      name: 'Thunder Strike',
+      emoji: '⚡',
+      lifecycleType: 'gated',
+      baseStats: {
+        damage: 12,
+        aoe: 3,
+        accuracy: 75,
+        noise: 4,
+        energy: 4,
+        speed: 2
+      },
+      resourceCost: { energy: 4, ammo: 2 },
+      synergyTags: ['burst', 'aoe', 'tech', 'aggressive', 'combo_finisher'],
+      description: 'Deal 12 AOE damage to all enemies within range 3. Devastating when comboed with energy generation.'
+    },
+    'Annihilation': {
+      category: 'attack',
+      type: 'attack',
+      name: 'Annihilation',
+      emoji: '💥',
+      lifecycleType: 'exhaust',
+      baseStats: {
+        damage: 20,
+        accuracy: 90,
+        noise: 5,
+        energy: 5,
+        speed: 1,
+        exhaust: true
+      },
+      resourceCost: { energy: 5, ammo: 3, fatigue: 10 },
+      synergyTags: ['burst', 'ranged', 'aggressive', 'combo_finisher'],
+      description: 'Deal 20 single-target damage. One use per combat. Combo finisher that ends bosses.'
+    },
+
+    // Battery Tech Devastation
+    'EMP Blast': {
+      category: 'attack',
+      type: 'attack',
+      name: 'EMP Blast',
+      emoji: '💻',
+      lifecycleType: 'gated',
+      baseStats: {
+        damage: 10,
+        aoe: 4,
+        disrupt: 3,
+        accuracy: 85,
+        energy: 3,
+        speed: 3,
+        affectsMachines: true
+      },
+      resourceCost: { energy: 3, battery: 3 },
+      synergyTags: ['tech', 'aoe', 'burst', 'combo_finisher'],
+      description: 'Requires 3 battery. Deal 10 AOE damage and disable all machines. Synergizes with battery generation.'
+    },
+    'System Crash': {
+      category: 'attack',
+      type: 'attack',
+      name: 'System Crash',
+      emoji: '🔥',
+      lifecycleType: 'gated',
+      baseStats: {
+        damage: 8,
+        dot: 4,
+        duration: 3,
+        accuracy: 80,
+        energy: 3,
+        speed: 2,
+        affectsMachines: true
+      },
+      resourceCost: { energy: 3, battery: 2 },
+      synergyTags: ['tech', 'fire', 'sustained'],
+      description: 'Deal 8 damage + 4 damage per turn for 3 turns. Applies burning to machines.'
+    },
+
+    // Chain Attack Starters
+    'Chain Lightning': {
+      category: 'attack',
+      type: 'attack',
+      name: 'Chain Lightning',
+      emoji: '⚡',
+      lifecycleType: 'gated',
+      baseStats: {
+        damage: 6,
+        chain: 3,
+        accuracy: 80,
+        energy: 3,
+        speed: 3
+      },
+      resourceCost: { energy: 3, battery: 2 },
+      synergyTags: ['tech', 'chain', 'ranged', 'combo_starter'],
+      description: 'Deal 6 damage that chains to 3 additional enemies. Sets up massive combo chains.'
+    },
+    'Inferno Round': {
+      category: 'attack',
+      type: 'attack',
+      name: 'Inferno Round',
+      emoji: '🔥',
+      lifecycleType: 'gated',
+      baseStats: {
+        damage: 5,
+        dot: 3,
+        duration: 3,
+        aoe: 2,
+        accuracy: 75,
+        energy: 3,
+        speed: 2
+      },
+      resourceCost: { energy: 3, ammo: 2 },
+      synergyTags: ['fire', 'aoe', 'sustained', 'combo_starter'],
+      description: 'Apply burning (3 damage/turn) in AOE. Enables explosive synergies.'
+    },
+
+    // Fatigue Manipulation
+    'Tactical Refresh': {
+      category: 'setup',
+      type: 'setup',
+      name: 'Tactical Refresh',
+      emoji: '🧘',
+      lifecycleType: 'persistent',
+      baseStats: {
+        fatigueReduction: 30,
+        energyGeneration: 2,
+        energy: 2,
+        speed: 2
+      },
+      resourceCost: { energy: 2 },
+      synergyTags: ['fatigue_reduce', 'energy_gen', 'combo_starter'],
+      description: 'Reduce fatigue by 30 and gain 2 energy. Enables sustained aggression.'
+    },
+    'Second Wind': {
+      category: 'setup',
+      type: 'setup',
+      name: 'Second Wind',
+      emoji: '💨',
+      lifecycleType: 'gated',
+      baseStats: {
+        fatigueReduction: 50,
+        hp: 10,
+        energyGeneration: 3,
+        energy: 2,
+        speed: 1
+      },
+      resourceCost: { energy: 2 },
+      synergyTags: ['fatigue_reduce', 'energy_gen', 'defensive'],
+      description: 'Heal 10 HP, reduce fatigue by 50, gain 3 energy. Powerful recovery enabler.'
+    },
+
+    // Precision Setup
+    'Perfect Aim': {
+      category: 'setup',
+      type: 'setup',
+      name: 'Perfect Aim',
+      emoji: '🎯',
+      lifecycleType: 'persistent',
+      baseStats: {
+        accuracyBoost: 30,
+        critBonus: 25,
+        nextTurn: true,
+        energy: 2,
+        speed: 2
+      },
+      resourceCost: { energy: 2, focus: 2 },
+      synergyTags: ['precision', 'combo_starter'],
+      description: 'Next attack has +30% accuracy and +25% crit. Sets up guaranteed critical hits.'
+    },
+    'Sniper Stance': {
+      category: 'defense',
+      type: 'defense',
+      name: 'Sniper Stance',
+      emoji: '🔭',
+      lifecycleType: 'power',
+      baseStats: {
+        accuracyBoost: 40,
+        damageBonus: 5,
+        mobility: -2,
+        energy: 3,
+        speed: 1,
+        combatPersistent: true
+      },
+      resourceCost: { energy: 3 },
+      synergyTags: ['precision', 'ranged', 'defensive'],
+      description: 'Permanent +40% accuracy and +5 damage. Cannot move. Ultimate sniper setup.'
+    },
+
+    // Ammo Generation and Sustain
+    'Quick Reload': {
+      category: 'setup',
+      type: 'setup',
+      name: 'Quick Reload',
+      emoji: '📎',
+      lifecycleType: 'persistent',
+      baseStats: {
+        ammoRestore: 5,
+        energyGeneration: 1,
+        energy: 1,
+        speed: 3
+      },
+      resourceCost: { energy: 1 },
+      synergyTags: ['ammo_gen', 'combo_starter', 'sustained'],
+      description: 'Restore 5 ammo and gain 1 energy. Enables sustained fire patterns.'
+    },
+    'Ammo Cache': {
+      category: 'setup',
+      type: 'setup',
+      name: 'Ammo Cache',
+      emoji: '📦',
+      lifecycleType: 'exhaust',
+      baseStats: {
+        ammoRestore: 15,
+        energyGeneration: 2,
+        energy: 0,
+        speed: 1,
+        exhaust: true
+      },
+      resourceCost: {},
+      synergyTags: ['ammo_gen', 'combo_starter'],
+      description: 'Restore 15 ammo and gain 2 energy. One use per combat. Enables full auto.'
+    },
+
+    // Aggressive Rush Cards
+    'Berserker Rage': {
+      category: 'setup',
+      type: 'power',
+      name: 'Berserker Rage',
+      emoji: '😡',
+      lifecycleType: 'power',
+      baseStats: {
+        damageBonus: 3,
+        speedBoost: 2,
+        defenseReduction: -2,
+        energy: 3,
+        speed: 1,
+        combatPersistent: true
+      },
+      resourceCost: { energy: 3 },
+      synergyTags: ['aggressive', 'mobile'],
+      description: 'Permanent +3 damage and +2 speed, -2 defense. All-in aggression.'
+    },
+    'Execute': {
+      category: 'attack',
+      type: 'attack',
+      name: 'Execute',
+      emoji: '⚔️',
+      lifecycleType: 'persistent',
+      baseStats: {
+        damage: 10,
+        accuracy: 85,
+        lowHpBonus: 10,
+        energy: 3,
+        speed: 3,
+        fatigue: 3
+      },
+      resourceCost: { energy: 3, ammo: 1 },
+      synergyTags: ['aggressive', 'ranged', 'combo_finisher'],
+      description: 'Deal 10 damage (20 if target below 50% HP). Aggressive finisher.'
+    },
+
+    // Explosive Chains
+    'Cluster Bomb': {
+      category: 'attack',
+      type: 'attack',
+      name: 'Cluster Bomb',
+      emoji: '💣',
+      lifecycleType: 'disposable',
+      baseStats: {
+        damage: 8,
+        aoe: 3,
+        accuracy: 70,
+        destroysEnvironment: true,
+        energy: 4,
+        speed: 1
+      },
+      resourceCost: { energy: 4, ammo: 3 },
+      synergyTags: ['explosive', 'aoe', 'fire', 'combo_finisher'],
+      description: 'Deal 8 AOE damage with huge radius. Synergizes with burning targets.'
+    },
+    'Incendiary Grenade': {
+      category: 'attack',
+      type: 'attack',
+      name: 'Incendiary Grenade',
+      emoji: '🔥',
+      lifecycleType: 'disposable',
+      baseStats: {
+        damage: 4,
+        dot: 5,
+        duration: 4,
+        aoe: 2,
+        accuracy: 80,
+        energy: 3,
+        speed: 2
+      },
+      resourceCost: { energy: 3, ammo: 2 },
+      synergyTags: ['fire', 'explosive', 'aoe', 'sustained', 'combo_starter'],
+      description: 'Create burning zone (5 damage/turn for 4 turns). Sets up explosive chains.'
     },
 
     // ========== CHARM CARDS (Passive Bonuses) ==========
