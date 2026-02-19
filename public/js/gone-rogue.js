@@ -323,6 +323,360 @@ const GoneRogue = (function () {
     }
   };
 
+  // ============================================================
+  // EXPLORATION FRAMEWORK
+  // Core exploration mechanics with discovery tiers and rewards
+  // ============================================================
+
+  /**
+   * Discovery tier definitions following the visibility spectrum
+   */
+  var DISCOVERY_TIERS = {
+    SURFACE: {
+      name: 'Surface',
+      frequency: 0.40,
+      visibility: 'immediate',
+      rewardTypes: ['currency', 'consumable'],
+      description: 'Immediately visible, modest rewards'
+    },
+    SEMI_HIDDEN: {
+      name: 'Semi-Hidden',
+      frequency: 0.30,
+      visibility: 'minimal_investigation',
+      rewardTypes: ['cards', 'equipment', 'currency'],
+      description: 'Requires minimal investigation'
+    },
+    CONCEALED: {
+      name: 'Concealed',
+      frequency: 0.20,
+      visibility: 'deliberate_action',
+      rewardTypes: ['rare_cards', 'equipment'],
+      description: 'Requires deliberate action to uncover'
+    },
+    HIDDEN: {
+      name: 'Hidden',
+      frequency: 0.08,
+      visibility: 'outside_context',
+      rewardTypes: ['legendary_items', 'secrets'],
+      description: 'Requires outside-context knowledge'
+    },
+    META: {
+      name: 'Meta',
+      frequency: 0.02,
+      visibility: 'multi_run',
+      rewardTypes: ['narrative', 'achievements'],
+      description: 'Multi-run discoveries'
+    }
+  };
+
+  /**
+   * Discovery placement state for current floor
+   */
+  var _discoveries = []; // { x, y, tier, revealed, contents, type }
+  var _metaDiscoveries = []; // Persistent cross-run discoveries
+
+  /**
+   * Environmental detail layer system
+   */
+  var DETAIL_LAYERS = {
+    STRUCTURAL: 'structural',    // Walls, floor, doors, major features
+    FUNCTIONAL: 'functional',    // Purpose-specific details (desks, displays, equipment)
+    NARRATIVE: 'narrative'       // Story-specific details (struggle evidence, personal items)
+  };
+
+  var _environmentalDetails = {}; // Stores details by layer
+
+  /**
+   * Generate discoveries for current floor based on tier distribution
+   */
+  function _generateDiscoveries(rooms, biome) {
+    _discoveries = [];
+
+    // Calculate total discoveries based on floor size and difficulty
+    var totalDiscoveries = Math.floor(rooms.length * 1.5) + Math.floor(_difficultyTier * 0.5);
+
+    for (var i = 0; i < totalDiscoveries; i++) {
+      var tier = _selectDiscoveryTier();
+      var room = rooms[Math.floor(Math.random() * rooms.length)];
+      var pos = _findDiscoveryPosition(room, tier);
+
+      if (pos) {
+        _discoveries.push({
+          x: pos.x,
+          y: pos.y,
+          tier: tier,
+          revealed: tier.visibility === 'immediate',
+          contents: _generateDiscoveryContents(tier, biome),
+          type: _selectDiscoveryType(tier, biome),
+          interacted: false
+        });
+      }
+    }
+  }
+
+  /**
+   * Select discovery tier based on frequency distribution
+   */
+  function _selectDiscoveryTier() {
+    var roll = Math.random();
+    var cumulative = 0;
+
+    var tiers = [
+      DISCOVERY_TIERS.SURFACE,
+      DISCOVERY_TIERS.SEMI_HIDDEN,
+      DISCOVERY_TIERS.CONCEALED,
+      DISCOVERY_TIERS.HIDDEN,
+      DISCOVERY_TIERS.META
+    ];
+
+    for (var i = 0; i < tiers.length; i++) {
+      cumulative += tiers[i].frequency;
+      if (roll <= cumulative) {
+        return tiers[i];
+      }
+    }
+
+    return DISCOVERY_TIERS.SURFACE;
+  }
+
+  /**
+   * Find appropriate position for discovery based on tier
+   */
+  function _findDiscoveryPosition(room, tier) {
+    var attempts = 0;
+    var maxAttempts = 20;
+
+    while (attempts < maxAttempts) {
+      var x = room.x + Math.floor(Math.random() * room.width);
+      var y = room.y + Math.floor(Math.random() * room.height);
+
+      // Check if position is valid (walkable, not occupied)
+      if (_grid[y] && _grid[y][x] === TILES.EMPTY) {
+        // For concealed/hidden discoveries, prefer corners or edges
+        if (tier === DISCOVERY_TIERS.CONCEALED || tier === DISCOVERY_TIERS.HIDDEN) {
+          var isEdge = (x === room.x || x === room.x + room.width - 1 ||
+                       y === room.y || y === room.y + room.height - 1);
+          if (isEdge || attempts > 10) {
+            return { x: x, y: y };
+          }
+        } else {
+          return { x: x, y: y };
+        }
+      }
+      attempts++;
+    }
+
+    return null;
+  }
+
+  /**
+   * Generate discovery contents based on tier and biome
+   */
+  function _generateDiscoveryContents(tier, biome) {
+    var contents = {
+      currency: 0,
+      items: [],
+      cards: [],
+      narrative: null
+    };
+
+    switch (tier) {
+      case DISCOVERY_TIERS.SURFACE:
+        contents.currency = Math.floor(Math.random() * 20) + 5;
+        break;
+      case DISCOVERY_TIERS.SEMI_HIDDEN:
+        contents.currency = Math.floor(Math.random() * 40) + 15;
+        if (Math.random() < 0.3) {
+          contents.cards.push('random_card');
+        }
+        break;
+      case DISCOVERY_TIERS.CONCEALED:
+        contents.currency = Math.floor(Math.random() * 80) + 30;
+        if (Math.random() < 0.5) {
+          contents.cards.push('rare_card');
+        }
+        break;
+      case DISCOVERY_TIERS.HIDDEN:
+        contents.currency = Math.floor(Math.random() * 150) + 50;
+        contents.cards.push('legendary_card');
+        break;
+      case DISCOVERY_TIERS.META:
+        contents.narrative = _generateMetaNarrative(biome);
+        break;
+    }
+
+    return contents;
+  }
+
+  /**
+   * Select discovery type based on tier and biome
+   */
+  function _selectDiscoveryType(tier, biome) {
+    var types = {
+      SURFACE: ['breakable_container', 'visible_treasure', 'obvious_crate'],
+      SEMI_HIDDEN: ['locked_door', 'debris_pile', 'dark_corner'],
+      CONCEALED: ['fake_wall', 'terminal_secret', 'breakable_pattern'],
+      HIDDEN: ['puzzle_solution', 'secret_room', 'environmental_hint'],
+      META: ['lore_fragment', 'achievement_unlock', 'cross_run_hint']
+    };
+
+    var tierTypes = types[tier.name.toUpperCase().replace('-', '_')];
+    if (tierTypes && tierTypes.length > 0) {
+      return tierTypes[Math.floor(Math.random() * tierTypes.length)];
+    }
+
+    return 'breakable_container';
+  }
+
+  /**
+   * Generate meta-narrative content for cross-run discoveries
+   */
+  function _generateMetaNarrative(biome) {
+    var narratives = [
+      'You notice a pattern in the wall structure...',
+      'A faded message hints at something deeper...',
+      'The environment suggests a hidden connection...',
+      'Something about this place feels familiar...'
+    ];
+
+    return narratives[Math.floor(Math.random() * narratives.length)];
+  }
+
+  /**
+   * Initialize environmental detail layers for a room
+   */
+  function _initializeEnvironmentalDetails(room, biome) {
+    var roomKey = room.x + '_' + room.y;
+
+    _environmentalDetails[roomKey] = {
+      structural: _generateStructuralLayer(room, biome),
+      functional: _generateFunctionalLayer(room, biome),
+      narrative: _generateNarrativeLayer(room, biome)
+    };
+  }
+
+  /**
+   * Generate structural layer details (always present)
+   */
+  function _generateStructuralLayer(room, biome) {
+    return {
+      walls: true,
+      floor: true,
+      ceiling: true,
+      doors: room.doors || [],
+      majorFeatures: []
+    };
+  }
+
+  /**
+   * Generate functional layer details (purpose-specific)
+   */
+  function _generateFunctionalLayer(room, biome) {
+    var functional = {
+      furniture: [],
+      equipment: [],
+      storage: []
+    };
+
+    // Biome-specific functional details
+    if (biome === BIOMES.OFFICE) {
+      functional.furniture = ['desks', 'chairs', 'cubicles'];
+      functional.equipment = ['terminals', 'printers', 'phones'];
+    } else if (biome === BIOMES.MALL) {
+      functional.furniture = ['displays', 'racks', 'counters'];
+      functional.equipment = ['registers', 'mannequins'];
+    } else if (biome === BIOMES.INDUSTRIAL) {
+      functional.equipment = ['machinery', 'conveyors', 'pipes'];
+    }
+
+    return functional;
+  }
+
+  /**
+   * Generate narrative layer details (story-specific)
+   */
+  function _generateNarrativeLayer(room, biome) {
+    var narrative = {
+      evidence: [],
+      personalItems: [],
+      environmentalChanges: []
+    };
+
+    // Random chance for narrative elements
+    if (Math.random() < 0.3) {
+      narrative.evidence.push('struggle_marks');
+    }
+    if (Math.random() < 0.2) {
+      narrative.personalItems.push('abandoned_photo');
+    }
+    if (Math.random() < 0.25) {
+      narrative.environmentalChanges.push('water_damage');
+    }
+
+    return narrative;
+  }
+
+  /**
+   * Reveal discovery when player interacts with it
+   */
+  function _revealDiscovery(x, y) {
+    for (var i = 0; i < _discoveries.length; i++) {
+      var discovery = _discoveries[i];
+      if (discovery.x === x && discovery.y === y && !discovery.revealed) {
+        discovery.revealed = true;
+        discovery.interacted = true;
+        _grantDiscoveryRewards(discovery);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Grant rewards from discovered content
+   */
+  function _grantDiscoveryRewards(discovery) {
+    var contents = discovery.contents;
+
+    if (contents.currency > 0) {
+      _spawnCurrency(discovery.x, discovery.y, contents.currency);
+    }
+
+    if (contents.cards && contents.cards.length > 0) {
+      // Spawn card items at discovery location
+      for (var i = 0; i < contents.cards.length; i++) {
+        _spawnDiscoveryCard(discovery.x, discovery.y);
+      }
+    }
+
+    if (contents.narrative) {
+      _displayNarrative(contents.narrative);
+    }
+  }
+
+  /**
+   * Spawn a card from discovery
+   */
+  function _spawnDiscoveryCard(x, y) {
+    // Integrate with existing item spawning system
+    var offset = _items.length % 2 === 0 ? 1 : -1;
+    var spawnX = Math.max(1, Math.min(GRID_WIDTH - 2, x + offset));
+    _items.push({ x: spawnX, y: y, quality: Math.random() });
+  }
+
+  /**
+   * Display narrative message to player
+   */
+  function _displayNarrative(narrative) {
+    if (typeof Terminal !== 'undefined' && Terminal.print) {
+      Terminal.print(narrative, 'narrative');
+    }
+  }
+
+  // ============================================================
+  // END EXPLORATION FRAMEWORK
+  // ============================================================
+
   /**
    * Determine floor type based on floor number
    */
@@ -1179,6 +1533,12 @@ const GoneRogue = (function () {
         _placeVillageCluster(floorBiome);
       }
       _buildBiomeVisualGrid(floorBiome);
+
+      // Generate discoveries and environmental details for exploration framework
+      _generateDiscoveries(rooms, floorBiome);
+      for (var i = 0; i < rooms.length; i++) {
+        _initializeEnvironmentalDetails(rooms[i], floorBiome);
+      }
     }
 
     // Place breakables (deterministic for tests)
@@ -2564,6 +2924,15 @@ const GoneRogue = (function () {
       // Tooltip: Currency pickup
       if (typeof TooltipSystem !== 'undefined') {
         TooltipSystem.showAction('currency-pickup', { amount: cryptoPickup.amount });
+      }
+    }
+
+    // Check for discovery reveal when player walks onto discovery tile
+    var discoveryRevealed = _revealDiscovery(newX, newY);
+    if (discoveryRevealed) {
+      // Discovery found, rewards already granted by _revealDiscovery
+      if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+        UIControls.updateMokInterjection('Discovery Found!');
       }
     }
 
@@ -7665,6 +8034,13 @@ const GoneRogue = (function () {
     createBordersForest: createBordersForest,
     generateForestOpenSpace: generateForestOpenSpace,
     placeVillageCluster: placeVillageCluster,
+
+    // Exploration framework API (for testing)
+    DISCOVERY_TIERS: DISCOVERY_TIERS,
+    DETAIL_LAYERS: DETAIL_LAYERS,
+    _generateDiscoveries: _generateDiscoveries,
+    _revealDiscovery: _revealDiscovery,
+    _initializeEnvironmentalDetails: _initializeEnvironmentalDetails,
 
     // Headless mode API (for testing/agent simulation)
     headless: {
