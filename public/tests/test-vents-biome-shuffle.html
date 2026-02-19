@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test: Vents, Floor Shuffling, and Biome Bleed</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      background: #0a0a0a;
+      color: #33ff33;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #33ff33;
+      text-shadow: 0 0 10px #33ff33;
+    }
+    .test-section {
+      background: #111;
+      border: 1px solid #33ff33;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 5px;
+    }
+    .console-output {
+      background: #000;
+      border: 1px solid #333;
+      padding: 15px;
+      margin: 10px 0;
+      font-size: 12px;
+      height: 400px;
+      overflow-y: auto;
+    }
+    button {
+      background: #33ff33;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background: #66ff66;
+    }
+    .info {
+      color: #ffaa00;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🕳️ Vents, Floor Shuffling, and Biome Bleed Test Suite</h1>
+
+  <div class="test-section">
+    <h2>Test Controls</h2>
+    <button onclick="runAllTests()">Run All Tests</button>
+    <button onclick="clearConsole()">Clear Console</button>
+    <button onclick="window.location.reload()">Reload Page</button>
+  </div>
+
+  <div class="test-section">
+    <h2>Test Information</h2>
+    <div class="info">
+      <strong>Tests Included:</strong>
+      <ul>
+        <li>✅ GoneRogue module availability</li>
+        <li>✅ Difficulty tier methods (setDifficulty, getDifficulty)</li>
+        <li>✅ Floor shuffling integration</li>
+        <li>✅ Vent system integration</li>
+        <li>✅ Biome bleed system integration</li>
+      </ul>
+    </div>
+    <div class="info">
+      <strong>Note:</strong> Open browser console (F12) for detailed test output.
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>Console Output</h2>
+    <div id="console-output" class="console-output"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>Manual Testing Instructions</h2>
+    <div class="info">
+      <strong>To manually test vents in Gone Rogue:</strong>
+      <ol>
+        <li>Start Gone Rogue from the main terminal (command: ROGUE)</li>
+        <li>Navigate through floors until you encounter a 'V' tile (vent)</li>
+        <li>Move to the vent tile and use INTERACT command</li>
+        <li>First INTERACT discovers the vent, second INTERACT attempts bypass</li>
+        <li>Success: Skip to floor N+2</li>
+        <li>Failure: Backtrack 3 floors with penalty enemies (marked 🔻)</li>
+      </ol>
+      
+      <strong>To test floor shuffling:</strong>
+      <ol>
+        <li>Start multiple Gone Rogue runs</li>
+        <li>Note the biome on each floor (displayed in status line)</li>
+        <li>Verify variety in biome selection after floor 4</li>
+      </ol>
+      
+      <strong>To test biome bleed:</strong>
+      <ol>
+        <li>Play Gone Rogue and advance floors</li>
+        <li>Look for tiles from previous/next biomes near edges</li>
+        <li>Grass (,) from Forest, debris (░) from Mall/Aerospace, etc.</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- Load dependencies -->
+  <script src="../js/terminal.js"></script>
+  <script src="../js/parser.js"></script>
+  <script src="../js/gamestate.js"></script>
+  <script src="../js/card-system.js"></script>
+  <script src="../js/lighting-system.js"></script>
+  <script src="../js/tooltip-system.js"></script>
+  <script src="../js/ground-effects.js"></script>
+  <script src="../js/secret-floors.js"></script>
+  <script src="../js/boss-encounters.js"></script>
+  <script src="../js/elite-enemies.js"></script>
+  <script src="../js/overhead-animator.js"></script>
+  <script src="../js/interactive-items.js"></script>
+  <script src="../js/item-spawner.js"></script>
+  <script src="../js/shop-system.js"></script>
+  <script src="../js/enemy-intent-system.js"></script>
+  <script src="../js/gone-rogue.js"></script>
+
+  <!-- Load test script -->
+  <script src="test-vents-biome-shuffle.js"></script>
+
+  <script>
+    // Capture console output
+    var consoleOutput = document.getElementById('console-output');
+    var originalLog = console.log;
+    var originalError = console.error;
+
+    console.log = function() {
+      var args = Array.prototype.slice.call(arguments);
+      var message = args.map(function(arg) {
+        if (typeof arg === 'object') {
+          return JSON.stringify(arg, null, 2);
+        }
+        return String(arg);
+      }).join(' ');
+      
+      // Remove color formatting
+      message = message.replace(/%c/g, '');
+      
+      var line = document.createElement('div');
+      line.textContent = message;
+      consoleOutput.appendChild(line);
+      consoleOutput.scrollTop = consoleOutput.scrollHeight;
+      
+      originalLog.apply(console, arguments);
+    };
+
+    console.error = function() {
+      var args = Array.prototype.slice.call(arguments);
+      var message = args.map(function(arg) {
+        if (typeof arg === 'object') {
+          return JSON.stringify(arg, null, 2);
+        }
+        return String(arg);
+      }).join(' ');
+      
+      message = message.replace(/%c/g, '');
+      
+      var line = document.createElement('div');
+      line.style.color = '#ff3333';
+      line.textContent = message;
+      consoleOutput.appendChild(line);
+      consoleOutput.scrollTop = consoleOutput.scrollHeight;
+      
+      originalError.apply(console, arguments);
+    };
+
+    function runAllTests() {
+      clearConsole();
+      console.log('Running test suite...');
+      console.log('');
+      // Test script auto-runs on load
+      window.location.reload();
+    }
+
+    function clearConsole() {
+      consoleOutput.innerHTML = '';
+    }
+
+    // Initial message
+    console.log('Test page loaded. Click "Run All Tests" to begin.');
+  </script>
+</body>
+</html>
