@@ -1,0 +1,374 @@
+/* ============================================================
+   EYES ONLY - Passive Items Visual Feedback
+   Scrapper Core and Thrift Ghost proc animations
+   ============================================================ */
+
+/* ========== SCRAPPER CORE PROC ANIMATION ========== */
+.debrief-screen.scrapper-proc-active {
+  animation: scrapper-spark 0.8s ease-out;
+}
+
+@keyframes scrapper-spark {
+  0% {
+    background: rgba(255, 165, 0, 0.2);
+    box-shadow: 0 0 10px rgba(255, 165, 0, 0.3);
+  }
+  20% {
+    background: rgba(255, 215, 0, 0.4);
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.6),
+                inset 0 0 20px rgba(255, 165, 0, 0.3);
+  }
+  40% {
+    background: rgba(255, 140, 0, 0.3);
+    box-shadow: 0 0 20px rgba(255, 140, 0, 0.4);
+  }
+  60% {
+    background: rgba(255, 215, 0, 0.2);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+  }
+  100% {
+    background: transparent;
+    box-shadow: none;
+  }
+}
+
+/* Scrapper spark particles */
+.debrief-screen.scrapper-proc-active::before {
+  content: '♻️';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 56px;
+  opacity: 0;
+  animation: scrapper-spark-emoji 0.8s ease-out;
+  pointer-events: none;
+  z-index: 100;
+}
+
+@keyframes scrapper-spark-emoji {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5) rotate(0deg);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.2) rotate(180deg);
+  }
+  70% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(1) rotate(360deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8) rotate(540deg);
+  }
+}
+
+/* ========== THRIFT GHOST PROC ANIMATION ========== */
+.debrief-screen.thrift-proc-active {
+  animation: thrift-ghost 0.8s ease-out;
+}
+
+@keyframes thrift-ghost {
+  0% {
+    background: rgba(147, 112, 219, 0.1);
+    box-shadow: 0 0 10px rgba(147, 112, 219, 0.2);
+  }
+  20% {
+    background: rgba(138, 43, 226, 0.3);
+    box-shadow: 0 0 30px rgba(138, 43, 226, 0.5),
+                inset 0 0 20px rgba(147, 112, 219, 0.3);
+  }
+  40% {
+    background: rgba(147, 112, 219, 0.25);
+    box-shadow: 0 0 25px rgba(147, 112, 219, 0.4);
+  }
+  60% {
+    background: rgba(138, 43, 226, 0.15);
+    box-shadow: 0 0 15px rgba(138, 43, 226, 0.3);
+  }
+  100% {
+    background: transparent;
+    box-shadow: none;
+  }
+}
+
+/* Thrift ghost echo effect */
+.debrief-screen.thrift-proc-active::before {
+  content: '👻';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 56px;
+  opacity: 0;
+  animation: thrift-ghost-emoji 0.8s ease-out;
+  pointer-events: none;
+  z-index: 100;
+}
+
+@keyframes thrift-ghost-emoji {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.5);
+    filter: blur(4px);
+  }
+  20% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1.2);
+    filter: blur(2px);
+  }
+  50% {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(1);
+    filter: blur(0px);
+  }
+  80% {
+    opacity: 0.3;
+    transform: translate(-50%, -50%) scale(0.9);
+    filter: blur(1px);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+    filter: blur(2px);
+  }
+}
+
+/* ========== PASSIVE ITEM INDICATORS ========== */
+.passive-equipment-indicator {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 8px;
+  z-index: 1000;
+}
+
+.passive-item-badge {
+  width: 48px;
+  height: 48px;
+  background: rgba(0, 0, 0, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.passive-item-badge:hover {
+  border-color: rgba(28, 255, 155, 0.6);
+  box-shadow: 0 0 15px rgba(28, 255, 155, 0.4);
+  transform: scale(1.1);
+}
+
+.passive-item-badge.scrapper {
+  border-color: rgba(255, 165, 0, 0.5);
+}
+
+.passive-item-badge.scrapper:hover {
+  border-color: rgba(255, 215, 0, 0.8);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+}
+
+.passive-item-badge.thrift {
+  border-color: rgba(147, 112, 219, 0.5);
+}
+
+.passive-item-badge.thrift:hover {
+  border-color: rgba(138, 43, 226, 0.8);
+  box-shadow: 0 0 20px rgba(138, 43, 226, 0.5);
+}
+
+/* Passive item tooltip */
+.passive-item-tooltip {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: rgba(0, 0, 0, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: #fff;
+  white-space: nowrap;
+  z-index: 1001;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-5px);
+  transition: all 0.2s ease;
+}
+
+.passive-item-badge:hover .passive-item-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.passive-item-tooltip-title {
+  font-size: 12px;
+  color: #FFD700;
+  margin-bottom: 4px;
+  font-weight: bold;
+}
+
+.passive-item-tooltip-desc {
+  color: #aaa;
+  font-size: 10px;
+  font-style: italic;
+}
+
+.passive-item-tooltip-proc {
+  color: #1cff9b;
+  margin-top: 4px;
+  font-size: 10px;
+}
+
+/* ========== CARD SPAWN NOTIFICATION ========== */
+.card-spawn-notification {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.9);
+  border: 2px solid #FFD700;
+  border-radius: 12px;
+  padding: 20px 30px;
+  font-family: 'Courier New', monospace;
+  z-index: 2000;
+  opacity: 0;
+  pointer-events: none;
+  animation: spawn-notification 2s ease-out forwards;
+}
+
+@keyframes spawn-notification {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+}
+
+.spawn-notification-emoji {
+  font-size: 48px;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.spawn-notification-text {
+  color: #FFD700;
+  text-align: center;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.spawn-notification-detail {
+  color: #1cff9b;
+  text-align: center;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+/* ========== PERFECT ECHO EFFECT ========== */
+.perfect-echo-card {
+  border: 2px solid #9C27B0 !important;
+  box-shadow: 0 0 20px rgba(156, 39, 176, 0.8),
+              inset 0 0 10px rgba(156, 39, 176, 0.3);
+  animation: perfect-echo-glow 2s ease-in-out infinite;
+}
+
+@keyframes perfect-echo-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(156, 39, 176, 0.6),
+                inset 0 0 10px rgba(156, 39, 176, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(156, 39, 176, 0.9),
+                inset 0 0 15px rgba(156, 39, 176, 0.4);
+  }
+}
+
+/* ========== SYNERGY INDICATOR ========== */
+.passive-synergy-active {
+  position: fixed;
+  top: 70px;
+  right: 10px;
+  background: linear-gradient(135deg, rgba(255, 165, 0, 0.3), rgba(147, 112, 219, 0.3));
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: #FFD700;
+  z-index: 1000;
+  animation: synergy-pulse 2s ease-in-out infinite;
+}
+
+@keyframes synergy-pulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
+    transform: scale(1.05);
+  }
+}
+
+.synergy-text {
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ========== MOBILE OPTIMIZATIONS ========== */
+@media (max-width: 768px) {
+  .passive-equipment-indicator {
+    top: 5px;
+    right: 5px;
+    gap: 4px;
+  }
+
+  .passive-item-badge {
+    width: 36px;
+    height: 36px;
+    font-size: 22px;
+  }
+
+  .passive-synergy-active {
+    top: 50px;
+    right: 5px;
+    font-size: 9px;
+    padding: 6px 8px;
+  }
+
+  .card-spawn-notification {
+    padding: 15px 20px;
+  }
+
+  .spawn-notification-emoji {
+    font-size: 36px;
+  }
+
+  .spawn-notification-text {
+    font-size: 12px;
+  }
+}

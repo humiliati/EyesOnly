@@ -217,10 +217,10 @@ const CardDisposalSystem = (function() {
       if (typeof HandFanComponent !== 'undefined') {
         // Get current cards
         var currentCards = HandFanComponent._cards || [];
-        
+
         // Remove the card
         currentCards.splice(index, 1);
-        
+
         // Update hand display
         HandFanComponent.updateCards(currentCards);
       }
@@ -237,16 +237,21 @@ const CardDisposalSystem = (function() {
       if (typeof UIControls !== 'undefined' && UIControls.removeInventoryItem) {
         UIControls.removeInventoryItem(index);
       }
-      
+
       // Repopulate inventory to refresh display
       if (typeof UIControls !== 'undefined' && UIControls.populateInventory) {
         UIControls.populateInventory();
       }
     }
 
+    // Trigger passive items (Scrapper Core)
+    if (typeof PassiveItemsSystem !== 'undefined') {
+      PassiveItemsSystem.handleDisposal(data, reason);
+    }
+
     // MOK interjection
     if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-      UIControls.updateMokInterjection('Card destroyed: ' + card.name);
+      UIControls.updateMokInterjection('Card destroyed: ' + data.name);
     }
   }
 

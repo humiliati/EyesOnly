@@ -180,12 +180,13 @@ const ReserveSlots = (function () {
    * Render reserve slots with natural collapsing behavior
    * Shows:
    * - Back button (always)
+   * - Inventory button (always)
    * - Cycle button (only if > _maxVisibleSlots cards)
    * - Up to _maxVisibleSlots card slots (4 by default)
-   * 
-   * Total buttons shown: 2-6 depending on card count
-   * - With 0-4 cards: back + 0-4 slots = 1-5 buttons
-   * - With > 4 cards: back + cycle + 4 slots = 6 buttons
+   *
+   * Total buttons shown: 3-7 depending on card count
+   * - With 0-4 cards: back + inventory + 0-4 slots = 2-6 buttons
+   * - With > 4 cards: back + inventory + cycle + 4 slots = 7 buttons
    */
   function render() {
     if (!_slotsContainer) return;
@@ -217,7 +218,18 @@ const ReserveSlots = (function () {
     });
     _slotsContainer.appendChild(backBtn);
 
-    // Button 2: Cycle (only shown if > _maxVisibleSlots cards)
+    // Button 2: Inventory (always shown)
+    var inventoryBtn = document.createElement('button');
+    inventoryBtn.type = 'button';
+    inventoryBtn.className = 'control-button gone-rogue-btn';
+    inventoryBtn.dataset.action = 'inventory';
+    inventoryBtn.textContent = 'inventory';
+    inventoryBtn.addEventListener('click', function() {
+      _handleInventoryClick();
+    });
+    _slotsContainer.appendChild(inventoryBtn);
+
+    // Button 3: Cycle (only shown if > _maxVisibleSlots cards)
     if (needsCycling) {
       var cycleBtn = document.createElement('button');
       cycleBtn.type = 'button';
@@ -231,8 +243,8 @@ const ReserveSlots = (function () {
       _slotsContainer.appendChild(cycleBtn);
     }
 
-    // Buttons 3-N: Card slots (show up to _maxVisibleSlots)
-    var slotsToShow = Math.min(_maxVisibleSlots, totalCards, maxSlots);
+    // Buttons 4-N: Card slots (show up to _maxVisibleSlots, with empty placeholders)
+    var slotsToShow = Math.min(_maxVisibleSlots, maxSlots);
     for (var i = 0; i < slotsToShow; i++) {
       var slotBtn = _createCardSlotButton(i);
       _slotsContainer.appendChild(slotBtn);
@@ -299,12 +311,11 @@ const ReserveSlots = (function () {
         _hideCardTooltip();
       });
     } else {
-      // Empty slot - this can occur during initialization or if render is called
-      // before cards are loaded. The empty-slot class can be used for custom styling
-      // if needed (e.g., different appearance for truly empty vs uninitialized slots)
-      btn.innerHTML = '<span class="card-empty">·</span>';
+      // Empty slot - show placeholder with "Exhstd" (exhausted - vowel drop)
+      btn.innerHTML = '<span class="card-empty">Exhstd</span>';
       btn.classList.add('empty-slot');
       btn.disabled = true;
+      btn.title = 'Empty Slot';
     }
 
     return btn;
@@ -321,6 +332,20 @@ const ReserveSlots = (function () {
       // Fallback to UI controls
       var backBtn = document.querySelector('button[data-action="back"]');
       if (backBtn) backBtn.click();
+    }
+  }
+
+  /**
+   * Handle inventory button click
+   */
+  function _handleInventoryClick() {
+    // Trigger inventory toggle through UI controls
+    if (typeof UIControls !== 'undefined' && typeof UIControls.toggleInventory === 'function') {
+      UIControls.toggleInventory();
+    } else {
+      // Fallback to clicking the inventory button
+      var inventoryBtn = document.querySelector('button[data-action="inventory"]');
+      if (inventoryBtn) inventoryBtn.click();
     }
   }
 

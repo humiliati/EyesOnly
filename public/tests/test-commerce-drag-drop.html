@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Commerce Drag-Drop System Test</title>
+
+  <link rel="stylesheet" href="../css/crt.css">
+  <link rel="stylesheet" href="../css/shop-system.css">
+  <link rel="stylesheet" href="../css/hand-fan-component.css">
+  <link rel="stylesheet" href="../css/commerce-drag-drop.css">
+
+  <style>
+    body {
+      background: #000;
+      color: #1cff9b;
+      font-family: 'Courier New', monospace;
+      padding: 20px;
+    }
+
+    h1, h2 {
+      color: #FFD700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    .test-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .test-section {
+      background: rgba(28, 255, 155, 0.05);
+      border: 1px solid rgba(28, 255, 155, 0.3);
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+    }
+
+    .test-results {
+      margin-top: 20px;
+    }
+
+    .test-row {
+      display: flex;
+      padding: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .test-name {
+      flex: 1;
+      color: #fff;
+    }
+
+    .test-status {
+      width: 80px;
+      text-align: right;
+      font-weight: bold;
+    }
+
+    .test-status.pass {
+      color: #4CAF50;
+    }
+
+    .test-status.fail {
+      color: #F44336;
+    }
+
+    .test-button {
+      background: rgba(255, 215, 0, 0.2);
+      border: 2px solid #FFD700;
+      color: #FFD700;
+      padding: 10px 20px;
+      margin: 10px 5px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      text-transform: uppercase;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .test-button:hover {
+      background: rgba(255, 215, 0, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .debrief-window {
+      width: 200px;
+      height: 300px;
+      background: rgba(0, 0, 0, 0.9);
+      border: 2px solid rgba(28, 255, 155, 0.5);
+      margin: 20px;
+      display: inline-block;
+      vertical-align: top;
+    }
+
+    .debrief-screen {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #1cff9b;
+      font-size: 12px;
+      text-align: center;
+      padding: 10px;
+    }
+
+    .test-shop-card {
+      width: 80px;
+      height: 110px;
+      background: rgba(40, 45, 50, 0.9);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      display: inline-block;
+      margin: 10px;
+      cursor: grab;
+      position: relative;
+      text-align: center;
+      padding: 10px;
+      vertical-align: top;
+    }
+
+    .test-shop-card:active {
+      cursor: grabbing;
+    }
+
+    .test-shop-card.dragging {
+      opacity: 0.5;
+    }
+
+    .test-hand-card {
+      width: 100px;
+      height: 140px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.90) 100%);
+      border: 2px solid rgba(255, 255, 255, 0.80);
+      border-radius: 8px;
+      display: inline-block;
+      margin: 10px;
+      cursor: grab;
+      position: relative;
+      text-align: center;
+      padding: 10px;
+      vertical-align: top;
+    }
+
+    .test-hand-card:active {
+      cursor: grabbing;
+    }
+
+    .test-hand-card.dragging-sell {
+      opacity: 0.6;
+      filter: hue-rotate(20deg);
+    }
+
+    .card-emoji {
+      font-size: 32px;
+      display: block;
+      margin: 10px 0;
+    }
+
+    .card-name {
+      font-size: 10px;
+      color: #000;
+    }
+
+    .card-price {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background: rgba(255, 215, 0, 0.9);
+      color: #000;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: bold;
+    }
+
+    .instruction {
+      background: rgba(255, 215, 0, 0.1);
+      border-left: 3px solid #FFD700;
+      padding: 10px;
+      margin: 10px 0;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <h1>🎮 Commerce Drag-Drop System Test</h1>
+
+    <div class="test-section">
+      <h2>System Initialization Tests</h2>
+      <button class="test-button" onclick="runInitTests()">Run Init Tests</button>
+      <div id="init-results" class="test-results"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>Context Detection Tests</h2>
+      <button class="test-button" onclick="runContextTests()">Run Context Tests</button>
+      <div id="context-results" class="test-results"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>Visual Feedback Tests</h2>
+      <div class="instruction">
+        💡 Drag the shop cards and hand cards to the debrief feed zone to test visual feedback.
+      </div>
+
+      <div>
+        <h3>Shop Items (Buying Context):</h3>
+        <div class="test-shop-card" draggable="true" data-type="shop_items" data-price="100">
+          <span class="card-price">100¢</span>
+          <span class="card-emoji">⚔️</span>
+          <div class="card-name">Sword</div>
+        </div>
+        <div class="test-shop-card" draggable="true" data-type="shop_items" data-price="200">
+          <span class="card-price">200¢</span>
+          <span class="card-emoji">🛡️</span>
+          <div class="card-name">Shield</div>
+        </div>
+        <div class="test-shop-card" draggable="true" data-type="shop_gamble" data-price="150">
+          <span class="card-price">150¢</span>
+          <span class="card-emoji">🎰</span>
+          <div class="card-name">Gamble</div>
+        </div>
+      </div>
+
+      <div>
+        <h3>Player Hand (Selling Context - Requires Shop Open):</h3>
+        <div class="test-hand-card" draggable="true" data-type="player_hand">
+          <span class="card-emoji">🗡️</span>
+          <div class="card-name">Old Blade</div>
+        </div>
+        <div class="test-hand-card" draggable="true" data-type="player_hand">
+          <span class="card-emoji">🏹</span>
+          <div class="card-name">Bow</div>
+        </div>
+      </div>
+
+      <div>
+        <h3>Debrief Feed Drop Zone:</h3>
+        <div class="debrief-window">
+          <div class="debrief-screen" id="debrief-screen">
+            Drag items here
+          </div>
+        </div>
+      </div>
+
+      <button class="test-button" onclick="toggleShopState()">Toggle Shop Open/Closed</button>
+      <span id="shop-status">Shop: Closed</span>
+    </div>
+
+    <div class="test-section">
+      <h2>Animation Tests</h2>
+      <button class="test-button" onclick="testAnimation('buying')">Test Buying Animation</button>
+      <button class="test-button" onclick="testAnimation('selling')">Test Selling Animation</button>
+      <button class="test-button" onclick="testAnimation('gambling')">Test Gambling Animation</button>
+      <button class="test-button" onclick="testAnimation('failed')">Test Failed Animation</button>
+    </div>
+
+    <div class="test-section">
+      <h2>Test Summary</h2>
+      <div id="summary-results"></div>
+    </div>
+  </div>
+
+  <!-- Load required scripts -->
+  <script src="../js/gamestate.js"></script>
+  <script src="../js/card-system.js"></script>
+  <script src="../js/card-disposal-system.js"></script>
+  <script src="../js/commerce-drag-drop-system.js"></script>
+  <script src="../js/shop-system.js"></script>
+
+  <script>
+    // Test state
+    var testResults = {
+      init: [],
+      context: [],
+      visual: []
+    };
+
+    var isShopOpen = false;
+
+    /**
+     * Initialize test drag-drop handlers
+     */
+    function initTestDragHandlers() {
+      // Shop cards
+      var shopCards = document.querySelectorAll('.test-shop-card');
+      shopCards.forEach(function(card) {
+        card.addEventListener('dragstart', function(e) {
+          var type = card.getAttribute('data-type');
+          var price = parseInt(card.getAttribute('data-price'), 10);
+
+          card.classList.add('dragging');
+
+          if (typeof CommerceDragDropSystem !== 'undefined') {
+            CommerceDragDropSystem.handleDragStart({
+              sourceZone: type,
+              itemId: 'test_' + Math.random(),
+              itemType: type === 'shop_gamble' ? 'gamble' : 'card',
+              cardData: { name: 'Test Item' },
+              itemPrice: price
+            });
+          }
+        });
+
+        card.addEventListener('dragend', function(e) {
+          card.classList.remove('dragging');
+          if (typeof CommerceDragDropSystem !== 'undefined') {
+            CommerceDragDropSystem.handleDragEnd();
+          }
+        });
+      });
+
+      // Hand cards
+      var handCards = document.querySelectorAll('.test-hand-card');
+      handCards.forEach(function(card) {
+        card.addEventListener('dragstart', function(e) {
+          card.classList.add('dragging-sell');
+
+          if (isShopOpen && typeof CommerceDragDropSystem !== 'undefined') {
+            CommerceDragDropSystem.handleDragStart({
+              sourceZone: 'player_hand',
+              itemId: 'test_' + Math.random(),
+              itemType: 'card',
+              cardData: { name: 'Test Card', rarity: 'common' },
+              itemPrice: 0
+            });
+          }
+        });
+
+        card.addEventListener('dragend', function(e) {
+          card.classList.remove('dragging-sell');
+          if (typeof CommerceDragDropSystem !== 'undefined') {
+            CommerceDragDropSystem.handleDragEnd();
+          }
+        });
+      });
+    }
+
+    /**
+     * Run initialization tests
+     */
+    function runInitTests() {
+      var results = [];
+
+      // Test 1: CommerceDragDropSystem exists
+      results.push({
+        name: 'CommerceDragDropSystem loaded',
+        pass: typeof CommerceDragDropSystem !== 'undefined'
+      });
+
+      // Test 2: System has required methods
+      if (typeof CommerceDragDropSystem !== 'undefined') {
+        results.push({
+          name: 'handleDragStart method exists',
+          pass: typeof CommerceDragDropSystem.handleDragStart === 'function'
+        });
+
+        results.push({
+          name: 'handleDragEnd method exists',
+          pass: typeof CommerceDragDropSystem.handleDragEnd === 'function'
+        });
+
+        results.push({
+          name: 'setShopOpen method exists',
+          pass: typeof CommerceDragDropSystem.setShopOpen === 'function'
+        });
+
+        results.push({
+          name: 'CONTEXT_TYPES constant exists',
+          pass: typeof CommerceDragDropSystem.CONTEXT_TYPES !== 'undefined'
+        });
+      }
+
+      // Test 3: Debrief feed element exists
+      results.push({
+        name: 'Debrief feed element found',
+        pass: document.getElementById('debrief-screen') !== null
+      });
+
+      testResults.init = results;
+      displayResults('init-results', results);
+    }
+
+    /**
+     * Run context detection tests
+     */
+    function runContextTests() {
+      var results = [];
+
+      if (typeof CommerceDragDropSystem === 'undefined') {
+        results.push({
+          name: 'CommerceDragDropSystem not loaded',
+          pass: false
+        });
+        displayResults('context-results', results);
+        return;
+      }
+
+      // Test buying context
+      CommerceDragDropSystem.handleDragStart({
+        sourceZone: 'shop_items',
+        itemId: 'test1',
+        itemType: 'card',
+        cardData: {},
+        itemPrice: 100
+      });
+
+      results.push({
+        name: 'Buying context set correctly',
+        pass: CommerceDragDropSystem.getCurrentContext() === CommerceDragDropSystem.CONTEXT_TYPES.BUYING
+      });
+
+      CommerceDragDropSystem.handleDragEnd();
+
+      // Test gambling context
+      CommerceDragDropSystem.handleDragStart({
+        sourceZone: 'shop_gamble',
+        itemId: 'test2',
+        itemType: 'gamble',
+        cardData: {},
+        itemPrice: 150
+      });
+
+      results.push({
+        name: 'Gambling context set correctly',
+        pass: CommerceDragDropSystem.getCurrentContext() === CommerceDragDropSystem.CONTEXT_TYPES.GAMBLING
+      });
+
+      CommerceDragDropSystem.handleDragEnd();
+
+      // Test selling context (shop must be open)
+      CommerceDragDropSystem.setShopOpen(true);
+      CommerceDragDropSystem.handleDragStart({
+        sourceZone: 'player_hand',
+        itemId: 'test3',
+        itemType: 'card',
+        cardData: {},
+        itemPrice: 0
+      });
+
+      results.push({
+        name: 'Selling context set correctly',
+        pass: CommerceDragDropSystem.getCurrentContext() === CommerceDragDropSystem.CONTEXT_TYPES.SELLING
+      });
+
+      CommerceDragDropSystem.handleDragEnd();
+      CommerceDragDropSystem.setShopOpen(false);
+
+      // Test idle context after drag end
+      results.push({
+        name: 'Idle context restored after drag end',
+        pass: CommerceDragDropSystem.getCurrentContext() === CommerceDragDropSystem.CONTEXT_TYPES.IDLE
+      });
+
+      testResults.context = results;
+      displayResults('context-results', results);
+    }
+
+    /**
+     * Test animation
+     */
+    function testAnimation(type) {
+      var debriefScreen = document.getElementById('debrief-screen');
+      if (!debriefScreen) return;
+
+      // Remove all animation classes
+      debriefScreen.classList.remove('money-bag-active', 'incinerator-active', 'slot-active', 'transaction-failed');
+
+      // Add animation class
+      setTimeout(function() {
+        switch(type) {
+          case 'buying':
+            debriefScreen.classList.add('money-bag-active');
+            break;
+          case 'selling':
+            debriefScreen.classList.add('incinerator-active');
+            break;
+          case 'gambling':
+            debriefScreen.classList.add('slot-active');
+            break;
+          case 'failed':
+            debriefScreen.classList.add('transaction-failed');
+            break;
+        }
+
+        // Remove after animation
+        setTimeout(function() {
+          debriefScreen.classList.remove('money-bag-active', 'incinerator-active', 'slot-active', 'transaction-failed');
+        }, 600);
+      }, 100);
+    }
+
+    /**
+     * Toggle shop state
+     */
+    function toggleShopState() {
+      isShopOpen = !isShopOpen;
+
+      if (typeof CommerceDragDropSystem !== 'undefined') {
+        CommerceDragDropSystem.setShopOpen(isShopOpen);
+      }
+
+      document.getElementById('shop-status').textContent = 'Shop: ' + (isShopOpen ? 'Open' : 'Closed');
+      document.getElementById('shop-status').style.color = isShopOpen ? '#4CAF50' : '#F44336';
+    }
+
+    /**
+     * Display test results
+     */
+    function displayResults(elementId, results) {
+      var html = '';
+      var passCount = 0;
+
+      results.forEach(function(result) {
+        if (result.pass) passCount++;
+
+        html += '<div class="test-row">';
+        html += '<div class="test-name">' + result.name + '</div>';
+        html += '<div class="test-status ' + (result.pass ? 'pass' : 'fail') + '">';
+        html += result.pass ? 'PASS' : 'FAIL';
+        html += '</div>';
+        html += '</div>';
+      });
+
+      document.getElementById(elementId).innerHTML = html;
+
+      // Update summary
+      updateSummary();
+    }
+
+    /**
+     * Update test summary
+     */
+    function updateSummary() {
+      var totalTests = 0;
+      var totalPass = 0;
+
+      Object.keys(testResults).forEach(function(key) {
+        testResults[key].forEach(function(result) {
+          totalTests++;
+          if (result.pass) totalPass++;
+        });
+      });
+
+      var html = '<h3>Total: ' + totalPass + ' / ' + totalTests + ' tests passed</h3>';
+      html += '<p>Pass rate: ' + (totalTests > 0 ? Math.round((totalPass / totalTests) * 100) : 0) + '%</p>';
+
+      document.getElementById('summary-results').innerHTML = html;
+    }
+
+    // Initialize on page load
+    window.addEventListener('DOMContentLoaded', function() {
+      initTestDragHandlers();
+      console.log('[Test] Commerce Drag-Drop Test Page Loaded');
+    });
+  </script>
+</body>
+</html>

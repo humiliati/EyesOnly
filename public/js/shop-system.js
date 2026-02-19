@@ -65,6 +65,10 @@ const ShopSystem = (function () {
     // Delegate event listeners for shop interactions
     _shopContainer.addEventListener('click', _handleShopClick);
     _shopContainer.addEventListener('touchend', _handleShopTouch);
+
+    // Drag-drop event listeners for shop cards
+    _shopContainer.addEventListener('dragstart', _handleShopDragStart);
+    _shopContainer.addEventListener('dragend', _handleShopDragEnd);
   }
 
   /**
@@ -85,6 +89,92 @@ const ShopSystem = (function () {
   }
 
   /**
+   * Handle drag start for shop cards
+   */
+  function _handleShopDragStart(e) {
+    var target = e.target;
+
+    // Find shop card element
+    while (target && target !== _shopContainer) {
+      if (target.classList && target.classList.contains('shop-card')) {
+        break;
+      }
+      target = target.parentElement;
+    }
+
+    if (!target || !target.classList.contains('shop-card')) {
+      return;
+    }
+
+    // Don't allow dragging disabled cards
+    if (target.classList.contains('disabled')) {
+      e.preventDefault();
+      return;
+    }
+
+    // Get item data
+    var itemId = target.getAttribute('data-item-id');
+    var itemType = target.getAttribute('data-type');
+    var itemPrice = parseInt(target.getAttribute('data-price'), 10);
+    var itemName = target.getAttribute('data-card-name');
+
+    // Find item in inventory
+    var item = null;
+    if (_currentShop && _currentShop.inventory) {
+      for (var i = 0; i < _currentShop.inventory.length; i++) {
+        if (_currentShop.inventory[i].id === itemId) {
+          item = _currentShop.inventory[i];
+          break;
+        }
+      }
+    }
+
+    if (!item) {
+      e.preventDefault();
+      return;
+    }
+
+    // Set drag data
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', itemId);
+
+    // Add dragging class
+    target.classList.add('dragging');
+
+    // Notify commerce drag-drop system
+    if (typeof CommerceDragDropSystem !== 'undefined') {
+      var sourceZone = itemType === 'gamble' ? 'shop_gamble' : 'shop_items';
+      CommerceDragDropSystem.handleDragStart({
+        sourceZone: sourceZone,
+        itemId: itemId,
+        itemType: itemType,
+        cardData: item.cardData,
+        itemPrice: itemPrice,
+        itemName: itemName
+      });
+    }
+
+    console.log('[ShopSystem] Drag started:', itemName, 'price:', itemPrice);
+  }
+
+  /**
+   * Handle drag end for shop cards
+   */
+  function _handleShopDragEnd(e) {
+    var target = e.target;
+
+    // Remove dragging class
+    if (target && target.classList) {
+      target.classList.remove('dragging');
+    }
+
+    // Notify commerce drag-drop system
+    if (typeof CommerceDragDropSystem !== 'undefined') {
+      CommerceDragDropSystem.handleDragEnd();
+    }
+  }
+
+  /**
    * Open a shop
    */
   function openShop(shopType, floor) {
@@ -100,17 +190,17 @@ const ShopSystem = (function () {
     var inventory = _generateShopInventory(floor, shopType);
 
     // Get player state
-    var playerCurrency = (typeof GAMESTATE !== 'undefined') 
-      ? GAMESTATE.getState().cryptos 
+    var playerCurrency = (typeof GAMESTATE !== 'undefined')
+      ? GAMESTATE.getState().cryptos
       : 0;
-    var playerHand = (typeof GAMESTATE !== 'undefined') 
-      ? GAMESTATE.getState().cardHand 
+    var playerHand = (typeof GAMESTATE !== 'undefined')
+      ? GAMESTATE.getState().cardHand
       : [];
-    var playerInventory = (typeof GAMESTATE !== 'undefined') 
-      ? GAMESTATE.getLooseInventory() 
+    var playerInventory = (typeof GAMESTATE !== 'undefined')
+      ? GAMESTATE.getLooseInventory()
       : [];
-    var playerActionBar = (typeof GAMESTATE !== 'undefined') 
-      ? GAMESTATE.getState().actionButtonCards 
+    var playerActionBar = (typeof GAMESTATE !== 'undefined')
+      ? GAMESTATE.getState().actionButtonCards
       : [];
 
     _currentShop = {
@@ -122,6 +212,11 @@ const ShopSystem = (function () {
     };
 
     _isOpen = true;
+
+    // Notify commerce drag-drop system that shop is open
+    if (typeof CommerceDragDropSystem !== 'undefined') {
+      CommerceDragDropSystem.setShopOpen(true);
+    }
 
     // Render shop UI
     _renderShop(_currentShop, playerCurrency, playerHand, playerInventory, playerActionBar);
@@ -152,6 +247,11 @@ const ShopSystem = (function () {
 
     _isOpen = false;
     _currentShop = null;
+
+    // Notify commerce drag-drop system that shop is closed
+    if (typeof CommerceDragDropSystem !== 'undefined') {
+      CommerceDragDropSystem.setShopOpen(false);
+    }
 
     // Hide UI
     _dimOverlay.style.display = 'none';
@@ -434,31 +534,56 @@ const ShopSystem = (function () {
    */
   function _renderShopItemsRow(shop, playerCurrency, playerInventory, playerActionBar) {
     var html = '<div class="shop-items-row">';
-    
+
+    // Check if shop is depleting (less than 5 items total)
+    var isDepleting = shop.inventory.length < 5;
+    var arrowsDisabled = isDepleting;
+
     // Cycle arrows
     html += '<div class="cycle-arrow-container">';
     html += '<button class="cycle-btn cycle-left" data-action="cycle-left"' +
-      (shop.visibleStart === 0 ? ' disabled' : '') + '>◀</button>';
+      (shop.visibleStart === 0 || arrowsDisabled ? ' disabled' : '') + '>◀</button>';
     html += '<button class="cycle-btn cycle-right" data-action="cycle-right"' +
-      (shop.visibleStart + shop.visibleCount >= shop.inventory.length ? ' disabled' : '') + '>▶</button>';
+      (shop.visibleStart + shop.visibleCount >= shop.inventory.length || arrowsDisabled ? ' disabled' : '') + '>▶</button>';
     html += '</div>';
 
     // Card container
     html += '<div class="shop-card-container">';
-    
+
     var visibleItems = shop.inventory.slice(shop.visibleStart, shop.visibleStart + shop.visibleCount);
-    var spaceState = _checkSpaceAvailability(playerInventory, playerActionBar, 
+    var spaceState = _checkSpaceAvailability(playerInventory, playerActionBar,
       (typeof GAMESTATE !== 'undefined' ? GAMESTATE.getState().cardHand : []));
 
+    // Render visible items
     for (var i = 0; i < visibleItems.length; i++) {
       var item = visibleItems[i];
       html += _renderShopCard(item, playerCurrency, spaceState);
+    }
+
+    // Add empty placeholders if shop is depleting
+    if (isDepleting) {
+      var emptySlots = shop.visibleCount - visibleItems.length;
+      for (var j = 0; j < emptySlots; j++) {
+        html += _renderEmptySlot();
+      }
     }
 
     html += '</div>'; // shop-card-container
     html += '</div>'; // shop-items-row
 
     return html;
+  }
+
+  /**
+   * Render empty shop slot placeholder
+   */
+  function _renderEmptySlot() {
+    return '<div class="shop-card empty-slot" title="SOLD OUT">' +
+      '<div class="empty-slot-content">' +
+        '<div class="sold-out-label">SldOt</div>' +
+        '<div class="sold-out-icon">📦</div>' +
+      '</div>' +
+    '</div>';
   }
 
   /**
@@ -479,10 +604,15 @@ const ShopSystem = (function () {
       cardStyle = _getGambleGradientStyle(item.gambleType, item.gradientSeed);
     }
 
+    // Make card draggable if not disabled
+    var draggableAttr = disabled ? '' : ' draggable="true"';
+
     var html = '<div class="shop-card ' + disabledClass + ' ' + gambleClass + '" ' +
       'data-item-id="' + item.id + '" ' +
       'data-price="' + item.price + '" ' +
       'data-type="' + item.type + '"' +
+      'data-card-name="' + (item.name || 'Unknown') + '"' +
+      draggableAttr +
       (cardStyle ? ' style="' + cardStyle + '"' : '') +
       '>';
 
@@ -524,12 +654,22 @@ const ShopSystem = (function () {
 
   /**
    * Abbreviate card name (vowel-dropped)
+   * Keeps first letter regardless of vowel/consonant, removes vowels from rest
    */
   function _abbreviateName(name) {
-    return name
-      .replace(/[aeiouAEIOU]/g, '')
-      .substring(0, 6)
-      .toLowerCase();
+    if (!name) return '';
+
+    // Remove spaces and convert to uppercase
+    var cleaned = name.replace(/\s+/g, '').toUpperCase();
+
+    // Take first character
+    var firstChar = cleaned.charAt(0);
+
+    // Remove vowels from remaining characters
+    var consonants = cleaned.slice(1).replace(/[AEIOU]/g, '');
+
+    // Combine first character + consonants, limit to 6 chars, lowercase
+    return (firstChar + consonants).substring(0, 6).toLowerCase();
   }
 
   /**
