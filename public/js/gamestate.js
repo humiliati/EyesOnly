@@ -289,6 +289,20 @@ const GAMESTATE = (function () {
   }
 
   /**
+   * Remove item from persistent inventory by index
+   * @param {number} index - Index of item to remove
+   */
+  function removePersistentInventoryItem(index) {
+    if (index >= 0 && index < _state.inventoryPersistent.length) {
+      _state.inventoryPersistent.splice(index, 1);
+      _saveState();
+      console.log('[GAMESTATE] Removed persistent inventory item at index', index);
+    } else {
+      console.warn('[GAMESTATE] Invalid inventory index:', index);
+    }
+  }
+
+  /**
    * Get loose inventory
    */
   function getLooseInventory() {
@@ -1107,6 +1121,7 @@ const GAMESTATE = (function () {
     removeFromLoose: removeFromLoose,
     clearLooseInventory: clearLooseInventory,
     getPersistentInventory: getPersistentInventory,
+    removePersistentInventoryItem: removePersistentInventoryItem,
     getLooseInventory: getLooseInventory,
     // Card system - NEW LOOT FLOW
     addCard: addCard,              // Main entry point for card loot

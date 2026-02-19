@@ -9,6 +9,7 @@
   var inventoryVisible = false;
   var selectedItemIndex = -1;
   var activeItem = null; // Currently active item in header slot
+  var _draggedInventoryItem = null; // Track item being dragged for equipping
 
   // Login overlay state
   var loginOverlayVisible = false;
@@ -51,6 +52,8 @@
     var activeSlot = document.getElementById('active-item-slot');
     if (activeSlot) {
       activeSlot.addEventListener('click', handleActiveItemClick);
+      // Add drag-and-drop support for equipping items
+      _initializeActiveSlotDragDrop(activeSlot);
     }
 
     // Initialize login overlay handlers
@@ -62,6 +65,84 @@
     // Listen for custom auth events instead of polling
     if (typeof window !== 'undefined') {
       window.addEventListener('auth-state-changed', _updateLoginButton);
+    }
+  }
+
+  /**
+   * Initialize active item slot to accept drag-and-drop
+   * @param {HTMLElement} activeSlot - The active item slot element
+   */
+  function _initializeActiveSlotDragDrop(activeSlot) {
+    // Prevent default drag behaviors to allow drop
+    activeSlot.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      activeSlot.classList.add('drag-over');
+    });
+
+    // Remove visual feedback on drag leave
+    activeSlot.addEventListener('dragleave', function(e) {
+      // Only remove styling if actually leaving the activeSlot, not just moving to a child
+      if (e.relatedTarget && !activeSlot.contains(e.relatedTarget)) {
+        activeSlot.classList.remove('drag-over');
+      } else if (!e.relatedTarget) {
+        // relatedTarget is null when leaving the document
+        activeSlot.classList.remove('drag-over');
+      }
+    });
+
+    // Handle drop event
+    activeSlot.addEventListener('drop', function(e) {
+      e.preventDefault();
+      activeSlot.classList.remove('drag-over');
+      
+      // Check if we have dragged inventory item data
+      if (_draggedInventoryItem) {
+        _equipInventoryItemToActiveSlot(_draggedInventoryItem);
+        _draggedInventoryItem = null;
+      }
+    });
+  }
+
+  /**
+   * Equip an inventory item to the active slot
+   * @param {Object} itemData - Item data including item and index
+   */
+  function _equipInventoryItemToActiveSlot(itemData) {
+    var item = itemData.item;
+    var index = itemData.index;
+
+    // Check if Gone Rogue is active
+    var isInGoneRogue = typeof GoneRogue !== 'undefined' && GoneRogue.isActive();
+
+    if (isInGoneRogue && typeof GAMESTATE !== 'undefined') {
+      // In Gone Rogue mode, use GAMESTATE to set active item
+      GAMESTATE.setActiveItem(item);
+
+      // Update active item display in header
+      var activeDisplay = document.getElementById('active-item-display');
+      if (activeDisplay) {
+        activeDisplay.innerHTML = '<span class="item-emoji">' + (item.emoji || '📦') + '</span>';
+        activeDisplay.classList.add('has-item');
+      }
+
+      // Update player lighting if this is a lighting item
+      if (typeof GoneRogue.updatePlayerLight === 'function') {
+        GoneRogue.updatePlayerLight();
+      }
+
+      // Show feedback message
+      if (typeof window.appendLine === 'function') {
+        window.appendLine('⚡ EQUIPPED: ' + item.emoji + ' ' + item.name);
+      }
+
+      // Refresh inventory display if mobile inventory is active
+      if (typeof GoneRogueMobile !== 'undefined' && typeof GoneRogueMobile.showInventory === 'function') {
+        GoneRogueMobile.showInventory();
+      }
+    } else {
+      // Standard mode (non-Gone Rogue)
+      setActiveItem(item);
     }
   }
 
@@ -568,14 +649,21 @@
         selectInventoryItem(index, allItems);
       });
 
-      // Drag handlers for disposal
+      // Drag handlers for disposal and equipping
       itemEl.addEventListener('dragstart', function(e) {
+        // Store item data for equipping to active slot
+        _draggedInventoryItem = { item: item, index: index };
+        
+        // Also notify CardDisposalSystem for incinerator functionality
         if (typeof CardDisposalSystem !== 'undefined') {
           CardDisposalSystem.handleDragStart(itemEl, item, index, 'inventory');
         }
       });
 
       itemEl.addEventListener('dragend', function(e) {
+        // Clear dragged item state
+        _draggedInventoryItem = null;
+        
         if (typeof CardDisposalSystem !== 'undefined') {
           CardDisposalSystem.handleDragEnd();
         }

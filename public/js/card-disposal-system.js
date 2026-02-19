@@ -233,9 +233,11 @@ const CardDisposalSystem = (function() {
         }
       }
     } else if (source === 'inventory') {
-      // Remove from inventory
-      if (typeof UIControls !== 'undefined' && UIControls.removeInventoryItem) {
-        UIControls.removeInventoryItem(index);
+      // Remove from GAMESTATE persistent inventory
+      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.removePersistentInventoryItem === 'function') {
+        GAMESTATE.removePersistentInventoryItem(index);
+      } else {
+        console.error('[CardDisposalSystem] GAMESTATE.removePersistentInventoryItem not available');
       }
 
       // Repopulate inventory to refresh display
