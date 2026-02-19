@@ -536,11 +536,11 @@ To prevent obvious cheating:
 ## 8) Engineer TODO checklist (handoff)
 
 ### UI
-- [ ] Add `/highscore` left-nav button
-  - Location: `public/index.html` - Add button element
-  - Handler: `public/js/ui-controls.js` - Add `case 'highscore'` to `handleButtonClick()`
-- [ ] Create highscore page HTML (`public/highscore.html` or integrate in main page)
-- [ ] Implement 3-tab container (Gone Rogue, Street-Chronicles, EyesOnly Live)
+- [x] Add `score` left-nav button (renamed from `/highscore`)
+  - Location: `public/index.html` - Add button element with `data-action="score"`
+  - Handler: `public/js/ui-controls.js` - Add `case 'score'` to `handleButtonClick()`
+- [x] Create highscore page HTML (`public/highscore/index.html`)
+- [x] Implement 3-tab container (Gone Rogue, Street-Chronicles, EyesOnly Live)
 - [ ] Context-sensitive default tab
   - Read from `GAMESTATE.getState().mode`
   - Persist in `localStorage.getItem('highscore:lastTab')`
