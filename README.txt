@@ -69,6 +69,14 @@ the command terminal. It features:
 - Mobile-optimized touch controls with tap-to-move and card swipe
 - Real-time game loop (10 FPS) with awareness decay
 
+**Performance Notes:**
+- Patrol enemies with view cones each run a sight-cone check (distance pre-filter → LOS
+  raycast) every tick. Floor generation caches the static wall list so it is not
+  re-scanned every 100ms. Light-map recalculation is throttled to every 5 ticks (~500ms).
+- Soft cap: floors with more than 4 simultaneously active patrolling enemies may cause
+  frame-rate stutter on low-end devices. Use STATIONARY or sparse PATROL paths when
+  designing floors beyond floor 10 to stay within budget.
+
 **Combat:**
 - Turn-based STR combat triggered on enemy collision
 - Advantage states: ambush, neutral, disadvantaged, flanked

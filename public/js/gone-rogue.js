@@ -47,6 +47,10 @@ const GoneRogue = (function () {
   var _muzzleFlash = null; // Track muzzle flash {x, y, time}
   var _impactEffects = []; // Track impact effects {x, y, type, time}
 
+  // Performance caches — rebuilt on floor generation, reused every tick
+  var _wallCache = []; // Cached wall positions for LightingSystem (avoids 800-iteration scan per tick)
+  var _lightMapTickCounter = 0; // Throttle full light-map recalc to every 5 ticks (~500ms)
+
   // Game loop state
   var _gameLoopActive = false;
   var _lastTickTime = 0;
@@ -1001,15 +1005,9 @@ const GoneRogue = (function () {
         LightingSystem.setDarknessMultiplier(1.0);
       }
 
-      // Collect wall positions for light blocking
-      var walls = [];
-      for (var y = 0; y < GRID_HEIGHT; y++) {
-        for (var x = 0; x < GRID_WIDTH; x++) {
-          if (_grid[y][x] === TILES.WALL) {
-            walls.push({ x: x, y: y });
-          }
-        }
-      }
+      // Collect wall positions for light blocking and cache them for per-tick use
+      _rebuildWallCache();
+      var walls = _wallCache;
 
       // Generate biome-specific light sources
       LightingSystem.generateBiomeLights(GRID_WIDTH, GRID_HEIGHT, rooms, walls);
@@ -3658,6 +3656,7 @@ const GoneRogue = (function () {
     _gameLoopActive = true;
     _lastTickTime = Date.now();
     _enemyColorCycleTime = 0;
+    _lightMapTickCounter = 0;
     _gameLoopTick();
   }
 
@@ -3811,18 +3810,13 @@ const GoneRogue = (function () {
       // Update enemy lights
       LightingSystem.updateEnemyLights(_enemies);
 
-      // Collect wall positions for light blocking
-      var walls = [];
-      for (var y = 0; y < GRID_HEIGHT; y++) {
-        for (var x = 0; x < GRID_WIDTH; x++) {
-          if (_grid[y][x] === TILES.WALL) {
-            walls.push({ x: x, y: y });
-          }
-        }
+      // Throttle full light-map recalculation to every 5 ticks (~500ms at 10 FPS).
+      // Walls are static per floor — _wallCache is built once in _generateFloor.
+      _lightMapTickCounter++;
+      if (_lightMapTickCounter >= 5) {
+        _lightMapTickCounter = 0;
+        LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, _wallCache);
       }
-
-      // Recalculate light map with animation
-      LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, walls);
     }
 
     // Re-render if using interactive grid
@@ -3999,6 +3993,22 @@ const GoneRogue = (function () {
   }
 
   /**
+   * Rebuild _wallCache from the current grid.
+   * Called once after each floor generation so the game loop doesn't need
+   * to scan all 800 cells every tick to collect wall positions.
+   */
+  function _rebuildWallCache() {
+    _wallCache = [];
+    for (var wy = 0; wy < GRID_HEIGHT; wy++) {
+      for (var wx = 0; wx < GRID_WIDTH; wx++) {
+        if (_grid[wy][wx] === TILES.WALL) {
+          _wallCache.push({ x: wx, y: wy });
+        }
+      }
+    }
+  }
+
+  /**
    * Update player light based on inventory
    */
   function _updatePlayerLight() {
@@ -4038,14 +4048,24 @@ const GoneRogue = (function () {
 
     var dx = _player.x - enemy.x;
     var dy = _player.y - enemy.y;
-    var distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Cheap Manhattan-distance pre-filter: skip all expensive checks when
+    // the player is definitely beyond the maximum possible sight range.
+    // Max base sight range is 8; stealth can halve it but never extends it.
+    var maxPossibleSightRange = (enemy.sightRange || 5) + 1;
+    if (Math.abs(dx) > maxPossibleSightRange || Math.abs(dy) > maxPossibleSightRange) {
+      return false;
+    }
+
+    var distanceSq = dx * dx + dy * dy;
 
     // Sight cone range (modified by player's tile stealth bonus)
     var baseSightRange = enemy.sightRange || 5;
     var stealthBonus = _getPlayerStealthBonus();
     var effectiveSightRange = baseSightRange * (1 - stealthBonus / 100);
 
-    if (distance > effectiveSightRange) return false;
+    // Compare squared distances to avoid Math.sqrt
+    if (distanceSq > effectiveSightRange * effectiveSightRange) return false;
 
     // Check if cover blocks line of sight
     if (_checkLineOfSight(enemy.x, enemy.y, _player.x, _player.y)) {
