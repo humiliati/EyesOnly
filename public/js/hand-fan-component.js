@@ -159,6 +159,9 @@ const HandFanComponent = (function () {
     // Create card element
     var cardEl = document.createElement('div');
     cardEl.className = 'hand-card';
+    
+    // Make card draggable
+    cardEl.draggable = true;
 
     // Apply lifecycle-based transparency
     var lifecycle = _getCardLifecycle(card);
@@ -173,6 +176,21 @@ const HandFanComponent = (function () {
     if (card.quality || card.qualityName) {
       var quality = (card.quality || card.qualityName).toLowerCase().replace(/ /g, '_');
       cardEl.dataset.quality = quality;
+    }
+
+    // === RESOURCE VALIDATION ===
+    // Check if player can afford this card
+    var affordability = _validateCardAffordability(card);
+    if (!affordability.canAfford) {
+      cardEl.classList.add('card-insufficient-resources');
+      cardEl.dataset.unaffordable = 'true';
+      
+      // Store shortage info for tooltip
+      if (affordability.missingResources && affordability.missingResources.length > 0) {
+        var shortageText = _formatResourceShortage(affordability.missingResources);
+        cardEl.dataset.resourceShortage = shortageText;
+        cardEl.title = shortageText; // Basic browser tooltip
+      }
     }
 
     // Card content
@@ -299,15 +317,59 @@ const HandFanComponent = (function () {
    * @param {number} index - Card index
    */
   function _attachCardHandlers(cardEl, card, index) {
-    // Click to select/deselect
+    // Click to select/deselect (only if affordable)
     cardEl.addEventListener('click', function() {
+      // Check if card is unaffordable
+      if (cardEl.dataset.unaffordable === 'true') {
+        // Shake animation for visual feedback
+        cardEl.classList.add('card-shake');
+        setTimeout(function() {
+          cardEl.classList.remove('card-shake');
+        }, 400);
+        
+        // Show MOK interjection with shortage info
+        if (cardEl.dataset.resourceShortage && typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+          UIControls.updateMokInterjection('Cannot play: ' + cardEl.dataset.resourceShortage);
+        }
+        
+        return; // Prevent selection
+      }
+      
       _toggleCardSelection(index);
     });
 
     // Touch handlers
     cardEl.addEventListener('touchend', function(e) {
       e.preventDefault();
+      
+      // Check if card is unaffordable
+      if (cardEl.dataset.unaffordable === 'true') {
+        cardEl.classList.add('card-shake');
+        setTimeout(function() {
+          cardEl.classList.remove('card-shake');
+        }, 400);
+        
+        if (cardEl.dataset.resourceShortage && typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+          UIControls.updateMokInterjection('Cannot play: ' + cardEl.dataset.resourceShortage);
+        }
+        
+        return;
+      }
+      
       _toggleCardSelection(index);
+    });
+
+    // Drag handlers for disposal system
+    cardEl.addEventListener('dragstart', function(e) {
+      if (typeof CardDisposalSystem !== 'undefined') {
+        CardDisposalSystem.handleDragStart(cardEl, card, index);
+      }
+    });
+
+    cardEl.addEventListener('dragend', function(e) {
+      if (typeof CardDisposalSystem !== 'undefined') {
+        CardDisposalSystem.handleDragEnd();
+      }
     });
 
     // Long-press for tooltip
@@ -500,6 +562,47 @@ const HandFanComponent = (function () {
     _renderCards();
   }
 
+  /**
+   * Validate if player can afford a card
+   * @param {Object} card - Card data
+   * @returns {Object} {canAfford: boolean, missingResources: Array}
+   */
+  function _validateCardAffordability(card) {
+    // Check if ResourceManager is available
+    if (typeof ResourceManager === 'undefined') {
+      // No resource manager, assume all cards are affordable
+      return { canAfford: true, missingResources: [] };
+    }
+
+    // Use ResourceManager to check affordability
+    return ResourceManager.canAffordCard(card);
+  }
+
+  /**
+   * Format resource shortage for display
+   * @param {Array} missingResources - Array of missing resource objects
+   * @returns {string} Formatted shortage message
+   */
+  function _formatResourceShortage(missingResources) {
+    if (!missingResources || missingResources.length === 0) {
+      return '';
+    }
+
+    var parts = missingResources.map(function(r) {
+      var resourceName = r.resource.charAt(0).toUpperCase() + r.resource.slice(1);
+      return resourceName + ' (' + r.current + '/' + r.needed + ')';
+    });
+
+    return 'Insufficient ' + parts.join(', ');
+  }
+
+  /**
+   * Refresh card affordability (call when resources change)
+   */
+  function refreshAffordability() {
+    _renderCards();
+  }
+
   // Public API
   return {
     init: init,
@@ -510,7 +613,8 @@ const HandFanComponent = (function () {
     playSelectedCards: playSelectedCards,
     repopulateCards: repopulateCards,
     getSelectedCards: getSelectedCards,
-    clearSelection: clearSelection
+    clearSelection: clearSelection,
+    refreshAffordability: refreshAffordability
   };
 })();
 

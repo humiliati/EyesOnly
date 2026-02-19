@@ -17,12 +17,15 @@ const GAMESTATE = (function () {
     mode: MODES.STREET,
     submode: null,
     inventoryPersistent: [],      // 9-12 slots (safe across death)
-    inventoryLoose: [],            // 8 slots (lost on death)
-    actionButtonCards: [],         // 4 slots - separate from loose inventory for Gone Rogue mode
+    inventoryLoose: [],            // 8 slots (lost on death) - LEGACY, being phased out for card system
+    actionButtonCards: [],         // 4 slots - cards available to draw from (reserve/deck)
+    cardHand: [],                  // Cards in play hand (drawn for immediate use)
     persistentSlots: 9,            // Start at 9, expand to 12
     maxPersistentSlots: 12,
-    looseSlots: 8,
-    actionButtonSlots: 4,          // Fixed at 4 for Gone Rogue mode
+    looseSlots: 8,                 // LEGACY - for non-card items
+    actionButtonSlots: 4,          // Fixed at 4 for Gone Rogue mode (reserve)
+    maxHandSize: 5,                // Maximum cards in play hand
+    cardDrawPerTurn: 1,            // Base card draw per STR combat turn (can be modified by items)
     cryptos: 0,                    // Currency (¢) - persistent across death
     rogueRun: null,
     activeItemSlot: null,          // Active item slot (for lighting items, etc.)
@@ -320,8 +323,115 @@ const GAMESTATE = (function () {
 
     return {
       success: true,
+      location: 'action_buttons',
       message: 'Card added to action buttons: ' + card.name
     };
+  }
+
+  /**
+   * Add card to hand (play area) - NEW LOOT FLOW
+   * Cards go to hand first, then overflow to action buttons
+   * @param {Object} card - Card object to add
+   */
+  function addToHand(card) {
+    var maxHand = _state.maxHandSize || 5;
+
+    if (_state.cardHand.length >= maxHand) {
+      // Hand is full, try action buttons
+      return addToActionButtons(card);
+    }
+
+    _state.cardHand.push(card);
+    _saveState();
+
+    return {
+      success: true,
+      location: 'hand',
+      message: 'Card added to hand: ' + card.name
+    };
+  }
+
+  /**
+   * Add card following proper loot flow priority
+   * 1. Try hand first
+   * 2. If hand full, go to action buttons
+   * 3. If both full, return failure
+   * @param {Object} card - Card object to add
+   */
+  function addCard(card) {
+    // Try hand first
+    var handResult = addToHand(card);
+    if (handResult.success) {
+      return handResult;
+    }
+
+    // Hand was full, addToHand already tried action buttons
+    return handResult;
+  }
+
+  /**
+   * Draw card from action buttons to hand (STR combat turn)
+   * @param {number} count - Number of cards to draw (default: cardDrawPerTurn)
+   */
+  function drawCardsToHand(count) {
+    count = count || _state.cardDrawPerTurn || 1;
+    var drawn = [];
+    var maxHand = _state.maxHandSize || 5;
+
+    for (var i = 0; i < count; i++) {
+      // Check if hand is full
+      if (_state.cardHand.length >= maxHand) {
+        break;
+      }
+
+      // Check if action buttons have cards
+      if (_state.actionButtonCards.length === 0) {
+        break;
+      }
+
+      // Draw first card from action buttons
+      var card = _state.actionButtonCards.shift();
+      _state.cardHand.push(card);
+      drawn.push(card);
+    }
+
+    _saveState();
+
+    return {
+      success: drawn.length > 0,
+      drawn: drawn,
+      count: drawn.length,
+      message: drawn.length + ' card(s) drawn to hand'
+    };
+  }
+
+  /**
+   * Get card hand
+   */
+  function getCardHand() {
+    return _state.cardHand.slice(); // Return copy
+  }
+
+  /**
+   * Get action button cards
+   */
+  function getActionButtonCards() {
+    return _state.actionButtonCards.slice(); // Return copy
+  }
+
+  /**
+   * Set card draw per turn rate (modified by items)
+   */
+  function setCardDrawRate(rate) {
+    _state.cardDrawPerTurn = Math.max(1, rate);
+    _saveState();
+  }
+
+  /**
+   * Get current card draw rate
+   */
+  function getCardDrawRate() {
+    return _state.cardDrawPerTurn || 1;
   }
 
   /**
@@ -982,6 +1092,13 @@ const GAMESTATE = (function () {
     clearLooseInventory: clearLooseInventory,
     getPersistentInventory: getPersistentInventory,
     getLooseInventory: getLooseInventory,
+    // Card system - NEW LOOT FLOW
+    addCard: addCard,              // Main entry point for card loot
+    addToHand: addToHand,          // Add to play hand
+    getCardHand: getCardHand,
+    drawCardsToHand: drawCardsToHand,  // Draw from action buttons to hand
+    setCardDrawRate: setCardDrawRate,
+    getCardDrawRate: getCardDrawRate,
     // Action button cards management (Gone Rogue mode)
     addToActionButtons: addToActionButtons,
     removeFromActionButtons: removeFromActionButtons,

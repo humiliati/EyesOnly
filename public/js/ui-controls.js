@@ -532,7 +532,8 @@
         name: item.name || 'Unknown Item',
         description: item.description || 'No description',
         context: 'both',  // Persistent items are available in both contexts
-        type: item.type || 'item'
+        type: item.type || 'item',
+        lifecycle: item.lifecycle || 'disposable'  // Items are disposable by default
       };
     });
 
@@ -548,7 +549,8 @@
         emoji: getEmojiForStreetItem(itemName),
         name: itemName,
         description: 'Found in street-chronicles',
-        context: 'street'
+        context: 'street',
+        lifecycle: 'disposable'  // Street items are disposable
       };
     });
 
@@ -559,6 +561,11 @@
     allItems.forEach(function (item, index) {
       var itemEl = document.createElement('button');
       itemEl.className = 'inventory-item';
+
+      // Make item draggable for disposal
+      itemEl.draggable = true;
+      itemEl.dataset.itemData = JSON.stringify(item);
+      itemEl.dataset.itemIndex = index;
 
       // Add context-specific class for color coding
       if (item.context === 'live') {
@@ -573,9 +580,25 @@
       itemEl.setAttribute('data-index', index);
       itemEl.setAttribute('type', 'button');
       itemEl.setAttribute('aria-label', item.name);
+      
+      // Click handler for selection
       itemEl.addEventListener('click', function () {
         selectInventoryItem(index, allItems);
       });
+
+      // Drag handlers for disposal
+      itemEl.addEventListener('dragstart', function(e) {
+        if (typeof CardDisposalSystem !== 'undefined') {
+          CardDisposalSystem.handleDragStart(itemEl, item, index, 'inventory');
+        }
+      });
+
+      itemEl.addEventListener('dragend', function(e) {
+        if (typeof CardDisposalSystem !== 'undefined') {
+          CardDisposalSystem.handleDragEnd();
+        }
+      });
+
       container.appendChild(itemEl);
     });
 
@@ -951,16 +974,45 @@
       submitBtn.textContent = 'AUTHENTICATING...';
     }
 
+    // Animation delay to allow smooth overlay close
+    var OVERLAY_CLOSE_ANIMATION_DELAY = 150; // ms
+
     // Check if using test account via LoginShell
+    // Note: test accounts 'user' and 'admin' use the LoginShell system (terminal-within-terminal)
+    // This is separate from the real UserAccount authentication system
     if (typeof LoginShell !== 'undefined' && (username === 'user' || username === 'admin')) {
-      // Use LoginShell for test accounts (backwards compatible)
+      // Close overlay first
       toggleLoginOverlay();
+      
+      // Show message in terminal that we're entering LoginShell mode
+      printToTerminal([
+        '',
+        'TEST ACCOUNT DETECTED: ' + username.toUpperCase(),
+        'Entering LoginShell subsystem...',
+        'This is a demo authentication system.',
+        ''
+      ]);
+      
+      // Start the LoginShell subsystem (terminal-within-terminal)
       if (typeof LoginShell.start === 'function') {
-        var result = LoginShell.start();
-        if (result && result.lines) {
-          printToTerminal(result.lines);
-        }
+        // Delay to let overlay close animation complete
+        setTimeout(function() {
+          var result = LoginShell.start();
+          if (result && result.lines) {
+            result.lines.forEach(function(line) {
+              if (typeof Terminal !== 'undefined' && Terminal.writeLine) {
+                Terminal.writeLine(line, 'system-msg');
+              }
+            });
+          }
+          // Update prompt if needed
+          if (result && result.prompt && typeof Terminal !== 'undefined' && Terminal.showInput) {
+            Terminal.showInput(result.prompt);
+          }
+        }, OVERLAY_CLOSE_ANIMATION_DELAY);
       }
+      
+      // Re-enable button
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.textContent = 'LOGIN';
@@ -1213,13 +1265,60 @@
    * Update currency display in header
    * @param {number} amount - Current crypto balance
    */
+  /**
+   * Update currency display with animated ticker effect
+   * @param {number} amount - New currency amount
+   */
   function updateCurrencyDisplay(amount) {
     var currencyValueEl = document.getElementById('currency-value');
-    if (currencyValueEl) {
-      // Format with leading zeros (8 digits)
-      var formatted = String(amount || 0).padStart(8, '0');
+    if (!currencyValueEl) return;
+
+    // Get current displayed value
+    var currentText = currencyValueEl.textContent || '00000000';
+    var currentValue = parseInt(currentText, 10) || 0;
+    var targetValue = amount || 0;
+
+    // If no change, just update without animation
+    if (currentValue === targetValue) {
+      var formatted = String(targetValue).padStart(8, '0');
       currencyValueEl.textContent = formatted;
+      return;
     }
+
+    // Animate from current to target value (ticker/slot machine effect)
+    var duration = 600; // 600ms animation
+    var startTime = Date.now();
+    var difference = targetValue - currentValue;
+
+    // Add ticker animation class for CSS effects
+    currencyValueEl.classList.add('currency-ticker-active');
+
+    function animateTicker() {
+      var elapsed = Date.now() - startTime;
+      var progress = Math.min(elapsed / duration, 1);
+      
+      // Easing function for smooth deceleration
+      var eased = 1 - Math.pow(1 - progress, 3); // Cubic ease-out
+      
+      var currentDisplayValue = Math.round(currentValue + (difference * eased));
+      var formatted = String(currentDisplayValue).padStart(8, '0');
+      currencyValueEl.textContent = formatted;
+
+      if (progress < 1) {
+        requestAnimationFrame(animateTicker);
+      } else {
+        // Ensure final value is exact
+        var finalFormatted = String(targetValue).padStart(8, '0');
+        currencyValueEl.textContent = finalFormatted;
+        
+        // Remove animation class after a brief moment
+        setTimeout(function() {
+          currencyValueEl.classList.remove('currency-ticker-active');
+        }, 100);
+      }
+    }
+
+    animateTicker();
   }
 
   // Expose API for other modules
@@ -1230,6 +1329,7 @@
       }
     },
     updateCurrency: updateCurrencyDisplay,
+    updateMokInterjection: updateMokInterjection,
     enableKernelButton: enableKernelButton,
     disableKernelButton: disableKernelButton
   };

@@ -8,6 +8,7 @@ const ReserveSlots = (function () {
 
   var _actionButtonCards = []; // Array of up to 4 card objects in action buttons
   var _maxActionButtonSlots = 4; // Default capacity (can be increased by equipment)
+  var _maxVisibleSlots = 4; // Maximum slots to show at once (before cycling needed)
   var _cycleOffset = 0; // Current pagination offset for card cycling
   var _slotsContainer = null;
   var _longPressTimer = null;
@@ -165,21 +166,26 @@ const ReserveSlots = (function () {
   }
 
   /**
-   * Cycle to next set of cards (for sort button)
+   * Cycle to next set of cards
+   * Advances the offset by 1 to show the next card in rotation
    */
   function cycleCards() {
-    var maxSlots = _getMaxSlots();
-    if (_actionButtonCards.length > maxSlots) {
+    if (_actionButtonCards.length > _maxVisibleSlots) {
       _cycleOffset = (_cycleOffset + 1) % _actionButtonCards.length;
       render();
     }
   }
 
   /**
-   * Render reserve slots - creates 6 buttons total
-   * Button 1: back
-   * Button 2: sort (cycle cards)
-   * Buttons 3-6: 4 card slots
+   * Render reserve slots with natural collapsing behavior
+   * Shows:
+   * - Back button (always)
+   * - Cycle button (only if > _maxVisibleSlots cards)
+   * - Up to _maxVisibleSlots card slots (4 by default)
+   * 
+   * Total buttons shown: 2-6 depending on card count
+   * - With 0-4 cards: back + 0-4 slots = 1-5 buttons
+   * - With > 4 cards: back + cycle + 4 slots = 6 buttons
    */
   function render() {
     if (!_slotsContainer) return;
@@ -196,9 +202,11 @@ const ReserveSlots = (function () {
       btn.style.display = 'none';
     });
 
-    // Create 6 buttons for Gone Rogue mode
+    var maxSlots = _getMaxSlots();
+    var totalCards = _actionButtonCards.length;
+    var needsCycling = totalCards > _maxVisibleSlots;
 
-    // Button 1: Back
+    // Button 1: Back (always shown)
     var backBtn = document.createElement('button');
     backBtn.type = 'button';
     backBtn.className = 'control-button gone-rogue-btn';
@@ -209,21 +217,23 @@ const ReserveSlots = (function () {
     });
     _slotsContainer.appendChild(backBtn);
 
-    // Button 2: Sort/Cycle
-    var sortBtn = document.createElement('button');
-    sortBtn.type = 'button';
-    sortBtn.className = 'control-button gone-rogue-btn sort-btn';
-    sortBtn.dataset.action = 'sort';
-    sortBtn.innerHTML = '↑↓'; // Two arrows
-    sortBtn.title = 'Cycle cards';
-    sortBtn.addEventListener('click', function() {
-      cycleCards();
-    });
-    _slotsContainer.appendChild(sortBtn);
+    // Button 2: Cycle (only shown if > _maxVisibleSlots cards)
+    if (needsCycling) {
+      var cycleBtn = document.createElement('button');
+      cycleBtn.type = 'button';
+      cycleBtn.className = 'control-button gone-rogue-btn cycle-btn';
+      cycleBtn.dataset.action = 'cycle';
+      cycleBtn.innerHTML = '↑↓'; // Double arrows
+      cycleBtn.title = 'Cycle cards (' + totalCards + ' total)';
+      cycleBtn.addEventListener('click', function() {
+        cycleCards();
+      });
+      _slotsContainer.appendChild(cycleBtn);
+    }
 
-    // Buttons 3-N: Card slots (dynamic based on equipment)
-    var maxSlots = _getMaxSlots();
-    for (var i = 0; i < maxSlots; i++) {
+    // Buttons 3-N: Card slots (show up to _maxVisibleSlots)
+    var slotsToShow = Math.min(_maxVisibleSlots, totalCards, maxSlots);
+    for (var i = 0; i < slotsToShow; i++) {
       var slotBtn = _createCardSlotButton(i);
       _slotsContainer.appendChild(slotBtn);
     }
@@ -234,7 +244,7 @@ const ReserveSlots = (function () {
 
   /**
    * Create a card slot button
-   * @param {number} slotIndex - Index of the slot (0-N)
+   * @param {number} slotIndex - Index of the visible slot (0 to _maxVisibleSlots-1)
    * @returns {HTMLElement} Button element
    */
   function _createCardSlotButton(slotIndex) {
@@ -244,9 +254,12 @@ const ReserveSlots = (function () {
     btn.dataset.slotIndex = slotIndex;
 
     // Calculate which card to show based on cycle offset
-    var maxSlots = _getMaxSlots();
-    var cardIndex = (_cycleOffset + slotIndex) % Math.max(_actionButtonCards.length, maxSlots);
-    var card = _actionButtonCards[cardIndex];
+    // With cycling, we rotate through all cards
+    // Guard against empty array to prevent NaN from modulo operation
+    var cardIndex = _actionButtonCards.length > 0 
+      ? (_cycleOffset + slotIndex) % _actionButtonCards.length 
+      : -1;
+    var card = cardIndex >= 0 ? _actionButtonCards[cardIndex] : null;
 
     if (card) {
       // Card exists - show emoji and abbreviated name
@@ -286,8 +299,11 @@ const ReserveSlots = (function () {
         _hideCardTooltip();
       });
     } else {
-      // Empty slot
+      // Empty slot - this can occur during initialization or if render is called
+      // before cards are loaded. The empty-slot class can be used for custom styling
+      // if needed (e.g., different appearance for truly empty vs uninitialized slots)
       btn.innerHTML = '<span class="card-empty">·</span>';
+      btn.classList.add('empty-slot');
       btn.disabled = true;
     }
 
@@ -419,6 +435,7 @@ const ReserveSlots = (function () {
     show: show,
     hide: hide,
     setActionButtonCards: setActionButtonCards,
+    setReserveCards: setActionButtonCards, // Alias for backward compatibility
     addCard: addCard,
     removeCard: removeCard,
     getCards: getCards,

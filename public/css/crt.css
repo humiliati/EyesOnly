@@ -568,6 +568,32 @@ html, body {
   letter-spacing: 0.02em;
 }
 
+/* Currency ticker animation - subtle slot machine effect */
+.currency-ticker-active {
+  animation: currency-ticker-pulse 0.6s ease-out;
+}
+
+@keyframes currency-ticker-pulse {
+  0% {
+    color: var(--phosphor);
+    text-shadow: 0 0 4px var(--phosphor-glow);
+  }
+  20% {
+    color: var(--phosphor-bright);
+    text-shadow: 0 0 8px rgba(51, 255, 51, 0.4);
+    transform: translateY(-1px);
+  }
+  40% {
+    color: var(--phosphor-bright);
+    text-shadow: 0 0 6px rgba(51, 255, 51, 0.3);
+  }
+  100% {
+    color: var(--phosphor);
+    text-shadow: 0 0 4px var(--phosphor-glow);
+    transform: translateY(0);
+  }
+}
+
 .header-chip {
   border: 1px solid var(--panel-border);
   padding: 4px 8px;
@@ -1416,11 +1442,14 @@ body.amber-mode #scanlines::after {
    Transform left column buttons into card management interface
    ============================================================ */
 
-/* Reserve card slots - desktop and mobile */
+/* Reserve card slots - maintain natural grid behavior for collapsing
+   against debrief feed, just like in normal mode */
 body.mode-gone-rogue .control-buttons,
 body.in-gone-rogue .control-buttons {
-  display: flex;
-  flex-direction: column;
+  /* Keep the default grid display from line 220-224 */
+  /* This allows natural collapsing behavior against debrief feed */
+  display: grid;
+  grid-auto-rows: minmax(32px, 1fr);
   gap: 8px;
 }
 
@@ -2098,4 +2127,513 @@ body.in-gone-rogue #log-column {
 .reserve-card-tooltip-stat span:last-child {
   color: var(--phosphor-bright);
   font-weight: bold;
+}
+
+/* ============================================================
+   CARD RESOURCE VALIDATION AND DISPOSAL SYSTEM
+   ============================================================ */
+
+/* Grey-out state for cards with insufficient resources */
+.card-insufficient-resources {
+  opacity: 0.4;
+  filter: grayscale(0.8);
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+
+.card-insufficient-resources::after {
+  content: '🚫';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+  opacity: 0.6;
+}
+
+/* Shake animation for invalid actions */
+@keyframes card-shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+.card-shake {
+  animation: card-shake 0.4s ease-out;
+}
+
+/* Incinerator animation for card disposal */
+@keyframes incinerator-flash {
+  0% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+  10% {
+    background-color: rgba(255, 165, 0, 0.8);
+    box-shadow: 0 0 20px rgba(255, 165, 0, 0.6);
+  }
+  30% {
+    background-color: rgba(255, 69, 0, 0.9);
+    box-shadow: 0 0 30px rgba(255, 69, 0, 0.8);
+  }
+  60% {
+    background-color: rgba(139, 0, 0, 0.6);
+    box-shadow: 0 0 15px rgba(139, 0, 0, 0.5);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+@keyframes burn-away {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+.incinerator-active {
+  animation: incinerator-flash 0.4s ease-out forwards;
+  position: relative;
+}
+
+.incinerator-active::after {
+  content: '♻️';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 32px;
+  animation: burn-away 0.3s ease-out 0.2s forwards;
+  pointer-events: none;
+}
+
+/* Intensity variants */
+.incinerator-single {
+  filter: brightness(1.2);
+}
+
+.incinerator-combat {
+  filter: brightness(1.4);
+}
+
+.incinerator-batch {
+  filter: brightness(1.6);
+  animation-duration: 0.6s;
+}
+
+/* Drag preview for disposal */
+.drag-preview-recycling {
+  opacity: 0.7;
+  transform: scale(0.8);
+  filter: brightness(1.2);
+}
+
+.drag-preview-recycling::after {
+  content: '♻️';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 48px;
+}
+
+/* ============================================================
+   DEBRIEF FEED RESOURCE DISPLAY
+   ============================================================ */
+
+.debrief-feed-resources {
+  font-family: 'Courier New', monospace;
+  font-size: 0.85em;
+  line-height: 1.6;
+  padding: 8px;
+}
+
+.resource-section {
+  margin-bottom: 8px;
+}
+
+.resource-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+.resource-icon {
+  font-size: 1.2em;
+  width: 20px;
+  text-align: center;
+}
+
+.resource-name {
+  color: var(--phosphor-dim);
+  min-width: 60px;
+  font-size: 0.9em;
+}
+
+.resource-bar-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  font-family: monospace;
+  letter-spacing: 0.05em;
+}
+
+.resource-bar-filled {
+  color: var(--phosphor);
+  text-shadow: 0 0 4px var(--phosphor-glow);
+}
+
+.resource-value {
+  color: var(--phosphor-bright);
+  margin-left: 6px;
+  font-weight: bold;
+  min-width: 45px;
+  text-align: right;
+}
+
+.resource-divider {
+  height: 1px;
+  background: var(--panel-border-soft);
+  margin: 6px 0;
+}
+
+/* Cycle button for secondary resources */
+.resource-cycle-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 8px;
+  margin: 6px 0;
+  background: rgba(8, 20, 12, 0.5);
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 4px;
+  color: var(--phosphor-dim);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.85em;
+}
+
+.resource-cycle-button:hover {
+  background: rgba(14, 30, 18, 0.7);
+  border-color: var(--phosphor);
+  color: var(--phosphor-bright);
+}
+
+.cycle-icon {
+  font-weight: bold;
+}
+
+/* Debrief feed states */
+.debrief-feed.minimized {
+  flex: 0 0 auto;
+  max-height: 100px;
+  overflow: hidden;
+}
+
+.debrief-feed.expanded {
+  flex: 1 1 auto;
+  min-height: 200px;
+}
+
+/* Status effects display */
+.status-effects-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.status-effect {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  background: rgba(8, 20, 12, 0.6);
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 3px;
+  font-size: 0.85em;
+}
+
+.status-effect.buff {
+  border-color: rgba(0, 255, 0, 0.3);
+  color: var(--phosphor-bright);
+}
+
+.status-effect.debuff {
+  border-color: rgba(255, 0, 0, 0.3);
+  color: #ff6b6b;
+}
+
+.effect-icon {
+  font-size: 1.1em;
+}
+
+.effect-duration {
+  color: var(--phosphor-dim);
+  margin-left: 2px;
+  font-size: 0.9em;
+}
+
+.stack-count {
+  color: var(--phosphor-bright);
+  font-weight: bold;
+  margin-left: 2px;
+}
+
+/* ============================================================
+   DRAG-TO-DEBRIEF DISPOSAL SYSTEM
+   ============================================================ */
+
+/* Dragging state for cards */
+.card-dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+/* Debrief feed as drop target */
+.debrief-drop-target {
+  background: rgba(255, 165, 0, 0.2);
+  box-shadow: 0 0 20px rgba(255, 165, 0, 0.4);
+  outline: 2px dashed rgba(255, 165, 0, 0.6);
+  outline-offset: 4px;
+}
+
+/* Drag preview with recycling icon already defined above */
+/* See .drag-preview-recycling class */
+
+/* Draggable cursor */
+.hand-card[draggable="true"] {
+  cursor: grab;
+}
+
+.hand-card[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* ============================================================
+   MOK AI INTERFACE SYSTEM
+   ============================================================ */
+
+/* MOK Visual Container */
+.mok-visual-container {
+  width: 100%;
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Pentagram Wrapper - Creates "zoomed in" effect */
+.mok-pentagram-wrapper {
+  position: relative;
+  width: 300px;
+  height: 300px;
+  transform: scale(1.8);
+  overflow: hidden;
+}
+
+/* MOK Pentagram Structure */
+.mok-pentagram {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Interior Triangle - LED Glow Area */
+.mok-triangle-glow {
+  font-size: 120px;
+  line-height: 1;
+  color: var(--mok-primary-glow, #00FF88);
+  text-shadow:
+    0 0 10px var(--mok-primary-glow, #00FF88),
+    0 0 20px var(--mok-secondary-glow, #00CC66),
+    0 0 30px var(--mok-secondary-glow, #00CC66),
+    0 0 40px var(--mok-primary-glow, #00FF88);
+  filter: drop-shadow(0 0 15px var(--mok-primary-glow, #00FF88));
+  transition: all 0.3s ease-out;
+  animation: mok-pulse-idle 4s ease-in-out infinite;
+}
+
+/* Glow State Animations */
+@keyframes mok-pulse-idle {
+  0%, 100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes mok-pulse-talking {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(0.98);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes mok-pulse-warning {
+  0%, 100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes mok-pulse-error {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Glow State Classes */
+.glow-talking {
+  animation: mok-pulse-talking 0.5s ease-in-out infinite;
+}
+
+.glow-processing {
+  animation: mok-pulse-idle 2s ease-in-out infinite;
+}
+
+.glow-warning {
+  animation: mok-pulse-warning 1s ease-in-out infinite;
+}
+
+.glow-error {
+  animation: mok-pulse-error 0.3s ease-in-out infinite;
+}
+
+.glow-sleep {
+  animation: mok-pulse-idle 8s ease-in-out infinite;
+  opacity: 0.4;
+}
+
+/* MOK Interjection Area */
+.mok-interjection {
+  padding: 8px 12px;
+  text-align: center;
+  color: var(--phosphor);
+  font-size: 0.9em;
+  min-height: 30px;
+  line-height: 1.4;
+}
+
+/* Kernel API Status */
+.kernel-api-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--panel-border-soft);
+  margin: 8px 0;
+  font-size: 0.85em;
+}
+
+.kernel-icon {
+  font-size: 1.2em;
+}
+
+.kernel-text {
+  color: var(--phosphor);
+}
+
+/* Debrief Display Containers */
+.debrief-mok-display,
+.debrief-resources-display,
+.debrief-video-display {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Debrief Cycle Button */
+.debrief-cycle-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--panel-border);
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: auto;
+  font-size: 0.9em;
+}
+
+.debrief-cycle-button:hover {
+  background: rgba(51, 255, 51, 0.1);
+  border-color: var(--phosphor);
+}
+
+.debrief-cycle-button .cycle-icon {
+  color: var(--phosphor-bright);
+  font-size: 1.1em;
+}
+
+.debrief-cycle-button .cycle-text {
+  color: var(--phosphor);
+}
+
+/* Resources Content Area */
+#debrief-resources-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Video Player Container */
+.video-player-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.8);
+  color: var(--phosphor);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .mok-pentagram-wrapper {
+    width: 200px;
+    height: 200px;
+    transform: scale(1.5);
+  }
+
+  .mok-triangle-glow {
+    font-size: 80px;
+  }
+
+  .kernel-api-status {
+    font-size: 0.75em;
+  }
+
+  .mok-interjection {
+    font-size: 0.8em;
+  }
 }

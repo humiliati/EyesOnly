@@ -25,6 +25,8 @@
   transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
   overflow: hidden; /* Prevent grid from extending beyond container */
   box-sizing: border-box;
+  position: relative; /* Ensure proper positioning context */
+  z-index: 10; /* Prioritize grid over other terminal content */
 }
 
 /* Combat Zoom Effect - Desktop & Mobile */
@@ -69,6 +71,21 @@
   color: #000;
   font-weight: bold;
   animation: pulse-player 1s infinite;
+}
+
+/* Player collecting currency animation - subtle bobbing */
+.cell-player.currency-collecting {
+  animation: player-currency-bob 0.6s ease-out, pulse-player 1s infinite;
+}
+
+@keyframes player-currency-bob {
+  0% { transform: translateY(0) scale(1); }
+  15% { transform: translateY(-3px) scale(1.05); }
+  30% { transform: translateY(-2px) scale(1.04); }
+  45% { transform: translateY(-3px) scale(1.05); }
+  60% { transform: translateY(-1px) scale(1.02); }
+  75% { transform: translateY(-2px) scale(1.03); }
+  100% { transform: translateY(0) scale(1); }
 }
 
 @keyframes pulse-player {
@@ -1428,3 +1445,57 @@
   }
 }
 
+
+/* ============================================================
+   MOBILE PORTRAIT MODE - PRIORITIZE ROGUE GRID
+   Ensure the Gone Rogue grid appears at the top of the terminal
+   area in portrait mode for better mobile UX
+   ============================================================ */
+@media (max-width: 767px) and (orientation: portrait) {
+  /* When in Gone Rogue mode on mobile portrait, position grid at top */
+  body.mode-gone-rogue .log-frame,
+  body.in-gone-rogue .log-frame {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Terminal output should scroll below the grid */
+  body.mode-gone-rogue #terminal,
+  body.in-gone-rogue #terminal {
+    order: 2; /* Terminal content appears after grid */
+    flex-shrink: 1; /* Allow terminal to shrink */
+    overflow-y: visible; /* Let parent handle scroll */
+  }
+
+  /* Rogue grid should be at top with sticky positioning */
+  body.mode-gone-rogue .rogue-grid-mobile,
+  body.in-gone-rogue .rogue-grid-mobile {
+    order: 1; /* Grid appears first */
+    flex-shrink: 0; /* Don't shrink the grid */
+    margin-bottom: 8px; /* Space between grid and terminal */
+    position: sticky; /* Stick to top when scrolling */
+    top: 0;
+    background: #0a0a0a; /* Ensure it has a background when sticky */
+    /* z-index not needed - flexbox order handles layout */
+  }
+
+  /* Rogue cards should also be prioritized */
+  body.mode-gone-rogue .rogue-cards-mobile,
+  body.in-gone-rogue .rogue-cards-mobile {
+    order: 0; /* Cards appear before grid */
+    flex-shrink: 0;
+    margin-bottom: 4px;
+    /* Don't use sticky on cards to avoid overlap with grid */
+    position: relative;
+    background: #0a0a0a;
+    /* z-index not needed - flexbox order handles layout */
+  }
+
+  /* Ensure input line appears at bottom if shown */
+  body.mode-gone-rogue #input-line,
+  body.in-gone-rogue #input-line {
+    order: 3;
+  }
+}

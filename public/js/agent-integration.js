@@ -652,6 +652,19 @@ const AgentIntegration = (function() {
   }
 
   /**
+   * Set MOK expression (API hook for agents)
+   * @param {string} expression - Expression name (idle, talking, warning, happy, error, etc.)
+   * @param {Object} options - Optional color and timing overrides
+   */
+  function setMOKExpression(expression, options) {
+    if (typeof DebriefFeedController === 'undefined' || !DebriefFeedController.setMOKExpression) {
+      return;
+    }
+    
+    DebriefFeedController.setMOKExpression(expression, options);
+  }
+
+  /**
    * Logging helper
    */
   function log(message) {
@@ -688,7 +701,8 @@ const AgentIntegration = (function() {
     togglePause: togglePause,
     isActive: isActive,
     getMode: getMode,
-    getReport: getReport
+    getReport: getReport,
+    setMOKExpression: setMOKExpression
   };
 })();
 

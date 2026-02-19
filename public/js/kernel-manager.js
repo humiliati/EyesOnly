@@ -386,6 +386,7 @@ const KernelManager = (function () {
       btn.classList.remove('connected');
       btn.classList.remove('active-run');
       return;
+      _syncMOKToKernelButton();
     }
 
     btn.disabled = false;
@@ -395,6 +396,7 @@ const KernelManager = (function () {
       btn.textContent = 'connecting...';
       btn.classList.remove('connected');
       btn.classList.remove('active-run');
+      _syncMOKToKernelButton();
       return;
     }
 
@@ -403,6 +405,7 @@ const KernelManager = (function () {
       btn.textContent = 'connected: ' + name;
       btn.classList.add('connected');
       btn.classList.remove('active-run');
+      _syncMOKToKernelButton();
       return;
     }
 
@@ -411,16 +414,19 @@ const KernelManager = (function () {
       btn.textContent = name + ' ';
       btn.classList.add('connected');
       btn.classList.add('active-run');
+      _syncMOKToKernelButton();
       return;
     }
 
     if (_state === STATES.DISMISSING) {
       btn.textContent = 'dismissing...';
+      _syncMOKToKernelButton();
       btn.classList.remove('active-run');
       return;
     }
 
     // DISCONNECTED / ERROR
+    _syncMOKToKernelButton();
     btn.textContent = 'kernel';
     btn.classList.remove('connected');
     btn.classList.remove('active-run');
@@ -551,6 +557,67 @@ const KernelManager = (function () {
     }
   }
 
+  /**
+   * Sync MOK triangle color to kernel button status color
+   */
+  function _syncMOKToKernelButton() {
+    // Check if MOK visual engine is available
+    if (typeof MOKVisualEngine === 'undefined' || !MOKVisualEngine.setCustomGlowColors) {
+      return;
+    }
+
+    const btn = document.querySelector('button[data-action="kernel"]');
+    if (!btn) return;
+
+    // Map kernel state to MOK colors
+    let primaryColor = null;
+    let secondaryColor = null;
+    let pulseSpeed = null;
+
+    if (_state === STATES.CONNECTED) {
+      // Connected: Use green tones
+      primaryColor = '#00FF88';  // Bright green
+      secondaryColor = '#00CC66'; // Mid green
+      pulseSpeed = 3000;
+    } else if (_state === STATES.ACTIVE_RUN) {
+      // Active run: Bright cyan/green
+      primaryColor = '#00FFCC';  // Cyan-green
+      secondaryColor = '#00FFAA'; // Bright green
+      pulseSpeed = 1000;  // Faster pulse
+    } else if (_state === STATES.ERROR) {
+      // Error: Red tones
+      primaryColor = '#FF4444';
+      secondaryColor = '#CC0000';
+      pulseSpeed = 500;  // Rapid pulse
+    } else if (_state === STATES.CONNECTING) {
+      // Connecting: Yellow/orange
+      primaryColor = '#FFCC00';
+      secondaryColor = '#FF8800';
+      pulseSpeed = 2000;
+    } else {
+      // Disconnected: Use default (don't override)
+      return;
+    }
+
+    // Apply colors to MOK
+    MOKVisualEngine.setCustomGlowColors(primaryColor, secondaryColor, pulseSpeed);
+  }
+
+  /**
+   * Get kernel button color (for external use)
+   */
+  function getKernelButtonColor() {
+    const btn = document.querySelector('button[data-action="kernel"]');
+    if (!btn) return null;
+
+    const computedStyle = window.getComputedStyle(btn);
+    return {
+      color: computedStyle.color,
+      backgroundColor: computedStyle.backgroundColor,
+      state: _state
+    };
+  }
+
   return {
     STATES,
     init,
@@ -561,7 +628,8 @@ const KernelManager = (function () {
     connect,
     disconnect,
     run,
-    syncButton: _syncButton
+    syncButton: _syncButton,
+    getKernelButtonColor: getKernelButtonColor
   };
 })();
 
