@@ -81,6 +81,7 @@ const GoneRogue = (function () {
   var _ventUseCount = 0; // Total vents used this run (affects success rate)
   var _penaltyFloors = []; // Floors marked as penalty (from vent failures)
   var _previousBiome = null; // Track previous floor biome for bleed
+  var _nextBiomePreview = null; // Cache next floor's biome for consistent preview
   var _visitedBiomes = []; // Track visited biomes this run
 
   // Highscore tracking variables
@@ -1804,14 +1805,20 @@ const GoneRogue = (function () {
     
     // Preview next floor's biome near exit (if floor < 30)
     if (_floor < 30) {
-      var nextBiome = _getBiome(_floor + 1);
-      if (nextBiome.name !== currentBiome.name) {
-        _applyBleedTiles(nextBiome, 'exit', 5, 10);
+      // Use cached preview if available, otherwise generate and cache
+      if (!_nextBiomePreview) {
+        _nextBiomePreview = _getBiome(_floor + 1);
+      }
+      
+      if (_nextBiomePreview.name !== currentBiome.name) {
+        _applyBleedTiles(_nextBiomePreview, 'exit', 5, 10);
       }
     }
     
-    // Store current biome for next floor
+    // Store current biome as previous for next floor
+    // And set next preview to null so it regenerates
     _previousBiome = currentBiome;
+    _nextBiomePreview = null; // Will be set fresh on next floor
   }
 
   /**
@@ -2625,11 +2632,8 @@ const GoneRogue = (function () {
       // Backtrack floor
       _floor = targetFloor - 1; // Will be incremented by advanceFloor
       
-      // Apply dizzy status effect
-      if (typeof GAMESTATE !== 'undefined') {
-        // Player takes minor damage from the fall
-        _player.hp = Math.max(1, _player.hp - 2);
-      }
+      // Player takes minor damage from the fall
+      _player.hp = Math.max(1, _player.hp - 2);
       
       // Remove the vent tile
       _grid[_player.y][_player.x] = TILES.EMPTY;
