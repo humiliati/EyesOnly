@@ -39,6 +39,7 @@ const GoneRogue = (function () {
   var _projectiles = [];
   var _breakables = [];
   var _currencies = []; // Currency drops on floor (yellow dots ¢)
+  var _shops = []; // Shop objects on floor (🏪 or 👤)
   var _turn = 0;
   var _floor = 1;
   var _alertLevel = 'safe'; // safe, caution, danger
@@ -100,7 +101,9 @@ const GoneRogue = (function () {
     SMOKE: '≈',
     GRASS: ',',
     HAZARD: '▒',
-    WATER: '~'
+    WATER: '~',
+    SHOP: '🏪',
+    BLACK_MARKET: '👤'
   };
 
   // Tile metadata and effects
@@ -701,6 +704,7 @@ const GoneRogue = (function () {
     _breakables = [];
     _items = [];
     _enemies = [];
+    _shops = [];
     _tileMetadata = {};
     _activeBoss = null;
     _bossFloorActive = false;
@@ -884,6 +888,9 @@ const GoneRogue = (function () {
       });
       console.log('[GoneRogue] Spawned', spawnedItems.length, 'interactive items');
     }
+
+    // Spawn shops
+    _spawnShops(rooms, floorType);
 
     _turn = 0;
   }
@@ -1522,6 +1529,55 @@ const GoneRogue = (function () {
     }
   }
 
+  /**
+   * Spawn shops on the floor
+   */
+  function _spawnShops(rooms, floorType) {
+    // Check if ShopSystem is available
+    if (typeof ShopSystem === 'undefined') {
+      return;
+    }
+
+    // Check if a shop should spawn on this floor
+    var shopSpawn = ShopSystem.shouldSpawnShop(_floor, floorType);
+    
+    if (!shopSpawn) {
+      return;
+    }
+
+    // Find a suitable room for the shop (prefer larger rooms)
+    var eligibleRooms = rooms.filter(function(room) {
+      return room.w >= 5 && room.h >= 5;
+    });
+
+    if (eligibleRooms.length === 0) {
+      eligibleRooms = rooms; // Fallback to any room
+    }
+
+    var shopRoom = eligibleRooms[Math.floor(Math.random() * eligibleRooms.length)];
+
+    // Place shop object in the center of the room
+    var shopX = Math.floor(shopRoom.x + shopRoom.w / 2);
+    var shopY = Math.floor(shopRoom.y + shopRoom.h / 2);
+
+    // Ensure position is empty
+    if (_grid[shopY][shopX] === TILES.EMPTY) {
+      var shopTile = shopSpawn.type === 'black_market' ? TILES.BLACK_MARKET : TILES.SHOP;
+      _grid[shopY][shopX] = shopTile;
+
+      // Track shop object
+      _shops.push({
+        x: shopX,
+        y: shopY,
+        type: shopSpawn.type,
+        floor: _floor,
+        opened: false
+      });
+
+      console.log('[GoneRogue] Spawned', shopSpawn.type, 'shop at', shopX, shopY);
+    }
+  }
+
   function _validateStealthPath(startX, startY, endX, endY) {
     // Simple BFS pathfinding to check if path exists
     // Count how many enemy vision cones the path crosses
@@ -1801,6 +1857,23 @@ const GoneRogue = (function () {
     // Check if player walked onto EXIT tile - trigger level transition
     if (tile === TILES.EXIT) {
       return _attemptExtract();
+    }
+
+    // Check if player walked onto SHOP tile - open shop
+    if (tile === TILES.SHOP || tile === TILES.BLACK_MARKET) {
+      var shopObj = _shops.find(function(s) { return s.x === newX && s.y === newY; });
+      if (shopObj && typeof ShopSystem !== 'undefined') {
+        var shopType = tile === TILES.BLACK_MARKET ? ShopSystem.SHOP_TYPES.BLACK_MARKET : ShopSystem.SHOP_TYPES.STANDARD;
+        ShopSystem.openShop(shopType, _floor);
+        shopObj.opened = true;
+        
+        // Return early to prevent turn advancement while shop is open
+        return {
+          lines: _renderGrid(),
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
     }
 
     // Check for currency pickup

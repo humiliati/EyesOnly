@@ -38,6 +38,9 @@
     if (typeof GoneRogue !== 'undefined') {
       GoneRogue.init();
     }
+    if (typeof ShopSystem !== 'undefined') {
+      ShopSystem.init();
+    }
 
     // Initialize API client (graceful — does nothing if backend unavailable)
     if (typeof ApiClient !== 'undefined') {
