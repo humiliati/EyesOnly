@@ -55,6 +55,42 @@ const GoneRogueMobile = (function () {
     _createMobileUI();
     _setupTouchHandlers();
     _setupKeyboardHandlers(); // Add keyboard support for desktop
+    _setupHandFanButton(); // Setup the MOK footer card button
+  }
+
+  /**
+   * Setup hand fan toggle button in MOK footer
+   */
+  function _setupHandFanButton() {
+    var handFanBtn = document.getElementById('hand-fan-toggle-btn');
+    if (!handFanBtn) {
+      console.warn('[GoneRogueMobile] Hand fan toggle button not found');
+      return;
+    }
+
+    handFanBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Only show hand fan if Gone Rogue is active
+      if (typeof GoneRogue === 'undefined' || !GoneRogue.isActive()) {
+        console.log('[GoneRogueMobile] Hand fan toggle suppressed: Gone Rogue not active');
+        return;
+      }
+
+      // Don't show card fan if in STR combat
+      var inStrCombat = GoneRogue.isStrCombatActive && GoneRogue.isStrCombatActive();
+      if (inStrCombat) {
+        console.log('[GoneRogueMobile] Hand fan toggle suppressed: in STR combat');
+        if (typeof TooltipSystem !== 'undefined') {
+          TooltipSystem.show('Hand fan disabled during combat', 2000);
+        }
+        return;
+      }
+
+      // Toggle the hand fan
+      _showCardFan();
+    });
   }
 
   /**
@@ -628,29 +664,39 @@ const GoneRogueMobile = (function () {
       // Check if tapping self (show card fan)
       // BUT NOT if in STR combat, if clicking on a breakable, or within cooldown after movement
       if (player && player.x === x && player.y === y) {
-        // Check cooldown to prevent accidental card fan during rapid movement
-        var timeSinceLastMovement = now - _lastMovementTime;
-        if (timeSinceLastMovement < _cardFanCooldown) {
-          console.log('[GoneRogueMobile] Card fan suppressed: within cooldown after movement (' + timeSinceLastMovement + 'ms < ' + _cardFanCooldown + 'ms)');
-          return;
+        // Tap on player now resets MOK windows instead of showing card fan
+        // Card fan is now toggled via the dedicated card button in MOK footer
+        console.log('[GoneRogueMobile] Player tapped: resetting MOK windows to default');
+
+        // Reset MOK history window to minimized state
+        if (typeof TooltipSystem !== 'undefined' && TooltipSystem.collapseHistory) {
+          TooltipSystem.collapseHistory();
         }
 
-        // Don't show card fan if in STR combat
-        var inStrCombat = GoneRogue.isStrCombatActive && GoneRogue.isStrCombatActive();
-        if (inStrCombat) {
-          console.log('[GoneRogueMobile] Card fan suppressed: in STR combat');
-          return;
+        // Reset debrief feed to default display for current mode
+        if (typeof DebriefFeedController !== 'undefined') {
+          var currentMode = document.body.classList.contains('mode-gone-rogue') ||
+                           document.body.classList.contains('in-gone-rogue');
+          if (currentMode) {
+            // In Gone Rogue, default is resources view
+            if (DebriefFeedController.getCurrentDisplay() !== 'resources') {
+              DebriefFeedController.toggleDisplay();
+            }
+          } else {
+            // Outside Gone Rogue, default is MOK view
+            if (DebriefFeedController.getCurrentDisplay() !== 'mok') {
+              DebriefFeedController.toggleDisplay();
+            }
+          }
         }
 
-        // Don't show card fan if there's a breakable at this position (shouldn't happen, but defensive)
-        var hasBreakable = GoneRogue.getBreakableAt && GoneRogue.getBreakableAt(x, y);
-        if (hasBreakable && hasBreakable.hp > 0) {
-          console.log('[GoneRogueMobile] Card fan suppressed: breakable at player position');
-          // Fall through to handleTapMove which will handle the breakable
-        } else {
-          _showCardFan();
-          return;
+        // Collapse debrief window if expanded
+        var debriefWindow = document.getElementById('debrief-window');
+        if (debriefWindow && debriefWindow.classList.contains('expanded')) {
+          debriefWindow.classList.remove('expanded');
         }
+
+        return;
       }
 
       // Validate tap distance from player

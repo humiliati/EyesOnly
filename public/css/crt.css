@@ -951,6 +951,59 @@ body.gone-rogue-active #scanlines::after {
   max-width: calc(100% - 100px);
 }
 
+/* MOK Footer Controls - Card Button */
+.mok-footer-controls {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.hand-fan-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+.hand-fan-toggle:hover {
+  background: rgba(51, 255, 51, 0.1);
+  border-color: var(--panel-border);
+}
+
+.hand-fan-toggle:active {
+  background: rgba(51, 255, 51, 0.2);
+  transform: scale(0.98);
+}
+
+.hand-fan-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.hand-fan-icon {
+  font-size: 1.1em;
+  line-height: 1;
+  filter: drop-shadow(0 0 2px rgba(51, 255, 51, 0.4));
+}
+
+.hand-fan-label {
+  font-size: 0.7em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--phosphor);
+}
+
+/* Show only in Gone Rogue mode */
+body:not(.mode-gone-rogue):not(.in-gone-rogue) .hand-fan-toggle {
+  display: none;
+}
+
 /* --- Terminal Output Area --- */
 #terminal {
   position: relative;
