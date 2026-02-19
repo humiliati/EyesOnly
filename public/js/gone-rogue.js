@@ -76,6 +76,7 @@ const GoneRogue = (function () {
   var _bossDefeated = false; // Has boss been defeated this floor
   var _bossHazards = []; // Boss-specific hazards (trains, drones, etc.)
   var _bossEnvironment = {}; // Boss-specific environment data
+  var _playerMoveLocked = false; // Set by Asteroids boss; disables walk commands
 
   // Secret floor state
   var _activeSecretFloor = null; // Current secret floor type (if any)
@@ -1598,6 +1599,7 @@ const GoneRogue = (function () {
     _bossDefeated = false;
     _bossHazards = [];
     _bossEnvironment = {};
+    _playerMoveLocked = false;
 
     // Reset forest biome state
     _forestBuildings = [];
@@ -4572,7 +4574,25 @@ const GoneRogue = (function () {
 
     _updateProjectiles(deltaMs);
 
-    // Update item decay timers
+    // Let the active boss inject real-time hazard projectiles into the
+    // existing projectile pipeline each tick (no new engine required).
+    if (_bossFloorActive && _activeBoss && !_bossDefeated &&
+        typeof _activeBoss.updateRealTime === 'function') {
+      var bossRt = _activeBoss.updateRealTime(deltaMs, {
+        player: _player,
+        grid: _grid,
+        enemies: _enemies
+      });
+      if (bossRt && bossRt.bossProjectiles && bossRt.bossProjectiles.length) {
+        bossRt.bossProjectiles.forEach(function(p) {
+          _projectiles.push(p);
+        });
+      }
+      // Apply move-lock state for Asteroids boss
+      if (_activeBoss.playerMoveLocked !== undefined) {
+        _playerMoveLocked = !!_activeBoss.playerMoveLocked;
+      }
+    }
     var now = Date.now();
     _items = _items.filter(function(item) {
       if (item.spawnTime && item.decayTime) {
@@ -5395,6 +5415,15 @@ const GoneRogue = (function () {
    */
   function handleTapMove(targetX, targetY, runMode) {
     if (!_active) return;
+
+    // Asteroids boss locks player movement — tap only activates cards
+    if (_playerMoveLocked) {
+      return {
+        lines: ['⚓ GRAVITY ANCHOR — movement disabled. Use cards to fight!', ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
 
     // Check if clicking on a breakable - kick it instead of moving
     var breakableAtTarget = _getBreakableAt(targetX, targetY);
@@ -6552,6 +6581,57 @@ const GoneRogue = (function () {
       _player.lastCardType = 'MELEE';
       // Let it fall through to standard attack resolution
       return { handled: false, lines: [] };
+    }
+
+    // CAMERA card interaction (Sniper Boss — accumulates accuracy penalties)
+    else if (cardName === 'Camera') {
+      handled = true;
+      lines.push('├─ 📷 Photographing boss position...');
+      var exploitResult = _activeBoss.checkExploit({ type: 'CAMERA', card: card }, gameState);
+      if (exploitResult.exploited) {
+        lines.push('├─ ' + exploitResult.message);
+        if (exploitResult.atMaxPenalty) {
+          lines.push('└─ ⚡ Boss fully exposed — attack now!');
+        }
+      } else {
+        lines.push('└─ Camera has no effect on this boss type.');
+      }
+    }
+
+    // FRAGMENT SHOWER card interaction (Asteroids Boss — clears incoming hazards)
+    else if (cardName === 'Fragment Shower') {
+      handled = true;
+      lines.push('├─ 💫 Launching fragment shower...');
+      var playerAction = {
+        type: 'FRAGMENT_SHOWER',
+        targetX: target ? (target.x || 20) : 20,
+        targetY: target ? (target.y || 10) : 10,
+        card: card
+      };
+      var exploitResult = _activeBoss.checkExploit(playerAction, gameState);
+      var damage = (card.stats && card.stats.damage) || 3;
+      if (exploitResult.exploited) {
+        lines.push('├─ ' + exploitResult.message);
+      }
+      if (target) {
+        target.hp = Math.max(0, target.hp - damage);
+        lines.push('└─ ' + damage + ' damage → Boss HP: ' + target.hp + '/' + _activeBoss.maxHp);
+      }
+    }
+
+    // SUPPRESSION FIRE card interaction (Tower Offense Boss — suppresses volleys)
+    else if (cardName === 'Suppression Fire') {
+      handled = true;
+      lines.push('├─ 🔥 Opening suppression fire...');
+      var exploitResult = _activeBoss.checkExploit({ type: 'SUPPRESSION_FIRE', card: card }, gameState);
+      var damage = (card.stats && card.stats.damage) || 2;
+      if (exploitResult.exploited) {
+        lines.push('├─ ' + exploitResult.message);
+      }
+      if (target) {
+        target.hp = Math.max(0, target.hp - damage);
+        lines.push('└─ ' + damage + ' damage → Boss HP: ' + target.hp + '/' + _activeBoss.maxHp);
+      }
     }
 
     return { handled: handled, lines: lines };

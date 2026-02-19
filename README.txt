@@ -68,6 +68,8 @@ the command terminal. It features:
 - Enemy AI with patrol patterns (stationary, patrol, circular, ellipse)
 - Mobile-optimized touch controls with tap-to-move and card swipe
 - Real-time game loop (10 FPS) with awareness decay
+- Boss encounters on floors 10, 16, 22, 30 (10 boss types, mythic conditions, legendary loot)
+  See docs/boss-encounters.md
 
 **Performance Notes:**
 - Patrol enemies with view cones each run a sight-cone check (distance pre-filter → LOS
@@ -180,6 +182,7 @@ PROJECT STRUCTURE
     0002_ugrs_grid.sql      - UGRS grid cells, cell_id columns on actors/dead_drops
 
   docs/
+    boss-encounters.md        - Boss encounter system: all 10 types, cards, mythic conditions, deck strategies
     m-tutorial-alpha.md     - M Mode director tutorial (maps UI to tutorial design)
     ops-tutorial-alpha.md   - Ops actor field manual (maps UI to tutorial design)
 
