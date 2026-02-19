@@ -655,21 +655,25 @@ const ShopSystem = (function () {
   /**
    * Abbreviate card name (vowel-dropped)
    * Keeps first letter regardless of vowel/consonant, removes vowels from rest
+   * Preserves original casing per README.txt convention
    */
   function _abbreviateName(name) {
     if (!name) return '';
 
-    // Remove spaces and convert to uppercase
-    var cleaned = name.replace(/\s+/g, '').toUpperCase();
+    // Remove spaces only, keep original casing
+    var cleaned = name.replace(/\s+/g, '');
 
-    // Take first character
+    // Take first character (preserves its case)
     var firstChar = cleaned.charAt(0);
 
-    // Remove vowels from remaining characters
-    var consonants = cleaned.slice(1).replace(/[AEIOU]/g, '');
+    // Remove vowels from remaining characters, preserving case
+    var remaining = cleaned.slice(1).split('').filter(function(char) {
+      var lower = char.toLowerCase();
+      return lower !== 'a' && lower !== 'e' && lower !== 'i' && lower !== 'o' && lower !== 'u';
+    }).join('');
 
-    // Combine first character + consonants, limit to 6 chars, lowercase
-    return (firstChar + consonants).substring(0, 6).toLowerCase();
+    // Combine first character + consonants, limit to 6 chars
+    return (firstChar + remaining).substring(0, 6);
   }
 
   /**

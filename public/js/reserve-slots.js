@@ -27,23 +27,27 @@ const ReserveSlots = (function () {
   /**
    * Abbreviate card name by removing vowels and spaces
    * Takes first letter + consonants only
+   * Preserves original casing per README.txt convention
    * @param {string} name - Full card name
    * @returns {string} Abbreviated name
    */
   function _abbreviateCardName(name) {
     if (!name) return '';
 
-    // Remove spaces and convert to uppercase
-    var cleaned = name.replace(/\s+/g, '').toUpperCase();
+    // Remove spaces only, keep original casing
+    var cleaned = name.replace(/\s+/g, '');
 
-    // Take first character
+    // Take first character (preserves its case)
     var firstChar = cleaned.charAt(0);
 
-    // Remove vowels from remaining characters
-    var consonants = cleaned.slice(1).replace(/[AEIOU]/g, '');
+    // Remove vowels from remaining characters, preserving case
+    var remaining = cleaned.slice(1).split('').filter(function(char) {
+      var lower = char.toLowerCase();
+      return lower !== 'a' && lower !== 'e' && lower !== 'i' && lower !== 'o' && lower !== 'u';
+    }).join('');
 
     // Combine first character + consonants
-    return firstChar + consonants;
+    return firstChar + remaining;
   }
 
   /**
