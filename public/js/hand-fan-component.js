@@ -159,6 +159,9 @@ const HandFanComponent = (function () {
     // Create card element
     var cardEl = document.createElement('div');
     cardEl.className = 'hand-card';
+    
+    // Make card draggable
+    cardEl.draggable = true;
 
     // Apply lifecycle-based transparency
     var lifecycle = _getCardLifecycle(card);
@@ -354,6 +357,19 @@ const HandFanComponent = (function () {
       }
       
       _toggleCardSelection(index);
+    });
+
+    // Drag handlers for disposal system
+    cardEl.addEventListener('dragstart', function(e) {
+      if (typeof CardDisposalSystem !== 'undefined') {
+        CardDisposalSystem.handleDragStart(cardEl, card, index);
+      }
+    });
+
+    cardEl.addEventListener('dragend', function(e) {
+      if (typeof CardDisposalSystem !== 'undefined') {
+        CardDisposalSystem.handleDragEnd();
+      }
     });
 
     // Long-press for tooltip

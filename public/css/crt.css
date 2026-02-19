@@ -2387,3 +2387,33 @@ body.in-gone-rogue #log-column {
   font-weight: bold;
   margin-left: 2px;
 }
+
+/* ============================================================
+   DRAG-TO-DEBRIEF DISPOSAL SYSTEM
+   ============================================================ */
+
+/* Dragging state for cards */
+.card-dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+/* Debrief feed as drop target */
+.debrief-drop-target {
+  background: rgba(255, 165, 0, 0.2);
+  box-shadow: 0 0 20px rgba(255, 165, 0, 0.4);
+  outline: 2px dashed rgba(255, 165, 0, 0.6);
+  outline-offset: 4px;
+}
+
+/* Drag preview with recycling icon already defined above */
+/* See .drag-preview-recycling class */
+
+/* Draggable cursor */
+.hand-card[draggable="true"] {
+  cursor: grab;
+}
+
+.hand-card[draggable="true"]:active {
+  cursor: grabbing;
+}

@@ -1,0 +1,267 @@
+/* ============================================================
+   EYES ONLY - Card Disposal System
+   Drag-to-debrief mechanics for destroying unwanted cards
+   ============================================================ */
+
+const CardDisposalSystem = (function() {
+  'use strict';
+
+  // Configuration
+  var DISPOSAL_CONFIG = {
+    validCardTypes: ['disposable', 'consumable'],  // Can destroy
+    invalidCardTypes: ['exhaust', 'power', 'persistent', 'gated'],  // Cannot destroy
+    animationDuration: 400,
+    feedbackOnInvalid: 'shake'
+  };
+
+  // State
+  var _isDragOverDebrief = false;
+  var _draggedCard = null;  // {element, card, index}
+  var _dragPreviewElement = null;
+  var _debriefFeedElement = null;
+
+  /**
+   * Initialize the disposal system
+   */
+  function init() {
+    _debriefFeedElement = document.getElementById('debrief-screen');
+    if (!_debriefFeedElement) {
+      console.warn('[CardDisposalSystem] Debrief screen not found');
+      return;
+    }
+
+    _setupDebriefDropZone();
+  }
+
+  /**
+   * Set up debrief feed as drop zone
+   */
+  function _setupDebriefDropZone() {
+    // Prevent default drag behaviors
+    _debriefFeedElement.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      
+      if (_draggedCard) {
+        _handleDragOverDebrief(true);
+      }
+    });
+
+    _debriefFeedElement.addEventListener('dragleave', function(e) {
+      // Only trigger if leaving the debrief element itself
+      if (e.target === _debriefFeedElement) {
+        _handleDragOverDebrief(false);
+      }
+    });
+
+    _debriefFeedElement.addEventListener('drop', function(e) {
+      e.preventDefault();
+      _handleDropOnDebrief();
+    });
+  }
+
+  /**
+   * Handle drag start from card
+   * @param {HTMLElement} cardElement - Card DOM element
+   * @param {Object} card - Card data
+   * @param {number} index - Card index in hand
+   */
+  function handleDragStart(cardElement, card, index) {
+    _draggedCard = {
+      element: cardElement,
+      card: card,
+      index: index
+    };
+
+    // Set drag data
+    var event = window.event;
+    if (event && event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/html', cardElement.innerHTML);
+    }
+
+    // Add dragging class
+    cardElement.classList.add('card-dragging');
+
+    console.log('[CardDisposalSystem] Drag started:', card.name);
+  }
+
+  /**
+   * Handle drag end
+   */
+  function handleDragEnd() {
+    if (_draggedCard && _draggedCard.element) {
+      _draggedCard.element.classList.remove('card-dragging');
+    }
+
+    _handleDragOverDebrief(false);
+    _draggedCard = null;
+  }
+
+  /**
+   * Handle drag over debrief feed
+   * @param {boolean} isOver - Whether drag is over debrief
+   */
+  function _handleDragOverDebrief(isOver) {
+    _isDragOverDebrief = isOver;
+
+    if (isOver && _draggedCard) {
+      _updateDragPreviewToRecycling();
+      _debriefFeedElement.classList.add('debrief-drop-target');
+    } else {
+      _restoreDragPreview();
+      _debriefFeedElement.classList.remove('debrief-drop-target');
+    }
+  }
+
+  /**
+   * Update drag preview to show recycling emoji
+   */
+  function _updateDragPreviewToRecycling() {
+    if (_draggedCard && _draggedCard.element) {
+      _draggedCard.element.classList.add('drag-preview-recycling');
+    }
+  }
+
+  /**
+   * Restore normal drag preview
+   */
+  function _restoreDragPreview() {
+    if (_draggedCard && _draggedCard.element) {
+      _draggedCard.element.classList.remove('drag-preview-recycling');
+    }
+  }
+
+  /**
+   * Handle drop on debrief feed
+   */
+  function _handleDropOnDebrief() {
+    if (!_draggedCard) {
+      console.warn('[CardDisposalSystem] No card being dragged');
+      return;
+    }
+
+    var card = _draggedCard.card;
+    var cardElement = _draggedCard.element;
+
+    // Check if card type allows disposal
+    var lifecycle = _getCardLifecycle(card);
+    var isDisposable = DISPOSAL_CONFIG.validCardTypes.indexOf(lifecycle) !== -1;
+
+    if (!isDisposable) {
+      _handleInvalidDisposal(card, cardElement, lifecycle);
+      _draggedCard = null;
+      _handleDragOverDebrief(false);
+      return;
+    }
+
+    // Valid disposal - destroy card
+    _destroyCard(_draggedCard.card, _draggedCard.index, 'manual_disposal');
+    _draggedCard = null;
+    _handleDragOverDebrief(false);
+  }
+
+  /**
+   * Get card lifecycle type
+   * @param {Object} card - Card data
+   * @returns {string} Lifecycle type
+   */
+  function _getCardLifecycle(card) {
+    return card.lifecycleType || card.lifecycle || 'persistent';
+  }
+
+  /**
+   * Handle invalid disposal attempt
+   * @param {Object} card - Card data
+   * @param {HTMLElement} cardElement - Card DOM element
+   * @param {string} lifecycle - Card lifecycle type
+   */
+  function _handleInvalidDisposal(card, cardElement, lifecycle) {
+    console.log('[CardDisposalSystem] Invalid disposal:', lifecycle, 'cards cannot be destroyed');
+
+    // Shake animation
+    if (cardElement) {
+      cardElement.classList.add('card-shake');
+      setTimeout(function() {
+        cardElement.classList.remove('card-shake');
+      }, DISPOSAL_CONFIG.animationDuration);
+    }
+
+    // MOK interjection
+    if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+      UIControls.updateMokInterjection('Cannot destroy ' + lifecycle + ' card: ' + card.name);
+    }
+  }
+
+  /**
+   * Destroy card and trigger animation
+   * @param {Object} card - Card data
+   * @param {number} index - Card index
+   * @param {string} reason - Destruction reason
+   */
+  function _destroyCard(card, index, reason) {
+    console.log('[CardDisposalSystem] Destroying card:', card.name, 'reason:', reason);
+
+    // Trigger incinerator animation
+    _triggerIncineratorAnimation();
+
+    // Remove from hand via HandFanComponent
+    if (typeof HandFanComponent !== 'undefined') {
+      // Get current cards
+      var currentCards = HandFanComponent._cards || [];
+      
+      // Remove the card
+      currentCards.splice(index, 1);
+      
+      // Update hand display
+      HandFanComponent.updateCards(currentCards);
+    }
+
+    // Remove from GAMESTATE hand if available
+    if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getCardHand) {
+      var hand = GAMESTATE.getCardHand();
+      if (hand && hand[index]) {
+        hand.splice(index, 1);
+        // Note: GAMESTATE manages its own state, this is just cleanup
+      }
+    }
+
+    // MOK interjection
+    if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+      UIControls.updateMokInterjection('Card destroyed: ' + card.name);
+    }
+  }
+
+  /**
+   * Trigger incinerator animation on debrief feed
+   */
+  function _triggerIncineratorAnimation() {
+    if (!_debriefFeedElement) return;
+
+    // Add animation class
+    _debriefFeedElement.classList.add('incinerator-active');
+
+    // Remove after animation completes
+    setTimeout(function() {
+      _debriefFeedElement.classList.remove('incinerator-active');
+    }, DISPOSAL_CONFIG.animationDuration);
+  }
+
+  /**
+   * Check if a card is disposable
+   * @param {Object} card - Card data
+   * @returns {boolean} Whether card can be destroyed
+   */
+  function isDisposable(card) {
+    var lifecycle = _getCardLifecycle(card);
+    return DISPOSAL_CONFIG.validCardTypes.indexOf(lifecycle) !== -1;
+  }
+
+  // Public API
+  return {
+    init: init,
+    handleDragStart: handleDragStart,
+    handleDragEnd: handleDragEnd,
+    isDisposable: isDisposable
+  };
+})();
