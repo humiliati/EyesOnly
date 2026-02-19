@@ -206,12 +206,7 @@
         }
 
         // Map button - context-aware
-        var isInGoneRogue = typeof GoneRogue !== 'undefined' && GoneRogue.isActive();
-
-        if (isInGoneRogue) {
-          // In Gone Rogue: Not used (button is hidden)
-          break;
-        } else if (isInStreetChronicles) {
+        if (isInStreetChronicles) {
           // In Street Chronicles: Show map/recenter to main street
           if (typeof StreetChronicles !== 'undefined' && typeof StreetChronicles.process === 'function') {
             var currentLoc = getStreetChroniclesLocation();
