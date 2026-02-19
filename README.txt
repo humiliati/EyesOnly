@@ -57,19 +57,27 @@ CODING CONVENTIONS
 **Vowel-Drop Abbreviation Convention:**
 
 Throughout the codebase, text is abbreviated by keeping the first letter
-(regardless of whether it's a vowel or consonant) and removing all vowels
-from the remaining characters. This convention is used for UI space efficiency
-and aesthetic consistency with the retro-CRT terminal theme.
+of EACH WORD (regardless of whether it's a vowel or consonant) and removing
+all vowels from the remaining characters within each word. This convention
+is used for UI space efficiency and aesthetic consistency with the retro-CRT
+terminal theme.
+
+**Key Rule:** The first letter of each word is ALWAYS kept, even if it's a vowel.
 
 Examples:
-  "SOLD OUT"  → "SldOt"  (not "SldT")
-  "exhausted" → "Exhstd" (not "xhstd")
-  "inventory" → "Invntry"
-  "Attack"    → "Attck"
+  "Sold Out"  → "SldOt"  (keeps 'S' and 'O', removes vowels from rest)
+  "Out"       → "Ot"     (keeps 'O' as first letter, removes 'u')
+  "Energy Drink" → "EnrgyDrnk" (keeps 'E' and 'D')
+  "exhausted" → "exhstd" (single word: keeps 'e', removes vowels from rest)
+  "inventory" → "invntry" (single word: keeps 'i', removes vowels from rest)
+  "Attack"    → "Attck"  (single word: keeps 'A', removes vowels from rest)
+
+Note: For multi-word names, each word contributes its first letter plus
+consonants. This ensures readability in abbreviated form.
 
 Implementation reference:
-  See _abbreviateCardName() in public/js/reserve-slots.js (lines 33-47)
-  and _abbreviateName() in public/js/shop-system.js (lines 659-673)
+  See _abbreviateCardName() in public/js/reserve-slots.js (lines 28-59)
+  and _abbreviateName() in public/js/shop-system.js (lines 655-687)
 
 TODO:
   - Cryptography integration: Consider using vowel-drop as obfuscation layer

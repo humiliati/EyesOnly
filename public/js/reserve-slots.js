@@ -25,29 +25,37 @@ const ReserveSlots = (function () {
   }
 
   /**
-   * Abbreviate card name by removing vowels and spaces
-   * Takes first letter + consonants only
-   * Preserves original casing per README.txt convention
+   * Abbreviate card name by removing vowels (except first letter of each word)
+   * Preserves first letter of each word, even if it's a vowel
+   * Example: "Sold Out" → "SldOt", "Energy Drink" → "EnrgyDrnk"
    * @param {string} name - Full card name
    * @returns {string} Abbreviated name
    */
   function _abbreviateCardName(name) {
     if (!name) return '';
 
-    // Remove spaces only, keep original casing
-    var cleaned = name.replace(/\s+/g, '');
+    // Split into words, process each word
+    var words = name.split(/\s+/);
+    var result = '';
 
-    // Take first character (preserves its case)
-    var firstChar = cleaned.charAt(0);
+    for (var i = 0; i < words.length; i++) {
+      var word = words[i];
+      if (word.length === 0) continue;
 
-    // Remove vowels from remaining characters, preserving case
-    var remaining = cleaned.slice(1).split('').filter(function(char) {
-      var lower = char.toLowerCase();
-      return lower !== 'a' && lower !== 'e' && lower !== 'i' && lower !== 'o' && lower !== 'u';
-    }).join('');
+      // Take first character of word (even if vowel)
+      result += word.charAt(0);
 
-    // Combine first character + consonants
-    return firstChar + remaining;
+      // Remove vowels from remaining characters in this word
+      for (var j = 1; j < word.length; j++) {
+        var char = word.charAt(j);
+        var lower = char.toLowerCase();
+        if (lower !== 'a' && lower !== 'e' && lower !== 'i' && lower !== 'o' && lower !== 'u') {
+          result += char;
+        }
+      }
+    }
+
+    return result;
   }
 
   /**

@@ -654,26 +654,36 @@ const ShopSystem = (function () {
 
   /**
    * Abbreviate card name (vowel-dropped)
-   * Keeps first letter regardless of vowel/consonant, removes vowels from rest
-   * Preserves original casing per README.txt convention
+   * Keeps first letter of each word, even if it's a vowel
+   * Removes vowels from remaining positions within each word
+   * Example: "Sold Out" → "SldOt", "Energy Drink" → "EnrgyD" (with 6-char limit)
    */
   function _abbreviateName(name) {
     if (!name) return '';
 
-    // Remove spaces only, keep original casing
-    var cleaned = name.replace(/\s+/g, '');
+    // Split into words, process each word
+    var words = name.split(/\s+/);
+    var result = '';
 
-    // Take first character (preserves its case)
-    var firstChar = cleaned.charAt(0);
+    for (var i = 0; i < words.length; i++) {
+      var word = words[i];
+      if (word.length === 0) continue;
 
-    // Remove vowels from remaining characters, preserving case
-    var remaining = cleaned.slice(1).split('').filter(function(char) {
-      var lower = char.toLowerCase();
-      return lower !== 'a' && lower !== 'e' && lower !== 'i' && lower !== 'o' && lower !== 'u';
-    }).join('');
+      // Take first character of word (even if vowel)
+      result += word.charAt(0);
 
-    // Combine first character + consonants, limit to 6 chars
-    return (firstChar + remaining).substring(0, 6);
+      // Remove vowels from remaining characters in this word
+      for (var j = 1; j < word.length; j++) {
+        var char = word.charAt(j);
+        var lower = char.toLowerCase();
+        if (lower !== 'a' && lower !== 'e' && lower !== 'i' && lower !== 'o' && lower !== 'u') {
+          result += char;
+        }
+      }
+    }
+
+    // Limit to 6 chars for shop display
+    return result.substring(0, 6);
   }
 
   /**
