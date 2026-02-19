@@ -138,6 +138,17 @@
       return;
     }
 
+    // Check if we're in turn resolution phase
+    var isResolvingTurn = combatState.phase === 'resolving' || combatState.isResolvingTurn;
+
+    if (isResolvingTurn) {
+      // Minimize hand during turn resolution to show enemy animations
+      HandFanComponent.minimize();
+    } else {
+      // Restore hand when not resolving
+      HandFanComponent.restore();
+    }
+
     // Determine fan mode based on STR window state
     if (STRCombatWindow.isMinimized()) {
       HandFanComponent.setMode('contextual', 'bottom');

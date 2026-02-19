@@ -60,6 +60,7 @@ const GoneRogue = (function () {
   var _strCombatAdvantage = 'neutral'; // 'ambush', 'neutral', 'disadvantaged', 'flanked'
   var _strCombatRound = 0;
   var _strCombatLog = []; // Combat log messages
+  var _strCombatAmmoSpent = 0; // Track ammo spent in this combat encounter
 
   // Boss encounter state
   var _activeBoss = null; // Current boss instance (from BossEncounters module)
@@ -406,26 +407,16 @@ const GoneRogue = (function () {
         _player.energy += energyBonus; // Also restore
       }
 
-      // Give random 3 starter cards if player has 0 cards (at game start, not floor transition)
+      // Give guaranteed 3 starter cards if player has 0 cards (at game start, not floor transition)
       if (typeof CardSystem !== 'undefined') {
         var looseInventory = GAMESTATE.getLooseInventory();
         if (looseInventory.length === 0) {
-          // Define all 5 starter cards
-          var allStarterCards = ['SINGLE_SHOT', 'PRONE', 'KATCHUP', 'DODGE', 'BURST_SHOT'];
+          // Define guaranteed 3 starter cards (includes 1 consumable grenade)
+          var starterCards = ['Single Shot', 'Dodge', 'Grenade'];
 
-          // Shuffle and pick 3 random cards
-          var shuffled = allStarterCards.slice();
-          for (var i = shuffled.length - 1; i > 0; i--) {
-            var j = Math.floor(Math.random() * (i + 1));
-            var temp = shuffled[i];
-            shuffled[i] = shuffled[j];
-            shuffled[j] = temp;
-          }
-          var selectedCards = shuffled.slice(0, 3);
-
-          // Add the 3 selected cards to loose inventory
-          for (var c = 0; c < selectedCards.length; c++) {
-            var card = CardSystem.rollCard(selectedCards[c]);
+          // Add the 3 starter cards to loose inventory
+          for (var c = 0; c < starterCards.length; c++) {
+            var card = CardSystem.rollCard(starterCards[c]);
             if (card) {
               GAMESTATE.addToLoose(card);
             }
@@ -434,6 +425,7 @@ const GoneRogue = (function () {
           lines.push('');
           lines.push('  📦 STARTER LOADOUT DEPLOYED');
           lines.push('  3 COMBAT CARDS ADDED TO INVENTORY');
+          lines.push('  🎯 Single Shot | 💨 Dodge | 💣 Grenade (1x use)');
           lines.push('');
         }
       }
@@ -2014,6 +2006,31 @@ const GoneRogue = (function () {
     if (!item) {
       return {
         lines: ['NO ITEM HERE', ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    // Handle ammo pickup (auto-collect)
+    if (item.type === 'ammo') {
+      if (typeof GAMESTATE !== 'undefined') {
+        GAMESTATE.addAmmo(item.amount);
+      }
+      
+      // Remove ammo from floor
+      _items = _items.filter(function(i) { return i !== item; });
+      
+      // Tooltip and MOK interjection
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showAction('item-pickup', { name: 'Ammo +' + item.amount });
+      }
+      
+      if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+        UIControls.updateMokInterjection('🔫 Ammo +' + item.amount);
+      }
+      
+      return {
+        lines: ['PICKED UP: 🔫 Ammo +' + item.amount, ''].concat(_renderGrid()),
         prompt: getPrompt(),
         stayActive: true
       };
@@ -3601,6 +3618,22 @@ const GoneRogue = (function () {
             _spawnCurrency(breakable.x, breakable.y, cryptoAmount);
           }
 
+          // 60% chance to drop ammo (3/5 or 6/10 breakables contain ammo)
+          // Average of 1.2 ammo per drop (1 or 2 ammo with weighted distribution)
+          if (Math.random() < 0.6) {
+            var ammoAmount = Math.random() < 0.8 ? 1 : 2; // 80% chance 1 ammo, 20% chance 2 ammo = 1.2 avg
+            _items.push({
+              x: breakable.x,
+              y: breakable.y,
+              type: 'ammo',
+              amount: ammoAmount,
+              spawnTime: Date.now(),
+              decayTime: 60000, // 60 second decay for resources
+              emoji: '🔫',
+              name: 'Ammo (' + ammoAmount + ')'
+            });
+          }
+
           // 30% chance to drop a card
           if (Math.random() < 0.3 && typeof CardSystem !== 'undefined') {
             var baseType = CardSystem.getRandomBaseCard();
@@ -4166,11 +4199,52 @@ const GoneRogue = (function () {
    * Use utility card
    */
   function _useUtility(card) {
+    var effects = [];
+    
+    // Health restoration
     if (card.stats.hp) {
       _player.hp = Math.min(_player.maxHp, _player.hp + card.stats.hp);
+      effects.push('HP +' + card.stats.hp);
     }
-    if (card.stats.energy) {
-      _player.energy = Math.min(_player.maxEnergy, _player.energy + card.stats.energy);
+    
+    // Energy restoration
+    if (card.stats.energyBoost) {
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addEnergy) {
+        GAMESTATE.addEnergy(card.stats.energyBoost);
+        effects.push('ENERGY +' + card.stats.energyBoost);
+      }
+    }
+    
+    // Fatigue reduction
+    if (card.stats.fatigueReduction) {
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.reduceFatigue) {
+        GAMESTATE.reduceFatigue(card.stats.fatigueReduction);
+        effects.push('FATIGUE -' + card.stats.fatigueReduction);
+      }
+    }
+    
+    // Battery recharge
+    if (card.stats.batteryRecharge) {
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.rechargeBattery) {
+        GAMESTATE.rechargeBattery(card.stats.batteryRecharge);
+        effects.push('BATTERY +' + card.stats.batteryRecharge);
+      }
+    }
+    
+    // Focus boost
+    if (card.stats.focusBoost) {
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addFocus) {
+        GAMESTATE.addFocus(card.stats.focusBoost);
+        effects.push('FOCUS +' + card.stats.focusBoost);
+      }
+    }
+    
+    // Ammo restoration
+    if (card.stats.ammoRestore) {
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addAmmo) {
+        GAMESTATE.addAmmo(card.stats.ammoRestore);
+        effects.push('AMMO +' + card.stats.ammoRestore);
+      }
     }
 
     // Check for wrong item in safe zone trigger
@@ -4198,8 +4272,9 @@ const GoneRogue = (function () {
     _turn++;
     _saveState();
 
+    var effectsMsg = effects.length > 0 ? effects.join(', ') : '';
     return {
-      lines: ['USED: ' + card.name.toUpperCase(), ''].concat(_renderGrid()),
+      lines: ['USED: ' + card.name.toUpperCase(), effectsMsg, ''].concat(_renderGrid()),
       prompt: getPrompt(),
       stayActive: true
     };
@@ -4277,6 +4352,7 @@ const GoneRogue = (function () {
     _strCombatEnemy = enemy;
     _strCombatRound = 0;
     _strCombatLog = [];
+    _strCombatAmmoSpent = 0; // Reset ammo tracking for this encounter
 
     // Initialize enemy intent state if system available
     if (typeof EnemyIntentSystem !== 'undefined') {
@@ -4928,9 +5004,9 @@ const GoneRogue = (function () {
     // GRENADE card interaction
     else if (cardName === 'Grenade') {
       handled = true;
-      lines.push('├─ Throwing GRENADE at boss environment...');
+      lines.push('├─ Throwing Grenade at boss environment...');
       var playerAction = {
-        type: 'GRENADE',
+        type: 'Grenade',
         targetX: target.x || 20,
         targetY: target.y || 10,
         card: card
@@ -5087,9 +5163,9 @@ const GoneRogue = (function () {
       var roll = Math.random();
       if (roll < 0.4 && typeof CardSystem !== 'undefined') {
         // Try to defend
-        return CardSystem.rollCard('DODGE');
+        return CardSystem.rollCard('Dodge');
       } else if (roll < 0.7 && typeof CardSystem !== 'undefined') {
-        return CardSystem.rollCard('PRONE');
+        return CardSystem.rollCard('Prone');
       }
     }
     
@@ -5098,18 +5174,18 @@ const GoneRogue = (function () {
       var attackRoll = Math.random();
       if (typeof CardSystem !== 'undefined') {
         if (attackRoll < 0.5) {
-          return CardSystem.rollCard('SINGLE_SHOT');
+          return CardSystem.rollCard('Single Shot');
         } else if (attackRoll < 0.8) {
-          return CardSystem.rollCard('BURST_SHOT');
+          return CardSystem.rollCard('Burst Shot');
         } else {
-          return CardSystem.rollCard('OVERWATCH');
+          return CardSystem.rollCard('Overwatch');
         }
       }
     }
     
     // Default: basic attack
     if (typeof CardSystem !== 'undefined') {
-      return CardSystem.rollCard('SINGLE_SHOT');
+      return CardSystem.rollCard('Single Shot');
     }
     
     // Fallback: create a basic attack card
@@ -5142,6 +5218,14 @@ const GoneRogue = (function () {
     var enemy = _strCombatEnemy;
     if (!enemy || enemy.hp <= 0) {
       return _exitStrCombat('player_victory');
+    }
+
+    // Track ammo spent if card has ammo cost
+    if (card && card.resourceCost && card.resourceCost.ammo) {
+      _strCombatAmmoSpent += card.resourceCost.ammo;
+    } else if (card && card.baseStats && card.baseStats.ammo) {
+      // Legacy ammo tracking from baseStats
+      _strCombatAmmoSpent += card.baseStats.ammo;
     }
 
     // Calculate hit
@@ -5377,6 +5461,20 @@ const GoneRogue = (function () {
         });
       }
 
+      // Calculate ammo drops based on ammo spent (1 ammo drop per 3 ammo spent)
+      var ammoDrops = Math.floor(_strCombatAmmoSpent / 3);
+      if (ammoDrops > 0) {
+        // Auto-collect ammo drops
+        GAMESTATE.addAmmo(ammoDrops);
+        lines.push('🔫 AMMO RECOVERED: +' + ammoDrops + ' (' + _strCombatAmmoSpent + ' spent in combat)');
+        
+        // Report to debrief feed
+        if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
+          var currentAmmo = GAMESTATE.getAmmo ? GAMESTATE.getAmmo() : 0;
+          DebriefFeedController.reportResourceChange('ammo', currentAmmo - ammoDrops, currentAmmo, 'Enemy Defeated');
+        }
+      }
+
       // Spawn standard loot (currency, cards, charms)
       if (deathResult && deathResult.loot) {
         // Currency
@@ -5493,7 +5591,7 @@ const GoneRogue = (function () {
               lines.push('');
               // Spawn legendary card
               if (typeof CardSystem !== 'undefined') {
-                var legendaryCard = CardSystem.rollCard('INVENTORY_CHARM'); // Guaranteed inventory charm
+                var legendaryCard = CardSystem.rollCard('Inventory Charm'); // Guaranteed inventory charm
                 _items.push({
                   x: _strCombatEnemy.x,
                   y: _strCombatEnemy.y,

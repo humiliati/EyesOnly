@@ -92,7 +92,22 @@ const HandFanComponent = (function () {
     setTimeout(function() {
       _fanContainer.style.display = 'none';
       _fanContainer.classList.remove('hand-fan-disappear');
+      _fanContainer.classList.remove('hand-fan-minimized'); // Remove minimized state
     }, 300);
+  }
+
+  /**
+   * Minimize hand to single transparent card (during turn resolution)
+   */
+  function minimize() {
+    _fanContainer.classList.add('hand-fan-minimized');
+  }
+
+  /**
+   * Restore hand from minimized state
+   */
+  function restore() {
+    _fanContainer.classList.remove('hand-fan-minimized');
   }
 
   /**
@@ -126,11 +141,24 @@ const HandFanComponent = (function () {
     _fanContainer.innerHTML = '';
     _updateFanPosition();
 
-    if (_cards.length === 0) {
-      var emptyMsg = document.createElement('div');
-      emptyMsg.className = 'hand-fan-empty';
-      emptyMsg.textContent = 'NO CARDS';
-      _fanContainer.appendChild(emptyMsg);
+    // Check if hand is empty or all cards are unaffordable
+    var hasAffordableCards = false;
+    if (_cards.length > 0) {
+      for (var i = 0; i < _cards.length; i++) {
+        var affordability = _validateCardAffordability(_cards[i]);
+        if (affordability.canAfford) {
+          hasAffordableCards = true;
+          break;
+        }
+      }
+    }
+
+    // Show placeholder if no cards or no affordable cards
+    if (_cards.length === 0 || !hasAffordableCards) {
+      var placeholder = document.createElement('div');
+      placeholder.className = 'hand-card-placeholder';
+      placeholder.textContent = 'BLCK';
+      _fanContainer.appendChild(placeholder);
       return;
     }
 
@@ -291,7 +319,7 @@ const HandFanComponent = (function () {
    */
   function _getCardLifecycle(card) {
     // Map card types to lifecycle categories
-    var lifecycle = card.lifecycle || card.consumable || 'core';
+    var lifecycle = card.lifecycleType || card.lifecycle || card.consumable || 'core';
 
     var lifecycleMap = {
       'disposable': 'consumable',
@@ -503,20 +531,70 @@ const HandFanComponent = (function () {
 
     // Commit animation: lift selected cards
     _animateCommit(function() {
-      // Resolve animation: fly to center
-      _animateResolve(function() {
-        // Notify game logic
-        if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.executeMultiCardRound === 'function') {
-          var selectedCardObjects = _selectedCards.map(function(index) {
-            return _cards[index];
-          });
-          GoneRogue.executeMultiCardRound(selectedCardObjects);
-        }
+      // Check for single-use/consumable cards and apply incinerator effect
+      var selectedCardObjects = _selectedCards.map(function(index) {
+        return _cards[index];
+      });
 
-        // Repopulate animation will be triggered by updateCards call
-        _selectedCards = [];
+      _animateIncinerator(selectedCardObjects, function() {
+        // Resolve animation: fly to center
+        _animateResolve(function() {
+          // Notify game logic
+          if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.executeMultiCardRound === 'function') {
+            GoneRogue.executeMultiCardRound(selectedCardObjects);
+          }
+
+          // Repopulate animation will be triggered by updateCards call
+          _selectedCards = [];
+        });
       });
     });
+  }
+
+  /**
+   * Animate incinerator effect for single-use cards
+   * @param {Array} cards - Array of card objects
+   * @param {Function} callback - Callback when animation completes
+   */
+  function _animateIncinerator(cards, callback) {
+    var hasConsumables = false;
+
+    // Check if any cards are consumable/disposable using helper function
+    for (var i = 0; i < cards.length; i++) {
+      var lifecycle = _getCardLifecycle(cards[i]);
+      if (lifecycle === 'consumable') {
+        hasConsumables = true;
+        break;
+      }
+    }
+
+    if (!hasConsumables) {
+      // No consumables, proceed immediately
+      if (callback) callback();
+      return;
+    }
+
+    // Apply incinerator animation to consumable cards
+    var cardElements = _fanContainer.querySelectorAll('.hand-card.hand-card-selected');
+    var consumableCount = 0;
+
+    for (var i = 0; i < cardElements.length; i++) {
+      var cardEl = cardElements[i];
+      var cardIndex = parseInt(cardEl.parentElement.dataset.cardIndex, 10);
+      var card = _cards[cardIndex];
+      var lifecycle = _getCardLifecycle(card);
+
+      if (lifecycle === 'consumable') {
+        cardEl.classList.add('card-incinerating');
+        consumableCount++;
+      }
+    }
+
+    // Wait for incinerator animation to complete
+    var duration = consumableCount > 0 ? 600 : 0;
+    setTimeout(function() {
+      if (callback) callback();
+    }, duration);
   }
 
   /**
@@ -629,6 +707,8 @@ const HandFanComponent = (function () {
     init: init,
     show: show,
     hide: hide,
+    minimize: minimize,
+    restore: restore,
     setMode: setMode,
     updateCards: updateCards,
     playSelectedCards: playSelectedCards,

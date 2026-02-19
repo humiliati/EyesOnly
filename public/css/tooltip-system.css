@@ -1,0 +1,192 @@
+/* ============================================================
+   Tooltip System - MOK Interjection with Scrollable History
+   ============================================================ */
+
+/* MOK History Toggle Button */
+.mok-history-toggle {
+  display: inline-block;
+  background: rgba(28, 255, 155, 0.1);
+  border: 1px solid rgba(28, 255, 155, 0.3);
+  color: #1cff9b;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  padding: 4px 12px;
+  margin: 4px 0;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+}
+
+.mok-history-toggle:hover {
+  background: rgba(28, 255, 155, 0.2);
+  border-color: #1cff9b;
+  box-shadow: 0 0 10px rgba(28, 255, 155, 0.3);
+}
+
+.mok-history-toggle:active {
+  background: rgba(28, 255, 155, 0.3);
+  transform: scale(0.98);
+}
+
+/* MOK History Container */
+.mok-history-container {
+  background: rgba(10, 10, 10, 0.95);
+  border: 1px solid rgba(28, 255, 155, 0.3);
+  border-radius: 4px;
+  margin: 8px 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+}
+
+.mok-history-container.mok-history-expanded {
+  max-height: 400px;
+  padding: 8px;
+}
+
+.mok-history-container.mok-history-collapsed {
+  max-height: 0;
+  padding: 0;
+}
+
+/* MOK History Content (scrollable area) */
+.mok-history-content {
+  max-height: 380px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+/* Custom scrollbar for history */
+.mok-history-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.mok-history-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+.mok-history-content::-webkit-scrollbar-thumb {
+  background: rgba(28, 255, 155, 0.3);
+  border-radius: 4px;
+}
+
+.mok-history-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(28, 255, 155, 0.5);
+}
+
+/* Firefox scrollbar */
+.mok-history-content {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(28, 255, 155, 0.3) rgba(0, 0, 0, 0.3);
+}
+
+/* History Entry */
+.mok-history-entry {
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(28, 255, 155, 0.1);
+  color: #ccc;
+  word-wrap: break-word;
+}
+
+.mok-history-entry:last-child {
+  border-bottom: none;
+}
+
+.mok-history-entry:hover {
+  background: rgba(28, 255, 155, 0.05);
+}
+
+/* History Time Stamp */
+.mok-history-time {
+  color: #666;
+  font-size: 10px;
+  margin-right: 8px;
+}
+
+/* History Message */
+.mok-history-message {
+  color: #1cff9b;
+}
+
+/* Empty History State */
+.mok-history-empty {
+  color: #666;
+  text-align: center;
+  padding: 20px;
+  font-style: italic;
+}
+
+/* ============================================================
+   Responsive Design
+   ============================================================ */
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .mok-history-container.mok-history-expanded {
+    max-height: 300px;
+  }
+
+  .mok-history-content {
+    max-height: 280px;
+    font-size: 10px;
+  }
+
+  .mok-history-toggle {
+    font-size: 10px;
+    padding: 3px 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .mok-history-container.mok-history-expanded {
+    max-height: 200px;
+  }
+
+  .mok-history-content {
+    max-height: 180px;
+    font-size: 9px;
+  }
+
+  .mok-history-toggle {
+    font-size: 9px;
+    padding: 2px 8px;
+  }
+
+  .mok-history-entry {
+    padding: 2px 0;
+  }
+
+  .mok-history-time {
+    font-size: 8px;
+  }
+}
+
+/* ============================================================
+   Accessibility
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .mok-history-container,
+  .mok-history-toggle {
+    transition: none !important;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .mok-history-container {
+    border-width: 2px;
+  }
+
+  .mok-history-toggle {
+    border-width: 2px;
+  }
+
+  .mok-history-entry {
+    border-bottom-width: 2px;
+  }
+}
