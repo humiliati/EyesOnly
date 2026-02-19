@@ -623,6 +623,17 @@ html, body {
   display: flex;
   align-items: center;
   gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.accountability-indicator:hover {
+  background: rgba(51, 255, 51, 0.1);
+  border-color: var(--panel-border);
 }
 
 .accountability-label {
@@ -632,6 +643,29 @@ html, body {
 .accountability-icon {
   font-size: 1.2em;
   line-height: 1;
+}
+
+/* Tier-based icon colors (overrides animation) */
+.accountability-icon.tier-1 {
+  color: #33ff33;
+  filter: drop-shadow(0 0 4px #33ff33);
+  animation: none;
+}
+
+.accountability-icon.tier-2 {
+  color: #ffb000;
+  filter: drop-shadow(0 0 4px #ffb000);
+  animation: none;
+}
+
+.accountability-icon.tier-3 {
+  color: #ff3333;
+  filter: drop-shadow(0 0 4px #ff3333);
+  animation: none;
+}
+
+/* Default animation when no tier selected */
+.accountability-icon:not(.tier-1):not(.tier-2):not(.tier-3) {
   animation: accountability-cycle 9s ease-in-out infinite;
 }
 
@@ -639,6 +673,132 @@ html, body {
   0%, 33% { color: #33ff33; filter: drop-shadow(0 0 4px #33ff33); } /* Green */
   33%, 66% { color: #ffb000; filter: drop-shadow(0 0 4px #ffb000); } /* Amber */
   66%, 100% { color: #ff3333; filter: drop-shadow(0 0 4px #ff3333); } /* Red */
+}
+
+/* AWOL Difficulty Selector Tooltip */
+.awol-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 280px;
+  background: rgba(8, 24, 12, 0.98);
+  border: 2px solid var(--panel-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+  z-index: 9999;
+  font-family: var(--font);
+}
+
+.awol-tooltip-header {
+  padding: 8px 12px;
+  background: rgba(20, 60, 30, 0.6);
+  border-bottom: 1px solid var(--panel-border);
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  color: var(--phosphor);
+  text-transform: uppercase;
+}
+
+.awol-tooltip-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.awol-option {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.awol-option-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.awol-option-value {
+  font-size: 12px;
+  color: var(--phosphor);
+  font-weight: bold;
+}
+
+.difficulty-toggle-group {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+.difficulty-btn {
+  flex: 1;
+  padding: 8px 12px;
+  background: rgba(20, 40, 25, 0.6);
+  border: 2px solid rgba(51, 255, 51, 0.3);
+  border-radius: 4px;
+  color: rgba(51, 255, 51, 0.5);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.difficulty-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  border-color: rgba(100, 100, 100, 0.3);
+  color: rgba(100, 100, 100, 0.5);
+}
+
+.difficulty-btn:not(:disabled):hover {
+  background: rgba(51, 255, 51, 0.15);
+  border-color: rgba(51, 255, 51, 0.6);
+  box-shadow: 0 0 8px rgba(51, 255, 51, 0.3);
+}
+
+.difficulty-btn.tier-1:not(:disabled) {
+  border-color: #33ff33;
+  color: #33ff33;
+}
+
+.difficulty-btn.tier-2:not(:disabled) {
+  border-color: #ffb000;
+  color: #ffb000;
+}
+
+.difficulty-btn.tier-3:not(:disabled) {
+  border-color: #ff3333;
+  color: #ff3333;
+}
+
+.difficulty-btn.active {
+  background: rgba(51, 255, 51, 0.25);
+  border-width: 3px;
+  box-shadow: 0 0 12px rgba(51, 255, 51, 0.5), inset 0 0 8px rgba(51, 255, 51, 0.3);
+}
+
+.difficulty-btn.active.tier-1 {
+  background: rgba(51, 255, 51, 0.25);
+  box-shadow: 0 0 12px rgba(51, 255, 51, 0.5), inset 0 0 8px rgba(51, 255, 51, 0.3);
+}
+
+.difficulty-btn.active.tier-2 {
+  background: rgba(255, 176, 0, 0.25);
+  box-shadow: 0 0 12px rgba(255, 176, 0, 0.5), inset 0 0 8px rgba(255, 176, 0, 0.3);
+}
+
+.difficulty-btn.active.tier-3 {
+  background: rgba(255, 51, 51, 0.25);
+  box-shadow: 0 0 12px rgba(255, 51, 51, 0.5), inset 0 0 8px rgba(255, 51, 51, 0.3);
+}
+
+.difficulty-tier {
+  display: block;
 }
 
 /* Inventory Grid Styles */
@@ -1226,6 +1386,12 @@ body.amber-mode #scanlines::after {
     display: none; /* Hide label text on tablet */
   }
   
+  /* AWOL tooltip adjustments for tablet */
+  .awol-tooltip {
+    min-width: 240px;
+    right: -10px;
+  }
+  
   .accountability-icon {
     font-size: 1.4em;
     cursor: help; /* Indicate tooltip available */
@@ -1313,6 +1479,16 @@ body.amber-mode #scanlines::after {
   
   .accountability-icon {
     font-size: 0.9em;
+  }
+  
+  /* AWOL tooltip adjustments for mobile */
+  .awol-tooltip {
+    position: fixed;
+    top: 60px !important;
+    right: 10px !important;
+    left: 10px !important;
+    min-width: auto;
+    max-width: calc(100vw - 20px);
   }
   
   /* Active item slot reduction */

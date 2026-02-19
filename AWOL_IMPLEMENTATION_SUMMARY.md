@@ -1,0 +1,183 @@
+# AWOL Button: Difficulty Tier Selector Implementation
+
+## Overview
+Implemented a difficulty tier selector for Gone Rogue, accessed via the AWOL button in the MOK header.
+
+## Visual Layout
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ MOK LINK ESTABLISHED                                    │
+│ Spy Games: Red Team [player_name]       AWOL ● (green) │
+└─────────────────────────────────────────────────────────┘
+                                             ↓ (click)
+                              ┌─────────────────────────────┐
+                              │ MISSION PARAMETERS          │
+                              ├─────────────────────────────┤
+                              │ Last Check-in with M:       │
+                              │ ACTIVE (green)              │
+                              │                             │
+                              │ Gone Rogue Difficulty:      │
+                              │ ┌────┐ ┌────┐ ┌────┐       │
+                              │ │ T1 │ │ T2 │ │ T3 │       │
+                              │ └────┘ └────┘ └────┘       │
+                              │ (green)(yellow)(red)        │
+                              └─────────────────────────────┘
+```
+
+## Button States
+
+### AWOL Icon Colors
+- **Green (●)**: T1 - Standard difficulty selected
+- **Yellow (●)**: T2 - Advanced difficulty selected  
+- **Red (●)**: T3 - Extreme difficulty selected
+- **Cycling**: No tier selected (default animation)
+
+### Difficulty Button States
+- **T1 (Green)**: Always available for logged-in users
+- **T2 (Yellow)**: Unlocked after completing T1 (floor 30)
+- **T3 (Red)**: Unlocked after completing T2 (floor 30)
+- **Disabled (Gray)**: Not yet unlocked or not logged in
+
+## Difficulty Multipliers
+
+| Tier | Name     | Enemy Count | Enemy Stats | Sight Range | Color  |
+|------|----------|-------------|-------------|-------------|--------|
+| T1   | Standard | 1.0x        | 1.0x        | +0          | Green  |
+| T2   | Advanced | 1.3x        | 1.3x        | +1          | Yellow |
+| T3   | Extreme  | 1.6x        | 1.6x        | +2          | Red    |
+
+## User Flow
+
+1. **New User (Not Logged In)**
+   - AWOL button shows cycling color animation
+   - Click shows tooltip with "M status: OFFLINE"
+   - All difficulty buttons disabled
+   - Message: "Log in to access difficulty settings"
+
+2. **Logged In User (No Completions)**
+   - AWOL icon shows green (T1 default)
+   - Click shows tooltip with "M status: ACTIVE"
+   - T1 button enabled, T2/T3 disabled
+   - Can select T1 to start standard difficulty run
+
+3. **Experienced User (Completed T1)**
+   - AWOL icon shows selected tier color
+   - Click shows tooltip
+   - T1 and T2 buttons enabled, T3 disabled
+   - Can toggle between T1 and T2
+
+4. **Veteran User (Completed T2)**
+   - All tier buttons enabled
+   - Full difficulty selection available
+   - Can challenge maximum difficulty (T3)
+
+## Integration Points
+
+### Gone Rogue Game Mechanics
+- Enemy count increased by multiplier
+- Enemy HP scaled by multiplier
+- Enemy STR/DEX scaled by multiplier
+- Enemy sight range increased by tier level
+- Tier completion tracked on floor 30 exit
+
+### User Account System
+- Authentication check before showing options
+- Tier completion saved to localStorage
+- Current selection persisted across sessions
+
+### MOK Interjection System
+- Difficulty change messages displayed
+- Tier completion congratulations shown
+- Status updates via MOK advisory system
+
+## Responsive Design
+
+### Desktop (1024px+)
+- Full button text "AWOL" visible
+- Tooltip positioned below button
+- All text and labels visible
+
+### Tablet (768px - 1023px)
+- Button text hidden, icon only
+- Tooltip width reduced to 240px
+- Hover tooltip shows full label
+
+### Mobile (<768px)
+- Icon becomes nested indicator (badge style)
+- Tooltip becomes full-width modal
+- Fixed positioning for better visibility
+- Touch-optimized button sizes
+
+## Code Structure
+
+### New Files
+- `public/js/awol-difficulty.js` - Main difficulty selector logic (289 lines)
+
+### Modified Files
+- `public/index.html` - Added button and tooltip markup
+- `public/css/crt.css` - Added styling and responsive rules
+- `public/js/gone-rogue.js` - Integrated difficulty system
+
+## Storage Format
+
+```javascript
+// localStorage: 'eyesonly_awol_difficulty'
+{
+  "currentTier": 2,           // Selected tier (1-3)
+  "completedTiers": [1, 2]    // Array of completed tiers
+}
+```
+
+## API Interface
+
+### AWOLDifficulty Module
+```javascript
+AWOLDifficulty.init()                      // Initialize system
+AWOLDifficulty.getCurrentTier()            // Get selected tier
+AWOLDifficulty.markTierCompleted(tier)     // Mark tier complete
+AWOLDifficulty.resetProgress()             // Reset for testing
+```
+
+### GoneRogue Module
+```javascript
+GoneRogue.setDifficulty(tier)    // Set difficulty (1-3)
+GoneRogue.getDifficulty()        // Get current difficulty
+GoneRogue.onStateChange(cb)      // Register state callback
+```
+
+## Testing Checklist
+
+✅ Syntax validation passed
+✅ Code review completed  
+✅ Security scan passed (CodeQL)
+✅ Responsive CSS breakpoints defined
+✅ Authentication integration verified
+✅ localStorage persistence implemented
+✅ Difficulty multipliers applied
+✅ Tier completion tracking added
+
+⚠️ Manual browser testing required:
+- Click interactions
+- Tooltip positioning
+- Color transitions
+- Mobile responsiveness
+- Authentication flow
+- Progression unlocking
+
+## Known Limitations
+
+1. Tooltip only shows when Gone Rogue is active
+2. Tier completion requires beating floor 30 (not just reaching)
+3. No difficulty preview or detailed stats in tooltip
+4. No difficulty indicator in Gone Rogue main screen
+5. Difficulty change requires new run (doesn't affect current run)
+
+## Future Enhancements
+
+- Add difficulty preview stats to tooltip
+- Show current difficulty in Gone Rogue status bar
+- Add achievements for tier completions
+- Implement leaderboards per difficulty tier
+- Add difficulty-specific enemy variants
+- Include difficulty in highscore submissions

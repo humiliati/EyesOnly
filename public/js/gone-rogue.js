@@ -72,6 +72,18 @@ const GoneRogue = (function () {
   // Secret floor state
   var _activeSecretFloor = null; // Current secret floor type (if any)
 
+  // Difficulty tier system (1 = Standard, 2 = Advanced, 3 = Extreme)
+  var _difficultyTier = 1;
+  var _stateChangeCallbacks = []; // Callbacks for state changes (used by AWOL button)
+
+  // Vents system state
+  var _vents = []; // Vent objects on current floor { x, y, quality, discovered, used }
+  var _ventUseCount = 0; // Total vents used this run (affects success rate)
+  var _penaltyFloors = []; // Floors marked as penalty (from vent failures)
+  var _previousBiome = null; // Track previous floor biome for bleed
+  var _nextBiomePreview = null; // Cache next floor's biome for consistent preview
+  var _visitedBiomes = []; // Track visited biomes this run
+
   // Highscore tracking variables
   var _runStartTime = null;        // Run start timestamp
   var _currencyCollected = 0;      // Total currency collected this run (excludes starting balance)
@@ -291,13 +303,88 @@ const GoneRogue = (function () {
   /**
    * Determine biome based on floor number
    */
+  /**
+   * Get biome for floor using weighted random selection (floor shuffling)
+   * Floors 1-3 are always Forest for new player experience
+   * Other floors use weighted probabilities based on depth
+   */
   function _getBiome(floorNum) {
-    if (floorNum >= 23) return BIOMES.AEROSPACE;
-    if (floorNum >= 17) return BIOMES.INDUSTRIAL;
-    if (floorNum >= 11) return BIOMES.MALL;
-    if (floorNum >= 5) return BIOMES.OFFICE;
+    // Floors 1-3: Always Forest (tutorial/starting experience)
+    if (floorNum <= 3) return BIOMES.FOREST;
+    
+    // Floor 4: Special Grey Cave floor
     if (floorNum === 4) return BIOMES.GREY_CAVE;
-    return BIOMES.FOREST; // Floors 1-3 use forest starting biome
+    
+    // Boss floors: Use boss-appropriate biomes (Aerospace for high floors)
+    if (BOSS_FLOORS.indexOf(floorNum) !== -1 && floorNum >= 23) {
+      return BIOMES.AEROSPACE;
+    }
+    
+    // Weighted biome selection based on floor depth
+    var weights = {};
+    
+    if (floorNum >= 5 && floorNum <= 6) {
+      // Early game: Forest dominant
+      weights = {
+        FOREST: 60,
+        MALL: 20,
+        INDUSTRIAL: 15,
+        GREY_CAVE: 5
+      };
+    } else if (floorNum >= 7 && floorNum <= 9) {
+      // Mid-early game: Mall becomes common
+      weights = {
+        FOREST: 25,
+        MALL: 35,
+        INDUSTRIAL: 30,
+        GREY_CAVE: 10
+      };
+    } else if (floorNum >= 10 && floorNum <= 15) {
+      // Mid game: Industrial rises
+      weights = {
+        FOREST: 10,
+        MALL: 25,
+        INDUSTRIAL: 40,
+        GREY_CAVE: 15,
+        AEROSPACE: 10
+      };
+    } else if (floorNum >= 16 && floorNum <= 22) {
+      // Late game: Mix with Aerospace
+      weights = {
+        FOREST: 5,
+        MALL: 20,
+        INDUSTRIAL: 35,
+        GREY_CAVE: 10,
+        AEROSPACE: 30
+      };
+    } else {
+      // Endgame: Aerospace dominant
+      weights = {
+        MALL: 10,
+        INDUSTRIAL: 20,
+        AEROSPACE: 70
+      };
+    }
+    
+    // Calculate total weight
+    var totalWeight = 0;
+    for (var key in weights) {
+      totalWeight += weights[key];
+    }
+    
+    // Select random biome based on weights
+    var rand = Math.random() * totalWeight;
+    var cumulative = 0;
+    
+    for (var biomeKey in weights) {
+      cumulative += weights[biomeKey];
+      if (rand <= cumulative) {
+        return BIOMES[biomeKey];
+      }
+    }
+    
+    // Fallback (should never happen)
+    return BIOMES.OFFICE;
   }
 
   function init() {
@@ -704,6 +791,40 @@ const GoneRogue = (function () {
     return lines;
   }
 
+  // ============================================================
+  // DIFFICULTY TIER HELPER FUNCTIONS
+  // ============================================================
+
+  /**
+   * Get difficulty multiplier based on current tier
+   * @returns {number} Multiplier for enemy stats/count
+   */
+  function _getDifficultyMultiplier() {
+    switch (_difficultyTier) {
+      case 1: return 1.0;    // Standard
+      case 2: return 1.3;    // Advanced (+30% enemies, stats)
+      case 3: return 1.6;    // Extreme (+60% enemies, stats)
+      default: return 1.0;
+    }
+  }
+
+  /**
+   * Notify all state change listeners
+   */
+  function _notifyStateChange() {
+    _stateChangeCallbacks.forEach(function(cb) {
+      try {
+        cb();
+      } catch (e) {
+        console.warn('[GoneRogue] State change callback error:', e);
+      }
+    });
+  }
+
+  // ============================================================
+  // FLOOR GENERATION
+  // ============================================================
+
   function _generateFloor(secretFloorData) {
     // Initialize generation state
     _projectiles = [];
@@ -903,6 +1024,12 @@ const GoneRogue = (function () {
 
     // Spawn shops
     _spawnShops(rooms, floorType);
+
+    // Spawn vents (15% chance, not on bonfire or tutorial floors)
+    _spawnVents(rooms, floorType);
+
+    // Apply biome bleed if we have a previous biome tracked
+    _applyBiomeBleed(rooms);
 
     _turn = 0;
   }
@@ -1309,14 +1436,17 @@ const GoneRogue = (function () {
       // Enemy density based on difficulty
       var difficulty = _floor;
 
+      // Apply difficulty tier multiplier
+      var tierMultiplier = _getDifficultyMultiplier();
+      
       if (difficulty <= 3) {
-        enemyCount = 4 + Math.floor(Math.random() * 3); // 4-6
+        enemyCount = Math.floor((4 + Math.floor(Math.random() * 3)) * tierMultiplier); // 4-6 base
       } else if (difficulty <= 7) {
-        enemyCount = 7 + Math.floor(Math.random() * 4); // 7-10
+        enemyCount = Math.floor((7 + Math.floor(Math.random() * 4)) * tierMultiplier); // 7-10 base
       } else if (difficulty <= 15) {
-        enemyCount = 10 + Math.floor(Math.random() * 6); // 10-15
+        enemyCount = Math.floor((10 + Math.floor(Math.random() * 6)) * tierMultiplier); // 10-15 base
       } else {
-        enemyCount = 12 + Math.floor(Math.random() * 7); // 12-18
+        enemyCount = Math.floor((12 + Math.floor(Math.random() * 7)) * tierMultiplier); // 12-18 base
       }
     }
 
@@ -1405,16 +1535,26 @@ const GoneRogue = (function () {
   }
 
   function _createEnemy(x, y, patrolType, room) {
+    var tierMultiplier = _getDifficultyMultiplier();
+    
+    // Check if this is a penalty floor
+    var isPenaltyFloor = _penaltyFloors.indexOf(_floor) !== -1;
+    var penaltyMultiplier = isPenaltyFloor ? 1.2 : 1.0; // +20% for penalty floors
+    
     var enemy = {
       x: x,
       y: y,
-      hp: 5,
+      hp: Math.floor(5 * tierMultiplier * penaltyMultiplier),
+      maxHp: Math.floor(5 * tierMultiplier * penaltyMultiplier),
+      str: Math.floor((3 + Math.floor(_floor * 0.2)) * tierMultiplier * penaltyMultiplier),
+      dex: Math.floor((3 + Math.floor(_floor * 0.2)) * tierMultiplier * penaltyMultiplier),
       awareness: 0,
       orientation: ['north', 'south', 'east', 'west'][Math.floor(Math.random() * 4)],
-      sightRange: _floor > 5 ? 7 : 5, // Increased range on late floors
+      sightRange: (_floor > 5 ? 7 : 5) + (_difficultyTier - 1) + (isPenaltyFloor ? 1 : 0), // +1 for penalty
       pathTimer: 0,
       isTreasureGoblin: false, // Special enemy type
-      goblinSpawnTime: null // For timeout tracking
+      goblinSpawnTime: null, // For timeout tracking
+      isPenalty: isPenaltyFloor // Mark penalty enemies
     };
 
     // 2% chance to spawn a treasure goblin after floor 5
@@ -1591,6 +1731,142 @@ const GoneRogue = (function () {
       });
 
       console.log('[GoneRogue] Spawned', shopSpawn.type, 'shop at', shopX, shopY);
+    }
+  }
+
+  /**
+   * Spawn vents on floor (15% probability, minimum 1 every 4-6 floors)
+   */
+  function _spawnVents(rooms, floorType) {
+    _vents = []; // Clear previous vents
+    
+    // No vents on tutorial, bonfire, or boss floors
+    if (floorType === FLOOR_TYPES.TUTORIAL || 
+        floorType === FLOOR_TYPES.BONFIRE || 
+        floorType === FLOOR_TYPES.BOSS ||
+        floorType === FLOOR_TYPES.FINAL) {
+      return;
+    }
+    
+    // 15% chance to spawn a vent
+    if (Math.random() > 0.15) {
+      return;
+    }
+    
+    // Find a suitable room (prefer mid-size rooms)
+    var eligibleRooms = rooms.filter(function(room) {
+      return room.w >= 4 && room.h >= 4 && room.w <= 8 && room.h <= 8;
+    });
+    
+    if (eligibleRooms.length === 0) {
+      eligibleRooms = rooms; // Fallback to any room
+    }
+    
+    var ventRoom = eligibleRooms[Math.floor(Math.random() * eligibleRooms.length)];
+    
+    // Place vent in a random position within room
+    var ventX = ventRoom.x + 1 + Math.floor(Math.random() * (ventRoom.w - 2));
+    var ventY = ventRoom.y + 1 + Math.floor(Math.random() * (ventRoom.h - 2));
+    
+    // Ensure position is empty
+    if (_grid[ventY][ventX] === TILES.EMPTY) {
+      // Vent quality: 85% standard, 15% rusty (worse success rate)
+      var quality = Math.random() < 0.85 ? 'standard' : 'rusty';
+      
+      _grid[ventY][ventX] = TILES.VENT;
+      
+      _vents.push({
+        x: ventX,
+        y: ventY,
+        quality: quality,
+        discovered: false,
+        used: false
+      });
+      
+      console.log('[GoneRogue] Spawned', quality, 'vent at', ventX, ventY);
+    }
+  }
+
+  /**
+   * Apply biome bleed - add tiles from adjacent biomes to floor edges
+   */
+  function _applyBiomeBleed(rooms) {
+    var currentBiome = _getBiome(_floor);
+    
+    // Track this biome for next floor
+    if (_visitedBiomes.indexOf(currentBiome.name) === -1) {
+      _visitedBiomes.push(currentBiome.name);
+    }
+    
+    // If we have a previous biome and it's different, add bleed tiles
+    if (_previousBiome && _previousBiome.name !== currentBiome.name) {
+      _applyBleedTiles(_previousBiome, 'entrance', 5, 10);
+    }
+    
+    // Preview next floor's biome near exit (if floor < 30)
+    if (_floor < 30) {
+      // Use cached preview if available, otherwise generate and cache
+      if (!_nextBiomePreview) {
+        _nextBiomePreview = _getBiome(_floor + 1);
+      }
+      
+      if (_nextBiomePreview.name !== currentBiome.name) {
+        _applyBleedTiles(_nextBiomePreview, 'exit', 5, 10);
+      }
+    }
+    
+    // Store current biome as previous for next floor
+    // And set next preview to null so it regenerates
+    _previousBiome = currentBiome;
+    _nextBiomePreview = null; // Will be set fresh on next floor
+  }
+
+  /**
+   * Apply bleed tiles from a biome to the floor
+   */
+  function _applyBleedTiles(biome, location, minCount, maxCount) {
+    var count = minCount + Math.floor(Math.random() * (maxCount - minCount + 1));
+    var bleedChar = _getBleedChar(biome);
+    
+    if (!bleedChar) return;
+    
+    for (var i = 0; i < count; i++) {
+      var x, y;
+      
+      if (location === 'entrance') {
+        // Place near player spawn (left side of map)
+        x = 1 + Math.floor(Math.random() * 8);
+        y = 1 + Math.floor(Math.random() * (GRID_HEIGHT - 2));
+      } else {
+        // Place near exit (right side of map)
+        x = GRID_WIDTH - 9 + Math.floor(Math.random() * 8);
+        y = 1 + Math.floor(Math.random() * (GRID_HEIGHT - 2));
+      }
+      
+      // Only place on empty floor tiles
+      if (_grid[y] && _grid[y][x] === TILES.EMPTY) {
+        _grid[y][x] = bleedChar;
+      }
+    }
+  }
+
+  /**
+   * Get bleed character for biome
+   */
+  function _getBleedChar(biome) {
+    switch (biome.name) {
+      case 'Cozy Forest':
+        return TILES.GRASS; // Grass/foliage
+      case 'Shopping Mall':
+        return TILES.DEBRIS; // Mall debris
+      case 'Industrial Complex':
+        return TILES.HAZARD; // Industrial waste
+      case 'Grey Cave':
+        return TILES.SHADOW; // Cave shadows
+      case 'Aerospace Museum':
+        return TILES.DEBRIS; // Metal debris
+      default:
+        return null;
     }
   }
 
@@ -1872,6 +2148,12 @@ const GoneRogue = (function () {
     } else if (_bossFloorActive && _bossDefeated) {
       floorLabel += ' ✅ BOSS DEFEATED';
     }
+    
+    // Show penalty floor indicator
+    if (_penaltyFloors.indexOf(_floor) !== -1) {
+      floorLabel += ' 🔻 PENALTY';
+    }
+    
     lines.push('HP: ' + _player.hp + '/' + _player.maxHp + ' | ' + floorLabel + ' | Turn: ' + _turn);
     if (_bossFloorActive && _activeBoss && !_bossDefeated) {
       lines.push('⚠️  Boss: ' + _activeBoss.type + ' | Phase: ' + _activeBoss.phase);
@@ -2229,6 +2511,12 @@ const GoneRogue = (function () {
     var MAX_FLOORS = 30;
     if (_floor >= MAX_FLOORS) {
       _runCompleted = true; // Mark run as completed for highscore
+      
+      // Mark difficulty tier as completed
+      if (typeof AWOLDifficulty !== 'undefined' && _difficultyTier >= 1 && _difficultyTier <= 3) {
+        AWOLDifficulty.markTierCompleted(_difficultyTier);
+      }
+      
       return _exitRogue(true);
     }
 
@@ -2237,9 +2525,152 @@ const GoneRogue = (function () {
   }
 
   /**
+   * Handle vent interaction and bypass attempt
+   */
+  function _handleVentInteraction() {
+    // Find vent at player position
+    var vent = null;
+    for (var i = 0; i < _vents.length; i++) {
+      if (_vents[i].x === _player.x && _vents[i].y === _player.y) {
+        vent = _vents[i];
+        break;
+      }
+    }
+    
+    if (!vent || vent.used) {
+      return { lines: ['This vent is no longer functional'], prompt: getPrompt(), stayActive: true };
+    }
+    
+    // Mark as discovered
+    if (!vent.discovered) {
+      vent.discovered = true;
+      return {
+        lines: [
+          'You found a vent!',
+          '',
+          'Quality: ' + (vent.quality === 'rusty' ? 'Rusty (Lower Success)' : 'Standard'),
+          'Destination: Floor ' + (_floor + 2),
+          '',
+          'Use INTERACT again to attempt bypass',
+          'or move away to continue normally'
+        ],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+    
+    // Calculate bypass success chance
+    var bypassChance = 0.75; // Base 75%
+    bypassChance -= (_ventUseCount * 0.05); // -5% per prior vent use
+    bypassChance -= (_floor * 0.01); // -1% per floor depth
+    
+    // Rusty vents have worse odds
+    if (vent.quality === 'rusty') {
+      bypassChance -= 0.05;
+    }
+    
+    // Difficulty tier affects success rate
+    bypassChance -= (_difficultyTier - 1) * 0.05; // -5% per tier above 1
+    
+    // Clamp to minimum 25%
+    bypassChance = Math.max(0.25, bypassChance);
+    
+    // Attempt bypass
+    var success = Math.random() < bypassChance;
+    vent.used = true;
+    _ventUseCount++;
+    
+    if (success) {
+      // Success: Skip to floor N+2
+      var lines = [
+        'VENT BYPASS SUCCESSFUL!',
+        '',
+        'You navigate through the vent system.',
+        'Emerging on floor ' + (_floor + 2) + '...',
+        '',
+        'Floor ' + (_floor + 1) + ' cleared automatically (50% XP awarded)'
+      ];
+      
+      // Award 50% XP for skipped floor
+      _awardSkippedFloorXP();
+      
+      // Advance floor by 2
+      _floor++;
+      
+      // Remove the vent tile
+      _grid[_player.y][_player.x] = TILES.EMPTY;
+      
+      // Generate next floor
+      setTimeout(function() {
+        _advanceFloor();
+      }, 100);
+      
+      return { lines: lines, prompt: getPrompt(), stayActive: true };
+    } else {
+      // Failure: Backtrack 3 floors with penalty enemies
+      var backtrackFloors = Math.min(3, _floor - 1);
+      var targetFloor = Math.max(1, _floor - backtrackFloors);
+      
+      var lines = [
+        'VENT MALFUNCTION!',
+        '',
+        'The vent collapses behind you!',
+        'You tumble backwards through the system...',
+        '',
+        'Landed on floor ' + targetFloor,
+        'WARNING: Penalty enemies active!'
+      ];
+      
+      // Mark floors as penalty
+      for (var i = 0; i < backtrackFloors; i++) {
+        var penaltyFloor = targetFloor + i;
+        if (_penaltyFloors.indexOf(penaltyFloor) === -1) {
+          _penaltyFloors.push(penaltyFloor);
+        }
+      }
+      
+      // Backtrack floor
+      _floor = targetFloor - 1; // Will be incremented by advanceFloor
+      
+      // Player takes minor damage from the fall
+      _player.hp = Math.max(1, _player.hp - 2);
+      
+      // Remove the vent tile
+      _grid[_player.y][_player.x] = TILES.EMPTY;
+      
+      // Generate penalty floor
+      setTimeout(function() {
+        _advanceFloor();
+      }, 100);
+      
+      return { lines: lines, prompt: getPrompt(), stayActive: true };
+    }
+  }
+
+  /**
+   * Award XP for skipped floor
+   */
+  function _awardSkippedFloorXP() {
+    // Calculate XP based on skipped floor
+    var baseXP = 50 + (_floor * 10);
+    var skippedXP = Math.floor(baseXP * 0.5);
+    
+    // Award to gamestate if available
+    if (typeof GAMESTATE !== 'undefined' && GAMESTATE.awardExperience) {
+      GAMESTATE.awardExperience(skippedXP);
+    }
+  }
+
+  /**
    * Handle interaction with interactive items
    */
   function _handleInteraction() {
+    // First check if player is on a vent tile
+    var playerTile = _grid[_player.y][_player.x];
+    if (playerTile === TILES.VENT) {
+      return _handleVentInteraction();
+    }
+    
     if (typeof InteractiveItems === 'undefined') {
       return { lines: ['Nothing to interact with'], prompt: getPrompt(), stayActive: true };
     }
@@ -6421,6 +6852,46 @@ const GoneRogue = (function () {
   // ============================================================
 
   // ============================================================
+  // DIFFICULTY TIER SYSTEM (Public API Functions)
+  // ============================================================
+
+  /**
+   * Set difficulty tier (called by AWOL button)
+   * @param {number} tier - 1, 2, or 3
+   */
+  function setDifficulty(tier) {
+    if (tier >= 1 && tier <= 3) {
+      _difficultyTier = tier;
+      console.log('[GoneRogue] Difficulty set to T' + tier);
+      
+      // Notify state change listeners
+      _notifyStateChange();
+    }
+  }
+
+  /**
+   * Get current difficulty tier
+   * @returns {number} Current tier (1-3)
+   */
+  function getDifficulty() {
+    return _difficultyTier;
+  }
+
+  /**
+   * Register callback for state changes
+   * @param {Function} callback
+   */
+  function onStateChange(callback) {
+    if (typeof callback === 'function') {
+      _stateChangeCallbacks.push(callback);
+    }
+  }
+
+  // ============================================================
+  // END DIFFICULTY TIER SYSTEM
+  // ============================================================
+
+  // ============================================================
   // HEADLESS MODE API (for automated testing/agent simulation)
   // ============================================================
 
@@ -6743,6 +7214,11 @@ const GoneRogue = (function () {
     getStrCombatState: getStrCombatState,
     triggerActiveItem: triggerActiveItem,
     updatePlayerLight: _updatePlayerLight,
+    
+    // Difficulty tier system
+    setDifficulty: setDifficulty,
+    getDifficulty: getDifficulty,
+    onStateChange: onStateChange,
 
     // Headless mode API (for testing/agent simulation)
     headless: {
