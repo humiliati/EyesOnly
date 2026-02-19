@@ -82,7 +82,13 @@
 
     // Remove visual feedback on drag leave
     activeSlot.addEventListener('dragleave', function(e) {
-      activeSlot.classList.remove('drag-over');
+      // Only remove styling if actually leaving the activeSlot, not just moving to a child
+      if (e.relatedTarget && !activeSlot.contains(e.relatedTarget)) {
+        activeSlot.classList.remove('drag-over');
+      } else if (!e.relatedTarget) {
+        // relatedTarget is null when leaving the document
+        activeSlot.classList.remove('drag-over');
+      }
     });
 
     // Handle drop event

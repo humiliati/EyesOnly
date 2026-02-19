@@ -236,12 +236,8 @@ const CardDisposalSystem = (function() {
       // Remove from GAMESTATE persistent inventory
       if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.removePersistentInventoryItem === 'function') {
         GAMESTATE.removePersistentInventoryItem(index);
-      } else if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getPersistentInventory === 'function') {
-        // Fallback: manually remove from persistent inventory array
-        var persistentInv = GAMESTATE.getPersistentInventory();
-        // Note: getPersistentInventory returns a copy, so we need direct access
-        // This is a workaround until removePersistentInventoryItem is implemented
-        console.warn('[CardDisposalSystem] Using fallback method to remove inventory item');
+      } else {
+        console.error('[CardDisposalSystem] GAMESTATE.removePersistentInventoryItem not available');
       }
 
       // Repopulate inventory to refresh display
