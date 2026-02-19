@@ -6,12 +6,16 @@
 const GoneRogueMobile = (function () {
   'use strict';
 
+  // Feature flags
+  var USE_CANVAS_RENDERER = true; // Enable high-performance canvas rendering
+
   // Constants
   var DOUBLE_TAP_THRESHOLD_MS = 300;
   var CLICK_FEEDBACK_DURATION_MS = 400;
   var TAP_TO_MOVE_MAX_RADIUS = 12; // Maximum distance (in tiles) from player for tap-to-move (extended by ~15% from original ~10.4)
 
   var _gridContainer = null;
+  var _canvasRenderer = null; // Canvas renderer instance
   var _cardContainer = null;
   var _inventoryContainer = null; // New: persistent inventory display
   var _lastTapTime = 0;
@@ -55,6 +59,42 @@ const GoneRogueMobile = (function () {
     _createMobileUI();
     _setupTouchHandlers();
     _setupKeyboardHandlers(); // Add keyboard support for desktop
+    _setupHandFanButton(); // Setup the MOK footer card button
+  }
+
+  /**
+   * Setup hand fan toggle button in MOK footer
+   */
+  function _setupHandFanButton() {
+    var handFanBtn = document.getElementById('hand-fan-toggle-btn');
+    if (!handFanBtn) {
+      console.warn('[GoneRogueMobile] Hand fan toggle button not found');
+      return;
+    }
+
+    handFanBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Only show hand fan if Gone Rogue is active
+      if (typeof GoneRogue === 'undefined' || !GoneRogue.isActive()) {
+        console.log('[GoneRogueMobile] Hand fan toggle suppressed: Gone Rogue not active');
+        return;
+      }
+
+      // Don't show card fan if in STR combat
+      var inStrCombat = GoneRogue.isStrCombatActive && GoneRogue.isStrCombatActive();
+      if (inStrCombat) {
+        console.log('[GoneRogueMobile] Hand fan toggle suppressed: in STR combat');
+        if (typeof TooltipSystem !== 'undefined') {
+          TooltipSystem.show('Hand fan disabled during combat', 2000);
+        }
+        return;
+      }
+
+      // Toggle the hand fan
+      _showCardFan();
+    });
   }
 
   /**
@@ -126,6 +166,27 @@ const GoneRogueMobile = (function () {
     _gridContainer.className = 'rogue-grid-mobile';
     _gridContainer.style.display = 'none'; // Hidden until rogue mode active
 
+    // Initialize canvas renderer if enabled and available
+    if (USE_CANVAS_RENDERER && typeof CanvasRenderer !== 'undefined') {
+      try {
+        _canvasRenderer = new CanvasRenderer.CanvasRenderer({
+          width: 40,
+          height: 20,
+          cellSize: 20,
+          renderMode: CanvasRenderer.RENDER_MODE.EMOJI,
+          enableLighting: true
+        });
+
+        // Add canvas to grid container
+        _gridContainer.appendChild(_canvasRenderer.getCanvas());
+
+        console.log('[GoneRogueMobile] Canvas renderer initialized');
+      } catch (e) {
+        console.warn('[GoneRogueMobile] Failed to initialize canvas renderer, falling back to DOM:', e);
+        _canvasRenderer = null;
+      }
+    }
+
     // Create card deck container
     _cardContainer = document.createElement('div');
     _cardContainer.id = 'rogue-cards-mobile';
@@ -169,7 +230,195 @@ const GoneRogueMobile = (function () {
   }
 
   /**
-   * Render grid as interactive HTML cells
+   * Render using canvas renderer (high performance path)
+   */
+  function _renderWithCanvas(grid, player, enemies, items, breakables, projectiles, muzzleFlash, impactEffects, currencies, colorCycleTime) {
+    // Prepare grid data for canvas renderer
+    var canvasGrid = [];
+
+    for (var y = 0; y < grid.length; y++) {
+      canvasGrid[y] = [];
+      for (var x = 0; x < grid[y].length; x++) {
+        var tile = grid[y][x];
+        var cellData = {
+          char: null,
+          color: '#FFFFFF',
+          bg: null,
+          type: tile ? tile.type : 'empty'
+        };
+
+        // Set tile appearance
+        if (tile) {
+          if (tile.emoji) {
+            cellData.char = tile.emoji;
+          } else if (tile.glyph) {
+            cellData.char = tile.glyph;
+          }
+
+          if (tile.color) {
+            cellData.color = tile.color;
+          }
+
+          // Background color for specific tiles
+          if (tile.type === 'wall') {
+            cellData.bg = '#2a2a2a';
+          } else if (tile.type === 'floor') {
+            cellData.bg = '#0a0a0a';
+          }
+        }
+
+        canvasGrid[y][x] = cellData;
+      }
+    }
+
+    // Prepare entities array (enemies, breakables, currencies, items, projectiles)
+    var entities = [];
+
+    // Add enemies
+    if (enemies) {
+      enemies.forEach(function(enemy) {
+        if (enemy.hp > 0) {
+          var color = '#FF0000';
+
+          // Color based on awareness state
+          if (enemy.awareness === 'detected') {
+            color = '#FF0000';
+          } else if (enemy.awareness === 'suspicious') {
+            color = '#FFFF00';
+          } else if (enemy.awareness === 'calm') {
+            color = '#00FF00';
+          }
+
+          entities.push({
+            x: enemy.x,
+            y: enemy.y,
+            char: enemy.emoji || '🪖',
+            color: color,
+            isEnemy: true
+          });
+        }
+      });
+    }
+
+    // Add breakables
+    if (breakables) {
+      breakables.forEach(function(breakable) {
+        if (breakable.hp > 0) {
+          entities.push({
+            x: breakable.x,
+            y: breakable.y,
+            char: breakable.emoji || breakable.glyph || '📦',
+            color: '#8B4513'
+          });
+        }
+      });
+    }
+
+    // Add currencies
+    if (currencies) {
+      currencies.forEach(function(currency) {
+        entities.push({
+          x: currency.x,
+          y: currency.y,
+          char: currency.glyph || '¢',
+          color: '#FFFF00'
+        });
+      });
+    }
+
+    // Add items
+    if (items) {
+      items.forEach(function(item) {
+        entities.push({
+          x: item.x,
+          y: item.y,
+          char: item.emoji || '💎',
+          color: '#00FFFF'
+        });
+      });
+    }
+
+    // Add projectiles
+    if (projectiles) {
+      projectiles.forEach(function(projectile) {
+        entities.push({
+          x: projectile.x,
+          y: projectile.y,
+          char: projectile.emoji || projectile.glyph || '💥',
+          color: '#FF00FF'
+        });
+      });
+    }
+
+    // Add interactive items
+    if (typeof InteractiveItems !== 'undefined') {
+      var interactiveItems = InteractiveItems.getAllItems();
+      interactiveItems.forEach(function(item) {
+        entities.push({
+          x: item.x,
+          y: item.y,
+          char: item.emoji,
+          color: '#00FFFF'
+        });
+      });
+    }
+
+    // Prepare effects array
+    var effects = [];
+
+    // Add muzzle flash
+    if (muzzleFlash) {
+      effects.push({
+        x: muzzleFlash.x,
+        y: muzzleFlash.y,
+        char: '💥',
+        color: '#FFFF00',
+        glow: true,
+        alpha: 0.8
+      });
+    }
+
+    // Add impact effects
+    if (impactEffects) {
+      impactEffects.forEach(function(impact) {
+        var impactChar = '💥';
+        var impactColor = '#FFFFFF';
+
+        if (impact.type === 'enemy') {
+          impactColor = '#FF0000';
+        } else if (impact.type === 'breakable') {
+          impactColor = '#FFA500';
+        } else if (impact.type === 'wall') {
+          impactColor = '#808080';
+        }
+
+        effects.push({
+          x: impact.x,
+          y: impact.y,
+          char: impactChar,
+          color: impactColor,
+          glow: true,
+          alpha: 0.9
+        });
+      });
+    }
+
+    // Render using canvas renderer
+    _canvasRenderer.renderGrid({
+      grid: canvasGrid,
+      entities: entities,
+      effects: effects,
+      player: player ? {
+        x: player.x,
+        y: player.y,
+        char: '🥷',
+        color: '#00FF00'
+      } : null
+    });
+  }
+
+  /**
+   * Render grid as interactive HTML cells (or canvas if enabled)
    */
   function renderGrid(grid, player, enemies, items, colorCycleTime, breakables, projectiles, alertLevel, strCombatActive, muzzleFlash, impactEffects, currencies) {
     if (!_gridContainer || !grid) return;
@@ -195,6 +444,13 @@ const GoneRogueMobile = (function () {
       _gridContainer.style.boxShadow = '0 0 20px rgba(28, 255, 155, 0.3)';
     }
 
+    // Use canvas renderer if available
+    if (_canvasRenderer) {
+      _renderWithCanvas(grid, player, enemies, items, breakables, projectiles, muzzleFlash, impactEffects, currencies, colorCycleTime);
+      return;
+    }
+
+    // Fallback to DOM rendering
     _gridContainer.innerHTML = '';
     _gridContainer.style.display = 'grid';
     _gridContainer.style.gridTemplateColumns = 'repeat(' + grid[0].length + ', 1fr)';
@@ -628,29 +884,39 @@ const GoneRogueMobile = (function () {
       // Check if tapping self (show card fan)
       // BUT NOT if in STR combat, if clicking on a breakable, or within cooldown after movement
       if (player && player.x === x && player.y === y) {
-        // Check cooldown to prevent accidental card fan during rapid movement
-        var timeSinceLastMovement = now - _lastMovementTime;
-        if (timeSinceLastMovement < _cardFanCooldown) {
-          console.log('[GoneRogueMobile] Card fan suppressed: within cooldown after movement (' + timeSinceLastMovement + 'ms < ' + _cardFanCooldown + 'ms)');
-          return;
+        // Tap on player now resets MOK windows instead of showing card fan
+        // Card fan is now toggled via the dedicated card button in MOK footer
+        console.log('[GoneRogueMobile] Player tapped: resetting MOK windows to default');
+
+        // Reset MOK history window to minimized state
+        if (typeof TooltipSystem !== 'undefined' && TooltipSystem.collapseHistory) {
+          TooltipSystem.collapseHistory();
         }
 
-        // Don't show card fan if in STR combat
-        var inStrCombat = GoneRogue.isStrCombatActive && GoneRogue.isStrCombatActive();
-        if (inStrCombat) {
-          console.log('[GoneRogueMobile] Card fan suppressed: in STR combat');
-          return;
+        // Reset debrief feed to default display for current mode
+        if (typeof DebriefFeedController !== 'undefined') {
+          var currentMode = document.body.classList.contains('mode-gone-rogue') ||
+                           document.body.classList.contains('in-gone-rogue');
+          if (currentMode) {
+            // In Gone Rogue, default is resources view
+            if (DebriefFeedController.getCurrentDisplay() !== 'resources') {
+              DebriefFeedController.toggleDisplay();
+            }
+          } else {
+            // Outside Gone Rogue, default is MOK view
+            if (DebriefFeedController.getCurrentDisplay() !== 'mok') {
+              DebriefFeedController.toggleDisplay();
+            }
+          }
         }
 
-        // Don't show card fan if there's a breakable at this position (shouldn't happen, but defensive)
-        var hasBreakable = GoneRogue.getBreakableAt && GoneRogue.getBreakableAt(x, y);
-        if (hasBreakable && hasBreakable.hp > 0) {
-          console.log('[GoneRogueMobile] Card fan suppressed: breakable at player position');
-          // Fall through to handleTapMove which will handle the breakable
-        } else {
-          _showCardFan();
-          return;
+        // Collapse debrief window if expanded
+        var debriefWindow = document.getElementById('debrief-window');
+        if (debriefWindow && debriefWindow.classList.contains('expanded')) {
+          debriefWindow.classList.remove('expanded');
         }
+
+        return;
       }
 
       // Validate tap distance from player
@@ -769,6 +1035,35 @@ const GoneRogueMobile = (function () {
   }
 
   /**
+   * Get grid coordinates from touch/click event
+   * Works with both DOM and canvas rendering
+   */
+  function _getGridCoordsFromEvent(clientX, clientY) {
+    // If using canvas renderer, convert canvas coordinates to grid coordinates
+    if (_canvasRenderer) {
+      var canvas = _canvasRenderer.getCanvas();
+      var rect = canvas.getBoundingClientRect();
+      var canvasX = clientX - rect.left;
+      var canvasY = clientY - rect.top;
+
+      // Convert to grid coordinates
+      var gridCoords = _canvasRenderer.canvasToGrid(canvasX, canvasY);
+      return gridCoords;
+    }
+
+    // Fallback to DOM element lookup
+    var target = document.elementFromPoint(clientX, clientY);
+    if (target && target.classList.contains('rogue-cell')) {
+      return {
+        x: parseInt(target.dataset.x),
+        y: parseInt(target.dataset.y)
+      };
+    }
+
+    return null;
+  }
+
+  /**
    * Handle grid touch start (for double-tap detection)
    */
   function _handleGridTouchStart(e) {
@@ -782,20 +1077,26 @@ const GoneRogueMobile = (function () {
     }
 
     var touch = e.touches[0];
-    var target = document.elementFromPoint(touch.clientX, touch.clientY);
+    var coords = _getGridCoordsFromEvent(touch.clientX, touch.clientY);
 
-    if (!target || !target.classList.contains('rogue-cell')) return;
+    if (!coords) return;
 
     var now = Date.now();
-    var cellKey = target.dataset.x + ',' + target.dataset.y;
+    var cellKey = coords.x + ',' + coords.y;
 
     // Check for double-tap (within threshold)
     if (_lastTapCell === cellKey && (now - _lastTapTime) < DOUBLE_TAP_THRESHOLD_MS) {
       _runMode = true;
-      target.classList.add('run-mode-flash');
-      setTimeout(function() {
-        target.classList.remove('run-mode-flash');
-      }, 200);
+      // For DOM mode, add visual feedback
+      if (!_canvasRenderer) {
+        var target = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (target) {
+          target.classList.add('run-mode-flash');
+          setTimeout(function() {
+            target.classList.remove('run-mode-flash');
+          }, 200);
+        }
+      }
     } else {
       _runMode = false;
     }
@@ -833,25 +1134,23 @@ const GoneRogueMobile = (function () {
     }
 
     var touch = e.changedTouches[0];
-    var target = document.elementFromPoint(touch.clientX, touch.clientY);
+    var coords = _getGridCoordsFromEvent(touch.clientX, touch.clientY);
 
-    if (!target || !target.classList.contains('rogue-cell')) return;
+    if (!coords) return;
 
     // Show click feedback at touch point
     _showClickFeedback(touch.clientX, touch.clientY);
 
-    var x = parseInt(target.dataset.x);
-    var y = parseInt(target.dataset.y);
-
-    _processGridInput(x, y, _runMode);
+    _processGridInput(coords.x, coords.y, _runMode);
   }
 
   /**
    * Handle grid click/tap
    */
   function _handleGridClick(e) {
-    var target = e.target;
-    if (!target || !target.classList.contains('rogue-cell')) return;
+    var coords = _getGridCoordsFromEvent(e.clientX, e.clientY);
+
+    if (!coords) return;
 
     e.preventDefault(); // Prevent default click behavior
     e.stopPropagation(); // Prevent bubbling to document-level handlers
@@ -859,19 +1158,22 @@ const GoneRogueMobile = (function () {
     // Show click feedback at mouse/pointer position
     _showClickFeedback(e.clientX, e.clientY);
 
-    var x = parseInt(target.dataset.x);
-    var y = parseInt(target.dataset.y);
-
     var now = Date.now();
-    var cellKey = x + ',' + y;
+    var cellKey = coords.x + ',' + coords.y;
 
     // Check for double-click on desktop (within threshold)
     if (_lastTapCell === cellKey && (now - _lastTapTime) < DOUBLE_TAP_THRESHOLD_MS) {
       _runMode = true;
-      target.classList.add('run-mode-flash');
-      setTimeout(function() {
-        target.classList.remove('run-mode-flash');
-      }, 200);
+      // For DOM mode, add visual feedback
+      if (!_canvasRenderer) {
+        var target = e.target;
+        if (target) {
+          target.classList.add('run-mode-flash');
+          setTimeout(function() {
+            target.classList.remove('run-mode-flash');
+          }, 200);
+        }
+      }
     } else {
       _runMode = false;
     }
@@ -879,7 +1181,7 @@ const GoneRogueMobile = (function () {
     _lastTapTime = now;
     _lastTapCell = cellKey;
 
-    _processGridInput(x, y, _runMode);
+    _processGridInput(coords.x, coords.y, _runMode);
   }
 
   /**

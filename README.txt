@@ -85,11 +85,87 @@ the command terminal. It features:
 - Card-powered attacks and defensive stances
 - Critical hits, damage multipliers, and timing mechanics
 
+**Hand Fan Component (Out-of-Combat Card Selection):**
+- Access via 🃏 CARDS button in MOK interjection footer (only visible in Gone Rogue mode)
+- Allows selecting cards outside of combat for first-cause modifiers
+- Example use case: Prime an "Aim" card before combat to apply aim bonus to combat entry
+- First-cause modifiers can affect STR combat initialization sequence countdown
+- Button suppressed during active STR combat (use STR combat window card selection instead)
+- See docs/boss-encounters.md for first-cause mechanics in boss fights
+
+**MOK Interjection & UI Controls:**
+- MOK interjection window displays context-aware advisories and status messages
+- Tap on player avatar resets MOK windows to default state:
+  - Collapses MOK history window to minimized
+  - Resets debrief feed to default display (resources view in Gone Rogue, MOK view in terminal)
+  - Collapses expanded debrief window
+- MOK history toggle (▼ History button) shows message log with timestamps
+- Debrief feed cycles between MOK visual display and resource bars (HP/Energy/Focus)
+- These UI elements "break out" from the Gone Rogue terminal grid for enhanced UX
+
 **Future Features:**
 - Bonfire/vendor system every 3-5 floors
 - Emoji sprite combat scenes with timing-based blocks
 - Status ailments (poison, shock, freeze, fear, rage)
 - Emoticon face system for combatants
+
+**Canvas Rendering System (Option C - Implemented 2026-02-19):**
+
+Gone Rogue now uses high-performance canvas rendering instead of DOM manipulation,
+providing 10-50x performance improvement (800 DOM elements → single canvas).
+
+Core Components:
+  - CanvasRenderer class (public/js/gone-rogue-canvas.js)
+  - Full lighting system integration with visual display
+  - Touch/click coordinate mapping for mobile controls
+  - Feature flag: USE_CANVAS_RENDERER (default: true)
+
+Canvas DOM Helper Hooks:
+  - canvasToGrid(canvasX, canvasY): Convert pixel coords to grid cells
+  - gridToCanvas(gridX, gridY): Convert grid cells to pixel coords (center)
+  - renderGrid(data): Single-pass rendering (tiles → lighting → entities → effects)
+  - setRenderMode('ascii'|'emoji'): Toggle rendering mode
+  - setLightingEnabled(bool): Toggle lighting overlay
+  - resize(cellSize): Responsive canvas resizing
+
+Integration Example:
+  var renderer = new CanvasRenderer.CanvasRenderer({
+    width: 40, height: 20, cellSize: 20,
+    renderMode: CanvasRenderer.RENDER_MODE.EMOJI,
+    enableLighting: true
+  });
+
+  // Render game state
+  renderer.renderGrid({
+    grid: gridData,        // 2D array of tile objects
+    entities: enemies,     // Array of { x, y, char, color }
+    player: playerObj,     // { x, y, char, color }
+    effects: effectsArr    // Explosions, particles, etc.
+  });
+
+  // Handle touch/click events
+  canvas.addEventListener('click', function(e) {
+    var rect = canvas.getBoundingClientRect();
+    var coords = renderer.canvasToGrid(
+      e.clientX - rect.left,
+      e.clientY - rect.top
+    );
+    // coords.x, coords.y = grid cell clicked
+  });
+
+Performance Notes:
+  - Light map updates: ~0.5ms per frame (cached per tick)
+  - Rendering: Single canvas clear + ~800 draw calls
+  - Target: 60fps on mobile (down from 10fps with DOM)
+  - See docs/GONE_ROGUE_DECKBUILDER_GAP_ANALYSIS.md for full Option C specs
+
+Advanced Lighting Roadmap (Terraria-style):
+  See docs/TERRARIA_LIGHTING_TODO.md for planned enhancements:
+  - 3D light collision with emoji tiles as opaque cubes
+  - Shadow casting with forced perspective
+  - Emanating light orbs with proper occlusion
+  - Item twinkle effects and visual polish
+  - Paper Mario single-input mobile controls
 
 
 CODING CONVENTIONS

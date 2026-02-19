@@ -1399,6 +1399,279 @@ Gated cards (uncommon) → Resource management
 
 ---
 
-**Document Version:** 1.0
-**Last Updated:** 2026-02-18
-**Status:** Complete gap analysis, ready for implementation planning
+## 17. STR Combat Out-of-Combat Extension
+
+### 17.1 Current Implementation
+
+**Status:** ✅ IMPLEMENTED (STR Combat System)
+
+The existing STR (Simultaneous Turn Resolution) combat system is fully implemented:
+- Priority-based card resolution (interrupt → defense → movement → attack → setup)
+- Card selection via mobile hand fan UI
+- Combat resolution with simultaneous player/enemy actions
+- Card priority system (5 levels)
+
+### 17.2 Out-of-Combat Hand Fan Usage
+
+**Status:** ⚠️ PARTIAL IMPLEMENTATION
+
+The hand fan component exists but needs extension for out-of-combat contextual usage:
+
+**Existing Features:**
+- ✅ Hand fan component with 'combat', 'hidden', 'contextual' modes
+- ✅ Card display with emoji, name, resource costs
+- ✅ Card selection via tap/click
+- ✅ Hearthstone-style visual card layout
+
+**Missing Features for Out-of-Combat:**
+- ❌ Contextual card usage on nearby tiles (environmental actions)
+- ❌ Contextual card usage on nearby enemies (pre-combat actions)
+- ❌ Resource spending validation outside combat
+- ❌ Card lifecycle tracking (disposable vs persistent outside combat)
+- ❌ Visual feedback for valid/invalid targets
+- ❌ Range indicators for card targeting
+
+### 17.3 Environmental Action Buttons
+
+**Status:** ⚠️ NEEDS DESIGN
+
+Environmental action buttons should allow out-of-combat interaction with:
+
+**Ground Effects Interaction:**
+- 🛢️ Oil tiles: Can ignite with Lighter card (CARD_012)
+- 🔥 Fire tiles: Can extinguish with Water Bottle (CARD_013)
+- 💧 Water tiles: Can electrify with Tazer Shot (CARD_014)
+- ☢️ Industrial Waste: Can clean with specialized cards
+- ✨ Glass: Can trigger noise alerts
+- 🥤 Soda Spill: Can clean or slip enemies
+
+**Enemy Interaction (Pre-Combat):**
+- Silent takedown cards (stealth kills before combat)
+- Lure cards (distract enemies out of position)
+- Environmental trap setup (oil slick before engagement)
+
+**Environmental Setup:**
+- Deploy ground effects before combat
+- Create tactical advantages (high ground, cover)
+- Set up ambush positions
+
+### 17.4 Equipped Item Usage from Header
+
+**Status:** ⚠️ NEEDS IMPLEMENTATION
+
+The header should have an action button for using equipped items:
+
+**Requirements:**
+- Display equipped item emoji + name in header action button
+- Click action button to use equipped item (consume if disposable)
+- Items must be equipped to be used (inventory display alone is insufficient)
+- Visual feedback when no item equipped ("No Item" / disabled state)
+- Resource cost validation (Energy, Ammo, Battery, Focus)
+- Cooldown tracking for reusable equipped items
+
+**Item Types for Header Usage:**
+- Consumables: Health Kit, Ration, Energy Drink, Cigarette
+- Environmental: Oil Slick, Lighter, Water Bottle
+- Utility: Smoke Screen, Flash Bang, Drone Support
+- Passive Equipment: Cardboard Box (toggle equip/unequip)
+
+### 17.5 Hand Fan Component Workflow
+
+**Out-of-Combat Workflow:**
+
+```javascript
+// 1. Player taps/clicks to open hand fan in contextual mode
+HandFanComponent.setMode('contextual', 'bottom');
+HandFanComponent.show(availableCards);
+
+// 2. Player selects card from hand fan
+HandFanComponent.selectCard(cardId);
+
+// 3. Player taps/clicks target tile (enemy, ground effect, empty tile)
+var validTarget = validateCardTarget(card, targetX, targetY);
+if (validTarget && hasResources(card.resourceCost)) {
+  // 4. Spend resources
+  spendResources(card.resourceCost);
+
+  // 5. Apply card effect
+  applyCardEffect(card, targetX, targetY);
+
+  // 6. Update hand fan (remove if disposable)
+  if (card.lifecycleType === 'disposable') {
+    HandFanComponent.removeCard(cardId);
+    // Trigger incinerator animation
+    animateCardDisposal(cardId);
+  }
+
+  // 7. Update debrief feed with resource consumption
+  DebriefFeedRenderer.addFeedItem({
+    type: 'resource-spend',
+    resource: 'energy', // or ammo, focus, battery
+    amount: card.resourceCost.energy,
+    cardName: card.name,
+    colorCode: getResourceColorCode(currentEnergy, maxEnergy)
+  });
+}
+```
+
+### 17.6 Visual Selection Indicators
+
+**Required Visual States:**
+
+**Card Selection (in hand fan):**
+- Unselected: Default card appearance
+- Hovered: Slight scale-up (transform: scale(1.05)), subtle glow
+- Selected: Transform up (translateY(-20px)), drop shadow, highlight border
+- Invalid (insufficient resources): Grayscale filter, red border, disabled cursor
+
+**Target Selection (on grid):**
+- Valid target: Green highlight overlay, pulsing animation
+- Invalid target: Red highlight overlay, X icon
+- Out of range: Grayed out, distance indicator
+- Optimal target: Gold highlight (e.g., oil tile + lighter card)
+
+### 17.7 Resource Consumption Color Coding
+
+**Debrief Feed Color Scheme:**
+
+**IMPORTANT:** Resource colors must be unique and distinct from the incinerator amber-red animation to avoid visual confusion.
+
+**Resource-Specific Color Palette:**
+
+Each resource has its own unique color that represents the resource type itself, not a percentage-based health indicator:
+
+| Resource | Color | Hex Code | Visual Style |
+|----------|-------|----------|--------------|
+| **HP** | Pink/Red | `#FF6B9D` | Vibrant health pink (not critical red) |
+| **Energy** | Electric Blue | `#00D4FF` | Bright cyan electric |
+| **Focus** | Bright Yellow-White | `#FFF9B0` | Almost white, sharp focus |
+| **Battery** | Sickly Green-Cyan | `#7CFC00` `#00FFA6` | Toxic green with cyan undertone |
+| **Fatigue** | Brown | `#8B4513` `#A0522D` | Earthy brown, exhaustion |
+| **Ammo** | Magenta-Purple | `#C71585` `#DA70D6` | Bright special ammo flow |
+
+**Frame Outline Animation (Gain/Loss):**
+- **Gaining Resource**: Frame outline pulses with resource color (glow effect)
+- **Losing Resource**: Frame outline briefly flashes with resource color, then fades
+- Animation is applied to the frame border, not the bar itself
+- Bars maintain their resource-specific color at all times
+
+**Application:**
+- Each resource bar uses its unique color regardless of percentage
+- Frame animations indicate resource changes (gain/loss)
+- No percentage-based color switching (avoids amber/red/green)
+- Incinerator uses distinct amber-red for card disposal
+- Resource collectibles flow with their specific colors (magenta ammo is special)
+
+**Example Debrief Frame Animations:**
+```
+[Frame pulses cyan] Energy: +2 (8/10) [Rest]
+[Frame flashes magenta] Ammo: -3 (4/10) [Burst Fire]
+[Frame flashes pink] HP: -5 (3/20) [Fire Tile Damage]
+[Frame pulses sickly green] Battery: +1 (3/5) [Battery Pack]
+```
+
+### 17.8 Incinerator Animation
+
+**Card Disposal Visual:**
+
+**Animation Sequence:**
+1. Card selected and used (disposable lifecycle)
+2. Card flashes bright (200ms)
+3. Card shrinks toward center with rotation (400ms)
+4. Flame particle effect (200ms)
+5. Card fades to ash (200ms)
+6. Remove from DOM (total: 1000ms)
+
+**CSS Implementation:**
+```css
+.card.incinerator-animation {
+  animation: card-incinerate 1000ms ease-out forwards;
+}
+
+@keyframes card-incinerate {
+  0% { transform: scale(1) rotate(0deg); opacity: 1; }
+  20% { transform: scale(1.1) rotate(5deg); opacity: 1; filter: brightness(1.5); }
+  50% { transform: scale(0.5) rotate(180deg); opacity: 0.8; }
+  70% { transform: scale(0.2) rotate(360deg); opacity: 0.5; filter: blur(2px); }
+  100% { transform: scale(0) rotate(720deg); opacity: 0; }
+}
+```
+
+**Trigger Conditions:**
+- Disposable cards used in or out of combat
+- Exhaust cards after first use
+- Cards discarded/destroyed by effects
+
+### 17.9 TODO Items for Out-of-Combat Extension
+
+**High Priority (Core Functionality):**
+- [ ] Implement out-of-combat card targeting system (tile selection)
+- [ ] Add resource validation before card use (check Energy, Ammo, Focus, Battery)
+- [ ] Implement card usage on ground effect tiles (ignite oil, extinguish fire)
+- [ ] Implement card usage on enemies (pre-combat actions, stealth takedowns)
+- [ ] Add header action button for equipped item usage
+- [ ] Implement "must be equipped to use" validation for inventory items
+- [ ] Add card count display in hand fan (show disposable usage tracking)
+
+**Medium Priority (UX/Visual):**
+- [ ] Add visual selection indicators (transform, shadow, highlight)
+- [ ] Implement valid/invalid target highlighting on grid
+- [ ] Add range indicators for card targeting
+- [ ] Implement incinerator animation for card disposal
+- [ ] Add resource color coding to debrief feed (green/orange/red)
+- [ ] Implement resource spend preview before card commit
+- [ ] Add card lifecycle icons (disposable, exhaust, persistent, power, gated)
+
+**Low Priority (Polish):**
+- [ ] Add sound effects for card selection/usage/disposal
+- [ ] Implement contextual help tooltips (card targeting, resource costs)
+- [ ] Add undo/cancel for card selection before commit
+- [ ] Implement card usage history in debrief feed
+- [ ] Add achievement tracking for environmental card combos
+- [ ] Create tutorial for out-of-combat card usage
+
+### 17.10 Ground Effects Integration
+
+**Required Ground Effects (from ground-effects.js):**
+
+| Ground Type | Card Interaction | Effect |
+|-------------|------------------|--------|
+| **Oil (🛢️)** | CARD_012 (Lighter) | Ignite → Fire spread |
+| **Fire (🔥)** | CARD_013 (Water Bottle) | Extinguish → Steam |
+| **Water (💧)** | CARD_014 (Tazer Shot) | Electrify → Chain stun |
+| **Industrial Waste (☢️)** | Specialized cleanup cards | Remove hazard |
+| **Glass (✨)** | Movement cards | Trigger noise alert |
+| **Soda Spill (🥤)** | Cleanup or lure cards | Remove sticky or distract |
+| **Steam (💨)** | Time-based dissipation | Obscures vision |
+
+**Out-of-Combat Ground Effect Setup:**
+- Deploy Oil Slick card → Create oil tiles
+- Deploy Water Bottle card → Create water puddle
+- Deploy Lighter card → Create small fire or ignite existing oil
+- Deploy Smoke Screen card → Create steam/smoke tiles
+
+### 17.11 Test Coverage for Out-of-Combat Workflow
+
+**Test File Created:** `/public/tests/test-hand-fan-out-of-combat.html`
+
+**Test Suites Implemented:**
+1. **Hand Fan Display Tests** - Component rendering, mode switching, card display
+2. **Card Selection Indicator Tests** - Visual states, transform, shadow, highlight
+3. **Card Usage & Resource Spending Tests** - Resource validation, deduction, multi-resource
+4. **Equipped Item Usage Tests** - Header action button, equip requirement, consumption
+5. **Debrief Feed Animation Tests** - Incinerator animation, card removal, timing
+6. **Resource Color Coding Tests** - Percentage thresholds, color scheme, dynamic updates
+
+**Test Runner:** `/public/tests/test-hand-fan-out-of-combat.js`
+
+**Manual Testing Areas:**
+- Visual test grid (10x10) with player, enemies, ground effects
+- Mock resource bars (HP, Energy, Ammo) with dynamic updates
+- Mock action button for equipped item testing
+- Interactive card selection and targeting
+
+---
+
+**Document Version:** 1.1
+**Last Updated:** 2026-02-19
+**Status:** Complete gap analysis with STR out-of-combat extension and environmental action buttons

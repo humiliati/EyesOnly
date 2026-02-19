@@ -131,36 +131,46 @@ const DebriefFeedRenderer = (function() {
   }
 
   /**
+   * Get resource-specific color
+   * Each resource has its own unique color identity (not percentage-based)
+   * @param {string} resourceName - Name of the resource
+   * @returns {string} Hex color code
+   */
+  function _getResourceColor(resourceName) {
+    var colors = {
+      'HP': '#FF6B9D',           // Vibrant health pink
+      'Energy': '#00D4FF',       // Electric blue cyan
+      'Focus': '#FFF9B0',        // Bright yellow-white
+      'Battery': '#00FFA6',      // Sickly green-cyan
+      'Fatigue': '#A0522D',      // Earthy brown
+      'Ammo': '#DA70D6'          // Magenta-purple (special ammo flow)
+    };
+
+    return colors[resourceName] || '#FFFFFF';  // Default to white if unknown
+  }
+
+  /**
    * Render a resource bar
    * @param {string} name - Resource name
    * @param {number} current - Current value
    * @param {number} max - Maximum value
    * @param {string} icon - Emoji icon
-   * @param {boolean} isHP - Whether this is HP (special coloring)
+   * @param {boolean} isHP - Whether this is HP (not used for coloring anymore)
    * @returns {string} HTML
    */
   function _renderResourceBar(name, current, max, icon, isHP) {
     var percentage = current / max;
     var filledBars = Math.round(percentage * 10);
     var emptyBars = 10 - filledBars;
-    
-    // Color based on percentage
-    var barColor = '#4CAF50';  // Green
-    if (percentage < 0.3) barColor = '#F44336';  // Red
-    else if (percentage < 0.6) barColor = '#FF9800';  // Orange
-    
-    // HP uses different color scheme
-    if (isHP) {
-      if (percentage < 0.3) barColor = '#F44336';  // Red
-      else if (percentage < 0.6) barColor = '#FFA726';  // Orange  
-      else barColor = '#66BB6A';  // Green
-    }
 
-    var html = '<div class="resource-row">';
+    // Use resource-specific color (not percentage-based)
+    var barColor = _getResourceColor(name);
+
+    var html = '<div class="resource-row" data-resource="' + name + '">';
     html += '<span class="resource-icon">' + icon + '</span>';
     html += '<span class="resource-name">' + name + '</span>';
     html += '<div class="resource-bar-container">';
-    html += '<span class="resource-bar-filled" style="color: ' + barColor + '">';
+    html += '<span class="resource-bar-filled" style="color: ' + barColor + '; text-shadow: 0 0 4px ' + barColor + '80">';
     html += '█'.repeat(filledBars) + '░'.repeat(emptyBars);
     html += '</span>';
     html += '</div>';

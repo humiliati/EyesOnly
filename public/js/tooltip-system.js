@@ -200,7 +200,7 @@ const TooltipSystem = (function() {
     _isExpanded = !_isExpanded;
 
     var toggleBtn = document.getElementById('mok-history-toggle');
-    
+
     if (_isExpanded) {
       _mokHistoryContainer.style.display = 'block';
       _mokHistoryContainer.classList.remove('mok-history-collapsed');
@@ -213,6 +213,21 @@ const TooltipSystem = (function() {
       _mokHistoryContainer.classList.add('mok-history-collapsed');
       if (toggleBtn) toggleBtn.textContent = '▼ History';
     }
+  }
+
+  /**
+   * Collapse history (force to minimized state)
+   */
+  function collapseHistory() {
+    if (!_isExpanded) return; // Already collapsed
+
+    _isExpanded = false;
+    var toggleBtn = document.getElementById('mok-history-toggle');
+
+    _mokHistoryContainer.style.display = 'none';
+    _mokHistoryContainer.classList.remove('mok-history-expanded');
+    _mokHistoryContainer.classList.add('mok-history-collapsed');
+    if (toggleBtn) toggleBtn.textContent = '▼ History';
   }
 
   /**
@@ -335,6 +350,7 @@ const TooltipSystem = (function() {
     showAction: showAction,
     clear: clear,
     init: init,
-    toggleHistory: toggleHistory
+    toggleHistory: toggleHistory,
+    collapseHistory: collapseHistory
   };
 })();
