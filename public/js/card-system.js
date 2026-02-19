@@ -251,6 +251,7 @@ const CardSystem = (function () {
       type: 'attack',
       name: 'Grenade',
       emoji: '💣',
+      lifecycleType: 'disposable',  // Single-use consumable
       baseStats: {
         damage: 6,
         aoe: 2, // Area of effect radius
@@ -259,7 +260,8 @@ const CardSystem = (function () {
         energy: 3,
         speed: 2,
         destroysEnvironment: true
-      }
+      },
+      resourceCost: { ammo: 2 }  // Costs 2 ammo to use
     },
     JAMMER: {
       category: 'interrupt',

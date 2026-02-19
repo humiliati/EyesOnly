@@ -406,26 +406,16 @@ const GoneRogue = (function () {
         _player.energy += energyBonus; // Also restore
       }
 
-      // Give random 3 starter cards if player has 0 cards (at game start, not floor transition)
+      // Give guaranteed 3 starter cards if player has 0 cards (at game start, not floor transition)
       if (typeof CardSystem !== 'undefined') {
         var looseInventory = GAMESTATE.getLooseInventory();
         if (looseInventory.length === 0) {
-          // Define all 5 starter cards
-          var allStarterCards = ['SINGLE_SHOT', 'PRONE', 'KATCHUP', 'DODGE', 'BURST_SHOT'];
+          // Define guaranteed 3 starter cards (includes 1 consumable grenade)
+          var starterCards = ['SINGLE_SHOT', 'DODGE', 'GRENADE'];
 
-          // Shuffle and pick 3 random cards
-          var shuffled = allStarterCards.slice();
-          for (var i = shuffled.length - 1; i > 0; i--) {
-            var j = Math.floor(Math.random() * (i + 1));
-            var temp = shuffled[i];
-            shuffled[i] = shuffled[j];
-            shuffled[j] = temp;
-          }
-          var selectedCards = shuffled.slice(0, 3);
-
-          // Add the 3 selected cards to loose inventory
-          for (var c = 0; c < selectedCards.length; c++) {
-            var card = CardSystem.rollCard(selectedCards[c]);
+          // Add the 3 starter cards to loose inventory
+          for (var c = 0; c < starterCards.length; c++) {
+            var card = CardSystem.rollCard(starterCards[c]);
             if (card) {
               GAMESTATE.addToLoose(card);
             }
@@ -434,6 +424,7 @@ const GoneRogue = (function () {
           lines.push('');
           lines.push('  📦 STARTER LOADOUT DEPLOYED');
           lines.push('  3 COMBAT CARDS ADDED TO INVENTORY');
+          lines.push('  🎯 Single Shot | 💨 Dodge | 💣 Grenade (1x use)');
           lines.push('');
         }
       }

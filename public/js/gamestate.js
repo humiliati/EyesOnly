@@ -36,7 +36,7 @@ const GAMESTATE = (function () {
     fatigueRecovery: 5,            // Per turn baseline recovery
     fatigueThreshold: 70,          // Above this, cards cost more/become less effective
 
-    playerAmmo: 30,                // Pooled ammunition resource
+    playerAmmo: 7,                 // Pooled ammunition resource (reduced for balanced economy)
     maxAmmo: 50,                   // Maximum ammo capacity
 
     // Additional resources (planned for full card system integration)
@@ -583,7 +583,7 @@ const GAMESTATE = (function () {
       maxFatigue: 100,
       fatigueRecovery: 5,
       fatigueThreshold: 70,
-      playerAmmo: 30,
+      playerAmmo: 7,  // Match initial state
       maxAmmo: 50,
       playerEnergy: 5,
       maxEnergy: 5,
