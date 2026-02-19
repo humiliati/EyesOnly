@@ -2474,7 +2474,13 @@ const GoneRogue = (function () {
           card = CardSystem.rollTrenchCoat();
           shouldSpawnTrenchCoat = false; // Only spawn once
         } else {
-          var baseType = CardSystem.getRandomBaseCard();
+          // Use biome-aware card selection if available
+          var baseType;
+          if (CardSystem.getRandomBaseCardByBiome) {
+            baseType = CardSystem.getRandomBaseCardByBiome(biome.name, _floor);
+          } else {
+            baseType = CardSystem.getRandomBaseCard();
+          }
           card = CardSystem.rollCard(baseType);
         }
 
