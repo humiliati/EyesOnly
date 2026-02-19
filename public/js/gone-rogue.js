@@ -2011,6 +2011,31 @@ const GoneRogue = (function () {
       };
     }
 
+    // Handle ammo pickup (auto-collect)
+    if (item.type === 'ammo') {
+      if (typeof GAMESTATE !== 'undefined') {
+        GAMESTATE.addAmmo(item.amount);
+      }
+      
+      // Remove ammo from floor
+      _items = _items.filter(function(i) { return i !== item; });
+      
+      // Tooltip and MOK interjection
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showAction('item-pickup', { name: 'Ammo +' + item.amount });
+      }
+      
+      if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+        UIControls.updateMokInterjection('🔫 Ammo +' + item.amount);
+      }
+      
+      return {
+        lines: ['PICKED UP: 🔫 Ammo +' + item.amount, ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
     // Check if item is a card (attack/support) or regular item
     var isCard = item.card && (item.card.type === 'attack' || item.card.type === 'support');
     
@@ -3591,6 +3616,22 @@ const GoneRogue = (function () {
           if (dropChance < 0.7) { // 70% chance to drop currency
             var cryptoAmount = Math.floor(Math.random() * 3) + 1; // 1-3 cryptos
             _spawnCurrency(breakable.x, breakable.y, cryptoAmount);
+          }
+
+          // 60% chance to drop ammo (3/5 or 6/10 breakables contain ammo)
+          // Average of 1.2 ammo per drop (1 or 2 ammo with weighted distribution)
+          if (Math.random() < 0.6) {
+            var ammoAmount = Math.random() < 0.8 ? 1 : 2; // 80% chance 1 ammo, 20% chance 2 ammo = 1.2 avg
+            _items.push({
+              x: breakable.x,
+              y: breakable.y,
+              type: 'ammo',
+              amount: ammoAmount,
+              spawnTime: Date.now(),
+              decayTime: 60000, // 60 second decay for resources
+              emoji: '🔫',
+              name: 'Ammo (' + ammoAmount + ')'
+            });
           }
 
           // 30% chance to drop a card
