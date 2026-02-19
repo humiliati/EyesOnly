@@ -85,6 +85,24 @@ the command terminal. It features:
 - Card-powered attacks and defensive stances
 - Critical hits, damage multipliers, and timing mechanics
 
+**Hand Fan Component (Out-of-Combat Card Selection):**
+- Access via 🃏 CARDS button in MOK interjection footer (only visible in Gone Rogue mode)
+- Allows selecting cards outside of combat for first-cause modifiers
+- Example use case: Prime an "Aim" card before combat to apply aim bonus to combat entry
+- First-cause modifiers can affect STR combat initialization sequence countdown
+- Button suppressed during active STR combat (use STR combat window card selection instead)
+- See docs/boss-encounters.md for first-cause mechanics in boss fights
+
+**MOK Interjection & UI Controls:**
+- MOK interjection window displays context-aware advisories and status messages
+- Tap on player avatar resets MOK windows to default state:
+  - Collapses MOK history window to minimized
+  - Resets debrief feed to default display (resources view in Gone Rogue, MOK view in terminal)
+  - Collapses expanded debrief window
+- MOK history toggle (▼ History button) shows message log with timestamps
+- Debrief feed cycles between MOK visual display and resource bars (HP/Energy/Focus)
+- These UI elements "break out" from the Gone Rogue terminal grid for enhanced UX
+
 **Future Features:**
 - Bonfire/vendor system every 3-5 floors
 - Emoji sprite combat scenes with timing-based blocks
