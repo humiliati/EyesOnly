@@ -344,10 +344,13 @@
         break;
 
       case 'user_login':
-        if (typeof LoginUI !== 'undefined') {
+        if (typeof UIControls !== 'undefined' && typeof UIControls.showLoginOverlay === 'function') {
+          // Set return context to index/idle since login was triggered from terminal
+          UIControls.showLoginOverlay('index');
+        } else if (typeof LoginUI !== 'undefined') {
           LoginUI.showLoginPrompt();
+          _enableInput('> ');
         }
-        _enableInput('> ');
         break;
 
       case 'user_register':
