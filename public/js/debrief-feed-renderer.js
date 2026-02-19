@@ -239,11 +239,19 @@ const DebriefFeedRenderer = (function() {
   };
 })();
 
-// Auto-initialize when DOM is ready
+// Auto-initialize when DOM is ready (unless controller will handle it)
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', function() {
-    DebriefFeedRenderer.init();
+    // Only auto-init if DebriefFeedController is not present
+    if (typeof DebriefFeedController === 'undefined') {
+      DebriefFeedRenderer.init();
+    }
   });
 } else {
-  DebriefFeedRenderer.init();
+  // Only auto-init if DebriefFeedController is not present
+  setTimeout(function() {
+    if (typeof DebriefFeedController === 'undefined') {
+      DebriefFeedRenderer.init();
+    }
+  }, 100);
 }
