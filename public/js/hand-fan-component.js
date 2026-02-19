@@ -359,15 +359,36 @@ const HandFanComponent = (function () {
       _toggleCardSelection(index);
     });
 
-    // Drag handlers for disposal system
+    // Drag handlers for disposal system and commerce
     cardEl.addEventListener('dragstart', function(e) {
-      if (typeof CardDisposalSystem !== 'undefined') {
-        CardDisposalSystem.handleDragStart(cardEl, card, index);
+      // Check if shop is open for sell operations
+      var isShopOpen = (typeof ShopSystem !== 'undefined' && ShopSystem.isOpen && ShopSystem.isOpen());
+
+      if (isShopOpen && typeof CommerceDragDropSystem !== 'undefined') {
+        // Commerce drag (sell to shop)
+        CommerceDragDropSystem.handleDragStart({
+          sourceZone: 'player_hand',
+          itemId: card.id || ('card_' + index),
+          itemType: 'card',
+          cardData: card,
+          itemPrice: 0  // Will be calculated by system
+        });
+        cardEl.classList.add('dragging-sell');
+      } else if (typeof CardDisposalSystem !== 'undefined') {
+        // Disposal drag (recycle/destroy)
+        CardDisposalSystem.handleDragStart(cardEl, card, index, 'hand');
       }
     });
 
     cardEl.addEventListener('dragend', function(e) {
-      if (typeof CardDisposalSystem !== 'undefined') {
+      cardEl.classList.remove('dragging-sell');
+
+      // Check if shop is open
+      var isShopOpen = (typeof ShopSystem !== 'undefined' && ShopSystem.isOpen && ShopSystem.isOpen());
+
+      if (isShopOpen && typeof CommerceDragDropSystem !== 'undefined') {
+        CommerceDragDropSystem.handleDragEnd();
+      } else if (typeof CardDisposalSystem !== 'undefined') {
         CardDisposalSystem.handleDragEnd();
       }
     });

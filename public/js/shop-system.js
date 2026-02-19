@@ -65,6 +65,10 @@ const ShopSystem = (function () {
     // Delegate event listeners for shop interactions
     _shopContainer.addEventListener('click', _handleShopClick);
     _shopContainer.addEventListener('touchend', _handleShopTouch);
+
+    // Drag-drop event listeners for shop cards
+    _shopContainer.addEventListener('dragstart', _handleShopDragStart);
+    _shopContainer.addEventListener('dragend', _handleShopDragEnd);
   }
 
   /**
@@ -85,6 +89,92 @@ const ShopSystem = (function () {
   }
 
   /**
+   * Handle drag start for shop cards
+   */
+  function _handleShopDragStart(e) {
+    var target = e.target;
+
+    // Find shop card element
+    while (target && target !== _shopContainer) {
+      if (target.classList && target.classList.contains('shop-card')) {
+        break;
+      }
+      target = target.parentElement;
+    }
+
+    if (!target || !target.classList.contains('shop-card')) {
+      return;
+    }
+
+    // Don't allow dragging disabled cards
+    if (target.classList.contains('disabled')) {
+      e.preventDefault();
+      return;
+    }
+
+    // Get item data
+    var itemId = target.getAttribute('data-item-id');
+    var itemType = target.getAttribute('data-type');
+    var itemPrice = parseInt(target.getAttribute('data-price'), 10);
+    var itemName = target.getAttribute('data-card-name');
+
+    // Find item in inventory
+    var item = null;
+    if (_currentShop && _currentShop.inventory) {
+      for (var i = 0; i < _currentShop.inventory.length; i++) {
+        if (_currentShop.inventory[i].id === itemId) {
+          item = _currentShop.inventory[i];
+          break;
+        }
+      }
+    }
+
+    if (!item) {
+      e.preventDefault();
+      return;
+    }
+
+    // Set drag data
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', itemId);
+
+    // Add dragging class
+    target.classList.add('dragging');
+
+    // Notify commerce drag-drop system
+    if (typeof CommerceDragDropSystem !== 'undefined') {
+      var sourceZone = itemType === 'gamble' ? 'shop_gamble' : 'shop_items';
+      CommerceDragDropSystem.handleDragStart({
+        sourceZone: sourceZone,
+        itemId: itemId,
+        itemType: itemType,
+        cardData: item.cardData,
+        itemPrice: itemPrice,
+        itemName: itemName
+      });
+    }
+
+    console.log('[ShopSystem] Drag started:', itemName, 'price:', itemPrice);
+  }
+
+  /**
+   * Handle drag end for shop cards
+   */
+  function _handleShopDragEnd(e) {
+    var target = e.target;
+
+    // Remove dragging class
+    if (target && target.classList) {
+      target.classList.remove('dragging');
+    }
+
+    // Notify commerce drag-drop system
+    if (typeof CommerceDragDropSystem !== 'undefined') {
+      CommerceDragDropSystem.handleDragEnd();
+    }
+  }
+
+  /**
    * Open a shop
    */
   function openShop(shopType, floor) {
@@ -100,17 +190,17 @@ const ShopSystem = (function () {
     var inventory = _generateShopInventory(floor, shopType);
 
     // Get player state
-    var playerCurrency = (typeof GAMESTATE !== 'undefined') 
-      ? GAMESTATE.getState().cryptos 
+    var playerCurrency = (typeof GAMESTATE !== 'undefined')
+      ? GAMESTATE.getState().cryptos
       : 0;
-    var playerHand = (typeof GAMESTATE !== 'undefined') 
-      ? GAMESTATE.getState().cardHand 
+    var playerHand = (typeof GAMESTATE !== 'undefined')
+      ? GAMESTATE.getState().cardHand
       : [];
-    var playerInventory = (typeof GAMESTATE !== 'undefined') 
-      ? GAMESTATE.getLooseInventory() 
+    var playerInventory = (typeof GAMESTATE !== 'undefined')
+      ? GAMESTATE.getLooseInventory()
       : [];
-    var playerActionBar = (typeof GAMESTATE !== 'undefined') 
-      ? GAMESTATE.getState().actionButtonCards 
+    var playerActionBar = (typeof GAMESTATE !== 'undefined')
+      ? GAMESTATE.getState().actionButtonCards
       : [];
 
     _currentShop = {
@@ -122,6 +212,11 @@ const ShopSystem = (function () {
     };
 
     _isOpen = true;
+
+    // Notify commerce drag-drop system that shop is open
+    if (typeof CommerceDragDropSystem !== 'undefined') {
+      CommerceDragDropSystem.setShopOpen(true);
+    }
 
     // Render shop UI
     _renderShop(_currentShop, playerCurrency, playerHand, playerInventory, playerActionBar);
@@ -152,6 +247,11 @@ const ShopSystem = (function () {
 
     _isOpen = false;
     _currentShop = null;
+
+    // Notify commerce drag-drop system that shop is closed
+    if (typeof CommerceDragDropSystem !== 'undefined') {
+      CommerceDragDropSystem.setShopOpen(false);
+    }
 
     // Hide UI
     _dimOverlay.style.display = 'none';
@@ -479,10 +579,15 @@ const ShopSystem = (function () {
       cardStyle = _getGambleGradientStyle(item.gambleType, item.gradientSeed);
     }
 
+    // Make card draggable if not disabled
+    var draggableAttr = disabled ? '' : ' draggable="true"';
+
     var html = '<div class="shop-card ' + disabledClass + ' ' + gambleClass + '" ' +
       'data-item-id="' + item.id + '" ' +
       'data-price="' + item.price + '" ' +
       'data-type="' + item.type + '"' +
+      'data-card-name="' + (item.name || 'Unknown') + '"' +
+      draggableAttr +
       (cardStyle ? ' style="' + cardStyle + '"' : '') +
       '>';
 
