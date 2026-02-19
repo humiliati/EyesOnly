@@ -334,6 +334,59 @@ const CardSystem = (function () {
       }
     },
 
+    // ── Boss-encounter specific cards ─────────────────────────────────────────
+    // Camera: photographs Sniper Boss to reduce its evasion by 5% per use (max 10×)
+    'Camera': {
+      category: 'setup',
+      type: 'setup',
+      name: 'Camera',
+      emoji: '📷',
+      lifecycleType: 'persistent',
+      baseStats: {
+        range: 10,
+        duration: 1,
+        energy: 1,
+        speed: 3,
+        accuracyPenaltyPerUse: 5,
+        bossInteraction: true
+      }
+    },
+    // Fragment Shower: AOE attack that clears a 4-tile radius of asteroids/projectiles
+    'Fragment Shower': {
+      category: 'attack',
+      type: 'attack',
+      name: 'Fragment Shower',
+      emoji: '💫',
+      lifecycleType: 'gated',
+      baseStats: {
+        damage: 3,
+        aoe: 4,
+        accuracy: 80,
+        energy: 3,
+        speed: 2,
+        clearsProjectiles: true,
+        bossInteraction: true
+      },
+      resourceCost: { ammo: 1 }
+    },
+    // Suppression Fire: suppresses Tower Offense Boss volleys for 2 turns
+    'Suppression Fire': {
+      category: 'attack',
+      type: 'attack',
+      name: 'Suppression Fire',
+      emoji: '🔥',
+      lifecycleType: 'gated',
+      baseStats: {
+        damage: 2,
+        accuracy: 70,
+        energy: 4,
+        speed: 2,
+        suppressTurns: 2,
+        bossInteraction: true
+      },
+      resourceCost: { ammo: 2 }
+    },
+
     // ========== CONSUMABLE CARDS (Single-use tactical items) ==========
     'Energy Drink': {
       category: 'consumable',

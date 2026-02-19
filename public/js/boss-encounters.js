@@ -871,6 +871,315 @@ const BossEncounters = (function () {
     }
   }
 
+  /**
+   * Asteroids Boss — Gravity Anchor (movement-locked dodging with card offense)
+   *
+   * Real-time hook: updateRealTime(elapsedMs, gameState) injects incoming
+   * asteroid hazards into the game's existing projectile list via the
+   * returned {bossProjectiles} array.  The gone-rogue.js game loop pushes
+   * these onto _projectiles each tick so the normal collision pipeline handles
+   * them without any new engine code.
+   *
+   * Exploit: Fragment Shower card clears a radius of active asteroids.
+   * Mythic:  Survive three consecutive asteroid waves without taking damage.
+   */
+  class AsteroidsBoss extends BossEncounter {
+    constructor(floorDepth) {
+      super('ASTEROID_FIELD', floorDepth);
+      this.hp = 75;
+      this.maxHp = 75;
+      this.mythicTrigger = 'THREE_WAVES_NO_DAMAGE';
+      this.mythicHint = 'RUMOR: Survive the field untouched three times and the void answers...';
+      this.whisperItem = 'Debris Fragment';
+      this.mythicDrop = 'Void Trajectory Chart';
+
+      this.playerMoveLocked = true; // Core mechanic: player cannot walk
+      this.currentWave = 0;
+      this.waveAsteroids = []; // Active asteroid descriptors (grid-space)
+      this.wavesWithoutDamage = 0;
+      this.shieldHits = 0;
+      this.shieldStrength = 3; // Clear 3 waves to expose boss
+      this.waveTurnTimer = 0;
+      this.waveInterval = 5; // Turns between waves
+    }
+
+    initialize(grid, player) {
+      this.bossPosition = { x: 20, y: 2 };
+      this._spawnWave();
+      return {
+        success: true,
+        playerMoveLocked: true,
+        message: '⚠️ GRAVITY ANCHOR ENGAGED — MOVEMENT DISABLED',
+        asteroids: this.waveAsteroids
+      };
+    }
+
+    _spawnWave() {
+      this.currentWave++;
+      this.waveAsteroids = [];
+      var count = Math.min(3 + this.currentWave, 8);
+      for (var i = 0; i < count; i++) {
+        // Asteroids always fall from top towards bottom centre
+        this.waveAsteroids.push({
+          id: i,
+          x: 5 + Math.floor(Math.random() * 30),
+          y: 0,
+          dx: (Math.random() < 0.5 ? 1 : -1),
+          dy: 1,
+          range: 20,
+          power: 2,
+          glyph: '🌑',
+          owner: 'boss',
+          source: 'asteroid'
+        });
+      }
+    }
+
+    // Called by gone-rogue.js _updateGameState each tick.
+    // Returns {bossProjectiles} to be merged into the existing _projectiles array.
+    updateRealTime(elapsedMs, gameState) {
+      this.waveTurnTimer++;
+      var bossProjectiles = [];
+
+      if (this.waveTurnTimer >= this.waveInterval) {
+        this.waveTurnTimer = 0;
+        var allGone = this.waveAsteroids.length === 0;
+        if (allGone) {
+          this.wavesWithoutDamage++;
+          this.shieldHits++;
+          if (this.wavesWithoutDamage >= 3) {
+            this.trackMythicCondition('THREE_WAVES_NO_DAMAGE');
+          }
+          if (this.shieldHits >= this.shieldStrength) {
+            this.enterVulnerableState(4);
+          }
+        } else {
+          this.wavesWithoutDamage = 0;
+        }
+        this._spawnWave();
+        bossProjectiles = this.waveAsteroids.slice();
+      }
+
+      return { bossProjectiles: bossProjectiles };
+    }
+
+    checkExploit(playerAction, gameState) {
+      // Fragment Shower: AOE clears nearby asteroids by removing them from the wave list
+      if (playerAction.type === 'FRAGMENT_SHOWER') {
+        var tx = playerAction.targetX || 20;
+        var ty = playerAction.targetY || 10;
+        var cleared = 0;
+        this.waveAsteroids = this.waveAsteroids.filter(function(a) {
+          var dist = Math.abs(a.x - tx) + Math.abs(a.y - ty);
+          if (dist <= 4) { cleared++; return false; }
+          return true;
+        });
+        if (cleared > 0) {
+          return { exploited: true, message: '💫 FRAGMENT SHOWER! ' + cleared + ' asteroids cleared!', cleared: cleared };
+        }
+      }
+      return { exploited: false };
+    }
+
+    onDefeat(source) {
+      return Object.assign(super.onDefeat(source), {
+        playerMoveLocked: false,
+        message: '🌌 GRAVITY ANCHOR DISENGAGED'
+      });
+    }
+  }
+
+  /**
+   * Tower Offense Boss — Fortress Core (player assaults a static saturating boss)
+   *
+   * The boss fires escalating volleys each turn.  Volley size shrinks as the
+   * boss takes damage — aggressive offense is the optimal strategy.
+   * Suppression Fire card suppresses the next volley entirely.
+   * Mythic: kill before the boss reaches phase 3 (≤33% HP).
+   */
+  class TowerOffenseBoss extends BossEncounter {
+    constructor(floorDepth) {
+      super('FORTRESS_CORE', floorDepth);
+      this.hp = 85;
+      this.maxHp = 85;
+      this.mythicTrigger = 'KILL_BEFORE_PHASE3';
+      this.mythicHint = 'RUMOR: Strike before the third volley and the fortress crumbles fully...';
+      this.whisperItem = 'Defensive Matrix Shard';
+      this.mythicDrop = 'Siege Breaker Doctrine';
+
+      this.volleyInterval = 3; // Turns between volleys
+      this.volleyTimer = 0;
+      this.suppressedTurns = 0; // Turns with fire suppressed
+      this.totalVolleysFired = 0;
+      this.phase3Reached = false;
+    }
+
+    initialize(grid, player) {
+      this.bossPosition = { x: 20, y: 2 };
+      this.volleyTimer = this.volleyInterval;
+      return { success: true, bossPosition: this.bossPosition };
+    }
+
+    _getVolleySize() {
+      var hpRatio = this.hp / this.maxHp;
+      if (hpRatio > 0.66) return 2;
+      if (hpRatio > 0.33) return 4;
+      return 6;
+    }
+
+    // Called each tick by gone-rogue.js game loop.
+    updateRealTime(elapsedMs, gameState) {
+      return { bossProjectiles: [] }; // Turn-based volleys handled in update()
+    }
+
+    update(gameState) {
+      super.update(gameState);
+
+      // Track when HP crosses into phase 3 territory
+      if (!this.phase3Reached && this.hp / this.maxHp <= 0.33) {
+        this.phase3Reached = true;
+      }
+
+      if (this.suppressedTurns > 0) {
+        this.suppressedTurns--;
+        return { phase: this.phase, message: '🔇 Boss reload suppressed!' };
+      }
+
+      this.volleyTimer--;
+      if (this.volleyTimer <= 0) {
+        this.volleyTimer = this.volleyInterval;
+        this.totalVolleysFired++;
+        var count = this._getVolleySize();
+        return {
+          phase: BOSS_PHASES.PATTERN,
+          attack: 'VOLLEY',
+          projectileCount: count,
+          message: '🔴 FORTRESS fires ' + count + ' projectiles!'
+        };
+      }
+      return { phase: this.phase };
+    }
+
+    checkExploit(playerAction, gameState) {
+      if (playerAction.type === 'SUPPRESSION_FIRE') {
+        this.suppressedTurns = 2;
+        return {
+          exploited: true,
+          message: '🔇 SUPPRESSION FIRE! Boss reload suppressed for 2 turns!',
+          suppressed: true
+        };
+      }
+      // Concentrated ranged attacks deal bonus damage to static target
+      if (playerAction.type === 'HIGH_GROUND' || playerAction.type === 'GRENADE') {
+        var bonus = playerAction.type === 'GRENADE' ? 4 : 2;
+        this.hp = Math.max(0, this.hp - bonus);
+        return {
+          exploited: true,
+          message: '💥 DIRECT HIT on Fortress! +' + bonus + ' bonus damage',
+          bonusDamage: bonus
+        };
+      }
+      return { exploited: false };
+    }
+
+    onDefeat(source) {
+      if (!this.phase3Reached) {
+        this.trackMythicCondition('KILL_BEFORE_PHASE3');
+      }
+      return super.onDefeat(source);
+    }
+  }
+
+  /**
+   * Sniper Boss — Ghost Sniper (patience and observation as weapons)
+   *
+   * The boss starts with 80% evasion.  Each use of the Camera card adds a
+   * progressive accuracy penalty (−5% evasion per photograph, up to −50%).
+   * Longer engagements favour the patient player.
+   * Mythic: land the killing blow with maximum penalty stacks applied.
+   */
+  class SniperBoss extends BossEncounter {
+    constructor(floorDepth) {
+      super('GHOST_SNIPER', floorDepth);
+      this.hp = 65;
+      this.maxHp = 65;
+      this.mythicTrigger = 'MAX_PENALTY_KILL';
+      this.mythicHint = 'RUMOR: Those who wait long enough find the ghost cannot hide...';
+      this.whisperItem = 'Ghillie Fragment';
+      this.mythicDrop = 'Spectral Crosshairs';
+
+      this.baseEvasion = 80;      // Boss starts very hard to hit
+      this.accuracyPenalty = 0;   // Accumulated via Camera card (max 50)
+      this.photographs = 0;
+      this.maxPhotographs = 10;
+      this.penaltyPerPhoto = 5;
+      this.shotCooldown = 4;      // Turns between boss sniper shots
+      this.lastShotTurn = 0;
+    }
+
+    initialize(grid, player) {
+      this.bossPosition = { x: 35, y: 2 };
+      return {
+        success: true,
+        concealedBoss: true,
+        message: '👁️ A presence watches from the shadows...'
+      };
+    }
+
+    getCurrentEvasion() {
+      return Math.max(0, this.baseEvasion - this.accuracyPenalty);
+    }
+
+    // Called each tick; no projectile injection needed (handled via update turn).
+    updateRealTime(elapsedMs, gameState) {
+      return { bossProjectiles: [] };
+    }
+
+    update(gameState) {
+      super.update(gameState);
+      this.lastShotTurn++;
+      if (this.lastShotTurn >= this.shotCooldown) {
+        this.lastShotTurn = 0;
+        var evasion = this.getCurrentEvasion();
+        return {
+          phase: BOSS_PHASES.PATTERN,
+          attack: 'SNIPER_SHOT',
+          damage: this.calculateDamage() * 2,
+          bossEvasion: evasion,
+          message: '🎯 Ghost Sniper fires! [Boss evasion: ' + evasion + '%]'
+        };
+      }
+      return { phase: this.phase, bossEvasion: this.getCurrentEvasion() };
+    }
+
+    checkExploit(playerAction, gameState) {
+      if (playerAction.type === 'CAMERA') {
+        if (this.photographs < this.maxPhotographs) {
+          this.photographs++;
+          this.accuracyPenalty = this.photographs * this.penaltyPerPhoto;
+        }
+        var evasion = this.getCurrentEvasion();
+        var atMax = this.photographs >= this.maxPhotographs;
+        return {
+          exploited: true,
+          message: '📷 Photo ' + this.photographs + '/' + this.maxPhotographs +
+            ' — Boss evasion: ' + evasion + '%' + (atMax ? ' ⚡ MAX PENALTY!' : ''),
+          photos: this.photographs,
+          evasion: evasion,
+          atMaxPenalty: atMax
+        };
+      }
+      return { exploited: false };
+    }
+
+    onDefeat(source) {
+      if (this.photographs >= this.maxPhotographs) {
+        this.trackMythicCondition('MAX_PENALTY_KILL');
+      }
+      return Object.assign(super.onDefeat(source), { photographs: this.photographs });
+    }
+  }
+
   // Boss type registry
   var BOSS_TYPES = {
     DEPOT_CROSSING: DepotCrossingBoss,
@@ -879,7 +1188,10 @@ const BossEncounters = (function () {
     MAINFRAME_CORE: MainframeCoreBoss,
     ORBITAL_CARRIER: OrbitalCarrierBoss,
     TREASURE_GOBLIN_KING: TreasureGoblinKingBoss,
-    UBER_MEGA: UberMegaBoss
+    UBER_MEGA: UberMegaBoss,
+    ASTEROIDS: AsteroidsBoss,
+    TOWER_OFFENSE: TowerOffenseBoss,
+    SNIPER: SniperBoss
   };
 
   /**
@@ -912,7 +1224,10 @@ const BossEncounters = (function () {
     MainframeCoreBoss: MainframeCoreBoss,
     OrbitalCarrierBoss: OrbitalCarrierBoss,
     TreasureGoblinKingBoss: TreasureGoblinKingBoss,
-    UberMegaBoss: UberMegaBoss
+    UberMegaBoss: UberMegaBoss,
+    AsteroidsBoss: AsteroidsBoss,
+    TowerOffenseBoss: TowerOffenseBoss,
+    SniperBoss: SniperBoss
   };
 })();
 
