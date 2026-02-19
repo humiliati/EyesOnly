@@ -1378,6 +1378,12 @@ body.amber-mode #scanlines::after {
     display: none; /* Hide label text on tablet */
   }
   
+  /* AWOL tooltip adjustments for tablet */
+  .awol-tooltip {
+    min-width: 240px;
+    right: -10px;
+  }
+  
   .accountability-icon {
     font-size: 1.4em;
     cursor: help; /* Indicate tooltip available */
@@ -1465,6 +1471,16 @@ body.amber-mode #scanlines::after {
   
   .accountability-icon {
     font-size: 0.9em;
+  }
+  
+  /* AWOL tooltip adjustments for mobile */
+  .awol-tooltip {
+    position: fixed;
+    top: 60px !important;
+    right: 10px !important;
+    left: 10px !important;
+    min-width: auto;
+    max-width: calc(100vw - 20px);
   }
   
   /* Active item slot reduction */

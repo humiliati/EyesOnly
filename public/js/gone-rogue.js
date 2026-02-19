@@ -708,6 +708,40 @@ const GoneRogue = (function () {
     return lines;
   }
 
+  // ============================================================
+  // DIFFICULTY TIER HELPER FUNCTIONS
+  // ============================================================
+
+  /**
+   * Get difficulty multiplier based on current tier
+   * @returns {number} Multiplier for enemy stats/count
+   */
+  function _getDifficultyMultiplier() {
+    switch (_difficultyTier) {
+      case 1: return 1.0;    // Standard
+      case 2: return 1.3;    // Advanced (+30% enemies, stats)
+      case 3: return 1.6;    // Extreme (+60% enemies, stats)
+      default: return 1.0;
+    }
+  }
+
+  /**
+   * Notify all state change listeners
+   */
+  function _notifyStateChange() {
+    _stateChangeCallbacks.forEach(function(cb) {
+      try {
+        cb();
+      } catch (e) {
+        console.warn('[GoneRogue] State change callback error:', e);
+      }
+    });
+  }
+
+  // ============================================================
+  // FLOOR GENERATION
+  // ============================================================
+
   function _generateFloor(secretFloorData) {
     // Initialize generation state
     _projectiles = [];
@@ -2240,6 +2274,12 @@ const GoneRogue = (function () {
     var MAX_FLOORS = 30;
     if (_floor >= MAX_FLOORS) {
       _runCompleted = true; // Mark run as completed for highscore
+      
+      // Mark difficulty tier as completed
+      if (typeof AWOLDifficulty !== 'undefined' && _difficultyTier >= 1 && _difficultyTier <= 3) {
+        AWOLDifficulty.markTierCompleted(_difficultyTier);
+      }
+      
       return _exitRogue(true);
     }
 
@@ -6432,21 +6472,8 @@ const GoneRogue = (function () {
   // ============================================================
 
   // ============================================================
-  // DIFFICULTY TIER SYSTEM
+  // DIFFICULTY TIER SYSTEM (Public API Functions)
   // ============================================================
-
-  /**
-   * Get difficulty multiplier based on current tier
-   * @returns {number} Multiplier for enemy stats/count
-   */
-  function _getDifficultyMultiplier() {
-    switch (_difficultyTier) {
-      case 1: return 1.0;    // Standard
-      case 2: return 1.3;    // Advanced (+30% enemies, stats)
-      case 3: return 1.6;    // Extreme (+60% enemies, stats)
-      default: return 1.0;
-    }
-  }
 
   /**
    * Set difficulty tier (called by AWOL button)
@@ -6478,19 +6505,6 @@ const GoneRogue = (function () {
     if (typeof callback === 'function') {
       _stateChangeCallbacks.push(callback);
     }
-  }
-
-  /**
-   * Notify all state change listeners
-   */
-  function _notifyStateChange() {
-    _stateChangeCallbacks.forEach(function(cb) {
-      try {
-        cb();
-      } catch (e) {
-        console.warn('[GoneRogue] State change callback error:', e);
-      }
-    });
   }
 
   // ============================================================
