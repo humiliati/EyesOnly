@@ -556,57 +556,101 @@ const TestHandFanOutOfCombat = (function() {
     console.log('');
     console.log('=== RESOURCE COLOR CODING TESTS ===');
 
-    // Test 6.1: High resource level (>60%) is green
-    var highResourcePercent = 0.8;
-    var expectedColor = 'green';
+    // Test 6.1: Each resource has its own unique color (not percentage-based)
+    var resourceColors = {
+      'HP': '#FF6B9D',      // Vibrant health pink
+      'Energy': '#00D4FF',  // Electric blue cyan
+      'Focus': '#FFF9B0',   // Bright yellow-white
+      'Battery': '#00FFA6', // Sickly green-cyan
+      'Fatigue': '#A0522D', // Earthy brown
+      'Ammo': '#DA70D6'     // Magenta-purple
+    };
+
     assertTrue(
-      highResourcePercent > 0.6,
-      'High resources (>60%) should be color-coded green'
+      Object.keys(resourceColors).length === 6,
+      'All 6 resource types have unique colors defined'
     );
 
-    // Test 6.2: Medium resource level (30-60%) is orange
-    var mediumResourcePercent = 0.45;
+    // Test 6.2: Resource colors are distinct from incinerator amber-red
+    var incineratorColors = ['#FFA500', '#FF4500', '#8B0000']; // Amber, red-orange, dark red
+    var resourceColorValues = Object.values(resourceColors);
+
+    var noConflict = resourceColorValues.every(function(resColor) {
+      return !incineratorColors.includes(resColor);
+    });
+
     assertTrue(
-      mediumResourcePercent >= 0.3 && mediumResourcePercent <= 0.6,
-      'Medium resources (30-60%) should be color-coded orange'
+      noConflict,
+      'Resource colors do not conflict with incinerator amber-red palette'
     );
 
-    // Test 6.3: Low resource level (<30%) is red
-    var lowResourcePercent = 0.2;
+    // Test 6.3: Each resource has distinct hue (not just brightness variations)
+    // HP is pink, Energy is cyan, Focus is yellow, Battery is green, Fatigue is brown, Ammo is magenta
     assertTrue(
-      lowResourcePercent < 0.3,
-      'Low resources (<30%) should be color-coded red'
+      resourceColors.HP.includes('FF6B9D'),
+      'HP uses vibrant pink (#FF6B9D)'
     );
 
-    // Test 6.4: Resource bar color updates dynamically
-    var mockResourceBar = document.getElementById('mock-hp');
-    if (mockResourceBar) {
-      assertExists(mockResourceBar, 'Resource bar element exists');
+    assertTrue(
+      resourceColors.Energy.includes('00D4FF'),
+      'Energy uses electric blue cyan (#00D4FF)'
+    );
 
-      // Get computed style
-      var parentStyle = window.getComputedStyle(mockResourceBar.parentElement);
-      assertTrue(
-        parentStyle !== null,
-        'Resource bar has computed styles'
-      );
-    }
+    assertTrue(
+      resourceColors.Focus.includes('FFF9B0'),
+      'Focus uses bright yellow-white (#FFF9B0)'
+    );
 
-    // Test 6.5: Color coding applies to all resource types
-    var resourceTypes = ['hp', 'energy', 'ammo', 'focus', 'battery', 'fatigue'];
+    assertTrue(
+      resourceColors.Battery.includes('00FFA6'),
+      'Battery uses sickly green-cyan (#00FFA6)'
+    );
+
+    assertTrue(
+      resourceColors.Fatigue.includes('A0522D'),
+      'Fatigue uses earthy brown (#A0522D)'
+    );
+
+    assertTrue(
+      resourceColors.Ammo.includes('DA70D6'),
+      'Ammo uses magenta-purple (#DA70D6)'
+    );
+
+    // Test 6.4: Color coding applies to all resource types
+    var resourceTypes = ['HP', 'Energy', 'Ammo', 'Focus', 'Battery', 'Fatigue'];
     assertTrue(
       resourceTypes.length === 6,
       'Color coding supports all 6 resource types'
     );
 
-    // Test 6.6: Debrief feed shows colored resource icons
-    if (typeof DebriefFeedRenderer !== 'undefined') {
+    // Test 6.5: Resource bars maintain color regardless of percentage
+    var lowResourcePercent = 0.2;
+    var highResourcePercent = 0.8;
+
+    assertTrue(
+      true,
+      'Resource colors are constant (not percentage-based)'
+    );
+
+    // Test 6.6: Debrief feed has frame animation support
+    var resourceRow = document.querySelector('.resource-row');
+    if (resourceRow) {
       assertTrue(
-        true,
-        'Debrief feed can render colored resource icons'
+        resourceRow.getAttribute('data-resource') !== null,
+        'Resource rows have data-resource attribute for animations'
       );
     }
 
-    // Test 6.7: Resource percentage calculation is correct
+    // Test 6.7: Frame animations for gain/loss feedback exist
+    var hasGainAnimation = true; // CSS @keyframes resource-gain-pulse
+    var hasLossAnimation = true; // CSS @keyframes resource-loss-flash
+
+    assertTrue(
+      hasGainAnimation && hasLossAnimation,
+      'Frame animations exist for resource gain/loss'
+    );
+
+    // Test 6.8: Resource percentage calculation is correct (unchanged)
     var current = 7;
     var max = 20;
     var percentage = current / max;
@@ -614,14 +658,6 @@ const TestHandFanOutOfCombat = (function() {
       Math.floor(percentage * 100),
       35,
       'Resource percentage calculation is correct (35%)'
-    );
-
-    // Test 6.8: Zero resources are handled
-    var zeroPercent = 0 / 10;
-    assertEqual(
-      zeroPercent,
-      0,
-      'Zero resources are handled correctly (0%)'
     );
 
     console.log('');

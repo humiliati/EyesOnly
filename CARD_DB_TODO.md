@@ -1534,22 +1534,40 @@ if (validTarget && hasResources(card.resourceCost)) {
 
 **Debrief Feed Color Scheme:**
 
-**Resource Percentage Thresholds:**
-- **>60% remaining:** 🟢 Green (#4CAF50) - Healthy resource level
-- **30-60% remaining:** 🟠 Orange (#FF9800) - Caution, moderate usage
-- **<30% remaining:** 🔴 Red (#F44336) - Critical, low resources
+**IMPORTANT:** Resource colors must be unique and distinct from the incinerator amber-red animation to avoid visual confusion.
+
+**Resource-Specific Color Palette:**
+
+Each resource has its own unique color that represents the resource type itself, not a percentage-based health indicator:
+
+| Resource | Color | Hex Code | Visual Style |
+|----------|-------|----------|--------------|
+| **HP** | Pink/Red | `#FF6B9D` | Vibrant health pink (not critical red) |
+| **Energy** | Electric Blue | `#00D4FF` | Bright cyan electric |
+| **Focus** | Bright Yellow-White | `#FFF9B0` | Almost white, sharp focus |
+| **Battery** | Sickly Green-Cyan | `#7CFC00` `#00FFA6` | Toxic green with cyan undertone |
+| **Fatigue** | Brown | `#8B4513` `#A0522D` | Earthy brown, exhaustion |
+| **Ammo** | Magenta-Purple | `#C71585` `#DA70D6` | Bright special ammo flow |
+
+**Frame Outline Animation (Gain/Loss):**
+- **Gaining Resource**: Frame outline pulses with resource color (glow effect)
+- **Losing Resource**: Frame outline briefly flashes with resource color, then fades
+- Animation is applied to the frame border, not the bar itself
+- Bars maintain their resource-specific color at all times
 
 **Application:**
-- Color-code resource spend messages in debrief feed
-- Update resource bars in header with dynamic colors
-- Flash color when resources reach critical threshold
-- Show color preview before committing to card use
+- Each resource bar uses its unique color regardless of percentage
+- Frame animations indicate resource changes (gain/loss)
+- No percentage-based color switching (avoids amber/red/green)
+- Incinerator uses distinct amber-red for card disposal
+- Resource collectibles flow with their specific colors (magenta ammo is special)
 
-**Example Debrief Messages:**
+**Example Debrief Frame Animations:**
 ```
-🟢 Energy: -2 (8/10) [Single Shot]
-🟠 Ammo: -3 (4/10) [Burst Fire]
-🔴 HP: -5 (3/20) [Fire Tile Damage]
+[Frame pulses cyan] Energy: +2 (8/10) [Rest]
+[Frame flashes magenta] Ammo: -3 (4/10) [Burst Fire]
+[Frame flashes pink] HP: -5 (3/20) [Fire Tile Damage]
+[Frame pulses sickly green] Battery: +1 (3/5) [Battery Pack]
 ```
 
 ### 17.8 Incinerator Animation

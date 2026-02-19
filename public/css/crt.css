@@ -2566,6 +2566,86 @@ body.in-gone-rogue #log-column {
   min-height: 200px;
 }
 
+/* Resource frame animations for gain/loss feedback */
+.resource-row {
+  position: relative;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 2px 4px;
+  transition: border-color 0.3s ease;
+}
+
+/* Gaining resource - frame pulses with resource color */
+@keyframes resource-gain-pulse {
+  0% {
+    border-color: transparent;
+    box-shadow: none;
+  }
+  50% {
+    border-color: currentColor;
+    box-shadow: 0 0 8px currentColor;
+  }
+  100% {
+    border-color: transparent;
+    box-shadow: none;
+  }
+}
+
+/* Losing resource - frame flashes then fades */
+@keyframes resource-loss-flash {
+  0% {
+    border-color: transparent;
+    box-shadow: none;
+  }
+  20% {
+    border-color: currentColor;
+    box-shadow: 0 0 6px currentColor;
+  }
+  100% {
+    border-color: transparent;
+    box-shadow: none;
+  }
+}
+
+/* Apply animations with specific resource colors */
+.resource-row.gaining {
+  animation: resource-gain-pulse 0.6s ease-out;
+}
+
+.resource-row.losing {
+  animation: resource-loss-flash 0.4s ease-out;
+}
+
+/* Resource-specific frame colors (using CSS variables for easier dynamic application) */
+.resource-row[data-resource="HP"] {
+  --resource-color: #FF6B9D;
+}
+
+.resource-row[data-resource="Energy"] {
+  --resource-color: #00D4FF;
+}
+
+.resource-row[data-resource="Focus"] {
+  --resource-color: #FFF9B0;
+}
+
+.resource-row[data-resource="Battery"] {
+  --resource-color: #00FFA6;
+}
+
+.resource-row[data-resource="Fatigue"] {
+  --resource-color: #A0522D;
+}
+
+.resource-row[data-resource="Ammo"] {
+  --resource-color: #DA70D6;
+}
+
+.resource-row.gaining,
+.resource-row.losing {
+  color: var(--resource-color);
+}
+
 /* Status effects display */
 .status-effects-row {
   display: flex;
