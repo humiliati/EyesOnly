@@ -778,6 +778,627 @@ This allows incremental integration without breaking existing functionality.
 
 ---
 
+## Appendix B: Detailed Card Specifications
+
+### B.1 Environmental Interaction Cards
+
+#### CARD_011: Oil Slick
+```javascript
+{
+  cardId: 'CARD_011',
+  cardName: 'Oil Slick',
+  emoji: '🛢️',
+  lifecycle: 'disposable',
+  category: 'utility',
+  rarity: 'uncommon',
+  biomeFlags: ['industrial', 'cave', 'museum'],
+  baseCost: 0,
+  resourceCost: {},
+  targetType: 'ground',
+  targetRange: 3,
+  targetArea: 'single',
+  baseStats: {
+    duration: 5  // rounds before evaporation
+  },
+  effectPrimary: 'create_tile',
+  effectSecondary: null,
+  tileCreated: 'oil',
+  description: 'Create oil tile. Causes slipping. Ignites with fire.',
+  flavorText: 'Industrial hazard waiting to happen.',
+  discovery: {
+    firstUseHint: 'Slippery surfaces impede movement. Fire amplifies danger.',
+    synergy: ['CARD_012 (Lighter)', 'fire sources', 'movement disruption']
+  }
+}
+```
+
+#### CARD_012: Lighter
+```javascript
+{
+  cardId: 'CARD_012',
+  cardName: 'Lighter',
+  emoji: '🔥',
+  lifecycle: 'disposable',
+  category: 'utility',
+  rarity: 'common',
+  biomeFlags: ['all'],
+  baseCost: 0,
+  resourceCost: {},
+  targetType: 'ground',
+  targetRange: 1,
+  targetArea: 'single',
+  baseStats: {
+    damage: 1,
+    duration: 3  // fire burns for 3 rounds
+  },
+  effectPrimary: 'ignite',
+  effectSecondary: 'create_tile',
+  tileCreated: 'fire',
+  statusInflicted: 'STAT_001',  // Burning
+  description: 'Ignite oil or create small fire. Causes BURNING status.',
+  flavorText: 'Not just for cigarettes anymore.',
+  discovery: {
+    firstUseHint: 'Fire spreads on oil. Creates area denial.',
+    synergy: ['CARD_011 (Oil Slick)', 'CARD_004 (Cigarette)', 'oiled enemies']
+  }
+}
+```
+
+#### CARD_013: Water Bottle
+```javascript
+{
+  cardId: 'CARD_013',
+  cardName: 'Water Bottle',
+  emoji: '💧',
+  lifecycle: 'disposable',
+  category: 'utility',
+  rarity: 'common',
+  biomeFlags: ['all'],
+  baseCost: 0,
+  resourceCost: {},
+  targetType: 'ground',
+  targetRange: 2,
+  targetArea: '3x3',
+  baseStats: {
+    duration: 2,  // water dries after 2 rounds
+    healAmount: 1  // optional: drink for 1 HP
+  },
+  effectPrimary: 'create_tile',
+  effectSecondary: 'extinguish_fire',
+  tileCreated: 'water',
+  statusRemoved: 'STAT_001',  // Removes burning
+  description: 'Create water tiles. Extinguishes fire. Enables electrocution.',
+  flavorText: 'H₂O: Universal solvent and conductor.',
+  discovery: {
+    firstUseHint: 'Water conducts electricity. Dowses flames.',
+    synergy: ['CARD_014 (Tazer)', 'fire tiles', 'burning status']
+  }
+}
+```
+
+### B.2 Tech/Battery Cards
+
+#### CARD_007: Smoke Screen
+```javascript
+{
+  cardId: 'CARD_007',
+  cardName: 'Smoke Screen',
+  emoji: '💨',
+  lifecycle: 'exhaust',
+  category: 'stealth',
+  rarity: 'uncommon',
+  biomeFlags: ['office', 'mall', 'industrial'],
+  baseCost: 1,
+  resourceCost: { battery: 1 },
+  targetType: 'self',
+  targetRange: 0,
+  targetArea: '5x5',
+  baseStats: {
+    duration: 3,
+    stealthBonus: 40
+  },
+  effectPrimary: 'create_smoke',
+  effectSecondary: 'stealth_boost',
+  statusGranted: 'STAT_008',  // Hidden
+  description: 'Deploy smoke cloud. Grants HIDDEN status for 3 rounds.',
+  flavorText: 'Tactical vanishing act.',
+  discovery: {
+    firstUseHint: 'Smoke breaks line of sight. Loud actions reveal position.',
+    synergy: ['stealth builds', 'retreat', 'ambush setup']
+  }
+}
+```
+
+#### CARD_014: Tazer Shot
+```javascript
+{
+  cardId: 'CARD_014',
+  cardName: 'Tazer Shot',
+  emoji: '⚡',
+  lifecycle: 'ammo_gated',
+  category: 'attack',
+  rarity: 'uncommon',
+  biomeFlags: ['office', 'mall'],
+  baseCost: 1,
+  resourceCost: { ammo: 1, battery: 1 },
+  targetType: 'enemy',
+  targetRange: 3,
+  targetArea: 'single_or_water',
+  baseStats: {
+    damage: 1,
+    stunDuration: 1
+  },
+  effectPrimary: 'stun',
+  effectSecondary: 'chain_in_water',
+  statusInflicted: 'STAT_003',  // Stunned
+  description: 'Non-lethal stun. Chain effect in water.',
+  flavorText: '50,000 volts of compliance.',
+  discovery: {
+    firstUseHint: 'Water amplifies effect. Chains to all in puddle.',
+    synergy: ['CARD_013 (Water)', 'wet status', 'crowd control']
+  }
+}
+```
+
+#### CARD_015: Drone Support
+```javascript
+{
+  cardId: 'CARD_015',
+  cardName: 'Drone Support',
+  emoji: '🛸',
+  lifecycle: 'ammo_gated',
+  category: 'setup',
+  rarity: 'rare',
+  biomeFlags: ['museum', 'industrial', 'office'],
+  baseCost: 2,
+  resourceCost: { battery: 2 },
+  targetType: 'enemy',
+  targetRange: 8,
+  targetArea: 'single',
+  baseStats: {
+    damage: 2,
+    accuracy: 95,
+    duration: 3  // lasts 3 rounds, auto-fires
+  },
+  effectPrimary: 'summon_drone',
+  effectSecondary: 'overwatch',
+  description: 'Deploy drone. Auto-attacks highest threat for 3 rounds.',
+  flavorText: 'Autonomous death from above.',
+  discovery: {
+    firstUseHint: 'Drone persists across rounds. Targets highest HP enemy.',
+    synergy: ['tech builds', 'high ground', 'area control']
+  }
+}
+```
+
+#### CARD_016: Thermal Vision
+```javascript
+{
+  cardId: 'CARD_016',
+  cardName: 'Thermal Vision',
+  emoji: '🔴',
+  lifecycle: 'power',
+  category: 'setup',
+  rarity: 'rare',
+  biomeFlags: ['cave', 'museum', 'industrial'],
+  baseCost: 1,
+  resourceCost: { battery: 1 },
+  targetType: 'self',
+  targetRange: 0,
+  targetArea: 'vision',
+  baseStats: {
+    sightBonus: 5,
+    accuracyBonus: 15
+  },
+  effectPrimary: 'enhanced_vision',
+  effectSecondary: 'reveal_hidden',
+  description: 'Power card. See through walls. Reveal hidden enemies.',
+  flavorText: 'No hiding from infrared.',
+  discovery: {
+    firstUseHint: 'Active entire combat. Negates stealth advantage.',
+    synergy: ['cave biomes', 'darkness', 'anti-stealth']
+  }
+}
+```
+
+#### CARD_029: Smoke Exit
+```javascript
+{
+  cardId: 'CARD_029',
+  cardName: 'Smoke Exit',
+  emoji: '💨',
+  lifecycle: 'disposable',
+  category: 'escape',
+  rarity: 'rare',
+  biomeFlags: ['office', 'mall', 'industrial'],
+  baseCost: 2,
+  resourceCost: { battery: 1 },
+  targetType: 'self',
+  targetRange: 0,
+  targetArea: 'instant',
+  baseStats: {
+    teleportRange: 5
+  },
+  effectPrimary: 'combat_escape',
+  effectSecondary: 'smoke_trail',
+  description: 'Instant escape. Leave smoke. End combat.',
+  flavorText: 'Emergency extraction protocol.',
+  discovery: {
+    firstUseHint: 'Ends combat immediately. Cannot be used on cooldown.',
+    synergy: ['low HP escapes', 'loot runs', 'speed builds']
+  }
+}
+```
+
+### B.3 Power Cards
+
+#### CARD_010: Perfect Ambush
+```javascript
+{
+  cardId: 'CARD_010',
+  cardName: 'Perfect Ambush',
+  emoji: '🎯',
+  lifecycle: 'power',
+  category: 'setup',
+  rarity: 'rare',
+  biomeFlags: ['cave', 'forest', 'industrial'],
+  baseCost: 1,
+  resourceCost: { focus: 3 },
+  targetType: 'self',
+  targetRange: 0,
+  targetArea: 'passive',
+  baseStats: {
+    critChance: 50,
+    damageMultiplier: 1.5
+  },
+  effectPrimary: 'ambush_bonus',
+  effectSecondary: 'first_strike',
+  description: 'Power card. +50% crit. 1.5x damage from stealth.',
+  flavorText: 'Patience rewarded with violence.',
+  discovery: {
+    firstUseHint: 'Active entire combat. Synergizes with stealth.',
+    synergy: ['stealth builds', 'CARD_001 (Silent Shot)', 'high focus']
+  }
+}
+```
+
+#### CARD_017: Scarface Mode
+```javascript
+{
+  cardId: 'CARD_017',
+  cardName: 'Scarface Mode',
+  emoji: '💀',
+  lifecycle: 'power',
+  category: 'attack',
+  rarity: 'perfect',
+  biomeFlags: ['all'],
+  baseCost: 2,
+  resourceCost: {},
+  targetType: 'self',
+  targetRange: 0,
+  targetArea: 'passive',
+  baseStats: {
+    damageBonus: 3,
+    hpDrainPerRound: 2,
+    accuracyPenalty: -10
+  },
+  effectPrimary: 'berserker',
+  effectSecondary: 'reckless',
+  description: 'Power card. +3 damage, -2 HP/round, -10% accuracy.',
+  flavorText: 'Say hello to my little friend.',
+  discovery: {
+    firstUseHint: 'High risk, high reward. HP drain can kill you.',
+    synergy: ['high HP builds', 'aggressive play', 'speed runs']
+  }
+}
+```
+
+#### CARD_018: Ghost Protocol
+```javascript
+{
+  cardId: 'CARD_018',
+  cardName: 'Ghost Protocol',
+  emoji: '👻',
+  lifecycle: 'power',
+  category: 'stealth',
+  rarity: 'rare',
+  biomeFlags: ['office', 'cave', 'museum'],
+  baseCost: 1,
+  resourceCost: { focus: 5 },
+  targetType: 'self',
+  targetRange: 0,
+  targetArea: 'passive',
+  baseStats: {
+    stealthBonus: 50,
+    detectionImmunity: true
+  },
+  effectPrimary: 'undetectable',
+  effectSecondary: 'no_combat_noise',
+  statusGranted: 'STAT_008',  // Hidden (permanent)
+  description: 'Power card. Cannot be detected. Silent attacks.',
+  flavorText: 'Operational ghost. No witnesses.',
+  discovery: {
+    firstUseHint: 'Perfect stealth. Breaks on loud actions.',
+    synergy: ['CARD_001 (Silent Shot)', 'stealth kills', 'no alerts']
+  }
+}
+```
+
+#### CARD_019: Adrenal Surge
+```javascript
+{
+  cardId: 'CARD_019',
+  cardName: 'Adrenal Surge',
+  emoji: '💉',
+  lifecycle: 'power',
+  category: 'utility',
+  rarity: 'perfect',
+  biomeFlags: ['all'],
+  baseCost: 1,
+  resourceCost: {},
+  targetType: 'self',
+  targetRange: 0,
+  targetArea: 'passive',
+  baseStats: {
+    energyRegenPerRound: 2,
+    movementBonus: 1,
+    fatigueReduction: 50
+  },
+  effectPrimary: 'energy_regen',
+  effectSecondary: 'enhanced_movement',
+  description: 'Power card. +2 Energy/round. +1 movement. -50% fatigue.',
+  flavorText: 'Biochemical advantage.',
+  discovery: {
+    firstUseHint: 'Enables high action economy. Combo enabler.',
+    synergy: ['combo builds', 'multi-card plays', 'aggressive tempo']
+  }
+}
+```
+
+#### CARD_020: Predator Focus
+```javascript
+{
+  cardId: 'CARD_020',
+  cardName: 'Predator Focus',
+  emoji: '🦅',
+  lifecycle: 'power',
+  category: 'attack',
+  rarity: 'rare',
+  biomeFlags: ['museum', 'cave', 'forest'],
+  baseCost: 1,
+  resourceCost: { focus: 4 },
+  targetType: 'self',
+  targetRange: 0,
+  targetArea: 'passive',
+  baseStats: {
+    accuracyBonus: 25,
+    critChance: 30,
+    sightBonus: 3
+  },
+  effectPrimary: 'enhanced_precision',
+  effectSecondary: 'target_marking',
+  description: 'Power card. +25% accuracy, +30% crit, +3 sight.',
+  flavorText: 'Apex predator instincts.',
+  discovery: {
+    firstUseHint: 'Precision build enabler. See and hit everything.',
+    synergy: ['sniper builds', 'long-range cards', 'accuracy focus']
+  }
+}
+```
+
+### B.4 Defensive/Utility Cards
+
+#### CARD_023: Last Stand
+```javascript
+{
+  cardId: 'CARD_023',
+  cardName: 'Last Stand',
+  emoji: '🛡️',
+  lifecycle: 'exhaust',
+  category: 'defense',
+  rarity: 'rare',
+  biomeFlags: ['all'],
+  baseCost: 2,
+  resourceCost: {},
+  targetType: 'self',
+  targetRange: 0,
+  targetArea: 'instant',
+  baseStats: {
+    damageReduction: 100,  // immune to damage
+    duration: 1,  // this round only
+    fatigueGain: 5
+  },
+  effectPrimary: 'damage_immunity',
+  effectSecondary: 'fatigue_cost',
+  description: 'Exhaust. Immune to damage this round. +5 fatigue.',
+  flavorText: 'Not today, Death.',
+  discovery: {
+    firstUseHint: 'Emergency defense. High fatigue cost.',
+    synergy: ['low HP situations', 'boss fights', 'buying time']
+  }
+}
+```
+
+#### CARD_024: Panic Dodge
+```javascript
+{
+  cardId: 'CARD_024',
+  cardName: 'Panic Dodge',
+  emoji: '😱',
+  lifecycle: 'exhaust',
+  category: 'defense',
+  rarity: 'common',
+  biomeFlags: ['all'],
+  baseCost: 1,
+  resourceCost: { fatigue: 4 },
+  targetType: 'self',
+  targetRange: 0,
+  targetArea: 'instant',
+  baseStats: {
+    evasion: 80,
+    movementDistance: 2
+  },
+  effectPrimary: 'panic_movement',
+  effectSecondary: 'discard_card',
+  statusInflicted: 'STAT_006',  // Self-panic
+  description: 'Exhaust. 80% evasion, move 2 tiles. Discard random card.',
+  flavorText: 'Fear is a survival mechanism.',
+  discovery: {
+    firstUseHint: 'Emergency dodge. Costs card from hand.',
+    synergy: ['low HP panic', 'card cycling', 'repositioning']
+  }
+}
+```
+
+#### CARD_027: Quick Reflex
+```javascript
+{
+  cardId: 'CARD_027',
+  cardName: 'Quick Reflex',
+  emoji: '⚡',
+  lifecycle: 'exhaust',
+  category: 'interrupt',
+  rarity: 'uncommon',
+  biomeFlags: ['office', 'mall', 'museum'],
+  baseCost: 0,
+  resourceCost: { energy: 2 },
+  targetType: 'self',
+  targetRange: 0,
+  targetArea: 'instant',
+  baseStats: {
+    counterDamage: 2,
+    accuracy: 90
+  },
+  effectPrimary: 'counter_attack',
+  effectSecondary: 'interrupt_enemy',
+  description: 'Exhaust. Counter enemy attack. 2 damage, 90% accuracy.',
+  flavorText: 'Faster than thought.',
+  discovery: {
+    firstUseHint: 'Interrupts enemy action. Requires fast reflexes.',
+    synergy: ['defensive builds', 'enemy prediction', 'high energy']
+  }
+}
+```
+
+#### CARD_028: Flash Bang
+```javascript
+{
+  cardId: 'CARD_028',
+  cardName: 'Flash Bang',
+  emoji: '💥',
+  lifecycle: 'disposable',
+  category: 'utility',
+  rarity: 'uncommon',
+  biomeFlags: ['office', 'mall', 'industrial'],
+  baseCost: 1,
+  resourceCost: { ammo: 1 },
+  targetType: 'area',
+  targetRange: 3,
+  targetArea: '3x3',
+  baseStats: {
+    stunDuration: 1,
+    accuracyPenalty: 50  // -50% accuracy for 2 rounds
+  },
+  effectPrimary: 'blind_enemies',
+  effectSecondary: 'suppress',
+  statusInflicted: 'STAT_004',  // Suppressed
+  description: 'Blind and suppress enemies in area. -50% accuracy.',
+  flavorText: 'Thunder and lightning.',
+  discovery: {
+    firstUseHint: 'Area denial. Disables enemy accuracy.',
+    synergy: ['crowd control', 'multi-enemy fights', 'escape setup']
+  }
+}
+```
+
+#### CARD_030: Heavy Recoil
+```javascript
+{
+  cardId: 'CARD_030',
+  cardName: 'Heavy Recoil',
+  emoji: '💥',
+  lifecycle: 'exhaust',
+  category: 'attack',
+  rarity: 'uncommon',
+  biomeFlags: ['industrial', 'museum', 'office'],
+  baseCost: 2,
+  resourceCost: { fatigue: 5, ammo: 3 },
+  targetType: 'enemy',
+  targetRange: 5,
+  targetArea: 'single',
+  baseStats: {
+    damage: 8,
+    accuracy: 70,
+    knockback: 2
+  },
+  effectPrimary: 'high_damage',
+  effectSecondary: 'knockback',
+  statusInflicted: 'STAT_005',  // Knocked down
+  description: 'Exhaust. Massive damage. Knockback. High fatigue.',
+  flavorText: '.50 cal problems.',
+  discovery: {
+    firstUseHint: 'Boss killer. High cost, high reward.',
+    synergy: ['boss fights', 'high HP targets', 'knockout setups']
+  }
+}
+```
+
+### B.5 Card Synergy Matrices
+
+#### Environmental Synergy Map
+```
+Oil (CARD_011) + Lighter (CARD_012) = Fire spread (high damage area)
+Water (CARD_013) + Tazer (CARD_014) = Chain stun (all in water)
+Water (CARD_013) + Fire tiles = Extinguish (removes fire)
+Smoke Screen (CARD_007) + Silent Shot (CARD_001) = Perfect stealth attack
+```
+
+#### Power Card Combos
+```
+Perfect Ambush (CARD_010) + Ghost Protocol (CARD_018) = Stealth crit build
+Adrenal Surge (CARD_019) + Heavy Recoil (CARD_030) = High action economy
+Predator Focus (CARD_020) + Thermal Vision (CARD_016) = Perfect accuracy
+Scarface Mode (CARD_017) + Last Stand (CARD_023) = Berserker survival
+```
+
+#### Lifecycle Combos
+```
+Disposables (common) → Tactical flexibility
+Exhaust cards (rare) → Emergency responses
+Power cards (rare/perfect) → Build-defining strategy
+Gated cards (uncommon) → Resource management
+```
+
+### B.6 Missing Card Implementation Priority
+
+#### Phase 1: Environmental System (Required)
+1. CARD_011 (Oil Slick) - Foundation for fire system
+2. CARD_012 (Lighter) - Ignition mechanic
+3. CARD_013 (Water Bottle) - Fire counter + electric conductor
+
+#### Phase 2: Tech/Battery Cards (Medium)
+4. CARD_007 (Smoke Screen) - Stealth utility
+5. CARD_014 (Tazer Shot) - Electric mechanic
+6. CARD_015 (Drone Support) - Summon mechanic
+7. CARD_016 (Thermal Vision) - Vision upgrade
+8. CARD_029 (Smoke Exit) - Escape mechanic
+
+#### Phase 3: Power Cards (High Impact)
+9. CARD_010 (Perfect Ambush) - Stealth build
+10. CARD_017 (Scarface Mode) - Aggressive build
+11. CARD_018 (Ghost Protocol) - Stealth build
+12. CARD_019 (Adrenal Surge) - Action economy
+13. CARD_020 (Predator Focus) - Precision build
+
+#### Phase 4: Utility/Defense (Polish)
+14. CARD_023 (Last Stand) - Emergency defense
+15. CARD_024 (Panic Dodge) - Panic mechanic
+16. CARD_027 (Quick Reflex) - Counter mechanic
+17. CARD_028 (Flash Bang) - Crowd control
+18. CARD_030 (Heavy Recoil) - Boss killer
+
+---
+
 **Document Version:** 1.0
 **Last Updated:** 2026-02-18
 **Status:** Complete gap analysis, ready for implementation planning
