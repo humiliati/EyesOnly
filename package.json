@@ -9,6 +9,7 @@
     "build:ops": "esbuild src/ops-ui/index.tsx --bundle --outfile=public/ops/app.js --jsx=automatic --jsx-import-source=preact --minify --target=es2020",
     "build:mmode": "esbuild src/m-mode/index.tsx --bundle --outfile=public/m/app.js --jsx=automatic --jsx-import-source=preact --minify --target=es2020",
     "build:ui": "npm run build:ops && npm run build:mmode",
+    "typecheck": "tsc --noEmit",
     "db:migrate": "wrangler d1 execute database_id --remote --file=migrations/0001_init.sql",
     "db:migrate:local": "wrangler d1 execute database_id --local --file=migrations/0001_init.sql",
     "types": "wrangler types"
@@ -22,6 +23,6 @@
     "@cloudflare/workers-types": "^4.20250214.0",
     "esbuild": "^0.24.0",
     "typescript": "^5.7.0",
-    "wrangler": "^3.109.0"
+    "wrangler": "^4.67.0"
   }
 }
