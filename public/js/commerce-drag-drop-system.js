@@ -256,6 +256,12 @@ const CommerceDragDropSystem = (function() {
       }
     }
 
+    // Trigger passive items (Thrift Ghost)
+    if (typeof PassiveItemsSystem !== 'undefined' && context.cardData) {
+      var isGamble = context.sourceZone === 'shop_gamble';
+      PassiveItemsSystem.handlePurchase(context.cardData, isGamble);
+    }
+
     return {
       success: true,
       remainingCurrency: playerState.cryptos,
