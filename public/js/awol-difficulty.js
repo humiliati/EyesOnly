@@ -7,7 +7,7 @@ const AWOLDifficulty = (function () {
   'use strict';
 
   var STORAGE_KEY = 'eyesonly_awol_difficulty';
-  var _currentTier = 0; // 0 = not set, 1 = T1, 2 = T2, 3 = T3
+  var _currentTier = 1; // Default to T1 (Standard) for new users
   var _tooltipVisible = false;
   var _completedTiers = []; // Array of completed tiers for progression check
 
