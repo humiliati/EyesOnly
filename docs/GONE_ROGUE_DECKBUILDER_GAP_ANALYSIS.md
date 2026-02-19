@@ -58,3 +58,8 @@
 - Are status stacks and expirations visible in one line of text/emoji?
 - Do reward offers always present one defensive or utility option to avoid dead runs?
 - Can players replay a seed from a shareable code to compare builds?
+
+## Issue Topics (double-down hooks)
+- **Card Instance Parity Pass** — Add explicit cardInstance fields (upgradeLevel, costMods, exhaustion) plus targeting metadata for every card; hook: unlock upgraded copies in rewards after first clear to nudge short-run mastery.
+- **Seeded Reward & Pity Tables** — Implement weighted reward buckets with duplicate-avoidance and a “guaranteed utility/defense every 3 offers” rule; hook: surface the current seed in UI so playtesters can race builds.
+- **Economy Sink & Salvage Loop** — Define salvage values for duplicate/low-tier cards and vendor costs for rerolls/removals; hook: quick mobile flow to turn junk into currency/affixes between fights, keeping hands lean.
