@@ -180,6 +180,43 @@
   box-shadow: 0 4px 20px rgba(28, 255, 155, 0.5);
 }
 
+/* Card insufficient resources state */
+.hand-card.card-insufficient-resources {
+  filter: grayscale(100%) brightness(0.4);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Card shake animation for unaffordable cards */
+@keyframes card-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+}
+
+.hand-card.card-shake {
+  animation: card-shake 0.4s ease-in-out;
+}
+
+/* Placeholder "blck" card when hand is empty or all cards unaffordable */
+.hand-card-placeholder {
+  width: 120px;
+  height: 168px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(20, 20, 20, 0.9) 100%);
+  border: 2px solid rgba(100, 100, 100, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Courier New', monospace;
+  color: #666;
+  font-size: 24px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  cursor: default;
+  user-select: none;
+}
+
 /* Card selected state */
 .hand-card.hand-card-selected {
   border-color: #ff9800 !important;
@@ -325,6 +362,59 @@
 /* ============================================================
    Card Animations
    ============================================================ */
+
+/* Minimization animation - slide to single transparent card */
+.hand-fan-container.hand-fan-minimized {
+  animation: hand-fan-minimize 0.4s ease-in forwards;
+}
+
+@keyframes hand-fan-minimize {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0.3;
+    transform: translate(-50%, -50%) scale(0.2);
+  }
+}
+
+/* Minimized state for hand fan */
+.hand-fan-container.hand-fan-minimized .hand-card-wrapper {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, 0) !important;
+  opacity: 0.3;
+}
+
+.hand-fan-container.hand-fan-minimized .hand-card-wrapper:not(:first-child) {
+  display: none;
+}
+
+/* Frame incinerator animation for single-use cards */
+@keyframes card-incinerator {
+  0% {
+    opacity: 1;
+    filter: brightness(1);
+  }
+  30% {
+    filter: brightness(2) saturate(2);
+    box-shadow: 0 0 30px rgba(255, 100, 0, 1);
+  }
+  60% {
+    transform: scale(1.1);
+    filter: brightness(3) hue-rotate(30deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.3) rotate(15deg);
+    filter: brightness(0) blur(10px);
+  }
+}
+
+.hand-card.card-incinerating {
+  animation: card-incinerator 0.6s ease-out forwards;
+}
 
 /* Commit animation - lift selected cards */
 .hand-fan-container.hand-fan-commit .hand-card.hand-card-selected {
