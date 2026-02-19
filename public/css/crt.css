@@ -1543,34 +1543,17 @@ body.in-gone-rogue .control-buttons {
   color: var(--phosphor-bright);
 }
 
-/* Action button in Gone Rogue mode */
-body.mode-gone-rogue .control-buttons button[data-action="action"],
-body.in-gone-rogue .control-buttons button[data-action="action"] {
-  background: rgba(28, 255, 155, 0.15);
-  border: 2px solid rgba(28, 255, 155, 0.6);
-  color: #1cff9b;
-  font-weight: bold;
-  letter-spacing: 0.15em;
-  min-height: 50px;
-  font-size: 1em;
-}
-
-body.mode-gone-rogue .control-buttons button[data-action="action"]:hover,
-body.in-gone-rogue .control-buttons button[data-action="action"]:hover {
-  background: rgba(28, 255, 155, 0.25);
-  border-color: #1cff9b;
-  box-shadow: 0 0 20px rgba(28, 255, 155, 0.4);
-}
-
 /* Hide non-Gone Rogue buttons when in Gone Rogue mode (except back button) */
 body.mode-gone-rogue .control-buttons button[data-action="map"],
 body.mode-gone-rogue .control-buttons button[data-action="login"],
 body.mode-gone-rogue .control-buttons button[data-action="inventory"],
-body.mode-gone-rogue .control-buttons button[data-action="highscore"],
+body.mode-gone-rogue .control-buttons button[data-action="score"],
+body.mode-gone-rogue .control-buttons button[data-action="kernel"],
 body.in-gone-rogue .control-buttons button[data-action="map"],
 body.in-gone-rogue .control-buttons button[data-action="login"],
 body.in-gone-rogue .control-buttons button[data-action="inventory"],
-body.in-gone-rogue .control-buttons button[data-action="highscore"] {
+body.in-gone-rogue .control-buttons button[data-action="score"],
+body.in-gone-rogue .control-buttons button[data-action="kernel"] {
   display: none;
 }
 
@@ -1647,12 +1630,6 @@ body.in-gone-rogue .control-buttons button[data-action="back"] {
   
   .reserve-card-name {
     font-size: 0.6em;
-  }
-  
-  body.mode-gone-rogue .control-buttons button[data-action="action"],
-  body.in-gone-rogue .control-buttons button[data-action="action"] {
-    min-height: 44px;
-    font-size: 0.9em;
   }
 }
 
