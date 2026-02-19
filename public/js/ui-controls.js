@@ -291,15 +291,6 @@
           // Capture current context before showing login
           captureReturnContext();
           toggleLoginOverlay();
-          // Also print test account info to terminal
-          printToTerminal([
-            '',
-            'AUTHENTICATION PORTAL ACTIVATED',
-            '',
-            'AUTHORIZED TEST ACCOUNTS: user, admin',
-            'Login overlay displayed.',
-            ''
-          ]);
         }
         break;
 
