@@ -74,6 +74,11 @@ const CommerceDragDropSystem = (function() {
     var contextType = _getContextFromSource(context.sourceZone);
     _setContext(contextType);
 
+    // Start drop zone detection for purchase operations
+    if (typeof DropZoneDetector !== 'undefined' && contextType === CONTEXT_TYPES.BUYING) {
+      DropZoneDetector.startDrag('purchase');
+    }
+
     console.log('[CommerceDragDropSystem] Drag started:', contextType, context);
   }
 
@@ -81,6 +86,11 @@ const CommerceDragDropSystem = (function() {
    * Handle drag end
    */
   function handleDragEnd() {
+    // End drop zone detection
+    if (typeof DropZoneDetector !== 'undefined') {
+      DropZoneDetector.endDrag();
+    }
+
     _setContext(CONTEXT_TYPES.IDLE);
     _dragContext = null;
   }

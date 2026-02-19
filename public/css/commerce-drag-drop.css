@@ -292,17 +292,50 @@
   position: fixed;
   pointer-events: none;
   z-index: 9999;
-  opacity: 0.8;
+  padding: 8px 12px;
+  background: rgba(30, 35, 40, 0.95);
+  border: 2px solid;
+  border-radius: 8px;
+  font-family: 'Courier New', monospace;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
+  gap: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  transform: translate(-50%, -50%);
+}
+
+.drag-preview.purchase {
+  border-color: #FFD700;
+  animation: purchase-bob 1.2s ease-in-out infinite;
+}
+
+.drag-preview .preview-emoji {
+  font-size: 28px;
+}
+
+.drag-preview .preview-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.drag-preview .preview-price {
+  font-size: 14px;
+  color: #FFD700;
   font-weight: bold;
 }
 
+.drag-preview .preview-destination {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+}
+
+@keyframes purchase-bob {
+  0%, 100% { transform: translate(-50%, -50%) translateY(0); }
+  50% { transform: translate(-50%, -50%) translateY(-4px); }
+}
+
+/* Legacy preview styles for compatibility */
 .drag-preview.preview-buy {
   background: rgba(255, 215, 0, 0.9);
   border: 2px solid #FFD700;
@@ -328,6 +361,38 @@
 .preview-price {
   font-size: 14px;
 }
+
+/* ========== DROP ZONE GLOW STYLES ========== */
+.drop-zone-active {
+  animation: gentle-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes gentle-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+/* Specific drop zone enhancements */
+#hand-fan-container.drop-zone-active {
+  border: 2px solid #4CAF50 !important;
+}
+
+#action-button-container.drop-zone-active {
+  border: 2px solid #2196F3 !important;
+}
+
+#inventory-grid.drop-zone-active {
+  border: 2px solid #9C27B0 !important;
+}
+
+#active-item-slot.drop-zone-active {
+  border: 2px solid #FF9800 !important;
+}
+
 
 /* ========== MOBILE OPTIMIZATIONS ========== */
 @media (max-width: 768px) {
