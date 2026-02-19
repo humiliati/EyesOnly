@@ -496,6 +496,14 @@ html, body {
   transform: translateY(-1px);
 }
 
+/* Drag-over visual feedback */
+.active-item-slot.drag-over {
+  background: rgba(255, 153, 0, 0.2);
+  border: 2px dashed #ff9800;
+  box-shadow: 0 0 10px rgba(255, 153, 0, 0.4);
+  border-radius: 4px;
+}
+
 .active-item-label {
   font-size: 0.65em;
   letter-spacing: 0.1em;
