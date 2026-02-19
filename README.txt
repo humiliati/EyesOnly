@@ -362,3 +362,56 @@ KNOWN CONSTRAINTS
   - Build scripts: npm run build:mmode (not "build")
   - Non-interactive deploy needs CLOUDFLARE_API_KEY + CLOUDFLARE_EMAIL env vars
   - Auth tokens are SHA-256 hashed, single-scenario scoped
+
+
+PERFORMANCE NOTES
+-----------------
+  Gone Rogue runs a 10 FPS game loop (100 ms tick interval) using
+  requestAnimationFrame. The following hotspots are known and mitigated:
+
+  1. Enemy sight-cone processing
+     Each tick, every living enemy calls _isPlayerInSightCone(), which
+     internally runs a Bresenham LOS raycast and queries player stealth.
+     With 4–18 patrol enemies the per-tick cost grows linearly.
+
+     Mitigations (applied in game loop):
+       a. _stealthBonusCache: player stealth bonus is computed once per
+          player-position change and cached; N enemies share the same
+          cached value instead of each re-querying GAMESTATE inventory.
+       b. Coarse distance pre-cull (threshold 10 tiles / 100 sq-units):
+          enemies outside the maximum effective sight range skip the
+          expensive LOS raycast entirely each tick.
+
+  2. LightingSystem wall collection
+     updateLightMap() needs the list of wall tiles. Previously this was
+     rebuilt every tick by scanning all 800 grid cells (40×20).
+
+     Mitigation: _cachedWalls is populated once during _generateFloor()
+     (walls never change mid-floor) and reused in _updateGameState().
+     Eliminates ~8,000 cell reads per second.
+
+  3. Ground effects (GroundEffects.update)
+     Fire spread logic runs each tick. Keep ignited tile counts low —
+     fire spread is O(burning tiles × neighbors).
+
+  Lag-spike checklist for future investigation:
+    • Floors with >4 patrol enemies AND open layouts (long LOS paths)
+    • LightingSystem.generateBiomeLights with dense light sources
+    • Heavy GoneRogueMobile.renderGrid DOM mutations at 10 FPS on low-end
+      mobile hardware (renderGrid is already gated behind _useInteractiveGrid)
+
+
+CLOUDFLARE WORKERS NOTES
+------------------------
+  The Cloudflare Workers runtime imposes a 10 ms CPU-time limit per
+  request subrequest. The game engine runs entirely client-side (JS in
+  browser), so this limit applies only to /api/* routes, not the game
+  loop. Server-side lag is unrelated to client-side frame drops.
+
+  Wrangler crash post-modification checklist:
+    1. Verify wrangler.jsonc compatibility_date matches or predates today.
+    2. Confirm "database_name" field in d1_databases is "database_id"
+       (the literal binding name used throughout the codebase).
+    3. "nodejs_compat" compatibility flag requires wrangler >= 3.x.
+    4. Run `npx wrangler deploy --dry-run` to validate config without
+       touching production.

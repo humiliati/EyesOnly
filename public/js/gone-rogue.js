@@ -63,6 +63,10 @@ const GoneRogue = (function () {
   var _strCombatAmmoSpent = 0; // Track ammo spent in this combat encounter
   var _strCombatContext = null; // Countdown context messages built at combat entry
 
+  // Performance caches
+  var _stealthBonusCache = null; // { bonus, px, py } — invalidated when player moves
+  var _cachedWalls = null;       // Wall positions for LightingSystem — rebuilt on floor gen
+
   // Boss encounter state
   var _activeBoss = null; // Current boss instance (from BossEncounters module)
   var _bossFloorActive = false; // Is this a boss floor
@@ -849,6 +853,10 @@ const GoneRogue = (function () {
     _bossDefeated = false;
     _bossHazards = [];
     _bossEnvironment = {};
+
+    // Invalidate per-floor caches
+    _cachedWalls = null;
+    _stealthBonusCache = null;
     _activeSecretFloor = null;
 
     // Determine floor type
@@ -1001,7 +1009,7 @@ const GoneRogue = (function () {
         LightingSystem.setDarknessMultiplier(1.0);
       }
 
-      // Collect wall positions for light blocking
+      // Collect wall positions for light blocking; cache for reuse in the game loop
       var walls = [];
       for (var y = 0; y < GRID_HEIGHT; y++) {
         for (var x = 0; x < GRID_WIDTH; x++) {
@@ -1010,11 +1018,10 @@ const GoneRogue = (function () {
           }
         }
       }
+      _cachedWalls = walls; // Walls don't change mid-floor; avoid re-scanning per tick
 
       // Generate biome-specific light sources
       LightingSystem.generateBiomeLights(GRID_WIDTH, GRID_HEIGHT, rooms, walls);
-
-      // Update player light based on inventory
       _updatePlayerLight();
 
       // Update enemy lights
@@ -3733,11 +3740,19 @@ const GoneRogue = (function () {
       // Update awareness decay
       _updateEnemyAwareness(enemy, deltaMs);
 
-      // Check if player is in sight cone
-      if (_isPlayerInSightCone(enemy)) {
-        _increaseEnemyAwareness(enemy, 10); // Increase awareness when player spotted
-        if (!_strCombatActive) {
-          _enterStrCombat(enemy, 'enemy_sighting');
+      // Coarse distance pre-cull: skip expensive sight-cone check for enemies
+      // that are provably beyond the maximum possible sight range.
+      // Uses squared-distance to avoid Math.sqrt — max base sight is 5 tiles,
+      // plus up to 5 tiles of darkness bonus gives an effective cap of 10.
+      var dxCull = _player.x - enemy.x;
+      var dyCull = _player.y - enemy.y;
+      if (dxCull * dxCull + dyCull * dyCull <= 100) { // 10² = 100
+        // Check if player is in sight cone
+        if (_isPlayerInSightCone(enemy)) {
+          _increaseEnemyAwareness(enemy, 10); // Increase awareness when player spotted
+          if (!_strCombatActive) {
+            _enterStrCombat(enemy, 'enemy_sighting');
+          }
         }
       }
     });
@@ -3811,15 +3826,8 @@ const GoneRogue = (function () {
       // Update enemy lights
       LightingSystem.updateEnemyLights(_enemies);
 
-      // Collect wall positions for light blocking
-      var walls = [];
-      for (var y = 0; y < GRID_HEIGHT; y++) {
-        for (var x = 0; x < GRID_WIDTH; x++) {
-          if (_grid[y][x] === TILES.WALL) {
-            walls.push({ x: x, y: y });
-          }
-        }
-      }
+      // Use cached wall positions (built once per floor in _generateFloor)
+      var walls = _cachedWalls || [];
 
       // Recalculate light map with animation
       LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, walls);
@@ -4077,6 +4085,14 @@ const GoneRogue = (function () {
    * Get player stealth bonus from current tile
    */
   function _getPlayerStealthBonus() {
+    // Return cached value if player hasn't moved since last computation.
+    // The cache is keyed on player grid position — any tile change invalidates it.
+    if (_stealthBonusCache &&
+        _stealthBonusCache.px === _player.x &&
+        _stealthBonusCache.py === _player.y) {
+      return _stealthBonusCache.bonus;
+    }
+
     var tile = _grid[_player.y][_player.x];
     var key = _player.x + ',' + _player.y;
     var metadata = _tileMetadata[key];
@@ -4110,6 +4126,9 @@ const GoneRogue = (function () {
         }
       });
     }
+
+    // Cache result for this player position
+    _stealthBonusCache = { bonus: bonus, px: _player.x, py: _player.y };
 
     return bonus;
   }

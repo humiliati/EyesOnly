@@ -9,8 +9,8 @@
     "build:ops": "esbuild src/ops-ui/index.tsx --bundle --outfile=public/ops/app.js --jsx=automatic --jsx-import-source=preact --minify --target=es2020",
     "build:mmode": "esbuild src/m-mode/index.tsx --bundle --outfile=public/m/app.js --jsx=automatic --jsx-import-source=preact --minify --target=es2020",
     "build:ui": "npm run build:ops && npm run build:mmode",
-    "db:migrate": "wrangler d1 execute eyesonly-db --file=migrations/0001_init.sql",
-    "db:migrate:local": "wrangler d1 execute eyesonly-db --local --file=migrations/0001_init.sql",
+    "db:migrate": "wrangler d1 execute database_id --remote --file=migrations/0001_init.sql",
+    "db:migrate:local": "wrangler d1 execute database_id --local --file=migrations/0001_init.sql",
     "types": "wrangler types"
   },
   "dependencies": {
