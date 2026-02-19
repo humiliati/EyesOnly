@@ -38,11 +38,21 @@ const TooltipSystem = (function() {
       return;
     }
 
-    // Find the MOK interjection parent element
+    // Find the MOK interjection parent element (#mok-interjections)
     var mokParent = _mokInterjectionElement ? _mokInterjectionElement.parentElement : null;
     if (!mokParent) {
       return;
     }
+
+    // Create expand/collapse button that will be positioned on the same line
+    var toggleBtn = document.createElement('button');
+    toggleBtn.id = 'mok-history-toggle';
+    toggleBtn.className = 'mok-history-toggle';
+    toggleBtn.textContent = '▼ History';
+    toggleBtn.addEventListener('click', toggleHistory);
+
+    // Insert button right after the interjection body (will be styled to float right)
+    mokParent.insertBefore(toggleBtn, _mokInterjectionElement.nextSibling);
 
     // Create history container
     _mokHistoryContainer = document.createElement('div');
@@ -56,16 +66,8 @@ const TooltipSystem = (function() {
     historyContent.className = 'mok-history-content';
     _mokHistoryContainer.appendChild(historyContent);
 
-    // Add expand/collapse button
-    var toggleBtn = document.createElement('button');
-    toggleBtn.id = 'mok-history-toggle';
-    toggleBtn.className = 'mok-history-toggle';
-    toggleBtn.textContent = '▼ History';
-    toggleBtn.addEventListener('click', toggleHistory);
-    
-    // Insert after the interjection element
-    mokParent.insertBefore(_mokHistoryContainer, _mokInterjectionElement.nextSibling);
-    mokParent.insertBefore(toggleBtn, _mokHistoryContainer);
+    // Insert history container after the toggle button
+    mokParent.insertBefore(_mokHistoryContainer, toggleBtn.nextSibling);
   }
 
   /**

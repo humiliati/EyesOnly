@@ -5,22 +5,25 @@
 /* MOK History Toggle Button */
 .mok-history-toggle {
   display: inline-block;
+  float: right;
   background: rgba(28, 255, 155, 0.1);
   border: 1px solid rgba(28, 255, 155, 0.3);
   color: #1cff9b;
   font-family: 'Courier New', monospace;
-  font-size: 11px;
-  padding: 4px 12px;
-  margin: 4px 0;
+  font-size: 10px;
+  padding: 2px 8px;
+  margin: 0;
+  margin-left: 8px;
   cursor: pointer;
-  border-radius: 3px;
+  border-radius: 2px;
   transition: all 0.2s ease;
+  line-height: 1.4em;
 }
 
 .mok-history-toggle:hover {
   background: rgba(28, 255, 155, 0.2);
   border-color: #1cff9b;
-  box-shadow: 0 0 10px rgba(28, 255, 155, 0.3);
+  box-shadow: 0 0 8px rgba(28, 255, 155, 0.3);
 }
 
 .mok-history-toggle:active {
@@ -33,15 +36,16 @@
   background: rgba(10, 10, 10, 0.95);
   border: 1px solid rgba(28, 255, 155, 0.3);
   border-radius: 4px;
-  margin: 8px 0;
+  margin: 4px 0 0 0;
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.3s ease, padding 0.3s ease;
+  clear: both;
 }
 
 .mok-history-container.mok-history-expanded {
   max-height: 400px;
-  padding: 8px;
+  padding: 6px;
 }
 
 .mok-history-container.mok-history-collapsed {
@@ -137,8 +141,8 @@
   }
 
   .mok-history-toggle {
-    font-size: 10px;
-    padding: 3px 10px;
+    font-size: 9px;
+    padding: 2px 6px;
   }
 }
 
@@ -153,8 +157,8 @@
   }
 
   .mok-history-toggle {
-    font-size: 9px;
-    padding: 2px 8px;
+    font-size: 8px;
+    padding: 1px 5px;
   }
 
   .mok-history-entry {

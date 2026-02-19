@@ -755,17 +755,17 @@ html, body {
 #mok-interjections {
   background: linear-gradient(135deg, rgba(6, 14, 9, 0.92), rgba(4, 9, 6, 0.96));
   border: 1px solid var(--panel-border);
-  border-radius: 8px;
-  padding: 10px 12px;
+  border-radius: 6px;
+  padding: 8px 10px;
   box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.55), 0 0 10px rgba(0, 255, 90, 0.06);
 }
 
 .interject-label {
-  font-size: 0.8em;
+  font-size: 0.75em;
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--phosphor-dim);
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .interject-body {

@@ -316,6 +316,12 @@ const Terminal = (function () {
   function _handleKeydown(e) {
     if (!_inputEnabled) return;
 
+    // Don't intercept keyboard input when login overlay is visible
+    var loginOverlay = document.getElementById('login-overlay');
+    if (loginOverlay && loginOverlay.style.display !== 'none') {
+      return;
+    }
+
     const key = e.key;
 
     if (key === 'Enter') {
