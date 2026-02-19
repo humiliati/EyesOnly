@@ -18,28 +18,28 @@ const CardSystem = (function () {
 
   // Card Lifecycle Types (spec section 7.4)
   var LIFECYCLE_TYPES = {
-    DISPOSABLE: 'disposable',   // Single use, consumed on play (consumables)
-    EXHAUST: 'exhaust',         // Removed from deck after first use (powerful abilities)
-    POWER: 'power',             // Activated once, persists entire combat
-    GATED: 'gated',             // Requires resource, not consumed (ammo/fatigue gated)
-    PERSISTENT: 'persistent'    // Always available, never consumed (basic actions)
+    Disposable: 'disposable',   // Single use, consumed on play (consumables)
+    Exhaust: 'exhaust',         // Removed from deck after first use (powerful abilities)
+    Power: 'power',             // Activated once, persists entire combat
+    Gated: 'gated',             // Requires resource, not consumed (ammo/fatigue gated)
+    Persistent: 'persistent'    // Always available, never consumed (basic actions)
   };
 
   var QUALITIES = {
-    CRACKED: { name: 'Cracked', color: 'gray', roll: 18 },
-    WORN: { name: 'Worn', color: 'lightgray', roll: 22 },
-    STANDARD: { name: 'Standard', color: 'white', roll: 25 },
-    FINE: { name: 'Fine', color: 'lightblue', roll: 15 },
-    SUPERIOR: { name: 'Superior', color: 'yellow', roll: 10 },
-    ELITE: { name: 'Elite', color: 'orange', roll: 6 },
-    MASTERWORK: { name: 'Masterwork', color: 'gold', roll: 3 },
-    NEAR_PERFECT: { name: 'Near Perfect', color: 'lightgreen', roll: 0.9 },
-    PERFECT: { name: 'Perfect', color: 'violet', roll: 0.1 }
+    Cracked: { name: 'Cracked', color: 'gray', roll: 18 },
+    Worn: { name: 'Worn', color: 'lightgray', roll: 22 },
+    Standard: { name: 'Standard', color: 'white', roll: 25 },
+    Fine: { name: 'Fine', color: 'lightblue', roll: 15 },
+    Superior: { name: 'Superior', color: 'yellow', roll: 10 },
+    Elite: { name: 'Elite', color: 'orange', roll: 6 },
+    Masterwork: { name: 'Masterwork', color: 'gold', roll: 3 },
+    'Near Perfect': { name: 'Near Perfect', color: 'lightgreen', roll: 0.9 },
+    Perfect: { name: 'Perfect', color: 'violet', roll: 0.1 }
   };
 
   var BASE_CARDS = {
     // ========== INTERRUPT CARDS (Priority 1) ==========
-    DIVE_COVER: {
+    'Dive Cover': {
       category: 'interrupt',
       type: 'interrupt',
       name: 'Dive for Cover',
@@ -48,7 +48,7 @@ const CardSystem = (function () {
       baseStats: { defense: 5, evasion: 3, energy: 2, speed: 5 },
       resourceCost: { energy: 2, fatigue: 1 }
     },
-    JAM_WEAPON: {
+    'Jam Weapon': {
       category: 'interrupt',
       type: 'interrupt',
       name: 'Jam Weapon',
@@ -57,7 +57,7 @@ const CardSystem = (function () {
       baseStats: { disrupt: 1, energy: 2, speed: 5 },
       resourceCost: { energy: 2, focus: 1 }
     },
-    OVERWATCH: {
+    Overwatch: {
       category: 'interrupt',
       type: 'interrupt',
       name: 'Overwatch Shot',
@@ -68,7 +68,7 @@ const CardSystem = (function () {
     },
 
     // ========== DEFENSE CARDS (Priority 2) ==========
-    BLOCK: {
+    Block: {
       category: 'defense',
       type: 'defense',
       name: 'Block',
@@ -77,7 +77,7 @@ const CardSystem = (function () {
       baseStats: { defense: 4, energy: 2, speed: 4 },
       resourceCost: { energy: 2 }
     },
-    DODGE: {
+    Dodge: {
       category: 'defense',
       type: 'defense',
       name: 'Dodge',
@@ -86,7 +86,7 @@ const CardSystem = (function () {
       baseStats: { evasion: 3, energy: 2, speed: 4 },
       resourceCost: { energy: 2, focus: 1 }
     },
-    PRONE: {
+    Prone: {
       category: 'defense',
       type: 'defense',
       name: 'Prone',
@@ -95,7 +95,7 @@ const CardSystem = (function () {
       baseStats: { defense: 3, stealth: 2, mobility: -1, energy: 1, speed: 3 },
       resourceCost: { energy: 1 }
     },
-    KNEEL: {
+    Kneel: {
       category: 'defense',
       type: 'defense',
       name: 'Kneel',
@@ -106,7 +106,7 @@ const CardSystem = (function () {
     },
 
     // ========== MOVEMENT CARDS (Priority 3) ==========
-    CLOSE_DISTANCE: {
+    'Close Distance': {
       category: 'movement',
       type: 'movement',
       name: 'Close Distance',
@@ -115,21 +115,21 @@ const CardSystem = (function () {
       baseStats: { distance: 2, risk: 1, energy: 2, speed: 3, fatigue: 2 },
       resourceCost: { energy: 2, fatigue: 2 }
     },
-    RETREAT: {
+    Retreat: {
       category: 'movement',
       type: 'movement',
       name: 'Retreat',
       emoji: '↩️',
       baseStats: { distance: -2, safety: 2, energy: 1, speed: 3, fatigue: 1 }
     },
-    STRAFE: {
+    Strafe: {
       category: 'movement',
       type: 'movement',
       name: 'Strafe',
       emoji: '↔️',
       baseStats: { evasion: 2, distance: 1, energy: 2, speed: 3, fatigue: 2 }
     },
-    ROLL: {
+    Roll: {
       category: 'movement',
       type: 'movement',
       name: 'Combat Roll',
@@ -138,35 +138,35 @@ const CardSystem = (function () {
     },
 
     // ========== ATTACK CARDS (Priority 4) ==========
-    SINGLE_SHOT: {
+    'Single Shot': {
       category: 'attack',
       type: 'attack',
       name: 'Single Shot',
       emoji: '🎯',
       baseStats: { damage: 3, noise: 1, accuracy: 80, energy: 2, speed: 3, ammo: 1, fatigue: 1 }
     },
-    BURST_SHOT: {
+    'Burst Shot': {
       category: 'attack',
       type: 'attack',
       name: 'Burst Shot',
       emoji: '💥',
       baseStats: { damage: 5, noise: 3, accuracy: 70, energy: 3, speed: 2, ammo: 3, fatigue: 2 }
     },
-    SILENT_SHOT: {
+    'Silent Shot': {
       category: 'attack',
       type: 'attack',
       name: 'Silent Shot',
       emoji: '🔇',
       baseStats: { damage: 3, noise: 1, accuracy: 80, energy: 2, speed: 3, ammo: 1, fatigue: 1 }
     },
-    EXPLOSIVE_SHOT: {
+    'Explosive Shot': {
       category: 'attack',
       type: 'attack',
       name: 'Explosive Shot',
       emoji: '💣',
       baseStats: { damage: 8, noise: 5, accuracy: 60, energy: 4, speed: 1, ammo: 1, fatigue: 3, consumable: true }
     },
-    SUPPRESSIVE_FIRE: {
+    'Suppressive Fire': {
       category: 'attack',
       type: 'attack',
       name: 'Suppressive Fire',
@@ -175,7 +175,7 @@ const CardSystem = (function () {
     },
 
     // ========== SETUP/UTILITY CARDS (Priority 5) ==========
-    CIGARETTES: {
+    Cigarettes: {
       category: 'setup',
       type: 'setup',
       name: 'Cigarettes',
@@ -192,21 +192,21 @@ const CardSystem = (function () {
         fatigueReduction: 3  // Reduces fatigue when used
       }
     },
-    KATCHUP: {
+    Katchup: {
       category: 'setup',
       type: 'setup',
       name: 'Katchup',
       emoji: '🩹',
       baseStats: { hp: 3, energy: 1, speed: 2, consumable: true }
     },
-    RATIONS: {
+    Rations: {
       category: 'setup',
       type: 'setup',
       name: 'Rations',
       emoji: '🍖',
       baseStats: { hp: 4, duration: 2, energy: 2, speed: 2, consumable: true, fatigueReduction: 5 }
     },
-    TOTAL_EVASION: {
+    'Total Evasion': {
       category: 'setup',
       type: 'setup',
       name: 'Total Evasion',
@@ -219,7 +219,7 @@ const CardSystem = (function () {
         fatigue: 2
       }
     },
-    AIM: {
+    Aim: {
       category: 'setup',
       type: 'setup',
       name: 'Aim',
@@ -233,7 +233,7 @@ const CardSystem = (function () {
     },
 
     // ========== BOSS ENCOUNTER CARDS (Special tactical cards for boss fights) ==========
-    LURE: {
+    Lure: {
       category: 'setup',
       type: 'setup',
       name: 'Lure',
@@ -246,7 +246,7 @@ const CardSystem = (function () {
         bossInteraction: true // Special flag for boss mechanics
       }
     },
-    GRENADE: {
+    Grenade: {
       category: 'attack',
       type: 'attack',
       name: 'Grenade',
@@ -263,7 +263,7 @@ const CardSystem = (function () {
       },
       resourceCost: { ammo: 2 }  // Costs 2 ammo to use
     },
-    JAMMER: {
+    'Jammer': {
       category: 'interrupt',
       type: 'interrupt',
       name: 'Jammer',
@@ -277,7 +277,7 @@ const CardSystem = (function () {
         affectsElectronics: true
       }
     },
-    VIRUS: {
+    'Virus': {
       category: 'attack',
       type: 'attack',
       name: 'Virus',
@@ -292,7 +292,7 @@ const CardSystem = (function () {
         affectsMachines: true
       }
     },
-    HIGH_GROUND: {
+    'High Ground': {
       category: 'attack',
       type: 'attack',
       name: 'High Ground',
@@ -306,7 +306,7 @@ const CardSystem = (function () {
         speed: 2
       }
     },
-    MELEE_STRIKE: {
+    'Melee Strike': {
       category: 'attack',
       type: 'attack',
       name: 'Melee Strike',
@@ -320,7 +320,7 @@ const CardSystem = (function () {
         isMelee: true
       }
     },
-    LOGIC_HACK: {
+    'Logic Hack': {
       category: 'interrupt',
       type: 'interrupt',
       name: 'Logic Hack',
@@ -335,7 +335,7 @@ const CardSystem = (function () {
     },
 
     // ========== CONSUMABLE CARDS (Single-use tactical items) ==========
-    ENERGY_DRINK: {
+    'Energy Drink': {
       category: 'consumable',
       type: 'consumable',
       name: 'Energy Drink',
@@ -349,7 +349,7 @@ const CardSystem = (function () {
         consumable: true
       }
     },
-    MEDICAL_KIT: {
+    'Medical Kit': {
       category: 'consumable',
       type: 'consumable',
       name: 'Medical Kit',
@@ -362,7 +362,7 @@ const CardSystem = (function () {
         consumable: true
       }
     },
-    AMMO_CLIP: {
+    'Ammo Clip': {
       category: 'consumable',
       type: 'consumable',
       name: 'Ammo Clip',
@@ -375,7 +375,7 @@ const CardSystem = (function () {
         consumable: true
       }
     },
-    STIM_PACK: {
+    'Stim Pack': {
       category: 'consumable',
       type: 'consumable',
       name: 'Stim Pack',
@@ -391,7 +391,7 @@ const CardSystem = (function () {
         consumable: true
       }
     },
-    ADRENALINE: {
+    'Adrenaline': {
       category: 'consumable',
       type: 'consumable',
       name: 'Adrenaline',
@@ -409,7 +409,7 @@ const CardSystem = (function () {
     },
 
     // ========== ENVIRONMENTAL CARDS (Interact with tiles and status effects) ==========
-    OIL_SLICK: {
+    'Oil Slick': {
       category: 'setup',
       type: 'setup',
       name: 'Oil Slick',
@@ -424,7 +424,7 @@ const CardSystem = (function () {
         consumable: true
       }
     },
-    LIGHTER: {
+    'Lighter': {
       category: 'setup',
       type: 'setup',
       name: 'Lighter',
@@ -439,7 +439,7 @@ const CardSystem = (function () {
         consumable: true
       }
     },
-    WATER_BOTTLE: {
+    'Water Bottle': {
       category: 'setup',
       type: 'setup',
       name: 'Water Bottle',
@@ -458,7 +458,7 @@ const CardSystem = (function () {
     },
 
     // ========== POWER CARDS (Persistent combat-long buffs) ==========
-    PREDATOR_FOCUS: {
+    'Predator Focus': {
       category: 'setup',
       type: 'power',
       name: 'Predator Focus',
@@ -473,7 +473,7 @@ const CardSystem = (function () {
         combatPersistent: true
       }
     },
-    GHOST_PROTOCOL: {
+    'Ghost Protocol': {
       category: 'setup',
       type: 'power',
       name: 'Ghost Protocol',
@@ -490,7 +490,7 @@ const CardSystem = (function () {
     },
 
     // ========== EXHAUST CARDS (Powerful one-time abilities) ==========
-    LAST_STAND: {
+    'Last Stand': {
       category: 'defense',
       type: 'defense',
       name: 'Last Stand',
@@ -505,7 +505,7 @@ const CardSystem = (function () {
         exhaust: true
       }
     },
-    PANIC_DODGE: {
+    'Panic Dodge': {
       category: 'defense',
       type: 'defense',
       name: 'Panic Dodge',
@@ -522,7 +522,7 @@ const CardSystem = (function () {
     },
 
     // ========== COOLDOWN CARDS (Multi-combat powerful abilities) ==========
-    THERMAL_VISION: {
+    'Thermal Vision': {
       category: 'setup',
       type: 'power',
       name: 'Thermal Vision',
@@ -539,7 +539,7 @@ const CardSystem = (function () {
         combatPersistent: true
       }
     },
-    ADRENALINE_SURGE: {
+    'Adrenaline Surge': {
       category: 'setup',
       type: 'power',
       name: 'Adrenaline Surge',
@@ -555,7 +555,7 @@ const CardSystem = (function () {
         combatPersistent: true
       }
     },
-    SMOKE_SCREEN: {
+    'Smoke Screen': {
       category: 'setup',
       type: 'setup',
       name: 'Smoke Screen',
@@ -573,7 +573,7 @@ const CardSystem = (function () {
         exhaust: true
       }
     },
-    PERFECT_AMBUSH: {
+    'Perfect Ambush': {
       category: 'setup',
       type: 'power',
       name: 'Perfect Ambush',
@@ -591,7 +591,7 @@ const CardSystem = (function () {
     },
 
     // ========== RESOURCE REPLENISHMENT CONSUMABLES ==========
-    BATTERY_PACK: {
+    'Battery Pack': {
       category: 'consumable',
       type: 'consumable',
       name: 'Battery Pack',
@@ -606,7 +606,7 @@ const CardSystem = (function () {
       resourceCost: {},
       description: 'Recharges 2 battery power for tech equipment'
     },
-    POWER_CELL: {
+    'Power Cell': {
       category: 'consumable',
       type: 'consumable',
       name: 'Power Cell',
@@ -621,7 +621,7 @@ const CardSystem = (function () {
       resourceCost: {},
       description: 'Recharges 1 battery power for tech equipment'
     },
-    COFFEE_MUG: {
+    'Coffee Mug': {
       category: 'consumable',
       type: 'consumable',
       name: 'Coffee Mug',
@@ -642,7 +642,7 @@ const CardSystem = (function () {
     // ========== CHARM CARDS (Passive Bonuses) ==========
 
     // Special: Inventory Charm (rare)
-    INVENTORY_CHARM: {
+    'Inventory Charm': {
       category: 'charm',
       type: 'charm',
       name: 'Inventory Charm',
@@ -651,42 +651,42 @@ const CardSystem = (function () {
     },
 
     // Common Charms (low utility, meant for early game)
-    LUCKY_CHARM: {
+    'Lucky Charm': {
       category: 'charm',
       type: 'charm',
       name: 'Lucky Charm',
       emoji: '🍀',
       baseStats: { luck: 1 }
     },
-    SPEED_CHARM: {
+    'Speed Charm': {
       category: 'charm',
       type: 'charm',
       name: 'Speed Charm',
       emoji: '⚡',
       baseStats: { speed: 1 }
     },
-    STEALTH_CHARM: {
+    'Stealth Charm': {
       category: 'charm',
       type: 'charm',
       name: 'Stealth Charm',
       emoji: '🌙',
       baseStats: { stealth: 1 }
     },
-    HEALTH_CHARM: {
+    'Health Charm': {
       category: 'charm',
       type: 'charm',
       name: 'Health Charm',
       emoji: '❤️',
       baseStats: { hp: 2 }
     },
-    ENERGY_CHARM: {
+    'Energy Charm': {
       category: 'charm',
       type: 'charm',
       name: 'Energy Charm',
       emoji: '⭐',
       baseStats: { energy: 1 }
     },
-    IMPOSSIBLE_CHARM: {
+    'Impossible Charm': {
       category: 'charm',
       type: 'charm',
       name: 'Impossible Binary Charm',

@@ -412,7 +412,7 @@ const GoneRogue = (function () {
         var looseInventory = GAMESTATE.getLooseInventory();
         if (looseInventory.length === 0) {
           // Define guaranteed 3 starter cards (includes 1 consumable grenade)
-          var starterCards = ['SINGLE_SHOT', 'DODGE', 'GRENADE'];
+          var starterCards = ['Single Shot', 'Dodge', 'Grenade'];
 
           // Add the 3 starter cards to loose inventory
           for (var c = 0; c < starterCards.length; c++) {
@@ -5004,9 +5004,9 @@ const GoneRogue = (function () {
     // GRENADE card interaction
     else if (cardName === 'Grenade') {
       handled = true;
-      lines.push('├─ Throwing GRENADE at boss environment...');
+      lines.push('├─ Throwing Grenade at boss environment...');
       var playerAction = {
-        type: 'GRENADE',
+        type: 'Grenade',
         targetX: target.x || 20,
         targetY: target.y || 10,
         card: card
@@ -5163,9 +5163,9 @@ const GoneRogue = (function () {
       var roll = Math.random();
       if (roll < 0.4 && typeof CardSystem !== 'undefined') {
         // Try to defend
-        return CardSystem.rollCard('DODGE');
+        return CardSystem.rollCard('Dodge');
       } else if (roll < 0.7 && typeof CardSystem !== 'undefined') {
-        return CardSystem.rollCard('PRONE');
+        return CardSystem.rollCard('Prone');
       }
     }
     
@@ -5174,18 +5174,18 @@ const GoneRogue = (function () {
       var attackRoll = Math.random();
       if (typeof CardSystem !== 'undefined') {
         if (attackRoll < 0.5) {
-          return CardSystem.rollCard('SINGLE_SHOT');
+          return CardSystem.rollCard('Single Shot');
         } else if (attackRoll < 0.8) {
-          return CardSystem.rollCard('BURST_SHOT');
+          return CardSystem.rollCard('Burst Shot');
         } else {
-          return CardSystem.rollCard('OVERWATCH');
+          return CardSystem.rollCard('Overwatch');
         }
       }
     }
     
     // Default: basic attack
     if (typeof CardSystem !== 'undefined') {
-      return CardSystem.rollCard('SINGLE_SHOT');
+      return CardSystem.rollCard('Single Shot');
     }
     
     // Fallback: create a basic attack card
@@ -5591,7 +5591,7 @@ const GoneRogue = (function () {
               lines.push('');
               // Spawn legendary card
               if (typeof CardSystem !== 'undefined') {
-                var legendaryCard = CardSystem.rollCard('INVENTORY_CHARM'); // Guaranteed inventory charm
+                var legendaryCard = CardSystem.rollCard('Inventory Charm'); // Guaranteed inventory charm
                 _items.push({
                   x: _strCombatEnemy.x,
                   y: _strCombatEnemy.y,
