@@ -319,7 +319,7 @@ const HandFanComponent = (function () {
    */
   function _getCardLifecycle(card) {
     // Map card types to lifecycle categories
-    var lifecycle = card.lifecycle || card.consumable || 'core';
+    var lifecycle = card.lifecycleType || card.lifecycle || card.consumable || 'core';
 
     var lifecycleMap = {
       'disposable': 'consumable',
@@ -559,10 +559,10 @@ const HandFanComponent = (function () {
   function _animateIncinerator(cards, callback) {
     var hasConsumables = false;
 
-    // Check if any cards are consumable/disposable
+    // Check if any cards are consumable/disposable using helper function
     for (var i = 0; i < cards.length; i++) {
-      var lifecycle = cards[i].lifecycleType || cards[i].lifecycle || cards[i].consumable;
-      if (lifecycle === 'disposable' || lifecycle === 'LIFE_001' || cards[i].consumable === true) {
+      var lifecycle = _getCardLifecycle(cards[i]);
+      if (lifecycle === 'consumable') {
         hasConsumables = true;
         break;
       }
@@ -582,9 +582,9 @@ const HandFanComponent = (function () {
       var cardEl = cardElements[i];
       var cardIndex = parseInt(cardEl.parentElement.dataset.cardIndex, 10);
       var card = _cards[cardIndex];
-      var lifecycle = card.lifecycleType || card.lifecycle || card.consumable;
+      var lifecycle = _getCardLifecycle(card);
 
-      if (lifecycle === 'disposable' || lifecycle === 'LIFE_001' || card.consumable === true) {
+      if (lifecycle === 'consumable') {
         cardEl.classList.add('card-incinerating');
         consumableCount++;
       }
