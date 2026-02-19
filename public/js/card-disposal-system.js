@@ -265,3 +265,12 @@ const CardDisposalSystem = (function() {
     isDisposable: isDisposable
   };
 })();
+
+// Auto-initialize when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() {
+    CardDisposalSystem.init();
+  });
+} else {
+  CardDisposalSystem.init();
+}

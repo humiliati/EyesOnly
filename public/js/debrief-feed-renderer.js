@@ -238,3 +238,12 @@ const DebriefFeedRenderer = (function() {
     toggleExpanded: toggleExpanded
   };
 })();
+
+// Auto-initialize when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() {
+    DebriefFeedRenderer.init();
+  });
+} else {
+  DebriefFeedRenderer.init();
+}
