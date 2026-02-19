@@ -52,6 +52,15 @@ const GoneRogueMobile = (function () {
   var _selectedCards = []; // Array of card indices
   var _maxSelectedCards = 5; // Maximum cards that can be selected per round
 
+  // Fishing input model state
+  var _fishingActive = false;
+  var _fishingStart = { x: 0, y: 0 };
+  var _fishingCurrent = { x: 0, y: 0 };
+  var _fishingPath = [];
+  var _fishingPathOverlay = null;
+  var FISHING_THRESHOLD = 20; // pixels to activate fishing mode
+  var FISHING_UPDATE_INTERVAL = 50; // ms between path recalculations
+
   /**
    * Initialize mobile UI
    */
@@ -973,13 +982,19 @@ const GoneRogueMobile = (function () {
   }
 
   /**
-   * Handle grid touch move (for pinch-to-zoom and pan)
+   * Handle grid touch move (for fishing input, pinch-to-zoom and pan)
    */
   function _handleGridTouchMove(e) {
     // Handle pinch-to-zoom and pan with two fingers
     if (e.touches.length === 2) {
       e.preventDefault();
       e.stopPropagation();
+
+      // Cancel fishing mode if active
+      if (_fishingActive) {
+        _hideFishingPath();
+        _fishingActive = false;
+      }
 
       var currentDistance = _getTouchDistance(e.touches);
       var currentCenter = _getTouchCenter(e.touches);
@@ -1031,6 +1046,42 @@ const GoneRogueMobile = (function () {
           _isPanning = true;
         }
       }
+      return;
+    }
+
+    // Single finger - check for fishing input
+    if (e.touches.length === 1 && _fishingStart) {
+      var touch = e.touches[0];
+      _fishingCurrent = { x: touch.clientX, y: touch.clientY };
+
+      // Calculate distance from start
+      var dx = _fishingCurrent.x - _fishingStart.x;
+      var dy = _fishingCurrent.y - _fishingStart.y;
+      var distance = Math.sqrt(dx * dx + dy * dy);
+
+      // Activate fishing mode if drag exceeds threshold
+      if (!_fishingActive && distance > FISHING_THRESHOLD) {
+        _fishingActive = true;
+      }
+
+      // If fishing is active, calculate and show path
+      if (_fishingActive) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        var targetCoords = _getGridCoordsFromEvent(touch.clientX, touch.clientY);
+        if (targetCoords && typeof GoneRogueMovement !== 'undefined') {
+          var player = typeof GoneRogue !== 'undefined' && GoneRogue.getPlayer ? GoneRogue.getPlayer() : null;
+          if (player) {
+            // Calculate path from player to target
+            var collisionCheck = typeof GoneRogue !== 'undefined' && GoneRogue.isWalkable ? GoneRogue.isWalkable : null;
+            _fishingPath = GoneRogueMovement.findPath(player.x, player.y, targetCoords.x, targetCoords.y, collisionCheck);
+
+            // Show path overlay
+            _showFishingPath(_fishingPath);
+          }
+        }
+      }
     }
   }
 
@@ -1064,7 +1115,81 @@ const GoneRogueMobile = (function () {
   }
 
   /**
-   * Handle grid touch start (for double-tap detection)
+   * Show fishing path overlay
+   */
+  function _showFishingPath(path) {
+    if (!path || path.length === 0) return;
+
+    // Remove existing overlay
+    _hideFishingPath();
+
+    // Create path overlay element
+    _fishingPathOverlay = document.createElement('div');
+    _fishingPathOverlay.className = 'fishing-path-overlay';
+    _fishingPathOverlay.style.position = 'absolute';
+    _fishingPathOverlay.style.top = '0';
+    _fishingPathOverlay.style.left = '0';
+    _fishingPathOverlay.style.width = '100%';
+    _fishingPathOverlay.style.height = '100%';
+    _fishingPathOverlay.style.pointerEvents = 'none';
+    _fishingPathOverlay.style.zIndex = '1000';
+
+    // Draw path using SVG
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+    svg.style.position = 'absolute';
+
+    // Calculate cell size
+    var gridRect = _gridContainer.getBoundingClientRect();
+    var cellWidth = gridRect.width / 40; // GRID_WIDTH = 40
+    var cellHeight = gridRect.height / 20; // GRID_HEIGHT = 20
+
+    // Draw path segments
+    for (var i = 0; i < path.length - 1; i++) {
+      var from = path[i];
+      var to = path[i + 1];
+
+      var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', (from.x + 0.5) * cellWidth);
+      line.setAttribute('y1', (from.y + 0.5) * cellHeight);
+      line.setAttribute('x2', (to.x + 0.5) * cellWidth);
+      line.setAttribute('y2', (to.y + 0.5) * cellHeight);
+      line.setAttribute('stroke', 'rgba(28, 255, 155, 0.8)');
+      line.setAttribute('stroke-width', '3');
+      line.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(line);
+    }
+
+    // Draw endpoint marker
+    if (path.length > 0) {
+      var endpoint = path[path.length - 1];
+      var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', (endpoint.x + 0.5) * cellWidth);
+      circle.setAttribute('cy', (endpoint.y + 0.5) * cellHeight);
+      circle.setAttribute('r', '8');
+      circle.setAttribute('fill', 'rgba(28, 255, 155, 0.6)');
+      circle.setAttribute('stroke', 'rgba(28, 255, 155, 1)');
+      circle.setAttribute('stroke-width', '2');
+      svg.appendChild(circle);
+    }
+
+    _fishingPathOverlay.appendChild(svg);
+    _gridContainer.appendChild(_fishingPathOverlay);
+  }
+
+  /**
+   * Hide fishing path overlay
+   */
+  function _hideFishingPath() {
+    if (_fishingPathOverlay && _fishingPathOverlay.parentNode) {
+      _fishingPathOverlay.parentNode.removeChild(_fishingPathOverlay);
+    }
+    _fishingPathOverlay = null;
+  }
+
+  /**
+   * Handle grid touch start (for double-tap detection and fishing input)
    */
   function _handleGridTouchStart(e) {
     e.preventDefault();
@@ -1083,6 +1208,12 @@ const GoneRogueMobile = (function () {
 
     var now = Date.now();
     var cellKey = coords.x + ',' + coords.y;
+
+    // Initialize fishing state
+    _fishingStart = { x: touch.clientX, y: touch.clientY, gridX: coords.x, gridY: coords.y };
+    _fishingCurrent = { x: touch.clientX, y: touch.clientY };
+    _fishingActive = false; // Will activate if drag exceeds threshold
+    _fishingPath = [];
 
     // Check for double-tap (within threshold)
     if (_lastTapCell === cellKey && (now - _lastTapTime) < DOUBLE_TAP_THRESHOLD_MS) {
@@ -1136,11 +1267,37 @@ const GoneRogueMobile = (function () {
     var touch = e.changedTouches[0];
     var coords = _getGridCoordsFromEvent(touch.clientX, touch.clientY);
 
-    if (!coords) return;
+    if (!coords) {
+      // Hide fishing path if touch ended outside grid
+      if (_fishingActive) {
+        _hideFishingPath();
+        _fishingActive = false;
+      }
+      return;
+    }
 
     // Show click feedback at touch point
     _showClickFeedback(touch.clientX, touch.clientY);
 
+    // If fishing was active, execute the path movement
+    if (_fishingActive && _fishingPath.length > 0) {
+      _hideFishingPath();
+      _fishingActive = false;
+
+      // Execute smooth movement along fishing path
+      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleFishingMove === 'function') {
+        GoneRogue.handleFishingMove(_fishingPath);
+      } else {
+        // Fallback to tap-to-move with final destination
+        var destination = _fishingPath[_fishingPath.length - 1];
+        _processGridInput(destination.x, destination.y, _runMode);
+      }
+
+      _fishingPath = [];
+      return;
+    }
+
+    // Normal tap-to-move
     _processGridInput(coords.x, coords.y, _runMode);
   }
 
