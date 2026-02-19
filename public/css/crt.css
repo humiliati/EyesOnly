@@ -138,6 +138,13 @@ html, body {
   animation: scanline-roll var(--scanline-speed) linear infinite;
 }
 
+/* Performance optimization: disable scanlines during Gone Rogue gameplay */
+body.gone-rogue-active #scanlines::before,
+body.gone-rogue-active #scanlines::after {
+  animation: none !important;
+  opacity: 0;
+}
+
 /* --- Phosphor Glow Layer --- */
 #phosphor-glow {
   position: fixed;

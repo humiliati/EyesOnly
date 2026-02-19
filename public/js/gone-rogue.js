@@ -1002,6 +1002,9 @@ const GoneRogue = (function () {
     _active = true;
     _loaded = true;
 
+    // Disable scanlines for performance during gameplay
+    document.body.classList.add('gone-rogue-active');
+
     // Initialize highscore tracking
     _runStartTime = Date.now();
     _currencyCollected = 0;
@@ -4425,6 +4428,9 @@ const GoneRogue = (function () {
   function _exitRogue(success) {
     _active = false;
     _stopGameLoop();
+
+    // Re-enable scanlines when returning to terminal
+    document.body.classList.remove('gone-rogue-active');
 
     // Submit highscore if extraction was successful
     if (success && typeof HighscoreState !== 'undefined') {
