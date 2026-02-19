@@ -194,3 +194,225 @@
     border-bottom-width: 2px;
   }
 }
+
+/* ============================================================
+   Tooltip Thumb System - Frameless Emoji Popups
+   ============================================================ */
+
+.tooltip-thumb {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1000;
+  font-family: 'Courier New', monospace;
+  text-align: center;
+  white-space: nowrap;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+}
+
+.tooltip-thumb-content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(10, 10, 10, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 6px 12px;
+  min-height: 24px;
+}
+
+.tooltip-emoji {
+  font-size: 20px;
+  line-height: 1;
+  display: inline-block;
+}
+
+.tooltip-glyph {
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1;
+  display: inline-block;
+  font-family: 'Courier New', monospace;
+}
+
+.tooltip-text {
+  font-size: 12px;
+  color: #ffffff;
+  line-height: 1.2;
+  max-width: 200px;
+  word-wrap: break-word;
+  white-space: normal;
+}
+
+/* Tooltip Types */
+.tooltip-thought {
+  /* Soft blue-ish background for thoughts */
+}
+
+.tooltip-thought .tooltip-thumb-content {
+  background: rgba(100, 150, 255, 0.15);
+  border-color: rgba(150, 180, 255, 0.4);
+}
+
+.tooltip-alert {
+  /* Pulsing alert style */
+}
+
+.tooltip-alert .tooltip-thumb-content {
+  background: rgba(255, 50, 50, 0.2);
+  border-color: rgba(255, 100, 100, 0.6);
+  border-width: 2px;
+}
+
+.tooltip-status_glyph {
+  /* ASCII glyph display */
+}
+
+.tooltip-status_glyph .tooltip-thumb-content {
+  background: rgba(10, 10, 10, 0.95);
+  border-color: rgba(255, 255, 255, 0.3);
+  padding: 4px 10px;
+}
+
+.tooltip-food {
+  /* Food item popup */
+}
+
+.tooltip-food .tooltip-thumb-content {
+  background: rgba(50, 200, 50, 0.15);
+  border-color: rgba(100, 255, 100, 0.4);
+}
+
+.tooltip-custom {
+  /* Custom styling handled inline */
+}
+
+/* ============================================================
+   Tooltip Animations
+   ============================================================ */
+
+@keyframes tooltip-shake {
+  0%, 100% { transform: translate(-50%, -100%) translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translate(-50%, -100%) translateX(-3px); }
+  20%, 40%, 60%, 80% { transform: translate(-50%, -100%) translateX(3px); }
+}
+
+.tooltip-shake {
+  animation: tooltip-shake 0.5s ease-in-out;
+}
+
+@keyframes tooltip-pulse {
+  0%, 100% { transform: translate(-50%, -100%) scale(1); }
+  50% { transform: translate(-50%, -100%) scale(1.1); }
+}
+
+.tooltip-pulse {
+  animation: tooltip-pulse 1s ease-in-out infinite;
+}
+
+@keyframes tooltip-flash {
+  0%, 50%, 100% { opacity: 1; }
+  25%, 75% { opacity: 0.3; }
+}
+
+.tooltip-flash {
+  animation: tooltip-flash 0.8s ease-in-out infinite;
+}
+
+@keyframes tooltip-bounce {
+  0%, 100% { transform: translate(-50%, -100%) translateY(0); }
+  50% { transform: translate(-50%, -100%) translateY(-8px); }
+}
+
+.tooltip-bounce {
+  animation: tooltip-bounce 0.6s ease-in-out;
+}
+
+@keyframes tooltip-float-in {
+  from {
+    transform: translate(-50%, -100%) translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, -100%) translateY(0);
+    opacity: 1;
+  }
+}
+
+.tooltip-thumb {
+  animation: tooltip-float-in 0.15s ease-out;
+}
+
+/* ============================================================
+   Responsive Design for Tooltip Thumb
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .tooltip-emoji {
+    font-size: 18px;
+  }
+
+  .tooltip-glyph {
+    font-size: 14px;
+  }
+
+  .tooltip-text {
+    font-size: 11px;
+    max-width: 150px;
+  }
+
+  .tooltip-thumb-content {
+    padding: 5px 10px;
+    gap: 5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .tooltip-emoji {
+    font-size: 16px;
+  }
+
+  .tooltip-glyph {
+    font-size: 12px;
+  }
+
+  .tooltip-text {
+    font-size: 10px;
+    max-width: 120px;
+  }
+
+  .tooltip-thumb-content {
+    padding: 4px 8px;
+    gap: 4px;
+  }
+}
+
+/* ============================================================
+   Accessibility for Tooltip Thumb
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .tooltip-shake,
+  .tooltip-pulse,
+  .tooltip-flash,
+  .tooltip-bounce,
+  .tooltip-thumb {
+    animation: none !important;
+  }
+
+  .tooltip-thumb {
+    transition: opacity 0.15s ease-in !important;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .tooltip-thumb-content {
+    border-width: 2px;
+    background: rgba(0, 0, 0, 1);
+  }
+
+  .tooltip-text {
+    color: #ffffff;
+    text-shadow: 0 0 2px #000000;
+  }
+}

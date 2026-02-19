@@ -1061,6 +1061,13 @@ const GoneRogue = (function () {
       console.log('[GoneRogue] Overhead animator initialized');
     }
 
+    // Initialize tooltip thumb system
+    if (typeof TooltipThumb !== 'undefined') {
+      var canvasOverlay = document.getElementById('gone-rogue-canvas');
+      TooltipThumb.init(canvasOverlay || document.body);
+      console.log('[GoneRogue] Tooltip thumb initialized');
+    }
+
     // Initialize interactive items
     if (typeof InteractiveItems !== 'undefined') {
       InteractiveItems.init();
@@ -4571,6 +4578,12 @@ const GoneRogue = (function () {
       // Store visual position for rendering
       _player.visualX = visual.x;
       _player.visualY = visual.y;
+
+      // Update tooltip positions for continuous movement
+      if (typeof TooltipThumb !== 'undefined') {
+        var playerPos = { x: visual.x, y: visual.y };
+        TooltipThumb.updatePosition('player', playerPos);
+      }
 
       // Update mobile UI with new positions
       if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
