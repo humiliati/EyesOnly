@@ -1862,17 +1862,10 @@ const GoneRogue = (function () {
     // Check if player walked onto SHOP tile - open shop
     if (tile === TILES.SHOP || tile === TILES.BLACK_MARKET) {
       var shopObj = _shops.find(function(s) { return s.x === newX && s.y === newY; });
-      if (shopObj && typeof ShopSystem !== 'undefined') {
+      if (shopObj && typeof ShopSystem !== 'undefined' && !shopObj.opened) {
         var shopType = tile === TILES.BLACK_MARKET ? ShopSystem.SHOP_TYPES.BLACK_MARKET : ShopSystem.SHOP_TYPES.STANDARD;
         ShopSystem.openShop(shopType, _floor);
         shopObj.opened = true;
-        
-        // Return early to prevent turn advancement while shop is open
-        return {
-          lines: _renderGrid(),
-          prompt: getPrompt(),
-          stayActive: true
-        };
       }
     }
 
