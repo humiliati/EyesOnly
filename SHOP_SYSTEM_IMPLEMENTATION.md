@@ -5,7 +5,7 @@ The shop system has been implemented for the Gone Rogue game mode, providing bot
 
 ## Files Created
 
-### 1. `/public/js/shop-system.js` (935 lines)
+### 1. `/public/js/shop-system.js` (920 lines)
 Core shop system module containing:
 - Shop state management
 - Shop UI rendering (ShopRoot, ShopItemRow, ShopCard, PlayerSellFan)

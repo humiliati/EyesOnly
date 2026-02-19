@@ -133,7 +133,7 @@ const ShopSystem = (function () {
     // Trigger MOK interjection
     if (typeof MokUX !== 'undefined') {
       var shopName = shopType === SHOP_TYPES.BLACK_MARKET ? 'Black Market' : 'Merchant';
-      MokUX.speak('You found a ' + shopName + '!', 'NEUTRAL');
+      MokUX.speak('Approaching ' + shopName + '.', 'NEUTRAL');
     }
 
     // Tooltip
@@ -351,8 +351,23 @@ const ShopSystem = (function () {
    * Get random gamble type
    */
   function _getRandomGambleType() {
-    var types = ['standard', 'standard', 'standard', 'cursed', 'binary', 'empty'];
-    return types[Math.floor(Math.random() * types.length)];
+    var roll = Math.random();
+    
+    // Weighted probabilities:
+    // Standard: 50% (0.0 - 0.5)
+    // Cursed: 25% (0.5 - 0.75)
+    // Binary: 15% (0.75 - 0.9)
+    // Empty: 10% (0.9 - 1.0)
+    
+    if (roll < 0.50) {
+      return 'standard';
+    } else if (roll < 0.75) {
+      return 'cursed';
+    } else if (roll < 0.90) {
+      return 'binary';
+    } else {
+      return 'empty';
+    }
   }
 
   /**
@@ -809,26 +824,40 @@ const ShopSystem = (function () {
     var result = null;
 
     if (gambleType === 'standard') {
+      // Standard gambling roll table
       if (roll < 0.01) {
-        result = _generateRandomCard(999, false); // Impossible
+        result = _generateRandomCard(999, false); // Impossible rarity
       } else if (roll < 0.08) {
-        result = _generateRandomCard(999, false); // Rare
+        result = _generateRandomCard(999, false); // Rare rarity
       } else if (roll < 0.30) {
-        result = _generateRandomCard(999, false); // Uncommon
+        result = _generateRandomCard(999, false); // Uncommon rarity
       } else {
-        result = _generateRandomCard(999, false); // Common
+        result = _generateRandomCard(999, false); // Common rarity
       }
     } else if (gambleType === 'binary') {
+      // Binary: 50/50 great or nothing
       if (roll < 0.50) {
-        result = _generateRandomCard(999, false); // God tier
+        result = _generateRandomCard(999, false); // God tier (high quality)
       } else {
-        result = null; // Catastrophic (no result)
+        result = null; // Catastrophic (nothing)
       }
     } else if (gambleType === 'empty') {
+      // Empty: mostly nothing
       if (roll < 0.25) {
-        result = _generateRandomCard(999, false);
+        result = _generateRandomCard(999, false); // Common
       } else {
-        result = null; // Empty
+        result = null; // Empty result
+      }
+    } else if (gambleType === 'cursed') {
+      // Cursed: high chance of good cards but with risk
+      if (roll < 0.40) {
+        result = _generateRandomCard(999, false); // Common
+      } else if (roll < 0.70) {
+        result = _generateRandomCard(999, false); // Uncommon
+      } else if (roll < 0.90) {
+        result = _generateRandomCard(999, false); // Rare
+      } else {
+        result = _generateRandomCard(999, false); // Impossible
       }
     } else {
       // Default to standard
@@ -854,10 +883,20 @@ const ShopSystem = (function () {
       var hand = GAMESTATE.getState().cardHand;
       var cardIndex = -1;
       
+      // First try to match by card ID if it exists
       for (var i = 0; i < hand.length; i++) {
-        if ((hand[i].id && hand[i].id === cardId) || i.toString() === cardId) {
+        if (hand[i].id && hand[i].id === cardId) {
           cardIndex = i;
           break;
+        }
+      }
+      
+      // If no ID match, try array index as fallback
+      // Note: This is fragile and should be avoided by always generating card IDs
+      if (cardIndex === -1 && !isNaN(cardId)) {
+        var indexAsNumber = parseInt(cardId, 10);
+        if (indexAsNumber >= 0 && indexAsNumber < hand.length) {
+          cardIndex = indexAsNumber;
         }
       }
 

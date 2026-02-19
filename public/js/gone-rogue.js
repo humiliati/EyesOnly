@@ -1560,10 +1560,14 @@ const GoneRogue = (function () {
     var shopX = Math.floor(shopRoom.x + shopRoom.w / 2);
     var shopY = Math.floor(shopRoom.y + shopRoom.h / 2);
 
+    // Use shop type constant for consistency
+    var shopTileType = shopSpawn.type === ShopSystem.SHOP_TYPES.BLACK_MARKET 
+      ? TILES.BLACK_MARKET 
+      : TILES.SHOP;
+
     // Ensure position is empty
     if (_grid[shopY][shopX] === TILES.EMPTY) {
-      var shopTile = shopSpawn.type === 'black_market' ? TILES.BLACK_MARKET : TILES.SHOP;
-      _grid[shopY][shopX] = shopTile;
+      _grid[shopY][shopX] = shopTileType;
 
       // Track shop object
       _shops.push({

@@ -571,6 +571,9 @@
 }
 
 /* ========== Drag-and-Drop States ========== */
+/* NOTE: These styles are prepared for future drag-and-drop implementation */
+/* They will be activated when debrief feed integration is completed */
+
 .shop-card.dragging {
   opacity: 0.5;
   transform: scale(0.95);
