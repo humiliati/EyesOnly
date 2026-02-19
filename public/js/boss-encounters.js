@@ -145,6 +145,16 @@ const BossEncounters = (function () {
         guaranteed: true
       });
 
+      // Synergy card bonus (50% chance for synergy-tagged card)
+      if (Math.random() < 0.5) {
+        loot.push({
+          type: 'synergy_card',
+          quality: 'SUPERIOR',
+          guaranteed: true,
+          message: '⚡ Synergy Card Dropped!'
+        });
+      }
+
       // Whisper drop (3-5% chance)
       if (Math.random() < 0.05) {
         loot.push({
@@ -159,6 +169,13 @@ const BossEncounters = (function () {
           type: 'mythic',
           item: this.mythicDrop,
           guaranteed: true
+        });
+        // Bonus synergy card on mythic kill
+        loot.push({
+          type: 'synergy_card',
+          quality: 'MASTERWORK',
+          guaranteed: true,
+          message: '⚡⚡ LEGENDARY SYNERGY CARD! ⚡⚡'
         });
       } else {
         // Rumor hint (10% chance if mythic condition not met)
@@ -1211,10 +1228,61 @@ const BossEncounters = (function () {
     return Object.keys(BOSS_TYPES);
   }
 
+  /**
+   * Get synergy card pool (cards with synergy tags)
+   * @returns {Array} - Array of synergy card base types
+   */
+  function getSynergyCardPool() {
+    if (typeof CardSystem === 'undefined' || !CardSystem.BASE_CARDS) {
+      return [];
+    }
+
+    var synergyCards = [];
+    for (var cardKey in CardSystem.BASE_CARDS) {
+      var card = CardSystem.BASE_CARDS[cardKey];
+      if (card.synergyTags && card.synergyTags.length > 0) {
+        synergyCards.push(cardKey);
+      }
+    }
+
+    return synergyCards;
+  }
+
+  /**
+   * Roll a random synergy card
+   * @param {String} quality - Quality tier to roll (optional)
+   * @returns {Object} - Rolled synergy card
+   */
+  function rollSynergyCard(quality) {
+    var pool = getSynergyCardPool();
+    if (pool.length === 0) {
+      return null;
+    }
+
+    var randomCard = pool[Math.floor(Math.random() * pool.length)];
+
+    if (typeof CardSystem !== 'undefined' && CardSystem.rollCard) {
+      var card = CardSystem.rollCard(randomCard);
+
+      // Override quality if specified
+      if (quality && card) {
+        card.quality = quality;
+        card.qualityName = CardSystem.QUALITIES[quality] ? CardSystem.QUALITIES[quality].name : quality;
+        card.qualityColor = CardSystem.QUALITIES[quality] ? CardSystem.QUALITIES[quality].color : 'white';
+      }
+
+      return card;
+    }
+
+    return null;
+  }
+
   // Public API
   return {
     createBossForFloor: createBossForFloor,
     getBossTypes: getBossTypes,
+    getSynergyCardPool: getSynergyCardPool,
+    rollSynergyCard: rollSynergyCard,
     BOSS_PHASES: BOSS_PHASES,
     // Export classes for testing
     BossEncounter: BossEncounter,
