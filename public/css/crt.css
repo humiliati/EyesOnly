@@ -772,6 +772,8 @@ html, body {
   color: var(--phosphor);
   min-height: 1.4em;
   text-shadow: 0 0 var(--glow-spread) var(--phosphor-glow);
+  display: inline-block;
+  max-width: calc(100% - 100px);
 }
 
 /* --- Terminal Output Area --- */
