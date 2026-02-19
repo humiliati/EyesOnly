@@ -92,6 +92,10 @@ const GoneRogue = (function () {
   var _nextBiomePreview = null; // Cache next floor's biome for consistent preview
   var _visitedBiomes = []; // Track visited biomes this run
 
+  // Forest biome state
+  var _forestBuildings = []; // Village buildings {x, y, emoji} for visual overlay
+  var _biomeVisualGrid = null; // Pre-computed visual substitution grid (wall/floor chars)
+
   // Highscore tracking variables
   var _runStartTime = null;        // Run start timestamp
   var _currencyCollected = 0;      // Total currency collected this run (excludes starting balance)
@@ -172,16 +176,47 @@ const GoneRogue = (function () {
   var BIOMES = {
     FOREST: {
       name: 'Cozy Forest',
-      wallChar: '█',
-      floorChar: '.',
+      wallChar: '🌳',
+      floorChar: ',',
       description: 'Welcoming woodland with tall grass',
       floorRange: [1, 3], // Starting biome for new players
+
+      // Wall tile distribution for natural variety
+      wallTiles: [
+        { char: '🌳', weight: 40 },
+        { char: '🌲', weight: 30 },
+        { char: '🪵', weight: 15 },
+        { char: '🪨', weight: 10 },
+        { char: '🌿', weight: 5 }
+      ],
+
+      // Floor tile variety
+      floorTiles: [
+        { char: ',', weight: 82 },
+        { char: '·', weight: 10 },
+        { char: '🍂', weight: 5 },
+        { char: '🌸', weight: 3 }
+      ],
+
       props: [
-        { emoji: '🚧', name: 'Wooden Gate', breakable: true, hp: 2 },
+        { emoji: '🚧', name: 'Wooden Gate', breakable: true, hp: 2, blocksPath: true },
         { emoji: '🌳', name: 'Tree', breakable: false },
-        { emoji: '🪵', name: 'Log', breakable: true, hp: 1 },
-        { emoji: '🌿', name: 'Bush', breakable: true, hp: 1 }
-      ]
+        { emoji: '🪵', name: 'Log', breakable: true, hp: 1, blocksPath: true },
+        { emoji: '🌿', name: 'Bush', breakable: true, hp: 1, blocksPath: false },
+        { emoji: '📦', name: 'Wooden Box', breakable: true, hp: 2, blocksPath: true }
+      ],
+
+      // Village features (no threats)
+      spawnFeatures: {
+        villageCluster: true,
+        buildings: ['🏠', '⛪', '🏪', '🏡'],
+        friendlyNPCs: ['👨', '👩', '🧓', '👶'],
+        decorations: ['🪧', '📬', '🏮', '⛲', '🪑']
+      },
+
+      // No real combat threats
+      enemies: [],
+      enemyDensity: 0.0
     },
     GREY_CAVE: {
       name: 'Grey Cave',
@@ -843,6 +878,179 @@ const GoneRogue = (function () {
   // FLOOR GENERATION
   // ============================================================
 
+  /**
+   * Pick a character from a weighted tiles array.
+   * Returns a char chosen by weighted random selection.
+   */
+  function _pickWeightedChar(tiles) {
+    var total = 0;
+    for (var i = 0; i < tiles.length; i++) {
+      total += tiles[i].weight;
+    }
+    var rand = Math.random() * total;
+    var cumulative = 0;
+    for (var j = 0; j < tiles.length; j++) {
+      cumulative += tiles[j].weight;
+      if (rand < cumulative) {
+        return tiles[j].char;
+      }
+    }
+    return tiles[tiles.length - 1].char;
+  }
+
+  /**
+   * Build the biome visual grid: pre-compute wall/floor char substitutions
+   * so the display is stable across render calls (no flickering).
+   * Stores result in _biomeVisualGrid.
+   */
+  function _buildBiomeVisualGrid(biome) {
+    if (!biome || (!biome.wallTiles && !biome.floorTiles)) {
+      _biomeVisualGrid = null;
+      return;
+    }
+    _biomeVisualGrid = [];
+    for (var y = 0; y < GRID_HEIGHT; y++) {
+      var row = [];
+      for (var x = 0; x < GRID_WIDTH; x++) {
+        var tile = _grid[y][x];
+        if (tile === TILES.WALL && biome.wallTiles) {
+          row.push(_pickWeightedChar(biome.wallTiles));
+        } else if ((tile === TILES.EMPTY || tile === TILES.GRASS) && biome.floorTiles) {
+          row.push(_pickWeightedChar(biome.floorTiles));
+        } else {
+          row.push(tile);
+        }
+      }
+      _biomeVisualGrid.push(row);
+    }
+    // Overlay village buildings on the visual grid
+    _forestBuildings.forEach(function(b) {
+      if (b.y >= 0 && b.y < GRID_HEIGHT && b.x >= 0 && b.x < GRID_WIDTH) {
+        _biomeVisualGrid[b.y][b.x] = b.emoji;
+      }
+    });
+  }
+
+  /**
+   * Create hard, nearly square perimeters with natural wall tile distribution.
+   * (Exported API function per spec — operates on an external map array.)
+   */
+  function createBordersForest(map, biome) {
+    var width = map[0].length;
+    var height = map.length;
+    var wallTiles = biome.wallTiles || [{ char: biome.wallChar || TILES.WALL, weight: 100 }];
+
+    for (var x = 0; x < width; x++) {
+      map[0][x] = _pickWeightedChar(wallTiles);
+      map[height - 1][x] = _pickWeightedChar(wallTiles);
+    }
+    for (var y = 0; y < height; y++) {
+      map[y][0] = _pickWeightedChar(wallTiles);
+      map[y][width - 1] = _pickWeightedChar(wallTiles);
+    }
+    return map;
+  }
+
+  /**
+   * Fill map interior with weighted floor tiles (70-80% walkable open space).
+   * (Exported API function per spec — operates on an external map array.)
+   */
+  function generateForestOpenSpace(map, biome) {
+    var width = map[0].length;
+    var height = map.length;
+    var floorTiles = biome.floorTiles || [{ char: biome.floorChar || TILES.EMPTY, weight: 100 }];
+    // 80% open floor per spec (https://github.com/humiliati/EyesOnly/issues/47)
+    var openSpaceRatio = 0.8;
+
+    for (var y = 1; y < height - 1; y++) {
+      for (var x = 1; x < width - 1; x++) {
+        if (Math.random() < openSpaceRatio) {
+          map[y][x] = _pickWeightedChar(floorTiles);
+        }
+      }
+    }
+    return map;
+  }
+
+  /**
+   * Place a village cluster (buildings + decorations) in the lower-left quadrant.
+   * (Exported API function per spec — operates on an external map array.)
+   */
+  function placeVillageCluster(map, biome) {
+    if (!biome.spawnFeatures || !biome.spawnFeatures.villageCluster) return map;
+    var width = map[0].length;
+    var height = map.length;
+
+    var villageX = Math.floor(width * 0.2) + Math.floor(Math.random() * 5);
+    var villageY = Math.floor(height * 0.6) + Math.floor(Math.random() * 5);
+
+    var buildings = biome.spawnFeatures.buildings;
+    var positions = [
+      [villageX, villageY],
+      [villageX + 3, villageY],
+      [villageX, villageY + 3],
+      [villageX + 3, villageY + 3]
+    ];
+
+    positions.forEach(function(pos, i) {
+      if (i < buildings.length && pos[1] < height - 1 && pos[0] < width - 1) {
+        map[pos[1]][pos[0]] = buildings[i];
+      }
+    });
+
+    var decorations = biome.spawnFeatures.decorations;
+    for (var d = 0; d < 5; d++) {
+      var dx = villageX + Math.floor(Math.random() * 7);
+      var dy = villageY + Math.floor(Math.random() * 7);
+      if (dx < width - 1 && dy < height - 1) {
+        map[dy][dx] = decorations[Math.floor(Math.random() * decorations.length)];
+      }
+    }
+    return map;
+  }
+
+  /**
+   * Internal: place village cluster on _grid, recording buildings in _forestBuildings
+   * so they can be visually overlaid during rendering.
+   * Buildings are stored as TILES.WALL in the logical grid for collision.
+   */
+  function _placeVillageCluster(biome) {
+    if (!biome.spawnFeatures || !biome.spawnFeatures.villageCluster) return;
+
+    var villageX = Math.floor(GRID_WIDTH * 0.2) + Math.floor(Math.random() * 5);
+    var villageY = Math.floor(GRID_HEIGHT * 0.6) + Math.floor(Math.random() * 5);
+
+    var buildings = biome.spawnFeatures.buildings;
+    var positions = [
+      [villageX, villageY],
+      [villageX + 3, villageY],
+      [villageX, villageY + 3],
+      [villageX + 3, villageY + 3]
+    ];
+
+    positions.forEach(function(pos, i) {
+      if (i < buildings.length) {
+        var bx = pos[0];
+        var by = pos[1];
+        if (bx >= 1 && bx < GRID_WIDTH - 1 && by >= 1 && by < GRID_HEIGHT - 1) {
+          _grid[by][bx] = TILES.WALL; // Impassable in game logic
+          _forestBuildings.push({ x: bx, y: by, emoji: buildings[i] });
+        }
+      }
+    });
+
+    var decorations = biome.spawnFeatures.decorations;
+    for (var d = 0; d < 5; d++) {
+      var dx = villageX + Math.floor(Math.random() * 7);
+      var dy = villageY + Math.floor(Math.random() * 7);
+      if (dx >= 1 && dx < GRID_WIDTH - 1 && dy >= 1 && dy < GRID_HEIGHT - 1 &&
+          _grid[dy][dx] === TILES.EMPTY) {
+        // Decorations are visual-only (walkable), stored just for rendering overlay
+        _forestBuildings.push({ x: dx, y: dy, emoji: decorations[Math.floor(Math.random() * decorations.length)] });
+      }
+    }
+  }
+
   function _generateFloor(secretFloorData) {
     // Initialize generation state
     _projectiles = [];
@@ -856,6 +1064,10 @@ const GoneRogue = (function () {
     _bossDefeated = false;
     _bossHazards = [];
     _bossEnvironment = {};
+
+    // Reset forest biome state
+    _forestBuildings = [];
+    _biomeVisualGrid = null;
 
     // Invalidate per-floor caches
     _stealthBonusCache = null;
@@ -958,6 +1170,15 @@ const GoneRogue = (function () {
 
     if (!validMap) {
       console.warn('Could not generate fully valid map after ' + maxAttempts + ' attempts. Using current map.');
+    }
+
+    // Forest biome: place village cluster and pre-compute visual grid
+    if (!isSecretFloor) {
+      var floorBiome = _getBiome(_floor);
+      if (floorBiome.spawnFeatures && floorBiome.spawnFeatures.villageCluster) {
+        _placeVillageCluster(floorBiome);
+      }
+      _buildBiomeVisualGrid(floorBiome);
     }
 
     // Place breakables (deterministic for tests)
@@ -1087,6 +1308,34 @@ const GoneRogue = (function () {
         centerY: 10,
         isBossArena: true
       }];
+    }
+
+    // Forest biome (floors 1-3): one large open room covering most of the map
+    // Two virtual rooms provide player spawn (left) and exit (right) positions
+    var biome = _getBiome(_floor);
+    if (biome.name === 'Cozy Forest') {
+      var halfW = Math.floor((GRID_WIDTH - 4) / 2);
+      var forestRooms = [
+        {
+          x: 2, y: 2,
+          w: halfW, h: GRID_HEIGHT - 4,
+          centerX: Math.floor(GRID_WIDTH * 0.25),
+          centerY: Math.floor(GRID_HEIGHT / 2)
+        },
+        {
+          x: 2 + halfW, y: 2,
+          w: GRID_WIDTH - 4 - halfW, h: GRID_HEIGHT - 4,
+          centerX: Math.floor(GRID_WIDTH * 0.75),
+          centerY: Math.floor(GRID_HEIGHT / 2)
+        }
+      ];
+      // Carve the entire interior as open space
+      for (var fy = 2; fy < GRID_HEIGHT - 2; fy++) {
+        for (var fx = 2; fx < GRID_WIDTH - 2; fx++) {
+          _grid[fy][fx] = TILES.EMPTY;
+        }
+      }
+      return forestRooms;
     }
 
     var numRooms = Math.min(4 + Math.floor(difficulty / 2), 8);
@@ -2102,8 +2351,8 @@ const GoneRogue = (function () {
   function _renderGrid() {
     var lines = [''];
 
-    // Copy grid for rendering
-    var display = _grid.map(function(row) { return row.slice(); });
+    // Copy grid for rendering (use biome visual grid if available for forest floors)
+    var display = (_biomeVisualGrid ? _biomeVisualGrid : _grid).map(function(row) { return row.slice(); });
 
     // Place breakables
     _breakables.forEach(function(breakable) {
@@ -2181,7 +2430,8 @@ const GoneRogue = (function () {
    */
   function _updateMobileGrid() {
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      GoneRogueMobile.renderGrid(_grid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles, _alertLevel, _strCombatActive, _muzzleFlash, _impactEffects, _currencies);
+      var displayGrid = _biomeVisualGrid || _grid;
+      GoneRogueMobile.renderGrid(displayGrid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles, _alertLevel, _strCombatActive, _muzzleFlash, _impactEffects, _currencies);
     }
   }
 
@@ -7410,6 +7660,11 @@ const GoneRogue = (function () {
     setDifficulty: setDifficulty,
     getDifficulty: getDifficulty,
     onStateChange: onStateChange,
+
+    // Forest biome generation API (per spec)
+    createBordersForest: createBordersForest,
+    generateForestOpenSpace: generateForestOpenSpace,
+    placeVillageCluster: placeVillageCluster,
 
     // Headless mode API (for testing/agent simulation)
     headless: {
