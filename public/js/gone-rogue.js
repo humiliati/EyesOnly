@@ -4523,6 +4523,46 @@ const GoneRogue = (function () {
    * Update all game state (enemies, awareness, etc.)
    */
   function _updateGameState(deltaMs) {
+    // Update smooth movement system
+    if (typeof GoneRogueMovement !== 'undefined' && GoneRogueMovement.isMoving()) {
+      var collisionCheck = function(x, y) {
+        return !_isWalkable(x, y);
+      };
+
+      GoneRogueMovement.update(collisionCheck);
+
+      // Update player position from movement system
+      var logical = GoneRogueMovement.getLogicalPosition();
+      var visual = GoneRogueMovement.getVisualPosition();
+
+      // Check if logical position changed (player reached next tile)
+      if (_player.x !== logical.x || _player.y !== logical.y) {
+        // Update player grid position
+        var oldX = _player.x;
+        var oldY = _player.y;
+        _player.x = logical.x;
+        _player.y = logical.y;
+
+        // Update last move direction for flanking
+        if (logical.x > oldX) _player.lastMoveDirection = 'east';
+        else if (logical.x < oldX) _player.lastMoveDirection = 'west';
+        else if (logical.y > oldY) _player.lastMoveDirection = 'south';
+        else if (logical.y < oldY) _player.lastMoveDirection = 'north';
+
+        // Check for items, currency, enemies at new position
+        _checkPlayerInteractions();
+      }
+
+      // Store visual position for rendering
+      _player.visualX = visual.x;
+      _player.visualY = visual.y;
+
+      // Update mobile UI with new positions
+      if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+        _updateMobileGrid();
+      }
+    }
+
     // Update enemy positions and awareness
     _enemies.forEach(function(enemy) {
       if (enemy.hp <= 0) return;
@@ -5542,7 +5582,49 @@ const GoneRogue = (function () {
   }
 
   /**
-   * Handle card swipe from mobile UI
+   * Handle fishing move from mobile UI (smooth movement along path)
+   */
+  function handleFishingMove(path) {
+    if (!_active) return;
+    if (!path || path.length === 0) return;
+
+    // Initialize movement system if not already
+    if (typeof GoneRogueMovement !== 'undefined') {
+      GoneRogueMovement.init(_player.x, _player.y);
+
+      // Set target with collision checking
+      var collisionCheck = function(x, y) {
+        return !_isWalkable(x, y);
+      };
+
+      var destination = path[path.length - 1];
+      GoneRogueMovement.setTarget(destination.x, destination.y, collisionCheck);
+
+      // Update mobile UI to start animation
+      if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+        _updateMobileGrid();
+      }
+
+      return {
+        lines: ['Moving...', ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    } else {
+      // Fallback to instant move
+      return handleTapMove(path[path.length - 1].x, path[path.length - 1].y, false);
+    }
+  }
+
+  /**
+   * Check if position is walkable
+   */
+  function isWalkable(x, y) {
+    return _isWalkable(x, y);
+  }
+
+  /**
+   * Card swipe from mobile UI
    */
   function handleCardSwipe(cardIndex, direction) {
     if (!_active) return;
@@ -8366,6 +8448,8 @@ const GoneRogue = (function () {
     isActive: isActive,
     getPrompt: getPrompt,
     handleTapMove: handleTapMove,
+    handleFishingMove: handleFishingMove,
+    isWalkable: isWalkable,
     handleCardSwipe: handleCardSwipe,
     handleMultiCardCombat: handleMultiCardCombat,
     getPlayer: getPlayer,

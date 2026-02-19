@@ -418,8 +418,8 @@ const GoneRogueMobile = (function () {
       entities: entities,
       effects: effects,
       player: player ? {
-        x: player.x,
-        y: player.y,
+        x: player.visualX !== undefined ? player.visualX : player.x,
+        y: player.visualY !== undefined ? player.visualY : player.y,
         char: '🥷',
         color: '#00FF00'
       } : null
