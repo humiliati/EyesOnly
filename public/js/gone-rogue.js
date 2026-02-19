@@ -190,28 +190,60 @@ const GoneRogue = (function () {
         { char: '🌿', weight: 5 }
       ],
 
-      // Floor tile variety
+      // Floor tile variety (expanded with new tiles)
       floorTiles: [
-        { char: ',', weight: 82 },
-        { char: '·', weight: 10 },
-        { char: '🍂', weight: 5 },
-        { char: '🌸', weight: 3 }
+        { char: ',', weight: 60 },        // Grass (standard)
+        { char: '🌿', weight: 15 },       // Dense grass (stealth high)
+        { char: '🟫', weight: 10 },       // Grass path (clear)
+        { char: '·', weight: 5 },         // Dirt patch
+        { char: '🍂', weight: 5 },        // Fallen leaves
+        { char: '🌸', weight: 3 },        // Flower clearing
+        { char: '🍄', weight: 2 }         // Mushroom circle
       ],
 
+      // Expanded props with breakable gates and obstacles
       props: [
-        { emoji: '🚧', name: 'Wooden Gate', breakable: true, hp: 2, blocksPath: true },
-        { emoji: '🌳', name: 'Tree', breakable: false },
-        { emoji: '🪵', name: 'Log', breakable: true, hp: 1, blocksPath: true },
-        { emoji: '🌿', name: 'Bush', breakable: true, hp: 1, blocksPath: false },
-        { emoji: '📦', name: 'Wooden Box', breakable: true, hp: 2, blocksPath: true }
+        { emoji: '🚧', name: 'Wooden Gate', breakable: true, hp: 3, blocksPath: true, drops: ['wood', 'coins'] },
+        { emoji: '🌳', name: 'Tree Trunk', breakable: true, hp: 4, blocksPath: true, drops: ['wood', 'apples'] },
+        { emoji: '🌲', name: 'Tree Canopy', breakable: true, hp: 6, blocksPath: true, drops: ['wood', 'sap'] },
+        { emoji: '🌿', name: 'Bush', breakable: true, hp: 2, blocksPath: false, drops: ['berries', 'sticks'] },
+        { emoji: '🪵', name: 'Hollow Log', breakable: true, hp: 2, blocksPath: true, drops: ['wood', 'insects'] },
+        { emoji: '🪨', name: 'Boulder', breakable: true, hp: 5, blocksPath: true, drops: ['stone', 'gems'] },
+        { emoji: '⛰️', name: 'Ridge', breakable: false, blocksPath: true },
+        { emoji: '📦', name: 'Wooden Box', breakable: true, hp: 2, blocksPath: true, drops: ['supplies'] }
       ],
+
+      // Interactive objects (non-breakable interactions)
+      interactiveObjects: [
+        { emoji: '🪧', name: 'Sign Post', interact: 'read', effect: 'shows_direction' },
+        { emoji: '🚧', name: 'Ruined Fence', breakable: true, hp: 1, drops: ['wood'] },
+        { emoji: '🐾', name: 'Deer Trail', interact: 'follow', effect: 'reveals_shortcut' },
+        { emoji: '🫐', name: 'Berry Bush', interact: 'harvest', effect: 'gives_berries' },
+        { emoji: '🍎', name: 'Apple Tree', interact: 'shake', effect: 'drops_apples' }
+      ],
+
+      // Tile effects for environmental interaction
+      tileEffects: {
+        ',': { stealth: 20, name: 'Grass' },              // Medium stealth
+        '🌿': { stealth: 40, name: 'Dense Grass' },       // High stealth, hides items
+        '🟫': { stealth: 0, name: 'Grass Path' },         // Clear path, no stealth
+        '·': { stealth: 10, name: 'Dirt Patch' },         // Slight stealth
+        '🍂': { stealth: 15, name: 'Fallen Leaves' },     // Cracking sounds
+        '🌸': { stealth: 20, healing: 1, name: 'Flower Clearing' }, // Restorative
+        '🍄': { stealth: 20, random: true, name: 'Mushroom Circle' } // Random effects
+      },
 
       // Village features (no threats)
       spawnFeatures: {
         villageCluster: true,
         buildings: ['🏠', '⛪', '🏪', '🏡'],
         friendlyNPCs: ['👨', '👩', '🧓', '👶'],
-        decorations: ['🪧', '📬', '🏮', '⛲', '🪑']
+        decorations: ['🪧', '📬', '🏮', '⛲', '🪑'],
+        landmarks: [
+          { emoji: '🏔️', name: 'Mountain Tower', visibility: 15 },
+          { emoji: '🌳', name: 'Giant Tree', visibility: 12 },
+          { emoji: '🏛️', name: 'Ruin', visibility: 10 }
+        ]
       },
 
       // No real combat threats
@@ -235,12 +267,58 @@ const GoneRogue = (function () {
       floorChar: '.',
       description: 'Corporate cubicles and conference rooms',
       floorRange: [5, 9],
+
+      // Floor tile variety for office environments
+      floorTiles: [
+        { char: '.', weight: 70 },        // Standard floor
+        { char: '🟫', weight: 15 },       // Office carpet
+        { char: '⬜', weight: 10 },       // Tile floor
+        { char: '▬', weight: 5 }          // Walkway
+      ],
+
+      // Wall variations for office areas
+      wallTiles: [
+        { char: '█', weight: 60 },        // Solid wall
+        { char: '▓', weight: 20 },        // Cubicle wall (low)
+        { char: '🪟', weight: 15 },       // Glass wall (transparent)
+        { char: '🚪', weight: 5 }         // Office door
+      ],
+
+      // Expanded props with office furniture and equipment
       props: [
-        { emoji: '📂', name: 'Filing Cabinet', breakable: true, hp: 1 },
-        { emoji: '🖨️', name: 'Printer', breakable: true, hp: 1 },
-        { emoji: '🪑', name: 'Office Chair', breakable: false },
-        { emoji: '💼', name: 'Briefcase', breakable: false }
-      ]
+        { emoji: '📂', name: 'Filing Cabinet', breakable: true, hp: 2, drops: ['documents', 'items'] },
+        { emoji: '🖨️', name: 'Photocopier', breakable: true, hp: 3, drops: ['toner'], explodes: true },
+        { emoji: '🪑', name: 'Office Chair', breakable: false, provides: 'cover' },
+        { emoji: '💼', name: 'Briefcase', breakable: true, hp: 1, drops: ['papers'] },
+        { emoji: '🖥️', name: 'Desk', breakable: true, hp: 3, provides: 'cover', drops: ['supplies'] },
+        { emoji: '💧', name: 'Water Cooler', interact: 'drink', healing: 5 },
+        { emoji: '🥤', name: 'Vending Machine', breakable: true, hp: 4, drops: ['drinks', 'snacks'] },
+        { emoji: '🖥️', name: 'Server Rack', interact: 'hack', effect: 'reveals_map' }
+      ],
+
+      // Interactive objects for office exploration
+      interactiveObjects: [
+        { emoji: '💻', name: 'Terminal', interact: 'hack', effects: ['map_reveal', 'enemy_intel', 'door_unlock', 'transmission'] },
+        { emoji: '🚪', name: 'Locked Door', interact: 'unlock', requires: 'keycard' },
+        { emoji: '🪟', name: 'Glass Window', transparent: true, blocks: 'projectiles' },
+        { emoji: '▓', name: 'Cubicle Cluster', provides: 'cover', slowsMovement: true }
+      ],
+
+      // Tile effects for office stealth gameplay
+      tileEffects: {
+        '.': { stealth: 5, name: 'Office Floor' },
+        '🟫': { stealth: 15, name: 'Cubicle Carpet' },    // Acoustic dampening
+        '⬜': { stealth: -5, name: 'Tile Floor' },         // Reflects light
+        '▬': { stealth: 0, name: 'Walkway' }              // Clear path
+      },
+
+      // Special office features
+      spawnFeatures: {
+        unreachableRooms: true,          // Visible through glass
+        terminals: 3,                     // Hackable terminals per floor
+        lockedDoors: 2,                   // Requires keycards
+        coverClusters: true               // Desk arrangements
+      }
     },
     MALL: {
       name: 'Shopping Mall',
@@ -248,11 +326,56 @@ const GoneRogue = (function () {
       floorChar: '.',
       description: 'Abandoned retail stores',
       floorRange: [11, 15],
+
+      // Floor tile variety for mall environments
+      floorTiles: [
+        { char: '.', weight: 60 },        // Standard mall floor
+        { char: '⬜', weight: 25 },       // Tile floor
+        { char: '🟫', weight: 10 },       // Carpet (stores)
+        { char: '🛍️', weight: 5 }         // Display area
+      ],
+
+      // Expanded props with breakable-rich environment
       props: [
-        { emoji: '🛍️', name: 'Shopping Bag', breakable: true, hp: 1 },
-        { emoji: '🧸', name: 'Toy', breakable: true, hp: 1 },
-        { emoji: '🥫', name: 'Canned Food', breakable: true, hp: 1 }
-      ]
+        { emoji: '🛍️', name: 'Shopping Bag', breakable: true, hp: 1, drops: ['random'] },
+        { emoji: '🧸', name: 'Toy', breakable: true, hp: 1, drops: ['toys'] },
+        { emoji: '🥫', name: 'Canned Food', breakable: true, hp: 1, drops: ['food'] },
+        { emoji: '👗', name: 'Clothing Display', breakable: true, hp: 1, drops: ['clothes'] },
+        { emoji: '👟', name: 'Shoe Rack', breakable: true, hp: 2, drops: ['shoes', 'coins'] },
+        { emoji: '💍', name: 'Jewelry Display', breakable: true, hp: 1, drops: ['gems', 'coins'], rare: true },
+        { emoji: '🛒', name: 'Shopping Cart', breakable: true, hp: 2, provides: 'mobile_cover', drops: ['items'] },
+        { emoji: '📰', name: 'Magazine Rack', breakable: true, hp: 1, drops: ['hints'] },
+        { emoji: '🎁', name: 'Gift Wrap Station', breakable: true, hp: 2, drops: ['wrapped_gifts'], surprise: true }
+      ],
+
+      // Interactive objects for mall navigation
+      interactiveObjects: [
+        { emoji: '🏪', name: 'Storefront', type: 'various', contains: 'multiple_displays' },
+        { emoji: '🛍️', name: 'Display Rack', contains: 'breakables' },
+        { emoji: '👕', name: 'Clothing Rack', provides: 'concealment' },
+        { emoji: '🧍', name: 'Mannequin', decorative: true, sometimes: 'hostile' },
+        { emoji: '🪧', name: 'Sign', provides: 'navigation_hints' },
+        { emoji: '📋', name: 'Directory', interact: 'read', shows: 'local_map' },
+        { emoji: '🔼', name: 'Escalator', vertical: true, bidirectional: true }
+      ],
+
+      // Tile effects for mall chaos
+      tileEffects: {
+        '.': { stealth: 5, name: 'Mall Floor' },
+        '⬜': { stealth: -5, name: 'Tile Floor' },
+        '🟫': { stealth: 15, name: 'Store Carpet' },
+        '🛍️': { stealth: 10, name: 'Display Area' }      // Cluttered
+      },
+
+      // Special mall features
+      spawnFeatures: {
+        mazeLayout: true,                 // Dead ends and detours
+        stores: 8,                        // Store count per floor
+        deadEnds: 5,                      // Intentional dead ends
+        escapeRoutes: 3,                  // Guaranteed exits
+        directories: 2,                   // Navigation aids
+        escalators: 2                     // Vertical movement
+      }
     },
     INDUSTRIAL: {
       name: 'Industrial Complex',
@@ -260,11 +383,68 @@ const GoneRogue = (function () {
       floorChar: '.',
       description: 'Hazardous factory floor',
       floorRange: [17, 21],
+
+      // Floor tile variety with hazards
+      floorTiles: [
+        { char: '.', weight: 40 },        // Standard industrial floor
+        { char: '⬜', weight: 20 },       // Metal floor
+        { char: '#️⃣', weight: 10 },      // Grate (see-through)
+        { char: '▪', weight: 10 },        // Metal walkway
+        { char: '🛢️', weight: 8 },       // Oil slick (ignitable)
+        { char: '🟢', weight: 5 },       // Acid pool (damage)
+        { char: '🔥', weight: 4 },       // Lava flow (damage)
+        { char: '⚫', weight: 3 }         // Cooled lava (fragile)
+      ],
+
+      // Hazardous environment props
       props: [
-        { emoji: '🛢️', name: 'Oil Drum', breakable: true, hp: 2 },
-        { emoji: '⚡', name: 'Exposed Wiring', breakable: false },
-        { emoji: '🔥', name: 'Vent Steam', breakable: false }
-      ]
+        { emoji: '🛢️', name: 'Oil Drum', breakable: true, hp: 2, drops: ['oil'], explodes: 'fire', ignitable: true },
+        { emoji: '⚡', name: 'Exposed Wiring', breakable: false, hazard: 'electric' },
+        { emoji: '🔥', name: 'Vent Steam', breakable: false, hazard: 'heat', areadenial: true },
+        { emoji: '🧪', name: 'Chemical Tank', breakable: true, hp: 3, drops: ['acid'], hazard: 'acid' },
+        { emoji: '🛤️', name: 'Pipeline', interact: 'damage', effect: 'releases_steam' },
+        { emoji: '🤖', name: 'Robot Wreckage', breakable: true, hp: 4, drops: ['scrap', 'parts'], sometimes: 'hostile' },
+        { emoji: '⏩', name: 'Conveyor Belt', interact: 'walk', effect: 'speed_boost', reversible: true }
+      ],
+
+      // Interactive hazard objects
+      interactiveObjects: [
+        { emoji: '🎛️', name: 'Valve', interact: 'turn', effect: 'controls_flow' },
+        { emoji: '🎚️', name: 'Control Panel', interact: 'activate', effect: 'activates_deactivates' },
+        { emoji: '🔥', name: 'Furnace', interact: 'ignite', effect: 'creates_fire', provides: 'light' }
+      ],
+
+      // Tile effects with hazards
+      tileEffects: {
+        '.': { stealth: 5, name: 'Industrial Floor' },
+        '⬜': { stealth: -10, name: 'Metal Floor' },      // Reflective, loud
+        '#️⃣': { stealth: 10, name: 'Grate', seeThrough: true },
+        '▪': { stealth: 0, name: 'Metal Walkway' },
+        '🛢️': { stealth: 5, name: 'Oil Slick', slip: true, ignitable: true },
+        '🟢': { stealth: 0, name: 'Acid Pool', damage: 2, corrosive: true, walkable: false },
+        '🔥': { stealth: 0, name: 'Lava Flow', damage: 5, burning: true, walkable: false },
+        '⚫': { stealth: 0, name: 'Cooled Lava', fragile: true }
+      },
+
+      // Ignition system properties
+      ignitionSystem: {
+        enabled: true,
+        spreadChance: 0.3,
+        burnDuration: 10,
+        damagePerTurn: 2,
+        lightRadius: 4,
+        smokeRadius: 6,
+        spreadTargets: ['🛢️', '🪵', '📦']  // What fire spreads to
+      },
+
+      // Special industrial features
+      spawnFeatures: {
+        hazardZones: true,               // Lava/acid hazard areas
+        narrowWalkways: true,            // 1-tile wide paths
+        ignitionChains: true,            // Oil spill fire spreads
+        verticalHazards: true,           // Collapsing tiles
+        controlPanels: 3                 // Hackable environmental controls
+      }
     },
     AEROSPACE: {
       name: 'Aerospace Museum',
