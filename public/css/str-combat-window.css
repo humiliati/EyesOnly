@@ -1,8 +1,71 @@
 /* ============================================================
-   STR Combat Window - Hearthstone-Style UI
+   STR Combat Countdown Overlay
+   Full-screen 3-2-1 countdown before combat begins
    ============================================================ */
 
-/* Background tint when combat is minimized */
+.str-combat-countdown-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.82);
+  z-index: 3000;
+  pointer-events: none;
+}
+
+.str-combat-countdown-overlay.str-countdown-fade-out {
+  animation: str-countdown-fade 0.4s ease-out forwards;
+}
+
+@keyframes str-countdown-fade {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.str-countdown-number {
+  font-family: 'Courier New', monospace;
+  font-size: clamp(6rem, 20vw, 14rem);
+  font-weight: bold;
+  color: #ffaa00;
+  text-shadow:
+    0 0 40px rgba(255, 170, 0, 0.9),
+    0 0 80px rgba(255, 170, 0, 0.5);
+  animation: str-countdown-pulse 0.9s ease-in-out;
+  line-height: 1;
+}
+
+@keyframes str-countdown-pulse {
+  0%   { transform: scale(1.4); opacity: 0; }
+  30%  { transform: scale(1);   opacity: 1; }
+  85%  { transform: scale(1);   opacity: 1; }
+  100% { transform: scale(0.8); opacity: 0; }
+}
+
+.str-countdown-fight {
+  font-family: 'Courier New', monospace;
+  font-size: clamp(3rem, 10vw, 7rem);
+  font-weight: bold;
+  color: #ff1c4a;
+  text-shadow:
+    0 0 40px rgba(255, 28, 74, 0.9),
+    0 0 80px rgba(255, 28, 74, 0.5);
+  letter-spacing: 0.15em;
+  animation: str-fight-appear 0.5s ease-out;
+}
+
+@keyframes str-fight-appear {
+  from { transform: scale(0.5); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+/* ============================================================
+   Background tint when combat is minimized
+   ============================================================ */
+
 body.str-combat-minimized-state {
   background: rgba(255, 28, 74, 0.08);
 }

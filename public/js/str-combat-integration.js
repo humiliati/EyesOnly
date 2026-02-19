@@ -149,14 +149,19 @@
       HandFanComponent.restore();
     }
 
+    // If fan isn't visible yet, show it; otherwise just update cards/mode
+    if (!HandFanComponent.isVisible()) {
+      HandFanComponent.show(cards);
+    } else {
+      HandFanComponent.updateCards(cards);
+    }
+
     // Determine fan mode based on STR window state
     if (STRCombatWindow.isMinimized()) {
       HandFanComponent.setMode('contextual', 'bottom');
     } else {
       HandFanComponent.setMode('combat', 'centered');
     }
-
-    HandFanComponent.updateCards(cards);
   }
 
   /**
@@ -167,31 +172,14 @@
   }
 
   /**
-   * Handle timer expiration (add to GoneRogue if not exists)
+   * Handle timer expiration — player ran out of time; enemy takes its turn unopposed
    */
   function handleStrTimerExpired() {
-    console.log('[STRIntegration] Combat timer expired - auto-playing default action');
+    console.log('[STRIntegration] Combat timer expired - passing player turn, enemy attacks');
 
-    // Get default card (first defense or attack card)
-    var cards = [];
-    if (typeof GAMESTATE !== 'undefined') {
-      cards = GAMESTATE.getLooseInventory() || [];
-    }
-
-    var defaultCard = null;
-    for (var i = 0; i < cards.length; i++) {
-      var card = cards[i];
-      if (card.category === 'defense' || card.category === 'attack') {
-        defaultCard = card;
-        break;
-      }
-    }
-
-    if (defaultCard && typeof GoneRogue !== 'undefined') {
-      // Execute with default card
-      if (typeof GoneRogue.handleCardSwipe === 'function') {
-        GoneRogue.handleCardSwipe(0, 'up'); // Use first card
-      }
+    // Execute enemy-only turn (player passes)
+    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.passPlayerTurn === 'function') {
+      GoneRogue.passPlayerTurn();
     }
   }
 
@@ -226,6 +214,15 @@
 
     if (!GoneRogue.executeMultiCardRound) {
       GoneRogue.executeMultiCardRound = executeMultiCardRound;
+    }
+
+    if (!GoneRogue.passPlayerTurn) {
+      GoneRogue.passPlayerTurn = function() {
+        // Execute only the enemy's attack using the direct passStrTurn method
+        if (typeof GoneRogue.passStrTurn === 'function') {
+          GoneRogue.passStrTurn();
+        }
+      };
     }
   }
 

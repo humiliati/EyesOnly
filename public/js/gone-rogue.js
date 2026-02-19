@@ -561,11 +561,21 @@ const GoneRogue = (function () {
         Terminal.hideInput();
       }
 
+      // Switch debrief feed to resource display for Gone Rogue
+      if (typeof DebriefFeedController !== 'undefined') {
+        DebriefFeedController.setMode('goneRogue');
+      }
+
       return {
         lines: lines,
         prompt: getPrompt(),
         stayActive: true
       };
+    }
+
+    // Switch debrief feed to resource display for Gone Rogue
+    if (typeof DebriefFeedController !== 'undefined') {
+      DebriefFeedController.setMode('goneRogue');
     }
 
     return {
@@ -3614,6 +3624,11 @@ const GoneRogue = (function () {
       ReserveSlots.hide();
     }
 
+    // Switch debrief feed back to MOK display
+    if (typeof DebriefFeedController !== 'undefined') {
+      DebriefFeedController.setMode('mainMenu');
+    }
+
     var result = {
       success: success,
       unlockedSlot: success,
@@ -6286,6 +6301,7 @@ const GoneRogue = (function () {
     return {
       active: _strCombatActive,
       enemy: _strCombatEnemy,
+      player: _player ? { hp: _player.hp, maxHp: _player.maxHp } : { hp: 10, maxHp: 10 },
       advantage: _strCombatAdvantage,
       round: _strCombatRound,
       log: _strCombatLog
@@ -7212,6 +7228,12 @@ const GoneRogue = (function () {
     stepProjectiles: stepProjectiles,
     isStrCombatActive: isStrCombatActive,
     getStrCombatState: getStrCombatState,
+    passStrTurn: function() {
+      // Pass player's combat turn — enemy attacks unopposed (called on timer expiry)
+      if (_strCombatActive) {
+        return _executeStrRound('enemy');
+      }
+    },
     triggerActiveItem: triggerActiveItem,
     updatePlayerLight: _updatePlayerLight,
     
