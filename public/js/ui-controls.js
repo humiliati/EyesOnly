@@ -199,25 +199,18 @@
         simulateCommand('home');
         break;
 
-      case 'action':
+      case 'map':
         // Close inventory if open
         if (inventoryVisible) {
           toggleInventory();
         }
 
-        // Context-aware action button
+        // Map button - context-aware
         var isInGoneRogue = typeof GoneRogue !== 'undefined' && GoneRogue.isActive();
 
         if (isInGoneRogue) {
-          // In Gone Rogue: Toggle action menu (card fan)
-          if (typeof GoneRogueMobile !== 'undefined' && typeof GoneRogueMobile.toggleActionMenu === 'function') {
-            GoneRogueMobile.toggleActionMenu();
-          } else {
-            // Fallback: Show card fan via tap on self
-            if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleTapSelf === 'function') {
-              GoneRogue.handleTapSelf();
-            }
-          }
+          // In Gone Rogue: Not used (button is hidden)
+          break;
         } else if (isInStreetChronicles) {
           // In Street Chronicles: Show map/recenter to main street
           if (typeof StreetChronicles !== 'undefined' && typeof StreetChronicles.process === 'function') {
@@ -242,7 +235,7 @@
             }
           }
         } else {
-          // In command terminal: Show context menu or default to map command
+          // In command terminal: Show map command
           simulateCommand('map');
         }
         break;
@@ -414,7 +407,7 @@
         handleKernelClick();
         break;
 
-      case 'highscore':
+      case 'score':
         // Open highscore page in new window
         window.open('highscore/', '_blank');
         break;
