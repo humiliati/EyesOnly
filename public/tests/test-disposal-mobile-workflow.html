@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Disposal & Mobile Portrait Workflow Test</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      background: #000;
+      color: #1cff9b;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1, h2 {
+      color: #1cff9b;
+      border-bottom: 2px solid #1cff9b;
+      padding-bottom: 10px;
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #1cff9b;
+      border-radius: 5px;
+    }
+    .test-step {
+      margin: 10px 0;
+      padding: 10px;
+      background: rgba(28, 255, 155, 0.1);
+    }
+    .status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-weight: bold;
+    }
+    .status.pending { background: #666; }
+    .status.pass { background: #0a0; color: #000; }
+    .status.fail { background: #a00; }
+    button {
+      background: #1cff9b;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+    }
+    button:hover {
+      background: #0f8;
+    }
+    .viewport-selector {
+      margin: 20px 0;
+    }
+    .viewport-btn {
+      background: #333;
+      color: #1cff9b;
+    }
+    .viewport-btn.active {
+      background: #1cff9b;
+      color: #000;
+    }
+    #test-results {
+      margin-top: 20px;
+      padding: 15px;
+      border: 2px solid #1cff9b;
+      min-height: 200px;
+    }
+    .result-item {
+      padding: 5px;
+      margin: 3px 0;
+    }
+    .result-item.pass { color: #0f0; }
+    .result-item.fail { color: #f00; }
+    .screenshot-link {
+      color: #0ff;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎯 Disposal & Mobile Portrait Workflow Test</h1>
+  
+  <div class="test-section">
+    <h2>Test Configuration</h2>
+    <div class="viewport-selector">
+      <strong>Viewport:</strong>
+      <button class="viewport-btn" onclick="setViewport('desktop')" id="btn-desktop">Desktop (1280x720)</button>
+      <button class="viewport-btn active" onclick="setViewport('mobile')" id="btn-mobile">Mobile Portrait (375x667)</button>
+      <button class="viewport-btn" onclick="setViewport('tablet')" id="btn-tablet">Tablet (768x1024)</button>
+    </div>
+    <p>Current: <span id="current-viewport">Mobile Portrait (375x667)</span></p>
+  </div>
+
+  <div class="test-section">
+    <h2>Test Suite: Card Disposal Workflow</h2>
+    
+    <div class="test-step">
+      <strong>Test 1: Inventory Item Disposal</strong>
+      <span class="status pending" id="status-1">PENDING</span>
+      <ol>
+        <li>Open inventory overlay (click INVENTORY button)</li>
+        <li>Drag an inventory item to debrief feed</li>
+        <li>Verify incinerator animation triggers</li>
+        <li>Verify item removed from inventory</li>
+        <li>Verify MOK interjection confirms disposal</li>
+      </ol>
+      <button onclick="runTest(1)">Run Test 1</button>
+    </div>
+
+    <div class="test-step">
+      <strong>Test 2: Hand Fan Card Disposal (STR Combat)</strong>
+      <span class="status pending" id="status-2">PENDING</span>
+      <ol>
+        <li>Enter Gone Rogue mode (type "rogue" in terminal)</li>
+        <li>Trigger STR combat encounter</li>
+        <li>Verify hand fan appears</li>
+        <li>Drag a card from hand fan to debrief feed</li>
+        <li>Verify disposal works in combat mode</li>
+      </ol>
+      <button onclick="runTest(2)">Run Test 2</button>
+    </div>
+
+    <div class="test-step">
+      <strong>Test 3: Mobile Portrait - Hand Fan Visibility</strong>
+      <span class="status pending" id="status-3">PENDING</span>
+      <ol>
+        <li>Set viewport to Mobile Portrait (375x667)</li>
+        <li>Enter STR combat</li>
+        <li>Verify hand fan doesn't cover debrief feed</li>
+        <li>Verify debrief feed is accessible for drag-drop</li>
+        <li>Verify z-index layering is correct</li>
+      </ol>
+      <button onclick="runTest(3)">Run Test 3</button>
+    </div>
+
+    <div class="test-step">
+      <strong>Test 4: Action Button → Hand Fan Workflow</strong>
+      <span class="status pending" id="status-4">PENDING</span>
+      <ol>
+        <li>Verify cards in action button containers (left column)</li>
+        <li>Trigger card use from action button</li>
+        <li>Verify card appears in hand fan during STR combat</li>
+        <li>Test card movement between containers</li>
+      </ol>
+      <button onclick="runTest(4)">Run Test 4</button>
+    </div>
+
+    <div class="test-step">
+      <strong>Test 5: Non-Disposable Item Rejection</strong>
+      <span class="status pending" id="status-5">PENDING</span>
+      <ol>
+        <li>Try to drag a persistent/power card to debrief</li>
+        <li>Verify shake animation triggers</li>
+        <li>Verify MOK explains why disposal failed</li>
+        <li>Verify card returns to original position</li>
+      </ol>
+      <button onclick="runTest(5)">Run Test 5</button>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>Human UI Checklist</h2>
+    <p>Manual verification points for human testers:</p>
+    <ul>
+      <li>
+        <input type="checkbox" id="check-1">
+        <label for="check-1">Inventory items are draggable (cursor shows grab/grabbing)</label>
+      </li>
+      <li>
+        <input type="checkbox" id="check-2">
+        <label for="check-2">Debrief feed highlights (orange glow) when dragging over it</label>
+      </li>
+      <li>
+        <input type="checkbox" id="check-3">
+        <label for="check-3">♻️ recycling emoji appears during drag over debrief</label>
+      </li>
+      <li>
+        <input type="checkbox" id="check-4">
+        <label for="check-4">Incinerator animation (orange→red flash) plays on disposal</label>
+      </li>
+      <li>
+        <input type="checkbox" id="check-5">
+        <label for="check-5">Hand fan visible and accessible in STR combat (mobile portrait)</label>
+      </li>
+      <li>
+        <input type="checkbox" id="check-6">
+        <label for="check-6">Debrief feed accessible during drag (not covered by hand fan)</label>
+      </li>
+      <li>
+        <input type="checkbox" id="check-7">
+        <label for="check-7">Cards move between action buttons and hand fan correctly</label>
+      </li>
+      <li>
+        <input type="checkbox" id="check-8">
+        <label for="check-8">Resource display visible and cycles properly</label>
+      </li>
+    </ul>
+    <button onclick="generateReport()">Generate Test Report</button>
+  </div>
+
+  <div class="test-section">
+    <h2>Test Results</h2>
+    <div id="test-results">
+      <p>Run tests to see results...</p>
+    </div>
+  </div>
+
+  <script>
+    let currentViewport = 'mobile';
+    let testResults = [];
+
+    function setViewport(type) {
+      currentViewport = type;
+      document.querySelectorAll('.viewport-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById('btn-' + type).classList.add('active');
+      
+      const viewports = {
+        'desktop': 'Desktop (1280x720)',
+        'mobile': 'Mobile Portrait (375x667)',
+        'tablet': 'Tablet (768x1024)'
+      };
+      
+      document.getElementById('current-viewport').textContent = viewports[type];
+      addResult('info', 'Viewport set to: ' + viewports[type]);
+    }
+
+    function runTest(testNum) {
+      const statusEl = document.getElementById('status-' + testNum);
+      statusEl.textContent = 'RUNNING';
+      statusEl.className = 'status pending';
+      
+      // Simulate test execution
+      setTimeout(() => {
+        const instructions = getTestInstructions(testNum);
+        addResult('info', '=== Test ' + testNum + ' Started ===');
+        addResult('info', instructions);
+        addResult('info', 'Please perform the steps manually and verify the results.');
+        addResult('info', 'Click "Mark as Pass" or "Mark as Fail" below.');
+        
+        const resultDiv = document.getElementById('test-results');
+        const btnDiv = document.createElement('div');
+        btnDiv.style.margin = '10px 0';
+        btnDiv.innerHTML = `
+          <button onclick="markTest(${testNum}, true)">✓ Mark as Pass</button>
+          <button onclick="markTest(${testNum}, false)">✗ Mark as Fail</button>
+        `;
+        resultDiv.appendChild(btnDiv);
+      }, 500);
+    }
+
+    function markTest(testNum, passed) {
+      const statusEl = document.getElementById('status-' + testNum);
+      statusEl.textContent = passed ? 'PASS' : 'FAIL';
+      statusEl.className = 'status ' + (passed ? 'pass' : 'fail');
+      
+      testResults.push({
+        test: testNum,
+        passed: passed,
+        viewport: currentViewport,
+        timestamp: new Date().toISOString()
+      });
+      
+      addResult(passed ? 'pass' : 'fail', 
+        'Test ' + testNum + ': ' + (passed ? 'PASSED' : 'FAILED'));
+    }
+
+    function getTestInstructions(testNum) {
+      const instructions = {
+        1: 'Test 1: Open inventory, drag item to debrief feed, verify disposal',
+        2: 'Test 2: Enter Gone Rogue, trigger combat, drag card from hand fan to debrief',
+        3: 'Test 3: Check hand fan visibility in mobile portrait during STR combat',
+        4: 'Test 4: Verify card movement between action buttons and hand fan',
+        5: 'Test 5: Try dragging persistent/power card, verify rejection'
+      };
+      return instructions[testNum] || 'Test instructions not found';
+    }
+
+    function addResult(type, message) {
+      const resultDiv = document.getElementById('test-results');
+      const item = document.createElement('div');
+      item.className = 'result-item ' + type;
+      item.textContent = '[' + new Date().toLocaleTimeString() + '] ' + message;
+      resultDiv.appendChild(item);
+      resultDiv.scrollTop = resultDiv.scrollHeight;
+    }
+
+    function generateReport() {
+      const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+      const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+      
+      addResult('info', '=== HUMAN UI TEST REPORT ===');
+      addResult('info', 'Viewport: ' + currentViewport);
+      addResult('info', 'Manual checks: ' + checkedCount + '/' + checkboxes.length);
+      addResult('info', 'Automated tests: ' + testResults.length);
+      
+      testResults.forEach(result => {
+        addResult(result.passed ? 'pass' : 'fail',
+          'Test ' + result.test + ' (' + result.viewport + '): ' + 
+          (result.passed ? 'PASS' : 'FAIL'));
+      });
+      
+      const passCount = testResults.filter(r => r.passed).length;
+      const summary = passCount + '/' + testResults.length + ' tests passed';
+      addResult('info', 'Summary: ' + summary);
+      
+      if (checkedCount === checkboxes.length && passCount === testResults.length) {
+        addResult('pass', '✓ ALL TESTS PASSED - Ready for PR');
+      } else {
+        addResult('fail', '✗ Some tests failed or incomplete - Review needed');
+      }
+    }
+
+    // Initialize
+    addResult('info', 'Test suite initialized');
+    addResult('info', 'Viewport: Mobile Portrait (375x667)');
+    addResult('info', 'Ready to run tests');
+  </script>
+</body>
+</html>
