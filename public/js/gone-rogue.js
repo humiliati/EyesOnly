@@ -191,47 +191,44 @@ const GoneRogue = (function () {
         { char: '🌿', weight: 5 }
       ],
 
-      // Floor tile variety (expanded with new tiles)
+      // Floor tile variety - ASCII only (no emoji floors per design rules)
       floorTiles: [
-        { char: ',', weight: 60 },        // Grass (standard)
-        { char: '🌿', weight: 15 },       // Dense grass (stealth high)
-        { char: '🟫', weight: 10 },       // Grass path (clear)
-        { char: '·', weight: 5 },         // Dirt patch
-        { char: '🍂', weight: 5 },        // Fallen leaves
-        { char: '🌸', weight: 3 },        // Flower clearing
-        { char: '🍄', weight: 2 }         // Mushroom circle
+        { char: ',', weight: 50, animated: true },        // Grass (standard) - animated wave
+        { char: '`', weight: 25, animated: true },        // Grass variation
+        { char: '\'', weight: 15, animated: true },       // Grass variation
+        { char: '"', weight: 5, animated: true },         // Dense grass - slower movement
+        { char: '·', weight: 5 }                          // Dirt patch - no animation
       ],
 
       // Expanded props with breakable gates and obstacles
+      // Note: 🌿 Bush is now a PROP (breakable) not a floor tile
       props: [
         { emoji: '🚧', name: 'Wooden Gate', breakable: true, hp: 3, blocksPath: true, drops: ['wood', 'coins'] },
         { emoji: '🌳', name: 'Tree Trunk', breakable: true, hp: 4, blocksPath: true, drops: ['wood', 'apples'] },
         { emoji: '🌲', name: 'Tree Canopy', breakable: true, hp: 6, blocksPath: true, drops: ['wood', 'sap'] },
-        { emoji: '🌿', name: 'Bush', breakable: true, hp: 2, blocksPath: false, drops: ['berries', 'sticks'] },
+        { emoji: '🌿', name: 'Bush', breakable: true, hp: 2, blocksPath: false, ghostCollision: true, drops: ['berries', 'sticks'] },
         { emoji: '🪵', name: 'Hollow Log', breakable: true, hp: 2, blocksPath: true, drops: ['wood', 'insects'] },
         { emoji: '🪨', name: 'Boulder', breakable: true, hp: 5, blocksPath: true, drops: ['stone', 'gems'] },
         { emoji: '⛰️', name: 'Ridge', breakable: false, blocksPath: true },
-        { emoji: '📦', name: 'Wooden Box', breakable: true, hp: 2, blocksPath: true, drops: ['supplies'] }
+        { emoji: '📦', name: 'Wooden Box', breakable: true, hp: 2, blocksPath: true, drops: ['supplies'] },
+        { emoji: '🧺', name: 'Picnic Blanket', breakable: false, blocksPath: false, ghostCollision: true, movePenalty: 0.3 }
       ],
 
       // Interactive objects (non-breakable interactions)
       interactiveObjects: [
-        { emoji: '🪧', name: 'Sign Post', interact: 'read', effect: 'shows_direction' },
-        { emoji: '🚧', name: 'Ruined Fence', breakable: true, hp: 1, drops: ['wood'] },
-        { emoji: '🐾', name: 'Deer Trail', interact: 'follow', effect: 'reveals_shortcut' },
-        { emoji: '🫐', name: 'Berry Bush', interact: 'harvest', effect: 'gives_berries' },
-        { emoji: '🍎', name: 'Apple Tree', interact: 'shake', effect: 'drops_apples' }
+        { emoji: '🪧', name: 'Sign Post', interact: 'read', effect: 'shows_direction', blocksPath: true },
+        { emoji: '📬', name: 'Mailbox', interact: 'open', effect: 'gives_letter', blocksPath: true },
+        { emoji: '🫐', name: 'Berry Bush', interact: 'harvest', effect: 'gives_berries', blocksPath: false, ghostCollision: true },
+        { emoji: '🍎', name: 'Apple Tree', interact: 'shake', effect: 'drops_apples', blocksPath: true }
       ],
 
-      // Tile effects for environmental interaction
+      // Tile effects for environmental interaction - ASCII only
       tileEffects: {
-        ',': { stealth: 20, name: 'Grass' },              // Medium stealth
-        '🌿': { stealth: 40, name: 'Dense Grass' },       // High stealth, hides items
-        '🟫': { stealth: 0, name: 'Grass Path' },         // Clear path, no stealth
-        '·': { stealth: 10, name: 'Dirt Patch' },         // Slight stealth
-        '🍂': { stealth: 15, name: 'Fallen Leaves' },     // Cracking sounds
-        '🌸': { stealth: 20, healing: 1, name: 'Flower Clearing' }, // Restorative
-        '🍄': { stealth: 20, random: true, name: 'Mushroom Circle' } // Random effects
+        ',': { stealth: 20, moveMod: 0.85, name: 'Grass', animated: true },
+        '`': { stealth: 20, moveMod: 0.85, name: 'Grass', animated: true },
+        '\'': { stealth: 20, moveMod: 0.85, name: 'Grass', animated: true },
+        '"': { stealth: 40, moveMod: 0.80, name: 'Dense Grass', animated: true },
+        '·': { stealth: 10, moveMod: 0.95, name: 'Dirt Patch' }
       },
 
       // Village features (no threats)
@@ -255,11 +252,33 @@ const GoneRogue = (function () {
       name: 'Grey Cave',
       wallChar: '█',
       floorChar: '.',
-      description: 'Dark underground tunnels',
+      description: 'Dark underground tunnels with water pools',
       floorRange: [4, 4], // Used for floor 4 and secret areas
+
+      // Cave floor tiles with water and hazards
+      floorTiles: [
+        { char: '.', weight: 60 },                // Stone floor
+        { char: '·', weight: 15 },                // Gravel
+        { char: '~', weight: 15, animated: true }, // Water pools - slow movement
+        { char: '☣', weight: 5, animated: true },  // Toxic waste - damage + slow
+        { char: '░', weight: 5 }                   // Debris
+      ],
+
+      // Tile effects
+      tileEffects: {
+        '.': { stealth: 5, moveMod: 1.0, name: 'Stone Floor' },
+        '·': { stealth: 10, moveMod: 0.95, name: 'Gravel' },
+        '~': { stealth: 0, moveMod: 0.60, name: 'Water', animated: true },
+        '≈': { stealth: 0, moveMod: 0.60, name: 'Water', animated: true },
+        '☣': { stealth: 0, moveMod: 0.60, damage: 1, name: 'Toxic Waste', animated: true },
+        'o': { stealth: 0, moveMod: 0.60, damage: 1, name: 'Toxic', animated: true },
+        '°': { stealth: 0, moveMod: 0.60, damage: 1, name: 'Toxic', animated: true },
+        '░': { stealth: 5, moveMod: 0.90, name: 'Debris' }
+      },
+
       props: [
-        { emoji: '🪨', name: 'Boulder', breakable: true, hp: 2 },
-        { emoji: '💧', name: 'Water Drip', breakable: false }
+        { emoji: '🪨', name: 'Boulder', breakable: true, hp: 2, blocksPath: true },
+        { emoji: '💧', name: 'Water Drip', breakable: false, blocksPath: true }
       ]
     },
     OFFICE: {
@@ -269,12 +288,11 @@ const GoneRogue = (function () {
       description: 'Corporate cubicles and conference rooms',
       floorRange: [5, 9],
 
-      // Floor tile variety for office environments
+      // Floor tile variety for office environments - ASCII only
       floorTiles: [
         { char: '.', weight: 70 },        // Standard floor
-        { char: '🟫', weight: 15 },       // Office carpet
-        { char: '⬜', weight: 10 },       // Tile floor
-        { char: '▬', weight: 5 }          // Walkway
+        { char: '▬', weight: 20 },        // Walkway - slight speedup
+        { char: '·', weight: 10 }         // Concrete
       ],
 
       // Wall variations for office areas
@@ -305,12 +323,11 @@ const GoneRogue = (function () {
         { emoji: '▓', name: 'Cubicle Cluster', provides: 'cover', slowsMovement: true }
       ],
 
-      // Tile effects for office stealth gameplay
+      // Tile effects for office stealth gameplay - ASCII only
       tileEffects: {
-        '.': { stealth: 5, name: 'Office Floor' },
-        '🟫': { stealth: 15, name: 'Cubicle Carpet' },    // Acoustic dampening
-        '⬜': { stealth: -5, name: 'Tile Floor' },         // Reflects light
-        '▬': { stealth: 0, name: 'Walkway' }              // Clear path
+        '.': { stealth: 5, moveMod: 1.0, name: 'Office Floor' },
+        '▬': { stealth: 0, moveMod: 1.1, name: 'Walkway' },      // Slight speedup
+        '·': { stealth: 10, moveMod: 1.0, name: 'Concrete' }
       },
 
       // Special office features
@@ -328,12 +345,11 @@ const GoneRogue = (function () {
       description: 'Abandoned retail stores',
       floorRange: [11, 15],
 
-      // Floor tile variety for mall environments
+      // Floor tile variety for mall environments - ASCII only
       floorTiles: [
-        { char: '.', weight: 60 },        // Standard mall floor
-        { char: '⬜', weight: 25 },       // Tile floor
-        { char: '🟫', weight: 10 },       // Carpet (stores)
-        { char: '🛍️', weight: 5 }         // Display area
+        { char: '.', weight: 70 },        // Standard mall floor
+        { char: '▬', weight: 20 },        // Walkway
+        { char: '·', weight: 10 }         // Tile floor
       ],
 
       // Expanded props with breakable-rich environment
@@ -360,12 +376,11 @@ const GoneRogue = (function () {
         { emoji: '🔼', name: 'Escalator', vertical: true, bidirectional: true }
       ],
 
-      // Tile effects for mall chaos
+      // Tile effects for mall - ASCII only
       tileEffects: {
-        '.': { stealth: 5, name: 'Mall Floor' },
-        '⬜': { stealth: -5, name: 'Tile Floor' },
-        '🟫': { stealth: 15, name: 'Store Carpet' },
-        '🛍️': { stealth: 10, name: 'Display Area' }      // Cluttered
+        '.': { stealth: 5, moveMod: 1.0, name: 'Mall Floor' },
+        '▬': { stealth: 0, moveMod: 1.05, name: 'Walkway' },
+        '·': { stealth: 5, moveMod: 1.0, name: 'Tile Floor' }
       },
 
       // Special mall features
@@ -385,16 +400,15 @@ const GoneRogue = (function () {
       description: 'Hazardous factory floor',
       floorRange: [17, 21],
 
-      // Floor tile variety with hazards
+      // Floor tile variety with hazards - ASCII only with animations
       floorTiles: [
-        { char: '.', weight: 40 },        // Standard industrial floor
-        { char: '⬜', weight: 20 },       // Metal floor
-        { char: '#️⃣', weight: 10 },      // Grate (see-through)
-        { char: '▪', weight: 10 },        // Metal walkway
-        { char: '🛢️', weight: 8 },       // Oil slick (ignitable)
-        { char: '🟢', weight: 5 },       // Acid pool (damage)
-        { char: '🔥', weight: 4 },       // Lava flow (damage)
-        { char: '⚫', weight: 3 }         // Cooled lava (fragile)
+        { char: '.', weight: 45 },                  // Standard industrial floor
+        { char: '·', weight: 15 },                  // Concrete
+        { char: '▪', weight: 15 },                  // Metal walkway
+        { char: '_', weight: 10, animated: true },  // Oil slick (ignitable, animated)
+        { char: '~', weight: 8, animated: true },   // Water (electrifiable)
+        { char: '^', weight: 4, animated: true },   // Fire (spreads on oil)
+        { char: '░', weight: 3 }                    // Debris/ash
       ],
 
       // Hazardous environment props
@@ -415,16 +429,17 @@ const GoneRogue = (function () {
         { emoji: '🔥', name: 'Furnace', interact: 'ignite', effect: 'creates_fire', provides: 'light' }
       ],
 
-      // Tile effects with hazards
+      // Tile effects with hazards - ASCII only
       tileEffects: {
-        '.': { stealth: 5, name: 'Industrial Floor' },
-        '⬜': { stealth: -10, name: 'Metal Floor' },      // Reflective, loud
-        '#️⃣': { stealth: 10, name: 'Grate', seeThrough: true },
-        '▪': { stealth: 0, name: 'Metal Walkway' },
-        '🛢️': { stealth: 5, name: 'Oil Slick', slip: true, ignitable: true },
-        '🟢': { stealth: 0, name: 'Acid Pool', damage: 2, corrosive: true, walkable: false },
-        '🔥': { stealth: 0, name: 'Lava Flow', damage: 5, burning: true, walkable: false },
-        '⚫': { stealth: 0, name: 'Cooled Lava', fragile: true }
+        '.': { stealth: 5, moveMod: 1.0, name: 'Industrial Floor' },
+        '·': { stealth: 5, moveMod: 1.0, name: 'Concrete' },
+        '▪': { stealth: 0, moveMod: 1.0, name: 'Metal Walkway' },
+        '_': { stealth: 5, moveMod: 0.70, ignitable: true, name: 'Oil Slick', animated: true },
+        '~': { stealth: 0, moveMod: 0.60, electrifiable: true, name: 'Water', animated: true },
+        '≈': { stealth: 0, moveMod: 0.60, electrifiable: true, name: 'Water', animated: true },
+        '^': { stealth: 0, moveMod: 0.40, damage: 2, spreads: true, name: 'Fire', animated: true },
+        '*': { stealth: 0, moveMod: 0.40, damage: 2, spreads: true, name: 'Fire', animated: true },
+        '░': { stealth: 5, moveMod: 0.90, name: 'Debris/Ash' }
       },
 
       // Ignition system properties
