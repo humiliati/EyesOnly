@@ -1,0 +1,632 @@
+/* ============================================================
+   EYES ONLY - Shop System Styles
+   Mobile-first responsive design with desktop adaptation
+   ============================================================ */
+
+/* ========== Dim Overlay ========== */
+.shop-dim-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 900;
+  backdrop-filter: blur(2px);
+}
+
+/* ========== Shop Root Container ========== */
+.shop-root {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 480px;
+  max-height: 80vh;
+  background: rgba(20, 25, 30, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px 8px 0 0;
+  z-index: 950;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: 'Courier New', monospace;
+}
+
+.shop-root.shop-black_market {
+  background: rgba(15, 10, 20, 0.97);
+  border-color: rgba(138, 43, 226, 0.4);
+  box-shadow: 0 0 20px rgba(138, 43, 226, 0.3);
+}
+
+/* ========== Shop Header ========== */
+.shop-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.3);
+  min-height: 40px;
+}
+
+.shop-title {
+  font-size: 13px;
+  color: #FFD700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-weight: bold;
+}
+
+.shop-black_market .shop-title {
+  color: #8B00FF;
+  text-shadow: 0 0 10px rgba(139, 0, 255, 0.5);
+}
+
+.shop-currency {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #FFD700;
+}
+
+.currency-icon {
+  font-size: 16px;
+}
+
+.currency-value {
+  font-weight: bold;
+}
+
+/* ========== Shop Items Row ========== */
+.shop-items-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 8px;
+  gap: 8px;
+  overflow: hidden;
+  min-height: 120px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.cycle-arrow-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.cycle-btn {
+  width: 32px;
+  height: 32px;
+  background: rgba(60, 65, 70, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.cycle-btn:hover:not(:disabled) {
+  background: rgba(80, 85, 90, 0.9);
+  border-color: rgba(255, 215, 0, 0.4);
+}
+
+.cycle-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.cycle-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+/* ========== Shop Card Container ========== */
+.shop-card-container {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  padding: 4px 0;
+  flex: 1;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.shop-card-container::-webkit-scrollbar {
+  display: none;
+}
+
+/* ========== Shop Card ========== */
+.shop-card {
+  position: relative;
+  flex-shrink: 0;
+  width: 64px;
+  height: 88px;
+  border-radius: 6px;
+  background: rgba(40, 45, 50, 0.9);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px;
+}
+
+.shop-card:hover:not(.disabled) {
+  transform: translateY(-4px);
+  border-color: rgba(255, 215, 0, 0.6);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+}
+
+.shop-card.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+
+.shop-card.gamble-card {
+  border-color: rgba(255, 215, 0, 0.5);
+  animation: gamble-pulse 2s ease-in-out infinite;
+}
+
+@keyframes gamble-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(255, 215, 0, 0.6);
+  }
+}
+
+/* ========== Price Label ========== */
+.price-label {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.65);
+  white-space: nowrap;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: bold;
+}
+
+.price-label.affordable {
+  color: rgba(144, 238, 144, 0.9);
+}
+
+.price-label.too-expensive {
+  color: rgba(255, 68, 68, 0.9);
+}
+
+/* ========== Card Thumbnail ========== */
+.card-thumbnail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  width: 100%;
+}
+
+.rarity-frame {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.rarity-frame.common {
+  border-color: #9E9E9E;
+}
+
+.rarity-frame.uncommon {
+  border-color: #4CAF50;
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.4);
+}
+
+.rarity-frame.rare {
+  border-color: #2196F3;
+  box-shadow: 0 0 8px rgba(33, 150, 243, 0.4);
+}
+
+.rarity-frame.impossible {
+  border-color: #9C27B0;
+  box-shadow: 0 0 12px rgba(156, 39, 176, 0.6);
+  animation: impossible-glow 2s ease-in-out infinite;
+}
+
+@keyframes impossible-glow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(156, 39, 176, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(156, 39, 176, 0.8);
+  }
+}
+
+.card-emoji {
+  font-size: 24px;
+}
+
+.card-abbr-name {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 6px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ========== Disabled Reason ========== */
+.disabled-reason {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 7px;
+  color: rgba(255, 100, 100, 0.9);
+  background: rgba(0, 0, 0, 0.8);
+  padding: 2px 4px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+/* ========== Player Sell Fan ========== */
+.player-sell-fan {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 10px 8px;
+  background: rgba(0, 0, 0, 0.2);
+  min-height: 100px;
+}
+
+.fan-header {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+.fan-cards {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.fan-cards::-webkit-scrollbar {
+  display: none;
+}
+
+/* ========== Sell Card ========== */
+.sell-card {
+  position: relative;
+  flex-shrink: 0;
+  width: 56px;
+  height: 72px;
+  background: rgba(50, 55, 60, 0.9);
+  border: 2px solid rgba(255, 100, 100, 0.3);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.sell-card:hover {
+  background: rgba(70, 75, 80, 0.9);
+  border-color: rgba(255, 100, 100, 0.6);
+  transform: translateY(-2px);
+}
+
+.sell-price {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: rgba(255, 215, 0, 0.8);
+  background: rgba(0, 0, 0, 0.7);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: bold;
+}
+
+.sell-emoji {
+  font-size: 28px;
+}
+
+/* ========== Black Market Notice ========== */
+.black-market-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  border-top: 1px solid rgba(138, 43, 226, 0.3);
+  background: rgba(138, 43, 226, 0.1);
+}
+
+.notice-icon {
+  font-size: 20px;
+}
+
+.notice-text {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ========== Minimize Button ========== */
+.shop-minimize-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.shop-minimize-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* ========== Desktop Layout ========== */
+@media (min-width: 768px) {
+  .shop-root {
+    width: 60%;
+    max-width: 600px;
+    max-height: 70vh;
+    bottom: auto;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 8px;
+  }
+
+  .shop-header {
+    padding: 14px 16px;
+    min-height: 48px;
+  }
+
+  .shop-title {
+    font-size: 15px;
+  }
+
+  .shop-currency {
+    font-size: 14px;
+  }
+
+  .shop-items-row {
+    padding: 16px 12px;
+    min-height: 140px;
+  }
+
+  .shop-card {
+    width: 72px;
+    height: 96px;
+  }
+
+  .card-emoji {
+    font-size: 28px;
+  }
+
+  .card-abbr-name {
+    font-size: 10px;
+  }
+
+  .player-sell-fan {
+    padding: 14px 12px;
+    min-height: 120px;
+  }
+
+  .sell-card {
+    width: 64px;
+    height: 80px;
+  }
+
+  .sell-emoji {
+    font-size: 32px;
+  }
+}
+
+/* ========== Mobile Portrait Optimization ========== */
+@media (max-width: 480px) and (orientation: portrait) {
+  .shop-root {
+    width: 95%;
+    max-height: 85vh;
+  }
+
+  .shop-header {
+    padding: 8px 10px;
+    min-height: 36px;
+  }
+
+  .shop-title {
+    font-size: 11px;
+  }
+
+  .shop-currency {
+    font-size: 11px;
+  }
+
+  .shop-items-row {
+    padding: 10px 6px;
+    min-height: 110px;
+  }
+
+  .cycle-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .shop-card {
+    width: 58px;
+    height: 80px;
+  }
+
+  .rarity-frame {
+    width: 38px;
+    height: 38px;
+  }
+
+  .card-emoji {
+    font-size: 20px;
+  }
+
+  .card-abbr-name {
+    font-size: 8px;
+  }
+
+  .price-label {
+    font-size: 9px;
+    top: -14px;
+  }
+
+  .player-sell-fan {
+    padding: 8px 6px;
+    min-height: 90px;
+  }
+
+  .fan-header {
+    font-size: 9px;
+  }
+
+  .sell-card {
+    width: 52px;
+    height: 68px;
+  }
+
+  .sell-emoji {
+    font-size: 24px;
+  }
+
+  .sell-price {
+    font-size: 9px;
+  }
+}
+
+/* ========== Animation Classes ========== */
+.shop-appear {
+  animation: shop-slide-up 0.3s ease-out;
+}
+
+@keyframes shop-slide-up {
+  from {
+    transform: translate(-50%, 100%);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, -50%);
+    opacity: 1;
+  }
+}
+
+.shop-disappear {
+  animation: shop-slide-down 0.3s ease-in;
+}
+
+@keyframes shop-slide-down {
+  from {
+    transform: translate(-50%, -50%);
+    opacity: 1;
+  }
+  to {
+    transform: translate(-50%, 100%);
+    opacity: 0;
+  }
+}
+
+/* ========== Drag-and-Drop States ========== */
+/* NOTE: These styles are prepared for future drag-and-drop implementation */
+/* They will be activated when debrief feed integration is completed */
+
+.shop-card.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+
+.debrief-feed.money-accepting {
+  background: rgba(255, 215, 0, 0.15) !important;
+  border-color: rgba(255, 215, 0, 0.6) !important;
+  animation: money-pulse 1s ease-in-out infinite;
+}
+
+.debrief-feed.money-accepting::before {
+  content: '💰';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 48px;
+  opacity: 0.4;
+  animation: money-twinkle 0.5s ease-in-out infinite;
+}
+
+@keyframes money-pulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+  }
+}
+
+@keyframes money-twinkle {
+  0%, 100% {
+    opacity: 0.4;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+}
+
+.debrief-feed.sell-accepting {
+  background: rgba(255, 69, 0, 0.15) !important;
+  border-color: rgba(255, 69, 0, 0.6) !important;
+}
+
+.debrief-feed.sell-accepting::before {
+  content: '🔥';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 48px;
+  opacity: 0.5;
+}
