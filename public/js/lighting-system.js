@@ -313,10 +313,64 @@ const LightingSystem = (function() {
       intensity = Math.max(0, Math.min(1, intensity));
     }
 
-    // TODO: Check for blockers (walls) between source and target using bresenham line
-    // For now, simple implementation without raycasting
+    // Check line of sight using Bresenham raycasting
+    if (blockers && blockers.length > 0) {
+      if (!_hasLineOfSight(source.x, source.y, targetX, targetY, blockers)) {
+        return 0;
+      }
+    }
 
     return intensity;
+  }
+
+  /**
+   * Check if there's line of sight between two points using Bresenham's line algorithm
+   * Returns false if any blocker is encountered along the line
+   */
+  function _hasLineOfSight(x0, y0, x1, y1, blockers) {
+    // Create a set for fast blocker lookup
+    var blockerSet = {};
+    for (var i = 0; i < blockers.length; i++) {
+      var key = blockers[i].x + ',' + blockers[i].y;
+      blockerSet[key] = true;
+    }
+
+    // Bresenham's line algorithm
+    var dx = Math.abs(x1 - x0);
+    var dy = Math.abs(y1 - y0);
+    var sx = x0 < x1 ? 1 : -1;
+    var sy = y0 < y1 ? 1 : -1;
+    var err = dx - dy;
+
+    var x = x0;
+    var y = y0;
+
+    while (true) {
+      // Don't check the source or target positions themselves
+      if ((x !== x0 || y !== y0) && (x !== x1 || y !== y1)) {
+        var key = x + ',' + y;
+        if (blockerSet[key]) {
+          return false; // Line is blocked
+        }
+      }
+
+      // Reached target
+      if (x === x1 && y === y1) {
+        break;
+      }
+
+      var e2 = 2 * err;
+      if (e2 > -dy) {
+        err -= dy;
+        x += sx;
+      }
+      if (e2 < dx) {
+        err += dx;
+        y += sy;
+      }
+    }
+
+    return true; // No blockers found
   }
 
   /**
