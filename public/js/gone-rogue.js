@@ -2920,8 +2920,15 @@ const GoneRogue = (function () {
       display[projectile.y][projectile.x] = projectile.glyph || TILES.PROJECTILE;
     });
 
-    // Place player
-    display[_player.y][_player.x] = TILES.PLAYER;
+    // Place player (check for avatar override from passive items)
+    var playerAvatar = TILES.PLAYER;
+    if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.getPlayerAvatarOverride) {
+      var override = PassiveItemsSystem.getPlayerAvatarOverride();
+      if (override) {
+        playerAvatar = override;
+      }
+    }
+    display[_player.y][_player.x] = playerAvatar;
 
     // Render grid
     for (var y = 0; y < GRID_HEIGHT; y++) {
@@ -3121,6 +3128,11 @@ const GoneRogue = (function () {
 
     // Run mode increases detection and makes noise
     if (runMode) {
+      // Break passive items that break on running
+      if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.checkAndBreakItems) {
+        PassiveItemsSystem.checkAndBreakItems('run');
+      }
+
       _player.detection += 2;
       _updateAlertLevel();
 
@@ -4950,6 +4962,12 @@ const GoneRogue = (function () {
       });
     }
 
+    // Passive item bonuses (e.g., Cardboard Box)
+    if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.getEquippedStealthBonus) {
+      var passiveBonus = PassiveItemsSystem.getEquippedStealthBonus(_player.quality || 50);
+      bonus += passiveBonus;
+    }
+
     // Cache result for this player position
     _stealthBonusCache = { bonus: bonus, px: _player.x, py: _player.y };
 
@@ -5735,6 +5753,11 @@ const GoneRogue = (function () {
    * @param {Object} card - Optional card used to initiate combat
    */
   function _enterStrCombat(enemy, trigger, card) {
+    // Break passive items that break on combat
+    if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.checkAndBreakItems) {
+      PassiveItemsSystem.checkAndBreakItems('combat');
+    }
+
     // Freeze realtime game loop
     if (_gameLoopActive) {
       _pauseGameLoop();
