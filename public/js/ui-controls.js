@@ -532,7 +532,8 @@
         name: item.name || 'Unknown Item',
         description: item.description || 'No description',
         context: 'both',  // Persistent items are available in both contexts
-        type: item.type || 'item'
+        type: item.type || 'item',
+        lifecycle: item.lifecycle || 'disposable'  // Items are disposable by default
       };
     });
 
@@ -548,7 +549,8 @@
         emoji: getEmojiForStreetItem(itemName),
         name: itemName,
         description: 'Found in street-chronicles',
-        context: 'street'
+        context: 'street',
+        lifecycle: 'disposable'  // Street items are disposable
       };
     });
 
@@ -559,6 +561,11 @@
     allItems.forEach(function (item, index) {
       var itemEl = document.createElement('button');
       itemEl.className = 'inventory-item';
+
+      // Make item draggable for disposal
+      itemEl.draggable = true;
+      itemEl.dataset.itemData = JSON.stringify(item);
+      itemEl.dataset.itemIndex = index;
 
       // Add context-specific class for color coding
       if (item.context === 'live') {
@@ -573,9 +580,25 @@
       itemEl.setAttribute('data-index', index);
       itemEl.setAttribute('type', 'button');
       itemEl.setAttribute('aria-label', item.name);
+      
+      // Click handler for selection
       itemEl.addEventListener('click', function () {
         selectInventoryItem(index, allItems);
       });
+
+      // Drag handlers for disposal
+      itemEl.addEventListener('dragstart', function(e) {
+        if (typeof CardDisposalSystem !== 'undefined') {
+          CardDisposalSystem.handleDragStart(itemEl, item, index, 'inventory');
+        }
+      });
+
+      itemEl.addEventListener('dragend', function(e) {
+        if (typeof CardDisposalSystem !== 'undefined') {
+          CardDisposalSystem.handleDragEnd();
+        }
+      });
+
       container.appendChild(itemEl);
     });
 
