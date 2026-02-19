@@ -580,6 +580,68 @@ const CardSystem = (function () {
       emoji: '🎯',
       lifecycleType: 'power',
       baseStats: {
+        guaranteedFirstStrike: true,
+        damageBonus: 5,
+        critBonus: 20,
+        energy: 3,
+        speed: 1,
+        cooldownCombat: 3,
+        combatPersistent: true
+      }
+    },
+
+    // ========== RESOURCE REPLENISHMENT CONSUMABLES ==========
+    BATTERY_PACK: {
+      category: 'consumable',
+      type: 'consumable',
+      name: 'Battery Pack',
+      emoji: '🔋',
+      lifecycleType: 'disposable',
+      baseStats: {
+        batteryRecharge: 2,
+        energy: 0,
+        speed: 1,
+        consumable: true
+      },
+      resourceCost: {},
+      description: 'Recharges 2 battery power for tech equipment'
+    },
+    POWER_CELL: {
+      category: 'consumable',
+      type: 'consumable',
+      name: 'Power Cell',
+      emoji: '⚡',
+      lifecycleType: 'disposable',
+      baseStats: {
+        batteryRecharge: 1,
+        energy: 0,
+        speed: 1,
+        consumable: true
+      },
+      resourceCost: {},
+      description: 'Recharges 1 battery power for tech equipment'
+    },
+    COFFEE_MUG: {
+      category: 'consumable',
+      type: 'consumable',
+      name: 'Coffee Mug',
+      emoji: '☕',
+      lifecycleType: 'disposable',
+      baseStats: {
+        fatigueReduction: 15,
+        focusBoost: 1,
+        energyBoost: 1,
+        energy: 0,
+        speed: 1,
+        consumable: true
+      },
+      resourceCost: {},
+      description: 'Hot coffee reduces fatigue and sharpens focus'
+    },
+
+    // ========== CHARM CARDS (Passive Bonuses) ==========
+      lifecycleType: 'power',
+      baseStats: {
         guaranteedCrit: true,
         damageMultiplier: 2.0,
         stealthBonus: 5,

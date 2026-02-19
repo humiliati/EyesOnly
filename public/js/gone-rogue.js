@@ -4199,11 +4199,53 @@ const GoneRogue = (function () {
    * Use utility card
    */
   function _useUtility(card) {
+    var effects = [];
+    
+    // Health restoration
     if (card.stats.hp) {
       _player.hp = Math.min(_player.maxHp, _player.hp + card.stats.hp);
+      effects.push('HP +' + card.stats.hp);
     }
-    if (card.stats.energy) {
-      _player.energy = Math.min(_player.maxEnergy, _player.energy + card.stats.energy);
+    
+    // Energy restoration
+    if (card.stats.energy || card.stats.energyBoost) {
+      var energyGain = card.stats.energyBoost || card.stats.energy || 0;
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addEnergy) {
+        GAMESTATE.addEnergy(energyGain);
+        effects.push('ENERGY +' + energyGain);
+      }
+    }
+    
+    // Fatigue reduction
+    if (card.stats.fatigueReduction) {
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.reduceFatigue) {
+        GAMESTATE.reduceFatigue(card.stats.fatigueReduction);
+        effects.push('FATIGUE -' + card.stats.fatigueReduction);
+      }
+    }
+    
+    // Battery recharge
+    if (card.stats.batteryRecharge) {
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.rechargeBattery) {
+        GAMESTATE.rechargeBattery(card.stats.batteryRecharge);
+        effects.push('BATTERY +' + card.stats.batteryRecharge);
+      }
+    }
+    
+    // Focus boost
+    if (card.stats.focusBoost) {
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addFocus) {
+        GAMESTATE.addFocus(card.stats.focusBoost);
+        effects.push('FOCUS +' + card.stats.focusBoost);
+      }
+    }
+    
+    // Ammo restoration
+    if (card.stats.ammoRestore) {
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addAmmo) {
+        GAMESTATE.addAmmo(card.stats.ammoRestore);
+        effects.push('AMMO +' + card.stats.ammoRestore);
+      }
     }
 
     // Check for wrong item in safe zone trigger
@@ -4231,8 +4273,9 @@ const GoneRogue = (function () {
     _turn++;
     _saveState();
 
+    var effectsMsg = effects.length > 0 ? effects.join(', ') : '';
     return {
-      lines: ['USED: ' + card.name.toUpperCase(), ''].concat(_renderGrid()),
+      lines: ['USED: ' + card.name.toUpperCase(), effectsMsg, ''].concat(_renderGrid()),
       prompt: getPrompt(),
       stayActive: true
     };

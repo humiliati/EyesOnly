@@ -905,6 +905,14 @@ const GAMESTATE = (function () {
     _saveState();
     return _state.playerEnergy;
   }
+  
+  /**
+   * Add energy (alias for restoreEnergy for consistency)
+   * @param {number} amount - Amount of energy to add
+   */
+  function addEnergy(amount) {
+    return restoreEnergy(amount);
+  }
 
   // ========== FOCUS MANAGEMENT ==========
 
@@ -935,6 +943,14 @@ const GAMESTATE = (function () {
     _state.playerFocus = Math.min(_state.maxFocus, current + amount);
     _saveState();
     return _state.playerFocus;
+  }
+  
+  /**
+   * Add focus (alias for restoreFocus for consistency)
+   * @param {number} amount - Amount of focus to add
+   */
+  function addFocus(amount) {
+    return restoreFocus(amount);
   }
 
   // ========== BATTERY MANAGEMENT ==========
@@ -1132,10 +1148,12 @@ const GAMESTATE = (function () {
     getEnergy: getEnergy,
     useEnergy: useEnergy,
     restoreEnergy: restoreEnergy,
+    addEnergy: addEnergy,
     // Focus management
     getFocus: getFocus,
     loseFocus: loseFocus,
     restoreFocus: restoreFocus,
+    addFocus: addFocus,
     // Battery management
     getBattery: getBattery,
     useBattery: useBattery,
