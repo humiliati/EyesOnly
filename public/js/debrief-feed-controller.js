@@ -313,6 +313,44 @@ const DebriefFeedController = (function() {
     }
   }
 
+  /**
+   * Set MOK expression directly (API hook for agents)
+   * @param {string} expression - Expression name (idle, talking, warning, happy, error, etc.)
+   * @param {Object} options - Optional color and timing overrides
+   */
+  function setMOKExpression(expression, options) {
+    if (!_mokInitialized || !MOKVisualEngine) {
+      return;
+    }
+    
+    MOKVisualEngine.setExpression(expression, options);
+  }
+
+  /**
+   * Set custom MOK glow colors (API hook for agents)
+   * @param {string} primaryColor - Primary glow color (hex)
+   * @param {string} secondaryColor - Secondary glow color (hex)
+   * @param {number} pulseSpeed - Pulse speed in ms (optional)
+   */
+  function setMOKGlowColors(primaryColor, secondaryColor, pulseSpeed) {
+    if (!_mokInitialized || !MOKVisualEngine) {
+      return;
+    }
+    
+    MOKVisualEngine.setCustomGlowColors(primaryColor, secondaryColor, pulseSpeed);
+  }
+
+  /**
+   * Get current MOK glow colors
+   */
+  function getMOKGlowColors() {
+    if (!_mokInitialized || !MOKVisualEngine || !MOKVisualEngine.getCurrentGlowColors) {
+      return null;
+    }
+    
+    return MOKVisualEngine.getCurrentGlowColors();
+  }
+
   // Public API
   return {
     init: init,
@@ -321,7 +359,10 @@ const DebriefFeedController = (function() {
     setVideoPlaying: setVideoPlaying,
     refresh: refresh,
     getCurrentDisplay: getCurrentDisplay,
-    triggerMOKEvent: triggerMOKEvent
+    triggerMOKEvent: triggerMOKEvent,
+    setMOKExpression: setMOKExpression,
+    setMOKGlowColors: setMOKGlowColors,
+    getMOKGlowColors: getMOKGlowColors
   };
 })();
 

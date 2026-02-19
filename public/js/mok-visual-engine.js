@@ -165,11 +165,82 @@ const MOKVisualEngine = (function() {
     return _currentAnimation ? _currentAnimation.cycleId : null;
   }
 
+  /**
+   * Set custom glow colors (for API/kernel integration)
+   * @param {string} primaryColor - Primary glow color (hex)
+   * @param {string} secondaryColor - Secondary glow color (hex)
+   * @param {number} pulseSpeed - Pulse speed in ms (optional)
+   */
+  function setCustomGlowColors(primaryColor, secondaryColor, pulseSpeed) {
+    if (!_glowElement) return;
+
+    if (primaryColor) {
+      _glowElement.style.setProperty('--mok-primary-glow', primaryColor);
+    }
+    if (secondaryColor) {
+      _glowElement.style.setProperty('--mok-secondary-glow', secondaryColor);
+    }
+    if (pulseSpeed) {
+      _glowElement.style.setProperty('--mok-pulse-speed', pulseSpeed + 'ms');
+    }
+  }
+
+  /**
+   * Set expression directly (for API integration)
+   * @param {string} expression - Expression name (idle, talking, warning, etc.)
+   * @param {Object} options - Optional color and timing overrides
+   */
+  function setExpression(expression, options) {
+    options = options || {};
+    
+    // Find cycle for expression
+    var cycleId = expression + '_active';
+    var cycle = MOKAnimationCycles.getCycle(cycleId);
+    
+    // Fallback to basic expression if specific cycle not found
+    if (!cycle) {
+      cycleId = expression === 'idle' ? 'idle_breathe' : (expression + '_active');
+      cycle = MOKAnimationCycles.getCycle(cycleId);
+    }
+    
+    if (!cycle) {
+      console.warn('[MOKVisualEngine] Unknown expression:', expression);
+      return;
+    }
+
+    // Apply custom colors if provided
+    if (options.primaryColor || options.secondaryColor) {
+      setCustomGlowColors(options.primaryColor, options.secondaryColor, options.pulseSpeed);
+    }
+
+    // Play animation
+    playAnimation(cycleId);
+  }
+
+  /**
+   * Get current glow colors (for inspection)
+   */
+  function getCurrentGlowColors() {
+    if (!_glowElement) return null;
+    
+    return {
+      primaryColor: _glowElement.style.getPropertyValue('--mok-primary-glow') || 
+                    getComputedStyle(_glowElement).getPropertyValue('--mok-primary-glow'),
+      secondaryColor: _glowElement.style.getPropertyValue('--mok-secondary-glow') ||
+                      getComputedStyle(_glowElement).getPropertyValue('--mok-secondary-glow'),
+      pulseSpeed: _glowElement.style.getPropertyValue('--mok-pulse-speed') ||
+                  getComputedStyle(_glowElement).getPropertyValue('--mok-pulse-speed')
+    };
+  }
+
   // Public API
   return {
     init: init,
     playAnimation: playAnimation,
     stop: stop,
-    getCurrentAnimation: getCurrentAnimation
+    getCurrentAnimation: getCurrentAnimation,
+    setCustomGlowColors: setCustomGlowColors,
+    setExpression: setExpression,
+    getCurrentGlowColors: getCurrentGlowColors
   };
 })();
