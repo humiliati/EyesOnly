@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Overlay UI Agent Tester - Integration Mode</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background: #000;
+      color: #1cff9b;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+
+    h1, h2 {
+      color: #1cff9b;
+      border-bottom: 2px solid #1cff9b;
+      padding-bottom: 10px;
+      margin: 20px 0;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .test-section {
+      margin: 20px 0;
+      padding: 20px;
+      border: 1px solid #1cff9b;
+      border-radius: 5px;
+      background: rgba(28, 255, 155, 0.05);
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 15px 0;
+    }
+
+    button {
+      background: #1cff9b;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+      transition: all 0.3s;
+      border-radius: 3px;
+    }
+
+    button:hover:not(:disabled) {
+      background: #0f8;
+      transform: translateY(-2px);
+    }
+
+    button:disabled {
+      background: #666;
+      color: #333;
+      cursor: not-allowed;
+    }
+
+    .viewport-selector {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin: 15px 0;
+    }
+
+    .viewport-btn {
+      background: #333;
+      color: #1cff9b;
+      border: 1px solid #1cff9b;
+      padding: 15px;
+      text-align: center;
+    }
+
+    .viewport-btn.active {
+      background: #1cff9b;
+      color: #000;
+    }
+
+    .test-frame-container {
+      position: relative;
+      margin: 20px 0;
+      border: 2px solid #1cff9b;
+      background: #000;
+      overflow: hidden;
+    }
+
+    .test-frame-label {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(28, 255, 155, 0.9);
+      color: #000;
+      padding: 5px 10px;
+      border-radius: 3px;
+      font-weight: bold;
+      z-index: 1000;
+    }
+
+    #test-iframe {
+      width: 100%;
+      height: 800px;
+      border: none;
+      display: block;
+    }
+
+    .results-panel {
+      margin: 20px 0;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.7);
+      border: 2px solid #1cff9b;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .result-item {
+      padding: 10px;
+      margin: 5px 0;
+      border-left: 4px solid transparent;
+      font-size: 0.95em;
+    }
+
+    .result-item.pass {
+      border-left-color: #0f0;
+      background: rgba(0, 255, 0, 0.1);
+    }
+
+    .result-item.fail {
+      border-left-color: #f00;
+      background: rgba(255, 0, 0, 0.1);
+    }
+
+    .result-item.info {
+      border-left-color: #0ff;
+      background: rgba(0, 255, 255, 0.05);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin: 15px 0;
+    }
+
+    .stat-card {
+      padding: 15px;
+      text-align: center;
+      border: 1px solid #1cff9b;
+      border-radius: 5px;
+      background: rgba(28, 255, 155, 0.05);
+    }
+
+    .stat-value {
+      font-size: 2.5em;
+      font-weight: bold;
+      color: #1cff9b;
+    }
+
+    .stat-label {
+      font-size: 0.9em;
+      color: #888;
+      margin-top: 5px;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 5px 15px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+
+    .status-badge.pending { background: #666; }
+    .status-badge.running { background: #ff0; color: #000; animation: pulse 1s infinite; }
+    .status-badge.pass { background: #0a0; }
+    .status-badge.fail { background: #a00; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .log-viewer {
+      background: #000;
+      border: 1px solid #1cff9b;
+      padding: 10px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-size: 0.85em;
+      font-family: 'Courier New', monospace;
+    }
+
+    .log-entry {
+      padding: 2px 0;
+    }
+
+    .log-time {
+      color: #666;
+    }
+
+    .log-info { color: #0ff; }
+    .log-success { color: #0f0; }
+    .log-error { color: #f00; }
+    .log-warning { color: #f80; }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      #test-iframe {
+        height: 600px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔐 Login Overlay UI Agent Tester</h1>
+    <p style="margin-bottom: 20px;">Automated UI testing with real iframe integration</p>
+
+    <div class="test-section">
+      <h2>📱 Viewport Configuration</h2>
+      <p style="margin-bottom: 10px;">
+        Current: <strong id="current-viewport">Desktop (1280x720)</strong>
+      </p>
+      <div class="viewport-selector">
+        <button class="viewport-btn active" onclick="setViewport('desktop', 1280, 720)" id="vp-desktop">
+          💻 Desktop<br>1280x720
+        </button>
+        <button class="viewport-btn" onclick="setViewport('mobile-portrait', 375, 667)" id="vp-mobile-portrait">
+          📱 Mobile Portrait<br>375x667
+        </button>
+        <button class="viewport-btn" onclick="setViewport('mobile-landscape', 667, 375)" id="vp-mobile-landscape">
+          📱 Mobile Landscape<br>667x375
+        </button>
+        <button class="viewport-btn" onclick="setViewport('tablet', 768, 1024)" id="vp-tablet">
+          📱 Tablet<br>768x1024
+        </button>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>🎮 Test Controls</h2>
+      <div class="controls">
+        <button onclick="runFullTest()" id="run-full">▶️ Run Full Test Suite</button>
+        <button onclick="testLoginFields()" id="test-login">🔐 Test Login Fields</button>
+        <button onclick="testRegisterFields()" id="test-register">📝 Test Register Fields</button>
+        <button onclick="showLoginOverlay()" id="show-login">👁️ Show Login Form</button>
+        <button onclick="showRegisterOverlay()" id="show-register">👁️ Show Register Form</button>
+        <button onclick="clearResults()" id="clear">🗑️ Clear Results</button>
+        <button onclick="exportResults()" id="export" disabled>📥 Export JSON</button>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>📊 Test Summary</h2>
+      <p>Status: <span class="status-badge pending" id="status">Pending</span></p>
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-total">0</div>
+          <div class="stat-label">Total Tests</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-passed" style="color: #0f0;">0</div>
+          <div class="stat-label">Passed</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-failed" style="color: #f00;">0</div>
+          <div class="stat-label">Failed</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-rate">0%</div>
+          <div class="stat-label">Success Rate</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>🖥️ Test Environment</h2>
+      <div class="test-frame-container">
+        <div class="test-frame-label" id="frame-label">Desktop View</div>
+        <iframe id="test-iframe" src="../index.html" sandbox="allow-same-origin allow-scripts allow-forms"></iframe>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>📋 Test Results</h2>
+      <div class="results-panel" id="results">
+        <p style="color: #666;">No tests run yet. Click a test button to begin.</p>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>🔍 Event Log</h2>
+      <div class="log-viewer" id="log"></div>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let currentViewport = { name: 'desktop', width: 1280, height: 720, isMobile: false };
+    let testResults = [];
+    let testRunning = false;
+
+    // Field configurations
+    const FIELDS = {
+      login: [
+        { id: 'login-username', name: 'Login Username Field', type: 'text' }
+      ],
+      register: [
+        { id: 'register-username', name: 'Register Username Field', type: 'text' },
+        { id: 'register-callsign', name: 'Register Callsign Field', type: 'text' },
+        { id: 'register-email', name: 'Register Email Field', type: 'email' }
+      ]
+    };
+
+    /**
+     * Set viewport dimensions
+     */
+    function setViewport(name, width, height) {
+      if (testRunning) {
+        log('warning', 'Cannot change viewport during test');
+        return;
+      }
+
+      currentViewport = {
+        name: name,
+        width: width,
+        height: height,
+        isMobile: width < 768
+      };
+
+      // Update UI
+      document.querySelectorAll('.viewport-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(`vp-${name}`).classList.add('active');
+      document.getElementById('current-viewport').textContent = `${name.replace('-', ' ')} (${width}x${height})`;
+      document.getElementById('frame-label').textContent = `${name.replace('-', ' ')} - ${width}x${height}`;
+
+      // Resize iframe container
+      const iframe = document.getElementById('test-iframe');
+      const container = iframe.parentElement;
+      container.style.width = width + 'px';
+      container.style.margin = '0 auto';
+
+      log('info', `Viewport changed to: ${name} (${width}x${height})`);
+    }
+
+    /**
+     * Run full test suite
+     */
+    async function runFullTest() {
+      if (testRunning) return;
+
+      testRunning = true;
+      clearResults();
+      updateStatus('running');
+      disableButtons(true);
+
+      log('info', '========== STARTING FULL TEST SUITE ==========');
+
+      // Test login fields
+      await showLoginOverlay();
+      await sleep(500);
+      await testLoginFields();
+      await sleep(500);
+
+      // Test register fields
+      await showRegisterOverlay();
+      await sleep(500);
+      await testRegisterFields();
+      await sleep(500);
+
+      // Complete
+      const allPassed = testResults.every(t => t.passed);
+      updateStatus(allPassed ? 'pass' : 'fail');
+      updateStats();
+      document.getElementById('export').disabled = false;
+
+      log('success', `========== TEST COMPLETE: ${testResults.filter(t => t.passed).length}/${testResults.length} passed ==========`);
+
+      testRunning = false;
+      disableButtons(false);
+    }
+
+    /**
+     * Test login form fields
+     */
+    async function testLoginFields() {
+      log('info', '--- Testing Login Fields ---');
+
+      for (const field of FIELDS.login) {
+        await testField(field, 'login');
+        await sleep(300);
+      }
+    }
+
+    /**
+     * Test register form fields
+     */
+    async function testRegisterFields() {
+      log('info', '--- Testing Register Fields ---');
+
+      for (const field of FIELDS.register) {
+        await testField(field, 'register');
+        await sleep(300);
+      }
+    }
+
+    /**
+     * Test an individual field
+     */
+    async function testField(field, form) {
+      const testName = `${currentViewport.name} - ${field.name}`;
+
+      try {
+        const iframe = document.getElementById('test-iframe');
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+
+        // Check if field exists
+        const fieldEl = iframeDoc.getElementById(field.id);
+        if (!fieldEl) {
+          addResult(testName, false, `Field ${field.id} not found in DOM`);
+          log('error', `✗ ${testName}: Field not found`);
+          return;
+        }
+
+        // Test 1: Field is visible
+        const isVisible = fieldEl.offsetParent !== null;
+        if (!isVisible) {
+          addResult(testName + ' - Visibility', false, 'Field is not visible');
+          log('error', `✗ ${testName}: Field not visible`);
+        } else {
+          addResult(testName + ' - Visibility', true, 'Field is visible');
+          log('success', `✓ ${testName}: Field visible`);
+        }
+
+        // Test 2: Field is enabled
+        const isEnabled = !fieldEl.disabled;
+        if (!isEnabled) {
+          addResult(testName + ' - Enabled', false, 'Field is disabled');
+          log('error', `✗ ${testName}: Field disabled`);
+        } else {
+          addResult(testName + ' - Enabled', true, 'Field is enabled');
+          log('success', `✓ ${testName}: Field enabled`);
+        }
+
+        // Test 3: Field can receive focus
+        fieldEl.focus();
+        await sleep(100);
+        const hasFocus = iframeDoc.activeElement === fieldEl;
+        if (!hasFocus) {
+          addResult(testName + ' - Focus', false, 'Field cannot receive focus');
+          log('error', `✗ ${testName}: Cannot focus`);
+        } else {
+          addResult(testName + ' - Focus', true, 'Field can receive focus');
+          log('success', `✓ ${testName}: Focus received`);
+        }
+
+        // Test 4: Field accepts input
+        const testValue = 'test_' + Date.now();
+        fieldEl.value = testValue;
+        fieldEl.dispatchEvent(new Event('input', { bubbles: true }));
+        await sleep(100);
+
+        if (fieldEl.value !== testValue) {
+          addResult(testName + ' - Input', false, 'Field does not retain input value');
+          log('error', `✗ ${testName}: Input failed`);
+        } else {
+          addResult(testName + ' - Input', true, 'Field accepts and retains input');
+          log('success', `✓ ${testName}: Input accepted`);
+        }
+
+        // Test 5: Mobile-specific checks
+        if (currentViewport.isMobile) {
+          // Check for input type that triggers mobile keyboard
+          const inputType = fieldEl.getAttribute('type') || 'text';
+          const mobileOptimized = ['text', 'email', 'tel', 'url'].includes(inputType);
+
+          addResult(testName + ' - Mobile Keyboard', mobileOptimized,
+            mobileOptimized ? 'Field configured for mobile keyboard' : 'Field may not trigger mobile keyboard');
+
+          if (mobileOptimized) {
+            log('success', `✓ ${testName}: Mobile keyboard optimized`);
+          } else {
+            log('warning', `⚠ ${testName}: May not trigger mobile keyboard`);
+          }
+        }
+
+        // Clear field
+        fieldEl.value = '';
+
+      } catch (error) {
+        addResult(testName, false, `Exception: ${error.message}`);
+        log('error', `✗ ${testName}: Exception - ${error.message}`);
+      }
+    }
+
+    /**
+     * Show login overlay
+     */
+    async function showLoginOverlay() {
+      log('info', 'Opening login overlay...');
+
+      try {
+        const iframe = document.getElementById('test-iframe');
+        const iframeWindow = iframe.contentWindow;
+
+        // Trigger login button click
+        const loginBtn = iframeWindow.document.querySelector('button[data-action="login"]');
+        if (loginBtn) {
+          loginBtn.click();
+          await sleep(300);
+          log('success', 'Login overlay opened');
+        } else {
+          log('warning', 'Login button not found - may need to adjust selector');
+        }
+      } catch (error) {
+        log('error', `Failed to open login overlay: ${error.message}`);
+      }
+    }
+
+    /**
+     * Show register overlay
+     */
+    async function showRegisterOverlay() {
+      log('info', 'Opening register overlay...');
+
+      try {
+        const iframe = document.getElementById('test-iframe');
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+
+        // First ensure login overlay is open
+        await showLoginOverlay();
+        await sleep(300);
+
+        // Click register button if available
+        const registerLink = iframeDoc.getElementById('login-submit-btn');
+        if (registerLink) {
+          // Simulate switching to register mode
+          const loginBtn = iframeDoc.querySelector('button[data-action="login"]');
+          if (loginBtn) {
+            loginBtn.click(); // Second click switches to register
+            await sleep(300);
+            log('success', 'Register overlay opened');
+          }
+        }
+      } catch (error) {
+        log('error', `Failed to open register overlay: ${error.message}`);
+      }
+    }
+
+    /**
+     * Add test result
+     */
+    function addResult(name, passed, details) {
+      testResults.push({ name, passed, details, timestamp: Date.now() });
+      displayResults();
+      updateStats();
+    }
+
+    /**
+     * Display test results
+     */
+    function displayResults() {
+      const container = document.getElementById('results');
+      container.innerHTML = '';
+
+      if (testResults.length === 0) {
+        container.innerHTML = '<p style="color: #666;">No test results yet.</p>';
+        return;
+      }
+
+      testResults.forEach(result => {
+        const item = document.createElement('div');
+        item.className = `result-item ${result.passed ? 'pass' : 'fail'}`;
+
+        const icon = result.passed ? '✓' : '✗';
+        const status = result.passed ? 'PASS' : 'FAIL';
+
+        item.innerHTML = `
+          <strong>${icon} ${status}</strong> - ${result.name}
+          <br><span style="font-size: 0.85em; color: #888;">${result.details}</span>
+        `;
+
+        container.appendChild(item);
+      });
+    }
+
+    /**
+     * Update statistics
+     */
+    function updateStats() {
+      const total = testResults.length;
+      const passed = testResults.filter(t => t.passed).length;
+      const failed = total - passed;
+      const rate = total > 0 ? Math.round((passed / total) * 100) : 0;
+
+      document.getElementById('stat-total').textContent = total;
+      document.getElementById('stat-passed').textContent = passed;
+      document.getElementById('stat-failed').textContent = failed;
+      document.getElementById('stat-rate').textContent = rate + '%';
+    }
+
+    /**
+     * Update test status
+     */
+    function updateStatus(status) {
+      const badge = document.getElementById('status');
+      badge.className = `status-badge ${status}`;
+      badge.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+    }
+
+    /**
+     * Clear results
+     */
+    function clearResults() {
+      testResults = [];
+      document.getElementById('results').innerHTML = '<p style="color: #666;">No test results yet.</p>';
+      updateStats();
+      updateStatus('pending');
+      document.getElementById('export').disabled = true;
+      log('info', 'Results cleared');
+    }
+
+    /**
+     * Export results as JSON
+     */
+    function exportResults() {
+      const data = {
+        timestamp: new Date().toISOString(),
+        viewport: currentViewport,
+        results: testResults
+      };
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `login-overlay-test-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      log('success', 'Results exported');
+    }
+
+    /**
+     * Disable/enable buttons
+     */
+    function disableButtons(disabled) {
+      ['run-full', 'test-login', 'test-register', 'show-login', 'show-register', 'clear'].forEach(id => {
+        document.getElementById(id).disabled = disabled;
+      });
+    }
+
+    /**
+     * Log message
+     */
+    function log(level, message) {
+      const time = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-${level}">${message}</span>`;
+
+      const logEl = document.getElementById('log');
+      logEl.appendChild(entry);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    /**
+     * Sleep utility
+     */
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // Initialize
+    log('info', 'UI Agent Tester initialized and ready');
+  </script>
+</body>
+</html>

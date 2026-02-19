@@ -35,13 +35,40 @@ export async function createUserAccount(
   email?: string,
 ): Promise<UserAccountRow> {
   const now = Date.now();
+
+  // Default filesystem template for new users (based on LoginShell 'user' account)
+  const defaultFilesystem = {
+    '/': { type: 'dir', children: ['home', 'public', 'ops'] },
+    '/home': { type: 'dir', children: ['user', 'admin'] },
+    '/home/user': { type: 'dir', children: ['documents', 'downloads', 'todo.txt', 'it-note.txt'] },
+    '/home/user/documents': { type: 'dir', children: ['field-journal.txt'] },
+    '/home/user/downloads': { type: 'dir', children: [] },
+    '/home/user/todo.txt': { type: 'file', body: '[TODO][IT] hide hardcoded credentials before launch\n[TODO][IT] rotate codename hint each week\n[TODO][IT] stop leaving TODOs in production' },
+    '/home/user/it-note.txt': { type: 'file', body: 'IT GUY NOTE: if this file is visible, permissions are "working as intended".' },
+    '/home/user/documents/field-journal.txt': { type: 'file', body: 'ENTRY: SANDPOINT COVER HOLDS. TERMINAL TRAFFIC INCREASING.' },
+    '/home/admin': { type: 'dir', children: ['audit.log'] },
+    '/home/admin/audit.log': { type: 'file', body: 'ACCESS DENIED FOR NON-ADMIN SESSIONS' },
+    '/public': { type: 'dir', children: ['readme.txt'] },
+    '/public/readme.txt': { type: 'file', body: 'ALL OPERATIONS ARE FICTIONAL. ALL LOCATIONS ARE REAL.' },
+    '/ops': { type: 'dir', children: ['staging', 'archive'] },
+    '/ops/staging': { type: 'dir', children: [] },
+    '/ops/archive': { type: 'dir', children: [] }
+  };
+
+  const preferences = JSON.stringify({
+    theme: 'green',
+    sfx_enabled: true,
+    cloud_sync_enabled: true,
+    filesystem: defaultFilesystem
+  });
+
   const result = await db
     .prepare(
       `INSERT INTO user_accounts (username, email, callsign, created_at, last_login, cryptos, preferences)
-       VALUES (?, ?, ?, ?, ?, 0, '{"theme":"green","sfx_enabled":true,"cloud_sync_enabled":true}')
+       VALUES (?, ?, ?, ?, ?, 0, ?)
        RETURNING *`,
     )
-    .bind(username, email || null, callsign, now, now)
+    .bind(username, email || null, callsign, now, now, preferences)
     .first<UserAccountRow>();
   return result!;
 }
@@ -299,4 +326,52 @@ export async function getUserCryptos(db: D1Database, userId: number): Promise<nu
     .bind(userId)
     .first<{ cryptos: number }>();
   return result?.cryptos || 0;
+}
+
+// --- User Filesystem ---
+
+export async function getUserFilesystem(db: D1Database, userId: number): Promise<object | null> {
+  const result = await db
+    .prepare('SELECT preferences FROM user_accounts WHERE id = ?')
+    .bind(userId)
+    .first<{ preferences: string }>();
+
+  if (!result || !result.preferences) return null;
+
+  try {
+    const prefs = JSON.parse(result.preferences);
+    return prefs.filesystem || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+export async function updateUserFilesystem(
+  db: D1Database,
+  userId: number,
+  filesystem: object,
+): Promise<void> {
+  // Get current preferences
+  const result = await db
+    .prepare('SELECT preferences FROM user_accounts WHERE id = ?')
+    .bind(userId)
+    .first<{ preferences: string }>();
+
+  let prefs: any = { theme: 'green', sfx_enabled: true, cloud_sync_enabled: true };
+  if (result && result.preferences) {
+    try {
+      prefs = JSON.parse(result.preferences);
+    } catch (e) {
+      // Keep default if parse fails
+    }
+  }
+
+  // Update filesystem
+  prefs.filesystem = filesystem;
+
+  // Save back to database
+  await db
+    .prepare('UPDATE user_accounts SET preferences = ? WHERE id = ?')
+    .bind(JSON.stringify(prefs), userId)
+    .run();
 }

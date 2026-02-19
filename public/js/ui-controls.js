@@ -13,6 +13,7 @@
   // Login overlay state
   var loginOverlayVisible = false;
   var loginOverlayMode = 'login'; // 'login' or 'register'
+  var loginReturnContext = 'index'; // Where to return after login: 'index', 'street', 'rogue'
 
   /**
    * Update login button text based on authentication state and overlay state
@@ -275,16 +276,9 @@
           switchToRegisterMode();
         } else {
           // User not logged in - open login overlay
+          // Capture current context before showing login
+          captureReturnContext();
           toggleLoginOverlay();
-          // Also print test account info to terminal
-          printToTerminal([
-            '',
-            'AUTHENTICATION PORTAL ACTIVATED',
-            '',
-            'AUTHORIZED TEST ACCOUNTS: user, admin',
-            'Login overlay displayed.',
-            ''
-          ]);
         }
         break;
 
@@ -850,6 +844,73 @@
   }
 
   /**
+   * Capture current context to restore after login
+   */
+  function captureReturnContext() {
+    // Determine current active mode
+    if (typeof GoneRogue !== 'undefined' && GoneRogue.isActive()) {
+      loginReturnContext = 'rogue';
+    } else if (typeof StreetChronicles !== 'undefined' && StreetChronicles.isActive()) {
+      loginReturnContext = 'street';
+    } else {
+      loginReturnContext = 'index';
+    }
+  }
+
+  /**
+   * Show login overlay with optional context parameter
+   * @param {string} returnContext - Optional context to return to after login ('index', 'street', 'rogue')
+   */
+  function showLoginOverlay(returnContext) {
+    if (returnContext) {
+      loginReturnContext = returnContext;
+    } else {
+      captureReturnContext();
+    }
+
+    if (!loginOverlayVisible) {
+      toggleLoginOverlay();
+    }
+  }
+
+  /**
+   * Restore context after successful login
+   */
+  function restoreContextAfterLogin() {
+    if (loginReturnContext === 'rogue' && typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.requestRogue === 'function') {
+      // Return to Gone Rogue mode
+      setTimeout(function() {
+        var action = GAMESTATE.requestRogue({});
+        if (action && action.lines) {
+          action.lines.forEach(function(line) {
+            if (typeof Terminal !== 'undefined' && Terminal.writeLine) {
+              Terminal.writeLine(line, 'system-msg highlight');
+            }
+          });
+        }
+      }, 100);
+    } else if (loginReturnContext === 'street' && typeof StreetChronicles !== 'undefined' && typeof StreetChronicles.start === 'function') {
+      // Return to Street Chronicles mode
+      setTimeout(function() {
+        var action = StreetChronicles.start();
+        if (action && action.lines) {
+          action.lines.forEach(function(line) {
+            if (typeof Terminal !== 'undefined' && Terminal.writeLine) {
+              Terminal.writeLine(line, 'system-msg');
+            }
+          });
+        }
+        if (action && action.prompt && typeof Terminal !== 'undefined' && Terminal.showInput) {
+          Terminal.showInput(action.prompt);
+        }
+      }, 100);
+    }
+    // For 'index' context, we just stay at the main terminal (default behavior)
+    // Reset to index for next time
+    loginReturnContext = 'index';
+  }
+
+  /**
    * Toggle login overlay visibility
    */
   function toggleLoginOverlay() {
@@ -1024,6 +1085,8 @@
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('auth-state-changed'));
           }
+          // Restore context after login
+          restoreContextAfterLogin();
         })
         .catch(function(err) {
           updateMokInterjection('Login failed: ' + err.message);
@@ -1103,6 +1166,8 @@
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('auth-state-changed'));
           }
+          // Restore context after registration
+          restoreContextAfterLogin();
         })
         .catch(function(err) {
           updateMokInterjection('Registration failed: ' + err.message);
@@ -1316,6 +1381,7 @@
         toggleInventory();
       }
     },
+    showLoginOverlay: showLoginOverlay,
     updateCurrency: updateCurrencyDisplay,
     updateMokInterjection: updateMokInterjection,
     enableKernelButton: enableKernelButton,
