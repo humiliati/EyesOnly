@@ -20,7 +20,7 @@ const ShopSystem = (function () {
   var _dimOverlay = null;
 
   // Configuration
-  var BONFIRE_FLOORS = [5, 10, 15, 20, 25]; // Standard shop floors
+  var BONFIRE_FLOORS = [10, 16, 22]; // Standard shop floors (matching gone-rogue.js)
   var BLACK_MARKET_CONFIG = {
     spawnChance: 0.18,
     guaranteedFloor: 6,
