@@ -72,6 +72,10 @@ const GoneRogue = (function () {
   // Secret floor state
   var _activeSecretFloor = null; // Current secret floor type (if any)
 
+  // Difficulty tier system (1 = Standard, 2 = Advanced, 3 = Extreme)
+  var _difficultyTier = 1;
+  var _stateChangeCallbacks = []; // Callbacks for state changes (used by AWOL button)
+
   // Highscore tracking variables
   var _runStartTime = null;        // Run start timestamp
   var _currencyCollected = 0;      // Total currency collected this run (excludes starting balance)
@@ -1309,14 +1313,17 @@ const GoneRogue = (function () {
       // Enemy density based on difficulty
       var difficulty = _floor;
 
+      // Apply difficulty tier multiplier
+      var tierMultiplier = _getDifficultyMultiplier();
+      
       if (difficulty <= 3) {
-        enemyCount = 4 + Math.floor(Math.random() * 3); // 4-6
+        enemyCount = Math.floor((4 + Math.floor(Math.random() * 3)) * tierMultiplier); // 4-6 base
       } else if (difficulty <= 7) {
-        enemyCount = 7 + Math.floor(Math.random() * 4); // 7-10
+        enemyCount = Math.floor((7 + Math.floor(Math.random() * 4)) * tierMultiplier); // 7-10 base
       } else if (difficulty <= 15) {
-        enemyCount = 10 + Math.floor(Math.random() * 6); // 10-15
+        enemyCount = Math.floor((10 + Math.floor(Math.random() * 6)) * tierMultiplier); // 10-15 base
       } else {
-        enemyCount = 12 + Math.floor(Math.random() * 7); // 12-18
+        enemyCount = Math.floor((12 + Math.floor(Math.random() * 7)) * tierMultiplier); // 12-18 base
       }
     }
 
@@ -1405,13 +1412,17 @@ const GoneRogue = (function () {
   }
 
   function _createEnemy(x, y, patrolType, room) {
+    var tierMultiplier = _getDifficultyMultiplier();
     var enemy = {
       x: x,
       y: y,
-      hp: 5,
+      hp: Math.floor(5 * tierMultiplier),
+      maxHp: Math.floor(5 * tierMultiplier),
+      str: Math.floor((3 + Math.floor(_floor * 0.2)) * tierMultiplier),
+      dex: Math.floor((3 + Math.floor(_floor * 0.2)) * tierMultiplier),
       awareness: 0,
       orientation: ['north', 'south', 'east', 'west'][Math.floor(Math.random() * 4)],
-      sightRange: _floor > 5 ? 7 : 5, // Increased range on late floors
+      sightRange: (_floor > 5 ? 7 : 5) + (_difficultyTier - 1), // +1 range per tier
       pathTimer: 0,
       isTreasureGoblin: false, // Special enemy type
       goblinSpawnTime: null // For timeout tracking
@@ -6421,6 +6432,72 @@ const GoneRogue = (function () {
   // ============================================================
 
   // ============================================================
+  // DIFFICULTY TIER SYSTEM
+  // ============================================================
+
+  /**
+   * Get difficulty multiplier based on current tier
+   * @returns {number} Multiplier for enemy stats/count
+   */
+  function _getDifficultyMultiplier() {
+    switch (_difficultyTier) {
+      case 1: return 1.0;    // Standard
+      case 2: return 1.3;    // Advanced (+30% enemies, stats)
+      case 3: return 1.6;    // Extreme (+60% enemies, stats)
+      default: return 1.0;
+    }
+  }
+
+  /**
+   * Set difficulty tier (called by AWOL button)
+   * @param {number} tier - 1, 2, or 3
+   */
+  function setDifficulty(tier) {
+    if (tier >= 1 && tier <= 3) {
+      _difficultyTier = tier;
+      console.log('[GoneRogue] Difficulty set to T' + tier);
+      
+      // Notify state change listeners
+      _notifyStateChange();
+    }
+  }
+
+  /**
+   * Get current difficulty tier
+   * @returns {number} Current tier (1-3)
+   */
+  function getDifficulty() {
+    return _difficultyTier;
+  }
+
+  /**
+   * Register callback for state changes
+   * @param {Function} callback
+   */
+  function onStateChange(callback) {
+    if (typeof callback === 'function') {
+      _stateChangeCallbacks.push(callback);
+    }
+  }
+
+  /**
+   * Notify all state change listeners
+   */
+  function _notifyStateChange() {
+    _stateChangeCallbacks.forEach(function(cb) {
+      try {
+        cb();
+      } catch (e) {
+        console.warn('[GoneRogue] State change callback error:', e);
+      }
+    });
+  }
+
+  // ============================================================
+  // END DIFFICULTY TIER SYSTEM
+  // ============================================================
+
+  // ============================================================
   // HEADLESS MODE API (for automated testing/agent simulation)
   // ============================================================
 
@@ -6743,6 +6820,11 @@ const GoneRogue = (function () {
     getStrCombatState: getStrCombatState,
     triggerActiveItem: triggerActiveItem,
     updatePlayerLight: _updatePlayerLight,
+    
+    // Difficulty tier system
+    setDifficulty: setDifficulty,
+    getDifficulty: getDifficulty,
+    onStateChange: onStateChange,
 
     // Headless mode API (for testing/agent simulation)
     headless: {
