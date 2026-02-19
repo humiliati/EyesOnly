@@ -61,6 +61,7 @@ const GoneRogue = (function () {
   var _strCombatRound = 0;
   var _strCombatLog = []; // Combat log messages
   var _strCombatAmmoSpent = 0; // Track ammo spent in this combat encounter
+  var _strCombatContext = null; // Countdown context messages built at combat entry
 
   // Boss encounter state
   var _activeBoss = null; // Current boss instance (from BossEncounters module)
@@ -4945,6 +4946,9 @@ const GoneRogue = (function () {
     // Scan 3x3 tiles around player for ground effects and apply combat modifiers
     _applyGroundEffectModifiers();
 
+    // Build countdown context messages (3/2/1 beat annotations)
+    _strCombatContext = _buildCountdownMessages(enemy, trigger);
+
     // Add combat entry message with emoji
     var advantageEmoji = _getAdvantageEmoji(_strCombatAdvantage);
     _strCombatLog.push('⚔️  STR COMBAT INITIATED ' + advantageEmoji);
@@ -6304,7 +6308,8 @@ const GoneRogue = (function () {
       player: _player ? { hp: _player.hp, maxHp: _player.maxHp } : { hp: 10, maxHp: 10 },
       advantage: _strCombatAdvantage,
       round: _strCombatRound,
-      log: _strCombatLog
+      log: _strCombatLog,
+      countdownMessages: _strCombatContext
     };
   }
 
@@ -6671,6 +6676,127 @@ const GoneRogue = (function () {
         enemy.weakened = true;
       }
     }
+  }
+
+  /**
+   * Build the three contextual messages displayed during the 3-2-1 countdown.
+   *
+   * Beat 3 → stealth / environment quality
+   * Beat 2 → flanking / advantage state
+   * Beat 1 → critical resource warnings
+   *
+   * @param {Object} enemy   - Enemy being engaged
+   * @param {string} trigger - Combat trigger type
+   * @returns {{ beat3: string, beat2: string, beat1: string }}
+   */
+  function _buildCountdownMessages(enemy, trigger) {
+    // ── BEAT 3 : Stealth / Environment ─────────────────────────────────────
+    var beat3 = '';
+
+    var tile = (_grid[_player.y] && _grid[_player.y][_player.x]) || '';
+    var groundEffect = (typeof GroundEffects !== 'undefined')
+      ? GroundEffects.getGroundEffect(_player.x, _player.y)
+      : null;
+    var stealthBonus = _getPlayerStealthBonus();
+
+    if (groundEffect) {
+      var gt = groundEffect.type;
+      if (gt === 'fire' || gt === 'oil_ignited') {
+        beat3 = '🔥 you were standing in fire';
+      } else if (gt === 'industrial_waste') {
+        beat3 = '☢️  you were standing in toxic waste';
+      } else if (gt === 'water') {
+        if (groundEffect.electrified) {
+          beat3 = '⚡ you were standing in electrified water';
+        } else {
+          beat3 = '💧 you were splashing in water';
+        }
+      } else if (gt === 'glass') {
+        beat3 = '🪟 you were crunching on broken glass';
+      } else if (gt === 'soda_spill') {
+        beat3 = '🧃 you were slipping in a soda spill';
+      } else if (gt === 'steam') {
+        beat3 = '♨️  you were hidden in steam';
+      } else if (gt === 'oil') {
+        beat3 = '🛢️  you were standing in an oil slick';
+      }
+    }
+
+    if (!beat3) {
+      if (tile === TILES.SHADOW) {
+        beat3 = '⬛ you were cloaked in shadow';
+      } else if (tile === TILES.SMOKE) {
+        beat3 = '🌫️  you were hidden in smoke';
+      } else if (tile === TILES.GRASS) {
+        beat3 = '🟩 you were crouched in the grass';
+      } else if (tile === TILES.WATER) {
+        beat3 = '💧 you were splashing in water';
+      } else if (stealthBonus >= 30) {
+        beat3 = '🌑 darkness gave you cover (+' + stealthBonus + '% stealth)';
+      } else if (stealthBonus > 0) {
+        beat3 = '👁 partial cover (+' + stealthBonus + '% stealth)';
+      } else {
+        beat3 = '👁 no cover — fully exposed';
+      }
+    }
+
+    // ── BEAT 2 : Flank / Advantage ─────────────────────────────────────────
+    var beat2 = '';
+    var advantage = _strCombatAdvantage;
+    var enemyAwareness = enemy ? (enemy.awareness || 0) : 0;
+    var isFlanking = _checkFlanking(_player, enemy);
+    var enemyInitiated = trigger === 'enemy_attack' || trigger === 'enemy_sighting' || trigger === 'enemy_projectile';
+
+    if (advantage === 'ambush') {
+      if (isFlanking) {
+        beat2 = '🎯 you struck from behind — they never saw it coming';
+      } else {
+        beat2 = '🎯 you caught them completely unaware';
+      }
+    } else if (advantage === 'flanked') {
+      beat2 = '❌ you were hit from behind — enemy flanked you';
+    } else if (advantage === 'disadvantaged') {
+      if (enemyAwareness >= 70) {
+        beat2 = '⚠️  the enemy was fully alerted to your position';
+      } else {
+        beat2 = '⚠️  you were caught in the open';
+      }
+    } else {
+      // neutral
+      if (enemyInitiated) {
+        beat2 = '⚔️  they spotted you — head-on engagement';
+      } else {
+        beat2 = '⚔️  you faced them head-on';
+      }
+    }
+
+    // ── BEAT 1 : Critical Resource Warnings ─────────────────────────────────
+    var beat1 = '';
+    var warnings = [];
+
+    if (typeof GAMESTATE !== 'undefined') {
+      var ammo    = GAMESTATE.getAmmo    ? GAMESTATE.getAmmo()    : 0;
+      var energy  = GAMESTATE.getEnergy  ? GAMESTATE.getEnergy()  : 0;
+      var fatigue = GAMESTATE.getFatigue ? GAMESTATE.getFatigue() : 0;
+      var state   = GAMESTATE.getState   ? GAMESTATE.getState()   : {};
+      var maxFatigue = state.maxFatigue  || 100;
+      var focus   = GAMESTATE.getFocus   ? GAMESTATE.getFocus()   : 0;
+
+      if (ammo <= 0)                               warnings.push('🔫 no ammo');
+      if (energy <= 0)                             warnings.push('⚡ no energy');
+      if (focus <= 0)                              warnings.push('🎯 no focus');
+      if (fatigue >= maxFatigue * 0.8)             warnings.push('🏋️  extreme fatigue');
+    }
+
+    if (warnings.length === 0) {
+      beat1 = '✅ all systems combat-ready';
+    } else if (warnings.length === 1) {
+      beat1 = warnings[0] + ' — limited options';
+    } else {
+      beat1 = warnings.join('  ·  ');
+    }
+
+    return { beat3: beat3, beat2: beat2, beat1: beat1 };
   }
 
   /**

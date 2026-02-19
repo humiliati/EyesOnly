@@ -10,6 +10,7 @@
   width: 100%;
   height: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.82);
@@ -43,6 +44,26 @@
   30%  { transform: scale(1);   opacity: 1; }
   85%  { transform: scale(1);   opacity: 1; }
   100% { transform: scale(0.8); opacity: 0; }
+}
+
+/* Contextual annotation beneath each countdown number */
+.str-countdown-context {
+  font-family: 'Courier New', monospace;
+  font-size: clamp(0.75rem, 2.2vw, 1.1rem);
+  color: #cccccc;
+  text-align: center;
+  max-width: min(80vw, 520px);
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  opacity: 0.88;
+  margin-top: 0.6em;
+  animation: str-context-slide-in 0.35s ease-out;
+  text-shadow: 0 0 8px rgba(255, 170, 0, 0.25);
+}
+
+@keyframes str-context-slide-in {
+  from { transform: translateY(12px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 0.88; }
 }
 
 .str-countdown-fight {

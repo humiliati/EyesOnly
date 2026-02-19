@@ -88,7 +88,8 @@
           maxHp: combatState.player ? combatState.player.maxHp : 10
         },
         advantage: combatState.advantage || 'neutral',
-        enemyType: enemyType
+        enemyType: enemyType,
+        countdownMessages: combatState.countdownMessages || null
       };
 
       STRCombatWindow.show(windowState);
