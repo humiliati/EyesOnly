@@ -229,10 +229,25 @@ const DebriefFeedRenderer = (function() {
     render();
   }
 
+  /**
+   * Render into a specific element (used by DebriefFeedController)
+   * @param {HTMLElement} targetElement - Element to render into
+   */
+  function renderInto(targetElement) {
+    var savedScreen = _debriefScreen;
+    _debriefScreen = targetElement;
+    try {
+      render();
+    } finally {
+      _debriefScreen = savedScreen;
+    }
+  }
+
   // Public API
   return {
     init: init,
     render: render,
+    renderInto: renderInto,
     refresh: refresh,
     cycle: cycle,
     toggleExpanded: toggleExpanded

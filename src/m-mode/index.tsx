@@ -897,7 +897,7 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
 
   // Start assign lane
   document.getElementById('ctrl-start-assign')!.addEventListener('click', () => {
-    const laneId = (document.getElementById('ctrl-assign-lane-select') as HTMLSelectElement).value;
+    const laneId = (document.getElementById('ctrl-assign-lane-select') as unknown as HTMLSelectElement).value;
     if (!laneId) return;
     selectedLaneId = laneId;
     panelMode = 'assign_lane';
@@ -908,7 +908,7 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
   // Add actor
   document.getElementById('ctrl-add-actor')!.addEventListener('click', async () => {
     const cs = (document.getElementById('ctrl-actor-callsign') as HTMLInputElement).value;
-    const team = (document.getElementById('ctrl-actor-team') as HTMLSelectElement).value;
+    const team = (document.getElementById('ctrl-actor-team') as unknown as HTMLSelectElement).value;
     const pw = (document.getElementById('ctrl-actor-pw') as HTMLInputElement).value;
     if (!cs) return;
     await mFetch('/m/actor', session, { method: 'POST', body: JSON.stringify({ scenario_id: session.scenarioId, callsign: cs, team, password: pw || undefined }) });
@@ -930,7 +930,7 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
 
   // Join codes
   document.getElementById('ctrl-gen-code')!.addEventListener('click', async () => {
-    const team = (document.getElementById('ctrl-jc-team') as HTMLSelectElement).value;
+    const team = (document.getElementById('ctrl-jc-team') as unknown as HTMLSelectElement).value;
     const res = await mFetch('/m/join-code', session, { method: 'POST', body: JSON.stringify({ scenario_id: session.scenarioId, team }) });
     if (res.ok) { const data = await res.json() as any; document.getElementById('ctrl-jc-result')!.textContent = 'CODE: ' + (data.join_code?.code || 'ERROR'); }
   });
@@ -1366,7 +1366,7 @@ async function populateLaneSelect(selectId: string, session: Session) {
     const res = await mFetch(`/m/grid/${session.scenarioId}`, session);
     if (!res.ok) return;
     const data = await res.json() as any;
-    const sel = document.getElementById(selectId) as HTMLSelectElement;
+    const sel = document.getElementById(selectId) as unknown as HTMLSelectElement;
     if (!sel) return;
     const lanes = data.lanes || [];
     sel.innerHTML = '<option value="">— select lane —</option>' +

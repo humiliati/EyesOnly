@@ -99,18 +99,82 @@ const STRCombatWindow = (function () {
     _timerDuration = TIMER_DURATIONS[_currentEnemyType] || TIMER_DURATIONS.standard;
     _timeRemaining = _timerDuration;
 
-    // Render window content
-    _renderWindow();
+    // Show 3-second countdown before revealing the combat window
+    _showCombatCountdown(combatState.countdownMessages || null, function() {
+      // Render window content
+      _renderWindow();
 
-    // Show window with animation
-    _windowContainer.style.display = 'block';
-    _windowContainer.classList.add('str-window-appear');
+      // Show window with animation
+      _windowContainer.style.display = 'block';
+      _windowContainer.classList.add('str-window-appear');
 
-    // Start timer
-    _startTimer();
+      // Start turn timer
+      _startTimer();
 
-    // Remove background tint if it exists
-    document.body.classList.remove('str-combat-minimized-state');
+      // Remove background tint if it exists
+      document.body.classList.remove('str-combat-minimized-state');
+    });
+  }
+
+  /**
+   * Show a full-screen 3-2-1 countdown overlay before combat begins.
+   * Sequence: 3 (1s) → 2 (1s) → 1 (1s) → FIGHT! (0.5s) → fade-out (0.4s) → callback.
+   * Total pre-combat delay: ~3.9 seconds.
+   *
+   * @param {Object|null} messages - Optional contextual messages per beat:
+   *   { beat3: string, beat2: string, beat1: string }
+   * @param {Function} callback - Called after the overlay fully fades out
+   */
+  function _showCombatCountdown(messages, callback) {
+    // Remove any existing countdown overlay
+    var existing = document.getElementById('str-combat-countdown');
+    if (existing) existing.remove();
+
+    var overlay = document.createElement('div');
+    overlay.id = 'str-combat-countdown';
+    overlay.className = 'str-combat-countdown-overlay';
+    document.body.appendChild(overlay);
+
+    var count = 3;
+    var beatMessages = messages || {};
+
+    function tick() {
+      if (count > 0) {
+        var contextMsg = beatMessages['beat' + count] || '';
+
+        // Build DOM nodes safely (no innerHTML for user-sourced text)
+        overlay.innerHTML = '';
+        var numEl = document.createElement('div');
+        numEl.className = 'str-countdown-number';
+        numEl.textContent = count;
+        overlay.appendChild(numEl);
+
+        if (contextMsg) {
+          var ctxEl = document.createElement('div');
+          ctxEl.className = 'str-countdown-context';
+          ctxEl.textContent = contextMsg;
+          overlay.appendChild(ctxEl);
+        }
+
+        count--;
+        setTimeout(tick, 1000);
+      } else {
+        var fightEl = document.createElement('div');
+        fightEl.className = 'str-countdown-fight';
+        fightEl.textContent = 'FIGHT!';
+        overlay.innerHTML = '';
+        overlay.appendChild(fightEl);
+        setTimeout(function() {
+          overlay.classList.add('str-countdown-fade-out');
+          setTimeout(function() {
+            overlay.remove();
+            if (callback) callback();
+          }, 400);
+        }, 500);
+      }
+    }
+
+    tick();
   }
 
   /**
@@ -409,12 +473,18 @@ const STRCombatWindow = (function () {
    * Update combat state (called each round)
    */
   function updateState(combatState) {
+    var previousRound = _combatState ? _combatState.round : 0;
     _combatState = combatState;
 
     if (_isVisible && !_isMinimized) {
       _renderWindow();
     } else if (_isMinimized) {
       _renderMinimizedIndicator();
+    }
+
+    // Reset turn timer when a new round begins
+    if (combatState.round !== previousRound) {
+      resetTimer(_currentEnemyType);
     }
   }
 

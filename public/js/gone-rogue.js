@@ -47,6 +47,10 @@ const GoneRogue = (function () {
   var _muzzleFlash = null; // Track muzzle flash {x, y, time}
   var _impactEffects = []; // Track impact effects {x, y, type, time}
 
+  // Performance caches — rebuilt on floor generation, reused every tick
+  var _wallCache = []; // Cached wall positions for LightingSystem (avoids 800-iteration scan per tick)
+  var _lightMapTickCounter = 0; // Throttle full light-map recalc to every 5 ticks (~500ms)
+
   // Game loop state
   var _gameLoopActive = false;
   var _lastTickTime = 0;
@@ -61,6 +65,10 @@ const GoneRogue = (function () {
   var _strCombatRound = 0;
   var _strCombatLog = []; // Combat log messages
   var _strCombatAmmoSpent = 0; // Track ammo spent in this combat encounter
+  var _strCombatContext = null; // Countdown context messages built at combat entry
+
+  // Performance caches
+  var _stealthBonusCache = null; // { bonus, px, py } — invalidated when player moves
 
   // Boss encounter state
   var _activeBoss = null; // Current boss instance (from BossEncounters module)
@@ -561,11 +569,21 @@ const GoneRogue = (function () {
         Terminal.hideInput();
       }
 
+      // Switch debrief feed to resource display for Gone Rogue
+      if (typeof DebriefFeedController !== 'undefined') {
+        DebriefFeedController.setMode('goneRogue');
+      }
+
       return {
         lines: lines,
         prompt: getPrompt(),
         stayActive: true
       };
+    }
+
+    // Switch debrief feed to resource display for Gone Rogue
+    if (typeof DebriefFeedController !== 'undefined') {
+      DebriefFeedController.setMode('goneRogue');
     }
 
     return {
@@ -838,6 +856,9 @@ const GoneRogue = (function () {
     _bossDefeated = false;
     _bossHazards = [];
     _bossEnvironment = {};
+
+    // Invalidate per-floor caches
+    _stealthBonusCache = null;
     _activeSecretFloor = null;
 
     // Determine floor type
@@ -990,20 +1011,12 @@ const GoneRogue = (function () {
         LightingSystem.setDarknessMultiplier(1.0);
       }
 
-      // Collect wall positions for light blocking
-      var walls = [];
-      for (var y = 0; y < GRID_HEIGHT; y++) {
-        for (var x = 0; x < GRID_WIDTH; x++) {
-          if (_grid[y][x] === TILES.WALL) {
-            walls.push({ x: x, y: y });
-          }
-        }
-      }
+      // Collect wall positions for light blocking and cache them for per-tick use
+      _rebuildWallCache();
+      var walls = _wallCache;
 
       // Generate biome-specific light sources
       LightingSystem.generateBiomeLights(GRID_WIDTH, GRID_HEIGHT, rooms, walls);
-
-      // Update player light based on inventory
       _updatePlayerLight();
 
       // Update enemy lights
@@ -3614,6 +3627,11 @@ const GoneRogue = (function () {
       ReserveSlots.hide();
     }
 
+    // Switch debrief feed back to MOK display
+    if (typeof DebriefFeedController !== 'undefined') {
+      DebriefFeedController.setMode('mainMenu');
+    }
+
     var result = {
       success: success,
       unlockedSlot: success,
@@ -3642,6 +3660,7 @@ const GoneRogue = (function () {
     _gameLoopActive = true;
     _lastTickTime = Date.now();
     _enemyColorCycleTime = 0;
+    _lightMapTickCounter = 0;
     _gameLoopTick();
   }
 
@@ -3717,11 +3736,19 @@ const GoneRogue = (function () {
       // Update awareness decay
       _updateEnemyAwareness(enemy, deltaMs);
 
-      // Check if player is in sight cone
-      if (_isPlayerInSightCone(enemy)) {
-        _increaseEnemyAwareness(enemy, 10); // Increase awareness when player spotted
-        if (!_strCombatActive) {
-          _enterStrCombat(enemy, 'enemy_sighting');
+      // Coarse distance pre-cull: skip expensive sight-cone check for enemies
+      // that are provably beyond the maximum possible sight range.
+      // Uses squared-distance to avoid Math.sqrt — max base sight is 5 tiles,
+      // plus up to 5 tiles of darkness bonus gives an effective cap of 10.
+      var dxCull = _player.x - enemy.x;
+      var dyCull = _player.y - enemy.y;
+      if (dxCull * dxCull + dyCull * dyCull <= 100) { // 10² = 100
+        // Check if player is in sight cone
+        if (_isPlayerInSightCone(enemy)) {
+          _increaseEnemyAwareness(enemy, 10); // Increase awareness when player spotted
+          if (!_strCombatActive) {
+            _enterStrCombat(enemy, 'enemy_sighting');
+          }
         }
       }
     });
@@ -3795,18 +3822,13 @@ const GoneRogue = (function () {
       // Update enemy lights
       LightingSystem.updateEnemyLights(_enemies);
 
-      // Collect wall positions for light blocking
-      var walls = [];
-      for (var y = 0; y < GRID_HEIGHT; y++) {
-        for (var x = 0; x < GRID_WIDTH; x++) {
-          if (_grid[y][x] === TILES.WALL) {
-            walls.push({ x: x, y: y });
-          }
-        }
+      // Throttle full light-map recalculation to every 5 ticks (~500ms at 10 FPS).
+      // Walls are static per floor — _wallCache is built once in _generateFloor.
+      _lightMapTickCounter++;
+      if (_lightMapTickCounter >= 5) {
+        _lightMapTickCounter = 0;
+        LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, _wallCache);
       }
-
-      // Recalculate light map with animation
-      LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, walls);
     }
 
     // Re-render if using interactive grid
@@ -3983,6 +4005,22 @@ const GoneRogue = (function () {
   }
 
   /**
+   * Rebuild _wallCache from the current grid.
+   * Called once after each floor generation so the game loop doesn't need
+   * to scan all 800 cells every tick to collect wall positions.
+   */
+  function _rebuildWallCache() {
+    _wallCache = [];
+    for (var wy = 0; wy < GRID_HEIGHT; wy++) {
+      for (var wx = 0; wx < GRID_WIDTH; wx++) {
+        if (_grid[wy][wx] === TILES.WALL) {
+          _wallCache.push({ x: wx, y: wy });
+        }
+      }
+    }
+  }
+
+  /**
    * Update player light based on inventory
    */
   function _updatePlayerLight() {
@@ -4022,14 +4060,24 @@ const GoneRogue = (function () {
 
     var dx = _player.x - enemy.x;
     var dy = _player.y - enemy.y;
-    var distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Cheap Manhattan-distance pre-filter: skip all expensive checks when
+    // the player is definitely beyond the maximum possible sight range.
+    // Max base sight range is 8; stealth can halve it but never extends it.
+    var maxPossibleSightRange = (enemy.sightRange || 5) + 1;
+    if (Math.abs(dx) > maxPossibleSightRange || Math.abs(dy) > maxPossibleSightRange) {
+      return false;
+    }
+
+    var distanceSq = dx * dx + dy * dy;
 
     // Sight cone range (modified by player's tile stealth bonus)
     var baseSightRange = enemy.sightRange || 5;
     var stealthBonus = _getPlayerStealthBonus();
     var effectiveSightRange = baseSightRange * (1 - stealthBonus / 100);
 
-    if (distance > effectiveSightRange) return false;
+    // Compare squared distances to avoid Math.sqrt
+    if (distanceSq > effectiveSightRange * effectiveSightRange) return false;
 
     // Check if cover blocks line of sight
     if (_checkLineOfSight(enemy.x, enemy.y, _player.x, _player.y)) {
@@ -4061,6 +4109,14 @@ const GoneRogue = (function () {
    * Get player stealth bonus from current tile
    */
   function _getPlayerStealthBonus() {
+    // Return cached value if player hasn't moved since last computation.
+    // The cache is keyed on player grid position — any tile change invalidates it.
+    if (_stealthBonusCache &&
+        _stealthBonusCache.px === _player.x &&
+        _stealthBonusCache.py === _player.y) {
+      return _stealthBonusCache.bonus;
+    }
+
     var tile = _grid[_player.y][_player.x];
     var key = _player.x + ',' + _player.y;
     var metadata = _tileMetadata[key];
@@ -4094,6 +4150,9 @@ const GoneRogue = (function () {
         }
       });
     }
+
+    // Cache result for this player position
+    _stealthBonusCache = { bonus: bonus, px: _player.x, py: _player.y };
 
     return bonus;
   }
@@ -4929,6 +4988,9 @@ const GoneRogue = (function () {
 
     // Scan 3x3 tiles around player for ground effects and apply combat modifiers
     _applyGroundEffectModifiers();
+
+    // Build countdown context messages (3/2/1 beat annotations)
+    _strCombatContext = _buildCountdownMessages(enemy, trigger);
 
     // Add combat entry message with emoji
     var advantageEmoji = _getAdvantageEmoji(_strCombatAdvantage);
@@ -6286,9 +6348,11 @@ const GoneRogue = (function () {
     return {
       active: _strCombatActive,
       enemy: _strCombatEnemy,
+      player: _player ? { hp: _player.hp, maxHp: _player.maxHp } : { hp: 10, maxHp: 10 },
       advantage: _strCombatAdvantage,
       round: _strCombatRound,
-      log: _strCombatLog
+      log: _strCombatLog,
+      countdownMessages: _strCombatContext
     };
   }
 
@@ -6655,6 +6719,127 @@ const GoneRogue = (function () {
         enemy.weakened = true;
       }
     }
+  }
+
+  /**
+   * Build the three contextual messages displayed during the 3-2-1 countdown.
+   *
+   * Beat 3 → stealth / environment quality
+   * Beat 2 → flanking / advantage state
+   * Beat 1 → critical resource warnings
+   *
+   * @param {Object} enemy   - Enemy being engaged
+   * @param {string} trigger - Combat trigger type
+   * @returns {{ beat3: string, beat2: string, beat1: string }}
+   */
+  function _buildCountdownMessages(enemy, trigger) {
+    // ── BEAT 3 : Stealth / Environment ─────────────────────────────────────
+    var beat3 = '';
+
+    var tile = (_grid[_player.y] && _grid[_player.y][_player.x]) || '';
+    var groundEffect = (typeof GroundEffects !== 'undefined')
+      ? GroundEffects.getGroundEffect(_player.x, _player.y)
+      : null;
+    var stealthBonus = _getPlayerStealthBonus();
+
+    if (groundEffect) {
+      var gt = groundEffect.type;
+      if (gt === 'fire' || gt === 'oil_ignited') {
+        beat3 = '🔥 you were standing in fire';
+      } else if (gt === 'industrial_waste') {
+        beat3 = '☢️  you were standing in toxic waste';
+      } else if (gt === 'water') {
+        if (groundEffect.electrified) {
+          beat3 = '⚡ you were standing in electrified water';
+        } else {
+          beat3 = '💧 you were splashing in water';
+        }
+      } else if (gt === 'glass') {
+        beat3 = '🪟 you were crunching on broken glass';
+      } else if (gt === 'soda_spill') {
+        beat3 = '🧃 you were slipping in a soda spill';
+      } else if (gt === 'steam') {
+        beat3 = '♨️  you were hidden in steam';
+      } else if (gt === 'oil') {
+        beat3 = '🛢️  you were standing in an oil slick';
+      }
+    }
+
+    if (!beat3) {
+      if (tile === TILES.SHADOW) {
+        beat3 = '⬛ you were cloaked in shadow';
+      } else if (tile === TILES.SMOKE) {
+        beat3 = '🌫️  you were hidden in smoke';
+      } else if (tile === TILES.GRASS) {
+        beat3 = '🟩 you were crouched in the grass';
+      } else if (tile === TILES.WATER) {
+        beat3 = '💧 you were splashing in water';
+      } else if (stealthBonus >= 30) {
+        beat3 = '🌑 darkness gave you cover (+' + stealthBonus + '% stealth)';
+      } else if (stealthBonus > 0) {
+        beat3 = '👁 partial cover (+' + stealthBonus + '% stealth)';
+      } else {
+        beat3 = '👁 no cover — fully exposed';
+      }
+    }
+
+    // ── BEAT 2 : Flank / Advantage ─────────────────────────────────────────
+    var beat2 = '';
+    var advantage = _strCombatAdvantage;
+    var enemyAwareness = enemy ? (enemy.awareness || 0) : 0;
+    var isFlanking = _checkFlanking(_player, enemy);
+    var enemyInitiated = trigger === 'enemy_attack' || trigger === 'enemy_sighting' || trigger === 'enemy_projectile';
+
+    if (advantage === 'ambush') {
+      if (isFlanking) {
+        beat2 = '🎯 you struck from behind — they never saw it coming';
+      } else {
+        beat2 = '🎯 you caught them completely unaware';
+      }
+    } else if (advantage === 'flanked') {
+      beat2 = '❌ you were hit from behind — enemy flanked you';
+    } else if (advantage === 'disadvantaged') {
+      if (enemyAwareness >= 70) {
+        beat2 = '⚠️  the enemy was fully alerted to your position';
+      } else {
+        beat2 = '⚠️  you were caught in the open';
+      }
+    } else {
+      // neutral
+      if (enemyInitiated) {
+        beat2 = '⚔️  they spotted you — head-on engagement';
+      } else {
+        beat2 = '⚔️  you faced them head-on';
+      }
+    }
+
+    // ── BEAT 1 : Critical Resource Warnings ─────────────────────────────────
+    var beat1 = '';
+    var warnings = [];
+
+    if (typeof GAMESTATE !== 'undefined') {
+      var ammo    = GAMESTATE.getAmmo    ? GAMESTATE.getAmmo()    : 0;
+      var energy  = GAMESTATE.getEnergy  ? GAMESTATE.getEnergy()  : 0;
+      var fatigue = GAMESTATE.getFatigue ? GAMESTATE.getFatigue() : 0;
+      var state   = GAMESTATE.getState   ? GAMESTATE.getState()   : {};
+      var maxFatigue = state.maxFatigue  || 100;
+      var focus   = GAMESTATE.getFocus   ? GAMESTATE.getFocus()   : 0;
+
+      if (ammo <= 0)                               warnings.push('🔫 no ammo');
+      if (energy <= 0)                             warnings.push('⚡ no energy');
+      if (focus <= 0)                              warnings.push('🎯 no focus');
+      if (fatigue >= maxFatigue * 0.8)             warnings.push('🏋️  extreme fatigue');
+    }
+
+    if (warnings.length === 0) {
+      beat1 = '✅ all systems combat-ready';
+    } else if (warnings.length === 1) {
+      beat1 = warnings[0] + ' — limited options';
+    } else {
+      beat1 = warnings.join('  ·  ');
+    }
+
+    return { beat3: beat3, beat2: beat2, beat1: beat1 };
   }
 
   /**
@@ -7212,6 +7397,12 @@ const GoneRogue = (function () {
     stepProjectiles: stepProjectiles,
     isStrCombatActive: isStrCombatActive,
     getStrCombatState: getStrCombatState,
+    passStrTurn: function() {
+      // Pass player's combat turn — enemy attacks unopposed (called on timer expiry)
+      if (_strCombatActive) {
+        return _executeStrRound('enemy');
+      }
+    },
     triggerActiveItem: triggerActiveItem,
     updatePlayerLight: _updatePlayerLight,
     

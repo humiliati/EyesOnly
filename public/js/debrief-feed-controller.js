@@ -161,12 +161,9 @@ const DebriefFeedController = (function() {
    * Render resources display
    */
   function _renderResources() {
-    // Use existing DebriefFeedRenderer
     if (typeof DebriefFeedRenderer !== 'undefined') {
       var html = '<div class="debrief-resources-display">';
-      
-      // Render resources using existing renderer
-      html += '<div id="debrief-resources-content"></div>';
+      html += '<div id="debrief-resources-content" class="debrief-resources-content"></div>';
 
       // Add cycle button to switch to MOK (if in Gone Rogue)
       if (_currentMode === MODES.goneRogue && _currentMode.allowCycle) {
@@ -177,17 +174,11 @@ const DebriefFeedController = (function() {
 
       _debriefScreen.innerHTML = html;
 
-      // Render resources into content area
-      setTimeout(function() {
-        var contentArea = document.getElementById('debrief-resources-content');
-        if (contentArea && DebriefFeedRenderer) {
-          // Temporarily replace debrief screen with content area
-          var originalScreen = _debriefScreen;
-          _debriefScreen = contentArea;
-          DebriefFeedRenderer.render();
-          _debriefScreen = originalScreen;
-        }
-      }, 100);
+      // Render resources into content area synchronously
+      var contentArea = document.getElementById('debrief-resources-content');
+      if (contentArea) {
+        DebriefFeedRenderer.renderInto(contentArea);
+      }
     }
 
     _attachEventHandlers();

@@ -13,6 +13,8 @@ const ReserveSlots = (function () {
   var _slotsContainer = null;
   var _longPressTimer = null;
   var _longPressThreshold = 500; // ms to trigger long-press tooltip
+  var _viewMode = 'cards'; // 'cards' or 'inventory'
+  var _inventoryCycleOffset = 0; // Pagination offset for inventory view
 
   /**
    * Get current action button capacity (including equipment bonuses)
@@ -132,8 +134,10 @@ const ReserveSlots = (function () {
       _slotsContainer.style.display = 'none';
     }
 
-    // Reset cycle offset
+    // Reset cycle offset and view mode
     _cycleOffset = 0;
+    _inventoryCycleOffset = 0;
+    _viewMode = 'cards';
   }
 
   /**
@@ -215,6 +219,20 @@ const ReserveSlots = (function () {
       btn.style.display = 'none';
     });
 
+    if (_viewMode === 'inventory') {
+      _renderInventoryView();
+    } else {
+      _renderCardsView();
+    }
+
+    // Position the container at the top of control buttons
+    controlButtons.insertBefore(_slotsContainer, controlButtons.firstChild);
+  }
+
+  /**
+   * Render the cards view (default)
+   */
+  function _renderCardsView() {
     var maxSlots = _getMaxSlots();
     var totalCards = _actionButtonCards.length;
     var needsCycling = totalCards > _maxVisibleSlots;
@@ -230,14 +248,16 @@ const ReserveSlots = (function () {
     });
     _slotsContainer.appendChild(backBtn);
 
-    // Button 2: Inventory (always shown)
+    // Button 2: Inventory — switches to inventory view
     var inventoryBtn = document.createElement('button');
     inventoryBtn.type = 'button';
     inventoryBtn.className = 'control-button gone-rogue-btn';
     inventoryBtn.dataset.action = 'inventory';
     inventoryBtn.textContent = 'inventory';
     inventoryBtn.addEventListener('click', function() {
-      _handleInventoryClick();
+      _viewMode = 'inventory';
+      _inventoryCycleOffset = 0;
+      render();
     });
     _slotsContainer.appendChild(inventoryBtn);
 
@@ -247,7 +267,7 @@ const ReserveSlots = (function () {
       cycleBtn.type = 'button';
       cycleBtn.className = 'control-button gone-rogue-btn cycle-btn';
       cycleBtn.dataset.action = 'cycle';
-      cycleBtn.innerHTML = '↑↓'; // Double arrows
+      cycleBtn.innerHTML = '↑↓';
       cycleBtn.title = 'Cycle cards (' + totalCards + ' total)';
       cycleBtn.addEventListener('click', function() {
         cycleCards();
@@ -261,9 +281,119 @@ const ReserveSlots = (function () {
       var slotBtn = _createCardSlotButton(i);
       _slotsContainer.appendChild(slotBtn);
     }
+  }
 
-    // Position the container at the top of control buttons
-    controlButtons.insertBefore(_slotsContainer, controlButtons.firstChild);
+  /**
+   * Render the inventory view (replaces card slots in left column)
+   * Shows 4 inventory items with a "+N more" badge if > 4, plus a "← cards" swap button
+   */
+  function _renderInventoryView() {
+    var items = [];
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getPersistentInventory === 'function') {
+      items = GAMESTATE.getPersistentInventory() || [];
+    }
+
+    var totalItems = items.length;
+    var visibleItems = items.slice(_inventoryCycleOffset, _inventoryCycleOffset + _maxVisibleSlots);
+    var remaining = totalItems - (_inventoryCycleOffset + visibleItems.length);
+
+    // Button 1: Back to cards view
+    var cardsBtn = document.createElement('button');
+    cardsBtn.type = 'button';
+    cardsBtn.className = 'control-button gone-rogue-btn';
+    cardsBtn.dataset.action = 'cards';
+    cardsBtn.textContent = '← cards';
+    cardsBtn.addEventListener('click', function() {
+      _viewMode = 'cards';
+      render();
+    });
+    _slotsContainer.appendChild(cardsBtn);
+
+    // Button 2: Cycle inventory (only shown if > _maxVisibleSlots items)
+    if (totalItems > _maxVisibleSlots) {
+      var cycleBtn = document.createElement('button');
+      cycleBtn.type = 'button';
+      cycleBtn.className = 'control-button gone-rogue-btn cycle-btn';
+      cycleBtn.dataset.action = 'inv-cycle';
+      cycleBtn.innerHTML = '↑↓';
+      cycleBtn.title = 'Cycle inventory (' + totalItems + ' total)';
+      cycleBtn.addEventListener('click', function() {
+        _inventoryCycleOffset = (_inventoryCycleOffset + _maxVisibleSlots) % totalItems;
+        render();
+      });
+      _slotsContainer.appendChild(cycleBtn);
+    }
+
+    // Buttons 3-N: Inventory item slots (up to _maxVisibleSlots)
+    for (var i = 0; i < _maxVisibleSlots; i++) {
+      var item = visibleItems[i] || null;
+      var itemBtn = _createInventorySlotButton(item, _inventoryCycleOffset + i);
+      _slotsContainer.appendChild(itemBtn);
+    }
+
+    // "+N more" badge appended to last non-empty slot when there are remaining items
+    if (remaining > 0) {
+      var lastBtn = _slotsContainer.lastElementChild;
+      if (lastBtn) {
+        var badge = document.createElement('span');
+        badge.className = 'inv-remaining-badge';
+        badge.textContent = '+' + remaining;
+        lastBtn.appendChild(badge);
+      }
+    }
+  }
+
+  /**
+   * Create an inventory slot button
+   * @param {Object|null} item - Inventory item or null for empty slot
+   * @param {number} itemIndex - Global item index in persistent inventory
+   * @returns {HTMLElement}
+   */
+  function _createInventorySlotButton(item, itemIndex) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'control-button gone-rogue-btn inv-slot-btn';
+
+    if (item) {
+      var emoji = item.emoji || '📦';
+      var abbrevName = _abbreviateCardName(item.name || 'Item');
+      btn.innerHTML = '<span class="card-emoji">' + emoji + '</span><span class="card-abbrev">' + abbrevName + '</span>';
+      btn.title = item.name || 'Item';
+
+      btn.addEventListener('click', function() {
+        _handleInventoryItemClick(itemIndex, item);
+      });
+
+      // Long-press tooltip
+      var touchTimer = null;
+      btn.addEventListener('mouseenter', function(e) {
+        touchTimer = setTimeout(function() {
+          _showCardTooltip(item, e.clientX, e.clientY);
+        }, _longPressThreshold);
+      });
+      btn.addEventListener('mouseleave', function() {
+        if (touchTimer) clearTimeout(touchTimer);
+        _hideCardTooltip();
+      });
+    } else {
+      btn.innerHTML = '<span class="card-empty">empty</span>';
+      btn.classList.add('empty-slot');
+      btn.disabled = true;
+      btn.title = 'Empty slot';
+    }
+
+    return btn;
+  }
+
+  /**
+   * Handle inventory item click — use item if usable
+   */
+  function _handleInventoryItemClick(index, item) {
+    console.log('[ReserveSlots] Using inventory item:', item.name || 'Unknown', 'at index', index);
+    if (typeof UIControls !== 'undefined' && typeof UIControls.useInventoryItem === 'function') {
+      UIControls.useInventoryItem(index, item);
+    }
+    _hideCardTooltip();
   }
 
   /**

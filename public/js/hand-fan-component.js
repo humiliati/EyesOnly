@@ -702,6 +702,14 @@ const HandFanComponent = (function () {
     _renderCards();
   }
 
+  /**
+   * Check if the hand fan is currently visible
+   * @returns {boolean}
+   */
+  function isVisible() {
+    return _fanContainer !== null && _fanContainer.style.display !== 'none';
+  }
+
   // Public API
   return {
     init: init,
@@ -715,7 +723,8 @@ const HandFanComponent = (function () {
     repopulateCards: repopulateCards,
     getSelectedCards: getSelectedCards,
     clearSelection: clearSelection,
-    refreshAffordability: refreshAffordability
+    refreshAffordability: refreshAffordability,
+    isVisible: isVisible
   };
 })();
 
