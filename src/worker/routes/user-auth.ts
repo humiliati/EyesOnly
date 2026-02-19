@@ -17,6 +17,8 @@ import {
   getUserCryptos,
   getUserInventory,
   getUserHighscores,
+  getUserFilesystem,
+  updateUserFilesystem,
 } from '../db/user-queries';
 import { hashPassword, generateToken } from '../db/queries';
 
@@ -227,3 +229,51 @@ userAuthRoutes.get('/highscores', async (c) => {
 
   return c.json({ highscores });
 });
+
+/**
+ * GET /api/user/filesystem
+ * Get user's immersive filesystem (for ARG mode).
+ */
+userAuthRoutes.get('/filesystem', async (c) => {
+  const sessionToken = c.req.header('X-Session-Token');
+
+  if (!sessionToken) {
+    return c.json({ error: 'UNAUTHORIZED', message: 'Session token required' }, 401);
+  }
+
+  const session = await getUserSession(c.env.DB, sessionToken);
+  if (!session) {
+    return c.json({ error: 'UNAUTHORIZED', message: 'Invalid or expired session' }, 401);
+  }
+
+  const filesystem = await getUserFilesystem(c.env.DB, session.user_id);
+
+  return c.json({ filesystem: filesystem || {} });
+});
+
+/**
+ * PUT /api/user/filesystem
+ * Update user's immersive filesystem (for ARG mode).
+ */
+userAuthRoutes.put('/filesystem', async (c) => {
+  const sessionToken = c.req.header('X-Session-Token');
+
+  if (!sessionToken) {
+    return c.json({ error: 'UNAUTHORIZED', message: 'Session token required' }, 401);
+  }
+
+  const session = await getUserSession(c.env.DB, sessionToken);
+  if (!session) {
+    return c.json({ error: 'UNAUTHORIZED', message: 'Invalid or expired session' }, 401);
+  }
+
+  const body = await c.req.json<{ filesystem: object }>();
+  if (!body.filesystem) {
+    return c.json({ error: 'BAD_REQUEST', message: 'Filesystem data required' }, 400);
+  }
+
+  await updateUserFilesystem(c.env.DB, session.user_id, body.filesystem);
+
+  return c.json({ success: true });
+});
+

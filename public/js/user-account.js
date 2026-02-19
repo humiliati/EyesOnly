@@ -241,6 +241,60 @@
       });
   };
 
+  /**
+   * Fetch user's immersive filesystem.
+   * @returns {Promise<Object>} Filesystem data
+   */
+  UserAccount.fetchFilesystem = function () {
+    var token = UserAccount.getSessionToken();
+    if (!token) {
+      return Promise.reject(new Error('Not logged in'));
+    }
+
+    return fetch(API_BASE + '/filesystem', {
+      method: 'GET',
+      headers: {
+        'X-Session-Token': token,
+      },
+    })
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error('Failed to fetch filesystem');
+        }
+        return response.json();
+      })
+      .then(function (data) {
+        return data.filesystem;
+      });
+  };
+
+  /**
+   * Update user's immersive filesystem.
+   * @param {Object} filesystem - Filesystem data to save
+   * @returns {Promise<void>}
+   */
+  UserAccount.updateFilesystem = function (filesystem) {
+    var token = UserAccount.getSessionToken();
+    if (!token) {
+      return Promise.reject(new Error('Not logged in'));
+    }
+
+    return fetch(API_BASE + '/filesystem', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Session-Token': token,
+      },
+      body: JSON.stringify({ filesystem: filesystem }),
+    })
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error('Failed to update filesystem');
+        }
+        return response.json();
+      });
+  };
+
   // --- Internal Helpers ---
 
   function _loadSession() {

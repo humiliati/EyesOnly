@@ -327,3 +327,51 @@ export async function getUserCryptos(db: D1Database, userId: number): Promise<nu
     .first<{ cryptos: number }>();
   return result?.cryptos || 0;
 }
+
+// --- User Filesystem ---
+
+export async function getUserFilesystem(db: D1Database, userId: number): Promise<object | null> {
+  const result = await db
+    .prepare('SELECT preferences FROM user_accounts WHERE id = ?')
+    .bind(userId)
+    .first<{ preferences: string }>();
+
+  if (!result || !result.preferences) return null;
+
+  try {
+    const prefs = JSON.parse(result.preferences);
+    return prefs.filesystem || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+export async function updateUserFilesystem(
+  db: D1Database,
+  userId: number,
+  filesystem: object,
+): Promise<void> {
+  // Get current preferences
+  const result = await db
+    .prepare('SELECT preferences FROM user_accounts WHERE id = ?')
+    .bind(userId)
+    .first<{ preferences: string }>();
+
+  let prefs: any = { theme: 'green', sfx_enabled: true, cloud_sync_enabled: true };
+  if (result && result.preferences) {
+    try {
+      prefs = JSON.parse(result.preferences);
+    } catch (e) {
+      // Keep default if parse fails
+    }
+  }
+
+  // Update filesystem
+  prefs.filesystem = filesystem;
+
+  // Save back to database
+  await db
+    .prepare('UPDATE user_accounts SET preferences = ? WHERE id = ?')
+    .bind(JSON.stringify(prefs), userId)
+    .run();
+}
