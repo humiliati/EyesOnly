@@ -2417,3 +2417,223 @@ body.in-gone-rogue #log-column {
 .hand-card[draggable="true"]:active {
   cursor: grabbing;
 }
+
+/* ============================================================
+   MOK AI INTERFACE SYSTEM
+   ============================================================ */
+
+/* MOK Visual Container */
+.mok-visual-container {
+  width: 100%;
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Pentagram Wrapper - Creates "zoomed in" effect */
+.mok-pentagram-wrapper {
+  position: relative;
+  width: 300px;
+  height: 300px;
+  transform: scale(1.8);
+  overflow: hidden;
+}
+
+/* MOK Pentagram Structure */
+.mok-pentagram {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Interior Triangle - LED Glow Area */
+.mok-triangle-glow {
+  font-size: 120px;
+  line-height: 1;
+  color: var(--mok-primary-glow, #00FF88);
+  text-shadow:
+    0 0 10px var(--mok-primary-glow, #00FF88),
+    0 0 20px var(--mok-secondary-glow, #00CC66),
+    0 0 30px var(--mok-secondary-glow, #00CC66),
+    0 0 40px var(--mok-primary-glow, #00FF88);
+  filter: drop-shadow(0 0 15px var(--mok-primary-glow, #00FF88));
+  transition: all 0.3s ease-out;
+  animation: mok-pulse-idle 4s ease-in-out infinite;
+}
+
+/* Glow State Animations */
+@keyframes mok-pulse-idle {
+  0%, 100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes mok-pulse-talking {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(0.98);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes mok-pulse-warning {
+  0%, 100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes mok-pulse-error {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Glow State Classes */
+.glow-talking {
+  animation: mok-pulse-talking 0.5s ease-in-out infinite;
+}
+
+.glow-processing {
+  animation: mok-pulse-idle 2s ease-in-out infinite;
+}
+
+.glow-warning {
+  animation: mok-pulse-warning 1s ease-in-out infinite;
+}
+
+.glow-error {
+  animation: mok-pulse-error 0.3s ease-in-out infinite;
+}
+
+.glow-sleep {
+  animation: mok-pulse-idle 8s ease-in-out infinite;
+  opacity: 0.4;
+}
+
+/* MOK Interjection Area */
+.mok-interjection {
+  padding: 8px 12px;
+  text-align: center;
+  color: var(--phosphor);
+  font-size: 0.9em;
+  min-height: 30px;
+  line-height: 1.4;
+}
+
+/* Kernel API Status */
+.kernel-api-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--panel-border-soft);
+  margin: 8px 0;
+  font-size: 0.85em;
+}
+
+.kernel-icon {
+  font-size: 1.2em;
+}
+
+.kernel-text {
+  color: var(--phosphor);
+}
+
+/* Debrief Display Containers */
+.debrief-mok-display,
+.debrief-resources-display,
+.debrief-video-display {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Debrief Cycle Button */
+.debrief-cycle-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--panel-border);
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: auto;
+  font-size: 0.9em;
+}
+
+.debrief-cycle-button:hover {
+  background: rgba(51, 255, 51, 0.1);
+  border-color: var(--phosphor);
+}
+
+.debrief-cycle-button .cycle-icon {
+  color: var(--phosphor-bright);
+  font-size: 1.1em;
+}
+
+.debrief-cycle-button .cycle-text {
+  color: var(--phosphor);
+}
+
+/* Resources Content Area */
+#debrief-resources-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Video Player Container */
+.video-player-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.8);
+  color: var(--phosphor);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .mok-pentagram-wrapper {
+    width: 200px;
+    height: 200px;
+    transform: scale(1.5);
+  }
+
+  .mok-triangle-glow {
+    font-size: 80px;
+  }
+
+  .kernel-api-status {
+    font-size: 0.75em;
+  }
+
+  .mok-interjection {
+    font-size: 0.8em;
+  }
+}
