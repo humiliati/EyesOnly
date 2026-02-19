@@ -60,6 +60,7 @@ const GoneRogue = (function () {
   var _strCombatAdvantage = 'neutral'; // 'ambush', 'neutral', 'disadvantaged', 'flanked'
   var _strCombatRound = 0;
   var _strCombatLog = []; // Combat log messages
+  var _strCombatAmmoSpent = 0; // Track ammo spent in this combat encounter
 
   // Boss encounter state
   var _activeBoss = null; // Current boss instance (from BossEncounters module)
@@ -4268,6 +4269,7 @@ const GoneRogue = (function () {
     _strCombatEnemy = enemy;
     _strCombatRound = 0;
     _strCombatLog = [];
+    _strCombatAmmoSpent = 0; // Reset ammo tracking for this encounter
 
     // Initialize enemy intent state if system available
     if (typeof EnemyIntentSystem !== 'undefined') {
@@ -5135,6 +5137,14 @@ const GoneRogue = (function () {
       return _exitStrCombat('player_victory');
     }
 
+    // Track ammo spent if card has ammo cost
+    if (card && card.resourceCost && card.resourceCost.ammo) {
+      _strCombatAmmoSpent += card.resourceCost.ammo;
+    } else if (card && card.baseStats && card.baseStats.ammo) {
+      // Legacy ammo tracking from baseStats
+      _strCombatAmmoSpent += card.baseStats.ammo;
+    }
+
     // Calculate hit
     var hitResult = _calculateHit(_player, enemy, _strCombatAdvantage);
 
@@ -5366,6 +5376,20 @@ const GoneRogue = (function () {
         deathResult.messages.forEach(function(msg) {
           if (msg) lines.push(msg);
         });
+      }
+
+      // Calculate ammo drops based on ammo spent (1 ammo drop per 3 ammo spent)
+      var ammoDrops = Math.floor(_strCombatAmmoSpent / 3);
+      if (ammoDrops > 0) {
+        // Auto-collect ammo drops
+        GAMESTATE.addAmmo(ammoDrops);
+        lines.push('🔫 AMMO RECOVERED: +' + ammoDrops + ' (' + _strCombatAmmoSpent + ' spent in combat)');
+        
+        // Report to debrief feed
+        if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
+          var currentAmmo = GAMESTATE.getAmmo ? GAMESTATE.getAmmo() : 0;
+          DebriefFeedController.reportResourceChange('ammo', currentAmmo - ammoDrops, currentAmmo, 'Enemy Defeated');
+        }
       }
 
       // Spawn standard loot (currency, cards, charms)
