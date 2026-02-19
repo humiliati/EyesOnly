@@ -8,6 +8,10 @@ const TooltipSystem = (function() {
 
   var _currentTimer = null;
   var _mokInterjectionElement = null;
+  var _mokHistoryContainer = null;
+  var _isExpanded = false;
+  var _messageHistory = [];
+  var MAX_HISTORY_LINES = 30;
   var DEFAULT_MESSAGE = 'Standing by for advisories.';
 
   /**
@@ -18,6 +22,50 @@ const TooltipSystem = (function() {
     if (!_mokInterjectionElement) {
       console.warn('TooltipSystem: MOK interjection element not found');
     }
+
+    // Create history container if it doesn't exist
+    _createHistoryContainer();
+  }
+
+  /**
+   * Create scrollable history container for MOK interjection
+   */
+  function _createHistoryContainer() {
+    // Check if history container already exists
+    var existingContainer = document.getElementById('mok-history-container');
+    if (existingContainer) {
+      _mokHistoryContainer = existingContainer;
+      return;
+    }
+
+    // Find the MOK interjection parent element
+    var mokParent = _mokInterjectionElement ? _mokInterjectionElement.parentElement : null;
+    if (!mokParent) {
+      return;
+    }
+
+    // Create history container
+    _mokHistoryContainer = document.createElement('div');
+    _mokHistoryContainer.id = 'mok-history-container';
+    _mokHistoryContainer.className = 'mok-history-container mok-history-collapsed';
+    _mokHistoryContainer.style.display = 'none';
+
+    // Add history content area
+    var historyContent = document.createElement('div');
+    historyContent.id = 'mok-history-content';
+    historyContent.className = 'mok-history-content';
+    _mokHistoryContainer.appendChild(historyContent);
+
+    // Add expand/collapse button
+    var toggleBtn = document.createElement('button');
+    toggleBtn.id = 'mok-history-toggle';
+    toggleBtn.className = 'mok-history-toggle';
+    toggleBtn.textContent = '▼ History';
+    toggleBtn.addEventListener('click', toggleHistory);
+    
+    // Insert after the interjection element
+    mokParent.insertBefore(_mokHistoryContainer, _mokInterjectionElement.nextSibling);
+    mokParent.insertBefore(toggleBtn, _mokHistoryContainer);
   }
 
   /**
@@ -67,12 +115,102 @@ const TooltipSystem = (function() {
     // Set the message
     _mokInterjectionElement.textContent = message;
 
+    // Add to history
+    _addToHistory(message);
+
     // Set auto-clear timer
     var duration = durationMs || 2500;
     _currentTimer = setTimeout(function() {
       _mokInterjectionElement.textContent = DEFAULT_MESSAGE;
       _currentTimer = null;
     }, duration);
+  }
+
+  /**
+   * Add message to history
+   * @param {string} message - Message to add
+   */
+  function _addToHistory(message) {
+    // Don't add default message or empty messages
+    if (!message || message === DEFAULT_MESSAGE) {
+      return;
+    }
+
+    // Add timestamp
+    var timestamp = new Date().toLocaleTimeString('en-US', { 
+      hour12: false, 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit' 
+    });
+
+    var entry = {
+      time: timestamp,
+      message: message
+    };
+
+    // Add to history array
+    _messageHistory.unshift(entry);
+
+    // Keep only MAX_HISTORY_LINES
+    if (_messageHistory.length > MAX_HISTORY_LINES) {
+      _messageHistory = _messageHistory.slice(0, MAX_HISTORY_LINES);
+    }
+
+    // Update history display if expanded
+    if (_isExpanded) {
+      _renderHistory();
+    }
+  }
+
+  /**
+   * Render message history
+   */
+  function _renderHistory() {
+    if (!_mokHistoryContainer) return;
+
+    var content = document.getElementById('mok-history-content');
+    if (!content) return;
+
+    var html = '';
+    for (var i = 0; i < _messageHistory.length; i++) {
+      var entry = _messageHistory[i];
+      html += '<div class="mok-history-entry">';
+      html += '<span class="mok-history-time">[' + entry.time + ']</span> ';
+      html += '<span class="mok-history-message">' + entry.message + '</span>';
+      html += '</div>';
+    }
+
+    if (html === '') {
+      html = '<div class="mok-history-empty">No messages yet</div>';
+    }
+
+    content.innerHTML = html;
+
+    // Auto-scroll to bottom (newest messages)
+    content.scrollTop = 0;
+  }
+
+  /**
+   * Toggle history visibility
+   */
+  function toggleHistory() {
+    _isExpanded = !_isExpanded;
+
+    var toggleBtn = document.getElementById('mok-history-toggle');
+    
+    if (_isExpanded) {
+      _mokHistoryContainer.style.display = 'block';
+      _mokHistoryContainer.classList.remove('mok-history-collapsed');
+      _mokHistoryContainer.classList.add('mok-history-expanded');
+      if (toggleBtn) toggleBtn.textContent = '▲ Hide History';
+      _renderHistory();
+    } else {
+      _mokHistoryContainer.style.display = 'none';
+      _mokHistoryContainer.classList.remove('mok-history-expanded');
+      _mokHistoryContainer.classList.add('mok-history-collapsed');
+      if (toggleBtn) toggleBtn.textContent = '▼ History';
+    }
   }
 
   /**
@@ -93,6 +231,9 @@ const TooltipSystem = (function() {
 
     // Set the message without auto-clear
     _mokInterjectionElement.textContent = message;
+
+    // Add to history
+    _addToHistory(message);
   }
 
   /**
@@ -191,6 +332,7 @@ const TooltipSystem = (function() {
     showPersistent: showPersistent,
     showAction: showAction,
     clear: clear,
-    init: init
+    init: init,
+    toggleHistory: toggleHistory
   };
 })();

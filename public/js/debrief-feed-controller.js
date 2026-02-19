@@ -351,6 +351,84 @@ const DebriefFeedController = (function() {
     return MOKVisualEngine.getCurrentGlowColors();
   }
 
+  /**
+   * Report resource change in debrief feed
+   * @param {string} resourceType - Type of resource (ammo, energy, etc.)
+   * @param {number} oldValue - Previous value
+   * @param {number} newValue - New value
+   * @param {string} reason - Reason for change (e.g., "Card Played: Grenade")
+   */
+  function reportResourceChange(resourceType, oldValue, newValue, reason) {
+    // Update MOK interjection with resource change
+    var change = newValue - oldValue;
+    var changeIcon = change >= 0 ? '▲' : '▼';
+    var changeColor = change >= 0 ? '#1cff9b' : '#ff4444';
+    
+    var message = resourceType.toUpperCase() + ' ' + changeIcon + ' ';
+    message += oldValue + ' → ' + newValue;
+    
+    if (reason) {
+      message += ' (' + reason + ')';
+    }
+
+    // Show in MOK interjection
+    if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+      UIControls.updateMokInterjection(message);
+    }
+
+    // If in resource display mode, refresh to show updated values
+    if (_currentDisplay === 'resources' && typeof DebriefFeedRenderer !== 'undefined') {
+      DebriefFeedRenderer.render();
+    }
+  }
+
+  /**
+   * Report card played in debrief feed
+   * @param {Object} card - Card that was played
+   * @param {Object} resourceChanges - Object with resource changes {ammo: -2, energy: -3, etc.}
+   */
+  function reportCardPlayed(card, resourceChanges) {
+    var message = '🎴 CARD PLAYED: ' + card.name;
+    
+    // Add resource cost details
+    if (resourceChanges && Object.keys(resourceChanges).length > 0) {
+      var costs = [];
+      for (var resource in resourceChanges) {
+        if (resourceChanges[resource] < 0) {
+          costs.push(resource.toUpperCase() + ' ' + Math.abs(resourceChanges[resource]));
+        }
+      }
+      if (costs.length > 0) {
+        message += ' (Cost: ' + costs.join(', ') + ')';
+      }
+    }
+
+    // Show in MOK interjection
+    if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+      UIControls.updateMokInterjection(message);
+    }
+
+    // Report individual resource changes
+    if (resourceChanges) {
+      for (var resource in resourceChanges) {
+        var change = resourceChanges[resource];
+        if (change !== 0) {
+          // Get current value from GAMESTATE
+          var currentValue = 0;
+          if (typeof GAMESTATE !== 'undefined') {
+            if (resource === 'ammo') currentValue = GAMESTATE.getAmmo();
+            else if (resource === 'energy') currentValue = GAMESTATE.getEnergy();
+            else if (resource === 'focus') currentValue = GAMESTATE.getFocus();
+            else if (resource === 'battery') currentValue = GAMESTATE.getBattery();
+            else if (resource === 'fatigue') currentValue = GAMESTATE.getFatigue();
+          }
+          
+          reportResourceChange(resource, currentValue - change, currentValue, 'Card: ' + card.name);
+        }
+      }
+    }
+  }
+
   // Public API
   return {
     init: init,
@@ -362,7 +440,9 @@ const DebriefFeedController = (function() {
     triggerMOKEvent: triggerMOKEvent,
     setMOKExpression: setMOKExpression,
     setMOKGlowColors: setMOKGlowColors,
-    getMOKGlowColors: getMOKGlowColors
+    getMOKGlowColors: getMOKGlowColors,
+    reportResourceChange: reportResourceChange,
+    reportCardPlayed: reportCardPlayed
   };
 })();
 
