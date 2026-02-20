@@ -31,7 +31,8 @@ const GoneRogue = (function () {
     combatEntries: 0, // Track total combat entries (for boss mythic conditions)
     lastCardType: null, // Track last card used (for boss mythic conditions)
     collectingCurrency: false, // Track currency collection for animation
-    currencyCollectTime: 0 // Timestamp of last currency collection
+    currencyCollectTime: 0, // Timestamp of last currency collection
+    positionHistory: [] // Position history buffer for pet following (max 16 entries)
   };
 
   var _enemies = [];
@@ -93,6 +94,20 @@ const GoneRogue = (function () {
   var _nextBiomePreview = null; // Cache next floor's biome for consistent preview
   var _visitedBiomes = []; // Track visited biomes this run
 
+  // Context-aware key+gate spawn system state
+  var _runState = {
+    floorsSinceGate: 0,        // Floors since last gate spawn (pity timer)
+    floorsSinceKey: 0,         // Floors since last key drop (pity timer)
+    visitedGateBiomes: [],     // Biomes entered via gates this run
+    keysOwned: [],             // Keys currently in inventory
+    lastBiomeEntered: null,    // Last biome gate entered (for cooldown)
+    biomeEntryCooldowns: {},   // Cooldown tracker {biomeName: floorsRemaining}
+    gatesSpawnedThisRun: 0,    // Total gates spawned
+    keysFoundThisRun: 0,       // Total keys found
+    firstCombatVictory: false, // Whether player has won first combat
+    firstBonfire: false        // Whether player has reached first bonfire
+  };
+
   // Forest biome state
   var _forestBuildings = []; // Village buildings {x, y, emoji} for visual overlay
   var _biomeVisualGrid = null; // Pre-computed visual substitution grid (wall/floor chars)
@@ -104,6 +119,7 @@ const GoneRogue = (function () {
 
   // Highscore tracking variables
   var _runStartTime = null;        // Run start timestamp
+  var _runSeed = null;             // Seeded RNG seed for reproducible runs
   var _currencyCollected = 0;      // Total currency collected this run (excludes starting balance)
   var _totalEnemiesSpawned = 0;    // Total enemies that spawned
   var _enemiesKilled = 0;          // Enemies defeated
@@ -114,6 +130,14 @@ const GoneRogue = (function () {
   var _runCompleted = false;       // Whether run reached floor 30
   var _playerDeaths = 0;           // Number of player deaths in this run
   var _lastPickupMessage = null;   // Track last item pickup message for display
+
+  // Pity timer tracking for card drops
+  var _recentCardDrops = [];       // Last 5 card drops { type, category, floor }
+  var _pitySince = {               // Floors since last drop of each type
+    defensive: 0,
+    utility: 0,
+    healing: 0
+  };
 
   var TILES = {
     EMPTY: '.',
@@ -317,7 +341,8 @@ const GoneRogue = (function () {
         { emoji: '🖥️', name: 'Desk', breakable: true, hp: 3, provides: 'cover', drops: ['supplies'] },
         { emoji: '💧', name: 'Water Cooler', interact: 'drink', healing: 5 },
         { emoji: '🥤', name: 'Vending Machine', breakable: true, hp: 4, drops: ['drinks', 'snacks'] },
-        { emoji: '🖥️', name: 'Server Rack', interact: 'hack', effect: 'reveals_map' }
+        { emoji: '🖥️', name: 'Server Rack', interact: 'hack', effect: 'reveals_map' },
+        { emoji: '💻', name: 'Terminal', breakable: true, hp: 2, drops: ['thumb_drive'], glows: true, lightType: 'TERMINAL' }
       ],
 
       // Interactive objects for office exploration
@@ -424,7 +449,8 @@ const GoneRogue = (function () {
         { emoji: '🧪', name: 'Chemical Tank', breakable: true, hp: 3, drops: ['acid'], hazard: 'acid' },
         { emoji: '🛤️', name: 'Pipeline', interact: 'damage', effect: 'releases_steam' },
         { emoji: '🤖', name: 'Robot Wreckage', breakable: true, hp: 4, drops: ['scrap', 'parts'], sometimes: 'hostile' },
-        { emoji: '⏩', name: 'Conveyor Belt', interact: 'walk', effect: 'speed_boost', reversible: true }
+        { emoji: '⏩', name: 'Conveyor Belt', interact: 'walk', effect: 'speed_boost', reversible: true },
+        { emoji: '🌫️', name: 'Vent Cover', breakable: true, hp: 3, requiresCrowbar: true, opensVent: true, drops: ['vent_access'] }
       ],
 
       // Interactive hazard objects
@@ -588,6 +614,110 @@ const GoneRogue = (function () {
   var _environmentalDetails = {}; // Stores details by layer
 
   /**
+   * RNG helper - uses SeededRNG if available, falls back to Math.random()
+   */
+  function _rng() {
+    if (typeof SeededRNG !== 'undefined' && SeededRNG.random) {
+      return SeededRNG.random();
+    }
+    return Math.random();
+  }
+
+  /**
+   * Update player position history for pet following
+   */
+  function _updatePositionHistory() {
+    var HISTORY_SIZE = 16;
+
+    // Push current position to history
+    _player.positionHistory.unshift({
+      x: _player.x,
+      y: _player.y,
+      facing: _player.lastMoveDirection || 'south'
+    });
+
+    // Trim history to max size
+    if (_player.positionHistory.length > HISTORY_SIZE) {
+      _player.positionHistory.pop();
+    }
+  }
+
+  /**
+   * Categorize card for pity timer tracking
+   */
+  function _categorizeCardForPity(card) {
+    if (!card) return 'other';
+    var type = card.type || card.category || '';
+    var name = card.name || '';
+
+    if (type === 'defense' || name.match(/Block|Shield|Dodge|Cover|Evade|Prone/i)) {
+      return 'defensive';
+    }
+    if (name.match(/Ration|Katchup|Medical|Heal|Health/i)) {
+      return 'healing';
+    }
+    if (type === 'utility' || name.match(/Cigarette|Energy Drink|Retreat|Lure|Smoke/i)) {
+      return 'utility';
+    }
+    return 'other';
+  }
+
+  /**
+   * Track card drop for pity timer
+   */
+  function _trackCardDrop(card) {
+    var category = _categorizeCardForPity(card);
+    _recentCardDrops.push({
+      type: card.type || 'unknown',
+      category: category,
+      floor: _floor,
+      name: card.name
+    });
+    if (_recentCardDrops.length > 5) {
+      _recentCardDrops.shift();
+    }
+    if (category !== 'other') {
+      _pitySince[category] = 0;
+    }
+  }
+
+  /**
+   * Check if pity timer should force a specific card type
+   */
+  function _checkPityTimer() {
+    var PITY_THRESHOLD = 3;
+    for (var category in _pitySince) {
+      if (_pitySince[category] >= PITY_THRESHOLD) {
+        return category;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Get a card of specific pity category
+   */
+  function _getPityCard(category) {
+    var pityCards = {
+      defensive: ['Block', 'Dodge', 'PRONE', 'DIVE_FOR_COVER'],
+      utility: ['CIGARETTES', 'RETREAT', 'LURE', 'ENERGY_DRINK'],
+      healing: ['RATIONS', 'KATCHUP', 'MEDICAL_KIT']
+    };
+    var cards = pityCards[category] || [];
+    if (cards.length === 0) return null;
+    return cards[Math.floor(_rng() * cards.length)];
+  }
+
+  /**
+   * Increment pity timers (call at start of each floor)
+   */
+  function _incrementPityTimers() {
+    for (var category in _pitySince) {
+      _pitySince[category]++;
+    }
+  }
+
+  /**
    * Generate discoveries for current floor based on tier distribution
    */
   function _generateDiscoveries(rooms, biome) {
@@ -598,7 +728,7 @@ const GoneRogue = (function () {
 
     for (var i = 0; i < totalDiscoveries; i++) {
       var tier = _selectDiscoveryTier();
-      var room = rooms[Math.floor(Math.random() * rooms.length)];
+      var room = rooms[Math.floor(_rng() * rooms.length)];
       var pos = _findDiscoveryPosition(room, tier);
 
       if (pos) {
@@ -619,7 +749,7 @@ const GoneRogue = (function () {
    * Select discovery tier based on frequency distribution
    */
   function _selectDiscoveryTier() {
-    var roll = Math.random();
+    var roll = _rng();
     var cumulative = 0;
 
     var tiers = [
@@ -648,8 +778,8 @@ const GoneRogue = (function () {
     var maxAttempts = 20;
 
     while (attempts < maxAttempts) {
-      var x = room.x + Math.floor(Math.random() * room.width);
-      var y = room.y + Math.floor(Math.random() * room.height);
+      var x = room.x + Math.floor(_rng() * room.width);
+      var y = room.y + Math.floor(_rng() * room.height);
 
       // Check if position is valid (walkable, not occupied)
       if (_grid[y] && _grid[y][x] === TILES.EMPTY) {
@@ -683,22 +813,22 @@ const GoneRogue = (function () {
 
     switch (tier) {
       case DISCOVERY_TIERS.SURFACE:
-        contents.currency = Math.floor(Math.random() * 20) + 5;
+        contents.currency = Math.floor(_rng() * 20) + 5;
         break;
       case DISCOVERY_TIERS.SEMI_HIDDEN:
-        contents.currency = Math.floor(Math.random() * 40) + 15;
-        if (Math.random() < 0.3) {
+        contents.currency = Math.floor(_rng() * 40) + 15;
+        if (_rng() < 0.3) {
           contents.cards.push('random_card');
         }
         break;
       case DISCOVERY_TIERS.CONCEALED:
-        contents.currency = Math.floor(Math.random() * 80) + 30;
-        if (Math.random() < 0.5) {
+        contents.currency = Math.floor(_rng() * 80) + 30;
+        if (_rng() < 0.5) {
           contents.cards.push('rare_card');
         }
         break;
       case DISCOVERY_TIERS.HIDDEN:
-        contents.currency = Math.floor(Math.random() * 150) + 50;
+        contents.currency = Math.floor(_rng() * 150) + 50;
         contents.cards.push('legendary_card');
         break;
       case DISCOVERY_TIERS.META:
@@ -723,7 +853,7 @@ const GoneRogue = (function () {
 
     var tierTypes = types[tier.name.toUpperCase().replace('-', '_')];
     if (tierTypes && tierTypes.length > 0) {
-      return tierTypes[Math.floor(Math.random() * tierTypes.length)];
+      return tierTypes[Math.floor(_rng() * tierTypes.length)];
     }
 
     return 'breakable_container';
@@ -740,7 +870,7 @@ const GoneRogue = (function () {
       'Something about this place feels familiar...'
     ];
 
-    return narratives[Math.floor(Math.random() * narratives.length)];
+    return narratives[Math.floor(_rng() * narratives.length)];
   }
 
   /**
@@ -804,13 +934,13 @@ const GoneRogue = (function () {
     };
 
     // Random chance for narrative elements
-    if (Math.random() < 0.3) {
+    if (_rng() < 0.3) {
       narrative.evidence.push('struggle_marks');
     }
-    if (Math.random() < 0.2) {
+    if (_rng() < 0.2) {
       narrative.personalItems.push('abandoned_photo');
     }
-    if (Math.random() < 0.25) {
+    if (_rng() < 0.25) {
       narrative.environmentalChanges.push('water_damage');
     }
 
@@ -862,7 +992,7 @@ const GoneRogue = (function () {
     // Integrate with existing item spawning system
     var offset = _items.length % 2 === 0 ? 1 : -1;
     var spawnX = Math.max(1, Math.min(GRID_WIDTH - 2, x + offset));
-    _items.push({ x: spawnX, y: y, quality: Math.random() });
+    _items.push({ x: spawnX, y: y, quality: _rng() });
   }
 
   /**
@@ -889,7 +1019,7 @@ const GoneRogue = (function () {
     if (BOSS_FLOORS.indexOf(floorNum) !== -1) return FLOOR_TYPES.BOSS;
 
     // Random exploration floors (5% chance on floors 15+)
-    if (floorNum >= 15 && Math.random() < 0.05) return FLOOR_TYPES.EXPLORATION;
+    if (floorNum >= 15 && _rng() < 0.05) return FLOOR_TYPES.EXPLORATION;
 
     // Light stealth early
     if (floorNum <= 9) return FLOOR_TYPES.STEALTH;
@@ -909,18 +1039,18 @@ const GoneRogue = (function () {
   function _getBiome(floorNum) {
     // Floors 1-3: Always Forest (tutorial/starting experience)
     if (floorNum <= 3) return BIOMES.FOREST;
-    
+
     // Floor 4: Special Grey Cave floor
     if (floorNum === 4) return BIOMES.GREY_CAVE;
-    
+
     // Boss floors: Use boss-appropriate biomes (Aerospace for high floors)
     if (BOSS_FLOORS.indexOf(floorNum) !== -1 && floorNum >= 23) {
       return BIOMES.AEROSPACE;
     }
-    
+
     // Weighted biome selection based on floor depth
     var weights = {};
-    
+
     if (floorNum >= 5 && floorNum <= 6) {
       // Early game: Forest dominant
       weights = {
@@ -963,24 +1093,24 @@ const GoneRogue = (function () {
         AEROSPACE: 70
       };
     }
-    
+
     // Calculate total weight
     var totalWeight = 0;
     for (var key in weights) {
       totalWeight += weights[key];
     }
-    
+
     // Select random biome based on weights
-    var rand = Math.random() * totalWeight;
+    var rand = _rng() * totalWeight;
     var cumulative = 0;
-    
+
     for (var biomeKey in weights) {
       cumulative += weights[biomeKey];
       if (rand <= cumulative) {
         return BIOMES[biomeKey];
       }
     }
-    
+
     // Fallback (should never happen)
     return BIOMES.OFFICE;
   }
@@ -1025,15 +1155,34 @@ const GoneRogue = (function () {
     // Disable scanlines for performance during gameplay
     document.body.classList.add('gone-rogue-active');
 
-    // Initialize seed-based generation
-    if (typeof SeededRandom !== 'undefined') {
-      _currentSeed = SeededRandom.generateRandomSeed();
-      _currentSeedPhrase = SeededRandom.generateSeedPhrase(_currentSeed);
-      _seedRNG = new SeededRandom.SeededRNG(_currentSeed);
-      console.log('[GoneRogue] Run seed:', _currentSeed, '(' + _currentSeedPhrase + ')');
+// Initialize seeded generation for reproducible runs
+(function initRunSeed() {
+  // Prefer SeededRandom (supports seed phrase + RNG instance + UI)
+  if (typeof SeededRandom !== 'undefined') {
+    _currentSeed = SeededRandom.generateRandomSeed();
+    _currentSeedPhrase = SeededRandom.generateSeedPhrase(_currentSeed);
+    _seedRNG = new SeededRandom.SeededRNG(_currentSeed);
 
-      // Update AWOL button to show seed phrase
-      _updateSeedDisplay();
+    // Back-compat / single canonical “seed id”
+    _runSeed = _currentSeed;
+
+    console.log('[GoneRogue] Run seed:', _currentSeed, '(' + _currentSeedPhrase + ')');
+    if (typeof _updateSeedDisplay === 'function') _updateSeedDisplay();
+    return;
+  }
+
+  // Fallback legacy seed helper
+  if (typeof SeededRNG !== 'undefined' && typeof SeededRNG.init === 'function') {
+    var seed = SeededRNG.init();
+
+    _runSeed = seed;
+    _currentSeed = seed;
+    _currentSeedPhrase = null;
+    _seedRNG = null;
+
+    console.log('[GoneRogue] Run seed:', seed);
+  }
+})();
     }
 
     // Initialize highscore tracking
@@ -1481,7 +1630,7 @@ const GoneRogue = (function () {
     for (var i = 0; i < tiles.length; i++) {
       total += tiles[i].weight;
     }
-    var rand = Math.random() * total;
+    var rand = _rng() * total;
     var cumulative = 0;
     for (var j = 0; j < tiles.length; j++) {
       cumulative += tiles[j].weight;
@@ -1558,7 +1707,7 @@ const GoneRogue = (function () {
 
     for (var y = 1; y < height - 1; y++) {
       for (var x = 1; x < width - 1; x++) {
-        if (Math.random() < openSpaceRatio) {
+        if (_rng() < openSpaceRatio) {
           map[y][x] = _pickWeightedChar(floorTiles);
         }
       }
@@ -1575,8 +1724,8 @@ const GoneRogue = (function () {
     var width = map[0].length;
     var height = map.length;
 
-    var villageX = Math.floor(width * 0.2) + Math.floor(Math.random() * 5);
-    var villageY = Math.floor(height * 0.6) + Math.floor(Math.random() * 5);
+    var villageX = Math.floor(width * 0.2) + Math.floor(_rng() * 5);
+    var villageY = Math.floor(height * 0.6) + Math.floor(_rng() * 5);
 
     var buildings = biome.spawnFeatures.buildings;
     var positions = [
@@ -1594,10 +1743,10 @@ const GoneRogue = (function () {
 
     var decorations = biome.spawnFeatures.decorations;
     for (var d = 0; d < 5; d++) {
-      var dx = villageX + Math.floor(Math.random() * 7);
-      var dy = villageY + Math.floor(Math.random() * 7);
+      var dx = villageX + Math.floor(_rng() * 7);
+      var dy = villageY + Math.floor(_rng() * 7);
       if (dx < width - 1 && dy < height - 1) {
-        map[dy][dx] = decorations[Math.floor(Math.random() * decorations.length)];
+        map[dy][dx] = decorations[Math.floor(_rng() * decorations.length)];
       }
     }
     return map;
@@ -1611,8 +1760,8 @@ const GoneRogue = (function () {
   function _placeVillageCluster(biome) {
     if (!biome.spawnFeatures || !biome.spawnFeatures.villageCluster) return;
 
-    var villageX = Math.floor(GRID_WIDTH * 0.2) + Math.floor(Math.random() * 5);
-    var villageY = Math.floor(GRID_HEIGHT * 0.6) + Math.floor(Math.random() * 5);
+    var villageX = Math.floor(GRID_WIDTH * 0.2) + Math.floor(_rng() * 5);
+    var villageY = Math.floor(GRID_HEIGHT * 0.6) + Math.floor(_rng() * 5);
 
     var buildings = biome.spawnFeatures.buildings;
     var positions = [
@@ -1635,12 +1784,12 @@ const GoneRogue = (function () {
 
     var decorations = biome.spawnFeatures.decorations;
     for (var d = 0; d < 5; d++) {
-      var dx = villageX + Math.floor(Math.random() * 7);
-      var dy = villageY + Math.floor(Math.random() * 7);
+      var dx = villageX + Math.floor(_rng() * 7);
+      var dy = villageY + Math.floor(_rng() * 7);
       if (dx >= 1 && dx < GRID_WIDTH - 1 && dy >= 1 && dy < GRID_HEIGHT - 1 &&
           _grid[dy][dx] === TILES.EMPTY) {
         // Decorations are visual-only (walkable), stored just for rendering overlay
-        _forestBuildings.push({ x: dx, y: dy, emoji: decorations[Math.floor(Math.random() * decorations.length)] });
+        _forestBuildings.push({ x: dx, y: dy, emoji: decorations[Math.floor(_rng() * decorations.length)] });
       }
     }
   }
@@ -1850,13 +1999,31 @@ const GoneRogue = (function () {
     _stealthBonusCache = null;
     _activeSecretFloor = null;
 
-    // Determine if secret floor
-    var isSecretFloor = !!secretFloorData;
+// Invalidate per-floor caches
+_stealthBonusCache = null;
+_activeSecretFloor = null;
 
-    // Check for contrived tutorial floors (floors 1-3)
-    if (!isSecretFloor && typeof TutorialFloors !== 'undefined' && TutorialFloors.isContrivedFloor(_floor)) {
-      _generateContrivedTutorialFloor();
-      return;
+// Clear environmental synergy state (must happen even on early-return floors)
+if (typeof EnvironmentalSynergy !== 'undefined') {
+  EnvironmentalSynergy.clearGates();
+}
+
+// Determine if secret floor
+var isSecretFloor = !!secretFloorData;
+
+// Check for contrived tutorial floors (floors 1-3)
+if (
+  !isSecretFloor &&
+  typeof TutorialFloors !== 'undefined' &&
+  TutorialFloors.isContrivedFloor(_floor)
+) {
+  _generateContrivedTutorialFloor();
+  return;
+}
+
+// Increment pity timers for card drop tracking (skip contrived tutorial floors)
+_incrementPityTimers();
+
     // Clear environmental synergy state
     if (typeof EnvironmentalSynergy !== 'undefined') {
       EnvironmentalSynergy.clearGates();
@@ -1879,6 +2046,12 @@ const GoneRogue = (function () {
       }
     } else {
       floorType = _getFloorType(_floor);
+
+      // Track first bonfire visit for gate eligibility
+      if (floorType === FLOOR_TYPES.BONFIRE && !_runState.firstBonfire) {
+        _runState.firstBonfire = true;
+        console.log('[GoneRogue] First bonfire reached - gates now eligible');
+      }
     }
 
     // Check if this is a boss floor (or secret boss floor)
@@ -1981,6 +2154,16 @@ const GoneRogue = (function () {
     // Tutorial floors: Place guaranteed gate with tutorial pickups
     if (floorType === FLOOR_TYPES.TUTORIAL) {
       _placeTutorialGate(exitX, exitY);
+    }
+
+    // Place biome-specific gates on regular floors
+    if (floorType !== FLOOR_TYPES.TUTORIAL) {
+      _placeBiomeGates(rooms, exitX, exitY, floorBiome);
+    }
+
+    // Spawn context-aware keys (separate from gates, loosely coupled)
+    if (floorType !== FLOOR_TYPES.TUTORIAL) {
+      _spawnContextAwareKey(rooms);
     }
 
     // Place items (increased loot for exploration floors)
@@ -2140,15 +2323,15 @@ const GoneRogue = (function () {
         var maxWidth = difficulty > 5 ? 12 : 10;
         var maxHeight = difficulty > 5 ? 10 : 8;
 
-        var w = Math.floor(Math.random() * (maxWidth - minSize + 1)) + minSize;
-        var h = Math.floor(Math.random() * (maxHeight - minSize + 1)) + minSize;
+        var w = Math.floor(_rng() * (maxWidth - minSize + 1)) + minSize;
+        var h = Math.floor(_rng() * (maxHeight - minSize + 1)) + minSize;
 
         // Ensure room dimensions fit within grid bounds with padding
         w = Math.min(w, GRID_WIDTH - 4);
         h = Math.min(h, GRID_HEIGHT - 4);
 
-        var x = Math.floor(Math.random() * (GRID_WIDTH - w - 4)) + 2;
-        var y = Math.floor(Math.random() * (GRID_HEIGHT - h - 4)) + 2;
+        var x = Math.floor(_rng() * (GRID_WIDTH - w - 4)) + 2;
+        var y = Math.floor(_rng() * (GRID_HEIGHT - h - 4)) + 2;
 
         // Additional validation: ensure room is fully within bounds
         if (x + w >= GRID_WIDTH - 2 || y + h >= GRID_HEIGHT - 2) {
@@ -2235,8 +2418,8 @@ const GoneRogue = (function () {
     var extraConnections = Math.min(2 + Math.floor(_floor / 3), 4);
 
     for (var i = 0; i < extraConnections && rooms.length > 2; i++) {
-      var idx1 = Math.floor(Math.random() * rooms.length);
-      var idx2 = Math.floor(Math.random() * rooms.length);
+      var idx1 = Math.floor(_rng() * rooms.length);
+      var idx2 = Math.floor(_rng() * rooms.length);
 
       if (idx1 !== idx2 && Math.abs(idx1 - idx2) > 1) {
         var room1 = rooms[idx1];
@@ -2248,11 +2431,11 @@ const GoneRogue = (function () {
 
   function _placeCover() {
     // Place cover on 6-10% of floor tiles
-    var coverChance = 0.06 + Math.random() * 0.04;
+    var coverChance = 0.06 + _rng() * 0.04;
 
     for (var y = 1; y < GRID_HEIGHT - 1; y++) {
       for (var x = 1; x < GRID_WIDTH - 1; x++) {
-        if (_grid[y][x] === TILES.EMPTY && Math.random() < coverChance) {
+        if (_grid[y][x] === TILES.EMPTY && _rng() < coverChance) {
           _grid[y][x] = TILES.COVER;
         }
       }
@@ -2265,7 +2448,7 @@ const GoneRogue = (function () {
 
     for (var y = 1; y < GRID_HEIGHT - 1; y++) {
       for (var x = 1; x < GRID_WIDTH - 1; x++) {
-        if (_grid[y][x] === TILES.EMPTY && Math.random() < shadowChance) {
+        if (_grid[y][x] === TILES.EMPTY && _rng() < shadowChance) {
           var key = x + ',' + y;
           _tileMetadata[key] = { type: 'shadow', stealthBonus: 30 };
           // Visual indicator: change tile to shadow tile
@@ -2298,11 +2481,11 @@ const GoneRogue = (function () {
 
       // Place ground effects
       for (var i = 0; i < effectCount && biomeEffects.length > 0; i++) {
-        var x = Math.floor(Math.random() * (GRID_WIDTH - 2)) + 1;
-        var y = Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1;
+        var x = Math.floor(_rng() * (GRID_WIDTH - 2)) + 1;
+        var y = Math.floor(_rng() * (GRID_HEIGHT - 2)) + 1;
 
         if (_grid[y][x] === TILES.EMPTY) {
-          var effectType = biomeEffects[Math.floor(Math.random() * biomeEffects.length)];
+          var effectType = biomeEffects[Math.floor(_rng() * biomeEffects.length)];
           GroundEffects.setGroundEffect(x, y, effectType);
 
           // Mark in tile metadata for rendering
@@ -2316,8 +2499,8 @@ const GoneRogue = (function () {
     if (difficulty >= 5) {
       var hazardCount = Math.floor(difficulty / 2);
       for (var i = 0; i < hazardCount; i++) {
-        var x = Math.floor(Math.random() * (GRID_WIDTH - 2)) + 1;
-        var y = Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1;
+        var x = Math.floor(_rng() * (GRID_WIDTH - 2)) + 1;
+        var y = Math.floor(_rng() * (GRID_HEIGHT - 2)) + 1;
 
         if (_grid[y][x] === TILES.EMPTY) {
           _grid[y][x] = TILES.HAZARD;
@@ -2334,10 +2517,10 @@ const GoneRogue = (function () {
 
     // Add some grass/vegetation for stealth
     if (difficulty < 5) {
-      var grassCount = 8 + Math.floor(Math.random() * 5);
+      var grassCount = 8 + Math.floor(_rng() * 5);
       for (var i = 0; i < grassCount; i++) {
-        var x = Math.floor(Math.random() * (GRID_WIDTH - 2)) + 1;
-        var y = Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1;
+        var x = Math.floor(_rng() * (GRID_WIDTH - 2)) + 1;
+        var y = Math.floor(_rng() * (GRID_HEIGHT - 2)) + 1;
 
         if (_grid[y][x] === TILES.EMPTY) {
           _grid[y][x] = TILES.GRASS;
@@ -2478,22 +2661,22 @@ const GoneRogue = (function () {
     // Exploration floors: very few enemies
     var enemyCount;
     if (floorType === FLOOR_TYPES.EXPLORATION) {
-      enemyCount = 1 + Math.floor(Math.random() * 2); // 1-2 enemies max
+      enemyCount = 1 + Math.floor(_rng() * 2); // 1-2 enemies max
     } else {
       // Enemy density based on difficulty
       var difficulty = _floor;
 
       // Apply difficulty tier multiplier
       var tierMultiplier = _getDifficultyMultiplier();
-      
+
       if (difficulty <= 3) {
-        enemyCount = Math.floor((4 + Math.floor(Math.random() * 3)) * tierMultiplier); // 4-6 base
+        enemyCount = Math.floor((4 + Math.floor(_rng() * 3)) * tierMultiplier); // 4-6 base
       } else if (difficulty <= 7) {
-        enemyCount = Math.floor((7 + Math.floor(Math.random() * 4)) * tierMultiplier); // 7-10 base
+        enemyCount = Math.floor((7 + Math.floor(_rng() * 4)) * tierMultiplier); // 7-10 base
       } else if (difficulty <= 15) {
-        enemyCount = Math.floor((10 + Math.floor(Math.random() * 6)) * tierMultiplier); // 10-15 base
+        enemyCount = Math.floor((10 + Math.floor(_rng() * 6)) * tierMultiplier); // 10-15 base
       } else {
-        enemyCount = Math.floor((12 + Math.floor(Math.random() * 7)) * tierMultiplier); // 12-18 base
+        enemyCount = Math.floor((12 + Math.floor(_rng() * 7)) * tierMultiplier); // 12-18 base
       }
     }
 
@@ -2505,10 +2688,10 @@ const GoneRogue = (function () {
       var eliteType = EliteEnemies.getRandomEliteForFloor(_floor);
       if (eliteType && rooms.length > 0) {
         // Place elite in a random room, away from player
-        var eliteRoomIdx = Math.floor(Math.random() * rooms.length);
+        var eliteRoomIdx = Math.floor(_rng() * rooms.length);
         var eliteRoom = rooms[eliteRoomIdx];
-        var eliteX = eliteRoom.x + 1 + Math.floor(Math.random() * Math.max(1, eliteRoom.w - 2));
-        var eliteY = eliteRoom.y + 1 + Math.floor(Math.random() * Math.max(1, eliteRoom.h - 2));
+        var eliteX = eliteRoom.x + 1 + Math.floor(_rng() * Math.max(1, eliteRoom.w - 2));
+        var eliteY = eliteRoom.y + 1 + Math.floor(_rng() * Math.max(1, eliteRoom.h - 2));
 
         // Ensure elite is far from player
         if (Math.abs(eliteX - _player.x) + Math.abs(eliteY - _player.y) >= 8) {
@@ -2528,12 +2711,12 @@ const GoneRogue = (function () {
     }
 
     for (var i = 0; i < enemyCount && rooms.length > 0; i++) {
-      var roomIdx = Math.floor(Math.random() * rooms.length);
+      var roomIdx = Math.floor(_rng() * rooms.length);
       var room = rooms[roomIdx];
 
       // Random position within room (avoid edges)
-      var x = room.x + 1 + Math.floor(Math.random() * Math.max(1, room.w - 2));
-      var y = room.y + 1 + Math.floor(Math.random() * Math.max(1, room.h - 2));
+      var x = room.x + 1 + Math.floor(_rng() * Math.max(1, room.w - 2));
+      var y = room.y + 1 + Math.floor(_rng() * Math.max(1, room.h - 2));
 
       // Check minimum separation from player and other enemies
       var tooClose = false;
@@ -2566,7 +2749,7 @@ const GoneRogue = (function () {
   }
 
   function _choosePatrolType(difficulty, room) {
-    var rand = Math.random();
+    var rand = _rng();
 
     if (difficulty <= 3) {
       // Early game: more stationary sentries
@@ -2583,11 +2766,11 @@ const GoneRogue = (function () {
 
   function _createEnemy(x, y, patrolType, room) {
     var tierMultiplier = _getDifficultyMultiplier();
-    
+
     // Check if this is a penalty floor
     var isPenaltyFloor = _penaltyFloors.indexOf(_floor) !== -1;
     var penaltyMultiplier = isPenaltyFloor ? 1.2 : 1.0; // +20% for penalty floors
-    
+
     var enemy = {
       x: x,
       y: y,
@@ -2596,7 +2779,7 @@ const GoneRogue = (function () {
       str: Math.floor((3 + Math.floor(_floor * 0.2)) * tierMultiplier * penaltyMultiplier),
       dex: Math.floor((3 + Math.floor(_floor * 0.2)) * tierMultiplier * penaltyMultiplier),
       awareness: 0,
-      orientation: ['north', 'south', 'east', 'west'][Math.floor(Math.random() * 4)],
+      orientation: ['north', 'south', 'east', 'west'][Math.floor(_rng() * 4)],
       sightRange: (_floor > 5 ? 7 : 5) + (_difficultyTier - 1) + (isPenaltyFloor ? 1 : 0), // +1 for penalty
       pathTimer: 0,
       isTreasureGoblin: false, // Special enemy type
@@ -2605,7 +2788,7 @@ const GoneRogue = (function () {
     };
 
     // 2% chance to spawn a treasure goblin after floor 5
-    if (_floor > 5 && Math.random() < 0.02) {
+    if (_floor > 5 && _rng() < 0.02) {
       enemy.isTreasureGoblin = true;
       enemy.goblinSpawnTime = Date.now();
       enemy.hp = 3; // Low HP, must kill fast
@@ -2693,12 +2876,13 @@ const GoneRogue = (function () {
 
     var attempts = 0;
     var maxAttempts = 50;
+    var droppedCardsThisFloor = []; // Track card bases to avoid duplicates
 
     for (var i = 0; i < itemCount && attempts < maxAttempts; i++) {
       attempts++;
 
-      var ix = Math.floor(Math.random() * (GRID_WIDTH - 2)) + 1;
-      var iy = Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1;
+      var ix = Math.floor(_rng() * (GRID_WIDTH - 2)) + 1;
+      var iy = Math.floor(_rng() * (GRID_HEIGHT - 2)) + 1;
 
       var occupied = _grid[iy][ix] !== TILES.EMPTY ||
         (_breakables.some(function(b) { return b.x === ix && b.y === iy && b.hp > 0; })) ||
@@ -2713,21 +2897,60 @@ const GoneRogue = (function () {
       // Generate random card
       if (typeof CardSystem !== 'undefined') {
         var card;
+        var baseType;
+        var duplicateAttempts = 0;
+        var maxDuplicateAttempts = 5;
 
         // First item spawned in grey cave is trench coat if needed
         if (shouldSpawnTrenchCoat && i === 0) {
           card = CardSystem.rollTrenchCoat();
           shouldSpawnTrenchCoat = false; // Only spawn once
+          baseType = 'TRENCH_COAT';
         } else {
-          // Use biome-aware card selection if available
-          var baseType;
-          if (CardSystem.getRandomBaseCardByBiome) {
-            baseType = CardSystem.getRandomBaseCardByBiome(biome.name, _floor);
-          } else {
-            baseType = CardSystem.getRandomBaseCard();
+          // Check pity timer - force defensive/utility/healing if threshold met
+          var pityCategory = _checkPityTimer();
+
+          if (pityCategory && i === 0) {
+            // Force a pity card on first item this floor
+            var pityType = _getPityCard(pityCategory);
+            if (pityType) {
+              card = CardSystem.rollCard(pityType);
+              baseType = pityType;
+              console.log('[GoneRogue] Pity drop triggered:', pityCategory, 'card:', card.name);
+            }
           }
-          card = CardSystem.rollCard(baseType);
+
+          // Normal card generation with duplicate avoidance
+          while (!card && duplicateAttempts < maxDuplicateAttempts) {
+            if (CardSystem.getRandomBaseCardByBiome) {
+              baseType = CardSystem.getRandomBaseCardByBiome(biome.name, _floor);
+            } else {
+              baseType = CardSystem.getRandomBaseCard();
+            }
+
+            // Check if we already dropped this card type this floor
+            if (droppedCardsThisFloor.indexOf(baseType) === -1) {
+              card = CardSystem.rollCard(baseType);
+              break; // Found unique card
+            }
+
+            duplicateAttempts++;
+          }
+
+          // Fallback: Allow duplicate if we couldn't find unique after max attempts
+          if (!card) {
+            if (CardSystem.getRandomBaseCardByBiome) {
+              baseType = CardSystem.getRandomBaseCardByBiome(biome.name, _floor);
+            } else {
+              baseType = CardSystem.getRandomBaseCard();
+            }
+            card = CardSystem.rollCard(baseType);
+          }
         }
+
+        // Track this card type and drop for pity timer
+        droppedCardsThisFloor.push(baseType);
+        _trackCardDrop(card);
 
         _items.push({ x: ix, y: iy, card: card, spawnTime: Date.now(), decayTime: 30000 }); // 30 second decay
       }
@@ -2745,7 +2968,7 @@ const GoneRogue = (function () {
 
     // Check if a shop should spawn on this floor
     var shopSpawn = ShopSystem.shouldSpawnShop(_floor, floorType);
-    
+
     if (!shopSpawn) {
       return;
     }
@@ -2759,15 +2982,15 @@ const GoneRogue = (function () {
       eligibleRooms = rooms; // Fallback to any room
     }
 
-    var shopRoom = eligibleRooms[Math.floor(Math.random() * eligibleRooms.length)];
+    var shopRoom = eligibleRooms[Math.floor(_rng() * eligibleRooms.length)];
 
     // Place shop object in the center of the room
     var shopX = Math.floor(shopRoom.x + shopRoom.w / 2);
     var shopY = Math.floor(shopRoom.y + shopRoom.h / 2);
 
     // Use shop type constant for consistency
-    var shopTileType = shopSpawn.type === ShopSystem.SHOP_TYPES.BLACK_MARKET 
-      ? TILES.BLACK_MARKET 
+    var shopTileType = shopSpawn.type === ShopSystem.SHOP_TYPES.BLACK_MARKET
+      ? TILES.BLACK_MARKET
       : TILES.SHOP;
 
     // Ensure position is empty
@@ -2792,42 +3015,42 @@ const GoneRogue = (function () {
    */
   function _spawnVents(rooms, floorType) {
     _vents = []; // Clear previous vents
-    
+
     // No vents on tutorial, bonfire, or boss floors
-    if (floorType === FLOOR_TYPES.TUTORIAL || 
-        floorType === FLOOR_TYPES.BONFIRE || 
+    if (floorType === FLOOR_TYPES.TUTORIAL ||
+        floorType === FLOOR_TYPES.BONFIRE ||
         floorType === FLOOR_TYPES.BOSS ||
         floorType === FLOOR_TYPES.FINAL) {
       return;
     }
-    
+
     // 15% chance to spawn a vent
-    if (Math.random() > 0.15) {
+    if (_rng() > 0.15) {
       return;
     }
-    
+
     // Find a suitable room (prefer mid-size rooms)
     var eligibleRooms = rooms.filter(function(room) {
       return room.w >= 4 && room.h >= 4 && room.w <= 8 && room.h <= 8;
     });
-    
+
     if (eligibleRooms.length === 0) {
       eligibleRooms = rooms; // Fallback to any room
     }
-    
-    var ventRoom = eligibleRooms[Math.floor(Math.random() * eligibleRooms.length)];
-    
+
+    var ventRoom = eligibleRooms[Math.floor(_rng() * eligibleRooms.length)];
+
     // Place vent in a random position within room
-    var ventX = ventRoom.x + 1 + Math.floor(Math.random() * (ventRoom.w - 2));
-    var ventY = ventRoom.y + 1 + Math.floor(Math.random() * (ventRoom.h - 2));
-    
+    var ventX = ventRoom.x + 1 + Math.floor(_rng() * (ventRoom.w - 2));
+    var ventY = ventRoom.y + 1 + Math.floor(_rng() * (ventRoom.h - 2));
+
     // Ensure position is empty
     if (_grid[ventY][ventX] === TILES.EMPTY) {
       // Vent quality: 85% standard, 15% rusty (worse success rate)
-      var quality = Math.random() < 0.85 ? 'standard' : 'rusty';
-      
+      var quality = _rng() < 0.85 ? 'standard' : 'rusty';
+
       _grid[ventY][ventX] = TILES.VENT;
-      
+
       _vents.push({
         x: ventX,
         y: ventY,
@@ -2835,7 +3058,7 @@ const GoneRogue = (function () {
         discovered: false,
         used: false
       });
-      
+
       console.log('[GoneRogue] Spawned', quality, 'vent at', ventX, ventY);
     }
   }
@@ -2845,29 +3068,29 @@ const GoneRogue = (function () {
    */
   function _applyBiomeBleed(rooms) {
     var currentBiome = _getBiome(_floor);
-    
+
     // Track this biome for next floor
     if (_visitedBiomes.indexOf(currentBiome.name) === -1) {
       _visitedBiomes.push(currentBiome.name);
     }
-    
+
     // If we have a previous biome and it's different, add bleed tiles
     if (_previousBiome && _previousBiome.name !== currentBiome.name) {
       _applyBleedTiles(_previousBiome, 'entrance', 5, 10);
     }
-    
+
     // Preview next floor's biome near exit (if floor < 30)
     if (_floor < 30) {
       // Use cached preview if available, otherwise generate and cache
       if (!_nextBiomePreview) {
         _nextBiomePreview = _getBiome(_floor + 1);
       }
-      
+
       if (_nextBiomePreview.name !== currentBiome.name) {
         _applyBleedTiles(_nextBiomePreview, 'exit', 5, 10);
       }
     }
-    
+
     // Store current biome as previous for next floor
     // And set next preview to null so it regenerates
     _previousBiome = currentBiome;
@@ -2878,24 +3101,24 @@ const GoneRogue = (function () {
    * Apply bleed tiles from a biome to the floor
    */
   function _applyBleedTiles(biome, location, minCount, maxCount) {
-    var count = minCount + Math.floor(Math.random() * (maxCount - minCount + 1));
+    var count = minCount + Math.floor(_rng() * (maxCount - minCount + 1));
     var bleedChar = _getBleedChar(biome);
-    
+
     if (!bleedChar) return;
-    
+
     for (var i = 0; i < count; i++) {
       var x, y;
-      
+
       if (location === 'entrance') {
         // Place near player spawn (left side of map)
-        x = 1 + Math.floor(Math.random() * 8);
-        y = 1 + Math.floor(Math.random() * (GRID_HEIGHT - 2));
+        x = 1 + Math.floor(_rng() * 8);
+        y = 1 + Math.floor(_rng() * (GRID_HEIGHT - 2));
       } else {
         // Place near exit (right side of map)
-        x = GRID_WIDTH - 9 + Math.floor(Math.random() * 8);
-        y = 1 + Math.floor(Math.random() * (GRID_HEIGHT - 2));
+        x = GRID_WIDTH - 9 + Math.floor(_rng() * 8);
+        y = 1 + Math.floor(_rng() * (GRID_HEIGHT - 2));
       }
-      
+
       // Only place on empty floor tiles
       if (_grid[y] && _grid[y][x] === TILES.EMPTY) {
         _grid[y][x] = bleedChar;
@@ -2973,7 +3196,7 @@ const GoneRogue = (function () {
     _breakables = [];
 
     // Spawn 8-12 random breakables from the biome's prop list
-    var breakableCount = 8 + Math.floor(Math.random() * 5);
+    var breakableCount = 8 + Math.floor(_rng() * 5);
     var breakableProps = biome.props.filter(function(p) { return p.breakable; });
 
     if (breakableProps.length === 0) {
@@ -2986,15 +3209,15 @@ const GoneRogue = (function () {
       var placed = false;
 
       while (!placed && attempts < 50) {
-        var x = 2 + Math.floor(Math.random() * (GRID_WIDTH - 4));
-        var y = 2 + Math.floor(Math.random() * (GRID_HEIGHT - 4));
+        var x = 2 + Math.floor(_rng() * (GRID_WIDTH - 4));
+        var y = 2 + Math.floor(_rng() * (GRID_HEIGHT - 4));
 
         // Check if position is valid (floor tile, not player, not exit, not occupied)
         if (_grid[y] && _grid[y][x] === TILES.EMPTY &&
             !(x === _player.x && y === _player.y) &&
             !_breakables.find(function(b) { return b.x === x && b.y === y; })) {
 
-          var propTemplate = breakableProps[Math.floor(Math.random() * breakableProps.length)];
+          var propTemplate = breakableProps[Math.floor(_rng() * breakableProps.length)];
           _breakables.push({
             x: x,
             y: y,
@@ -3051,8 +3274,8 @@ const GoneRogue = (function () {
 
       if (!validPosition) {
         // Try a nearby position
-        gateX = Math.floor(_player.x + dx * (0.5 + Math.random() * 0.3));
-        gateY = Math.floor(_player.y + dy * (0.5 + Math.random() * 0.3));
+        gateX = Math.floor(_player.x + dx * (0.5 + _rng() * 0.3));
+        gateY = Math.floor(_player.y + dy * (0.5 + _rng() * 0.3));
         gateX = Math.max(2, Math.min(GRID_WIDTH - 3, gateX));
         gateY = Math.max(2, Math.min(GRID_HEIGHT - 3, gateY));
       }
@@ -3089,8 +3312,8 @@ const GoneRogue = (function () {
     }
 
     // Spawn RUSTY_KEY near player spawn (so they can unlock the gate)
-    var keyX = _player.x + (Math.random() > 0.5 ? 2 : -2);
-    var keyY = _player.y + (Math.random() > 0.5 ? 1 : -1);
+    var keyX = _player.x + (_rng() > 0.5 ? 2 : -2);
+    var keyY = _player.y + (_rng() > 0.5 ? 1 : -1);
 
     // Ensure key position is valid
     if (keyX >= 1 && keyX < GRID_WIDTH - 1 && keyY >= 1 && keyY < GRID_HEIGHT - 1 &&
@@ -3160,6 +3383,408 @@ const GoneRogue = (function () {
   }
 
   /**
+   * Context-aware biome gate spawn system
+   * Implements dynamic weighting, pity timers, and soft-lock prevention
+   * @param {Array} rooms - Room objects
+   * @param {number} exitX - Exit X position
+   * @param {number} exitY - Exit Y position
+   * @param {Object} biome - Current biome
+   */
+  function _placeBiomeGates(rooms, exitX, exitY, biome) {
+    if (typeof EnvironmentalSynergy === 'undefined') {
+      return;
+    }
+
+    // RULE 1: Floor Eligibility
+    // Gates cannot spawn until after floor 1, first combat victory, or first bonfire
+    var eligible = _floor > 1 && (_runState.firstCombatVictory || _runState.firstBonfire);
+    if (!eligible || _floor <= 4 || BOSS_FLOORS.indexOf(_floor) !== -1) {
+      _runState.floorsSinceGate++;
+      return; // Skip tutorial, ghost, and boss floors
+    }
+
+    // Update biome cooldowns
+    for (var biomeName in _runState.biomeEntryCooldowns) {
+      if (_runState.biomeEntryCooldowns[biomeName] > 0) {
+        _runState.biomeEntryCooldowns[biomeName]--;
+      }
+    }
+
+    // RULE 2: Calculate gate spawn chance based on run depth
+    var baseChance = 0;
+    if (_floor === 2) baseChance = 0.18;
+    else if (_floor === 3) baseChance = 0.28;
+    else if (_floor === 4) baseChance = 0.38;
+    else baseChance = 0.45; // Cap at 45%
+
+    // RULE 4: Pity Timer - Force gate spawn after 3 floors without
+    var forceGate = _runState.floorsSinceGate >= 3;
+
+    // RULE 8: Soft-Lock Prevention - Force matching gate if player has 2+ keys without match for 3 floors
+    var playerKeys = _getPlayerKeys();
+    var unmatchedKeys = _countUnmatchedKeys(playerKeys);
+    var forceSoftLockPrevention = unmatchedKeys >= 2 && _runState.floorsSinceGate >= 3;
+
+    if (!forceGate && !forceSoftLockPrevention && _rng() > baseChance) {
+      _runState.floorsSinceGate++;
+      return; // No gate this floor
+    }
+
+    // RULE 5: Calculate biome weights dynamically
+    var biomeWeights = {
+      'Commercial Office': 30,
+      'Shopping Mall': 25,
+      'Industrial Complex': 25,
+      'Aerospace Museum': 20
+    };
+
+    // Adjust weights based on player context
+    for (var targetBiome in biomeWeights) {
+      // If player has matching key: +15 weight (creates "destiny" feeling)
+      if (_playerHasKeyForBiome(playerKeys, targetBiome)) {
+        biomeWeights[targetBiome] += 15;
+      }
+
+      // If player recently visited (cooldown active): -25 weight
+      if (_runState.biomeEntryCooldowns[targetBiome] > 0) {
+        biomeWeights[targetBiome] = Math.max(0, biomeWeights[targetBiome] - 25);
+      }
+
+      // If player has never visited this run: +20 weight
+      if (_runState.visitedGateBiomes.indexOf(targetBiome) === -1) {
+        biomeWeights[targetBiome] += 20;
+      }
+    }
+
+    // If forcing soft-lock prevention, boost matching biome weights dramatically
+    if (forceSoftLockPrevention) {
+      for (var key in playerKeys) {
+        var matchingBiome = _getBiomeForKey(playerKeys[key]);
+        if (matchingBiome && biomeWeights[matchingBiome] !== undefined) {
+          biomeWeights[matchingBiome] += 50; // Strong boost for matching
+        }
+      }
+    }
+
+    // Pick biome using weighted roll
+    var selectedBiome = _weightedBiomeRoll(biomeWeights);
+    if (!selectedBiome) {
+      _runState.floorsSinceGate++;
+      return; // No valid biome found
+    }
+
+    // Get gates for selected biome
+    var availableGates = EnvironmentalSynergy.getGatesForBiome(selectedBiome.toUpperCase().replace(/ /g, '_'));
+    if (availableGates.length === 0) {
+      availableGates = ['WOODEN_GATE', 'OLD_DOOR']; // Fallback
+    }
+
+    // Pick a random gate type
+    var gateType = availableGates[Math.floor(_rng() * availableGates.length)];
+    var gateDef = EnvironmentalSynergy.getGateDefinitions()[gateType];
+    if (!gateDef) {
+      _runState.floorsSinceGate++;
+      return;
+    }
+
+    // Find a good position (between player and exit, not too close to either)
+    var dx = exitX - _player.x;
+    var dy = exitY - _player.y;
+    var gateX = Math.floor(_player.x + dx * (0.4 + _rng() * 0.3)); // 40-70% of the way
+    var gateY = Math.floor(_player.y + dy * (0.4 + _rng() * 0.3));
+
+    // Ensure gate is on a floor tile and not too close
+    var attempts = 0;
+    var validPosition = false;
+    while (!validPosition && attempts < 50) {
+      if (_grid[gateY] && _grid[gateY][gateX] === TILES.EMPTY) {
+        var distToPlayer = Math.abs(gateX - _player.x) + Math.abs(gateY - _player.y);
+        var distToExit = Math.abs(gateX - exitX) + Math.abs(gateY - exitY);
+
+        if (distToPlayer >= 8 && distToExit >= 8) {
+          validPosition = true;
+        }
+      }
+
+      if (!validPosition) {
+        gateX = Math.floor(_player.x + dx * (0.4 + _rng() * 0.3));
+        gateY = Math.floor(_player.y + dy * (0.4 + _rng() * 0.3));
+        attempts++;
+      }
+    }
+
+    if (!validPosition) {
+      console.log('[GoneRogue] Could not find valid gate position');
+      _runState.floorsSinceGate++;
+      return;
+    }
+
+    // Create gate as a breakable
+    var gateBreakable = {
+      x: gateX,
+      y: gateY,
+      hp: 3,
+      maxHp: 3,
+      glyph: TILES.BREAKABLE,
+      destroyedGlyph: TILES.DEBRIS,
+      emoji: gateDef.emoji,
+      name: gateDef.name,
+      tag: 'gate_' + gateType,
+      isGate: true,
+      gateType: gateType,
+      targetBiome: selectedBiome
+    };
+
+    _breakables.push(gateBreakable);
+    _grid[gateY][gateX] = TILES.BREAKABLE;
+
+    // Register with environmental synergy system
+    EnvironmentalSynergy.registerGate({
+      x: gateX,
+      y: gateY,
+      type: gateType
+    });
+
+    // Add lighting for terminal gates
+    if (gateDef.glowColor && typeof LightingSystem !== 'undefined') {
+      LightingSystem.addLightSource(gateX, gateY, 'TERMINAL');
+    }
+
+    // Update run state
+    _runState.floorsSinceGate = 0;
+    _runState.gatesSpawnedThisRun++;
+    _runState.lastBiomeEntered = selectedBiome;
+    _runState.biomeEntryCooldowns[selectedBiome] = 2; // 2-floor cooldown
+
+    console.log('[GoneRogue] Placed', gateDef.name, 'for', selectedBiome, 'at', gateX, gateY, 'on floor', _floor, forceGate ? '(FORCED)' : '');
+  }
+
+  /**
+   * Helper: Get player's current keys from inventory
+   */
+  function _getPlayerKeys() {
+    var keys = [];
+    if (typeof InteractiveItems !== 'undefined') {
+      var items = InteractiveItems.getAllItems();
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].type === 'key') {
+          keys.push(items[i].keyType || items[i].itemId);
+        }
+      }
+    }
+    // Also check GAMESTATE inventory
+    if (typeof GAMESTATE !== 'undefined') {
+      var loose = GAMESTATE.getLooseInventory();
+      var persistent = GAMESTATE.getPersistentInventory();
+      var allItems = loose.concat(persistent);
+      for (var j = 0; j < allItems.length; j++) {
+        if (allItems[j].type === 'key') {
+          keys.push(allItems[j].keyType || allItems[j].itemId);
+        }
+      }
+    }
+    return keys;
+  }
+
+  /**
+   * Helper: Check if player has key for specific biome
+   */
+  function _playerHasKeyForBiome(playerKeys, biomeName) {
+    var biomeToKey = {
+      'Commercial Office': 'KEYCARD',
+      'Shopping Mall': 'MALL_KEY',
+      'Industrial Complex': 'INDUSTRIAL_PASS',
+      'Aerospace Museum': 'ACCESS_CARD'
+    };
+    var requiredKey = biomeToKey[biomeName];
+    if (!requiredKey) return false;
+    return playerKeys.indexOf(requiredKey) !== -1;
+  }
+
+  /**
+   * Helper: Get biome name for a key type
+   */
+  function _getBiomeForKey(keyType) {
+    var keyToBiome = {
+      'KEYCARD': 'Commercial Office',
+      'THUMB_DRIVE': 'Commercial Office',
+      'MALL_KEY': 'Shopping Mall',
+      'INDUSTRIAL_PASS': 'Industrial Complex',
+      'ACCESS_CARD': 'Aerospace Museum'
+    };
+    return keyToBiome[keyType] || null;
+  }
+
+  /**
+   * Helper: Count keys that don't have matching gates available
+   */
+  function _countUnmatchedKeys(playerKeys) {
+    var unmatched = 0;
+    for (var i = 0; i < playerKeys.length; i++) {
+      var biome = _getBiomeForKey(playerKeys[i]);
+      if (biome && _runState.visitedGateBiomes.indexOf(biome) === -1) {
+        unmatched++;
+      }
+    }
+    return unmatched;
+  }
+
+  /**
+   * Helper: Weighted biome roll
+   */
+  function _weightedBiomeRoll(weights) {
+    var totalWeight = 0;
+    for (var biome in weights) {
+      totalWeight += weights[biome];
+    }
+    if (totalWeight <= 0) return null;
+
+    var roll = _rng() * totalWeight;
+    var cumulative = 0;
+    for (var b in weights) {
+      cumulative += weights[b];
+      if (roll < cumulative) {
+        return b;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Context-aware key spawn system
+   * Implements dynamic drop rates, inventory bonuses, and pity timers
+   * Called during floor generation to potentially spawn a key
+   */
+  function _spawnContextAwareKey(rooms) {
+    if (typeof EnvironmentalSynergy === 'undefined' || !rooms || rooms.length === 0) {
+      return;
+    }
+
+    // Skip tutorial and early floors
+    if (_floor <= 1) {
+      _runState.floorsSinceKey++;
+      return;
+    }
+
+    // RULE 3: Calculate key spawn chance based on run depth
+    var baseChance = 0;
+    if (_floor === 1) baseChance = 0.25;
+    else if (_floor === 2) baseChance = 0.35;
+    else baseChance = 0.45; // Floor 3+
+
+    // Adjust based on player's key inventory
+    var playerKeys = _getPlayerKeys();
+
+    // If player holds no keys: +20% bonus
+    if (playerKeys.length === 0) {
+      baseChance += 0.20;
+    }
+
+    // If player holds unused key: -10% penalty (to avoid key hoarding)
+    var hasUnusedKey = _countUnmatchedKeys(playerKeys) > 0;
+    if (hasUnusedKey) {
+      baseChance -= 0.10;
+    }
+
+    // RULE 4: Pity Timer - Force key spawn after 3 floors without
+    var forceKey = _runState.floorsSinceKey >= 3;
+
+    if (!forceKey && _rng() > baseChance) {
+      _runState.floorsSinceKey++;
+      return; // No key this floor
+    }
+
+    // Determine which key type to drop (biome-weighted)
+    var keyWeights = {
+      'KEYCARD': 30,        // Office
+      'ACCESS_CARD': 25,    // Aerospace
+      'INDUSTRIAL_PASS': 25, // Industrial
+      'MALL_KEY': 20        // Mall
+    };
+
+    // Boost weight for keys player doesn't have
+    for (var keyType in keyWeights) {
+      if (playerKeys.indexOf(keyType) === -1) {
+        keyWeights[keyType] += 15; // Player doesn't have this key yet
+      }
+    }
+
+    // Pick key using weighted roll
+    var selectedKeyType = _weightedKeyRoll(keyWeights);
+    if (!selectedKeyType) {
+      _runState.floorsSinceKey++;
+      return;
+    }
+
+    var keyDef = EnvironmentalSynergy.getKeyDefinitions()[selectedKeyType];
+    if (!keyDef) {
+      _runState.floorsSinceKey++;
+      return;
+    }
+
+    // Find a good spawn position (in a random room, away from player)
+    var roomIndex = Math.floor(_rng() * rooms.length);
+    var room = rooms[roomIndex];
+    var keyX = room.x + 2 + Math.floor(_rng() * (room.w - 4));
+    var keyY = room.y + 2 + Math.floor(_rng() * (room.h - 4));
+
+    // Ensure valid position
+    var attempts = 0;
+    while (attempts < 20) {
+      if (_grid[keyY] && _grid[keyY][keyX] === TILES.EMPTY) {
+        var distToPlayer = Math.abs(keyX - _player.x) + Math.abs(keyY - _player.y);
+        if (distToPlayer >= 5) {
+          break; // Valid position found
+        }
+      }
+      keyX = room.x + 2 + Math.floor(_rng() * (room.w - 4));
+      keyY = room.y + 2 + Math.floor(_rng() * (room.h - 4));
+      attempts++;
+    }
+
+    // Spawn the key
+    _items.push({
+      x: keyX,
+      y: keyY,
+      type: 'key',
+      keyType: selectedKeyType,
+      emoji: keyDef.emoji,
+      name: keyDef.name,
+      description: keyDef.description,
+      spawnTime: Date.now(),
+      decayTime: 180000 // 3 minute decay (longer for context keys)
+    });
+
+    // Update run state
+    _runState.floorsSinceKey = 0;
+    _runState.keysFoundThisRun++;
+    _runState.keysOwned.push(selectedKeyType);
+
+    console.log('[GoneRogue] Spawned context-aware key:', keyDef.name, 'at', keyX, keyY, 'on floor', _floor, forceKey ? '(FORCED)' : '');
+  }
+
+  /**
+   * Helper: Weighted key roll
+   */
+  function _weightedKeyRoll(weights) {
+    var totalWeight = 0;
+    for (var keyType in weights) {
+      totalWeight += weights[keyType];
+    }
+    if (totalWeight <= 0) return null;
+
+    var roll = _rng() * totalWeight;
+    var cumulative = 0;
+    for (var k in weights) {
+      cumulative += weights[k];
+      if (roll < cumulative) {
+        return k;
+      }
+    }
+    return null;
+  }
+
+  /**
    * Spawn currency (cryptos ¢) at a location
    */
   function _spawnCurrency(x, y, amount) {
@@ -3195,6 +3820,20 @@ const GoneRogue = (function () {
         display[enemy.y][enemy.x] = TILES.ENEMY;
       }
     });
+
+    // Place pets
+    if (typeof PetFollower !== 'undefined') {
+      var activePets = PetFollower.getActivePets();
+      activePets.forEach(function(pet) {
+        if (pet.alive) {
+          var petX = Math.round(pet.x);
+          var petY = Math.round(pet.y);
+          if (petY >= 0 && petY < GRID_HEIGHT && petX >= 0 && petX < GRID_WIDTH) {
+            display[petY][petX] = pet.emoji || '🐾';
+          }
+        }
+      });
+    }
 
     // Place items
     _items.forEach(function(item) {
@@ -3243,12 +3882,12 @@ const GoneRogue = (function () {
     } else if (_bossFloorActive && _bossDefeated) {
       floorLabel += ' ✅ BOSS DEFEATED';
     }
-    
+
     // Show penalty floor indicator
     if (_penaltyFloors.indexOf(_floor) !== -1) {
       floorLabel += ' 🔻 PENALTY';
     }
-    
+
     lines.push('HP: ' + _player.hp + '/' + _player.maxHp + ' | ' + floorLabel + ' | Turn: ' + _turn);
     if (_bossFloorActive && _activeBoss && !_bossDefeated) {
       lines.push('⚠️  Boss: ' + _activeBoss.type + ' | Phase: ' + _activeBoss.phase);
@@ -3276,7 +3915,7 @@ const GoneRogue = (function () {
 
     // Get loose inventory (current hand)
     var loose = GAMESTATE.getLooseInventory();
-    
+
     // Convert to card format for reserve slots
     var cards = loose.map(function(item) {
       return {
@@ -3363,6 +4002,9 @@ const GoneRogue = (function () {
     _player.x = newX;
     _player.y = newY;
     _turn++;
+
+    // Update position history for pet following
+    _updatePositionHistory();
 
     // Check if player walked onto EXIT tile - trigger level transition
     if (tile === TILES.EXIT) {
@@ -3613,19 +4255,19 @@ const GoneRogue = (function () {
       if (typeof GAMESTATE !== 'undefined') {
         GAMESTATE.addAmmo(item.amount);
       }
-      
+
       // Remove ammo from floor
       _items = _items.filter(function(i) { return i !== item; });
-      
+
       // Tooltip and MOK interjection
       if (typeof TooltipSystem !== 'undefined') {
         TooltipSystem.showAction('item-pickup', { name: 'Ammo +' + item.amount });
       }
-      
+
       if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
         UIControls.updateMokInterjection('🔫 Ammo +' + item.amount);
       }
-      
+
       return {
         lines: ['PICKED UP: 🔫 Ammo +' + item.amount, ''].concat(_renderGrid()),
         prompt: getPrompt(),
@@ -3635,11 +4277,11 @@ const GoneRogue = (function () {
 
     // Check if item is a card (attack/support) or regular item
     var isCard = item.card && (item.card.type === 'attack' || item.card.type === 'support');
-    
+
     // Add to appropriate inventory
     if (typeof GAMESTATE !== 'undefined') {
       var result;
-      
+
       if (isCard) {
         // NEW LOOT FLOW: Cards go to hand first, then action buttons
         result = GAMESTATE.addCard(item.card);
@@ -3647,7 +4289,7 @@ const GoneRogue = (function () {
         // Non-card items go to loose inventory (legacy behavior)
         result = GAMESTATE.addToLoose(item.card);
       }
-      
+
       if (!result.success) {
         return {
           lines: [result.message, 'DROP SOMETHING FIRST', ''].concat(_renderGrid()),
@@ -3655,7 +4297,7 @@ const GoneRogue = (function () {
           stayActive: true
         };
       }
-      
+
       // Show where card was added (hand vs action buttons)
       if (isCard && result.location) {
         var locationMsg = result.location === 'hand' ? '[Added to HAND]' : '[Added to ACTION BUTTONS]';
@@ -3674,7 +4316,7 @@ const GoneRogue = (function () {
         TooltipSystem.showAction('item-pickup', { name: item.card.name });
       }
     }
-    
+
     // MOK interjection for card/item pickup
     if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
       var pickupType = isCard ? 'Card' : 'Item';
@@ -3703,12 +4345,12 @@ const GoneRogue = (function () {
     var MAX_FLOORS = 30;
     if (_floor >= MAX_FLOORS) {
       _runCompleted = true; // Mark run as completed for highscore
-      
+
       // Mark difficulty tier as completed
       if (typeof AWOLDifficulty !== 'undefined' && _difficultyTier >= 1 && _difficultyTier <= 3) {
         AWOLDifficulty.markTierCompleted(_difficultyTier);
       }
-      
+
       return _exitRogue(true);
     }
 
@@ -3728,11 +4370,11 @@ const GoneRogue = (function () {
         break;
       }
     }
-    
+
     if (!vent || vent.used) {
       return { lines: ['This vent is no longer functional'], prompt: getPrompt(), stayActive: true };
     }
-    
+
     // Mark as discovered
     if (!vent.discovered) {
       vent.discovered = true;
@@ -3750,28 +4392,28 @@ const GoneRogue = (function () {
         stayActive: true
       };
     }
-    
+
     // Calculate bypass success chance
     var bypassChance = 0.75; // Base 75%
     bypassChance -= (_ventUseCount * 0.05); // -5% per prior vent use
     bypassChance -= (_floor * 0.01); // -1% per floor depth
-    
+
     // Rusty vents have worse odds
     if (vent.quality === 'rusty') {
       bypassChance -= 0.05;
     }
-    
+
     // Difficulty tier affects success rate
     bypassChance -= (_difficultyTier - 1) * 0.05; // -5% per tier above 1
-    
+
     // Clamp to minimum 25%
     bypassChance = Math.max(0.25, bypassChance);
-    
+
     // Attempt bypass
-    var success = Math.random() < bypassChance;
+    var success = _rng() < bypassChance;
     vent.used = true;
     _ventUseCount++;
-    
+
     if (success) {
       // Success: Skip to floor N+2
       var lines = [
@@ -3782,27 +4424,27 @@ const GoneRogue = (function () {
         '',
         'Floor ' + (_floor + 1) + ' cleared automatically (50% XP awarded)'
       ];
-      
+
       // Award 50% XP for skipped floor
       _awardSkippedFloorXP();
-      
+
       // Advance floor by 2
       _floor++;
-      
+
       // Remove the vent tile
       _grid[_player.y][_player.x] = TILES.EMPTY;
-      
+
       // Generate next floor
       setTimeout(function() {
         _advanceFloor();
       }, 100);
-      
+
       return { lines: lines, prompt: getPrompt(), stayActive: true };
     } else {
       // Failure: Backtrack 3 floors with penalty enemies
       var backtrackFloors = Math.min(3, _floor - 1);
       var targetFloor = Math.max(1, _floor - backtrackFloors);
-      
+
       var lines = [
         'VENT MALFUNCTION!',
         '',
@@ -3812,7 +4454,7 @@ const GoneRogue = (function () {
         'Landed on floor ' + targetFloor,
         'WARNING: Penalty enemies active!'
       ];
-      
+
       // Mark floors as penalty
       for (var i = 0; i < backtrackFloors; i++) {
         var penaltyFloor = targetFloor + i;
@@ -3820,21 +4462,21 @@ const GoneRogue = (function () {
           _penaltyFloors.push(penaltyFloor);
         }
       }
-      
+
       // Backtrack floor
       _floor = targetFloor - 1; // Will be incremented by advanceFloor
-      
+
       // Player takes minor damage from the fall
       _player.hp = Math.max(1, _player.hp - 2);
-      
+
       // Remove the vent tile
       _grid[_player.y][_player.x] = TILES.EMPTY;
-      
+
       // Generate penalty floor
       setTimeout(function() {
         _advanceFloor();
       }, 100);
-      
+
       return { lines: lines, prompt: getPrompt(), stayActive: true };
     }
   }
@@ -3846,7 +4488,7 @@ const GoneRogue = (function () {
     // Calculate XP based on skipped floor
     var baseXP = 50 + (_floor * 10);
     var skippedXP = Math.floor(baseXP * 0.5);
-    
+
     // Award to gamestate if available
     if (typeof GAMESTATE !== 'undefined' && GAMESTATE.awardExperience) {
       GAMESTATE.awardExperience(skippedXP);
@@ -3862,7 +4504,7 @@ const GoneRogue = (function () {
     if (playerTile === TILES.VENT) {
       return _handleVentInteraction();
     }
-    
+
     if (typeof InteractiveItems === 'undefined') {
       return { lines: ['Nothing to interact with'], prompt: getPrompt(), stayActive: true };
     }
@@ -3957,7 +4599,7 @@ const GoneRogue = (function () {
       _vendorInventory = [];
 
       // Heal player slightly between floors (10-20% of max HP)
-      var healAmount = Math.floor(_player.maxHp * (0.1 + Math.random() * 0.1));
+      var healAmount = Math.floor(_player.maxHp * (0.1 + _rng() * 0.1));
       _player.hp = Math.min(_player.maxHp, _player.hp + healAmount);
 
       // Generate next floor (moved BEFORE card delivery logic)
@@ -4049,7 +4691,7 @@ const GoneRogue = (function () {
   function _initializeVendor() {
     // Choose random vendor type
     var vendorTypes = Object.keys(VENDOR_TYPES);
-    var randomType = vendorTypes[Math.floor(Math.random() * vendorTypes.length)];
+    var randomType = vendorTypes[Math.floor(_rng() * vendorTypes.length)];
     _vendor = VENDOR_TYPES[randomType];
 
     // Generate vendor inventory (5 cards)
@@ -4229,7 +4871,7 @@ const GoneRogue = (function () {
       }
 
       // Heal 30-50% HP
-      var healPercent = 0.3 + Math.random() * 0.2;
+      var healPercent = 0.3 + _rng() * 0.2;
       var healAmount = Math.floor(_player.maxHp * healPercent);
       var oldHp = _player.hp;
       _player.hp = Math.min(_player.maxHp, _player.hp + healAmount);
@@ -4288,19 +4930,19 @@ const GoneRogue = (function () {
 
       // Roll random card with gambling odds
       // 70% junk (30-55%), 20% usable (55-75%), 8% strong (75-90%), 1.8% near-perfect (90-97%), 0.2% perfect (97-100%)
-      var rand = Math.random() * 100;
+      var rand = _rng() * 100;
       var targetQuality;
 
       if (rand < 0.2) {
-        targetQuality = 97 + Math.random() * 3; // 97-100% (perfect)
+        targetQuality = 97 + _rng() * 3; // 97-100% (perfect)
       } else if (rand < 2) {
-        targetQuality = 90 + Math.random() * 7; // 90-97% (near-perfect)
+        targetQuality = 90 + _rng() * 7; // 90-97% (near-perfect)
       } else if (rand < 10) {
-        targetQuality = 75 + Math.random() * 15; // 75-90% (strong)
+        targetQuality = 75 + _rng() * 15; // 75-90% (strong)
       } else if (rand < 30) {
-        targetQuality = 55 + Math.random() * 20; // 55-75% (usable)
+        targetQuality = 55 + _rng() * 20; // 55-75% (usable)
       } else {
-        targetQuality = 30 + Math.random() * 25; // 30-55% (junk)
+        targetQuality = 30 + _rng() * 25; // 30-55% (junk)
       }
 
       var baseType = CardSystem.getRandomBaseCard();
@@ -4599,7 +5241,7 @@ const GoneRogue = (function () {
     // Prepare run data for score calculation
     var runData = {
       currencyFound: _currencyCollected,
-      interactivesFound: 0, // TODO: Track interactive items in future
+      interactivesFound: (typeof InteractiveItems !== 'undefined' && InteractiveItems.getInteractionCount) ? InteractiveItems.getInteractionCount() : 0,
       enemiesAvoided: enemiesAvoided,
       breakableDamage: _totalBreakableDamage,
       damageMitigated: _damageMitigated
@@ -4730,6 +5372,12 @@ const GoneRogue = (function () {
     // Update kill counter if player gets credit
     if (deathResult.playerCredit) {
       _enemiesKilled++;
+
+      // Track first combat victory for gate eligibility
+      if (!_runState.firstCombatVictory) {
+        _runState.firstCombatVictory = true;
+        console.log('[GoneRogue] First combat victory achieved - gates now eligible');
+      }
     }
 
     // Spawn loot
@@ -4924,6 +5572,24 @@ const GoneRogue = (function () {
       if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
         _updateMobileGrid();
       }
+    }
+
+    // Update pets based on player position history
+    if (typeof PetFollower !== 'undefined') {
+      var currentTime = Date.now();
+      PetFollower.updatePets(_player.positionHistory, currentTime);
+
+      // Check for breakables near humanoid pets
+      PetFollower.checkBreakables(_breakables, function(breakable, index) {
+        // Pet breaks a breakable
+        _breakables.splice(index, 1);
+        console.log('[Pet] Broke breakable at', breakable.x, breakable.y);
+
+        // Optional: trigger overhead animation
+        if (typeof OverheadAnimator !== 'undefined') {
+          OverheadAnimator.showGenericExpression(breakable.x, breakable.y, '💥', 800);
+        }
+      });
     }
 
     // Update enemy positions and awareness
@@ -5563,16 +6229,16 @@ const GoneRogue = (function () {
           } else {
             // Fallback to hardcoded loot if LootTableManager not available
             // Drop currency (cryptos) when breakable is destroyed
-            var dropChance = Math.random();
+            var dropChance = _rng();
             if (dropChance < 0.7) { // 70% chance to drop currency
-              var cryptoAmount = Math.floor(Math.random() * 3) + 1; // 1-3 cryptos
+              var cryptoAmount = Math.floor(_rng() * 3) + 1; // 1-3 cryptos
               _spawnCurrency(breakable.x, breakable.y, cryptoAmount);
             }
 
             // 60% chance to drop ammo (3/5 or 6/10 breakables contain ammo)
             // Average of 1.2 ammo per drop (1 or 2 ammo with weighted distribution)
-            if (Math.random() < 0.6) {
-              var ammoAmount = Math.random() < 0.8 ? 1 : 2; // 80% chance 1 ammo, 20% chance 2 ammo = 1.2 avg
+            if (_rng() < 0.6) {
+              var ammoAmount = _rng() < 0.8 ? 1 : 2; // 80% chance 1 ammo, 20% chance 2 ammo = 1.2 avg
               _items.push({
                 x: breakable.x,
                 y: breakable.y,
@@ -5585,8 +6251,53 @@ const GoneRogue = (function () {
               });
             }
 
+            // Check for key item drops from specific breakables
+            if (typeof EnvironmentalSynergy !== 'undefined' && breakable.name) {
+              var keyDropped = false;
+
+              // Terminal breakables can drop thumb drives (OFFICE biome)
+              if (breakable.name === 'Terminal' && _rng() < 0.15) { // 15% chance
+                var keyDefs = EnvironmentalSynergy.getKeyDefinitions();
+                if (keyDefs.THUMB_DRIVE) {
+                  _items.push({
+                    x: breakable.x,
+                    y: breakable.y,
+                    type: 'key',
+                    keyType: 'THUMB_DRIVE',
+                    emoji: keyDefs.THUMB_DRIVE.emoji,
+                    name: keyDefs.THUMB_DRIVE.name,
+                    description: keyDefs.THUMB_DRIVE.description,
+                    spawnTime: Date.now(),
+                    decayTime: 120000 // 2 minute decay
+                  });
+                  keyDropped = true;
+                  console.log('[GoneRogue] Thumb drive dropped from terminal at', breakable.x, breakable.y);
+                }
+              }
+
+              // Wooden gates/boxes can drop rusty keys (FOREST biome)
+              if (!keyDropped && (breakable.name === 'Wooden Gate' || breakable.name === 'Wooden Box') && _rng() < 0.10) {
+                var keyDefs = EnvironmentalSynergy.getKeyDefinitions();
+                if (keyDefs.RUSTY_KEY) {
+                  _items.push({
+                    x: breakable.x,
+                    y: breakable.y,
+                    type: 'key',
+                    keyType: 'RUSTY_KEY',
+                    emoji: keyDefs.RUSTY_KEY.emoji,
+                    name: keyDefs.RUSTY_KEY.name,
+                    description: keyDefs.RUSTY_KEY.description,
+                    spawnTime: Date.now(),
+                    decayTime: 120000
+                  });
+                  keyDropped = true;
+                  console.log('[GoneRogue] Rusty key dropped at', breakable.x, breakable.y);
+                }
+              }
+            }
+
             // 30% chance to drop a card
-            if (Math.random() < 0.3 && typeof CardSystem !== 'undefined') {
+            if (_rng() < 0.3 && typeof CardSystem !== 'undefined') {
               var baseType = CardSystem.getRandomBaseCard();
               var card = CardSystem.rollCard(baseType);
               if (card) {
@@ -5602,7 +6313,7 @@ const GoneRogue = (function () {
             }
 
             // 25% chance to drop a charm (similar frequency to cards)
-            if (Math.random() < 0.25 && typeof CardSystem !== 'undefined') {
+            if (_rng() < 0.25 && typeof CardSystem !== 'undefined') {
               var charm = CardSystem.rollCommonCharm();
               if (charm) {
                 _items.push({
@@ -6223,13 +6934,13 @@ const GoneRogue = (function () {
    */
   function _useUtility(card) {
     var effects = [];
-    
+
     // Health restoration
     if (card.stats.hp) {
       _player.hp = Math.min(_player.maxHp, _player.hp + card.stats.hp);
       effects.push('HP +' + card.stats.hp);
     }
-    
+
     // Energy restoration
     if (card.stats.energyBoost) {
       if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addEnergy) {
@@ -6237,7 +6948,7 @@ const GoneRogue = (function () {
         effects.push('ENERGY +' + card.stats.energyBoost);
       }
     }
-    
+
     // Fatigue reduction
     if (card.stats.fatigueReduction) {
       if (typeof GAMESTATE !== 'undefined' && GAMESTATE.reduceFatigue) {
@@ -6245,7 +6956,7 @@ const GoneRogue = (function () {
         effects.push('FATIGUE -' + card.stats.fatigueReduction);
       }
     }
-    
+
     // Battery recharge
     if (card.stats.batteryRecharge) {
       if (typeof GAMESTATE !== 'undefined' && GAMESTATE.rechargeBattery) {
@@ -6253,7 +6964,7 @@ const GoneRogue = (function () {
         effects.push('BATTERY +' + card.stats.batteryRecharge);
       }
     }
-    
+
     // Focus boost
     if (card.stats.focusBoost) {
       if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addFocus) {
@@ -6261,7 +6972,7 @@ const GoneRogue = (function () {
         effects.push('FOCUS +' + card.stats.focusBoost);
       }
     }
-    
+
     // Ammo restoration
     if (card.stats.ammoRestore) {
       if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addAmmo) {
@@ -6403,6 +7114,32 @@ const GoneRogue = (function () {
 
     // Scan 3x3 tiles around player for ground effects and apply combat modifiers
     _applyGroundEffectModifiers();
+
+    // Apply pet combat modifiers (Mega tier only)
+    if (typeof PetFollower !== 'undefined') {
+      var combatContext = {
+        playerAccuracy: 0,
+        playerCritMultiplier: 0,
+        enemyStatus: enemy.statusEffects || {},
+        petAutoStrike: false,
+        petStrikeDamage: 0
+      };
+
+      PetFollower.applyCombatModifiers(combatContext);
+
+      // Apply modifiers to player/combat state
+      if (combatContext.playerAccuracy > 0) {
+        _player.accuracyBonus = (_player.accuracyBonus || 0) + combatContext.playerAccuracy;
+        _strCombatLog.push('🐾 Pet grants +' + combatContext.playerAccuracy.toFixed(0) + '% accuracy!');
+      }
+      if (combatContext.playerCritMultiplier > 0) {
+        _player.critBonus = (_player.critBonus || 0) + combatContext.playerCritMultiplier;
+      }
+      if (combatContext.petAutoStrike) {
+        enemy.hp -= combatContext.petStrikeDamage;
+        _strCombatLog.push('🔫 Pet auto-strike! ' + combatContext.petStrikeDamage + ' damage!');
+      }
+    }
 
     // Build countdown context messages (3/2/1 beat annotations)
     _strCombatContext = _buildCountdownMessages(enemy, trigger);
@@ -6548,7 +7285,7 @@ const GoneRogue = (function () {
       var category = typeof CardSystem !== 'undefined' ? CardSystem.getCardCategory(playerCard) : 'attack';
       var priority = typeof CardSystem !== 'undefined' ? CardSystem.getCardPriority(category) : 4;
       var speed = (playerCard.stats && playerCard.stats.speed) || _player.initiative || 0;
-      
+
       actions.push({
         actor: 'player',
         card: playerCard,
@@ -6563,7 +7300,7 @@ const GoneRogue = (function () {
       var enemyCategory = typeof CardSystem !== 'undefined' ? CardSystem.getCardCategory(enemyCard) : 'attack';
       var enemyPriority = typeof CardSystem !== 'undefined' ? CardSystem.getCardPriority(enemyCategory) : 4;
       var enemySpeed = (enemyCard.stats && enemyCard.stats.speed) || _strCombatEnemy.initiative || 0;
-      
+
       actions.push({
         actor: 'enemy',
         card: enemyCard,
@@ -6589,7 +7326,7 @@ const GoneRogue = (function () {
     for (var i = 0; i < actions.length; i++) {
       var action = actions[i];
       var result = _resolveAction(action);
-      
+
       if (result && result.lines) {
         lines = lines.concat(result.lines);
       }
@@ -6825,10 +7562,10 @@ const GoneRogue = (function () {
    */
   function _resolveDefenseAction(actor, target, card) {
     var lines = [];
-    
+
     var defense = card.stats.defense || 0;
     var evasion = card.stats.evasion || 0;
-    
+
     if (defense > 0) {
       actor.tempDefense = (actor.tempDefense || 0) + defense;
       lines.push('├─ Gained +' + defense + ' defense');
@@ -6837,13 +7574,13 @@ const GoneRogue = (function () {
       actor.tempEvasion = (actor.tempEvasion || 0) + evasion;
       lines.push('├─ Gained +' + evasion + ' evasion');
     }
-    
+
     var stealth = card.stats.stealth || 0;
     if (stealth > 0) {
       actor.stealth = Math.min((actor.maxStealth || 5), (actor.stealth || 0) + stealth);
       lines.push('└─ Stealth increased');
     }
-    
+
     return lines;
   }
 
@@ -6852,20 +7589,20 @@ const GoneRogue = (function () {
    */
   function _resolveMovementAction(actor, target, card) {
     var lines = [];
-    
+
     var distance = card.stats.distance || 0;
     var evasion = card.stats.evasion || 0;
-    
+
     if (distance !== 0) {
       // Movement affects distance (abstracted in STR combat)
       lines.push('├─ Position adjusted (' + (distance > 0 ? 'closing' : 'retreating') + ')');
     }
-    
+
     if (evasion > 0) {
       actor.tempEvasion = (actor.tempEvasion || 0) + evasion;
       lines.push('└─ Gained +' + evasion + ' evasion from movement');
     }
-    
+
     return lines;
   }
 
@@ -7118,7 +7855,7 @@ const GoneRogue = (function () {
     else if (cardName === 'Logic Hack') {
       handled = true;
       lines.push('├─ Executing LOGIC HACK on boss systems...');
-      var targetNode = Math.floor(Math.random() * 8); // Random node 0-7
+      var targetNode = Math.floor(_rng() * 8); // Random node 0-7
       var playerAction = {
         type: 'LOGIC_HACK',
         targetNode: targetNode,
@@ -7200,7 +7937,7 @@ const GoneRogue = (function () {
    */
   function _showStrCombatUIWithLog(logLines) {
     var lines = logLines || [];
-    
+
     // Add current combat state
     lines.push('╔═══════════════════════════╗');
     lines.push('║  PLAYER: ' + _player.hp + '/' + (_player.maxHp || 10) + ' HP         ║');
@@ -7239,10 +7976,10 @@ const GoneRogue = (function () {
     // Simple AI: choose based on HP and situation
     var enemy = _strCombatEnemy;
     var enemyHpPercent = (enemy.hp / (enemy.maxHp || 5)) * 100;
-    
+
     // If low HP, prefer defense/healing
     if (enemyHpPercent < 30) {
-      var roll = Math.random();
+      var roll = _rng();
       if (roll < 0.4 && typeof CardSystem !== 'undefined') {
         // Try to defend
         return CardSystem.rollCard('Dodge');
@@ -7250,10 +7987,10 @@ const GoneRogue = (function () {
         return CardSystem.rollCard('Prone');
       }
     }
-    
+
     // If healthy, prefer attacks
     if (enemyHpPercent > 50) {
-      var attackRoll = Math.random();
+      var attackRoll = _rng();
       if (typeof CardSystem !== 'undefined') {
         if (attackRoll < 0.5) {
           return CardSystem.rollCard('Single Shot');
@@ -7264,12 +8001,12 @@ const GoneRogue = (function () {
         }
       }
     }
-    
+
     // Default: basic attack
     if (typeof CardSystem !== 'undefined') {
       return CardSystem.rollCard('Single Shot');
     }
-    
+
     // Fallback: create a basic attack card
     return {
       name: 'Basic Attack',
@@ -7420,7 +8157,7 @@ const GoneRogue = (function () {
     hitChance = Math.max(5, Math.min(95, hitChance)); // Clamp between 5-95%
 
     // Roll d100
-    var roll = Math.floor(Math.random() * 100) + 1;
+    var roll = Math.floor(_rng() * 100) + 1;
 
     return {
       hit: roll <= hitChance,
@@ -7549,7 +8286,7 @@ const GoneRogue = (function () {
         // Auto-collect ammo drops
         GAMESTATE.addAmmo(ammoDrops);
         lines.push('🔫 AMMO RECOVERED: +' + ammoDrops + ' (' + _strCombatAmmoSpent + ' spent in combat)');
-        
+
         // Report to debrief feed
         if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
           var currentAmmo = GAMESTATE.getAmmo ? GAMESTATE.getAmmo() : 0;
@@ -7703,7 +8440,7 @@ const GoneRogue = (function () {
             impossibleCharmChance = 0.10; // 10% chance from final boss
           }
 
-          if (impossibleCharmChance > 0 && Math.random() < impossibleCharmChance) {
+          if (impossibleCharmChance > 0 && _rng() < impossibleCharmChance) {
             var impossibleCharm = CardSystem.rollImpossibleCharm();
             _items.push({
               x: _strCombatEnemy.x,
@@ -8007,7 +8744,7 @@ const GoneRogue = (function () {
     // HEALING ITEMS: Restore HP
     else if (itemName.indexOf('medkit') !== -1 || itemName.indexOf('bandage') !== -1 ||
              itemName.indexOf('heal') !== -1 || itemName.indexOf('💊') !== -1) {
-      var healAmount = 20 + Math.floor(Math.random() * 11); // 20-30 HP
+      var healAmount = 20 + Math.floor(_rng() * 11); // 20-30 HP
       _player.hp = Math.min(_player.hp + healAmount, _player.maxHp);
       messages.push('💊 HEALED: +' + healAmount + ' HP');
       messages.push('HP: ' + _player.hp + '/' + _player.maxHp);
@@ -8139,7 +8876,7 @@ const GoneRogue = (function () {
     }
     // INDUSTRIAL_WASTE: Random mutation or debuff
     else if (effect.type === 'INDUSTRIAL_WASTE') {
-      if (Math.random() < 0.3) {
+      if (_rng() < 0.3) {
         _strCombatLog.push('☢️  TOXIC WASTE EXPOSURE!');
         _strCombatLog.push('└─ Random debuff applied');
         // Could implement specific debuffs here
@@ -8179,7 +8916,7 @@ const GoneRogue = (function () {
     }
     // INDUSTRIAL_WASTE: Random debuff
     else if (effect.type === 'INDUSTRIAL_WASTE') {
-      if (Math.random() < 0.3) {
+      if (_rng() < 0.3) {
         _strCombatLog.push('☢️  Enemy exposed to toxic waste');
         _strCombatLog.push('└─ Enemy weakened');
         enemy.weakened = true;
@@ -8461,7 +9198,7 @@ const GoneRogue = (function () {
             '',
             'AGENT MODE: ' + mode.toUpperCase(),
             '',
-            mode === 'natural' 
+            mode === 'natural'
               ? 'Natural human-like play with thorough exploration'
               : 'Fast developer mode with optimal pathfinding',
             ''
@@ -8514,7 +9251,7 @@ const GoneRogue = (function () {
     if (tier >= 1 && tier <= 3) {
       _difficultyTier = tier;
       console.log('[GoneRogue] Difficulty set to T' + tier);
-      
+
       // Notify state change listeners
       _notifyStateChange();
     }
@@ -8619,10 +9356,10 @@ const GoneRogue = (function () {
           });
         });
       }
-      
+
       // Can flee
       actions.push({ type: 'flee' });
-      
+
       return actions;
     }
 
@@ -8637,11 +9374,11 @@ const GoneRogue = (function () {
     directions.forEach(function(dir) {
       var newX = _player.x + dir.dx;
       var newY = _player.y + dir.dy;
-      
+
       // Check bounds
       if (newX >= 0 && newX < GRID_WIDTH && newY >= 0 && newY < GRID_HEIGHT) {
         var tile = _grid[newY][newX];
-        
+
         // Check if tile is walkable
         if (tile !== TILES.WALL) {
           actions.push({
@@ -8801,7 +9538,7 @@ const GoneRogue = (function () {
       _active = state.active;
       _floor = state.floor;
       _turn = state.turn;
-      
+
       // Restore player
       _player.x = state.player.x;
       _player.y = state.player.y;
@@ -8817,13 +9554,13 @@ const GoneRogue = (function () {
       _player.credits = state.player.credits;
       _player.deck = state.player.deck ? state.player.deck.slice() : [];
       _player.activeItem = state.player.activeItem;
-      
+
       // Restore grid
       _grid = state.grid.map(function(row) { return row.slice(); });
-      
+
       // Restore enemies
       _enemies = state.enemies.slice();
-      
+
       // Restore other state
       _breakables = state.breakables ? state.breakables.slice() : [];
       _projectiles = state.projectiles ? state.projectiles.slice() : [];
@@ -8832,12 +9569,66 @@ const GoneRogue = (function () {
       _strCombatActive = state.strCombatActive;
       _alertLevel = state.alertLevel;
       _bossFloorActive = state.bossFloorActive;
-      
+
       return true;
     } catch (error) {
       console.error('Failed to reset state:', error);
       return false;
     }
+  }
+
+  // ============================================================
+  // PET SYSTEM DEBUG
+  // ============================================================
+
+  /**
+   * Spawn test pets for debugging (one of each tier)
+   */
+  function spawnTestPets() {
+    if (typeof PetFollower === 'undefined') {
+      console.warn('[GoneRogue] PetFollower module not available');
+      return;
+    }
+
+    // Create test pets
+    var pikachuPet = PetFollower.createPet(
+      PetFollower.PET_TIERS.RUMBA,
+      'UNCOMMON',
+      '🐭',
+      'Pikachu',
+      { scrapProc: 0.02, dropChance: 0.05 }
+    );
+
+    var humanoidPet = PetFollower.createPet(
+      PetFollower.PET_TIERS.HUMANOID,
+      'RARE',
+      '🧍',
+      'Breaker',
+      null
+    );
+
+    var tanyaPet = PetFollower.createPet(
+      PetFollower.PET_TIERS.MEGA,
+      'MEGA',
+      '🔫',
+      'Tanya',
+      null
+    );
+
+    // Initialize pets at player position
+    pikachuPet.x = _player.x;
+    pikachuPet.y = _player.y;
+    humanoidPet.x = _player.x;
+    humanoidPet.y = _player.y;
+    tanyaPet.x = _player.x;
+    tanyaPet.y = _player.y;
+
+    // Add pets
+    PetFollower.addPet(pikachuPet);
+    PetFollower.addPet(humanoidPet);
+    PetFollower.addPet(tanyaPet);
+
+    console.log('[GoneRogue] Test pets spawned: Pikachu (Rumba), Breaker (Humanoid), Tanya (Mega)');
   }
 
   // ============================================================
@@ -8907,7 +9698,7 @@ const GoneRogue = (function () {
     },
     triggerActiveItem: triggerActiveItem,
     updatePlayerLight: _updatePlayerLight,
-    
+
     // Difficulty tier system
     setDifficulty: setDifficulty,
     getDifficulty: getDifficulty,
@@ -8930,6 +9721,9 @@ const GoneRogue = (function () {
     _generateDiscoveries: _generateDiscoveries,
     _revealDiscovery: _revealDiscovery,
     _initializeEnvironmentalDetails: _initializeEnvironmentalDetails,
+
+    // Pet system debug API
+    spawnTestPets: spawnTestPets,
 
     // Headless mode API (for testing/agent simulation)
     headless: {

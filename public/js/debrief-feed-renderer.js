@@ -34,7 +34,7 @@ const DebriefFeedRenderer = (function() {
     var html = '';
 
     html += '<div class="debrief-feed-content">';
-    
+
     if (_cycleMode === 'primary') {
       html += _renderPrimaryResources(resources);
     } else {
@@ -63,7 +63,7 @@ const DebriefFeedRenderer = (function() {
     }
 
     var state = GAMESTATE.getState();
-    
+
     return {
       // Primary resources
       hp: state.playerHP || 12,
@@ -72,7 +72,7 @@ const DebriefFeedRenderer = (function() {
       maxEnergy: state.maxEnergy || 5,
       focus: GAMESTATE.getFocus ? GAMESTATE.getFocus() : 10,
       maxFocus: state.maxFocus || 10,
-      
+
       // Secondary resources
       battery: GAMESTATE.getBattery ? GAMESTATE.getBattery() : 5,
       maxBattery: state.maxBattery || 5,
@@ -105,11 +105,11 @@ const DebriefFeedRenderer = (function() {
    */
   function _renderPrimaryResources(resources) {
     var html = '<div class="resource-section primary">';
-    
+
     html += _renderResourceBar('HP', resources.hp, resources.maxHp, '💖', true);
     html += _renderResourceBar('Energy', resources.energy, resources.maxEnergy, '⚡', false);
     html += _renderResourceBar('Focus', resources.focus, resources.maxFocus, '🎯', false);
-    
+
     html += '</div>';
     return html;
   }
@@ -121,11 +121,11 @@ const DebriefFeedRenderer = (function() {
    */
   function _renderSecondaryResources(resources) {
     var html = '<div class="resource-section secondary">';
-    
+
     html += _renderResourceBar('Battery', resources.battery, resources.maxBattery, '🔋', false);
     html += _renderResourceBar('Fatigue', resources.fatigue, resources.maxFatigue, '🏋️', false);
     html += _renderResourceBar('Ammo', resources.ammo, resources.maxAmmo, '🔫', false);
-    
+
     html += '</div>';
     return html;
   }

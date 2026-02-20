@@ -84,6 +84,7 @@ const CanvasRenderer = (function() {
     }
 
     this._renderEntities(renderData.entities);
+    this._renderPets(renderData.pets);
     this._renderPlayer(renderData.player);
     this._renderEffects(renderData.effects);
   };
@@ -268,6 +269,51 @@ const CanvasRenderer = (function() {
 
     // Reset shadow
     this.ctx.shadowBlur = 0;
+  };
+
+  /**
+   * Render pets (follower companions)
+   * @param {Array} pets - Array of pet objects { x, y, emoji, opacity, type }
+   */
+  CanvasRenderer.prototype._renderPets = function(pets) {
+    if (!pets || pets.length === 0) return;
+
+    for (var i = 0; i < pets.length; i++) {
+      var pet = pets[i];
+      if (!pet || pet.x === undefined || pet.y === undefined) continue;
+
+      var centerX = (pet.x + 0.5) * this.cellSize;
+      var centerY = (pet.y + 0.5) * this.cellSize;
+
+      // Save current alpha
+      var oldAlpha = this.ctx.globalAlpha;
+
+      // Apply pet opacity for subtle semi-transparency
+      if (pet.opacity !== undefined) {
+        this.ctx.globalAlpha = pet.opacity;
+      }
+
+      // Render pet emoji/character
+      this.ctx.fillStyle = pet.color || '#FFFF88';
+
+      // Add subtle glow based on pet tier
+      if (pet.type === 'mega') {
+        this.ctx.shadowColor = '#FF6B6B';
+        this.ctx.shadowBlur = 6;
+      } else if (pet.type === 'humanoid') {
+        this.ctx.shadowColor = '#7BD7FF';
+        this.ctx.shadowBlur = 4;
+      } else {
+        this.ctx.shadowColor = '#FFFF88';
+        this.ctx.shadowBlur = 3;
+      }
+
+      this.ctx.fillText(pet.emoji || '🐾', centerX, centerY);
+
+      // Reset
+      this.ctx.shadowBlur = 0;
+      this.ctx.globalAlpha = oldAlpha;
+    }
   };
 
   /**

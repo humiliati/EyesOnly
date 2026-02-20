@@ -94,12 +94,12 @@ const AgentIntegration = (function() {
 
     // Start agent loop
     currentReport = initializeReport(mode);
-    
+
     var modeLabel = (mode === 'natural') ? 'MOK AGENT' :
                     (mode === 'developer') ? 'DEVELOPER AGENT' :
                     'KERNEL AGENT';
     updateMOK(`🤖 ${modeLabel} ACTIVATED`, true);
-    
+
     if (mode === 'natural') {
       updateMOK('[MOK]: "Taking control. Proceeding with standard protocol."');
     } else if (mode === 'developer') {
@@ -179,7 +179,7 @@ const AgentIntegration = (function() {
    */
   function togglePause() {
     if (!agentActive) return;
-    
+
     isPaused = !isPaused;
     updateMOK(isPaused ? '⏸️  Agent paused' : '▶️  Agent resumed');
   }
@@ -201,7 +201,7 @@ const AgentIntegration = (function() {
     try {
       // Get current state
       var state = adapter.getState();
-      
+
       if (!state || !state.active) {
         log('Game no longer active, stopping agent');
         stopAgentTakeover();
@@ -219,7 +219,7 @@ const AgentIntegration = (function() {
 
       // Get legal actions
       var actions = adapter.getLegalActions();
-      
+
       if (actions.length === 0) {
         updateMOK('⚠️ No legal actions available');
         currentReport.stuckSituations++;
@@ -234,7 +234,7 @@ const AgentIntegration = (function() {
       } else {
         action = chooseAction(actions, state);
       }
-      
+
       if (!action) {
         log('No valid action chosen, stopping');
         stopAgentTakeover();
@@ -248,7 +248,7 @@ const AgentIntegration = (function() {
 
       // Execute action
       var result = await adapter.applyAction(action);
-      
+
       if (!result.success) {
         log('Action failed: ' + result.reason);
         currentReport.failedActions++;
@@ -266,7 +266,7 @@ const AgentIntegration = (function() {
 
       // Get delay for next action
       var config = CONFIG[agentMode];
-      var delay = config.minActionDelay + 
+      var delay = config.minActionDelay +
                   Math.random() * (config.maxActionDelay - config.minActionDelay);
 
       // Schedule next action
@@ -402,7 +402,7 @@ const AgentIntegration = (function() {
       // Prefer north or east
       var preferred = moveActions.find(a => a.direction === 'north' || a.direction === 'east');
       if (preferred) return preferred;
-      
+
       // Otherwise any move
       return moveActions[Math.floor(Math.random() * moveActions.length)];
     }
@@ -426,7 +426,7 @@ const AgentIntegration = (function() {
       if (cardAction) {
         return cardAction;
       }
-      
+
       // Flee if low HP
       if (state.player.hp < state.player.maxHp * 0.3) {
         var fleeAction = actions.find(a => a.type === 'flee');
@@ -647,7 +647,7 @@ const AgentIntegration = (function() {
         TooltipSystem.show(message, 2000);
       }
     }
-    
+
     log('[MOK] ' + message);
   }
 
@@ -660,7 +660,7 @@ const AgentIntegration = (function() {
     if (typeof DebriefFeedController === 'undefined' || !DebriefFeedController.setMOKExpression) {
       return;
     }
-    
+
     DebriefFeedController.setMOKExpression(expression, options);
   }
 

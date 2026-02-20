@@ -489,7 +489,7 @@ const GoneRogueMobile = (function () {
 
         // Check for muzzle flash at this position
         var hasMuzzleFlash = muzzleFlash && muzzleFlash.x === x && muzzleFlash.y === y;
-        
+
         // Check for impact effects at this position
         var impact = impactEffects ? impactEffects.find(function(e) { return e.x === x && e.y === y; }) : null;
 
@@ -748,7 +748,7 @@ const GoneRogueMobile = (function () {
    */
   function _applyAwarenessColor(cell, enemy, colorCycleTime) {
     var state;
-    
+
     // Use GoneRogue's awareness state function if available
     if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.getEnemyAwarenessState === 'function') {
       state = GoneRogue.getEnemyAwarenessState(enemy);

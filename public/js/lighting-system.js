@@ -48,6 +48,15 @@ const LightingSystem = (function() {
       type: 'radial',
       flickerRate: 0.1
     },
+    TERMINAL: {
+      name: 'Terminal',
+      emoji: '💻',
+      radius: 4,
+      intensity: 0.8,
+      color: '#00ffff', // Cyan glow - distinguishable from regular monitors
+      type: 'radial',
+      flickerRate: 0.05
+    },
     LIGHT_BULB: {
       name: 'Light Bulb',
       emoji: '💡',

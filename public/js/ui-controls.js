@@ -95,7 +95,7 @@
     activeSlot.addEventListener('drop', function(e) {
       e.preventDefault();
       activeSlot.classList.remove('drag-over');
-      
+
       // Check if we have dragged inventory item data
       if (_draggedInventoryItem) {
         _equipInventoryItemToActiveSlot(_draggedInventoryItem);
@@ -155,7 +155,7 @@
       case 'help':
         // Check if in Gone Rogue mode - offer agent takeover
         var isInGoneRogue = typeof GoneRogue !== 'undefined' && GoneRogue.isActive();
-        
+
         if (isInGoneRogue) {
           // Check if agent is already active
           if (typeof AgentIntegration !== 'undefined' && AgentIntegration.isActive()) {
@@ -246,8 +246,8 @@
         // Priority 3: Check if in authorization/clearance sequence
         if (typeof StateMachine !== 'undefined') {
           var currentState = StateMachine.getState();
-          if (currentState === 'AWAITING_DESIGNATION' || 
-              currentState === 'AWAITING_PROCEED' || 
+          if (currentState === 'AWAITING_DESIGNATION' ||
+              currentState === 'AWAITING_PROCEED' ||
               currentState === 'AWAITING_TEMPORAL') {
             simulateCommand('back');
             break;
@@ -643,7 +643,7 @@
       itemEl.setAttribute('data-index', index);
       itemEl.setAttribute('type', 'button');
       itemEl.setAttribute('aria-label', item.name);
-      
+
       // Click handler for selection
       itemEl.addEventListener('click', function () {
         selectInventoryItem(index, allItems);
@@ -653,7 +653,7 @@
       itemEl.addEventListener('dragstart', function(e) {
         // Store item data for equipping to active slot
         _draggedInventoryItem = { item: item, index: index };
-        
+
         // Also notify CardDisposalSystem for incinerator functionality
         if (typeof CardDisposalSystem !== 'undefined') {
           CardDisposalSystem.handleDragStart(itemEl, item, index, 'inventory');
@@ -663,7 +663,7 @@
       itemEl.addEventListener('dragend', function(e) {
         // Clear dragged item state
         _draggedInventoryItem = null;
-        
+
         if (typeof CardDisposalSystem !== 'undefined') {
           CardDisposalSystem.handleDragEnd();
         }
@@ -1120,7 +1120,7 @@
     if (typeof LoginShell !== 'undefined' && (username === 'user' || username === 'admin')) {
       // Close overlay first
       toggleLoginOverlay();
-      
+
       // Show message in terminal that we're entering LoginShell mode
       printToTerminal([
         '',
@@ -1129,7 +1129,7 @@
         'This is a demo authentication system.',
         ''
       ]);
-      
+
       // Start the LoginShell subsystem (terminal-within-terminal)
       if (typeof LoginShell.start === 'function') {
         // Delay to let overlay close animation complete
@@ -1148,7 +1148,7 @@
           }
         }, OVERLAY_CLOSE_ANIMATION_DELAY);
       }
-      
+
       // Re-enable button
       if (submitBtn) {
         submitBtn.disabled = false;
@@ -1437,10 +1437,10 @@
     function animateTicker() {
       var elapsed = Date.now() - startTime;
       var progress = Math.min(elapsed / duration, 1);
-      
+
       // Easing function for smooth deceleration
       var eased = 1 - Math.pow(1 - progress, 3); // Cubic ease-out
-      
+
       var currentDisplayValue = Math.round(currentValue + (difference * eased));
       var formatted = String(currentDisplayValue).padStart(8, '0');
       currencyValueEl.textContent = formatted;
@@ -1451,7 +1451,7 @@
         // Ensure final value is exact
         var finalFormatted = String(targetValue).padStart(8, '0');
         currencyValueEl.textContent = finalFormatted;
-        
+
         // Remove animation class after a brief moment
         setTimeout(function() {
           currencyValueEl.classList.remove('currency-ticker-active');

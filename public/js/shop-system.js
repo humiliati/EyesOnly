@@ -328,7 +328,7 @@ const ShopSystem = (function () {
     var base = 80 + (floor * 40);
     var variance = base * 0.3;
     var price = base + (Math.random() * variance * 2) - variance;
-    
+
     // Some slots more expensive
     if (index % 3 === 0) {
       price *= 1.5;
@@ -452,13 +452,13 @@ const ShopSystem = (function () {
    */
   function _getRandomGambleType() {
     var roll = Math.random();
-    
+
     // Weighted probabilities:
     // Standard: 50% (0.0 - 0.5)
     // Cursed: 25% (0.5 - 0.75)
     // Binary: 15% (0.75 - 0.9)
     // Empty: 10% (0.9 - 1.0)
-    
+
     if (roll < 0.50) {
       return 'standard';
     } else if (roll < 0.75) {
@@ -516,8 +516,8 @@ const ShopSystem = (function () {
    * Render shop header
    */
   function _renderShopHeader(shop, playerCurrency) {
-    var shopName = shop.type === SHOP_TYPES.BLACK_MARKET 
-      ? '⚠️ BLACK MARKET' 
+    var shopName = shop.type === SHOP_TYPES.BLACK_MARKET
+      ? '⚠️ BLACK MARKET'
       : '🏪 MERCHANT';
 
     return '<div class="shop-header">' +
@@ -765,7 +765,7 @@ const ShopSystem = (function () {
     // Find closest action element
     while (target && target !== _shopContainer) {
       var action = target.getAttribute('data-action');
-      
+
       if (action === 'close-shop') {
         closeShop();
         return;
@@ -817,17 +817,17 @@ const ShopSystem = (function () {
     );
 
     // Re-render shop
-    var playerCurrency = (typeof GAMESTATE !== 'undefined') 
-      ? GAMESTATE.getState().cryptos 
+    var playerCurrency = (typeof GAMESTATE !== 'undefined')
+      ? GAMESTATE.getState().cryptos
       : 0;
-    var playerHand = (typeof GAMESTATE !== 'undefined') 
-      ? GAMESTATE.getState().cardHand 
+    var playerHand = (typeof GAMESTATE !== 'undefined')
+      ? GAMESTATE.getState().cardHand
       : [];
-    var playerInventory = (typeof GAMESTATE !== 'undefined') 
-      ? GAMESTATE.getLooseInventory() 
+    var playerInventory = (typeof GAMESTATE !== 'undefined')
+      ? GAMESTATE.getLooseInventory()
       : [];
-    var playerActionBar = (typeof GAMESTATE !== 'undefined') 
-      ? GAMESTATE.getState().actionButtonCards 
+    var playerActionBar = (typeof GAMESTATE !== 'undefined')
+      ? GAMESTATE.getState().actionButtonCards
       : [];
 
     _renderShop(_currentShop, playerCurrency, playerHand, playerInventory, playerActionBar);
@@ -1052,7 +1052,7 @@ const ShopSystem = (function () {
       // Find and remove card from hand
       var hand = GAMESTATE.getState().cardHand;
       var cardIndex = -1;
-      
+
       // First try to match by card ID if it exists
       for (var i = 0; i < hand.length; i++) {
         if (hand[i].id && hand[i].id === cardId) {
@@ -1060,7 +1060,7 @@ const ShopSystem = (function () {
           break;
         }
       }
-      
+
       // If no ID match, try array index as fallback
       // Note: This is fragile and should be avoided by always generating card IDs
       if (cardIndex === -1 && !isNaN(cardId)) {

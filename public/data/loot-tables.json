@@ -25,6 +25,14 @@
           "PERFECT": 0.1
         }
       },
+      "key_item": {
+        "enabled": true,
+        "chance": 0.30,
+        "biome_specific": true,
+        "types": {
+          "ACCESS_CARD": 100
+        }
+      },
       "charm": {
         "enabled": true,
         "chance": 0.3,
@@ -141,11 +149,12 @@
       },
       "key_item": {
         "enabled": true,
-        "chance": 0.15,
+        "chance": 0.25,
         "types": {
           "RUSTY_KEY": 50,
           "BRONZE_KEY": 30,
           "KEYCARD": 15,
+          "ACCESS_CARD": 10,
           "MASTER_KEY": 5
         }
       }
@@ -390,7 +399,8 @@
         "Katchup": 1.8,
         "Rations": 1.8,
         "Dodge": 1.3,
-        "Retreat": 1.3
+        "Retreat": 1.3,
+        "Crowbar": 1.2
       },
       "SHOPPING_MALL": {
         "Burst Shot": 1.5,
@@ -409,6 +419,7 @@
       "INDUSTRIAL": {
         "Explosive Shot": 1.8,
         "Grenade": 1.8,
+        "Propane Tank": 2.0,
         "Burst Shot": 1.5,
         "Suppressive Fire": 1.5
       },

@@ -205,10 +205,14 @@ Example:
 - Movement rules not implemented
 - Card lifecycle integration pending
 
-⚠️ **moveCard() full implementation**: Only Action Buttons → Hand implemented
+✅ **moveCard() full implementation**: COMPLETED (as of 2026-02-20)
+- All primary zone movements implemented:
+  - Hand ↔ Action Buttons
+  - Inventory ↔ Action Buttons
+  - Hand ↔ Inventory
+  - Inventory ↔ Active Item (equip/unequip)
+- All implementations include proper rollback on failure
 - Validation via canMoveCard() works for all zones
-- Actual movement execution only complete for one direction
-- Other movements need similar implementations
 
 ### 7.2 Combat Integration
 
@@ -255,7 +259,15 @@ For full functionality, the following integration points are needed:
    // UI should re-render to show new capacity
    ```
 
-### 8.2 Backward Compatibility
+### 8.2 Drop Zone Detector Integration
+
+✅ **UPDATED (as of 2026-02-20)**: drop-zone-detector.js now uses CardZoneManager
+- Hand capacity check uses `CardZoneManager.getZoneLimits()` for accurate 8-slot limit
+- Action button capacity check uses `CardZoneManager.getZoneLimits()` for equipment-aware capacity
+- Falls back gracefully to GAMESTATE if CardZoneManager unavailable
+- Provides correct visual feedback during drag-and-drop operations
+
+### 8.3 Backward Compatibility
 
 The system maintains backward compatibility:
 - If CardZoneManager unavailable, falls back to default capacity
@@ -266,9 +278,12 @@ The system maintains backward compatibility:
 
 ### 9.1 Manual Testing Steps
 
-1. **Load Test Page**: Open `public/tests/test-zone-boundaries.html`
-2. **Check Console**: Verify all tests pass (green ✓)
-3. **In-Game Testing**:
+✅ **Test Harness Available**: `public/tests/test-zone-boundaries.html` (Added 2026-02-20)
+
+1. **Load Test Page**: Open `public/tests/test-zone-boundaries.html` in a browser
+2. **Run Tests**: Click "Run Tests" button
+3. **Check Results**: Verify all tests pass (green checkmarks)
+4. **In-Game Testing**:
    - Start new Gone Rogue run
    - Navigate to grey cave floors (1-4)
    - Find and pick up trench coat
@@ -279,14 +294,23 @@ The system maintains backward compatibility:
 
 ### 9.2 Automated Testing
 
+✅ **Test HTML Harness Created**: Interactive web-based test runner now available
+
 Run the test suite:
 ```bash
 # Open in browser
 open public/tests/test-zone-boundaries.html
 
-# Check console for results
-# Expected: All tests pass
+# Click "Run Tests" button
+# Check console and UI for results
+# Expected: All tests pass with visual feedback
 ```
+
+The test harness provides:
+- Real-time pass/fail counters
+- Color-coded test results
+- Section-by-section test organization
+- Interactive UI for easy debugging
 
 ## 10. Future Enhancements
 
@@ -306,15 +330,17 @@ open public/tests/test-zone-boundaries.html
 
 ### 10.3 Advanced Movement Rules
 
-- Implement card swapping between zones
-- Add bulk card movement
+~~- Implement card swapping between zones~~
+~~- Add bulk card movement~~
 - Create card sorting/filtering
 - Add auto-organize features
 
+**Note**: Basic card movement between all primary zones is now complete (2026-02-20)
+
 ### 10.4 UI Enhancements
 
+~~- Drag-and-drop card movement~~ (drop-zone-detector now integrated with CardZoneManager)
 - Visual indicators for zone limits
-- Drag-and-drop card movement
 - Zone preview tooltips
 - Capacity indicator in UI
 
@@ -326,10 +352,34 @@ The card zone boundaries and equipment capacity system has been successfully imp
 ✅ Dynamic equipment-based capacity modification
 ✅ Trench coat as inaugural equipable item
 ✅ Guaranteed grey biome drop system
-✅ Full test coverage
+✅ Full test coverage with interactive test harness
+✅ Complete moveCard() implementation for all primary zones
+✅ Drop-zone-detector integration with CardZoneManager
 ✅ Backward compatible integration
 
-The system is production-ready for the implemented features, with clear paths for future enhancements. All specified requirements from the engineering task specification have been met.
+### Recent Updates (2026-02-20)
+
+The following improvements were completed to address the known limitations identified in the initial audit:
+
+1. **Complete moveCard() Implementation**
+   - Implemented all primary zone movement handlers
+   - Hand ↔ Action Buttons, Inventory ↔ Action Buttons
+   - Hand ↔ Inventory, Inventory ↔ Active Item
+   - All movements include proper error handling and rollback
+
+2. **Interactive Test Harness**
+   - Created `test-zone-boundaries.html` with full UI
+   - Real-time test results and status counters
+   - Visual feedback for pass/fail tests
+   - Matches styling of other test pages
+
+3. **Drop Zone Detector Enhancement**
+   - Updated to use `CardZoneManager.getZoneLimits()`
+   - Now respects equipment-modified action button capacity
+   - Provides accurate visual feedback during drag operations
+   - Maintains backward compatibility
+
+The system is production-ready for all implemented features. The file has grown from 352 lines to 540 lines in zone-manager.js, implementing comprehensive card movement logic across all primary zones.
 
 ## Appendix A: API Reference
 

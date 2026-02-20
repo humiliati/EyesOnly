@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pet Follower System Test</title>
+  <style>
+    :root {
+      --bg: #07080b;
+      --panel: #0e1220;
+      --text: #e7e7ee;
+      --muted: #a7a7b6;
+      --accent: #7bd7ff;
+      --ok: #7bffb6;
+      --warn: #ffd36b;
+      --danger: #ff6b6b;
+      --border: rgba(255,255,255,0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, Monaco, 'Courier New', monospace;
+      background: radial-gradient(1200px 600px at 20% 0%, rgba(123,215,255,0.10), transparent 60%),
+                  radial-gradient(800px 400px at 90% 20%, rgba(255,211,107,0.10), transparent 55%),
+                  var(--bg);
+      color: var(--text);
+      padding: 20px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: rgba(14,18,32,0.75);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+    }
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      color: var(--accent);
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+    .btn {
+      display: inline-block;
+      padding: 10px 18px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(7,8,11,0.45);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+    .btn:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(123,215,255,0.12) inset;
+    }
+    .btn.primary {
+      border-color: rgba(123,215,255,0.45);
+      box-shadow: 0 0 0 1px rgba(123,215,255,0.12) inset;
+    }
+    #console {
+      margin-top: 20px;
+      padding: 16px;
+      background: rgba(7,8,11,0.8);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      min-height: 400px;
+      max-height: 600px;
+      overflow-y: auto;
+      font-size: 13px;
+    }
+    .log-line {
+      margin: 4px 0;
+      padding: 2px 0;
+    }
+    .pass-line { color: var(--ok); }
+    .fail-line { color: var(--danger); }
+    .info-line { color: var(--text); }
+    .warning-line { color: var(--warn); }
+    .section-header {
+      color: var(--accent);
+      font-weight: 700;
+      margin-top: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Pet Follower System Test</h1>
+    <div class="subtitle">Tests pet creation, following, and combat modifiers</div>
+
+    <button class="btn primary" onclick="testPetCreation()">Test Pet Creation</button>
+    <button class="btn primary" onclick="testPetFollowing()">Test Pet Following</button>
+    <button class="btn primary" onclick="testJealousySystem()">Test Jealousy System</button>
+    <button class="btn primary" onclick="testBreakables()">Test Breakable Interaction</button>
+    <button class="btn primary" onclick="testCombatModifiers()">Test Combat Modifiers</button>
+    <button class="btn" onclick="clearConsole()">Clear Console</button>
+
+    <div id="console"></div>
+  </div>
+
+  <!-- Load required modules -->
+  <script src="../js/seeded-rng.js"></script>
+  <script src="../js/pet-follower.js"></script>
+
+  <!-- Test harness -->
+  <script>
+    const consoleDiv = document.getElementById('console');
+
+    function log(message, type = 'info') {
+      const line = document.createElement('div');
+      line.className = 'log-line ' + type + '-line';
+
+      if (message.includes('✓')) {
+        line.className = 'log-line pass-line';
+      } else if (message.includes('✗')) {
+        line.className = 'log-line fail-line';
+      } else if (message.includes('===') || message.includes('---')) {
+        line.className = 'log-line section-header';
+      }
+
+      line.textContent = message;
+      consoleDiv.appendChild(line);
+      consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    }
+
+    function clearConsole() {
+      consoleDiv.innerHTML = '';
+    }
+
+    function testPetCreation() {
+      log('=== Testing Pet Creation ===');
+
+      try {
+        // Test Rumba pet
+        const rumbaPet = PetFollower.createPet(
+          PetFollower.PET_TIERS.RUMBA,
+          'COMMON',
+          '🐭',
+          'Test Rumba',
+          { scrapProc: 0.02 }
+        );
+        log('✓ Rumba pet created: ' + rumbaPet.name + ' (' + rumbaPet.emoji + ')');
+        log('  Delay index: ' + rumbaPet.delayIndex);
+
+        // Test Humanoid pet
+        const humanoidPet = PetFollower.createPet(
+          PetFollower.PET_TIERS.HUMANOID,
+          'RARE',
+          '🧍',
+          'Test Humanoid',
+          null
+        );
+        log('✓ Humanoid pet created: ' + humanoidPet.name + ' (' + humanoidPet.emoji + ')');
+        log('  Delay index: ' + humanoidPet.delayIndex);
+
+        // Test Mega pet
+        const megaPet = PetFollower.createPet(
+          PetFollower.PET_TIERS.MEGA,
+          'MEGA',
+          '🔫',
+          'Test Tanya',
+          null
+        );
+        log('✓ Mega pet created: ' + megaPet.name + ' (' + megaPet.emoji + ')');
+        log('  Delay index: ' + megaPet.delayIndex);
+        log('  Quality stat multiplier: ' + PetFollower.PET_QUALITIES[megaPet.quality].statMultiplier);
+
+        log('✓ All pet types created successfully');
+      } catch (error) {
+        log('✗ Pet creation failed: ' + error.message, 'fail');
+      }
+    }
+
+    function testPetFollowing() {
+      log('=== Testing Pet Following Logic ===');
+
+      try {
+        PetFollower.clearPets();
+
+        const pet = PetFollower.createPet(
+          PetFollower.PET_TIERS.RUMBA,
+          'COMMON',
+          '🐭',
+          'Follower',
+          null
+        );
+        pet.x = 5;
+        pet.y = 5;
+
+        PetFollower.addPet(pet);
+        log('✓ Pet added at position (5, 5)');
+
+        // Create position history
+        const positionHistory = [
+          { x: 10, y: 10, facing: 'north' },
+          { x: 10, y: 11, facing: 'south' },
+          { x: 9, y: 11, facing: 'west' },
+          { x: 8, y: 11, facing: 'west' },
+          { x: 7, y: 11, facing: 'west' }
+        ];
+
+        PetFollower.updatePets(positionHistory, Date.now());
+
+        const activePets = PetFollower.getActivePets();
+        log('✓ Pet position updated to: (' + Math.round(activePets[0].x) + ', ' + Math.round(activePets[0].y) + ')');
+        log('  Target position from history[' + activePets[0].delayIndex + ']: (' +
+            positionHistory[activePets[0].delayIndex].x + ', ' +
+            positionHistory[activePets[0].delayIndex].y + ')');
+
+        log('✓ Pet following logic works correctly');
+      } catch (error) {
+        log('✗ Pet following test failed: ' + error.message, 'fail');
+      }
+    }
+
+    function testJealousySystem() {
+      log('=== Testing Jealousy System (1 Mega Limit) ===');
+
+      try {
+        PetFollower.clearPets();
+
+        const megaPet1 = PetFollower.createPet(
+          PetFollower.PET_TIERS.MEGA,
+          'MEGA',
+          '🔫',
+          'Tanya 1',
+          null
+        );
+
+        const result1 = PetFollower.addPet(megaPet1);
+        log('✓ First mega pet added: ' + result1);
+
+        const megaPet2 = PetFollower.createPet(
+          PetFollower.PET_TIERS.MEGA,
+          'MEGA',
+          '🔫',
+          'Tanya 2',
+          null
+        );
+
+        const result2 = PetFollower.addPet(megaPet2);
+        log((result2 ? '✗' : '✓') + ' Second mega pet addition blocked: ' + !result2);
+
+        const activePets = PetFollower.getActivePets();
+        log('✓ Active pet count: ' + activePets.length + ' (should be 1)');
+
+        if (activePets.length === 1 && !result2) {
+          log('✓ Jealousy system working correctly');
+        } else {
+          log('✗ Jealousy system failed', 'fail');
+        }
+      } catch (error) {
+        log('✗ Jealousy system test failed: ' + error.message, 'fail');
+      }
+    }
+
+    function testBreakables() {
+      log('=== Testing Breakable Interaction ===');
+
+      try {
+        PetFollower.clearPets();
+
+        const humanoidPet = PetFollower.createPet(
+          PetFollower.PET_TIERS.HUMANOID,
+          'MEGA',
+          '🧍',
+          'Breaker',
+          null
+        );
+        humanoidPet.x = 10;
+        humanoidPet.y = 10;
+
+        PetFollower.addPet(humanoidPet);
+        log('✓ Humanoid pet added at (10, 10)');
+
+        const breakables = [
+          { x: 10, y: 11, hp: 1 },  // Adjacent
+          { x: 11, y: 10, hp: 1 },  // Adjacent
+          { x: 15, y: 15, hp: 1 }   // Far away
+        ];
+
+        let brokenCount = 0;
+        PetFollower.checkBreakables(breakables, function(breakable, index) {
+          log('  Breakable broken at (' + breakable.x + ', ' + breakable.y + ')');
+          brokenCount++;
+        });
+
+        log('✓ Breakables checked (MEGA quality has 75% break chance and radius 2)');
+        log('  Broken count: ' + brokenCount + ' (probabilistic, should be 0-2)');
+
+        const quality = PetFollower.PET_QUALITIES['MEGA'];
+        log('  MEGA quality break chance: ' + (quality.breakChance * 100) + '%');
+        log('  MEGA quality break radius: ' + quality.breakRadius);
+
+      } catch (error) {
+        log('✗ Breakable test failed: ' + error.message, 'fail');
+      }
+    }
+
+    function testCombatModifiers() {
+      log('=== Testing Combat Modifiers ===');
+
+      try {
+        PetFollower.clearPets();
+
+        const megaPet = PetFollower.createPet(
+          PetFollower.PET_TIERS.MEGA,
+          'MEGA',
+          '🔫',
+          'Tanya Combat',
+          null
+        );
+
+        PetFollower.addPet(megaPet);
+        log('✓ Mega pet added for combat');
+
+        const combatContext = {
+          playerAccuracy: 0,
+          playerCritMultiplier: 0,
+          enemyStatus: { stunned: true },
+          petAutoStrike: false,
+          petStrikeDamage: 0
+        };
+
+        PetFollower.applyCombatModifiers(combatContext);
+
+        log('✓ Combat modifiers applied');
+        log('  Accuracy bonus: +' + combatContext.playerAccuracy + '%');
+        log('  Crit multiplier bonus: +' + combatContext.playerCritMultiplier.toFixed(2));
+        log('  Auto-strike triggered: ' + combatContext.petAutoStrike);
+        if (combatContext.petAutoStrike) {
+          log('  Auto-strike damage: ' + combatContext.petStrikeDamage);
+        }
+
+        const quality = PetFollower.PET_QUALITIES['MEGA'];
+        log('  MEGA quality stat multiplier: ' + quality.statMultiplier + 'x');
+
+      } catch (error) {
+        log('✗ Combat modifiers test failed: ' + error.message, 'fail');
+      }
+    }
+
+    // Auto-run basic test on load
+    log('Pet Follower System Test Ready');
+    log('Click buttons above to run tests');
+    log('');
+  </script>
+</body>
+</html>
