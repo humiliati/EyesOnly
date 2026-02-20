@@ -256,8 +256,25 @@ const GoneRogueMovement = (function () {
       return true;
     }
 
-    // Lerp towards target with sprint multiplier
-    var currentSpeed = MOVEMENT_SPEED * (_isSprinting ? SPRINT_MULTIPLIER : 1.0);
+    // Lerp towards target with sprint multiplier and equipment modifiers
+    var currentSpeed = MOVEMENT_SPEED;
+
+    if (_isSprinting) {
+      var sprintMultiplier = SPRINT_MULTIPLIER;
+
+      // Apply equipment sprint speed modifiers (Stiletto Slippers, etc.)
+      if (typeof PassiveItemsSystem !== 'undefined') {
+        var equipped = PassiveItemsSystem.getEquippedItems();
+        for (var i = 0; i < equipped.length; i++) {
+          if (equipped[i].sprint_speed_multiplier) {
+            sprintMultiplier *= equipped[i].sprint_speed_multiplier;
+          }
+        }
+      }
+
+      currentSpeed *= sprintMultiplier;
+    }
+
     var moveDistance = currentSpeed * deltaTime;
     if (moveDistance > distance) {
       moveDistance = distance;
