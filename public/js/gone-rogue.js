@@ -1018,18 +1018,18 @@ const GoneRogue = (function () {
   function _getBiome(floorNum) {
     // Floors 1-3: Always Forest (tutorial/starting experience)
     if (floorNum <= 3) return BIOMES.FOREST;
-    
+
     // Floor 4: Special Grey Cave floor
     if (floorNum === 4) return BIOMES.GREY_CAVE;
-    
+
     // Boss floors: Use boss-appropriate biomes (Aerospace for high floors)
     if (BOSS_FLOORS.indexOf(floorNum) !== -1 && floorNum >= 23) {
       return BIOMES.AEROSPACE;
     }
-    
+
     // Weighted biome selection based on floor depth
     var weights = {};
-    
+
     if (floorNum >= 5 && floorNum <= 6) {
       // Early game: Forest dominant
       weights = {
@@ -1072,24 +1072,24 @@ const GoneRogue = (function () {
         AEROSPACE: 70
       };
     }
-    
+
     // Calculate total weight
     var totalWeight = 0;
     for (var key in weights) {
       totalWeight += weights[key];
     }
-    
+
     // Select random biome based on weights
     var rand = _rng() * totalWeight;
     var cumulative = 0;
-    
+
     for (var biomeKey in weights) {
       cumulative += weights[biomeKey];
       if (rand <= cumulative) {
         return BIOMES[biomeKey];
       }
     }
-    
+
     // Fallback (should never happen)
     return BIOMES.OFFICE;
   }
@@ -2405,7 +2405,7 @@ const GoneRogue = (function () {
 
       // Apply difficulty tier multiplier
       var tierMultiplier = _getDifficultyMultiplier();
-      
+
       if (difficulty <= 3) {
         enemyCount = Math.floor((4 + Math.floor(_rng() * 3)) * tierMultiplier); // 4-6 base
       } else if (difficulty <= 7) {
@@ -2503,11 +2503,11 @@ const GoneRogue = (function () {
 
   function _createEnemy(x, y, patrolType, room) {
     var tierMultiplier = _getDifficultyMultiplier();
-    
+
     // Check if this is a penalty floor
     var isPenaltyFloor = _penaltyFloors.indexOf(_floor) !== -1;
     var penaltyMultiplier = isPenaltyFloor ? 1.2 : 1.0; // +20% for penalty floors
-    
+
     var enemy = {
       x: x,
       y: y,
@@ -2705,7 +2705,7 @@ const GoneRogue = (function () {
 
     // Check if a shop should spawn on this floor
     var shopSpawn = ShopSystem.shouldSpawnShop(_floor, floorType);
-    
+
     if (!shopSpawn) {
       return;
     }
@@ -2726,8 +2726,8 @@ const GoneRogue = (function () {
     var shopY = Math.floor(shopRoom.y + shopRoom.h / 2);
 
     // Use shop type constant for consistency
-    var shopTileType = shopSpawn.type === ShopSystem.SHOP_TYPES.BLACK_MARKET 
-      ? TILES.BLACK_MARKET 
+    var shopTileType = shopSpawn.type === ShopSystem.SHOP_TYPES.BLACK_MARKET
+      ? TILES.BLACK_MARKET
       : TILES.SHOP;
 
     // Ensure position is empty
@@ -2752,42 +2752,42 @@ const GoneRogue = (function () {
    */
   function _spawnVents(rooms, floorType) {
     _vents = []; // Clear previous vents
-    
+
     // No vents on tutorial, bonfire, or boss floors
-    if (floorType === FLOOR_TYPES.TUTORIAL || 
-        floorType === FLOOR_TYPES.BONFIRE || 
+    if (floorType === FLOOR_TYPES.TUTORIAL ||
+        floorType === FLOOR_TYPES.BONFIRE ||
         floorType === FLOOR_TYPES.BOSS ||
         floorType === FLOOR_TYPES.FINAL) {
       return;
     }
-    
+
     // 15% chance to spawn a vent
     if (_rng() > 0.15) {
       return;
     }
-    
+
     // Find a suitable room (prefer mid-size rooms)
     var eligibleRooms = rooms.filter(function(room) {
       return room.w >= 4 && room.h >= 4 && room.w <= 8 && room.h <= 8;
     });
-    
+
     if (eligibleRooms.length === 0) {
       eligibleRooms = rooms; // Fallback to any room
     }
-    
+
     var ventRoom = eligibleRooms[Math.floor(_rng() * eligibleRooms.length)];
-    
+
     // Place vent in a random position within room
     var ventX = ventRoom.x + 1 + Math.floor(_rng() * (ventRoom.w - 2));
     var ventY = ventRoom.y + 1 + Math.floor(_rng() * (ventRoom.h - 2));
-    
+
     // Ensure position is empty
     if (_grid[ventY][ventX] === TILES.EMPTY) {
       // Vent quality: 85% standard, 15% rusty (worse success rate)
       var quality = _rng() < 0.85 ? 'standard' : 'rusty';
-      
+
       _grid[ventY][ventX] = TILES.VENT;
-      
+
       _vents.push({
         x: ventX,
         y: ventY,
@@ -2795,7 +2795,7 @@ const GoneRogue = (function () {
         discovered: false,
         used: false
       });
-      
+
       console.log('[GoneRogue] Spawned', quality, 'vent at', ventX, ventY);
     }
   }
@@ -2805,29 +2805,29 @@ const GoneRogue = (function () {
    */
   function _applyBiomeBleed(rooms) {
     var currentBiome = _getBiome(_floor);
-    
+
     // Track this biome for next floor
     if (_visitedBiomes.indexOf(currentBiome.name) === -1) {
       _visitedBiomes.push(currentBiome.name);
     }
-    
+
     // If we have a previous biome and it's different, add bleed tiles
     if (_previousBiome && _previousBiome.name !== currentBiome.name) {
       _applyBleedTiles(_previousBiome, 'entrance', 5, 10);
     }
-    
+
     // Preview next floor's biome near exit (if floor < 30)
     if (_floor < 30) {
       // Use cached preview if available, otherwise generate and cache
       if (!_nextBiomePreview) {
         _nextBiomePreview = _getBiome(_floor + 1);
       }
-      
+
       if (_nextBiomePreview.name !== currentBiome.name) {
         _applyBleedTiles(_nextBiomePreview, 'exit', 5, 10);
       }
     }
-    
+
     // Store current biome as previous for next floor
     // And set next preview to null so it regenerates
     _previousBiome = currentBiome;
@@ -2840,12 +2840,12 @@ const GoneRogue = (function () {
   function _applyBleedTiles(biome, location, minCount, maxCount) {
     var count = minCount + Math.floor(_rng() * (maxCount - minCount + 1));
     var bleedChar = _getBleedChar(biome);
-    
+
     if (!bleedChar) return;
-    
+
     for (var i = 0; i < count; i++) {
       var x, y;
-      
+
       if (location === 'entrance') {
         // Place near player spawn (left side of map)
         x = 1 + Math.floor(_rng() * 8);
@@ -2855,7 +2855,7 @@ const GoneRogue = (function () {
         x = GRID_WIDTH - 9 + Math.floor(_rng() * 8);
         y = 1 + Math.floor(_rng() * (GRID_HEIGHT - 2));
       }
-      
+
       // Only place on empty floor tiles
       if (_grid[y] && _grid[y][x] === TILES.EMPTY) {
         _grid[y][x] = bleedChar;
@@ -3217,12 +3217,12 @@ const GoneRogue = (function () {
     } else if (_bossFloorActive && _bossDefeated) {
       floorLabel += ' ✅ BOSS DEFEATED';
     }
-    
+
     // Show penalty floor indicator
     if (_penaltyFloors.indexOf(_floor) !== -1) {
       floorLabel += ' 🔻 PENALTY';
     }
-    
+
     lines.push('HP: ' + _player.hp + '/' + _player.maxHp + ' | ' + floorLabel + ' | Turn: ' + _turn);
     if (_bossFloorActive && _activeBoss && !_bossDefeated) {
       lines.push('⚠️  Boss: ' + _activeBoss.type + ' | Phase: ' + _activeBoss.phase);
@@ -3250,7 +3250,7 @@ const GoneRogue = (function () {
 
     // Get loose inventory (current hand)
     var loose = GAMESTATE.getLooseInventory();
-    
+
     // Convert to card format for reserve slots
     var cards = loose.map(function(item) {
       return {
@@ -3577,19 +3577,19 @@ const GoneRogue = (function () {
       if (typeof GAMESTATE !== 'undefined') {
         GAMESTATE.addAmmo(item.amount);
       }
-      
+
       // Remove ammo from floor
       _items = _items.filter(function(i) { return i !== item; });
-      
+
       // Tooltip and MOK interjection
       if (typeof TooltipSystem !== 'undefined') {
         TooltipSystem.showAction('item-pickup', { name: 'Ammo +' + item.amount });
       }
-      
+
       if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
         UIControls.updateMokInterjection('🔫 Ammo +' + item.amount);
       }
-      
+
       return {
         lines: ['PICKED UP: 🔫 Ammo +' + item.amount, ''].concat(_renderGrid()),
         prompt: getPrompt(),
@@ -3599,11 +3599,11 @@ const GoneRogue = (function () {
 
     // Check if item is a card (attack/support) or regular item
     var isCard = item.card && (item.card.type === 'attack' || item.card.type === 'support');
-    
+
     // Add to appropriate inventory
     if (typeof GAMESTATE !== 'undefined') {
       var result;
-      
+
       if (isCard) {
         // NEW LOOT FLOW: Cards go to hand first, then action buttons
         result = GAMESTATE.addCard(item.card);
@@ -3611,7 +3611,7 @@ const GoneRogue = (function () {
         // Non-card items go to loose inventory (legacy behavior)
         result = GAMESTATE.addToLoose(item.card);
       }
-      
+
       if (!result.success) {
         return {
           lines: [result.message, 'DROP SOMETHING FIRST', ''].concat(_renderGrid()),
@@ -3619,7 +3619,7 @@ const GoneRogue = (function () {
           stayActive: true
         };
       }
-      
+
       // Show where card was added (hand vs action buttons)
       if (isCard && result.location) {
         var locationMsg = result.location === 'hand' ? '[Added to HAND]' : '[Added to ACTION BUTTONS]';
@@ -3638,7 +3638,7 @@ const GoneRogue = (function () {
         TooltipSystem.showAction('item-pickup', { name: item.card.name });
       }
     }
-    
+
     // MOK interjection for card/item pickup
     if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
       var pickupType = isCard ? 'Card' : 'Item';
@@ -3667,12 +3667,12 @@ const GoneRogue = (function () {
     var MAX_FLOORS = 30;
     if (_floor >= MAX_FLOORS) {
       _runCompleted = true; // Mark run as completed for highscore
-      
+
       // Mark difficulty tier as completed
       if (typeof AWOLDifficulty !== 'undefined' && _difficultyTier >= 1 && _difficultyTier <= 3) {
         AWOLDifficulty.markTierCompleted(_difficultyTier);
       }
-      
+
       return _exitRogue(true);
     }
 
@@ -3692,11 +3692,11 @@ const GoneRogue = (function () {
         break;
       }
     }
-    
+
     if (!vent || vent.used) {
       return { lines: ['This vent is no longer functional'], prompt: getPrompt(), stayActive: true };
     }
-    
+
     // Mark as discovered
     if (!vent.discovered) {
       vent.discovered = true;
@@ -3714,28 +3714,28 @@ const GoneRogue = (function () {
         stayActive: true
       };
     }
-    
+
     // Calculate bypass success chance
     var bypassChance = 0.75; // Base 75%
     bypassChance -= (_ventUseCount * 0.05); // -5% per prior vent use
     bypassChance -= (_floor * 0.01); // -1% per floor depth
-    
+
     // Rusty vents have worse odds
     if (vent.quality === 'rusty') {
       bypassChance -= 0.05;
     }
-    
+
     // Difficulty tier affects success rate
     bypassChance -= (_difficultyTier - 1) * 0.05; // -5% per tier above 1
-    
+
     // Clamp to minimum 25%
     bypassChance = Math.max(0.25, bypassChance);
-    
+
     // Attempt bypass
     var success = _rng() < bypassChance;
     vent.used = true;
     _ventUseCount++;
-    
+
     if (success) {
       // Success: Skip to floor N+2
       var lines = [
@@ -3746,27 +3746,27 @@ const GoneRogue = (function () {
         '',
         'Floor ' + (_floor + 1) + ' cleared automatically (50% XP awarded)'
       ];
-      
+
       // Award 50% XP for skipped floor
       _awardSkippedFloorXP();
-      
+
       // Advance floor by 2
       _floor++;
-      
+
       // Remove the vent tile
       _grid[_player.y][_player.x] = TILES.EMPTY;
-      
+
       // Generate next floor
       setTimeout(function() {
         _advanceFloor();
       }, 100);
-      
+
       return { lines: lines, prompt: getPrompt(), stayActive: true };
     } else {
       // Failure: Backtrack 3 floors with penalty enemies
       var backtrackFloors = Math.min(3, _floor - 1);
       var targetFloor = Math.max(1, _floor - backtrackFloors);
-      
+
       var lines = [
         'VENT MALFUNCTION!',
         '',
@@ -3776,7 +3776,7 @@ const GoneRogue = (function () {
         'Landed on floor ' + targetFloor,
         'WARNING: Penalty enemies active!'
       ];
-      
+
       // Mark floors as penalty
       for (var i = 0; i < backtrackFloors; i++) {
         var penaltyFloor = targetFloor + i;
@@ -3784,21 +3784,21 @@ const GoneRogue = (function () {
           _penaltyFloors.push(penaltyFloor);
         }
       }
-      
+
       // Backtrack floor
       _floor = targetFloor - 1; // Will be incremented by advanceFloor
-      
+
       // Player takes minor damage from the fall
       _player.hp = Math.max(1, _player.hp - 2);
-      
+
       // Remove the vent tile
       _grid[_player.y][_player.x] = TILES.EMPTY;
-      
+
       // Generate penalty floor
       setTimeout(function() {
         _advanceFloor();
       }, 100);
-      
+
       return { lines: lines, prompt: getPrompt(), stayActive: true };
     }
   }
@@ -3810,7 +3810,7 @@ const GoneRogue = (function () {
     // Calculate XP based on skipped floor
     var baseXP = 50 + (_floor * 10);
     var skippedXP = Math.floor(baseXP * 0.5);
-    
+
     // Award to gamestate if available
     if (typeof GAMESTATE !== 'undefined' && GAMESTATE.awardExperience) {
       GAMESTATE.awardExperience(skippedXP);
@@ -3826,7 +3826,7 @@ const GoneRogue = (function () {
     if (playerTile === TILES.VENT) {
       return _handleVentInteraction();
     }
-    
+
     if (typeof InteractiveItems === 'undefined') {
       return { lines: ['Nothing to interact with'], prompt: getPrompt(), stayActive: true };
     }
@@ -6205,13 +6205,13 @@ const GoneRogue = (function () {
    */
   function _useUtility(card) {
     var effects = [];
-    
+
     // Health restoration
     if (card.stats.hp) {
       _player.hp = Math.min(_player.maxHp, _player.hp + card.stats.hp);
       effects.push('HP +' + card.stats.hp);
     }
-    
+
     // Energy restoration
     if (card.stats.energyBoost) {
       if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addEnergy) {
@@ -6219,7 +6219,7 @@ const GoneRogue = (function () {
         effects.push('ENERGY +' + card.stats.energyBoost);
       }
     }
-    
+
     // Fatigue reduction
     if (card.stats.fatigueReduction) {
       if (typeof GAMESTATE !== 'undefined' && GAMESTATE.reduceFatigue) {
@@ -6227,7 +6227,7 @@ const GoneRogue = (function () {
         effects.push('FATIGUE -' + card.stats.fatigueReduction);
       }
     }
-    
+
     // Battery recharge
     if (card.stats.batteryRecharge) {
       if (typeof GAMESTATE !== 'undefined' && GAMESTATE.rechargeBattery) {
@@ -6235,7 +6235,7 @@ const GoneRogue = (function () {
         effects.push('BATTERY +' + card.stats.batteryRecharge);
       }
     }
-    
+
     // Focus boost
     if (card.stats.focusBoost) {
       if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addFocus) {
@@ -6243,7 +6243,7 @@ const GoneRogue = (function () {
         effects.push('FOCUS +' + card.stats.focusBoost);
       }
     }
-    
+
     // Ammo restoration
     if (card.stats.ammoRestore) {
       if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addAmmo) {
@@ -6556,7 +6556,7 @@ const GoneRogue = (function () {
       var category = typeof CardSystem !== 'undefined' ? CardSystem.getCardCategory(playerCard) : 'attack';
       var priority = typeof CardSystem !== 'undefined' ? CardSystem.getCardPriority(category) : 4;
       var speed = (playerCard.stats && playerCard.stats.speed) || _player.initiative || 0;
-      
+
       actions.push({
         actor: 'player',
         card: playerCard,
@@ -6571,7 +6571,7 @@ const GoneRogue = (function () {
       var enemyCategory = typeof CardSystem !== 'undefined' ? CardSystem.getCardCategory(enemyCard) : 'attack';
       var enemyPriority = typeof CardSystem !== 'undefined' ? CardSystem.getCardPriority(enemyCategory) : 4;
       var enemySpeed = (enemyCard.stats && enemyCard.stats.speed) || _strCombatEnemy.initiative || 0;
-      
+
       actions.push({
         actor: 'enemy',
         card: enemyCard,
@@ -6597,7 +6597,7 @@ const GoneRogue = (function () {
     for (var i = 0; i < actions.length; i++) {
       var action = actions[i];
       var result = _resolveAction(action);
-      
+
       if (result && result.lines) {
         lines = lines.concat(result.lines);
       }
@@ -6833,10 +6833,10 @@ const GoneRogue = (function () {
    */
   function _resolveDefenseAction(actor, target, card) {
     var lines = [];
-    
+
     var defense = card.stats.defense || 0;
     var evasion = card.stats.evasion || 0;
-    
+
     if (defense > 0) {
       actor.tempDefense = (actor.tempDefense || 0) + defense;
       lines.push('├─ Gained +' + defense + ' defense');
@@ -6845,13 +6845,13 @@ const GoneRogue = (function () {
       actor.tempEvasion = (actor.tempEvasion || 0) + evasion;
       lines.push('├─ Gained +' + evasion + ' evasion');
     }
-    
+
     var stealth = card.stats.stealth || 0;
     if (stealth > 0) {
       actor.stealth = Math.min((actor.maxStealth || 5), (actor.stealth || 0) + stealth);
       lines.push('└─ Stealth increased');
     }
-    
+
     return lines;
   }
 
@@ -6860,20 +6860,20 @@ const GoneRogue = (function () {
    */
   function _resolveMovementAction(actor, target, card) {
     var lines = [];
-    
+
     var distance = card.stats.distance || 0;
     var evasion = card.stats.evasion || 0;
-    
+
     if (distance !== 0) {
       // Movement affects distance (abstracted in STR combat)
       lines.push('├─ Position adjusted (' + (distance > 0 ? 'closing' : 'retreating') + ')');
     }
-    
+
     if (evasion > 0) {
       actor.tempEvasion = (actor.tempEvasion || 0) + evasion;
       lines.push('└─ Gained +' + evasion + ' evasion from movement');
     }
-    
+
     return lines;
   }
 
@@ -7208,7 +7208,7 @@ const GoneRogue = (function () {
    */
   function _showStrCombatUIWithLog(logLines) {
     var lines = logLines || [];
-    
+
     // Add current combat state
     lines.push('╔═══════════════════════════╗');
     lines.push('║  PLAYER: ' + _player.hp + '/' + (_player.maxHp || 10) + ' HP         ║');
@@ -7247,7 +7247,7 @@ const GoneRogue = (function () {
     // Simple AI: choose based on HP and situation
     var enemy = _strCombatEnemy;
     var enemyHpPercent = (enemy.hp / (enemy.maxHp || 5)) * 100;
-    
+
     // If low HP, prefer defense/healing
     if (enemyHpPercent < 30) {
       var roll = _rng();
@@ -7258,7 +7258,7 @@ const GoneRogue = (function () {
         return CardSystem.rollCard('Prone');
       }
     }
-    
+
     // If healthy, prefer attacks
     if (enemyHpPercent > 50) {
       var attackRoll = _rng();
@@ -7272,12 +7272,12 @@ const GoneRogue = (function () {
         }
       }
     }
-    
+
     // Default: basic attack
     if (typeof CardSystem !== 'undefined') {
       return CardSystem.rollCard('Single Shot');
     }
-    
+
     // Fallback: create a basic attack card
     return {
       name: 'Basic Attack',
@@ -7557,7 +7557,7 @@ const GoneRogue = (function () {
         // Auto-collect ammo drops
         GAMESTATE.addAmmo(ammoDrops);
         lines.push('🔫 AMMO RECOVERED: +' + ammoDrops + ' (' + _strCombatAmmoSpent + ' spent in combat)');
-        
+
         // Report to debrief feed
         if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
           var currentAmmo = GAMESTATE.getAmmo ? GAMESTATE.getAmmo() : 0;
@@ -8469,7 +8469,7 @@ const GoneRogue = (function () {
             '',
             'AGENT MODE: ' + mode.toUpperCase(),
             '',
-            mode === 'natural' 
+            mode === 'natural'
               ? 'Natural human-like play with thorough exploration'
               : 'Fast developer mode with optimal pathfinding',
             ''
@@ -8522,7 +8522,7 @@ const GoneRogue = (function () {
     if (tier >= 1 && tier <= 3) {
       _difficultyTier = tier;
       console.log('[GoneRogue] Difficulty set to T' + tier);
-      
+
       // Notify state change listeners
       _notifyStateChange();
     }
@@ -8627,10 +8627,10 @@ const GoneRogue = (function () {
           });
         });
       }
-      
+
       // Can flee
       actions.push({ type: 'flee' });
-      
+
       return actions;
     }
 
@@ -8645,11 +8645,11 @@ const GoneRogue = (function () {
     directions.forEach(function(dir) {
       var newX = _player.x + dir.dx;
       var newY = _player.y + dir.dy;
-      
+
       // Check bounds
       if (newX >= 0 && newX < GRID_WIDTH && newY >= 0 && newY < GRID_HEIGHT) {
         var tile = _grid[newY][newX];
-        
+
         // Check if tile is walkable
         if (tile !== TILES.WALL) {
           actions.push({
@@ -8809,7 +8809,7 @@ const GoneRogue = (function () {
       _active = state.active;
       _floor = state.floor;
       _turn = state.turn;
-      
+
       // Restore player
       _player.x = state.player.x;
       _player.y = state.player.y;
@@ -8825,13 +8825,13 @@ const GoneRogue = (function () {
       _player.credits = state.player.credits;
       _player.deck = state.player.deck ? state.player.deck.slice() : [];
       _player.activeItem = state.player.activeItem;
-      
+
       // Restore grid
       _grid = state.grid.map(function(row) { return row.slice(); });
-      
+
       // Restore enemies
       _enemies = state.enemies.slice();
-      
+
       // Restore other state
       _breakables = state.breakables ? state.breakables.slice() : [];
       _projectiles = state.projectiles ? state.projectiles.slice() : [];
@@ -8840,7 +8840,7 @@ const GoneRogue = (function () {
       _strCombatActive = state.strCombatActive;
       _alertLevel = state.alertLevel;
       _bossFloorActive = state.bossFloorActive;
-      
+
       return true;
     } catch (error) {
       console.error('Failed to reset state:', error);
@@ -8936,7 +8936,7 @@ const GoneRogue = (function () {
     },
     triggerActiveItem: triggerActiveItem,
     updatePlayerLight: _updatePlayerLight,
-    
+
     // Difficulty tier system
     setDifficulty: setDifficulty,
     getDifficulty: getDifficulty,
