@@ -51,8 +51,8 @@
 /* Mini indicator (stacked above STR minimized indicator) */
 .hand-fan-mini-indicator {
   position: fixed;
-  width: 28px;
-  height: 18px;
+  width: 24px;
+  height: 32px;
   display: none;
   align-items: center;
   justify-content: center;
@@ -60,9 +60,26 @@
   border: 2px solid rgba(76, 175, 80, 0.9);
   border-radius: 6px;
   z-index: 1950; /* above STR minimized (1900) */
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1;
   text-align: center;
+}
+
+.hand-fan-mini-indicator .mini-count {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+  font-size: 9px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Contextual mode overlay dimming */
@@ -266,6 +283,22 @@
   box-shadow: 0 0 0 2px rgba(255, 235, 59, 0.22) inset, 0 0 18px rgba(255, 235, 59, 0.25) !important;
   transform: translateY(-14px) scale(1.06);
   z-index: 999;
+}
+
+/* Fan collapse + shuffle polish */
+.hand-fan-container.hand-fan-collapsing {
+  pointer-events: none;
+}
+
+.hand-fan-container.hand-fan-shuffle {
+  animation: hand-fan-shuffle 220ms ease-in-out;
+}
+
+@keyframes hand-fan-shuffle {
+  0%   { transform: translateX(0px); }
+  25%  { transform: translateX(-6px); }
+  55%  { transform: translateX(5px); }
+  100% { transform: translateX(0px); }
 }
 
 /* Contextual mode selected state (persistent highlight) */

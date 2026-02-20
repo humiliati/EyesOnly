@@ -484,11 +484,27 @@ const STRCombatWindow = (function () {
       }
     }
 
-    // Update minimized indicator timer
+    // Update minimized indicator timer (visual deceleration only)
     if (_isMinimized) {
       var miniTimer = _minimizedIndicator.querySelector('.str-mini-timer');
       if (miniTimer) {
-        miniTimer.textContent = '⏱️ ' + (_timeRemaining / 1000).toFixed(1) + 's';
+        var pct = (_timerDuration > 0) ? (_timeRemaining / _timerDuration) : 0;
+        pct = Math.max(0, Math.min(1, pct));
+
+        // Visual-only deceleration: show more time remaining near 0.
+        // This does NOT affect the actual timer used for combat.
+        // Curve: pct^gamma where gamma < 1 inflates small pct values.
+        var gamma = 0.55;
+        var visualPct = Math.pow(pct, gamma);
+        var visualSec = Math.max(0, (visualPct * (_timerDuration / 1000)));
+
+        miniTimer.textContent = '⏱️ ' + visualSec.toFixed(1) + 's';
+
+        // Micro pulse on change
+        miniTimer.classList.remove('str-mini-timer-pulse');
+        // force reflow
+        void miniTimer.offsetWidth;
+        miniTimer.classList.add('str-mini-timer-pulse');
       }
     }
   }

@@ -498,6 +498,17 @@ body.str-combat-minimized-state::before {
   font-weight: bold;
 }
 
+/* Timer text micro-pulse to reinforce deceleration */
+.str-mini-timer.str-mini-timer-pulse {
+  animation: str-mini-timer-pulse 120ms ease-out;
+}
+
+@keyframes str-mini-timer-pulse {
+  0%   { transform: scale(1.0); }
+  40%  { transform: scale(1.12); }
+  100% { transform: scale(1.0); }
+}
+
 .str-mini-expand {
   font-size: 10px;
   color: #ffaa00;

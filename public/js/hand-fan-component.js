@@ -109,8 +109,57 @@ const HandFanComponent = (function () {
   /**
    * Minimize hand to single transparent card (during turn resolution)
    */
+  function _animateCollapseToMiniIcon(done) {
+    if (!_fanContainer) return done && done();
+
+    var mini = document.getElementById('hand-fan-mini-indicator') || document.getElementById('str-combat-minimized');
+    if (!mini || !mini.getBoundingClientRect) {
+      if (done) done();
+      return;
+    }
+
+    var fr = _fanContainer.getBoundingClientRect();
+    var mr = mini.getBoundingClientRect();
+
+    var fx = fr.left + fr.width / 2;
+    var fy = fr.top + fr.height / 2;
+    var mx = mr.left + mr.width / 2;
+    var my = mr.top + mr.height / 2;
+
+    var dx = mx - fx;
+    var dy = my - fy;
+
+    try {
+      _fanContainer.classList.add('hand-fan-collapsing');
+      var anim = _fanContainer.animate([
+        { transform: 'translate(0px, 0px) scale(1)', opacity: 1 },
+        { transform: 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px) scale(0.4)', opacity: 0.6 }
+      ], {
+        duration: 250,
+        easing: 'ease-out',
+        fill: 'forwards'
+      });
+
+      anim.onfinish = function() {
+        _fanContainer.classList.remove('hand-fan-collapsing');
+        // Clear animation side effects
+        _fanContainer.style.transform = '';
+        _fanContainer.style.opacity = '';
+        if (done) done();
+      };
+    } catch (e) {
+      _fanContainer.classList.remove('hand-fan-collapsing');
+      if (done) done();
+    }
+  }
+
   function minimize() {
-    _fanContainer.classList.add('hand-fan-minimized');
+    if (!_fanContainer) return;
+
+    // Animate toward mini icon, then apply minimized class
+    _animateCollapseToMiniIcon(function() {
+      _fanContainer.classList.add('hand-fan-minimized');
+    });
   }
 
   function _ensureMiniIndicator() {
@@ -173,8 +222,17 @@ const HandFanComponent = (function () {
       el.style.top = Math.round(r.top - 18) + 'px';
     }
 
-    // Emoji: show first available card
-    el.textContent = opts.emoji || '🃏';
+    // Emoji + card count badge
+    el.innerHTML = '';
+    var emojiSpan = document.createElement('span');
+    emojiSpan.className = 'mini-emoji';
+    emojiSpan.textContent = opts.emoji || '🃏';
+    el.appendChild(emojiSpan);
+
+    var countSpan = document.createElement('span');
+    countSpan.className = 'mini-count';
+    countSpan.textContent = String(opts.count != null ? opts.count : 0);
+    el.appendChild(countSpan);
 
     // Color: reflect timer percent
     if (opts.timerPercent != null) {
@@ -982,6 +1040,11 @@ const HandFanComponent = (function () {
 
     setTimeout(function() {
       _fanContainer.classList.remove('hand-fan-resolve');
+      _fanContainer.classList.add('hand-fan-shuffle');
+      setTimeout(function() {
+        _fanContainer.classList.remove('hand-fan-shuffle');
+      }, 220);
+
       _animationPhase = 'repopulate';
       _isAnimating = false;
       if (callback) callback();

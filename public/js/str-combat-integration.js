@@ -188,6 +188,7 @@
       HandFanComponent.updateMiniIndicator({
         visible: !!isMini,
         emoji: emoji || '🃏',
+        count: (cards && cards.length) ? cards.length : 0,
         timerPercent: pct
       });
     }
