@@ -880,6 +880,12 @@
   }
 
   function updateMokInterjection(text) {
+    // Route through TooltipSystem so the message is captured in history as well.
+    if (typeof TooltipSystem !== 'undefined' && TooltipSystem.showPersistent) {
+      TooltipSystem.showPersistent(text);
+      return;
+    }
+
     var interjection = document.getElementById('mok-interject-body');
     if (interjection) {
       interjection.textContent = text;

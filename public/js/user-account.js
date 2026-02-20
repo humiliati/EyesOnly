@@ -68,12 +68,14 @@
       body: JSON.stringify(payload),
     })
       .then(function (response) {
-        if (!response.ok) {
-          return response.json().then(function (err) {
-            throw new Error(err.message || 'Registration failed');
-          });
-        }
-        return response.json();
+        return _readJsonOrText(response).then(function (body) {
+          if (!response.ok) {
+            // body may be {message} JSON or plain text (HTML error page, worker exception, etc.)
+            var msg = (body && body.message) ? body.message : (typeof body === 'string' ? body : null);
+            throw new Error(msg || 'Registration failed');
+          }
+          return body;
+        });
       })
       .then(function (data) {
         _session = {
@@ -101,12 +103,13 @@
       body: JSON.stringify({ username: username }),
     })
       .then(function (response) {
-        if (!response.ok) {
-          return response.json().then(function (err) {
-            throw new Error(err.message || 'Login failed');
-          });
-        }
-        return response.json();
+        return _readJsonOrText(response).then(function (body) {
+          if (!response.ok) {
+            var msg = (body && body.message) ? body.message : (typeof body === 'string' ? body : null);
+            throw new Error(msg || 'Login failed');
+          }
+          return body;
+        });
       })
       .then(function (data) {
         _session = {
@@ -161,15 +164,16 @@
       },
     })
       .then(function (response) {
-        if (!response.ok) {
-          // Session expired or invalid
-          _session = null;
-          _clearSession();
-          return response.json().then(function (err) {
-            throw new Error(err.message || 'Session invalid');
-          });
-        }
-        return response.json();
+        return _readJsonOrText(response).then(function (body) {
+          if (!response.ok) {
+            // Session expired or invalid
+            _session = null;
+            _clearSession();
+            var msg = (body && body.message) ? body.message : (typeof body === 'string' ? body : null);
+            throw new Error(msg || 'Session invalid');
+          }
+          return body;
+        });
       })
       .then(function (data) {
         // Update cached user data
@@ -296,6 +300,26 @@
   };
 
   // --- Internal Helpers ---
+
+  /**
+   * Read response as JSON when possible; otherwise fall back to text.
+   * Prevents "Unexpected token <" / "is not valid JSON" errors when the API returns HTML/text.
+   */
+  function _readJsonOrText(response) {
+    try {
+      var ct = (response && response.headers && response.headers.get) ? (response.headers.get('content-type') || '') : '';
+      if (ct.indexOf('application/json') !== -1) {
+        return response.json();
+      }
+      // Some APIs omit content-type on JSON. Try json() once, then fallback.
+      return response.clone().json().catch(function () {
+        return response.text();
+      });
+    } catch (e) {
+      // Last resort
+      return response.text();
+    }
+  }
 
   function _loadSession() {
     try {
