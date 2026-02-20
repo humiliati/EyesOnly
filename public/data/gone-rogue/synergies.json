@@ -9,5 +9,17 @@
     "effects": [
       { "type": "focus", "value": 2 }
     ]
+  },
+  {
+    "id": "SYN-999",
+    "name": "Box Ambush (stub)",
+    "itemId": "ITM-999",
+    "cardId": "ACT-999",
+    "trigger": "card_on_item",
+    "visual": "💥",
+    "effects": [
+      { "type": "ambush_crit", "multiplier": 2.0 }
+    ],
+    "tags": ["stealth", "box", "ambush"]
   }
 ]

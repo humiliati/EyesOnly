@@ -57,8 +57,41 @@
   },
   {
     "id": "ITM-998",
-    "name": "Unknown Item",
+    "name": "Amazon Box",
     "emoji": "📦",
+    "type": "equipment",
+    "rarity": "common",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      { "type": "avatar_transform", "sprite": "box_amazon" },
+      { "type": "sightline_evasion_modifier", "walk_bonus": 0.15, "sprint_penalty": -0.10 },
+      { "type": "break_on_combat", "condition": "first_encounter" }
+    ],
+    "synergyTags": ["stealth", "box", "camo"],
+    "description": "Standard shipping box. Disposable camouflage."
+  },
+  {
+    "id": "ITM-999",
+    "name": "Refrigerator Box",
+    "emoji": "📦",
+    "type": "equipment",
+    "rarity": "common",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      { "type": "avatar_transform", "sprite": "box_refrigerator" },
+      { "type": "sightline_evasion_modifier", "walk_bonus": 0.15, "sprint_penalty": -0.10 }
+    ],
+    "synergyTags": ["stealth", "box", "camo"],
+    "description": "Large cardboard camouflage. Better when you take your time."
+  },
+  {
+    "id": "ITM-000",
+    "name": "[Unknown Legacy Item]",
+    "emoji": "❓",
     "type": "resource",
     "rarity": "common",
     "stackable": true,
@@ -66,6 +99,7 @@
     "equipSlot": "none",
     "effects": [],
     "synergyTags": [],
-    "description": "Placeholder for migrated legacy items."
+    "description": "Migration fallback for unrecognized legacy items.",
+    "_migrationNote": "Use this ID for unknown items during legacy migration; replace with real IDs when identified"
   }
 ]

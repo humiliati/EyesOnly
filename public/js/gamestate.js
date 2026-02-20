@@ -607,7 +607,7 @@ const GAMESTATE = (function () {
     // Legacy object shape
     var legacy = item;
     var mappedId = _legacyItemNameToId(legacy.name);
-    if (!mappedId) mappedId = 'ITM-998';
+    if (!mappedId) mappedId = 'ITM-000';
 
     return {
       id: mappedId,

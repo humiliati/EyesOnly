@@ -11,5 +11,20 @@
     ],
     "preCombat": true,
     "synergyTags": ["medical"]
+  },
+  {
+    "id": "ACT-999",
+    "name": "Cardboard Box",
+    "emoji": "📦",
+    "targetType": "self",
+    "cost": 0,
+    "rarity": "rare",
+    "effects": [
+      { "type": "stealth_entry", "bonus": 0.20 },
+      { "type": "enemy_confuse", "duration": 2 },
+      { "type": "evasion", "value": 0.10 }
+    ],
+    "preCombat": true,
+    "synergyTags": ["stealth", "box", "ambush"]
   }
 ]
