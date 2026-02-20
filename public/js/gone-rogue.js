@@ -111,6 +111,14 @@ const GoneRogue = (function () {
   var _playerDeaths = 0;           // Number of player deaths in this run
   var _lastPickupMessage = null;   // Track last item pickup message for display
 
+  // Pity timer tracking for card drops
+  var _recentCardDrops = [];       // Last 5 card drops { type, category, floor }
+  var _pitySince = {               // Floors since last drop of each type
+    defensive: 0,
+    utility: 0,
+    healing: 0
+  };
+
   var TILES = {
     EMPTY: '.',
     WALL: '█',
@@ -584,13 +592,88 @@ const GoneRogue = (function () {
   var _environmentalDetails = {}; // Stores details by layer
 
   /**
-   * RNG helper - uses SeededRNG if available, falls back to _rng()
+   * RNG helper - uses SeededRNG if available, falls back to Math.random()
    */
   function _rng() {
     if (typeof SeededRNG !== 'undefined' && SeededRNG.random) {
       return SeededRNG.random();
     }
-    return _rng();
+    return Math.random();
+  }
+
+  /**
+   * Categorize card for pity timer tracking
+   */
+  function _categorizeCardForPity(card) {
+    if (!card) return 'other';
+    var type = card.type || card.category || '';
+    var name = card.name || '';
+
+    if (type === 'defense' || name.match(/Block|Shield|Dodge|Cover|Evade|Prone/i)) {
+      return 'defensive';
+    }
+    if (name.match(/Ration|Katchup|Medical|Heal|Health/i)) {
+      return 'healing';
+    }
+    if (type === 'utility' || name.match(/Cigarette|Energy Drink|Retreat|Lure|Smoke/i)) {
+      return 'utility';
+    }
+    return 'other';
+  }
+
+  /**
+   * Track card drop for pity timer
+   */
+  function _trackCardDrop(card) {
+    var category = _categorizeCardForPity(card);
+    _recentCardDrops.push({
+      type: card.type || 'unknown',
+      category: category,
+      floor: _floor,
+      name: card.name
+    });
+    if (_recentCardDrops.length > 5) {
+      _recentCardDrops.shift();
+    }
+    if (category !== 'other') {
+      _pitySince[category] = 0;
+    }
+  }
+
+  /**
+   * Check if pity timer should force a specific card type
+   */
+  function _checkPityTimer() {
+    var PITY_THRESHOLD = 3;
+    for (var category in _pitySince) {
+      if (_pitySince[category] >= PITY_THRESHOLD) {
+        return category;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Get a card of specific pity category
+   */
+  function _getPityCard(category) {
+    var pityCards = {
+      defensive: ['Block', 'Dodge', 'PRONE', 'DIVE_FOR_COVER'],
+      utility: ['CIGARETTES', 'RETREAT', 'LURE', 'ENERGY_DRINK'],
+      healing: ['RATIONS', 'KATCHUP', 'MEDICAL_KIT']
+    };
+    var cards = pityCards[category] || [];
+    if (cards.length === 0) return null;
+    return cards[Math.floor(_rng() * cards.length)];
+  }
+
+  /**
+   * Increment pity timers (call at start of each floor)
+   */
+  function _incrementPityTimers() {
+    for (var category in _pitySince) {
+      _pitySince[category]++;
+    }
   }
 
   /**
@@ -1670,6 +1753,9 @@ const GoneRogue = (function () {
     _stealthBonusCache = null;
     _activeSecretFloor = null;
 
+    // Increment pity timers for card drop tracking
+    _incrementPityTimers();
+
     // Clear environmental synergy state
     if (typeof EnvironmentalSynergy !== 'undefined') {
       EnvironmentalSynergy.clearGates();
@@ -2533,15 +2619,32 @@ const GoneRogue = (function () {
           card = CardSystem.rollTrenchCoat();
           shouldSpawnTrenchCoat = false; // Only spawn once
         } else {
-          // Use biome-aware card selection if available
-          var baseType;
-          if (CardSystem.getRandomBaseCardByBiome) {
-            baseType = CardSystem.getRandomBaseCardByBiome(biome.name, _floor);
-          } else {
-            baseType = CardSystem.getRandomBaseCard();
+          // Check pity timer - force defensive/utility/healing if threshold met
+          var pityCategory = _checkPityTimer();
+
+          if (pityCategory && i === 0) {
+            // Force a pity card on first item this floor
+            var pityType = _getPityCard(pityCategory);
+            if (pityType) {
+              card = CardSystem.rollCard(pityType);
+              console.log('[GoneRogue] Pity drop triggered:', pityCategory, 'card:', card.name);
+            }
           }
-          card = CardSystem.rollCard(baseType);
+
+          // Normal card generation if no pity card was forced
+          if (!card) {
+            var baseType;
+            if (CardSystem.getRandomBaseCardByBiome) {
+              baseType = CardSystem.getRandomBaseCardByBiome(biome.name, _floor);
+            } else {
+              baseType = CardSystem.getRandomBaseCard();
+            }
+            card = CardSystem.rollCard(baseType);
+          }
         }
+
+        // Track this card drop for pity timer
+        _trackCardDrop(card);
 
         _items.push({ x: ix, y: iy, card: card, spawnTime: Date.now(), decayTime: 30000 }); // 30 second decay
       }
