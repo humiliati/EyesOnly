@@ -78,9 +78,12 @@ Tutorial floors can include NPCs with optional gate projection.
    - TODO: play-direct-from-backup (skip hand), item reserve sources, and action-point/economy rules
 
 3) **Ground effect deployment / contextual targeting**
-   - Not implemented yet.
-   - Needs a targeting layer (tile hover/tap) + card metadata describing target type:
-     - enemy, self, ground tile(s), cone, line, radius.
+   - Implemented (v1) for DOM grid: release a held-targeting card over a `.rogue-cell` to deploy a `GroundEffects` tile.
+   - Mapping is designer-configurable via `GroundEffectCardMappings`.
+   - Designer portal: `public/tests/ground-effects-designer.html`
+   - Notes:
+     - Canvas renderer support not implemented yet (needs coordinate mapping)
+     - Targeting preview (AoE overlay) not implemented yet
 
 3) **Synergy chaining rules**
    - Multi-card selection exists, but synergy resolution is still in GoneRogue.

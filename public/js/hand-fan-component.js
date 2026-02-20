@@ -680,7 +680,50 @@ const HandFanComponent = (function () {
       // Release over enemy = play immediately
       if (overEnemy && typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleMultiCardCombat === 'function') {
         GoneRogue.handleMultiCardCombat([idx]);
+        return;
       }
+
+      // Drag-to-map ground effects (v1): if released over a grid cell while STR UI is minimized/collapsed
+      try {
+        var elAt = document.elementFromPoint(ev.clientX, ev.clientY);
+        var cell = elAt ? elAt.closest && elAt.closest('.rogue-cell') : null;
+        if (cell && cell.dataset && cell.dataset.x != null && cell.dataset.y != null) {
+          var gx = Number(cell.dataset.x);
+          var gy = Number(cell.dataset.y);
+
+          var mapping = (typeof GroundEffectCardMappings !== 'undefined' && GroundEffectCardMappings.getMappingForCard) ? GroundEffectCardMappings.getMappingForCard(_cards[idx]) : null;
+          if (mapping && typeof GroundEffects !== 'undefined' && typeof GroundEffects.setGroundEffect === 'function') {
+            var overrides = {};
+            if (mapping.lifetimeSec && mapping.lifetimeSec > 0) {
+              overrides.dissipates = true;
+              overrides.lifetime = mapping.lifetimeSec;
+            }
+
+            // Radius v1: apply to a square radius (designer can tune later)
+            var r = Number(mapping.radius || 0);
+            for (var dy = -r; dy <= r; dy++) {
+              for (var dx = -r; dx <= r; dx++) {
+                GroundEffects.setGroundEffect(gx + dx, gy + dy, mapping.type, overrides);
+              }
+            }
+
+            // Consume card from loose inventory
+            if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getLooseInventory === 'function') {
+              var loose = GAMESTATE.getLooseInventory();
+              if (Array.isArray(loose) && loose[idx]) {
+                loose.splice(idx, 1);
+                if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.updateCards === 'function') {
+                  HandFanComponent.updateCards(loose);
+                }
+              }
+            }
+
+            if (typeof TooltipSystem !== 'undefined') {
+              TooltipSystem.showPersistent('🌋 DEPLOYED ' + (mapping.type || 'EFFECT') + ' @(' + gx + ',' + gy + ')', 1300);
+            }
+          }
+        }
+      } catch (e) {}
     }
 
     function onCancel(ev) {

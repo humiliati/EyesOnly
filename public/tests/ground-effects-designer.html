@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ground Effect Card Mapping Designer</title>
+  <style>
+    body { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; padding: 16px; }
+    table { border-collapse: collapse; width: 100%; max-width: 920px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    input, select { width: 100%; }
+    .row { display:flex; gap: 12px; align-items:center; margin: 12px 0; }
+    button { padding: 8px 12px; }
+    .hint { color:#555; font-size: 12px; }
+    pre { background:#111; color:#ddd; padding: 12px; overflow:auto; }
+  </style>
+</head>
+<body>
+  <h1>Ground Effect Card Mappings (V1)</h1>
+  <div class="hint">Edits are saved to localStorage key <code>EYESONLY_GROUND_EFFECT_CARD_MAP_V1</code>. Runtime reads these mappings when dragging cards to the map in STR combat.</div>
+
+  <div class="row">
+    <button id="add">Add Row</button>
+    <button id="save">Save</button>
+    <button id="reset">Reset to Defaults</button>
+    <button id="export">Export JSON</button>
+  </div>
+
+  <table id="tbl">
+    <thead>
+      <tr>
+        <th style="width:32%">Card Name (lowercase match)</th>
+        <th style="width:22%">Ground Type</th>
+        <th style="width:12%">Radius</th>
+        <th style="width:16%">Lifetime (sec)</th>
+        <th style="width:18%">Delete</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>Current JSON</h2>
+  <pre id="out"></pre>
+
+  <script src="../js/ground-effect-card-mappings.js"></script>
+  <script>
+    const TYPES = ['FIRE','WATER','OIL','OIL_IGNITED','INDUSTRIAL_WASTE','GLASS','SODA_SPILL','STEAM'];
+    const tbody = document.querySelector('#tbl tbody');
+    const out = document.getElementById('out');
+
+    function render(map){
+      tbody.innerHTML = '';
+      Object.keys(map).sort().forEach(key => addRow(key, map[key]));
+      out.textContent = JSON.stringify(map, null, 2);
+    }
+
+    function addRow(key='', v={}){
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input class="k" value="${key}" placeholder="e.g. lighter" /></td>
+        <td><select class="t">${TYPES.map(t=>`<option ${v.type===t?'selected':''}>${t}</option>`).join('')}</select></td>
+        <td><input class="r" type="number" min="0" max="5" step="1" value="${v.radius??0}" /></td>
+        <td><input class="l" type="number" min="0" max="120" step="1" value="${v.lifetimeSec??8}" /></td>
+        <td><button class="del">Delete</button></td>
+      `;
+      tr.querySelector('.del').onclick = ()=>{ tr.remove(); saveFromUI(); };
+      tbody.appendChild(tr);
+    }
+
+    function readUI(){
+      const map = {};
+      [...tbody.querySelectorAll('tr')].forEach(tr=>{
+        const k = tr.querySelector('.k').value.trim().toLowerCase();
+        if(!k) return;
+        map[k] = {
+          type: tr.querySelector('.t').value,
+          radius: Number(tr.querySelector('.r').value||0),
+          lifetimeSec: Number(tr.querySelector('.l').value||0)
+        };
+      });
+      return map;
+    }
+
+    function saveFromUI(){
+      const map = readUI();
+      GroundEffectCardMappings.setAll(map);
+      render(GroundEffectCardMappings.getAll());
+    }
+
+    document.getElementById('add').onclick = ()=> addRow();
+    document.getElementById('save').onclick = saveFromUI;
+    document.getElementById('reset').onclick = ()=>{ localStorage.removeItem(GroundEffectCardMappings.STORAGE_KEY); render(GroundEffectCardMappings.getAll()); };
+    document.getElementById('export').onclick = ()=>{
+      const blob = new Blob([JSON.stringify(readUI(), null, 2)], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'ground_effect_card_map.json';
+      a.click();
+    };
+
+    render(GroundEffectCardMappings.getAll());
+  </script>
+</body>
+</html>
