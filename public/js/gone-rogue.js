@@ -31,7 +31,8 @@ const GoneRogue = (function () {
     combatEntries: 0, // Track total combat entries (for boss mythic conditions)
     lastCardType: null, // Track last card used (for boss mythic conditions)
     collectingCurrency: false, // Track currency collection for animation
-    currencyCollectTime: 0 // Timestamp of last currency collection
+    currencyCollectTime: 0, // Timestamp of last currency collection
+    positionHistory: [] // Position history buffer for pet following (max 16 entries)
   };
 
   var _enemies = [];
@@ -599,6 +600,25 @@ const GoneRogue = (function () {
       return SeededRNG.random();
     }
     return Math.random();
+  }
+
+  /**
+   * Update player position history for pet following
+   */
+  function _updatePositionHistory() {
+    var HISTORY_SIZE = 16;
+
+    // Push current position to history
+    _player.positionHistory.unshift({
+      x: _player.x,
+      y: _player.y,
+      facing: _player.lastMoveDirection || 'south'
+    });
+
+    // Trim history to max size
+    if (_player.positionHistory.length > HISTORY_SIZE) {
+      _player.positionHistory.pop();
+    }
   }
 
   /**
@@ -3290,6 +3310,9 @@ const GoneRogue = (function () {
     _player.x = newX;
     _player.y = newY;
     _turn++;
+
+    // Update position history for pet following
+    _updatePositionHistory();
 
     // Check if player walked onto EXIT tile - trigger level transition
     if (tile === TILES.EXIT) {
