@@ -59,6 +59,7 @@ const GAMESTATE = (function () {
 
   function init() {
     _loadState();
+    _migrateInventoryToRefs();
     _ensureDefaultPersistentInventory();
 
     // Initialize UI currency display
@@ -71,12 +72,12 @@ const GAMESTATE = (function () {
    * Ensure player has default persistent inventory items on first run
    */
   function _ensureDefaultPersistentInventory() {
-    // If persistent inventory is empty, add the 3 core items
+    // If persistent inventory is empty, add the 3 core items (ref model)
     if (_state.inventoryPersistent.length === 0) {
       _state.inventoryPersistent = [
-        { name: 'Radio Transceiver', emoji: '📻', type: 'equipment', description: 'Encrypted communication device' },
-        { name: 'Surveillance Cam', emoji: '📷', type: 'equipment', description: 'Compact surveillance camera' },
-        { name: 'Personal Journal', emoji: '📓', type: 'equipment', description: 'Your operational notes and observations' }
+        { id: 'ITM-002', qty: 1 },
+        { id: 'ITM-003', qty: 1 },
+        { id: 'ITM-004', qty: 1 }
       ];
       _saveState();
     }
@@ -287,7 +288,7 @@ const GAMESTATE = (function () {
    * Get persistent inventory
    */
   function getPersistentInventory() {
-    return _state.inventoryPersistent.slice(); // Return copy
+    return _state.inventoryPersistent.slice(); // Return copy of refs
   }
 
   /**
@@ -510,8 +511,8 @@ const GAMESTATE = (function () {
   /**
    * Set active item slot (for equipment that needs to be "equipped")
    */
-  function setActiveItem(item) {
-    _state.activeItemSlot = item;
+  function setActiveItem(itemRef) {
+    _state.activeItemSlot = _normalizeItemRef(itemRef);
     _saveState();
   }
 
@@ -520,6 +521,65 @@ const GAMESTATE = (function () {
    */
   function getActiveItem() {
     return _state.activeItemSlot;
+  }
+
+  function _normalizeItemRef(item) {
+    if (!item) return null;
+
+    // Already a ref
+    if (item.id && typeof item.id === 'string') {
+      return {
+        id: item.id,
+        qty: (typeof item.qty === 'number' ? item.qty : 1),
+        meta: item.meta || null
+      };
+    }
+
+    // Legacy object shape
+    var legacy = item;
+    var mappedId = _legacyItemNameToId(legacy.name);
+    if (!mappedId) mappedId = 'ITM-998';
+
+    return {
+      id: mappedId,
+      qty: 1,
+      meta: {
+        legacyName: legacy.name || null,
+        emoji: legacy.emoji || null,
+        type: legacy.type || null,
+        description: legacy.description || null
+      }
+    };
+  }
+
+  function _legacyItemNameToId(name) {
+    if (!name) return null;
+    var map = {
+      'Radio Transceiver': 'ITM-002',
+      'Surveillance Cam': 'ITM-003',
+      'Personal Journal': 'ITM-004'
+    };
+    return map[name] || null;
+  }
+
+  function _migrateInventoryToRefs() {
+    // persistent inventory
+    if (!Array.isArray(_state.inventoryPersistent)) _state.inventoryPersistent = [];
+
+    var migrated = [];
+    for (var i = 0; i < _state.inventoryPersistent.length; i++) {
+      var it = _state.inventoryPersistent[i];
+      var ref = _normalizeItemRef(it);
+      if (ref) migrated.push(ref);
+    }
+    _state.inventoryPersistent = migrated;
+
+    // active slot
+    if (_state.activeItemSlot) {
+      _state.activeItemSlot = _normalizeItemRef(_state.activeItemSlot);
+    }
+
+    _saveState();
   }
 
   /**

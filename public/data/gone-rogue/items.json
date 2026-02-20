@@ -15,5 +15,57 @@
     ],
     "synergyTags": ["vice"],
     "description": "Trade blood for calm. Tap repeatedly, but don’t bottom out."
+  },
+  {
+    "id": "ITM-002",
+    "name": "Radio Transceiver",
+    "emoji": "📻",
+    "type": "equipment",
+    "rarity": "common",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "active",
+    "effects": [],
+    "synergyTags": ["comms"],
+    "description": "Encrypted communication device."
+  },
+  {
+    "id": "ITM-003",
+    "name": "Surveillance Cam",
+    "emoji": "📷",
+    "type": "equipment",
+    "rarity": "common",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "active",
+    "effects": [],
+    "synergyTags": ["surveillance"],
+    "description": "Compact surveillance camera."
+  },
+  {
+    "id": "ITM-004",
+    "name": "Personal Journal",
+    "emoji": "📓",
+    "type": "equipment",
+    "rarity": "common",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [],
+    "synergyTags": ["intel"],
+    "description": "Your operational notes and observations."
+  },
+  {
+    "id": "ITM-998",
+    "name": "Unknown Item",
+    "emoji": "📦",
+    "type": "resource",
+    "rarity": "common",
+    "stackable": true,
+    "maxStack": 99,
+    "equipSlot": "none",
+    "effects": [],
+    "synergyTags": [],
+    "description": "Placeholder for migrated legacy items."
   }
 ]

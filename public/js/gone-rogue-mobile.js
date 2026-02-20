@@ -2300,13 +2300,13 @@ const GoneRogueMobile = (function () {
       return;
     }
 
-    // Get persistent inventory from GAMESTATE
+    // Get persistent inventory refs from GAMESTATE
     var persistentInv = [];
-    var activeItem = null;
+    var activeItemRef = null;
 
     if (typeof GAMESTATE !== 'undefined') {
       persistentInv = GAMESTATE.getPersistentInventory() || [];
-      activeItem = GAMESTATE.getActiveItem();
+      activeItemRef = GAMESTATE.getActiveItem();
     }
 
     // Clear existing inventory display
@@ -2318,15 +2318,25 @@ const GoneRogueMobile = (function () {
     }
 
     // Create inventory grid
-    persistentInv.forEach(function(item, index) {
-      if (!item) return;
+    persistentInv.forEach(function(itemRef, index) {
+      if (!itemRef) return;
 
       var itemDiv = document.createElement('div');
       itemDiv.className = 'rogue-inventory-item';
       itemDiv.dataset.index = index;
 
+      var item = null;
+      if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
+        item = GoneRogueDataRegistry.getItem(itemRef.id);
+      }
+      if (!item) item = { name: itemRef.id, emoji: '📦' };
+
+      // Allow migrated legacy overrides
+      var displayName = (itemRef.meta && itemRef.meta.legacyName) ? itemRef.meta.legacyName : (item.name || itemRef.id);
+      var displayEmoji = (itemRef.meta && itemRef.meta.emoji) ? itemRef.meta.emoji : (item.emoji || '📦');
+
       // Check if this item is currently equipped
-      var isEquipped = activeItem && activeItem.name === item.name;
+      var isEquipped = activeItemRef && activeItemRef.id === itemRef.id;
       if (isEquipped) {
         itemDiv.classList.add('equipped');
       }
@@ -2334,11 +2344,11 @@ const GoneRogueMobile = (function () {
       // Item emoji and name
       var emojiSpan = document.createElement('span');
       emojiSpan.className = 'item-emoji';
-      emojiSpan.textContent = item.emoji || '📦';
+      emojiSpan.textContent = displayEmoji;
 
       var nameSpan = document.createElement('span');
       nameSpan.className = 'item-name';
-      nameSpan.textContent = item.name || 'Unknown';
+      nameSpan.textContent = displayName;
 
       itemDiv.appendChild(emojiSpan);
       itemDiv.appendChild(nameSpan);
@@ -2367,13 +2377,13 @@ const GoneRogueMobile = (function () {
     if (typeof GAMESTATE === 'undefined') return;
 
     var persistentInv = GAMESTATE.getPersistentInventory();
-    var item = persistentInv[index];
+    var itemRef = persistentInv[index];
 
-    if (!item) return;
+    if (!itemRef) return;
 
     _activeDragItem = {
       element: itemDiv,
-      item: item,
+      item: itemRef,
       startX: e.touches[0].clientX,
       startY: e.touches[0].clientY,
       originalTransform: itemDiv.style.transform
@@ -2439,13 +2449,13 @@ const GoneRogueMobile = (function () {
     if (typeof GAMESTATE === 'undefined') return;
 
     var persistentInv = GAMESTATE.getPersistentInventory();
-    var item = persistentInv[index];
+    var itemRef = persistentInv[index];
 
-    if (!item) return;
+    if (!itemRef) return;
 
     _activeDragItem = {
       element: itemDiv,
-      item: item,
+      item: itemRef,
       startX: e.clientX,
       startY: e.clientY,
       originalTransform: itemDiv.style.transform
@@ -2510,33 +2520,42 @@ const GoneRogueMobile = (function () {
     if (typeof GAMESTATE === 'undefined') return;
 
     var persistentInv = GAMESTATE.getPersistentInventory();
-    var item = persistentInv[index];
+    var itemRef = persistentInv[index];
 
-    if (!item) return;
+    if (!itemRef) return;
 
     // Check if already equipped
     var activeItem = GAMESTATE.getActiveItem();
-    if (activeItem && activeItem.name === item.name) {
+    if (activeItem && activeItem.id === itemRef.id) {
       // Unequip
       _unequipActiveItem();
     } else {
       // Equip
-      _equipItemToActiveSlot(item);
+      _equipItemToActiveSlot(itemRef);
     }
 
     // Refresh inventory display
     showInventory();
   }
 
-  function _equipItemToActiveSlot(item) {
+  function _equipItemToActiveSlot(itemRef) {
     if (typeof GAMESTATE === 'undefined') return;
 
-    GAMESTATE.setActiveItem(item);
+    GAMESTATE.setActiveItem(itemRef);
+
+    var item = null;
+    if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
+      item = GoneRogueDataRegistry.getItem(itemRef.id);
+    }
+    if (!item) item = { name: itemRef.id, emoji: '📦' };
+
+    var displayName = (itemRef.meta && itemRef.meta.legacyName) ? itemRef.meta.legacyName : (item.name || itemRef.id);
+    var displayEmoji = (itemRef.meta && itemRef.meta.emoji) ? itemRef.meta.emoji : (item.emoji || '📦');
 
     // Update active item display in header
     var activeDisplay = document.getElementById('active-item-display');
     if (activeDisplay) {
-      activeDisplay.innerHTML = '<span class="item-emoji">' + (item.emoji || '📦') + '</span>';
+      activeDisplay.innerHTML = '<span class="item-emoji">' + displayEmoji + '</span>';
       activeDisplay.classList.add('has-item');
     }
 
@@ -2549,7 +2568,7 @@ const GoneRogueMobile = (function () {
 
     // Show feedback message
     if (typeof window.appendLine === 'function') {
-      window.appendLine('⚡ EQUIPPED: ' + item.emoji + ' ' + item.name);
+      window.appendLine('⚡ EQUIPPED: ' + displayEmoji + ' ' + displayName);
     }
 
     // Tooltip: Item equipped (include a little stats/quality if present)
@@ -2557,7 +2576,7 @@ const GoneRogueMobile = (function () {
       var extra = '';
       if (item.qualityName) extra += ' (' + item.qualityName + ')';
       if (item.keyType) extra += ' [' + item.keyType + ']';
-      TooltipSystem.showAction('item-equip', { name: (item.name + extra) });
+      TooltipSystem.showAction('item-equip', { name: (displayName + extra) });
     }
   }
 
