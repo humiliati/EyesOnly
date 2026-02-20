@@ -8,7 +8,7 @@
   bottom: 10px;
   transform: translateX(-50%);
   width: min(940px, calc(100vw - 16px));
-  max-height: 180px;
+  height: min(30vh, 280px);
   display: flex;
   gap: 10px;
   padding: 10px;
@@ -18,6 +18,49 @@
   border-radius: 12px;
   box-shadow: 0 0 24px rgba(28, 255, 155, 0.12);
   pointer-events: auto;
+  overflow: hidden;
+}
+
+.non-combat-hud.minimized {
+  display: none;
+}
+
+#non-combat-hud-mini {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 1801;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 2px solid rgba(28, 255, 155, 0.45);
+  background: rgba(0,0,0,0.85);
+  box-shadow: 0 0 18px rgba(28, 255, 155, 0.12);
+  color: rgba(191, 255, 227, 0.95);
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  pointer-events: auto;
+  user-select: none;
+}
+
+#non-combat-hud-mini .nch-mini-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(28, 255, 155, 0.8);
+  box-shadow: 0 0 10px rgba(28, 255, 155, 0.35);
+}
+
+#non-combat-hud-mini.nch-mini-warn .nch-mini-dot {
+  background: rgba(255, 152, 0, 0.95);
+  box-shadow: 0 0 10px rgba(255, 152, 0, 0.35);
+}
+
+#non-combat-hud-mini.nch-mini-busy .nch-mini-dot {
+  background: rgba(255, 193, 7, 0.95);
+  box-shadow: 0 0 10px rgba(255, 193, 7, 0.35);
 }
 
 .nch-col {
@@ -37,6 +80,26 @@
   font-size: 11px;
   letter-spacing: 1px;
   color: rgba(28, 255, 155, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nch-min-btn {
+  appearance: none;
+  border: 1px solid rgba(28, 255, 155, 0.35);
+  background: rgba(0,0,0,0.3);
+  color: rgba(191, 255, 227, 0.95);
+  border-radius: 8px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.nch-min-btn:hover {
+  border-color: rgba(28, 255, 155, 0.55);
 }
 
 .nch-equipped,
@@ -54,6 +117,10 @@
 @media (max-width: 768px) {
   .non-combat-hud {
     bottom: calc(10px + env(safe-area-inset-bottom));
-    max-height: 210px;
+    height: min(32vh, 320px);
+  }
+
+  #non-combat-hud-mini {
+    bottom: calc(12px + env(safe-area-inset-bottom));
   }
 }
