@@ -205,7 +205,37 @@
 
     console.log('  ℹ️  Emojis: ' + emojis.join(' '));
 
-    console.log('\n--- Test 9: Combat Stats ---');
+    console.log('\n--- Test 9: Mini UI Timer + Indicators (Lightweight) ---');
+
+    assert(
+      typeof STRCombatWindow !== 'undefined',
+      'STRCombatWindow module is available'
+    );
+
+    if (typeof STRCombatWindow !== 'undefined') {
+      assert(
+        typeof STRCombatWindow.getTimeRemainingMs === 'function' && typeof STRCombatWindow.getTimerDurationMs === 'function',
+        'STRCombatWindow exposes timer getters for mini UI sync'
+      );
+    }
+
+    assert(
+      typeof HandFanComponent !== 'undefined',
+      'HandFanComponent module is available'
+    );
+
+    if (typeof HandFanComponent !== 'undefined') {
+      assert(
+        typeof HandFanComponent.updateMiniIndicator === 'function',
+        'HandFanComponent.updateMiniIndicator() exists'
+      );
+      assert(
+        typeof HandFanComponent.flashMiniIndicator === 'function',
+        'HandFanComponent.flashMiniIndicator() exists'
+      );
+    }
+
+    console.log('\n--- Test 10: Combat Stats ---');
 
     assert(
       player.str >= 0 && player.str <= 20,

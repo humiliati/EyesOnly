@@ -131,6 +131,8 @@
    * Show Hand Fan with cards
    * @param {Object} combatState - Current combat state
    */
+  var _lastResolvingTurn = false;
+
   function _showHandFan(combatState) {
     // Get cards from GAMESTATE
     var cards = [];
@@ -153,6 +155,14 @@
       // Restore hand when not resolving
       HandFanComponent.restore();
     }
+
+    // Flash mini indicator on resolution edge
+    if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.flashMiniIndicator === 'function') {
+      if (isResolvingTurn && !_lastResolvingTurn && STRCombatWindow && STRCombatWindow.isMinimized && STRCombatWindow.isMinimized()) {
+        HandFanComponent.flashMiniIndicator('resolution');
+      }
+    }
+    _lastResolvingTurn = !!isResolvingTurn;
 
     // If fan isn't visible yet, show it; otherwise just update cards/mode
     if (!HandFanComponent.isVisible()) {

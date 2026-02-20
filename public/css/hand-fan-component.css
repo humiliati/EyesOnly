@@ -82,6 +82,50 @@
   justify-content: center;
 }
 
+/* Critical time pulse (<20%) */
+.hand-fan-mini-indicator.mini-critical {
+  animation: mini-critical-pulse 0.55s ease-in-out infinite;
+}
+
+@keyframes mini-critical-pulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.05);
+    filter: brightness(1.25);
+  }
+}
+
+/* Resolution flash (incinerator-esque but without recycling glyph) */
+.hand-fan-mini-indicator.mini-flash {
+  animation: mini-incinerator-flash 0.38s ease-out forwards;
+}
+
+@keyframes mini-incinerator-flash {
+  0% {
+    background-color: rgba(10, 10, 10, 0.95);
+    box-shadow: none;
+  }
+  10% {
+    background-color: rgba(255, 165, 0, 0.75);
+    box-shadow: 0 0 16px rgba(255, 165, 0, 0.45);
+  }
+  30% {
+    background-color: rgba(255, 69, 0, 0.85);
+    box-shadow: 0 0 22px rgba(255, 69, 0, 0.65);
+  }
+  60% {
+    background-color: rgba(139, 0, 0, 0.55);
+    box-shadow: 0 0 12px rgba(139, 0, 0, 0.45);
+  }
+  100% {
+    background-color: rgba(10, 10, 10, 0.95);
+    box-shadow: none;
+  }
+}
+
 /* Contextual mode overlay dimming */
 .hand-fan-container.hand-fan-contextual::before {
   content: '';

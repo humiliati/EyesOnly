@@ -206,6 +206,21 @@ const HandFanComponent = (function () {
     return 'rgb(244,67,54)';
   }
 
+  function flashMiniIndicator(kind) {
+    var el = _ensureMiniIndicator();
+    if (!el) return;
+
+    // Coalesce by restarting the animation
+    el.classList.remove('mini-flash');
+    // force reflow
+    void el.offsetWidth;
+    el.classList.add('mini-flash');
+
+    setTimeout(function() {
+      el.classList.remove('mini-flash');
+    }, 420);
+  }
+
   function updateMiniIndicator(opts) {
     opts = opts || {};
     var el = _ensureMiniIndicator();
@@ -213,6 +228,13 @@ const HandFanComponent = (function () {
     var visible = !!opts.visible;
     el.style.display = visible ? 'block' : 'none';
     if (!visible) return;
+
+    // Critical class based on timer
+    if (opts.timerPercent != null && opts.timerPercent < 0.20) {
+      el.classList.add('mini-critical');
+    } else {
+      el.classList.remove('mini-critical');
+    }
 
     // Position: stacked above the STR minimized indicator
     var anchor = document.getElementById('str-combat-minimized');
@@ -1245,6 +1267,7 @@ const HandFanComponent = (function () {
     clearSelection: clearSelection,
     refreshAffordability: refreshAffordability,
     updateMiniIndicator: updateMiniIndicator,
+    flashMiniIndicator: flashMiniIndicator,
     isVisible: isVisible,
     selectContextualCard: selectContextualCard,
     getContextualCard: getContextualCard,
