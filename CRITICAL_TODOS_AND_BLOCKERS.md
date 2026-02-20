@@ -430,24 +430,25 @@ Three architectural paths were identified, each with different technical debt an
 
 ---
 
-### Decision Required
-**Question**: Which path forward - Option A (economy depth) or Option B (emoji pivot)?
+### ✅ STRATEGIC DECISION MADE: Option A (Economy Pass)
 
-**Considerations**:
-1. **Market positioning**: Terminal hacker aesthetic (niche) vs emoji accessibility (mass-market)?
-2. **Development resources**: 2-3 weeks (Option A) vs 6-8 weeks (Option B)
-3. **Target audience**: Who is the primary player demographic?
-4. **Technical debt**: Low-risk iteration (A) vs high-risk refactor (B)
-5. **Differentiation**: Unique terminal aesthetic vs saturated emoji market
+**Decision**: Going with Option A - finish existing systems wiring and leverage agent audit for expansion
 
-**Recommendation**:
-- If targeting **desktop/terminal enthusiasts**: Choose Option A (economy pass)
-- If targeting **mobile mass-market**: Choose Option B (emoji pivot)
-- Consider **hybrid approach**: Ship Option A first (2-3 weeks), evaluate metrics, then decide on Option B
+**Rationale**:
+- Target audience: Boomer puzzlers and iPad toddlers (authoritative)
+- Focus on puzzle mechanics, accessibility, clear visual feedback
+- Leverage terminal aesthetic with strong visual polish
+- TODO: Designer-facing portals that match existing designer portals
 
-**Current Status**: Canvas foundation (Option C) complete, but strategic direction for Option A vs B undefined.
+**Next Steps**:
+1. Complete interactive items wiring
+2. Implement food/resource system
+3. Wire up tutorial gate mechanics
+4. Add visual feedback improvements (water slowdown animation, etc.)
+5. Create designer portals for item placement
+6. Focus on economy depth, salvage, vendor systems
 
-**Priority**: ⚠️ **STRATEGIC** - Doesn't block alpha launch, but defines long-term vision
+**Priority**: ✅ **DECIDED** - Option A is the path forward
 
 ---
 
@@ -538,61 +539,62 @@ The following TODOs are **intentional** parts of the ARG gameplay and should NOT
 
 ---
 
-## OPEN QUESTIONS REQUIRING DECISIONS
+## OPEN QUESTIONS REQUIRING DECISIONS ✅ ANSWERED
 
 ### Strategic Questions
 
-1. **Target Audience**:
-   - Q: Are we targeting desktop terminal enthusiasts or mobile mass-market?
-   - Impact: Determines Option A (ASCII/terminal) vs Option B (emoji/mobile) path
-   - Decision maker: Product/founder
-   - Timeline: Needed before post-alpha roadmap
+1. **Target Audience**: ✅ **ANSWERED**
+   - **Decision**: Target audience is intended to be boomer puzzlers, expected to be iPad toddlers (authoritative)
+   - Impact: Focus on accessibility, puzzle mechanics, clear visual feedback
+   - Implication: Option A (terminal/ASCII) with strong visual polish
 
-2. **Monetization Strategy**:
-   - Q: Free-to-play with cosmetics? Premium? No monetization?
-   - Impact: Affects account system design (wallet integration?)
-   - Decision maker: Business/founder
-   - Timeline: Can defer to post-alpha
+2. **Monetization Strategy**: ✅ **ANSWERED**
+   - **Decision**: No monetization of Gone Rogue. This is a primer for a Live team-based ARG that's very expensive, geared for alpine ski lodge vacationers
+   - Stakeholder: Real-life James Bond M who wants hooks from ARG terminal into Gone Rogue experience
+   - Implication: Account system doesn't need payment integration; focus on hooks between systems
 
-3. **Agent Integration Priority**:
-   - Q: Is AI agent gameplay a core feature or experimental?
-   - Impact: Affects kernel persistence priority (P1 vs P2)
-   - Decision maker: Product/founder
-   - Timeline: Needed for MVP scope definition
+3. **Agent Integration Priority**: ✅ **ANSWERED**
+   - **Decision**: Moderate priority for free economic playtesting
+   - Impact: Kernel persistence is P2 (medium priority)
+   - Use case: Agents provide automated playtesting for game balance
 
 ### Technical Questions
 
-4. **Authentication Method**:
-   - Q: WebAuthn only, or support password + WebAuthn hybrid?
-   - Impact: User account creation complexity
-   - Decision maker: Engineering lead
-   - Timeline: Needed before account system implementation
+4. **Authentication Method**: ⏳ **DEFERRED**
+   - Decision: Remains TODO
+   - Timeline: After core systems are wired and functional
 
-5. **Cloud Sync Strategy**:
-   - Q: Real-time sync or manual "save to cloud" button?
-   - Impact: Cloudflare Workers cost, user experience
-   - Decision maker: Engineering + product
-   - Timeline: Needed during account system design
+5. **Cloud Sync Strategy**: ✅ **ANSWERED**
+   - **Decision**: Save on bonfire or run completion/death conditions
+   - Optional: Provide hooks TODO for an item that consumes for on-demand manual cloud sync
+   - Implication: Event-based sync, not real-time
 
-6. **Data Migration Conflict Resolution**:
-   - Q: When local and cloud data differ, auto-merge or prompt user?
-   - Impact: User experience vs implementation complexity
-   - Decision maker: Product/UX
-   - Timeline: Needed during account system implementation
+6. **Data Migration Conflict Resolution**: ✅ **ANSWERED**
+   - **Decision**: Save on bonfire or completion/death → score to highscore
+   - Special item for manual sync
+   - Implication: Simple event-driven model, no complex conflict resolution needed
 
 ### Design Questions
 
-7. **Rendering Mode Default**:
-   - Q: Default to ASCII or emoji rendering on mobile?
-   - Impact: First impression, accessibility
-   - Decision maker: Design/product
-   - Timeline: Before alpha launch
+7. **Rendering Mode Default**: ✅ **ANSWERED**
+   - **Decision**:
+     - **Floor tiles**: ASCII (motion with status mods, default grid for obvious path)
+     - **Walls and interactives**: Emoji
+     - Rule: Don't use breakable leaves with practically no collision speed modifiers
+     - Overlap is acceptable but maintain clear visual hierarchy
+   - Implication: Hybrid rendering mode is the default
 
-8. **Tutorial Flow**:
-   - Q: Mandatory tutorial or skip option?
-   - Impact: Onboarding completion rate
-   - Decision maker: Design/product
-   - Timeline: Before alpha launch
+8. **Tutorial Flow**: ✅ **ANSWERED**
+   - **Decision**: TODO after everything works as expected, before API agent plugin for tuning, before user portal
+   - **Approach**: Manually block out T1 forest biome to enforce environment learning
+   - Maintain procedural generator for T2, T3 forest biomes
+   - Hook contrived T1 forest biome to procedural generation for collectibles, NPC variety (but not walls/gates or special items)
+   - **Tutorial UX Gates**:
+     - Key item found in bush near gate
+     - Player must drag key from inventory to equip slot in header
+     - Player must drag key item from header into gate on map
+     - Leverage existing debrief feed for unlock animation (key+gate emojis like commerce/destruction)
+     - Define database for item synergy and item world event combos now for "functional, local, immediate friends and children playtest polish"
 
 ---
 
