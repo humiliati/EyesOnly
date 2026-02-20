@@ -59,6 +59,24 @@ const EnvironmentalSynergy = (function() {
         compatibleGates: ['FLOOR_ELEVATOR', 'AEROSPACE_DOOR'],
         consumeOnUse: false, // Can be reused
         biome: 'AEROSPACE'
+      },
+      MALL_KEY: {
+        itemId: 'KEY_007',
+        emoji: '🏷️',
+        name: 'Mall Security Tag',
+        description: 'Security clearance for restricted mall areas.',
+        compatibleGates: ['MALL_GATE', 'STORE_DOOR'],
+        consumeOnUse: false,
+        biome: 'SHOPPING_MALL'
+      },
+      INDUSTRIAL_PASS: {
+        itemId: 'KEY_008',
+        emoji: '🔧',
+        name: 'Industrial Pass',
+        description: 'Worker authorization for restricted industrial zones.',
+        compatibleGates: ['FACTORY_GATE', 'HAZARD_DOOR'],
+        consumeOnUse: false,
+        biome: 'INDUSTRIAL'
       }
     },
 
@@ -172,6 +190,50 @@ const EnvironmentalSynergy = (function() {
         unlockEmoji: '🚀',
         unlockMessage: 'Aerospace door unlocks with authorization.',
         biome: 'AEROSPACE'
+      },
+      MALL_GATE: {
+        objectId: 'GATE_011',
+        emoji: '🚧',
+        name: 'Mall Security Gate',
+        description: 'Locked security gate blocking store access.',
+        requiredKeys: ['MALL_KEY', 'MASTER_KEY'],
+        blocksPath: true,
+        unlockEmoji: '🏬',
+        unlockMessage: 'Security gate retracts. Access granted.',
+        biome: 'SHOPPING_MALL'
+      },
+      STORE_DOOR: {
+        objectId: 'GATE_012',
+        emoji: '🚪',
+        name: 'Store Door',
+        description: 'Locked store entrance.',
+        requiredKeys: ['MALL_KEY', 'MASTER_KEY'],
+        blocksPath: true,
+        unlockEmoji: '🛍️',
+        unlockMessage: 'Store door unlocks.',
+        biome: 'SHOPPING_MALL'
+      },
+      FACTORY_GATE: {
+        objectId: 'GATE_013',
+        emoji: '⚠️',
+        name: 'Factory Gate',
+        description: 'Restricted industrial access point.',
+        requiredKeys: ['INDUSTRIAL_PASS', 'MASTER_KEY'],
+        blocksPath: true,
+        unlockEmoji: '🏭',
+        unlockMessage: 'Factory gate opens. Authorization verified.',
+        biome: 'INDUSTRIAL'
+      },
+      HAZARD_DOOR: {
+        objectId: 'GATE_014',
+        emoji: '🚪',
+        name: 'Hazard Door',
+        description: 'Heavy door marked with hazard warnings.',
+        requiredKeys: ['INDUSTRIAL_PASS', 'MASTER_KEY'],
+        blocksPath: true,
+        unlockEmoji: '☢️',
+        unlockMessage: 'Hazard door unseals with a hiss.',
+        biome: 'INDUSTRIAL'
       }
     },
 
