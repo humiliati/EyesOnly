@@ -4526,7 +4526,7 @@ const GoneRogue = (function () {
     // Prepare run data for score calculation
     var runData = {
       currencyFound: _currencyCollected,
-      interactivesFound: 0, // TODO: Track interactive items in future
+      interactivesFound: (typeof InteractiveItems !== 'undefined' && InteractiveItems.getInteractionCount) ? InteractiveItems.getInteractionCount() : 0,
       enemiesAvoided: enemiesAvoided,
       breakableDamage: _totalBreakableDamage,
       damageMitigated: _damageMitigated

@@ -317,6 +317,16 @@ const InteractiveItems = (function() {
   }
 
   /**
+   * Get count of interacted items
+   * @returns {number} Number of items that have been interacted with
+   */
+  function getInteractionCount() {
+    return _interactiveItems.filter(function(item) {
+      return item.interacted === true;
+    }).length;
+  }
+
+  /**
    * Serialize interactive items for save/load
    * @returns {array} Serialized item data
    */
@@ -370,6 +380,7 @@ const InteractiveItems = (function() {
     getAllItems: getAllItems,
     clearAll: clearAll,
     getNearestItem: getNearestItem,
+    getInteractionCount: getInteractionCount,
     serialize: serialize,
     deserialize: deserialize,
     ITEM_TYPES: ITEM_TYPES
