@@ -2593,6 +2593,7 @@ const GoneRogue = (function () {
 
     var attempts = 0;
     var maxAttempts = 50;
+    var droppedCardsThisFloor = []; // Track card bases to avoid duplicates
 
     for (var i = 0; i < itemCount && attempts < maxAttempts; i++) {
       attempts++;
@@ -2613,11 +2614,15 @@ const GoneRogue = (function () {
       // Generate random card
       if (typeof CardSystem !== 'undefined') {
         var card;
+        var baseType;
+        var duplicateAttempts = 0;
+        var maxDuplicateAttempts = 5;
 
         // First item spawned in grey cave is trench coat if needed
         if (shouldSpawnTrenchCoat && i === 0) {
           card = CardSystem.rollTrenchCoat();
           shouldSpawnTrenchCoat = false; // Only spawn once
+          baseType = 'TRENCH_COAT';
         } else {
           // Check pity timer - force defensive/utility/healing if threshold met
           var pityCategory = _checkPityTimer();
@@ -2627,13 +2632,30 @@ const GoneRogue = (function () {
             var pityType = _getPityCard(pityCategory);
             if (pityType) {
               card = CardSystem.rollCard(pityType);
+              baseType = pityType;
               console.log('[GoneRogue] Pity drop triggered:', pityCategory, 'card:', card.name);
             }
           }
 
-          // Normal card generation if no pity card was forced
+          // Normal card generation with duplicate avoidance
+          while (!card && duplicateAttempts < maxDuplicateAttempts) {
+            if (CardSystem.getRandomBaseCardByBiome) {
+              baseType = CardSystem.getRandomBaseCardByBiome(biome.name, _floor);
+            } else {
+              baseType = CardSystem.getRandomBaseCard();
+            }
+
+            // Check if we already dropped this card type this floor
+            if (droppedCardsThisFloor.indexOf(baseType) === -1) {
+              card = CardSystem.rollCard(baseType);
+              break; // Found unique card
+            }
+
+            duplicateAttempts++;
+          }
+
+          // Fallback: Allow duplicate if we couldn't find unique after max attempts
           if (!card) {
-            var baseType;
             if (CardSystem.getRandomBaseCardByBiome) {
               baseType = CardSystem.getRandomBaseCardByBiome(biome.name, _floor);
             } else {
@@ -2643,7 +2665,8 @@ const GoneRogue = (function () {
           }
         }
 
-        // Track this card drop for pity timer
+        // Track this card type and drop for pity timer
+        droppedCardsThisFloor.push(baseType);
         _trackCardDrop(card);
 
         _items.push({ x: ix, y: iy, card: card, spawnTime: Date.now(), decayTime: 30000 }); // 30 second decay
