@@ -1499,3 +1499,74 @@
     order: 3;
   }
 }
+
+/* ============================================================
+   TODO: PORTRAIT MOBILE <-> DESKTOP LANDSCAPE SQUISH TRANSITIONS
+   Maximizing "squish" possibilities for browser-based mobile
+   portrait-first, single-tap / single-input performance preference.
+   ============================================================
+
+   GRID SQUISH:
+   TODO: Add CSS container queries on .rogue-grid-mobile so cell size
+         auto-scales to fill available width without overflow.
+         Current: clamp(10px,2vw,14px) — not container-aware.
+         Target: cells should fill exactly the game frame width with
+         zero horizontal scroll on any viewport from 320px to 2560px.
+
+   TODO: On portrait mobile (<480px), reduce grid from 40×20 to a
+         visible viewport of ~20×14 with smooth CSS-only panning
+         (transform: translate) so the full map is still accessible
+         via swipe but the visible area is larger cells.
+
+   TODO: Add transition for orientation change so grid "breathes"
+         between portrait tall/narrow and landscape wide/short
+         without layout jump. Use CSS transition on grid-template-columns
+         + grid-template-rows for a smooth reflow (~200ms ease).
+
+   HAND FAN SQUISH:
+   TODO: In portrait mobile, anchor hand fan to bottom safe area
+         (env(safe-area-inset-bottom)) and reduce card height to
+         ~90px with 2-line name truncation. Cards should be tappable
+         with a single thumb tap from natural resting position.
+
+   TODO: On landscape mobile, move hand fan to right edge (vertical
+         stack, not horizontal arc) so it doesn't occlude the game
+         grid. Cards become ~60px wide "chip" mode with emoji + cost
+         only, expandable on hold.
+
+   TODO: Add CSS transition for hand fan position change between
+         portrait (bottom arc) and landscape (right stack) so cards
+         smoothly reflow during orientation change instead of popping.
+
+   STR COMBAT WINDOW SQUISH:
+   TODO: On portrait mobile, STR combat window should take full width
+         (100vw - safe-area) and reduce vertical height to ~40vh so
+         the game grid remains visible behind it (translucent bg).
+
+   TODO: On landscape mobile, STR window becomes a side panel (right
+         40vw) instead of centered overlay, so grid stays fully
+         visible on the left.
+
+   SINGLE-TAP INPUT PREFERENCE:
+   TODO: All interactive elements must have minimum 44×44px touch
+         target on mobile (WCAG 2.5.5). Audit card tap targets,
+         grid cells, and combat buttons for compliance.
+
+   TODO: Add "one-tap commit" mode for combat: selecting a card auto-
+         commits after 800ms unless another card is tapped (eliminates
+         need for separate "play" button on mobile).
+
+   TODO: Ensure keyboard number keys (1-5) still work for card
+         selection on desktop landscape, with visual hint overlay
+         showing key bindings on card hover.
+
+   TRANSITION ANIMATION:
+   TODO: Use CSS @media (orientation: portrait/landscape) + prefers-
+         reduced-motion to gate transition animations. Users with
+         reduced-motion get instant layout swap, others get smooth
+         200ms ease transition.
+
+   TODO: On resize/orientation change, debounce grid reflow to avoid
+         layout thrashing (single requestAnimationFrame pass).
+
+   ============================================================ */

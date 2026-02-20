@@ -274,6 +274,7 @@ const STRCombatWindow = (function () {
    */
   function _renderWindow() {
     if (!_combatState) return;
+    var _sw0 = (typeof EYESONLY_PERF !== 'undefined') ? performance.now() : 0;
 
     var html = '';
 
@@ -347,6 +348,10 @@ const STRCombatWindow = (function () {
         e.preventDefault();
         minimize();
       });
+    }
+
+    if (_sw0 && typeof EYESONLY_PERF !== 'undefined') {
+      EYESONLY_PERF.mark('str.renderWindowMs', performance.now() - _sw0);
     }
   }
 

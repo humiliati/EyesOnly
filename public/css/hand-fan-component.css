@@ -644,3 +644,26 @@
     border-width: 3px;
   }
 }
+
+/* ============================================================
+   TODO: HAND FAN SQUISH - PORTRAIT/LANDSCAPE TRANSITIONS
+   ============================================================
+
+   TODO: Add @media (max-width: 480px) and (orientation: landscape)
+         rule to switch hand fan from bottom-arc to right-edge
+         vertical chip stack. Cards become 60px wide emoji+cost chips.
+
+   TODO: Card breakout from game frame is by-design (position:fixed,
+         z:2100) but on portrait mobile the fan should be anchored
+         to env(safe-area-inset-bottom) and use max-height: 30vh
+         to avoid occluding game grid entirely.
+
+   TODO: Add CSS transition on .hand-fan-container position/transform
+         so orientation changes produce smooth card reflow (~200ms)
+         instead of instant pop.
+
+   TODO: Investigate using CSS anchor-positioning (when supported)
+         to tether fan container to #str-combat-window during combat
+         mode, so it moves with the STR window on landscape panels.
+
+   ============================================================ */

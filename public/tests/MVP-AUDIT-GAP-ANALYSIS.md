@@ -17,20 +17,22 @@ Based on team feedback (Basil, 2/17/2026), the current MVP audit system needs si
 ### ⚠️ Critical Gaps Identified
 
 #### 1. **Lack of Human-like IO Constraints**
-**Problem**: Agents can take impossible actions that humans cannot.
-- No action timing/delays
-- No distinction between tap/click/swipe primitives
-- Agents can "teleport" rather than follow paths
+**Problem**: Audit agents can take actions that *don’t correspond to real player input*.
+- No action timing/delays (unbounded APM)
+- No distinction between **tap vs press/drag vs release** (the “fishing” control)
+- Agents may bypass the movement stack (e.g., set destination/cell directly) rather than exercising **the same pathing + collision + move-locks** as players
 - Uses internal APIs instead of public UI hooks
 
 **Impact**: Results don't reflect actual player experience. **HIGH SEVERITY**
 
+**2026-02-19 update**: player motion is now *animated/free-feel* while grid math remains authoritative. This improves UX, but it raises the bar for audit validity: the audit runner must operate at the **gesture layer** (pointer events) with realistic throttles, not at the cell/state layer.
+
 #### 2. **No Deterministic Replay System**
-**Problem**: Bugs cannot be reproduced.
-- No seed system for RNG
-- No input trace logging
-- Can't replay a specific failed run
-- No state diff tracking
+**Problem**: Bugs cannot be reproduced reliably end-to-end.
+- Seed initialization is not yet standardized (conflicting `SeededRNG` vs `SeededRandom` patterns) and not yet guaranteed to cover *all* proc-gen call sites
+- No **gesture-layer** input trace logging (tap / fishing drag / release with timestamps)
+- Can't replay a specific failed run from a single artifact/id
+- No consistent state diff tracking
 
 **Impact**: Cannot debug or verify specific failures. **HIGH SEVERITY**
 
@@ -114,84 +116,102 @@ function checkBossViability(boss, playerBuild) {
 - ✅ Flags mathematically impossible bosses
 - ✅ Reports minimum required deck power
 
-#### 1.2 Deterministic Seed System
+#### 1.2 Deterministic Seed + Replay System (Gesture-Aware)
 **Priority**: 🚨 CRITICAL - DEBUGGING REQUIRED
 
-**Implementation**:
+**Why this changed**: with “free-feel” movement on top of grid math, determinism must cover:
+- proc-gen RNG
+- **gesture input traces** (tap/drag/release) with timestamps
+- feature toggles (lighting occlusion on/off, ground effects, etc.)
+
+**Implementation (canonical seed model)**:
 ```javascript
-class DeterministicAgent {
-  constructor(seed) {
-    this.rng = new SeededRNG(seed);
-    this.inputTrace = [];
+// Canonical in-game seed variables (preferred)
+//   _currentSeed, _currentSeedPhrase, _seedRNG
+// Legacy alias:
+//   _runSeed
+
+class DeterministicRunRecorder {
+  constructor(seed, seedPhrase) {
+    this.seed = seed;
+    this.seedPhrase = seedPhrase || null;
+    this.gestureTrace = []; // pointer primitives, not internal state
     this.stateDiffs = [];
+    this.featureFlags = {};
   }
-  
-  takeAction(gameState) {
-    var action = this.decideAction(gameState, this.rng);
-    this.inputTrace.push({
-      tick: gameState.tick,
-      action: action,
-      stateBefore: gameState.snapshot()
-    });
-    return action;
+
+  recordGesture(evt) {
+    // evt: { tMs, kind:'down'|'move'|'up'|'tap', x, y, gridX, gridY, pointerId }
+    this.gestureTrace.push(evt);
   }
-  
+
+  recordStateDiff(diff) {
+    this.stateDiffs.push(diff);
+  }
+
   exportReplay() {
     return {
+      version: 1,
       seed: this.seed,
-      inputTrace: this.inputTrace,
-      stateDiffs: this.stateDiffs,
-      finalState: this.finalState
+      seedPhrase: this.seedPhrase,
+      featureFlags: this.featureFlags,
+      gestureTrace: this.gestureTrace,
+      stateDiffs: this.stateDiffs
     };
   }
 }
+
+// Seed initialization should prefer SeededRandom if present:
+//   _currentSeed = SeededRandom.generateRandomSeed();
+//   _currentSeedPhrase = SeededRandom.generateSeedPhrase(_currentSeed);
+//   _seedRNG = new SeededRandom.SeededRNG(_currentSeed);
+//   _runSeed = _currentSeed; // legacy alias
 ```
 
 **Acceptance Criteria**:
-- ✅ Same seed + same actions = same outcome
-- ✅ Can export and replay any run
-- ✅ Can reproduce any failure
+- ✅ Same seed + same **gesture trace** + same feature flags = same outcome
+- ✅ Can export and replay any run (including “fishing” drag-follow)
+- ✅ Can reproduce any failure from a single JSON artifact
 - ✅ State diffs logged for debugging
+- ✅ (Optional but recommended) Replay artifacts can be persisted and reloaded by id (D1/DB-backed), not just held in-memory
+- ✅ Seed system aligns with codebase reality (`SeededRandom` preferred; `_runSeed` treated as alias)
 
-#### 1.3 Human-like IO Constraints
+#### 1.3 Human-like IO Constraints (Fishing-Drag + Timing)
 **Priority**: ⚠️ HIGH - VALIDITY REQUIRED
 
 **Implementation**:
 ```javascript
 class HumanLikeAgent {
   constructor() {
-    this.actionQueue = [];
-    this.lastActionTime = 0;
-    this.minActionDelay = 200; // ms
+    this.lastInputTime = 0;
+    this.minInputDelayMs = 120; // throttle "impossible" APM
+    this.maxDragUpdateHz = 15;  // matches intended drag-follow repath throttles
   }
-  
-  // Only allowed actions
-  tap(x, y) { /* must be legal tile */ }
-  click(x, y) { /* same as tap but for desktop */ }
-  swipe(startX, startY, endX, endY) { /* must be valid swipe */ }
-  wait() { /* do nothing this turn */ }
-  
-  // No direct state manipulation
-  // No teleportation
-  // No hidden APIs
-  
-  canTakeAction() {
+
+  // Allowed primitives (gesture layer)
+  pointerDown(x, y) { /* begins fishing */ }
+  pointerMove(x, y) { /* updates fishing target (throttled) */ }
+  pointerUp(x, y) { /* ends fishing */ }
+  tap(x, y) { /* quick down/up */ }
+  wait(ms) { /* no input */ }
+
+  // Forbidden:
+  // - direct state mutation (player.x/y, destination cell setters)
+  // - calling internal movement/path APIs that bypass UI
+
+  canSendInput() {
     var now = Date.now();
-    return (now - this.lastActionTime) >= this.minActionDelay;
-  }
-  
-  getLegalActions(gameState) {
-    // Query game for legal moves
-    return gameState.getLegalActions();
+    return (now - this.lastInputTime) >= this.minInputDelayMs;
   }
 }
 ```
 
 **Acceptance Criteria**:
-- ✅ Only uses actions humans can perform
-- ✅ Respects timing constraints
-- ✅ Cannot teleport or use hidden APIs
-- ✅ Path-bound movement only
+- ✅ Only uses actions humans can perform (pointer/touch gestures)
+- ✅ Respects timing constraints (min delay + drag update throttles)
+- ✅ Cannot call hidden APIs or mutate internal state
+- ✅ Exercises the real movement stack (pathing + collision + move-locks)
+- ✅ Works on both desktop + mobile interactive grid
 
 ### Phase 2: UX Validation (Required for Confidence)
 
@@ -289,8 +309,11 @@ SWIPE_OPTIMIZER: {
 
 ### Phase 3: Integration (Essential for Trust)
 
-#### 3.1 Real Game Integration
+#### 3.1 Real Game Integration (No Sim Drift, No Hidden Hooks)
 **Priority**: 🎯 HIGHEST - AVOID SIM DRIFT
+
+**2026-02-19 update**: with the movement animation overhaul complete, "real integration" also means the audit runner must drive the game via the same **interactive grid / pointer gesture layer** the player uses, not by calling internal movement functions.
+
 
 **Two Approaches**:
 

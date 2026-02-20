@@ -137,6 +137,7 @@ const HandFanComponent = (function () {
    */
   function _renderCards() {
     if (!_fanContainer) return;
+    var _fr0 = (typeof EYESONLY_PERF !== 'undefined') ? performance.now() : 0;
 
     _fanContainer.innerHTML = '';
     _updateFanPosition();
@@ -169,6 +170,10 @@ const HandFanComponent = (function () {
       var cardEl = _createCardElement(card, index);
       _fanContainer.appendChild(cardEl);
     });
+
+    if (_fr0 && typeof EYESONLY_PERF !== 'undefined') {
+      EYESONLY_PERF.mark('fan.renderMs', performance.now() - _fr0);
+    }
   }
 
   /**
@@ -283,6 +288,7 @@ const HandFanComponent = (function () {
    * @param {number} total - Total number of cards
    */
   function _applyFanTransform(wrapper, index, total) {
+    var _ft0 = (typeof EYESONLY_PERF !== 'undefined') ? performance.now() : 0;
     // Calculate fan spread
     var centerIndex = (total - 1) / 2;
     var offset = index - centerIndex;
@@ -322,6 +328,10 @@ const HandFanComponent = (function () {
         wrapper.style.zIndex = zIndex;
       }
     });
+
+    if (_ft0 && typeof EYESONLY_PERF !== 'undefined') {
+      EYESONLY_PERF.mark('fan.transformMs', performance.now() - _ft0);
+    }
   }
 
   /**

@@ -5516,7 +5516,11 @@ _incrementPityTimers();
 
     // Process game updates if enough time has passed
     if (delta >= _tickInterval) {
+      var _t0 = (typeof EYESONLY_PERF !== 'undefined') ? performance.now() : 0;
       _updateGameState(delta);
+      if (_t0 && typeof EYESONLY_PERF !== 'undefined') {
+        EYESONLY_PERF.mark('rogue.gameTickMs', performance.now() - _t0);
+      }
       _lastTickTime = now;
     }
 
@@ -5593,6 +5597,7 @@ _incrementPityTimers();
     }
 
     // Update enemy positions and awareness
+    var _ep0 = (typeof EYESONLY_PERF !== 'undefined') ? performance.now() : 0;
     _enemies.forEach(function(enemy) {
       if (enemy.hp <= 0) return;
 
@@ -5646,6 +5651,9 @@ _incrementPityTimers();
         }
       }
     });
+    if (_ep0 && typeof EYESONLY_PERF !== 'undefined') {
+      EYESONLY_PERF.mark('rogue.enemyPathMs', performance.now() - _ep0);
+    }
 
     _updateProjectiles(deltaMs);
 
@@ -5739,7 +5747,11 @@ _incrementPityTimers();
       _lightMapTickCounter++;
       if (_lightMapTickCounter >= 5) {
         _lightMapTickCounter = 0;
+        var _lt0 = (typeof EYESONLY_PERF !== 'undefined') ? performance.now() : 0;
         LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, _wallCache);
+        if (_lt0 && typeof EYESONLY_PERF !== 'undefined') {
+          EYESONLY_PERF.mark('lighting.updateLightMapMs', performance.now() - _lt0);
+        }
       }
     }
 

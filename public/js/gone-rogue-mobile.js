@@ -437,6 +437,7 @@ const GoneRogueMobile = (function () {
    * Render grid as interactive HTML cells (or canvas if enabled)
    */
   function renderGrid(grid, player, enemies, items, colorCycleTime, breakables, projectiles, alertLevel, strCombatActive, muzzleFlash, impactEffects, currencies) {
+    var _rg0 = (typeof EYESONLY_PERF !== 'undefined') ? performance.now() : 0;
     if (!_gridContainer || !grid) return;
 
     breakables = breakables || [];
@@ -463,6 +464,9 @@ const GoneRogueMobile = (function () {
     // Use canvas renderer if available
     if (_canvasRenderer) {
       _renderWithCanvas(grid, player, enemies, items, breakables, projectiles, muzzleFlash, impactEffects, currencies, colorCycleTime);
+      if (_rg0 && typeof EYESONLY_PERF !== 'undefined') {
+        EYESONLY_PERF.mark('rogue.renderGridMs', performance.now() - _rg0);
+      }
       return;
     }
 
@@ -741,6 +745,10 @@ const GoneRogueMobile = (function () {
 
     // Render STR combat overlay if combat is active
     _renderStrCombatOverlay();
+
+    if (_rg0 && typeof EYESONLY_PERF !== 'undefined') {
+      EYESONLY_PERF.mark('rogue.renderGridMs', performance.now() - _rg0);
+    }
   }
 
   /**

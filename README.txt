@@ -265,6 +265,34 @@ PROJECT STRUCTURE
   wrangler.jsonc            - Cloudflare Workers config
 
 
+LOCAL DEV + PERF HOOK
+----------------------
+
+Fast iteration loop (full website) with an on-screen perf HUD:
+
+  1) Start local dev worker:
+     PowerShell:
+       ./scripts/dev-local-perf.ps1 -Port 8787
+
+     (or run directly)
+       npx wrangler dev --local --port 8787
+
+  2) Open:
+       http://127.0.0.1:8787/?perf=1
+
+Perf HUD features:
+  - FPS (min/max)
+  - Long task count + max stall duration
+  - Error counter
+  - Optional FCP/LCP when supported
+  - Console dump button (prints a compact snapshot)
+
+You can also persist-enable it via:
+  localStorage.EYESONLY_PERF = '1'
+
+To force-disable on localhost:
+  ?perf=0
+
 BUILD + DEPLOY
 --------------
   npm run build:mmode       - Build M Mode bundle (esbuild)
