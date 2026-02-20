@@ -3156,6 +3156,20 @@ const GoneRogue = (function () {
       }
     });
 
+    // Place pets
+    if (typeof PetFollower !== 'undefined') {
+      var activePets = PetFollower.getActivePets();
+      activePets.forEach(function(pet) {
+        if (pet.alive) {
+          var petX = Math.round(pet.x);
+          var petY = Math.round(pet.y);
+          if (petY >= 0 && petY < GRID_HEIGHT && petX >= 0 && petX < GRID_WIDTH) {
+            display[petY][petX] = pet.emoji || '🐾';
+          }
+        }
+      });
+    }
+
     // Place items
     _items.forEach(function(item) {
       display[item.y][item.x] = TILES.ITEM;
@@ -4876,6 +4890,24 @@ const GoneRogue = (function () {
       }
     }
 
+    // Update pets based on player position history
+    if (typeof PetFollower !== 'undefined') {
+      var currentTime = Date.now();
+      PetFollower.updatePets(_player.positionHistory, currentTime);
+
+      // Check for breakables near humanoid pets
+      PetFollower.checkBreakables(_breakables, function(breakable, index) {
+        // Pet breaks a breakable
+        _breakables.splice(index, 1);
+        console.log('[Pet] Broke breakable at', breakable.x, breakable.y);
+
+        // Optional: trigger overhead animation
+        if (typeof OverheadAnimator !== 'undefined') {
+          OverheadAnimator.showGenericExpression(breakable.x, breakable.y, '💥', 800);
+        }
+      });
+    }
+
     // Update enemy positions and awareness
     _enemies.forEach(function(enemy) {
       if (enemy.hp <= 0) return;
@@ -6353,6 +6385,32 @@ const GoneRogue = (function () {
 
     // Scan 3x3 tiles around player for ground effects and apply combat modifiers
     _applyGroundEffectModifiers();
+
+    // Apply pet combat modifiers (Mega tier only)
+    if (typeof PetFollower !== 'undefined') {
+      var combatContext = {
+        playerAccuracy: 0,
+        playerCritMultiplier: 0,
+        enemyStatus: enemy.statusEffects || {},
+        petAutoStrike: false,
+        petStrikeDamage: 0
+      };
+
+      PetFollower.applyCombatModifiers(combatContext);
+
+      // Apply modifiers to player/combat state
+      if (combatContext.playerAccuracy > 0) {
+        _player.accuracyBonus = (_player.accuracyBonus || 0) + combatContext.playerAccuracy;
+        _strCombatLog.push('🐾 Pet grants +' + combatContext.playerAccuracy.toFixed(0) + '% accuracy!');
+      }
+      if (combatContext.playerCritMultiplier > 0) {
+        _player.critBonus = (_player.critBonus || 0) + combatContext.playerCritMultiplier;
+      }
+      if (combatContext.petAutoStrike) {
+        enemy.hp -= combatContext.petStrikeDamage;
+        _strCombatLog.push('🔫 Pet auto-strike! ' + combatContext.petStrikeDamage + ' damage!');
+      }
+    }
 
     // Build countdown context messages (3/2/1 beat annotations)
     _strCombatContext = _buildCountdownMessages(enemy, trigger);
@@ -8791,6 +8849,60 @@ const GoneRogue = (function () {
   }
 
   // ============================================================
+  // PET SYSTEM DEBUG
+  // ============================================================
+
+  /**
+   * Spawn test pets for debugging (one of each tier)
+   */
+  function spawnTestPets() {
+    if (typeof PetFollower === 'undefined') {
+      console.warn('[GoneRogue] PetFollower module not available');
+      return;
+    }
+
+    // Create test pets
+    var pikachuPet = PetFollower.createPet(
+      PetFollower.PET_TIERS.RUMBA,
+      'UNCOMMON',
+      '🐭',
+      'Pikachu',
+      { scrapProc: 0.02, dropChance: 0.05 }
+    );
+
+    var humanoidPet = PetFollower.createPet(
+      PetFollower.PET_TIERS.HUMANOID,
+      'RARE',
+      '🧍',
+      'Breaker',
+      null
+    );
+
+    var tanyaPet = PetFollower.createPet(
+      PetFollower.PET_TIERS.MEGA,
+      'MEGA',
+      '🔫',
+      'Tanya',
+      null
+    );
+
+    // Initialize pets at player position
+    pikachuPet.x = _player.x;
+    pikachuPet.y = _player.y;
+    humanoidPet.x = _player.x;
+    humanoidPet.y = _player.y;
+    tanyaPet.x = _player.x;
+    tanyaPet.y = _player.y;
+
+    // Add pets
+    PetFollower.addPet(pikachuPet);
+    PetFollower.addPet(humanoidPet);
+    PetFollower.addPet(tanyaPet);
+
+    console.log('[GoneRogue] Test pets spawned: Pikachu (Rumba), Breaker (Humanoid), Tanya (Mega)');
+  }
+
+  // ============================================================
   // END HEADLESS MODE API
   // ============================================================
 
@@ -8841,6 +8953,9 @@ const GoneRogue = (function () {
     _generateDiscoveries: _generateDiscoveries,
     _revealDiscovery: _revealDiscovery,
     _initializeEnvironmentalDetails: _initializeEnvironmentalDetails,
+
+    // Pet system debug API
+    spawnTestPets: spawnTestPets,
 
     // Headless mode API (for testing/agent simulation)
     headless: {
