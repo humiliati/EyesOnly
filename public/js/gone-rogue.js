@@ -1080,6 +1080,12 @@ const GoneRogue = (function () {
       console.log('[GoneRogue] Item spawner initialized');
     }
 
+    // Initialize food database
+    if (typeof FoodDatabase !== 'undefined') {
+      FoodDatabase.init();
+      console.log('[GoneRogue] Food database initialized');
+    }
+
     // Initialize from GAMESTATE if available
     var lines = [];
     if (typeof GAMESTATE !== 'undefined') {
@@ -3144,6 +3150,37 @@ const GoneRogue = (function () {
       // Tooltip: Currency pickup
       if (typeof TooltipSystem !== 'undefined') {
         TooltipSystem.showAction('currency-pickup', { amount: cryptoPickup.amount });
+      }
+    }
+
+    // Check for food item pickup (auto-pickup from interactive items)
+    if (typeof InteractiveItems !== 'undefined') {
+      var foodItem = InteractiveItems.getItemAt(newX, newY);
+      if (foodItem && foodItem.autoPickup && foodItem.type === 'FOOD') {
+        // Apply food effects
+        if (typeof FoodDatabase !== 'undefined' && foodItem.customData && foodItem.customData.foodId) {
+          var result = FoodDatabase.applyFoodEffects(foodItem.customData.foodId, _player);
+          if (result.success) {
+            // Show overhead animation with food emoji
+            if (typeof OverheadAnimator !== 'undefined') {
+              OverheadAnimator.showExpression(newX, newY, 'LOOT', 1000, result.emoji);
+            }
+
+            // MOK interjection for food pickup
+            if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+              UIControls.updateMokInterjection(result.emoji + ' ' + result.foodName + ' consumed');
+            }
+
+            // Tooltip: Food effects
+            if (typeof TooltipSystem !== 'undefined' && result.tooltipText) {
+              TooltipSystem.showGeneric(result.tooltipText, 2000);
+            }
+
+            // Remove food item from world (clean disappearance)
+            InteractiveItems.removeItem(foodItem.id);
+            console.log('[GoneRogue] Food consumed:', result.foodName);
+          }
+        }
       }
     }
 
