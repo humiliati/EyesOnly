@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Floor Passability Test - EYES ONLY</title>
+  <style>
+    body {
+      background: #000;
+      color: #1cff9b;
+      font-family: 'Courier New', monospace;
+      padding: 20px;
+    }
+    h1 {
+      color: #1cff9b;
+      text-align: center;
+    }
+    #test-output {
+      background: #0a0a0a;
+      border: 2px solid #1cff9b;
+      padding: 20px;
+      margin: 20px 0;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+    .pass { color: #0f0; }
+    .fail { color: #f00; }
+  </style>
+</head>
+<body>
+  <h1>🎮 Floor Passability & Environmental Synergy Tests 🗺️</h1>
+  <div id="test-output"></div>
+
+  <!-- Load all dependencies (same as main index.html) -->
+  <script src="../js/state-machine.js"></script>
+  <script src="../js/gamestate.js"></script>
+  <script src="../js/card-system.js"></script>
+  <script src="../js/synergy-engine.js"></script>
+  <script src="../js/loot-table-manager.js"></script>
+  <script src="../js/cooldown-tracker.js"></script>
+  <script src="../js/boss-encounters.js"></script>
+  <script src="../js/elite-enemies.js"></script>
+  <script src="../js/overhead-animator.js"></script>
+  <script src="../js/interactive-items.js"></script>
+  <script src="../js/food-database.js"></script>
+  <script src="../js/item-spawner.js"></script>
+  <script src="../js/environmental-synergy.js"></script>
+  <script src="../js/utils/name-utils.js"></script>
+  <script src="../js/environmental-drag-drop.js"></script>
+  <script src="../js/tile-animation-system.js"></script>
+  <script src="../js/gone-rogue.js"></script>
+
+  <!-- Load test -->
+  <script src="test-floor-passability.js"></script>
+
+  <script>
+    // Redirect console to output div
+    (function() {
+      var output = document.getElementById('test-output');
+      var originalLog = console.log;
+      var originalError = console.error;
+
+      console.log = function(...args) {
+        var message = args.join(' ');
+        var div = document.createElement('div');
+
+        // Check for color in message (from %c)
+        if (args[0] && args[0].includes('PASS')) {
+          div.className = 'pass';
+          div.textContent = args[0].replace('%c', '');
+        } else if (args[0] && args[0].includes('FAIL')) {
+          div.className = 'fail';
+          div.textContent = args[0].replace('%c', '');
+        } else {
+          div.textContent = message;
+        }
+
+        output.appendChild(div);
+        output.scrollTop = output.scrollHeight;
+        originalLog.apply(console, args);
+      };
+
+      console.error = function(...args) {
+        var div = document.createElement('div');
+        div.className = 'fail';
+        div.textContent = args.join(' ').replace('%c', '');
+        output.appendChild(div);
+        output.scrollTop = output.scrollHeight;
+        originalError.apply(console, args);
+      };
+    })();
+  </script>
+</body>
+</html>
