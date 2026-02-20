@@ -1,0 +1,19 @@
+[
+  {
+    "id": "ITM-001",
+    "name": "Cigarette",
+    "emoji": "🚬",
+    "rarity": "common",
+    "stackable": true,
+    "maxStack": 20,
+    "use": {
+      "targetType": "self",
+      "cost": 0,
+      "effects": [
+        { "type": "hp", "value": -1 },
+        { "type": "focus", "value": 1 }
+      ]
+    },
+    "synergyTags": ["vice"]
+  }
+]

@@ -1,0 +1,15 @@
+[
+  {
+    "id": "ACT-001",
+    "name": "Field Dressing",
+    "emoji": "🩹",
+    "targetType": "self",
+    "cost": 0,
+    "rarity": "common",
+    "effects": [
+      { "type": "hp", "value": 3 }
+    ],
+    "preCombat": true,
+    "synergyTags": ["medical"]
+  }
+]

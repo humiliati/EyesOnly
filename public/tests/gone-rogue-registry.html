@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gone Rogue Registry Test</title>
+  <style>
+    body { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; padding: 16px; }
+    button { padding: 8px 12px; margin-right: 8px; }
+    pre { background:#111; color:#ddd; padding: 12px; overflow:auto; max-height: 520px; }
+  </style>
+</head>
+<body>
+  <h1>Gone Rogue Data Registry</h1>
+  <button id="load">Load</button>
+  <button id="dump">Dump Sample</button>
+  <pre id="out"></pre>
+
+  <script src="../js/non-combat-event-bus.js"></script>
+  <script src="../js/gone-rogue-data-registry.js"></script>
+  <script>
+    const out = document.getElementById('out');
+    NonCombatEventBus.on('*', (e) => {
+      if (e.type === 'registry:loaded') {
+        out.textContent = 'Loaded: ' + JSON.stringify(e.payload, null, 2);
+      }
+    });
+
+    document.getElementById('load').onclick = async () => {
+      out.textContent = 'loading...';
+      await GoneRogueDataRegistry.load();
+      out.textContent = 'loaded.';
+    };
+
+    document.getElementById('dump').onclick = async () => {
+      if (!GoneRogueDataRegistry.isLoaded()) await GoneRogueDataRegistry.load();
+      const sample = {
+        card: GoneRogueDataRegistry.getCard('ACT-001'),
+        item: GoneRogueDataRegistry.getItem('ITM-001'),
+        status: GoneRogueDataRegistry.getStatus('STS-001'),
+        eff: GoneRogueDataRegistry.getGroundEffect('EFF-001'),
+        syn: GoneRogueDataRegistry.getSynergy('SYN-001')
+      };
+      out.textContent = JSON.stringify(sample, null, 2);
+    };
+  </script>
+</body>
+</html>

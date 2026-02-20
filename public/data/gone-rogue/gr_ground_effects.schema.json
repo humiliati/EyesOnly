@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Gone Rogue Ground Effect",
+  "type": "object",
+  "required": ["id", "name", "emoji"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^EFF-[0-9]{3}$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "emoji": { "type": "string", "minLength": 1, "maxLength": 8 },
+    "description": { "type": "string" },
+    "radius": { "type": "integer", "minimum": 0, "default": 0 },
+    "lifetimeSec": { "type": "integer", "minimum": 1, "default": 5 },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "effects": { "type": "array", "items": { "$ref": "gr_cards.schema.json#/definitions/effect" } }
+  },
+  "additionalProperties": true
+}

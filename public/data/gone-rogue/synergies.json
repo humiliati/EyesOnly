@@ -1,0 +1,13 @@
+[
+  {
+    "id": "SYN-001",
+    "name": "Nicotine Focus",
+    "itemId": "ITM-001",
+    "cardId": "ACT-001",
+    "trigger": "item_then_card",
+    "visual": "💛",
+    "effects": [
+      { "type": "focus", "value": 2 }
+    ]
+  }
+]

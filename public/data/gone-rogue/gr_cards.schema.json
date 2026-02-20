@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Gone Rogue Action Card",
+  "type": "object",
+  "required": ["id", "name", "emoji", "targetType", "cost", "effects"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^ACT-[0-9]{3}$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 48 },
+    "emoji": { "type": "string", "minLength": 1, "maxLength": 8 },
+    "targetType": { "type": "string", "enum": ["self", "enemy", "ground", "area", "all", "npc", "item"] },
+    "cost": { "type": "integer", "minimum": 0 },
+    "rarity": { "type": "string", "enum": ["common", "uncommon", "rare", "epic", "legendary"], "default": "common" },
+    "effects": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/effect" }
+    },
+    "preCombat": { "type": "boolean", "default": false },
+    "groundEffectId": { "type": "string", "pattern": "^EFF-[0-9]{3}$" },
+    "synergyTags": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "effect": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string" },
+        "value": { "type": "number" },
+        "duration": { "type": "integer", "minimum": 0 },
+        "condition": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

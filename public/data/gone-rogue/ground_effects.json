@@ -1,0 +1,14 @@
+[
+  {
+    "id": "EFF-001",
+    "name": "Smoke",
+    "emoji": "🌫️",
+    "description": "Reduces accuracy for anyone inside.",
+    "radius": 1,
+    "lifetimeSec": 10,
+    "tags": ["obscure"],
+    "effects": [
+      { "type": "accuracy", "value": -5 }
+    ]
+  }
+]

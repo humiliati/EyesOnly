@@ -1,0 +1,12 @@
+[
+  {
+    "id": "STS-001",
+    "name": "Inspired",
+    "emoji": "✨",
+    "description": "A short-lived edge.",
+    "duration": 2,
+    "modifiers": {
+      "accuracy": 5
+    }
+  }
+]

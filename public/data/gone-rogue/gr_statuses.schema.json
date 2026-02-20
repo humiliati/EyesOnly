@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Gone Rogue Status Effect",
+  "type": "object",
+  "required": ["id", "name", "emoji"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^STS-[0-9]{3}$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "emoji": { "type": "string", "minLength": 1, "maxLength": 8 },
+    "description": { "type": "string" },
+    "duration": { "type": "integer", "minimum": 0 },
+    "modifiers": { "type": "object", "additionalProperties": { "type": "number" } },
+    "tags": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": true
+}
