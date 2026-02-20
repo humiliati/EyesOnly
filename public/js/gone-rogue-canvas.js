@@ -160,7 +160,7 @@ const CanvasRenderer = (function() {
           var pixelY = y * this.cellSize;
 
           // Apply darkness with light color tint
-          var alpha = darkness * 0.85; // Max 85% darkness for playability
+          var alpha = darkness * 0.55; // Max 55% darkness overlay for playability
 
           // Parse light color for tinting
           var r = parseInt(light.color.substr(1, 2), 16);
