@@ -602,15 +602,23 @@ The following TODOs are **intentional** parts of the ARG gameplay and should NOT
 
 ### This Week (Sprint 1)
 1. **Decide MVP scope**: Account creation required for alpha, or defer?
-2. **Integrate interactive items** (3-4 hours) - quick win for polish
+2. ~~**Integrate interactive items** (3-4 hours) - quick win for polish~~ ✅ **COMPLETED**
+   - Environmental synergy system (key+gate interactions) wired into floor generation
+   - Food consumption system integrated with player resources
+   - Water slowdown and tile effect visual feedback already implemented
+   - Overhead animator and interactive items fully functional
 3. **Answer strategic question #1**: Option A (terminal) or Option B (emoji)?
 4. **Create account system design doc** if required for MVP
 
 ### Next 2 Weeks (Sprint 2-3)
 1. **If account creation in MVP**: Start frontend registration UI
 2. **If account creation deferred**: Focus on gameplay polish and playtesting
-3. **Kernel persistence**: Implement basic API endpoints
-4. **Testing**: E2E flow for current features
+3. **Tutorial level blockout**: Add randomness hooks for contrived T1 forest biome
+   - Hook collectibles and NPC variety into procedural generation
+   - Maintain manual wall/gate placement for tutorial gate mechanics
+   - Test key+gate interaction flow end-to-end
+4. **Kernel persistence**: Implement basic API endpoints
+5. **Testing**: E2E flow for current features
 
 ### Month 2
 1. **Account system completion** (if in MVP)
