@@ -3209,6 +3209,11 @@ const GoneRogue = (function () {
               OverheadAnimator.showExpression(newX, newY, 'LOOT', 1000, result.emoji);
             }
 
+            // Grant sprint relief for exhausted players (1.5 second grace period)
+            if (typeof GAMESTATE !== 'undefined' && GAMESTATE.grantSprintRelief) {
+              GAMESTATE.grantSprintRelief(1500);
+            }
+
             // MOK interjection for food pickup
             if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
               UIControls.updateMokInterjection(result.emoji + ' ' + result.foodName + ' consumed');
@@ -5752,9 +5757,29 @@ const GoneRogue = (function () {
     if (typeof GoneRogueMovement !== 'undefined') {
       GoneRogueMovement.init(_player.x, _player.y);
 
-      // Set target with collision checking
+      // Set target with collision checking and terrain penalty callbacks
       var collisionCheck = function(x, y) {
         return !_isWalkable(x, y);
+      };
+
+      // Attach getTileMovePenalty as a property of the callback function
+      collisionCheck.getTileMovePenalty = function(x, y) {
+        // Get tile at position
+        if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) return 0;
+        var tile = _grid[y][x];
+
+        // Check TILE_EFFECTS for move penalty
+        if (tile === TILES.WATER && TILE_EFFECTS.WATER) {
+          return TILE_EFFECTS.WATER.movePenalty || 0;
+        }
+
+        // Check tile metadata for custom penalties
+        var key = x + ',' + y;
+        if (_tileMetadata[key] && _tileMetadata[key].movePenalty) {
+          return _tileMetadata[key].movePenalty;
+        }
+
+        return 0; // No penalty
       };
 
       var destination = path[path.length - 1];

@@ -36,6 +36,7 @@ const GAMESTATE = (function () {
     fatigueRecovery: 5,            // Per turn baseline recovery
     fatigueThreshold: 70,          // Above this, cards cost more/become less effective
     _playerFatigueDecimal: 0.0,    // Hidden decimal fatigue (for smooth sprint drain)
+    _sprintReliefUntil: 0,         // Timestamp when sprint relief expires (food pickup grace)
 
     playerAmmo: 7,                 // Pooled ammunition resource (reduced for balanced economy)
     maxAmmo: 50,                   // Maximum ammo capacity
@@ -805,6 +806,34 @@ const GAMESTATE = (function () {
     return rolled;
   }
 
+  /**
+   * Grant temporary sprint relief (after food pickup)
+   * Allows sprinting for exhausted players for a limited time
+   * @param {number} duration - Duration in milliseconds (default: 1500ms)
+   */
+  function grantSprintRelief(duration) {
+    duration = duration || 1500; // Default: 1.5 seconds
+    _state._sprintReliefUntil = performance.now() + duration;
+  }
+
+  /**
+   * Check if player can sprint (not exhausted or has sprint relief)
+   * @returns {boolean} True if player can sprint
+   */
+  function canSprint() {
+    // Always allow sprint if not exhausted
+    if (_state.playerFatigue < _state.maxFatigue) {
+      return true;
+    }
+
+    // Check if sprint relief is active
+    if (_state._sprintReliefUntil > performance.now()) {
+      return true;
+    }
+
+    return false;
+  }
+
   // ========== AMMO MANAGEMENT ==========
 
   /**
@@ -1193,6 +1222,8 @@ const GAMESTATE = (function () {
     reduceFatigue: reduceFatigue,
     resetFatigue: resetFatigue,
     drainSprintFatigue: drainSprintFatigue,
+    grantSprintRelief: grantSprintRelief,
+    canSprint: canSprint,
     // Ammo management
     getAmmo: getAmmo,
     useAmmo: useAmmo,

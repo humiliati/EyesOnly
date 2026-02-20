@@ -256,11 +256,12 @@ const GoneRogueMovement = (function () {
       return true;
     }
 
-    // Lerp towards target with sprint multiplier and equipment modifiers
+    // Lerp towards target with sprint multiplier, equipment modifiers, and terrain penalties
     var currentSpeed = MOVEMENT_SPEED;
 
     if (_isSprinting) {
       var sprintMultiplier = SPRINT_MULTIPLIER;
+      var terrainPenaltyReduction = 0; // Default: no reduction
 
       // Apply equipment sprint speed modifiers (Stiletto Slippers, etc.)
       if (typeof PassiveItemsSystem !== 'undefined') {
@@ -269,10 +270,25 @@ const GoneRogueMovement = (function () {
           if (equipped[i].sprint_speed_multiplier) {
             sprintMultiplier *= equipped[i].sprint_speed_multiplier;
           }
+          if (equipped[i].terrain_penalty_reduction) {
+            terrainPenaltyReduction = Math.max(terrainPenaltyReduction, equipped[i].terrain_penalty_reduction);
+          }
         }
       }
 
       currentSpeed *= sprintMultiplier;
+
+      // Apply terrain penalties (water, etc.)
+      // Call getTileMovePenalty if available to get terrain modifier
+      if (collisionCheck && typeof collisionCheck.getTileMovePenalty === 'function') {
+        var terrainPenalty = collisionCheck.getTileMovePenalty(Math.floor(target.x), Math.floor(target.y));
+        if (terrainPenalty > 0) {
+          // Reduce penalty based on equipment (Treads boots)
+          var effectivePenalty = terrainPenalty * (1 - terrainPenaltyReduction);
+          // Penalty reduces speed multiplicatively (penalty of 1 = 50% speed)
+          currentSpeed *= (1 / (1 + effectivePenalty));
+        }
+      }
     }
 
     var moveDistance = currentSpeed * deltaTime;
