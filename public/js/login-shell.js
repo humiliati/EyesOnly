@@ -131,6 +131,18 @@ const LoginShell = (function () {
     return _state === STATES.SESSION;
   }
 
+  function getUser() {
+    return _user;
+  }
+
+  function deactivate() {
+    _state = STATES.INACTIVE;
+    _pendingUsername = null;
+    _user = null;
+    _cwd = '/';
+    _save();
+  }
+
   function isActive() {
     return _state !== STATES.INACTIVE;
   }

@@ -311,7 +311,10 @@ body.gone-rogue-active #scanlines::after {
   transform: scale(1.35);
   transform-origin: top left;
   box-shadow: 0 0 0 1px var(--panel-border), 0 12px 28px rgba(0, 0, 0, 0.45);
-  z-index: 10;
+
+  /* Layering: above right column, below tooltip overlay */
+  position: relative;
+  z-index: 150;
 }
 
 .debrief-window.expanded .debrief-screen {

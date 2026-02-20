@@ -210,7 +210,9 @@ const DebriefFeedRenderer = (function() {
   function _attachEventHandlers() {
     var cycleBtn = document.getElementById('resource-cycle-btn');
     if (cycleBtn) {
-      cycleBtn.addEventListener('click', function() {
+      cycleBtn.addEventListener('click', function(e) {
+        // Prevent debrief-window click-to-expand from hijacking resource UI clicks
+        if (e && e.stopPropagation) e.stopPropagation();
         cycle();
       });
     }

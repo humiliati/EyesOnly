@@ -47,10 +47,28 @@
   var debriefWindow = document.getElementById('debrief-window');
   if (debriefWindow) {
     debriefWindow.addEventListener('click', function (e) {
-      // Only toggle if clicking the window itself, not MOK
-      if (e.target !== avatar && !avatar.contains(e.target)) {
-        debriefWindow.classList.toggle('expanded');
+      // Only toggle expansion when it won't conflict with in-window UI.
+      // If the debrief is showing resources, clicks should interact with resources (cycle, select lines, etc.).
+      try {
+        var display = (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.getCurrentDisplay)
+          ? DebriefFeedController.getCurrentDisplay()
+          : null;
+        if (display === 'resources') {
+          return;
+        }
+      } catch (err) { /* ignore */ }
+
+      // Never toggle when clicking the MOK avatar itself
+      if (avatar && (e.target === avatar || avatar.contains(e.target))) {
+        return;
       }
+
+      // Only toggle when clicking non-interactive chrome (avoid hijacking clicks on buttons/inputs)
+      if (e.target && (e.target.closest && e.target.closest('button, a, input, select, textarea'))) {
+        return;
+      }
+
+      debriefWindow.classList.toggle('expanded');
     });
   }
 
