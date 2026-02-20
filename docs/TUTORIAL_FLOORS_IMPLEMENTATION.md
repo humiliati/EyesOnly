@@ -76,31 +76,52 @@ Created `docs/tutorial-floor-designer-guide.md` with:
 
 ## The Three Tutorial Floors
 
-### Floor 1: Village Entrance
+### Floor 1: Village Entrance (Zelda-style 4-Zone Layout)
 
-**Teaching Goal:** Breakables contain things. Hit things, get things.
+**Teaching Goals:**
+- Breakables contain things (break bushes, crates, logs, flower patches)
+- Interactive items provide clues (signs, books, mailbox)
+- Exploration is rewarded (hidden grove, breadcrumb currency pickups)
+- Environmental variety exists (water tiles, bush walls)
 
-**Layout:**
+**4-Zone Layout:**
 ```
-Peaceful forest village with:
-- 6 buildings (houses, chapel, cottage)
-- 4 decorations (mailbox, sign, bench, lantern)
-- 6 breakables scattered around
-- Tutorial gate blocking exit (3 wooden barriers)
-- Guaranteed rewards behind gate (50 currency, card)
-- Zero enemies
+Zone 1 — Village Hub (upper-left, cols 1-18, rows 1-9)
+  4 buildings (🏠🏠🏡⛪), fountain (⛲), lantern (🏮)
+  Interactive: Sign post ("Break bushes..."), Mailbox (lore)
+  2 breakable bushes near path
+
+Zone 2 — Garden & Orchard (upper-right, cols 20-38, rows 1-9)
+  3 breakable apple trees (🌳 hp:3), 2 flower patches (🌸 hp:1)
+  Interactive: Orchard sign, Berry bush (🫐 auto-pickup food)
+  Bench decoration
+
+Zone 3 — Hidden Grove (lower-left, cols 1-18, rows 10-18)
+  Blocked by 4 breakable bush wall (🌿 hp:1 each)
+  Inside: Hollow log (🪵 guaranteed card), Picnic basket (🧺 high currency)
+  Interactive: Area of interest (❓ discovery text)
+  Water feature: 3 water tiles (~) with slow movement
+  Hidden lantern for atmosphere
+
+Zone 4 — Southern Path & Gate (center-south, rows 12-18)
+  Tutorial gate (🚧 x3, hp:2) blocking exit
+  Wooden crate (📦) near gate
+  Interactive: Weathered journal (📚 exit hint)
+  Behind gate: 50 currency + guaranteed card
 ```
+
+**Breadcrumb Pickups:** 5 small currency pickups (3-5 coins) placed along paths between zones to guide exploration flow.
 
 **Player Experience:**
-1. Spawn in eastern area, see village to the west
-2. Explore buildings and decorations
-3. Break objects to discover currency and items
-4. Encounter tutorial gate blocking southern exit
-5. Break gate to access exit
-6. Collect guaranteed rewards
-7. Learn: Breaking things = good things
+1. Spawn in eastern area (30,10), see village to the west
+2. Village Hub: Read signs for tutorial hints, explore buildings
+3. Follow breadcrumbs to Garden & Orchard, discover food and breakables
+4. Notice bush wall in lower-left, break through to discover Hidden Grove
+5. Find high-value rewards and mysterious area of interest in grove
+6. Approach tutorial gate, break through to access exit
+7. Read journal near exit as foreshadowing for harder floors ahead
 
-**Design Inspiration:** Original Zelda's starting cave entrance
+**Design Inspiration:** Original Zelda's starting area with themed zones encouraging exploration and environmental discovery rather than linear progression.
 
 ### Floor 2: The Key Quest
 

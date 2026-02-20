@@ -7,9 +7,10 @@
 4. [Floor Shuffling](#floor-shuffling)
 5. [Biome Bleed](#biome-bleed)
 6. [Biome-Specific Card Drops](#biome-specific-card-drops)
-7. [Biome Catalog](#biome-catalog)
-8. [Testing](#testing)
-9. [Technical Implementation](#technical-implementation)
+7. [Biome Background Gradients](#biome-background-gradients)
+8. [Biome Catalog](#biome-catalog)
+9. [Testing](#testing)
+10. [Technical Implementation](#technical-implementation)
 
 ---
 
@@ -630,7 +631,68 @@ _visitedBiomes = [];      // All visited biomes
 
 ---
 
+## Biome Background Gradients
+
+### Overview
+
+Each biome defines a per-tile background gradient that replaces the former hardcoded `#0a0a0a` black floor background. This provides subtle environmental coloring that complements the biome's visual palette and improves readability of floor tiles against the background.
+
+### Design Convention
+
+The gradient system uses a **135-degree axial gradient** (top-left to bottom-right diagonal), matching the convention established by gambling card gradients in the Black Market shop system (`_getGambleGradientStyle` in `shop-system.js`). This consistency allows the gradient direction to hint at zone transitions and biome bleed.
+
+### Day/Night Variants
+
+Each biome defines two gradient configs:
+- **Night** (`backgroundGradient.night`): Darker, more muted colors for even-numbered floors
+- **Day** (`backgroundGradient.day`): Slightly brighter/warmer colors for odd-numbered floors
+
+Floor parity determines variant: `isNight = (_floor % 2 === 0)`
+
+### Gradient Configs by Biome
+
+| Biome | Night Start | Night End | Day Start | Day End | Character |
+|-------|-----------|---------|---------|-------|-----------|
+| **Forest** | `#0a1a0a` | `#0d2a0d` | `#0a1a0a` | `#1a3a1a` | Two dark greens / dark to medium green |
+| **Grey Cave** | `#0a0a0f` | `#0f0a1a` | `#0a0a0f` | `#0f0a1a` | Dark blue-grey (always dark) |
+| **Office** | `#0a0a0a` | `#0f0f15` | `#0a0a12` | `#12121a` | Near-black to dark grey-blue |
+| **Mall** | `#0a0a0a` | `#1a0a0a` | `#0f0a0a` | `#1a1010` | Dark to dark-red tint |
+| **Industrial** | `#0a0a08` | `#1a1508` | `#0f0e08` | `#1a1a0a` | Dark to amber-tinted |
+| **Aerospace** | `#08080f` | `#0f0f1a` | `#0a0a12` | `#141420` | Deep space blue |
+
+### Technical Implementation
+
+**Pre-computation:** At floor generation time, `_buildBiomeBackgroundColors(biome, isNight)` pre-computes a 40x20 array of hex color strings. The interpolation formula for 135-degree gradient:
+
+```
+t = (x + y) / (GRID_WIDTH + GRID_HEIGHT - 2)
+color = lerp(startColor, endColor, clamp(t, 0, 1))
+```
+
+**Rendering:** The canvas renderer (`_renderWithCanvas` in `gone-rogue-mobile.js`) calls `GoneRogue.getBiomeBackgroundColor(x, y)` for each floor tile instead of using the hardcoded `#0a0a0a`. Wall tiles, door tiles, water tiles, and debris tiles keep their own distinct background colors.
+
+**Files:**
+- `gone-rogue.js`: `_hexToRgb()`, `_rgbToHex()`, `_lerpColor()`, `_buildBiomeBackgroundColors()`, `getBiomeBackgroundColor()` + `backgroundGradient` config on each BIOME
+- `gone-rogue-mobile.js`: `_renderWithCanvas()` biome bg lookup for floor tiles
+
+### Special Tile Overrides
+
+These tiles ignore the biome gradient and use their own backgrounds:
+- Walls (`█`, `▓`): `#333333`
+- Debris (`░`): `#1a1a1a`
+- Doors (`🚪`, `▼`): `#0a1a0a`
+- Water (`~`): `#0a1a2a`
+
+---
+
 ## Changelog
+
+### 2026-02-20
+- ✅ Added biome background gradient system (135-degree axial, per-biome day/night configs)
+- ✅ Redesigned Floor 1 with 4-zone Zelda-style layout (Village Hub, Garden/Orchard, Hidden Grove, Gate Path)
+- ✅ Added interactive items support to tutorial floors (signs, books, food, area of interest)
+- ✅ Added water tile rendering and breadcrumb pickup system
+- ✅ Added breakable bush wall mechanic for hidden grove discovery
 
 ### 2026-02-19
 - ✅ Added biome-specific card drops with weighted tables
@@ -657,6 +719,6 @@ Implementation based on GONE_ROGUE_DECKBUILDER_GAP_ANALYSIS.md Issue 2 (Procedur
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2026-02-19
+**Document Version**: 1.1
+**Last Updated**: 2026-02-20
 **Status**: Complete consolidated guide

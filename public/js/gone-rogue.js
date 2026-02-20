@@ -111,6 +111,7 @@ const GoneRogue = (function () {
   // Forest biome state
   var _forestBuildings = []; // Village buildings {x, y, emoji} for visual overlay
   var _biomeVisualGrid = null; // Pre-computed visual substitution grid (wall/floor chars)
+  var _biomeBackgroundColors = null; // Pre-computed per-tile background gradient colors (40x20)
 
   // Seed-based generation for reproducible runs
   var _currentSeed = null;         // Current run seed (for deterministic generation)
@@ -275,7 +276,13 @@ const GoneRogue = (function () {
 
       // No real combat threats
       enemies: [],
-      enemyDensity: 0.0
+      enemyDensity: 0.0,
+
+      // Background gradient (135-degree axial, matching gambling card convention)
+      backgroundGradient: {
+        night: { start: '#0a1a0a', end: '#0d2a0d' },  // Two dark greens
+        day:   { start: '#0a1a0a', end: '#1a3a1a' }   // Dark to medium low-hue green
+      }
     },
     GREY_CAVE: {
       name: 'Grey Cave',
@@ -308,7 +315,12 @@ const GoneRogue = (function () {
       props: [
         { emoji: '🪨', name: 'Boulder', breakable: true, hp: 2, blocksPath: true },
         { emoji: '💧', name: 'Water Drip', breakable: false, blocksPath: true }
-      ]
+      ],
+
+      backgroundGradient: {
+        night: { start: '#0a0a0f', end: '#0f0a1a' },  // Dark blue-grey
+        day:   { start: '#0a0a0f', end: '#0f0a1a' }   // Caves are always dark
+      }
     },
     OFFICE: {
       name: 'Commercial Office',
@@ -366,6 +378,11 @@ const GoneRogue = (function () {
         terminals: 3,                     // Hackable terminals per floor
         lockedDoors: 2,                   // Requires keycards
         coverClusters: true               // Desk arrangements
+      },
+
+      backgroundGradient: {
+        night: { start: '#0a0a0a', end: '#0f0f15' },  // Near-black to dark grey-blue
+        day:   { start: '#0a0a12', end: '#12121a' }   // Subtle blue tint
       }
     },
     MALL: {
@@ -421,6 +438,11 @@ const GoneRogue = (function () {
         escapeRoutes: 3,                  // Guaranteed exits
         directories: 2,                   // Navigation aids
         escalators: 2                     // Vertical movement
+      },
+
+      backgroundGradient: {
+        night: { start: '#0a0a0a', end: '#1a0a0a' },  // Dark to dark-red tint
+        day:   { start: '#0f0a0a', end: '#1a1010' }   // Warmer dark red
       }
     },
     INDUSTRIAL: {
@@ -491,6 +513,11 @@ const GoneRogue = (function () {
         ignitionChains: true,            // Oil spill fire spreads
         verticalHazards: true,           // Collapsing tiles
         controlPanels: 3                 // Hackable environmental controls
+      },
+
+      backgroundGradient: {
+        night: { start: '#0a0a08', end: '#1a1508' },  // Dark to amber-tinted
+        day:   { start: '#0f0e08', end: '#1a1a0a' }   // Warm industrial yellow
       }
     },
     AEROSPACE: {
@@ -502,7 +529,12 @@ const GoneRogue = (function () {
       props: [
         { emoji: '🚀', name: 'Rocket Scaffold', breakable: false },
         { emoji: '✈️', name: 'Hanging Plane', breakable: false }
-      ]
+      ],
+
+      backgroundGradient: {
+        night: { start: '#08080f', end: '#0f0f1a' },  // Deep space blue
+        day:   { start: '#0a0a12', end: '#141420' }   // Lighter space blue
+      }
     }
   };
 
@@ -1673,6 +1705,104 @@ const GoneRogue = (function () {
     });
   }
 
+  // ============================================================
+  // BIOME BACKGROUND GRADIENT SYSTEM
+  // 135-degree axial gradient per biome (matches gambling card convention)
+  // ============================================================
+
+  /**
+   * Parse hex color string to RGB object
+   * @param {string} hex - Color string like '#0a1a0a'
+   * @returns {Object} { r, g, b } integers 0-255
+   */
+  function _hexToRgb(hex) {
+    var r = parseInt(hex.substr(1, 2), 16);
+    var g = parseInt(hex.substr(3, 2), 16);
+    var b = parseInt(hex.substr(5, 2), 16);
+    return { r: r, g: g, b: b };
+  }
+
+  /**
+   * Convert RGB values to hex color string
+   * @param {number} r - Red 0-255
+   * @param {number} g - Green 0-255
+   * @param {number} b - Blue 0-255
+   * @returns {string} Hex color string like '#0a1a0a'
+   */
+  function _rgbToHex(r, g, b) {
+    var rr = Math.max(0, Math.min(255, Math.round(r)));
+    var gg = Math.max(0, Math.min(255, Math.round(g)));
+    var bb = Math.max(0, Math.min(255, Math.round(b)));
+    return '#' +
+      (rr < 16 ? '0' : '') + rr.toString(16) +
+      (gg < 16 ? '0' : '') + gg.toString(16) +
+      (bb < 16 ? '0' : '') + bb.toString(16);
+  }
+
+  /**
+   * Linear interpolate between two hex colors
+   * @param {string} color1 - Start hex color
+   * @param {string} color2 - End hex color
+   * @param {number} t - Interpolation factor 0.0 to 1.0
+   * @returns {string} Interpolated hex color
+   */
+  function _lerpColor(color1, color2, t) {
+    var c1 = _hexToRgb(color1);
+    var c2 = _hexToRgb(color2);
+    return _rgbToHex(
+      c1.r + (c2.r - c1.r) * t,
+      c1.g + (c2.g - c1.g) * t,
+      c1.b + (c2.b - c1.b) * t
+    );
+  }
+
+  /**
+   * Pre-compute per-tile background colors for the current biome gradient.
+   * Uses 135-degree axial gradient (top-left to bottom-right diagonal).
+   * @param {Object} biome - Biome definition with backgroundGradient
+   * @param {boolean} isNight - Whether this is a night biome variant
+   */
+  function _buildBiomeBackgroundColors(biome, isNight) {
+    if (!biome || !biome.backgroundGradient) {
+      _biomeBackgroundColors = null;
+      return;
+    }
+
+    var gradientConfig = isNight ? biome.backgroundGradient.night : biome.backgroundGradient.day;
+    if (!gradientConfig) {
+      _biomeBackgroundColors = null;
+      return;
+    }
+
+    _biomeBackgroundColors = [];
+    var maxDist = GRID_WIDTH + GRID_HEIGHT - 2; // Max diagonal distance for 135-degree
+
+    for (var y = 0; y < GRID_HEIGHT; y++) {
+      var row = [];
+      for (var x = 0; x < GRID_WIDTH; x++) {
+        // 135-degree gradient: progress along top-left → bottom-right diagonal
+        var t = maxDist > 0 ? (x + y) / maxDist : 0;
+        t = Math.max(0, Math.min(1, t));
+        row.push(_lerpColor(gradientConfig.start, gradientConfig.end, t));
+      }
+      _biomeBackgroundColors.push(row);
+    }
+  }
+
+  /**
+   * Get the biome background color for a specific tile position.
+   * Returns null if no gradient is active.
+   * @param {number} x - Grid X coordinate
+   * @param {number} y - Grid Y coordinate
+   * @returns {string|null} Hex color or null
+   */
+  function getBiomeBackgroundColor(x, y) {
+    if (!_biomeBackgroundColors) return null;
+    if (y < 0 || y >= _biomeBackgroundColors.length) return null;
+    if (x < 0 || x >= _biomeBackgroundColors[y].length) return null;
+    return _biomeBackgroundColors[y][x];
+  }
+
   /**
    * Create hard, nearly square perimeters with natural wall tile distribution.
    * (Exported API function per spec — operates on an external map array.)
@@ -1992,9 +2122,52 @@ const GoneRogue = (function () {
       console.log('[TutorialFloors] NPCs defined but NPC system not yet implemented');
     }
 
+    // Place interactive items (signs, books, food, area-of-interest)
+    if (floorData.interactiveItems && typeof InteractiveItems !== 'undefined') {
+      floorData.interactiveItems.forEach(function(itemDef) {
+        var item = InteractiveItems.createItem(itemDef.type, itemDef.x, itemDef.y, {
+          text: itemDef.text || '',
+          emoji: itemDef.emoji,
+          name: itemDef.name,
+          customData: itemDef.customData
+        });
+        if (item) {
+          InteractiveItems.addItem(item);
+        }
+      });
+      console.log('[TutorialFloors] Placed ' + floorData.interactiveItems.length + ' interactive items');
+    }
+
+    // Place water tiles
+    if (floorData.waterTiles) {
+      floorData.waterTiles.forEach(function(w) {
+        if (w.y >= 0 && w.y < GRID_HEIGHT && w.x >= 0 && w.x < GRID_WIDTH) {
+          _grid[w.y][w.x] = '~';
+        }
+      });
+      console.log('[TutorialFloors] Placed ' + floorData.waterTiles.length + ' water tiles');
+    }
+
+    // Place breadcrumb pickups (small currency rewards along exploration paths)
+    if (floorData.breadcrumbPickups) {
+      floorData.breadcrumbPickups.forEach(function(pickup) {
+        _currencies.push({
+          x: pickup.x,
+          y: pickup.y,
+          amount: pickup.amount || 3,
+          collected: false
+        });
+      });
+      console.log('[TutorialFloors] Placed ' + floorData.breadcrumbPickups.length + ' breadcrumb pickups');
+    }
+
     // Build biome visual grid for forest biome
     var forestBiome = BIOMES.FOREST;
     _buildBiomeVisualGrid(forestBiome);
+
+    // Build biome background gradient (day for odd floors, night for even)
+    var isNightFloor = (_floor % 2 === 0);
+    _buildBiomeBackgroundColors(forestBiome, isNightFloor);
 
     // Cache walls for lighting system
     _cachedWalls = [];
@@ -2031,6 +2204,7 @@ const GoneRogue = (function () {
     // Reset forest biome state
     _forestBuildings = [];
     _biomeVisualGrid = null;
+    _biomeBackgroundColors = null;
 
     // Invalidate per-floor caches
     _stealthBonusCache = null;
@@ -2183,6 +2357,10 @@ _incrementPityTimers();
         _placeVillageCluster(floorBiome);
       }
       _buildBiomeVisualGrid(floorBiome);
+
+      // Build biome background gradient (day for odd floors, night for even)
+      var isNightFloor = (_floor % 2 === 0);
+      _buildBiomeBackgroundColors(floorBiome, isNightFloor);
 
       // Generate discoveries and environmental details for exploration framework
       _generateDiscoveries(rooms, floorBiome);
@@ -3998,6 +4176,24 @@ _incrementPityTimers();
       var difficulty = ['STANDARD', 'ADVANCED', 'EXTREME'][_difficultyTier - 1];
       awolButton.setAttribute('title', 'AWOL status — Click to configure difficulty\nSeed: ' + _currentSeedPhrase);
     }
+  }
+
+  /**
+   * Check if a grid position is walkable (used by pathfinding and collision)
+   */
+  function _isWalkable(x, y) {
+    // Bounds check
+    if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) return false;
+
+    // Wall check
+    var tile = _grid[y][x];
+    if (tile === TILES.WALL) return false;
+
+    // Breakable with HP blocks movement
+    var breakable = _getBreakableAt(x, y);
+    if (breakable && breakable.hp > 0) return false;
+
+    return true;
   }
 
   function _movePlayer(dx, dy, runMode) {
@@ -9867,6 +10063,7 @@ _incrementPityTimers();
     },
     triggerActiveItem: triggerActiveItem,
     updatePlayerLight: _updatePlayerLight,
+    getBiomeBackgroundColor: getBiomeBackgroundColor,
 
     // Difficulty tier system
     setDifficulty: setDifficulty,

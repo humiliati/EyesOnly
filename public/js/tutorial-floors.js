@@ -28,30 +28,34 @@ var TutorialFloors = (function() {
   };
 
   /**
-   * Floor 1: Village Entrance
+   * Floor 1: Village Entrance — Zelda-style 4-zone layout
    *
-   * Teaching objective: Breakables contain things. Hit things, get things.
+   * Teaching objectives:
+   * - Breakables contain things (break bushes, crates, logs)
+   * - Interactive items provide clues (signs, books, mailbox)
+   * - Exploration is rewarded (hidden grove, breadcrumb pickups)
+   * - Environmental variety (water tiles, bush walls)
    *
-   * Layout:
-   * - Peaceful village in center-left quadrant
-   * - Border of trees/bushes containing player
-   * - Gate blocking southern exit (breakable tutorial)
-   * - No enemies, no combat
-   * - Mailbox as first interactive hint
+   * Layout (4 zones):
+   * - Zone 1 (upper-left): Village Hub — buildings, signs, fountain
+   * - Zone 2 (upper-right): Garden & Orchard — food, flowers, apple trees
+   * - Zone 3 (lower-left): Hidden Grove — behind breakable bush wall
+   * - Zone 4 (center-south): Southern Path & Gate — tutorial gate to exit
    */
   var FLOOR_1_LAYOUT = {
     floorNumber: 1,
     name: 'Village Entrance',
-    description: 'A peaceful forest village. Learn the basics.',
+    description: 'A peaceful forest village with secrets to discover.',
 
     // Grid layout template (ASCII representation)
     // '.' = floor, '#' = wall, 'P' = player spawn, 'E' = exit, 'G' = tutorial gate
+    // '~' = water tile
     template: [
       '########################################',
       '#......................................#',
-      '#...🏠.........🏠......................#',
-      '#...🏠.........⛪......................#',
-      '#...🏡.........🏠......................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
       '#......................................#',
       '#......................................#',
       '#......................................#',
@@ -63,7 +67,7 @@ var TutorialFloors = (function() {
       '#......................................#',
       '#.................GGG..................#',
       '#......................................#',
-      '#......................................#',
+      '#..~~..................................#',
       '#...................E..................#',
       '#......................................#',
       '########################################'
@@ -73,22 +77,49 @@ var TutorialFloors = (function() {
     player: { x: 30, y: 10 },
     exit: { x: 20, y: 17 },
 
-    // Buildings (visual overlay, walkable)
+    // Buildings (visual overlay, impassable)
+    // Zone 1: Village Hub — small hamlet in upper-left
     buildings: [
       { x: 4, y: 2, emoji: '🏠', name: 'Village House' },
-      { x: 4, y: 3, emoji: '🏠', name: 'Village House' },
+      { x: 8, y: 2, emoji: '🏠', name: 'Village House' },
       { x: 4, y: 4, emoji: '🏡', name: 'Village Cottage' },
-      { x: 12, y: 2, emoji: '🏠', name: 'Village House' },
-      { x: 12, y: 3, emoji: '⛪', name: 'Village Chapel' },
-      { x: 12, y: 4, emoji: '🏠', name: 'Village House' }
+      { x: 8, y: 4, emoji: '⛪', name: 'Village Chapel' }
     ],
 
     // Decorations (visual overlay, walkable)
     decorations: [
-      { x: 6, y: 3, emoji: '📬', name: 'Mailbox' },
-      { x: 8, y: 5, emoji: '🪧', name: 'Sign Post' },
-      { x: 15, y: 6, emoji: '🪑', name: 'Bench' },
-      { x: 25, y: 8, emoji: '🏮', name: 'Lantern' }
+      // Zone 1: Village atmosphere
+      { x: 6, y: 1, emoji: '⛲', name: 'Fountain' },
+      { x: 10, y: 3, emoji: '🏮', name: 'Lantern' },
+      // Zone 2: Orchard/garden atmosphere
+      { x: 32, y: 3, emoji: '🪑', name: 'Bench' },
+      // Zone 3: Hidden grove atmosphere
+      { x: 3, y: 15, emoji: '🏮', name: 'Hidden Lantern' }
+    ],
+
+    // Interactive items (use InteractiveItems system)
+    interactiveItems: [
+      // Zone 1: Tutorial signs & mailbox
+      { x: 12, y: 5, type: 'SIGN', emoji: '🪧', name: 'Sign Post',
+        text: 'Break bushes to find treasure! Try hitting anything that looks fragile.' },
+      { x: 6, y: 3, type: 'SIGN', emoji: '📬', name: 'Mailbox',
+        text: 'Welcome to the Cozy Forest village. Explore freely — secrets hide in every corner.' },
+      // Zone 2: Orchard sign + berry bush
+      { x: 28, y: 2, type: 'SIGN', emoji: '🪧', name: 'Orchard Sign',
+        text: 'The orchard keeper left berries for travelers. Help yourself!' },
+      { x: 26, y: 4, type: 'FOOD', emoji: '🫐', name: 'Berry Bush',
+        customData: { foodId: 'berries' } },
+      // Zone 3: Hidden grove discovery
+      { x: 7, y: 15, type: 'AREA_OF_INTEREST', emoji: '❓', name: 'Strange Marking',
+        text: 'Something glimmers in the undergrowth... Ancient runes are carved into the stone.' },
+      // Zone 4: Exit hint
+      { x: 17, y: 15, type: 'BOOK', emoji: '📚', name: 'Weathered Journal',
+        text: 'The forest grows darker beyond this point. Prepare yourself before venturing further.' }
+    ],
+
+    // Water tiles (slow movement, visual variety)
+    waterTiles: [
+      { x: 3, y: 16 }, { x: 4, y: 16 }, { x: 5, y: 16 }
     ],
 
     // Tutorial gate (blocks path to exit)
@@ -104,14 +135,38 @@ var TutorialFloors = (function() {
       message: 'A wooden gate blocks your path. Try breaking it!'
     },
 
-    // Breakable objects (teach collection mechanics)
+    // Breakable objects — spread across all 4 zones
     breakables: [
-      { x: 10, y: 8, emoji: '🌿', name: 'Bush', hp: 1, drops: { currency: [3, 5], cards: 0.3 } },
-      { x: 22, y: 7, emoji: '🌿', name: 'Bush', hp: 1, drops: { currency: [3, 5], cards: 0.3 } },
-      { x: 28, y: 12, emoji: '🧺', name: 'Picnic Basket', hp: 2, drops: { currency: [5, 10], cards: 0.4 } },
-      { x: 14, y: 10, emoji: '🪵', name: 'Hollow Log', hp: 2, drops: { currency: [4, 8], cards: 0.3 } },
-      { x: 32, y: 15, emoji: '📦', name: 'Wooden Crate', hp: 2, drops: { currency: [5, 10], cards: 0.5 } },
-      { x: 8, y: 15, emoji: '🌿', name: 'Bush', hp: 1, drops: { currency: [3, 5], cards: 0.3 } }
+      // Zone 1: Village bushes (easy, near spawn path)
+      { x: 14, y: 3, emoji: '🌿', name: 'Bush', hp: 1, drops: { currency: [3, 5], cards: 0.2 } },
+      { x: 16, y: 7, emoji: '🌿', name: 'Bush', hp: 1, drops: { currency: [3, 5], cards: 0.2 } },
+      // Zone 2: Orchard trees & flowers
+      { x: 24, y: 2, emoji: '🌳', name: 'Apple Tree', hp: 3, drops: { currency: [5, 10], cards: 0.3 } },
+      { x: 28, y: 4, emoji: '🌳', name: 'Apple Tree', hp: 3, drops: { currency: [5, 10], cards: 0.3 } },
+      { x: 32, y: 2, emoji: '🌳', name: 'Apple Tree', hp: 3, drops: { currency: [5, 10], cards: 0.3 } },
+      { x: 22, y: 5, emoji: '🌸', name: 'Flower Patch', hp: 1, drops: { currency: [2, 4], cards: 0.4 } },
+      { x: 35, y: 6, emoji: '🌸', name: 'Flower Patch', hp: 1, drops: { currency: [2, 4], cards: 0.4 } },
+      // Zone 3: Hidden grove (breakable bush wall + rewards inside)
+      { x: 5, y: 11, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 3] } },
+      { x: 5, y: 12, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 3] } },
+      { x: 5, y: 13, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 3] } },
+      { x: 5, y: 14, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 3] } },
+      { x: 3, y: 13, emoji: '🪵', name: 'Hollow Log', hp: 2, drops: { currency: [8, 15], cards: 0.7 } },
+      { x: 3, y: 11, emoji: '🧺', name: 'Picnic Basket', hp: 2, drops: { currency: [10, 20], cards: 0.5 } },
+      // Zone 4: Near gate
+      { x: 23, y: 13, emoji: '📦', name: 'Wooden Crate', hp: 2, drops: { currency: [5, 10], cards: 0.5 } }
+    ],
+
+    // Breadcrumb pickups — small currency rewards along paths between zones
+    breadcrumbPickups: [
+      // Path from spawn toward village
+      { x: 25, y: 9, amount: 3 },
+      { x: 20, y: 8, amount: 3 },
+      // Path from village toward orchard
+      { x: 18, y: 3, amount: 3 },
+      { x: 21, y: 3, amount: 3 },
+      // Path toward gate
+      { x: 20, y: 12, amount: 5 }
     ],
 
     // Tutorial pickups (behind gate, guaranteed rewards)
@@ -465,6 +520,8 @@ var TutorialFloors = (function() {
           var char = row.charAt(tx);
           if (char === '#') {
             grid[ty][tx] = TILES.WALL;
+          } else if (char === '~') {
+            grid[ty][tx] = '~'; // Water tile
           } else if (char !== 'P' && char !== 'E' && char !== 'G' && char !== 'L') {
             // Keep as floor, handle special markers separately
             grid[ty][tx] = TILES.EMPTY;
@@ -498,6 +555,9 @@ var TutorialFloors = (function() {
       lockedGate: layout.lockedGate,
       keyBreakable: layout.keyBreakable,
       tutorialPickups: layout.tutorialPickups || [],
+      interactiveItems: layout.interactiveItems || [],
+      waterTiles: layout.waterTiles || [],
+      breadcrumbPickups: layout.breadcrumbPickups || [],
       border: layout.border,
       metadata: {
         name: layout.name,

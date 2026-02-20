@@ -461,18 +461,27 @@ const LightingSystem = (function() {
         var sources = [];
 
         // Accumulate light from all sources
+        var sightConeIntensity = 0; // Track sight cone separately (not illumination)
         for (var i = 0; i < _lightSources.length; i++) {
           var source = _lightSources[i];
           var lightIntensity = _calculateLightFromSource(source, x, y, blockers);
 
           if (lightIntensity > 0.01) { // Threshold to avoid very dim lights
             lightIntensity *= _darknessMultiplier;
-            totalIntensity += lightIntensity;
-            sources.push(source.type);
 
-            // Blend color
-            var lightDef = LIGHT_SOURCES[source.type];
-            blendedColor = _blendColors(blendedColor, totalIntensity - lightIntensity, lightDef.color, lightIntensity);
+            // Sight cones are awareness indicators, not illumination —
+            // track them separately so they render as colored overlays
+            if (source.type === 'SIGHT_CONE' || source.type === 'ROBOT_LED') {
+              sightConeIntensity = Math.max(sightConeIntensity, lightIntensity);
+              sources.push(source.type);
+            } else {
+              totalIntensity += lightIntensity;
+              sources.push(source.type);
+
+              // Blend color (environmental lights only)
+              var lightDef = LIGHT_SOURCES[source.type];
+              blendedColor = _blendColors(blendedColor, totalIntensity - lightIntensity, lightDef.color, lightIntensity);
+            }
           }
         }
 
@@ -482,7 +491,8 @@ const LightingSystem = (function() {
         _lightMap[key] = {
           intensity: totalIntensity,
           color: blendedColor,
-          sources: sources
+          sources: sources,
+          sightCone: sightConeIntensity // 0 = not in cone, >0 = in enemy sight
         };
       }
     }

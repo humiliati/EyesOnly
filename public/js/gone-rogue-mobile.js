@@ -268,6 +268,12 @@ const GoneRogueMobile = (function () {
           type: tile ? tile.type : 'empty'
         };
 
+        // Get biome background color for this tile (gradient system)
+        var biomeBg = null;
+        if (typeof GoneRogue !== 'undefined' && GoneRogue.getBiomeBackgroundColor) {
+          biomeBg = GoneRogue.getBiomeBackgroundColor(x, y);
+        }
+
         // Set tile appearance
         if (tile) {
           if (typeof tile === 'string') {
@@ -282,9 +288,14 @@ const GoneRogueMobile = (function () {
             } else if (tile === '🚪' || tile === '▼') {
               cellData.bg = '#0a1a0a';
               cellData.color = '#00ff88';
+            } else if (tile === '~') {
+              // Water tile — dark blue background
+              cellData.bg = '#0a1a2a';
+              cellData.color = '#2a5a8a';
             } else {
               // Floor tiles (ASCII grass, dirt) and emoji wall/deco tiles
-              cellData.bg = '#0a0a0a';
+              // Use biome gradient background if available, else fallback
+              cellData.bg = biomeBg || '#0a0a0a';
               cellData.color = '#2a6e3f'; // Green for ASCII floor readability
             }
           } else {
@@ -303,7 +314,7 @@ const GoneRogueMobile = (function () {
             if (tile.type === 'wall') {
               cellData.bg = '#2a2a2a';
             } else if (tile.type === 'floor') {
-              cellData.bg = '#0a0a0a';
+              cellData.bg = biomeBg || '#0a0a0a';
             }
           }
         }

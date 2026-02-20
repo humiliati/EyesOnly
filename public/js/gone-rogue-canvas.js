@@ -181,6 +181,13 @@ const CanvasRenderer = (function() {
         if (light.sources && light.sources.length > 0 && light.intensity > 0.6) {
           this._renderLightGlow(x, y, light);
         }
+
+        // Render enemy sight cone as a red-tinted shadow overlay (darkens, not brightens)
+        if (light.sightCone && light.sightCone > 0.01) {
+          var coneAlpha = light.sightCone * 0.35; // Subtle red tint
+          this.ctx.fillStyle = 'rgba(255,34,68,' + coneAlpha + ')';
+          this.ctx.fillRect(pixelX, pixelY, this.cellSize, this.cellSize);
+        }
       }
     }
   };
