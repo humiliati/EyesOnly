@@ -2008,6 +2008,9 @@ const GoneRogue = (function () {
 
     console.log('[TutorialFloors] Floor generated successfully');
     console.log('[TutorialFloors] Buildings: ' + _forestBuildings.length + ', Breakables: ' + _breakables.length + ', Enemies: ' + _enemies.length);
+    if (_enemies.length > 0 && _floor < 3) {
+      console.warn('[TutorialFloors] BUG: ' + _enemies.length + ' enemies on floor ' + _floor + ' (should be 0 for floors < 3)');
+    }
   }
 
   function _generateFloor(secretFloorData) {
@@ -2053,6 +2056,12 @@ if (
 ) {
   _generateContrivedTutorialFloor();
   return;
+}
+
+// Diagnostic: if floor < 3 but TutorialFloors didn't catch it, log why
+if (_floor < 3 && !isSecretFloor) {
+  console.warn('[GoneRogue] Floor ' + _floor + ' using PROCEDURAL path (TutorialFloors ' +
+    (typeof TutorialFloors === 'undefined' ? 'NOT LOADED' : 'loaded but isContrivedFloor=' + TutorialFloors.isContrivedFloor(_floor)) + ')');
 }
 
 // Increment pity timers for card drop tracking (skip contrived tutorial floors)
@@ -6434,7 +6443,11 @@ _incrementPityTimers();
       'north': '↑',
       'south': '↓',
       'east': '→',
-      'west': '←'
+      'west': '←',
+      'northeast': './',
+      'northwest': '/',
+      'southeast': '.\\',
+      'southwest': '\\'
     };
 
     return glyphs[direction] || TILES.PROJECTILE;
@@ -6481,6 +6494,62 @@ _incrementPityTimers();
 
     return {
       lines: ['FIRING ' + projectile.glyph + ' ' + dir.direction.toUpperCase(), ''].concat(_renderGrid()),
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  /**
+   * Fire a projectile toward a clicked target coordinate (used by desktop/mobile grid input)
+   */
+  function fireProjectileAtTarget(targetX, targetY) {
+    if (!_active || !_player) return;
+
+    var dx = targetX - _player.x;
+    var dy = targetY - _player.y;
+
+    if (dx === 0 && dy === 0) return;
+
+    // Prefer 8-directional aim, fall back to dominant axis if needed
+    var stepX = dx === 0 ? 0 : (dx > 0 ? 1 : -1);
+    var stepY = dy === 0 ? 0 : (dy > 0 ? 1 : -1);
+
+    var dirName = 'east';
+    if (stepX === 0 && stepY === -1) dirName = 'north';
+    else if (stepX === 0 && stepY === 1) dirName = 'south';
+    else if (stepX === 1 && stepY === 0) dirName = 'east';
+    else if (stepX === -1 && stepY === 0) dirName = 'west';
+    else if (stepX === 1 && stepY === -1) dirName = 'northeast';
+    else if (stepX === -1 && stepY === -1) dirName = 'northwest';
+    else if (stepX === 1 && stepY === 1) dirName = 'southeast';
+    else if (stepX === -1 && stepY === 1) dirName = 'southwest';
+
+    var projectile = {
+      x: _player.x,
+      y: _player.y,
+      dx: stepX,
+      dy: stepY,
+      glyph: _getProjectileGlyph(dirName),
+      emoji: '💥',
+      range: 10,
+      power: 2,
+      owner: 'player'
+    };
+
+    // Muzzle flash at player position
+    _muzzleFlash = { x: _player.x, y: _player.y, time: Date.now() };
+    setTimeout(function() { _muzzleFlash = null; }, 300);
+
+    _projectiles.push(projectile);
+    _updateProjectiles(0, 1);
+    _saveState();
+
+    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+      _updateMobileGrid();
+    }
+
+    return {
+      lines: ['FIRING ' + projectile.glyph + ' AT TARGET', ''].concat(_renderGrid()),
       prompt: getPrompt(),
       stayActive: true
     };
@@ -6718,7 +6787,45 @@ _incrementPityTimers();
       }
     }
 
-    // Calculate path (simple: move one step towards target)
+    // Route tap-to-move through smooth movement system when available
+    if (typeof GoneRogueMovement !== 'undefined') {
+      GoneRogueMovement.init(_player.x, _player.y);
+
+      var collisionCheck = function(x, y) {
+        return !_isWalkable(x, y);
+      };
+
+      // Terrain penalty callback used by sprint movement
+      collisionCheck.getTileMovePenalty = function(x, y) {
+        if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) return 0;
+        var tile = _grid[y][x];
+
+        if (tile === TILES.WATER && TILE_EFFECTS.WATER) {
+          return TILE_EFFECTS.WATER.movePenalty || 0;
+        }
+
+        var key = x + ',' + y;
+        if (_tileMetadata[key] && _tileMetadata[key].movePenalty) {
+          return _tileMetadata[key].movePenalty;
+        }
+
+        return 0;
+      };
+
+      GoneRogueMovement.setTarget(targetX, targetY, collisionCheck, !!runMode);
+
+      if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+        _updateMobileGrid();
+      }
+
+      return {
+        lines: ['Moving...', ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    // Fallback: instant single-step move
     var dx = targetX - _player.x;
     var dy = targetY - _player.y;
 
@@ -6726,10 +6833,8 @@ _incrementPityTimers();
     var stepX = dx === 0 ? 0 : (dx > 0 ? 1 : -1);
     var stepY = dy === 0 ? 0 : (dy > 0 ? 1 : -1);
 
-    // Execute move
     var moveResult = _movePlayer(stepX, stepY, runMode);
 
-    // Update mobile UI
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
       _updateMobileGrid();
     }
@@ -9750,6 +9855,7 @@ _incrementPityTimers();
     removeBreakableAt: _removeBreakableAt,
     getProjectiles: function() { return _projectiles; },
     fireProjectile: _fireProjectile,
+    fireProjectileAtTarget: fireProjectileAtTarget,
     stepProjectiles: stepProjectiles,
     isStrCombatActive: isStrCombatActive,
     getStrCombatState: getStrCombatState,

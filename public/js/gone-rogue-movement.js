@@ -53,9 +53,12 @@ const GoneRogueMovement = (function () {
       this.f = this.g + this.h; // total cost
     }
 
-    // Heuristic: Manhattan distance
+    // Heuristic: Octile distance (admissible for 8-directional movement)
     function heuristic(x1, y1, x2, y2) {
-      return Math.abs(x2 - x1) + Math.abs(y2 - y1);
+      var dx = Math.abs(x2 - x1);
+      var dy = Math.abs(y2 - y1);
+      var F = Math.SQRT2 - 1;
+      return (dx < dy) ? (F * dx + dy) : (F * dy + dx);
     }
 
     // Check if position is in list
@@ -72,24 +75,36 @@ const GoneRogueMovement = (function () {
       if (idx !== -1) list.splice(idx, 1);
     }
 
-    // Get neighbors (4-directional)
+    // Get neighbors (8-directional)
     function getNeighbors(node) {
       var neighbors = [];
       var dirs = [
-        { dx: 0, dy: -1 }, // north
-        { dx: 1, dy: 0 },  // east
-        { dx: 0, dy: 1 },  // south
-        { dx: -1, dy: 0 }  // west
+        { dx: 0, dy: -1, cost: 1 }, // north
+        { dx: 1, dy: 0, cost: 1 },  // east
+        { dx: 0, dy: 1, cost: 1 },  // south
+        { dx: -1, dy: 0, cost: 1 }, // west
+        { dx: 1, dy: -1, cost: Math.SQRT2 },  // northeast
+        { dx: 1, dy: 1, cost: Math.SQRT2 },   // southeast
+        { dx: -1, dy: 1, cost: Math.SQRT2 },  // southwest
+        { dx: -1, dy: -1, cost: Math.SQRT2 }  // northwest
       ];
 
       for (var i = 0; i < dirs.length; i++) {
         var nx = node.x + dirs[i].dx;
         var ny = node.y + dirs[i].dy;
 
-        // Check if walkable
-        if (!collisionCheck || !collisionCheck(nx, ny)) {
-          neighbors.push({ x: nx, y: ny });
+        // Walkability check for the destination
+        if (collisionCheck && collisionCheck(nx, ny)) continue;
+
+        // Prevent diagonal corner-cutting through blocked orthogonals
+        var isDiagonal = (dirs[i].dx !== 0 && dirs[i].dy !== 0);
+        if (isDiagonal && collisionCheck) {
+          if (collisionCheck(node.x + dirs[i].dx, node.y) || collisionCheck(node.x, node.y + dirs[i].dy)) {
+            continue;
+          }
         }
+
+        neighbors.push({ x: nx, y: ny, cost: dirs[i].cost });
       }
 
       return neighbors;
@@ -142,7 +157,7 @@ const GoneRogueMovement = (function () {
         // Skip if in closed list
         if (inList(closedList, neighbor.x, neighbor.y)) continue;
 
-        var g = current.g + 1; // cost to reach this neighbor
+        var g = current.g + (neighbor.cost || 1); // cost to reach this neighbor
         var h = heuristic(neighbor.x, neighbor.y, goalX, goalY);
 
         var existingOpen = inList(openList, neighbor.x, neighbor.y);

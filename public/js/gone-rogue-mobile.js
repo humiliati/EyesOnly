@@ -61,6 +61,12 @@ const GoneRogueMobile = (function () {
   var FISHING_THRESHOLD = 20; // pixels to activate fishing mode
   var FISHING_UPDATE_INTERVAL = 50; // ms between path recalculations
 
+  // Desktop pointer-based fishing
+  var _desktopPointerDown = false;
+  var _desktopPointerStart = { x: 0, y: 0 };
+  var _desktopFishingActive = false;
+  var _suppressNextClick = false;
+
   /**
    * Initialize mobile UI
    */
@@ -224,6 +230,12 @@ const GoneRogueMobile = (function () {
     _gridContainer.addEventListener('touchmove', _handleGridTouchMove, { passive: false });
     _gridContainer.addEventListener('touchend', _handleGridTouchEnd, { passive: false });
     _gridContainer.addEventListener('click', _handleGridClick);
+
+    // Desktop: pointer-based fishing (hold-to-move)
+    _gridContainer.addEventListener('pointerdown', _handleGridPointerDown);
+    _gridContainer.addEventListener('pointermove', _handleGridPointerMove);
+    _gridContainer.addEventListener('pointerup', _handleGridPointerUp);
+    _gridContainer.addEventListener('pointercancel', _handleGridPointerUp);
 
     // Card swipe (touch)
     if (_cardContainer) {
@@ -995,6 +1007,23 @@ const GoneRogueMobile = (function () {
       }
     }
 
+    // Click-on-enemy: fire projectile instead of moving
+    if (typeof GoneRogue !== 'undefined') {
+      var enemies = GoneRogue.getEnemies ? GoneRogue.getEnemies() : [];
+      if (enemies && enemies.length) {
+        for (var i = 0; i < enemies.length; i++) {
+          var en = enemies[i];
+          if (en && en.hp > 0 && en.x === x && en.y === y) {
+            if (typeof GoneRogue.fireProjectileAtTarget === 'function') {
+              GoneRogue.fireProjectileAtTarget(x, y);
+              _lastMovementTime = Date.now();
+              return;
+            }
+          }
+        }
+      }
+    }
+
     // Send tap-to-move command and track movement time
     if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleTapMove === 'function') {
       GoneRogue.handleTapMove(x, y, runMode);
@@ -1116,7 +1145,9 @@ const GoneRogueMobile = (function () {
           var player = typeof GoneRogue !== 'undefined' && GoneRogue.getPlayer ? GoneRogue.getPlayer() : null;
           if (player) {
             // Calculate path from player to target
-            var collisionCheck = typeof GoneRogue !== 'undefined' && GoneRogue.isWalkable ? GoneRogue.isWalkable : null;
+            var collisionCheck = (typeof GoneRogue !== 'undefined' && GoneRogue.isWalkable)
+              ? function(x, y) { return !GoneRogue.isWalkable(x, y); }
+              : null;
             _fishingPath = GoneRogueMovement.findPath(player.x, player.y, targetCoords.x, targetCoords.y, collisionCheck);
 
             // Show path overlay
@@ -1350,9 +1381,101 @@ const GoneRogueMobile = (function () {
   }
 
   /**
+   * Desktop pointerdown (hold-to-move / fishing)
+   */
+  function _handleGridPointerDown(e) {
+    if (!e || e.pointerType === 'touch') return;
+    if (e.button !== undefined && e.button !== 0) return; // left click only
+
+    _desktopPointerDown = true;
+    _desktopFishingActive = false;
+    _desktopPointerStart = { x: e.clientX, y: e.clientY };
+    _fishingStart = { x: e.clientX, y: e.clientY };
+    _fishingPath = [];
+
+    try {
+      if (_gridContainer && _gridContainer.setPointerCapture) {
+        _gridContainer.setPointerCapture(e.pointerId);
+      }
+    } catch (err) { /* ignore */ }
+  }
+
+  /**
+   * Desktop pointermove (drag to preview A* path)
+   */
+  function _handleGridPointerMove(e) {
+    if (!e || e.pointerType === 'touch') return;
+    if (!_desktopPointerDown) return;
+
+    var dx = e.clientX - _desktopPointerStart.x;
+    var dy = e.clientY - _desktopPointerStart.y;
+    var distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (!_desktopFishingActive && distance > FISHING_THRESHOLD) {
+      _desktopFishingActive = true;
+    }
+
+    if (_desktopFishingActive) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      var targetCoords = _getGridCoordsFromEvent(e.clientX, e.clientY);
+      if (targetCoords && typeof GoneRogueMovement !== 'undefined') {
+        var player = typeof GoneRogue !== 'undefined' && GoneRogue.getPlayer ? GoneRogue.getPlayer() : null;
+        if (player) {
+          var collisionCheck = (typeof GoneRogue !== 'undefined' && GoneRogue.isWalkable)
+            ? function(x, y) { return !GoneRogue.isWalkable(x, y); }
+            : null;
+
+          _fishingPath = GoneRogueMovement.findPath(player.x, player.y, targetCoords.x, targetCoords.y, collisionCheck);
+          _showFishingPath(_fishingPath);
+        }
+      }
+    }
+  }
+
+  /**
+   * Desktop pointerup (execute fishing move if active)
+   */
+  function _handleGridPointerUp(e) {
+    if (!e || e.pointerType === 'touch') return;
+
+    if (!_desktopPointerDown) return;
+    _desktopPointerDown = false;
+
+    try {
+      if (_gridContainer && _gridContainer.releasePointerCapture) {
+        _gridContainer.releasePointerCapture(e.pointerId);
+      }
+    } catch (err) { /* ignore */ }
+
+    if (_desktopFishingActive && _fishingPath.length > 0) {
+      _hideFishingPath();
+      _desktopFishingActive = false;
+
+      // Prevent the subsequent click from also firing movement
+      _suppressNextClick = true;
+
+      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleFishingMove === 'function') {
+        GoneRogue.handleFishingMove(_fishingPath, _runMode);
+      } else {
+        var destination = _fishingPath[_fishingPath.length - 1];
+        _processGridInput(destination.x, destination.y, _runMode);
+      }
+
+      _fishingPath = [];
+    }
+  }
+
+  /**
    * Handle grid click/tap
    */
   function _handleGridClick(e) {
+    if (_suppressNextClick) {
+      _suppressNextClick = false;
+      return;
+    }
+
     var coords = _getGridCoordsFromEvent(e.clientX, e.clientY);
 
     if (!coords) return;

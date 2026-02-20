@@ -144,8 +144,8 @@ const CanvasRenderer = (function() {
    * @param {Array} grid - 2D array of tile data
    */
   CanvasRenderer.prototype._renderLighting = function(grid) {
-    // Use globalCompositeOperation for multiplicative darkening
-    this.ctx.globalCompositeOperation = 'multiply';
+    // Use source-over for direct darkness overlay (visible shadow gradients)
+    this.ctx.globalCompositeOperation = 'source-over';
 
     for (var y = 0; y < grid.length; y++) {
       for (var x = 0; x < grid[y].length; x++) {
@@ -159,8 +159,8 @@ const CanvasRenderer = (function() {
           var pixelX = x * this.cellSize;
           var pixelY = y * this.cellSize;
 
-          // Apply darkness with light color tint
-          var alpha = darkness * 0.55; // Max 55% darkness overlay for playability
+          // Apply darkness overlay — 70% max for visible shadows while staying playable
+          var alpha = darkness * 0.7;
 
           // Parse light color for tinting
           var r = parseInt(light.color.substr(1, 2), 16);
@@ -168,7 +168,7 @@ const CanvasRenderer = (function() {
           var b = parseInt(light.color.substr(5, 2), 16);
 
           // Create darkness with subtle color tint
-          var tintFactor = 0.15; // 15% of light color mixed into darkness
+          var tintFactor = 0.1; // 10% of light color mixed into darkness
           var darkR = Math.floor(r * tintFactor);
           var darkG = Math.floor(g * tintFactor);
           var darkB = Math.floor(b * tintFactor);
@@ -183,9 +183,6 @@ const CanvasRenderer = (function() {
         }
       }
     }
-
-    // Reset composite operation
-    this.ctx.globalCompositeOperation = 'source-over';
   };
 
   /**
