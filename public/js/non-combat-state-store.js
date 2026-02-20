@@ -36,7 +36,10 @@ var NonCombatStateStore = (function() {
     unlockedActions: [],
 
     equippedItemId: null,
-    cardsInHand: []
+    cardsInHand: [],
+    backupCards: [],
+    selectedHandIndex: -1,
+    selectedBackupIndex: -1
   };
 
   var _subs = [];
@@ -173,6 +176,105 @@ var NonCombatStateStore = (function() {
     return modifyState({ cardsInHand: cards }, triggerEvent || 'hand:add_card', context || { id: cardId, qty: qty });
   }
 
+  function setSelectedHandIndex(idx) {
+    idx = Number(idx);
+    if (!isFinite(idx)) idx = -1;
+    return modifyState({ selectedHandIndex: idx }, 'hand:select', { idx: idx });
+  }
+
+  function setSelectedBackupIndex(idx) {
+    idx = Number(idx);
+    if (!isFinite(idx)) idx = -1;
+    return modifyState({ selectedBackupIndex: idx }, 'backup:select', { idx: idx });
+  }
+
+  function moveSelectedHandToBackup(opts) {
+    opts = opts || {};
+    var maxSlots = Number(opts.maxSlots || 4);
+
+    var hand = Array.isArray(_state.cardsInHand) ? _state.cardsInHand.slice() : [];
+    var backup = Array.isArray(_state.backupCards) ? _state.backupCards.slice() : [];
+
+    // Ensure fixed-length array for stable UI
+    if (backup.length < maxSlots) {
+      while (backup.length < maxSlots) backup.push(null);
+    }
+    if (backup.length > maxSlots) backup = backup.slice(0, maxSlots);
+
+    var hIdx = Number(_state.selectedHandIndex || -1);
+    if (hIdx < 0 || hIdx >= hand.length || !hand[hIdx]) {
+      return false;
+    }
+
+    // Find empty backup slot
+    var bIdx = -1;
+    for (var i = 0; i < backup.length; i++) {
+      if (!backup[i]) { bIdx = i; break; }
+    }
+    if (bIdx === -1) return false;
+
+    var ref = Object.assign({}, hand[hIdx]);
+
+    // Decrement from hand by 1
+    var remaining = (hand[hIdx].qty || 1) - 1;
+    if (remaining <= 0) {
+      hand.splice(hIdx, 1);
+      hIdx = Math.min(hIdx, hand.length - 1);
+    } else {
+      hand[hIdx] = Object.assign({}, hand[hIdx], { qty: remaining });
+    }
+
+    // Place into backup as qty 1 (single card unit)
+    backup[bIdx] = { id: ref.id, qty: 1, meta: ref.meta || null };
+
+    return modifyState({
+      cardsInHand: hand,
+      backupCards: backup,
+      selectedHandIndex: hIdx,
+      selectedBackupIndex: bIdx
+    }, 'hand:move_to_backup', { cardId: ref.id, from: hIdx, to: bIdx });
+  }
+
+  function moveSelectedBackupToHand(opts) {
+    opts = opts || {};
+    var maxSlots = Number(opts.maxSlots || 4);
+
+    var hand = Array.isArray(_state.cardsInHand) ? _state.cardsInHand.slice() : [];
+    var backup = Array.isArray(_state.backupCards) ? _state.backupCards.slice() : [];
+
+    if (backup.length < maxSlots) {
+      while (backup.length < maxSlots) backup.push(null);
+    }
+    if (backup.length > maxSlots) backup = backup.slice(0, maxSlots);
+
+    var bIdx = Number(_state.selectedBackupIndex || -1);
+    if (bIdx < 0 || bIdx >= backup.length || !backup[bIdx]) return false;
+
+    var ref = backup[bIdx];
+
+    // Clear backup slot
+    backup[bIdx] = null;
+
+    // Add to hand (stack qty)
+    var found = false;
+    for (var i = 0; i < hand.length; i++) {
+      if (hand[i] && hand[i].id === ref.id) {
+        hand[i] = Object.assign({}, hand[i], { qty: (hand[i].qty || 0) + 1 });
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      hand.push({ id: ref.id, qty: 1, meta: ref.meta || null });
+    }
+
+    return modifyState({
+      cardsInHand: hand,
+      backupCards: backup,
+      selectedBackupIndex: -1
+    }, 'backup:move_to_hand', { cardId: ref.id, from: bIdx });
+  }
+
   return {
     STORAGE_KEY: STORAGE_KEY,
     HISTORY_KEY: HISTORY_KEY,
@@ -183,6 +285,10 @@ var NonCombatStateStore = (function() {
     transitionTo: transitionTo,
     modifyResource: modifyResource,
     addCardToHand: addCardToHand,
+    setSelectedHandIndex: setSelectedHandIndex,
+    setSelectedBackupIndex: setSelectedBackupIndex,
+    moveSelectedHandToBackup: moveSelectedHandToBackup,
+    moveSelectedBackupToHand: moveSelectedBackupToHand,
     getHistory: getHistory,
     clearHistory: clearHistory
   };

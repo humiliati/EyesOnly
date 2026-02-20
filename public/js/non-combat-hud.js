@@ -50,7 +50,12 @@ var NonCombatHUD = (function() {
     _root.innerHTML =
       '<div class="nch-col nch-left">' +
         '<div class="nch-title">ACTIONS</div>' +
-        '<div class="nch-actions" id="nch-actions"></div>' +
+        '<div class="nch-actions" id="nch-actions">' +
+          '<button class="nch-action-btn" id="nch-btn-to-backup">⬅︎ BACKUP</button>' +
+          '<button class="nch-action-btn" id="nch-btn-to-hand">HAND ➜</button>' +
+          '<div class="nch-title" style="margin-top:6px;">BACKUP</div>' +
+          '<div class="nch-backup" id="nch-backup"></div>' +
+        '</div>' +
       '</div>' +
       '<div class="nch-col nch-center">' +
         '<div class="nch-title">EQUIPPED <button class="nch-min-btn" id="nch-min-btn" title="Minimize">_</button></div>' +
@@ -76,6 +81,31 @@ var NonCombatHUD = (function() {
       minBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         setMinimized(true, 'button');
+      });
+    }
+
+    // Action buttons
+    var btnToBackup = _root.querySelector('#nch-btn-to-backup');
+    if (btnToBackup) {
+      btnToBackup.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (typeof NonCombatStateStore === 'undefined') return;
+        var ok = NonCombatStateStore.moveSelectedHandToBackup({ maxSlots: 4 });
+        if (typeof TooltipSystem !== 'undefined') {
+          TooltipSystem.showPersistent(ok ? '📦 moved to BACKUP' : '❌ select a hand card + ensure backup has space', 1100);
+        }
+      });
+    }
+
+    var btnToHand = _root.querySelector('#nch-btn-to-hand');
+    if (btnToHand) {
+      btnToHand.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (typeof NonCombatStateStore === 'undefined') return;
+        var ok = NonCombatStateStore.moveSelectedBackupToHand({ maxSlots: 4 });
+        if (typeof TooltipSystem !== 'undefined') {
+          TooltipSystem.showPersistent(ok ? '➕ moved to HAND' : '❌ select a backup card', 1000);
+        }
       });
     }
 
@@ -199,22 +229,75 @@ var NonCombatHUD = (function() {
     var hand = _root.querySelector('#nch-hand');
     if (hand) {
       var refs = (state.cardsInHand && Array.isArray(state.cardsInHand)) ? state.cardsInHand : [];
+      hand.innerHTML = '';
+
       if (refs.length === 0) {
         hand.textContent = 'Drop cards here from inventory.';
       } else {
-        var lines = [];
         for (var i = 0; i < refs.length; i++) {
           var ref = refs[i];
           if (!ref || !ref.id) continue;
+
           var card = null;
           if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) {
             card = GoneRogueDataRegistry.getCard(ref.id);
           }
+
           var nm = card ? card.name : ref.id;
           var em = card ? card.emoji : '🃏';
-          lines.push(em + ' ' + nm + ' x' + (ref.qty || 1));
+
+          var row = document.createElement('div');
+          row.className = 'nch-hand-row' + ((state.selectedHandIndex === i) ? ' selected' : '');
+          row.dataset.handIndex = i;
+          row.textContent = em + ' ' + nm + ' x' + (ref.qty || 1);
+
+          row.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var idx = Number(e.currentTarget.dataset.handIndex);
+            if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.setSelectedHandIndex) {
+              NonCombatStateStore.setSelectedHandIndex(idx);
+            }
+          });
+
+          hand.appendChild(row);
         }
-        hand.textContent = lines.join('\n');
+      }
+    }
+
+    var backup = _root.querySelector('#nch-backup');
+    if (backup) {
+      backup.innerHTML = '';
+      var slots = (state.backupCards && Array.isArray(state.backupCards)) ? state.backupCards : [];
+
+      // Fixed 4 slots display
+      for (var s = 0; s < 4; s++) {
+        var ref2 = slots[s] || null;
+        var cell = document.createElement('div');
+        cell.className = 'nch-backup-slot' + ((state.selectedBackupIndex === s) ? ' selected' : '');
+        cell.dataset.backupIndex = s;
+
+        if (ref2 && ref2.id) {
+          var card2 = null;
+          if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) {
+            card2 = GoneRogueDataRegistry.getCard(ref2.id);
+          }
+          var nm2 = card2 ? card2.name : ref2.id;
+          var em2 = card2 ? card2.emoji : '🃏';
+          cell.textContent = em2 + ' ' + nm2;
+        } else {
+          cell.textContent = '—';
+          cell.classList.add('empty');
+        }
+
+        cell.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var idx2 = Number(e.currentTarget.dataset.backupIndex);
+          if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.setSelectedBackupIndex) {
+            NonCombatStateStore.setSelectedBackupIndex(idx2);
+          }
+        });
+
+        backup.appendChild(cell);
       }
     }
 

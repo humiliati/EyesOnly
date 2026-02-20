@@ -104,7 +104,8 @@
 
 .nch-equipped,
 .nch-hand,
-.nch-preview {
+.nch-preview,
+.nch-backup {
   font-family: 'Courier New', monospace;
   font-size: 12px;
   color: rgba(191, 255, 227, 0.95);
@@ -112,6 +113,66 @@
   border-radius: 10px;
   padding: 8px;
   background: rgba(0, 0, 0, 0.35);
+}
+
+.nch-action-btn {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(28, 255, 155, 0.35);
+  background: rgba(0,0,0,0.45);
+  color: rgba(191, 255, 227, 0.95);
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.nch-action-btn:hover {
+  border-color: rgba(28, 255, 155, 0.6);
+}
+
+.nch-hand {
+  white-space: normal;
+  overflow: auto;
+}
+
+.nch-hand-row {
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.nch-hand-row:hover {
+  background: rgba(28, 255, 155, 0.08);
+}
+
+.nch-hand-row.selected {
+  outline: 2px solid rgba(255, 193, 7, 0.6);
+  background: rgba(255, 193, 7, 0.12);
+}
+
+.nch-backup {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  overflow: auto;
+}
+
+.nch-backup-slot {
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px dashed rgba(28, 255, 155, 0.25);
+  cursor: pointer;
+}
+
+.nch-backup-slot.empty {
+  color: rgba(191, 255, 227, 0.45);
+}
+
+.nch-backup-slot.selected {
+  border-style: solid;
+  border-color: rgba(255, 193, 7, 0.6);
+  background: rgba(255, 193, 7, 0.12);
 }
 
 @media (max-width: 768px) {
