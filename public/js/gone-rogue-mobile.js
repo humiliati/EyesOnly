@@ -258,21 +258,41 @@ const GoneRogueMobile = (function () {
 
         // Set tile appearance
         if (tile) {
-          if (tile.emoji) {
-            cellData.char = tile.emoji;
-          } else if (tile.glyph) {
-            cellData.char = tile.glyph;
-          }
+          if (typeof tile === 'string') {
+            // Raw string/character tile from _biomeVisualGrid or _grid
+            cellData.char = tile;
+            if (tile === '█' || tile === '▓') {
+              cellData.bg = '#333333';
+              cellData.color = '#666666';
+            } else if (tile === '░') {
+              cellData.bg = '#1a1a1a';
+              cellData.color = '#555555';
+            } else if (tile === '🚪' || tile === '▼') {
+              cellData.bg = '#0a1a0a';
+              cellData.color = '#00ff88';
+            } else {
+              // Floor tiles (ASCII grass, dirt) and emoji wall/deco tiles
+              cellData.bg = '#0a0a0a';
+              cellData.color = '#2a6e3f'; // Green for ASCII floor readability
+            }
+          } else {
+            // Object tile format
+            if (tile.emoji) {
+              cellData.char = tile.emoji;
+            } else if (tile.glyph) {
+              cellData.char = tile.glyph;
+            }
 
-          if (tile.color) {
-            cellData.color = tile.color;
-          }
+            if (tile.color) {
+              cellData.color = tile.color;
+            }
 
-          // Background color for specific tiles
-          if (tile.type === 'wall') {
-            cellData.bg = '#2a2a2a';
-          } else if (tile.type === 'floor') {
-            cellData.bg = '#0a0a0a';
+            // Background color for specific tiles
+            if (tile.type === 'wall') {
+              cellData.bg = '#2a2a2a';
+            } else if (tile.type === 'floor') {
+              cellData.bg = '#0a0a0a';
+            }
           }
         }
 

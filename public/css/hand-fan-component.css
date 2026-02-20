@@ -112,10 +112,11 @@
   position: relative;
   border-radius: 8px;
   overflow: hidden;
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease, opacity 0.2s ease;
   user-select: none;
   display: flex;
   flex-direction: column;
+  will-change: transform;
 }
 
 /* Card background layers with lifecycle-based transparency */
@@ -217,23 +218,19 @@
   user-select: none;
 }
 
-/* Card selected state */
+/* Card selected state — single merged rule; transform is handled entirely
+   by the gentle pulse keyframes so there is no competing static transform. */
 .hand-card.hand-card-selected {
   border-color: rgba(28, 255, 155, 0.75) !important;
   box-shadow:
     0 0 0 1px rgba(28, 255, 155, 0.25) inset,
     0 0 18px rgba(28, 255, 155, 0.35) !important;
-  transform: translateY(-6px);
-}
-
-/* Soft "pulse" instead of violent shake for the currently-active/primary selection */
-.hand-card.hand-card-selected {
-  animation: card-selected-pulse 1.2s ease-in-out infinite;
+  animation: card-selected-pulse 2s ease-in-out infinite;
 }
 
 @keyframes card-selected-pulse {
   0%, 100% { transform: translateY(-6px) scale(1.00); }
-  50%      { transform: translateY(-6px) scale(1.02); }
+  50%      { transform: translateY(-6px) scale(1.015); }
 }
 
 /* Contextual mode selected state (persistent highlight) */

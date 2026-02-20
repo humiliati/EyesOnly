@@ -476,6 +476,50 @@ const HandFanComponent = (function () {
       }
     }
 
+    // Fast path: update classes & badges in-place instead of full DOM rebuild.
+    // This prevents the animation restart / visual quiver that occurs when
+    // _renderCards() destroys and re-creates every card element.
+    if (_fanContainer && _fanContainer.children.length > 0) {
+      var wrappers = _fanContainer.querySelectorAll('.hand-card-wrapper');
+      var patchedOk = wrappers.length > 0;
+
+      for (var i = 0; i < wrappers.length; i++) {
+        var wrapper = wrappers[i];
+        var wrapperIndex = parseInt(wrapper.dataset.cardIndex, 10);
+        var cardEl = wrapper.querySelector('.hand-card');
+        if (!cardEl) { patchedOk = false; break; }
+
+        var isSelected = _selectedCards.indexOf(wrapperIndex) !== -1;
+        var selOrder = _selectedCards.indexOf(wrapperIndex);
+
+        // Toggle selected class
+        if (isSelected) {
+          cardEl.classList.add('hand-card-selected');
+        } else {
+          cardEl.classList.remove('hand-card-selected');
+        }
+
+        // Update or remove selection badge
+        var existingBadge = cardEl.querySelector('.hand-card-selection-badge');
+        if (isSelected) {
+          if (existingBadge) {
+            existingBadge.textContent = selOrder + 1;
+          } else {
+            var badge = document.createElement('div');
+            badge.className = 'hand-card-selection-badge';
+            badge.textContent = selOrder + 1;
+            cardEl.appendChild(badge);
+          }
+        } else if (existingBadge) {
+          existingBadge.parentNode.removeChild(existingBadge);
+        }
+      }
+
+      // If fast path succeeded, skip full re-render
+      if (patchedOk) return;
+    }
+
+    // Fallback: full re-render (initial render, or DOM is in unexpected state)
     _renderCards();
   }
 
@@ -543,19 +587,24 @@ const HandFanComponent = (function () {
     _animationPhase = 'commit';
     _isAnimating = true;
 
+    // Capture indices before any async callbacks can clear them
+    var capturedIndices = _selectedCards.slice();
+
     // Commit animation: lift selected cards
     _animateCommit(function() {
       // Check for single-use/consumable cards and apply incinerator effect
-      var selectedCardObjects = _selectedCards.map(function(index) {
+      var selectedCardObjects = capturedIndices.map(function(index) {
         return _cards[index];
       });
 
       _animateIncinerator(selectedCardObjects, function() {
         // Resolve animation: fly to center
         _animateResolve(function() {
-          // Notify game logic
-          if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.executeMultiCardRound === 'function') {
-            GoneRogue.executeMultiCardRound(selectedCardObjects);
+          // Notify game logic — use handleMultiCardCombat (public API) with card indices.
+          // The indices correspond to GAMESTATE.getLooseInventory() positions,
+          // which is the same array passed to HandFanComponent via show()/updateCards().
+          if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleMultiCardCombat === 'function') {
+            GoneRogue.handleMultiCardCombat(capturedIndices);
           }
 
           // Repopulate animation will be triggered by updateCards call

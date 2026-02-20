@@ -1971,10 +1971,19 @@ const GoneRogue = (function () {
       var pseudoRooms = [{ x: 1, y: 1, width: GRID_WIDTH - 2, height: GRID_HEIGHT - 2 }];
       LightingSystem.generateBiomeLights(GRID_WIDTH, GRID_HEIGHT, pseudoRooms, walls);
 
+      // Guarantee light sources near player spawn and exit for visibility
+      LightingSystem.addLightSource(_player.x, _player.y, 'CAMPFIRE');
+      LightingSystem.addLightSource(exitX, exitY, 'LIGHT_BULB');
+
       // Always include player/enemy lights
       _updatePlayerLight();
       LightingSystem.updateEnemyLights(_enemies);
       LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, walls);
+
+      var playerLight = LightingSystem.getLightAt(_player.x, _player.y);
+      console.log('[Lighting] Tutorial floor ' + _floor + ': biome=' + biomeName +
+        ', playerIntensity=' + playerLight.intensity.toFixed(2) +
+        ', sources=' + (playerLight.sources ? playerLight.sources.join(',') : 'none'));
     }
 
     // Place NPCs (floor 2)
@@ -2253,6 +2262,11 @@ _incrementPityTimers();
 
       // Calculate initial light map
       LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, walls);
+
+      var playerLight = LightingSystem.getLightAt(_player.x, _player.y);
+      console.log('[Lighting] Floor ' + _floor + ': biome=' + biomeName +
+        ', playerIntensity=' + playerLight.intensity.toFixed(2) +
+        ', sources=' + (playerLight.sources ? playerLight.sources.join(',') : 'none'));
     }
 
     // Spawn shops
