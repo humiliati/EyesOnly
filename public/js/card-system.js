@@ -7,13 +7,13 @@ const CardSystem = (function () {
   'use strict';
 
   /**
-   * RNG helper - uses SeededRNG if available, falls back to Math.random()
+   * RNG helper - uses SeededRNG if available, falls back to _rng()
    */
   function _rng() {
     if (typeof SeededRNG !== 'undefined' && SeededRNG.random) {
       return SeededRNG.random();
     }
-    return Math.random();
+    return _rng();
   }
 
   // STR Combat Priority System
