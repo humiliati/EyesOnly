@@ -122,6 +122,25 @@ var NonCombatHUD = (function() {
       _render(NonCombatStateStore.getState());
     }
 
+    // Registry loading UX
+    var previewEl = _root.querySelector('#nch-preview');
+    if (previewEl) {
+      previewEl.textContent = 'Loading data...';
+    }
+
+    if (typeof NonCombatEventBus !== 'undefined') {
+      NonCombatEventBus.on('registry:loaded', function(evt) {
+        if (previewEl) {
+          var counts = (evt && evt.payload && evt.payload.counts) ? evt.payload.counts : null;
+          previewEl.textContent = 'idle' + (counts ? (' (cards ' + counts.cards + ', items ' + counts.items + ')') : '');
+        }
+      });
+    } else if (typeof GoneRogueDataRegistry !== 'undefined' && typeof GoneRogueDataRegistry.ready === 'function') {
+      GoneRogueDataRegistry.ready().then(function() {
+        if (previewEl) previewEl.textContent = 'idle';
+      });
+    }
+
     // Show/hide based on GoneRogue mode and STR combat state
     setInterval(function() {
       var rogueActive = (typeof GoneRogue !== 'undefined' && typeof GoneRogue.isActive === 'function' && GoneRogue.isActive());

@@ -66,24 +66,38 @@ var GoneRogueDataRegistry = (function() {
       try { console.warn('[Registry] ' + msg); } catch (e) {}
     }
 
-    function check(list, kind, re, requiredKeys) {
+    function check(list, kind, fileName, re, requiredKeys) {
+      var anyWarn = false;
+      try { console.groupCollapsed('[Registry] validate ' + (fileName || kind)); } catch (e) {}
+
       for (var i = 0; i < list.length; i++) {
         var it = list[i];
-        if (!it || !it.id) { warn(kind + ' missing id at index ' + i); continue; }
-        if (re && !re.test(it.id)) warn(kind + ' id pattern mismatch: ' + it.id);
+        if (!it || !it.id) { warn(kind + ' missing id at index ' + i); anyWarn = true; continue; }
+        if (re && !re.test(it.id)) { warn(kind + ' id pattern mismatch: ' + it.id); anyWarn = true; }
         for (var k = 0; k < requiredKeys.length; k++) {
           var key = requiredKeys[k];
-          if (typeof it[key] === 'undefined') warn(kind + ' ' + it.id + ' missing key: ' + key);
+          if (typeof it[key] === 'undefined') { warn(kind + ' ' + it.id + ' missing key: ' + key); anyWarn = true; }
         }
       }
+
+      try {
+        if (!anyWarn) console.log('ok');
+      } catch (e2) {}
+
+      try { console.groupEnd(); } catch (e3) {}
     }
 
-    check(_db.items, 'item', /^ITM-\d{3}$/, ['name', 'emoji', 'type']);
-    check(_db.cards, 'card', /^ACT-\d{3}$/, ['name', 'emoji', 'targetType', 'effects']);
-    check(_db.statuses, 'status', /^STS-\d{3}$/, ['name', 'emoji']);
-    check(_db.groundEffects, 'groundEffect', /^EFF-\d{3}$/, ['name', 'emoji']);
-    check(_db.synergies, 'synergy', /^SYN-\d{3}$/, ['name']);
+    check(_db.items, 'item', 'items.json', /^ITM-\d{3}$/, ['name', 'emoji', 'type']);
+    check(_db.cards, 'card', 'cards.json', /^ACT-\d{3}$/, ['name', 'emoji', 'targetType', 'effects']);
+    check(_db.statuses, 'status', 'statuses.json', /^STS-\d{3}$/, ['name', 'emoji']);
+    check(_db.groundEffects, 'groundEffect', 'ground_effects.json', /^EFF-\d{3}$/, ['name', 'emoji']);
+    check(_db.synergies, 'synergy', 'synergies.json', /^SYN-\d{3}$/, ['name']);
   }
+
+  var info = {
+    loadedAt: null,
+    counts: { items: 0, cards: 0, statuses: 0, groundEffects: 0, synergies: 0 }
+  };
 
   function load() {
     if (_loaded) return Promise.resolve(true);
@@ -106,14 +120,17 @@ var GoneRogueDataRegistry = (function() {
       _validateLightweight();
       _loaded = true;
 
+      info.loadedAt = Date.now();
+      info.counts = {
+        items: _db.items.length,
+        cards: _db.cards.length,
+        statuses: _db.statuses.length,
+        groundEffects: _db.groundEffects.length,
+        synergies: _db.synergies.length
+      };
+
       if (typeof NonCombatEventBus !== 'undefined') {
-        NonCombatEventBus.emit('registry:loaded', { counts: {
-          items: _db.items.length,
-          cards: _db.cards.length,
-          statuses: _db.statuses.length,
-          groundEffects: _db.groundEffects.length,
-          synergies: _db.synergies.length
-        }});
+        NonCombatEventBus.emit('registry:loaded', { counts: info.counts, loadedAt: info.loadedAt });
       }
 
       return true;
@@ -188,8 +205,14 @@ var GoneRogueDataRegistry = (function() {
     load().catch(function() {});
   }
 
+  function ready() {
+    return load();
+  }
+
   return {
     load: load,
+    ready: ready,
+    info: info,
     isLoaded: isLoaded,
     getItem: getItem,
     getCard: getCard,
