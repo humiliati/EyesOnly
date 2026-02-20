@@ -2872,6 +2872,13 @@ body.in-gone-rogue #log-column {
   height: 100%;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+
+  /* Ensure content renders above the debrief scanline overlay (::after) */
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
 }
 
 /* Debrief Cycle Button */
@@ -2906,7 +2913,12 @@ body.in-gone-rogue #log-column {
 /* Resources Content Area */
 #debrief-resources-content {
   flex: 1;
+  min-height: 0;
+  width: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px;
+  box-sizing: border-box;
 }
 
 /* Video Player Container */

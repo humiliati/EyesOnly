@@ -13,6 +13,46 @@ body {
   overflow: hidden;
 }
 
+/* Let the page scroll INSIDE the CRT frame instead of spilling off-screen */
+#crt-frame {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.highscore-container {
+  flex: 1;
+  min-height: 0; /* critical for nested scroll containers */
+  overflow-y: auto;
+  padding-bottom: 1.5rem;
+
+  /* scrollbar styling to match the UI */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(28, 255, 155, 0.45) rgba(0, 0, 0, 0.35);
+}
+
+.highscore-container::-webkit-scrollbar {
+  width: 10px;
+}
+
+.highscore-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.35);
+  border-left: 1px solid rgba(28, 255, 155, 0.15);
+}
+
+.highscore-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(28, 255, 155, 0.15), rgba(28, 255, 155, 0.45));
+  border: 1px solid rgba(28, 255, 155, 0.35);
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(28, 255, 155, 0.15);
+}
+
+.highscore-container::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(28, 255, 155, 0.25), rgba(28, 255, 155, 0.65));
+  border-color: rgba(28, 255, 155, 0.6);
+}
+
+
 /* Header */
 .highscore-header {
   display: flex;
