@@ -82,7 +82,49 @@ const server = http.createServer(async (req, res) => {
         ok: true,
         agent_name: 'ExampleKernelAgent',
         agent_version: '0.0.1',
-        protocol: 'kernel-decision-v1'
+        protocol: 'kernel-turn-envelope-v1'
+      });
+    }
+
+    if (req.url === '/turn_envelope' && req.method === 'POST') {
+      const raw = await readBody(req);
+      let payload;
+      try {
+        payload = JSON.parse(raw || '{}');
+      } catch {
+        return sendJson(res, 400, { error: 'bad_json' });
+      }
+
+      const envelope = payload && payload.envelope ? payload.envelope : {};
+      const legal = (envelope.execution && envelope.execution.legalActions) || (envelope.perception && envelope.perception.legalActions) || [];
+      const suggestedBatch = (envelope.execution && envelope.execution.suggestedBatchSize) || 3;
+
+      const primary = chooseAction(legal);
+      const batch = [];
+      if (primary) batch.push(primary);
+
+      // Simple batching: keep moving in same direction if possible
+      if (primary && primary.type === 'move') {
+        const followMoves = legal.filter((a) => a.type === 'move' && a.direction === primary.direction);
+        for (let i = 0; i < followMoves.length && batch.length < suggestedBatch; i++) {
+          batch.push(followMoves[i]);
+        }
+      }
+
+      if (!batch.length && legal.length) {
+        batch.push(legal[0]);
+      }
+
+      const threats = (envelope.perception && envelope.perception.threats && envelope.perception.threats.count) || 0;
+      const axis = threats > 0 ? 'survival' : 'progression';
+
+      return sendJson(res, 200, {
+        utility: { axis, rationale: threats > 0 ? 'Visible threats' : 'Fast traversal' },
+        commentary: batch.length > 1 ? 'Batching ' + batch.length + ' actions' : 'Single-step action',
+        execution: {
+          actions: batch,
+          stop: { onEnemy: true, onDamage: true, maxActions: Math.max(1, batch.length) }
+        }
       });
     }
 
