@@ -94,6 +94,20 @@ const GoneRogue = (function () {
   var _nextBiomePreview = null; // Cache next floor's biome for consistent preview
   var _visitedBiomes = []; // Track visited biomes this run
 
+  // Context-aware key+gate spawn system state
+  var _runState = {
+    floorsSinceGate: 0,        // Floors since last gate spawn (pity timer)
+    floorsSinceKey: 0,         // Floors since last key drop (pity timer)
+    visitedGateBiomes: [],     // Biomes entered via gates this run
+    keysOwned: [],             // Keys currently in inventory
+    lastBiomeEntered: null,    // Last biome gate entered (for cooldown)
+    biomeEntryCooldowns: {},   // Cooldown tracker {biomeName: floorsRemaining}
+    gatesSpawnedThisRun: 0,    // Total gates spawned
+    keysFoundThisRun: 0,       // Total keys found
+    firstCombatVictory: false, // Whether player has won first combat
+    firstBonfire: false        // Whether player has reached first bonfire
+  };
+
   // Forest biome state
   var _forestBuildings = []; // Village buildings {x, y, emoji} for visual overlay
   var _biomeVisualGrid = null; // Pre-computed visual substitution grid (wall/floor chars)
@@ -1801,6 +1815,12 @@ const GoneRogue = (function () {
       }
     } else {
       floorType = _getFloorType(_floor);
+
+      // Track first bonfire visit for gate eligibility
+      if (floorType === FLOOR_TYPES.BONFIRE && !_runState.firstBonfire) {
+        _runState.firstBonfire = true;
+        console.log('[GoneRogue] First bonfire reached - gates now eligible');
+      }
     }
 
     // Check if this is a boss floor (or secret boss floor)
@@ -1908,6 +1928,11 @@ const GoneRogue = (function () {
     // Place biome-specific gates on regular floors
     if (floorType !== FLOOR_TYPES.TUTORIAL) {
       _placeBiomeGates(rooms, exitX, exitY, floorBiome);
+    }
+
+    // Spawn context-aware keys (separate from gates, loosely coupled)
+    if (floorType !== FLOOR_TYPES.TUTORIAL) {
+      _spawnContextAwareKey(rooms);
     }
 
     // Place items (increased loot for exploration floors)
@@ -3127,41 +3152,107 @@ const GoneRogue = (function () {
   }
 
   /**
-   * Place biome-specific gates on floors (non-tutorial)
+   * Context-aware biome gate spawn system
+   * Implements dynamic weighting, pity timers, and soft-lock prevention
    * @param {Array} rooms - Room objects
    * @param {number} exitX - Exit X position
    * @param {number} exitY - Exit Y position
    * @param {Object} biome - Current biome
    */
   function _placeBiomeGates(rooms, exitX, exitY, biome) {
-    // Only place gates on certain floor types
-    if (_floor <= 4 || BOSS_FLOORS.indexOf(_floor) !== -1) {
-      return; // Skip tutorial, ghost, and boss floors
-    }
-
-    // 20% chance to spawn a gate on this floor (reduced from 30% to ensure keys are more common)
-    if (_rng() > 0.20) {
-      return;
-    }
-
     if (typeof EnvironmentalSynergy === 'undefined') {
       return;
     }
 
-    // Get biome-appropriate gates
-    var biomeName = biome.name || 'OFFICE';
-    var availableGates = EnvironmentalSynergy.getGatesForBiome(biomeName.toUpperCase());
+    // RULE 1: Floor Eligibility
+    // Gates cannot spawn until after floor 1, first combat victory, or first bonfire
+    var eligible = _floor > 1 && (_runState.firstCombatVictory || _runState.firstBonfire);
+    if (!eligible || _floor <= 4 || BOSS_FLOORS.indexOf(_floor) !== -1) {
+      _runState.floorsSinceGate++;
+      return; // Skip tutorial, ghost, and boss floors
+    }
 
+    // Update biome cooldowns
+    for (var biomeName in _runState.biomeEntryCooldowns) {
+      if (_runState.biomeEntryCooldowns[biomeName] > 0) {
+        _runState.biomeEntryCooldowns[biomeName]--;
+      }
+    }
+
+    // RULE 2: Calculate gate spawn chance based on run depth
+    var baseChance = 0;
+    if (_floor === 2) baseChance = 0.18;
+    else if (_floor === 3) baseChance = 0.28;
+    else if (_floor === 4) baseChance = 0.38;
+    else baseChance = 0.45; // Cap at 45%
+
+    // RULE 4: Pity Timer - Force gate spawn after 3 floors without
+    var forceGate = _runState.floorsSinceGate >= 3;
+
+    // RULE 8: Soft-Lock Prevention - Force matching gate if player has 2+ keys without match for 3 floors
+    var playerKeys = _getPlayerKeys();
+    var unmatchedKeys = _countUnmatchedKeys(playerKeys);
+    var forceSoftLockPrevention = unmatchedKeys >= 2 && _runState.floorsSinceGate >= 3;
+
+    if (!forceGate && !forceSoftLockPrevention && _rng() > baseChance) {
+      _runState.floorsSinceGate++;
+      return; // No gate this floor
+    }
+
+    // RULE 5: Calculate biome weights dynamically
+    var biomeWeights = {
+      'Commercial Office': 30,
+      'Shopping Mall': 25,
+      'Industrial Complex': 25,
+      'Aerospace Museum': 20
+    };
+
+    // Adjust weights based on player context
+    for (var targetBiome in biomeWeights) {
+      // If player has matching key: +15 weight (creates "destiny" feeling)
+      if (_playerHasKeyForBiome(playerKeys, targetBiome)) {
+        biomeWeights[targetBiome] += 15;
+      }
+
+      // If player recently visited (cooldown active): -25 weight
+      if (_runState.biomeEntryCooldowns[targetBiome] > 0) {
+        biomeWeights[targetBiome] = Math.max(0, biomeWeights[targetBiome] - 25);
+      }
+
+      // If player has never visited this run: +20 weight
+      if (_runState.visitedGateBiomes.indexOf(targetBiome) === -1) {
+        biomeWeights[targetBiome] += 20;
+      }
+    }
+
+    // If forcing soft-lock prevention, boost matching biome weights dramatically
+    if (forceSoftLockPrevention) {
+      for (var key in playerKeys) {
+        var matchingBiome = _getBiomeForKey(playerKeys[key]);
+        if (matchingBiome && biomeWeights[matchingBiome] !== undefined) {
+          biomeWeights[matchingBiome] += 50; // Strong boost for matching
+        }
+      }
+    }
+
+    // Pick biome using weighted roll
+    var selectedBiome = _weightedBiomeRoll(biomeWeights);
+    if (!selectedBiome) {
+      _runState.floorsSinceGate++;
+      return; // No valid biome found
+    }
+
+    // Get gates for selected biome
+    var availableGates = EnvironmentalSynergy.getGatesForBiome(selectedBiome.toUpperCase().replace(/ /g, '_'));
     if (availableGates.length === 0) {
-      // Fallback to generic gates
-      availableGates = ['WOODEN_GATE', 'OLD_DOOR'];
+      availableGates = ['WOODEN_GATE', 'OLD_DOOR']; // Fallback
     }
 
     // Pick a random gate type
     var gateType = availableGates[Math.floor(_rng() * availableGates.length)];
     var gateDef = EnvironmentalSynergy.getGateDefinitions()[gateType];
-
     if (!gateDef) {
+      _runState.floorsSinceGate++;
       return;
     }
 
@@ -3193,6 +3284,7 @@ const GoneRogue = (function () {
 
     if (!validPosition) {
       console.log('[GoneRogue] Could not find valid gate position');
+      _runState.floorsSinceGate++;
       return;
     }
 
@@ -3208,7 +3300,8 @@ const GoneRogue = (function () {
       name: gateDef.name,
       tag: 'gate_' + gateType,
       isGate: true,
-      gateType: gateType
+      gateType: gateType,
+      targetBiome: selectedBiome
     };
 
     _breakables.push(gateBreakable);
@@ -3226,7 +3319,238 @@ const GoneRogue = (function () {
       LightingSystem.addLightSource(gateX, gateY, 'TERMINAL');
     }
 
-    console.log('[GoneRogue] Placed', gateDef.name, 'at', gateX, gateY, 'on floor', _floor);
+    // Update run state
+    _runState.floorsSinceGate = 0;
+    _runState.gatesSpawnedThisRun++;
+    _runState.lastBiomeEntered = selectedBiome;
+    _runState.biomeEntryCooldowns[selectedBiome] = 2; // 2-floor cooldown
+
+    console.log('[GoneRogue] Placed', gateDef.name, 'for', selectedBiome, 'at', gateX, gateY, 'on floor', _floor, forceGate ? '(FORCED)' : '');
+  }
+
+  /**
+   * Helper: Get player's current keys from inventory
+   */
+  function _getPlayerKeys() {
+    var keys = [];
+    if (typeof InteractiveItems !== 'undefined') {
+      var items = InteractiveItems.getAllItems();
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].type === 'key') {
+          keys.push(items[i].keyType || items[i].itemId);
+        }
+      }
+    }
+    // Also check GAMESTATE inventory
+    if (typeof GAMESTATE !== 'undefined') {
+      var loose = GAMESTATE.getLooseInventory();
+      var persistent = GAMESTATE.getPersistentInventory();
+      var allItems = loose.concat(persistent);
+      for (var j = 0; j < allItems.length; j++) {
+        if (allItems[j].type === 'key') {
+          keys.push(allItems[j].keyType || allItems[j].itemId);
+        }
+      }
+    }
+    return keys;
+  }
+
+  /**
+   * Helper: Check if player has key for specific biome
+   */
+  function _playerHasKeyForBiome(playerKeys, biomeName) {
+    var biomeToKey = {
+      'Commercial Office': 'KEYCARD',
+      'Shopping Mall': 'MALL_KEY',
+      'Industrial Complex': 'INDUSTRIAL_PASS',
+      'Aerospace Museum': 'ACCESS_CARD'
+    };
+    var requiredKey = biomeToKey[biomeName];
+    if (!requiredKey) return false;
+    return playerKeys.indexOf(requiredKey) !== -1;
+  }
+
+  /**
+   * Helper: Get biome name for a key type
+   */
+  function _getBiomeForKey(keyType) {
+    var keyToBiome = {
+      'KEYCARD': 'Commercial Office',
+      'THUMB_DRIVE': 'Commercial Office',
+      'MALL_KEY': 'Shopping Mall',
+      'INDUSTRIAL_PASS': 'Industrial Complex',
+      'ACCESS_CARD': 'Aerospace Museum'
+    };
+    return keyToBiome[keyType] || null;
+  }
+
+  /**
+   * Helper: Count keys that don't have matching gates available
+   */
+  function _countUnmatchedKeys(playerKeys) {
+    var unmatched = 0;
+    for (var i = 0; i < playerKeys.length; i++) {
+      var biome = _getBiomeForKey(playerKeys[i]);
+      if (biome && _runState.visitedGateBiomes.indexOf(biome) === -1) {
+        unmatched++;
+      }
+    }
+    return unmatched;
+  }
+
+  /**
+   * Helper: Weighted biome roll
+   */
+  function _weightedBiomeRoll(weights) {
+    var totalWeight = 0;
+    for (var biome in weights) {
+      totalWeight += weights[biome];
+    }
+    if (totalWeight <= 0) return null;
+
+    var roll = _rng() * totalWeight;
+    var cumulative = 0;
+    for (var b in weights) {
+      cumulative += weights[b];
+      if (roll < cumulative) {
+        return b;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Context-aware key spawn system
+   * Implements dynamic drop rates, inventory bonuses, and pity timers
+   * Called during floor generation to potentially spawn a key
+   */
+  function _spawnContextAwareKey(rooms) {
+    if (typeof EnvironmentalSynergy === 'undefined' || !rooms || rooms.length === 0) {
+      return;
+    }
+
+    // Skip tutorial and early floors
+    if (_floor <= 1) {
+      _runState.floorsSinceKey++;
+      return;
+    }
+
+    // RULE 3: Calculate key spawn chance based on run depth
+    var baseChance = 0;
+    if (_floor === 1) baseChance = 0.25;
+    else if (_floor === 2) baseChance = 0.35;
+    else baseChance = 0.45; // Floor 3+
+
+    // Adjust based on player's key inventory
+    var playerKeys = _getPlayerKeys();
+
+    // If player holds no keys: +20% bonus
+    if (playerKeys.length === 0) {
+      baseChance += 0.20;
+    }
+
+    // If player holds unused key: -10% penalty (to avoid key hoarding)
+    var hasUnusedKey = _countUnmatchedKeys(playerKeys) > 0;
+    if (hasUnusedKey) {
+      baseChance -= 0.10;
+    }
+
+    // RULE 4: Pity Timer - Force key spawn after 3 floors without
+    var forceKey = _runState.floorsSinceKey >= 3;
+
+    if (!forceKey && _rng() > baseChance) {
+      _runState.floorsSinceKey++;
+      return; // No key this floor
+    }
+
+    // Determine which key type to drop (biome-weighted)
+    var keyWeights = {
+      'KEYCARD': 30,        // Office
+      'ACCESS_CARD': 25,    // Aerospace
+      'INDUSTRIAL_PASS': 25, // Industrial
+      'MALL_KEY': 20        // Mall
+    };
+
+    // Boost weight for keys player doesn't have
+    for (var keyType in keyWeights) {
+      if (playerKeys.indexOf(keyType) === -1) {
+        keyWeights[keyType] += 15; // Player doesn't have this key yet
+      }
+    }
+
+    // Pick key using weighted roll
+    var selectedKeyType = _weightedKeyRoll(keyWeights);
+    if (!selectedKeyType) {
+      _runState.floorsSinceKey++;
+      return;
+    }
+
+    var keyDef = EnvironmentalSynergy.getKeyDefinitions()[selectedKeyType];
+    if (!keyDef) {
+      _runState.floorsSinceKey++;
+      return;
+    }
+
+    // Find a good spawn position (in a random room, away from player)
+    var roomIndex = Math.floor(_rng() * rooms.length);
+    var room = rooms[roomIndex];
+    var keyX = room.x + 2 + Math.floor(_rng() * (room.w - 4));
+    var keyY = room.y + 2 + Math.floor(_rng() * (room.h - 4));
+
+    // Ensure valid position
+    var attempts = 0;
+    while (attempts < 20) {
+      if (_grid[keyY] && _grid[keyY][keyX] === TILES.EMPTY) {
+        var distToPlayer = Math.abs(keyX - _player.x) + Math.abs(keyY - _player.y);
+        if (distToPlayer >= 5) {
+          break; // Valid position found
+        }
+      }
+      keyX = room.x + 2 + Math.floor(_rng() * (room.w - 4));
+      keyY = room.y + 2 + Math.floor(_rng() * (room.h - 4));
+      attempts++;
+    }
+
+    // Spawn the key
+    _items.push({
+      x: keyX,
+      y: keyY,
+      type: 'key',
+      keyType: selectedKeyType,
+      emoji: keyDef.emoji,
+      name: keyDef.name,
+      description: keyDef.description,
+      spawnTime: Date.now(),
+      decayTime: 180000 // 3 minute decay (longer for context keys)
+    });
+
+    // Update run state
+    _runState.floorsSinceKey = 0;
+    _runState.keysFoundThisRun++;
+    _runState.keysOwned.push(selectedKeyType);
+
+    console.log('[GoneRogue] Spawned context-aware key:', keyDef.name, 'at', keyX, keyY, 'on floor', _floor, forceKey ? '(FORCED)' : '');
+  }
+
+  /**
+   * Helper: Weighted key roll
+   */
+  function _weightedKeyRoll(weights) {
+    var totalWeight = 0;
+    for (var keyType in weights) {
+      totalWeight += weights[keyType];
+    }
+    if (totalWeight <= 0) return null;
+
+    var roll = _rng() * totalWeight;
+    var cumulative = 0;
+    for (var k in weights) {
+      cumulative += weights[k];
+      if (roll < cumulative) {
+        return k;
+      }
+    }
+    return null;
   }
 
   /**
@@ -4804,6 +5128,12 @@ const GoneRogue = (function () {
     // Update kill counter if player gets credit
     if (deathResult.playerCredit) {
       _enemiesKilled++;
+
+      // Track first combat victory for gate eligibility
+      if (!_runState.firstCombatVictory) {
+        _runState.firstCombatVictory = true;
+        console.log('[GoneRogue] First combat victory achieved - gates now eligible');
+      }
     }
 
     // Spawn loot
