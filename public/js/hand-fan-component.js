@@ -710,6 +710,70 @@ const HandFanComponent = (function () {
     return _fanContainer !== null && _fanContainer.style.display !== 'none';
   }
 
+  /**
+   * Set contextual (non-combat) card selection
+   * In contextual mode, only one card can be selected at a time
+   * and it stays highlighted until used
+   * @param {number} index - Card index to select
+   */
+  function selectContextualCard(index) {
+    // Clear any previous selection
+    _selectedCards = [];
+
+    // Select the new card
+    if (index >= 0 && index < _cards.length) {
+      _selectedCards.push(index);
+    }
+
+    // Re-render to show selection
+    _renderCards();
+
+    // Add contextual selection class for different visual style
+    if (_fanContainer) {
+      _fanContainer.classList.add('hand-fan-contextual-mode');
+    }
+  }
+
+  /**
+   * Get the currently selected contextual card
+   * @returns {Object|null} Selected card object or null
+   */
+  function getContextualCard() {
+    if (_selectedCards.length > 0 && _cards[_selectedCards[0]]) {
+      return _cards[_selectedCards[0]];
+    }
+    return null;
+  }
+
+  /**
+   * Clear contextual selection and minimize hand
+   * Called after card is used in contextual mode
+   */
+  function clearContextualSelection() {
+    _selectedCards = [];
+
+    // Remove contextual mode class
+    if (_fanContainer) {
+      _fanContainer.classList.remove('hand-fan-contextual-mode');
+    }
+
+    // Minimize the hand after card use
+    minimize();
+
+    // Re-render after a brief delay
+    setTimeout(function() {
+      _renderCards();
+    }, 300);
+  }
+
+  /**
+   * Check if in contextual mode
+   * @returns {boolean} True if in contextual mode
+   */
+  function isContextualMode() {
+    return _mode === 'contextual';
+  }
+
   // Public API
   return {
     init: init,
@@ -724,7 +788,11 @@ const HandFanComponent = (function () {
     getSelectedCards: getSelectedCards,
     clearSelection: clearSelection,
     refreshAffordability: refreshAffordability,
-    isVisible: isVisible
+    isVisible: isVisible,
+    selectContextualCard: selectContextualCard,
+    getContextualCard: getContextualCard,
+    clearContextualSelection: clearContextualSelection,
+    isContextualMode: isContextualMode
   };
 })();
 
