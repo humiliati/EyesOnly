@@ -224,6 +224,11 @@
       'HandFanComponent module is available'
     );
 
+    assert(
+      typeof NameUtils !== 'undefined' && typeof NameUtils.getDisplayName === 'function',
+      'NameUtils.getDisplayName() available for combat abbreviation'
+    );
+
     if (typeof HandFanComponent !== 'undefined') {
       assert(
         typeof HandFanComponent.updateMiniIndicator === 'function',

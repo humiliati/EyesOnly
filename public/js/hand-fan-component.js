@@ -402,13 +402,24 @@ const HandFanComponent = (function () {
     html += '<div class="hand-card-emoji">' + (card.emoji || '🃏') + '</div>';
     html += '</div>';
 
-    // Card name (bottom) — always abbreviated for compact display in combat
+    // Card name (bottom) - abbreviated for compact display in combat
     var cardName = card.name || 'Unknown Card';
-    if (typeof NameUtils !== 'undefined' && NameUtils.formatForMobile) {
-      cardName = NameUtils.formatForMobile(card);
+
+    // When in mobile portrait + collapsed/minimized combat UI, abbreviate harder.
+    var maxLen = 6;
+    try {
+      var isPortrait = (window && window.innerHeight && window.innerWidth) ? (window.innerHeight > window.innerWidth) : false;
+      var strMini = (typeof STRCombatWindow !== 'undefined' && STRCombatWindow.isMinimized && STRCombatWindow.isMinimized());
+      var fanMini = _fanContainer && (_fanContainer.classList.contains('hand-fan-minimized') || _fanContainer.classList.contains('hand-fan-collapsing'));
+      if (isPortrait && (strMini || fanMini)) {
+        maxLen = 4;
+      }
+    } catch (e) {}
+
+    if (typeof NameUtils !== 'undefined' && NameUtils.getDisplayName) {
+      cardName = NameUtils.getDisplayName(card, { maxLength: maxLen });
     } else {
-      // Fallback abbreviation (max 6 chars)
-      cardName = _abbreviateCardName(cardName, 6);
+      cardName = _abbreviateCardName(cardName, maxLen);
     }
 
     html += '<div class="hand-card-name">' + cardName + '</div>';
@@ -825,7 +836,7 @@ const HandFanComponent = (function () {
       }
     });
 
-    // Hover tooltip — show card details immediately on mouseenter
+    // Hover tooltip - show card details immediately on mouseenter
     cardEl.addEventListener('mouseenter', function() {
       _showCardTooltip(card, cardEl);
     });
@@ -976,7 +987,7 @@ const HandFanComponent = (function () {
       _animateIncinerator(selectedCardObjects, function() {
         // Resolve animation: fly to center
         _animateResolve(function() {
-          // Notify game logic — use handleMultiCardCombat (public API) with card indices.
+          // Notify game logic - use handleMultiCardCombat (public API) with card indices.
           // The indices correspond to GAMESTATE.getLooseInventory() positions,
           // which is the same array passed to HandFanComponent via show()/updateCards().
           if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleMultiCardCombat === 'function') {
