@@ -2421,14 +2421,43 @@ const GoneRogueMobile = (function () {
 
         cardDiv.addEventListener('pointerdown', _handleInventoryPointerDown);
         cardDiv.addEventListener('click', function(e) {
-          // Click-to-add to non-combat hand (fast path)
+          // Click-to-move card to non-combat hand (commit)
           try {
             var idx = parseInt(e.currentTarget.dataset.cardIndex, 10);
             var cards = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentCards) ? GAMESTATE.getPersistentCards() : [];
             var ref = cards[idx];
-            if (ref && typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.addCardToHand) {
-              NonCombatStateStore.addCardToHand(ref.id, 1, 'inventory:click_add_card');
+            if (!ref) return;
+
+            var okRemove = true;
+            if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.removePersistentCard === 'function') {
+              okRemove = GAMESTATE.removePersistentCard(ref.id, 1).success;
             }
+
+            if (okRemove && typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.addCardToHand) {
+              NonCombatStateStore.addCardToHand(ref.id, 1, 'inventory:click_move_card');
+
+              if (typeof NonCombatEventBus !== 'undefined') {
+                var remaining = 0;
+                try {
+                  var after = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentCards) ? GAMESTATE.getPersistentCards() : [];
+                  for (var i = 0; i < after.length; i++) {
+                    if (after[i] && after[i].id === ref.id) remaining = after[i].qty || 0;
+                  }
+                } catch (e2) {}
+
+                NonCombatEventBus.emit('card:moved_to_hand', { cardId: ref.id, qty: 1, remainingInStash: remaining, source: 'click' });
+              }
+
+              if (typeof TooltipSystem !== 'undefined') {
+                TooltipSystem.showAction('card-move', { name: ref.id });
+              }
+            } else {
+              if (typeof NonCombatEventBus !== 'undefined') {
+                NonCombatEventBus.emit('hand:add_failed', { cardId: ref.id, reason: 'insufficient_qty' });
+              }
+            }
+
+            showInventory();
           } catch (err) {}
         });
 
@@ -2589,8 +2618,31 @@ const GoneRogueMobile = (function () {
           if (element === handZone || handZone.contains(element)) droppedOnHand = true;
         }
 
-        if (droppedOnHand && typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.addCardToHand) {
-          NonCombatStateStore.addCardToHand(_activeDragItem.item.id, 1, 'inventory:drag_add_card');
+        if (droppedOnHand) {
+          var okRemove = true;
+          if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.removePersistentCard === 'function') {
+            okRemove = GAMESTATE.removePersistentCard(_activeDragItem.item.id, 1).success;
+          }
+
+          if (okRemove && typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.addCardToHand) {
+            NonCombatStateStore.addCardToHand(_activeDragItem.item.id, 1, 'inventory:drag_move_card');
+
+            if (typeof NonCombatEventBus !== 'undefined') {
+              var remaining = 0;
+              try {
+                var after = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentCards) ? GAMESTATE.getPersistentCards() : [];
+                for (var i = 0; i < after.length; i++) {
+                  if (after[i] && after[i].id === _activeDragItem.item.id) remaining = after[i].qty || 0;
+                }
+              } catch (e2) {}
+
+              NonCombatEventBus.emit('card:moved_to_hand', { cardId: _activeDragItem.item.id, qty: 1, remainingInStash: remaining, source: 'drag' });
+            }
+          } else {
+            if (typeof NonCombatEventBus !== 'undefined') {
+              NonCombatEventBus.emit('hand:add_failed', { cardId: _activeDragItem.item.id, reason: 'insufficient_qty' });
+            }
+          }
         }
 
         _activeDragItem.element.style.transform = _activeDragItem.originalTransform || '';
