@@ -13,24 +13,28 @@ var EnemyIntentSystem = (function() {
   var FACE_EXPRESSIONS = {
     HAPPY_CALM: {
       glyph: '^_^',
+      frames: ['^_^', '^___^'],
       name: 'Happy/Calm',
       emotionalState: 'Enemy at ease, no immediate threat',
       threatLevel: 'low'
     },
     ANGRY_FOCUSED: {
       glyph: '>__<',
+      frames: ['>__<', '>_<'],
       name: 'Angry/Focused',
       emotionalState: 'Enemy noticed something',
       threatLevel: 'medium'
     },
     SURPRISED: {
       glyph: 'O_O',
+      frames: ['O_O', 'o_o'],
       name: 'Surprised',
       emotionalState: 'Enemy caught off-guard',
       threatLevel: 'low'
     },
     DAZED_STUNNED: {
       glyph: 'X_X',
+      frames: ['X_X', 'x_x'],
       name: 'Dazed/Stunned',
       emotionalState: 'Enemy disoriented',
       threatLevel: 'none'
@@ -73,6 +77,7 @@ var EnemyIntentSystem = (function() {
     },
     ALERT: {
       glyph: 'o_o',
+      frames: ['o_o', 'O_O'],
       name: 'Alert',
       emotionalState: 'Enemy on high alert',
       threatLevel: 'high'
@@ -191,6 +196,14 @@ var EnemyIntentSystem = (function() {
     var weapon = determineWeapon(card);
     var intentType = determineIntentType(card);
 
+    // Stable-ish animation seed per enemy
+    var seed = 0;
+    if (enemy && (typeof enemy.x === 'number') && (typeof enemy.y === 'number')) {
+      seed = (enemy.x * 73856093) ^ (enemy.y * 19349663);
+    } else {
+      seed = Math.floor(Math.random() * 1000000);
+    }
+
     return {
       expression: expression,
       weapon: weapon,
@@ -198,7 +211,8 @@ var EnemyIntentSystem = (function() {
       damageEstimate: card ? (card.stats.damage || 0) : 0,
       isCharging: false,
       chargeMultiplier: 1.0,
-      lastUpdateTime: Date.now()
+      lastUpdateTime: Date.now(),
+      animSeed: seed >>> 0
     };
   }
 
@@ -470,12 +484,27 @@ var EnemyIntentSystem = (function() {
    * @param {Object} intentState - Intent state object
    * @returns {String} Formatted display string
    */
+  function _getAnimatedExpressionGlyph(intentState, nowMs) {
+    if (!intentState || !intentState.expression) return '';
+
+    var expr = intentState.expression;
+    var frames = expr.frames;
+    if (!frames || !frames.length) return expr.glyph;
+
+    // Global pulse with slight per-enemy phase offset
+    var seed = (intentState.animSeed || 0) % 997;
+    var phaseMs = (seed * 17) % 400;
+    var t = Math.floor(((nowMs || Date.now()) + phaseMs) / 350);
+    var idx = ((t % frames.length) + frames.length) % frames.length;
+    return frames[idx] || expr.glyph;
+  }
+
   function formatIntentDisplay(intentState) {
     var parts = [];
 
-    // Add face expression
+    // Add face expression (animated)
     if (intentState.expression) {
-      parts.push(intentState.expression.glyph);
+      parts.push(_getAnimatedExpressionGlyph(intentState));
     }
 
     // Add weapon icon
@@ -532,6 +561,7 @@ var EnemyIntentSystem = (function() {
 
     // Display functions
     formatIntentDisplay: formatIntentDisplay,
-    getIntentDescription: getIntentDescription
+    getIntentDescription: getIntentDescription,
+    getAnimatedExpressionGlyph: _getAnimatedExpressionGlyph
   };
 })();

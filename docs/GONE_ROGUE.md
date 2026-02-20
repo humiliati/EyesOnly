@@ -121,6 +121,20 @@ Affixes provide unique bonuses beyond stat rolls:
 - Turn-based tactical combat
 - Access via `ROGUE` or `GONE_ROGUE` command
 
+#### Enemy Intent Expressions (Animated)
+- Implemented in: `public/js/enemy-intent-system.js`
+- Rendered in: `public/js/str-combat-window.js`
+- Face glyphs animate (blink/pulse) while STR combat UI is visible/minimized
+
+**Boss / Special Expression TODO Palette**
+- Sniper: `( -_•)▄︻テحكـ━一💥`
+- Tower boss: `( -_•)╦̵̵ ╤─`
+- Table-flip berserk: `(ノಠ益ಠ)ノ彡┻━┻`
+- Train boss v1/v2: `ლ(ಠ益ಠლ)`
+
+Unused/emote glyph stash (for bosses, elites, tooltip-only synergies):
+- `( ͡° ͜ʖ ͡°)` `ʘ‿ʘ` `ಠ_ಠ` `¯\\_(ツ)_/¯` `༼ つ ◕_◕ ༽つ` `(ง'̀-'́)ง` `ಥ_ಥ` `ᕙ(⇀‸↼‶)ᕗ` `ヽ(´▽`)/` `(⌐■_■)`
+
 ## Mode Transitions
 
 ### Entering Gone Rogue

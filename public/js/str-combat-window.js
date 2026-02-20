@@ -12,6 +12,7 @@ const STRCombatWindow = (function () {
   var _timerDuration = 2000; // Default 2 seconds
   var _timeRemaining = 0;
   var _timerInterval = null;
+  var _intentAnimInterval = null;
   var _currentEnemyType = null;
   var _combatState = null;
 
@@ -105,6 +106,9 @@ const STRCombatWindow = (function () {
       // Render window content
       _renderWindow();
 
+      // Start intent glyph animator (animated faces + weapons)
+      _startIntentAnimator();
+
       // Show window with animation
       _windowContainer.style.display = 'block';
       _windowContainer.classList.add('str-window-appear');
@@ -184,6 +188,7 @@ const STRCombatWindow = (function () {
   function hide() {
     _isVisible = false;
     _stopTimer();
+    _stopIntentAnimator();
 
     _windowContainer.style.display = 'none';
     _minimizedIndicator.style.display = 'none';
@@ -409,6 +414,47 @@ const STRCombatWindow = (function () {
     }
   }
 
+  function _refreshIntentDisplays() {
+    if (!_combatState) return;
+
+    var enemy = _combatState.enemy || {};
+    if (!enemy.intentState) return;
+
+    if (typeof EnemyIntentSystem === 'undefined') return;
+
+    // Full window display
+    if (_windowContainer && _isVisible && !_isMinimized) {
+      var intentEl = _windowContainer.querySelector('.str-intent-display');
+      if (intentEl) {
+        intentEl.textContent = EnemyIntentSystem.formatIntentDisplay(enemy.intentState);
+      }
+    }
+
+    // Minimized indicator (expression only)
+    if (_minimizedIndicator && _isVisible && _isMinimized) {
+      var miniEl = _minimizedIndicator.querySelector('.str-mini-intent');
+      if (miniEl && EnemyIntentSystem.getAnimatedExpressionGlyph) {
+        miniEl.textContent = EnemyIntentSystem.getAnimatedExpressionGlyph(enemy.intentState);
+      }
+    }
+  }
+
+  function _startIntentAnimator() {
+    _stopIntentAnimator();
+
+    // Update at a gentle cadence; just enough to feel "alive".
+    _intentAnimInterval = setInterval(function() {
+      _refreshIntentDisplays();
+    }, 250);
+  }
+
+  function _stopIntentAnimator() {
+    if (_intentAnimInterval) {
+      clearInterval(_intentAnimInterval);
+      _intentAnimInterval = null;
+    }
+  }
+
   /**
    * Update timer display
    */
@@ -481,6 +527,11 @@ const STRCombatWindow = (function () {
   function updateState(combatState) {
     var previousRound = _combatState ? _combatState.round : 0;
     _combatState = combatState;
+
+    // Ensure animator is running whenever combat is active/visible
+    if (_isVisible) {
+      _startIntentAnimator();
+    }
 
     if (_isVisible && !_isMinimized) {
       _renderWindow();
