@@ -3259,6 +3259,17 @@ const GoneRogue = (function () {
     var metadata = _tileMetadata[key];
     var message = null;
 
+    // Check for ground effects (water, oil, etc.)
+    if (typeof GroundEffects !== 'undefined') {
+      var groundEffect = GroundEffects.getGroundAt(x, y);
+      if (groundEffect && groundEffect.movePenalty) {
+        // Apply visual feedback for water slowdown
+        if (groundEffect.type === 'WATER' || groundEffect.char === '~') {
+          _applyWaterSlowdownEffect();
+        }
+      }
+    }
+
     // Hazard damage
     if (tile === TILES.HAZARD || (metadata && metadata.type === 'hazard')) {
       var damage = metadata ? metadata.damage : 1;
@@ -3285,6 +3296,27 @@ const GoneRogue = (function () {
     }
 
     return message;
+  }
+
+  /**
+   * Apply visual feedback for water slowdown
+   * Blue wave roll down animation on window frame
+   */
+  function _applyWaterSlowdownEffect() {
+    var gameFrame = document.getElementById('game-frame');
+    if (!gameFrame) {
+      gameFrame = document.querySelector('.game-window');
+    }
+
+    if (gameFrame) {
+      // Add water slowdown class for CSS animation
+      gameFrame.classList.add('water-slowdown-effect');
+
+      // Remove class after animation completes (1 second)
+      setTimeout(function() {
+        gameFrame.classList.remove('water-slowdown-effect');
+      }, 1000);
+    }
   }
 
   /**
