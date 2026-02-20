@@ -424,6 +424,13 @@ const GoneRogueMobile = (function () {
         color: '#00FF00'
       } : null
     });
+
+    // Render sprint trails on canvas
+    if (typeof SprintTrailSystem !== 'undefined' && _canvasRenderer && _canvasRenderer.getContext) {
+      var cellWidth = _canvasRenderer.getCellWidth ? _canvasRenderer.getCellWidth() : 32;
+      var cellHeight = _canvasRenderer.getCellHeight ? _canvasRenderer.getCellHeight() : 32;
+      SprintTrailSystem.renderToCanvas(_canvasRenderer.getContext(), cellWidth, cellHeight);
+    }
   }
 
   /**
@@ -723,6 +730,13 @@ const GoneRogueMobile = (function () {
           cell.appendChild(animEl);
         }
       }
+    }
+
+    // Render sprint trails (DOM mode)
+    if (typeof SprintTrailSystem !== 'undefined') {
+      var cellWidth = _gridContainer.offsetWidth / grid[0].length;
+      var cellHeight = _gridContainer.offsetHeight / grid.length;
+      SprintTrailSystem.renderToDOM(_gridContainer, cellWidth, cellHeight);
     }
 
     // Render STR combat overlay if combat is active

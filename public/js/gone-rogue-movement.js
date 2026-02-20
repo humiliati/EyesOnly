@@ -213,6 +213,11 @@ const GoneRogueMovement = (function () {
       GAMESTATE.drainSprintFatigue(deltaTime);
     }
 
+    // Update sprint trail system
+    if (typeof SprintTrailSystem !== 'undefined') {
+      SprintTrailSystem.update(deltaTime, _isSprinting, _visualPosition.x, _visualPosition.y);
+    }
+
     // Get current target waypoint
     if (_currentPathIndex >= _targetPath.length) {
       // Reached end of path
