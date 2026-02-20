@@ -1583,3 +1583,20 @@
 .cell-npc-gate-trigger {
   background: rgba(255, 82, 82, 0.08);
 }
+
+/* AOE preview rings for drag-to-map ground effects */
+.rogue-cell.aoe-exact {
+  outline: 2px solid rgba(0, 212, 255, 0.55);
+  outline-offset: -2px;
+  background: rgba(0, 212, 255, 0.12);
+}
+
+.rogue-cell.aoe-prob {
+  outline: 2px dashed rgba(255, 193, 7, 0.45);
+  outline-offset: -2px;
+  background: rgba(255, 193, 7, 0.07);
+}
+
+.rogue-cell.aoe-far {
+  background: rgba(255, 255, 255, 0.035);
+}

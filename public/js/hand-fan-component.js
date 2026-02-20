@@ -569,9 +569,102 @@ const HandFanComponent = (function () {
     else enemyEl.classList.remove('str-enemy-targeted');
   }
 
+  var _aoePreview = {
+    raf: null,
+    lastKey: null
+  };
+
+  function _clearAoePreview() {
+    try {
+      var cells = document.querySelectorAll('.rogue-cell.aoe-exact, .rogue-cell.aoe-prob, .rogue-cell.aoe-far');
+      for (var i = 0; i < cells.length; i++) {
+        cells[i].classList.remove('aoe-exact', 'aoe-prob', 'aoe-far');
+      }
+    } catch (e) {}
+    _aoePreview.lastKey = null;
+  }
+
+  function _scheduleAoePreviewUpdate(clientX, clientY, cardIndex) {
+    if (_aoePreview.raf) return;
+    _aoePreview.raf = requestAnimationFrame(function() {
+      _aoePreview.raf = null;
+      _updateAoePreviewNow(clientX, clientY, cardIndex);
+    });
+  }
+
+  function _updateAoePreviewNow(clientX, clientY, cardIndex) {
+    if (typeof GroundEffectCardMappings === 'undefined' || typeof GroundEffectCardMappings.getMappingForCard !== 'function') {
+      _clearAoePreview();
+      return;
+    }
+
+    var card = _cards[cardIndex];
+    var mapping = GroundEffectCardMappings.getMappingForCard(card);
+    if (!mapping || !mapping.type) {
+      _clearAoePreview();
+      return;
+    }
+
+    // Only preview when hovering a grid cell
+    var elAt = document.elementFromPoint(clientX, clientY);
+    var cell = elAt ? (elAt.closest && elAt.closest('.rogue-cell')) : null;
+    if (!cell || !cell.dataset) {
+      _clearAoePreview();
+      return;
+    }
+
+    var gx = Number(cell.dataset.x);
+    var gy = Number(cell.dataset.y);
+    if (!isFinite(gx) || !isFinite(gy)) {
+      _clearAoePreview();
+      return;
+    }
+
+    var key = gx + ',' + gy + ':' + String(mapping.type) + ':' + String(mapping.radius || 0);
+    if (_aoePreview.lastKey === key) return;
+    _aoePreview.lastKey = key;
+
+    _clearAoePreview();
+
+    var r = Math.max(0, Number(mapping.radius || 0));
+    var pr = r + 1; // probabilistic ring
+
+    // Exact tiles
+    for (var dy = -r; dy <= r; dy++) {
+      for (var dx = -r; dx <= r; dx++) {
+        var c = document.querySelector('.rogue-cell[data-x="' + (gx + dx) + '"][data-y="' + (gy + dy) + '"]');
+        if (c) c.classList.add('aoe-exact');
+      }
+    }
+
+    // Probabilistic ring tiles (border around exact)
+    for (var dy2 = -pr; dy2 <= pr; dy2++) {
+      for (var dx2 = -pr; dx2 <= pr; dx2++) {
+        if (Math.abs(dx2) <= r && Math.abs(dy2) <= r) continue;
+        var c2 = document.querySelector('.rogue-cell[data-x="' + (gx + dx2) + '"][data-y="' + (gy + dy2) + '"]');
+        if (c2) c2.classList.add('aoe-prob');
+      }
+    }
+
+    // Far faint "reach" highlight so it shows beyond a finger.
+    // Highlight a plus-shape out to ~half the scene width.
+    var reach = 10;
+    for (var i = 1; i <= reach; i++) {
+      var up = document.querySelector('.rogue-cell[data-x="' + gx + '"][data-y="' + (gy - i) + '"]');
+      var dn = document.querySelector('.rogue-cell[data-x="' + gx + '"][data-y="' + (gy + i) + '"]');
+      var lf = document.querySelector('.rogue-cell[data-x="' + (gx - i) + '"][data-y="' + gy + '"]');
+      var rt = document.querySelector('.rogue-cell[data-x="' + (gx + i) + '"][data-y="' + gy + '"]');
+      if (up) up.classList.add('aoe-far');
+      if (dn) dn.classList.add('aoe-far');
+      if (lf) lf.classList.add('aoe-far');
+      if (rt) rt.classList.add('aoe-far');
+    }
+  }
+
   function _clearTargetingVisuals(cardEl) {
     try { document.body.style.cursor = ''; } catch (e) {}
     _setEnemyHoverState(false, false);
+    _clearAoePreview();
     if (cardEl) cardEl.classList.remove('hand-card-targeting');
   }
 
@@ -654,6 +747,9 @@ const HandFanComponent = (function () {
 
       var overEnemy = _isEnemyUnderPointer(ev.clientX, ev.clientY);
       _setEnemyHoverState(true, overEnemy);
+
+      // AOE preview for map-deployable cards
+      _scheduleAoePreviewUpdate(ev.clientX, ev.clientY, index);
     }
 
     function onUp(ev) {
