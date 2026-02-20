@@ -36,7 +36,7 @@ const GAMESTATE = (function () {
     fatigueRecovery: 5,            // Per turn baseline recovery
     fatigueThreshold: 70,          // Above this, cards cost more/become less effective
     _playerFatigueDecimal: 0.0,    // Hidden decimal fatigue (for smooth sprint drain)
-    _sprintReliefUntil: 0,         // Timestamp when sprint relief expires (food pickup grace)
+    _sprintBlockedUntil: 0,        // Timestamp when sprint block expires (food pickup delay)
 
     playerAmmo: 7,                 // Pooled ammunition resource (reduced for balanced economy)
     maxAmmo: 50,                   // Maximum ammo capacity
@@ -807,31 +807,32 @@ const GAMESTATE = (function () {
   }
 
   /**
-   * Grant temporary sprint relief (after food pickup)
-   * Allows sprinting for exhausted players for a limited time
-   * @param {number} duration - Duration in milliseconds (default: 1500ms)
+   * Block sprint temporarily (after food pickup when exhausted)
+   * Creates a delay before fatigue recovery can start during sprint
+   * This prevents immediate fatigue refill and causes delayed food buff effect
+   * @param {number} duration - Duration in milliseconds (default: 900ms)
    */
-  function grantSprintRelief(duration) {
-    duration = duration || 1500; // Default: 1.5 seconds
-    _state._sprintReliefUntil = performance.now() + duration;
+  function blockSprintTemporarily(duration) {
+    duration = duration || 900; // Default: 0.9 seconds
+    _state._sprintBlockedUntil = performance.now() + duration;
   }
 
   /**
-   * Check if player can sprint (not exhausted or has sprint relief)
+   * Check if player can sprint (not exhausted and sprint not blocked)
    * @returns {boolean} True if player can sprint
    */
   function canSprint() {
-    // Always allow sprint if not exhausted
-    if (_state.playerFatigue < _state.maxFatigue) {
-      return true;
+    // Block sprint if temporary block is active (e.g., after food pickup)
+    if (_state._sprintBlockedUntil > performance.now()) {
+      return false;
     }
 
-    // Check if sprint relief is active
-    if (_state._sprintReliefUntil > performance.now()) {
-      return true;
+    // Block sprint if exhausted
+    if (_state.playerFatigue >= _state.maxFatigue) {
+      return false;
     }
 
-    return false;
+    return true;
   }
 
   // ========== AMMO MANAGEMENT ==========
@@ -1222,7 +1223,7 @@ const GAMESTATE = (function () {
     reduceFatigue: reduceFatigue,
     resetFatigue: resetFatigue,
     drainSprintFatigue: drainSprintFatigue,
-    grantSprintRelief: grantSprintRelief,
+    blockSprintTemporarily: blockSprintTemporarily,
     canSprint: canSprint,
     // Ammo management
     getAmmo: getAmmo,

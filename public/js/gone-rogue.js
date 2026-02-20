@@ -3209,9 +3209,10 @@ const GoneRogue = (function () {
               OverheadAnimator.showExpression(newX, newY, 'LOOT', 1000, result.emoji);
             }
 
-            // Grant sprint relief for exhausted players (1.5 second grace period)
-            if (typeof GAMESTATE !== 'undefined' && GAMESTATE.grantSprintRelief) {
-              GAMESTATE.grantSprintRelief(1500);
+            // Block sprint temporarily after food pickup (0.9 second delay)
+            // This prevents immediate fatigue refill during sprint, causing delayed food buff effect
+            if (typeof GAMESTATE !== 'undefined' && GAMESTATE.blockSprintTemporarily) {
+              GAMESTATE.blockSprintTemporarily(900);
             }
 
             // MOK interjection for food pickup
