@@ -16,7 +16,8 @@ const GroundEffects = (function () {
     INDUSTRIAL_WASTE: 'industrial_waste',
     GLASS: 'glass',
     SODA_SPILL: 'soda_spill',
-    STEAM: 'steam'
+    STEAM: 'steam',
+    ICE: 'ice'
   };
 
   // Ground effect definitions
@@ -103,6 +104,17 @@ const GroundEffects = (function () {
       dissipates: true,          // Fades over time
       lifetime: 5,               // Seconds before dissipating
       description: 'Hot steam'
+    },
+    ICE: {
+      emoji: '🧊',
+      char: '·',
+      color: '#b3e5ff',
+      movePenalty: -0.15,        // Negative penalty = speed boost
+      slippery: true,
+      // STR combat penalties
+      accuracyPenaltyPct: 12,    // -12% hit chance
+      evasionPenaltyPts: 2,      // -2 evasion points (each = 5% miss)
+      description: 'Frozen surface (fast but slippery)'
     }
   };
 
@@ -281,7 +293,8 @@ const GroundEffects = (function () {
     if (!effect) return 0;
 
     if (effect.blocksPath) return 1.0;
-    return effect.movePenalty || 0;
+    // movePenalty may be negative (ice speed boost)
+    return (typeof effect.movePenalty === 'number') ? effect.movePenalty : 0;
   }
 
   /**
@@ -339,6 +352,11 @@ const GroundEffects = (function () {
       modifiers.evasion = effect.evasionPenalty || -0.1;
     }
 
+    // Ice: speed up but reduce evasion (accuracy handled at combat layer)
+    if (effect.type === GROUND_TYPES.ICE) {
+      modifiers.evasion = -0.2;
+    }
+
     // Industrial waste gives random debuff
     if (effect.type === GROUND_TYPES.INDUSTRIAL_WASTE) {
       if (Math.random() < (effect.randomDebuffChance || 0.3)) {
@@ -369,12 +387,49 @@ const GroundEffects = (function () {
     return GROUND_EFFECTS[type] || null;
   }
 
+  function getGroundAt(x, y) {
+    return getGroundEffect(x, y);
+  }
+
+  function freezeAt(x, y, opts) {
+    opts = opts || {};
+    var effect = getGroundEffect(x, y);
+    if (effect && (effect.type === GROUND_TYPES.WATER || effect.type === GROUND_TYPES.INDUSTRIAL_WASTE)) {
+      setGroundEffect(x, y, GROUND_TYPES.ICE, {
+        dissipates: true,
+        lifetime: (typeof opts.lifetime === 'number') ? opts.lifetime : 10
+      });
+      return true;
+    }
+
+    // If empty, allow direct ice placement
+    if (!effect) {
+      setGroundEffect(x, y, GROUND_TYPES.ICE, {
+        dissipates: true,
+        lifetime: (typeof opts.lifetime === 'number') ? opts.lifetime : 10
+      });
+      return true;
+    }
+
+    return false;
+  }
+
+  // Locomotive passability gate: water/waste are not passable unless frozen to ICE.
+  function isLocomotivePassable(x, y) {
+    var effect = getGroundEffect(x, y);
+    if (!effect) return true;
+    if (effect.type === GROUND_TYPES.ICE) return true;
+    if (effect.type === GROUND_TYPES.WATER || effect.type === GROUND_TYPES.INDUSTRIAL_WASTE) return false;
+    return true;
+  }
+
   // Public API
   return {
     init: init,
     GROUND_TYPES: GROUND_TYPES,
     setGroundEffect: setGroundEffect,
     getGroundEffect: getGroundEffect,
+    getGroundAt: getGroundAt,
     removeGroundEffect: removeGroundEffect,
     clearAll: clearAll,
     update: update,
@@ -383,6 +438,8 @@ const GroundEffects = (function () {
     getMovementPenalty: getMovementPenalty,
     getDamage: getDamage,
     getSTRModifiers: getSTRModifiers,
+    freezeAt: freezeAt,
+    isLocomotivePassable: isLocomotivePassable,
     getAllEffects: getAllEffects,
     getDefinition: getDefinition
   };

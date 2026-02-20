@@ -703,7 +703,15 @@ const HandFanComponent = (function () {
             var r = Number(mapping.radius || 0);
             for (var dy = -r; dy <= r; dy++) {
               for (var dx = -r; dx <= r; dx++) {
-                GroundEffects.setGroundEffect(gx + dx, gy + dy, mapping.type, overrides);
+                var tx = gx + dx;
+                var ty = gy + dy;
+
+                // ICE gate: freeze water/toxic waste into ice for locomotive passability
+                if (mapping.type === 'ICE' && typeof GroundEffects.freezeAt === 'function') {
+                  GroundEffects.freezeAt(tx, ty, { lifetime: mapping.lifetimeSec });
+                } else {
+                  GroundEffects.setGroundEffect(tx, ty, mapping.type, overrides);
+                }
               }
             }
 

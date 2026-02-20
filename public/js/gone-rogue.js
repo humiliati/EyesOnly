@@ -7498,6 +7498,11 @@ _incrementPityTimers();
           return _tileMetadata[key].movePenalty;
         }
 
+        // GroundEffects movement penalty (can be negative e.g. ICE)
+        if (typeof GroundEffects !== 'undefined' && typeof GroundEffects.getMovementPenalty === 'function') {
+          return GroundEffects.getMovementPenalty(x, y) || 0;
+        }
+
         return 0;
       };
 
@@ -7562,6 +7567,11 @@ _incrementPityTimers();
         var key = x + ',' + y;
         if (_tileMetadata[key] && _tileMetadata[key].movePenalty) {
           return _tileMetadata[key].movePenalty;
+        }
+
+        // GroundEffects movement penalty (can be negative e.g. ICE)
+        if (typeof GroundEffects !== 'undefined' && typeof GroundEffects.getMovementPenalty === 'function') {
+          return GroundEffects.getMovementPenalty(x, y) || 0;
         }
 
         return 0; // No penalty
@@ -9046,8 +9056,11 @@ _incrementPityTimers();
       far: 35
     }[bracket] || 0;
 
+    // Accuracy modifiers (percent)
+    var accBonus = (attacker.accuracyBonus || 0) + (attacker.tempAccuracyBoost || 0);
+
     // Calculate hit chance
-    var hitChance = baseHitChance + (attackerDex - defenderDex) * 2 + advantageBonus - distancePenalty;
+    var hitChance = baseHitChance + (attackerDex - defenderDex) * 2 + advantageBonus - distancePenalty + accBonus;
     hitChance = Math.max(5, Math.min(95, hitChance)); // Clamp between 5-95%
 
     // Roll d100
@@ -9917,6 +9930,15 @@ _incrementPityTimers();
     // WATER: Movement penalty, reduced evasion
     else if (effect.type === 'WATER') {
       _strCombatLog.push('💧 Standing in water: -10% evasion');
+    }
+    // ICE: speed boost but slippery
+    else if (effect.type === 'ICE') {
+      var accPen = (effect.accuracyPenaltyPct != null) ? effect.accuracyPenaltyPct : 12;
+      var evPen = (effect.evasionPenaltyPts != null) ? effect.evasionPenaltyPts : 2;
+      _player.tempAccuracyBoost = (_player.tempAccuracyBoost || 0) - accPen;
+      _player.tempEvasion = (_player.tempEvasion || 0) - evPen;
+      _strCombatLog.push('🧊 ICE: speed up, but slip risk');
+      _strCombatLog.push('└─ Accuracy -' + accPen + '%, Evasion -' + evPen);
     }
   }
 

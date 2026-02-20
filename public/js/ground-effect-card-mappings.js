@@ -14,7 +14,9 @@ var GroundEffectCardMappings = (function() {
     'lighter': { type: 'FIRE', radius: 0, lifetimeSec: 6 },
     'katchup': { type: 'SODA_SPILL', radius: 0, lifetimeSec: 8 },
     'water bottle': { type: 'WATER', radius: 0, lifetimeSec: 10 },
-    'propane': { type: 'OIL', radius: 0, lifetimeSec: 12 }
+    'propane': { type: 'OIL', radius: 0, lifetimeSec: 12 },
+    // Gate: freeze water/toxic waste into ice
+    'cooling': { type: 'ICE', radius: 0, lifetimeSec: 10 }
   };
 
   var _map = null;
