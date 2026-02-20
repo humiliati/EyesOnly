@@ -35,6 +35,8 @@ const GAMESTATE = (function () {
     maxFatigue: 100,
     fatigueRecovery: 5,            // Per turn baseline recovery
     fatigueThreshold: 70,          // Above this, cards cost more/become less effective
+    _playerFatigueDecimal: 0.0,    // Hidden decimal fatigue (for smooth sprint drain)
+    _sprintBlockedUntil: 0,        // Timestamp when sprint block expires (food pickup delay)
 
     playerAmmo: 7,                 // Pooled ammunition resource (reduced for balanced economy)
     maxAmmo: 50,                   // Maximum ammo capacity
@@ -760,7 +762,77 @@ const GAMESTATE = (function () {
    */
   function resetFatigue() {
     _state.playerFatigue = 0;
+    _state._playerFatigueDecimal = 0.0;
     _saveState();
+  }
+
+  /**
+   * Drain sprint fatigue (continuous, fractional)
+   * Called each frame during sprint movement
+   * @param {number} deltaTime - Time elapsed in seconds
+   * @returns {boolean} True if fatigue increased (rolled over to next integer)
+   */
+  function drainSprintFatigue(deltaTime) {
+    // Sprint fatigue drain rate: ~70% of a 50-tile map before 1 full fatigue point
+    // Assuming 50 tiles traversed in ~6.25 seconds at sprint speed (8 * 1.5 = 12 tiles/sec)
+    // We want to drain 1.0 fatigue over 6.25 * 0.7 = ~4.4 seconds
+    // Rate = 1.0 / 4.4 = ~0.227 fatigue per second
+    var SPRINT_FATIGUE_RATE = 0.227;
+
+    // Apply modifiers from equipment (Moon Boots, etc.)
+    var fatigueModifier = 1.0;
+    if (typeof PassiveItemsSystem !== 'undefined') {
+      var equipped = PassiveItemsSystem.getEquippedItems();
+      for (var i = 0; i < equipped.length; i++) {
+        if (equipped[i].sprintFatigueModifier) {
+          fatigueModifier *= equipped[i].sprintFatigueModifier;
+        }
+      }
+    }
+
+    // Add fractional fatigue
+    _state._playerFatigueDecimal += SPRINT_FATIGUE_RATE * fatigueModifier * deltaTime;
+
+    // Check if we've accumulated a full integer point
+    var rolled = false;
+    if (_state._playerFatigueDecimal >= 1.0) {
+      var integerPart = Math.floor(_state._playerFatigueDecimal);
+      _state.playerFatigue = Math.min(_state.maxFatigue, _state.playerFatigue + integerPart);
+      _state._playerFatigueDecimal -= integerPart;
+      rolled = true;
+      _saveState();
+    }
+
+    return rolled;
+  }
+
+  /**
+   * Block sprint temporarily (after food pickup when exhausted)
+   * Creates a delay before fatigue recovery can start during sprint
+   * This prevents immediate fatigue refill and causes delayed food buff effect
+   * @param {number} duration - Duration in milliseconds (default: 900ms)
+   */
+  function blockSprintTemporarily(duration) {
+    duration = duration || 900; // Default: 0.9 seconds
+    _state._sprintBlockedUntil = performance.now() + duration;
+  }
+
+  /**
+   * Check if player can sprint (not exhausted and sprint not blocked)
+   * @returns {boolean} True if player can sprint
+   */
+  function canSprint() {
+    // Block sprint if temporary block is active (e.g., after food pickup)
+    if (_state._sprintBlockedUntil > performance.now()) {
+      return false;
+    }
+
+    // Block sprint if exhausted
+    if (_state.playerFatigue >= _state.maxFatigue) {
+      return false;
+    }
+
+    return true;
   }
 
   // ========== AMMO MANAGEMENT ==========
@@ -1150,6 +1222,9 @@ const GAMESTATE = (function () {
     addFatigue: addFatigue,
     reduceFatigue: reduceFatigue,
     resetFatigue: resetFatigue,
+    drainSprintFatigue: drainSprintFatigue,
+    blockSprintTemporarily: blockSprintTemporarily,
+    canSprint: canSprint,
     // Ammo management
     getAmmo: getAmmo,
     useAmmo: useAmmo,

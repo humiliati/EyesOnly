@@ -1080,6 +1080,18 @@ const GoneRogue = (function () {
       console.log('[GoneRogue] Item spawner initialized');
     }
 
+    // Initialize environmental synergy
+    if (typeof EnvironmentalSynergy !== 'undefined') {
+      EnvironmentalSynergy.init();
+      console.log('[GoneRogue] Environmental synergy initialized');
+    }
+
+    // Initialize environmental drag-drop
+    if (typeof EnvironmentalDragDrop !== 'undefined') {
+      EnvironmentalDragDrop.init();
+      console.log('[GoneRogue] Environmental drag-drop initialized');
+    }
+
     // Initialize food database
     if (typeof FoodDatabase !== 'undefined') {
       FoodDatabase.init();
@@ -1640,6 +1652,11 @@ const GoneRogue = (function () {
     _stealthBonusCache = null;
     _activeSecretFloor = null;
 
+    // Clear environmental synergy state
+    if (typeof EnvironmentalSynergy !== 'undefined') {
+      EnvironmentalSynergy.clearGates();
+    }
+
     // Determine floor type
     var floorType;
     var isSecretFloor = !!secretFloorData;
@@ -1818,15 +1835,6 @@ const GoneRogue = (function () {
 
       // Calculate initial light map
       LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, walls);
-    }
-
-    // Spawn interactive items
-    if (typeof ItemSpawner !== 'undefined' && typeof InteractiveItems !== 'undefined') {
-      var spawnedItems = ItemSpawner.spawnItemsForFloor(_floor, rooms, _grid);
-      spawnedItems.forEach(function(item) {
-        InteractiveItems.addItem(item);
-      });
-      console.log('[GoneRogue] Spawned', spawnedItems.length, 'interactive items');
     }
 
     // Spawn shops
@@ -2859,11 +2867,46 @@ const GoneRogue = (function () {
       emoji: '🚧',
       name: 'Wooden Gate',
       tag: 'tutorial_gate',
-      isTutorialGate: true
+      isTutorialGate: true,
+      type: 'WOODEN_GATE' // Gate type for environmental synergy
     };
 
     _breakables.push(gateBreakable);
     _grid[gateY][gateX] = TILES.BREAKABLE;
+
+    // Register with environmental synergy system
+    if (typeof EnvironmentalSynergy !== 'undefined') {
+      EnvironmentalSynergy.registerGate({
+        x: gateX,
+        y: gateY,
+        type: 'WOODEN_GATE'
+      });
+      console.log('[GoneRogue] Registered tutorial gate with environmental synergy');
+    }
+
+    // Spawn RUSTY_KEY near player spawn (so they can unlock the gate)
+    var keyX = _player.x + (Math.random() > 0.5 ? 2 : -2);
+    var keyY = _player.y + (Math.random() > 0.5 ? 1 : -1);
+
+    // Ensure key position is valid
+    if (keyX >= 1 && keyX < GRID_WIDTH - 1 && keyY >= 1 && keyY < GRID_HEIGHT - 1 &&
+        _grid[keyY] && _grid[keyY][keyX] === TILES.EMPTY) {
+
+      // Add key as interactive item
+      if (typeof InteractiveItems !== 'undefined') {
+        InteractiveItems.addItem({
+          x: keyX,
+          y: keyY,
+          itemId: 'RUSTY_KEY',
+          type: 'key',
+          emoji: '🔑',
+          name: 'Rusty Key',
+          description: 'An old, rusted key. Might open something...',
+          tag: 'tutorial_key'
+        });
+        console.log('[GoneRogue] Spawned tutorial key at', keyX, keyY);
+      }
+    }
 
     // Spawn tutorial pickups behind the gate (towards the exit)
     var pickupX = gateX + Math.sign(dx);
@@ -3164,6 +3207,12 @@ const GoneRogue = (function () {
             // Show overhead animation with food emoji
             if (typeof OverheadAnimator !== 'undefined') {
               OverheadAnimator.showExpression(newX, newY, 'LOOT', 1000, result.emoji);
+            }
+
+            // Block sprint temporarily after food pickup (0.9 second delay)
+            // This prevents immediate fatigue refill during sprint, causing delayed food buff effect
+            if (typeof GAMESTATE !== 'undefined' && GAMESTATE.blockSprintTemporarily) {
+              GAMESTATE.blockSprintTemporarily(900);
             }
 
             // MOK interjection for food pickup
@@ -5189,6 +5238,26 @@ const GoneRogue = (function () {
     return _breakables.find(function(b) { return b.x === x && b.y === y; });
   }
 
+  /**
+   * Remove breakable at specific position (for environmental synergy system)
+   * @param {number} x - X coordinate
+   * @param {number} y - Y coordinate
+   * @returns {boolean} True if removed
+   */
+  function _removeBreakableAt(x, y) {
+    var initialLength = _breakables.length;
+    _breakables = _breakables.filter(function(b) {
+      return !(b.x === x && b.y === y);
+    });
+
+    // Update grid tile if removed
+    if (_breakables.length < initialLength && _grid[y] && _grid[y][x]) {
+      _grid[y][x] = TILES.EMPTY;
+    }
+
+    return _breakables.length < initialLength;
+  }
+
   function _damageBreakable(breakable, amount) {
     breakable.hp = Math.max(0, (breakable.hp || 0) - amount);
 
@@ -5681,7 +5750,7 @@ const GoneRogue = (function () {
   /**
    * Handle fishing move from mobile UI (smooth movement along path)
    */
-  function handleFishingMove(path) {
+  function handleFishingMove(path, isSprinting) {
     if (!_active) return;
     if (!path || path.length === 0) return;
 
@@ -5689,13 +5758,33 @@ const GoneRogue = (function () {
     if (typeof GoneRogueMovement !== 'undefined') {
       GoneRogueMovement.init(_player.x, _player.y);
 
-      // Set target with collision checking
+      // Set target with collision checking and terrain penalty callbacks
       var collisionCheck = function(x, y) {
         return !_isWalkable(x, y);
       };
 
+      // Attach getTileMovePenalty as a property of the callback function
+      collisionCheck.getTileMovePenalty = function(x, y) {
+        // Get tile at position
+        if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) return 0;
+        var tile = _grid[y][x];
+
+        // Check TILE_EFFECTS for move penalty
+        if (tile === TILES.WATER && TILE_EFFECTS.WATER) {
+          return TILE_EFFECTS.WATER.movePenalty || 0;
+        }
+
+        // Check tile metadata for custom penalties
+        var key = x + ',' + y;
+        if (_tileMetadata[key] && _tileMetadata[key].movePenalty) {
+          return _tileMetadata[key].movePenalty;
+        }
+
+        return 0; // No penalty
+      };
+
       var destination = path[path.length - 1];
-      GoneRogueMovement.setTarget(destination.x, destination.y, collisionCheck);
+      GoneRogueMovement.setTarget(destination.x, destination.y, collisionCheck, isSprinting);
 
       // Update mobile UI to start animation
       if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
@@ -5709,7 +5798,7 @@ const GoneRogue = (function () {
       };
     } else {
       // Fallback to instant move
-      return handleTapMove(path[path.length - 1].x, path[path.length - 1].y, false);
+      return handleTapMove(path[path.length - 1].x, path[path.length - 1].y, isSprinting || false);
     }
   }
 
@@ -8554,6 +8643,7 @@ const GoneRogue = (function () {
     getEnemyAwarenessState: getEnemyAwarenessState,
     getBreakables: function() { return _breakables; },
     getBreakableAt: _getBreakableAt,
+    removeBreakableAt: _removeBreakableAt,
     getProjectiles: function() { return _projectiles; },
     fireProjectile: _fireProjectile,
     stepProjectiles: stepProjectiles,

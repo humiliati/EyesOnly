@@ -20,7 +20,7 @@ const GoneRogueMobile = (function () {
   var _inventoryContainer = null; // New: persistent inventory display
   var _lastTapTime = 0;
   var _lastTapCell = null;
-  var _runMode = false;
+  var _runMode = false; // Actually "sprint mode" (double-tap), NOT a separate "run" speed
 
   // Pinch-to-zoom state
   var _initialPinchDistance = 0;
@@ -424,6 +424,13 @@ const GoneRogueMobile = (function () {
         color: '#00FF00'
       } : null
     });
+
+    // Render sprint trails on canvas
+    if (typeof SprintTrailSystem !== 'undefined' && _canvasRenderer && _canvasRenderer.getContext) {
+      var cellWidth = _canvasRenderer.getCellWidth ? _canvasRenderer.getCellWidth() : 32;
+      var cellHeight = _canvasRenderer.getCellHeight ? _canvasRenderer.getCellHeight() : 32;
+      SprintTrailSystem.renderToCanvas(_canvasRenderer.getContext(), cellWidth, cellHeight);
+    }
   }
 
   /**
@@ -723,6 +730,13 @@ const GoneRogueMobile = (function () {
           cell.appendChild(animEl);
         }
       }
+    }
+
+    // Render sprint trails (DOM mode)
+    if (typeof SprintTrailSystem !== 'undefined') {
+      var cellWidth = _gridContainer.offsetWidth / grid[0].length;
+      var cellHeight = _gridContainer.offsetHeight / grid.length;
+      SprintTrailSystem.renderToDOM(_gridContainer, cellWidth, cellHeight);
     }
 
     // Render STR combat overlay if combat is active
@@ -1217,9 +1231,15 @@ const GoneRogueMobile = (function () {
 
     // Check for double-tap (within threshold)
     if (_lastTapCell === cellKey && (now - _lastTapTime) < DOUBLE_TAP_THRESHOLD_MS) {
-      _runMode = true;
-      // For DOM mode, add visual feedback
-      if (!_canvasRenderer) {
+      // Check if sprint is allowed (not blocked by food pickup delay or exhaustion)
+      var canSprint = typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.canSprint === 'function'
+        ? GAMESTATE.canSprint()
+        : true;
+
+      _runMode = canSprint;
+
+      // For DOM mode, add visual feedback only if sprint is allowed
+      if (_runMode && !_canvasRenderer) {
         var target = document.elementFromPoint(touch.clientX, touch.clientY);
         if (target) {
           target.classList.add('run-mode-flash');
@@ -1286,7 +1306,7 @@ const GoneRogueMobile = (function () {
 
       // Execute smooth movement along fishing path
       if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleFishingMove === 'function') {
-        GoneRogue.handleFishingMove(_fishingPath);
+        GoneRogue.handleFishingMove(_fishingPath, _runMode);
       } else {
         // Fallback to tap-to-move with final destination
         var destination = _fishingPath[_fishingPath.length - 1];
@@ -1320,9 +1340,15 @@ const GoneRogueMobile = (function () {
 
     // Check for double-click on desktop (within threshold)
     if (_lastTapCell === cellKey && (now - _lastTapTime) < DOUBLE_TAP_THRESHOLD_MS) {
-      _runMode = true;
-      // For DOM mode, add visual feedback
-      if (!_canvasRenderer) {
+      // Check if sprint is allowed (not blocked by food pickup delay or exhaustion)
+      var canSprint = typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.canSprint === 'function'
+        ? GAMESTATE.canSprint()
+        : true;
+
+      _runMode = canSprint;
+
+      // For DOM mode, add visual feedback only if sprint is allowed
+      if (_runMode && !_canvasRenderer) {
         var target = e.target;
         if (target) {
           target.classList.add('run-mode-flash');

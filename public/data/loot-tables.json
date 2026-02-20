@@ -138,6 +138,16 @@
       "item": {
         "enabled": true,
         "chance": 0.3
+      },
+      "key_item": {
+        "enabled": true,
+        "chance": 0.15,
+        "types": {
+          "RUSTY_KEY": 50,
+          "BRONZE_KEY": 30,
+          "KEYCARD": 15,
+          "MASTER_KEY": 5
+        }
       }
     },
     "biomes": {
@@ -161,7 +171,9 @@
           "bush": {
             "hp": 2,
             "drops": ["berries", "sticks"],
-            "item_chance": 0.5
+            "item_chance": 0.5,
+            "key_chance": 0.25,
+            "key_types": ["RUSTY_KEY", "BRONZE_KEY"]
           },
           "boulder": {
             "hp": 5,
