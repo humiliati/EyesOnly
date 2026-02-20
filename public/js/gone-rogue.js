@@ -97,6 +97,11 @@ const GoneRogue = (function () {
   var _forestBuildings = []; // Village buildings {x, y, emoji} for visual overlay
   var _biomeVisualGrid = null; // Pre-computed visual substitution grid (wall/floor chars)
 
+  // Seed-based generation for reproducible runs
+  var _currentSeed = null;         // Current run seed (for deterministic generation)
+  var _currentSeedPhrase = null;   // Human-readable seed phrase
+  var _seedRNG = null;             // Seeded RNG instance
+
   // Highscore tracking variables
   var _runStartTime = null;        // Run start timestamp
   var _currencyCollected = 0;      // Total currency collected this run (excludes starting balance)
@@ -1019,6 +1024,17 @@ const GoneRogue = (function () {
 
     // Disable scanlines for performance during gameplay
     document.body.classList.add('gone-rogue-active');
+
+    // Initialize seed-based generation
+    if (typeof SeededRandom !== 'undefined') {
+      _currentSeed = SeededRandom.generateRandomSeed();
+      _currentSeedPhrase = SeededRandom.generateSeedPhrase(_currentSeed);
+      _seedRNG = new SeededRandom.SeededRNG(_currentSeed);
+      console.log('[GoneRogue] Run seed:', _currentSeed, '(' + _currentSeedPhrase + ')');
+
+      // Update AWOL button to show seed phrase
+      _updateSeedDisplay();
+    }
 
     // Initialize highscore tracking
     _runStartTime = Date.now();
@@ -3229,6 +3245,19 @@ const GoneRogue = (function () {
     });
 
     ReserveSlots.setReserveCards(cards);
+  }
+
+  /**
+   * Update seed display in AWOL button tooltip
+   */
+  function _updateSeedDisplay() {
+    var awolButton = document.getElementById('awol-button');
+    if (!awolButton) return;
+
+    if (_currentSeedPhrase) {
+      var difficulty = ['STANDARD', 'ADVANCED', 'EXTREME'][_difficultyTier - 1];
+      awolButton.setAttribute('title', 'AWOL status — Click to configure difficulty\nSeed: ' + _currentSeedPhrase);
+    }
   }
 
   function _movePlayer(dx, dy, runMode) {
@@ -8659,6 +8688,39 @@ const GoneRogue = (function () {
   // END HEADLESS MODE API
   // ============================================================
 
+  /**
+   * Get current run seed
+   */
+  function getSeed() {
+    return _currentSeed;
+  }
+
+  /**
+   * Get current seed phrase
+   */
+  function getSeedPhrase() {
+    return _currentSeedPhrase;
+  }
+
+  /**
+   * Set seed for next run (must be called before start())
+   */
+  function setSeed(seed) {
+    if (typeof SeededRandom !== 'undefined') {
+      _currentSeed = seed;
+      _currentSeedPhrase = SeededRandom.generateSeedPhrase(seed);
+      _seedRNG = new SeededRandom.SeededRNG(seed);
+      console.log('[GoneRogue] Seed set to:', _currentSeed, '(' + _currentSeedPhrase + ')');
+    }
+  }
+
+  /**
+   * Get seeded RNG instance (for procedural generation)
+   */
+  function getSeededRNG() {
+    return _seedRNG;
+  }
+
   return {
     init: init,
     start: start,
@@ -8693,6 +8755,12 @@ const GoneRogue = (function () {
     setDifficulty: setDifficulty,
     getDifficulty: getDifficulty,
     onStateChange: onStateChange,
+
+    // Seed-based generation system
+    getSeed: getSeed,
+    getSeedPhrase: getSeedPhrase,
+    setSeed: setSeed,
+    getSeededRNG: getSeededRNG,
 
     // Forest biome generation API (per spec)
     createBordersForest: createBordersForest,
