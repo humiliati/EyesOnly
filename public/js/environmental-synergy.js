@@ -50,6 +50,15 @@ const EnvironmentalSynergy = (function() {
         compatibleGates: ['TERMINAL_GATE', 'SERVER_RACK'],
         consumeOnUse: false, // Can be reused on multiple terminals
         biome: 'OFFICE'
+      },
+      ACCESS_CARD: {
+        itemId: 'KEY_006',
+        emoji: '🎫',
+        name: 'Access Card',
+        description: 'Aerospace facility access card. Permits elevator use.',
+        compatibleGates: ['FLOOR_ELEVATOR', 'AEROSPACE_DOOR'],
+        consumeOnUse: false, // Can be reused
+        biome: 'AEROSPACE'
       }
     },
 
@@ -140,6 +149,29 @@ const EnvironmentalSynergy = (function() {
         biome: 'OFFICE',
         glowColor: '#00ffff',
         lightRadius: 3
+      },
+      FLOOR_ELEVATOR: {
+        objectId: 'GATE_009',
+        emoji: '🛗',
+        name: 'Floor Elevator',
+        description: 'Locked elevator to next floor. Requires access card.',
+        requiredKeys: ['ACCESS_CARD', 'MASTER_KEY'],
+        blocksPath: true,
+        unlockEmoji: '⬆️',
+        unlockMessage: 'Elevator activated. Access granted.',
+        biome: 'AEROSPACE',
+        isElevator: true  // Special flag for elevator mechanics
+      },
+      AEROSPACE_DOOR: {
+        objectId: 'GATE_010',
+        emoji: '🚪',
+        name: 'Aerospace Door',
+        description: 'Secure aerospace facility door.',
+        requiredKeys: ['ACCESS_CARD', 'MASTER_KEY'],
+        blocksPath: true,
+        unlockEmoji: '🚀',
+        unlockMessage: 'Aerospace door unlocks with authorization.',
+        biome: 'AEROSPACE'
       }
     },
 

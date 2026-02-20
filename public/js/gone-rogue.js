@@ -430,7 +430,8 @@ const GoneRogue = (function () {
         { emoji: '🧪', name: 'Chemical Tank', breakable: true, hp: 3, drops: ['acid'], hazard: 'acid' },
         { emoji: '🛤️', name: 'Pipeline', interact: 'damage', effect: 'releases_steam' },
         { emoji: '🤖', name: 'Robot Wreckage', breakable: true, hp: 4, drops: ['scrap', 'parts'], sometimes: 'hostile' },
-        { emoji: '⏩', name: 'Conveyor Belt', interact: 'walk', effect: 'speed_boost', reversible: true }
+        { emoji: '⏩', name: 'Conveyor Belt', interact: 'walk', effect: 'speed_boost', reversible: true },
+        { emoji: '🌫️', name: 'Vent Cover', breakable: true, hp: 3, requiresCrowbar: true, opensVent: true, drops: ['vent_access'] }
       ],
 
       // Interactive hazard objects
@@ -3138,8 +3139,8 @@ const GoneRogue = (function () {
       return; // Skip tutorial, ghost, and boss floors
     }
 
-    // 30% chance to spawn a gate on this floor
-    if (_rng() > 0.30) {
+    // 20% chance to spawn a gate on this floor (reduced from 30% to ensure keys are more common)
+    if (_rng() > 0.20) {
       return;
     }
 

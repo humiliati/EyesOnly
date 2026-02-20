@@ -291,6 +291,30 @@ const CardSystem = (function () {
       resourceCost: { ammo: 2 },  // Costs 2 ammo to use
       synergyTags: ['explosive', 'aoe', 'burst']
     },
+    'Propane Tank': {
+      category: 'attack',
+      type: 'attack',
+      name: 'Propane Tank',
+      emoji: '🧳',  // Luggage emoji as specified
+      lifecycleType: 'disposable',  // Single-use consumable
+      baseStats: {
+        damage: 4,  // Initial explosion damage
+        aoe: 2,     // Area of effect radius
+        noise: 4,
+        accuracy: 70,
+        energy: 3,
+        speed: 2,
+        createsGroundEffect: true,       // Creates fire/lava ground effect
+        groundEffectType: 'FIRE',        // Type of effect to create
+        groundEffectSpread: true,        // Effect spreads over time
+        groundEffectRadius: 2,           // Initial spread radius
+        ignitionSynergy: true,           // Synergizes with ignition sources
+        destroysEnvironment: true
+      },
+      resourceCost: { energy: 3 },  // Energy cost only
+      synergyTags: ['fire', 'explosive', 'aoe', 'industrial', 'environmental'],
+      biome: 'INDUSTRIAL'  // Industrial biome specific
+    },
     'Jammer': {
       category: 'interrupt',
       type: 'interrupt',
@@ -351,6 +375,27 @@ const CardSystem = (function () {
         isMelee: true
       },
       synergyTags: ['melee', 'aggressive']
+    },
+    'Crowbar': {
+      category: 'attack',
+      type: 'attack',
+      name: 'Crowbar',
+      emoji: '⛏️',  // Pick emoji as specified
+      lifecycleType: 'persistent',  // Reusable tool
+      baseStats: {
+        damage: 3,      // Medium damage for combat
+        accuracy: 80,
+        range: 1,       // Must be adjacent
+        energy: 1,      // Tiny energy cost
+        speed: 3,
+        fatigue: 2,     // Medium fatigue
+        isMelee: true,
+        opensVents: true,           // Special: can open vent covers
+        breaksEnvironment: true     // Can break certain objects
+      },
+      resourceCost: { energy: 1, fatigue: 2 },
+      synergyTags: ['melee', 'utility', 'tool', 'vent_access'],
+      description: 'Melee weapon that opens vent covers. Uses tiny energy, causes medium fatigue.'
     },
     'Logic Hack': {
       category: 'interrupt',
