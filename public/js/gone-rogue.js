@@ -36,6 +36,7 @@ const GoneRogue = (function () {
   };
 
   var _enemies = [];
+  var _npcs = []; // NPCs on floor (tutorial gates, etc.)
   var _items = [];
   var _projectiles = [];
   var _breakables = [];
@@ -67,6 +68,7 @@ const GoneRogue = (function () {
   var _strCombatLog = []; // Combat log messages
   var _strCombatAmmoSpent = 0; // Track ammo spent in this combat encounter
   var _strCombatContext = null; // Countdown context messages built at combat entry
+  var _strCombatEntryPos = null; // {x,y} where combat began (for soft resets)
 
   // Performance caches
   var _stealthBonusCache = null; // { bonus, px, py } — invalidated when player moves
@@ -2074,6 +2076,90 @@ const GoneRogue = (function () {
       });
     }
 
+    // Place tutorial NPCs / gate NPCs
+    if (floorData.npcs && floorData.npcs.length) {
+      floorData.npcs.forEach(function(npc) {
+        var npcId = npc.id || ('NPC-' + npc.x + '-' + npc.y);
+        var dir = (npc.direction || 'south').toLowerCase();
+
+        var npcObj = {
+          id: npcId,
+          x: npc.x,
+          y: npc.y,
+          emoji: npc.emoji || '🧑',
+          name: npc.name || 'NPC',
+          direction: dir,
+          dialogues: Array.isArray(npc.dialogues) ? npc.dialogues.slice() : [],
+          gate: npc.gate || null,
+          reward: npc.reward || null,
+          state: {
+            released: false,
+            rewardGiven: false,
+            lastWarnTurn: -999,
+            lastTalkTurn: -999
+          }
+        };
+
+        _npcs.push(npcObj);
+
+        // Occupy NPC tile
+        _grid[npcObj.y][npcObj.x] = TILES.WALL;
+        _tileMetadata[npcObj.x + ',' + npcObj.y] = {
+          type: 'npc',
+          npcId: npcObj.id,
+          emoji: npcObj.emoji,
+          name: npcObj.name
+        };
+
+        // Project gate warning/trigger zones
+        if (npcObj.gate && npcObj.gate.type && !npcObj.state.released) {
+          var wDist = (npcObj.gate.warningDistance != null) ? npcObj.gate.warningDistance : 6;
+          var tDist = (npcObj.gate.triggerDistance != null) ? npcObj.gate.triggerDistance : 3;
+          var width = (npcObj.gate.width != null) ? npcObj.gate.width : 2;
+
+          function _markZone(dist, zoneType) {
+            for (var f = 1; f <= dist; f++) {
+              for (var s = -width; s <= width; s++) {
+                var zx = npcObj.x;
+                var zy = npcObj.y;
+
+                if (dir === 'north') {
+                  zx = npcObj.x + s;
+                  zy = npcObj.y - f;
+                } else if (dir === 'south') {
+                  zx = npcObj.x + s;
+                  zy = npcObj.y + f;
+                } else if (dir === 'east') {
+                  zx = npcObj.x + f;
+                  zy = npcObj.y + s;
+                } else if (dir === 'west') {
+                  zx = npcObj.x - f;
+                  zy = npcObj.y + s;
+                }
+
+                if (zx < 0 || zx >= GRID_WIDTH || zy < 0 || zy >= GRID_HEIGHT) continue;
+                // Don't overwrite actual walls/breakables/locked gates/chests
+                if (_grid[zy][zx] === TILES.WALL) continue;
+
+                var key = zx + ',' + zy;
+                // Trigger zone wins over warning zone
+                if (zoneType === 'npc_gate_trigger') {
+                  _tileMetadata[key] = { type: 'npc_gate_trigger', npcId: npcObj.id };
+                } else {
+                  if (!_tileMetadata[key]) {
+                    _tileMetadata[key] = { type: 'npc_gate_warning', npcId: npcObj.id };
+                  }
+                }
+              }
+            }
+          }
+
+          _markZone(wDist, 'npc_gate_warning');
+          _markZone(tDist, 'npc_gate_trigger');
+        }
+      });
+    }
+
     // Place enemies (intended for floor 3)
     // Enforce: no enemies on Cozy Forest tutorial floors until floor 3.
     var tutorialEnemies = (Array.isArray(floorData.enemies) ? floorData.enemies : []);
@@ -2218,6 +2304,7 @@ const GoneRogue = (function () {
     _breakables = [];
     _items = [];
     _enemies = [];
+    _npcs = [];
     _shops = [];
     _tileMetadata = {};
     _activeBoss = null;
@@ -4072,16 +4159,24 @@ _incrementPityTimers();
       }
     });
 
-    // Place locked gates (render door emoji over the underlying wall tile)
+    // Place metadata-driven overlays (doors/chests/NPCs)
     for (var mk in _tileMetadata) {
       if (_tileMetadata.hasOwnProperty(mk)) {
         var md = _tileMetadata[mk];
-        if (md && md.type === 'locked_gate') {
+        if (!md) continue;
+
+        if (md.type === 'locked_gate' || md.type === 'locked_chest' || md.type === 'npc') {
           var parts = mk.split(',');
           var mx = parseInt(parts[0]);
           var my = parseInt(parts[1]);
           if (display[my] && typeof display[my][mx] !== 'undefined') {
-            display[my][mx] = md.emoji || '🚪';
+            if (md.type === 'locked_gate') {
+              display[my][mx] = md.emoji || '🚪';
+            } else if (md.type === 'locked_chest') {
+              display[my][mx] = md.emoji || '🧰';
+            } else if (md.type === 'npc') {
+              display[my][mx] = md.emoji || '🧑';
+            }
           }
         }
       }
@@ -4176,7 +4271,7 @@ _incrementPityTimers();
   function _updateMobileGrid() {
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
       var displayGrid = _biomeVisualGrid || _grid;
-      GoneRogueMobile.renderGrid(displayGrid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles, _alertLevel, _strCombatActive, _muzzleFlash, _impactEffects, _currencies);
+      GoneRogueMobile.renderGrid(displayGrid, _player, _enemies, _items, _enemyColorCycleTime, _breakables, _projectiles, _alertLevel, _strCombatActive, _muzzleFlash, _impactEffects, _currencies, _npcs, _tileMetadata);
     }
   }
 
@@ -4217,6 +4312,76 @@ _incrementPityTimers();
       var difficulty = ['STANDARD', 'ADVANCED', 'EXTREME'][_difficultyTier - 1];
       awolButton.setAttribute('title', 'AWOL status — Click to configure difficulty\nSeed: ' + _currentSeedPhrase);
     }
+  }
+
+  function _getNpcById(npcId) {
+    for (var i = 0; i < _npcs.length; i++) {
+      if (_npcs[i].id === npcId) return _npcs[i];
+    }
+    return null;
+  }
+
+  function _npcShowEmoji(npc, emoji, ms) {
+    if (!npc) return;
+    if (typeof OverheadAnimator !== 'undefined') {
+      OverheadAnimator.showGenericExpression(npc.x, npc.y, emoji, ms || 800);
+    }
+  }
+
+  function _npcSay(npc, text) {
+    if (!npc || !text) return;
+    if (typeof TooltipSystem !== 'undefined') {
+      // Use persistent tooltip so the player can glance back
+      TooltipSystem.showPersistent(text, 2400);
+    }
+  }
+
+  function _clearNpcGateZones(npcId) {
+    for (var k in _tileMetadata) {
+      if (!_tileMetadata.hasOwnProperty(k)) continue;
+      var md = _tileMetadata[k];
+      if (md && (md.type === 'npc_gate_warning' || md.type === 'npc_gate_trigger') && md.npcId === npcId) {
+        delete _tileMetadata[k];
+      }
+    }
+  }
+
+  function _startNpcGateCombat(npc) {
+    if (!npc) return;
+
+    _npcShowEmoji(npc, '🥊', 900);
+
+    // Print a short line (avoid spam)
+    if (_turn - npc.state.lastTalkTurn > 6) {
+      npc.state.lastTalkTurn = _turn;
+      if (npc.dialogues && npc.dialogues.length) {
+        _npcSay(npc, npc.dialogues[0]);
+      } else {
+        _npcSay(npc, npc.emoji + ' ' + npc.name + ': Spar?');
+      }
+    }
+
+    // Create a combat proxy using enemy-shaped stats
+    var enemy = {
+      x: npc.x,
+      y: npc.y,
+      emoji: npc.emoji,
+      name: npc.name,
+      hp: 18,
+      maxHp: 18,
+      str: 4,
+      dex: 2,
+      initiative: 0,
+      awareness: 0,
+      orientation: npc.direction || 'south',
+      sightRange: 0,
+      dead: false,
+      isTreasureGoblin: false,
+      _npcGateId: npc.id,
+      _npcGateType: (npc.gate && npc.gate.type) ? npc.gate.type : 'friendly'
+    };
+
+    _enterStrCombat(enemy, 'collision');
   }
 
   /**
@@ -4268,6 +4433,31 @@ _incrementPityTimers();
         prompt: getPrompt(),
         stayActive: true
       };
+    }
+
+    // NPC gate zones (warning + trigger)
+    var metaKey = newX + ',' + newY;
+    var meta = _tileMetadata[metaKey];
+    if (meta && meta.type === 'npc_gate_warning') {
+      var warnNpc = _getNpcById(meta.npcId);
+      if (warnNpc && (!warnNpc.state.released) && (_turn - warnNpc.state.lastWarnTurn > 10)) {
+        warnNpc.state.lastWarnTurn = _turn;
+        _npcShowEmoji(warnNpc, '❗️', 700);
+        _npcSay(warnNpc, warnNpc.emoji + ' ' + warnNpc.name + ' watches your approach.');
+      }
+      // Warning zone is walkable
+    } else if (meta && meta.type === 'npc_gate_trigger') {
+      var trigNpc = _getNpcById(meta.npcId);
+      if (trigNpc && !trigNpc.state.released) {
+        // Block movement and trigger encounter
+        _npcShowEmoji(trigNpc, '⚠️', 650);
+        _startNpcGateCombat(trigNpc);
+        return {
+          lines: ['GATE ENGAGED', ''].concat(_renderGrid()),
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
     }
 
     // Check collision
@@ -7725,6 +7915,7 @@ _incrementPityTimers();
     // Initialize combat state
     _strCombatActive = true;
     _strCombatEnemy = enemy;
+    _strCombatEntryPos = { x: _player.x, y: _player.y };
     _strCombatRound = 0;
     _strCombatLog = [];
     _strCombatAmmoSpent = 0; // Reset ammo tracking for this encounter
@@ -8752,6 +8943,18 @@ _incrementPityTimers();
     // Check if player defeated
     if (_player.hp <= 0) {
       _strCombatLog.push('💀 YOU HAVE BEEN DEFEATED...');
+
+      // Soft reset for friendly NPC gate combats (tutorial sparring)
+      if (_strCombatEnemy && _strCombatEnemy._npcGateId) {
+        // Restore player and reposition to combat entry
+        _player.hp = _player.maxHp;
+        if (_strCombatEntryPos) {
+          _player.x = _strCombatEntryPos.x;
+          _player.y = _strCombatEntryPos.y;
+        }
+        return _exitStrCombat('npc_gate_soft_defeat');
+      }
+
       return _handlePlayerDeath('combat_damage', { enemy: _strCombatEnemy });
     }
 
@@ -8903,11 +9106,54 @@ _incrementPityTimers();
       lines.push('✅ COMBAT VICTORY!');
       lines.push('└─ Enemy neutralized');
 
-      // Handle enemy death through centralized death system
-      var deathResult = _handleEnemyDeath(_strCombatEnemy, 'player', {
-        player: _player,
-        location: { x: _strCombatEnemy.x, y: _strCombatEnemy.y }
-      });
+      // NPC gate combat (friendly / defeatable)
+      if (_strCombatEnemy && _strCombatEnemy._npcGateId) {
+        var gateNpc = _getNpcById(_strCombatEnemy._npcGateId);
+        if (gateNpc) {
+          // Release wall permanently
+          gateNpc.state.released = true;
+          _clearNpcGateZones(gateNpc.id);
+
+          if (_strCombatEnemy._npcGateType === 'defeatable') {
+            // Remove NPC entirely
+            _npcs = _npcs.filter(function(n) { return n.id !== gateNpc.id; });
+            delete _tileMetadata[gateNpc.x + ',' + gateNpc.y];
+            // Keep grid blocked? no — clear the NPC tile so passage is truly open
+            _grid[gateNpc.y][gateNpc.x] = TILES.EMPTY;
+            lines.push('🧱 GATE REMOVED: ' + gateNpc.name + ' yields the path.');
+          } else {
+            lines.push('🟢 GATE RELEASED: ' + gateNpc.name + ' lets you pass.');
+          }
+
+          // First-win reward (friendly gates teach + reward)
+          if (!gateNpc.state.rewardGiven && gateNpc.reward) {
+            gateNpc.state.rewardGiven = true;
+            if (gateNpc.reward.currency) {
+              GAMESTATE.addMoney(gateNpc.reward.currency);
+              lines.push('💰 REWARD: +' + gateNpc.reward.currency);
+            }
+          }
+
+          // Debrief feedback
+          if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.showSynergyOverlay) {
+            DebriefFeedController.showSynergyOverlay({
+              kind: 'gate',
+              keyEmoji: '🥊',
+              gateEmoji: '🚧',
+              text: 'Gate cleared'
+            });
+          }
+        }
+
+        // Skip normal enemy death/loot pipeline
+        // (gate NPCs are training/gating entities, not standard enemies)
+      } else {
+        // Handle enemy death through centralized death system
+        var deathResult = _handleEnemyDeath(_strCombatEnemy, 'player', {
+          player: _player,
+          location: { x: _strCombatEnemy.x, y: _strCombatEnemy.y }
+        });
+
 
       // Add standard loot messages from death handler
       if (deathResult && deathResult.messages && deathResult.messages.length > 0) {
@@ -9094,11 +9340,21 @@ _incrementPityTimers();
         }
       }
 
+      // Close normal-enemy victory branch (NPC gates skip this branch)
+      }
+
       // Remove defeated enemy from map
       var enemyIndex = _enemies.indexOf(_strCombatEnemy);
       if (enemyIndex > -1) {
         _enemies[enemyIndex].hp = 0;
       }
+    } else if (reason === 'npc_gate_soft_defeat') {
+      lines.push('💀 DEFEAT (TRAINING MATCH)');
+      lines.push('└─ Resetting position…');
+      lines.push('');
+      lines.push('Respawning in: 3…');
+      lines.push('Respawning in: 2…');
+      lines.push('Respawning in: 1…');
     } else if (reason === 'fled') {
       lines.push('🏃 FLED COMBAT!');
       lines.push('└─ Repositioned to safety');

@@ -1574,3 +1574,12 @@
          layout thrashing (single requestAnimationFrame pass).
 
    ============================================================ */
+
+/* NPC gate zone hinting (subtle approach + inner trigger) */
+.cell-npc-gate-warning {
+  background: rgba(255, 235, 59, 0.08);
+}
+
+.cell-npc-gate-trigger {
+  background: rgba(255, 82, 82, 0.08);
+}

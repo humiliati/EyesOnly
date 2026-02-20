@@ -371,6 +371,30 @@ var TutorialFloors = (function() {
     buildings: [],
     decorations: [],
 
+    // Friendly gate NPC (Pokemon-style) that teaches STR combat before leaving
+    npcs: [
+      {
+        id: 'TUTORIAL-GATE-01',
+        x: 20,
+        y: 13,
+        emoji: '🧑‍🏫',
+        name: 'Trainer',
+        direction: 'south',
+        gate: {
+          type: 'friendly',
+          // warning zone extends farther; trigger zone is the inner boundary
+          warningDistance: 6,
+          triggerDistance: 3,
+          width: 2
+        },
+        dialogues: [
+          '🧑‍🏫 You can’t leave yet. Show me you can fight.',
+          '🧑‍🏫 Tip: you can soften a target before combat — but only one trick, once.'
+        ],
+        reward: { currency: 15 }
+      }
+    ],
+
     // Weak tutorial enemies
     enemies: [
       {

@@ -620,7 +620,7 @@ const GoneRogueMobile = (function () {
   /**
    * Render grid as interactive HTML cells (or canvas if enabled)
    */
-  function renderGrid(grid, player, enemies, items, colorCycleTime, breakables, projectiles, alertLevel, strCombatActive, muzzleFlash, impactEffects, currencies) {
+  function renderGrid(grid, player, enemies, items, colorCycleTime, breakables, projectiles, alertLevel, strCombatActive, muzzleFlash, impactEffects, currencies, npcs, tileMetadata) {
     var _rg0 = (typeof EYESONLY_PERF !== 'undefined') ? performance.now() : 0;
     if (!_gridContainer || !grid) return;
 
@@ -670,10 +670,12 @@ const GoneRogueMobile = (function () {
 
         var tile = grid[y][x];
         var enemy = enemies ? enemies.find(function(e) { return e.x === x && e.y === y && e.hp > 0; }) : null;
+        var npc = npcs ? npcs.find(function(n) { return n.x === x && n.y === y; }) : null;
         var projectile = projectiles.find(function(p) { return p.x === x && p.y === y; });
         var breakable = breakables.find(function(b) { return b.x === x && b.y === y; });
         var item = items ? items.find(function(i) { return i.x === x && i.y === y; }) : null;
         var currency = currencies.find(function(c) { return c.x === x && c.y === y; });
+        var md = tileMetadata ? tileMetadata[x + ',' + y] : null;
 
         // Check for muzzle flash at this position
         var hasMuzzleFlash = muzzleFlash && muzzleFlash.x === x && muzzleFlash.y === y;
@@ -774,6 +776,9 @@ const GoneRogueMobile = (function () {
 
           // Add sight cone overlay
           _addSightConeOverlay(cell, enemy, grid);
+        } else if (npc) {
+          cell.textContent = npc.emoji || '🧑';
+          cell.classList.add('cell-npc');
         } else if (projectile) {
           cell.textContent = projectile.emoji || projectile.glyph || '💥';
           cell.classList.add('cell-projectile');
@@ -814,6 +819,15 @@ const GoneRogueMobile = (function () {
           cell.style.filter = 'brightness(' + brightness + ')';
           cell.style.color = '#ffff00'; // Yellow for currency
         } else {
+          // Metadata overlays (locked doors/chests + gate zones)
+          if (md && (md.type === 'locked_gate' || md.type === 'locked_chest')) {
+            cell.textContent = md.emoji || (md.type === 'locked_gate' ? '🚪' : '🧰');
+            cell.classList.add(md.type === 'locked_gate' ? 'cell-locked-gate' : 'cell-locked-chest');
+          } else if (md && (md.type === 'npc_gate_warning' || md.type === 'npc_gate_trigger')) {
+            // Subtle approach indicator: don't replace tile, just tint
+            cell.classList.add(md.type === 'npc_gate_trigger' ? 'cell-npc-gate-trigger' : 'cell-npc-gate-warning');
+          }
+
           // Check for interactive items
           var interactiveItem = null;
           if (typeof InteractiveItems !== 'undefined') {
