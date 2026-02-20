@@ -1183,7 +1183,6 @@ const GoneRogue = (function () {
     console.log('[GoneRogue] Run seed:', seed);
   }
 })();
-    }
 
     // Initialize highscore tracking
     _runStartTime = Date.now();
