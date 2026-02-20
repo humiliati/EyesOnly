@@ -117,6 +117,20 @@ const PassiveItemsSystem = (function() {
       slot: 'passive_equipment',
       is_active_effect: true  // Continuous effect while equipped
     },
+    GESARA_MEDBED: {
+      id: 'gesara_medbed',
+      name: 'GESARA Medbed',
+      emoji: '🛏️',
+      description: 'Stabilizes lethal damage. Once per run: full heal + overheal. Otherwise: soft reset to partial health.',
+      trigger_event: TRIGGER_EVENTS.ON_EQUIP,
+      slot: 'passive_equipment',
+      stackable: false,
+      is_active_effect: true,
+      // tuning
+      stabilize_hp_fraction: 0.45,
+      full_heal_overheal_base: 12,
+      full_heal_overheal_quality_scale: 18
+    },
     CARDBOARD_BOX_PLUS: {
       id: 'cardboard_box_plus',
       name: 'Cardboard Box+',
@@ -301,11 +315,59 @@ const PassiveItemsSystem = (function() {
   var _passiveSlots = 1;  // Start with 1 slot, can be upgraded
   var _maxPassiveSlots = 2;  // Can equip both items late game
 
+  // Per-run state for "once per run" passives
+  var _runState = {
+    fullHealUsed: {}
+  };
+
   /**
    * Initialize passive items system
    */
   function init() {
     console.log('[PassiveItemsSystem] Initialized');
+  }
+
+  function resetRunState() {
+    _runState.fullHealUsed = {};
+  }
+
+  /**
+   * Prevent combat death if a passive supports it.
+   * Modes:
+   * - full: once per run full heal + overheal, combat continues
+   * - stabilize: otherwise soft reset to partial HP, caller should exit combat
+   */
+  function tryPreventCombatDeath(opts) {
+    opts = opts || {};
+    var player = opts.player;
+    if (!player) return { prevented: false };
+
+    // Find equipped medbed
+    var hasMedbed = _equippedPassives.some(function(id) {
+      return ('' + id).toUpperCase() === 'GESARA_MEDBED';
+    });
+
+    if (!hasMedbed) return { prevented: false };
+
+    var item = PASSIVE_ITEMS_DB.GESARA_MEDBED;
+    var quality = (typeof player.quality === 'number') ? player.quality : 50;
+
+    // Once per run: full heal + overheal
+    if (!_runState.fullHealUsed.GESARA_MEDBED) {
+      _runState.fullHealUsed.GESARA_MEDBED = true;
+      var overheal = Math.round(item.full_heal_overheal_base + (quality / 100) * item.full_heal_overheal_quality_scale);
+      player.hp = player.maxHp + overheal;
+      return { prevented: true, mode: 'full', overheal: overheal };
+    }
+
+    // Otherwise: stabilize to partial
+    var targetHp = Math.max(1, Math.round(player.maxHp * item.stabilize_hp_fraction));
+    player.hp = targetHp;
+    if (opts.context && opts.context.entryPos) {
+      player.x = opts.context.entryPos.x;
+      player.y = opts.context.entryPos.y;
+    }
+    return { prevented: true, mode: 'stabilize', hp: targetHp };
   }
 
   /**
@@ -823,6 +885,8 @@ const PassiveItemsSystem = (function() {
     getEquippedStealthBonus: getEquippedStealthBonus,
     getPlayerAvatarOverride: getPlayerAvatarOverride,
     checkAndBreakItems: checkAndBreakItems,
+    resetRunState: resetRunState,
+    tryPreventCombatDeath: tryPreventCombatDeath,
     TRIGGER_EVENTS: TRIGGER_EVENTS,
     PASSIVE_ITEMS_DB: PASSIVE_ITEMS_DB
   };

@@ -1302,6 +1302,11 @@ const GoneRogue = (function () {
       var result = GAMESTATE.enterRogueMode(context);
       lines = result.lines || [];
 
+      // Reset per-run passive item state
+      if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.resetRunState) {
+        PassiveItemsSystem.resetRunState();
+      }
+
       // Apply charm bonuses to player stats (charms work from inventory)
       var persistent = GAMESTATE.getPersistentInventory();
       var loose = GAMESTATE.getLooseInventory();
@@ -4349,6 +4354,7 @@ _incrementPityTimers();
   function _startNpcGateCombat(npc) {
     if (!npc) return;
 
+    // Combat initialize
     _npcShowEmoji(npc, '🥊', 900);
 
     // Print a short line (avoid spam)
@@ -4442,15 +4448,16 @@ _incrementPityTimers();
       var warnNpc = _getNpcById(meta.npcId);
       if (warnNpc && (!warnNpc.state.released) && (_turn - warnNpc.state.lastWarnTurn > 10)) {
         warnNpc.state.lastWarnTurn = _turn;
-        _npcShowEmoji(warnNpc, '❗️', 700);
-        _npcSay(warnNpc, warnNpc.emoji + ' ' + warnNpc.name + ' watches your approach.');
+        // Match existing enemy alert convention: "!" means confirmed alert
+        _npcShowEmoji(warnNpc, '!', 700);
       }
       // Warning zone is walkable
     } else if (meta && meta.type === 'npc_gate_trigger') {
       var trigNpc = _getNpcById(meta.npcId);
       if (trigNpc && !trigNpc.state.released) {
-        // Block movement and trigger encounter
-        _npcShowEmoji(trigNpc, '⚠️', 650);
+        // Block movement and trigger encounter.
+        // "?" means you are pushing the wall / being challenged.
+        _npcShowEmoji(trigNpc, '?', 650);
         _startNpcGateCombat(trigNpc);
         return {
           lines: ['GATE ENGAGED', ''].concat(_renderGrid()),
@@ -8944,7 +8951,28 @@ _incrementPityTimers();
     if (_player.hp <= 0) {
       _strCombatLog.push('💀 YOU HAVE BEEN DEFEATED...');
 
-      // Soft reset for friendly NPC gate combats (tutorial sparring)
+      // Medbed: passive death-prevention / soft reset
+      if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.tryPreventCombatDeath) {
+        var medbed = PassiveItemsSystem.tryPreventCombatDeath({
+          player: _player,
+          enemy: _strCombatEnemy,
+          context: { floor: _floor, entryPos: _strCombatEntryPos }
+        });
+
+        if (medbed && medbed.prevented) {
+          if (medbed.mode === 'full') {
+            _strCombatLog.push('🛏️ MEDBED: FULL HEAL TRIGGERED');
+            _strCombatLog.push('└─ HP restored to ' + _player.hp + '/' + _player.maxHp);
+            _strCombatLog.push('');
+            return _showStrCombatUI();
+          }
+
+          // Stabilize mode exits combat and resets position
+          return _exitStrCombat('medbed_soft_defeat');
+        }
+      }
+
+      // Default: soft reset for friendly NPC gate combats (tutorial sparring)
       if (_strCombatEnemy && _strCombatEnemy._npcGateId) {
         // Restore player and reposition to combat entry
         _player.hp = _player.maxHp;
@@ -9348,6 +9376,13 @@ _incrementPityTimers();
       if (enemyIndex > -1) {
         _enemies[enemyIndex].hp = 0;
       }
+    } else if (reason === 'medbed_soft_defeat') {
+      lines.push('🛏️ MEDBED STABILIZED');
+      lines.push('└─ Soft reset engaged');
+      lines.push('');
+      lines.push('Respawning in: 3…');
+      lines.push('Respawning in: 2…');
+      lines.push('Respawning in: 1…');
     } else if (reason === 'npc_gate_soft_defeat') {
       lines.push('💀 DEFEAT (TRAINING MATCH)');
       lines.push('└─ Resetting position…');
