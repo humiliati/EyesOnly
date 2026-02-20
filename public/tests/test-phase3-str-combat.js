@@ -240,6 +240,11 @@
       );
     }
 
+    assert(
+      typeof CardDisposalSystem !== 'undefined',
+      'CardDisposalSystem module is available'
+    );
+
     console.log('\n--- Test 10: Combat Stats ---');
 
     assert(

@@ -106,15 +106,90 @@ const CardDisposalSystem = (function() {
    * Handle drag over debrief feed
    * @param {boolean} isOver - Whether drag is over debrief
    */
+  function _isStrCombatActive() {
+    return (typeof GoneRogue !== 'undefined' && typeof GoneRogue.isStrCombatActive === 'function' && GoneRogue.isStrCombatActive());
+  }
+
+  function _isSelfCastCard(card) {
+    if (!card || !card.stats) return false;
+    return !!(
+      card.stats.hp ||
+      card.stats.energyBoost ||
+      card.stats.fatigueReduction ||
+      card.stats.batteryRecharge ||
+      card.stats.focusBoost ||
+      card.stats.ammoRestore
+    );
+  }
+
+  function _applySelfCast(card) {
+    if (!card || !card.stats) return { ok: false, msg: 'No effect' };
+
+    // Apply effects similar to GoneRogue utility cards
+    var effects = [];
+
+    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.getPlayer === 'function') {
+      var p = GoneRogue.getPlayer();
+      if (p && card.stats.hp) {
+        p.hp = Math.min(p.maxHp || p.hp, p.hp + card.stats.hp);
+        effects.push('HP +' + card.stats.hp);
+      }
+    }
+
+    if (typeof GAMESTATE !== 'undefined') {
+      if (card.stats.energyBoost && GAMESTATE.addEnergy) {
+        GAMESTATE.addEnergy(card.stats.energyBoost);
+        effects.push('ENERGY +' + card.stats.energyBoost);
+      }
+      if (card.stats.fatigueReduction && GAMESTATE.reduceFatigue) {
+        GAMESTATE.reduceFatigue(card.stats.fatigueReduction);
+        effects.push('FATIGUE -' + card.stats.fatigueReduction);
+      }
+      if (card.stats.batteryRecharge && GAMESTATE.rechargeBattery) {
+        GAMESTATE.rechargeBattery(card.stats.batteryRecharge);
+        effects.push('BATTERY +' + card.stats.batteryRecharge);
+      }
+      if (card.stats.focusBoost && GAMESTATE.addFocus) {
+        GAMESTATE.addFocus(card.stats.focusBoost);
+        effects.push('FOCUS +' + card.stats.focusBoost);
+      }
+      if (card.stats.ammoRestore && GAMESTATE.addAmmo) {
+        GAMESTATE.addAmmo(card.stats.ammoRestore);
+        effects.push('AMMO +' + card.stats.ammoRestore);
+      }
+    }
+
+    return { ok: effects.length > 0, msg: effects.join(', ') };
+  }
+
   function _handleDragOverDebrief(isOver) {
     _isDragOverDebrief = isOver;
 
+    // Clear prior classes
+    _debriefFeedElement.classList.remove('debrief-drop-target', 'debrief-drop-target-self', 'debrief-drop-target-invalid');
+
     if (isOver && _draggedCard) {
+      // In STR combat, debrief is a self-target channel (not disposal)
+      if (_isStrCombatActive()) {
+        if (_isSelfCastCard(_draggedCard.card)) {
+          _debriefFeedElement.classList.add('debrief-drop-target-self');
+          if (typeof TooltipSystem !== 'undefined') {
+            TooltipSystem.showPersistent('🧑 SELF TARGET: drop to apply', 650);
+          }
+        } else {
+          _debriefFeedElement.classList.add('debrief-drop-target-invalid');
+          if (typeof TooltipSystem !== 'undefined') {
+            TooltipSystem.showPersistent('❌ Cannot self-target this card', 650);
+          }
+        }
+        return;
+      }
+
+      // Non-combat: disposal behavior
       _updateDragPreviewToRecycling();
       _debriefFeedElement.classList.add('debrief-drop-target');
     } else {
       _restoreDragPreview();
-      _debriefFeedElement.classList.remove('debrief-drop-target');
     }
   }
 
@@ -149,7 +224,45 @@ const CardDisposalSystem = (function() {
     var element = _draggedCard.element;
     var source = _draggedCard.source || 'hand';
 
-    // Check if card/item type allows disposal
+    // STR combat: debrief drop is SELF target attempt
+    if (_isStrCombatActive()) {
+      if (_isSelfCastCard(data) && source === 'hand') {
+        var result = _applySelfCast(data);
+
+        if (result.ok) {
+          // Consume card from hand
+          if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getLooseInventory === 'function') {
+            var loose = GAMESTATE.getLooseInventory();
+            if (Array.isArray(loose) && loose[_draggedCard.index]) {
+              loose.splice(_draggedCard.index, 1);
+              if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.updateCards === 'function') {
+                HandFanComponent.updateCards(loose);
+              }
+            }
+          }
+
+          // Flash incinerator style on debrief (feedback only)
+          _triggerIncineratorAnimation();
+
+          if (typeof TooltipSystem !== 'undefined') {
+            TooltipSystem.showPersistent('✅ SELF: ' + result.msg, 1400);
+          }
+        } else {
+          _handleInvalidDisposal(data, element, 'self_target_invalid');
+        }
+
+        _draggedCard = null;
+        _handleDragOverDebrief(false);
+        return;
+      }
+
+      _handleInvalidDisposal(data, element, 'self_target_invalid');
+      _draggedCard = null;
+      _handleDragOverDebrief(false);
+      return;
+    }
+
+    // Non-combat: disposal rules
     var lifecycle = _getCardLifecycle(data);
     var isDisposable = DISPOSAL_CONFIG.validCardTypes.indexOf(lifecycle) !== -1;
 

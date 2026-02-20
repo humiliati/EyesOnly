@@ -2712,6 +2712,21 @@ body.in-gone-rogue #log-column {
   outline-offset: 4px;
 }
 
+/* STR combat: debrief as SELF target (blue tint) */
+.debrief-drop-target-self {
+  background: rgba(0, 140, 255, 0.18);
+  box-shadow: 0 0 20px rgba(0, 140, 255, 0.28);
+  outline: 2px dashed rgba(0, 140, 255, 0.55);
+  outline-offset: 4px;
+}
+
+.debrief-drop-target-invalid {
+  background: rgba(255, 28, 74, 0.16);
+  box-shadow: 0 0 18px rgba(255, 28, 74, 0.28);
+  outline: 2px dashed rgba(255, 28, 74, 0.55);
+  outline-offset: 4px;
+}
+
 /* Drag preview with recycling icon already defined above */
 /* See .drag-preview-recycling class */
 
