@@ -15,9 +15,9 @@
   pointer-events: auto;
 }
 
-/* Combat mode - centered over STR window */
+/* Combat mode - centered over STR window, nudged down 5px */
 .hand-fan-container.hand-fan-combat {
-  top: 50%;
+  top: calc(50% + 5px);
   left: 50%;
   transform: translate(-50%, -50%);
   width: 90vw;
@@ -337,7 +337,7 @@
 }
 
 .hand-card-emoji {
-  font-size: 48px;
+  font-size: 30px;
   line-height: 1;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
 }

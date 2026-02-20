@@ -5358,6 +5358,11 @@ _incrementPityTimers();
       _submitHighscore();
     }
 
+    // Show YOU DIED full-screen overlay using the countdown takeover system
+    if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.showDeathScreen === 'function') {
+      STRCombatWindow.showDeathScreen();
+    }
+
     // Exit rogue mode
     return _exitRogue(false);
   }
@@ -8597,6 +8602,7 @@ _incrementPityTimers();
       player: _player ? { hp: _player.hp, maxHp: _player.maxHp } : { hp: 10, maxHp: 10 },
       advantage: _strCombatAdvantage,
       round: _strCombatRound,
+      floor: _floor,
       log: _strCombatLog,
       countdownMessages: _strCombatContext
     };

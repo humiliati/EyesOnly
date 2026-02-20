@@ -146,16 +146,6 @@ const LightingSystem = (function() {
 
   // Biome-specific ambient light levels and light source types
   const BIOME_LIGHTING = {
-    COZY_FOREST_DAY: {
-      ambientLight: 0.42,
-      lightRatio: 0.65,
-      lightSources: ['CAMPFIRE', 'LIGHT_BULB']
-    },
-    COZY_FOREST_NIGHT: {
-      ambientLight: 0.18,
-      lightRatio: 0.75,
-      lightSources: ['CAMPFIRE', 'FIRE']
-    },
     GREY_CAVE: {
       ambientLight: 0.25, // Raised from 0.1
       lightRatio: 0.5, // 50% lit areas, 50% dark areas

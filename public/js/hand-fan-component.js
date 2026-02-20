@@ -234,22 +234,18 @@ const HandFanComponent = (function () {
       html += '<div class="hand-card-cost">' + card.cost + '</div>';
     }
 
-    // Card artwork/emoji (80% of card height)
+    // Card artwork/emoji (80% of card height) - tiny icon
     html += '<div class="hand-card-artwork">';
     html += '<div class="hand-card-emoji">' + (card.emoji || '🃏') + '</div>';
     html += '</div>';
 
-    // Card name (bottom)
+    // Card name (bottom) — always abbreviated for compact display in combat
     var cardName = card.name || 'Unknown Card';
-
-    // Abbreviate card name for mobile landscape mode (space-constrained)
-    if (window.innerWidth <= 480) {
-      if (typeof NameUtils !== 'undefined') {
-        cardName = NameUtils.formatForMobile(card);
-      } else if (window.innerWidth <= 480) {
-        // Fallback abbreviation (max 6 chars)
-        cardName = _abbreviateCardName(cardName, 6);
-      }
+    if (typeof NameUtils !== 'undefined' && NameUtils.formatForMobile) {
+      cardName = NameUtils.formatForMobile(card);
+    } else {
+      // Fallback abbreviation (max 6 chars)
+      cardName = _abbreviateCardName(cardName, 6);
     }
 
     html += '<div class="hand-card-name">' + cardName + '</div>';
@@ -453,26 +449,12 @@ const HandFanComponent = (function () {
       }
     });
 
-    // Long-press for tooltip
-    var longPressTimer = null;
-    cardEl.addEventListener('mousedown', function() {
-      longPressTimer = setTimeout(function() {
-        _showCardTooltip(card, cardEl);
-      }, 500);
-    });
-
-    cardEl.addEventListener('mouseup', function() {
-      if (longPressTimer) {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
-      }
+    // Hover tooltip — show card details immediately on mouseenter
+    cardEl.addEventListener('mouseenter', function() {
+      _showCardTooltip(card, cardEl);
     });
 
     cardEl.addEventListener('mouseleave', function() {
-      if (longPressTimer) {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
-      }
       _hideCardTooltip();
     });
   }

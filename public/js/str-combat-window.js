@@ -94,9 +94,10 @@ const STRCombatWindow = (function () {
     _isVisible = true;
     _isMinimized = false;
 
-    // Set timer based on enemy type
+    // Set timer based on enemy type, scaled by floor number
     _currentEnemyType = combatState.enemyType || 'standard';
-    _timerDuration = TIMER_DURATIONS[_currentEnemyType] || TIMER_DURATIONS.standard;
+    var baseMs = TIMER_DURATIONS[_currentEnemyType] || TIMER_DURATIONS.standard;
+    _timerDuration = _scaleTimerForFloor(baseMs, combatState.floor || 1);
     _timeRemaining = _timerDuration;
 
     // Show 3-second countdown before revealing the combat window
@@ -489,21 +490,77 @@ const STRCombatWindow = (function () {
 
     // Reset turn timer when a new round begins
     if (combatState.round !== previousRound) {
-      resetTimer(_currentEnemyType);
+      resetTimer(_currentEnemyType, combatState.floor);
     }
+  }
+
+  /**
+   * Compute floor-scaled timer duration.
+   * At floor 1 the player gets 40% extra time; this bonus decays linearly to 0
+   * at floor 10 and beyond, keeping the timer at the base value for late floors.
+   *
+   * @param {number} baseMs - Base timer duration in milliseconds
+   * @param {number} floor  - Current floor number (1-based)
+   * @returns {number} Scaled timer duration in milliseconds
+   */
+  function _scaleTimerForFloor(baseMs, floor) {
+    var RAMP_DOWN_FLOOR = 10; // Bonus fully gone by this floor
+    var MAX_BONUS = 0.40;     // 40% extra time at floor 1
+    var remaining = Math.max(0, RAMP_DOWN_FLOOR - floor);
+    var bonus = MAX_BONUS * (remaining / (RAMP_DOWN_FLOOR - 1));
+    return Math.round(baseMs * (1 + bonus));
   }
 
   /**
    * Reset timer for new round
    */
-  function resetTimer(enemyType) {
+  function resetTimer(enemyType, floor) {
     _currentEnemyType = enemyType || _currentEnemyType || 'standard';
-    _timerDuration = TIMER_DURATIONS[_currentEnemyType] || TIMER_DURATIONS.standard;
+    var baseMs = TIMER_DURATIONS[_currentEnemyType] || TIMER_DURATIONS.standard;
+    var currentFloor = 1;
+    if (floor != null) {
+      currentFloor = floor;
+    } else if (_combatState) {
+      currentFloor = _combatState.floor || 1;
+    }
+    _timerDuration = _scaleTimerForFloor(baseMs, currentFloor);
     _timeRemaining = _timerDuration;
 
     if (_isVisible) {
       _startTimer();
     }
+  }
+
+  /**
+   * Show the YOU DIED full-screen overlay and auto-dismiss after ~2.5 seconds.
+   * Uses the same overlay mechanics as the pre-combat 3-2-1 countdown.
+   */
+  function showDeathScreen() {
+    var existing = document.getElementById('str-death-overlay');
+    if (existing) existing.remove();
+
+    var overlay = document.createElement('div');
+    overlay.id = 'str-death-overlay';
+    overlay.className = 'str-death-overlay';
+
+    var msgEl = document.createElement('div');
+    msgEl.className = 'str-death-message';
+    msgEl.textContent = 'YOU DIED';
+    overlay.appendChild(msgEl);
+
+    var subEl = document.createElement('div');
+    subEl.className = 'str-death-sub';
+    subEl.textContent = '// SIGNAL LOST';
+    overlay.appendChild(subEl);
+
+    document.body.appendChild(overlay);
+
+    setTimeout(function() {
+      overlay.classList.add('str-death-fade-out');
+      setTimeout(function() {
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      }, 600);
+    }, 2500);
   }
 
   /**
@@ -529,6 +586,7 @@ const STRCombatWindow = (function () {
     maximize: maximize,
     updateState: updateState,
     resetTimer: resetTimer,
+    showDeathScreen: showDeathScreen,
     isMinimized: isMinimized,
     isVisible: isVisible
   };
