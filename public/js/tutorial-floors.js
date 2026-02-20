@@ -122,6 +122,19 @@ var TutorialFloors = (function() {
       { x: 3, y: 16 }, { x: 4, y: 16 }, { x: 5, y: 16 }
     ],
 
+    // Locked chests (teach keys as "mystery" + reward exploration)
+    lockedChests: [
+      {
+        x: 4,
+        y: 15,
+        emoji: '🧰',
+        name: 'Locked Chest',
+        // Ambiguous: either key might work
+        acceptsKeys: ['RUSTY_KEY', 'BRONZE_KEY'],
+        message: 'A small chest with a stubborn lock. It might take the right key...'
+      }
+    ],
+
     // Tutorial gate (blocks path to exit)
     tutorialGate: {
       positions: [
@@ -553,6 +566,7 @@ var TutorialFloors = (function() {
       npcs: layout.npcs || [],
       tutorialGate: layout.tutorialGate,
       lockedGate: layout.lockedGate,
+      lockedChests: layout.lockedChests || [],
       keyBreakable: layout.keyBreakable,
       tutorialPickups: layout.tutorialPickups || [],
       interactiveItems: layout.interactiveItems || [],

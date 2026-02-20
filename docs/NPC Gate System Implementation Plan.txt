@@ -1,0 +1,277 @@
+NPC Gate System Implementation Plan — Revised with Clarifications
+Overview and Design Philosophy
+The Pokemon-style gate NPC system represents a significant evolution in how players encounter mandatory combat challenges. In Pokemon, certain NPCs block progression until the player engages in battle, creating a natural difficulty gate while establishing combat as a core game pillar. Translating this to a STR-based deckbuilder requires careful consideration of how the invisible collision wall, dialogue integration, and post-combat resolution all work together.
+The core design challenge is maintaining player agency while enforcing combat engagement. Unlike voluntary encounters, gate NPCs must feel like obstacles that require confrontation rather than optional challenges. However, since this is a deckbuilder (not a monster-collecting game), we have an opportunity to frame these encounters as "sparring matches" or "training bouts" that make narrative sense within the game's world.
+This revised plan incorporates extensive clarifications regarding friendly NPC rewards and dialogue systems, NPC placement strategies, combat phase tooltips with emoji-based communication, and the out-of-combat card synergy system that teaches players proactive combat preparation.
+________________________________________
+NPC Gate Architecture
+Core NPC Types
+The system requires two distinct NPC behaviors that share a common base class but diverge in post-combat handling and placement strategy.
+Friendly Gate NPCs serve as tutorial gates, early-game obstacles, and teaching moments. They emit an invisible collision wall from their forward vector and trigger combat when the player bumps against it. Upon combat resolution, these NPCs remain on the map, release their collision wall, and return to an interactive idle state. These NPCs function as permanent fixtures who have "approved" the player's passage—they never truly die or leave the map. Their design emphasizes educational value: they demonstrate out-of-combat card synergies and provide context-sensitive dialogue about tier progression, biome mechanics, and level generation patterns.
+Friendly NPCs should offer small rewards upon first defeat, tips about level generation challenges, and acknowledgments of the player's tier/biome/floor competence. They may also deliver "almost random" dialogue pulled from adjacent game systems (street-chronicles, arg) to create personality and world-building texture. These NPCs use the same emoji over-head popup system used for collectibles while printing dialogue to the player's tooltip.
+Defeat-Able Gate NPCs function as true gates that open permanently after being defeated. When the player wins the STR combat, these NPCs are pulled off the map entirely (either despawning or being replaced with a "defeated" variant positioned elsewhere). These NPCs create genuine progression markers—the player has overcome a specific challenge, and the map reflects this permanently. They are procedurally generated at logical chokepoints on levels without clearly defined key + gate systems, appearing at a modest rate proportional to level complexity.
+Both NPC types share fundamental behaviors: they position themselves strategically to block paths, emit directional collision zones, initiate dialogue on contact, engage the player in STR combat with tier-scaled difficulty, and support pet-to-NPC communication with emoji indicators. The distinction lies in post-combat handling and placement strategy.
+Collision Wall Implementation
+The invisible collision wall projects from the NPC's forward vector and extends a configurable distance, creating a natural "cone" or "wedge" of blocking space rather than a simple line. This approach approximates Pokemon's tree and event-trigger mechanics while accommodating grid-based movement.
+The collision detection checks player position on every movement tick. When the player attempts to enter a cell within the collision zone, movement is blocked and the encounter triggers. This requires careful timing calibration: overly eager detection causes accidental encounters when walking past NPCs; overly reluctant detection makes the gate feel penetrable and weakens the obstacle concept.
+A two-zone approach resolves this tension. The warning zone (outer cone boundary) displays subtle visual indicators—faint overlay highlighting, slightly different tile coloring, or a small "!" indicator that shows the NPC's facing direction more prominently. This gives players feedback that they're approaching a gate without forcing immediate confrontation. The trigger zone (inner collision boundary) actually initiates combat when entered.
+Upon combat resolution, friendly NPCs release their collision wall permanently. This state persists across the session and should be saved if the game supports floor revisitation. The NPC remains interactive and may reinitiate combat if the player chooses to engage again (useful for farming dialogue or practicing out-of-combat synergies).
+________________________________________
+Dialogue and Communication System
+Emoji Over-Head Popup System
+Both friendly and defeat-able NPCs utilize the existing emoji over-head popup system established for collectibles. This provides visual consistency and helps players immediately recognize NPCs as interactive entities.
+Emoji States:
+The idle emoji (default) appears when the NPC is in their resting state, typically a neutral face or context-appropriate icon. The thinking emoji (❔ or 💭) appears when the pet is approaching or when the NPC is processing player input. The talking emoji (💬 or 🗣️) appears during active dialogue printing to the player's tooltip. The alert emoji (❗ or ⚠️) appears in the warning zone when the player is approaching the trigger zone. The combat emoji (⚔️ or 🥊) appears when STR combat is initializing.
+Tooltip Dialogue Integration
+NPC dialogue prints directly to the player's tooltip area rather than triggering a modal popup. This maintains game flow while providing narrative feedback. Dialogue should be concise—single sentences or short phrases that communicate context without halting gameplay.
+Friendly NPC Dialogue Categories:
+Tutorial dialogue establishes mechanical understanding. Example: "That card you just aimed at me? Try using it before combat starts for an accuracy boost!" This teaches the out-of-combat synergy system through in-context advice.
+Progression acknowledgment dialogue recognizes player achievement. Examples: "Impressive for someone still finding their footing in this tier!" or "You've clearly mastered the basics of this biome." This reinforces competence and provides biometric feedback.
+Level generation tips dialogue offers strategic insight. Examples: "The vent to the north connects to a treasure room" or "Key doors in this area often hide behind environmental puzzles." This rewards engagement with NPCs.
+Flavor dialogue from adjacent game systems provides world-building texture. Street-chronicles quotes, arg references, and environmental storytelling create personality without requiring dedicated writing for every NPC.
+Pet-to-NPC Communication:
+The player character's pet (if present) can engage in bidirectional dialogue with NPCs. Both entities display thinking or talking emojis about each other while dialogue fires to the tooltip. This creates an "spammy ok" effect—the dialogue fires rapidly between pet and NPC, establishing them as communicating entities. Example flow: NPC shows 💬, Pet shows 💭, NPC shows 💬, Pet shows 💬, each accompanied by brief text in the tooltip.
+________________________________________
+Combat Phase Tooltip System
+Phase Reporting Architecture
+Combat phase tooltips provide real-time feedback about the current state of STR combat, helping players understand what's happening and make informed decisions. The tooltip anchors to a corner of the combat interface (bottom-left works well for left-aligned text) and updates dynamically as phases change.
+Phase Definitions:
+The Initiative Phase displays which combatant acts first and any modifiers affecting turn order. Example: "First Strike: Enemy (Accuracy Bonus from Pre-Combat Dizziness)" or "Initiative: You (Tier-Scaled Advantage)". This helps players understand turn order dynamics.
+The Card Play Phase shows available action cards, their costs, and current energy/resources. It also displays the enemy's current held cards (if applicable) to maintain tactical transparency. Cards that benefit from pre-combat application should be highlighted: "Lucky Strike Active: +15% Accuracy this round (from Lighter Card)" or "Target Dazed: Enemy has -2 Accuracy (from Propane)".
+The Resolution Phase reports damage calculations, armor/absorption effects, and resulting health changes. Each numerical change should clearly show both initial values and final values with "-" or "+" indicators. Example: "23 → 15 HP (-8 Damage, 4 absorbed by Armor)".
+The Victory/Defeat Phase provides final results with the countdown timer integration, displaying combat statistics and any status effects that persist (briefly) after combat ends.
+Visual Implementation
+A simple color-coding system maintains clarity: white for neutral information, green for player advantages and positive modifiers, red for threats or damage received, gold for critical moments or phase transitions. The tooltip shrinks to minimal size during fast-paced moments and expands when the player pauses or hovers over it, preventing interface clutter while maintaining accessibility.
+________________________________________
+Out-of-Combat Synergy System
+Pre-Combat Card Application
+Friendly gate NPCs serve as teaching tools for the out-of-combat card synergy system. When a player uses an action card aimed at an NPC outside of active STR combat, the system treats this as a pre-emptive status modification that primes the upcoming combat encounter.
+Single-Use Application Rule:
+Out-of-combat action cards function as single-use applications with ground effects that persist into combat. The design explicitly prevents "propane + lighter" style combo stacking—players cannot chain multiple cards to compound effects. Each card application is independent and consumes the card.
+Propane Card Pre-Combat Use:
+When aimed at an NPC and played before combat initiates, Propane applies a dizziness status effect to the target. This modifier reduces the NPC's accuracy by a fixed amount (example: -3 accuracy) for a configurable number of combat rounds (example: 3 rounds). The tooltip should indicate: "Pre-Combat Application: Target Dazed (-3 Accuracy for 3 rounds)".
+Lighter Card Pre-Combat Use:
+When aimed at self or played before combat initiates, Lighter applies a luck status effect to the player. This modifier provides a small accuracy or critical hit bonus (example: +15% accuracy) for a configurable number of combat rounds or the full encounter. The tooltip should indicate: "Pre-Combat Application: Lucky (+15% Accuracy for encounter)".
+Multi-Level Synergy Consideration:
+True multi-level synergies (applying multiple card effects that interact) are restricted to combinations involving the equipped item plus a single action card. Example: A "Burning Torch" item might synergize with Propane card to extend the dizziness duration, while a "Lucky Clover" item might synergize with Lighter to increase the accuracy bonus. This canonical restriction requires further design documentation to establish clear rules and exceptions.
+NPC Teaching Function
+Friendly NPCs should actively encourage players to experiment with pre-combat card applications. Post-combat dialogue could include: "You fought well, but try aiming your cards at me before we start—you'll get bonus accuracy!" or "Notice how that Lighter card boosted your hits? Use it before combat for maximum effect!"
+This transforms friendly NPCs from simple obstacles into interactive tutorials that teach core game mechanics through direct experience rather than text-based tutorials.
+________________________________________
+Victory/Death Screen Design
+Countdown Timer Aesthetic
+The victory and death screens share a visual language centered on countdown timers—large, prominent numerical displays that create tension and closure.
+Victory Screen Elements:
+The victory countdown displays prominently: "VICTORY" in large text with a sub-countdown "Gate opens in: 3... 2... 1...". During the countdown, defeated friendly NPCs have a brief acknowledgment animation (nodding, stepping aside) while defeated defeat-able NPCs play their removal animation (fading, walking off-map, or collapsing).
+The countdown provides natural pacing between combat resolution and map resumption, giving players time to process outcomes. It also serves as the delivery moment for rewards, unlock notifications, and stat summaries. The tooltip shows: "Rewards: 50 Coins, 1 Card Pack" or "Gate Removed: Permanent Access Granted".
+Death Screen Elements:
+The death countdown follows similar principles with appropriate tonal shift: "DEFEAT" displays in large text with "Respawning in: 3... 2... 1...". During the countdown, the player character appears in their defeated state alongside displayed resource losses (if any).
+A combat recap appears during the death countdown: "Rounds Survived: 4", "Damage Dealt: 127", "Combat Phase Reached: Enemy Turn 3". Improvement suggestions may appear based on available information: "Try applying Propane before combat to reduce enemy accuracy" or "Consider armor cards against high-damage NPCs".
+Transition Mechanics:
+Both screens fade or slide away when the countdown completes, revealing the map with updated NPC state. Friendly NPCs appear with released collision walls; defeat-able NPCs are removed or replaced. The transition takes approximately 0.5 seconds—fast enough to avoid sluggishness, slow enough to maintain dramatic weight.
+________________________________________
+NPC Placement Strategy
+Tier 1 Forest Biome Placement
+Friendly gate NPCs in the T1 forest biome are placeable by level designers. This allows deliberate tutorial pacing and narrative control during the game's opening hours. Each designer-placed NPC should serve a specific purpose: teaching out-of-combat synergies, introducing the collision wall concept, establishing difficulty expectations, or delivering key world-building information.
+Designer placement should consider player progression, ensuring the first friendly NPC appears early enough to establish expectations but not so early that players lack basic game understanding. A recommended pattern: the first friendly NPC appears after the player has completed one optional battle and understands basic movement, introducing the collision wall concept as their first mandatory challenge.
+Vent Area Reuse
+Friendly NPCs are reused in vent areas across multiple playthroughs. These instances provide consistent learning opportunities regardless of procedural variation in other map areas. The NPC's dialogue and behavior remain constant, creating familiar anchors in otherwise variable environments.
+Procedural Generation
+Defeat-able gate NPCs and supplementary enemy/friendly NPCs are procedurally generated at logical chokepoints—narrow corridors, bridge approaches, doorway clusters, and other naturally constricted path points. Generation algorithms should identify candidate tiles based on path width, adjacent room connections, and total map topology.
+Procedural generation occurs at a modest rate calibrated to prevent over-saturation while ensuring every player encounter has meaningful gate NPCs. The generation system should respect designer-placed NPCs and avoid duplicate placements in already-populated areas.
+________________________________________
+Difficulty Scaling
+Tier-Based Combat Scaling
+Gate NPC combat scales with general tier considerations rather than player-specific tracking. This maintains mystery while providing appropriate challenge across progression.
+Scaling Parameters:
+Health pools increase by tier tier (example: T1: 30 HP, T2: 45 HP, T3: 60 HP). Damage output increases proportionally (example: T1: 4-6 per attack, T2: 6-10, T3: 10-15). Card quality improves with tier (T1 NPCs play basic attacks, T2 NPCs play attacks plus utility cards, T3 NPCs play synergistic combinations). Accuracy and defense modifiers scale modestly (T1: baseline, T2: +1 accuracy, T3: +2 accuracy and minor armor).
+This approach ensures gate NPCs provide meaningful challenge without requiring complex individual tracking. Players naturally encounter harder NPCs as they progress through tiers, with the scaling visible through NPC behavior and combat outcomes.
+________________________________________
+Technical Implementation Requirements
+NPC Entity Class Structure
+Bash
+Copy
+class NPCGate {
+    constructor(config) {
+        this.type = config.type; // 'friendly' or 'defeatable'
+        this.position = config.position; // {x, y}
+        this.facing = config.facing; // 0: up, 1: right, 2: down, 3: left
+        this.collisionDistance = config.collisionDistance || 2;
+        this.collisionAngle = config.collisionAngle || Math.PI / 3;
+        
+        this.state = 'idle'; // idle, warning, combat, defeated
+        this.combatScaled = false;
+        this.hasBeenDefeated = false;
+        
+        this.emojiState = 'idle'; // idle, thinking, talking, alert, combat
+        this.dialogueQueue = [];
+    }
+    
+    // Collision zone calculation
+    getCollisionZone() {
+        // Returns array of grid coordinates within cone
+        // from facing vector extending collisionDistance
+    }
+    
+    // Combat hooks
+    initiateCombat() {
+        // Trigger dialogue, set state to combat, scale stats
+        // Apply any pre-combat card effects (dizziness, luck)
+    }
+    
+    resolveCombat(playerWon) {
+        if (this.type === 'friendly') {
+            this.releaseCollisionWall();
+            this.state = 'idle';
+            this.playAcknowledgmentAnimation();
+        } else {
+            this.state = 'defeated';
+            this.removeFromMap();
+        }
+    }
+    
+    // Dialogue system
+    queueDialogue(text, category) {
+        // Add to queue, trigger emoji animation
+    }
+}
+Combat Phase Integration
+Bash
+Copy
+class CombatPhaseSystem {
+    constructor() {
+        this.currentPhase = 'init';
+        this.phaseCallbacks = {
+            'initiative': [],
+            'cardplay': [],
+            'resolution': [],
+            'victory': [],
+            'defeat': []
+        };
+    }
+    
+    onPhaseChange(phase, callback) {
+        this.phaseCallbacks[phase].push(callback);
+    }
+    
+    setPhase(phase) {
+        this.currentPhase = phase;
+        this.phaseCallbacks[phase].forEach(cb => cb());
+    }
+}
+Tooltip Controller
+Bash
+Copy
+class CombatTooltipController {
+    constructor() {
+        this.element = document.getElementById('combat-tooltip');
+        this.phaseDisplay = this.element.querySelector('.phase-display');
+        this.actionDisplay = this.element.querySelector('.action-display');
+        this.statsDisplay = this.element.querySelector('.stats-display');
+    }
+    
+    updateForPhase(phase, combatData) {
+        this.element.className = `tooltip phase-${phase}`;
+        this.phaseDisplay.textContent = this.getPhaseText(phase);
+        this.actionDisplay.textContent = this.getActionText(combatData);
+        this.statsDisplay.textContent = this.getStatsText(combatData);
+        
+        // Apply color coding based on phase and combat state
+        this.updateColorCoding(phase, combatData);
+    }
+    
+    updatePreCombatEffects(effects) {
+        // Display active pre-combat applications
+        this.actionDisplay.innerHTML = effects.map(e => 
+            `<span class="pre-combat-effect">${e.description}</span>`
+        ).join('');
+    }
+}
+________________________________________
+Persistence Requirements
+Save Data Structure
+JavaScript
+Copy
+{
+    floors: {
+        'floor_1': {
+            npcs: {
+                'npc_gate_1': {
+                    state: 'idle',
+                    hasBeenDefeated: false,
+                    collisionWallReleased: true
+                },
+                'npc_gate_procedural_0': {
+                    state: 'defeated',
+                    position: {x: 12, y: 7}
+                }
+            }
+        }
+    }
+}
+The save system tracks NPC state per floor, including friendly NPCs that have released their collision walls and defeat-able NPCs that have been removed. This ensures progression persists across sessions and floor revisitation maintains the player's achievements.
+________________________________________
+Clarifications Addressed
+This revised plan incorporates the following clarifications from the design discussion:
+Friendly NPC rewards and dialogue are now explicitly defined, including small rewards on first defeat, tips about level generation, and "almost random" flavor dialogue from adjacent game systems. The emoji over-head popup system and tooltip dialogue integration are documented.
+NPC placement strategy distinguishes between designer-placed T1 forest NPCs (deliberate tutorial pacing), vent area reuse (consistent learning), and procedural generation at logical chokepoints (modest rate, meaningful placement).
+Difficulty scaling follows tier-based considerations rather than individual player tracking, providing appropriate challenge while maintaining mystery.
+Pet-to-NPC communication uses thinking and talking emoji exchanges that fire rapidly to the tooltip, creating personality and immersion without halting gameplay.
+Out-of-combat synergy system documents the single-use application rule, pre-combat effects for Propane (dizziness) and Lighter (luck bonus), and the restriction on multi-level synergies to equipped item plus single action card combinations.
+The NPC teaching function explicitly encourages players to experiment with pre-combat card applications, transforming friendly NPCs from obstacles into interactive tutorials that reinforce core game mechanics.
+Translating this to a STR-based deckbuilder requires careful consideration of how the invisible collision wall, dialogue integration, and post-combat resolution all work together.
+The core design challenge is maintaining player agency while enforcing combat engagement. Unlike voluntary encounters, gate NPCs must feel like obstacles that require confrontation rather than optional challenges. However, since this is a deckbuilder (not a monster-collecting game), we have an opportunity to frame these encounters as "sparring matches" or "training bouts" that make narrative sense within the game's world.
+________________________________________
+NPC Gate Architecture
+Core NPC Types
+The system requires two distinct NPC behaviors that share a common base class but diverge in post-combat handling.
+Friendly Gate NPCs serve as tutorial gates and early-game obstacles. They emit an invisible collision wall from their forward vector and trigger combat when the player bumps against it. Upon combat resolution, these NPCs remain on the map and return to their idle state, having "approved" the player's passage. These NPCs never truly die or leave the map—they're more like trainers who have accepted that the player has demonstrated competence.
+Defeat-Able Gate NPCs function as true gates that open permanently after being defeated. When the player wins the STR combat, these NPCs are pulled off the map entirely (either despawning or being replaced with a "defeated" variant that occupies a different position). These NPCs create genuine progression markers—the player has overcome a specific challenge, and the map reflects this permanently.
+Both NPC types share fundamental behaviors: they position themselves strategically to block paths, they emit directional collision zones, they initiate dialogue on contact, and they engage the player in STR combat. The distinction lies entirely in what happens after combat resolves.
+Collision Wall Implementation
+The invisible collision wall should project from the NPC's forward vector (the direction they're facing) and extend a configurable distance. This creates a natural "cone" or "wedge" of blocking space rather than a simple line, which better approximates Pokemon's tree and event-trigger mechanics while accommodating grid-based movement.
+The collision detection should check player position on every movement tick. When the player attempts to enter a cell within the collision zone, the movement is blocked and the encounter triggers. This needs careful timing—too eager and players will accidentally trigger encounters while trying to walk past; too reluctant and the gate feels penetrable.
+I recommend a two-zone approach: an inner "warning zone" that shows a subtle visual indicator (faint overlay, slightly different tile coloring) and an outer "trigger zone" that actually initiates combat. This gives players feedback that they're approaching a gate without forcing immediate confrontation. The warning zone could display a small "!" indicator or show the NPC's facing direction more prominently.
+________________________________________
+Combat Phase Tooltip System
+Phase Reporting Architecture
+Combat phase tooltips provide real-time feedback about the current state of STR combat, helping players understand what's happening and make informed decisions. The tooltip should be unobtrusive but always visible during combat encounters.
+Tooltip Content by Phase:
+The Initiative Phase displays which combatant acts first and any modifiers affecting turn order. This helps players understand why the enemy struck before they could respond.
+The Card Play Phase shows available action cards, their costs, and current energy/resources. It also displays any cards currently held in the NPC's hand (if applicable) to maintain tactical transparency.
+The Resolution Phase reports damage calculations, armor/absorption effects, and resulting health changes. Each numerical change should be clear—showing both initial values and final values with a "-" or "+" indicator for damage dealt or health restored.
+The Victory/Defeat Phase provides final results with the countdown timer integration described below.
+Visual Implementation
+The tooltip should anchor to a corner of the combat interface (bottom-left works well for left-aligned text) and update dynamically as phases change. A simple color-coding system helps: white for neutral information, green for player advantages, red for threats or damage, gold for critical moments or phase transitions.
+Consider implementing the tooltip as a persistent overlay that shrinks to minimal size during fast-paced moments and expands when the player pauses or hovers over it. This prevents the tooltip from cluttering the interface during intense combat while remaining accessible for tactical review.
+________________________________________
+Victory/Death Screen Design
+Countdown Timer Aesthetic
+The victory and death screens should share a visual language centered on countdown timers—large, prominent numerical displays that create tension and closure.
+Victory Screen Elements:
+The victory countdown should display prominently, showing something like "VICTORY" in large text with a sub-countdown showing "Gate opens in: 3... 2... 1...". During this countdown, the defeated NPC could have a brief "acknowledgment" animation (nodding, stepping aside, or in the case of friendly NPCs, simply returning to idle).
+The countdown creates a natural pause between combat resolution and map resumption, giving players time to process what happened. It also provides a clear moment to display any rewards or unlock notifications.
+Death Screen Elements:
+The death countdown follows similar principles but with appropriate tonal shift. "DEFEAT" displays in large text with "Respawning in: 3... 2... 1...". During this countdown, show the player character in their defeated state and display what resources or progress were lost (if any).
+The death screen should also include a brief combat recap: what phase the player reached, how much damage they dealt, and a suggestion for improvement (e.g., "Try using more armor cards against high-damage NPCs").
+Transition Mechanics
+Both screens need smooth transitions back to normal gameplay. When the countdown completes, the interface should fade or slide away, revealing the map with the updated NPC state (either still present for friendly NPCs or removed for defeat-able NPCs). The transition should take approximately 0.5 seconds—fast enough to not feel sluggish, slow enough to maintain the dramatic weight of the moment.
+________________________________________
+Implementation Priorities
+Phase 1: Foundation
+Begin with the basic NPC gate structure in the game engine. This means creating the NPC entity class with facing direction, collision zone properties, and combat hookups. The collision wall needs to integrate with existing pathfinding and movement systems, which likely requires modifying the tile-based movement controller to check for gate intersections before allowing player movement.
+Simultaneously, establish the combat phase system. Define what phases exist in STR combat (Initiative → Player Turn → Enemy Turn → Resolution → Victory/Defeat) and create the event hooks that trigger when each phase begins and ends. The tooltip system should hook into these events to update its display.
+Phase 2: NPC Variants
+With the foundation in place, implement the two NPC types. The friendly variant focuses on dialogue integration and non-destructive post-combat behavior. The defeat-able variant adds the despawn/replace mechanic that permanently alters the map.
+Map persistence becomes important here—the game needs to track which defeat-able NPCs have been removed and save this state. When the player revisits a floor (if revisitation is possible), removed NPCs should stay removed.
+Phase 3: Polish
+The countdown timer screens and phase tooltips are polish features that enhance the core experience without being required for basic functionality. These should come last, iterating based on player feedback about whether the pacing feels right and whether the information displayed is useful.
+________________________________________
+Clarification Questions
+Before full implementation begins, a few design decisions need resolution:
+Regarding Friendly NPCs NPCs should offer a small reward, a tip about level generation challenges, (almost) random dialogue from adjacent games (street-chronicles, arg) 
+and/or simply acknowledge the player's tier/biome/floor competence and step aside, release collision wall, remain interactive. The npc should have the same emoji over head popup we’re using for collectibles while npc prints dialogue to player’s tooltip.
+
+Regarding NPC Placement: 1 friendly gate NPCs in contrived t1 forest biome be placeable by level designers, and somewhat rare, procedurally generated (algorithmically positioned at logical chokepoints). We only reuse the friendly NPC in vents, elsewhere we procedurally generate npc gates on levels without clearly defined key + gates at a modest rate
+
+Regarding Difficulty Scaling: gate NPC combat scales with general tier considerations

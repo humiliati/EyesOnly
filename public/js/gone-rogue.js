@@ -2024,11 +2024,22 @@ const GoneRogue = (function () {
       }
     }
 
-    // Place locked gate and key (floor 2)
+    // Place locked gate (floor 2)
+    // Implemented as a wall tile with metadata so it renders as a door and can be unlocked via INTERACT.
     if (floorData.lockedGate) {
       floorData.lockedGate.positions.forEach(function(pos) {
-        _grid[pos.y][pos.x] = TILES.WALL; // Initially blocked
-        // TODO: Implement proper locked gate system
+        _grid[pos.y][pos.x] = TILES.WALL; // blocked until unlocked
+
+        var k = pos.x + ',' + pos.y;
+        var req = (floorData.lockedGate.requiredKey || floorData.lockedGate.requiresKey || 'RUSTY_KEY');
+        req = ('' + req).toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+
+        _tileMetadata[k] = {
+          type: 'locked_gate',
+          requiredKey: req,
+          emoji: (floorData.lockedGate.emoji || '🚪'),
+          name: (floorData.lockedGate.name || 'Locked Door')
+        };
       });
     }
 
@@ -2045,6 +2056,21 @@ const GoneRogue = (function () {
         name: keyObj.name,
         tag: 'key_breakable',
         drops: keyObj.drops
+      });
+    }
+
+    // Place locked chests (floor 1+)
+    if (floorData.lockedChests && floorData.lockedChests.length) {
+      floorData.lockedChests.forEach(function(ch) {
+        // Mark as blocked until opened
+        _grid[ch.y][ch.x] = TILES.WALL;
+        _tileMetadata[ch.x + ',' + ch.y] = {
+          type: 'locked_chest',
+          emoji: ch.emoji || '🧰',
+          name: ch.name || 'Locked Chest',
+          acceptsKeys: ch.acceptsKeys || ['RUSTY_KEY'],
+          message: ch.message || null
+        };
       });
     }
 
@@ -4046,6 +4072,21 @@ _incrementPityTimers();
       }
     });
 
+    // Place locked gates (render door emoji over the underlying wall tile)
+    for (var mk in _tileMetadata) {
+      if (_tileMetadata.hasOwnProperty(mk)) {
+        var md = _tileMetadata[mk];
+        if (md && md.type === 'locked_gate') {
+          var parts = mk.split(',');
+          var mx = parseInt(parts[0]);
+          var my = parseInt(parts[1]);
+          if (display[my] && typeof display[my][mx] !== 'undefined') {
+            display[my][mx] = md.emoji || '🚪';
+          }
+        }
+      }
+    }
+
     // Place enemies
     _enemies.forEach(function(enemy) {
       if (enemy.hp > 0) {
@@ -4528,6 +4569,27 @@ _incrementPityTimers();
     // Check if item is a card (attack/support) or regular item
     var isCard = item.card && (item.card.type === 'attack' || item.card.type === 'support');
 
+    // Normalize non-card pickups: some world drops (keys, etc.) are not wrapped in item.card
+    var nonCardPayload = item.card;
+    if (!isCard) {
+      if (item.type === 'key') {
+        nonCardPayload = {
+          type: 'key',
+          keyType: item.keyType || item.itemId || 'UNKNOWN_KEY',
+          emoji: item.emoji || '🗝',
+          name: item.name || 'Key',
+          description: item.description || ''
+        };
+      } else if (!nonCardPayload) {
+        nonCardPayload = {
+          type: item.type || 'item',
+          emoji: item.emoji || '📦',
+          name: item.name || 'Item',
+          description: item.description || ''
+        };
+      }
+    }
+
     // Add to appropriate inventory
     if (typeof GAMESTATE !== 'undefined') {
       var result;
@@ -4536,8 +4598,8 @@ _incrementPityTimers();
         // NEW LOOT FLOW: Cards go to hand first, then action buttons
         result = GAMESTATE.addCard(item.card);
       } else {
-        // Non-card items go to loose inventory (legacy behavior)
-        result = GAMESTATE.addToLoose(item.card);
+        // Non-card items go to loose inventory
+        result = GAMESTATE.addToLoose(nonCardPayload);
       }
 
       if (!result.success) {
@@ -4558,12 +4620,13 @@ _incrementPityTimers();
     // Remove item from floor
     _items = _items.filter(function(i) { return i !== item; });
 
-    // Tooltip: Item/card pickup (all items use card structure)
+    // Tooltip: Item/card pickup
     if (typeof TooltipSystem !== 'undefined') {
-      if (item.card.type === 'attack' || item.card.type === 'support') {
+      if (item.card && (item.card.type === 'attack' || item.card.type === 'support')) {
         TooltipSystem.showAction('card-pickup', { name: item.card.name });
       } else {
-        TooltipSystem.showAction('item-pickup', { name: item.card.name });
+        var nm = (item.card && item.card.name) ? item.card.name : (item.name || 'Item');
+        TooltipSystem.showAction('item-pickup', { name: nm });
       }
     }
 
@@ -4745,6 +4808,186 @@ _incrementPityTimers();
     }
   }
 
+  function _findAdjacentLockedGate() {
+    var dirs = [
+      { dx: 0, dy: -1 },
+      { dx: 1, dy: 0 },
+      { dx: 0, dy: 1 },
+      { dx: -1, dy: 0 }
+    ];
+
+    for (var i = 0; i < dirs.length; i++) {
+      var x = _player.x + dirs[i].dx;
+      var y = _player.y + dirs[i].dy;
+      var key = x + ',' + y;
+      var meta = _tileMetadata[key];
+      if (meta && meta.type === 'locked_gate') {
+        return { x: x, y: y, meta: meta };
+      }
+    }
+
+    return null;
+  }
+
+  function _consumeActiveItemIfMatches(requiredKey) {
+    if (typeof GAMESTATE === 'undefined') return false;
+
+    var active = GAMESTATE.getActiveItem ? GAMESTATE.getActiveItem() : null;
+    if (!active || active.type !== 'key') return false;
+
+    var activeKeyType = active.keyType || active.itemId;
+    if (activeKeyType !== requiredKey) return false;
+
+    // Remove one matching key from persistent inventory (equipped items currently come from persistent)
+    var persistent = GAMESTATE.getPersistentInventory ? GAMESTATE.getPersistentInventory() : [];
+    for (var i = 0; i < persistent.length; i++) {
+      var pit = persistent[i];
+      if (pit && pit.type === 'key' && (pit.keyType || pit.itemId) === requiredKey) {
+        if (GAMESTATE.removePersistentInventoryItem) GAMESTATE.removePersistentInventoryItem(i);
+        break;
+      }
+    }
+
+    if (GAMESTATE.clearActiveItem) GAMESTATE.clearActiveItem();
+
+    // Update active slot display (header)
+    if (typeof document !== 'undefined') {
+      var activeDisplay = document.getElementById('active-item-display');
+      if (activeDisplay) {
+        activeDisplay.innerHTML = '<span class="empty-slot-indicator">·</span>';
+        activeDisplay.classList.remove('has-item');
+      }
+    }
+
+    // Refresh inventory display if mobile UI present
+    if (typeof GoneRogueMobile !== 'undefined' && GoneRogueMobile.showInventory) {
+      GoneRogueMobile.showInventory();
+    }
+
+    return true;
+  }
+
+  function _consumeKeyFromInventory(requiredKey) {
+    if (typeof GAMESTATE === 'undefined') return false;
+
+    var loose = GAMESTATE.getLooseInventory ? GAMESTATE.getLooseInventory() : [];
+    for (var i = 0; i < loose.length; i++) {
+      var it = loose[i];
+      if (it && it.type === 'key' && (it.keyType || it.itemId) === requiredKey) {
+        if (GAMESTATE.removeFromLoose) GAMESTATE.removeFromLoose(i);
+        return true;
+      }
+    }
+
+    // Optional: allow consuming from persistent inventory (keyring slot). Keep it conservative for now.
+    var persistent = GAMESTATE.getPersistentInventory ? GAMESTATE.getPersistentInventory() : [];
+    for (var j = 0; j < persistent.length; j++) {
+      var pit = persistent[j];
+      if (pit && pit.type === 'key' && (pit.keyType || pit.itemId) === requiredKey) {
+        if (GAMESTATE.removeFromPersistent) GAMESTATE.removeFromPersistent(j);
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  function _attemptUnlockLockedGate(gx, gy, meta, opts) {
+    opts = opts || {};
+
+    var required = meta.requiredKey || 'RUSTY_KEY';
+    var accepts = meta.acceptsKeys || null;
+    var playerKeys = _getPlayerKeys();
+
+    // Locked chest supports multiple acceptable keys
+    if (accepts && accepts.length) {
+      var hasAny = false;
+      for (var ai = 0; ai < accepts.length; ai++) {
+        if (playerKeys.indexOf(accepts[ai]) !== -1) {
+          required = accepts[ai];
+          hasAny = true;
+          break;
+        }
+      }
+      if (!hasAny) {
+        return {
+          lines: [
+            (meta.emoji || '🧰') + ' ' + (meta.name || 'LOCKED CHEST'),
+            'LOCKED — NEEDS A KEY',
+            ''],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+    } else {
+      if (playerKeys.indexOf(required) === -1) {
+        return {
+          lines: [
+            (meta.emoji || '🚪') + ' ' + (meta.name || 'LOCKED DOOR'),
+            'LOCKED — REQUIRES KEY: ' + required,
+            ''],
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+    }
+
+    // Consume one matching key (keys are meant to be ambiguous + consumable in the chip-challenge feel)
+    if (opts.consumeFromActiveSlot) {
+      _consumeActiveItemIfMatches(required);
+    } else {
+      _consumeKeyFromInventory(required);
+    }
+
+    // If this was a chest, spawn loot before opening
+    if (meta.type === 'locked_chest') {
+      // Basic reward: a little currency + a card roll
+      _spawnCurrency(gx, gy, 12 + Math.floor(_rng() * 10));
+
+      if (typeof CardSystem !== 'undefined') {
+        var baseType = CardSystem.getRandomBaseCard ? CardSystem.getRandomBaseCard() : null;
+        if (baseType && CardSystem.rollCard) {
+          var card = CardSystem.rollCard(baseType);
+          if (card) {
+            _items.push({ x: gx, y: gy, type: 'card', card: card, spawnTime: Date.now(), decayTime: 30000 });
+          }
+        }
+      }
+    }
+
+    // Open the tile
+    _grid[gy][gx] = TILES.EMPTY;
+    delete _tileMetadata[gx + ',' + gy];
+    _rebuildWallCache();
+
+    if (typeof TooltipSystem !== 'undefined') {
+      TooltipSystem.show((meta.emoji || '🚪') + ' UNLOCKED', 1500);
+    }
+
+    // Debrief synergy overlap + incinerator flash (key consumed)
+    if (typeof DebriefFeedController !== 'undefined') {
+      var kind = (meta.type === 'locked_chest') ? 'chest' : 'gate';
+      DebriefFeedController.showSynergyOverlay({
+        kind: kind,
+        keyEmoji: '🗝',
+        gateEmoji: (meta.emoji || '🚪')
+      });
+      DebriefFeedController.flashIncinerator({ kind: 'key' });
+    }
+
+    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+      _updateMobileGrid();
+    }
+
+    _saveState();
+
+    return {
+      lines: ['UNLOCKED: ' + (meta.emoji || '🚪') + ' ' + (meta.name || 'Door'), ''].concat(_renderGrid()),
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
   /**
    * Handle interaction with interactive items
    */
@@ -4753,6 +4996,12 @@ _incrementPityTimers();
     var playerTile = _grid[_player.y][_player.x];
     if (playerTile === TILES.VENT) {
       return _handleVentInteraction();
+    }
+
+    // Locked gates/doors (tutorial + occasional chip-style challenge)
+    var locked = _findAdjacentLockedGate();
+    if (locked) {
+      return _attemptUnlockLockedGate(locked.x, locked.y, locked.meta);
     }
 
     if (typeof InteractiveItems === 'undefined') {
@@ -6521,6 +6770,30 @@ _incrementPityTimers();
             // Check for key item drops from specific breakables
             if (typeof EnvironmentalSynergy !== 'undefined' && breakable.name) {
               var keyDropped = false;
+
+              // Tutorial / designer-defined key breakables can explicitly drop a key by id
+              if (breakable.drops && breakable.drops.item) {
+                var requested = ('' + breakable.drops.item).toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+                // Common aliases
+                if (requested === 'RUSTY_KEY' || requested === 'RUSTYKEY' || requested === 'RUSTY__KEY') requested = 'RUSTY_KEY';
+
+                var keyDefs2 = EnvironmentalSynergy.getKeyDefinitions();
+                var def2 = keyDefs2[requested];
+                if (def2) {
+                  _items.push({
+                    x: breakable.x,
+                    y: breakable.y,
+                    type: 'key',
+                    keyType: requested,
+                    emoji: def2.emoji,
+                    name: def2.name,
+                    description: def2.description,
+                    spawnTime: Date.now(),
+                    decayTime: 60000
+                  });
+                  keyDropped = true;
+                }
+              }
 
               // Terminal breakables can drop thumb drives (OFFICE biome)
               if (breakable.name === 'Terminal' && _rng() < 0.15) { // 15% chance
@@ -8998,6 +9271,20 @@ _incrementPityTimers();
       };
     }
 
+    // Keys: first applicable encounter = adjacent locked gate
+    if (activeItem.type === 'key') {
+      var locked = _findAdjacentLockedGate();
+      if (locked) {
+        return _attemptUnlockLockedGate(locked.x, locked.y, locked.meta, { consumeFromActiveSlot: true });
+      }
+
+      return {
+        lines: ['🗝 NO LOCK IN RANGE', 'Stand next to a door/chest to use a key.', ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
     // Determine targeting: player tile + adjacent tiles
     var targetTiles = [
       { x: _player.x, y: _player.y }, // Player tile
@@ -9016,6 +9303,65 @@ _incrementPityTimers();
     }
 
     return result;
+  }
+
+  /**
+   * Use active item at a specific grid target (drag/drop targeting)
+   */
+  function useActiveItemAt(targetX, targetY) {
+    if (!_active) return;
+    if (typeof GAMESTATE === 'undefined') return;
+
+    var activeItem = GAMESTATE.getActiveItem ? GAMESTATE.getActiveItem() : null;
+    if (!activeItem) {
+      return {
+        lines: ['NO ACTIVE ITEM', 'Equip an item first', ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    // Keys: resolve lock near target, but enforce player proximity
+    if (activeItem.type === 'key') {
+      var lock = _findLockedGateNearTarget(targetX, targetY, 1);
+      if (!lock) {
+        return {
+          lines: ['NO LOCK AT TARGET', 'Drag onto a door/chest tile to use a key.', ''].concat(_renderGrid()),
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+
+      var dist = Math.abs(lock.x - _player.x) + Math.abs(lock.y - _player.y);
+      if (dist > 1) {
+        return {
+          lines: ['TOO FAR', 'Stand next to the lock to use a key.', ''].concat(_renderGrid()),
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+
+      return _attemptUnlockLockedGate(lock.x, lock.y, lock.meta, { consumeFromActiveSlot: true });
+    }
+
+    // Non-key items: fall back to existing "first applicable" targeting
+    return triggerActiveItem();
+  }
+
+  function _findLockedGateNearTarget(tx, ty, radius) {
+    radius = (typeof radius === 'number') ? radius : 1;
+    for (var dy = -radius; dy <= radius; dy++) {
+      for (var dx = -radius; dx <= radius; dx++) {
+        var x = tx + dx;
+        var y = ty + dy;
+        var key = x + ',' + y;
+        var meta = _tileMetadata[key];
+        if (meta && meta.type === 'locked_gate') {
+          return { x: x, y: y, meta: meta };
+        }
+      }
+    }
+    return null;
   }
 
   /**
@@ -10062,6 +10408,7 @@ _incrementPityTimers();
       }
     },
     triggerActiveItem: triggerActiveItem,
+    useActiveItemAt: useActiveItemAt,
     updatePlayerLight: _updatePlayerLight,
     getBiomeBackgroundColor: getBiomeBackgroundColor,
 

@@ -67,6 +67,9 @@ const GoneRogueMobile = (function () {
   var _desktopFishingActive = false;
   var _suppressNextClick = false;
 
+  // Active-slot drag targeting
+  var _activeSlotDrag = null; // { startX, startY, dragging, ghostEl }
+
   /**
    * Initialize mobile UI
    */
@@ -75,11 +78,149 @@ const GoneRogueMobile = (function () {
     _setupTouchHandlers();
     _setupKeyboardHandlers(); // Add keyboard support for desktop
     _setupHandFanButton(); // Setup the MOK footer card button
+    _setupActiveSlotTargeting();
   }
 
   /**
    * Setup hand fan toggle button in MOK footer
    */
+  function _setupActiveSlotTargeting() {
+    var slot = document.getElementById('active-item-slot');
+    if (!slot) return;
+
+    // Touch drag targeting (mobile)
+    slot.addEventListener('touchstart', function(e) {
+      if (!e || !e.touches || !e.touches.length) return;
+      if (typeof GAMESTATE === 'undefined' || !GAMESTATE.getActiveItem || !GAMESTATE.getActiveItem()) return;
+
+      var t = e.touches[0];
+      _activeSlotDrag = { startX: t.clientX, startY: t.clientY, dragging: false, ghostEl: null };
+    }, { passive: true });
+
+    slot.addEventListener('touchmove', function(e) {
+      if (!_activeSlotDrag || !_activeSlotDrag) return;
+      if (!e || !e.touches || !e.touches.length) return;
+
+      var t = e.touches[0];
+      var dx = t.clientX - _activeSlotDrag.startX;
+      var dy = t.clientY - _activeSlotDrag.startY;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (!_activeSlotDrag.dragging && dist > 12) {
+        _activeSlotDrag.dragging = true;
+        var activeItem = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) ? GAMESTATE.getActiveItem() : null;
+        if (activeItem) {
+          var ghost = document.createElement('div');
+          ghost.className = 'active-slot-drag-ghost';
+          ghost.textContent = activeItem.emoji || '📦';
+          ghost.style.position = 'fixed';
+          ghost.style.left = (t.clientX - 10) + 'px';
+          ghost.style.top = (t.clientY - 10) + 'px';
+          ghost.style.zIndex = '99999';
+          ghost.style.pointerEvents = 'none';
+          ghost.style.fontSize = '20px';
+          document.body.appendChild(ghost);
+          _activeSlotDrag.ghostEl = ghost;
+        }
+      }
+
+      if (_activeSlotDrag.dragging && _activeSlotDrag.ghostEl) {
+        _activeSlotDrag.ghostEl.style.left = (t.clientX - 10) + 'px';
+        _activeSlotDrag.ghostEl.style.top = (t.clientY - 10) + 'px';
+      }
+    }, { passive: true });
+
+    slot.addEventListener('touchend', function(e) {
+      if (!_activeSlotDrag) return;
+      var dragWasActive = _activeSlotDrag.dragging;
+      var ghost = _activeSlotDrag.ghostEl;
+      _activeSlotDrag = null;
+      if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
+      if (!dragWasActive) return;
+
+      var t = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : null;
+      if (!t) return;
+
+      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.useActiveItemAt === 'function') {
+        var coords = _getGridCoordsFromEvent(t.clientX, t.clientY);
+        if (coords) {
+          GoneRogue.useActiveItemAt(coords.x, coords.y);
+          _suppressNextClick = true;
+        }
+      }
+    }, { passive: true });
+
+    // Pointer-based drag targeting (desktop)
+    slot.addEventListener('pointerdown', function(e) {
+      if (!e || e.pointerType === 'touch') return;
+      if (e.button !== undefined && e.button !== 0) return;
+      if (typeof GAMESTATE === 'undefined' || !GAMESTATE.getActiveItem || !GAMESTATE.getActiveItem()) return;
+
+      _activeSlotDrag = {
+        startX: e.clientX,
+        startY: e.clientY,
+        dragging: false,
+        ghostEl: null
+      };
+    });
+
+    document.addEventListener('pointermove', function(e) {
+      if (!_activeSlotDrag) return;
+      if (!e || e.pointerType === 'touch') return;
+
+      var dx = e.clientX - _activeSlotDrag.startX;
+      var dy = e.clientY - _activeSlotDrag.startY;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (!_activeSlotDrag.dragging && dist > 12) {
+        _activeSlotDrag.dragging = true;
+
+        // Create a small ghost indicator
+        var activeItem = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) ? GAMESTATE.getActiveItem() : null;
+        if (activeItem) {
+          var ghost = document.createElement('div');
+          ghost.className = 'active-slot-drag-ghost';
+          ghost.textContent = activeItem.emoji || '📦';
+          ghost.style.position = 'fixed';
+          ghost.style.left = (e.clientX - 10) + 'px';
+          ghost.style.top = (e.clientY - 10) + 'px';
+          ghost.style.zIndex = '99999';
+          ghost.style.pointerEvents = 'none';
+          ghost.style.fontSize = '20px';
+          document.body.appendChild(ghost);
+          _activeSlotDrag.ghostEl = ghost;
+        }
+      }
+
+      if (_activeSlotDrag.dragging && _activeSlotDrag.ghostEl) {
+        _activeSlotDrag.ghostEl.style.left = (e.clientX - 10) + 'px';
+        _activeSlotDrag.ghostEl.style.top = (e.clientY - 10) + 'px';
+      }
+    });
+
+    document.addEventListener('pointerup', function(e) {
+      if (!_activeSlotDrag) return;
+      if (!e || e.pointerType === 'touch') { _activeSlotDrag = null; return; }
+
+      var dragWasActive = _activeSlotDrag.dragging;
+      var ghost = _activeSlotDrag.ghostEl;
+      _activeSlotDrag = null;
+
+      if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
+
+      if (!dragWasActive) return;
+
+      // Dropped somewhere: if over grid, target-use at coords
+      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.useActiveItemAt === 'function') {
+        var coords = _getGridCoordsFromEvent(e.clientX, e.clientY);
+        if (coords) {
+          GoneRogue.useActiveItemAt(coords.x, coords.y);
+          _suppressNextClick = true;
+        }
+      }
+    });
+  }
+
   function _setupHandFanButton() {
     var handFanBtn = document.getElementById('hand-fan-toggle-btn');
     if (!handFanBtn) {
@@ -2397,9 +2538,12 @@ const GoneRogueMobile = (function () {
       window.appendLine('⚡ EQUIPPED: ' + item.emoji + ' ' + item.name);
     }
 
-    // Tooltip: Item equipped
+    // Tooltip: Item equipped (include a little stats/quality if present)
     if (typeof TooltipSystem !== 'undefined') {
-      TooltipSystem.showAction('item-equip', { name: item.name });
+      var extra = '';
+      if (item.qualityName) extra += ' (' + item.qualityName + ')';
+      if (item.keyType) extra += ' [' + item.keyType + ']';
+      TooltipSystem.showAction('item-equip', { name: (item.name + extra) });
     }
   }
 

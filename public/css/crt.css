@@ -2924,6 +2924,61 @@ body.in-gone-rogue #log-column {
   box-sizing: border-box;
 }
 
+/* Synergy overlap overlay (keys+gates/chests/vents) */
+.debrief-resources-display {
+  position: relative;
+}
+
+#debrief-synergy-overlay.debrief-synergy-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.98);
+  transition: opacity 140ms ease, transform 140ms ease;
+  z-index: 10;
+}
+
+#debrief-synergy-overlay.debrief-synergy-overlay.synergy-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+#debrief-synergy-overlay .synergy-pair {
+  font-size: 28px;
+  letter-spacing: 2px;
+  padding: 8px 14px;
+  border: 1px solid rgba(0, 255, 136, 0.35);
+  background: rgba(0, 0, 0, 0.65);
+  box-shadow: 0 0 18px rgba(0, 255, 136, 0.25);
+}
+
+#debrief-synergy-overlay.synergy-kind-chest .synergy-pair {
+  border-color: rgba(255, 235, 59, 0.45);
+  box-shadow: 0 0 18px rgba(255, 235, 59, 0.25);
+}
+
+#debrief-synergy-overlay.synergy-kind-vent .synergy-pair {
+  border-color: rgba(0, 212, 255, 0.45);
+  box-shadow: 0 0 18px rgba(0, 212, 255, 0.25);
+}
+
+/* Frame/background accent on the debrief window */
+#debrief-window.synergy-frame-gate {
+  box-shadow: 0 0 28px rgba(0, 255, 136, 0.25), inset 0 0 18px rgba(0, 255, 136, 0.18);
+}
+
+#debrief-window.synergy-frame-chest {
+  box-shadow: 0 0 28px rgba(255, 235, 59, 0.25), inset 0 0 18px rgba(255, 235, 59, 0.18);
+}
+
+#debrief-window.synergy-frame-vent {
+  box-shadow: 0 0 28px rgba(0, 212, 255, 0.25), inset 0 0 18px rgba(0, 212, 255, 0.18);
+}
+
 /* Video Player Container */
 .video-player-container {
   width: 100%;

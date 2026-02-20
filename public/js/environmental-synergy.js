@@ -102,6 +102,16 @@ const EnvironmentalSynergy = (function() {
         unlockEmoji: '✓',
         unlockMessage: 'The door unlocks with a click.'
       },
+      LOCKED_CHEST: {
+        objectId: 'OBJ_001',
+        emoji: '🧰',
+        name: 'Locked Chest',
+        description: 'A small chest with a stubborn lock. It might take the right key...',
+        requiredKeys: ['RUSTY_KEY', 'BRONZE_KEY', 'MASTER_KEY'],
+        blocksPath: true,
+        unlockEmoji: '✨',
+        unlockMessage: 'The chest pops open.'
+      },
       BRONZE_GATE: {
         objectId: 'GATE_003',
         emoji: '🚪',

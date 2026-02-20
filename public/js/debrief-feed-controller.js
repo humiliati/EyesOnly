@@ -163,6 +163,7 @@ const DebriefFeedController = (function() {
   function _renderResources() {
     if (typeof DebriefFeedRenderer !== 'undefined') {
       var html = '<div class="debrief-resources-display">';
+      html += '<div id="debrief-synergy-overlay" class="debrief-synergy-overlay" aria-hidden="true"></div>';
       html += '<div id="debrief-resources-content" class="debrief-resources-content"></div>';
 
       // Add cycle button to switch to MOK (if in Gone Rogue)
@@ -420,6 +421,57 @@ const DebriefFeedController = (function() {
     }
   }
 
+  function showSynergyOverlay(payload) {
+    var overlay = document.getElementById('debrief-synergy-overlay');
+    if (!overlay) return;
+
+    payload = payload || {};
+    var left = payload.leftEmoji || payload.keyEmoji || '🗝';
+    var right = payload.rightEmoji || payload.gateEmoji || '🔐';
+    var kind = payload.kind || 'generic';
+
+    overlay.className = 'debrief-synergy-overlay synergy-kind-' + kind;
+    overlay.innerHTML =
+      '<div class="synergy-pair">' +
+        '<span class="synergy-emoji synergy-left">' + left + '</span>' +
+        '<span class="synergy-emoji synergy-mid">✚</span>' +
+        '<span class="synergy-emoji synergy-right">' + right + '</span>' +
+      '</div>' +
+      (payload.text ? '<div class="synergy-text">' + payload.text + '</div>' : '');
+
+    overlay.classList.add('synergy-visible');
+
+    var win = document.getElementById('debrief-window');
+    if (win) {
+      win.classList.remove('synergy-frame-gate', 'synergy-frame-chest', 'synergy-frame-vent');
+      if (kind === 'chest') win.classList.add('synergy-frame-chest');
+      else if (kind === 'vent') win.classList.add('synergy-frame-vent');
+      else win.classList.add('synergy-frame-gate');
+
+      setTimeout(function() {
+        win.classList.remove('synergy-frame-gate', 'synergy-frame-chest', 'synergy-frame-vent');
+      }, 900);
+    }
+
+    setTimeout(function() {
+      overlay.classList.remove('synergy-visible');
+    }, payload.durationMs || 900);
+  }
+
+  function flashIncinerator(opts) {
+    opts = opts || {};
+    var win = document.getElementById('debrief-window');
+    if (!win) return;
+
+    win.classList.add('incinerator-active');
+    if (opts.kind) win.classList.add('incinerator-kind-' + opts.kind);
+
+    setTimeout(function() {
+      win.classList.remove('incinerator-active');
+      if (opts.kind) win.classList.remove('incinerator-kind-' + opts.kind);
+    }, opts.durationMs || 450);
+  }
+
   // Public API
   return {
     init: init,
@@ -433,7 +485,11 @@ const DebriefFeedController = (function() {
     setMOKGlowColors: setMOKGlowColors,
     getMOKGlowColors: getMOKGlowColors,
     reportResourceChange: reportResourceChange,
-    reportCardPlayed: reportCardPlayed
+    reportCardPlayed: reportCardPlayed,
+
+    // Visual feedback hooks
+    showSynergyOverlay: showSynergyOverlay,
+    flashIncinerator: flashIncinerator
   };
 })();
 

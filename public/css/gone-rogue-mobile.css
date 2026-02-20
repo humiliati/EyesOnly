@@ -1264,6 +1264,10 @@
   animation: slot-highlight 0.5s ease-in-out infinite;
 }
 
+.active-slot-drag-ghost {
+  filter: drop-shadow(0 0 6px rgba(0, 255, 136, 0.6));
+}
+
 @keyframes slot-highlight {
   0%, 100% {
     box-shadow: 0 0 20px rgba(255, 235, 59, 0.6);
