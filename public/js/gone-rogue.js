@@ -1080,6 +1080,12 @@ const GoneRogue = (function () {
       console.log('[GoneRogue] Item spawner initialized');
     }
 
+    // Initialize food database
+    if (typeof FoodDatabase !== 'undefined') {
+      FoodDatabase.init();
+      console.log('[GoneRogue] Food database initialized');
+    }
+
     // Initialize from GAMESTATE if available
     var lines = [];
     if (typeof GAMESTATE !== 'undefined') {
@@ -3147,6 +3153,37 @@ const GoneRogue = (function () {
       }
     }
 
+    // Check for food item pickup (auto-pickup from interactive items)
+    if (typeof InteractiveItems !== 'undefined') {
+      var foodItem = InteractiveItems.getItemAt(newX, newY);
+      if (foodItem && foodItem.autoPickup && foodItem.type === 'FOOD') {
+        // Apply food effects
+        if (typeof FoodDatabase !== 'undefined' && foodItem.customData && foodItem.customData.foodId) {
+          var result = FoodDatabase.applyFoodEffects(foodItem.customData.foodId, _player);
+          if (result.success) {
+            // Show overhead animation with food emoji
+            if (typeof OverheadAnimator !== 'undefined') {
+              OverheadAnimator.showExpression(newX, newY, 'LOOT', 1000, result.emoji);
+            }
+
+            // MOK interjection for food pickup
+            if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+              UIControls.updateMokInterjection(result.emoji + ' ' + result.foodName + ' consumed');
+            }
+
+            // Tooltip: Food effects
+            if (typeof TooltipSystem !== 'undefined' && result.tooltipText) {
+              TooltipSystem.showGeneric(result.tooltipText, 2000);
+            }
+
+            // Remove food item from world (clean disappearance)
+            InteractiveItems.removeItem(foodItem.id);
+            console.log('[GoneRogue] Food consumed:', result.foodName);
+          }
+        }
+      }
+    }
+
     // Check for discovery reveal when player walks onto discovery tile
     var discoveryRevealed = _revealDiscovery(newX, newY);
     if (discoveryRevealed) {
@@ -3222,6 +3259,17 @@ const GoneRogue = (function () {
     var metadata = _tileMetadata[key];
     var message = null;
 
+    // Check for ground effects (water, oil, etc.)
+    if (typeof GroundEffects !== 'undefined') {
+      var groundEffect = GroundEffects.getGroundAt(x, y);
+      if (groundEffect && groundEffect.movePenalty) {
+        // Apply visual feedback for water slowdown
+        if (groundEffect.type === 'WATER' || groundEffect.char === '~') {
+          _applyWaterSlowdownEffect();
+        }
+      }
+    }
+
     // Hazard damage
     if (tile === TILES.HAZARD || (metadata && metadata.type === 'hazard')) {
       var damage = metadata ? metadata.damage : 1;
@@ -3248,6 +3296,27 @@ const GoneRogue = (function () {
     }
 
     return message;
+  }
+
+  /**
+   * Apply visual feedback for water slowdown
+   * Blue wave roll down animation on window frame
+   */
+  function _applyWaterSlowdownEffect() {
+    var gameFrame = document.getElementById('game-frame');
+    if (!gameFrame) {
+      gameFrame = document.querySelector('.game-window');
+    }
+
+    if (gameFrame) {
+      // Add water slowdown class for CSS animation
+      gameFrame.classList.add('water-slowdown-effect');
+
+      // Remove class after animation completes (1 second)
+      setTimeout(function() {
+        gameFrame.classList.remove('water-slowdown-effect');
+      }, 1000);
+    }
   }
 
   /**
