@@ -36,14 +36,14 @@ const MOKVisualEngine = (function() {
     // Create pentagram structure
     // For now, using CSS-based pentagram (upside down)
     // TODO: Replace with sprite sheet system when cutting engine is ready
-    
+
     var mokWrapper = document.createElement('div');
     mokWrapper.className = 'mok-pentagram-wrapper';
 
     // Pentagram outer structure (will be cut off by frame for "zoomed" effect)
     _pentagramElement = document.createElement('div');
     _pentagramElement.className = 'mok-pentagram';
-    
+
     // Interior triangle (LED glow area)
     _glowElement = document.createElement('div');
     _glowElement.className = 'mok-triangle-glow';
@@ -124,7 +124,7 @@ const MOKVisualEngine = (function() {
 
     // Pulse scale (0.9 to 1.1)
     var scale = 0.9 + Math.sin(pulsePhase * Math.PI * 2) * 0.1;
-    
+
     // Pulse opacity (0.6 to 1.0)
     var opacity = 0.6 + Math.sin(pulsePhase * Math.PI * 2) * 0.4;
 
@@ -192,17 +192,17 @@ const MOKVisualEngine = (function() {
    */
   function setExpression(expression, options) {
     options = options || {};
-    
+
     // Find cycle for expression
     var cycleId = expression + '_active';
     var cycle = MOKAnimationCycles.getCycle(cycleId);
-    
+
     // Fallback to basic expression if specific cycle not found
     if (!cycle) {
       cycleId = expression === 'idle' ? 'idle_breathe' : (expression + '_active');
       cycle = MOKAnimationCycles.getCycle(cycleId);
     }
-    
+
     if (!cycle) {
       console.warn('[MOKVisualEngine] Unknown expression:', expression);
       return;
@@ -222,9 +222,9 @@ const MOKVisualEngine = (function() {
    */
   function getCurrentGlowColors() {
     if (!_glowElement) return null;
-    
+
     return {
-      primaryColor: _glowElement.style.getPropertyValue('--mok-primary-glow') || 
+      primaryColor: _glowElement.style.getPropertyValue('--mok-primary-glow') ||
                     getComputedStyle(_glowElement).getPropertyValue('--mok-primary-glow'),
       secondaryColor: _glowElement.style.getPropertyValue('--mok-secondary-glow') ||
                       getComputedStyle(_glowElement).getPropertyValue('--mok-secondary-glow'),

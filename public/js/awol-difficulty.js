@@ -18,7 +18,7 @@ const AWOLDifficulty = (function () {
     _loadState();
     _attachEventListeners();
     _updateUI();
-    
+
     // Listen for Gone Rogue state changes to show/hide based on context
     if (typeof GoneRogue !== 'undefined' && GoneRogue.onStateChange) {
       GoneRogue.onStateChange(_updateUI);
@@ -140,9 +140,9 @@ const AWOLDifficulty = (function () {
     if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.isActive === 'function') {
       return GoneRogue.isActive();
     }
-    
+
     // Fallback: check body class
-    return document.body.classList.contains('mode-gone-rogue') || 
+    return document.body.classList.contains('mode-gone-rogue') ||
            document.body.classList.contains('in-gone-rogue');
   }
 
@@ -151,7 +151,7 @@ const AWOLDifficulty = (function () {
    */
   function _updateTooltipContent() {
     var isLoggedIn = _checkUserLoggedIn();
-    
+
     // Update M status
     var mStatusValue = document.getElementById('m-status-value');
     if (mStatusValue) {
@@ -179,16 +179,16 @@ const AWOLDifficulty = (function () {
    */
   function _updateDifficultyButtons(isLoggedIn) {
     var diffButtons = document.querySelectorAll('.difficulty-btn');
-    
+
     diffButtons.forEach(function (btn) {
       var tier = parseInt(btn.dataset.tier, 10);
-      
+
       // Remove all tier classes first
       btn.classList.remove('tier-1', 'tier-2', 'tier-3', 'active');
-      
+
       // Add tier class for color
       btn.classList.add('tier-' + tier);
-      
+
       if (!isLoggedIn) {
         // Disable all buttons if not logged in
         btn.disabled = true;
@@ -196,7 +196,7 @@ const AWOLDifficulty = (function () {
         // Enable T1 always for logged-in users
         if (tier === 1) {
           btn.disabled = false;
-        } 
+        }
         // Enable T2 only if T1 is completed
         else if (tier === 2) {
           btn.disabled = !_isTierCompleted(1);
@@ -206,7 +206,7 @@ const AWOLDifficulty = (function () {
           btn.disabled = !_isTierCompleted(2);
         }
       }
-      
+
       // Mark active tier
       if (tier === _currentTier) {
         btn.classList.add('active');
@@ -226,16 +226,16 @@ const AWOLDifficulty = (function () {
    */
   function _selectTier(tier) {
     if (tier < 1 || tier > 3) return;
-    
+
     _currentTier = tier;
     _saveState();
     _updateUI();
-    
+
     // Notify Gone Rogue module about difficulty change
     if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.setDifficulty === 'function') {
       GoneRogue.setDifficulty(tier);
     }
-    
+
     // Notify via MOK interjection
     var tierNames = ['', 'STANDARD', 'ADVANCED', 'EXTREME'];
     var messages = [
@@ -244,11 +244,11 @@ const AWOLDifficulty = (function () {
       'Difficulty set to TIER 2 (Advanced). Enemy awareness and lethality increased.',
       'Difficulty set to TIER 3 (Extreme). Maximum threat. Extraction not guaranteed.'
     ];
-    
+
     if (typeof updateMokInterjection === 'function' && tier >= 1 && tier <= 3) {
       updateMokInterjection('[AWOL] ' + messages[tier]);
     }
-    
+
     // Hide tooltip after selection
     _hideTooltip();
   }
@@ -259,15 +259,15 @@ const AWOLDifficulty = (function () {
   function _updateUI() {
     var accountabilityIcon = document.getElementById('accountability-icon');
     if (!accountabilityIcon) return;
-    
+
     // Remove all tier classes
     accountabilityIcon.classList.remove('tier-1', 'tier-2', 'tier-3');
-    
+
     // Add current tier class
     if (_currentTier >= 1 && _currentTier <= 3) {
       accountabilityIcon.classList.add('tier-' + _currentTier);
     }
-    
+
     // Update tooltip if visible
     if (_tooltipVisible) {
       _updateTooltipContent();
@@ -283,7 +283,7 @@ const AWOLDifficulty = (function () {
       _completedTiers.push(tier);
       _saveState();
       _updateUI();
-      
+
       // Notify player
       if (typeof updateMokInterjection === 'function') {
         var nextTier = tier + 1;

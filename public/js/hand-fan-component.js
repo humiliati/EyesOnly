@@ -187,7 +187,7 @@ const HandFanComponent = (function () {
     // Create card element
     var cardEl = document.createElement('div');
     cardEl.className = 'hand-card';
-    
+
     // Make card draggable
     cardEl.draggable = true;
 
@@ -212,7 +212,7 @@ const HandFanComponent = (function () {
     if (!affordability.canAfford) {
       cardEl.classList.add('card-insufficient-resources');
       cardEl.dataset.unaffordable = 'true';
-      
+
       // Store shortage info for tooltip
       if (affordability.missingResources && affordability.missingResources.length > 0) {
         var shortageText = _formatResourceShortage(affordability.missingResources);
@@ -366,36 +366,36 @@ const HandFanComponent = (function () {
         setTimeout(function() {
           cardEl.classList.remove('card-shake');
         }, 400);
-        
+
         // Show MOK interjection with shortage info
         if (cardEl.dataset.resourceShortage && typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
           UIControls.updateMokInterjection('Cannot play: ' + cardEl.dataset.resourceShortage);
         }
-        
+
         return; // Prevent selection
       }
-      
+
       _toggleCardSelection(index);
     });
 
     // Touch handlers
     cardEl.addEventListener('touchend', function(e) {
       e.preventDefault();
-      
+
       // Check if card is unaffordable
       if (cardEl.dataset.unaffordable === 'true') {
         cardEl.classList.add('card-shake');
         setTimeout(function() {
           cardEl.classList.remove('card-shake');
         }, 400);
-        
+
         if (cardEl.dataset.resourceShortage && typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
           UIControls.updateMokInterjection('Cannot play: ' + cardEl.dataset.resourceShortage);
         }
-        
+
         return;
       }
-      
+
       _toggleCardSelection(index);
     });
 

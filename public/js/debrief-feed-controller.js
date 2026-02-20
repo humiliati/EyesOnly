@@ -76,7 +76,7 @@ const DebriefFeedController = (function() {
     var body = document.body;
 
     // Check for Gone Rogue mode
-    if (body.classList.contains('mode-gone-rogue') || 
+    if (body.classList.contains('mode-gone-rogue') ||
         body.classList.contains('in-gone-rogue')) {
       return MODES.goneRogue;
     }
@@ -121,10 +121,10 @@ const DebriefFeedController = (function() {
    */
   function _renderMOK() {
     var html = '<div class="debrief-mok-display">';
-    
+
     // MOK visual container
     html += '<div id="mok-visual-container" class="mok-visual-container"></div>';
-    
+
     // MOK interjection area (existing system)
     html += '<div id="mok-interjection" class="mok-interjection"></div>';
 
@@ -313,7 +313,7 @@ const DebriefFeedController = (function() {
     if (!_mokInitialized || !MOKVisualEngine) {
       return;
     }
-    
+
     MOKVisualEngine.setExpression(expression, options);
   }
 
@@ -327,7 +327,7 @@ const DebriefFeedController = (function() {
     if (!_mokInitialized || !MOKVisualEngine) {
       return;
     }
-    
+
     MOKVisualEngine.setCustomGlowColors(primaryColor, secondaryColor, pulseSpeed);
   }
 
@@ -338,7 +338,7 @@ const DebriefFeedController = (function() {
     if (!_mokInitialized || !MOKVisualEngine || !MOKVisualEngine.getCurrentGlowColors) {
       return null;
     }
-    
+
     return MOKVisualEngine.getCurrentGlowColors();
   }
 
@@ -354,10 +354,10 @@ const DebriefFeedController = (function() {
     var change = newValue - oldValue;
     var changeIcon = change >= 0 ? '▲' : '▼';
     var changeColor = change >= 0 ? '#1cff9b' : '#ff4444';
-    
+
     var message = resourceType.toUpperCase() + ' ' + changeIcon + ' ';
     message += oldValue + ' → ' + newValue;
-    
+
     if (reason) {
       message += ' (' + reason + ')';
     }
@@ -380,7 +380,7 @@ const DebriefFeedController = (function() {
    */
   function reportCardPlayed(card, resourceChanges) {
     var message = '🎴 CARD PLAYED: ' + card.name;
-    
+
     // Add resource cost details
     if (resourceChanges && Object.keys(resourceChanges).length > 0) {
       var costs = [];
@@ -413,7 +413,7 @@ const DebriefFeedController = (function() {
             else if (resource === 'battery') currentValue = GAMESTATE.getBattery();
             else if (resource === 'fatigue') currentValue = GAMESTATE.getFatigue();
           }
-          
+
           reportResourceChange(resource, currentValue - change, currentValue, 'Card: ' + card.name);
         }
       }
