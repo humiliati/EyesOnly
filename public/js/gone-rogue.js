@@ -5744,7 +5744,7 @@ const GoneRogue = (function () {
   /**
    * Handle fishing move from mobile UI (smooth movement along path)
    */
-  function handleFishingMove(path) {
+  function handleFishingMove(path, isSprinting) {
     if (!_active) return;
     if (!path || path.length === 0) return;
 
@@ -5758,7 +5758,7 @@ const GoneRogue = (function () {
       };
 
       var destination = path[path.length - 1];
-      GoneRogueMovement.setTarget(destination.x, destination.y, collisionCheck);
+      GoneRogueMovement.setTarget(destination.x, destination.y, collisionCheck, isSprinting);
 
       // Update mobile UI to start animation
       if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
@@ -5772,7 +5772,7 @@ const GoneRogue = (function () {
       };
     } else {
       // Fallback to instant move
-      return handleTapMove(path[path.length - 1].x, path[path.length - 1].y, false);
+      return handleTapMove(path[path.length - 1].x, path[path.length - 1].y, isSprinting || false);
     }
   }
 

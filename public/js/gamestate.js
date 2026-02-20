@@ -35,6 +35,7 @@ const GAMESTATE = (function () {
     maxFatigue: 100,
     fatigueRecovery: 5,            // Per turn baseline recovery
     fatigueThreshold: 70,          // Above this, cards cost more/become less effective
+    _playerFatigueDecimal: 0.0,    // Hidden decimal fatigue (for smooth sprint drain)
 
     playerAmmo: 7,                 // Pooled ammunition resource (reduced for balanced economy)
     maxAmmo: 50,                   // Maximum ammo capacity
@@ -760,7 +761,48 @@ const GAMESTATE = (function () {
    */
   function resetFatigue() {
     _state.playerFatigue = 0;
+    _state._playerFatigueDecimal = 0.0;
     _saveState();
+  }
+
+  /**
+   * Drain sprint fatigue (continuous, fractional)
+   * Called each frame during sprint movement
+   * @param {number} deltaTime - Time elapsed in seconds
+   * @returns {boolean} True if fatigue increased (rolled over to next integer)
+   */
+  function drainSprintFatigue(deltaTime) {
+    // Sprint fatigue drain rate: ~70% of a 50-tile map before 1 full fatigue point
+    // Assuming 50 tiles traversed in ~6.25 seconds at sprint speed (8 * 1.5 = 12 tiles/sec)
+    // We want to drain 1.0 fatigue over 6.25 * 0.7 = ~4.4 seconds
+    // Rate = 1.0 / 4.4 = ~0.227 fatigue per second
+    var SPRINT_FATIGUE_RATE = 0.227;
+
+    // Apply modifiers from equipment (Moon Boots, etc.)
+    var fatigueModifier = 1.0;
+    if (typeof PassiveItemsSystem !== 'undefined') {
+      var equipped = PassiveItemsSystem.getEquippedItems();
+      for (var i = 0; i < equipped.length; i++) {
+        if (equipped[i].sprintFatigueModifier) {
+          fatigueModifier *= equipped[i].sprintFatigueModifier;
+        }
+      }
+    }
+
+    // Add fractional fatigue
+    _state._playerFatigueDecimal += SPRINT_FATIGUE_RATE * fatigueModifier * deltaTime;
+
+    // Check if we've accumulated a full integer point
+    var rolled = false;
+    if (_state._playerFatigueDecimal >= 1.0) {
+      var integerPart = Math.floor(_state._playerFatigueDecimal);
+      _state.playerFatigue = Math.min(_state.maxFatigue, _state.playerFatigue + integerPart);
+      _state._playerFatigueDecimal -= integerPart;
+      rolled = true;
+      _saveState();
+    }
+
+    return rolled;
   }
 
   // ========== AMMO MANAGEMENT ==========
@@ -1150,6 +1192,7 @@ const GAMESTATE = (function () {
     addFatigue: addFatigue,
     reduceFatigue: reduceFatigue,
     resetFatigue: resetFatigue,
+    drainSprintFatigue: drainSprintFatigue,
     // Ammo management
     getAmmo: getAmmo,
     useAmmo: useAmmo,

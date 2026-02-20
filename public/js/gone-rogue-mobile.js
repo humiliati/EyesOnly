@@ -1286,7 +1286,7 @@ const GoneRogueMobile = (function () {
 
       // Execute smooth movement along fishing path
       if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleFishingMove === 'function') {
-        GoneRogue.handleFishingMove(_fishingPath);
+        GoneRogue.handleFishingMove(_fishingPath, _runMode);
       } else {
         // Fallback to tap-to-move with final destination
         var destination = _fishingPath[_fishingPath.length - 1];
