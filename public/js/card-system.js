@@ -6,6 +6,16 @@
 const CardSystem = (function () {
   'use strict';
 
+  /**
+   * RNG helper - uses SeededRNG if available, falls back to Math.random()
+   */
+  function _rng() {
+    if (typeof SeededRNG !== 'undefined' && SeededRNG.random) {
+      return SeededRNG.random();
+    }
+    return Math.random();
+  }
+
   // STR Combat Priority System
   // Lower number = executes first in simultaneous resolution
   var CARD_PRIORITIES = {
@@ -1145,7 +1155,7 @@ const CardSystem = (function () {
    * Roll a quality tier based on probability distribution
    */
   function rollQuality() {
-    var roll = Math.random() * 100;
+    var roll = _rng() * 100;
     var cumulative = 0;
 
     for (var key in QUALITIES) {
@@ -1206,9 +1216,9 @@ const CardSystem = (function () {
       case 'PERFECT': affixChance = 100; break;
     }
 
-    if (Math.random() * 100 < affixChance) {
+    if (_rng() * 100 < affixChance) {
       var affixKeys = Object.keys(AFFIXES);
-      var randomAffix = affixKeys[Math.floor(Math.random() * affixKeys.length)];
+      var randomAffix = affixKeys[Math.floor(_rng() * affixKeys.length)];
       affixes.push(AFFIXES[randomAffix]);
     }
 
@@ -1238,7 +1248,7 @@ const CardSystem = (function () {
       qualityColor: QUALITIES[quality].color,
       stats: stats,
       affixes: affixes,
-      id: 'card_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+      id: 'card_' + Date.now() + '_' + _rng().toString(36).substr(2, 9)
     };
   }
 
@@ -1246,7 +1256,7 @@ const CardSystem = (function () {
    * Special: Roll inventory charm (binary: cracked or perfect)
    */
   function rollInventoryCharm() {
-    var roll = Math.random() * 100;
+    var roll = _rng() * 100;
     var quality = roll <= 97 ? 'CRACKED' : 'PERFECT';
 
     var charm = {
@@ -1259,7 +1269,7 @@ const CardSystem = (function () {
       qualityColor: QUALITIES[quality].color,
       stats: quality === 'PERFECT' ? { slots: 1 } : { slots: 0 },
       affixes: [],
-      id: 'charm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+      id: 'charm_' + Date.now() + '_' + _rng().toString(36).substr(2, 9)
     };
 
     return charm;
@@ -1271,11 +1281,11 @@ const CardSystem = (function () {
    */
   function rollCommonCharm() {
     var commonCharmTypes = ['LUCKY_CHARM', 'SPEED_CHARM', 'STEALTH_CHARM', 'HEALTH_CHARM', 'ENERGY_CHARM'];
-    var charmType = commonCharmTypes[Math.floor(Math.random() * commonCharmTypes.length)];
+    var charmType = commonCharmTypes[Math.floor(_rng() * commonCharmTypes.length)];
     var baseCharm = BASE_CARDS[charmType];
 
     // Common charms are always poor quality (97% cracked, 3% worn)
-    var roll = Math.random() * 100;
+    var roll = _rng() * 100;
     var quality = roll <= 97 ? 'CRACKED' : 'WORN';
 
     var charm = {
@@ -1289,7 +1299,7 @@ const CardSystem = (function () {
       qualityColor: QUALITIES[quality].color,
       stats: rollStats(baseCharm.baseStats, quality),
       affixes: [],
-      id: 'charm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+      id: 'charm_' + Date.now() + '_' + _rng().toString(36).substr(2, 9)
     };
 
     return charm;
@@ -1311,7 +1321,7 @@ const CardSystem = (function () {
       qualityColor: QUALITIES.PERFECT.color,
       stats: { impossible: 1 },
       affixes: [],
-      id: 'impossible_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+      id: 'impossible_' + Date.now() + '_' + _rng().toString(36).substr(2, 9)
     };
 
     return charm;
@@ -1325,7 +1335,7 @@ const CardSystem = (function () {
     var baseEquipment = BASE_CARDS.TRENCH_COAT;
 
     // Trench coat quality: 60% WORN, 30% STANDARD, 10% FINE
-    var roll = Math.random() * 100;
+    var roll = _rng() * 100;
     var quality;
     if (roll <= 60) {
       quality = 'WORN';
@@ -1348,7 +1358,7 @@ const CardSystem = (function () {
       qualityColor: QUALITIES[quality].color,
       stats: stats,
       affixes: [],
-      id: 'trench_coat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+      id: 'trench_coat_' + Date.now() + '_' + _rng().toString(36).substr(2, 9)
     };
 
     return trenchCoat;
@@ -1362,7 +1372,7 @@ const CardSystem = (function () {
       // Exclude all charms from normal card drops
       return BASE_CARDS[k].category !== 'charm';
     });
-    return keys[Math.floor(Math.random() * keys.length)];
+    return keys[Math.floor(_rng() * keys.length)];
   }
 
   /**
@@ -1466,7 +1476,7 @@ const CardSystem = (function () {
     });
 
     // Return random card from weighted pool
-    return cardPool[Math.floor(Math.random() * cardPool.length)];
+    return cardPool[Math.floor(_rng() * cardPool.length)];
   }
 
   /**

@@ -99,6 +99,7 @@ const GoneRogue = (function () {
 
   // Highscore tracking variables
   var _runStartTime = null;        // Run start timestamp
+  var _runSeed = null;             // Seeded RNG seed for reproducible runs
   var _currencyCollected = 0;      // Total currency collected this run (excludes starting balance)
   var _totalEnemiesSpawned = 0;    // Total enemies that spawned
   var _enemiesKilled = 0;          // Enemies defeated
@@ -583,6 +584,16 @@ const GoneRogue = (function () {
   var _environmentalDetails = {}; // Stores details by layer
 
   /**
+   * RNG helper - uses SeededRNG if available, falls back to _rng()
+   */
+  function _rng() {
+    if (typeof SeededRNG !== 'undefined' && SeededRNG.random) {
+      return SeededRNG.random();
+    }
+    return _rng();
+  }
+
+  /**
    * Generate discoveries for current floor based on tier distribution
    */
   function _generateDiscoveries(rooms, biome) {
@@ -593,7 +604,7 @@ const GoneRogue = (function () {
 
     for (var i = 0; i < totalDiscoveries; i++) {
       var tier = _selectDiscoveryTier();
-      var room = rooms[Math.floor(Math.random() * rooms.length)];
+      var room = rooms[Math.floor(_rng() * rooms.length)];
       var pos = _findDiscoveryPosition(room, tier);
 
       if (pos) {
@@ -614,7 +625,7 @@ const GoneRogue = (function () {
    * Select discovery tier based on frequency distribution
    */
   function _selectDiscoveryTier() {
-    var roll = Math.random();
+    var roll = _rng();
     var cumulative = 0;
 
     var tiers = [
@@ -643,8 +654,8 @@ const GoneRogue = (function () {
     var maxAttempts = 20;
 
     while (attempts < maxAttempts) {
-      var x = room.x + Math.floor(Math.random() * room.width);
-      var y = room.y + Math.floor(Math.random() * room.height);
+      var x = room.x + Math.floor(_rng() * room.width);
+      var y = room.y + Math.floor(_rng() * room.height);
 
       // Check if position is valid (walkable, not occupied)
       if (_grid[y] && _grid[y][x] === TILES.EMPTY) {
@@ -678,22 +689,22 @@ const GoneRogue = (function () {
 
     switch (tier) {
       case DISCOVERY_TIERS.SURFACE:
-        contents.currency = Math.floor(Math.random() * 20) + 5;
+        contents.currency = Math.floor(_rng() * 20) + 5;
         break;
       case DISCOVERY_TIERS.SEMI_HIDDEN:
-        contents.currency = Math.floor(Math.random() * 40) + 15;
-        if (Math.random() < 0.3) {
+        contents.currency = Math.floor(_rng() * 40) + 15;
+        if (_rng() < 0.3) {
           contents.cards.push('random_card');
         }
         break;
       case DISCOVERY_TIERS.CONCEALED:
-        contents.currency = Math.floor(Math.random() * 80) + 30;
-        if (Math.random() < 0.5) {
+        contents.currency = Math.floor(_rng() * 80) + 30;
+        if (_rng() < 0.5) {
           contents.cards.push('rare_card');
         }
         break;
       case DISCOVERY_TIERS.HIDDEN:
-        contents.currency = Math.floor(Math.random() * 150) + 50;
+        contents.currency = Math.floor(_rng() * 150) + 50;
         contents.cards.push('legendary_card');
         break;
       case DISCOVERY_TIERS.META:
@@ -718,7 +729,7 @@ const GoneRogue = (function () {
 
     var tierTypes = types[tier.name.toUpperCase().replace('-', '_')];
     if (tierTypes && tierTypes.length > 0) {
-      return tierTypes[Math.floor(Math.random() * tierTypes.length)];
+      return tierTypes[Math.floor(_rng() * tierTypes.length)];
     }
 
     return 'breakable_container';
@@ -735,7 +746,7 @@ const GoneRogue = (function () {
       'Something about this place feels familiar...'
     ];
 
-    return narratives[Math.floor(Math.random() * narratives.length)];
+    return narratives[Math.floor(_rng() * narratives.length)];
   }
 
   /**
@@ -799,13 +810,13 @@ const GoneRogue = (function () {
     };
 
     // Random chance for narrative elements
-    if (Math.random() < 0.3) {
+    if (_rng() < 0.3) {
       narrative.evidence.push('struggle_marks');
     }
-    if (Math.random() < 0.2) {
+    if (_rng() < 0.2) {
       narrative.personalItems.push('abandoned_photo');
     }
-    if (Math.random() < 0.25) {
+    if (_rng() < 0.25) {
       narrative.environmentalChanges.push('water_damage');
     }
 
@@ -857,7 +868,7 @@ const GoneRogue = (function () {
     // Integrate with existing item spawning system
     var offset = _items.length % 2 === 0 ? 1 : -1;
     var spawnX = Math.max(1, Math.min(GRID_WIDTH - 2, x + offset));
-    _items.push({ x: spawnX, y: y, quality: Math.random() });
+    _items.push({ x: spawnX, y: y, quality: _rng() });
   }
 
   /**
@@ -884,7 +895,7 @@ const GoneRogue = (function () {
     if (BOSS_FLOORS.indexOf(floorNum) !== -1) return FLOOR_TYPES.BOSS;
 
     // Random exploration floors (5% chance on floors 15+)
-    if (floorNum >= 15 && Math.random() < 0.05) return FLOOR_TYPES.EXPLORATION;
+    if (floorNum >= 15 && _rng() < 0.05) return FLOOR_TYPES.EXPLORATION;
 
     // Light stealth early
     if (floorNum <= 9) return FLOOR_TYPES.STEALTH;
@@ -966,7 +977,7 @@ const GoneRogue = (function () {
     }
     
     // Select random biome based on weights
-    var rand = Math.random() * totalWeight;
+    var rand = _rng() * totalWeight;
     var cumulative = 0;
     
     for (var biomeKey in weights) {
@@ -1019,6 +1030,13 @@ const GoneRogue = (function () {
 
     // Disable scanlines for performance during gameplay
     document.body.classList.add('gone-rogue-active');
+
+    // Initialize seeded RNG for reproducible runs
+    if (typeof SeededRNG !== 'undefined') {
+      var seed = SeededRNG.init();
+      console.log('[GoneRogue] Run seed:', seed);
+      _runSeed = seed; // Store for save/load and display
+    }
 
     // Initialize highscore tracking
     _runStartTime = Date.now();
@@ -1465,7 +1483,7 @@ const GoneRogue = (function () {
     for (var i = 0; i < tiles.length; i++) {
       total += tiles[i].weight;
     }
-    var rand = Math.random() * total;
+    var rand = _rng() * total;
     var cumulative = 0;
     for (var j = 0; j < tiles.length; j++) {
       cumulative += tiles[j].weight;
@@ -1542,7 +1560,7 @@ const GoneRogue = (function () {
 
     for (var y = 1; y < height - 1; y++) {
       for (var x = 1; x < width - 1; x++) {
-        if (Math.random() < openSpaceRatio) {
+        if (_rng() < openSpaceRatio) {
           map[y][x] = _pickWeightedChar(floorTiles);
         }
       }
@@ -1559,8 +1577,8 @@ const GoneRogue = (function () {
     var width = map[0].length;
     var height = map.length;
 
-    var villageX = Math.floor(width * 0.2) + Math.floor(Math.random() * 5);
-    var villageY = Math.floor(height * 0.6) + Math.floor(Math.random() * 5);
+    var villageX = Math.floor(width * 0.2) + Math.floor(_rng() * 5);
+    var villageY = Math.floor(height * 0.6) + Math.floor(_rng() * 5);
 
     var buildings = biome.spawnFeatures.buildings;
     var positions = [
@@ -1578,10 +1596,10 @@ const GoneRogue = (function () {
 
     var decorations = biome.spawnFeatures.decorations;
     for (var d = 0; d < 5; d++) {
-      var dx = villageX + Math.floor(Math.random() * 7);
-      var dy = villageY + Math.floor(Math.random() * 7);
+      var dx = villageX + Math.floor(_rng() * 7);
+      var dy = villageY + Math.floor(_rng() * 7);
       if (dx < width - 1 && dy < height - 1) {
-        map[dy][dx] = decorations[Math.floor(Math.random() * decorations.length)];
+        map[dy][dx] = decorations[Math.floor(_rng() * decorations.length)];
       }
     }
     return map;
@@ -1595,8 +1613,8 @@ const GoneRogue = (function () {
   function _placeVillageCluster(biome) {
     if (!biome.spawnFeatures || !biome.spawnFeatures.villageCluster) return;
 
-    var villageX = Math.floor(GRID_WIDTH * 0.2) + Math.floor(Math.random() * 5);
-    var villageY = Math.floor(GRID_HEIGHT * 0.6) + Math.floor(Math.random() * 5);
+    var villageX = Math.floor(GRID_WIDTH * 0.2) + Math.floor(_rng() * 5);
+    var villageY = Math.floor(GRID_HEIGHT * 0.6) + Math.floor(_rng() * 5);
 
     var buildings = biome.spawnFeatures.buildings;
     var positions = [
@@ -1619,12 +1637,12 @@ const GoneRogue = (function () {
 
     var decorations = biome.spawnFeatures.decorations;
     for (var d = 0; d < 5; d++) {
-      var dx = villageX + Math.floor(Math.random() * 7);
-      var dy = villageY + Math.floor(Math.random() * 7);
+      var dx = villageX + Math.floor(_rng() * 7);
+      var dy = villageY + Math.floor(_rng() * 7);
       if (dx >= 1 && dx < GRID_WIDTH - 1 && dy >= 1 && dy < GRID_HEIGHT - 1 &&
           _grid[dy][dx] === TILES.EMPTY) {
         // Decorations are visual-only (walkable), stored just for rendering overlay
-        _forestBuildings.push({ x: dx, y: dy, emoji: decorations[Math.floor(Math.random() * decorations.length)] });
+        _forestBuildings.push({ x: dx, y: dy, emoji: decorations[Math.floor(_rng() * decorations.length)] });
       }
     }
   }
@@ -1936,15 +1954,15 @@ const GoneRogue = (function () {
         var maxWidth = difficulty > 5 ? 12 : 10;
         var maxHeight = difficulty > 5 ? 10 : 8;
 
-        var w = Math.floor(Math.random() * (maxWidth - minSize + 1)) + minSize;
-        var h = Math.floor(Math.random() * (maxHeight - minSize + 1)) + minSize;
+        var w = Math.floor(_rng() * (maxWidth - minSize + 1)) + minSize;
+        var h = Math.floor(_rng() * (maxHeight - minSize + 1)) + minSize;
 
         // Ensure room dimensions fit within grid bounds with padding
         w = Math.min(w, GRID_WIDTH - 4);
         h = Math.min(h, GRID_HEIGHT - 4);
 
-        var x = Math.floor(Math.random() * (GRID_WIDTH - w - 4)) + 2;
-        var y = Math.floor(Math.random() * (GRID_HEIGHT - h - 4)) + 2;
+        var x = Math.floor(_rng() * (GRID_WIDTH - w - 4)) + 2;
+        var y = Math.floor(_rng() * (GRID_HEIGHT - h - 4)) + 2;
 
         // Additional validation: ensure room is fully within bounds
         if (x + w >= GRID_WIDTH - 2 || y + h >= GRID_HEIGHT - 2) {
@@ -2031,8 +2049,8 @@ const GoneRogue = (function () {
     var extraConnections = Math.min(2 + Math.floor(_floor / 3), 4);
 
     for (var i = 0; i < extraConnections && rooms.length > 2; i++) {
-      var idx1 = Math.floor(Math.random() * rooms.length);
-      var idx2 = Math.floor(Math.random() * rooms.length);
+      var idx1 = Math.floor(_rng() * rooms.length);
+      var idx2 = Math.floor(_rng() * rooms.length);
 
       if (idx1 !== idx2 && Math.abs(idx1 - idx2) > 1) {
         var room1 = rooms[idx1];
@@ -2044,11 +2062,11 @@ const GoneRogue = (function () {
 
   function _placeCover() {
     // Place cover on 6-10% of floor tiles
-    var coverChance = 0.06 + Math.random() * 0.04;
+    var coverChance = 0.06 + _rng() * 0.04;
 
     for (var y = 1; y < GRID_HEIGHT - 1; y++) {
       for (var x = 1; x < GRID_WIDTH - 1; x++) {
-        if (_grid[y][x] === TILES.EMPTY && Math.random() < coverChance) {
+        if (_grid[y][x] === TILES.EMPTY && _rng() < coverChance) {
           _grid[y][x] = TILES.COVER;
         }
       }
@@ -2061,7 +2079,7 @@ const GoneRogue = (function () {
 
     for (var y = 1; y < GRID_HEIGHT - 1; y++) {
       for (var x = 1; x < GRID_WIDTH - 1; x++) {
-        if (_grid[y][x] === TILES.EMPTY && Math.random() < shadowChance) {
+        if (_grid[y][x] === TILES.EMPTY && _rng() < shadowChance) {
           var key = x + ',' + y;
           _tileMetadata[key] = { type: 'shadow', stealthBonus: 30 };
           // Visual indicator: change tile to shadow tile
@@ -2094,11 +2112,11 @@ const GoneRogue = (function () {
 
       // Place ground effects
       for (var i = 0; i < effectCount && biomeEffects.length > 0; i++) {
-        var x = Math.floor(Math.random() * (GRID_WIDTH - 2)) + 1;
-        var y = Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1;
+        var x = Math.floor(_rng() * (GRID_WIDTH - 2)) + 1;
+        var y = Math.floor(_rng() * (GRID_HEIGHT - 2)) + 1;
 
         if (_grid[y][x] === TILES.EMPTY) {
-          var effectType = biomeEffects[Math.floor(Math.random() * biomeEffects.length)];
+          var effectType = biomeEffects[Math.floor(_rng() * biomeEffects.length)];
           GroundEffects.setGroundEffect(x, y, effectType);
 
           // Mark in tile metadata for rendering
@@ -2112,8 +2130,8 @@ const GoneRogue = (function () {
     if (difficulty >= 5) {
       var hazardCount = Math.floor(difficulty / 2);
       for (var i = 0; i < hazardCount; i++) {
-        var x = Math.floor(Math.random() * (GRID_WIDTH - 2)) + 1;
-        var y = Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1;
+        var x = Math.floor(_rng() * (GRID_WIDTH - 2)) + 1;
+        var y = Math.floor(_rng() * (GRID_HEIGHT - 2)) + 1;
 
         if (_grid[y][x] === TILES.EMPTY) {
           _grid[y][x] = TILES.HAZARD;
@@ -2130,10 +2148,10 @@ const GoneRogue = (function () {
 
     // Add some grass/vegetation for stealth
     if (difficulty < 5) {
-      var grassCount = 8 + Math.floor(Math.random() * 5);
+      var grassCount = 8 + Math.floor(_rng() * 5);
       for (var i = 0; i < grassCount; i++) {
-        var x = Math.floor(Math.random() * (GRID_WIDTH - 2)) + 1;
-        var y = Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1;
+        var x = Math.floor(_rng() * (GRID_WIDTH - 2)) + 1;
+        var y = Math.floor(_rng() * (GRID_HEIGHT - 2)) + 1;
 
         if (_grid[y][x] === TILES.EMPTY) {
           _grid[y][x] = TILES.GRASS;
@@ -2274,7 +2292,7 @@ const GoneRogue = (function () {
     // Exploration floors: very few enemies
     var enemyCount;
     if (floorType === FLOOR_TYPES.EXPLORATION) {
-      enemyCount = 1 + Math.floor(Math.random() * 2); // 1-2 enemies max
+      enemyCount = 1 + Math.floor(_rng() * 2); // 1-2 enemies max
     } else {
       // Enemy density based on difficulty
       var difficulty = _floor;
@@ -2283,13 +2301,13 @@ const GoneRogue = (function () {
       var tierMultiplier = _getDifficultyMultiplier();
       
       if (difficulty <= 3) {
-        enemyCount = Math.floor((4 + Math.floor(Math.random() * 3)) * tierMultiplier); // 4-6 base
+        enemyCount = Math.floor((4 + Math.floor(_rng() * 3)) * tierMultiplier); // 4-6 base
       } else if (difficulty <= 7) {
-        enemyCount = Math.floor((7 + Math.floor(Math.random() * 4)) * tierMultiplier); // 7-10 base
+        enemyCount = Math.floor((7 + Math.floor(_rng() * 4)) * tierMultiplier); // 7-10 base
       } else if (difficulty <= 15) {
-        enemyCount = Math.floor((10 + Math.floor(Math.random() * 6)) * tierMultiplier); // 10-15 base
+        enemyCount = Math.floor((10 + Math.floor(_rng() * 6)) * tierMultiplier); // 10-15 base
       } else {
-        enemyCount = Math.floor((12 + Math.floor(Math.random() * 7)) * tierMultiplier); // 12-18 base
+        enemyCount = Math.floor((12 + Math.floor(_rng() * 7)) * tierMultiplier); // 12-18 base
       }
     }
 
@@ -2301,10 +2319,10 @@ const GoneRogue = (function () {
       var eliteType = EliteEnemies.getRandomEliteForFloor(_floor);
       if (eliteType && rooms.length > 0) {
         // Place elite in a random room, away from player
-        var eliteRoomIdx = Math.floor(Math.random() * rooms.length);
+        var eliteRoomIdx = Math.floor(_rng() * rooms.length);
         var eliteRoom = rooms[eliteRoomIdx];
-        var eliteX = eliteRoom.x + 1 + Math.floor(Math.random() * Math.max(1, eliteRoom.w - 2));
-        var eliteY = eliteRoom.y + 1 + Math.floor(Math.random() * Math.max(1, eliteRoom.h - 2));
+        var eliteX = eliteRoom.x + 1 + Math.floor(_rng() * Math.max(1, eliteRoom.w - 2));
+        var eliteY = eliteRoom.y + 1 + Math.floor(_rng() * Math.max(1, eliteRoom.h - 2));
 
         // Ensure elite is far from player
         if (Math.abs(eliteX - _player.x) + Math.abs(eliteY - _player.y) >= 8) {
@@ -2324,12 +2342,12 @@ const GoneRogue = (function () {
     }
 
     for (var i = 0; i < enemyCount && rooms.length > 0; i++) {
-      var roomIdx = Math.floor(Math.random() * rooms.length);
+      var roomIdx = Math.floor(_rng() * rooms.length);
       var room = rooms[roomIdx];
 
       // Random position within room (avoid edges)
-      var x = room.x + 1 + Math.floor(Math.random() * Math.max(1, room.w - 2));
-      var y = room.y + 1 + Math.floor(Math.random() * Math.max(1, room.h - 2));
+      var x = room.x + 1 + Math.floor(_rng() * Math.max(1, room.w - 2));
+      var y = room.y + 1 + Math.floor(_rng() * Math.max(1, room.h - 2));
 
       // Check minimum separation from player and other enemies
       var tooClose = false;
@@ -2362,7 +2380,7 @@ const GoneRogue = (function () {
   }
 
   function _choosePatrolType(difficulty, room) {
-    var rand = Math.random();
+    var rand = _rng();
 
     if (difficulty <= 3) {
       // Early game: more stationary sentries
@@ -2392,7 +2410,7 @@ const GoneRogue = (function () {
       str: Math.floor((3 + Math.floor(_floor * 0.2)) * tierMultiplier * penaltyMultiplier),
       dex: Math.floor((3 + Math.floor(_floor * 0.2)) * tierMultiplier * penaltyMultiplier),
       awareness: 0,
-      orientation: ['north', 'south', 'east', 'west'][Math.floor(Math.random() * 4)],
+      orientation: ['north', 'south', 'east', 'west'][Math.floor(_rng() * 4)],
       sightRange: (_floor > 5 ? 7 : 5) + (_difficultyTier - 1) + (isPenaltyFloor ? 1 : 0), // +1 for penalty
       pathTimer: 0,
       isTreasureGoblin: false, // Special enemy type
@@ -2401,7 +2419,7 @@ const GoneRogue = (function () {
     };
 
     // 2% chance to spawn a treasure goblin after floor 5
-    if (_floor > 5 && Math.random() < 0.02) {
+    if (_floor > 5 && _rng() < 0.02) {
       enemy.isTreasureGoblin = true;
       enemy.goblinSpawnTime = Date.now();
       enemy.hp = 3; // Low HP, must kill fast
@@ -2493,8 +2511,8 @@ const GoneRogue = (function () {
     for (var i = 0; i < itemCount && attempts < maxAttempts; i++) {
       attempts++;
 
-      var ix = Math.floor(Math.random() * (GRID_WIDTH - 2)) + 1;
-      var iy = Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1;
+      var ix = Math.floor(_rng() * (GRID_WIDTH - 2)) + 1;
+      var iy = Math.floor(_rng() * (GRID_HEIGHT - 2)) + 1;
 
       var occupied = _grid[iy][ix] !== TILES.EMPTY ||
         (_breakables.some(function(b) { return b.x === ix && b.y === iy && b.hp > 0; })) ||
@@ -2555,7 +2573,7 @@ const GoneRogue = (function () {
       eligibleRooms = rooms; // Fallback to any room
     }
 
-    var shopRoom = eligibleRooms[Math.floor(Math.random() * eligibleRooms.length)];
+    var shopRoom = eligibleRooms[Math.floor(_rng() * eligibleRooms.length)];
 
     // Place shop object in the center of the room
     var shopX = Math.floor(shopRoom.x + shopRoom.w / 2);
@@ -2598,7 +2616,7 @@ const GoneRogue = (function () {
     }
     
     // 15% chance to spawn a vent
-    if (Math.random() > 0.15) {
+    if (_rng() > 0.15) {
       return;
     }
     
@@ -2611,16 +2629,16 @@ const GoneRogue = (function () {
       eligibleRooms = rooms; // Fallback to any room
     }
     
-    var ventRoom = eligibleRooms[Math.floor(Math.random() * eligibleRooms.length)];
+    var ventRoom = eligibleRooms[Math.floor(_rng() * eligibleRooms.length)];
     
     // Place vent in a random position within room
-    var ventX = ventRoom.x + 1 + Math.floor(Math.random() * (ventRoom.w - 2));
-    var ventY = ventRoom.y + 1 + Math.floor(Math.random() * (ventRoom.h - 2));
+    var ventX = ventRoom.x + 1 + Math.floor(_rng() * (ventRoom.w - 2));
+    var ventY = ventRoom.y + 1 + Math.floor(_rng() * (ventRoom.h - 2));
     
     // Ensure position is empty
     if (_grid[ventY][ventX] === TILES.EMPTY) {
       // Vent quality: 85% standard, 15% rusty (worse success rate)
-      var quality = Math.random() < 0.85 ? 'standard' : 'rusty';
+      var quality = _rng() < 0.85 ? 'standard' : 'rusty';
       
       _grid[ventY][ventX] = TILES.VENT;
       
@@ -2674,7 +2692,7 @@ const GoneRogue = (function () {
    * Apply bleed tiles from a biome to the floor
    */
   function _applyBleedTiles(biome, location, minCount, maxCount) {
-    var count = minCount + Math.floor(Math.random() * (maxCount - minCount + 1));
+    var count = minCount + Math.floor(_rng() * (maxCount - minCount + 1));
     var bleedChar = _getBleedChar(biome);
     
     if (!bleedChar) return;
@@ -2684,12 +2702,12 @@ const GoneRogue = (function () {
       
       if (location === 'entrance') {
         // Place near player spawn (left side of map)
-        x = 1 + Math.floor(Math.random() * 8);
-        y = 1 + Math.floor(Math.random() * (GRID_HEIGHT - 2));
+        x = 1 + Math.floor(_rng() * 8);
+        y = 1 + Math.floor(_rng() * (GRID_HEIGHT - 2));
       } else {
         // Place near exit (right side of map)
-        x = GRID_WIDTH - 9 + Math.floor(Math.random() * 8);
-        y = 1 + Math.floor(Math.random() * (GRID_HEIGHT - 2));
+        x = GRID_WIDTH - 9 + Math.floor(_rng() * 8);
+        y = 1 + Math.floor(_rng() * (GRID_HEIGHT - 2));
       }
       
       // Only place on empty floor tiles
@@ -2769,7 +2787,7 @@ const GoneRogue = (function () {
     _breakables = [];
 
     // Spawn 8-12 random breakables from the biome's prop list
-    var breakableCount = 8 + Math.floor(Math.random() * 5);
+    var breakableCount = 8 + Math.floor(_rng() * 5);
     var breakableProps = biome.props.filter(function(p) { return p.breakable; });
 
     if (breakableProps.length === 0) {
@@ -2782,15 +2800,15 @@ const GoneRogue = (function () {
       var placed = false;
 
       while (!placed && attempts < 50) {
-        var x = 2 + Math.floor(Math.random() * (GRID_WIDTH - 4));
-        var y = 2 + Math.floor(Math.random() * (GRID_HEIGHT - 4));
+        var x = 2 + Math.floor(_rng() * (GRID_WIDTH - 4));
+        var y = 2 + Math.floor(_rng() * (GRID_HEIGHT - 4));
 
         // Check if position is valid (floor tile, not player, not exit, not occupied)
         if (_grid[y] && _grid[y][x] === TILES.EMPTY &&
             !(x === _player.x && y === _player.y) &&
             !_breakables.find(function(b) { return b.x === x && b.y === y; })) {
 
-          var propTemplate = breakableProps[Math.floor(Math.random() * breakableProps.length)];
+          var propTemplate = breakableProps[Math.floor(_rng() * breakableProps.length)];
           _breakables.push({
             x: x,
             y: y,
@@ -2847,8 +2865,8 @@ const GoneRogue = (function () {
 
       if (!validPosition) {
         // Try a nearby position
-        gateX = Math.floor(_player.x + dx * (0.5 + Math.random() * 0.3));
-        gateY = Math.floor(_player.y + dy * (0.5 + Math.random() * 0.3));
+        gateX = Math.floor(_player.x + dx * (0.5 + _rng() * 0.3));
+        gateY = Math.floor(_player.y + dy * (0.5 + _rng() * 0.3));
         gateX = Math.max(2, Math.min(GRID_WIDTH - 3, gateX));
         gateY = Math.max(2, Math.min(GRID_HEIGHT - 3, gateY));
       }
@@ -2885,8 +2903,8 @@ const GoneRogue = (function () {
     }
 
     // Spawn RUSTY_KEY near player spawn (so they can unlock the gate)
-    var keyX = _player.x + (Math.random() > 0.5 ? 2 : -2);
-    var keyY = _player.y + (Math.random() > 0.5 ? 1 : -1);
+    var keyX = _player.x + (_rng() > 0.5 ? 2 : -2);
+    var keyY = _player.y + (_rng() > 0.5 ? 1 : -1);
 
     // Ensure key position is valid
     if (keyX >= 1 && keyX < GRID_WIDTH - 1 && keyY >= 1 && keyY < GRID_HEIGHT - 1 &&
@@ -3551,7 +3569,7 @@ const GoneRogue = (function () {
     bypassChance = Math.max(0.25, bypassChance);
     
     // Attempt bypass
-    var success = Math.random() < bypassChance;
+    var success = _rng() < bypassChance;
     vent.used = true;
     _ventUseCount++;
     
@@ -3740,7 +3758,7 @@ const GoneRogue = (function () {
       _vendorInventory = [];
 
       // Heal player slightly between floors (10-20% of max HP)
-      var healAmount = Math.floor(_player.maxHp * (0.1 + Math.random() * 0.1));
+      var healAmount = Math.floor(_player.maxHp * (0.1 + _rng() * 0.1));
       _player.hp = Math.min(_player.maxHp, _player.hp + healAmount);
 
       // Generate next floor (moved BEFORE card delivery logic)
@@ -3832,7 +3850,7 @@ const GoneRogue = (function () {
   function _initializeVendor() {
     // Choose random vendor type
     var vendorTypes = Object.keys(VENDOR_TYPES);
-    var randomType = vendorTypes[Math.floor(Math.random() * vendorTypes.length)];
+    var randomType = vendorTypes[Math.floor(_rng() * vendorTypes.length)];
     _vendor = VENDOR_TYPES[randomType];
 
     // Generate vendor inventory (5 cards)
@@ -4012,7 +4030,7 @@ const GoneRogue = (function () {
       }
 
       // Heal 30-50% HP
-      var healPercent = 0.3 + Math.random() * 0.2;
+      var healPercent = 0.3 + _rng() * 0.2;
       var healAmount = Math.floor(_player.maxHp * healPercent);
       var oldHp = _player.hp;
       _player.hp = Math.min(_player.maxHp, _player.hp + healAmount);
@@ -4071,19 +4089,19 @@ const GoneRogue = (function () {
 
       // Roll random card with gambling odds
       // 70% junk (30-55%), 20% usable (55-75%), 8% strong (75-90%), 1.8% near-perfect (90-97%), 0.2% perfect (97-100%)
-      var rand = Math.random() * 100;
+      var rand = _rng() * 100;
       var targetQuality;
 
       if (rand < 0.2) {
-        targetQuality = 97 + Math.random() * 3; // 97-100% (perfect)
+        targetQuality = 97 + _rng() * 3; // 97-100% (perfect)
       } else if (rand < 2) {
-        targetQuality = 90 + Math.random() * 7; // 90-97% (near-perfect)
+        targetQuality = 90 + _rng() * 7; // 90-97% (near-perfect)
       } else if (rand < 10) {
-        targetQuality = 75 + Math.random() * 15; // 75-90% (strong)
+        targetQuality = 75 + _rng() * 15; // 75-90% (strong)
       } else if (rand < 30) {
-        targetQuality = 55 + Math.random() * 20; // 55-75% (usable)
+        targetQuality = 55 + _rng() * 20; // 55-75% (usable)
       } else {
-        targetQuality = 30 + Math.random() * 25; // 30-55% (junk)
+        targetQuality = 30 + _rng() * 25; // 30-55% (junk)
       }
 
       var baseType = CardSystem.getRandomBaseCard();
@@ -5346,16 +5364,16 @@ const GoneRogue = (function () {
           } else {
             // Fallback to hardcoded loot if LootTableManager not available
             // Drop currency (cryptos) when breakable is destroyed
-            var dropChance = Math.random();
+            var dropChance = _rng();
             if (dropChance < 0.7) { // 70% chance to drop currency
-              var cryptoAmount = Math.floor(Math.random() * 3) + 1; // 1-3 cryptos
+              var cryptoAmount = Math.floor(_rng() * 3) + 1; // 1-3 cryptos
               _spawnCurrency(breakable.x, breakable.y, cryptoAmount);
             }
 
             // 60% chance to drop ammo (3/5 or 6/10 breakables contain ammo)
             // Average of 1.2 ammo per drop (1 or 2 ammo with weighted distribution)
-            if (Math.random() < 0.6) {
-              var ammoAmount = Math.random() < 0.8 ? 1 : 2; // 80% chance 1 ammo, 20% chance 2 ammo = 1.2 avg
+            if (_rng() < 0.6) {
+              var ammoAmount = _rng() < 0.8 ? 1 : 2; // 80% chance 1 ammo, 20% chance 2 ammo = 1.2 avg
               _items.push({
                 x: breakable.x,
                 y: breakable.y,
@@ -5369,7 +5387,7 @@ const GoneRogue = (function () {
             }
 
             // 30% chance to drop a card
-            if (Math.random() < 0.3 && typeof CardSystem !== 'undefined') {
+            if (_rng() < 0.3 && typeof CardSystem !== 'undefined') {
               var baseType = CardSystem.getRandomBaseCard();
               var card = CardSystem.rollCard(baseType);
               if (card) {
@@ -5385,7 +5403,7 @@ const GoneRogue = (function () {
             }
 
             // 25% chance to drop a charm (similar frequency to cards)
-            if (Math.random() < 0.25 && typeof CardSystem !== 'undefined') {
+            if (_rng() < 0.25 && typeof CardSystem !== 'undefined') {
               var charm = CardSystem.rollCommonCharm();
               if (charm) {
                 _items.push({
@@ -6901,7 +6919,7 @@ const GoneRogue = (function () {
     else if (cardName === 'Logic Hack') {
       handled = true;
       lines.push('├─ Executing LOGIC HACK on boss systems...');
-      var targetNode = Math.floor(Math.random() * 8); // Random node 0-7
+      var targetNode = Math.floor(_rng() * 8); // Random node 0-7
       var playerAction = {
         type: 'LOGIC_HACK',
         targetNode: targetNode,
@@ -7025,7 +7043,7 @@ const GoneRogue = (function () {
     
     // If low HP, prefer defense/healing
     if (enemyHpPercent < 30) {
-      var roll = Math.random();
+      var roll = _rng();
       if (roll < 0.4 && typeof CardSystem !== 'undefined') {
         // Try to defend
         return CardSystem.rollCard('Dodge');
@@ -7036,7 +7054,7 @@ const GoneRogue = (function () {
     
     // If healthy, prefer attacks
     if (enemyHpPercent > 50) {
-      var attackRoll = Math.random();
+      var attackRoll = _rng();
       if (typeof CardSystem !== 'undefined') {
         if (attackRoll < 0.5) {
           return CardSystem.rollCard('Single Shot');
@@ -7203,7 +7221,7 @@ const GoneRogue = (function () {
     hitChance = Math.max(5, Math.min(95, hitChance)); // Clamp between 5-95%
 
     // Roll d100
-    var roll = Math.floor(Math.random() * 100) + 1;
+    var roll = Math.floor(_rng() * 100) + 1;
 
     return {
       hit: roll <= hitChance,
@@ -7486,7 +7504,7 @@ const GoneRogue = (function () {
             impossibleCharmChance = 0.10; // 10% chance from final boss
           }
 
-          if (impossibleCharmChance > 0 && Math.random() < impossibleCharmChance) {
+          if (impossibleCharmChance > 0 && _rng() < impossibleCharmChance) {
             var impossibleCharm = CardSystem.rollImpossibleCharm();
             _items.push({
               x: _strCombatEnemy.x,
@@ -7790,7 +7808,7 @@ const GoneRogue = (function () {
     // HEALING ITEMS: Restore HP
     else if (itemName.indexOf('medkit') !== -1 || itemName.indexOf('bandage') !== -1 ||
              itemName.indexOf('heal') !== -1 || itemName.indexOf('💊') !== -1) {
-      var healAmount = 20 + Math.floor(Math.random() * 11); // 20-30 HP
+      var healAmount = 20 + Math.floor(_rng() * 11); // 20-30 HP
       _player.hp = Math.min(_player.hp + healAmount, _player.maxHp);
       messages.push('💊 HEALED: +' + healAmount + ' HP');
       messages.push('HP: ' + _player.hp + '/' + _player.maxHp);
@@ -7922,7 +7940,7 @@ const GoneRogue = (function () {
     }
     // INDUSTRIAL_WASTE: Random mutation or debuff
     else if (effect.type === 'INDUSTRIAL_WASTE') {
-      if (Math.random() < 0.3) {
+      if (_rng() < 0.3) {
         _strCombatLog.push('☢️  TOXIC WASTE EXPOSURE!');
         _strCombatLog.push('└─ Random debuff applied');
         // Could implement specific debuffs here
@@ -7962,7 +7980,7 @@ const GoneRogue = (function () {
     }
     // INDUSTRIAL_WASTE: Random debuff
     else if (effect.type === 'INDUSTRIAL_WASTE') {
-      if (Math.random() < 0.3) {
+      if (_rng() < 0.3) {
         _strCombatLog.push('☢️  Enemy exposed to toxic waste');
         _strCombatLog.push('└─ Enemy weakened');
         enemy.weakened = true;
