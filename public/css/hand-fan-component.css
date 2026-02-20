@@ -48,6 +48,23 @@
   box-shadow: 0 0 30px rgba(28, 255, 155, 0.5);
 }
 
+/* Mini indicator (stacked above STR minimized indicator) */
+.hand-fan-mini-indicator {
+  position: fixed;
+  width: 28px;
+  height: 18px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 10, 10, 0.95);
+  border: 2px solid rgba(76, 175, 80, 0.9);
+  border-radius: 6px;
+  z-index: 1950; /* above STR minimized (1900) */
+  font-size: 12px;
+  line-height: 1;
+  text-align: center;
+}
+
 /* Contextual mode overlay dimming */
 .hand-fan-container.hand-fan-contextual::before {
   content: '';

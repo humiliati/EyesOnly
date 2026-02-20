@@ -644,6 +644,14 @@ const STRCombatWindow = (function () {
     return _isVisible;
   }
 
+  function getTimeRemainingMs() {
+    return _timeRemaining || 0;
+  }
+
+  function getTimerDurationMs() {
+    return _timerDuration || 0;
+  }
+
   // Public API
   return {
     init: init,
@@ -655,7 +663,9 @@ const STRCombatWindow = (function () {
     resetTimer: resetTimer,
     showDeathScreen: showDeathScreen,
     isMinimized: isMinimized,
-    isVisible: isVisible
+    isVisible: isVisible,
+    getTimeRemainingMs: getTimeRemainingMs,
+    getTimerDurationMs: getTimerDurationMs
   };
 })();
 

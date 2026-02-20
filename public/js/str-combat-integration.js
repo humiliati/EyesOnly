@@ -162,11 +162,34 @@
     }
 
     // Determine fan mode based on STR window state
-    if (STRCombatWindow.isMinimized()) {
+    var isMini = STRCombatWindow.isMinimized();
+
+    if (isMini) {
       HandFanComponent.setMode('contextual', 'bottom');
     } else {
       // Peripheral hand fan: keeps enemy + combat window readable
       HandFanComponent.setMode('combat', 'peripheral');
+    }
+
+    // Update minimized hand-fan indicator (stacked above STR minimized indicator)
+    if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.updateMiniIndicator === 'function') {
+      var emoji = null;
+      if (cards && cards.length) {
+        emoji = cards[0].emoji || cards[0].glyph || '🃏';
+      }
+
+      var pct = null;
+      if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.getTimeRemainingMs === 'function' && typeof STRCombatWindow.getTimerDurationMs === 'function') {
+        var dur = STRCombatWindow.getTimerDurationMs();
+        var rem = STRCombatWindow.getTimeRemainingMs();
+        if (dur > 0) pct = rem / dur;
+      }
+
+      HandFanComponent.updateMiniIndicator({
+        visible: !!isMini,
+        emoji: emoji || '🃏',
+        timerPercent: pct
+      });
     }
   }
 

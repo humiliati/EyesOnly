@@ -113,6 +113,77 @@ const HandFanComponent = (function () {
     _fanContainer.classList.add('hand-fan-minimized');
   }
 
+  function _ensureMiniIndicator() {
+    var el = document.getElementById('hand-fan-mini-indicator');
+    if (el) return el;
+
+    el = document.createElement('div');
+    el.id = 'hand-fan-mini-indicator';
+    el.className = 'hand-fan-mini-indicator';
+    el.style.display = 'none';
+    document.body.appendChild(el);
+    return el;
+  }
+
+  function _timerColorForPercent(pct) {
+    // pct: 0..1
+    function lerp(a, b, t) { return Math.round(a + (b - a) * t); }
+
+    var stops = [
+      { p: 1.00, c: [ 76, 175,  80] }, // green
+      { p: 0.80, c: [  0, 150, 136] }, // teal
+      { p: 0.60, c: [255, 193,   7] }, // yellow
+      { p: 0.40, c: [255, 152,   0] }, // orange
+      { p: 0.20, c: [255,  87,  34] }, // red-orange
+      { p: 0.10, c: [244,  67,  54] }, // deep red
+      { p: 0.00, c: [244,  67,  54] }
+    ];
+
+    pct = Math.max(0, Math.min(1, pct));
+
+    for (var i = 0; i < stops.length - 1; i++) {
+      var a = stops[i];
+      var b = stops[i + 1];
+      if (pct <= a.p && pct >= b.p) {
+        var span = (a.p - b.p) || 1;
+        var t = (a.p - pct) / span;
+        var r = lerp(a.c[0], b.c[0], t);
+        var g = lerp(a.c[1], b.c[1], t);
+        var bl = lerp(a.c[2], b.c[2], t);
+        return 'rgb(' + r + ',' + g + ',' + bl + ')';
+      }
+    }
+
+    return 'rgb(244,67,54)';
+  }
+
+  function updateMiniIndicator(opts) {
+    opts = opts || {};
+    var el = _ensureMiniIndicator();
+
+    var visible = !!opts.visible;
+    el.style.display = visible ? 'block' : 'none';
+    if (!visible) return;
+
+    // Position: stacked above the STR minimized indicator
+    var anchor = document.getElementById('str-combat-minimized');
+    if (anchor) {
+      var r = anchor.getBoundingClientRect();
+      el.style.left = Math.round(r.left) + 'px';
+      el.style.top = Math.round(r.top - 18) + 'px';
+    }
+
+    // Emoji: show first available card
+    el.textContent = opts.emoji || '🃏';
+
+    // Color: reflect timer percent
+    if (opts.timerPercent != null) {
+      var col = _timerColorForPercent(opts.timerPercent);
+      el.style.borderColor = col;
+      el.style.boxShadow = '0 0 12px ' + col + '66';
+    }
+  }
+
   /**
    * Restore hand from minimized state
    */
@@ -1110,6 +1181,7 @@ const HandFanComponent = (function () {
     getSelectedCards: getSelectedCards,
     clearSelection: clearSelection,
     refreshAffordability: refreshAffordability,
+    updateMiniIndicator: updateMiniIndicator,
     isVisible: isVisible,
     selectContextualCard: selectContextualCard,
     getContextualCard: getContextualCard,
