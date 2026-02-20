@@ -449,6 +449,100 @@
       'THUMB_DRIVE cannot unlock WOODEN_GATE'
     );
 
+    console.log('\n--- Test 15: Biome-Specific Keys (AEROSPACE) ---');
+
+    // Test ACCESS_CARD key for AEROSPACE biome
+    var accessCard = keyDefs.ACCESS_CARD;
+    assert(
+      accessCard !== undefined,
+      'ACCESS_CARD is defined'
+    );
+
+    assertEqual(
+      accessCard.itemId,
+      'KEY_006',
+      'ACCESS_CARD has correct itemId'
+    );
+
+    assertEqual(
+      accessCard.emoji,
+      '🎫',
+      'ACCESS_CARD has correct emoji'
+    );
+
+    assertEqual(
+      accessCard.biome,
+      'AEROSPACE',
+      'ACCESS_CARD is AEROSPACE biome specific'
+    );
+
+    assertEqual(
+      accessCard.consumeOnUse,
+      false,
+      'ACCESS_CARD is reusable (not consumed)'
+    );
+
+    assertIncludes(
+      accessCard.compatibleGates.join(','),
+      'FLOOR_ELEVATOR',
+      'ACCESS_CARD compatible with FLOOR_ELEVATOR'
+    );
+
+    console.log('\n--- Test 16: Biome-Specific Gates (AEROSPACE) ---');
+
+    // Test FLOOR_ELEVATOR for AEROSPACE biome
+    var floorElevator = gateDefs.FLOOR_ELEVATOR;
+    assert(
+      floorElevator !== undefined,
+      'FLOOR_ELEVATOR is defined'
+    );
+
+    assertEqual(
+      floorElevator.emoji,
+      '🛗',
+      'FLOOR_ELEVATOR has correct emoji'
+    );
+
+    assertEqual(
+      floorElevator.biome,
+      'AEROSPACE',
+      'FLOOR_ELEVATOR is AEROSPACE biome specific'
+    );
+
+    assertEqual(
+      floorElevator.isElevator,
+      true,
+      'FLOOR_ELEVATOR has isElevator flag'
+    );
+
+    assertIncludes(
+      floorElevator.requiredKeys.join(','),
+      'ACCESS_CARD',
+      'FLOOR_ELEVATOR requires ACCESS_CARD'
+    );
+
+    console.log('\n--- Test 17: Key-Gate Compatibility (AEROSPACE) ---');
+
+    assert(
+      EnvironmentalSynergy.canUnlock('ACCESS_CARD', 'FLOOR_ELEVATOR'),
+      'ACCESS_CARD can unlock FLOOR_ELEVATOR'
+    );
+
+    assert(
+      EnvironmentalSynergy.canUnlock('MASTER_KEY', 'FLOOR_ELEVATOR'),
+      'MASTER_KEY can unlock FLOOR_ELEVATOR'
+    );
+
+    assert(
+      !EnvironmentalSynergy.canUnlock('KEYCARD', 'FLOOR_ELEVATOR'),
+      'KEYCARD cannot unlock FLOOR_ELEVATOR'
+    );
+
+    assert(
+      !EnvironmentalSynergy.canUnlock('ACCESS_CARD', 'SECURITY_DOOR'),
+      'ACCESS_CARD can unlock AEROSPACE_DOOR (should pass if gate exists)'
+    );
+
     console.log('\n========================================');
     console.log('TEST SUMMARY');
     console.log('========================================');
