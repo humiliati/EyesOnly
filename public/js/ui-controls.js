@@ -1121,33 +1121,32 @@
       // Close overlay first
       toggleLoginOverlay();
 
-      // Show message in terminal that we're entering LoginShell mode
-      printToTerminal([
-        '',
-        'TEST ACCOUNT DETECTED: ' + username.toUpperCase(),
-        'Entering LoginShell subsystem...',
-        'This is a demo authentication system.',
-        ''
-      ]);
+      // Start an authenticated test session immediately (skip username/password prompts)
+      setTimeout(function() {
+        var result = (typeof LoginShell.autoLogin === 'function')
+          ? LoginShell.autoLogin(username)
+          : (typeof LoginShell.start === 'function' ? LoginShell.start() : null);
 
-      // Start the LoginShell subsystem (terminal-within-terminal)
-      if (typeof LoginShell.start === 'function') {
-        // Delay to let overlay close animation complete
-        setTimeout(function() {
-          var result = LoginShell.start();
-          if (result && result.lines) {
-            result.lines.forEach(function(line) {
-              if (typeof Terminal !== 'undefined' && Terminal.writeLine) {
-                Terminal.writeLine(line, 'system-msg');
-              }
-            });
-          }
-          // Update prompt if needed
-          if (result && result.prompt && typeof Terminal !== 'undefined' && Terminal.showInput) {
-            Terminal.showInput(result.prompt);
-          }
-        }, OVERLAY_CLOSE_ANIMATION_DELAY);
-      }
+        if (result && result.lines) {
+          result.lines.forEach(function(line) {
+            if (typeof Terminal !== 'undefined' && Terminal.writeLine) {
+              Terminal.writeLine(line, 'system-msg');
+            }
+          });
+        }
+
+        if (result && result.prompt && typeof Terminal !== 'undefined' && Terminal.showInput) {
+          Terminal.showInput(result.prompt);
+        }
+
+        // Dispatch auth state change event so UI (kernel button, etc) can react
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('auth-state-changed'));
+        }
+
+        // Restore context after login
+        restoreContextAfterLogin();
+      }, OVERLAY_CLOSE_ANIMATION_DELAY);
 
       // Re-enable button
       if (submitBtn) {

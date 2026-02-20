@@ -93,6 +93,44 @@ const LoginShell = (function () {
     };
   }
 
+  /**
+   * Skip username/password prompts and drop directly into a test session.
+   * Used by the login overlay so test accounts don't require "login twice".
+   *
+   * @param {string} username - 'user' | 'admin'
+   */
+  function autoLogin(username) {
+    var u = Parser.normalize(username || '');
+    if (!u || !ACCOUNTS[u]) {
+      return {
+        lines: ['UNKNOWN ACCOUNT', 'TRY: user OR admin', ''],
+        prompt: 'USER> ',
+        stayActive: true
+      };
+    }
+
+    _state = STATES.SESSION;
+    _pendingUsername = null;
+    _user = u;
+    _cwd = ACCOUNTS[_user].home;
+    _save();
+
+    return {
+      lines: [
+        '',
+        'TEST SESSION AUTHORIZED: ' + _user.toUpperCase(),
+        'TYPE HELP FOR FILESYSTEM COMMANDS',
+        ''
+      ],
+      prompt: getPrompt(),
+      stayActive: true
+    };
+  }
+
+  function isAuthenticated() {
+    return _state === STATES.SESSION;
+  }
+
   function isActive() {
     return _state !== STATES.INACTIVE;
   }
@@ -105,7 +143,13 @@ const LoginShell = (function () {
   }
 
   function process(raw) {
-    var input = Parser.normalize(raw || '');
+    raw = raw || '';
+
+    // Defensive: if some caller accidentally includes the shell prompt in the submitted text
+    // (e.g., "USER> ls" or "ADMIN:/home/admin> cat file"), strip it.
+    raw = raw.replace(/^\s*(user|admin)(:[^>]+)?\s*>\s*/i, '');
+
+    var input = Parser.normalize(raw);
 
     if (_state === STATES.AWAIT_USERNAME) {
       if (!input) {
@@ -291,8 +335,10 @@ const LoginShell = (function () {
   return {
     init: init,
     start: start,
+    autoLogin: autoLogin,
     process: process,
     isActive: isActive,
+    isAuthenticated: isAuthenticated,
     getPrompt: getPrompt
   };
 })();
