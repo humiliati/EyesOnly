@@ -137,6 +137,24 @@ const ItemSpawner = (function() {
       spawnWeight: 35,
       spawnConditions: 'hazard_near',
       hazardType: 'visual'
+    },
+
+    // Forest/Universal Items
+    'PICNIC_BLANKET': {
+      itemId: 'PICNIC_BLANKET',
+      itemName: 'Cozy Picnic Blanket',
+      category: 'MovementPenalty',
+      baseEmoji: '🧺',
+      defaultExpression: 'none',
+      interactionType: 'movement_impediment',
+      breakable: false,
+      biomes: ['forest', 'cave', 'all'],
+      spawnWeight: 15,
+      spawnConditions: 'floor_clear',
+      movementPenalty: 0.5, // 50% movement speed reduction
+      foodSpawnCount: { min: 2, max: 3 },
+      foodSpawnRadius: 2,
+      lightingAffected: false
     }
   };
 
@@ -345,6 +363,15 @@ const ItemSpawner = (function() {
           if (interactiveItem) {
             spawnedItems.push(interactiveItem);
             spawned = true;
+
+            // If this is a picnic blanket, spawn food items nearby
+            if (selectedItem.itemId === 'PICNIC_BLANKET' && typeof FoodDatabase !== 'undefined') {
+              var foodItems = _spawnFoodNearPicnic(position.x, position.y, selectedItem, biome, grid, spawnedItems);
+              if (foodItems.length > 0) {
+                spawnedItems = spawnedItems.concat(foodItems);
+                console.log('[ItemSpawner] Spawned', foodItems.length, 'food items near picnic blanket');
+              }
+            }
           }
         }
       }
@@ -352,6 +379,107 @@ const ItemSpawner = (function() {
 
     console.log('[ItemSpawner] Successfully spawned', spawnedItems.length, 'items');
     return spawnedItems;
+  }
+
+  /**
+   * Spawn food items near a picnic blanket
+   * @param {number} blanketX - Picnic blanket X position
+   * @param {number} blanketY - Picnic blanket Y position
+   * @param {object} blanketDef - Picnic blanket definition
+   * @param {string} biome - Current biome
+   * @param {object} grid - Level grid
+   * @param {array} existingItems - Already spawned items
+   * @returns {array} Array of spawned food items
+   */
+  function _spawnFoodNearPicnic(blanketX, blanketY, blanketDef, biome, grid, existingItems) {
+    if (!FoodDatabase || !FoodDatabase.getRandomFoodItems) {
+      return [];
+    }
+
+    var foodCount = blanketDef.foodSpawnCount.min +
+      Math.floor(Math.random() * (blanketDef.foodSpawnCount.max - blanketDef.foodSpawnCount.min + 1));
+    var radius = blanketDef.foodSpawnRadius;
+    var foodItems = [];
+
+    // Get random food IDs for this biome
+    var foodIds = FoodDatabase.getRandomFoodItems(biome, foodCount);
+
+    for (var i = 0; i < foodIds.length; i++) {
+      var foodDef = FoodDatabase.getFoodItem(foodIds[i]);
+      if (!foodDef) continue;
+
+      // Find position near blanket
+      var attempts = 0;
+      var placed = false;
+
+      while (attempts < 20 && !placed) {
+        attempts++;
+
+        // Random position within radius
+        var offsetX = Math.floor(Math.random() * (radius * 2 + 1)) - radius;
+        var offsetY = Math.floor(Math.random() * (radius * 2 + 1)) - radius;
+        var foodX = blanketX + offsetX;
+        var foodY = blanketY + offsetY;
+
+        // Skip if same position as blanket
+        if (foodX === blanketX && foodY === blanketY) continue;
+
+        // Check if position is valid (floor tile, not occupied)
+        if (!_isPositionValid(foodX, foodY, grid, existingItems.concat(foodItems))) continue;
+
+        // Create food item as interactive item with auto-pickup
+        if (typeof InteractiveItems !== 'undefined') {
+          var foodItem = InteractiveItems.createItem('FOOD', foodX, foodY, {
+            emoji: foodDef.emoji,
+            name: foodDef.name,
+            text: foodDef.tooltipText,
+            interactionEmoji: 'none',
+            autoPickup: true,
+            customData: {
+              itemId: foodDef.id,
+              foodId: foodDef.id,
+              effects: foodDef.effects,
+              category: foodDef.category
+            }
+          });
+
+          if (foodItem) {
+            foodItems.push(foodItem);
+            placed = true;
+          }
+        }
+      }
+    }
+
+    return foodItems;
+  }
+
+  /**
+   * Check if position is valid for item placement
+   * @param {number} x - X position
+   * @param {number} y - Y position
+   * @param {object} grid - Level grid
+   * @param {array} existingItems - Already spawned items
+   * @returns {boolean} True if position is valid
+   */
+  function _isPositionValid(x, y, grid, existingItems) {
+    // Check bounds
+    if (!grid || !grid[y] || !grid[y][x]) {
+      return false;
+    }
+
+    // Check tile is floor (not wall)
+    var tile = grid[y][x];
+    if (tile === '#' || tile === '█') {
+      return false;
+    }
+
+    // Check not occupied by another item
+    var occupied = existingItems.some(function(item) {
+      return item.x === x && item.y === y;
+    });
+
+    return !occupied;
   }
 
   /**

@@ -136,6 +136,133 @@ const PassiveItemsSystem = (function() {
       stackable: false,
       slot: 'passive_equipment',
       is_active_effect: true
+    },
+
+    // Sprint system items
+    STILETTO_SLIPPERS: {
+      id: 'stiletto_slippers',
+      name: 'Stiletto Slippers',
+      emoji: '👠',
+      description: 'Raw speed at the cost of subtlety. Sprint 20% faster.',
+      trigger_event: TRIGGER_EVENTS.ON_EQUIP,
+      // Sprint properties
+      sprint_speed_multiplier: 1.2,  // 20% faster sprinting
+      trailColor: '#ff1493',  // Hot pink trail
+      // Equipment properties
+      upgrade_path: 'stiletto_slippers_plus',
+      stackable: false,
+      slot: 'passive_equipment',
+      is_active_effect: true
+    },
+    STILETTO_SLIPPERS_PLUS: {
+      id: 'stiletto_slippers_plus',
+      name: 'Stiletto Slippers+',
+      emoji: '👠',
+      description: 'Refined speed. Sprint 35% faster with style. [UPGRADED]',
+      trigger_event: TRIGGER_EVENTS.ON_EQUIP,
+      // Sprint properties
+      sprint_speed_multiplier: 1.35,  // 35% faster sprinting
+      trailColor: '#ff69b4',  // Lighter hot pink trail
+      // Equipment properties
+      upgrade_path: null,
+      stackable: false,
+      slot: 'passive_equipment',
+      is_active_effect: true
+    },
+    TREADS_BOOTS: {
+      id: 'treads_boots',
+      name: 'Treads',
+      emoji: '🥾',
+      description: 'All-terrain grip. Terrain penalties reduced by 50%.',
+      trigger_event: TRIGGER_EVENTS.ON_EQUIP,
+      // Sprint properties
+      terrain_penalty_reduction: 0.5,  // 50% reduction in speed debuffs
+      trailColor: '#8b4513',  // Brown trail
+      // Equipment properties
+      upgrade_path: 'treads_boots_plus',
+      stackable: false,
+      slot: 'passive_equipment',
+      is_active_effect: true
+    },
+    TREADS_BOOTS_PLUS: {
+      id: 'treads_boots_plus',
+      name: 'Treads+',
+      emoji: '🥾',
+      description: 'Military-grade traction. Terrain penalties reduced by 80%. [UPGRADED]',
+      trigger_event: TRIGGER_EVENTS.ON_EQUIP,
+      // Sprint properties
+      terrain_penalty_reduction: 0.8,  // 80% reduction in speed debuffs
+      trailColor: '#654321',  // Darker brown trail
+      // Equipment properties
+      upgrade_path: null,
+      stackable: false,
+      slot: 'passive_equipment',
+      is_active_effect: true
+    },
+
+    // Equipable sprint items
+    SOFT_STEP: {
+      id: 'soft_step',
+      name: 'Soft Step',
+      emoji: '🦶',
+      description: 'Silent sprinting. Stealth is not reduced while running.',
+      trigger_event: TRIGGER_EVENTS.ON_EQUIP,
+      // Sprint properties
+      silent_sprint: true,  // Maintains stealth during sprint
+      trailColor: '#708090',  // Slate gray trail
+      // Equipment properties
+      breaks_on_combat: true,
+      upgrade_path: 'soft_step_plus',
+      stackable: false,
+      slot: 'passive_equipment',
+      is_active_effect: true
+    },
+    SOFT_STEP_PLUS: {
+      id: 'soft_step_plus',
+      name: 'Soft Step+',
+      emoji: '🦶',
+      description: 'Ghost sprinting. Stealth is enhanced while running. [UPGRADED]',
+      trigger_event: TRIGGER_EVENTS.ON_EQUIP,
+      // Sprint properties
+      silent_sprint: true,
+      sprint_stealth_bonus: 10,  // +10 stealth while sprinting
+      trailColor: '#2f4f4f',  // Dark slate gray trail
+      // Equipment properties
+      breaks_on_combat: true,
+      upgrade_path: null,
+      stackable: false,
+      slot: 'passive_equipment',
+      is_active_effect: true
+    },
+    MOON_BOOTS: {
+      id: 'moon_boots',
+      name: 'Moon Boots',
+      emoji: '🌙',
+      description: 'Low-gravity feel. Fatigue drain reduced by 40% while sprinting.',
+      trigger_event: TRIGGER_EVENTS.ON_EQUIP,
+      // Sprint properties
+      sprintFatigueModifier: 0.6,  // 40% less fatigue drain (multiply by 0.6)
+      trailColor: '#f0e68c',  // Khaki/tan trail
+      // Equipment properties
+      upgrade_path: 'moon_boots_plus',
+      stackable: false,
+      slot: 'passive_equipment',
+      is_active_effect: true
+    },
+    MOON_BOOTS_PLUS: {
+      id: 'moon_boots_plus',
+      name: 'Moon Boots+',
+      emoji: '🌙',
+      description: 'Zero-g mastery. Fatigue drain reduced by 70% while sprinting. [UPGRADED]',
+      trigger_event: TRIGGER_EVENTS.ON_EQUIP,
+      // Sprint properties
+      sprintFatigueModifier: 0.3,  // 70% less fatigue drain (multiply by 0.3)
+      trailColor: '#daa520',  // Golden tan trail
+      // Equipment properties
+      upgrade_path: null,
+      stackable: false,
+      slot: 'passive_equipment',
+      is_active_effect: true
     }
   };
 

@@ -235,7 +235,19 @@ const HandFanComponent = (function () {
     html += '</div>';
 
     // Card name (bottom)
-    html += '<div class="hand-card-name">' + (card.name || 'Unknown Card') + '</div>';
+    var cardName = card.name || 'Unknown Card';
+
+    // Abbreviate card name for mobile landscape mode (space-constrained)
+    if (window.innerWidth <= 480) {
+      if (typeof NameUtils !== 'undefined') {
+        cardName = NameUtils.formatForMobile(card);
+      } else if (window.innerWidth <= 480) {
+        // Fallback abbreviation (max 6 chars)
+        cardName = _abbreviateCardName(cardName, 6);
+      }
+    }
+
+    html += '<div class="hand-card-name">' + cardName + '</div>';
 
     // Effect icons (if any)
     if (card.effects && card.effects.length > 0) {
@@ -710,6 +722,104 @@ const HandFanComponent = (function () {
     return _fanContainer !== null && _fanContainer.style.display !== 'none';
   }
 
+  /**
+   * Set contextual (non-combat) card selection
+   * In contextual mode, only one card can be selected at a time
+   * and it stays highlighted until used
+   * @param {number} index - Card index to select
+   */
+  function selectContextualCard(index) {
+    // Clear any previous selection
+    _selectedCards = [];
+
+    // Select the new card
+    if (index >= 0 && index < _cards.length) {
+      _selectedCards.push(index);
+    }
+
+    // Re-render to show selection
+    _renderCards();
+
+    // Add contextual selection class for different visual style
+    if (_fanContainer) {
+      _fanContainer.classList.add('hand-fan-contextual-mode');
+    }
+  }
+
+  /**
+   * Get the currently selected contextual card
+   * @returns {Object|null} Selected card object or null
+   */
+  function getContextualCard() {
+    if (_selectedCards.length > 0 && _cards[_selectedCards[0]]) {
+      return _cards[_selectedCards[0]];
+    }
+    return null;
+  }
+
+  /**
+   * Clear contextual selection and minimize hand
+   * Called after card is used in contextual mode
+   */
+  function clearContextualSelection() {
+    _selectedCards = [];
+
+    // Remove contextual mode class
+    if (_fanContainer) {
+      _fanContainer.classList.remove('hand-fan-contextual-mode');
+    }
+
+    // Minimize the hand after card use
+    minimize();
+
+    // Re-render after a brief delay
+    setTimeout(function() {
+      _renderCards();
+    }, 300);
+  }
+
+  /**
+   * Check if in contextual mode
+   * @returns {boolean} True if in contextual mode
+   */
+  function isContextualMode() {
+    return _mode === 'contextual';
+  }
+
+  /**
+   * Fallback abbreviation function if NameUtils not available
+   * Removes vowels except first letter of each word
+   * @param {string} name - Full name
+   * @param {number} maxLength - Maximum length
+   * @returns {string} Abbreviated name
+   * @private
+   */
+  function _abbreviateCardName(name, maxLength) {
+    if (!name) return '';
+
+    var words = name.split(/\s+/);
+    var result = '';
+
+    for (var i = 0; i < words.length; i++) {
+      var word = words[i];
+      if (word.length === 0) continue;
+
+      // Take first character of word (even if vowel)
+      result += word.charAt(0);
+
+      // Remove vowels from remaining characters
+      for (var j = 1; j < word.length; j++) {
+        var char = word.charAt(j);
+        var lower = char.toLowerCase();
+        if (lower !== 'a' && lower !== 'e' && lower !== 'i' && lower !== 'o' && lower !== 'u') {
+          result += char;
+        }
+      }
+    }
+
+    return maxLength ? result.substring(0, maxLength) : result;
+  }
+
   // Public API
   return {
     init: init,
@@ -724,7 +834,11 @@ const HandFanComponent = (function () {
     getSelectedCards: getSelectedCards,
     clearSelection: clearSelection,
     refreshAffordability: refreshAffordability,
-    isVisible: isVisible
+    isVisible: isVisible,
+    selectContextualCard: selectContextualCard,
+    getContextualCard: getContextualCard,
+    clearContextualSelection: clearContextualSelection,
+    isContextualMode: isContextualMode
   };
 })();
 

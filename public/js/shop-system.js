@@ -624,7 +624,7 @@ const ShopSystem = (function () {
     html += '<div class="rarity-frame ' + item.rarity + '">';
     html += '<span class="card-emoji">' + item.emoji + '</span>';
     html += '</div>';
-    html += '<div class="card-abbr-name">' + _abbreviateName(item.name) + '</div>';
+    html += '<div class="card-abbr-name">' + _getAbbreviatedName(item.name) + '</div>';
     html += '</div>';
 
     // Disabled reason tooltip
@@ -653,7 +653,23 @@ const ShopSystem = (function () {
   }
 
   /**
-   * Abbreviate card name (vowel-dropped)
+   * Get abbreviated card name (with vowel-drop convention)
+   * Uses NameUtils if available, falls back to local implementation
+   * @param {string} name - Full name
+   * @returns {string} Abbreviated name (max 6 chars for shop display)
+   */
+  function _getAbbreviatedName(name) {
+    // Use NameUtils if available
+    if (typeof NameUtils !== 'undefined') {
+      return NameUtils.formatForShop(name);
+    }
+
+    // Fallback to local _abbreviateName
+    return _abbreviateName(name);
+  }
+
+  /**
+   * Abbreviate card name (vowel-dropped) - FALLBACK
    * Keeps first letter of each word, even if it's a vowel
    * Removes vowels from remaining positions within each word
    * Example: "Sold Out" → "SldOt", "Energy Drink" → "EnrgyD" (with 6-char limit)

@@ -117,28 +117,32 @@ const CardSystem = (function () {
       emoji: '⏩',
       lifecycleType: 'persistent',
       baseStats: { distance: 2, risk: 1, energy: 2, speed: 3, fatigue: 2 },
-      resourceCost: { energy: 2, fatigue: 2 }
+      resourceCost: { energy: 2, fatigue: 2 },
+      synergyTags: ['aggressive', 'mobile']
     },
     Retreat: {
       category: 'movement',
       type: 'movement',
       name: 'Retreat',
       emoji: '↩️',
-      baseStats: { distance: -2, safety: 2, energy: 1, speed: 3, fatigue: 1 }
+      baseStats: { distance: -2, safety: 2, energy: 1, speed: 3, fatigue: 1 },
+      synergyTags: ['defensive', 'mobile']
     },
     Strafe: {
       category: 'movement',
       type: 'movement',
       name: 'Strafe',
       emoji: '↔️',
-      baseStats: { evasion: 2, distance: 1, energy: 2, speed: 3, fatigue: 2 }
+      baseStats: { evasion: 2, distance: 1, energy: 2, speed: 3, fatigue: 2 },
+      synergyTags: ['defensive', 'mobile']
     },
     Roll: {
       category: 'movement',
       type: 'movement',
       name: 'Combat Roll',
       emoji: '🔄',
-      baseStats: { evasion: 4, distance: 1, energy: 3, speed: 4, fatigue: 4 }
+      baseStats: { evasion: 4, distance: 1, energy: 3, speed: 4, fatigue: 4 },
+      synergyTags: ['defensive', 'mobile', 'chain']
     },
 
     // ========== ATTACK CARDS (Priority 4) ==========
@@ -199,21 +203,24 @@ const CardSystem = (function () {
         speed: 2,
         consumable: true,  // Single use item
         fatigueReduction: 3  // Reduces fatigue when used
-      }
+      },
+      synergyTags: ['fatigue_reduce', 'combo_starter']
     },
     Katchup: {
       category: 'setup',
       type: 'setup',
       name: 'Katchup',
       emoji: '🩹',
-      baseStats: { hp: 3, energy: 1, speed: 2, consumable: true }
+      baseStats: { hp: 3, energy: 1, speed: 2, consumable: true },
+      synergyTags: ['chain']
     },
     Rations: {
       category: 'setup',
       type: 'setup',
       name: 'Rations',
       emoji: '🍖',
-      baseStats: { hp: 4, duration: 2, energy: 2, speed: 2, consumable: true, fatigueReduction: 5 }
+      baseStats: { hp: 4, duration: 2, energy: 2, speed: 2, consumable: true, fatigueReduction: 5 },
+      synergyTags: ['fatigue_reduce', 'energy_gen']
     },
     'Total Evasion': {
       category: 'setup',
@@ -238,7 +245,8 @@ const CardSystem = (function () {
         nextTurn: true,     // Renamed from next_turn for camelCase consistency
         energy: 1,
         speed: 2
-      }
+      },
+      synergyTags: ['precision', 'combo_starter']
     },
 
     // ========== BOSS ENCOUNTER CARDS (Special tactical cards for boss fights) ==========

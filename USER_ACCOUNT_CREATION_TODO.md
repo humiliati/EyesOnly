@@ -1,5 +1,7 @@
 # User-Driven Account Creation Tool - Implementation TODO
 
+> **STATUS UPDATE (2026-02-20)**: Basic login/registration UI is **implemented** in `public/js/login-ui.js` and accessible via the "login" action button in the left column. This document describes the full M Console integration and account creation flow that remains to be completed.
+
 ## Purpose
 Create a user-friendly account creation interface that integrates with the M Console authorization system, enabling players to:
 - Register new accounts with email/username

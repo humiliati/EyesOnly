@@ -7,7 +7,8 @@ const GoneRogueMovement = (function () {
   'use strict';
 
   // Configuration
-  var MOVEMENT_SPEED = 8.0; // tiles per second
+  var MOVEMENT_SPEED = 8.0; // tiles per second (base speed)
+  var SPRINT_MULTIPLIER = 1.5; // speed multiplier when sprinting
   var LERP_SMOOTHING = 0.2; // smoothing factor for interpolation
   var MIN_PATH_DISTANCE = 0.1; // minimum distance to consider "arrived"
 
@@ -17,6 +18,7 @@ const GoneRogueMovement = (function () {
   var _targetPath = []; // Array of grid positions to traverse
   var _currentPathIndex = 0;
   var _isMoving = false;
+  var _isSprinting = false; // sprint mode flag
   var _lastUpdateTime = 0;
 
   /**
@@ -166,8 +168,9 @@ const GoneRogueMovement = (function () {
   /**
    * Set new movement target
    * Calculates path and starts smooth movement
+   * @param {boolean} isSprinting - Whether player is sprinting (optional)
    */
-  function setTarget(targetX, targetY, collisionCheck) {
+  function setTarget(targetX, targetY, collisionCheck, isSprinting) {
     // Calculate path from current logical position
     var path = findPath(_logicalPosition.x, _logicalPosition.y, targetX, targetY, collisionCheck);
 
@@ -180,6 +183,7 @@ const GoneRogueMovement = (function () {
       _targetPath = path;
       _currentPathIndex = 0;
       _isMoving = true;
+      _isSprinting = isSprinting || false;
       _lastUpdateTime = performance.now();
       return true;
     }
@@ -203,6 +207,16 @@ const GoneRogueMovement = (function () {
     var now = performance.now();
     var deltaTime = (now - _lastUpdateTime) / 1000; // convert to seconds
     _lastUpdateTime = now;
+
+    // Drain sprint fatigue if sprinting
+    if (_isSprinting && typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.drainSprintFatigue === 'function') {
+      GAMESTATE.drainSprintFatigue(deltaTime);
+    }
+
+    // Update sprint trail system
+    if (typeof SprintTrailSystem !== 'undefined') {
+      SprintTrailSystem.update(deltaTime, _isSprinting, _visualPosition.x, _visualPosition.y);
+    }
 
     // Get current target waypoint
     if (_currentPathIndex >= _targetPath.length) {
@@ -242,8 +256,42 @@ const GoneRogueMovement = (function () {
       return true;
     }
 
-    // Lerp towards target
-    var moveDistance = MOVEMENT_SPEED * deltaTime;
+    // Lerp towards target with sprint multiplier, equipment modifiers, and terrain penalties
+    var currentSpeed = MOVEMENT_SPEED;
+
+    if (_isSprinting) {
+      var sprintMultiplier = SPRINT_MULTIPLIER;
+      var terrainPenaltyReduction = 0; // Default: no reduction
+
+      // Apply equipment sprint speed modifiers (Stiletto Slippers, etc.)
+      if (typeof PassiveItemsSystem !== 'undefined') {
+        var equipped = PassiveItemsSystem.getEquippedItems();
+        for (var i = 0; i < equipped.length; i++) {
+          if (equipped[i].sprint_speed_multiplier) {
+            sprintMultiplier *= equipped[i].sprint_speed_multiplier;
+          }
+          if (equipped[i].terrain_penalty_reduction) {
+            terrainPenaltyReduction = Math.max(terrainPenaltyReduction, equipped[i].terrain_penalty_reduction);
+          }
+        }
+      }
+
+      currentSpeed *= sprintMultiplier;
+
+      // Apply terrain penalties (water, etc.)
+      // Call getTileMovePenalty if available to get terrain modifier
+      if (collisionCheck && typeof collisionCheck.getTileMovePenalty === 'function') {
+        var terrainPenalty = collisionCheck.getTileMovePenalty(Math.floor(target.x), Math.floor(target.y));
+        if (terrainPenalty > 0) {
+          // Reduce penalty based on equipment (Treads boots)
+          var effectivePenalty = terrainPenalty * (1 - terrainPenaltyReduction);
+          // Penalty reduces speed multiplicatively (penalty of 1 = 50% speed)
+          currentSpeed *= (1 / (1 + effectivePenalty));
+        }
+      }
+    }
+
+    var moveDistance = currentSpeed * deltaTime;
     if (moveDistance > distance) {
       moveDistance = distance;
     }
@@ -291,6 +339,13 @@ const GoneRogueMovement = (function () {
   }
 
   /**
+   * Check if currently sprinting
+   */
+  function isSprinting() {
+    return _isSprinting;
+  }
+
+  /**
    * Get current path (for visualization)
    */
   function getCurrentPath() {
@@ -320,6 +375,7 @@ const GoneRogueMovement = (function () {
     getVisualPosition: getVisualPosition,
     getLogicalPosition: getLogicalPosition,
     isMoving: isMoving,
+    isSprinting: isSprinting,
     getCurrentPath: getCurrentPath,
     setPosition: setPosition
   };

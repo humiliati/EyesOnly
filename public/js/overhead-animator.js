@@ -148,8 +148,9 @@ const OverheadAnimator = (function() {
    * @param {number} y - Entity Y position
    * @param {string} expressionKey - Key from EXPRESSIONS object
    * @param {number} duration - Optional custom duration in ms
+   * @param {string} customEmoji - Optional custom emoji to override expression emoji
    */
-  function showExpression(x, y, expressionKey, duration) {
+  function showExpression(x, y, expressionKey, duration, customEmoji) {
     var expression = EXPRESSIONS[expressionKey];
     if (!expression) {
       console.warn('[OverheadAnimator] Unknown expression:', expressionKey);
@@ -158,7 +159,7 @@ const OverheadAnimator = (function() {
 
     var animation = {
       type: 'EXPRESSION',
-      emoji: expression.emoji,
+      emoji: customEmoji || expression.emoji,
       color: expression.color,
       startTime: Date.now(),
       duration: duration || ANIMATION_TYPES.EXPRESSION.duration,

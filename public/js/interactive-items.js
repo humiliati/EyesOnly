@@ -101,6 +101,15 @@ const InteractiveItems = (function() {
       tooltipPrefix: '❓ ',
       canInteract: true,
       breakable: false
+    },
+    FOOD: {
+      emoji: '🍎',
+      name: 'Food',
+      interactionEmoji: 'none',
+      tooltipPrefix: '',
+      canInteract: true,
+      breakable: false,
+      autoPickup: true // Food items auto-pickup on interaction
     }
   };
 
@@ -142,6 +151,7 @@ const InteractiveItems = (function() {
       interactionRange: config.interactionRange || _interactionRange,
       canInteract: config.canInteract !== undefined ? config.canInteract : itemType.canInteract,
       breakable: config.breakable !== undefined ? config.breakable : itemType.breakable,
+      autoPickup: config.autoPickup !== undefined ? config.autoPickup : (itemType.autoPickup || false),
       interacted: false,
       onInteract: config.onInteract || null, // Custom callback function
       customData: config.customData || {} // Designer-defined data
