@@ -72,6 +72,12 @@ You'll be transported into a fragmented memory subsystem where tactical survival
 
 When you collide with an enemy, you enter **STR combat** - a tactical turn-based mode where initiative and positioning matter.
 
+**Combat Phase Tooltips (MOK interjection):**
+- ⚡ **INITIATIVE** — shows engagement + advantage context
+- 🃏 **CARD PLAY** — prompts you to choose an action
+- 💥 **RESOLUTION** — damage/status math resolving
+- 🏁 **VICTORY** / ☠️ **DEFEAT** — encounter outcome (friendly gates may soft-reset)
+
 **Advantage States:**
 - **Ambush**: You surprised the enemy (unaware state) → +20% hit, +30% damage
 - **Neutral**: Both combatants are ready → Standard combat
@@ -377,6 +383,7 @@ Reduce detection by:
 
 - **Player (@)**: Pulsing green glow
 - **Enemies (E)**: Color-coded by awareness (green/orange/red/magenta)
+- **NPC Gates**: Warning/trigger zones tint tiles on mobile; overhead `!` indicates alert, `?` indicates you’re pressing the gate
 - **Items (*)**: Yellow sparkle animation
 - **Exit (▼)**: Glowing green beacon
 - **Cryptos (¢)**: Yellow dot on floor
@@ -402,6 +409,9 @@ Reduce detection by:
 
 **Q: What happens if I die?**
 A: You lose all loose inventory but keep persistent inventory and cryptos. You respawn at the Street Chronicles terminal.
+
+**Q: What is the GESARA Medbed?**
+A: A passive item. It prevents lethal combat damage by stabilizing you (soft reset exit) and, once per run, can trigger a full heal + overheal.
 
 **Q: How do I save my progress?**
 A: Progress is auto-saved to localStorage. Login at a bonfire to sync with the server.

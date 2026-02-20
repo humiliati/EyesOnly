@@ -4341,6 +4341,29 @@ _incrementPityTimers();
     }
   }
 
+  function _combatPhaseTooltip(phase, details, ms) {
+    if (typeof TooltipSystem === 'undefined') return;
+
+    var label = ('' + phase).toUpperCase();
+    var msg = '';
+
+    if (label === 'INITIATIVE') {
+      msg = '⚡ INITIATIVE — ' + (details || 'engaging');
+    } else if (label === 'CARDPLAY') {
+      msg = '🃏 CARD PLAY — ' + (details || 'choose your action');
+    } else if (label === 'RESOLUTION') {
+      msg = '💥 RESOLUTION — ' + (details || 'calculating damage');
+    } else if (label === 'VICTORY') {
+      msg = '🏁 VICTORY — ' + (details || 'encounter cleared');
+    } else if (label === 'DEFEAT') {
+      msg = '☠️ DEFEAT — ' + (details || 'recovering');
+    } else {
+      msg = label + (details ? (': ' + details) : '');
+    }
+
+    TooltipSystem.showPersistent(msg, ms || 1600);
+  }
+
   function _clearNpcGateZones(npcId) {
     for (var k in _tileMetadata) {
       if (!_tileMetadata.hasOwnProperty(k)) continue;
@@ -7941,6 +7964,9 @@ _incrementPityTimers();
     // Calculate advantage state
     _strCombatAdvantage = _calculateAdvantage(_player, enemy, trigger);
 
+    // Phase tooltip: initiative
+    _combatPhaseTooltip('initiative', 'Advantage: ' + _strCombatAdvantage.toUpperCase(), 1800);
+
     // Update intent based on advantage (ambush reaction)
     if (typeof EnemyIntentSystem !== 'undefined' && _strCombatAdvantage === 'ambush') {
       enemy.intentState.expression = EnemyIntentSystem.onCombatEvent(enemy, 'ambushed');
@@ -8770,6 +8796,7 @@ _incrementPityTimers();
    * Show STR combat UI with additional log lines
    */
   function _showStrCombatUIWithLog(logLines) {
+    _combatPhaseTooltip('resolution');
     var lines = logLines || [];
 
     // Add current combat state
@@ -9083,6 +9110,7 @@ _incrementPityTimers();
    * Show STR combat UI and wait for player action
    */
   function _showStrCombatUI() {
+    _combatPhaseTooltip('cardplay');
     var lines = [];
     lines.push('═══════════════════════════════════════');
     lines.push('⚔️  STR COMBAT - ROUND ' + _strCombatRound);
@@ -9131,6 +9159,7 @@ _incrementPityTimers();
     var lines = [];
 
     if (reason === 'player_victory') {
+      _combatPhaseTooltip('victory');
       lines.push('✅ COMBAT VICTORY!');
       lines.push('└─ Enemy neutralized');
 
@@ -9377,6 +9406,7 @@ _incrementPityTimers();
         _enemies[enemyIndex].hp = 0;
       }
     } else if (reason === 'medbed_soft_defeat') {
+      _combatPhaseTooltip('defeat', 'Medbed stabilized');
       lines.push('🛏️ MEDBED STABILIZED');
       lines.push('└─ Soft reset engaged');
       lines.push('');
@@ -9384,6 +9414,7 @@ _incrementPityTimers();
       lines.push('Respawning in: 2…');
       lines.push('Respawning in: 1…');
     } else if (reason === 'npc_gate_soft_defeat') {
+      _combatPhaseTooltip('defeat', 'Training match');
       lines.push('💀 DEFEAT (TRAINING MATCH)');
       lines.push('└─ Resetting position…');
       lines.push('');

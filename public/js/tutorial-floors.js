@@ -381,6 +381,8 @@ var TutorialFloors = (function() {
         name: 'Trainer',
         direction: 'south',
         gate: {
+          // Use 'friendly' for tutorial sparring gates (wall releases, NPC stays)
+          // Use 'defeatable' for true gates (NPC despawns on victory)
           type: 'friendly',
           // warning zone extends farther; trigger zone is the inner boundary
           warningDistance: 6,
