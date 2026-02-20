@@ -39,8 +39,17 @@ const EnvironmentalSynergy = (function() {
         emoji: '🔐',
         name: 'Master Key',
         description: 'Opens all standard locks.',
-        compatibleGates: ['WOODEN_GATE', 'OLD_DOOR', 'BRONZE_GATE', 'SECURITY_DOOR'],
+        compatibleGates: ['WOODEN_GATE', 'OLD_DOOR', 'BRONZE_GATE', 'SECURITY_DOOR', 'TERMINAL_GATE'],
         consumeOnUse: false
+      },
+      THUMB_DRIVE: {
+        itemId: 'KEY_005',
+        emoji: '💾',
+        name: 'Thumb Drive',
+        description: 'Contains encrypted access credentials.',
+        compatibleGates: ['TERMINAL_GATE', 'SERVER_RACK'],
+        consumeOnUse: false, // Can be reused on multiple terminals
+        biome: 'OFFICE'
       }
     },
 
@@ -105,6 +114,32 @@ const EnvironmentalSynergy = (function() {
         blocksPath: true,
         unlockEmoji: '🔬',
         unlockMessage: 'Airlock hisses open.'
+      },
+      TERMINAL_GATE: {
+        objectId: 'GATE_007',
+        emoji: '💻',
+        name: 'Locked Terminal',
+        description: 'Terminal requires authentication.',
+        requiredKeys: ['THUMB_DRIVE', 'MASTER_KEY'],
+        blocksPath: true,
+        unlockEmoji: '✓',
+        unlockMessage: 'Terminal access granted. System unlocked.',
+        biome: 'OFFICE',
+        glowColor: '#00ffff', // Cyan glow for lighting system
+        lightRadius: 4
+      },
+      SERVER_RACK: {
+        objectId: 'GATE_008',
+        emoji: '🖥️',
+        name: 'Server Rack',
+        description: 'Encrypted server cluster.',
+        requiredKeys: ['THUMB_DRIVE', 'MASTER_KEY'],
+        blocksPath: true,
+        unlockEmoji: '⚡',
+        unlockMessage: 'Server encryption bypassed.',
+        biome: 'OFFICE',
+        glowColor: '#00ffff',
+        lightRadius: 3
       }
     },
 
@@ -263,6 +298,40 @@ const EnvironmentalSynergy = (function() {
   }
 
   /**
+   * Get biome-specific key types
+   * @param {string} biomeName - Biome name (e.g., 'OFFICE', 'FOREST')
+   * @returns {Array} Array of key type strings for this biome
+   */
+  function getKeysForBiome(biomeName) {
+    var keys = [];
+    for (var keyType in SYNERGY_DEFINITIONS.KEY_ITEMS) {
+      var keyDef = SYNERGY_DEFINITIONS.KEY_ITEMS[keyType];
+      if (keyDef.biome === biomeName || !keyDef.biome) {
+        // Include keys with matching biome or no biome restriction
+        keys.push(keyType);
+      }
+    }
+    return keys;
+  }
+
+  /**
+   * Get biome-specific gate types
+   * @param {string} biomeName - Biome name (e.g., 'OFFICE', 'FOREST')
+   * @returns {Array} Array of gate type strings for this biome
+   */
+  function getGatesForBiome(biomeName) {
+    var gates = [];
+    for (var gateType in SYNERGY_DEFINITIONS.GATE_OBJECTS) {
+      var gateDef = SYNERGY_DEFINITIONS.GATE_OBJECTS[gateType];
+      if (gateDef.biome === biomeName || !gateDef.biome) {
+        // Include gates with matching biome or no biome restriction
+        gates.push(gateType);
+      }
+    }
+    return gates;
+  }
+
+  /**
    * Check if an item is a key
    * @param {string} itemId - Item ID to check
    * @returns {boolean} True if item is a key
@@ -311,6 +380,8 @@ const EnvironmentalSynergy = (function() {
     isGateUnlocked: isGateUnlocked,
     getKeyDefinitions: getKeyDefinitions,
     getGateDefinitions: getGateDefinitions,
+    getKeysForBiome: getKeysForBiome,
+    getGatesForBiome: getGatesForBiome,
     isKeyItem: isKeyItem,
     getKeyInfo: getKeyInfo,
     serialize: serialize,

@@ -322,7 +322,8 @@ const GoneRogue = (function () {
         { emoji: '🖥️', name: 'Desk', breakable: true, hp: 3, provides: 'cover', drops: ['supplies'] },
         { emoji: '💧', name: 'Water Cooler', interact: 'drink', healing: 5 },
         { emoji: '🥤', name: 'Vending Machine', breakable: true, hp: 4, drops: ['drinks', 'snacks'] },
-        { emoji: '🖥️', name: 'Server Rack', interact: 'hack', effect: 'reveals_map' }
+        { emoji: '🖥️', name: 'Server Rack', interact: 'hack', effect: 'reveals_map' },
+        { emoji: '💻', name: 'Terminal', breakable: true, hp: 2, drops: ['thumb_drive'], glows: true, lightType: 'TERMINAL' }
       ],
 
       // Interactive objects for office exploration
@@ -1903,6 +1904,11 @@ const GoneRogue = (function () {
       _placeTutorialGate(exitX, exitY);
     }
 
+    // Place biome-specific gates on regular floors
+    if (floorType !== FLOOR_TYPES.TUTORIAL) {
+      _placeBiomeGates(rooms, exitX, exitY, floorBiome);
+    }
+
     // Place items (increased loot for exploration floors)
     _placeItems(floorType);
 
@@ -3117,6 +3123,109 @@ const GoneRogue = (function () {
         cardQuality: 50 // Medium quality for tutorial
       });
     }
+  }
+
+  /**
+   * Place biome-specific gates on floors (non-tutorial)
+   * @param {Array} rooms - Room objects
+   * @param {number} exitX - Exit X position
+   * @param {number} exitY - Exit Y position
+   * @param {Object} biome - Current biome
+   */
+  function _placeBiomeGates(rooms, exitX, exitY, biome) {
+    // Only place gates on certain floor types
+    if (_floor <= 4 || BOSS_FLOORS.indexOf(_floor) !== -1) {
+      return; // Skip tutorial, ghost, and boss floors
+    }
+
+    // 30% chance to spawn a gate on this floor
+    if (_rng() > 0.30) {
+      return;
+    }
+
+    if (typeof EnvironmentalSynergy === 'undefined') {
+      return;
+    }
+
+    // Get biome-appropriate gates
+    var biomeName = biome.name || 'OFFICE';
+    var availableGates = EnvironmentalSynergy.getGatesForBiome(biomeName.toUpperCase());
+
+    if (availableGates.length === 0) {
+      // Fallback to generic gates
+      availableGates = ['WOODEN_GATE', 'OLD_DOOR'];
+    }
+
+    // Pick a random gate type
+    var gateType = availableGates[Math.floor(_rng() * availableGates.length)];
+    var gateDef = EnvironmentalSynergy.getGateDefinitions()[gateType];
+
+    if (!gateDef) {
+      return;
+    }
+
+    // Find a good position (between player and exit, not too close to either)
+    var dx = exitX - _player.x;
+    var dy = exitY - _player.y;
+    var gateX = Math.floor(_player.x + dx * (0.4 + _rng() * 0.3)); // 40-70% of the way
+    var gateY = Math.floor(_player.y + dy * (0.4 + _rng() * 0.3));
+
+    // Ensure gate is on a floor tile and not too close
+    var attempts = 0;
+    var validPosition = false;
+    while (!validPosition && attempts < 50) {
+      if (_grid[gateY] && _grid[gateY][gateX] === TILES.EMPTY) {
+        var distToPlayer = Math.abs(gateX - _player.x) + Math.abs(gateY - _player.y);
+        var distToExit = Math.abs(gateX - exitX) + Math.abs(gateY - exitY);
+
+        if (distToPlayer >= 8 && distToExit >= 8) {
+          validPosition = true;
+        }
+      }
+
+      if (!validPosition) {
+        gateX = Math.floor(_player.x + dx * (0.4 + _rng() * 0.3));
+        gateY = Math.floor(_player.y + dy * (0.4 + _rng() * 0.3));
+        attempts++;
+      }
+    }
+
+    if (!validPosition) {
+      console.log('[GoneRogue] Could not find valid gate position');
+      return;
+    }
+
+    // Create gate as a breakable
+    var gateBreakable = {
+      x: gateX,
+      y: gateY,
+      hp: 3,
+      maxHp: 3,
+      glyph: TILES.BREAKABLE,
+      destroyedGlyph: TILES.DEBRIS,
+      emoji: gateDef.emoji,
+      name: gateDef.name,
+      tag: 'gate_' + gateType,
+      isGate: true,
+      gateType: gateType
+    };
+
+    _breakables.push(gateBreakable);
+    _grid[gateY][gateX] = TILES.BREAKABLE;
+
+    // Register with environmental synergy system
+    EnvironmentalSynergy.registerGate({
+      x: gateX,
+      y: gateY,
+      type: gateType
+    });
+
+    // Add lighting for terminal gates
+    if (gateDef.glowColor && typeof LightingSystem !== 'undefined') {
+      LightingSystem.addLightSource(gateX, gateY, 'TERMINAL');
+    }
+
+    console.log('[GoneRogue] Placed', gateDef.name, 'at', gateX, gateY, 'on floor', _floor);
   }
 
   /**
@@ -5565,6 +5674,51 @@ const GoneRogue = (function () {
                 emoji: '🔫',
                 name: 'Ammo (' + ammoAmount + ')'
               });
+            }
+
+            // Check for key item drops from specific breakables
+            if (typeof EnvironmentalSynergy !== 'undefined' && breakable.name) {
+              var keyDropped = false;
+
+              // Terminal breakables can drop thumb drives (OFFICE biome)
+              if (breakable.name === 'Terminal' && _rng() < 0.15) { // 15% chance
+                var keyDefs = EnvironmentalSynergy.getKeyDefinitions();
+                if (keyDefs.THUMB_DRIVE) {
+                  _items.push({
+                    x: breakable.x,
+                    y: breakable.y,
+                    type: 'key',
+                    keyType: 'THUMB_DRIVE',
+                    emoji: keyDefs.THUMB_DRIVE.emoji,
+                    name: keyDefs.THUMB_DRIVE.name,
+                    description: keyDefs.THUMB_DRIVE.description,
+                    spawnTime: Date.now(),
+                    decayTime: 120000 // 2 minute decay
+                  });
+                  keyDropped = true;
+                  console.log('[GoneRogue] Thumb drive dropped from terminal at', breakable.x, breakable.y);
+                }
+              }
+
+              // Wooden gates/boxes can drop rusty keys (FOREST biome)
+              if (!keyDropped && (breakable.name === 'Wooden Gate' || breakable.name === 'Wooden Box') && _rng() < 0.10) {
+                var keyDefs = EnvironmentalSynergy.getKeyDefinitions();
+                if (keyDefs.RUSTY_KEY) {
+                  _items.push({
+                    x: breakable.x,
+                    y: breakable.y,
+                    type: 'key',
+                    keyType: 'RUSTY_KEY',
+                    emoji: keyDefs.RUSTY_KEY.emoji,
+                    name: keyDefs.RUSTY_KEY.name,
+                    description: keyDefs.RUSTY_KEY.description,
+                    spawnTime: Date.now(),
+                    decayTime: 120000
+                  });
+                  keyDropped = true;
+                  console.log('[GoneRogue] Rusty key dropped at', breakable.x, breakable.y);
+                }
+              }
             }
 
             // 30% chance to drop a card

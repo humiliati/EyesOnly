@@ -91,7 +91,8 @@
     EnvironmentalSynergy.init();
 
     // Test RUSTY_KEY definition
-    var rustyKey = EnvironmentalSynergy.SYNERGY_DEFINITIONS.KEY_ITEMS.RUSTY_KEY;
+    var keyDefs = EnvironmentalSynergy.getKeyDefinitions();
+    var rustyKey = keyDefs.RUSTY_KEY;
     assert(
       rustyKey !== undefined,
       'RUSTY_KEY is defined'
@@ -122,7 +123,8 @@
 
     console.log('\n--- Test 3: Gate Definitions ---');
 
-    var woodenGate = EnvironmentalSynergy.SYNERGY_DEFINITIONS.GATE_TYPES.WOODEN_GATE;
+    var gateDefs = EnvironmentalSynergy.getGateDefinitions();
+    var woodenGate = gateDefs.WOODEN_GATE;
     assert(
       woodenGate !== undefined,
       'WOODEN_GATE is defined'
@@ -305,6 +307,146 @@
       displayName,
       'Rusty',
       'Display name should be human-readable'
+    );
+
+    console.log('\n--- Test 11: Biome-Specific Keys (OFFICE) ---');
+
+    // Test THUMB_DRIVE key for OFFICE biome
+    var thumbDrive = keyDefs.THUMB_DRIVE;
+    assert(
+      thumbDrive !== undefined,
+      'THUMB_DRIVE is defined'
+    );
+
+    assertEqual(
+      thumbDrive.itemId,
+      'KEY_005',
+      'THUMB_DRIVE has correct itemId'
+    );
+
+    assertEqual(
+      thumbDrive.emoji,
+      '💾',
+      'THUMB_DRIVE has correct emoji'
+    );
+
+    assertEqual(
+      thumbDrive.biome,
+      'OFFICE',
+      'THUMB_DRIVE is OFFICE biome specific'
+    );
+
+    assertEqual(
+      thumbDrive.consumeOnUse,
+      false,
+      'THUMB_DRIVE is reusable (not consumed)'
+    );
+
+    assertIncludes(
+      thumbDrive.compatibleGates.join(','),
+      'TERMINAL_GATE',
+      'THUMB_DRIVE compatible with TERMINAL_GATE'
+    );
+
+    console.log('\n--- Test 12: Biome-Specific Gates (OFFICE) ---');
+
+    // Test TERMINAL_GATE for OFFICE biome
+    var terminalGate = gateDefs.TERMINAL_GATE;
+    assert(
+      terminalGate !== undefined,
+      'TERMINAL_GATE is defined'
+    );
+
+    assertEqual(
+      terminalGate.emoji,
+      '💻',
+      'TERMINAL_GATE has correct emoji'
+    );
+
+    assertEqual(
+      terminalGate.biome,
+      'OFFICE',
+      'TERMINAL_GATE is OFFICE biome specific'
+    );
+
+    assertEqual(
+      terminalGate.glowColor,
+      '#00ffff',
+      'TERMINAL_GATE has cyan glow color'
+    );
+
+    assertEqual(
+      terminalGate.lightRadius,
+      4,
+      'TERMINAL_GATE has light radius of 4'
+    );
+
+    assertIncludes(
+      terminalGate.requiredKeys.join(','),
+      'THUMB_DRIVE',
+      'TERMINAL_GATE requires THUMB_DRIVE'
+    );
+
+    console.log('\n--- Test 13: Biome Filtering Functions ---');
+
+    // Test getKeysForBiome
+    var officeKeys = EnvironmentalSynergy.getKeysForBiome('OFFICE');
+    assert(
+      Array.isArray(officeKeys),
+      'getKeysForBiome returns an array'
+    );
+
+    assertIncludes(
+      officeKeys.join(','),
+      'THUMB_DRIVE',
+      'OFFICE biome includes THUMB_DRIVE'
+    );
+
+    assertIncludes(
+      officeKeys.join(','),
+      'RUSTY_KEY',
+      'OFFICE biome includes generic keys (RUSTY_KEY has no biome restriction)'
+    );
+
+    // Test getGatesForBiome
+    var officeGates = EnvironmentalSynergy.getGatesForBiome('OFFICE');
+    assert(
+      Array.isArray(officeGates),
+      'getGatesForBiome returns an array'
+    );
+
+    assertIncludes(
+      officeGates.join(','),
+      'TERMINAL_GATE',
+      'OFFICE biome includes TERMINAL_GATE'
+    );
+
+    assertIncludes(
+      officeGates.join(','),
+      'WOODEN_GATE',
+      'OFFICE biome includes generic gates (WOODEN_GATE has no biome restriction)'
+    );
+
+    console.log('\n--- Test 14: Key-Gate Compatibility (Biome-Specific) ---');
+
+    assert(
+      EnvironmentalSynergy.canUnlock('THUMB_DRIVE', 'TERMINAL_GATE'),
+      'THUMB_DRIVE can unlock TERMINAL_GATE'
+    );
+
+    assert(
+      EnvironmentalSynergy.canUnlock('MASTER_KEY', 'TERMINAL_GATE'),
+      'MASTER_KEY can unlock TERMINAL_GATE'
+    );
+
+    assert(
+      !EnvironmentalSynergy.canUnlock('RUSTY_KEY', 'TERMINAL_GATE'),
+      'RUSTY_KEY cannot unlock TERMINAL_GATE'
+    );
+
+    assert(
+      !EnvironmentalSynergy.canUnlock('THUMB_DRIVE', 'WOODEN_GATE'),
+      'THUMB_DRIVE cannot unlock WOODEN_GATE'
     );
 
     console.log('\n========================================');
