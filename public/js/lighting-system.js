@@ -93,6 +93,24 @@ const LightingSystem = (function() {
       type: 'radial',
       flickerRate: 0.35
     },
+    TORCH: {
+      name: 'Torch',
+      emoji: '🕯️',
+      radius: 5,
+      intensity: 0.75,
+      color: '#ffb15a',
+      type: 'radial',
+      flickerRate: 0.25
+    },
+    LAMP_POST: {
+      name: 'Lamp Post',
+      emoji: '🏮',
+      radius: 6,
+      intensity: 0.8,
+      color: '#ffe7b0',
+      type: 'radial',
+      flickerRate: 0.08
+    },
     LAVA_FLOOR: {
       name: 'Lava',
       emoji: '🌋',
@@ -152,6 +170,18 @@ const LightingSystem = (function() {
       ambientLight: 0.35, // Raised from 0.3
       lightRatio: 0.9, // 90% lit, 10% dark
       lightSources: ['LIGHT_BULB']
+    },
+
+    // Forest variants (tutorial floors are mostly one big room, so we guarantee at least one lit room)
+    COZY_FOREST_DAY: {
+      ambientLight: 0.6,
+      lightRatio: 1.0,
+      lightSources: ['LAMP_POST', 'TORCH', 'CAMPFIRE']
+    },
+    COZY_FOREST_NIGHT: {
+      ambientLight: 0.22,
+      lightRatio: 1.0,
+      lightSources: ['TORCH', 'CAMPFIRE']
     }
   };
 
@@ -507,6 +537,10 @@ const LightingSystem = (function() {
     clearLightSources();
 
     var biomeConfig = BIOME_LIGHTING[_currentBiome];
+    if (!biomeConfig) {
+      // Unknown biome: leave only ambient light + player/enemy lights.
+      return;
+    }
     var lightSourceTypes = biomeConfig.lightSources;
 
     if (!rooms || rooms.length === 0) return;
@@ -514,6 +548,8 @@ const LightingSystem = (function() {
     // Calculate how many rooms should be lit based on lightRatio
     var totalRooms = rooms.length;
     var litRooms = Math.floor(totalRooms * biomeConfig.lightRatio);
+    // Ensure at least one room is lit when any rooms exist (prevents "all-dark" tutorial forest)
+    if (litRooms < 1) litRooms = 1;
 
     // Randomly select which rooms to light
     var roomsToLight = [];

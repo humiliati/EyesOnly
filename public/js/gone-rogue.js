@@ -2195,6 +2195,12 @@ _incrementPityTimers();
       } else {
         biome = _getBiome(_floor);
         biomeName = biome.name.toUpperCase().replace(/ /g, '_');
+
+        // Forest tutorial floors: ensure we use a lighting profile that actually includes environmental lights.
+        if (biomeName === 'COZY_FOREST') {
+          // Simple variant: alternate day/night by floor number
+          biomeName = (_floor % 2 === 1) ? 'COZY_FOREST_DAY' : 'COZY_FOREST_NIGHT';
+        }
       }
 
       LightingSystem.setBiome(biomeName);
