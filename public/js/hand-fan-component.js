@@ -8,7 +8,7 @@ const HandFanComponent = (function () {
 
   // State
   var _mode = 'hidden'; // 'hidden', 'combat', 'contextual'
-  var _position = 'centered'; // 'centered', 'bottom'
+  var _position = 'centered'; // 'centered', 'peripheral', 'bottom'
   var _cards = [];
   var _selectedCards = [];
   var _animationPhase = 'idle'; // 'idle', 'commit', 'resolve', 'repopulate'
@@ -50,7 +50,7 @@ const HandFanComponent = (function () {
   /**
    * Set mode and position
    * @param {string} mode - 'combat' or 'contextual'
-   * @param {string} position - 'centered' or 'bottom'
+   * @param {string} position - 'centered', 'peripheral', or 'bottom'
    */
   function setMode(mode, position) {
     _mode = mode;
@@ -127,6 +127,8 @@ const HandFanComponent = (function () {
 
     if (_mode === 'combat' && _position === 'centered') {
       _fanContainer.classList.add('hand-fan-combat');
+    } else if (_mode === 'combat' && _position === 'peripheral') {
+      _fanContainer.classList.add('hand-fan-combat-peripheral');
     } else if (_mode === 'contextual' && _position === 'bottom') {
       _fanContainer.classList.add('hand-fan-contextual');
     }

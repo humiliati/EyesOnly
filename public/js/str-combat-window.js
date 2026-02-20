@@ -447,6 +447,16 @@ const STRCombatWindow = (function () {
   function _startIntentAnimator() {
     _stopIntentAnimator();
 
+    if (!_combatState || !_combatState.enemy || !_combatState.enemy.intentState || typeof EnemyIntentSystem === 'undefined') {
+      return;
+    }
+
+    var expr = _combatState.enemy.intentState.expression;
+    var hasFrames = expr && expr.frames && expr.frames.length > 1;
+
+    // If there is nothing to animate, don't spin an interval.
+    if (!hasFrames) return;
+
     // Update at a gentle cadence; just enough to feel "alive".
     _intentAnimInterval = setInterval(function() {
       _refreshIntentDisplays();

@@ -163,7 +163,8 @@
     if (STRCombatWindow.isMinimized()) {
       HandFanComponent.setMode('contextual', 'bottom');
     } else {
-      HandFanComponent.setMode('combat', 'centered');
+      // Peripheral hand fan: keeps enemy + combat window readable
+      HandFanComponent.setMode('combat', 'peripheral');
     }
   }
 

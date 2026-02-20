@@ -1,0 +1,69 @@
+# Hand Fan Component + Combat Card Deployment (Designer Notes)
+
+## Current Behavior (as implemented)
+
+### Hand Fan
+- Implemented in: `public/js/hand-fan-component.js`
+- Styles: `public/css/hand-fan-component.css`
+- Integration glue: `public/js/str-combat-integration.js`
+
+**Selection model**
+- Tap/click a card to select/deselect.
+- Selected cards are committed when:
+  - player explicitly plays them (`HandFanComponent.playSelectedCards()`), or
+  - STR timer expires (integration commits selected cards), or
+  - future: explicit commit UI.
+
+**Multi-card play**
+- HandFan sends selected card *indices* into `GoneRogue.handleMultiCardCombat(indices)`.
+
+**Drag model**
+- Dragging a card is currently used for:
+  - recycling/incineration via `CardDisposalSystem`
+  - selling when shop is open via `CommerceDragDropSystem`
+
+### STR Combat Window intent animator
+- Intent faces/weapons are displayed by `EnemyIntentSystem` and rendered by `STRCombatWindow`.
+- The intent glyph animation is lightweight:
+  - only starts an interval if the current intent expression has `frames`.
+
+## Layout / Positioning
+
+### Combat hand fan placement
+Hand fan supports three positions:
+- `combat / centered` (legacy)
+- `combat / peripheral` (default for STR window)
+- `contextual / bottom` (when STR window minimized)
+
+**Peripheral position goal:** reduce occlusion of STR combat window.
+- CSS class: `.hand-fan-combat-peripheral`
+- Default positioning: `top: 30vh; left: 50%; transform: translate(-50%,-50%)`
+
+## Defeatable vs Friendly NPC Gates (Tutorial Floors)
+
+Tutorial floors can include NPCs with optional gate projection.
+
+- `gate.type: 'friendly'`
+  - On victory: gate zones clear; NPC remains; passage opens.
+- `gate.type: 'defeatable'`
+  - On victory: NPC despawns; NPC tile clears; gate zones clear.
+
+## Gaps / Next planned work
+
+1) **Click-to-target vs click-to-select**
+   - Current system uses click-to-select.
+   - If we adopt click-to-target (enemy default), we should keep multi-select via:
+     - shift-click (desktop)
+     - long-press to multi-select (mobile)
+
+2) **Ground effect deployment / contextual targeting**
+   - Not implemented yet.
+   - Needs a targeting layer (tile hover/tap) + card metadata describing target type:
+     - enemy, self, ground tile(s), cone, line, radius.
+
+3) **Synergy chaining rules**
+   - Multi-card selection exists, but synergy resolution is still in GoneRogue.
+   - If we want “controlled chaos”, we should define:
+     - max cards per commit
+     - ordering (selected order vs sorted)
+     - feedback (tooltip + intent face changes)
