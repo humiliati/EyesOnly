@@ -35,6 +35,8 @@ Default is **unabbreviated** card names.
 When the combat UI is minimized/collapsed on **mobile portrait**, HandFan abbreviates card names aggressively (max 4 chars) using `NameUtils.getDisplayName(..., {maxLength})`.
 This auto-updates on orientation changes (window resize).
 
+Backup Action Container uses the same rule for slot names.
+
 ### Combat hand fan placement
 Hand fan supports three positions:
 - `combat / centered` (legacy)

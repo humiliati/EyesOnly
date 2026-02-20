@@ -12,6 +12,8 @@ var BackupActionContainer = (function() {
   var _cards = [];
   var _lastRound = 0;
 
+  var _resizeDebounce = null;
+
   function init() {
     if (_container) return;
 
@@ -24,6 +26,17 @@ var BackupActionContainer = (function() {
 
     document.body.appendChild(_container);
     _render();
+
+    // Orientation/resize: re-render so abbreviation reacts to portrait/landscape flips.
+    window.addEventListener('resize', function() {
+      if (_resizeDebounce) clearTimeout(_resizeDebounce);
+      _resizeDebounce = setTimeout(function() {
+        _resizeDebounce = null;
+        if (_isVisible) {
+          _render();
+        }
+      }, 120);
+    });
   }
 
   function setSlots(count) {
@@ -78,6 +91,24 @@ var BackupActionContainer = (function() {
         slot.classList.add('backup-slot-filled');
 
         var name = (card.name || 'Backup');
+
+        // Default: do NOT abbreviate unless necessary.
+        // Only abbreviate aggressively when mobile portrait + minimized/collapsed combat UI.
+        var maxLen = 0;
+        try {
+          var isPortrait = (window && window.innerHeight && window.innerWidth) ? (window.innerHeight > window.innerWidth) : false;
+          var strMini = (typeof STRCombatWindow !== 'undefined' && STRCombatWindow.isMinimized && STRCombatWindow.isMinimized());
+          if (isPortrait && strMini) {
+            maxLen = 4;
+          }
+        } catch (e) {}
+
+        if (typeof NameUtils !== 'undefined' && NameUtils.getDisplayName) {
+          name = NameUtils.getDisplayName(card, { maxLength: maxLen });
+        } else if (maxLen > 0) {
+          name = name.substring(0, maxLen);
+        }
+
         var emoji = card.emoji || '🃏';
         var typeIcon = (card.type && ('' + card.type).toLowerCase().indexOf('attack') !== -1) ? '⚔️' : '⚡';
 
