@@ -153,6 +153,26 @@ var NonCombatStateStore = (function() {
   // Init
   _load();
 
+  function addCardToHand(cardId, qty, triggerEvent, context) {
+    qty = (typeof qty === 'number' ? qty : 1);
+    qty = Math.max(1, qty);
+
+    var cards = Array.isArray(_state.cardsInHand) ? _state.cardsInHand.slice() : [];
+    var found = false;
+    for (var i = 0; i < cards.length; i++) {
+      if (cards[i] && cards[i].id === cardId) {
+        cards[i] = Object.assign({}, cards[i], { qty: (cards[i].qty || 0) + qty });
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      cards.push({ id: cardId, qty: qty, meta: null });
+    }
+
+    return modifyState({ cardsInHand: cards }, triggerEvent || 'hand:add_card', context || { id: cardId, qty: qty });
+  }
+
   return {
     STORAGE_KEY: STORAGE_KEY,
     HISTORY_KEY: HISTORY_KEY,
@@ -162,6 +182,7 @@ var NonCombatStateStore = (function() {
     modifyState: modifyState,
     transitionTo: transitionTo,
     modifyResource: modifyResource,
+    addCardToHand: addCardToHand,
     getHistory: getHistory,
     clearHistory: clearHistory
   };

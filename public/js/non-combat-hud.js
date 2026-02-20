@@ -56,7 +56,7 @@ var NonCombatHUD = (function() {
         '<div class="nch-title">EQUIPPED <button class="nch-min-btn" id="nch-min-btn" title="Minimize">_</button></div>' +
         '<div class="nch-equipped" id="nch-equipped">(none)</div>' +
         '<div class="nch-title">HAND</div>' +
-        '<div class="nch-hand" id="nch-hand">Use the hand fan (🃏) below</div>' +
+        '<div class="nch-hand" id="nch-hand" data-dropzone="hand">Drop cards here from inventory.</div>' +
       '</div>' +
       '<div class="nch-col nch-right">' +
         '<div class="nch-title">PREVIEW</div>' +
@@ -194,6 +194,28 @@ var NonCombatHUD = (function() {
     var pv = _root.querySelector('#nch-preview');
     if (pv) {
       pv.textContent = state.uiState || 'idle';
+    }
+
+    var hand = _root.querySelector('#nch-hand');
+    if (hand) {
+      var refs = (state.cardsInHand && Array.isArray(state.cardsInHand)) ? state.cardsInHand : [];
+      if (refs.length === 0) {
+        hand.textContent = 'Drop cards here from inventory.';
+      } else {
+        var lines = [];
+        for (var i = 0; i < refs.length; i++) {
+          var ref = refs[i];
+          if (!ref || !ref.id) continue;
+          var card = null;
+          if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) {
+            card = GoneRogueDataRegistry.getCard(ref.id);
+          }
+          var nm = card ? card.name : ref.id;
+          var em = card ? card.emoji : '🃏';
+          lines.push(em + ' ' + nm + ' x' + (ref.qty || 1));
+        }
+        hand.textContent = lines.join('\n');
+      }
     }
 
     if (_mini) {

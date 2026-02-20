@@ -16,7 +16,8 @@ const GAMESTATE = (function () {
   var _state = {
     mode: MODES.STREET,
     submode: null,
-    inventoryPersistent: [],      // 9-12 slots (safe across death)
+    inventoryPersistent: [],      // 9-12 slots (safe across death) - ItemRef[]
+    persistentCards: [],           // Persistent card stash (safe across death) - CardRef[]
     inventoryLoose: [],            // 8 slots (lost on death) - LEGACY, being phased out for card system
     actionButtonCards: [],         // 4 slots - cards available to draw from (reserve/deck)
     cardHand: [],                  // Cards in play hand (drawn for immediate use)
@@ -306,6 +307,74 @@ const GAMESTATE = (function () {
   }
 
   /**
+   * Get persistent card stash (CardRef[])
+   */
+  function getPersistentCards() {
+    return (_state.persistentCards || []).slice();
+  }
+
+  function _normalizeCardRef(refOrId) {
+    if (!refOrId) return null;
+    if (typeof refOrId === 'string') return { id: refOrId, qty: 1, meta: null };
+    if (refOrId.id) {
+      return {
+        id: refOrId.id,
+        qty: (typeof refOrId.qty === 'number' ? refOrId.qty : 1),
+        meta: refOrId.meta || null
+      };
+    }
+    return null;
+  }
+
+  function addPersistentCard(cardRefOrId, qty) {
+    qty = (typeof qty === 'number' ? qty : 1);
+    qty = Math.max(1, qty);
+
+    var ref = _normalizeCardRef(cardRefOrId);
+    if (!ref) return { success: false };
+
+    if (!_state.persistentCards) _state.persistentCards = [];
+
+    var existing = null;
+    for (var i = 0; i < _state.persistentCards.length; i++) {
+      if (_state.persistentCards[i] && _state.persistentCards[i].id === ref.id) {
+        existing = _state.persistentCards[i];
+        break;
+      }
+    }
+
+    if (existing) {
+      existing.qty = (existing.qty || 0) + qty;
+    } else {
+      _state.persistentCards.push({ id: ref.id, qty: qty, meta: ref.meta || null });
+    }
+
+    _saveState();
+    return { success: true };
+  }
+
+  function removePersistentCard(cardId, qty) {
+    qty = (typeof qty === 'number' ? qty : 1);
+    qty = Math.max(1, qty);
+
+    if (!_state.persistentCards) _state.persistentCards = [];
+
+    for (var i = 0; i < _state.persistentCards.length; i++) {
+      var ref = _state.persistentCards[i];
+      if (!ref || ref.id !== cardId) continue;
+
+      ref.qty = (ref.qty || 0) - qty;
+      if (ref.qty <= 0) {
+        _state.persistentCards.splice(i, 1);
+      }
+      _saveState();
+      return { success: true };
+    }
+
+    return { success: false };
+  }
+
+  /**
    * Get loose inventory
    */
   function getLooseInventory() {
@@ -574,6 +643,9 @@ const GAMESTATE = (function () {
     }
     _state.inventoryPersistent = migrated;
 
+    // persistent cards
+    if (!Array.isArray(_state.persistentCards)) _state.persistentCards = [];
+
     // active slot
     if (_state.activeItemSlot) {
       _state.activeItemSlot = _normalizeItemRef(_state.activeItemSlot);
@@ -646,6 +718,7 @@ const GAMESTATE = (function () {
       mode: MODES.STREET,
       submode: null,
       inventoryPersistent: [],
+      persistentCards: [],
       inventoryLoose: [],
       actionButtonCards: [],
       persistentSlots: 9,
@@ -1254,6 +1327,9 @@ const GAMESTATE = (function () {
     clearLooseInventory: clearLooseInventory,
     getPersistentInventory: getPersistentInventory,
     removePersistentInventoryItem: removePersistentInventoryItem,
+    getPersistentCards: getPersistentCards,
+    addPersistentCard: addPersistentCard,
+    removePersistentCard: removePersistentCard,
     getLooseInventory: getLooseInventory,
     // Card system - NEW LOOT FLOW
     addCard: addCard,              // Main entry point for card loot

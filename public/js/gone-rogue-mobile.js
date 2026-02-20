@@ -2312,12 +2312,26 @@ const GoneRogueMobile = (function () {
     // Clear existing inventory display
     _inventoryContainer.innerHTML = '';
 
-    if (persistentInv.length === 0) {
+    // Build view model: items + cards (cards are refs resolved via registry)
+    var persistentCards = [];
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getPersistentCards === 'function') {
+      persistentCards = GAMESTATE.getPersistentCards() || [];
+    }
+
+    if (persistentInv.length === 0 && persistentCards.length === 0) {
       _inventoryContainer.style.display = 'none';
       return;
     }
 
-    // Create inventory grid
+    // Items section
+    if (persistentInv.length > 0) {
+      var itemsHeader = document.createElement('div');
+      itemsHeader.className = 'rogue-inventory-section';
+      itemsHeader.textContent = 'ITEMS';
+      _inventoryContainer.appendChild(itemsHeader);
+    }
+
+    // Create inventory grid (items)
     persistentInv.forEach(function(itemRef, index) {
       if (!itemRef) return;
 
@@ -2365,6 +2379,63 @@ const GoneRogueMobile = (function () {
       _inventoryContainer.appendChild(itemDiv);
     });
 
+    // Cards section
+    if (persistentCards.length > 0) {
+      var cardsHeader = document.createElement('div');
+      cardsHeader.className = 'rogue-inventory-section';
+      cardsHeader.textContent = 'CARDS';
+      _inventoryContainer.appendChild(cardsHeader);
+
+      persistentCards.forEach(function(cardRef, cIndex) {
+        if (!cardRef) return;
+
+        var cardDiv = document.createElement('div');
+        cardDiv.className = 'rogue-inventory-item rogue-inventory-card';
+        cardDiv.dataset.cardIndex = cIndex;
+        cardDiv.dataset.kind = 'card';
+
+        var card = null;
+        if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) {
+          card = GoneRogueDataRegistry.getCard(cardRef.id);
+        }
+        if (!card) card = { name: cardRef.id, emoji: '🃏' };
+
+        var cEmoji = card.emoji || '🃏';
+        var cName = card.name || cardRef.id;
+
+        var emojiSpan2 = document.createElement('span');
+        emojiSpan2.className = 'item-emoji';
+        emojiSpan2.textContent = cEmoji;
+
+        var nameSpan2 = document.createElement('span');
+        nameSpan2.className = 'item-name';
+        nameSpan2.textContent = cName + (cardRef.qty ? (' x' + cardRef.qty) : '');
+
+        cardDiv.appendChild(emojiSpan2);
+        cardDiv.appendChild(nameSpan2);
+
+        // Drag handlers for cards (to non-combat hand)
+        cardDiv.addEventListener('touchstart', _handleInventoryTouchStart, { passive: false });
+        cardDiv.addEventListener('touchmove', _handleInventoryTouchMove, { passive: false });
+        cardDiv.addEventListener('touchend', _handleInventoryTouchEnd, { passive: false });
+
+        cardDiv.addEventListener('pointerdown', _handleInventoryPointerDown);
+        cardDiv.addEventListener('click', function(e) {
+          // Click-to-add to non-combat hand (fast path)
+          try {
+            var idx = parseInt(e.currentTarget.dataset.cardIndex, 10);
+            var cards = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentCards) ? GAMESTATE.getPersistentCards() : [];
+            var ref = cards[idx];
+            if (ref && typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.addCardToHand) {
+              NonCombatStateStore.addCardToHand(ref.id, 1, 'inventory:click_add_card');
+            }
+          } catch (err) {}
+        });
+
+        _inventoryContainer.appendChild(cardDiv);
+      });
+    }
+
     _inventoryContainer.style.display = 'grid';
   }
 
@@ -2372,10 +2443,31 @@ const GoneRogueMobile = (function () {
     e.preventDefault();
 
     var itemDiv = e.currentTarget;
-    var index = parseInt(itemDiv.dataset.index, 10);
 
     if (typeof GAMESTATE === 'undefined') return;
 
+    // Card drag
+    if (itemDiv.dataset.kind === 'card') {
+      var cIndex = parseInt(itemDiv.dataset.cardIndex, 10);
+      var cards = (typeof GAMESTATE.getPersistentCards === 'function') ? GAMESTATE.getPersistentCards() : [];
+      var cardRef = cards[cIndex];
+      if (!cardRef) return;
+
+      _activeDragItem = {
+        element: itemDiv,
+        item: cardRef,
+        kind: 'card',
+        startX: e.touches[0].clientX,
+        startY: e.touches[0].clientY,
+        originalTransform: itemDiv.style.transform
+      };
+
+      itemDiv.classList.add('dragging');
+      return;
+    }
+
+    // Item drag
+    var index = parseInt(itemDiv.dataset.index, 10);
     var persistentInv = GAMESTATE.getPersistentInventory();
     var itemRef = persistentInv[index];
 
@@ -2384,6 +2476,7 @@ const GoneRogueMobile = (function () {
     _activeDragItem = {
       element: itemDiv,
       item: itemRef,
+      kind: 'item',
       startX: e.touches[0].clientX,
       startY: e.touches[0].clientY,
       originalTransform: itemDiv.style.transform
@@ -2413,21 +2506,34 @@ const GoneRogueMobile = (function () {
     var touch = e.changedTouches[0];
     var element = document.elementFromPoint(touch.clientX, touch.clientY);
 
-    // Check if dropped on active item slot
-    var activeSlot = document.getElementById('active-item-slot');
-    var activeDisplay = document.getElementById('active-item-display');
-
-    var droppedOnActiveSlot = false;
-    if (element) {
-      if (element === activeSlot || element === activeDisplay ||
-          activeSlot.contains(element) || activeDisplay.contains(element)) {
-        droppedOnActiveSlot = true;
+    // Card drop -> Non-combat hand zone
+    if (_activeDragItem.kind === 'card') {
+      var handZone = document.getElementById('nch-hand');
+      var droppedOnHand = false;
+      if (element && handZone) {
+        if (element === handZone || handZone.contains(element)) droppedOnHand = true;
       }
-    }
 
-    if (droppedOnActiveSlot) {
-      // Equip the item
-      _equipItemToActiveSlot(_activeDragItem.item);
+      if (droppedOnHand && typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.addCardToHand) {
+        NonCombatStateStore.addCardToHand(_activeDragItem.item.id, 1, 'inventory:drag_add_card');
+      }
+    } else {
+      // Check if dropped on active item slot
+      var activeSlot = document.getElementById('active-item-slot');
+      var activeDisplay = document.getElementById('active-item-display');
+
+      var droppedOnActiveSlot = false;
+      if (element) {
+        if (element === activeSlot || element === activeDisplay ||
+            activeSlot.contains(element) || activeDisplay.contains(element)) {
+          droppedOnActiveSlot = true;
+        }
+      }
+
+      if (droppedOnActiveSlot) {
+        // Equip the item
+        _equipItemToActiveSlot(_activeDragItem.item);
+      }
     }
 
     // Reset visual state
@@ -2444,10 +2550,66 @@ const GoneRogueMobile = (function () {
     if (e.pointerType === 'touch') return;
 
     var itemDiv = e.currentTarget;
-    var index = parseInt(itemDiv.dataset.index, 10);
 
     if (typeof GAMESTATE === 'undefined') return;
 
+    // Card drag
+    if (itemDiv.dataset.kind === 'card') {
+      var cIndex = parseInt(itemDiv.dataset.cardIndex, 10);
+      var cards = (typeof GAMESTATE.getPersistentCards === 'function') ? GAMESTATE.getPersistentCards() : [];
+      var cardRef = cards[cIndex];
+      if (!cardRef) return;
+
+      _activeDragItem = {
+        element: itemDiv,
+        item: cardRef,
+        kind: 'card',
+        startX: e.clientX,
+        startY: e.clientY,
+        originalTransform: itemDiv.style.transform
+      };
+
+      itemDiv.classList.add('dragging');
+
+      // Add move and up handlers to document
+      var handleMoveC = function(moveE) {
+        if (!_activeDragItem) return;
+        var deltaX = moveE.clientX - _activeDragItem.startX;
+        var deltaY = moveE.clientY - _activeDragItem.startY;
+        _activeDragItem.element.style.transform = 'translate(' + deltaX + 'px, ' + deltaY + 'px) scale(1.1)';
+      };
+
+      var handleUpC = function(upE) {
+        if (!_activeDragItem) return;
+
+        var element = document.elementFromPoint(upE.clientX, upE.clientY);
+        var handZone = document.getElementById('nch-hand');
+        var droppedOnHand = false;
+        if (element && handZone) {
+          if (element === handZone || handZone.contains(element)) droppedOnHand = true;
+        }
+
+        if (droppedOnHand && typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.addCardToHand) {
+          NonCombatStateStore.addCardToHand(_activeDragItem.item.id, 1, 'inventory:drag_add_card');
+        }
+
+        _activeDragItem.element.style.transform = _activeDragItem.originalTransform || '';
+        _activeDragItem.element.classList.remove('dragging');
+        _activeDragItem = null;
+
+        showInventory();
+
+        document.removeEventListener('pointermove', handleMoveC);
+        document.removeEventListener('pointerup', handleUpC);
+      };
+
+      document.addEventListener('pointermove', handleMoveC);
+      document.addEventListener('pointerup', handleUpC);
+      return;
+    }
+
+    // Item drag
+    var index = parseInt(itemDiv.dataset.index, 10);
     var persistentInv = GAMESTATE.getPersistentInventory();
     var itemRef = persistentInv[index];
 
@@ -2456,6 +2618,7 @@ const GoneRogueMobile = (function () {
     _activeDragItem = {
       element: itemDiv,
       item: itemRef,
+      kind: 'item',
       startX: e.clientX,
       startY: e.clientY,
       originalTransform: itemDiv.style.transform
