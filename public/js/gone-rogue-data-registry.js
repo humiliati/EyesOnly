@@ -27,6 +27,15 @@ var GoneRogueDataRegistry = (function() {
     synergies: {}
   };
 
+  function _createMissingEntry(id, type) {
+    return {
+      id: id,
+      name: '[' + String(type || 'missing').toUpperCase() + ':' + id + ']',
+      emoji: '❓',
+      _missing: true
+    };
+  }
+
   function _index() {
     function idx(list, out) {
       out = out || {};
@@ -51,6 +60,31 @@ var GoneRogueDataRegistry = (function() {
     });
   }
 
+  function _validateLightweight() {
+    // No hard failures at runtime. We just warn to keep designers informed.
+    function warn(msg) {
+      try { console.warn('[Registry] ' + msg); } catch (e) {}
+    }
+
+    function check(list, kind, re, requiredKeys) {
+      for (var i = 0; i < list.length; i++) {
+        var it = list[i];
+        if (!it || !it.id) { warn(kind + ' missing id at index ' + i); continue; }
+        if (re && !re.test(it.id)) warn(kind + ' id pattern mismatch: ' + it.id);
+        for (var k = 0; k < requiredKeys.length; k++) {
+          var key = requiredKeys[k];
+          if (typeof it[key] === 'undefined') warn(kind + ' ' + it.id + ' missing key: ' + key);
+        }
+      }
+    }
+
+    check(_db.items, 'item', /^ITM-\d{3}$/, ['name', 'emoji', 'type']);
+    check(_db.cards, 'card', /^ACT-\d{3}$/, ['name', 'emoji', 'targetType', 'effects']);
+    check(_db.statuses, 'status', /^STS-\d{3}$/, ['name', 'emoji']);
+    check(_db.groundEffects, 'groundEffect', /^EFF-\d{3}$/, ['name', 'emoji']);
+    check(_db.synergies, 'synergy', /^SYN-\d{3}$/, ['name']);
+  }
+
   function load() {
     if (_loaded) return Promise.resolve(true);
     if (_loadingPromise) return _loadingPromise;
@@ -69,6 +103,7 @@ var GoneRogueDataRegistry = (function() {
       _db.synergies = Array.isArray(arr[4]) ? arr[4] : [];
 
       _index();
+      _validateLightweight();
       _loaded = true;
 
       if (typeof NonCombatEventBus !== 'undefined') {
@@ -89,14 +124,69 @@ var GoneRogueDataRegistry = (function() {
 
   function isLoaded() { return _loaded; }
 
-  function getItem(id) { return _byId.items[id] || null; }
-  function getCard(id) { return _byId.cards[id] || null; }
-  function getStatus(id) { return _byId.statuses[id] || null; }
-  function getGroundEffect(id) { return _byId.groundEffects[id] || null; }
-  function getSynergy(id) { return _byId.synergies[id] || null; }
+  function getItem(id) { return _byId.items[id] || _createMissingEntry(id, 'item'); }
+  function getCard(id) { return _byId.cards[id] || _createMissingEntry(id, 'card'); }
+  function getStatus(id) { return _byId.statuses[id] || _createMissingEntry(id, 'status'); }
+  function getGroundEffect(id) { return _byId.groundEffects[id] || _createMissingEntry(id, 'ground_effect'); }
+  function getSynergy(id) { return _byId.synergies[id] || _createMissingEntry(id, 'synergy'); }
 
-  function listCards() { return _db.cards.slice(); }
+  function listCards(filter) {
+    filter = filter || {};
+    var results = _db.cards.slice();
+
+    if (filter.targetType) {
+      results = results.filter(function(c) { return c && c.targetType === filter.targetType; });
+    }
+    if (filter.rarity) {
+      results = results.filter(function(c) { return c && c.rarity === filter.rarity; });
+    }
+    if (typeof filter.preCombat === 'boolean') {
+      results = results.filter(function(c) { return c && !!c.preCombat === filter.preCombat; });
+    }
+    if (Array.isArray(filter.synergyTags) && filter.synergyTags.length) {
+      results = results.filter(function(c) {
+        if (!c) return false;
+        var tags = c.synergyTags || [];
+        for (var i = 0; i < filter.synergyTags.length; i++) {
+          if (tags.indexOf(filter.synergyTags[i]) !== -1) return true;
+        }
+        return false;
+      });
+    }
+
+    return results;
+  }
+
   function listItems() { return _db.items.slice(); }
+
+  function findSynergiesFor(itemId, cardId) {
+    // Returns synergies that either explicitly match item+card,
+    // OR match itemId and share at least one tag with the card.
+    var card = cardId ? getCard(cardId) : null;
+    var cardTags = (card && card.synergyTags) ? card.synergyTags : [];
+
+    return _db.synergies.filter(function(syn) {
+      if (!syn) return false;
+      if (syn.itemId !== itemId) return false;
+      if (syn.cardId && cardId && syn.cardId === cardId) return true;
+
+      var synTags = syn.tags || [];
+      for (var i = 0; i < synTags.length; i++) {
+        if (cardTags.indexOf(synTags[i]) !== -1) return true;
+      }
+
+      return false;
+    });
+  }
+
+  // Eager auto-load for deterministic UI previews
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      load().catch(function() {});
+    });
+  } else {
+    load().catch(function() {});
+  }
 
   return {
     load: load,
@@ -107,6 +197,7 @@ var GoneRogueDataRegistry = (function() {
     getGroundEffect: getGroundEffect,
     getSynergy: getSynergy,
     listCards: listCards,
-    listItems: listItems
+    listItems: listItems,
+    findSynergiesFor: findSynergiesFor
   };
 })();

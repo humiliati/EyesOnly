@@ -1,26 +1,25 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Gone Rogue Item",
+  "title": "Gone Rogue Inventory Item",
   "type": "object",
-  "required": ["id", "name", "emoji"],
+  "required": ["id", "name", "emoji", "type"],
   "properties": {
     "id": { "type": "string", "pattern": "^ITM-[0-9]{3}$" },
-    "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "name": { "type": "string", "minLength": 1, "maxLength": 48 },
     "emoji": { "type": "string", "minLength": 1, "maxLength": 8 },
+    "type": { "type": "string", "enum": ["consumable", "equipment", "resource", "key"] },
+    "subtype": { "type": "string" },
+
     "rarity": { "type": "string", "enum": ["common", "uncommon", "rare", "epic", "legendary"], "default": "common" },
+
     "stackable": { "type": "boolean", "default": false },
     "maxStack": { "type": "integer", "minimum": 1, "default": 1 },
+
+    "effects": { "type": "array", "items": { "$ref": "#/definitions/effect" } },
     "synergyTags": { "type": "array", "items": { "type": "string" } },
-    "use": {
-      "type": "object",
-      "required": ["targetType", "effects"],
-      "properties": {
-        "targetType": { "type": "string", "enum": ["self", "enemy", "ground", "npc", "item"] },
-        "cost": { "type": "integer", "minimum": 0, "default": 0 },
-        "effects": { "type": "array", "items": { "$ref": "#/definitions/effect" } }
-      },
-      "additionalProperties": true
-    }
+
+    "equipSlot": { "type": "string", "enum": ["active", "passive", "none"], "default": "none" },
+    "description": { "type": "string", "maxLength": 256 }
   },
   "additionalProperties": true,
   "definitions": {

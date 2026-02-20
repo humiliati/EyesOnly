@@ -3,17 +3,17 @@
     "id": "ITM-001",
     "name": "Cigarette",
     "emoji": "🚬",
+    "type": "consumable",
+    "subtype": "vice",
     "rarity": "common",
     "stackable": true,
     "maxStack": 20,
-    "use": {
-      "targetType": "self",
-      "cost": 0,
-      "effects": [
-        { "type": "hp", "value": -1 },
-        { "type": "focus", "value": 1 }
-      ]
-    },
-    "synergyTags": ["vice"]
+    "equipSlot": "none",
+    "effects": [
+      { "type": "hp", "value": -1 },
+      { "type": "focus", "value": 1 }
+    ],
+    "synergyTags": ["vice"],
+    "description": "Trade blood for calm. Tap repeatedly, but don’t bottom out."
   }
 ]
