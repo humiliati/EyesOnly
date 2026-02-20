@@ -41,36 +41,42 @@ var EnemyIntentSystem = (function() {
     },
     ENRAGED: {
       glyph: '>:(',
+      frames: ['>:(', '>:<'],
       name: 'Enraged',
       emotionalState: 'Enemy lost patience',
       threatLevel: 'high'
     },
     BORED_WAITING: {
       glyph: '·_·',
+      frames: ['·_·', '·__·'],
       name: 'Bored/Waiting',
       emotionalState: 'Enemy uninterested',
       threatLevel: 'low'
     },
     ANNOYED: {
       glyph: '¬_¬',
+      frames: ['¬_¬', '¬__¬'],
       name: 'Annoyed',
       emotionalState: 'Enemy irritated by player',
       threatLevel: 'medium'
     },
     GREEDY: {
       glyph: '$_$',
+      frames: ['$_$', '$__$'],
       name: 'Greedy/Opportunistic',
       emotionalState: 'Enemy sees opportunity',
       threatLevel: 'medium'
     },
     CONFUSED: {
       glyph: '@_@',
+      frames: ['@_@', '@__@'],
       name: 'Confused',
       emotionalState: 'Enemy uncertain',
       threatLevel: 'low'
     },
     SLEEPING: {
       glyph: '-_-',
+      frames: ['-_-', '-__-'],
       name: 'Sleeping',
       emotionalState: 'Enemy unconscious',
       threatLevel: 'none'
@@ -84,12 +90,14 @@ var EnemyIntentSystem = (function() {
     },
     PLEASED: {
       glyph: '^w^',
+      frames: ['^w^', '^_ ^'],
       name: 'Pleased',
       emotionalState: 'Enemy enjoying combat',
       threatLevel: 'medium'
     },
     DETERMINED: {
       glyph: '•_•',
+      frames: ['•_•', '•__•'],
       name: 'Determined',
       emotionalState: 'Enemy focused on objective',
       threatLevel: 'medium'

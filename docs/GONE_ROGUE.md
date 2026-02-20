@@ -133,7 +133,7 @@ Affixes provide unique bonuses beyond stat rolls:
 - Train boss v1/v2: `ლ(ಠ益ಠლ)`
 
 Unused/emote glyph stash (for bosses, elites, tooltip-only synergies):
-- `( ͡° ͜ʖ ͡°)` `ʘ‿ʘ` `ಠ_ಠ` `¯\\_(ツ)_/¯` `༼ つ ◕_◕ ༽つ` `(ง'̀-'́)ง` `ಥ_ಥ` `ᕙ(⇀‸↼‶)ᕗ` `ヽ(´▽`)/` `(⌐■_■)`
+- See `docs/INTENT_GLYPH_PALETTE.md` (raw palette dump + candidates)
 
 ## Mode Transitions
 
