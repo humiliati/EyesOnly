@@ -52,9 +52,11 @@ Tutorial floors can include NPCs with optional gate projection.
 
 1) **Click-to-target vs click-to-select**
    - Current system uses click-to-select.
-   - If we adopt click-to-target (enemy default), we should keep multi-select via:
-     - shift-click (desktop)
-     - long-press to multi-select (mobile)
+   - Implemented targeting mode (Option 1): **press-and-hold** enters enemy-targeting mode.
+     - Hold lifts the card + crosshair cursor
+     - Release over enemy plays that single card
+     - Release elsewhere cancels
+   - Tap still toggles selection for multi-card commits.
 
 2) **Backup action container (expendable slots)**
    - Implemented in: `public/js/backup-action-container.js` + `public/css/backup-action-container.css`

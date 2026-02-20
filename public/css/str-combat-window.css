@@ -247,6 +247,17 @@ body.str-combat-minimized-state::before {
   animation: enemy-pulse 2s ease-in-out infinite;
 }
 
+/* Highlight when a card is being targeted at the enemy */
+.str-enemy.str-enemy-targetable {
+  box-shadow: 0 0 0 2px rgba(255, 235, 59, 0.35) inset, 0 0 18px rgba(255, 235, 59, 0.18);
+  border-radius: 10px;
+}
+
+.str-enemy.str-enemy-targeted {
+  box-shadow: 0 0 0 2px rgba(255, 82, 82, 0.45) inset, 0 0 22px rgba(255, 82, 82, 0.22);
+  border-radius: 10px;
+}
+
 @keyframes enemy-pulse {
   0%, 100% {
     filter: drop-shadow(0 0 10px rgba(255, 28, 74, 0.5));

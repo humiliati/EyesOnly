@@ -243,6 +243,14 @@
   50%      { transform: translateY(-6px) scale(1.015); }
 }
 
+/* Targeting mode (press-and-hold) — lifts card and changes border */
+.hand-card.hand-card-targeting {
+  border-color: rgba(255, 235, 59, 0.85) !important;
+  box-shadow: 0 0 0 2px rgba(255, 235, 59, 0.22) inset, 0 0 18px rgba(255, 235, 59, 0.25) !important;
+  transform: translateY(-14px) scale(1.06);
+  z-index: 999;
+}
+
 /* Contextual mode selected state (persistent highlight) */
 .hand-fan-contextual-mode .hand-card.hand-card-selected {
   border-color: #ffd700 !important;

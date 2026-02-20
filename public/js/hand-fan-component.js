@@ -14,6 +14,16 @@ const HandFanComponent = (function () {
   var _animationPhase = 'idle'; // 'idle', 'commit', 'resolve', 'repopulate'
   var _isAnimating = false;
 
+  // Press-and-hold targeting state (Option 1: tap selects, hold targets)
+  var _targeting = {
+    active: false,
+    cardIndex: -1,
+    holdTimer: null,
+    holdMs: 180,
+    pointerId: null,
+    startedAt: 0
+  };
+
   // DOM elements
   var _fanContainer = null;
 
@@ -364,6 +374,90 @@ const HandFanComponent = (function () {
    * @param {Object} card - Card data
    * @param {number} index - Card index
    */
+  function _isEnemyUnderPointer(clientX, clientY) {
+    var enemyEl = document.querySelector('.str-combatant.str-enemy');
+    if (!enemyEl) return false;
+    var rect = enemyEl.getBoundingClientRect();
+    return clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
+  }
+
+  function _setEnemyHoverState(isTargetable, isTargeted) {
+    var enemyEl = document.querySelector('.str-combatant.str-enemy');
+    if (!enemyEl) return;
+
+    if (isTargetable) enemyEl.classList.add('str-enemy-targetable');
+    else enemyEl.classList.remove('str-enemy-targetable');
+
+    if (isTargeted) enemyEl.classList.add('str-enemy-targeted');
+    else enemyEl.classList.remove('str-enemy-targeted');
+  }
+
+  function _clearTargetingVisuals(cardEl) {
+    try { document.body.style.cursor = ''; } catch (e) {}
+    _setEnemyHoverState(false, false);
+    if (cardEl) cardEl.classList.remove('hand-card-targeting');
+  }
+
+  function _beginHoldTargeting(cardEl, index, pointerId) {
+    _targeting.active = true;
+    _targeting.cardIndex = index;
+    _targeting.pointerId = pointerId;
+    _targeting.startedAt = Date.now();
+
+    cardEl.classList.add('hand-card-targeting');
+    try { document.body.style.cursor = 'crosshair'; } catch (e) {}
+    _setEnemyHoverState(true, false);
+
+    // Attach global listeners until release/cancel
+    function onMove(ev) {
+      if (!_targeting.active) return;
+      if (ev.pointerId != null && _targeting.pointerId != null && ev.pointerId !== _targeting.pointerId) return;
+      var overEnemy = _isEnemyUnderPointer(ev.clientX, ev.clientY);
+      _setEnemyHoverState(true, overEnemy);
+    }
+
+    function onUp(ev) {
+      if (!_targeting.active) return;
+      if (ev.pointerId != null && _targeting.pointerId != null && ev.pointerId !== _targeting.pointerId) return;
+
+      var overEnemy = _isEnemyUnderPointer(ev.clientX, ev.clientY);
+      var idx = _targeting.cardIndex;
+      _targeting.active = false;
+      _targeting.cardIndex = -1;
+      _targeting.pointerId = null;
+
+      window.removeEventListener('pointermove', onMove, true);
+      window.removeEventListener('pointerup', onUp, true);
+      window.removeEventListener('pointercancel', onCancel, true);
+
+      _clearTargetingVisuals(cardEl);
+
+      // Release over enemy = play immediately
+      if (overEnemy && typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleMultiCardCombat === 'function') {
+        GoneRogue.handleMultiCardCombat([idx]);
+      }
+    }
+
+    function onCancel(ev) {
+      if (!_targeting.active) return;
+      if (ev.pointerId != null && _targeting.pointerId != null && ev.pointerId !== _targeting.pointerId) return;
+
+      _targeting.active = false;
+      _targeting.cardIndex = -1;
+      _targeting.pointerId = null;
+
+      window.removeEventListener('pointermove', onMove, true);
+      window.removeEventListener('pointerup', onUp, true);
+      window.removeEventListener('pointercancel', onCancel, true);
+
+      _clearTargetingVisuals(cardEl);
+    }
+
+    window.addEventListener('pointermove', onMove, true);
+    window.addEventListener('pointerup', onUp, true);
+    window.addEventListener('pointercancel', onCancel, true);
+  }
+
   function _attachCardHandlers(cardEl, card, index) {
     // Click to select/deselect (only if affordable)
     cardEl.addEventListener('click', function(e) {
@@ -391,7 +485,59 @@ const HandFanComponent = (function () {
         return; // Prevent selection
       }
 
+      // If we were in hold-targeting mode, don't toggle selection.
+      if (_targeting && _targeting.active) {
+        if (e && e.preventDefault) e.preventDefault();
+        return;
+      }
+
+      // If we are targeting, ignore selection toggles
+      if (_targeting && _targeting.active) {
+        return;
+      }
+
       _toggleCardSelection(index);
+    });
+
+    // Press-and-hold targeting (enemy default)
+    cardEl.addEventListener('pointerdown', function(e) {
+      if (_isAnimating) return;
+
+      // Only enable this behavior during STR combat mode
+      if (_mode !== 'combat') return;
+
+      // Don't start targeting if card is unaffordable
+      if (cardEl.dataset.unaffordable === 'true') return;
+
+      // Only primary button
+      if (e && e.button != null && e.button !== 0) return;
+
+      // Setup hold timer
+      if (_targeting.holdTimer) {
+        clearTimeout(_targeting.holdTimer);
+        _targeting.holdTimer = null;
+      }
+
+      var pointerId = e.pointerId;
+      _targeting.pointerId = pointerId;
+      _targeting.holdTimer = setTimeout(function() {
+        _targeting.holdTimer = null;
+        _beginHoldTargeting(cardEl, index, pointerId);
+      }, _targeting.holdMs);
+
+      // If user releases quickly, cancel timer (tap will be handled by click)
+      function cleanup(ev) {
+        if (ev.pointerId != null && pointerId != null && ev.pointerId !== pointerId) return;
+        if (_targeting.holdTimer) {
+          clearTimeout(_targeting.holdTimer);
+          _targeting.holdTimer = null;
+        }
+        window.removeEventListener('pointerup', cleanup, true);
+        window.removeEventListener('pointercancel', cleanup, true);
+      }
+
+      window.addEventListener('pointerup', cleanup, true);
+      window.addEventListener('pointercancel', cleanup, true);
     });
 
     // Touch handlers
@@ -411,6 +557,11 @@ const HandFanComponent = (function () {
           UIControls.updateMokInterjection('Cannot play: ' + cardEl.dataset.resourceShortage);
         }
 
+        return;
+      }
+
+      // If we are targeting, ignore selection toggles
+      if (_targeting && _targeting.active) {
         return;
       }
 
