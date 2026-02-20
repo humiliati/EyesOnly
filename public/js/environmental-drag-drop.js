@@ -312,7 +312,7 @@ const EnvironmentalDragDrop = (function() {
   function _showDestructionWarning(context) {
     // For now, use simple confirm dialog
     // TODO: Replace with custom modal UI
-    var itemName = context.itemData ? context.itemData.name : context.itemId;
+    var itemName = context.itemData ? context.itemData.name : _getItemDisplayName(context.itemId);
     return confirm('Are you sure you want to destroy ' + itemName + '? This cannot be undone.');
   }
 
@@ -353,8 +353,31 @@ const EnvironmentalDragDrop = (function() {
 
     return {
       success: true,
-      itemName: destroyedItem.name || context.itemId
+      itemName: destroyedItem.name || _getItemDisplayName(context.itemId)
     };
+  }
+
+  /**
+   * Get display name from itemId
+   * Converts XXXXX_XXX format to "Xxxxx Xxx" format
+   * @param {string} itemId - Item identifier
+   * @returns {string} Display name
+   * @private
+   */
+  function _getItemDisplayName(itemId) {
+    if (!itemId) return 'Unknown';
+
+    // Use NameUtils if available
+    if (typeof NameUtils !== 'undefined') {
+      return NameUtils.getDisplayName(itemId);
+    }
+
+    // Fallback: Convert RUSTY_KEY → Rusty Key
+    var words = itemId.split('_');
+    return words.map(function(word) {
+      if (word.length === 0) return '';
+      return word.charAt(0).toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
   }
 
   /**

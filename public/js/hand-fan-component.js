@@ -235,7 +235,19 @@ const HandFanComponent = (function () {
     html += '</div>';
 
     // Card name (bottom)
-    html += '<div class="hand-card-name">' + (card.name || 'Unknown Card') + '</div>';
+    var cardName = card.name || 'Unknown Card';
+
+    // Abbreviate card name for mobile landscape mode (space-constrained)
+    if (window.innerWidth <= 480) {
+      if (typeof NameUtils !== 'undefined') {
+        cardName = NameUtils.formatForMobile(card);
+      } else if (window.innerWidth <= 480) {
+        // Fallback abbreviation (max 6 chars)
+        cardName = _abbreviateCardName(cardName, 6);
+      }
+    }
+
+    html += '<div class="hand-card-name">' + cardName + '</div>';
 
     // Effect icons (if any)
     if (card.effects && card.effects.length > 0) {
@@ -772,6 +784,40 @@ const HandFanComponent = (function () {
    */
   function isContextualMode() {
     return _mode === 'contextual';
+  }
+
+  /**
+   * Fallback abbreviation function if NameUtils not available
+   * Removes vowels except first letter of each word
+   * @param {string} name - Full name
+   * @param {number} maxLength - Maximum length
+   * @returns {string} Abbreviated name
+   * @private
+   */
+  function _abbreviateCardName(name, maxLength) {
+    if (!name) return '';
+
+    var words = name.split(/\s+/);
+    var result = '';
+
+    for (var i = 0; i < words.length; i++) {
+      var word = words[i];
+      if (word.length === 0) continue;
+
+      // Take first character of word (even if vowel)
+      result += word.charAt(0);
+
+      // Remove vowels from remaining characters
+      for (var j = 1; j < word.length; j++) {
+        var char = word.charAt(j);
+        var lower = char.toLowerCase();
+        if (lower !== 'a' && lower !== 'e' && lower !== 'i' && lower !== 'o' && lower !== 'u') {
+          result += char;
+        }
+      }
+    }
+
+    return maxLength ? result.substring(0, maxLength) : result;
   }
 
   // Public API
