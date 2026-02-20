@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Non-Combat Debug</title>
+  <style>
+    body { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; padding: 16px; }
+    button { padding: 8px 12px; margin-right: 8px; }
+    pre { background:#111; color:#ddd; padding: 12px; overflow:auto; max-height: 320px; }
+    .row { display:flex; gap: 12px; align-items:center; margin: 12px 0; flex-wrap: wrap; }
+    input { padding: 6px; }
+  </style>
+</head>
+<body>
+  <h1>Non-Combat State Debug</h1>
+  <div class="row">
+    <button id="refresh">Refresh</button>
+    <button id="clearHist">Clear History</button>
+    <button id="exportHist">Export History JSON</button>
+    <button id="exportEvents">Export Event History JSON</button>
+    <label>Filter events: <input id="filter" placeholder="e.g. state" /></label>
+  </div>
+
+  <h2>Current State</h2>
+  <pre id="state"></pre>
+
+  <h2>State History</h2>
+  <pre id="hist"></pre>
+
+  <h2>Event History</h2>
+  <pre id="ev"></pre>
+
+  <script src="../js/non-combat-event-bus.js"></script>
+  <script src="../js/non-combat-state-store.js"></script>
+  <script>
+    const stEl = document.getElementById('state');
+    const hEl = document.getElementById('hist');
+    const eEl = document.getElementById('ev');
+    const filter = document.getElementById('filter');
+
+    function render() {
+      stEl.textContent = JSON.stringify(NonCombatStateStore.getState(), null, 2);
+      hEl.textContent = JSON.stringify(NonCombatStateStore.getHistory(), null, 2);
+      const f = filter.value.trim();
+      eEl.textContent = JSON.stringify(NonCombatEventBus.getHistory(f || null), null, 2);
+    }
+
+    document.getElementById('refresh').onclick = render;
+    document.getElementById('clearHist').onclick = () => { NonCombatStateStore.clearHistory(); render(); };
+    document.getElementById('exportHist').onclick = () => {
+      const blob = new Blob([JSON.stringify(NonCombatStateStore.getHistory(), null, 2)], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'non_combat_state_history.json';
+      a.click();
+    };
+    document.getElementById('exportEvents').onclick = () => {
+      const blob = new Blob([JSON.stringify(NonCombatEventBus.getHistory(), null, 2)], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'non_combat_event_history.json';
+      a.click();
+    };
+
+    filter.addEventListener('input', () => render());
+
+    // Seed a demo transition
+    NonCombatStateStore.transitionTo(NonCombatStateStore.NON_COMBAT_STATES.IDLE, 'debug:load');
+    NonCombatStateStore.modifyResource('resourceCurrency', 0, 'debug:noop');
+
+    render();
+  </script>
+</body>
+</html>
