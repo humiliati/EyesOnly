@@ -77,6 +77,7 @@
       // Build window state
       var windowState = {
         round: combatState.round || 1,
+        floor: combatState.floor || 1,
         enemy: {
           emoji: combatState.enemy ? combatState.enemy.emoji : '👾',
           hp: combatState.enemy ? combatState.enemy.hp : 0,
@@ -97,6 +98,7 @@
       // Update existing window
       var windowState = {
         round: combatState.round || 1,
+        floor: combatState.floor || 1,
         enemy: {
           emoji: combatState.enemy ? combatState.enemy.emoji : '👾',
           hp: combatState.enemy ? combatState.enemy.hp : 0,
@@ -173,12 +175,25 @@
   }
 
   /**
-   * Handle timer expiration — player ran out of time; enemy takes its turn unopposed
+   * Handle timer expiration.
+   * If the player has cards selected in the hand fan, commit them now.
+   * Otherwise pass the turn (enemy attacks unopposed).
    */
   function handleStrTimerExpired() {
-    console.log('[STRIntegration] Combat timer expired - passing player turn, enemy attacks');
+    // Play whatever the player has already selected before time ran out
+    if (typeof HandFanComponent !== 'undefined' &&
+        typeof HandFanComponent.getSelectedCards === 'function' &&
+        typeof HandFanComponent.playSelectedCards === 'function') {
+      var selected = HandFanComponent.getSelectedCards();
+      if (selected.length > 0) {
+        console.log('[STRIntegration] Timer expired - committing ' + selected.length + ' selected card(s)');
+        HandFanComponent.playSelectedCards();
+        return;
+      }
+    }
 
-    // Execute enemy-only turn (player passes)
+    // No cards selected — enemy attacks unopposed
+    console.log('[STRIntegration] Timer expired - no selection, passing player turn');
     if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.passPlayerTurn === 'function') {
       GoneRogue.passPlayerTurn();
     }
