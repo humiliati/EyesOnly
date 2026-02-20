@@ -50,9 +50,11 @@
     if (isActive && combatState && combatState.active) {
       _showCombatWindow(combatState);
       _showHandFan(combatState);
+      _showBackupActions(combatState);
     } else {
       _hideCombatWindow();
       _hideHandFan();
+      _hideBackupActions();
     }
   }
 
@@ -173,6 +175,25 @@
    */
   function _hideHandFan() {
     HandFanComponent.hide();
+  }
+
+  function _showBackupActions(combatState) {
+    if (typeof BackupActionContainer === 'undefined') return;
+
+    if (!BackupActionContainer.isVisible()) {
+      BackupActionContainer.resetForCombat();
+      BackupActionContainer.show();
+    }
+
+    // Draw 1 backup card per round (v1)
+    if (combatState && combatState.round) {
+      BackupActionContainer.drawCardForRound(combatState.round);
+    }
+  }
+
+  function _hideBackupActions() {
+    if (typeof BackupActionContainer === 'undefined') return;
+    BackupActionContainer.hide();
   }
 
   /**

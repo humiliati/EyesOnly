@@ -56,7 +56,16 @@ Tutorial floors can include NPCs with optional gate projection.
      - shift-click (desktop)
      - long-press to multi-select (mobile)
 
-2) **Ground effect deployment / contextual targeting**
+2) **Backup action container (expendable slots)**
+   - Implemented in: `public/js/backup-action-container.js` + `public/css/backup-action-container.css`
+   - Integration: `public/js/str-combat-integration.js`
+   - v1 behavior:
+     - shows 3 vertical slots on the left during STR combat
+     - fills 1 slot per round with a rolled consumable card
+     - click moves backup card into hand (loose inventory)
+   - TODO: play-direct-from-backup (skip hand), item reserve sources, and action-point/economy rules
+
+3) **Ground effect deployment / contextual targeting**
    - Not implemented yet.
    - Needs a targeting layer (tile hover/tap) + card metadata describing target type:
      - enemy, self, ground tile(s), cone, line, radius.
