@@ -404,14 +404,77 @@ const HandFanComponent = (function () {
     _targeting.pointerId = pointerId;
     _targeting.startedAt = Date.now();
 
+    var dragCollapse = {
+      collapsed: false,
+      prevX: null,
+      prevY: null,
+      prevT: null
+    };
+
     cardEl.classList.add('hand-card-targeting');
     try { document.body.style.cursor = 'crosshair'; } catch (e) {}
     _setEnemyHoverState(true, false);
+
+    function _maybeCollapseCombatUi(ev) {
+      if (typeof STRCombatWindow === 'undefined' || typeof STRCombatWindow.isMinimized !== 'function') return;
+
+      // Only collapse if the pointer exits the combat window bounds meaningfully.
+      var win = document.getElementById('str-combat-window');
+      if (!win) return;
+      var rect = win.getBoundingClientRect();
+
+      var dxOut = 0;
+      var dyOut = 0;
+      if (ev.clientX < rect.left) dxOut = rect.left - ev.clientX;
+      else if (ev.clientX > rect.right) dxOut = ev.clientX - rect.right;
+      if (ev.clientY < rect.top) dyOut = rect.top - ev.clientY;
+      else if (ev.clientY > rect.bottom) dyOut = ev.clientY - rect.bottom;
+
+      var outDist = Math.max(dxOut, dyOut);
+      var threshold = Math.round(Math.min(rect.width, rect.height) * 0.15);
+
+      // Velocity supplement
+      var now = Date.now();
+      var speed = 0;
+      if (dragCollapse.prevT != null) {
+        var dt = Math.max(1, now - dragCollapse.prevT);
+        var ddx = ev.clientX - dragCollapse.prevX;
+        var ddy = ev.clientY - dragCollapse.prevY;
+        var dist = Math.sqrt(ddx * ddx + ddy * ddy);
+        speed = (dist / dt) * 1000;
+      }
+      dragCollapse.prevX = ev.clientX;
+      dragCollapse.prevY = ev.clientY;
+      dragCollapse.prevT = now;
+
+      var fastExit = speed >= 800;
+      var exited = outDist >= threshold;
+
+      if (!dragCollapse.collapsed && (exited || fastExit)) {
+        // Collapse only when exiting toward the world/map area (avoid collapsing toward random UI)
+        var grid = document.getElementById('rogue-grid');
+        if (grid) {
+          var g = grid.getBoundingClientRect();
+          var towardGrid = (ev.clientX >= g.left && ev.clientX <= g.right && ev.clientY >= g.top && ev.clientY <= g.bottom);
+          if (towardGrid) {
+            STRCombatWindow.minimize();
+            dragCollapse.collapsed = true;
+          }
+        } else {
+          // If we don't have a grid element, still allow collapse (better than blocking drag)
+          STRCombatWindow.minimize();
+          dragCollapse.collapsed = true;
+        }
+      }
+    }
 
     // Attach global listeners until release/cancel
     function onMove(ev) {
       if (!_targeting.active) return;
       if (ev.pointerId != null && _targeting.pointerId != null && ev.pointerId !== _targeting.pointerId) return;
+
+      _maybeCollapseCombatUi(ev);
+
       var overEnemy = _isEnemyUnderPointer(ev.clientX, ev.clientY);
       _setEnemyHoverState(true, overEnemy);
     }
@@ -432,6 +495,11 @@ const HandFanComponent = (function () {
 
       _clearTargetingVisuals(cardEl);
 
+      // Restore full combat window if we collapsed it during this drag
+      if (dragCollapse.collapsed && typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.maximize === 'function') {
+        STRCombatWindow.maximize();
+      }
+
       // Release over enemy = play immediately
       if (overEnemy && typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleMultiCardCombat === 'function') {
         GoneRogue.handleMultiCardCombat([idx]);
@@ -451,6 +519,10 @@ const HandFanComponent = (function () {
       window.removeEventListener('pointercancel', onCancel, true);
 
       _clearTargetingVisuals(cardEl);
+
+      if (dragCollapse.collapsed && typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.maximize === 'function') {
+        STRCombatWindow.maximize();
+      }
     }
 
     window.addEventListener('pointermove', onMove, true);

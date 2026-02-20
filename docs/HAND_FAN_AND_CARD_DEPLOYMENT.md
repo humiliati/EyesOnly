@@ -54,8 +54,10 @@ Tutorial floors can include NPCs with optional gate projection.
    - Current system uses click-to-select.
    - Implemented targeting mode (Option 1): **press-and-hold** enters enemy-targeting mode.
      - Hold lifts the card + crosshair cursor
+     - Dragging outside the STR combat window (15% threshold or fast exit) will **auto-minimize** the combat window to expose the map
      - Release over enemy plays that single card
      - Release elsewhere cancels
+     - On release/cancel, the STR window is restored if it was minimized by the drag
    - Tap still toggles selection for multi-card commits.
 
 2) **Backup action container (expendable slots)**
