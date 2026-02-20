@@ -1,0 +1,17 @@
+{
+  "ITM-001": {"name":"Government Badge","emoji":"🪪","acquired":"start","type":"credential","spend_effect":"Identifies you as federal agent. Some doors open. Some eyes narrow.","tags":["agency","authority"],"notes":"Fictional prop for ARG."},
+  "ITM-002": {"name":"W-90 Handgun","emoji":"🔫","acquired":"start","type":"weapon","spend_effect":"A last-resort tool. It changes the tone of every conversation.","tags":["agency","force"],"notes":"Fictional prop for ARG."},
+  "ITM-003": {"name":"Encrypted Codec","emoji":"📻","acquired":"start","type":"comms","spend_effect":"Call your handler. Receive mission updates. Or get static.","tags":["agency","signal"],"notes":"Fictional prop for ARG."},
+
+  "ITM-004": {"name":"Chen's Dropped Wallet","emoji":"👛","acquired":"Town Square","type":"evidence","spend_effect":"A photo, a receipt, a name that doesn’t match the face.","tags":["evidence","chen"],"notes":"Fictional character."},
+  "ITM-005": {"name":"Subway Token","emoji":"🎟️","acquired":"Gas Station","type":"access","spend_effect":"Access to a service stairwell that isn’t on the map.","tags":["access","underground"],"notes":"Fictional prop."},
+  "ITM-006": {"name":"Rusty Key","emoji":"🗝","acquired":"Church","type":"key","spend_effect":"Opens a basement latch that smells like old paper.","tags":["access","archive"],"notes":"Fictional prop."},
+  "ITM-007": {"name":"Jesuit Bible","emoji":"📖","acquired":"Church","type":"artifact","spend_effect":"Margin notes, coded initials, a place-name: Kaniksu.","tags":["archive","kaniksu"],"notes":"Fictionalized; treat as in-world lore."},
+
+  "ITM-008": {"name":"Pinkerton Coin","emoji":"🪙","acquired":"Tavern","type":"token","spend_effect":"A private insignia. Not official. Not harmless.","tags":["pinkerton","money"],"notes":"Fictionalized organization for ARG."},
+  "ITM-009": {"name":"Russian Matryoshka","emoji":"🎎","acquired":"Docks","type":"token","spend_effect":"A nested message: someone wanted you to open it slowly.","tags":["russia","signal"],"notes":"Fictionalized."},
+
+  "ITM-011": {"name":"Panda Plushie","emoji":"🐼","acquired":"Toy Store","type":"lure","spend_effect":"A soft decoy with a hard label stitched inside.","tags":["panda","chen"],"notes":"Fictional plot device."},
+  "ITM-012": {"name":"Lab Coat","emoji":"🥼","acquired":"Clinic","type":"disguise","spend_effect":"You look like you belong where you shouldn’t.","tags":["disguise","lab"],"notes":"Fictional prop."},
+  "ITM-013": {"name":"ID Badge (Dr. Hoffman)","emoji":"💳","acquired":"Clinic","type":"credential","spend_effect":"A barcode that passes. For now.","tags":["disguise","access"],"notes":"Fictional prop."}
+}

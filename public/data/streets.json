@@ -1,6 +1,6 @@
 {
   "Cedar St": {
-    "description": "You are on Cedar Street, where the evening crowd flows between warm storefront light and the hiss of passing tires. A brass placard reads: CEDAR ST — HOME OF THE ANNUAL SANDPOINT SUMMER FEST. A suspicious cardboard box sits near the corner with 'TRAINING DECK' scrawled on it.",
+    "description": "Cedar Street smells like roasted coffee and lake air. Warm storefront light spills onto wet asphalt, and you can hear tires hiss along the hill toward the waterfront. A brass placard reads: CEDAR ST — HOME OF THE ANNUAL SANDPOINT SUMMER FEST. On the community corkboard: lost-dog flyers, a Pend Oreille Arts Council postcard, and a faded handbill for a Jesuit-era lecture series about the ‘Kaniksu’ name—half history, half argument. Near the corner, a suspicious cardboard box sits under the eaves with TRAINING DECK scrawled on it in marker.",
     "north": "Main St",
     "east": "First St E",
     "south": null,
@@ -10,7 +10,7 @@
     "items": ["festival flyer", "🎯 SINGLE_SHOT card", "🛡️ PRONE card", "🍅 KATCHUP card", "💨 DODGE card", "💥 BURST_SHOT card"]
   },
   "Main St": {
-    "description": "Main Street rises gently with amber storefronts, a violinist at the corner, and reflections in old glass. People pass by as if this were any ordinary night. Something metallic glints near a storefront.",
+    "description": "Main Street rises gently, stitched with amber windows and old brick. A violinist works the corner by muscle memory; somewhere nearby, a train horn from across the water answers the wind. Reflections in vintage glass turn every passerby into a double exposure. A plaque mentions timber money, rail schedules, and ‘private agents’ hired during labor troubles—Pinkerton is never printed, but everyone locally seems to know the word. Something metallic glints near a storefront threshold, like it was dropped in a hurry.",
     "north": "North 3rd St",
     "east": "Second St E",
     "south": "Cedar St",
@@ -20,7 +20,7 @@
     "items": ["🔦 flashlight"]
   },
   "First St E": {
-    "description": "First Street East curves beside the waterfront. The Statue of Liberty replica stands ahead, torch trembling in a wind rolling off the lake.",
+    "description": "First Street East bends toward the waterfront. The little Statue of Liberty replica stands ahead, torch trembling in a wind rolling off Lake Pend Oreille. The lake is ink-dark, but the marina lights draw thin lines across it like cables. On a bench, someone left a tourist map marked with a pen circle around Bayview—too casual to be official, too deliberate to be random. The air tastes like cold metal and pine pitch.",
     "north": "Second St E",
     "east": "Waterfront Ave",
     "south": "Cedar St",
@@ -30,7 +30,7 @@
     "items": ["folded note"]
   },
   "Second St E": {
-    "description": "Second Street East is quieter, lined with vintage lampposts and a mural of Sandpoint's founding families. A billboard recalls the 2023 EyesOnly Hackathon.",
+    "description": "Second Street East is quieter, lined with vintage lampposts and a mural of Sandpoint’s founding families—faces rendered in clean paint that still feels like a warning. A billboard recalls the 2023 EyesOnly Hackathon, the kind of civic pride that hides its sharp edges. Beneath the mural, a small interpretive sign talks about the Kaniksu region and the long, braided record of traders, missionaries, and surveyors—Jesuit names in neat type, Indigenous names in smaller print, like someone tried to make time behave. A discarded lanyard badge catches on a nail.",
     "north": "North 3rd St",
     "east": "Waterfront Ave",
     "south": "First St E",
@@ -40,7 +40,7 @@
     "items": ["hackathon badge"]
   },
   "North 3rd St": {
-    "description": "North 3rd Street climbs toward a lookout where the lake opens wide. A bronze gull statue watches the avenue from a small park bench. Military surplus gear is scattered nearby.",
+    "description": "North 3rd Street climbs toward a lookout where the lake opens wide and the town drops away in tiers of porchlight. A bronze gull statue watches the avenue from a small park bench, beak angled like it’s listening. Up here the air changes—colder, resinous, Kaniksu pine in the throat. Someone stashed military surplus odds and ends near the bench, as if they were building a story out of leftovers. A hand‑scratched note on the underside of the bench reads FALCON / SNOWMAN — like a joke you’re not in on.",
     "north": null,
     "east": null,
     "south": "Second St E",
@@ -50,7 +50,7 @@
     "items": ["gull feather", "🥽 night vision goggles"]
   },
   "Waterfront Ave": {
-    "description": "Waterfront Avenue hums with dock lights and low engine rumble. The boardwalk creaks beneath your steps as signs flicker over late-night kiosks. A discarded lighter sits on a bench.",
+    "description": "Waterfront Avenue hums with dock lights and low engine rumble. The boardwalk creaks beneath your steps; kiosk signs flicker over late-night windows selling ice cream by day and silence by night. Out on the water, a line of lights could be fishing boats—or a courier route, depending on which Cold War story you believe. Locals talk about a ‘Snowman’ who used seasonal ice drops and a ‘Falcon’ who listened from the hills, both hiding in plain sight in nearby towns when the heat rose. A discarded lighter sits on a bench, still warm like it was just used.",
     "north": null,
     "east": null,
     "south": null,

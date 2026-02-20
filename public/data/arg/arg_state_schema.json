@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ARG State Variables",
+  "description": "Core narrative state tracked throughout the experience",
+  "type": "object",
+  "required": [
+    "agency_trust",
+    "chen_trust",
+    "pinkerton_awareness",
+    "kaniksu_knowledge",
+    "panda_truth",
+    "chimera_awareness",
+    "is_caught",
+    "escaped_cell",
+    "final_choice_made"
+  ],
+  "properties": {
+    "agency_trust": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 100,
+      "description": "Relationship with handler agency. At 0, agency becomes hostile."
+    },
+    "chen_trust": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 50,
+      "description": "Relationship with Chen Wei-lin. Affects ending options."
+    },
+    "pinkerton_awareness": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 0,
+      "description": "How much the Pinkertons know about the investigation. At 80, assassins deploy."
+    },
+    "kaniksu_knowledge": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 0,
+      "description": "Understanding of the Jesuit/Kaniksu conspiracy. Unlocks deeper narrative."
+    },
+    "panda_truth": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether panda origin revelation has been discovered."
+    },
+    "chimera_awareness": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether organ-container truth about pandas is known."
+    },
+    "is_caught": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether player has been captured by agency."
+    },
+    "escaped_cell": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether player has escaped agency custody."
+    },
+    "final_choice_made": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether endgame decision has been executed."
+    },
+    "final_choice_outcome": {
+      "type": ["string", "null"],
+      "default": null,
+      "enum": [
+        "expose_truth",
+        "preserve_balance",
+        "destroy_pinkertons",
+        "extract_chen",
+        null
+      ],
+      "description": "Which ending was chosen."
+    },
+    "chen_dialogue_complete": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether Chen Wei-lin dialogue tree resolved."
+    },
+    "mathias_true_allegiance_known": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether Father Mathias's true nature discovered."
+    },
+    "russian_contact_established": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether Yekaterina Volkova contact unlocked."
+    },
+    "inventory": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": ["ITM-001", "ITM-002", "ITM-003"],
+      "description": "List of item IDs currently held."
+    },
+    "location": {
+      "type": "string",
+      "default": "TOWN_SQUARE",
+      "description": "Current location ID."
+    },
+    "time_of_day": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2400,
+      "default": 347,
+      "description": "Military time representation (0347 = 3:47 AM)."
+    },
+    "truth_level": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 0,
+      "description": "Computed property: progress through truth discovery phases. (Engine may recompute.)"
+    }
+  }
+}

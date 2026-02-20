@@ -1,0 +1,35 @@
+{
+  "SQUARE-01": {
+    "title":"Initial Discovery",
+    "text":[
+      "> 0347 HOURS. The square is quiet in the way a room gets quiet when someone stops talking.",
+      "> Your target (CHEN WEI-LIN) was last seen here. The file says 12 hours. The pavement says sooner.",
+      "> In the gutter: a wallet. Too clean to be lost. Too ordinary to be planted.",
+      "> A statue stands at center—pioneer posture, modern eyes. It points nowhere. It watches everything."
+    ]
+  },
+  "SQUARE-INVEST-01": {
+    "title":"Paper Trail",
+    "text":[
+      "> The receipts are local. The handwriting isn’t.",
+      "> Two alphabets, one intention.",
+      "> Someone wanted the trail to look like tourism. It reads like routing."
+    ]
+  },
+  "CHURCH-02": {
+    "title":"Kaniksu Notes",
+    "text":[
+      "> The basement smells like varnish, dust, and old decisions.",
+      "> In the margins: Kaniksu. A place-name, a mask, a key.",
+      "> The notes never say ‘truth.’ They say ‘stability.’"
+    ]
+  },
+  "INDUSTRY-01": {
+    "title":"The Disguise",
+    "text":[
+      "> The badge scans green.",
+      "> The guard doesn’t look up.",
+      "> That’s the first sign you’re inside the wrong story."
+    ]
+  }
+}

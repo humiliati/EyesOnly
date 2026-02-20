@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Item Database (ARG)",
+  "description": "All collectible items with acquisition, spend effects, and synergy tags",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "name", "emoji", "acquired_at", "category"],
+    "properties": {
+      "id": { "type": "string", "pattern": "^ITM-\\d{3}$" },
+      "name": { "type": "string" },
+      "emoji": { "type": "string" },
+      "acquired_at": { "type": "string" },
+      "category": {
+        "type": "string",
+        "enum": [
+          "identification",
+          "weapon",
+          "communication",
+          "investigation",
+          "key",
+          "document",
+          "disguise",
+          "equipment",
+          "artifact"
+        ]
+      },
+      "description": { "type": "string" },
+      "spend_effect": {
+        "type": ["object", "null"],
+        "properties": {
+          "delta": { "type": "object", "additionalProperties": { "type": "integer" } },
+          "set": { "type": "object", "additionalProperties": { "type": ["boolean", "string", "number", "null"] } },
+          "unlock_locations": { "type": "array", "items": { "type": "string" } },
+          "unlock_beats": { "type": "array", "items": { "type": "string" } },
+          "consumes": { "type": "boolean", "default": true },
+          "message": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "synergy_tags": { "type": "array", "items": { "type": "string" } },
+      "discoverable": { "type": "boolean", "default": true },
+      "unique": { "type": "boolean", "default": true }
+    },
+    "additionalProperties": false
+  }
+}

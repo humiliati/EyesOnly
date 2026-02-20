@@ -1,0 +1,565 @@
+[
+  {
+    "id": "ITM-001",
+    "name": "Government Badge",
+    "emoji": "🪪",
+    "acquired_at": "START",
+    "category": "identification",
+    "description": "Federal agent credentials. Shows you're official... for now.",
+    "spend_effect": {
+      "delta": { "agency_trust": 20 },
+      "set": {},
+      "unlock_locations": [],
+      "unlock_beats": [],
+      "consumes": false,
+      "message": "You flash your badge. Authority recognized."
+    },
+    "synergy_tags": ["badge", "identification"],
+    "discoverable": false,
+    "unique": true
+  },
+  {
+    "id": "ITM-002",
+    "name": "W-90 Handgun",
+    "emoji": "🔫",
+    "acquired_at": "START",
+    "category": "weapon",
+    "description": "Standard issue sidearm. 9mm, reliable, lethal.",
+    "spend_effect": null,
+    "synergy_tags": ["weapon", "gun"],
+    "discoverable": false,
+    "unique": false
+  },
+  {
+    "id": "ITM-003",
+    "name": "Encrypted Codec",
+    "emoji": "📻",
+    "acquired_at": "START",
+    "category": "communication",
+    "description": "Secure radio. Channel 141.3 for handler. Others exist...",
+    "spend_effect": {
+      "delta": {},
+      "set": {},
+      "unlock_locations": [],
+      "unlock_beats": ["CODEC_INTRO"],
+      "consumes": false,
+      "message": "Codec active. Waiting for transmission..."
+    },
+    "synergy_tags": ["communication", "codec"],
+    "discoverable": false,
+    "unique": true
+  },
+  {
+    "id": "ITM-004",
+    "name": "Chen's Dropped Wallet",
+    "emoji": "👛",
+    "acquired_at": "TOWN_SQUARE",
+    "category": "investigation",
+    "description": "American dollars. Chinese Yuan. A photo of a panda from 1987. 'For Wei-Lin. Remember home.'",
+    "spend_effect": {
+      "delta": { "kaniksu_knowledge": 5 },
+      "set": {},
+      "unlock_locations": [],
+      "unlock_beats": ["SQUARE-01-WALLET"],
+      "consumes": false,
+      "message": "You examine the wallet. Chen was here. Not long ago."
+    },
+    "synergy_tags": ["evidence", "chen_connected"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-005",
+    "name": "Subway Token",
+    "emoji": "🎟",
+    "acquired_at": "GAS_STATION",
+    "category": "key",
+    "description": "Dirty. Bent. Used recently. Grants access to Underground Station.",
+    "spend_effect": {
+      "delta": {},
+      "set": {},
+      "unlock_locations": ["SUBWAY_STATION"],
+      "unlock_beats": [],
+      "consumes": false,
+      "message": "The token fits. Turnstile opens."
+    },
+    "synergy_tags": ["access", "transit"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-006",
+    "name": "Rusty Key",
+    "emoji": "🗝",
+    "acquired_at": "CHURCH",
+    "category": "key",
+    "description": "Old iron. No markings. The church archive key?",
+    "spend_effect": {
+      "delta": {},
+      "set": {},
+      "unlock_locations": ["CHURCH_BASEMENT"],
+      "unlock_beats": [],
+      "consumes": false,
+      "message": "The key turns. The lock clicks."
+    },
+    "synergy_tags": ["key", "church", "jesuit"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-007",
+    "name": "Jesuit Bible",
+    "emoji": "📖",
+    "acquired_at": "CHURCH",
+    "category": "document",
+    "description": "Latin text, 18th century printing. A hidden compartment reveals additional pages.",
+    "spend_effect": {
+      "delta": { "kaniksu_knowledge": 15 },
+      "set": {},
+      "unlock_locations": [],
+      "unlock_beats": ["CHURCH-01-BIBLE"],
+      "consumes": false,
+      "message": "The hidden pages speak of 'children of the Middle Kingdom.'"
+    },
+    "synergy_tags": ["document", "jesuit", "history"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-008",
+    "name": "Pinkerton Coin",
+    "emoji": "🪙",
+    "acquired_at": "TAVERN",
+    "category": "investigation",
+    "description": "Private eye. The insignia is unmistakable. Pinkertons are here.",
+    "spend_effect": {
+      "delta": { "pinkerton_awareness": 10 },
+      "set": {},
+      "unlock_locations": [],
+      "unlock_beats": ["TAVERN-01-COIN"],
+      "consumes": false,
+      "message": "You've found proof. They're not subtle."
+    },
+    "synergy_tags": ["pinkerton", "evidence"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-009",
+    "name": "Russian Matryoshka",
+    "emoji": "🎎",
+    "acquired_at": "DOCKS",
+    "category": "investigation",
+    "description": "Nesting doll. Russian. Open it — there's a note inside: 'Friend of friend. 142.7.'",
+    "spend_effect": {
+      "delta": {},
+      "set": { "russian_contact_established": true },
+      "unlock_locations": [],
+      "unlock_beats": ["DOCKS-01-DOLL"],
+      "consumes": false,
+      "message": "A contact frequency. Someone wants to talk."
+    },
+    "synergy_tags": ["russian", "contact", "frequency"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-010",
+    "name": "Vodka Flask",
+    "emoji": "🍾",
+    "acquired_at": "DOCKS",
+    "category": "equipment",
+    "description": "Real Russian vodka. Good for gifts. Or for courage.",
+    "spend_effect": {
+      "delta": { "chen_trust": 5 },
+      "set": {},
+      "unlock_locations": [],
+      "unlock_beats": ["DOCKS-02-VODKA"],
+      "consumes": true,
+      "message": "You offer the flask. The dockside contact nods approvingly."
+    },
+    "synergy_tags": ["gift", "russian"],
+    "discoverable": true,
+    "unique": false
+  },
+  {
+    "id": "ITM-011",
+    "name": "Panda Plushie",
+    "emoji": "🐼",
+    "acquired_at": "TOY_STORE",
+    "category": "equipment",
+    "description": "Cute. Chen was looking for this. Why?",
+    "spend_effect": {
+      "delta": { "chen_trust": 15 },
+      "set": {},
+      "unlock_locations": [],
+      "unlock_beats": ["TOY_STORE-PANDA"],
+      "consumes": false,
+      "message": "You take the plushie. It feels heavier than it should."
+    },
+    "synergy_tags": ["chen", "panda", "emotional"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-012",
+    "name": "Lab Coat",
+    "emoji": "🥼",
+    "acquired_at": "MEDICAL_CLINIC",
+    "category": "disguise",
+    "description": "White coat. Faded logo: 'Hollow Creek Research Facility'.",
+    "spend_effect": {
+      "delta": {},
+      "set": {},
+      "unlock_locations": [],
+      "unlock_beats": ["CLINIC-01-COAT"],
+      "consumes": false,
+      "message": "The coat fits. You could pass for staff."
+    },
+    "synergy_tags": ["disguise", "research"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-013",
+    "name": "ID Badge (Dr. Hoffman)",
+    "emoji": "💳",
+    "acquired_at": "MEDICAL_CLINIC",
+    "category": "identification",
+    "description": "Photo ID. Level 3 Access. Research Wing. Expired 2019.",
+    "spend_effect": {
+      "delta": {},
+      "set": {},
+      "unlock_locations": ["SUBMARINE_RESEARCH"],
+      "unlock_beats": [],
+      "consumes": false,
+      "message": "The badge works. The guard doesn't check expiration dates."
+    },
+    "synergy_tags": ["disguise", "access", "research"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-014",
+    "name": "Submarine Blueprint",
+    "emoji": "🗺",
+    "acquired_at": "SUBMARINE_BASE",
+    "category": "document",
+    "description": "Facility layout. Restricted areas marked. Something beneath the base.",
+    "spend_effect": {
+      "delta": { "kaniksu_knowledge": 20 },
+      "set": {},
+      "unlock_locations": [],
+      "unlock_beats": ["BASE-01-BLUEPRINT"],
+      "consumes": false,
+      "message": "They built a nuclear facility to hide something else."
+    },
+    "synergy_tags": ["map", "base", "secret"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-015",
+    "name": "Ventilation Key",
+    "emoji": "🗝",
+    "acquired_at": "MAINTENANCE_BUILDING",
+    "category": "key",
+    "description": "Magnetic card. Opens maintenance shafts throughout the base.",
+    "spend_effect": {
+      "delta": {},
+      "set": {},
+      "unlock_locations": ["SECRET_VENT"],
+      "unlock_beats": [],
+      "consumes": false,
+      "message": "The card activates a hidden panel."
+    },
+    "synergy_tags": ["key", "base", "secret"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-016",
+    "name": "Tattered Map",
+    "emoji": "🧩",
+    "acquired_at": "SECRET_VENT",
+    "category": "document",
+    "description": "Part of a larger map. The cave system extends further than any official record shows.",
+    "spend_effect": {
+      "delta": { "kaniksu_knowledge": 10 },
+      "set": {},
+      "unlock_locations": [],
+      "unlock_beats": ["VENT-01-MAP"],
+      "consumes": false,
+      "message": "The missing pieces connect to something called 'The Shrine'."
+    },
+    "synergy_tags": ["map", "cave", "shrine"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-017",
+    "name": "Magnifying Glass",
+    "emoji": "🔎",
+    "acquired_at": "LIBRARY",
+    "category": "investigation",
+    "description": "Forensic tool. Useful for examining evidence.",
+    "spend_effect": {
+      "delta": {},
+      "set": {},
+      "unlock_locations": [],
+      "unlock_beats": ["LIBRARY-01-GLASS"],
+      "consumes": false,
+      "message": "Ready to analyze evidence."
+    },
+    "synergy_tags": ["investigation", "analysis"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-018",
+    "name": "1987 Newspaper",
+    "emoji": "📰",
+    "acquired_at": "ANTIQUES_SHOP",
+    "category": "document",
+    "description": "Headline: 'Rare Pandas Arrive at Hollow Creek Zoo.' Date: October 1987.",
+    "spend_effect": {
+      "delta": { "kaniksu_knowledge": 10 },
+      "set": { "panda_truth": true },
+      "unlock_locations": [],
+      "unlock_beats": ["ANTIQUES-01-NEWSPAPER"],
+      "consumes": false,
+      "message": "Pandas arrived here. Same year Jesuits expanded the church."
+    },
+    "synergy_tags": ["history", "panda", "timeline"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-019",
+    "name": "Bamboo Plant",
+    "emoji": "🎋",
+    "acquired_at": "GREENHOUSE",
+    "category": "equipment",
+    "description": "Living bamboo. The pandas were introduced to eat this. Or so the story goes.",
+    "spend_effect": {
+      "delta": {},
+      "set": { "panda_truth": true },
+      "unlock_locations": [],
+      "unlock_beats": ["GREENHOUSE-01-BAMBOO"],
+      "consumes": false,
+      "message": "The plant pulses with strange warmth."
+    },
+    "synergy_tags": ["panda", "living"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-020",
+    "name": "Pinkerton Ledger",
+    "emoji": "📋",
+    "acquired_at": "OFFICE_BUILDING",
+    "category": "investigation",
+    "description": "Financial records. Payments to 'Asset CW-7' since 1987. Recipient: Hollow Creek.",
+    "spend_effect": {
+      "delta": { "pinkerton_awareness": 25, "kaniksu_knowledge": 15 },
+      "set": {},
+      "unlock_locations": [],
+      "unlock_beats": ["OFFICE-01-LEDGER"],
+      "consumes": false,
+      "message": "The Pinkertons have been paying Chen's family for decades."
+    },
+    "synergy_tags": ["pinkerton", "financial", "evidence"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-021",
+    "name": "Train Schedule",
+    "emoji": "🚂",
+    "acquired_at": "STATION",
+    "category": "document",
+    "description": "Midnight freight. Car 7 marked 'SPECIAL.' Unscheduled stops.",
+    "spend_effect": {
+      "delta": {},
+      "set": {},
+      "unlock_locations": [],
+      "unlock_beats": ["STATION-01-SCHEDULE"],
+      "consumes": false,
+      "message": "Something was extracted via train. Recently."
+    },
+    "synergy_tags": ["transit", "extraction"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-022",
+    "name": "Chinese Calligraphy",
+    "emoji": "🖌",
+    "acquired_at": "ART_GALLERY",
+    "category": "document",
+    "description": "Scroll reading: 'The bamboo remembers what men forget.'",
+    "spend_effect": {
+      "delta": { "kaniksu_knowledge": 5 },
+      "set": {},
+      "unlock_locations": [],
+      "unlock_beats": ["GALLERY-01-SCROLL"],
+      "consumes": false,
+      "message": "A poem. Or a warning."
+    },
+    "synergy_tags": ["chinese", "culture", "mystery"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-023",
+    "name": "Family Photo",
+    "emoji": "🖼",
+    "acquired_at": "ART_GALLERY",
+    "category": "investigation",
+    "description": "Chen with a woman and child. A daughter. On the back: 'Mei-Lin, age 7.'",
+    "spend_effect": {
+      "delta": { "chen_trust": 20 },
+      "set": {},
+      "unlock_locations": [],
+      "unlock_beats": ["GALLERY-01-PHOTO"],
+      "consumes": false,
+      "message": "Chen has a family. Someone knows this."
+    },
+    "synergy_tags": ["chen", "family", "emotional"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-024",
+    "name": "Security Tape",
+    "emoji": "📼",
+    "acquired_at": "POLICE_STATION",
+    "category": "investigation",
+    "description": "VHS tape labeled 'INTERVIEW 7.' Shows Chen with Augustus Pinkerton IV.",
+    "spend_effect": {
+      "delta": { "pinkerton_awareness": 20 },
+      "set": {},
+      "unlock_locations": [],
+      "unlock_beats": ["POLICE-01-TAPE"],
+      "consumes": false,
+      "message": "You watch Chen being threatened. The Pinkertons have leverage."
+    },
+    "synergy_tags": ["evidence", "pinkerton", "video"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-025",
+    "name": "Organ Container",
+    "emoji": "🧊",
+    "acquired_at": "MEDICAL_LAB",
+    "category": "equipment",
+    "description": "Glass cylinder, cryogenic fluid. Label: 'Panda Subject 7 — Liver. Recipient: Pinkerton IV.'",
+    "spend_effect": {
+      "delta": { "pinkerton_awareness": 15 },
+      "set": { "chimera_awareness": true },
+      "unlock_locations": [],
+      "unlock_beats": ["LAB-01-CONTAINER"],
+      "consumes": false,
+      "message": "The pandas are not what they seem."
+    },
+    "synergy_tags": ["horror", "panda", "cloning"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-026",
+    "name": "Research Notes",
+    "emoji": "📓",
+    "acquired_at": "MEDICAL_LAB",
+    "category": "document",
+    "description": "Specimen logs. Donor codes. 'Subject 47: Neural cluster, mature. Gift for Mr. Pinkerton's 89th birthday.'",
+    "spend_effect": {
+      "delta": { "kaniksu_knowledge": 25 },
+      "set": { "chimera_awareness": true },
+      "unlock_locations": [],
+      "unlock_beats": ["LAB-02-NOTES"],
+      "consumes": false,
+      "message": "Human stem cells. Opossum wombs. Pandas are chimeras."
+    },
+    "synergy_tags": ["horror", "science", "cloning"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-027",
+    "name": "Facility Keycard",
+    "emoji": "💳",
+    "acquired_at": "SECRET_VENT",
+    "category": "key",
+    "description": "Black card. No markings. 'LEVEL OMEGA' embossed in silver.",
+    "spend_effect": {
+      "delta": {},
+      "set": {},
+      "unlock_locations": ["FINAL_CHAMBER"],
+      "unlock_beats": [],
+      "consumes": false,
+      "message": "The final door. Beyond it, everything ends."
+    },
+    "synergy_tags": ["key", "final", "omega"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-028",
+    "name": "Satellite Uplink",
+    "emoji": "📡",
+    "acquired_at": "CONTROL_TOWER",
+    "category": "equipment",
+    "description": "Portable uplink. One transmission. Global reach.",
+    "spend_effect": {
+      "delta": {},
+      "set": {},
+      "unlock_locations": [],
+      "unlock_beats": ["FINAL-CHOICE"],
+      "consumes": true,
+      "message": "Ready to transmit. Your finger hovers over the button."
+    },
+    "synergy_tags": ["final", "transmission", "uplink"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-029",
+    "name": "Jesuit Ring",
+    "emoji": "💍",
+    "acquired_at": "CHURCH_BASEMENT",
+    "category": "artifact",
+    "description": "Iron ring, date 1415. 'Adiutorium Nostrum in Nomine Domini.' Inscribed: 'For when the Signet returns.'",
+    "spend_effect": {
+      "delta": { "kaniksu_knowledge": 40 },
+      "set": {},
+      "unlock_locations": [],
+      "unlock_beats": ["BASEMENT-01-RING"],
+      "consumes": false,
+      "message": "Four hundred years of history on your finger."
+    },
+    "synergy_tags": ["jesuit", "ancient", "artifact", "omega"],
+    "discoverable": true,
+    "unique": true
+  },
+  {
+    "id": "ITM-030",
+    "name": "Pinkerton Signet",
+    "emoji": "🏰",
+    "acquired_at": "FINAL_BOSS",
+    "category": "artifact",
+    "description": "Family seal. Used for six thousand years. The enemy you've been chasing.",
+    "spend_effect": {
+      "delta": { "pinkerton_awareness": 50 },
+      "set": {},
+      "unlock_locations": [],
+      "unlock_beats": ["BOSS-01-SIGNET"],
+      "consumes": false,
+      "message": "Six thousand years of conflict. It ends here."
+    },
+    "synergy_tags": ["pinkerton", "ancient", "enemy"],
+    "discoverable": false,
+    "unique": true
+  }
+]

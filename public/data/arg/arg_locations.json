@@ -1,0 +1,388 @@
+[
+  {
+    "id": "TOWN_SQUARE",
+    "name": "Hollow Creek Town Square",
+    "emoji": "📍",
+    "description": "The center of Hollow Creek feels wrong. Too quiet. Too many people watching from windows. The pioneer statue stares with empty eye sockets.",
+    "enemy_presence": "LOW",
+    "discoverables": ["ITM-004", "ITM-011"],
+    "npcs": ["SHERIFF", "BARTENDER", "SUSPICIOUS_FIGURE"],
+    "exits": {
+      "north": {"target": "COURTHOUSE", "requirement": null, "locked_message": null},
+      "south": {"target": "DOCKS", "requirement": null, "locked_message": null},
+      "east": {"target": "CHURCH", "requirement": null, "locked_message": null},
+      "west": {"target": "TAVERN", "requirement": null, "locked_message": null},
+      "down": {"target": "SUBWAY_STATION", "requirement": "ITM-005", "locked_message": "The subway entrance is sealed. You need a token."}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "SQUARE-01"
+  },
+  {
+    "id": "TAVERN",
+    "name": "The Rusty Anchor Tavern",
+    "emoji": "🍻",
+    "description": "Smell of stale beer and cheaper memories. A woman watches from the corner. She vanishes when you look.",
+    "enemy_presence": "LOW",
+    "discoverables": ["ITM-008"],
+    "npcs": ["BARTENDER"],
+    "exits": {
+      "east": {"target": "TOWN_SQUARE", "requirement": null, "locked_message": null}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "TAVERN-01"
+  },
+  {
+    "id": "CHURCH",
+    "name": "St. Sebastian Catholic Church",
+    "emoji": "⛪️",
+    "description": "St. Sebastian has stood for 200 years. The Jesuits built it, they say. Father Mathias kneels at the altar.",
+    "enemy_presence": "NONE",
+    "discoverables": ["ITM-006", "ITM-007"],
+    "npcs": ["FATHER_MATHIAS"],
+    "exits": {
+      "south": {"target": "CEMETERY", "requirement": null, "locked_message": null},
+      "east": {"target": "FOREST", "requirement": null, "locked_message": null},
+      "down": {"target": "CHURCH_BASEMENT", "requirement": "ITM-006", "locked_message": "The archive door is locked. You need a key."}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "CHURCH-01"
+  },
+  {
+    "id": "CHURCH_BASEMENT",
+    "name": "Church Archive",
+    "emoji": "📚",
+    "description": "Dust and centuries of paper. A ledger labeled 'KANIKSU PROTOCOL' sits on a shelf.",
+    "enemy_presence": "NONE",
+    "discoverables": ["ITM-029"],
+    "npcs": [],
+    "exits": {
+      "up": {"target": "CHURCH", "requirement": null, "locked_message": null}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "CHURCH-02"
+  },
+  {
+    "id": "DOCKS",
+    "name": "Hollow Creek Docks",
+    "emoji": "🌊",
+    "description": "The river reflects nothing. Empty boats bob in the dark water. A contact waits in the shadows.",
+    "enemy_presence": "LOW",
+    "discoverables": ["ITM-009", "ITM-010"],
+    "npcs": ["RUSSIAN_CONTACT"],
+    "exits": {
+      "north": {"target": "TOWN_SQUARE", "requirement": null, "locked_message": null},
+      "east": {"target": "INDUSTRIAL_ZONE", "requirement": null, "locked_message": null}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "DOCKS-01"
+  },
+  {
+    "id": "TOY_STORE",
+    "name": "Abandoned Toy Store",
+    "emoji": "🧸",
+    "description": "Broken toys and faded packaging. The panda plushie in the window seems untouched by time.",
+    "enemy_presence": "LOW",
+    "discoverables": ["ITM-011"],
+    "npcs": [],
+    "exits": {
+      "west": {"target": "MAIN_STREET", "requirement": null, "locked_message": null}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "TOY_STORE-PANDA"
+  },
+  {
+    "id": "SUBWAY_STATION",
+    "name": "Underground Station",
+    "emoji": "🚇",
+    "description": "Abandoned since the 70s. Graffiti covers the tiles. A train sits on Track 7, door open.",
+    "enemy_presence": "LOW",
+    "discoverables": [],
+    "npcs": [],
+    "exits": {
+      "up": {"target": "TOWN_SQUARE", "requirement": null, "locked_message": null},
+      "east": {"target": "INDUSTRIAL_ZONE", "requirement": null, "locked_message": null}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "SUBWAY-01"
+  },
+  {
+    "id": "INDUSTRIAL_ZONE",
+    "name": "Abandoned Shipyard",
+    "emoji": "🏭",
+    "description": "Rust and secrets. A tarp covers something submarine-shaped. The security cameras are new.",
+    "enemy_presence": "HIGH",
+    "discoverables": ["ITM-012", "ITM-013", "ITM-014"],
+    "npcs": [],
+    "exits": {
+      "north": {"target": "MAINTENANCE_BUILDING", "requirement": null, "locked_message": null},
+      "south": {"target": "SUBMARINE_HATCH", "requirement": "ITM-013", "locked_message": "The hatch requires Level 3 access."},
+      "west": {"target": "OFFICE_BUILDING", "requirement": null, "locked_message": null},
+      "down": {"target": "SUBMARINE_RESEARCH", "requirement": "SYN-N06", "locked_message": "You need proper credentials to enter."}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "INDUSTRY-01"
+  },
+  {
+    "id": "MAINTENANCE_BUILDING",
+    "name": "Maintenance Building",
+    "emoji": "🔧",
+    "description": "Tools and machinery. A vent shaft glows with strange light.",
+    "enemy_presence": "MEDIUM",
+    "discoverables": ["ITM-015"],
+    "npcs": [],
+    "exits": {
+      "south": {"target": "INDUSTRIAL_ZONE", "requirement": null, "locked_message": null}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "INDUSTRY-02"
+  },
+  {
+    "id": "OFFICE_BUILDING",
+    "name": "Administration Office",
+    "emoji": "🏢",
+    "description": "Old desks and newer computers. Someone's been paying attention to the books.",
+    "enemy_presence": "MEDIUM",
+    "discoverables": ["ITM-020", "ITM-024"],
+    "npcs": [],
+    "exits": {
+      "east": {"target": "INDUSTRIAL_ZONE", "requirement": null, "locked_message": null}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "OFFICE-01"
+  },
+  {
+    "id": "SUBMARINE_RESEARCH",
+    "name": "Submarine Research Wing",
+    "emoji": "🧪",
+    "description": "White walls and humming equipment. Cages line the corridor. Something whines behind the glass.",
+    "enemy_presence": "HIGH",
+    "discoverables": ["ITM-025", "ITM-026"],
+    "npcs": ["DR_HOFFMAN"],
+    "exits": {
+      "up": {"target": "INDUSTRIAL_ZONE", "requirement": null, "locked_message": null},
+      "east": {"target": "SECRET_VENT", "requirement": "ITM-015", "locked_message": "The vent requires a magnetic key."}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "INDUSTRY-03"
+  },
+  {
+    "id": "SECRET_VENT",
+    "name": "Twinkly Grey Cave Secret Vent",
+    "emoji": "✨",
+    "description": "Crystal formations pulse with grey light. The hum is deafening here. A shrine stands in the center.",
+    "enemy_presence": "HIGH",
+    "discoverables": ["ITM-016", "ITM-022", "ITM-023"],
+    "npcs": [],
+    "exits": {
+      "west": {"target": "SUBMARINE_RESEARCH", "requirement": null, "locked_message": null},
+      "north": {"target": "WAR_ROOM", "requirement": null, "locked_message": null},
+      "south": {"target": "MEDICAL_LAB", "requirement": null, "locked_message": null},
+      "east": {"target": "FORGOTTEN_SHRINE", "requirement": null, "locked_message": null},
+      "down": {"target": "FINAL_CHAMBER", "requirement": "ITM-027", "locked_message": "The final door requires the Omega keycard."}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "VENT-01"
+  },
+  {
+    "id": "MEDICAL_LAB",
+    "name": "Deep Medical Laboratory",
+    "emoji": "💀",
+    "description": "Operating tables. Glass cylinders filled with organs. Tags read 'Panda Subject 7.'",
+    "enemy_presence": "HIGH",
+    "discoverables": [],
+    "npcs": [],
+    "exits": {
+      "north": {"target": "SECRET_VENT", "requirement": null, "locked_message": null}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "LAB-01"
+  },
+  {
+    "id": "WAR_ROOM",
+    "name": "War Room",
+    "emoji": "🗺",
+    "description": "Maps cover every wall. Operations dating back centuries. A red line traces the Pinkerton network.",
+    "enemy_presence": "HIGH",
+    "discoverables": [],
+    "npcs": [],
+    "exits": {
+      "south": {"target": "SECRET_VENT", "requirement": null, "locked_message": null}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "VENT-03"
+  },
+  {
+    "id": "FORGOTTEN_SHRINE",
+    "name": "Forgotten Shrine",
+    "emoji": "👻",
+    "description": "Names carved in stone. 'Chen Wei-Lin Sr. 1947-1987. The Truth Was His Gift.'",
+    "enemy_presence": "NONE",
+    "discoverables": [],
+    "npcs": [],
+    "exits": {
+      "west": {"target": "SECRET_VENT", "requirement": null, "locked_message": null}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "SHRINE-01"
+  },
+  {
+    "id": "FINAL_CHAMBER",
+    "name": "The Final Seal",
+    "emoji": "🔐",
+    "description": "Massive steel and grey stone. Two locks. One for a keycard, one for a ring.",
+    "enemy_presence": "VERY_HIGH",
+    "discoverables": ["ITM-030"],
+    "npcs": ["AUGUSTUS_PINKERTON_IV"],
+    "exits": {
+      "west": {"target": "SECRET_VENT", "requirement": null, "locked_message": null},
+      "up": {"target": "CONTROL_TOWER", "requirement": null, "locked_message": null},
+      "east": {"target": "PANDA_CHAMBER", "requirement": null, "locked_message": null}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "FINAL-01"
+  },
+  {
+    "id": "CONTROL_TOWER",
+    "name": "Control Tower",
+    "emoji": "📡",
+    "description": "The facility is collapsing. The satellite uplink blinks green. Ready.",
+    "enemy_presence": "MEDIUM",
+    "discoverables": ["ITM-028"],
+    "npcs": ["FATHER_MATHIAS_DYING"],
+    "exits": {
+      "down": {"target": "FINAL_CHAMBER", "requirement": null, "locked_message": null}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "FINAL-02"
+  },
+  {
+    "id": "PANDA_CHAMBER",
+    "name": "The Panda Chamber",
+    "emoji": "🐼",
+    "description": "Bioluminescent algae cast sickly green light. Pandas in glass enclosures press their palms against the glass. One whispers, 'Help us.'",
+    "enemy_presence": "MEDIUM",
+    "discoverables": [],
+    "npcs": ["CHEN_WEI_LIN"],
+    "exits": {
+      "up": {"target": "CONTROL_TOWER", "requirement": null, "locked_message": null},
+      "west": {"target": "FINAL_CHAMBER", "requirement": null, "locked_message": null}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "PANDA-01"
+  },
+  {
+    "id": "COURTHOUSE",
+    "name": "County Courthouse",
+    "emoji": "🏛",
+    "description": "Day only location. Records of every transaction in Hollow Creek history.",
+    "enemy_presence": "LOW",
+    "discoverables": ["ITM-018"],
+    "npcs": ["CLERK"],
+    "exits": {
+      "south": {"target": "TOWN_SQUARE", "requirement": null, "locked_message": null}
+    },
+    "time_restriction": {"day_only": true, "night_only": false, "message": "The courthouse is closed. Return during daylight."},
+    "first_visit_beat": "COURTHOUSE-01"
+  },
+  {
+    "id": "LIBRARY",
+    "name": "Hollow Creek Library",
+    "emoji": "📚",
+    "description": "Quiet. Too quiet. Someone has been researching the same things you have.",
+    "enemy_presence": "LOW",
+    "discoverables": ["ITM-017"],
+    "npcs": ["LIBRARIAN"],
+    "exits": {
+      "west": {"target": "MAIN_STREET", "requirement": null, "locked_message": null}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "LIBRARY-01"
+  },
+  {
+    "id": "ART_GALLERY",
+    "name": "Abandoned Art Gallery",
+    "emoji": "🖼",
+    "description": "Paintings of Hollow Creek history. One scroll reads: 'The bamboo remembers what men forget.'",
+    "enemy_presence": "LOW",
+    "discoverables": ["ITM-022", "ITM-023"],
+    "npcs": [],
+    "exits": {
+      "east": {"target": "MAIN_STREET", "requirement": null, "locked_message": null}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "GALLERY-01"
+  },
+  {
+    "id": "CEMETERY",
+    "name": "Abandoned Cemetery",
+    "emoji": "🏚",
+    "description": "Old graves. New flowers. Someone visits here regularly.",
+    "enemy_presence": "LOW",
+    "discoverables": [],
+    "npcs": [],
+    "exits": {
+      "north": {"target": "CHURCH", "requirement": null, "locked_message": null},
+      "east": {"target": "FOREST", "requirement": null, "locked_message": null}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "CEMETERY-01"
+  },
+  {
+    "id": "FOREST",
+    "name": "Hollow Creek Forest",
+    "emoji": "🌲",
+    "description": "Dense trees hide paths. The forest has been here longer than the town.",
+    "enemy_presence": "MEDIUM",
+    "discoverables": [],
+    "npcs": [],
+    "exits": {
+      "west": {"target": "CEMETERY", "requirement": null, "locked_message": null},
+      "north": {"target": "GREENHOUSE", "requirement": null, "locked_message": null},
+      "south": {"target": "CHURCH", "requirement": null, "locked_message": null}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "FOREST-01"
+  },
+  {
+    "id": "GREENHOUSE",
+    "name": "Abandoned Greenhouse",
+    "emoji": "🌿",
+    "description": "Dead plants and living bamboo. The bamboo pulses with warmth.",
+    "enemy_presence": "MEDIUM",
+    "discoverables": ["ITM-019"],
+    "npcs": [],
+    "exits": {
+      "south": {"target": "FOREST", "requirement": null, "locked_message": null}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "GREENHOUSE-01"
+  },
+  {
+    "id": "AGENCY_SAFEHOUSE",
+    "name": "Agency Safehouse",
+    "emoji": "🏠",
+    "description": "A temporary location. Resources and mission updates available.",
+    "enemy_presence": "NONE",
+    "discoverables": [],
+    "npcs": ["HANDLER"],
+    "exits": {
+      "out": {"target": "TOWN_SQUARE", "requirement": null, "locked_message": null}
+    },
+    "time_restriction": null,
+    "first_visit_beat": null
+  },
+  {
+    "id": "AGENCY_FACILITY",
+    "name": "Agency Detention Facility",
+    "emoji": "⛓️",
+    "description": "A cell. Concrete walls. No windows. You're in their hands now.",
+    "enemy_presence": "HIGH",
+    "discoverables": [],
+    "npcs": ["AGENT_MILLER"],
+    "exits": {
+      "up": {"target": "TOWN_SQUARE", "requirement": "escaped_cell", "locked_message": "The hatch is sealed. Find another way."}
+    },
+    "time_restriction": null,
+    "first_visit_beat": "CELL-01"
+  }
+]

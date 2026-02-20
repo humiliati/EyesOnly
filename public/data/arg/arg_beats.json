@@ -1,0 +1,1042 @@
+[
+  {
+    "id": "SQUARE-01",
+    "trigger": { "type": "location_enter", "target": "TOWN_SQUARE", "once": true },
+    "text": [
+      "> You arrive at the square at 0347 hours. The streetlights flicker.",
+      "> Your target CHEN WEI-LIN was last seen here 12 hours ago.",
+      "> A wallet lies in the gutter near the statue.",
+      "> [🪪] AGENCY BADGE + [🔫] W-90 at waist. Codec on channel 141.3.",
+      "> You bend to examine the wallet.",
+      "> [📄] INSIDE: American dollars, Chinese Yuan, a photo of a panda.",
+      "> The photo is dated 1987. On the back: 'For Wei-Lin. Remember home.'",
+      "> A woman watches from the tavern door. She vanishes when you look.",
+      "> Your codec crackles. Handler: 'Status, Agent? Chen's gone dark.'"
+    ],
+    "choices": [
+      { "id": "A", "prompt": "[🔍] INVESTIGATE the statue", "requirements": null, "outcomes": ["SQUARE-STATUE"] },
+      { "id": "B", "prompt": "[🍻] ENTER the tavern", "requirements": null, "outcomes": ["TAVERN-01"] },
+      { "id": "C", "prompt": "[🏃] PURSUE the woman", "requirements": null, "outcomes": ["CHURCH-01"] },
+      { "id": "D", "prompt": "[📻] CALL Handler", "requirements": null, "outcomes": ["CODEC_HANDLER_INTRO"] }
+    ],
+    "effects": null
+  },
+
+  {
+    "id": "SQUARE-02-ANALYSIS",
+    "trigger": { "type": "synergy_complete", "target": "SYN-N02", "once": true },
+    "text": [
+      "> You spread the wallet's contents under the streetlamp and bring the glass close.",
+      "> Receipts stop looking like trash. Ink patterns start looking like routing.",
+      "> Chen was paid by multiple sources. Pinkertons AND Chinese.",
+      "> The traces go back decades. This isn't a defection.",
+      "> Your codec clicks — not static. A handshake tone. Logging.",
+      "> Handler (141.3): 'Agent? What are you doing? That frequency—'",
+      "> The line goes dead.",
+      "> A second later: 'Return to base, Agent. That's an order.'",
+      "> You feel the net tighten."
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "pinkerton_awareness": 15 },
+      "set": {},
+      "unlock_beats": ["SQUARE-03-ESCAPE_SEQUENCE"],
+      "grant_items": [],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "SQUARE-03-ESCAPE_SEQUENCE",
+    "trigger": {
+      "type": "state_threshold",
+      "target": "agency_trust",
+      "state_min": {},
+      "state_max": { "agency_trust": 0 },
+      "once": true
+    },
+    "text": [
+      "> 'AGENT? This is DIRECTOR MORROW. RETURN TO BASE IMMEDIATELY.'",
+      "> The codec blares. Two black SUVs pull into the square.",
+      "> You recognize the suits. Internal Affairs. Threat Assessment.",
+      "> 'You have questions about the asset. That's our job.'",
+      "> Agent Miller steps out, hands raised. 'Come quietly. For your own good.'",
+      "> Behind Miller, you see it—a shimmer. Someone in the church tower.",
+      "> [🎯] DECISION: Surrender or Escape"
+    ],
+    "choices": [
+      { "id": "SURRENDER", "prompt": "[🙋] SURRENDER to Internal Affairs", "requirements": null, "outcomes": ["CELL-01"] },
+      { "id": "ESCAPE", "prompt": "[🏃] ESCAPE into the subway", "requirements": null, "outcomes": ["SUBWAY-01", "CELL-02"] }
+    ],
+    "effects": null
+  },
+
+  {
+    "id": "CELL-01",
+    "trigger": { "type": "manual", "target": "SURRENDER", "once": true },
+    "text": [
+      "> You comply. You're brought to the facility. Cell 7.",
+      "> Concrete walls. No windows. Miller sits outside.",
+      "> 'You should have followed orders, Agent.'",
+      "> Hours pass. Or days. The lights never dim.",
+      "> On the third cycle, you notice the vent. Loose panel.",
+      "> [🔓] ESCAPE OPPORTUNITY DETECTED"
+    ],
+    "choices": [
+      { "id": "ESCAPE", "prompt": "[🔧] PRY the vent panel", "requirements": null, "outcomes": ["CELL-02"] }
+    ],
+    "effects": {
+      "delta": {},
+      "set": { "is_caught": true },
+      "unlock_beats": [],
+      "grant_items": [],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "CELL-02",
+    "trigger": { "type": "manual", "target": "ESCAPE", "once": true },
+    "text": [
+      "> You vault the statue, sprint for the subway. Gunfire echoes.",
+      "> Miller: 'He's going dark! All units, CONTAIN!'",
+      "> Down the stairs. Into darkness. The hatch closes behind you.",
+      "> [🏃] STATUS: ON THE RUN",
+      "> [📍] LOCATION: UNDERGROUND",
+      "> [⛓️] AGENCY TRUST: 0 (BECAME HOSTILE)",
+      "> The mission has changed. You're no longer the hunter."
+    ],
+    "choices": null,
+    "effects": {
+      "delta": {},
+      "set": { "agency_trust": 0, "escaped_cell": true, "is_caught": true },
+      "unlock_beats": [],
+      "grant_items": [],
+      "teleport": "SUBWAY_STATION"
+    }
+  },
+
+  {
+    "id": "CODEC_HANDLER_INTRO",
+    "trigger": { "type": "manual", "target": "CODEC-141.3", "once": false },
+    "text": [
+      "> [📻] CODEC 141.3 — HANDLER",
+      "> 'Status, Agent? Chen's gone dark. Last ping: Hollow Creek.'",
+      "> 'Your mission is simple. Locate. Extract. Neutralize if compromised.'",
+      "> 'Don't ask questions about the client. Just get the asset.'",
+      "> [💬] END TRANSMISSION"
+    ],
+    "choices": null,
+    "effects": null
+  },
+
+  {
+    "id": "CODEC-142.7",
+    "trigger": { "type": "manual", "target": "CODEC-142.7", "once": true },
+    "text": [
+      "> [📻] CODEC 142.7 — UNKNOWN",
+      "> 'You should not be here, Agent.'",
+      "> Female voice. Russian accent.",
+      "> 'The Pinkertons have paid the Russians well to keep their secrets.'",
+      "> 'But I'm tired of cleaning up their mess. Listen carefully.'",
+      "> 'The pandas are not animals. They never were.'",
+      "> The line goes dead.",
+      "> [📡] UNKNOWN FREQUENCY TRACKED: 142.7",
+      "> [🎯] UNLOCKED: RUSSIAN CONTACT (Yekaterina Volkova)"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "pinkerton_awareness": 25 },
+      "set": { "russian_contact_established": true },
+      "unlock_beats": ["DOCKS-03-CONFESSION"],
+      "grant_items": [],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "TAVERN-01",
+    "trigger": { "type": "location_enter", "target": "TAVERN", "once": true },
+    "text": [
+      "> The Rusty Anchor. Smell of stale beer.",
+      "> The bartender polishes glasses. Too attentive.",
+      "> You notice a coin on the bar. Private eye insignia.",
+      "> [🪙] PINKERTON COIN",
+      "> Someone's been here. Recently. Watching.",
+      "> A woman in the corner vanishes when you look."
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "pinkerton_awareness": 10 },
+      "set": {},
+      "unlock_beats": [],
+      "grant_items": ["ITM-008"],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "CHURCH-01",
+    "trigger": { "type": "location_enter", "target": "CHURCH", "once": true },
+    "text": [
+      "> St. Sebastian. Empty save for an old man at the altar.",
+      "> Father Mathias. Forty years here. He knows more than he says.",
+      "> 'You're looking for something, son. I can tell.'",
+      "> 'The asset?' you ask.",
+      "> He chuckles. 'I don't know your business. But I know Chen Wei-Lin.'",
+      "> 'He came here. Three days ago. Asked about the archive.'",
+      "> 'I told him the same I'll tell you: The door only opens from inside.'",
+      "> He gestures to the altar. 'Help me with the candles, and I might help.'"
+    ],
+    "choices": [
+      { "id": "A", "prompt": "[🕯] HELP with candles (gain ITM-006)", "requirements": null, "outcomes": ["CHURCH-01-HELP"] },
+      { "id": "B", "prompt": "[❓] PRESS for information", "requirements": null, "outcomes": ["CHURCH-01-PRESS"] },
+      { "id": "C", "prompt": "[🔍] INVESTIGATE altar (gain ITM-007)", "requirements": null, "outcomes": ["CHURCH-01-ALTAR"] }
+    ],
+    "effects": null
+  },
+
+  {
+    "id": "CHURCH-01-HELP",
+    "trigger": { "type": "manual", "target": "CHURCH-HELP", "once": true },
+    "text": [
+      "> You help the old man with the candles.",
+      "> His hands shake. 'Thank you, son.'",
+      "> He presses something into your palm. A key. Rusty.",
+      "> 'The archive... it's not what you expect.'",
+      "> He turns back to the altar. Silent.",
+      "> [🗝] RUSTY KEY acquired"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": {},
+      "set": {},
+      "unlock_beats": [],
+      "grant_items": ["ITM-006"],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "CHURCH-01-PRESS",
+    "trigger": { "type": "manual", "target": "CHURCH-PRESS", "once": true },
+    "text": [
+      "> 'Jesuits have been here since 1624,' he says quietly.",
+      "> 'Longer than America. Longer than this town.'",
+      "> 'We came to keep balance. Some truths are too dangerous.'",
+      "> He pauses. 'Chen Wei-Lin... his father understood that.'",
+      "> 'His father found things in the archive. Things that changed him.'",
+      "> 'Now the son seeks the same answers.'",
+      "> [📜] UNLOCKED: JESUIT PRESENCE 1624"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "kaniksu_knowledge": 20 },
+      "set": {},
+      "unlock_beats": [],
+      "grant_items": [],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "CHURCH-01-ALTAR",
+    "trigger": { "type": "manual", "target": "CHURCH-ALTAR", "once": true },
+    "text": [
+      "> You examine the altar closely.",
+      "> Behind the crucifix, a false panel.",
+      "> Inside: A book. Leather bound. Latin.",
+      "> [📖] JESUIT BIBLE acquired",
+      "> The pages speak of a protocol. 'Kaniksu.'",
+      "> 'The children of the Middle Kingdom shall be kept divided.'",
+      "> 'The panda gift shall ensure eternal instability.'"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "kaniksu_knowledge": 15 },
+      "set": { "panda_truth": true },
+      "unlock_beats": [],
+      "grant_items": ["ITM-007"],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "CHURCH-02-KANIKSU",
+    "trigger": { "type": "synergy_complete", "target": "SYN-N03", "once": true },
+    "text": [
+      "> The key turns. The lock clicks.",
+      "> Below, the air is cold. Dust motes dance in your flashlight beam.",
+      "> Shelves of documents. Centuries of paper.",
+      "> You find the ledger: 'KANIKSU PROTOCOL — CONFIDENTIAL'",
+      "> The entry date: March 17, 1624.",
+      "> 'The Society shall establish permanent presence in the New World.'",
+      "> 'The children of the Middle Kingdom shall be kept divided.'",
+      "> 'The panda gift shall ensure eternal instability.'",
+      "> Your hands shake. 1624. Four hundred years of manipulation.",
+      "> [📜] UNLOCKED: KANIKSU ORIGIN STORY",
+      "> [🐼] UNLOCKED: PANDA INTRODUCTION",
+      "> [⚠️] WARNING: You've read what you shouldn't. They're watching."
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "kaniksu_knowledge": 40 },
+      "set": {},
+      "unlock_beats": [],
+      "grant_items": [],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "BASEMENT-01-RING",
+    "trigger": { "type": "location_enter", "target": "CHURCH_BASEMENT", "once": true },
+    "text": [
+      "> Behind a false panel, a small box.",
+      "> Inside: A ring of iron. Simple. On the inside, an inscription.",
+      "> 'ADIUTORIUM NOSTRUM IN NOMINE DOMINI'",
+      "> 'Our help is in the name of the Lord.'",
+      "> The date carved beside it: 1415.",
+      "> This predates the church. The Jesuits. America.",
+      "> A note: 'For when the Signet returns. Together again.'",
+      "> The Signet. You saw it once in a history class. The Pinkerton family.",
+      "> [💍] JESUIT RING acquired",
+      "> [🏰] UNLOCKED: PINKERTON CONNECTION",
+      "> [🕰] UNLOCKED: 6000 YEAR CONFLICT"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "kaniksu_knowledge": 40 },
+      "set": {},
+      "unlock_beats": [],
+      "grant_items": ["ITM-029"],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "DOCKS-01-DOLL",
+    "trigger": { "type": "location_enter", "target": "DOCKS", "once": true },
+    "text": [
+      "> The river reflects nothing. Empty boats.",
+      "> A shadow moves. A woman steps into the light.",
+      "> Russian. Military bearing. She holds a Matryoshka doll.",
+      "> 'You're looking for Chen.' Not a question.",
+      "> She hands you the doll. 'Open it.'",
+      "> Inside: A note. 'Friend of friend. 142.7.'",
+      "> [🎎] RUSSIAN MATRYOSHKA acquired",
+      "> She vanishes into the dark."
+    ],
+    "choices": null,
+    "effects": {
+      "delta": {},
+      "set": { "russian_contact_established": true },
+      "unlock_beats": ["DOCKS-02-VODKA"],
+      "grant_items": ["ITM-009"],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "DOCKS-03-CONFESSION",
+    "trigger": { "type": "synergy_complete", "target": "SYN-N05", "once": true },
+    "text": [
+      "> [📻] CODEC 142.7 — YEKATERINA VOLKOVA",
+      "> 'The Russians are helping the Chinese to maintain regional instability.'",
+      "> 'We get access. They get protection. Everyone wins.'",
+      "> 'But the Pinkertons... they own this region. They own this story.'",
+      "> 'The pandas are the key. They've always been the key.'",
+      "> 'Find the shrine in the caves. Chen's father left something there.'",
+      "> 'The truth about what pandas really are.'",
+      "> [🎯] UNLOCKED: SHRINE LOCATION",
+      "> [📜] UNLOCKED: PANDA TRUTH LEAD"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "kaniksu_knowledge": 25 },
+      "set": {},
+      "unlock_beats": [],
+      "grant_items": [],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "INDUSTRY-01",
+    "trigger": { "type": "location_enter", "target": "INDUSTRIAL_ZONE", "once": true },
+    "text": [
+      "> The shipyard pretends to be abandoned. Rusting hulls. Dead cranes.",
+      "> But the security cameras are new. The guard patrol is too professional.",
+      "> Under tarp 7, you see it: the silhouette of an Ohio-class submarine.",
+      "> Testing site. They said it was decommissioned.",
+      "> [🏭] NORTH: Maintenance Building (Loot: ITM-015)",
+      "> [🔧] SOUTH: Submarine Hatch (Requires ITM-013)",
+      "> [💀] EAST: Scrapped Vessel (Cover, ambush)",
+      "> [📋] WEST: Administration Office (ITM-020, ITM-024)",
+      "> [🧪] DOWN: Research Wing (Requires SYN-N06)"
+    ],
+    "choices": null,
+    "effects": null
+  },
+
+  {
+    "id": "CLINIC-02-DISGUISE",
+    "trigger": { "type": "synergy_complete", "target": "SYN-N06", "once": true },
+    "text": [
+      "> You pull on the lab coat. Fits perfectly. The badge says 'Dr. Hoffman.'",
+      "> A photo ID would raise questions. But the guard just nods.",
+      "> 'Morning, Doc. Tough night in the lab?'",
+      "> 'The pandas are restless,' you reply.",
+      "> His face pales. 'God. Yeah. I'll... I'll let you through.'",
+      "> You walk past. Panda lab? What happens here?",
+      "> Inside: The submarine hatch. Beyond that...",
+      "> [📍] UNLOCKED: SUBMARINE INTERIOR"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": {},
+      "set": {},
+      "unlock_beats": ["INDUSTRY-03"],
+      "grant_items": [],
+      "teleport": "SUBMARINE_RESEARCH"
+    }
+  },
+
+  {
+    "id": "OFFICE-01-LEDGER",
+    "trigger": { "type": "location_enter", "target": "OFFICE_BUILDING", "once": true },
+    "text": [
+      "> Old desks. Newer computers. Someone's been paying attention to the books.",
+      "> You find the ledger on a desk. Pinkerton letterhead.",
+      "> 'Payment to Asset CW-7: $50,000/month. Since 1987.'",
+      "> Recipient: Hollow Creek Research Facility.",
+      "> This predates Chen's defection. By decades.",
+      "> [📋] PINKERTON LEDGER acquired",
+      "> The Pinkertons own Chen. Have for years."
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "pinkerton_awareness": 25, "kaniksu_knowledge": 15 },
+      "set": {},
+      "unlock_beats": [],
+      "grant_items": ["ITM-020"],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "POLICE-01-TAPE",
+    "trigger": { "type": "location_enter", "target": "OFFICE_BUILDING", "once": true },
+    "text": [
+      "> In the back room, a TV and VCR.",
+      "> Tape labeled 'INTERVIEW 7.' You press play.",
+      "> The room shows Chen Wei-Lin. He's alive.",
+      "> A man in a grey suit stands over him. You recognize the face.",
+      "> AUGUSTUS PINKERTON IV. Billionaire. Philanthropist.",
+      "> 'Mr. Chen, you have family in San Francisco. A daughter. Seven years.'",
+      "> Chen's face twists with pain.",
+      "> 'She's safe as long as you cooperate. The panda research continues.'",
+      "> The tape ends.",
+      "> [📼] SECURITY TAPE acquired"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "pinkerton_awareness": 20, "chen_trust": -10 },
+      "set": {},
+      "unlock_beats": ["OFFICE-02-TRACKING"],
+      "grant_items": ["ITM-024"],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "LAB-01-CONTAINER",
+    "trigger": { "type": "location_enter", "target": "MEDICAL_LAB", "once": true },
+    "text": [
+      "> The lab gleams. Too clean. Too new.",
+      "> On the tables: Containers. Glass. Filled with something red.",
+      "> You look closer.",
+      "> Organs. Human organs. But wrong. Wrong in ways you can't name.",
+      "> The tags: 'Panda Subject 7 — Liver. Recipient: PINKERTON IV.'",
+      "> 'Recipient.' Not transplant. Transfer.",
+      "> They're using the pandas as... incubators?",
+      "> A screen flickers on. 'SUBJECT 47: NEURAL CLUSTER. STATUS: MATURE.'",
+      "> Below: 'For Mr. Pinkerton's 89th birthday. Gift from the Society.'",
+      "> [🧊] ORGAN CONTAINER acquired"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "pinkerton_awareness": 15 },
+      "set": { "chimera_awareness": true },
+      "unlock_beats": ["LAB-02-NOTES"],
+      "grant_items": ["ITM-025"],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "LAB-02-NOTES",
+    "trigger": { "type": "item_acquired", "target": "ITM-026", "once": true },
+    "text": [
+      "> Research notes cover every surface.",
+      "> 'Specimen logs. Donor codes.'",
+      "> 'Subject 47: Neural cluster, mature. Gift for Mr. Pinkerton's 89th birthday.'",
+      "> 'Panda Subject 7 — Liver extraction successful.'",
+      "> The header: 'Project Chimera — 1962.'",
+      "> Human stem cells. Opossum wombs.",
+      "> The pandas are not animals. They never were.",
+      "> [📓] RESEARCH NOTES acquired",
+      "> [🧬] UNLOCKED: CHIMERA CREATION TRUTH"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "kaniksu_knowledge": 30 },
+      "set": { "chimera_awareness": true },
+      "unlock_beats": ["LAB-03-REVELATION"],
+      "grant_items": ["ITM-026"],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "LAB-03-REVELATION",
+    "trigger": { "type": "synergy_complete", "target": "SYN-N09", "once": true },
+    "text": [
+      "> You combine the container and the notes.",
+      "> The picture becomes clear. Horrible.",
+      "> Pandas are human-opossum chimeras.",
+      "> Created in 1962. Funded by Pinkertons. Built by Jesuits.",
+      "> They grow human organs. For the ultra-wealthy.",
+      "> Living pandas are... livestock. Organ farms.",
+      "> And Chen Wei-Lin's father created them.",
+      "> [💀] UNLOCKED: ORGAN CONTAINER HORROR",
+      "> [🏰] UNLOCKED: PINKERTON IMMORTALITY"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "kaniksu_knowledge": 50 },
+      "set": { "chimera_awareness": true },
+      "unlock_beats": ["SHRINE-01"],
+      "grant_items": [],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "VENT-01",
+    "trigger": { "type": "location_enter", "target": "SECRET_VENT", "once": true },
+    "text": [
+      "> Behind the submarine base, hidden behind crystal formations.",
+      "> Sparkles grey and silver in the darkness. A vent. Human-sized.",
+      "> The crystals hum. Almost sing.",
+      "> This place is older than the base. Older than the church. Older than America.",
+      "> [✨] NORTH: War Room (Map fragments)",
+      "> [🧪] SOUTH: Medical Lab (Horror)",
+      "> [👻] EAST: Forgotten Shrine (Chen Sr.)",
+      "> [🚪] WEST: Final Seal (Requires ITM-027 + ITM-029)"
+    ],
+    "choices": null,
+    "effects": null
+  },
+
+  {
+    "id": "VENT-02-LETTER",
+    "trigger": { "type": "synergy_complete", "target": "SYN-N14", "once": true },
+    "text": [
+      "> You find it in the shrine. Chen Wei-Lin Sr.'s final letter.",
+      "> 'To whoever finds this: The pandas are not animals.'",
+      "> 'They are us. We made them in 1962. Human stem cells. Opossum wombs.'",
+      "> 'The Pinkertons funded it. The Jesuits built the labs.'",
+      "> 'China was never meant to have them. They were meant to need them. Forever.'",
+      "> 'My son will finish what I started.'",
+      "> [📜] UNLOCKED: CHEN SR.'S LETTER",
+      "> [👨‍👦] UNLOCKED: CHEN'S LEGACY",
+      "> [🎯] UNLOCKED: COMPLETE MOTIVE"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "kaniksu_knowledge": 100, "chen_trust": 30 },
+      "set": {},
+      "unlock_beats": ["FINAL-01"],
+      "grant_items": [],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "SHRINE-01",
+    "trigger": { "type": "location_enter", "target": "FORGOTTEN_SHRINE", "once": true },
+    "text": [
+      "> A shrine to the fallen. Names carved in stone.",
+      "> You recognize some. Jesuit priests. Chinese scholars.",
+      "> And one: 'CHEN WEI-LIN SR. 1947-1987. The Truth Was His Gift.'",
+      "> Chen's father. 1987. The year pandas were introduced.",
+      "> A photo beside the name: A man holding a baby panda.",
+      "> On the back: 'My son will finish what I started.'",
+      "> And a letter:",
+      "> 'To whoever finds this: The pandas are not animals...'"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "kaniksu_knowledge": 25, "chen_trust": 20 },
+      "set": {},
+      "unlock_beats": ["VENT-02-LETTER"],
+      "grant_items": [],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "FINAL-01",
+    "trigger": { "type": "synergy_complete", "target": "SYN-N11", "once": true },
+    "text": [
+      "> The door is massive. Steel and something else. Grey stone.",
+      "> Two locks. One requires a keycard (ITM-027). The other...",
+      "> A depression. Circular. Made for a ring.",
+      "> You hold the Jesuit Ring (ITM-029).",
+      "> A voice echoes. 'So. You found our history.'",
+      "> AUGUSTUS PINKERTON IV steps from the shadows.",
+      "> He looks 40. You know he's 89. The organs. The clones.",
+      "> 'The panda gift was perfect. Four hundred years of Chinese division.'",
+      "> 'Six thousand years of our war with them. And now you want to end it?'",
+      "> He laughs.",
+      "> 'You can't. The powder keg is too big. Reveal this truth, and trust collapses worldwide.'"
+    ],
+    "choices": [
+      { "id": "A", "prompt": "[⚔️] FIGHT — Final Boss Confrontation", "requirements": null, "outcomes": ["FINAL-BOSS-FIGHT"] },
+      { "id": "B", "prompt": "[💬] NEGOTIATE — Ask about Chen's location", "requirements": null, "outcomes": ["FINAL-NEGOTIATE"] },
+      { "id": "C", "prompt": "[🔓] USE RING — Press ring into depression", "requirements": null, "outcomes": ["FINAL-RING-USE"] }
+    ],
+    "effects": null
+  },
+
+  {
+    "id": "FINAL-BOSS-FIGHT",
+    "trigger": { "type": "manual", "target": "FINAL-FIGHT", "once": true },
+    "text": [
+      "> Pinkerton snaps his fingers. Automated turrets descend from ceiling.",
+      "> 'You have spirit, Agent. But this facility was designed for...'",
+      "> You fire first.",
+      "> [⚔️] FINAL BOSS: AUGUSTUS PINKERTON IV",
+      "> HP: ??? / Phases: 3",
+      "> ABILITIES: Organ Regeneration, Summon Elite Guards, Environmental Trap",
+      "> Weakness: Jesuit Ring (ITM-029)"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": {},
+      "set": {},
+      "unlock_beats": ["FINAL-02"],
+      "grant_items": [],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "FINAL-RING-USE",
+    "trigger": { "type": "manual", "target": "FINAL-RING", "once": true },
+    "text": [
+      "> You press the Jesuit Ring into the depression.",
+      "> The door shudders. Opens.",
+      "> Pinkerton's face goes pale. 'Impossible. The Society swore...'",
+      "> 'The Society lies.' A voice from within. Father Mathias.",
+      "> He steps forward. Removes his collar. Beneath: Pinkerton insignia.",
+      "> 'Double agent, Mr. Pinkerton. For four hundred years.'",
+      "> 'The Jesuits never worked for you. They work for the Truth.'",
+      "> [🔓] DOORS OPEN: FULL ACCESS",
+      "> [👤] UNLOCKED: MATHIAS'S TRUE ALLEGIANCE",
+      "> [📜] UNLOCKED: KANIKSU TRUE PURPOSE"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "kaniksu_knowledge": 100 },
+      "set": { "mathias_true_allegiance_known": true },
+      "unlock_beats": ["PANDA-01", "FINAL-02"],
+      "grant_items": [],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "PANDA-01",
+    "trigger": { "type": "location_enter", "target": "PANDA_CHAMBER", "once": true },
+    "text": [
+      "> A vast chamber carved into grey stone.",
+      "> Bioluminescent algae cast everything in sickly green light.",
+      "> And there are pandas. Dozens. In glass enclosures.",
+      "> They look at you with eyes that are too intelligent. Too human.",
+      "> One approaches the glass. It presses its palm against it.",
+      "> You swear it whispers: 'Help us.'",
+      "> In the center: Chen Wei-lin. Strapped to a medical chair.",
+      "> Tubes connect his arm to a panda's arm. Their blood mixing.",
+      "> CHEN WEI-LIN — STATUS: SEDITATED BUT CONSCIOUS",
+      "> [👤] CHEN WEI-LIN AVAILABLE FOR DIALOGUE"
+    ],
+    "choices": [
+      { "id": "A", "prompt": "[💬] 'Wei-Lin. I'm here to extract you.'", "requirements": null, "outcomes": ["PANDA-02-A"] },
+      { "id": "B", "prompt": "[📖] 'I know about your father. About the pandas.'", "requirements": null, "outcomes": ["PANDA-02-B"] },
+      { "id": "C", "prompt": "[🔓] CUT his restraints immediately", "requirements": null, "outcomes": ["PANDA-02-C"] }
+    ],
+    "effects": null
+  },
+
+  {
+    "id": "PANDA-02-A",
+    "trigger": { "type": "manual", "target": "PANDA-DIALOGUE-A", "once": true },
+    "text": [
+      "> 'Extract?' Chen laughs. Broken. 'There's nothing to extract.'",
+      "> 'I'm not the asset. I never was. I'm the fail-safe.'",
+      "> 'If I leave, the truth dies with me. That's the deal my father made.'",
+      "> 'You want to save me? Then stay. Learn. Understand.'",
+      "> 'When you know what I know, you can decide what to do.'"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "chen_trust": 10 },
+      "set": {},
+      "unlock_beats": ["PANDA-02-COMPLETE"],
+      "grant_items": [],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "PANDA-02-B",
+    "trigger": { "type": "manual", "target": "PANDA-DIALOGUE-B", "once": true },
+    "text": [
+      "> Chen's eyes focus. 'You know?'",
+      "> 'My father created them. In 1962. I was ten.'",
+      "> 'Human embryos. Opossum wombs. They were supposed to save lives.'",
+      "> 'But the Pinkertons... they saw something else. Currency. Immortality.'",
+      "> 'When China discovered the truth, my father was blamed. We had to run.'",
+      "> 'I've spent thirty years running. I'm tired.'"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "chen_trust": 25, "kaniksu_knowledge": 10 },
+      "set": {},
+      "unlock_beats": ["PANDA-02-COMPLETE"],
+      "grant_items": [],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "PANDA-02-C",
+    "trigger": { "type": "manual", "target": "PANDA-DIALOGUE-C", "once": true },
+    "text": [
+      "> You cut his restraints. He rubs his wrists.",
+      "> He looks at the panda beside him. Tubes connecting them.",
+      "> 'Do you know what they are?' he asks quietly.",
+      "> You nod.",
+      "> 'My father made them. The Pinkertons made him make them.'",
+      "> 'For six thousand years, they've been fighting. And we've been the battlefield.'",
+      "> 'You found the ring? The shrine?'",
+      "> 'Then you know it's time to decide.'"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "chen_trust": 35 },
+      "set": {},
+      "unlock_beats": ["PANDA-02-COMPLETE"],
+      "grant_items": [],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "PANDA-02-COMPLETE",
+    "trigger": { "type": "dialogue_complete", "target": "PANDA-02", "once": true },
+    "text": [
+      "> Chen sits up. The panda beside him whines.",
+      "> 'I was supposed to extract information. The Pinkertons, the Jesuits...'",
+      "> 'The Jesuits are protecting this. Not for power. For balance.'",
+      "> Chen shakes his head. 'There's no balance. There's only the truth.'",
+      "> He grabs your arm. 'You found the shrine. My father's letter.'",
+      "> 'He wrote that if the truth ever came out... it would end everything.'",
+      "> 'Trust in governments. In corporations. In history itself.'",
+      "> 'The Pinkertons know this. That's why they hoard it.'",
+      "> 'But the Jesuits... they're waiting for someone worthy. Someone who would use it to heal, not to hurt.'",
+      "> He looks at you.",
+      "> 'Are you worthy, Agent?'"
+    ],
+    "choices": [
+      { "id": "A", "prompt": "[🙋] 'I'm just trying to do my job.'", "requirements": null, "outcomes": ["PANDA-TRUST-LOW"] },
+      { "id": "B", "prompt": "[📢] 'I want to expose all of it.'", "requirements": null, "outcomes": ["PANDA-TRUST-HIGH"] },
+      { "id": "C", "prompt": "[🤔] 'I want to understand first.'", "requirements": null, "outcomes": ["PANDA-TRUST-FULL"] },
+      { "id": "D", "prompt": "[🏃] 'I want to get us out of here.'", "requirements": null, "outcomes": ["PANDA-TRUST-EXTRACT"] }
+    ],
+    "effects": {
+      "delta": {},
+      "set": { "chen_dialogue_complete": true },
+      "unlock_beats": [],
+      "grant_items": [],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "PANDA-TRUST-LOW",
+    "trigger": { "type": "manual", "target": "PANDA-RESPONSE-JOB", "once": true },
+    "text": [
+      "> Chen nods slowly. 'Fair. Not everyone is ready for the truth.'",
+      "> 'But you found it anyway. That counts for something.'",
+      "> 'Go. Get us out. We can talk about what comes next later.'"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "chen_trust": 5 },
+      "set": {},
+      "unlock_beats": ["FINAL-02"],
+      "grant_items": [],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "PANDA-TRUST-HIGH",
+    "trigger": { "type": "manual", "target": "PANDA-RESPONSE-EXPOSE", "once": true },
+    "text": [
+      "> Chen's eyes widen. 'You... you mean it?'",
+      "> 'My father spent his life protecting this secret. And you want to burn it all?'",
+      "> He laughs. A real laugh. 'Maybe that's exactly what we need.'",
+      "> 'When this is over... we do it together. Tell the world everything.'"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "chen_trust": 35 },
+      "set": {},
+      "unlock_beats": ["FINAL-02"],
+      "grant_items": [],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "PANDA-TRUST-FULL",
+    "trigger": { "type": "manual", "target": "PANDA-RESPONSE-UNDERSTAND", "once": true },
+    "text": [
+      "> Chen smiles. Tired, but real.",
+      "> 'That's what my father said. Before he understood what the truth was worth.'",
+      "> 'Study it. Learn it. And when you're ready... decide.'",
+      "> 'I'll be here. Someone has to watch over them.'"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "chen_trust": 50 },
+      "set": {},
+      "unlock_beats": ["FINAL-02"],
+      "grant_items": [],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "PANDA-TRUST-EXTRACT",
+    "trigger": { "type": "manual", "target": "PANDA-RESPONSE-EXTRACT", "once": true },
+    "text": [
+      "> Chen shakes his head. 'Escape isn't the mission anymore.'",
+      "> 'The truth is the mission. And it won't fit in any helicopter.'",
+      "> 'Stay. Fight. Choose. That's the only way out.'"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": { "chen_trust": 25 },
+      "set": {},
+      "unlock_beats": ["FINAL-02"],
+      "grant_items": [],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "FINAL-02",
+    "trigger": { "type": "location_enter", "target": "CONTROL_TOWER", "once": true },
+    "text": [
+      "> The control tower is collapsing. Pinkerton's forces are retreating.",
+      "> Mathias—Father Mathias—lies dying beside you.",
+      "> 'The ring... it chose you. The Jesuits have waited four hundred years.'",
+      "> He presses something into your hand. ITM-029. The Jesuit Ring.",
+      "> 'There is a choice to make. You know the truth now.'",
+      "> His eyes fade.",
+      "> Chen stands behind you. 'They're coming back. The Russians. The...'",
+      "> The satellite uplink blinks. Ready.",
+      "> [📡] FINAL CHOICE MENU ACTIVATED",
+      "> [📍] ALL STORY BRANCHES CONVERGED"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": {},
+      "set": {},
+      "unlock_beats": ["FINAL-CHOICE"],
+      "grant_items": ["ITM-028"],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "FINAL-CHOICE",
+    "trigger": { "type": "item_acquired", "target": "ITM-028", "once": true },
+    "text": [
+      "> The satellite uplink is active. Your finger hovers over the transmit button.",
+      "> Three choices. Three futures. Chen watches. Waiting.",
+      "> ════════════════════════════════════════════════════════════════════════",
+      "> OPTION 1: [📢] EXPOSE THE TRUTH",
+      "> REQUIREMENTS: kaniksu_knowledge = 100, chen_trust ≥ 70",
+      "> COST: Your identity, career, possibly your life",
+      "> ════════════════════════════════════════════════════════════════════════",
+      "> OPTION 2: [🛡] PRESERVE THE BALANCE",
+      "> REQUIREMENTS: kaniksu_knowledge = 100, chen_trust ≤ 50",
+      "> COST: The truth remains hidden, balance maintained",
+      "> ════════════════════════════════════════════════════════════════════════",
+      "> OPTION 3: [💀] DESTROY THE PINKERTONS",
+      "> REQUIREMENTS: pinkerton_awareness = 100, agency_trust = 0",
+      "> COST: Everything burns. Including you.",
+      "> ════════════════════════════════════════════════════════════════════════",
+      "> OPTION 4: [🔄] EXTRACT CHEN AND DISAPPEAR",
+      "> REQUIREMENTS: chen_trust = 100",
+      "> COST: Truth remains hidden, but you walk away together",
+      "> ════════════════════════════════════════════════════════════════════════"
+    ],
+    "choices": [
+      { "id": "A", "prompt": "[📢] EXPOSE THE TRUTH", "requirements": { "state_min": { "kaniksu_knowledge": 100, "chen_trust": 70 } }, "outcomes": ["ENDING-EXPOSE"] },
+      { "id": "B", "prompt": "[🛡] PRESERVE THE BALANCE", "requirements": { "state_min": { "kaniksu_knowledge": 100 }, "state_max": { "chen_trust": 50 } }, "outcomes": ["ENDING-BALANCE"] },
+      { "id": "C", "prompt": "[💀] DESTROY THE PINKERTONS", "requirements": { "state_min": { "pinkerton_awareness": 100 } }, "outcomes": ["ENDING-DESTROY"] },
+      { "id": "D", "prompt": "[🔄] EXTRACT CHEN AND DISAPPEAR", "requirements": { "state_min": { "chen_trust": 100 } }, "outcomes": ["ENDING-EXTRACT"] }
+    ],
+    "effects": null
+  },
+
+  {
+    "id": "ENDING-EXPOSE",
+    "trigger": { "type": "manual", "target": "ENDING-EXPOSE", "once": true },
+    "text": [
+      "> You key the broadcast.",
+      "> 'This is Agent [REDACTED]. I am transmitting from the Pinkerton facility at Hollow Creek, Idaho.'",
+      "> 'What I am about to share is the truth behind sixty years of geopolitical manipulation.'",
+      "> [FILE ATTACHED: Complete Kaniksu Protocol documentation]",
+      "> [FILE ATTACHED: Panda chimera research footage]",
+      "> [FILE ATTACHED: Financial records linking Pinkerton family to global instability events since 1962]",
+      "> 'The pandas are not animals. They are human-opossum chimeras. Created by Jesuits, funded by Pinkertons, used to manipulate China.'",
+      "> 'The Jesuits call themselves Kaniksu. They've been here for 400 years.'",
+      "> 'The Pinkertons are 6000 years old. In terms of organ cloning.'",
+      "> 'Every government that trusted them has been played.'",
+      "> 'This transmission is going everywhere. Enjoy the truth.'",
+      "> ───────────────────────────────────────────────────────────────────────",
+      "> MARKETS CRASH. GOVERNMENTS DENY. TRUTH SPREADS LIKE WILDFIRE.",
+      "> THE PINKERTON EMPIRE CRUMBLES PUBLICLY.",
+      "> YOU BECOME A GHOST. A LEGEND. THE ONE WHO ENDED THE SILENCE.",
+      "> Chen disappears. His family is safe. He leaves you a letter:",
+      "> 'Thank you for seeing my father as he was. A scientist. Not a monster.'",
+      "> ENDING TITLE: 'THE TRUTH AGENT'",
+      "> RATING: BITTERSWEET"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": {},
+      "set": { "final_choice_made": true, "final_choice_outcome": "expose_truth" },
+      "unlock_beats": [],
+      "grant_items": [],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "ENDING-BALANCE",
+    "trigger": { "type": "manual", "target": "ENDING-BALANCE", "once": true },
+    "text": [
+      "> You don't transmit. Instead, you use the satellite uplink to send encrypted coordinates to the Jesuit network.",
+      "> 'The Ring has chosen. The truth stays hidden. The balance remains.'",
+      "> You destroy the uplink. The documents. Everything.",
+      "> Chen stares at you. 'You're... keeping their secrets?'",
+      "> 'No.' You show him Father Mathias's final letter.",
+      "> 'I'm trusting someone else to decide when the truth is ready.'",
+      "> 'The Jesuits. The Kaniksu. They're not the villains. They're the guardians.'",
+      "> 'They've been guarding this for four hundred years.'",
+      "> 'Four hundred years without the truth destroying everything.'",
+      "> 'Maybe... maybe some truths need guardians.'",
+      "> ───────────────────────────────────────────────────────────────────────",
+      "> THE FACILITY IMPLODES. HIDDEN BENEATH THE RUBBLE.",
+      "> YOU WALK AWAY. THE PINKERTONS DON'T PURSUE—THEY'RE REGROUPING.",
+      "> CHEN JOINS YOU. NOT AS AN ASSET. AS A PARTNER.",
+      "> YOU BECOME AN UNOFFICIAL GUARDIAN. WATCHING. WAITING.",
+      "> SOMEWHERE, A JESUIT TAKES THE RING. THE WATCH CONTINUES.",
+      "> ENDING TITLE: 'THE GUARDIAN CHOICE'",
+      "> RATING: AMBIGUOUS"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": {},
+      "set": { "final_choice_made": true, "final_choice_outcome": "preserve_balance" },
+      "unlock_beats": [],
+      "grant_items": [],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "ENDING-DESTROY",
+    "trigger": { "type": "manual", "target": "ENDING-DESTROY", "once": true },
+    "text": [
+      "> You don't send data. You send coordinates. To everyone. Every news outlet. Every government.",
+      "> 'Pinkerton Facility. Hollow Creek. Idaho. Coordinates attached.'",
+      "> 'They have nuclear capability. They have organ cloning. They have been manipulating global politics for six thousand years.'",
+      "> 'They're not just criminals. They're an ancient empire.'",
+      "> 'And tonight, we end them.'",
+      "> You activate the self-destruct.",
+      "> Chen runs. You stay.",
+      "> 'I was supposed to extract you.' You smile.",
+      "> 'But extraction wasn't the mission, was it? It was truth.'",
+      "> The facility detonates.",
+      "> SOMEWHERE, A JESUIT RECORDS YOUR NAME.",
+      "> SOMEWHERE, THE WORLD LEARNS THE PINKERTONS ARE REAL.",
+      "> IN THE JESUITS' ARCHIVES, A NEW ENTRY: 'The Ring Bearer. Gone but never forgotten.'",
+      "> ENDING TITLE: 'THE SACRIFICE'",
+      "> RATING: TRAGIC HERO"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": {},
+      "set": { "final_choice_made": true, "final_choice_outcome": "destroy_pinkertons" },
+      "unlock_beats": [],
+      "grant_items": [],
+      "teleport": null
+    }
+  },
+
+  {
+    "id": "ENDING-EXTRACT",
+    "trigger": { "type": "manual", "target": "ENDING-EXTRACT", "once": true },
+    "text": [
+      "> No transmission. Just extraction.",
+      "> You signal the helicopter. ITM-028 blinking green.",
+      "> 'Chen. Let's go.'",
+      "> He doesn't ask questions. He just runs.",
+      "> The facility fades behind you. The secrets stay buried.",
+      "> Chen looks at you as the helicopter rises.",
+      "> 'What now?'",
+      "> You think. You didn't expect to survive.",
+      "> 'I don't know. But we're not doing this for the agency.'",
+      "> 'We're doing it for your father. For the pandas. For everyone who was used as a piece in someone else's game.'",
+      "> Chen nods.",
+      "> 'Then we find out the truth. Together. When we're ready.'",
+      "> ───────────────────────────────────────────────────────────────────────",
+      "> YOU VANISH. THE AGENCY THINKS YOU'RE DEAD.",
+      "> PINKERTONS CAN'T FIND YOU.",
+      "> CHEN'S FAMILY IS SAFE—SOMEWHERE NEW.",
+      "> YOU LIVE IN THE SHADOWS. LEARNING. WAITING.",
+      "> ONE DAY, YOU'LL BE READY. ONE DAY, YOU'LL FINISH WHAT YOU STARTED.",
+      "> BUT NOT TODAY.",
+      "> ENDING TITLE: 'THE NEW SHADOW'",
+      "> RATING: HOPEFUL"
+    ],
+    "choices": null,
+    "effects": {
+      "delta": {},
+      "set": { "final_choice_made": true, "final_choice_outcome": "extract_chen" },
+      "unlock_beats": [],
+      "grant_items": [],
+      "teleport": null
+    }
+  }
+]

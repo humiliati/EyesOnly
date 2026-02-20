@@ -1,0 +1,248 @@
+[
+  {
+    "id": "SYN-N01",
+    "items": ["ITM-001", "ITM-002"],
+    "result": "Verified Identity",
+    "requirements": {"state_min": {}, "state_max": {}, "location": null, "flags_required": [], "flags_forbidden": []},
+    "effects": {
+      "delta": {"agency_trust": 20},
+      "set": {},
+      "unlock_beats": [],
+      "unlock_locations": ["AGENCY_SAFEHOUSE"],
+      "grant_items": [],
+      "consume_items": false,
+      "message": "Your credentials check out. Agency trust increased."
+    },
+    "narrative_level": "surface"
+  },
+  {
+    "id": "SYN-N02",
+    "items": ["ITM-004", "ITM-017", "ITM-003"],
+    "result": "Evidence Analysis",
+    "requirements": {
+      "state_min": {},
+      "state_max": { "agency_trust": 10 },
+      "location": null,
+      "flags_required": [],
+      "flags_forbidden": ["agency_hostile"]
+    },
+    "effects": {
+      "delta": {"kaniksu_knowledge": 15, "pinkerton_awareness": 10, "agency_trust": -100},
+      "set": {"agency_hostile": true},
+      "unlock_beats": ["SQUARE-03-ESCAPE_SEQUENCE"],
+      "unlock_locations": [],
+      "grant_items": [],
+      "consume_items": false,
+      "message": "You analyze the wallet with the magnifying glass. Your codec crackles: 'Agent? What are you doing? That frequency...' The line goes dead. You feel the net tighten."
+    },
+    "narrative_level": "surface"
+  },
+  {
+    "id": "SYN-N03",
+    "items": ["ITM-006", "ITM-007"],
+    "result": "Archive Access",
+    "requirements": {"state_min": {}, "state_max": {}, "location": "CHURCH", "flags_required": [], "flags_forbidden": ["is_caught"]},
+    "effects": {
+      "delta": {"kaniksu_knowledge": 40},
+      "set": {},
+      "unlock_beats": ["CHURCH-02-KANIKSU"],
+      "unlock_locations": ["CHURCH_BASEMENT"],
+      "grant_items": [],
+      "consume_items": false,
+      "message": "The lock clicks. Below, the air is cold. Dust motes dance in your flashlight beam."
+    },
+    "narrative_level": "hidden"
+  },
+  {
+    "id": "SYN-N04",
+    "items": ["ITM-008", "ITM-020"],
+    "result": "Financial Tracking",
+    "requirements": {"state_min": {}, "state_max": {}, "location": null, "flags_required": [], "flags_forbidden": []},
+    "effects": {
+      "delta": {"pinkerton_awareness": 30},
+      "set": {},
+      "unlock_beats": ["OFFICE-02-TRACKING"],
+      "unlock_locations": [],
+      "grant_items": [],
+      "consume_items": false,
+      "message": "Payments to Chen's family since 1987. The Pinkertons own him."
+    },
+    "narrative_level": "hidden"
+  },
+  {
+    "id": "SYN-N05",
+    "items": ["ITM-009", "ITM-010"],
+    "result": "Russian Confession",
+    "requirements": {"state_min": {}, "state_max": {}, "location": "DOCKS", "flags_required": ["russian_contact_established"], "flags_forbidden": []},
+    "effects": {
+      "delta": {"pinkerton_awareness": 20, "kaniksu_knowledge": 15},
+      "set": {},
+      "unlock_beats": ["DOCKS-03-CONFESSION"],
+      "unlock_locations": [],
+      "grant_items": [],
+      "consume_items": false,
+      "message": "The Russians are helping the Chinese to keep the region unstable. Everyone profits but the truth."
+    },
+    "narrative_level": "hidden"
+  },
+  {
+    "id": "SYN-N06",
+    "items": ["ITM-012", "ITM-013"],
+    "result": "Perfect Disguise",
+    "requirements": {"state_min": {}, "state_max": {}, "location": null, "flags_required": [], "flags_forbidden": ["is_caught"]},
+    "effects": {
+      "delta": {},
+      "set": {},
+      "unlock_beats": ["CLINIC-02-DISGUISE"],
+      "unlock_locations": ["SUBMARINE_RESEARCH"],
+      "grant_items": [],
+      "consume_items": false,
+      "message": "You pull on the lab coat. Fits perfectly. The badge says 'Dr. Hoffman'."
+    },
+    "narrative_level": "hidden"
+  },
+  {
+    "id": "SYN-N07",
+    "items": ["ITM-014", "ITM-015"],
+    "result": "Secret Passage",
+    "requirements": {"state_min": {"kaniksu_knowledge": 40}, "state_max": {}, "location": "SUBMARINE_BASE", "flags_required": [], "flags_forbidden": []},
+    "effects": {
+      "delta": {"kaniksu_knowledge": 50},
+      "set": {},
+      "unlock_beats": ["BASE-02-PASSAGE"],
+      "unlock_locations": ["SECRET_VENT"],
+      "grant_items": ["ITM-016"],
+      "consume_items": false,
+      "message": "They built a nuclear facility to hide something else. Now you've found it."
+    },
+    "narrative_level": "forbidden"
+  },
+  {
+    "id": "SYN-N08",
+    "items": ["ITM-024", "ITM-020"],
+    "result": "Visual Proof",
+    "requirements": {"state_min": {}, "state_max": {}, "location": null, "flags_required": [], "flags_forbidden": []},
+    "effects": {
+      "delta": {"pinkerton_awareness": 20},
+      "set": {"panda_truth": true},
+      "unlock_beats": ["POLICE-02-EVIDENCE"],
+      "unlock_locations": [],
+      "grant_items": [],
+      "consume_items": false,
+      "message": "You watch Chen being threatened. Augustus Pinkerton IV. 'The panda research continues.'"
+    },
+    "narrative_level": "forbidden"
+  },
+  {
+    "id": "SYN-N09",
+    "items": ["ITM-025", "ITM-026"],
+    "result": "Forbidden Science",
+    "requirements": {"state_min": {}, "state_max": {}, "location": "MEDICAL_LAB", "flags_required": [], "flags_forbidden": []},
+    "effects": {
+      "delta": {"kaniksu_knowledge": 30},
+      "set": {"chimera_awareness": true},
+      "unlock_beats": ["LAB-03-REVELATION"],
+      "unlock_locations": [],
+      "grant_items": [],
+      "consume_items": false,
+      "message": "Human stem cells. Opossum wombs. The pandas are chimeras. Organ containers."
+    },
+    "narrative_level": "forbidden"
+  },
+  {
+    "id": "SYN-N10",
+    "items": ["ITM-018", "ITM-019"],
+    "result": "Historical Connection",
+    "requirements": {"state_min": {}, "state_max": {}, "location": null, "flags_required": [], "flags_forbidden": []},
+    "effects": {
+      "delta": {"kaniksu_knowledge": 20},
+      "set": {"panda_truth": true},
+      "unlock_beats": ["ANTIQUES-02-CONNECTION"],
+      "unlock_locations": [],
+      "grant_items": [],
+      "consume_items": false,
+      "message": "Pandas introduced in 1987. Same year Jesuits expanded the church. Not a coincidence."
+    },
+    "narrative_level": "forbidden"
+  },
+  {
+    "id": "SYN-N11",
+    "items": ["ITM-029", "ITM-030"],
+    "result": "Ancient Enemies",
+    "requirements": {"state_min": {"kaniksu_knowledge": 90}, "state_max": {}, "location": "FINAL_CHAMBER", "flags_required": [], "flags_forbidden": ["final_choice_made"]},
+    "effects": {
+      "delta": {"pinkerton_awareness": 100, "kaniksu_knowledge": 100},
+      "set": {},
+      "unlock_beats": ["FINAL-01-CONFRONTATION"],
+      "unlock_locations": [],
+      "grant_items": [],
+      "consume_items": false,
+      "message": "6000 years of conflict. The ring and the signet. Together at last."
+    },
+    "narrative_level": "final"
+  },
+  {
+    "id": "SYN-N12",
+    "items": ["ITM-011", "ITM-004"],
+    "result": "Child's Gift",
+    "requirements": {"state_min": {}, "state_max": {}, "location": null, "flags_required": [], "flags_forbidden": []},
+    "effects": {
+      "delta": {"chen_trust": 30},
+      "set": {},
+      "unlock_beats": ["TOY_STORE-INSIGHT"],
+      "unlock_locations": [],
+      "grant_items": [],
+      "consume_items": false,
+      "message": "Chen was looking for this plushie. For his daughter. That's why he went AWOL."
+    },
+    "narrative_level": "surface"
+  },
+  {
+    "id": "SYN-N13",
+    "items": ["ITM-022", "ITM-023"],
+    "result": "Personal Letters",
+    "requirements": {"state_min": {}, "state_max": {}, "location": "ART_GALLERY", "flags_required": [], "flags_forbidden": []},
+    "effects": {
+      "delta": {"chen_trust": 40, "kaniksu_knowledge": 15},
+      "set": {},
+      "unlock_beats": ["GALLERY-02-LETTERS"],
+      "unlock_locations": [],
+      "grant_items": [],
+      "consume_items": false,
+      "message": "Chen's family history. His father created the pandas. His life was built on a foundation of lies."
+    },
+    "narrative_level": "hidden"
+  },
+  {
+    "id": "SYN-N14",
+    "items": ["ITM-017", "ITM-018"],
+    "result": "Chen's Father's Letter",
+    "requirements": {"state_min": {"kaniksu_knowledge": 50}, "state_max": {}, "location": "SECRET_VENT", "flags_required": ["panda_truth"], "flags_forbidden": []},
+    "effects": {
+      "delta": {"kaniksu_knowledge": 100},
+      "set": {"panda_truth": true, "chimera_awareness": true},
+      "unlock_beats": ["VENT-02-LETTER"],
+      "unlock_locations": [],
+      "grant_items": [],
+      "consume_items": false,
+      "message": "The complete truth arrives in ink and timestamps. Your senses argue with it anyway."
+    },
+    "narrative_level": "forbidden"
+  },
+  {
+    "id": "SYN-N15",
+    "items": ["ITM-027", "ITM-003", "ITM-028"],
+    "result": "Endgame Protocol",
+    "requirements": {"state_min": {"kaniksu_knowledge": 100}, "state_max": {}, "location": "CONTROL_TOWER", "flags_required": [], "flags_forbidden": ["final_choice_made"]},
+    "effects": {
+      "delta": {},
+      "set": {"final_choice_made": true},
+      "unlock_beats": ["FINAL-CHOICE"],
+      "unlock_locations": [],
+      "grant_items": [],
+      "consume_items": false,
+      "message": "The uplink is active. Your finger hovers over the transmit button."
+    },
+    "narrative_level": "final"
+  }
+]

@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Location Database (ARG)",
+  "description": "All navigable locations with exits, discoverables, NPCs, and time variants",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "name", "description", "exits"],
+    "properties": {
+      "id": { "type": "string" },
+      "name": { "type": "string" },
+      "emoji": { "type": "string" },
+      "description": { "type": "string" },
+      "enemy_presence": { "type": "string", "enum": ["NONE", "LOW", "MEDIUM", "HIGH", "VERY_HIGH"] },
+      "discoverables": { "type": "array", "items": { "type": "string" } },
+      "npcs": { "type": "array", "items": { "type": "string" } },
+      "exits": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "required": ["target"],
+          "properties": {
+            "target": { "type": "string" },
+            "requirement": { "type": ["string", "null"] },
+            "locked_message": { "type": ["string", "null"] }
+          },
+          "additionalProperties": false
+        }
+      },
+      "time_restriction": {
+        "type": ["object", "null"],
+        "properties": {
+          "day_only": { "type": "boolean" },
+          "night_only": { "type": "boolean" },
+          "message": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "first_visit_beat": { "type": ["string", "null"] }
+    },
+    "additionalProperties": false
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "ITM-001+ITM-002": {
+    "name":"Verified Identity",
+    "result_emoji":"🕵️",
+    "effect":"Authority display. NPC intimidation lines unlock; some conflicts can be avoided.",
+    "deltas":{"agency_trust":20},
+    "unlock_beats":["SQUARE-01"],
+    "once":true
+  },
+  "ITM-004+ITM-017": {
+    "name":"Evidence Analysis",
+    "result_emoji":"🔍",
+    "effect":"Photo + receipt alignment. Reveals a second name in the wallet’s paper trail.",
+    "deltas":{"spy_trust":5,"pinkerton_awareness":5},
+    "unlock_beats":["SQUARE-INVEST-01"],
+    "once":true
+  },
+  "ITM-006+ITM-007": {
+    "name":"Archive Access",
+    "result_emoji":"🔓",
+    "effect":"Basement archive opens. Kaniksu references deepen. A ‘protocol’ title appears in margin notes.",
+    "deltas":{"kaniksu_knowledge":25},
+    "unlock_beats":["CHURCH-02"],
+    "once":true
+  },
+  "ITM-012+ITM-013": {
+    "name":"Perfect Disguise",
+    "result_emoji":"🎭",
+    "effect":"Research wing access lines unlock. Guards talk to you like you’re already late.",
+    "deltas":{"pinkerton_awareness":10},
+    "unlock_beats":["INDUSTRY-01"],
+    "once":true
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Synergy Combination Matrix (ARG)",
+  "description": "Item combinations that unlock story beats, change state, and advance narrative",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "items", "result", "requirements", "effects", "narrative_level"],
+    "properties": {
+      "id": { "type": "string", "pattern": "^SYN-N\\d{2}$" },
+      "items": {
+        "type": "array",
+        "minItems": 2,
+        "items": { "type": "string", "pattern": "^ITM-\\d{3}$" }
+      },
+      "result": { "type": "string" },
+      "requirements": {
+        "type": "object",
+        "properties": {
+          "state_min": { "type": "object", "additionalProperties": { "type": "integer" } },
+          "state_max": { "type": "object", "additionalProperties": { "type": "integer" } },
+          "location": { "type": ["string", "null"] },
+          "flags_required": { "type": "array", "items": { "type": "string" } },
+          "flags_forbidden": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": false
+      },
+      "effects": {
+        "type": "object",
+        "properties": {
+          "delta": { "type": "object", "additionalProperties": { "type": "integer" } },
+          "set": { "type": "object", "additionalProperties": { "type": ["boolean", "string", "number", "null"] } },
+          "unlock_beats": { "type": "array", "items": { "type": "string" } },
+          "unlock_locations": { "type": "array", "items": { "type": "string" } },
+          "grant_items": { "type": "array", "items": { "type": "string" } },
+          "consume_items": { "type": "boolean", "default": false },
+          "message": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "narrative_level": { "type": "string", "enum": ["surface", "hidden", "forbidden", "final"] }
+    },
+    "additionalProperties": false
+  }
+}
