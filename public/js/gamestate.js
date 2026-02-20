@@ -646,12 +646,93 @@ const GAMESTATE = (function () {
     // persistent cards
     if (!Array.isArray(_state.persistentCards)) _state.persistentCards = [];
 
+    // Legacy card arrays -> persistentCards
+    if (_state.cards && !Array.isArray(_state.cards)) {
+      // If someone stored a single card, wrap it
+      _state.cards = [_state.cards];
+    }
+
+    if (Array.isArray(_state.cards) && _state.cards.length && (!_state.persistentCards || _state.persistentCards.length === 0)) {
+      _state.persistentCards = _state.cards.map(_migrateLegacyCardEntry).filter(Boolean);
+      try { delete _state.cards; } catch (e) { _state.cards = null; }
+    }
+
+    // Normalize any existing persistentCards entries
+    if (Array.isArray(_state.persistentCards)) {
+      _state.persistentCards = _state.persistentCards.map(_migrateLegacyCardEntry).filter(Boolean);
+    }
+
     // active slot
     if (_state.activeItemSlot) {
       _state.activeItemSlot = _normalizeItemRef(_state.activeItemSlot);
     }
 
     _saveState();
+  }
+
+  function _migrateLegacyCardEntry(entry) {
+    if (!entry) return null;
+
+    // Already in CardRef format
+    if (entry.id && typeof entry.id === 'string' && entry.id.indexOf('ACT-') === 0) {
+      return {
+        id: entry.id,
+        qty: (typeof entry.qty === 'number' ? entry.qty : 1),
+        meta: entry.meta || null
+      };
+    }
+
+    // String format
+    if (typeof entry === 'string') {
+      return {
+        id: _inferCardIdFromName(entry) || 'ACT-000',
+        qty: 1,
+        meta: { legacyName: entry, source: 'string_array' }
+      };
+    }
+
+    // Object format with name/emoji/etc
+    if (entry && entry.name) {
+      return {
+        id: _inferCardIdFromName(entry.name) || 'ACT-000',
+        qty: (typeof entry.qty === 'number' ? entry.qty : 1),
+        meta: {
+          legacyName: entry.name,
+          emoji: entry.emoji || null,
+          type: entry.type || null,
+          description: entry.description || null,
+          source: 'object_array'
+        }
+      };
+    }
+
+    // Unknown
+    return {
+      id: 'ACT-000',
+      qty: 1,
+      meta: { rawEntry: entry, source: 'unknown_format' }
+    };
+  }
+
+  function _inferCardIdFromName(name) {
+    try {
+      if (!name) return null;
+      if (typeof GoneRogueDataRegistry === 'undefined' || !GoneRogueDataRegistry.listCards) return null;
+
+      var needle = String(name).toLowerCase().trim();
+      var all = GoneRogueDataRegistry.listCards() || [];
+      for (var i = 0; i < all.length; i++) {
+        var c = all[i];
+        if (!c || !c.name) continue;
+        if (String(c.name).toLowerCase().trim() === needle) {
+          return c.id;
+        }
+      }
+
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 
   /**
