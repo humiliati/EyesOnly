@@ -30,7 +30,10 @@
 ## Layout / Positioning
 
 ### Mobile portrait abbreviation
-When the combat UI is minimized/collapsed on **mobile portrait**, HandFan abbreviates card names more aggressively (max 4 chars) using `NameUtils.getDisplayName(..., {maxLength})`.
+Default is **unabbreviated** card names.
+
+When the combat UI is minimized/collapsed on **mobile portrait**, HandFan abbreviates card names aggressively (max 4 chars) using `NameUtils.getDisplayName(..., {maxLength})`.
+This auto-updates on orientation changes (window resize).
 
 ### Combat hand fan placement
 Hand fan supports three positions:

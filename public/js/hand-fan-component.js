@@ -34,9 +34,23 @@ const HandFanComponent = (function () {
   /**
    * Initialize the Hand Fan Component
    */
+  var _resizeDebounce = null;
+
   function init() {
     _createFanContainer();
     _attachEventListeners();
+
+    // Orientation/resize: re-render so abbreviation reacts to portrait/landscape flips.
+    window.addEventListener('resize', function() {
+      if (_resizeDebounce) clearTimeout(_resizeDebounce);
+      _resizeDebounce = setTimeout(function() {
+        _resizeDebounce = null;
+        // Only re-render when the fan is active/visible
+        if (_fanContainer && _fanContainer.style.display !== 'none') {
+          _renderCards();
+        }
+      }, 120);
+    });
   }
 
   /**
@@ -405,8 +419,9 @@ const HandFanComponent = (function () {
     // Card name (bottom) - abbreviated for compact display in combat
     var cardName = card.name || 'Unknown Card';
 
-    // When in mobile portrait + collapsed/minimized combat UI, abbreviate harder.
-    var maxLen = 6;
+    // Default: do NOT abbreviate unless we need to.
+    // Only abbreviate aggressively when mobile portrait + minimized/collapsed.
+    var maxLen = 0;
     try {
       var isPortrait = (window && window.innerHeight && window.innerWidth) ? (window.innerHeight > window.innerWidth) : false;
       var strMini = (typeof STRCombatWindow !== 'undefined' && STRCombatWindow.isMinimized && STRCombatWindow.isMinimized());
