@@ -1918,8 +1918,12 @@ const GoneRogue = (function () {
       });
     }
 
-    // Place enemies (floor 3)
-    floorData.enemies.forEach(function(enemy) {
+    // Place enemies (intended for floor 3)
+    // Enforce: no enemies on Cozy Forest tutorial floors until floor 3.
+    var tutorialEnemies = (Array.isArray(floorData.enemies) ? floorData.enemies : []);
+    if (_floor < 3) tutorialEnemies = [];
+
+    tutorialEnemies.forEach(function(enemy) {
       var enemyObj = {
         x: enemy.x,
         y: enemy.y,
@@ -1950,6 +1954,28 @@ const GoneRogue = (function () {
 
       _enemies.push(enemyObj);
     });
+
+    // Tutorial lighting: contrived floors return early from _generateFloor(),
+    // so we must generate lighting here.
+    if (typeof LightingSystem !== 'undefined') {
+      // Alternate day/night by floor number (simple variant)
+      var biomeName = (_floor % 2 === 1) ? 'COZY_FOREST_DAY' : 'COZY_FOREST_NIGHT';
+      LightingSystem.setBiome(biomeName);
+      LightingSystem.setDarknessMultiplier(1.0);
+
+      // Build wall cache from the current grid and generate a few environmental lights.
+      _rebuildWallCache();
+      var walls = _wallCache;
+
+      // Use a pseudo-room covering the interior so lights place even without procedural rooms.
+      var pseudoRooms = [{ x: 1, y: 1, width: GRID_WIDTH - 2, height: GRID_HEIGHT - 2 }];
+      LightingSystem.generateBiomeLights(GRID_WIDTH, GRID_HEIGHT, pseudoRooms, walls);
+
+      // Always include player/enemy lights
+      _updatePlayerLight();
+      LightingSystem.updateEnemyLights(_enemies);
+      LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, walls);
+    }
 
     // Place NPCs (floor 2)
     // TODO: Implement NPC system

@@ -368,7 +368,15 @@ const HandFanComponent = (function () {
    */
   function _attachCardHandlers(cardEl, card, index) {
     // Click to select/deselect (only if affordable)
-    cardEl.addEventListener('click', function() {
+    cardEl.addEventListener('click', function(e) {
+      // On touch devices, a touchend can be followed by a synthetic click.
+      // If we just handled a touch interaction, ignore this click to prevent rapid toggle ("shaking").
+      var lastTouch = Number(cardEl.dataset.lastTouchTs || 0);
+      if (lastTouch && Date.now() - lastTouch < 800) {
+        if (e && e.preventDefault) e.preventDefault();
+        return;
+      }
+
       // Check if card is unaffordable
       if (cardEl.dataset.unaffordable === 'true') {
         // Shake animation for visual feedback
@@ -391,6 +399,8 @@ const HandFanComponent = (function () {
     // Touch handlers
     cardEl.addEventListener('touchend', function(e) {
       e.preventDefault();
+      // Mark touch timestamp to suppress the follow-up synthetic click
+      cardEl.dataset.lastTouchTs = String(Date.now());
 
       // Check if card is unaffordable
       if (cardEl.dataset.unaffordable === 'true') {
