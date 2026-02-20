@@ -16,9 +16,14 @@ const DropZoneDetector = (function() {
       glowIntensity: 0.6,
       enabled: true,
       capacityCheck: function() {
+        // Use CardZoneManager if available, otherwise fallback to GAMESTATE
+        if (typeof CardZoneManager !== 'undefined' && CardZoneManager.getZoneLimits) {
+          var limits = CardZoneManager.getZoneLimits(CardZoneManager.ZONES.HAND);
+          return limits.current < limits.max;
+        }
         var state = GAMESTATE.getState();
         var hand = state.cardHand || [];
-        return hand.length < 5;
+        return hand.length < (state.looseSlots || 8);
       }
     },
     {
@@ -29,6 +34,11 @@ const DropZoneDetector = (function() {
       glowIntensity: 0.5,
       enabled: true,
       capacityCheck: function() {
+        // Use CardZoneManager if available for dynamic capacity
+        if (typeof CardZoneManager !== 'undefined' && CardZoneManager.getZoneLimits) {
+          var limits = CardZoneManager.getZoneLimits(CardZoneManager.ZONES.ACTION_BUTTONS);
+          return limits.current < limits.max;
+        }
         var state = GAMESTATE.getState();
         var actionBar = state.actionButtonCards || [];
         return actionBar.length < 4;

@@ -232,7 +232,6 @@ const CardZoneManager = (function () {
     try {
       // Action Buttons -> Hand
       if (from === 'ACTION_BUTTONS' && to === 'HAND') {
-        // Find card in action buttons
         var actionCards = GAMESTATE.getActionButtonCards();
         var cardIndex = actionCards.findIndex(function(c) {
           return c.id === card.id || c === card;
@@ -242,21 +241,17 @@ const CardZoneManager = (function () {
           return { success: false, message: 'Card not found in action buttons' };
         }
 
-        // Remove from action buttons
         var removeResult = GAMESTATE.removeFromActionButtons(cardIndex);
         if (!removeResult.success) {
           return { success: false, message: 'Failed to remove card from action buttons' };
         }
 
-        // Add to hand (loose inventory)
         var addResult = GAMESTATE.addToLoose(card);
         if (!addResult.success) {
-          // Rollback: add card back to action buttons
           GAMESTATE.addToActionButtons(card);
           return { success: false, message: addResult.message };
         }
 
-        // Increment turn counter
         _cardsMovedThisTurn++;
 
         return {
@@ -265,7 +260,199 @@ const CardZoneManager = (function () {
         };
       }
 
-      // Add more movement handlers as needed...
+      // Hand -> Action Buttons
+      if (from === 'HAND' && to === 'ACTION_BUTTONS') {
+        var looseInv = GAMESTATE.getLooseInventory();
+        var cardIndex = looseInv.findIndex(function(c) {
+          return c.id === card.id || c === card;
+        });
+
+        if (cardIndex === -1) {
+          return { success: false, message: 'Card not found in hand' };
+        }
+
+        var removeResult = GAMESTATE.removeFromLoose(cardIndex);
+        if (!removeResult.success) {
+          return { success: false, message: 'Failed to remove card from hand' };
+        }
+
+        var addResult = GAMESTATE.addToActionButtons(card);
+        if (!addResult.success) {
+          GAMESTATE.addToLoose(card);
+          return { success: false, message: addResult.message };
+        }
+
+        return {
+          success: true,
+          message: 'Card moved from hand to action buttons'
+        };
+      }
+
+      // Action Buttons -> Inventory
+      if (from === 'ACTION_BUTTONS' && to === 'INVENTORY') {
+        var actionCards = GAMESTATE.getActionButtonCards();
+        var cardIndex = actionCards.findIndex(function(c) {
+          return c.id === card.id || c === card;
+        });
+
+        if (cardIndex === -1) {
+          return { success: false, message: 'Card not found in action buttons' };
+        }
+
+        var removeResult = GAMESTATE.removeFromActionButtons(cardIndex);
+        if (!removeResult.success) {
+          return { success: false, message: 'Failed to remove card from action buttons' };
+        }
+
+        var addResult = GAMESTATE.addToPersistent(card);
+        if (!addResult.success) {
+          GAMESTATE.addToActionButtons(card);
+          return { success: false, message: addResult.message };
+        }
+
+        return {
+          success: true,
+          message: 'Card moved from action buttons to inventory'
+        };
+      }
+
+      // Inventory -> Action Buttons
+      if (from === 'INVENTORY' && to === 'ACTION_BUTTONS') {
+        var persistentInv = GAMESTATE.getPersistentInventory();
+        var cardIndex = persistentInv.findIndex(function(c) {
+          return c.id === card.id || c === card;
+        });
+
+        if (cardIndex === -1) {
+          return { success: false, message: 'Card not found in inventory' };
+        }
+
+        var removeResult = GAMESTATE.removeFromPersistent(cardIndex);
+        if (!removeResult.success) {
+          return { success: false, message: 'Failed to remove card from inventory' };
+        }
+
+        var addResult = GAMESTATE.addToActionButtons(card);
+        if (!addResult.success) {
+          GAMESTATE.addToPersistent(card);
+          return { success: false, message: addResult.message };
+        }
+
+        return {
+          success: true,
+          message: 'Card moved from inventory to action buttons'
+        };
+      }
+
+      // Hand -> Inventory
+      if (from === 'HAND' && to === 'INVENTORY') {
+        var looseInv = GAMESTATE.getLooseInventory();
+        var cardIndex = looseInv.findIndex(function(c) {
+          return c.id === card.id || c === card;
+        });
+
+        if (cardIndex === -1) {
+          return { success: false, message: 'Card not found in hand' };
+        }
+
+        var removeResult = GAMESTATE.removeFromLoose(cardIndex);
+        if (!removeResult.success) {
+          return { success: false, message: 'Failed to remove card from hand' };
+        }
+
+        var addResult = GAMESTATE.addToPersistent(card);
+        if (!addResult.success) {
+          GAMESTATE.addToLoose(card);
+          return { success: false, message: addResult.message };
+        }
+
+        return {
+          success: true,
+          message: 'Card moved from hand to inventory'
+        };
+      }
+
+      // Inventory -> Hand
+      if (from === 'INVENTORY' && to === 'HAND') {
+        var persistentInv = GAMESTATE.getPersistentInventory();
+        var cardIndex = persistentInv.findIndex(function(c) {
+          return c.id === card.id || c === card;
+        });
+
+        if (cardIndex === -1) {
+          return { success: false, message: 'Card not found in inventory' };
+        }
+
+        var removeResult = GAMESTATE.removeFromPersistent(cardIndex);
+        if (!removeResult.success) {
+          return { success: false, message: 'Failed to remove card from inventory' };
+        }
+
+        var addResult = GAMESTATE.addToLoose(card);
+        if (!addResult.success) {
+          GAMESTATE.addToPersistent(card);
+          return { success: false, message: addResult.message };
+        }
+
+        return {
+          success: true,
+          message: 'Card moved from inventory to hand'
+        };
+      }
+
+      // Inventory -> Active Item (equip)
+      if (from === 'INVENTORY' && to === 'ACTIVE_ITEM') {
+        var persistentInv = GAMESTATE.getPersistentInventory();
+        var cardIndex = persistentInv.findIndex(function(c) {
+          return c.id === card.id || c === card;
+        });
+
+        if (cardIndex === -1) {
+          return { success: false, message: 'Card not found in inventory' };
+        }
+
+        // Check if slot is occupied
+        var currentActiveItem = GAMESTATE.getActiveItem();
+        if (currentActiveItem) {
+          return { success: false, message: 'Active item slot is occupied. Unequip first.' };
+        }
+
+        var removeResult = GAMESTATE.removeFromPersistent(cardIndex);
+        if (!removeResult.success) {
+          return { success: false, message: 'Failed to remove card from inventory' };
+        }
+
+        GAMESTATE.setActiveItem(card);
+
+        return {
+          success: true,
+          message: 'Card equipped to active item slot'
+        };
+      }
+
+      // Active Item -> Inventory (unequip)
+      if (from === 'ACTIVE_ITEM' && to === 'INVENTORY') {
+        var activeItem = GAMESTATE.getActiveItem();
+        if (!activeItem) {
+          return { success: false, message: 'No item in active slot' };
+        }
+
+        if (activeItem.id !== card.id) {
+          return { success: false, message: 'Card does not match active item' };
+        }
+
+        var addResult = GAMESTATE.addToPersistent(card);
+        if (!addResult.success) {
+          return { success: false, message: addResult.message };
+        }
+
+        GAMESTATE.clearActiveItem();
+
+        return {
+          success: true,
+          message: 'Card unequipped from active item slot'
+        };
+      }
 
       return {
         success: false,
