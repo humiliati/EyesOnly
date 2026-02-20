@@ -6,6 +6,7 @@ This is a minimal external agent server that plugs into EyesOnly Gone Rogue via 
 Implements the required endpoints:
 - `GET /health`
 - `POST /next_action`
+- `POST /turn_envelope` (batch-aware Sundog envelope)
 
 Strategy is intentionally simple (exit > currency > north/east move > first action).
 

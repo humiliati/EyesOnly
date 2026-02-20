@@ -14,6 +14,11 @@ const AgentIntegration = (function() {
   var currentReport = null;
   var actionTimer = null;
   var isPaused = false;
+  var batchQueue = [];
+  var batchStopConditions = null;
+  var batchGuardState = null;
+  var batchActionsExecuted = 0;
+  var lastUtilityAlignment = null;
 
   // Agent configuration
   var CONFIG = {
@@ -79,6 +84,7 @@ const AgentIntegration = (function() {
     agentMode = mode;
     agentActive = true;
     isPaused = false;
+    clearBatch();
 
     // Initialize adapter with mode-specific config
     var config = CONFIG[mode];
@@ -163,6 +169,8 @@ const AgentIntegration = (function() {
       actionTimer = null;
     }
 
+    clearBatch();
+
     updateMOK('🛑 Agent control released', true);
 
     // Generate final report
@@ -182,6 +190,234 @@ const AgentIntegration = (function() {
 
     isPaused = !isPaused;
     updateMOK(isPaused ? '⏸️  Agent paused' : '▶️  Agent resumed');
+  }
+
+  function snapshotForStop(state) {
+    if (!state || !state.player) return null;
+    return {
+      hp: state.player.hp,
+      enemies: Array.isArray(state.enemies) ? state.enemies.length : 0,
+      items: (Array.isArray(state.items) ? state.items.length : 0) + (Array.isArray(state.currencies) ? state.currencies.length : 0),
+      floor: state.floor,
+      turn: state.turn
+    };
+  }
+
+  function normalizeStopConditions(stop, fallbackMax) {
+    stop = stop || {};
+    return {
+      onEnemy: stop.onEnemy !== undefined ? !!stop.onEnemy : true,
+      onDamage: stop.onDamage !== undefined ? !!stop.onDamage : true,
+      onNewItem: stop.onNewItem !== undefined ? !!stop.onNewItem : false,
+      onExit: stop.onExit !== undefined ? !!stop.onExit : false,
+      maxActions: typeof stop.maxActions === 'number' && stop.maxActions > 0 ? stop.maxActions : fallbackMax
+    };
+  }
+
+  function clearBatch() {
+    batchQueue = [];
+    batchStopConditions = null;
+    batchGuardState = null;
+    batchActionsExecuted = 0;
+  }
+
+  function shouldStopBatch(state, legalActions) {
+    if (!batchStopConditions || !batchGuardState || !state) return false;
+    var stop = batchStopConditions;
+    if (stop.onDamage && state.player && state.player.hp < batchGuardState.hp) return true;
+
+    var enemyCount = Array.isArray(state.enemies) ? state.enemies.length : 0;
+    if (stop.onEnemy && enemyCount > batchGuardState.enemies) return true;
+
+    var itemCount = (Array.isArray(state.items) ? state.items.length : 0) + (Array.isArray(state.currencies) ? state.currencies.length : 0);
+    if (stop.onNewItem && itemCount > batchGuardState.items) return true;
+
+    if (stop.onExit && Array.isArray(legalActions) && legalActions.some(function(a) { return a && a.type === 'exit'; })) {
+      return true;
+    }
+
+    if (stop.maxActions && batchActionsExecuted >= stop.maxActions) {
+      return true;
+    }
+
+    return false;
+  }
+
+  function deriveUtilityFrame(state) {
+    var hp = state && state.player ? state.player.hp : 0;
+    var maxHp = state && state.player ? (state.player.maxHp || 1) : 1;
+    var hpPct = maxHp ? hp / maxHp : 0;
+    var enemyCount = state && Array.isArray(state.enemies) ? state.enemies.length : 0;
+    var currency = state && state.player ? (state.player.credits || 0) : 0;
+    var alignment = 'progression';
+    var rationale = 'Default: moving toward exit';
+
+    if (hpPct < 0.4 || enemyCount > 0) {
+      alignment = 'survival';
+      rationale = 'Low HP or active threats';
+    } else if (currency < 10 && enemyCount === 0) {
+      alignment = 'resources';
+      rationale = 'Safe corridor, building economy';
+    }
+
+    return { axis: alignment, rationale: rationale };
+  }
+
+  function computeSpatialPerception(state) {
+    var width = state && state.gridWidth ? state.gridWidth : 0;
+    var height = state && state.gridHeight ? state.gridHeight : 0;
+    var walkable = 0;
+    var obstacles = Array.isArray(state.breakables) ? state.breakables.length : 0;
+    var enemies = Array.isArray(state.enemies) ? state.enemies.length : 0;
+    var items = (Array.isArray(state.items) ? state.items.length : 0) + (Array.isArray(state.currencies) ? state.currencies.length : 0);
+
+    if (state && Array.isArray(state.grid)) {
+      for (var y = 0; y < state.grid.length; y++) {
+        var row = state.grid[y] || [];
+        for (var x = 0; x < row.length; x++) {
+          if (row[x] !== null && row[x] !== undefined && row[x] !== 1 && row[x] !== 'WALL') {
+            walkable++;
+          }
+        }
+      }
+    } else if (width && height) {
+      walkable = width * height;
+    }
+
+    var density = (width && height) ? ((obstacles + enemies) / (width * height)) : 0;
+    var pathAssessment = 'clear';
+    if (enemies > 0) pathAssessment = 'contested';
+    else if (density > 0.12) pathAssessment = 'blocked';
+    else if (density > 0.05) pathAssessment = 'moderate';
+
+    var corridorComplexity = Math.max(0, Math.min(10, Math.round(density * 40)));
+
+    return {
+      visibleRadius: 5,
+      tileCounts: {
+        walkable: walkable,
+        obstacles: obstacles,
+        enemies: enemies,
+        items: items
+      },
+      pathAssessment: pathAssessment,
+      corridorComplexity: corridorComplexity
+    };
+  }
+
+  function computeThreatPerception(state) {
+    var enemies = Array.isArray(state && state.enemies) ? state.enemies : [];
+    var player = state && state.player ? state.player : { x: 0, y: 0 };
+    var nearest = null;
+
+    enemies.forEach(function(e) {
+      var dist = Math.abs((e.x || 0) - player.x) + Math.abs((e.y || 0) - player.y);
+      if (!nearest || dist < nearest.distance) {
+        nearest = { type: e.type, tier: e.tier, distance: dist, intent: e.awarenessState || 'unknown' };
+      }
+    });
+
+    return {
+      count: enemies.length,
+      nearest: nearest,
+      alertLevel: state && state.alertLevel !== undefined ? state.alertLevel : 'unknown'
+    };
+  }
+
+  function buildPerceptionSummary(state, legalActions) {
+    var spatial = computeSpatialPerception(state || {});
+    var utility = deriveUtilityFrame(state || {});
+    return {
+      spatial: spatial,
+      inventory: {
+        keys: state && state.player && typeof state.player.keys === 'number' ? state.player.keys : 0,
+        currency: state && state.player ? (state.player.credits || 0) : 0,
+        cardsInHand: state && state.player && Array.isArray(state.player.deck) ? state.player.deck.length : 0,
+        activeEffects: (state && state.statusEffects) || (state && state.player && state.player.statusEffects) || [],
+        equipmentState: state && state.player && state.player.activeItem ? { activeItem: state.player.activeItem } : {}
+      },
+      threats: computeThreatPerception(state || {}),
+      temporal: {
+        floor: state && state.floor,
+        turn: state && state.turn,
+        bossFloor: !!(state && state.bossFloorActive),
+        strCombat: !!(state && state.strCombatActive)
+      },
+      legalActions: (legalActions || []).map(function (a) {
+        var out = { type: a.type };
+        if (a.direction) out.direction = a.direction;
+        if (typeof a.dx === 'number') out.dx = a.dx;
+        if (typeof a.dy === 'number') out.dy = a.dy;
+        if (typeof a.cardIndex === 'number') out.cardIndex = a.cardIndex;
+        if (typeof a.itemId !== 'undefined') out.itemId = a.itemId;
+        if (typeof a.targetX === 'number' && typeof a.targetY === 'number') {
+          out.targetX = a.targetX;
+          out.targetY = a.targetY;
+        }
+        return out;
+      }),
+      utilityFrame: utility
+    };
+  }
+
+  function suggestBatchSize(state, legalActions) {
+    var enemies = Array.isArray(state && state.enemies) ? state.enemies.length : 0;
+    var exitAvailable = Array.isArray(legalActions) && legalActions.some(function (a) { return a.type === 'exit'; });
+    if (enemies > 0) return 2;
+    if (exitAvailable) return 3;
+    return 4;
+  }
+
+  function buildTurnEnvelope(state, legalActions) {
+    return {
+      envelopeId: 'env-' + Date.now() + '-' + Math.floor(Math.random() * 100000),
+      turnNumber: state && typeof state.turn === 'number' ? state.turn : 0,
+      timestamp: Date.now(),
+      perception: buildPerceptionSummary(state || {}, legalActions || []),
+      utilityFrame: deriveUtilityFrame(state || {}),
+      execution: {
+        legalActions: (legalActions || []).map(function (a) {
+          var out = { type: a.type };
+          if (a.direction) out.direction = a.direction;
+          if (typeof a.dx === 'number') out.dx = a.dx;
+          if (typeof a.dy === 'number') out.dy = a.dy;
+          if (typeof a.cardIndex === 'number') out.cardIndex = a.cardIndex;
+          if (typeof a.itemId !== 'undefined') out.itemId = a.itemId;
+          if (typeof a.targetX === 'number' && typeof a.targetY === 'number') {
+            out.targetX = a.targetX;
+            out.targetY = a.targetY;
+          }
+          return out;
+        }),
+        suggestedBatchSize: suggestBatchSize(state, legalActions)
+      }
+    };
+  }
+
+  function matchAgentAction(agentAction, legalActions) {
+    if (!agentAction || !Array.isArray(legalActions)) return null;
+    for (var i = 0; i < legalActions.length; i++) {
+      var a = legalActions[i];
+      if (!a || a.type !== agentAction.type) continue;
+      if (agentAction.direction && a.direction !== agentAction.direction) continue;
+      if (typeof agentAction.dx === 'number' && a.dx !== agentAction.dx) continue;
+      if (typeof agentAction.dy === 'number' && a.dy !== agentAction.dy) continue;
+      if (typeof agentAction.cardIndex === 'number' && a.cardIndex !== agentAction.cardIndex) continue;
+      if (typeof agentAction.targetX === 'number' && a.targetX !== agentAction.targetX) continue;
+      if (typeof agentAction.targetY === 'number' && a.targetY !== agentAction.targetY) continue;
+      return a;
+    }
+    return null;
+  }
+
+  function normalizeBatchActions(agentActions, legalActions) {
+    var batch = [];
+    if (!Array.isArray(agentActions)) return batch;
+    agentActions.forEach(function (act) {
+      var matched = matchAgentAction(act, legalActions);
+      if (matched) batch.push(matched);
+    });
+    return batch;
   }
 
   /**
@@ -227,18 +463,51 @@ const AgentIntegration = (function() {
         return;
       }
 
-      // Choose action based on mode
+      var decision = null;
       var action = null;
-      if (agentMode === 'kernel') {
-        action = await chooseKernelActionAsync(actions, state);
-      } else {
-        action = chooseAction(actions, state);
+      var fromBatch = false;
+      var decisionCommentary = null;
+
+      if (agentMode === 'kernel' && batchQueue.length > 0) {
+        if (shouldStopBatch(state, actions)) {
+          clearBatch();
+        } else {
+          action = batchQueue.shift();
+          fromBatch = true;
+        }
+      }
+
+      if (!action) {
+        decision = agentMode === 'kernel'
+          ? await chooseKernelActionAsync(actions, state)
+          : { action: chooseAction(actions, state) };
+
+        if (decision && decision.batch && decision.batch.length) {
+          batchQueue = decision.batch.slice();
+          batchStopConditions = normalizeStopConditions(decision.stopConditions || {}, decision.batch.length);
+          batchGuardState = snapshotForStop(state);
+          batchActionsExecuted = 0;
+          if (decision.alignment) {
+            lastUtilityAlignment = decision.alignment;
+            if (!decisionCommentary) decisionCommentary = 'Alignment: ' + decision.alignment;
+          }
+          if (decision.commentary) decisionCommentary = decision.commentary;
+          action = batchQueue.shift();
+          fromBatch = true;
+        } else {
+          decisionCommentary = decision ? decision.commentary : null;
+          action = decision ? decision.action : null;
+        }
       }
 
       if (!action) {
         log('No valid action chosen, stopping');
         stopAgentTakeover();
         return;
+      }
+
+      if (agentMode === 'kernel' && decisionCommentary) {
+        updateMOK('[KERNEL]: ' + decisionCommentary);
       }
 
       // Show action via MOK interjection (natural/kernel mode only)
@@ -256,6 +525,18 @@ const AgentIntegration = (function() {
         // Track action in report
         currentReport.actionsExecuted++;
         trackActionMetrics(action, state, result);
+      }
+
+      if (fromBatch) {
+        batchActionsExecuted++;
+        var postState = (result && result.state) ? result.state : adapter.getState();
+        if (batchQueue.length === 0 || shouldStopBatch(postState || state, adapter.getLegalActions())) {
+          clearBatch();
+        } else {
+          batchGuardState = snapshotForStop(postState || state);
+        }
+      } else {
+        clearBatch();
       }
 
       // Check if reached exit
@@ -290,21 +571,58 @@ const AgentIntegration = (function() {
     }
   }
 
-  /**
-   * Kernel mode: external decision API chooses from legal actions.
-   */
-  async function chooseKernelActionAsync(actions, state) {
-    if (!kernelAgentUrl) {
-      return actions.find(a => a.type === 'wait') || actions[0];
-    }
+  async function requestTurnEnvelope(actions, state) {
+    var payload = {
+      protocol_version: 'kernel-turn-envelope-v1',
+      session: {
+        username: (typeof UserAccount !== 'undefined' && UserAccount.getCurrentUser) ? (UserAccount.getCurrentUser() || {}).username : null,
+        callsign: (typeof UserAccount !== 'undefined' && UserAccount.getCurrentUser) ? (UserAccount.getCurrentUser() || {}).callsign : null,
+        agent_name: kernelAgentName || 'KernelAgent',
+        run_id: currentReport ? (currentReport.runId || null) : null,
+        tick: currentReport ? (currentReport.actionsExecuted || 0) : 0
+      },
+      envelope: buildTurnEnvelope(state, actions)
+    };
 
-    // Build minimal observation payload (do not leak more than needed)
+    var controller = new AbortController();
+    var t = setTimeout(function () { controller.abort(); }, 5000);
+
+    try {
+      var res = await fetch(kernelAgentUrl.replace(/\/$/, '') + '/turn_envelope', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+      clearTimeout(t);
+
+      if (!res.ok) return null;
+
+      var data = await res.json().catch(function () { return null; });
+      if (!data) return null;
+
+      var rawActions = (data.execution && data.execution.actions) || data.actions;
+      var batch = normalizeBatchActions(rawActions, actions);
+      if (!batch.length) return null;
+
+      return {
+        batch: batch,
+        stopConditions: normalizeStopConditions((data.execution && data.execution.stop) || data.stop || {}, (data.execution && data.execution.maxActions) || batch.length),
+        alignment: (data.utility && data.utility.axis) || data.alignment || null,
+        commentary: data.commentary || (data.utility && data.utility.rationale) || null
+      };
+    } catch (e) {
+      clearTimeout(t);
+      return null;
+    }
+  }
+
+  async function requestLegacyKernelAction(actions, state) {
     var obs = {
       floor: state.floor,
       hp: state.player ? state.player.hp : null,
       position: state.player ? { x: state.player.x, y: state.player.y } : null,
       legal_actions: actions.map(function (a) {
-        // Keep action objects small and serializable
         var out = { type: a.type };
         if (a.direction) out.direction = a.direction;
         if (typeof a.dx === 'number') out.dx = a.dx;
@@ -331,9 +649,10 @@ const AgentIntegration = (function() {
       observation: obs
     };
 
+    var controller = new AbortController();
+    var t = setTimeout(function () { controller.abort(); }, 5000);
+
     try {
-      var controller = new AbortController();
-      var t = setTimeout(function () { controller.abort(); }, 5000);
       var res = await fetch(kernelAgentUrl.replace(/\/$/, '') + '/next_action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -347,37 +666,35 @@ const AgentIntegration = (function() {
       }
 
       var data = await res.json().catch(function () { return null; });
-      if (!data || !data.action) {
-        return actions.find(a => a.type === 'wait') || actions[0];
-      }
+      var chosen = data && data.action ? matchAgentAction(data.action, actions) : null;
 
-      // Find a matching legal action
-      var chosen = null;
-      for (var i = 0; i < actions.length; i++) {
-        var a = actions[i];
-        if (a.type !== data.action.type) continue;
-        if (data.action.direction && a.direction !== data.action.direction) continue;
-        if (typeof data.action.dx === 'number' && a.dx !== data.action.dx) continue;
-        if (typeof data.action.dy === 'number' && a.dy !== data.action.dy) continue;
-        if (typeof data.action.cardIndex === 'number' && a.cardIndex !== data.action.cardIndex) continue;
-        chosen = a;
-        break;
-      }
-
-      if (!chosen) {
-        return actions.find(a => a.type === 'wait') || actions[0];
-      }
-
-      if (data.commentary && typeof data.commentary === 'string') {
-        updateMOK('[KERNEL]: ' + data.commentary);
-      }
-
-      return chosen;
-
+      return {
+        action: chosen || actions.find(function (a) { return a.type === 'wait'; }) || actions[0],
+        commentary: data && typeof data.commentary === 'string' ? data.commentary : null
+      };
     } catch (e) {
-      updateMOK('⚠️ Kernel agent error: ' + (e && e.message ? e.message : 'unknown'));
-      return actions.find(a => a.type === 'wait') || actions[0];
+      clearTimeout(t);
+      return {
+        action: actions.find(function (a) { return a.type === 'wait'; }) || actions[0],
+        commentary: null
+      };
     }
+  }
+
+  /**
+   * Kernel mode: external decision API chooses from legal actions.
+   */
+  async function chooseKernelActionAsync(actions, state) {
+    if (!kernelAgentUrl) {
+      return { action: actions.find(a => a.type === 'wait') || actions[0] };
+    }
+
+    var envelopeDecision = await requestTurnEnvelope(actions, state);
+    if (envelopeDecision) {
+      return envelopeDecision;
+    }
+
+    return requestLegacyKernelAction(actions, state);
   }
 
   /**

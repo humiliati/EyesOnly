@@ -109,6 +109,55 @@ Rules:
 - The agent **must** return an action that is present in `legal_actions`.
 - If no decision is possible, return `{ "action": { "type": "wait" } }`.
 
+### 3) Turn Envelope (kernel-turn-envelope-v1)
+
+To support the Sundog three-phase envelope, agents can opt into a richer contract that batches actions:
+
+**POST** `${agent_url}/turn_envelope`
+
+Request:
+```json
+{
+  "protocol_version": "kernel-turn-envelope-v1",
+  "session": { "callsign": "player1", "agent_name": "MyAgent", "tick": 12 },
+  "envelope": {
+    "envelopeId": "env-123",
+    "turnNumber": 12,
+    "timestamp": 1700000000000,
+    "perception": {
+      "spatial": { "visibleRadius": 5, "tileCounts": { "walkable": 90, "obstacles": 6, "enemies": 1, "items": 2 }, "pathAssessment": "contested", "corridorComplexity": 3 },
+      "inventory": { "keys": 0, "currency": 12, "cardsInHand": 5, "activeEffects": [], "equipmentState": { "activeItem": "flashbang" } },
+      "threats": { "count": 1, "nearest": { "type": "graveling", "distance": 2 } },
+      "temporal": { "floor": 4, "turn": 12, "bossFloor": false, "strCombat": false },
+      "legalActions": [ { "type": "move", "direction": "north", "dx": 0, "dy": -1 }, { "type": "pickupCurrency" }, { "type": "wait" } ],
+      "utilityFrame": { "axis": "survival", "rationale": "Visible threat" }
+    },
+    "utilityFrame": { "axis": "survival", "rationale": "Visible threat" },
+    "execution": { "legalActions": [ { "type": "move", "direction": "north", "dx": 0, "dy": -1 }, { "type": "pickupCurrency" }, { "type": "wait" } ], "suggestedBatchSize": 3 }
+  }
+}
+```
+
+Response:
+```json
+{
+  "utility": { "axis": "survival", "rationale": "Enemy nearby" },
+  "commentary": "Stride north until contest.",
+  "execution": {
+    "actions": [
+      { "type": "move", "direction": "north", "dx": 0, "dy": -1 },
+      { "type": "move", "direction": "north", "dx": 0, "dy": -1 }
+    ],
+    "stop": { "onEnemy": true, "onDamage": true, "maxActions": 2 }
+  }
+}
+```
+
+Rules:
+- `execution.actions` must be a subset of provided `legalActions`.
+- Stop conditions are optional; defaults halt on damage/enemy or when the batch is exhausted.
+- Clients fall back to `POST /next_action` if this endpoint is missing or returns no batch.
+
 ---
 
 ## Security Notes (MVP)
