@@ -219,8 +219,21 @@
 
 /* Card selected state */
 .hand-card.hand-card-selected {
-  border-color: #ff9800 !important;
-  box-shadow: 0 0 20px rgba(255, 152, 0, 0.7) !important;
+  border-color: rgba(28, 255, 155, 0.75) !important;
+  box-shadow:
+    0 0 0 1px rgba(28, 255, 155, 0.25) inset,
+    0 0 18px rgba(28, 255, 155, 0.35) !important;
+  transform: translateY(-6px);
+}
+
+/* Soft "pulse" instead of violent shake for the currently-active/primary selection */
+.hand-card.hand-card-selected {
+  animation: card-selected-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes card-selected-pulse {
+  0%, 100% { transform: translateY(-6px) scale(1.00); }
+  50%      { transform: translateY(-6px) scale(1.02); }
 }
 
 /* Contextual mode selected state (persistent highlight) */
@@ -370,13 +383,14 @@
 /* Selection badge */
 .hand-card-selection-badge {
   position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 28px;
-  height: 28px;
-  background: #ff9800;
-  border: 2px solid #fff;
-  border-radius: 50%;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(28, 255, 155, 0.55);
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(28, 255, 155, 0.18);
   display: flex;
   align-items: center;
   justify-content: center;
