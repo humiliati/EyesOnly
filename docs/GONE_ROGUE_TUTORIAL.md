@@ -78,6 +78,20 @@ When you collide with an enemy, you enter **STR combat** - a tactical turn-based
 - 💥 **RESOLUTION** — damage/status math resolving
 - 🏁 **VICTORY** / ☠️ **DEFEAT** — encounter outcome (friendly gates may soft-reset)
 
+### NPC Gate Designers’ Notes (Tutorial Floors)
+
+Tutorial floors support NPCs with optional **gate projection**. When `npc.gate` is present, the NPC projects two zones forward:
+- **Warning zone** (outer): walkable. NPC flashes `!` overhead.
+- **Trigger zone** (inner): blocks movement. NPC flashes `?` overhead and starts STR combat.
+
+NPC gate config shape (in `public/js/tutorial-floors.js`):
+- `gate.type: 'friendly' | 'defeatable'`
+  - `friendly`: on victory, wall releases but NPC remains
+  - `defeatable`: on victory, NPC despawns and its occupied tile clears
+- `warningDistance`, `triggerDistance`, `width`
+
+Tip: keep `triggerDistance` small (2–3) so passing nearby doesn’t feel like accidental combat.
+
 **Advantage States:**
 - **Ambush**: You surprised the enemy (unaware state) → +20% hit, +30% damage
 - **Neutral**: Both combatants are ready → Standard combat

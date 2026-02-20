@@ -258,7 +258,7 @@ var TutorialFloors = (function() {
       { x: 32, y: 6, emoji: '🪑', name: 'Bench' }
     ],
 
-    // NPCs with directional indicators
+    // NPCs with directional indicators (and a defeatable gate example)
     npcs: [
       {
         x: 8, y: 5,
@@ -280,6 +280,26 @@ var TutorialFloors = (function() {
           'The gate ahead is locked.',
           'Maybe try looking around for a key?'
         ]
+      },
+      {
+        // Defeatable NPC gate: despawns on victory (demonstrates the variant)
+        id: 'TUTORIAL-DEFEATABLE-GATE-01',
+        x: 20,
+        y: 15,
+        emoji: '🧑‍✈️',
+        name: 'Checkpoint Guard',
+        direction: 'south',
+        gate: {
+          type: 'defeatable',
+          warningDistance: 4,
+          triggerDistance: 2,
+          width: 1
+        },
+        dialogues: [
+          '🧑‍✈️ Not until you prove it. This checkpoint is live.',
+          '🧑‍✈️ Win, and I’m gone. Lose, and you’re reset.'
+        ],
+        reward: { currency: 20 }
       }
     ],
 

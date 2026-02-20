@@ -20,6 +20,7 @@ const STRCombatWindow = (function () {
   var _windowContainer = null;
   var _minimizedIndicator = null;
   var _bounceTimeout = null;
+  var _bounceInterval = null;
 
   // Timer durations by enemy type (in milliseconds)
   var TIMER_DURATIONS = {
@@ -196,10 +197,14 @@ const STRCombatWindow = (function () {
     // Remove background tint
     document.body.classList.remove('str-combat-minimized-state');
 
-    // Clear bounce timeout
+    // Clear bounce timeout/interval
     if (_bounceTimeout) {
       clearTimeout(_bounceTimeout);
       _bounceTimeout = null;
+    }
+    if (_bounceInterval) {
+      clearInterval(_bounceInterval);
+      _bounceInterval = null;
     }
   }
 
@@ -496,7 +501,8 @@ const STRCombatWindow = (function () {
           _minimizedIndicator.classList.add('bounce-attention');
 
           // Repeat bounce every 3-4 seconds
-          setInterval(function() {
+          if (_bounceInterval) clearInterval(_bounceInterval);
+          _bounceInterval = setInterval(function() {
             if (_isMinimized) {
               _minimizedIndicator.classList.remove('bounce-attention');
               setTimeout(function() {
