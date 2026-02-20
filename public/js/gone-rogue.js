@@ -112,6 +112,11 @@ const GoneRogue = (function () {
   var _forestBuildings = []; // Village buildings {x, y, emoji} for visual overlay
   var _biomeVisualGrid = null; // Pre-computed visual substitution grid (wall/floor chars)
 
+  // Seed-based generation for reproducible runs
+  var _currentSeed = null;         // Current run seed (for deterministic generation)
+  var _currentSeedPhrase = null;   // Human-readable seed phrase
+  var _seedRNG = null;             // Seeded RNG instance
+
   // Highscore tracking variables
   var _runStartTime = null;        // Run start timestamp
   var _runSeed = null;             // Seeded RNG seed for reproducible runs
@@ -1150,11 +1155,34 @@ const GoneRogue = (function () {
     // Disable scanlines for performance during gameplay
     document.body.classList.add('gone-rogue-active');
 
-    // Initialize seeded RNG for reproducible runs
-    if (typeof SeededRNG !== 'undefined') {
-      var seed = SeededRNG.init();
-      console.log('[GoneRogue] Run seed:', seed);
-      _runSeed = seed; // Store for save/load and display
+// Initialize seeded generation for reproducible runs
+(function initRunSeed() {
+  // Prefer SeededRandom (supports seed phrase + RNG instance + UI)
+  if (typeof SeededRandom !== 'undefined') {
+    _currentSeed = SeededRandom.generateRandomSeed();
+    _currentSeedPhrase = SeededRandom.generateSeedPhrase(_currentSeed);
+    _seedRNG = new SeededRandom.SeededRNG(_currentSeed);
+
+    // Back-compat / single canonical “seed id”
+    _runSeed = _currentSeed;
+
+    console.log('[GoneRogue] Run seed:', _currentSeed, '(' + _currentSeedPhrase + ')');
+    if (typeof _updateSeedDisplay === 'function') _updateSeedDisplay();
+    return;
+  }
+
+  // Fallback legacy seed helper
+  if (typeof SeededRNG !== 'undefined' && typeof SeededRNG.init === 'function') {
+    var seed = SeededRNG.init();
+
+    _runSeed = seed;
+    _currentSeed = seed;
+    _currentSeedPhrase = null;
+    _seedRNG = null;
+
+    console.log('[GoneRogue] Run seed:', seed);
+  }
+})();
     }
 
     // Initialize highscore tracking
@@ -1766,6 +1794,188 @@ const GoneRogue = (function () {
     }
   }
 
+  /**
+   * Generate contrived tutorial floor using hand-crafted layouts (floors 1-3)
+   * Uses TutorialFloors module for designer-friendly level definitions
+   */
+  function _generateContrivedTutorialFloor() {
+    if (typeof TutorialFloors === 'undefined') {
+      console.warn('[TutorialFloors] Module not loaded, falling back to procedural generation');
+      return;
+    }
+
+    var layout = TutorialFloors.getFloorLayout(_floor);
+    if (!layout) {
+      console.warn('[TutorialFloors] No layout found for floor ' + _floor);
+      return;
+    }
+
+    console.log('[TutorialFloors] Generating contrived floor ' + _floor + ': ' + layout.name);
+
+    // Generate floor data from layout
+    var floorData = TutorialFloors.generateContrivedFloor(layout);
+
+    // Apply grid
+    _grid = floorData.grid;
+
+    // Place player
+    _player.x = floorData.player.x;
+    _player.y = floorData.player.y;
+
+    // Place exit
+    var exitX = floorData.exit.x;
+    var exitY = floorData.exit.y;
+    _grid[exitY][exitX] = TILES.EXIT;
+
+    // Place buildings (visual overlay)
+    _forestBuildings = [];
+    floorData.buildings.forEach(function(building) {
+      _grid[building.y][building.x] = TILES.WALL; // Impassable
+      _forestBuildings.push({ x: building.x, y: building.y, emoji: building.emoji });
+    });
+
+    // Place decorations (visual overlay, walkable)
+    floorData.decorations.forEach(function(deco) {
+      _forestBuildings.push({ x: deco.x, y: deco.y, emoji: deco.emoji });
+    });
+
+    // Place breakables
+    floorData.breakables.forEach(function(breakable) {
+      _breakables.push({
+        x: breakable.x,
+        y: breakable.y,
+        hp: breakable.hp,
+        maxHp: breakable.hp,
+        glyph: TILES.BREAKABLE,
+        destroyedGlyph: TILES.DEBRIS,
+        emoji: breakable.emoji,
+        name: breakable.name,
+        tag: 'tutorial_breakable_' + _breakables.length,
+        drops: breakable.drops
+      });
+    });
+
+    // Place tutorial gate (floor 1)
+    if (floorData.tutorialGate) {
+      floorData.tutorialGate.positions.forEach(function(pos) {
+        _breakables.push({
+          x: pos.x,
+          y: pos.y,
+          hp: floorData.tutorialGate.hp,
+          maxHp: floorData.tutorialGate.hp,
+          glyph: TILES.BREAKABLE,
+          destroyedGlyph: TILES.DEBRIS,
+          emoji: floorData.tutorialGate.emoji,
+          name: floorData.tutorialGate.name,
+          tag: 'tutorial_gate_' + pos.x + '_' + pos.y
+        });
+      });
+
+      // Place tutorial pickups behind gate
+      if (floorData.tutorialPickups) {
+        floorData.tutorialPickups.forEach(function(pickup) {
+          if (pickup.type === 'currency') {
+            _currencies.push({
+              x: pickup.x,
+              y: pickup.y,
+              amount: pickup.amount,
+              collected: false
+            });
+          } else if (pickup.type === 'card' && pickup.guaranteed) {
+            // Place guaranteed card pickup
+            _items.push({
+              x: pickup.x,
+              y: pickup.y,
+              type: 'card',
+              card: 'strike', // Default tutorial card
+              collected: false
+            });
+          }
+        });
+      }
+    }
+
+    // Place locked gate and key (floor 2)
+    if (floorData.lockedGate) {
+      floorData.lockedGate.positions.forEach(function(pos) {
+        _grid[pos.y][pos.x] = TILES.WALL; // Initially blocked
+        // TODO: Implement proper locked gate system
+      });
+    }
+
+    if (floorData.keyBreakable) {
+      var keyObj = floorData.keyBreakable;
+      _breakables.push({
+        x: keyObj.x,
+        y: keyObj.y,
+        hp: keyObj.hp,
+        maxHp: keyObj.hp,
+        glyph: TILES.BREAKABLE,
+        destroyedGlyph: TILES.DEBRIS,
+        emoji: keyObj.emoji,
+        name: keyObj.name,
+        tag: 'key_breakable',
+        drops: keyObj.drops
+      });
+    }
+
+    // Place enemies (floor 3)
+    floorData.enemies.forEach(function(enemy) {
+      var enemyObj = {
+        x: enemy.x,
+        y: enemy.y,
+        hp: enemy.hp,
+        maxHp: enemy.maxHp,
+        str: enemy.attack,
+        dex: enemy.defense,
+        awareness: 0,
+        orientation: enemy.orientation || 'south',
+        sightRange: enemy.sightRange || 3,
+        emoji: enemy.emoji,
+        name: enemy.name,
+        dropTable: enemy.dropTable,
+        dead: false,
+        isTreasureGoblin: false
+      };
+
+      // Setup patrol path
+      if (enemy.patrolType === 'stationary') {
+        enemyObj.path = { type: PATH_TYPES.STATIONARY };
+      } else if (enemy.patrolType === 'circular' && enemy.patrolPath) {
+        enemyObj.path = {
+          type: PATH_TYPES.CIRCULAR,
+          points: enemy.patrolPath,
+          currentIndex: 0
+        };
+      }
+
+      _enemies.push(enemyObj);
+    });
+
+    // Place NPCs (floor 2)
+    // TODO: Implement NPC system
+    if (floorData.npcs && floorData.npcs.length > 0) {
+      console.log('[TutorialFloors] NPCs defined but NPC system not yet implemented');
+    }
+
+    // Build biome visual grid for forest biome
+    var forestBiome = BIOMES.FOREST;
+    _buildBiomeVisualGrid(forestBiome);
+
+    // Cache walls for lighting system
+    _cachedWalls = [];
+    for (var cy = 0; cy < GRID_HEIGHT; cy++) {
+      for (var cx = 0; cx < GRID_WIDTH; cx++) {
+        if (_grid[cy][cx] === TILES.WALL) {
+          _cachedWalls.push({ x: cx, y: cy });
+        }
+      }
+    }
+
+    console.log('[TutorialFloors] Floor generated successfully');
+    console.log('[TutorialFloors] Buildings: ' + _forestBuildings.length + ', Breakables: ' + _breakables.length + ', Enemies: ' + _enemies.length);
+  }
+
   function _generateFloor(secretFloorData) {
     // Initialize generation state
     _projectiles = [];
@@ -1789,8 +1999,30 @@ const GoneRogue = (function () {
     _stealthBonusCache = null;
     _activeSecretFloor = null;
 
-    // Increment pity timers for card drop tracking
-    _incrementPityTimers();
+// Invalidate per-floor caches
+_stealthBonusCache = null;
+_activeSecretFloor = null;
+
+// Clear environmental synergy state (must happen even on early-return floors)
+if (typeof EnvironmentalSynergy !== 'undefined') {
+  EnvironmentalSynergy.clearGates();
+}
+
+// Determine if secret floor
+var isSecretFloor = !!secretFloorData;
+
+// Check for contrived tutorial floors (floors 1-3)
+if (
+  !isSecretFloor &&
+  typeof TutorialFloors !== 'undefined' &&
+  TutorialFloors.isContrivedFloor(_floor)
+) {
+  _generateContrivedTutorialFloor();
+  return;
+}
+
+// Increment pity timers for card drop tracking (skip contrived tutorial floors)
+_incrementPityTimers();
 
     // Clear environmental synergy state
     if (typeof EnvironmentalSynergy !== 'undefined') {
@@ -1799,7 +2031,6 @@ const GoneRogue = (function () {
 
     // Determine floor type
     var floorType;
-    var isSecretFloor = !!secretFloorData;
 
     if (isSecretFloor) {
       // Set active secret floor
@@ -3700,6 +3931,19 @@ const GoneRogue = (function () {
     });
 
     ReserveSlots.setReserveCards(cards);
+  }
+
+  /**
+   * Update seed display in AWOL button tooltip
+   */
+  function _updateSeedDisplay() {
+    var awolButton = document.getElementById('awol-button');
+    if (!awolButton) return;
+
+    if (_currentSeedPhrase) {
+      var difficulty = ['STANDARD', 'ADVANCED', 'EXTREME'][_difficultyTier - 1];
+      awolButton.setAttribute('title', 'AWOL status — Click to configure difficulty\nSeed: ' + _currentSeedPhrase);
+    }
   }
 
   function _movePlayer(dx, dy, runMode) {
@@ -9391,6 +9635,39 @@ const GoneRogue = (function () {
   // END HEADLESS MODE API
   // ============================================================
 
+  /**
+   * Get current run seed
+   */
+  function getSeed() {
+    return _currentSeed;
+  }
+
+  /**
+   * Get current seed phrase
+   */
+  function getSeedPhrase() {
+    return _currentSeedPhrase;
+  }
+
+  /**
+   * Set seed for next run (must be called before start())
+   */
+  function setSeed(seed) {
+    if (typeof SeededRandom !== 'undefined') {
+      _currentSeed = seed;
+      _currentSeedPhrase = SeededRandom.generateSeedPhrase(seed);
+      _seedRNG = new SeededRandom.SeededRNG(seed);
+      console.log('[GoneRogue] Seed set to:', _currentSeed, '(' + _currentSeedPhrase + ')');
+    }
+  }
+
+  /**
+   * Get seeded RNG instance (for procedural generation)
+   */
+  function getSeededRNG() {
+    return _seedRNG;
+  }
+
   return {
     init: init,
     start: start,
@@ -9426,6 +9703,12 @@ const GoneRogue = (function () {
     setDifficulty: setDifficulty,
     getDifficulty: getDifficulty,
     onStateChange: onStateChange,
+
+    // Seed-based generation system
+    getSeed: getSeed,
+    getSeedPhrase: getSeedPhrase,
+    setSeed: setSeed,
+    getSeededRNG: getSeededRNG,
 
     // Forest biome generation API (per spec)
     createBordersForest: createBordersForest,
