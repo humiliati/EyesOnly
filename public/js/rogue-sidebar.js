@@ -198,13 +198,20 @@ var RogueSidebar = (function() {
             var cardId = (cards[Number(e.currentTarget.dataset.index)] || {}).id;
             if (!cardId) return;
 
-            // Move 1 from stash -> NCH hand
-            if (typeof GAMESTATE !== 'undefined' && GAMESTATE.removePersistentCard) {
-              var okRemove = GAMESTATE.removePersistentCard(cardId, 1).success;
-              if (!okRemove) return;
+            // Move 1 from stash -> canonical hand (mirrors NCH + CH)
+            var okAdd = false;
+            if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addCardToHand === 'function') {
+              okAdd = !!GAMESTATE.addCardToHand(cardId, 1).success;
             }
-            if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.addCardToHand) {
-              NonCombatStateStore.addCardToHand(cardId, 1, 'sidebar:move_card');
+            if (!okAdd) {
+              if (typeof TooltipSystem !== 'undefined') {
+                TooltipSystem.showPersistent('❌ Cannot add card to hand', 900);
+              }
+              return;
+            }
+
+            if (typeof TooltipSystem !== 'undefined') {
+              TooltipSystem.showPersistent('🃏 Added to hand', 650);
             }
 
             _lastSignature = null;
