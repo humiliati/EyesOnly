@@ -112,6 +112,18 @@ const GAMESTATE = (function () {
       _state._starterCardsSeeded = true;
       _saveState();
     }
+
+    // Migration grant: ensure ACT-002 exists for older saves (once)
+    if (!_state._grantAct002Done) {
+      if (!Array.isArray(_state.persistentCards)) _state.persistentCards = [];
+      var has002 = _state.persistentCards.some(function(r) { return r && r.id === 'ACT-002' && (r.qty || 0) > 0; });
+      if (!has002) {
+        _state.persistentCards.push({ id: 'ACT-002', qty: 5, meta: null });
+        _saveState();
+      }
+      _state._grantAct002Done = true;
+      _saveState();
+    }
   }
 
   function getMode() {
@@ -1072,6 +1084,7 @@ const GAMESTATE = (function () {
       persistentCards: [],
       _starterCardsSeeded: false,
       _starterBoxesSeeded: false,
+      _grantAct002Done: false,
       inventoryLoose: [],
       actionButtonCards: [],
       persistentSlots: 9,

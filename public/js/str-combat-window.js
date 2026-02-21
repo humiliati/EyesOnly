@@ -358,7 +358,7 @@ const STRCombatWindow = (function () {
     } catch (e2) {}
 
     var drawDisabled = (!canDraw) || (!hasBackup);
-    html += '<button class="str-backup-draw-btn" id="str-backup-draw-btn"' + (drawDisabled ? ' disabled' : '') + '>' + (drawDisabled ? 'DRAW' : 'DRAW 1') + '</button>';
+    html += '<button class="str-backup-draw-btn" id="str-backup-draw-btn" title="Draw 1 card from BACKUP into your HAND (once per combat)"' + (drawDisabled ? ' disabled' : '') + '>' + (drawDisabled ? 'DRAW (BACKUP)' : 'DRAW 1 (BACKUP)') + '</button>';
 
     html += '<div class="str-timer-display">';
     html += '<span class="str-timer-label">TIME:</span> ';
