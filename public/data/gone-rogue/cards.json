@@ -14,6 +14,22 @@
     "synergyTags": ["medical"]
   },
   {
+    "id": "ACT-002",
+    "name": "Basic Shot",
+    "emoji": "🔫",
+    "targetType": "enemy",
+    "cost": 0,
+    "costs": [
+      { "kind": "ammo", "amount": 1 }
+    ],
+    "rarity": "common",
+    "effects": [
+      { "type": "damage", "value": 2 }
+    ],
+    "preCombat": true,
+    "synergyTags": ["attack"]
+  },
+  {
     "id": "ACT-999",
     "name": "Cardboard Box",
     "emoji": "📦",

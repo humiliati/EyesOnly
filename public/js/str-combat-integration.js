@@ -134,10 +134,27 @@
   var _lastResolvingTurn = false;
 
   function _showHandFan(combatState) {
-    // Get cards from GAMESTATE
+    // Get canonical hand cards from GAMESTATE (mirrors NCH)
     var cards = [];
     if (typeof GAMESTATE !== 'undefined') {
-      cards = GAMESTATE.getLooseInventory() || [];
+      var refs = (typeof GAMESTATE.getCardsInHand === 'function') ? GAMESTATE.getCardsInHand() : [];
+      // Expand qty into individual UI card entries for now
+      for (var i = 0; i < refs.length; i++) {
+        var ref = refs[i];
+        if (!ref || !ref.id) continue;
+        var def = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) ? GoneRogueDataRegistry.getCard(ref.id) : null;
+        if (!def) def = { id: ref.id, name: ref.id, emoji: '🃏', effects: [] };
+        var qty = (typeof ref.qty === 'number' ? ref.qty : 1);
+        qty = Math.max(1, qty);
+        for (var q = 0; q < qty; q++) {
+          cards.push(Object.assign({}, def, { id: ref.id }));
+        }
+      }
+
+      // Fallback to legacy loose inventory if canonical hand empty
+      if (cards.length === 0 && typeof GAMESTATE.getLooseInventory === 'function') {
+        cards = GAMESTATE.getLooseInventory() || [];
+      }
     }
 
     if (cards.length === 0) {

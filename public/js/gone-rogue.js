@@ -7893,6 +7893,138 @@ _incrementPityTimers();
     return _isWalkable(x, y);
   }
 
+  function _canAffordCosts(costs) {
+    if (!costs || !costs.length) return { canAfford: true, missing: [] };
+    if (typeof GAMESTATE === 'undefined') return { canAfford: false, missing: costs.slice() };
+
+    var missing = [];
+    for (var i = 0; i < costs.length; i++) {
+      var c = costs[i];
+      if (!c || !c.kind) continue;
+      var need = Number(c.amount || 0);
+      if (!isFinite(need) || need <= 0) continue;
+
+      var have = 0;
+      if (c.kind === 'ammo' && typeof GAMESTATE.getAmmo === 'function') have = GAMESTATE.getAmmo();
+      else if (c.kind === 'battery' && typeof GAMESTATE.getBattery === 'function') have = GAMESTATE.getBattery();
+      else if (c.kind === 'energy' && typeof GAMESTATE.getEnergy === 'function') have = GAMESTATE.getEnergy();
+      else if (c.kind === 'focus' && typeof GAMESTATE.getFocus === 'function') have = GAMESTATE.getFocus();
+
+      if (have < need) missing.push({ kind: c.kind, amount: need, have: have });
+    }
+
+    return { canAfford: missing.length === 0, missing: missing };
+  }
+
+  function _consumeCosts(costs) {
+    if (!costs || !costs.length) return { success: true };
+    if (typeof GAMESTATE === 'undefined') return { success: false };
+
+    // Spend each resource; if any fails, stop (best effort)
+    for (var i = 0; i < costs.length; i++) {
+      var c = costs[i];
+      if (!c || !c.kind) continue;
+      var amt = Number(c.amount || 0);
+      if (!isFinite(amt) || amt <= 0) continue;
+
+      var ok = true;
+      if (c.kind === 'ammo' && typeof GAMESTATE.useAmmo === 'function') ok = GAMESTATE.useAmmo(amt).success;
+      else if (c.kind === 'battery' && typeof GAMESTATE.useBattery === 'function') ok = GAMESTATE.useBattery(amt).success;
+      else if (c.kind === 'energy' && typeof GAMESTATE.useEnergy === 'function') ok = GAMESTATE.useEnergy(amt).success;
+      else if (c.kind === 'focus' && typeof GAMESTATE.useFocus === 'function') { GAMESTATE.useFocus(amt); ok = true; }
+
+      if (!ok) return { success: false, failed: c };
+    }
+
+    return { success: true };
+  }
+
+  function playCardFromHand(cardId) {
+    if (!_active || !_strCombatActive) {
+      return { success: false, reason: 'not_in_combat' };
+    }
+    if (!cardId || typeof GoneRogueDataRegistry === 'undefined' || !GoneRogueDataRegistry.getCard) {
+      return { success: false, reason: 'missing_registry' };
+    }
+
+    var card = GoneRogueDataRegistry.getCard(cardId);
+    if (!card || card._missing) {
+      return { success: false, reason: 'missing_card' };
+    }
+
+    var costs = Array.isArray(card.costs) ? card.costs : null;
+    var affordability = _canAffordCosts(costs);
+    if (!affordability.canAfford) {
+      return { success: false, reason: 'insufficient_resources', missing: affordability.missing, costs: costs };
+    }
+
+    if (costs && costs.length) {
+      var spent = _consumeCosts(costs);
+      if (!spent.success) {
+        return { success: false, reason: 'cost_spend_failed', costs: costs };
+      }
+    }
+
+    var lines = [];
+    lines.push('🃏 ' + (card.emoji || '🃏') + ' ' + (card.name || cardId));
+
+    // Apply effects (v0 subset)
+    var enemy = _strCombatEnemy;
+    for (var i = 0; i < (card.effects || []).length; i++) {
+      var eff = card.effects[i];
+      if (!eff || !eff.type) continue;
+
+      if (eff.type === 'damage') {
+        var dmg = Number(eff.value || 0);
+        if (enemy && isFinite(dmg)) {
+          enemy.hp = Math.max(0, (enemy.hp || 0) - dmg);
+          lines.push('⚔️ ' + dmg + ' damage');
+          if (typeof EnemyIntentSystem !== 'undefined' && enemy.intentState) {
+            enemy.intentState.expression = EnemyIntentSystem.onCombatEvent(enemy, 'took_damage');
+          }
+        }
+      } else if (eff.type === 'hp') {
+        var heal = Number(eff.value || 0);
+        if (isFinite(heal)) {
+          _player.hp = Math.min(_player.maxHp || 10, (_player.hp || 0) + heal);
+          lines.push('🩹 +' + heal + ' HP');
+        }
+      }
+    }
+
+    var consumes = (typeof card.consumesOnPlay === 'boolean') ? card.consumesOnPlay : !(costs && costs.length);
+    if (consumes) {
+      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.consumeCardFromHand === 'function') {
+        GAMESTATE.consumeCardFromHand(cardId, 1);
+      }
+    }
+
+    _strCombatLog = (_strCombatLog || []).concat(lines);
+
+    // Trigger re-render
+    if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.show === 'function') {
+      STRCombatWindow.show({
+        active: true,
+        enemy: _strCombatEnemy,
+        player: _player,
+        advantage: _strCombatAdvantage,
+        round: _strCombatRound,
+        log: _strCombatLog
+      });
+    }
+
+    return { success: true, consumed: consumes, lines: lines };
+  }
+
+  function playCardsFromHand(cardIds) {
+    if (!cardIds || !cardIds.length) return { success: false };
+    var res = { success: true, results: [] };
+    for (var i = 0; i < cardIds.length; i++) {
+      res.results.push(playCardFromHand(cardIds[i]));
+    }
+    return res;
+  }
+
   /**
    * Card swipe from mobile UI
    */
@@ -11095,6 +11227,8 @@ _incrementPityTimers();
     isWalkable: isWalkable,
     handleCardSwipe: handleCardSwipe,
     handleMultiCardCombat: handleMultiCardCombat,
+    playCardFromHand: playCardFromHand,
+    playCardsFromHand: playCardsFromHand,
     getPlayer: getPlayer,
     getEnemies: getEnemies,
     getEnemyAwarenessState: getEnemyAwarenessState,

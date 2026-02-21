@@ -773,10 +773,17 @@ const HandFanComponent = (function () {
         STRCombatWindow.maximize();
       }
 
-      // Release over enemy = play immediately
-      if (overEnemy && typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleMultiCardCombat === 'function') {
-        GoneRogue.handleMultiCardCombat([idx]);
-        return;
+      // Release over enemy = play immediately (canonical hook)
+      if (overEnemy && typeof GoneRogue !== 'undefined') {
+        var c = _cards && _cards[idx] ? _cards[idx] : null;
+        if (c && c.id && typeof GoneRogue.playCardFromHand === 'function') {
+          GoneRogue.playCardFromHand(c.id);
+          return;
+        }
+        if (typeof GoneRogue.handleMultiCardCombat === 'function') {
+          GoneRogue.handleMultiCardCombat([idx]);
+          return;
+        }
       }
 
       // Drag-to-map ground effects (v1): if released over a grid cell while STR UI is minimized/collapsed
@@ -1149,10 +1156,17 @@ const HandFanComponent = (function () {
       _animateIncinerator(selectedCardObjects, function() {
         // Resolve animation: fly to center
         _animateResolve(function() {
-          // Notify game logic - use handleMultiCardCombat (public API) with card indices.
-          // The indices correspond to GAMESTATE.getLooseInventory() positions,
-          // which is the same array passed to HandFanComponent via show()/updateCards().
-          if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleMultiCardCombat === 'function') {
+          // Notify game logic: prefer canonical playCardsFromHand (by cardId).
+          if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.playCardsFromHand === 'function') {
+            var ids = [];
+            for (var k = 0; k < capturedIndices.length; k++) {
+              var c = _cards && _cards[capturedIndices[k]] ? _cards[capturedIndices[k]] : null;
+              if (c && c.id) ids.push(c.id);
+            }
+            if (ids.length) {
+              GoneRogue.playCardsFromHand(ids);
+            }
+          } else if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleMultiCardCombat === 'function') {
             GoneRogue.handleMultiCardCombat(capturedIndices);
           }
 

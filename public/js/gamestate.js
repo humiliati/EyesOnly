@@ -106,7 +106,8 @@ const GAMESTATE = (function () {
     // If persistent cards are empty, seed a tiny starter pack ONCE (for testing/new runs)
     if ((!_state.persistentCards || _state.persistentCards.length === 0) && !_state._starterCardsSeeded) {
       _state.persistentCards = [
-        { id: 'ACT-001', qty: 2 }
+        { id: 'ACT-001', qty: 2 },
+        { id: 'ACT-002', qty: 5 }
       ];
       _state._starterCardsSeeded = true;
       _saveState();
@@ -455,6 +456,33 @@ const GAMESTATE = (function () {
     } catch (e2) {}
 
     return { success: true };
+  }
+
+  function consumeCardFromHand(cardId, qty) {
+    qty = (typeof qty === 'number' ? qty : 1);
+    qty = Math.max(1, qty);
+
+    if (!Array.isArray(_state.cardsInHand)) _state.cardsInHand = [];
+
+    for (var i = 0; i < _state.cardsInHand.length; i++) {
+      var ref = _state.cardsInHand[i];
+      if (!ref || ref.id !== cardId) continue;
+
+      var take = Math.min(qty, ref.qty || 1);
+      ref.qty = (ref.qty || 1) - take;
+      if (ref.qty <= 0) _state.cardsInHand.splice(i, 1);
+
+      _saveState();
+      try {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'consume', cardId: cardId, qty: take } }));
+        }
+      } catch (e2) {}
+
+      return { success: true, qty: take };
+    }
+
+    return { success: false, reason: 'not_in_hand' };
   }
 
   function returnCardFromHandToStash(cardId, qty) {
@@ -1665,6 +1693,7 @@ const GAMESTATE = (function () {
     getCardsInHand: getCardsInHand,
     getBackupCards: getBackupCards,
     addCardToHand: addCardToHand,
+    consumeCardFromHand: consumeCardFromHand,
     returnCardFromHandToStash: returnCardFromHandToStash,
     moveHandIndexToBackup: moveHandIndexToBackup,
     moveBackupIndexToHand: moveBackupIndexToHand,

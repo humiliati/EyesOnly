@@ -20,14 +20,36 @@ const ResourceManager = (function() {
    * @param {Object} card - Card definition with resourceCost property
    * @returns {Object} {canAfford: boolean, missingResources: Array}
    */
+  function _normalizeCost(card) {
+    if (!card) return null;
+
+    // New: costs[] list
+    if (Array.isArray(card.costs)) {
+      var out = {};
+      for (var i = 0; i < card.costs.length; i++) {
+        var c = card.costs[i];
+        if (!c || !c.kind) continue;
+        var amt = Number(c.amount || 0);
+        if (!isFinite(amt) || amt <= 0) continue;
+        out[c.kind] = (out[c.kind] || 0) + amt;
+      }
+      return out;
+    }
+
+    // Legacy: resourceCost map
+    if (card.resourceCost) return card.resourceCost;
+
+    return null;
+  }
+
   function canAffordCard(card) {
-    if (!card || !card.resourceCost) {
+    var cost = _normalizeCost(card);
+    if (!card || !cost) {
       return { canAfford: true, missingResources: [] };
     }
 
     var missing = [];
     var resources = _getCurrentResources();
-    var cost = card.resourceCost;
 
     // Check ammo
     if (cost.ammo && resources.ammo < cost.ammo) {
@@ -90,7 +112,8 @@ const ResourceManager = (function() {
    * @returns {boolean} Success status
    */
   function consumeResources(card) {
-    if (!card || !card.resourceCost) {
+    var cost = _normalizeCost(card);
+    if (!card || !cost) {
       return true;
     }
 
@@ -101,7 +124,7 @@ const ResourceManager = (function() {
       return false;
     }
 
-    var cost = card.resourceCost;
+    // cost already normalized above
 
     // Consume resources via GAMESTATE
     if (typeof GAMESTATE === 'undefined') {
