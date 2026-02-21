@@ -178,12 +178,18 @@ var NonCombatHUD = (function() {
     setInterval(function() {
       var rogueActive = (typeof GoneRogue !== 'undefined' && typeof GoneRogue.isActive === 'function' && GoneRogue.isActive());
       var strActive = (typeof GoneRogue !== 'undefined' && typeof GoneRogue.isStrCombatActive === 'function' && GoneRogue.isStrCombatActive());
-      var shouldShow = rogueActive && !strActive;
+      var shouldShow = rogueActive;
 
       if (!shouldShow) {
         _root.style.display = 'none';
         _mini.style.display = 'none';
         return;
+      }
+
+      if (strActive) {
+        _root.classList.add('locked');
+      } else {
+        _root.classList.remove('locked');
       }
 
       if (_prefs.minimized) {

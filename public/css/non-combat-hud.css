@@ -25,6 +25,18 @@
   display: none;
 }
 
+.non-combat-hud.locked {
+  opacity: 0.75;
+  filter: saturate(0.9);
+}
+
+.non-combat-hud.locked .nch-action-btn,
+.non-combat-hud.locked .nch-hand-row,
+.non-combat-hud.locked .nch-backup-slot,
+.non-combat-hud.locked #nch-min-btn {
+  pointer-events: none;
+}
+
 #non-combat-hud-mini {
   position: fixed;
   right: 12px;
