@@ -2914,6 +2914,51 @@ body.in-gone-rogue #log-column {
   font-size: 0.9em;
 }
 
+/* In resources view, the swapper sits in a header row (avoid pushing to bottom). */
+.debrief-resources-display .debrief-cycle-button {
+  margin-top: 0;
+}
+
+.debrief-resources-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid rgba(28, 255, 155, 0.18);
+}
+
+.debrief-mok-swapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(28, 255, 155, 0.30);
+  background: rgba(0,0,0,0.28);
+  color: rgba(191, 255, 227, 0.95);
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.debrief-mok-swapper:hover {
+  border-color: rgba(28, 255, 155, 0.55);
+  background: rgba(28, 255, 155, 0.06);
+}
+
+.debrief-mok-swapper .mok-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(28, 255, 155, 0.85);
+  box-shadow: 0 0 10px rgba(28, 255, 155, 0.28);
+}
+
+.debrief-mok-swapper .mok-label {
+  letter-spacing: 1px;
+}
+
 .debrief-cycle-button:hover {
   background: rgba(51, 255, 51, 0.1);
   border-color: var(--phosphor);

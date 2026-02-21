@@ -164,13 +164,19 @@ const DebriefFeedController = (function() {
     if (typeof DebriefFeedRenderer !== 'undefined') {
       var html = '<div class="debrief-resources-display">';
       html += '<div id="debrief-synergy-overlay" class="debrief-synergy-overlay" aria-hidden="true"></div>';
-      html += '<div id="debrief-resources-content" class="debrief-resources-content"></div>';
 
-      // Add cycle button to switch to MOK (if in Gone Rogue)
+      // Header row: keep the MOK selection/swapper in-line with resources
       if (_currentMode === MODES.goneRogue && _currentMode.allowCycle) {
+        html += '<div class="debrief-resources-header">';
+        html += '<button class="debrief-mok-swapper" id="debrief-mok-swapper" type="button" aria-label="Switch debrief view to MOK">';
+        html += '<span class="mok-dot" aria-hidden="true"></span>';
+        html += '<span class="mok-label">MOK</span>';
+        html += '</button>';
         html += _renderCycleButton('Show MOK');
+        html += '</div>';
       }
 
+      html += '<div id="debrief-resources-content" class="debrief-resources-content"></div>';
       html += '</div>';
 
       _debriefScreen.innerHTML = html;
@@ -179,6 +185,15 @@ const DebriefFeedController = (function() {
       var contentArea = document.getElementById('debrief-resources-content');
       if (contentArea) {
         DebriefFeedRenderer.renderInto(contentArea);
+      }
+
+      // Wire swapper click (same as cycle)
+      var mokSwap = document.getElementById('debrief-mok-swapper');
+      if (mokSwap) {
+        mokSwap.addEventListener('click', function(e) {
+          e.stopPropagation();
+          toggleDisplay();
+        });
       }
     }
 
