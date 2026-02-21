@@ -630,7 +630,7 @@ const GoneRogueMobile = (function () {
     // Add impact effects
     if (impactEffects) {
       impactEffects.forEach(function(impact) {
-        var impactChar = '💥';
+        var impactChar = (impact && impact.char) ? impact.char : '💥';
         var impactColor = '#FFFFFF';
 
         if (impact.type === 'enemy') {
@@ -639,6 +639,8 @@ const GoneRogueMobile = (function () {
           impactColor = '#FFA500';
         } else if (impact.type === 'wall') {
           impactColor = '#808080';
+        } else if (impact.type === 'poof') {
+          impactColor = 'rgba(191, 255, 227, 0.95)';
         }
 
         effects.push({
