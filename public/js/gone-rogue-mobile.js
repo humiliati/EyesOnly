@@ -601,12 +601,22 @@ const GoneRogueMobile = (function () {
       grid: canvasGrid,
       entities: entities,
       effects: effects,
-      player: player ? {
-        x: player.visualX !== undefined ? player.visualX : player.x,
-        y: player.visualY !== undefined ? player.visualY : player.y,
-        char: '🥷',
-        color: '#00FF00'
-      } : null
+      player: player ? (function() {
+        var playerChar = '🥷';
+        if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.getPlayerAvatarOverride) {
+          var avatarOverride = PassiveItemsSystem.getPlayerAvatarOverride();
+          if (avatarOverride) {
+            playerChar = avatarOverride;
+          }
+        }
+
+        return {
+          x: player.visualX !== undefined ? player.visualX : player.x,
+          y: player.visualY !== undefined ? player.visualY : player.y,
+          char: playerChar,
+          color: '#00FF00'
+        };
+      })() : null
     });
 
     // Render sprint trails on canvas
