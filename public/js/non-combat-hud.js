@@ -199,6 +199,9 @@ var NonCombatHUD = (function() {
       var strActive = (typeof GoneRogue !== 'undefined' && typeof GoneRogue.isStrCombatActive === 'function' && GoneRogue.isStrCombatActive());
       var shouldShow = rogueActive;
 
+      // Always keep EQUIPPED display in sync with GAMESTATE (cheap update)
+      _renderEquippedOnly();
+
       if (!shouldShow) {
         _root.style.display = 'none';
         _mini.style.display = 'none';
@@ -241,48 +244,53 @@ var NonCombatHUD = (function() {
     }
   }
 
+  function _renderEquippedOnly() {
+    if (!_root) return;
+    var eq = _root.querySelector('#nch-equipped');
+    if (!eq) return;
+
+    // Prefer GAMESTATE active item (canonical for rogue)
+    var activeRef = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) ? GAMESTATE.getActiveItem() : null;
+
+    if (activeRef && activeRef.id && typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
+      var it = GoneRogueDataRegistry.getItem(activeRef.id);
+      var em = (it && it.emoji) ? it.emoji : '📦';
+      var nm = (it && it.name) ? it.name : activeRef.id;
+      eq.textContent = em + ' ' + nm;
+      eq.classList.add('nch-draggable');
+      eq.dataset.equippedId = activeRef.id;
+      eq.style.pointerEvents = 'auto';
+    } else {
+      eq.textContent = '(none)';
+      eq.classList.remove('nch-draggable');
+      eq.dataset.equippedId = '';
+      eq.style.pointerEvents = 'auto';
+    }
+
+    // One-time attach: allow dragging the equipped item from NCH to the map
+    if (!eq._nchEquippedBound) {
+      eq._nchEquippedBound = true;
+
+      eq.addEventListener('pointerdown', function(e) {
+        if (!e || e.pointerType === 'touch') return;
+        if (e.button !== undefined && e.button !== 0) return;
+        if (_root && _root.classList.contains('locked')) return;
+
+        var id = e.currentTarget.dataset.equippedId;
+        if (!id) return;
+
+        var itemDef = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) ? GoneRogueDataRegistry.getItem(id) : null;
+        var ghostEmoji = (itemDef && itemDef.emoji) ? itemDef.emoji : '📦';
+
+        _startNchDrag({ kind: 'equipped_item', id: id, emoji: ghostEmoji }, e);
+      });
+    }
+  }
+
   function _render(state) {
     if (!_root || !state) return;
 
-    var eq = _root.querySelector('#nch-equipped');
-    if (eq) {
-      // Prefer GAMESTATE active item (canonical for rogue)
-      var activeRef = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) ? GAMESTATE.getActiveItem() : null;
-      var em = '';
-      var nm = '';
-
-      if (activeRef && activeRef.id && typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
-        var it = GoneRogueDataRegistry.getItem(activeRef.id);
-        em = (it && it.emoji) ? it.emoji : '📦';
-        nm = (it && it.name) ? it.name : activeRef.id;
-        eq.textContent = em + ' ' + nm;
-        eq.classList.add('nch-draggable');
-        eq.dataset.equippedId = activeRef.id;
-      } else {
-        eq.textContent = '(none)';
-        eq.classList.remove('nch-draggable');
-        eq.dataset.equippedId = '';
-      }
-
-      // One-time attach: allow dragging the equipped item from NCH to the map
-      if (!eq._nchEquippedBound) {
-        eq._nchEquippedBound = true;
-
-        eq.addEventListener('pointerdown', function(e) {
-          if (!e || e.pointerType === 'touch') return;
-          if (e.button !== undefined && e.button !== 0) return;
-          if (_root && _root.classList.contains('locked')) return;
-
-          var id = e.currentTarget.dataset.equippedId;
-          if (!id) return;
-
-          var itemDef = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) ? GoneRogueDataRegistry.getItem(id) : null;
-          var ghostEmoji = (itemDef && itemDef.emoji) ? itemDef.emoji : '📦';
-
-          _startNchDrag({ kind: 'equipped_item', id: id, emoji: ghostEmoji }, e);
-        });
-      }
-    }
+    _renderEquippedOnly();
 
     var pv = _root.querySelector('#nch-preview');
     if (pv) {
