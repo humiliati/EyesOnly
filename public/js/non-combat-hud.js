@@ -127,6 +127,16 @@ var NonCombatHUD = (function() {
         var st = (typeof NonCombatStateStore.getState === 'function') ? NonCombatStateStore.getState() : null;
         var sel = st ? Number(st.selectedBackupIndex || -1) : -1;
 
+        if (!isFinite(sel) || sel < 0) {
+          // Fallback: if only one backup card exists, select it
+          try {
+            var b = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getBackupCards) ? GAMESTATE.getBackupCards() : [];
+            var filled = [];
+            for (var i = 0; i < b.length; i++) if (b[i] && b[i].id) filled.push(i);
+            if (filled.length === 1) sel = filled[0];
+          } catch (e2) {}
+        }
+
         var ok = false;
         if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.moveBackupIndexToHand === 'function') {
           ok = !!GAMESTATE.moveBackupIndexToHand(sel).success;
@@ -424,8 +434,13 @@ var NonCombatHUD = (function() {
           if (e.button !== undefined && e.button !== 0) return;
 
           var idx2 = Number(e.currentTarget.dataset.backupIndex);
-          var st = (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.getState) ? NonCombatStateStore.getState() : null;
-          var refB = st && st.backupCards ? st.backupCards[idx2] : null;
+
+          var refB = null;
+          if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getBackupCards === 'function') {
+            var b = GAMESTATE.getBackupCards();
+            refB = b ? b[idx2] : null;
+          }
+
           if (!refB || !refB.id) return;
 
           var cardB = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) ? GoneRogueDataRegistry.getCard(refB.id) : null;
@@ -563,6 +578,39 @@ var NonCombatHUD = (function() {
       return;
     }
 
+    // NCH internal drops (hand <-> backup) take priority
+    var el = null;
+    try { el = document.elementFromPoint(e.clientX, e.clientY); } catch (e0) {}
+
+    var droppedOnHand = false;
+    var droppedOnBackup = false;
+    if (el && _root && _root.contains(el)) {
+      var handZone = _root.querySelector('#nch-hand');
+      var backupZone = _root.querySelector('#nch-backup');
+      if (handZone && (el === handZone || (handZone.contains && handZone.contains(el)))) droppedOnHand = true;
+      if (backupZone && (el === backupZone || (backupZone.contains && backupZone.contains(el)))) droppedOnBackup = true;
+    }
+
+    var ok = false;
+    if (_nchDrag.kind === 'hand' && droppedOnBackup) {
+      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.moveHandIndexToBackup === 'function') {
+        ok = !!GAMESTATE.moveHandIndexToBackup(_nchDrag.handIndex).success;
+      }
+      if (!ok && typeof TooltipSystem !== 'undefined') TooltipSystem.showPersistent('❌ BACKUP full or invalid', 900);
+      _nchDrag = null;
+      return;
+    }
+
+    if (_nchDrag.kind === 'backup' && droppedOnHand) {
+      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.moveBackupIndexToHand === 'function') {
+        ok = !!GAMESTATE.moveBackupIndexToHand(_nchDrag.backupIndex).success;
+      }
+      if (!ok && typeof TooltipSystem !== 'undefined') TooltipSystem.showPersistent('❌ Cannot move to hand', 900);
+      _nchDrag = null;
+      return;
+    }
+
+    // Otherwise: map drop (cards deploy / equipped targeting)
     var coords = _screenToGrid(e.clientX, e.clientY);
     if (!coords) {
       _nchDrag = null;
@@ -570,7 +618,6 @@ var NonCombatHUD = (function() {
     }
 
     // Resolve drop
-    var ok = false;
     if (_nchDrag.kind === 'hand') {
       if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.applyNonCombatCardAt === 'function') {
         ok = GoneRogue.applyNonCombatCardAt(_nchDrag.id, coords.x, coords.y);
