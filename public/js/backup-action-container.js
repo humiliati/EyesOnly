@@ -132,6 +132,14 @@ var BackupActionContainer = (function() {
   }
 
   function _onSlotClick(e) {
+    // Disabled: legacy backup action container conflicts with canonical GAMESTATE backup system
+    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.isStrCombatActive === 'function' && GoneRogue.isStrCombatActive()) {
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showPersistent('⛔ Legacy backup bar disabled in STR (use DRAW 1 BACKUP)', 1100);
+      }
+      return;
+    }
+
     var target = e.currentTarget;
     if (!target) return;
 
@@ -185,6 +193,11 @@ var BackupActionContainer = (function() {
   }
 
   function drawCardForRound(roundNumber) {
+    // Disabled during STR: canonical backup now lives in GAMESTATE.backupCards
+    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.isStrCombatActive === 'function' && GoneRogue.isStrCombatActive()) {
+      return false;
+    }
+
     roundNumber = Number(roundNumber || 0);
     if (!roundNumber) return false;
 
