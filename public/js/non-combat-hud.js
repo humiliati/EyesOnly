@@ -227,7 +227,16 @@ var NonCombatHUD = (function() {
 
     var eq = _root.querySelector('#nch-equipped');
     if (eq) {
-      eq.textContent = state.equippedItemId ? ('📎 ' + state.equippedItemId) : '(none)';
+      // Prefer GAMESTATE active item (canonical for rogue)
+      var activeRef = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) ? GAMESTATE.getActiveItem() : null;
+      if (activeRef && activeRef.id && typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
+        var it = GoneRogueDataRegistry.getItem(activeRef.id);
+        var em = it && it.emoji ? it.emoji : '📦';
+        var nm = it && it.name ? it.name : activeRef.id;
+        eq.textContent = em + ' ' + nm;
+      } else {
+        eq.textContent = '(none)';
+      }
     }
 
     var pv = _root.querySelector('#nch-preview');

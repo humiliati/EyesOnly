@@ -9,6 +9,7 @@ var RogueSidebar = (function() {
 
   var _container = null;
   var _originalHtml = null;
+  var _interactionLockUntil = 0;
 
   var PREF_KEY = 'EYESONLY_ROGUE_SIDEBAR_PREFS_V1';
   var _prefs = {
@@ -44,10 +45,28 @@ var RogueSidebar = (function() {
 
     _originalHtml = _container.innerHTML;
 
+    // Prevent interval re-render from swallowing the first click
+    _container.addEventListener('pointerdown', function(e) {
+      if (!e || e.pointerType === 'touch') return;
+      _interactionLockUntil = Date.now() + 450;
+    });
+    _container.addEventListener('pointerup', function(e) {
+      if (!e || e.pointerType === 'touch') return;
+      _interactionLockUntil = Date.now() + 120;
+    });
+    _container.addEventListener('pointercancel', function(e) {
+      if (!e || e.pointerType === 'touch') return;
+      _interactionLockUntil = Date.now() + 120;
+    });
+
     setInterval(_tick, 250);
   }
 
   function _tick() {
+    if (_interactionLockUntil && Date.now() < _interactionLockUntil) {
+      return;
+    }
+
     var rogueActive = (typeof GoneRogue !== 'undefined' && typeof GoneRogue.isActive === 'function' && GoneRogue.isActive());
 
     if (!rogueActive) {
