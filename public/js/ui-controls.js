@@ -608,15 +608,26 @@
       persistentItems = GAMESTATE.getPersistentInventory();
     }
 
-    // Map persistent inventory to UI format
-    var persistentInventoryItems = persistentItems.map(function(item) {
+    // Map persistent inventory refs to UI format (resolve via registry when possible)
+    var persistentInventoryItems = persistentItems.map(function(ref) {
+      var id = ref && ref.id ? ref.id : null;
+      var def = (id && typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) ? GoneRogueDataRegistry.getItem(id) : null;
+
+      var emoji = (def && def.emoji) ? def.emoji : '📦';
+      var name = (def && def.name) ? def.name : (id || 'Unknown Item');
+      var description = (def && def.desc) ? def.desc : ((def && def.description) ? def.description : '');
+      var type = (def && def.type) ? def.type : (ref && ref.type ? ref.type : 'item');
+
       return {
-        emoji: item.emoji || '📦',
-        name: item.name || 'Unknown Item',
-        description: item.description || 'No description',
-        context: 'both',  // Persistent items are available in both contexts
-        type: item.type || 'item',
-        lifecycle: item.lifecycle || 'disposable'  // Items are disposable by default
+        id: id,
+        itemId: id,
+        qty: (ref && ref.qty) ? ref.qty : 1,
+        emoji: emoji,
+        name: name,
+        description: description || 'No description',
+        context: 'both',
+        type: type,
+        lifecycle: (def && def.lifecycle) ? def.lifecycle : (ref && ref.lifecycle ? ref.lifecycle : 'disposable')
       };
     });
 

@@ -119,9 +119,10 @@ var NonCombatHUD = (function() {
 
     // Drag-down minimize gesture (similar feel to STR, simplified)
     _root.addEventListener('pointerdown', function(e) {
-      // Ignore interactions on buttons/inputs/links
+      // Ignore interactions on buttons/inputs/links and draggable NCH elements
       var t = e.target;
       if (t && t.closest && t.closest('button, a, input, textarea, select, label')) return;
+      if (t && t.closest && t.closest('.nch-draggable, #nch-equipped, #nch-hand, #nch-backup')) return;
 
       _drag.active = true;
       _drag.startY = e.clientY;
