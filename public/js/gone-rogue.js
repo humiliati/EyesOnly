@@ -4431,6 +4431,98 @@ _incrementPityTimers();
     return true;
   }
 
+  function _checkPlayerInteractions() {
+    // Interactions after arriving on a tile via smooth movement (GoneRogueMovement).
+    var x = _player.x;
+    var y = _player.y;
+
+    // Update turn + pet following history
+    _turn++;
+    _updatePositionHistory();
+
+    // Bounds safety
+    if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) return;
+
+    var tile = _grid[y] ? _grid[y][x] : null;
+
+    // Exit tile
+    if (tile === TILES.EXIT) {
+      _attemptExtract();
+      return;
+    }
+
+    // Shop tile
+    if (tile === TILES.SHOP || tile === TILES.BLACK_MARKET) {
+      var shopObj = _shops.find(function(s) { return s.x === x && s.y === y; });
+      if (shopObj && typeof ShopSystem !== 'undefined' && !shopObj.opened) {
+        var shopType = tile === TILES.BLACK_MARKET ? ShopSystem.SHOP_TYPES.BLACK_MARKET : ShopSystem.SHOP_TYPES.STANDARD;
+        ShopSystem.openShop(shopType, _floor);
+        shopObj.opened = true;
+      }
+    }
+
+    // Currency pickup
+    var cryptoPickup = _currencies.find(function(c) { return c.x === x && c.y === y; });
+    if (cryptoPickup) {
+      if (typeof GAMESTATE !== 'undefined') {
+        GAMESTATE.addCryptos(cryptoPickup.amount);
+      }
+      _currencyCollected += cryptoPickup.amount;
+      _currencies = _currencies.filter(function(c) { return c.x !== x || c.y !== y; });
+
+      _player.collectingCurrency = true;
+      _player.currencyCollectTime = Date.now();
+
+      if (typeof OverheadAnimator !== 'undefined') {
+        OverheadAnimator.showCurrencyPickup(x, y, cryptoPickup.amount);
+      }
+
+      if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+        var cryptoMsg = cryptoPickup.amount === 1 ? '¢1 Collected' : '¢' + cryptoPickup.amount + ' Collected';
+        UIControls.updateMokInterjection(cryptoMsg);
+      }
+
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showAction('currency-pickup', { amount: cryptoPickup.amount });
+      }
+    }
+
+    // Food auto-pickup
+    if (typeof InteractiveItems !== 'undefined') {
+      var foodItem = InteractiveItems.getItemAt(x, y);
+      if (foodItem && foodItem.autoPickup && foodItem.type === 'FOOD') {
+        if (typeof FoodDatabase !== 'undefined' && foodItem.customData && foodItem.customData.foodId) {
+          var result = FoodDatabase.applyFoodEffects(foodItem.customData.foodId, _player);
+          if (result && result.success) {
+            if (typeof OverheadAnimator !== 'undefined') {
+              OverheadAnimator.showExpression(x, y, 'LOOT', 1000, result.emoji);
+            }
+            if (typeof GAMESTATE !== 'undefined' && GAMESTATE.blockSprintTemporarily) {
+              GAMESTATE.blockSprintTemporarily(900);
+            }
+            if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+              UIControls.updateMokInterjection(result.emoji + ' ' + result.foodName + ' consumed');
+            }
+            if (typeof TooltipSystem !== 'undefined' && result.tooltipText) {
+              TooltipSystem.showGeneric(result.tooltipText, 2000);
+            }
+            InteractiveItems.removeItem(foodItem.id);
+          }
+        }
+      }
+    }
+
+    // Discovery reveal
+    _revealDiscovery(x, y);
+
+    // Enemy collision -> enter STR combat
+    var hitEnemy = _enemies.find(function(e) { return e.x === x && e.y === y && e.hp > 0; });
+    if (hitEnemy) {
+      _enterStrCombat(hitEnemy, 'collision');
+      return;
+    }
+  }
+
   function _movePlayer(dx, dy, runMode) {
     // Block movement during STR combat
     if (_strCombatActive) {
