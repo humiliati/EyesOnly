@@ -6450,6 +6450,15 @@ _incrementPityTimers();
     _active = false;
     _stopGameLoop();
 
+    // Ensure STR combat UI is fully cleared
+    _strCombatActive = false;
+    _strCombatEnemy = null;
+    try {
+      if (typeof STRCombatWindow !== 'undefined' && STRCombatWindow.hide) STRCombatWindow.hide();
+      if (typeof HandFanComponent !== 'undefined' && HandFanComponent.hide) HandFanComponent.hide();
+      if (typeof BackupActionContainer !== 'undefined' && BackupActionContainer.hide) BackupActionContainer.hide();
+    } catch (e0) {}
+
     // Re-enable scanlines when returning to terminal
     document.body.classList.remove('gone-rogue-active');
 
@@ -8180,6 +8189,20 @@ _incrementPityTimers();
       if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.consumeCardFromHand === 'function') {
         GAMESTATE.consumeCardFromHand(cardId, 1);
       }
+    }
+
+    // End conditions (so we don't rely on the legacy per-round resolver to exit)
+    if (_strCombatEnemy && _strCombatEnemy.hp <= 0) {
+      lines.push('');
+      lines.push('🏁 ENEMY DEFEATED');
+      var exitResult = _exitStrCombat('player_victory');
+      return { success: true, consumed: consumes, lines: lines.concat(exitResult.lines || []), exited: true };
+    }
+
+    if (_player && _player.hp <= 0) {
+      // Clamp to prevent negative HP looping
+      _player.hp = 0;
+      return _handlePlayerDeath('combat_damage', { enemy: _strCombatEnemy });
     }
 
     _strCombatLog = (_strCombatLog || []).concat(lines);
