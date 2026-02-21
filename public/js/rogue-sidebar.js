@@ -33,6 +33,8 @@ var RogueSidebar = (function() {
     try { localStorage.setItem(PREF_KEY, JSON.stringify(_prefs)); } catch (e) {}
   }
 
+  var _lastSignature = null;
+
   function init() {
     if (_container) return;
     _loadPrefs();
@@ -72,6 +74,7 @@ var RogueSidebar = (function() {
     // Fetch refs
     var items = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentInventory) ? (GAMESTATE.getPersistentInventory() || []) : [];
     var cards = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentCards) ? (GAMESTATE.getPersistentCards() || []) : [];
+    var activeItem = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) ? GAMESTATE.getActiveItem() : null;
 
     var list = (view === 'items') ? items : cards;
     var offsetKey = (view === 'items') ? 'itemOffset' : 'cardOffset';
@@ -82,6 +85,29 @@ var RogueSidebar = (function() {
     var maxOffset = Math.max(0, list.length - maxVisible);
     if (offset > maxOffset) offset = maxOffset;
     _prefs[offsetKey] = offset;
+
+    // Signature to avoid re-render flicker (hover flashing)
+    var sigParts = [
+      'v=' + view,
+      'io=' + (_prefs.itemOffset || 0),
+      'co=' + (_prefs.cardOffset || 0),
+      'il=' + items.length,
+      'cl=' + cards.length,
+      'ai=' + (activeItem && activeItem.id ? activeItem.id : '')
+    ];
+
+    // include visible slice ids/qty
+    for (var si = 0; si < maxVisible; si++) {
+      var refSig = list[offset + si];
+      if (refSig && refSig.id) sigParts.push(refSig.id + ':' + (refSig.qty || 1));
+      else sigParts.push('-');
+    }
+
+    var signature = sigParts.join('|');
+    if (signature === _lastSignature) {
+      return;
+    }
+    _lastSignature = signature;
 
     _container.innerHTML = '';
 
@@ -121,6 +147,10 @@ var RogueSidebar = (function() {
             btn.classList.add('equippable');
           }
 
+          if (activeItem && activeItem.id === ref.id) {
+            btn.classList.add('selected');
+          }
+
           btn.addEventListener('click', function(e) {
             e.stopPropagation();
             var id = (items[Number(e.currentTarget.dataset.index)] || {}).id;
@@ -132,6 +162,10 @@ var RogueSidebar = (function() {
             } else {
               GAMESTATE.setActiveItem({ id: id, qty: 1 });
             }
+
+            // Force refresh to reflect selection state
+            _lastSignature = null;
+            _render();
           });
         } else {
           var card = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) ? GoneRogueDataRegistry.getCard(ref.id) : null;
@@ -154,6 +188,7 @@ var RogueSidebar = (function() {
               NonCombatStateStore.addCardToHand(cardId, 1, 'sidebar:move_card');
             }
 
+            _lastSignature = null;
             _render();
           });
         }
@@ -178,6 +213,7 @@ var RogueSidebar = (function() {
         if (next > maxOffset) next = 0;
         _prefs[offsetKey] = next;
         _savePrefs();
+        _lastSignature = null;
         _render();
       });
     }

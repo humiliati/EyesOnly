@@ -82,6 +82,14 @@ const GAMESTATE = (function () {
       ];
       _saveState();
     }
+
+    // If persistent cards are empty, seed a tiny starter pack for testing/new runs
+    if (!_state.persistentCards || _state.persistentCards.length === 0) {
+      _state.persistentCards = [
+        { id: 'ACT-001', qty: 2 }
+      ];
+      _saveState();
+    }
   }
 
   function getMode() {
