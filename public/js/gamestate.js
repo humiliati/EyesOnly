@@ -333,6 +333,20 @@ const GAMESTATE = (function () {
     var ref = _normalizeCardRef(cardRefOrId);
     if (!ref) return { success: false };
 
+    // Guard: only ACT- ids belong in persistentCards. If an item id is passed,
+    // route it into persistent inventory instead of creating ITM entries in the card stash.
+    if (ref.id && ref.id.indexOf('ITM-') === 0) {
+      if (!Array.isArray(_state.inventoryPersistent)) _state.inventoryPersistent = [];
+      _state.inventoryPersistent.push({ id: ref.id, qty: qty, meta: ref.meta || null });
+      _saveState();
+      return { success: true, routed: 'inventoryPersistent' };
+    }
+
+    if (ref.id && ref.id.indexOf('ACT-') !== 0) {
+      // Unknown type, reject (keeps stash clean)
+      return { success: false, reason: 'invalid_card_id' };
+    }
+
     if (!_state.persistentCards) _state.persistentCards = [];
 
     var existing = null;
@@ -678,6 +692,19 @@ const GAMESTATE = (function () {
     // Normalize any existing persistentCards entries
     if (Array.isArray(_state.persistentCards)) {
       _state.persistentCards = _state.persistentCards.map(_migrateLegacyCardEntry).filter(Boolean);
+
+      // If anything that looks like an item snuck into the card stash, move it out.
+      var keep = [];
+      for (var pc = 0; pc < _state.persistentCards.length; pc++) {
+        var cref = _state.persistentCards[pc];
+        if (!cref || !cref.id) continue;
+        if (cref.id.indexOf('ITM-') === 0) {
+          _state.inventoryPersistent.push({ id: cref.id, qty: cref.qty || 1, meta: cref.meta || null });
+        } else {
+          keep.push(cref);
+        }
+      }
+      _state.persistentCards = keep;
     }
 
     // active slot
