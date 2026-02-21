@@ -9763,6 +9763,43 @@ _incrementPityTimers();
   /**
    * Use active item at a specific grid target (drag/drop targeting)
    */
+  function applyNonCombatCardAt(cardId, targetX, targetY) {
+    if (!_active) return false;
+
+    if (typeof GoneRogueDataRegistry === 'undefined' || !GoneRogueDataRegistry.getCard) {
+      return false;
+    }
+
+    var card = GoneRogueDataRegistry.getCard(cardId);
+    if (!card || card._missing) {
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showPersistent('❌ Missing card: ' + cardId, 1200);
+      }
+      return false;
+    }
+
+    // v0: ground effects only (if defined)
+    if ((card.targetType === 'ground' || card.targetType === 'area') && card.groundEffectId) {
+      if (typeof GroundEffects !== 'undefined' && GroundEffects.setGroundEffect) {
+        GroundEffects.setGroundEffect(targetX, targetY, card.groundEffectId.replace('EFF-', '')); // best-effort mapping
+        if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+          _updateMobileGrid();
+        }
+        if (typeof TooltipSystem !== 'undefined') {
+          TooltipSystem.showPersistent('🟢 DEPLOYED: ' + (card.emoji || '🃏') + ' ' + card.name, 900);
+        }
+        return true;
+      }
+    }
+
+    // v0 fallback: preview-only
+    if (typeof TooltipSystem !== 'undefined') {
+      TooltipSystem.showPersistent('ℹ️ ' + (card.emoji || '🃏') + ' ' + card.name + ' (no non-combat resolver yet)', 1200);
+    }
+
+    return false;
+  }
+
   function useActiveItemAt(targetX, targetY) {
     if (!_active) return;
     if (typeof GAMESTATE === 'undefined') return;
@@ -10873,6 +10910,7 @@ _incrementPityTimers();
     },
     triggerActiveItem: triggerActiveItem,
     useActiveItemAt: useActiveItemAt,
+    applyNonCombatCardAt: applyNonCombatCardAt,
     updatePlayerLight: _updatePlayerLight,
     getBiomeBackgroundColor: getBiomeBackgroundColor,
 

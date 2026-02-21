@@ -287,6 +287,43 @@ var NonCombatStateStore = (function() {
     }, 'backup:move_to_hand', { cardId: ref.id, from: bIdx });
   }
 
+  function consumeHandIndex(handIndex, qty) {
+    qty = (typeof qty === 'number' ? qty : 1);
+    qty = Math.max(1, qty);
+
+    var hand = Array.isArray(_state.cardsInHand) ? _state.cardsInHand.slice() : [];
+    var idx = Number(handIndex);
+    if (!isFinite(idx) || idx < 0 || idx >= hand.length || !hand[idx]) return null;
+
+    var id = hand[idx].id;
+    var remaining = (hand[idx].qty || 1) - qty;
+    if (remaining <= 0) {
+      hand.splice(idx, 1);
+      // adjust selection
+      var sel = Number(_state.selectedHandIndex || -1);
+      if (sel === idx) sel = -1;
+      else if (sel > idx) sel = sel - 1;
+      return modifyState({ cardsInHand: hand, selectedHandIndex: sel }, 'hand:consume', { id: id, qty: qty }) ? id : null;
+    }
+
+    hand[idx] = Object.assign({}, hand[idx], { qty: remaining });
+    return modifyState({ cardsInHand: hand }, 'hand:consume', { id: id, qty: qty }) ? id : null;
+  }
+
+  function consumeBackupIndex(backupIndex) {
+    var backup = Array.isArray(_state.backupCards) ? _state.backupCards.slice() : [];
+    var idx = Number(backupIndex);
+    if (!isFinite(idx) || idx < 0 || idx >= backup.length || !backup[idx]) return null;
+
+    var id = backup[idx].id;
+    backup[idx] = null;
+
+    var sel = Number(_state.selectedBackupIndex || -1);
+    if (sel === idx) sel = -1;
+
+    return modifyState({ backupCards: backup, selectedBackupIndex: sel }, 'backup:consume', { id: id, idx: idx }) ? id : null;
+  }
+
   return {
     STORAGE_KEY: STORAGE_KEY,
     HISTORY_KEY: HISTORY_KEY,
@@ -297,6 +334,8 @@ var NonCombatStateStore = (function() {
     transitionTo: transitionTo,
     modifyResource: modifyResource,
     addCardToHand: addCardToHand,
+    consumeHandIndex: consumeHandIndex,
+    consumeBackupIndex: consumeBackupIndex,
     setSelectedHandIndex: setSelectedHandIndex,
     setSelectedBackupIndex: setSelectedBackupIndex,
     moveSelectedHandToBackup: moveSelectedHandToBackup,

@@ -172,6 +172,27 @@
   background: rgba(255, 193, 7, 0.12);
 }
 
+.nch-hand-row.nch-draggable,
+.nch-backup-slot.nch-draggable {
+  cursor: grab;
+}
+
+.nch-hand-row.nch-draggable:active,
+.nch-backup-slot.nch-draggable:active {
+  cursor: grabbing;
+}
+
+.nch-drag-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  transform: translate(-10px, -10px);
+  z-index: 99999;
+  pointer-events: none;
+  font-size: 20px;
+  filter: drop-shadow(0 0 8px rgba(28, 255, 155, 0.35));
+}
+
 .nch-backup {
   display: grid;
   grid-template-columns: 1fr;

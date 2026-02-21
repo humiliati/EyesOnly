@@ -265,7 +265,7 @@ var NonCombatHUD = (function() {
           var em = card ? card.emoji : '🃏';
 
           var row = document.createElement('div');
-          row.className = 'nch-hand-row' + ((state.selectedHandIndex === i) ? ' selected' : '');
+          row.className = 'nch-hand-row nch-draggable' + ((state.selectedHandIndex === i) ? ' selected' : '');
           row.dataset.handIndex = i;
           row.textContent = em + ' ' + nm + ' x' + (ref.qty || 1);
 
@@ -276,6 +276,17 @@ var NonCombatHUD = (function() {
               var current = (typeof NonCombatStateStore.getState === 'function') ? NonCombatStateStore.getState().selectedHandIndex : -1;
               NonCombatStateStore.setSelectedHandIndex(current === idx ? -1 : idx);
             }
+          });
+
+          row.addEventListener('pointerdown', function(e) {
+            if (!e || e.pointerType === 'touch') return;
+            if (e.button !== undefined && e.button !== 0) return;
+            _startNchDrag({
+              kind: 'hand',
+              handIndex: Number(e.currentTarget.dataset.handIndex),
+              emoji: em,
+              id: ref.id
+            }, e);
           });
 
           hand.appendChild(row);
@@ -292,7 +303,7 @@ var NonCombatHUD = (function() {
       for (var s = 0; s < 4; s++) {
         var ref2 = slots[s] || null;
         var cell = document.createElement('div');
-        cell.className = 'nch-backup-slot' + ((state.selectedBackupIndex === s) ? ' selected' : '');
+        cell.className = 'nch-backup-slot nch-draggable' + ((state.selectedBackupIndex === s) ? ' selected' : '');
         cell.dataset.backupIndex = s;
 
         if (ref2 && ref2.id) {
@@ -316,6 +327,26 @@ var NonCombatHUD = (function() {
           }
         });
 
+        cell.addEventListener('pointerdown', function(e) {
+          if (!e || e.pointerType === 'touch') return;
+          if (e.button !== undefined && e.button !== 0) return;
+
+          var idx2 = Number(e.currentTarget.dataset.backupIndex);
+          var st = (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.getState) ? NonCombatStateStore.getState() : null;
+          var refB = st && st.backupCards ? st.backupCards[idx2] : null;
+          if (!refB || !refB.id) return;
+
+          var cardB = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) ? GoneRogueDataRegistry.getCard(refB.id) : null;
+          var emB = cardB ? (cardB.emoji || '🃏') : '🃏';
+
+          _startNchDrag({
+            kind: 'backup',
+            backupIndex: idx2,
+            emoji: emB,
+            id: refB.id
+          }, e);
+        });
+
         backup.appendChild(cell);
       }
     }
@@ -337,6 +368,138 @@ var NonCombatHUD = (function() {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
+  }
+
+  var _nchDrag = null; // { kind, emoji, id, handIndex?, backupIndex?, ghostEl, startX, startY, dragging }
+
+  function _startNchDrag(payload, e) {
+    if (!_root || !_mini) {}
+
+    // Don't allow during STR combat (locked)
+    if (_root && _root.classList.contains('locked')) {
+      return;
+    }
+
+    _nchDrag = Object.assign({
+      ghostEl: null,
+      startX: e.clientX,
+      startY: e.clientY,
+      dragging: false
+    }, payload);
+
+    try { _root.setPointerCapture(e.pointerId); } catch (err) {}
+
+    document.addEventListener('pointermove', _onNchDragMove);
+    document.addEventListener('pointerup', _onNchDragUp);
+    document.addEventListener('pointercancel', _onNchDragUp);
+  }
+
+  function _ensureGhost(x, y) {
+    if (!_nchDrag || _nchDrag.ghostEl) return;
+
+    var ghost = document.createElement('div');
+    ghost.className = 'nch-drag-ghost';
+    ghost.textContent = _nchDrag.emoji || '🃏';
+    ghost.style.left = x + 'px';
+    ghost.style.top = y + 'px';
+    document.body.appendChild(ghost);
+    _nchDrag.ghostEl = ghost;
+  }
+
+  function _onNchDragMove(e) {
+    if (!_nchDrag) return;
+    if (!e || e.pointerType === 'touch') return;
+
+    var dx = e.clientX - _nchDrag.startX;
+    var dy = e.clientY - _nchDrag.startY;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (!_nchDrag.dragging && dist > 6) {
+      _nchDrag.dragging = true;
+      _ensureGhost(e.clientX, e.clientY);
+    }
+
+    if (_nchDrag.dragging && _nchDrag.ghostEl) {
+      _nchDrag.ghostEl.style.left = e.clientX + 'px';
+      _nchDrag.ghostEl.style.top = e.clientY + 'px';
+    }
+  }
+
+  function _screenToGrid(clientX, clientY) {
+    // DOM grid cell (preferred)
+    var el = document.elementFromPoint(clientX, clientY);
+    if (el && el.closest) {
+      var cell = el.closest('.rogue-cell');
+      if (cell && cell.dataset && cell.dataset.x !== undefined && cell.dataset.y !== undefined) {
+        return { x: Number(cell.dataset.x), y: Number(cell.dataset.y) };
+      }
+    }
+
+    // Canvas fallback
+    var gridContainer = document.getElementById('rogue-grid-mobile');
+    var canvas = gridContainer ? gridContainer.querySelector('canvas') : null;
+    if (canvas) {
+      var r = canvas.getBoundingClientRect();
+      if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) {
+        var relX = (clientX - r.left);
+        var relY = (clientY - r.top);
+        var cellW = (canvas.width || (r.width || 1)) / 40;
+        var cellH = (canvas.height || (r.height || 1)) / 20;
+        var gx = Math.floor(relX / cellW);
+        var gy = Math.floor(relY / cellH);
+        if (gx >= 0 && gx < 40 && gy >= 0 && gy < 20) {
+          return { x: gx, y: gy };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  function _onNchDragUp(e) {
+    if (!_nchDrag) return;
+
+    document.removeEventListener('pointermove', _onNchDragMove);
+    document.removeEventListener('pointerup', _onNchDragUp);
+    document.removeEventListener('pointercancel', _onNchDragUp);
+
+    var ghost = _nchDrag.ghostEl;
+    if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
+
+    if (!_nchDrag.dragging) {
+      _nchDrag = null;
+      return;
+    }
+
+    var coords = _screenToGrid(e.clientX, e.clientY);
+    if (!coords) {
+      _nchDrag = null;
+      return;
+    }
+
+    // Resolve drop
+    var ok = false;
+    if (_nchDrag.kind === 'hand') {
+      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.applyNonCombatCardAt === 'function') {
+        ok = GoneRogue.applyNonCombatCardAt(_nchDrag.id, coords.x, coords.y);
+      }
+      if (ok && typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.consumeHandIndex) {
+        NonCombatStateStore.consumeHandIndex(_nchDrag.handIndex, 1);
+      }
+    } else if (_nchDrag.kind === 'backup') {
+      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.applyNonCombatCardAt === 'function') {
+        ok = GoneRogue.applyNonCombatCardAt(_nchDrag.id, coords.x, coords.y);
+      }
+      if (ok && typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.consumeBackupIndex) {
+        NonCombatStateStore.consumeBackupIndex(_nchDrag.backupIndex);
+      }
+    }
+
+    if (!ok && typeof TooltipSystem !== 'undefined') {
+      TooltipSystem.showPersistent('❌ Invalid drop / no effect', 900);
+    }
+
+    _nchDrag = null;
   }
 
   return {
