@@ -579,6 +579,40 @@ const GAMESTATE = (function () {
     return { success: true };
   }
 
+  function moveStashCardToBackup(cardId) {
+    if (!cardId) return { success: false };
+
+    if (!Array.isArray(_state.backupCards)) _state.backupCards = [null, null, null, null];
+
+    // Avoid duplicates in backup
+    for (var i = 0; i < 4; i++) {
+      if (_state.backupCards[i] && _state.backupCards[i].id === cardId) {
+        return { success: false, reason: 'already_in_backup' };
+      }
+    }
+
+    var slot = -1;
+    for (var s = 0; s < 4; s++) {
+      if (!_state.backupCards[s]) { slot = s; break; }
+    }
+    if (slot === -1) return { success: false, reason: 'backup_full' };
+
+    // Consume 1 from stash
+    var removed = removePersistentCard(cardId, 1);
+    if (!removed || !removed.success) return { success: false, reason: 'not_in_stash' };
+
+    _state.backupCards[slot] = { id: cardId, qty: 1, meta: null };
+
+    _saveState();
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'stash_to_backup', cardId: cardId, slot: slot } }));
+      }
+    } catch (e2) {}
+
+    return { success: true, slot: slot };
+  }
+
   function resetCombatBackupDrawFlag() {
     _state.hasDrawnBackupThisCombat = false;
     _saveState();
@@ -1710,6 +1744,7 @@ const GAMESTATE = (function () {
     returnCardFromHandToStash: returnCardFromHandToStash,
     moveHandIndexToBackup: moveHandIndexToBackup,
     moveBackupIndexToHand: moveBackupIndexToHand,
+    moveStashCardToBackup: moveStashCardToBackup,
     resetCombatBackupDrawFlag: resetCombatBackupDrawFlag,
     canDrawBackupThisCombat: canDrawBackupThisCombat,
     drawOneFromBackupOncePerCombat: drawOneFromBackupOncePerCombat,

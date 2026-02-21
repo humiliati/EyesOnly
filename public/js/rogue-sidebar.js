@@ -198,7 +198,18 @@ var RogueSidebar = (function() {
             var cardId = (cards[Number(e.currentTarget.dataset.index)] || {}).id;
             if (!cardId) return;
 
-            // Move 1 from stash -> canonical hand (mirrors NCH + CH)
+            // Shift-click: stash -> BACKUP (convenience)
+            if (e.shiftKey && typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.moveStashCardToBackup === 'function') {
+              var r = GAMESTATE.moveStashCardToBackup(cardId);
+              if (typeof TooltipSystem !== 'undefined') {
+                TooltipSystem.showPersistent(r && r.success ? '📦 Stash → BACKUP' : ('❌ Backup: ' + ((r && r.reason) ? r.reason : 'failed')), 900);
+              }
+              _lastSignature = null;
+              _render();
+              return;
+            }
+
+            // Default: stash -> HAND (mirrors NCH + CH)
             var okAdd = false;
             if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addCardToHand === 'function') {
               okAdd = !!GAMESTATE.addCardToHand(cardId, 1).success;
