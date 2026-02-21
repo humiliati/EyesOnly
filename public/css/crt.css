@@ -300,11 +300,31 @@ body.gone-rogue-active #scanlines::after {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  position: relative;
+  position: fixed;
   min-height: 0;
   box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.65);
   cursor: pointer;
   transition: transform 180ms ease, box-shadow 180ms ease;
+  z-index: 500;
+}
+
+/* Adaptive positioning for the floating debrief feed */
+@media (min-aspect-ratio: 1/1) {
+  .debrief-window {
+    left: 16px;
+    bottom: 16px;
+    top: auto;
+    right: auto;
+  }
+}
+
+@media (max-aspect-ratio: 1/1) {
+  .debrief-window {
+    right: 16px;
+    top: 72px; /* below header */
+    left: auto;
+    bottom: auto;
+  }
 }
 
 .debrief-window.expanded {
@@ -312,9 +332,9 @@ body.gone-rogue-active #scanlines::after {
   transform-origin: top left;
   box-shadow: 0 0 0 1px var(--panel-border), 0 12px 28px rgba(0, 0, 0, 0.45);
 
-  /* Layering: above right column, below tooltip overlay */
-  position: relative;
-  z-index: 150;
+  /* Layering: above UI, below tooltip overlay */
+  position: fixed;
+  z-index: 900;
 }
 
 .debrief-window.expanded .debrief-screen {
