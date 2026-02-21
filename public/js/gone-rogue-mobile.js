@@ -531,6 +531,19 @@ const GoneRogueMobile = (function () {
       });
     }
 
+    // Add placed boxes
+    if (typeof GoneRogue !== 'undefined' && GoneRogue.getPlacedBoxes) {
+      var placedBoxes = GoneRogue.getPlacedBoxes();
+      placedBoxes.forEach(function(box) {
+        entities.push({
+          x: box.x,
+          y: box.y,
+          char: '📦',
+          color: box.state === 'occupied' ? '#FFD700' : '#8B6914'
+        });
+      });
+    }
+
     // Add projectiles
     if (projectiles) {
       projectiles.forEach(function(projectile) {

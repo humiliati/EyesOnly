@@ -11,6 +11,7 @@ const EnvironmentalDragDrop = (function() {
     IDLE: 'idle',
     KEY_TO_GATE: 'key_to_gate',
     ITEM_DESTRUCTION: 'item_destruction',
+    BOX_PLACEMENT: 'box_placement',
     DISABLED: 'disabled'
   };
 
@@ -138,8 +139,12 @@ const EnvironmentalDragDrop = (function() {
     _dragContext = context;
     _draggedFromEquippedSlot = context.sourceZone === 'equipped_slot' || context.sourceZone === 'header_inventory';
 
-    // Check if item is a key
-    if (typeof EnvironmentalSynergy !== 'undefined' && EnvironmentalSynergy.isKeyItem(context.itemId)) {
+    // Check if item is a deployable box
+    if (typeof GoneRogue !== 'undefined' && GoneRogue.isBoxDeployItem && GoneRogue.isBoxDeployItem(context.itemId)) {
+      _setContext(CONTEXT_TYPES.BOX_PLACEMENT);
+      _draggedFromEquippedSlot = true; // allow map drop from any inventory source
+    } else if (typeof EnvironmentalSynergy !== 'undefined' && EnvironmentalSynergy.isKeyItem(context.itemId)) {
+      // Check if item is a key
       _setContext(CONTEXT_TYPES.KEY_TO_GATE);
     } else {
       _setContext(CONTEXT_TYPES.IDLE);
@@ -152,6 +157,7 @@ const EnvironmentalDragDrop = (function() {
    * Handle drag end
    */
   function handleDragEnd() {
+    _clearBoxPlacementPreview();
     _setContext(CONTEXT_TYPES.IDLE);
     _dragContext = null;
     _draggedFromEquippedSlot = false;
@@ -193,7 +199,23 @@ const EnvironmentalDragDrop = (function() {
   function _handleDragOverGameMap(isOver, gridPos) {
     if (!isOver || !gridPos) {
       _clearGateHighlight();
+      _clearBoxPlacementPreview();
       _nearestGate = null;
+      return;
+    }
+
+    // Box placement preview
+    if (_currentContext === CONTEXT_TYPES.BOX_PLACEMENT) {
+      _clearBoxPlacementPreview();
+      if (_gameMapElement && _gameMapElement.children) {
+        var cellIdx = gridPos.y * 40 + gridPos.x;
+        var cell = _gameMapElement.children[cellIdx];
+        if (cell) {
+          var isValid = typeof GoneRogue !== 'undefined' && GoneRogue.isValidBoxPlacement &&
+                        GoneRogue.isValidBoxPlacement(gridPos.x, gridPos.y);
+          cell.classList.add(isValid ? 'box-placement-valid' : 'box-placement-invalid');
+        }
+      }
       return;
     }
 
@@ -248,6 +270,45 @@ const EnvironmentalDragDrop = (function() {
   }
 
   /**
+   * Clear box placement preview highlight from all cells
+   */
+  function _clearBoxPlacementPreview() {
+    if (_gameMapElement && _gameMapElement.children) {
+      for (var i = 0; i < _gameMapElement.children.length; i++) {
+        _gameMapElement.children[i].classList.remove('box-placement-valid');
+        _gameMapElement.children[i].classList.remove('box-placement-invalid');
+      }
+    }
+  }
+
+  /**
+   * Process box placement drop
+   * @param {Object} gridPos - Grid position {x, y}
+   */
+  function _processBoxPlacement(gridPos) {
+    if (!gridPos || !_dragContext) return;
+
+    if (typeof GoneRogue === 'undefined' || !GoneRogue.isValidBoxPlacement ||
+        !GoneRogue.isValidBoxPlacement(gridPos.x, gridPos.y)) {
+      _triggerFailureAnimation('Cannot place here');
+      return;
+    }
+
+    // Look up quality from registry
+    var quality = 'common';
+    if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
+      var itemDef = GoneRogueDataRegistry.getItem(_dragContext.itemId);
+      if (itemDef && itemDef.boxQuality) quality = itemDef.boxQuality;
+    }
+
+    GoneRogue.placeBox(gridPos, _dragContext.itemId, quality);
+
+    if (typeof MokUX !== 'undefined') {
+      MokUX.speak('📦 Box placed.', 'NEUTRAL');
+    }
+  }
+
+  /**
    * Handle drop on debrief feed (item destruction)
    */
   function _handleDropOnDebrief() {
@@ -279,6 +340,14 @@ const EnvironmentalDragDrop = (function() {
   function _handleDropOnGameMap(gridPos) {
     if (!_dragContext || !gridPos) {
       console.warn('[EnvironmentalDragDrop] No drag context or grid position');
+      handleDragEnd();
+      return;
+    }
+
+    // Box placement
+    if (_currentContext === CONTEXT_TYPES.BOX_PLACEMENT) {
+      _clearBoxPlacementPreview();
+      _processBoxPlacement(gridPos);
       handleDragEnd();
       return;
     }

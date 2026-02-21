@@ -42,6 +42,8 @@ const GoneRogue = (function () {
   var _breakables = [];
   var _currencies = []; // Currency drops on floor (yellow dots ¢)
   var _shops = []; // Shop objects on floor (🏪 or 👤)
+  var _placedBoxes = []; // Deployable box entities placed on the map {id, x, y, quality, state, discoveryCount}
+  var _playerInBox = null; // Box entity the player is currently hiding inside (or null)
   var _turn = 0;
   var _floor = 1;
   var _alertLevel = 'safe'; // safe, caution, danger
@@ -4519,6 +4521,17 @@ _incrementPityTimers();
     // Discovery reveal
     _revealDiscovery(x, y);
 
+    // Box auto-exit: player has moved off the box tile they were hiding in
+    if (_playerInBox && (_player.x !== _playerInBox.x || _player.y !== _playerInBox.y)) {
+      _playerExitBox('voluntary');
+    }
+
+    // Box auto-enter: player steps onto a placed empty box
+    var _boxUnderPlayer = _getBoxAt(x, y);
+    if (_boxUnderPlayer && _boxUnderPlayer.state === 'empty' && !_playerInBox) {
+      _playerEnterBox(_boxUnderPlayer);
+    }
+
     // Enemy collision -> enter STR combat
     var hitEnemy = _enemies.find(function(e) { return e.x === x && e.y === y && e.hp > 0; });
     if (hitEnemy) {
@@ -6457,6 +6470,13 @@ _incrementPityTimers();
       // Update enemy pathing
       _updateEnemyPath(enemy, deltaMs);
 
+      // Box interaction: check when enemy arrives at a new integer tile
+      if (enemy.x !== enemy._lastBoxCheckX || enemy.y !== enemy._lastBoxCheckY) {
+        enemy._lastBoxCheckX = enemy.x;
+        enemy._lastBoxCheckY = enemy.y;
+        _checkEnemyBoxInteraction(enemy);
+      }
+
       // Update awareness decay
       _updateEnemyAwareness(enemy, deltaMs);
 
@@ -6833,6 +6853,14 @@ _incrementPityTimers();
       return false; // LOS blocked by cover
     }
 
+    // Box evasion: player hiding in a placed box gets a probabilistic LOS block
+    if (_playerInBox) {
+      var boxEvasion = _BOX_EVASION_CHANCE[_playerInBox.quality] || 0.85;
+      if (Math.random() < boxEvasion) {
+        return false; // enemy fails to see through box
+      }
+    }
+
     // Calculate angle to player
     var angleToPlayer = Math.atan2(dy, dx);
 
@@ -6906,6 +6934,12 @@ _incrementPityTimers();
       bonus += passiveBonus;
     }
 
+    // Deployed box bonus: even if the random evasion roll in _isPlayerInSightCone
+    // fails, the box still reduces enemy effective sight range significantly.
+    if (_playerInBox) {
+      bonus += 70; // large range reduction regardless of evasion roll
+    }
+
     // Cache result for this player position
     _stealthBonusCache = { bonus: bonus, px: _player.x, py: _player.y };
 
@@ -6976,6 +7010,136 @@ _incrementPityTimers();
     }
 
     return _breakables.length < initialLength;
+  }
+
+  // ============================================================
+  // DEPLOYED BOX SYSTEM
+  // ============================================================
+
+  var _BOX_DEPLOY_IDS = ['ITM-020', 'ITM-021', 'ITM-022', 'ITM-023'];
+
+  var _BOX_EVASION_CHANCE = {
+    'common': 0.85,
+    'uncommon': 0.90,
+    'rare': 0.95,
+    'legendary': 0.991
+  };
+
+  var _BOX_WALK_OVER_CHANCE = {
+    'common': 0.70,
+    'uncommon': 0.40,
+    'rare': 0.20,
+    'legendary': 0.00
+  };
+
+  var _BOX_NOTICE_CHANCE = {
+    'common': 0.50,
+    'uncommon': 0.35,
+    'rare': 0.20,
+    'legendary': 0.00
+  };
+
+  function _getBoxAt(x, y) {
+    return _placedBoxes.find(function(b) { return b.x === x && b.y === y; }) || null;
+  }
+
+  function _isValidBoxPlacement(x, y) {
+    if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) return false;
+    if (!_grid[y] || _grid[y][x] === TILES.WALL) return false;
+    if (_getBoxAt(x, y)) return false; // already a box here
+    var hasEnemy = _enemies.some(function(e) { return e.x === x && e.y === y && e.hp > 0; });
+    if (hasEnemy) return false;
+    return true;
+  }
+
+  function _placeBoxAt(x, y, quality, itemId) {
+    var box = {
+      id: 'box_' + Date.now() + '_' + x + '_' + y,
+      x: x,
+      y: y,
+      quality: quality || 'common',
+      state: 'empty',
+      discoveryCount: 0,
+      isIdentified: false,
+      sourceItemId: itemId
+    };
+    _placedBoxes.push(box);
+    return box;
+  }
+
+  function _destroyBox(box) {
+    _placedBoxes = _placedBoxes.filter(function(b) { return b.id !== box.id; });
+    if (typeof OverheadAnimator !== 'undefined') {
+      OverheadAnimator.showExpression(box.x, box.y, 'SURPRISED', 800, '📦💥');
+    }
+  }
+
+  function _playerEnterBox(box) {
+    _playerInBox = box;
+    box.state = 'occupied';
+    // Transform avatar
+    if (typeof GoneRogueEffectInterpreter !== 'undefined') {
+      GoneRogueEffectInterpreter.executeEffect({ type: 'avatar_transform', char: '📦' }, { equipping: true });
+    }
+    // Invalidate stealth cache so box bonus is applied on next check
+    _stealthBonusCache = null;
+    if (typeof TooltipSystem !== 'undefined') {
+      TooltipSystem.showGeneric('📦 Inside box — stay still', 1600);
+    }
+  }
+
+  function _playerExitBox(reason) {
+    var box = _playerInBox;
+    if (!box) return;
+    _playerInBox = null;
+    box.state = 'empty';
+    // Restore avatar
+    if (typeof GoneRogueEffectInterpreter !== 'undefined') {
+      GoneRogueEffectInterpreter.executeEffect({ type: 'avatar_transform' }, { equipping: false });
+    }
+    _stealthBonusCache = null;
+    // Legendary boxes survive combat forced exit; all others are consumed on exit
+    if (reason !== 'legendary_combat') {
+      _destroyBox(box);
+    }
+  }
+
+  function _checkEnemyBoxInteraction(enemy) {
+    var box = _getBoxAt(enemy.x, enemy.y);
+    if (!box) return;
+
+    if (box.state === 'occupied') {
+      // Player is hiding — evasion roll
+      var evasionChance = _BOX_EVASION_CHANCE[box.quality] || 0.85;
+      if (Math.random() < evasionChance) {
+        // Enemy fails to detect player
+        if (typeof OverheadAnimator !== 'undefined') {
+          OverheadAnimator.showExpression(enemy.x, enemy.y, 'QUESTION');
+        }
+      } else {
+        // Enemy detects player — trigger combat
+        _playerExitBox('combat');
+        if (!_strCombatActive) {
+          _enterStrCombat(enemy, 'box_discover', null);
+        }
+      }
+    } else if (box.state === 'empty') {
+      if (box.quality === 'legendary') return; // legendary boxes are never interacted with
+
+      var noticeChance = _BOX_NOTICE_CHANCE[box.quality] || 0.50;
+      if (Math.random() < noticeChance) {
+        if (typeof OverheadAnimator !== 'undefined') {
+          OverheadAnimator.showExpression(enemy.x, enemy.y, 'QUESTION');
+        }
+        box.discoveryCount = (box.discoveryCount || 0) + 1;
+      }
+
+      // Walk-over destruction
+      var walkOverChance = _BOX_WALK_OVER_CHANCE[box.quality] || 0.70;
+      if (Math.random() < walkOverChance) {
+        _destroyBox(box);
+      }
+    }
   }
 
   function _damageBreakable(breakable, amount) {
@@ -8047,6 +8211,22 @@ _incrementPityTimers();
         }
       }
     } catch (e) {}
+
+    // Deployed box: exit if player is hiding inside one
+    if (_playerInBox) {
+      var _combatBox = _playerInBox;
+      if (_combatBox.quality === 'legendary') {
+        _playerExitBox('legendary_combat'); // legendary box survives
+        if (typeof TooltipSystem !== 'undefined') {
+          TooltipSystem.showPersistent('📦 Legendary box persists!', 1400);
+        }
+      } else {
+        _playerExitBox('combat'); // box is destroyed
+        if (typeof TooltipSystem !== 'undefined') {
+          TooltipSystem.showPersistent('💥 BOX DESTROYED ON COMBAT', 1400);
+        }
+      }
+    }
 
     // Freeze realtime game loop
     if (_gameLoopActive) {
@@ -10896,6 +11076,32 @@ _incrementPityTimers();
     getBreakables: function() { return _breakables; },
     getBreakableAt: _getBreakableAt,
     removeBreakableAt: _removeBreakableAt,
+
+    // Deployed box system
+    isBoxDeployItem: function(itemId) { return _BOX_DEPLOY_IDS.indexOf(itemId) !== -1; },
+    isValidBoxPlacement: _isValidBoxPlacement,
+    placeBox: function(gridPos, itemId, quality) {
+      if (!gridPos || !_isValidBoxPlacement(gridPos.x, gridPos.y)) return null;
+      var box = _placeBoxAt(gridPos.x, gridPos.y, quality, itemId);
+      // Remove item from persistent inventory
+      if (typeof GAMESTATE !== 'undefined') {
+        var inv = GAMESTATE.getPersistentInventory();
+        var idx = -1;
+        for (var _bi = 0; _bi < inv.length; _bi++) {
+          if (inv[_bi] && inv[_bi].id === itemId) { idx = _bi; break; }
+        }
+        if (idx !== -1 && GAMESTATE.removePersistentInventoryItem) {
+          GAMESTATE.removePersistentInventoryItem(idx);
+        }
+      }
+      return box;
+    },
+    getBoxAt: _getBoxAt,
+    removeBoxAt: function(x, y) {
+      var box = _getBoxAt(x, y);
+      if (box) _destroyBox(box);
+    },
+    getPlacedBoxes: function() { return _placedBoxes.slice(); },
     getProjectiles: function() { return _projectiles; },
     fireProjectile: _fireProjectile,
     fireProjectileAtTarget: fireProjectileAtTarget,
