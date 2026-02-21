@@ -582,6 +582,24 @@ const GAMESTATE = (function () {
    */
   function setActiveItem(itemRef) {
     _state.activeItemSlot = _normalizeItemRef(itemRef);
+
+    // Minimal effect interpreter integration (active item effects)
+    try {
+      if (typeof GoneRogueEffectInterpreter !== 'undefined') {
+        GoneRogueEffectInterpreter.clearAll();
+
+        if (_state.activeItemSlot && typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
+          var item = GoneRogueDataRegistry.getItem(_state.activeItemSlot.id);
+          if (item && Array.isArray(item.effects)) {
+            GoneRogueEffectInterpreter.applyEffects(item.effects, { equipping: true, itemId: _state.activeItemSlot.id });
+          }
+        } else {
+          // Unequip
+          GoneRogueEffectInterpreter.applyEffects([], { equipping: false });
+        }
+      }
+    } catch (e) {}
+
     _saveState();
   }
 

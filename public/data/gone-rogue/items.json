@@ -65,7 +65,7 @@
     "maxStack": 1,
     "equipSlot": "passive",
     "effects": [
-      { "type": "avatar_transform", "sprite": "box_amazon" },
+      { "type": "avatar_transform", "char": "📦", "sprite": "box_amazon" },
       { "type": "sightline_evasion_modifier", "walk_bonus": 0.15, "sprint_penalty": -0.10 },
       { "type": "break_on_combat", "condition": "first_encounter" }
     ],
@@ -82,7 +82,7 @@
     "maxStack": 1,
     "equipSlot": "passive",
     "effects": [
-      { "type": "avatar_transform", "sprite": "box_refrigerator" },
+      { "type": "avatar_transform", "char": "📦", "sprite": "box_refrigerator" },
       { "type": "sightline_evasion_modifier", "walk_bonus": 0.15, "sprint_penalty": -0.10 }
     ],
     "synergyTags": ["stealth", "box", "camo"],

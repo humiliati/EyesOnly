@@ -7928,6 +7928,25 @@ _incrementPityTimers();
       PassiveItemsSystem.checkAndBreakItems('combat');
     }
 
+    // Break-on-combat effect interpreter (e.g., Amazon Box breaks on first encounter)
+    try {
+      if (typeof GoneRogueEffectInterpreter !== 'undefined' && GoneRogueEffectInterpreter.shouldBreakOnCombat && GoneRogueEffectInterpreter.shouldBreakOnCombat()) {
+        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getActiveItem === 'function') {
+          var activeRef = GAMESTATE.getActiveItem();
+          if (activeRef && activeRef.id) {
+            GAMESTATE.clearActiveItem();
+            if (GoneRogueEffectInterpreter.clearBreakOnCombat) {
+              GoneRogueEffectInterpreter.clearBreakOnCombat();
+            }
+
+            if (typeof TooltipSystem !== 'undefined') {
+              TooltipSystem.showPersistent('💥 BOX BROKE ON COMBAT INITIATION', 1400);
+            }
+          }
+        }
+      }
+    } catch (e) {}
+
     // Freeze realtime game loop
     if (_gameLoopActive) {
       _pauseGameLoop();

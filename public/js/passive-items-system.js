@@ -818,7 +818,19 @@ const PassiveItemsSystem = (function() {
    * Get player avatar override from equipped items
    * @returns {string|null} Avatar emoji or null if no override
    */
+  var _manualAvatarOverride = null;
+
+  function setPlayerAvatarOverride(char) {
+    _manualAvatarOverride = char || null;
+  }
+
+  function clearPlayerAvatarOverride() {
+    _manualAvatarOverride = null;
+  }
+
   function getPlayerAvatarOverride() {
+    if (_manualAvatarOverride) return _manualAvatarOverride;
+
     for (var i = 0; i < _equippedPassives.length; i++) {
       var itemId = _equippedPassives[i];
       var item = PASSIVE_ITEMS_DB[itemId];
@@ -884,6 +896,8 @@ const PassiveItemsSystem = (function() {
     getAllPassiveItems: getAllPassiveItems,
     getEquippedStealthBonus: getEquippedStealthBonus,
     getPlayerAvatarOverride: getPlayerAvatarOverride,
+    setPlayerAvatarOverride: setPlayerAvatarOverride,
+    clearPlayerAvatarOverride: clearPlayerAvatarOverride,
     checkAndBreakItems: checkAndBreakItems,
     resetRunState: resetRunState,
     tryPreventCombatDeath: tryPreventCombatDeath,
