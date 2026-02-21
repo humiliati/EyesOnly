@@ -658,11 +658,13 @@ const GoneRogueMobile = (function () {
       entities: entities,
       effects: effects,
       player: player ? (function() {
-        var playerChar = '🥷';
+        var playerChar = (typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent || '')) ? '@' : '🥷';
         if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.getPlayerAvatarOverride) {
           var avatarOverride = PassiveItemsSystem.getPlayerAvatarOverride();
-          if (avatarOverride) {
+          if (avatarOverride && (typeof avatarOverride === 'string')) {
             playerChar = avatarOverride;
+          } else if (avatarOverride && typeof avatarOverride.char === 'string') {
+            playerChar = avatarOverride.char;
           }
         }
 
@@ -750,8 +752,20 @@ const GoneRogueMobile = (function () {
         var impact = impactEffects ? impactEffects.find(function(e) { return e.x === x && e.y === y; }) : null;
 
         if (player && player.x === x && player.y === y) {
-          cell.textContent = '🥷';
+          var basePlayerChar = (typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent || '')) ? '@' : '🥷';
+          cell.textContent = basePlayerChar;
           cell.classList.add('cell-player');
+
+          if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.getPlayerAvatarOverride) {
+            try {
+              var av = PassiveItemsSystem.getPlayerAvatarOverride();
+              if (av && typeof av === 'string') {
+                cell.textContent = av;
+              } else if (av && typeof av.char === 'string') {
+                cell.textContent = av.char;
+              }
+            } catch (err) {}
+          }
 
           // Add directional gun indicator
           if (player.lastMoveDirection) {
