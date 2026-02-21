@@ -65,6 +65,26 @@
     // Listen for custom auth events instead of polling
     if (typeof window !== 'undefined') {
       window.addEventListener('auth-state-changed', _updateLoginButton);
+
+      // Sync header active item display when GAMESTATE changes it (e.g. sidebar equip)
+      window.addEventListener('rogue-active-item-changed', function(e) {
+        try {
+          var ref = e && e.detail ? e.detail.activeItem : null;
+          var display = document.getElementById('active-item-display');
+          if (!display) return;
+
+          if (!ref || !ref.id) {
+            display.innerHTML = '<span class="empty-slot-indicator">·</span>';
+            display.classList.remove('has-item');
+            return;
+          }
+
+          var item = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) ? GoneRogueDataRegistry.getItem(ref.id) : null;
+          var em = item && item.emoji ? item.emoji : '📦';
+          display.innerHTML = '<span class="item-emoji">' + em + '</span>';
+          display.classList.add('has-item');
+        } catch (err) {}
+      });
     }
   }
 

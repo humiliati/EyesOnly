@@ -161,19 +161,26 @@ var NonCombatStateStore = (function() {
     qty = Math.max(1, qty);
 
     var cards = Array.isArray(_state.cardsInHand) ? _state.cardsInHand.slice() : [];
-    var found = false;
+    var selectedIdx = Number(_state.selectedHandIndex || -1);
+
+    var foundIdx = -1;
     for (var i = 0; i < cards.length; i++) {
       if (cards[i] && cards[i].id === cardId) {
+        foundIdx = i;
         cards[i] = Object.assign({}, cards[i], { qty: (cards[i].qty || 0) + qty });
-        found = true;
         break;
       }
     }
-    if (!found) {
+
+    if (foundIdx === -1) {
       cards.push({ id: cardId, qty: qty, meta: null });
+      foundIdx = cards.length - 1;
     }
 
-    return modifyState({ cardsInHand: cards }, triggerEvent || 'hand:add_card', context || { id: cardId, qty: qty });
+    // Auto-select the card we just added/moved (sticky selection for quick backup move)
+    selectedIdx = foundIdx;
+
+    return modifyState({ cardsInHand: cards, selectedHandIndex: selectedIdx }, triggerEvent || 'hand:add_card', context || { id: cardId, qty: qty });
   }
 
   function setSelectedHandIndex(idx) {

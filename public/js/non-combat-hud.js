@@ -264,7 +264,8 @@ var NonCombatHUD = (function() {
             e.stopPropagation();
             var idx = Number(e.currentTarget.dataset.handIndex);
             if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.setSelectedHandIndex) {
-              NonCombatStateStore.setSelectedHandIndex(idx);
+              var current = (typeof NonCombatStateStore.getState === 'function') ? NonCombatStateStore.getState().selectedHandIndex : -1;
+              NonCombatStateStore.setSelectedHandIndex(current === idx ? -1 : idx);
             }
           });
 

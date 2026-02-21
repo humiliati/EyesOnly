@@ -623,6 +623,10 @@ const GAMESTATE = (function () {
     } catch (e) {}
 
     _saveState();
+
+    try {
+      window.dispatchEvent(new CustomEvent('rogue-active-item-changed', { detail: { activeItem: _state.activeItemSlot } }));
+    } catch (e2) {}
   }
 
   /**
@@ -794,6 +798,10 @@ const GAMESTATE = (function () {
   function clearActiveItem() {
     _state.activeItemSlot = null;
     _saveState();
+
+    try {
+      window.dispatchEvent(new CustomEvent('rogue-active-item-changed', { detail: { activeItem: null } }));
+    } catch (e2) {}
   }
 
   function _saveState() {
