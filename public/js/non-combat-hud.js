@@ -11,7 +11,7 @@ var NonCombatHUD = (function() {
 
   var PREF_KEY = 'EYESONLY_NONCOMBAT_HUD_PREFS_V1';
   var _prefs = {
-    minimized: false
+    minimized: true
   };
 
   var _drag = {
@@ -29,6 +29,9 @@ var NonCombatHUD = (function() {
         if (parsed && typeof parsed === 'object') {
           _prefs = Object.assign(_prefs, parsed);
         }
+      } else {
+        // First-run default: keep minimized so new players aren't confused.
+        _prefs.minimized = true;
       }
     } catch (e) {}
   }
