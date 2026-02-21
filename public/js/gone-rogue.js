@@ -6235,17 +6235,22 @@ _incrementPityTimers();
   function _gameLoopTick() {
     if (!_gameLoopActive) return;
 
-    var now = Date.now();
-    var delta = now - _lastTickTime;
+    try {
+      var now = Date.now();
+      var delta = now - _lastTickTime;
 
-    // Process game updates if enough time has passed
-    if (delta >= _tickInterval) {
-      var _t0 = (typeof EYESONLY_PERF !== 'undefined') ? performance.now() : 0;
-      _updateGameState(delta);
-      if (_t0 && typeof EYESONLY_PERF !== 'undefined') {
-        EYESONLY_PERF.mark('rogue.gameTickMs', performance.now() - _t0);
+      // Process game updates if enough time has passed
+      if (delta >= _tickInterval) {
+        var _t0 = (typeof EYESONLY_PERF !== 'undefined') ? performance.now() : 0;
+        _updateGameState(delta);
+        if (_t0 && typeof EYESONLY_PERF !== 'undefined') {
+          EYESONLY_PERF.mark('rogue.gameTickMs', performance.now() - _t0);
+        }
+        _lastTickTime = now;
       }
-      _lastTickTime = now;
+    } catch (e) {
+      // Keep the loop alive even if an update throws, so the world doesn't hard-freeze.
+      try { console.error('[GoneRogue] game loop tick error:', e); } catch (e2) {}
     }
 
     // Schedule next tick
