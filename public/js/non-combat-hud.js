@@ -155,6 +155,25 @@ var NonCombatHUD = (function() {
       _render(NonCombatStateStore.getState());
     }
 
+    // Re-render when rogue equipped item changes (GAMESTATE is canonical)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('rogue-active-item-changed', function() {
+        try {
+          if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.getState) {
+            _render(NonCombatStateStore.getState());
+          }
+        } catch (err) {}
+      });
+
+      window.addEventListener('gone-rogue-registry-ready', function() {
+        try {
+          if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.getState) {
+            _render(NonCombatStateStore.getState());
+          }
+        } catch (err) {}
+      });
+    }
+
     // Registry loading UX
     var previewEl = _root.querySelector('#nch-preview');
     if (previewEl) {
@@ -229,13 +248,39 @@ var NonCombatHUD = (function() {
     if (eq) {
       // Prefer GAMESTATE active item (canonical for rogue)
       var activeRef = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) ? GAMESTATE.getActiveItem() : null;
+      var em = '';
+      var nm = '';
+
       if (activeRef && activeRef.id && typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
         var it = GoneRogueDataRegistry.getItem(activeRef.id);
-        var em = it && it.emoji ? it.emoji : '📦';
-        var nm = it && it.name ? it.name : activeRef.id;
+        em = (it && it.emoji) ? it.emoji : '📦';
+        nm = (it && it.name) ? it.name : activeRef.id;
         eq.textContent = em + ' ' + nm;
+        eq.classList.add('nch-draggable');
+        eq.dataset.equippedId = activeRef.id;
       } else {
         eq.textContent = '(none)';
+        eq.classList.remove('nch-draggable');
+        eq.dataset.equippedId = '';
+      }
+
+      // One-time attach: allow dragging the equipped item from NCH to the map
+      if (!eq._nchEquippedBound) {
+        eq._nchEquippedBound = true;
+
+        eq.addEventListener('pointerdown', function(e) {
+          if (!e || e.pointerType === 'touch') return;
+          if (e.button !== undefined && e.button !== 0) return;
+          if (_root && _root.classList.contains('locked')) return;
+
+          var id = e.currentTarget.dataset.equippedId;
+          if (!id) return;
+
+          var itemDef = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) ? GoneRogueDataRegistry.getItem(id) : null;
+          var ghostEmoji = (itemDef && itemDef.emoji) ? itemDef.emoji : '📦';
+
+          _startNchDrag({ kind: 'equipped_item', id: id, emoji: ghostEmoji }, e);
+        });
       }
     }
 
@@ -492,6 +537,23 @@ var NonCombatHUD = (function() {
       }
       if (ok && typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.consumeBackupIndex) {
         NonCombatStateStore.consumeBackupIndex(_nchDrag.backupIndex);
+      }
+    } else if (_nchDrag.kind === 'equipped_item') {
+      var id = _nchDrag.id;
+
+      // Box deployables: placement
+      if (id && typeof GoneRogue !== 'undefined' && GoneRogue.isBoxDeployItem && GoneRogue.isBoxDeployItem(id) && GoneRogue.placeBox) {
+        var quality = 'common';
+        if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
+          var def = GoneRogueDataRegistry.getItem(id);
+          if (def && def.boxQuality) quality = def.boxQuality;
+        }
+        GoneRogue.placeBox(coords, id, quality);
+        ok = true;
+      } else if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.useActiveItemAt === 'function') {
+        // Default: route to active item targeting
+        GoneRogue.useActiveItemAt(coords.x, coords.y);
+        ok = true;
       }
     }
 

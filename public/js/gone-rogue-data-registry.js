@@ -133,6 +133,12 @@ var GoneRogueDataRegistry = (function() {
         NonCombatEventBus.emit('registry:loaded', { counts: info.counts, loadedAt: info.loadedAt });
       }
 
+      try {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('gone-rogue-registry-ready', { detail: { counts: info.counts, loadedAt: info.loadedAt } }));
+        }
+      } catch (err) {}
+
       return true;
     });
 
