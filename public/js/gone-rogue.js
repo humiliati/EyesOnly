@@ -7061,7 +7061,8 @@ _incrementPityTimers();
       state: 'empty',
       discoveryCount: 0,
       isIdentified: false,
-      sourceItemId: itemId
+      sourceItemId: itemId,
+      placedAtMs: Date.now()
     };
     _placedBoxes.push(box);
     return box;
@@ -7069,6 +7070,17 @@ _incrementPityTimers();
 
   function _destroyBox(box) {
     _placedBoxes = _placedBoxes.filter(function(b) { return b.id !== box.id; });
+
+    // Visual feedback: brief poof at box position (non-projectile)
+    try {
+      var effect = { x: box.x, y: box.y, type: 'poof', time: Date.now(), char: '💨' };
+      _impactEffects.push(effect);
+      setTimeout(function() {
+        var index = _impactEffects.indexOf(effect);
+        if (index > -1) _impactEffects.splice(index, 1);
+      }, 320);
+    } catch (e0) {}
+
     if (typeof OverheadAnimator !== 'undefined') {
       OverheadAnimator.showExpression(box.x, box.y, 'SURPRISED', 800, '📦💥');
     }
@@ -7077,6 +7089,16 @@ _incrementPityTimers();
   function _playerEnterBox(box) {
     _playerInBox = box;
     box.state = 'occupied';
+
+    // Sneak-in bonus: entering within 2s of placement reduces enemy notice chance.
+    // TODO: consider see-sawing this with LOS evasion or sight range instead.
+    box._sneakBonusActive = false;
+    try {
+      if (box.placedAtMs && (Date.now() - box.placedAtMs) <= 2000) {
+        box._sneakBonusActive = true;
+      }
+    } catch (e0) {}
+
     // Transform avatar
     if (typeof GoneRogueEffectInterpreter !== 'undefined') {
       GoneRogueEffectInterpreter.executeEffect({ type: 'avatar_transform', char: '📦' }, { equipping: true });
@@ -7127,6 +7149,9 @@ _incrementPityTimers();
       if (box.quality === 'legendary') return; // legendary boxes are never interacted with
 
       var noticeChance = _BOX_NOTICE_CHANCE[box.quality] || 0.50;
+      if (box._sneakBonusActive) {
+        noticeChance = noticeChance * 0.55;
+      }
       if (Math.random() < noticeChance) {
         if (typeof OverheadAnimator !== 'undefined') {
           OverheadAnimator.showExpression(enemy.x, enemy.y, 'QUESTION');
