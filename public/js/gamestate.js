@@ -83,6 +83,26 @@ const GAMESTATE = (function () {
       _saveState();
     }
 
+    // Seed deployable boxes ONCE for early testing (remove/adjust later)
+    if (!_state._starterBoxesSeeded) {
+      var starters = [
+        { id: 'ITM-020', qty: 2 },
+        { id: 'ITM-021', qty: 1 },
+        { id: 'ITM-022', qty: 1 },
+        { id: 'ITM-023', qty: 1 }
+      ];
+
+      for (var i = 0; i < starters.length; i++) {
+        var s = starters[i];
+        var existing = _state.inventoryPersistent.find(function(it) { return it && it.id === s.id; });
+        if (existing) existing.qty = (existing.qty || 0) + s.qty;
+        else _state.inventoryPersistent.push({ id: s.id, qty: s.qty, meta: null });
+      }
+
+      _state._starterBoxesSeeded = true;
+      _saveState();
+    }
+
     // If persistent cards are empty, seed a tiny starter pack ONCE (for testing/new runs)
     if ((!_state.persistentCards || _state.persistentCards.length === 0) && !_state._starterCardsSeeded) {
       _state.persistentCards = [
@@ -863,6 +883,7 @@ const GAMESTATE = (function () {
       inventoryPersistent: [],
       persistentCards: [],
       _starterCardsSeeded: false,
+      _starterBoxesSeeded: false,
       inventoryLoose: [],
       actionButtonCards: [],
       persistentSlots: 9,

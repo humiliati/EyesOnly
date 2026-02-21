@@ -112,7 +112,14 @@ const GoneRogueMobile = (function () {
         if (activeItem) {
           var ghost = document.createElement('div');
           ghost.className = 'active-slot-drag-ghost';
-          ghost.textContent = activeItem.emoji || '📦';
+
+          var ghostEmoji = '📦';
+          if (activeItem && activeItem.id && typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
+            var itemDef = GoneRogueDataRegistry.getItem(activeItem.id);
+            if (itemDef && itemDef.emoji) ghostEmoji = itemDef.emoji;
+          }
+          ghost.textContent = ghostEmoji;
+
           ghost.style.position = 'fixed';
           ghost.style.left = (t.clientX - 10) + 'px';
           ghost.style.top = (t.clientY - 10) + 'px';
@@ -180,7 +187,14 @@ const GoneRogueMobile = (function () {
         if (activeItem) {
           var ghost = document.createElement('div');
           ghost.className = 'active-slot-drag-ghost';
-          ghost.textContent = activeItem.emoji || '📦';
+
+          var ghostEmoji = '📦';
+          if (activeItem && activeItem.id && typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
+            var itemDef = GoneRogueDataRegistry.getItem(activeItem.id);
+            if (itemDef && itemDef.emoji) ghostEmoji = itemDef.emoji;
+          }
+          ghost.textContent = ghostEmoji;
+
           ghost.style.position = 'fixed';
           ghost.style.left = (e.clientX - 10) + 'px';
           ghost.style.top = (e.clientY - 10) + 'px';
