@@ -132,20 +132,26 @@
    * @param {Object} combatState - Current combat state
    */
   var _lastResolvingTurn = false;
+  var _lastHandSig = null;
 
   function _showHandFan(combatState) {
     // Get canonical hand cards from GAMESTATE (mirrors NCH)
     var cards = [];
+    var sigParts = [];
     if (typeof GAMESTATE !== 'undefined') {
       var refs = (typeof GAMESTATE.getCardsInHand === 'function') ? GAMESTATE.getCardsInHand() : [];
-      // Expand qty into individual UI card entries for now
+
       for (var i = 0; i < refs.length; i++) {
         var ref = refs[i];
         if (!ref || !ref.id) continue;
-        var def = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) ? GoneRogueDataRegistry.getCard(ref.id) : null;
-        if (!def) def = { id: ref.id, name: ref.id, emoji: '🃏', effects: [] };
         var qty = (typeof ref.qty === 'number' ? ref.qty : 1);
         qty = Math.max(1, qty);
+        sigParts.push(ref.id + 'x' + qty);
+
+        var def = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) ? GoneRogueDataRegistry.getCard(ref.id) : null;
+        if (!def) def = { id: ref.id, name: ref.id, emoji: '🃏', effects: [] };
+
+        // Expand qty into individual UI card entries for now (stable by order)
         for (var q = 0; q < qty; q++) {
           cards.push(Object.assign({}, def, { id: ref.id }));
         }
@@ -154,8 +160,11 @@
       // Fallback to legacy loose inventory if canonical hand empty
       if (cards.length === 0 && typeof GAMESTATE.getLooseInventory === 'function') {
         cards = GAMESTATE.getLooseInventory() || [];
+        sigParts = ['legacy:' + cards.length];
       }
     }
+
+    var handSig = sigParts.join('|');
 
     if (cards.length === 0) {
       HandFanComponent.hide();
@@ -181,11 +190,16 @@
     }
     _lastResolvingTurn = !!isResolvingTurn;
 
-    // If fan isn't visible yet, show it; otherwise just update cards/mode
+    // If fan isn't visible yet, show it.
+    // If visible: only update cards when the hand signature changes (prevents selection jitter).
     if (!HandFanComponent.isVisible()) {
       HandFanComponent.show(cards);
+      _lastHandSig = handSig;
     } else {
-      HandFanComponent.updateCards(cards);
+      if (_lastHandSig !== handSig) {
+        HandFanComponent.updateCards(cards);
+        _lastHandSig = handSig;
+      }
     }
 
     // Determine fan mode based on STR window state
