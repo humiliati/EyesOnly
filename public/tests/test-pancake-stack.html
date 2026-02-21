@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test: Pancake Stack System</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      background: #0a0a0a;
+      color: #33ff33;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #33ff33;
+      text-shadow: 0 0 10px #33ff33;
+    }
+
+    .test-section {
+      background: #111;
+      border: 1px solid #33ff33;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 5px;
+    }
+
+    #canvas-container {
+      position: relative;
+      background: #1a1a2e;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    #test-canvas {
+      border: 2px solid #333;
+      background: #0a0a1a;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+
+    button {
+      background: #33ff33;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    button:hover {
+      background: #66ff66;
+    }
+
+    .info {
+      color: #ffaa00;
+      margin: 10px 0;
+    }
+
+    #stack-info {
+      background: #1a1a2e;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 10px 0;
+    }
+
+    .stack-counter-demo {
+      display: inline-block;
+      margin: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🥞 Pancake Stack System Test Suite</h1>
+
+  <div class="test-section">
+    <h2>Visual Test Canvas</h2>
+    <div id="canvas-container">
+      <canvas id="test-canvas" width="800" height="400"></canvas>
+    </div>
+
+    <div class="controls">
+      <button onclick="addPancake()">🥞 Add Pancake</button>
+      <button onclick="addItem('☕')">☕ Add Coffee</button>
+      <button onclick="addItem('🪙')">🪙 Add Coin</button>
+      <button onclick="removeTopItem()">⬇️ Remove Top</button>
+      <button onclick="clearStack()">🗑️ Clear Stack</button>
+      <button onclick="addMultiplePancakes()">🥞🥞🥞 Add 5 Pancakes</button>
+    </div>
+
+    <div id="stack-info">
+      <strong>Stack Count:</strong> <span id="count">0</span><br>
+      <strong>Stack Items:</strong> <span id="items">None</span>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>UI Counter Component Test</h2>
+    <div class="info">
+      Hover over the counter to see stack preview:
+    </div>
+    <div id="ui-counter-container" class="stack-counter-demo"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>Animation Timeline Test</h2>
+    <div class="info">
+      Tests the complete pickup-to-stack animation sequence:
+      <ol>
+        <li>Flash highlight (0-50ms)</li>
+        <li>Shrink source (50-100ms)</li>
+        <li>Player glow (100-150ms)</li>
+        <li>Pop up with bounce (150-300ms)</li>
+        <li>Continuous bobbing (300ms+)</li>
+      </ol>
+    </div>
+    <button onclick="testFullAnimation()">▶️ Test Full Animation</button>
+  </div>
+
+  <div class="test-section">
+    <h2>Test Results</h2>
+    <div id="test-results" style="color: #ccc; font-size: 13px;">
+      <p>Run tests using the buttons above...</p>
+    </div>
+  </div>
+
+  <!-- Load dependencies -->
+  <script src="../js/player-stack-manager.js"></script>
+  <script src="../js/pancake-stack.js"></script>
+  <script src="../js/stack-ui-counter.js"></script>
+
+  <script>
+    // Test setup
+    var canvas = document.getElementById('test-canvas');
+    var ctx = canvas.getContext('2d');
+
+    var mockPlayer = {
+      x: 400,
+      y: 200,
+      emoji: '🧍'
+    };
+
+    var pancakeStack = new PancakeStack(mockPlayer);
+    var uiUpdateFn = null;
+
+    var itemIdCounter = 0;
+
+    // Animation loop
+    var lastTime = Date.now();
+    function animate() {
+      var currentTime = Date.now();
+
+      // Update stack
+      pancakeStack.update(currentTime);
+
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#0a0a1a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw player
+      ctx.font = '48px system-ui';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(mockPlayer.emoji, mockPlayer.x, mockPlayer.y);
+
+      // Draw stack
+      pancakeStack.render(ctx, mockPlayer, { x: 0, y: 0 });
+
+      // Update info
+      updateStackInfo();
+
+      requestAnimationFrame(animate);
+    }
+
+    // Start animation
+    animate();
+
+    // Initialize UI counter
+    uiUpdateFn = StackUICounter.initialize(pancakeStack, '#ui-counter-container');
+
+    // Test functions
+    function addPancake() {
+      var item = {
+        id: 'pancake_' + (++itemIdCounter),
+        type: 'pancake',
+        emoji: '🥞'
+      };
+      pancakeStack.addPancake(item);
+      logTest('Added pancake to stack');
+      if (uiUpdateFn) uiUpdateFn();
+    }
+
+    function addItem(emoji) {
+      var item = {
+        id: 'item_' + (++itemIdCounter),
+        type: 'generic',
+        emoji: emoji
+      };
+      pancakeStack.addToStack(item);
+      logTest('Added ' + emoji + ' to stack');
+      if (uiUpdateFn) uiUpdateFn();
+    }
+
+    function removeTopItem() {
+      var stack = pancakeStack.getStack();
+      if (stack.length > 0) {
+        var top = stack[stack.length - 1];
+        pancakeStack.removeFromStack(top.item);
+        logTest('Removed top item from stack');
+        if (uiUpdateFn) uiUpdateFn();
+      } else {
+        logTest('Stack is empty - nothing to remove', 'warning');
+      }
+    }
+
+    function clearStack() {
+      pancakeStack.clearStack();
+      logTest('Cleared entire stack');
+      if (uiUpdateFn) uiUpdateFn();
+    }
+
+    function addMultiplePancakes() {
+      for (var i = 0; i < 5; i++) {
+        setTimeout(function() {
+          addPancake();
+        }, i * 200);
+      }
+    }
+
+    function testFullAnimation() {
+      logTest('Testing full animation sequence...');
+      clearStack();
+      setTimeout(function() {
+        logTest('0ms: Starting pickup');
+        addPancake();
+        setTimeout(function() { logTest('50ms: Shrink phase'); }, 50);
+        setTimeout(function() { logTest('100ms: Player glow'); }, 100);
+        setTimeout(function() { logTest('150ms: Pop up with bounce'); }, 150);
+        setTimeout(function() { logTest('300ms: Continuous bobbing active'); }, 300);
+      }, 100);
+    }
+
+    function updateStackInfo() {
+      document.getElementById('count').textContent = pancakeStack.getStackCount();
+      var stack = pancakeStack.getStack();
+      if (stack.length === 0) {
+        document.getElementById('items').textContent = 'None';
+      } else {
+        document.getElementById('items').textContent = stack.map(function(s) {
+          return s.emoji;
+        }).join(' ');
+      }
+    }
+
+    function logTest(message, level) {
+      level = level || 'info';
+      var resultsDiv = document.getElementById('test-results');
+      var timestamp = new Date().toLocaleTimeString();
+      var color = level === 'warning' ? '#ffaa00' : level === 'error' ? '#ff3333' : '#33ff33';
+      resultsDiv.innerHTML += `<div style="color: ${color};">[${timestamp}] ${message}</div>`;
+      resultsDiv.scrollTop = resultsDiv.scrollHeight;
+    }
+
+    // Initial log
+    logTest('Pancake Stack System initialized');
+    logTest('Canvas size: ' + canvas.width + 'x' + canvas.height);
+    logTest('Max stack height: ' + pancakeStack.maxStackHeight);
+  </script>
+</body>
+</html>
