@@ -210,7 +210,12 @@ var NonCombatStateStore = (function() {
 
     var hIdx = Number(_state.selectedHandIndex || -1);
     if (hIdx < 0 || hIdx >= hand.length || !hand[hIdx]) {
-      return false;
+      // Fallback: if exactly one card in hand, assume it.
+      if (hand.length === 1 && hand[0]) {
+        hIdx = 0;
+      } else {
+        return false;
+      }
     }
 
     // Find empty backup slot

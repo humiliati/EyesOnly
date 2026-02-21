@@ -95,7 +95,7 @@ var NonCombatHUD = (function() {
         if (typeof NonCombatStateStore === 'undefined') return;
         var ok = NonCombatStateStore.moveSelectedHandToBackup({ maxSlots: 4 });
         if (typeof TooltipSystem !== 'undefined') {
-          TooltipSystem.showPersistent(ok ? '📦 moved to BACKUP' : '❌ select a hand card + ensure backup has space', 1100);
+          TooltipSystem.showPersistent(ok ? '📦 moved to BACKUP' : '❌ select a hand card (or ensure hand has exactly 1) + ensure backup has space', 1200);
         }
       });
     }

@@ -83,11 +83,12 @@ const GAMESTATE = (function () {
       _saveState();
     }
 
-    // If persistent cards are empty, seed a tiny starter pack for testing/new runs
-    if (!_state.persistentCards || _state.persistentCards.length === 0) {
+    // If persistent cards are empty, seed a tiny starter pack ONCE (for testing/new runs)
+    if ((!_state.persistentCards || _state.persistentCards.length === 0) && !_state._starterCardsSeeded) {
       _state.persistentCards = [
         { id: 'ACT-001', qty: 2 }
       ];
+      _state._starterCardsSeeded = true;
       _saveState();
     }
   }
@@ -861,6 +862,7 @@ const GAMESTATE = (function () {
       submode: null,
       inventoryPersistent: [],
       persistentCards: [],
+      _starterCardsSeeded: false,
       inventoryLoose: [],
       actionButtonCards: [],
       persistentSlots: 9,
