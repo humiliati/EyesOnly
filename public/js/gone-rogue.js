@@ -663,6 +663,10 @@ const GoneRogue = (function () {
   function _updatePositionHistory() {
     var HISTORY_SIZE = 16;
 
+    if (!_player.positionHistory || !Array.isArray(_player.positionHistory)) {
+      _player.positionHistory = [];
+    }
+
     // Push current position to history
     _player.positionHistory.unshift({
       x: _player.x,
