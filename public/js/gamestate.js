@@ -417,6 +417,166 @@ const GAMESTATE = (function () {
     return { success: false };
   }
 
+  // ============================================================
+  // CANONICAL HAND SYSTEM (CH/NCH)
+  // ============================================================
+
+  function getCardsInHand() {
+    return Array.isArray(_state.cardsInHand) ? _state.cardsInHand.slice() : [];
+  }
+
+  function getBackupCards() {
+    var b = Array.isArray(_state.backupCards) ? _state.backupCards.slice() : [];
+    // stable 4 slots
+    while (b.length < 4) b.push(null);
+    if (b.length > 4) b = b.slice(0, 4);
+    return b;
+  }
+
+  function addCardToHand(cardId, qty) {
+    qty = (typeof qty === 'number' ? qty : 1);
+    qty = Math.max(1, qty);
+
+    // Consume from stash
+    var removed = removePersistentCard(cardId, qty);
+    if (!removed || !removed.success) return { success: false, reason: 'not_in_stash' };
+
+    if (!Array.isArray(_state.cardsInHand)) _state.cardsInHand = [];
+
+    var existing = _state.cardsInHand.find(function(r) { return r && r.id === cardId; });
+    if (existing) existing.qty = (existing.qty || 0) + qty;
+    else _state.cardsInHand.push({ id: cardId, qty: qty, meta: null });
+
+    _saveState();
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'add', cardId: cardId, qty: qty } }));
+      }
+    } catch (e2) {}
+
+    return { success: true };
+  }
+
+  function returnCardFromHandToStash(cardId, qty) {
+    qty = (typeof qty === 'number' ? qty : 1);
+    qty = Math.max(1, qty);
+
+    if (!Array.isArray(_state.cardsInHand)) _state.cardsInHand = [];
+
+    for (var i = 0; i < _state.cardsInHand.length; i++) {
+      var ref = _state.cardsInHand[i];
+      if (!ref || ref.id !== cardId) continue;
+
+      var take = Math.min(qty, ref.qty || 1);
+      ref.qty = (ref.qty || 1) - take;
+      if (ref.qty <= 0) _state.cardsInHand.splice(i, 1);
+
+      addPersistentCard(cardId, take);
+      _saveState();
+      try {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'return', cardId: cardId, qty: take } }));
+        }
+      } catch (e2) {}
+
+      return { success: true, qty: take };
+    }
+
+    return { success: false, reason: 'not_in_hand' };
+  }
+
+  function moveHandIndexToBackup(handIndex) {
+    var idx = Number(handIndex);
+    if (!isFinite(idx) || idx < 0) return { success: false };
+
+    if (!Array.isArray(_state.cardsInHand)) _state.cardsInHand = [];
+    if (!Array.isArray(_state.backupCards)) _state.backupCards = [null, null, null, null];
+
+    if (idx >= _state.cardsInHand.length) return { success: false };
+
+    var ref = _state.cardsInHand[idx];
+    if (!ref || !ref.id) return { success: false };
+
+    // Find first empty backup slot
+    var slot = -1;
+    for (var s = 0; s < 4; s++) {
+      if (!_state.backupCards[s]) { slot = s; break; }
+    }
+    if (slot === -1) return { success: false, reason: 'backup_full' };
+
+    _state.backupCards[slot] = { id: ref.id, qty: ref.qty || 1, meta: ref.meta || null };
+    _state.cardsInHand.splice(idx, 1);
+
+    _saveState();
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'to_backup', cardId: ref.id, slot: slot } }));
+      }
+    } catch (e2) {}
+
+    return { success: true, slot: slot };
+  }
+
+  function moveBackupIndexToHand(backupIndex) {
+    var idx = Number(backupIndex);
+    if (!isFinite(idx) || idx < 0 || idx > 3) return { success: false };
+
+    if (!Array.isArray(_state.backupCards)) _state.backupCards = [null, null, null, null];
+    var ref = _state.backupCards[idx];
+    if (!ref || !ref.id) return { success: false, reason: 'empty' };
+
+    if (!Array.isArray(_state.cardsInHand)) _state.cardsInHand = [];
+    _state.cardsInHand.push({ id: ref.id, qty: ref.qty || 1, meta: ref.meta || null });
+    _state.backupCards[idx] = null;
+
+    _saveState();
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'from_backup', cardId: ref.id, idx: idx } }));
+      }
+    } catch (e2) {}
+
+    return { success: true };
+  }
+
+  function resetCombatBackupDrawFlag() {
+    _state.hasDrawnBackupThisCombat = false;
+    _saveState();
+  }
+
+  function canDrawBackupThisCombat() {
+    return !_state.hasDrawnBackupThisCombat;
+  }
+
+  function drawOneFromBackupOncePerCombat() {
+    if (_state.hasDrawnBackupThisCombat) return { success: false, reason: 'already_drawn' };
+
+    if (!Array.isArray(_state.backupCards)) _state.backupCards = [null, null, null, null];
+
+    var idx = -1;
+    for (var i = 0; i < 4; i++) {
+      if (_state.backupCards[i] && _state.backupCards[i].id) { idx = i; break; }
+    }
+    if (idx === -1) return { success: false, reason: 'backup_empty' };
+
+    var ref = _state.backupCards[idx];
+    _state.backupCards[idx] = null;
+
+    if (!Array.isArray(_state.cardsInHand)) _state.cardsInHand = [];
+    _state.cardsInHand.push({ id: ref.id, qty: ref.qty || 1, meta: ref.meta || null });
+
+    _state.hasDrawnBackupThisCombat = true;
+    _saveState();
+
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'draw_backup', cardId: ref.id, idx: idx } }));
+      }
+    } catch (e2) {}
+
+    return { success: true, cardId: ref.id };
+  }
+
   /**
    * Get loose inventory
    */
@@ -893,6 +1053,11 @@ const GAMESTATE = (function () {
       cryptos: 0,
       rogueRun: null,
       activeItemSlot: null,
+
+      // Canonical hand + backup (CH/NCH)
+      cardsInHand: [],
+      backupCards: [null, null, null, null],
+      hasDrawnBackupThisCombat: false,
       playerFatigue: 0,
       maxFatigue: 100,
       fatigueRecovery: 5,
@@ -1495,6 +1660,17 @@ const GAMESTATE = (function () {
     getPersistentCards: getPersistentCards,
     addPersistentCard: addPersistentCard,
     removePersistentCard: removePersistentCard,
+
+    // Canonical hand (CH/NCH)
+    getCardsInHand: getCardsInHand,
+    getBackupCards: getBackupCards,
+    addCardToHand: addCardToHand,
+    returnCardFromHandToStash: returnCardFromHandToStash,
+    moveHandIndexToBackup: moveHandIndexToBackup,
+    moveBackupIndexToHand: moveBackupIndexToHand,
+    resetCombatBackupDrawFlag: resetCombatBackupDrawFlag,
+    canDrawBackupThisCombat: canDrawBackupThisCombat,
+    drawOneFromBackupOncePerCombat: drawOneFromBackupOncePerCombat,
     getLooseInventory: getLooseInventory,
     // Card system - NEW LOOT FLOW
     addCard: addCard,              // Main entry point for card loot
