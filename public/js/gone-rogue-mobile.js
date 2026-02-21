@@ -148,12 +148,27 @@ const GoneRogueMobile = (function () {
       var t = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : null;
       if (!t) return;
 
-      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.useActiveItemAt === 'function') {
-        var coords = _getGridCoordsFromEvent(t.clientX, t.clientY);
-        if (coords) {
-          GoneRogue.useActiveItemAt(coords.x, coords.y);
-          _suppressNextClick = true;
+      var coords = _getGridCoordsFromEvent(t.clientX, t.clientY);
+      if (!coords) return;
+
+      var activeItemRef = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) ? GAMESTATE.getActiveItem() : null;
+
+      // Box deployables: drag-to-place
+      if (activeItemRef && activeItemRef.id && typeof GoneRogue !== 'undefined' && GoneRogue.isBoxDeployItem && GoneRogue.isBoxDeployItem(activeItemRef.id) && GoneRogue.placeBox) {
+        var quality = 'common';
+        if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
+          var def = GoneRogueDataRegistry.getItem(activeItemRef.id);
+          if (def && def.boxQuality) quality = def.boxQuality;
         }
+        GoneRogue.placeBox(coords, activeItemRef.id, quality);
+        _suppressNextClick = true;
+        return;
+      }
+
+      // Default: active item targeting
+      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.useActiveItemAt === 'function') {
+        GoneRogue.useActiveItemAt(coords.x, coords.y);
+        _suppressNextClick = true;
       }
     }, { passive: true });
 
@@ -225,12 +240,26 @@ const GoneRogueMobile = (function () {
       if (!dragWasActive) return;
 
       // Dropped somewhere: if over grid, target-use at coords
-      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.useActiveItemAt === 'function') {
-        var coords = _getGridCoordsFromEvent(e.clientX, e.clientY);
-        if (coords) {
-          GoneRogue.useActiveItemAt(coords.x, coords.y);
-          _suppressNextClick = true;
+      var coords = _getGridCoordsFromEvent(e.clientX, e.clientY);
+      if (!coords) return;
+
+      var activeItemRef = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) ? GAMESTATE.getActiveItem() : null;
+
+      // Box deployables: drag-to-place
+      if (activeItemRef && activeItemRef.id && typeof GoneRogue !== 'undefined' && GoneRogue.isBoxDeployItem && GoneRogue.isBoxDeployItem(activeItemRef.id) && GoneRogue.placeBox) {
+        var quality = 'common';
+        if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
+          var def = GoneRogueDataRegistry.getItem(activeItemRef.id);
+          if (def && def.boxQuality) quality = def.boxQuality;
         }
+        GoneRogue.placeBox(coords, activeItemRef.id, quality);
+        _suppressNextClick = true;
+        return;
+      }
+
+      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.useActiveItemAt === 'function') {
+        GoneRogue.useActiveItemAt(coords.x, coords.y);
+        _suppressNextClick = true;
       }
     });
   }
