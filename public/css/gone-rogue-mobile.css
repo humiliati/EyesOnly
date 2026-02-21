@@ -1264,6 +1264,19 @@
   animation: slot-highlight 0.5s ease-in-out infinite;
 }
 
+/* Box placement preview (deployables) */
+.rogue-cell.box-placement-valid {
+  outline: 2px solid rgba(104, 211, 145, 0.75);
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 2px rgba(104, 211, 145, 0.25);
+}
+
+.rogue-cell.box-placement-invalid {
+  outline: 2px solid rgba(244, 67, 54, 0.65);
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 2px rgba(244, 67, 54, 0.18);
+}
+
 .active-slot-drag-ghost {
   filter: drop-shadow(0 0 6px rgba(0, 255, 136, 0.6));
 }
