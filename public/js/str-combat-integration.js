@@ -243,16 +243,10 @@
   }
 
   function _showBackupActions(combatState) {
-    if (typeof BackupActionContainer === 'undefined') return;
-
-    if (!BackupActionContainer.isVisible()) {
-      BackupActionContainer.resetForCombat();
-      BackupActionContainer.show();
-    }
-
-    // Draw 1 backup card per round (v1)
-    if (combatState && combatState.round) {
-      BackupActionContainer.drawCardForRound(combatState.round);
+    // Legacy backup action container fed looseInventory and conflicts with canonical hand.
+    // Replaced by GAMESTATE.backupCards + STRCombatWindow "DRAW 1".
+    if (typeof BackupActionContainer !== 'undefined') {
+      BackupActionContainer.hide();
     }
   }
 

@@ -8369,6 +8369,13 @@ _incrementPityTimers();
       }
     } catch (e) {}
 
+    // Canonical: reset once-per-combat backup draw flag
+    try {
+      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.resetCombatBackupDrawFlag === 'function') {
+        GAMESTATE.resetCombatBackupDrawFlag();
+      }
+    } catch (e0) {}
+
     // Deployed box: exit if player is hiding inside one
     if (_playerInBox) {
       var _combatBox = _playerInBox;

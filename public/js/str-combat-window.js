@@ -343,6 +343,23 @@ const STRCombatWindow = (function () {
 
     // Timer footer
     html += '<div class="str-window-footer">';
+
+    // Backup draw button (canonical)
+    var canDraw = false;
+    var hasBackup = false;
+    try {
+      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.canDrawBackupThisCombat === 'function') {
+        canDraw = !!GAMESTATE.canDrawBackupThisCombat();
+      }
+      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getBackupCards === 'function') {
+        var b = GAMESTATE.getBackupCards();
+        hasBackup = Array.isArray(b) && b.some(function(x) { return x && x.id; });
+      }
+    } catch (e2) {}
+
+    var drawDisabled = (!canDraw) || (!hasBackup);
+    html += '<button class="str-backup-draw-btn" id="str-backup-draw-btn"' + (drawDisabled ? ' disabled' : '') + '>' + (drawDisabled ? 'DRAW' : 'DRAW 1') + '</button>';
+
     html += '<div class="str-timer-display">';
     html += '<span class="str-timer-label">TIME:</span> ';
     html += '<span class="str-timer-value">' + (_timeRemaining / 1000).toFixed(1) + 's</span>';
@@ -358,6 +375,24 @@ const STRCombatWindow = (function () {
       minimizeBtn.addEventListener('touchend', function(e) {
         e.preventDefault();
         minimize();
+      });
+    }
+
+    // Backup draw handler
+    var drawBtn = _windowContainer.querySelector('#str-backup-draw-btn');
+    if (drawBtn && !drawBtn._bound) {
+      drawBtn._bound = true;
+      drawBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof GAMESTATE === 'undefined' || typeof GAMESTATE.drawOneFromBackupOncePerCombat !== 'function') return;
+        var res = GAMESTATE.drawOneFromBackupOncePerCombat();
+        if (typeof TooltipSystem !== 'undefined') {
+          if (res && res.success) TooltipSystem.showPersistent('➕ BACKUP → HAND', 900);
+          else TooltipSystem.showPersistent('❌ Cannot draw (once/combat or empty)', 900);
+        }
+        // Re-render button state
+        _renderWindow();
       });
     }
 
