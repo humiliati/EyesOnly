@@ -117,6 +117,7 @@ const GoneRogue = (function () {
   var _biomeVisualGrid = null; // Pre-computed visual substitution grid (wall/floor chars)
   var _biomeBackgroundColors = null; // Pre-computed per-tile background gradient colors (40x20)
   var _tileRenderObjects = null; // Per-tile render objects for visual density (multi-tree scatter)
+  var _cachedWalls = []; // Lighting/LOS cache (rebuilt per floor)
 
   // Seed-based generation for reproducible runs
   var _currentSeed = null;         // Current run seed (for deterministic generation)
@@ -2509,6 +2510,7 @@ const GoneRogue = (function () {
     _biomeVisualGrid = null;
     _biomeBackgroundColors = null;
     _tileRenderObjects = null;
+    _cachedWalls = [];
 
     // Invalidate per-floor caches
     _stealthBonusCache = null;
