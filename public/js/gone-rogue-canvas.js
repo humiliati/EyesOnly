@@ -122,20 +122,70 @@ const CanvasRenderer = (function() {
       this.ctx.fillRect(pixelX, pixelY, this.cellSize, this.cellSize);
     }
 
-    // Render character/emoji
-    if (tile.char) {
-      this.ctx.fillStyle = tile.color || '#FFFFFF';
+    // Check if we have multiple render objects for this tile (multi-tree scatter)
+    var renderObjects = null;
+    if (typeof GoneRogue !== 'undefined' && GoneRogue.getTileRenderObjects) {
+      renderObjects = GoneRogue.getTileRenderObjects(x, y);
+    }
 
-      // Add text shadow for better visibility
-      if (tile.color && tile.color !== '#000000') {
-        this.ctx.shadowColor = tile.color;
-        this.ctx.shadowBlur = 3;
+    if (renderObjects && renderObjects.length > 0) {
+      // Render multiple objects per tile for visual density
+      // Sort by layer order: trunk -> scatter -> edge (back to front)
+      var layerOrder = { 'trunk': 0, 'scatter': 1, 'edge': 2 };
+      var sorted = renderObjects.slice().sort(function(a, b) {
+        return (layerOrder[a.layer] || 0) - (layerOrder[b.layer] || 0);
+      });
+
+      // Save font size for scale restoration
+      var originalFont = this.ctx.font;
+      var baseFontSize = Math.floor(this.cellSize * 0.8);
+
+      for (var i = 0; i < sorted.length; i++) {
+        var obj = sorted[i];
+        var objCenterX = centerX + (obj.offsetX || 0);
+        var objCenterY = centerY + (obj.offsetY || 0);
+
+        // Apply scale to font size
+        var scaledFontSize = Math.floor(baseFontSize * (obj.scale || 1.0));
+        if (this.renderMode === RENDER_MODE.ASCII) {
+          this.ctx.font = scaledFontSize + 'px ' + FONT_FAMILY;
+        } else {
+          this.ctx.font = scaledFontSize + 'px ' + EMOJI_FONT_FAMILY;
+        }
+
+        // Render object emoji
+        this.ctx.fillStyle = tile.color || '#FFFFFF';
+
+        // Add text shadow for better visibility
+        if (tile.color && tile.color !== '#000000') {
+          this.ctx.shadowColor = tile.color;
+          this.ctx.shadowBlur = 3;
+        }
+
+        this.ctx.fillText(obj.emoji, objCenterX, objCenterY);
+
+        // Reset shadow
+        this.ctx.shadowBlur = 0;
       }
 
-      this.ctx.fillText(tile.char, centerX, centerY);
+      // Restore original font
+      this.ctx.font = originalFont;
+    } else {
+      // Render single character/emoji (legacy path)
+      if (tile.char) {
+        this.ctx.fillStyle = tile.color || '#FFFFFF';
 
-      // Reset shadow
-      this.ctx.shadowBlur = 0;
+        // Add text shadow for better visibility
+        if (tile.color && tile.color !== '#000000') {
+          this.ctx.shadowColor = tile.color;
+          this.ctx.shadowBlur = 3;
+        }
+
+        this.ctx.fillText(tile.char, centerX, centerY);
+
+        // Reset shadow
+        this.ctx.shadowBlur = 0;
+      }
     }
   };
 

@@ -116,6 +116,7 @@ const GoneRogue = (function () {
   var _forestBuildings = []; // Village buildings {x, y, emoji} for visual overlay
   var _biomeVisualGrid = null; // Pre-computed visual substitution grid (wall/floor chars)
   var _biomeBackgroundColors = null; // Pre-computed per-tile background gradient colors (40x20)
+  var _tileRenderObjects = null; // Per-tile render objects for visual density (multi-tree scatter)
 
   // Seed-based generation for reproducible runs
   var _currentSeed = null;         // Current run seed (for deterministic generation)
@@ -215,6 +216,7 @@ const GoneRogue = (function () {
       floorChar: ',',
       description: 'Welcoming woodland with tall grass',
       floorRange: [1, 3], // Starting biome for new players
+      wallDensity: 2, // Number of additional scatter trees per wall tile
 
       // Wall tile distribution for natural variety
       wallTiles: [
@@ -1718,6 +1720,169 @@ const GoneRogue = (function () {
     });
   }
 
+  /**
+   * Generate render objects for a single tile with seeded scatter.
+   * Creates multiple visual objects per wall tile for density without changing collision.
+   * @param {number} x - Tile X position
+   * @param {number} y - Tile Y position
+   * @param {Object} biome - Current biome definition
+   * @returns {Array} Array of render objects { emoji, offsetX, offsetY, scale, layer }
+   */
+  function _generateTileRenderObjects(x, y, biome) {
+    var tile = _grid[y][x];
+    var renderObjects = [];
+
+    // Only add scatter objects for wall tiles
+    if (tile !== TILES.WALL || !biome || !biome.wallTiles) {
+      return renderObjects;
+    }
+
+    // Create a local seeded RNG for this specific tile
+    var tileIndex = y * GRID_WIDTH + x;
+    var tileSeed = _currentSeed + tileIndex;
+    var tileRNG = new SeededRandom.SeededRNG(tileSeed);
+
+    // Get the primary wall character for this tile
+    var primaryChar = _biomeVisualGrid ? _biomeVisualGrid[y][x] : TILES.WALL;
+
+    // Always add the primary tree at center
+    renderObjects.push({
+      emoji: primaryChar,
+      offsetX: 0,
+      offsetY: 0,
+      scale: 1.0,
+      layer: 'trunk'
+    });
+
+    // Determine density based on biome (can be customized per biome)
+    var density = biome.wallDensity || 2; // Default 2 additional trees per tile
+
+    // Add scatter trees with deterministic offsets
+    for (var i = 0; i < density; i++) {
+      // Pick a random emoji from wallTiles (weighted)
+      var scatterEmoji = _pickWeightedCharWithRNG(biome.wallTiles, tileRNG);
+
+      // Generate offset within tile bounds (-10 to +10 pixels for 20px tiles)
+      var offsetX = -10 + (tileRNG.next() * 20);
+      var offsetY = -10 + (tileRNG.next() * 20);
+
+      // Slight scale variance for visual variety
+      var scale = 0.7 + (tileRNG.next() * 0.4); // 0.7 to 1.1
+
+      renderObjects.push({
+        emoji: scatterEmoji,
+        offsetX: offsetX,
+        offsetY: offsetY,
+        scale: scale,
+        layer: 'scatter'
+      });
+    }
+
+    // Add edge-aware leaf overlays for wall-to-floor boundaries
+    var neighbors = _getNeighborTiles(x, y);
+    var directions = [
+      { dx: 0, dy: -1, name: 'north' },
+      { dx: 1, dy: 0, name: 'east' },
+      { dx: 0, dy: 1, name: 'south' },
+      { dx: -1, dy: 0, name: 'west' }
+    ];
+
+    directions.forEach(function(dir) {
+      var nx = x + dir.dx;
+      var ny = y + dir.dy;
+
+      // Check if neighbor is floor (empty or grass)
+      if (nx >= 0 && nx < GRID_WIDTH && ny >= 0 && ny < GRID_HEIGHT) {
+        var neighborTile = _grid[ny][nx];
+        if (neighborTile === TILES.EMPTY || neighborTile === TILES.GRASS) {
+          // Add a leaf edge overlay toward the floor
+          renderObjects.push({
+            emoji: '🍃',
+            offsetX: dir.dx * 8,
+            offsetY: dir.dy * 8,
+            scale: 0.5,
+            layer: 'edge'
+          });
+        }
+      }
+    });
+
+    return renderObjects;
+  }
+
+  /**
+   * Helper to pick weighted character using provided RNG instance
+   * @param {Array} tiles - Array of { char, weight }
+   * @param {SeededRNG} rng - RNG instance to use
+   * @returns {string} Selected character
+   */
+  function _pickWeightedCharWithRNG(tiles, rng) {
+    if (!tiles || tiles.length === 0) return '?';
+    if (tiles.length === 1) return tiles[0].char;
+
+    var totalWeight = 0;
+    for (var i = 0; i < tiles.length; i++) {
+      totalWeight += tiles[i].weight || 1;
+    }
+
+    var rand = rng.next() * totalWeight;
+    var cumulative = 0;
+    for (var j = 0; j < tiles.length; j++) {
+      cumulative += tiles[j].weight;
+      if (rand < cumulative) {
+        return tiles[j].char;
+      }
+    }
+    return tiles[tiles.length - 1].char;
+  }
+
+  /**
+   * Get neighbor tiles for a position
+   * @param {number} x - Tile X position
+   * @param {number} y - Tile Y position
+   * @returns {Array} Array of neighbor tile values
+   */
+  function _getNeighborTiles(x, y) {
+    var neighbors = [];
+    var directions = [
+      { dx: 0, dy: -1 },
+      { dx: 1, dy: 0 },
+      { dx: 0, dy: 1 },
+      { dx: -1, dy: 0 }
+    ];
+
+    directions.forEach(function(dir) {
+      var nx = x + dir.dx;
+      var ny = y + dir.dy;
+      if (nx >= 0 && nx < GRID_WIDTH && ny >= 0 && ny < GRID_HEIGHT) {
+        neighbors.push(_grid[ny][nx]);
+      }
+    });
+
+    return neighbors;
+  }
+
+  /**
+   * Build tile render objects grid: pre-compute visual scatter objects
+   * for each tile to create dense forest walls without changing collision.
+   * Stores result in _tileRenderObjects.
+   */
+  function _buildTileRenderObjects(biome) {
+    if (!biome || !biome.wallTiles) {
+      _tileRenderObjects = null;
+      return;
+    }
+
+    _tileRenderObjects = [];
+    for (var y = 0; y < GRID_HEIGHT; y++) {
+      var row = [];
+      for (var x = 0; x < GRID_WIDTH; x++) {
+        row.push(_generateTileRenderObjects(x, y, biome));
+      }
+      _tileRenderObjects.push(row);
+    }
+  }
+
   // ============================================================
   // BIOME BACKGROUND GRADIENT SYSTEM
   // 135-degree axial gradient per biome (matches gambling card convention)
@@ -1814,6 +1979,19 @@ const GoneRogue = (function () {
     if (y < 0 || y >= _biomeBackgroundColors.length) return null;
     if (x < 0 || x >= _biomeBackgroundColors[y].length) return null;
     return _biomeBackgroundColors[y][x];
+  }
+
+  /**
+   * Get tile render objects for a specific tile position
+   * @param {number} x - Tile X position
+   * @param {number} y - Tile Y position
+   * @returns {Array|null} Array of render objects or null
+   */
+  function getTileRenderObjects(x, y) {
+    if (!_tileRenderObjects) return null;
+    if (y < 0 || y >= _tileRenderObjects.length) return null;
+    if (x < 0 || x >= _tileRenderObjects[y].length) return null;
+    return _tileRenderObjects[y][x];
   }
 
   /**
@@ -2287,6 +2465,7 @@ const GoneRogue = (function () {
     // Build biome visual grid for forest biome
     var forestBiome = BIOMES.FOREST;
     _buildBiomeVisualGrid(forestBiome);
+    _buildTileRenderObjects(forestBiome);
 
     // Build biome background gradient (day for odd floors, night for even)
     var isNightFloor = (_floor % 2 === 0);
@@ -2329,6 +2508,7 @@ const GoneRogue = (function () {
     _forestBuildings = [];
     _biomeVisualGrid = null;
     _biomeBackgroundColors = null;
+    _tileRenderObjects = null;
 
     // Invalidate per-floor caches
     _stealthBonusCache = null;
@@ -2481,6 +2661,7 @@ _incrementPityTimers();
         _placeVillageCluster(floorBiome);
       }
       _buildBiomeVisualGrid(floorBiome);
+      _buildTileRenderObjects(floorBiome);
 
       // Build biome background gradient (day for odd floors, night for even)
       var isNightFloor = (_floor % 2 === 0);
@@ -11285,6 +11466,7 @@ _incrementPityTimers();
     applyNonCombatCardAt: applyNonCombatCardAt,
     updatePlayerLight: _updatePlayerLight,
     getBiomeBackgroundColor: getBiomeBackgroundColor,
+    getTileRenderObjects: getTileRenderObjects,
 
     // Difficulty tier system
     setDifficulty: setDifficulty,
