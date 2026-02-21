@@ -2510,14 +2510,18 @@ const GoneRogueMobile = (function () {
             var ref = cards[idx];
             if (!ref) return;
 
-            var okRemove = true;
-            if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.removePersistentCard === 'function') {
-              okRemove = GAMESTATE.removePersistentCard(ref.id, 1).success;
+            var okAdd = false;
+            if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addCardToHand === 'function') {
+              okAdd = GAMESTATE.addCardToHand(ref.id, 1).success;
             }
 
-            if (okRemove && typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.addCardToHand) {
-              NonCombatStateStore.addCardToHand(ref.id, 1, 'inventory:click_move_card');
+            if (okAdd) {
+              // Keep NonCombat selection UI in sync (optional)
+              if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.setSelectedHandIndex) {
+                try { NonCombatStateStore.setSelectedHandIndex(0); } catch (e3) {}
+              }
 
+              // Legacy event bus hooks
               if (typeof NonCombatEventBus !== 'undefined') {
                 var remaining = 0;
                 try {
@@ -2540,6 +2544,10 @@ const GoneRogueMobile = (function () {
             }
 
             showInventory();
+            return;
+
+            // legacy NonCombatStateStore hand-mutation path removed (GAMESTATE is canonical)
+
           } catch (err) {}
         });
 

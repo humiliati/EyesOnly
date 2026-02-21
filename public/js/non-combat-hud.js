@@ -93,10 +93,28 @@ var NonCombatHUD = (function() {
       btnToBackup.addEventListener('click', function(e) {
         e.stopPropagation();
         if (typeof NonCombatStateStore === 'undefined') return;
-        var ok = NonCombatStateStore.moveSelectedHandToBackup({ maxSlots: 4 });
-        if (typeof TooltipSystem !== 'undefined') {
-          TooltipSystem.showPersistent(ok ? '📦 moved to BACKUP' : '❌ select a hand card (or ensure hand has exactly 1) + ensure backup has space', 1200);
+
+        var st = (typeof NonCombatStateStore.getState === 'function') ? NonCombatStateStore.getState() : null;
+        var sel = st ? Number(st.selectedHandIndex || -1) : -1;
+        if (!isFinite(sel) || sel < 0) {
+          // Fallback: if only one card, select it
+          try {
+            var h = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getCardsInHand) ? GAMESTATE.getCardsInHand() : [];
+            if (h.length === 1) sel = 0;
+          } catch (e2) {}
         }
+
+        var ok = false;
+        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.moveHandIndexToBackup === 'function') {
+          ok = !!GAMESTATE.moveHandIndexToBackup(sel).success;
+        }
+
+        if (typeof TooltipSystem !== 'undefined') {
+          TooltipSystem.showPersistent(ok ? '📦 moved to BACKUP' : '❌ select a hand card + ensure backup has space', 1200);
+        }
+
+        // force rerender
+        try { _render(NonCombatStateStore.getState()); } catch (e3) {}
       });
     }
 
@@ -105,10 +123,20 @@ var NonCombatHUD = (function() {
       btnToHand.addEventListener('click', function(e) {
         e.stopPropagation();
         if (typeof NonCombatStateStore === 'undefined') return;
-        var ok = NonCombatStateStore.moveSelectedBackupToHand({ maxSlots: 4 });
+
+        var st = (typeof NonCombatStateStore.getState === 'function') ? NonCombatStateStore.getState() : null;
+        var sel = st ? Number(st.selectedBackupIndex || -1) : -1;
+
+        var ok = false;
+        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.moveBackupIndexToHand === 'function') {
+          ok = !!GAMESTATE.moveBackupIndexToHand(sel).success;
+        }
+
         if (typeof TooltipSystem !== 'undefined') {
           TooltipSystem.showPersistent(ok ? '➕ moved to HAND' : '❌ select a backup card', 1000);
         }
+
+        try { _render(NonCombatStateStore.getState()); } catch (e3) {}
       });
     }
 
@@ -300,7 +328,12 @@ var NonCombatHUD = (function() {
 
     var hand = _root.querySelector('#nch-hand');
     if (hand) {
-      var refs = (state.cardsInHand && Array.isArray(state.cardsInHand)) ? state.cardsInHand : [];
+      var refs = [];
+      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getCardsInHand === 'function') {
+        refs = GAMESTATE.getCardsInHand();
+      } else {
+        refs = (state.cardsInHand && Array.isArray(state.cardsInHand)) ? state.cardsInHand : [];
+      }
       hand.innerHTML = '';
 
       if (refs.length === 0) {
@@ -351,7 +384,12 @@ var NonCombatHUD = (function() {
     var backup = _root.querySelector('#nch-backup');
     if (backup) {
       backup.innerHTML = '';
-      var slots = (state.backupCards && Array.isArray(state.backupCards)) ? state.backupCards : [];
+      var slots = [];
+      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getBackupCards === 'function') {
+        slots = GAMESTATE.getBackupCards();
+      } else {
+        slots = (state.backupCards && Array.isArray(state.backupCards)) ? state.backupCards : [];
+      }
 
       // Fixed 4 slots display
       for (var s = 0; s < 4; s++) {
