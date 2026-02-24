@@ -1,0 +1,31 @@
+/* Debrief global scaling + ordering tweaks */
+:root {
+  --debrief-scale: 0.85; /* ~15% shrink baseline */
+}
+
+/* Apply shrink to debrief window content via font-size */
+.debrief-window {
+  font-size: calc(1em * var(--debrief-scale, 1));
+}
+
+/* In mobile portrait (especially rogue), shrink further */
+@media (max-width: 600px) and (orientation: portrait) {
+  :root {
+    --debrief-scale: 0.55; /* additional ~45% shrink */
+  }
+}
+
+/* Make resources scroll above avatar; keep avatar reachable at bottom */
+.debrief-feed-content-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow: auto;
+  padding: 6px;
+  z-index: 2;
+}
+
+/* Keep avatar as a footer element */
+#mok-avatar {
+  flex: 0 0 auto;
+}

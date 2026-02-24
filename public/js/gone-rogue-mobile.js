@@ -2823,7 +2823,8 @@ const GoneRogueMobile = (function () {
 
         var nameSpan2 = document.createElement('span');
         nameSpan2.className = 'item-name';
-        nameSpan2.textContent = cName + (cardRef.qty ? (' x' + cardRef.qty) : '');
+        // No quantity badge yet on action list; equipped item will later flag dupable cards during drag.
+        nameSpan2.textContent = cName;
 
         cardDiv.appendChild(emojiSpan2);
         cardDiv.appendChild(nameSpan2);
