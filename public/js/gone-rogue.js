@@ -2145,7 +2145,8 @@ const GoneRogue = (function () {
     _grid = floorData.grid;
 
     // Place player (door-anchored spawn when advancing floors)
-    if (_lastExitPos && floorData.exit && typeof floorData.exit.x === 'number') {
+    // Floor 1 should feel like an initial arrival, not a return-from-previous.
+    if (_floor !== 1 && _lastExitPos && floorData.exit && typeof floorData.exit.x === 'number') {
       // Spawn near the *previous floor's* exit position.
       _player.x = _lastExitPos.x;
       _player.y = _lastExitPos.y;
@@ -2165,23 +2166,35 @@ const GoneRogue = (function () {
     var backX = _player.x;
     var backY = _player.y;
 
-    // If spawn overlaps the forward exit, push the back door to a nearby empty tile
-    if (backX === exitX && backY === exitY) {
+    function _tryMoveBackDoorAwayFrom(x0, y0, avoidX, avoidY, minDist) {
       var moved = false;
-      var opts = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}];
-      for (var oi = 0; oi < opts.length; oi++) {
-        var tx = backX + opts[oi].dx;
-        var ty = backY + opts[oi].dy;
-        if (tx > 0 && tx < GRID_WIDTH - 1 && ty > 0 && ty < GRID_HEIGHT - 1 && _grid[ty] && _grid[ty][tx] === TILES.EMPTY) {
-          backX = tx;
-          backY = ty;
-          moved = true;
-          break;
+      for (var r = 1; r <= 6 && !moved; r++) {
+        for (var dy = -r; dy <= r && !moved; dy++) {
+          for (var dx = -r; dx <= r && !moved; dx++) {
+            var tx = x0 + dx;
+            var ty = y0 + dy;
+            if (tx <= 0 || tx >= GRID_WIDTH - 1 || ty <= 0 || ty >= GRID_HEIGHT - 1) continue;
+            if (!_grid[ty] || _grid[ty][tx] !== TILES.EMPTY) continue;
+            var dist = Math.abs(tx - avoidX) + Math.abs(ty - avoidY);
+            if (dist >= (minDist || 0)) {
+              backX = tx;
+              backY = ty;
+              moved = true;
+            }
+          }
         }
       }
-      if (!moved) {
-        // leave overlapping; metadata will still distinguish, but it's not ideal
-      }
+      return moved;
+    }
+
+    // If spawn overlaps the forward exit, push the back door to a nearby empty tile
+    if (backX === exitX && backY === exitY) {
+      _tryMoveBackDoorAwayFrom(backX, backY, exitX, exitY, 1);
+    }
+
+    // If back door is too close to forward exit (stacked/adjacent confusion), separate them.
+    if (Math.abs(backX - exitX) + Math.abs(backY - exitY) <= 2) {
+      _tryMoveBackDoorAwayFrom(backX, backY, exitX, exitY, 4);
     }
 
     _grid[backY][backX] = TILES.DOOR;
@@ -2190,9 +2203,20 @@ const GoneRogue = (function () {
     // Place buildings (visual overlay)
     _forestBuildings = [];
     floorData.buildings.forEach(function(building) {
+      // Never overwrite door tiles with walls
+      if ((building.x === exitX && building.y === exitY) || (building.x === backX && building.y === backY)) {
+        _forestBuildings.push({ x: building.x, y: building.y, emoji: building.emoji });
+        return;
+      }
       _grid[building.y][building.x] = TILES.WALL; // Impassable
       _forestBuildings.push({ x: building.x, y: building.y, emoji: building.emoji });
     });
+
+    // Re-assert door tiles after any template/building mutations
+    _grid[exitY][exitX] = TILES.EXIT;
+    _tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'forward' };
+    _grid[backY][backX] = TILES.DOOR;
+    _tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
 
     // Place decorations (visual overlay, walkable)
     floorData.decorations.forEach(function(deco) {
