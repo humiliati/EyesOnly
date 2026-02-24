@@ -1431,6 +1431,92 @@ body.amber-mode #scanlines::after {
   }
 }
 
+/* --- Gone Rogue portrait layout (mobile) --- */
+@media (max-width: 600px) and (orientation: portrait) {
+  body.mode-gone-rogue #mok-header.monitor-header,
+  body.in-gone-rogue #mok-header.monitor-header {
+    min-height: 20px;
+    padding: 2px 6px;
+  }
+
+  /* Hide verbose header copy; keep only tiny icons */
+  body.mode-gone-rogue .mok-header-copy,
+  body.in-gone-rogue .mok-header-copy {
+    display: none;
+  }
+  body.mode-gone-rogue .active-item-label,
+  body.in-gone-rogue .active-item-label {
+    display: none;
+  }
+  body.mode-gone-rogue #currency-display,
+  body.in-gone-rogue #currency-display {
+    display: none;
+  }
+
+  /* 4-band vertical budget: header + torso + legs + footer (footer handled by NCH pill/tooltips) */
+  body.mode-gone-rogue #monitor-body,
+  body.in-gone-rogue #monitor-body {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 30vh 1fr;
+    gap: 6px;
+  }
+
+  /* Torso: controls + debrief side-by-side */
+  body.mode-gone-rogue #control-rail,
+  body.in-gone-rogue #control-rail {
+    flex-direction: row;
+    align-items: stretch;
+    height: 30vh;
+    min-height: 0;
+  }
+
+  body.mode-gone-rogue .control-buttons,
+  body.in-gone-rogue .control-buttons {
+    width: calc(100% - var(--rogue-debrief-pct, 30%));
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-auto-rows: minmax(32px, 1fr);
+    gap: 6px;
+    overflow: auto;
+  }
+
+  body.mode-gone-rogue .debrief-window,
+  body.in-gone-rogue .debrief-window {
+    width: var(--rogue-debrief-pct, 30%);
+    max-width: none;
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+
+  /* Encourage status-strip feel */
+  body.mode-gone-rogue .debrief-window .debrief-label,
+  body.in-gone-rogue .debrief-window .debrief-label {
+    cursor: ew-resize;
+    user-select: none;
+  }
+
+  body.mode-gone-rogue .debrief-window .debrief-screen,
+  body.in-gone-rogue .debrief-window .debrief-screen {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Legs: terminal area should give map maximum room */
+  body.mode-gone-rogue #log-column,
+  body.in-gone-rogue #log-column {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body.mode-gone-rogue #terminal,
+  body.in-gone-rogue #terminal {
+    min-height: 0;
+    height: 100%;
+    padding: 6px;
+  }
+}
+
 /* --- Print (disable for classified documents) --- */
 @media print {
   body::before {

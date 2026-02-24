@@ -66,6 +66,86 @@ const DebriefFeedController = (function() {
 
     // Initialize display
     _render();
+
+    // Portrait Gone Rogue: tap to expand/collapse debrief width; drag to resize
+    _setupPortraitDebriefSizing();
+  }
+
+  function _setupPortraitDebriefSizing() {
+    var win = document.getElementById('debrief-window');
+    if (!win || win._portraitSizingBound) return;
+    win._portraitSizingBound = true;
+
+    var body = document.body;
+    var PREF_KEY = 'EYESONLY_ROGUE_PORTRAIT_DEBRIEF_PCT_V1';
+
+    function _isPortrait() {
+      try {
+        return window.matchMedia && window.matchMedia('(orientation: portrait)').matches;
+      } catch (e) { return false; }
+    }
+
+    function _isRogue() {
+      return body.classList.contains('mode-gone-rogue') || body.classList.contains('in-gone-rogue');
+    }
+
+    function _applyPct(pct) {
+      pct = Math.max(20, Math.min(60, Number(pct || 30)));
+      try {
+        body.style.setProperty('--rogue-debrief-pct', pct + '%');
+        localStorage.setItem(PREF_KEY, String(pct));
+      } catch (e) {}
+    }
+
+    // Load saved width
+    try {
+      var saved = Number(localStorage.getItem(PREF_KEY));
+      if (isFinite(saved)) _applyPct(saved);
+    } catch (e) {}
+
+    // Tap toggles expanded (30% <-> 50%)
+    win.addEventListener('click', function(e) {
+      if (!_isRogue() || !_isPortrait()) return;
+      if (e && e.target && e.target.closest && e.target.closest('button, a, input, textarea, select')) return;
+
+      var expanded = body.classList.toggle('rogue-debrief-expanded');
+      if (expanded) _applyPct(50);
+      else _applyPct(30);
+    });
+
+    // Drag on label to resize
+    var label = win.querySelector('.debrief-label');
+    if (!label) return;
+
+    var dragging = false;
+    function onMove(ev) {
+      if (!dragging) return;
+      var x = ev.clientX;
+      var w = window.innerWidth || 1;
+      // debrief is right-side panel: pct based on distance from right edge
+      var pct = ((w - x) / w) * 100;
+      _applyPct(pct);
+      if (pct >= 45) body.classList.add('rogue-debrief-expanded');
+      else body.classList.remove('rogue-debrief-expanded');
+      ev.preventDefault();
+    }
+
+    function onUp() {
+      dragging = false;
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+    }
+
+    label.addEventListener('pointerdown', function(ev) {
+      if (!_isRogue() || !_isPortrait()) return;
+      dragging = true;
+      try { label.setPointerCapture(ev.pointerId); } catch (e) {}
+      document.addEventListener('pointermove', onMove, { passive: false });
+      document.addEventListener('pointerup', onUp);
+      document.addEventListener('pointercancel', onUp);
+      ev.preventDefault();
+    });
   }
 
   /**
