@@ -115,7 +115,7 @@ const GoneRogue = (function () {
   // Last exit position (for door-anchored spawns)
   var _lastExitPos = null;
   // When true, the next floor generation should spawn near _lastExitPos (used for retreat/backtracking).
-  var _spawnFromLastExitPos = false;
+  var _spawnFromLastExitPos = null; // 'advance' | 'retreat' | null
   var _lastDoorHintAtMs = 0;
 
   // Forest biome state
@@ -2153,31 +2153,47 @@ const GoneRogue = (function () {
 
     console.log('[TutorialFloors] Generating contrived floor ' + _floor + ': ' + layout.name);
 
-    // Generate floor data from layout.
-    // Anchor the authored entry point to the door position we just used so transitions feel spatially consistent.
-    var layout2 = layout;
-    try {
-      if (_lastExitPos && typeof _lastExitPos.x === 'number' && typeof _lastExitPos.y === 'number') {
-        layout2 = Object.assign({}, layout, { anchorTo: { x: _lastExitPos.x, y: _lastExitPos.y } });
-      }
-    } catch (e0) {}
-
-    var floorData = TutorialFloors.generateContrivedFloor(layout2);
+    // Generate floor data from authored layout (do not shift full-grid templates).
+    // Continuity is handled by spawning near the correct door.
+    var floorData = TutorialFloors.generateContrivedFloor(layout);
 
     // Apply grid
     _grid = floorData.grid;
 
-    // Place player
-    // Default for contrived/tutorial floors: always spawn at the authored entry point.
-    // Only spawn near _lastExitPos when we are *retreating* back to a previous floor.
-    if (_spawnFromLastExitPos && _lastExitPos) {
-      _player.x = _lastExitPos.x;
-      _player.y = _lastExitPos.y;
-    } else {
-      _player.x = floorData.player.x;
-      _player.y = floorData.player.y;
-    }
-    _spawnFromLastExitPos = false;
+    // Place player: continuity via door-consistent spawning (no template shifting).
+    _player.x = floorData.player.x;
+    _player.y = floorData.player.y;
+
+    // If we just used a door, spawn adjacent to the corresponding door on the destination floor.
+    // - Advancing forward: spawn near the BACK door (entry)
+    // - Retreating back: spawn near the FORWARD door (exit)
+    try {
+      if (_spawnFromLastExitPos) {
+        var targetDoorKind = (_spawnFromLastExitPos === 'retreat') ? 'forward' : 'back';
+        var doorX = (targetDoorKind === 'forward') ? floorData.exit.x : floorData.player.x;
+        var doorY = (targetDoorKind === 'forward') ? floorData.exit.y : floorData.player.y;
+
+        var spawnChoices = [
+          // Prefer stepping "through" the door into the map: south, then east/west, then north
+          { x: doorX, y: doorY + 1 },
+          { x: doorX + 1, y: doorY },
+          { x: doorX - 1, y: doorY },
+          { x: doorX, y: doorY - 1 }
+        ];
+
+        for (var si = 0; si < spawnChoices.length; si++) {
+          var s = spawnChoices[si];
+          if (s.x <= 0 || s.x >= GRID_WIDTH - 1 || s.y <= 0 || s.y >= GRID_HEIGHT - 1) continue;
+          if (_grid[s.y] && _grid[s.y][s.x] === TILES.EMPTY) {
+            _player.x = s.x;
+            _player.y = s.y;
+            break;
+          }
+        }
+      }
+    } catch (e0) {}
+
+    _spawnFromLastExitPos = null;
     _ensurePlayerOnEmptyTile();
 
     // Place exit (forward)
@@ -5945,7 +5961,7 @@ _incrementPityTimers();
 
     // Remember where we are so the previous floor can spawn us near the return door
     try { _lastExitPos = { x: _player.x, y: _player.y }; } catch (e0) {}
-    _spawnFromLastExitPos = true;
+    _spawnFromLastExitPos = 'retreat';
 
     // Fade-out effect
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
@@ -6012,7 +6028,7 @@ _incrementPityTimers();
     try {
       _lastExitPos = { x: _player.x, y: _player.y };
     } catch (e0) {}
-    _spawnFromLastExitPos = false;
+    _spawnFromLastExitPos = 'advance';
 
     // Wait for fade-out to complete before generating new floor
     setTimeout(function() {
