@@ -44,6 +44,7 @@ var TutorialFloors = (function() {
    */
   var FLOOR_1_LAYOUT = {
     floorNumber: 1,
+    anchorPlayerToCenter: true,
     name: 'Village Entrance',
     description: 'A peaceful forest village with secrets to discover.',
 
@@ -213,6 +214,7 @@ var TutorialFloors = (function() {
    */
   var FLOOR_2_LAYOUT = {
     floorNumber: 2,
+    anchorPlayerToCenter: true,
     name: 'The Key Quest',
     description: 'Find the key to unlock the southern gate.',
 
@@ -362,6 +364,7 @@ var TutorialFloors = (function() {
    */
   var FLOOR_3_LAYOUT = {
     floorNumber: 3,
+    anchorPlayerToCenter: true,
     name: 'First Encounters',
     description: 'Practice combat with harmless creatures.',
 
@@ -576,19 +579,40 @@ var TutorialFloors = (function() {
       }
     }
 
-    // Apply template if provided
+    // Optional: center the designed entry point on screen by shifting the whole layout.
+    // This makes "new entrants" appear centered while keeping relative authored geometry.
+    var dx = 0;
+    var dy = 0;
+    var player = layout.player;
+    var exit = layout.exit;
+    if (layout.anchorPlayerToCenter && player && typeof player.x === 'number' && typeof player.y === 'number') {
+      var cx = Math.floor(GRID_WIDTH / 2);
+      var cy = Math.floor(GRID_HEIGHT / 2);
+      dx = cx - player.x;
+      dy = cy - player.y;
+      player = { x: player.x + dx, y: player.y + dy };
+      if (exit && typeof exit.x === 'number' && typeof exit.y === 'number') {
+        exit = { x: exit.x + dx, y: exit.y + dy };
+      }
+    }
+
+    // Apply template if provided (with optional shift)
     if (layout.template) {
       for (var ty = 0; ty < Math.min(layout.template.length, GRID_HEIGHT); ty++) {
         var row = layout.template[ty];
         for (var tx = 0; tx < Math.min(row.length, GRID_WIDTH); tx++) {
           var char = row.charAt(tx);
+          var gx = tx + dx;
+          var gy = ty + dy;
+          if (gx < 0 || gx >= GRID_WIDTH || gy < 0 || gy >= GRID_HEIGHT) continue;
+
           if (char === '#') {
-            grid[ty][tx] = TILES.WALL;
+            grid[gy][gx] = TILES.WALL;
           } else if (char === '~') {
-            grid[ty][tx] = '~'; // Water tile
+            grid[gy][gx] = '~'; // Water tile
           } else if (char !== 'P' && char !== 'E' && char !== 'G' && char !== 'L') {
             // Keep as floor, handle special markers separately
-            grid[ty][tx] = TILES.EMPTY;
+            grid[gy][gx] = TILES.EMPTY;
           }
         }
       }
@@ -606,23 +630,33 @@ var TutorialFloors = (function() {
       }
     }
 
+    function _shiftList(list) {
+      if (!dx && !dy) return list || [];
+      var out = [];
+      (list || []).forEach(function(o) {
+        if (!o || typeof o.x !== 'number' || typeof o.y !== 'number') { out.push(o); return; }
+        out.push(Object.assign({}, o, { x: o.x + dx, y: o.y + dy }));
+      });
+      return out;
+    }
+
     return {
       grid: grid,
-      player: layout.player,
-      exit: layout.exit,
-      buildings: layout.buildings || [],
-      decorations: layout.decorations || [],
-      breakables: layout.breakables || [],
-      enemies: layout.enemies || [],
-      npcs: layout.npcs || [],
+      player: player,
+      exit: exit,
+      buildings: _shiftList(layout.buildings),
+      decorations: _shiftList(layout.decorations),
+      breakables: _shiftList(layout.breakables),
+      enemies: _shiftList(layout.enemies),
+      npcs: _shiftList(layout.npcs),
       tutorialGate: layout.tutorialGate,
       lockedGate: layout.lockedGate,
-      lockedChests: layout.lockedChests || [],
+      lockedChests: _shiftList(layout.lockedChests),
       keyBreakable: layout.keyBreakable,
-      tutorialPickups: layout.tutorialPickups || [],
-      interactiveItems: layout.interactiveItems || [],
-      waterTiles: layout.waterTiles || [],
-      breadcrumbPickups: layout.breadcrumbPickups || [],
+      tutorialPickups: _shiftList(layout.tutorialPickups),
+      interactiveItems: _shiftList(layout.interactiveItems),
+      waterTiles: _shiftList(layout.waterTiles),
+      breadcrumbPickups: _shiftList(layout.breadcrumbPickups),
       border: layout.border,
       metadata: {
         name: layout.name,
