@@ -74,7 +74,8 @@ var TutorialFloors = (function() {
     ],
 
     // Spawn points
-    player: { x: 30, y: 10 },
+    // Spawn near center-left of the main clearing (stable onboarding start)
+    player: { x: 6, y: 10 },
     exit: { x: 20, y: 17 },
 
     // Buildings (visual overlay, impassable)
