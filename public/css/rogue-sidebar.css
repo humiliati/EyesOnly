@@ -45,6 +45,21 @@
   line-height: 1;
 }
 
+@media (max-width: 600px) and (orientation: portrait) {
+  /* Mobile portrait: left column emojis must be much smaller */
+  body.mode-gone-rogue .rogue-sidebar-btn .rs-emoji,
+  body.in-gone-rogue .rogue-sidebar-btn .rs-emoji,
+  body.gone-rogue-active .rogue-sidebar-btn .rs-emoji {
+    font-size: 12px;
+  }
+
+  body.mode-gone-rogue .rogue-sidebar-btn .rs-label,
+  body.in-gone-rogue .rogue-sidebar-btn .rs-label,
+  body.gone-rogue-active .rogue-sidebar-btn .rs-label {
+    font-size: 0.75em;
+  }
+}
+
 .rogue-sidebar-btn .rs-label {
   flex: 1;
   text-align: left;

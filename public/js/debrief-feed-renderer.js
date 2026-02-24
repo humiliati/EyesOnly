@@ -21,20 +21,6 @@ const DebriefFeedRenderer = (function() {
       return;
     }
 
-    // Preserve the MOK avatar button and render resources into a dedicated container above it.
-    var existing = document.getElementById('debrief-feed-content');
-    if (!existing) {
-      existing = document.createElement('div');
-      existing.id = 'debrief-feed-content';
-      existing.className = 'debrief-feed-content-container';
-      var avatar = document.getElementById('mok-avatar');
-      if (avatar && avatar.parentNode === _debriefScreen) {
-        _debriefScreen.insertBefore(existing, avatar);
-      } else {
-        _debriefScreen.appendChild(existing);
-      }
-    }
-
     render();
   }
 
@@ -43,9 +29,6 @@ const DebriefFeedRenderer = (function() {
    */
   function render() {
     if (!_debriefScreen) return;
-
-    var container = document.getElementById('debrief-feed-content');
-    if (!container) return;
 
     var resources = _getResources();
     var html = '';
@@ -66,7 +49,7 @@ const DebriefFeedRenderer = (function() {
 
     html += '</div>';
 
-    container.innerHTML = html;
+    _debriefScreen.innerHTML = html;
     _attachEventHandlers();
   }
 
