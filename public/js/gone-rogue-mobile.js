@@ -442,6 +442,7 @@ const GoneRogueMobile = (function () {
     cy: 0,
     originXi: 0,
     originYi: 0,
+    windowActive: false,
     inited: false
   };
 
@@ -466,6 +467,7 @@ const GoneRogueMobile = (function () {
     var cellSize = _canvasRenderer ? (_canvasRenderer.cellSize || 20) : 20;
 
     var cameraWindow = _useCameraWindow(grid, viewW, viewH);
+    _cameraState.windowActive = !!cameraWindow;
 
     // Camera target in world cell coords (center player)
     var px = player ? (player.visualX !== undefined ? player.visualX : player.x) : 0;
@@ -1537,9 +1539,11 @@ const GoneRogueMobile = (function () {
       var gridCoords = _canvasRenderer.canvasToGrid(canvasX, canvasY);
       if (!gridCoords) return null;
       // Camera-window rendering: input coords are in viewport space; map back into world space.
+      var ox = (_cameraState.windowActive ? (_cameraState.originXi || 0) : 0);
+      var oy = (_cameraState.windowActive ? (_cameraState.originYi || 0) : 0);
       return {
-        x: gridCoords.x + (_cameraState.originXi || 0),
-        y: gridCoords.y + (_cameraState.originYi || 0)
+        x: gridCoords.x + ox,
+        y: gridCoords.y + oy
       };
     }
 
@@ -1611,8 +1615,8 @@ const GoneRogueMobile = (function () {
     var cellHeight = pxH / viewH;
 
     // Camera-window rendering: path is in WORLD coords; convert to VIEW coords.
-    var originXi = (_canvasRenderer && _cameraState && isFinite(_cameraState.originXi)) ? _cameraState.originXi : 0;
-    var originYi = (_canvasRenderer && _cameraState && isFinite(_cameraState.originYi)) ? _cameraState.originYi : 0;
+    var originXi = (_canvasRenderer && _cameraState && _cameraState.windowActive && isFinite(_cameraState.originXi)) ? _cameraState.originXi : 0;
+    var originYi = (_canvasRenderer && _cameraState && _cameraState.windowActive && isFinite(_cameraState.originYi)) ? _cameraState.originYi : 0;
     function _toView(pt) {
       return { x: pt.x - originXi, y: pt.y - originYi };
     }

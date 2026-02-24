@@ -3074,7 +3074,13 @@ _incrementPityTimers();
 
   function _ensurePlayerOnEmptyTile() {
     try {
-      if (!_player || !_grid || !_grid[_player.y] || !_grid[_player.y][_player.x]) return;
+      if (!_player || !_grid || !_grid.length || !_grid[0] || !_grid[0].length) return;
+
+      // Clamp into bounds first (bad legacy spawns can be out of range)
+      _player.x = Math.max(1, Math.min(GRID_WIDTH - 2, _player.x | 0));
+      _player.y = Math.max(1, Math.min(GRID_HEIGHT - 2, _player.y | 0));
+
+      if (!_grid[_player.y] || !_grid[_player.y][_player.x]) return;
       if (_grid[_player.y][_player.x] === TILES.EMPTY) return;
 
       var found = false;
