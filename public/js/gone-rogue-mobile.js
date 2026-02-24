@@ -764,6 +764,21 @@ const GoneRogueMobile = (function () {
       });
     }
 
+    // Smooth visual player position (tile->float) for nicer feel.
+    // IMPORTANT: do this BEFORE rendering so the player glyph itself glides.
+    if (player) {
+      if (!_playerVisual.inited) {
+        _playerVisual.x = player.x;
+        _playerVisual.y = player.y;
+        _playerVisual.inited = true;
+      } else {
+        var pvA = 0.35;
+        _playerVisual.x += (player.x - _playerVisual.x) * pvA;
+        _playerVisual.y += (player.y - _playerVisual.y) * pvA;
+      }
+      player = Object.assign({}, player, { visualX: _playerVisual.x, visualY: _playerVisual.y });
+    }
+
     // Render using canvas renderer
     _canvasRenderer.renderGrid({
       grid: canvasGrid,
@@ -795,20 +810,6 @@ const GoneRogueMobile = (function () {
       var cellWidth = _canvasRenderer.getCellWidth ? _canvasRenderer.getCellWidth() : 32;
       var cellHeight = _canvasRenderer.getCellHeight ? _canvasRenderer.getCellHeight() : 32;
       SprintTrailSystem.renderToCanvas(_canvasRenderer.getContext(), cellWidth, cellHeight);
-    }
-
-    // Smooth visual player position (tile->float) for nicer feel under zoom-follow.
-    if (player) {
-      if (!_playerVisual.inited) {
-        _playerVisual.x = player.x;
-        _playerVisual.y = player.y;
-        _playerVisual.inited = true;
-      } else {
-        var pvA = 0.35;
-        _playerVisual.x += (player.x - _playerVisual.x) * pvA;
-        _playerVisual.y += (player.y - _playerVisual.y) * pvA;
-      }
-      player = Object.assign({}, player, { visualX: _playerVisual.x, visualY: _playerVisual.y });
     }
 
     // Mobile-only: zoomed-in viewport that pans by translating the canvas element under a fixed frame.
