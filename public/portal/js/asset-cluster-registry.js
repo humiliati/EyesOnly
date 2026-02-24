@@ -87,6 +87,66 @@ const AssetClusterRegistry = (function() {
       created: new Date().toISOString().split('T')[0],
       modified: new Date().toISOString().split('T')[0]
     },
+    DOOR_HINT_BACK: {
+      id: 'DOOR_HINT_BACK',
+      name: 'Door Hint (Back)',
+      description: 'Overhead hint for return door (↩️)',
+      category: 'structure',
+      emojiSet: [
+        { emoji: '↩️', offsetX: 0, offsetY: -18, scale: 0.9, layer: 'floating', rotation: 0 }
+      ],
+      anchor: { x: 0, y: 0, origin: 'center' },
+      validTiles: ['DOOR'],
+      placementRules: { minSeparation: 1, maxPerRegion: 99, preferAgainstWall: false, avoidHighTraffic: false, seedModifier: 0 },
+      densityConfig: { baseDensity: 0.0, scatterChance: 0.0, maxClustersPerChunk: 0 },
+      renderConfig: { layers: [{ name: 'floating', zOffset: 8 }], shadows: false, ambientOcclusion: false },
+      animations: { onPlace: 'pop', onInteract: 'none', onDestroy: 'fade' },
+      tags: ['door', 'hint', 'back'],
+      author: 'system',
+      version: '1.0.0',
+      created: new Date().toISOString().split('T')[0],
+      modified: new Date().toISOString().split('T')[0]
+    },
+    DOOR_HINT_FORWARD: {
+      id: 'DOOR_HINT_FORWARD',
+      name: 'Door Hint (Forward)',
+      description: 'Overhead hint for forward door (↪️)',
+      category: 'structure',
+      emojiSet: [
+        { emoji: '↪️', offsetX: 0, offsetY: -18, scale: 0.9, layer: 'floating', rotation: 0 }
+      ],
+      anchor: { x: 0, y: 0, origin: 'center' },
+      validTiles: ['DOOR'],
+      placementRules: { minSeparation: 1, maxPerRegion: 99, preferAgainstWall: false, avoidHighTraffic: false, seedModifier: 0 },
+      densityConfig: { baseDensity: 0.0, scatterChance: 0.0, maxClustersPerChunk: 0 },
+      renderConfig: { layers: [{ name: 'floating', zOffset: 8 }], shadows: false, ambientOcclusion: false },
+      animations: { onPlace: 'pop', onInteract: 'none', onDestroy: 'fade' },
+      tags: ['door', 'hint', 'forward'],
+      author: 'system',
+      version: '1.0.0',
+      created: new Date().toISOString().split('T')[0],
+      modified: new Date().toISOString().split('T')[0]
+    },
+    DOOR_HINT_UNKNOWN: {
+      id: 'DOOR_HINT_UNKNOWN',
+      name: 'Door Hint (Unknown)',
+      description: 'Overhead hint for unknown/joker door (↕️)',
+      category: 'structure',
+      emojiSet: [
+        { emoji: '↕️', offsetX: 0, offsetY: -18, scale: 0.9, layer: 'floating', rotation: 0 }
+      ],
+      anchor: { x: 0, y: 0, origin: 'center' },
+      validTiles: ['DOOR'],
+      placementRules: { minSeparation: 1, maxPerRegion: 99, preferAgainstWall: false, avoidHighTraffic: false, seedModifier: 0 },
+      densityConfig: { baseDensity: 0.0, scatterChance: 0.0, maxClustersPerChunk: 0 },
+      renderConfig: { layers: [{ name: 'floating', zOffset: 8 }], shadows: false, ambientOcclusion: false },
+      animations: { onPlace: 'pop', onInteract: 'none', onDestroy: 'fade' },
+      tags: ['door', 'hint', 'unknown'],
+      author: 'system',
+      version: '1.0.0',
+      created: new Date().toISOString().split('T')[0],
+      modified: new Date().toISOString().split('T')[0]
+    },
     TREE_BASIC: {
       id: 'TREE_BASIC',
       name: 'Basic Tree',
