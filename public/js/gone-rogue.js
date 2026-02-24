@@ -2327,9 +2327,8 @@ const GoneRogue = (function () {
     // Place buildings (visual overlay)
     _forestBuildings = [];
     floorData.buildings.forEach(function(building) {
-      // Never overwrite door tiles with walls
+      // Never overwrite/cover door tiles
       if ((building.x === exitX && building.y === exitY) || (building.x === backX && building.y === backY)) {
-        _forestBuildings.push({ x: building.x, y: building.y, emoji: building.emoji });
         return;
       }
       _grid[building.y][building.x] = TILES.WALL; // Impassable
@@ -2344,6 +2343,7 @@ const GoneRogue = (function () {
 
     // Place decorations (visual overlay, walkable)
     floorData.decorations.forEach(function(deco) {
+      if ((deco.x === exitX && deco.y === exitY) || (deco.x === backX && deco.y === backY)) return;
       _forestBuildings.push({ x: deco.x, y: deco.y, emoji: deco.emoji });
     });
 
@@ -2362,6 +2362,23 @@ const GoneRogue = (function () {
         });
       }
     } catch (e00) {}
+
+    // Ensure no entities/breakables/items sit on door tiles either (they render above tiles and can hide doors).
+    try {
+      if (Array.isArray(_breakables)) {
+        _breakables = _breakables.filter(function(bb) { return bb && !((bb.x === exitX && bb.y === exitY) || (bb.x === backX && bb.y === backY)); });
+      }
+    } catch (e01) {}
+    try {
+      if (Array.isArray(_items)) {
+        _items = _items.filter(function(it) { return it && !((it.x === exitX && it.y === exitY) || (it.x === backX && it.y === backY)); });
+      }
+    } catch (e02) {}
+    try {
+      if (Array.isArray(_enemies)) {
+        _enemies = _enemies.filter(function(en) { return en && !((en.x === exitX && en.y === exitY) || (en.x === backX && en.y === backY)); });
+      }
+    } catch (e03) {}
 
     // If the player is currently standing on the back door, show a one-shot hint so it isn't "invisible" under the player glyph.
     try {
