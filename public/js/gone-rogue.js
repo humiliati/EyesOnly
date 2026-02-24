@@ -10138,6 +10138,22 @@ _incrementPityTimers();
     // Disable combat zoom
     _disableCombatZoom();
 
+    // Ensure combat UI is cleared
+    try {
+      if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.hide === 'function') {
+        STRCombatWindow.hide();
+      }
+      if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.hide === 'function') {
+        HandFanComponent.hide();
+        if (typeof HandFanComponent.clearSelection === 'function') {
+          HandFanComponent.clearSelection();
+        }
+      }
+      if (typeof BackupActionContainer !== 'undefined' && typeof BackupActionContainer.hide === 'function') {
+        BackupActionContainer.hide();
+      }
+    } catch (e0) {}
+
     // Resume game loop
     if (!_gameLoopActive) {
       _startGameLoop();
