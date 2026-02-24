@@ -169,6 +169,19 @@ var RogueSidebar = (function() {
     var list = (view === 'items') ? items : cards;
     var offsetKey = (view === 'items') ? 'itemOffset' : 'cardOffset';
     var offset = Number(_prefs[offsetKey] || 0);
+
+    // 3D Printer armed state (for x2 cue on eligible ammo/battery cards)
+    var printerArmed = false;
+    try {
+      if (activeItem && activeItem.id && activeItem.meta && activeItem.meta.toggled) {
+        var idef = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) ? GoneRogueDataRegistry.getItem(activeItem.id) : null;
+        if (idef && Array.isArray(idef.effects)) {
+          for (var pi = 0; pi < idef.effects.length; pi++) {
+            if (idef.effects[pi] && idef.effects[pi].type === 'printer_3d') { printerArmed = true; break; }
+          }
+        }
+      }
+    } catch (e0) {}
     if (!isFinite(offset) || offset < 0) offset = 0;
 
     var maxVisible = 4;
@@ -183,7 +196,8 @@ var RogueSidebar = (function() {
       'co=' + (_prefs.cardOffset || 0),
       'il=' + items.length,
       'cl=' + cards.length,
-      'ai=' + (activeItem && activeItem.id ? activeItem.id : '')
+      'ai=' + (activeItem && activeItem.id ? activeItem.id : ''),
+      'pa=' + (printerArmed ? '1' : '0')
     ];
 
     // include visible slice ids/qty
@@ -262,7 +276,18 @@ var RogueSidebar = (function() {
           var nm2 = card ? card.name : ref.id;
           var em2 = card ? card.emoji : '🃏';
           var qty = ref.qty || 1;
-          btn.innerHTML = '<span class="rs-emoji">' + em2 + '</span><span class="rs-label">' + nm2 + '</span><span class="rs-qty">x' + qty + '</span>';
+
+          var x2 = '';
+          try {
+            if (printerArmed && card && Array.isArray(card.costs)) {
+              for (var ci = 0; ci < card.costs.length; ci++) {
+                var cst = card.costs[ci];
+                if (cst && (cst.kind === 'ammo' || cst.kind === 'battery')) { x2 = '<span class="rs-x2">x2</span>'; btn.classList.add('printer-eligible'); break; }
+              }
+            }
+          } catch (e1) {}
+
+          btn.innerHTML = '<span class="rs-emoji">' + em2 + '</span><span class="rs-label">' + nm2 + '</span>' + x2 + '<span class="rs-qty">x' + qty + '</span>';
 
           btn.addEventListener('click', function(e) {
             e.stopPropagation();
