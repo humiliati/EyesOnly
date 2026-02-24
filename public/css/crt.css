@@ -1438,6 +1438,16 @@ body.amber-mode #scanlines::after {
   body.gone-rogue-active {
     --rogue-emoji-scale: 0.5; /* shrink emoji render size up to 50% when needed */
     --header-chip-scale: 0.5; /* shrink header action chip (AWOL) */
+    --header-center-scale: 0.6; /* shrink active item + currency frames */
+    --hud-emoji-scale: 0.5; /* shrink HUD emoji list (items/resources) */
+  }
+
+  /* Shrink header center (active item + currency) in portrait rogue */
+  body.mode-gone-rogue #mok-header .mok-header-center,
+  body.in-gone-rogue #mok-header .mok-header-center,
+  body.gone-rogue-active #mok-header .mok-header-center {
+    transform: scale(var(--header-center-scale, 1));
+    transform-origin: top center;
   }
 
   body.mode-gone-rogue #mok-header .header-chip,
@@ -1448,6 +1458,7 @@ body.amber-mode #scanlines::after {
     padding: 2px 4px !important;
     min-height: 18px !important;
     font-size: 10px !important;
+    display: inline-flex !important; /* ensure AWOL stays visible */
   }
 
   body.mode-gone-rogue #mok-header .header-chip .accountability-icon,
@@ -1544,9 +1555,27 @@ body.amber-mode #scanlines::after {
   body.mode-gone-rogue .control-buttons button,
   body.in-gone-rogue .control-buttons button,
   body.gone-rogue-active .control-buttons button {
-    min-height: 30px;
-    padding: 4px 6px;
-    font-size: 0.9em;
+    min-height: 28px;
+    padding: 3px 4px;
+    font-size: 0.82em;
+  }
+
+  /* Shrink HUD emojis (inventory/resource lists) */
+  body.mode-gone-rogue .rogue-inventory-item .item-emoji,
+  body.in-gone-rogue .rogue-inventory-item .item-emoji,
+  body.gone-rogue-active .rogue-inventory-item .item-emoji,
+  body.mode-gone-rogue .card-emoji,
+  body.in-gone-rogue .card-emoji,
+  body.gone-rogue-active .card-emoji {
+    font-size: calc(32px * var(--hud-emoji-scale, 1)) !important;
+    margin-bottom: 2px !important;
+  }
+
+  body.mode-gone-rogue .rogue-inventory-item,
+  body.in-gone-rogue .rogue-inventory-item,
+  body.gone-rogue-active .rogue-inventory-item {
+    padding: 4px 4px !important;
+    gap: 4px !important;
   }
 
   body.mode-gone-rogue .debrief-window,
@@ -1644,9 +1673,11 @@ body.amber-mode #scanlines::after {
   }
 
   /* Hide terminal text chrome in portrait rogue; the grid is the product surface */
-  body.mode-gone-rogue #terminal-output,
-  body.in-gone-rogue #terminal-output,
-  body.gone-rogue-active #terminal-output {
+  /* In this build terminal output lines are appended directly under #terminal.
+     In portrait rogue, hide terminal chatter so the game surface is visible. */
+  body.mode-gone-rogue #terminal > :not(#rogue-grid-mobile):not(#mobile-input):not(#input-line),
+  body.in-gone-rogue #terminal > :not(#rogue-grid-mobile):not(#mobile-input):not(#input-line),
+  body.gone-rogue-active #terminal > :not(#rogue-grid-mobile):not(#mobile-input):not(#input-line) {
     display: none !important;
   }
 }
