@@ -57,19 +57,9 @@
   opacity: 0.8;
 }
 
-/* 3D printer armed cue */
-.rogue-sidebar-btn .rs-x2 {
-  margin-left: 6px;
-  font-size: 0.72em;
-  color: rgba(191, 255, 227, 0.95);
-  border: 1px solid rgba(28, 255, 155, 0.25);
-  border-radius: 8px;
-  padding: 1px 4px;
-  opacity: 0.9;
-}
-
+/* 3D printer eligible glow */
 .rogue-sidebar-btn.card-button.printer-eligible {
-  box-shadow: 0 0 10px rgba(28, 255, 155, 0.12);
+  box-shadow: 0 0 10px rgba(255, 107, 0, 0.12);
 }
 
 .rogue-sidebar-toggle {

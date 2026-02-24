@@ -282,7 +282,7 @@ var RogueSidebar = (function() {
             if (printerArmed && card && Array.isArray(card.costs)) {
               for (var ci = 0; ci < card.costs.length; ci++) {
                 var cst = card.costs[ci];
-                if (cst && (cst.kind === 'ammo' || cst.kind === 'battery')) { x2 = '<span class="rs-x2">x2</span>'; btn.classList.add('printer-eligible'); break; }
+                if (cst && (cst.kind === 'ammo' || cst.kind === 'battery')) { x2 = '<span class="printer-x2">x2</span>'; btn.classList.add('printer-eligible'); break; }
               }
             }
           } catch (e1) {}
