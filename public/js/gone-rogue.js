@@ -117,6 +117,8 @@ const GoneRogue = (function () {
   // When true, the next floor generation should spawn near _lastExitPos (used for retreat/backtracking).
   var _spawnFromLastExitPos = null; // 'advance' | 'retreat' | null
   var _lastDoorHintAtMs = 0;
+  // Door spawn protection: if we spawn directly on a door tile, ignore activation until the player steps off.
+  var _doorSpawnProtect = null; // { x, y }
 
   // Forest biome state
   var _forestBuildings = []; // Village buildings {x, y, emoji} for visual overlay
@@ -2164,32 +2166,17 @@ const GoneRogue = (function () {
     _player.x = floorData.player.x;
     _player.y = floorData.player.y;
 
-    // If we just used a door, spawn adjacent to the corresponding door on the destination floor.
-    // - Advancing forward: spawn near the BACK door (entry)
-    // - Retreating back: spawn near the FORWARD door (exit)
+    // If we just used a door, spawn ON the corresponding door tile, but protect against
+    // immediate re-trigger until the player steps off and returns.
     try {
       if (_spawnFromLastExitPos) {
         var targetDoorKind = (_spawnFromLastExitPos === 'retreat') ? 'forward' : 'back';
         var doorX = (targetDoorKind === 'forward') ? floorData.exit.x : floorData.player.x;
         var doorY = (targetDoorKind === 'forward') ? floorData.exit.y : floorData.player.y;
 
-        var spawnChoices = [
-          // Prefer stepping "through" the door into the map: south, then east/west, then north
-          { x: doorX, y: doorY + 1 },
-          { x: doorX + 1, y: doorY },
-          { x: doorX - 1, y: doorY },
-          { x: doorX, y: doorY - 1 }
-        ];
-
-        for (var si = 0; si < spawnChoices.length; si++) {
-          var s = spawnChoices[si];
-          if (s.x <= 0 || s.x >= GRID_WIDTH - 1 || s.y <= 0 || s.y >= GRID_HEIGHT - 1) continue;
-          if (_grid[s.y] && _grid[s.y][s.x] === TILES.EMPTY) {
-            _player.x = s.x;
-            _player.y = s.y;
-            break;
-          }
-        }
+        _player.x = doorX;
+        _player.y = doorY;
+        _doorSpawnProtect = { x: doorX, y: doorY };
       }
     } catch (e0) {}
 
@@ -5010,6 +4997,13 @@ _incrementPityTimers();
 
     // Door/Exit tile (🚪): behavior determined by tile metadata (back/forward/unknown)
     if (tile === TILES.EXIT || tile === TILES.DOOR) {
+      // Spawn protection: if we spawned onto this door tile, require the player to step off and return.
+      try {
+        if (_doorSpawnProtect && _doorSpawnProtect.x === x && _doorSpawnProtect.y === y) {
+          return;
+        }
+      } catch (e0) {}
+
       var md = _tileMetadata[x + ',' + y];
       if (md && md.type === 'door') {
         if (md.doorKind === 'back') {
@@ -5028,6 +5022,9 @@ _incrementPityTimers();
         _attemptExtract();
         return;
       }
+    } else {
+      // Clear spawn protection once the player steps off the door.
+      _doorSpawnProtect = null;
     }
 
     // Shop tile
