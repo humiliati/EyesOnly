@@ -605,10 +605,10 @@ var NonCombatHUD = (function() {
     var droppedOnHand = false;
     var droppedOnBackup = false;
     if (el && _root && _root.contains(el)) {
-      var handZone = _root.querySelector('#nch-hand');
-      var backupZone = _root.querySelector('#nch-backup');
-      if (handZone && (el === handZone || (handZone.contains && handZone.contains(el)))) droppedOnHand = true;
-      if (backupZone && (el === backupZone || (backupZone.contains && backupZone.contains(el)))) droppedOnBackup = true;
+      var overHand = (el.closest && el.closest('#nch-hand')) ? true : false;
+      var overBackup = (el.closest && el.closest('#nch-backup')) ? true : false;
+      droppedOnHand = overHand;
+      droppedOnBackup = overBackup;
     }
 
     var ok = false;
