@@ -47,6 +47,10 @@
   var debriefWindow = document.getElementById('debrief-window');
   if (debriefWindow) {
     debriefWindow.addEventListener('click', function (e) {
+      // Gone Rogue owns debrief behavior; don't toggle global "expanded" here.
+      if (document.body && (document.body.classList.contains('mode-gone-rogue') || document.body.classList.contains('in-gone-rogue') || document.body.classList.contains('gone-rogue-active'))) {
+        return;
+      }
       // Only toggle expansion when it won't conflict with in-window UI.
       // If the debrief is showing resources, clicks should interact with resources (cycle, select lines, etc.).
       try {

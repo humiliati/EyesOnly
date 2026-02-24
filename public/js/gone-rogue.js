@@ -6443,6 +6443,25 @@ _incrementPityTimers();
       }
     }
 
+    // If the dying enemy was the active STR combat target, hard-clear STR state.
+    // This prevents "ghost" STR windows when enemies die through non-STR pipelines.
+    try {
+      if (_strCombatActive && _strCombatEnemy && enemy && _strCombatEnemy === enemy) {
+        _strCombatActive = false;
+        _strCombatEnemy = null;
+        if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.hide === 'function') {
+          STRCombatWindow.hide();
+        }
+        if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.hide === 'function') {
+          HandFanComponent.hide();
+          if (typeof HandFanComponent.clearSelection === 'function') HandFanComponent.clearSelection();
+        }
+        if (typeof BackupActionContainer !== 'undefined' && typeof BackupActionContainer.hide === 'function') {
+          BackupActionContainer.hide();
+        }
+      }
+    } catch (e0) {}
+
     return deathResult;
   }
 
