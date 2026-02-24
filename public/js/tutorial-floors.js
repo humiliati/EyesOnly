@@ -588,7 +588,17 @@ var TutorialFloors = (function() {
       anchor = { x: Math.floor(GRID_WIDTH / 2), y: Math.floor(GRID_HEIGHT / 2) };
     }
 
-    if (anchor && player && typeof player.x === 'number' && typeof player.y === 'number') {
+    // If the template already fills the entire grid, shifting it will necessarily crop content and
+    // create "blank fields". In that case, ignore anchor shifts and keep the authored layout fixed.
+    var templateFillsGrid = false;
+    try {
+      if (layout.template && layout.template.length >= GRID_HEIGHT) {
+        var r0 = layout.template[0] || '';
+        if (typeof r0 === 'string' && r0.length >= GRID_WIDTH) templateFillsGrid = true;
+      }
+    } catch (eT) {}
+
+    if (!templateFillsGrid && anchor && player && typeof player.x === 'number' && typeof player.y === 'number') {
       dx = anchor.x - player.x;
       dy = anchor.y - player.y;
 
