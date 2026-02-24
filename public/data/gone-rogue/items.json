@@ -56,6 +56,21 @@
     "description": "Your operational notes and observations."
   },
   {
+    "id": "ITM-005",
+    "name": "3D Printer (Kaaba)",
+    "emoji": "🕋",
+    "type": "equipment",
+    "rarity": "legendary",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "active",
+    "effects": [
+      { "type": "printer_3d" }
+    ],
+    "synergyTags": ["fabrication", "printer"],
+    "description": "Consumes itself to print extra action cards when you spend ammo/battery. Mostly prints lower-quality substitutes."
+  },
+  {
     "id": "ITM-998",
     "name": "Amazon Box",
     "emoji": "📦",

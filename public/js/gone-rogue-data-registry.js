@@ -149,6 +149,7 @@ var GoneRogueDataRegistry = (function() {
 
   function getItem(id) { return _byId.items[id] || _createMissingEntry(id, 'item'); }
   function getCard(id) { return _byId.cards[id] || _createMissingEntry(id, 'card'); }
+  function listCards() { return Array.isArray(_db.cards) ? _db.cards.slice() : []; }
   function getStatus(id) { return _byId.statuses[id] || _createMissingEntry(id, 'status'); }
   function getGroundEffect(id) { return _byId.groundEffects[id] || _createMissingEntry(id, 'ground_effect'); }
   function getSynergy(id) { return _byId.synergies[id] || _createMissingEntry(id, 'synergy'); }
@@ -222,6 +223,7 @@ var GoneRogueDataRegistry = (function() {
     isLoaded: isLoaded,
     getItem: getItem,
     getCard: getCard,
+    listCards: listCards,
     getStatus: getStatus,
     getGroundEffect: getGroundEffect,
     getSynergy: getSynergy,

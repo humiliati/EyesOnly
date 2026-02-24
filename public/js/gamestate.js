@@ -446,6 +446,88 @@ const GAMESTATE = (function () {
     return b;
   }
 
+  // Add printed cards into CH/NCH hand first, then overflow into backup.
+  // Backup is treated as an ordered "newest at top" list in 4 slots.
+  // Overflow discards the oldest (slot 3).
+  function addPrintedCards(cardId, qty, opts) {
+    opts = opts || {};
+    qty = (typeof qty === 'number' ? qty : 1);
+    qty = Math.max(1, Math.floor(qty));
+    if (!cardId) return { success: false };
+
+    if (!Array.isArray(_state.cardsInHand)) _state.cardsInHand = [];
+    if (!Array.isArray(_state.backupCards)) _state.backupCards = [null, null, null, null];
+    while (_state.backupCards.length < 4) _state.backupCards.push(null);
+    if (_state.backupCards.length > 4) _state.backupCards = _state.backupCards.slice(0, 4);
+
+    var maxHand = (typeof _state.maxHandSize === 'number' && isFinite(_state.maxHandSize)) ? _state.maxHandSize : 5;
+    maxHand = Math.max(1, maxHand);
+
+    var res = { success: true, toHand: 0, toBackup: 0, discarded: 0 };
+
+    function _touchMeta(ref) {
+      if (!ref) return;
+      if (!ref.meta) ref.meta = {};
+      ref.meta.t = Date.now();
+    }
+
+    function _promoteOrInsertBackup(ref) {
+      // If same card already in backup, stack and move to slot 0.
+      for (var i = 0; i < 4; i++) {
+        var b = _state.backupCards[i];
+        if (b && b.id === ref.id) {
+          b.qty = (b.qty || 1) + (ref.qty || 1);
+          _touchMeta(b);
+          // move to top
+          _state.backupCards.splice(i, 1);
+          _state.backupCards.unshift(b);
+          while (_state.backupCards.length < 4) _state.backupCards.push(null);
+          if (_state.backupCards.length > 4) _state.backupCards = _state.backupCards.slice(0, 4);
+          return;
+        }
+      }
+
+      // Insert at top, shift down, discard last
+      var dropped = _state.backupCards[3];
+      _state.backupCards.pop();
+      _state.backupCards.unshift(ref);
+      if (dropped && dropped.id) res.discarded += 1;
+    }
+
+    function _addOne() {
+      // prefer hand if there is space
+      if ((_state.cardsInHand.length < maxHand) && opts.preferHand !== false) {
+        var ex = _state.cardsInHand.find(function(r) { return r && r.id === cardId; });
+        if (ex) {
+          ex.qty = (ex.qty || 0) + 1;
+          _touchMeta(ex);
+        } else {
+          var ref = { id: cardId, qty: 1, meta: { t: Date.now() } };
+          // add to top/front
+          _state.cardsInHand.unshift(ref);
+        }
+        res.toHand += 1;
+        return;
+      }
+
+      // overflow to backup
+      var bref = { id: cardId, qty: 1, meta: { t: Date.now() } };
+      _promoteOrInsertBackup(bref);
+      res.toBackup += 1;
+    }
+
+    for (var n = 0; n < qty; n++) _addOne();
+
+    _saveState();
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'printed', cardId: cardId, qty: qty, toHand: res.toHand, toBackup: res.toBackup, discarded: res.discarded } }));
+      }
+    } catch (e2) {}
+
+    return res;
+  }
+
   function addCardToHand(cardId, qty) {
     qty = (typeof qty === 'number' ? qty : 1);
     qty = Math.max(1, qty);
@@ -1057,6 +1139,38 @@ const GAMESTATE = (function () {
     try {
       window.dispatchEvent(new CustomEvent('rogue-active-item-changed', { detail: { activeItem: null } }));
     } catch (e2) {}
+  }
+
+  // Consume active item and remove one instance from inventories (persistent/loose).
+  function consumeActiveItem() {
+    var active = _state.activeItemSlot;
+    if (!active || !active.id) {
+      clearActiveItem();
+      return { success: false, reason: 'no_active_item' };
+    }
+
+    var id = active.id;
+
+    function _dec(list) {
+      if (!Array.isArray(list)) return false;
+      for (var i = 0; i < list.length; i++) {
+        var r = list[i];
+        if (!r || r.id !== id) continue;
+        r.qty = (r.qty || 1) - 1;
+        if (r.qty <= 0) list.splice(i, 1);
+        return true;
+      }
+      return false;
+    }
+
+    var removed = false;
+    try { removed = _dec(_state.inventoryPersistent) || removed; } catch (e0) {}
+    try { removed = _dec(_state.inventoryLoose) || removed; } catch (e1) {}
+
+    clearActiveItem();
+    _saveState();
+
+    return { success: true, removedFromInventory: removed };
   }
 
   function _saveState() {
@@ -1748,6 +1862,7 @@ const GAMESTATE = (function () {
     resetCombatBackupDrawFlag: resetCombatBackupDrawFlag,
     canDrawBackupThisCombat: canDrawBackupThisCombat,
     drawOneFromBackupOncePerCombat: drawOneFromBackupOncePerCombat,
+    addPrintedCards: addPrintedCards,
     getLooseInventory: getLooseInventory,
     // Card system - NEW LOOT FLOW
     addCard: addCard,              // Main entry point for card loot
@@ -1766,6 +1881,7 @@ const GAMESTATE = (function () {
     setActiveItem: setActiveItem,
     getActiveItem: getActiveItem,
     clearActiveItem: clearActiveItem,
+    consumeActiveItem: consumeActiveItem,
     addCryptos: addCryptos,
     spendCryptos: spendCryptos,
     getCryptos: getCryptos,

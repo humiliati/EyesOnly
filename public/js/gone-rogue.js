@@ -8465,6 +8465,106 @@ _incrementPityTimers();
     return { success: true };
   }
 
+  function _maybeTrigger3dPrinter(triggerCardId, triggerCard) {
+    try {
+      if (typeof GAMESTATE === 'undefined' || !GAMESTATE.getActiveItem) return;
+      var active = GAMESTATE.getActiveItem();
+      if (!active || !active.id) return;
+      if (typeof GoneRogueDataRegistry === 'undefined' || !GoneRogueDataRegistry.getItem) return;
+
+      var item = GoneRogueDataRegistry.getItem(active.id);
+      if (!item || item._missing) return;
+
+      // Identify the 3D printer via its effect tag
+      var isPrinter = false;
+      if (Array.isArray(item.effects)) {
+        for (var i = 0; i < item.effects.length; i++) {
+          if (item.effects[i] && item.effects[i].type === 'printer_3d') { isPrinter = true; break; }
+        }
+      }
+      if (!isPrinter) return;
+
+      // Trigger only on ammo/battery spending cards (per design)
+      var costs = triggerCard && Array.isArray(triggerCard.costs) ? triggerCard.costs : [];
+      var spends = false;
+      for (var j = 0; j < costs.length; j++) {
+        var c = costs[j];
+        if (!c || !c.kind) continue;
+        if (c.kind === 'ammo' || c.kind === 'battery') { spends = true; break; }
+      }
+      if (!spends) return;
+
+      // Determine printer quality (rarity)
+      var qMap = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+      var qp = qMap[String(item.rarity || 'common').toLowerCase()];
+      if (!isFinite(qp)) qp = 0;
+
+      // Choose output quality (biased down)
+      var roll = Math.random();
+      var qo = 0;
+      if (roll < 0.70) qo = 0;
+      else if (roll < 0.88) qo = 1;
+      else if (roll < 0.96) qo = 2;
+      else if (roll < 0.99) qo = 3;
+      else qo = 4;
+      if (qo > qp) qo = qp;
+
+      // Choose a printable card of that quality, almost never the triggering card
+      if (!GoneRogueDataRegistry.listCards) return;
+      var all = GoneRogueDataRegistry.listCards();
+      var qNames = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+      var wantQ = qNames[qo] || 'common';
+
+      var candidates = [];
+      for (var k = 0; k < all.length; k++) {
+        var cd = all[k];
+        if (!cd || !cd.id) continue;
+        if (String(cd.rarity || 'common').toLowerCase() !== wantQ) continue;
+        // Action cards only
+        if (String(cd.id).indexOf('ACT-') !== 0) continue;
+        candidates.push(cd);
+      }
+      if (!candidates.length) return;
+
+      var allowSame = (Math.random() < 0.05);
+      if (!allowSame && triggerCardId) {
+        candidates = candidates.filter(function(c2) { return c2 && c2.id !== triggerCardId; });
+        if (!candidates.length) return;
+      }
+
+      var pick = candidates[Math.floor(Math.random() * candidates.length)];
+      if (!pick || !pick.id) return;
+
+      // Determine print count based on quality distance
+      var d = qp - qo;
+      function rint(a, b) {
+        a = Math.floor(a); b = Math.floor(b);
+        return a + Math.floor(Math.random() * (b - a + 1));
+      }
+      var n = 2;
+      if (d >= 3) n = rint(12, 21);
+      else if (d === 2) n = rint(8, 16);
+      else if (d === 1) n = rint(4, 10);
+      else n = rint(1, 3);
+
+      // Add printed cards to CH/NCH hand then overflow to backup, discarding oldest backup when full.
+      if (typeof GAMESTATE.addPrintedCards === 'function') {
+        GAMESTATE.addPrintedCards(pick.id, n, { preferHand: true });
+      }
+
+      // Consume the printer
+      if (typeof GAMESTATE.consumeActiveItem === 'function') {
+        GAMESTATE.consumeActiveItem();
+      } else if (typeof GAMESTATE.clearActiveItem === 'function') {
+        GAMESTATE.clearActiveItem();
+      }
+
+      if (typeof TooltipSystem !== 'undefined' && TooltipSystem.showPersistent) {
+        TooltipSystem.showPersistent('🕋 PRINTED x' + n + ' ' + (pick.emoji || '🃏') + ' ' + (pick.name || pick.id), 1600);
+      }
+    } catch (e0) {}
+  }
+
   function playCardFromHand(cardId) {
     if (!_active || !_strCombatActive) {
       return { success: false, reason: 'not_in_combat' };
@@ -8490,6 +8590,9 @@ _incrementPityTimers();
         return { success: false, reason: 'cost_spend_failed', costs: costs };
       }
     }
+
+    // 3D printer (🕋) hook: if active, and this card spent ammo/battery, print extra cards then consume the printer.
+    _maybeTrigger3dPrinter(cardId, card);
 
     var lines = [];
     lines.push('🃏 ' + (card.emoji || '🃏') + ' ' + (card.name || cardId));
