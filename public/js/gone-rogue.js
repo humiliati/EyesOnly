@@ -2164,8 +2164,36 @@ const GoneRogue = (function () {
     // Mark entry/return door at spawn (back)
     var backX = _player.x;
     var backY = _player.y;
+
+    // If spawn overlaps the forward exit, push the back door to a nearby empty tile
+    if (backX === exitX && backY === exitY) {
+      var moved = false;
+      var opts = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}];
+      for (var oi = 0; oi < opts.length; oi++) {
+        var tx = backX + opts[oi].dx;
+        var ty = backY + opts[oi].dy;
+        if (tx > 0 && tx < GRID_WIDTH - 1 && ty > 0 && ty < GRID_HEIGHT - 1 && _grid[ty] && _grid[ty][tx] === TILES.EMPTY) {
+          backX = tx;
+          backY = ty;
+          moved = true;
+          break;
+        }
+      }
+      if (!moved) {
+        // leave overlapping; metadata will still distinguish, but it's not ideal
+      }
+    }
+
     _grid[backY][backX] = TILES.DOOR;
     _tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
+
+    // Proactive door hints on floor load (so players can find doors even before moving)
+    try {
+      if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+        OverheadAnimator.showGenericExpression(backX, backY, '↩️', 1200);
+        OverheadAnimator.showGenericExpression(exitX, exitY, '↪️', 1200);
+      }
+    } catch (e0) {}
 
     // Place buildings (visual overlay)
     _forestBuildings = [];
