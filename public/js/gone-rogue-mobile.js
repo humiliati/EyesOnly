@@ -812,7 +812,13 @@ const GoneRogueMobile = (function () {
     if (!canvas || !_gridContainer) return;
 
     // Desired zoom: show fewer than 40x20 tiles by scaling up and cropping.
-    var z = 1.6;
+    // Slightly less aggressive than 1.6 so more context is visible
+    var z = 1.55;
+
+    // Smooth-follow the camera offset so it doesn't "click" tile-to-tile
+    if (!_followState) {
+      _followState = { tx: 0, ty: 0, inited: false };
+    }
 
     var contRect = _gridContainer.getBoundingClientRect();
     var canvasW = viewW * cellSize;
@@ -832,8 +838,19 @@ const GoneRogueMobile = (function () {
     tx = Math.max(minTx, Math.min(0, tx));
     ty = Math.max(minTy, Math.min(0, ty));
 
+    // Smooth camera
+    var a = 0.22;
+    if (!_followState.inited) {
+      _followState.tx = tx;
+      _followState.ty = ty;
+      _followState.inited = true;
+    } else {
+      _followState.tx += (tx - _followState.tx) * a;
+      _followState.ty += (ty - _followState.ty) * a;
+    }
+
     canvas.style.transformOrigin = '0 0';
-    canvas.style.transform = 'scale(' + z + ') translate(' + tx + 'px, ' + ty + 'px)';
+    canvas.style.transform = 'scale(' + z + ') translate(' + _followState.tx + 'px, ' + _followState.ty + 'px)';
   }
 
   /**

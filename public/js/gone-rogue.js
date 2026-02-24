@@ -112,6 +112,9 @@ const GoneRogue = (function () {
     firstBonfire: false        // Whether player has reached first bonfire
   };
 
+  // Last exit position (for door-anchored spawns)
+  var _lastExitPos = null;
+
   // Forest biome state
   var _forestBuildings = []; // Village buildings {x, y, emoji} for visual overlay
   var _biomeVisualGrid = null; // Pre-computed visual substitution grid (wall/floor chars)
@@ -2139,9 +2142,15 @@ const GoneRogue = (function () {
     // Apply grid
     _grid = floorData.grid;
 
-    // Place player
-    _player.x = floorData.player.x;
-    _player.y = floorData.player.y;
+    // Place player (door-anchored spawn when advancing floors)
+    if (_lastExitPos && floorData.exit && typeof floorData.exit.x === 'number') {
+      // Spawn near the *previous floor's* exit position.
+      _player.x = _lastExitPos.x;
+      _player.y = _lastExitPos.y;
+    } else {
+      _player.x = floorData.player.x;
+      _player.y = floorData.player.y;
+    }
     _ensurePlayerOnEmptyTile();
 
     // Place exit
@@ -5628,6 +5637,11 @@ _incrementPityTimers();
         gridContainer.style.transition = 'opacity 0.3s ease-out';
       }
     }
+
+    // Remember which door/exit we used so next floor can spawn near it
+    try {
+      _lastExitPos = { x: _player.x, y: _player.y };
+    } catch (e0) {}
 
     // Wait for fade-out to complete before generating new floor
     setTimeout(function() {
