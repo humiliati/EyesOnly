@@ -2360,6 +2360,16 @@ const GoneRogue = (function () {
     _grid[backY][backX] = TILES.DOOR;
     _tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
 
+    // Ensure no visual overlay (buildings/decorations) sits on top of a door tile.
+    try {
+      if (_forestBuildings && _forestBuildings.length) {
+        _forestBuildings = _forestBuildings.filter(function(b) {
+          if (!b) return false;
+          return !((b.x === exitX && b.y === exitY) || (b.x === backX && b.y === backY));
+        });
+      }
+    } catch (e00) {}
+
     // If the player is currently standing on the back door, show a one-shot hint so it isn't "invisible" under the player glyph.
     try {
       if (_player && _player.x === backX && _player.y === backY && typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
