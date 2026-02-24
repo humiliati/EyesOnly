@@ -71,6 +71,106 @@ const DebriefFeedController = (function() {
     _setupPortraitDebriefSizing();
   }
 
+  var _nav = {
+    bound: false,
+    highlighted: 0,
+    startY: 0,
+    dragging: false,
+    lastExpanded: 'resources'
+  };
+
+  function _setupDragNav() {
+    if (_nav.bound) return;
+    var content = document.getElementById('debrief-resources-content');
+    if (!content) return;
+
+    _nav.bound = true;
+
+    try {
+      var raw = localStorage.getItem('EYESONLY_DEBRIEF_LAST_EXPANDED_V1');
+      if (raw) _nav.lastExpanded = raw;
+    } catch (e0) {}
+
+    function rows() {
+      return Array.prototype.slice.call(document.querySelectorAll('#debrief-nav-list .debrief-nav-row'));
+    }
+
+    function setHighlight(idx) {
+      var r = rows();
+      idx = Math.max(0, Math.min(r.length - 1, idx));
+      _nav.highlighted = idx;
+      for (var i = 0; i < r.length; i++) {
+        r[i].classList.toggle('highlighted', i === idx);
+      }
+    }
+
+    function showSection(sectionId) {
+      var ids = ['resources','battery','passives','api','mok'];
+      for (var i = 0; i < ids.length; i++) {
+        var el = document.getElementById('debrief-sec-' + ids[i]);
+        if (!el) continue;
+        el.style.display = (ids[i] === sectionId) ? 'block' : 'none';
+      }
+      _nav.lastExpanded = sectionId;
+      try {
+        localStorage.setItem('EYESONLY_DEBRIEF_LAST_EXPANDED_V1', sectionId);
+      } catch (e0) {}
+    }
+
+    // initial
+    setHighlight(0);
+    showSection(_nav.lastExpanded || 'resources');
+
+    content.addEventListener('pointerdown', function(e) {
+      if (_currentMode !== MODES.goneRogue) return;
+      if (_currentDisplay !== 'resources') return;
+      if (!e) return;
+      _nav.startY = e.clientY;
+      _nav.dragging = false;
+      try { content.setPointerCapture(e.pointerId); } catch (e2) {}
+    });
+
+    content.addEventListener('pointermove', function(e) {
+      if (!e) return;
+      if (_currentDisplay !== 'resources') return;
+      var dy = e.clientY - _nav.startY;
+      if (Math.abs(dy) < 10) return;
+      _nav.dragging = true;
+      var step = Math.round(dy / 34);
+      setHighlight(0 + step);
+      e.preventDefault();
+    }, { passive: false });
+
+    content.addEventListener('pointerup', function() {
+      if (_currentDisplay !== 'resources') return;
+      if (!_nav.dragging) {
+        // default to last expanded (wins)
+        showSection(_nav.lastExpanded || 'resources');
+        return;
+      }
+      var r = rows();
+      var row = r[_nav.highlighted];
+      var sectionId = row ? row.dataset.section : null;
+      if (!sectionId) {
+        showSection(_nav.lastExpanded || 'resources');
+        return;
+      }
+      showSection(sectionId);
+      _nav.dragging = false;
+    });
+
+    // Click row to select (desktop)
+    document.addEventListener('click', function(e) {
+      if (_currentDisplay !== 'resources') return;
+      var t = e && e.target;
+      if (!t || !t.closest) return;
+      var row = t.closest('#debrief-nav-list .debrief-nav-row');
+      if (!row) return;
+      var sid = row.dataset.section;
+      if (sid) showSection(sid);
+    });
+  }
+
   function _setupPortraitDebriefSizing() {
     var win = document.getElementById('debrief-window');
     if (!win || win._portraitSizingBound) return;
@@ -256,16 +356,41 @@ const DebriefFeedController = (function() {
         html += '</div>';
       }
 
-      html += '<div id="debrief-resources-content" class="debrief-resources-content"></div>';
+      html += '<div id="debrief-resources-content" class="debrief-resources-content">';
+      html +=   '<div class="debrief-nav-list" id="debrief-nav-list" aria-label="Debrief sections">';
+      html +=     '<div class="debrief-nav-row" data-section="resources">📊 RESOURCES</div>';
+      html +=     '<div class="debrief-nav-row" data-section="battery">🔋 BATTERY</div>';
+      html +=     '<div class="debrief-nav-row" data-section="passives">✨ PASSIVES</div>';
+      html +=     '<div class="debrief-nav-row" data-section="api">🔌 API</div>';
+      html +=     '<div class="debrief-nav-row" data-section="mok">🤖 MOK</div>';
+      html +=   '</div>';
+      html +=   '<div class="debrief-section" id="debrief-sec-resources"></div>';
+      html +=   '<div class="debrief-section" id="debrief-sec-battery" style="display:none"></div>';
+      html +=   '<div class="debrief-section" id="debrief-sec-passives" style="display:none"></div>';
+      html +=   '<div class="debrief-section" id="debrief-sec-api" style="display:none"></div>';
+      html +=   '<div class="debrief-section" id="debrief-sec-mok" style="display:none"></div>';
+      html += '</div>';
       html += '</div>';
 
       _debriefScreen.innerHTML = html;
 
-      // Render resources into content area synchronously
-      var contentArea = document.getElementById('debrief-resources-content');
-      if (contentArea) {
-        DebriefFeedRenderer.renderInto(contentArea);
+      // Render resources into resources section synchronously
+      var resArea = document.getElementById('debrief-sec-resources');
+      if (resArea) {
+        DebriefFeedRenderer.renderInto(resArea);
       }
+
+      // Fill other sections (lightweight placeholders for now)
+      var bat = document.getElementById('debrief-sec-battery');
+      if (bat) bat.innerHTML = '<div class="debrief-mini-block">Signal / Battery details</div>';
+      var pas = document.getElementById('debrief-sec-passives');
+      if (pas) pas.innerHTML = '<div class="debrief-mini-block">Passives & Debuffs</div>';
+      var api = document.getElementById('debrief-sec-api');
+      if (api) api.innerHTML = '<div class="debrief-mini-block">API / Checks</div>';
+      var mok = document.getElementById('debrief-sec-mok');
+      if (mok) mok.innerHTML = '<div class="debrief-mini-block">MOK (resources view)</div>';
+
+      _setupDragNav();
 
       // Wire swapper click (same as cycle)
       var mokSwap = document.getElementById('debrief-mok-swapper');
