@@ -2187,14 +2187,6 @@ const GoneRogue = (function () {
     _grid[backY][backX] = TILES.DOOR;
     _tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
 
-    // Proactive door hints on floor load (so players can find doors even before moving)
-    try {
-      if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
-        OverheadAnimator.showGenericExpression(backX, backY, '↩️', 1200);
-        OverheadAnimator.showGenericExpression(exitX, exitY, '↪️', 1200);
-      }
-    } catch (e0) {}
-
     // Place buildings (visual overlay)
     _forestBuildings = [];
     floorData.buildings.forEach(function(building) {
@@ -4846,6 +4838,9 @@ _incrementPityTimers();
     } else if (dy === -1) {
       _player.lastMoveDirection = 'north';
     }
+
+    // Door hints should fire on approach (so you can find doors without relying on pickups)
+    _maybeHintNearbyDoors();
 
     // Check bounds
     if (newX < 0 || newX >= GRID_WIDTH || newY < 0 || newY >= GRID_HEIGHT) {
