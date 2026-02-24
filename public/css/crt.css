@@ -1517,6 +1517,7 @@ body.amber-mode #scanlines::after {
     font-size: 11px;
     color: rgba(191, 255, 227, 0.95);
     background: rgba(0, 0, 0, 0.32);
+    touch-action: none; /* drag-to-navigate */
   }
 
   .debrief-nav-row.highlighted {

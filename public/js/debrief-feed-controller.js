@@ -105,32 +105,51 @@ const DebriefFeedController = (function() {
     }
 
     function showSection(sectionId) {
+      // toggle: keep list visible; reveal selected section under it
       var ids = ['resources','battery','passives','api','mok'];
+
+      var willExpand = true;
+      try {
+        var currentEl = document.getElementById('debrief-sec-' + sectionId);
+        willExpand = !(currentEl && currentEl.style.display !== 'none');
+      } catch (e0) { willExpand = true; }
+
       for (var i = 0; i < ids.length; i++) {
         var el = document.getElementById('debrief-sec-' + ids[i]);
         if (!el) continue;
-        el.style.display = (ids[i] === sectionId) ? 'block' : 'none';
+        if (ids[i] === sectionId) {
+          el.style.display = willExpand ? 'block' : 'none';
+        } else {
+          el.style.display = 'none';
+        }
       }
-      _nav.lastExpanded = sectionId;
-      try {
-        localStorage.setItem('EYESONLY_DEBRIEF_LAST_EXPANDED_V1', sectionId);
-      } catch (e0) {}
+
+      if (willExpand) {
+        _nav.lastExpanded = sectionId;
+        try {
+          localStorage.setItem('EYESONLY_DEBRIEF_LAST_EXPANDED_V1', sectionId);
+        } catch (e0) {}
+      }
     }
 
     // initial
     setHighlight(0);
     showSection(_nav.lastExpanded || 'resources');
 
-    content.addEventListener('pointerdown', function(e) {
+    var navList = document.getElementById('debrief-nav-list');
+    if (!navList) return;
+
+    navList.addEventListener('pointerdown', function(e) {
       if (_currentMode !== MODES.goneRogue) return;
       if (_currentDisplay !== 'resources') return;
       if (!e) return;
       _nav.startY = e.clientY;
       _nav.dragging = false;
-      try { content.setPointerCapture(e.pointerId); } catch (e2) {}
+      try { navList.setPointerCapture(e.pointerId); } catch (e2) {}
+      e.preventDefault();
     });
 
-    content.addEventListener('pointermove', function(e) {
+    navList.addEventListener('pointermove', function(e) {
       if (!e) return;
       if (_currentDisplay !== 'resources') return;
       var dy = e.clientY - _nav.startY;
@@ -141,21 +160,20 @@ const DebriefFeedController = (function() {
       e.preventDefault();
     }, { passive: false });
 
-    content.addEventListener('pointerup', function() {
+    navList.addEventListener('pointerup', function() {
       if (_currentDisplay !== 'resources') return;
       if (!_nav.dragging) {
-        // default to last expanded (wins)
-        showSection(_nav.lastExpanded || 'resources');
+        // no drag: select highlighted row
+        var r0 = rows();
+        var row0 = r0[_nav.highlighted];
+        var sid0 = row0 ? row0.dataset.section : null;
+        showSection(sid0 || _nav.lastExpanded || 'resources');
         return;
       }
       var r = rows();
       var row = r[_nav.highlighted];
       var sectionId = row ? row.dataset.section : null;
-      if (!sectionId) {
-        showSection(_nav.lastExpanded || 'resources');
-        return;
-      }
-      showSection(sectionId);
+      showSection(sectionId || _nav.lastExpanded || 'resources');
       _nav.dragging = false;
     });
 
