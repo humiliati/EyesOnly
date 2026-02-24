@@ -1568,6 +1568,10 @@ const GoneRogueMobile = (function () {
     _fishingPathOverlay = document.createElement('div');
     _fishingPathOverlay.className = 'fishing-path-overlay';
     _fishingPathOverlay.style.position = 'absolute';
+    // Ensure absolute overlay is positioned relative to the grid container
+    if (_gridContainer && !_gridContainer.style.position) {
+      _gridContainer.style.position = 'relative';
+    }
 
     // Align overlay to the canvas region (canvas may not fill the container)
     var gridRect = _gridContainer.getBoundingClientRect();
@@ -1601,9 +1605,10 @@ const GoneRogueMobile = (function () {
     // Calculate cell size (prefer renderer dims; canvas may be scaled)
     var viewW = (_canvasRenderer && _canvasRenderer.width) ? _canvasRenderer.width : 40;
     var viewH = (_canvasRenderer && _canvasRenderer.height) ? _canvasRenderer.height : 20;
-    var overlayRect = _fishingPathOverlay.getBoundingClientRect();
-    var cellWidth = overlayRect.width / viewW;
-    var cellHeight = overlayRect.height / viewH;
+    var pxW = (canvasRect && canvasRect.width) ? canvasRect.width : _gridContainer.getBoundingClientRect().width;
+    var pxH = (canvasRect && canvasRect.height) ? canvasRect.height : _gridContainer.getBoundingClientRect().height;
+    var cellWidth = pxW / viewW;
+    var cellHeight = pxH / viewH;
 
     // Camera-window rendering: path is in WORLD coords; convert to VIEW coords.
     var originXi = (_canvasRenderer && _cameraState && isFinite(_cameraState.originXi)) ? _cameraState.originXi : 0;
