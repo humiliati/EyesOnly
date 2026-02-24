@@ -246,20 +246,47 @@
 
   function _executeRogueAction(action) {
     Terminal.hideInput();
+
+    // When rogue is entering/active with interactive grid, keep terminal silent.
+    var enteringInteractiveRogue = false;
+    try {
+      enteringInteractiveRogue = !!(action && action.stayActive &&
+        (typeof GoneRogueMobile !== 'undefined') &&
+        (typeof GoneRogue !== 'undefined') &&
+        (typeof GoneRogue.isActive === 'function') && GoneRogue.isActive());
+    } catch (e0) { enteringInteractiveRogue = false; }
+
+    if (enteringInteractiveRogue) {
+      _displayLines([], function () {
+        if (action.stayActive) {
+          // Check if interactive grid is active - if so, don't re-enable text input
+          var isInteractiveGrid = (typeof GoneRogueMobile !== 'undefined' && 
+                                    typeof GoneRogue !== 'undefined' && 
+                                    GoneRogue.isActive());
+          
+          if (isInteractiveGrid) {
+            // Grid is the input - don't show text input or focus keyboard
+            // Keyboard commands (WASD) will still work via keydown handlers
+            return;
+          }
+          
+          // Fallback to text mode (for non-interactive/text-only mode)
+          _enableInput(action.prompt || GoneRogue.getPrompt());
+          return;
+        }
+        _enableInput(_promptForState(StateMachine.getState()));
+      }, 'system-msg highlight');
+      return;
+    }
+
     _displayLines(action.lines || [], function () {
       if (action.stayActive) {
-        // Check if interactive grid is active - if so, don't re-enable text input
         var isInteractiveGrid = (typeof GoneRogueMobile !== 'undefined' && 
                                   typeof GoneRogue !== 'undefined' && 
                                   GoneRogue.isActive());
-        
         if (isInteractiveGrid) {
-          // Grid is the input - don't show text input or focus keyboard
-          // Keyboard commands (WASD) will still work via keydown handlers
           return;
         }
-        
-        // Fallback to text mode (for non-interactive/text-only mode)
         _enableInput(action.prompt || GoneRogue.getPrompt());
         return;
       }
