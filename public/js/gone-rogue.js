@@ -114,6 +114,8 @@ const GoneRogue = (function () {
 
   // Last exit position (for door-anchored spawns)
   var _lastExitPos = null;
+  // When true, the next floor generation should spawn near _lastExitPos (used for retreat/backtracking).
+  var _spawnFromLastExitPos = false;
   var _lastDoorHintAtMs = 0;
 
   // Forest biome state
@@ -2157,16 +2159,17 @@ const GoneRogue = (function () {
     // Apply grid
     _grid = floorData.grid;
 
-    // Place player (door-anchored spawn when advancing floors)
-    // Floor 1 should feel like an initial arrival, not a return-from-previous.
-    if (_floor !== 1 && _lastExitPos && floorData.exit && typeof floorData.exit.x === 'number') {
-      // Spawn near the *previous floor's* exit position.
+    // Place player
+    // Default for contrived/tutorial floors: always spawn at the authored entry point.
+    // Only spawn near _lastExitPos when we are *retreating* back to a previous floor.
+    if (_spawnFromLastExitPos && _lastExitPos) {
       _player.x = _lastExitPos.x;
       _player.y = _lastExitPos.y;
     } else {
       _player.x = floorData.player.x;
       _player.y = floorData.player.y;
     }
+    _spawnFromLastExitPos = false;
     _ensurePlayerOnEmptyTile();
 
     // Place exit (forward)
@@ -5773,6 +5776,7 @@ _incrementPityTimers();
 
     // Remember where we are so the previous floor can spawn us near the return door
     try { _lastExitPos = { x: _player.x, y: _player.y }; } catch (e0) {}
+    _spawnFromLastExitPos = true;
 
     // Fade-out effect
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
@@ -5835,10 +5839,11 @@ _incrementPityTimers();
       }
     }
 
-    // Remember which door/exit we used so next floor can spawn near it
+    // Remember which door/exit we used (for retreat/backtracking only)
     try {
       _lastExitPos = { x: _player.x, y: _player.y };
     } catch (e0) {}
+    _spawnFromLastExitPos = false;
 
     // Wait for fade-out to complete before generating new floor
     setTimeout(function() {
