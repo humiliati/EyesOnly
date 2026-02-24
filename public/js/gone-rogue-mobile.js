@@ -717,6 +717,42 @@ const GoneRogueMobile = (function () {
     // Prepare effects array
     var effects = [];
 
+    // OverheadAnimator (canvas path): render overhead emojis/text as effects
+    if (typeof OverheadAnimator !== 'undefined' && typeof OverheadAnimator.getAllAnimations === 'function') {
+      try {
+        var currentTime = Date.now();
+        OverheadAnimator.update(currentTime);
+        var animations = OverheadAnimator.getAllAnimations();
+        for (var akey in animations) {
+          var parts = akey.split(',');
+          var ax = parseInt(parts[0]);
+          var ay = parseInt(parts[1]);
+          var anim = animations[akey];
+
+          var vx = _toViewX(ax);
+          var vy = _toViewY(ay);
+          if (!_inView(vx, vy)) continue;
+
+          var t = (typeof OverheadAnimator.calculateAnimationTransform === 'function')
+            ? OverheadAnimator.calculateAnimationTransform(anim, currentTime)
+            : { x: 0, y: -12, opacity: 1, scale: 1 };
+
+          // Convert pixel offset to cell offset
+          var dyCells = (t.y || 0) / cellSize;
+          var dxCells = (t.x || 0) / cellSize;
+
+          effects.push({
+            x: vx + dxCells,
+            y: vy - 0.6 + dyCells,
+            char: anim.text || anim.emoji,
+            color: anim.color || '#FFFFFF',
+            glow: true,
+            alpha: (t.opacity !== undefined ? t.opacity : 1)
+          });
+        }
+      } catch (e0) {}
+    }
+
     // Add muzzle flash
     if (muzzleFlash) {
       var mvx = _toViewX(muzzleFlash.x);
