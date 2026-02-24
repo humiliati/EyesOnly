@@ -55,6 +55,9 @@ const GoneRogueMobile = (function () {
   var _selectedCards = []; // Array of card indices
   var _maxSelectedCards = 5; // Maximum cards that can be selected per round
 
+  // Player visual smoothing (for canvas/mobile feel)
+  var _playerVisual = { x: 0, y: 0, inited: false };
+
   // Fishing input model state
   var _fishingActive = false;
   var _fishingStart = { x: 0, y: 0 };
@@ -794,6 +797,20 @@ const GoneRogueMobile = (function () {
       SprintTrailSystem.renderToCanvas(_canvasRenderer.getContext(), cellWidth, cellHeight);
     }
 
+    // Smooth visual player position (tile->float) for nicer feel under zoom-follow.
+    if (player) {
+      if (!_playerVisual.inited) {
+        _playerVisual.x = player.x;
+        _playerVisual.y = player.y;
+        _playerVisual.inited = true;
+      } else {
+        var pvA = 0.35;
+        _playerVisual.x += (player.x - _playerVisual.x) * pvA;
+        _playerVisual.y += (player.y - _playerVisual.y) * pvA;
+      }
+      player = Object.assign({}, player, { visualX: _playerVisual.x, visualY: _playerVisual.y });
+    }
+
     // Mobile-only: zoomed-in viewport that pans by translating the canvas element under a fixed frame.
     _applyMobileCanvasFollow(player, viewW, viewH, cellSize);
   }
@@ -815,8 +832,8 @@ const GoneRogueMobile = (function () {
     if (!canvas || !_gridContainer) return;
 
     // Desired zoom: show fewer than 40x20 tiles by scaling up and cropping.
-    // Slightly less aggressive than 1.6 so more context is visible
-    var z = 1.55;
+    // Zoomed-in viewport (show fewer than 40x20 tiles)
+    var z = 1.5;
 
     // Smooth-follow the camera offset so it doesn't "click" tile-to-tile
     if (!_followState) {
@@ -828,8 +845,8 @@ const GoneRogueMobile = (function () {
     var canvasH = viewH * cellSize;
 
     // Player center in canvas pixel coords (unscaled)
-    var px = (player.x + 0.5) * cellSize;
-    var py = (player.y + 0.5) * cellSize;
+    var px = ((player.visualX !== undefined ? player.visualX : player.x) + 0.5) * cellSize;
+    var py = ((player.visualY !== undefined ? player.visualY : player.y) + 0.5) * cellSize;
 
     // Compute translate in unscaled units (because we apply scale() first)
     var tx = (contRect.width / (2 * z)) - px;
@@ -2312,6 +2329,7 @@ const GoneRogueMobile = (function () {
     _currentZoom = 1.0;
     _panOffset = { x: 0, y: 0 };
     _followState = null;
+    _playerVisual.inited = false;
     _initialPinchDistance = 0;
     _initialPinchCenter = { x: 0, y: 0 };
     _isPanning = false;
@@ -2336,6 +2354,7 @@ const GoneRogueMobile = (function () {
     _currentZoom = 1.0;
     _panOffset = { x: 0, y: 0 };
     _followState = null;
+    _playerVisual.inited = false;
     _initialPinchDistance = 0;
     _initialPinchCenter = { x: 0, y: 0 };
     _isPanning = false;
