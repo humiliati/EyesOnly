@@ -238,7 +238,8 @@ var TutorialFloors = (function() {
       '########################################'
     ],
 
-    player: { x: 21, y: 7 },
+    // Spawn near the exit door position so floor-to-floor transitions feel anchored
+    player: { x: 20, y: 15 },
     exit: { x: 20, y: 16 },
 
     buildings: [

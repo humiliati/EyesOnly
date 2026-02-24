@@ -790,6 +790,50 @@ const GoneRogueMobile = (function () {
       var cellHeight = _canvasRenderer.getCellHeight ? _canvasRenderer.getCellHeight() : 32;
       SprintTrailSystem.renderToCanvas(_canvasRenderer.getContext(), cellWidth, cellHeight);
     }
+
+    // Mobile-only: zoomed-in viewport that pans by translating the canvas element under a fixed frame.
+    _applyMobileCanvasFollow(player, viewW, viewH, cellSize);
+  }
+
+  function _applyMobileCanvasFollow(player, viewW, viewH, cellSize) {
+    if (!_canvasRenderer || !player) return;
+
+    // Only on small portrait screens.
+    try {
+      if (!(window.matchMedia && window.matchMedia('(max-width: 700px) and (orientation: portrait)').matches)) {
+        // Ensure no residual transform
+        var c0 = _canvasRenderer.getCanvas();
+        if (c0) c0.style.transform = '';
+        return;
+      }
+    } catch (e0) {}
+
+    var canvas = _canvasRenderer.getCanvas();
+    if (!canvas || !_gridContainer) return;
+
+    // Desired zoom: show fewer than 40x20 tiles by scaling up and cropping.
+    var z = 1.6;
+
+    var contRect = _gridContainer.getBoundingClientRect();
+    var canvasW = viewW * cellSize;
+    var canvasH = viewH * cellSize;
+
+    // Player center in canvas pixel coords (unscaled)
+    var px = (player.x + 0.5) * cellSize;
+    var py = (player.y + 0.5) * cellSize;
+
+    // Compute translate in unscaled units (because we apply scale() first)
+    var tx = (contRect.width / (2 * z)) - px;
+    var ty = (contRect.height / (2 * z)) - py;
+
+    // Clamp so we never reveal void beyond map bounds
+    var minTx = (contRect.width / z) - canvasW;
+    var minTy = (contRect.height / z) - canvasH;
+    tx = Math.max(minTx, Math.min(0, tx));
+    ty = Math.max(minTy, Math.min(0, ty));
+
+    canvas.style.transformOrigin = '0 0';
+    canvas.style.transform = 'scale(' + z + ') translate(' + tx + 'px, ' + ty + 'px)';
   }
 
   /**
