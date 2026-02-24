@@ -2827,8 +2827,30 @@ const GoneRogueMobile = (function () {
 
         var nameSpan2 = document.createElement('span');
         nameSpan2.className = 'item-name';
-        // No quantity badge yet on action list; equipped item will later flag dupable cards during drag.
-        nameSpan2.textContent = cName;
+        // Quantity badges are handled elsewhere; here we show a duping cue if the active item is toggled.
+        var cue = '';
+        try {
+          if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem && typeof GoneRogueDataRegistry !== 'undefined') {
+            var ar = GAMESTATE.getActiveItem();
+            var ad = ar && ar.id && GoneRogueDataRegistry.getItem ? GoneRogueDataRegistry.getItem(ar.id) : null;
+            var isPrinter = false;
+            if (ad && Array.isArray(ad.effects)) {
+              for (var ei = 0; ei < ad.effects.length; ei++) {
+                if (ad.effects[ei] && ad.effects[ei].type === 'printer_3d') { isPrinter = true; break; }
+              }
+            }
+            if (isPrinter && ar && ar.meta && ar.meta.toggled) {
+              // Show a simple x2 cue for any ammo/battery cards
+              var cd = (GoneRogueDataRegistry.getCard ? GoneRogueDataRegistry.getCard(cardRef.id) : null);
+              var costs = cd && Array.isArray(cd.costs) ? cd.costs : [];
+              for (var ci = 0; ci < costs.length; ci++) {
+                var cst = costs[ci];
+                if (cst && (cst.kind === 'ammo' || cst.kind === 'battery')) { cue = ' x2'; break; }
+              }
+            }
+          }
+        } catch (e0) {}
+        nameSpan2.textContent = cName + cue;
 
         cardDiv.appendChild(emojiSpan2);
         cardDiv.appendChild(nameSpan2);

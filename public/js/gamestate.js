@@ -973,6 +973,17 @@ const GAMESTATE = (function () {
     return _state.activeItemSlot;
   }
 
+  function toggleActiveItemToggled() {
+    if (!_state.activeItemSlot) return { success: false, reason: 'no_active_item' };
+    if (!_state.activeItemSlot.meta) _state.activeItemSlot.meta = {};
+    _state.activeItemSlot.meta.toggled = !_state.activeItemSlot.meta.toggled;
+    _saveState();
+    try {
+      window.dispatchEvent(new CustomEvent('rogue-active-item-changed', { detail: { activeItem: _state.activeItemSlot } }));
+    } catch (e2) {}
+    return { success: true, toggled: !!_state.activeItemSlot.meta.toggled };
+  }
+
   function _normalizeItemRef(item) {
     if (!item) return null;
 
@@ -1880,6 +1891,7 @@ const GAMESTATE = (function () {
     getActionButtonCapacity: getActionButtonCapacity,
     setActiveItem: setActiveItem,
     getActiveItem: getActiveItem,
+    toggleActiveItemToggled: toggleActiveItemToggled,
     clearActiveItem: clearActiveItem,
     consumeActiveItem: consumeActiveItem,
     addCryptos: addCryptos,

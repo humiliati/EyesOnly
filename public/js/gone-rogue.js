@@ -8484,6 +8484,10 @@ _incrementPityTimers();
       }
       if (!isPrinter) return;
 
+      // Must be armed/toggled first (primary method for consuming/using active items)
+      var armed = !!(active.meta && active.meta.toggled);
+      if (!armed) return;
+
       // Trigger only on ammo/battery spending cards (per design)
       var costs = triggerCard && Array.isArray(triggerCard.costs) ? triggerCard.costs : [];
       var spends = false;
@@ -8509,31 +8513,15 @@ _incrementPityTimers();
       else qo = 4;
       if (qo > qp) qo = qp;
 
-      // Choose a printable card of that quality, almost never the triggering card
-      if (!GoneRogueDataRegistry.listCards) return;
-      var all = GoneRogueDataRegistry.listCards();
-      var qNames = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
-      var wantQ = qNames[qo] || 'common';
-
-      var candidates = [];
-      for (var k = 0; k < all.length; k++) {
-        var cd = all[k];
-        if (!cd || !cd.id) continue;
-        if (String(cd.rarity || 'common').toLowerCase() !== wantQ) continue;
-        // Action cards only
-        if (String(cd.id).indexOf('ACT-') !== 0) continue;
-        candidates.push(cd);
-      }
-      if (!candidates.length) return;
-
-      var allowSame = (Math.random() < 0.05);
-      if (!allowSame && triggerCardId) {
-        candidates = candidates.filter(function(c2) { return c2 && c2.id !== triggerCardId; });
-        if (!candidates.length) return;
-      }
-
-      var pick = candidates[Math.floor(Math.random() * candidates.length)];
+      // Armed mode: duplicate the card you're interfacing with.
+      var pick = triggerCard;
       if (!pick || !pick.id) return;
+
+      // Treat output quality as the picked card's rarity for proximity math
+      var qMap2 = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+      qo = qMap2[String(pick.rarity || 'common').toLowerCase()];
+      if (!isFinite(qo)) qo = 0;
+      if (qo > qp) qo = qp;
 
       // Determine print count based on quality distance
       var d = qp - qo;
@@ -8560,7 +8548,7 @@ _incrementPityTimers();
       }
 
       if (typeof TooltipSystem !== 'undefined' && TooltipSystem.showPersistent) {
-        TooltipSystem.showPersistent('🕋 PRINTED x' + n + ' ' + (pick.emoji || '🃏') + ' ' + (pick.name || pick.id), 1600);
+        TooltipSystem.showPersistent('🕋 DUPED x' + n + ' ' + (pick.emoji || '🃏') + ' ' + (pick.name || pick.id), 1600);
       }
     } catch (e0) {}
   }

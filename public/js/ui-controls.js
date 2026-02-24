@@ -817,11 +817,32 @@
               GoneRogueMobile.showInventory();
             }
           } else {
-            // Inventory closed: USE the item for ground effects/buffs/healing
-            if (typeof GoneRogue.triggerActiveItem === 'function') {
-              GoneRogue.triggerActiveItem();
-            } else {
-              updateMokInterjection('Active item usage: ' + goneRogueActiveItem.name + ' - Feature coming soon.');
+            // Inventory closed: TOGGLE the item (primary use pattern). Some items may still route to active-use.
+            var didToggle = false;
+            try {
+              if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
+                var def = GoneRogueDataRegistry.getItem(goneRogueActiveItem.id);
+                var isPrinter = false;
+                if (def && Array.isArray(def.effects)) {
+                  for (var ei = 0; ei < def.effects.length; ei++) {
+                    if (def.effects[ei] && def.effects[ei].type === 'printer_3d') { isPrinter = true; break; }
+                  }
+                }
+                if (isPrinter && GAMESTATE.toggleActiveItemToggled) {
+                  var r = GAMESTATE.toggleActiveItemToggled();
+                  didToggle = !!(r && r.success);
+                  updateMokInterjection((r && r.toggled) ? '🕋 3D PRINTER ARMED (duplication queued)' : '🕋 3D PRINTER DISARMED');
+                }
+              }
+            } catch (e0) {}
+
+            if (!didToggle) {
+              // Fallback: USE the item for ground effects/buffs/healing
+              if (typeof GoneRogue.triggerActiveItem === 'function') {
+                GoneRogue.triggerActiveItem();
+              } else {
+                updateMokInterjection('Active item usage: ' + goneRogueActiveItem.name + ' - Feature coming soon.');
+              }
             }
           }
         } else {
