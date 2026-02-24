@@ -2244,17 +2244,47 @@ const GoneRogueMobile = (function () {
    * Hide mobile UI
    */
   function hide() {
-    if (_gridContainer) _gridContainer.style.display = 'none';
+    if (_gridContainer) {
+      _gridContainer.style.display = 'none';
+      _gridContainer.style.transform = '';
+      _gridContainer.style.transformOrigin = '';
+    }
     if (_cardContainer) _cardContainer.style.display = 'none';
+
+    _currentZoom = 1.0;
+    _panOffset = { x: 0, y: 0 };
+    _initialPinchDistance = 0;
+    _initialPinchCenter = { x: 0, y: 0 };
+    _isPanning = false;
+
+    _cameraState.inited = false;
+    _cameraState.windowActive = false;
+    _cameraState.originXi = 0;
+    _cameraState.originYi = 0;
   }
 
   /**
    * Show mobile UI
    */
   function show() {
-    if (_gridContainer) _gridContainer.style.display = 'grid';
+    if (_gridContainer) {
+      _gridContainer.style.display = 'grid';
+      // Reset any pinch-zoom/pan transforms so the viewport isn't stuck on a corner
+      _gridContainer.style.transform = '';
+      _gridContainer.style.transformOrigin = '';
+    }
+
+    _currentZoom = 1.0;
+    _panOffset = { x: 0, y: 0 };
+    _initialPinchDistance = 0;
+    _initialPinchCenter = { x: 0, y: 0 };
+    _isPanning = false;
+
     // Reset camera so it recenters immediately on first frame after show
     _cameraState.inited = false;
+    _cameraState.windowActive = false;
+    _cameraState.originXi = 0;
+    _cameraState.originYi = 0;
   }
 
   /**
