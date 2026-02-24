@@ -2693,6 +2693,18 @@ const GoneRogue = (function () {
     // Final tutorial door guarantee: after ALL placements (breakables/items/currency/water/etc),
     // force door tiles+metadata and remove anything that could render over them.
     try {
+      // Never allow back+forward doors to overlap (confusing + can cause spawn-on-exit).
+      if (exitX === backX && exitY === backY) {
+        var moved = _findNearestEmptyDoorSpot(exitX, exitY, backX, backY, 6);
+        if (moved) { exitX = moved.x; exitY = moved.y; }
+      }
+
+      // Never allow the player to spawn on top of the forward/advance door.
+      if (_player && _player.x === exitX && _player.y === exitY) {
+        var sp = _findNearestEmptyDoorSpot(_player.x, _player.y, exitX, exitY, 2);
+        if (sp) { _player.x = sp.x; _player.y = sp.y; }
+      }
+
       // Carve
       if (_grid && _grid[exitY]) _grid[exitY][exitX] = TILES.EXIT;
       _tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'forward' };
