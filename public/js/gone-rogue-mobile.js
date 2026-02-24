@@ -440,6 +440,8 @@ const GoneRogueMobile = (function () {
   var _cameraState = {
     cx: 0,
     cy: 0,
+    originXi: 0,
+    originYi: 0,
     inited: false
   };
 
@@ -471,6 +473,8 @@ const GoneRogueMobile = (function () {
 
     var originXi = Math.floor(originXf);
     var originYi = Math.floor(originYf);
+    _cameraState.originXi = originXi;
+    _cameraState.originYi = originYi;
 
     // Fractional offset used to smooth between tiles
     var fracX = originXf - originXi;
@@ -733,7 +737,7 @@ const GoneRogueMobile = (function () {
     // Render using canvas renderer
     _canvasRenderer.renderGrid({
       grid: canvasGrid,
-      camera: { zoom: 1, offsetX: camOffsetPxX, offsetY: camOffsetPxY },
+      camera: { zoom: 1, offsetX: camOffsetPxX, offsetY: camOffsetPxY, worldOriginX: originXi, worldOriginY: originYi },
       entities: entities,
       effects: effects,
       player: player ? (function() {
@@ -1497,7 +1501,12 @@ const GoneRogueMobile = (function () {
 
       // Convert to grid coordinates
       var gridCoords = _canvasRenderer.canvasToGrid(canvasX, canvasY);
-      return gridCoords;
+      if (!gridCoords) return null;
+      // Camera-window rendering: input coords are in viewport space; map back into world space.
+      return {
+        x: gridCoords.x + (_cameraState.originXi || 0),
+        y: gridCoords.y + (_cameraState.originYi || 0)
+      };
     }
 
     // Fallback to DOM element lookup
@@ -2165,6 +2174,8 @@ const GoneRogueMobile = (function () {
    */
   function show() {
     if (_gridContainer) _gridContainer.style.display = 'grid';
+    // Reset camera so it recenters immediately on first frame after show
+    _cameraState.inited = false;
   }
 
   /**

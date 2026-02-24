@@ -72,11 +72,13 @@ const CanvasRenderer = (function() {
       return;
     }
 
-    // Camera transform (optional): { zoom, offsetX, offsetY }
+    // Camera transform (optional): { zoom, offsetX, offsetY, worldOriginX, worldOriginY }
     var cam = (renderData && renderData.camera) ? renderData.camera : null;
     var zoom = cam && isFinite(cam.zoom) ? cam.zoom : 1;
     var offX = cam && isFinite(cam.offsetX) ? cam.offsetX : 0;
     var offY = cam && isFinite(cam.offsetY) ? cam.offsetY : 0;
+    this._worldOriginX = cam && isFinite(cam.worldOriginX) ? cam.worldOriginX : 0;
+    this._worldOriginY = cam && isFinite(cam.worldOriginY) ? cam.worldOriginY : 0;
 
     // Clear canvas in identity space
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -135,7 +137,10 @@ const CanvasRenderer = (function() {
     // Check if we have multiple render objects for this tile (multi-tree scatter)
     var renderObjects = null;
     if (typeof GoneRogue !== 'undefined' && GoneRogue.getTileRenderObjects) {
-      renderObjects = GoneRogue.getTileRenderObjects(x, y);
+      // When using camera-window rendering, map view coords back to world coords.
+      var wx = x + (this._worldOriginX || 0);
+      var wy = y + (this._worldOriginY || 0);
+      renderObjects = GoneRogue.getTileRenderObjects(wx, wy);
     }
 
     if (renderObjects && renderObjects.length > 0) {
@@ -209,7 +214,9 @@ const CanvasRenderer = (function() {
 
     for (var y = 0; y < grid.length; y++) {
       for (var x = 0; x < grid[y].length; x++) {
-        var light = LightingSystem.getLightAt(x, y);
+        var wx = x + (this._worldOriginX || 0);
+        var wy = y + (this._worldOriginY || 0);
+        var light = LightingSystem.getLightAt(wx, wy);
 
         // Calculate darkness level (inverse of light intensity)
         var darkness = 1 - light.intensity;
