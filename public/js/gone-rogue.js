@@ -2690,6 +2690,44 @@ const GoneRogue = (function () {
       console.log('[TutorialFloors] Placed ' + floorData.breadcrumbPickups.length + ' breadcrumb pickups');
     }
 
+    // Final tutorial door guarantee: after ALL placements (breakables/items/currency/water/etc),
+    // force door tiles+metadata and remove anything that could render over them.
+    try {
+      // Carve
+      if (_grid && _grid[exitY]) _grid[exitY][exitX] = TILES.EXIT;
+      _tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'forward' };
+      if (_grid && _grid[backY]) _grid[backY][backX] = TILES.DOOR;
+      _tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
+
+      // Remove overlays/entities
+      if (_forestBuildings && _forestBuildings.length) {
+        _forestBuildings = _forestBuildings.filter(function(b) {
+          return b && !((b.x === exitX && b.y === exitY) || (b.x === backX && b.y === backY));
+        });
+      }
+      if (Array.isArray(_breakables)) {
+        _breakables = _breakables.filter(function(bb) { return bb && !((bb.x === exitX && bb.y === exitY) || (bb.x === backX && bb.y === backY)); });
+      }
+      if (Array.isArray(_items)) {
+        _items = _items.filter(function(it) { return it && !((it.x === exitX && it.y === exitY) || (it.x === backX && it.y === backY)); });
+      }
+      if (Array.isArray(_currencies)) {
+        _currencies = _currencies.filter(function(cc) { return cc && !((cc.x === exitX && cc.y === exitY) || (cc.x === backX && cc.y === backY)); });
+      }
+      if (Array.isArray(_enemies)) {
+        _enemies = _enemies.filter(function(en) { return en && !((en.x === exitX && en.y === exitY) || (en.x === backX && en.y === backY)); });
+      }
+
+      // Debug: count door tiles in grid
+      var doorCount = 0;
+      for (var yy = 0; yy < GRID_HEIGHT; yy++) {
+        for (var xx = 0; xx < GRID_WIDTH; xx++) {
+          if (_grid[yy] && (_grid[yy][xx] === TILES.EXIT || _grid[yy][xx] === TILES.DOOR)) doorCount++;
+        }
+      }
+      console.log('[TutorialFloors] Doors stamped: back=(' + backX + ',' + backY + ') forward=(' + exitX + ',' + exitY + ') count=' + doorCount);
+    } catch (eDoor) {}
+
     // Build biome visual grid for forest biome
     var forestBiome = BIOMES.FOREST;
     _buildBiomeVisualGrid(forestBiome);
