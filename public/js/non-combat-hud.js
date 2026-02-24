@@ -364,6 +364,33 @@ var NonCombatHUD = (function() {
       pv.textContent = state.uiState || 'idle';
     }
 
+    // 3D printer armed state (for x2 cue on eligible ammo/battery cards)
+    var printerArmed = false;
+    try {
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) {
+        var ar = GAMESTATE.getActiveItem();
+        if (ar && ar.id && ar.meta && ar.meta.toggled && typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
+          var idef = GoneRogueDataRegistry.getItem(ar.id);
+          if (idef && Array.isArray(idef.effects)) {
+            for (var pi = 0; pi < idef.effects.length; pi++) {
+              if (idef.effects[pi] && idef.effects[pi].type === 'printer_3d') { printerArmed = true; break; }
+            }
+          }
+        }
+      }
+    } catch (e0) {}
+
+    function _isAmmoBatteryCard(cardDef) {
+      try {
+        if (!cardDef || !Array.isArray(cardDef.costs)) return false;
+        for (var ci = 0; ci < cardDef.costs.length; ci++) {
+          var cst = cardDef.costs[ci];
+          if (cst && (cst.kind === 'ammo' || cst.kind === 'battery')) return true;
+        }
+      } catch (e1) {}
+      return false;
+    }
+
     var hand = _root.querySelector('#nch-hand');
     if (hand) {
       var refs = [];
@@ -392,7 +419,18 @@ var NonCombatHUD = (function() {
           var row = document.createElement('div');
           row.className = 'nch-hand-row nch-draggable' + ((state.selectedHandIndex === i) ? ' selected' : '');
           row.dataset.handIndex = i;
-          row.textContent = em + ' ' + nm + ' x' + (ref.qty || 1);
+          row.style.position = 'relative';
+
+          var qtyTxt = 'x' + (ref.qty || 1);
+          row.textContent = em + ' ' + nm + ' ' + qtyTxt;
+
+          if (printerArmed && _isAmmoBatteryCard(card)) {
+            row.classList.add('printer-eligible');
+            var b = document.createElement('span');
+            b.className = 'printer-x2';
+            b.textContent = 'x2';
+            row.appendChild(b);
+          }
 
           row.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -443,7 +481,16 @@ var NonCombatHUD = (function() {
           }
           var nm2 = card2 ? card2.name : ref2.id;
           var em2 = card2 ? card2.emoji : '🃏';
+          cell.style.position = 'relative';
           cell.textContent = em2 + ' ' + nm2;
+
+          if (printerArmed && _isAmmoBatteryCard(card2)) {
+            cell.classList.add('printer-eligible');
+            var b2 = document.createElement('span');
+            b2.className = 'printer-x2';
+            b2.textContent = 'x2';
+            cell.appendChild(b2);
+          }
         } else {
           cell.textContent = '—';
           cell.classList.add('empty');
