@@ -2202,6 +2202,16 @@ const GoneRogue = (function () {
             var ty = y0 + dy;
             if (tx <= 0 || tx >= GRID_WIDTH - 1 || ty <= 0 || ty >= GRID_HEIGHT - 1) continue;
             if (!_grid[ty] || _grid[ty][tx] !== TILES.EMPTY) continue;
+
+            // Avoid placing the back door under visual clutter (trees/buildings overlays)
+            var blocked = false;
+            if (_forestBuildings && _forestBuildings.length) {
+              for (var bi = 0; bi < _forestBuildings.length; bi++) {
+                if (_forestBuildings[bi].x === tx && _forestBuildings[bi].y === ty) { blocked = true; break; }
+              }
+            }
+            if (blocked) continue;
+
             var dist = Math.abs(tx - avoidX) + Math.abs(ty - avoidY);
             if (dist >= (minDist || 0)) {
               backX = tx;

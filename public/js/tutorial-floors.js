@@ -241,7 +241,7 @@ var TutorialFloors = (function() {
     // Player spawns at the back/entry door near the arrival point
     player: { x: 20, y: 15 },
     // Forward exit should be elsewhere (seek it out)
-    exit: { x: 34, y: 16 },
+    exit: { x: 34, y: 17 },
 
     buildings: [
       { x: 4, y: 2, emoji: '🏠', name: 'Village House' },
@@ -390,7 +390,7 @@ var TutorialFloors = (function() {
     // Player spawns at the back/entry door near the arrival point
     player: { x: 20, y: 5 },
     // Forward exit should be elsewhere (seek it out)
-    exit: { x: 34, y: 16 },
+    exit: { x: 34, y: 17 },
 
     // No buildings or decorations (combat focus)
     buildings: [],
