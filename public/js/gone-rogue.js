@@ -7921,6 +7921,33 @@ _incrementPityTimers();
       if (!raw) return;
       var parsed = JSON.parse(raw);
       if (parsed.player) _player = parsed.player;
+
+      // Hard clamp: never allow restored player spawn to be inside walls.
+      // Camera + fullscreen makes bad legacy positions very visible.
+      try {
+        if (_player && _grid && _grid[_player.y] && _grid[_player.y][_player.x] && _grid[_player.y][_player.x] !== TILES.EMPTY) {
+          // Attempt to snap to nearest empty tile (spiral search)
+          var found = false;
+          for (var r = 1; r <= 10 && !found; r++) {
+            for (var dy = -r; dy <= r && !found; dy++) {
+              for (var dx = -r; dx <= r && !found; dx++) {
+                var tx = _player.x + dx;
+                var ty = _player.y + dy;
+                if (tx > 0 && tx < GRID_WIDTH - 1 && ty > 0 && ty < GRID_HEIGHT - 1 && _grid[ty] && _grid[ty][tx] === TILES.EMPTY) {
+                  _player.x = tx;
+                  _player.y = ty;
+                  found = true;
+                }
+              }
+            }
+          }
+          if (!found) {
+            // fall back to safe-ish center
+            _player.x = Math.floor(GRID_WIDTH / 2);
+            _player.y = Math.floor(GRID_HEIGHT / 2);
+          }
+        }
+      } catch (e0) {}
       if (parsed.enemies) _enemies = parsed.enemies;
       if (parsed.items) _items = parsed.items;
       if (parsed.projectiles) _projectiles = parsed.projectiles;
