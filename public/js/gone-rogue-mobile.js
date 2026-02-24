@@ -1446,28 +1446,32 @@ const GoneRogueMobile = (function () {
           TooltipSystem.collapseHistory();
         }
 
-        // Reset debrief feed to default display for current mode
-        if (typeof DebriefFeedController !== 'undefined') {
-          var currentMode = document.body.classList.contains('mode-gone-rogue') ||
-                           document.body.classList.contains('in-gone-rogue');
-          if (currentMode) {
-            // In Gone Rogue, default is resources view
-            if (DebriefFeedController.getCurrentDisplay() !== 'resources') {
-              DebriefFeedController.toggleDisplay();
-            }
-          } else {
-            // Outside Gone Rogue, default is MOK view
-            if (DebriefFeedController.getCurrentDisplay() !== 'mok') {
-              DebriefFeedController.toggleDisplay();
-            }
+        // Minimize debrief chrome (but do NOT change which section the player was inspecting).
+        // Goal: bring essential resources into view without trampling the user's current debrief context.
+        try {
+          var body = document.body;
+          if (body) {
+            body.classList.remove('rogue-debrief-expanded');
+            // Nudge debrief width smaller for focus mode; don't persist to localStorage.
+            body.style.setProperty('--rogue-debrief-pct', '28%');
           }
+        } catch (e1) {}
+
+        // Collapse debrief window if expanded (legacy/global expanded class)
+        var debriefWindow = document.getElementById('debrief-window');
+        if (debriefWindow) {
+          try { debriefWindow.classList.remove('expanded'); } catch (e2) {}
         }
 
-        // Collapse debrief window if expanded
-        var debriefWindow = document.getElementById('debrief-window');
-        if (debriefWindow && debriefWindow.classList.contains('expanded')) {
-          debriefWindow.classList.remove('expanded');
-        }
+        // Scroll resources container toward top so HP bar is visible again.
+        try {
+          var content = document.getElementById('debrief-feed-content');
+          if (content && typeof content.scrollTo === 'function') {
+            content.scrollTo({ top: 0, behavior: 'smooth' });
+          } else if (content) {
+            content.scrollTop = 0;
+          }
+        } catch (e3) {}
 
         return;
       }
