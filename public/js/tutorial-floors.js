@@ -44,7 +44,6 @@ var TutorialFloors = (function() {
    */
   var FLOOR_1_LAYOUT = {
     floorNumber: 1,
-    anchorPlayerToCenter: true,
     name: 'Village Entrance',
     description: 'A peaceful forest village with secrets to discover.',
 
@@ -214,7 +213,6 @@ var TutorialFloors = (function() {
    */
   var FLOOR_2_LAYOUT = {
     floorNumber: 2,
-    anchorPlayerToCenter: true,
     name: 'The Key Quest',
     description: 'Find the key to unlock the southern gate.',
 
@@ -364,7 +362,6 @@ var TutorialFloors = (function() {
    */
   var FLOOR_3_LAYOUT = {
     floorNumber: 3,
-    anchorPlayerToCenter: true,
     name: 'First Encounters',
     description: 'Practice combat with harmless creatures.',
 
@@ -579,17 +576,22 @@ var TutorialFloors = (function() {
       }
     }
 
-    // Optional: center the designed entry point on screen by shifting the whole layout.
-    // This makes "new entrants" appear centered while keeping relative authored geometry.
+    // Optional: shift the whole layout so the designed entry point lands at a target location.
+    // This allows transitions to feel spatially consistent (anchor to the door you just used).
     var dx = 0;
     var dy = 0;
     var player = layout.player;
     var exit = layout.exit;
-    if (layout.anchorPlayerToCenter && player && typeof player.x === 'number' && typeof player.y === 'number') {
-      var cx = Math.floor(GRID_WIDTH / 2);
-      var cy = Math.floor(GRID_HEIGHT / 2);
-      dx = cx - player.x;
-      dy = cy - player.y;
+
+    var anchor = layout.anchorTo || null; // {x,y} in grid coordinates
+    if (!anchor && layout.anchorPlayerToCenter && player && typeof player.x === 'number' && typeof player.y === 'number') {
+      anchor = { x: Math.floor(GRID_WIDTH / 2), y: Math.floor(GRID_HEIGHT / 2) };
+    }
+
+    if (anchor && player && typeof player.x === 'number' && typeof player.y === 'number') {
+      dx = anchor.x - player.x;
+      dy = anchor.y - player.y;
+
       player = { x: player.x + dx, y: player.y + dy };
       if (exit && typeof exit.x === 'number' && typeof exit.y === 'number') {
         exit = { x: exit.x + dx, y: exit.y + dy };

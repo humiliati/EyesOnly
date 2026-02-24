@@ -2153,8 +2153,16 @@ const GoneRogue = (function () {
 
     console.log('[TutorialFloors] Generating contrived floor ' + _floor + ': ' + layout.name);
 
-    // Generate floor data from layout
-    var floorData = TutorialFloors.generateContrivedFloor(layout);
+    // Generate floor data from layout.
+    // Anchor the authored entry point to the door position we just used so transitions feel spatially consistent.
+    var layout2 = layout;
+    try {
+      if (_lastExitPos && typeof _lastExitPos.x === 'number' && typeof _lastExitPos.y === 'number') {
+        layout2 = Object.assign({}, layout, { anchorTo: { x: _lastExitPos.x, y: _lastExitPos.y } });
+      }
+    } catch (e0) {}
+
+    var floorData = TutorialFloors.generateContrivedFloor(layout2);
 
     // Apply grid
     _grid = floorData.grid;
