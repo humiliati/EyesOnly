@@ -2202,9 +2202,10 @@ const GoneRogue = (function () {
       }
     } catch (e0) {}
 
-    // Mark entry/return door at spawn (back)
-    var backX = _player.x;
-    var backY = _player.y;
+    // Mark entry/return door at the entry point, but DO NOT spawn the player on top of it
+    // (player glyph hides the door tile, making it look like there is only one door).
+    var backX = floorData.player.x;
+    var backY = floorData.player.y;
 
     function _tryMoveBackDoorAwayFrom(x0, y0, avoidX, avoidY, minDist) {
       var moved = false;
@@ -2249,6 +2250,31 @@ const GoneRogue = (function () {
 
     _grid[backY][backX] = TILES.DOOR;
     _tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
+
+    // Spawn player adjacent to the back door (so the back door is visible & interactable)
+    try {
+      var spawnChoices = [
+        { x: backX - 1, y: backY },
+        { x: backX + 1, y: backY },
+        { x: backX, y: backY - 1 },
+        { x: backX, y: backY + 1 }
+      ];
+
+      var picked = null;
+      for (var si = 0; si < spawnChoices.length; si++) {
+        var s = spawnChoices[si];
+        if (s.x <= 0 || s.x >= GRID_WIDTH - 1 || s.y <= 0 || s.y >= GRID_HEIGHT - 1) continue;
+        if (!_grid[s.y] || _grid[s.y][s.x] !== TILES.EMPTY) continue;
+        if (Math.abs(s.x - exitX) + Math.abs(s.y - exitY) <= 2) continue;
+        picked = s;
+        break;
+      }
+
+      if (picked) {
+        _player.x = picked.x;
+        _player.y = picked.y;
+      }
+    } catch (e0) {}
 
     // Place buildings (visual overlay)
     _forestBuildings = [];
