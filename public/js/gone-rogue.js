@@ -2711,7 +2711,7 @@ const GoneRogue = (function () {
       if (_grid && _grid[backY]) _grid[backY][backX] = TILES.DOOR;
       _tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
 
-      // Remove overlays/entities
+      // Remove overlays/entities from door positions
       if (_forestBuildings && _forestBuildings.length) {
         _forestBuildings = _forestBuildings.filter(function(b) {
           return b && !((b.x === exitX && b.y === exitY) || (b.x === backX && b.y === backY));
@@ -2729,6 +2729,53 @@ const GoneRogue = (function () {
       if (Array.isArray(_enemies)) {
         _enemies = _enemies.filter(function(en) { return en && !((en.x === exitX && en.y === exitY) || (en.x === backX && en.y === backY)); });
       }
+
+      // Relocate any NPCs sitting on door tiles (the DOM renderer draws NPC emoji on top
+      // of the tile, hiding the door even when the grid tile is correctly set to 🚪).
+      if (Array.isArray(_npcs)) {
+        _npcs.forEach(function(npc) {
+          if (!npc) return;
+          var onDoor = (npc.x === exitX && npc.y === exitY) || (npc.x === backX && npc.y === backY);
+          if (!onDoor) return;
+
+          // Try to move the NPC to an adjacent empty tile
+          var dirs = [
+            { dx: -1, dy: 0 }, { dx: 1, dy: 0 },
+            { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
+            { dx: -1, dy: -1 }, { dx: 1, dy: -1 },
+            { dx: -1, dy: 1 }, { dx: 1, dy: 1 }
+          ];
+          var oldX = npc.x, oldY = npc.y;
+          var relocated = false;
+          for (var di = 0; di < dirs.length; di++) {
+            var nx = oldX + dirs[di].dx;
+            var ny = oldY + dirs[di].dy;
+            if (nx <= 0 || nx >= GRID_WIDTH - 1 || ny <= 0 || ny >= GRID_HEIGHT - 1) continue;
+            if (!_grid[ny] || (_grid[ny][nx] !== TILES.EMPTY && _grid[ny][nx] !== TILES.GRASS)) continue;
+            // Don't relocate onto a door
+            if ((nx === exitX && ny === exitY) || (nx === backX && ny === backY)) continue;
+            // Don't relocate onto a live breakable
+            var bb0 = _getBreakableAt ? _getBreakableAt(nx, ny) : null;
+            if (bb0 && bb0.hp > 0) continue;
+
+            // Move NPC to new position (NPCs are visual; do NOT mutate grid tiles)
+            npc.x = nx;
+            npc.y = ny;
+            relocated = true;
+            console.log('[TutorialFloors] Relocated NPC ' + npc.name + ' from (' + oldX + ',' + oldY + ') to (' + nx + ',' + ny + ') to avoid door collision');
+            break;
+          }
+          if (!relocated) {
+            console.warn('[TutorialFloors] Could not relocate NPC ' + npc.name + ' off door at (' + oldX + ',' + oldY + ')');
+          }
+        });
+      }
+
+      // Final re-stamp doors after ALL entity relocations to guarantee grid+metadata integrity.
+      if (_grid && _grid[exitY]) _grid[exitY][exitX] = TILES.EXIT;
+      _tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'forward' };
+      if (_grid && _grid[backY]) _grid[backY][backX] = TILES.DOOR;
+      _tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
 
       // Debug: count door tiles in grid
       var doorCount = 0;
@@ -10397,8 +10444,11 @@ _incrementPityTimers();
             // Remove NPC entirely
             _npcs = _npcs.filter(function(n) { return n.id !== gateNpc.id; });
             delete _tileMetadata[gateNpc.x + ',' + gateNpc.y];
-            // Keep grid blocked? no — clear the NPC tile so passage is truly open
-            _grid[gateNpc.y][gateNpc.x] = TILES.EMPTY;
+            // Clear the NPC tile so passage is open — but preserve door tiles!
+            var npcTile = _grid[gateNpc.y][gateNpc.x];
+            if (npcTile !== TILES.EXIT && npcTile !== TILES.DOOR) {
+              _grid[gateNpc.y][gateNpc.x] = TILES.EMPTY;
+            }
             lines.push('🧱 GATE REMOVED: ' + gateNpc.name + ' yields the path.');
           } else {
             lines.push('🟢 GATE RELEASED: ' + gateNpc.name + ' lets you pass.');

@@ -666,6 +666,32 @@ var TutorialFloors = (function() {
       return out;
     }
 
+    // Shift a gate/barrier object that has a .positions array (lockedGate, tutorialGate).
+    // Returns a new object with shifted positions (drops out-of-bounds positions).
+    function _shiftGateObj(gateObj) {
+      if (!gateObj) return null;
+      var shifted = Object.assign({}, gateObj);
+      if (Array.isArray(gateObj.positions)) {
+        shifted.positions = [];
+        gateObj.positions.forEach(function(pos) {
+          var nx = pos.x + dx;
+          var ny = pos.y + dy;
+          if (nx < 0 || nx >= GRID_WIDTH || ny < 0 || ny >= GRID_HEIGHT) return;
+          shifted.positions.push({ x: nx, y: ny });
+        });
+      }
+      return shifted;
+    }
+
+    // Shift a single-position object (like keyBreakable) that has .x and .y.
+    function _shiftSingleObj(obj) {
+      if (!obj || typeof obj.x !== 'number' || typeof obj.y !== 'number') return obj;
+      var nx = obj.x + dx;
+      var ny = obj.y + dy;
+      if (nx < 0 || nx >= GRID_WIDTH || ny < 0 || ny >= GRID_HEIGHT) return null;
+      return Object.assign({}, obj, { x: nx, y: ny });
+    }
+
     return {
       grid: grid,
       player: player,
@@ -675,10 +701,10 @@ var TutorialFloors = (function() {
       breakables: _shiftList(layout.breakables),
       enemies: _shiftList(layout.enemies),
       npcs: _shiftList(layout.npcs),
-      tutorialGate: layout.tutorialGate,
-      lockedGate: layout.lockedGate,
+      tutorialGate: _shiftGateObj(layout.tutorialGate),
+      lockedGate: _shiftGateObj(layout.lockedGate),
       lockedChests: _shiftList(layout.lockedChests),
-      keyBreakable: layout.keyBreakable,
+      keyBreakable: _shiftSingleObj(layout.keyBreakable),
       tutorialPickups: _shiftList(layout.tutorialPickups),
       interactiveItems: _shiftList(layout.interactiveItems),
       waterTiles: _shiftList(layout.waterTiles),
