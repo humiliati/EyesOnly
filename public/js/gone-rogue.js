@@ -2162,6 +2162,33 @@ const GoneRogue = (function () {
     _grid[exitY][exitX] = TILES.EXIT;
     _tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'forward' };
 
+    // If player spawned too close to the forward exit, move them (and entry door) away.
+    // This prevents the "spawn next to next-floor door" stacking bug on floor 2.
+    try {
+      var distSpawnExit = Math.abs(_player.x - exitX) + Math.abs(_player.y - exitY);
+      if (distSpawnExit <= 2) {
+        var sx0 = _player.x;
+        var sy0 = _player.y;
+        var moved = false;
+        for (var r = 1; r <= 10 && !moved; r++) {
+          for (var dy = -r; dy <= r && !moved; dy++) {
+            for (var dx = -r; dx <= r && !moved; dx++) {
+              var tx = sx0 + dx;
+              var ty = sy0 + dy;
+              if (tx <= 0 || tx >= GRID_WIDTH - 1 || ty <= 0 || ty >= GRID_HEIGHT - 1) continue;
+              if (!_grid[ty] || _grid[ty][tx] !== TILES.EMPTY) continue;
+              var d2 = Math.abs(tx - exitX) + Math.abs(ty - exitY);
+              if (d2 >= 4) {
+                _player.x = tx;
+                _player.y = ty;
+                moved = true;
+              }
+            }
+          }
+        }
+      }
+    } catch (e0) {}
+
     // Mark entry/return door at spawn (back)
     var backX = _player.x;
     var backY = _player.y;
