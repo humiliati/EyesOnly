@@ -194,10 +194,30 @@ var NonCombatHUD = (function() {
       _render(NonCombatStateStore.getState());
     }
 
-    // Re-render when rogue equipped item changes (GAMESTATE is canonical)
+    // Re-render when rogue equipped item/hand changes (GAMESTATE is canonical)
     if (typeof window !== 'undefined') {
       window.addEventListener('rogue-active-item-changed', function() {
         try {
+          if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.getState) {
+            _render(NonCombatStateStore.getState());
+          }
+        } catch (err) {}
+      });
+
+      window.addEventListener('rogue-hand-changed', function() {
+        try {
+          // Clamp selections against canonical arrays
+          if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.getState && NonCombatStateStore.modifyState) {
+            var st = NonCombatStateStore.getState();
+            var selH = Number(st.selectedHandIndex || -1);
+            var selB = Number(st.selectedBackupIndex || -1);
+            var hand = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getCardsInHand) ? GAMESTATE.getCardsInHand() : [];
+            var backup = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getBackupCards) ? GAMESTATE.getBackupCards() : [];
+            if (!isFinite(selH) || selH >= hand.length) selH = -1;
+            if (!isFinite(selB) || selB < 0 || selB > 3 || !backup[selB]) selB = -1;
+            NonCombatStateStore.modifyState({ selectedHandIndex: selH, selectedBackupIndex: selB }, 'nch:clamp_selection');
+          }
+
           if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.getState) {
             _render(NonCombatStateStore.getState());
           }
