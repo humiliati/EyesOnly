@@ -204,7 +204,7 @@ const DebriefFeedController = (function() {
     }
 
     function _isRogue() {
-      return body.classList.contains('mode-gone-rogue') || body.classList.contains('in-gone-rogue');
+      return body.classList.contains('mode-gone-rogue') || body.classList.contains('in-gone-rogue') || body.classList.contains('gone-rogue-active');
     }
 
     function _applyPct(pct) {

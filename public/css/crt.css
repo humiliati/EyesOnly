@@ -1434,28 +1434,33 @@ body.amber-mode #scanlines::after {
 /* --- Gone Rogue portrait layout (mobile) --- */
 @media (max-width: 600px) and (orientation: portrait) {
   body.mode-gone-rogue #mok-header.monitor-header,
-  body.in-gone-rogue #mok-header.monitor-header {
+  body.in-gone-rogue #mok-header.monitor-header,
+  body.gone-rogue-active #mok-header.monitor-header {
     min-height: 20px;
     padding: 2px 6px;
   }
 
   /* Hide verbose header copy; keep only tiny icons */
   body.mode-gone-rogue .mok-header-copy,
-  body.in-gone-rogue .mok-header-copy {
+  body.in-gone-rogue .mok-header-copy,
+  body.gone-rogue-active .mok-header-copy {
     display: none;
   }
   body.mode-gone-rogue .active-item-label,
-  body.in-gone-rogue .active-item-label {
+  body.in-gone-rogue .active-item-label,
+  body.gone-rogue-active .active-item-label {
     display: none;
   }
   body.mode-gone-rogue #currency-display,
-  body.in-gone-rogue #currency-display {
+  body.in-gone-rogue #currency-display,
+  body.gone-rogue-active #currency-display {
     display: none;
   }
 
   /* 4-band vertical budget: header + torso + legs + footer (footer handled by NCH pill/tooltips) */
   body.mode-gone-rogue #monitor-body,
-  body.in-gone-rogue #monitor-body {
+  body.in-gone-rogue #monitor-body,
+  body.gone-rogue-active #monitor-body {
     display: grid;
     grid-template-columns: 1fr;
     grid-template-rows: auto 30vh 1fr;
@@ -1464,7 +1469,8 @@ body.amber-mode #scanlines::after {
 
   /* Torso: controls + debrief side-by-side */
   body.mode-gone-rogue #control-rail,
-  body.in-gone-rogue #control-rail {
+  body.in-gone-rogue #control-rail,
+  body.gone-rogue-active #control-rail {
     flex-direction: row;
     align-items: stretch;
     height: 30vh;
@@ -1472,7 +1478,8 @@ body.amber-mode #scanlines::after {
   }
 
   body.mode-gone-rogue .control-buttons,
-  body.in-gone-rogue .control-buttons {
+  body.in-gone-rogue .control-buttons,
+  body.gone-rogue-active .control-buttons {
     width: calc(100% - var(--rogue-debrief-pct, 30%));
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1482,7 +1489,8 @@ body.amber-mode #scanlines::after {
   }
 
   body.mode-gone-rogue .debrief-window,
-  body.in-gone-rogue .debrief-window {
+  body.in-gone-rogue .debrief-window,
+  body.gone-rogue-active .debrief-window {
     width: var(--rogue-debrief-pct, 30%);
     max-width: none;
     flex: 0 0 auto;
@@ -1491,13 +1499,15 @@ body.amber-mode #scanlines::after {
 
   /* Encourage status-strip feel */
   body.mode-gone-rogue .debrief-window .debrief-label,
-  body.in-gone-rogue .debrief-window .debrief-label {
+  body.in-gone-rogue .debrief-window .debrief-label,
+  body.gone-rogue-active .debrief-window .debrief-label {
     cursor: ew-resize;
     user-select: none;
   }
 
   body.mode-gone-rogue .debrief-window .debrief-screen,
-  body.in-gone-rogue .debrief-window .debrief-screen {
+  body.in-gone-rogue .debrief-window .debrief-screen,
+  body.gone-rogue-active .debrief-window .debrief-screen {
     min-height: 0;
     overflow: hidden;
   }
@@ -1536,13 +1546,15 @@ body.amber-mode #scanlines::after {
 
   /* Legs: terminal area should give map maximum room */
   body.mode-gone-rogue #log-column,
-  body.in-gone-rogue #log-column {
+  body.in-gone-rogue #log-column,
+  body.gone-rogue-active #log-column {
     min-height: 0;
     overflow: hidden;
   }
 
   body.mode-gone-rogue #terminal,
-  body.in-gone-rogue #terminal {
+  body.in-gone-rogue #terminal,
+  body.gone-rogue-active #terminal {
     min-height: 0;
     height: 100%;
     padding: 6px;
