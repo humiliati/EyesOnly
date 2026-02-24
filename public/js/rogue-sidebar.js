@@ -90,10 +90,81 @@ var RogueSidebar = (function() {
 
     var view = _prefs.view === 'items' ? 'items' : 'cards';
 
+    var strActive = false;
+    try {
+      strActive = (typeof GoneRogue !== 'undefined' && typeof GoneRogue.isStrCombatActive === 'function' && GoneRogue.isStrCombatActive());
+    } catch (e0) { strActive = false; }
+
     // Fetch refs
     var items = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentInventory) ? (GAMESTATE.getPersistentInventory() || []) : [];
     var cards = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentCards) ? (GAMESTATE.getPersistentCards() || []) : [];
     var activeItem = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) ? GAMESTATE.getActiveItem() : null;
+
+    // STR combat view: left column becomes redacted BACKUP deck surface
+    if (strActive) {
+      var backup = (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getBackupCards === 'function') ? (GAMESTATE.getBackupCards() || []) : [];
+      var canDraw = (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.canDrawBackupThisCombat === 'function') ? !!GAMESTATE.canDrawBackupThisCombat() : false;
+      var hasBackup = Array.isArray(backup) && backup.some(function(r) { return r && r.id; });
+
+      var sigB = ['v=str', 'draw=' + (canDraw ? '1' : '0')];
+      for (var bi = 0; bi < 4; bi++) {
+        var br = backup[bi];
+        sigB.push(br && br.id ? (br.id + ':' + (br.qty || 1)) : '-');
+      }
+      var signatureB = sigB.join('|');
+      if (signatureB === _lastSignature) return;
+      _lastSignature = signatureB;
+
+      _container.innerHTML = '';
+
+      // Slot 1 becomes DRAW button
+      var drawBtn = document.createElement('button');
+      drawBtn.type = 'button';
+      drawBtn.className = 'rogue-sidebar-btn rogue-sidebar-toggle';
+      drawBtn.textContent = (canDraw && hasBackup) ? 'DRAW 1' : 'BACKUP';
+      drawBtn.disabled = !(canDraw && hasBackup);
+      drawBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (drawBtn.disabled) return;
+        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.drawOneFromBackupOncePerCombat === 'function') {
+          GAMESTATE.drawOneFromBackupOncePerCombat();
+        }
+        // force refresh
+        _lastSignature = null;
+        _render();
+      });
+      _container.appendChild(drawBtn);
+
+      // Slots 2-5: preview backup (redacted/non-interactive baseline)
+      for (var i = 0; i < 4; i++) {
+        var ref = backup[i] || null;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'rogue-sidebar-btn card-button';
+        btn.disabled = true;
+
+        if (!ref || !ref.id) {
+          btn.classList.add('empty');
+          btn.textContent = '—';
+        } else {
+          var cardDef = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) ? GoneRogueDataRegistry.getCard(ref.id) : null;
+          var em = cardDef && cardDef.emoji ? cardDef.emoji : '🃏';
+          btn.innerHTML = '<span class="rs-emoji">' + em + '</span><span class="rs-label">' + 'REDACTED' + '</span>';
+        }
+
+        _container.appendChild(btn);
+      }
+
+      // Slot 6: cycle placeholder (disabled)
+      var cycleBtn = document.createElement('button');
+      cycleBtn.type = 'button';
+      cycleBtn.className = 'rogue-sidebar-btn rogue-sidebar-cycle disabled';
+      cycleBtn.textContent = ' ';
+      cycleBtn.disabled = true;
+      _container.appendChild(cycleBtn);
+
+      return;
+    }
 
     var list = (view === 'items') ? items : cards;
     var offsetKey = (view === 'items') ? 'itemOffset' : 'cardOffset';

@@ -331,12 +331,20 @@ const HandFanComponent = (function () {
       }
     }
 
-    // Show placeholder if no cards or no affordable cards
+    // Show placeholder(s) if no cards or no affordable cards
     if (_cards.length === 0 || !hasAffordableCards) {
-      var placeholder = document.createElement('div');
-      placeholder.className = 'hand-card-placeholder';
-      placeholder.textContent = 'BLCK';
-      _fanContainer.appendChild(placeholder);
+      // Grey EMPTY joker (always present)
+      var emptyJoker = document.createElement('div');
+      emptyJoker.className = 'hand-card-placeholder hand-card-placeholder-empty';
+      emptyJoker.textContent = 'JOKER';
+      _fanContainer.appendChild(emptyJoker);
+
+      // BLVCK safety net (non-interactive for now; will become conditional)
+      var blvck = document.createElement('div');
+      blvck.className = 'hand-card-placeholder hand-card-placeholder-blvck';
+      blvck.textContent = 'BLVCK';
+      _fanContainer.appendChild(blvck);
+
       return;
     }
 
