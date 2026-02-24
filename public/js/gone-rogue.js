@@ -2183,6 +2183,39 @@ const GoneRogue = (function () {
     // Place exit (forward)
     var exitX = floorData.exit.x;
     var exitY = floorData.exit.y;
+
+    function _findNearestEmptyDoorSpot(x0, y0, avoidX, avoidY, minDist) {
+      var best = null;
+      for (var r = 0; r <= 12; r++) {
+        for (var dy = -r; dy <= r; dy++) {
+          for (var dx = -r; dx <= r; dx++) {
+            var tx = x0 + dx;
+            var ty = y0 + dy;
+            if (tx <= 0 || tx >= GRID_WIDTH - 1 || ty <= 0 || ty >= GRID_HEIGHT - 1) continue;
+            if (!_grid[ty] || _grid[ty][tx] !== TILES.EMPTY) continue;
+            if (typeof avoidX === 'number' && typeof avoidY === 'number') {
+              var dist = Math.abs(tx - avoidX) + Math.abs(ty - avoidY);
+              if (dist < (minDist || 0)) continue;
+            }
+            best = { x: tx, y: ty };
+            return best;
+          }
+        }
+      }
+      return best;
+    }
+
+    // If exit coords were shifted out-of-bounds or landed on a wall, relocate to nearest empty.
+    if (exitX <= 0 || exitX >= GRID_WIDTH - 1 || exitY <= 0 || exitY >= GRID_HEIGHT - 1 || !_grid[exitY] || _grid[exitY][exitX] !== TILES.EMPTY) {
+      var fx = Math.max(1, Math.min(GRID_WIDTH - 2, exitX));
+      var fy = Math.max(1, Math.min(GRID_HEIGHT - 2, exitY));
+      var movedExit = _findNearestEmptyDoorSpot(fx, fy);
+      if (movedExit) {
+        exitX = movedExit.x;
+        exitY = movedExit.y;
+      }
+    }
+
     _grid[exitY][exitX] = TILES.EXIT;
     _tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'forward' };
 
@@ -2213,10 +2246,21 @@ const GoneRogue = (function () {
       }
     } catch (e0) {}
 
-    // Mark entry/return door at the entry point, but DO NOT spawn the player on top of it
+    // Mark entry/return door at the entry point, but DO NOT spawn the player on top of it.
     // (player glyph hides the door tile, making it look like there is only one door).
     var backX = floorData.player.x;
     var backY = floorData.player.y;
+
+    // If back door was shifted out-of-bounds or landed on a wall, relocate.
+    if (backX <= 0 || backX >= GRID_WIDTH - 1 || backY <= 0 || backY >= GRID_HEIGHT - 1 || !_grid[backY] || _grid[backY][backX] !== TILES.EMPTY) {
+      var bx = Math.max(1, Math.min(GRID_WIDTH - 2, backX));
+      var by = Math.max(1, Math.min(GRID_HEIGHT - 2, backY));
+      var movedBack = _findNearestEmptyDoorSpot(bx, by, exitX, exitY, 6);
+      if (movedBack) {
+        backX = movedBack.x;
+        backY = movedBack.y;
+      }
+    }
 
     function _tryMoveBackDoorAwayFrom(x0, y0, avoidX, avoidY, minDist) {
       var moved = false;
