@@ -161,7 +161,8 @@ const GoneRogue = (function () {
     BREAKABLE: '📦',
     DEBRIS: '░',
     PROJECTILE: '💥',
-    DOOR: 'D',
+    // Door emoji for all doors; behavior determined by tile metadata + overhead popup hints
+    DOOR: '🚪',
     VENT: 'V',
     SHADOW: '░',
     SMOKE: '≈',
@@ -4686,23 +4687,25 @@ _incrementPityTimers();
 
     var tile = _grid[y] ? _grid[y][x] : null;
 
-    // Exit tile (forward)
-    if (tile === TILES.EXIT) {
-      _attemptExtract();
-      return;
-    }
-
-    // Door tile (back/forward/unknown via metadata)
-    if (tile === TILES.DOOR) {
+    // Door/Exit tile (🚪): behavior determined by tile metadata (back/forward/unknown)
+    if (tile === TILES.EXIT || tile === TILES.DOOR) {
       var md = _tileMetadata[x + ',' + y];
       if (md && md.type === 'door') {
         if (md.doorKind === 'back') {
           _retreatFloor();
           return;
-        } else if (md.doorKind === 'forward') {
+        }
+        if (md.doorKind === 'forward') {
           _attemptExtract();
           return;
         }
+        // Unknown/joker door: fall through for now
+      }
+
+      // Default: treat as forward exit
+      if (tile === TILES.EXIT) {
+        _attemptExtract();
+        return;
       }
     }
 
