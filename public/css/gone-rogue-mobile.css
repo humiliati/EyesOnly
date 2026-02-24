@@ -1488,7 +1488,8 @@
 
   /* Rogue grid should be at top with sticky positioning */
   body.mode-gone-rogue .rogue-grid-mobile,
-  body.in-gone-rogue .rogue-grid-mobile {
+  body.in-gone-rogue .rogue-grid-mobile,
+  body.gone-rogue-active .rogue-grid-mobile {
     order: 1; /* Grid appears first */
     flex-shrink: 0; /* Don't shrink the grid */
     margin-bottom: 8px; /* Space between grid and terminal */

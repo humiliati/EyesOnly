@@ -1458,12 +1458,31 @@ body.amber-mode #scanlines::after {
   }
 
   /* 4-band vertical budget: header + torso + legs + footer (footer handled by NCH pill/tooltips) */
+  body.mode-gone-rogue #monitor-top,
+  body.in-gone-rogue #monitor-top,
+  body.gone-rogue-active #monitor-top {
+    display: none; /* kill dead header band in rogue portrait */
+  }
+
+  body.mode-gone-rogue #crt-screen,
+  body.in-gone-rogue #crt-screen,
+  body.gone-rogue-active #crt-screen {
+    padding: 4px;
+  }
+
+  body.mode-gone-rogue #crt-frame,
+  body.in-gone-rogue #crt-frame,
+  body.gone-rogue-active #crt-frame {
+    padding: 6px;
+    gap: 6px;
+  }
+
   body.mode-gone-rogue #monitor-body,
   body.in-gone-rogue #monitor-body,
   body.gone-rogue-active #monitor-body {
     display: grid;
     grid-template-columns: 1fr;
-    grid-template-rows: auto 30vh 1fr;
+    grid-template-rows: auto 22vh 1fr;
     gap: 6px;
   }
 
@@ -1480,21 +1499,38 @@ body.amber-mode #scanlines::after {
   body.mode-gone-rogue .control-buttons,
   body.in-gone-rogue .control-buttons,
   body.gone-rogue-active .control-buttons {
-    width: calc(100% - var(--rogue-debrief-pct, 30%));
+    width: calc(100% - var(--rogue-debrief-pct, 34%));
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-auto-rows: minmax(32px, 1fr);
+    grid-auto-rows: minmax(38px, auto);
+    align-content: start;
     gap: 6px;
     overflow: auto;
+  }
+
+  body.mode-gone-rogue .control-buttons button,
+  body.in-gone-rogue .control-buttons button,
+  body.gone-rogue-active .control-buttons button {
+    min-height: 38px;
+    padding: 8px 8px;
   }
 
   body.mode-gone-rogue .debrief-window,
   body.in-gone-rogue .debrief-window,
   body.gone-rogue-active .debrief-window {
-    width: var(--rogue-debrief-pct, 30%);
+    width: var(--rogue-debrief-pct, 34%);
     max-width: none;
     flex: 0 0 auto;
     min-height: 0;
+    overflow: hidden;
+  }
+
+  body.mode-gone-rogue .debrief-window .debrief-label,
+  body.in-gone-rogue .debrief-window .debrief-label,
+  body.gone-rogue-active .debrief-window .debrief-label {
+    margin: 0;
+    padding: 0;
+    line-height: 1.1;
   }
 
   /* Encourage status-strip feel */
@@ -1510,6 +1546,9 @@ body.amber-mode #scanlines::after {
   body.gone-rogue-active .debrief-window .debrief-screen {
     min-height: 0;
     overflow: hidden;
+    max-width: 100%;
+    aspect-ratio: auto; /* stop forcing tall CRT box */
+    height: 100%;
   }
 
   .debrief-nav-list {
