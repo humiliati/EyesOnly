@@ -2260,6 +2260,19 @@ const GoneRogue = (function () {
       _forestBuildings.push({ x: deco.x, y: deco.y, emoji: deco.emoji });
     });
 
+    // Re-assert doors again after decorations too (decor overlays can visually hide doors; metadata must remain stable)
+    _grid[exitY][exitX] = TILES.EXIT;
+    _tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'forward' };
+    _grid[backY][backX] = TILES.DOOR;
+    _tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
+
+    // If the player is currently standing on the back door, show a one-shot hint so it isn't "invisible" under the player glyph.
+    try {
+      if (_player && _player.x === backX && _player.y === backY && typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+        OverheadAnimator.showGenericExpression(backX, backY, '↩️', 900);
+      }
+    } catch (e0) {}
+
     // Place breakables
     floorData.breakables.forEach(function(breakable) {
       _breakables.push({
