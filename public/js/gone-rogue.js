@@ -2142,6 +2142,7 @@ const GoneRogue = (function () {
     // Place player
     _player.x = floorData.player.x;
     _player.y = floorData.player.y;
+    _ensurePlayerOnEmptyTile();
 
     // Place exit
     var exitX = floorData.exit.x;
@@ -2628,6 +2629,7 @@ _incrementPityTimers();
       var spawnData = _placePlayerAndExit(rooms);
       _player.x = spawnData.playerX;
       _player.y = spawnData.playerY;
+      _ensurePlayerOnEmptyTile();
       exitX = spawnData.exitX;
       exitY = spawnData.exitY;
 
@@ -3068,6 +3070,33 @@ _incrementPityTimers();
         }
       }
     }
+  }
+
+  function _ensurePlayerOnEmptyTile() {
+    try {
+      if (!_player || !_grid || !_grid[_player.y] || !_grid[_player.y][_player.x]) return;
+      if (_grid[_player.y][_player.x] === TILES.EMPTY) return;
+
+      var found = false;
+      for (var r = 1; r <= 12 && !found; r++) {
+        for (var dy = -r; dy <= r && !found; dy++) {
+          for (var dx = -r; dx <= r && !found; dx++) {
+            var tx = _player.x + dx;
+            var ty = _player.y + dy;
+            if (tx > 0 && tx < GRID_WIDTH - 1 && ty > 0 && ty < GRID_HEIGHT - 1 && _grid[ty] && _grid[ty][tx] === TILES.EMPTY) {
+              _player.x = tx;
+              _player.y = ty;
+              found = true;
+            }
+          }
+        }
+      }
+
+      if (!found) {
+        _player.x = Math.floor(GRID_WIDTH / 2);
+        _player.y = Math.floor(GRID_HEIGHT / 2);
+      }
+    } catch (e0) {}
   }
 
   function _placePlayerAndExit(rooms) {

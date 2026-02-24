@@ -445,10 +445,14 @@ const GoneRogueMobile = (function () {
     inited: false
   };
 
-  function _useCameraWindow() {
+  function _useCameraWindow(grid, viewW, viewH) {
     try {
-      // Camera-window only for small portrait (mobile feel). Desktop should not pan into blank frame space.
-      if (window.matchMedia && window.matchMedia('(max-width: 700px) and (orientation: portrait)').matches) return true;
+      // Only for small portrait AND only if the world is larger than the viewport.
+      if (!(window.matchMedia && window.matchMedia('(max-width: 700px) and (orientation: portrait)').matches)) return false;
+      if (!grid || !grid.length || !grid[0] || !grid[0].length) return false;
+      var gw = grid[0].length;
+      var gh = grid.length;
+      return (gw > viewW) || (gh > viewH);
     } catch (e0) {}
     return false;
   }
@@ -461,7 +465,7 @@ const GoneRogueMobile = (function () {
     var viewH = _canvasRenderer ? (_canvasRenderer.height || 20) : 20;
     var cellSize = _canvasRenderer ? (_canvasRenderer.cellSize || 20) : 20;
 
-    var cameraWindow = _useCameraWindow();
+    var cameraWindow = _useCameraWindow(grid, viewW, viewH);
 
     // Camera target in world cell coords (center player)
     var px = player ? (player.visualX !== undefined ? player.visualX : player.x) : 0;
