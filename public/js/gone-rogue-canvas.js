@@ -72,8 +72,18 @@ const CanvasRenderer = (function() {
       return;
     }
 
-    // Clear canvas
+    // Camera transform (optional): { zoom, offsetX, offsetY }
+    var cam = (renderData && renderData.camera) ? renderData.camera : null;
+    var zoom = cam && isFinite(cam.zoom) ? cam.zoom : 1;
+    var offX = cam && isFinite(cam.offsetX) ? cam.offsetX : 0;
+    var offY = cam && isFinite(cam.offsetY) ? cam.offsetY : 0;
+
+    // Clear canvas in identity space
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // Apply camera transform for subsequent draws
+    this.ctx.setTransform(zoom, 0, 0, zoom, offX, offY);
 
     // Render in layers
     this._renderTiles(renderData.grid);

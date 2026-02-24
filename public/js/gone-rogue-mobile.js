@@ -437,14 +437,56 @@ const GoneRogueMobile = (function () {
   /**
    * Render using canvas renderer (high performance path)
    */
+  var _cameraState = {
+    cx: 0,
+    cy: 0,
+    inited: false
+  };
+
   function _renderWithCanvas(grid, player, enemies, items, breakables, projectiles, muzzleFlash, impactEffects, currencies, colorCycleTime) {
-    // Prepare grid data for canvas renderer
+    // Prepare grid data for canvas renderer (camera window from full world)
     var canvasGrid = [];
 
-    for (var y = 0; y < grid.length; y++) {
-      canvasGrid[y] = [];
-      for (var x = 0; x < grid[y].length; x++) {
-        var tile = grid[y][x];
+    var viewW = _canvasRenderer ? (_canvasRenderer.width || 40) : 40;
+    var viewH = _canvasRenderer ? (_canvasRenderer.height || 20) : 20;
+    var cellSize = _canvasRenderer ? (_canvasRenderer.cellSize || 20) : 20;
+
+    // Camera target in world cell coords (center player)
+    var px = player ? (player.visualX !== undefined ? player.visualX : player.x) : 0;
+    var py = player ? (player.visualY !== undefined ? player.visualY : player.y) : 0;
+
+    if (!_cameraState.inited) {
+      _cameraState.cx = px;
+      _cameraState.cy = py;
+      _cameraState.inited = true;
+    }
+
+    // Smooth the camera center (sub-tile)
+    var lerp = 0.18;
+    _cameraState.cx += (px - _cameraState.cx) * lerp;
+    _cameraState.cy += (py - _cameraState.cy) * lerp;
+
+    var originXf = _cameraState.cx - (viewW / 2);
+    var originYf = _cameraState.cy - (viewH / 2);
+
+    var originXi = Math.floor(originXf);
+    var originYi = Math.floor(originYf);
+
+    // Fractional offset used to smooth between tiles
+    var fracX = originXf - originXi;
+    var fracY = originYf - originYi;
+
+    // Negative offset shifts the world opposite the camera drift
+    var camOffsetPxX = -fracX * cellSize;
+    var camOffsetPxY = -fracY * cellSize;
+
+    // Sample the world grid into a viewport-sized grid
+    for (var sy = 0; sy < viewH; sy++) {
+      canvasGrid[sy] = [];
+      for (var sx = 0; sx < viewW; sx++) {
+        var wx = originXi + sx;
+        var wy = originYi + sy;
+        var tile = (grid[wy] && grid[wy][wx]) ? grid[wy][wx] : null;
         var cellData = {
           char: null,
           color: '#FFFFFF',
@@ -455,7 +497,7 @@ const GoneRogueMobile = (function () {
         // Get biome background color for this tile (gradient system)
         var biomeBg = null;
         if (typeof GoneRogue !== 'undefined' && GoneRogue.getBiomeBackgroundColor) {
-          biomeBg = GoneRogue.getBiomeBackgroundColor(x, y);
+          biomeBg = GoneRogue.getBiomeBackgroundColor(wx, wy);
         }
 
         // Set tile appearance
@@ -503,17 +545,25 @@ const GoneRogueMobile = (function () {
           }
         }
 
-        canvasGrid[y][x] = cellData;
+        canvasGrid[sy][sx] = cellData;
       }
     }
 
     // Prepare entities array (enemies, breakables, currencies, items, projectiles)
     var entities = [];
 
+    function _toViewX(wx) { return wx - originXi; }
+    function _toViewY(wy) { return wy - originYi; }
+    function _inView(vx, vy) { return vx >= 0 && vy >= 0 && vx < viewW && vy < viewH; }
+
     // Add enemies
     if (enemies) {
       enemies.forEach(function(enemy) {
         if (enemy.hp > 0) {
+          var vx = _toViewX(enemy.x);
+          var vy = _toViewY(enemy.y);
+          if (!_inView(vx, vy)) return;
+
           var color = '#FF0000';
 
           // Color based on awareness state
@@ -526,8 +576,8 @@ const GoneRogueMobile = (function () {
           }
 
           entities.push({
-            x: enemy.x,
-            y: enemy.y,
+            x: vx,
+            y: vy,
             char: enemy.emoji || '🪖',
             color: color,
             isEnemy: true
@@ -540,9 +590,12 @@ const GoneRogueMobile = (function () {
     if (breakables) {
       breakables.forEach(function(breakable) {
         if (breakable.hp > 0) {
+          var vx = _toViewX(breakable.x);
+          var vy = _toViewY(breakable.y);
+          if (!_inView(vx, vy)) return;
           entities.push({
-            x: breakable.x,
-            y: breakable.y,
+            x: vx,
+            y: vy,
             char: breakable.emoji || breakable.glyph || '📦',
             color: '#8B4513'
           });
@@ -553,9 +606,12 @@ const GoneRogueMobile = (function () {
     // Add currencies
     if (currencies) {
       currencies.forEach(function(currency) {
+        var vx = _toViewX(currency.x);
+        var vy = _toViewY(currency.y);
+        if (!_inView(vx, vy)) return;
         entities.push({
-          x: currency.x,
-          y: currency.y,
+          x: vx,
+          y: vy,
           char: currency.glyph || '¢',
           color: '#FFFF00'
         });
@@ -565,9 +621,12 @@ const GoneRogueMobile = (function () {
     // Add items
     if (items) {
       items.forEach(function(item) {
+        var vx = _toViewX(item.x);
+        var vy = _toViewY(item.y);
+        if (!_inView(vx, vy)) return;
         entities.push({
-          x: item.x,
-          y: item.y,
+          x: vx,
+          y: vy,
           char: item.emoji || '💎',
           color: '#00FFFF'
         });
@@ -578,9 +637,12 @@ const GoneRogueMobile = (function () {
     if (typeof GoneRogue !== 'undefined' && GoneRogue.getPlacedBoxes) {
       var placedBoxes = GoneRogue.getPlacedBoxes();
       placedBoxes.forEach(function(box) {
+        var vx = _toViewX(box.x);
+        var vy = _toViewY(box.y);
+        if (!_inView(vx, vy)) return;
         entities.push({
-          x: box.x,
-          y: box.y,
+          x: vx,
+          y: vy,
           char: '📦',
           color: box.state === 'occupied' ? '#FFD700' : '#8B6914'
         });
@@ -590,9 +652,12 @@ const GoneRogueMobile = (function () {
     // Add projectiles
     if (projectiles) {
       projectiles.forEach(function(projectile) {
+        var vx = _toViewX(projectile.x);
+        var vy = _toViewY(projectile.y);
+        if (!_inView(vx, vy)) return;
         entities.push({
-          x: projectile.x,
-          y: projectile.y,
+          x: vx,
+          y: vy,
           char: projectile.emoji || projectile.glyph || '💥',
           color: '#FF00FF'
         });
@@ -603,9 +668,12 @@ const GoneRogueMobile = (function () {
     if (typeof InteractiveItems !== 'undefined') {
       var interactiveItems = InteractiveItems.getAllItems();
       interactiveItems.forEach(function(item) {
+        var vx = _toViewX(item.x);
+        var vy = _toViewY(item.y);
+        if (!_inView(vx, vy)) return;
         entities.push({
-          x: item.x,
-          y: item.y,
+          x: vx,
+          y: vy,
           char: item.emoji,
           color: '#00FFFF'
         });
@@ -617,14 +685,18 @@ const GoneRogueMobile = (function () {
 
     // Add muzzle flash
     if (muzzleFlash) {
-      effects.push({
-        x: muzzleFlash.x,
-        y: muzzleFlash.y,
-        char: '💥',
+      var mvx = _toViewX(muzzleFlash.x);
+      var mvy = _toViewY(muzzleFlash.y);
+      if (_inView(mvx, mvy)) {
+        effects.push({
+          x: mvx,
+          y: mvy,
+          char: '💥',
         color: '#FFFF00',
         glow: true,
-        alpha: 0.8
-      });
+          alpha: 0.8
+        });
+      }
     }
 
     // Add impact effects
@@ -643,9 +715,13 @@ const GoneRogueMobile = (function () {
           impactColor = 'rgba(191, 255, 227, 0.95)';
         }
 
+        var ivx = _toViewX(impact.x);
+        var ivy = _toViewY(impact.y);
+        if (!_inView(ivx, ivy)) return;
+
         effects.push({
-          x: impact.x,
-          y: impact.y,
+          x: ivx,
+          y: ivy,
           char: impactChar,
           color: impactColor,
           glow: true,
@@ -657,6 +733,7 @@ const GoneRogueMobile = (function () {
     // Render using canvas renderer
     _canvasRenderer.renderGrid({
       grid: canvasGrid,
+      camera: { zoom: 1, offsetX: camOffsetPxX, offsetY: camOffsetPxY },
       entities: entities,
       effects: effects,
       player: player ? (function() {
@@ -671,8 +748,8 @@ const GoneRogueMobile = (function () {
         }
 
         return {
-          x: player.visualX !== undefined ? player.visualX : player.x,
-          y: player.visualY !== undefined ? player.visualY : player.y,
+          x: _toViewX(player.visualX !== undefined ? player.visualX : player.x),
+          y: _toViewY(player.visualY !== undefined ? player.visualY : player.y),
           char: playerChar,
           color: '#00FF00'
         };
