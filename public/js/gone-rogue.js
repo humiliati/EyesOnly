@@ -114,6 +114,7 @@ const GoneRogue = (function () {
 
   // Last exit position (for door-anchored spawns)
   var _lastExitPos = null;
+  var _lastDoorHintAtMs = 0;
 
   // Forest biome state
   var _forestBuildings = []; // Village buildings {x, y, emoji} for visual overlay
@@ -2153,10 +2154,17 @@ const GoneRogue = (function () {
     }
     _ensurePlayerOnEmptyTile();
 
-    // Place exit
+    // Place exit (forward)
     var exitX = floorData.exit.x;
     var exitY = floorData.exit.y;
     _grid[exitY][exitX] = TILES.EXIT;
+    _tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'forward' };
+
+    // Mark entry/return door at spawn (back)
+    var backX = _player.x;
+    var backY = _player.y;
+    _grid[backY][backX] = TILES.DOOR;
+    _tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
 
     // Place buildings (visual overlay)
     _forestBuildings = [];
@@ -4678,10 +4686,24 @@ _incrementPityTimers();
 
     var tile = _grid[y] ? _grid[y][x] : null;
 
-    // Exit tile
+    // Exit tile (forward)
     if (tile === TILES.EXIT) {
       _attemptExtract();
       return;
+    }
+
+    // Door tile (back/forward/unknown via metadata)
+    if (tile === TILES.DOOR) {
+      var md = _tileMetadata[x + ',' + y];
+      if (md && md.type === 'door') {
+        if (md.doorKind === 'back') {
+          _retreatFloor();
+          return;
+        } else if (md.doorKind === 'forward') {
+          _attemptExtract();
+          return;
+        }
+      }
     }
 
     // Shop tile
@@ -4693,6 +4715,9 @@ _incrementPityTimers();
         shopObj.opened = true;
       }
     }
+
+    // Door hint popups when approaching
+    _maybeHintNearbyDoors();
 
     // Currency pickup
     var cryptoPickup = _currencies.find(function(c) { return c.x === x && c.y === y; });
@@ -5602,6 +5627,39 @@ _incrementPityTimers();
     }
 
     return { lines: ['Cannot interact with that'], prompt: getPrompt(), stayActive: true };
+  }
+
+  function _retreatFloor() {
+    if (_floor <= 1) return;
+
+    // Remember where we are so the previous floor can spawn us near the return door
+    try { _lastExitPos = { x: _player.x, y: _player.y }; } catch (e0) {}
+
+    // Fade-out effect
+    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+      var gridContainer = document.getElementById('rogue-grid-mobile');
+      if (gridContainer) {
+        gridContainer.style.opacity = '0';
+        gridContainer.style.transition = 'opacity 0.25s ease-out';
+      }
+    }
+
+    setTimeout(function() {
+      _floor = Math.max(1, _floor - 1);
+      _turn = 0;
+      _generateFloor();
+      _startGameLoop();
+      _saveState();
+
+      // Fade-in
+      if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+        var gridContainer = document.getElementById('rogue-grid-mobile');
+        if (gridContainer) {
+          gridContainer.style.opacity = '1';
+          gridContainer.style.transition = 'opacity 0.25s ease-in';
+        }
+      }
+    }, 260);
   }
 
   function _advanceFloor() {
@@ -8176,6 +8234,35 @@ _incrementPityTimers();
   /**
    * Check if position is walkable
    */
+  function _maybeHintNearbyDoors() {
+    try {
+      if (typeof OverheadAnimator === 'undefined') return;
+      var now = Date.now();
+      if (now - _lastDoorHintAtMs < 350) return;
+
+      // Scan a small radius around player for door tiles/metadata
+      for (var dy = -2; dy <= 2; dy++) {
+        for (var dx = -2; dx <= 2; dx++) {
+          var x = _player.x + dx;
+          var y = _player.y + dy;
+          if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) continue;
+
+          var tile = _grid[y] ? _grid[y][x] : null;
+          if (tile !== TILES.EXIT && tile !== TILES.DOOR) continue;
+
+          var md = _tileMetadata[x + ',' + y];
+          var kind = md && md.type === 'door' ? md.doorKind : (tile === TILES.EXIT ? 'forward' : null);
+          if (!kind) continue;
+
+          var emoji = (kind === 'back') ? '↩️' : (kind === 'forward') ? '↪️' : '↕️';
+          OverheadAnimator.showGenericExpression(x, y, emoji, 650);
+          _lastDoorHintAtMs = now;
+          return;
+        }
+      }
+    } catch (e0) {}
+  }
+
   function isWalkable(x, y) {
     return _isWalkable(x, y);
   }
