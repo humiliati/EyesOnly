@@ -255,7 +255,15 @@ var NonCombatHUD = (function() {
     // Show/hide based on GoneRogue mode and STR combat state
     setInterval(function() {
       var rogueActive = (typeof GoneRogue !== 'undefined' && typeof GoneRogue.isActive === 'function' && GoneRogue.isActive());
-      var strActive = (typeof GoneRogue !== 'undefined' && typeof GoneRogue.isStrCombatActive === 'function' && GoneRogue.isStrCombatActive());
+      var strActive = false;
+      try {
+        strActive = (typeof GoneRogue !== 'undefined' && typeof GoneRogue.isStrCombatActive === 'function' && GoneRogue.isStrCombatActive());
+        if (!strActive && typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.isVisible === 'function') {
+          strActive = !!STRCombatWindow.isVisible();
+        }
+      } catch (e0) {
+        strActive = false;
+      }
       var shouldShow = rogueActive;
 
       // Always keep EQUIPPED display in sync with GAMESTATE (cheap update)

@@ -157,10 +157,10 @@
         }
       }
 
-      // Fallback to legacy loose inventory if canonical hand empty
-      if (cards.length === 0 && typeof GAMESTATE.getLooseInventory === 'function') {
-        cards = GAMESTATE.getLooseInventory() || [];
-        sigParts = ['legacy:' + cards.length];
+      // Do NOT fall back to legacy loose inventory in STR combat.
+      // If canonical hand is empty, the player must draw from BACKUP (once per combat) first.
+      if (cards.length === 0) {
+        sigParts = ['canonical:empty'];
       }
     }
 
@@ -168,6 +168,12 @@
 
     if (cards.length === 0) {
       HandFanComponent.hide();
+      // Hint: draw from backup
+      try {
+        if (typeof TooltipSystem !== 'undefined') {
+          TooltipSystem.showPersistent('🃏 NO HAND — use DRAW 1 (BACKUP)', 1100);
+        }
+      } catch (e0) {}
       return;
     }
 
