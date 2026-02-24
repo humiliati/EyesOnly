@@ -1549,13 +1549,20 @@ const GoneRogueMobile = (function () {
 
     // Calculate cell size
     var gridRect = _gridContainer.getBoundingClientRect();
-    var cellWidth = gridRect.width / 40; // GRID_WIDTH = 40
-    var cellHeight = gridRect.height / 20; // GRID_HEIGHT = 20
+    var cellWidth = gridRect.width / 40; // viewport width
+    var cellHeight = gridRect.height / 20; // viewport height
+
+    // Camera-window rendering: path is in WORLD coords; convert to VIEW coords.
+    var originXi = (_canvasRenderer && _cameraState && isFinite(_cameraState.originXi)) ? _cameraState.originXi : 0;
+    var originYi = (_canvasRenderer && _cameraState && isFinite(_cameraState.originYi)) ? _cameraState.originYi : 0;
+    function _toView(pt) {
+      return { x: pt.x - originXi, y: pt.y - originYi };
+    }
 
     // Draw path segments
     for (var i = 0; i < path.length - 1; i++) {
-      var from = path[i];
-      var to = path[i + 1];
+      var from = _toView(path[i]);
+      var to = _toView(path[i + 1]);
 
       var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       line.setAttribute('x1', (from.x + 0.5) * cellWidth);
@@ -1570,7 +1577,7 @@ const GoneRogueMobile = (function () {
 
     // Draw endpoint marker
     if (path.length > 0) {
-      var endpoint = path[path.length - 1];
+      var endpoint = _toView(path[path.length - 1]);
       var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       circle.setAttribute('cx', (endpoint.x + 0.5) * cellWidth);
       circle.setAttribute('cy', (endpoint.y + 0.5) * cellHeight);
