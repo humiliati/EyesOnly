@@ -33,6 +33,9 @@ const GoneRogueMobile = (function () {
   var _initialPinchCenter = { x: 0, y: 0 };
   var _isPanning = false;
 
+  // Mobile follow smoothing state (canvas transform lerp)
+  var _followState = null;
+
   // Touch tracking for swipes
   var _touchStart = { x: 0, y: 0, time: 0 };
   var _activeCard = null;
@@ -2308,6 +2311,7 @@ const GoneRogueMobile = (function () {
 
     _currentZoom = 1.0;
     _panOffset = { x: 0, y: 0 };
+    _followState = null;
     _initialPinchDistance = 0;
     _initialPinchCenter = { x: 0, y: 0 };
     _isPanning = false;
@@ -2331,6 +2335,7 @@ const GoneRogueMobile = (function () {
 
     _currentZoom = 1.0;
     _panOffset = { x: 0, y: 0 };
+    _followState = null;
     _initialPinchDistance = 0;
     _initialPinchCenter = { x: 0, y: 0 };
     _isPanning = false;
