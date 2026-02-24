@@ -12,6 +12,7 @@
 .rogue-grid-mobile {
   display: none;
   width: 100%;
+  position: relative;
   max-width: min(600px, 100vw);
   margin: 0 auto;
   gap: 1px;

@@ -1,0 +1,17 @@
+/* Micro floor counter overlay */
+.rogue-floor-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 1200;
+  padding: 2px 6px;
+  border: 1px solid rgba(28, 255, 155, 0.35);
+  border-radius: 10px;
+  background: rgba(0,0,0,0.35);
+  color: rgba(191, 255, 227, 0.95);
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  pointer-events: none;
+}

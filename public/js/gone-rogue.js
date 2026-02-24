@@ -1197,8 +1197,21 @@ const GoneRogue = (function () {
    * Start Gone Rogue mode
    */
   function start(context) {
+    context = context || {};
     _active = true;
     _loaded = true;
+
+    // Default behavior: new run when entering rogue via GAMESTATE.requestRogue.
+    // Allow explicit resume only when context.resume === true.
+    try {
+      if (!context.resume) {
+        _floor = 1;
+        _turn = 0;
+        _lastExitPos = null;
+        // Clear persisted rogue state so we don't start new players on a mid-run floor.
+        try { localStorage.removeItem(STORAGE_KEY); } catch (e1) {}
+      }
+    } catch (e0) {}
 
     // Disable scanlines for performance during gameplay
     document.body.classList.add('gone-rogue-active');

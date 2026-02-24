@@ -16,6 +16,7 @@ const GoneRogueMobile = (function () {
 
   var _gridContainer = null;
   var _canvasRenderer = null; // Canvas renderer instance
+  var _floorBadgeEl = null;
   var _cardContainer = null;
   var _inventoryContainer = null; // New: persistent inventory display
   var _lastTapTime = 0;
@@ -405,6 +406,14 @@ const GoneRogueMobile = (function () {
     _inventoryContainer.style.display = 'none';
 
     terminal.appendChild(_gridContainer);
+
+    // Floor badge (micro overlay)
+    _floorBadgeEl = document.createElement('div');
+    _floorBadgeEl.id = 'rogue-floor-badge';
+    _floorBadgeEl.className = 'rogue-floor-badge';
+    _floorBadgeEl.textContent = 'FLOOR 1';
+    _gridContainer.appendChild(_floorBadgeEl);
+
     terminal.appendChild(_cardContainer);
     terminal.appendChild(_inventoryContainer);
   }
@@ -922,6 +931,16 @@ const GoneRogueMobile = (function () {
     currencies = currencies || [];
     alertLevel = alertLevel || 'safe';
     strCombatActive = strCombatActive || false;
+
+    // Update floor badge
+    try {
+      if (_floorBadgeEl && typeof GoneRogue !== 'undefined' && GoneRogue.getFloor) {
+        _floorBadgeEl.textContent = 'FLOOR ' + GoneRogue.getFloor();
+      } else if (_floorBadgeEl && typeof GoneRogue !== 'undefined' && GoneRogue.getStrCombatState) {
+        var st = GoneRogue.getStrCombatState();
+        if (st && typeof st.floor === 'number') _floorBadgeEl.textContent = 'FLOOR ' + st.floor;
+      }
+    } catch (e0) {}
 
     // Update grid border based on alert level
     if (strCombatActive) {
