@@ -1503,7 +1503,7 @@ body.amber-mode #scanlines::after {
     backdrop-filter: none;
     border-radius: 0;
     overflow: hidden;
-    height: 24vh;
+    height: 20vh;
     min-height: 0;
   }
 
@@ -1513,17 +1513,18 @@ body.amber-mode #scanlines::after {
     width: calc(100% - var(--rogue-debrief-pct, 34%));
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-auto-rows: minmax(34px, auto);
+    grid-auto-rows: minmax(30px, auto);
     align-content: start;
-    gap: 6px;
+    gap: 4px;
     overflow: auto;
   }
 
   body.mode-gone-rogue .control-buttons button,
   body.in-gone-rogue .control-buttons button,
   body.gone-rogue-active .control-buttons button {
-    min-height: 38px;
-    padding: 8px 8px;
+    min-height: 30px;
+    padding: 4px 6px;
+    font-size: 0.9em;
   }
 
   body.mode-gone-rogue .debrief-window,
@@ -1616,8 +1617,15 @@ body.amber-mode #scanlines::after {
   body.gone-rogue-active #terminal {
     min-height: 0;
     height: 100%;
-    padding: 6px;
+    padding: 2px;
     overflow: hidden;
+  }
+
+  /* Hide terminal text chrome in portrait rogue; the grid is the product surface */
+  body.mode-gone-rogue #terminal-output,
+  body.in-gone-rogue #terminal-output,
+  body.gone-rogue-active #terminal-output {
+    display: none !important;
   }
 }
 
