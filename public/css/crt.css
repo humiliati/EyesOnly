@@ -1437,6 +1437,23 @@ body.amber-mode #scanlines::after {
   body.in-gone-rogue,
   body.gone-rogue-active {
     --rogue-emoji-scale: 0.5; /* shrink emoji render size up to 50% when needed */
+    --header-chip-scale: 0.5; /* shrink header action chip (AWOL) */
+  }
+
+  body.mode-gone-rogue #mok-header .header-chip,
+  body.in-gone-rogue #mok-header .header-chip,
+  body.gone-rogue-active #mok-header .header-chip {
+    transform: scale(var(--header-chip-scale, 1));
+    transform-origin: top right;
+    padding: 2px 4px !important;
+    min-height: 18px !important;
+    font-size: 10px !important;
+  }
+
+  body.mode-gone-rogue #mok-header .header-chip .accountability-icon,
+  body.in-gone-rogue #mok-header .header-chip .accountability-icon,
+  body.gone-rogue-active #mok-header .header-chip .accountability-icon {
+    font-size: 10px !important;
   }
   body.mode-gone-rogue #mok-header.monitor-header,
   body.in-gone-rogue #mok-header.monitor-header,
