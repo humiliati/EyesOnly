@@ -445,51 +445,75 @@ const GoneRogueMobile = (function () {
     inited: false
   };
 
+  function _useCameraWindow() {
+    try {
+      // Camera-window only for small portrait (mobile feel). Desktop should not pan into blank frame space.
+      if (window.matchMedia && window.matchMedia('(max-width: 700px) and (orientation: portrait)').matches) return true;
+    } catch (e0) {}
+    return false;
+  }
+
   function _renderWithCanvas(grid, player, enemies, items, breakables, projectiles, muzzleFlash, impactEffects, currencies, colorCycleTime) {
-    // Prepare grid data for canvas renderer (camera window from full world)
+    // Prepare grid data for canvas renderer
     var canvasGrid = [];
 
     var viewW = _canvasRenderer ? (_canvasRenderer.width || 40) : 40;
     var viewH = _canvasRenderer ? (_canvasRenderer.height || 20) : 20;
     var cellSize = _canvasRenderer ? (_canvasRenderer.cellSize || 20) : 20;
 
+    var cameraWindow = _useCameraWindow();
+
     // Camera target in world cell coords (center player)
     var px = player ? (player.visualX !== undefined ? player.visualX : player.x) : 0;
     var py = player ? (player.visualY !== undefined ? player.visualY : player.y) : 0;
 
-    if (!_cameraState.inited) {
+    var originXi = 0;
+    var originYi = 0;
+    var camOffsetPxX = 0;
+    var camOffsetPxY = 0;
+
+    if (cameraWindow) {
+      if (!_cameraState.inited) {
+        _cameraState.cx = px;
+        _cameraState.cy = py;
+        _cameraState.inited = true;
+      }
+
+      // Smooth the camera center (sub-tile)
+      var lerp = 0.18;
+      _cameraState.cx += (px - _cameraState.cx) * lerp;
+      _cameraState.cy += (py - _cameraState.cy) * lerp;
+
+      var originXf = _cameraState.cx - (viewW / 2);
+      var originYf = _cameraState.cy - (viewH / 2);
+
+      originXi = Math.floor(originXf);
+      originYi = Math.floor(originYf);
+      _cameraState.originXi = originXi;
+      _cameraState.originYi = originYi;
+
+      // Fractional offset used to smooth between tiles
+      var fracX = originXf - originXi;
+      var fracY = originYf - originYi;
+
+      // Negative offset shifts the world opposite the camera drift
+      camOffsetPxX = -fracX * cellSize;
+      camOffsetPxY = -fracY * cellSize;
+    } else {
+      // Desktop/static viewport: do not pan into blank space
+      _cameraState.originXi = 0;
+      _cameraState.originYi = 0;
       _cameraState.cx = px;
       _cameraState.cy = py;
       _cameraState.inited = true;
     }
 
-    // Smooth the camera center (sub-tile)
-    var lerp = 0.18;
-    _cameraState.cx += (px - _cameraState.cx) * lerp;
-    _cameraState.cy += (py - _cameraState.cy) * lerp;
-
-    var originXf = _cameraState.cx - (viewW / 2);
-    var originYf = _cameraState.cy - (viewH / 2);
-
-    var originXi = Math.floor(originXf);
-    var originYi = Math.floor(originYf);
-    _cameraState.originXi = originXi;
-    _cameraState.originYi = originYi;
-
-    // Fractional offset used to smooth between tiles
-    var fracX = originXf - originXi;
-    var fracY = originYf - originYi;
-
-    // Negative offset shifts the world opposite the camera drift
-    var camOffsetPxX = -fracX * cellSize;
-    var camOffsetPxY = -fracY * cellSize;
-
     // Sample the world grid into a viewport-sized grid
     for (var sy = 0; sy < viewH; sy++) {
       canvasGrid[sy] = [];
       for (var sx = 0; sx < viewW; sx++) {
-        var wx = originXi + sx;
-        var wy = originYi + sy;
+        var wx = cameraWindow ? (originXi + sx) : sx;
+        var wy = cameraWindow ? (originYi + sy) : sy;
         var tile = (grid[wy] && grid[wy][wx]) ? grid[wy][wx] : null;
         var cellData = {
           char: null,
@@ -1499,6 +1523,12 @@ const GoneRogueMobile = (function () {
       var canvasX = clientX - rect.left;
       var canvasY = clientY - rect.top;
 
+      // Account for CSS scaling (canvas internal pixels may not match rect)
+      var scaleX = rect.width ? (_canvasRenderer.getCanvas().width / rect.width) : 1;
+      var scaleY = rect.height ? (_canvasRenderer.getCanvas().height / rect.height) : 1;
+      canvasX *= scaleX;
+      canvasY *= scaleY;
+
       // Convert to grid coordinates
       var gridCoords = _canvasRenderer.canvasToGrid(canvasX, canvasY);
       if (!gridCoords) return null;
@@ -1558,6 +1588,16 @@ const GoneRogueMobile = (function () {
     function _toView(pt) {
       return { x: pt.x - originXi, y: pt.y - originYi };
     }
+
+    // Ensure path originates at player tile (some path outputs omit start)
+    try {
+      if (_canvasRenderer && typeof GoneRogue !== 'undefined' && GoneRogue.getPlayer && path && path.length) {
+        var p = GoneRogue.getPlayer();
+        if (p && (path[0].x !== p.x || path[0].y !== p.y)) {
+          path = [{ x: p.x, y: p.y }].concat(path);
+        }
+      }
+    } catch (e0) {}
 
     // Draw path segments
     for (var i = 0; i < path.length - 1; i++) {
