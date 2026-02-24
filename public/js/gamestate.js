@@ -1320,7 +1320,7 @@ const GAMESTATE = (function () {
     // Apply modifiers from equipment (Moon Boots, etc.)
     var fatigueModifier = 1.0;
     if (typeof PassiveItemsSystem !== 'undefined') {
-      var equipped = PassiveItemsSystem.getEquippedItems();
+      var equipped = (PassiveItemsSystem.getEquippedItems ? PassiveItemsSystem.getEquippedItems() : []);
       for (var i = 0; i < equipped.length; i++) {
         if (equipped[i].sprintFatigueModifier) {
           fatigueModifier *= equipped[i].sprintFatigueModifier;
