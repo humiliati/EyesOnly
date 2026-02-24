@@ -173,6 +173,30 @@ const OverheadAnimator = (function() {
   }
 
   /**
+   * Show a generic emoji above an entity (no vocabulary key required)
+   * @param {number} x
+   * @param {number} y
+   * @param {string} emoji
+   * @param {number} duration
+   * @param {string} color
+   */
+  function showGenericExpression(x, y, emoji, duration, color) {
+    if (!emoji) return;
+
+    var animation = {
+      type: 'EXPRESSION',
+      emoji: emoji,
+      color: color || '#ffffff',
+      startTime: Date.now(),
+      duration: duration || ANIMATION_TYPES.EXPRESSION.duration,
+      data: { desc: 'generic' }
+    };
+
+    var key = x + ',' + y;
+    _activeAnimations[key] = animation;
+  }
+
+  /**
    * Show persistent status effect icon
    * @param {number} x - Entity X position
    * @param {number} y - Entity Y position
@@ -359,6 +383,7 @@ const OverheadAnimator = (function() {
     init: init,
     showCurrencyPickup: showCurrencyPickup,
     showExpression: showExpression,
+    showGenericExpression: showGenericExpression,
     showStatus: showStatus,
     showSpeech: showSpeech,
     clearAnimation: clearAnimation,
