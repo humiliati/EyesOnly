@@ -592,6 +592,24 @@ var TutorialFloors = (function() {
       dx = anchor.x - player.x;
       dy = anchor.y - player.y;
 
+      // Clamp shift so the entry point and exit remain in-bounds.
+      // This prevents doors from being shifted off-grid ("no doors visible").
+      function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+      var minDx = 1 - player.x;
+      var maxDx = (GRID_WIDTH - 2) - player.x;
+      var minDy = 1 - player.y;
+      var maxDy = (GRID_HEIGHT - 2) - player.y;
+
+      if (exit && typeof exit.x === 'number' && typeof exit.y === 'number') {
+        minDx = Math.max(minDx, 1 - exit.x);
+        maxDx = Math.min(maxDx, (GRID_WIDTH - 2) - exit.x);
+        minDy = Math.max(minDy, 1 - exit.y);
+        maxDy = Math.min(maxDy, (GRID_HEIGHT - 2) - exit.y);
+      }
+
+      dx = clamp(dx, minDx, maxDx);
+      dy = clamp(dy, minDy, maxDy);
+
       player = { x: player.x + dx, y: player.y + dy };
       if (exit && typeof exit.x === 'number' && typeof exit.y === 'number') {
         exit = { x: exit.x + dx, y: exit.y + dy };
@@ -612,7 +630,10 @@ var TutorialFloors = (function() {
             grid[gy][gx] = TILES.WALL;
           } else if (char === '~') {
             grid[gy][gx] = '~'; // Water tile
-          } else if (char !== 'P' && char !== 'E' && char !== 'G' && char !== 'L') {
+          } else if (char === 'P' || char === 'E') {
+            // Entry/exit markers: always carve to empty so doors can be stamped reliably later.
+            grid[gy][gx] = TILES.EMPTY;
+          } else if (char !== 'G' && char !== 'L') {
             // Keep as floor, handle special markers separately
             grid[gy][gx] = TILES.EMPTY;
           }
@@ -633,11 +654,14 @@ var TutorialFloors = (function() {
     }
 
     function _shiftList(list) {
-      if (!dx && !dy) return list || [];
       var out = [];
       (list || []).forEach(function(o) {
         if (!o || typeof o.x !== 'number' || typeof o.y !== 'number') { out.push(o); return; }
-        out.push(Object.assign({}, o, { x: o.x + dx, y: o.y + dy }));
+        var nx = o.x + dx;
+        var ny = o.y + dy;
+        // Drop shifted objects that land out-of-bounds to avoid invisible blockers/metadata.
+        if (nx < 0 || nx >= GRID_WIDTH || ny < 0 || ny >= GRID_HEIGHT) return;
+        out.push(Object.assign({}, o, { x: nx, y: ny }));
       });
       return out;
     }

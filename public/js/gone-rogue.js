@@ -2205,16 +2205,13 @@ const GoneRogue = (function () {
       return best;
     }
 
-    // If exit coords were shifted out-of-bounds or landed on a wall, relocate to nearest empty.
-    if (exitX <= 0 || exitX >= GRID_WIDTH - 1 || exitY <= 0 || exitY >= GRID_HEIGHT - 1 || !_grid[exitY] || _grid[exitY][exitX] !== TILES.EMPTY) {
-      var fx = Math.max(1, Math.min(GRID_WIDTH - 2, exitX));
-      var fy = Math.max(1, Math.min(GRID_HEIGHT - 2, exitY));
-      var movedExit = _findNearestEmptyDoorSpot(fx, fy);
-      if (movedExit) {
-        exitX = movedExit.x;
-        exitY = movedExit.y;
-      }
-    }
+    // If exit coords landed on a wall/obstacle (e.g. after shift), carve it to empty.
+    // Tutorial floors are authored; we prefer deterministic doors over relocation.
+    if (exitX <= 0) exitX = 1;
+    if (exitX >= GRID_WIDTH - 1) exitX = GRID_WIDTH - 2;
+    if (exitY <= 0) exitY = 1;
+    if (exitY >= GRID_HEIGHT - 1) exitY = GRID_HEIGHT - 2;
+    if (_grid[exitY]) _grid[exitY][exitX] = TILES.EMPTY;
 
     _grid[exitY][exitX] = TILES.EXIT;
     _tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'forward' };
@@ -2251,16 +2248,12 @@ const GoneRogue = (function () {
     var backX = floorData.player.x;
     var backY = floorData.player.y;
 
-    // If back door was shifted out-of-bounds or landed on a wall, relocate.
-    if (backX <= 0 || backX >= GRID_WIDTH - 1 || backY <= 0 || backY >= GRID_HEIGHT - 1 || !_grid[backY] || _grid[backY][backX] !== TILES.EMPTY) {
-      var bx = Math.max(1, Math.min(GRID_WIDTH - 2, backX));
-      var by = Math.max(1, Math.min(GRID_HEIGHT - 2, backY));
-      var movedBack = _findNearestEmptyDoorSpot(bx, by, exitX, exitY, 6);
-      if (movedBack) {
-        backX = movedBack.x;
-        backY = movedBack.y;
-      }
-    }
+    // Back door must always exist. Clamp + carve to empty (deterministic).
+    if (backX <= 0) backX = 1;
+    if (backX >= GRID_WIDTH - 1) backX = GRID_WIDTH - 2;
+    if (backY <= 0) backY = 1;
+    if (backY >= GRID_HEIGHT - 1) backY = GRID_HEIGHT - 2;
+    if (_grid[backY]) _grid[backY][backX] = TILES.EMPTY;
 
     function _tryMoveBackDoorAwayFrom(x0, y0, avoidX, avoidY, minDist) {
       var moved = false;
