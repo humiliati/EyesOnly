@@ -54,7 +54,17 @@ const CanvasRenderer = (function() {
     this.ctx.textBaseline = 'middle';
 
     // Font size should be slightly smaller than cell size for padding
-    var fontSize = Math.floor(this.cellSize * 0.8);
+    // Allow mobile to shrink emoji/text further via CSS var.
+    var scale = 0.8;
+    try {
+      if (typeof document !== 'undefined' && document.body) {
+        var css = getComputedStyle(document.body).getPropertyValue('--rogue-emoji-scale');
+        var n = parseFloat(css);
+        if (isFinite(n) && n > 0.2 && n <= 1.0) scale = scale * n;
+      }
+    } catch (e0) {}
+
+    var fontSize = Math.floor(this.cellSize * scale);
 
     if (this.renderMode === RENDER_MODE.ASCII) {
       this.ctx.font = fontSize + 'px ' + FONT_FAMILY;
@@ -153,7 +163,17 @@ const CanvasRenderer = (function() {
 
       // Save font size for scale restoration
       var originalFont = this.ctx.font;
-      var baseFontSize = Math.floor(this.cellSize * 0.8);
+
+      var scale = 0.8;
+      try {
+        if (typeof document !== 'undefined' && document.body) {
+          var css = getComputedStyle(document.body).getPropertyValue('--rogue-emoji-scale');
+          var n = parseFloat(css);
+          if (isFinite(n) && n > 0.2 && n <= 1.0) scale = scale * n;
+        }
+      } catch (e0) {}
+
+      var baseFontSize = Math.floor(this.cellSize * scale);
 
       for (var i = 0; i < sorted.length; i++) {
         var obj = sorted[i];

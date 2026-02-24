@@ -1433,6 +1433,11 @@ body.amber-mode #scanlines::after {
 
 /* --- Gone Rogue portrait layout (mobile) --- */
 @media (max-width: 600px) and (orientation: portrait) {
+  body.mode-gone-rogue,
+  body.in-gone-rogue,
+  body.gone-rogue-active {
+    --rogue-emoji-scale: 0.5; /* shrink emoji render size up to 50% when needed */
+  }
   body.mode-gone-rogue #mok-header.monitor-header,
   body.in-gone-rogue #mok-header.monitor-header,
   body.gone-rogue-active #mok-header.monitor-header {
