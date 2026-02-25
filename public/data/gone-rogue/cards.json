@@ -1,5 +1,19 @@
 [
   {
+    "id": "ACT-000",
+    "name": "BLVCK",
+    "emoji": "■",
+    "targetType": "enemy",
+    "cost": 0,
+    "costs": null,
+    "rarity": "common",
+    "effects": [
+      { "type": "damage", "value": 1 }
+    ],
+    "preCombat": false,
+    "synergyTags": ["fallback"]
+  },
+  {
     "id": "ACT-001",
     "name": "Field Dressing",
     "emoji": "🩹",

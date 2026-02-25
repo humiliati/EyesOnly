@@ -158,7 +158,7 @@
       }
 
       // Do NOT fall back to legacy loose inventory in STR combat.
-      // If canonical hand is empty, the player must draw from BACKUP (once per combat) first.
+      // If canonical hand is empty or unplayable, provide the BLVCK fallback so combat never softlocks.
       if (cards.length === 0) {
         sigParts = ['canonical:empty'];
       }
@@ -166,15 +166,54 @@
 
     var handSig = sigParts.join('|');
 
-    if (cards.length === 0) {
-      HandFanComponent.hide();
-      // Hint: draw from backup
+    // Fallback card injection (BLVCK) when the player is stranded.
+    function _getFallbackCardDef() {
       try {
-        if (typeof TooltipSystem !== 'undefined') {
-          TooltipSystem.showPersistent('🃏 NO HAND — use DRAW 1 (BACKUP)', 1100);
+        if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) {
+          var d = GoneRogueDataRegistry.getCard('ACT-000');
+          if (d && !d._missing) return d;
         }
       } catch (e0) {}
-      return;
+      return { id: 'ACT-000', name: 'BLVCK', emoji: '■', targetType: 'enemy', costs: null, effects: [{ type: 'damage', value: 1 }] };
+    }
+
+    function _canAffordCard(def) {
+      try {
+        var costs = Array.isArray(def.costs) ? def.costs : null;
+        if (!costs || !costs.length) return true;
+        for (var i = 0; i < costs.length; i++) {
+          var c = costs[i];
+          if (!c || !c.kind) continue;
+          var need = Number(c.amount || 0);
+          var have = 0;
+          if (c.kind === 'ammo' && typeof GAMESTATE.getAmmo === 'function') have = GAMESTATE.getAmmo();
+          else if (c.kind === 'battery' && typeof GAMESTATE.getBattery === 'function') have = GAMESTATE.getBattery();
+          else if (c.kind === 'energy' && typeof GAMESTATE.getEnergy === 'function') have = GAMESTATE.getEnergy();
+          else if (c.kind === 'focus' && typeof GAMESTATE.getFocus === 'function') have = GAMESTATE.getFocus();
+          if (have < need) return false;
+        }
+        return true;
+      } catch (e1) {}
+      return true;
+    }
+
+    var stranded = (cards.length === 0);
+    if (!stranded) {
+      // If none of the hand cards are affordable/playable, still inject fallback.
+      stranded = !cards.some(function(c) { return c && _canAffordCard(c); });
+    }
+
+    if (stranded) {
+      var fb = _getFallbackCardDef();
+      cards = [Object.assign({}, fb, { id: 'ACT-000' })];
+      sigParts = ['fallback:ACT-000'];
+      handSig = sigParts.join('|');
+
+      try {
+        if (typeof TooltipSystem !== 'undefined') {
+          TooltipSystem.showPersistent('■ STRUGGLE (BLVCK) — no cards available', 1100);
+        }
+      } catch (e2) {}
     }
 
     // Check if we're in turn resolution phase
