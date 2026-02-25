@@ -357,6 +357,7 @@ function renderConsole(container: HTMLElement, session: Session) {
         <span>${session.callsign}</span>
         <span id="m-ws-dot" class="ws-dot" title="OFFLINE"></span>
         <button id="m-freeze-btn" class="freeze-btn">FREEZE GAME</button>
+        <a href="/m/scenario-designer.html" style="background:none;border:1px solid #1a4a2a;color:#1a8a1a;font-family:var(--font);font-size:9px;padding:2px 8px;cursor:pointer;border-radius:3px;text-decoration:none;letter-spacing:1px;" title="Scenario Designer — build scenarios from narrative text">SCENARIO DESIGNER</a>
         <button id="m-logout" style="background:none;border:1px solid #333;color:#666;font-family:var(--font);font-size:9px;padding:2px 8px;cursor:pointer;border-radius:3px;">LOGOUT</button>
       </div>
     </header>

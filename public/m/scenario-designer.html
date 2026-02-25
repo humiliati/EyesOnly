@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data: blob:;">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>EYES ONLY // SCENARIO DESIGNER</title>
+  <style>
+    :root {
+      --bg:        #0a0a0a;
+      --surface:   #111;
+      --surface2:  #1a1a1a;
+      --border:    #2a2a2a;
+      --text:      #33ff33;
+      --text-dim:  #1a8a1a;
+      --accent:    #33ff33;
+      --red:       #ff3333;
+      --amber:     #ffaa33;
+      --blue:      #3399ff;
+      --cyan:      #33ffee;
+      --purple:    #cc66ff;
+      --radius:    4px;
+      --font:      'Courier New', Courier, monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.4;
+      -webkit-font-smoothing: none;
+    }
+    #app { height: 100vh; display: flex; flex-direction: column; }
+
+    /* ===== HEADER ===== */
+    .sd-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+      gap: 12px;
+    }
+    .sd-header h1 { font-size: 11px; letter-spacing: 3px; color: var(--accent); white-space: nowrap; }
+    .sd-header .hdr-meta { font-size: 9px; color: var(--text-dim); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .hdr-back {
+      font-size: 9px; color: var(--text-dim); text-decoration: none;
+      border: 1px solid var(--border); padding: 2px 8px; border-radius: 3px;
+      letter-spacing: 1px; white-space: nowrap;
+    }
+    .hdr-back:hover { color: var(--accent); border-color: var(--accent); }
+    .hdr-badge {
+      font-size: 8px; padding: 1px 6px; border-radius: 2px;
+      background: rgba(51,255,51,0.1); border: 1px solid rgba(51,255,51,0.3);
+      letter-spacing: 1px;
+    }
+
+    /* ===== SUBBAR ===== */
+    .sd-subbar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 16px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      font-size: 9px;
+      color: var(--text-dim);
+      letter-spacing: 1px;
+    }
+    .subbar-btn {
+      background: transparent; border: 1px solid var(--border);
+      color: var(--text-dim); font-family: var(--font); font-size: 8px;
+      padding: 2px 8px; border-radius: 3px; cursor: pointer;
+      letter-spacing: 1px; white-space: nowrap;
+    }
+    .subbar-btn:hover { color: var(--accent); border-color: var(--accent); }
+    .subbar-btn.active { color: var(--accent); border-color: var(--accent); background: rgba(51,255,51,0.06); }
+    .subbar-sep { color: #333; }
+    .subbar-label { color: #444; }
+    select.subbar-select {
+      background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--font); font-size: 9px;
+      padding: 2px 4px; border-radius: 3px;
+    }
+
+    /* ===== THREE-COLUMN LAYOUT ===== */
+    .sd-columns {
+      flex: 1; display: grid;
+      grid-template-columns: 280px 1fr 260px;
+      gap: 1px;
+      background: var(--border);
+      overflow: hidden;
+    }
+    .sd-panel {
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .sd-panel-hdr {
+      padding: 5px 10px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      font-size: 9px; letter-spacing: 2px; color: var(--text-dim);
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .sd-panel-body { flex: 1; overflow-y: auto; overflow-x: hidden; }
+
+    /* ===== LEFT: INPUT PANEL ===== */
+    .input-section { padding: 8px; border-bottom: 1px solid var(--border); }
+    .input-section label { display: block; font-size: 8px; color: #555; letter-spacing: 1px; margin-bottom: 3px; }
+    .input-section select, .input-section input {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--font); font-size: 10px;
+      padding: 3px 6px; border-radius: 3px; outline: none;
+    }
+    .input-section select:focus, .input-section input:focus { border-color: var(--accent); }
+    .narrative-area {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--font); font-size: 10px;
+      padding: 6px; border-radius: 3px; outline: none;
+      resize: none; height: 320px; line-height: 1.5;
+    }
+    .narrative-area:focus { border-color: var(--accent); }
+    .narrative-area::placeholder { color: #333; }
+    .parse-btn {
+      width: 100%; background: transparent;
+      border: 1px solid var(--accent); color: var(--accent);
+      font-family: var(--font); font-size: 10px; letter-spacing: 2px;
+      padding: 6px; border-radius: 3px; cursor: pointer;
+      margin-top: 6px;
+    }
+    .parse-btn:hover { background: rgba(51,255,51,0.08); }
+    .load-sample-btn {
+      width: 100%; background: transparent;
+      border: 1px solid #555; color: #666;
+      font-family: var(--font); font-size: 9px; letter-spacing: 1px;
+      padding: 4px; border-radius: 3px; cursor: pointer;
+      margin-top: 4px;
+    }
+    .load-sample-btn:hover { color: var(--text-dim); border-color: var(--text-dim); }
+    .parse-status {
+      font-size: 9px; color: var(--text-dim); padding: 4px 0;
+      letter-spacing: 1px; min-height: 18px;
+    }
+    .parse-status.ok { color: var(--accent); }
+    .parse-status.err { color: var(--red); }
+
+    /* ===== CENTER: BEAT BOARD ===== */
+    .beat-board {
+      padding: 8px;
+      display: flex; flex-direction: column; gap: 4px;
+      min-height: 100%;
+    }
+    .beat-board-empty {
+      color: #333; font-size: 10px; text-align: center;
+      padding: 40px 20px; letter-spacing: 1px; line-height: 2;
+    }
+
+    /* Lane swimlane row */
+    .lane-row {
+      display: flex; align-items: stretch; gap: 0;
+      border: 1px solid var(--border); border-radius: 3px;
+      min-height: 80px;
+    }
+    .lane-row-label {
+      width: 68px; flex-shrink: 0;
+      background: var(--surface2);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 4px;
+      font-size: 9px; letter-spacing: 2px; color: var(--text-dim);
+      text-align: center;
+    }
+    .lane-row-label .lane-icon { font-size: 14px; margin-bottom: 2px; }
+    .lane-row-beats {
+      flex: 1; display: flex; align-items: flex-start;
+      padding: 6px; gap: 6px; flex-wrap: wrap;
+    }
+
+    /* Beat card */
+    .beat-card {
+      position: relative;
+      min-width: 130px; max-width: 180px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 6px 8px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+      font-size: 10px;
+    }
+    .beat-card:hover { border-color: var(--accent); }
+    .beat-card.selected { border-color: var(--accent); border-width: 2px; box-shadow: 0 0 8px rgba(51,255,51,0.25); }
+    .beat-card.type-pm    { border-left: 3px solid var(--accent); }
+    .beat-card.type-dd    { border-left: 3px solid var(--amber); }
+    .beat-card.type-rv    { border-left: 3px solid var(--blue); }
+    .beat-card.type-exfil { border-left: 3px solid var(--purple); }
+    .beat-card.type-event { border-left: 3px solid var(--cyan); }
+    .beat-card-num {
+      position: absolute; top: 4px; right: 6px;
+      font-size: 8px; color: #444;
+    }
+    .beat-card-type {
+      font-size: 8px; letter-spacing: 1px; margin-bottom: 2px;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .beat-card-type.type-pm    { color: var(--accent); }
+    .beat-card-type.type-dd    { color: var(--amber); }
+    .beat-card-type.type-rv    { color: var(--blue); }
+    .beat-card-type.type-exfil { color: var(--purple); }
+    .beat-card-type.type-event { color: var(--cyan); }
+    .beat-card-title { font-size: 10px; color: var(--text); margin-bottom: 3px; line-height: 1.2; }
+    .beat-card-loc {
+      font-size: 8px; color: #555; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .beat-card-tags { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 3px; }
+    .beat-tag {
+      font-size: 7px; padding: 1px 4px; border-radius: 2px;
+      background: rgba(51,255,51,0.05); border: 1px solid #333;
+      color: #666; letter-spacing: 0.5px;
+    }
+    .beat-tag.has-ic  { border-color: var(--accent); color: var(--text-dim); }
+    .beat-tag.has-dd  { border-color: var(--amber); color: var(--amber); }
+    .beat-tag.has-bfide { border-color: var(--blue); color: var(--blue); }
+    .beat-tag.has-exfil { border-color: var(--purple); color: var(--purple); }
+
+    /* Connector arrow between beats (drawn in JS as SVG overlay) */
+    .beat-board-svg-layer {
+      position: absolute; top: 0; left: 0;
+      pointer-events: none; overflow: visible;
+    }
+
+    /* ===== BEAT SEQUENCE TIMELINE (bottom strip) ===== */
+    .beat-timeline {
+      flex-shrink: 0;
+      border-top: 1px solid var(--border);
+      background: var(--surface2);
+      padding: 6px 10px;
+      display: flex; align-items: center; gap: 0;
+      overflow-x: auto;
+      min-height: 44px;
+    }
+    .tl-beat {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 2px 6px;
+      font-size: 8px; color: var(--text-dim);
+      cursor: pointer;
+      border-radius: 3px;
+      transition: background 0.1s;
+      white-space: nowrap;
+    }
+    .tl-beat:hover { background: rgba(51,255,51,0.05); color: var(--accent); }
+    .tl-beat.selected { color: var(--accent); }
+    .tl-beat .tl-icon { font-size: 14px; }
+    .tl-beat .tl-label { font-size: 7px; margin-top: 1px; letter-spacing: 0.5px; max-width: 60px; overflow: hidden; text-overflow: ellipsis; }
+    .tl-arrow {
+      color: #333; font-size: 10px; padding: 0 2px;
+      align-self: center;
+    }
+
+    /* ===== RIGHT: PROPERTIES PANEL ===== */
+    .prop-section { padding: 8px; border-bottom: 1px solid var(--border); }
+    .prop-section h4 { font-size: 8px; letter-spacing: 2px; color: var(--text-dim); margin-bottom: 6px; }
+    .prop-row { margin-bottom: 5px; }
+    .prop-row label { display: block; font-size: 8px; color: #555; letter-spacing: 1px; margin-bottom: 2px; }
+    .prop-row input, .prop-row select, .prop-row textarea {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--font); font-size: 10px;
+      padding: 3px 5px; border-radius: 3px; outline: none;
+    }
+    .prop-row textarea { resize: vertical; min-height: 50px; line-height: 1.4; }
+    .prop-row input:focus, .prop-row select:focus, .prop-row textarea:focus { border-color: var(--accent); }
+    .prop-hint { font-size: 8px; color: #444; margin-top: 2px; line-height: 1.3; }
+    .prop-empty { color: #333; font-size: 9px; padding: 20px 8px; text-align: center; letter-spacing: 1px; line-height: 2; }
+    .prop-bfide-block {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 3px; padding: 6px; font-size: 9px;
+      margin-top: 3px;
+    }
+    .prop-bfide-block .bfide-q { color: var(--blue); margin-bottom: 3px; }
+    .prop-bfide-block .bfide-a { color: var(--cyan); }
+
+    /* Lane selector pills */
+    .lane-pills { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 3px; }
+    .lane-pill {
+      font-size: 8px; padding: 2px 6px; border-radius: 2px;
+      border: 1px solid var(--border); color: #555;
+      cursor: pointer; letter-spacing: 1px;
+    }
+    .lane-pill:hover { border-color: var(--accent); color: var(--text-dim); }
+    .lane-pill.active { border-color: var(--accent); color: var(--accent); background: rgba(51,255,51,0.08); }
+
+    /* Beat type selector */
+    .type-selector { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 3px; }
+    .type-pill {
+      font-size: 8px; padding: 2px 6px; border-radius: 2px;
+      border: 1px solid var(--border); cursor: pointer; letter-spacing: 1px;
+    }
+    .type-pill:hover { opacity: 0.85; }
+    .type-pill.pm    { color: var(--accent);  border-color: var(--accent);  }
+    .type-pill.dd    { color: var(--amber);   border-color: var(--amber);   }
+    .type-pill.rv    { color: var(--blue);    border-color: var(--blue);    }
+    .type-pill.exfil { color: var(--purple);  border-color: var(--purple);  }
+    .type-pill.event { color: var(--cyan);    border-color: var(--cyan);    }
+    .type-pill.active { font-weight: bold; opacity: 1; }
+    .type-pill:not(.active) { opacity: 0.35; }
+
+    /* Export button */
+    .export-btn {
+      width: 100%; background: transparent;
+      border: 1px solid var(--accent); color: var(--accent);
+      font-family: var(--font); font-size: 9px; letter-spacing: 2px;
+      padding: 5px; border-radius: 3px; cursor: pointer;
+    }
+    .export-btn:hover { background: rgba(51,255,51,0.08); }
+    .export-btn.amber { border-color: var(--amber); color: var(--amber); }
+    .export-btn.amber:hover { background: rgba(255,170,51,0.08); }
+    .export-preview {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 3px; padding: 6px;
+      font-size: 9px; color: #555;
+      max-height: 140px; overflow-y: auto;
+      margin-top: 4px;
+      white-space: pre-wrap; word-break: break-all;
+      line-height: 1.4;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <header class="sd-header">
+    <h1>SCENARIO DESIGNER</h1>
+    <div class="hdr-meta">
+      <span class="hdr-badge">EXTRACTION TEMPLATE</span>
+      <span id="beat-count-display" style="color:#444;">0 beats parsed</span>
+      <span id="scenario-name-display" style="color:#555;">untitled</span>
+    </div>
+    <a href="/m/" class="hdr-back">&#8592; M MODE</a>
+  </header>
+
+  <!-- SUBBAR -->
+  <div class="sd-subbar">
+    <button class="subbar-btn active" id="view-swimlane" onclick="setView('swimlane')">SWIMLANE</button>
+    <button class="subbar-btn" id="view-chain" onclick="setView('chain')">CHAIN</button>
+    <span class="subbar-sep">|</span>
+    <span class="subbar-label">TEMPLATE:</span>
+    <select class="subbar-select" id="template-select" onchange="loadTemplate(this.value)">
+      <option value="">— select —</option>
+      <option value="extraction">EXTRACTION (Downed Pilot)</option>
+      <option value="courier">COURIER RUN</option>
+      <option value="counterintel">COUNTERINTELLIGENCE</option>
+      <option value="asset_recovery">ASSET RECOVERY</option>
+    </select>
+    <span class="subbar-sep">|</span>
+    <button class="subbar-btn" onclick="addBeatManual()">+ ADD BEAT</button>
+    <button class="subbar-btn" onclick="clearBeats()">CLEAR</button>
+  </div>
+
+  <!-- THREE COLUMNS -->
+  <div class="sd-columns">
+
+    <!-- LEFT: SOURCE TEXT INPUT -->
+    <div class="sd-panel">
+      <div class="sd-panel-hdr"><span>SOURCE NARRATIVE</span><span id="parse-word-count" style="color:#333;">0 words</span></div>
+      <div class="sd-panel-body">
+        <div class="input-section">
+          <label>SCENARIO TITLE</label>
+          <input type="text" id="scenario-title" placeholder="e.g. 1.2026DownedPilot" oninput="updateTitleDisplay()">
+        </div>
+        <div class="input-section">
+          <label>PASTE NARRATIVE TEXT</label>
+          <textarea class="narrative-area" id="narrative-input"
+            placeholder="Paste your scenario narrative here.&#10;&#10;The parser will detect:&#10;• Numbered events (Event 1, Event 2…)&#10;• Locations (Location: …)&#10;• Actor types (IC, spy, contact…)&#10;• Dead drops (canister, dead drop…)&#10;• Bonafides (challenge / response)&#10;• EXFIL / ENDEX markers&#10;&#10;Then maps them into wirable beats&#10;on the lane grid."
+            oninput="updateWordCount()"
+          ></textarea>
+          <button class="parse-btn" onclick="parseNarrative()">⚡ PARSE NARRATIVE → BEATS</button>
+          <button class="load-sample-btn" onclick="loadSampleScenario()">↓ LOAD DOWNED PILOT SAMPLE</button>
+          <div class="parse-status" id="parse-status"></div>
+        </div>
+        <div class="input-section">
+          <label>DEFAULT LANES (comma-separated)</label>
+          <input type="text" id="lanes-input" value="ALPHA,BRAVO,CHARLIE,DELTA" placeholder="ALPHA,BRAVO,CHARLIE">
+        </div>
+        <div class="input-section">
+          <label>SCENARIO TYPE</label>
+          <select id="scenario-type">
+            <option value="extraction">Extraction / Downed Pilot</option>
+            <option value="courier">Courier Run</option>
+            <option value="counterintel">Counterintelligence</option>
+            <option value="asset_recovery">Asset Recovery</option>
+            <option value="multi_team">Multi-Team Race</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER: BEAT BOARD -->
+    <div class="sd-panel" style="overflow:hidden; position:relative;">
+      <div class="sd-panel-hdr">
+        <span>BEAT BOARD</span>
+        <span id="board-lane-count" style="color:#333;">0 lanes</span>
+      </div>
+      <div class="sd-panel-body" id="beat-board-scroll">
+        <div class="beat-board" id="beat-board">
+          <div class="beat-board-empty" id="board-empty">
+            PASTE NARRATIVE AND CLICK<br>
+            ⚡ PARSE NARRATIVE → BEATS<br><br>
+            OR LOAD THE SAMPLE SCENARIO<br>
+            TO SEE THE BEAT BOARD.
+          </div>
+        </div>
+      </div>
+      <!-- Timeline strip at bottom -->
+      <div class="beat-timeline" id="beat-timeline">
+        <span style="color:#333;font-size:9px;letter-spacing:1px;">NO BEATS</span>
+      </div>
+    </div>
+
+    <!-- RIGHT: PROPERTIES -->
+    <div class="sd-panel">
+      <div class="sd-panel-hdr"><span>BEAT PROPERTIES</span><span id="prop-beat-id" style="color:#333;">—</span></div>
+      <div class="sd-panel-body" id="prop-panel-body">
+        <div class="prop-empty" id="prop-empty">
+          CLICK A BEAT CARD<br>TO EDIT PROPERTIES
+        </div>
+        <div id="prop-content" style="display:none;">
+
+          <div class="prop-section">
+            <h4>IDENTITY</h4>
+            <div class="prop-row">
+              <label>BEAT TITLE</label>
+              <input type="text" id="prop-title" oninput="syncBeatProp('title', this.value)">
+            </div>
+            <div class="prop-row">
+              <label>BEAT TYPE</label>
+              <div class="type-selector" id="prop-type-selector">
+                <span class="type-pill pm active" onclick="setBeatType('pm')" title="Personal Meet">🤝 PM</span>
+                <span class="type-pill dd" onclick="setBeatType('dd')" title="Dead Drop">📦 DD</span>
+                <span class="type-pill rv" onclick="setBeatType('rv')" title="Rendezvous">🎯 RV</span>
+                <span class="type-pill exfil" onclick="setBeatType('exfil')" title="Extraction">🚁 EXFIL</span>
+                <span class="type-pill event" onclick="setBeatType('event')" title="Generic Event">⚡ EVT</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="prop-section">
+            <h4>LOCATION</h4>
+            <div class="prop-row">
+              <label>VENUE / ADDRESS</label>
+              <input type="text" id="prop-location" oninput="syncBeatProp('location', this.value)">
+            </div>
+            <div class="prop-row">
+              <label>GRID CELL (e.g. B2)</label>
+              <input type="text" id="prop-cell" placeholder="A1" oninput="syncBeatProp('cell', this.value)" style="width:80px;">
+            </div>
+            <div class="prop-row">
+              <label>LANE ASSIGNMENT</label>
+              <div class="lane-pills" id="prop-lane-pills"></div>
+            </div>
+          </div>
+
+          <div class="prop-section">
+            <h4>ACTOR</h4>
+            <div class="prop-row">
+              <label>ACTOR ROLE (IC, spy, hostess, pilot…)</label>
+              <input type="text" id="prop-actor" placeholder="IC" oninput="syncBeatProp('actor', this.value)">
+            </div>
+            <div class="prop-row">
+              <label>ENGAGEMENT LEVEL (0–3)</label>
+              <select id="prop-engagement" onchange="syncBeatProp('engagement', this.value)">
+                <option value="0">0 — Invisible</option>
+                <option value="1">1 — Ambient</option>
+                <option value="2" selected>2 — Indirect Contact</option>
+                <option value="3">3 — Direct Contact</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="prop-section">
+            <h4>BONAFIDES</h4>
+            <div class="prop-row">
+              <label>CHALLENGE (player says)</label>
+              <input type="text" id="prop-bfide-q" placeholder="I've always favored an Old Fashioned in Paris."
+                oninput="syncBeatProp('bfide_q', this.value)">
+            </div>
+            <div class="prop-row">
+              <label>RESPONSE (IC replies)</label>
+              <input type="text" id="prop-bfide-a" placeholder="I usually prefer champagne in the city of lights."
+                oninput="syncBeatProp('bfide_a', this.value)">
+            </div>
+          </div>
+
+          <div class="prop-section">
+            <h4>NARRATIVE</h4>
+            <div class="prop-row">
+              <label>DETAIL / INSTRUCTIONS FOR IC</label>
+              <textarea id="prop-detail" rows="4" oninput="syncBeatProp('detail', this.value)"></textarea>
+            </div>
+            <div class="prop-row">
+              <label>SUCCESS PATH → next beat</label>
+              <select id="prop-success" onchange="syncBeatProp('success_next', this.value)">
+                <option value="">— none —</option>
+              </select>
+            </div>
+            <div class="prop-row">
+              <label>FAIL PATH → next beat</label>
+              <select id="prop-fail" onchange="syncBeatProp('fail_next', this.value)">
+                <option value="">— none (actor intervenes) —</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="prop-section">
+            <h4>ESCALATION</h4>
+            <div class="prop-row">
+              <label>TENSION DELTA (+/−)</label>
+              <input type="number" id="prop-tension" value="0" min="-50" max="100"
+                oninput="syncBeatProp('tension_delta', parseInt(this.value)||0)">
+              <div class="prop-hint">Applied to lane cells when beat is active.</div>
+            </div>
+            <div class="prop-row">
+              <label>ESCALATION PHASE (0–5)</label>
+              <select id="prop-phase" onchange="syncBeatProp('phase', this.value)">
+                <option value="0">0 — Calm</option>
+                <option value="1">1 — Awareness</option>
+                <option value="2">2 — Contact</option>
+                <option value="3">3 — Pressure</option>
+                <option value="4">4 — Collapse</option>
+                <option value="5">5 — Extraction</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="prop-section">
+            <h4>EXPORT</h4>
+            <button class="export-btn" onclick="exportSingleBeat()">COPY BEAT JSON</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /.sd-columns -->
+
+</div><!-- /#app -->
+
+<!-- Export modal -->
+<div id="export-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:200; align-items:center; justify-content:center;">
+  <div style="background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:16px; max-width:700px; width:90%; max-height:80vh; display:flex; flex-direction:column; gap:8px;">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:11px; letter-spacing:2px; color:var(--accent);">SCENARIO JSON EXPORT</span>
+      <button onclick="closeExport()" style="background:none; border:1px solid #444; color:#666; font-family:var(--font); font-size:9px; padding:2px 8px; cursor:pointer;">CLOSE</button>
+    </div>
+    <div style="font-size:9px; color:var(--text-dim);">Copy this JSON and use it to pre-populate your scenario via <code>POST /api/m/scenario</code>.</div>
+    <textarea id="export-json-area" readonly style="background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font); font-size:9px; padding:8px; border-radius:3px; outline:none; flex:1; min-height:300px; resize:none; white-space:pre; overflow-y:auto; line-height:1.5;"></textarea>
+    <button onclick="copyExportJson()" style="background:transparent; border:1px solid var(--accent); color:var(--accent); font-family:var(--font); font-size:9px; letter-spacing:2px; padding:6px; border-radius:3px; cursor:pointer;">COPY TO CLIPBOARD</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   EYES ONLY — Scenario Designer
+   Narrative-to-beats parser + swimlane editor.
+   Pure vanilla JS, no build step.
+   ============================================================ */
+
+// ===== STATE =====
+var beats = [];        // Array of beat objects
+var selectedBeatId = null;
+var currentView = 'swimlane';
+
+// ===== BEAT SCHEMA =====
+function makeBeat(id, overrides) {
+  return Object.assign({
+    id: id,
+    title: 'Beat ' + id,
+    type: 'event',      // pm | dd | rv | exfil | event
+    lane: 'ALPHA',
+    location: '',
+    cell: '',
+    actor: '',
+    engagement: 2,
+    bfide_q: '',
+    bfide_a: '',
+    detail: '',
+    success_next: '',
+    fail_next: '',
+    tension_delta: 0,
+    phase: 1,
+    tags: []
+  }, overrides || {});
+}
+
+// ===== LANE HELPERS =====
+function getLanes() {
+  var raw = (document.getElementById('lanes-input').value || 'ALPHA,BRAVO,CHARLIE');
+  return raw.split(',').map(function(s){ return s.trim().toUpperCase(); }).filter(Boolean);
+}
+
+function updateLanePills() {
+  var lanes = getLanes();
+  var container = document.getElementById('prop-lane-pills');
+  if (!container) return;
+  container.innerHTML = '';
+  var beat = selectedBeatId ? beats.find(function(b){ return b.id === selectedBeatId; }) : null;
+  lanes.forEach(function(lane) {
+    var pill = document.createElement('span');
+    pill.className = 'lane-pill' + (beat && beat.lane === lane ? ' active' : '');
+    pill.textContent = lane;
+    pill.onclick = function() {
+      if (beat) {
+        beat.lane = lane;
+        renderBoard();
+        updateLanePills();
+      }
+    };
+    container.appendChild(pill);
+  });
+}
+
+// ===== TITLE DISPLAY =====
+function updateTitleDisplay() {
+  var title = document.getElementById('scenario-title').value || 'untitled';
+  document.getElementById('scenario-name-display').textContent = title;
+}
+
+function updateWordCount() {
+  var text = document.getElementById('narrative-input').value;
+  var words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  document.getElementById('parse-word-count').textContent = words + ' words';
+}
+
+// ===== PARSER =====
+var BEAT_TYPE_KEYWORDS = {
+  pm:    ['personal meet', 'pm1', 'pm2', 'pm3', 'link-up', 'l/u', 'meet', 'liaison', 'bonafides', 'bona fide'],
+  dd:    ['dead.?drop', 'dead drop', 'canister', 'dead-drop', '\\bDD\\b'],
+  rv:    ['rendezvous', 'rendez-vous', 'r/v', 'contact', 'link.up', 'exfil.*point', 'pub.*meet'],
+  exfil: ['exfil', 'extraction', 'endex', 'end exercise', 'rescue', 'downed.pilot', 'escape']
+};
+
+function detectType(text) {
+  var t = text.toLowerCase();
+  for (var type in BEAT_TYPE_KEYWORDS) {
+    for (var i = 0; i < BEAT_TYPE_KEYWORDS[type].length; i++) {
+      if (new RegExp(BEAT_TYPE_KEYWORDS[type][i], 'i').test(t)) return type;
+    }
+  }
+  return 'event';
+}
+
+function extractField(text, label) {
+  var m = new RegExp(label + '\\s*:\\s*([^\\n]+)', 'im').exec(text);
+  return m ? m[1].trim() : '';
+}
+
+function extractBonafides(text) {
+  // Look for quoted challenge/response pairs
+  var bfq = '', bfa = '';
+  var m = /[""]([^""]+)[""]\s*\.?\s*[Tt]o\s*whit|Ex\.\s*[""]([^""]+)[""]|[""]([^""]+)[""]/m.exec(text);
+  if (m) bfq = (m[1] || m[2] || m[3] || '').trim();
+  var lines = text.split('\n');
+  for (var i = 0; i < lines.length; i++) {
+    if (/IC replies|replies/.test(lines[i])) {
+      var rm = /[""]([^""]+)[""]/.exec(lines[i]);
+      if (rm) { bfa = rm[1].trim(); break; }
+    }
+  }
+  return { q: bfq, a: bfa };
+}
+
+function extractActor(text) {
+  var t = text;
+  if (/\bIC\b/.test(t)) return 'IC';
+  if (/\bhostess\b|\bwaitress\b/i.test(t)) return 'Hostess';
+  if (/\bdowned.pilot\b/i.test(t)) return 'Downed Pilot (IC)';
+  if (/\bspy\b|\bforeign agent\b/i.test(t)) return 'IC (Spy)';
+  if (/\bcontact\b/i.test(t)) return 'Contact';
+  return '';
+}
+
+function assignLane(index, total, type) {
+  var lanes = getLanes();
+  if (lanes.length === 0) return 'ALPHA';
+  if (type === 'exfil') return lanes[lanes.length - 1] || 'CHARLIE';
+  return lanes[Math.min(index, lanes.length - 1)] || lanes[0];
+}
+
+function parseNarrative() {
+  var text = document.getElementById('narrative-input').value.trim();
+  if (!text) {
+    setParseStatus('err', 'No text to parse.');
+    return;
+  }
+
+  // Split on numbered events
+  var chunks = text.split(/(?=Event\s*[#]?\s*\d+)/i).filter(function(s){ return s.trim().length > 0; });
+  // If no numbered events, treat whole text as one chunk
+  if (chunks.length <= 1 && !/Event\s*[#]?\s*\d+/i.test(text)) {
+    chunks = [text];
+  }
+
+  var newBeats = [];
+  chunks.forEach(function(chunk, idx) {
+    var titleMatch = /Event\s*[#]?\s*(\d+)\s*[–\-—]?\s*([^\n]+)/i.exec(chunk);
+    var eventNum = titleMatch ? titleMatch[1] : String(idx + 1);
+    var eventLabel = titleMatch ? titleMatch[2].trim().replace(/^[–\-—]\s*/, '') : ('Event ' + (idx + 1));
+
+    var location = extractField(chunk, 'Location');
+    var detail   = extractField(chunk, 'Detail') || chunk.substring(0, 200);
+    var type     = detectType(chunk);
+    var bfides   = extractBonafides(chunk);
+    var actor    = extractActor(chunk);
+    var phase    = Math.min(idx + 1, 5);
+
+    newBeats.push(makeBeat(idx + 1, {
+      title:        eventLabel || ('Beat ' + (idx + 1)),
+      type:         type,
+      lane:         assignLane(idx, chunks.length, type),
+      location:     location,
+      actor:        actor,
+      bfide_q:      bfides.q,
+      bfide_a:      bfides.a,
+      detail:       detail,
+      tension_delta: (type === 'exfil') ? 50 : (idx * 15),
+      phase:        phase,
+      tags:         buildTags(type, actor, bfides)
+    }));
+  });
+
+  // Wire success paths
+  for (var i = 0; i < newBeats.length - 1; i++) {
+    newBeats[i].success_next = newBeats[i + 1].id;
+  }
+
+  beats = newBeats;
+  renderBoard();
+  setParseStatus('ok', beats.length + ' beats parsed from narrative.');
+}
+
+function buildTags(type, actor, bfides) {
+  var tags = [];
+  if (actor) tags.push({ label: actor, cls: 'has-ic' });
+  if (type === 'dd') tags.push({ label: 'DEAD DROP', cls: 'has-dd' });
+  if (bfides.q) tags.push({ label: 'BONAFIDES', cls: 'has-bfide' });
+  if (type === 'exfil') tags.push({ label: 'EXFIL', cls: 'has-exfil' });
+  return tags;
+}
+
+function setParseStatus(cls, msg) {
+  var el = document.getElementById('parse-status');
+  el.className = 'parse-status ' + cls;
+  el.textContent = msg;
+}
+
+// ===== VIEW TOGGLE =====
+function setView(v) {
+  currentView = v;
+  document.getElementById('view-swimlane').classList.toggle('active', v === 'swimlane');
+  document.getElementById('view-chain').classList.toggle('active', v === 'chain');
+  renderBoard();
+}
+
+// ===== RENDER BOARD =====
+var BEAT_ICONS = { pm: '🤝', dd: '📦', rv: '🎯', exfil: '🚁', event: '⚡' };
+var BEAT_LABELS = { pm: 'PERSONAL MEET', dd: 'DEAD DROP', rv: 'RENDEZVOUS', exfil: 'EXFIL', event: 'EVENT' };
+
+function renderBoard() {
+  var board = document.getElementById('beat-board');
+  var empty = document.getElementById('board-empty');
+  var beatCount = document.getElementById('beat-count-display');
+  var laneCount = document.getElementById('board-lane-count');
+
+  beatCount.textContent = beats.length + ' beats';
+
+  if (beats.length === 0) {
+    board.innerHTML = '';
+    board.appendChild(empty);
+    empty.style.display = '';
+    renderTimeline();
+    return;
+  }
+  empty.style.display = 'none';
+
+  var lanes = getLanes();
+  var usedLanes = lanes.filter(function(l) {
+    return beats.some(function(b){ return b.lane === l; });
+  });
+  // Also include any lane assigned to beats that's not in the list
+  beats.forEach(function(b) {
+    if (usedLanes.indexOf(b.lane) === -1) usedLanes.push(b.lane);
+  });
+
+  laneCount.textContent = usedLanes.length + ' lanes';
+
+  if (currentView === 'swimlane') {
+    board.innerHTML = '';
+    usedLanes.forEach(function(lane) {
+      var row = document.createElement('div');
+      row.className = 'lane-row';
+
+      var lbl = document.createElement('div');
+      lbl.className = 'lane-row-label';
+      lbl.innerHTML = '<div class="lane-icon">🛣️</div>' + lane;
+      row.appendChild(lbl);
+
+      var beatsArea = document.createElement('div');
+      beatsArea.className = 'lane-row-beats';
+
+      var laneBeats = beats.filter(function(b){ return b.lane === lane; });
+      laneBeats.forEach(function(beat) {
+        beatsArea.appendChild(makeBeatCard(beat));
+      });
+
+      row.appendChild(beatsArea);
+      board.appendChild(row);
+    });
+  } else {
+    // Chain view: linear sequence
+    board.innerHTML = '';
+    var chainRow = document.createElement('div');
+    chainRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;padding:8px;align-items:flex-start;';
+    beats.forEach(function(beat) {
+      var card = makeBeatCard(beat);
+      chainRow.appendChild(card);
+      if (beat.success_next) {
+        var arrow = document.createElement('div');
+        arrow.style.cssText = 'align-self:center;color:#333;font-size:16px;';
+        arrow.textContent = '→';
+        chainRow.appendChild(arrow);
+      }
+    });
+    board.appendChild(chainRow);
+  }
+
+  renderTimeline();
+  updateNextBeatSelects();
+}
+
+function makeBeatCard(beat) {
+  var card = document.createElement('div');
+  card.className = 'beat-card type-' + beat.type + (selectedBeatId === beat.id ? ' selected' : '');
+  card.dataset.beatId = beat.id;
+  card.onclick = function() { selectBeat(beat.id); };
+
+  var typeRow = document.createElement('div');
+  typeRow.className = 'beat-card-type type-' + beat.type;
+  typeRow.innerHTML = (BEAT_ICONS[beat.type] || '⚡') + ' ' + (BEAT_LABELS[beat.type] || beat.type.toUpperCase());
+  card.appendChild(typeRow);
+
+  var num = document.createElement('div');
+  num.className = 'beat-card-num';
+  num.textContent = '#' + beat.id;
+  card.appendChild(num);
+
+  var title = document.createElement('div');
+  title.className = 'beat-card-title';
+  title.textContent = beat.title;
+  card.appendChild(title);
+
+  if (beat.location) {
+    var loc = document.createElement('div');
+    loc.className = 'beat-card-loc';
+    loc.textContent = '📍 ' + beat.location;
+    card.appendChild(loc);
+  }
+
+  if (beat.tags && beat.tags.length) {
+    var tagRow = document.createElement('div');
+    tagRow.className = 'beat-card-tags';
+    beat.tags.forEach(function(t) {
+      var tag = document.createElement('span');
+      tag.className = 'beat-tag ' + (t.cls || '');
+      tag.textContent = t.label;
+      tagRow.appendChild(tag);
+    });
+    card.appendChild(tagRow);
+  }
+
+  return card;
+}
+
+function renderTimeline() {
+  var tl = document.getElementById('beat-timeline');
+  tl.innerHTML = '';
+  if (beats.length === 0) {
+    tl.innerHTML = '<span style="color:#333;font-size:9px;letter-spacing:1px;">NO BEATS</span>';
+    return;
+  }
+  beats.forEach(function(beat, idx) {
+    var item = document.createElement('div');
+    item.className = 'tl-beat' + (selectedBeatId === beat.id ? ' selected' : '');
+    item.onclick = function() { selectBeat(beat.id); };
+    item.innerHTML = '<div class="tl-icon">' + (BEAT_ICONS[beat.type] || '⚡') + '</div>' +
+                     '<div class="tl-label">' + escHtml(beat.title.substring(0, 18)) + '</div>';
+    tl.appendChild(item);
+    if (idx < beats.length - 1) {
+      var arrow = document.createElement('div');
+      arrow.className = 'tl-arrow';
+      arrow.textContent = '→';
+      tl.appendChild(arrow);
+    }
+  });
+}
+
+// ===== SELECT BEAT =====
+function selectBeat(id) {
+  selectedBeatId = id;
+  var beat = beats.find(function(b){ return b.id === id; });
+  if (!beat) return;
+
+  // Update card highlights
+  document.querySelectorAll('.beat-card').forEach(function(c) {
+    c.classList.toggle('selected', Number(c.dataset.beatId) === id);
+  });
+  document.querySelectorAll('.tl-beat').forEach(function(c) {
+    c.classList.remove('selected');
+  });
+  var tlItems = document.querySelectorAll('.tl-beat');
+  var beatIdx = beats.findIndex(function(b){ return b.id === id; });
+  if (tlItems[beatIdx]) tlItems[beatIdx].classList.add('selected');
+
+  // Show properties
+  document.getElementById('prop-empty').style.display = 'none';
+  document.getElementById('prop-content').style.display = '';
+  document.getElementById('prop-beat-id').textContent = '#' + id;
+
+  // Fill fields
+  document.getElementById('prop-title').value = beat.title;
+  document.getElementById('prop-location').value = beat.location;
+  document.getElementById('prop-cell').value = beat.cell || '';
+  document.getElementById('prop-actor').value = beat.actor;
+  document.getElementById('prop-engagement').value = String(beat.engagement);
+  document.getElementById('prop-bfide-q').value = beat.bfide_q;
+  document.getElementById('prop-bfide-a').value = beat.bfide_a;
+  document.getElementById('prop-detail').value = beat.detail;
+  document.getElementById('prop-tension').value = String(beat.tension_delta);
+  document.getElementById('prop-phase').value = String(beat.phase);
+
+  // Type pills
+  document.querySelectorAll('.type-pill').forEach(function(p) {
+    var t = p.classList.contains('pm') ? 'pm' :
+            p.classList.contains('dd') ? 'dd' :
+            p.classList.contains('rv') ? 'rv' :
+            p.classList.contains('exfil') ? 'exfil' : 'event';
+    p.classList.toggle('active', t === beat.type);
+  });
+
+  updateLanePills();
+  updateNextBeatSelects();
+  if (beat.success_next) document.getElementById('prop-success').value = String(beat.success_next);
+  if (beat.fail_next) document.getElementById('prop-fail').value = String(beat.fail_next);
+}
+
+function updateNextBeatSelects() {
+  ['prop-success', 'prop-fail'].forEach(function(elId) {
+    var sel = document.getElementById(elId);
+    if (!sel) return;
+    var curVal = sel.value;
+    sel.innerHTML = '<option value="">— none —</option>';
+    beats.forEach(function(b) {
+      if (b.id !== selectedBeatId) {
+        var opt = document.createElement('option');
+        opt.value = String(b.id);
+        opt.textContent = '#' + b.id + ' ' + b.title.substring(0, 30);
+        sel.appendChild(opt);
+      }
+    });
+    if (curVal) sel.value = curVal;
+  });
+  var beat = selectedBeatId ? beats.find(function(b){ return b.id === selectedBeatId; }) : null;
+  if (beat) {
+    if (beat.success_next) document.getElementById('prop-success').value = String(beat.success_next);
+    if (beat.fail_next) document.getElementById('prop-fail').value = String(beat.fail_next);
+  }
+}
+
+// ===== SYNC BEAT PROPS =====
+function syncBeatProp(key, value) {
+  var beat = selectedBeatId ? beats.find(function(b){ return b.id === selectedBeatId; }) : null;
+  if (!beat) return;
+  beat[key] = value;
+  // Partially re-render the specific card
+  var card = document.querySelector('.beat-card[data-beat-id="' + selectedBeatId + '"]');
+  if (card) {
+    var newCard = makeBeatCard(beat);
+    card.parentNode.replaceChild(newCard, card);
+    // Re-bind selection
+    newCard.classList.add('selected');
+  }
+  renderTimeline();
+}
+
+function setBeatType(type) {
+  var beat = selectedBeatId ? beats.find(function(b){ return b.id === selectedBeatId; }) : null;
+  if (!beat) return;
+  beat.type = type;
+  document.querySelectorAll('.type-pill').forEach(function(p) {
+    var t = p.classList.contains('pm') ? 'pm' :
+            p.classList.contains('dd') ? 'dd' :
+            p.classList.contains('rv') ? 'rv' :
+            p.classList.contains('exfil') ? 'exfil' : 'event';
+    p.classList.toggle('active', t === type);
+  });
+  renderBoard();
+}
+
+// ===== ADD / CLEAR =====
+function addBeatManual() {
+  var id = beats.length > 0 ? Math.max.apply(null, beats.map(function(b){ return b.id; })) + 1 : 1;
+  var lanes = getLanes();
+  beats.push(makeBeat(id, { lane: lanes[0] || 'ALPHA', title: 'New Beat' }));
+  renderBoard();
+  selectBeat(id);
+}
+
+function clearBeats() {
+  if (beats.length > 0 && !confirm('Clear all beats?')) return;
+  beats = [];
+  selectedBeatId = null;
+  document.getElementById('prop-empty').style.display = '';
+  document.getElementById('prop-content').style.display = 'none';
+  document.getElementById('prop-beat-id').textContent = '—';
+  renderBoard();
+}
+
+// ===== TEMPLATES =====
+function loadTemplate(type) {
+  if (!type) return;
+  var templates = {
+    extraction: SAMPLE_BEATS_EXTRACTION,
+    courier: [
+      makeBeat(1, { title: 'Package Pickup', type: 'pm', lane: 'ALPHA', location: 'Sender location TBD', actor: 'IC (Courier Handler)', engagement: 3, phase: 1, tension_delta: 0 }),
+      makeBeat(2, { title: 'Transit Checkpoint', type: 'event', lane: 'BRAVO', location: 'Midpoint TBD', actor: 'IC (Watcher)', engagement: 1, phase: 2, tension_delta: 20 }),
+      makeBeat(3, { title: 'Package Delivery', type: 'rv', lane: 'CHARLIE', location: 'Recipient location TBD', actor: 'IC (Recipient)', engagement: 3, phase: 3, tension_delta: 30 })
+    ],
+    counterintel: [
+      makeBeat(1, { title: 'Identify Suspect', type: 'event', lane: 'ALPHA', location: 'Surveillance point TBD', engagement: 0, phase: 1, tension_delta: 10 }),
+      makeBeat(2, { title: 'Observe Meeting', type: 'pm', lane: 'BRAVO', location: 'Meeting location TBD', actor: 'IC (Suspect)', engagement: 1, phase: 2, tension_delta: 25 }),
+      makeBeat(3, { title: 'Evidence Retrieval', type: 'dd', lane: 'ALPHA', location: 'Dead drop TBD', phase: 3, tension_delta: 40 }),
+      makeBeat(4, { title: 'Confirm & Extract', type: 'exfil', lane: 'CHARLIE', location: 'Safe house TBD', phase: 5, tension_delta: 60 })
+    ],
+    asset_recovery: [
+      makeBeat(1, { title: 'Initial Brief', type: 'pm', lane: 'ALPHA', location: 'Brief point TBD', actor: 'IC (Handler)', engagement: 3, phase: 1, tension_delta: 0 }),
+      makeBeat(2, { title: 'Locate Asset', type: 'event', lane: 'BRAVO', location: 'Search area TBD', phase: 2, tension_delta: 20 }),
+      makeBeat(3, { title: 'Dead Drop Clue', type: 'dd', lane: 'BRAVO', location: 'Dead drop TBD', phase: 3, tension_delta: 30 }),
+      makeBeat(4, { title: 'Asset Recovery', type: 'rv', lane: 'CHARLIE', location: 'Asset location TBD', actor: 'IC (Asset)', engagement: 3, phase: 4, tension_delta: 50 }),
+      makeBeat(5, { title: 'Extraction', type: 'exfil', lane: 'DELTA', location: 'Exfil point TBD', phase: 5, tension_delta: 70 })
+    ]
+  };
+  var t = templates[type];
+  if (t) {
+    beats = t;
+    // Wire success paths
+    for (var i = 0; i < beats.length - 1; i++) beats[i].success_next = beats[i+1].id;
+    renderBoard();
+    setParseStatus('ok', 'Template loaded: ' + type.replace(/_/g, ' ').toUpperCase() + ' (' + beats.length + ' beats)');
+  }
+}
+
+// ===== SAMPLE SCENARIO =====
+var SAMPLE_BEATS_EXTRACTION = [
+  makeBeat(1, {
+    title: 'PM1 — The District',
+    type: 'pm',
+    lane: 'ALPHA',
+    location: '313 N First Ave., Sandpoint, ID 83864 ("The District")',
+    actor: 'IC (Spy / Liaison)',
+    engagement: 3,
+    bfide_q: "I've always favored an Old Fashioned in Paris.",
+    bfide_a: "I usually prefer champagne in the city of lights.",
+    detail: 'Client approaches IC in role. IC confirms bonafides, delivers verbal briefing: scenario background + instructions for finding next clue at dead drop. IC becomes "spooked" and departs early.',
+    tension_delta: 15,
+    phase: 2,
+    tags: [{ label: 'IC', cls: 'has-ic' }, { label: 'BONAFIDES', cls: 'has-bfide' }]
+  }),
+  makeBeat(2, {
+    title: 'DD — Long Bridge Canister',
+    type: 'dd',
+    lane: 'BRAVO',
+    location: 'Long Bridge (Bonner County) — park bench, walking bridge',
+    actor: '',
+    engagement: 0,
+    detail: 'Waterproof canister pre-emplaced under wooden park bench along middle of Long Bridge bike/walking path. Contains paper code / clue pointing to next location or link-up point.',
+    tension_delta: 30,
+    phase: 3,
+    tags: [{ label: 'DEAD DROP', cls: 'has-dd' }, { label: 'CANISTER', cls: 'has-dd' }]
+  }),
+  makeBeat(3, {
+    title: 'RV / EXFIL — Schweitzer Pub',
+    type: 'exfil',
+    lane: 'CHARLIE',
+    location: 'Schweitzer Pub, Schweitzer Ski Resort (exact venue TBD)',
+    actor: 'IC (Downed Pilot) + Hostess/Waitress',
+    engagement: 3,
+    bfide_q: '[Bonafides TBD for final contact]',
+    bfide_a: '[Hostess confirms, provides final clue to locate downed pilot]',
+    detail: 'Client arrives at venue, confirms bonafides with hostess/waitress. Hostess provides final instructions. Client links up with IC (downed pilot) and delivers key information / article (car key / train info). ENDEX.',
+    tension_delta: 60,
+    phase: 5,
+    tags: [{ label: 'DOWNED PILOT', cls: 'has-ic' }, { label: 'EXFIL', cls: 'has-exfil' }]
+  })
+];
+SAMPLE_BEATS_EXTRACTION[0].success_next = 2;
+SAMPLE_BEATS_EXTRACTION[1].success_next = 3;
+
+function loadSampleScenario() {
+  document.getElementById('scenario-title').value = '1.2026DownedPilot';
+  document.getElementById('scenario-type').value = 'extraction';
+  updateTitleDisplay();
+  document.getElementById('narrative-input').value = SAMPLE_NARRATIVE;
+  updateWordCount();
+  beats = JSON.parse(JSON.stringify(SAMPLE_BEATS_EXTRACTION));
+  renderBoard();
+  setParseStatus('ok', 'Sample: 1.2026DownedPilot loaded (3 beats).');
+}
+
+// ===== EXPORT =====
+function exportScenario() {
+  if (beats.length === 0) { alert('No beats to export.'); return; }
+  var title = document.getElementById('scenario-title').value || 'untitled';
+  var type  = document.getElementById('scenario-type').value || 'extraction';
+  var lanes = getLanes();
+
+  var out = {
+    scenario: {
+      name: title,
+      type: type,
+      status: 'draft',
+      config: {
+        designer_version: '1.0',
+        beat_count: beats.length,
+        lanes_used: Array.from(new Set(beats.map(function(b){ return b.lane; })))
+      }
+    },
+    lanes: lanes.map(function(l, i) {
+      return { lane_id: l, label: l, sort_order: i, config: {} };
+    }),
+    beats: beats.map(function(b) {
+      return {
+        id: b.id,
+        title: b.title,
+        type: b.type,
+        lane: b.lane,
+        cell: b.cell || null,
+        location: b.location,
+        actor: b.actor,
+        engagement: b.engagement,
+        bonafides: b.bfide_q ? { challenge: b.bfide_q, response: b.bfide_a } : null,
+        detail: b.detail,
+        success_next: b.success_next || null,
+        fail_next: b.fail_next || null,
+        tension_delta: b.tension_delta,
+        escalation_phase: b.phase
+      };
+    }),
+    // SEL (Scenario Engine Language) skeleton
+    sel: generateSEL(title, type, beats, lanes)
+  };
+
+  document.getElementById('export-json-area').value = JSON.stringify(out, null, 2);
+  document.getElementById('export-modal').style.display = 'flex';
+}
+
+function generateSEL(title, type, beats, lanes) {
+  var lines = ['SCENARIO "' + title + '" {'];
+  lines.push('  type: ' + type);
+  lines.push('  difficulty: moderate');
+  lines.push('  teams: 1');
+  lines.push('  players: 2-4');
+  lines.push('  actors: ' + Array.from(new Set(beats.map(function(b){ return b.actor; }).filter(Boolean))).length);
+  lines.push('}', '');
+
+  lanes.forEach(function(l) {
+    var laneBeats = beats.filter(function(b){ return b.lane === l; });
+    lines.push('LANE ' + l + ' {');
+    lines.push('  status: safe');
+    if (laneBeats.length) {
+      lines.push('  beats: [' + laneBeats.map(function(b){ return b.id; }).join(', ') + ']');
+    }
+    lines.push('}', '');
+  });
+
+  beats.forEach(function(b) {
+    var objType = b.type === 'dd' ? 'retrieve' : b.type === 'pm' ? 'meet' : b.type === 'exfil' ? 'escort' : 'locate';
+    lines.push('OBJECTIVE beat_' + b.id + ' {');
+    lines.push('  type: ' + objType);
+    lines.push('  lane: ' + b.lane);
+    lines.push('  description: "' + escSel(b.title) + '"');
+    if (b.location) lines.push('  location: "' + escSel(b.location) + '"');
+    if (b.actor) lines.push('  actor: "' + escSel(b.actor) + '"');
+    if (b.bfide_q) {
+      lines.push('  bonafides: {');
+      lines.push('    challenge: "' + escSel(b.bfide_q) + '"');
+      lines.push('    response: "' + escSel(b.bfide_a) + '"');
+      lines.push('  }');
+    }
+    if (b.success_next) lines.push('  success: -> beat_' + b.success_next);
+    if (b.fail_next) lines.push('  fail: -> beat_' + b.fail_next);
+    else lines.push('  fail: -> actor_intervenes');
+    lines.push('  recovery: -> actor_delivers_hint');
+    lines.push('}', '');
+  });
+
+  beats.forEach(function(b, idx) {
+    lines.push('ESCALATION phase_beat_' + b.id + ' {');
+    lines.push('  trigger: objective_complete(beat_' + b.id + ')');
+    lines.push('  tension: +' + b.tension_delta + ' on ' + b.lane);
+    lines.push('  actor_behavior: engagement_level ' + b.engagement);
+    if (b.phase >= 4) lines.push('  event: surveillance_sweep');
+    lines.push('}', '');
+  });
+
+  return lines.join('\n');
+}
+
+function closeExport() {
+  document.getElementById('export-modal').style.display = 'none';
+}
+
+function copyExportJson() {
+  var area = document.getElementById('export-json-area');
+  area.select();
+  try { document.execCommand('copy'); } catch(e) { /* fallback */ }
+  if (navigator.clipboard) navigator.clipboard.writeText(area.value).catch(function(){});
+}
+
+function exportSingleBeat() {
+  var beat = selectedBeatId ? beats.find(function(b){ return b.id === selectedBeatId; }) : null;
+  if (!beat) return;
+  var json = JSON.stringify(beat, null, 2);
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(json).then(function() {
+      setParseStatus('ok', 'Beat JSON copied to clipboard.');
+    }).catch(function() {
+      prompt('Beat JSON:', json);
+    });
+  } else {
+    prompt('Beat JSON:', json);
+  }
+}
+
+// ===== UTILITY =====
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escSel(s) {
+  return String(s).replace(/"/g, '\\"');
+}
+
+// ===== SUBBAR EXPORT BUTTON WIRE =====
+// Inject export button into subbar after DOM load
+document.addEventListener('DOMContentLoaded', function() {
+  var subbar = document.querySelector('.sd-subbar');
+  if (subbar) {
+    var sep = document.createElement('span');
+    sep.className = 'subbar-sep';
+    sep.textContent = '|';
+    subbar.appendChild(sep);
+    var btn = document.createElement('button');
+    btn.className = 'subbar-btn';
+    btn.textContent = '↗ EXPORT JSON / SEL';
+    btn.onclick = exportScenario;
+    subbar.appendChild(btn);
+  }
+});
+
+// ===== SAMPLE NARRATIVE (for "load sample") =====
+var SAMPLE_NARRATIVE = 'Sandpoint Scenario Event #1.2026DownedPilot\n\nBackground: this is the "downed pilot behind enemy lines scenario." The client(s) goal is to "infiltrate" (INFIL) into the scenario after receiving some limited online instruction, conduct a link-up (L/U) with a foreign agent (spy), obtain key information to find the next instructions from a "dead drop" (DD), which will lead to finding and assisting in the rescue of the downed-pilot.\n\nEvent 1: Initial Personal Meet (PM1)\nLocation: "The District" – 313 N First Ave., Sandpoint, ID, 83864\nWhen: (date/time TBD)\nDetail: our individual contractor (IC) will either be in position or enter "The District" at the appropriate time, dressed to be "in role" for appropriate historic era. The Clients will have already been instructed as to the time, location, and appearance of their liaison. They will also be instructed with the verbal bonafides (these will changed by scenario). The Client(s) will approach our IC and issue one portion of the verbal bonafides, Ex. "I\'ve always favored an Old Fashioned in Paris." To whit, the IC replies, "I usually prefer champagne in the city of lights."\n\nOnce the IC has been confirmed, the Client will elicit the key clue / instructions from the IC (spy). It will involve more specific background for the scenario, as well as instructions for where / when to look for the next clue (instructions) that will be found at a pre-determined geolocation at a dead drop in a canister.\n\nAt the end of this portion of the scenario, the IC can acted "spooked," become nervous and make an excuse to depart the premises early, in fear of being discovered or captured by malign forces.\n\nWhy: this initial portion of the scenario will provide the initial realism with our IC who will be in costume, role, and demeanor, that will add to the realism of the Client\'s experience.\n\nEvent 2: Dead-drop (DD)\nLocation: The Long Bridge (Bonner County) – park bench along walking bridge.\nWhen: (date/time TBD)\nDetail: We will have emplaced a waterproof canister, somewhere under one of the old, wooden park benches along the middle of the Long Bridge bike/walking portion. Once recovered, the Client(s) will find a paper code or clue for the next link-up or extraction point to find the "downed pilot." (More details will follow)\n\nWhy: this portion of the scenario, will test the Client(s) ability to follow instructions and solve a medium-difficulty clue, to "find" the canister at the park bench dead-drop.\n\nEvent #3 – Rendezvous & EXFIL of Downed-Pilot\nLocation: Schweitzer Pub @ Schweitzer Ski Resort (Exact venue TBD)\nWhen: Date / Time TBD\nDetail: Depending on the duration of this scenario, this will either be the final event of the scenario, or an intermediary PM with IC (actor) that provides another clue to continue to advance the scenario. If it is the final event, the Client(s) will arrive at the specific venue, make contact with a hostess or waitress, confirm with "bonafides" who will provide final clue (instructions) to link-up with IC role-player (downed pilot). The Client(s) will then affect link-up (L/U) with the IC (downed pilot) and provide the key information or article (car key or key info to catch train, the downed pilot will need to escape or EXFIL from behind enemy-controlled territory.\n\nENDEX (End Exercise)';
+
+// ===== INIT =====
+renderBoard();
+</script>
+
+</body>
+</html>
