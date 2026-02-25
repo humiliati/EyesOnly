@@ -2249,10 +2249,24 @@ const GoneRogueMobile = (function () {
       return;
     }
 
-    // Execute multi-card combat round
-    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleMultiCardCombat === 'function') {
-      // Pass selected card indices to GoneRogue for execution
-      GoneRogue.handleMultiCardCombat(_selectedCards.slice()); // Pass a copy
+    // Execute multi-card combat round (prefer id-based hand play so BLVCK/fallback
+    // and affordability logic stay consistent across desktop/mobile).
+    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.playCardsFromHand === 'function') {
+      var loose = null;
+      try {
+        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getLooseInventory === 'function') {
+          loose = GAMESTATE.getLooseInventory();
+        }
+      } catch (e0) {}
+
+      var ids = [];
+      for (var i = 0; i < _selectedCards.length; i++) {
+        var idx = _selectedCards[i];
+        var c = (loose && loose[idx]) ? loose[idx] : null;
+        if (c && c.id) ids.push(c.id);
+      }
+
+      GoneRogue.playCardsFromHand(ids);
 
       // Clear selection
       _selectedCards = [];
@@ -2267,6 +2281,20 @@ const GoneRogueMobile = (function () {
           _showCardFan();
         } else {
           // Combat ended - reset page index
+          _cardPageIndex = 0;
+        }
+      }, 500);
+    } else if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleMultiCardCombat === 'function') {
+      // Legacy fallback: indices-based play
+      GoneRogue.handleMultiCardCombat(_selectedCards.slice());
+
+      _selectedCards = [];
+      _cardContainer.style.display = 'none';
+
+      setTimeout(function() {
+        if (typeof GoneRogue !== 'undefined' && GoneRogue.isStrCombatActive && GoneRogue.isStrCombatActive()) {
+          _showCardFan();
+        } else {
           _cardPageIndex = 0;
         }
       }, 500);
