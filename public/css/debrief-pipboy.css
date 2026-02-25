@@ -42,6 +42,25 @@
 .debrief-nav-row.row-status { color: rgba(255, 160, 100, 0.92); }
 .debrief-nav-row.row-mok { color: rgba(191, 255, 227, 0.90); }
 .debrief-nav-row.row-api { color: rgba(191, 255, 227, 0.82); }
+.debrief-nav-row.row-accessibility { color: rgba(100, 200, 255, 0.90); }
+
+/* Accessibility panel: link + toggle buttons styled as terminal text */
+.debrief-acc-link {
+  color: currentColor;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.debrief-acc-btn {
+  background: transparent;
+  border: none;
+  color: currentColor;
+  font-family: inherit;
+  font-size: inherit;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0.9;
+}
+.debrief-acc-btn:hover { opacity: 1; filter: brightness(1.3); }
 
 /* colored sublines inside resources */
 .debrief-row-panel .debrief-line { padding: 0; margin: 0; }

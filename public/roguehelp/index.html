@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="EYES ONLY - Gone Rogue Accessibility Guide">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#000000">
+  <title>EYES ONLY // ROGUE HELP — ACCESSIBILITY</title>
+
+  <link rel="stylesheet" href="../css/crt.css">
+  <link rel="stylesheet" href="../css/highscore.css">
+  <style>
+    /* Page-specific overrides */
+    .roguehelp-section {
+      border-top: 1px solid rgba(28, 255, 155, 0.25);
+      margin: 1.5rem 0 0;
+      padding: 1rem 0 0;
+    }
+    .roguehelp-section:first-child { border-top: none; margin-top: 0; }
+    .roguehelp-section h2 {
+      font-size: 1rem;
+      letter-spacing: 0.12em;
+      color: #1cff9b;
+      text-shadow: 0 0 8px #1cff9b;
+      margin: 0 0 0.6rem;
+    }
+    .roguehelp-section h3 {
+      font-size: 0.85rem;
+      letter-spacing: 0.08em;
+      color: rgba(28, 255, 155, 0.75);
+      margin: 0.8rem 0 0.3rem;
+    }
+    .roguehelp-section p,
+    .roguehelp-section li {
+      font-size: 0.82rem;
+      color: rgba(28, 255, 155, 0.80);
+      line-height: 1.6;
+      margin: 0.25rem 0;
+    }
+    .roguehelp-section ul {
+      padding-left: 1.4em;
+      margin: 0.3rem 0;
+    }
+    .tag {
+      display: inline-block;
+      border: 1px solid rgba(28, 255, 155, 0.45);
+      padding: 0 0.4em;
+      margin-right: 0.3em;
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      color: #1cff9b;
+    }
+    .qs-diagram {
+      font-family: 'Courier New', monospace;
+      font-size: 0.78rem;
+      line-height: 1.5;
+      color: rgba(28, 255, 155, 0.72);
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(28, 255, 155, 0.18);
+      padding: 0.6rem 0.8rem;
+      margin: 0.5rem 0;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .acc-toggle-demo {
+      display: flex;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+      margin: 0.5rem 0;
+    }
+    .acc-toggle-demo .toggle-item {
+      border: 1px solid rgba(28, 255, 155, 0.35);
+      padding: 0.3rem 0.6rem;
+      font-size: 0.78rem;
+    }
+    .toggle-item .toggle-key { color: #64c8ff; }
+    .toggle-item .toggle-val { color: #1cff9b; }
+  </style>
+</head>
+<body>
+  <!-- CRT Screen Container -->
+  <div id="crt-screen">
+    <!-- CRT Effect Layers -->
+    <div id="phosphor-glow"></div>
+    <div id="scanlines"></div>
+    <div id="vignette"></div>
+
+    <div id="crt-frame">
+      <header class="highscore-header">
+        <div class="header-title">
+          <span class="title-main">ROGUE HELP — ACCESSIBILITY</span>
+          <span class="title-sub">Controller input &amp; game-wide accessibility features</span>
+        </div>
+        <button type="button" class="back-btn" onclick="window.close(); window.location.href='../';">&larr; Back</button>
+      </header>
+
+      <div class="highscore-container">
+
+        <!-- ── QuadStick Overview ──────────────────────────────────────── -->
+        <section class="roguehelp-section">
+          <h2><span class="tag">QuadStick</span> Controller Support</h2>
+          <p>
+            Gone Rogue supports the <strong>QuadStick</strong> mouth-operated gamepad controller
+            via the browser <strong>Gamepad API</strong>. No drivers or plugins are required —
+            plug in the QuadStick and the game detects it automatically once controller mode is
+            toggled on in the <span class="tag">[Accssblty]</span> row of the debrief panel.
+          </p>
+
+          <h3>How it works</h3>
+          <p>
+            The QuadStick sends joystick axis values and button events through the standard
+            Gamepad API. A lightweight adapter maps these to the three fishing-preview hooks
+            that <code>GoneRogueMobile</code> exposes:
+          </p>
+          <div class="qs-diagram">GoneRogueMobile.beginFishingFromPlayer()   // aim gesture starts
+GoneRogueMobile.updateFishingTarget(x, y)  // cursor moves → path preview
+GoneRogueMobile.commitFishingTarget(x, y)  // confirm → player moves</div>
+          <p>
+            These hooks reuse the same A* pathfinding and path-overlay rendering that
+            touch/mouse dragging uses, so the visual feedback is identical.
+          </p>
+
+          <h3>QuadStick input mapping</h3>
+          <div class="qs-diagram">Sip (soft)   → hold to aim  (beginFishingFromPlayer)
+Lip left/right → move grid cursor left/right
+Lip up/down    → move grid cursor up/down
+Puff (hard)    → commit move  (commitFishingTarget)
+Sip (hard)     → cancel aim   (hides preview, resets)
+Button A       → tap nearest cell (tap-to-move)
+Button B       → open card fan (action menu)</div>
+          <p>
+            Full axis-to-tile mapping and polling is handled by the
+            <code>gone-rogue-quadstick.js</code> adapter (loaded separately when QuadStick
+            mode is enabled).
+          </p>
+
+          <h3>Enabling QuadStick mode</h3>
+          <ul>
+            <li>Open the debrief panel during a Gone Rogue run.</li>
+            <li>Tap <span class="tag">[Accssblty]</span> to expand the accessibility row.</li>
+            <li>Toggle <strong>QuadStick [OFF → ON]</strong>.</li>
+            <li>The setting persists across sessions via <code>localStorage</code>.</li>
+          </ul>
+        </section>
+
+        <!-- ── Other Accessibility Options ──────────────────────────────── -->
+        <section class="roguehelp-section">
+          <h2><span class="tag">Accessibility</span> Options</h2>
+          <p>
+            All options below are available in the
+            <span class="tag">[Accssblty]</span> row of the debrief panel, or can be toggled
+            here for preview. State is saved in <code>localStorage</code>.
+          </p>
+
+          <div class="acc-toggle-demo">
+            <div class="toggle-item">
+              <span class="toggle-key">QuadStick</span>&nbsp;
+              <span class="toggle-val" id="demo-qs">—</span>
+            </div>
+            <div class="toggle-item">
+              <span class="toggle-key">Hi-Contrast</span>&nbsp;
+              <span class="toggle-val" id="demo-hc">—</span>
+            </div>
+          </div>
+
+          <h3>High-Contrast Mode</h3>
+          <p>
+            Increases visual contrast across the game UI: brightens the grid overlay, strengthens
+            text shadows, and removes low-opacity tints on labels. Useful for low-vision players
+            or bright-environment play.
+          </p>
+
+          <h3>Abbreviation Convention</h3>
+          <p>
+            The debrief panel uses a vowel-drop abbreviation scheme throughout
+            (e.g. <em>resources → Rsrcs</em>, <em>accessibility → Accssblty</em>).
+            Labels keep the first letter of each word regardless of vowel/consonant,
+            then drop all non-first vowels. This keeps the terminal aesthetic while staying
+            readable for screen-reader users (full names are in <code>aria-label</code>
+            attributes where present).
+          </p>
+        </section>
+
+        <!-- ── Keyboard / Touch fallback ─────────────────────────────────── -->
+        <section class="roguehelp-section">
+          <h2><span class="tag">Keyboard</span> &amp; Touch Fallback</h2>
+          <p>
+            All movement and actions are accessible without a mouse or controller:
+          </p>
+          <ul>
+            <li><strong>WASD / N S E W</strong> — directional movement</li>
+            <li><strong>Click / tap grid cell</strong> — tap-to-move (A* pathfinding)</li>
+            <li><strong>Hold + drag</strong> — fishing-mode path preview, release to commit</li>
+            <li><strong>Double-tap cell</strong> — sprint mode</li>
+            <li><strong>Tap player (@)</strong> — open card fan / action menu</li>
+            <li><strong>TAKE / EXTRACT / STATUS / INVENTORY</strong> — text commands always available</li>
+          </ul>
+        </section>
+
+        <!-- Footer -->
+        <footer class="highscore-footer">
+          <p>
+            <span class="footer-icon">*</span>
+            QuadStick is a product of QuadStick LLC. EyesOnly is not affiliated with QuadStick LLC.
+          </p>
+          <p class="footer-copyright">
+            &copy; StellarAqua — Sandpoint Field Operations
+          </p>
+        </footer>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      // Reflect current localStorage toggle state in the demo badges
+      function refreshDemo() {
+        var qsOn = localStorage.getItem('eo:qs-ctrl') === '1';
+        var hcOn = localStorage.getItem('eo:hi-contrast') === '1';
+        var qsEl = document.getElementById('demo-qs');
+        var hcEl = document.getElementById('demo-hc');
+        if (qsEl) qsEl.textContent = qsOn ? '[ON]' : '[OFF]';
+        if (hcEl) hcEl.textContent = hcOn ? '[ON]' : '[OFF]';
+      }
+      refreshDemo();
+    })();
+  </script>
+</body>
+</html>

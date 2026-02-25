@@ -431,3 +431,44 @@ e.stopPropagation(); // Prevents bubbling to parent handlers
 - Interactive grid enabled when `GoneRogueMobile` module is available (platform-agnostic)
 - Keyboard commands preserved as accessibility fallback
 - Text-only rendering still available when interactive grid unavailable
+
+## QuadStick / Gamepad-API Controller Hooks
+
+Three public methods on `GoneRogueMobile` let an external Gamepad-API adapter
+(e.g. QuadStick) drive the same fishing drag-preview + commit behaviour that
+touch and mouse already use, **without** synthesising DOM pointer events.
+
+### Call Flow (controller adapter)
+
+```
+// 1. User starts aiming gesture on controller
+GoneRogueMobile.beginFishingFromPlayer();
+
+// 2. As cursor moves, update preview (grid tile coordinates)
+GoneRogueMobile.updateFishingTarget(targetX, targetY);
+
+// 3. User confirms target – execute movement
+GoneRogueMobile.commitFishingTarget(targetX, targetY);
+```
+
+### API
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `beginFishingFromPlayer` | `()` | Resets fishing state and marks it active so the next `updateFishingTarget` call renders a fresh path overlay. |
+| `updateFishingTarget` | `(x: number, y: number)` | Runs A* from the player to grid tile `(x, y)` and re-renders the path overlay. Safe to call on every animation frame. |
+| `commitFishingTarget` | `(x: number, y: number)` | Hides the overlay and executes movement via `GoneRogue.handleFishingMove` (or tap-to-move fallback). Computes the path on-demand when called without a prior `updateFishingTarget`. |
+
+All three methods are **no-ops** when `GoneRogue` is not loaded, so they are
+safe to call before or after the module is initialised.
+
+### QuadStick Adapter Notes
+
+- Poll the Gamepad API at 60 fps in a `requestAnimationFrame` loop.
+- Map joystick/sip-and-puff axes to a grid cursor position (integer tile coords).
+- Call `updateFishingTarget` on every frame the cursor moves; the overlay will
+  automatically throttle redraws via `_showFishingPath`.
+- On the "commit" action (e.g. hard puff), call `commitFishingTarget` with the
+  current cursor tile.
+- Full gamepad polling / axis-to-tile mapping is intentionally out of scope for
+  this module and should live in a separate `gone-rogue-quadstick.js` adapter.

@@ -3314,6 +3314,94 @@ const GoneRogueMobile = (function () {
     _showCardFan();
   }
 
+  // ── Controller hooks (QuadStick / Gamepad API) ────────────────────────────
+  // These three functions expose the fishing drag-preview / commit behaviour to
+  // external controller adapters without synthesising DOM pointer events.
+  // All three are safe to call even when the Gone Rogue module is not loaded.
+
+  /**
+   * Controller hook – begin a fishing gesture anchored at the player's tile.
+   *
+   * Call this when the QuadStick (or other Gamepad-API adapter) starts an aim
+   * gesture.  Resets any in-progress fishing state so a fresh preview can be
+   * built with `updateFishingTarget`.
+   *
+   * No-op when GoneRogue is not loaded.
+   */
+  function beginFishingFromPlayer() {
+    if (typeof GoneRogue === 'undefined') return;
+    _hideFishingPath();
+    _fishingPath = [];
+    _fishingActive = true;
+    _desktopFishingActive = false;
+  }
+
+  /**
+   * Controller hook – update the fishing preview to a new grid tile.
+   *
+   * Computes a fresh A* path from the player to (x, y) and renders the path
+   * overlay.  Call this repeatedly as the controller cursor moves.
+   *
+   * No-op when GoneRogue or GoneRogueMovement are not loaded.
+   *
+   * @param {number} x - Target grid X coordinate
+   * @param {number} y - Target grid Y coordinate
+   */
+  function updateFishingTarget(x, y) {
+    if (typeof GoneRogue === 'undefined' || typeof GoneRogueMovement === 'undefined') return;
+    var player = GoneRogue.getPlayer ? GoneRogue.getPlayer() : null;
+    if (!player) return;
+    var collisionCheck = GoneRogue.isWalkable
+      ? function(cx, cy) { return !GoneRogue.isWalkable(cx, cy); }
+      : null;
+    _fishingPath = GoneRogueMovement.findPath(player.x, player.y, x, y, collisionCheck);
+    _showFishingPath(_fishingPath);
+  }
+
+  /**
+   * Controller hook – commit movement along the current fishing path.
+   *
+   * Hides the path overlay and executes movement via the same path that the
+   * touch/mouse handlers use (`GoneRogue.handleFishingMove` when available,
+   * falling back to tap-to-move with the final destination).  If
+   * `updateFishingTarget` was not called first the path is computed on-demand
+   * from (x, y).
+   *
+   * No-op when GoneRogue is not loaded.
+   *
+   * @param {number} x - Target grid X coordinate
+   * @param {number} y - Target grid Y coordinate
+   */
+  function commitFishingTarget(x, y) {
+    if (typeof GoneRogue === 'undefined') return;
+
+    // Compute path on demand if the caller skipped updateFishingTarget
+    if (_fishingPath.length === 0 && typeof GoneRogueMovement !== 'undefined') {
+      var player = GoneRogue.getPlayer ? GoneRogue.getPlayer() : null;
+      if (player) {
+        var collisionCheck = GoneRogue.isWalkable
+          ? function(cx, cy) { return !GoneRogue.isWalkable(cx, cy); }
+          : null;
+        _fishingPath = GoneRogueMovement.findPath(player.x, player.y, x, y, collisionCheck);
+      }
+    }
+
+    _hideFishingPath();
+    _fishingActive = false;
+    _desktopFishingActive = false;
+
+    if (_fishingPath.length > 0) {
+      if (typeof GoneRogue.handleFishingMove === 'function') {
+        GoneRogue.handleFishingMove(_fishingPath, _runMode);
+      } else {
+        var destination = _fishingPath[_fishingPath.length - 1];
+        _processGridInput(destination.x, destination.y, _runMode);
+      }
+    }
+
+    _fishingPath = [];
+  }
+
   return {
     init: init,
     renderGrid: renderGrid,
@@ -3321,6 +3409,10 @@ const GoneRogueMobile = (function () {
     show: show,
     showFloatingDamage: showFloatingDamage,
     showInventory: showInventory,
-    toggleActionMenu: toggleActionMenu
+    toggleActionMenu: toggleActionMenu,
+    // QuadStick / Gamepad-API controller hooks
+    beginFishingFromPlayer: beginFishingFromPlayer,
+    updateFishingTarget: updateFishingTarget,
+    commitFishingTarget: commitFishingTarget
   };
 })();
