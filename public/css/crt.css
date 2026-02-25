@@ -1699,17 +1699,21 @@ body.amber-mode #scanlines::after {
   .debrief-nav-row {
     border: 0;
     border-radius: 0;
-    padding: 1px 2px;
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-    font-weight: 600;
+    padding: 2px 4px;
+    font-family: var(--font-legible, 'Classic Console Neue', 'Courier New', monospace);
+    font-size: 13px;
+    font-weight: 750;
     color: rgba(191, 255, 227, 0.95);
     background: transparent;
-    touch-action: none; /* drag-to-navigate */
+    touch-action: pan-y; /* allow drag scroll */
     display: flex;
     align-items: center;
     justify-content: space-between;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.03em;
+  }
+
+  @media (min-width: 900px) {
+    .debrief-nav-row { font-size: 15px; }
   }
 
   .debrief-nav-row.highlighted {

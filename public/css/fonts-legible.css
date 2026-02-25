@@ -1,0 +1,5 @@
+/* Legibility-first font stack.
+   If Classic Console Neue is not present/loaded, falls back gracefully. */
+:root {
+  --font-legible: 'Classic Console Neue', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}

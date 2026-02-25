@@ -1,8 +1,10 @@
 /* Pip-boy-ish ASCII debrief row layout */
 .debrief-row-label {
   flex: 0 0 auto;
-  opacity: 0.6;
+  opacity: 0.75;
   color: currentColor;
+  font-family: var(--font-legible, 'Classic Console Neue', 'Courier New', monospace);
+  font-weight: 750;
 }
 
 /* Portrait mobile: hide macro labels for resources + ammo, keep PASSIVES/STATUS */
@@ -14,12 +16,14 @@
 }
 
 .debrief-row-panel {
-  font-family: 'Courier New', monospace;
+  /* Aesthetic mono for panels, but keep it thicker if Classic Console Neue is available */
+  font-family: var(--font-legible, 'Classic Console Neue', 'Courier New', monospace);
   white-space: pre;
   padding: 1px 2px;
   margin: 0;
-  opacity: 0.85;
-  letter-spacing: 0.06em;
+  opacity: 0.9;
+  letter-spacing: 0.04em;
+  font-weight: 650;
 }
 
 /* Per-row color grammar */
@@ -77,6 +81,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: var(--font-legible, 'Classic Console Neue', 'Courier New', monospace);
+  font-weight: 750;
 }
 
 .debrief-feed-content.summary .resource-bar {

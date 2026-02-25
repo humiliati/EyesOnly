@@ -374,6 +374,15 @@ const DebriefFeedController = (function() {
       function abbrKeepFirst(s) {
         s = String(s || '');
         if (!s) return '';
+
+        // Desktop: prefer full labels (instant legibility).
+        try {
+          if (typeof window !== 'undefined' && window.innerWidth >= 900) {
+            return s.toUpperCase();
+          }
+        } catch (e0) {}
+
+        // Compact mode (mobile / narrow): abbreviate.
         var first = s.charAt(0).toUpperCase();
         var rest = s.slice(1).toLowerCase().replace(/[aeiou]/g, '');
         return first + rest;
