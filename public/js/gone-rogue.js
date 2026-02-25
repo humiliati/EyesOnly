@@ -1211,9 +1211,30 @@ const GoneRogue = (function () {
     _loaded = true;
 
     // Show onboarding splash ("YOU'VE GONE ROGUE") for new runs.
-    // The splash is a non-blocking overlay that animates while init runs underneath.
+    // After splash, check if this is a first-time player needing character creation.
+    // Character creation gates floor generation so the player has an identity first.
+    var _needsCharCreation = false;
+    if (!context.resume && typeof CharacterCreation !== 'undefined') {
+      var ps = (typeof TerminalCommandRouter !== 'undefined' && TerminalCommandRouter.getPlayerState)
+        ? TerminalCommandRouter.getPlayerState() : {};
+      _needsCharCreation = !ps.callsign;
+    }
+
     if (!context.resume && typeof OnboardingSplash !== 'undefined' && OnboardingSplash.show) {
-      OnboardingSplash.show(); // Auto-dismisses after ~2.2s
+      OnboardingSplash.show(function onSplashDone() {
+        if (_needsCharCreation) {
+          var tier = 0;
+          try {
+            var ps2 = TerminalCommandRouter.getPlayerState();
+            tier = ps2.completedTiers || 0;
+          } catch (e) {}
+          CharacterCreation.show({
+            tier: tier,
+            onComplete: function () { _beginGameplay(); }
+          });
+        }
+        // If player already has a profile, gameplay was already started below
+      });
     }
 
     // Default behavior: new run when entering rogue via GAMESTATE.requestRogue.
@@ -1400,6 +1421,26 @@ const GoneRogue = (function () {
       lines = ['', 'GONE ROGUE MODE ACTIVATED', ''];
     }
 
+    // If character creation is needed, defer gameplay start until it completes.
+    // The splash onComplete callback will trigger _beginGameplay via CharacterCreation.
+    if (_needsCharCreation) {
+      // Return placeholder lines; actual gameplay starts after char creation
+      return {
+        lines: ['', 'INITIALIZING OPERATIVE REGISTRATION...', ''],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    // Existing player — start gameplay immediately
+    return _beginGameplay();
+  }
+
+  /**
+   * Kicks off floor generation, game loop, and UI after all onboarding is done.
+   * Called immediately for returning players, or after character creation for new ones.
+   */
+  function _beginGameplay() {
     // Apply desired UBER difficulty on run start (before initial floor generation)
     _applyDesiredDifficultyTier('start_run');
 
@@ -1436,7 +1477,7 @@ const GoneRogue = (function () {
       }
 
       return {
-        lines: lines,
+        lines: [],
         prompt: getPrompt(),
         stayActive: true
       };
@@ -1448,7 +1489,7 @@ const GoneRogue = (function () {
     }
 
     return {
-      lines: lines.concat(_renderGrid()),
+      lines: _renderGrid(),
       prompt: getPrompt(),
       stayActive: true
     };

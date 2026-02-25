@@ -1,0 +1,260 @@
+/* ============================================================
+   EYES ONLY - Character Creation Overlay
+   Terminal aesthetic matching onboarding-splash.
+   ============================================================ */
+
+/* ---- Overlay ---- */
+
+.cc-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #0a0a0a;
+  z-index: 5000;
+  animation: cc-fade-in 0.4s ease-out;
+  overflow-y: auto;
+  padding: 2rem 1rem;
+  font-family: 'Courier New', monospace;
+}
+
+@keyframes cc-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.cc-overlay.cc-fade-out {
+  animation: cc-fade-out 0.5s ease-in forwards;
+}
+
+@keyframes cc-fade-out {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-20px); }
+}
+
+/* ---- Header ---- */
+
+.cc-header {
+  font-size: clamp(0.85rem, 2.5vw, 1.1rem);
+  color: #ff1c4a;
+  letter-spacing: 0.15em;
+  text-align: center;
+  margin-bottom: 1.2em;
+  text-shadow: 0 0 20px rgba(255, 28, 74, 0.4);
+}
+
+/* ---- Flavour / labels ---- */
+
+.cc-flavour {
+  font-size: clamp(0.7rem, 1.8vw, 0.85rem);
+  color: #555;
+  text-align: center;
+  white-space: pre-line;
+  line-height: 1.6;
+  margin-bottom: 1.5em;
+}
+
+.cc-label {
+  font-size: clamp(0.7rem, 1.8vw, 0.85rem);
+  color: #888;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.6em;
+}
+
+/* ---- Callsign Input ---- */
+
+.cc-input-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5em;
+}
+
+.cc-prompt {
+  color: #ff1c4a;
+  font-size: clamp(0.9rem, 2vw, 1.1rem);
+  margin-right: 0.2em;
+}
+
+.cc-text-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #333;
+  color: #ccc;
+  font-family: 'Courier New', monospace;
+  font-size: clamp(0.9rem, 2vw, 1.1rem);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  width: 14ch;
+  padding: 0.2em 0;
+  outline: none;
+  caret-color: #ff1c4a;
+}
+
+.cc-text-input:focus {
+  border-bottom-color: #ff1c4a;
+}
+
+/* ---- Validation ---- */
+
+.cc-validation {
+  font-size: 0.75rem;
+  min-height: 1.2em;
+  margin-bottom: 0.5em;
+  color: transparent;
+}
+
+.cc-validation-error {
+  color: #ff4466;
+}
+
+/* ---- Hint ---- */
+
+.cc-hint {
+  font-size: clamp(0.6rem, 1.5vw, 0.7rem);
+  color: #333;
+  letter-spacing: 0.08em;
+  margin-top: 1em;
+}
+
+/* ---- Avatar List ---- */
+
+.cc-avatar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  width: 100%;
+  max-width: 380px;
+  margin-bottom: 1em;
+}
+
+.cc-avatar-card {
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+  padding: 0.6em 0.8em;
+  border: 1px solid #222;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.cc-avatar-card:hover {
+  border-color: #ff1c4a;
+  background: rgba(255, 28, 74, 0.05);
+}
+
+.cc-avatar-card.cc-selected {
+  border-color: #ff1c4a;
+  background: rgba(255, 28, 74, 0.12);
+  box-shadow: 0 0 12px rgba(255, 28, 74, 0.2);
+}
+
+.cc-avatar-card.cc-locked {
+  opacity: 0.35;
+  cursor: not-allowed;
+  border-color: #1a1a1a;
+}
+.cc-avatar-card.cc-locked:hover {
+  border-color: #1a1a1a;
+  background: transparent;
+}
+
+.cc-avatar-emoji {
+  font-size: 1.6rem;
+  min-width: 2em;
+  text-align: center;
+}
+
+.cc-avatar-info {
+  flex: 1;
+}
+
+.cc-avatar-name {
+  font-size: clamp(0.75rem, 1.8vw, 0.9rem);
+  color: #ccc;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+}
+
+.cc-avatar-desc {
+  font-size: clamp(0.6rem, 1.4vw, 0.72rem);
+  color: #555;
+  margin-top: 0.15em;
+}
+
+/* ---- Confirmation ---- */
+
+.cc-confirm-identity {
+  font-size: clamp(1.4rem, 5vw, 2.2rem);
+  color: #ccc;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  text-align: center;
+  margin-bottom: 0.3em;
+}
+
+.cc-confirm-class {
+  font-size: clamp(0.7rem, 1.8vw, 0.85rem);
+  color: #ff1c4a;
+  letter-spacing: 0.2em;
+  text-align: center;
+  margin-bottom: 0.5em;
+}
+
+.cc-confirm-desc {
+  font-size: clamp(0.65rem, 1.6vw, 0.78rem);
+  color: #555;
+  text-align: center;
+  margin-bottom: 2em;
+}
+
+/* ---- Buttons ---- */
+
+.cc-btn-row {
+  display: flex;
+  gap: 1.5em;
+  justify-content: center;
+}
+
+.cc-btn {
+  font-family: 'Courier New', monospace;
+  font-size: clamp(0.75rem, 1.8vw, 0.9rem);
+  letter-spacing: 0.12em;
+  padding: 0.5em 1.2em;
+  cursor: pointer;
+  transition: color 0.15s, text-shadow 0.15s;
+}
+
+.cc-btn-confirm {
+  color: #ff1c4a;
+  text-shadow: 0 0 10px rgba(255, 28, 74, 0.3);
+}
+.cc-btn-confirm:hover {
+  text-shadow: 0 0 20px rgba(255, 28, 74, 0.6);
+}
+
+.cc-btn-back {
+  color: #444;
+}
+.cc-btn-back:hover {
+  color: #888;
+}
+
+/* ---- Deploy message ---- */
+
+.cc-deploy-msg {
+  font-size: clamp(1rem, 3vw, 1.4rem);
+  color: #ccc;
+  text-align: center;
+  white-space: pre-line;
+  line-height: 1.8;
+  animation: cc-deploy-pulse 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes cc-deploy-pulse {
+  from { opacity: 0.6; }
+  to   { opacity: 1; }
+}
