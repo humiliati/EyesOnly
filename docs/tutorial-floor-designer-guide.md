@@ -481,97 +481,59 @@ tutorialPickups: [
 ]
 ```
 
-## Key System Reference
+## Key System Reference (3 Tiers + ID Conventions)
 
-The key system uses three distinct tiers, each with different ID conventions, storage behavior, and consumption rules.
+Tutorial floors rely on a **3-tier key model**. The tiers deliberately use **two different ID systems** so designers can tell at a glance how a key behaves.
 
-### Tier 1: Ammo Keys (Breakable Drops)
+### Quick Table
 
-**ID Pattern:** `KEY_XX2`, `KEY_XX4` (even suffix convention)
-**Definition:** `environmental-synergy.js` → `KEY_ITEMS` object
-**Storage:** Loose inventory (no equip, no header slot)
-**Consumption:** Auto-consumed when walking into a matching lock. Searched loose-first, then persistent.
-**On Death:** Lost
+| Tier | What it unlocks | ID pattern | Lives in | Storage | Consumption |
+|---:|---|---|---|---|---|
+| 1 | Cheap locks / breakable puzzles (ammo-like) | `KEY_0X2`, `KEY_0X4` (even suffix) | `public/js/environmental-synergy.js` → `KEY_ITEMS` | **loose inventory** | auto-consume at lock; **lost on death** |
+| 2 | Doors / gates (real inventory items) | `ITM-01X` (`ITM-010`–`ITM-019`) | `public/data/gone-rogue/items.json` + data registry | **persistent inventory** + **active slot** | consume-on-use via active-item workflow |
+| 3 | Quest turn-ins (NPC rewards) | `ITM-03X` (`ITM-030`–`ITM-039`) | `items.json` + data registry | persistent inventory | **never** consumed by gates; only by NPC turn-in |
 
-These are disposable keys dropped by breakable objects and random chests. They work like ammo — pick up several, spend them at matching locks automatically.
+### Tier 1 — Ammo Keys (environmental / consumable)
 
-```javascript
-// Placing a Tier 1 key inside a breakable
-breakables: [
-  {
-    x: 10, y: 5,
-    emoji: '🏺',
-    name: 'Clay Pot',
-    hp: 1,
-    drops: {
-      item: 'KEY_002',  // RUSTY_KEY ammo — even suffix
-      currency: [2, 5]
-    }
-  }
-]
+- **ID pattern:** `KEY_0X2`, `KEY_0X4` (even suffix convention)
+- **Definition:** `public/js/environmental-synergy.js` → `KEY_ITEMS`
+- **Required fields (in KEY_ITEMS):**
+  - `consumeOnUse: true`
+  - `tier: 1` (added for standardization)
+- **Behavior:** goes to **loose inventory**, auto-consumed at matching locks, **lost on death**.
+
+Example placement inside a breakable:
+
+```js
+breakables: [{
+  x: 10, y: 5,
+  emoji: '🏺',
+  name: 'Clay Pot',
+  hp: 1,
+  drops: { item: 'KEY_002', currency: [2, 5] }
+}]
 ```
 
-**Available Tier 1 keys:** `KEY_002` (Rusty Key), `KEY_004` (Bronze Key)
+### Tier 2 — Gate/Door Keys (inventory items)
 
-### Tier 2: Gate/Door Keys (Inventory Items)
+- **ID pattern:** `ITM-01X` (reserved range `ITM-010`–`ITM-019`)
+- **Definition:** `public/data/gone-rogue/items.json` (loaded by `GoneRogueDataRegistry`)
+- **Required fields (items.json):**
+  - `type: "key"`
+  - `subtype: "gate"` (or `"door"` if you prefer—keep it consistent)
+  - `equipSlot: "active"`
+  - `consumeOnUse: true`
+- **Behavior:** goes to **persistent inventory**, triggers overhead pickup feedback, typically **auto-equips** to active slot for tutorial flow.
 
-**ID Pattern:** `ITM-01X` (items.json registry, range 010–019)
-**Definition:** `items.json` + `environmental-synergy.js` (linked via `registryId`)
-**Storage:** Persistent inventory → auto-equips to header active slot on pickup
-**Consumption:** Player must equip → toggle → interact at gate. Consumed from active slot.
-**On Death:** Persists (carried between floors)
+### Tier 3 — Quest Keys (NPC turn-in)
 
-These are real inventory items for hand-placed Chip's Challenge-style key+gate puzzles. The pickup triggers an overhead pancake-stacker animation and auto-equips to the active item slot.
+- **ID pattern:** `ITM-03X` (reserved range `ITM-030`–`ITM-039`)
+- **Definition:** `items.json` with `type:"key"`, `subtype:"quest"`
+- **Behavior:** goes to **persistent inventory**, **does not** auto-equip, and is **not** consumed by gates.
 
-```javascript
-// Placing a Tier 2 key inside a breakable
-keyBreakable: {
-  x: 34, y: 5,
-  emoji: '🌸',
-  name: 'Flower Patch',
-  hp: 2,
-  drops: {
-    item: { keyType: 'RUSTY_KEY', tier: 2 },
-    currency: [5, 10]
-  }
-}
+Example (quest key in items.json):
 
-// Placing the matching locked gate
-lockedGate: {
-  positions: [
-    { x: 18, y: 8 }, { x: 19, y: 8 },
-    { x: 20, y: 8 }, { x: 21, y: 8 }
-  ],
-  requiresKey: 'RUSTY_KEY',
-  emoji: '🚪',
-  name: 'Locked Gate'
-}
-```
-
-**Available Tier 2 keys:**
-
-| Registry ID | Key Name | Compatible Gates |
-|-------------|----------|-----------------|
-| ITM-010 | Rusty Key | WOODEN_GATE, OLD_DOOR |
-| ITM-011 | Security Keycard | SECURITY_DOOR, LAB_ENTRANCE |
-| ITM-012 | Master Key | All standard locks |
-| ITM-013 | Thumb Drive | TERMINAL_GATE, SERVER_RACK |
-| ITM-014 | Access Card | FLOOR_ELEVATOR, AEROSPACE_DOOR |
-| ITM-015 | Mall Security Tag | MALL_GATE, STORE_DOOR |
-| ITM-016 | Industrial Pass | FACTORY_GATE, HAZARD_DOOR |
-
-### Tier 3: Quest Keys (Loot Table → NPC Turn-In)
-
-**ID Pattern:** `ITM-03X` (items.json registry, range 030–039)
-**Definition:** `items.json` with `subtype: "quest"`
-**Storage:** Persistent inventory (NO auto-equip, shows quest tooltip)
-**Consumption:** Only via NPC interaction turn-in. Never consumed by gates.
-**Reward:** Card upgrade gem or rare card upgrade from NPC
-
-These are late-game optional items that drop from boss loot tables. The player carries them to a specific NPC to receive a powerful reward (inspired by the Diablo 2 Charsi quest / Horadric Cube pattern).
-
-```javascript
-// Quest key in items.json (already registered)
+```json
 {
   "id": "ITM-030",
   "name": "Blacksmith's Hammer",
@@ -579,29 +541,32 @@ These are late-game optional items that drop from boss loot tables. The player c
   "type": "key",
   "subtype": "quest",
   "rarity": "rare",
+  "stackable": false,
+  "maxStack": 1,
+  "equipSlot": "active",
   "effects": [{ "type": "quest_turn_in", "npcTarget": "BLACKSMITH", "rewardType": "card_upgrade" }],
-  "description": "A master blacksmith's hammer. Return it to the forge for a powerful reward.",
+  "description": "Return it to the forge for a powerful reward.",
   "consumeOnUse": true
 }
 ```
 
-On pickup, Tier 3 keys show a red "❗" overhead animation and a quest-style tooltip: "Return this to [NPC name]". They are never consumed by gates — only by NPC turn-in via `_consumeQuestItem()`.
-
-**Available Tier 3 keys:**
-
-| Registry ID | Key Name | NPC Target | Reward |
-|-------------|----------|-----------|--------|
-| ITM-030 | Blacksmith's Hammer | BLACKSMITH | Card upgrade gem |
-| ITM-031 | Rune Fragment (×3) | RUNESMITH | Rare card upgrade |
-
 ### ID Range Reservations
 
-| Range | Purpose |
-|-------|---------|
-| `KEY_XX2`, `KEY_XX4` | Tier 1 ammo keys (even suffix) |
-| `ITM-010` – `ITM-019` | Tier 2 gate/door keys |
-| `ITM-020` – `ITM-029` | Deployable boxes |
-| `ITM-030` – `ITM-039` | Tier 3 quest keys |
+- `KEY_0X2`, `KEY_0X4` → Tier 1 ammo keys (even suffix)
+- `ITM-010`–`ITM-019` → Tier 2 gate/door keys
+- `ITM-020`–`ITM-029` → deployables (boxes)
+- `ITM-030`–`ITM-039` → Tier 3 quest keys
+
+### Implementation Notes (for designers)
+
+- **Pickup branching** is implemented in `public/js/gone-rogue.js`:
+  - Tier 1 → loose inventory
+  - Tier 2 → persistent inventory + auto-equip (tutorial flow)
+  - Tier 3 → persistent inventory + quest tooltip (no auto-equip)
+- **Consumption branching** in `gone-rogue.js`:
+  - Tier 1 → consumed from loose inventory
+  - Tier 2 → consumed from active item slot
+  - Tier 3 → consumed only via NPC turn-in interaction
 
 ## Planned Features
 
