@@ -401,16 +401,15 @@ const DebriefFeedController = (function() {
         return s;
       }
 
-      html += row('hp', abbrKeepFirst('hp'), 'debrief-summary-hp', 'row-hp');
-      html += row('energy', abbrKeepFirst('energy'), 'debrief-summary-energy', 'row-energy');
-      html += row('focus', abbrKeepFirst('focus'), 'debrief-summary-focus', 'row-focus');
-      html += row('ammo', abbrKeepFirst('ammo'), 'debrief-summary-ammo', 'row-ammo');
-      // signal has no label (battery grammar should read itself)
+      // Macro rows
+      html += row('resources', '[' + abbrKeepFirst('resources') + ']', 'debrief-summary-resources', 'row-resources');
+      html += row('ammo', '[' + abbrKeepFirst('ammo') + ']', 'debrief-summary-ammo', 'row-ammo');
+      // signal row header is the battery-ascii pulse; label hidden in CSS
       html += row('signal', '', 'debrief-summary-signal', 'row-signal');
-      html += row('passives', abbrKeepFirst('passives'), 'debrief-summary-passives', 'row-passives');
-      html += row('statuses', abbrKeepFirst('status'), 'debrief-summary-statuses', 'row-statuses');
-      html += row('mok', abbrKeepFirst('mok'), 'debrief-summary-mok', 'row-mok');
-      html += row('api', abbrKeepFirst('api'), 'debrief-summary-api', 'row-api');
+      html += row('passives', '[' + abbrKeepFirst('passives') + ']', 'debrief-summary-passives', 'row-passives');
+      html += row('status', '[' + abbrKeepFirst('status') + ']', 'debrief-summary-status', 'row-status');
+      html += row('mok', '[' + abbrKeepFirst('mok') + ']', 'debrief-summary-mok', 'row-mok');
+      html += row('api', '[' + abbrKeepFirst('api') + ']', 'debrief-summary-api', 'row-api');
 
       html +=   '</div>';
       html += '</div>';
@@ -420,7 +419,7 @@ const DebriefFeedController = (function() {
 
       // Sticky row expansion/highlight state
       if (!_rowExpanded) _rowExpanded = {};
-      if (!_highlightedRow) _highlightedRow = 'hp';
+      if (!_highlightedRow) _highlightedRow = 'resources';
 
       function _setPanelVisible(rowId, on) {
         var panel = document.getElementById('debrief-panel-' + rowId);
@@ -463,23 +462,68 @@ const DebriefFeedController = (function() {
         return {};
       }
 
-      // Summaries
+      // Summaries + panels
       try {
         var st = _getState();
-        var hpEl = document.getElementById('debrief-summary-hp');
-        if (hpEl) hpEl.textContent = _renderBarLine('hp', st.hp, st.maxHp, 6);
 
-        var enEl = document.getElementById('debrief-summary-energy');
-        if (enEl) enEl.textContent = _renderBarLine('enrgy', st.energy, st.maxEnergy, 6);
+        // Resources macro summary: show HP only (critical)
+        var rSum = document.getElementById('debrief-summary-resources');
+        if (rSum) rSum.textContent = _renderBarLine('hp', st.hp, st.maxHp, 6);
 
-        var fcEl = document.getElementById('debrief-summary-focus');
-        if (fcEl) fcEl.textContent = _renderBarLine('fcs', st.focus, st.maxFocus, 6);
+        // Resources panel: HP + Energy + Focus lines (colored via spans)
+        var rPanel = document.getElementById('debrief-panel-resources');
+        if (rPanel && _rowExpanded.resources) {
+          var hpLine = '|_HP' + String(st.hp) + '/' + String(st.maxHp) + '[' + _renderBarLine('', st.hp, st.maxHp, 6).split('[')[1];
+          // extract bar portion from helper for consistency
+          var hpBar = _renderBarLine('', st.hp, st.maxHp, 6);
+          hpBar = hpBar.slice(hpBar.indexOf('['));
+          var enBar = _renderBarLine('', st.energy, st.maxEnergy, 6);
+          enBar = enBar.slice(enBar.indexOf('['));
+          var fcBar = _renderBarLine('', st.focus, st.maxFocus, 6);
+          fcBar = fcBar.slice(fcBar.indexOf('['));
 
+          rPanel.innerHTML =
+            '<div class="debrief-line hp">|_HP' + st.hp + '/' + st.maxHp + hpBar + '</div>' +
+            '<div class="debrief-line energy">|_ENRGY' + st.energy + '/' + st.maxEnergy + enBar + '</div>' +
+            '<div class="debrief-line focus">|_FCS' + st.focus + '/' + st.maxFocus + fcBar + '</div>';
+        } else if (rPanel) {
+          rPanel.textContent = '';
+        }
+
+        // Ammo macro summary
         var amEl = document.getElementById('debrief-summary-ammo');
         if (amEl) {
           var ammo = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo) ? GAMESTATE.getAmmo() : (st.ammo || 0);
-          var maxA = st.maxAmmo || 6;
+          var maxA = st.maxAmmo || 20;
           amEl.textContent = _renderBarLine('ammo', ammo, maxA, 6);
+        }
+
+        // Ammo panel: keys by tier bucket
+        var aPanel = document.getElementById('debrief-panel-ammo');
+        if (aPanel && _rowExpanded.ammo) {
+          var linesA = [];
+          var ammo2 = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo) ? GAMESTATE.getAmmo() : (st.ammo || 0);
+          var maxA2 = st.maxAmmo || 20;
+          linesA.push('|_Ammo' + ammo2 + '/' + maxA2);
+
+          var kc = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getKeyCounts) ? GAMESTATE.getKeyCounts() : null;
+          // Designer-named sublines: show only if >0
+          function addKeyLine(label, bucket, keyType) {
+            try {
+              var n = kc && kc[bucket] && kc[bucket][keyType] ? kc[bucket][keyType] : 0;
+              if (n > 0) linesA.push('|_' + label + n);
+            } catch (e0) {}
+          }
+          // Use your tier buckets (ammo/gate/quest). Labels are spec-level.
+          // If keyTypes differ, counts still show when present.
+          addKeyLine('ChstKyLq', 'ammo', 'CHEST_KEY_LQ');
+          addKeyLine('ChstKyHq', 'ammo', 'CHEST_KEY_HQ');
+          addKeyLine('TagKy1', 'gate', 'TAG_INV_1');
+          addKeyLine('TagKy2', 'gate', 'TAG_INV_2');
+
+          aPanel.textContent = linesA.join('\n');
+        } else if (aPanel) {
+          aPanel.textContent = '';
         }
       } catch (eS1) {}
 
@@ -495,15 +539,15 @@ const DebriefFeedController = (function() {
           var pPanel = document.getElementById('debrief-panel-passives');
           if (pPanel && _rowExpanded.passives) {
             var lines = [];
-            for (var j = 0; j < (eq || []).length; j++) lines.push('+ ' + String(eq[j]));
+            for (var j = 0; j < (eq || []).length; j++) lines.push('|_+' + String(eq[j]));
             pPanel.textContent = lines.length ? lines.join('\n') : '—';
-          }
+          } else if (pPanel) pPanel.textContent = '';
         }
       } catch (eP1) {}
 
-      // Statuses summary + panel (from rogue player statusEffects)
+      // Status macro (from rogue player statusEffects)
       try {
-        var sEl = document.getElementById('debrief-summary-statuses');
+        var sEl = document.getElementById('debrief-summary-status');
         var player = _getRoguePlayer();
         var se = player && player.statusEffects ? player.statusEffects : {};
         var keys = [];
@@ -513,11 +557,11 @@ const DebriefFeedController = (function() {
           for (var ii = 0; ii < Math.min(6, keys.length); ii++) sym2 += '!';
           sEl.textContent = sym2 || '—';
         }
-        var sPanel = document.getElementById('debrief-panel-statuses');
-        if (sPanel && _rowExpanded.statuses) {
-          var lines2 = keys.map(function(n) { return '! ' + String(n); });
+        var sPanel = document.getElementById('debrief-panel-status');
+        if (sPanel && _rowExpanded.status) {
+          var lines2 = keys.map(function(n) { return '|_!' + String(n); });
           sPanel.textContent = lines2.length ? lines2.join('\n') : '—';
-        }
+        } else if (sPanel) sPanel.textContent = '';
       } catch (eST0) {}
 
       // MOK row: color driven by kernel quality signal
@@ -638,7 +682,7 @@ const DebriefFeedController = (function() {
 
       // Panels visibility
       try {
-        var ids = ['hp','energy','focus','ammo','signal','passives','statuses','mok','api'];
+        var ids = ['resources','ammo','signal','passives','status','mok','api'];
         for (var ii = 0; ii < ids.length; ii++) {
           _setPanelVisible(ids[ii], !!_rowExpanded[ids[ii]]);
         }

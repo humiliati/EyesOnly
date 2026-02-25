@@ -15,14 +15,19 @@
 }
 
 /* Per-row color grammar */
-.debrief-nav-row.row-hp { color: rgba(255, 70, 70, 0.95); }
-.debrief-nav-row.row-energy { color: rgba(255, 225, 120, 0.92); }
-.debrief-nav-row.row-focus { color: rgba(140, 170, 255, 0.92); }
+.debrief-nav-row.row-resources { color: rgba(191, 255, 227, 0.82); }
 .debrief-nav-row.row-ammo { color: rgba(255, 120, 255, 0.92); }
 .debrief-nav-row.row-signal { color: rgba(120, 255, 255, 0.95); }
 .debrief-nav-row.row-passives { color: rgba(191, 255, 227, 0.85); }
-.debrief-nav-row.row-statuses { color: rgba(255, 160, 100, 0.90); }
+.debrief-nav-row.row-status { color: rgba(255, 160, 100, 0.90); }
+.debrief-nav-row.row-mok { color: rgba(191, 255, 227, 0.80); }
 .debrief-nav-row.row-api { color: rgba(191, 255, 227, 0.75); }
+
+/* colored sublines inside resources */
+.debrief-row-panel .debrief-line { padding: 0; margin: 0; }
+.debrief-row-panel .debrief-line.hp { color: rgba(255, 70, 70, 0.95); }
+.debrief-row-panel .debrief-line.energy { color: rgba(255, 225, 120, 0.92); }
+.debrief-row-panel .debrief-line.focus { color: rgba(140, 170, 255, 0.92); }
 
 .debrief-row-summary {
   flex: 1 1 auto;
