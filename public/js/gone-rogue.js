@@ -2460,7 +2460,8 @@ const GoneRogue = (function () {
           type: 'locked_gate',
           requiredKey: req,
           emoji: (floorData.lockedGate.emoji || '🚪'),
-          name: (floorData.lockedGate.name || 'Locked Door')
+          name: (floorData.lockedGate.name || 'Locked Door'),
+          positions: floorData.lockedGate.positions // multi-tile reference for poof effect
         };
       });
     }
@@ -5505,6 +5506,34 @@ _incrementPityTimers();
       } else {
         // Non-card items go to loose inventory
         result = GAMESTATE.addToLoose(nonCardPayload);
+
+        // KEY PICKUP ENHANCEMENTS: overhead stacker animation + auto-equip to active slot
+        if (item.type === 'key' && result.success) {
+          // 1) Overhead pancake-stacker animation (key floats above player head)
+          try {
+            if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+              OverheadAnimator.showGenericExpression(_player.x, _player.y, item.emoji || '🔑', 1200, '#FFD700');
+            }
+            if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
+              PlayerStackManager.addPancake(item.emoji || '🔑');
+            } else if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+              PancakeStack.addPancake(item.emoji || '🔑');
+            }
+          } catch (eAnim) { /* animation is cosmetic, don't break pickup */ }
+
+          // 2) Auto-equip key to header active item slot (Chip's Challenge feel)
+          try {
+            if (GAMESTATE.setActiveItem) {
+              GAMESTATE.setActiveItem(nonCardPayload);
+              if (typeof UIControls !== 'undefined' && UIControls.setActiveItem) {
+                UIControls.setActiveItem(nonCardPayload);
+              }
+              if (typeof TooltipSystem !== 'undefined') {
+                TooltipSystem.show('🔑 KEY EQUIPPED — Tap header icon near the gate!', 2500);
+              }
+            }
+          } catch (eEquip) { /* equip is secondary, don't break pickup */ }
+        }
       }
 
       if (!result.success) {
@@ -5864,6 +5893,38 @@ _incrementPityTimers();
     _grid[gy][gx] = TILES.EMPTY;
     delete _tileMetadata[gx + ',' + gy];
     _rebuildWallCache();
+
+    // POOF EFFECT: Chip's Challenge style gate vanish (💨)
+    try {
+      var poofEffect = { x: gx, y: gy, type: 'poof', time: Date.now(), char: '💨' };
+      _impactEffects.push(poofEffect);
+      setTimeout(function() {
+        var idx = _impactEffects.indexOf(poofEffect);
+        if (idx > -1) _impactEffects.splice(idx, 1);
+      }, 400);
+      // Also show overhead expression for extra oomph
+      if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+        OverheadAnimator.showGenericExpression(gx, gy, '💨', 800, '#AAAAAA');
+      }
+    } catch (ePoof) { /* visual only, don't break unlock */ }
+
+    // If this was a multi-tile gate (lockedGate with positions array), poof ALL positions
+    try {
+      if (meta.positions && Array.isArray(meta.positions)) {
+        meta.positions.forEach(function(pos) {
+          if (pos.x === gx && pos.y === gy) return; // Already poofed above
+          _grid[pos.y][pos.x] = TILES.EMPTY;
+          delete _tileMetadata[pos.x + ',' + pos.y];
+          var mEffect = { x: pos.x, y: pos.y, type: 'poof', time: Date.now(), char: '💨' };
+          _impactEffects.push(mEffect);
+          setTimeout(function() {
+            var mi = _impactEffects.indexOf(mEffect);
+            if (mi > -1) _impactEffects.splice(mi, 1);
+          }, 400);
+        });
+        _rebuildWallCache();
+      }
+    } catch (eMulti) { /* visual only */ }
 
     if (typeof TooltipSystem !== 'undefined') {
       TooltipSystem.show((meta.emoji || '🚪') + ' UNLOCKED', 1500);

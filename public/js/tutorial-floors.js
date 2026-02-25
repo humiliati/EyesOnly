@@ -201,151 +201,138 @@ var TutorialFloors = (function() {
   };
 
   /**
-   * Floor 2: The Key Quest
+   * Floor 2: The Gate — Chip’s Challenge-style key+gate mechanic
    *
-   * Teaching objective: Items can unlock barriers. NPCs point you in directions.
+   * Teaching objectives:
+   * - Items can be equipped to the active item slot (header icon)
+   * - Toggling the active item arms it (like 3D printer workflow)
+   * - Armed key + interact on gate = gate poofs away
+   * - Breakables may hide important items
    *
-   * Layout:
-   * - Two village clusters for exploration
-   * - NPCs with directional indicators
-   * - Hidden key in breakable object
-   * - Locked gate requiring key
+   * Layout (hourglass shape):
+   * - Wide top half: player spawn (back door) + key behind breakables on right
+   * - Narrow bottleneck at center: locked gate (🚧) blocks passage
+   * - Wide bottom half: forward exit (floor 3 door) visible through gate
+   * - Both doors always visible from spawn — forward door just unreachable
+   *
+   * Template fills entire 20×40 grid → templateFillsGrid=true → no anchor shifting.
    */
   var FLOOR_2_LAYOUT = {
     floorNumber: 2,
-    name: 'The Key Quest',
-    description: 'Find the key to unlock the southern gate.',
+    name: ‘The Gate’,
+    description: ‘Find the key, equip it, and unlock the gate to proceed.’,
 
+    // 20 rows × 40 cols — fills grid exactly, no shifting applied
+    // ‘#’ = wall, ‘.’ = floor, ‘P’ = player spawn, ‘E’ = exit
+    // Hourglass: wide top, pinch at rows 9-10, wide bottom
     template: [
-      '########################################',
-      '#......................................#',
-      '#...🏠.....🏠..........🏠.....🏠.......#',
-      '#...🏠.....⛪..........🏠.....🏪.......#',
-      '#......................................#',
-      '#......................................#',
-      '#......................................#',
-      '#....................P.................#',
-      '#......................................#',
-      '#......................................#',
-      '#......................................#',
-      '#......................................#',
-      '#......................................#',
-      '#.................LLL..................#',
-      '#......................................#',
-      '#......................................#',
-      '#...................E..................#',
-      '#......................................#',
-      '########################################'
+      ‘########################################’,
+      ‘#......................................#’,
+      ‘#..P...................................#’,
+      ‘#......................................#’,
+      ‘#......................................#’,
+      ‘#......................................#’,
+      ‘#......................................#’,
+      ‘##########....................##########’,
+      ‘##################LLLL##################’,
+      ‘##########....................##########’,
+      ‘#####..............................#####’,
+      ‘#......................................#’,
+      ‘#......................................#’,
+      ‘#......................................#’,
+      ‘#......................................#’,
+      ‘#......................................#’,
+      ‘#......................................#’,
+      ‘#......................................#’,
+      ‘#...................E..................#’,
+      ‘########################################’
     ],
 
-    // Player spawns at the back/entry door near the arrival point
-    player: { x: 20, y: 15 },
-    // Forward exit should be elsewhere (seek it out)
-    exit: { x: 34, y: 17 },
+    // Player spawns upper-left — sees both doors and the gate bottleneck
+    player: { x: 3, y: 2 },
+    // Forward exit at bottom-center — visible through the hourglass but unreachable
+    exit: { x: 20, y: 18 },
 
-    buildings: [
-      { x: 4, y: 2, emoji: '🏠', name: 'Village House' },
-      { x: 4, y: 3, emoji: '🏠', name: 'Village House' },
-      { x: 8, y: 2, emoji: '🏠', name: 'Village House' },
-      { x: 8, y: 3, emoji: '⛪', name: 'Village Chapel' },
-      { x: 23, y: 2, emoji: '🏠', name: 'Village House' },
-      { x: 23, y: 3, emoji: '🏠', name: 'Village House' },
-      { x: 28, y: 2, emoji: '🏠', name: 'Village House' },
-      { x: 28, y: 3, emoji: '🏪', name: 'Village Shop' }
-    ],
+    // No buildings — open field design so both doors + gate are clearly visible
+    buildings: [],
 
     decorations: [
-      { x: 6, y: 5, emoji: '📬', name: 'Mailbox' },
-      { x: 12, y: 6, emoji: '⛲', name: 'Fountain' },
-      { x: 25, y: 5, emoji: '🪧', name: 'Sign Post' },
-      { x: 32, y: 6, emoji: '🪑', name: 'Bench' }
+      // Breadcrumb trail toward the key alcove (right side)
+      { x: 15, y: 3, emoji: ‘🪧’, name: ‘Hint Sign’ },
+      { x: 25, y: 4, emoji: ‘🏮’, name: ‘Lantern’ }
     ],
 
-    // NPCs with directional indicators (and a defeatable gate example)
+    // Single helpful NPC — points player toward key
     npcs: [
       {
-        x: 8, y: 5,
-        emoji: '👱',
-        name: 'Villager',
-        direction: 'east',
+        x: 8, y: 4,
+        emoji: ‘👵’,
+        name: ‘Elder’,
+        direction: ‘east’,
         dialogues: [
-          'I think I saw something shiny near the eastern bushes...',
-          'Keys open gates, you know.'
+          ‘That gate blocks the only way through...’,
+          ‘I heard something shiny fell behind those bushes to the east.’,
+          ‘Try equipping it from your items — tap the icon in your header!’
         ],
-        pointsAt: { x: 32, y: 10 } // Points toward key location
-      },
-      {
-        x: 25, y: 7,
-        emoji: '👵',
-        name: 'Elder',
-        direction: 'south',
-        dialogues: [
-          'The gate ahead is locked.',
-          'Maybe try looking around for a key?'
-        ]
-      },
-      {
-        // Defeatable NPC gate: despawns on victory (demonstrates the variant)
-        id: 'TUTORIAL-DEFEATABLE-GATE-01',
-        x: 20,
-        y: 15,
-        emoji: '🧑‍✈️',
-        name: 'Checkpoint Guard',
-        direction: 'south',
-        gate: {
-          type: 'defeatable',
-          warningDistance: 4,
-          triggerDistance: 2,
-          width: 1
-        },
-        dialogues: [
-          '🧑‍✈️ Not until you prove it. This checkpoint is live.',
-          '🧑‍✈️ Win, and I’m gone. Lose, and you’re reset.'
-        ],
-        reward: { currency: 20 }
+        pointsAt: { x: 34, y: 5 }
       }
     ],
 
-    // Locked gate (requires key)
+    // Locked gate at the hourglass bottleneck — 4 tiles wide, fully blocks the passage
     lockedGate: {
       positions: [
-        { x: 18, y: 13 },
-        { x: 19, y: 13 },
-        { x: 20, y: 13 }
+        { x: 18, y: 8 },
+        { x: 19, y: 8 },
+        { x: 20, y: 8 },
+        { x: 21, y: 8 }
       ],
-      emoji: '🔐',
-      name: 'Locked Gate',
-      requiresKey: 'rusty_key',
-      message: 'The gate is locked. You need a key.'
+      emoji: ‘🚧’,
+      name: ‘Locked Gate’,
+      requiresKey: ‘rusty_key’,
+      message: ‘A sturdy gate blocks the passage. You need a key to open it.’
     },
 
-    // Key spawn location (in breakable)
+    // Key hidden behind breakable bushes on the right side of the top half
     keyBreakable: {
-      x: 32,
-      y: 10,
-      emoji: '🌸',
-      name: 'Flower Patch',
+      x: 34,
+      y: 5,
+      emoji: ‘🌸’,
+      name: ‘Glinting Flower Patch’,
       hp: 2,
       drops: {
-        item: 'rusty_key',
+        item: ‘rusty_key’,
         currency: [5, 10]
       },
-      message: 'A pretty flower patch. Something glints inside...'
+      message: ‘Something metallic glints among the petals...’
     },
 
+    // Breakable bushes forming a small wall guarding the key
     breakables: [
-      { x: 10, y: 9, emoji: '🌿', name: 'Bush', hp: 1, drops: { currency: [3, 5], cards: 0.3 } },
-      { x: 15, y: 11, emoji: '🪵', name: 'Hollow Log', hp: 2, drops: { currency: [4, 8], cards: 0.3 } },
-      { x: 28, y: 12, emoji: '📦', name: 'Wooden Crate', hp: 2, drops: { currency: [5, 10], cards: 0.4 } },
-      { x: 12, y: 14, emoji: '🧺', name: 'Picnic Basket', hp: 2, drops: { currency: [5, 10], cards: 0.5 } }
+      { x: 32, y: 4, emoji: ‘🌿’, name: ‘Thick Bush’, hp: 1, drops: { currency: [2, 4] } },
+      { x: 33, y: 4, emoji: ‘🌿’, name: ‘Thick Bush’, hp: 1, drops: { currency: [2, 4] } },
+      { x: 34, y: 4, emoji: ‘🌿’, name: ‘Thick Bush’, hp: 1, drops: { currency: [2, 4] } },
+      { x: 35, y: 4, emoji: ‘🌿’, name: ‘Thick Bush’, hp: 1, drops: { currency: [2, 4] } },
+      { x: 32, y: 5, emoji: ‘🌿’, name: ‘Thick Bush’, hp: 1, drops: { currency: [2, 4] } },
+      { x: 35, y: 5, emoji: ‘🌿’, name: ‘Thick Bush’, hp: 1, drops: { currency: [2, 4] } },
+      // A couple bonus breakables near spawn for early currency
+      { x: 10, y: 6, emoji: ‘📦’, name: ‘Wooden Crate’, hp: 2, drops: { currency: [5, 10], cards: 0.3 } },
+      { x: 18, y: 7, emoji: ‘🧺’, name: ‘Picnic Basket’, hp: 2, drops: { currency: [5, 10], cards: 0.4 } }
+    ],
+
+    // Breadcrumb pickups leading player toward the key alcove
+    breadcrumbPickups: [
+      { x: 12, y: 3, amount: 3 },
+      { x: 20, y: 3, amount: 3 },
+      { x: 28, y: 4, amount: 5 },
+      { x: 30, y: 5, amount: 5 }
     ],
 
     enemies: [],
 
     border: {
       thickness: 1,
-      style: 'natural',
-      tiles: ['🌳', '🌲', '🪨', '🌿']
+      style: ‘natural’,
+      tiles: [‘🌳’, ‘🌲’, ‘🪨’, ‘🌿’]
     }
   };
 
