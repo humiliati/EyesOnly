@@ -144,6 +144,15 @@
       if (activeDisplay) {
         activeDisplay.innerHTML = '<span class="item-emoji">' + (item.emoji || '📦') + '</span>';
         activeDisplay.classList.add('has-item');
+      // Equip flash to help the player see where the equipped key went
+      try {
+        activeDisplay.classList.remove('equip-flash');
+        void activeDisplay.offsetWidth;
+        activeDisplay.classList.add('equip-flash');
+        setTimeout(function() {
+          try { activeDisplay.classList.remove('equip-flash'); } catch (e0) {}
+        }, 420);
+      } catch (e1) {}
       }
 
       // Update player lighting if this is a lighting item

@@ -13,7 +13,8 @@ var RogueSidebar = (function() {
 
   var PREF_KEY = 'EYESONLY_ROGUE_SIDEBAR_PREFS_V1';
   var _prefs = {
-    view: 'cards', // 'items' | 'cards'
+    // New-player UX: default to items view (empty slots prime item collection)
+    view: 'items', // 'items' | 'cards'
     itemOffset: 0,
     cardOffset: 0
   };
@@ -35,6 +36,7 @@ var RogueSidebar = (function() {
   }
 
   var _lastSignature = null;
+  var _lastItemsLen = null;
 
   function init() {
     if (_container) return;
@@ -213,13 +215,31 @@ var RogueSidebar = (function() {
     }
     _lastSignature = signature;
 
+    // Highlight the container when items list grows (e.g., first key pickup)
+    try {
+      if (view === 'items') {
+        var curLen = items.length;
+        if (_lastItemsLen === null) _lastItemsLen = curLen;
+        if (curLen > _lastItemsLen) {
+          _container.classList.remove('rs-flash');
+          void _container.offsetWidth;
+          _container.classList.add('rs-flash');
+          setTimeout(function() {
+            try { _container.classList.remove('rs-flash'); } catch (e0) {}
+          }, 420);
+        }
+        _lastItemsLen = curLen;
+      }
+    } catch (eF0) {}
+
     _container.innerHTML = '';
 
     // Slot 1: toggle view
     var toggleBtn = document.createElement('button');
     toggleBtn.type = 'button';
     toggleBtn.className = 'rogue-sidebar-btn rogue-sidebar-toggle';
-    toggleBtn.textContent = (view === 'items') ? 'Cards →' : 'Items →';
+    // Swapper copy: items view should clearly indicate "back to cards".
+    toggleBtn.textContent = (view === 'items') ? '← Cards' : 'Items →';
     toggleBtn.addEventListener('click', function() {
       _prefs.view = (view === 'items') ? 'cards' : 'items';
       _savePrefs();
@@ -239,7 +259,7 @@ var RogueSidebar = (function() {
 
       if (!ref || !ref.id) {
         btn.classList.add('empty');
-        btn.textContent = '—';
+        btn.textContent = '[     ]';
       } else {
         if (view === 'items') {
           var item = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) ? GoneRogueDataRegistry.getItem(ref.id) : null;

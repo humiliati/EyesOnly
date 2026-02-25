@@ -252,7 +252,8 @@
           "desk": {
             "hp": 3,
             "drops": ["supplies"],
-            "item_chance": 0.35
+            "item_chance": 0.35,
+            "loot_table": "deploy_box_loot"
           }
         }
       },
@@ -349,6 +350,12 @@
         "weight": 20,
         "quantity": 1
       }
+    ],
+    "deploy_box_loot": [
+      { "registryId": "ITM-020", "emoji": "📦", "name": "Cardboard Box", "weight": 52, "quantity": 1 },
+      { "registryId": "ITM-021", "emoji": "📦", "name": "Reinforced Box", "weight": 24, "quantity": 1 },
+      { "registryId": "ITM-022", "emoji": "📦", "name": "Tactical Box", "weight": 16, "quantity": 1 },
+      { "registryId": "ITM-023", "emoji": "📦", "name": "Refrigerator Box", "weight": 8, "quantity": 1 }
     ],
     "food_loot": [
       {

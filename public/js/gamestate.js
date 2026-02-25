@@ -81,48 +81,30 @@ const GAMESTATE = (function () {
    * Ensure player has default persistent inventory items on first run
    */
   function _ensureDefaultPersistentInventory() {
-    // If persistent inventory is empty, add the 3 core items (ref model)
-    if (_state.inventoryPersistent.length === 0) {
-      _state.inventoryPersistent = [
-        { id: 'ITM-002', qty: 1 },
-        { id: 'ITM-003', qty: 1 },
-        { id: 'ITM-004', qty: 1 }
-      ];
-      _saveState();
-    }
+    // New-player bootstrap: start with EMPTY persistent inventory.
+    // Items view should be primed for discovery (empty slots), not pre-filled placeholders.
+    if (!Array.isArray(_state.inventoryPersistent)) _state.inventoryPersistent = [];
 
-    // Seed deployable boxes ONCE for early testing (remove/adjust later)
-    if (!_state._starterBoxesSeeded) {
-      var starters = [
-        { id: 'ITM-020', qty: 2 },
-        { id: 'ITM-021', qty: 1 },
-        { id: 'ITM-022', qty: 1 },
-        { id: 'ITM-023', qty: 1 }
-      ];
-
-      for (var i = 0; i < starters.length; i++) {
-        var s = starters[i];
-        var existing = _state.inventoryPersistent.find(function(it) { return it && it.id === s.id; });
-        if (existing) existing.qty = (existing.qty || 0) + s.qty;
-        else _state.inventoryPersistent.push({ id: s.id, qty: s.qty, meta: null });
-      }
-
-      _state._starterBoxesSeeded = true;
-      _saveState();
-    }
-
-    // If persistent cards are empty, seed a tiny starter pack ONCE (for testing/new runs)
-    if ((!_state.persistentCards || _state.persistentCards.length === 0) && !_state._starterCardsSeeded) {
+    // If persistent cards are empty, seed a minimal starter hand ONCE:
+    // - one ammo spender
+    // - one disposable/utility
+    // - one resource manager
+    if ((!_state.persistentCards || _state.persistentCards.length === 0) && !_state._starterCardsSeededV2) {
       _state.persistentCards = [
-        { id: 'ACT-001', qty: 2 },
-        { id: 'ACT-002', qty: 5 }
+        { id: 'ACT-002', qty: 1 }, // Basic Shot (ammo spender)
+        { id: 'ACT-999', qty: 1 }, // Cardboard Box (disposable/utility)
+        { id: 'ACT-001', qty: 1 }  // Field Dressing (resource manager)
       ];
+      _state._starterCardsSeededV2 = true;
+      // Also mark old migration flags so we don't grant extra Basic Shot stacks.
       _state._starterCardsSeeded = true;
+      _state._grantAct002Done = true;
       _saveState();
     }
 
-    // Migration grant: ensure ACT-002 exists for older saves (once)
-    if (!_state._grantAct002Done) {
+    // Migration grant (legacy): ensure ACT-002 exists for older saves (once)
+    // Do NOT run for V2 starter pack.
+    if (!_state._starterCardsSeededV2 && !_state._grantAct002Done) {
       if (!Array.isArray(_state.persistentCards)) _state.persistentCards = [];
       var has002 = _state.persistentCards.some(function(r) { return r && r.id === 'ACT-002' && (r.qty || 0) > 0; });
       if (!has002) {
