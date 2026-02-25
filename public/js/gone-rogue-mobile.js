@@ -884,6 +884,14 @@ const GoneRogueMobile = (function () {
       effects: effects,
       player: player ? (function() {
         var playerChar = (typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent || '')) ? '@' : '🥷';
+
+        // Use selected avatar emoji from character creation (if available)
+        if (typeof TerminalCommandRouter !== 'undefined' && TerminalCommandRouter.getPlayerState) {
+          var _ps = TerminalCommandRouter.getPlayerState();
+          if (_ps.avatarEmoji) playerChar = _ps.avatarEmoji;
+        }
+
+        // Passive items can override avatar (highest priority — e.g. costume items)
         if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.getPlayerAvatarOverride) {
           var avatarOverride = PassiveItemsSystem.getPlayerAvatarOverride();
           if (avatarOverride && (typeof avatarOverride === 'string')) {
@@ -1049,9 +1057,17 @@ const GoneRogueMobile = (function () {
 
         if (player && player.x === x && player.y === y) {
           var basePlayerChar = (typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent || '')) ? '@' : '🥷';
+
+          // Use selected avatar emoji from character creation
+          if (typeof TerminalCommandRouter !== 'undefined' && TerminalCommandRouter.getPlayerState) {
+            var _gps = TerminalCommandRouter.getPlayerState();
+            if (_gps.avatarEmoji) basePlayerChar = _gps.avatarEmoji;
+          }
+
           cell.textContent = basePlayerChar;
           cell.classList.add('cell-player');
 
+          // Passive items override avatar (highest priority)
           if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.getPlayerAvatarOverride) {
             try {
               var av = PassiveItemsSystem.getPlayerAvatarOverride();

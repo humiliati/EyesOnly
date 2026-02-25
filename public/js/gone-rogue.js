@@ -1223,6 +1223,7 @@ const GoneRogue = (function () {
     if (!context.resume && typeof OnboardingSplash !== 'undefined' && OnboardingSplash.show) {
       OnboardingSplash.show(function onSplashDone() {
         if (_needsCharCreation) {
+          // New player → character creation before first run
           var tier = 0;
           try {
             var ps2 = TerminalCommandRouter.getPlayerState();
@@ -1232,8 +1233,16 @@ const GoneRogue = (function () {
             tier: tier,
             onComplete: function () { _beginGameplay(); }
           });
+        } else if (typeof WelcomeBack !== 'undefined' && WelcomeBack.show) {
+          // Returning player → welcome-back stats recap, then gameplay
+          var psWb = (typeof TerminalCommandRouter !== 'undefined' && TerminalCommandRouter.getPlayerState)
+            ? TerminalCommandRouter.getPlayerState() : {};
+          WelcomeBack.show({
+            playerState: psWb,
+            onComplete: function () { _beginGameplay(); }
+          });
         }
-        // If player already has a profile, gameplay was already started below
+        // If neither module is available, gameplay was already started below
       });
     }
 
@@ -1421,18 +1430,20 @@ const GoneRogue = (function () {
       lines = ['', 'GONE ROGUE MODE ACTIVATED', ''];
     }
 
-    // If character creation is needed, defer gameplay start until it completes.
-    // The splash onComplete callback will trigger _beginGameplay via CharacterCreation.
-    if (_needsCharCreation) {
-      // Return placeholder lines; actual gameplay starts after char creation
+    // If onboarding screens are active (char creation or welcome-back),
+    // defer gameplay start — the splash onComplete chain handles it.
+    var _hasSplashChain = !context.resume && typeof OnboardingSplash !== 'undefined' && OnboardingSplash.show &&
+      (_needsCharCreation || (typeof WelcomeBack !== 'undefined' && WelcomeBack.show));
+
+    if (_hasSplashChain) {
       return {
-        lines: ['', 'INITIALIZING OPERATIVE REGISTRATION...', ''],
+        lines: ['', 'INITIALIZING...', ''],
         prompt: getPrompt(),
         stayActive: true
       };
     }
 
-    // Existing player — start gameplay immediately
+    // No onboarding overlay — start gameplay immediately (e.g. resume or no splash modules)
     return _beginGameplay();
   }
 
@@ -7067,12 +7078,19 @@ _incrementPityTimers();
       mode = 'agent';
     }
 
-    // Get display name
+    // Get display name — prefer account username, fall back to local callsign
     var displayName = 'Anonymous';
     if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getAccount === 'function') {
       var account = GAMESTATE.getAccount();
       if (account && account.username) {
         displayName = account.username;
+      }
+    }
+    // Fallback: use local player callsign from TerminalCommandRouter
+    if (displayName === 'Anonymous' && typeof TerminalCommandRouter !== 'undefined' && TerminalCommandRouter.getPlayerState) {
+      var _pState = TerminalCommandRouter.getPlayerState();
+      if (_pState.callsign) {
+        displayName = _pState.callsign;
       }
     }
 
@@ -7166,6 +7184,11 @@ _incrementPityTimers();
     // Submit highscore on death
     if (typeof HighscoreState !== 'undefined') {
       _submitHighscore();
+    }
+
+    // Record run in player profile (death = not success)
+    if (typeof TerminalCommandRouter !== 'undefined' && TerminalCommandRouter.recordRun) {
+      TerminalCommandRouter.recordRun({ success: false, floor: _floor, deaths: 1 });
     }
 
     // Build death cause string
@@ -7368,6 +7391,11 @@ _incrementPityTimers();
     // Submit highscore if extraction was successful
     if (success && typeof HighscoreState !== 'undefined') {
       _submitHighscore();
+    }
+
+    // Record run in player profile
+    if (typeof TerminalCommandRouter !== 'undefined' && TerminalCommandRouter.recordRun) {
+      TerminalCommandRouter.recordRun({ success: success, floor: _floor, deaths: 0 });
     }
 
     // Restore mobile keyboard behavior when exiting

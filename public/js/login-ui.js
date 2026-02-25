@@ -288,10 +288,29 @@
         accountabilityIcon.textContent = '●';
       }
     } else {
-      actorNameDisplay.textContent = '[guest]';
-      if (accountabilityIcon) {
-        accountabilityIcon.style.color = '#ff0000'; // Red = unaccountable
-        accountabilityIcon.textContent = '●';
+      // Fallback: use local player state from TerminalCommandRouter (offline / no account)
+      var localName = null;
+      var localEmoji = null;
+      if (typeof TerminalCommandRouter !== 'undefined' && TerminalCommandRouter.getPlayerState) {
+        var ps = TerminalCommandRouter.getPlayerState();
+        if (ps.callsign) {
+          localName = ps.callsign;
+          localEmoji = ps.avatarEmoji || null;
+        }
+      }
+
+      if (localName) {
+        actorNameDisplay.textContent = (localEmoji ? localEmoji + ' ' : '') + localName;
+        if (accountabilityIcon) {
+          accountabilityIcon.style.color = '#ffaa00'; // Amber = local profile
+          accountabilityIcon.textContent = '●';
+        }
+      } else {
+        actorNameDisplay.textContent = '[guest]';
+        if (accountabilityIcon) {
+          accountabilityIcon.style.color = '#ff0000'; // Red = unaccountable
+          accountabilityIcon.textContent = '●';
+        }
       }
     }
   }
@@ -328,6 +347,14 @@
    */
   LoginUI.checkLoginStatus = function () {
     return UserAccount.isLoggedIn();
+  };
+
+  /**
+   * Refresh the header callsign/avatar display.
+   * Call after character creation or any identity change.
+   */
+  LoginUI.refreshHeader = function () {
+    _updateHeaderDisplay();
   };
 
   // Export to global scope

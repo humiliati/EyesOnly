@@ -335,6 +335,11 @@ const CharacterCreation = (function () {
       TerminalCommandRouter.setAvatar(_selectedAvatar.id, _selectedAvatar.emoji);
     }
 
+    // Update HUD header with new identity
+    if (typeof LoginUI !== 'undefined' && LoginUI.refreshHeader) {
+      LoginUI.refreshHeader();
+    }
+
     // Deploy animation: flash the overlay then fade out
     _overlay.innerHTML = '';
     var deployMsg = _el('div', 'cc-deploy-msg',
