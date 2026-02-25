@@ -322,6 +322,35 @@ opsRoutes.get('/events', async (c) => {
 });
 
 /**
+ * POST /api/ops/pingback
+ * Player sends a manual pingback to the scenario event log.
+ * Only available when scenario-joined (requires auth token).
+ * M Mode will see this as a 'player_pingback' event in the event feed.
+ */
+opsRoutes.post('/pingback', async (c) => {
+  const auth = c.get('auth');
+
+  const event = await insertEvent(c.env.DB, auth.scenario_id, auth.actor_id, 'player_pingback', {
+    callsign: auth.callsign,
+    pinged_at: Date.now(),
+  });
+
+  // Broadcast via Durable Object so M Mode sees it in real time
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+  const room = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'event',
+      data: { ...event, payload: JSON.parse(event.payload) },
+      timestamp: Date.now(),
+    }),
+  }));
+
+  return c.json({ ok: true, event_id: event.id });
+});
+
+/**
  * GET /api/ops/ws
  * Upgrade to WebSocket via ScenarioRoom Durable Object.
  */

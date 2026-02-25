@@ -3479,3 +3479,22 @@ body.in-gone-rogue #log-column {
 .water-slowdown-effect::before {
   animation: water-wave-roll 1s ease-out;
 }
+
+/* AWOL tooltip livehelp link */
+.awol-livehelp-link {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-decoration: underline;
+  cursor: pointer;
+  outline-offset: 2px;
+}
+
+.awol-livehelp-link:hover,
+.awol-livehelp-link:focus {
+  color: var(--phosphor);
+  text-shadow: 0 0 6px var(--phosphor);
+}
+
+.awol-livehelp-link:focus-visible {
+  outline: 1px solid var(--phosphor);
+}

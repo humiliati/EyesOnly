@@ -119,6 +119,15 @@ const ApiClient = (function () {
   }
 
   /**
+   * Send a player pingback to the scenario event log.
+   * Only works when scenario-joined (isConnected() is true).
+   */
+  function pingback() {
+    if (!isConnected()) return Promise.resolve(null);
+    return _post('/ops/pingback', {}).catch(function () { return null; });
+  }
+
+  /**
    * Disconnect / clear session.
    */
   function disconnect() {
@@ -182,6 +191,7 @@ const ApiClient = (function () {
     getScenario: getScenario,
     getEvents: getEvents,
     reportDeadDrop: reportDeadDrop,
+    pingback: pingback,
     disconnect: disconnect,
     ping: ping
   };

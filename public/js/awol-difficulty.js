@@ -169,14 +169,14 @@ const AWOLDifficulty = (function () {
    */
   function _updateTooltipContent() {
     var isLoggedIn = _checkUserLoggedIn();
+    var isScenarioJoined = _checkScenarioJoined();
 
-    // Update M status (placeholder: login == link active)
+    // Update M status: OFFLINE unless joined to a scenario
     var mStatusValue = document.getElementById('m-status-value');
     var pingBtn = document.getElementById('awol-pingback-btn');
     if (mStatusValue) {
-      if (isLoggedIn) {
-        // TODO: replace with /m ping status + last-response state
-        mStatusValue.textContent = _lastMPingAt ? ('PINGED ' + _formatAgeMs(Date.now() - _lastMPingAt)) : 'READY';
+      if (isScenarioJoined) {
+        mStatusValue.textContent = _lastMPingAt ? ('ACTIVE — last ping ' + _formatAgeMs(Date.now() - _lastMPingAt) + ' ago') : 'ACTIVE';
         mStatusValue.style.color = '#00FFA6';
       } else {
         mStatusValue.textContent = 'OFFLINE';
@@ -185,20 +185,30 @@ const AWOLDifficulty = (function () {
     }
 
     if (pingBtn) {
-      pingBtn.disabled = !isLoggedIn;
+      pingBtn.disabled = !isScenarioJoined;
     }
 
-    // Update difficulty button states
+    // Update difficulty button states (gated on user account login)
     _updateDifficultyButtons(isLoggedIn);
   }
 
   /**
-   * Check if user is logged in
+   * Check if user is logged in (user account — allows standalone Rogue play)
    */
   function _checkUserLoggedIn() {
     // Check UserAccount module if available
     if (typeof UserAccount !== 'undefined' && typeof UserAccount.isLoggedIn === 'function') {
       return UserAccount.isLoggedIn();
+    }
+    return false;
+  }
+
+  /**
+   * Check if player is joined to a live scenario (enables Live ARG features)
+   */
+  function _checkScenarioJoined() {
+    if (typeof ApiClient !== 'undefined' && typeof ApiClient.isConnected === 'function') {
+      return ApiClient.isConnected();
     }
     return false;
   }
@@ -356,18 +366,52 @@ const AWOLDifficulty = (function () {
   }
 
   function _pingMConsole() {
+    if (!_checkScenarioJoined()) return;
+
+    var pingBtn = document.getElementById('awol-pingback-btn');
+
+    // Optimistic UI update
     _lastMPingAt = Date.now();
     _saveState();
-    _updateUI();
+    if (pingBtn) {
+      pingBtn.textContent = 'PING SENT';
+      pingBtn.disabled = true;
+    }
+    _updateTooltipContent();
 
-    // Placeholder behavior: open /m in a new tab.
-    // TODO(stakeholder): integrate actual ping/response pressure from /m console.
-    try {
-      window.open('/m', '_blank', 'noopener');
-    } catch (e0) {}
+    // Send real pingback via ApiClient
+    var sent = false;
+    if (typeof ApiClient !== 'undefined' && typeof ApiClient.pingback === 'function') {
+      sent = true;
+      ApiClient.pingback().then(function (result) {
+        if (result && result.ok) {
+          if (typeof updateMokInterjection === 'function') {
+            updateMokInterjection('[M] PING SENT — Awaiting response.');
+          }
+        }
+      }).catch(function () {
+        if (typeof updateMokInterjection === 'function') {
+          updateMokInterjection('[M] PING FAILED — Check connection.');
+        }
+      }).finally(function () {
+        // Re-enable button after brief delay
+        setTimeout(function () {
+          if (pingBtn) {
+            pingBtn.textContent = '[M] PING BACK';
+            pingBtn.disabled = !_checkScenarioJoined();
+          }
+        }, 3000);
+      });
+    }
 
-    if (typeof updateMokInterjection === 'function') {
-      updateMokInterjection('[M] PING SENT — Awaiting response. (/m)');
+    if (!sent && typeof updateMokInterjection === 'function') {
+      updateMokInterjection('[M] PING SENT — Awaiting response.');
+      setTimeout(function () {
+        if (pingBtn) {
+          pingBtn.textContent = '[M] PING BACK';
+          pingBtn.disabled = !_checkScenarioJoined();
+        }
+      }, 3000);
     }
   }
 
