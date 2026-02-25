@@ -9154,31 +9154,8 @@ _incrementPityTimers();
     return result;
   }
 
-  /**
-   * Handle multiple card selection from mobile UI in STR combat
-   * Executes all selected cards as player actions in a single combat round
-   */
-  function handleMultiCardCombat(cardIndices) {
-    if (!_active || !_strCombatActive) return;
-    if (!cardIndices || cardIndices.length === 0) return;
-
-    // Get all cards from loose inventory
-    var loose = typeof GAMESTATE !== 'undefined' ? GAMESTATE.getLooseInventory() : [];
-
-    // Filter valid card indices and get card objects
-    var playerCards = [];
-    for (var i = 0; i < cardIndices.length; i++) {
-      var idx = cardIndices[i];
-      if (idx >= 0 && idx < loose.length) {
-        playerCards.push(loose[idx]);
-      }
-    }
-
-    if (playerCards.length === 0) return;
-
-    // Execute multi-card combat round
-    return _executeMultiCardRound(playerCards);
-  }
+  // NOTE: indices-based multi-card STR execution removed during STR UI rebase.
+  // Use playCardFromHand(cardId) / playCardsFromHand([cardIds]) instead.
 
   /**
    * Map swipe direction to card action
@@ -12346,7 +12323,6 @@ _incrementPityTimers();
     handleFishingMove: handleFishingMove,
     isWalkable: isWalkable,
     handleCardSwipe: handleCardSwipe,
-    handleMultiCardCombat: handleMultiCardCombat,
     playCardFromHand: playCardFromHand,
     playCardsFromHand: playCardsFromHand,
     getPlayer: getPlayer,
