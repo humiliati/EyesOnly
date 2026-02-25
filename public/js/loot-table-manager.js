@@ -156,6 +156,41 @@ const LootTableManager = (function () {
       });
     }
 
+    // Roll key item (Tier 1 ammo keys from standard/elite enemies)
+    if (tierConfig.key_item && tierConfig.key_item.enabled) {
+      if (Math.random() < tierConfig.key_item.chance) {
+        var keyDrop = _rollWeightedKey(tierConfig.key_item.types);
+        if (keyDrop) {
+          loot.items.push({
+            type: 'key',
+            keyType: keyDrop,
+            tier: tierConfig.key_item.tier || 1,
+            source: 'enemy'
+          });
+        }
+      }
+    }
+
+    // Roll quest key (Tier 3 from bosses only)
+    if (enemyTier === 'boss' && tierConfig.quest_key && tierConfig.quest_key.enabled) {
+      if (Math.random() < tierConfig.quest_key.chance) {
+        var questItem = rollFromItemTable(tierConfig.quest_key.loot_table);
+        if (questItem) {
+          loot.items.push({
+            type: 'key',
+            keyType: questItem.keyType || questItem.name,
+            registryId: questItem.registryId,
+            tier: questItem.tier || 3,
+            subtype: 'quest',
+            npcTarget: questItem.npcTarget,
+            emoji: questItem.emoji,
+            name: questItem.name,
+            source: 'boss'
+          });
+        }
+      }
+    }
+
     // Roll charm
     if (tierConfig.charm && tierConfig.charm.enabled) {
       if (Math.random() < tierConfig.charm.chance) {
@@ -250,6 +285,58 @@ const LootTableManager = (function () {
           type: 'generic',
           drops: typeConfig.drops
         });
+      }
+    }
+
+    // Roll key item from breakable
+    var keyConfig = defaultConfig.key_item;
+    // Biome-specific breakables can override key chance/types
+    var breakableKeyChance = typeConfig && typeConfig.key_chance !== undefined
+      ? typeConfig.key_chance
+      : (keyConfig && keyConfig.enabled ? keyConfig.chance : 0);
+
+    if (breakableKeyChance > 0 && Math.random() < breakableKeyChance) {
+      // Determine which tier to drop
+      var tierRoll = Math.random();
+      var tier1Config = keyConfig && keyConfig.tier_1;
+      var tier2Config = keyConfig && keyConfig.tier_2;
+      var tier1Threshold = tier1Config ? tier1Config.chance : 0.80;
+
+      // Biome-specific key types override defaults
+      var keyTypes = typeConfig && typeConfig.key_types ? typeConfig.key_types : null;
+      var keyTier = typeConfig && typeConfig.key_tier ? typeConfig.key_tier : null;
+
+      if (keyTypes) {
+        // Direct key types from biome breakable config (always tier 1 ammo)
+        var idx = Math.floor(Math.random() * keyTypes.length);
+        loot.items.push({
+          type: 'key',
+          keyType: keyTypes[idx],
+          tier: keyTier || 1,
+          source: 'breakable'
+        });
+      } else if (tierRoll < tier1Threshold && tier1Config) {
+        // Tier 1 ammo key
+        var t1Key = _rollWeightedKey(tier1Config.types);
+        if (t1Key) {
+          loot.items.push({
+            type: 'key',
+            keyType: t1Key,
+            tier: 1,
+            source: 'breakable'
+          });
+        }
+      } else if (tier2Config) {
+        // Tier 2 gate key
+        var t2Key = _rollWeightedKey(tier2Config.types);
+        if (t2Key) {
+          loot.items.push({
+            type: 'key',
+            keyType: t2Key,
+            tier: 2,
+            source: 'breakable'
+          });
+        }
       }
     }
 
@@ -458,12 +545,113 @@ const LootTableManager = (function () {
     }
   }
 
+  /**
+   * Roll a weighted key from a types object
+   * @param {Object} types - Key types with weights {KEY_002: 60, KEY_004: 40}
+   * @returns {String|null} - Selected key type or null
+   */
+  function _rollWeightedKey(types) {
+    if (!types) return null;
+    var totalWeight = 0;
+    for (var k in types) {
+      if (types.hasOwnProperty(k)) totalWeight += types[k];
+    }
+    if (totalWeight <= 0) return null;
+
+    var roll = Math.random() * totalWeight;
+    var cumulative = 0;
+    for (var key in types) {
+      if (types.hasOwnProperty(key)) {
+        cumulative += types[key];
+        if (roll <= cumulative) return key;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Roll a key drop given a source context.
+   * Convenience wrapper that delegates to the appropriate roll function.
+   * @param {String} source - 'enemy', 'breakable', or 'boss'
+   * @param {Object} context - {enemyTier, biome, breakableType, floorNum}
+   * @returns {Object|null} - Key drop {type:'key', keyType, tier, ...} or null
+   */
+  function rollKeyDrop(source, context) {
+    _ensureLoaded();
+    context = context || {};
+
+    if (source === 'boss') {
+      var bossConfig = _lootTables.enemy_loot.boss;
+      if (bossConfig && bossConfig.quest_key && bossConfig.quest_key.enabled) {
+        if (Math.random() < bossConfig.quest_key.chance) {
+          var questItem = rollFromItemTable(bossConfig.quest_key.loot_table);
+          if (questItem) {
+            return {
+              type: 'key',
+              keyType: questItem.keyType || questItem.name,
+              registryId: questItem.registryId,
+              tier: questItem.tier || 3,
+              subtype: 'quest',
+              npcTarget: questItem.npcTarget,
+              emoji: questItem.emoji,
+              name: questItem.name,
+              source: 'boss'
+            };
+          }
+        }
+      }
+      return null;
+    }
+
+    if (source === 'enemy') {
+      var tier = context.enemyTier || 'standard';
+      var tierCfg = _lootTables.enemy_loot[tier];
+      if (tierCfg && tierCfg.key_item && tierCfg.key_item.enabled) {
+        if (Math.random() < tierCfg.key_item.chance) {
+          var keyType = _rollWeightedKey(tierCfg.key_item.types);
+          if (keyType) {
+            return {
+              type: 'key',
+              keyType: keyType,
+              tier: tierCfg.key_item.tier || 1,
+              source: 'enemy'
+            };
+          }
+        }
+      }
+      return null;
+    }
+
+    if (source === 'breakable') {
+      var defCfg = _lootTables.breakable_loot.default;
+      var keyItemCfg = defCfg && defCfg.key_item;
+      if (keyItemCfg && keyItemCfg.enabled) {
+        if (Math.random() < keyItemCfg.chance) {
+          var tierRoll = Math.random();
+          var t1 = keyItemCfg.tier_1;
+          var t2 = keyItemCfg.tier_2;
+          if (tierRoll < (t1 ? t1.chance : 0.80) && t1) {
+            var k1 = _rollWeightedKey(t1.types);
+            if (k1) return { type: 'key', keyType: k1, tier: 1, source: 'breakable' };
+          } else if (t2) {
+            var k2 = _rollWeightedKey(t2.types);
+            if (k2) return { type: 'key', keyType: k2, tier: 2, source: 'breakable' };
+          }
+        }
+      }
+      return null;
+    }
+
+    return null;
+  }
+
   // Public API
   return {
     loadLootTables: loadLootTables,
     rollEnemyLoot: rollEnemyLoot,
     rollBreakableLoot: rollBreakableLoot,
     rollFromItemTable: rollFromItemTable,
+    rollKeyDrop: rollKeyDrop,
     getCardDropModifier: getCardDropModifier,
     getDecayTime: getDecayTime,
     getEconomySettings: getEconomySettings,

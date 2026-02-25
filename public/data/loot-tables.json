@@ -27,11 +27,14 @@
       },
       "key_item": {
         "enabled": true,
-        "chance": 0.30,
+        "chance": 0.15,
+        "tier": 1,
         "biome_specific": true,
         "types": {
-          "ACCESS_CARD": 100
-        }
+          "KEY_002": 60,
+          "KEY_004": 40
+        },
+        "_designNote": "Standard enemies only drop Tier 1 ammo keys — disposable, auto-consume at locks"
       },
       "charm": {
         "enabled": true,
@@ -61,6 +64,17 @@
           "NEAR_PERFECT": 2.5,
           "PERFECT": 0.5
         }
+      },
+      "key_item": {
+        "enabled": true,
+        "chance": 0.20,
+        "tier": 1,
+        "biome_specific": true,
+        "types": {
+          "KEY_002": 40,
+          "KEY_004": 60
+        },
+        "_designNote": "Elite enemies drop Tier 1 ammo keys with slight bias toward Bronze"
       },
       "charm": {
         "enabled": true,
@@ -95,6 +109,13 @@
         "enabled": true,
         "quality": "MASTERWORK",
         "condition": "mythic_kill"
+      },
+      "quest_key": {
+        "enabled": true,
+        "chance": 0.08,
+        "tier": 3,
+        "loot_table": "quest_key_loot",
+        "_designNote": "Bosses have ~8% chance to drop a Tier 3 quest key (Diablo 2 Charsi-style turn-in)"
       },
       "xp": 100
     },
@@ -149,13 +170,26 @@
       },
       "key_item": {
         "enabled": true,
-        "chance": 0.25,
-        "types": {
-          "RUSTY_KEY": 50,
-          "BRONZE_KEY": 30,
-          "KEYCARD": 15,
-          "ACCESS_CARD": 10,
-          "MASTER_KEY": 5
+        "chance": 0.15,
+        "tier_1": {
+          "chance": 0.80,
+          "types": {
+            "KEY_002": 60,
+            "KEY_004": 40
+          },
+          "_designNote": "80% of breakable key drops are Tier 1 ammo keys (even suffix IDs)"
+        },
+        "tier_2": {
+          "chance": 0.20,
+          "biome_specific": true,
+          "types": {
+            "KEYCARD": 30,
+            "ACCESS_CARD": 25,
+            "MALL_KEY": 20,
+            "INDUSTRIAL_PASS": 15,
+            "MASTER_KEY": 10
+          },
+          "_designNote": "20% of breakable key drops are Tier 2 gate keys — biome filters applied at runtime"
         }
       }
     },
@@ -182,7 +216,8 @@
             "drops": ["berries", "sticks"],
             "item_chance": 0.5,
             "key_chance": 0.25,
-            "key_types": ["RUSTY_KEY", "BRONZE_KEY"]
+            "key_types": ["KEY_002", "KEY_004"],
+            "key_tier": 1
           },
           "boulder": {
             "hp": 5,
@@ -332,6 +367,30 @@
         "emoji": "🍖",
         "name": "Rations",
         "weight": 10,
+        "quantity": 1
+      }
+    ],
+    "quest_key_loot": [
+      {
+        "emoji": "🔨",
+        "name": "Blacksmith's Hammer",
+        "registryId": "ITM-030",
+        "keyType": "BLACKSMITH_HAMMER",
+        "tier": 3,
+        "subtype": "quest",
+        "npcTarget": "BLACKSMITH",
+        "weight": 60,
+        "quantity": 1
+      },
+      {
+        "emoji": "🪨",
+        "name": "Rune Fragment",
+        "registryId": "ITM-031",
+        "keyType": "RUNE_FRAGMENT",
+        "tier": 3,
+        "subtype": "quest",
+        "npcTarget": "RUNESMITH",
+        "weight": 40,
         "quantity": 1
       }
     ],

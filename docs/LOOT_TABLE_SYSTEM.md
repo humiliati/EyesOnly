@@ -86,8 +86,10 @@ Each enemy tier (standard, elite, boss, scout) has:
 - `currency.min/max` - Currency amount range
 - `card.chance` - Probability of card drop (0-1)
 - `card.quality_weights` - Weighted random quality distribution
+- `key_item.chance` - Probability of key drop (0-1), `tier` specifies key tier, `types` is weighted key pool
 - `charm.chance` - Probability of charm drop (0-1)
 - `xp` - Experience points awarded
+- Boss tier also has `quest_key.chance` and `quest_key.loot_table` for Tier 3 quest key drops
 
 ### Breakable Loot Configuration
 
@@ -146,6 +148,69 @@ Each enemy tier (standard, elite, boss, scout) has:
 - Total weight = sum of all weights
 - Roll = random(0, totalWeight)
 - Select item where cumulative weight >= roll
+
+### Key Item Drops
+
+Key items drop from three sources (enemies, breakables, bosses) and are organized into three tiers. The loot table system handles rolling which key drops; the pickup/consumption behavior is handled by `gone-rogue.js` based on the item's `tier` field.
+
+**Enemy Key Drops (Tier 1):**
+
+```json
+"key_item": {
+  "enabled": true,
+  "chance": 0.15,
+  "tier": 1,
+  "types": {
+    "KEY_002": 60,
+    "KEY_004": 40
+  }
+}
+```
+
+Standard and elite enemies drop Tier 1 ammo keys. Weighted random selection determines which key type drops. These go to loose inventory and auto-consume at matching locks.
+
+**Breakable Key Drops (Tier 1 + Tier 2):**
+
+```json
+"key_item": {
+  "enabled": true,
+  "chance": 0.15,
+  "tier_1": {
+    "chance": 0.80,
+    "types": { "KEY_002": 60, "KEY_004": 40 }
+  },
+  "tier_2": {
+    "chance": 0.20,
+    "biome_specific": true,
+    "types": { "KEYCARD": 30, "ACCESS_CARD": 25, "MALL_KEY": 20, "INDUSTRIAL_PASS": 15, "MASTER_KEY": 10 }
+  }
+}
+```
+
+Breakables can drop either Tier 1 (80%) or Tier 2 (20%) keys. Tier 2 gate keys go to persistent inventory and auto-equip to the active item slot.
+
+Biome-specific breakables can override with `key_chance`, `key_types`, and `key_tier` fields.
+
+**Boss Quest Key Drops (Tier 3):**
+
+```json
+"quest_key": {
+  "enabled": true,
+  "chance": 0.08,
+  "tier": 3,
+  "loot_table": "quest_key_loot"
+}
+```
+
+Bosses have an ~8% chance to drop a Tier 3 quest key from the `quest_key_loot` item table. These are Diablo 2-style turn-in items carried to a specific NPC for card upgrade rewards.
+
+**Key Tier Summary:**
+
+| Tier | ID Pattern | Source | Drop Chance | Storage | Consumption |
+|------|-----------|--------|------------|---------|-------------|
+| 1 | `KEY_XX2`, `KEY_XX4` | Enemies, breakables | 15-25% | Loose inventory | Auto at lock |
+| 2 | `ITM-01X` | Breakables (20% of key drops) | ~3% effective | Persistent + active slot | Equip → toggle → interact |
+| 3 | `ITM-03X` | Boss (~8%) | ~8% per boss | Persistent (quest) | NPC turn-in only |
 
 ### Card Drop Modifiers
 
@@ -221,6 +286,26 @@ const loot = LootTableManager.rollBreakableLoot('wooden_gate', 'COZY_FOREST');
 
 // Returns: { currency, ammo, items }
 ```
+
+#### Key Item Drops
+
+```javascript
+// Roll a key drop from an enemy kill
+const keyDrop = LootTableManager.rollKeyDrop('enemy', { enemyTier: 'standard' });
+// Returns: { type: 'key', keyType: 'KEY_002', tier: 1, source: 'enemy' } or null
+
+// Roll a key drop from a breakable
+const breakableKey = LootTableManager.rollKeyDrop('breakable');
+// Returns: { type: 'key', keyType: 'KEY_004', tier: 1, source: 'breakable' } or null
+
+// Roll a quest key from a boss kill
+const questKey = LootTableManager.rollKeyDrop('boss');
+// Returns: { type: 'key', keyType: 'BLACKSMITH_HAMMER', registryId: 'ITM-030', tier: 3,
+//            subtype: 'quest', npcTarget: 'BLACKSMITH', emoji: '🔨', name: "Blacksmith's Hammer",
+//            source: 'boss' } or null
+```
+
+Note: `rollEnemyLoot()` and `rollBreakableLoot()` also roll key drops internally and include them in the `items` array of their return value.
 
 #### Item Table Loot
 
@@ -321,12 +406,12 @@ Navigate to: `http://localhost:8787/loot-table-editor.html`
 
 ### Enemy Tiers
 
-| Enemy Type | Currency | Card Drop | Card Quality | Charm | XP |
-|------------|----------|-----------|--------------|-------|-----|
-| Standard   | 2-8¢ (100%) | 50% | Weighted random | 30% | 10 |
-| Elite      | 10-25¢ (100%) | 75% | Better weights | 30% | 30 |
-| Boss       | 50-100¢ (100%) | 100% (ELITE) | Guaranteed ELITE | - | 100 |
-| Scout      | 2-8¢ (100%) | 50% | Lower weights | 30% | 5 |
+| Enemy Type | Currency | Card Drop | Card Quality | Key Drop | Charm | XP |
+|------------|----------|-----------|--------------|----------|-------|-----|
+| Standard   | 2-8¢ (100%) | 50% | Weighted random | 15% (Tier 1) | 30% | 10 |
+| Elite      | 10-25¢ (100%) | 75% | Better weights | 20% (Tier 1) | 30% | 30 |
+| Boss       | 50-100¢ (100%) | 100% (ELITE) | Guaranteed ELITE | 8% (Tier 3 quest) | - | 100 |
+| Scout      | 2-8¢ (100%) | 50% | Lower weights | — | 30% | 5 |
 
 ### Boss Special Drops
 
@@ -334,6 +419,7 @@ Navigate to: `http://localhost:8787/loot-table-editor.html`
 |-----------|--------|---------|-----------|
 | Synergy Card | 50% | SUPERIOR | Standard kill |
 | Whisper Item | 3-5% | Unique | Standard kill |
+| Quest Key (Tier 3) | 8% | Rare+ | Standard kill |
 | Mythic Item | 100% | Mythic | Mythic condition |
 | Mythic Synergy | 100% | MASTERWORK | Mythic condition |
 
@@ -344,6 +430,8 @@ Navigate to: `http://localhost:8787/loot-table-editor.html`
 | Currency  | 70%    | 1-5¢   |
 | Ammo      | 60%    | 1-2    |
 | Item      | 30%    | Varies |
+| Key (Tier 1) | ~12% | 1 (80% of 15% key chance) |
+| Key (Tier 2) | ~3% | 1 (20% of 15% key chance) |
 
 ### Quality Distribution
 
