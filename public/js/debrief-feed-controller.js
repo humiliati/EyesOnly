@@ -437,30 +437,92 @@ const DebriefFeedController = (function() {
         }
       } catch (eS0) {}
 
-      // Signal summary (3-tier: LOW/MID/HIGH) driven by battery level
+      // Signal summary (battery-driven pulse, 3-tier speed)
       try {
         var sumS = document.getElementById('debrief-summary-signal');
         if (sumS) {
-          var st = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getState) ? GAMESTATE.getState() : {};
-          var batt = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getBattery) ? GAMESTATE.getBattery() : (st.battery || 0);
-          var maxB = st.maxBattery || 5;
-          var pct = maxB ? (batt / maxB) : 0;
-          var tier = (pct <= 0.34) ? 'LOW' : (pct <= 0.67) ? 'MID' : 'HIGH';
+          (function() {
+            var _frames = ['(((...)))', '((....))', '(.....)', '......'];
+            var _timer = null;
+            var _frameIx = 0;
 
-          function bar(cur, max, w) {
-            w = w || 8;
-            max = max || 1;
-            cur = Math.max(0, Math.min(max, cur));
-            var filled = Math.round((cur / max) * w);
-            var s = '';
-            for (var i = 0; i < w; i++) s += (i < filled) ? '█' : '░';
-            return s;
-          }
+            function _getBatt() {
+              var st = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getState) ? GAMESTATE.getState() : {};
+              var batt = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getBattery) ? GAMESTATE.getBattery() : (st.battery || 0);
+              var maxB = st.maxBattery || 5;
+              return { batt: batt || 0, maxB: maxB || 5 };
+            }
 
-          var link = (tier === 'HIGH') ? '(((' : (tier === 'MID') ? '((' : '(';
-          // pad to 3 for consistent width
-          link = (link + '   ').slice(0, 3);
-          sumS.textContent = 'BATT[' + bar(batt, maxB, 6) + '] ' + tier + ' ' + link;
+            function _bar(cur, max, w) {
+              w = w || 6;
+              max = max || 1;
+              cur = Math.max(0, Math.min(max, cur));
+              var filled = Math.round((cur / max) * w);
+              var s = '';
+              for (var i = 0; i < w; i++) s += (i < filled) ? '█' : '░';
+              return s;
+            }
+
+            function _tierFromPct(pct) {
+              return (pct <= 0.34) ? 'LOW' : (pct <= 0.67) ? 'MID' : 'HIGH';
+            }
+
+            function _speedForTier(tier) {
+              // cheap hooks later: faster = stronger
+              if (tier === 'HIGH') return 170;
+              if (tier === 'MID') return 320;
+              return 520;
+            }
+
+            function _renderOnce() {
+              var b = _getBatt();
+              var pct = b.maxB ? (b.batt / b.maxB) : 0;
+              var tier = _tierFromPct(pct);
+
+              if (b.batt <= 0) {
+                // Battery=0: powered down
+                sumS.textContent = 'BATT[' + _bar(0, 1, 6) + '] OFF';
+                try {
+                  var av = document.getElementById('mok-avatar');
+                  if (av) {
+                    av.classList.add('mok-powered-down');
+                    av.setAttribute('aria-disabled', 'true');
+                  }
+                } catch (e0) {}
+                if (_timer) { clearInterval(_timer); _timer = null; }
+                return;
+              }
+
+              try {
+                var av2 = document.getElementById('mok-avatar');
+                if (av2) {
+                  av2.classList.remove('mok-powered-down');
+                  av2.removeAttribute('aria-disabled');
+                }
+              } catch (e1) {}
+
+              var frame = _frames[_frameIx % _frames.length];
+              _frameIx++;
+              // compact, no spaces
+              sumS.textContent = 'BATT[' + _bar(b.batt, b.maxB, 6) + ']' + frame + tier;
+
+              // adjust interval if tier changed
+              var want = _speedForTier(tier);
+              if (!_timer || _timer._ms !== want) {
+                if (_timer) clearInterval(_timer);
+                _timer = setInterval(_renderOnce, want);
+                _timer._ms = want;
+              }
+            }
+
+            // Kill previous timer if re-rendering
+            try {
+              if (sumS._pulseTimer) clearInterval(sumS._pulseTimer);
+            } catch (e2) {}
+
+            _renderOnce();
+            sumS._pulseTimer = _timer;
+          })();
         }
       } catch (eS1) {}
 
