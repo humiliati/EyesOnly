@@ -5566,6 +5566,16 @@ _incrementPityTimers();
         result = GAMESTATE.addToLoose(nonCardPayload);
       }
 
+      // KEY COUNTER: Increment structured key counter on successful pickup
+      if (item.type === 'key' && result && result.success) {
+        try {
+          if (GAMESTATE.addKeyCount) {
+            var countKeyType = nonCardPayload.keyType || item.keyType || item.itemId || 'UNKNOWN';
+            GAMESTATE.addKeyCount(countKeyType, keyTier || 1);
+          }
+        } catch (eKeyCount) {}
+      }
+
       // KEY PICKUP ENHANCEMENTS — behavior varies by tier
       if (item.type === 'key' && result && result.success) {
         if (keyTier >= 2 && keyTier < 3) {
@@ -5866,6 +5876,11 @@ _incrementPityTimers();
 
     if (GAMESTATE.clearActiveItem) GAMESTATE.clearActiveItem();
 
+    // Decrement structured key counter (Tier 2 gate key consumed from active slot)
+    try {
+      if (GAMESTATE.removeKeyCount) GAMESTATE.removeKeyCount(requiredKey, 2);
+    } catch (eKC) {}
+
     // Update active slot display (header)
     if (typeof document !== 'undefined') {
       var activeDisplay = document.getElementById('active-item-display');
@@ -5891,16 +5906,20 @@ _incrementPityTimers();
       var it = loose[i];
       if (it && it.type === 'key' && (it.keyType || it.itemId) === requiredKey) {
         if (GAMESTATE.removeFromLoose) GAMESTATE.removeFromLoose(i);
+        // Decrement counter (tier 1 ammo — from loose inventory)
+        try { if (GAMESTATE.removeKeyCount) GAMESTATE.removeKeyCount(requiredKey, it.tier || 1); } catch (e) {}
         return true;
       }
     }
 
-    // Optional: allow consuming from persistent inventory (keyring slot). Keep it conservative for now.
+    // Fallback: consume from persistent inventory (keyring slot)
     var persistent = GAMESTATE.getPersistentInventory ? GAMESTATE.getPersistentInventory() : [];
     for (var j = 0; j < persistent.length; j++) {
       var pit = persistent[j];
       if (pit && pit.type === 'key' && (pit.keyType || pit.itemId) === requiredKey) {
         if (GAMESTATE.removeFromPersistent) GAMESTATE.removeFromPersistent(j);
+        // Decrement counter (tier 2 gate key — from persistent)
+        try { if (GAMESTATE.removeKeyCount) GAMESTATE.removeKeyCount(requiredKey, pit.tier || 2); } catch (e) {}
         return true;
       }
     }
@@ -5937,6 +5956,11 @@ _incrementPityTimers();
       } else if (GAMESTATE.removeFromPersistent) {
         GAMESTATE.removeFromPersistent(i);
       }
+
+      // Decrement structured key counter (Tier 3 quest key consumed via NPC turn-in)
+      try {
+        if (GAMESTATE.removeKeyCount) GAMESTATE.removeKeyCount(questKeyType, 3);
+      } catch (eKC) {}
 
       // Visual feedback
       if (typeof TooltipSystem !== 'undefined') {

@@ -55,7 +55,15 @@ const GAMESTATE = (function () {
     // Consumables inventory (separate from card inventory)
     consumables: [],               // Array of consumable items with counts: {type, count}
     consumableSlots: 3,            // How many different types can be carried
-    maxConsumableSlots: 5          // Can be upgraded
+    maxConsumableSlots: 5,         // Can be upgraded
+
+    // Structured key counters — single source of truth for UI hooks
+    // Tier 1 (ammo): lost on death.  Tier 2/3: persist across death.
+    keys: {
+      ammo:  {},   // Tier 1: { KEY_002: n, KEY_004: n, ... }
+      gate:  {},   // Tier 2: { KEYCARD: n, MALL_KEY: n, ... }
+      quest: {}    // Tier 3: { BLACKSMITH_HAMMER: n, RUNE_FRAGMENT: n, ... }
+    }
   };
 
   function init() {
@@ -324,6 +332,9 @@ const GAMESTATE = (function () {
    */
   function clearLooseInventory() {
     _state.inventoryLoose = [];
+    // Tier 1 ammo keys live in loose inventory — zero them on death
+    _ensureKeysObj();
+    _state.keys.ammo = {};
     _saveState();
   }
 
@@ -1200,6 +1211,8 @@ const GAMESTATE = (function () {
       if (parsed) {
         _state = Object.assign(_state, parsed);
       }
+      // Migrate old saves that lack key counters
+      _ensureKeysObj();
     } catch (e) {
       console.error('Failed to load gamestate:', e);
     }
@@ -1274,7 +1287,8 @@ const GAMESTATE = (function () {
       maxStability: 10,
       consumables: [],
       consumableSlots: 3,
-      maxConsumableSlots: 5
+      maxConsumableSlots: 5,
+      keys: { ammo: {}, gate: {}, quest: {} }
     };
     _saveState();
   }
@@ -1843,6 +1857,115 @@ const GAMESTATE = (function () {
     return _state.actionButtonSlots || 4;
   }
 
+  // ── Key Counter Management ──────────────────────────────────────
+  // Structured counters for external UI hooks.
+  // Buckets: ammo (tier 1), gate (tier 2), quest (tier 3).
+
+  /** Ensure _state.keys exists (migration from old saves) */
+  function _ensureKeysObj() {
+    if (!_state.keys) _state.keys = { ammo: {}, gate: {}, quest: {} };
+    if (!_state.keys.ammo)  _state.keys.ammo  = {};
+    if (!_state.keys.gate)  _state.keys.gate  = {};
+    if (!_state.keys.quest) _state.keys.quest = {};
+  }
+
+  /** Map tier number → bucket name */
+  function _keyBucket(tier) {
+    if (tier >= 3) return 'quest';
+    if (tier >= 2) return 'gate';
+    return 'ammo';
+  }
+
+  /**
+   * Increment a key counter.
+   * @param {String} keyType - e.g. 'KEY_002', 'KEYCARD', 'BLACKSMITH_HAMMER'
+   * @param {Number} tier    - 1, 2, or 3
+   * @param {Number} [delta] - amount to add (default 1)
+   */
+  function addKeyCount(keyType, tier, delta) {
+    _ensureKeysObj();
+    delta = (typeof delta === 'number') ? delta : 1;
+    var bucket = _state.keys[_keyBucket(tier)];
+    bucket[keyType] = (bucket[keyType] || 0) + delta;
+    _saveState();
+  }
+
+  /**
+   * Decrement a key counter (floors at 0).
+   * @param {String} keyType
+   * @param {Number} tier
+   * @param {Number} [delta] - amount to subtract (default 1)
+   * @returns {Boolean} true if there was stock to consume
+   */
+  function removeKeyCount(keyType, tier, delta) {
+    _ensureKeysObj();
+    delta = (typeof delta === 'number') ? delta : 1;
+    var bucket = _state.keys[_keyBucket(tier)];
+    var cur = bucket[keyType] || 0;
+    if (cur <= 0) return false;
+    bucket[keyType] = Math.max(0, cur - delta);
+    if (bucket[keyType] === 0) delete bucket[keyType]; // keep object tidy
+    _saveState();
+    return true;
+  }
+
+  /**
+   * Get the full keys object (read-only copy).
+   * Shape: { ammo: {KEY_002:n,...}, gate: {KEYCARD:n,...}, quest: {BLACKSMITH_HAMMER:n,...} }
+   */
+  function getKeyCounts() {
+    _ensureKeysObj();
+    return JSON.parse(JSON.stringify(_state.keys));
+  }
+
+  /**
+   * Get count for a single key type.
+   * @param {String} keyType
+   * @param {Number} tier
+   * @returns {Number}
+   */
+  function getKeyCount(keyType, tier) {
+    _ensureKeysObj();
+    var bucket = _state.keys[_keyBucket(tier)];
+    return bucket[keyType] || 0;
+  }
+
+  /**
+   * Rebuild key counters from current inventory arrays.
+   * Safety net — call after load or suspected desync.
+   */
+  function rebuildKeyCounts() {
+    _ensureKeysObj();
+    _state.keys = { ammo: {}, gate: {}, quest: {} };
+
+    // Scan loose inventory → tier 1
+    var loose = _state.inventoryLoose || [];
+    for (var i = 0; i < loose.length; i++) {
+      var li = loose[i];
+      if (li && li.type === 'key') {
+        var kt1 = li.keyType || li.itemId || 'UNKNOWN';
+        var t1 = li.tier || 1;
+        var b1 = _keyBucket(t1);
+        _state.keys[b1][kt1] = (_state.keys[b1][kt1] || 0) + 1;
+      }
+    }
+
+    // Scan persistent inventory → tier 2 / tier 3
+    var persistent = _state.inventoryPersistent || [];
+    for (var j = 0; j < persistent.length; j++) {
+      var pi = persistent[j];
+      if (pi && pi.type === 'key') {
+        var kt2 = pi.keyType || pi.registryId || pi.itemId || 'UNKNOWN';
+        var t2 = pi.tier || (pi.subtype === 'quest' ? 3 : 2);
+        var b2 = _keyBucket(t2);
+        _state.keys[b2][kt2] = (_state.keys[b2][kt2] || 0) + 1;
+      }
+    }
+
+    _saveState();
+    return _state.keys;
+  }
+
   return {
     MODES: MODES,
     init: init,
@@ -1940,6 +2063,12 @@ const GAMESTATE = (function () {
     incrementCombatCounter: incrementCombatCounter,
     incrementFloorCounter: incrementFloorCounter,
     getCombatCount: getCombatCount,
-    getFloorCount: getFloorCount
+    getFloorCount: getFloorCount,
+    // Key counter management (structured counts for UI hooks)
+    addKeyCount: addKeyCount,
+    removeKeyCount: removeKeyCount,
+    getKeyCounts: getKeyCounts,
+    getKeyCount: getKeyCount,
+    rebuildKeyCounts: rebuildKeyCounts
   };
 })();
