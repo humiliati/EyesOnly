@@ -1210,6 +1210,12 @@ const GoneRogue = (function () {
     _active = true;
     _loaded = true;
 
+    // Show onboarding splash ("YOU'VE GONE ROGUE") for new runs.
+    // The splash is a non-blocking overlay that animates while init runs underneath.
+    if (!context.resume && typeof OnboardingSplash !== 'undefined' && OnboardingSplash.show) {
+      OnboardingSplash.show(); // Auto-dismisses after ~2.2s
+    }
+
     // Default behavior: new run when entering rogue via GAMESTATE.requestRogue.
     // Allow explicit resume only when context.resume === true.
     try {
