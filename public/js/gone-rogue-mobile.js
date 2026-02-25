@@ -2284,20 +2284,6 @@ const GoneRogueMobile = (function () {
           _cardPageIndex = 0;
         }
       }, 500);
-    } else if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleMultiCardCombat === 'function') {
-      // Legacy fallback: indices-based play
-      GoneRogue.handleMultiCardCombat(_selectedCards.slice());
-
-      _selectedCards = [];
-      _cardContainer.style.display = 'none';
-
-      setTimeout(function() {
-        if (typeof GoneRogue !== 'undefined' && GoneRogue.isStrCombatActive && GoneRogue.isStrCombatActive()) {
-          _showCardFan();
-        } else {
-          _cardPageIndex = 0;
-        }
-      }, 500);
     }
   }
 

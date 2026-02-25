@@ -774,10 +774,8 @@ const HandFanComponent = (function () {
           GoneRogue.playCardFromHand(c.id);
           return;
         }
-        if (typeof GoneRogue.handleMultiCardCombat === 'function') {
-          GoneRogue.handleMultiCardCombat([idx]);
-          return;
-        }
+        // Legacy indices-based combat path removed; keep id-based only.
+        return;
       }
 
       // Drag-to-map ground effects (v1): if released over a grid cell while STR UI is minimized/collapsed
@@ -1179,8 +1177,8 @@ const HandFanComponent = (function () {
             if (ids.length) {
               GoneRogue.playCardsFromHand(ids);
             }
-          } else if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleMultiCardCombat === 'function') {
-            GoneRogue.handleMultiCardCombat(capturedIndices);
+          } else {
+            // Legacy indices-based combat path removed; keep id-based only.
           }
 
           // Repopulate animation will be triggered by updateCards call

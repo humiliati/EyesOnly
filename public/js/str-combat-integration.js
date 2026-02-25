@@ -329,22 +329,13 @@
    * Handle multi-card combat execution
    */
   function executeMultiCardRound(selectedCards) {
-    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleMultiCardCombat === 'function') {
-      // Get card indices
-      var cardIndices = [];
-      var allCards = [];
-      if (typeof GAMESTATE !== 'undefined') {
-        allCards = GAMESTATE.getLooseInventory() || [];
-      }
-
-      selectedCards.forEach(function(card) {
-        var index = allCards.indexOf(card);
-        if (index !== -1) {
-          cardIndices.push(index);
-        }
+    // Rebased: execute by card id (stable across hand reorder/repopulate).
+    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.playCardsFromHand === 'function') {
+      var ids = [];
+      (selectedCards || []).forEach(function(card) {
+        if (card && card.id) ids.push(card.id);
       });
-
-      GoneRogue.handleMultiCardCombat(cardIndices);
+      GoneRogue.playCardsFromHand(ids);
     }
   }
 
