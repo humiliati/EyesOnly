@@ -1545,7 +1545,10 @@ body.amber-mode #scanlines::after {
   body.gone-rogue-active #monitor-body {
     display: grid;
     grid-template-columns: 1fr;
-    grid-template-rows: auto 18vh 1fr; /* header hidden; torso + legs */
+    /* header is hidden; keep a small torso band for controls + debrief, but
+       prioritize the game surface (legs). Use clamp to prevent dead space on
+       tall phones and prevent collapse on tiny viewports. */
+    grid-template-rows: auto clamp(92px, 12vh, 140px) 1fr;
     gap: 6px;
   }
 
@@ -1567,7 +1570,8 @@ body.amber-mode #scanlines::after {
     backdrop-filter: none;
     border-radius: 0;
     overflow: hidden;
-    height: 20vh;
+    /* Match the torso band allocation above */
+    height: clamp(92px, 12vh, 140px);
     min-height: 0;
   }
 
