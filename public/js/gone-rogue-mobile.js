@@ -592,6 +592,37 @@ const GoneRogueMobile = (function () {
       }
     }
 
+    // Overlay ground effects onto the canvas grid (fire, water, oil, steam, etc.)
+    if (typeof GroundEffects !== 'undefined' && typeof GroundEffects.getAllEffects === 'function') {
+      var allGroundEffects = GroundEffects.getAllEffects();
+      allGroundEffects.forEach(function(ge) {
+        if (!ge || ge.x === undefined || ge.y === undefined) return;
+        var gvx = ge.x - originXi;
+        var gvy = ge.y - originYi;
+        if (gvx < 0 || gvy < 0 || gvx >= viewW || gvy >= viewH) return;
+        var cell = canvasGrid[gvy] && canvasGrid[gvy][gvx];
+        if (!cell) return;
+        // Get the visual definition for this ground type
+        var def = GroundEffects.getDefinition ? GroundEffects.getDefinition(ge.type) : null;
+        if (def) {
+          // Use the emoji if available, otherwise the char
+          cell.char = def.emoji || def.char || cell.char;
+          cell.color = def.color || cell.color;
+          // Tint the background slightly with the effect color for visibility
+          if (def.color && def.color !== '#000000') {
+            cell.bg = def.color.replace(')', ', 0.15)').replace('rgb', 'rgba');
+            // If it's a hex color, darken it for background
+            if (def.color.charAt(0) === '#') {
+              var gr = parseInt(def.color.substr(1, 2), 16);
+              var gg = parseInt(def.color.substr(3, 2), 16);
+              var gb = parseInt(def.color.substr(5, 2), 16);
+              cell.bg = 'rgb(' + Math.floor(gr * 0.2) + ',' + Math.floor(gg * 0.2) + ',' + Math.floor(gb * 0.2) + ')';
+            }
+          }
+        }
+      });
+    }
+
     // Prepare entities array (enemies, breakables, currencies, items, projectiles)
     var entities = [];
 
@@ -1529,6 +1560,28 @@ const GoneRogueMobile = (function () {
       }
     }
 
+    // Click-on-breakable from range: fire projectile at breakable (noise tradeoff)
+    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.fireProjectileAtTarget === 'function') {
+      var breakables = GoneRogue.getBreakables ? GoneRogue.getBreakables() : [];
+      if (breakables && breakables.length) {
+        for (var bi = 0; bi < breakables.length; bi++) {
+          var br = breakables[bi];
+          if (br && br.hp > 0 && br.x === x && br.y === y) {
+            // If adjacent, handleTapMove will kick it. Only shoot from range (distance > 1).
+            if (player) {
+              var bdx = x - player.x;
+              var bdy = y - player.y;
+              if (Math.abs(bdx) > 1 || Math.abs(bdy) > 1) {
+                GoneRogue.fireProjectileAtTarget(x, y);
+                _lastMovementTime = Date.now();
+                return;
+              }
+            }
+          }
+        }
+      }
+    }
+
     // Send tap-to-move command and track movement time
     if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleTapMove === 'function') {
       GoneRogue.handleTapMove(x, y, runMode);
@@ -1561,10 +1614,11 @@ const GoneRogueMobile = (function () {
    * Handle grid touch move (for fishing input, pinch-to-zoom and pan)
    */
   function _handleGridTouchMove(e) {
-    // Handle pinch-to-zoom and pan with two fingers
-    if (e.touches.length === 2) {
-      e.preventDefault();
-      e.stopPropagation();
+    // Pinch-to-zoom + drag-pan is DISABLED on mobile.
+    // The mobile camera follow already applies a controlled transform to the canvas.
+    if (e.touches && e.touches.length >= 2) {
+      try { e.preventDefault(); } catch (e0) {}
+      try { e.stopPropagation(); } catch (e1) {}
 
       // Cancel fishing mode if active
       if (_fishingActive) {
@@ -1572,56 +1626,6 @@ const GoneRogueMobile = (function () {
         _fishingActive = false;
       }
 
-      var currentDistance = _getTouchDistance(e.touches);
-      var currentCenter = _getTouchCenter(e.touches);
-
-      if (_initialPinchDistance === 0) {
-        _initialPinchDistance = currentDistance;
-        _initialPinchCenter = currentCenter;
-        _isPanning = false;
-      } else {
-        // Calculate zoom scale
-        var scale = currentDistance / _initialPinchDistance;
-        var newZoom = _currentZoom * scale;
-
-        // Clamp zoom level
-        newZoom = Math.max(_minZoom, Math.min(_maxZoom, newZoom));
-
-        // Calculate pan delta
-        var panDeltaX = currentCenter.x - _initialPinchCenter.x;
-        var panDeltaY = currentCenter.y - _initialPinchCenter.y;
-
-        // Apply pan sensitivity based on zoom level (higher zoom = lower sensitivity)
-        var panSensitivity = 0.5 - (newZoom - _minZoom) / (_maxZoom - _minZoom) * 0.3;
-        panSensitivity = Math.max(0.2, Math.min(0.5, panSensitivity));
-
-        var newPanX = _panOffset.x + panDeltaX * panSensitivity;
-        var newPanY = _panOffset.y + panDeltaY * panSensitivity;
-
-        // Calculate bounds based on zoom level and container size
-        if (_gridContainer) {
-          var containerRect = _gridContainer.getBoundingClientRect();
-          var parentRect = _gridContainer.parentElement.getBoundingClientRect();
-
-          // Maximum pan distance (prevent showing void beyond map)
-          var scaledWidth = containerRect.width * newZoom;
-          var scaledHeight = containerRect.height * newZoom;
-          var maxPanX = Math.max(0, (scaledWidth - parentRect.width) / 2);
-          var maxPanY = Math.max(0, (scaledHeight - parentRect.height) / 2);
-
-          // Clamp pan offsets
-          newPanX = Math.max(-maxPanX, Math.min(maxPanX, newPanX));
-          newPanY = Math.max(-maxPanY, Math.min(maxPanY, newPanY));
-
-          // Apply zoom and pan to grid container
-          _gridContainer.style.transform = 'scale(' + newZoom + ') translate(' + newPanX + 'px, ' + newPanY + 'px)';
-          _gridContainer.style.transformOrigin = 'center center';
-
-          // Update initial center for continuous panning
-          _initialPinchCenter = currentCenter;
-          _isPanning = true;
-        }
-      }
       return;
     }
 
@@ -1827,9 +1831,11 @@ const GoneRogueMobile = (function () {
     e.preventDefault();
     e.stopPropagation(); // Prevent document-level listeners
 
-    // Initialize pinch distance for two-finger gestures
-    if (e.touches.length === 2) {
-      _initialPinchDistance = _getTouchDistance(e.touches);
+    // Pinch-to-zoom is disabled; ignore 2-finger gesture and do not enter pinch mode.
+    if (e.touches.length >= 2) {
+      _initialPinchDistance = 0;
+      _initialPinchCenter = { x: 0, y: 0 };
+      _isPanning = false;
       return; // Don't process as tap
     }
 
@@ -1881,21 +1887,8 @@ const GoneRogueMobile = (function () {
     e.preventDefault();
     e.stopPropagation();
 
-    // If pinch gesture ended, save current zoom and pan state, reset pinch distance
+    // Pinch-to-zoom is disabled; ignore pinch bookkeeping if any legacy state exists.
     if (_initialPinchDistance > 0) {
-      var currentTransform = _gridContainer ? window.getComputedStyle(_gridContainer).transform : 'none';
-      if (currentTransform && currentTransform !== 'none') {
-        var matrix = currentTransform.match(/matrix\(([^)]+)\)/);
-        if (matrix) {
-          var values = matrix[1].split(', ');
-          _currentZoom = parseFloat(values[0]) || 1.0;
-          // Extract translate values if present (matrix includes translate)
-          if (values.length >= 6) {
-            _panOffset.x = parseFloat(values[4]) || 0;
-            _panOffset.y = parseFloat(values[5]) || 0;
-          }
-        }
-      }
       _initialPinchDistance = 0;
       _initialPinchCenter = { x: 0, y: 0 };
       _isPanning = false;
