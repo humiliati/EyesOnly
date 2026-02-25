@@ -1544,6 +1544,7 @@ body.amber-mode #scanlines::after {
     left: auto;
     top: auto;
     right: auto;
+    overflow: hidden;
     width: 100%;
     max-height: none;
     z-index: auto;
@@ -1561,6 +1562,9 @@ body.amber-mode #scanlines::after {
   body.in-gone-rogue .control-buttons,
   body.gone-rogue-active .control-buttons {
     width: calc(100% - var(--rogue-debrief-pct, 34%));
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-auto-rows: minmax(30px, auto);
