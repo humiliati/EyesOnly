@@ -430,14 +430,18 @@ const DebriefFeedController = (function() {
         } catch (eH0) {}
       }
 
-      function _renderBarLine(prefix, cur, max, w) {
+      function _renderBarLine(prefixOrGlyph, cur, max, w) {
+        // Standard compact format: GLYPH[████░░]num/den
+        // If no glyph, fall back to prefix text.
         w = w || 6;
         max = (typeof max === 'number' && max > 0) ? max : 1;
         cur = (typeof cur === 'number') ? cur : 0;
         cur = Math.max(0, Math.min(max, cur));
         var filled = Math.round((cur / max) * w);
         var bar = '█'.repeat(filled) + '░'.repeat(w - filled);
-        return String(prefix || '') + String(cur) + '/' + String(max) + '[' + bar + ']';
+
+        var head = String(prefixOrGlyph || '');
+        return head + '[' + bar + ']' + String(cur) + '/' + String(max);
       }
 
       function _getRoguePlayer() {
@@ -483,24 +487,19 @@ const DebriefFeedController = (function() {
 
         // Resources macro summary: show HP only (critical)
         var rSum = document.getElementById('debrief-summary-resources');
-        if (rSum) rSum.textContent = _renderBarLine('hp', st.hp, st.maxHp, 6);
+        if (rSum) rSum.textContent = _renderBarLine('♥', st.hp, st.maxHp, 6);
 
         // Resources panel: HP + Energy + Focus lines (colored via spans)
         var rPanel = document.getElementById('debrief-panel-resources');
         if (rPanel && _rowExpanded.resources) {
-          var hpLine = '|_HP' + String(st.hp) + '/' + String(st.maxHp) + '[' + _renderBarLine('', st.hp, st.maxHp, 6).split('[')[1];
-          // extract bar portion from helper for consistency
-          var hpBar = _renderBarLine('', st.hp, st.maxHp, 6);
-          hpBar = hpBar.slice(hpBar.indexOf('['));
-          var enBar = _renderBarLine('', st.energy, st.maxEnergy, 6);
-          enBar = enBar.slice(enBar.indexOf('['));
-          var fcBar = _renderBarLine('', st.focus, st.maxFocus, 6);
-          fcBar = fcBar.slice(fcBar.indexOf('['));
+          var hpLine = _renderBarLine('♥', st.hp, st.maxHp, 6);
+          var enLine = _renderBarLine('E', st.energy, st.maxEnergy, 6);
+          var fcLine = _renderBarLine('◎', st.focus, st.maxFocus, 6);
 
           rPanel.innerHTML =
-            '<div class="debrief-line hp">|_HP' + st.hp + '/' + st.maxHp + hpBar + '</div>' +
-            '<div class="debrief-line energy">|_ENRGY' + st.energy + '/' + st.maxEnergy + enBar + '</div>' +
-            '<div class="debrief-line focus">|_FCS' + st.focus + '/' + st.maxFocus + fcBar + '</div>';
+            '<div class="debrief-line hp">|_' + hpLine + '</div>' +
+            '<div class="debrief-line energy">|_' + enLine + '</div>' +
+            '<div class="debrief-line focus">|_' + fcLine + '</div>';
         } else if (rPanel) {
           rPanel.textContent = '';
         }
@@ -510,7 +509,7 @@ const DebriefFeedController = (function() {
         if (amEl) {
           var ammo = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo) ? GAMESTATE.getAmmo() : (st.ammo || 0);
           var maxA = st.maxAmmo || 20;
-          amEl.textContent = _renderBarLine('ammo', ammo, maxA, 6);
+          amEl.textContent = _renderBarLine('A', ammo, maxA, 6);
         }
 
         // Ammo panel: keys by tier bucket
@@ -519,7 +518,7 @@ const DebriefFeedController = (function() {
           var linesA = [];
           var ammo2 = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo) ? GAMESTATE.getAmmo() : (st.ammo || 0);
           var maxA2 = st.maxAmmo || 20;
-          linesA.push('|_Ammo' + ammo2 + '/' + maxA2);
+          linesA.push('|_' + _renderBarLine('A', ammo2, maxA2, 6));
 
           var kc = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getKeyCounts) ? GAMESTATE.getKeyCounts() : null;
           // Designer-named sublines: show only if >0
