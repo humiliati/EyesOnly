@@ -83,6 +83,13 @@ const HandFanComponent = (function () {
    * @param {string} position - 'centered', 'peripheral', or 'bottom'
    */
   function setMode(mode, position) {
+    // Avoid expensive re-renders when callers poll.
+    if (mode === _mode && position === _position) {
+      // Still ensure anchoring is up-to-date in combat mode.
+      try { if (_mode === 'combat') _positionRelativeToStrWindow(); } catch (e0) {}
+      return;
+    }
+
     _mode = mode;
     _position = position;
 
@@ -92,7 +99,12 @@ const HandFanComponent = (function () {
     }
 
     _updateFanPosition();
-    _renderCards();
+
+    // Only re-render when the fan is actually visible. Mode/position changes
+    // can affect abbreviation/layout, but should not churn DOM every tick.
+    if (_fanContainer && _fanContainer.style.display !== 'none') {
+      _renderCards();
+    }
   }
 
   /**

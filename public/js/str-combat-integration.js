@@ -250,8 +250,13 @@
     // Determine fan mode based on STR window state
     var isMini = STRCombatWindow.isMinimized();
 
+    // Only update mode when it changes (prevents HandFan churn)
     if (isMini) {
-      HandFanComponent.setMode('contextual', 'bottom');
+      if (!HandFanComponent.getMode || HandFanComponent.getMode() !== 'contextual') {
+        HandFanComponent.setMode('contextual', 'bottom');
+      } else {
+        HandFanComponent.setMode('contextual', 'bottom');
+      }
     } else {
       // Peripheral hand fan: keeps enemy + combat window readable
       HandFanComponent.setMode('combat', 'peripheral');
