@@ -636,10 +636,21 @@ const STRCombatWindow = (function () {
 
     var targetBase = tierBase[tier] || 5000;
 
-    // Within-tier shortening across floors 1..10
-    var floorsPerTier = 10;
-    var localFloor = ((Math.max(1, floor) - 1) % floorsPerTier) + 1;
-    var progress = (localFloor - 1) / (floorsPerTier - 1);
+    // Within-tier shortening across the tier's real floor span.
+    // Per repo mapping:
+    // - T1: floors 1..10 (10 floors)
+    // - T2: floors 11..22 (12 floors)
+    // - T3: floors 23..30 (8 floors)
+    var tierRanges = {
+      1: { start: 1, end: 10 },
+      2: { start: 11, end: 22 },
+      3: { start: 23, end: 30 }
+    };
+
+    var r = tierRanges[tier] || tierRanges[3];
+    var f = Math.max(r.start, Math.min(r.end, Math.max(1, floor)));
+    var denom = Math.max(1, (r.end - r.start));
+    var progress = (f - r.start) / denom;
 
     // Shorten 20% across a tier
     var shortenFactor = 1 - (progress * 0.20);
