@@ -7121,12 +7121,36 @@ _incrementPityTimers();
       _submitHighscore();
     }
 
-    // Show YOU DIED full-screen overlay using the countdown takeover system
-    if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.showDeathScreen === 'function') {
-      STRCombatWindow.showDeathScreen();
+    // Build death cause string
+    var causeStr = '// SIGNAL LOST';
+    if (reason === 'combat_damage' && context.enemy) {
+      causeStr = '// KILLED BY ' + (context.enemy.name || 'HOSTILE').toUpperCase();
+    } else if (reason === 'burning') {
+      causeStr = '// BURNED TO DEATH';
+    } else if (reason === 'toxin') {
+      causeStr = '// TOXIC EXPOSURE';
+    } else if (reason === 'trap') {
+      causeStr = '// CAUGHT IN TRAP';
+    } else if (reason === 'environmental_hazard') {
+      causeStr = '// ENVIRONMENTAL HAZARD';
     }
 
-    // Exit rogue mode
+    // Calculate currency penalty preview (actual penalty applied in GAMESTATE.exitRogueMode)
+    var currencyBefore = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getCryptos) ? GAMESTATE.getCryptos() : 0;
+    var currencyLost = Math.floor(currencyBefore * 0.5);
+
+    // Show YOU DIED full-screen overlay with run stats
+    if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.showDeathScreen === 'function') {
+      STRCombatWindow.showDeathScreen({
+        floor: _floor,
+        enemiesKilled: _enemiesKilled,
+        runTimeMs: _runStartTime ? (Date.now() - _runStartTime) : 0,
+        currencyLost: currencyLost,
+        cause: causeStr
+      });
+    }
+
+    // Exit rogue mode (applies inventory wipe + currency penalty)
     return _exitRogue(false);
   }
 

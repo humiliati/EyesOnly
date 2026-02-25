@@ -217,8 +217,25 @@ const GAMESTATE = (function () {
       lines.push('');
       lines.push('Loose inventory lost.');
 
-      // Clear loose inventory on death
+      // 50% currency penalty on death
+      var currencyBefore = _state.cryptos || 0;
+      var currencyLost = Math.floor(currencyBefore * 0.5);
+      if (currencyLost > 0) {
+        _state.cryptos = currencyBefore - currencyLost;
+        lines.push('Currency penalty: -¢' + currencyLost + ' (50%)');
+        lines.push('Remaining: ¢' + _state.cryptos);
+      }
+
+      // Clear hand, backup cards, equipped active item (lost on death per spec)
+      _state.cardHand = [];
+      _state.backupCards = [null, null, null, null];
+      _state.activeItemSlot = null;
+
+      // Clear loose inventory on death (includes tier-1 ammo keys)
       _state.inventoryLoose = [];
+
+      // Store currency lost for death screen display
+      result.currencyLost = currencyLost;
     }
 
     lines.push('');

@@ -682,35 +682,121 @@ const STRCombatWindow = (function () {
   }
 
   /**
-   * Show the YOU DIED full-screen overlay and auto-dismiss after ~2.5 seconds.
-   * Uses the same overlay mechanics as the pre-combat 3-2-1 countdown.
+   * Show the YOU DIED full-screen overlay with run stats.
+   * Triggers camera shake + red vignette before the overlay appears.
+   * Auto-dismisses after ~4 seconds to allow stats reading.
+   *
+   * @param {Object} [stats] - Optional run statistics
+   * @param {number} [stats.floor]          - Floor reached
+   * @param {number} [stats.enemiesKilled]  - Enemies defeated
+   * @param {number} [stats.cardsPlayed]    - Cards played during run
+   * @param {number} [stats.runTimeMs]      - Run duration in ms
+   * @param {number} [stats.currencyLost]   - Currency lost to 50% death penalty
+   * @param {string} [stats.cause]          - Death cause string
    */
-  function showDeathScreen() {
+  function showDeathScreen(stats) {
+    stats = stats || {};
+
+    // Clean up any existing death elements
     var existing = document.getElementById('str-death-overlay');
     if (existing) existing.remove();
+    var existingVignette = document.getElementById('death-red-vignette');
+    if (existingVignette) existingVignette.remove();
 
-    var overlay = document.createElement('div');
-    overlay.id = 'str-death-overlay';
-    overlay.className = 'str-death-overlay';
+    // Phase 1: Camera shake (500ms) + red vignette
+    var gridEl = document.getElementById('rogue-grid-mobile');
+    if (gridEl) {
+      gridEl.classList.add('death-shake');
+      gridEl.addEventListener('animationend', function onEnd() {
+        gridEl.classList.remove('death-shake');
+        gridEl.removeEventListener('animationend', onEnd);
+      });
+    }
 
-    var msgEl = document.createElement('div');
-    msgEl.className = 'str-death-message';
-    msgEl.textContent = 'YOU DIED';
-    overlay.appendChild(msgEl);
+    var vignette = document.createElement('div');
+    vignette.id = 'death-red-vignette';
+    vignette.className = 'death-red-vignette';
+    document.body.appendChild(vignette);
 
-    var subEl = document.createElement('div');
-    subEl.className = 'str-death-sub';
-    subEl.textContent = '// SIGNAL LOST';
-    overlay.appendChild(subEl);
-
-    document.body.appendChild(overlay);
-
+    // Phase 2: After shake settles, show YOU DIED overlay (300ms delay)
     setTimeout(function() {
-      overlay.classList.add('str-death-fade-out');
+      var overlay = document.createElement('div');
+      overlay.id = 'str-death-overlay';
+      overlay.className = 'str-death-overlay';
+
+      var msgEl = document.createElement('div');
+      msgEl.className = 'str-death-message';
+      msgEl.textContent = 'YOU DIED';
+      overlay.appendChild(msgEl);
+
+      // Cause of death subtitle
+      var subText = stats.cause || '// SIGNAL LOST';
+      var subEl = document.createElement('div');
+      subEl.className = 'str-death-sub';
+      subEl.textContent = subText;
+      overlay.appendChild(subEl);
+
+      // Run stats section
+      var statsEl = document.createElement('div');
+      statsEl.className = 'str-death-stats';
+
+      var statRows = [];
+      if (stats.floor !== undefined) {
+        statRows.push({ label: 'FLOOR REACHED', value: '' + stats.floor });
+      }
+      if (stats.enemiesKilled !== undefined) {
+        statRows.push({ label: 'ENEMIES DEFEATED', value: '' + stats.enemiesKilled });
+      }
+      if (stats.cardsPlayed !== undefined) {
+        statRows.push({ label: 'CARDS PLAYED', value: '' + stats.cardsPlayed });
+      }
+      if (stats.runTimeMs !== undefined) {
+        var secs = Math.floor(stats.runTimeMs / 1000);
+        var mins = Math.floor(secs / 60);
+        var remSecs = secs % 60;
+        var timeStr = mins + ':' + (remSecs < 10 ? '0' : '') + remSecs;
+        statRows.push({ label: 'RUN TIME', value: timeStr });
+      }
+      if (stats.currencyLost !== undefined && stats.currencyLost > 0) {
+        statRows.push({ label: 'CURRENCY LOST', value: '-¢' + stats.currencyLost, penalty: true });
+      }
+
+      for (var i = 0; i < statRows.length; i++) {
+        var row = document.createElement('div');
+        row.className = 'stat-row';
+
+        var lbl = document.createElement('span');
+        lbl.className = 'stat-label';
+        lbl.textContent = statRows[i].label;
+        row.appendChild(lbl);
+
+        var val = document.createElement('span');
+        val.className = statRows[i].penalty ? 'stat-value stat-penalty' : 'stat-value';
+        val.textContent = statRows[i].value;
+        row.appendChild(val);
+
+        statsEl.appendChild(row);
+      }
+
+      if (statRows.length > 0) {
+        overlay.appendChild(statsEl);
+      }
+
+      document.body.appendChild(overlay);
+
+      // Phase 3: Auto-dismiss after 4s (longer to read stats)
       setTimeout(function() {
-        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-      }, 600);
-    }, 2500);
+        overlay.classList.add('str-death-fade-out');
+        if (vignette.parentNode) {
+          vignette.style.transition = 'opacity 0.6s ease-in';
+          vignette.style.opacity = '0';
+        }
+        setTimeout(function() {
+          if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+          if (vignette.parentNode) vignette.parentNode.removeChild(vignette);
+        }, 600);
+      }, 4000);
+    }, 300);
   }
 
   /**

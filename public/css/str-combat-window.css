@@ -722,3 +722,71 @@ body.str-combat-minimized-state::before {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* Camera shake applied to game container on death */
+.death-shake {
+  animation: death-shake 0.5s ease-out;
+}
+
+@keyframes death-shake {
+  0%   { transform: translate(0, 0); }
+  10%  { transform: translate(-6px, 4px); }
+  20%  { transform: translate(5px, -3px); }
+  30%  { transform: translate(-4px, 5px); }
+  40%  { transform: translate(4px, -2px); }
+  50%  { transform: translate(-3px, 3px); }
+  60%  { transform: translate(3px, -2px); }
+  70%  { transform: translate(-2px, 2px); }
+  80%  { transform: translate(2px, -1px); }
+  90%  { transform: translate(-1px, 1px); }
+  100% { transform: translate(0, 0); }
+}
+
+/* Red vignette that fades in before the death overlay */
+.death-red-vignette {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 3999;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(51, 0, 0, 0.85) 100%);
+  animation: death-vignette-in 0.5s ease-out forwards;
+}
+
+@keyframes death-vignette-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Run stats section inside the death overlay */
+.str-death-stats {
+  font-family: 'Courier New', monospace;
+  font-size: clamp(0.7rem, 2vw, 0.95rem);
+  color: #aaa;
+  margin-top: 1.8em;
+  text-align: left;
+  line-height: 1.8;
+  letter-spacing: 0.05em;
+  animation: str-death-sub-in 0.5s ease-out 0.6s both;
+}
+
+.str-death-stats .stat-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 2em;
+  border-bottom: 1px solid rgba(255, 28, 74, 0.15);
+  padding: 0.15em 0;
+}
+
+.str-death-stats .stat-label {
+  color: #777;
+}
+
+.str-death-stats .stat-value {
+  color: #ff1c4a;
+  font-weight: bold;
+}
+
+.str-death-stats .stat-penalty {
+  color: #ff4444;
+  font-size: 0.85em;
+}
