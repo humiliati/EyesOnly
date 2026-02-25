@@ -148,6 +148,46 @@ export async function updateActorLane(db: D1Database, id: number, laneId: string
     .run();
 }
 
+export async function updateActorTelemetry(
+  db: D1Database,
+  id: number,
+  opts: {
+    lat?: number | null;
+    lng?: number | null;
+    accel_x?: number | null;
+    accel_y?: number | null;
+    accel_z?: number | null;
+    motion_state?: string | null;
+  },
+): Promise<void> {
+  const now = Date.now();
+  await db
+    .prepare(
+      `UPDATE actors SET
+         last_lat = ?,
+         last_lng = ?,
+         last_accel_x = ?,
+         last_accel_y = ?,
+         last_accel_z = ?,
+         motion_state = ?,
+         last_seen_at = ?,
+         updated_at = ?
+       WHERE id = ?`,
+    )
+    .bind(
+      opts.lat ?? null,
+      opts.lng ?? null,
+      opts.accel_x ?? null,
+      opts.accel_y ?? null,
+      opts.accel_z ?? null,
+      opts.motion_state ?? 'unknown',
+      now,
+      now,
+      id,
+    )
+    .run();
+}
+
 // --- Events (Append-Only) ---
 
 export async function insertEvent(

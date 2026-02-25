@@ -703,6 +703,32 @@ mModeRoutes.get('/pings/:scenarioId', async (c) => {
 // --- WebSocket ---
 
 /**
+ * GET /api/m/actors/positions/:scenarioId
+ * Returns last-known GPS position and telemetry for all actors in the scenario.
+ * Used by the M console live actor layer.
+ */
+mModeRoutes.get('/actors/positions/:scenarioId', async (c) => {
+  const scenarioId = parseInt(c.req.param('scenarioId'), 10);
+  const actors = await listActors(c.env.DB, scenarioId);
+
+  return c.json({
+    positions: actors.map((a) => ({
+      actor_id:     a.id,
+      callsign:     a.callsign,
+      team:         a.team,
+      status:       a.status,
+      lane_id:      a.lane_id ?? null,
+      cell_id:      a.cell_id ?? null,
+      lat:          a.last_lat ?? null,
+      lng:          a.last_lng ?? null,
+      last_seen_at: a.last_seen_at ?? null,
+      motion_state: a.motion_state ?? 'unknown',
+    })),
+    as_of: Date.now(),
+  });
+});
+
+/**
  * GET /api/m/ws
  * Upgrade to WebSocket via ScenarioRoom Durable Object.
  */

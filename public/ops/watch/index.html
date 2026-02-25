@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' wss: ws:; img-src 'self' data:;">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="OPS WATCH">
+  <title>EYES ONLY // OPS WATCH</title>
+  <link rel="manifest" href="/ops/watch/manifest.json">
+  <style>
+    /* ======================================================
+       EYES ONLY — OPS WATCH
+       Smartwatch / phone-first minimal dark actor app.
+       Design principles:
+         - Black background default
+         - Green phosphor text (consistent with M console)
+         - Maximum 3 elements visible at once
+         - One-tap confirm for all critical actions
+         - No map, no complex UI — use Ops portal for that
+         - Vibration cues on all pings
+    ====================================================== */
+
+    :root {
+      --bg:        #000;
+      --surface:   #0a0a0a;
+      --border:    #1a1a1a;
+      --text:      #33ff33;
+      --text-dim:  #1a6a1a;
+      --text-mute: #0d3a0d;
+      --red:       #ff3333;
+      --amber:     #ffaa33;
+      --blue:      #3399ff;
+      --font:      'Courier New', Courier, monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      height: 100%;
+      /* Prevent pull-to-refresh — actors cannot accidentally refresh mid-op */
+      overscroll-behavior: none;
+    }
+
+    body {
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.4;
+      -webkit-font-smoothing: none;
+      /* Disable text selection — accidental long-presses should not select text */
+      -webkit-user-select: none;
+      user-select: none;
+      /* Touch action: prevent double-tap zoom on iOS */
+      touch-action: manipulation;
+    }
+
+    /* ====== SCREEN STACK ====== */
+    .screen { display: none; flex-direction: column; min-height: 100vh; padding: 0; }
+    .screen.active { display: flex; }
+
+    /* ====== LOGIN SCREEN ====== */
+    .login-wrap {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 24px 20px; gap: 16px;
+    }
+    .login-logo {
+      font-size: 10px; letter-spacing: 4px; color: var(--text-dim);
+      text-align: center; line-height: 2;
+    }
+    .login-logo .logo-eye {
+      font-size: 28px; display: block; margin-bottom: 4px;
+      text-shadow: 0 0 16px var(--text);
+    }
+    .login-field { width: 100%; }
+    .login-field label {
+      display: block; font-size: 9px; color: var(--text-dim);
+      letter-spacing: 2px; margin-bottom: 4px;
+    }
+    .login-field input {
+      width: 100%; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 4px;
+      color: var(--text); font-family: var(--font); font-size: 14px;
+      padding: 10px 12px; outline: none;
+      -webkit-user-select: text; user-select: text;
+    }
+    .login-field input:focus { border-color: var(--text-dim); }
+    .login-error { color: var(--red); font-size: 10px; letter-spacing: 1px; text-align: center; }
+    .btn-primary {
+      width: 100%; background: transparent;
+      border: 2px solid var(--text); color: var(--text);
+      font-family: var(--font); font-size: 13px; letter-spacing: 3px;
+      padding: 14px; border-radius: 4px; cursor: pointer;
+      text-transform: uppercase; transition: background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-primary:active { background: rgba(51,255,51,0.12); }
+    .btn-primary:disabled { opacity: 0.3; pointer-events: none; }
+    .btn-danger {
+      width: 100%; background: transparent;
+      border: 2px solid var(--red); color: var(--red);
+      font-family: var(--font); font-size: 13px; letter-spacing: 3px;
+      padding: 14px; border-radius: 4px; cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-danger:active { background: rgba(255,51,51,0.15); }
+
+    /* ====== MAIN WATCH SCREEN ====== */
+    .watch-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .watch-callsign {
+      font-size: 10px; letter-spacing: 2px; color: var(--text-dim);
+    }
+    .watch-status-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--red); display: inline-block;
+      margin-right: 4px; vertical-align: middle;
+    }
+    .watch-status-dot.on { background: var(--text); }
+    .watch-time {
+      font-size: 9px; color: var(--text-mute); letter-spacing: 1px;
+    }
+
+    /* ====== PING ZONE (dominant UI element) ====== */
+    .ping-zone {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 16px;
+      gap: 12px;
+      position: relative;
+    }
+
+    /* Idle state: show callsign + lane */
+    .idle-state { text-align: center; }
+    .idle-state .idle-label {
+      font-size: 9px; letter-spacing: 3px; color: var(--text-mute);
+      margin-bottom: 8px;
+    }
+    .idle-state .idle-callsign {
+      font-size: 22px; letter-spacing: 4px; color: var(--text-dim);
+    }
+    .idle-state .idle-lane {
+      font-size: 10px; letter-spacing: 2px; color: var(--text-mute);
+      margin-top: 6px;
+    }
+    .idle-state .idle-motion {
+      font-size: 9px; letter-spacing: 1px; color: var(--text-mute);
+      margin-top: 4px;
+    }
+
+    /* Active ping: full-screen alert style */
+    .ping-alert {
+      display: none;
+      flex-direction: column; align-items: center; gap: 10px;
+      text-align: center; width: 100%;
+    }
+    .ping-alert.visible { display: flex; }
+    .ping-badge {
+      font-size: 9px; letter-spacing: 3px;
+      color: var(--red); border: 1px solid var(--red);
+      padding: 3px 10px; border-radius: 2px;
+      animation: ping-flash 1s ease-in-out infinite;
+    }
+    @keyframes ping-flash {
+      0%, 100% { opacity: 1; } 50% { opacity: 0.3; }
+    }
+    .ping-command {
+      font-size: 32px; letter-spacing: 4px; color: var(--text);
+      text-shadow: 0 0 20px rgba(51,255,51,0.4);
+      font-weight: bold;
+    }
+    .ping-detail {
+      font-size: 11px; color: var(--text-dim); letter-spacing: 1px;
+      max-width: 200px; line-height: 1.6; text-align: center;
+    }
+    .ping-timer {
+      font-size: 28px; color: var(--red); letter-spacing: 2px;
+      font-variant-numeric: tabular-nums;
+    }
+    .ping-timer.ok { color: var(--text); }
+
+    /* ACK button */
+    .ack-btn {
+      width: 100%;
+      background: transparent;
+      border: 3px solid var(--text);
+      color: var(--text);
+      font-family: var(--font); font-size: 18px; letter-spacing: 4px;
+      padding: 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .ack-btn:active {
+      background: rgba(51,255,51,0.2);
+      border-color: var(--text);
+      transform: scale(0.97);
+    }
+    .ack-btn.acked {
+      border-color: var(--text-dim);
+      color: var(--text-dim);
+    }
+
+    /* ====== BOTTOM BAR ====== */
+    .watch-bottom {
+      display: flex; gap: 1px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+    .watch-bottom button {
+      flex: 1; background: var(--surface);
+      border: none; color: var(--text-dim);
+      font-family: var(--font); font-size: 9px; letter-spacing: 1px;
+      padding: 10px 4px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.1s;
+    }
+    .watch-bottom button:active { background: rgba(51,255,51,0.06); color: var(--text); }
+    .watch-bottom button.warn { color: var(--amber); }
+    .watch-bottom button.danger-btn { color: var(--red); }
+    .watch-bottom button .btn-icon { display: block; font-size: 16px; margin-bottom: 2px; }
+
+    /* ====== STATUS BAR ====== */
+    .status-bar {
+      display: flex; justify-content: space-between;
+      padding: 5px 12px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .status-item {
+      font-size: 8px; letter-spacing: 1px; color: var(--text-mute);
+      display: flex; flex-direction: column; align-items: center; gap: 1px;
+    }
+    .status-item .sv { font-size: 9px; color: var(--text-dim); }
+    .status-item .sv.active { color: var(--text); }
+    .status-item .sv.red { color: var(--red); }
+    .status-item .sv.amber { color: var(--amber); }
+
+    /* ====== EXPANDED STATUS PANEL ====== */
+    .status-panel {
+      display: none; flex-direction: column;
+      gap: 1px; background: var(--border);
+    }
+    .status-panel.visible { display: flex; }
+    .sp-row {
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--surface); padding: 8px 12px;
+      font-size: 10px;
+    }
+    .sp-label { color: var(--text-dim); letter-spacing: 1px; }
+    .sp-value { color: var(--text); letter-spacing: 1px; }
+    .sp-value.dim { color: var(--text-mute); }
+    .sp-value.ok { color: var(--text); }
+    .sp-value.warn { color: var(--amber); }
+    .sp-value.danger { color: var(--red); }
+
+    /* ====== PANIC CONFIRM OVERLAY ====== */
+    .panic-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.92);
+      flex-direction: column; align-items: center; justify-content: center;
+      gap: 16px; z-index: 100; padding: 24px;
+    }
+    .panic-overlay.visible { display: flex; }
+    .panic-title {
+      font-size: 20px; letter-spacing: 4px; color: var(--red);
+      text-shadow: 0 0 12px rgba(255,51,51,0.5);
+      animation: ping-flash 0.6s ease-in-out infinite;
+    }
+    .panic-sub { font-size: 10px; color: #666; letter-spacing: 2px; text-align: center; line-height: 2; }
+
+    /* ====== MISC ====== */
+    .gps-indicator {
+      font-size: 8px; letter-spacing: 1px; color: var(--text-mute);
+      text-align: center; padding: 4px 0;
+    }
+    .gps-indicator.acquiring { color: var(--amber); }
+    .gps-indicator.locked { color: var(--text-dim); }
+    .frozen-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(255,0,0,0.04);
+      flex-direction: column; align-items: center; justify-content: center;
+      gap: 8px; z-index: 200; pointer-events: none;
+    }
+    .frozen-overlay.visible { display: flex; }
+    .frozen-text {
+      font-size: 20px; letter-spacing: 6px; color: var(--red);
+      text-shadow: 0 0 16px rgba(255,51,51,0.5);
+      text-align: center;
+    }
+    .frozen-sub { font-size: 9px; letter-spacing: 2px; color: #cc3333; text-align: center; }
+  </style>
+</head>
+<body>
+
+<!-- ====== LOGIN SCREEN ====== -->
+<div id="screen-login" class="screen active">
+  <div class="login-wrap">
+    <div class="login-logo">
+      <span class="logo-eye">👁</span>
+      EYES ONLY<br>OPS WATCH
+    </div>
+
+    <div class="login-field">
+      <label>JOIN CODE</label>
+      <input type="text" id="lf-code" placeholder="6-char code" maxlength="16"
+             autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+    </div>
+    <div class="login-field">
+      <label>CALLSIGN</label>
+      <input type="text" id="lf-callsign" placeholder="Your callsign"
+             autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+    </div>
+    <div id="login-error" class="login-error" style="display:none;"></div>
+    <button class="btn-primary" id="login-btn" onclick="doLogin()">JOIN OPERATION</button>
+    <div style="font-size:9px;color:#1a3a1a;text-align:center;letter-spacing:1px;margin-top:8px;">
+      WATCH APP — BLUE TEAM ONLY
+    </div>
+  </div>
+</div>
+
+<!-- ====== MAIN WATCH SCREEN ====== -->
+<div id="screen-watch" class="screen">
+
+  <!-- Header -->
+  <div class="watch-header">
+    <div>
+      <span class="watch-status-dot" id="ws-dot"></span>
+      <span class="watch-callsign" id="hdr-callsign">—</span>
+    </div>
+    <div class="watch-time" id="hdr-time">00:00</div>
+  </div>
+
+  <!-- Ping zone (main area) -->
+  <div class="ping-zone">
+
+    <!-- Idle state -->
+    <div class="idle-state" id="idle-state">
+      <div class="idle-label">STANDBY</div>
+      <div class="idle-callsign" id="idle-callsign">—</div>
+      <div class="idle-lane" id="idle-lane">NO LANE</div>
+      <div class="idle-motion" id="idle-motion">— MOTION: —</div>
+    </div>
+
+    <!-- Active ping alert (shown when unacked ping exists) -->
+    <div class="ping-alert" id="ping-alert">
+      <div class="ping-badge">⚡ M DIRECTIVE</div>
+      <div class="ping-command" id="ping-command">HOLD</div>
+      <div class="ping-detail" id="ping-detail"></div>
+      <div class="ping-timer" id="ping-timer">30</div>
+      <button class="ack-btn" id="ack-btn" onclick="doAck()">ACKNOWLEDGE</button>
+    </div>
+
+  </div>
+
+  <!-- GPS status -->
+  <div class="gps-indicator" id="gps-indicator">GPS: —</div>
+
+  <!-- Status bar (tap to expand) -->
+  <div class="status-bar" id="status-bar" onclick="toggleStatusPanel()">
+    <div class="status-item">
+      <span>STATUS</span>
+      <span class="sv" id="sb-status">—</span>
+    </div>
+    <div class="status-item">
+      <span>PINGS</span>
+      <span class="sv" id="sb-pings">0</span>
+    </div>
+    <div class="status-item">
+      <span>LANE</span>
+      <span class="sv" id="sb-lane">—</span>
+    </div>
+    <div class="status-item">
+      <span>BATTERY</span>
+      <span class="sv" id="sb-battery">—</span>
+    </div>
+    <div class="status-item">
+      <span>MOTION</span>
+      <span class="sv" id="sb-motion">—</span>
+    </div>
+  </div>
+
+  <!-- Expanded status panel (hidden by default) -->
+  <div class="status-panel" id="status-panel">
+    <div class="sp-row"><span class="sp-label">SCENARIO</span><span class="sp-value" id="sp-scenario">—</span></div>
+    <div class="sp-row"><span class="sp-label">CELL</span><span class="sp-value" id="sp-cell">—</span></div>
+    <div class="sp-row"><span class="sp-label">LAT</span><span class="sp-value dim" id="sp-lat">—</span></div>
+    <div class="sp-row"><span class="sp-label">LNG</span><span class="sp-value dim" id="sp-lng">—</span></div>
+    <div class="sp-row"><span class="sp-label">LAST TELEMETRY</span><span class="sp-value dim" id="sp-last-telem">—</span></div>
+    <div class="sp-row"><span class="sp-label">HEARTBEAT</span><span class="sp-value dim" id="sp-heartbeat">—</span></div>
+    <div class="sp-row" style="padding:8px 12px;">
+      <button class="btn-primary" style="font-size:10px;padding:8px;" onclick="doLogout()">DISCONNECT</button>
+    </div>
+  </div>
+
+  <!-- Bottom action bar -->
+  <div class="watch-bottom">
+    <button onclick="doCheckin()" title="Check In">
+      <span class="btn-icon">✓</span>CHECK IN
+    </button>
+    <button onclick="doSilentMode()" id="silent-btn" title="Toggle Silent Mode">
+      <span class="btn-icon" id="silent-icon">🔔</span>SILENT
+    </button>
+    <button class="danger-btn" onclick="showPanicConfirm()" title="Panic / Abort">
+      <span class="btn-icon">⚠</span>PANIC
+    </button>
+  </div>
+
+</div><!-- /#screen-watch -->
+
+<!-- ====== PANIC CONFIRM OVERLAY ====== -->
+<div class="panic-overlay" id="panic-overlay">
+  <div class="panic-title">⚠ ABORT ⚠</div>
+  <div class="panic-sub">
+    THIS SIGNALS DISTRESS<br>TO M IMMEDIATELY.<br><br>
+    CONFIRM TO SEND PANIC.
+  </div>
+  <button class="btn-danger" onclick="doPanic()">CONFIRM PANIC</button>
+  <button class="btn-primary" style="border-color:#333;color:#555;" onclick="hidePanicConfirm()">CANCEL</button>
+</div>
+
+<!-- ====== GAME FROZEN OVERLAY ====== -->
+<div class="frozen-overlay" id="frozen-overlay">
+  <div class="frozen-text">GAME FROZEN</div>
+  <div class="frozen-sub">STAND BY FOR COMMAND</div>
+</div>
+
+<script>
+/* ============================================================
+   EYES ONLY — OPS WATCH
+   Smartwatch actor app: join, receive pings, ack, GPS heartbeat.
+   Uses same /api/ops/* endpoints as the standard Ops portal.
+   ============================================================ */
+
+'use strict';
+
+// ===== CONFIG =====
+var API_BASE   = '/api/ops';
+var POLL_MS    = 15000;   // Status poll: 15 seconds
+var TELEM_MS   = 30000;   // Telemetry heartbeat: 30 seconds
+var ACK_TIMER  = 30;      // Countdown seconds for ping ACK
+
+// ===== STATE =====
+var _token       = null;
+var _callsign    = null;
+var _scenarioId  = null;
+var _pendingPing = null;   // { id, command, detail, received_at }
+var _ackInterval = null;
+var _ackCountdown= ACK_TIMER;
+var _pollTimer   = null;
+var _telemTimer  = null;
+var _gps         = null;   // { lat, lng }
+var _gpsWatchId  = null;
+var _battery     = null;
+var _motionState = 'unknown';
+var _silentMode  = false;
+var _isFrozen    = false;
+var _lastTelemAt = null;
+var _heartbeatCnt= 0;
+var _wsConn      = false;
+var _ws          = null;
+
+var STORAGE_KEY = 'eyesonly_watch_session';
+var MOTION_LABELS = {
+  unknown: '—', stationary: 'STILL',
+  walking: 'WALK', running: 'RUN',
+  vehicle: 'VHC', dropped: 'DROP'
+};
+
+// ===== INIT =====
+(function init() {
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/ops/watch/sw.js').catch(function() {});
+  }
+
+  // Restore session
+  try {
+    var saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    if (saved && saved.token) {
+      _token = saved.token;
+      _callsign = saved.callsign;
+      _scenarioId = saved.scenarioId;
+      showScreen('watch');
+      startWatch();
+    }
+  } catch (e) {}
+
+  // Clock
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // Battery API
+  if (navigator.getBattery) {
+    navigator.getBattery().then(function(bat) {
+      _battery = Math.round(bat.level * 100);
+      bat.addEventListener('levelchange', function() {
+        _battery = Math.round(bat.level * 100);
+        updateStatusBar();
+      });
+    });
+  }
+})();
+
+// ===== SCREEN =====
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+  var el = document.getElementById('screen-' + id);
+  if (el) el.classList.add('active');
+}
+
+// ===== CLOCK =====
+function updateClock() {
+  var now = new Date();
+  var hh  = String(now.getHours()).padStart(2, '0');
+  var mm  = String(now.getMinutes()).padStart(2, '0');
+  var el  = document.getElementById('hdr-time');
+  if (el) el.textContent = hh + ':' + mm;
+}
+
+// ===== LOGIN =====
+async function doLogin() {
+  var code     = document.getElementById('lf-code').value.trim();
+  var callsign = document.getElementById('lf-callsign').value.trim();
+  if (!code || !callsign) { showLoginError('Enter join code and callsign.'); return; }
+
+  var btn = document.getElementById('login-btn');
+  btn.disabled = true;
+  btn.textContent = 'JOINING…';
+  hideLoginError();
+
+  try {
+    var res = await fetch('/api/join', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code, callsign: callsign }),
+    });
+    if (!res.ok) {
+      var d = await res.json().catch(function() { return {}; });
+      throw new Error(d.message || 'Join failed');
+    }
+    var data = await res.json();
+    if (data.actor && data.actor.team !== 'blue' && data.actor.team !== 'director') {
+      throw new Error('Watch app is for Blue Team actors only.');
+    }
+    _token      = data.token;
+    _callsign   = data.actor.callsign;
+    _scenarioId = data.actor.scenario_id;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ token: _token, callsign: _callsign, scenarioId: _scenarioId }));
+    showScreen('watch');
+    startWatch();
+  } catch (err) {
+    showLoginError(err.message || 'Network error');
+    btn.disabled = false;
+    btn.textContent = 'JOIN OPERATION';
+  }
+}
+
+function showLoginError(msg) {
+  var el = document.getElementById('login-error');
+  el.textContent = msg.toUpperCase();
+  el.style.display = '';
+}
+function hideLoginError() {
+  document.getElementById('login-error').style.display = 'none';
+}
+
+// ===== START WATCH =====
+function startWatch() {
+  var callsignEl = document.getElementById('hdr-callsign');
+  var idleEl = document.getElementById('idle-callsign');
+  if (callsignEl) callsignEl.textContent = _callsign;
+  if (idleEl) idleEl.textContent = _callsign;
+
+  // Start GPS
+  startGPS();
+
+  // Start WS connection
+  connectWS();
+
+  // Start polling (fallback if WS is not connected)
+  pollStatus();
+  _pollTimer = setInterval(pollStatus, POLL_MS);
+
+  // Start telemetry heartbeat
+  sendTelemetry();
+  _telemTimer = setInterval(sendTelemetry, TELEM_MS);
+}
+
+function stopWatch() {
+  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+  if (_telemTimer) { clearInterval(_telemTimer); _telemTimer = null; }
+  if (_ackInterval) { clearInterval(_ackInterval); _ackInterval = null; }
+  if (_gpsWatchId != null) { navigator.geolocation.clearWatch(_gpsWatchId); _gpsWatchId = null; }
+  if (_ws) { try { _ws.close(); } catch(e) {} _ws = null; }
+  _wsConn = false;
+}
+
+// ===== WEBSOCKET =====
+function connectWS() {
+  if (!_token) return;
+  try {
+    var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    var url = proto + '//' + location.host + '/api/ops/ws';
+    _ws = new WebSocket(url);
+
+    _ws.onopen = function() {
+      // Authenticate via first message (same pattern as ops portal)
+      _ws.send(JSON.stringify({ type: 'auth', token: _token }));
+      _wsConn = true;
+      updateStatusDot(true);
+    };
+
+    _ws.onmessage = function(e) {
+      try {
+        var msg = JSON.parse(e.data);
+        handleWSMessage(msg);
+      } catch (err) {}
+    };
+
+    _ws.onclose = function() {
+      _wsConn = false;
+      updateStatusDot(false);
+      // Reconnect after 5s
+      setTimeout(connectWS, 5000);
+    };
+
+    _ws.onerror = function() {
+      _wsConn = false;
+      updateStatusDot(false);
+    };
+  } catch (err) {
+    _wsConn = false;
+  }
+}
+
+function handleWSMessage(msg) {
+  if (!msg || !msg.type) return;
+
+  if (msg.type === 'event' && msg.data) {
+    var d = msg.data;
+    var et = d.event_type;
+
+    if (et === 'mping') {
+      var payload = d.payload || {};
+      if (payload.target_actor_id === undefined || String(payload.target_actor_id) === String(getMyActorId())) {
+        receivePing(d.id, payload.ping_command || 'DIRECTIVE', payload.message || '');
+      }
+    }
+
+    if (et === 'game_freeze') { setFrozen(true); }
+    if (et === 'game_unfreeze') { setFrozen(false); }
+  }
+
+  if (msg.type === 'mping') {
+    var pd = msg.data || {};
+    receivePing(pd.event_id, pd.ping_command || 'DIRECTIVE', pd.message || '');
+  }
+}
+
+// We don't store actor_id locally — use a placeholder approach
+// (The server validates via token, so we don't strictly need it client-side,
+// but we can retrieve it from the status endpoint.)
+var _myActorId = null;
+function getMyActorId() { return _myActorId; }
+
+// ===== STATUS POLLING =====
+async function pollStatus() {
+  if (!_token) return;
+  try {
+    var res = await apiGet('/status');
+    if (!res.ok) return;
+    var data = await res.json();
+
+    if (data.actor) {
+      _myActorId = data.actor.id;
+      document.getElementById('idle-lane').textContent  = data.actor.lane_id || 'NO LANE';
+      document.getElementById('sb-lane').textContent    = data.actor.lane_id || '—';
+      document.getElementById('sb-status').textContent  = data.actor.status ? data.actor.status.toUpperCase() : '—';
+      document.getElementById('sp-cell').textContent    = data.actor.cell_id || '—';
+    }
+    if (data.scenario) {
+      document.getElementById('sp-scenario').textContent = data.scenario.name || '—';
+      setFrozen(!!data.scenario.frozen);
+    }
+    if (data.last_ping && !data.last_ping.acked) {
+      receivePing(null, data.last_ping.command || 'DIRECTIVE', data.last_ping.message || '', data.last_ping.sent_at);
+    }
+    updateStatusBar();
+  } catch (e) {}
+}
+
+// ===== GPS =====
+function startGPS() {
+  if (!navigator.geolocation) {
+    updateGPSIndicator('GPS: NOT SUPPORTED', 'acquiring');
+    return;
+  }
+  updateGPSIndicator('GPS: ACQUIRING…', 'acquiring');
+  _gpsWatchId = navigator.geolocation.watchPosition(
+    function(pos) {
+      _gps = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      updateGPSIndicator(
+        'GPS: ' + _gps.lat.toFixed(5) + '  ' + _gps.lng.toFixed(5),
+        'locked'
+      );
+      document.getElementById('sp-lat').textContent = _gps.lat.toFixed(6);
+      document.getElementById('sp-lng').textContent = _gps.lng.toFixed(6);
+    },
+    function(err) {
+      updateGPSIndicator('GPS: ' + (err.code === 1 ? 'DENIED' : 'UNAVAIL'), 'acquiring');
+    },
+    { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
+  );
+}
+
+function updateGPSIndicator(text, cls) {
+  var el = document.getElementById('gps-indicator');
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'gps-indicator ' + (cls || '');
+}
+
+// ===== ACCELEROMETER =====
+(function setupMotion() {
+  if (typeof DeviceMotionEvent !== 'undefined') {
+    window.addEventListener('devicemotion', function(e) {
+      var a = e.accelerationIncludingGravity;
+      if (!a) return;
+      var mag = Math.sqrt((a.x||0)**2 + (a.y||0)**2 + (a.z||0)**2);
+      if      (mag < 0.5) _motionState = 'stationary';
+      else if (mag < 3)   _motionState = 'walking';
+      else if (mag < 8)   _motionState = 'running';
+      else if (mag < 15)  _motionState = 'vehicle';
+      else                _motionState = 'dropped';
+      document.getElementById('idle-motion').textContent = 'MOTION: ' + (MOTION_LABELS[_motionState] || _motionState);
+      document.getElementById('sb-motion').textContent   = MOTION_LABELS[_motionState] || _motionState;
+    }, false);
+  }
+})();
+
+// ===== TELEMETRY HEARTBEAT =====
+async function sendTelemetry() {
+  if (!_token) return;
+  try {
+    var payload = {
+      lat:          _gps ? _gps.lat : undefined,
+      lng:          _gps ? _gps.lng : undefined,
+      motion_state: _motionState,
+      battery:      _battery !== null ? _battery : undefined,
+      low_power:    _battery !== null && _battery < 20,
+    };
+    var res = await apiPost('/telemetry', payload);
+    if (res.ok) {
+      _lastTelemAt = Date.now();
+      _heartbeatCnt++;
+      document.getElementById('sp-last-telem').textContent = fmtAge(_lastTelemAt);
+      document.getElementById('sp-heartbeat').textContent  = '#' + _heartbeatCnt;
+    }
+  } catch (e) {}
+}
+
+// ===== INCOMING PING =====
+function receivePing(pingId, command, detail, receivedAt) {
+  // Don't re-trigger the same ping
+  if (_pendingPing && _pendingPing.id === pingId) return;
+
+  _pendingPing = {
+    id:         pingId,
+    command:    command.toUpperCase(),
+    detail:     detail,
+    received_at: receivedAt || Date.now(),
+  };
+
+  // Show ping alert
+  document.getElementById('idle-state').style.display = 'none';
+  var alertEl = document.getElementById('ping-alert');
+  alertEl.classList.add('visible');
+  document.getElementById('ping-command').textContent = _pendingPing.command;
+  document.getElementById('ping-detail').textContent  = _pendingPing.detail || '';
+  document.getElementById('ack-btn').classList.remove('acked');
+  document.getElementById('ack-btn').textContent = 'ACKNOWLEDGE';
+  document.getElementById('ack-btn').disabled = false;
+
+  // Vibrate
+  vibrate('ping');
+
+  // Start ACK countdown
+  _ackCountdown = ACK_TIMER;
+  updatePingTimer();
+  if (_ackInterval) clearInterval(_ackInterval);
+  _ackInterval = setInterval(function() {
+    _ackCountdown--;
+    updatePingTimer();
+    if (_ackCountdown <= 0) {
+      clearInterval(_ackInterval);
+      _ackInterval = null;
+    }
+  }, 1000);
+
+  updateStatusBar();
+}
+
+function updatePingTimer() {
+  var el = document.getElementById('ping-timer');
+  if (!el) return;
+  el.textContent = String(Math.max(0, _ackCountdown));
+  el.className = 'ping-timer' + (_ackCountdown > 10 ? '' : (_ackCountdown > 5 ? ' ok' : ''));
+  if (_ackCountdown <= 5 && _ackCountdown > 0 && !_silentMode) {
+    vibrate('tick');
+  }
+}
+
+// ===== ACK =====
+async function doAck() {
+  if (!_pendingPing) return;
+  var btn = document.getElementById('ack-btn');
+  btn.disabled = true;
+  btn.textContent = 'SENDING…';
+
+  try {
+    var body = { ping_event_id: _pendingPing.id, message: 'ACK from watch' };
+    var res = await apiPost('/ack', body);
+    if (res.ok) {
+      btn.classList.add('acked');
+      btn.textContent = 'ACKNOWLEDGED ✓';
+      vibrate('ack');
+      if (_ackInterval) { clearInterval(_ackInterval); _ackInterval = null; }
+      document.getElementById('ping-timer').textContent = '✓';
+      document.getElementById('ping-timer').className   = 'ping-timer ok';
+      // Return to idle after 2s
+      setTimeout(clearPing, 2000);
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'RETRY ACK';
+    }
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = 'RETRY ACK';
+  }
+}
+
+function clearPing() {
+  _pendingPing = null;
+  document.getElementById('ping-alert').classList.remove('visible');
+  document.getElementById('idle-state').style.display = '';
+  updateStatusBar();
+}
+
+// ===== CHECK-IN =====
+async function doCheckin() {
+  if (!_token) return;
+  vibrate('tap');
+  try {
+    await apiPost('/checkin', {
+      lat:     _gps ? _gps.lat : undefined,
+      lng:     _gps ? _gps.lng : undefined,
+      message: 'WATCH CHECKIN — ' + _motionState.toUpperCase(),
+    });
+  } catch (e) {}
+}
+
+// ===== SILENT MODE =====
+function doSilentMode() {
+  _silentMode = !_silentMode;
+  var icon = document.getElementById('silent-icon');
+  var btn  = document.getElementById('silent-btn');
+  if (icon) icon.textContent = _silentMode ? '🔇' : '🔔';
+  if (btn) btn.className = _silentMode ? 'warn' : '';
+  vibrate('tap');
+}
+
+// ===== PANIC =====
+function showPanicConfirm() {
+  vibrate('tap');
+  document.getElementById('panic-overlay').classList.add('visible');
+}
+function hidePanicConfirm() {
+  document.getElementById('panic-overlay').classList.remove('visible');
+}
+async function doPanic() {
+  hidePanicConfirm();
+  vibrate('panic');
+  try {
+    await apiPost('/panic', {
+      lat:     _gps ? _gps.lat : undefined,
+      lng:     _gps ? _gps.lng : undefined,
+      message: 'PANIC — ACTOR ABORT',
+    });
+  } catch (e) {}
+}
+
+// ===== STATUS PANEL =====
+function toggleStatusPanel() {
+  var panel = document.getElementById('status-panel');
+  panel.classList.toggle('visible');
+  updateStatusPanel();
+}
+function updateStatusPanel() {
+  document.getElementById('sp-last-telem').textContent = _lastTelemAt ? fmtAge(_lastTelemAt) : '—';
+  document.getElementById('sp-heartbeat').textContent  = _heartbeatCnt ? '#' + _heartbeatCnt : '—';
+}
+
+// ===== STATUS BAR =====
+function updateStatusBar() {
+  var pings = _pendingPing ? '1' : '0';
+  document.getElementById('sb-pings').textContent  = pings;
+  document.getElementById('sb-pings').className    = 'sv' + (_pendingPing ? ' danger' : '');
+  document.getElementById('sb-battery').textContent = _battery !== null ? _battery + '%' : '—';
+  document.getElementById('sb-battery').className   = 'sv' + (_battery !== null && _battery < 20 ? ' amber' : '');
+  document.getElementById('sb-motion').textContent  = MOTION_LABELS[_motionState] || _motionState;
+}
+
+// ===== FROZEN =====
+function setFrozen(val) {
+  _isFrozen = val;
+  var ov = document.getElementById('frozen-overlay');
+  if (ov) ov.classList.toggle('visible', val);
+  if (val && !_silentMode) vibrate('panic');
+}
+
+// ===== WS DOT =====
+function updateStatusDot(on) {
+  var dot = document.getElementById('ws-dot');
+  if (dot) dot.classList.toggle('on', !!on);
+}
+
+// ===== LOGOUT =====
+function doLogout() {
+  stopWatch();
+  _token = _callsign = _scenarioId = _myActorId = _pendingPing = null;
+  _lastTelemAt = null; _heartbeatCnt = 0; _gps = null;
+  localStorage.removeItem(STORAGE_KEY);
+  document.getElementById('status-panel').classList.remove('visible');
+  showScreen('login');
+}
+
+// ===== VIBRATION =====
+function vibrate(type) {
+  if (_silentMode && type !== 'panic') return;
+  if (!('vibrate' in navigator)) return;
+  var patterns = {
+    tap:   [30],
+    tick:  [20],
+    ping:  [100, 50, 100, 50, 200],
+    ack:   [50, 30, 200],
+    panic: [200, 100, 200, 100, 500, 100, 500],
+  };
+  try { navigator.vibrate(patterns[type] || [50]); } catch (e) {}
+}
+
+// ===== API HELPERS =====
+function apiGet(path) {
+  return fetch(API_BASE + path, {
+    headers: { 'Authorization': 'Bearer ' + _token },
+  });
+}
+function apiPost(path, body) {
+  return fetch(API_BASE + path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + _token,
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+// ===== UTILS =====
+function fmtAge(ts) {
+  var s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return s + 's ago';
+  return Math.floor(s / 60) + 'm ago';
+}
+</script>
+</body>
+</html>

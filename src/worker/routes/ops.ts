@@ -5,7 +5,7 @@
    ============================================================ */
 
 import { Hono } from 'hono';
-import type { Env, AuthContext, CheckinRequest, DeadDropRequest } from '../../shared/types';
+import type { Env, AuthContext, CheckinRequest, DeadDropRequest, TelemetryRequest, PanicRequest } from '../../shared/types';
 import { requireAuth } from '../middleware/auth';
 import {
   getScenario,
@@ -16,6 +16,7 @@ import {
   getEventsByLane,
   updateActorStatus,
   updateActorLane,
+  updateActorTelemetry,
   createDeadDrop,
   retrieveDeadDrop,
   getDeadDropsByLane,
@@ -336,6 +337,92 @@ opsRoutes.post('/pingback', async (c) => {
   });
 
   // Broadcast via Durable Object so M Mode sees it in real time
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+  const room = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'event',
+      data: { ...event, payload: JSON.parse(event.payload) },
+      timestamp: Date.now(),
+    }),
+  }));
+
+  return c.json({ ok: true, event_id: event.id });
+});
+
+/**
+ * POST /api/ops/telemetry
+ * Actor heartbeat: GPS position + accelerometer data.
+ * Sent every 10–30 seconds by the smartwatch/ops app.
+ * Updates the actor's last-known position and broadcasts to M console.
+ */
+opsRoutes.post('/telemetry', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<TelemetryRequest>();
+
+  // Classify motion state from accelerometer magnitude if not provided
+  let motionState = body.motion_state ?? 'unknown';
+  if (motionState === 'unknown' && body.accel_x != null && body.accel_y != null && body.accel_z != null) {
+    const mag = Math.sqrt(body.accel_x ** 2 + body.accel_y ** 2 + body.accel_z ** 2);
+    if (mag < 0.5)       motionState = 'stationary';
+    else if (mag < 3)    motionState = 'walking';
+    else if (mag < 8)    motionState = 'running';
+    else if (mag < 15)   motionState = 'vehicle';
+    else                 motionState = 'dropped';
+  }
+
+  // Update actor telemetry in DB
+  await updateActorTelemetry(c.env.DB, auth.actor_id, {
+    lat: body.lat,
+    lng: body.lng,
+    accel_x: body.accel_x,
+    accel_y: body.accel_y,
+    accel_z: body.accel_z,
+    motion_state: motionState,
+  });
+
+  // Broadcast lightweight telemetry update to M console (no DB event insert to avoid log spam)
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+  const room = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'actor_telemetry',
+      data: {
+        actor_id:     auth.actor_id,
+        callsign:     auth.callsign,
+        lat:          body.lat ?? null,
+        lng:          body.lng ?? null,
+        motion_state: motionState,
+        battery:      body.battery ?? null,
+        low_power:    body.low_power ?? false,
+        ts:           Date.now(),
+      },
+      timestamp: Date.now(),
+    }),
+  }));
+
+  return c.json({ ok: true, motion_state: motionState });
+});
+
+/**
+ * POST /api/ops/panic
+ * Emergency abort — actor signals distress.
+ * Inserts a high-priority event, M console is alerted immediately.
+ */
+opsRoutes.post('/panic', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<PanicRequest>().catch(() => ({} as PanicRequest));
+
+  const event = await insertEvent(c.env.DB, auth.scenario_id, auth.actor_id, 'actor_panic', {
+    callsign: auth.callsign,
+    lat:      body.lat ?? null,
+    lng:      body.lng ?? null,
+    message:  body.message || 'PANIC — ACTOR ABORT',
+    ts:       Date.now(),
+  });
+
   const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
   const room = c.env.SCENARIO_ROOM.get(roomId);
   await room.fetch(new Request('http://internal/broadcast', {

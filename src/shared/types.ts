@@ -41,6 +41,14 @@ export interface ActorRow {
   cell_id: string | null;
   status: string;
   password_hash: string;
+  // Telemetry fields (added by migration 0004)
+  last_lat: number | null;
+  last_lng: number | null;
+  last_seen_at: number | null;
+  last_accel_x: number | null;
+  last_accel_y: number | null;
+  last_accel_z: number | null;
+  motion_state: 'unknown' | 'stationary' | 'walking' | 'running' | 'vehicle' | 'dropped' | null;
   created_at: number;
   updated_at: number;
 }
@@ -151,6 +159,29 @@ export interface CheckinRequest {
   message?: string;
 }
 
+export interface TelemetryRequest {
+  lat?: number;
+  lng?: number;
+  /** Accelerometer X axis (m/s²) */
+  accel_x?: number;
+  /** Accelerometer Y axis (m/s²) */
+  accel_y?: number;
+  /** Accelerometer Z axis (m/s²) */
+  accel_z?: number;
+  /** Client-classified motion state */
+  motion_state?: 'unknown' | 'stationary' | 'walking' | 'running' | 'vehicle' | 'dropped';
+  /** Battery level 0–100 */
+  battery?: number;
+  /** Whether device is in low-power mode */
+  low_power?: boolean;
+}
+
+export interface PanicRequest {
+  lat?: number;
+  lng?: number;
+  message?: string;
+}
+
 export interface DeadDropRequest {
   lane_id: string;
   label: string;
@@ -175,10 +206,11 @@ export interface EscalationRequest {
 // --- WebSocket Message Types ---
 
 export type WSMessageType =
-  | 'event'        // new event broadcast
-  | 'state'        // full state snapshot
-  | 'actor_update' // actor position/status change
-  | 'escalation'   // escalation tier change
+  | 'event'            // new event broadcast
+  | 'state'            // full state snapshot
+  | 'actor_update'     // actor position/status change
+  | 'actor_telemetry'  // actor GPS + motion update
+  | 'escalation'       // escalation tier change
   | 'ping'
   | 'pong';
 

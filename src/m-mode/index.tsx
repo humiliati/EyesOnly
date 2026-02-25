@@ -427,6 +427,7 @@ function renderConsole(container: HTMLElement, session: Session) {
   renderRightPanel(session);
   connectWS(session);
   setInterval(() => loadEvents(session), 10000);
+  setInterval(() => loadActorPositions(session), 15000);
 }
 
 // --- Map Grid with image overlay ---
@@ -719,6 +720,45 @@ async function loadEvents(session: Session) {
   } catch {}
 }
 
+// ===== LIVE ACTOR TELEMETRY =====
+
+const MOTION_STATE_ICON: Record<string, string> = {
+  unknown: '·', stationary: '◼', walking: '▶', running: '⚡', vehicle: '🚗', dropped: '⬇',
+};
+
+async function loadActorPositions(session: Session) {
+  const listEl = document.getElementById('actor-telemetry-list');
+  if (!listEl) return;
+  try {
+    const res = await mFetch(`/m/actors/positions/${session.scenarioId}`, session);
+    if (!res.ok) { listEl.innerHTML = '<div style="font-size:9px;color:var(--red);">TELEMETRY UNAVAIL</div>'; return; }
+    const data = await res.json() as any;
+    const positions: any[] = data.positions || [];
+    if (!positions.length) {
+      listEl.innerHTML = '<div style="font-size:9px;color:var(--text-dim);padding:4px 0;">No actors.</div>';
+      return;
+    }
+    const now = Date.now();
+    listEl.innerHTML = positions.map((p: any) => {
+      const ageMs = p.last_seen_at ? now - p.last_seen_at : null;
+      const ageStr = ageMs == null ? 'NO DATA' : ageMs < 60000 ? `${Math.round(ageMs / 1000)}s ago` : `${Math.round(ageMs / 60000)}m ago`;
+      const isStale = ageMs == null || ageMs > 120000;
+      const motionIcon = MOTION_STATE_ICON[p.motion_state] || '·';
+      const locStr = p.lat != null ? `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}` : 'NO GPS';
+      const ageColor = isStale ? 'var(--red)' : ageMs! < 45000 ? 'var(--accent)' : 'var(--amber)';
+      return `<div style="display:flex;flex-direction:column;padding:3px 0;border-bottom:1px solid rgba(40,40,40,0.4);gap:1px;">
+        <div style="display:flex;justify-content:space-between;font-size:9px;">
+          <span><span class="actor-badge team-${p.team}">${p.callsign}</span>&nbsp;${motionIcon}</span>
+          <span style="color:${ageColor};font-size:8px;">${ageStr}</span>
+        </div>
+        <div style="font-size:8px;color:${isStale ? '#555' : 'var(--text-dim)'};letter-spacing:0.5px;">${locStr}</div>
+      </div>`;
+    }).join('');
+  } catch {
+    if (listEl) listEl.innerHTML = '<div style="font-size:9px;color:var(--red);">TELEMETRY ERROR</div>';
+  }
+}
+
 // ===== CONTEXT-SENSITIVE RIGHT PANEL =====
 
 function renderRightPanel(session: Session) {
@@ -771,6 +811,13 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
       <div class="ctrl-section">
         <h3>ACTOR NETWORK</h3>
         <div id="actor-roster" style="max-height:140px;overflow-y:auto;padding:2px 0;">${actorRows}</div>
+      </div>
+      <div class="ctrl-section">
+        <h3>LIVE TELEMETRY</h3>
+        <div id="actor-telemetry-list" style="max-height:150px;overflow-y:auto;padding:2px 0;">
+          <div style="font-size:9px;color:var(--text-dim);padding:4px 0;">Loading positions…</div>
+        </div>
+        <button class="ctrl-btn" id="ctrl-refresh-telemetry" style="margin-top:4px;font-size:8px;">REFRESH POSITIONS</button>
       </div>
       <div class="ctrl-section">
         <h3>MAP</h3>
@@ -854,6 +901,10 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
 
   // Populate lane dropdown for assignment
   populateLaneSelect('ctrl-assign-lane-select', session);
+
+  // Live telemetry refresh
+  loadActorPositions(session);
+  document.getElementById('ctrl-refresh-telemetry')?.addEventListener('click', () => loadActorPositions(session));
 
   // Map upload
   document.getElementById('ctrl-map-upload')!.addEventListener('click', () => document.getElementById('ctrl-map-file')!.click());
@@ -1410,6 +1461,18 @@ function connectWS(session: Session) {
             mokSend('warning', `${evType.replace(/_/g, ' ')} detected.`);
           } else if (evType === 'checkin') {
             mokSend('advisory', `Check-in: ${data.data?.payload?.callsign || 'unknown'}`);
+          } else if (evType === 'actor_panic') {
+            const p = data.data?.payload || {};
+            mokSend('critical', `⚠ PANIC — ${p.callsign || 'ACTOR'}: ${p.message || 'ABORT'}`);
+          } else if (evType === 'player_pingback') {
+            mokSend('advisory', `Pingback from ${data.data?.payload?.callsign || 'player'}.`);
+          }
+        } else if (data.type === 'actor_telemetry') {
+          // Live GPS update from watch app — update telemetry list if visible
+          const td = data.data as any;
+          if (td) {
+            const listEl = document.getElementById('actor-telemetry-list');
+            if (listEl && cachedSession) loadActorPositions(cachedSession);
           }
         } else if (data.type === 'mping_ack') {
           const callsign = data.data?.acked_by || 'unknown';
