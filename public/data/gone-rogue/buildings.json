@@ -11,10 +11,11 @@
     "nested": [
       {
         "id": "INT-001",
-        "name": "Catacombs",
+        "name": "Brewery",
+        "parentBuildingId": "BLD-001",
         "targetFloorId": "1.1.1",
         "kind": "procedural",
-        "gen": "catacombs"
+        "gen": "brewery"
       }
     ]
   },
@@ -27,6 +28,15 @@
     "orientation": "horizontal",
     "interiorFloorId": "1.2",
     "enterHint": "↔️",
-    "nested": []
+    "nested": [
+      {
+        "id": "INT-002",
+        "name": "Catacombs",
+        "parentBuildingId": "BLD-002",
+        "targetFloorId": "1.2.1",
+        "kind": "procedural",
+        "gen": "catacombs"
+      }
+    ]
   }
 ]

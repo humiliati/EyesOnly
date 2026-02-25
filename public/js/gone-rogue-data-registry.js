@@ -96,6 +96,28 @@ var GoneRogueDataRegistry = (function() {
     check(_db.groundEffects, 'groundEffect', 'ground_effects.json', /^EFF-\d{3}$/, ['name', 'emoji']);
     check(_db.synergies, 'synergy', 'synergies.json', /^SYN-\d{3}$/, ['name']);
     check(_db.buildings, 'building', 'buildings.json', /^BLD-\d{3}$/, ['name', 'emoji', 'interiorFloorId']);
+
+    // Deeper building validation: nested parent linkage + floorId prefixing
+    try {
+      for (var bi = 0; bi < _db.buildings.length; bi++) {
+        var b = _db.buildings[bi];
+        if (!b || !b.id) continue;
+        var prefix = (b.interiorFloorId ? (String(b.interiorFloorId) + '.') : null);
+        if (Array.isArray(b.nested)) {
+          for (var ni = 0; ni < b.nested.length; ni++) {
+            var n = b.nested[ni];
+            if (!n) continue;
+            if (n.parentBuildingId && n.parentBuildingId !== b.id) {
+              warn('building ' + b.id + ' nested ' + (n.id || ('#' + ni)) + ' parentBuildingId mismatch: ' + n.parentBuildingId);
+            }
+            if (prefix && n.targetFloorId && String(n.targetFloorId).indexOf(prefix) !== 0) {
+              warn('building ' + b.id + ' nested ' + (n.id || ('#' + ni)) + ' targetFloorId not under ' + b.interiorFloorId + ': ' + n.targetFloorId);
+            }
+          }
+        }
+      }
+    } catch (e4) {}
+
   }
 
   var info = {
