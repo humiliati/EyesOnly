@@ -310,20 +310,23 @@ const FoodDatabase = (function() {
     var effectsApplied = [];
     var effects = food.effects;
 
-    // Apply HP restoration
-    if (effects.hp && typeof GAMESTATE !== 'undefined') {
+    // Apply HP restoration (HP lives on player object, not GAMESTATE)
+    if (effects.hp && player) {
       var hpBefore = player.hp || 0;
-      GAMESTATE.addHP(effects.hp);
-      var hpAfter = player.hp || 0;
-      effectsApplied.push({ type: 'hp', amount: hpAfter - hpBefore });
+      var maxHp = player.maxHp || 10;
+      player.hp = Math.min(maxHp, hpBefore + effects.hp);
+      effectsApplied.push({ type: 'hp', amount: player.hp - hpBefore });
     }
 
-    // Apply fatigue reduction
+    // Apply fatigue reduction (negative fatigue value = reduce fatigue)
     if (effects.fatigue && typeof GAMESTATE !== 'undefined') {
-      var fatigueBefore = player.fatigue || 0;
-      GAMESTATE.modifyFatigue(effects.fatigue); // Negative value reduces fatigue
-      var fatigueAfter = player.fatigue || 0;
-      effectsApplied.push({ type: 'fatigue', amount: fatigueAfter - fatigueBefore });
+      var absReduction = Math.abs(effects.fatigue);
+      if (effects.fatigue < 0 && GAMESTATE.reduceFatigue) {
+        GAMESTATE.reduceFatigue(absReduction);
+      } else if (effects.fatigue > 0 && GAMESTATE.addFatigue) {
+        GAMESTATE.addFatigue(effects.fatigue);
+      }
+      effectsApplied.push({ type: 'fatigue', amount: effects.fatigue });
     }
 
     // Apply ammo restoration

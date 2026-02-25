@@ -124,7 +124,7 @@ const DebriefFeedRenderer = (function() {
 
     html += _renderResourceBar('Battery', resources.battery, resources.maxBattery, '🔋', false);
     html += _renderResourceBar('Fatigue', resources.fatigue, resources.maxFatigue, '🏋️', false);
-    html += _renderResourceBar('Ammo', resources.ammo, resources.maxAmmo, '🔫', false);
+    html += _renderResourceBar('Ammo', resources.ammo, resources.maxAmmo, '؋', false);
 
     html += '</div>';
     return html;

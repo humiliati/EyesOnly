@@ -562,6 +562,16 @@ const GoneRogueMobile = (function () {
               cellData.bg = '#3d2800';
               cellData.color = '#ffaa00';
               cellData.glow = '#ff8800'; // custom flag for canvas glow pass
+            } else if (tile === '؋') {
+              // Ammo pickup — magenta per RESOURCE_COLOR_SYSTEM.md
+              cellData.bg = '#2a0a2a';
+              cellData.color = '#DA70D6';
+              cellData.glow = '#DA70D6';
+            } else if (tile === '💎') {
+              // Gem / battery recharge — purple glow
+              cellData.bg = '#1a0a2a';
+              cellData.color = '#aa66ff';
+              cellData.glow = '#8844cc';
             } else if (tile === '~') {
               // Water tile — dark blue background
               cellData.bg = '#0a1a2a';

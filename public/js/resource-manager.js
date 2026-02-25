@@ -218,7 +218,7 @@ const ResourceManager = (function() {
       secondary: [
         { name: 'Battery', icon: '🔋', current: resources.battery, max: resources.maxBattery },
         { name: 'Fatigue', icon: '🏋️', current: resources.fatigue, max: resources.maxFatigue },
-        { name: 'Ammo', icon: '🔫', current: resources.ammo, max: resources.maxAmmo }
+        { name: 'Ammo', icon: '؋', current: resources.ammo, max: resources.maxAmmo }
       ]
     };
   }

@@ -4805,9 +4805,9 @@ _incrementPityTimers();
       });
     }
 
-    // Place items
+    // Place items — use item-specific emoji if available, fallback to TILES.ITEM
     _items.forEach(function(item) {
-      display[item.y][item.x] = TILES.ITEM;
+      display[item.y][item.x] = item.emoji || TILES.ITEM;
     });
 
     // Place projectiles
@@ -5132,6 +5132,14 @@ _incrementPityTimers();
             if (typeof TooltipSystem !== 'undefined' && result.tooltipText) {
               TooltipSystem.showGeneric(result.tooltipText, 2000);
             }
+            // Pancake stacker animation for food
+            try {
+              if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+                PancakeStack.addPancake(result.emoji || '🍎');
+              } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
+                PlayerStackManager.addPancake(result.emoji || '🍎');
+              }
+            } catch (ePancake) {}
             InteractiveItems.removeItem(foodItem.id);
           }
         }
@@ -5339,6 +5347,15 @@ _incrementPityTimers();
               TooltipSystem.showGeneric(result.tooltipText, 2000);
             }
 
+            // Pancake stacker animation for food
+            try {
+              if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+                PancakeStack.addPancake(result.emoji || '🍎');
+              } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
+                PlayerStackManager.addPancake(result.emoji || '🍎');
+              }
+            } catch (ePancake) {}
+
             // Remove food item from world (clean disappearance)
             InteractiveItems.removeItem(foodItem.id);
             console.log('[GoneRogue] Food consumed:', result.foodName);
@@ -5520,11 +5537,59 @@ _incrementPityTimers();
       }
 
       if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-        UIControls.updateMokInterjection('🔫 Ammo +' + item.amount);
+        UIControls.updateMokInterjection('؋ Ammo +' + item.amount);
       }
 
+      // Pancake stacker for ammo
+      try {
+        if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+          PancakeStack.addPancake('؋');
+        } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
+          PlayerStackManager.addPancake('؋');
+        }
+      } catch (ePancake) {}
+
       return {
-        lines: ['PICKED UP: 🔫 Ammo +' + item.amount, ''].concat(_renderGrid()),
+        lines: ['PICKED UP: ؋ Ammo +' + item.amount, ''].concat(_renderGrid()),
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
+    // Handle gem pickup — restores battery resource
+    if (item.type === 'gem') {
+      var gemAmount = item.amount || 1;
+
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.rechargeBattery) {
+        GAMESTATE.rechargeBattery(gemAmount);
+      }
+
+      // Remove gem from floor
+      _items = _items.filter(function(i) { return i !== item; });
+
+      if (typeof OverheadAnimator !== 'undefined') {
+        OverheadAnimator.showExpression(_player.x, _player.y, 'LOOT', 800, '💎');
+      }
+
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showAction('item-pickup', { name: '💎 Battery +' + gemAmount });
+      }
+
+      if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+        UIControls.updateMokInterjection('💎 Battery +' + gemAmount);
+      }
+
+      // Pancake stacker for gems
+      try {
+        if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+          PancakeStack.addPancake('💎');
+        } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
+          PlayerStackManager.addPancake('💎');
+        }
+      } catch (ePancake) {}
+
+      return {
+        lines: ['PICKED UP: 💎 Battery +' + gemAmount, ''].concat(_renderGrid()),
         prompt: getPrompt(),
         stayActive: true
       };
@@ -5574,6 +5639,15 @@ _incrementPityTimers();
       if (isCard) {
         // NEW LOOT FLOW: Cards go to hand first, then action buttons
         result = GAMESTATE.addCard(item.card);
+        // Pancake stacker for card pickup
+        try {
+          var cardEmoji = (item.card && item.card.emoji) ? item.card.emoji : '🃏';
+          if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+            PancakeStack.addPancake(cardEmoji);
+          } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
+            PlayerStackManager.addPancake(cardEmoji);
+          }
+        } catch (ePancake) {}
       } else if (item.type === 'key' && keyTier >= 2) {
         // TIER 2+: Door/gate keys and quest items go to persistent inventory (safe across death)
         if (GAMESTATE.addToPersistent) {
@@ -8149,8 +8223,22 @@ _incrementPityTimers();
                   amount: rolledLoot.ammo,
                   spawnTime: Date.now(),
                   decayTime: LootTableManager.getDecayTime('ammo') * 1000 || 60000,
-                  emoji: '🔫',
+                  emoji: '؋',
                   name: 'Ammo (' + rolledLoot.ammo + ')'
+                });
+              }
+
+              // Spawn gem (15% chance — battery recharge collectible)
+              if (_rng() < 0.15) {
+                _items.push({
+                  x: breakable.x,
+                  y: breakable.y,
+                  type: 'gem',
+                  amount: 1,
+                  spawnTime: Date.now(),
+                  decayTime: 45000,
+                  emoji: '💎',
+                  name: 'Energy Gem'
                 });
               }
 
@@ -8211,8 +8299,22 @@ _incrementPityTimers();
                 amount: ammoAmount,
                 spawnTime: Date.now(),
                 decayTime: 60000, // 60 second decay for resources
-                emoji: '🔫',
+                emoji: '؋',
                 name: 'Ammo (' + ammoAmount + ')'
+              });
+            }
+
+            // 15% chance to drop gem (battery recharge)
+            if (_rng() < 0.15) {
+              _items.push({
+                x: breakable.x,
+                y: breakable.y,
+                type: 'gem',
+                amount: 1,
+                spawnTime: Date.now(),
+                decayTime: 45000, // 45 second decay
+                emoji: '💎',
+                name: 'Energy Gem'
               });
             }
 
@@ -10798,7 +10900,7 @@ _incrementPityTimers();
       if (ammoDrops > 0) {
         // Auto-collect ammo drops
         GAMESTATE.addAmmo(ammoDrops);
-        lines.push('🔫 AMMO RECOVERED: +' + ammoDrops + ' (' + _strCombatAmmoSpent + ' spent in combat)');
+        lines.push('؋ AMMO RECOVERED: +' + ammoDrops + ' (' + _strCombatAmmoSpent + ' spent in combat)');
 
         // Report to debrief feed
         if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
@@ -11696,7 +11798,7 @@ _incrementPityTimers();
       var maxFatigue = state.maxFatigue  || 100;
       var focus   = GAMESTATE.getFocus   ? GAMESTATE.getFocus()   : 0;
 
-      if (ammo <= 0)                               warnings.push('🔫 no ammo');
+      if (ammo <= 0)                               warnings.push('؋ no ammo');
       if (energy <= 0)                             warnings.push('⚡ no energy');
       if (focus <= 0)                              warnings.push('🎯 no focus');
       if (fatigue >= maxFatigue * 0.8)             warnings.push('🏋️  extreme fatigue');
