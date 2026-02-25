@@ -27,6 +27,17 @@
 .debrief-nav-row.row-ammo { color: #DA70D6; }
 /* SIGNAL row is battery grammar */
 .debrief-nav-row.row-signal { color: #00FFA6; }
+
+/* Signal pulse: color/glow pulse without changing row width */
+@keyframes signalPulse {
+  0% { filter: brightness(1); text-shadow: 0 0 6px color-mix(in srgb, currentColor 45%, transparent); }
+  40% { filter: brightness(1.35); text-shadow: 0 0 10px color-mix(in srgb, currentColor 70%, transparent); }
+  100% { filter: brightness(1); text-shadow: 0 0 6px color-mix(in srgb, currentColor 45%, transparent); }
+}
+
+.debrief-nav-row.row-signal.signal-pulse {
+  animation: signalPulse 320ms ease-out;
+}
 .debrief-nav-row.row-passives { color: rgba(191, 255, 227, 0.92); }
 .debrief-nav-row.row-status { color: rgba(255, 160, 100, 0.92); }
 .debrief-nav-row.row-mok { color: rgba(191, 255, 227, 0.90); }

@@ -59,6 +59,24 @@
   user-select: none;
 }
 
+/* Rogue portrait: squish the NCH mini pill so it doesn't steal vertical budget */
+@media (max-width: 767px) and (orientation: portrait) {
+  body.gone-rogue-active #non-combat-hud-mini {
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    gap: 6px;
+    padding: 5px 8px;
+    font-size: 11px;
+    max-width: 92px;
+    border-width: 2px;
+  }
+
+  body.gone-rogue-active #non-combat-hud-mini .nch-mini-dot {
+    width: 8px;
+    height: 8px;
+  }
+}
+
 #non-combat-hud-mini .nch-mini-dot {
   width: 10px;
   height: 10px;

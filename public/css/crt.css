@@ -1499,8 +1499,29 @@ body.amber-mode #scanlines::after {
   body.mode-gone-rogue #mok-header.monitor-header,
   body.in-gone-rogue #mok-header.monitor-header,
   body.gone-rogue-active #mok-header.monitor-header {
-    min-height: 20px;
+    min-height: 16px;
+    padding: 1px 4px;
+    gap: 6px;
+  }
+
+  body.mode-gone-rogue #mok-header .mok-header-left,
+  body.in-gone-rogue #mok-header .mok-header-left,
+  body.gone-rogue-active #mok-header .mok-header-left {
+    gap: 6px;
+  }
+
+  body.mode-gone-rogue #mok-header .mok-header-center,
+  body.in-gone-rogue #mok-header .mok-header-center,
+  body.gone-rogue-active #mok-header .mok-header-center {
+    min-height: 0;
+  }
+
+  /* Keep AWOL button present + tappable even when header is squished */
+  body.mode-gone-rogue #awol-button,
+  body.in-gone-rogue #awol-button,
+  body.gone-rogue-active #awol-button {
     padding: 2px 6px;
+    min-height: 18px;
   }
 
   /* Hide verbose header copy; keep only tiny icons */
@@ -1712,13 +1733,24 @@ body.amber-mode #scanlines::after {
   body.gone-rogue-active #terminal {
     min-height: 0;
     height: 100%;
-    padding: 2px;
+    padding: 0;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
     align-items: stretch;
-    gap: 4px;
+    gap: 0;
+  }
+
+  /* Legs chrome collapse: remove the "log-frame" padding/border so the grid
+     reads as the product surface (reduces perceived dead space). */
+  body.mode-gone-rogue .log-frame,
+  body.in-gone-rogue .log-frame,
+  body.gone-rogue-active .log-frame {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
   }
 
   body.gone-rogue-active #rogue-grid-mobile {

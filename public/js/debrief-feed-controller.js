@@ -609,7 +609,9 @@ const DebriefFeedController = (function() {
         var sumS = document.getElementById('debrief-summary-signal');
         if (sumS) {
           (function() {
-            var _frames = ['(((...)))', '((....))', '(.....)', '......'];
+            // Keep the signal summary width stable so the row stays visible.
+            // Pulse is color/glow-driven (CSS), not "extra-long" ASCII frames.
+            var _frames = ['(((', '(((', '(((', '((('];
             var _timer = null;
             var _frameIx = 0;
 
@@ -648,8 +650,8 @@ const DebriefFeedController = (function() {
 
               if (b.batt <= 0) {
                 // Battery=0: powered down
-                // Display empty battery ascii wrapped in signal parens
-                sumS.textContent = '(((((░░░░░░)))))';
+                // Display empty battery ascii in stable signal wrapper
+                sumS.textContent = '(((' + _bar(0, b.maxB, 6) + ')))';
                 try {
                   var av = document.getElementById('mok-avatar');
                   if (av) {
@@ -671,8 +673,20 @@ const DebriefFeedController = (function() {
 
               var frame = _frames[_frameIx % _frames.length];
               _frameIx++;
-              // compact, no spaces: (((((battery.ascii))))) + pulse frame + tier
-              sumS.textContent = '(((((' + _bar(b.batt, b.maxB, 6) + ')))))' + frame + tier;
+
+              // Stable-width signal grammar: "(((" + battery bar + ")))".
+              // Pulse is via CSS class toggled each tick; do not append variable-length frames.
+              sumS.textContent = '(((' + _bar(b.batt, b.maxB, 6) + ')))';
+
+              // Toggle pulse class for color/glow (no width expansion).
+              try {
+                var rowElS = document.querySelector('.debrief-nav-row[data-row="signal"]');
+                if (rowElS) {
+                  rowElS.classList.remove('signal-pulse');
+                  void rowElS.offsetWidth;
+                  rowElS.classList.add('signal-pulse');
+                }
+              } catch (e5) {}
 
               // adjust interval if tier changed
               var want = _speedForTier(tier);
