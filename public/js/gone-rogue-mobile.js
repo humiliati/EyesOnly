@@ -742,22 +742,28 @@ const GoneRogueMobile = (function () {
           var vy = _toViewY(ay);
           if (!_inView(vx, vy)) continue;
 
-          var t = (typeof OverheadAnimator.calculateAnimationTransform === 'function')
-            ? OverheadAnimator.calculateAnimationTransform(anim, currentTime)
-            : { x: 0, y: -12, opacity: 1, scale: 1 };
+          var list = Array.isArray(anim) ? anim : [anim];
+          for (var li = 0; li < list.length; li++) {
+            var a1 = list[li];
+            if (!a1) continue;
 
-          // Convert pixel offset to cell offset
-          var dyCells = (t.y || 0) / cellSize;
-          var dxCells = (t.x || 0) / cellSize;
+            var t = (typeof OverheadAnimator.calculateAnimationTransform === 'function')
+              ? OverheadAnimator.calculateAnimationTransform(a1, currentTime)
+              : { x: 0, y: -12, opacity: 1, scale: 1 };
 
-          effects.push({
-            x: vx + dxCells,
-            y: vy - 0.6 + dyCells,
-            char: anim.text || anim.emoji,
-            color: anim.color || '#FFFFFF',
-            glow: true,
-            alpha: (t.opacity !== undefined ? t.opacity : 1)
-          });
+            // Convert pixel offset to cell offset
+            var dyCells = (t.y || 0) / cellSize;
+            var dxCells = (t.x || 0) / cellSize;
+
+            effects.push({
+              x: vx + dxCells,
+              y: vy - 0.6 + dyCells,
+              char: a1.text || a1.emoji,
+              color: a1.color || '#FFFFFF',
+              glow: true,
+              alpha: (t.opacity !== undefined ? t.opacity : 1)
+            });
+          }
         }
       } catch (e0) {}
     }
@@ -1242,14 +1248,19 @@ const GoneRogueMobile = (function () {
         var cellIndex = animY * grid[0].length + animX;
         var cell = _gridContainer.children[cellIndex];
 
-        if (cell) {
-          var transform = OverheadAnimator.calculateAnimationTransform(anim, currentTime);
+        if (!cell) continue;
+
+        var list = Array.isArray(anim) ? anim : [anim];
+        for (var li = 0; li < list.length; li++) {
+          var a1 = list[li];
+          if (!a1) continue;
+          var transform = OverheadAnimator.calculateAnimationTransform(a1, currentTime);
 
           // Create animation element
           var animEl = document.createElement('div');
-          animEl.className = 'overhead-animation ' + anim.type.toLowerCase().replace(/_/g, '-');
-          animEl.textContent = anim.text || anim.emoji;
-          animEl.style.color = anim.color;
+          animEl.className = 'overhead-animation ' + a1.type.toLowerCase().replace(/_/g, '-');
+          animEl.textContent = a1.text || a1.emoji;
+          animEl.style.color = a1.color;
           animEl.style.opacity = transform.opacity;
           animEl.style.transform = 'translate(' + transform.x + 'px, ' + transform.y + 'px) scale(' + transform.scale + ')';
 

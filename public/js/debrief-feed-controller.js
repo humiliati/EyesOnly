@@ -677,6 +677,24 @@ const DebriefFeedController = (function() {
       UIControls.updateMokInterjection(message);
     }
 
+    // Pulse the debrief window on resource changes (monochrome)
+    try {
+      if (_debriefScreen) {
+        _debriefScreen.classList.remove('debrief-pulse-pos');
+        _debriefScreen.classList.remove('debrief-pulse-neg');
+        var cls = change >= 0 ? 'debrief-pulse-pos' : 'debrief-pulse-neg';
+        // restart animation
+        void _debriefScreen.offsetWidth;
+        _debriefScreen.classList.add(cls);
+        setTimeout(function() {
+          try {
+            _debriefScreen.classList.remove('debrief-pulse-pos');
+            _debriefScreen.classList.remove('debrief-pulse-neg');
+          } catch (eP0) {}
+        }, 260);
+      }
+    } catch (eP1) {}
+
     // If in resource display mode, refresh to show updated values
     if (_currentDisplay === 'resources' && typeof DebriefFeedRenderer !== 'undefined') {
       DebriefFeedRenderer.render();

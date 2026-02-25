@@ -24,3 +24,18 @@
 .debrief-feed-content.summary .resource-value {
   font-size: 0.9em;
 }
+
+/* Resource pulse (monochrome glow bump) */
+@keyframes debriefPulsePos {
+  0% { filter: brightness(1); }
+  40% { filter: brightness(1.35); }
+  100% { filter: brightness(1); }
+}
+@keyframes debriefPulseNeg {
+  0% { filter: brightness(1); }
+  40% { filter: brightness(0.85); }
+  100% { filter: brightness(1); }
+}
+
+#debrief-screen.debrief-pulse-pos { animation: debriefPulsePos 260ms ease-out; }
+#debrief-screen.debrief-pulse-neg { animation: debriefPulseNeg 260ms ease-out; }

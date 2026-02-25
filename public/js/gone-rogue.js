@@ -6836,13 +6836,29 @@ _incrementPityTimers();
         _spawnCurrency(enemy.x, enemy.y, deathResult.loot.currency);
       }
 
+      // Spawn ammo (if provided by DeathHandler)
+      if (deathResult.loot.ammo && deathResult.loot.ammo > 0) {
+        _items.push({
+          x: enemy.x,
+          y: enemy.y,
+          type: 'ammo',
+          amount: deathResult.loot.ammo,
+          spawnTime: Date.now(),
+          decayTime: 30000,
+          emoji: '📦',
+          name: 'Ammo (' + deathResult.loot.ammo + ')'
+        });
+      }
+
       // Spawn cards
+      var _dropCountCards = 0;
       if (deathResult.loot.cards && deathResult.loot.cards.length > 0 && typeof CardSystem !== 'undefined') {
         for (var i = 0; i < deathResult.loot.cards.length; i++) {
           if (deathResult.loot.cards[i].shouldDrop) {
             var baseType = CardSystem.getRandomBaseCard();
             var card = CardSystem.rollCard(baseType);
             if (card) {
+              _dropCountCards++;
               _items.push({
                 x: enemy.x,
                 y: enemy.y,
@@ -6857,11 +6873,13 @@ _incrementPityTimers();
       }
 
       // Spawn charms
+      var _dropCountItems = 0;
       if (deathResult.loot.charms && deathResult.loot.charms.length > 0 && typeof CardSystem !== 'undefined') {
         for (var j = 0; j < deathResult.loot.charms.length; j++) {
           if (deathResult.loot.charms[j].shouldDrop) {
             var charm = CardSystem.rollCommonCharm();
             if (charm) {
+              _dropCountItems++;
               _items.push({
                 x: enemy.x,
                 y: enemy.y,
@@ -6874,6 +6892,18 @@ _incrementPityTimers();
           }
         }
       }
+
+      // Pancake stacker: show distinct category stacks above the drop.
+      try {
+        if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showPancakeStacks) {
+          var stacks = [];
+          if (deathResult.loot.currency > 0) stacks.push({ text: 'CR+' + deathResult.loot.currency, color: '#FFFFFF' });
+          if (deathResult.loot.ammo && deathResult.loot.ammo > 0) stacks.push({ text: 'AM+' + deathResult.loot.ammo, color: '#FFFFFF' });
+          if (_dropCountCards > 0) stacks.push({ text: 'CD+' + _dropCountCards, color: '#FFFFFF' });
+          if (_dropCountItems > 0) stacks.push({ text: 'IT+' + _dropCountItems, color: '#FFFFFF' });
+          if (stacks.length) OverheadAnimator.showPancakeStacks(enemy.x, enemy.y, stacks, 1200);
+        }
+      } catch (eLoot0) {}
     }
 
     // If the dying enemy was the active STR combat target, hard-clear STR state.

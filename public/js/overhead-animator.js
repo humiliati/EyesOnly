@@ -202,6 +202,33 @@ const OverheadAnimator = (function() {
    * @param {number} y - Entity Y position
    * @param {string} statusKey - Key from EXPRESSIONS object
    */
+  // Show multiple stacked expressions at once ("pancake stacker")
+  // stacks: [{ text|emoji, color, duration }]
+  function showPancakeStacks(x, y, stacks, duration) {
+    if (!Array.isArray(stacks) || !stacks.length) return;
+    var now = Date.now();
+    var anims = [];
+
+    for (var i = 0; i < stacks.length; i++) {
+      var s = stacks[i] || {};
+      var glyph = s.text || s.emoji;
+      if (!glyph) continue;
+      anims.push({
+        type: 'EXPRESSION',
+        emoji: glyph,
+        text: glyph,
+        color: s.color || '#ffffff',
+        startTime: now,
+        duration: (typeof s.duration === 'number' ? s.duration : (duration || 1100)),
+        data: { desc: 'pancake', stackIndex: i, stackCount: stacks.length }
+      });
+    }
+
+    if (!anims.length) return;
+    var key = x + ',' + y;
+    _activeAnimations[key] = anims;
+  }
+
   function showStatus(x, y, statusKey) {
     var status = EXPRESSIONS[statusKey];
     if (!status) {
@@ -276,10 +303,25 @@ const OverheadAnimator = (function() {
   function update(currentTime) {
     var expiredKeys = [];
 
-    // Check for expired animations
+    // Check for expired animations (support stacked arrays)
     for (var key in _activeAnimations) {
       var anim = _activeAnimations[key];
-      if (anim.duration !== null) {
+
+      if (Array.isArray(anim)) {
+        var survivors = [];
+        for (var i = 0; i < anim.length; i++) {
+          var a = anim[i];
+          if (!a) continue;
+          if (a.duration === null) { survivors.push(a); continue; }
+          var elapsedA = currentTime - a.startTime;
+          if (elapsedA < a.duration) survivors.push(a);
+        }
+        if (survivors.length) _activeAnimations[key] = survivors;
+        else expiredKeys.push(key);
+        continue;
+      }
+
+      if (anim && anim.duration !== null) {
         var elapsed = currentTime - anim.startTime;
         if (elapsed >= anim.duration) {
           expiredKeys.push(key);
@@ -375,6 +417,17 @@ const OverheadAnimator = (function() {
         break;
     }
 
+    // Pancake stack offsets (multiple independent animations over same tile)
+    try {
+      if (animation && animation.data && typeof animation.data.stackIndex === 'number') {
+        var idx = animation.data.stackIndex;
+        var stackCount = animation.data.stackCount || 1;
+        // Center stacks horizontally over entity, and stagger vertically
+        transform.x += (idx - ((stackCount - 1) / 2)) * 10;
+        transform.y += -idx * 10;
+      }
+    } catch (e0) {}
+
     return transform;
   }
 
@@ -384,6 +437,7 @@ const OverheadAnimator = (function() {
     showCurrencyPickup: showCurrencyPickup,
     showExpression: showExpression,
     showGenericExpression: showGenericExpression,
+    showPancakeStacks: showPancakeStacks,
     showStatus: showStatus,
     showSpeech: showSpeech,
     clearAnimation: clearAnimation,
