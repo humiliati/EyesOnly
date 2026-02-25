@@ -1,0 +1,26 @@
+/* Pip-boy-ish ASCII debrief row layout */
+.debrief-row-label {
+  flex: 0 0 auto;
+  opacity: 0.92;
+  color: rgba(191, 255, 227, 0.95);
+}
+
+.debrief-row-summary {
+  flex: 1 1 auto;
+  text-align: right;
+  opacity: 0.8;
+  color: rgba(191, 255, 227, 0.85);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.debrief-feed-content.summary .resource-bar {
+  margin: 0;
+}
+
+/* Make the summary HP line more compact */
+.debrief-feed-content.summary .resource-name,
+.debrief-feed-content.summary .resource-value {
+  font-size: 0.9em;
+}

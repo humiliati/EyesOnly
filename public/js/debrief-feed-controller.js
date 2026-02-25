@@ -374,14 +374,45 @@ const DebriefFeedController = (function() {
         html += '</div>';
       }
 
+      // ASCII/Pip-boy style rows (no emoji spam)
+      function abbr(s) {
+        try {
+          if (typeof MicroAbbreviator !== 'undefined' && MicroAbbreviator.get) return MicroAbbreviator.get(s);
+        } catch (e0) {}
+        // fallback: vowel-drop
+        return String(s || '').toUpperCase().replace(/[AEIOU]/g, '');
+      }
+
       html += '<div id="debrief-resources-content" class="debrief-resources-content">';
-      html +=   '<div class="debrief-nav-list" id="debrief-nav-list" aria-label="Debrief sections">';
-      html +=     '<div class="debrief-nav-row" data-section="resources">📊 RESOURCES</div>';
-      html +=     '<div class="debrief-nav-row" data-section="battery">🔋 BATTERY</div>';
-      html +=     '<div class="debrief-nav-row" data-section="passives">✨ PASSIVES</div>';
-      html +=     '<div class="debrief-nav-row" data-section="api">🔌 API</div>';
-      html +=     '<div class="debrief-nav-row" data-section="mok">🤖 MOK</div>';
+      html +=   '<div class="debrief-nav-list" id="debrief-nav-list" aria-label="Debrief rows">';
+
+      html +=     '<div class="debrief-nav-row" data-section="resources">' +
+                 '  <span class="debrief-row-label">' + abbr('RESOURCES') + '</span>' +
+                 '  <span class="debrief-row-summary" id="debrief-summary-resources"></span>' +
+                 '</div>';
+
+      html +=     '<div class="debrief-nav-row" data-section="battery">' +
+                 '  <span class="debrief-row-label">' + abbr('SIGNAL') + '</span>' +
+                 '  <span class="debrief-row-summary" id="debrief-summary-signal"></span>' +
+                 '</div>';
+
+      html +=     '<div class="debrief-nav-row" data-section="passives">' +
+                 '  <span class="debrief-row-label">' + abbr('PASSIVES') + '</span>' +
+                 '  <span class="debrief-row-summary" id="debrief-summary-passives"></span>' +
+                 '</div>';
+
+      html +=     '<div class="debrief-nav-row" data-section="api">' +
+                 '  <span class="debrief-row-label">' + abbr('API') + '</span>' +
+                 '  <span class="debrief-row-summary" id="debrief-summary-api"></span>' +
+                 '</div>';
+
+      html +=     '<div class="debrief-nav-row" data-section="mok">' +
+                 '  <span class="debrief-row-label">' + abbr('MOK') + '</span>' +
+                 '  <span class="debrief-row-summary" id="debrief-summary-mok"></span>' +
+                 '</div>';
+
       html +=   '</div>';
+
       html +=   '<div class="debrief-section" id="debrief-sec-resources"></div>';
       html +=   '<div class="debrief-section" id="debrief-sec-battery" style="display:none"></div>';
       html +=   '<div class="debrief-section" id="debrief-sec-passives" style="display:none"></div>';
@@ -397,6 +428,46 @@ const DebriefFeedController = (function() {
       if (resArea) {
         DebriefFeedRenderer.renderInto(resArea);
       }
+
+      // Minimized summaries (top-line only)
+      try {
+        var sumR = document.getElementById('debrief-summary-resources');
+        if (sumR && DebriefFeedRenderer.renderSummaryInto) {
+          DebriefFeedRenderer.renderSummaryInto(sumR);
+        }
+      } catch (eS0) {}
+
+      // Signal summary (3-tier: LOW/MID/HIGH) driven by battery level
+      try {
+        var sumS = document.getElementById('debrief-summary-signal');
+        if (sumS) {
+          var st = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getState) ? GAMESTATE.getState() : {};
+          var batt = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getBattery) ? GAMESTATE.getBattery() : (st.battery || 0);
+          var maxB = st.maxBattery || 5;
+          var pct = maxB ? (batt / maxB) : 0;
+          var tier = (pct <= 0.34) ? 'LOW' : (pct <= 0.67) ? 'MID' : 'HIGH';
+
+          function bar(cur, max, w) {
+            w = w || 8;
+            max = max || 1;
+            cur = Math.max(0, Math.min(max, cur));
+            var filled = Math.round((cur / max) * w);
+            var s = '';
+            for (var i = 0; i < w; i++) s += (i < filled) ? '█' : '░';
+            return s;
+          }
+
+          var link = (tier === 'HIGH') ? '(((' : (tier === 'MID') ? '((' : '(';
+          // pad to 3 for consistent width
+          link = (link + '   ').slice(0, 3);
+          sumS.textContent = 'BATT[' + bar(batt, maxB, 6) + '] ' + tier + ' ' + link;
+        }
+      } catch (eS1) {}
+
+      // Other summaries (cheap placeholders)
+      try { var p0 = document.getElementById('debrief-summary-passives'); if (p0) p0.textContent = '—'; } catch (eS2) {}
+      try { var a0 = document.getElementById('debrief-summary-api'); if (a0) a0.textContent = '—'; } catch (eS3) {}
+      try { var m0 = document.getElementById('debrief-summary-mok'); if (m0) m0.textContent = 'IDLE'; } catch (eS4) {}
 
       // Fill other sections (lightweight placeholders for now)
       var bat = document.getElementById('debrief-sec-battery');

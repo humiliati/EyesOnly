@@ -255,11 +255,29 @@ const DebriefFeedRenderer = (function() {
     }
   }
 
+  // Summary mode: render ONLY the first line (HP) for minimized debrief rows.
+  function renderSummaryInto(targetElement) {
+    if (!targetElement) return;
+    var savedScreen = _debriefScreen;
+    _debriefScreen = targetElement;
+    try {
+      var r = _getResources();
+      var html = '';
+      html += '<div class="debrief-feed-content summary">';
+      html += _renderResourceBar('HP', r.hp, r.maxHp, '', true);
+      html += '</div>';
+      _debriefScreen.innerHTML = html;
+    } finally {
+      _debriefScreen = savedScreen;
+    }
+  }
+
   // Public API
   return {
     init: init,
     render: render,
     renderInto: renderInto,
+    renderSummaryInto: renderSummaryInto,
     refresh: refresh,
     cycle: cycle,
     toggleExpanded: toggleExpanded
