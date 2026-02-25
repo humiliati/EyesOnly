@@ -16,7 +16,8 @@ var GoneRogueDataRegistry = (function() {
     cards: [],
     statuses: [],
     groundEffects: [],
-    synergies: []
+    synergies: [],
+    buildings: []
   };
 
   var _byId = {
@@ -24,7 +25,8 @@ var GoneRogueDataRegistry = (function() {
     cards: {},
     statuses: {},
     groundEffects: {},
-    synergies: {}
+    synergies: {},
+    buildings: {}
   };
 
   function _createMissingEntry(id, type) {
@@ -51,6 +53,7 @@ var GoneRogueDataRegistry = (function() {
     _byId.statuses = idx(_db.statuses, {});
     _byId.groundEffects = idx(_db.groundEffects, {});
     _byId.synergies = idx(_db.synergies, {});
+    _byId.buildings = idx(_db.buildings, {});
   }
 
   function _fetchJson(path) {
@@ -92,11 +95,12 @@ var GoneRogueDataRegistry = (function() {
     check(_db.statuses, 'status', 'statuses.json', /^STS-\d{3}$/, ['name', 'emoji']);
     check(_db.groundEffects, 'groundEffect', 'ground_effects.json', /^EFF-\d{3}$/, ['name', 'emoji']);
     check(_db.synergies, 'synergy', 'synergies.json', /^SYN-\d{3}$/, ['name']);
+    check(_db.buildings, 'building', 'buildings.json', /^BLD-\d{3}$/, ['name', 'emoji', 'interiorFloorId']);
   }
 
   var info = {
     loadedAt: null,
-    counts: { items: 0, cards: 0, statuses: 0, groundEffects: 0, synergies: 0 }
+    counts: { items: 0, cards: 0, statuses: 0, groundEffects: 0, synergies: 0, buildings: 0 }
   };
 
   function load() {
@@ -108,13 +112,15 @@ var GoneRogueDataRegistry = (function() {
       _fetchJson(BASE + 'cards.json').catch(function() { return []; }),
       _fetchJson(BASE + 'statuses.json').catch(function() { return []; }),
       _fetchJson(BASE + 'ground_effects.json').catch(function() { return []; }),
-      _fetchJson(BASE + 'synergies.json').catch(function() { return []; })
+      _fetchJson(BASE + 'synergies.json').catch(function() { return []; }),
+      _fetchJson(BASE + 'buildings.json').catch(function() { return []; })
     ]).then(function(arr) {
       _db.items = Array.isArray(arr[0]) ? arr[0] : [];
       _db.cards = Array.isArray(arr[1]) ? arr[1] : [];
       _db.statuses = Array.isArray(arr[2]) ? arr[2] : [];
       _db.groundEffects = Array.isArray(arr[3]) ? arr[3] : [];
       _db.synergies = Array.isArray(arr[4]) ? arr[4] : [];
+      _db.buildings = Array.isArray(arr[5]) ? arr[5] : [];
 
       _index();
       _validateLightweight();
@@ -126,7 +132,8 @@ var GoneRogueDataRegistry = (function() {
         cards: _db.cards.length,
         statuses: _db.statuses.length,
         groundEffects: _db.groundEffects.length,
-        synergies: _db.synergies.length
+        synergies: _db.synergies.length,
+        buildings: _db.buildings.length
       };
 
       if (typeof NonCombatEventBus !== 'undefined') {
@@ -153,6 +160,11 @@ var GoneRogueDataRegistry = (function() {
   function getStatus(id) { return _byId.statuses[id] || _createMissingEntry(id, 'status'); }
   function getGroundEffect(id) { return _byId.groundEffects[id] || _createMissingEntry(id, 'ground_effect'); }
   function getSynergy(id) { return _byId.synergies[id] || _createMissingEntry(id, 'synergy'); }
+  function getBuilding(id) { return _byId.buildings[id] || _createMissingEntry(id, 'building'); }
+  function listBuildings() { return Array.isArray(_db.buildings) ? _db.buildings.slice() : []; }
+  function listInteractiveBuildings() {
+    return listBuildings().filter(function(b) { return b && b.interiorFloorId && b.interiorFloorId !== 'none'; });
+  }
 
   function listCards(filter) {
     filter = filter || {};
@@ -227,6 +239,9 @@ var GoneRogueDataRegistry = (function() {
     getStatus: getStatus,
     getGroundEffect: getGroundEffect,
     getSynergy: getSynergy,
+    getBuilding: getBuilding,
+    listBuildings: listBuildings,
+    listInteractiveBuildings: listInteractiveBuildings,
     listCards: listCards,
     listItems: listItems,
     findSynergiesFor: findSynergiesFor

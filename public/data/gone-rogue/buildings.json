@@ -1,0 +1,32 @@
+[
+  {
+    "id": "BLD-001",
+    "name": "Tavern",
+    "emoji": "🍺",
+    "clusterWidth": 3,
+    "interactiveIndex": 1,
+    "orientation": "horizontal",
+    "interiorFloorId": "1.1",
+    "enterHint": "↔️",
+    "nested": [
+      {
+        "id": "INT-001",
+        "name": "Catacombs",
+        "targetFloorId": "1.1.1",
+        "kind": "procedural",
+        "gen": "catacombs"
+      }
+    ]
+  },
+  {
+    "id": "BLD-002",
+    "name": "Church",
+    "emoji": "⛪️",
+    "clusterWidth": 3,
+    "interactiveIndex": 1,
+    "orientation": "horizontal",
+    "interiorFloorId": "1.2",
+    "enterHint": "↔️",
+    "nested": []
+  }
+]
