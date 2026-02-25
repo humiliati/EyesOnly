@@ -108,8 +108,14 @@ var TutorialFloors = (function() {
       // Zone 2: Orchard sign + berry bush
       { x: 28, y: 2, type: 'SIGN', emoji: '🪧', name: 'Orchard Sign',
         text: 'The orchard keeper left berries for travelers. Help yourself!' },
-      { x: 26, y: 4, type: 'FOOD', emoji: '🫐', name: 'Berry Bush',
-        customData: { foodId: 'berries' } },
+      { x: 26, y: 4, type: 'FOOD', emoji: '🍎', name: 'Fresh Apple',
+        customData: { foodId: 'FOOD_APPLE' } },
+      // Zone 1: Water fountain near village
+      { x: 10, y: 8, type: 'FOOD', emoji: '💧', name: 'Spring Water',
+        customData: { foodId: 'FOOD_WATER' } },
+      // Zone 3: Hidden grove snack
+      { x: 5, y: 14, type: 'FOOD', emoji: '🍬', name: 'Forest Candy',
+        customData: { foodId: 'FOOD_CANDY' } },
       // Zone 3: Hidden grove discovery
       { x: 7, y: 15, type: 'AREA_OF_INTEREST', emoji: '❓', name: 'Strange Marking',
         text: 'Something glimmers in the undergrowth... Ancient runes are carved into the stone.' },
@@ -191,7 +197,7 @@ var TutorialFloors = (function() {
   };
 
   /**
-   * Floor 2: The Gate — Chip’s Challenge-style key+gate mechanic
+   * Floor 2: The Gate — Chip's Challenge-style key+gate mechanic
    *
    * Teaching objectives:
    * - Items can be equipped to the active item slot (header icon)
@@ -209,33 +215,33 @@ var TutorialFloors = (function() {
    */
   var FLOOR_2_LAYOUT = {
     floorNumber: 2,
-    name: ‘The Gate’,
-    description: ‘Find the key, equip it, and unlock the gate to proceed.’,
+    name: 'The Gate',
+    description: 'Find the key, equip it, and unlock the gate to proceed.',
 
     // 20 rows × 40 cols — fills grid exactly, no shifting applied
-    // ‘#’ = wall, ‘.’ = floor, ‘P’ = player spawn, ‘E’ = exit
+    // '#' = wall, '.' = floor, 'P' = player spawn, 'E' = exit
     // Hourglass: wide top, pinch at rows 9-10, wide bottom
     template: [
-      ‘########################################’,
-      ‘#......................................#’,
-      ‘#..P...................................#’,
-      ‘#......................................#’,
-      ‘#......................................#’,
-      ‘#......................................#’,
-      ‘#......................................#’,
-      ‘##########....................##########’,
-      ‘##################LLLL##################’,
-      ‘##########....................##########’,
-      ‘#####..............................#####’,
-      ‘#......................................#’,
-      ‘#......................................#’,
-      ‘#......................................#’,
-      ‘#......................................#’,
-      ‘#......................................#’,
-      ‘#......................................#’,
-      ‘#......................................#’,
-      ‘#...................E..................#’,
-      ‘########################################’
+      '########################################',
+      '#......................................#',
+      '#..P...................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '##########....................##########',
+      '##################LLLL##################',
+      '##########....................##########',
+      '#####..............................#####',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#...................E..................#',
+      '########################################'
     ],
 
     // Player spawns upper-left — sees both doors and the gate bottleneck
@@ -248,21 +254,21 @@ var TutorialFloors = (function() {
 
     decorations: [
       // Breadcrumb trail toward the key alcove (right side)
-      { x: 15, y: 3, emoji: ‘🪧’, name: ‘Hint Sign’ },
-      { x: 25, y: 4, emoji: ‘🏮’, name: ‘Lantern’ }
+      { x: 15, y: 3, emoji: '🪧', name: 'Hint Sign' },
+      { x: 25, y: 4, emoji: '🏮', name: 'Lantern' }
     ],
 
     // Single helpful NPC — points player toward key
     npcs: [
       {
         x: 8, y: 4,
-        emoji: ‘👵’,
-        name: ‘Elder’,
-        direction: ‘east’,
+        emoji: '👵',
+        name: 'Elder',
+        direction: 'east',
         dialogues: [
-          ‘That gate blocks the only way through...’,
-          ‘I heard something shiny fell behind those bushes to the east.’,
-          ‘Try equipping it from your items — tap the icon in your header!’
+          'That gate blocks the only way through...',
+          'I heard something shiny fell behind those bushes to the east.',
+          'Try equipping it from your items — tap the icon in your header!'
         ],
         pointsAt: { x: 34, y: 5 }
       }
@@ -276,37 +282,47 @@ var TutorialFloors = (function() {
         { x: 20, y: 8 },
         { x: 21, y: 8 }
       ],
-      emoji: ‘🚧’,
-      name: ‘Locked Gate’,
-      requiresKey: ‘rusty_key’,
-      message: ‘A sturdy gate blocks the passage. You need a key to open it.’
+      emoji: '🚧',
+      name: 'Locked Gate',
+      requiresKey: 'rusty_key',
+      message: 'A sturdy gate blocks the passage. You need a key to open it.'
     },
 
     // Key hidden behind breakable bushes on the right side of the top half
     keyBreakable: {
       x: 34,
       y: 5,
-      emoji: ‘🌸’,
-      name: ‘Glinting Flower Patch’,
+      emoji: '🌸',
+      name: 'Glinting Flower Patch',
       hp: 2,
       drops: {
-        item: ‘rusty_key’,
+        item: 'rusty_key',
         currency: [5, 10]
       },
-      message: ‘Something metallic glints among the petals...’
+      message: 'Something metallic glints among the petals...'
     },
 
     // Breakable bushes forming a small wall guarding the key
     breakables: [
-      { x: 32, y: 4, emoji: ‘🌿’, name: ‘Thick Bush’, hp: 1, drops: { currency: [2, 4] } },
-      { x: 33, y: 4, emoji: ‘🌿’, name: ‘Thick Bush’, hp: 1, drops: { currency: [2, 4] } },
-      { x: 34, y: 4, emoji: ‘🌿’, name: ‘Thick Bush’, hp: 1, drops: { currency: [2, 4] } },
-      { x: 35, y: 4, emoji: ‘🌿’, name: ‘Thick Bush’, hp: 1, drops: { currency: [2, 4] } },
-      { x: 32, y: 5, emoji: ‘🌿’, name: ‘Thick Bush’, hp: 1, drops: { currency: [2, 4] } },
-      { x: 35, y: 5, emoji: ‘🌿’, name: ‘Thick Bush’, hp: 1, drops: { currency: [2, 4] } },
+      { x: 32, y: 4, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
+      { x: 33, y: 4, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
+      { x: 34, y: 4, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
+      { x: 35, y: 4, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
+      { x: 32, y: 5, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
+      { x: 35, y: 5, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
       // A couple bonus breakables near spawn for early currency
-      { x: 10, y: 6, emoji: ‘📦’, name: ‘Wooden Crate’, hp: 2, drops: { currency: [5, 10], cards: 0.3 } },
-      { x: 18, y: 7, emoji: ‘🧺’, name: ‘Picnic Basket’, hp: 2, drops: { currency: [5, 10], cards: 0.4 } }
+      { x: 10, y: 6, emoji: '📦', name: 'Wooden Crate', hp: 2, drops: { currency: [5, 10], cards: 0.3 } },
+      { x: 18, y: 7, emoji: '🧺', name: 'Picnic Basket', hp: 2, drops: { currency: [5, 10], cards: 0.4 } }
+    ],
+
+    // Food collectibles for health/fatigue recovery
+    interactiveItems: [
+      { x: 5, y: 3, type: 'FOOD', emoji: '🍎', name: 'Fresh Apple',
+        customData: { foodId: 'FOOD_APPLE' } },
+      { x: 20, y: 14, type: 'FOOD', emoji: '☕', name: 'Hot Coffee',
+        customData: { foodId: 'FOOD_COFFEE' } },
+      { x: 15, y: 3, type: 'SIGN', emoji: '🪧', name: 'Hint Sign',
+        text: 'Break the bushes on the right to find the key! Equip it, then use it on the gate.' }
     ],
 
     // Breadcrumb pickups leading player toward the key alcove
@@ -321,8 +337,8 @@ var TutorialFloors = (function() {
 
     border: {
       thickness: 1,
-      style: ‘natural’,
-      tiles: [‘🌳’, ‘🌲’, ‘🪨’, ‘🌿’]
+      style: 'natural',
+      tiles: ['🌳', '🌲', '🪨', '🌿']
     }
   };
 
@@ -392,8 +408,8 @@ var TutorialFloors = (function() {
           width: 2
         },
         dialogues: [
-          '🧑‍🏫 You can’t leave yet. Show me you can fight.',
-          '🧑‍🏫 Tip: you can soften a target before combat — but only one trick, once.'
+          '🧑‍🏫 You can\'t leave yet. Show me you can fight.',
+          '🧑‍🏫 Tip: you can soften a target before combat \u2014 but only one trick, once.'
         ],
         reward: { currency: 15 }
       }

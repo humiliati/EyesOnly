@@ -60,6 +60,8 @@ const GoneRogue = (function () {
   var _lastTickTime = 0;
   var _tickInterval = 100; // ms between ticks (10 ticks per second)
   var _animationFrameId = null;
+  var _projectileTickAccum = 0; // Accumulator for projectile speed throttle (ms)
+  var _projectileAdvanceInterval = 150; // Advance projectiles every 150ms for visible animation
   var _enemyColorCycleTime = 0;
 
   // STR Combat state (Simultaneous Turn Resolution)
@@ -296,8 +298,8 @@ const GoneRogue = (function () {
 
       // Background gradient (135-degree axial, matching gambling card convention)
       backgroundGradient: {
-        night: { start: '#0a1a0a', end: '#0d2a0d' },  // Two dark greens
-        day:   { start: '#0a1a0a', end: '#1a3a1a' }   // Dark to medium low-hue green
+        night: { start: '#061206', end: '#0d2a12' },  // Deep forest shadow to moonlit glade
+        day:   { start: '#081a08', end: '#1e4a1e' }   // Dark canopy to dappled sunlight clearing
       }
     },
     GREY_CAVE: {
@@ -5130,6 +5132,18 @@ _incrementPityTimers();
       }
     }
 
+    // Auto-pickup floor items (cards, keys, gems) when player walks onto them
+    var floorItem = _items.find(function(i) { return i.x === x && i.y === y; });
+    if (floorItem) {
+      var pickupResult = _pickupItem();
+      if (pickupResult && pickupResult.lines && pickupResult.lines[0] !== 'NO ITEM HERE') {
+        // Show overhead loot animation
+        if (typeof OverheadAnimator !== 'undefined') {
+          OverheadAnimator.showExpression(x, y, 'LOOT', 800, floorItem.emoji || '✨');
+        }
+      }
+    }
+
     // Discovery reveal
     _revealDiscovery(x, y);
 
@@ -7406,7 +7420,14 @@ _incrementPityTimers();
       EYESONLY_PERF.mark('rogue.enemyPathMs', performance.now() - _ep0);
     }
 
-    _updateProjectiles(deltaMs);
+    // Throttle projectile advancement so they're visually animated
+    _projectileTickAccum += deltaMs;
+    if (_projectiles.length > 0 && _projectileTickAccum >= _projectileAdvanceInterval) {
+      _projectileTickAccum = 0;
+      _updateProjectiles(deltaMs);
+    } else if (_projectiles.length === 0) {
+      _projectileTickAccum = 0;
+    }
 
     // Let the active boss inject real-time hazard projectiles into the
     // existing projectile pipeline each tick (no new engine required).
@@ -8366,15 +8387,12 @@ _incrementPityTimers();
     }, 300);
 
     _projectiles.push(projectile);
-    var action = _updateProjectiles(0, 1);
+    // Don't advance immediately — let the game loop advance one tile per tick
+    // so the projectile is visually animated across frames.
     _saveState();
 
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
       _updateMobileGrid();
-    }
-
-    if (action) {
-      return action;
     }
 
     return {
@@ -8426,7 +8444,7 @@ _incrementPityTimers();
     setTimeout(function() { _muzzleFlash = null; }, 300);
 
     _projectiles.push(projectile);
-    _updateProjectiles(0, 1);
+    // Don't advance immediately — let the game loop animate the projectile per tick.
     _saveState();
 
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
@@ -8557,10 +8575,19 @@ _incrementPityTimers();
    * Add impact effect for rendering
    */
   function _addImpactEffect(x, y, type) {
+    // Assign visual char based on impact type for canvas rendering
+    var impactChar = '💥';
+    if (type === 'breakable') impactChar = '💫';
+    else if (type === 'enemy') impactChar = '💥';
+    else if (type === 'wall') impactChar = '✨';
+    else if (type === 'miss') impactChar = '💨';
+    else if (type === 'poof') impactChar = '💨';
+
     var effect = {
       x: x,
       y: y,
-      type: type, // 'breakable', 'enemy', 'wall', 'miss'
+      type: type, // 'breakable', 'enemy', 'wall', 'miss', 'poof'
+      char: impactChar,
       time: Date.now()
     };
     _impactEffects.push(effect);
