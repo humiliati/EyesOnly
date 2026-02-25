@@ -516,10 +516,10 @@ const DebriefFeedController = (function() {
           }
           // Use your tier buckets (ammo/gate/quest). Labels are spec-level.
           // If keyTypes differ, counts still show when present.
-          addKeyLine('ChstKyLq', 'ammo', 'CHEST_KEY_LQ');
-          addKeyLine('ChstKyHq', 'ammo', 'CHEST_KEY_HQ');
-          addKeyLine('TagKy1', 'gate', 'TAG_INV_1');
-          addKeyLine('TagKy2', 'gate', 'TAG_INV_2');
+          addKeyLine('ChstKyLq', 'ammo', 'RUSTY_KEY');
+          addKeyLine('ChstKyHq', 'ammo', 'BRONZE_KEY');
+          addKeyLine('TagKy1', 'gate', 'KEYCARD');
+          addKeyLine('TagKy2', 'gate', 'MALL_KEY');
 
           aPanel.textContent = linesA.join('\n');
         } else if (aPanel) {
