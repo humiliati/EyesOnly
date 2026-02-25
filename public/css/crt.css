@@ -2055,6 +2055,19 @@ body.amber-mode #scanlines::after {
   }
 }
 
+/* Rogue portrait: zoom-fill the grid surface to reduce 2:1 letterboxing
+   (the 40x20 grid is wide; portrait screens are tall). */
+@media (max-width: 767px) and (orientation: portrait) {
+  body.gone-rogue-active {
+    --rogue-grid-portrait-scale: 1.28;
+  }
+
+  body.gone-rogue-active #rogue-grid-mobile {
+    transform-origin: center;
+    transform: scale(var(--rogue-grid-portrait-scale));
+  }
+}
+
 /* --- Control Rail Button Transformation for Gone Rogue --- */
 @media (max-width: 767px) {
   body.mode-gone-rogue .control-buttons button,
