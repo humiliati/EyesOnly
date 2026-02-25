@@ -1,7 +1,7 @@
 /* Pip-boy-ish ASCII debrief row layout */
 .debrief-row-label {
   flex: 0 0 auto;
-  opacity: 0.55;
+  opacity: 0.6;
   color: currentColor;
 }
 
@@ -23,25 +23,27 @@
 }
 
 /* Per-row color grammar */
-.debrief-nav-row.row-resources { color: rgba(191, 255, 227, 0.82); }
-.debrief-nav-row.row-ammo { color: rgba(255, 120, 255, 0.92); }
-.debrief-nav-row.row-signal { color: rgba(120, 255, 255, 0.95); }
-.debrief-nav-row.row-passives { color: rgba(191, 255, 227, 0.85); }
-.debrief-nav-row.row-status { color: rgba(255, 160, 100, 0.90); }
-.debrief-nav-row.row-mok { color: rgba(191, 255, 227, 0.80); }
-.debrief-nav-row.row-api { color: rgba(191, 255, 227, 0.75); }
+.debrief-nav-row.row-resources { color: #FF6B9D; }
+.debrief-nav-row.row-ammo { color: #DA70D6; }
+/* SIGNAL row is battery grammar */
+.debrief-nav-row.row-signal { color: #00FFA6; }
+.debrief-nav-row.row-passives { color: rgba(191, 255, 227, 0.92); }
+.debrief-nav-row.row-status { color: rgba(255, 160, 100, 0.92); }
+.debrief-nav-row.row-mok { color: rgba(191, 255, 227, 0.90); }
+.debrief-nav-row.row-api { color: rgba(191, 255, 227, 0.82); }
 
 /* colored sublines inside resources */
 .debrief-row-panel .debrief-line { padding: 0; margin: 0; }
-.debrief-row-panel .debrief-line.hp { color: rgba(255, 70, 70, 0.95); }
-.debrief-row-panel .debrief-line.energy { color: rgba(255, 225, 120, 0.92); }
-.debrief-row-panel .debrief-line.focus { color: rgba(140, 170, 255, 0.92); }
+.debrief-row-panel .debrief-line.hp { color: #FF6B9D; }
+.debrief-row-panel .debrief-line.energy { color: #00D4FF; }
+.debrief-row-panel .debrief-line.focus { color: #FFF9B0; }
 
 .debrief-row-summary {
   flex: 1 1 auto;
   text-align: right;
-  opacity: 0.92;
+  opacity: 1;
   color: currentColor;
+  text-shadow: 0 0 6px color-mix(in srgb, currentColor 45%, transparent);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
