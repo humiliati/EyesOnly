@@ -6,7 +6,7 @@
    ============================================================ */
 
 import { Hono } from 'hono';
-import type { Env, AuthContext, EventPayload, EscalationRequest } from '../../shared/types';
+import type { Env, AuthContext, EventPayload, EscalationRequest, GeofenceRequest, ScenarioBeatRequest, MicrochatSendRequest } from '../../shared/types';
 import { requireAuth, requireDirector } from '../middleware/auth';
 import {
   listScenarios,
@@ -35,7 +35,23 @@ import {
   updateCellTension,
   updateCellLane,
   updateCellNotes,
+  listGeofenceZones,
+  createGeofenceZone,
+  deleteGeofenceZone,
+  setGeofenceZoneActive,
+  getPushSubscriptionsByScenario,
+  listScenarioBeats,
+  createScenarioBeat,
+  deleteScenarioBeat,
+  unlockScenarioBeat,
+  getPlayerLocations,
+  listFogZones,
+  upsertFogZone,
+  deleteFogZone,
+  insertMicrochatMessage,
+  getMicrochatMessages,
 } from '../db/queries';
+import { sendWebPushToAll } from '../utils/web-push';
 
 type HonoEnv = { Bindings: Env; Variables: { auth: AuthContext } };
 
@@ -633,6 +649,7 @@ mModeRoutes.post('/ping', async (c) => {
     command: string;
     cell_id?: string;
     message?: string;
+    target_actor_id?: number; // alias for actor_id — explicit for push routing
   }>();
 
   const validPings = ['MOVE', 'HOLD', 'ENGAGE', 'SHADOW', 'DROP', 'ESCALATE', 'FREEZE', 'EXTRACT'];
@@ -671,6 +688,26 @@ mModeRoutes.post('/ping', async (c) => {
     }),
   }));
 
+  // Web Push to actor's subscribed devices (so watch gets ping even with screen off)
+  const subs = await getPushSubscriptionsByScenario(c.env.DB, actor.scenario_id, body.target_actor_id ?? body.actor_id);
+  if (subs.length) {
+    await sendWebPushToAll(
+      c.env,
+      subs,
+      {
+        title:   `⚡ M DIRECTIVE — ${pingPayload.ping_command}`,
+        body:    body.message || pingPayload.ping_command,
+        tag:     'mping',
+        vibrate: [100, 50, 100, 50, 200],
+        data:    { event_id: event.id, ping_command: pingPayload.ping_command },
+      },
+      async (expired) => {
+        const { deletePushSubscription: delSub } = await import('../db/queries');
+        await delSub(c.env.DB, expired.actor_id, expired.endpoint);
+      },
+    );
+  }
+
   return c.json({ ok: true, event_id: event.id, ping_command: body.command.toUpperCase() });
 });
 
@@ -703,6 +740,32 @@ mModeRoutes.get('/pings/:scenarioId', async (c) => {
 // --- WebSocket ---
 
 /**
+ * GET /api/m/actors/positions/:scenarioId
+ * Returns last-known GPS position and telemetry for all actors in the scenario.
+ * Used by the M console live actor layer.
+ */
+mModeRoutes.get('/actors/positions/:scenarioId', async (c) => {
+  const scenarioId = parseInt(c.req.param('scenarioId'), 10);
+  const actors = await listActors(c.env.DB, scenarioId);
+
+  return c.json({
+    positions: actors.map((a) => ({
+      actor_id:     a.id,
+      callsign:     a.callsign,
+      team:         a.team,
+      status:       a.status,
+      lane_id:      a.lane_id ?? null,
+      cell_id:      a.cell_id ?? null,
+      lat:          a.last_lat ?? null,
+      lng:          a.last_lng ?? null,
+      last_seen_at: a.last_seen_at ?? null,
+      motion_state: a.motion_state ?? 'unknown',
+    })),
+    as_of: Date.now(),
+  });
+});
+
+/**
  * GET /api/m/ws
  * Upgrade to WebSocket via ScenarioRoom Durable Object.
  */
@@ -722,4 +785,329 @@ mModeRoutes.get('/ws', async (c) => {
       headers: c.req.raw.headers,
     }),
   );
+});
+
+// --- Geofence Zones (Phase 2) ---
+
+/**
+ * GET /api/m/geofences/:scenarioId
+ * List all geofence zones for a scenario.
+ */
+mModeRoutes.get('/geofences/:scenarioId', async (c) => {
+  const scenarioId = parseInt(c.req.param('scenarioId'), 10);
+  const zones = await listGeofenceZones(c.env.DB, scenarioId);
+  return c.json({ zones });
+});
+
+/**
+ * POST /api/m/geofences
+ * Create a new geofence zone.
+ * Body: { scenario_id, name, lat, lng, radius_m, trigger_on, trigger_event_type }
+ */
+mModeRoutes.post('/geofences', async (c) => {
+  const body = await c.req.json<GeofenceRequest & { scenario_id: number }>();
+  if (!body.scenario_id || !body.name || body.lat == null || body.lng == null) {
+    return c.json({ error: 'BAD_REQUEST', message: 'scenario_id, name, lat, lng required' }, 400);
+  }
+  const zone = await createGeofenceZone(
+    c.env.DB,
+    body.scenario_id,
+    body.name,
+    body.lat,
+    body.lng,
+    body.radius_m ?? 100,
+    body.trigger_on ?? 'enter',
+    body.trigger_event_type ?? 'geofence_enter',
+  );
+  return c.json({ zone }, 201);
+});
+
+/**
+ * DELETE /api/m/geofences/:id
+ * Delete a geofence zone.
+ */
+mModeRoutes.delete('/geofences/:id', async (c) => {
+  const id = parseInt(c.req.param('id'), 10);
+  await deleteGeofenceZone(c.env.DB, id);
+  return c.json({ ok: true });
+});
+
+/**
+ * PATCH /api/m/geofences/:id
+ * Toggle active state on a geofence zone.
+ */
+mModeRoutes.patch('/geofences/:id', async (c) => {
+  const id = parseInt(c.req.param('id'), 10);
+  const body = await c.req.json<{ active: boolean }>();
+  await setGeofenceZoneActive(c.env.DB, id, body.active);
+  return c.json({ ok: true });
+});
+
+// --- Push Broadcast (Phase 2) ---
+
+/**
+ * POST /api/m/push-broadcast
+ * M sends a Web Push notification to all subscribed actors in a scenario.
+ * Body: { scenario_id, title, body, actor_id? (optional — target single actor) }
+ */
+mModeRoutes.post('/push-broadcast', async (c) => {
+  const body = await c.req.json<{
+    scenario_id: number;
+    title: string;
+    body: string;
+    actor_id?: number;
+    tag?: string;
+  }>();
+
+  if (!body.scenario_id || !body.title) {
+    return c.json({ error: 'BAD_REQUEST', message: 'scenario_id and title required' }, 400);
+  }
+
+  const subs = await getPushSubscriptionsByScenario(c.env.DB, body.scenario_id, body.actor_id);
+  if (!subs.length) return c.json({ ok: true, sent: 0, message: 'No subscriptions found' });
+
+  let sent = 0;
+  await sendWebPushToAll(
+    c.env,
+    subs,
+    { title: body.title, body: body.body || '', tag: body.tag },
+    async (expired) => {
+      // Remove expired subscription
+      const { deletePushSubscription: delSub } = await import('../db/queries');
+      await delSub(c.env.DB, expired.actor_id, expired.endpoint);
+    },
+  );
+  sent = subs.length;
+
+  return c.json({ ok: true, sent });
+});
+
+// ── Phase 3: Scenario Beats ────────────────────────────────────────
+
+/**
+ * GET /api/m/beats/:scenarioId
+ * List all scenario beats (story beat triggers with geo coordinates).
+ */
+mModeRoutes.get('/beats/:scenarioId', async (c) => {
+  const scenarioId = parseInt(c.req.param('scenarioId'), 10);
+  const beats = await listScenarioBeats(c.env.DB, scenarioId);
+  return c.json({ beats });
+});
+
+/**
+ * POST /api/m/beats
+ * Create a new scenario beat.
+ * Body: { scenario_id, title, description?, lat?, lng?, trigger_radius_m?, event_type?, beat_seq? }
+ */
+mModeRoutes.post('/beats', async (c) => {
+  const body = await c.req.json<ScenarioBeatRequest>();
+  if (!body.scenario_id || !body.title) {
+    return c.json({ error: 'BAD_REQUEST', message: 'scenario_id and title required' }, 400);
+  }
+  const beat = await createScenarioBeat(c.env.DB, body.scenario_id, body.title, {
+    description: body.description,
+    lat: body.lat,
+    lng: body.lng,
+    trigger_radius_m: body.trigger_radius_m,
+    event_type: body.event_type,
+    beat_seq: body.beat_seq,
+  });
+  return c.json({ beat }, 201);
+});
+
+/**
+ * DELETE /api/m/beats/:id
+ * Delete a scenario beat.
+ */
+mModeRoutes.delete('/beats/:id', async (c) => {
+  const id = parseInt(c.req.param('id'), 10);
+  await deleteScenarioBeat(c.env.DB, id);
+  return c.json({ ok: true });
+});
+
+/**
+ * POST /api/m/beats/:id/unlock
+ * Manually unlock a beat (director override — bypasses geo trigger).
+ */
+mModeRoutes.post('/beats/:id/unlock', async (c) => {
+  const auth = c.get('auth');
+  const id = parseInt(c.req.param('id'), 10);
+  await unlockScenarioBeat(c.env.DB, id);
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+  const room   = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'beat_unlock',
+      data: { beat_id: id, manual: true, unlocked_by: auth.callsign },
+      timestamp: Date.now(),
+    }),
+  }));
+  return c.json({ ok: true });
+});
+
+// ── Phase 3: Player Locations ─────────────────────────────────────
+
+/**
+ * GET /api/m/player-locations/:scenarioId
+ * Returns all player GPS locations reported with consent.
+ * Shown as separate dots on M console live map.
+ */
+mModeRoutes.get('/player-locations/:scenarioId', async (c) => {
+  const scenarioId = parseInt(c.req.param('scenarioId'), 10);
+  const locations = await getPlayerLocations(c.env.DB, scenarioId);
+  return c.json({ locations, as_of: Date.now() });
+});
+
+// ── Phase 3: Fog of War ───────────────────────────────────────────
+
+/**
+ * GET /api/m/fog/:scenarioId
+ * List all fog-of-war zones and their lit state.
+ */
+mModeRoutes.get('/fog/:scenarioId', async (c) => {
+  const scenarioId = parseInt(c.req.param('scenarioId'), 10);
+  const zones = await listFogZones(c.env.DB, scenarioId);
+  return c.json({ zones });
+});
+
+/**
+ * POST /api/m/fog
+ * Create or toggle a fog zone.
+ * Body: { scenario_id, zone_label, lit }
+ */
+mModeRoutes.post('/fog', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{ scenario_id: number; zone_label: string; lit: boolean }>();
+  if (!body.scenario_id || !body.zone_label) {
+    return c.json({ error: 'BAD_REQUEST', message: 'scenario_id and zone_label required' }, 400);
+  }
+  await upsertFogZone(c.env.DB, body.scenario_id, body.zone_label, body.lit !== false);
+
+  // Broadcast fog update to all clients
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${body.scenario_id}`);
+  const room   = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'fog_update',
+      data: { zone_label: body.zone_label, lit: body.lit !== false, updated_by: auth.callsign },
+      timestamp: Date.now(),
+    }),
+  }));
+
+  return c.json({ ok: true });
+});
+
+/**
+ * DELETE /api/m/fog/:scenarioId/:zoneLabel
+ * Remove a fog zone entry.
+ */
+mModeRoutes.delete('/fog/:scenarioId/:zoneLabel', async (c) => {
+  const scenarioId = parseInt(c.req.param('scenarioId'), 10);
+  const zoneLabel  = c.req.param('zoneLabel');
+  await deleteFogZone(c.env.DB, scenarioId, zoneLabel);
+  return c.json({ ok: true });
+});
+
+// ── Phase 3: Microchat (M side) ───────────────────────────────────
+
+/**
+ * POST /api/m/microchat
+ * M sends an encrypted message to a specific actor.
+ * Body: { actor_id, ciphertext }
+ */
+mModeRoutes.post('/microchat', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{ actor_id: number; ciphertext: string }>();
+  if (!body.actor_id || !body.ciphertext) {
+    return c.json({ error: 'BAD_REQUEST', message: 'actor_id and ciphertext required' }, 400);
+  }
+  const actor = await getActor(c.env.DB, body.actor_id);
+  if (!actor) return c.json({ error: 'NOT_FOUND', message: 'Actor not found' }, 404);
+
+  const msg = await insertMicrochatMessage(
+    c.env.DB, actor.scenario_id, 'M', String(body.actor_id), body.ciphertext,
+  );
+
+  // Route only to the target actor + directors
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${actor.scenario_id}`);
+  const room   = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'actor_message',
+      data: { msg_id: msg.id, from_id: 'M', to_id: String(body.actor_id), ciphertext: body.ciphertext, ts: Date.now() },
+      timestamp: Date.now(),
+      audience: 'target',
+      target_actor_id: body.actor_id,
+    }),
+  }));
+
+  return c.json({ ok: true, msg_id: msg.id });
+});
+
+/**
+ * GET /api/m/microchat/:actorId
+ * M reads the microchat thread with a specific actor.
+ * Query params: limit (default 30)
+ */
+mModeRoutes.get('/microchat/:actorId', async (c) => {
+  const auth    = c.get('auth');
+  const actorId = c.req.param('actorId');
+  const limit   = parseInt(c.req.query('limit') || '30', 10);
+  const msgs = await getMicrochatMessages(c.env.DB, auth.scenario_id, actorId, limit);
+  return c.json({ messages: msgs });
+});
+
+// ── Phase 3: Decoy Ping (False Ping Injection) ────────────────────
+
+/**
+ * POST /api/m/decoy-ping
+ * M injects a false ping visible ONLY to actor WebSocket clients.
+ * NOT inserted into the event log — leaves no trace in M event feed.
+ * Used to create confusion for surveillance actors or test actor reactions.
+ * Body: { actor_id, command, message?, cell_id? }
+ */
+mModeRoutes.post('/decoy-ping', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{
+    actor_id: number;
+    command: string;
+    message?: string;
+    cell_id?: string;
+  }>();
+
+  if (!body.actor_id || !body.command) {
+    return c.json({ error: 'BAD_REQUEST', message: 'actor_id and command required' }, 400);
+  }
+
+  const actor = await getActor(c.env.DB, body.actor_id);
+  if (!actor) return c.json({ error: 'NOT_FOUND', message: 'Actor not found' }, 404);
+
+  const decoyPayload = {
+    ping_command:      body.command.toUpperCase(),
+    target_actor_id:   body.actor_id,
+    target_callsign:   actor.callsign,
+    cell_id:           body.cell_id || actor.cell_id || null,
+    message:           body.message || '[DECOY]',
+    sent_by:           auth.callsign,
+    is_decoy:          true,
+    sent_at:           Date.now(),
+  };
+
+  // Broadcast ONLY to actors — NOT to M console, NOT in event log
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${actor.scenario_id}`);
+  const room   = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'decoy_ping',
+      data: decoyPayload,
+      timestamp: Date.now(),
+      audience: 'actors',        // ← actors ONLY — directors never see this
+    }),
+  }));
+
+  return c.json({ ok: true, decoy: true, ping_command: body.command.toUpperCase() });
 });

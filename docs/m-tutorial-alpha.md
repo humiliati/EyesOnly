@@ -231,3 +231,96 @@ All state changes broadcast via Durable Object WebSocket:
 - MOK reacts to incoming events automatically
 
 The green dot in the header confirms live WebSocket connection.
+
+---
+
+## 12. SCENARIO DESIGNER
+
+The Scenario Designer is an in-workspace authoring tool for building operations from narrative text.
+
+**URL:** `https://flapsandseals.com/m/scenario-designer.html`
+
+### Purpose
+Takes freeform scenario narrative (the kind you'd write in a design document or briefing) and turns it into **wirable beat blocks** that map directly to the UGRS lane grid. Designed for scenario designers who think in story terms and need a bridge to M's operational systems.
+
+### Getting Started
+
+1. Navigate to **SCENARIO DESIGNER** from the M Mode header, or go directly to `/m/scenario-designer.html`.
+2. You do **not** need to be logged in to use the designer — it runs entirely in the browser.
+3. Either:
+   - Click **↓ LOAD DOWNED PILOT SAMPLE** to see the Extraction template pre-loaded, or
+   - Paste your own narrative text and click **⚡ PARSE NARRATIVE → BEATS**
+
+### Layout
+
+| Panel | Purpose |
+|-------|---------|
+| **Left: SOURCE NARRATIVE** | Paste narrative text; set title, lanes, scenario type |
+| **Center: BEAT BOARD** | Visual swimlane showing parsed beats assigned to lanes |
+| **Right: BEAT PROPERTIES** | Edit selected beat (type, location, actor, bonafides, paths) |
+| **Timeline strip** | Linear sequence of all beats; click to select |
+
+### Beat Types
+
+| Icon | Code | Meaning |
+|------|------|---------|
+| 🤝 | PM | Personal Meet — direct actor/client interaction |
+| 📦 | DD | Dead Drop — physical item retrieval |
+| 🎯 | RV | Rendezvous — link-up, handoff |
+| 🚁 | EXFIL | Extraction — final or convergence event |
+| ⚡ | EVT | Generic event — surveillance, pressure, environmental |
+
+### Parsing Rules
+
+The parser detects:
+- **Numbered events** — `Event 1`, `Event #2`, `Event #3 –` etc.
+- **Locations** — `Location: …` lines
+- **Beat type** — keyword scan: "dead drop", "canister", "rendezvous", "EXFIL", "extraction", "personal meet", etc.
+- **Bonafides** — quoted challenge/response pairs near "Ex." or "To whit, the IC replies"
+- **Actor roles** — IC, spy, hostess, downed pilot, foreign agent, contact
+- **Success chain** — beats are auto-wired sequentially; adjust in Properties panel
+
+### Templates
+
+Use the **TEMPLATE** dropdown to load pre-built beat boards for common scenario types:
+- `EXTRACTION` — Downed Pilot (3 beats: PM → DD → EXFIL)
+- `COURIER RUN` — 3-beat transport chain
+- `COUNTERINTELLIGENCE` — 4-beat identify/observe/retrieve/extract
+- `ASSET RECOVERY` — 5-beat full-length operation
+
+### Editing Beats
+
+Click any beat card to open its properties:
+- **Title, type, lane** — core identity
+- **Location, grid cell** — physical placement (use UGRS cell IDs like `A1`, `B3`)
+- **Actor role + engagement level** — who is at this beat and how active (0–3)
+- **Bonafides** — challenge / response pair for client-IC confirmation
+- **Detail** — IC instructions / narrative notes
+- **Success / fail path** — wire to next beat
+- **Tension delta** — how much tension this beat adds to its lane cells
+- **Escalation phase** — which phase of the emotional curve this beat occupies
+
+### Adding Beats Manually
+
+Click **+ ADD BEAT** in the subbar. A blank beat is added to the first lane. Assign it a type and lane in the Properties panel.
+
+### Export
+
+Click **↗ EXPORT JSON / SEL** in the subbar to open the export modal.
+
+The export contains two formats:
+1. **JSON** — `scenario`, `lanes`, and `beats` arrays suitable for API creation
+2. **SEL** (Scenario Engine Language) — human-readable declarative format for version control
+
+Copy the JSON and use it to create a scenario via `POST /api/m/scenario` (future endpoint) or reference the SEL file in `docs/scenarios/`.
+
+The sample scenario is at `docs/scenarios/downed-pilot.sel.txt`.
+
+### Views
+
+| Mode | Description |
+|------|-------------|
+| **SWIMLANE** (default) | Beats grouped by lane in horizontal rows — see lane assignments |
+| **CHAIN** | Linear beat sequence — see the narrative flow |
+
+---

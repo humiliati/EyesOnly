@@ -357,6 +357,7 @@ function renderConsole(container: HTMLElement, session: Session) {
         <span>${session.callsign}</span>
         <span id="m-ws-dot" class="ws-dot" title="OFFLINE"></span>
         <button id="m-freeze-btn" class="freeze-btn">FREEZE GAME</button>
+        <a href="/m/scenario-designer.html" style="background:none;border:1px solid #1a4a2a;color:#1a8a1a;font-family:var(--font);font-size:9px;padding:2px 8px;cursor:pointer;border-radius:3px;text-decoration:none;letter-spacing:1px;" title="Scenario Designer — build scenarios from narrative text">SCENARIO DESIGNER</a>
         <button id="m-logout" style="background:none;border:1px solid #333;color:#666;font-family:var(--font);font-size:9px;padding:2px 8px;cursor:pointer;border-radius:3px;">LOGOUT</button>
       </div>
     </header>
@@ -426,6 +427,7 @@ function renderConsole(container: HTMLElement, session: Session) {
   renderRightPanel(session);
   connectWS(session);
   setInterval(() => loadEvents(session), 10000);
+  setInterval(() => loadActorPositions(session), 15000);
 }
 
 // --- Map Grid with image overlay ---
@@ -718,6 +720,292 @@ async function loadEvents(session: Session) {
   } catch {}
 }
 
+// ===== LIVE ACTOR TELEMETRY =====
+
+const MOTION_STATE_ICON: Record<string, string> = {
+  unknown: '·', stationary: '◼', walking: '▶', running: '⚡', vehicle: '🚗', dropped: '⬇',
+};
+
+async function loadActorPositions(session: Session) {
+  const listEl = document.getElementById('actor-telemetry-list');
+  if (!listEl) return;
+  try {
+    const res = await mFetch(`/m/actors/positions/${session.scenarioId}`, session);
+    if (!res.ok) { listEl.innerHTML = '<div style="font-size:9px;color:var(--red);">TELEMETRY UNAVAIL</div>'; return; }
+    const data = await res.json() as any;
+    const positions: any[] = data.positions || [];
+    if (!positions.length) {
+      listEl.innerHTML = '<div style="font-size:9px;color:var(--text-dim);padding:4px 0;">No actors.</div>';
+      return;
+    }
+    const now = Date.now();
+    listEl.innerHTML = positions.map((p: any) => {
+      const ageMs = p.last_seen_at ? now - p.last_seen_at : null;
+      const ageStr = ageMs == null ? 'NO DATA' : ageMs < 60000 ? `${Math.round(ageMs / 1000)}s ago` : `${Math.round(ageMs / 60000)}m ago`;
+      const isStale = ageMs == null || ageMs > 120000;
+      const motionIcon = MOTION_STATE_ICON[p.motion_state] || '·';
+      const locStr = p.lat != null ? `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}` : 'NO GPS';
+      const ageColor = isStale ? 'var(--red)' : ageMs! < 45000 ? 'var(--accent)' : 'var(--amber)';
+      return `<div style="display:flex;flex-direction:column;padding:3px 0;border-bottom:1px solid rgba(40,40,40,0.4);gap:1px;">
+        <div style="display:flex;justify-content:space-between;font-size:9px;">
+          <span><span class="actor-badge team-${p.team}">${p.callsign}</span>&nbsp;${motionIcon}</span>
+          <span style="color:${ageColor};font-size:8px;">${ageStr}</span>
+        </div>
+        <div style="font-size:8px;color:${isStale ? '#555' : 'var(--text-dim)'};letter-spacing:0.5px;">${locStr}</div>
+      </div>`;
+    }).join('');
+  } catch {
+    if (listEl) listEl.innerHTML = '<div style="font-size:9px;color:var(--red);">TELEMETRY ERROR</div>';
+  }
+}
+
+// ===== GEOFENCE MANAGEMENT =====
+
+async function loadGeofences(session: Session) {
+  const listEl = document.getElementById('geofence-list');
+  if (!listEl) return;
+  try {
+    const res = await mFetch(`/m/geofences/${session.scenarioId}`, session);
+    if (!res.ok) { listEl.innerHTML = '<div style="color:var(--red);">UNAVAIL</div>'; return; }
+    const data = await res.json() as any;
+    const zones: any[] = data.zones || [];
+    if (!zones.length) { listEl.innerHTML = '<div style="color:var(--text-dim);">No zones defined.</div>'; return; }
+    listEl.innerHTML = zones.map((z: any) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:2px 0;border-bottom:1px solid rgba(40,40,40,0.3);">
+        <span style="font-size:9px;color:${z.active ? 'var(--accent)' : '#555'};">
+          ${z.active ? '●' : '○'} ${z.name} <span style="color:#555;">(${z.radius_m}m · ${z.trigger_on})</span>
+        </span>
+        <button data-gf-del="${z.id}" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:10px;padding:0 4px;" title="Delete zone">✕</button>
+      </div>`).join('');
+    // Wire delete buttons
+    listEl.querySelectorAll('[data-gf-del]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = (btn as HTMLElement).dataset.gfDel;
+        await mFetch(`/m/geofences/${id}`, session, { method: 'DELETE' });
+        loadGeofences(session);
+        refreshLiveMapZones(session);
+      });
+    });
+  } catch {
+    if (listEl) listEl.innerHTML = '<div style="color:var(--red);">ERROR</div>';
+  }
+}
+
+async function addGeofence(session: Session) {
+  const name    = (document.getElementById('ctrl-gf-name') as HTMLInputElement)?.value.trim();
+  const lat     = parseFloat((document.getElementById('ctrl-gf-lat') as HTMLInputElement)?.value);
+  const lng     = parseFloat((document.getElementById('ctrl-gf-lng') as HTMLInputElement)?.value);
+  const radius  = parseFloat((document.getElementById('ctrl-gf-radius') as HTMLInputElement)?.value) || 100;
+  const trigger = (document.getElementById('ctrl-gf-trigger') as unknown as HTMLSelectElement)?.value || 'enter';
+  const evType  = (document.getElementById('ctrl-gf-event') as HTMLInputElement)?.value.trim() || 'geofence_enter';
+  const resultEl = document.getElementById('ctrl-gf-result');
+
+  if (!name || isNaN(lat) || isNaN(lng)) {
+    if (resultEl) resultEl.textContent = 'Name, lat and lng required.';
+    return;
+  }
+  try {
+    const res = await mFetch('/m/geofences', session, {
+      method: 'POST',
+      body: JSON.stringify({ scenario_id: session.scenarioId, name, lat, lng, radius_m: radius, trigger_on: trigger, trigger_event_type: evType }),
+    });
+    if (res.ok) {
+      if (resultEl) resultEl.textContent = `Zone "${name}" added.`;
+      loadGeofences(session);
+      refreshLiveMapZones(session);
+      // Clear inputs
+      (document.getElementById('ctrl-gf-name') as HTMLInputElement).value = '';
+      (document.getElementById('ctrl-gf-lat') as HTMLInputElement).value = '';
+      (document.getElementById('ctrl-gf-lng') as HTMLInputElement).value = '';
+    } else {
+      if (resultEl) resultEl.textContent = 'Error adding zone.';
+    }
+  } catch { if (resultEl) resultEl.textContent = 'Network error.'; }
+}
+
+// ===== LIVE MAP (Leaflet) =====
+
+let leafletMap: any = null;        // Leaflet map instance
+let leafletActorLayer: any = null; // Layer group for actor markers
+let leafletZoneLayer: any = null;  // Layer group for geofence circles
+let mapVisible = false;
+
+function toggleLiveMap(session: Session) {
+  const container = document.getElementById('m-live-map-container');
+  const btn       = document.getElementById('ctrl-toggle-map');
+  const abtn      = document.getElementById('ctrl-map-actors-toggle');
+  const zbtn      = document.getElementById('ctrl-map-zones-toggle');
+  if (!container) return;
+
+  mapVisible = !mapVisible;
+  container.style.display = mapVisible ? '' : 'none';
+  if (btn) btn.textContent = mapVisible ? 'CLOSE MAP ▲' : 'OPEN MAP ▼';
+  if (abtn) abtn.style.display = mapVisible ? '' : 'none';
+  if (zbtn) zbtn.style.display = mapVisible ? '' : 'none';
+
+  if (mapVisible) {
+    if (!leafletMap) {
+      initLeafletMap(session);
+    } else {
+      leafletMap.invalidateSize();
+      refreshLiveMapActors(session);
+    }
+  }
+}
+
+function initLeafletMap(session: Session) {
+  // Dynamically load Leaflet CSS + JS from CDN
+  if (!(window as any).L) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(link);
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = () => buildLeafletMap(session);
+    document.head.appendChild(script);
+  } else {
+    buildLeafletMap(session);
+  }
+}
+
+function buildLeafletMap(session: Session) {
+  const L = (window as any).L;
+  if (!L || leafletMap) return;
+
+  leafletMap = L.map('m-live-map', { zoomControl: true, attributionControl: false });
+
+  // OSM tile layer
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap',
+  }).addTo(leafletMap);
+
+  leafletActorLayer = L.layerGroup().addTo(leafletMap);
+  leafletZoneLayer  = L.layerGroup().addTo(leafletMap);
+
+  // Default center (world view) — will be updated when actors have GPS
+  leafletMap.setView([0, 0], 2);
+
+  // Actor toggle button
+  const abtn = document.getElementById('ctrl-map-actors-toggle');
+  if (abtn) {
+    abtn.addEventListener('click', () => {
+      if (leafletMap.hasLayer(leafletActorLayer)) {
+        leafletMap.removeLayer(leafletActorLayer);
+        abtn.textContent = 'ACTORS ○';
+      } else {
+        leafletMap.addLayer(leafletActorLayer);
+        abtn.textContent = 'ACTORS ●';
+        refreshLiveMapActors(session);
+      }
+    });
+  }
+
+  // Zone toggle button
+  const zbtn = document.getElementById('ctrl-map-zones-toggle');
+  if (zbtn) {
+    zbtn.addEventListener('click', () => {
+      if (leafletMap.hasLayer(leafletZoneLayer)) {
+        leafletMap.removeLayer(leafletZoneLayer);
+        zbtn.textContent = 'ZONES ○';
+      } else {
+        leafletMap.addLayer(leafletZoneLayer);
+        zbtn.textContent = 'ZONES ⬤';
+        refreshLiveMapZones(session);
+      }
+    });
+  }
+
+  refreshLiveMapActors(session);
+  refreshLiveMapZones(session);
+}
+
+const TEAM_COLORS: Record<string, string> = { blue: '#3399ff', red: '#ff3333', director: '#33ff33' };
+
+async function refreshLiveMapActors(session: Session) {
+  const L = (window as any).L;
+  if (!L || !leafletMap || !leafletActorLayer) return;
+  leafletActorLayer.clearLayers();
+  try {
+    const res = await mFetch(`/m/actors/positions/${session.scenarioId}`, session);
+    if (!res.ok) return;
+    const data = await res.json() as any;
+    const positions: any[] = data.positions || [];
+    const validPositions = positions.filter((p: any) => p.lat != null && p.lng != null);
+
+    if (!validPositions.length) return;
+
+    const bounds: [number, number][] = [];
+    for (const p of validPositions) {
+      const color = TEAM_COLORS[p.team] || '#33ff33';
+      const isStale = !p.last_seen_at || (Date.now() - p.last_seen_at) > 120000;
+      const markerColor = isStale ? '#555' : color;
+
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="background:${markerColor};border:2px solid #000;border-radius:50%;width:12px;height:12px;box-shadow:0 0 4px ${markerColor};"></div>`,
+        iconSize: [12, 12],
+        iconAnchor: [6, 6],
+      });
+
+      const marker = L.marker([p.lat, p.lng], { icon })
+        .bindPopup(`<b style="font-family:monospace;">${p.callsign}</b><br>Team: ${p.team}<br>Motion: ${p.motion_state}<br>${isStale ? '⚠ STALE' : 'LIVE'}`);
+      leafletActorLayer.addLayer(marker);
+
+      // Callsign label
+      const label = L.tooltip({ permanent: true, direction: 'top', className: '' })
+        .setContent(`<span style="font-family:monospace;font-size:9px;background:#000;color:${markerColor};padding:1px 3px;">${p.callsign}</span>`);
+      marker.bindTooltip(label);
+
+      bounds.push([p.lat, p.lng]);
+    }
+
+    if (bounds.length === 1) {
+      leafletMap.setView(bounds[0], 15);
+    } else if (bounds.length > 1) {
+      leafletMap.fitBounds(bounds, { padding: [30, 30] });
+    }
+  } catch {}
+}
+
+async function refreshLiveMapZones(session: Session) {
+  const L = (window as any).L;
+  if (!L || !leafletMap || !leafletZoneLayer) return;
+  leafletZoneLayer.clearLayers();
+  try {
+    const res = await mFetch(`/m/geofences/${session.scenarioId}`, session);
+    if (!res.ok) return;
+    const data = await res.json() as any;
+    const zones: any[] = data.zones || [];
+    for (const z of zones) {
+      if (!z.active) continue;
+      const circle = L.circle([z.lat, z.lng], {
+        radius:      z.radius_m,
+        color:       '#ffaa33',
+        fillColor:   '#ffaa33',
+        fillOpacity: 0.08,
+        weight:      1,
+        dashArray:   '4 4',
+      }).bindPopup(`<b style="font-family:monospace;">${z.name}</b><br>Trigger: ${z.trigger_on}<br>Event: ${z.trigger_event_type}<br>Radius: ${z.radius_m}m`);
+      leafletZoneLayer.addLayer(circle);
+
+      // Zone label
+      L.tooltip({ permanent: true, direction: 'center', className: '' })
+        .setContent(`<span style="font-family:monospace;font-size:8px;background:#000;color:#ffaa33;padding:1px 3px;">${z.name}</span>`)
+        .setLatLng([z.lat, z.lng])
+        .addTo(leafletZoneLayer);
+    }
+  } catch {}
+}
+
+// Refresh live map when WS sends actor_telemetry (if map is open)
+function onActorTelemetryForMap(session: Session) {
+  if (mapVisible && leafletMap) {
+    refreshLiveMapActors(session);
+  }
+}
+
 // ===== CONTEXT-SENSITIVE RIGHT PANEL =====
 
 function renderRightPanel(session: Session) {
@@ -770,6 +1058,106 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
       <div class="ctrl-section">
         <h3>ACTOR NETWORK</h3>
         <div id="actor-roster" style="max-height:140px;overflow-y:auto;padding:2px 0;">${actorRows}</div>
+      </div>
+      <div class="ctrl-section">
+        <h3>LIVE TELEMETRY</h3>
+        <div id="actor-telemetry-list" style="max-height:150px;overflow-y:auto;padding:2px 0;">
+          <div style="font-size:9px;color:var(--text-dim);padding:4px 0;">Loading positions…</div>
+        </div>
+        <button class="ctrl-btn" id="ctrl-refresh-telemetry" style="margin-top:4px;font-size:8px;">REFRESH POSITIONS</button>
+      </div>
+      <div class="ctrl-section">
+        <h3>LIVE MAP</h3>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px;">
+          <button class="ctrl-btn" id="ctrl-toggle-map" style="font-size:8px;">OPEN MAP ▼</button>
+          <button class="ctrl-btn amber" id="ctrl-map-actors-toggle" style="font-size:8px;display:none;" title="Toggle actor GPS dots">ACTORS ●</button>
+          <button class="ctrl-btn amber" id="ctrl-map-zones-toggle" style="font-size:8px;display:none;" title="Toggle geofence zone overlays">ZONES ⬤</button>
+        </div>
+        <div id="m-live-map-container" style="display:none;height:320px;border:1px solid var(--border);border-radius:3px;overflow:hidden;position:relative;">
+          <div id="m-live-map" style="width:100%;height:100%;"></div>
+        </div>
+      </div>
+      <div class="ctrl-section">
+        <h3>GEOFENCE ZONES</h3>
+        <div id="geofence-list" style="max-height:100px;overflow-y:auto;font-size:9px;color:var(--text-dim);padding:2px 0;">Loading…</div>
+        <div style="margin-top:6px;">
+          <div class="ctrl-field"><label>NAME</label><input type="text" id="ctrl-gf-name" placeholder="Dock Zone" /></div>
+          <div class="ctrl-row">
+            <div class="ctrl-field"><label>LAT</label><input type="number" id="ctrl-gf-lat" step="0.0001" placeholder="47.678" /></div>
+            <div class="ctrl-field"><label>LNG</label><input type="number" id="ctrl-gf-lng" step="0.0001" placeholder="-116.799" /></div>
+          </div>
+          <div class="ctrl-row">
+            <div class="ctrl-field"><label>RADIUS (m)</label><input type="number" id="ctrl-gf-radius" value="100" min="10" max="5000" /></div>
+            <div class="ctrl-field"><label>TRIGGER</label>
+              <select id="ctrl-gf-trigger"><option value="enter">ENTER</option><option value="exit">EXIT</option><option value="both">BOTH</option></select>
+            </div>
+          </div>
+          <div class="ctrl-field"><label>EVENT TYPE</label><input type="text" id="ctrl-gf-event" placeholder="geofence_enter" /></div>
+          <button class="ctrl-btn" id="ctrl-add-geofence">ADD ZONE</button>
+          <div id="ctrl-gf-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
+        </div>
+      </div>
+      <div class="ctrl-section">
+        <h3>SCENARIO BEATS</h3>
+        <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Geo-locked story beats — unlock when actor/player reaches radius.</div>
+        <div id="beats-list" style="max-height:120px;overflow-y:auto;font-size:9px;color:var(--text-dim);padding:2px 0;">Loading…</div>
+        <div style="margin-top:6px;">
+          <div class="ctrl-field"><label>TITLE</label><input type="text" id="ctrl-beat-title" placeholder="PM1 — Initial contact" /></div>
+          <div class="ctrl-row">
+            <div class="ctrl-field"><label>LAT</label><input type="number" id="ctrl-beat-lat" step="0.0001" placeholder="47.678" /></div>
+            <div class="ctrl-field"><label>LNG</label><input type="number" id="ctrl-beat-lng" step="0.0001" placeholder="-116.799" /></div>
+          </div>
+          <div class="ctrl-row">
+            <div class="ctrl-field"><label>RADIUS (m)</label><input type="number" id="ctrl-beat-radius" value="100" min="10" /></div>
+            <div class="ctrl-field"><label>SEQ</label><input type="number" id="ctrl-beat-seq" value="0" min="0" /></div>
+          </div>
+          <div class="ctrl-field"><label>EVENT TYPE</label><input type="text" id="ctrl-beat-event" placeholder="beat_unlock" /></div>
+          <button class="ctrl-btn" id="ctrl-add-beat">ADD BEAT</button>
+          <div id="ctrl-beat-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
+        </div>
+      </div>
+      <div class="ctrl-section">
+        <h3>FOG OF WAR</h3>
+        <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Toggle visibility of zones for player map.</div>
+        <div id="fog-list" style="max-height:100px;overflow-y:auto;font-size:9px;color:var(--text-dim);padding:2px 0;">Loading…</div>
+        <div style="margin-top:6px;display:flex;gap:4px;">
+          <input type="text" id="ctrl-fog-label" placeholder="zone_label or cell_id" style="flex:1;font-size:9px;" />
+          <button class="ctrl-btn" id="ctrl-fog-lit" style="font-size:8px;">LIT</button>
+          <button class="ctrl-btn amber" id="ctrl-fog-dark" style="font-size:8px;">DARK</button>
+        </div>
+        <div id="ctrl-fog-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
+      </div>
+      <div class="ctrl-section">
+        <h3>PLAYER POSITIONS</h3>
+        <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Players who consented to GPS sharing.</div>
+        <div id="player-positions-list" style="max-height:100px;overflow-y:auto;font-size:9px;color:var(--text-dim);padding:2px 0;">Loading…</div>
+        <button class="ctrl-btn" id="ctrl-refresh-players" style="margin-top:4px;font-size:8px;">REFRESH</button>
+      </div>
+      <div class="ctrl-section">
+        <h3>MICROCHAT</h3>
+        <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Encrypted one-to-one channel with actor watch app.</div>
+        <div class="ctrl-field"><label>ACTOR ID</label><input type="number" id="ctrl-chat-actor-id" placeholder="actor id" /></div>
+        <div id="ctrl-chat-thread" style="max-height:100px;overflow-y:auto;font-size:9px;background:#060e06;border:1px solid var(--border);padding:4px;margin-bottom:4px;"></div>
+        <div class="ctrl-field"><label>MESSAGE</label><input type="text" id="ctrl-chat-msg" placeholder="Encrypted message…" maxlength="280" /></div>
+        <div style="display:flex;gap:4px;">
+          <button class="ctrl-btn" id="ctrl-chat-load" style="font-size:8px;">LOAD THREAD</button>
+          <button class="ctrl-btn amber" id="ctrl-chat-send" style="font-size:8px;">SEND</button>
+        </div>
+        <div id="ctrl-chat-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
+      </div>
+      <div class="ctrl-section">
+        <h3>DECOY PING</h3>
+        <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">False ping — actors only, NOT in event log.</div>
+        <div class="ctrl-field"><label>ACTOR ID</label><input type="number" id="ctrl-decoy-actor-id" placeholder="actor id" /></div>
+        <div class="ctrl-field"><label>COMMAND</label>
+          <select id="ctrl-decoy-cmd">
+            <option>SHADOW</option><option>HOLD</option><option>ENGAGE</option>
+            <option>MOVE</option><option>DROP</option><option>EXTRACT</option>
+          </select>
+        </div>
+        <div class="ctrl-field"><label>MSG (optional)</label><input type="text" id="ctrl-decoy-msg" placeholder="Decoy detail…" /></div>
+        <button class="ctrl-btn danger" id="ctrl-send-decoy">INJECT DECOY</button>
+        <div id="ctrl-decoy-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
       </div>
       <div class="ctrl-section">
         <h3>MAP</h3>
@@ -853,6 +1241,37 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
 
   // Populate lane dropdown for assignment
   populateLaneSelect('ctrl-assign-lane-select', session);
+
+  // Live telemetry refresh
+  loadActorPositions(session);
+  document.getElementById('ctrl-refresh-telemetry')?.addEventListener('click', () => loadActorPositions(session));
+
+  // Live map toggle
+  document.getElementById('ctrl-toggle-map')?.addEventListener('click', () => toggleLiveMap(session));
+
+  // Geofence list + add
+  loadGeofences(session);
+  document.getElementById('ctrl-add-geofence')?.addEventListener('click', () => addGeofence(session));
+
+  // Phase 3: Scenario beats
+  loadScenarioBeats(session);
+  document.getElementById('ctrl-add-beat')?.addEventListener('click', () => addScenarioBeat(session));
+
+  // Phase 3: Fog of war
+  loadFogZones(session);
+  document.getElementById('ctrl-fog-lit')?.addEventListener('click', () => setFogZone(session, true));
+  document.getElementById('ctrl-fog-dark')?.addEventListener('click', () => setFogZone(session, false));
+
+  // Phase 3: Player positions
+  loadPlayerPositions(session);
+  document.getElementById('ctrl-refresh-players')?.addEventListener('click', () => loadPlayerPositions(session));
+
+  // Phase 3: Microchat
+  document.getElementById('ctrl-chat-load')?.addEventListener('click', () => loadMicrochatThread(session));
+  document.getElementById('ctrl-chat-send')?.addEventListener('click', () => sendMicrochatToActor(session));
+
+  // Phase 3: Decoy ping
+  document.getElementById('ctrl-send-decoy')?.addEventListener('click', () => sendDecoyPing(session));
 
   // Map upload
   document.getElementById('ctrl-map-upload')!.addEventListener('click', () => document.getElementById('ctrl-map-file')!.click());
@@ -1409,7 +1828,29 @@ function connectWS(session: Session) {
             mokSend('warning', `${evType.replace(/_/g, ' ')} detected.`);
           } else if (evType === 'checkin') {
             mokSend('advisory', `Check-in: ${data.data?.payload?.callsign || 'unknown'}`);
+          } else if (evType === 'actor_panic') {
+            const p = data.data?.payload || {};
+            mokSend('critical', `⚠ PANIC — ${p.callsign || 'ACTOR'}: ${p.message || 'ABORT'}`);
+          } else if (evType === 'player_pingback') {
+            mokSend('advisory', `Pingback from ${data.data?.payload?.callsign || 'player'}.`);
+          } else if (evType === 'actor_deadman') {
+            const p = data.data?.payload || {};
+            mokSend('critical', `☠ DEADMAN — ${p.callsign || 'ACTOR'}: no heartbeat.`);
           }
+        } else if (data.type === 'actor_telemetry') {
+          // Live GPS update from watch app — update telemetry list if visible
+          const td = data.data as any;
+          if (td) {
+            const listEl = document.getElementById('actor-telemetry-list');
+            if (listEl && cachedSession) loadActorPositions(cachedSession);
+            if (cachedSession) onActorTelemetryForMap(cachedSession);
+          }
+        } else if (data.type === 'geofence_trigger') {
+          const gd = data.data as any;
+          if (gd) mokSend('warning', `⬡ ${gd.callsign || 'actor'} ${gd.transition?.toUpperCase() || 'TRIGGERED'} zone "${gd.zone_name}" (${gd.dist_m}m)`);
+        } else if (data.type === 'deadman_alert') {
+          const dd = data.data as any;
+          mokSend('critical', `☠ DEADMAN — ${dd?.callsign || 'ACTOR'}: no heartbeat.`);
         } else if (data.type === 'mping_ack') {
           const callsign = data.data?.acked_by || 'unknown';
           mokSend('advisory', `ACK received from ${callsign}.`);
@@ -1417,6 +1858,22 @@ function connectWS(session: Session) {
           if (panelMode === 'actor' && cachedSession) renderRightPanel(cachedSession);
         } else if (data.type === 'state' && data.data?.frozen !== undefined) {
           mokSend('critical', data.data.frozen ? 'GAME FROZEN by command.' : 'Game UNFROZEN — resume ops.');
+        } else if (data.type === 'actor_message_ack') {
+          // Phase 3: delivery confirmation from actor
+          const md = data.data as any;
+          mokSend('advisory', `✓ Chat delivered to ${md?.callsign || 'actor'}.`);
+        } else if (data.type === 'beat_unlock') {
+          // Phase 3: story beat triggered
+          const bd = data.data as any;
+          mokSend('warning', `🎯 BEAT UNLOCKED — "${bd?.beat_title || 'unknown'}" (seq ${bd?.beat_seq ?? '?'})`);
+          loadEvents(session);
+        } else if (data.type === 'player_location') {
+          // Phase 3: player GPS update — refresh player layer on map
+          if (cachedSession) refreshPlayerLayer(cachedSession);
+        } else if (data.type === 'fog_update') {
+          // Phase 3: fog zone toggled
+          const fd = data.data as any;
+          mokSend('advisory', `🌫 Fog ${fd?.lit ? 'LIFTED' : 'DARKENED'}: zone "${fd?.zone_label}"`);
         }
       } catch {}
     };
@@ -1427,4 +1884,251 @@ function connectWS(session: Session) {
     };
     ws.onerror = () => ws.close();
   } catch {}
+}
+
+// ── Phase 3: Scenario Beats ────────────────────────────────────────
+
+async function loadScenarioBeats(session: Session) {
+  const listEl = document.getElementById('beats-list');
+  if (!listEl) return;
+  try {
+    const res = await mFetch(`/m/beats/${session.scenarioId}`, session);
+    if (!res.ok) { listEl.textContent = 'Error loading beats.'; return; }
+    const data = await res.json() as { beats: any[] };
+    const beats = data.beats || [];
+    if (!beats.length) { listEl.innerHTML = '<div style="color:var(--text-dim)">No beats defined.</div>'; return; }
+    listEl.innerHTML = beats.map((b: any) =>
+      `<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1a2a1a;padding:3px 0;">
+        <span style="color:${b.unlocked_at ? 'var(--accent)' : 'var(--text-dim)'}">
+          ${b.unlocked_at ? '🔓' : '🔒'} [${b.beat_seq}] ${b.title}
+          ${b.lat != null ? `<br><span style="font-size:8px;color:#444">${b.lat.toFixed(4)},${b.lng?.toFixed(4)} ±${b.trigger_radius_m}m</span>` : ''}
+        </span>
+        <span style="display:flex;gap:4px;">
+          ${!b.unlocked_at ? `<button class="ctrl-btn" style="font-size:7px;padding:1px 5px;" onclick="window._unlockBeat(${b.id})">UNLOCK</button>` : ''}
+          <button class="ctrl-btn danger" style="font-size:7px;padding:1px 5px;" onclick="window._deleteBeat(${b.id})">✕</button>
+        </span>
+      </div>`,
+    ).join('');
+  } catch { listEl.textContent = 'Error.'; }
+}
+
+async function addScenarioBeat(session: Session) {
+  const title   = (document.getElementById('ctrl-beat-title') as HTMLInputElement)?.value;
+  const lat     = parseFloat((document.getElementById('ctrl-beat-lat') as HTMLInputElement)?.value);
+  const lng     = parseFloat((document.getElementById('ctrl-beat-lng') as HTMLInputElement)?.value);
+  const radius  = parseFloat((document.getElementById('ctrl-beat-radius') as HTMLInputElement)?.value || '100');
+  const seq     = parseInt((document.getElementById('ctrl-beat-seq') as HTMLInputElement)?.value || '0', 10);
+  const evType  = (document.getElementById('ctrl-beat-event') as HTMLInputElement)?.value || 'beat_unlock';
+  const resultEl = document.getElementById('ctrl-beat-result');
+  if (!title) { if (resultEl) resultEl.textContent = 'Title required.'; return; }
+  try {
+    const res = await mFetch('/m/beats', session, {
+      method: 'POST',
+      body: JSON.stringify({ scenario_id: session.scenarioId, title, lat: isNaN(lat) ? undefined : lat, lng: isNaN(lng) ? undefined : lng, trigger_radius_m: radius, event_type: evType, beat_seq: seq }),
+    });
+    if (res.ok) {
+      if (resultEl) resultEl.textContent = 'Beat added.';
+      (document.getElementById('ctrl-beat-title') as HTMLInputElement).value = '';
+      loadScenarioBeats(session);
+    } else { if (resultEl) resultEl.textContent = 'Error.'; }
+  } catch { if (resultEl) resultEl.textContent = 'Error.'; }
+}
+
+// Expose beat actions to onclick handlers in the beats list
+(window as any)._unlockBeat = async (id: number) => {
+  if (!cachedSession) return;
+  await mFetch(`/m/beats/${id}/unlock`, cachedSession, { method: 'POST', body: '{}' });
+  loadScenarioBeats(cachedSession);
+  mokSend('directive', `Beat ${id} manually unlocked.`);
+};
+(window as any)._deleteBeat = async (id: number) => {
+  if (!cachedSession) return;
+  await mFetch(`/m/beats/${id}`, cachedSession, { method: 'DELETE' });
+  loadScenarioBeats(cachedSession);
+};
+
+// ── Phase 3: Fog of War ────────────────────────────────────────────
+
+async function loadFogZones(session: Session) {
+  const listEl = document.getElementById('fog-list');
+  if (!listEl) return;
+  try {
+    const res = await mFetch(`/m/fog/${session.scenarioId}`, session);
+    if (!res.ok) { listEl.textContent = 'Error.'; return; }
+    const data = await res.json() as { zones: any[] };
+    const zones = data.zones || [];
+    if (!zones.length) { listEl.innerHTML = '<div style="color:var(--text-dim)">No fog zones.</div>'; return; }
+    listEl.innerHTML = zones.map((z: any) =>
+      `<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1a2a1a;padding:2px 0;">
+        <span style="color:${z.lit ? 'var(--accent)' : '#555'};">${z.lit ? '☀' : '🌑'} ${z.zone_label}</span>
+        <button class="ctrl-btn ${z.lit ? 'amber' : ''}" style="font-size:7px;padding:1px 5px;"
+          onclick="window._toggleFog('${z.zone_label}',${!z.lit})">${z.lit ? 'DARK' : 'LIT'}</button>
+      </div>`,
+    ).join('');
+  } catch { listEl.textContent = 'Error.'; }
+}
+
+async function setFogZone(session: Session, lit: boolean) {
+  const label   = (document.getElementById('ctrl-fog-label') as HTMLInputElement)?.value?.trim();
+  const resultEl = document.getElementById('ctrl-fog-result');
+  if (!label) { if (resultEl) resultEl.textContent = 'Zone label required.'; return; }
+  try {
+    const res = await mFetch('/m/fog', session, {
+      method: 'POST',
+      body: JSON.stringify({ scenario_id: session.scenarioId, zone_label: label, lit }),
+    });
+    if (res.ok) { if (resultEl) resultEl.textContent = `Zone "${label}" set to ${lit ? 'LIT' : 'DARK'}.`; loadFogZones(session); }
+    else { if (resultEl) resultEl.textContent = 'Error.'; }
+  } catch { if (resultEl) resultEl.textContent = 'Error.'; }
+}
+
+(window as any)._toggleFog = (label: string, lit: boolean) => {
+  if (!cachedSession) return;
+  setFogZone(cachedSession, lit);
+  (document.getElementById('ctrl-fog-label') as HTMLInputElement | null)!.value = label;
+};
+
+// ── Phase 3: Player Positions ─────────────────────────────────────
+
+async function loadPlayerPositions(session: Session) {
+  const listEl = document.getElementById('player-positions-list');
+  if (!listEl) return;
+  try {
+    const res = await mFetch(`/m/player-locations/${session.scenarioId}`, session);
+    if (!res.ok) { listEl.textContent = 'Error.'; return; }
+    const data = await res.json() as { locations: any[] };
+    const locs = data.locations || [];
+    if (!locs.length) { listEl.innerHTML = '<div style="color:var(--text-dim)">No player positions reported.</div>'; return; }
+    const now = Date.now();
+    listEl.innerHTML = locs.map((loc: any) => {
+      const ageS = Math.round((now - loc.reported_at) / 1000);
+      const stale = ageS > 120;
+      return `<div style="display:flex;justify-content:space-between;border-bottom:1px solid #1a2a1a;padding:2px 0;color:${stale ? '#555' : 'var(--text-dim)'};">
+        <span>👤 ${loc.player_id}</span>
+        <span>${loc.lat?.toFixed(4)},${loc.lng?.toFixed(4)} · ${ageS}s</span>
+      </div>`;
+    }).join('');
+    refreshPlayerLayer(session, locs);
+  } catch { listEl.textContent = 'Error.'; }
+}
+
+/** Add/refresh player GPS dots on the Leaflet live map */
+function refreshPlayerLayer(session: Session, locs?: any[]) {
+  const mapObj = (window as any)._leafletMap;
+  if (!mapObj) return; // map not open
+  if (!locs) {
+    mFetch(`/m/player-locations/${session.scenarioId}`, session).then((r) => r.json()).then((d: any) => {
+      const locations = (d.locations || []) as any[];
+      renderPlayerDots(mapObj, locations);
+    }).catch(() => {});
+    return;
+  }
+  renderPlayerDots(mapObj, locs);
+}
+
+function renderPlayerDots(mapObj: any, locs: any[]) {
+  const L = (window as any).L;
+  if (!L) return;
+  if (!(mapObj as any)._playerMarkers) (mapObj as any)._playerMarkers = [];
+  (mapObj as any)._playerMarkers.forEach((m: any) => m.remove());
+  (mapObj as any)._playerMarkers = [];
+  const now = Date.now();
+  for (const loc of locs) {
+    if (loc.lat == null) continue;
+    const stale = (now - loc.reported_at) > 120000;
+    const marker = L.circleMarker([loc.lat, loc.lng], {
+      radius: 6, color: stale ? '#555' : '#ffcc00', fillColor: stale ? '#333' : '#ffcc00',
+      fillOpacity: 0.7, weight: 2,
+    }).bindTooltip(`👤 ${loc.player_id} (${Math.round((now - loc.reported_at) / 1000)}s)`).addTo(mapObj);
+    (mapObj as any)._playerMarkers.push(marker);
+  }
+}
+
+// ── Phase 3: Microchat (M side) ───────────────────────────────────
+
+async function loadMicrochatThread(session: Session) {
+  const actorId = parseInt((document.getElementById('ctrl-chat-actor-id') as HTMLInputElement)?.value, 10);
+  const threadEl = document.getElementById('ctrl-chat-thread');
+  const resultEl = document.getElementById('ctrl-chat-result');
+  if (!actorId) { if (resultEl) resultEl.textContent = 'Actor ID required.'; return; }
+  try {
+    const res = await mFetch(`/m/microchat/${actorId}`, session);
+    if (!res.ok) { if (threadEl) threadEl.textContent = 'Error.'; return; }
+    const data = await res.json() as { messages: any[] };
+    const msgs = data.messages || [];
+    if (!msgs.length) { if (threadEl) threadEl.innerHTML = '<div style="color:var(--text-dim);font-size:9px;">No messages.</div>'; return; }
+    if (threadEl) {
+      threadEl.innerHTML = msgs.map((m: any) => {
+        const from = m.from_id === 'M' ? '⬡ M' : `👤 ${m.from_id}`;
+        const ts   = new Date(m.created_at || Date.now()).toLocaleTimeString();
+        const col  = m.from_id === 'M' ? '#6666ff' : 'var(--accent)';
+        return `<div style="border-bottom:1px solid #1a2a1a;padding:2px 0;color:${col};font-size:8px;">
+          <span>[${ts}] ${from}:</span> <span style="color:var(--text-dim);">[encrypted ciphertext]</span>
+        </div>`;
+      }).join('');
+      threadEl.scrollTop = threadEl.scrollHeight;
+    }
+  } catch { if (threadEl) threadEl.textContent = 'Error.'; }
+}
+
+async function sendMicrochatToActor(session: Session) {
+  const actorId = parseInt((document.getElementById('ctrl-chat-actor-id') as HTMLInputElement)?.value, 10);
+  const msg     = (document.getElementById('ctrl-chat-msg') as HTMLInputElement)?.value?.trim();
+  const resultEl = document.getElementById('ctrl-chat-result');
+  if (!actorId || !msg) { if (resultEl) resultEl.textContent = 'Actor ID and message required.'; return; }
+  try {
+    // Derive shared encryption key (same logic as watch app)
+    const ciphertext = await encryptChatMsg(msg, session.scenarioId);
+    const res = await mFetch('/m/microchat', session, {
+      method: 'POST',
+      body: JSON.stringify({ actor_id: actorId, ciphertext }),
+    });
+    if (res.ok) {
+      if (resultEl) resultEl.textContent = 'Sent.';
+      (document.getElementById('ctrl-chat-msg') as HTMLInputElement).value = '';
+      loadMicrochatThread(session);
+    } else { if (resultEl) resultEl.textContent = 'Error.'; }
+  } catch { if (resultEl) resultEl.textContent = 'Error.'; }
+}
+
+async function encryptChatMsg(plaintext: string, scenarioId: number): Promise<string> {
+  const key = await deriveChatKey(scenarioId);
+  const iv  = crypto.getRandomValues(new Uint8Array(12));
+  const ct  = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(plaintext));
+  return b64url(iv) + ':' + b64url(new Uint8Array(ct));
+}
+
+async function deriveChatKey(scenarioId: number): Promise<CryptoKey> {
+  const material = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode('eyesonly-chat-v1:' + scenarioId),
+    { name: 'PBKDF2' }, false, ['deriveKey'],
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: new TextEncoder().encode('eowatch'), iterations: 5000, hash: 'SHA-256' },
+    material, { name: 'AES-GCM', length: 256 }, false, ['encrypt'],
+  );
+}
+
+function b64url(buf: Uint8Array): string {
+  return btoa(String.fromCharCode(...buf)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+// ── Phase 3: Decoy Ping ────────────────────────────────────────────
+
+async function sendDecoyPing(session: Session) {
+  const actorId = parseInt((document.getElementById('ctrl-decoy-actor-id') as HTMLInputElement)?.value, 10);
+  const cmd     = (document.getElementById('ctrl-decoy-cmd') as HTMLElement as unknown as HTMLSelectElement)?.value;
+  const msg     = (document.getElementById('ctrl-decoy-msg') as HTMLInputElement)?.value;
+  const resultEl = document.getElementById('ctrl-decoy-result');
+  if (!actorId || !cmd) { if (resultEl) resultEl.textContent = 'Actor ID and command required.'; return; }
+  try {
+    const res = await mFetch('/m/decoy-ping', session, {
+      method: 'POST',
+      body: JSON.stringify({ actor_id: actorId, command: cmd, message: msg }),
+    });
+    if (res.ok) {
+      if (resultEl) resultEl.textContent = `Decoy ${cmd} injected → actor ${actorId} (not logged).`;
+      mokSend('directive', `🎭 Decoy ping ${cmd} sent to actor ${actorId}.`);
+    } else { if (resultEl) resultEl.textContent = 'Error.'; }
+  } catch { if (resultEl) resultEl.textContent = 'Error.'; }
 }

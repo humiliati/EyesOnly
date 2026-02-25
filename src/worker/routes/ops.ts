@@ -5,7 +5,7 @@
    ============================================================ */
 
 import { Hono } from 'hono';
-import type { Env, AuthContext, CheckinRequest, DeadDropRequest } from '../../shared/types';
+import type { Env, AuthContext, CheckinRequest, DeadDropRequest, TelemetryRequest, PanicRequest, PushSubscribeRequest, MicrochatSendRequest, PlayerLocationRequest } from '../../shared/types';
 import { requireAuth } from '../middleware/auth';
 import {
   getScenario,
@@ -16,13 +16,27 @@ import {
   getEventsByLane,
   updateActorStatus,
   updateActorLane,
+  updateActorTelemetry,
   createDeadDrop,
   retrieveDeadDrop,
   getDeadDropsByLane,
   listDeadDrops,
   getActor,
   getGridCell,
+  listActiveGeofenceZones,
+  getActorGeofenceState,
+  upsertActorGeofenceState,
+  upsertPushSubscription,
+  deletePushSubscription,
+  getPushSubscriptionsByScenario,
+  getActiveScenarioBeats,
+  unlockScenarioBeat,
+  upsertPlayerLocation,
+  insertMicrochatMessage,
+  getMicrochatMessages,
+  markMicrochatDelivered,
 } from '../db/queries';
+import { sendWebPushToAll } from '../utils/web-push';
 
 type HonoEnv = { Bindings: Env; Variables: { auth: AuthContext } };
 
@@ -322,6 +336,298 @@ opsRoutes.get('/events', async (c) => {
 });
 
 /**
+ * POST /api/ops/pingback
+ * Player sends a manual pingback to the scenario event log.
+ * Only available when scenario-joined (requires auth token).
+ * M Mode will see this as a 'player_pingback' event in the event feed.
+ */
+opsRoutes.post('/pingback', async (c) => {
+  const auth = c.get('auth');
+
+  const event = await insertEvent(c.env.DB, auth.scenario_id, auth.actor_id, 'player_pingback', {
+    callsign: auth.callsign,
+    pinged_at: Date.now(),
+  });
+
+  // Broadcast via Durable Object so M Mode sees it in real time
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+  const room = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'event',
+      data: { ...event, payload: JSON.parse(event.payload) },
+      timestamp: Date.now(),
+    }),
+  }));
+
+  return c.json({ ok: true, event_id: event.id });
+});
+
+/**
+ * POST /api/ops/telemetry
+ * Actor heartbeat: GPS position + accelerometer data.
+ * Sent every 10–30 seconds by the smartwatch/ops app.
+ * Updates the actor's last-known position and broadcasts to M console.
+ */
+opsRoutes.post('/telemetry', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<TelemetryRequest>();
+
+  // Classify motion state from accelerometer magnitude if not provided
+  let motionState = body.motion_state ?? 'unknown';
+  if (motionState === 'unknown' && body.accel_x != null && body.accel_y != null && body.accel_z != null) {
+    const mag = Math.sqrt(body.accel_x ** 2 + body.accel_y ** 2 + body.accel_z ** 2);
+    if (mag < 0.5)       motionState = 'stationary';
+    else if (mag < 3)    motionState = 'walking';
+    else if (mag < 8)    motionState = 'running';
+    else if (mag < 15)   motionState = 'vehicle';
+    else                 motionState = 'dropped';
+  }
+
+  // Update actor telemetry in DB
+  await updateActorTelemetry(c.env.DB, auth.actor_id, {
+    lat: body.lat,
+    lng: body.lng,
+    accel_x: body.accel_x,
+    accel_y: body.accel_y,
+    accel_z: body.accel_z,
+    motion_state: motionState,
+  });
+
+  // ── Geo-trigger check ─────────────────────────────────────────────
+  // Only run if actor has valid GPS coordinates
+  const triggeredZones: string[] = [];
+  if (body.lat != null && body.lng != null) {
+    const zones = await listActiveGeofenceZones(c.env.DB, auth.scenario_id);
+    for (const zone of zones) {
+      const distM = haversineMeters(body.lat, body.lng, zone.lat, zone.lng);
+      const nowInside = distM <= zone.radius_m;
+      const prevState = await getActorGeofenceState(c.env.DB, auth.actor_id, zone.id);
+      const wasInside = prevState?.inside === 1;
+
+      const isEnter = !wasInside && nowInside;
+      const isExit  = wasInside && !nowInside;
+      const shouldFire =
+        (zone.trigger_on === 'enter' && isEnter) ||
+        (zone.trigger_on === 'exit' && isExit) ||
+        (zone.trigger_on === 'both' && (isEnter || isExit));
+
+      if (shouldFire) {
+        await upsertActorGeofenceState(c.env.DB, auth.actor_id, zone.id, nowInside);
+
+        const triggerPayload = {
+          actor_id:   auth.actor_id,
+          callsign:   auth.callsign,
+          zone_id:    zone.id,
+          zone_name:  zone.name,
+          transition: isEnter ? 'enter' : 'exit',
+          dist_m:     Math.round(distM),
+          lat:        body.lat,
+          lng:        body.lng,
+          ts:         Date.now(),
+        };
+
+        const event = await insertEvent(
+          c.env.DB,
+          auth.scenario_id,
+          auth.actor_id,
+          zone.trigger_event_type,
+          triggerPayload,
+        );
+
+        const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+        const room   = c.env.SCENARIO_ROOM.get(roomId);
+        await room.fetch(new Request('http://internal/broadcast', {
+          method: 'POST',
+          body: JSON.stringify({
+            type: 'geofence_trigger',
+            data: { ...triggerPayload, event_id: event.id },
+            timestamp: Date.now(),
+          }),
+        }));
+
+        triggeredZones.push(zone.name);
+      } else if (prevState?.inside !== (nowInside ? 1 : 0)) {
+        // Update state even if no fire (crossed boundary of inactive trigger type)
+        await upsertActorGeofenceState(c.env.DB, auth.actor_id, zone.id, nowInside);
+      }
+    }
+
+    // ── Beat-unlock check (Phase 3) ─────────────────────────────────
+    // Check if this actor's position triggers any unlocked story beats.
+    const unlockedBeats: string[] = [];
+    const activeBeats = await getActiveScenarioBeats(c.env.DB, auth.scenario_id);
+    for (const beat of activeBeats) {
+      if (beat.lat == null || beat.lng == null) continue;
+      const distM = haversineMeters(body.lat, body.lng, beat.lat, beat.lng);
+      if (distM <= beat.trigger_radius_m) {
+        await unlockScenarioBeat(c.env.DB, beat.id);
+        const beatEvent = await insertEvent(c.env.DB, auth.scenario_id, auth.actor_id, beat.event_type, {
+          beat_id:    beat.id,
+          beat_title: beat.title,
+          beat_seq:   beat.beat_seq,
+          triggered_by: auth.callsign,
+          dist_m:     Math.round(distM),
+          lat: body.lat,
+          lng: body.lng,
+          ts: Date.now(),
+        });
+        const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+        const room   = c.env.SCENARIO_ROOM.get(roomId);
+        await room.fetch(new Request('http://internal/broadcast', {
+          method: 'POST',
+          body: JSON.stringify({
+            type: 'beat_unlock',
+            data: { beat_id: beat.id, beat_title: beat.title, beat_seq: beat.beat_seq, event_id: beatEvent.id },
+            timestamp: Date.now(),
+          }),
+        }));
+        unlockedBeats.push(beat.title);
+      }
+    }
+    // ────────────────────────────────────────────────────────────────
+  }
+  // ──────────────────────────────────────────────────────────────────
+
+  // Broadcast lightweight telemetry update to M console (no DB event insert to avoid log spam)
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+  const room = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'actor_telemetry',
+      data: {
+        actor_id:     auth.actor_id,
+        callsign:     auth.callsign,
+        lat:          body.lat ?? null,
+        lng:          body.lng ?? null,
+        motion_state: motionState,
+        battery:      body.battery ?? null,
+        low_power:    body.low_power ?? false,
+        ts:           Date.now(),
+      },
+      timestamp: Date.now(),
+    }),
+  }));
+
+  return c.json({ ok: true, motion_state: motionState, triggered_zones: triggeredZones });
+});
+
+/**
+ * POST /api/ops/panic
+ * Emergency abort — actor signals distress.
+ * Inserts a high-priority event, M console is alerted immediately.
+ */
+opsRoutes.post('/panic', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<PanicRequest>().catch(() => ({} as PanicRequest));
+
+  const event = await insertEvent(c.env.DB, auth.scenario_id, auth.actor_id, 'actor_panic', {
+    callsign: auth.callsign,
+    lat:      body.lat ?? null,
+    lng:      body.lng ?? null,
+    message:  body.message || 'PANIC — ACTOR ABORT',
+    ts:       Date.now(),
+  });
+
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+  const room = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'event',
+      data: { ...event, payload: JSON.parse(event.payload) },
+      timestamp: Date.now(),
+    }),
+  }));
+
+  return c.json({ ok: true, event_id: event.id });
+});
+
+// ===== Haversine distance helper (meters) =====
+function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R  = 6371000; // Earth radius in metres
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lng2 - lng1) * Math.PI) / 180;
+  const a  = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/**
+ * POST /api/ops/push-subscribe
+ * Register a Web Push subscription for the actor's device.
+ * Called once on login from the watch app after push permission is granted.
+ */
+opsRoutes.post('/push-subscribe', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<PushSubscribeRequest>();
+
+  if (!body.endpoint || !body.keys?.p256dh || !body.keys?.auth) {
+    return c.json({ error: 'BAD_REQUEST', message: 'endpoint, keys.p256dh and keys.auth required' }, 400);
+  }
+
+  await upsertPushSubscription(
+    c.env.DB,
+    auth.actor_id,
+    auth.scenario_id,
+    body.endpoint,
+    body.keys.p256dh,
+    body.keys.auth,
+  );
+
+  return c.json({ ok: true });
+});
+
+/**
+ * DELETE /api/ops/push-subscribe
+ * Unregister a Web Push subscription.
+ */
+opsRoutes.delete('/push-subscribe', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{ endpoint: string }>().catch(() => ({ endpoint: '' }));
+  if (body.endpoint) {
+    await deletePushSubscription(c.env.DB, auth.actor_id, body.endpoint);
+  }
+  return c.json({ ok: true });
+});
+
+/**
+ * GET /api/ops/nfc-drop?tag=<nfc-tag-id>
+ * Look up a dead drop by its NFC tag ID (stored in the drop label).
+ * When the watch app scans an NFC tag, it sends the tag serial here.
+ * If a matching active dead drop is found, auto-retrieve it.
+ */
+opsRoutes.get('/nfc-drop', async (c) => {
+  const auth = c.get('auth');
+  const tag  = c.req.query('tag');
+  if (!tag) return c.json({ error: 'BAD_REQUEST', message: 'tag query param required' }, 400);
+
+  // All active drops in scenario — search by label containing the tag
+  const allDrops = await listDeadDrops(c.env.DB, auth.scenario_id);
+  const match = allDrops.find((d) =>
+    (d.status === 'placed' || d.status === 'active') &&
+    d.label.toLowerCase().includes(tag.toLowerCase()),
+  );
+
+  if (!match) {
+    return c.json({ found: false, message: 'No active dead drop matches this NFC tag.' });
+  }
+
+  return c.json({
+    found:       true,
+    dead_drop_id: match.id,
+    label:       match.label,
+    lane_id:     match.lane_id,
+    lat:         match.lat,
+    lng:         match.lng,
+    message:     `Dead drop "${match.label}" found. Tap RETRIEVE to confirm.`,
+  });
+});
+
+/**
  * GET /api/ops/ws
  * Upgrade to WebSocket via ScenarioRoom Durable Object.
  */
@@ -340,4 +646,140 @@ opsRoutes.get('/ws', async (c) => {
   return room.fetch(new Request(url.toString(), {
     headers: c.req.raw.headers,
   }));
+});
+
+// ── Phase 3: Microchat ────────────────────────────────────────────
+
+/**
+ * POST /api/ops/microchat
+ * Actor sends an encrypted message to M (or another actor).
+ * The server routes the ciphertext without decrypting it.
+ * Key derivation and encryption happen entirely on the client.
+ */
+opsRoutes.post('/microchat', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<MicrochatSendRequest>();
+
+  if (!body.to_id || !body.ciphertext) {
+    return c.json({ error: 'BAD_REQUEST', message: 'to_id and ciphertext required' }, 400);
+  }
+
+  const fromId = String(auth.actor_id);
+  const msg = await insertMicrochatMessage(c.env.DB, auth.scenario_id, fromId, body.to_id, body.ciphertext);
+
+  // Route to target: if to_id === 'M', audience = directors; otherwise target actor + directors
+  const targetActorId = body.to_id === 'M' ? undefined : parseInt(body.to_id, 10);
+  const audience = body.to_id === 'M' ? 'directors' : 'target';
+
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+  const room   = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'actor_message',
+      data: { msg_id: msg.id, from_id: fromId, to_id: body.to_id, ciphertext: body.ciphertext, ts: Date.now() },
+      timestamp: Date.now(),
+      audience,
+      target_actor_id: targetActorId,
+    }),
+  }));
+
+  return c.json({ ok: true, msg_id: msg.id });
+});
+
+/**
+ * GET /api/ops/microchat
+ * Get the microchat thread for the authenticated actor (messages to/from M).
+ * Query params: limit (default 30)
+ */
+opsRoutes.get('/microchat', async (c) => {
+  const auth = c.get('auth');
+  const limit = parseInt(c.req.query('limit') || '30', 10);
+  const msgs = await getMicrochatMessages(c.env.DB, auth.scenario_id, String(auth.actor_id), limit);
+  return c.json({ messages: msgs });
+});
+
+/**
+ * POST /api/ops/microchat/:id/ack
+ * Actor confirms message delivery. Broadcasts actor_message_ack to M.
+ */
+opsRoutes.post('/microchat/:id/ack', async (c) => {
+  const auth = c.get('auth');
+  const msgId = parseInt(c.req.param('id'), 10);
+  await markMicrochatDelivered(c.env.DB, msgId);
+
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+  const room   = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'actor_message_ack',
+      data: { msg_id: msgId, actor_id: auth.actor_id, callsign: auth.callsign, ts: Date.now() },
+      timestamp: Date.now(),
+      audience: 'directors',
+    }),
+  }));
+
+  return c.json({ ok: true });
+});
+
+// ── Phase 3: Player Location Reporting ───────────────────────────
+
+/**
+ * POST /api/player/location
+ * Player terminal reports GPS position with consent.
+ * M Console sees player dots on the live map.
+ * Check beat-unlock triggers against active scenario beats.
+ */
+opsRoutes.post('/player-location', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<PlayerLocationRequest>();
+
+  if (body.lat == null || body.lng == null) {
+    return c.json({ error: 'BAD_REQUEST', message: 'lat and lng required' }, 400);
+  }
+
+  const playerId = body.player_id || auth.callsign;
+  await upsertPlayerLocation(c.env.DB, playerId, auth.scenario_id, body.lat, body.lng, body.accuracy_m);
+
+  // Broadcast player location to directors only (M console live map — not visible to other players)
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+  const room   = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'player_location',
+      data: { player_id: playerId, lat: body.lat, lng: body.lng, accuracy_m: body.accuracy_m ?? null, ts: Date.now() },
+      timestamp: Date.now(),
+      audience: 'directors',
+    }),
+  }));
+
+  // ── Beat-unlock check for player position ──────────────────────
+  const unlockedBeats: string[] = [];
+  const activeBeats = await getActiveScenarioBeats(c.env.DB, auth.scenario_id);
+  for (const beat of activeBeats) {
+    if (beat.lat == null || beat.lng == null) continue;
+    const distM = haversineMeters(body.lat, body.lng, beat.lat, beat.lng);
+    if (distM <= beat.trigger_radius_m) {
+      await unlockScenarioBeat(c.env.DB, beat.id);
+      const beatEvent = await insertEvent(c.env.DB, auth.scenario_id, auth.actor_id, beat.event_type, {
+        beat_id: beat.id, beat_title: beat.title, beat_seq: beat.beat_seq,
+        triggered_by: playerId, source: 'player_location',
+        dist_m: Math.round(distM), lat: body.lat, lng: body.lng, ts: Date.now(),
+      });
+      await room.fetch(new Request('http://internal/broadcast', {
+        method: 'POST',
+        body: JSON.stringify({
+          type: 'beat_unlock',
+          data: { beat_id: beat.id, beat_title: beat.title, beat_seq: beat.beat_seq, event_id: beatEvent.id },
+          timestamp: Date.now(),
+        }),
+      }));
+      unlockedBeats.push(beat.title);
+    }
+  }
+  // ──────────────────────────────────────────────────────────────
+
+  return c.json({ ok: true, unlocked_beats: unlockedBeats });
 });
