@@ -48,6 +48,11 @@ const HandFanComponent = (function () {
         // Only re-render when the fan is active/visible
         if (_fanContainer && _fanContainer.style.display !== 'none') {
           _renderCards();
+          // Re-anchor after resize (STR window + hand fan layout change)
+          if (_mode === 'combat') {
+            _positionRelativeToStrWindow();
+            setTimeout(function() { try { _positionRelativeToStrWindow(); } catch (e2) {} }, 220);
+          }
         }
       }, 120);
     });
@@ -294,11 +299,55 @@ const HandFanComponent = (function () {
     _renderCards();
   }
 
+  function _positionRelativeToStrWindow() {
+    if (!_fanContainer) return false;
+
+    // Anchor to STR combat window so we never occlude the header/minimize button
+    // on short viewports. This also makes placement resilient to future STR
+    // layout changes.
+    var win = document.getElementById('str-combat-window');
+    if (!win || !win.getBoundingClientRect) return false;
+
+    // If STR window isn't visible, don't anchor.
+    try {
+      if (win.style && win.style.display === 'none') return false;
+    } catch (e0) {}
+
+    var r = win.getBoundingClientRect();
+    if (!isFinite(r.left) || !isFinite(r.top) || r.width <= 0 || r.height <= 0) return false;
+
+    var cx = r.left + (r.width / 2);
+
+    // Default: bias toward bottom (player + timer area) to avoid enemy intent.
+    var relY = 0.78;
+    if (_position === 'peripheral') {
+      // Peripheral mode should sit higher but still below the header.
+      relY = 0.60;
+    }
+
+    var cy = r.top + (r.height * relY);
+
+    _fanContainer.style.left = Math.round(cx) + 'px';
+    _fanContainer.style.top = Math.round(cy) + 'px';
+    _fanContainer.style.transform = 'translate(-50%, -50%)';
+
+    return true;
+  }
+
   /**
    * Update fan position based on mode and position
    */
   function _updateFanPosition() {
     _fanContainer.className = 'hand-fan-container';
+
+    // Clear any previous anchoring overrides unless we're in combat mode.
+    if (!(_mode === 'combat')) {
+      try {
+        _fanContainer.style.left = '';
+        _fanContainer.style.top = '';
+        _fanContainer.style.transform = '';
+      } catch (e1) {}
+    }
 
     if (_mode === 'combat' && _position === 'centered') {
       _fanContainer.classList.add('hand-fan-combat');
@@ -306,6 +355,11 @@ const HandFanComponent = (function () {
       _fanContainer.classList.add('hand-fan-combat-peripheral');
     } else if (_mode === 'contextual' && _position === 'bottom') {
       _fanContainer.classList.add('hand-fan-contextual');
+    }
+
+    if (_mode === 'combat') {
+      // Anchor to STR window when available.
+      _positionRelativeToStrWindow();
     }
   }
 

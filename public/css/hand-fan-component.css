@@ -18,6 +18,8 @@
 /* Combat mode - centered over STR window, but biased downward so it doesn't
    occlude enemy intent + STR header controls. */
 .hand-fan-container.hand-fan-combat {
+  /* Default/fallback position; in STR combat we prefer JS anchoring to
+     #str-combat-window for short-viewport safety. */
   top: 70vh;
   left: 50%;
   transform: translate(-50%, -50%);
