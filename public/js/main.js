@@ -31,6 +31,11 @@
       LoginUI.init();
     }
 
+    // Initialize Terminal Command Router (stats, inventory, dev mode)
+    if (typeof TerminalCommandRouter !== 'undefined') {
+      TerminalCommandRouter.init();
+    }
+
     // Initialize GAMESTATE and subsystems
     if (typeof GAMESTATE !== 'undefined') {
       GAMESTATE.init();
@@ -199,6 +204,15 @@
       return;
     }
 
+    // Priority 0.5: Terminal Command Router (stats, inventory, etc.)
+    // Only active when NOT inside rogue or street gameplay
+    if (typeof TerminalCommandRouter !== 'undefined' &&
+        TerminalCommandRouter.isRouterCommand &&
+        TerminalCommandRouter.isRouterCommand(rawInput || '')) {
+      _executeRouterAction(TerminalCommandRouter.process(rawInput || ''));
+      return;
+    }
+
     // Priority 1: Check if Gone Rogue mode is active
     if (typeof GoneRogue !== 'undefined' && GoneRogue.isActive()) {
       _executeRogueAction(GoneRogue.process(rawInput || ''));
@@ -295,6 +309,17 @@
   }
 
   function _executeKernelAction(action) {
+    Terminal.hideInput();
+    _displayLines(action.lines || [], function () {
+      if (action.stayActive) {
+        _enableInput(action.prompt || _promptForState(StateMachine.getState()));
+        return;
+      }
+      _enableInput(_promptForState(StateMachine.getState()));
+    }, 'system-msg');
+  }
+
+  function _executeRouterAction(action) {
     Terminal.hideInput();
     _displayLines(action.lines || [], function () {
       if (action.stayActive) {
