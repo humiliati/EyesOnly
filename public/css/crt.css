@@ -3309,9 +3309,8 @@ body.in-gone-rogue #log-column {
   flex: 1;
   min-height: 0;
   width: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 8px;
+  overflow: hidden; /* prevent grey scroll wheel in debrief */
+  padding: 4px;
   box-sizing: border-box;
 }
 

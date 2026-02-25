@@ -367,16 +367,8 @@ const DebriefFeedController = (function() {
       var html = '<div class="debrief-resources-display">';
       html += '<div id="debrief-synergy-overlay" class="debrief-synergy-overlay" aria-hidden="true"></div>';
 
-      // Header row: keep the MOK selection/swapper in-line with resources
-      if (_currentMode === MODES.goneRogue && _currentMode.allowCycle) {
-        html += '<div class="debrief-resources-header">';
-        html += '<button class="debrief-mok-swapper" id="debrief-mok-swapper" type="button" aria-label="Switch debrief view to MOK">';
-        html += '<span class="mok-dot" aria-hidden="true"></span>';
-        html += '<span class="mok-label">MOK</span>';
-        html += '</button>';
-        html += _renderCycleButton('Show MOK');
-        html += '</div>';
-      }
+      // NOTE: In Gone Rogue, MOK selection is handled by the [Mok] row.
+      // Do not render the old MOK capsule / cycle button header here.
 
       // ASCII/Pip-boy style rows (terminal lines)
       function abbrKeepFirst(s) {
@@ -456,10 +448,33 @@ const DebriefFeedController = (function() {
       }
 
       function _getState() {
+        // Merge GAMESTATE + rogue player so debrief never shows "undefined".
+        var st = {};
         try {
-          if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getState) return GAMESTATE.getState() || {};
+          if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getState) st = GAMESTATE.getState() || {};
         } catch (eS0) {}
-        return {};
+
+        try {
+          var p = _getRoguePlayer();
+          if (p) {
+            if (typeof p.hp === 'number') st.hp = p.hp;
+            if (typeof p.maxHp === 'number') st.maxHp = p.maxHp;
+            if (typeof p.energy === 'number') st.energy = p.energy;
+            if (typeof p.maxEnergy === 'number') st.maxEnergy = p.maxEnergy;
+            if (typeof p.focus === 'number') st.focus = p.focus;
+            if (typeof p.maxFocus === 'number') st.maxFocus = p.maxFocus;
+          }
+        } catch (eS1) {}
+
+        // Hard defaults
+        if (typeof st.hp !== 'number') st.hp = 0;
+        if (typeof st.maxHp !== 'number') st.maxHp = Math.max(1, st.hp);
+        if (typeof st.energy !== 'number') st.energy = 0;
+        if (typeof st.maxEnergy !== 'number') st.maxEnergy = Math.max(1, st.energy);
+        if (typeof st.focus !== 'number') st.focus = 0;
+        if (typeof st.maxFocus !== 'number') st.maxFocus = Math.max(1, st.focus);
+
+        return st;
       }
 
       // Summaries + panels
