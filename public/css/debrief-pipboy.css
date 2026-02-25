@@ -2,8 +2,27 @@
 .debrief-row-label {
   flex: 0 0 auto;
   opacity: 0.92;
-  color: rgba(191, 255, 227, 0.95);
+  color: currentColor;
 }
+
+.debrief-row-panel {
+  font-family: 'Courier New', monospace;
+  white-space: pre;
+  padding: 1px 2px;
+  margin: 0;
+  opacity: 0.85;
+  letter-spacing: 0.06em;
+}
+
+/* Per-row color grammar */
+.debrief-nav-row.row-hp { color: rgba(255, 70, 70, 0.95); }
+.debrief-nav-row.row-energy { color: rgba(255, 225, 120, 0.92); }
+.debrief-nav-row.row-focus { color: rgba(140, 170, 255, 0.92); }
+.debrief-nav-row.row-ammo { color: rgba(255, 120, 255, 0.92); }
+.debrief-nav-row.row-signal { color: rgba(120, 255, 255, 0.95); }
+.debrief-nav-row.row-passives { color: rgba(191, 255, 227, 0.85); }
+.debrief-nav-row.row-statuses { color: rgba(255, 160, 100, 0.90); }
+.debrief-nav-row.row-api { color: rgba(191, 255, 227, 0.75); }
 
 .debrief-row-summary {
   flex: 1 1 auto;
@@ -48,18 +67,9 @@ body.gone-rogue-active .debrief-feed-content .resource-value { opacity: 0.75; }
 #debrief-screen.debrief-pulse-neg { animation: debriefPulseNeg 260ms ease-out; }
 
 /* Make RESOURCES/HP summary feel critical */
-#debrief-summary-resources { color: rgba(255, 70, 70, 0.95); opacity: 0.92; }
+#debrief-summary-hp { opacity: 0.92; }
 
 /* Signal row does not need a label if it visually reads as battery signal */
-.debrief-nav-row[data-section="battery"] .debrief-row-label { display: none; }
-.debrief-nav-row[data-section="battery"] .debrief-row-summary { text-align: left; color: rgba(120, 255, 255, 0.95); opacity: 0.92; }
-
-/* Resources label: hidden by default (esp. mobile). Show only when interacting,
-   OR when the whole debrief window is expanded (desktop maximized-ish). */
-.debrief-nav-row[data-section="resources"] .debrief-row-label { display: none; }
-/* Desktop expanded: allow the label (still abbreviated by controller) */
-.debrief-window.expanded .debrief-nav-row[data-section="resources"] .debrief-row-label { display: inline; }
-/* Mobile portrait: never show the resources label (summary line is enough) */
-@media (max-width: 767px) and (orientation: portrait) {
-  .debrief-nav-row[data-section="resources"] .debrief-row-label { display: none !important; }
-}
+/* SIGNAL row: no label; summary left-aligned */
+.debrief-nav-row[data-row="signal"] .debrief-row-label { display: none; }
+.debrief-nav-row[data-row="signal"] .debrief-row-summary { text-align: left; }

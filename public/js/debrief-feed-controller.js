@@ -20,6 +20,10 @@ const DebriefFeedController = (function() {
   var _mokInitialized = false;
   var _videoPlaying = false;
 
+  // Terminal-row interaction state (sticky highlight + sticky expand)
+  var _rowExpanded = {}; // { rowId: boolean }
+  var _highlightedRow = 'hp';
+
   /**
    * Game mode configurations
    */
@@ -374,68 +378,173 @@ const DebriefFeedController = (function() {
         html += '</div>';
       }
 
-      // ASCII/Pip-boy style rows (no emoji spam)
-      function abbr(s) {
-        try {
-          if (typeof MicroAbbreviator !== 'undefined' && MicroAbbreviator.get) return MicroAbbreviator.get(s);
-        } catch (e0) {}
-        // fallback: vowel-drop
-        return String(s || '').toUpperCase().replace(/[AEIOU]/g, '');
+      // ASCII/Pip-boy style rows (terminal lines)
+      function abbrKeepFirst(s) {
+        s = String(s || '');
+        if (!s) return '';
+        var first = s.charAt(0).toUpperCase();
+        var rest = s.slice(1).toLowerCase().replace(/[aeiou]/g, '');
+        return first + rest;
       }
 
       html += '<div id="debrief-resources-content" class="debrief-resources-content">';
       html +=   '<div class="debrief-nav-list" id="debrief-nav-list" aria-label="Debrief rows">';
 
-      html +=     '<div class="debrief-nav-row" data-section="resources">' +
-                 '  <span class="debrief-row-label">' + abbr('RESOURCES') + '</span>' +
-                 '  <span class="debrief-row-summary" id="debrief-summary-resources"></span>' +
-                 '</div>';
+      function row(rowId, label, summaryId, extraCls) {
+        extraCls = extraCls || '';
+        var s = '';
+        s += '<div class="debrief-nav-row ' + extraCls + '" data-row="' + rowId + '">';
+        s +=   '<span class="debrief-row-label">' + (label || '') + '</span>';
+        s +=   '<span class="debrief-row-summary" id="' + summaryId + '"></span>';
+        s += '</div>';
+        s += '<div class="debrief-row-panel" id="debrief-panel-' + rowId + '" style="display:none"></div>';
+        return s;
+      }
 
-      html +=     '<div class="debrief-nav-row" data-section="battery">' +
-                 '  <span class="debrief-row-label">' + abbr('SIGNAL') + '</span>' +
-                 '  <span class="debrief-row-summary" id="debrief-summary-signal"></span>' +
-                 '</div>';
-
-      html +=     '<div class="debrief-nav-row" data-section="passives">' +
-                 '  <span class="debrief-row-label">' + abbr('PASSIVES') + '</span>' +
-                 '  <span class="debrief-row-summary" id="debrief-summary-passives"></span>' +
-                 '</div>';
-
-      html +=     '<div class="debrief-nav-row" data-section="api">' +
-                 '  <span class="debrief-row-label">' + abbr('API') + '</span>' +
-                 '  <span class="debrief-row-summary" id="debrief-summary-api"></span>' +
-                 '</div>';
-
-      html +=     '<div class="debrief-nav-row" data-section="mok">' +
-                 '  <span class="debrief-row-label">' + abbr('MOK') + '</span>' +
-                 '  <span class="debrief-row-summary" id="debrief-summary-mok"></span>' +
-                 '</div>';
+      html += row('hp', abbrKeepFirst('hp'), 'debrief-summary-hp', 'row-hp');
+      html += row('energy', abbrKeepFirst('energy'), 'debrief-summary-energy', 'row-energy');
+      html += row('focus', abbrKeepFirst('focus'), 'debrief-summary-focus', 'row-focus');
+      html += row('ammo', abbrKeepFirst('ammo'), 'debrief-summary-ammo', 'row-ammo');
+      // signal has no label (battery grammar should read itself)
+      html += row('signal', '', 'debrief-summary-signal', 'row-signal');
+      html += row('passives', abbrKeepFirst('passives'), 'debrief-summary-passives', 'row-passives');
+      html += row('statuses', abbrKeepFirst('status'), 'debrief-summary-statuses', 'row-statuses');
+      html += row('mok', abbrKeepFirst('mok'), 'debrief-summary-mok', 'row-mok');
+      html += row('api', abbrKeepFirst('api'), 'debrief-summary-api', 'row-api');
 
       html +=   '</div>';
-
-      html +=   '<div class="debrief-section" id="debrief-sec-resources"></div>';
-      html +=   '<div class="debrief-section" id="debrief-sec-battery" style="display:none"></div>';
-      html +=   '<div class="debrief-section" id="debrief-sec-passives" style="display:none"></div>';
-      html +=   '<div class="debrief-section" id="debrief-sec-api" style="display:none"></div>';
-      html +=   '<div class="debrief-section" id="debrief-sec-mok" style="display:none"></div>';
       html += '</div>';
       html += '</div>';
 
       _debriefScreen.innerHTML = html;
 
-      // Render resources into resources section synchronously
-      var resArea = document.getElementById('debrief-sec-resources');
-      if (resArea) {
-        DebriefFeedRenderer.renderInto(resArea);
+      // Sticky row expansion/highlight state
+      if (!_rowExpanded) _rowExpanded = {};
+      if (!_highlightedRow) _highlightedRow = 'hp';
+
+      function _setPanelVisible(rowId, on) {
+        var panel = document.getElementById('debrief-panel-' + rowId);
+        if (!panel) return;
+        panel.style.display = on ? 'block' : 'none';
       }
 
-      // Minimized summaries (top-line only)
+      function _applyHighlight() {
+        try {
+          var rows = document.querySelectorAll('.debrief-nav-row[data-row]');
+          rows.forEach(function(r) {
+            var rid = r.getAttribute('data-row');
+            if (rid === _highlightedRow) r.classList.add('highlighted');
+            else r.classList.remove('highlighted');
+          });
+        } catch (eH0) {}
+      }
+
+      function _renderBarLine(prefix, cur, max, w) {
+        w = w || 6;
+        max = (typeof max === 'number' && max > 0) ? max : 1;
+        cur = (typeof cur === 'number') ? cur : 0;
+        cur = Math.max(0, Math.min(max, cur));
+        var filled = Math.round((cur / max) * w);
+        var bar = '█'.repeat(filled) + '░'.repeat(w - filled);
+        return String(prefix || '') + String(cur) + '/' + String(max) + '[' + bar + ']';
+      }
+
+      function _getRoguePlayer() {
+        try {
+          if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.getPlayer === 'function') return GoneRogue.getPlayer();
+        } catch (eP0) {}
+        return null;
+      }
+
+      function _getState() {
+        try {
+          if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getState) return GAMESTATE.getState() || {};
+        } catch (eS0) {}
+        return {};
+      }
+
+      // Summaries
       try {
-        var sumR = document.getElementById('debrief-summary-resources');
-        if (sumR && DebriefFeedRenderer.renderSummaryInto) {
-          DebriefFeedRenderer.renderSummaryInto(sumR);
+        var st = _getState();
+        var hpEl = document.getElementById('debrief-summary-hp');
+        if (hpEl) hpEl.textContent = _renderBarLine('hp', st.hp, st.maxHp, 6);
+
+        var enEl = document.getElementById('debrief-summary-energy');
+        if (enEl) enEl.textContent = _renderBarLine('enrgy', st.energy, st.maxEnergy, 6);
+
+        var fcEl = document.getElementById('debrief-summary-focus');
+        if (fcEl) fcEl.textContent = _renderBarLine('fcs', st.focus, st.maxFocus, 6);
+
+        var amEl = document.getElementById('debrief-summary-ammo');
+        if (amEl) {
+          var ammo = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo) ? GAMESTATE.getAmmo() : (st.ammo || 0);
+          var maxA = st.maxAmmo || 6;
+          amEl.textContent = _renderBarLine('ammo', ammo, maxA, 6);
         }
-      } catch (eS0) {}
+      } catch (eS1) {}
+
+      // Passives summary + panel
+      try {
+        var pEl = document.getElementById('debrief-summary-passives');
+        if (pEl) {
+          var eq = (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.getEquippedPassives) ? PassiveItemsSystem.getEquippedPassives() : [];
+          var sym = '';
+          for (var i = 0; i < Math.min(6, (eq || []).length); i++) sym += '+';
+          pEl.textContent = sym || '—';
+
+          var pPanel = document.getElementById('debrief-panel-passives');
+          if (pPanel && _rowExpanded.passives) {
+            var lines = [];
+            for (var j = 0; j < (eq || []).length; j++) lines.push('+ ' + String(eq[j]));
+            pPanel.textContent = lines.length ? lines.join('\n') : '—';
+          }
+        }
+      } catch (eP1) {}
+
+      // Statuses summary + panel (from rogue player statusEffects)
+      try {
+        var sEl = document.getElementById('debrief-summary-statuses');
+        var player = _getRoguePlayer();
+        var se = player && player.statusEffects ? player.statusEffects : {};
+        var keys = [];
+        for (var k in se) { if (se.hasOwnProperty(k) && se[k]) keys.push(k); }
+        if (sEl) {
+          var sym2 = '';
+          for (var ii = 0; ii < Math.min(6, keys.length); ii++) sym2 += '!';
+          sEl.textContent = sym2 || '—';
+        }
+        var sPanel = document.getElementById('debrief-panel-statuses');
+        if (sPanel && _rowExpanded.statuses) {
+          var lines2 = keys.map(function(n) { return '! ' + String(n); });
+          sPanel.textContent = lines2.length ? lines2.join('\n') : '—';
+        }
+      } catch (eST0) {}
+
+      // MOK row: color driven by kernel quality signal
+      try {
+        var mokEl = document.getElementById('debrief-summary-mok');
+        if (mokEl) {
+          var kc = (typeof KernelManager !== 'undefined' && KernelManager.getKernelButtonColor) ? KernelManager.getKernelButtonColor() : null;
+          var ks = (typeof KernelManager !== 'undefined' && KernelManager.getState) ? KernelManager.getState() : null;
+          var stateTxt = (kc && kc.state) ? String(kc.state) : (ks && ks.state ? String(ks.state) : '');
+          mokEl.textContent = stateTxt ? stateTxt.toLowerCase() : 'idle';
+          if (kc && kc.color) {
+            var rowEl = document.querySelector('.debrief-nav-row[data-row="mok"]');
+            if (rowEl) rowEl.style.color = kc.color;
+          }
+        }
+      } catch (eM0) {}
+
+      // API summary placeholder (can become toggle UI)
+      try {
+        var apiEl = document.getElementById('debrief-summary-api');
+        if (apiEl) {
+          var kc2 = (typeof KernelManager !== 'undefined' && KernelManager.getKernelButtonColor) ? KernelManager.getKernelButtonColor() : null;
+          apiEl.textContent = (kc2 && kc2.state) ? String(kc2.state).toLowerCase() : '—';
+        }
+      } catch (eA0) {}
+
+      // Signal summary (battery-driven pulse, 3-tier speed)
 
       // Signal summary (battery-driven pulse, 3-tier speed)
       try {
@@ -527,22 +636,30 @@ const DebriefFeedController = (function() {
         }
       } catch (eS1) {}
 
-      // Other summaries (cheap placeholders)
-      try { var p0 = document.getElementById('debrief-summary-passives'); if (p0) p0.textContent = '—'; } catch (eS2) {}
-      try { var a0 = document.getElementById('debrief-summary-api'); if (a0) a0.textContent = '—'; } catch (eS3) {}
-      try { var m0 = document.getElementById('debrief-summary-mok'); if (m0) m0.textContent = 'IDLE'; } catch (eS4) {}
+      // Panels visibility
+      try {
+        var ids = ['hp','energy','focus','ammo','signal','passives','statuses','mok','api'];
+        for (var ii = 0; ii < ids.length; ii++) {
+          _setPanelVisible(ids[ii], !!_rowExpanded[ids[ii]]);
+        }
+      } catch (ePV0) {}
 
-      // Fill other sections (lightweight placeholders for now)
-      var bat = document.getElementById('debrief-sec-battery');
-      if (bat) bat.innerHTML = '<div class="debrief-mini-block">Signal / Battery details</div>';
-      var pas = document.getElementById('debrief-sec-passives');
-      if (pas) pas.innerHTML = '<div class="debrief-mini-block">Passives & Debuffs</div>';
-      var api = document.getElementById('debrief-sec-api');
-      if (api) api.innerHTML = '<div class="debrief-mini-block">API / Checks</div>';
-      var mok = document.getElementById('debrief-sec-mok');
-      if (mok) mok.innerHTML = '<div class="debrief-mini-block">MOK (resources view)</div>';
+      // Click to highlight + toggle expand (sticky)
+      try {
+        var rows = document.querySelectorAll('.debrief-nav-row[data-row]');
+        rows.forEach(function(r) {
+          r.addEventListener('click', function(e) {
+            if (e && e.stopPropagation) e.stopPropagation();
+            var rid = r.getAttribute('data-row');
+            if (!rid) return;
+            _highlightedRow = rid;
+            _rowExpanded[rid] = !_rowExpanded[rid];
+            _renderResources(); // cheap + consistent (also refreshes summaries/panels)
+          });
+        });
+      } catch (eW0) {}
 
-      _setupDragNav();
+      _applyHighlight();
 
       // Wire swapper click (same as cycle)
       var mokSwap = document.getElementById('debrief-mok-swapper');
