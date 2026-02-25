@@ -1069,7 +1069,8 @@ const GoneRogue = (function () {
    * Determine floor type based on floor number
    */
   function _getFloorType(floorNum) {
-    if (floorNum <= 2) return FLOOR_TYPES.TUTORIAL;
+    // On Uber 1+, early floors use stealth (enemies spawn) instead of tutorial (safe)
+    if (floorNum <= 2) return (_difficultyTier <= 1) ? FLOOR_TYPES.TUTORIAL : FLOOR_TYPES.STEALTH;
     if (floorNum <= 4) return FLOOR_TYPES.GHOST;
     if (BONFIRE_FLOORS.indexOf(floorNum) !== -1) return FLOOR_TYPES.BONFIRE;
     if (floorNum === 30) return FLOOR_TYPES.FINAL;
@@ -1452,6 +1453,12 @@ const GoneRogue = (function () {
    * Called immediately for returning players, or after character creation for new ones.
    */
   function _beginGameplay() {
+    // Sync difficulty from AWOL button state (authoritative source of truth).
+    // Handles auto-advance after tier completion and manual toggling between runs.
+    if (typeof AWOLDifficulty !== 'undefined' && AWOLDifficulty.getCurrentTier) {
+      _desiredDifficultyTier = AWOLDifficulty.getCurrentTier();
+    }
+
     // Apply desired UBER difficulty on run start (before initial floor generation)
     _applyDesiredDifficultyTier('start_run');
 
@@ -2922,9 +2929,11 @@ if (typeof EnvironmentalSynergy !== 'undefined') {
 // Determine if secret floor
 var isSecretFloor = !!secretFloorData;
 
-// Check for contrived tutorial floors (floors 1-3)
+// Check for contrived tutorial floors (floors 1-3).
+// On Uber 1+ (_difficultyTier >= 2), skip tutorials — use procedural Forest instead.
 if (
   !isSecretFloor &&
+  _difficultyTier <= 1 &&
   typeof TutorialFloors !== 'undefined' &&
   TutorialFloors.isContrivedFloor(_floor)
 ) {
@@ -5860,6 +5869,23 @@ _incrementPityTimers();
         AWOLDifficulty.markTierCompleted(_difficultyTier);
       }
 
+      // Unlock avatar tier matching difficulty completed (tier 1-3 → avatar tiers 1-3)
+      var _prevTier = 0;
+      if (typeof TerminalCommandRouter !== 'undefined' && TerminalCommandRouter.completeTier) {
+        _prevTier = TerminalCommandRouter.getPlayerState().completedTiers || 0;
+        TerminalCommandRouter.completeTier(_difficultyTier);
+      }
+
+      // Show tier-up announcement if a new tier was unlocked
+      var _newTier = (typeof TerminalCommandRouter !== 'undefined' && TerminalCommandRouter.getPlayerState)
+        ? TerminalCommandRouter.getPlayerState().completedTiers : 0;
+      if (_newTier > _prevTier && typeof TierUpAnnouncement !== 'undefined' && TierUpAnnouncement.show) {
+        TierUpAnnouncement.show({
+          tier: _newTier,
+          onComplete: function () { /* announcement done, rogue already exiting */ }
+        });
+      }
+
       return _exitRogue(true);
     }
 
@@ -7396,6 +7422,33 @@ _incrementPityTimers();
     // Record run in player profile
     if (typeof TerminalCommandRouter !== 'undefined' && TerminalCommandRouter.recordRun) {
       TerminalCommandRouter.recordRun({ success: success, floor: _floor, deaths: 0 });
+    }
+
+    // Show post-run summary screen
+    if (typeof RunSummary !== 'undefined' && RunSummary.show) {
+      // Check if a tier was just unlocked (set by floor-30 extraction handler)
+      var _rsPrevTier = 0;
+      var _rsNewTier = 0;
+      if (typeof TerminalCommandRouter !== 'undefined' && TerminalCommandRouter.getPlayerState) {
+        var _rsPs = TerminalCommandRouter.getPlayerState();
+        _rsNewTier = _rsPs.completedTiers || 0;
+      }
+
+      RunSummary.show({
+        success: success,
+        floor: _floor,
+        duration: _runStartTime ? (Date.now() - _runStartTime) : 0,
+        kills: _enemiesKilled || 0,
+        currency: _currencyCollected || 0,
+        score: (typeof HighscoreState !== 'undefined' && success)
+          ? HighscoreState.calculateGoneRogueScore({
+              currencyFound: _currencyCollected, interactivesUsed: 0,
+              enemiesAvoided: Math.max(0, _totalEnemiesSpawned - _enemiesKilled),
+              breakableDamage: _totalBreakableDamage, damageMitigated: _damageMitigated
+            }) : 0,
+        tierUp: success && _runCompleted && _rsNewTier > 0,
+        newTier: _rsNewTier
+      });
     }
 
     // Restore mobile keyboard behavior when exiting

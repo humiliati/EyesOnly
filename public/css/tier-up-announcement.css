@@ -1,0 +1,146 @@
+/* ============================================================
+   EYES ONLY - Tier-Up Announcement Overlay
+   Gold/amber accent for achievement, matching terminal aesthetic.
+   ============================================================ */
+
+.tu-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #0a0a0a;
+  z-index: 5500;
+  animation: tu-fade-in 0.5s ease-out;
+  font-family: 'Courier New', monospace;
+  padding: 2rem 1rem;
+  overflow: hidden;
+}
+
+@keyframes tu-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.tu-overlay.tu-fade-out {
+  animation: tu-fade-out 0.5s ease-in forwards;
+}
+
+@keyframes tu-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* ---- Glow flash ---- */
+
+.tu-flash {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 300px; height: 300px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,170,0,0.2) 0%, transparent 70%);
+  animation: tu-flash-pulse 1.5s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes tu-flash-pulse {
+  0%   { transform: translate(-50%, -50%) scale(0.3); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
+}
+
+/* ---- Badge ---- */
+
+.tu-badge {
+  font-size: clamp(2rem, 8vw, 3.5rem);
+  color: #ffaa00;
+  text-shadow: 0 0 30px rgba(255, 170, 0, 0.6), 0 0 60px rgba(255, 170, 0, 0.3);
+  margin-bottom: 0.3em;
+  animation: tu-el-in 0.5s ease-out 0.2s both;
+}
+
+/* ---- Title ---- */
+
+.tu-title {
+  font-size: clamp(1.2rem, 4vw, 2rem);
+  color: #ffaa00;
+  font-weight: bold;
+  letter-spacing: 0.15em;
+  text-shadow: 0 0 20px rgba(255, 170, 0, 0.4);
+  margin-bottom: 0.2em;
+  animation: tu-el-in 0.5s ease-out 0.3s both;
+}
+
+/* ---- Subtitle ---- */
+
+.tu-subtitle {
+  font-size: clamp(0.6rem, 1.5vw, 0.75rem);
+  color: #666;
+  letter-spacing: 0.25em;
+  margin-bottom: 1.5em;
+  animation: tu-el-in 0.4s ease-out 0.5s both;
+}
+
+/* ---- Avatar list ---- */
+
+.tu-avatar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6em;
+  width: 100%;
+  max-width: 340px;
+  margin-bottom: 1.5em;
+  animation: tu-el-in 0.5s ease-out 0.7s both;
+}
+
+.tu-avatar-card {
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+  padding: 0.6em 0.8em;
+  border: 1px solid rgba(255, 170, 0, 0.25);
+  border-radius: 3px;
+  background: rgba(255, 170, 0, 0.04);
+}
+
+.tu-avatar-emoji {
+  font-size: 1.5rem;
+  min-width: 2em;
+  text-align: center;
+}
+
+.tu-avatar-info {
+  flex: 1;
+}
+
+.tu-avatar-name {
+  font-size: clamp(0.8rem, 1.8vw, 0.95rem);
+  color: #ddd;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+}
+
+.tu-avatar-desc {
+  font-size: clamp(0.6rem, 1.4vw, 0.7rem);
+  color: #555;
+  margin-top: 0.1em;
+}
+
+/* ---- Hint ---- */
+
+.tu-hint {
+  font-size: clamp(0.55rem, 1.3vw, 0.65rem);
+  color: #333;
+  letter-spacing: 0.08em;
+  text-align: center;
+  animation: tu-el-in 0.4s ease-out 1s both;
+}
+
+/* ---- Shared entrance ---- */
+
+@keyframes tu-el-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

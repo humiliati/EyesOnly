@@ -407,11 +407,21 @@ const GoneRogueMobile = (function () {
 
     terminal.appendChild(_gridContainer);
 
-    // Floor badge (micro overlay)
+    // Floor badge (micro overlay) — shows callsign + floor + tier
     _floorBadgeEl = document.createElement('div');
     _floorBadgeEl.id = 'rogue-floor-badge';
     _floorBadgeEl.className = 'rogue-floor-badge';
-    _floorBadgeEl.textContent = 'FLOOR 1';
+
+    var _initBadge = 'FLOOR 1';
+    if (typeof TerminalCommandRouter !== 'undefined' && TerminalCommandRouter.getPlayerState) {
+      var _ibps = TerminalCommandRouter.getPlayerState();
+      if (_ibps.callsign) {
+        var _ibAvatar = _ibps.avatarEmoji ? _ibps.avatarEmoji + ' ' : '';
+        _initBadge = _ibAvatar + _ibps.callsign + ' · F1 · T' + (_ibps.completedTiers || 0);
+      }
+    }
+    _floorBadgeEl.textContent = _initBadge;
+
     _gridContainer.appendChild(_floorBadgeEl);
 
     terminal.appendChild(_cardContainer);
@@ -992,13 +1002,28 @@ const GoneRogueMobile = (function () {
     alertLevel = alertLevel || 'safe';
     strCombatActive = strCombatActive || false;
 
-    // Update floor badge
+    // Update floor badge with player identity + floor
     try {
-      if (_floorBadgeEl && typeof GoneRogue !== 'undefined' && GoneRogue.getFloor) {
-        _floorBadgeEl.textContent = 'FLOOR ' + GoneRogue.getFloor();
-      } else if (_floorBadgeEl && typeof GoneRogue !== 'undefined' && GoneRogue.getStrCombatState) {
-        var st = GoneRogue.getStrCombatState();
-        if (st && typeof st.floor === 'number') _floorBadgeEl.textContent = 'FLOOR ' + st.floor;
+      if (_floorBadgeEl) {
+        var _floorNum = '';
+        if (typeof GoneRogue !== 'undefined' && GoneRogue.getFloor) {
+          _floorNum = GoneRogue.getFloor();
+        } else if (typeof GoneRogue !== 'undefined' && GoneRogue.getStrCombatState) {
+          var st = GoneRogue.getStrCombatState();
+          if (st && typeof st.floor === 'number') _floorNum = st.floor;
+        }
+
+        // Build badge text: "AVATAR CALLSIGN · F5 · T2"
+        var badgeText = 'FLOOR ' + _floorNum;
+        if (typeof TerminalCommandRouter !== 'undefined' && TerminalCommandRouter.getPlayerState) {
+          var _bps = TerminalCommandRouter.getPlayerState();
+          if (_bps.callsign) {
+            var _bAvatar = _bps.avatarEmoji ? _bps.avatarEmoji + ' ' : '';
+            badgeText = _bAvatar + _bps.callsign + ' · F' + _floorNum + ' · T' + (_bps.completedTiers || 0);
+          }
+        }
+
+        _floorBadgeEl.textContent = badgeText;
       }
     } catch (e0) {}
 

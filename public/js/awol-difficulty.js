@@ -319,16 +319,27 @@ const AWOLDifficulty = (function () {
     if (tier < 1 || tier > 3) return;
     if (_completedTiers.indexOf(tier) === -1) {
       _completedTiers.push(tier);
+
+      var nextTier = tier + 1;
+      var uberLevel = tier - 1;
+
+      // Auto-advance to next uber tier so the player's next run starts harder
+      if (nextTier <= 3) {
+        _currentTier = nextTier;
+        // Queue the new difficulty for next run start
+        if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.setDifficulty === 'function') {
+          GoneRogue.setDifficulty(nextTier);
+        }
+      }
+
       _saveState();
       _updateUI();
 
       // Notify player
       if (typeof updateMokInterjection === 'function') {
-        var nextTier = tier + 1;
-        var uberLevel = tier - 1;
         var message = '[AWOL] UBER ' + uberLevel + ' COMPLETED! ';
         if (nextTier <= 3) {
-          message += 'Uber ' + (uberLevel + 1) + ' now available.';
+          message += 'Auto-set to Uber ' + (uberLevel + 1) + ' for next run. Toggle in AWOL to change.';
         } else {
           message += 'All Uber levels conquered. Legendary operative status achieved.';
         }

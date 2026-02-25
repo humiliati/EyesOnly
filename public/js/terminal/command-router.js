@@ -403,6 +403,10 @@ const TerminalCommandRouter = (function() {
   function setCallsign(callsign) {
     if (!callsign || callsign.length < 2 || callsign.length > 12) return false;
     _playerState.callsign = callsign.toUpperCase();
+    // Stamp creation time on first callsign assignment
+    if (!_playerState.createdAt) {
+      _playerState.createdAt = Date.now();
+    }
     _savePlayerState();
     return true;
   }
