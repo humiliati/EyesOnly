@@ -237,12 +237,12 @@ const AWOLDifficulty = (function () {
     }
 
     // Notify via MOK interjection
-    var tierNames = ['', 'STANDARD', 'ADVANCED', 'EXTREME'];
+    var tierNames = ['', 'STANDARD', 'ELITE', 'HELL'];
     var messages = [
       '',
-      'Difficulty set to TIER 1 (Standard). Recommended for new operatives.',
-      'Difficulty set to TIER 2 (Advanced). Enemy awareness and lethality increased.',
-      'Difficulty set to TIER 3 (Extreme). Maximum threat. Extraction not guaranteed.'
+      'Difficulty set to Uber 0 (Standard). Recommended for new operatives.',
+      'Difficulty set to Uber 1 (Elite). Enemy awareness and lethality increased.',
+      'Difficulty set to Uber 2 (Hell). Maximum threat. Extraction not guaranteed.'
     ];
 
     if (typeof updateMokInterjection === 'function' && tier >= 1 && tier <= 3) {
@@ -287,11 +287,12 @@ const AWOLDifficulty = (function () {
       // Notify player
       if (typeof updateMokInterjection === 'function') {
         var nextTier = tier + 1;
-        var message = '[AWOL] TIER ' + tier + ' COMPLETED! ';
+        var uberLevel = tier - 1;
+        var message = '[AWOL] Uber ' + uberLevel + ' COMPLETED! ';
         if (nextTier <= 3) {
-          message += 'TIER ' + nextTier + ' now available.';
+          message += 'Uber ' + (uberLevel + 1) + ' now available.';
         } else {
-          message += 'All tiers conquered. Legendary operative status achieved.';
+          message += 'All Uber levels conquered. Legendary operative status achieved.';
         }
         updateMokInterjection(message);
       }
