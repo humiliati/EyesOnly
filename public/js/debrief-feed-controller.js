@@ -481,7 +481,8 @@ const DebriefFeedController = (function() {
 
               if (b.batt <= 0) {
                 // Battery=0: powered down
-                sumS.textContent = 'BATT[' + _bar(0, 1, 6) + '] OFF';
+                // Display empty battery ascii wrapped in signal parens
+                sumS.textContent = '(((((░░░░░░)))))';
                 try {
                   var av = document.getElementById('mok-avatar');
                   if (av) {
@@ -503,8 +504,8 @@ const DebriefFeedController = (function() {
 
               var frame = _frames[_frameIx % _frames.length];
               _frameIx++;
-              // compact, no spaces
-              sumS.textContent = 'BATT[' + _bar(b.batt, b.maxB, 6) + ']' + frame + tier;
+              // compact, no spaces: (((((battery.ascii))))) + pulse frame + tier
+              sumS.textContent = '(((((' + _bar(b.batt, b.maxB, 6) + ')))))' + frame + tier;
 
               // adjust interval if tier changed
               var want = _speedForTier(tier);
