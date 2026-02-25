@@ -88,8 +88,11 @@ const GoneRogue = (function () {
   // Secret floor state
   var _activeSecretFloor = null; // Current secret floor type (if any)
 
-  // Difficulty tier system (1 = Standard, 2 = Advanced, 3 = Extreme)
-  var _difficultyTier = 1;
+  // Difficulty system (UBER 0/1/2) — internally stored as tier 1/2/3 for now.
+  // IMPORTANT: selecting an UBER level should NOT teleport biomes.
+  // It should apply on the *next spawned floor* (or next run start).
+  var _difficultyTier = 1;         // applied tier (1..3)
+  var _desiredDifficultyTier = 1;  // requested tier (1..3), applied on next floor spawn
   var _stateChangeCallbacks = []; // Callbacks for state changes (used by AWOL button)
 
   // Vents system state
@@ -1390,6 +1393,9 @@ const GoneRogue = (function () {
     } else {
       lines = ['', 'GONE ROGUE MODE ACTIVATED', ''];
     }
+
+    // Apply desired UBER difficulty on run start (before initial floor generation)
+    _applyDesiredDifficultyTier('start_run');
 
     // Generate initial floor
     _generateFloor();
@@ -6291,6 +6297,12 @@ _incrementPityTimers();
       // Heal player slightly between floors (10-20% of max HP)
       var healAmount = Math.floor(_player.maxHp * (0.1 + _rng() * 0.1));
       _player.hp = Math.min(_player.maxHp, _player.hp + healAmount);
+
+      // Apply desired UBER difficulty on spawn boundary (before floor generation)
+      // so it affects enemies/loot/etc for the new floor without biome teleport.
+      if (!isSecretFloor) {
+        _applyDesiredDifficultyTier('advance_floor');
+      }
 
       // Generate next floor (moved BEFORE card delivery logic)
       if (isSecretFloor) {
@@ -11892,12 +11904,25 @@ _incrementPityTimers();
    * Set difficulty tier (called by AWOL button)
    * @param {number} tier - 1, 2, or 3
    */
-  function setDifficulty(tier) {
-    if (tier >= 1 && tier <= 3) {
-      _difficultyTier = tier;
-      console.log('[GoneRogue] Difficulty set to T' + tier);
+  function _applyDesiredDifficultyTier(reason) {
+    reason = reason || 'unknown';
+    if (_desiredDifficultyTier >= 1 && _desiredDifficultyTier <= 3) {
+      if (_difficultyTier !== _desiredDifficultyTier) {
+        _difficultyTier = _desiredDifficultyTier;
+        console.log('[GoneRogue] Difficulty applied to T' + _difficultyTier + ' (reason=' + reason + ')');
+        _notifyStateChange();
+      }
+    }
+  }
 
-      // Notify state change listeners
+  function setDifficulty(tier) {
+    // Rebased semantics: this is an UBER selection request.
+    // Apply on next spawned floor (or next run start), not instantly.
+    if (tier >= 1 && tier <= 3) {
+      _desiredDifficultyTier = tier;
+      console.log('[GoneRogue] Difficulty requested T' + tier + ' (applies next floor)');
+
+      // Notify state change listeners so UI can reflect "pending" if desired.
       _notifyStateChange();
     }
   }
@@ -11908,6 +11933,10 @@ _incrementPityTimers();
    */
   function getDifficulty() {
     return _difficultyTier;
+  }
+
+  function getDesiredDifficulty() {
+    return _desiredDifficultyTier;
   }
 
   /**
@@ -12379,6 +12408,7 @@ _incrementPityTimers();
     // Difficulty tier system
     setDifficulty: setDifficulty,
     getDifficulty: getDifficulty,
+    getDesiredDifficulty: getDesiredDifficulty,
     onStateChange: onStateChange,
 
     // Seed-based generation system
