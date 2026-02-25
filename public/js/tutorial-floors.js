@@ -87,6 +87,11 @@ var TutorialFloors = (function() {
       { x: 8, y: 4, emoji: '⛪', name: 'Village Chapel' }
     ],
 
+    // Building doors (interactive doors leading to building interiors)
+    buildingDoors: [
+      { x: 8, y: 5, buildingId: 'BLD-002' }
+    ],
+
     // Decorations (visual overlay, walkable)
     decorations: [
       // Zone 1: Village atmosphere
@@ -527,6 +532,75 @@ var TutorialFloors = (function() {
     }
   };
 
+
+  // Church Interior Layout (Floor ID: "1.2")
+  var CHURCH_INTERIOR_LAYOUT = {
+    name: 'Church Interior',
+    template: [
+      '########################################',
+      '#......................................#',
+      '#..####..........########..........##..#',
+      '#..####..........#......#..........##..#',
+      '#................#......#...........#..#',
+      '#................########...........#..#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '########################################'
+    ],
+    player: { x: 20, y: 17 },
+    exit: { x: 20, y: 18 },
+    buildingDoors: [
+      { x: 38, y: 10, buildingId: 'BLD-002', targetFloorId: '1.2.1' }
+    ],
+    npcs: [{
+      id: 'NPC-PRIEST', x: 20, y: 4, emoji: '\uD83D\uDC74', name: 'Father Aldric',
+      direction: 'south',
+      dialogues: [
+        'Welcome, traveler. This chapel has stood for centuries.',
+        'Strange sounds echo from behind the eastern wall at night...',
+        'They say the old catacombs hold treasures from a forgotten age.',
+        'Be careful if you venture below. The dead do not rest easy here.'
+      ],
+      gate: null, reward: null
+    }],
+    decorations: [
+      { x: 10, y: 8, emoji: '\uD83E\uDE91' }, { x: 11, y: 8, emoji: '\uD83E\uDE91' },
+      { x: 12, y: 8, emoji: '\uD83E\uDE91' }, { x: 13, y: 8, emoji: '\uD83E\uDE91' },
+      { x: 10, y: 10, emoji: '\uD83E\uDE91' }, { x: 11, y: 10, emoji: '\uD83E\uDE91' },
+      { x: 12, y: 10, emoji: '\uD83E\uDE91' }, { x: 13, y: 10, emoji: '\uD83E\uDE91' },
+      { x: 26, y: 8, emoji: '\uD83E\uDE91' }, { x: 27, y: 8, emoji: '\uD83E\uDE91' },
+      { x: 28, y: 8, emoji: '\uD83E\uDE91' }, { x: 29, y: 8, emoji: '\uD83E\uDE91' },
+      { x: 26, y: 10, emoji: '\uD83E\uDE91' }, { x: 27, y: 10, emoji: '\uD83E\uDE91' },
+      { x: 28, y: 10, emoji: '\uD83E\uDE91' }, { x: 29, y: 10, emoji: '\uD83E\uDE91' },
+      { x: 19, y: 3, emoji: '\uD83D\uDD6F\uFE0F' }, { x: 21, y: 3, emoji: '\uD83D\uDD6F\uFE0F' },
+      { x: 20, y: 2, emoji: '\u271D\uFE0F' },
+      { x: 3, y: 7, emoji: '\uD83D\uDD6F\uFE0F' }, { x: 3, y: 13, emoji: '\uD83D\uDD6F\uFE0F' },
+      { x: 36, y: 7, emoji: '\uD83D\uDD6F\uFE0F' }, { x: 36, y: 13, emoji: '\uD83D\uDD6F\uFE0F' }
+    ],
+    breakables: [
+      { x: 6, y: 5, emoji: '\uD83D\uDD6F\uFE0F', name: 'Candelabra', hp: 1, drops: { currency: [3, 7] } },
+      { x: 33, y: 5, emoji: '\uD83D\uDD6F\uFE0F', name: 'Candelabra', hp: 1, drops: { currency: [3, 7] } },
+      { x: 6, y: 14, emoji: '\uD83D\uDD6F\uFE0F', name: 'Candelabra', hp: 1, drops: { currency: [3, 7] } },
+      { x: 33, y: 14, emoji: '\uD83D\uDD6F\uFE0F', name: 'Candelabra', hp: 1, drops: { currency: [3, 7] } }
+    ],
+    currencies: [{ x: 18, y: 5, amount: 5 }, { x: 22, y: 5, amount: 5 }],
+    enemies: []
+  };
+  if (typeof InteriorFloors !== 'undefined') {
+    InteriorFloors.registerAuthoredLayout('1.2', CHURCH_INTERIOR_LAYOUT);
+  }
+
   /**
    * Get contrived floor layout for tutorial floors
    * @param {number} floorNumber - Floor number (1-3)
@@ -700,6 +774,7 @@ var TutorialFloors = (function() {
       player: player,
       exit: exit,
       buildings: _shiftList(layout.buildings),
+      buildingDoors: _shiftList(layout.buildingDoors),
       decorations: _shiftList(layout.decorations),
       breakables: _shiftList(layout.breakables),
       enemies: _shiftList(layout.enemies),
@@ -730,7 +805,8 @@ var TutorialFloors = (function() {
     // Export for designer tooling
     FLOOR_1_LAYOUT: FLOOR_1_LAYOUT,
     FLOOR_2_LAYOUT: FLOOR_2_LAYOUT,
-    FLOOR_3_LAYOUT: FLOOR_3_LAYOUT
+    FLOOR_3_LAYOUT: FLOOR_3_LAYOUT,
+    CHURCH_INTERIOR_LAYOUT: CHURCH_INTERIOR_LAYOUT
   };
 
 })();

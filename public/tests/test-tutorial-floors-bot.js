@@ -380,7 +380,121 @@
     );
   });
 
-  // ========== TEST SUMMARY ==========
+  // ========== TEST: Interior Floors Module ==========
+  console.log('\n--- Test: Interior Floors Module ---');
+
+  assert(
+    typeof InteriorFloors !== 'undefined',
+    'InteriorFloors module is available'
+  );
+
+  if (typeof InteriorFloors !== 'undefined') {
+    assert(
+      InteriorFloors.isInteriorFloor('1.2') === true,
+      'isInteriorFloor("1.2") returns true'
+    );
+    assert(
+      InteriorFloors.isInteriorFloor('1') === false,
+      'isInteriorFloor("1") returns false'
+    );
+    assertEqual(
+      InteriorFloors.getParentFloorId('1.2.1'), '1.2',
+      'getParentFloorId("1.2.1") returns "1.2"'
+    );
+    assert(
+      InteriorFloors.getParentFloorId('1') === null,
+      'getParentFloorId("1") returns null'
+    );
+
+    var churchLayout = InteriorFloors.getAuthoredLayout('1.2');
+    assert(
+      churchLayout !== null,
+      'Church interior layout (1.2) is registered'
+    );
+    if (churchLayout) {
+      assert(
+        churchLayout.name === 'Church Interior',
+        'Church layout name is correct'
+      );
+      assert(
+        churchLayout.npcs && churchLayout.npcs.length > 0,
+        'Church has NPCs (priest)'
+      );
+      assert(
+        churchLayout.buildingDoors && churchLayout.buildingDoors.length > 0,
+        'Church has building doors (catacombs entrance)'
+      );
+    }
+
+    assert(
+      InteriorFloors.hasGenerator('catacombs') === true,
+      'Catacombs generator is registered'
+    );
+  }
+
+  // ========== TEST: Catacombs Generator ==========
+  console.log('\n--- Test: Catacombs Generator ---');
+
+  assert(
+    typeof CatacombsGenerator !== 'undefined',
+    'CatacombsGenerator module is available'
+  );
+
+  if (typeof CatacombsGenerator !== 'undefined') {
+    var catResult = CatacombsGenerator.generate({ seed: 42 });
+    assertNotNull(catResult, 'Catacombs generate() returns result');
+    assert(catResult.grid.length === 20, 'Grid has 20 rows');
+    assert(catResult.grid[0].length === 40, 'Grid has 40 columns');
+    assertNotNull(catResult.spawns.player, 'Has player spawn');
+    assertNotNull(catResult.exits.back, 'Has back exit');
+    assert(catResult.enemies.length > 0, 'Has enemies');
+    assert(catResult.breakables.length > 0, 'Has breakables');
+    assert(
+      catResult.grid[catResult.spawns.player.y][catResult.spawns.player.x] === '.',
+      'Player spawn is on empty tile'
+    );
+
+    var catResult2 = CatacombsGenerator.generate({ seed: 42 });
+    assert(
+      catResult.spawns.player.x === catResult2.spawns.player.x,
+      'Same seed produces deterministic output'
+    );
+  }
+
+  // ========== TEST: Building Doors in Floor 1 ==========
+  console.log('\n--- Test: Building Doors ---');
+
+  if (typeof TutorialFloors !== 'undefined') {
+    var f1Layout = TutorialFloors.FLOOR_1_LAYOUT;
+    assert(
+      f1Layout.buildingDoors && f1Layout.buildingDoors.length > 0,
+      'Floor 1 has building doors'
+    );
+    if (f1Layout.buildingDoors) {
+      assert(
+        f1Layout.buildingDoors[0].buildingId === 'BLD-002',
+        'Church door references BLD-002'
+      );
+    }
+
+    var f1Data = TutorialFloors.generateContrivedFloor(f1Layout);
+    assert(
+      f1Data.buildingDoors && f1Data.buildingDoors.length > 0,
+      'generateContrivedFloor includes buildingDoors'
+    );
+  }
+
+  // ========== TEST: GoneRogue Interior API ==========
+  console.log('\n--- Test: GoneRogue Interior API ---');
+
+  if (typeof GoneRogue !== 'undefined') {
+    assert(typeof GoneRogue.getFloorId === 'function', 'getFloorId() exists');
+    assert(typeof GoneRogue.getFloorNav === 'function', 'getFloorNav() exists');
+    assert(typeof GoneRogue.getTileMetadata === 'function', 'getTileMetadata() exists');
+    assert(typeof GoneRogue.isInInterior === 'function', 'isInInterior() exists');
+  }
+
+    // ========== TEST SUMMARY ==========
   console.log('\n========================================');
   console.log('TEST SUMMARY');
   console.log('========================================');
