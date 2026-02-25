@@ -62,7 +62,37 @@
    * Show STR Combat Window
    * @param {Object} combatState - Current combat state
    */
+  var _lastWindowSig = null;
+
+  function _sig(combatState, enemyType) {
+    try {
+      var r = (typeof combatState.round === 'number' && isFinite(combatState.round)) ? combatState.round : 1;
+      var f = (typeof combatState.floor === 'number' && isFinite(combatState.floor)) ? combatState.floor : 1;
+      var e = combatState.enemy || {};
+      var p = combatState.player || {};
+      var intent = '';
+      try {
+        if (e.intentState && e.intentState.expression && e.intentState.expression.glyph) intent = String(e.intentState.expression.glyph);
+      } catch (e0) {}
+
+      return [
+        'r=' + r,
+        'f=' + f,
+        'et=' + (enemyType || ''),
+        'e=' + (e.emoji || ''),
+        'eh=' + (e.hp || 0) + '/' + (e.maxHp || 0),
+        'ph=' + (p.hp || 0) + '/' + (p.maxHp || 0),
+        'adv=' + (combatState.advantage || 'neutral'),
+        'i=' + intent
+      ].join('|');
+    } catch (e1) {}
+    return String(Date.now());
+  }
+
   function _showCombatWindow(combatState) {
+    var safeRound = (typeof combatState.round === 'number' && isFinite(combatState.round)) ? combatState.round : 1;
+    var safeFloor = (typeof combatState.floor === 'number' && isFinite(combatState.floor)) ? combatState.floor : 1;
+
     if (!STRCombatWindow.isVisible()) {
       // Determine enemy type for timer duration
       var enemyType = 'standard';
@@ -78,8 +108,8 @@
 
       // Build window state
       var windowState = {
-        round: combatState.round || 1,
-        floor: combatState.floor || 1,
+        round: safeRound,
+        floor: safeFloor,
         enemy: {
           emoji: combatState.enemy ? combatState.enemy.emoji : '👾',
           hp: combatState.enemy ? combatState.enemy.hp : 0,
@@ -96,11 +126,18 @@
       };
 
       STRCombatWindow.show(windowState);
+      _lastWindowSig = _sig(combatState, enemyType);
     } else {
-      // Update existing window
+      // Update existing window (only when state meaningfully changes)
+      var nowSig = _sig(combatState, combatState.enemy && combatState.enemy.elite ? 'elite' : (combatState.enemy && combatState.enemy.boss ? 'boss' : (combatState.enemy && (combatState.enemy.type === 'rat' || combatState.enemy.type === 'insect') ? 'quick' : 'standard')));
+      if (_lastWindowSig && nowSig === _lastWindowSig) {
+        return;
+      }
+      _lastWindowSig = nowSig;
+
       var windowState = {
-        round: combatState.round || 1,
-        floor: combatState.floor || 1,
+        round: safeRound,
+        floor: safeFloor,
         enemy: {
           emoji: combatState.enemy ? combatState.enemy.emoji : '👾',
           hp: combatState.enemy ? combatState.enemy.hp : 0,
