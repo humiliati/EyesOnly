@@ -4463,12 +4463,15 @@ _incrementPityTimers();
   /**
    * Helper: Get player's current keys from inventory
    */
-  function _getPlayerKeys() {
+  function _getPlayerKeys(opts) {
+    opts = opts || {};
+    var excludeQuest = opts.excludeQuest !== false; // Default: exclude quest keys from gate matching
     var keys = [];
     if (typeof InteractiveItems !== 'undefined') {
       var items = InteractiveItems.getAllItems();
       for (var i = 0; i < items.length; i++) {
         if (items[i].type === 'key') {
+          if (excludeQuest && items[i].subtype === 'quest') continue;
           keys.push(items[i].keyType || items[i].itemId);
         }
       }
@@ -4480,11 +4483,46 @@ _incrementPityTimers();
       var allItems = loose.concat(persistent);
       for (var j = 0; j < allItems.length; j++) {
         if (allItems[j].type === 'key') {
+          if (excludeQuest && allItems[j].subtype === 'quest') continue;
           keys.push(allItems[j].keyType || allItems[j].itemId);
         }
       }
     }
     return keys;
+  }
+
+  /**
+   * Helper: Get the tier of a key by its keyType identifier.
+   * Tier 1 = ammo/breakable (KEY_XX2, KEY_XX4), Tier 2 = gate/door (ITM-01X), Tier 3 = quest (ITM-03X)
+   * Falls back to checking EnvironmentalSynergy definitions, then inventory item metadata.
+   */
+  function _getKeyTier(keyType) {
+    // Check EnvironmentalSynergy definitions first (authoritative for tier)
+    if (typeof EnvironmentalSynergy !== 'undefined' && EnvironmentalSynergy.getKeyDefinitions) {
+      var defs = EnvironmentalSynergy.getKeyDefinitions();
+      for (var k in defs) {
+        if (defs.hasOwnProperty(k)) {
+          var def = defs[k];
+          if (k === keyType || def.itemId === keyType || def.registryId === keyType) {
+            return def.tier || 1;
+          }
+        }
+      }
+    }
+    // Check player's inventory for the item's tier metadata
+    if (typeof GAMESTATE !== 'undefined') {
+      var all = (GAMESTATE.getLooseInventory ? GAMESTATE.getLooseInventory() : [])
+        .concat(GAMESTATE.getPersistentInventory ? GAMESTATE.getPersistentInventory() : []);
+      for (var i = 0; i < all.length; i++) {
+        var it = all[i];
+        if (it && it.type === 'key') {
+          var id = it.keyType || it.registryId || it.itemId;
+          if (id === keyType && it.tier) return it.tier;
+        }
+      }
+    }
+    // Default: tier 1 (ammo keys — most permissive)
+    return 1;
   }
 
   /**
@@ -5484,8 +5522,20 @@ _incrementPityTimers();
           keyType: item.keyType || item.itemId || 'UNKNOWN_KEY',
           emoji: item.emoji || '🗝',
           name: item.name || 'Key',
-          description: item.description || ''
+          description: item.description || '',
+          tier: item.tier || 1,
+          subtype: item.subtype || null
         };
+        // Resolve tier from EnvironmentalSynergy if not explicitly set
+        if (!item.tier && typeof EnvironmentalSynergy !== 'undefined' && EnvironmentalSynergy.getKeyDefinitions) {
+          try {
+            var keyDefs = EnvironmentalSynergy.getKeyDefinitions();
+            var kt = (nonCardPayload.keyType || '').toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+            if (keyDefs[kt] && keyDefs[kt].tier) {
+              nonCardPayload.tier = keyDefs[kt].tier;
+            }
+          } catch (eTier) {}
+        }
       } else if (!nonCardPayload) {
         nonCardPayload = {
           type: item.type || 'item',
@@ -5499,17 +5549,27 @@ _incrementPityTimers();
     // Add to appropriate inventory
     if (typeof GAMESTATE !== 'undefined') {
       var result;
+      var keyTier = (nonCardPayload && nonCardPayload.tier) ? nonCardPayload.tier : 0;
 
       if (isCard) {
         // NEW LOOT FLOW: Cards go to hand first, then action buttons
         result = GAMESTATE.addCard(item.card);
+      } else if (item.type === 'key' && keyTier >= 2) {
+        // TIER 2+: Door/gate keys and quest items go to persistent inventory (safe across death)
+        if (GAMESTATE.addToPersistent) {
+          result = GAMESTATE.addToPersistent(nonCardPayload);
+        } else {
+          result = GAMESTATE.addToLoose(nonCardPayload);
+        }
       } else {
-        // Non-card items go to loose inventory
+        // TIER 1 (ammo keys) and non-key items go to loose inventory (lost on death)
         result = GAMESTATE.addToLoose(nonCardPayload);
+      }
 
-        // KEY PICKUP ENHANCEMENTS: overhead stacker animation + auto-equip to active slot
-        if (item.type === 'key' && result.success) {
-          // 1) Overhead pancake-stacker animation (key floats above player head)
+      // KEY PICKUP ENHANCEMENTS — behavior varies by tier
+      if (item.type === 'key' && result && result.success) {
+        if (keyTier >= 2 && keyTier < 3) {
+          // TIER 2 (gate key): overhead stacker animation + auto-equip to active slot
           try {
             if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
               OverheadAnimator.showGenericExpression(_player.x, _player.y, item.emoji || '🔑', 1200, '#FFD700');
@@ -5519,9 +5579,8 @@ _incrementPityTimers();
             } else if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
               PancakeStack.addPancake(item.emoji || '🔑');
             }
-          } catch (eAnim) { /* animation is cosmetic, don't break pickup */ }
+          } catch (eAnim) {}
 
-          // 2) Auto-equip key to header active item slot (Chip's Challenge feel)
           try {
             if (GAMESTATE.setActiveItem) {
               GAMESTATE.setActiveItem(nonCardPayload);
@@ -5532,8 +5591,31 @@ _incrementPityTimers();
                 TooltipSystem.show('🔑 KEY EQUIPPED — Tap header icon near the gate!', 2500);
               }
             }
-          } catch (eEquip) { /* equip is secondary, don't break pickup */ }
+          } catch (eEquip) {}
+
+        } else if (keyTier >= 3) {
+          // TIER 3 (quest key): special overhead animation, NO auto-equip, quest tooltip
+          try {
+            if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+              OverheadAnimator.showGenericExpression(_player.x, _player.y, '❗', 1500, '#FF4444');
+            }
+          } catch (eAnim) {}
+
+          try {
+            var npcTarget = '';
+            if (item.effects && item.effects.length) {
+              for (var ei = 0; ei < item.effects.length; ei++) {
+                if (item.effects[ei].npcTarget) { npcTarget = item.effects[ei].npcTarget; break; }
+              }
+            }
+            if (typeof TooltipSystem !== 'undefined') {
+              var questMsg = '❗ QUEST ITEM — ' + (item.name || 'Item');
+              if (npcTarget) questMsg += ' — Return to ' + npcTarget;
+              TooltipSystem.show(questMsg, 3500);
+            }
+          } catch (eQuest) {}
         }
+        // TIER 1 (ammo): no special effects, just goes to loose inventory silently
       }
 
       if (!result.success) {
@@ -5826,6 +5908,55 @@ _incrementPityTimers();
     return false;
   }
 
+  /**
+   * Consume a Tier 3 quest key via NPC turn-in interaction.
+   * Only called from NPC dialogue callbacks, never from gate unlock.
+   * @param {string} questKeyType - The keyType or registryId to consume
+   * @param {string} npcTarget - The NPC identifier for validation
+   * @returns {object|false} - The consumed item data, or false if not found
+   */
+  function _consumeQuestItem(questKeyType, npcTarget) {
+    if (typeof GAMESTATE === 'undefined') return false;
+
+    var persistent = GAMESTATE.getPersistentInventory ? GAMESTATE.getPersistentInventory() : [];
+    for (var i = 0; i < persistent.length; i++) {
+      var pit = persistent[i];
+      if (!pit || pit.type !== 'key') continue;
+      if (pit.subtype !== 'quest') continue;
+
+      var keyId = pit.keyType || pit.registryId || pit.itemId;
+      if (keyId !== questKeyType) continue;
+
+      // Validate NPC target matches if provided on the item
+      if (pit.npcTarget && npcTarget && pit.npcTarget !== npcTarget) continue;
+
+      // Found a match — remove from persistent inventory
+      var consumed = JSON.parse(JSON.stringify(pit));
+      if (GAMESTATE.removePersistentInventoryItem) {
+        GAMESTATE.removePersistentInventoryItem(i);
+      } else if (GAMESTATE.removeFromPersistent) {
+        GAMESTATE.removeFromPersistent(i);
+      }
+
+      // Visual feedback
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.show((pit.emoji || '🔨') + ' TURNED IN', 1500);
+      }
+      if (typeof DebriefFeedController !== 'undefined') {
+        DebriefFeedController.flashIncinerator({ kind: 'quest_key' });
+      }
+
+      // Refresh inventory display
+      if (typeof GoneRogueMobile !== 'undefined' && GoneRogueMobile.showInventory) {
+        GoneRogueMobile.showInventory();
+      }
+
+      return consumed;
+    }
+
+    return false;
+  }
+
   function _attemptUnlockLockedGate(gx, gy, meta, opts) {
     opts = opts || {};
 
@@ -5866,7 +5997,23 @@ _incrementPityTimers();
       }
     }
 
-    // Consume one matching key (keys are meant to be ambiguous + consumable in the chip-challenge feel)
+    // Tier-aware key consumption:
+    // Tier 1 (ammo): consume from loose inventory first, then persistent
+    // Tier 2 (gate): consume from active slot if equipped, else loose/persistent
+    // Tier 3 (quest): NEVER consumed by gates — only via NPC turn-in
+    var keyTier = _getKeyTier(required);
+    if (keyTier >= 3) {
+      // Quest keys can't open gates — shouldn't reach here, but guard anyway
+      return {
+        lines: [
+          (meta.emoji || '🚪') + ' ' + (meta.name || 'LOCKED DOOR'),
+          'This lock requires a different key.',
+          ''],
+        prompt: getPrompt(),
+        stayActive: true
+      };
+    }
+
     if (opts.consumeFromActiveSlot) {
       _consumeActiveItemIfMatches(required);
     } else {

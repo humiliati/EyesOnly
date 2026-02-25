@@ -123,18 +123,8 @@ var TutorialFloors = (function() {
       { x: 3, y: 16 }, { x: 4, y: 16 }, { x: 5, y: 16 }
     ],
 
-    // Locked chests (teach keys as "mystery" + reward exploration)
-    lockedChests: [
-      {
-        x: 4,
-        y: 15,
-        emoji: '🧰',
-        name: 'Locked Chest',
-        // Ambiguous: either key might work
-        acceptsKeys: ['RUSTY_KEY', 'BRONZE_KEY'],
-        message: 'A small chest with a stubborn lock. It might take the right key...'
-      }
-    ],
+    // No locked chests on Floor 1 — keys are introduced on Floor 2
+    lockedChests: [],
 
     // Tutorial gate (blocks path to exit)
     tutorialGate: {

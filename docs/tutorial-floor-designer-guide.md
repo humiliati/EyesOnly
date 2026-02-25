@@ -140,66 +140,81 @@ tutorialGate: {
 }
 ```
 
-## Floor 2: The Key Quest
+## Floor 2: The Key Quest (Hourglass Layout)
 
-**Teaching Objective:** Items can unlock barriers. NPCs point you in directions.
+**Teaching Objective:** Items can unlock barriers. NPCs point you in directions. Equip keys from inventory.
 
 ### Design Principles
 
-1. **Key-Gate Puzzle:** Hidden key in breakable unlocks southern gate
-2. **NPC Guidance:** Friendly NPCs with directional indicators hint at key location
-3. **Two Village Clusters:** Encourages full exploration
-4. **No Combat:** Safe environment to learn item mechanics
+1. **Chip's Challenge Key-Gate Flow:** Key hidden in breakable → auto-equips to active slot → walk to gate → toggle + interact to poof gate open
+2. **NPC Guidance:** Elder NPC uses `pointsAt` to physically orient toward key location
+3. **Hourglass Topology:** Wide top half, 4-tile chokepoint with locked gate, wide bottom half. Both doors visible from spawn
+4. **No Combat:** Safe environment to learn item + gate mechanics
 
-### Current Layout
+### Current Layout (Hourglass Template)
 
-- **Player Spawn:** (21, 7) - Central area
-- **Exit:** (20, 16) - Southern area, behind locked gate
-- **Buildings:** 8 total in two clusters (east and west)
-- **NPCs:** 2 defined (villager, elder) - *Note: NPC interaction system pending*
-- **Locked Gate:** 3-tile gate at (18-20, 13) requires `rusty_key`
-- **Key Location:** Hidden in flower patch breakable at (32, 10)
-- **Breakables:** 4 objects + key breakable
+```
+########################################
+#......................................#   ← Top half: open exploration
+#..P...................................#   ← Player spawn (3, 2)
+#......................................#
+#......................................#   ← Elder NPC at (8, 4)
+#......................................#   ← Key breakable at (34, 5)
+#......................................#
+##########....................##########   ← Hourglass narrows
+##################LLLL##################   ← Locked gate: 4 tiles at x=18-21
+##########....................##########   ← Hourglass widens
+#####..............................#####
+#......................................#   ← Bottom half: exit area
+#......................................#
+#......................................#
+#......................................#
+#......................................#
+#......................................#
+#......................................#
+#...................E..................#   ← Exit at (20, 18)
+########################################
+```
+
+- **Player Spawn:** (3, 2) — Top-left, can see both halves
+- **Exit:** (20, 18) — Bottom center, visible through gate gap
+- **Locked Gate:** 4-tile wall at (18-21, y=8), requires `RUSTY_KEY`
+- **Key Breakable:** Flower patch at (34, 5), drops Tier 2 `RUSTY_KEY`
+- **Elder NPC:** At (8, 4), `pointsAt: { x: 34, y: 5 }` — hints at key location
+- **Breadcrumb Pickups:** Currency behind gate to reward unlocking
 
 ### Editing Floor 2
 
-**Adding NPCs:**
+**Moving the Locked Gate:**
 
 ```javascript
-npcs: [
-  {
-    x: 8, y: 5,
-    emoji: '👱',
-    name: 'Villager',
-    direction: 'east',
-    dialogues: [
-      'I think I saw something shiny near the eastern bushes...',
-      'Keys open gates, you know.'
-    ],
-    pointsAt: { x: 32, y: 10 }  // Points toward key location
-  }
-]
+lockedGate: {
+  positions: [
+    { x: 18, y: 8 }, { x: 19, y: 8 },
+    { x: 20, y: 8 }, { x: 21, y: 8 }
+  ],
+  requiresKey: 'RUSTY_KEY',
+  emoji: '🚪',
+  name: 'Locked Gate'
+}
 ```
 
 **Changing Key Location:**
 
 ```javascript
-// Move key to different breakable
 keyBreakable: {
-  x: 12,        // New X position
-  y: 8,         // New Y position
-  emoji: '🧺',  // Different container
+  x: 12, y: 6,
+  emoji: '🧺',
   name: 'Picnic Basket',
   hp: 2,
   drops: {
-    item: 'rusty_key',
+    item: { keyType: 'RUSTY_KEY', tier: 2 },
     currency: [5, 10]
-  },
-  message: 'A picnic basket. Something rattles inside...'
+  }
 }
 ```
 
-**Note:** NPC interaction system is not yet implemented. NPCs are defined in layout but currently non-functional. See [Planned Features](#planned-features) below.
+**Key Pickup Behavior:** When the player breaks the `keyBreakable`, the Tier 2 key automatically goes to persistent inventory, plays a pancake-stacker overhead animation, auto-equips to the header active slot, and shows a tooltip hint. The player then walks to the locked gate, toggles the active item, and interacts — the gate poofs away with a 💨 effect.
 
 ## Floor 3: First Encounters
 
@@ -466,38 +481,160 @@ tutorialPickups: [
 ]
 ```
 
+## Key System Reference
+
+The key system uses three distinct tiers, each with different ID conventions, storage behavior, and consumption rules.
+
+### Tier 1: Ammo Keys (Breakable Drops)
+
+**ID Pattern:** `KEY_XX2`, `KEY_XX4` (even suffix convention)
+**Definition:** `environmental-synergy.js` → `KEY_ITEMS` object
+**Storage:** Loose inventory (no equip, no header slot)
+**Consumption:** Auto-consumed when walking into a matching lock. Searched loose-first, then persistent.
+**On Death:** Lost
+
+These are disposable keys dropped by breakable objects and random chests. They work like ammo — pick up several, spend them at matching locks automatically.
+
+```javascript
+// Placing a Tier 1 key inside a breakable
+breakables: [
+  {
+    x: 10, y: 5,
+    emoji: '🏺',
+    name: 'Clay Pot',
+    hp: 1,
+    drops: {
+      item: 'KEY_002',  // RUSTY_KEY ammo — even suffix
+      currency: [2, 5]
+    }
+  }
+]
+```
+
+**Available Tier 1 keys:** `KEY_002` (Rusty Key), `KEY_004` (Bronze Key)
+
+### Tier 2: Gate/Door Keys (Inventory Items)
+
+**ID Pattern:** `ITM-01X` (items.json registry, range 010–019)
+**Definition:** `items.json` + `environmental-synergy.js` (linked via `registryId`)
+**Storage:** Persistent inventory → auto-equips to header active slot on pickup
+**Consumption:** Player must equip → toggle → interact at gate. Consumed from active slot.
+**On Death:** Persists (carried between floors)
+
+These are real inventory items for hand-placed Chip's Challenge-style key+gate puzzles. The pickup triggers an overhead pancake-stacker animation and auto-equips to the active item slot.
+
+```javascript
+// Placing a Tier 2 key inside a breakable
+keyBreakable: {
+  x: 34, y: 5,
+  emoji: '🌸',
+  name: 'Flower Patch',
+  hp: 2,
+  drops: {
+    item: { keyType: 'RUSTY_KEY', tier: 2 },
+    currency: [5, 10]
+  }
+}
+
+// Placing the matching locked gate
+lockedGate: {
+  positions: [
+    { x: 18, y: 8 }, { x: 19, y: 8 },
+    { x: 20, y: 8 }, { x: 21, y: 8 }
+  ],
+  requiresKey: 'RUSTY_KEY',
+  emoji: '🚪',
+  name: 'Locked Gate'
+}
+```
+
+**Available Tier 2 keys:**
+
+| Registry ID | Key Name | Compatible Gates |
+|-------------|----------|-----------------|
+| ITM-010 | Rusty Key | WOODEN_GATE, OLD_DOOR |
+| ITM-011 | Security Keycard | SECURITY_DOOR, LAB_ENTRANCE |
+| ITM-012 | Master Key | All standard locks |
+| ITM-013 | Thumb Drive | TERMINAL_GATE, SERVER_RACK |
+| ITM-014 | Access Card | FLOOR_ELEVATOR, AEROSPACE_DOOR |
+| ITM-015 | Mall Security Tag | MALL_GATE, STORE_DOOR |
+| ITM-016 | Industrial Pass | FACTORY_GATE, HAZARD_DOOR |
+
+### Tier 3: Quest Keys (Loot Table → NPC Turn-In)
+
+**ID Pattern:** `ITM-03X` (items.json registry, range 030–039)
+**Definition:** `items.json` with `subtype: "quest"`
+**Storage:** Persistent inventory (NO auto-equip, shows quest tooltip)
+**Consumption:** Only via NPC interaction turn-in. Never consumed by gates.
+**Reward:** Card upgrade gem or rare card upgrade from NPC
+
+These are late-game optional items that drop from boss loot tables. The player carries them to a specific NPC to receive a powerful reward (inspired by the Diablo 2 Charsi quest / Horadric Cube pattern).
+
+```javascript
+// Quest key in items.json (already registered)
+{
+  "id": "ITM-030",
+  "name": "Blacksmith's Hammer",
+  "emoji": "🔨",
+  "type": "key",
+  "subtype": "quest",
+  "rarity": "rare",
+  "effects": [{ "type": "quest_turn_in", "npcTarget": "BLACKSMITH", "rewardType": "card_upgrade" }],
+  "description": "A master blacksmith's hammer. Return it to the forge for a powerful reward.",
+  "consumeOnUse": true
+}
+```
+
+On pickup, Tier 3 keys show a red "❗" overhead animation and a quest-style tooltip: "Return this to [NPC name]". They are never consumed by gates — only by NPC turn-in via `_consumeQuestItem()`.
+
+**Available Tier 3 keys:**
+
+| Registry ID | Key Name | NPC Target | Reward |
+|-------------|----------|-----------|--------|
+| ITM-030 | Blacksmith's Hammer | BLACKSMITH | Card upgrade gem |
+| ITM-031 | Rune Fragment (×3) | RUNESMITH | Rare card upgrade |
+
+### ID Range Reservations
+
+| Range | Purpose |
+|-------|---------|
+| `KEY_XX2`, `KEY_XX4` | Tier 1 ammo keys (even suffix) |
+| `ITM-010` – `ITM-019` | Tier 2 gate/door keys |
+| `ITM-020` – `ITM-029` | Deployable boxes |
+| `ITM-030` – `ITM-039` | Tier 3 quest keys |
+
 ## Planned Features
 
-### Currently Not Implemented
+### Implemented
 
-1. **NPC Interaction System**
-   - NPCs are defined in Floor 2 layout
-   - Interaction, dialogue, and directional indicators not yet functional
-   - NPCs will be visual-only until system implementation
+1. **NPC Interaction System** ✓
+   - NPCs render on map with dialogue on interact
+   - `pointsAt` directional indicators functional (NPC faces target location)
+   - Gate-blocking NPCs relocate during final guarantee pass
 
-2. **Locked Gate Mechanics**
-   - Floor 2 defines locked gate and key
-   - Key collection and gate unlock logic pending
-   - Currently gates are impassable walls
+2. **Locked Gate Mechanics** ✓
+   - Tier 1 + Tier 2 key pickup, storage, and consumption fully functional
+   - Multi-tile gate clearing with 💨 poof effect
+   - Active slot equip → toggle → interact workflow
 
-3. **Item-Based Puzzle System**
-   - No support for keys, tools, or progression items yet
-   - Will be added in future iteration
+3. **Item-Based Puzzle System** (Partial) ✓
+   - Tier 1 ammo keys and Tier 2 gate keys implemented
+   - Tier 3 quest keys registered but NPC turn-in reward flow pending
+   - See [Key System Reference](#key-system-reference) for full details
 
-4. **Tutorial Message System**
+4. **Dynamic NPC Pointing** ✓
+   - NPCs use `pointsAt` to orient toward key/item locations
+   - Rendered with directional emoji indicators
+
+### Not Yet Implemented
+
+1. **Tutorial Message System**
    - No in-game hints or tutorial text overlays
    - Players learn through environmental design only
 
-5. **Dynamic NPC Pointing**
-   - NPCs cannot point at locations or items
-   - Directional indicators defined but not rendered
-
-### Workarounds
-
-Until these features are implemented:
-- Floor 2 should be simplified to remove gate puzzle
-- NPCs can remain as visual decorations
-- Tutorial messages can be added via breakable object names
+2. **Quest Key NPC Turn-In Rewards**
+   - `_consumeQuestItem()` is registered but reward dispensing (card upgrades, gems) requires CardSystem integration
+   - Blacksmith + Runesmith NPCs need onInteract callbacks wired up
 
 ## Advanced: Creating New Floors
 

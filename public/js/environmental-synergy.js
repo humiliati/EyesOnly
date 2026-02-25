@@ -9,9 +9,17 @@ const EnvironmentalSynergy = (function() {
   // Synergy definitions for environmental combinations
   var SYNERGY_DEFINITIONS = {
     // Key Types and their compatible gates
+    // Tier 1 (ammo): consumable, loose inventory, auto-consume at lock, lost on death
+    //   ID convention: KEY_0X2, KEY_0X4 (even suffix)
+    // Tier 2 (door/gate): persistent inventory, equip to active slot, header toggle workflow
+    //   ID convention: ITM-01X in items.json registry
+    // Tier 3 (quest): persistent inventory, NPC turn-in for card upgrade reward
+    //   ID convention: ITM-03X in items.json registry
     KEY_ITEMS: {
+      // --- Tier 1: Ammo keys (consumable, breakable drops) ---
       RUSTY_KEY: {
-        itemId: 'KEY_001',
+        itemId: 'KEY_002',
+        tier: 1,
         emoji: '🔑',
         name: 'Rusty Key',
         description: 'An old, rusted key. Might open something...',
@@ -19,23 +27,30 @@ const EnvironmentalSynergy = (function() {
         consumeOnUse: true
       },
       BRONZE_KEY: {
-        itemId: 'KEY_002',
+        itemId: 'KEY_004',
+        tier: 1,
         emoji: '🗝️',
         name: 'Bronze Key',
         description: 'A tarnished bronze key with ornate markings.',
         compatibleGates: ['BRONZE_GATE', 'MUSEUM_DOOR'],
         consumeOnUse: true
       },
+
+      // --- Tier 2: Door/gate keys (persistent, equip+toggle workflow) ---
       KEYCARD: {
         itemId: 'KEY_003',
+        tier: 2,
+        registryId: 'ITM-011',
         emoji: '💳',
         name: 'Security Keycard',
         description: 'Electronic access card. Still has charge.',
         compatibleGates: ['SECURITY_DOOR', 'LAB_ENTRANCE'],
-        consumeOnUse: false // Can be reused
+        consumeOnUse: false
       },
       MASTER_KEY: {
         itemId: 'KEY_004',
+        tier: 2,
+        registryId: 'ITM-012',
         emoji: '🔐',
         name: 'Master Key',
         description: 'Opens all standard locks.',
@@ -44,24 +59,30 @@ const EnvironmentalSynergy = (function() {
       },
       THUMB_DRIVE: {
         itemId: 'KEY_005',
+        tier: 2,
+        registryId: 'ITM-013',
         emoji: '💾',
         name: 'Thumb Drive',
         description: 'Contains encrypted access credentials.',
         compatibleGates: ['TERMINAL_GATE', 'SERVER_RACK'],
-        consumeOnUse: false, // Can be reused on multiple terminals
+        consumeOnUse: false,
         biome: 'OFFICE'
       },
       ACCESS_CARD: {
         itemId: 'KEY_006',
+        tier: 2,
+        registryId: 'ITM-014',
         emoji: '🎫',
         name: 'Access Card',
         description: 'Aerospace facility access card. Permits elevator use.',
         compatibleGates: ['FLOOR_ELEVATOR', 'AEROSPACE_DOOR'],
-        consumeOnUse: false, // Can be reused
+        consumeOnUse: false,
         biome: 'AEROSPACE'
       },
       MALL_KEY: {
         itemId: 'KEY_007',
+        tier: 2,
+        registryId: 'ITM-015',
         emoji: '🏷️',
         name: 'Mall Security Tag',
         description: 'Security clearance for restricted mall areas.',
@@ -71,6 +92,8 @@ const EnvironmentalSynergy = (function() {
       },
       INDUSTRIAL_PASS: {
         itemId: 'KEY_008',
+        tier: 2,
+        registryId: 'ITM-016',
         emoji: '🔧',
         name: 'Industrial Pass',
         description: 'Worker authorization for restricted industrial zones.',

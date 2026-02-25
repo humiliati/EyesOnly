@@ -7,7 +7,7 @@
     "id": { "type": "string", "pattern": "^ITM-[0-9]{3}$" },
     "name": { "type": "string", "minLength": 1, "maxLength": 48 },
     "emoji": { "type": "string", "minLength": 1, "maxLength": 8 },
-    "type": { "type": "string", "enum": ["consumable", "equipment", "resource", "key"] },
+    "type": { "type": "string", "enum": ["consumable", "equipment", "resource", "key", "deployable"] },
     "subtype": { "type": "string" },
 
     "rarity": { "type": "string", "enum": ["common", "uncommon", "rare", "epic", "legendary"], "default": "common" },
