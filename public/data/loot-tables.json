@@ -31,8 +31,8 @@
         "tier": 1,
         "biome_specific": true,
         "types": {
-          "KEY_002": 60,
-          "KEY_004": 40
+          "RUSTY_KEY": 60,
+          "BRONZE_KEY": 40
         },
         "_designNote": "Standard enemies only drop Tier 1 ammo keys — disposable, auto-consume at locks"
       },
@@ -71,8 +71,8 @@
         "tier": 1,
         "biome_specific": true,
         "types": {
-          "KEY_002": 40,
-          "KEY_004": 60
+          "RUSTY_KEY": 40,
+          "BRONZE_KEY": 60
         },
         "_designNote": "Elite enemies drop Tier 1 ammo keys with slight bias toward Bronze"
       },
@@ -174,8 +174,8 @@
         "tier_1": {
           "chance": 0.80,
           "types": {
-            "KEY_002": 60,
-            "KEY_004": 40
+            "RUSTY_KEY": 60,
+            "BRONZE_KEY": 40
           },
           "_designNote": "80% of breakable key drops are Tier 1 ammo keys (even suffix IDs)"
         },
@@ -216,7 +216,7 @@
             "drops": ["berries", "sticks"],
             "item_chance": 0.5,
             "key_chance": 0.25,
-            "key_types": ["KEY_002", "KEY_004"],
+            "key_types": ["RUSTY_KEY", "BRONZE_KEY"],
             "key_tier": 1
           },
           "boulder": {

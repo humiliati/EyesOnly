@@ -161,8 +161,8 @@ Key items drop from three sources (enemies, breakables, bosses) and are organize
   "chance": 0.15,
   "tier": 1,
   "types": {
-    "KEY_002": 60,
-    "KEY_004": 40
+    "RUSTY_KEY": 60,
+    "BRONZE_KEY": 40
   }
 }
 ```
@@ -292,11 +292,11 @@ const loot = LootTableManager.rollBreakableLoot('wooden_gate', 'COZY_FOREST');
 ```javascript
 // Roll a key drop from an enemy kill
 const keyDrop = LootTableManager.rollKeyDrop('enemy', { enemyTier: 'standard' });
-// Returns: { type: 'key', keyType: 'KEY_002', tier: 1, source: 'enemy' } or null
+// Returns: { type: 'key', keyType: 'RUSTY_KEY', tier: 1, source: 'enemy' } or null
 
 // Roll a key drop from a breakable
 const breakableKey = LootTableManager.rollKeyDrop('breakable');
-// Returns: { type: 'key', keyType: 'KEY_004', tier: 1, source: 'breakable' } or null
+// Returns: { type: 'key', keyType: 'BRONZE_KEY', tier: 1, source: 'breakable' } or null
 
 // Roll a quest key from a boss kill
 const questKey = LootTableManager.rollKeyDrop('boss');
