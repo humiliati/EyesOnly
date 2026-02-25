@@ -5,7 +5,7 @@
    ============================================================ */
 
 import { Hono } from 'hono';
-import type { Env, AuthContext, CheckinRequest, DeadDropRequest, TelemetryRequest, PanicRequest, PushSubscribeRequest } from '../../shared/types';
+import type { Env, AuthContext, CheckinRequest, DeadDropRequest, TelemetryRequest, PanicRequest, PushSubscribeRequest, MicrochatSendRequest, PlayerLocationRequest } from '../../shared/types';
 import { requireAuth } from '../middleware/auth';
 import {
   getScenario,
@@ -29,6 +29,12 @@ import {
   upsertPushSubscription,
   deletePushSubscription,
   getPushSubscriptionsByScenario,
+  getActiveScenarioBeats,
+  unlockScenarioBeat,
+  upsertPlayerLocation,
+  insertMicrochatMessage,
+  getMicrochatMessages,
+  markMicrochatDelivered,
 } from '../db/queries';
 import { sendWebPushToAll } from '../utils/web-push';
 
@@ -447,6 +453,40 @@ opsRoutes.post('/telemetry', async (c) => {
         await upsertActorGeofenceState(c.env.DB, auth.actor_id, zone.id, nowInside);
       }
     }
+
+    // ── Beat-unlock check (Phase 3) ─────────────────────────────────
+    // Check if this actor's position triggers any unlocked story beats.
+    const unlockedBeats: string[] = [];
+    const activeBeats = await getActiveScenarioBeats(c.env.DB, auth.scenario_id);
+    for (const beat of activeBeats) {
+      if (beat.lat == null || beat.lng == null) continue;
+      const distM = haversineMeters(body.lat, body.lng, beat.lat, beat.lng);
+      if (distM <= beat.trigger_radius_m) {
+        await unlockScenarioBeat(c.env.DB, beat.id);
+        const beatEvent = await insertEvent(c.env.DB, auth.scenario_id, auth.actor_id, beat.event_type, {
+          beat_id:    beat.id,
+          beat_title: beat.title,
+          beat_seq:   beat.beat_seq,
+          triggered_by: auth.callsign,
+          dist_m:     Math.round(distM),
+          lat: body.lat,
+          lng: body.lng,
+          ts: Date.now(),
+        });
+        const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+        const room   = c.env.SCENARIO_ROOM.get(roomId);
+        await room.fetch(new Request('http://internal/broadcast', {
+          method: 'POST',
+          body: JSON.stringify({
+            type: 'beat_unlock',
+            data: { beat_id: beat.id, beat_title: beat.title, beat_seq: beat.beat_seq, event_id: beatEvent.id },
+            timestamp: Date.now(),
+          }),
+        }));
+        unlockedBeats.push(beat.title);
+      }
+    }
+    // ────────────────────────────────────────────────────────────────
   }
   // ──────────────────────────────────────────────────────────────────
 
@@ -606,4 +646,140 @@ opsRoutes.get('/ws', async (c) => {
   return room.fetch(new Request(url.toString(), {
     headers: c.req.raw.headers,
   }));
+});
+
+// ── Phase 3: Microchat ────────────────────────────────────────────
+
+/**
+ * POST /api/ops/microchat
+ * Actor sends an encrypted message to M (or another actor).
+ * The server routes the ciphertext without decrypting it.
+ * Key derivation and encryption happen entirely on the client.
+ */
+opsRoutes.post('/microchat', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<MicrochatSendRequest>();
+
+  if (!body.to_id || !body.ciphertext) {
+    return c.json({ error: 'BAD_REQUEST', message: 'to_id and ciphertext required' }, 400);
+  }
+
+  const fromId = String(auth.actor_id);
+  const msg = await insertMicrochatMessage(c.env.DB, auth.scenario_id, fromId, body.to_id, body.ciphertext);
+
+  // Route to target: if to_id === 'M', audience = directors; otherwise target actor + directors
+  const targetActorId = body.to_id === 'M' ? undefined : parseInt(body.to_id, 10);
+  const audience = body.to_id === 'M' ? 'directors' : 'target';
+
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+  const room   = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'actor_message',
+      data: { msg_id: msg.id, from_id: fromId, to_id: body.to_id, ciphertext: body.ciphertext, ts: Date.now() },
+      timestamp: Date.now(),
+      audience,
+      target_actor_id: targetActorId,
+    }),
+  }));
+
+  return c.json({ ok: true, msg_id: msg.id });
+});
+
+/**
+ * GET /api/ops/microchat
+ * Get the microchat thread for the authenticated actor (messages to/from M).
+ * Query params: limit (default 30)
+ */
+opsRoutes.get('/microchat', async (c) => {
+  const auth = c.get('auth');
+  const limit = parseInt(c.req.query('limit') || '30', 10);
+  const msgs = await getMicrochatMessages(c.env.DB, auth.scenario_id, String(auth.actor_id), limit);
+  return c.json({ messages: msgs });
+});
+
+/**
+ * POST /api/ops/microchat/:id/ack
+ * Actor confirms message delivery. Broadcasts actor_message_ack to M.
+ */
+opsRoutes.post('/microchat/:id/ack', async (c) => {
+  const auth = c.get('auth');
+  const msgId = parseInt(c.req.param('id'), 10);
+  await markMicrochatDelivered(c.env.DB, msgId);
+
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+  const room   = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'actor_message_ack',
+      data: { msg_id: msgId, actor_id: auth.actor_id, callsign: auth.callsign, ts: Date.now() },
+      timestamp: Date.now(),
+      audience: 'directors',
+    }),
+  }));
+
+  return c.json({ ok: true });
+});
+
+// ── Phase 3: Player Location Reporting ───────────────────────────
+
+/**
+ * POST /api/player/location
+ * Player terminal reports GPS position with consent.
+ * M Console sees player dots on the live map.
+ * Check beat-unlock triggers against active scenario beats.
+ */
+opsRoutes.post('/player-location', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<PlayerLocationRequest>();
+
+  if (body.lat == null || body.lng == null) {
+    return c.json({ error: 'BAD_REQUEST', message: 'lat and lng required' }, 400);
+  }
+
+  const playerId = body.player_id || auth.callsign;
+  await upsertPlayerLocation(c.env.DB, playerId, auth.scenario_id, body.lat, body.lng, body.accuracy_m);
+
+  // Broadcast player location to directors only (M console live map — not visible to other players)
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+  const room   = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'player_location',
+      data: { player_id: playerId, lat: body.lat, lng: body.lng, accuracy_m: body.accuracy_m ?? null, ts: Date.now() },
+      timestamp: Date.now(),
+      audience: 'directors',
+    }),
+  }));
+
+  // ── Beat-unlock check for player position ──────────────────────
+  const unlockedBeats: string[] = [];
+  const activeBeats = await getActiveScenarioBeats(c.env.DB, auth.scenario_id);
+  for (const beat of activeBeats) {
+    if (beat.lat == null || beat.lng == null) continue;
+    const distM = haversineMeters(body.lat, body.lng, beat.lat, beat.lng);
+    if (distM <= beat.trigger_radius_m) {
+      await unlockScenarioBeat(c.env.DB, beat.id);
+      const beatEvent = await insertEvent(c.env.DB, auth.scenario_id, auth.actor_id, beat.event_type, {
+        beat_id: beat.id, beat_title: beat.title, beat_seq: beat.beat_seq,
+        triggered_by: playerId, source: 'player_location',
+        dist_m: Math.round(distM), lat: body.lat, lng: body.lng, ts: Date.now(),
+      });
+      await room.fetch(new Request('http://internal/broadcast', {
+        method: 'POST',
+        body: JSON.stringify({
+          type: 'beat_unlock',
+          data: { beat_id: beat.id, beat_title: beat.title, beat_seq: beat.beat_seq, event_id: beatEvent.id },
+          timestamp: Date.now(),
+        }),
+      }));
+      unlockedBeats.push(beat.title);
+    }
+  }
+  // ──────────────────────────────────────────────────────────────
+
+  return c.json({ ok: true, unlocked_beats: unlockedBeats });
 });

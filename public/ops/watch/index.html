@@ -309,6 +309,88 @@
       text-align: center;
     }
     .frozen-sub { font-size: 9px; letter-spacing: 2px; color: #cc3333; text-align: center; }
+
+    /* ====== MICROCHAT PANEL (Phase 3) ====== */
+    .chat-fab {
+      position: fixed; bottom: 64px; right: 12px; z-index: 50;
+      width: 44px; height: 44px; border-radius: 50%;
+      background: var(--surface); border: 1px solid var(--text-dim);
+      color: var(--text-dim); font-family: var(--font);
+      font-size: 18px; cursor: pointer; display: none;
+      align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .chat-fab.visible { display: flex; }
+    .chat-fab .chat-badge {
+      position: absolute; top: -4px; right: -4px;
+      background: var(--red); color: #fff; font-size: 9px;
+      border-radius: 8px; padding: 1px 4px; display: none;
+      font-family: var(--font);
+    }
+    .chat-fab .chat-badge.visible { display: block; }
+
+    .chat-panel {
+      display: none; position: fixed; inset: 0; z-index: 80;
+      background: var(--bg); flex-direction: column;
+    }
+    .chat-panel.visible { display: flex; }
+    .chat-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px; border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .chat-header-title {
+      font-size: 10px; letter-spacing: 3px; color: var(--text-dim);
+    }
+    .chat-close {
+      background: none; border: none; color: var(--text-dim);
+      font-family: var(--font); font-size: 14px; cursor: pointer;
+      padding: 4px 8px;
+    }
+    .chat-messages {
+      flex: 1; overflow-y: auto; padding: 8px 12px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .chat-msg {
+      max-width: 80%; padding: 6px 10px;
+      border-radius: 4px; font-size: 11px; line-height: 1.5;
+      letter-spacing: 0.5px;
+    }
+    .chat-msg.from-m {
+      background: #0a1a0a; border: 1px solid var(--text-dim);
+      color: var(--text); align-self: flex-start;
+    }
+    .chat-msg.from-me {
+      background: #0a0a1a; border: 1px solid #1a1a6a;
+      color: #6666ff; align-self: flex-end;
+    }
+    .chat-msg-ts {
+      font-size: 8px; color: var(--text-mute); margin-top: 3px;
+      letter-spacing: 1px;
+    }
+    .chat-input-row {
+      display: flex; gap: 1px; background: var(--border);
+      flex-shrink: 0;
+    }
+    .chat-input {
+      flex: 1; background: var(--surface);
+      border: none; color: var(--text); font-family: var(--font);
+      font-size: 12px; padding: 12px;
+      -webkit-user-select: text; user-select: text;
+      outline: none;
+    }
+    .chat-send {
+      background: var(--surface); border: none;
+      color: var(--text-dim); font-family: var(--font);
+      font-size: 10px; letter-spacing: 2px; padding: 12px 16px;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+    .chat-send:active { background: rgba(51,255,51,0.08); }
+    .chat-encrypt-note {
+      font-size: 8px; color: var(--text-mute); letter-spacing: 1px;
+      text-align: center; padding: 4px 8px;
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
   </style>
 </head>
 <body>
@@ -452,6 +534,32 @@
 <div class="frozen-overlay" id="frozen-overlay">
   <div class="frozen-text">GAME FROZEN</div>
   <div class="frozen-sub">STAND BY FOR COMMAND</div>
+</div>
+
+<!-- ====== MICROCHAT PANEL (Phase 3) ====== -->
+<!-- Floating action button — shows when scenario-joined -->
+<button class="chat-fab" id="chat-fab" onclick="toggleChat()" title="Microchat with M">
+  💬
+  <span class="chat-badge" id="chat-badge">0</span>
+</button>
+
+<div class="chat-panel" id="chat-panel">
+  <div class="chat-header">
+    <span class="chat-header-title">⬡ MICROCHAT — M</span>
+    <button class="chat-close" onclick="toggleChat()">✕ CLOSE</button>
+  </div>
+  <div class="chat-encrypt-note">🔒 end-to-end encrypted · visible only on this device</div>
+  <div class="chat-messages" id="chat-messages">
+    <div style="color:var(--text-mute);font-size:9px;letter-spacing:1px;text-align:center;padding:20px 0;">
+      NO MESSAGES YET
+    </div>
+  </div>
+  <div class="chat-input-row">
+    <input class="chat-input" id="chat-input" type="text" placeholder="Type message…"
+           maxlength="280" autocomplete="off" autocorrect="off" spellcheck="false"
+           onkeydown="if(event.key==='Enter')sendChatMsg()">
+    <button class="chat-send" onclick="sendChatMsg()">SEND ↵</button>
+  </div>
 </div>
 
 <script>
@@ -629,6 +737,13 @@ function startWatch() {
   if (callsignEl) callsignEl.textContent = _callsign;
   if (idleEl) idleEl.textContent = _callsign;
 
+  // Show microchat FAB now that we're scenario-joined
+  var fab = document.getElementById('chat-fab');
+  if (fab) fab.classList.add('visible');
+
+  // Load existing chat history (fire-and-forget)
+  loadChatHistory();
+
   // Start GPS
   startGPS();
 
@@ -716,6 +831,23 @@ function handleWSMessage(msg) {
   if (msg.type === 'mping') {
     var pd = msg.data || {};
     receivePing(pd.event_id, pd.ping_command || 'DIRECTIVE', pd.message || '');
+  }
+
+  // Phase 3: encrypted microchat from M
+  if (msg.type === 'actor_message') {
+    onActorMessage(msg.data || {});
+  }
+
+  // Phase 3: decoy ping — display like a real ping locally but NOT logged
+  if (msg.type === 'decoy_ping') {
+    var dp = msg.data || {};
+    if (!dp.target_actor_id || String(dp.target_actor_id) === String(getMyActorId())) {
+      receivePing(null, dp.ping_command || 'DIRECTIVE', (dp.message || '') + ' [DECOY]');
+    }
+  }
+
+  if (msg.type === 'state' && msg.data && msg.data.frozen !== undefined) {
+    setFrozen(msg.data.frozen);
   }
 }
 
@@ -1249,6 +1381,172 @@ function fmtAge(ts) {
   if (s < 60) return s + 's ago';
   return Math.floor(s / 60) + 'm ago';
 }
+
+// ===== MICROCHAT (Phase 3) =====
+var _chatOpen     = false;
+var _chatUnread   = 0;
+var _chatKey      = null;   // CryptoKey for AES-GCM (derived per scenario)
+var _chatHistory  = [];     // [{id, from_id, to_id, text, ts, outgoing}]
+
+/** Derive a per-scenario AES-GCM key from scenarioId (shared secret channel). */
+async function deriveChatKey(scenarioId) {
+  var material = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode('eyesonly-chat-v1:' + scenarioId),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: new TextEncoder().encode('eowatch'), iterations: 5000, hash: 'SHA-256' },
+    material,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+/** Encrypt plaintext → "<iv_b64url>:<ct_b64url>" */
+async function chatEncrypt(plaintext) {
+  if (!_chatKey) _chatKey = await deriveChatKey(_scenarioId);
+  var iv  = crypto.getRandomValues(new Uint8Array(12));
+  var ct  = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, _chatKey, new TextEncoder().encode(plaintext));
+  return b64url(iv) + ':' + b64url(new Uint8Array(ct));
+}
+
+/** Decrypt "<iv_b64url>:<ct_b64url>" → plaintext (or "[encrypted]" on failure) */
+async function chatDecrypt(ciphertext) {
+  try {
+    if (!_chatKey) _chatKey = await deriveChatKey(_scenarioId);
+    var parts = ciphertext.split(':');
+    if (parts.length < 2) return '[encrypted]';
+    var iv  = b64urlDecode(parts[0]);
+    var ct  = b64urlDecode(parts.slice(1).join(':'));
+    var pt  = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, _chatKey, ct);
+    return new TextDecoder().decode(pt);
+  } catch(e) {
+    return '[encrypted]';
+  }
+}
+
+function b64url(buf) {
+  return btoa(String.fromCharCode.apply(null, buf))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+function b64urlDecode(s) {
+  s = s.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  var bin = atob(s);
+  var out = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/** Toggle chat panel open/closed */
+function toggleChat() {
+  _chatOpen = !_chatOpen;
+  document.getElementById('chat-panel').classList.toggle('visible', _chatOpen);
+  if (_chatOpen) {
+    _chatUnread = 0;
+    var badge = document.getElementById('chat-badge');
+    badge.textContent = '0';
+    badge.classList.remove('visible');
+  }
+}
+
+/** Render chat history into panel */
+async function renderChatHistory() {
+  var container = document.getElementById('chat-messages');
+  if (!container) return;
+  if (_chatHistory.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-mute);font-size:9px;letter-spacing:1px;text-align:center;padding:20px 0;">NO MESSAGES YET</div>';
+    return;
+  }
+  container.innerHTML = '';
+  for (var i = 0; i < _chatHistory.length; i++) {
+    var m   = _chatHistory[i];
+    var txt = await chatDecrypt(m.ciphertext || '');
+    var div = document.createElement('div');
+    div.className = 'chat-msg ' + (m.outgoing ? 'from-me' : 'from-m');
+    var ts = new Date(m.ts || m.created_at || Date.now()).toLocaleTimeString();
+    div.innerHTML = '<div>' + escHtml(txt) + '</div><div class="chat-msg-ts">' + ts + '</div>';
+    container.appendChild(div);
+    // ACK delivery on received messages from M
+    if (!m.outgoing && !m.delivered && m.id) {
+      fetch(API_BASE + '/microchat/' + m.id + '/ack', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _token },
+      }).catch(function(){});
+      m.delivered = 1;
+    }
+  }
+  container.scrollTop = container.scrollHeight;
+}
+
+/** Load chat history from server */
+async function loadChatHistory() {
+  if (!_token) return;
+  try {
+    var res = await fetch(API_BASE + '/microchat?limit=30', {
+      headers: { 'Authorization': 'Bearer ' + _token },
+    });
+    if (!res.ok) return;
+    var data = await res.json();
+    var msgs = data.messages || [];
+    var myId = _myActorId ? String(_myActorId) : null;
+    _chatHistory = msgs.map(function(m) {
+      return Object.assign({}, m, { outgoing: m.from_id === myId });
+    });
+    await renderChatHistory();
+  } catch(e) {}
+}
+
+/** Send a new chat message to M */
+async function sendChatMsg() {
+  var input = document.getElementById('chat-input');
+  var text  = (input && input.value.trim()) || '';
+  if (!text || !_token) return;
+  try {
+    input.value = '';
+    var ciphertext = await chatEncrypt(text);
+    var res = await fetch(API_BASE + '/microchat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _token },
+      body: JSON.stringify({ to_id: 'M', ciphertext: ciphertext }),
+    });
+    if (res.ok) {
+      var data = await res.json();
+      _chatHistory.push({ id: data.msg_id, from_id: String(_myActorId), to_id: 'M', ciphertext: ciphertext, outgoing: true, ts: Date.now(), delivered: 0 });
+      await renderChatHistory();
+    }
+  } catch(e) {}
+}
+
+/** Handle incoming actor_message WS event */
+async function onActorMessage(data) {
+  // Only show messages addressed to this actor or from M
+  var myId = _myActorId ? String(_myActorId) : null;
+  if (data.to_id !== myId && data.from_id !== 'M') return;
+  _chatHistory.push({ id: data.msg_id, from_id: data.from_id, to_id: data.to_id, ciphertext: data.ciphertext, outgoing: false, ts: data.ts || Date.now(), delivered: 0 });
+  if (_chatOpen) {
+    await renderChatHistory();
+  } else {
+    _chatUnread++;
+    var badge = document.getElementById('chat-badge');
+    if (badge) { badge.textContent = _chatUnread; badge.classList.add('visible'); }
+    vibrate([80, 40, 80]); // soft ping pattern for chat
+  }
+  // Show chat FAB
+  var fab = document.getElementById('chat-fab');
+  if (fab) fab.classList.add('visible');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Store actor id at login time for chat routing
+var _actorId = null;
 </script>
 </body>
 </html>

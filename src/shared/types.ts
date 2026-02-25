@@ -95,6 +95,49 @@ export interface DeadDropRow {
   updated_at: number;
 }
 
+// --- Phase 3: Scenario Beats, Player Locations, Fog, Microchat ---
+
+export interface ScenarioBeatRow {
+  id: number;
+  scenario_id: number;
+  beat_seq: number;
+  title: string;
+  description: string | null;
+  lat: number | null;
+  lng: number | null;
+  trigger_radius_m: number;
+  event_type: string;
+  auto_advance: number;  // 1 = fires on proximity, 0 = manual only
+  unlocked_at: number | null;
+  created_at: number;
+}
+
+export interface PlayerLocationRow {
+  player_id: string;
+  scenario_id: number;
+  lat: number;
+  lng: number;
+  accuracy_m: number | null;
+  reported_at: number;
+}
+
+export interface FogLitZoneRow {
+  scenario_id: string;
+  zone_label: string;
+  lit: number;  // 1 = lit (visible to players), 0 = dark
+  updated_at: number;
+}
+
+export interface MicrochatMessageRow {
+  id: number;
+  scenario_id: number;
+  from_id: string;  // actor_id as string, or 'M'
+  to_id: string;    // actor_id as string, or 'M'
+  ciphertext: string; // "<iv_b64url>:<ct_b64url>" AES-GCM
+  delivered: number;
+  created_at: number;
+}
+
 // --- Phase 2: Geofence + Push ---
 
 export interface GeofenceZoneRow {
@@ -248,6 +291,32 @@ export interface PushSubscribeRequest {
   };
 }
 
+export interface MicrochatSendRequest {
+  /** actor_id as string, or 'M' */
+  to_id: string;
+  /** AES-GCM encrypted message: "<iv_b64url>:<ciphertext_b64url>" */
+  ciphertext: string;
+}
+
+export interface PlayerLocationRequest {
+  lat: number;
+  lng: number;
+  accuracy_m?: number;
+  /** Identifier for the player; defaults to auth callsign if omitted */
+  player_id?: string;
+}
+
+export interface ScenarioBeatRequest {
+  scenario_id: number;
+  title: string;
+  description?: string;
+  lat?: number;
+  lng?: number;
+  trigger_radius_m?: number;
+  event_type?: string;
+  beat_seq?: number;
+}
+
 export interface DeadDropRequest {
   lane_id: string;
   label: string;
@@ -279,6 +348,12 @@ export type WSMessageType =
   | 'geofence_trigger' // actor entered/exited a geofence zone
   | 'deadman_alert'    // actor missed heartbeat deadline
   | 'escalation'       // escalation tier change
+  | 'actor_message'    // Phase 3: microchat (actor ↔ M, encrypted)
+  | 'actor_message_ack'// Phase 3: microchat delivery confirmation
+  | 'beat_unlock'      // Phase 3: scenario beat auto-triggered
+  | 'player_location'  // Phase 3: player GPS update (M-only)
+  | 'fog_update'       // Phase 3: fog of war zone toggled
+  | 'decoy_ping'       // Phase 3: false ping — actors only, NOT in event log
   | 'ping'
   | 'pong';
 
@@ -286,6 +361,16 @@ export interface WSMessage {
   type: WSMessageType;
   data: unknown;
   timestamp: number;
+  /**
+   * Routing audience for ScenarioRoom broadcast.
+   * Default: 'all' — sent to every connected WebSocket.
+   * 'actors'    — sent only to red/blue team connections.
+   * 'directors' — sent only to director connections.
+   * 'target'    — sent only to target_actor_id + all directors.
+   */
+  audience?: 'all' | 'actors' | 'directors' | 'target';
+  /** Used when audience === 'target': the actor_id to route to (plus all directors). */
+  target_actor_id?: number;
 }
 
 // --- Auth Context (attached by middleware) ---

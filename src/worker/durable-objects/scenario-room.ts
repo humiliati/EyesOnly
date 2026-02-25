@@ -122,12 +122,28 @@ export class ScenarioRoom implements DurableObject {
   /**
    * Broadcast a message to all connected WebSockets.
    * Optionally exclude one (e.g., the sender).
+   * Respects `message.audience` for targeted routing:
+   *  - 'actors'    → only red/blue team connections
+   *  - 'directors' → only director connections
+   *  - 'target'    → only the target_actor_id + all directors
+   *  - 'all' / undefined → everyone (default)
    */
   private broadcast(message: WSMessage, exclude?: WebSocket): void {
     const payload = JSON.stringify(message);
+    const audience = message.audience ?? 'all';
+    const targetActorId = (message as any).target_actor_id as number | undefined;
 
     for (const [ws, client] of this.clients) {
       if (ws === exclude) continue;
+
+      // Audience-based routing
+      if (audience === 'actors' && client.role === 'director') continue;
+      if (audience === 'directors' && client.role !== 'director') continue;
+      if (audience === 'target') {
+        // Send to the specific target actor AND all directors
+        if (client.role !== 'director' && client.actorId !== targetActorId) continue;
+      }
+
       try {
         ws.send(payload);
       } catch {

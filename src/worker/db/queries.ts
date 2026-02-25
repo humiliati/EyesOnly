@@ -610,3 +610,174 @@ export async function listActiveScenarios(db: D1Database): Promise<Array<{ id: n
     .all<{ id: number; name: string }>();
   return result.results;
 }
+
+// --- Scenario Beats (Phase 3) ---
+
+import type {
+  ScenarioBeatRow,
+  PlayerLocationRow,
+  FogLitZoneRow,
+  MicrochatMessageRow,
+} from '../../shared/types';
+
+export async function listScenarioBeats(db: D1Database, scenarioId: number): Promise<ScenarioBeatRow[]> {
+  const result = await db
+    .prepare('SELECT * FROM scenario_beats WHERE scenario_id = ? ORDER BY beat_seq ASC')
+    .bind(scenarioId)
+    .all<ScenarioBeatRow>();
+  return result.results;
+}
+
+export async function getActiveScenarioBeats(db: D1Database, scenarioId: number): Promise<ScenarioBeatRow[]> {
+  const result = await db
+    .prepare('SELECT * FROM scenario_beats WHERE scenario_id = ? AND auto_advance = 1 AND unlocked_at IS NULL AND lat IS NOT NULL AND lng IS NOT NULL ORDER BY beat_seq ASC')
+    .bind(scenarioId)
+    .all<ScenarioBeatRow>();
+  return result.results;
+}
+
+export async function createScenarioBeat(
+  db: D1Database,
+  scenarioId: number,
+  title: string,
+  opts: {
+    description?: string;
+    lat?: number;
+    lng?: number;
+    trigger_radius_m?: number;
+    event_type?: string;
+    beat_seq?: number;
+  } = {},
+): Promise<ScenarioBeatRow> {
+  const result = await db
+    .prepare(
+      `INSERT INTO scenario_beats
+         (scenario_id, title, description, lat, lng, trigger_radius_m, event_type, beat_seq, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
+    )
+    .bind(
+      scenarioId,
+      title,
+      opts.description ?? null,
+      opts.lat ?? null,
+      opts.lng ?? null,
+      opts.trigger_radius_m ?? 100,
+      opts.event_type ?? 'beat_unlock',
+      opts.beat_seq ?? 0,
+      Date.now(),
+    )
+    .first<ScenarioBeatRow>();
+  return result!;
+}
+
+export async function deleteScenarioBeat(db: D1Database, id: number): Promise<void> {
+  await db.prepare('DELETE FROM scenario_beats WHERE id = ?').bind(id).run();
+}
+
+export async function unlockScenarioBeat(db: D1Database, id: number): Promise<void> {
+  await db.prepare('UPDATE scenario_beats SET unlocked_at = ? WHERE id = ?').bind(Date.now(), id).run();
+}
+
+// --- Player Locations (Phase 3) ---
+
+export async function upsertPlayerLocation(
+  db: D1Database,
+  playerId: string,
+  scenarioId: number,
+  lat: number,
+  lng: number,
+  accuracyM?: number,
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO player_locations (player_id, scenario_id, lat, lng, accuracy_m, reported_at)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT (player_id, scenario_id) DO UPDATE SET
+         lat=excluded.lat, lng=excluded.lng, accuracy_m=excluded.accuracy_m, reported_at=excluded.reported_at`,
+    )
+    .bind(playerId, scenarioId, lat, lng, accuracyM ?? null, Date.now())
+    .run();
+}
+
+export async function getPlayerLocations(db: D1Database, scenarioId: number): Promise<PlayerLocationRow[]> {
+  const result = await db
+    .prepare('SELECT * FROM player_locations WHERE scenario_id = ? ORDER BY reported_at DESC')
+    .bind(scenarioId)
+    .all<PlayerLocationRow>();
+  return result.results;
+}
+
+// --- Fog of War (Phase 3) ---
+
+export async function listFogZones(db: D1Database, scenarioId: number): Promise<FogLitZoneRow[]> {
+  const result = await db
+    .prepare("SELECT * FROM fog_lit_zones WHERE scenario_id = ? ORDER BY zone_label ASC")
+    .bind(String(scenarioId))
+    .all<FogLitZoneRow>();
+  return result.results;
+}
+
+export async function upsertFogZone(
+  db: D1Database,
+  scenarioId: number,
+  zoneLabel: string,
+  lit: boolean,
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO fog_lit_zones (scenario_id, zone_label, lit, updated_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT (scenario_id, zone_label) DO UPDATE SET lit=excluded.lit, updated_at=excluded.updated_at`,
+    )
+    .bind(String(scenarioId), zoneLabel, lit ? 1 : 0, Date.now())
+    .run();
+}
+
+export async function deleteFogZone(db: D1Database, scenarioId: number, zoneLabel: string): Promise<void> {
+  await db
+    .prepare('DELETE FROM fog_lit_zones WHERE scenario_id = ? AND zone_label = ?')
+    .bind(String(scenarioId), zoneLabel)
+    .run();
+}
+
+// --- Microchat (Phase 3) ---
+
+export async function insertMicrochatMessage(
+  db: D1Database,
+  scenarioId: number,
+  fromId: string,
+  toId: string,
+  ciphertext: string,
+): Promise<MicrochatMessageRow> {
+  const result = await db
+    .prepare(
+      `INSERT INTO microchat_messages (scenario_id, from_id, to_id, ciphertext, created_at)
+       VALUES (?, ?, ?, ?, ?) RETURNING *`,
+    )
+    .bind(scenarioId, fromId, toId, ciphertext, Date.now())
+    .first<MicrochatMessageRow>();
+  return result!;
+}
+
+export async function getMicrochatMessages(
+  db: D1Database,
+  scenarioId: number,
+  actorId: string,
+  limit: number = 30,
+): Promise<MicrochatMessageRow[]> {
+  // Return messages where actor is either sender or recipient (includes M↔actor thread)
+  const result = await db
+    .prepare(
+      `SELECT * FROM microchat_messages
+       WHERE scenario_id = ? AND (from_id = ? OR to_id = ? OR from_id = 'M' OR to_id = 'M')
+         AND (from_id = ? OR to_id = ? OR from_id = 'M' OR to_id = 'M')
+       ORDER BY created_at DESC LIMIT ?`,
+    )
+    .bind(scenarioId, actorId, actorId, actorId, actorId, limit)
+    .all<MicrochatMessageRow>();
+  return result.results.reverse();
+}
+
+export async function markMicrochatDelivered(db: D1Database, id: number): Promise<void> {
+  await db.prepare('UPDATE microchat_messages SET delivered = 1 WHERE id = ?').bind(id).run();
+}

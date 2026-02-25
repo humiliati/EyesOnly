@@ -85,20 +85,49 @@
 
 ---
 
-## 🔲 TODO — Phase 3 (Long-Term / Strategic)
+## 🔲 TODO — Phase 3 (Long-Term / Strategic) ← NOW SHIPPED
 
 ### Actor App
+- [x] **Microchat** — encrypted actor ↔ M text channel visible only on watch
+  - `actor_message` WS event type with `audience: 'target'` routing
+  - AES-GCM client-side encryption (key derived from scenario ID via PBKDF2)
+  - Delivery confirmation (`POST /api/ops/microchat/:id/ack` → `actor_message_ack` WS)
+  - Watch app: floating 💬 FAB + full-screen chat panel with compose + history + unread badge
+  - M console: per-actor chat thread viewer + send panel in MICROCHAT section
 - [ ] **Native companion app** — Wear OS app using WebView or native Kotlin wrapping `/ops/watch/`
+  - See `docs/NATIVE_COMPANION_GUIDE.md` for implementation roadmap
 - [ ] **Apple Watch app** — WatchKit + shared iOS app
+  - See `docs/NATIVE_COMPANION_GUIDE.md` for implementation roadmap
 - [ ] **Offline mesh mode** — WebRTC peer-to-peer data channel between actors for GPS sharing without server
-- [ ] **Microchat** — text channel between M and actor visible only on watch
-  - Needs: `actor_message` event type, encrypted payload, delivery confirmation
+  - Requires STUN/TURN server (add Cloudflare Calls or coturn)
+  - Watch app: `RTCPeerConnection` + `RTCDataChannel` for GPS broadcast
+  - Signaling: use existing WS channel for offer/answer/ICE exchange
 
 ### Scenario Engine Integration
-- [ ] **Geo-triggered beat unlock** — when player reaches `lat/lng` within N meters of beat location, auto-advance scenario state
-- [ ] **Player portal GPS reporting** — player terminal (`/`) optionally reports position (with consent) for M pressure modeling
-- [ ] **Fog of war** — players see partial map; M controls which zones are "lit" for players
-- [ ] **False ping injection** — M can inject a decoy ping visible only to actors (not logged in main event feed) to create confusion for surveillance actors
+- [x] **Geo-triggered beat unlock** — when player/actor reaches lat/lng within N meters of beat location, auto-advance scenario state
+  - `scenario_beats` table (migration 0006); beat CRUD at `GET/POST/DELETE /api/m/beats/:scenarioId`
+  - Beat-unlock check in `POST /api/ops/telemetry` (actor proximity) and `POST /api/ops/player-location` (player proximity)
+  - Manual unlock override: `POST /api/m/beats/:id/unlock`
+  - M console: SCENARIO BEATS panel with add/delete/manual-unlock
+  - WS: `beat_unlock` event broadcast to all → MOK WARNING `🎯`
+- [x] **Player portal GPS reporting** — player terminal (`/`) optionally reports position (with consent) for M pressure modeling
+  - Consent banner shown once after scenario join (stored in `localStorage`)
+  - `POST /api/ops/player-location` — stores in `player_locations` table; checks active beats
+  - M console: PLAYER POSITIONS section; player GPS dots (yellow) on Leaflet live map
+  - WS: `player_location` event type broadcast to directors only
+  - `window._EyesOnlyGPS.revoke()` / `.enable()` for runtime control
+- [x] **Fog of war** — M controls which zones are "lit" for players
+  - `fog_lit_zones` table (migration 0006)
+  - `GET/POST /api/m/fog/:scenarioId`, `DELETE /api/m/fog/:scenarioId/:zoneLabel`
+  - M console: FOG OF WAR section with per-zone LIT/DARK toggle
+  - WS: `fog_update` broadcast → MOK advisory `🌫`
+  - Player-side rendering: future work (no player map yet)
+- [x] **False ping injection** — M can inject a decoy ping visible only to actors (not logged in main event feed)
+  - `POST /api/m/decoy-ping` — `decoy_ping` WS message with `audience: 'actors'`
+  - ScenarioRoom: `audience` routing — actors only, directors never see decoy_pings
+  - NOT inserted into `events` table — leaves no log trace
+  - Watch app: handles `decoy_ping` exactly like a real `mping` (actors cannot distinguish)
+  - M console: DECOY PING section (actor ID + command + optional message) to create confusion for surveillance actors
 
 ---
 

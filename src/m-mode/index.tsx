@@ -1098,6 +1098,68 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
         </div>
       </div>
       <div class="ctrl-section">
+        <h3>SCENARIO BEATS</h3>
+        <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Geo-locked story beats — unlock when actor/player reaches radius.</div>
+        <div id="beats-list" style="max-height:120px;overflow-y:auto;font-size:9px;color:var(--text-dim);padding:2px 0;">Loading…</div>
+        <div style="margin-top:6px;">
+          <div class="ctrl-field"><label>TITLE</label><input type="text" id="ctrl-beat-title" placeholder="PM1 — Initial contact" /></div>
+          <div class="ctrl-row">
+            <div class="ctrl-field"><label>LAT</label><input type="number" id="ctrl-beat-lat" step="0.0001" placeholder="47.678" /></div>
+            <div class="ctrl-field"><label>LNG</label><input type="number" id="ctrl-beat-lng" step="0.0001" placeholder="-116.799" /></div>
+          </div>
+          <div class="ctrl-row">
+            <div class="ctrl-field"><label>RADIUS (m)</label><input type="number" id="ctrl-beat-radius" value="100" min="10" /></div>
+            <div class="ctrl-field"><label>SEQ</label><input type="number" id="ctrl-beat-seq" value="0" min="0" /></div>
+          </div>
+          <div class="ctrl-field"><label>EVENT TYPE</label><input type="text" id="ctrl-beat-event" placeholder="beat_unlock" /></div>
+          <button class="ctrl-btn" id="ctrl-add-beat">ADD BEAT</button>
+          <div id="ctrl-beat-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
+        </div>
+      </div>
+      <div class="ctrl-section">
+        <h3>FOG OF WAR</h3>
+        <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Toggle visibility of zones for player map.</div>
+        <div id="fog-list" style="max-height:100px;overflow-y:auto;font-size:9px;color:var(--text-dim);padding:2px 0;">Loading…</div>
+        <div style="margin-top:6px;display:flex;gap:4px;">
+          <input type="text" id="ctrl-fog-label" placeholder="zone_label or cell_id" style="flex:1;font-size:9px;" />
+          <button class="ctrl-btn" id="ctrl-fog-lit" style="font-size:8px;">LIT</button>
+          <button class="ctrl-btn amber" id="ctrl-fog-dark" style="font-size:8px;">DARK</button>
+        </div>
+        <div id="ctrl-fog-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
+      </div>
+      <div class="ctrl-section">
+        <h3>PLAYER POSITIONS</h3>
+        <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Players who consented to GPS sharing.</div>
+        <div id="player-positions-list" style="max-height:100px;overflow-y:auto;font-size:9px;color:var(--text-dim);padding:2px 0;">Loading…</div>
+        <button class="ctrl-btn" id="ctrl-refresh-players" style="margin-top:4px;font-size:8px;">REFRESH</button>
+      </div>
+      <div class="ctrl-section">
+        <h3>MICROCHAT</h3>
+        <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Encrypted one-to-one channel with actor watch app.</div>
+        <div class="ctrl-field"><label>ACTOR ID</label><input type="number" id="ctrl-chat-actor-id" placeholder="actor id" /></div>
+        <div id="ctrl-chat-thread" style="max-height:100px;overflow-y:auto;font-size:9px;background:#060e06;border:1px solid var(--border);padding:4px;margin-bottom:4px;"></div>
+        <div class="ctrl-field"><label>MESSAGE</label><input type="text" id="ctrl-chat-msg" placeholder="Encrypted message…" maxlength="280" /></div>
+        <div style="display:flex;gap:4px;">
+          <button class="ctrl-btn" id="ctrl-chat-load" style="font-size:8px;">LOAD THREAD</button>
+          <button class="ctrl-btn amber" id="ctrl-chat-send" style="font-size:8px;">SEND</button>
+        </div>
+        <div id="ctrl-chat-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
+      </div>
+      <div class="ctrl-section">
+        <h3>DECOY PING</h3>
+        <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">False ping — actors only, NOT in event log.</div>
+        <div class="ctrl-field"><label>ACTOR ID</label><input type="number" id="ctrl-decoy-actor-id" placeholder="actor id" /></div>
+        <div class="ctrl-field"><label>COMMAND</label>
+          <select id="ctrl-decoy-cmd">
+            <option>SHADOW</option><option>HOLD</option><option>ENGAGE</option>
+            <option>MOVE</option><option>DROP</option><option>EXTRACT</option>
+          </select>
+        </div>
+        <div class="ctrl-field"><label>MSG (optional)</label><input type="text" id="ctrl-decoy-msg" placeholder="Decoy detail…" /></div>
+        <button class="ctrl-btn danger" id="ctrl-send-decoy">INJECT DECOY</button>
+        <div id="ctrl-decoy-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
+      </div>
+      <div class="ctrl-section">
         <h3>MAP</h3>
         <input type="file" id="ctrl-map-file" accept="image/*" style="display:none" />
         <button class="ctrl-btn" id="ctrl-map-upload">UPLOAD MAP IMAGE</button>
@@ -1190,6 +1252,26 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
   // Geofence list + add
   loadGeofences(session);
   document.getElementById('ctrl-add-geofence')?.addEventListener('click', () => addGeofence(session));
+
+  // Phase 3: Scenario beats
+  loadScenarioBeats(session);
+  document.getElementById('ctrl-add-beat')?.addEventListener('click', () => addScenarioBeat(session));
+
+  // Phase 3: Fog of war
+  loadFogZones(session);
+  document.getElementById('ctrl-fog-lit')?.addEventListener('click', () => setFogZone(session, true));
+  document.getElementById('ctrl-fog-dark')?.addEventListener('click', () => setFogZone(session, false));
+
+  // Phase 3: Player positions
+  loadPlayerPositions(session);
+  document.getElementById('ctrl-refresh-players')?.addEventListener('click', () => loadPlayerPositions(session));
+
+  // Phase 3: Microchat
+  document.getElementById('ctrl-chat-load')?.addEventListener('click', () => loadMicrochatThread(session));
+  document.getElementById('ctrl-chat-send')?.addEventListener('click', () => sendMicrochatToActor(session));
+
+  // Phase 3: Decoy ping
+  document.getElementById('ctrl-send-decoy')?.addEventListener('click', () => sendDecoyPing(session));
 
   // Map upload
   document.getElementById('ctrl-map-upload')!.addEventListener('click', () => document.getElementById('ctrl-map-file')!.click());
@@ -1776,6 +1858,22 @@ function connectWS(session: Session) {
           if (panelMode === 'actor' && cachedSession) renderRightPanel(cachedSession);
         } else if (data.type === 'state' && data.data?.frozen !== undefined) {
           mokSend('critical', data.data.frozen ? 'GAME FROZEN by command.' : 'Game UNFROZEN — resume ops.');
+        } else if (data.type === 'actor_message_ack') {
+          // Phase 3: delivery confirmation from actor
+          const md = data.data as any;
+          mokSend('advisory', `✓ Chat delivered to ${md?.callsign || 'actor'}.`);
+        } else if (data.type === 'beat_unlock') {
+          // Phase 3: story beat triggered
+          const bd = data.data as any;
+          mokSend('warning', `🎯 BEAT UNLOCKED — "${bd?.beat_title || 'unknown'}" (seq ${bd?.beat_seq ?? '?'})`);
+          loadEvents(session);
+        } else if (data.type === 'player_location') {
+          // Phase 3: player GPS update — refresh player layer on map
+          if (cachedSession) refreshPlayerLayer(cachedSession);
+        } else if (data.type === 'fog_update') {
+          // Phase 3: fog zone toggled
+          const fd = data.data as any;
+          mokSend('advisory', `🌫 Fog ${fd?.lit ? 'LIFTED' : 'DARKENED'}: zone "${fd?.zone_label}"`);
         }
       } catch {}
     };
@@ -1786,4 +1884,251 @@ function connectWS(session: Session) {
     };
     ws.onerror = () => ws.close();
   } catch {}
+}
+
+// ── Phase 3: Scenario Beats ────────────────────────────────────────
+
+async function loadScenarioBeats(session: Session) {
+  const listEl = document.getElementById('beats-list');
+  if (!listEl) return;
+  try {
+    const res = await mFetch(`/m/beats/${session.scenarioId}`, session);
+    if (!res.ok) { listEl.textContent = 'Error loading beats.'; return; }
+    const data = await res.json() as { beats: any[] };
+    const beats = data.beats || [];
+    if (!beats.length) { listEl.innerHTML = '<div style="color:var(--text-dim)">No beats defined.</div>'; return; }
+    listEl.innerHTML = beats.map((b: any) =>
+      `<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1a2a1a;padding:3px 0;">
+        <span style="color:${b.unlocked_at ? 'var(--accent)' : 'var(--text-dim)'}">
+          ${b.unlocked_at ? '🔓' : '🔒'} [${b.beat_seq}] ${b.title}
+          ${b.lat != null ? `<br><span style="font-size:8px;color:#444">${b.lat.toFixed(4)},${b.lng?.toFixed(4)} ±${b.trigger_radius_m}m</span>` : ''}
+        </span>
+        <span style="display:flex;gap:4px;">
+          ${!b.unlocked_at ? `<button class="ctrl-btn" style="font-size:7px;padding:1px 5px;" onclick="window._unlockBeat(${b.id})">UNLOCK</button>` : ''}
+          <button class="ctrl-btn danger" style="font-size:7px;padding:1px 5px;" onclick="window._deleteBeat(${b.id})">✕</button>
+        </span>
+      </div>`,
+    ).join('');
+  } catch { listEl.textContent = 'Error.'; }
+}
+
+async function addScenarioBeat(session: Session) {
+  const title   = (document.getElementById('ctrl-beat-title') as HTMLInputElement)?.value;
+  const lat     = parseFloat((document.getElementById('ctrl-beat-lat') as HTMLInputElement)?.value);
+  const lng     = parseFloat((document.getElementById('ctrl-beat-lng') as HTMLInputElement)?.value);
+  const radius  = parseFloat((document.getElementById('ctrl-beat-radius') as HTMLInputElement)?.value || '100');
+  const seq     = parseInt((document.getElementById('ctrl-beat-seq') as HTMLInputElement)?.value || '0', 10);
+  const evType  = (document.getElementById('ctrl-beat-event') as HTMLInputElement)?.value || 'beat_unlock';
+  const resultEl = document.getElementById('ctrl-beat-result');
+  if (!title) { if (resultEl) resultEl.textContent = 'Title required.'; return; }
+  try {
+    const res = await mFetch('/m/beats', session, {
+      method: 'POST',
+      body: JSON.stringify({ scenario_id: session.scenarioId, title, lat: isNaN(lat) ? undefined : lat, lng: isNaN(lng) ? undefined : lng, trigger_radius_m: radius, event_type: evType, beat_seq: seq }),
+    });
+    if (res.ok) {
+      if (resultEl) resultEl.textContent = 'Beat added.';
+      (document.getElementById('ctrl-beat-title') as HTMLInputElement).value = '';
+      loadScenarioBeats(session);
+    } else { if (resultEl) resultEl.textContent = 'Error.'; }
+  } catch { if (resultEl) resultEl.textContent = 'Error.'; }
+}
+
+// Expose beat actions to onclick handlers in the beats list
+(window as any)._unlockBeat = async (id: number) => {
+  if (!cachedSession) return;
+  await mFetch(`/m/beats/${id}/unlock`, cachedSession, { method: 'POST', body: '{}' });
+  loadScenarioBeats(cachedSession);
+  mokSend('directive', `Beat ${id} manually unlocked.`);
+};
+(window as any)._deleteBeat = async (id: number) => {
+  if (!cachedSession) return;
+  await mFetch(`/m/beats/${id}`, cachedSession, { method: 'DELETE' });
+  loadScenarioBeats(cachedSession);
+};
+
+// ── Phase 3: Fog of War ────────────────────────────────────────────
+
+async function loadFogZones(session: Session) {
+  const listEl = document.getElementById('fog-list');
+  if (!listEl) return;
+  try {
+    const res = await mFetch(`/m/fog/${session.scenarioId}`, session);
+    if (!res.ok) { listEl.textContent = 'Error.'; return; }
+    const data = await res.json() as { zones: any[] };
+    const zones = data.zones || [];
+    if (!zones.length) { listEl.innerHTML = '<div style="color:var(--text-dim)">No fog zones.</div>'; return; }
+    listEl.innerHTML = zones.map((z: any) =>
+      `<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1a2a1a;padding:2px 0;">
+        <span style="color:${z.lit ? 'var(--accent)' : '#555'};">${z.lit ? '☀' : '🌑'} ${z.zone_label}</span>
+        <button class="ctrl-btn ${z.lit ? 'amber' : ''}" style="font-size:7px;padding:1px 5px;"
+          onclick="window._toggleFog('${z.zone_label}',${!z.lit})">${z.lit ? 'DARK' : 'LIT'}</button>
+      </div>`,
+    ).join('');
+  } catch { listEl.textContent = 'Error.'; }
+}
+
+async function setFogZone(session: Session, lit: boolean) {
+  const label   = (document.getElementById('ctrl-fog-label') as HTMLInputElement)?.value?.trim();
+  const resultEl = document.getElementById('ctrl-fog-result');
+  if (!label) { if (resultEl) resultEl.textContent = 'Zone label required.'; return; }
+  try {
+    const res = await mFetch('/m/fog', session, {
+      method: 'POST',
+      body: JSON.stringify({ scenario_id: session.scenarioId, zone_label: label, lit }),
+    });
+    if (res.ok) { if (resultEl) resultEl.textContent = `Zone "${label}" set to ${lit ? 'LIT' : 'DARK'}.`; loadFogZones(session); }
+    else { if (resultEl) resultEl.textContent = 'Error.'; }
+  } catch { if (resultEl) resultEl.textContent = 'Error.'; }
+}
+
+(window as any)._toggleFog = (label: string, lit: boolean) => {
+  if (!cachedSession) return;
+  setFogZone(cachedSession, lit);
+  (document.getElementById('ctrl-fog-label') as HTMLInputElement | null)!.value = label;
+};
+
+// ── Phase 3: Player Positions ─────────────────────────────────────
+
+async function loadPlayerPositions(session: Session) {
+  const listEl = document.getElementById('player-positions-list');
+  if (!listEl) return;
+  try {
+    const res = await mFetch(`/m/player-locations/${session.scenarioId}`, session);
+    if (!res.ok) { listEl.textContent = 'Error.'; return; }
+    const data = await res.json() as { locations: any[] };
+    const locs = data.locations || [];
+    if (!locs.length) { listEl.innerHTML = '<div style="color:var(--text-dim)">No player positions reported.</div>'; return; }
+    const now = Date.now();
+    listEl.innerHTML = locs.map((loc: any) => {
+      const ageS = Math.round((now - loc.reported_at) / 1000);
+      const stale = ageS > 120;
+      return `<div style="display:flex;justify-content:space-between;border-bottom:1px solid #1a2a1a;padding:2px 0;color:${stale ? '#555' : 'var(--text-dim)'};">
+        <span>👤 ${loc.player_id}</span>
+        <span>${loc.lat?.toFixed(4)},${loc.lng?.toFixed(4)} · ${ageS}s</span>
+      </div>`;
+    }).join('');
+    refreshPlayerLayer(session, locs);
+  } catch { listEl.textContent = 'Error.'; }
+}
+
+/** Add/refresh player GPS dots on the Leaflet live map */
+function refreshPlayerLayer(session: Session, locs?: any[]) {
+  const mapObj = (window as any)._leafletMap;
+  if (!mapObj) return; // map not open
+  if (!locs) {
+    mFetch(`/m/player-locations/${session.scenarioId}`, session).then((r) => r.json()).then((d: any) => {
+      const locations = (d.locations || []) as any[];
+      renderPlayerDots(mapObj, locations);
+    }).catch(() => {});
+    return;
+  }
+  renderPlayerDots(mapObj, locs);
+}
+
+function renderPlayerDots(mapObj: any, locs: any[]) {
+  const L = (window as any).L;
+  if (!L) return;
+  if (!(mapObj as any)._playerMarkers) (mapObj as any)._playerMarkers = [];
+  (mapObj as any)._playerMarkers.forEach((m: any) => m.remove());
+  (mapObj as any)._playerMarkers = [];
+  const now = Date.now();
+  for (const loc of locs) {
+    if (loc.lat == null) continue;
+    const stale = (now - loc.reported_at) > 120000;
+    const marker = L.circleMarker([loc.lat, loc.lng], {
+      radius: 6, color: stale ? '#555' : '#ffcc00', fillColor: stale ? '#333' : '#ffcc00',
+      fillOpacity: 0.7, weight: 2,
+    }).bindTooltip(`👤 ${loc.player_id} (${Math.round((now - loc.reported_at) / 1000)}s)`).addTo(mapObj);
+    (mapObj as any)._playerMarkers.push(marker);
+  }
+}
+
+// ── Phase 3: Microchat (M side) ───────────────────────────────────
+
+async function loadMicrochatThread(session: Session) {
+  const actorId = parseInt((document.getElementById('ctrl-chat-actor-id') as HTMLInputElement)?.value, 10);
+  const threadEl = document.getElementById('ctrl-chat-thread');
+  const resultEl = document.getElementById('ctrl-chat-result');
+  if (!actorId) { if (resultEl) resultEl.textContent = 'Actor ID required.'; return; }
+  try {
+    const res = await mFetch(`/m/microchat/${actorId}`, session);
+    if (!res.ok) { if (threadEl) threadEl.textContent = 'Error.'; return; }
+    const data = await res.json() as { messages: any[] };
+    const msgs = data.messages || [];
+    if (!msgs.length) { if (threadEl) threadEl.innerHTML = '<div style="color:var(--text-dim);font-size:9px;">No messages.</div>'; return; }
+    if (threadEl) {
+      threadEl.innerHTML = msgs.map((m: any) => {
+        const from = m.from_id === 'M' ? '⬡ M' : `👤 ${m.from_id}`;
+        const ts   = new Date(m.created_at || Date.now()).toLocaleTimeString();
+        const col  = m.from_id === 'M' ? '#6666ff' : 'var(--accent)';
+        return `<div style="border-bottom:1px solid #1a2a1a;padding:2px 0;color:${col};font-size:8px;">
+          <span>[${ts}] ${from}:</span> <span style="color:var(--text-dim);">[encrypted ciphertext]</span>
+        </div>`;
+      }).join('');
+      threadEl.scrollTop = threadEl.scrollHeight;
+    }
+  } catch { if (threadEl) threadEl.textContent = 'Error.'; }
+}
+
+async function sendMicrochatToActor(session: Session) {
+  const actorId = parseInt((document.getElementById('ctrl-chat-actor-id') as HTMLInputElement)?.value, 10);
+  const msg     = (document.getElementById('ctrl-chat-msg') as HTMLInputElement)?.value?.trim();
+  const resultEl = document.getElementById('ctrl-chat-result');
+  if (!actorId || !msg) { if (resultEl) resultEl.textContent = 'Actor ID and message required.'; return; }
+  try {
+    // Derive shared encryption key (same logic as watch app)
+    const ciphertext = await encryptChatMsg(msg, session.scenarioId);
+    const res = await mFetch('/m/microchat', session, {
+      method: 'POST',
+      body: JSON.stringify({ actor_id: actorId, ciphertext }),
+    });
+    if (res.ok) {
+      if (resultEl) resultEl.textContent = 'Sent.';
+      (document.getElementById('ctrl-chat-msg') as HTMLInputElement).value = '';
+      loadMicrochatThread(session);
+    } else { if (resultEl) resultEl.textContent = 'Error.'; }
+  } catch { if (resultEl) resultEl.textContent = 'Error.'; }
+}
+
+async function encryptChatMsg(plaintext: string, scenarioId: number): Promise<string> {
+  const key = await deriveChatKey(scenarioId);
+  const iv  = crypto.getRandomValues(new Uint8Array(12));
+  const ct  = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(plaintext));
+  return b64url(iv) + ':' + b64url(new Uint8Array(ct));
+}
+
+async function deriveChatKey(scenarioId: number): Promise<CryptoKey> {
+  const material = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode('eyesonly-chat-v1:' + scenarioId),
+    { name: 'PBKDF2' }, false, ['deriveKey'],
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: new TextEncoder().encode('eowatch'), iterations: 5000, hash: 'SHA-256' },
+    material, { name: 'AES-GCM', length: 256 }, false, ['encrypt'],
+  );
+}
+
+function b64url(buf: Uint8Array): string {
+  return btoa(String.fromCharCode(...buf)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+// ── Phase 3: Decoy Ping ────────────────────────────────────────────
+
+async function sendDecoyPing(session: Session) {
+  const actorId = parseInt((document.getElementById('ctrl-decoy-actor-id') as HTMLInputElement)?.value, 10);
+  const cmd     = (document.getElementById('ctrl-decoy-cmd') as HTMLElement as unknown as HTMLSelectElement)?.value;
+  const msg     = (document.getElementById('ctrl-decoy-msg') as HTMLInputElement)?.value;
+  const resultEl = document.getElementById('ctrl-decoy-result');
+  if (!actorId || !cmd) { if (resultEl) resultEl.textContent = 'Actor ID and command required.'; return; }
+  try {
+    const res = await mFetch('/m/decoy-ping', session, {
+      method: 'POST',
+      body: JSON.stringify({ actor_id: actorId, command: cmd, message: msg }),
+    });
+    if (res.ok) {
+      if (resultEl) resultEl.textContent = `Decoy ${cmd} injected → actor ${actorId} (not logged).`;
+      mokSend('directive', `🎭 Decoy ping ${cmd} sent to actor ${actorId}.`);
+    } else { if (resultEl) resultEl.textContent = 'Error.'; }
+  } catch { if (resultEl) resultEl.textContent = 'Error.'; }
 }
