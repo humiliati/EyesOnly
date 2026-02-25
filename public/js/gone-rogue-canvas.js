@@ -264,10 +264,7 @@ const CanvasRenderer = (function() {
           this.ctx.fillRect(pixelX, pixelY, this.cellSize, this.cellSize);
         }
 
-        // Render light source glow if tile has a light source
-        if (light.sources && light.sources.length > 0 && light.intensity > 0.6) {
-          this._renderLightGlow(x, y, light);
-        }
+        // (Light source glows are now rendered as unified gradients below)
 
         // Render enemy sight cone as a red-tinted shadow overlay (darkens, not brightens)
         if (light.sightCone && light.sightCone > 0.01) {
@@ -277,38 +274,81 @@ const CanvasRenderer = (function() {
         }
       }
     }
+
+    // Render unified source-centered light glows (smooth gradients from each source)
+    this._renderSourceGlows(grid);
   };
 
   /**
-   * Render light source glow effect
-   * @param {number} x - Grid X position
-   * @param {number} y - Grid Y position
-   * @param {Object} light - Light data from LightingSystem
+   * Render smooth light gradients emanating from actual source positions.
+   * Each light source gets one large radial gradient covering its full radius,
+   * instead of per-tile orbs.
    */
-  CanvasRenderer.prototype._renderLightGlow = function(x, y, light) {
-    var centerX = (x + 0.5) * this.cellSize;
-    var centerY = (y + 0.5) * this.cellSize;
-    var radius = this.cellSize * 0.4;
+  CanvasRenderer.prototype._renderSourceGlows = function(grid) {
+    if (typeof LightingSystem === 'undefined' || !LightingSystem.getLightSources) return;
 
-    // Create radial gradient for glow
-    var gradient = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+    var sources = LightingSystem.getLightSources();
+    if (!sources || sources.length === 0) return;
 
-    // Parse light color
-    var r = parseInt(light.color.substr(1, 2), 16);
-    var g = parseInt(light.color.substr(3, 2), 16);
-    var b = parseInt(light.color.substr(5, 2), 16);
+    var LIGHT_DEFS = LightingSystem.LIGHT_SOURCES;
+    var prevComp = this.ctx.globalCompositeOperation;
+    this.ctx.globalCompositeOperation = 'lighter';
 
-    var glowAlpha = light.intensity * 0.3;
-    gradient.addColorStop(0, 'rgba(' + r + ',' + g + ',' + b + ',' + glowAlpha + ')');
-    gradient.addColorStop(1, 'rgba(' + r + ',' + g + ',' + b + ',0)');
+    var originX = this._worldOriginX || 0;
+    var originY = this._worldOriginY || 0;
 
-    this.ctx.fillStyle = gradient;
-    this.ctx.fillRect(
-      centerX - radius,
-      centerY - radius,
-      radius * 2,
-      radius * 2
-    );
+    for (var i = 0; i < sources.length; i++) {
+      var src = sources[i];
+      // Skip sight cones — those are rendered as red overlays per tile
+      if (src.type === 'SIGHT_CONE') continue;
+
+      // Look up the light definition for radius and color
+      var def = LIGHT_DEFS[src.type];
+      if (!def) continue;
+
+      // Convert world position to canvas pixel position
+      var screenX = (src.x - originX + 0.5) * this.cellSize;
+      var screenY = (src.y - originY + 0.5) * this.cellSize;
+
+      // Radius in pixels — covers the full light radius in tile units
+      var radiusPx = def.radius * this.cellSize;
+
+      // Skip sources off-screen
+      if (screenX + radiusPx < 0 || screenX - radiusPx > this.width * this.cellSize) continue;
+      if (screenY + radiusPx < 0 || screenY - radiusPx > this.height * this.cellSize) continue;
+
+      // Parse light color
+      var color = def.color || '#ffffff';
+      var r = parseInt(color.substr(1, 2), 16);
+      var g = parseInt(color.substr(3, 2), 16);
+      var b = parseInt(color.substr(5, 2), 16);
+
+      // Apply flicker variance
+      var intensityMod = def.intensity;
+      if (def.flickerRate > 0 && src.flickerPhase !== undefined) {
+        var flicker = Math.sin(src.flickerPhase * 0.1) * def.flickerRate;
+        intensityMod = Math.max(0.1, intensityMod + flicker);
+      }
+
+      var alpha = intensityMod * 0.25;
+
+      // Create one large radial gradient centered on the light source
+      var gradient = this.ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, radiusPx);
+      gradient.addColorStop(0.0, 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')');
+      gradient.addColorStop(0.3, 'rgba(' + r + ',' + g + ',' + b + ',' + (alpha * 0.6) + ')');
+      gradient.addColorStop(0.7, 'rgba(' + r + ',' + g + ',' + b + ',' + (alpha * 0.2) + ')');
+      gradient.addColorStop(1.0, 'rgba(' + r + ',' + g + ',' + b + ',0)');
+
+      this.ctx.fillStyle = gradient;
+      this.ctx.fillRect(
+        screenX - radiusPx,
+        screenY - radiusPx,
+        radiusPx * 2,
+        radiusPx * 2
+      );
+    }
+
+    this.ctx.globalCompositeOperation = prevComp;
   };
 
   /**

@@ -1051,62 +1051,11 @@
   filter: brightness(1.2) saturate(1.1);
 }
 
-/* Light source indicators */
+/* Light source indicators — orb pseudo-elements removed.
+   Lighting is now rendered as smooth canvas gradients from source positions.
+   DOM fallback relies only on the brightness filter classes above. */
 .cell-light-source {
   position: relative;
-}
-
-.cell-light-source::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 150%;
-  height: 150%;
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: -1;
-  opacity: 0.6;
-  animation: light-pulse 2s ease-in-out infinite;
-}
-
-/* Biome-specific light colors */
-.light-monitor::after {
-  background: radial-gradient(circle, rgba(74, 144, 226, 0.4) 0%, transparent 70%);
-}
-
-.light-bulb::after {
-  background: radial-gradient(circle, rgba(255, 255, 221, 0.5) 0%, transparent 70%);
-}
-
-.light-fire::after {
-  background: radial-gradient(circle, rgba(255, 102, 0, 0.5) 0%, transparent 70%);
-  animation: fire-flicker 0.3s ease-in-out infinite;
-}
-
-.light-lava::after {
-  background: radial-gradient(circle, rgba(255, 51, 0, 0.6) 0%, transparent 70%);
-  animation: lava-pulse 1.5s ease-in-out infinite;
-}
-
-.light-purple::after {
-  background: radial-gradient(circle, rgba(153, 51, 255, 0.4) 0%, transparent 70%);
-}
-
-.light-robot::after {
-  background: radial-gradient(circle, rgba(0, 255, 170, 0.4) 0%, transparent 70%);
-}
-
-@keyframes light-pulse {
-  0%, 100% {
-    opacity: 0.5;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  50% {
-    opacity: 0.8;
-    transform: translate(-50%, -50%) scale(1.1);
-  }
 }
 
 @keyframes fire-flicker {

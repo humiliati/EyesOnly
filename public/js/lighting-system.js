@@ -661,6 +661,7 @@ const LightingSystem = (function() {
     generateBiomeLights: generateBiomeLights,
     updateEnemyLights: updateEnemyLights,
     updatePlayerLight: updatePlayerLight,
+    getLightSources: function() { return _lightSources; },
     LIGHT_SOURCES: LIGHT_SOURCES,
     BIOME_LIGHTING: BIOME_LIGHTING
   };
