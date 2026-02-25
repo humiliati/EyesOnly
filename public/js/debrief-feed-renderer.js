@@ -269,9 +269,9 @@ const DebriefFeedRenderer = (function() {
       var filled = Math.max(0, Math.min(w, Math.round(pct * w)));
       var bar = '█'.repeat(filled) + '░'.repeat(w - filled);
 
-      // ultra-compact, no spaces: hp07/12[██░░░░]
-      var cur2 = String(Math.max(0, cur)).padStart(2, '0');
-      var max2 = String(Math.max(0, max)).padStart(2, '0');
+      // ultra-compact, no spaces: hp0/7[██░░░░]
+      var cur2 = String(Math.max(0, cur));
+      var max2 = String(Math.max(0, max));
       _debriefScreen.textContent = 'hp' + cur2 + '/' + max2 + '[' + bar + ']';
     } finally {
       _debriefScreen = savedScreen;

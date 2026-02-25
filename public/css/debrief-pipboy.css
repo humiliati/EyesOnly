@@ -39,3 +39,10 @@
 
 #debrief-screen.debrief-pulse-pos { animation: debriefPulsePos 260ms ease-out; }
 #debrief-screen.debrief-pulse-neg { animation: debriefPulseNeg 260ms ease-out; }
+
+/* Make RESOURCES/HP summary feel critical */
+#debrief-summary-resources { color: rgba(255, 90, 90, 0.95); opacity: 0.92; }
+
+/* Signal row does not need a label if it visually reads as battery signal */
+.debrief-nav-row[data-section="battery"] .debrief-row-label { display: none; }
+.debrief-nav-row[data-section="battery"] .debrief-row-summary { text-align: left; }

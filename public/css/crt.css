@@ -1611,6 +1611,8 @@ body.amber-mode #scanlines::after {
     background: rgba(0,0,0,0.18);
     backdrop-filter: blur(1px);
     border-radius: 10px;
+    padding: 4px;
+    gap: 4px;
   }
 
   body.mode-gone-rogue .debrief-window .debrief-label,
@@ -1691,6 +1693,21 @@ body.amber-mode #scanlines::after {
     height: 100%;
     padding: 2px;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  body.gone-rogue-active #rogue-grid-mobile {
+    margin: 0 !important;
+    order: 1;
+  }
+
+  body.gone-rogue-active #input-line,
+  body.gone-rogue-active #mobile-input {
+    order: 2;
   }
 
   /* Hide terminal text chrome in portrait rogue; the grid is the product surface */
