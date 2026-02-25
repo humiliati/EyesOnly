@@ -1,15 +1,23 @@
 /* ============================================================
-   EYES ONLY - AWOL Button: Difficulty Tier Selector
-   Manages Gone Rogue difficulty tiers with authentication checks
+   EYES ONLY - AWOL Button: UBER Difficulty Selector + M Ping
+   Manages Gone Rogue UBER difficulty (separate from biome tiers) and provides
+   a canonical "check in with M" surface for the ARG (/m console).
+
+   NOTE: M ping + response pressure is currently placeholders/TODOs; UI is
+   canonized per stakeholders.
    ============================================================ */
 
 const AWOLDifficulty = (function () {
   'use strict';
 
   var STORAGE_KEY = 'eyesonly_awol_difficulty';
-  var _currentTier = 1; // Default to T1 (Standard) for new users
+  var _currentTier = 1; // Internally 1..3 maps to Uber 0..2
   var _tooltipVisible = false;
-  var _completedTiers = []; // Array of completed tiers for progression check
+  var _completedTiers = []; // Internal completion gates (Tier 1 unlocks Tier 2, etc.)
+
+  // TODO(stakeholder): real M ping state machine sourced from /m console.
+  // For now, treat "logged in" as "M link active".
+  var _lastMPingAt = 0;
 
   /**
    * Initialize AWOL button and difficulty selector
@@ -73,6 +81,16 @@ const AWOLDifficulty = (function () {
       e.stopPropagation();
       _toggleTooltip();
     });
+
+    // Ping-back handler (placeholder)
+    var pingBtn = document.getElementById('awol-pingback-btn');
+    if (pingBtn && !pingBtn._bound) {
+      pingBtn._bound = true;
+      pingBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        _pingMConsole();
+      });
+    }
 
     // Close tooltip when clicking outside
     document.addEventListener('click', function (e) {
@@ -152,11 +170,22 @@ const AWOLDifficulty = (function () {
   function _updateTooltipContent() {
     var isLoggedIn = _checkUserLoggedIn();
 
-    // Update M status
+    // Update M status (placeholder: login == link active)
     var mStatusValue = document.getElementById('m-status-value');
+    var pingBtn = document.getElementById('awol-pingback-btn');
     if (mStatusValue) {
-      mStatusValue.textContent = isLoggedIn ? 'ACTIVE' : 'OFFLINE';
-      mStatusValue.style.color = isLoggedIn ? '#33ff33' : '#ff3333';
+      if (isLoggedIn) {
+        // TODO: replace with /m ping status + last-response state
+        mStatusValue.textContent = _lastMPingAt ? ('PINGED ' + _formatAgeMs(Date.now() - _lastMPingAt)) : 'READY';
+        mStatusValue.style.color = '#00FFA6';
+      } else {
+        mStatusValue.textContent = 'OFFLINE';
+        mStatusValue.style.color = '#ff3333';
+      }
+    }
+
+    if (pingBtn) {
+      pingBtn.disabled = !isLoggedIn;
     }
 
     // Update difficulty button states
@@ -237,16 +266,15 @@ const AWOLDifficulty = (function () {
     }
 
     // Notify via MOK interjection
-    var tierNames = ['', 'STANDARD', 'ELITE', 'HELL'];
     var messages = [
       '',
-      'Difficulty set to Uber 0 (Standard). Recommended for new operatives.',
-      'Difficulty set to Uber 1 (Elite). Enemy awareness and lethality increased.',
-      'Difficulty set to Uber 2 (Hell). Maximum threat. Extraction not guaranteed.'
+      'UBER 0 selected (baseline).',
+      'UBER 1 selected (hard). Increased enemy awareness + lethality.',
+      'UBER 2 selected (extreme). Maximum threat. Extraction not guaranteed.'
     ];
 
     if (typeof updateMokInterjection === 'function' && tier >= 1 && tier <= 3) {
-      updateMokInterjection('[AWOL] ' + messages[tier]);
+      updateMokInterjection('[AWOL] ' + messages[tier] + ' (Applies on next spawned floor/run; TODO enforce)');
     }
 
     // Hide tooltip after selection
@@ -288,7 +316,7 @@ const AWOLDifficulty = (function () {
       if (typeof updateMokInterjection === 'function') {
         var nextTier = tier + 1;
         var uberLevel = tier - 1;
-        var message = '[AWOL] Uber ' + uberLevel + ' COMPLETED! ';
+        var message = '[AWOL] UBER ' + uberLevel + ' COMPLETED! ';
         if (nextTier <= 3) {
           message += 'Uber ' + (uberLevel + 1) + ' now available.';
         } else {
@@ -310,10 +338,37 @@ const AWOLDifficulty = (function () {
    * Reset progress (for testing)
    */
   function resetProgress() {
-    _currentTier = 0;
+    _currentTier = 1;
     _completedTiers = [];
+    _lastMPingAt = 0;
     _saveState();
     _updateUI();
+  }
+
+  function _formatAgeMs(ms) {
+    ms = Math.max(0, Number(ms || 0));
+    var s = Math.round(ms / 1000);
+    if (s < 60) return s + 's';
+    var m = Math.round(s / 60);
+    if (m < 60) return m + 'm';
+    var h = Math.round(m / 60);
+    return h + 'h';
+  }
+
+  function _pingMConsole() {
+    _lastMPingAt = Date.now();
+    _saveState();
+    _updateUI();
+
+    // Placeholder behavior: open /m in a new tab.
+    // TODO(stakeholder): integrate actual ping/response pressure from /m console.
+    try {
+      window.open('/m', '_blank', 'noopener');
+    } catch (e0) {}
+
+    if (typeof updateMokInterjection === 'function') {
+      updateMokInterjection('[M] PING SENT — Awaiting response. (/m)');
+    }
   }
 
   // Public API

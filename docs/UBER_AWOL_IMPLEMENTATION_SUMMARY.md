@@ -1,7 +1,13 @@
-# AWOL Button: Difficulty Tier Selector Implementation
+# AWOL Button: UBER Difficulty + M Ping (Implementation Summary)
 
 ## Overview
-Implemented a difficulty tier selector for Gone Rogue, accessed via the AWOL button in the MOK header.
+The AWOL button is a **dual-purpose** surface:
+1) **M Ping**: a canonical prompt to check in with **M** for the IRL ARG experience (via `/m`).
+2) **UBER difficulty selector**: sets the run/floor difficulty **without changing biome packs**.
+
+> Note: *tiers describe biome packs*, so the player-facing selector is **UBER 0/1/2**. Internally the legacy tier index (1..3) is still used in code paths for now.
+
+**Status:** M ping/pressure loop is currently placeholders + TODOs; the UI is canonized per stakeholder.
 
 ## Visual Layout
 
@@ -14,12 +20,13 @@ Implemented a difficulty tier selector for Gone Rogue, accessed via the AWOL but
                               ┌─────────────────────────────┐
                               │ MISSION PARAMETERS          │
                               ├─────────────────────────────┤
-                              │ Last Check-in with M:       │
-                              │ ACTIVE (green)              │
+                              │ M /ops link status:         │
+                              │ READY / OFFLINE / PINGED…   │
+                              │ [M] PING BACK               │
                               │                             │
-                              │ Gone Rogue Difficulty:      │
+                              │ UBER (difficulty):          │
                               │ ┌────┐ ┌────┐ ┌────┐       │
-                              │ │ T1 │ │ T2 │ │ T3 │       │
+                              │ │ U0 │ │ U1 │ │ U2 │       │
                               │ └────┘ └────┘ └────┘       │
                               │ (green)(yellow)(red)        │
                               └─────────────────────────────┘
@@ -33,11 +40,16 @@ Implemented a difficulty tier selector for Gone Rogue, accessed via the AWOL but
 - **Red (●)**: T3 - Extreme difficulty selected
 - **Cycling**: No tier selected (default animation)
 
-### Difficulty Button States
-- **T1 (Green)**: Always available for logged-in users
-- **T2 (Yellow)**: Unlocked after completing T1 (floor 30)
-- **T3 (Red)**: Unlocked after completing T2 (floor 30)
+### UBER Button States
+- **U0 (Green)**: Always available for logged-in users
+- **U1 (Yellow)**: Unlocked after completing U0 (defeat the last boss on Uber 0)
+- **U2 (Red)**: Unlocked after completing U1 (defeat the last boss on Uber 1)
 - **Disabled (Gray)**: Not yet unlocked or not logged in
+
+### Downgrading
+- Player may select a **lower UBER** while currently in a higher UBER.
+- **Expected behavior:** the *next spawned floor* should use the lower UBER difficulty.
+- **TODO:** enforce this by storing a `desiredUber` / `pendingUber` and applying it on next floor generation / run start (not instant biome teleport).
 
 ## Difficulty Multipliers
 
