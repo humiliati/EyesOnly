@@ -402,6 +402,7 @@ const DebriefFeedController = (function() {
       html += row('status', '[' + abbrKeepFirst('status') + ']', 'debrief-summary-status', 'row-status');
       html += row('mok', '[' + abbrKeepFirst('mok') + ']', 'debrief-summary-mok', 'row-mok');
       html += row('api', '[' + abbrKeepFirst('api') + ']', 'debrief-summary-api', 'row-api');
+      html += row('accessibility', '[' + abbrKeepFirst('accessibility') + ']', 'debrief-summary-accessibility', 'row-accessibility');
 
       html +=   '</div>';
       html += '</div>';
@@ -602,6 +603,59 @@ const DebriefFeedController = (function() {
         }
       } catch (eA0) {}
 
+      // Accessibility row: summary + interactive panel
+      // Toggle state persisted in localStorage so it survives re-renders.
+      try {
+        var accEl = document.getElementById('debrief-summary-accessibility');
+        if (accEl) {
+          var qsOn = (typeof localStorage !== 'undefined' && localStorage.getItem('eo:qs-ctrl') === '1');
+          accEl.textContent = qsOn ? 'qs-on' : 'qs-off';
+        }
+        var accPanel = document.getElementById('debrief-panel-accessibility');
+        if (accPanel && _rowExpanded.accessibility) {
+          var qsOn2 = (typeof localStorage !== 'undefined' && localStorage.getItem('eo:qs-ctrl') === '1');
+          var hcOn  = (typeof localStorage !== 'undefined' && localStorage.getItem('eo:hi-contrast') === '1');
+          var inner = '';
+          // HELP sub-row: link to /roguehelp accessibility guide
+          inner += '<div class="debrief-line acc-help">'
+            + '|_<a class="debrief-acc-link" href="/roguehelp" target="_blank" rel="noopener">[ HELP ]</a>'
+            + ' accessibility&nbsp;guide'
+            + '</div>';
+          // QuadStick controller toggle
+          inner += '<div class="debrief-line acc-toggle" id="debrief-acc-qs">'
+            + '|_QuadStick&nbsp;<button class="debrief-acc-btn" data-acc="qs-ctrl">'
+            + (qsOn2 ? '[ON]' : '[OFF]')
+            + '</button>'
+            + '</div>';
+          // High-contrast mode toggle
+          inner += '<div class="debrief-line acc-toggle" id="debrief-acc-hc">'
+            + '|_HiCntrst&nbsp;<button class="debrief-acc-btn" data-acc="hi-contrast">'
+            + (hcOn ? '[ON]' : '[OFF]')
+            + '</button>'
+            + '</div>';
+          accPanel.innerHTML = inner;
+
+          // Wire toggle buttons (re-wired each render, safe to call multiple times)
+          try {
+            accPanel.querySelectorAll('.debrief-acc-btn').forEach(function(btn) {
+              btn.addEventListener('click', function(ev) {
+                if (ev && ev.stopPropagation) ev.stopPropagation();
+                var key = 'eo:' + btn.getAttribute('data-acc');
+                var cur = (typeof localStorage !== 'undefined' && localStorage.getItem(key) === '1');
+                if (typeof localStorage !== 'undefined') localStorage.setItem(key, cur ? '0' : '1');
+                // Apply side-effects
+                if (btn.getAttribute('data-acc') === 'hi-contrast') {
+                  if (document.body) document.body.classList.toggle('acc-hi-contrast', !cur);
+                }
+                _renderResources(); // refresh row
+              });
+            });
+          } catch (eAB0) {}
+        } else if (accPanel) {
+          accPanel.innerHTML = '';
+        }
+      } catch (eACC0) {}
+
       // Signal summary (battery-driven pulse, 3-tier speed)
 
       // Signal summary (battery-driven pulse, 3-tier speed)
@@ -710,7 +764,7 @@ const DebriefFeedController = (function() {
 
       // Panels visibility
       try {
-        var ids = ['resources','ammo','signal','passives','status','mok','api'];
+        var ids = ['resources','ammo','signal','passives','status','mok','api','accessibility'];
         for (var ii = 0; ii < ids.length; ii++) {
           _setPanelVisible(ids[ii], !!_rowExpanded[ids[ii]]);
         }
