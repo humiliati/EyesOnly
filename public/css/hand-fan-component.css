@@ -15,9 +15,10 @@
   pointer-events: auto;
 }
 
-/* Combat mode - centered over STR window, nudged down 5px */
+/* Combat mode - centered over STR window, but biased downward so it doesn't
+   occlude enemy intent + STR header controls. */
 .hand-fan-container.hand-fan-combat {
-  top: calc(50% + 5px);
+  top: 70vh;
   left: 50%;
   transform: translate(-50%, -50%);
   width: 90vw;

@@ -765,10 +765,7 @@ const HandFanComponent = (function () {
 
       _clearTargetingVisuals(cardEl);
 
-      // Restore full combat window if we collapsed it during this drag
-      if (dragCollapse.collapsed && typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.maximize === 'function') {
-        STRCombatWindow.maximize();
-      }
+      var didDeployGroundEffect = false;
 
       // Release over enemy = play immediately (canonical hook)
       if (overEnemy && typeof GoneRogue !== 'undefined') {
@@ -829,9 +826,24 @@ const HandFanComponent = (function () {
             if (typeof TooltipSystem !== 'undefined') {
               TooltipSystem.showPersistent('🌋 DEPLOYED ' + (mapping.type || 'EFFECT') + ' @(' + gx + ',' + gy + ')', 1300);
             }
+
+            didDeployGroundEffect = true;
           }
         }
       } catch (e) {}
+
+      // Restore full combat window if we collapsed it during this drag.
+      // If we deployed a ground effect, leave the window minimized briefly so
+      // the player can see the map feedback/animation, then pop STR back.
+      if (dragCollapse.collapsed && typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.maximize === 'function') {
+        if (didDeployGroundEffect) {
+          setTimeout(function() {
+            try { STRCombatWindow.maximize(); } catch (e4) {}
+          }, 750);
+        } else {
+          STRCombatWindow.maximize();
+        }
+      }
     }
 
     function onCancel(ev) {
