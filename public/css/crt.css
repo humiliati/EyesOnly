@@ -1569,7 +1569,7 @@ body.amber-mode #scanlines::after {
     /* header is hidden; keep a small torso band for controls + debrief, but
        prioritize the game surface (legs). Use clamp to prevent dead space on
        tall phones and prevent collapse on tiny viewports. */
-    grid-template-rows: auto clamp(92px, 12vh, 140px) 1fr;
+    grid-template-rows: auto clamp(140px, 18vh, 240px) 1fr;
     gap: 6px;
   }
 
@@ -1592,7 +1592,7 @@ body.amber-mode #scanlines::after {
     border-radius: 0;
     overflow: hidden;
     /* Match the torso band allocation above */
-    height: clamp(92px, 12vh, 140px);
+    height: clamp(140px, 18vh, 240px);
     min-height: 0;
   }
 
