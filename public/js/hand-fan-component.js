@@ -945,6 +945,17 @@ const HandFanComponent = (function () {
         return;
       }
 
+      // If we queued a selection during an animation on pointerdown, suppress
+      // the subsequent click (otherwise it toggles twice and feels like
+      // triple-click is required).
+      var lastPtrSel = Number(cardEl.dataset.lastPtrSelectTs || 0);
+      if (lastPtrSel && Date.now() - lastPtrSel < 600) {
+        try { delete cardEl.dataset.lastPtrSelectTs; } catch (e0) {}
+        if (e && e.preventDefault) e.preventDefault();
+        if (e && e.stopPropagation) e.stopPropagation();
+        return;
+      }
+
       // Check if card is unaffordable
       if (cardEl.dataset.unaffordable === 'true') {
         // Shake animation for visual feedback
@@ -979,6 +990,8 @@ const HandFanComponent = (function () {
     cardEl.addEventListener('pointerdown', function(e) {
       if (_isAnimating) {
         // Don't drop the first click during repopulate; queue a selection.
+        // Also suppress the follow-on click event to avoid double-toggling.
+        try { cardEl.dataset.lastPtrSelectTs = String(Date.now()); } catch (e0) {}
         _toggleCardSelection(index);
         return;
       }
