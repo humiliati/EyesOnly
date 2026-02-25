@@ -25,6 +25,13 @@
   font-size: 0.9em;
 }
 
+/* Rogue expanded resources: no emojis, tighter rows, pipboy alignment */
+body.gone-rogue-active .debrief-feed-content .resource-icon { display: none !important; }
+body.gone-rogue-active .debrief-feed-content .resource-name { opacity: 0.92; }
+body.gone-rogue-active .debrief-feed-content .resource-row { padding: 1px 0; }
+body.gone-rogue-active .debrief-feed-content .resource-value { opacity: 0.75; }
+
+
 /* Resource pulse (monochrome glow bump) */
 @keyframes debriefPulsePos {
   0% { filter: brightness(1); }
@@ -41,7 +48,7 @@
 #debrief-screen.debrief-pulse-neg { animation: debriefPulseNeg 260ms ease-out; }
 
 /* Make RESOURCES/HP summary feel critical */
-#debrief-summary-resources { color: rgba(255, 90, 90, 0.95); opacity: 0.92; }
+#debrief-summary-resources { color: rgba(255, 70, 70, 0.95); opacity: 0.92; }
 
 /* Signal row does not need a label if it visually reads as battery signal */
 .debrief-nav-row[data-section="battery"] .debrief-row-label { display: none; }

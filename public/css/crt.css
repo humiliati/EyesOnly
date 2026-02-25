@@ -358,10 +358,13 @@ body.in-gone-rogue .debrief-window.expanded {
 }
 
 .debrief-label {
-  font-size: 0.82em;
-  letter-spacing: 0.08em;
+  font-size: 0.78em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--phosphor-dim);
+  margin: 0;
+  padding: 0;
+  line-height: 1.05;
 }
 
 .debrief-screen {
@@ -1532,7 +1535,7 @@ body.amber-mode #scanlines::after {
   body.gone-rogue-active #monitor-body {
     display: grid;
     grid-template-columns: 1fr;
-    grid-template-rows: auto 24vh 1fr; /* header hidden; torso + legs */
+    grid-template-rows: auto 18vh 1fr; /* header hidden; torso + legs */
     gap: 6px;
   }
 
