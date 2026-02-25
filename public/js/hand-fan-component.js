@@ -18,6 +18,7 @@ const HandFanComponent = (function () {
   var _targeting = {
     active: false,
     cardIndex: -1,
+    cardId: null,
     holdTimer: null,
     holdMs: 180,
     pointerId: null,
@@ -722,6 +723,7 @@ const HandFanComponent = (function () {
   function _beginHoldTargeting(cardEl, index, pointerId) {
     _targeting.active = true;
     _targeting.cardIndex = index;
+    _targeting.cardId = (_cards && _cards[index] && _cards[index].id) ? _cards[index].id : null;
     _targeting.pointerId = pointerId;
     _targeting.startedAt = Date.now();
 
@@ -809,8 +811,10 @@ const HandFanComponent = (function () {
 
       var overEnemy = _isEnemyUnderPointer(ev.clientX, ev.clientY);
       var idx = _targeting.cardIndex;
+      var draggedCardId = _targeting.cardId;
       _targeting.active = false;
       _targeting.cardIndex = -1;
+      _targeting.cardId = null;
       _targeting.pointerId = null;
 
       window.removeEventListener('pointermove', onMove, true);
@@ -864,13 +868,20 @@ const HandFanComponent = (function () {
               }
             }
 
-            // Consume card from loose inventory
-            if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getLooseInventory === 'function') {
+            // Consume the dragged card by id (safer than index; hand can mutate
+            // during drag due to round resolution / repopulate).
+            if (draggedCardId && typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getLooseInventory === 'function') {
               var loose = GAMESTATE.getLooseInventory();
-              if (Array.isArray(loose) && loose[idx]) {
-                loose.splice(idx, 1);
-                if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.updateCards === 'function') {
-                  HandFanComponent.updateCards(loose);
+              if (Array.isArray(loose)) {
+                var removeAt = -1;
+                for (var li = 0; li < loose.length; li++) {
+                  if (loose[li] && loose[li].id === draggedCardId) { removeAt = li; break; }
+                }
+                if (removeAt !== -1) {
+                  loose.splice(removeAt, 1);
+                  if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.updateCards === 'function') {
+                    HandFanComponent.updateCards(loose);
+                  }
                 }
               }
             }
@@ -904,6 +915,7 @@ const HandFanComponent = (function () {
 
       _targeting.active = false;
       _targeting.cardIndex = -1;
+      _targeting.cardId = null;
       _targeting.pointerId = null;
 
       window.removeEventListener('pointermove', onMove, true);
