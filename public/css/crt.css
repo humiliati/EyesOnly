@@ -1570,10 +1570,9 @@ body.amber-mode #scanlines::after {
     overflow: hidden;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-auto-rows: minmax(30px, auto);
+    grid-auto-rows: minmax(28px, auto);
     align-content: start;
-    gap: 4px;
-    overflow: auto;
+    gap: 3px;
   }
 
   body.mode-gone-rogue .control-buttons button,
@@ -1656,13 +1655,13 @@ body.amber-mode #scanlines::after {
   }
 
   .debrief-nav-row {
-    border: 1px solid rgba(28, 255, 155, 0.18);
-    border-radius: 6px;
-    padding: 4px 6px;
+    border: 0;
+    border-radius: 0;
+    padding: 1px 2px;
     font-family: 'Courier New', monospace;
     font-size: 11px;
     color: rgba(191, 255, 227, 0.95);
-    background: rgba(0, 0, 0, 0.32);
+    background: transparent;
     touch-action: none; /* drag-to-navigate */
     display: flex;
     align-items: center;
@@ -1671,9 +1670,9 @@ body.amber-mode #scanlines::after {
   }
 
   .debrief-nav-row.highlighted {
-    border-color: rgba(28, 255, 155, 0.55);
-    box-shadow: 0 0 10px rgba(28, 255, 155, 0.14);
-    background: rgba(28, 255, 155, 0.08);
+    border: 0;
+    box-shadow: none;
+    background: rgba(28, 255, 155, 0.06);
   }
 
   .debrief-mini-block {

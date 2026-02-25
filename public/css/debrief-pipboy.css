@@ -1,8 +1,16 @@
 /* Pip-boy-ish ASCII debrief row layout */
 .debrief-row-label {
   flex: 0 0 auto;
-  opacity: 0.92;
+  opacity: 0.55;
   color: currentColor;
+}
+
+/* Portrait mobile: hide macro labels for resources + ammo, keep PASSIVES/STATUS */
+@media (max-width: 767px) and (orientation: portrait) {
+  .debrief-nav-row.row-resources .debrief-row-label,
+  .debrief-nav-row.row-ammo .debrief-row-label {
+    display: none !important;
+  }
 }
 
 .debrief-row-panel {
@@ -32,8 +40,8 @@
 .debrief-row-summary {
   flex: 1 1 auto;
   text-align: right;
-  opacity: 0.8;
-  color: rgba(191, 255, 227, 0.85);
+  opacity: 0.92;
+  color: currentColor;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
