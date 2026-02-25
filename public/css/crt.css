@@ -1566,10 +1566,10 @@ body.amber-mode #scanlines::after {
   body.gone-rogue-active #monitor-body {
     display: grid;
     grid-template-columns: 1fr;
-    /* header is hidden; keep a small torso band for controls + debrief, but
-       prioritize the game surface (legs). Use clamp to prevent dead space on
-       tall phones and prevent collapse on tiny viewports. */
-    grid-template-rows: auto clamp(140px, 18vh, 240px) 1fr;
+    /* Header is hidden. The first row was previously "auto" but nothing was
+       assigned to it, so it became a phantom empty band. Keep it at 0.
+       Torso holds controls+debrief; legs holds the game surface. */
+    grid-template-rows: 0px clamp(140px, 18vh, 240px) 1fr;
     gap: 6px;
   }
 
@@ -1577,6 +1577,7 @@ body.amber-mode #scanlines::after {
   body.mode-gone-rogue #control-rail,
   body.in-gone-rogue #control-rail,
   body.gone-rogue-active #control-rail {
+    grid-row: 2;
     position: relative;
     left: auto;
     top: auto;
@@ -2062,7 +2063,13 @@ body.amber-mode #scanlines::after {
     --rogue-grid-portrait-scale: 1.28;
   }
 
+  /* Avoid fighting .combat-zoom-active (which sets transform on the container).
+     Scale the canvas inside the grid instead. */
   body.gone-rogue-active #rogue-grid-mobile {
+    transform: none !important;
+  }
+
+  body.gone-rogue-active #rogue-grid-mobile canvas {
     transform-origin: center;
     transform: scale(var(--rogue-grid-portrait-scale));
   }
