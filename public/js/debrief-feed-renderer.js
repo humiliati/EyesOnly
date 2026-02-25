@@ -262,11 +262,17 @@ const DebriefFeedRenderer = (function() {
     _debriefScreen = targetElement;
     try {
       var r = _getResources();
-      var html = '';
-      html += '<div class="debrief-feed-content summary">';
-      html += _renderResourceBar('HP', r.hp, r.maxHp, '', true);
-      html += '</div>';
-      _debriefScreen.innerHTML = html;
+      var cur = (r && typeof r.hp === 'number') ? r.hp : 0;
+      var max = (r && typeof r.maxHp === 'number') ? r.maxHp : 0;
+      var w = 6;
+      var pct = (max > 0) ? (cur / max) : 0;
+      var filled = Math.max(0, Math.min(w, Math.round(pct * w)));
+      var bar = '█'.repeat(filled) + '░'.repeat(w - filled);
+
+      // ultra-compact, no spaces: hp07/12[██░░░░]
+      var cur2 = String(Math.max(0, cur)).padStart(2, '0');
+      var max2 = String(Math.max(0, max)).padStart(2, '0');
+      _debriefScreen.textContent = 'hp' + cur2 + '/' + max2 + '[' + bar + ']';
     } finally {
       _debriefScreen = savedScreen;
     }
