@@ -108,6 +108,10 @@ const CanvasRenderer = (function() {
     this._renderEntities(renderData.entities);
     this._renderPets(renderData.pets);
     this._renderPlayer(renderData.player);
+
+    // Render pancake stack above player head
+    this._renderPancakeStack(renderData.player);
+
     this._renderEffects(renderData.effects);
   };
 
@@ -418,6 +422,26 @@ const CanvasRenderer = (function() {
 
     // Reset shadow
     this.ctx.shadowBlur = 0;
+  };
+
+  /**
+   * Render the pancake (collectible) stack above the player.
+   * Delegates to the PlayerStackManager singleton which manages
+   * update + draw for the persistent emoji stack.
+   * @param {Object} player - Player object { x, y }
+   */
+  CanvasRenderer.prototype._renderPancakeStack = function(player) {
+    if (!player || player.x === undefined || player.y === undefined) return;
+    if (typeof PlayerStackManager === 'undefined' || !PlayerStackManager.render) return;
+
+    var now = Date.now();
+    PlayerStackManager.update(now);
+
+    // Player center in canvas pixel space
+    var screenX = (player.x + 0.5) * this.cellSize;
+    var screenY = (player.y + 0.5) * this.cellSize;
+
+    PlayerStackManager.render(this.ctx, screenX, screenY, this.cellSize);
   };
 
   /**

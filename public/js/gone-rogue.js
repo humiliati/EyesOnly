@@ -5111,6 +5111,15 @@ _incrementPityTimers();
       if (typeof TooltipSystem !== 'undefined') {
         TooltipSystem.showAction('currency-pickup', { amount: cryptoPickup.amount });
       }
+
+      // Pancake stacker for currency
+      try {
+        if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+          PancakeStack.addPancake('¢');
+        } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
+          PlayerStackManager.addPancake('¢');
+        }
+      } catch (ePancake) {}
     }
 
     // Food auto-pickup
@@ -5316,6 +5325,15 @@ _incrementPityTimers();
       if (typeof TooltipSystem !== 'undefined') {
         TooltipSystem.showAction('currency-pickup', { amount: cryptoPickup.amount });
       }
+
+      // Pancake stacker for currency
+      try {
+        if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+          PancakeStack.addPancake('¢');
+        } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
+          PlayerStackManager.addPancake('¢');
+        }
+      } catch (ePancake) {}
     }
 
     // Check for food item pickup (auto-pickup from interactive items)

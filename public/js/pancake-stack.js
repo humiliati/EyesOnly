@@ -1,129 +1,54 @@
 /* ============================================================
-   EYES ONLY - Pancake Stack
-   Pancake-specific stacking behavior with compact rendering
+   EYES ONLY - Pancake Stack (Singleton)
+   Thin wrapper around PlayerStackManager.
+   Callers use PancakeStack.addPancake(emoji) — delegates to the
+   shared PlayerStackManager singleton for state & rendering.
    ============================================================ */
 
 const PancakeStack = (function() {
   'use strict';
 
   /**
-   * PancakeStack extends PlayerStackManager
-   * @param {Object} player - Player object reference
+   * Add a pancake emoji to the visual stack above the player.
+   * @param {string|object} emojiOrItem - Emoji string or { emoji }
    */
-  function PancakeStack(player) {
-    // Call parent constructor
-    PlayerStackManager.call(this, player);
-
-    this.pancakeEmoji = '🥞';
-    this.stackColor = '#d4a373'; // Pancake brown
-    this.pancakeHeight = 6; // Compact stacking
+  function addPancake(emojiOrItem) {
+    if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
+      return PlayerStackManager.addPancake(emojiOrItem);
+    }
+    console.warn('[PancakeStack] PlayerStackManager not available');
   }
 
-  // Inherit from PlayerStackManager
-  PancakeStack.prototype = Object.create(PlayerStackManager.prototype);
-  PancakeStack.prototype.constructor = PancakeStack;
-
-  /**
-   * Add pancake to stack
-   * @param {Object} pancakeItem - Pancake item
-   */
-  PancakeStack.prototype.addPancake = function(pancakeItem) {
-    // Pancakes always use pancake emoji regardless of source
-    var stackItem = {
-      item: pancakeItem,
-      emoji: this.pancakeEmoji,
-      collectedAt: Date.now(),
-      // Pancakes stack more tightly with slight rotation variance
-      offsetX: Math.sin(this.stack.length * 1.2) * 1.5,
-      offsetY: 0,
-      layer: this.stack.length,
-      bobPhase: Math.random() * Math.PI * 2,
-      bobSpeed: 1.5 + Math.random(), // Slower, heavier bob
-      currentScale: 0, // For animation
-      rotation: Math.sin(this.stack.length * 0.5) * 0.1 // Slight rotation
-    };
-
-    this.stack.push(stackItem);
-
-    // Trigger pickup animation
-    this.playPickupAnimation(stackItem);
-
-    // Play sound
-    this.playPancakeStackSound();
-
-    return stackItem;
-  };
-
-  /**
-   * Play pancake stack sound
-   */
-  PancakeStack.prototype.playPancakeStackSound = function() {
-    // TODO: Integrate with AudioManager when available
-    console.log('[PancakeStack] Stack sound played');
-  };
-
-  /**
-   * Render pancake stack with compact, realistic stacking
-   * @param {Object} ctx - Canvas context
-   * @param {Object} playerPosition - Player position {x, y}
-   * @param {Object} cameraOffset - Camera offset {x, y}
-   */
-  PancakeStack.prototype.renderPancakeStack = function(ctx, playerPosition, cameraOffset) {
-    if (this.stack.length === 0) return;
-
-    var screenX = playerPosition.x - (cameraOffset ? cameraOffset.x : 0);
-    var screenY = playerPosition.y - (cameraOffset ? cameraOffset.y : 0);
-
-    // Pancakes stack very compactly
-    var baseY = screenY - 52;
-
-    for (var i = this.stack.length - 1; i >= 0; i--) {
-      var item = this.stack[i];
-      var scale = item.currentScale || 1;
-      var size = 28 * scale;
-
-      // Slight rotation for realism
-      var rotation = item.rotation || 0;
-
-      // Slight spiral pattern
-      var x = screenX + (i % 3) * 2;
-      var y = baseY - (i * this.pancakeHeight) + item.offsetY;
-
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(rotation);
-
-      // Draw pancake shadow
-      ctx.fillStyle = 'rgba(0,0,0,0.2)';
-      ctx.beginPath();
-      ctx.ellipse(2, 2, size/2, size/4, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Draw pancake
-      ctx.font = size + 'px system-ui';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText(this.pancakeEmoji, 0, 0);
-
-      // Syrup highlight on topmost pancake
-      if (i === this.stack.length - 1) {
-        ctx.shadowColor = 'rgba(255,180,80,0.6)';
-        ctx.shadowBlur = 6;
-        ctx.fillText(this.pancakeEmoji, 0, 0);
-      }
-
-      ctx.restore();
+  function update(now) {
+    if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.update) {
+      PlayerStackManager.update(now);
     }
-  };
+  }
 
-  /**
-   * Override render to use pancake-specific rendering
-   */
-  PancakeStack.prototype.render = function(ctx, playerPosition, cameraOffset) {
-    this.renderPancakeStack(ctx, playerPosition, cameraOffset);
-  };
+  function render(ctx, screenX, screenY, cellSize) {
+    if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.render) {
+      PlayerStackManager.render(ctx, screenX, screenY, cellSize);
+    }
+  }
 
-  return PancakeStack;
+  function getStackCount() {
+    return (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.getStackCount)
+      ? PlayerStackManager.getStackCount() : 0;
+  }
+
+  function clearStack() {
+    if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.clearStack) {
+      PlayerStackManager.clearStack();
+    }
+  }
+
+  return {
+    addPancake: addPancake,
+    update: update,
+    render: render,
+    getStackCount: getStackCount,
+    clearStack: clearStack
+  };
 })();
 
 // Export for Node.js if available

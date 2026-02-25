@@ -1,79 +1,21 @@
 /* ============================================================
-   EYES ONLY - Player Stack Manager
-   Z-axis stacking system for collectible items above player head
+   EYES ONLY - Player Stack Manager (Singleton)
+   Z-axis stacking system for collectible items above player head.
+   Called as PlayerStackManager.addPancake(emoji) from pickup code.
    ============================================================ */
 
 const PlayerStackManager = (function() {
   'use strict';
 
-  /**
-   * PlayerStackManager class - Base class for stackable items
-   * @param {Object} player - Player object reference
-   */
-  function PlayerStackManager(player) {
-    this.player = player;
-    this.stack = []; // Array of { item, collectedAt, offset, emoji, layer, etc. }
-    this.maxStackHeight = 12;
-    this.wobbleIntensity = 2;
-    this.currentTime = 0;
-  }
+  // ---- internal state ----
+  var _stack = [];          // Array of { emoji, collectedAt, offsetX, offsetY, layer, bobPhase, bobSpeed, currentScale, rotation }
+  var _maxStackHeight = 12;
+  var _wobbleIntensity = 2;
+  var _decayMs = 4000;      // Items fade and drop off the stack after this many ms
 
-  /**
-   * Add item to stack
-   * @param {Object} item - Item to add
-   */
-  PlayerStackManager.prototype.addToStack = function(item) {
-    if (this.stack.length >= this.maxStackHeight) {
-      // Convert oldest to particles when overflow
-      this.overflowToParticles();
-    }
+  // ---- helpers ----
 
-    var stackItem = {
-      item: item,
-      emoji: item.emoji || '🥞',
-      collectedAt: Date.now(),
-      // Deterministic offset based on position in stack
-      offsetX: Math.sin(this.stack.length * 0.7) * this.wobbleIntensity,
-      offsetY: 0,
-      layer: this.stack.length,
-      bobPhase: Math.random() * Math.PI * 2,
-      bobSpeed: 2 + Math.random() * 2,
-      currentScale: 0 // For animation
-    };
-
-    this.stack.push(stackItem);
-
-    // Trigger pickup animation
-    this.playPickupAnimation(stackItem);
-
-    return stackItem;
-  };
-
-  /**
-   * Remove item from stack
-   * @param {Object} item - Item to remove
-   * @returns {Object|null} Removed item
-   */
-  PlayerStackManager.prototype.removeFromStack = function(item) {
-    var index = this.stack.findIndex(function(s) {
-      return s.item.id === item.id;
-    });
-
-    if (index > -1) {
-      var removed = this.stack.splice(index, 1)[0];
-      this.playRemoveAnimation(removed);
-      return removed;
-    }
-
-    return null;
-  };
-
-  /**
-   * Play pickup animation for stack item
-   * @param {Object} stackItem - Stack item
-   */
-  PlayerStackManager.prototype.playPickupAnimation = function(stackItem) {
-    var startScale = 0;
+  function _playPickupAnimation(stackItem) {
     var targetScale = 1;
     var duration = 200;
     var startTime = Date.now();
@@ -82,11 +24,11 @@ const PlayerStackManager = (function() {
       var elapsed = Date.now() - startTime;
       var progress = Math.min(elapsed / duration, 1);
 
-      // Ease out back
+      // Ease-out-back
       var eased = 1 + 2.7 * Math.pow(progress - 1, 3) +
                  1.7 * Math.pow(progress - 1, 2);
 
-      stackItem.currentScale = startScale + (targetScale - startScale) * eased;
+      stackItem.currentScale = targetScale * eased;
 
       if (progress < 1) {
         requestAnimationFrame(animate);
@@ -96,117 +38,132 @@ const PlayerStackManager = (function() {
     };
 
     animate();
-  };
+  }
 
-  /**
-   * Play remove animation
-   * @param {Object} stackItem - Stack item
-   */
-  PlayerStackManager.prototype.playRemoveAnimation = function(stackItem) {
-    // Simple shrink animation
-    console.log('[PlayerStack] Removed item:', stackItem.emoji);
-  };
-
-  /**
-   * Handle stack overflow - convert to particles
-   */
-  PlayerStackManager.prototype.overflowToParticles = function() {
-    if (this.stack.length > 0) {
-      var oldest = this.stack.shift();
-      console.log('[PlayerStack] Overflow item to particles:', oldest.emoji);
-      // TODO: Create particle effect
+  function _overflowOldest() {
+    if (_stack.length > 0) {
+      _stack.shift();
     }
-  };
+  }
+
+  // ---- public API ----
 
   /**
-   * Update stack (called each frame)
-   * @param {number} currentTime - Current time in ms
+   * Add an emoji (or item object with .emoji) to the visual stack.
+   * Accepts a string emoji or an object with an emoji property.
    */
-  PlayerStackManager.prototype.update = function(currentTime) {
-    this.currentTime = currentTime;
+  function addPancake(emojiOrItem) {
+    if (_stack.length >= _maxStackHeight) {
+      _overflowOldest();
+    }
 
-    // Update bobbing animation for each stack item
-    this.stack.forEach(function(item, index) {
-      item.offsetY = Math.sin(
-        (currentTime / 1000) * item.bobSpeed + item.bobPhase
-      ) * 1.5;
-    });
-  };
+    var emoji = (typeof emojiOrItem === 'string') ? emojiOrItem : ((emojiOrItem && emojiOrItem.emoji) ? emojiOrItem.emoji : '🥞');
+
+    var stackItem = {
+      emoji: emoji,
+      collectedAt: Date.now(),
+      offsetX: Math.sin(_stack.length * 1.2) * _wobbleIntensity,
+      offsetY: 0,
+      layer: _stack.length,
+      bobPhase: Math.random() * Math.PI * 2,
+      bobSpeed: 1.5 + Math.random(),
+      currentScale: 0,
+      rotation: Math.sin(_stack.length * 0.5) * 0.1
+    };
+
+    _stack.push(stackItem);
+    _playPickupAnimation(stackItem);
+
+    return stackItem;
+  }
 
   /**
-   * Render stack above player
-   * @param {Object} ctx - Canvas context
-   * @param {Object} playerPosition - Player position {x, y}
-   * @param {Object} cameraOffset - Camera offset {x, y}
+   * Update bobbing & decay (call once per frame).
+   * @param {number} now - Date.now() or performance.now()
    */
-  PlayerStackManager.prototype.render = function(ctx, playerPosition, cameraOffset) {
-    if (this.stack.length === 0) return;
+  function update(now) {
+    if (!now) now = Date.now();
 
-    var screenX = playerPosition.x - (cameraOffset ? cameraOffset.x : 0);
-    var screenY = playerPosition.y - (cameraOffset ? cameraOffset.y : 0);
-    var stackBaseY = screenY - 48; // Above player head
+    // Decay old items
+    var cutoff = now - _decayMs;
+    while (_stack.length > 0 && _stack[0].collectedAt < cutoff) {
+      _stack.shift();
+    }
 
-    // Render stack from bottom to top (reverse order for proper layering)
-    for (var i = this.stack.length - 1; i >= 0; i--) {
-      var item = this.stack[i];
+    // Re-index layers after decay
+    for (var i = 0; i < _stack.length; i++) {
+      _stack[i].layer = i;
+      _stack[i].offsetY = Math.sin((now / 1000) * _stack[i].bobSpeed + _stack[i].bobPhase) * 1.5;
+    }
+  }
+
+  /**
+   * Render the stack as emoji above a given screen position.
+   * Works in both canvas-native and effects-array pipelines.
+   *
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} screenX  - center X of player in canvas px
+   * @param {number} screenY  - center Y of player in canvas px
+   * @param {number} cellSize - size of a grid cell in canvas px
+   */
+  function render(ctx, screenX, screenY, cellSize) {
+    if (_stack.length === 0) return;
+
+    var pancakeHeight = 6;
+    var baseY = screenY - (cellSize * 2.4); // Above player head
+
+    for (var i = _stack.length - 1; i >= 0; i--) {
+      var item = _stack[i];
       var scale = item.currentScale || 1;
-      var size = 24 * scale;
+      var size = Math.max(8, Math.floor(cellSize * 1.2 * scale));
 
-      var x = screenX + item.offsetX;
-      var y = stackBaseY - (item.layer * 8) + item.offsetY;
+      var x = screenX + (i % 3) * 2 + item.offsetX;
+      var y = baseY - (i * pancakeHeight) + item.offsetY;
 
       ctx.save();
-      ctx.font = size + 'px system-ui';
+      ctx.translate(x, y);
+      ctx.rotate(item.rotation || 0);
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.beginPath();
+      ctx.ellipse(2, 2, size / 2, size / 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Emoji
+      ctx.font = size + 'px system-ui, Arial, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
-      ctx.fillText(item.emoji, x, y);
+      ctx.fillText(item.emoji, 0, 0);
 
-      // Subtle glow on most recent item
-      if (i === this.stack.length - 1) {
-        ctx.shadowColor = 'rgba(255,200,100,0.5)';
-        ctx.shadowBlur = 8;
-        ctx.fillText(item.emoji, x, y);
+      // Glow on newest item
+      if (i === _stack.length - 1) {
+        ctx.shadowColor = 'rgba(255,180,80,0.6)';
+        ctx.shadowBlur = 6;
+        ctx.fillText(item.emoji, 0, 0);
       }
 
       ctx.restore();
     }
-  };
+  }
 
   /**
-   * Get stack count
-   * @returns {number} Number of items in stack
+   * Return the full stack (for external inspection / serialization).
    */
-  PlayerStackManager.prototype.getStackCount = function() {
-    return this.stack.length;
-  };
+  function getStack() { return _stack.slice(); }
+  function getStackCount() { return _stack.length; }
+  function clearStack() { _stack = []; }
 
-  /**
-   * Check if player has specific item
-   * @param {string} itemId - Item ID
-   * @returns {boolean} Has item
-   */
-  PlayerStackManager.prototype.hasItem = function(itemId) {
-    return this.stack.some(function(s) {
-      return s.item.id === itemId;
-    });
+  // ---- module ----
+  return {
+    addPancake: addPancake,
+    addToStack: addPancake,  // alias for legacy callers
+    update: update,
+    render: render,
+    getStack: getStack,
+    getStackCount: getStackCount,
+    clearStack: clearStack
   };
-
-  /**
-   * Clear all items from stack
-   */
-  PlayerStackManager.prototype.clearStack = function() {
-    this.stack = [];
-  };
-
-  /**
-   * Get all items in stack
-   * @returns {Array} Stack items
-   */
-  PlayerStackManager.prototype.getStack = function() {
-    return this.stack.slice();
-  };
-
-  return PlayerStackManager;
 })();
 
 // Export for Node.js if available
