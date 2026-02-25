@@ -46,3 +46,9 @@
 /* Signal row does not need a label if it visually reads as battery signal */
 .debrief-nav-row[data-section="battery"] .debrief-row-label { display: none; }
 .debrief-nav-row[data-section="battery"] .debrief-row-summary { text-align: left; }
+
+/* Resources label: hidden by default (esp. mobile). Show only when interacting,
+   OR when the whole debrief window is expanded (desktop maximized-ish). */
+.debrief-nav-row[data-section="resources"] .debrief-row-label { display: none; }
+.debrief-nav-row[data-section="resources"].highlighted .debrief-row-label { display: inline; }
+.debrief-window.expanded .debrief-nav-row[data-section="resources"] .debrief-row-label { display: inline; }
