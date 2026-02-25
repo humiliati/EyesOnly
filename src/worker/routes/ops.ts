@@ -5,7 +5,7 @@
    ============================================================ */
 
 import { Hono } from 'hono';
-import type { Env, AuthContext, CheckinRequest, DeadDropRequest, TelemetryRequest, PanicRequest } from '../../shared/types';
+import type { Env, AuthContext, CheckinRequest, DeadDropRequest, TelemetryRequest, PanicRequest, PushSubscribeRequest } from '../../shared/types';
 import { requireAuth } from '../middleware/auth';
 import {
   getScenario,
@@ -23,7 +23,14 @@ import {
   listDeadDrops,
   getActor,
   getGridCell,
+  listActiveGeofenceZones,
+  getActorGeofenceState,
+  upsertActorGeofenceState,
+  upsertPushSubscription,
+  deletePushSubscription,
+  getPushSubscriptionsByScenario,
 } from '../db/queries';
+import { sendWebPushToAll } from '../utils/web-push';
 
 type HonoEnv = { Bindings: Env; Variables: { auth: AuthContext } };
 
@@ -382,6 +389,67 @@ opsRoutes.post('/telemetry', async (c) => {
     motion_state: motionState,
   });
 
+  // ── Geo-trigger check ─────────────────────────────────────────────
+  // Only run if actor has valid GPS coordinates
+  const triggeredZones: string[] = [];
+  if (body.lat != null && body.lng != null) {
+    const zones = await listActiveGeofenceZones(c.env.DB, auth.scenario_id);
+    for (const zone of zones) {
+      const distM = haversineMeters(body.lat, body.lng, zone.lat, zone.lng);
+      const nowInside = distM <= zone.radius_m;
+      const prevState = await getActorGeofenceState(c.env.DB, auth.actor_id, zone.id);
+      const wasInside = prevState?.inside === 1;
+
+      const isEnter = !wasInside && nowInside;
+      const isExit  = wasInside && !nowInside;
+      const shouldFire =
+        (zone.trigger_on === 'enter' && isEnter) ||
+        (zone.trigger_on === 'exit' && isExit) ||
+        (zone.trigger_on === 'both' && (isEnter || isExit));
+
+      if (shouldFire) {
+        await upsertActorGeofenceState(c.env.DB, auth.actor_id, zone.id, nowInside);
+
+        const triggerPayload = {
+          actor_id:   auth.actor_id,
+          callsign:   auth.callsign,
+          zone_id:    zone.id,
+          zone_name:  zone.name,
+          transition: isEnter ? 'enter' : 'exit',
+          dist_m:     Math.round(distM),
+          lat:        body.lat,
+          lng:        body.lng,
+          ts:         Date.now(),
+        };
+
+        const event = await insertEvent(
+          c.env.DB,
+          auth.scenario_id,
+          auth.actor_id,
+          zone.trigger_event_type,
+          triggerPayload,
+        );
+
+        const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+        const room   = c.env.SCENARIO_ROOM.get(roomId);
+        await room.fetch(new Request('http://internal/broadcast', {
+          method: 'POST',
+          body: JSON.stringify({
+            type: 'geofence_trigger',
+            data: { ...triggerPayload, event_id: event.id },
+            timestamp: Date.now(),
+          }),
+        }));
+
+        triggeredZones.push(zone.name);
+      } else if (prevState?.inside !== (nowInside ? 1 : 0)) {
+        // Update state even if no fire (crossed boundary of inactive trigger type)
+        await upsertActorGeofenceState(c.env.DB, auth.actor_id, zone.id, nowInside);
+      }
+    }
+  }
+  // ──────────────────────────────────────────────────────────────────
+
   // Broadcast lightweight telemetry update to M console (no DB event insert to avoid log spam)
   const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
   const room = c.env.SCENARIO_ROOM.get(roomId);
@@ -403,7 +471,7 @@ opsRoutes.post('/telemetry', async (c) => {
     }),
   }));
 
-  return c.json({ ok: true, motion_state: motionState });
+  return c.json({ ok: true, motion_state: motionState, triggered_zones: triggeredZones });
 });
 
 /**
@@ -435,6 +503,88 @@ opsRoutes.post('/panic', async (c) => {
   }));
 
   return c.json({ ok: true, event_id: event.id });
+});
+
+// ===== Haversine distance helper (meters) =====
+function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R  = 6371000; // Earth radius in metres
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lng2 - lng1) * Math.PI) / 180;
+  const a  = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/**
+ * POST /api/ops/push-subscribe
+ * Register a Web Push subscription for the actor's device.
+ * Called once on login from the watch app after push permission is granted.
+ */
+opsRoutes.post('/push-subscribe', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<PushSubscribeRequest>();
+
+  if (!body.endpoint || !body.keys?.p256dh || !body.keys?.auth) {
+    return c.json({ error: 'BAD_REQUEST', message: 'endpoint, keys.p256dh and keys.auth required' }, 400);
+  }
+
+  await upsertPushSubscription(
+    c.env.DB,
+    auth.actor_id,
+    auth.scenario_id,
+    body.endpoint,
+    body.keys.p256dh,
+    body.keys.auth,
+  );
+
+  return c.json({ ok: true });
+});
+
+/**
+ * DELETE /api/ops/push-subscribe
+ * Unregister a Web Push subscription.
+ */
+opsRoutes.delete('/push-subscribe', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{ endpoint: string }>().catch(() => ({ endpoint: '' }));
+  if (body.endpoint) {
+    await deletePushSubscription(c.env.DB, auth.actor_id, body.endpoint);
+  }
+  return c.json({ ok: true });
+});
+
+/**
+ * GET /api/ops/nfc-drop?tag=<nfc-tag-id>
+ * Look up a dead drop by its NFC tag ID (stored in the drop label).
+ * When the watch app scans an NFC tag, it sends the tag serial here.
+ * If a matching active dead drop is found, auto-retrieve it.
+ */
+opsRoutes.get('/nfc-drop', async (c) => {
+  const auth = c.get('auth');
+  const tag  = c.req.query('tag');
+  if (!tag) return c.json({ error: 'BAD_REQUEST', message: 'tag query param required' }, 400);
+
+  // All active drops in scenario — search by label containing the tag
+  const allDrops = await listDeadDrops(c.env.DB, auth.scenario_id);
+  const match = allDrops.find((d) =>
+    (d.status === 'placed' || d.status === 'active') &&
+    d.label.toLowerCase().includes(tag.toLowerCase()),
+  );
+
+  if (!match) {
+    return c.json({ found: false, message: 'No active dead drop matches this NFC tag.' });
+  }
+
+  return c.json({
+    found:       true,
+    dead_drop_id: match.id,
+    label:       match.label,
+    lane_id:     match.lane_id,
+    lat:         match.lat,
+    lng:         match.lng,
+    message:     `Dead drop "${match.label}" found. Tap RETRIEVE to confirm.`,
+  });
 });
 
 /**

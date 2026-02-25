@@ -3,13 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' wss: ws:; img-src 'self' data:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' wss: ws: https:; img-src 'self' data:;">
   <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="OPS WATCH">
   <title>EYES ONLY // OPS WATCH</title>
   <link rel="manifest" href="/ops/watch/manifest.json">
+  <!--
+    VAPID_PUBLIC_KEY: set this to your base64url-encoded VAPID public key.
+    The server reads VAPID_PUBLIC_KEY from wrangler secrets.
+    This meta tag is read by the watch app JS to subscribe to push.
+    Replace "REPLACE_WITH_VAPID_PUBLIC_KEY" with the actual key before deploy.
+  -->
+  <meta name="vapid-public-key" content="REPLACE_WITH_VAPID_PUBLIC_KEY">
   <style>
     /* ======================================================
        EYES ONLY — OPS WATCH
@@ -353,6 +360,12 @@
       <div class="idle-callsign" id="idle-callsign">—</div>
       <div class="idle-lane" id="idle-lane">NO LANE</div>
       <div class="idle-motion" id="idle-motion">— MOTION: —</div>
+      <!-- Bearing arrow: shows direction to current assignment cell if GPS available -->
+      <div id="bearing-zone" style="display:none;margin-top:12px;text-align:center;">
+        <div id="bearing-arrow" style="font-size:48px;line-height:1;transition:transform 0.5s;">↑</div>
+        <div id="bearing-dist" style="font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-top:4px;">—</div>
+        <div id="bearing-label" style="font-size:8px;color:var(--text-mute);letter-spacing:1px;margin-top:2px;">BEARING TO CELL</div>
+      </div>
     </div>
 
     <!-- Active ping alert (shown when unacked ping exists) -->
@@ -411,6 +424,9 @@
     <button onclick="doCheckin()" title="Check In">
       <span class="btn-icon">✓</span>CHECK IN
     </button>
+    <button onclick="doNFCScan()" id="nfc-btn" title="NFC Dead Drop" style="display:none;">
+      <span class="btn-icon">📡</span>NFC
+    </button>
     <button onclick="doSilentMode()" id="silent-btn" title="Toggle Silent Mode">
       <span class="btn-icon" id="silent-icon">🔔</span>SILENT
     </button>
@@ -450,7 +466,7 @@
 // ===== CONFIG =====
 var API_BASE   = '/api/ops';
 var POLL_MS    = 15000;   // Status poll: 15 seconds
-var TELEM_MS   = 30000;   // Telemetry heartbeat: 30 seconds
+var TELEM_MS   = 30000;   // Telemetry heartbeat: 30 seconds (60s in low-power)
 var ACK_TIMER  = 30;      // Countdown seconds for ping ACK
 
 // ===== STATE =====
@@ -472,6 +488,11 @@ var _lastTelemAt = null;
 var _heartbeatCnt= 0;
 var _wsConn      = false;
 var _ws          = null;
+var _lowPower    = false;   // Phase 2: low-power mode (battery < 20%)
+var _assignedCell = null;   // Phase 2: bearing arrow target { lat, lng, label }
+var _nfcReader   = null;    // Phase 2: Web NFC reader
+var _nfcScanning = false;
+var _pushSub     = null;    // Phase 2: PushSubscription object
 
 var STORAGE_KEY = 'eyesonly_watch_session';
 var MOTION_LABELS = {
@@ -482,9 +503,24 @@ var MOTION_LABELS = {
 
 // ===== INIT =====
 (function init() {
-  // Register service worker
+  // Register service worker + listen for SW messages (auto_ack from notification action)
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/ops/watch/sw.js').catch(function() {});
+    navigator.serviceWorker.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'auto_ack' && e.data.event_id) {
+        if (_pendingPing && _pendingPing.id === e.data.event_id) {
+          doAck();
+        }
+      }
+    });
+  }
+
+  // Check for auto_ack URL param (notification action → opened app)
+  var params = new URLSearchParams(location.search);
+  var autoAckId = params.get('auto_ack');
+  if (autoAckId) {
+    // Will be handled after startWatch() sets up the pending ping
+    window._pendingAutoAck = parseInt(autoAckId, 10);
   }
 
   // Restore session
@@ -503,15 +539,23 @@ var MOTION_LABELS = {
   setInterval(updateClock, 1000);
   updateClock();
 
-  // Battery API
+  // Battery API + low-power mode
   if (navigator.getBattery) {
     navigator.getBattery().then(function(bat) {
       _battery = Math.round(bat.level * 100);
+      updateLowPowerMode();
       bat.addEventListener('levelchange', function() {
         _battery = Math.round(bat.level * 100);
+        updateLowPowerMode();
         updateStatusBar();
       });
     });
+  }
+
+  // Show NFC button if Web NFC is available
+  if ('NDEFReader' in window) {
+    var nfcBtn = document.getElementById('nfc-btn');
+    if (nfcBtn) nfcBtn.style.display = '';
   }
 })();
 
@@ -595,9 +639,12 @@ function startWatch() {
   pollStatus();
   _pollTimer = setInterval(pollStatus, POLL_MS);
 
-  // Start telemetry heartbeat
+  // Start telemetry heartbeat (respects low-power mode)
   sendTelemetry();
-  _telemTimer = setInterval(sendTelemetry, TELEM_MS);
+  _telemTimer = setInterval(sendTelemetry, _lowPower ? 60000 : TELEM_MS);
+
+  // Request Web Push permission after a short delay (UX: don't immediately prompt)
+  setTimeout(requestPushPermission, 3000);
 }
 
 function stopWatch() {
@@ -607,6 +654,7 @@ function stopWatch() {
   if (_gpsWatchId != null) { navigator.geolocation.clearWatch(_gpsWatchId); _gpsWatchId = null; }
   if (_ws) { try { _ws.close(); } catch(e) {} _ws = null; }
   _wsConn = false;
+  stopNFCScan();
 }
 
 // ===== WEBSOCKET =====
@@ -700,6 +748,12 @@ async function pollStatus() {
       receivePing(null, data.last_ping.command || 'DIRECTIVE', data.last_ping.message || '', data.last_ping.sent_at);
     }
     updateStatusBar();
+
+    // Auto-ack from notification if pending
+    if (window._pendingAutoAck && _pendingPing && _pendingPing.id === window._pendingAutoAck) {
+      window._pendingAutoAck = null;
+      doAck();
+    }
   } catch (e) {}
 }
 
@@ -759,18 +813,27 @@ async function sendTelemetry() {
     var payload = {
       lat:          _gps ? _gps.lat : undefined,
       lng:          _gps ? _gps.lng : undefined,
-      motion_state: _motionState,
+      motion_state: _lowPower ? 'unknown' : _motionState, // Skip accel in low-power
       battery:      _battery !== null ? _battery : undefined,
-      low_power:    _battery !== null && _battery < 20,
+      low_power:    _lowPower,
     };
     var res = await apiPost('/telemetry', payload);
     if (res.ok) {
+      var data = await res.json().catch(function() { return {}; });
       _lastTelemAt = Date.now();
       _heartbeatCnt++;
       document.getElementById('sp-last-telem').textContent = fmtAge(_lastTelemAt);
       document.getElementById('sp-heartbeat').textContent  = '#' + _heartbeatCnt;
+
+      // If any geofence zones were triggered, show brief notification
+      if (data.triggered_zones && data.triggered_zones.length) {
+        console.log('[geo] triggered zones:', data.triggered_zones.join(', '));
+      }
     }
   } catch (e) {}
+
+  // Update bearing arrow on every telemetry cycle
+  updateBearing();
 }
 
 // ===== INCOMING PING =====
@@ -940,12 +1003,203 @@ function updateStatusDot(on) {
 
 // ===== LOGOUT =====
 function doLogout() {
+  // Unsubscribe from push before logout
+  if (_pushSub) {
+    apiDeleteJson('/push-subscribe', { endpoint: _pushSub.endpoint }).catch(function() {});
+    _pushSub = null;
+  }
   stopWatch();
   _token = _callsign = _scenarioId = _myActorId = _pendingPing = null;
   _lastTelemAt = null; _heartbeatCnt = 0; _gps = null;
+  _assignedCell = null; _lowPower = false;
   localStorage.removeItem(STORAGE_KEY);
   document.getElementById('status-panel').classList.remove('visible');
   showScreen('login');
+}
+
+// ===== LOW-POWER MODE =====
+function updateLowPowerMode() {
+  var wasLow = _lowPower;
+  _lowPower = _battery !== null && _battery < 20;
+  if (_lowPower !== wasLow && _telemTimer) {
+    // Restart heartbeat at new interval
+    clearInterval(_telemTimer);
+    _telemTimer = setInterval(sendTelemetry, _lowPower ? 60000 : TELEM_MS);
+    // Disable accelerometer in low-power
+    if (_lowPower) _motionState = 'unknown';
+  }
+}
+
+// ===== BEARING ARROW =====
+// Shows direction + distance to the actor's current assignment location.
+// _assignedCell should have { lat, lng, label } — set from ops status or WS.
+function updateBearing() {
+  var zone = document.getElementById('bearing-zone');
+  if (!zone) return;
+  if (!_assignedCell || !_gps || _assignedCell.lat == null) {
+    zone.style.display = 'none';
+    return;
+  }
+  var bearing = calcBearing(_gps.lat, _gps.lng, _assignedCell.lat, _assignedCell.lng);
+  var dist    = haversineM(_gps.lat, _gps.lng, _assignedCell.lat, _assignedCell.lng);
+  var distStr = dist < 1000 ? Math.round(dist) + 'm' : (dist / 1000).toFixed(1) + 'km';
+
+  zone.style.display = '';
+  document.getElementById('bearing-arrow').style.transform = 'rotate(' + bearing + 'deg)';
+  document.getElementById('bearing-dist').textContent  = distStr;
+  document.getElementById('bearing-label').textContent = _assignedCell.label || 'BEARING TO CELL';
+}
+
+function calcBearing(lat1, lng1, lat2, lng2) {
+  var φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180;
+  var Δλ = (lng2 - lng1) * Math.PI / 180;
+  var y = Math.sin(Δλ) * Math.cos(φ2);
+  var x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+}
+
+function haversineM(lat1, lng1, lat2, lng2) {
+  var R = 6371000;
+  var φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180;
+  var Δφ = (lat2 - lat1) * Math.PI / 180, Δλ = (lng2 - lng1) * Math.PI / 180;
+  var a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ===== WEB PUSH =====
+async function requestPushPermission() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    var reg = await navigator.serviceWorker.ready;
+    var existing = await reg.pushManager.getSubscription();
+    if (existing) {
+      _pushSub = existing;
+      await registerPushWithServer(existing);
+      return;
+    }
+    // Request permission
+    var perm = await Notification.requestPermission();
+    if (perm !== 'granted') return;
+    // Subscribe
+    // VAPID public key must match server's VAPID_PUBLIC_KEY
+    // It's embedded here as a placeholder — replace with actual key before deploy
+    var vapidPublicKey = document.querySelector('meta[name="vapid-public-key"]')?.content || '';
+    if (!vapidPublicKey) return; // No key configured
+    var sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+    });
+    _pushSub = sub;
+    await registerPushWithServer(sub);
+  } catch (e) {
+    console.warn('[push] subscription failed:', e);
+  }
+}
+
+async function registerPushWithServer(sub) {
+  if (!_token) return;
+  try {
+    var json = sub.toJSON();
+    await apiPost('/push-subscribe', {
+      endpoint: json.endpoint,
+      keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+    });
+  } catch (e) {}
+}
+
+function urlBase64ToUint8Array(base64String) {
+  var padding = '='.repeat((4 - base64String.length % 4) % 4);
+  var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  var rawData = atob(base64);
+  var arr = new Uint8Array(rawData.length);
+  for (var i = 0; i < rawData.length; ++i) arr[i] = rawData.charCodeAt(i);
+  return arr;
+}
+
+// ===== NFC DEAD DROP TAP =====
+async function doNFCScan() {
+  if (!('NDEFReader' in window)) return;
+  if (_nfcScanning) { stopNFCScan(); return; }
+
+  var btn = document.getElementById('nfc-btn');
+  try {
+    _nfcReader = new NDEFReader();
+    await _nfcReader.scan();
+    _nfcScanning = true;
+    if (btn) { btn.style.color = 'var(--amber)'; btn.querySelector('.btn-icon').textContent = '📡'; }
+    vibrate('tap');
+
+    _nfcReader.addEventListener('reading', async function(event) {
+      var serialNumber = event.serialNumber || '';
+      // Decode NDEF records for a tag ID or URL
+      var tagId = serialNumber;
+      for (var rec of (event.message.records || [])) {
+        if (rec.recordType === 'text') {
+          tagId = new TextDecoder().decode(rec.data);
+          break;
+        } else if (rec.recordType === 'url') {
+          tagId = new TextDecoder().decode(rec.data);
+          break;
+        }
+      }
+      await handleNFCTag(tagId);
+    });
+
+    _nfcReader.addEventListener('readingerror', function() {
+      stopNFCScan();
+    });
+  } catch (err) {
+    _nfcScanning = false;
+    console.warn('[nfc] scan failed:', err);
+  }
+}
+
+async function handleNFCTag(tagId) {
+  if (!tagId || !_token) return;
+  vibrate('ping');
+  try {
+    var res = await apiGet('/nfc-drop?tag=' + encodeURIComponent(tagId));
+    if (!res.ok) return;
+    var data = await res.json();
+    if (!data.found) {
+      // Show brief message
+      showNFCResult('NOT FOUND', 'No active dead drop for this tag.', false);
+      return;
+    }
+    // Found — show confirm to retrieve
+    showNFCResult('DEAD DROP FOUND', data.label + '\n' + data.message, true, data.lane_id, data.dead_drop_id);
+  } catch (e) {}
+  stopNFCScan();
+}
+
+function showNFCResult(title, msg, hasRetrieve, laneId, dropId) {
+  // Reuse panic overlay pattern — inject a quick modal
+  var overlay = document.getElementById('panic-overlay');
+  if (!overlay) return;
+  overlay.querySelector('.panic-title').textContent = title;
+  overlay.querySelector('.panic-sub').innerHTML = msg.replace(/\n/g, '<br>');
+  // Swap buttons
+  var confirmBtn = overlay.querySelector('button.btn-danger');
+  var cancelBtn  = overlay.querySelector('button.btn-primary');
+  if (hasRetrieve && confirmBtn) {
+    confirmBtn.textContent = 'RETRIEVE DROP';
+    confirmBtn.onclick = function() {
+      hidePanicConfirm();
+      apiPost('/dead-drop', { lane_id: laneId, label: 'NFC', action: 'retrieve' })
+        .catch(function() {});
+      confirmBtn.textContent = 'CONFIRM PANIC';
+      confirmBtn.onclick = doPanic;
+      cancelBtn.onclick = hidePanicConfirm;
+    };
+  }
+  overlay.classList.add('visible');
+}
+
+function stopNFCScan() {
+  _nfcScanning = false;
+  _nfcReader = null;
+  var btn = document.getElementById('nfc-btn');
+  if (btn) { btn.style.color = ''; btn.querySelector('.btn-icon').textContent = '📡'; }
 }
 
 // ===== VIBRATION =====
@@ -971,6 +1225,16 @@ function apiGet(path) {
 function apiPost(path, body) {
   return fetch(API_BASE + path, {
     method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + _token,
+    },
+    body: JSON.stringify(body),
+  });
+}
+function apiDeleteJson(path, body) {
+  return fetch(API_BASE + path, {
+    method: 'DELETE',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + _token,

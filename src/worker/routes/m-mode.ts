@@ -6,7 +6,7 @@
    ============================================================ */
 
 import { Hono } from 'hono';
-import type { Env, AuthContext, EventPayload, EscalationRequest } from '../../shared/types';
+import type { Env, AuthContext, EventPayload, EscalationRequest, GeofenceRequest } from '../../shared/types';
 import { requireAuth, requireDirector } from '../middleware/auth';
 import {
   listScenarios,
@@ -35,7 +35,13 @@ import {
   updateCellTension,
   updateCellLane,
   updateCellNotes,
+  listGeofenceZones,
+  createGeofenceZone,
+  deleteGeofenceZone,
+  setGeofenceZoneActive,
+  getPushSubscriptionsByScenario,
 } from '../db/queries';
+import { sendWebPushToAll } from '../utils/web-push';
 
 type HonoEnv = { Bindings: Env; Variables: { auth: AuthContext } };
 
@@ -633,6 +639,7 @@ mModeRoutes.post('/ping', async (c) => {
     command: string;
     cell_id?: string;
     message?: string;
+    target_actor_id?: number; // alias for actor_id — explicit for push routing
   }>();
 
   const validPings = ['MOVE', 'HOLD', 'ENGAGE', 'SHADOW', 'DROP', 'ESCALATE', 'FREEZE', 'EXTRACT'];
@@ -670,6 +677,26 @@ mModeRoutes.post('/ping', async (c) => {
       timestamp: Date.now(),
     }),
   }));
+
+  // Web Push to actor's subscribed devices (so watch gets ping even with screen off)
+  const subs = await getPushSubscriptionsByScenario(c.env.DB, actor.scenario_id, body.target_actor_id ?? body.actor_id);
+  if (subs.length) {
+    await sendWebPushToAll(
+      c.env,
+      subs,
+      {
+        title:   `⚡ M DIRECTIVE — ${pingPayload.ping_command}`,
+        body:    body.message || pingPayload.ping_command,
+        tag:     'mping',
+        vibrate: [100, 50, 100, 50, 200],
+        data:    { event_id: event.id, ping_command: pingPayload.ping_command },
+      },
+      async (expired) => {
+        const { deletePushSubscription: delSub } = await import('../db/queries');
+        await delSub(c.env.DB, expired.actor_id, expired.endpoint);
+      },
+    );
+  }
 
   return c.json({ ok: true, event_id: event.id, ping_command: body.command.toUpperCase() });
 });
@@ -748,4 +775,99 @@ mModeRoutes.get('/ws', async (c) => {
       headers: c.req.raw.headers,
     }),
   );
+});
+
+// --- Geofence Zones (Phase 2) ---
+
+/**
+ * GET /api/m/geofences/:scenarioId
+ * List all geofence zones for a scenario.
+ */
+mModeRoutes.get('/geofences/:scenarioId', async (c) => {
+  const scenarioId = parseInt(c.req.param('scenarioId'), 10);
+  const zones = await listGeofenceZones(c.env.DB, scenarioId);
+  return c.json({ zones });
+});
+
+/**
+ * POST /api/m/geofences
+ * Create a new geofence zone.
+ * Body: { scenario_id, name, lat, lng, radius_m, trigger_on, trigger_event_type }
+ */
+mModeRoutes.post('/geofences', async (c) => {
+  const body = await c.req.json<GeofenceRequest & { scenario_id: number }>();
+  if (!body.scenario_id || !body.name || body.lat == null || body.lng == null) {
+    return c.json({ error: 'BAD_REQUEST', message: 'scenario_id, name, lat, lng required' }, 400);
+  }
+  const zone = await createGeofenceZone(
+    c.env.DB,
+    body.scenario_id,
+    body.name,
+    body.lat,
+    body.lng,
+    body.radius_m ?? 100,
+    body.trigger_on ?? 'enter',
+    body.trigger_event_type ?? 'geofence_enter',
+  );
+  return c.json({ zone }, 201);
+});
+
+/**
+ * DELETE /api/m/geofences/:id
+ * Delete a geofence zone.
+ */
+mModeRoutes.delete('/geofences/:id', async (c) => {
+  const id = parseInt(c.req.param('id'), 10);
+  await deleteGeofenceZone(c.env.DB, id);
+  return c.json({ ok: true });
+});
+
+/**
+ * PATCH /api/m/geofences/:id
+ * Toggle active state on a geofence zone.
+ */
+mModeRoutes.patch('/geofences/:id', async (c) => {
+  const id = parseInt(c.req.param('id'), 10);
+  const body = await c.req.json<{ active: boolean }>();
+  await setGeofenceZoneActive(c.env.DB, id, body.active);
+  return c.json({ ok: true });
+});
+
+// --- Push Broadcast (Phase 2) ---
+
+/**
+ * POST /api/m/push-broadcast
+ * M sends a Web Push notification to all subscribed actors in a scenario.
+ * Body: { scenario_id, title, body, actor_id? (optional — target single actor) }
+ */
+mModeRoutes.post('/push-broadcast', async (c) => {
+  const body = await c.req.json<{
+    scenario_id: number;
+    title: string;
+    body: string;
+    actor_id?: number;
+    tag?: string;
+  }>();
+
+  if (!body.scenario_id || !body.title) {
+    return c.json({ error: 'BAD_REQUEST', message: 'scenario_id and title required' }, 400);
+  }
+
+  const subs = await getPushSubscriptionsByScenario(c.env.DB, body.scenario_id, body.actor_id);
+  if (!subs.length) return c.json({ ok: true, sent: 0, message: 'No subscriptions found' });
+
+  let sent = 0;
+  await sendWebPushToAll(
+    c.env,
+    subs,
+    { title: body.title, body: body.body || '', tag: body.tag },
+    async (expired) => {
+      // Remove expired subscription
+      const { deletePushSubscription: delSub } = await import('../db/queries');
+      await delSub(c.env.DB, expired.actor_id, expired.endpoint);
+    },
+  );
+  sent = subs.length;
+
+  return c.json({ ok: true, sent });
 });

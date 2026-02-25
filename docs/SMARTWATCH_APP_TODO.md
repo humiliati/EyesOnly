@@ -51,43 +51,37 @@
 
 ---
 
-## 🔲 TODO — Phase 2 (Near-Term)
+## 🔲 TODO — Phase 2 (Near-Term) ← NOW SHIPPED
 
 ### Watch App UX
-- [ ] **Map arrow** — show bearing arrow + distance to current assignment cell (no full map; just direction + meters)
-- [ ] **Deep link ping notifications** — use Web Push API so watch gets pings even when screen is off
-  - Requires: VAPID keys, push subscription on login, server-side Web Push send on `mping` event
+- [x] **Bearing arrow** — bearing arrow in idle zone; shows direction + distance to `_assignedCell` when GPS available; updates on every telemetry cycle via `updateBearing()` + `calcBearing()` + `haversineM()`
+- [x] **Web Push notifications** — `requestPushPermission()` on login; `POST /api/ops/push-subscribe`; SW handles `push` events → `showNotification()`; notification ACK action dispatches `auto_ack` to app; SW `notificationclick` opens app or dispatches auto-ACK
+- [x] **Low-power mode** — when `battery < 20%`, heartbeat stretches to 60s; accelerometer stops; `updateLowPowerMode()` called on `levelchange`
+- [x] **NFC dead-drop tap** — `NDEFReader.scan()` in `doNFCScan()`; `GET /api/ops/nfc-drop?tag=` lookup; confirm overlay for retrieve; `POST /api/ops/dead-drop` with `action:retrieve`; NFC button shown only if `NDEFReader` in window
 - [ ] **Haptic patterns on iOS** — iOS Web Vibration is blocked; investigate WKWebView wrapper or PWA wrapper (Capacitor / Expo)
-- [ ] **Battery reporting** — already sent in telemetry payload; add M console display
-- [ ] **Low-power mode** — when `battery < 20`, increase heartbeat interval to 60s, disable accelerometer
 - [ ] **Watch face shortcuts** — on Wear OS / Apple Watch via WebBluetooth companion or native companion app
-- [ ] **QR / NFC interaction** — tap NFC tag at dead drop location to auto-confirm retrieval
-  - Requires: Web NFC API (Android Chrome) — `NDEFReader.scan()` trigger → `POST /api/ops/dead-drop`
 - [ ] **PIN / biometric lock** — prevent unauthorized ACK from grabbed device
 
 ### Backend
-- [ ] **Geo-trigger engine** — compare actor position against configured geofence zones; auto-fire events when actor enters/exits
-  - Needs: `geofence_zones` table (`scenario_id`, `name`, `lat`, `lng`, `radius_m`, `trigger_event_type`)
-  - Process: on telemetry POST, check actor lat/lng against active geofences; insert event + broadcast if triggered
-- [ ] **Deadman check** — M console warns if no telemetry for > 5 minutes from an active actor
-  - Needs: scheduled Cron Trigger (Cloudflare `[triggers.crons]`) + `actor_deadman` event type
+- [x] **Geo-trigger engine** — `geofence_zones` table + `actor_geofence_state` table (migration 0005); `listActiveGeofenceZones`, `getActorGeofenceState`, `upsertActorGeofenceState` queries; haversine distance check on every `/api/ops/telemetry` POST; edge-detect enter/exit; insert named event + broadcast `geofence_trigger` WS message; `triggered_zones[]` returned in telemetry response
+- [x] **Deadman check** — Cloudflare cron trigger `*/5 * * * *` in `wrangler.jsonc`; `scheduled()` export in `worker/index.ts`; `findStaleActors()` + `listActiveScenarios()` queries; inserts `actor_deadman` event + broadcasts `deadman_alert` WS; sends Web Push nudge to stale actor's devices
+- [x] **Web Push backend** — `push_subscriptions` table (migration 0005); `upsertPushSubscription`, `deletePushSubscription`, `getPushSubscriptionsByScenario` queries; `sendWebPush` + `sendWebPushToAll` in `utils/web-push.ts` (VAPID JWT + RFC 8291 aes128gcm payload encryption); VAPID secrets in `wrangler.jsonc` + env var pattern; mping fires Web Push to target actor's devices
+- [x] **NFC hint endpoint** — `GET /api/ops/nfc-drop?tag=` searches active dead drops by label substring match
 - [ ] **Vector / speed calculation** — compare last two telemetry positions; calculate heading + m/s; add to broadcast
-- [ ] **Intercept prediction** — given actor vector and player position (if reported), calculate ETA intercept; surface in M console
+- [ ] **Intercept prediction** — given actor vector and player position, calculate ETA intercept; surface in M console
 - [ ] **Heat debt system** — track player "exposure score"; auto-reduce tension after no contact for N minutes
 - [ ] **Stationary loiter detection** — if `motion_state === 'stationary'` for > 10 min, MOK advisory to M
-- [ ] **Rate limiting on `/api/ops/telemetry`** — max 4 req/min per actor (Cloudflare Rate Limiting rule or KV counter)
+- [ ] **Rate limiting on `/api/ops/telemetry`** — max 4 req/min per actor
 
 ### M Console
-- [ ] **Live map layer (Leaflet / Mapbox)** — replace UGRS grid with real-world map when GPS data exists
-  - Show actor icons at GPS coordinates (color-coded by team)
-  - Show player position (if reporting)
-  - Overlay geofence rings (soft encirclement visualization)
-  - Mission radius rings around objectives
-  - Heat zone gradient layer from tension values
+- [x] **Live map layer (Leaflet)** — dynamic Leaflet.js + OSM tiles loaded from CDN; actor GPS dots (team-colored, stale=grey); geofence zone circles (amber dashed); bounds auto-fit when actors have GPS; layer toggles (ACTORS / ZONES); toggleable map container in LIVE MAP section
+- [x] **Geofence management UI** — GEOFENCE ZONES section: list with active status, delete buttons; ADD ZONE form (name, lat, lng, radius, trigger type, event type); live updates list and map on add/delete
+- [x] **M console Push Broadcast** — `POST /api/m/push-broadcast` endpoint; sends Web Push to all subscribed actors in scenario (or specific actor)
+- [x] **M console deadman + geofence WS alerts** — `deadman_alert` → MOK CRITICAL `☠`; `geofence_trigger` → MOK WARNING `⬡ ACTOR ENTER/EXIT zone`
 - [ ] **Dispatch drag-and-drop** — drag actor icon on map to target cell → auto-send MOVE ping
 - [ ] **Intercept probability % display** — per-actor ETA to player position
 - [ ] **Ghost replay** — scrub through event log, re-animate actor positions on map
-- [ ] **After-action log** — auto-generated PDF/markdown summary: player path, actor movements, escalation timeline, near-misses
+- [ ] **After-action log** — auto-generated summary
 
 ---
 
@@ -142,26 +136,59 @@ Since there is no automated test infrastructure in this repo, verify the followi
 
 ---
 
-## Architecture Reference
+## Architecture Reference (Phase 2 updated)
 
 ```
 Watch App (PWA)                     Cloudflare Worker
 /ops/watch/index.html               /api/ops/*
         │
         ├── POST /api/ops/telemetry  ─→  updateActorTelemetry(DB)
+        │                            ─→  geo-trigger check (haversine vs geofence_zones)
         │                            ─→  broadcast actor_telemetry (DO)
+        │                            ─→  insert geofence_enter/exit event + broadcast if triggered
         ├── POST /api/ops/ack        ─→  insertEvent(mping_ack)
         │                            ─→  broadcast mping_ack (DO)
         ├── POST /api/ops/panic      ─→  insertEvent(actor_panic)
         │                            ─→  broadcast event (DO)
+        ├── POST /api/ops/push-subscribe  ─→  upsertPushSubscription(DB)
+        ├── DELETE /api/ops/push-subscribe  ─→  deletePushSubscription(DB)
+        ├── GET  /api/ops/nfc-drop?tag=  ─→  search dead_drops by label
         ├── POST /api/ops/checkin    ─→  insertEvent(checkin)
         └── GET  /api/ops/status     ─→  pending pings, actor state
+
+Web Push (server → device)
+        Cloudflare Worker VAPID     Push Service (FCM/APNs/Mozilla)
+        ├── sendWebPush(sub, payload)  ─→  RFC 8291 aes128gcm encryption
+        │                               ─→  VAPID JWT signing (ES256)
+        └── triggered by:
+              mping POST              (target actor's devices)
+              deadman cron            (stale actor's devices)
+              /api/m/push-broadcast   (all or specific actor)
+
+Cron (Cloudflare scheduled trigger: */5 * * * *)
+        scheduled()  ─→  listActiveScenarios
+                     ─→  findStaleActors (last_seen_at > 5 min)
+                     ─→  insertEvent(actor_deadman)
+                     ─→  broadcast deadman_alert (DO)
+                     ─→  sendWebPush nudge to stale actor
 
 M Console                           /api/m/*
 /m/app.js
         ├── GET /api/m/actors/positions/:id  ─→  last GPS per actor
+        ├── GET /api/m/geofences/:id   ─→  list geofence zones
+        ├── POST /api/m/geofences      ─→  create zone
+        ├── DELETE /api/m/geofences/:id  ─→  delete zone
+        ├── POST /api/m/push-broadcast  ─→  push to all actor devices
         └── WS  /api/m/ws            ←─  actor_telemetry, actor_panic,
+                                          geofence_trigger, deadman_alert,
                                           mping_ack, game_freeze, events
+
+Live Map (Leaflet.js CDN, rendered in M console right panel)
+        ─ Actor dots at GPS coords (blue/red/green, grey if stale)
+        ─ Geofence zone circles (amber dashed) with hover labels
+        ─ Layer toggles: ACTORS ● / ZONES ⬤
+        ─ Auto-refresh on WS actor_telemetry events
+        ─ fitBounds when actors have GPS
 
 ScenarioRoom (Durable Object)
   ─ single room per scenario_id

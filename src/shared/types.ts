@@ -10,6 +10,23 @@ export interface Env {
   SCENARIO_ROOM: DurableObjectNamespace;
   R2: R2Bucket;
   ASSETS: Fetcher;
+  /**
+   * VAPID public key (base64url) for Web Push.
+   * Generate with: openssl ecparam -name prime256v1 -genkey -noout -out vapid.pem
+   * Then derive public key in base64url.
+   * Set via `wrangler secret put VAPID_PUBLIC_KEY`
+   */
+  VAPID_PUBLIC_KEY?: string;
+  /**
+   * VAPID private key (base64url) for Web Push.
+   * Set via `wrangler secret put VAPID_PRIVATE_KEY`
+   */
+  VAPID_PRIVATE_KEY?: string;
+  /**
+   * VAPID subject — mailto: or https: URI for push service contact.
+   * Set in wrangler.jsonc vars.
+   */
+  VAPID_SUBJECT?: string;
 }
 
 // --- Database Row Types ---
@@ -76,6 +93,38 @@ export interface DeadDropRow {
   cell_id: string | null;
   created_at: number;
   updated_at: number;
+}
+
+// --- Phase 2: Geofence + Push ---
+
+export interface GeofenceZoneRow {
+  id: number;
+  scenario_id: number;
+  name: string;
+  lat: number;
+  lng: number;
+  radius_m: number;
+  trigger_on: 'enter' | 'exit' | 'both';
+  trigger_event_type: string;
+  active: number; // 1 = enabled, 0 = disabled
+  created_at: number;
+}
+
+export interface ActorGeofenceStateRow {
+  actor_id: number;
+  zone_id: number;
+  inside: number; // 1 = inside, 0 = outside
+  updated_at: number;
+}
+
+export interface PushSubscriptionRow {
+  id: number;
+  actor_id: number;
+  scenario_id: number;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  created_at: number;
 }
 
 // --- UGRS Grid Types ---
@@ -182,6 +231,23 @@ export interface PanicRequest {
   message?: string;
 }
 
+export interface GeofenceRequest {
+  name: string;
+  lat: number;
+  lng: number;
+  radius_m?: number;
+  trigger_on?: 'enter' | 'exit' | 'both';
+  trigger_event_type?: string;
+}
+
+export interface PushSubscribeRequest {
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+}
+
 export interface DeadDropRequest {
   lane_id: string;
   label: string;
@@ -210,6 +276,8 @@ export type WSMessageType =
   | 'state'            // full state snapshot
   | 'actor_update'     // actor position/status change
   | 'actor_telemetry'  // actor GPS + motion update
+  | 'geofence_trigger' // actor entered/exited a geofence zone
+  | 'deadman_alert'    // actor missed heartbeat deadline
   | 'escalation'       // escalation tier change
   | 'ping'
   | 'pong';

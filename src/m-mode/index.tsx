@@ -759,6 +759,253 @@ async function loadActorPositions(session: Session) {
   }
 }
 
+// ===== GEOFENCE MANAGEMENT =====
+
+async function loadGeofences(session: Session) {
+  const listEl = document.getElementById('geofence-list');
+  if (!listEl) return;
+  try {
+    const res = await mFetch(`/m/geofences/${session.scenarioId}`, session);
+    if (!res.ok) { listEl.innerHTML = '<div style="color:var(--red);">UNAVAIL</div>'; return; }
+    const data = await res.json() as any;
+    const zones: any[] = data.zones || [];
+    if (!zones.length) { listEl.innerHTML = '<div style="color:var(--text-dim);">No zones defined.</div>'; return; }
+    listEl.innerHTML = zones.map((z: any) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:2px 0;border-bottom:1px solid rgba(40,40,40,0.3);">
+        <span style="font-size:9px;color:${z.active ? 'var(--accent)' : '#555'};">
+          ${z.active ? '●' : '○'} ${z.name} <span style="color:#555;">(${z.radius_m}m · ${z.trigger_on})</span>
+        </span>
+        <button data-gf-del="${z.id}" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:10px;padding:0 4px;" title="Delete zone">✕</button>
+      </div>`).join('');
+    // Wire delete buttons
+    listEl.querySelectorAll('[data-gf-del]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = (btn as HTMLElement).dataset.gfDel;
+        await mFetch(`/m/geofences/${id}`, session, { method: 'DELETE' });
+        loadGeofences(session);
+        refreshLiveMapZones(session);
+      });
+    });
+  } catch {
+    if (listEl) listEl.innerHTML = '<div style="color:var(--red);">ERROR</div>';
+  }
+}
+
+async function addGeofence(session: Session) {
+  const name    = (document.getElementById('ctrl-gf-name') as HTMLInputElement)?.value.trim();
+  const lat     = parseFloat((document.getElementById('ctrl-gf-lat') as HTMLInputElement)?.value);
+  const lng     = parseFloat((document.getElementById('ctrl-gf-lng') as HTMLInputElement)?.value);
+  const radius  = parseFloat((document.getElementById('ctrl-gf-radius') as HTMLInputElement)?.value) || 100;
+  const trigger = (document.getElementById('ctrl-gf-trigger') as unknown as HTMLSelectElement)?.value || 'enter';
+  const evType  = (document.getElementById('ctrl-gf-event') as HTMLInputElement)?.value.trim() || 'geofence_enter';
+  const resultEl = document.getElementById('ctrl-gf-result');
+
+  if (!name || isNaN(lat) || isNaN(lng)) {
+    if (resultEl) resultEl.textContent = 'Name, lat and lng required.';
+    return;
+  }
+  try {
+    const res = await mFetch('/m/geofences', session, {
+      method: 'POST',
+      body: JSON.stringify({ scenario_id: session.scenarioId, name, lat, lng, radius_m: radius, trigger_on: trigger, trigger_event_type: evType }),
+    });
+    if (res.ok) {
+      if (resultEl) resultEl.textContent = `Zone "${name}" added.`;
+      loadGeofences(session);
+      refreshLiveMapZones(session);
+      // Clear inputs
+      (document.getElementById('ctrl-gf-name') as HTMLInputElement).value = '';
+      (document.getElementById('ctrl-gf-lat') as HTMLInputElement).value = '';
+      (document.getElementById('ctrl-gf-lng') as HTMLInputElement).value = '';
+    } else {
+      if (resultEl) resultEl.textContent = 'Error adding zone.';
+    }
+  } catch { if (resultEl) resultEl.textContent = 'Network error.'; }
+}
+
+// ===== LIVE MAP (Leaflet) =====
+
+let leafletMap: any = null;        // Leaflet map instance
+let leafletActorLayer: any = null; // Layer group for actor markers
+let leafletZoneLayer: any = null;  // Layer group for geofence circles
+let mapVisible = false;
+
+function toggleLiveMap(session: Session) {
+  const container = document.getElementById('m-live-map-container');
+  const btn       = document.getElementById('ctrl-toggle-map');
+  const abtn      = document.getElementById('ctrl-map-actors-toggle');
+  const zbtn      = document.getElementById('ctrl-map-zones-toggle');
+  if (!container) return;
+
+  mapVisible = !mapVisible;
+  container.style.display = mapVisible ? '' : 'none';
+  if (btn) btn.textContent = mapVisible ? 'CLOSE MAP ▲' : 'OPEN MAP ▼';
+  if (abtn) abtn.style.display = mapVisible ? '' : 'none';
+  if (zbtn) zbtn.style.display = mapVisible ? '' : 'none';
+
+  if (mapVisible) {
+    if (!leafletMap) {
+      initLeafletMap(session);
+    } else {
+      leafletMap.invalidateSize();
+      refreshLiveMapActors(session);
+    }
+  }
+}
+
+function initLeafletMap(session: Session) {
+  // Dynamically load Leaflet CSS + JS from CDN
+  if (!(window as any).L) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(link);
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = () => buildLeafletMap(session);
+    document.head.appendChild(script);
+  } else {
+    buildLeafletMap(session);
+  }
+}
+
+function buildLeafletMap(session: Session) {
+  const L = (window as any).L;
+  if (!L || leafletMap) return;
+
+  leafletMap = L.map('m-live-map', { zoomControl: true, attributionControl: false });
+
+  // OSM tile layer
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap',
+  }).addTo(leafletMap);
+
+  leafletActorLayer = L.layerGroup().addTo(leafletMap);
+  leafletZoneLayer  = L.layerGroup().addTo(leafletMap);
+
+  // Default center (world view) — will be updated when actors have GPS
+  leafletMap.setView([0, 0], 2);
+
+  // Actor toggle button
+  const abtn = document.getElementById('ctrl-map-actors-toggle');
+  if (abtn) {
+    abtn.addEventListener('click', () => {
+      if (leafletMap.hasLayer(leafletActorLayer)) {
+        leafletMap.removeLayer(leafletActorLayer);
+        abtn.textContent = 'ACTORS ○';
+      } else {
+        leafletMap.addLayer(leafletActorLayer);
+        abtn.textContent = 'ACTORS ●';
+        refreshLiveMapActors(session);
+      }
+    });
+  }
+
+  // Zone toggle button
+  const zbtn = document.getElementById('ctrl-map-zones-toggle');
+  if (zbtn) {
+    zbtn.addEventListener('click', () => {
+      if (leafletMap.hasLayer(leafletZoneLayer)) {
+        leafletMap.removeLayer(leafletZoneLayer);
+        zbtn.textContent = 'ZONES ○';
+      } else {
+        leafletMap.addLayer(leafletZoneLayer);
+        zbtn.textContent = 'ZONES ⬤';
+        refreshLiveMapZones(session);
+      }
+    });
+  }
+
+  refreshLiveMapActors(session);
+  refreshLiveMapZones(session);
+}
+
+const TEAM_COLORS: Record<string, string> = { blue: '#3399ff', red: '#ff3333', director: '#33ff33' };
+
+async function refreshLiveMapActors(session: Session) {
+  const L = (window as any).L;
+  if (!L || !leafletMap || !leafletActorLayer) return;
+  leafletActorLayer.clearLayers();
+  try {
+    const res = await mFetch(`/m/actors/positions/${session.scenarioId}`, session);
+    if (!res.ok) return;
+    const data = await res.json() as any;
+    const positions: any[] = data.positions || [];
+    const validPositions = positions.filter((p: any) => p.lat != null && p.lng != null);
+
+    if (!validPositions.length) return;
+
+    const bounds: [number, number][] = [];
+    for (const p of validPositions) {
+      const color = TEAM_COLORS[p.team] || '#33ff33';
+      const isStale = !p.last_seen_at || (Date.now() - p.last_seen_at) > 120000;
+      const markerColor = isStale ? '#555' : color;
+
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="background:${markerColor};border:2px solid #000;border-radius:50%;width:12px;height:12px;box-shadow:0 0 4px ${markerColor};"></div>`,
+        iconSize: [12, 12],
+        iconAnchor: [6, 6],
+      });
+
+      const marker = L.marker([p.lat, p.lng], { icon })
+        .bindPopup(`<b style="font-family:monospace;">${p.callsign}</b><br>Team: ${p.team}<br>Motion: ${p.motion_state}<br>${isStale ? '⚠ STALE' : 'LIVE'}`);
+      leafletActorLayer.addLayer(marker);
+
+      // Callsign label
+      const label = L.tooltip({ permanent: true, direction: 'top', className: '' })
+        .setContent(`<span style="font-family:monospace;font-size:9px;background:#000;color:${markerColor};padding:1px 3px;">${p.callsign}</span>`);
+      marker.bindTooltip(label);
+
+      bounds.push([p.lat, p.lng]);
+    }
+
+    if (bounds.length === 1) {
+      leafletMap.setView(bounds[0], 15);
+    } else if (bounds.length > 1) {
+      leafletMap.fitBounds(bounds, { padding: [30, 30] });
+    }
+  } catch {}
+}
+
+async function refreshLiveMapZones(session: Session) {
+  const L = (window as any).L;
+  if (!L || !leafletMap || !leafletZoneLayer) return;
+  leafletZoneLayer.clearLayers();
+  try {
+    const res = await mFetch(`/m/geofences/${session.scenarioId}`, session);
+    if (!res.ok) return;
+    const data = await res.json() as any;
+    const zones: any[] = data.zones || [];
+    for (const z of zones) {
+      if (!z.active) continue;
+      const circle = L.circle([z.lat, z.lng], {
+        radius:      z.radius_m,
+        color:       '#ffaa33',
+        fillColor:   '#ffaa33',
+        fillOpacity: 0.08,
+        weight:      1,
+        dashArray:   '4 4',
+      }).bindPopup(`<b style="font-family:monospace;">${z.name}</b><br>Trigger: ${z.trigger_on}<br>Event: ${z.trigger_event_type}<br>Radius: ${z.radius_m}m`);
+      leafletZoneLayer.addLayer(circle);
+
+      // Zone label
+      L.tooltip({ permanent: true, direction: 'center', className: '' })
+        .setContent(`<span style="font-family:monospace;font-size:8px;background:#000;color:#ffaa33;padding:1px 3px;">${z.name}</span>`)
+        .setLatLng([z.lat, z.lng])
+        .addTo(leafletZoneLayer);
+    }
+  } catch {}
+}
+
+// Refresh live map when WS sends actor_telemetry (if map is open)
+function onActorTelemetryForMap(session: Session) {
+  if (mapVisible && leafletMap) {
+    refreshLiveMapActors(session);
+  }
+}
+
 // ===== CONTEXT-SENSITIVE RIGHT PANEL =====
 
 function renderRightPanel(session: Session) {
@@ -818,6 +1065,37 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
           <div style="font-size:9px;color:var(--text-dim);padding:4px 0;">Loading positions…</div>
         </div>
         <button class="ctrl-btn" id="ctrl-refresh-telemetry" style="margin-top:4px;font-size:8px;">REFRESH POSITIONS</button>
+      </div>
+      <div class="ctrl-section">
+        <h3>LIVE MAP</h3>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px;">
+          <button class="ctrl-btn" id="ctrl-toggle-map" style="font-size:8px;">OPEN MAP ▼</button>
+          <button class="ctrl-btn amber" id="ctrl-map-actors-toggle" style="font-size:8px;display:none;" title="Toggle actor GPS dots">ACTORS ●</button>
+          <button class="ctrl-btn amber" id="ctrl-map-zones-toggle" style="font-size:8px;display:none;" title="Toggle geofence zone overlays">ZONES ⬤</button>
+        </div>
+        <div id="m-live-map-container" style="display:none;height:320px;border:1px solid var(--border);border-radius:3px;overflow:hidden;position:relative;">
+          <div id="m-live-map" style="width:100%;height:100%;"></div>
+        </div>
+      </div>
+      <div class="ctrl-section">
+        <h3>GEOFENCE ZONES</h3>
+        <div id="geofence-list" style="max-height:100px;overflow-y:auto;font-size:9px;color:var(--text-dim);padding:2px 0;">Loading…</div>
+        <div style="margin-top:6px;">
+          <div class="ctrl-field"><label>NAME</label><input type="text" id="ctrl-gf-name" placeholder="Dock Zone" /></div>
+          <div class="ctrl-row">
+            <div class="ctrl-field"><label>LAT</label><input type="number" id="ctrl-gf-lat" step="0.0001" placeholder="47.678" /></div>
+            <div class="ctrl-field"><label>LNG</label><input type="number" id="ctrl-gf-lng" step="0.0001" placeholder="-116.799" /></div>
+          </div>
+          <div class="ctrl-row">
+            <div class="ctrl-field"><label>RADIUS (m)</label><input type="number" id="ctrl-gf-radius" value="100" min="10" max="5000" /></div>
+            <div class="ctrl-field"><label>TRIGGER</label>
+              <select id="ctrl-gf-trigger"><option value="enter">ENTER</option><option value="exit">EXIT</option><option value="both">BOTH</option></select>
+            </div>
+          </div>
+          <div class="ctrl-field"><label>EVENT TYPE</label><input type="text" id="ctrl-gf-event" placeholder="geofence_enter" /></div>
+          <button class="ctrl-btn" id="ctrl-add-geofence">ADD ZONE</button>
+          <div id="ctrl-gf-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
+        </div>
       </div>
       <div class="ctrl-section">
         <h3>MAP</h3>
@@ -905,6 +1183,13 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
   // Live telemetry refresh
   loadActorPositions(session);
   document.getElementById('ctrl-refresh-telemetry')?.addEventListener('click', () => loadActorPositions(session));
+
+  // Live map toggle
+  document.getElementById('ctrl-toggle-map')?.addEventListener('click', () => toggleLiveMap(session));
+
+  // Geofence list + add
+  loadGeofences(session);
+  document.getElementById('ctrl-add-geofence')?.addEventListener('click', () => addGeofence(session));
 
   // Map upload
   document.getElementById('ctrl-map-upload')!.addEventListener('click', () => document.getElementById('ctrl-map-file')!.click());
@@ -1466,6 +1751,9 @@ function connectWS(session: Session) {
             mokSend('critical', `⚠ PANIC — ${p.callsign || 'ACTOR'}: ${p.message || 'ABORT'}`);
           } else if (evType === 'player_pingback') {
             mokSend('advisory', `Pingback from ${data.data?.payload?.callsign || 'player'}.`);
+          } else if (evType === 'actor_deadman') {
+            const p = data.data?.payload || {};
+            mokSend('critical', `☠ DEADMAN — ${p.callsign || 'ACTOR'}: no heartbeat.`);
           }
         } else if (data.type === 'actor_telemetry') {
           // Live GPS update from watch app — update telemetry list if visible
@@ -1473,7 +1761,14 @@ function connectWS(session: Session) {
           if (td) {
             const listEl = document.getElementById('actor-telemetry-list');
             if (listEl && cachedSession) loadActorPositions(cachedSession);
+            if (cachedSession) onActorTelemetryForMap(cachedSession);
           }
+        } else if (data.type === 'geofence_trigger') {
+          const gd = data.data as any;
+          if (gd) mokSend('warning', `⬡ ${gd.callsign || 'actor'} ${gd.transition?.toUpperCase() || 'TRIGGERED'} zone "${gd.zone_name}" (${gd.dist_m}m)`);
+        } else if (data.type === 'deadman_alert') {
+          const dd = data.data as any;
+          mokSend('critical', `☠ DEADMAN — ${dd?.callsign || 'ACTOR'}: no heartbeat.`);
         } else if (data.type === 'mping_ack') {
           const callsign = data.data?.acked_by || 'unknown';
           mokSend('advisory', `ACK received from ${callsign}.`);
