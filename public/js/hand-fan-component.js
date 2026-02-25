@@ -502,25 +502,14 @@ const HandFanComponent = (function () {
     // Z-index (center cards on top)
     var zIndex = 100 - Math.abs(offset * 10);
 
-    // Apply transforms
+    // Expose base transform via CSS variables; CSS handles hover lift.
+    wrapper.style.setProperty('--fan-ty', String(verticalOffset) + 'px');
+    wrapper.style.setProperty('--fan-rot', String(rotation) + 'deg');
     wrapper.style.transform = 'translateY(' + verticalOffset + 'px) rotate(' + rotation + 'deg)';
     wrapper.style.marginLeft = (index === 0 ? 0 : -overlapWidth) + 'px';
     wrapper.style.zIndex = zIndex;
 
-    // Add hover lift effect
-    wrapper.addEventListener('mouseenter', function() {
-      if (!_isAnimating) {
-        wrapper.style.transform = 'translateY(' + (verticalOffset - 20) + 'px) rotate(' + rotation + 'deg) scale(1.05)';
-        wrapper.style.zIndex = 200;
-      }
-    });
-
-    wrapper.addEventListener('mouseleave', function() {
-      if (!_isAnimating) {
-        wrapper.style.transform = 'translateY(' + verticalOffset + 'px) rotate(' + rotation + 'deg)';
-        wrapper.style.zIndex = zIndex;
-      }
-    });
+    // NOTE: no JS hover transform mutation (prevents violent jumps + missed clicks).
 
     if (_ft0 && typeof EYESONLY_PERF !== 'undefined') {
       EYESONLY_PERF.mark('fan.transformMs', performance.now() - _ft0);
@@ -912,7 +901,11 @@ const HandFanComponent = (function () {
 
     // Press-and-hold targeting (enemy default)
     cardEl.addEventListener('pointerdown', function(e) {
-      if (_isAnimating) return;
+      if (_isAnimating) {
+        // Don't drop the first click during repopulate; queue a selection.
+        _toggleCardSelection(index);
+        return;
+      }
 
       // Only enable this behavior during STR combat mode
       if (_mode !== 'combat') return;
@@ -1275,13 +1268,19 @@ const HandFanComponent = (function () {
     _cards = newCards || [];
     _animationPhase = 'repopulate';
 
+    // Lock interactions during repopulate so hover/click can't fight transforms.
+    _isAnimating = true;
+    try { if (_fanContainer) _fanContainer.classList.add('hand-fan-interaction-lock'); } catch (e0) {}
+
     _fanContainer.classList.add('hand-fan-repopulate');
     _renderCards();
 
     setTimeout(function() {
       _fanContainer.classList.remove('hand-fan-repopulate');
       _animationPhase = 'idle';
-    }, 300);
+      _isAnimating = false;
+      try { if (_fanContainer) _fanContainer.classList.remove('hand-fan-interaction-lock'); } catch (e1) {}
+    }, 320);
   }
 
   /**

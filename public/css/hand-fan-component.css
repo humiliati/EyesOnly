@@ -186,8 +186,9 @@
 
 .hand-card-wrapper {
   position: relative;
-  transition: transform 0.3s ease, z-index 0s;
+  transition: transform 0.2s ease;
   cursor: pointer;
+  transform: translateY(var(--fan-ty, 0px)) rotate(var(--fan-rot, 0deg));
 }
 
 /* ============================================================
@@ -265,6 +266,11 @@
 }
 
 /* Card hover effect */
+.hand-card-wrapper:hover {
+  transform: translateY(calc(var(--fan-ty, 0px) - 20px)) rotate(var(--fan-rot, 0deg)) scale(1.05);
+  z-index: 200;
+}
+
 .hand-card:hover {
   box-shadow: 0 4px 20px rgba(28, 255, 155, 0.5);
 }
@@ -606,6 +612,14 @@
 .hand-fan-container.hand-fan-repopulate .hand-card-wrapper {
   animation: card-from-center 0.3s ease-out forwards;
   animation-delay: calc(var(--card-index, 0) * 50ms);
+}
+
+/* While repopulating, don't allow hover/click interactions to fight transforms */
+.hand-fan-container.hand-fan-repopulate .hand-card-wrapper,
+.hand-fan-container.hand-fan-repopulate .hand-card,
+.hand-fan-container.hand-fan-interaction-lock .hand-card-wrapper,
+.hand-fan-container.hand-fan-interaction-lock .hand-card {
+  pointer-events: none;
 }
 
 @keyframes card-from-center {

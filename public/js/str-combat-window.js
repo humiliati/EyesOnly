@@ -99,7 +99,7 @@ const STRCombatWindow = (function () {
     // Set timer based on enemy type, scaled by floor number
     _currentEnemyType = combatState.enemyType || 'standard';
     var baseMs = TIMER_DURATIONS[_currentEnemyType] || TIMER_DURATIONS.standard;
-    _timerDuration = _scaleTimerForFloor(baseMs, combatState.floor || 1);
+    _timerDuration = _scaleTimerForFloor(baseMs, combatState.floor || 1, combatState.difficultyTier || 1);
     _timeRemaining = _timerDuration;
 
     // Show 3-second countdown before revealing the combat window
@@ -608,7 +608,7 @@ const STRCombatWindow = (function () {
 
     // Reset turn timer when a new round begins
     if (combatState.round !== previousRound) {
-      resetTimer(_currentEnemyType, combatState.floor);
+      resetTimer(_currentEnemyType, combatState.floor, combatState.difficultyTier || 1);
     }
   }
 
@@ -621,18 +621,39 @@ const STRCombatWindow = (function () {
    * @param {number} floor  - Current floor number (1-based)
    * @returns {number} Scaled timer duration in milliseconds
    */
-  function _scaleTimerForFloor(baseMs, floor) {
-    var RAMP_DOWN_FLOOR = 10; // Bonus fully gone by this floor
-    var MAX_BONUS = 0.40;     // 40% extra time at floor 1
-    var remaining = Math.max(0, RAMP_DOWN_FLOOR - floor);
-    var bonus = MAX_BONUS * (remaining / (RAMP_DOWN_FLOOR - 1));
-    return Math.round(baseMs * (1 + bonus));
+  function _scaleTimerForFloor(baseMs, floor, difficultyTier) {
+    // Tier-aware timer design:
+    // - T1 biome 1: ~10s (very generous)
+    // - Progressively shortens within each tier
+    // - By T3 biome 1: ~5s
+    var tier = difficultyTier || 1;
+
+    var tierBase = {
+      1: 10000,
+      2: 7000,
+      3: 5000
+    };
+
+    var targetBase = tierBase[tier] || 5000;
+
+    // Within-tier shortening across floors 1..10
+    var floorsPerTier = 10;
+    var localFloor = ((Math.max(1, floor) - 1) % floorsPerTier) + 1;
+    var progress = (localFloor - 1) / (floorsPerTier - 1);
+
+    // Shorten 20% across a tier
+    var shortenFactor = 1 - (progress * 0.20);
+
+    // Enemy type influences baseMs slightly; blend it gently so timers still feel distinct.
+    var blended = (targetBase * 0.85) + (baseMs * 0.15);
+
+    return Math.floor(blended * shortenFactor);
   }
 
   /**
    * Reset timer for new round
    */
-  function resetTimer(enemyType, floor) {
+  function resetTimer(enemyType, floor, difficultyTier) {
     _currentEnemyType = enemyType || _currentEnemyType || 'standard';
     var baseMs = TIMER_DURATIONS[_currentEnemyType] || TIMER_DURATIONS.standard;
     var currentFloor = 1;
@@ -641,7 +662,7 @@ const STRCombatWindow = (function () {
     } else if (_combatState) {
       currentFloor = _combatState.floor || 1;
     }
-    _timerDuration = _scaleTimerForFloor(baseMs, currentFloor);
+    _timerDuration = _scaleTimerForFloor(baseMs, currentFloor, difficultyTier || (_combatState && _combatState.difficultyTier) || 1);
     _timeRemaining = _timerDuration;
 
     if (_isVisible) {
