@@ -176,8 +176,10 @@ const GoneRogueMovement = (function () {
       }
     }
 
-    // No path found - return direct line to goal (will hit wall but at least moves)
-    return [{ x: goalX, y: goalY }];
+    // No path found — return empty array so caller knows the target is unreachable.
+    // Previously this returned the goal directly, which let the movement system
+    // lerp the player straight through walls (the "fishing drag through walls" bug).
+    return [];
   }
 
   /**

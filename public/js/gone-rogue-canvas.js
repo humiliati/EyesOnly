@@ -144,6 +144,24 @@ const CanvasRenderer = (function() {
       this.ctx.fillRect(pixelX, pixelY, this.cellSize, this.cellSize);
     }
 
+    // Pulsing glow highlight for special tiles (locked gates, etc.)
+    if (tile.glow) {
+      var glowRadius = this.cellSize * 1.5;
+      var pulse = 0.4 + 0.3 * Math.sin(performance.now() * 0.003);
+      var gr = parseInt(tile.glow.substr(1, 2), 16);
+      var gg = parseInt(tile.glow.substr(3, 2), 16);
+      var gb = parseInt(tile.glow.substr(5, 2), 16);
+      var glowGrad = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, glowRadius);
+      glowGrad.addColorStop(0, 'rgba(' + gr + ',' + gg + ',' + gb + ',' + pulse + ')');
+      glowGrad.addColorStop(0.5, 'rgba(' + gr + ',' + gg + ',' + gb + ',' + (pulse * 0.3) + ')');
+      glowGrad.addColorStop(1, 'rgba(' + gr + ',' + gg + ',' + gb + ',0)');
+      var prevComp = this.ctx.globalCompositeOperation;
+      this.ctx.globalCompositeOperation = 'lighter';
+      this.ctx.fillStyle = glowGrad;
+      this.ctx.fillRect(centerX - glowRadius, centerY - glowRadius, glowRadius * 2, glowRadius * 2);
+      this.ctx.globalCompositeOperation = prevComp;
+    }
+
     // Check if we have multiple render objects for this tile (multi-tree scatter)
     var renderObjects = null;
     if (typeof GoneRogue !== 'undefined' && GoneRogue.getTileRenderObjects) {

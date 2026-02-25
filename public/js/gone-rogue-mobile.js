@@ -557,6 +557,11 @@ const GoneRogueMobile = (function () {
             } else if (tile === '🚪' || tile === '▼') {
               cellData.bg = '#0a1a0a';
               cellData.color = '#00ff88';
+            } else if (tile === '🚧') {
+              // Locked gate — bright orange-gold background so playtesters spot it
+              cellData.bg = '#3d2800';
+              cellData.color = '#ffaa00';
+              cellData.glow = '#ff8800'; // custom flag for canvas glow pass
             } else if (tile === '~') {
               // Water tile — dark blue background
               cellData.bg = '#0a1a2a';

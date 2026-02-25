@@ -8805,6 +8805,17 @@ _incrementPityTimers();
     if (!_active) return;
     if (!path || path.length === 0) return;
 
+    // Validate every waypoint in the path is walkable — reject paths that
+    // cut through walls (safety net against pathfinder fallback bugs).
+    for (var pi = 0; pi < path.length; pi++) {
+      if (!_isWalkable(path[pi].x, path[pi].y)) {
+        // Trim path to the last walkable waypoint before the wall
+        path = path.slice(0, pi);
+        break;
+      }
+    }
+    if (path.length === 0) return;
+
     // Initialize movement system if not already
     if (typeof GoneRogueMovement !== 'undefined') {
       GoneRogueMovement.init(_player.x, _player.y);
