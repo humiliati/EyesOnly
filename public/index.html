@@ -212,8 +212,11 @@
               <div class="awol-tooltip-body">
                 <div class="awol-option" id="awol-m-status">
                   <span class="awol-option-label">M /ops link status:</span>
-                  <span class="awol-option-value" id="m-status-value">UNKNOWN</span>
-                  <button class="difficulty-btn awol-pingback-btn" id="awol-pingback-btn" type="button" disabled title="Ping M console (/m) and pressure a response">[M] PING BACK</button>
+                  <span class="awol-option-value" id="m-status-value">OFFLINE</span>
+                  <button class="difficulty-btn awol-pingback-btn" id="awol-pingback-btn" type="button" disabled title="Ping M console and log your position">[M] PING BACK</button>
+                </div>
+                <div class="awol-option" id="awol-livehelp-row">
+                  <a href="/livehelp" class="debrief-acc-link awol-livehelp-link" target="_blank" rel="noopener" aria-label="Live ARG help and legal disclaimers (opens in new tab)">Live ARG help &amp; disclaimers &#8599;</a>
                 </div>
                 <div class="awol-option awol-difficulty-selector" id="awol-difficulty">
                   <span class="awol-option-label">UBER (difficulty, not biome tier):</span>
@@ -330,6 +333,119 @@
   <script src="js/perf-hook.js"></script>
   <!-- Dev-only playtest agent (enable with ?playtest=1, human-UI-bound edge case hunter) -->
   <script src="js/playtest-agent.js"></script>
+
+  <!-- Phase 3: Optional player GPS consent + reporting for M pressure modeling -->
+  <script>
+  (function() {
+    'use strict';
+    var GPS_CONSENT_KEY = 'eyesonly_gps_consent';
+    var GPS_WATCH_ID    = null;
+    var GPS_INTERVAL    = 30000; // 30s report interval
+    var _lastReportMs   = 0;
+
+    /** Report player position to /api/ops/player-location */
+    function reportLocation(lat, lng, accuracy) {
+      try {
+        var token = (window.ApiClient && window.ApiClient.getToken && window.ApiClient.getToken())
+                  || localStorage.getItem('eyesonly_token');
+        if (!token) return;
+        var body = JSON.stringify({ lat: lat, lng: lng, accuracy_m: accuracy || null });
+        fetch('/api/ops/player-location', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: body,
+        }).catch(function() {}); // fire-and-forget; no user-visible feedback
+      } catch(e) {}
+    }
+
+    /** Start watching position after consent */
+    function startGpsWatch() {
+      if (!navigator.geolocation || GPS_WATCH_ID !== null) return;
+      GPS_WATCH_ID = navigator.geolocation.watchPosition(
+        function(pos) {
+          var now = Date.now();
+          if (now - _lastReportMs < GPS_INTERVAL) return; // rate limit
+          _lastReportMs = now;
+          reportLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+        },
+        function() {}, // ignore errors silently
+        { enableHighAccuracy: false, maximumAge: 60000, timeout: 20000 }
+      );
+    }
+
+    /** Show a one-time consent banner at the bottom of the screen */
+    function showConsentBanner() {
+      if (document.getElementById('gps-consent-banner')) return;
+      var banner = document.createElement('div');
+      banner.id = 'gps-consent-banner';
+      banner.setAttribute('role', 'dialog');
+      banner.setAttribute('aria-label', 'Optional location sharing for Live ARG');
+      banner.style.cssText = [
+        'position:fixed;bottom:0;left:0;right:0;z-index:9999',
+        'background:#0a0a0a;border-top:1px solid #1a3a1a',
+        'color:#1a6a1a;font-family:Courier New,monospace;font-size:10px',
+        'padding:10px 16px;display:flex;align-items:center;gap:12px',
+        'letter-spacing:1px',
+      ].join(';');
+      banner.innerHTML = [
+        '<span style="flex:1;line-height:1.6">',
+          '&#9655; LIVE ARG: Share location with M for enhanced pressure modeling? ',
+          '<span style="color:#555">(opt-in · no tracking outside sessions · revoke anytime)</span>',
+        '</span>',
+        '<button id="gps-consent-yes" style="background:transparent;border:1px solid #1a6a1a;color:#1a6a1a;',
+          'font-family:inherit;font-size:9px;letter-spacing:2px;padding:5px 10px;cursor:pointer">ALLOW</button>',
+        '<button id="gps-consent-no"  style="background:transparent;border:1px solid #333;color:#444;',
+          'font-family:inherit;font-size:9px;letter-spacing:2px;padding:5px 10px;cursor:pointer">DECLINE</button>',
+      ].join('');
+      document.body.appendChild(banner);
+
+      document.getElementById('gps-consent-yes').addEventListener('click', function() {
+        localStorage.setItem(GPS_CONSENT_KEY, '1');
+        banner.remove();
+        startGpsWatch();
+      });
+      document.getElementById('gps-consent-no').addEventListener('click', function() {
+        localStorage.setItem(GPS_CONSENT_KEY, '0');
+        banner.remove();
+      });
+    }
+
+    /** Boot: check consent state, show banner if not decided yet */
+    function boot() {
+      var consent = localStorage.getItem(GPS_CONSENT_KEY);
+      if (consent === '1') {
+        startGpsWatch();
+      } else if (consent === null) {
+        // Show banner only after scenario join (ApiClient must have a token)
+        var checkReady = setInterval(function() {
+          var token = (window.ApiClient && window.ApiClient.getToken && window.ApiClient.getToken())
+                    || localStorage.getItem('eyesonly_token');
+          if (token) {
+            clearInterval(checkReady);
+            // Small delay so the UI has settled before showing banner
+            setTimeout(showConsentBanner, 3000);
+          }
+        }, 2000);
+      }
+    }
+
+    // Expose for testing and manual revocation
+    window._EyesOnlyGPS = {
+      revoke: function() {
+        if (GPS_WATCH_ID !== null) { navigator.geolocation.clearWatch(GPS_WATCH_ID); GPS_WATCH_ID = null; }
+        localStorage.setItem(GPS_CONSENT_KEY, '0');
+      },
+      enable: function() { localStorage.setItem(GPS_CONSENT_KEY, '1'); startGpsWatch(); },
+    };
+
+    // Boot after DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', boot);
+    } else {
+      boot();
+    }
+  })();
+  </script>
 
 </body>
 </html>

@@ -148,6 +148,46 @@ export async function updateActorLane(db: D1Database, id: number, laneId: string
     .run();
 }
 
+export async function updateActorTelemetry(
+  db: D1Database,
+  id: number,
+  opts: {
+    lat?: number | null;
+    lng?: number | null;
+    accel_x?: number | null;
+    accel_y?: number | null;
+    accel_z?: number | null;
+    motion_state?: string | null;
+  },
+): Promise<void> {
+  const now = Date.now();
+  await db
+    .prepare(
+      `UPDATE actors SET
+         last_lat = ?,
+         last_lng = ?,
+         last_accel_x = ?,
+         last_accel_y = ?,
+         last_accel_z = ?,
+         motion_state = ?,
+         last_seen_at = ?,
+         updated_at = ?
+       WHERE id = ?`,
+    )
+    .bind(
+      opts.lat ?? null,
+      opts.lng ?? null,
+      opts.accel_x ?? null,
+      opts.accel_y ?? null,
+      opts.accel_z ?? null,
+      opts.motion_state ?? 'unknown',
+      now,
+      now,
+      id,
+    )
+    .run();
+}
+
 // --- Events (Append-Only) ---
 
 export async function insertEvent(
@@ -416,4 +456,328 @@ export async function updateScenarioConfig(db: D1Database, scenarioId: number, c
     .prepare('UPDATE scenarios SET config = ?, updated_at = ? WHERE id = ?')
     .bind(JSON.stringify(config), Date.now(), scenarioId)
     .run();
+}
+
+// --- Geofence Zones (Phase 2) ---
+
+import type { GeofenceZoneRow, ActorGeofenceStateRow, PushSubscriptionRow } from '../../shared/types';
+
+export async function listGeofenceZones(db: D1Database, scenarioId: number): Promise<GeofenceZoneRow[]> {
+  const result = await db
+    .prepare('SELECT * FROM geofence_zones WHERE scenario_id = ? ORDER BY created_at ASC')
+    .bind(scenarioId)
+    .all<GeofenceZoneRow>();
+  return result.results;
+}
+
+export async function listActiveGeofenceZones(db: D1Database, scenarioId: number): Promise<GeofenceZoneRow[]> {
+  const result = await db
+    .prepare('SELECT * FROM geofence_zones WHERE scenario_id = ? AND active = 1')
+    .bind(scenarioId)
+    .all<GeofenceZoneRow>();
+  return result.results;
+}
+
+export async function createGeofenceZone(
+  db: D1Database,
+  scenarioId: number,
+  name: string,
+  lat: number,
+  lng: number,
+  radiusM: number = 100,
+  triggerOn: string = 'enter',
+  triggerEventType: string = 'geofence_enter',
+): Promise<GeofenceZoneRow> {
+  const result = await db
+    .prepare(
+      `INSERT INTO geofence_zones
+         (scenario_id, name, lat, lng, radius_m, trigger_on, trigger_event_type, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
+    )
+    .bind(scenarioId, name, lat, lng, radiusM, triggerOn, triggerEventType, Date.now())
+    .first<GeofenceZoneRow>();
+  return result!;
+}
+
+export async function deleteGeofenceZone(db: D1Database, id: number): Promise<void> {
+  await db.prepare('DELETE FROM geofence_zones WHERE id = ?').bind(id).run();
+}
+
+export async function setGeofenceZoneActive(db: D1Database, id: number, active: boolean): Promise<void> {
+  await db.prepare('UPDATE geofence_zones SET active = ? WHERE id = ?').bind(active ? 1 : 0, id).run();
+}
+
+export async function getActorGeofenceState(
+  db: D1Database,
+  actorId: number,
+  zoneId: number,
+): Promise<ActorGeofenceStateRow | null> {
+  return db
+    .prepare('SELECT * FROM actor_geofence_state WHERE actor_id = ? AND zone_id = ?')
+    .bind(actorId, zoneId)
+    .first<ActorGeofenceStateRow>();
+}
+
+export async function upsertActorGeofenceState(
+  db: D1Database,
+  actorId: number,
+  zoneId: number,
+  inside: boolean,
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO actor_geofence_state (actor_id, zone_id, inside, updated_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT (actor_id, zone_id) DO UPDATE SET inside=excluded.inside, updated_at=excluded.updated_at`,
+    )
+    .bind(actorId, zoneId, inside ? 1 : 0, Date.now())
+    .run();
+}
+
+// --- Push Subscriptions (Phase 2) ---
+
+export async function upsertPushSubscription(
+  db: D1Database,
+  actorId: number,
+  scenarioId: number,
+  endpoint: string,
+  p256dh: string,
+  auth: string,
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO push_subscriptions (actor_id, scenario_id, endpoint, p256dh, auth, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT (actor_id, endpoint) DO UPDATE SET p256dh=excluded.p256dh, auth=excluded.auth`,
+    )
+    .bind(actorId, scenarioId, endpoint, p256dh, auth, Date.now())
+    .run();
+}
+
+export async function deletePushSubscription(db: D1Database, actorId: number, endpoint: string): Promise<void> {
+  await db
+    .prepare('DELETE FROM push_subscriptions WHERE actor_id = ? AND endpoint = ?')
+    .bind(actorId, endpoint)
+    .run();
+}
+
+export async function getPushSubscriptionsByScenario(
+  db: D1Database,
+  scenarioId: number,
+  actorId?: number,
+): Promise<PushSubscriptionRow[]> {
+  if (actorId !== undefined) {
+    const result = await db
+      .prepare('SELECT * FROM push_subscriptions WHERE scenario_id = ? AND actor_id = ?')
+      .bind(scenarioId, actorId)
+      .all<PushSubscriptionRow>();
+    return result.results;
+  }
+  const result = await db
+    .prepare('SELECT * FROM push_subscriptions WHERE scenario_id = ?')
+    .bind(scenarioId)
+    .all<PushSubscriptionRow>();
+  return result.results;
+}
+
+// --- Deadman / Stale Actor Query (Phase 2) ---
+
+/**
+ * Find actors who have not sent telemetry in the last `thresholdMs` milliseconds
+ * and whose status is not 'dark' or 'offline'.
+ */
+export async function findStaleActors(
+  db: D1Database,
+  scenarioId: number,
+  thresholdMs: number = 5 * 60 * 1000, // 5 minutes default
+): Promise<Array<{ id: number; callsign: string; last_seen_at: number | null; motion_state: string | null }>> {
+  const cutoff = Date.now() - thresholdMs;
+  const result = await db
+    .prepare(
+      `SELECT id, callsign, last_seen_at, motion_state FROM actors
+       WHERE scenario_id = ?
+         AND status NOT IN ('dark','offline','standby')
+         AND (last_seen_at IS NULL OR last_seen_at < ?)`,
+    )
+    .bind(scenarioId, cutoff)
+    .all<{ id: number; callsign: string; last_seen_at: number | null; motion_state: string | null }>();
+  return result.results;
+}
+
+export async function listActiveScenarios(db: D1Database): Promise<Array<{ id: number; name: string }>> {
+  const result = await db
+    .prepare("SELECT id, name FROM scenarios WHERE status = 'active'")
+    .all<{ id: number; name: string }>();
+  return result.results;
+}
+
+// --- Scenario Beats (Phase 3) ---
+
+import type {
+  ScenarioBeatRow,
+  PlayerLocationRow,
+  FogLitZoneRow,
+  MicrochatMessageRow,
+} from '../../shared/types';
+
+export async function listScenarioBeats(db: D1Database, scenarioId: number): Promise<ScenarioBeatRow[]> {
+  const result = await db
+    .prepare('SELECT * FROM scenario_beats WHERE scenario_id = ? ORDER BY beat_seq ASC')
+    .bind(scenarioId)
+    .all<ScenarioBeatRow>();
+  return result.results;
+}
+
+export async function getActiveScenarioBeats(db: D1Database, scenarioId: number): Promise<ScenarioBeatRow[]> {
+  const result = await db
+    .prepare('SELECT * FROM scenario_beats WHERE scenario_id = ? AND auto_advance = 1 AND unlocked_at IS NULL AND lat IS NOT NULL AND lng IS NOT NULL ORDER BY beat_seq ASC')
+    .bind(scenarioId)
+    .all<ScenarioBeatRow>();
+  return result.results;
+}
+
+export async function createScenarioBeat(
+  db: D1Database,
+  scenarioId: number,
+  title: string,
+  opts: {
+    description?: string;
+    lat?: number;
+    lng?: number;
+    trigger_radius_m?: number;
+    event_type?: string;
+    beat_seq?: number;
+  } = {},
+): Promise<ScenarioBeatRow> {
+  const result = await db
+    .prepare(
+      `INSERT INTO scenario_beats
+         (scenario_id, title, description, lat, lng, trigger_radius_m, event_type, beat_seq, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
+    )
+    .bind(
+      scenarioId,
+      title,
+      opts.description ?? null,
+      opts.lat ?? null,
+      opts.lng ?? null,
+      opts.trigger_radius_m ?? 100,
+      opts.event_type ?? 'beat_unlock',
+      opts.beat_seq ?? 0,
+      Date.now(),
+    )
+    .first<ScenarioBeatRow>();
+  return result!;
+}
+
+export async function deleteScenarioBeat(db: D1Database, id: number): Promise<void> {
+  await db.prepare('DELETE FROM scenario_beats WHERE id = ?').bind(id).run();
+}
+
+export async function unlockScenarioBeat(db: D1Database, id: number): Promise<void> {
+  await db.prepare('UPDATE scenario_beats SET unlocked_at = ? WHERE id = ?').bind(Date.now(), id).run();
+}
+
+// --- Player Locations (Phase 3) ---
+
+export async function upsertPlayerLocation(
+  db: D1Database,
+  playerId: string,
+  scenarioId: number,
+  lat: number,
+  lng: number,
+  accuracyM?: number,
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO player_locations (player_id, scenario_id, lat, lng, accuracy_m, reported_at)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT (player_id, scenario_id) DO UPDATE SET
+         lat=excluded.lat, lng=excluded.lng, accuracy_m=excluded.accuracy_m, reported_at=excluded.reported_at`,
+    )
+    .bind(playerId, scenarioId, lat, lng, accuracyM ?? null, Date.now())
+    .run();
+}
+
+export async function getPlayerLocations(db: D1Database, scenarioId: number): Promise<PlayerLocationRow[]> {
+  const result = await db
+    .prepare('SELECT * FROM player_locations WHERE scenario_id = ? ORDER BY reported_at DESC')
+    .bind(scenarioId)
+    .all<PlayerLocationRow>();
+  return result.results;
+}
+
+// --- Fog of War (Phase 3) ---
+
+export async function listFogZones(db: D1Database, scenarioId: number): Promise<FogLitZoneRow[]> {
+  const result = await db
+    .prepare("SELECT * FROM fog_lit_zones WHERE scenario_id = ? ORDER BY zone_label ASC")
+    .bind(String(scenarioId))
+    .all<FogLitZoneRow>();
+  return result.results;
+}
+
+export async function upsertFogZone(
+  db: D1Database,
+  scenarioId: number,
+  zoneLabel: string,
+  lit: boolean,
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO fog_lit_zones (scenario_id, zone_label, lit, updated_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT (scenario_id, zone_label) DO UPDATE SET lit=excluded.lit, updated_at=excluded.updated_at`,
+    )
+    .bind(String(scenarioId), zoneLabel, lit ? 1 : 0, Date.now())
+    .run();
+}
+
+export async function deleteFogZone(db: D1Database, scenarioId: number, zoneLabel: string): Promise<void> {
+  await db
+    .prepare('DELETE FROM fog_lit_zones WHERE scenario_id = ? AND zone_label = ?')
+    .bind(String(scenarioId), zoneLabel)
+    .run();
+}
+
+// --- Microchat (Phase 3) ---
+
+export async function insertMicrochatMessage(
+  db: D1Database,
+  scenarioId: number,
+  fromId: string,
+  toId: string,
+  ciphertext: string,
+): Promise<MicrochatMessageRow> {
+  const result = await db
+    .prepare(
+      `INSERT INTO microchat_messages (scenario_id, from_id, to_id, ciphertext, created_at)
+       VALUES (?, ?, ?, ?, ?) RETURNING *`,
+    )
+    .bind(scenarioId, fromId, toId, ciphertext, Date.now())
+    .first<MicrochatMessageRow>();
+  return result!;
+}
+
+export async function getMicrochatMessages(
+  db: D1Database,
+  scenarioId: number,
+  actorId: string,
+  limit: number = 30,
+): Promise<MicrochatMessageRow[]> {
+  // Return messages where actor is either sender or recipient (includes M↔actor thread)
+  const result = await db
+    .prepare(
+      `SELECT * FROM microchat_messages
+       WHERE scenario_id = ? AND (from_id = ? OR to_id = ? OR from_id = 'M' OR to_id = 'M')
+         AND (from_id = ? OR to_id = ? OR from_id = 'M' OR to_id = 'M')
+       ORDER BY created_at DESC LIMIT ?`,
+    )
+    .bind(scenarioId, actorId, actorId, actorId, actorId, limit)
+    .all<MicrochatMessageRow>();
+  return result.results.reverse();
+}
+
+export async function markMicrochatDelivered(db: D1Database, id: number): Promise<void> {
+  await db.prepare('UPDATE microchat_messages SET delivered = 1 WHERE id = ?').bind(id).run();
 }

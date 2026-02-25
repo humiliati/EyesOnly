@@ -46,5 +46,18 @@
       "tag": "v1",
       "new_sqlite_classes": ["ScenarioRoom"]
     }
-  ]
+  ],
+
+  // Scheduled triggers — deadman check every 5 minutes
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  },
+
+  // Non-secret environment variables
+  // VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY are SECRETS — set with:
+  //   wrangler secret put VAPID_PUBLIC_KEY
+  //   wrangler secret put VAPID_PRIVATE_KEY
+  "vars": {
+    "VAPID_SUBJECT": "mailto:ops@flapsandseals.com"
+  }
 }

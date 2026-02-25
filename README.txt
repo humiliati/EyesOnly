@@ -217,6 +217,7 @@ ARCHITECTURE
 
   M Mode Console:     /m/          (director command & control)
   Ops Portal:         /ops/        (actor field interface)
+  Scenario Designer:  /m/scenario-designer.html  (narrative-to-beats authoring tool)
   Player Terminal:    / (root)     (ARG recruitment terminal + Gone Rogue)
 
 
@@ -247,17 +248,25 @@ PROJECT STRUCTURE
     m/
       index.html            - M Mode HTML + CSS
       app.js                - Built M Mode bundle
+      scenario-designer.html - Scenario Designer (narrative → beats, no build step)
     ops/
       index.html            - Ops HTML + CSS
       app.js                - Built Ops bundle
+    portal/
+      asset-designer.html   - Asset cluster designer portal
+      map-designer.html     - Floor/map designer portal
     index.html              - Player ARG terminal
     css/, js/, data/        - Player terminal assets
+    livehelp/
+      index.html            - Live ARG help & legal disclaimers page
 
   migrations/
     0001_init.sql           - Core schema (scenarios, actors, lanes, events, etc.)
     0002_ugrs_grid.sql      - UGRS grid cells, cell_id columns on actors/dead_drops
 
   docs/
+    scenarios/
+      downed-pilot.sel.txt  - Sample extraction scenario in SEL format (1.2026DownedPilot)
     boss-encounters.md        - Boss encounter system: all 10 types, cards, mythic conditions, deck strategies
     m-tutorial-alpha.md     - M Mode director tutorial (maps UI to tutorial design)
     ops-tutorial-alpha.md   - Ops actor field manual (maps UI to tutorial design)
@@ -356,6 +365,27 @@ SCENARIO ENGINE (NEXT PHASE)
 -----------------------------
 The scenario engine is the authoring and runtime system for live operations.
 Design document: scenarioenginedesign.docx
+
+  Scenario Designer (SHIPPED):
+    Located at /m/scenario-designer.html.
+    Takes freeform narrative text and parses it into wirable "story beats" that
+    map to the UGRS lane grid — the same way escape rooms are built from design
+    briefs. Beats are arranged in a swimlane view (one row per lane) or a linear
+    chain view. Each beat has type (PM, DD, RV, EXFIL, EVT), location, actor,
+    bonafides, success/fail paths, and escalation phase.
+    Export produces JSON (for API creation) and SEL (Scenario Engine Language,
+    human-readable, version-controllable). Runs entirely in-browser, no build step.
+
+    Sample scenario: docs/scenarios/downed-pilot.sel.txt
+      - Event 1: PM1 at The District (Sandpoint) — IC spy / bonafides exchange
+      - Event 2: Dead Drop at Long Bridge — waterproof canister under park bench
+      - Event 3: EXFIL at Schweitzer Pub — link-up with downed pilot, key handoff
+
+  SEL (Scenario Engine Language):
+    Declarative authoring format. Compiles to scenario config stored in D1.
+    Human-readable, version-controllable. Blocks: SCENARIO, LANE, OBJECTIVE,
+    ACTOR_SCRIPT, ESCALATION, EXTRACTION, EVENT_DECK, RECOVERY.
+    See docs/scenarios/downed-pilot.sel.txt for full syntax reference.
 
 Planned implementation layers:
 

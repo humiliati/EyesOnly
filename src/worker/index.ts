@@ -12,6 +12,14 @@ import { opsRoutes } from './routes/ops';
 import { mModeRoutes } from './routes/m-mode';
 import { userAuthRoutes } from './routes/user-auth';
 import { kernelRoutes } from './routes/kernel';
+import {
+  listActiveScenarios,
+  findStaleActors,
+  insertEvent,
+  getPushSubscriptionsByScenario,
+  deletePushSubscription,
+} from './db/queries';
+import { sendWebPushToAll } from './utils/web-push';
 
 export { ScenarioRoom } from './durable-objects/scenario-room';
 
@@ -83,3 +91,73 @@ app.all('*', async (c) => {
 });
 
 export default app;
+
+// ============================================================
+// SCHEDULED HANDLER — Deadman Check (runs every 5 minutes)
+// Fires an 'actor_deadman' event for every active actor that
+// has not sent telemetry in the last 5 minutes.
+// ============================================================
+
+export async function scheduled(
+  _event: ScheduledEvent,
+  env: Env,
+  _ctx: ExecutionContext,
+): Promise<void> {
+  const DEADMAN_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+
+  try {
+    const scenarios = await listActiveScenarios(env.DB);
+
+    for (const scenario of scenarios) {
+      const stale = await findStaleActors(env.DB, scenario.id, DEADMAN_THRESHOLD_MS);
+      if (!stale.length) continue;
+
+      for (const actor of stale) {
+        // Insert deadman event
+        const event = await insertEvent(env.DB, scenario.id, actor.id, 'actor_deadman', {
+          callsign:     actor.callsign,
+          last_seen_at: actor.last_seen_at,
+          stale_ms:     actor.last_seen_at ? Date.now() - actor.last_seen_at : null,
+          ts:           Date.now(),
+        });
+
+        // Broadcast to M console
+        try {
+          const roomId = env.SCENARIO_ROOM.idFromName(`scenario-${scenario.id}`);
+          const room   = env.SCENARIO_ROOM.get(roomId);
+          await room.fetch(new Request('http://internal/broadcast', {
+            method: 'POST',
+            body: JSON.stringify({
+              type: 'deadman_alert',
+              data: { actor_id: actor.id, callsign: actor.callsign, event_id: event.id },
+              timestamp: Date.now(),
+            }),
+          }));
+        } catch {}
+
+        // Web Push to M's devices (M is the director — subscribe separately in future)
+        // For now, push to the stale actor's own devices as a "reconnect" nudge
+        try {
+          const subs = await getPushSubscriptionsByScenario(env.DB, scenario.id, actor.id);
+          if (subs.length) {
+            await sendWebPushToAll(
+              env,
+              subs,
+              {
+                title:  '⚠ HEARTBEAT MISSED',
+                body:   'M has lost contact. Reconnect now.',
+                tag:    'deadman',
+                silent: false,
+              },
+              async (expired) => {
+                await deletePushSubscription(env.DB, expired.actor_id, expired.endpoint);
+              },
+            );
+          }
+        } catch {}
+      }
+    }
+  } catch (err) {
+    console.error('[deadman] scheduled handler error:', err);
+  }
+}

@@ -203,3 +203,86 @@ Press the red **DISCONNECT** button at the bottom of the dashboard. This clears 
 ## 14. GOLDEN RULE
 
 > If the players think you "might actually have been real," you succeeded.
+
+---
+
+## 15. EXTRACTION SCENARIO FIELD NOTES — DOWNED PILOT (1.2026)
+
+This section covers actor-specific field guidance for the **Downed Pilot extraction** scenario type. It is the template for all EyesOnly extraction operations.
+
+### Scenario Summary
+
+Players infiltrate a scenario, link up with a foreign agent (spy), solve a dead drop, and assist in rescuing a downed pilot. Three beats, three lanes.
+
+| Beat | Type | Location | Your Role |
+|------|------|----------|-----------|
+| PM1 | Personal Meet | The District — 313 N First Ave., Sandpoint | IC (Spy / Liaison) |
+| DD | Dead Drop | Long Bridge (Bonner County) — park bench | Pre-stage only |
+| EXFIL | Rendezvous | Schweitzer Pub, Schweitzer Ski Resort | IC (Downed Pilot) or Hostess |
+
+### Beat 1: Personal Meet (PM1) — IC (Spy) Guidance
+
+**Your objective:** Confirm client bonafides, deliver verbal briefing, exit "spooked."
+
+**Bonafides exchange:**
+- Client says: *"I've always favored an Old Fashioned in Paris."*
+- You reply: *"I usually prefer champagne in the city of lights."*
+
+**After confirmation:**
+1. Deliver verbal briefing (scenario background + dead drop location instructions).
+2. Keep your voice low. Lean in. Use period-appropriate mannerisms.
+3. After 5–8 minutes: check your watch, become visibly nervous.
+4. Exit line: *"I've said too much. I must go."* Leave naturally.
+
+**If client misses the bonafide:** Pass a folded note instead of verbal exchange. M will confirm via ping if this is needed.
+
+**Check in:** After client departs, check in via Ops portal:
+- Lane: `ALPHA`
+- Message: `PM1 COMPLETE. CLIENT CONFIRMED. DEPARTED ALPHA.`
+
+### Beat 2: Dead Drop (DD) — Pre-Staging
+
+**Your objective:** Pre-stage the waterproof canister before the scenario begins.
+
+1. Place the canister under the designated park bench on the Long Bridge walking path.
+2. Confirm placement by checking in:
+   - Lane: `BRAVO`
+   - Message: `DD STAGED. BENCH [DESCRIPTION]. CANISTER SECURE.`
+3. You are **not present** at the dead drop during player recovery. Stay away from BRAVO lane.
+4. If canister is missing when M alerts: text M `BRAVO COMPROMISED` and wait for alternate drop instruction.
+
+### Beat 3: Rendezvous & EXFIL — IC (Downed Pilot) Guidance
+
+**Your objective:** Receive the key/info from clients, acknowledge, depart naturally.
+
+**Hostess IC (secondary actor):**
+1. When clients arrive, approach naturally as wait staff.
+2. Clients will issue their bonafide (provided by M before the event).
+3. Confirm with your response, then provide final link-up instructions (directed to the downed pilot table).
+
+**Downed Pilot IC:**
+1. Sit at the designated table. Appear distressed but composed — you've been in the cold.
+2. When clients approach, let them speak first.
+3. Accept the key/info with relief: *"You have no idea what this means."*
+4. Do NOT perform a dramatic exit. Leave naturally within 3–5 minutes.
+5. Check in: Lane `CHARLIE`, Message: `EXFIL COMPLETE. PILOT CLEAR.`
+
+**ENDEX:** M will broadcast ENDEX via your Ops device. When you receive it:
+1. Acknowledge the ping.
+2. Break character only when fully clear of the venue and other guests.
+
+### Actor Communication Protocol
+
+- **Green status:** Operating normally. No issues.
+- **Yellow status:** Client confused or stalled. Send via check-in for M guidance.
+- **Red status:** Something is wrong. M will ping with directive immediately.
+
+### Contingency: Players Stalled
+
+| Situation | Your Action |
+|-----------|-------------|
+| Players haven't found DD after 30 min | Wait for M PING with hint directive |
+| Players missed bonafide at PM1 | Pass note (pre-written, given by M before scenario) |
+| Canister missing at Long Bridge | Text M immediately: `BRAVO COMPROMISED` |
+| Players arrive at Schweitzer early | Stay in character as regular patron until M sends ENGAGE ping |
+
