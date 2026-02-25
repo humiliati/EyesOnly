@@ -2056,23 +2056,16 @@ body.amber-mode #scanlines::after {
   }
 }
 
-/* Rogue portrait: zoom-fill the grid surface to reduce 2:1 letterboxing
-   (the 40x20 grid is wide; portrait screens are tall). */
+/* Rogue portrait: layout debug (opt-in)
+   Add `layout-debug` class to <body> to see which container owns the dead space.
+   Example: `document.body.classList.add('layout-debug')` */
 @media (max-width: 767px) and (orientation: portrait) {
-  body.gone-rogue-active {
-    --rogue-grid-portrait-scale: 1.28;
-  }
-
-  /* Avoid fighting .combat-zoom-active (which sets transform on the container).
-     Scale the canvas inside the grid instead. */
-  body.gone-rogue-active #rogue-grid-mobile {
-    transform: none !important;
-  }
-
-  body.gone-rogue-active #rogue-grid-mobile canvas {
-    transform-origin: center;
-    transform: scale(var(--rogue-grid-portrait-scale));
-  }
+  body.layout-debug #monitor-body { outline: 2px solid rgba(255, 0, 0, 0.65); }
+  body.layout-debug #control-rail { outline: 2px solid rgba(0, 212, 255, 0.65); background: rgba(0, 212, 255, 0.04); }
+  body.layout-debug #log-column { outline: 2px solid rgba(255, 235, 59, 0.65); background: rgba(255, 235, 59, 0.03); }
+  body.layout-debug #terminal { outline: 2px solid rgba(255, 105, 180, 0.55); background: rgba(255, 105, 180, 0.02); }
+  body.layout-debug #rogue-grid-mobile { outline: 2px solid rgba(28, 255, 155, 0.75); }
+  body.layout-debug #debrief-window { outline: 2px solid rgba(218, 112, 214, 0.65); }
 }
 
 /* --- Control Rail Button Transformation for Gone Rogue --- */
