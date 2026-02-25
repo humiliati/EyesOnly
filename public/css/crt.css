@@ -1606,17 +1606,17 @@ body.amber-mode #scanlines::after {
     overflow: hidden;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-auto-rows: minmax(28px, auto);
+    grid-auto-rows: minmax(26px, auto);
     align-content: start;
-    gap: 3px;
+    gap: 2px;
   }
 
   body.mode-gone-rogue .control-buttons button,
   body.in-gone-rogue .control-buttons button,
   body.gone-rogue-active .control-buttons button {
-    min-height: 28px;
-    padding: 3px 4px;
-    font-size: 0.82em;
+    min-height: 26px;
+    padding: 2px 4px;
+    font-size: 0.80em;
   }
 
   /* Shrink HUD emojis (inventory/resource lists) */
@@ -1677,10 +1677,16 @@ body.amber-mode #scanlines::after {
   body.in-gone-rogue .debrief-window .debrief-screen,
   body.gone-rogue-active .debrief-window .debrief-screen {
     min-height: 0;
-    overflow: hidden;
     max-width: 100%;
     aspect-ratio: auto; /* stop forcing tall CRT box */
     height: 100%;
+
+    /* Allow drag-scroll on mobile (the rows are the product surface). */
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
   }
 
   .debrief-nav-list {
