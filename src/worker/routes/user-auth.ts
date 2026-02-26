@@ -8,6 +8,7 @@ import { Hono } from 'hono';
 import type { Env } from '../../shared/types';
 import {
   getUserByUsername,
+  getUserByCallsign,
   createUserAccount,
   createUserSession,
   getUserSession,
@@ -81,11 +82,22 @@ userAuthRoutes.post('/register', async (c) => {
     }
   }
 
+  // Normalize desired callsign (uppercase, spaces -> hyphen)
+  const desiredBase = String(callsign || username).trim().toUpperCase().replace(/\s+/g, '-');
+
+  // Guarantee uniqueness by appending -2, -3, ... if taken.
+  let finalCallsign = desiredBase;
+  for (let n = 1; n < 500; n++) {
+    const exists = await getUserByCallsign(c.env.DB, finalCallsign);
+    if (!exists) break;
+    finalCallsign = `${desiredBase}-${n + 1}`;
+  }
+
   // Create user account
   const user = await createUserAccount(
     c.env.DB,
     username,
-    callsign || username, // Default callsign to username
+    finalCallsign,
     email,
   );
 

@@ -28,6 +28,16 @@ export async function getUserById(db: D1Database, id: number): Promise<UserAccou
   return db.prepare('SELECT * FROM user_accounts WHERE id = ?').bind(id).first<UserAccountRow>();
 }
 
+export async function getUserByCallsign(
+  db: D1Database,
+  callsign: string,
+): Promise<UserAccountRow | null> {
+  return db
+    .prepare('SELECT * FROM user_accounts WHERE UPPER(callsign) = UPPER(?) LIMIT 1')
+    .bind(callsign)
+    .first<UserAccountRow>();
+}
+
 export async function createUserAccount(
   db: D1Database,
   username: string,
