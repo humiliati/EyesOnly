@@ -2757,6 +2757,110 @@ body.in-gone-rogue #log-column {
 }
 
 /* ============================================================
+   STR COMBAT LEFT COLUMN — INTERACTIVE DRAW UX
+   ============================================================ */
+
+/* Draw-ready indicator pulse */
+.draw-ready-indicator {
+  color: #4fc3f7;
+  font-weight: bold;
+  animation: draw-ready-pulse 1.5s ease-in-out infinite;
+}
+
+.draw-spent-indicator {
+  color: #666;
+  font-style: italic;
+}
+
+@keyframes draw-ready-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1.0; text-shadow: 0 0 6px rgba(79, 195, 247, 0.5); }
+}
+
+/* Draw-eligible slot — interactive during STR */
+.backup-preview-slot.draw-eligible {
+  cursor: pointer;
+  border-color: rgba(79, 195, 247, 0.3);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+
+.backup-preview-slot.draw-eligible:hover {
+  border-color: rgba(79, 195, 247, 0.7);
+  box-shadow: 0 0 10px rgba(79, 195, 247, 0.25);
+  transform: scale(1.04);
+}
+
+/* Hold-to-draw feedback (300ms hold) */
+.backup-preview-slot.draw-holding {
+  border-color: #ff5722 !important;
+  box-shadow: 0 0 12px rgba(255, 87, 34, 0.4) !important;
+  animation: draw-hold-pulse 0.3s linear;
+}
+
+@keyframes draw-hold-pulse {
+  0% { box-shadow: 0 0 4px rgba(255, 87, 34, 0.2); }
+  100% { box-shadow: 0 0 16px rgba(255, 87, 34, 0.6); }
+}
+
+/* Draw confirmed — green flash */
+.backup-preview-slot.draw-confirmed {
+  border-color: #4caf50 !important;
+  box-shadow: 0 0 14px rgba(76, 175, 80, 0.5) !important;
+  animation: draw-confirm-flash 0.3s ease-out;
+}
+
+@keyframes draw-confirm-flash {
+  0% { background: rgba(76, 175, 80, 0.3); }
+  100% { background: rgba(8, 24, 12, 0.85); }
+}
+
+/* Active draw slot — fading out */
+.backup-preview-slot.draw-active {
+  opacity: 0.3 !important;
+  transform: scale(0.9);
+  transition: opacity 0.4s, transform 0.4s;
+}
+
+/* Red pulse border on container when draw is available */
+#reserve-slots-container.str-draw-ready {
+  border-left: 2px solid transparent;
+  animation: str-draw-border-pulse 2s ease-in-out infinite;
+}
+
+@keyframes str-draw-border-pulse {
+  0%, 100% { border-left-color: transparent; }
+  50% { border-left-color: rgba(255, 87, 34, 0.4); }
+}
+
+/* Ghost 🃏 element for draw cycling animation */
+.reserve-draw-ghost {
+  position: fixed;
+  z-index: 99999;
+  font-size: 2em;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  text-shadow: 0 0 10px rgba(79, 195, 247, 0.6);
+  transition: opacity 0.15s;
+  opacity: 0.9;
+}
+
+/* Ghost fly-upward animation after settling */
+.reserve-draw-ghost.reserve-draw-ghost-fly {
+  animation: reserve-ghost-fly-up 0.4s ease-in forwards;
+}
+
+@keyframes reserve-ghost-fly-up {
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
+  60% { transform: translate(-50%, -200%) scale(0.7); opacity: 0.6; }
+  100% { transform: translate(-50%, -400%) scale(0.4); opacity: 0; }
+}
+
+/* Slot shift animation after draw */
+#reserve-slots-container.slots-shifting .backup-preview-slot {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* ============================================================
    CARD RESOURCE VALIDATION AND DISPOSAL SYSTEM
    ============================================================ */
 

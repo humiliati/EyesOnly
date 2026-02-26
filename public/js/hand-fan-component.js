@@ -434,110 +434,39 @@ const HandFanComponent = (function () {
    * @param {number} index - Index in hand
    */
   function _createCardElement(card, index) {
-    var cardWrapper = document.createElement('div');
-    cardWrapper.className = 'hand-card-wrapper';
-    cardWrapper.dataset.cardIndex = index;
+    // Delegate card DOM building to SharedCardRenderer
+    var cardWrapper;
+    if (typeof SharedCardRenderer !== 'undefined' && SharedCardRenderer.createCardElement) {
+      cardWrapper = SharedCardRenderer.createCardElement(card, index, 'combat');
+    } else {
+      // Fallback: minimal card element
+      cardWrapper = document.createElement('div');
+      cardWrapper.className = 'hand-card-wrapper';
+      cardWrapper.dataset.cardIndex = index;
+      var cardEl = document.createElement('div');
+      cardEl.className = 'hand-card';
+      cardEl.innerHTML = '<div class="hand-card-artwork"><div class="hand-card-emoji">' + (card.emoji || '🃏') + '</div></div><div class="hand-card-name">' + (card.name || '?') + '</div>';
+      cardWrapper.appendChild(cardEl);
+    }
 
-    // Apply fan transformation
+    // Apply fan transformation (combat-specific geometry)
     _applyFanTransform(cardWrapper, index, _cards.length);
 
-    // Create card element
-    var cardEl = document.createElement('div');
-    cardEl.className = 'hand-card';
-
-    // Make card draggable
-    cardEl.draggable = true;
-
-    // Apply lifecycle-based transparency
-    var lifecycle = _getCardLifecycle(card);
-    cardEl.classList.add('hand-card-' + lifecycle);
-
-    // Check if selected
-    if (_selectedCards.indexOf(index) !== -1) {
+    // Check if selected (combat-specific state)
+    var cardEl = cardWrapper.querySelector('.hand-card');
+    if (cardEl && _selectedCards.indexOf(index) !== -1) {
       cardEl.classList.add('hand-card-selected');
-    }
-
-    // Apply quality border color
-    if (card.quality || card.qualityName) {
-      var quality = (card.quality || card.qualityName).toLowerCase().replace(/ /g, '_');
-      cardEl.dataset.quality = quality;
-    }
-
-    // === RESOURCE VALIDATION ===
-    // Check if player can afford this card
-    var affordability = _validateCardAffordability(card);
-    if (!affordability.canAfford) {
-      cardEl.classList.add('card-insufficient-resources');
-      cardEl.dataset.unaffordable = 'true';
-
-      // Store shortage info for tooltip
-      if (affordability.missingResources && affordability.missingResources.length > 0) {
-        var shortageText = _formatResourceShortage(affordability.missingResources);
-        cardEl.dataset.resourceShortage = shortageText;
-        cardEl.title = shortageText; // Basic browser tooltip
-      }
-    }
-
-    // Card content
-    var html = '';
-
-    // Cost badge (top-left)
-    if (card.cost !== undefined && card.cost !== null) {
-      html += '<div class="hand-card-cost">' + card.cost + '</div>';
-    }
-
-    // Card artwork/emoji (80% of card height) - tiny icon
-    html += '<div class="hand-card-artwork">';
-    html += '<div class="hand-card-emoji">' + (card.emoji || '🃏') + '</div>';
-    html += '</div>';
-
-    // Card name (bottom) - abbreviated for compact display in combat
-    var cardName = card.name || 'Unknown Card';
-
-    // Default: do NOT abbreviate unless we need to.
-    // Only abbreviate aggressively when mobile portrait + minimized/collapsed.
-    var maxLen = 0;
-    try {
-      var isPortrait = (window && window.innerHeight && window.innerWidth) ? (window.innerHeight > window.innerWidth) : false;
-      var strMini = (typeof STRCombatWindow !== 'undefined' && STRCombatWindow.isMinimized && STRCombatWindow.isMinimized());
-      var fanMini = _fanContainer && (_fanContainer.classList.contains('hand-fan-minimized') || _fanContainer.classList.contains('hand-fan-collapsing'));
-      if (isPortrait && (strMini || fanMini)) {
-        maxLen = 4;
-      }
-    } catch (e) {}
-
-    if (typeof NameUtils !== 'undefined' && NameUtils.getDisplayName) {
-      cardName = NameUtils.getDisplayName(card, { maxLength: maxLen });
-    } else {
-      cardName = _abbreviateCardName(cardName, maxLen);
-    }
-
-    html += '<div class="hand-card-name">' + cardName + '</div>';
-
-    // Effect icons (if any)
-    if (card.effects && card.effects.length > 0) {
-      html += '<div class="hand-card-effects">';
-      card.effects.slice(0, 3).forEach(function(effect) {
-        html += '<span class="hand-card-effect-icon">' + (effect.icon || '•') + '</span>';
-      });
-      html += '</div>';
-    }
-
-    cardEl.innerHTML = html;
-
-    // Selection badge (if selected)
-    var selectionIndex = _selectedCards.indexOf(index);
-    if (selectionIndex !== -1) {
       var badge = document.createElement('div');
       badge.className = 'hand-card-selection-badge';
-      badge.textContent = selectionIndex + 1;
+      badge.textContent = _selectedCards.indexOf(index) + 1;
       cardEl.appendChild(badge);
     }
 
-    // Attach event handlers
-    _attachCardHandlers(cardEl, card, index);
+    // Attach combat-specific event handlers
+    if (cardEl) {
+      _attachCardHandlers(cardEl, card, index);
+    }
 
-    cardWrapper.appendChild(cardEl);
     return cardWrapper;
   }
 
@@ -589,23 +518,17 @@ const HandFanComponent = (function () {
    * @returns {string} Lifecycle type
    */
   function _getCardLifecycle(card) {
-    // Map card types to lifecycle categories
+    if (typeof SharedCardRenderer !== 'undefined' && SharedCardRenderer.getCardLifecycle) {
+      return SharedCardRenderer.getCardLifecycle(card);
+    }
     var lifecycle = card.lifecycleType || card.lifecycle || card.consumable || 'core';
-
     var lifecycleMap = {
-      'disposable': 'consumable',
-      'LIFE_001': 'consumable',
-      'exhaust': 'exhaust',
-      'LIFE_002': 'exhaust',
-      'power': 'power',
-      'LIFE_003': 'power',
-      'gated': 'gated',
-      'LIFE_004': 'gated',
-      'persistent': 'core',
-      'LIFE_005': 'core',
-      'core': 'core'
+      'disposable': 'consumable', 'LIFE_001': 'consumable',
+      'exhaust': 'exhaust', 'LIFE_002': 'exhaust',
+      'power': 'power', 'LIFE_003': 'power',
+      'gated': 'gated', 'LIFE_004': 'gated',
+      'persistent': 'core', 'LIFE_005': 'core', 'core': 'core'
     };
-
     return lifecycleMap[lifecycle] || 'core';
   }
 
@@ -1406,7 +1329,9 @@ const HandFanComponent = (function () {
    * @returns {Object} {canAfford: boolean, missingResources: Array}
    */
   function _validateCardAffordability(card) {
-    // Check if ResourceManager is available
+    if (typeof SharedCardRenderer !== 'undefined' && SharedCardRenderer.validateCardAffordability) {
+      return SharedCardRenderer.validateCardAffordability(card);
+    }
     if (typeof ResourceManager === 'undefined') {
       // No resource manager, assume all cards are affordable
       return { canAfford: true, missingResources: [] };
@@ -1422,6 +1347,9 @@ const HandFanComponent = (function () {
    * @returns {string} Formatted shortage message
    */
   function _formatResourceShortage(missingResources) {
+    if (typeof SharedCardRenderer !== 'undefined' && SharedCardRenderer.formatResourceShortage) {
+      return SharedCardRenderer.formatResourceShortage(missingResources);
+    }
     if (!missingResources || missingResources.length === 0) {
       return '';
     }

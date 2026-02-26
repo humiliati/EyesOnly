@@ -1,632 +1,1079 @@
 /* ============================================================
-   Non-Combat HUD (fixed overlay, v0)
-   Shell + state display + debug hooks.
+   Non-Combat HUD — NCH Capsule + Solitaire Tableau (v2)
+   Capsule (bottom-left) → expands to 3-zone deck management.
    ============================================================ */
 
 var NonCombatHUD = (function() {
   'use strict';
 
-  var _root = null;
-  var _mini = null;
+  // DOM refs
+  var _capsule = null;   // .nch-capsule-wrapper (closed state)
+  var _expanded = null;   // #nch-expanded (open state)
+  var _isExpanded = false;
 
-  var PREF_KEY = 'EYESONLY_NONCOMBAT_HUD_PREFS_V1';
-  var _prefs = {
-    minimized: true
-  };
+  // Drag state
+  var _drag = null; // { kind, index, id, emoji, ghostEl, startX, startY, dragging }
 
-  var _drag = {
-    active: false,
-    startY: 0,
-    lastY: 0,
-    startTs: 0
-  };
+  // Preferences (localStorage)
+  var PREF_KEY = 'EYESONLY_NONCOMBAT_HUD_PREFS_V2';
+  var _prefs = { expanded: false };
 
   function _loadPrefs() {
     try {
       var raw = localStorage.getItem(PREF_KEY);
-      if (raw) {
-        var parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === 'object') {
-          _prefs = Object.assign(_prefs, parsed);
-        }
-      } else {
-        // First-run default: keep minimized so new players aren't confused.
-        _prefs.minimized = true;
-      }
+      if (raw) _prefs = Object.assign(_prefs, JSON.parse(raw));
     } catch (e) {}
   }
-
   function _savePrefs() {
     try { localStorage.setItem(PREF_KEY, JSON.stringify(_prefs)); } catch (e) {}
   }
 
+  // ─── INIT ───────────────────────────────────────────────
+
   function init() {
-    if (_root) return;
-
+    if (_capsule) return;
     _loadPrefs();
+    _createCapsule();
+    _createExpanded();
+    _attachGlobalListeners();
 
-    _root = document.createElement('div');
-    _root.id = 'non-combat-hud';
-    _root.className = 'non-combat-hud';
-    _root.style.display = 'none';
+    // Subscribe to state changes
+    if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.subscribe) {
+      NonCombatStateStore.subscribe(function() { _renderAll(); });
+    }
 
-    _root.innerHTML =
-      '<div class="nch-col nch-left">' +
-        '<div class="nch-title">ACTIONS</div>' +
-        '<div class="nch-actions" id="nch-actions">' +
-          '<button class="nch-action-btn" id="nch-btn-to-backup">⬅︎ BACKUP</button>' +
-          '<button class="nch-action-btn" id="nch-btn-to-hand">HAND ➜</button>' +
-          '<div class="nch-title" style="margin-top:6px;">BACKUP</div>' +
-          '<div class="nch-backup" id="nch-backup"></div>' +
+    // React to GAMESTATE events
+    if (typeof window !== 'undefined') {
+      window.addEventListener('rogue-hand-changed', function() { _renderAll(); });
+      window.addEventListener('rogue-active-item-changed', function() { _renderAll(); });
+      window.addEventListener('gone-rogue-registry-ready', function() { _renderAll(); });
+      window.addEventListener('rogue-card-incinerated', function(e) { _showIncinerationEffect(e.detail); });
+    }
+
+    // Visibility polling (show/hide based on GoneRogue active + STR combat state)
+    setInterval(_pollVisibility, 350);
+
+    // Apply initial state
+    if (_prefs.expanded) {
+      _expand('init');
+    }
+
+    _renderAll();
+  }
+
+  // ─── CAPSULE (closed state) ─────────────────────────────
+
+  function _createCapsule() {
+    _capsule = document.createElement('div');
+    _capsule.className = 'nch-capsule-wrapper';
+    _capsule.style.display = 'none';
+    _capsule.innerHTML =
+      '<div class="nch-capsule">' +
+        '<div class="nch-capsule-stack" id="nch-capsule-stack"></div>' +
+        '<div class="nch-capsule-count" id="nch-capsule-count">0</div>' +
+      '</div>';
+    _capsule.addEventListener('click', function() { _expand('capsule_click'); });
+    document.body.appendChild(_capsule);
+  }
+
+  function _renderCapsule() {
+    if (!_capsule) return;
+    var hand = _getHand();
+    var count = hand.length;
+
+    // Update count
+    var countEl = _capsule.querySelector('#nch-capsule-count');
+    if (countEl) countEl.textContent = String(count);
+
+    // Update joker stack (max 5 visual jokers)
+    var stackEl = _capsule.querySelector('#nch-capsule-stack');
+    if (stackEl) {
+      var numJokers = Math.min(count, 5);
+      // Only rebuild if count changed
+      if (stackEl.children.length !== numJokers) {
+        stackEl.innerHTML = '';
+        for (var i = 0; i < numJokers; i++) {
+          var j = document.createElement('div');
+          j.className = 'nch-capsule-joker nch-capsule-joker-' + i;
+          j.textContent = '\uD83C\uDCCF'; // 🃏
+          stackEl.appendChild(j);
+        }
+      }
+    }
+  }
+
+  // ─── EXPANDED VIEW ──────────────────────────────────────
+
+  function _createExpanded() {
+    _expanded = document.createElement('div');
+    _expanded.id = 'nch-expanded';
+    _expanded.style.display = 'none';
+    _expanded.innerHTML =
+      '<div class="nch-header">' +
+        '<span class="nch-header-title">DECK MANAGEMENT</span>' +
+        '<div class="nch-header-right">' +
+          '<span class="nch-equipped-display" id="nch-equipped-display"></span>' +
+          '<button class="nch-close-btn" id="nch-close-btn">\u2715</button>' +
         '</div>' +
       '</div>' +
-      '<div class="nch-col nch-center">' +
-        '<div class="nch-title">EQUIPPED <button class="nch-min-btn" id="nch-min-btn" title="Minimize">_</button></div>' +
-        '<div class="nch-equipped" id="nch-equipped">(none)</div>' +
-        '<div class="nch-title">HAND</div>' +
-        '<div class="nch-hand" id="nch-hand" data-dropzone="hand">Drop cards here from inventory.</div>' +
-      '</div>' +
-      '<div class="nch-col nch-right">' +
-        '<div class="nch-title">PREVIEW</div>' +
-        '<div class="nch-preview" id="nch-preview">idle</div>' +
+      '<div class="nch-content">' +
+        // Zone 1: Hand
+        '<div class="nch-zone nch-zone-hand">' +
+          '<div class="nch-zone-label">EQUIPPED HAND</div>' +
+          '<div class="nch-hand-container" id="nch-hand-container" data-dropzone="hand"></div>' +
+        '</div>' +
+        // Draw Bar (between hand and backup)
+        '<div class="nch-zone nch-zone-drawbar">' +
+          '<div class="nch-zone-label">DRAW <span class="nch-draw-count" id="nch-draw-count"></span>' +
+            '<button class="nch-shuffle-btn" id="nch-shuffle-btn" title="Shuffle draw order">\uD83D\uDD00</button>' +
+            '<button class="nch-sort-btn" id="nch-sort-btn" title="Sort (requires Archive Indexer)" disabled>\uD83D\uDCD1</button>' +
+          '</div>' +
+          '<div class="nch-drawbar" id="nch-drawbar"></div>' +
+        '</div>' +
+        // Zone 2: Backup Deck
+        '<div class="nch-zone nch-zone-backup">' +
+          '<div class="nch-zone-label">BACKUP DECK <span class="nch-backup-count" id="nch-backup-count"></span></div>' +
+          '<div class="nch-backup-scroll-wrapper">' +
+            '<div class="nch-backup-scroller" id="nch-backup-scroller" data-dropzone="backup"></div>' +
+          '</div>' +
+        '</div>' +
+        // Zone 3: Vault
+        '<div class="nch-zone nch-zone-vault">' +
+          '<div class="nch-zone-label">CARD VAULT <small>(survives death)</small></div>' +
+          '<div class="nch-vault-slots" id="nch-vault-slots" data-dropzone="vault"></div>' +
+        '</div>' +
       '</div>';
 
-    document.body.appendChild(_root);
+    document.body.appendChild(_expanded);
 
-    _mini = document.createElement('div');
-    _mini.id = 'non-combat-hud-mini';
-    _mini.innerHTML = '<span class="nch-mini-dot"></span><span class="nch-mini-label">NCH</span>';
-    _mini.style.display = 'none';
-    document.body.appendChild(_mini);
-
-    var minBtn = _root.querySelector('#nch-min-btn');
-    if (minBtn) {
-      minBtn.addEventListener('click', function(e) {
+    // Close button
+    var closeBtn = _expanded.querySelector('#nch-close-btn');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function(e) {
         e.stopPropagation();
-        setMinimized(true, 'button');
+        _collapse('close_btn');
       });
     }
+  }
 
-    // Action buttons
-    var btnToBackup = _root.querySelector('#nch-btn-to-backup');
-    if (btnToBackup) {
-      btnToBackup.addEventListener('click', function(e) {
-        e.stopPropagation();
-        if (typeof NonCombatStateStore === 'undefined') return;
+  // ─── EXPAND / COLLAPSE ──────────────────────────────────
 
-        var st = (typeof NonCombatStateStore.getState === 'function') ? NonCombatStateStore.getState() : null;
-        var sel = st ? Number(st.selectedHandIndex || -1) : -1;
-        if (!isFinite(sel) || sel < 0) {
-          // Fallback: if only one card, select it
-          try {
-            var h = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getCardsInHand) ? GAMESTATE.getCardsInHand() : [];
-            if (h.length === 1) sel = 0;
-          } catch (e2) {}
-        }
+  function _expand(reason) {
+    _isExpanded = true;
+    _prefs.expanded = true;
+    _savePrefs();
+    if (_capsule) _capsule.style.display = 'none';
+    if (_expanded) _expanded.style.display = 'flex';
+    _renderExpanded();
+    // Activate ghost cursor when expanded with drawable cards
+    var backup = _getBackup();
+    if (backup.length > 0) _activateGhostCursor();
+  }
 
-        var ok = false;
-        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.moveHandIndexToBackup === 'function') {
-          ok = !!GAMESTATE.moveHandIndexToBackup(sel).success;
-        }
-
-        if (typeof TooltipSystem !== 'undefined') {
-          TooltipSystem.showPersistent(ok ? '📦 moved to BACKUP' : '❌ select a hand card + ensure backup has space', 1200);
-        }
-
-        // force rerender
-        try { _render(NonCombatStateStore.getState()); } catch (e3) {}
-      });
-    }
-
-    var btnToHand = _root.querySelector('#nch-btn-to-hand');
-    if (btnToHand) {
-      btnToHand.addEventListener('click', function(e) {
-        e.stopPropagation();
-        if (typeof NonCombatStateStore === 'undefined') return;
-
-        var st = (typeof NonCombatStateStore.getState === 'function') ? NonCombatStateStore.getState() : null;
-        var sel = st ? Number(st.selectedBackupIndex || -1) : -1;
-
-        if (!isFinite(sel) || sel < 0) {
-          // Fallback: if only one backup card exists, select it
-          try {
-            var b = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getBackupCards) ? GAMESTATE.getBackupCards() : [];
-            var filled = [];
-            for (var i = 0; i < b.length; i++) if (b[i] && b[i].id) filled.push(i);
-            if (filled.length === 1) sel = filled[0];
-          } catch (e2) {}
-        }
-
-        var ok = false;
-        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.moveBackupIndexToHand === 'function') {
-          ok = !!GAMESTATE.moveBackupIndexToHand(sel).success;
-        }
-
-        if (typeof TooltipSystem !== 'undefined') {
-          TooltipSystem.showPersistent(ok ? '➕ moved to HAND' : '❌ select a backup card', 1000);
-        }
-
-        try { _render(NonCombatStateStore.getState()); } catch (e3) {}
-      });
-    }
-
-    // Tap mini pill to expand
-    _mini.addEventListener('click', function() {
-      setMinimized(false, 'pill');
-    });
-
-    // Drag-down minimize gesture (similar feel to STR, simplified)
-    _root.addEventListener('pointerdown', function(e) {
-      // Ignore interactions on buttons/inputs/links and draggable NCH elements
-      var t = e.target;
-      if (t && t.closest && t.closest('button, a, input, textarea, select, label')) return;
-      if (t && t.closest && t.closest('.nch-draggable, #nch-equipped, #nch-hand, #nch-backup')) return;
-
-      _drag.active = true;
-      _drag.startY = e.clientY;
-      _drag.lastY = e.clientY;
-      _drag.startTs = Date.now();
-      try { _root.setPointerCapture(e.pointerId); } catch (err) {}
-    });
-
-    _root.addEventListener('pointermove', function(e) {
-      if (!_drag.active) return;
-      _drag.lastY = e.clientY;
-    });
-
-    _root.addEventListener('pointerup', function(e) {
-      if (!_drag.active) return;
-      _drag.active = false;
-      var dy = _drag.lastY - _drag.startY;
-      var dt = Math.max(1, Date.now() - _drag.startTs);
-      var v = (dy / dt) * 1000; // px/s
-
-      // Thresholds: drag down far enough OR fast swipe
-      if (dy > 90 || (dy > 40 && v > 850)) {
-        setMinimized(true, 'drag');
-      }
-    });
-
-    if (typeof NonCombatStateStore !== 'undefined') {
-      NonCombatStateStore.subscribe(function(prev, next) {
-        _render(next);
-      });
-      _render(NonCombatStateStore.getState());
-    }
-
-    // Re-render when rogue equipped item/hand changes (GAMESTATE is canonical)
-    if (typeof window !== 'undefined') {
-      window.addEventListener('rogue-active-item-changed', function() {
-        try {
-          if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.getState) {
-            _render(NonCombatStateStore.getState());
-          }
-        } catch (err) {}
-      });
-
-      window.addEventListener('rogue-hand-changed', function() {
-        try {
-          // Clamp selections against canonical arrays
-          if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.getState && NonCombatStateStore.modifyState) {
-            var st = NonCombatStateStore.getState();
-            var selH = Number(st.selectedHandIndex || -1);
-            var selB = Number(st.selectedBackupIndex || -1);
-            var hand = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getCardsInHand) ? GAMESTATE.getCardsInHand() : [];
-            var backup = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getBackupCards) ? GAMESTATE.getBackupCards() : [];
-            if (!isFinite(selH) || selH >= hand.length) selH = -1;
-            if (!isFinite(selB) || selB < 0 || selB > 3 || !backup[selB]) selB = -1;
-            NonCombatStateStore.modifyState({ selectedHandIndex: selH, selectedBackupIndex: selB }, 'nch:clamp_selection');
-          }
-
-          if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.getState) {
-            _render(NonCombatStateStore.getState());
-          }
-        } catch (err) {}
-      });
-
-      window.addEventListener('gone-rogue-registry-ready', function() {
-        try {
-          if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.getState) {
-            _render(NonCombatStateStore.getState());
-          }
-        } catch (err) {}
-      });
-    }
-
-    // Registry loading UX
-    var previewEl = _root.querySelector('#nch-preview');
-    if (previewEl) {
-      previewEl.textContent = 'Loading data...';
-    }
-
-    if (typeof NonCombatEventBus !== 'undefined') {
-      NonCombatEventBus.on('registry:loaded', function(evt) {
-        if (previewEl) {
-          var counts = (evt && evt.payload && evt.payload.counts) ? evt.payload.counts : null;
-          previewEl.textContent = 'idle' + (counts ? (' (cards ' + counts.cards + ', items ' + counts.items + ')') : '');
-        }
-      });
-    } else if (typeof GoneRogueDataRegistry !== 'undefined' && typeof GoneRogueDataRegistry.ready === 'function') {
-      GoneRogueDataRegistry.ready().then(function() {
-        if (previewEl) previewEl.textContent = 'idle';
-      });
-    }
-
-    // Show/hide based on GoneRogue mode and STR combat state
-    setInterval(function() {
-      var rogueActive = (typeof GoneRogue !== 'undefined' && typeof GoneRogue.isActive === 'function' && GoneRogue.isActive());
-      var strActive = false;
-      try {
-        strActive = (typeof GoneRogue !== 'undefined' && typeof GoneRogue.isStrCombatActive === 'function' && GoneRogue.isStrCombatActive());
-        if (!strActive && typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.isVisible === 'function') {
-          strActive = !!STRCombatWindow.isVisible();
-        }
-      } catch (e0) {
-        strActive = false;
-      }
-      var shouldShow = rogueActive;
-
-      // Always keep EQUIPPED display in sync with GAMESTATE (cheap update)
-      _renderEquippedOnly();
-
-      if (!shouldShow) {
-        _root.style.display = 'none';
-        _mini.style.display = 'none';
-        return;
-      }
-
-      if (strActive) {
-        _root.classList.add('locked');
-      } else {
-        _root.classList.remove('locked');
-      }
-
-      if (_prefs.minimized) {
-        _root.style.display = 'none';
-        _mini.style.display = 'flex';
-      } else {
-        _root.style.display = 'flex';
-        _mini.style.display = 'none';
-      }
-    }, 350);
-
-    // Apply initial minimized state
-    setMinimized(!!_prefs.minimized, 'init');
+  function _collapse(reason) {
+    _isExpanded = false;
+    _prefs.expanded = false;
+    _savePrefs();
+    if (_expanded) _expanded.style.display = 'none';
+    _deactivateGhostCursor();
+    // Capsule visibility handled by _pollVisibility
   }
 
   function setMinimized(minimized, reason) {
-    _prefs.minimized = !!minimized;
-    _savePrefs();
+    if (minimized) _collapse(reason);
+    else _expand(reason);
+  }
 
-    if (_prefs.minimized) {
-      if (_root) _root.classList.add('minimized');
-    } else {
-      if (_root) _root.classList.remove('minimized');
+  // ─── VISIBILITY POLLING ─────────────────────────────────
+
+  function _pollVisibility() {
+    var rogueActive = false;
+    try {
+      rogueActive = (typeof GoneRogue !== 'undefined' && GoneRogue.isActive && GoneRogue.isActive());
+    } catch (e) {}
+
+    var strActive = false;
+    try {
+      strActive = (typeof GoneRogue !== 'undefined' && GoneRogue.isStrCombatActive && GoneRogue.isStrCombatActive());
+      if (!strActive && typeof STRCombatWindow !== 'undefined' && STRCombatWindow.isVisible) {
+        strActive = !!STRCombatWindow.isVisible();
+      }
+    } catch (e) {}
+
+    if (!rogueActive) {
+      if (_capsule) _capsule.style.display = 'none';
+      if (_expanded) _expanded.style.display = 'none';
+      return;
     }
 
-    if (typeof NonCombatStateStore !== 'undefined') {
-      NonCombatStateStore.modifyState({
-        uiState: NonCombatStateStore.NON_COMBAT_STATES.IDLE
-      }, 'nch:minimized', { minimized: _prefs.minimized, reason: reason || 'unknown' });
+    // Lock during STR combat
+    if (_expanded) {
+      if (strActive) {
+        _expanded.classList.add('nch-locked');
+        _deactivateGhostCursor();
+      } else {
+        _expanded.classList.remove('nch-locked');
+        // Re-activate ghost cursor if expanded and has cards
+        if (_isExpanded && _getBackup().length > 0 && !_ghostEl) _activateGhostCursor();
+      }
+    }
+
+    if (_isExpanded) {
+      if (_capsule) _capsule.style.display = 'none';
+      if (_expanded) _expanded.style.display = 'flex';
+    } else {
+      if (_expanded) _expanded.style.display = 'none';
+      if (_capsule) _capsule.style.display = 'flex';
     }
   }
 
-  function _renderEquippedOnly() {
-    if (!_root) return;
-    var eq = _root.querySelector('#nch-equipped');
-    if (!eq) return;
+  // ─── DATA HELPERS ───────────────────────────────────────
 
-    // Prefer GAMESTATE active item (canonical for rogue)
-    var activeRef = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) ? GAMESTATE.getActiveItem() : null;
-
-    if (activeRef && activeRef.id && typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
-      var it = GoneRogueDataRegistry.getItem(activeRef.id);
-      var em = (it && it.emoji) ? it.emoji : '📦';
-      var nm = (it && it.name) ? it.name : activeRef.id;
-      eq.textContent = em + ' ' + nm;
-      eq.classList.add('nch-draggable');
-      eq.dataset.equippedId = activeRef.id;
-      eq.style.pointerEvents = 'auto';
-    } else {
-      eq.textContent = '(none)';
-      eq.classList.remove('nch-draggable');
-      eq.dataset.equippedId = '';
-      eq.style.pointerEvents = 'auto';
+  function _getHand() {
+    if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getCardsInHand) {
+      return GAMESTATE.getCardsInHand();
     }
-
-    // One-time attach: allow dragging the equipped item from NCH to the map
-    if (!eq._nchEquippedBound) {
-      eq._nchEquippedBound = true;
-
-      eq.addEventListener('pointerdown', function(e) {
-        if (!e || e.pointerType === 'touch') return;
-        if (e.button !== undefined && e.button !== 0) return;
-        if (_root && _root.classList.contains('locked')) return;
-
-        var id = e.currentTarget.dataset.equippedId;
-        if (!id) return;
-
-        var itemDef = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) ? GoneRogueDataRegistry.getItem(id) : null;
-        var ghostEmoji = (itemDef && itemDef.emoji) ? itemDef.emoji : '📦';
-
-        _startNchDrag({ kind: 'equipped_item', id: id, emoji: ghostEmoji }, e);
-      });
+    if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.getState) {
+      var st = NonCombatStateStore.getState();
+      return Array.isArray(st.cardsInHand) ? st.cardsInHand : [];
     }
+    return [];
   }
 
-  function _render(state) {
-    if (!_root || !state) return;
-
-    _renderEquippedOnly();
-
-    var pv = _root.querySelector('#nch-preview');
-    if (pv) {
-      pv.textContent = state.uiState || 'idle';
+  function _getBackup() {
+    if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getBackupCards) {
+      return GAMESTATE.getBackupCards();
     }
+    if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.getState) {
+      var st = NonCombatStateStore.getState();
+      return Array.isArray(st.backupCards) ? st.backupCards : [];
+    }
+    return [];
+  }
 
-    // 3D printer armed state (for x2 cue on eligible ammo/battery cards)
-    var printerArmed = false;
+  function _getMaxBackup() {
+    if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getMaxBackupSlots) {
+      return GAMESTATE.getMaxBackupSlots();
+    }
+    return 25;
+  }
+
+  function _getVaultCards() {
+    if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentCards) {
+      return GAMESTATE.getPersistentCards();
+    }
+    return [];
+  }
+
+  function _getCardDef(id) {
+    if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) {
+      return GoneRogueDataRegistry.getCard(id);
+    }
+    return null;
+  }
+
+  function _isPrinterArmed() {
     try {
       if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) {
         var ar = GAMESTATE.getActiveItem();
         if (ar && ar.id && ar.meta && ar.meta.toggled && typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
           var idef = GoneRogueDataRegistry.getItem(ar.id);
           if (idef && Array.isArray(idef.effects)) {
-            for (var pi = 0; pi < idef.effects.length; pi++) {
-              if (idef.effects[pi] && idef.effects[pi].type === 'printer_3d') { printerArmed = true; break; }
+            for (var i = 0; i < idef.effects.length; i++) {
+              if (idef.effects[i] && idef.effects[i].type === 'printer_3d') return true;
             }
           }
         }
       }
-    } catch (e0) {}
+    } catch (e) {}
+    return false;
+  }
 
-    function _isAmmoBatteryCard(cardDef) {
-      try {
-        if (!cardDef || !Array.isArray(cardDef.costs)) return false;
-        for (var ci = 0; ci < cardDef.costs.length; ci++) {
-          var cst = cardDef.costs[ci];
-          if (cst && (cst.kind === 'ammo' || cst.kind === 'battery')) return true;
-        }
-      } catch (e1) {}
-      return false;
+  function _isAmmoBatteryCard(cardDef) {
+    try {
+      if (!cardDef || !Array.isArray(cardDef.costs)) return false;
+      for (var i = 0; i < cardDef.costs.length; i++) {
+        if (cardDef.costs[i] && (cardDef.costs[i].kind === 'ammo' || cardDef.costs[i].kind === 'battery')) return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  // ─── RENDER: MASTER ─────────────────────────────────────
+
+  function _renderAll() {
+    _renderCapsule();
+    if (_isExpanded) _renderExpanded();
+  }
+
+  function _renderExpanded() {
+    _renderEquipped();
+    _renderHand();
+    _renderDrawBar();
+    _renderBackup();
+    _renderVault();
+  }
+
+  // ─── RENDER: EQUIPPED DISPLAY ───────────────────────────
+
+  function _renderEquipped() {
+    var el = _expanded ? _expanded.querySelector('#nch-equipped-display') : null;
+    if (!el) return;
+    var active = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) ? GAMESTATE.getActiveItem() : null;
+    if (active && active.id) {
+      var it = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) ? GoneRogueDataRegistry.getItem(active.id) : null;
+      el.textContent = (it && it.emoji ? it.emoji : '\uD83D\uDCE6') + ' ' + (it && it.name ? it.name : active.id);
+    } else {
+      el.textContent = '';
+    }
+  }
+
+  // ─── RENDER: HAND (Zone 1 — large cards) ────────────────
+
+  function _renderHand() {
+    var container = _expanded ? _expanded.querySelector('#nch-hand-container') : null;
+    if (!container) return;
+    container.innerHTML = '';
+
+    var hand = _getHand();
+    var printerArmed = _isPrinterArmed();
+
+    if (hand.length === 0) {
+      var empty = document.createElement('div');
+      empty.className = 'nch-hand-empty';
+      empty.textContent = 'Drag cards here from backup or vault';
+      empty.style.cssText = 'color:rgba(28,255,155,0.4);font-family:"Courier New",monospace;font-size:12px;padding:40px 16px;text-align:center;width:100%;';
+      container.appendChild(empty);
+      return;
     }
 
-    var hand = _root.querySelector('#nch-hand');
-    if (hand) {
-      var refs = [];
-      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getCardsInHand === 'function') {
-        refs = GAMESTATE.getCardsInHand();
+    for (var i = 0; i < hand.length; i++) {
+      var ref = hand[i];
+      if (!ref || !ref.id) continue;
+      var cardDef = _getCardDef(ref.id);
+      var merged = Object.assign({}, cardDef || {}, { id: ref.id, qty: ref.qty });
+
+      var wrapper;
+      if (typeof SharedCardRenderer !== 'undefined' && SharedCardRenderer.createCardElement) {
+        wrapper = SharedCardRenderer.createCardElement(merged, i, 'nch-hand');
       } else {
-        refs = (state.cardsInHand && Array.isArray(state.cardsInHand)) ? state.cardsInHand : [];
-      }
-      hand.innerHTML = '';
-
-      if (refs.length === 0) {
-        hand.textContent = 'Drop cards here from inventory.';
-      } else {
-        for (var i = 0; i < refs.length; i++) {
-          var ref = refs[i];
-          if (!ref || !ref.id) continue;
-
-          var card = null;
-          if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) {
-            card = GoneRogueDataRegistry.getCard(ref.id);
-          }
-
-          var nm = card ? card.name : ref.id;
-          var em = card ? card.emoji : '🃏';
-
-          var row = document.createElement('div');
-          row.className = 'nch-hand-row nch-draggable' + ((state.selectedHandIndex === i) ? ' selected' : '');
-          row.dataset.handIndex = i;
-          row.style.position = 'relative';
-
-          var qtyTxt = 'x' + (ref.qty || 1);
-          row.textContent = em + ' ' + nm + ' ' + qtyTxt;
-
-          if (printerArmed && _isAmmoBatteryCard(card)) {
-            row.classList.add('printer-eligible');
-            var b = document.createElement('span');
-            b.className = 'printer-x2';
-            b.textContent = 'x2';
-            row.appendChild(b);
-          }
-
-          row.addEventListener('click', function(e) {
-            e.stopPropagation();
-            var idx = Number(e.currentTarget.dataset.handIndex);
-            if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.setSelectedHandIndex) {
-              var current = (typeof NonCombatStateStore.getState === 'function') ? NonCombatStateStore.getState().selectedHandIndex : -1;
-              NonCombatStateStore.setSelectedHandIndex(current === idx ? -1 : idx);
-            }
-          });
-
-          row.addEventListener('pointerdown', function(e) {
-            if (!e || e.pointerType === 'touch') return;
-            if (e.button !== undefined && e.button !== 0) return;
-            var hIdx = Number(e.currentTarget.dataset.handIndex);
-            var handArr = (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getCardsInHand === 'function') ? GAMESTATE.getCardsInHand() : [];
-            var handRef = handArr[hIdx];
-            if (!handRef || !handRef.id) return;
-            var handCard = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) ? GoneRogueDataRegistry.getCard(handRef.id) : null;
-            var handEm = handCard ? (handCard.emoji || '🃏') : '🃏';
-            _startNchDrag({
-              kind: 'hand',
-              handIndex: hIdx,
-              emoji: handEm,
-              id: handRef.id
-            }, e);
-          });
-
-          hand.appendChild(row);
-        }
-      }
-    }
-
-    var backup = _root.querySelector('#nch-backup');
-    if (backup) {
-      backup.innerHTML = '';
-      var slots = [];
-      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getBackupCards === 'function') {
-        slots = GAMESTATE.getBackupCards();
-      } else {
-        slots = (state.backupCards && Array.isArray(state.backupCards)) ? state.backupCards : [];
+        wrapper = document.createElement('div');
+        wrapper.className = 'hand-card-wrapper';
+        wrapper.innerHTML = '<div class="hand-card"><div class="hand-card-artwork"><div class="hand-card-emoji">' + (merged.emoji || '\uD83C\uDCCF') + '</div></div><div class="hand-card-name">' + (merged.name || ref.id) + '</div></div>';
       }
 
-      // Fixed 4 slots display
-      for (var s = 0; s < 4; s++) {
-        var ref2 = slots[s] || null;
-        var cell = document.createElement('div');
-        cell.className = 'nch-backup-slot' + ((state.selectedBackupIndex === s) ? ' selected' : '');
-        cell.dataset.backupIndex = s;
+      // Qty badge
+      if (ref.qty && ref.qty > 1) {
+        var qBadge = document.createElement('div');
+        qBadge.className = 'nch-qty-badge';
+        qBadge.textContent = 'x' + ref.qty;
+        qBadge.style.cssText = 'position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,0.8);color:#fff;font-size:10px;padding:1px 4px;border-radius:4px;z-index:5;';
+        wrapper.style.position = 'relative';
+        wrapper.appendChild(qBadge);
+      }
 
-        if (ref2 && ref2.id) {
-          var card2 = null;
-          if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) {
-            card2 = GoneRogueDataRegistry.getCard(ref2.id);
-          }
-          var nm2 = card2 ? card2.name : ref2.id;
-          var em2 = card2 ? card2.emoji : '🃏';
-          cell.style.position = 'relative';
-          cell.textContent = em2 + ' ' + nm2;
+      // 3D printer badge
+      if (printerArmed && _isAmmoBatteryCard(cardDef)) {
+        wrapper.classList.add('printer-eligible');
+        var px2 = document.createElement('span');
+        px2.className = 'printer-x2';
+        px2.textContent = 'x2';
+        wrapper.appendChild(px2);
+      }
 
-          if (printerArmed && _isAmmoBatteryCard(card2)) {
-            cell.classList.add('printer-eligible');
-            var b2 = document.createElement('span');
-            b2.className = 'printer-x2';
-            b2.textContent = 'x2';
-            cell.appendChild(b2);
-          }
-        } else {
-          cell.textContent = '—';
-          cell.classList.add('empty');
-        }
-
-        cell.addEventListener('click', function(e) {
-          e.stopPropagation();
-          var idx2 = Number(e.currentTarget.dataset.backupIndex);
-          if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.setSelectedBackupIndex) {
-            NonCombatStateStore.setSelectedBackupIndex(idx2);
-          }
-        });
-
-        cell.addEventListener('pointerdown', function(e) {
-          if (!e || e.pointerType === 'touch') return;
+      // Drag handler
+      (function(idx, cardRef, cDef) {
+        wrapper.addEventListener('pointerdown', function(e) {
           if (e.button !== undefined && e.button !== 0) return;
-
-          var idx2 = Number(e.currentTarget.dataset.backupIndex);
-
-          var refB = null;
-          if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getBackupCards === 'function') {
-            var b = GAMESTATE.getBackupCards();
-            refB = b ? b[idx2] : null;
-          }
-
-          if (!refB || !refB.id) return;
-
-          var cardB = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) ? GoneRogueDataRegistry.getCard(refB.id) : null;
-          var emB = cardB ? (cardB.emoji || '🃏') : '🃏';
-
-          _startNchDrag({
-            kind: 'backup',
-            backupIndex: idx2,
-            emoji: emB,
-            id: refB.id
-          }, e);
+          if (_expanded && _expanded.classList.contains('nch-locked')) return;
+          var em = (cDef && cDef.emoji) ? cDef.emoji : '\uD83C\uDCCF';
+          _startDrag({ kind: 'hand', index: idx, id: cardRef.id, emoji: em }, e);
         });
+      })(i, ref, cardDef);
 
-        backup.appendChild(cell);
-      }
-    }
-
-    if (_mini) {
-      _mini.classList.remove('nch-mini-warn');
-      _mini.classList.remove('nch-mini-busy');
-      if (state.uiState === (NonCombatStateStore.NON_COMBAT_STATES.TARGETING || 'targeting')) {
-        _mini.classList.add('nch-mini-busy');
-      }
-      if (state.uiState === (NonCombatStateStore.NON_COMBAT_STATES.CONFIRMATION || 'confirmation')) {
-        _mini.classList.add('nch-mini-warn');
-      }
+      container.appendChild(wrapper);
     }
   }
 
-  // Auto-init
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
+  // ─── SORT ITEM GATING ──────────────────────────────────
+
+  function _isSortUnlocked() {
+    try {
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) {
+        var ar = GAMESTATE.getActiveItem();
+        if (ar && ar.id) {
+          var idef = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) ? GoneRogueDataRegistry.getItem(ar.id) : null;
+          if (idef && Array.isArray(idef.effects)) {
+            for (var i = 0; i < idef.effects.length; i++) {
+              if (idef.effects[i] && idef.effects[i].type === 'sort_hand') return true;
+            }
+          }
+        }
+      }
+    } catch (e) {}
+    return false;
   }
 
-  var _nchDrag = null; // { kind, emoji, id, handIndex?, backupIndex?, ghostEl, startX, startY, dragging }
+  // ─── RENDER: DRAW BAR ────────────────────────────────────
 
-  function _startNchDrag(payload, e) {
-    if (!_root || !_mini) {
-      // If the HUD hasn't mounted yet, don't crash.
+  var DRAW_BAR_SIZE = 5; // max visible draw buttons
+
+  function _renderDrawBar() {
+    var drawbar = _expanded ? _expanded.querySelector('#nch-drawbar') : null;
+    var countEl = _expanded ? _expanded.querySelector('#nch-draw-count') : null;
+    var shuffleBtn = _expanded ? _expanded.querySelector('#nch-shuffle-btn') : null;
+    var sortBtn = _expanded ? _expanded.querySelector('#nch-sort-btn') : null;
+    if (!drawbar) return;
+    drawbar.innerHTML = '';
+
+    var backup = _getBackup();
+    var sortUnlocked = _isSortUnlocked();
+    var isLocked = !!(_expanded && _expanded.classList.contains('nch-locked'));
+
+    // Update count
+    if (countEl) countEl.textContent = '(' + backup.length + ')';
+
+    // Toggle shuffle/sort buttons based on item
+    if (shuffleBtn) {
+      shuffleBtn.style.display = sortUnlocked ? 'none' : 'inline-block';
+      shuffleBtn.disabled = isLocked || backup.length < 2;
+      if (!shuffleBtn._bound) {
+        shuffleBtn._bound = true;
+        shuffleBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          _onShuffleClick();
+        });
+      }
+    }
+    if (sortBtn) {
+      sortBtn.disabled = !sortUnlocked || isLocked || backup.length < 2;
+      sortBtn.style.display = sortUnlocked ? 'inline-block' : 'inline-block';
+      sortBtn.title = sortUnlocked ? 'Sort backup deck' : 'Requires Archive Indexer (\uD83D\uDCD1)';
+      if (!sortBtn._bound) {
+        sortBtn._bound = true;
+        sortBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          _onSortClick();
+        });
+      }
+    }
+
+    // Empty state
+    if (backup.length === 0) {
+      var empty = document.createElement('div');
+      empty.className = 'nch-drawbar-empty';
+      empty.textContent = 'No cards to draw';
+      drawbar.appendChild(empty);
       return;
     }
 
-    // Don't allow during STR combat (locked)
-    if (_root && _root.classList.contains('locked')) {
+    // Render draw buttons (top N cards from backup)
+    var count = Math.min(DRAW_BAR_SIZE, backup.length);
+    for (var i = 0; i < count; i++) {
+      var ref = backup[i];
+      if (!ref || !ref.id) continue;
+
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'nch-draw-btn';
+      if (isLocked) btn.disabled = true;
+
+      if (sortUnlocked) {
+        // Face-up: show card identity
+        btn.classList.add('face-up');
+        var cardDef = _getCardDef(ref.id);
+        var emoji = (cardDef && cardDef.emoji) ? cardDef.emoji : '\uD83C\uDCCF';
+        var name = (cardDef && cardDef.name) ? cardDef.name : ref.id;
+        var quality = String((cardDef && (cardDef.quality || cardDef.qualityName)) || 'standard').toLowerCase();
+
+        var emojiSpan = document.createElement('span');
+        emojiSpan.className = 'nch-draw-btn-emoji';
+        emojiSpan.textContent = emoji;
+        btn.appendChild(emojiSpan);
+
+        var nameSpan = document.createElement('span');
+        nameSpan.className = 'nch-draw-btn-name';
+        nameSpan.textContent = name.length > 8 ? name.substring(0, 7) + '\u2026' : name;
+        btn.appendChild(nameSpan);
+
+        // Quality border color
+        if (typeof SharedCardRenderer !== 'undefined' && SharedCardRenderer.getQualityBorderColor) {
+          btn.style.borderColor = SharedCardRenderer.getQualityBorderColor(quality);
+        }
+      } else {
+        // Face-down: joker card back
+        btn.innerHTML = '<span class="nch-draw-btn-joker">\uD83C\uDCCF</span>';
+      }
+
+      btn.title = sortUnlocked ? (name || ref.id) : 'Draw card (face down)';
+      btn.setAttribute('data-backup-index', String(i));
+
+      // Click + hover handlers (closure)
+      (function(idx, cardRef) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          if (isLocked) return;
+          _onDrawButtonClick(idx);
+        });
+        // Ghost cursor feedback on hover
+        btn.addEventListener('mouseenter', function() {
+          var def = _getCardDef(cardRef.id);
+          var em = (def && def.emoji) ? def.emoji : null;
+          _updateGhostForHover(em);
+          btn.classList.add('nch-draw-btn-hover');
+        });
+        btn.addEventListener('mouseleave', function() {
+          _updateGhostForHover(null);
+          btn.classList.remove('nch-draw-btn-hover');
+        });
+      })(i, ref);
+
+      drawbar.appendChild(btn);
+    }
+
+    // Remaining indicator
+    if (backup.length > DRAW_BAR_SIZE) {
+      var more = document.createElement('div');
+      more.className = 'nch-drawbar-more';
+      more.textContent = '+' + (backup.length - DRAW_BAR_SIZE) + ' more';
+      drawbar.appendChild(more);
+    }
+  }
+
+  // ─── DRAW BAR ACTIONS ─────────────────────────────────────
+
+  function _onDrawButtonClick(backupIndex) {
+    if (typeof GAMESTATE === 'undefined') return;
+
+    // If hand is full, auto-push oldest card to backup first
+    var hand = _getHand();
+    var maxHand = 5;
+    try { if (GAMESTATE.getState) { var s = GAMESTATE.getState(); maxHand = s.maxHandSize || 5; } } catch (e) {}
+
+    if (hand.length >= maxHand) {
+      try { GAMESTATE.pushOldestHandCardToBackup(); } catch (e) {}
+    }
+
+    // Draw from backup to hand
+    try {
+      var result = GAMESTATE.moveBackupIndexToHand(backupIndex);
+      if (result && result.success !== false) {
+        // Animate draw: add .drawing class to the button briefly
+        var drawbar = _expanded ? _expanded.querySelector('#nch-drawbar') : null;
+        if (drawbar) {
+          var btns = drawbar.querySelectorAll('.nch-draw-btn');
+          if (btns[backupIndex]) {
+            btns[backupIndex].classList.add('drawing');
+          }
+        }
+
+        // Tooltip feedback
+        if (typeof TooltipSystem !== 'undefined') {
+          TooltipSystem.showPersistent('\uD83C\uDCCF DRAWN \u2192 HAND', 700);
+        }
+      }
+    } catch (e) {
+      console.warn('[NCH] Draw failed:', e);
+    }
+
+    // Re-render after short animation delay
+    setTimeout(function() { _renderAll(); }, 150);
+  }
+
+  function _onShuffleClick() {
+    if (typeof GAMESTATE === 'undefined' || typeof GAMESTATE.shuffleBackupDeck !== 'function') return;
+
+    // Visual: add scatter animation
+    var drawbar = _expanded ? _expanded.querySelector('#nch-drawbar') : null;
+    if (drawbar) {
+      var btns = drawbar.querySelectorAll('.nch-draw-btn');
+      for (var i = 0; i < btns.length; i++) {
+        btns[i].classList.add('shuffling');
+      }
+    }
+
+    // Shuffle after brief visual
+    setTimeout(function() {
+      GAMESTATE.shuffleBackupDeck();
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showPersistent('\uD83D\uDD00 Deck shuffled', 700);
+      }
+      // rogue-hand-changed event triggers _renderAll
+    }, 200);
+  }
+
+  function _onSortClick() {
+    if (typeof GAMESTATE === 'undefined' || typeof GAMESTATE.sortBackupDeck !== 'function') return;
+    if (!_isSortUnlocked()) return;
+
+    GAMESTATE.sortBackupDeck('quality');
+    if (typeof TooltipSystem !== 'undefined') {
+      TooltipSystem.showPersistent('\uD83D\uDCD1 Deck sorted by quality', 700);
+    }
+  }
+
+  // ─── GHOST JOKER CURSOR ───────────────────────────────────
+
+  var _ghostEl = null;
+  var _ghostMoveHandler = null;
+
+  function _activateGhostCursor() {
+    if (_ghostEl) return; // already active
+
+    _ghostEl = document.createElement('div');
+    _ghostEl.className = 'nch-ghost-joker';
+    _ghostEl.textContent = '\uD83C\uDCCF';
+    document.body.appendChild(_ghostEl);
+    document.body.classList.add('nch-ghost-cursor-active');
+
+    _ghostMoveHandler = function(e) {
+      if (_ghostEl) {
+        _ghostEl.style.left = (e.clientX + 14) + 'px';
+        _ghostEl.style.top = (e.clientY + 14) + 'px';
+      }
+    };
+    document.addEventListener('pointermove', _ghostMoveHandler);
+  }
+
+  function _deactivateGhostCursor() {
+    if (_ghostEl && _ghostEl.parentNode) {
+      _ghostEl.parentNode.removeChild(_ghostEl);
+    }
+    _ghostEl = null;
+    document.body.classList.remove('nch-ghost-cursor-active');
+    if (_ghostMoveHandler) {
+      document.removeEventListener('pointermove', _ghostMoveHandler);
+      _ghostMoveHandler = null;
+    }
+  }
+
+  function _updateGhostForHover(cardEmoji) {
+    if (!_ghostEl) return;
+    if (cardEmoji && _isSortUnlocked()) {
+      _ghostEl.textContent = cardEmoji;
+      _ghostEl.classList.add('nch-ghost-known');
+    } else {
+      _ghostEl.textContent = '\uD83C\uDCCF';
+      _ghostEl.classList.remove('nch-ghost-known');
+    }
+  }
+
+  // ─── RENDER: BACKUP DECK (Zone 2 — scrollable band) ─────
+
+  function _renderBackup() {
+    var scroller = _expanded ? _expanded.querySelector('#nch-backup-scroller') : null;
+    var countEl = _expanded ? _expanded.querySelector('#nch-backup-count') : null;
+    if (!scroller) return;
+    scroller.innerHTML = '';
+
+    var backup = _getBackup();
+    var maxB = _getMaxBackup();
+    var printerArmed = _isPrinterArmed();
+
+    if (countEl) countEl.textContent = backup.length + '/' + maxB;
+
+    if (backup.length === 0) {
+      var empty = document.createElement('div');
+      empty.style.cssText = 'color:rgba(28,255,155,0.3);font-family:"Courier New",monospace;font-size:11px;padding:20px 12px;';
+      empty.textContent = 'Backup deck empty';
+      scroller.appendChild(empty);
       return;
     }
 
-    _nchDrag = Object.assign({
+    for (var i = 0; i < backup.length; i++) {
+      var ref = backup[i];
+      if (!ref || !ref.id) continue;
+      var cardDef = _getCardDef(ref.id);
+      var merged = Object.assign({}, cardDef || {}, { id: ref.id, qty: ref.qty });
+
+      var wrapper;
+      if (typeof SharedCardRenderer !== 'undefined' && SharedCardRenderer.createCardElement) {
+        wrapper = SharedCardRenderer.createCardElement(merged, i, 'nch-backup');
+      } else {
+        wrapper = document.createElement('div');
+        wrapper.className = 'hand-card-wrapper';
+        wrapper.innerHTML = '<div class="hand-card"><div class="hand-card-artwork"><div class="hand-card-emoji">' + (merged.emoji || '\uD83C\uDCCF') + '</div></div><div class="hand-card-name">' + (merged.name || ref.id) + '</div></div>';
+      }
+
+      // Progressive visual aging: newest (left, i=0) bright, oldest (right) faded + desaturated
+      var depthRatio = backup.length > 1 ? i / (backup.length - 1) : 0;
+      var agingOpacity = 1.0 - (depthRatio * 0.6); // 1.0 → 0.4
+      var agingGrayscale = depthRatio * 0.5;        // 0 → 0.5
+      var agingDrift = depthRatio * 2;               // 0px → 2px downward drift
+      wrapper.style.opacity = String(Math.max(0.3, agingOpacity));
+      wrapper.style.filter = 'grayscale(' + agingGrayscale.toFixed(2) + ')';
+      wrapper.style.transform = 'translateY(' + agingDrift.toFixed(1) + 'px)';
+
+      // Legacy class hooks
+      if (depthRatio > 0.7) {
+        wrapper.classList.add('nch-backup-old');
+      }
+      if (depthRatio > 0.9) {
+        wrapper.classList.add('nch-backup-dying');
+      }
+
+      // Store card ID on element for shift animation tracking
+      wrapper.dataset.cardId = ref.id;
+
+      // 3D printer badge
+      if (printerArmed && _isAmmoBatteryCard(cardDef)) {
+        wrapper.classList.add('printer-eligible');
+        var px2 = document.createElement('span');
+        px2.className = 'printer-x2';
+        px2.textContent = 'x2';
+        wrapper.appendChild(px2);
+      }
+
+      // Drag handler
+      (function(idx, cardRef, cDef) {
+        wrapper.addEventListener('pointerdown', function(e) {
+          if (e.button !== undefined && e.button !== 0) return;
+          if (_expanded && _expanded.classList.contains('nch-locked')) return;
+          var em = (cDef && cDef.emoji) ? cDef.emoji : '\uD83C\uDCCF';
+          _startDrag({ kind: 'backup', index: idx, id: cardRef.id, emoji: em }, e);
+        });
+      })(i, ref, cardDef);
+
+      scroller.appendChild(wrapper);
+    }
+  }
+
+  // ─── RENDER: VAULT (Zone 3 — persistent card slots) ─────
+
+  function _renderVault() {
+    var container = _expanded ? _expanded.querySelector('#nch-vault-slots') : null;
+    if (!container) return;
+    container.innerHTML = '';
+
+    var vaultCards = _getVaultCards();
+    var maxSlots = 12;
+    try {
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getGameState) {
+        var gs = GAMESTATE.getGameState();
+        if (gs && gs.maxPersistentSlots) maxSlots = gs.maxPersistentSlots;
+      }
+    } catch (e) {}
+
+    var total = Math.max(vaultCards.length, maxSlots);
+
+    for (var i = 0; i < total; i++) {
+      var ref = vaultCards[i] || null;
+      var slot = document.createElement('div');
+      slot.className = 'nch-vault-slot' + (ref && ref.id ? ' occupied' : ' empty');
+      slot.dataset.vaultIndex = i;
+
+      if (ref && ref.id) {
+        var cardDef = _getCardDef(ref.id);
+
+        // Joker face (default visible)
+        var joker = document.createElement('div');
+        joker.className = 'nch-vault-joker';
+        joker.textContent = '\uD83C\uDCCF'; // 🃏
+        slot.appendChild(joker);
+
+        // Portrait (visible on hover)
+        var portrait = document.createElement('div');
+        portrait.className = 'nch-vault-portrait';
+        var em = (cardDef && cardDef.emoji) ? cardDef.emoji : '\uD83C\uDCCF';
+        var nm = (cardDef && cardDef.name) ? cardDef.name : ref.id;
+        portrait.innerHTML = '<div style="font-size:20px;">' + em + '</div><div style="font-size:8px;color:rgba(191,255,227,0.9);margin-top:2px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:54px;">' + nm + '</div>';
+        slot.appendChild(portrait);
+
+        // Drag handler (vault → backup)
+        (function(idx, cardRef, cDef) {
+          slot.addEventListener('pointerdown', function(e) {
+            if (e.button !== undefined && e.button !== 0) return;
+            if (_expanded && _expanded.classList.contains('nch-locked')) return;
+            var emj = (cDef && cDef.emoji) ? cDef.emoji : '\uD83C\uDCCF';
+            _startDrag({ kind: 'vault', index: idx, id: cardRef.id, emoji: emj }, e);
+          });
+        })(i, ref, cardDef);
+      } else {
+        slot.textContent = '\u2014'; // —
+      }
+
+      // Drop target for vault slots
+      container.appendChild(slot);
+    }
+  }
+
+  // ─── DRAG & DROP ────────────────────────────────────────
+
+  function _startDrag(payload, e) {
+    if (_drag) return; // already dragging
+
+    _drag = Object.assign({
       ghostEl: null,
       startX: e.clientX,
       startY: e.clientY,
       dragging: false
     }, payload);
 
-    // External drags (from left column) should feel immediate on desktop.
-    if (_nchDrag.kind === 'stash_card') {
-      _nchDrag.dragging = true;
-      _ensureGhost(e.clientX, e.clientY);
-      // Expand NCH so the hand/backup drop zones are visible and hit-testable.
-      setMinimized(false, 'stash_drag');
-    }
+    try { e.preventDefault(); } catch (ex) {}
+    try { e.stopPropagation(); } catch (ex) {}
 
-    try { e.preventDefault && e.preventDefault(); } catch (eP0) {}
-    try { e.stopPropagation && e.stopPropagation(); } catch (eS0) {}
+    document.addEventListener('pointermove', _onDragMove);
+    document.addEventListener('pointerup', _onDragUp);
+    document.addEventListener('pointercancel', _onDragUp);
+  }
 
-    document.addEventListener('pointermove', _onNchDragMove);
-    document.addEventListener('pointerup', _onNchDragUp);
-    document.addEventListener('pointercancel', _onNchDragUp);
+  // Expose for external drags (from left column / reserve slots)
+  function startExternalDrag(payload, e) {
+    _startDrag(payload, e);
+    // Force expand NCH so drop zones are visible
+    if (!_isExpanded) _expand('external_drag');
   }
 
   function _ensureGhost(x, y) {
-    if (!_nchDrag || _nchDrag.ghostEl) return;
-
+    if (!_drag || _drag.ghostEl) return;
     var ghost = document.createElement('div');
     ghost.className = 'nch-drag-ghost';
-    ghost.textContent = _nchDrag.emoji || '🃏';
+    ghost.textContent = _drag.emoji || '\uD83C\uDCCF';
     ghost.style.left = x + 'px';
     ghost.style.top = y + 'px';
     document.body.appendChild(ghost);
-    _nchDrag.ghostEl = ghost;
+    _drag.ghostEl = ghost;
   }
 
-  function _onNchDragMove(e) {
-    if (!_nchDrag) return;
-    if (!e || e.pointerType === 'touch') return;
-
-    var dx = e.clientX - _nchDrag.startX;
-    var dy = e.clientY - _nchDrag.startY;
-    var dist = Math.sqrt(dx * dx + dy * dy);
-
-    if (!_nchDrag.dragging && dist > 6) {
-      _nchDrag.dragging = true;
+  function _onDragMove(e) {
+    if (!_drag) return;
+    var dx = e.clientX - _drag.startX;
+    var dy = e.clientY - _drag.startY;
+    if (!_drag.dragging && Math.sqrt(dx * dx + dy * dy) > 6) {
+      _drag.dragging = true;
       _ensureGhost(e.clientX, e.clientY);
+      _highlightDropZones(true);
+    }
+    if (_drag.dragging && _drag.ghostEl) {
+      _drag.ghostEl.style.left = e.clientX + 'px';
+      _drag.ghostEl.style.top = e.clientY + 'px';
+    }
+  }
+
+  function _highlightDropZones(show) {
+    if (!_expanded) return;
+    var zones = _expanded.querySelectorAll('[data-dropzone]');
+    for (var i = 0; i < zones.length; i++) {
+      if (show) zones[i].classList.add('nch-drop-active');
+      else zones[i].classList.remove('nch-drop-active', 'nch-drop-highlight');
+    }
+  }
+
+  function _onDragUp(e) {
+    if (!_drag) return;
+
+    document.removeEventListener('pointermove', _onDragMove);
+    document.removeEventListener('pointerup', _onDragUp);
+    document.removeEventListener('pointercancel', _onDragUp);
+
+    // Clean up ghost
+    if (_drag.ghostEl && _drag.ghostEl.parentNode) {
+      _drag.ghostEl.parentNode.removeChild(_drag.ghostEl);
     }
 
-    if (_nchDrag.dragging && _nchDrag.ghostEl) {
-      _nchDrag.ghostEl.style.left = e.clientX + 'px';
-      _nchDrag.ghostEl.style.top = e.clientY + 'px';
+    _highlightDropZones(false);
+
+    if (!_drag.dragging) {
+      _drag = null;
+      return;
+    }
+
+    // Determine drop target
+    var el = null;
+    try { el = document.elementFromPoint(e.clientX, e.clientY); } catch (ex) {}
+
+    var droppedOnHand = !!(el && el.closest && el.closest('[data-dropzone="hand"]'));
+    var droppedOnBackup = !!(el && el.closest && el.closest('[data-dropzone="backup"]'));
+    var droppedOnVault = !!(el && el.closest && el.closest('[data-dropzone="vault"]'));
+    // Left column sidebar is also a backup zone
+    var droppedOnSidebar = !!(el && el.closest && el.closest('[data-dropzone="backup"]'));
+
+    var ok = false;
+
+    // ── HAND → BACKUP ──
+    if (_drag.kind === 'hand' && (droppedOnBackup || droppedOnSidebar)) {
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.moveHandIndexToBackup) {
+        ok = !!GAMESTATE.moveHandIndexToBackup(_drag.index).success;
+      }
+      _showDragResult(ok, 'Moved to backup', 'Backup full or invalid');
+      _drag = null;
+      _renderAll();
+      return;
+    }
+
+    // ── BACKUP → HAND ──
+    if (_drag.kind === 'backup' && droppedOnHand) {
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.moveBackupIndexToHand) {
+        ok = !!GAMESTATE.moveBackupIndexToHand(_drag.index).success;
+      }
+      _showDragResult(ok, 'Moved to hand', 'Cannot move to hand');
+      _drag = null;
+      _renderAll();
+      return;
+    }
+
+    // ── HAND → VAULT ──
+    if (_drag.kind === 'hand' && droppedOnVault) {
+      // Remove from hand, add to persistent
+      if (typeof GAMESTATE !== 'undefined') {
+        // First move to persistent cards
+        if (GAMESTATE.addPersistentCard) {
+          ok = true;
+          try {
+            GAMESTATE.addPersistentCard(_drag.id, 1);
+            // Remove from hand
+            if (GAMESTATE.consumeCardFromHand) {
+              GAMESTATE.consumeCardFromHand(_drag.index, 1);
+            } else if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.consumeHandIndex) {
+              NonCombatStateStore.consumeHandIndex(_drag.index, 1);
+            }
+          } catch (ex) { ok = false; }
+        }
+      }
+      _showDragResult(ok, 'Vaulted!', 'Cannot vault card');
+      _drag = null;
+      _renderAll();
+      return;
+    }
+
+    // ── BACKUP → VAULT ──
+    if (_drag.kind === 'backup' && droppedOnVault) {
+      if (typeof GAMESTATE !== 'undefined') {
+        ok = true;
+        try {
+          if (GAMESTATE.addPersistentCard) GAMESTATE.addPersistentCard(_drag.id, 1);
+          // Remove from backup by index
+          var bCards = GAMESTATE.getBackupCards();
+          if (bCards[_drag.index]) {
+            // Direct state manipulation via moveBackupIndexToHand then to persistent
+            // Simpler: just splice from backup array if we have access
+            if (GAMESTATE.removeBackupCard) {
+              GAMESTATE.removeBackupCard(_drag.index);
+            } else if (GAMESTATE.moveBackupIndexToHand) {
+              // Move to hand then immediately to persistent
+              GAMESTATE.moveBackupIndexToHand(_drag.index);
+              // The card is now in hand — it was already added to persistent above
+              // We need to remove the duplicate from hand
+              var handNow = GAMESTATE.getCardsInHand();
+              for (var hi = handNow.length - 1; hi >= 0; hi--) {
+                if (handNow[hi] && handNow[hi].id === _drag.id) {
+                  if (GAMESTATE.consumeCardFromHand) GAMESTATE.consumeCardFromHand(hi, 1);
+                  else if (typeof NonCombatStateStore !== 'undefined') NonCombatStateStore.consumeHandIndex(hi, 1);
+                  break;
+                }
+              }
+            }
+          }
+        } catch (ex) { ok = false; }
+      }
+      _showDragResult(ok, 'Vaulted from backup!', 'Cannot vault');
+      _drag = null;
+      _renderAll();
+      return;
+    }
+
+    // ── VAULT → BACKUP ──
+    if (_drag.kind === 'vault' && (droppedOnBackup || droppedOnSidebar)) {
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.moveStashCardToBackup) {
+        ok = !!GAMESTATE.moveStashCardToBackup(_drag.id).success;
+      }
+      _showDragResult(ok, 'Moved to backup', 'Cannot move to backup');
+      _drag = null;
+      _renderAll();
+      return;
+    }
+
+    // ── VAULT → HAND ──
+    if (_drag.kind === 'vault' && droppedOnHand) {
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addCardToHand) {
+        ok = !!GAMESTATE.addCardToHand(_drag.id, 1).success;
+      }
+      _showDragResult(ok, 'Added to hand', 'Cannot add to hand');
+      _drag = null;
+      _renderAll();
+      return;
+    }
+
+    // ── STASH CARD (external) → HAND or BACKUP ──
+    if (_drag.kind === 'stash_card') {
+      if (droppedOnHand) {
+        if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addCardToHand) {
+          ok = !!GAMESTATE.addCardToHand(_drag.id, 1).success;
+        }
+      } else if (droppedOnBackup) {
+        if (typeof GAMESTATE !== 'undefined' && GAMESTATE.moveStashCardToBackup) {
+          ok = !!GAMESTATE.moveStashCardToBackup(_drag.id).success;
+        }
+      }
+      _showDragResult(ok, 'Card placed', 'Cannot place card');
+      _drag = null;
+      _renderAll();
+      return;
+    }
+
+    // ── WORLD MAP DROP (ground effects) ──
+    var coords = _screenToGrid(e.clientX, e.clientY);
+    if (coords && (_drag.kind === 'hand' || _drag.kind === 'backup')) {
+      if (typeof GoneRogue !== 'undefined' && GoneRogue.applyNonCombatCardAt) {
+        ok = GoneRogue.applyNonCombatCardAt(_drag.id, coords.x, coords.y);
+      }
+      if (ok) {
+        // Consume the card
+        if (_drag.kind === 'hand') {
+          if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.consumeHandIndex) {
+            NonCombatStateStore.consumeHandIndex(_drag.index, 1);
+          }
+        } else if (_drag.kind === 'backup') {
+          if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.consumeBackupIndex) {
+            NonCombatStateStore.consumeBackupIndex(_drag.index);
+          }
+        }
+        // Minimize NCH to show map effect
+        _collapse('world_fire');
+      }
+      _showDragResult(ok, 'Deployed!', 'Invalid drop');
+      _drag = null;
+      _renderAll();
+      return;
+    }
+
+    // ── EQUIPPED ITEM drop ──
+    if (_drag.kind === 'equipped_item' && coords) {
+      if (_drag.id && typeof GoneRogue !== 'undefined') {
+        if (GoneRogue.isBoxDeployItem && GoneRogue.isBoxDeployItem(_drag.id) && GoneRogue.placeBox) {
+          var quality = 'common';
+          if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
+            var def = GoneRogueDataRegistry.getItem(_drag.id);
+            if (def && def.boxQuality) quality = def.boxQuality;
+          }
+          GoneRogue.placeBox(coords, _drag.id, quality);
+          ok = true;
+        } else if (GoneRogue.useActiveItemAt) {
+          GoneRogue.useActiveItemAt(coords.x, coords.y);
+          ok = true;
+        }
+      }
+      if (ok) _collapse('item_fire');
+      _drag = null;
+      _renderAll();
+      return;
+    }
+
+    // No valid drop
+    if (typeof TooltipSystem !== 'undefined') {
+      TooltipSystem.showPersistent('\u274C Invalid drop', 800);
+    }
+    _drag = null;
+  }
+
+  function _showDragResult(ok, successMsg, failMsg) {
+    if (typeof TooltipSystem !== 'undefined') {
+      TooltipSystem.showPersistent(ok ? ('\u2705 ' + successMsg) : ('\u274C ' + failMsg), 900);
     }
   }
 
   function _screenToGrid(clientX, clientY) {
-    // DOM grid cell (preferred)
+    // DOM grid cell
     var el = document.elementFromPoint(clientX, clientY);
     if (el && el.closest) {
       var cell = el.closest('.rogue-cell');
@@ -634,177 +1081,94 @@ var NonCombatHUD = (function() {
         return { x: Number(cell.dataset.x), y: Number(cell.dataset.y) };
       }
     }
-
     // Canvas fallback
     var gridContainer = document.getElementById('rogue-grid-mobile');
     var canvas = gridContainer ? gridContainer.querySelector('canvas') : null;
     if (canvas) {
       var r = canvas.getBoundingClientRect();
       if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) {
-        var relX = (clientX - r.left);
-        var relY = (clientY - r.top);
-        var cellW = (canvas.width || (r.width || 1)) / 40;
-        var cellH = (canvas.height || (r.height || 1)) / 20;
-        var gx = Math.floor(relX / cellW);
-        var gy = Math.floor(relY / cellH);
+        var cellW = (canvas.width || r.width || 1) / 40;
+        var cellH = (canvas.height || r.height || 1) / 20;
+        var gx = Math.floor((clientX - r.left) / cellW);
+        var gy = Math.floor((clientY - r.top) / cellH);
         if (gx >= 0 && gx < 40 && gy >= 0 && gy < 20) {
           return { x: gx, y: gy };
         }
       }
     }
-
     return null;
   }
 
-  function _onNchDragUp(e) {
-    if (!_nchDrag) return;
+  // ─── GLOBAL LISTENERS ───────────────────────────────────
 
-    document.removeEventListener('pointermove', _onNchDragMove);
-    document.removeEventListener('pointerup', _onNchDragUp);
-    document.removeEventListener('pointercancel', _onNchDragUp);
-
-    var ghost = _nchDrag.ghostEl;
-    if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
-
-    if (!_nchDrag.dragging) {
-      _nchDrag = null;
-      return;
-    }
-
-    // Determine drop targets
-    var el = null;
-    try { el = document.elementFromPoint(e.clientX, e.clientY); } catch (e0) {}
-
-    var droppedOnHand = false;
-    var droppedOnBackup = false;
-    var droppedOnSidebar = false;
-
-    if (el) {
-      droppedOnHand = !!(el.closest && el.closest('#nch-hand'));
-      droppedOnBackup = !!(el.closest && el.closest('#nch-backup'));
-      // Left column is now the backup zone (data-dropzone="backup") — same deck as NCH backup.
-      droppedOnSidebar = !!(el.closest && el.closest('[data-dropzone="backup"]'));
-    }
-
-    var ok = false;
-    if (_nchDrag.kind === 'hand' && droppedOnBackup) {
-      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.moveHandIndexToBackup === 'function') {
-        ok = !!GAMESTATE.moveHandIndexToBackup(_nchDrag.handIndex).success;
-      }
-      if (!ok && typeof TooltipSystem !== 'undefined') TooltipSystem.showPersistent('❌ BACKUP full or invalid', 900);
-      _nchDrag = null;
-      return;
-    }
-
-    if (_nchDrag.kind === 'backup' && droppedOnHand) {
-      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.moveBackupIndexToHand === 'function') {
-        ok = !!GAMESTATE.moveBackupIndexToHand(_nchDrag.backupIndex).success;
-      }
-      if (!ok && typeof TooltipSystem !== 'undefined') TooltipSystem.showPersistent('❌ Cannot move to hand', 900);
-      _nchDrag = null;
-      return;
-    }
-
-    // NCH hand -> left column backup zone: move hand card back to backup
-    if (droppedOnSidebar && _nchDrag.kind === 'hand') {
-      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.moveHandIndexToBackup === 'function') {
-        ok = !!GAMESTATE.moveHandIndexToBackup(_nchDrag.handIndex).success;
-      }
-      if (!ok && typeof TooltipSystem !== 'undefined') TooltipSystem.showPersistent('❌ BACKUP full or invalid', 900);
-      _nchDrag = null;
-      return;
-    }
-
-    // Dropping a backup card onto the backup zone (left column) is a no-op.
-    if (droppedOnSidebar && _nchDrag.kind === 'backup') {
-      _nchDrag = null;
-      return;
-    }
-
-    // RogueSidebar (stash) -> NCH hand/backup
-    if (_nchDrag.kind === 'stash_card' && (droppedOnHand || droppedOnBackup)) {
-      if (droppedOnBackup) {
-        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.moveStashCardToBackup === 'function') {
-          ok = !!GAMESTATE.moveStashCardToBackup(_nchDrag.id).success;
-        }
-        if (!ok && typeof TooltipSystem !== 'undefined') TooltipSystem.showPersistent('❌ Backup: full/invalid', 900);
-        _nchDrag = null;
-        return;
-      }
-
-      if (droppedOnHand) {
-        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addCardToHand === 'function') {
-          ok = !!GAMESTATE.addCardToHand(_nchDrag.id, 1).success;
-        }
-        if (!ok && typeof TooltipSystem !== 'undefined') TooltipSystem.showPersistent('❌ Cannot add to hand', 900);
-        _nchDrag = null;
-        return;
-      }
-    }
-
-    // Otherwise: map drop (cards deploy / equipped targeting)
-    var coords = _screenToGrid(e.clientX, e.clientY);
-    if (!coords) {
-      _nchDrag = null;
-      return;
-    }
-
-    // Resolve drop
-    if (_nchDrag.kind === 'hand') {
-      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.applyNonCombatCardAt === 'function') {
-        ok = GoneRogue.applyNonCombatCardAt(_nchDrag.id, coords.x, coords.y);
-      }
-      if (ok && typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.consumeHandIndex) {
-        NonCombatStateStore.consumeHandIndex(_nchDrag.handIndex, 1);
-      }
-    } else if (_nchDrag.kind === 'backup') {
-      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.applyNonCombatCardAt === 'function') {
-        ok = GoneRogue.applyNonCombatCardAt(_nchDrag.id, coords.x, coords.y);
-      }
-      if (ok && typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.consumeBackupIndex) {
-        NonCombatStateStore.consumeBackupIndex(_nchDrag.backupIndex);
-      }
-    } else if (_nchDrag.kind === 'stash_card') {
-      // Apply directly from stash, consuming 1 persistent card.
-      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.applyNonCombatCardAt === 'function') {
-        ok = GoneRogue.applyNonCombatCardAt(_nchDrag.id, coords.x, coords.y);
-      }
-      if (ok && typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.removePersistentCard === 'function') {
-        GAMESTATE.removePersistentCard(_nchDrag.id, 1);
-      }
-    } else if (_nchDrag.kind === 'equipped_item') {
-      var id = _nchDrag.id;
-
-      // Box deployables: placement
-      if (id && typeof GoneRogue !== 'undefined' && GoneRogue.isBoxDeployItem && GoneRogue.isBoxDeployItem(id) && GoneRogue.placeBox) {
-        var quality = 'common';
-        if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
-          var def = GoneRogueDataRegistry.getItem(id);
-          if (def && def.boxQuality) quality = def.boxQuality;
-        }
-        GoneRogue.placeBox(coords, id, quality);
-        ok = true;
-      } else if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.useActiveItemAt === 'function') {
-        // Default: route to active item targeting
-        GoneRogue.useActiveItemAt(coords.x, coords.y);
-        ok = true;
-      }
-    }
-
-    if (!ok && typeof TooltipSystem !== 'undefined') {
-      TooltipSystem.showPersistent('❌ Invalid drop / no effect', 900);
-    }
-
-    _nchDrag = null;
+  function _attachGlobalListeners() {
+    // Nothing needed beyond event subscriptions in init()
   }
+
+  // ─── AUTO-INIT ──────────────────────────────────────────
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // ─── INCINERATION EFFECT ────────────────────────────────
+
+  /**
+   * Show incineration animation when a card is destroyed from backup overflow.
+   * Listens for 'rogue-card-incinerated' events dispatched by GAMESTATE.
+   * @param {Object} detail - { card: { id, qty }, source: 'backup_overflow' }
+   */
+  function _showIncinerationEffect(detail) {
+    if (!detail || !detail.card) return;
+
+    var cardId = detail.card.id || '?';
+    var cardDef = _getCardDef(cardId);
+    var emoji = (cardDef && cardDef.emoji) ? cardDef.emoji : '🃏';
+    var name = (cardDef && cardDef.name) ? cardDef.name : cardId;
+
+    // If NCH backup scroller is visible, animate from the rightmost card position
+    var scroller = _expanded ? _expanded.querySelector('#nch-backup-scroller') : null;
+    var anchorRect = null;
+    if (scroller && scroller.lastElementChild) {
+      anchorRect = scroller.lastElementChild.getBoundingClientRect();
+    }
+
+    // Create floating incineration element
+    var incEl = document.createElement('div');
+    incEl.className = 'nch-card-incinerating';
+    incEl.innerHTML = '<span class="nch-incinerate-emoji">' + emoji + '</span><span class="nch-incinerate-name">' + name + '</span>';
+
+    if (anchorRect) {
+      incEl.style.left = (anchorRect.left + anchorRect.width / 2) + 'px';
+      incEl.style.top = (anchorRect.top + anchorRect.height / 2) + 'px';
+    } else {
+      // Fallback: bottom-right of viewport
+      incEl.style.right = '40px';
+      incEl.style.bottom = '120px';
+    }
+
+    document.body.appendChild(incEl);
+
+    // Show tooltip notification
+    try {
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showPersistent('🔥 INCINERATED: ' + emoji + ' ' + name, 1200);
+      }
+    } catch (e) {}
+
+    // Remove after animation completes (600ms)
+    setTimeout(function() {
+      if (incEl.parentNode) incEl.remove();
+    }, 650);
+  }
+
+  // ─── PUBLIC API ─────────────────────────────────────────
 
   return {
     init: init,
     setMinimized: setMinimized,
-    startExternalDrag: function(payload, e) {
-      try {
-        _startNchDrag(payload, e);
-      } catch (e0) {}
-    }
+    startExternalDrag: startExternalDrag
   };
 })();

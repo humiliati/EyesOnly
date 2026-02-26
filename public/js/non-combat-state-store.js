@@ -39,7 +39,8 @@ var NonCombatStateStore = (function() {
     cardsInHand: [],
     backupCards: [],
     selectedHandIndex: -1,
-    selectedBackupIndex: -1
+    selectedBackupIndex: -1,
+    maxBackupSlots: 25
   };
 
   var _subs = [];
@@ -197,16 +198,10 @@ var NonCombatStateStore = (function() {
 
   function moveSelectedHandToBackup(opts) {
     opts = opts || {};
-    var maxSlots = Number(opts.maxSlots || 4);
+    var maxSlots = Number(opts.maxSlots || _state.maxBackupSlots || 25);
 
     var hand = Array.isArray(_state.cardsInHand) ? _state.cardsInHand.slice() : [];
     var backup = Array.isArray(_state.backupCards) ? _state.backupCards.slice() : [];
-
-    // Ensure fixed-length array for stable UI
-    if (backup.length < maxSlots) {
-      while (backup.length < maxSlots) backup.push(null);
-    }
-    if (backup.length > maxSlots) backup = backup.slice(0, maxSlots);
 
     var hIdx = Number(_state.selectedHandIndex || -1);
     if (hIdx < 0 || hIdx >= hand.length || !hand[hIdx]) {
@@ -218,12 +213,8 @@ var NonCombatStateStore = (function() {
       }
     }
 
-    // Find empty backup slot
-    var bIdx = -1;
-    for (var i = 0; i < backup.length; i++) {
-      if (!backup[i]) { bIdx = i; break; }
-    }
-    if (bIdx === -1) return false;
+    // Insert at top of backup (newest)
+    var bIdx = 0;
 
     var ref = Object.assign({}, hand[hIdx]);
 
@@ -237,7 +228,10 @@ var NonCombatStateStore = (function() {
     }
 
     // Place into backup as qty 1 (single card unit)
-    backup[bIdx] = { id: ref.id, qty: 1, meta: ref.meta || null };
+    backup.unshift({ id: ref.id, qty: 1, meta: ref.meta || null });
+    var maxB = _state.maxBackupSlots || 25;
+    while (backup.length > maxB) backup.pop();
+    bIdx = 0;
 
     return modifyState({
       cardsInHand: hand,
@@ -249,23 +243,18 @@ var NonCombatStateStore = (function() {
 
   function moveSelectedBackupToHand(opts) {
     opts = opts || {};
-    var maxSlots = Number(opts.maxSlots || 4);
+    var maxSlots = Number(opts.maxSlots || _state.maxBackupSlots || 25);
 
     var hand = Array.isArray(_state.cardsInHand) ? _state.cardsInHand.slice() : [];
     var backup = Array.isArray(_state.backupCards) ? _state.backupCards.slice() : [];
-
-    if (backup.length < maxSlots) {
-      while (backup.length < maxSlots) backup.push(null);
-    }
-    if (backup.length > maxSlots) backup = backup.slice(0, maxSlots);
 
     var bIdx = Number(_state.selectedBackupIndex || -1);
     if (bIdx < 0 || bIdx >= backup.length || !backup[bIdx]) return false;
 
     var ref = backup[bIdx];
 
-    // Clear backup slot
-    backup[bIdx] = null;
+    // Remove from backup slot
+    backup.splice(bIdx, 1);
 
     // Add to hand (stack qty)
     var found = false;

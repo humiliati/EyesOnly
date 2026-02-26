@@ -293,6 +293,21 @@
   },
 
   {
+    "id": "ITM-040",
+    "name": "Archive Indexer",
+    "emoji": "📑",
+    "type": "equipment",
+    "rarity": "uncommon",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "active",
+    "effects": [{ "type": "sort_hand" }],
+    "synergyTags": ["intel", "organizer"],
+    "description": "Recovered Field Catalog. See every card you'll draw — but lose the chaos advantage.",
+    "_designNote": "Unlocks sort, shows card faces in draw bar. Replaces shuffle. Trade-off: lose randomness upside."
+  },
+
+  {
     "id": "ITM-030",
     "name": "Blacksmith's Hammer",
     "emoji": "🔨",

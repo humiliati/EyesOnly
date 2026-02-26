@@ -1,196 +1,757 @@
 /* ============================================================
-   Non-Combat HUD (fixed overlay) - v0 shell
+   Non-Combat HUD (NCH) — Solitaire-Tableau Styling
+   Fixed overlay capsule + expanded modal with hand, backup deck, vault
    ============================================================ */
 
-.non-combat-hud {
+/* ============================================================
+   1. CAPSULE (Closed State — Bottom-Left)
+   ============================================================ */
+
+.nch-capsule-wrapper {
   position: fixed;
-  left: 50%;
-  bottom: 10px;
-  transform: translateX(-50%);
-  width: min(940px, calc(100vw - 16px));
-  height: min(30vh, 280px);
-  display: flex;
-  gap: 10px;
-  padding: 10px;
-  z-index: 1800; /* below combat minis (1900+), above world */
-  background: rgba(0, 0, 0, 0.82);
-  border: 2px solid rgba(28, 255, 155, 0.45);
-  border-radius: 12px;
-  box-shadow: 0 0 24px rgba(28, 255, 155, 0.12);
-  pointer-events: auto;
-  overflow: hidden;
-}
-
-.non-combat-hud.minimized {
-  display: none;
-}
-
-.non-combat-hud.locked {
-  opacity: 0.75;
-  filter: saturate(0.9);
-}
-
-.non-combat-hud.locked .nch-action-btn,
-.non-combat-hud.locked .nch-hand-row,
-.non-combat-hud.locked .nch-backup-slot,
-.non-combat-hud.locked #nch-min-btn {
-  pointer-events: none;
-}
-
-#non-combat-hud-mini {
-  position: fixed;
-  right: 12px;
-  bottom: 12px;
+  bottom: 20px;
+  left: 20px;
   z-index: 1801;
-  display: none;
+  width: auto;
+  height: auto;
+  display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
-  border-radius: 999px;
-  border: 2px solid rgba(28, 255, 155, 0.45);
-  background: rgba(0,0,0,0.85);
-  box-shadow: 0 0 18px rgba(28, 255, 155, 0.12);
-  color: rgba(191, 255, 227, 0.95);
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
-  line-height: 1;
-  max-width: 120px;
+  padding: 8px 14px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.92);
+  border: 2px solid rgba(28, 255, 155, 0.5);
+  cursor: pointer;
   pointer-events: auto;
+  transition: all 0.25s ease;
   user-select: none;
 }
 
-/* Rogue portrait: squish the NCH mini pill so it doesn't steal vertical budget */
-@media (max-width: 767px) and (orientation: portrait) {
-  body.gone-rogue-active #non-combat-hud-mini {
-    right: 8px;
-    bottom: calc(8px + env(safe-area-inset-bottom));
-    gap: 6px;
-    padding: 5px 8px;
-    font-size: 11px;
-    max-width: 92px;
-    border-width: 2px;
-  }
-
-  body.gone-rogue-active #non-combat-hud-mini .nch-mini-dot {
-    width: 8px;
-    height: 8px;
-  }
+.nch-capsule-wrapper:hover {
+  border-color: rgba(28, 255, 155, 0.8);
+  box-shadow: 0 0 20px rgba(28, 255, 155, 0.25);
+  transform: scale(1.05);
 }
 
-#non-combat-hud-mini .nch-mini-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: rgba(28, 255, 155, 0.8);
-  box-shadow: 0 0 10px rgba(28, 255, 155, 0.35);
-}
-
-#non-combat-hud-mini.nch-mini-warn .nch-mini-dot {
-  background: rgba(255, 152, 0, 0.95);
-  box-shadow: 0 0 10px rgba(255, 152, 0, 0.35);
-}
-
-#non-combat-hud-mini.nch-mini-busy .nch-mini-dot {
-  background: rgba(255, 193, 7, 0.95);
-  box-shadow: 0 0 10px rgba(255, 193, 7, 0.35);
-}
-
-.nch-col {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.nch-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-height: 0;
-}
-
-.nch-left { flex: 0.8; }
-.nch-center { flex: 1.4; }
-.nch-right { flex: 1.0; }
-
-.nch-title {
-  font-family: 'Courier New', monospace;
-  font-size: 11px;
-  letter-spacing: 1px;
-  color: rgba(28, 255, 155, 0.8);
+.nch-capsule {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
 }
 
-.nch-min-btn {
+.nch-capsule-stack {
+  position: relative;
+  width: 32px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nch-capsule-joker {
+  position: absolute;
+  font-size: 26px;
+  transition: transform 0.3s ease;
+  animation: capsule-shuffle 3s infinite ease-in-out;
+}
+
+/* Stagger 5 jokers with subtle transforms */
+.nch-capsule-joker.joker-0 {
+  transform: translateX(-6px) rotate(-10deg);
+}
+
+.nch-capsule-joker.joker-1 {
+  transform: translateX(-3px) rotate(-5deg);
+}
+
+.nch-capsule-joker.joker-2 {
+  transform: translateX(0) rotate(0deg);
+}
+
+.nch-capsule-joker.joker-3 {
+  transform: translateX(3px) rotate(5deg);
+}
+
+.nch-capsule-joker.joker-4 {
+  transform: translateX(6px) rotate(10deg);
+}
+
+@keyframes capsule-shuffle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+.nch-capsule-wrapper:hover .nch-capsule-joker {
+  animation: none;
+}
+
+.nch-capsule-wrapper:hover .nch-capsule-joker.joker-0 {
+  transform: translateX(-12px) rotate(-18deg);
+}
+
+.nch-capsule-wrapper:hover .nch-capsule-joker.joker-1 {
+  transform: translateX(-6px) rotate(-9deg);
+}
+
+.nch-capsule-wrapper:hover .nch-capsule-joker.joker-2 {
+  transform: translateX(0) rotate(0deg);
+}
+
+.nch-capsule-wrapper:hover .nch-capsule-joker.joker-3 {
+  transform: translateX(6px) rotate(9deg);
+}
+
+.nch-capsule-wrapper:hover .nch-capsule-joker.joker-4 {
+  transform: translateX(12px) rotate(18deg);
+}
+
+.nch-capsule-count {
+  font-family: 'Courier New', monospace;
+  font-size: 15px;
+  font-weight: bold;
+  color: rgba(28, 255, 155, 0.9);
+  min-width: 18px;
+  text-align: center;
+}
+
+/* ============================================================
+   2. EXPANDED OVERLAY
+   ============================================================ */
+
+#nch-expanded {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(95vw, 1020px);
+  max-height: min(82vh, 620px);
+  display: flex;
+  flex-direction: column;
+  z-index: 1850;
+  background: linear-gradient(145deg, rgba(8, 12, 8, 0.96), rgba(16, 22, 16, 0.96));
+  border: 2px solid rgba(28, 255, 155, 0.45);
+  border-radius: 14px;
+  box-shadow: 0 0 40px rgba(28, 255, 155, 0.15);
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+#nch-expanded.nch-locked {
+  opacity: 0.7;
+  filter: saturate(0.85);
+  pointer-events: none;
+}
+
+.nch-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(28, 255, 155, 0.25);
+  background: rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+.nch-header-title {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(28, 255, 155, 0.85);
+}
+
+.nch-close-btn {
   appearance: none;
-  border: 1px solid rgba(28, 255, 155, 0.35);
-  background: rgba(0,0,0,0.3);
-  color: rgba(191, 255, 227, 0.95);
-  border-radius: 8px;
-  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid rgba(28, 255, 155, 0.4);
+  color: rgba(28, 255, 155, 0.7);
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
   cursor: pointer;
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
+  font-size: 14px;
+  line-height: 1;
+  transition: all 0.2s;
+  padding: 0;
 }
 
-.nch-min-btn:hover {
-  border-color: rgba(28, 255, 155, 0.55);
+.nch-close-btn:hover {
+  background: rgba(28, 255, 155, 0.1);
+  border-color: rgba(28, 255, 155, 0.8);
+  color: rgba(28, 255, 155, 0.95);
 }
 
-.nch-equipped,
-.nch-hand,
-.nch-preview,
-.nch-backup {
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
-  color: rgba(191, 255, 227, 0.95);
-  border: 1px solid rgba(28, 255, 155, 0.25);
+.nch-content {
+  flex: 1;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 10px;
+  padding: 12px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ============================================================
+   3. HAND ZONE (Zone 1 — Top)
+   ============================================================ */
+
+.nch-zone {
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(28, 255, 155, 0.2);
   border-radius: 10px;
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.35);
+  padding: 10px;
+  overflow: hidden;
+  min-height: 0;
 }
 
-.nch-action-btn {
-  width: 100%;
+.nch-zone-label {
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(28, 255, 155, 0.6);
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(28, 255, 155, 0.12);
+  flex-shrink: 0;
+}
+
+.nch-zone-hand {
+  display: flex;
+  flex-direction: column;
+  min-height: 180px;
+  overflow: hidden;
+}
+
+.nch-hand-container {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 0;
+  align-items: flex-end;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nch-hand-container .hand-card-wrapper {
+  flex: 0 0 auto;
+}
+
+.nch-hand-container .hand-card-wrapper:hover {
+  transform: translateY(calc(var(--fan-ty, 0px) - 14px)) scale(1.04);
+  z-index: 200;
+  transition: transform 0.15s ease;
+}
+
+/* ============================================================
+   3b. DRAW BAR (Between Hand and Backup)
+   ============================================================ */
+
+.nch-zone-drawbar {
+  min-height: auto;
   padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(28, 255, 155, 0.35);
-  background: rgba(0,0,0,0.45);
-  color: rgba(191, 255, 227, 0.95);
+}
+
+.nch-zone-drawbar .nch-zone-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nch-drawbar {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  padding: 6px 0;
+  flex-wrap: nowrap;
+}
+
+.nch-drawbar-empty {
+  color: rgba(28, 255, 155, 0.3);
   font-family: 'Courier New', monospace;
-  font-size: 12px;
-  cursor: pointer;
+  font-size: 11px;
+  padding: 12px;
+  text-align: center;
 }
 
-.nch-action-btn:hover {
-  border-color: rgba(28, 255, 155, 0.6);
-}
-
-.nch-hand {
-  white-space: normal;
-  overflow: auto;
-}
-
-.nch-hand-row {
-  padding: 6px 8px;
+.nch-draw-btn {
+  appearance: none;
+  width: 80px;
+  height: 112px;
+  border: 2px solid rgba(28, 255, 155, 0.3);
   border-radius: 8px;
+  background: linear-gradient(135deg, rgba(8, 12, 8, 0.9), rgba(15, 25, 15, 0.8));
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  padding: 6px;
 }
 
-.nch-hand-row:hover {
+.nch-draw-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(28, 255, 155, 0.04) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.nch-draw-btn:hover:not(:disabled) {
+  transform: translateY(-4px) scale(1.05);
+  border-color: rgba(28, 255, 155, 0.7);
+  box-shadow: 0 4px 16px rgba(28, 255, 155, 0.15), 0 0 8px rgba(28, 255, 155, 0.1);
+}
+
+.nch-draw-btn:active:not(:disabled) {
+  transform: translateY(-1px) scale(0.98);
+}
+
+.nch-draw-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.nch-draw-btn-joker {
+  font-size: 32px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+
+.nch-draw-btn.face-up {
+  background: linear-gradient(135deg, rgba(12, 20, 12, 0.95), rgba(20, 35, 20, 0.85));
+}
+
+.nch-draw-btn-emoji {
+  font-size: 28px;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+}
+
+.nch-draw-btn-name {
+  font-family: 'Courier New', monospace;
+  font-size: 8px;
+  letter-spacing: 0.5px;
+  color: rgba(28, 255, 155, 0.7);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.nch-draw-btn.nch-draw-btn-hover {
+  border-color: rgba(28, 255, 155, 0.9);
+  box-shadow: 0 0 12px rgba(28, 255, 155, 0.2);
+}
+
+.nch-draw-btn.drawing {
+  animation: draw-fly 0.3s ease-out forwards;
+}
+
+.nch-draw-btn.shuffling {
+  animation: shuffle-scatter 0.25s ease-in-out;
+}
+
+.nch-drawbar-more {
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  color: rgba(28, 255, 155, 0.4);
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+/* Shuffle / Sort buttons */
+.nch-shuffle-btn,
+.nch-sort-btn {
+  appearance: none;
   background: rgba(28, 255, 155, 0.08);
+  border: 1px solid rgba(28, 255, 155, 0.3);
+  color: rgba(28, 255, 155, 0.7);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 6px;
+  margin-left: 4px;
+  transition: all 0.2s;
+  line-height: 1.2;
 }
 
-.nch-hand-row.selected {
-  outline: 2px solid rgba(255, 193, 7, 0.6);
-  background: rgba(255, 193, 7, 0.12);
+.nch-shuffle-btn:hover:not(:disabled),
+.nch-sort-btn:hover:not(:disabled) {
+  background: rgba(28, 255, 155, 0.15);
+  border-color: rgba(28, 255, 155, 0.6);
+  color: rgba(28, 255, 155, 0.95);
 }
 
-/* Unified x2 indicator (3D printer armed cue) */
+.nch-shuffle-btn:disabled,
+.nch-sort-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Draw animation */
+@keyframes draw-fly {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  60% { transform: translateY(-30px) scale(1.1); opacity: 0.8; }
+  100% { transform: translateY(-60px) scale(0.5); opacity: 0; }
+}
+
+@keyframes shuffle-scatter {
+  0% { transform: rotate(0deg) translateX(0); }
+  25% { transform: rotate(-8deg) translateX(-6px); }
+  50% { transform: rotate(6deg) translateX(4px); }
+  75% { transform: rotate(-3deg) translateX(-2px); }
+  100% { transform: rotate(0deg) translateX(0); }
+}
+
+/* ============================================================
+   3c. GHOST JOKER CURSOR
+   ============================================================ */
+
+body.nch-ghost-cursor-active #nch-expanded {
+  cursor: none;
+}
+
+.nch-ghost-joker {
+  position: fixed;
+  z-index: 99998;
+  pointer-events: none;
+  font-size: 24px;
+  opacity: 0.5;
+  transform: rotate(-8deg) scale(0.85);
+  transition: opacity 0.15s, transform 0.15s;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.nch-ghost-joker.nch-ghost-known {
+  opacity: 0.75;
+  transform: rotate(-3deg) scale(1.0);
+}
+
+/* Brighten ghost when over draw buttons */
+body.nch-ghost-cursor-active .nch-draw-btn:hover ~ .nch-ghost-joker,
+body.nch-ghost-cursor-active .nch-draw-btn-hover ~ .nch-ghost-joker {
+  opacity: 0.85;
+  transform: rotate(-4deg) scale(1.1);
+}
+
+/* ============================================================
+   4. BACKUP DECK ZONE (Zone 2 — Middle, Scrollable Band)
+   ============================================================ */
+
+.nch-zone-backup {
+  flex: 1;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+}
+
+.nch-backup-scroll-wrapper {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.nch-backup-scroll-wrapper::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 30px;
+  background: linear-gradient(to right, rgba(8, 12, 8, 0.95), transparent);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.nch-backup-scroll-wrapper::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 30px;
+  background: linear-gradient(to left, rgba(8, 12, 8, 0.95), transparent);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.nch-backup-scroller {
+  display: flex;
+  gap: -20px;
+  padding: 8px 32px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  align-items: flex-end;
+  min-width: 100%;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+.nch-backup-scroller .hand-card-wrapper {
+  flex: 0 0 100px;
+  transform-origin: bottom center;
+}
+
+.nch-backup-scroller .hand-card {
+  width: 100px;
+  height: 140px;
+  font-size: inherit;
+}
+
+.nch-backup-scroller .hand-card-emoji {
+  font-size: 24px;
+}
+
+.nch-backup-scroller .hand-card-name {
+  font-size: 9px;
+}
+
+.nch-backup-scroller .hand-card-cost {
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+}
+
+.nch-backup-scroller .hand-card-wrapper.nch-backup-old {
+  opacity: 0.5;
+  filter: grayscale(0.3);
+}
+
+.nch-backup-scroller .hand-card-wrapper.nch-backup-dying {
+  opacity: 0.3;
+  filter: grayscale(0.6);
+}
+
+/* Visual aging transition: smooth shift when backup changes */
+.nch-backup-scroller .hand-card-wrapper {
+  transition: transform 0.3s ease, opacity 0.3s ease, filter 0.3s ease;
+}
+
+/* Newest cards (left): slightly elevated */
+.nch-backup-scroller .hand-card-wrapper:first-child {
+  transform: translateY(-1px);
+}
+
+/* Oldest visible cards: slight downward drift */
+.nch-backup-scroller .hand-card-wrapper:nth-child(n+15) {
+  transform: translateY(2px);
+}
+
+/* ── Incineration animation ── */
+.nch-card-incinerating {
+  position: fixed;
+  z-index: 99999;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translate(-50%, -50%);
+  animation: nch-incinerate 0.6s ease-out forwards;
+}
+
+.nch-incinerate-emoji {
+  font-size: 1.8em;
+  filter: brightness(2);
+}
+
+.nch-incinerate-name {
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  color: #ff5722;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+@keyframes nch-incinerate {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    filter: brightness(1) saturate(1);
+  }
+  30% {
+    transform: translate(-50%, -50%) scale(1.1);
+    opacity: 0.9;
+    filter: brightness(2) saturate(1.5);
+    text-shadow: 0 0 10px rgba(255, 87, 34, 0.8);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0.4);
+    opacity: 0;
+    filter: brightness(3) saturate(0);
+  }
+}
+
+.nch-backup-count {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: rgba(28, 255, 155, 0.5);
+  text-align: right;
+  margin-top: 4px;
+  flex-shrink: 0;
+  padding: 0 8px;
+}
+
+/* ============================================================
+   5. VAULT ZONE (Zone 3 — Bottom Strip)
+   ============================================================ */
+
+.nch-zone-vault {
+  max-height: 120px;
+  display: flex;
+  flex-direction: column;
+}
+
+.nch-vault-slots {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nch-vault-slot {
+  flex: 0 0 60px;
+  height: 84px;
+  background: rgba(10, 10, 10, 0.5);
+  border: 1px dashed rgba(28, 255, 155, 0.2);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: grab;
+  transition: all 0.25s ease;
+  overflow: hidden;
+}
+
+.nch-vault-slot:hover {
+  border-color: rgba(28, 255, 155, 0.5);
+  border-style: solid;
+  background: rgba(28, 255, 155, 0.04);
+}
+
+.nch-vault-slot.empty {
+  color: rgba(28, 255, 155, 0.25);
+  font-size: 20px;
+  cursor: default;
+}
+
+.nch-vault-slot.occupied {
+  cursor: grab;
+}
+
+.nch-vault-joker {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  transition: opacity 0.3s ease;
+  z-index: 1;
+}
+
+.nch-vault-portrait {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 2;
+  transform: scale(0.85);
+}
+
+.nch-vault-slot:hover .nch-vault-joker {
+  opacity: 0;
+}
+
+.nch-vault-slot:hover .nch-vault-portrait {
+  opacity: 1;
+}
+
+/* ============================================================
+   6. DRAG & DROP
+   ============================================================ */
+
+.nch-drag-ghost {
+  position: fixed;
+  z-index: 99999;
+  pointer-events: none;
+  font-size: 36px;
+  filter: drop-shadow(0 0 10px rgba(28, 255, 155, 0.35));
+  opacity: 0.85;
+  transform: translate(-18px, -18px);
+}
+
+.nch-drop-highlight {
+  outline: 2px solid rgba(28, 255, 155, 0.7) !important;
+  outline-offset: -2px;
+  background: rgba(28, 255, 155, 0.06) !important;
+}
+
+.nch-drop-highlight-warn {
+  outline-color: rgba(255, 152, 0, 0.7) !important;
+}
+
+/* ============================================================
+   7. ANIMATIONS
+   ============================================================ */
+
+@keyframes nch-card-dissolve {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: grayscale(0) blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(30px) scale(0.85);
+    filter: grayscale(1) blur(2px);
+  }
+}
+
+.nch-card-dissolving {
+  animation: nch-card-dissolve 0.5s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes nch-drop-zone-pulse {
+  0%, 100% {
+    outline-color: rgba(28, 255, 155, 0.4);
+  }
+  50% {
+    outline-color: rgba(28, 255, 155, 0.8);
+  }
+}
+
+.nch-drop-active {
+  animation: nch-drop-zone-pulse 1s ease-in-out infinite;
+}
+
+/* ============================================================
+   8. PRINTER (3D Printer Armed Cue — Reused from Original)
+   ============================================================ */
+
 .printer-x2 {
   position: absolute;
   top: -6px;
@@ -201,79 +762,86 @@
   font-weight: bold;
   padding: 2px 5px;
   border-radius: 6px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
   z-index: 10;
   pointer-events: none;
   animation: printer-x2-glow 1.5s ease-in-out infinite;
 }
 
 @keyframes printer-x2-glow {
-  0%, 100% { box-shadow: 0 2px 6px rgba(255, 107, 0, 0.4); }
-  50% { box-shadow: 0 2px 12px rgba(255, 107, 0, 0.7); }
+  0%, 100% {
+    box-shadow: 0 2px 6px rgba(255, 107, 0, 0.4);
+  }
+  50% {
+    box-shadow: 0 2px 12px rgba(255, 107, 0, 0.7);
+  }
 }
 
-/* Eligible border tint */
 .printer-eligible {
   border-color: #ff6b00 !important;
 }
+
 .printer-eligible:hover {
   background: rgba(255, 107, 0, 0.15) !important;
   border-color: #ff9500 !important;
 }
 
-.nch-hand-row.nch-draggable,
-.nch-backup-slot.nch-draggable {
-  cursor: grab;
-}
-
-.nch-hand-row.nch-draggable:active,
-.nch-backup-slot.nch-draggable:active {
-  cursor: grabbing;
-}
-
-.nch-drag-ghost {
-  position: fixed;
-  left: 0;
-  top: 0;
-  transform: translate(-10px, -10px);
-  z-index: 99999;
-  pointer-events: none;
-  font-size: 20px;
-  filter: drop-shadow(0 0 8px rgba(28, 255, 155, 0.35));
-}
-
-.nch-backup {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 6px;
-  overflow: auto;
-  min-height: 120px;
-}
-
-.nch-backup-slot {
-  padding: 6px 8px;
-  border-radius: 10px;
-  border: 1px dashed rgba(28, 255, 155, 0.25);
-  cursor: pointer;
-}
-
-.nch-backup-slot.empty {
-  color: rgba(191, 255, 227, 0.45);
-}
-
-.nch-backup-slot.selected {
-  border-style: solid;
-  border-color: rgba(255, 193, 7, 0.6);
-  background: rgba(255, 193, 7, 0.12);
-}
+/* ============================================================
+   9. RESPONSIVE
+   ============================================================ */
 
 @media (max-width: 768px) {
-  .non-combat-hud {
+  #nch-expanded {
+    width: min(98vw, 600px);
+    max-height: min(88vh, 550px);
     bottom: calc(10px + env(safe-area-inset-bottom));
-    height: min(32vh, 320px);
   }
 
-  #non-combat-hud-mini {
+  .nch-content {
+    grid-template-rows: auto auto 1fr auto;
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .nch-zone-hand {
+    min-height: 140px;
+  }
+
+  .nch-draw-btn {
+    width: 64px;
+    height: 90px;
+  }
+
+  .nch-draw-btn-joker {
+    font-size: 24px;
+  }
+
+  .nch-draw-btn-emoji {
+    font-size: 22px;
+  }
+
+  .nch-hand-container .hand-card-wrapper .hand-card {
+    width: 90px;
+    height: 126px;
+  }
+
+  .nch-hand-container .hand-card-emoji {
+    font-size: 22px;
+  }
+
+  .nch-capsule-wrapper {
     bottom: calc(12px + env(safe-area-inset-bottom));
+    left: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .nch-vault-slot {
+    flex: 0 0 48px;
+    height: 67px;
+  }
+
+  .nch-vault-joker {
+    font-size: 24px;
   }
 }

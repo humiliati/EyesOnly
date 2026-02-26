@@ -8,7 +8,7 @@ const ReserveSlots = (function () {
 
   var _actionButtonCards = []; // Array of up to 4 card objects in action buttons
   var _maxActionButtonSlots = 4; // Default capacity (can be increased by equipment)
-  var _maxVisibleSlots = 4; // Maximum slots to show at once (before cycling needed)
+  var _maxVisibleSlots = 5; // Maximum slots to show at once (synchronized backup viewport)
   var _cycleOffset = 0; // Current pagination offset for card cycling
   var _slotsContainer = null;
   var _longPressTimer = null;
@@ -87,6 +87,13 @@ const ReserveSlots = (function () {
   function init() {
     // Create slots container if it doesn't exist
     _createSlotsContainer();
+
+    // Listen for hand/backup changes to re-render during STR combat
+    window.addEventListener('rogue-hand-changed', function() {
+      if (_slotsContainer && _slotsContainer.style.display !== 'none') {
+        render();
+      }
+    });
   }
 
   /**
@@ -193,6 +200,302 @@ const ReserveSlots = (function () {
   }
 
   /**
+   * Check if STR combat is currently active
+   * @returns {boolean}
+   */
+  function _isStrCombatActive() {
+    try {
+      return typeof GoneRogue !== 'undefined' &&
+             typeof GoneRogue.isStrCombatActive === 'function' &&
+             GoneRogue.isStrCombatActive();
+    } catch (e) { return false; }
+  }
+
+  // ─── STR COMBAT DRAW STATE ───────────────────────────────
+  var _drawHoldTimer = null;       // 300ms hold delay for heavier draw UX
+  var _drawHoldTarget = null;      // Which slot index is being held
+  var _ghostCycleTimer = null;     // Timer for ghost 🃏 emoji cycling
+  var _drawAnimating = false;      // Prevent double-draws during animation
+
+  /**
+   * Render backup deck preview during STR combat.
+   * Synchronized viewport into BACKUP_DECK[0..4] — interactive draw (1/turn).
+   * Shows card faces, depth-faded newest→oldest, with "DRAW 1" indicator.
+   */
+  function _renderBackupPreview() {
+    var backupCards = [];
+    try {
+      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getBackupCards === 'function') {
+        var raw = GAMESTATE.getBackupCards() || [];
+        // raw is dense ordered: 0=newest, N=oldest
+        backupCards = raw.slice(0, _maxVisibleSlots);
+      }
+    } catch (e) {}
+
+    var totalBackup = 0;
+    try { totalBackup = (GAMESTATE.getBackupCards() || []).length; } catch (e) {}
+
+    // Check draw eligibility
+    var canDraw = false;
+    try {
+      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.canDrawBackupThisTurn === 'function') {
+        canDraw = GAMESTATE.canDrawBackupThisTurn();
+      }
+    } catch (e) {}
+
+    // Label button with draw indicator
+    var labelBtn = document.createElement('button');
+    labelBtn.type = 'button';
+    labelBtn.className = 'control-button gone-rogue-btn backup-preview-label';
+    labelBtn.disabled = true;
+    var drawLabel = canDraw ? ' <span class="draw-ready-indicator">DRAW 1</span>' : ' <span class="draw-spent-indicator">SPENT</span>';
+    labelBtn.innerHTML = 'BCKP' + drawLabel;
+    labelBtn.title = 'Backup deck (' + totalBackup + ' cards)' + (canDraw ? ' — hold a card to draw' : ' — already drawn this turn');
+    labelBtn.style.fontSize = '10px';
+    labelBtn.style.letterSpacing = '1px';
+    labelBtn.style.opacity = canDraw ? '0.85' : '0.5';
+    _slotsContainer.appendChild(labelBtn);
+
+    // Render 5 backup card slots (synchronized viewport of backup[0..4])
+    for (var i = 0; i < _maxVisibleSlots; i++) {
+      var card = backupCards[i] || null;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'control-button gone-rogue-btn card-slot-btn backup-preview-slot';
+      btn.dataset.backupIndex = String(i);
+
+      if (card && card.id) {
+        var def = null;
+        try {
+          if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) {
+            def = GoneRogueDataRegistry.getCard(card.id);
+          }
+        } catch (e) {}
+        if (!def) def = { emoji: '🃏', name: card.id };
+
+        var emoji = def.emoji || '🃏';
+        var abbrevName = _abbreviateCardName(def.name || card.id);
+        var quality = def.quality || def.qualityName || 'standard';
+        var color = _getQualityColor(String(quality).toLowerCase());
+
+        btn.innerHTML = '<span class="card-emoji">' + emoji + '</span><span class="card-abbrev" style="color: ' + color + ';">' + abbrevName + '</span>';
+        btn.title = (def.name || card.id) + (i === 0 ? ' (newest)' : i === backupCards.length - 1 ? ' (oldest visible)' : '');
+
+        // Depth fade: newer=brighter, older=dimmer (visual aging)
+        var depthOpacity = 1.0 - (i * 0.12);
+        btn.style.opacity = String(Math.max(0.45, depthOpacity));
+
+        // Interactive draw — hold 300ms to draw this card
+        if (canDraw && !_drawAnimating) {
+          btn.classList.add('draw-eligible');
+          _attachDrawHoldListeners(btn, i, emoji);
+        } else {
+          btn.disabled = true;
+        }
+      } else {
+        btn.innerHTML = '<span class="card-empty">—</span>';
+        btn.classList.add('empty-slot');
+        btn.disabled = true;
+      }
+
+      _slotsContainer.appendChild(btn);
+    }
+
+    // Show total count badge if > 5
+    if (totalBackup > _maxVisibleSlots) {
+      var lastBtn = _slotsContainer.lastElementChild;
+      if (lastBtn) {
+        var badge = document.createElement('span');
+        badge.className = 'inv-remaining-badge';
+        badge.textContent = '+' + (totalBackup - _maxVisibleSlots);
+        lastBtn.appendChild(badge);
+      }
+    }
+
+    // Red pulse border on the draw row when draw is available
+    if (canDraw && backupCards.length > 0) {
+      _slotsContainer.classList.add('str-draw-ready');
+    } else {
+      _slotsContainer.classList.remove('str-draw-ready');
+    }
+  }
+
+  /**
+   * Attach hold-to-draw listeners to a backup preview slot.
+   * 300ms hold delay prevents accidental taps during hectic STR combat.
+   * @param {HTMLElement} btn - The slot button element
+   * @param {number} backupIndex - Index into backup deck (0=newest)
+   * @param {string} cardEmoji - Emoji of the card in this slot
+   */
+  function _attachDrawHoldListeners(btn, backupIndex, cardEmoji) {
+    function _startHold(e) {
+      if (_drawAnimating) return;
+      _drawHoldTarget = backupIndex;
+      btn.classList.add('draw-holding');
+
+      _drawHoldTimer = setTimeout(function() {
+        _drawHoldTimer = null;
+        _drawHoldTarget = null;
+        btn.classList.remove('draw-holding');
+        _onLeftColumnDraw(backupIndex, btn, cardEmoji);
+      }, 300);
+    }
+
+    function _cancelHold() {
+      if (_drawHoldTimer) {
+        clearTimeout(_drawHoldTimer);
+        _drawHoldTimer = null;
+      }
+      _drawHoldTarget = null;
+      btn.classList.remove('draw-holding');
+    }
+
+    // Mouse
+    btn.addEventListener('mousedown', _startHold);
+    btn.addEventListener('mouseup', _cancelHold);
+    btn.addEventListener('mouseleave', _cancelHold);
+
+    // Touch
+    btn.addEventListener('touchstart', function(e) {
+      e.preventDefault();
+      _startHold(e);
+    });
+    btn.addEventListener('touchend', _cancelHold);
+    btn.addEventListener('touchcancel', _cancelHold);
+  }
+
+  /**
+   * Execute draw from left column during STR combat.
+   * 1. Show ghost 🃏 cycling visible card emojis (200ms each, 5 cycles)
+   * 2. Settle on drawn card
+   * 3. Ghost flies upward (toward hand fan)
+   * 4. Move card from backup to hand via GAMESTATE
+   * 5. Re-render triggers via rogue-hand-changed
+   * @param {number} backupIndex - Index into backup deck
+   * @param {HTMLElement} btn - The slot button that was held
+   * @param {string} cardEmoji - The emoji of the drawn card
+   */
+  function _onLeftColumnDraw(backupIndex, btn, cardEmoji) {
+    // Guard: re-check eligibility
+    try {
+      if (!GAMESTATE.canDrawBackupThisTurn()) {
+        console.log('[ReserveSlots] Draw rejected — already drawn this turn');
+        return;
+      }
+    } catch (e) { return; }
+
+    _drawAnimating = true;
+
+    // Collect visible card emojis for ghost cycling
+    var visibleEmojis = [];
+    try {
+      var raw = GAMESTATE.getBackupCards() || [];
+      var visible = raw.slice(0, _maxVisibleSlots);
+      for (var i = 0; i < visible.length; i++) {
+        var def = null;
+        try {
+          if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) {
+            def = GoneRogueDataRegistry.getCard(visible[i].id);
+          }
+        } catch (e2) {}
+        visibleEmojis.push(def ? (def.emoji || '🃏') : '🃏');
+      }
+    } catch (e) {}
+    if (visibleEmojis.length === 0) visibleEmojis = ['🃏'];
+
+    // Create ghost 🃏 element over the clicked slot
+    var rect = btn.getBoundingClientRect();
+    var ghost = document.createElement('div');
+    ghost.className = 'reserve-draw-ghost';
+    ghost.textContent = '🃏';
+    ghost.style.left = (rect.left + rect.width / 2) + 'px';
+    ghost.style.top = (rect.top + rect.height / 2) + 'px';
+    document.body.appendChild(ghost);
+
+    // Cycle through visible emojis (200ms each)
+    var cycleIndex = 0;
+    var totalCycles = visibleEmojis.length * 2; // cycle through twice
+    _ghostCycleTimer = setInterval(function() {
+      ghost.textContent = visibleEmojis[cycleIndex % visibleEmojis.length];
+      cycleIndex++;
+      if (cycleIndex >= totalCycles) {
+        clearInterval(_ghostCycleTimer);
+        _ghostCycleTimer = null;
+
+        // Settle on drawn card emoji
+        ghost.textContent = cardEmoji;
+
+        // Fly ghost upward toward hand fan area
+        ghost.classList.add('reserve-draw-ghost-fly');
+
+        // After fly animation completes, execute the actual draw
+        setTimeout(function() {
+          if (ghost.parentNode) ghost.remove();
+
+          // Execute draw via GAMESTATE
+          try {
+            // Enforce hand overflow before draw
+            if (typeof GAMESTATE.enforceHandOverflow === 'function') {
+              GAMESTATE.enforceHandOverflow();
+            }
+
+            // Move specific backup card to hand
+            if (typeof GAMESTATE.moveBackupIndexToHand === 'function') {
+              GAMESTATE.moveBackupIndexToHand(backupIndex);
+            }
+
+            // Mark per-turn draw flag as used
+            _markDrawUsed();
+
+          } catch (e) {
+            console.warn('[ReserveSlots] Draw failed:', e);
+          }
+
+          _drawAnimating = false;
+
+          // Shift animation: briefly add shift class to remaining slots
+          _animateSlotShift();
+
+          // Dispatch hand changed for re-render
+          try {
+            window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'left-column-draw' } }));
+          } catch (e) {}
+
+        }, 400); // fly animation duration
+      }
+    }, 150); // faster cycling for responsiveness
+
+    // Mark the slot as "drawing" for visual feedback
+    btn.classList.add('draw-active');
+    btn.classList.add('draw-confirmed');
+  }
+
+  /**
+   * Mark that the player has used their per-turn draw.
+   * Calls GAMESTATE.markBackupDrawUsedThisTurn() since we use
+   * moveBackupIndexToHand (which doesn't set the flag itself).
+   */
+  function _markDrawUsed() {
+    try {
+      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.markBackupDrawUsedThisTurn === 'function') {
+        GAMESTATE.markBackupDrawUsedThisTurn();
+      }
+    } catch (e) {}
+  }
+
+  /**
+   * Animate remaining slots shifting left after a draw.
+   * Applies brief CSS transition class to reserve-slots-container.
+   */
+  function _animateSlotShift() {
+    if (!_slotsContainer) return;
+    _slotsContainer.classList.add('slots-shifting');
+    setTimeout(function() {
+      _slotsContainer.classList.remove('slots-shifting');
+    }, 350);
+  }
+
+  /**
    * Render reserve slots with natural collapsing behavior
    * Shows:
    * - Swapper button (always) — "← items" in cards view, "cards →" in inventory view
@@ -218,7 +521,10 @@ const ReserveSlots = (function () {
       btn.style.display = 'none';
     });
 
-    if (_viewMode === 'inventory') {
+    // During STR combat, show backup deck preview instead of normal cards/inventory
+    if (_isStrCombatActive()) {
+      _renderBackupPreview();
+    } else if (_viewMode === 'inventory') {
       _renderInventoryView();
     } else {
       _renderCardsView();

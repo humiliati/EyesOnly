@@ -26,6 +26,7 @@ const GAMESTATE = (function () {
     looseSlots: 8,                 // LEGACY - for non-card items
     actionButtonSlots: 4,          // Fixed at 4 for Gone Rogue mode (reserve)
     maxHandSize: 5,                // Maximum cards in play hand
+    maxBackupSlots: 25,            // Maximum backup deck size (configurable, default 25)
     cardDrawPerTurn: 1,            // Base card draw per STR combat turn (can be modified by items)
     cryptos: 0,                    // Currency (¢) - persistent across death
     rogueRun: null,
@@ -56,6 +57,10 @@ const GAMESTATE = (function () {
     consumables: [],               // Array of consumable items with counts: {type, count}
     consumableSlots: 3,            // How many different types can be carried
     maxConsumableSlots: 5,         // Can be upgraded
+
+    // Card hand and backup deck (lost on death per spec)
+    cardsInHand: [],               // Cards in play hand (drawn for immediate use)
+    backupCards: [],               // Backup deck (configurable size, default empty)
 
     // Structured key counters — single source of truth for UI hooks
     // Tier 1 (ammo): lost on death.  Tier 2/3: persist across death.
@@ -228,7 +233,7 @@ const GAMESTATE = (function () {
 
       // Clear hand, backup cards, equipped active item (lost on death per spec)
       _state.cardHand = [];
-      _state.backupCards = [null, null, null, null];
+      _state.backupCards = [];
       _state.activeItemSlot = null;
 
       // Clear loose inventory on death (includes tier-1 ammo keys)
@@ -450,15 +455,12 @@ const GAMESTATE = (function () {
 
   function getBackupCards() {
     var b = Array.isArray(_state.backupCards) ? _state.backupCards.slice() : [];
-    // stable 4 slots
-    while (b.length < 4) b.push(null);
-    if (b.length > 4) b = b.slice(0, 4);
-    return b;
+    return b.slice(0, _state.maxBackupSlots || 25);
   }
 
   // Add printed cards into CH/NCH hand first, then overflow into backup.
-  // Backup is treated as an ordered "newest at top" list in 4 slots.
-  // Overflow discards the oldest (slot 3).
+  // Backup is treated as an ordered "newest at top" list with configurable max size.
+  // Overflow discards the oldest cards.
   function addPrintedCards(cardId, qty, opts) {
     opts = opts || {};
     qty = (typeof qty === 'number' ? qty : 1);
@@ -466,9 +468,7 @@ const GAMESTATE = (function () {
     if (!cardId) return { success: false };
 
     if (!Array.isArray(_state.cardsInHand)) _state.cardsInHand = [];
-    if (!Array.isArray(_state.backupCards)) _state.backupCards = [null, null, null, null];
-    while (_state.backupCards.length < 4) _state.backupCards.push(null);
-    if (_state.backupCards.length > 4) _state.backupCards = _state.backupCards.slice(0, 4);
+    if (!Array.isArray(_state.backupCards)) _state.backupCards = [];
 
     var maxHand = (typeof _state.maxHandSize === 'number' && isFinite(_state.maxHandSize)) ? _state.maxHandSize : 5;
     maxHand = Math.max(1, maxHand);
@@ -487,7 +487,7 @@ const GAMESTATE = (function () {
       for (var hi = 0; hi < _state.cardsInHand.length; hi++) {
         if (_state.cardsInHand[hi]) t += (_state.cardsInHand[hi].qty || 1);
       }
-      for (var bi = 0; bi < 4; bi++) {
+      for (var bi = 0; bi < _state.backupCards.length; bi++) {
         var bs = _state.backupCards[bi];
         if (bs && bs.id) t += (bs.qty || 1);
       }
@@ -495,12 +495,13 @@ const GAMESTATE = (function () {
     }
 
     function _dropOldest() {
-      // Drop one from the oldest backup slot (slot 3 = oldest, slot 0 = newest).
-      for (var s = 3; s >= 0; s--) {
-        var b = _state.backupCards[s];
+      // Drop one from the oldest backup card (last in array).
+      if (_state.backupCards.length > 0) {
+        var lastIdx = _state.backupCards.length - 1;
+        var b = _state.backupCards[lastIdx];
         if (b && b.id) {
           b.qty = (b.qty || 1) - 1;
-          if (b.qty <= 0) _state.backupCards[s] = null;
+          if (b.qty <= 0) _state.backupCards.splice(lastIdx, 1);
           res.discarded += 1;
           return;
         }
@@ -517,8 +518,8 @@ const GAMESTATE = (function () {
     }
 
     function _promoteOrInsertBackup(ref) {
-      // If same card already in backup, stack and move to slot 0.
-      for (var i = 0; i < 4; i++) {
+      // If same card already in backup, stack and move to top.
+      for (var i = 0; i < _state.backupCards.length; i++) {
         var b = _state.backupCards[i];
         if (b && b.id === ref.id) {
           b.qty = (b.qty || 1) + (ref.qty || 1);
@@ -526,17 +527,24 @@ const GAMESTATE = (function () {
           // move to top
           _state.backupCards.splice(i, 1);
           _state.backupCards.unshift(b);
-          while (_state.backupCards.length < 4) _state.backupCards.push(null);
-          if (_state.backupCards.length > 4) _state.backupCards = _state.backupCards.slice(0, 4);
+          // Enforce max size
+          var maxB = _state.maxBackupSlots || 25;
+          while (_state.backupCards.length > maxB) {
+            var dropped = _state.backupCards.pop();
+            if (dropped && dropped.id) res.discarded += 1;
+          }
           return;
         }
       }
 
-      // Insert at top, shift down, discard last
-      var dropped = _state.backupCards[3];
-      _state.backupCards.pop();
+      // Insert at top, discard oldest if needed
       _state.backupCards.unshift(ref);
-      if (dropped && dropped.id) res.discarded += 1;
+      // Enforce max size
+      var maxB = _state.maxBackupSlots || 25;
+      while (_state.backupCards.length > maxB) {
+        var dropped = _state.backupCards.pop();
+        if (dropped && dropped.id) res.discarded += 1;
+      }
     }
 
     function _addOne() {
@@ -591,6 +599,9 @@ const GAMESTATE = (function () {
     var existing = _state.cardsInHand.find(function(r) { return r && r.id === cardId; });
     if (existing) existing.qty = (existing.qty || 0) + qty;
     else _state.cardsInHand.push({ id: cardId, qty: qty, meta: null });
+
+    // Enforce hand overflow at GAMESTATE level
+    enforceHandOverflow();
 
     _saveState();
     try {
@@ -662,44 +673,50 @@ const GAMESTATE = (function () {
     if (!isFinite(idx) || idx < 0) return { success: false };
 
     if (!Array.isArray(_state.cardsInHand)) _state.cardsInHand = [];
-    if (!Array.isArray(_state.backupCards)) _state.backupCards = [null, null, null, null];
+    if (!Array.isArray(_state.backupCards)) _state.backupCards = [];
 
     if (idx >= _state.cardsInHand.length) return { success: false };
 
     var ref = _state.cardsInHand[idx];
     if (!ref || !ref.id) return { success: false };
 
-    // Find first empty backup slot
-    var slot = -1;
-    for (var s = 0; s < 4; s++) {
-      if (!_state.backupCards[s]) { slot = s; break; }
+    // Insert at top of backup deck (newest)
+    _state.backupCards.unshift({ id: ref.id, qty: ref.qty || 1, meta: ref.meta || null });
+    // Enforce max size — incinerate oldest
+    var maxB = _state.maxBackupSlots || 25;
+    while (_state.backupCards.length > maxB) {
+      var incinerated = _state.backupCards.pop();
+      try { window.dispatchEvent(new CustomEvent('rogue-card-incinerated', { detail: { card: incinerated, source: 'backup_overflow' } })); } catch (ei) {}
     }
-    if (slot === -1) return { success: false, reason: 'backup_full' };
 
-    _state.backupCards[slot] = { id: ref.id, qty: ref.qty || 1, meta: ref.meta || null };
     _state.cardsInHand.splice(idx, 1);
 
     _saveState();
     try {
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'to_backup', cardId: ref.id, slot: slot } }));
+        window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'to_backup', cardId: ref.id } }));
       }
     } catch (e2) {}
 
-    return { success: true, slot: slot };
+    return { success: true };
   }
 
   function moveBackupIndexToHand(backupIndex) {
     var idx = Number(backupIndex);
-    if (!isFinite(idx) || idx < 0 || idx > 3) return { success: false };
+    if (!isFinite(idx) || idx < 0) return { success: false };
 
-    if (!Array.isArray(_state.backupCards)) _state.backupCards = [null, null, null, null];
+    if (!Array.isArray(_state.backupCards)) _state.backupCards = [];
+    if (idx >= _state.backupCards.length) return { success: false };
+
     var ref = _state.backupCards[idx];
     if (!ref || !ref.id) return { success: false, reason: 'empty' };
 
     if (!Array.isArray(_state.cardsInHand)) _state.cardsInHand = [];
     _state.cardsInHand.push({ id: ref.id, qty: ref.qty || 1, meta: ref.meta || null });
-    _state.backupCards[idx] = null;
+    _state.backupCards.splice(idx, 1);  // Remove by splice, not null
+
+    // Enforce hand overflow at GAMESTATE level
+    enforceHandOverflow();
 
     _saveState();
     try {
@@ -714,73 +731,135 @@ const GAMESTATE = (function () {
   function moveStashCardToBackup(cardId) {
     if (!cardId) return { success: false };
 
-    if (!Array.isArray(_state.backupCards)) _state.backupCards = [null, null, null, null];
+    if (!Array.isArray(_state.backupCards)) _state.backupCards = [];
 
     // Avoid duplicates in backup
-    for (var i = 0; i < 4; i++) {
+    for (var i = 0; i < _state.backupCards.length; i++) {
       if (_state.backupCards[i] && _state.backupCards[i].id === cardId) {
         return { success: false, reason: 'already_in_backup' };
       }
     }
 
-    var slot = -1;
-    for (var s = 0; s < 4; s++) {
-      if (!_state.backupCards[s]) { slot = s; break; }
+    // Check if backup is full
+    var maxB = _state.maxBackupSlots || 25;
+    if (_state.backupCards.length >= maxB) {
+      return { success: false, reason: 'backup_full' };
     }
-    if (slot === -1) return { success: false, reason: 'backup_full' };
 
     // Consume 1 from stash
     var removed = removePersistentCard(cardId, 1);
     if (!removed || !removed.success) return { success: false, reason: 'not_in_stash' };
 
-    _state.backupCards[slot] = { id: cardId, qty: 1, meta: null };
+    // Insert at top of backup deck
+    _state.backupCards.unshift({ id: cardId, qty: 1, meta: null });
 
     _saveState();
     try {
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'stash_to_backup', cardId: cardId, slot: slot } }));
+        window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'stash_to_backup', cardId: cardId } }));
       }
     } catch (e2) {}
 
-    return { success: true, slot: slot };
+    return { success: true };
   }
 
-  function resetCombatBackupDrawFlag() {
-    _state.hasDrawnBackupThisCombat = false;
+  // ─── PER-TURN DRAW (was per-combat) ─────────────────────
+
+  function resetTurnBackupDrawFlag() {
+    _state.hasDrawnBackupThisTurn = false;
+    _state.hasDrawnBackupThisCombat = false; // backward compat
     _saveState();
   }
+  // Backward-compatible alias
+  function resetCombatBackupDrawFlag() { return resetTurnBackupDrawFlag(); }
 
-  function canDrawBackupThisCombat() {
-    return !_state.hasDrawnBackupThisCombat;
+  function canDrawBackupThisTurn() {
+    return !_state.hasDrawnBackupThisTurn && !_state.hasDrawnBackupThisCombat;
   }
+  // Backward-compatible alias
+  function canDrawBackupThisCombat() { return canDrawBackupThisTurn(); }
 
-  function drawOneFromBackupOncePerCombat() {
-    if (_state.hasDrawnBackupThisCombat) return { success: false, reason: 'already_drawn' };
-
-    if (!Array.isArray(_state.backupCards)) _state.backupCards = [null, null, null, null];
-
-    var idx = -1;
-    for (var i = 0; i < 4; i++) {
-      if (_state.backupCards[i] && _state.backupCards[i].id) { idx = i; break; }
+  function drawOneFromBackupPerTurn() {
+    if (_state.hasDrawnBackupThisTurn || _state.hasDrawnBackupThisCombat) {
+      return { success: false, reason: 'already_drawn_this_turn' };
     }
-    if (idx === -1) return { success: false, reason: 'backup_empty' };
 
-    var ref = _state.backupCards[idx];
-    _state.backupCards[idx] = null;
+    if (!Array.isArray(_state.backupCards)) _state.backupCards = [];
+    if (_state.backupCards.length === 0) return { success: false, reason: 'backup_empty' };
+
+    var ref = _state.backupCards.splice(0, 1)[0];  // Draw from top (newest)
 
     if (!Array.isArray(_state.cardsInHand)) _state.cardsInHand = [];
     _state.cardsInHand.push({ id: ref.id, qty: ref.qty || 1, meta: ref.meta || null });
 
-    _state.hasDrawnBackupThisCombat = true;
+    _state.hasDrawnBackupThisTurn = true;
+    _state.hasDrawnBackupThisCombat = true; // backward compat
     _saveState();
+
+    // Enforce hand overflow at GAMESTATE level
+    enforceHandOverflow();
 
     try {
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'draw_backup', cardId: ref.id, idx: idx } }));
+        window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'draw_backup', cardId: ref.id } }));
       }
     } catch (e2) {}
 
     return { success: true, cardId: ref.id };
+  }
+  // Backward-compatible alias
+  function drawOneFromBackupOncePerCombat() { return drawOneFromBackupPerTurn(); }
+
+  /**
+   * Mark that the player has used their per-turn backup draw.
+   * Used by left-column draw (reserve-slots) which calls moveBackupIndexToHand
+   * directly instead of drawOneFromBackupPerTurn.
+   */
+  function markBackupDrawUsedThisTurn() {
+    _state.hasDrawnBackupThisTurn = true;
+    _state.hasDrawnBackupThisCombat = true;
+    _saveState();
+  }
+
+  // ─── HAND OVERFLOW ENFORCEMENT ──────────────────────────
+
+  /**
+   * Enforce hand size limit. Called internally after any card enters hand.
+   * Pushes oldest cards to backup, incinerating backup overflow.
+   */
+  function enforceHandOverflow() {
+    var maxHand = _state.maxHandSize || 5;
+    while (Array.isArray(_state.cardsInHand) && _state.cardsInHand.length > maxHand) {
+      pushOldestHandCardToBackup();
+    }
+  }
+
+  // ─── ACQUIRE CARD DURING COMBAT (deterministic serial) ──
+
+  /**
+   * Add a new card to hand during STR combat (loot drop, item dupe).
+   * Deterministic sequence:
+   *   1. New card enters hand (push to front)
+   *   2. If hand > max: oldest hand → backup front
+   *   3. If backup > 25: oldest backup incinerates
+   */
+  function acquireNewCardDuringCombat(cardId, qty) {
+    qty = (typeof qty === 'number' ? qty : 1);
+    if (!Array.isArray(_state.cardsInHand)) _state.cardsInHand = [];
+
+    for (var q = 0; q < qty; q++) {
+      // Insert at front (newest position)
+      _state.cardsInHand.unshift({ id: cardId, qty: 1, meta: null });
+      // Enforce hand overflow (pushes oldest to backup, which may incinerate)
+      enforceHandOverflow();
+    }
+
+    _saveState();
+    try {
+      window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'combat_acquire', cardId: cardId, qty: qty } }));
+    } catch (e2) {}
+
+    return { success: true };
   }
 
   /**
@@ -1331,7 +1410,7 @@ const GAMESTATE = (function () {
 
       // Canonical hand + backup (CH/NCH)
       cardsInHand: [],
-      backupCards: [null, null, null, null],
+      backupCards: [],
       hasDrawnBackupThisCombat: false,
       playerFatigue: 0,
       maxFatigue: 100,
@@ -2028,6 +2107,105 @@ const GAMESTATE = (function () {
     return _state.keys;
   }
 
+  function getMaxBackupSlots() {
+    return _state.maxBackupSlots || 25;
+  }
+
+  function setMaxBackupSlots(n) {
+    _state.maxBackupSlots = Math.max(1, Number(n) || 25);
+    _saveState();
+  }
+
+  /**
+   * Fisher-Yates shuffle the backup deck in place.
+   */
+  function shuffleBackupDeck() {
+    if (!Array.isArray(_state.backupCards) || _state.backupCards.length < 2) return { success: false, reason: 'too_few' };
+    for (var i = _state.backupCards.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = _state.backupCards[i];
+      _state.backupCards[i] = _state.backupCards[j];
+      _state.backupCards[j] = tmp;
+    }
+    _saveState();
+    window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'shuffle' } }));
+    return { success: true };
+  }
+
+  /**
+   * Sort the backup deck by a given criteria.
+   * @param {'quality'|'name'|'cost'} criteria
+   */
+  function sortBackupDeck(criteria) {
+    if (!Array.isArray(_state.backupCards) || _state.backupCards.length < 2) return { success: false, reason: 'too_few' };
+
+    var _getDefSafe = function(id) {
+      try {
+        if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) {
+          return GoneRogueDataRegistry.getCard(id) || {};
+        }
+      } catch (e) {}
+      return {};
+    };
+
+    var qualityOrder = { cracked: 0, damaged: 1, worn: 2, standard: 3, refined: 4, superior: 5, elite: 6, masterwork: 7, perfect: 8 };
+
+    _state.backupCards.sort(function(a, b) {
+      var da = _getDefSafe(a.id);
+      var db = _getDefSafe(b.id);
+      if (criteria === 'quality') {
+        var qa = qualityOrder[String(da.quality || da.qualityName || 'standard').toLowerCase()] || 3;
+        var qb = qualityOrder[String(db.quality || db.qualityName || 'standard').toLowerCase()] || 3;
+        return qb - qa; // highest quality first
+      } else if (criteria === 'cost') {
+        var costA = 0, costB = 0;
+        if (Array.isArray(da.costs)) da.costs.forEach(function(c) { costA += Number(c.amount || 0); });
+        if (Array.isArray(db.costs)) db.costs.forEach(function(c) { costB += Number(c.amount || 0); });
+        return costA - costB; // cheapest first
+      }
+      // Default: name
+      var na = String(da.name || a.id || '').toLowerCase();
+      var nb = String(db.name || b.id || '').toLowerCase();
+      return na < nb ? -1 : na > nb ? 1 : 0;
+    });
+
+    _saveState();
+    window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'sort', criteria: criteria } }));
+    return { success: true };
+  }
+
+  function pushOldestHandCardToBackup() {
+    if (!Array.isArray(_state.cardsInHand) || _state.cardsInHand.length === 0) {
+      return { success: false, reason: 'hand_empty' };
+    }
+    var old = _state.cardsInHand.pop();
+    if (!Array.isArray(_state.backupCards)) _state.backupCards = [];
+    _state.backupCards.unshift(old);
+    var maxB = _state.maxBackupSlots || 25;
+    while (_state.backupCards.length > maxB) {
+      var incinerated = _state.backupCards.pop();
+      try { window.dispatchEvent(new CustomEvent('rogue-card-incinerated', { detail: { card: incinerated, source: 'backup_overflow' } })); } catch (ei) {}
+    }
+    _saveState();
+    window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'push_oldest', cardId: old.id } }));
+    return { success: true, returnedCard: old };
+  }
+
+  function insertCardAtBackupTop(ref) {
+    if (!ref || !ref.id) return { success: false };
+    if (!Array.isArray(_state.backupCards)) _state.backupCards = [];
+    _state.backupCards.unshift({ id: ref.id, qty: ref.qty || 1, meta: ref.meta || null });
+    var maxB = _state.maxBackupSlots || 25;
+    var discarded = 0;
+    while (_state.backupCards.length > maxB) {
+      _state.backupCards.pop();
+      discarded++;
+    }
+    _saveState();
+    window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'insert_top', cardId: ref.id } }));
+    return { success: true, discarded: discarded };
+  }
+
   return {
     MODES: MODES,
     init: init,
@@ -2056,8 +2234,20 @@ const GAMESTATE = (function () {
     moveBackupIndexToHand: moveBackupIndexToHand,
     moveStashCardToBackup: moveStashCardToBackup,
     resetCombatBackupDrawFlag: resetCombatBackupDrawFlag,
+    resetTurnBackupDrawFlag: resetTurnBackupDrawFlag,
     canDrawBackupThisCombat: canDrawBackupThisCombat,
+    canDrawBackupThisTurn: canDrawBackupThisTurn,
     drawOneFromBackupOncePerCombat: drawOneFromBackupOncePerCombat,
+    drawOneFromBackupPerTurn: drawOneFromBackupPerTurn,
+    markBackupDrawUsedThisTurn: markBackupDrawUsedThisTurn,
+    enforceHandOverflow: enforceHandOverflow,
+    acquireNewCardDuringCombat: acquireNewCardDuringCombat,
+    getMaxBackupSlots: getMaxBackupSlots,
+    setMaxBackupSlots: setMaxBackupSlots,
+    shuffleBackupDeck: shuffleBackupDeck,
+    sortBackupDeck: sortBackupDeck,
+    pushOldestHandCardToBackup: pushOldestHandCardToBackup,
+    insertCardAtBackupTop: insertCardAtBackupTop,
     addPrintedCards: addPrintedCards,
     getLooseInventory: getLooseInventory,
     // Card system - NEW LOOT FLOW

@@ -170,8 +170,24 @@
    */
   var _lastResolvingTurn = false;
   var _lastHandSig = null;
+  var _endOfTurnPushDone = false; // Guard: only push oldest card once per resolution cycle
+  var _lastRound = -1; // Track round number for per-turn draw reset
 
   function _showHandFan(combatState) {
+    // ── Per-turn draw flag reset ──
+    // When the round number changes, reset the backup draw flag so the player
+    // can draw once from the left column (reserve slots) each turn.
+    var currentRound = (typeof combatState.round === 'number' && isFinite(combatState.round)) ? combatState.round : 1;
+    if (currentRound !== _lastRound) {
+      _lastRound = currentRound;
+      try {
+        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.resetTurnBackupDrawFlag === 'function') {
+          GAMESTATE.resetTurnBackupDrawFlag();
+          console.log('[STRIntegration] Round ' + currentRound + ': reset per-turn backup draw flag');
+        }
+      } catch (e) {}
+    }
+
     // Get canonical hand cards from GAMESTATE (mirrors NCH)
     var cards = [];
     var sigParts = [];
@@ -259,9 +275,29 @@
     if (isResolvingTurn) {
       // Minimize hand during turn resolution to show enemy animations
       HandFanComponent.minimize();
+      // Reset guard so we can push once when resolution ends
+      _endOfTurnPushDone = false;
     } else {
       // Restore hand when not resolving
       HandFanComponent.restore();
+
+      // ── End-of-turn cycle: oldest hand card returns to backup ──
+      // Fires once on the resolving→idle edge.
+      if (_lastResolvingTurn && !_endOfTurnPushDone) {
+        _endOfTurnPushDone = true;
+        try {
+          if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.pushOldestHandCardToBackup === 'function') {
+            var pushResult = GAMESTATE.pushOldestHandCardToBackup();
+            if (pushResult && pushResult.success) {
+              var pushedId = (pushResult.returnedCard && pushResult.returnedCard.id) || '?';
+              console.log('[STRIntegration] End-of-turn: pushed oldest hand card "' + pushedId + '" back to backup');
+              // Note: pushOldestHandCardToBackup already dispatches rogue-hand-changed internally
+            }
+          }
+        } catch (e3) {
+          console.warn('[STRIntegration] pushOldestHandCardToBackup error:', e3);
+        }
+      }
     }
 
     // Flash mini indicator on resolution edge

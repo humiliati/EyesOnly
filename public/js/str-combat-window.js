@@ -348,8 +348,8 @@ const STRCombatWindow = (function () {
     var canDraw = false;
     var hasBackup = false;
     try {
-      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.canDrawBackupThisCombat === 'function') {
-        canDraw = !!GAMESTATE.canDrawBackupThisCombat();
+      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.canDrawBackupThisTurn === 'function') {
+        canDraw = !!GAMESTATE.canDrawBackupThisTurn();
       }
       if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getBackupCards === 'function') {
         var b = GAMESTATE.getBackupCards();
@@ -358,7 +358,7 @@ const STRCombatWindow = (function () {
     } catch (e2) {}
 
     var drawDisabled = (!canDraw) || (!hasBackup);
-    html += '<button class="str-backup-draw-btn" id="str-backup-draw-btn" title="Draw 1 card from BACKUP into your HAND (once per combat)"' + (drawDisabled ? ' disabled' : '') + '>' + (drawDisabled ? 'DRAW (BACKUP)' : 'DRAW 1 (BACKUP)') + '</button>';
+    html += '<button class="str-backup-draw-btn" id="str-backup-draw-btn" title="Draw 1 card from BACKUP into your HAND (once per turn)"' + (drawDisabled ? ' disabled' : '') + '>' + (drawDisabled ? 'DRAWN' : 'DRAW 1') + '</button>';
 
     html += '<div class="str-timer-display">';
     html += '<span class="str-timer-label">TIME:</span> ';
@@ -385,11 +385,15 @@ const STRCombatWindow = (function () {
       drawBtn.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        if (typeof GAMESTATE === 'undefined' || typeof GAMESTATE.drawOneFromBackupOncePerCombat !== 'function') return;
-        var res = GAMESTATE.drawOneFromBackupOncePerCombat();
+        if (typeof GAMESTATE === 'undefined' || typeof GAMESTATE.drawOneFromBackupPerTurn !== 'function') return;
+        var res = GAMESTATE.drawOneFromBackupPerTurn();
         if (typeof TooltipSystem !== 'undefined') {
           if (res && res.success) TooltipSystem.showPersistent('➕ BACKUP → HAND', 900);
-          else TooltipSystem.showPersistent('❌ Cannot draw (once/combat or empty)', 900);
+          else TooltipSystem.showPersistent('❌ Cannot draw (once/turn or empty)', 900);
+        }
+        // Notify NCH + reserve slots that hand/backup changed
+        if (res && res.success) {
+          try { window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'str-backup-draw' } })); } catch (e3) {}
         }
         // Re-render button state
         _renderWindow();
