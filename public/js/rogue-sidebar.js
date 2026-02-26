@@ -279,6 +279,7 @@ var RogueSidebar = (function() {
       if (!ref || !ref.id) {
         btn.classList.add('empty');
         btn.textContent = '[     ]';
+        btn.disabled = true;
       } else {
         if (view === 'items') {
           var item = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) ? GoneRogueDataRegistry.getItem(ref.id) : null;
@@ -327,6 +328,22 @@ var RogueSidebar = (function() {
           } catch (e1) {}
 
           btn.innerHTML = '<span class="rs-emoji">' + em2 + '</span><span class="rs-label">' + nm2 + '</span>' + x2 + '<span class="rs-qty">x' + qty + '</span>';
+
+          btn.addEventListener('pointerdown', function(e) {
+            if (!e || e.pointerType === 'touch') return;
+            if (e.button !== undefined && e.button !== 0) return;
+
+            var cardId = (cards[Number(e.currentTarget.dataset.index)] || {}).id;
+            if (!cardId) return;
+
+            // Start NCH drag pipeline so the user can drop onto NCH hand/backup or onto the map.
+            try {
+              if (typeof NonCombatHUD !== 'undefined' && typeof NonCombatHUD.startExternalDrag === 'function') {
+                NonCombatHUD.startExternalDrag({ kind: 'stash_card', id: cardId, emoji: '👆' }, e);
+                return;
+              }
+            } catch (e0) {}
+          });
 
           btn.addEventListener('click', function(e) {
             e.stopPropagation();

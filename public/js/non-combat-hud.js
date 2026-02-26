@@ -471,7 +471,7 @@ var NonCombatHUD = (function() {
       for (var s = 0; s < 4; s++) {
         var ref2 = slots[s] || null;
         var cell = document.createElement('div');
-        cell.className = 'nch-backup-slot nch-draggable' + ((state.selectedBackupIndex === s) ? ' selected' : '');
+        cell.className = 'nch-backup-slot' + ((state.selectedBackupIndex === s) ? ' selected' : '');
         cell.dataset.backupIndex = s;
 
         if (ref2 && ref2.id) {
@@ -653,17 +653,18 @@ var NonCombatHUD = (function() {
       return;
     }
 
-    // NCH internal drops (hand <-> backup) take priority
+    // Determine drop targets
     var el = null;
     try { el = document.elementFromPoint(e.clientX, e.clientY); } catch (e0) {}
 
     var droppedOnHand = false;
     var droppedOnBackup = false;
-    if (el && _root && _root.contains(el)) {
-      var overHand = (el.closest && el.closest('#nch-hand')) ? true : false;
-      var overBackup = (el.closest && el.closest('#nch-backup')) ? true : false;
-      droppedOnHand = overHand;
-      droppedOnBackup = overBackup;
+    var droppedOnSidebar = false;
+
+    if (el) {
+      droppedOnHand = !!(el.closest && el.closest('#nch-hand'));
+      droppedOnBackup = !!(el.closest && el.closest('#nch-backup'));
+      droppedOnSidebar = !!(el.closest && el.closest('#control-rail .control-buttons[data-rogue-sidebar-active="1"]'));
     }
 
     var ok = false;
@@ -683,6 +684,50 @@ var NonCombatHUD = (function() {
       if (!ok && typeof TooltipSystem !== 'undefined') TooltipSystem.showPersistent('❌ Cannot move to hand', 900);
       _nchDrag = null;
       return;
+    }
+
+    // NCH -> RogueSidebar (return to stash)
+    if (droppedOnSidebar && (_nchDrag.kind === 'hand' || _nchDrag.kind === 'backup')) {
+      if (_nchDrag.kind === 'hand') {
+        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.returnCardFromHandToStash === 'function') {
+          ok = !!GAMESTATE.returnCardFromHandToStash(_nchDrag.id, 1).success;
+        }
+        if (ok && typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.consumeHandIndex) {
+          NonCombatStateStore.consumeHandIndex(_nchDrag.handIndex, 1);
+        }
+      } else {
+        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addPersistentCard === 'function') {
+          ok = !!GAMESTATE.addPersistentCard(_nchDrag.id, 1).success;
+        }
+        if (ok && typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.consumeBackupIndex) {
+          NonCombatStateStore.consumeBackupIndex(_nchDrag.backupIndex);
+        }
+      }
+
+      if (!ok && typeof TooltipSystem !== 'undefined') TooltipSystem.showPersistent('❌ Cannot return to stash', 900);
+      _nchDrag = null;
+      return;
+    }
+
+    // RogueSidebar (stash) -> NCH hand/backup
+    if (_nchDrag.kind === 'stash_card' && (droppedOnHand || droppedOnBackup)) {
+      if (droppedOnBackup) {
+        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.moveStashCardToBackup === 'function') {
+          ok = !!GAMESTATE.moveStashCardToBackup(_nchDrag.id).success;
+        }
+        if (!ok && typeof TooltipSystem !== 'undefined') TooltipSystem.showPersistent('❌ Backup: full/invalid', 900);
+        _nchDrag = null;
+        return;
+      }
+
+      if (droppedOnHand) {
+        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addCardToHand === 'function') {
+          ok = !!GAMESTATE.addCardToHand(_nchDrag.id, 1).success;
+        }
+        if (!ok && typeof TooltipSystem !== 'undefined') TooltipSystem.showPersistent('❌ Cannot add to hand', 900);
+        _nchDrag = null;
+        return;
+      }
     }
 
     // Otherwise: map drop (cards deploy / equipped targeting)
@@ -706,6 +751,14 @@ var NonCombatHUD = (function() {
       }
       if (ok && typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.consumeBackupIndex) {
         NonCombatStateStore.consumeBackupIndex(_nchDrag.backupIndex);
+      }
+    } else if (_nchDrag.kind === 'stash_card') {
+      // Apply directly from stash, consuming 1 persistent card.
+      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.applyNonCombatCardAt === 'function') {
+        ok = GoneRogue.applyNonCombatCardAt(_nchDrag.id, coords.x, coords.y);
+      }
+      if (ok && typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.removePersistentCard === 'function') {
+        GAMESTATE.removePersistentCard(_nchDrag.id, 1);
       }
     } else if (_nchDrag.kind === 'equipped_item') {
       var id = _nchDrag.id;
@@ -735,6 +788,11 @@ var NonCombatHUD = (function() {
 
   return {
     init: init,
-    setMinimized: setMinimized
+    setMinimized: setMinimized,
+    startExternalDrag: function(payload, e) {
+      try {
+        _startNchDrag(payload, e);
+      } catch (e0) {}
+    }
   };
 })();
