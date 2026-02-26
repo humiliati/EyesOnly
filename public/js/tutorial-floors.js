@@ -198,7 +198,10 @@ var TutorialFloors = (function() {
       thickness: 1,
       style: 'natural', // Mix of tree emojis
       tiles: ['🌳', '🌲', '🪨']
-    }
+    },
+
+    // Tutorial highlight: nearest breakable to spawn gets ❗ pulse on floor load
+    firstBreakableHighlight: { x: 14, y: 3 }
   };
 
   /**
@@ -304,7 +307,8 @@ var TutorialFloors = (function() {
         item: 'rusty_key',
         currency: [5, 10]
       },
-      message: 'Something metallic glints among the petals...'
+      message: 'Something metallic glints among the petals...',
+      highlight: true
     },
 
     // Breakable bushes forming a small wall guarding the key

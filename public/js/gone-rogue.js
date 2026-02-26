@@ -7919,14 +7919,41 @@ _incrementPityTimers();
         // Check for items, currency, enemies at new position
         _checkPlayerInteractions();
 
-        // Floor 0 scripted walk: when player reaches the exit tile, clear the scripted walk flag.
-        // The actual floor advance is handled by _checkPlayerInteractions → _attemptExtract.
+        // Floor 0 scripted walk: two-phase system (tavern pause → exit stop)
         if (_scriptedWalk && _scriptedWalkTarget) {
           if (_player.x === _scriptedWalkTarget.x && _player.y === _scriptedWalkTarget.y) {
-            _scriptedWalk = false;
-            _scriptedWalkTarget = null;
             if (typeof GoneRogueMovement !== 'undefined') GoneRogueMovement.stop();
-            // Door interaction in _checkPlayerInteractions handles the advance
+
+            if (_scriptedWalkPhase === 1) {
+              // Phase 1 complete: arrived at tavern door — pause and show hint
+              _scriptedWalkPhase = 2;
+              _scriptedWalk = false;
+              _scriptedWalkTarget = null;
+              _showTutorialHint('tavern_hint', '👆 Tap to explore the tavern — or wait to continue', 3500);
+
+              // After 3.5s pause, resume walk toward exit
+              setTimeout(function() {
+                if (_scriptedWalkPhase === 2 && _scriptedWalkExitTarget) {
+                  _scriptedWalkPhase = 3;
+                  _scriptedWalk = true;
+                  _scriptedWalkTarget = _scriptedWalkExitTarget;
+                  if (typeof GoneRogueMovement !== 'undefined') {
+                    GoneRogueMovement.startMoveTo(_scriptedWalkTarget.x, _scriptedWalkTarget.y);
+                  }
+                }
+              }, 3500);
+            } else if (_scriptedWalkPhase === 3) {
+              // Phase 3 complete: arrived at exit — stop and let player tap the door
+              _scriptedWalk = false;
+              _scriptedWalkTarget = null;
+              _scriptedWalkPhase = 0;
+              _showTutorialHint('exit_hint', '🚪 Tap the door to enter the forest', 4000);
+              // Player must tap exit door themselves — no auto-advance
+            } else {
+              // Fallback: clear scripted walk
+              _scriptedWalk = false;
+              _scriptedWalkTarget = null;
+            }
           }
         }
       }
