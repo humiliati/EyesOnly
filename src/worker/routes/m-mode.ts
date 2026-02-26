@@ -9,6 +9,10 @@ import { Hono } from 'hono';
 import type { Env, AuthContext, EventPayload, EscalationRequest, GeofenceRequest, ScenarioBeatRequest, MicrochatSendRequest } from '../../shared/types';
 import { requireAuth, requireDirector } from '../middleware/auth';
 import {
+  getUserByCallsign,
+  grantInventoryItem,
+} from '../db/user-queries';
+import {
   listScenarios,
   getScenario,
   createScenario,
@@ -323,6 +327,69 @@ mModeRoutes.delete('/dead-drop/:id', async (c) => {
   }));
 
   return c.json({ ok: true });
+});
+
+/**
+ * POST /api/m/inventory/grant
+ * Director grants items to a user account inventory (account-level persistence).
+ * This is intended to be driven by ops events (e.g., dead_drop_retrieved) and is idempotent
+ * when source_event_id is provided.
+ */
+mModeRoutes.post('/inventory/grant', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{ callsign: string; items: string[]; source_event_id?: number }>();
+
+  const callsign = String(body.callsign || '').trim();
+  if (!callsign) return c.json({ error: 'BAD_REQUEST', message: 'callsign required' }, 400);
+
+  const items = Array.isArray(body.items) ? body.items.map((s) => String(s).trim()).filter(Boolean) : [];
+  if (items.length === 0) return c.json({ error: 'BAD_REQUEST', message: 'items required' }, 400);
+
+  const user = await getUserByCallsign(c.env.DB, callsign);
+  if (!user) return c.json({ error: 'NOT_FOUND', message: `No user account with callsign ${callsign}` }, 404);
+
+  // Idempotency gate (optional)
+  if (body.source_event_id) {
+    const existing = await c.env.DB
+      .prepare('SELECT id FROM inventory_grants WHERE source_event_id = ? LIMIT 1')
+      .bind(body.source_event_id)
+      .first<{ id: number }>();
+
+    if (existing) {
+      return c.json({ ok: true, already_granted: true });
+    }
+
+    await c.env.DB
+      .prepare('INSERT INTO inventory_grants (scenario_id, source_event_id, target_user_id, granted_by, items_json, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .bind(auth.scenario_id, body.source_event_id, user.id, auth.actor_id, JSON.stringify(items), Date.now())
+      .run();
+  }
+
+  for (const itemId of items) {
+    await grantInventoryItem(c.env.DB, user.id, itemId, { itemType: 'persistent', quantity: 1 });
+  }
+
+  const event = await insertEvent(c.env.DB, auth.scenario_id, auth.actor_id, 'inventory_granted', {
+    callsign,
+    user_id: user.id,
+    items,
+    source_event_id: body.source_event_id || null,
+    granted_by: auth.callsign,
+    ts: Date.now(),
+  });
+
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+  const room = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'event',
+      data: { ...event, payload: JSON.parse(event.payload) },
+      timestamp: Date.now(),
+    }),
+  }));
+
+  return c.json({ ok: true, event_id: event.id });
 });
 
 // --- Event Injection ---

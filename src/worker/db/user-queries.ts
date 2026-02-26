@@ -239,6 +239,37 @@ export async function addInventoryItem(
   return result!;
 }
 
+export async function grantInventoryItem(
+  db: D1Database,
+  userId: number,
+  itemId: string,
+  opts: {
+    itemType?: 'persistent' | 'loose';
+    quantity?: number;
+    metadata?: object;
+  } = {},
+): Promise<void> {
+  const itemType = opts.itemType || 'persistent';
+  const quantity = Math.max(1, Math.floor(opts.quantity ?? 1));
+  const metadata = opts.metadata || {};
+
+  // If the user already has this item_id+type, increment quantity. Otherwise insert.
+  const existing = await db
+    .prepare('SELECT id, quantity FROM user_inventory WHERE user_id = ? AND item_id = ? AND item_type = ? LIMIT 1')
+    .bind(userId, itemId, itemType)
+    .first<{ id: number; quantity: number }>();
+
+  if (existing) {
+    await db
+      .prepare('UPDATE user_inventory SET quantity = ? WHERE id = ?')
+      .bind((existing.quantity || 0) + quantity, existing.id)
+      .run();
+    return;
+  }
+
+  await addInventoryItem(db, userId, itemId, itemType, quantity, metadata);
+}
+
 export async function removeInventoryItem(
   db: D1Database,
   userId: number,

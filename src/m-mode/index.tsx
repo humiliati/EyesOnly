@@ -714,9 +714,59 @@ async function loadEvents(session: Session) {
     evBody.innerHTML = '<div class="feed">' + events.slice(-50).reverse().map((ev: any) => {
       const ts = new Date(ev.created_at).toLocaleTimeString();
       const cls = ev.event_type || '';
+      const payloadObj = ev.payload && typeof ev.payload !== 'string' ? ev.payload : null;
       const payload = ev.payload ? (typeof ev.payload === 'string' ? ev.payload : JSON.stringify(ev.payload)) : '';
-      return `<div class="feed-item ${cls}"><span class="ts">${ts}</span> <strong>${ev.event_type}</strong> ${payload.substring(0, 60)}</div>`;
+
+      const canGrant = ev.event_type === 'dead_drop_retrieved' && Array.isArray(payloadObj?.items) && payloadObj.items.length > 0;
+      const grantTarget = String(payloadObj?.callsign || '');
+      const grantItems = canGrant ? encodeURIComponent(JSON.stringify(payloadObj.items)) : '';
+
+      const grantBtn = canGrant
+        ? `<button class="btn btn-small" style="margin-left:8px;" data-action="grant-items" data-source-event-id="${ev.id}" data-callsign="${grantTarget}" data-items="${grantItems}">GRANT</button>`
+        : '';
+
+      return `<div class="feed-item ${cls}">
+        <span class="ts">${ts}</span>
+        <strong>${ev.event_type}</strong>
+        ${payload.substring(0, 80)}
+        ${grantBtn}
+      </div>`;
     }).join('') + '</div>';
+
+    // Bind GRANT buttons
+    evBody.querySelectorAll('button[data-action="grant-items"]').forEach((btn: any) => {
+      btn.onclick = async () => {
+        try {
+          const sourceEventId = parseInt(btn.getAttribute('data-source-event-id') || '0', 10);
+          const callsign = btn.getAttribute('data-callsign') || '';
+          const itemsRaw = btn.getAttribute('data-items') || '';
+          const items = JSON.parse(decodeURIComponent(itemsRaw || '[]'));
+
+          btn.disabled = true;
+          btn.textContent = 'GRANTING…';
+
+          const res = await mFetch('/m/inventory/grant', session, {
+            method: 'POST',
+            body: JSON.stringify({ callsign, items, source_event_id: sourceEventId }),
+          } as any);
+
+          if (!res.ok) {
+            const d = await res.json().catch(() => ({} as any)) as any;
+            throw new Error(d?.message || `Grant failed (${res.status})`);
+          }
+
+          const d = await res.json().catch(() => ({} as any)) as any;
+          btn.textContent = d?.already_granted ? 'GRANTED' : 'GRANTED';
+          btn.classList.add('ok');
+          mokSend('advisory', `Granted ${Array.isArray(items) ? items.length : 0} item(s) to ${callsign}.`);
+          loadEvents(session);
+        } catch (err: any) {
+          btn.disabled = false;
+          btn.textContent = 'GRANT';
+          mokSend('warning', err?.message || 'Grant failed.');
+        }
+      };
+    });
   } catch {}
 }
 
