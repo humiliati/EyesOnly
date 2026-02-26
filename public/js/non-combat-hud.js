@@ -444,11 +444,17 @@ var NonCombatHUD = (function() {
           row.addEventListener('pointerdown', function(e) {
             if (!e || e.pointerType === 'touch') return;
             if (e.button !== undefined && e.button !== 0) return;
+            var hIdx = Number(e.currentTarget.dataset.handIndex);
+            var handArr = (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getCardsInHand === 'function') ? GAMESTATE.getCardsInHand() : [];
+            var handRef = handArr[hIdx];
+            if (!handRef || !handRef.id) return;
+            var handCard = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) ? GoneRogueDataRegistry.getCard(handRef.id) : null;
+            var handEm = handCard ? (handCard.emoji || '🃏') : '🃏';
             _startNchDrag({
               kind: 'hand',
-              handIndex: Number(e.currentTarget.dataset.handIndex),
-              emoji: em,
-              id: ref.id
+              handIndex: hIdx,
+              emoji: handEm,
+              id: handRef.id
             }, e);
           });
 
@@ -576,6 +582,8 @@ var NonCombatHUD = (function() {
     if (_nchDrag.kind === 'stash_card') {
       _nchDrag.dragging = true;
       _ensureGhost(e.clientX, e.clientY);
+      // Expand NCH so the hand/backup drop zones are visible and hit-testable.
+      setMinimized(false, 'stash_drag');
     }
 
     try { e.preventDefault && e.preventDefault(); } catch (eP0) {}
@@ -674,7 +682,7 @@ var NonCombatHUD = (function() {
     if (el) {
       droppedOnHand = !!(el.closest && el.closest('#nch-hand'));
       droppedOnBackup = !!(el.closest && el.closest('#nch-backup'));
-      droppedOnSidebar = !!(el.closest && el.closest('#control-rail .control-buttons[data-rogue-sidebar-active="1"]'));
+      droppedOnSidebar = !!(el.closest && el.closest('[data-dropzone="stash"]'));
     }
 
     var ok = false;
