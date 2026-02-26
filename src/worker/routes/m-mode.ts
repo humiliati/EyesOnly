@@ -353,12 +353,19 @@ mModeRoutes.delete('/dead-drop/:id', async (c) => {
  */
 mModeRoutes.post('/inventory/grant', async (c) => {
   const auth = c.get('auth');
-  const body = await c.req.json<{ callsign: string; items: string[]; source_event_id?: number }>();
+  const body = await c.req.json<{ callsign: string; items: Array<string | { item_id: string; metadata?: any }>; source_event_id?: number }>();
 
   const callsign = String(body.callsign || '').trim();
   if (!callsign) return c.json({ error: 'BAD_REQUEST', message: 'callsign required' }, 400);
 
-  const items = Array.isArray(body.items) ? body.items.map((s) => String(s).trim()).filter(Boolean) : [];
+  const itemsRaw = Array.isArray(body.items) ? body.items : [];
+  if (itemsRaw.length === 0) return c.json({ error: 'BAD_REQUEST', message: 'items required' }, 400);
+
+  const items = itemsRaw.map((it: any) => {
+    if (typeof it === 'string') return { item_id: String(it).trim(), metadata: null };
+    return { item_id: String(it?.item_id || '').trim(), metadata: it?.metadata ?? null };
+  }).filter((x: any) => !!x.item_id);
+
   if (items.length === 0) return c.json({ error: 'BAD_REQUEST', message: 'items required' }, 400);
 
   const user = await getUserByCallsign(c.env.DB, callsign);
@@ -377,18 +384,27 @@ mModeRoutes.post('/inventory/grant', async (c) => {
 
     await c.env.DB
       .prepare('INSERT INTO inventory_grants (scenario_id, source_event_id, target_user_id, granted_by, items_json, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-      .bind(auth.scenario_id, body.source_event_id, user.id, auth.actor_id, JSON.stringify(items), Date.now())
+      .bind(auth.scenario_id, body.source_event_id, user.id, auth.actor_id, JSON.stringify(items.map((x: any) => x.item_id)), Date.now())
       .run();
   }
 
-  for (const itemId of items) {
-    await grantInventoryItem(c.env.DB, user.id, itemId, { itemType: 'persistent', quantity: 1 });
+  for (const it of items) {
+    let md: any = it.metadata;
+    if (md && typeof md === 'object') {
+      // Ensure per-artifact opaque UUID
+      if (!md.id) {
+        try { md.id = crypto.randomUUID(); } catch { md.id = `inv-${Date.now()}-${Math.random().toString(16).slice(2)}`; }
+      }
+      if (!md.version) md.version = 1;
+    }
+
+    await grantInventoryItem(c.env.DB, user.id, it.item_id, { itemType: 'persistent', quantity: 1, metadata: md || {} });
   }
 
   const event = await insertEvent(c.env.DB, auth.scenario_id, auth.actor_id, 'inventory_granted', {
     callsign,
     user_id: user.id,
-    items,
+    items: items.map((x: any) => x.item_id),
     source_event_id: body.source_event_id || null,
     granted_by: auth.callsign,
     ts: Date.now(),

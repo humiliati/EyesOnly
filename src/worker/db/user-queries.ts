@@ -253,21 +253,34 @@ export async function grantInventoryItem(
   const quantity = Math.max(1, Math.floor(opts.quantity ?? 1));
   const metadata = opts.metadata || {};
 
-  // If the user already has this item_id+type, increment quantity. Otherwise insert.
-  const existing = await db
-    .prepare('SELECT id, quantity FROM user_inventory WHERE user_id = ? AND item_id = ? AND item_type = ? LIMIT 1')
-    .bind(userId, itemId, itemType)
-    .first<{ id: number; quantity: number }>();
+  // If metadata contains a per-artifact id, treat this as a unique instance and do NOT coalesce.
+  // This keeps the system trade-ready: each artifact has its own metadata.id.
+  const metaAny: any = metadata as any;
+  const hasArtifactId = !!(metaAny && typeof metaAny === 'object' && metaAny.id);
 
-  if (existing) {
-    await db
-      .prepare('UPDATE user_inventory SET quantity = ? WHERE id = ?')
-      .bind((existing.quantity || 0) + quantity, existing.id)
-      .run();
+  if (!hasArtifactId) {
+    // Fungible path: coalesce by (item_id,item_type)
+    const existing = await db
+      .prepare('SELECT id, quantity FROM user_inventory WHERE user_id = ? AND item_id = ? AND item_type = ? LIMIT 1')
+      .bind(userId, itemId, itemType)
+      .first<{ id: number; quantity: number }>();
+
+    if (existing) {
+      await db
+        .prepare('UPDATE user_inventory SET quantity = ? WHERE id = ?')
+        .bind((existing.quantity || 0) + quantity, existing.id)
+        .run();
+      return;
+    }
+
+    await addInventoryItem(db, userId, itemId, itemType, quantity, metadata);
     return;
   }
 
-  await addInventoryItem(db, userId, itemId, itemType, quantity, metadata);
+  // Unique artifact path: insert one row per instance.
+  for (let i = 0; i < quantity; i++) {
+    await addInventoryItem(db, userId, itemId, itemType, 1, metadata);
+  }
 }
 
 export async function removeInventoryItem(
