@@ -27,3 +27,11 @@ dist/
 
 # Test files
 test-*.html
+
+# Python / PyInstaller build artifacts
+.venv_runner_build/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+build/
