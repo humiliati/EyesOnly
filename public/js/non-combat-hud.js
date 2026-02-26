@@ -555,7 +555,10 @@ var NonCombatHUD = (function() {
   var _nchDrag = null; // { kind, emoji, id, handIndex?, backupIndex?, ghostEl, startX, startY, dragging }
 
   function _startNchDrag(payload, e) {
-    if (!_root || !_mini) {}
+    if (!_root || !_mini) {
+      // If the HUD hasn't mounted yet, don't crash.
+      return;
+    }
 
     // Don't allow during STR combat (locked)
     if (_root && _root.classList.contains('locked')) {
@@ -569,7 +572,14 @@ var NonCombatHUD = (function() {
       dragging: false
     }, payload);
 
-    try { _root.setPointerCapture(e.pointerId); } catch (err) {}
+    // External drags (from left column) should feel immediate on desktop.
+    if (_nchDrag.kind === 'stash_card') {
+      _nchDrag.dragging = true;
+      _ensureGhost(e.clientX, e.clientY);
+    }
+
+    try { e.preventDefault && e.preventDefault(); } catch (eP0) {}
+    try { e.stopPropagation && e.stopPropagation(); } catch (eS0) {}
 
     document.addEventListener('pointermove', _onNchDragMove);
     document.addEventListener('pointerup', _onNchDragUp);

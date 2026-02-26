@@ -342,6 +342,9 @@ var RogueSidebar = (function() {
                 NonCombatHUD.startExternalDrag({ kind: 'stash_card', id: cardId, emoji: '👆' }, e);
                 return;
               }
+              if (typeof TooltipSystem !== 'undefined') {
+                TooltipSystem.showPersistent('⚠️ NCH not ready (drag disabled)', 900);
+              }
             } catch (e0) {}
           });
 
