@@ -977,6 +977,52 @@
       });
     }
 
+    // Callsign presets (mobile-friendly)
+    (function initCallsignPresets() {
+      var preset = document.getElementById('register-callsign-preset');
+      var customWrap = document.getElementById('register-callsign-custom-wrapper');
+      var customInput = document.getElementById('register-callsign');
+      if (!preset) return;
+
+      var PRESETS = [
+        '007','RED','BLUE','SOLID SNAKE','LARA CROFT','SAMUS','RAIDEN','FOXHOUND','NOMAD','RAVEN',
+        'ECHO','NIFTY','MOK','AWOL','GHOST','SCOUT','MEDIC','HEAVY','TECH','VIPER',
+        'HOUND','WRAITH','ORACLE','SABER','FALCON','HUNTER','SPECTER','KILO','SIGMA','TANGO'
+      ];
+
+      // populate (keep placeholder + custom)
+      try {
+        for (var i = 0; i < PRESETS.length; i++) {
+          var opt = document.createElement('option');
+          opt.value = PRESETS[i];
+          opt.textContent = PRESETS[i];
+          preset.insertBefore(opt, preset.querySelector('option[value="__custom__"]'));
+        }
+      } catch (e0) {}
+
+      function showCustom(on) {
+        if (customWrap) customWrap.style.display = on ? 'block' : 'none';
+        if (customInput) {
+          if (on) {
+            setTimeout(function() { try { customInput.focus(); } catch (e1) {} }, 0);
+          } else {
+            customInput.value = '';
+          }
+        }
+      }
+
+      preset.addEventListener('change', function() {
+        var v = (preset.value || '').trim();
+        if (v === '__custom__') {
+          showCustom(true);
+        } else {
+          showCustom(false);
+          // stash chosen value into the actual callsign input for existing submit code
+          if (customInput) customInput.value = v;
+        }
+      });
+    })();
+
     // Add validation for registration fields
     var registerUsername = document.getElementById('register-username');
     if (registerUsername) {
@@ -1295,6 +1341,9 @@
     if (!callsign) {
       callsign = username;
     }
+
+    // Normalize callsign for server (uppercase, spaces->hyphen)
+    callsign = String(callsign || '').trim().toUpperCase().replace(/\s+/g, '-');
 
     // Disable button during request
     var submitBtn = document.getElementById('register-submit-btn');

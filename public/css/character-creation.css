@@ -97,6 +97,41 @@
   border-bottom-color: #ff1c4a;
 }
 
+.cc-select {
+  background: rgba(0,0,0,0.1);
+  border: 1px solid #222;
+  color: #ccc;
+  font-family: 'Courier New', monospace;
+  font-size: clamp(0.85rem, 2vw, 1rem);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 10px 12px;
+  border-radius: 10px;
+  margin-bottom: 0.8em;
+  width: min(520px, 90vw);
+  outline: none;
+}
+
+.cc-select:focus {
+  border-color: #ff1c4a;
+  box-shadow: 0 0 0 2px rgba(255, 28, 74, 0.15);
+}
+
+.cc-confirm-btn {
+  margin-top: 10px;
+  background: rgba(255, 28, 74, 0.12);
+  border: 1px solid rgba(255, 28, 74, 0.45);
+  color: #ff1c4a;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.12em;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.cc-confirm-btn:hover { filter: brightness(1.15); }
+.cc-confirm-btn:active { transform: translateY(1px); }
+
 /* ---- Validation ---- */
 
 .cc-validation {

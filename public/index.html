@@ -183,8 +183,15 @@
                     <span class="field-validation" id="username-validation"></span>
                   </div>
                   <div class="form-field">
-                    <label for="register-callsign">CALLSIGN (optional)</label>
-                    <input type="text" id="register-callsign" placeholder="Display name (defaults to username)" autocomplete="off" />
+                    <label for="register-callsign-preset">CALLSIGN</label>
+                    <select id="register-callsign-preset" class="auth-select">
+                      <option value="" selected>SELECT A CALLSIGN…</option>
+                      <option value="__custom__">CUSTOM…</option>
+                    </select>
+                    <div id="register-callsign-custom-wrapper" style="display:none; margin-top:6px;">
+                      <input type="text" id="register-callsign" placeholder="Custom callsign" autocomplete="off" />
+                      <div class="field-validation" style="opacity:0.75; font-size: 11px; margin-top:4px;">If taken, we’ll append “-2”.</div>
+                    </div>
                   </div>
                   <div class="form-field">
                     <label for="register-email">EMAIL (optional)</label>

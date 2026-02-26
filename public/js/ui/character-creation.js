@@ -99,6 +99,32 @@ const CharacterCreation = (function () {
   //  STEP 1 — CALLSIGN
   // ================================================================
 
+  var CALLSIGN_PRESETS = [
+    '007','RED','BLUE','SOLID SNAKE','LARA CROFT','SAMUS','RAIDEN','FOXHOUND','NOMAD','RAVEN',
+    'ECHO','NIFTY','MOK','AWOL','GHOST','SCOUT','MEDIC','HEAVY','TECH','VIPER',
+    'HOUND','WRAITH','ORACLE','SABER','FALCON','HUNTER','SPECTER','KILO','SIGMA','TANGO'
+  ];
+
+  var CALLSIGN_RESERVE_KEY = 'EYESONLY_CALLSIGN_RESERVATIONS_V1';
+  function _reserveCallsign(base) {
+    base = String(base || '').trim().toUpperCase().replace(/\s+/g, '-');
+    if (!base) return '';
+
+    var used = {};
+    try { used = JSON.parse(localStorage.getItem(CALLSIGN_RESERVE_KEY) || '{}') || {}; } catch (e0) { used = {}; }
+
+    if (!used[base]) {
+      used[base] = 1;
+      try { localStorage.setItem(CALLSIGN_RESERVE_KEY, JSON.stringify(used)); } catch (e1) {}
+      return base;
+    }
+
+    var n = Number(used[base] || 1) + 1;
+    used[base] = n;
+    try { localStorage.setItem(CALLSIGN_RESERVE_KEY, JSON.stringify(used)); } catch (e2) {}
+    return base + '-' + n;
+  }
+
   function _renderCallsignStep() {
     _step = STEP.CALLSIGN;
     _overlay.innerHTML = '';
@@ -113,12 +139,38 @@ const CharacterCreation = (function () {
     _overlay.appendChild(flavour);
 
     // Label
-    var label = _el('div', 'cc-label', 'ENTER CALLSIGN (2-12 CHARACTERS):');
+    var label = _el('div', 'cc-label', 'SELECT CALLSIGN (OR CUSTOM):');
     _overlay.appendChild(label);
 
-    // Input row: "> ___________"
+    // Preset selector
+    var sel = document.createElement('select');
+    sel.className = 'cc-select';
+    sel.id = 'cc-callsign-preset';
+
+    var opt0 = document.createElement('option');
+    opt0.value = '';
+    opt0.textContent = 'SELECT…';
+    sel.appendChild(opt0);
+
+    for (var i = 0; i < CALLSIGN_PRESETS.length; i++) {
+      var o = document.createElement('option');
+      o.value = CALLSIGN_PRESETS[i];
+      o.textContent = CALLSIGN_PRESETS[i];
+      sel.appendChild(o);
+    }
+
+    var optC = document.createElement('option');
+    optC.value = '__custom__';
+    optC.textContent = 'CUSTOM…';
+    sel.appendChild(optC);
+
+    _overlay.appendChild(sel);
+
+    // Custom input row (hidden unless custom)
     var row = document.createElement('div');
     row.className = 'cc-input-row';
+    row.id = 'cc-custom-row';
+    row.style.display = 'none';
 
     var prompt = _el('span', 'cc-prompt', '> ');
     row.appendChild(prompt);
@@ -139,17 +191,70 @@ const CharacterCreation = (function () {
     validMsg.id = 'cc-validation-msg';
     _overlay.appendChild(validMsg);
 
-    // Hint
-    var hint = _el('div', 'cc-hint', 'Letters, numbers, hyphens. Press ENTER to confirm.');
-    _overlay.appendChild(hint);
+    // Confirm button
+    var btn = document.createElement('button');
+    btn.className = 'cc-confirm-btn';
+    btn.textContent = 'CONFIRM';
+    btn.type = 'button';
+    _overlay.appendChild(btn);
 
-    // Focus after animation frame
-    requestAnimationFrame(function () {
-      _input.focus();
+    function _confirm(raw0) {
+      var raw = String(raw0 || '').trim().toUpperCase();
+      var validMsg = document.getElementById('cc-validation-msg');
+
+      // Validate
+      if (raw.length < 2) {
+        validMsg.textContent = 'Too short. Minimum 2 characters.';
+        validMsg.className = 'cc-validation cc-validation-error';
+        return;
+      }
+      if (raw.length > 12) {
+        validMsg.textContent = 'Too long. Maximum 12 characters.';
+        validMsg.className = 'cc-validation cc-validation-error';
+        return;
+      }
+      if (!/^[A-Z0-9][A-Z0-9\-_]*[A-Z0-9]$/.test(raw) && raw.length > 1) {
+        validMsg.textContent = 'Invalid. Use A-Z, 0-9, hyphens, underscores.';
+        validMsg.className = 'cc-validation cc-validation-error';
+        return;
+      }
+
+      _callsign = _reserveCallsign(raw);
+      _renderAvatarStep();
+    }
+
+    sel.addEventListener('change', function() {
+      var v = (sel.value || '').trim();
+      var customRow = document.getElementById('cc-custom-row');
+      if (v === '__custom__') {
+        customRow.style.display = 'flex';
+        requestAnimationFrame(function() { try { _input.focus(); } catch (e0) {} });
+      } else {
+        customRow.style.display = 'none';
+        if (_input) _input.value = '';
+      }
     });
 
-    // Key handler
-    _input.addEventListener('keydown', _onCallsignKey);
+    if (_input) {
+      _input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          _confirm(_input.value);
+        }
+      });
+    }
+
+    btn.addEventListener('click', function() {
+      var v = (sel.value || '').trim();
+      if (v === '__custom__') {
+        _confirm(_input.value);
+      } else {
+        _confirm(v);
+      }
+    });
+
+    // focus selector by default (prevents keyboard on mobile)
+    requestAnimationFrame(function() { try { sel.focus(); } catch (e0) {} });
   }
 
   function _onCallsignKey(e) {
