@@ -18,11 +18,12 @@ The repository DOES have a reserve slots system that dynamically renders action 
 
 ### Current Gone Rogue Button Structure (reserve-slots.js render())
 
-When Gone Rogue mode is active, the reserve slots system renders:
+When Gone Rogue mode is active, the reserve slots system renders up to **6 buttons max**:
 
+**Cards View:**
 ```
 ┌─────────────────────────────────────┐
-│ [◀ back]                            │  ← Always shown
+│ [← items]                           │  ← Swapper: switches to inventory view
 ├─────────────────────────────────────┤
 │ [↑↓]                                │  ← Cycle button (only if >4 cards)
 ├─────────────────────────────────────┤
@@ -33,6 +34,23 @@ When Gone Rogue mode is active, the reserve slots system renders:
 │ [🃏 CARD3]                          │  ← Card slot 3 (if card present)
 ├─────────────────────────────────────┤
 │ [🃏 CARD4]                          │  ← Card slot 4 (if card present)
+└─────────────────────────────────────┘
+```
+
+**Inventory View:**
+```
+┌─────────────────────────────────────┐
+│ [cards →]                           │  ← Swapper: switches back to cards view
+├─────────────────────────────────────┤
+│ [↑↓]                                │  ← Cycle button (only if >4 items)
+├─────────────────────────────────────┤
+│ [📦 ITEM1]                          │  ← Inventory slot 1
+├─────────────────────────────────────┤
+│ [📦 ITEM2]                          │  ← Inventory slot 2
+├─────────────────────────────────────┤
+│ [📦 ITEM3]                          │  ← Inventory slot 3
+├─────────────────────────────────────┤
+│ [📦 ITEM4]                          │  ← Inventory slot 4
 └─────────────────────────────────────┘
 ```
 
@@ -51,57 +69,40 @@ When Gone Rogue mode is active, the reserve slots system renders:
 
 ### Current Implementation (reserve-slots.js)
 ```
-1. [back]         ← ✅ Exits Gone Rogue (calls _handleBackClick)
-2. [↑↓]           ← ❓ Cycle button (only if >4 cards)
+Cards View:
+1. [← items]     ← ✅ Swapper to inventory view
+2. [↑↓]           ← ✅ Cycle button (only if >4 cards)
 3. [🃏 CARD]      ← ✅ Action card slots (up to 4)
 4. [🃏 CARD]
 5. [🃏 CARD]
 6. [🃏 CARD]
+
+Inventory View:
+1. [cards →]     ← ✅ Swapper back to cards view
+2. [↑↓]           ← ✅ Cycle button (only if >4 items)
+3-6. [📦 ITEM]   ← ✅ Inventory slots (up to 4)
 ```
 
 ### Gap Analysis
 
-**Missing:**
-1. ❌ **Inventory button not included in Gone Rogue layout**
-2. ❌ **Sort button not implemented** (cycle button exists instead)
-
-**Differences:**
-- Current: Cycle button (↑↓) for rotating through >4 cards
-- Required: Sort button (◀▶) for reordering cards
+**Previously Missing (now fixed):**
+1. ✅ **Inventory/swapper button** — replaced separate back+inventory buttons with a single `← items` / `cards →` toggle
+2. ✅ **Max 6 buttons constraint** — enforced by removing the back button and using a single swapper
 
 **Present:**
-- ✅ Back button with exit functionality
+- ✅ Swapper button (`← items` / `cards →`) toggles between card and inventory views
 - ✅ Dynamic action card slots (up to 4 visible)
 - ✅ Card abbreviation system (vowel-drop)
 - ✅ Quality color coding
 - ✅ Long-press tooltips
 - ✅ Click handlers for card selection
-
-## Required Changes
-
-To match the problem statement requirements:
-
-1. **Add Inventory Button**
-   - Insert between back button and first card slot
-   - Always visible (even when no cards)
-   - Opens inventory overlay on click
-
-2. **Consider Sort vs Cycle**
-   - Current: Cycle button rotates view (for >4 cards)
-   - Required: Sort button reorders cards
-   - May need both functionalities
-
-3. **Empty Slot Placeholders**
-   - Show greyed-out slots when cards < 4
-   - Visual indication of available capacity
-   - Match problem statement: "empty action button containers show appropriate placeholders"
+- ✅ Inventory item slots (up to 4 visible)
 
 ## Verification Status
 
-✅ **Back button** - Correctly exits Gone Rogue to terminal
+✅ **Swapper button** - Toggles between cards and inventory views
 ✅ **Action card buttons** - Implemented with full functionality
 ✅ **Card cycling** - Works for >4 cards
+✅ **Inventory cycling** - Works for >4 items
 ✅ **Vowel-drop abbreviation** - Matches EyesOnly conventions
-❌ **Inventory button** - NOT included in Gone Rogue layout
-❌ **Sort button** - Not implemented (cycle exists instead)
-❓ **Empty slot placeholders** - Need to verify rendering behavior
+✅ **Max 6 buttons** - Enforced by layout design
