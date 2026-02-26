@@ -225,6 +225,128 @@ userAuthRoutes.get('/inventory', async (c) => {
 });
 
 /**
+ * GET /api/user/inventory/instances
+ * Returns an "instance view" of inventory rows where quantity>1 is expanded into separate instances.
+ * Oldest-first semantics are supported by sorting by acquired_at ascending.
+ */
+userAuthRoutes.get('/inventory/instances', async (c) => {
+  const sessionToken = c.req.header('X-Session-Token');
+  if (!sessionToken) return c.json({ error: 'UNAUTHORIZED', message: 'Session token required' }, 401);
+
+  const session = await getUserSession(c.env.DB, sessionToken);
+  if (!session) return c.json({ error: 'UNAUTHORIZED', message: 'Invalid or expired session' }, 401);
+
+  const inventory = await getUserInventory(c.env.DB, session.user_id);
+  const rows = (inventory || []).slice().sort((a: any, b: any) => (a.acquired_at || 0) - (b.acquired_at || 0));
+
+  const instances: any[] = [];
+  for (const row of rows) {
+    const q = Math.max(1, Math.floor(Number((row as any).quantity ?? 1) || 1));
+    let md: any = {};
+    try { md = row.metadata ? JSON.parse(row.metadata) : {}; } catch { md = {}; }
+    for (let i = 0; i < q; i++) {
+      instances.push({
+        inventory_row_id: row.id,
+        instance_index: i,
+        item_id: row.item_id,
+        item_type: row.item_type,
+        metadata: md,
+        acquired_at: row.acquired_at,
+      });
+    }
+  }
+
+  return c.json({ instances });
+});
+
+/**
+ * POST /api/user/inventory/consume
+ * Consume inventory instances (oldest-first by default).
+ *
+ * Body supports two shapes:
+ *  A) Explicit instances:
+ *     { instances: [{ inventory_row_id:number, instance_index:number }, ...] }
+ *  B) Selector:
+ *     { item_id: string, count: number, item_type?: 'persistent'|'loose' }
+ */
+userAuthRoutes.post('/inventory/consume', async (c) => {
+  const sessionToken = c.req.header('X-Session-Token');
+  if (!sessionToken) return c.json({ error: 'UNAUTHORIZED', message: 'Session token required' }, 401);
+
+  const session = await getUserSession(c.env.DB, sessionToken);
+  if (!session) return c.json({ error: 'UNAUTHORIZED', message: 'Invalid or expired session' }, 401);
+  const userId = session.user_id;
+
+  const body = await c.req.json<any>().catch(() => ({} as any));
+
+  // Load inventory rows oldest-first for deterministic selection.
+  const inv = await getUserInventory(c.env.DB, userId);
+  const rows = (inv || []).slice().sort((a: any, b: any) => (a.acquired_at || 0) - (b.acquired_at || 0));
+
+  // helper: decrement a row by n
+  async function decRow(rowId: number, n: number) {
+    const row = rows.find((r: any) => r.id === rowId);
+    if (!row) throw new Error('Inventory row not found');
+    const cur = Math.max(0, Math.floor(Number(row.quantity || 0) || 0));
+    if (cur < n) throw new Error('Insufficient quantity');
+    const next = cur - n;
+    if (next <= 0) {
+      await c.env.DB.prepare('DELETE FROM user_inventory WHERE id = ? AND user_id = ?').bind(rowId, userId).run();
+    } else {
+      await c.env.DB.prepare('UPDATE user_inventory SET quantity = ? WHERE id = ? AND user_id = ?').bind(next, rowId, userId).run();
+    }
+    row.quantity = next;
+  }
+
+  const consumed: any[] = [];
+
+  if (Array.isArray(body.instances) && body.instances.length) {
+    // Explicit consumption: group by row id and decrement counts.
+    const byRow = new Map<number, number>();
+    for (const inst of body.instances) {
+      const rid = parseInt(String(inst?.inventory_row_id || 0), 10);
+      if (!rid) continue;
+      byRow.set(rid, (byRow.get(rid) || 0) + 1);
+      consumed.push({ inventory_row_id: rid, instance_index: Number(inst?.instance_index ?? 0) });
+    }
+    if (!byRow.size) return c.json({ error: 'BAD_REQUEST', message: 'No valid instances provided' }, 400);
+
+    for (const [rid, n] of byRow.entries()) {
+      await decRow(rid, n);
+    }
+
+    return c.json({ ok: true, consumed });
+  }
+
+  // Selector mode
+  const itemId = String(body.item_id || '').trim();
+  const count = Math.max(1, Math.floor(Number(body.count ?? 1) || 1));
+  const itemType = body.item_type ? String(body.item_type) : null;
+  if (!itemId) return c.json({ error: 'BAD_REQUEST', message: 'item_id required' }, 400);
+
+  // Walk oldest rows and consume until satisfied.
+  let remaining = count;
+  for (const row of rows) {
+    if (row.item_id !== itemId) continue;
+    if (itemType && row.item_type !== itemType) continue;
+    const cur = Math.max(0, Math.floor(Number(row.quantity || 0) || 0));
+    if (cur <= 0) continue;
+
+    const take = Math.min(cur, remaining);
+    await decRow(row.id, take);
+    for (let i = 0; i < take; i++) consumed.push({ inventory_row_id: row.id });
+    remaining -= take;
+    if (remaining <= 0) break;
+  }
+
+  if (remaining > 0) {
+    return c.json({ error: 'INSUFFICIENT', message: 'Insufficient inventory to consume' }, 409);
+  }
+
+  return c.json({ ok: true, consumed });
+});
+
+/**
  * POST /api/user/merge-local-data
  * Import legacy localStorage state into the account.
  *
