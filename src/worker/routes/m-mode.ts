@@ -537,6 +537,30 @@ mModeRoutes.post('/join-code', async (c) => {
 });
 
 /**
+ * GET /api/m/scenario/user-roles/:scenarioId
+ * List scenario-scoped user roles (e.g. ops moderators).
+ */
+mModeRoutes.get('/scenario/user-roles/:scenarioId', async (c) => {
+  const scenarioId = parseInt(c.req.param('scenarioId'), 10);
+  const role = (c.req.query('role') || '').trim();
+  if (!scenarioId) return c.json({ error: 'BAD_REQUEST', message: 'scenarioId required' }, 400);
+
+  const rows = await c.env.DB
+    .prepare(
+      `SELECT r.role, r.user_id, u.callsign, u.username, r.created_at
+       FROM scenario_user_roles r
+       JOIN user_accounts u ON u.id = r.user_id
+       WHERE r.scenario_id = ?
+         AND (? = '' OR r.role = ?)
+       ORDER BY r.role, u.callsign`,
+    )
+    .bind(scenarioId, role, role)
+    .all<{ role: string; user_id: number; callsign: string; username: string; created_at: number }>();
+
+  return c.json({ roles: rows.results });
+});
+
+/**
  * POST /api/m/scenario/user-role
  * Director grants/revokes a scenario-scoped role for a user account.
  * (This is the "Ops is a moderator tag applied by M" primitive.)

@@ -1110,6 +1110,27 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
         <div id="actor-roster" style="max-height:140px;overflow-y:auto;padding:2px 0;">${actorRows}</div>
       </div>
       <div class="ctrl-section">
+        <h3>MODERATOR CONTROL</h3>
+        <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Assign scenario-scoped roles to accounts (Ops = moderator tag).</div>
+        <div id="m-role-ops-list" style="max-height:90px;overflow-y:auto;font-size:9px;color:var(--text-dim);padding:2px 0;">
+          <div style="font-size:9px;color:var(--text-dim);padding:4px 0;">Loading ops roles…</div>
+        </div>
+        <div style="margin-top:6px;">
+          <div class="ctrl-row">
+            <div class="ctrl-field" style="flex:1;"><label>CALLSIGN</label><input type="text" id="m-role-callsign" placeholder="ECHO" /></div>
+            <div class="ctrl-field" style="width:120px;"><label>ROLE</label>
+              <select id="m-role-name"><option value="ops">ops</option></select>
+            </div>
+          </div>
+          <div class="ctrl-row" style="gap:4px;">
+            <button class="ctrl-btn" id="m-role-grant" style="font-size:8px;">GRANT</button>
+            <button class="ctrl-btn amber" id="m-role-revoke" style="font-size:8px;">REVOKE</button>
+          </div>
+          <div id="m-role-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
+        </div>
+      </div>
+
+      <div class="ctrl-section">
         <h3>LIVE TELEMETRY</h3>
         <div id="actor-telemetry-list" style="max-height:150px;overflow-y:auto;padding:2px 0;">
           <div style="font-size:9px;color:var(--text-dim);padding:4px 0;">Loading positions…</div>
@@ -1291,6 +1312,77 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
 
   // Populate lane dropdown for assignment
   populateLaneSelect('ctrl-assign-lane-select', session);
+
+  // Moderator control (ops roles)
+  (async function initModeratorControl() {
+    async function loadOpsRoles() {
+      const listEl = document.getElementById('m-role-ops-list');
+      if (!listEl) return;
+      try {
+        const res = await mFetch(`/m/scenario/user-roles/${session.scenarioId}?role=ops`, session);
+        if (!res.ok) { listEl.innerHTML = '<div style="color:var(--red);font-size:9px;">UNAVAIL</div>'; return; }
+        const data = await res.json() as any;
+        const roles = (data.roles || []) as any[];
+        if (!roles.length) {
+          listEl.innerHTML = '<div style="font-size:9px;color:var(--text-dim);padding:4px 0;">No ops moderators.</div>';
+          return;
+        }
+        listEl.innerHTML = roles.map((r) => {
+          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(40,40,40,0.3);">
+            <span class="actor-badge team-red" style="font-size:9px;">${r.callsign}</span>
+            <button class="btn btn-small" data-action="revoke-ops" data-callsign="${r.callsign}" style="font-size:8px;">REVOKE</button>
+          </div>`;
+        }).join('');
+
+        listEl.querySelectorAll('button[data-action="revoke-ops"]').forEach((b: any) => {
+          b.onclick = async () => {
+            const callsign = b.getAttribute('data-callsign') || '';
+            await setRole(callsign, 'ops', false);
+          };
+        });
+      } catch {
+        listEl.innerHTML = '<div style="color:var(--red);font-size:9px;">ERROR</div>';
+      }
+    }
+
+    async function setRole(callsign: string, role: string, enabled: boolean) {
+      const resultEl = document.getElementById('m-role-result');
+      try {
+        if (resultEl) resultEl.textContent = enabled ? 'Granting…' : 'Revoking…';
+        const res = await mFetch('/m/scenario/user-role', session, {
+          method: 'POST',
+          body: JSON.stringify({ scenario_id: session.scenarioId, callsign, role, enabled }),
+        } as any);
+        const d = await res.json().catch(() => ({} as any)) as any;
+        if (!res.ok) throw new Error(d?.message || `Role update failed (${res.status})`);
+        if (resultEl) resultEl.textContent = enabled ? `Granted ${role} to ${callsign}.` : `Revoked ${role} from ${callsign}.`;
+        loadOpsRoles();
+      } catch (e: any) {
+        if (resultEl) resultEl.textContent = e?.message || 'Role update failed.';
+      }
+    }
+
+    const grantBtn = document.getElementById('m-role-grant') as HTMLButtonElement | null;
+    const revokeBtn = document.getElementById('m-role-revoke') as HTMLButtonElement | null;
+    const csInput = document.getElementById('m-role-callsign') as HTMLInputElement | null;
+    const roleSel = document.getElementById('m-role-name') as HTMLSelectElement | null;
+
+    grantBtn && (grantBtn.onclick = () => {
+      const callsign = (csInput?.value || '').trim().toUpperCase();
+      const role = (roleSel?.value || 'ops').trim();
+      if (!callsign) return;
+      setRole(callsign, role, true);
+    });
+
+    revokeBtn && (revokeBtn.onclick = () => {
+      const callsign = (csInput?.value || '').trim().toUpperCase();
+      const role = (roleSel?.value || 'ops').trim();
+      if (!callsign) return;
+      setRole(callsign, role, false);
+    });
+
+    loadOpsRoles();
+  })();
 
   // Live telemetry refresh
   loadActorPositions(session);
