@@ -706,6 +706,8 @@ const DebriefFeedController = (function() {
               return 520;
             }
 
+            var _timerMs = 0; // Track interval speed separately (setInterval returns a number, can't set props on it)
+
             function _renderOnce() {
               var b = _getBatt();
               var pct = b.maxB ? (b.batt / b.maxB) : 0;
@@ -753,10 +755,10 @@ const DebriefFeedController = (function() {
 
               // adjust interval if tier changed
               var want = _speedForTier(tier);
-              if (!_timer || _timer._ms !== want) {
+              if (!_timer || _timerMs !== want) {
                 if (_timer) clearInterval(_timer);
                 _timer = setInterval(_renderOnce, want);
-                _timer._ms = want;
+                _timerMs = want;
               }
             }
 
