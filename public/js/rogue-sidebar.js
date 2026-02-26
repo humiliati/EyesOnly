@@ -83,7 +83,7 @@ var RogueSidebar = (function() {
     if (!_container) return;
     if (_container.dataset.rogueSidebarActive !== '1') {
       _container.dataset.rogueSidebarActive = '1';
-      _container.dataset.dropzone = 'stash';
+      _container.dataset.dropzone = 'backup';
 
       // When the rogue sidebar takes over the left column, ensure the NCH overlay is
       // available (it lives outside the control rail, but should feel like the same surface).
@@ -102,7 +102,8 @@ var RogueSidebar = (function() {
 
     // Fetch refs early so we can enforce first-pickup UX.
     var items = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentInventory) ? (GAMESTATE.getPersistentInventory() || []) : [];
-    var cards = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentCards) ? (GAMESTATE.getPersistentCards() || []) : [];
+    // The "cards" view shows the NCH backup deck (canonical, shared with NCH panel).
+    var backupCards = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getBackupCards) ? (GAMESTATE.getBackupCards() || []) : [];
 
     // New-player UX: if items just became non-empty (e.g., first key pickup), force items view.
     try {
@@ -189,9 +190,9 @@ var RogueSidebar = (function() {
       return;
     }
 
-    var list = (view === 'items') ? items : cards;
+    var list = (view === 'items') ? items : backupCards;
     var offsetKey = (view === 'items') ? 'itemOffset' : 'cardOffset';
-    var offset = Number(_prefs[offsetKey] || 0);
+    var offset = (view === 'items') ? Number(_prefs.itemOffset || 0) : 0;
 
     // 3D Printer armed state (for x2 cue on eligible ammo/battery cards)
     var printerArmed = false;
@@ -208,17 +209,16 @@ var RogueSidebar = (function() {
     if (!isFinite(offset) || offset < 0) offset = 0;
 
     var maxVisible = 4;
-    var maxOffset = Math.max(0, list.length - maxVisible);
+    var maxOffset = (view === 'items') ? Math.max(0, list.length - maxVisible) : 0;
     if (offset > maxOffset) offset = maxOffset;
-    _prefs[offsetKey] = offset;
+    if (view === 'items') _prefs.itemOffset = offset;
 
     // Signature to avoid re-render flicker (hover flashing)
     var sigParts = [
       'v=' + view,
       'io=' + (_prefs.itemOffset || 0),
-      'co=' + (_prefs.cardOffset || 0),
       'il=' + items.length,
-      'cl=' + cards.length,
+      'cl=' + backupCards.filter(function(r) { return r && r.id; }).length,
       'ai=' + (activeItem && activeItem.id ? activeItem.id : ''),
       'pa=' + (printerArmed ? '1' : '0')
     ];
@@ -335,13 +335,19 @@ var RogueSidebar = (function() {
             if (!e || e.pointerType === 'touch') return;
             if (e.button !== undefined && e.button !== 0) return;
 
-            var cardId = (cards[Number(e.currentTarget.dataset.index)] || {}).id;
-            if (!cardId) return;
+            var bIdx = Number(e.currentTarget.dataset.index);
+            var bRef = (backupCards[bIdx] || null);
+            var bCardId = bRef ? bRef.id : null;
+            if (!bCardId) return;
 
-            // Start NCH drag pipeline so the user can drop onto NCH hand/backup or onto the map.
+            var bCardDef = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) ? GoneRogueDataRegistry.getCard(bCardId) : null;
+            var bEmoji = bCardDef ? (bCardDef.emoji || '🃏') : '🃏';
+
+            // Use the canonical NCH drag engine with kind:'backup' so drop onto NCH hand
+            // calls moveBackupIndexToHand, which is the same as clicking the HAND→ button.
             try {
               if (typeof NonCombatHUD !== 'undefined' && typeof NonCombatHUD.startExternalDrag === 'function') {
-                NonCombatHUD.startExternalDrag({ kind: 'stash_card', id: cardId, emoji: '👆' }, e);
+                NonCombatHUD.startExternalDrag({ kind: 'backup', backupIndex: bIdx, id: bCardId, emoji: bEmoji }, e);
                 return;
               }
               if (typeof TooltipSystem !== 'undefined') {
@@ -352,34 +358,24 @@ var RogueSidebar = (function() {
 
           btn.addEventListener('click', function(e) {
             e.stopPropagation();
-            var cardId = (cards[Number(e.currentTarget.dataset.index)] || {}).id;
-            if (!cardId) return;
+            var bIdx = Number(e.currentTarget.dataset.index);
+            var bRef = (backupCards[bIdx] || null);
+            if (!bRef || !bRef.id) return;
 
-            // Shift-click: stash -> BACKUP (convenience)
-            if (e.shiftKey && typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.moveStashCardToBackup === 'function') {
-              var r = GAMESTATE.moveStashCardToBackup(cardId);
-              if (typeof TooltipSystem !== 'undefined') {
-                TooltipSystem.showPersistent(r && r.success ? '📦 Stash → BACKUP' : ('❌ Backup: ' + ((r && r.reason) ? r.reason : 'failed')), 900);
-              }
-              _lastSignature = null;
-              _render();
-              return;
+            // Click: backup -> HAND (canonical move via GAMESTATE, mirrors NCH "HAND→" button)
+            var okMove = false;
+            if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.moveBackupIndexToHand === 'function') {
+              okMove = !!GAMESTATE.moveBackupIndexToHand(bIdx).success;
             }
-
-            // Default: stash -> HAND (mirrors NCH + CH)
-            var okAdd = false;
-            if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addCardToHand === 'function') {
-              okAdd = !!GAMESTATE.addCardToHand(cardId, 1).success;
-            }
-            if (!okAdd) {
+            if (!okMove) {
               if (typeof TooltipSystem !== 'undefined') {
-                TooltipSystem.showPersistent('❌ Cannot add card to hand', 900);
+                TooltipSystem.showPersistent('❌ Cannot move to hand', 900);
               }
               return;
             }
 
             if (typeof TooltipSystem !== 'undefined') {
-              TooltipSystem.showPersistent('🃏 Added to hand', 650);
+              TooltipSystem.showPersistent('🃏 Moved to hand', 650);
             }
 
             _lastSignature = null;
@@ -391,21 +387,21 @@ var RogueSidebar = (function() {
       _container.appendChild(btn);
     }
 
-    // Slot 6: cycle (enabled only if overflow exists)
+    // Slot 6: cycle (enabled only for items view overflow)
     var cycleBtn = document.createElement('button');
     cycleBtn.type = 'button';
     cycleBtn.className = 'rogue-sidebar-btn rogue-sidebar-cycle';
 
-    var overflow = list.length > maxVisible;
+    var overflow = view === 'items' && list.length > maxVisible;
     cycleBtn.textContent = overflow ? '↻ Cycle' : ' '; // keep height stable
     if (!overflow) {
       cycleBtn.classList.add('disabled');
       cycleBtn.disabled = true;
     } else {
       cycleBtn.addEventListener('click', function() {
-        var next = (_prefs[offsetKey] || 0) + 1;
+        var next = (_prefs.itemOffset || 0) + 1;
         if (next > maxOffset) next = 0;
-        _prefs[offsetKey] = next;
+        _prefs.itemOffset = next;
         _savePrefs();
         _lastSignature = null;
         _render();

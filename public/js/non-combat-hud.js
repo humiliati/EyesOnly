@@ -682,7 +682,8 @@ var NonCombatHUD = (function() {
     if (el) {
       droppedOnHand = !!(el.closest && el.closest('#nch-hand'));
       droppedOnBackup = !!(el.closest && el.closest('#nch-backup'));
-      droppedOnSidebar = !!(el.closest && el.closest('[data-dropzone="stash"]'));
+      // Left column is now the backup zone (data-dropzone="backup") — same deck as NCH backup.
+      droppedOnSidebar = !!(el.closest && el.closest('[data-dropzone="backup"]'));
     }
 
     var ok = false;
@@ -704,25 +705,18 @@ var NonCombatHUD = (function() {
       return;
     }
 
-    // NCH -> RogueSidebar (return to stash)
-    if (droppedOnSidebar && (_nchDrag.kind === 'hand' || _nchDrag.kind === 'backup')) {
-      if (_nchDrag.kind === 'hand') {
-        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.returnCardFromHandToStash === 'function') {
-          ok = !!GAMESTATE.returnCardFromHandToStash(_nchDrag.id, 1).success;
-        }
-        if (ok && typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.consumeHandIndex) {
-          NonCombatStateStore.consumeHandIndex(_nchDrag.handIndex, 1);
-        }
-      } else {
-        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addPersistentCard === 'function') {
-          ok = !!GAMESTATE.addPersistentCard(_nchDrag.id, 1).success;
-        }
-        if (ok && typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.consumeBackupIndex) {
-          NonCombatStateStore.consumeBackupIndex(_nchDrag.backupIndex);
-        }
+    // NCH hand -> left column backup zone: move hand card back to backup
+    if (droppedOnSidebar && _nchDrag.kind === 'hand') {
+      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.moveHandIndexToBackup === 'function') {
+        ok = !!GAMESTATE.moveHandIndexToBackup(_nchDrag.handIndex).success;
       }
+      if (!ok && typeof TooltipSystem !== 'undefined') TooltipSystem.showPersistent('❌ BACKUP full or invalid', 900);
+      _nchDrag = null;
+      return;
+    }
 
-      if (!ok && typeof TooltipSystem !== 'undefined') TooltipSystem.showPersistent('❌ Cannot return to stash', 900);
+    // Dropping a backup card onto the backup zone (left column) is a no-op.
+    if (droppedOnSidebar && _nchDrag.kind === 'backup') {
       _nchDrag = null;
       return;
     }
