@@ -740,7 +740,19 @@ async function loadEvents(session: Session) {
           const sourceEventId = parseInt(btn.getAttribute('data-source-event-id') || '0', 10);
           const callsign = btn.getAttribute('data-callsign') || '';
           const itemsRaw = btn.getAttribute('data-items') || '';
-          const items = JSON.parse(decodeURIComponent(itemsRaw || '[]'));
+          const parsed = JSON.parse(decodeURIComponent(itemsRaw || '[]'));
+
+          // Items may be legacy string[] or metadata-aware objects.
+          const items = (Array.isArray(parsed) ? parsed : []).map((it: any) => {
+            if (typeof it === 'string') return it;
+            if (it && typeof it === 'object') {
+              const itemId = String(it.item_id || it.itemId || it.id || '').trim();
+              const md = it.metadata && typeof it.metadata === 'object' ? it.metadata : undefined;
+              return md ? { item_id: itemId, metadata: md } : itemId;
+            }
+            return null;
+          }).filter(Boolean);
+
 
           btn.disabled = true;
           btn.textContent = 'GRANTING…';
