@@ -1203,6 +1203,7 @@ const GAMESTATE = (function () {
   }
 
   // Consume active item and remove one instance from inventories (persistent/loose).
+  // If logged in, also attempt to consume from account inventory on the server.
   function consumeActiveItem() {
     var active = _state.activeItemSlot;
     if (!active || !active.id) {
@@ -1211,6 +1212,28 @@ const GAMESTATE = (function () {
     }
 
     var id = active.id;
+
+    // Best-effort server consume (oldest-first selector). We do NOT block local gameplay.
+    try {
+      if (typeof UserAccount !== 'undefined' && UserAccount.isLoggedIn && UserAccount.isLoggedIn()) {
+        var token = UserAccount.getSessionToken && UserAccount.getSessionToken();
+        if (token) {
+          fetch('/api/user/inventory/consume', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Session-Token': token,
+            },
+            body: JSON.stringify({ item_id: id, count: 1 }),
+          }).then(function(res) {
+            if (!res || !res.ok) {
+              // silent; local-only fallback covers us. merge-local-data can reconcile later.
+              return;
+            }
+          }).catch(function() {});
+        }
+      }
+    } catch (eFetch) {}
 
     function _dec(list) {
       if (!Array.isArray(list)) return false;
