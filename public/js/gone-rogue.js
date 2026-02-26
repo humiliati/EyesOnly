@@ -6526,6 +6526,13 @@ _incrementPityTimers();
       _forestBuildings = [];
       _tileMetadata = {};
 
+      // CRITICAL: Clear pre-computed visual grids so the renderer uses the NEW _grid
+      // instead of the stale biome visual grid from the previous floor.
+      _biomeVisualGrid = null;
+      _biomeBackgroundColors = null;
+      _tileRenderObjects = null;
+      _cachedWalls = [];
+
       // Place exit door (back to parent floor)
       var exitX = floorData.exit.x;
       var exitY = floorData.exit.y;
@@ -9512,10 +9519,20 @@ _incrementPityTimers();
           if (tile !== TILES.EXIT && tile !== TILES.DOOR) continue;
 
           var md = _tileMetadata[x + ',' + y];
-          var kind = md && md.type === 'door' ? md.doorKind : (tile === TILES.EXIT ? 'forward' : null);
+          var kind = null;
+          if (md && md.type === 'door') {
+            kind = md.doorKind;
+          } else if (md && md.type === 'building_door') {
+            kind = 'building';
+          } else if (tile === TILES.EXIT) {
+            kind = 'forward';
+          }
           if (!kind) continue;
 
-          var emoji = (kind === 'back') ? '↩️' : (kind === 'forward') ? '↪️' : '↕️';
+          var emoji = (kind === 'building') ? '↔️' :
+                      (kind === 'back') ? '↩️' :
+                      (kind === 'forward') ? '↪️' :
+                      (kind === 'interior_exit') ? '↩️' : '↕️';
           OverheadAnimator.showGenericExpression(x, y, emoji, 650);
           _lastDoorHintAtMs = now;
           return;

@@ -623,6 +623,7 @@ var TutorialFloors = (function() {
     // 20 rows × 40 cols — fills grid exactly
     // Road runs left-to-right through the middle rows
     // Tavern building in upper-left with a doorway gap at (6,5)
+    // Exit door at (30,10) — visible and within tap radius from spawn
     template: [
       '########################################',
       '#......................................#',
@@ -634,6 +635,7 @@ var TutorialFloors = (function() {
       '#..P...................................#',
       '#......................................#',
       '#......................................#',
+      '#..............................E.......#',
       '#......................................#',
       '#......................................#',
       '#......................................#',
@@ -641,15 +643,14 @@ var TutorialFloors = (function() {
       '#......................................#',
       '#......................................#',
       '#......................................#',
-      '#.....................................E#',
       '#......................................#',
       '########################################'
     ],
 
     // Player spawns on the left side of the road
     player: { x: 3, y: 7 },
-    // Exit on the far right — leads to Floor 1
-    exit: { x: 38, y: 17 },
+    // Exit door visible at center-right — scripted walk targets this door tile
+    exit: { x: 30, y: 10 },
 
     // Tavern building (visual overlay, impassable) — solid block (3-12, 2-4)
     // South wall (y=5) has a doorway gap at (6,5)
@@ -751,11 +752,10 @@ var TutorialFloors = (function() {
     enemies: [],
 
     breadcrumbPickups: [
-      { x: 12, y: 7, amount: 3 },
-      { x: 18, y: 7, amount: 3 },
-      { x: 24, y: 7, amount: 3 },
-      { x: 30, y: 7, amount: 5 },
-      { x: 35, y: 7, amount: 5 }
+      { x: 10, y: 7, amount: 3 },
+      { x: 16, y: 8, amount: 3 },
+      { x: 22, y: 9, amount: 3 },
+      { x: 27, y: 10, amount: 5 }
     ],
 
     border: {
