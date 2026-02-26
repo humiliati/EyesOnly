@@ -1500,13 +1500,18 @@ const GoneRogue = (function () {
           // Delay slightly so the grid renders before the walk starts
           setTimeout(function() {
             if (typeof GoneRogueMovement !== 'undefined' && GoneRogueMovement.setTarget) {
-              GoneRogueMovement.setTarget(exitTarget.x, exitTarget.y, {
-                isPassable: function(x, y) {
-                  if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) return false;
-                  var t = _grid[y] ? _grid[y][x] : null;
-                  return t === TILES.EMPTY || t === TILES.EXIT || t === TILES.DOOR || t === '~';
-                }
+              // Must init movement system at player pos before setting a target
+              GoneRogueMovement.init(_player.x, _player.y);
+              // collisionCheck(x,y) returns true if BLOCKED (matches findPath convention)
+              var pathFound = GoneRogueMovement.setTarget(exitTarget.x, exitTarget.y, function(x, y) {
+                return !_isWalkable(x, y);
               }, false);
+              // If pathfinding failed, abort scripted walk so player isn't stuck
+              if (!pathFound) {
+                console.warn('[GoneRogue] Scripted walk: no path to exit, aborting');
+                _scriptedWalk = false;
+                _scriptedWalkTarget = null;
+              }
             }
           }, 600);
         }
@@ -7907,13 +7912,14 @@ _incrementPityTimers();
         // Check for items, currency, enemies at new position
         _checkPlayerInteractions();
 
-        // Floor 0 scripted walk: when player reaches the exit, auto-advance to Floor 1
+        // Floor 0 scripted walk: when player reaches the exit tile, clear the scripted walk flag.
+        // The actual floor advance is handled by _checkPlayerInteractions → _attemptExtract.
         if (_scriptedWalk && _scriptedWalkTarget) {
           if (_player.x === _scriptedWalkTarget.x && _player.y === _scriptedWalkTarget.y) {
             _scriptedWalk = false;
             _scriptedWalkTarget = null;
             if (typeof GoneRogueMovement !== 'undefined') GoneRogueMovement.stop();
-            _advanceFloor();
+            // Door interaction in _checkPlayerInteractions handles the advance
           }
         }
       }
@@ -8716,7 +8722,7 @@ _incrementPityTimers();
           // Use LootTableManager if available
           if (typeof LootTableManager !== 'undefined' && LootTableManager.rollBreakableLoot) {
             var breakableType = breakable.type || 'default';
-            var currentBiome = _biome || 'COZY_FOREST';
+            var currentBiome = _getBiome(_floor) || 'COZY_FOREST';
 
             var rolledLoot = LootTableManager.rollBreakableLoot(breakableType, currentBiome);
 

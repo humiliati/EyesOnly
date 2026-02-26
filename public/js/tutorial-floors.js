@@ -622,13 +622,14 @@ var TutorialFloors = (function() {
 
     // 20 rows × 40 cols — fills grid exactly
     // Road runs left-to-right through the middle rows
+    // Tavern building in upper-left with a doorway gap at (6,5)
     template: [
       '########################################',
       '#......................................#',
-      '#..####.####...........................#',
-      '#..####.####...........................#',
-      '#..####.####...........................#',
-      '#......................................#',
+      '#..############........................#',
+      '#..############........................#',
+      '#..############........................#',
+      '#..###.######..........................#',
       '#......................................#',
       '#..P...................................#',
       '#......................................#',
@@ -650,37 +651,64 @@ var TutorialFloors = (function() {
     // Exit on the far right — leads to Floor 1
     exit: { x: 38, y: 17 },
 
-    // Tavern building (visual overlay, impassable) — upper-left cluster
+    // Tavern building (visual overlay, impassable) — solid block (3-12, 2-4)
+    // South wall (y=5) has a doorway gap at (6,5)
+    // Template walls handle collision; buildings array adds emoji overlays
     buildings: [
+      // Top row (y=2): full wall x=3-12
       { x: 3, y: 2, emoji: '🏚️', name: 'Old Tavern' },
       { x: 4, y: 2, emoji: '🏚️', name: 'Old Tavern' },
       { x: 5, y: 2, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 6, y: 2, emoji: '🏚️', name: 'Old Tavern' },
       { x: 7, y: 2, emoji: '🏚️', name: 'Old Tavern' },
       { x: 8, y: 2, emoji: '🏚️', name: 'Old Tavern' },
       { x: 9, y: 2, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 10, y: 2, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 11, y: 2, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 12, y: 2, emoji: '🏚️', name: 'Old Tavern' },
+      // Middle rows (y=3-4): full wall x=3-12
       { x: 3, y: 3, emoji: '🏚️', name: 'Old Tavern' },
       { x: 4, y: 3, emoji: '🏚️', name: 'Old Tavern' },
       { x: 5, y: 3, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 6, y: 3, emoji: '🏚️', name: 'Old Tavern' },
       { x: 7, y: 3, emoji: '🏚️', name: 'Old Tavern' },
       { x: 8, y: 3, emoji: '🏚️', name: 'Old Tavern' },
       { x: 9, y: 3, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 10, y: 3, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 11, y: 3, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 12, y: 3, emoji: '🏚️', name: 'Old Tavern' },
       { x: 3, y: 4, emoji: '🏚️', name: 'Old Tavern' },
       { x: 4, y: 4, emoji: '🏚️', name: 'Old Tavern' },
       { x: 5, y: 4, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 6, y: 4, emoji: '🏚️', name: 'Old Tavern' },
       { x: 7, y: 4, emoji: '🏚️', name: 'Old Tavern' },
       { x: 8, y: 4, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 9, y: 4, emoji: '🏚️', name: 'Old Tavern' }
+      { x: 9, y: 4, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 10, y: 4, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 11, y: 4, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 12, y: 4, emoji: '🏚️', name: 'Old Tavern' },
+      // South wall (y=5): gap at x=6 for doorway
+      { x: 3, y: 5, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 4, y: 5, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 5, y: 5, emoji: '🏚️', name: 'Old Tavern' },
+      // (6,5) = doorway — intentionally omitted
+      { x: 7, y: 5, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 8, y: 5, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 9, y: 5, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 10, y: 5, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 11, y: 5, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 12, y: 5, emoji: '🏚️', name: 'Old Tavern' }
     ],
 
-    // Tavern entrance door — leads to interior floor 0.1
+    // Tavern entrance door — at the doorway gap in the south wall (6,5)
     buildingDoors: [
-      { x: 6, y: 4, buildingId: 'BLD-TAVERN', targetFloorId: '0.1' }
+      { x: 6, y: 5, buildingId: 'BLD-TAVERN', targetFloorId: '0.1' }
     ],
 
     // Decorations (visual overlay, walkable)
     decorations: [
       // Trees along the road
-      { x: 15, y: 3, emoji: '🌳', name: 'Oak Tree' },
+      { x: 16, y: 3, emoji: '🌳', name: 'Oak Tree' },
       { x: 22, y: 2, emoji: '🌲', name: 'Pine Tree' },
       { x: 30, y: 4, emoji: '🌳', name: 'Oak Tree' },
       { x: 35, y: 2, emoji: '🌲', name: 'Pine Tree' },
@@ -692,8 +720,8 @@ var TutorialFloors = (function() {
       { x: 14, y: 14, emoji: '🪨', name: 'Boulder' },
       { x: 25, y: 15, emoji: '🌿', name: 'Fern' },
       { x: 33, y: 13, emoji: '🪨', name: 'Boulder' },
-      // Tavern sign
-      { x: 6, y: 5, emoji: '🪧', name: 'Tavern Sign' }
+      // Tavern sign near doorway
+      { x: 6, y: 6, emoji: '🪧', name: 'Tavern Sign' }
     ],
 
     // Hint NPC outside the tavern
@@ -715,7 +743,7 @@ var TutorialFloors = (function() {
     ],
 
     interactiveItems: [
-      { x: 6, y: 5, type: 'SIGN', emoji: '🪧', name: 'Tavern Sign',
+      { x: 6, y: 6, type: 'SIGN', emoji: '🪧', name: 'Tavern Sign',
         text: 'The Rusty Mug — Est. ???. "All adventurers welcome."' }
     ],
 
