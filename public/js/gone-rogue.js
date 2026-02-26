@@ -1526,11 +1526,13 @@ const GoneRogue = (function () {
       GoneRogueMobile.show();
       _updateMobileGrid();
 
-      // Show reserve card slots
-      if (typeof ReserveSlots !== 'undefined') {
-        ReserveSlots.show();
-        _updateReserveSlots();
+      // Show left column action buttons via BackupActionContainer (new unified overlay).
+      // This replaces legacy ReserveSlots which showed stale actionButtonCards data.
+      if (typeof BackupActionContainer !== 'undefined') {
+        BackupActionContainer.show();
       }
+      // Legacy ReserveSlots is no longer shown at game start — BackupActionContainer
+      // reads from CardStateAuthority (vault items / backup cards) for true state.
 
       // Suppress mobile keyboard when interactive grid is active
       if (typeof Terminal !== 'undefined' && typeof Terminal.suppressMobileKeyboard === 'function') {
@@ -9941,10 +9943,8 @@ _incrementPityTimers();
       _updateMobileGrid();
     }
 
-    // Update reserve slots (hand may have changed)
-    if (typeof ReserveSlots !== 'undefined') {
-      _updateReserveSlots();
-    }
+    // BackupActionContainer auto-re-renders via CardStateAuthority events.
+    // Legacy ReserveSlots update removed — no longer the primary left column UI.
 
     return result;
   }

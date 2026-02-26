@@ -944,13 +944,8 @@ var NonCombatHUD = (function() {
         ok = CardTransferManager.handToVault(_drag.index, 1);
       } else if (_useCSA) {
         ok = CardStateAuthority.moveHandToVault(_drag.index, 1);
-      } else if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addPersistentCard) {
-        ok = true;
-        try {
-          GAMESTATE.addPersistentCard(_drag.id, 1);
-          if (GAMESTATE.consumeCardFromHand) GAMESTATE.consumeCardFromHand(_drag.index, 1);
-        } catch (ex) { ok = false; }
       }
+      // No GAMESTATE-direct fallback — that path caused duplication
       _showDragResult(ok, 'Vaulted!', 'Cannot vault card');
       _drag = null;
       _renderAll();
@@ -963,13 +958,8 @@ var NonCombatHUD = (function() {
         ok = CardTransferManager.backupToVault(_drag.index);
       } else if (_useCSA) {
         ok = CardStateAuthority.moveBackupToVault(_drag.index);
-      } else if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addPersistentCard) {
-        ok = true;
-        try {
-          GAMESTATE.addPersistentCard(_drag.id, 1);
-          if (GAMESTATE.removeBackupCard) GAMESTATE.removeBackupCard(_drag.index);
-        } catch (ex) { ok = false; }
       }
+      // No GAMESTATE-direct fallback — that path caused duplication
       _showDragResult(ok, 'Vaulted from backup!', 'Cannot vault');
       _drag = null;
       _renderAll();
@@ -982,9 +972,8 @@ var NonCombatHUD = (function() {
         ok = CardTransferManager.vaultToBackup(_drag.id);
       } else if (_useCSA) {
         ok = CardStateAuthority.moveVaultToBackup(_drag.id);
-      } else if (typeof GAMESTATE !== 'undefined' && GAMESTATE.moveStashCardToBackup) {
-        ok = !!GAMESTATE.moveStashCardToBackup(_drag.id).success;
       }
+      // No GAMESTATE-direct fallback — that path caused duplication
       _showDragResult(ok, 'Moved to backup', 'Cannot move to backup');
       _drag = null;
       _renderAll();
@@ -997,9 +986,8 @@ var NonCombatHUD = (function() {
         ok = CardTransferManager.vaultToHand(_drag.id, 1);
       } else if (_useCSA) {
         ok = CardStateAuthority.moveVaultToHand(_drag.id, 1);
-      } else if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addCardToHand) {
-        ok = !!GAMESTATE.addCardToHand(_drag.id, 1).success;
       }
+      // No GAMESTATE-direct fallback — that path was ADD-only (no vault removal = dupe)
       _showDragResult(ok, 'Added to hand', 'Cannot add to hand');
       _drag = null;
       _renderAll();
@@ -1007,14 +995,19 @@ var NonCombatHUD = (function() {
     }
 
     // ── STASH CARD (external) → HAND or BACKUP ──
+    // Route through CardStateAuthority for proper move semantics
     if (_drag.kind === 'stash_card') {
       if (droppedOnHand) {
-        if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addCardToHand) {
-          ok = !!GAMESTATE.addCardToHand(_drag.id, 1).success;
+        if (_useCSA) {
+          ok = CardStateAuthority.moveVaultToHand(_drag.id, 1);
+        } else if (_useCTM) {
+          ok = CardTransferManager.vaultToHand(_drag.id, 1);
         }
       } else if (droppedOnBackup) {
-        if (typeof GAMESTATE !== 'undefined' && GAMESTATE.moveStashCardToBackup) {
-          ok = !!GAMESTATE.moveStashCardToBackup(_drag.id).success;
+        if (_useCSA) {
+          ok = CardStateAuthority.moveVaultToBackup(_drag.id);
+        } else if (_useCTM) {
+          ok = CardTransferManager.vaultToBackup(_drag.id);
         }
       }
       _showDragResult(ok, 'Card placed', 'Cannot place card');

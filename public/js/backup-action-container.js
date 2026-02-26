@@ -61,6 +61,19 @@ var BackupActionContainer = (function() {
     if (!_container) init();
     _isVisible = true;
     _container.style.display = 'flex';
+
+    // Hide legacy left column components that conflict with this overlay.
+    // ReserveSlots shows stale actionButtonCards; RogueSidebar renders its own
+    // redundant card preview. Both are superseded by BackupActionContainer.
+    try {
+      if (typeof ReserveSlots !== 'undefined' && typeof ReserveSlots.hide === 'function') {
+        ReserveSlots.hide();
+      }
+      // Also hide the ReserveSlots DOM container directly (belt + suspenders)
+      var legacySlots = document.getElementById('reserve-slots-container');
+      if (legacySlots) legacySlots.style.display = 'none';
+    } catch (e0) {}
+
     _render();
   }
 
@@ -298,9 +311,19 @@ var BackupActionContainer = (function() {
 
     } else {
       // NCH: inventory/backup swapper button
+      // When viewing items: show "Cards →" (switch to cards/deck)
+      // When viewing cards: show "← Items" (switch to items/inventory)
       slot.classList.add('backup-slot-swapper');
-      var icon = (_slot5Mode === 'backup') ? '🎴' : '🎒';
-      var swapLabel = (_slot5Mode === 'backup') ? 'ITEMS' : 'DECK';
+      var swapLabel, icon;
+      if (_slot5Mode === 'items') {
+        // Currently showing items → button offers cards
+        icon = '🎴';
+        swapLabel = 'Cards \u2192';
+      } else {
+        // Currently showing cards/backup → button offers items
+        icon = '🎒';
+        swapLabel = '\u2190 Items';
+      }
 
       slot.innerHTML =
         '<div class="backup-swap-icon">' + icon + '</div>' +

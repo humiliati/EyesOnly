@@ -80,18 +80,24 @@ var RogueSidebar = (function() {
       return;
     }
 
+    // If BackupActionContainer is visible, it owns the left column overlay.
+    // Don't render the legacy sidebar — it would show stale/conflicting data.
+    if (typeof BackupActionContainer !== 'undefined' && typeof BackupActionContainer.isVisible === 'function' && BackupActionContainer.isVisible()) {
+      // Hide our container so it doesn't overlap
+      if (_container) _container.style.display = 'none';
+      return;
+    } else {
+      if (_container) _container.style.display = '';
+    }
+
     if (!_container) return;
     if (_container.dataset.rogueSidebarActive !== '1') {
       _container.dataset.rogueSidebarActive = '1';
       _container.dataset.dropzone = 'backup';
 
-      // When the rogue sidebar takes over the left column, ensure the NCH overlay is
-      // available (it lives outside the control rail, but should feel like the same surface).
-      try {
-        if (typeof NonCombatHUD !== 'undefined' && typeof NonCombatHUD.setMinimized === 'function') {
-          NonCombatHUD.setMinimized(false);
-        }
-      } catch (e0) {}
+      // NCH stays in its current state (minimized capsule by default).
+      // Players expand it manually when they need deck management.
+      // Previously this force-expanded the NCH, covering the game screen.
     }
 
     _render();
