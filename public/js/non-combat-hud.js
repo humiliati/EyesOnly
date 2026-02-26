@@ -61,10 +61,12 @@ var NonCombatHUD = (function() {
     // Visibility polling (show/hide based on GoneRogue active + STR combat state)
     setInterval(_pollVisibility, 350);
 
-    // Apply initial state
-    if (_prefs.expanded) {
-      _expand('init');
-    }
+    // Apply initial state — always start minimized (capsule mode).
+    // Players expand manually when they need deck management.
+    // Previously this respected _prefs.expanded, but new players
+    // were seeing a full-screen NCH covering the game on first load.
+    _prefs.expanded = false;
+    _savePrefs();
 
     _renderAll();
   }

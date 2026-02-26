@@ -210,6 +210,9 @@
   /**
    * Complete registration process.
    */
+  var _registerRetries = 0;
+  var MAX_REGISTER_RETRIES = 5;
+
   function _completeRegistration() {
     Terminal.writeLine('');
     Terminal.writeLine('Creating account...', 'system-msg');
@@ -222,15 +225,37 @@
         Terminal.writeLine('');
         _mode = 'idle';
         _registrationData = {};
+        _registerRetries = 0;
         _updateHeaderDisplay();
         _notifyLoginSuccess();
       })
       .catch(function (err) {
+        var msg = (err.message || '').toLowerCase();
+        // Auto-retry with suffix if callsign/username is taken
+        if (_registerRetries < MAX_REGISTER_RETRIES &&
+            (msg.indexOf('taken') !== -1 || msg.indexOf('exist') !== -1 ||
+             msg.indexOf('duplicate') !== -1 || msg.indexOf('in use') !== -1 ||
+             msg.indexOf('already') !== -1)) {
+          _registerRetries++;
+          var base = _registrationData.callsign || _registrationData.username || '';
+          // Strip existing suffix to avoid GHOST-2-3-4 chains
+          base = base.replace(/-\d+$/, '');
+          _registrationData.callsign = base + '-' + (_registerRetries + 1);
+          // Also update username if it was the same
+          if (_registrationData.username === base || _registrationData.username === _registrationData.callsign) {
+            _registrationData.username = _registrationData.callsign;
+          }
+          Terminal.writeLine('Callsign taken, trying ' + _registrationData.callsign + '...', 'warn-msg');
+          _completeRegistration(); // Retry with new suffix
+          return;
+        }
+
         Terminal.writeLine('');
         Terminal.writeLine('Registration failed: ' + err.message, 'error-msg');
         Terminal.writeLine('');
         _mode = 'idle';
         _registrationData = {};
+        _registerRetries = 0;
       });
   }
 

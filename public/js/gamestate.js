@@ -91,21 +91,60 @@ const GAMESTATE = (function () {
     // Items view should be primed for discovery (empty slots), not pre-filled placeholders.
     if (!Array.isArray(_state.inventoryPersistent)) _state.inventoryPersistent = [];
 
-    // If persistent cards are empty, seed a minimal starter hand ONCE:
-    // - one ammo spender
-    // - one disposable/utility
-    // - one resource manager
-    if ((!_state.persistentCards || _state.persistentCards.length === 0) && !_state._starterCardsSeededV2) {
-      _state.persistentCards = [
-        { id: 'ACT-002', qty: 1 }, // Basic Shot (ammo spender)
-        { id: 'ACT-999', qty: 1 }, // Cardboard Box (disposable/utility)
-        { id: 'ACT-001', qty: 1 }  // Field Dressing (resource manager)
-      ];
-      _state._starterCardsSeededV2 = true;
-      // Also mark old migration flags so we don't grant extra Basic Shot stacks.
-      _state._starterCardsSeeded = true;
-      _state._grantAct002Done = true;
-      _saveState();
+    // Seed a minimal starter hand ONCE for new players.
+    // Cards go into cardsInHand (equipped hand) so player is ready for
+    // their first STR-combat encounter without needing to manage inventory.
+    // The vault (persistentCards) stays empty — primed for item discovery.
+    if (!Array.isArray(_state.persistentCards)) _state.persistentCards = [];
+    if (!Array.isArray(_state.cardsInHand)) _state.cardsInHand = [];
+
+    if (!_state._starterCardsSeededV2) {
+      // Only seed if both hand and vault are empty (true new player)
+      var hasCards = (_state.cardsInHand.length > 0) || (_state.persistentCards.length > 0);
+      if (!hasCards) {
+        _state.cardsInHand = [
+          { id: 'ACT-002', qty: 1, meta: { t: Date.now() } }, // Basic Shot (ammo spender)
+          { id: 'ACT-999', qty: 1, meta: { t: Date.now() } }, // Cardboard Box (disposable/utility)
+          { id: 'ACT-001', qty: 1, meta: { t: Date.now() } }  // Field Dressing (resource manager)
+        ];
+        _state._starterCardsSeededV2 = true;
+        // Also mark old migration flags so we don't grant extra Basic Shot stacks.
+        _state._starterCardsSeeded = true;
+        _state._grantAct002Done = true;
+        _saveState();
+
+        // Fire event so UI layers pick up the new hand immediately
+        try {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'starter_seed' } }));
+          }
+        } catch (e0) {}
+      }
+    }
+
+    // Migration V3: move starter cards from vault → hand for players who got
+    // them seeded into persistentCards by the old V2 logic.
+    // Only runs once, only if hand is empty and vault has the standard-issue cards.
+    if (_state._starterCardsSeededV2 && !_state._starterCardsMovedToHandV3 &&
+        _state.cardsInHand.length === 0 && Array.isArray(_state.persistentCards)) {
+      var starterIds = ['ACT-002', 'ACT-999', 'ACT-001'];
+      var allInVault = starterIds.every(function(sid) {
+        return _state.persistentCards.some(function(r) { return r && r.id === sid; });
+      });
+      if (allInVault) {
+        // Move starters from vault to hand
+        for (var si = 0; si < starterIds.length; si++) {
+          for (var vi = 0; vi < _state.persistentCards.length; vi++) {
+            if (_state.persistentCards[vi] && _state.persistentCards[vi].id === starterIds[si]) {
+              var moved = _state.persistentCards.splice(vi, 1)[0];
+              _state.cardsInHand.push({ id: moved.id, qty: moved.qty || 1, meta: { t: Date.now() } });
+              break;
+            }
+          }
+        }
+        _state._starterCardsMovedToHandV3 = true;
+        _saveState();
+      }
     }
 
     // Migration grant (legacy): ensure ACT-002 exists for older saves (once)

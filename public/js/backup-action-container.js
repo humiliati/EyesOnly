@@ -17,7 +17,10 @@ var BackupActionContainer = (function() {
   var _totalSlots = 6;     // Always 6: 5 top cards + 1 action slot
   var _resizeDebounce = null;
   var _lastSig = null;      // Signature-based change detection
-  var _slot5Mode = 'backup'; // 'backup' | 'items' (swapper toggle in NCH)
+  // Default to 'items' so new players see their inventory items in the left column.
+  // The swapper button (slot 5) shows "DECK" label, allowing savvy players to toggle to cards.
+  // This primes new players to notice their first item pickup appearing.
+  var _slot5Mode = 'items'; // 'backup' | 'items' (swapper toggle in NCH)
 
   // ── Init ──────────────────────────────────────────────────
 

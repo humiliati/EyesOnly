@@ -280,7 +280,8 @@ const CharacterCreation = (function () {
         return;
       }
 
-      _callsign = raw;
+      // Auto-reserve with suffix if taken (was missing _reserveCallsign call)
+      _callsign = _reserveCallsign(raw);
       _renderAvatarStep();
     }
   }
