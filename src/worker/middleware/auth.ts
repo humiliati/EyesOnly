@@ -16,11 +16,22 @@ type HonoEnv = { Bindings: Env; Variables: { auth: AuthContext } };
  */
 export const requireAuth = createMiddleware<HonoEnv>(async (c, next) => {
   const header = c.req.header('Authorization');
-  if (!header || !header.startsWith('Bearer ')) {
-    return c.json({ error: 'UNAUTHORIZED', message: 'Missing or invalid Authorization header' }, 401);
+
+  // WebSocket clients can't reliably set Authorization headers.
+  // Allow token via query string ONLY for websocket upgrade requests.
+  let token: string | null = null;
+  if (header && header.startsWith('Bearer ')) {
+    token = header.slice(7);
+  } else {
+    const upgrade = c.req.header('Upgrade');
+    const isWs = upgrade && upgrade.toLowerCase() === 'websocket';
+    const qToken = c.req.query('token');
+    if (isWs && qToken) token = qToken;
   }
 
-  const token = header.slice(7);
+  if (!token) {
+    return c.json({ error: 'UNAUTHORIZED', message: 'Missing auth token' }, 401);
+  }
   const tokenRow = await validateToken(c.env.DB, token);
   if (!tokenRow) {
     return c.json({ error: 'UNAUTHORIZED', message: 'Invalid or expired token' }, 401);
