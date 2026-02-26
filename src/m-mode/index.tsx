@@ -1115,6 +1115,7 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
         <div id="m-role-ops-list" style="max-height:90px;overflow-y:auto;font-size:9px;color:var(--text-dim);padding:2px 0;">
           <div style="font-size:9px;color:var(--text-dim);padding:4px 0;">Loading ops roles…</div>
         </div>
+        <button class="ctrl-btn" id="m-role-refresh" style="margin-top:4px;font-size:8px;">REFRESH ROLES</button>
         <div style="margin-top:6px;">
           <div class="ctrl-row">
             <div class="ctrl-field" style="flex:1;"><label>CALLSIGN</label><input type="text" id="m-role-callsign" placeholder="ECHO" /></div>
@@ -1328,8 +1329,9 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
           return;
         }
         listEl.innerHTML = roles.map((r) => {
-          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(40,40,40,0.3);">
-            <span class="actor-badge team-red" style="font-size:9px;">${r.callsign}</span>
+          const who = `${r.callsign}${r.username ? ` (${r.username})` : ''}`;
+          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(40,40,40,0.3);gap:6px;">
+            <span class="actor-badge team-red" style="font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px;" title="${who}">${who}</span>
             <button class="btn btn-small" data-action="revoke-ops" data-callsign="${r.callsign}" style="font-size:8px;">REVOKE</button>
           </div>`;
         }).join('');
@@ -1380,6 +1382,8 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
       if (!callsign) return;
       setRole(callsign, role, false);
     });
+
+    document.getElementById('m-role-refresh')?.addEventListener('click', () => loadOpsRoles());
 
     loadOpsRoles();
   })();
