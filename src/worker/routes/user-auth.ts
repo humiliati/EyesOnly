@@ -20,7 +20,11 @@ import {
   getUserHighscores,
   getUserFilesystem,
   updateUserFilesystem,
+  getUserPreferences,
+  setUserPreferences,
+  updateUserCryptos,
 } from '../db/user-queries';
+import { grantInventoryItem } from '../db/user-queries';
 import { hashPassword, generateToken } from '../db/queries';
 
 type HonoEnv = { Bindings: Env; Variables: Record<string, unknown> };
@@ -218,6 +222,101 @@ userAuthRoutes.get('/inventory', async (c) => {
   const inventory = await getUserInventory(c.env.DB, session.user_id);
 
   return c.json({ inventory });
+});
+
+/**
+ * POST /api/user/merge-local-data
+ * Import legacy localStorage state into the account.
+ *
+ * Conflict rules (safe defaults):
+ * - Preferences: server wins; we stash the local snapshot under preferences.imports for audit.
+ * - Cryptos: take MAX(server, local) by adding only the positive difference.
+ * - Inventory quantities: take MAX(serverQty, localQty) per (item_id,item_type) by adding only the positive difference.
+ *
+ * Idempotency:
+ * - Requires device_id. If that device_id has already been imported, return already_merged.
+ */
+userAuthRoutes.post('/merge-local-data', async (c) => {
+  const sessionToken = c.req.header('X-Session-Token');
+  if (!sessionToken) return c.json({ error: 'UNAUTHORIZED', message: 'Session token required' }, 401);
+
+  const session = await getUserSession(c.env.DB, sessionToken);
+  if (!session) return c.json({ error: 'UNAUTHORIZED', message: 'Invalid or expired session' }, 401);
+
+  const body = await c.req.json<{ device_id: string; gamestate?: any }>().catch(() => ({ device_id: '' } as any));
+  const deviceId = String(body.device_id || '').trim();
+  if (!deviceId) return c.json({ error: 'BAD_REQUEST', message: 'device_id required' }, 400);
+
+  const prefs = await getUserPreferences(c.env.DB, session.user_id);
+  prefs.imports = prefs.imports || {};
+  prefs.imports.localStorage = prefs.imports.localStorage || {};
+
+  if (prefs.imports.localStorage[deviceId]) {
+    return c.json({ ok: true, already_merged: true });
+  }
+
+  const gs = body.gamestate || {};
+  const localCryptos = Math.max(0, Math.floor(Number(gs.cryptos ?? 0) || 0));
+
+  // Build current inventory map
+  const currentInv = await getUserInventory(c.env.DB, session.user_id);
+  const invMap = new Map<string, number>();
+  for (const row of currentInv) {
+    const k = `${row.item_type}:${row.item_id}`;
+    invMap.set(k, (invMap.get(k) || 0) + (row.quantity || 0));
+  }
+
+  // Merge inventory lists from gamestate
+  const changes: Array<{ item_id: string; item_type: 'persistent' | 'loose'; add: number }> = [];
+
+  function ingest(list: any, itemType: 'persistent' | 'loose') {
+    if (!Array.isArray(list)) return;
+    for (const r of list) {
+      const itemId = String(r?.id || '').trim();
+      if (!itemId) continue;
+      const qty = Math.max(1, Math.floor(Number(r?.qty ?? r?.quantity ?? 1) || 1));
+      const k = `${itemType}:${itemId}`;
+      const cur = invMap.get(k) || 0;
+      if (qty > cur) {
+        const diff = qty - cur;
+        invMap.set(k, cur + diff);
+        changes.push({ item_id: itemId, item_type: itemType, add: diff });
+      }
+    }
+  }
+
+  ingest(gs.inventoryPersistent, 'persistent');
+  ingest(gs.inventoryLoose, 'loose');
+
+  // Apply cryptos max merge
+  if (localCryptos > 0) {
+    const cur = (await getUserCryptos(c.env.DB, session.user_id)) || 0;
+    if (localCryptos > cur) {
+      await updateUserCryptos(c.env.DB, session.user_id, localCryptos - cur);
+    }
+  }
+
+  // Apply inventory diffs
+  for (const ch of changes) {
+    await grantInventoryItem(c.env.DB, session.user_id, ch.item_id, { itemType: ch.item_type, quantity: ch.add });
+  }
+
+  // Stash snapshot for audit/debug (server-wins preferences merge)
+  prefs.imports.localStorage[deviceId] = {
+    merged_at: Date.now(),
+    keys: {
+      eyesonly_gamestate: true,
+    },
+    gamestate_summary: {
+      cryptos: localCryptos,
+      persistent_count: Array.isArray(gs.inventoryPersistent) ? gs.inventoryPersistent.length : 0,
+      loose_count: Array.isArray(gs.inventoryLoose) ? gs.inventoryLoose.length : 0,
+    },
+  };
+
+  await setUserPreferences(c.env.DB, session.user_id, prefs);
+
+  return c.json({ ok: true, merged: true, inventory_added: changes.length });
 });
 
 /**

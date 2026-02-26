@@ -83,6 +83,10 @@
           user: data.user,
         };
         _saveSession();
+
+        // Best-effort: import legacy local-only state into the account once per device.
+        try { UserAccount.mergeLocalData(); } catch (e0) {}
+
         return data;
       });
   };
@@ -117,6 +121,10 @@
           user: data.user,
         };
         _saveSession();
+
+        // Best-effort: import legacy local-only state into the account once per device.
+        try { UserAccount.mergeLocalData(); } catch (e0) {}
+
         return data;
       });
   };
@@ -182,6 +190,56 @@
           _saveSession();
         }
         return data.user;
+      });
+  };
+
+  /**
+   * Merge legacy localStorage state into the account.
+   * Runs once per device_id (server enforces idempotency).
+   */
+  UserAccount.mergeLocalData = function () {
+    var token = UserAccount.getSessionToken();
+    if (!token) return Promise.resolve({ ok: false, reason: 'not_logged_in' });
+
+    // device id
+    var DEVICE_KEY = 'eyesonly_device_id';
+    var deviceId = null;
+    try { deviceId = localStorage.getItem(DEVICE_KEY); } catch (e0) {}
+    if (!deviceId) {
+      // simple pseudo-uuid
+      deviceId = 'dev-' + Math.random().toString(16).slice(2) + '-' + Date.now();
+      try { localStorage.setItem(DEVICE_KEY, deviceId); } catch (e1) {}
+    }
+
+    // legacy gamestate snapshot
+    var gamestate = null;
+    try {
+      var raw = localStorage.getItem('eyesonly_gamestate');
+      if (raw) gamestate = JSON.parse(raw);
+    } catch (e2) {
+      gamestate = null;
+    }
+
+    return fetch(API_BASE + '/merge-local-data', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Session-Token': token,
+      },
+      body: JSON.stringify({ device_id: deviceId, gamestate: gamestate }),
+    })
+      .then(function (res) {
+        return _readJsonOrText(res).then(function (body) {
+          if (!res.ok) {
+            var msg = (body && body.message) ? body.message : (typeof body === 'string' ? body : null);
+            throw new Error(msg || 'Merge failed');
+          }
+          return body;
+        });
+      })
+      .catch(function (err) {
+        // best-effort only
+        return { ok: false, error: String(err && err.message || err) };
       });
   };
 

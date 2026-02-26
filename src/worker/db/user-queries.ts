@@ -371,20 +371,31 @@ export async function getUserCryptos(db: D1Database, userId: number): Promise<nu
 
 // --- User Filesystem ---
 
-export async function getUserFilesystem(db: D1Database, userId: number): Promise<object | null> {
+export async function getUserPreferences(db: D1Database, userId: number): Promise<any> {
   const result = await db
     .prepare('SELECT preferences FROM user_accounts WHERE id = ?')
     .bind(userId)
     .first<{ preferences: string }>();
 
-  if (!result || !result.preferences) return null;
-
+  if (!result || !result.preferences) return {};
   try {
-    const prefs = JSON.parse(result.preferences);
-    return prefs.filesystem || null;
-  } catch (e) {
-    return null;
+    return JSON.parse(result.preferences) || {};
+  } catch {
+    return {};
   }
+}
+
+export async function setUserPreferences(db: D1Database, userId: number, preferences: any): Promise<void> {
+  const prefsStr = JSON.stringify(preferences || {});
+  await db
+    .prepare('UPDATE user_accounts SET preferences = ? WHERE id = ?')
+    .bind(prefsStr, userId)
+    .run();
+}
+
+export async function getUserFilesystem(db: D1Database, userId: number): Promise<object | null> {
+  const prefs = await getUserPreferences(db, userId);
+  return prefs.filesystem || null;
 }
 
 export async function updateUserFilesystem(
@@ -392,27 +403,7 @@ export async function updateUserFilesystem(
   userId: number,
   filesystem: object,
 ): Promise<void> {
-  // Get current preferences
-  const result = await db
-    .prepare('SELECT preferences FROM user_accounts WHERE id = ?')
-    .bind(userId)
-    .first<{ preferences: string }>();
-
-  let prefs: any = { theme: 'green', sfx_enabled: true, cloud_sync_enabled: true };
-  if (result && result.preferences) {
-    try {
-      prefs = JSON.parse(result.preferences);
-    } catch (e) {
-      // Keep default if parse fails
-    }
-  }
-
-  // Update filesystem
+  const prefs = await getUserPreferences(db, userId);
   prefs.filesystem = filesystem;
-
-  // Save back to database
-  await db
-    .prepare('UPDATE user_accounts SET preferences = ? WHERE id = ?')
-    .bind(JSON.stringify(prefs), userId)
-    .run();
+  await setUserPreferences(db, userId, prefs);
 }
