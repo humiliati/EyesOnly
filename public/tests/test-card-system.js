@@ -452,6 +452,121 @@
     assert(newManager.has('BURNING'), 'Restored BURNING status');
     assert(newManager.has('BLEEDING'), 'Restored BLEEDING status');
 
+    // ========== TEST 21: 3D Printer — addPrintedCards API ==========
+    console.log('\n--- Test 21: 3D Printer — addPrintedCards API ---');
+
+    assert(
+      typeof GAMESTATE.addPrintedCards === 'function',
+      'GAMESTATE.addPrintedCards() exists'
+    );
+
+    // Reset to clean state for printer tests
+    GAMESTATE.reset();
+
+    // T21.1: Single card goes to hand
+    var pr1 = GAMESTATE.addPrintedCards('ACT-002', 1, { preferHand: true });
+    assert(pr1.success, 'addPrintedCards returns success');
+    assertEqual(pr1.toHand, 1, 'First card goes to hand');
+    assertEqual(pr1.toBackup, 0, 'First card does not go to backup');
+    var hand21 = GAMESTATE.getCardsInHand();
+    assertEqual(hand21.length, 1, 'Hand has 1 entry after printing 1');
+    assertEqual(hand21[0].id, 'ACT-002', 'Hand entry has correct card id');
+    assertEqual(hand21[0].qty, 1, 'Hand entry starts at qty 1');
+
+    // T21.2: Same card stacks qty in hand
+    var pr2 = GAMESTATE.addPrintedCards('ACT-002', 2, { preferHand: true });
+    var hand21b = GAMESTATE.getCardsInHand();
+    assertEqual(hand21b.length, 1, 'Same card stacks in hand (still 1 entry)');
+    assertEqual(hand21b[0].qty, 3, 'Hand qty stacked to 3 after printing 2 more');
+    assertEqual(pr2.toHand, 2, 'Both cards went to hand');
+
+    // T21.3: Different card fills next hand slot
+    GAMESTATE.reset();
+    GAMESTATE.addPrintedCards('ACT-002', 1, { preferHand: true });
+    GAMESTATE.addPrintedCards('ACT-001', 1, { preferHand: true });
+    var hand21c = GAMESTATE.getCardsInHand();
+    assertEqual(hand21c.length, 2, 'Two different cards occupy two hand slots');
+
+    // T21.4: Hand overflow spills into backup
+    GAMESTATE.reset();
+    // Fill all 5 hand slots with different cards
+    GAMESTATE.addPrintedCards('ACT-001', 1);
+    GAMESTATE.addPrintedCards('ACT-002', 1);
+    GAMESTATE.addPrintedCards('ACT-999', 1);
+    GAMESTATE.addPrintedCards('ACT-000', 1);
+    GAMESTATE.addPrintedCards('ACT-001', 1); // stacks, not a new slot
+    var handFull = GAMESTATE.getCardsInHand();
+    assert(handFull.length <= 5, 'Hand does not exceed maxHandSize');
+
+
+    GAMESTATE.reset();
+    for (var fi = 0; fi < 5; fi++) {
+      GAMESTATE.addPrintedCards('CARD-' + fi, 1, { preferHand: true });
+    }
+    var handAfter5 = GAMESTATE.getCardsInHand();
+    assert(handAfter5.length <= 5, 'Hand capped at maxHandSize after 5 unique cards');
+
+    // Print a 6th unique card — must overflow to backup
+    var pr6 = GAMESTATE.addPrintedCards('CARD-6', 1, { preferHand: true });
+    var backup21 = GAMESTATE.getBackupCards();
+    var backupFilled = backup21.filter(function(b) { return b && b.id; });
+    assert(backupFilled.length >= 1, 'Overflow card lands in backup');
+    assertEqual(pr6.toBackup, 1, 'Overflow card counted as toBackup');
+    assertEqual(pr6.toHand, 0, 'Overflow card not counted as toHand');
+
+    // T21.5: Backup stacks same card by qty
+    GAMESTATE.reset();
+    for (var si = 0; si < 5; si++) GAMESTATE.addPrintedCards('CARD-' + si, 1);
+    GAMESTATE.addPrintedCards('CARD-5', 1); // slot 0 of backup
+    GAMESTATE.addPrintedCards('CARD-5', 1); // should stack qty in backup slot 0
+    var backupAfterStack = GAMESTATE.getBackupCards();
+    var stacked = backupAfterStack.filter(function(b) { return b && b.id === 'CARD-5'; });
+    assert(stacked.length === 1, 'Same card stacks to single backup slot');
+    assert(stacked[0].qty >= 2, 'Backup slot qty incremented for same card');
+
+    // T21.6: 25-card total cap — holding exactly 25 prevents further accumulation
+    GAMESTATE.reset();
+    // Fill up 25 total qty across hand + backup using single card (stacks)
+    var prBig = GAMESTATE.addPrintedCards('ACT-002', 30, { preferHand: true });
+    assert(prBig.success, 'addPrintedCards succeeds with qty > 25');
+    assert(prBig.discarded > 0, '25-card cap triggers discards when printing 30');
+
+    function _countTotal() {
+      var t = 0;
+      var h = GAMESTATE.getCardsInHand();
+      for (var qi = 0; qi < h.length; qi++) if (h[qi]) t += (h[qi].qty || 1);
+      var bk = GAMESTATE.getBackupCards();
+      for (var bj = 0; bj < bk.length; bj++) if (bk[bj] && bk[bj].id) t += (bk[bj].qty || 1);
+      return t;
+    }
+
+    var total21 = _countTotal();
+    assert(total21 <= 25, '3D printer cap: total cards held <= 25 after printing 30 (got ' + total21 + ')');
+
+    // T21.7: Qty display — printing adds to existing qty in hand/backup
+    GAMESTATE.reset();
+    GAMESTATE.addPrintedCards('ACT-002', 5, { preferHand: true });
+    var handQty = GAMESTATE.getCardsInHand();
+    var act002InHand = handQty.find(function(r) { return r && r.id === 'ACT-002'; });
+    assert(act002InHand && act002InHand.qty === 5, 'qty field on hand entry reflects print count (5)');
+
+    // T21.8: consumeActiveItem removes the active item
+    GAMESTATE.reset();
+    GAMESTATE.setActiveItem({ id: 'ITM-PRINTER', qty: 1, meta: { toggled: true } });
+    var activeAfterSet = GAMESTATE.getActiveItem();
+    assert(activeAfterSet && activeAfterSet.id === 'ITM-PRINTER', 'setActiveItem sets the active item');
+    GAMESTATE.consumeActiveItem();
+    var activeAfterConsume = GAMESTATE.getActiveItem();
+    assert(!activeAfterConsume || !activeAfterConsume.id, 'consumeActiveItem clears the active item');
+
+    // T21.9: toggleActiveItemToggled arms the item (meta.toggled = true)
+    GAMESTATE.reset();
+    GAMESTATE.addToPersistent({ id: 'ITM-PRINTER', qty: 1 });
+    GAMESTATE.setActiveItem({ id: 'ITM-PRINTER', qty: 1, meta: {} });
+    GAMESTATE.toggleActiveItemToggled();
+    var toggledItem = GAMESTATE.getActiveItem();
+    assert(toggledItem && toggledItem.meta && toggledItem.meta.toggled === true, 'toggleActiveItemToggled arms the item (meta.toggled = true)');
+
     // ========== FINAL REPORT ==========
     console.log('\n========================================');
     console.log('TEST RESULTS:');
