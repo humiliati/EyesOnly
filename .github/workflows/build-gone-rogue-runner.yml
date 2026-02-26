@@ -1,0 +1,39 @@
+name: Build Gone Rogue Runner
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "tools/**"
+      - "vendor/sundog"
+      - ".github/workflows/build-gone-rogue-runner.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build gone-rogue-runner.exe
+        shell: pwsh
+        run: .\tools\build_runner_exe.ps1 -PythonVersion 3.11
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gone-rogue-runner
+          path: dist/gone-rogue-runner/**
+          retention-days: 14

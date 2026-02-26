@@ -1,0 +1,3 @@
+[submodule "vendor/sundog"]
+	path = vendor/sundog
+	url = https://github.com/humiliati/sundog.git
