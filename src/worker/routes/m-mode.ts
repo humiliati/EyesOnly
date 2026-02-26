@@ -206,6 +206,7 @@ mModeRoutes.post('/actor', async (c) => {
     scenario_id?: number;
     callsign?: string;
     team?: string;
+    actor_kind?: 'staff' | 'npc' | 'business';
     password?: string;
     lane_id?: string;
     status?: string;
@@ -232,7 +233,20 @@ mModeRoutes.post('/actor', async (c) => {
   }
 
   const passwordHash = body.password ? await hashPassword(body.password) : '';
-  const actor = await createActor(c.env.DB, body.scenario_id, body.callsign, body.team, passwordHash, null);
+
+  // Non-account actor creation is allowed only when explicitly tagged.
+  // Default to staff for director/blue, and npc for red unless specified.
+  const kind = body.actor_kind || (body.team === 'director' || body.team === 'blue' ? 'staff' : 'npc');
+
+  const actor = await createActor(
+    c.env.DB,
+    body.scenario_id,
+    body.callsign,
+    body.team,
+    passwordHash,
+    null,
+    kind,
+  );
 
   // Optionally assign to lane
   if (body.lane_id) {

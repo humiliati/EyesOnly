@@ -54,6 +54,8 @@ export interface ActorRow {
   scenario_id: number;
   // Account-link: when set, this actor represents a persistent user account.
   user_id?: number | null;
+  // Actor classification. 'player' should always be account-linked.
+  actor_kind?: 'player' | 'staff' | 'npc' | 'business' | string;
   callsign: string;
   team: 'red' | 'blue' | 'director';
   lane_id: string | null;

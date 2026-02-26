@@ -50,10 +50,12 @@ publicRoutes.post('/join', async (c) => {
     }
   }
 
-  const callsign = accountUser?.callsign || body.callsign;
-  if (!callsign) {
-    return c.json({ error: 'BAD_REQUEST', message: 'callsign required (or provide Authorization user session)' }, 400);
+  // From here on: account-linked join is required.
+  if (!accountUser?.callsign || !accountUser?.id) {
+    return c.json({ error: 'UNAUTHORIZED', message: 'Account login required to join scenario' }, 401);
   }
+
+  const callsign = accountUser.callsign;
 
   // Validate join code
   const joinCode = await getJoinCode(c.env.DB, code.toUpperCase());
@@ -82,6 +84,7 @@ publicRoutes.post('/join', async (c) => {
       joinCode.team,
       '',
       accountUser?.id ?? null,
+      'player',
     );
   }
 

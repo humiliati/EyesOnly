@@ -135,18 +135,24 @@ export async function createActor(
   team: string,
   passwordHash: string = '',
   userId?: number | null,
+  actorKind: 'player' | 'staff' | 'npc' | 'business' = 'player',
 ): Promise<ActorRow> {
   const now = Date.now();
 
+  // Prevent creating non-account player actors. Non-account actors must be explicit NPC/staff/business.
+  if (actorKind === 'player' && userId == null) {
+    throw new Error('Cannot create non-account player actor');
+  }
+
   const hasUser = userId != null;
   const sql = hasUser
-    ? 'INSERT INTO actors (scenario_id, user_id, callsign, team, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *'
-    : 'INSERT INTO actors (scenario_id, callsign, team, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING *';
+    ? 'INSERT INTO actors (scenario_id, user_id, actor_kind, callsign, team, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *'
+    : 'INSERT INTO actors (scenario_id, actor_kind, callsign, team, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *';
 
   const stmt = db.prepare(sql);
   const result = hasUser
-    ? await stmt.bind(scenarioId, userId, callsign, team, passwordHash, now, now).first<ActorRow>()
-    : await stmt.bind(scenarioId, callsign, team, passwordHash, now, now).first<ActorRow>();
+    ? await stmt.bind(scenarioId, userId, actorKind, callsign, team, passwordHash, now, now).first<ActorRow>()
+    : await stmt.bind(scenarioId, actorKind, callsign, team, passwordHash, now, now).first<ActorRow>();
 
   return result!;
 }
