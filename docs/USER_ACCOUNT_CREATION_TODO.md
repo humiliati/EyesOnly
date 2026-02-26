@@ -1,5 +1,16 @@
 # User-Driven Account Creation Tool - Implementation TODO
 
+> **STATUS UPDATE (2026-02-26)**: The project has shifted to an **account-first identity model** with **scenario-scoped roles**.
+>
+> **Now (current architecture):**
+> - **Account callsign is immutable** and is the canonical identity.
+> - **Scenario actors are account-linked** (`actors.user_id`) and should always use the account callsign.
+> - **Ops is not a separate identity**: it’s a **moderator role** granted by M per scenario (`scenario_user_roles`).
+> - **Unified inventory is account-wide** (`user_inventory`) and shared across ARG + Gone Rogue contexts.
+>
+> **Future (legacy ideas retained):**
+> Password-based auth, M-console “auth codes”, and agent API key binding are kept in this doc as **FUTURE/OPTIONAL** concepts unless explicitly re-adopted.
+>
 > **STATUS UPDATE (2026-02-20)**: Basic login/registration UI is **implemented** in `public/js/login-ui.js` and accessible via the "login" action button in the left column. This document describes the full M Console integration and account creation flow that remains to be completed.
 
 ## Purpose
