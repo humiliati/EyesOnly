@@ -130,24 +130,19 @@ var NonCombatHUD = (function() {
           '<div class="nch-zone-label">EQUIPPED HAND</div>' +
           '<div class="nch-hand-container" id="nch-hand-container" data-dropzone="hand"></div>' +
         '</div>' +
-        // Draw Bar (between hand and backup)
-        '<div class="nch-zone nch-zone-drawbar">' +
-          '<div class="nch-zone-label">DRAW <span class="nch-draw-count" id="nch-draw-count"></span>' +
-            '<button class="nch-shuffle-btn" id="nch-shuffle-btn" title="Shuffle draw order">\uD83D\uDD00</button>' +
+        // Zone 2: Backup Deck (shuffle/sort moved here from removed draw bar)
+        '<div class="nch-zone nch-zone-backup">' +
+          '<div class="nch-zone-label">BACKUP DECK <span class="nch-backup-count" id="nch-backup-count"></span>' +
+            '<button class="nch-shuffle-btn" id="nch-shuffle-btn" title="Shuffle deck order">\uD83D\uDD00</button>' +
             '<button class="nch-sort-btn" id="nch-sort-btn" title="Sort (requires Archive Indexer)" disabled>\uD83D\uDCD1</button>' +
           '</div>' +
-          '<div class="nch-drawbar" id="nch-drawbar"></div>' +
-        '</div>' +
-        // Zone 2: Backup Deck
-        '<div class="nch-zone nch-zone-backup">' +
-          '<div class="nch-zone-label">BACKUP DECK <span class="nch-backup-count" id="nch-backup-count"></span></div>' +
           '<div class="nch-backup-scroll-wrapper">' +
             '<div class="nch-backup-scroller" id="nch-backup-scroller" data-dropzone="backup"></div>' +
           '</div>' +
         '</div>' +
-        // Zone 3: Vault
+        // Zone 3: Vault (account inventory, shared across platforms)
         '<div class="nch-zone nch-zone-vault">' +
-          '<div class="nch-zone-label">CARD VAULT <small>(survives death)</small></div>' +
+          '<div class="nch-zone-label">CARD VAULT <small>(survives death \u00B7 shared across platforms)</small></div>' +
           '<div class="nch-vault-slots" id="nch-vault-slots" data-dropzone="vault"></div>' +
         '</div>' +
       '</div>';
@@ -312,9 +307,9 @@ var NonCombatHUD = (function() {
   function _renderExpanded() {
     _renderEquipped();
     _renderHand();
-    // Draw bar is mode-gated: REMOVED from NCH (lives in left column only).
-    // In NCH the full backup scroll gives direct access — no draw row needed.
-    _hideDrawBarInNCH();
+    // No draw bar — removed from NCH architecture entirely.
+    // Cards move seamlessly between backup/hand/vault via drag or left column.
+    // Shuffle/sort buttons are now in the backup zone header.
     _renderBackup();
     _renderVault();
   }
@@ -419,21 +414,16 @@ var NonCombatHUD = (function() {
     return false;
   }
 
-  // ─── DRAW BAR (mode-gated: hidden in NCH) ────────────────
+  // ─── DRAW BAR — REMOVED FROM NCH ─────────────────────────
+  // Draw bar zone no longer exists in NCH DOM.
+  // Cards move seamlessly via left column (backup deck top / items toggle)
+  // and drag-drop between backup scroll ↔ hand ↔ vault.
+  // In STR-combat, draw is handled by left column slot 6 with item-specific
+  // ghost cursors (🃏 default, 🔍 magnifying glass, card emoji for true joker).
 
-  function _hideDrawBarInNCH() {
-    // The draw bar zone should be hidden in NCH mode.
-    // Drawing in NCH is done by dragging from the backup scroll to the hand.
-    // In STR-combat, draw is handled by left column slot 6.
-    var drawZone = _expanded ? _expanded.querySelector('.nch-zone-drawbar') : null;
-    if (drawZone) {
-      drawZone.style.display = 'none';
-    }
-  }
+  var DRAW_BAR_SIZE = 5; // kept for legacy reference
 
-  var DRAW_BAR_SIZE = 5; // max visible draw buttons
-
-  /** @deprecated — Draw bar is now hidden in NCH. Kept for legacy compat if re-enabled. */
+  /** @deprecated — Draw bar removed from NCH. Legacy code kept as dead path. */
   function _renderDrawBar() {
     var drawbar = _expanded ? _expanded.querySelector('#nch-drawbar') : null;
     var countEl = _expanded ? _expanded.querySelector('#nch-draw-count') : null;
@@ -662,8 +652,37 @@ var NonCombatHUD = (function() {
     var backup = _getBackup();
     var maxB = _getMaxBackup();
     var printerArmed = _isPrinterArmed();
+    var sortUnlocked = _isSortUnlocked();
+    var isLocked = !!(_expanded && _expanded.classList.contains('nch-locked'));
 
     if (countEl) countEl.textContent = backup.length + '/' + maxB;
+
+    // Bind shuffle/sort buttons (in backup zone header, bound once)
+    var shuffleBtn = _expanded ? _expanded.querySelector('#nch-shuffle-btn') : null;
+    var sortBtn = _expanded ? _expanded.querySelector('#nch-sort-btn') : null;
+    if (shuffleBtn) {
+      shuffleBtn.style.display = sortUnlocked ? 'none' : 'inline-block';
+      shuffleBtn.disabled = isLocked || backup.length < 2;
+      if (!shuffleBtn._bound) {
+        shuffleBtn._bound = true;
+        shuffleBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          _onShuffleClick();
+        });
+      }
+    }
+    if (sortBtn) {
+      sortBtn.disabled = !sortUnlocked || isLocked || backup.length < 2;
+      sortBtn.style.display = sortUnlocked ? 'inline-block' : 'inline-block';
+      sortBtn.title = sortUnlocked ? 'Sort backup deck' : 'Requires Archive Indexer (\uD83D\uDCD1)';
+      if (!sortBtn._bound) {
+        sortBtn._bound = true;
+        sortBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          _onSortClick();
+        });
+      }
+    }
 
     if (backup.length === 0) {
       var empty = document.createElement('div');

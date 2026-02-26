@@ -43,10 +43,11 @@ var BackupActionContainer = (function() {
 
     // Subscribe to CardStateAuthority events for auto-re-render
     if (typeof CardStateAuthority !== 'undefined') {
-      CardStateAuthority.on('backup:changed', function() { if (_isVisible) _render(); });
-      CardStateAuthority.on('hand:changed', function() { if (_isVisible) _render(); });
-      CardStateAuthority.on('draw:executed', function() { if (_isVisible) _render(); });
-      CardStateAuthority.on('draw:reset', function() { if (_isVisible) _render(); });
+      CardStateAuthority.on('backup:changed', function() { if (_isVisible) { _lastSig = null; _render(); } });
+      CardStateAuthority.on('hand:changed', function() { if (_isVisible) { _lastSig = null; _render(); } });
+      CardStateAuthority.on('vault:changed', function() { if (_isVisible) { _lastSig = null; _render(); } });
+      CardStateAuthority.on('draw:executed', function() { if (_isVisible) { _lastSig = null; _render(); } });
+      CardStateAuthority.on('draw:reset', function() { if (_isVisible) { _lastSig = null; _render(); } });
     }
   }
 
@@ -83,12 +84,36 @@ var BackupActionContainer = (function() {
     if (typeof CardStateAuthority !== 'undefined') {
       return CardStateAuthority.getBackupTop(5);
     }
-    // Legacy fallback
     if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getBackupCards === 'function') {
       var b = GAMESTATE.getBackupCards();
       return Array.isArray(b) ? b.slice(0, 5) : [];
     }
     return [];
+  }
+
+  /**
+   * Returns item/vault inventory cards for slots 0-4 when swapper is in 'items' mode.
+   * These are the account-level persistent cards (shared across platforms).
+   */
+  function _getItemCards() {
+    if (typeof CardStateAuthority !== 'undefined') {
+      return CardStateAuthority.getVault().slice(0, 5);
+    }
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getPersistentCards === 'function') {
+      var v = GAMESTATE.getPersistentCards();
+      return Array.isArray(v) ? v.slice(0, 5) : [];
+    }
+    return [];
+  }
+
+  /**
+   * Returns the cards to display in slots 0-4 based on current swapper mode.
+   * - 'backup': top 5 from backup deck
+   * - 'items': first 5 from account vault/inventory
+   */
+  function _getSlotCards() {
+    if (_isCombat()) return _getTopCards(); // Always backup in combat
+    return (_slot5Mode === 'items') ? _getItemCards() : _getTopCards();
   }
 
   function _getCardDef(cardId) {
@@ -99,16 +124,30 @@ var BackupActionContainer = (function() {
     return null;
   }
 
+  /**
+   * Returns the draw ghost emoji based on equipped item modifier.
+   * Default: 🃏 (joker), True Joker: card's own emoji, Magnifying Glass: 🔍
+   */
+  function _getDrawGhostEmoji(cardDef, modifier) {
+    if (!modifier) {
+      modifier = (typeof CardStateAuthority !== 'undefined') ? CardStateAuthority.getEquippedDrawModifier() : 'default';
+    }
+    if (modifier === 'magnifying-glass') return '🔍';
+    if (modifier === 'true-joker' && cardDef && cardDef.emoji) return cardDef.emoji;
+    return '🃏'; // default joker
+  }
+
   // ── Signature for change detection ────────────────────────
 
   function _buildSig() {
-    var top = _getTopCards();
+    var slotCards = _getSlotCards();
     var parts = [];
-    for (var i = 0; i < top.length; i++) {
-      parts.push((top[i].id || '?') + ':' + (top[i].qty || 1));
+    for (var i = 0; i < slotCards.length; i++) {
+      parts.push((slotCards[i].id || '?') + ':' + (slotCards[i].qty || 1));
     }
     parts.push('mode:' + (_isCombat() ? 'combat' : 'gr'));
     parts.push('s5:' + _slot5Mode);
+    parts.push('src:' + (_slot5Mode === 'items' ? 'vault' : 'backup'));
     if (_isCombat() && typeof CardStateAuthority !== 'undefined') {
       parts.push('dr:' + CardStateAuthority.getTurnDrawsRemaining());
       parts.push('mod:' + CardStateAuthority.getEquippedDrawModifier());
@@ -128,12 +167,13 @@ var BackupActionContainer = (function() {
 
     _container.innerHTML = '';
 
-    var topCards = _getTopCards();
+    var slotCards = _getSlotCards();
     var inCombat = _isCombat();
+    var source = (inCombat || _slot5Mode === 'backup') ? 'backup' : 'items';
 
-    // Slots 0-4: top 5 backup cards
+    // Slots 0-4: cards from active source (backup deck top OR item vault)
     for (var i = 0; i < 5; i++) {
-      var slot = _createCardSlot(i, topCards[i] || null, inCombat);
+      var slot = _createCardSlot(i, slotCards[i] || null, inCombat, source);
       _container.appendChild(slot);
     }
 
@@ -144,21 +184,24 @@ var BackupActionContainer = (function() {
 
   // ── Card Slot (0-4) ───────────────────────────────────────
 
-  function _createCardSlot(index, cardRef, inCombat) {
+  function _createCardSlot(index, cardRef, inCombat, source) {
+    source = source || 'backup';
     var slot = document.createElement('div');
     slot.className = 'backup-slot';
     slot.dataset.slotIndex = String(index);
+    slot.dataset.source = source;
 
     if (!cardRef) {
       slot.classList.add('backup-slot-empty');
-      slot.textContent = '+';
+      slot.textContent = (source === 'items') ? '—' : '+';
       return slot;
     }
 
     slot.classList.add('backup-slot-filled');
+    if (source === 'items') slot.classList.add('backup-slot-item');
 
     var def = _getCardDef(cardRef.id) || {};
-    var name = def.name || cardRef.id || 'Backup';
+    var name = def.name || cardRef.id || (source === 'items' ? 'Item' : 'Backup');
     var emoji = def.emoji || '🃏';
 
     // Abbreviation for mobile portrait
@@ -174,7 +217,8 @@ var BackupActionContainer = (function() {
       name = name.substring(0, maxLen);
     }
 
-    var typeIcon = (def.type && ('' + def.type).toLowerCase().indexOf('attack') !== -1) ? '⚔️' : '⚡';
+    var typeIcon = (source === 'items') ? '🎒' :
+      (def.type && ('' + def.type).toLowerCase().indexOf('attack') !== -1) ? '⚔️' : '⚡';
 
     if (inCombat) {
       // Combat: 60×84 thumbnail with cost pip
@@ -198,14 +242,14 @@ var BackupActionContainer = (function() {
     }
 
     // Click/touch handlers
-    slot.addEventListener('click', function(e) { _onCardSlotClick(e, index, inCombat); });
-    slot.addEventListener('touchend', function(e) { e.preventDefault(); _onCardSlotClick(e, index, inCombat); });
+    slot.addEventListener('click', function(e) { _onCardSlotClick(e, index, inCombat, source); });
+    slot.addEventListener('touchend', function(e) { e.preventDefault(); _onCardSlotClick(e, index, inCombat, source); });
 
-    // Drag handler (NCH: reorder; Combat: draw with ghost)
+    // Drag handler
     if (inCombat) {
       _attachCombatDragHandlers(slot, index, cardRef, def);
     } else {
-      _attachNCHDragHandlers(slot, index, cardRef, def);
+      _attachNCHDragHandlers(slot, index, cardRef, def, source);
     }
 
     return slot;
@@ -267,38 +311,50 @@ var BackupActionContainer = (function() {
 
   // ── Click Handlers ────────────────────────────────────────
 
-  function _onCardSlotClick(e, index, inCombat) {
+  function _onCardSlotClick(e, index, inCombat, source) {
+    source = source || 'backup';
+
     if (inCombat) {
       // Combat: clicking a card slot draws it (if draws remain)
       if (typeof CardStateAuthority !== 'undefined') {
         var modifier = CardStateAuthority.getEquippedDrawModifier();
         if (modifier === 'magnifying-glass') {
-          // Exact pick from top 5
           var success = CardStateAuthority.drawFromBackup(index, 'pick');
-          if (success) {
-            _notifyDraw('exact pick', index);
-          } else {
-            _notifyError('Cannot draw — no draws remaining or invalid');
-          }
+          if (success) { _notifyDraw('exact pick', index); }
+          else { _notifyError('Cannot draw — no draws remaining or invalid'); }
         } else {
-          // Default + true-joker: any of top 5
           var success2 = CardStateAuthority.drawFromBackup(index, 'pick');
-          if (success2) {
-            _notifyDraw('picked', index);
-          } else {
-            _notifyError('Cannot draw — no draws remaining');
-          }
+          if (success2) { _notifyDraw('picked', index); }
+          else { _notifyError('Cannot draw — no draws remaining'); }
+        }
+      }
+    } else if (source === 'items') {
+      // NCH items mode: move vault card to hand (seamless transfer)
+      if (typeof CardTransferManager !== 'undefined') {
+        var vault = (typeof CardStateAuthority !== 'undefined') ? CardStateAuthority.getVault() : [];
+        if (index < vault.length && vault[index]) {
+          var ok = CardTransferManager.vaultToHand(vault[index].id, 1);
+          if (ok) { _notify('🎒 Item card → hand'); }
+          else { _notifyError('Hand is full'); }
+        }
+      } else if (typeof CardStateAuthority !== 'undefined') {
+        var vault2 = CardStateAuthority.getVault();
+        if (index < vault2.length && vault2[index]) {
+          var ok2 = CardStateAuthority.moveVaultToHand(vault2[index].id, 1);
+          if (ok2) { _notify('🎒 Item card → hand'); }
+          else { _notifyError('Hand is full'); }
         }
       }
     } else {
-      // NCH: move this backup card to hand
-      if (typeof CardStateAuthority !== 'undefined') {
-        var moved = CardStateAuthority.moveBackupToHand(index);
-        if (moved) {
-          _notify('➕ Backup card moved to hand');
-        } else {
-          _notifyError('Hand is full');
-        }
+      // NCH backup mode: move backup card to hand (seamless transfer)
+      if (typeof CardTransferManager !== 'undefined') {
+        var moved = CardTransferManager.backupToHand(index);
+        if (moved) { _notify('🎴 Backup card → hand'); }
+        else { _notifyError('Hand is full'); }
+      } else if (typeof CardStateAuthority !== 'undefined') {
+        var moved2 = CardStateAuthority.moveBackupToHand(index);
+        if (moved2) { _notify('🎴 Backup card → hand'); }
+        else { _notifyError('Hand is full'); }
       }
     }
   }
@@ -351,15 +407,19 @@ var BackupActionContainer = (function() {
   // ── Drag Handlers (Combat) ────────────────────────────────
 
   function _attachCombatDragHandlers(slot, index, cardRef, def) {
-    // Combat: drag from slot creates 60×84 thumbnail ghost for hand fan drop
+    // Combat: drag from slot creates ghost with item-specific emoji
     var _ghostEl = null;
 
     slot.addEventListener('pointerdown', function(e) {
       if (typeof CardStateAuthority !== 'undefined' && CardStateAuthority.getTurnDrawsRemaining() <= 0) return;
 
+      // Item-specific ghost emoji
+      var modifier = (typeof CardStateAuthority !== 'undefined') ? CardStateAuthority.getEquippedDrawModifier() : 'default';
+      var ghostEmoji = _getDrawGhostEmoji(def, modifier);
+
       _ghostEl = document.createElement('div');
-      _ghostEl.className = 'backup-drag-ghost';
-      _ghostEl.innerHTML = '<div class="backup-ghost-emoji">' + (def.emoji || '🃏') + '</div>';
+      _ghostEl.className = 'backup-drag-ghost backup-drag-ghost-' + modifier;
+      _ghostEl.innerHTML = '<div class="backup-ghost-emoji">' + ghostEmoji + '</div>';
       _ghostEl.style.position = 'fixed';
       _ghostEl.style.width = '60px';
       _ghostEl.style.height = '84px';
@@ -386,7 +446,6 @@ var BackupActionContainer = (function() {
         // Check if dropped on hand fan
         var dropTarget = document.elementFromPoint(ev.clientX, ev.clientY);
         if (dropTarget && _isHandFanElement(dropTarget)) {
-          // Execute draw
           if (typeof CardStateAuthority !== 'undefined') {
             CardStateAuthority.drawFromBackup(index, 'pick');
             _notifyDraw('drag-to-hand', index);
@@ -401,14 +460,119 @@ var BackupActionContainer = (function() {
 
   // ── Drag Handlers (NCH) ───────────────────────────────────
 
-  function _attachNCHDragHandlers(slot, index, cardRef, def) {
-    // NCH: drag to reorder backup deck, or drag to hand fan, or drag to map
-    // Full implementation in Phase 1.3 (CardTransferManager)
-    // For now: basic drop-to-hand
-    slot.draggable = true;
-    slot.addEventListener('dragstart', function(e) {
-      e.dataTransfer.setData('text/plain', JSON.stringify({ source: 'backup', index: index, cardId: cardRef.id }));
-      e.dataTransfer.effectAllowed = 'move';
+  function _attachNCHDragHandlers(slot, index, cardRef, def, source) {
+    source = source || 'backup';
+
+    // Pointer-based drag for seamless transfer to NCH hand/backup/map
+    var _ghostEl = null;
+    var _startX = 0;
+    var _startY = 0;
+    var _dragging = false;
+
+    slot.addEventListener('pointerdown', function(e) {
+      if (e.button !== undefined && e.button !== 0) return;
+      _startX = e.clientX;
+      _startY = e.clientY;
+      _dragging = false;
+
+      function onMove(ev) {
+        var dx = ev.clientX - _startX;
+        var dy = ev.clientY - _startY;
+        if (!_dragging && Math.sqrt(dx * dx + dy * dy) > 6) {
+          _dragging = true;
+          _ghostEl = document.createElement('div');
+          _ghostEl.className = 'backup-drag-ghost';
+          _ghostEl.innerHTML = '<div class="backup-ghost-emoji">' + (def.emoji || '🃏') + '</div>';
+          _ghostEl.style.cssText = 'position:fixed;width:48px;height:64px;pointer-events:none;z-index:99999;opacity:0.85;';
+          _ghostEl.style.left = (ev.clientX - 24) + 'px';
+          _ghostEl.style.top = (ev.clientY - 32) + 'px';
+          document.body.appendChild(_ghostEl);
+
+          // Notify CardTransferManager
+          if (typeof CardTransferManager !== 'undefined') {
+            CardTransferManager.startDrag({
+              source: source === 'items' ? 'vault' : 'backup',
+              index: index,
+              cardId: cardRef.id,
+              cardRef: cardRef,
+              ghostEl: _ghostEl
+            });
+          }
+        }
+        if (_dragging && _ghostEl) {
+          _ghostEl.style.left = (ev.clientX - 24) + 'px';
+          _ghostEl.style.top = (ev.clientY - 32) + 'px';
+        }
+      }
+
+      function onUp(ev) {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        if (_ghostEl) {
+          _ghostEl.remove();
+          _ghostEl = null;
+        }
+        if (!_dragging) return;
+
+        var dropTarget = document.elementFromPoint(ev.clientX, ev.clientY);
+
+        // Drop on hand fan → transfer to hand
+        if (dropTarget && _isHandFanElement(dropTarget)) {
+          if (source === 'items') {
+            if (typeof CardTransferManager !== 'undefined') {
+              CardTransferManager.vaultToHand(cardRef.id, 1);
+            } else if (typeof CardStateAuthority !== 'undefined') {
+              CardStateAuthority.moveVaultToHand(cardRef.id, 1);
+            }
+            _notify('🎒 Item → hand');
+          } else {
+            if (typeof CardTransferManager !== 'undefined') {
+              CardTransferManager.backupToHand(index);
+            } else if (typeof CardStateAuthority !== 'undefined') {
+              CardStateAuthority.moveBackupToHand(index);
+            }
+            _notify('🎴 Backup → hand');
+          }
+          return;
+        }
+
+        // Drop on NCH expanded zones → delegate to NCH drop handling
+        if (dropTarget && dropTarget.closest) {
+          var backupZone = dropTarget.closest('[data-dropzone="backup"]');
+          var handZone = dropTarget.closest('[data-dropzone="hand"]');
+          var vaultZone = dropTarget.closest('[data-dropzone="vault"]');
+
+          if (handZone) {
+            // Same as hand fan drop
+            if (source === 'items') {
+              if (typeof CardTransferManager !== 'undefined') CardTransferManager.vaultToHand(cardRef.id, 1);
+              else if (typeof CardStateAuthority !== 'undefined') CardStateAuthority.moveVaultToHand(cardRef.id, 1);
+              _notify('🎒 Item → hand');
+            } else {
+              if (typeof CardTransferManager !== 'undefined') CardTransferManager.backupToHand(index);
+              else if (typeof CardStateAuthority !== 'undefined') CardStateAuthority.moveBackupToHand(index);
+              _notify('🎴 Backup → hand');
+            }
+          } else if (backupZone && source === 'items') {
+            // Item → backup deck
+            if (typeof CardTransferManager !== 'undefined') CardTransferManager.vaultToBackup(cardRef.id);
+            else if (typeof CardStateAuthority !== 'undefined') CardStateAuthority.moveVaultToBackup(cardRef.id);
+            _notify('🎒 Item → backup deck');
+          } else if (vaultZone && source === 'backup') {
+            // Backup → vault
+            if (typeof CardTransferManager !== 'undefined') CardTransferManager.backupToVault(index);
+            else if (typeof CardStateAuthority !== 'undefined') CardStateAuthority.moveBackupToVault(index);
+            _notify('🎴 Backup → vault');
+          }
+        }
+
+        if (typeof CardTransferManager !== 'undefined') {
+          CardTransferManager.cancelDrag();
+        }
+      }
+
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
     });
   }
 
