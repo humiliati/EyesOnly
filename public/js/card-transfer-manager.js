@@ -333,6 +333,78 @@ var CardTransferManager = (function() {
     };
   }
 
+  // ── Equip Item Slot ────────────────────────────────────────
+
+  /**
+   * Equip an item from vault to the active slot in website header.
+   * @param {string} cardId
+   * @returns {boolean}
+   */
+  function equipFromVault(cardId) {
+    if (typeof CardStateAuthority === 'undefined') return false;
+    return CardStateAuthority.equipItemFromVault(cardId);
+  }
+
+  /**
+   * Unequip current item back to vault.
+   * @returns {boolean}
+   */
+  function unequipItem() {
+    if (typeof CardStateAuthority === 'undefined') return false;
+    return CardStateAuthority.unequipItem();
+  }
+
+  // ── Map Pickup ───────────────────────────────────────────
+
+  /**
+   * Route a card picked up from the map to the correct container.
+   * @param {string} cardId
+   * @param {string} cardType - 'item' | 'card' | auto
+   * @returns {object}
+   */
+  function pickupFromMap(cardId, cardType) {
+    if (typeof CardStateAuthority === 'undefined') return { success: false };
+    return CardStateAuthority.pickupFromMap(cardId, cardType);
+  }
+
+  // ── Overflow Add ─────────────────────────────────────────
+
+  /**
+   * Add card to hand with trickle-down overflow.
+   * @param {string} cardId
+   * @param {number} qty
+   * @returns {object}
+   */
+  function addCardWithOverflow(cardId, qty) {
+    if (typeof CardStateAuthority === 'undefined') return { placed: null };
+    return CardStateAuthority.addCardWithOverflow(cardId, qty);
+  }
+
+  // ── Drop Zone Factories (continued) ──────────────────────
+
+  /**
+   * Create standard accepts/onDrop for equipped item slot drop zone.
+   * Accepts items from vault only.
+   */
+  function createEquipSlotDropHandlers() {
+    return {
+      accepts: function(drag) {
+        if (CardStateAuthority.isCombat()) return false;
+        if (drag.source !== 'vault' && drag.source !== 'items') return false;
+        // Only items can be equipped — check card type
+        var def = CardStateAuthority.getCardDef(drag.cardId);
+        if (def && def.type) {
+          var t = ('' + def.type).toLowerCase();
+          return (t.indexOf('item') !== -1 || t.indexOf('equip') !== -1);
+        }
+        return true; // allow by default if no type info
+      },
+      onDrop: function(drag, e) {
+        equipFromVault(drag.cardId);
+      }
+    };
+  }
+
   // ── Helpers ────────────────────────────────────────────────
 
   function _inferDropIndex(e) {
@@ -380,11 +452,22 @@ var CardTransferManager = (function() {
     vaultToBackup: vaultToBackup,
     deployToMap: deployToMap,
 
+    // Equip slot
+    equipFromVault: equipFromVault,
+    unequipItem: unequipItem,
+
+    // Map pickup
+    pickupFromMap: pickupFromMap,
+
+    // Overflow
+    addCardWithOverflow: addCardWithOverflow,
+
     // Drop handler factories
     createHandFanDropHandlers: createHandFanDropHandlers,
     createBackupDropHandlers: createBackupDropHandlers,
     createVaultDropHandlers: createVaultDropHandlers,
-    createMapDropHandlers: createMapDropHandlers
+    createMapDropHandlers: createMapDropHandlers,
+    createEquipSlotDropHandlers: createEquipSlotDropHandlers
   };
 
 })();

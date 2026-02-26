@@ -429,7 +429,56 @@ var CardStateAuthority = (function() {
     _emit('backup:changed', { action: 'sort', sortKey: sortKey, backup: getBackup() });
   }
 
+  // ── Vault Reads ──────────────────────────────────────────
+
+  function getMaxVaultSlots() {
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getMaxVaultSlots === 'function') {
+      return GAMESTATE.getMaxVaultSlots();
+    }
+    return 20; // default vault capacity
+  }
+
+  function isVaultFull() {
+    return getVault().length >= getMaxVaultSlots();
+  }
+
   // ── Vault Transfers ────────────────────────────────────────
+
+  /**
+   * Remove a card from the vault/persistent inventory.
+   * @param {string} cardId
+   * @param {number} qty
+   * @returns {boolean}
+   */
+  function _removeFromVault(cardId, qty) {
+    qty = qty || 1;
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.removePersistentCard === 'function') {
+      return GAMESTATE.removePersistentCard(cardId, qty) !== false;
+    }
+    // Fallback: try consumePersistentCard
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.consumePersistentCard === 'function') {
+      return GAMESTATE.consumePersistentCard(cardId, qty) !== false;
+    }
+    // Last resort: try to manipulate the array directly
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getPersistentCards === 'function' &&
+        typeof GAMESTATE.setPersistentCards === 'function') {
+      var cards = GAMESTATE.getPersistentCards();
+      if (!Array.isArray(cards)) return false;
+      for (var i = 0; i < cards.length; i++) {
+        if (cards[i] && cards[i].id === cardId) {
+          var cur = cards[i].qty || 1;
+          if (cur <= qty) {
+            cards.splice(i, 1);
+          } else {
+            cards[i].qty = cur - qty;
+          }
+          GAMESTATE.setPersistentCards(cards);
+          return true;
+        }
+      }
+    }
+    return false;
+  }
 
   function moveHandToVault(handIndex, qty) {
     qty = qty || 1;
@@ -437,6 +486,12 @@ var CardStateAuthority = (function() {
     if (handIndex < 0 || handIndex >= hand.length) return false;
     var card = hand[handIndex];
     if (!card) return false;
+
+    // Check vault capacity
+    if (isVaultFull()) {
+      _emit('transfer:rejected', { reason: 'vault_full', from: 'hand', cardId: card.id });
+      return false;
+    }
 
     var success = false;
     if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addPersistentCard === 'function') {
@@ -457,6 +512,12 @@ var CardStateAuthority = (function() {
     var card = backup[backupIndex];
     if (!card) return false;
 
+    // Check vault capacity
+    if (isVaultFull()) {
+      _emit('transfer:rejected', { reason: 'vault_full', from: 'backup', cardId: card.id });
+      return false;
+    }
+
     var success = false;
     if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addPersistentCard === 'function') {
       success = GAMESTATE.addPersistentCard(card.id, card.qty || 1);
@@ -470,27 +531,293 @@ var CardStateAuthority = (function() {
     return success;
   }
 
+  /**
+   * Move card from vault to hand. MOVE semantics — removes from vault.
+   * @param {string} cardId
+   * @param {number} qty
+   * @returns {boolean}
+   */
   function moveVaultToHand(cardId, qty) {
     qty = qty || 1;
-    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addCardToHand === 'function') {
-      GAMESTATE.addCardToHand(cardId, qty);
-      _syncNonCombatStore();
-      _emit('hand:changed', { action: 'from_vault', cardId: cardId, hand: getHand() });
-      _emit('vault:changed', { action: 'to_hand', cardId: cardId, vault: getVault() });
-      return true;
+    var hand = getHand();
+    if (hand.length >= getMaxHandSize()) {
+      _emit('transfer:rejected', { reason: 'hand_full', from: 'vault', cardId: cardId });
+      return false;
     }
-    return false;
+
+    if (typeof GAMESTATE === 'undefined') return false;
+    if (typeof GAMESTATE.addCardToHand !== 'function') return false;
+
+    // First remove from vault, then add to hand (atomic move)
+    var removed = _removeFromVault(cardId, qty);
+    if (!removed) {
+      console.warn('[CardStateAuthority] moveVaultToHand: failed to remove from vault', cardId);
+      return false;
+    }
+
+    GAMESTATE.addCardToHand(cardId, qty);
+    _syncNonCombatStore();
+    _emit('hand:changed', { action: 'from_vault', cardId: cardId, hand: getHand() });
+    _emit('vault:changed', { action: 'to_hand', cardId: cardId, vault: getVault() });
+    return true;
   }
 
+  /**
+   * Move card from vault to backup deck. MOVE semantics — removes from vault.
+   * @param {string} cardId
+   * @returns {boolean}
+   */
   function moveVaultToBackup(cardId) {
+    // Check backup capacity
+    var backup = getBackup();
+    if (backup.length >= getMaxBackupSlots()) {
+      _emit('transfer:rejected', { reason: 'backup_full', from: 'vault', cardId: cardId });
+      return false;
+    }
+
     if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.moveStashCardToBackup === 'function') {
+      // This GAMESTATE method may handle removal internally
       GAMESTATE.moveStashCardToBackup(cardId);
       _syncNonCombatStore();
       _emit('backup:changed', { action: 'from_vault', cardId: cardId, backup: getBackup() });
       _emit('vault:changed', { action: 'to_backup', cardId: cardId, vault: getVault() });
       return true;
     }
-    return false;
+
+    // Manual fallback: remove from vault, add to backup
+    var removed = _removeFromVault(cardId, 1);
+    if (!removed) return false;
+
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addBackupCard === 'function') {
+      GAMESTATE.addBackupCard(cardId);
+    }
+    _syncNonCombatStore();
+    _emit('backup:changed', { action: 'from_vault', cardId: cardId, backup: getBackup() });
+    _emit('vault:changed', { action: 'to_backup', cardId: cardId, vault: getVault() });
+    return true;
+  }
+
+  // ── Equip Item Slot ────────────────────────────────────────
+
+  /**
+   * Equip an item from vault to the active item slot in website header.
+   * Old equipped item returns to vault.
+   * @param {string} cardId - item to equip from vault
+   * @returns {boolean}
+   */
+  function equipItemFromVault(cardId) {
+    if (typeof GAMESTATE === 'undefined') return false;
+
+    var currentEquipped = getEquippedItemId();
+
+    // Remove new item from vault
+    var removed = _removeFromVault(cardId, 1);
+    if (!removed) return false;
+
+    // If something is already equipped, return it to vault
+    if (currentEquipped) {
+      if (typeof GAMESTATE.addPersistentCard === 'function') {
+        GAMESTATE.addPersistentCard(currentEquipped, 1);
+      }
+    }
+
+    // Set the new equipped item
+    if (typeof GAMESTATE.setActiveItemSlot === 'function') {
+      GAMESTATE.setActiveItemSlot(cardId);
+    }
+
+    _syncNonCombatStore();
+    _emit('vault:changed', { action: 'equip', cardId: cardId, vault: getVault() });
+    _emit('equipped:changed', { cardId: cardId, previousId: currentEquipped });
+    return true;
+  }
+
+  /**
+   * Unequip the current item back to vault.
+   * @returns {boolean}
+   */
+  function unequipItem() {
+    if (typeof GAMESTATE === 'undefined') return false;
+    var currentEquipped = getEquippedItemId();
+    if (!currentEquipped) return false;
+
+    // Check vault capacity
+    if (isVaultFull()) {
+      _emit('transfer:rejected', { reason: 'vault_full', from: 'equipped', cardId: currentEquipped });
+      return false;
+    }
+
+    // Return to vault
+    if (typeof GAMESTATE.addPersistentCard === 'function') {
+      GAMESTATE.addPersistentCard(currentEquipped, 1);
+    }
+
+    // Clear slot
+    if (typeof GAMESTATE.setActiveItemSlot === 'function') {
+      GAMESTATE.setActiveItemSlot(null);
+    }
+
+    _syncNonCombatStore();
+    _emit('vault:changed', { action: 'unequip', cardId: currentEquipped, vault: getVault() });
+    _emit('equipped:changed', { cardId: null, previousId: currentEquipped });
+    return true;
+  }
+
+  // ── Map Pickup Routing ────────────────────────────────────
+
+  /**
+   * Route a card picked up from the map to the correct container.
+   * Items → vault (account inventory). Cards → backup deck top.
+   *
+   * Overflow rules:
+   * - Backup at capacity: auto-incinerate the FURTHEST (bottom) card
+   * - Vault at capacity: reject pickup, emit event for manual disposal UI
+   *
+   * @param {string} cardId
+   * @param {string} cardType - 'item' | 'card' | auto-detect from def
+   * @returns {{ success: boolean, destination: string, incinerated: string|null }}
+   */
+  function pickupFromMap(cardId, cardType) {
+    var result = { success: false, destination: null, incinerated: null };
+
+    // Auto-detect type from card definition
+    if (!cardType) {
+      var def = getCardDef(cardId);
+      if (def && def.type) {
+        var t = ('' + def.type).toLowerCase();
+        cardType = (t.indexOf('item') !== -1 || t.indexOf('equip') !== -1) ? 'item' : 'card';
+      } else {
+        cardType = 'card'; // default to card
+      }
+    }
+
+    if (cardType === 'item') {
+      // Items → vault
+      if (isVaultFull()) {
+        _emit('pickup:rejected', { reason: 'vault_full', cardId: cardId, cardType: 'item' });
+        result.success = false;
+        return result;
+      }
+
+      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addPersistentCard === 'function') {
+        var ok = GAMESTATE.addPersistentCard(cardId, 1);
+        if (ok !== false) {
+          _syncNonCombatStore();
+          result.success = true;
+          result.destination = 'vault';
+          _emit('vault:changed', { action: 'pickup', cardId: cardId, vault: getVault() });
+          _emit('pickup:routed', { cardId: cardId, destination: 'vault' });
+        }
+      }
+    } else {
+      // Cards → backup deck top
+      var backup = getBackup();
+
+      if (backup.length >= getMaxBackupSlots()) {
+        // Auto-incinerate the FURTHEST (bottom/last) card
+        var incineratedCard = backup[backup.length - 1];
+        removeBackupCard(backup.length - 1);
+        result.incinerated = incineratedCard ? incineratedCard.id : null;
+        _emit('backup:incinerated', {
+          cardId: result.incinerated,
+          reason: 'overflow',
+          backup: getBackup()
+        });
+      }
+
+      // Add new card to top of backup (index 0)
+      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addBackupCardToTop === 'function') {
+        GAMESTATE.addBackupCardToTop(cardId);
+      } else if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addBackupCard === 'function') {
+        GAMESTATE.addBackupCard(cardId);
+        // If addBackupCard appends to bottom, reorder to top
+        var newBackup = getBackup();
+        if (newBackup.length > 1 && newBackup[newBackup.length - 1].id === cardId) {
+          reorderBackup(newBackup.length - 1, 0);
+        }
+      }
+
+      _syncNonCombatStore();
+      result.success = true;
+      result.destination = 'backup';
+      _emit('backup:changed', { action: 'pickup', cardId: cardId, backup: getBackup() });
+      _emit('pickup:routed', { cardId: cardId, destination: 'backup', incinerated: result.incinerated });
+    }
+
+    return result;
+  }
+
+  // ── Hand Overflow (Dupe Trickle) ──────────────────────────
+
+  /**
+   * Add a card to hand with overflow handling.
+   * If hand is full, trickle to backup deck top.
+   * If backup is also full, auto-incinerate backup bottom.
+   *
+   * Used by 3D printer during combat and dupe mechanics.
+   *
+   * @param {string} cardId
+   * @param {number} qty
+   * @returns {{ placed: string, incinerated: string|null }}
+   */
+  function addCardWithOverflow(cardId, qty) {
+    qty = qty || 1;
+    var results = [];
+
+    for (var q = 0; q < qty; q++) {
+      var result = { placed: null, incinerated: null };
+      var hand = getHand();
+
+      if (hand.length < getMaxHandSize()) {
+        // Fits in hand
+        addCardToHand(cardId, 1);
+        result.placed = 'hand';
+      } else {
+        // Trickle to backup
+        var backup = getBackup();
+        if (backup.length >= getMaxBackupSlots()) {
+          // Auto-incinerate bottom
+          var incCard = backup[backup.length - 1];
+          removeBackupCard(backup.length - 1);
+          result.incinerated = incCard ? incCard.id : null;
+          _emit('backup:incinerated', { cardId: result.incinerated, reason: 'overflow_trickle' });
+        }
+
+        // Add to backup top
+        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addBackupCardToTop === 'function') {
+          GAMESTATE.addBackupCardToTop(cardId);
+        } else if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addBackupCard === 'function') {
+          GAMESTATE.addBackupCard(cardId);
+        }
+        _syncNonCombatStore();
+        _emit('backup:changed', { action: 'trickle', cardId: cardId, backup: getBackup() });
+        result.placed = 'backup';
+      }
+      results.push(result);
+    }
+
+    return results.length === 1 ? results[0] : results;
+  }
+
+  // ── Vault Disposal ─────────────────────────────────────────
+
+  /**
+   * Dispose an item from vault to debrief feed (permanent removal).
+   * Used when vault is full and player manually discards.
+   * @param {string} cardId
+   * @returns {boolean}
+   */
+  function disposeFromVault(cardId) {
+    var removed = _removeFromVault(cardId, 1);
+    if (removed) {
+      _emit('vault:changed', { action: 'disposed', cardId: cardId, vault: getVault() });
+      _emit('card:disposed', { cardId: cardId, source: 'vault' });
+      // Notify debrief feed if available
+      if (typeof NonCombatEventBus !== 'undefined') {
+        NonCombatEventBus.emit('debrief:card-disposed', { cardId: cardId, source: 'vault' });
+      }
+    }
+    return removed;
   }
 
   // ── Sync NonCombatStateStore (backward compat) ─────────────
@@ -522,6 +849,7 @@ var CardStateAuthority = (function() {
   function getSignature() {
     var hand = getHand();
     var backup = getBackup();
+    var vault = getVault();
     var parts = [];
     for (var i = 0; i < hand.length; i++) {
       parts.push('h:' + hand[i].id + ':' + (hand[i].qty || 1));
@@ -529,8 +857,12 @@ var CardStateAuthority = (function() {
     for (var j = 0; j < backup.length; j++) {
       parts.push('b:' + backup[j].id + ':' + (backup[j].qty || 1));
     }
+    for (var k = 0; k < vault.length; k++) {
+      parts.push('v:' + vault[k].id + ':' + (vault[k].qty || 1));
+    }
     parts.push('m:' + getMode());
     parts.push('d:' + _turnDrawsRemaining);
+    parts.push('e:' + (getEquippedItemId() || 'none'));
     return parts.join('|');
   }
 
@@ -609,6 +941,8 @@ var CardStateAuthority = (function() {
     getBackupTop: getBackupTop,
     getMaxBackupSlots: getMaxBackupSlots,
     getVault: getVault,
+    getMaxVaultSlots: getMaxVaultSlots,
+    isVaultFull: isVaultFull,
     getEquippedItemId: getEquippedItemId,
     getEquippedDrawModifier: getEquippedDrawModifier,
     getResources: getResources,
@@ -635,6 +969,19 @@ var CardStateAuthority = (function() {
     moveBackupToVault: moveBackupToVault,
     moveVaultToHand: moveVaultToHand,
     moveVaultToBackup: moveVaultToBackup,
+
+    // Equip slot
+    equipItemFromVault: equipItemFromVault,
+    unequipItem: unequipItem,
+
+    // Map pickup routing
+    pickupFromMap: pickupFromMap,
+
+    // Overflow handling
+    addCardWithOverflow: addCardWithOverflow,
+
+    // Vault disposal
+    disposeFromVault: disposeFromVault,
 
     // Combat draw (item-aware)
     drawFromBackup: drawFromBackup,

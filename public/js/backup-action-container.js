@@ -48,6 +48,7 @@ var BackupActionContainer = (function() {
       CardStateAuthority.on('vault:changed', function() { if (_isVisible) { _lastSig = null; _render(); } });
       CardStateAuthority.on('draw:executed', function() { if (_isVisible) { _lastSig = null; _render(); } });
       CardStateAuthority.on('draw:reset', function() { if (_isVisible) { _lastSig = null; _render(); } });
+      CardStateAuthority.on('equipped:changed', function() { if (_isVisible) { _lastSig = null; _render(); } });
     }
   }
 
@@ -516,6 +517,18 @@ var BackupActionContainer = (function() {
 
         var dropTarget = document.elementFromPoint(ev.clientX, ev.clientY);
 
+        // Drop on equip slot → equip item (items source only)
+        if (dropTarget && source === 'items' && _isEquipSlotElement(dropTarget)) {
+          if (typeof CardTransferManager !== 'undefined') {
+            CardTransferManager.equipFromVault(cardRef.id);
+          } else if (typeof CardStateAuthority !== 'undefined') {
+            CardStateAuthority.equipItemFromVault(cardRef.id);
+          }
+          _notify('🎒 Item → equipped');
+          if (typeof CardTransferManager !== 'undefined') CardTransferManager.cancelDrag();
+          return;
+        }
+
         // Drop on hand fan → transfer to hand
         if (dropTarget && _isHandFanElement(dropTarget)) {
           if (source === 'items') {
@@ -533,16 +546,23 @@ var BackupActionContainer = (function() {
             }
             _notify('🎴 Backup → hand');
           }
+          if (typeof CardTransferManager !== 'undefined') CardTransferManager.cancelDrag();
           return;
         }
 
         // Drop on NCH expanded zones → delegate to NCH drop handling
         if (dropTarget && dropTarget.closest) {
+          var equipZone = dropTarget.closest('[data-dropzone="equip"]');
           var backupZone = dropTarget.closest('[data-dropzone="backup"]');
           var handZone = dropTarget.closest('[data-dropzone="hand"]');
           var vaultZone = dropTarget.closest('[data-dropzone="vault"]');
 
-          if (handZone) {
+          if (equipZone && source === 'items') {
+            // Item → equip slot
+            if (typeof CardTransferManager !== 'undefined') CardTransferManager.equipFromVault(cardRef.id);
+            else if (typeof CardStateAuthority !== 'undefined') CardStateAuthority.equipItemFromVault(cardRef.id);
+            _notify('🎒 Item → equipped');
+          } else if (handZone) {
             // Same as hand fan drop
             if (source === 'items') {
               if (typeof CardTransferManager !== 'undefined') CardTransferManager.vaultToHand(cardRef.id, 1);
@@ -583,6 +603,20 @@ var BackupActionContainer = (function() {
       if (el.classList && (el.classList.contains('hand-fan-container') || el.classList.contains('hand-card'))) {
         return true;
       }
+      el = el.parentElement;
+    }
+    return false;
+  }
+
+  /**
+   * Check if element is an equip item slot in the website header.
+   */
+  function _isEquipSlotElement(el) {
+    while (el) {
+      if (el.classList && (el.classList.contains('equipped-item-slot') || el.classList.contains('header-item-slot'))) {
+        return true;
+      }
+      if (el.dataset && el.dataset.dropzone === 'equip') return true;
       el = el.parentElement;
     }
     return false;
