@@ -269,13 +269,15 @@ export async function createDeadDrop(
   placedBy: number,
   lat?: number,
   lng?: number,
+  items: string[] = [],
 ): Promise<DeadDropRow> {
   const now = Date.now();
+  const itemsJson = JSON.stringify(items || []);
   const result = await db
     .prepare(
-      'INSERT INTO dead_drops (scenario_id, lane_id, label, lat, lng, placed_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *',
+      'INSERT INTO dead_drops (scenario_id, lane_id, label, lat, lng, placed_by, items_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *',
     )
-    .bind(scenarioId, laneId, label, lat ?? null, lng ?? null, placedBy, now, now)
+    .bind(scenarioId, laneId, label, lat ?? null, lng ?? null, placedBy, itemsJson, now, now)
     .first<DeadDropRow>();
   return result!;
 }

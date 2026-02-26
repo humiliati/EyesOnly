@@ -141,6 +141,7 @@ opsRoutes.post('/dead-drop', async (c) => {
       auth.actor_id,
       body.lat,
       body.lng,
+      [],
     );
 
     event = await insertEvent(c.env.DB, auth.scenario_id, auth.actor_id, 'dead_drop_placed', {
@@ -159,11 +160,35 @@ opsRoutes.post('/dead-drop', async (c) => {
 
     await retrieveDeadDrop(c.env.DB, activeDrop.id, auth.actor_id);
 
+    let items: string[] = [];
+    try {
+      items = activeDrop.items_json ? JSON.parse(activeDrop.items_json) : [];
+      if (!Array.isArray(items)) items = [];
+    } catch {
+      items = [];
+    }
+
     event = await insertEvent(c.env.DB, auth.scenario_id, auth.actor_id, 'dead_drop_retrieved', {
       dead_drop_id: activeDrop.id,
       lane_id: body.lane_id,
       callsign: auth.callsign,
+      items,
     });
+
+    // Include item payload so ops tools can mirror the old KV flow.
+    // NOTE: This does not itself grant items; it informs M for grant processing.
+    const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+    const room = c.env.SCENARIO_ROOM.get(roomId);
+    await room.fetch(new Request('http://internal/broadcast', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'event',
+        data: { ...event, payload: { ...JSON.parse(event.payload), items } },
+        timestamp: Date.now(),
+      }),
+    }));
+
+    return c.json({ ok: true, event_id: event.id, items });
   } else {
     return c.json({ error: 'BAD_REQUEST', message: 'action must be "place" or "retrieve"' }, 400);
   }

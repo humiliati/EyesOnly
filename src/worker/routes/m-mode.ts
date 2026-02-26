@@ -251,6 +251,7 @@ mModeRoutes.post('/dead-drop', async (c) => {
     label: string;
     lat?: number;
     lng?: number;
+    items?: string[];
   }>();
 
   const scenarioId = body.scenario_id || auth.scenario_id;
@@ -258,7 +259,16 @@ mModeRoutes.post('/dead-drop', async (c) => {
     return c.json({ error: 'BAD_REQUEST', message: 'scenario_id, lane_id, label are required' }, 400);
   }
 
-  const drop = await createDeadDrop(c.env.DB, scenarioId, body.lane_id, body.label, auth.actor_id, body.lat, body.lng);
+  const drop = await createDeadDrop(
+    c.env.DB,
+    scenarioId,
+    body.lane_id,
+    body.label,
+    auth.actor_id,
+    body.lat,
+    body.lng,
+    body.items || [],
+  );
 
   // Log + broadcast
   const event = await insertEvent(c.env.DB, scenarioId, auth.actor_id, 'dead_drop_placed', {
@@ -267,6 +277,7 @@ mModeRoutes.post('/dead-drop', async (c) => {
     label: drop.label,
     lat: drop.lat,
     lng: drop.lng,
+    items: body.items || [],
     placed_by: auth.callsign,
   });
 

@@ -92,6 +92,7 @@ export interface DeadDropRow {
   placed_by: number | null;
   retrieved_by: number | null;
   asset_key: string | null; // R2 object key for photo
+  items_json?: string | null; // JSON array of item ids
   cell_id: string | null;
   created_at: number;
   updated_at: number;
