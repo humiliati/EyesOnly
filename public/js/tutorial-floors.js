@@ -601,13 +601,330 @@ var TutorialFloors = (function() {
     InteriorFloors.registerAuthoredLayout('1.2', CHURCH_INTERIOR_LAYOUT);
   }
 
+
+  /**
+   * Floor 0: The Tavern Road — Onboarding hub with scripted walk
+   *
+   * Design:
+   * - Player spawns on the left side of a forest road
+   * - A tavern building sits mid-map (easter egg: explorable interior + basement)
+   * - The road leads east to the Floor 1 exit (scripted auto-walk on first visit)
+   * - No enemies — safe hub area
+   * - Building door leads to tavern interior (floor ID 0.1)
+   *
+   * Template fills entire 20×40 grid → templateFillsGrid=true → no anchor shifting.
+   */
+  var FLOOR_0_LAYOUT = {
+    floorNumber: 0,
+    name: 'The Tavern Road',
+    description: 'A quiet forest road leading past an old tavern.',
+    templateFillsGrid: true,
+
+    // 20 rows × 40 cols — fills grid exactly
+    // Road runs left-to-right through the middle rows
+    template: [
+      '########################################',
+      '#......................................#',
+      '#..####.####...........................#',
+      '#..####.####...........................#',
+      '#..####.####...........................#',
+      '#......................................#',
+      '#......................................#',
+      '#..P...................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#.....................................E#',
+      '#......................................#',
+      '########################################'
+    ],
+
+    // Player spawns on the left side of the road
+    player: { x: 3, y: 7 },
+    // Exit on the far right — leads to Floor 1
+    exit: { x: 38, y: 17 },
+
+    // Tavern building (visual overlay, impassable) — upper-left cluster
+    buildings: [
+      { x: 3, y: 2, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 4, y: 2, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 5, y: 2, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 7, y: 2, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 8, y: 2, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 9, y: 2, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 3, y: 3, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 4, y: 3, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 5, y: 3, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 7, y: 3, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 8, y: 3, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 9, y: 3, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 3, y: 4, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 4, y: 4, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 5, y: 4, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 7, y: 4, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 8, y: 4, emoji: '🏚️', name: 'Old Tavern' },
+      { x: 9, y: 4, emoji: '🏚️', name: 'Old Tavern' }
+    ],
+
+    // Tavern entrance door — leads to interior floor 0.1
+    buildingDoors: [
+      { x: 6, y: 4, buildingId: 'BLD-TAVERN', targetFloorId: '0.1' }
+    ],
+
+    // Decorations (visual overlay, walkable)
+    decorations: [
+      // Trees along the road
+      { x: 15, y: 3, emoji: '🌳', name: 'Oak Tree' },
+      { x: 22, y: 2, emoji: '🌲', name: 'Pine Tree' },
+      { x: 30, y: 4, emoji: '🌳', name: 'Oak Tree' },
+      { x: 35, y: 2, emoji: '🌲', name: 'Pine Tree' },
+      // Lanterns along the path
+      { x: 10, y: 8, emoji: '🏮', name: 'Lantern' },
+      { x: 20, y: 8, emoji: '🏮', name: 'Lantern' },
+      { x: 30, y: 8, emoji: '🏮', name: 'Lantern' },
+      // Scenery
+      { x: 14, y: 14, emoji: '🪨', name: 'Boulder' },
+      { x: 25, y: 15, emoji: '🌿', name: 'Fern' },
+      { x: 33, y: 13, emoji: '🪨', name: 'Boulder' },
+      // Tavern sign
+      { x: 6, y: 5, emoji: '🪧', name: 'Tavern Sign' }
+    ],
+
+    // Hint NPC outside the tavern
+    npcs: [
+      {
+        id: 'NPC-TAVERN-KEEPER',
+        x: 8, y: 6,
+        emoji: '🧔',
+        name: 'Tavern Keeper',
+        direction: 'south',
+        dialogues: [
+          'Welcome, stranger. The road ahead leads to the forest.',
+          'This old tavern has been here longer than anyone can remember.',
+          'If you ever come back this way, take a look around the cellar...',
+          'They say the previous owner left something valuable down there.'
+        ],
+        gate: null, reward: null
+      }
+    ],
+
+    interactiveItems: [
+      { x: 6, y: 5, type: 'SIGN', emoji: '🪧', name: 'Tavern Sign',
+        text: 'The Rusty Mug — Est. ???. "All adventurers welcome."' }
+    ],
+
+    breakables: [],
+    enemies: [],
+
+    breadcrumbPickups: [
+      { x: 12, y: 7, amount: 3 },
+      { x: 18, y: 7, amount: 3 },
+      { x: 24, y: 7, amount: 3 },
+      { x: 30, y: 7, amount: 5 },
+      { x: 35, y: 7, amount: 5 }
+    ],
+
+    border: {
+      thickness: 1,
+      style: 'natural',
+      tiles: ['🌳', '🌲', '🪨']
+    }
+  };
+
+
+  // =========================================================================
+  // Tavern Interior Layout (Floor ID: "0.1")
+  // Cozy tavern with bar, tables, and a door to the basement.
+  // =========================================================================
+  var TAVERN_INTERIOR_LAYOUT = {
+    name: 'Tavern Interior',
+    template: [
+      '########################################',
+      '#......................................#',
+      '#..################....................#',
+      '#..################....................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '########################################'
+    ],
+    player: { x: 20, y: 17 },
+    exit: { x: 20, y: 18 },
+
+    // Door to the basement (nested interior 0.1.1)
+    buildingDoors: [
+      { x: 38, y: 10, buildingId: 'BLD-TAVERN-BASEMENT', targetFloorId: '0.1.1' }
+    ],
+
+    npcs: [{
+      id: 'NPC-BARMAID', x: 10, y: 3, emoji: '👩', name: 'Dusty Portrait',
+      direction: 'south',
+      dialogues: [
+        'A faded portrait of a woman hangs on the wall.',
+        'Below it reads: "Mara, Keeper of the Forge Key".',
+        'She seems to be holding something behind her back...',
+        'The portrait\'s eyes seem to follow you toward the eastern wall.'
+      ],
+      gate: null, reward: null
+    }],
+
+    decorations: [
+      // Bar counter (top area)
+      { x: 3, y: 2, emoji: '🍺', name: 'Beer Tap' },
+      { x: 18, y: 2, emoji: '🍺', name: 'Beer Tap' },
+      // Tables
+      { x: 6, y: 8, emoji: '🪑', name: 'Chair' },
+      { x: 8, y: 8, emoji: '🪑', name: 'Chair' },
+      { x: 7, y: 9, emoji: '🪑', name: 'Chair' },
+      { x: 14, y: 8, emoji: '🪑', name: 'Chair' },
+      { x: 16, y: 8, emoji: '🪑', name: 'Chair' },
+      { x: 15, y: 9, emoji: '🪑', name: 'Chair' },
+      // Fireplace
+      { x: 30, y: 2, emoji: '🔥', name: 'Fireplace' },
+      { x: 31, y: 2, emoji: '🔥', name: 'Fireplace' },
+      // Candles
+      { x: 3, y: 10, emoji: '🕯️', name: 'Candle' },
+      { x: 36, y: 10, emoji: '🕯️', name: 'Candle' },
+      // Basement door hint
+      { x: 37, y: 10, emoji: '🪧', name: 'Sign' }
+    ],
+
+    interactiveItems: [
+      { x: 37, y: 10, type: 'SIGN', emoji: '🪧', name: 'Cellar Sign',
+        text: 'CELLAR — Authorized Personnel Only. (The lock is broken.)' }
+    ],
+
+    breakables: [
+      { x: 24, y: 6, emoji: '🍺', name: 'Dusty Barrel', hp: 1, drops: { currency: [2, 5] } },
+      { x: 25, y: 6, emoji: '🍺', name: 'Dusty Barrel', hp: 1, drops: { currency: [2, 5] } },
+      { x: 24, y: 7, emoji: '📦', name: 'Old Crate', hp: 1, drops: { currency: [3, 6] } }
+    ],
+
+    currencies: [{ x: 7, y: 8, amount: 3 }, { x: 15, y: 8, amount: 3 }],
+    enemies: []
+  };
+
+  // =========================================================================
+  // Tavern Basement Layout (Floor ID: "0.1.1")
+  // Dark cellar with the BLACKSMITH_HAMMER quest key at the far end.
+  // =========================================================================
+  var TAVERN_BASEMENT_LAYOUT = {
+    name: 'Tavern Basement',
+    template: [
+      '########################################',
+      '#......................................#',
+      '#......................................#',
+      '#..########..........########.........#',
+      '#..#......#..........#......#.........#',
+      '#..#......#..........#......#.........#',
+      '#..########..........########.........#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#..########..........########.........#',
+      '#..#......#..........#......#.........#',
+      '#..#......#..........#......#.........#',
+      '#..########..........########.........#',
+      '#......................................#',
+      '#......................................#',
+      '########################################'
+    ],
+    player: { x: 20, y: 17 },
+    exit: { x: 20, y: 18 },
+
+    // No nested doors — this is the deepest level
+    buildingDoors: [],
+
+    npcs: [],
+
+    decorations: [
+      // Cobwebs
+      { x: 2, y: 1, emoji: '🕸️', name: 'Cobweb' },
+      { x: 37, y: 1, emoji: '🕸️', name: 'Cobweb' },
+      { x: 2, y: 18, emoji: '🕸️', name: 'Cobweb' },
+      { x: 37, y: 18, emoji: '🕸️', name: 'Cobweb' },
+      // Torches
+      { x: 1, y: 5, emoji: '🔥', name: 'Wall Torch' },
+      { x: 1, y: 14, emoji: '🔥', name: 'Wall Torch' },
+      { x: 38, y: 5, emoji: '🔥', name: 'Wall Torch' },
+      { x: 38, y: 14, emoji: '🔥', name: 'Wall Torch' }
+    ],
+
+    interactiveItems: [
+      { x: 20, y: 10, type: 'SIGN', emoji: '🪧', name: 'Scratched Note',
+        text: 'Mara hid the hammer here before she left. "For the one who returns to the forge."' }
+    ],
+
+    breakables: [
+      { x: 10, y: 9, emoji: '📦', name: 'Rotting Crate', hp: 1, drops: { currency: [5, 10] } },
+      { x: 11, y: 9, emoji: '📦', name: 'Rotting Crate', hp: 1, drops: { currency: [5, 10] } },
+      { x: 28, y: 9, emoji: '🛢️', name: 'Rusted Barrel', hp: 1, drops: { currency: [3, 8] } },
+      { x: 29, y: 9, emoji: '🛢️', name: 'Rusted Barrel', hp: 1, drops: { currency: [3, 8] } },
+      // Crates guarding the hammer alcove
+      { x: 34, y: 1, emoji: '📦', name: 'Heavy Crate', hp: 2, drops: { currency: [5, 12] } },
+      { x: 35, y: 1, emoji: '📦', name: 'Heavy Crate', hp: 2, drops: { currency: [5, 12] } }
+    ],
+
+    // The BLACKSMITH_HAMMER quest key — freely pickable at the end of the basement
+    tutorialPickups: [
+      {
+        x: 37, y: 2,
+        type: 'key',
+        keyType: 'BLACKSMITH_HAMMER',
+        tier: 3,
+        subtype: 'quest',
+        emoji: '🔨',
+        name: 'Blacksmith\'s Hammer',
+        npcTarget: 'BLACKSMITH'
+      }
+    ],
+
+    currencies: [
+      { x: 15, y: 5, amount: 8 },
+      { x: 25, y: 5, amount: 8 },
+      { x: 15, y: 14, amount: 8 },
+      { x: 25, y: 14, amount: 8 }
+    ],
+    enemies: []
+  };
+
+  // Register tavern interiors with InteriorFloors module
+  if (typeof InteriorFloors !== 'undefined') {
+    InteriorFloors.registerAuthoredLayout('0.1', TAVERN_INTERIOR_LAYOUT);
+    InteriorFloors.registerAuthoredLayout('0.1.1', TAVERN_BASEMENT_LAYOUT);
+  }
+
+
   /**
    * Get contrived floor layout for tutorial floors
-   * @param {number} floorNumber - Floor number (1-3)
+   * @param {number} floorNumber - Floor number (0-3)
    * @returns {Object|null} Floor layout or null if not a tutorial floor
    */
   function getFloorLayout(floorNumber) {
     switch (floorNumber) {
+      case 0:
+        return FLOOR_0_LAYOUT;
       case 1:
         return FLOOR_1_LAYOUT;
       case 2:
@@ -625,7 +942,7 @@ var TutorialFloors = (function() {
    * @returns {boolean} True if floor uses contrived layout
    */
   function isContrivedFloor(floorNumber) {
-    return floorNumber >= 1 && floorNumber <= 3;
+    return floorNumber >= 0 && floorNumber <= 3;
   }
 
   /**
@@ -803,10 +1120,13 @@ var TutorialFloors = (function() {
     generateContrivedFloor: generateContrivedFloor,
 
     // Export for designer tooling
+    FLOOR_0_LAYOUT: FLOOR_0_LAYOUT,
     FLOOR_1_LAYOUT: FLOOR_1_LAYOUT,
     FLOOR_2_LAYOUT: FLOOR_2_LAYOUT,
     FLOOR_3_LAYOUT: FLOOR_3_LAYOUT,
-    CHURCH_INTERIOR_LAYOUT: CHURCH_INTERIOR_LAYOUT
+    CHURCH_INTERIOR_LAYOUT: CHURCH_INTERIOR_LAYOUT,
+    TAVERN_INTERIOR_LAYOUT: TAVERN_INTERIOR_LAYOUT,
+    TAVERN_BASEMENT_LAYOUT: TAVERN_BASEMENT_LAYOUT
   };
 
 })();

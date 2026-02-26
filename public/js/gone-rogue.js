@@ -84,6 +84,8 @@ const GoneRogue = (function () {
   var _bossHazards = []; // Boss-specific hazards (trains, drones, etc.)
   var _bossEnvironment = {}; // Boss-specific environment data
   var _playerMoveLocked = false; // Set by Asteroids boss; disables walk commands
+  var _scriptedWalk = false; // True during Floor 0 auto-walk (disables player click input)
+  var _scriptedWalkTarget = null; // {x, y} target for scripted walk
 
   // Secret floor state
   var _activeSecretFloor = null; // Current secret floor type (if any)
@@ -1251,7 +1253,15 @@ const GoneRogue = (function () {
     // Allow explicit resume only when context.resume === true.
     try {
       if (!context.resume) {
-        _floor = 1;
+        // Uber 1+ (experienced players) skip Floor 0 tavern hub and start at Floor 1 directly.
+        // First-time / Uber 0 players start at Floor 0 for onboarding scripted walk.
+        var startFloor = 0;
+        try {
+          if (typeof AWOLDifficulty !== 'undefined' && AWOLDifficulty.getCurrentTier && AWOLDifficulty.getCurrentTier() >= 2) {
+            startFloor = 1;
+          }
+        } catch (eAwol) {}
+        _floor = startFloor;
         _turn = 0;
         _lastExitPos = null;
         // Clear persisted rogue state so we don't start new players on a mid-run floor.
@@ -1467,6 +1477,44 @@ const GoneRogue = (function () {
 
     // Start game loop
     _startGameLoop();
+
+    // Floor 0 scripted walk: auto-path the player toward the exit (Floor 1 door).
+    // Player control is disabled until they reach Floor 1.
+    if (_floor === 0) {
+      _scriptedWalk = true;
+      try {
+        // Find the forward exit position from current grid
+        var exitTarget = null;
+        for (var sy = 0; sy < GRID_HEIGHT && !exitTarget; sy++) {
+          for (var sx = 0; sx < GRID_WIDTH && !exitTarget; sx++) {
+            if (_grid[sy] && (_grid[sy][sx] === TILES.EXIT)) {
+              var mk = sx + ',' + sy;
+              if (_tileMetadata[mk] && _tileMetadata[mk].doorKind === 'forward') {
+                exitTarget = { x: sx, y: sy };
+              }
+            }
+          }
+        }
+        if (exitTarget) {
+          _scriptedWalkTarget = exitTarget;
+          // Delay slightly so the grid renders before the walk starts
+          setTimeout(function() {
+            if (typeof GoneRogueMovement !== 'undefined' && GoneRogueMovement.setTarget) {
+              GoneRogueMovement.setTarget(exitTarget.x, exitTarget.y, {
+                isPassable: function(x, y) {
+                  if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) return false;
+                  var t = _grid[y] ? _grid[y][x] : null;
+                  return t === TILES.EMPTY || t === TILES.EXIT || t === TILES.DOOR || t === '~';
+                }
+              }, false);
+            }
+          }, 600);
+        }
+      } catch (eScripted) {
+        console.warn('[GoneRogue] Scripted walk setup error:', eScripted);
+        _scriptedWalk = false;
+      }
+    }
 
     // Use mobile UI if available
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
@@ -2726,6 +2774,27 @@ const GoneRogue = (function () {
     // TODO: Implement NPC system
     if (floorData.npcs && floorData.npcs.length > 0) {
       console.log('[TutorialFloors] NPCs defined but NPC system not yet implemented');
+    }
+
+    // Place building doors (tavern, church, etc.) — special door tiles leading to interior floors
+    if (floorData.buildingDoors && floorData.buildingDoors.length > 0) {
+      floorData.buildingDoors.forEach(function(bd) {
+        if (!bd || typeof bd.x !== 'number' || typeof bd.y !== 'number') return;
+        if (bd.x < 0 || bd.x >= GRID_WIDTH || bd.y < 0 || bd.y >= GRID_HEIGHT) return;
+
+        // Carve the door tile to empty first, then stamp as a door
+        _grid[bd.y][bd.x] = TILES.DOOR;
+        _tileMetadata[bd.x + ',' + bd.y] = {
+          type: 'building_door',
+          doorKind: 'building',
+          buildingId: bd.buildingId || null,
+          targetFloorId: bd.targetFloorId || null,
+          emoji: '🚪',
+          name: (bd.buildingId || 'Building') + ' Entrance'
+        };
+
+        console.log('[TutorialFloors] Placed building door at (' + bd.x + ',' + bd.y + ') → ' + (bd.targetFloorId || 'unknown'));
+      });
     }
 
     // Place interactive items (signs, books, food, area-of-interest)
@@ -5128,7 +5197,17 @@ _incrementPityTimers();
           _attemptExtract();
           return;
         }
+        if (md.doorKind === 'interior_exit') {
+          _exitInteriorFloor();
+          return;
+        }
         // Unknown/joker door: fall through for now
+      }
+
+      // Building door → enter interior floor (tavern, church, etc.)
+      if (md && md.type === 'building_door' && md.targetFloorId) {
+        _enterInteriorFloor(md.targetFloorId);
+        return;
       }
 
       // Default: treat as forward exit
@@ -6381,8 +6460,261 @@ _incrementPityTimers();
     return { lines: ['Cannot interact with that'], prompt: getPrompt(), stayActive: true };
   }
 
+  // =========================================================================
+  // Interior Floor System — Enter/exit building interiors (tavern, church, etc.)
+  // Uses InteriorFloors module for authored layouts and dot-notation floor IDs.
+  // =========================================================================
+  var _interiorFloorStack = []; // Stack of { floorId, playerPos } for nested interiors
+  var _currentInteriorFloorId = null; // Current interior floor ID (null if on main floor)
+
+  function _enterInteriorFloor(targetFloorId) {
+    if (!targetFloorId) return;
+    if (typeof InteriorFloors === 'undefined') {
+      console.warn('[GoneRogue] InteriorFloors module not loaded');
+      return;
+    }
+
+    var layout = InteriorFloors.getAuthoredLayout(targetFloorId);
+    if (!layout) {
+      console.warn('[GoneRogue] No authored layout for interior: ' + targetFloorId);
+      return;
+    }
+
+    console.log('[GoneRogue] Entering interior floor: ' + targetFloorId);
+
+    // Save current state to the stack so we can return
+    _interiorFloorStack.push({
+      floorId: _currentInteriorFloorId,
+      mainFloor: _floor,
+      playerX: _player.x,
+      playerY: _player.y
+    });
+    _currentInteriorFloorId = targetFloorId;
+
+    // Fade-out effect
+    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+      var gridContainer = document.getElementById('rogue-grid-mobile');
+      if (gridContainer) {
+        gridContainer.style.opacity = '0';
+        gridContainer.style.transition = 'opacity 0.25s ease-out';
+      }
+    }
+
+    setTimeout(function() {
+      // Generate the interior floor using the authored layout
+      var floorData = TutorialFloors.generateContrivedFloor(layout);
+
+      // Apply grid
+      _grid = floorData.grid;
+
+      // Place player at interior spawn
+      _player.x = floorData.player.x;
+      _player.y = floorData.player.y;
+      _ensurePlayerOnEmptyTile();
+
+      // Reset state arrays for interior
+      _enemies = [];
+      _breakables = [];
+      _items = [];
+      _currencies = [];
+      _npcs = [];
+      _forestBuildings = [];
+      _tileMetadata = {};
+
+      // Place exit door (back to parent floor)
+      var exitX = floorData.exit.x;
+      var exitY = floorData.exit.y;
+      if (exitX >= 0 && exitX < GRID_WIDTH && exitY >= 0 && exitY < GRID_HEIGHT) {
+        _grid[exitY][exitX] = TILES.DOOR;
+        _tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'interior_exit' };
+      }
+
+      // Place decorations
+      if (floorData.decorations) {
+        floorData.decorations.forEach(function(deco) {
+          _forestBuildings.push({ x: deco.x, y: deco.y, emoji: deco.emoji });
+        });
+      }
+
+      // Place breakables
+      if (floorData.breakables) {
+        floorData.breakables.forEach(function(breakable) {
+          _breakables.push({
+            x: breakable.x, y: breakable.y,
+            hp: breakable.hp, maxHp: breakable.hp,
+            glyph: TILES.BREAKABLE, destroyedGlyph: TILES.DEBRIS,
+            emoji: breakable.emoji, name: breakable.name,
+            tag: 'interior_breakable_' + _breakables.length,
+            drops: breakable.drops
+          });
+        });
+      }
+
+      // Place currencies
+      if (layout.currencies) {
+        layout.currencies.forEach(function(c) {
+          _currencies.push({ x: c.x, y: c.y, amount: c.amount || 3, collected: false });
+        });
+      }
+
+      // Place building doors (for nested interiors, e.g. tavern → basement)
+      if (floorData.buildingDoors && floorData.buildingDoors.length > 0) {
+        floorData.buildingDoors.forEach(function(bd) {
+          if (!bd || typeof bd.x !== 'number' || typeof bd.y !== 'number') return;
+          if (bd.x < 0 || bd.x >= GRID_WIDTH || bd.y < 0 || bd.y >= GRID_HEIGHT) return;
+          _grid[bd.y][bd.x] = TILES.DOOR;
+          _tileMetadata[bd.x + ',' + bd.y] = {
+            type: 'building_door',
+            doorKind: 'building',
+            buildingId: bd.buildingId || null,
+            targetFloorId: bd.targetFloorId || null,
+            emoji: '🚪',
+            name: (bd.buildingId || 'Building') + ' Entrance'
+          };
+        });
+      }
+
+      // Place NPCs
+      if (floorData.npcs && floorData.npcs.length > 0) {
+        floorData.npcs.forEach(function(npc) {
+          var npcObj = {
+            id: npc.id || ('NPC-' + npc.x + '-' + npc.y),
+            x: npc.x, y: npc.y,
+            emoji: npc.emoji || '🧑', name: npc.name || 'NPC',
+            direction: (npc.direction || 'south').toLowerCase(),
+            dialogues: Array.isArray(npc.dialogues) ? npc.dialogues.slice() : [],
+            gate: npc.gate || null, reward: npc.reward || null,
+            state: { released: false, rewardGiven: false, lastWarnTurn: -999, lastTalkTurn: -999 }
+          };
+          _npcs.push(npcObj);
+          _grid[npcObj.y][npcObj.x] = TILES.WALL;
+          _tileMetadata[npcObj.x + ',' + npcObj.y] = {
+            type: 'npc', npcId: npcObj.id, emoji: npcObj.emoji, name: npcObj.name
+          };
+        });
+      }
+
+      // Place interactive items
+      if (floorData.interactiveItems && typeof InteractiveItems !== 'undefined') {
+        floorData.interactiveItems.forEach(function(itemDef) {
+          var item = InteractiveItems.createItem(itemDef.type, itemDef.x, itemDef.y, {
+            text: itemDef.text || '', emoji: itemDef.emoji, name: itemDef.name,
+            customData: itemDef.customData
+          });
+          if (item) InteractiveItems.addItem(item);
+        });
+      }
+
+      // Place quest key items (tutorialPickups with type 'key')
+      if (floorData.tutorialPickups) {
+        floorData.tutorialPickups.forEach(function(pickup) {
+          if (pickup.type === 'key') {
+            _items.push({
+              x: pickup.x, y: pickup.y,
+              type: 'key',
+              keyType: pickup.keyType || 'UNKNOWN_KEY',
+              tier: pickup.tier || 3,
+              subtype: pickup.subtype || 'quest',
+              emoji: pickup.emoji || '🔑',
+              name: pickup.name || 'Key',
+              npcTarget: pickup.npcTarget || null,
+              collected: false
+            });
+          } else if (pickup.type === 'currency') {
+            _currencies.push({ x: pickup.x, y: pickup.y, amount: pickup.amount, collected: false });
+          } else if (pickup.type === 'card' && pickup.guaranteed) {
+            _items.push({ x: pickup.x, y: pickup.y, type: 'card', card: 'strike', collected: false });
+          }
+        });
+      }
+
+      // Lighting for interior
+      if (typeof LightingSystem !== 'undefined') {
+        LightingSystem.setBiome('COZY_FOREST_NIGHT');
+        LightingSystem.setDarknessMultiplier(1.2);
+        _rebuildWallCache();
+        var pseudoRooms = [{ x: 1, y: 1, width: GRID_WIDTH - 2, height: GRID_HEIGHT - 2 }];
+        LightingSystem.generateBiomeLights(GRID_WIDTH, GRID_HEIGHT, pseudoRooms, _wallCache);
+        LightingSystem.addLightSource(_player.x, _player.y, 'CAMPFIRE');
+        _updatePlayerLight();
+        LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, _wallCache);
+      }
+
+      // Initialize movement at new position
+      if (typeof GoneRogueMovement !== 'undefined') {
+        GoneRogueMovement.init(_player.x, _player.y);
+      }
+
+      _startGameLoop();
+
+      // Fade-in
+      if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+        var gridContainer = document.getElementById('rogue-grid-mobile');
+        if (gridContainer) {
+          gridContainer.style.opacity = '1';
+          gridContainer.style.transition = 'opacity 0.25s ease-in';
+        }
+      }
+
+      // Show interior name
+      if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+        UIControls.updateMokInterjection('📍 ' + (layout.name || 'Interior'));
+      }
+
+      console.log('[GoneRogue] Interior floor loaded: ' + targetFloorId);
+    }, 260);
+  }
+
+  function _exitInteriorFloor() {
+    if (_interiorFloorStack.length === 0) return;
+
+    var prev = _interiorFloorStack.pop();
+    _currentInteriorFloorId = prev.floorId;
+
+    console.log('[GoneRogue] Exiting interior, returning to ' + (prev.floorId || 'main floor ' + prev.mainFloor));
+
+    // Fade-out
+    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+      var gridContainer = document.getElementById('rogue-grid-mobile');
+      if (gridContainer) {
+        gridContainer.style.opacity = '0';
+        gridContainer.style.transition = 'opacity 0.25s ease-out';
+      }
+    }
+
+    setTimeout(function() {
+      if (prev.floorId) {
+        // Returning to a parent interior (e.g. basement → tavern)
+        _enterInteriorFloor(prev.floorId);
+      } else {
+        // Returning to main floor — regenerate it
+        _floor = prev.mainFloor;
+        _lastExitPos = { x: prev.playerX, y: prev.playerY };
+        _spawnFromLastExitPos = 'retreat';
+        _turn = 0;
+        _generateFloor();
+        _startGameLoop();
+      }
+
+      // Fade-in
+      if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+        var gridContainer = document.getElementById('rogue-grid-mobile');
+        if (gridContainer) {
+          gridContainer.style.opacity = '1';
+          gridContainer.style.transition = 'opacity 0.25s ease-in';
+        }
+      }
+    }, 260);
+  }
+
   function _retreatFloor() {
-    if (_floor <= 1) return;
+    // If inside an interior floor, exit the interior instead of retreating main floors
+    if (_currentInteriorFloorId) {
+      _exitInteriorFloor();
+      return;
+    }
+
+    if (_floor <= 0) return;
 
     // Remember where we are so the previous floor can spawn us near the return door
     try { _lastExitPos = { x: _player.x, y: _player.y }; } catch (e0) {}
@@ -6398,7 +6730,7 @@ _incrementPityTimers();
     }
 
     setTimeout(function() {
-      _floor = Math.max(1, _floor - 1);
+      _floor = Math.max(0, _floor - 1);
       _turn = 0;
       _generateFloor();
       _startGameLoop();
@@ -7574,6 +7906,16 @@ _incrementPityTimers();
 
         // Check for items, currency, enemies at new position
         _checkPlayerInteractions();
+
+        // Floor 0 scripted walk: when player reaches the exit, auto-advance to Floor 1
+        if (_scriptedWalk && _scriptedWalkTarget) {
+          if (_player.x === _scriptedWalkTarget.x && _player.y === _scriptedWalkTarget.y) {
+            _scriptedWalk = false;
+            _scriptedWalkTarget = null;
+            if (typeof GoneRogueMovement !== 'undefined') GoneRogueMovement.stop();
+            _advanceFloor();
+          }
+        }
       }
 
       // Store visual position for rendering
@@ -8976,6 +9318,9 @@ _incrementPityTimers();
    */
   function handleTapMove(targetX, targetY, runMode) {
     if (!_active) return;
+
+    // Floor 0 scripted walk — ignore player input until auto-walk completes
+    if (_scriptedWalk) return;
 
     // Asteroids boss locks player movement — tap only activates cards
     if (_playerMoveLocked) {
