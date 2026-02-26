@@ -17,6 +17,7 @@ import {
   updateActorStatus,
   updateActorLane,
   updateActorTelemetry,
+  updateActorOpsTelemetryVisible,
   createDeadDrop,
   retrieveDeadDrop,
   getDeadDropsByLane,
@@ -365,6 +366,61 @@ opsRoutes.post('/pingback', async (c) => {
 });
 
 /**
+ * GET /api/ops/actors/positions
+ * Returns last-known GPS position and telemetry for actors in the ops actor's scenario.
+ * By default, this is scoped to red team because ops is intended as red-team support.
+ *
+ * Privacy rule:
+ * - M can see full telemetry.
+ * - Ops can see all red-team actors, but each actor can hide their lat/lng from other ops.
+ * - An actor always sees their own lat/lng.
+ */
+opsRoutes.get('/actors/positions', async (c) => {
+  const auth = c.get('auth');
+  const team = (c.req.query('team') || 'red').toLowerCase();
+  if (team !== 'red') {
+    return c.json({ error: 'BAD_REQUEST', message: 'Only team=red is supported for ops positions' }, 400);
+  }
+
+  const actors = (await listActors(c.env.DB, auth.scenario_id))
+    .filter((a) => a.team === 'red');
+
+  return c.json({
+    positions: actors.map((a: any) => {
+      const visible = (a.ops_telemetry_visible ?? 1) ? true : false;
+      const isSelf = a.id === auth.actor_id;
+      const shouldReveal = isSelf || visible;
+      return {
+        actor_id:     a.id,
+        callsign:     a.callsign,
+        team:         a.team,
+        status:       a.status,
+        lane_id:      a.lane_id ?? null,
+        cell_id:      a.cell_id ?? null,
+        lat:          shouldReveal ? (a.last_lat ?? null) : null,
+        lng:          shouldReveal ? (a.last_lng ?? null) : null,
+        last_seen_at: a.last_seen_at ?? null,
+        motion_state: a.motion_state ?? 'unknown',
+        gps_hidden:   !shouldReveal,
+      };
+    }),
+    as_of: Date.now(),
+  });
+});
+
+/**
+ * POST /api/ops/telemetry/visibility
+ * Toggle whether this actor's GPS is visible to other ops viewers.
+ * NOTE: This does not affect what M sees.
+ */
+opsRoutes.post('/telemetry/visibility', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{ visible: boolean }>().catch(() => ({ visible: true }));
+  await updateActorOpsTelemetryVisible(c.env.DB, auth.actor_id, !!body.visible);
+  return c.json({ ok: true, visible: !!body.visible });
+});
+
+/**
  * POST /api/ops/telemetry
  * Actor heartbeat: GPS position + accelerometer data.
  * Sent every 10–30 seconds by the smartwatch/ops app.
@@ -490,7 +546,9 @@ opsRoutes.post('/telemetry', async (c) => {
   }
   // ──────────────────────────────────────────────────────────────────
 
-  // Broadcast lightweight telemetry update to M console (no DB event insert to avoid log spam)
+  // Broadcast lightweight telemetry update (no DB event insert to avoid log spam).
+  // NOTE: Do NOT include lat/lng in WS payloads — ops clients also connect to the same room.
+  // M should refresh positions via /api/m/actors/positions/:scenarioId.
   const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
   const room = c.env.SCENARIO_ROOM.get(roomId);
   await room.fetch(new Request('http://internal/broadcast', {
@@ -500,8 +558,8 @@ opsRoutes.post('/telemetry', async (c) => {
       data: {
         actor_id:     auth.actor_id,
         callsign:     auth.callsign,
-        lat:          body.lat ?? null,
-        lng:          body.lng ?? null,
+        lat:          null,
+        lng:          null,
         motion_state: motionState,
         battery:      body.battery ?? null,
         low_power:    body.low_power ?? false,

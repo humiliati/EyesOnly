@@ -66,6 +66,8 @@ export interface ActorRow {
   last_accel_y: number | null;
   last_accel_z: number | null;
   motion_state: 'unknown' | 'stationary' | 'walking' | 'running' | 'vehicle' | 'dropped' | null;
+  // Ops privacy flag: when 0, other ops viewers should not see this actor's lat/lng.
+  ops_telemetry_visible?: 0 | 1 | number;
   created_at: number;
   updated_at: number;
 }

@@ -188,6 +188,17 @@ export async function updateActorTelemetry(
     .run();
 }
 
+export async function updateActorOpsTelemetryVisible(
+  db: D1Database,
+  actorId: number,
+  visible: boolean,
+): Promise<void> {
+  await db
+    .prepare('UPDATE actors SET ops_telemetry_visible = ?, updated_at = ? WHERE id = ?')
+    .bind(visible ? 1 : 0, Date.now(), actorId)
+    .run();
+}
+
 // --- Events (Append-Only) ---
 
 export async function insertEvent(
