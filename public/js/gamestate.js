@@ -473,12 +473,47 @@ const GAMESTATE = (function () {
     var maxHand = (typeof _state.maxHandSize === 'number' && isFinite(_state.maxHandSize)) ? _state.maxHandSize : 5;
     maxHand = Math.max(1, maxHand);
 
+    var MAX_TOTAL_PRINTED_CARDS = 25;
     var res = { success: true, toHand: 0, toBackup: 0, discarded: 0 };
 
     function _touchMeta(ref) {
       if (!ref) return;
       if (!ref.meta) ref.meta = {};
       ref.meta.t = Date.now();
+    }
+
+    function _totalQty() {
+      var t = 0;
+      for (var hi = 0; hi < _state.cardsInHand.length; hi++) {
+        if (_state.cardsInHand[hi]) t += (_state.cardsInHand[hi].qty || 1);
+      }
+      for (var bi = 0; bi < 4; bi++) {
+        var bs = _state.backupCards[bi];
+        if (bs && bs.id) t += (bs.qty || 1);
+      }
+      return t;
+    }
+
+    function _dropOldest() {
+      // Drop one from the oldest backup slot (slot 3 = oldest, slot 0 = newest).
+      for (var s = 3; s >= 0; s--) {
+        var b = _state.backupCards[s];
+        if (b && b.id) {
+          b.qty = (b.qty || 1) - 1;
+          if (b.qty <= 0) _state.backupCards[s] = null;
+          res.discarded += 1;
+          return;
+        }
+      }
+      // Fallback: drop one from the last hand entry (oldest by insertion order).
+      if (_state.cardsInHand.length > 0) {
+        var last = _state.cardsInHand[_state.cardsInHand.length - 1];
+        if (last) {
+          last.qty = (last.qty || 1) - 1;
+          if (last.qty <= 0) _state.cardsInHand.splice(_state.cardsInHand.length - 1, 1);
+          res.discarded += 1;
+        }
+      }
     }
 
     function _promoteOrInsertBackup(ref) {
@@ -527,6 +562,11 @@ const GAMESTATE = (function () {
     }
 
     for (var n = 0; n < qty; n++) _addOne();
+
+    // Enforce total card cap in a single cleanup pass after all cards are added.
+    while (_totalQty() > MAX_TOTAL_PRINTED_CARDS) {
+      _dropOldest();
+    }
 
     _saveState();
     try {
