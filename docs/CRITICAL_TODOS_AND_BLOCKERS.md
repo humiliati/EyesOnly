@@ -19,12 +19,26 @@ The EyesOnly project is a sophisticated full-stack platform combining live espio
 
 ---
 
-## 🔴 BLOCKER #1: User Account Creation System
+## 🟡 BLOCKER #1 (UPDATED): Account & Inventory Unification
 
-**Status**: ❌ Database schema ready, frontend UI missing
-**Location**: `USER_ACCOUNT_CREATION_TODO.md` (587 lines)
-**Impact**: **BLOCKS ALL USER PERSISTENCE** - without accounts, no cross-device saves, no leaderboards, no agent binding
-**Estimated Effort**: 4 weeks (1 FTE developer)
+**Status**: 🟡 In progress (core shipped; remaining standardization)
+**Location**: `USER_ACCOUNT_CREATION_TODO.md`
+**Impact**: Enables long-horizon seasonal play + cross-mode economy
+
+### Shipped
+- Account registration/login (`/api/user/register`, `/api/user/login`)
+- Callsign uniqueness enforcement (`-2`, `-3`, …)
+- Account-linked scenario join (`/api/join` requires user session)
+- Ops moderation via `scenario_user_roles` + M UI
+- Unified inventory grant path (ops retrieve → M GRANT → `user_inventory`)
+- Cloud/local import (best-effort) via `POST /api/user/merge-local-data`
+- Unified consume semantics via `POST /api/user/inventory/consume` (oldest-first)
+
+### Remaining (still important)
+- Standard inventory metadata schema (season/rarity/ladder tags)
+- Wiring more client spend paths to server consume (beyond active item consume)
+- Broader localStorage merge coverage + explicit conflict policy
+
 
 ### Why This Blocks Rollout
 - Players cannot persist inventory across devices

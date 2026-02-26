@@ -13,6 +13,19 @@
 >
 > **STATUS UPDATE (2026-02-20)**: Basic login/registration UI is **implemented** in `public/js/login-ui.js` and accessible via the "login" action button in the left column. This document describes the full M Console integration and account creation flow that remains to be completed.
 
+## Shipped (current architecture)
+
+- Account registration/login: `POST /api/user/register`, `POST /api/user/login`
+- Callsign uniqueness: server appends `-2`, `-3`, … when needed
+- Account-linked scenario join: `POST /api/join` requires user session token
+- Ops moderation: `scenario_user_roles` + M UI (grant/revoke/list)
+- Unified inventory: `user_inventory` used for grants and cross-mode persistence
+- Cloud/local import (best-effort): `POST /api/user/merge-local-data`
+- Instance view + consume semantics:
+  - `GET /api/user/inventory/instances` (quantity expanded)
+  - `POST /api/user/inventory/consume` (oldest-first selector)
+- Gone Rogue: active item consume also calls server consume when logged in (best-effort)
+
 ## Purpose
 Create a user-friendly account creation interface that integrates with the M Console authorization system, enabling players to:
 - Register new accounts with email/username
