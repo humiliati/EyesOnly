@@ -75,6 +75,7 @@ var RogueSidebar = (function() {
       if (_container && _originalHtml !== null && _container.dataset.rogueSidebarActive === '1') {
         _container.innerHTML = _originalHtml;
         delete _container.dataset.rogueSidebarActive;
+        delete _container.dataset.dropzone;
       }
       return;
     }
@@ -82,6 +83,7 @@ var RogueSidebar = (function() {
     if (!_container) return;
     if (_container.dataset.rogueSidebarActive !== '1') {
       _container.dataset.rogueSidebarActive = '1';
+      _container.dataset.dropzone = 'stash';
 
       // When the rogue sidebar takes over the left column, ensure the NCH overlay is
       // available (it lives outside the control rail, but should feel like the same surface).
