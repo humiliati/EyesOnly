@@ -40,53 +40,47 @@ The EyesOnly project is a sophisticated full-stack platform combining live espio
 - Broader localStorage merge coverage + explicit conflict policy
 
 
-### Why This Blocks Rollout
-- Players cannot persist inventory across devices
-- Highscore submissions require login (not implemented)
-- Agent API integration depends on user accounts
-- Currency/progress is lost on browser clear
-- No way to attribute achievements or track retention
+### Legacy/Future: Why this blocked rollout (pre account-first model)
 
-### Missing Components
+> **Legacy note:** The subsections below describe the older password/auth-code account creation design.
+> We keep them as **future/optional** ideas.
+>
+> **Current blockers are captured above** under: _Remaining (still important)_.
 
-#### 1. Frontend Registration UI
-**File**: Need new overlay in `public/index.html`
+- (LEGACY) Players cannot persist inventory across devices
+- (LEGACY) Highscore submissions require login
+- (FUTURE) Agent API integration depends on user accounts / kernel persistence
+- (LEGACY) Currency/progress is lost on browser clear
+- (FUTURE) Advanced attribution/retention tooling
 
-Missing form with:
+### Legacy/Future: Missing Components (pre account-first model)
+
+#### (FUTURE) 1. Frontend Registration UI (password/auth-code design)
+**File**: `public/index.html`
+
 - Username validation (3-20 chars, unique check)
 - Email validation with regex
-- Password strength meter (8+ chars, uppercase, number)
-- M Console auth code input (6-digit verification)
+- Password strength meter
+- M Console auth code input
 - Optional agent API key fields
-- Rate limiting: 3 attempts/hour/IP
+- Rate limiting
 
-#### 2. M Console Auth Code Generator
-**File**: `src/m-mode/` (needs new panel)
+#### (FUTURE) 2. M Console Auth Code Generator
+- 6-digit codes, expiry, single-use, countdown
 
-Missing features:
-- Generate 6-digit codes (15-minute expiry)
-- Single-use code enforcement
-- Display with countdown timer
-- Track code usage (used/expired/active)
+#### (FUTURE) 3. Backend API Endpoints (auth-code model)
+- `POST /api/auth/register`
+- `POST /api/auth/verify-code`
+- `GET /api/auth/check-username`
+- `POST /api/auth/merge-local-data`
 
-#### 3. Backend API Endpoints
-**Location**: `src/worker/routes/user-auth.ts` (may need expansion)
-
-Missing endpoints:
-- `POST /api/auth/register` - Create new account
-- `POST /api/auth/verify-code` - Validate M Console code
-- `GET /api/auth/check-username` - Availability check
-- `POST /api/auth/merge-local-data` - Import localStorage
-
-#### 4. Data Migration Logic
+#### (FUTURE) 4. Data Migration Logic (broader localStorage import)
 **Integration points**: `public/js/login-shell.js`, `public/js/gamestate.js`
 
-Missing:
-- Read existing localStorage keys (`eyesonly_rogue_state`, `eyesonly_gamestate`)
-- Merge inventory (persistent + loose)
-- Consolidate currency across sources
+- Read additional localStorage keys beyond `eyesonly_gamestate`
+- Merge inventory/currency across sources
 - Upload merged data to cloud
-- Conflict resolution (local vs cloud)
+- Conflict resolution UI
 
 ### Database Schema Status
 ✅ **COMPLETE** - Schema defined in `migrations/0002_user_accounts.sql`:
