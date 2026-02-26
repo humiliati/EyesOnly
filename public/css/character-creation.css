@@ -98,23 +98,66 @@
 }
 
 .cc-select {
-  background: rgba(0,0,0,0.1);
-  border: 1px solid #222;
-  color: #ccc;
+  /* Dark background fixes white-on-white on mobile browsers */
+  background: #111;
+  border: 1px solid #333;
+  color: #ddd;
   font-family: 'Courier New', monospace;
   font-size: clamp(0.85rem, 2vw, 1rem);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 10px 12px;
-  border-radius: 10px;
+  padding: 0;
+  border-radius: 6px;
   margin-bottom: 0.8em;
-  width: min(520px, 90vw);
+  width: min(340px, 88vw);
+  max-height: min(260px, 40vh);
   outline: none;
+  overflow-y: auto;
+  /* Remove default dropdown arrow since we're using size attribute (list mode) */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* Style individual options for dark theme legibility */
+.cc-select option {
+  background: #111;
+  color: #ddd;
+  padding: 8px 12px;
+  border-bottom: 1px solid #1a1a1a;
+  cursor: pointer;
+}
+
+.cc-select option:checked,
+.cc-select option:hover {
+  background: rgba(255, 28, 74, 0.15);
+  color: #ff8899;
+}
+
+.cc-select option:disabled {
+  color: #333;
+  background: #0d0d0d;
+  font-size: 0.7em;
 }
 
 .cc-select:focus {
   border-color: #ff1c4a;
   box-shadow: 0 0 0 2px rgba(255, 28, 74, 0.15);
+}
+
+/* Scrollbar styling for the select list */
+.cc-select::-webkit-scrollbar {
+  width: 6px;
+}
+.cc-select::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+.cc-select::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+.cc-select::-webkit-scrollbar-thumb:hover {
+  background: #ff1c4a;
 }
 
 .cc-confirm-btn {

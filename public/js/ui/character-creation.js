@@ -142,15 +142,24 @@ const CharacterCreation = (function () {
     var label = _el('div', 'cc-label', 'SELECT CALLSIGN (OR CUSTOM):');
     _overlay.appendChild(label);
 
-    // Preset selector
+    // Callsign selector — CUSTOM at top, then presets (scrollable on mobile)
     var sel = document.createElement('select');
     sel.className = 'cc-select';
     sel.id = 'cc-callsign-preset';
+    // Show multiple options at once for better mobile UX (scrollable list)
+    sel.size = 8;
 
-    var opt0 = document.createElement('option');
-    opt0.value = '';
-    opt0.textContent = 'SELECT…';
-    sel.appendChild(opt0);
+    // CUSTOM option first so keyboard-averse mobile users see it immediately
+    var optC = document.createElement('option');
+    optC.value = '__custom__';
+    optC.textContent = '✎ CUSTOM…';
+    sel.appendChild(optC);
+
+    // Separator visual
+    var optSep = document.createElement('option');
+    optSep.disabled = true;
+    optSep.textContent = '────────────────';
+    sel.appendChild(optSep);
 
     for (var i = 0; i < CALLSIGN_PRESETS.length; i++) {
       var o = document.createElement('option');
@@ -158,11 +167,6 @@ const CharacterCreation = (function () {
       o.textContent = CALLSIGN_PRESETS[i];
       sel.appendChild(o);
     }
-
-    var optC = document.createElement('option');
-    optC.value = '__custom__';
-    optC.textContent = 'CUSTOM…';
-    sel.appendChild(optC);
 
     _overlay.appendChild(sel);
 
@@ -178,7 +182,7 @@ const CharacterCreation = (function () {
     _input = document.createElement('input');
     _input.type = 'text';
     _input.className = 'cc-text-input';
-    _input.maxLength = 12;
+    _input.maxLength = 16;
     _input.setAttribute('autocomplete', 'off');
     _input.setAttribute('spellcheck', 'false');
     _input.setAttribute('autocapitalize', 'characters');
@@ -198,25 +202,37 @@ const CharacterCreation = (function () {
     btn.type = 'button';
     _overlay.appendChild(btn);
 
-    function _confirm(raw0) {
+    function _confirm(raw0, isPreset) {
       var raw = String(raw0 || '').trim().toUpperCase();
       var validMsg = document.getElementById('cc-validation-msg');
 
-      // Validate
-      if (raw.length < 2) {
-        validMsg.textContent = 'Too short. Minimum 2 characters.';
+      if (!raw || raw.length < 1) {
+        validMsg.textContent = 'Select a callsign or enter a custom one.';
         validMsg.className = 'cc-validation cc-validation-error';
         return;
       }
-      if (raw.length > 12) {
-        validMsg.textContent = 'Too long. Maximum 12 characters.';
-        validMsg.className = 'cc-validation cc-validation-error';
-        return;
-      }
-      if (!/^[A-Z0-9][A-Z0-9\-_]*[A-Z0-9]$/.test(raw) && raw.length > 1) {
-        validMsg.textContent = 'Invalid. Use A-Z, 0-9, hyphens, underscores.';
-        validMsg.className = 'cc-validation cc-validation-error';
-        return;
+
+      // Normalize spaces to hyphens BEFORE validation (presets like "SOLID SNAKE" → "SOLID-SNAKE")
+      raw = raw.replace(/\s+/g, '-');
+
+      // Skip strict validation for known presets — they're already vetted
+      if (!isPreset) {
+        if (raw.length < 2) {
+          validMsg.textContent = 'Too short. Minimum 2 characters.';
+          validMsg.className = 'cc-validation cc-validation-error';
+          return;
+        }
+        if (raw.length > 16) {
+          // Raised from 12 to 16 to accommodate hyphenated presets + suffix
+          validMsg.textContent = 'Too long. Maximum 16 characters.';
+          validMsg.className = 'cc-validation cc-validation-error';
+          return;
+        }
+        if (!/^[A-Z0-9][A-Z0-9\-_]*[A-Z0-9]$/.test(raw) && raw.length > 1) {
+          validMsg.textContent = 'Invalid. Use A-Z, 0-9, hyphens, underscores.';
+          validMsg.className = 'cc-validation cc-validation-error';
+          return;
+        }
       }
 
       _callsign = _reserveCallsign(raw);
@@ -239,7 +255,7 @@ const CharacterCreation = (function () {
       _input.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
           e.preventDefault();
-          _confirm(_input.value);
+          _confirm(_input.value, false);
         }
       });
     }
@@ -247,43 +263,21 @@ const CharacterCreation = (function () {
     btn.addEventListener('click', function() {
       var v = (sel.value || '').trim();
       if (v === '__custom__') {
-        _confirm(_input.value);
+        _confirm(_input.value, false);
+      } else if (v) {
+        // Preset selection — skip strict validation, auto-reserve with suffix
+        _confirm(v, true);
       } else {
-        _confirm(v);
+        var validMsg = document.getElementById('cc-validation-msg');
+        if (validMsg) {
+          validMsg.textContent = 'Select a callsign or choose CUSTOM.';
+          validMsg.className = 'cc-validation cc-validation-error';
+        }
       }
     });
 
     // focus selector by default (prevents keyboard on mobile)
     requestAnimationFrame(function() { try { sel.focus(); } catch (e0) {} });
-  }
-
-  function _onCallsignKey(e) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      var raw = (_input.value || '').trim().toUpperCase();
-      var validMsg = document.getElementById('cc-validation-msg');
-
-      // Validate
-      if (raw.length < 2) {
-        validMsg.textContent = 'Too short. Minimum 2 characters.';
-        validMsg.className = 'cc-validation cc-validation-error';
-        return;
-      }
-      if (raw.length > 12) {
-        validMsg.textContent = 'Too long. Maximum 12 characters.';
-        validMsg.className = 'cc-validation cc-validation-error';
-        return;
-      }
-      if (!/^[A-Z0-9][A-Z0-9\-_]*[A-Z0-9]$/.test(raw) && raw.length > 1) {
-        validMsg.textContent = 'Invalid. Use A-Z, 0-9, hyphens, underscores.';
-        validMsg.className = 'cc-validation cc-validation-error';
-        return;
-      }
-
-      // Auto-reserve with suffix if taken (was missing _reserveCallsign call)
-      _callsign = _reserveCallsign(raw);
-      _renderAvatarStep();
-    }
   }
 
   // ================================================================
