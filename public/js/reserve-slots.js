@@ -195,14 +195,13 @@ const ReserveSlots = (function () {
   /**
    * Render reserve slots with natural collapsing behavior
    * Shows:
-   * - Back button (always)
-   * - Inventory button (always)
-   * - Cycle button (only if > _maxVisibleSlots cards)
-   * - Up to _maxVisibleSlots card slots (4 by default)
+   * - Swapper button (always) — "← items" in cards view, "cards →" in inventory view
+   * - Cycle button (only if > _maxVisibleSlots cards/items)
+   * - Up to _maxVisibleSlots card/inventory slots (4 by default)
    *
-   * Total buttons shown: 3-7 depending on card count
-   * - With 0-4 cards: back + inventory + 0-4 slots = 2-6 buttons
-   * - With > 4 cards: back + inventory + cycle + 4 slots = 7 buttons
+   * Total buttons shown: max 6
+   * - With 0-4 cards: swapper + 0-4 slots = 1-5 buttons
+   * - With > 4 cards: swapper + cycle + 4 slots = 6 buttons
    */
   function render() {
     if (!_slotsContainer) return;
@@ -237,31 +236,20 @@ const ReserveSlots = (function () {
     var totalCards = _actionButtonCards.length;
     var needsCycling = totalCards > _maxVisibleSlots;
 
-    // Button 1: Back (always shown)
-    var backBtn = document.createElement('button');
-    backBtn.type = 'button';
-    backBtn.className = 'control-button gone-rogue-btn';
-    backBtn.dataset.action = 'back';
-    backBtn.textContent = 'back';
-    backBtn.addEventListener('click', function() {
-      _handleBackClick();
-    });
-    _slotsContainer.appendChild(backBtn);
-
-    // Button 2: Inventory — switches to inventory view
-    var inventoryBtn = document.createElement('button');
-    inventoryBtn.type = 'button';
-    inventoryBtn.className = 'control-button gone-rogue-btn';
-    inventoryBtn.dataset.action = 'inventory';
-    inventoryBtn.textContent = 'inventory';
-    inventoryBtn.addEventListener('click', function() {
+    // Button 1: Swapper — switches to inventory view
+    var swapBtn = document.createElement('button');
+    swapBtn.type = 'button';
+    swapBtn.className = 'control-button gone-rogue-btn';
+    swapBtn.dataset.action = 'swap-to-items';
+    swapBtn.textContent = '← items';
+    swapBtn.addEventListener('click', function() {
       _viewMode = 'inventory';
       _inventoryCycleOffset = 0;
       render();
     });
-    _slotsContainer.appendChild(inventoryBtn);
+    _slotsContainer.appendChild(swapBtn);
 
-    // Button 3: Cycle (only shown if > _maxVisibleSlots cards)
+    // Button 2: Cycle (only shown if > _maxVisibleSlots cards)
     if (needsCycling) {
       var cycleBtn = document.createElement('button');
       cycleBtn.type = 'button';
@@ -275,7 +263,7 @@ const ReserveSlots = (function () {
       _slotsContainer.appendChild(cycleBtn);
     }
 
-    // Buttons 4-N: Card slots (show up to _maxVisibleSlots, with empty placeholders)
+    // Buttons 3+: Card slots (show up to _maxVisibleSlots, with empty placeholders)
     var slotsToShow = Math.min(_maxVisibleSlots, maxSlots);
     for (var i = 0; i < slotsToShow; i++) {
       var slotBtn = _createCardSlotButton(i);
@@ -297,12 +285,12 @@ const ReserveSlots = (function () {
     var visibleItems = items.slice(_inventoryCycleOffset, _inventoryCycleOffset + _maxVisibleSlots);
     var remaining = totalItems - (_inventoryCycleOffset + visibleItems.length);
 
-    // Button 1: Back to cards view
+    // Button 1: Swapper — switches back to cards view
     var cardsBtn = document.createElement('button');
     cardsBtn.type = 'button';
     cardsBtn.className = 'control-button gone-rogue-btn';
-    cardsBtn.dataset.action = 'cards';
-    cardsBtn.textContent = '← cards';
+    cardsBtn.dataset.action = 'swap-to-cards';
+    cardsBtn.textContent = 'cards →';
     cardsBtn.addEventListener('click', function() {
       _viewMode = 'cards';
       render();
@@ -461,34 +449,6 @@ const ReserveSlots = (function () {
     }
 
     return btn;
-  }
-
-  /**
-   * Handle back button click
-   */
-  function _handleBackClick() {
-    // Trigger the back action through GoneRogue or main UI
-    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.process === 'function') {
-      GoneRogue.process('exit');
-    } else if (typeof UIControls !== 'undefined') {
-      // Fallback to UI controls
-      var backBtn = document.querySelector('button[data-action="back"]');
-      if (backBtn) backBtn.click();
-    }
-  }
-
-  /**
-   * Handle inventory button click
-   */
-  function _handleInventoryClick() {
-    // Trigger inventory toggle through UI controls
-    if (typeof UIControls !== 'undefined' && typeof UIControls.toggleInventory === 'function') {
-      UIControls.toggleInventory();
-    } else {
-      // Fallback to clicking the inventory button
-      var inventoryBtn = document.querySelector('button[data-action="inventory"]');
-      if (inventoryBtn) inventoryBtn.click();
-    }
   }
 
   /**

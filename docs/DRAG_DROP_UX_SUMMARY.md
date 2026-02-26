@@ -50,21 +50,32 @@ This document summarizes the drag-and-drop commerce system enhancements and Gone
 ### 3. Gone Rogue Left Column Buttons (`reserve-slots.js`)
 
 **Changes:**
-- Added inventory button to Gone Rogue layout
-- New button order: back → inventory → (cycle) → card slots
-- Added `_handleInventoryClick()` function
-- Enhanced empty slot rendering with "Exhstd" label (vowel-drop for "exhausted")
-- Updated documentation comments
+- Replaced separate `back` + `inventory` buttons with a single swapper button
+- Cards view shows `← items` (swaps to inventory view)
+- Inventory view shows `cards →` (swaps back to cards view)
+- Removed `_handleBackClick()` and `_handleInventoryClick()` (dead code)
+- Enforces max 6 buttons for mobile portrait layout integrity
 
 **Current Button Structure:**
+
+*Cards View:*
 ```
-1. [back]      ← Exits Gone Rogue to terminal
-2. [inventory] ← Opens inventory overlay (NEW!)
-3. [↑↓]        ← Cycle button (only if >4 cards)
-4. [🃏 CARD1]  ← Card slot 1 (or "Exhstd" if empty)
-5. [🃏 CARD2]  ← Card slot 2 (or "Exhstd" if empty)
-6. [🃏 CARD3]  ← Card slot 3 (or "Exhstd" if empty)
-7. [🃏 CARD4]  ← Card slot 4 (or "Exhstd" if empty)
+1. [← items]  ← Swapper: switches to inventory view
+2. [↑↓]        ← Cycle button (only if >4 cards)
+3. [🃏 CARD1]  ← Card slot 1 (or "Exhstd" if empty)
+4. [🃏 CARD2]  ← Card slot 2 (or "Exhstd" if empty)
+5. [🃏 CARD3]  ← Card slot 3 (or "Exhstd" if empty)
+6. [🃏 CARD4]  ← Card slot 4 (or "Exhstd" if empty)
+```
+
+*Inventory View:*
+```
+1. [cards →]   ← Swapper: switches back to cards view
+2. [↑↓]        ← Cycle button (only if >4 items)
+3. [📦 ITEM1]  ← Inventory slot 1
+4. [📦 ITEM2]  ← Inventory slot 2
+5. [📦 ITEM3]  ← Inventory slot 3
+6. [📦 ITEM4]  ← Inventory slot 4
 ```
 
 ### 4. Enhanced CSS for Drop Zones (`commerce-drag-drop.css`)
@@ -120,9 +131,8 @@ if (isDepleting) {
 ### Gone Rogue Button Rendering
 
 ```javascript
-// Always show back and inventory
-_slotsContainer.appendChild(backBtn);
-_slotsContainer.appendChild(inventoryBtn);
+// Always show swapper button first
+_slotsContainer.appendChild(swapBtn);
 
 // Conditionally show cycle button
 if (needsCycling) {
@@ -183,8 +193,8 @@ Drop zones only glow if they have capacity:
 ### Working Correctly
 1. ✅ Drop zone proximity detection
 2. ✅ Shop depletion with empty placeholders
-3. ✅ Gone Rogue button structure with inventory
-4. ✅ Back button exit functionality
+3. ✅ Gone Rogue button structure with swapper (max 6 buttons)
+4. ✅ Items ↔ cards swapper toggle
 5. ✅ Empty slot visual placeholders
 
 ## Testing Checklist
