@@ -47,6 +47,7 @@ export const requireAuth = createMiddleware<HonoEnv>(async (c, next) => {
     callsign: actor.callsign,
     role: tokenRow.role as AuthContext['role'],
     scenario_id: tokenRow.scenario_id,
+    user_id: (tokenRow as any).user_id ?? (actor as any).user_id ?? null,
   });
 
   await next();

@@ -109,6 +109,17 @@ export async function getActorByCallsign(
     .first<ActorRow>();
 }
 
+export async function getActorByScenarioUser(
+  db: D1Database,
+  scenarioId: number,
+  userId: number,
+): Promise<ActorRow | null> {
+  return db
+    .prepare('SELECT * FROM actors WHERE scenario_id = ? AND user_id = ? LIMIT 1')
+    .bind(scenarioId, userId)
+    .first<ActorRow>();
+}
+
 export async function listActors(db: D1Database, scenarioId: number): Promise<ActorRow[]> {
   const result = await db
     .prepare('SELECT * FROM actors WHERE scenario_id = ? ORDER BY team, callsign')
@@ -123,14 +134,20 @@ export async function createActor(
   callsign: string,
   team: string,
   passwordHash: string = '',
+  userId?: number | null,
 ): Promise<ActorRow> {
   const now = Date.now();
-  const result = await db
-    .prepare(
-      'INSERT INTO actors (scenario_id, callsign, team, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING *',
-    )
-    .bind(scenarioId, callsign, team, passwordHash, now, now)
-    .first<ActorRow>();
+
+  const hasUser = userId != null;
+  const sql = hasUser
+    ? 'INSERT INTO actors (scenario_id, user_id, callsign, team, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *'
+    : 'INSERT INTO actors (scenario_id, callsign, team, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING *';
+
+  const stmt = db.prepare(sql);
+  const result = hasUser
+    ? await stmt.bind(scenarioId, userId, callsign, team, passwordHash, now, now).first<ActorRow>()
+    : await stmt.bind(scenarioId, callsign, team, passwordHash, now, now).first<ActorRow>();
+
   return result!;
 }
 
@@ -324,16 +341,22 @@ export async function createAuthToken(
   role: string,
   scenarioId: number,
   ttlMs: number = 24 * 60 * 60 * 1000, // 24h default
+  userId?: number | null,
 ): Promise<{ token: string; row: AuthTokenRow }> {
   const token = generateToken();
   const tokenHash = await hashToken(token);
   const now = Date.now();
-  const row = await db
-    .prepare(
-      'INSERT INTO auth_tokens (token_hash, actor_id, role, scenario_id, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING *',
-    )
-    .bind(tokenHash, actorId, role, scenarioId, now + ttlMs, now)
-    .first<AuthTokenRow>();
+
+  const hasUser = userId != null;
+  const sql = hasUser
+    ? 'INSERT INTO auth_tokens (token_hash, actor_id, user_id, role, scenario_id, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *'
+    : 'INSERT INTO auth_tokens (token_hash, actor_id, role, scenario_id, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING *';
+
+  const stmt = db.prepare(sql);
+  const row = hasUser
+    ? await stmt.bind(tokenHash, actorId, userId, role, scenarioId, now + ttlMs, now).first<AuthTokenRow>()
+    : await stmt.bind(tokenHash, actorId, role, scenarioId, now + ttlMs, now).first<AuthTokenRow>();
+
   return { token, row: row! };
 }
 
@@ -800,4 +823,43 @@ export async function getMicrochatMessages(
 
 export async function markMicrochatDelivered(db: D1Database, id: number): Promise<void> {
   await db.prepare('UPDATE microchat_messages SET delivered = 1 WHERE id = ?').bind(id).run();
+}
+
+// --- Scenario User Roles (Ops moderators, etc.) ---
+
+export async function hasScenarioUserRole(
+  db: D1Database,
+  scenarioId: number,
+  userId: number,
+  role: string,
+): Promise<boolean> {
+  const row = await db
+    .prepare('SELECT id FROM scenario_user_roles WHERE scenario_id = ? AND user_id = ? AND role = ? LIMIT 1')
+    .bind(scenarioId, userId, role)
+    .first<{ id: number }>();
+  return !!row;
+}
+
+export async function grantScenarioUserRole(
+  db: D1Database,
+  scenarioId: number,
+  userId: number,
+  role: string,
+): Promise<void> {
+  await db
+    .prepare('INSERT OR IGNORE INTO scenario_user_roles (scenario_id, user_id, role, created_at) VALUES (?, ?, ?, ?)')
+    .bind(scenarioId, userId, role, Date.now())
+    .run();
+}
+
+export async function revokeScenarioUserRole(
+  db: D1Database,
+  scenarioId: number,
+  userId: number,
+  role: string,
+): Promise<void> {
+  await db
+    .prepare('DELETE FROM scenario_user_roles WHERE scenario_id = ? AND user_id = ? AND role = ?')
+    .bind(scenarioId, userId, role)
+    .run();
 }

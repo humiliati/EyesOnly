@@ -18,6 +18,7 @@ import {
   updateActorLane,
   updateActorTelemetry,
   updateActorOpsTelemetryVisible,
+  hasScenarioUserRole,
   createDeadDrop,
   retrieveDeadDrop,
   getDeadDropsByLane,
@@ -402,6 +403,16 @@ opsRoutes.post('/pingback', async (c) => {
  */
 opsRoutes.get('/actors/positions', async (c) => {
   const auth = c.get('auth');
+
+  // Only ops-moderators may view other actors.
+  if (!auth.user_id) {
+    return c.json({ error: 'FORBIDDEN', message: 'Account-linked ops session required' }, 403);
+  }
+  const ok = await hasScenarioUserRole(c.env.DB, auth.scenario_id, auth.user_id, 'ops');
+  if (!ok) {
+    return c.json({ error: 'FORBIDDEN', message: 'Ops moderator role required' }, 403);
+  }
+
   const team = (c.req.query('team') || 'red').toLowerCase();
   if (team !== 'red') {
     return c.json({ error: 'BAD_REQUEST', message: 'Only team=red is supported for ops positions' }, 400);

@@ -52,6 +52,8 @@ export interface LaneRow {
 export interface ActorRow {
   id: number;
   scenario_id: number;
+  // Account-link: when set, this actor represents a persistent user account.
+  user_id?: number | null;
   callsign: string;
   team: 'red' | 'blue' | 'director';
   lane_id: string | null;
@@ -209,6 +211,8 @@ export interface AuthTokenRow {
   id: number;
   token_hash: string;
   actor_id: number;
+  // Optional account link for identity and grants
+  user_id?: number | null;
   role: 'red' | 'blue' | 'director';
   scenario_id: number;
   expires_at: number;
@@ -229,7 +233,8 @@ export interface JoinCodeRow {
 
 export interface JoinRequest {
   code: string;
-  callsign: string;
+  // Legacy: callsign used for anonymous join. Prefer account-linked join (Authorization: Bearer <user session token>).
+  callsign?: string;
 }
 
 export interface JoinResponse {
@@ -383,6 +388,8 @@ export interface AuthContext {
   callsign: string;
   role: 'red' | 'blue' | 'director';
   scenario_id: number;
+  // When present, this actor is bound to a persistent user account.
+  user_id?: number | null;
 }
 
 // --- User Account Types ---

@@ -56,6 +56,8 @@ import {
   deleteFogZone,
   insertMicrochatMessage,
   getMicrochatMessages,
+  grantScenarioUserRole,
+  revokeScenarioUserRole,
 } from '../db/queries';
 import { sendWebPushToAll } from '../utils/web-push';
 
@@ -230,7 +232,7 @@ mModeRoutes.post('/actor', async (c) => {
   }
 
   const passwordHash = body.password ? await hashPassword(body.password) : '';
-  const actor = await createActor(c.env.DB, body.scenario_id, body.callsign, body.team, passwordHash);
+  const actor = await createActor(c.env.DB, body.scenario_id, body.callsign, body.team, passwordHash, null);
 
   // Optionally assign to lane
   if (body.lane_id) {
@@ -518,6 +520,56 @@ mModeRoutes.post('/join-code', async (c) => {
 
   const joinCode = await createJoinCode(c.env.DB, code, body.scenario_id, body.team, body.max_uses || 50);
   return c.json({ join_code: joinCode }, 201);
+});
+
+/**
+ * POST /api/m/scenario/user-role
+ * Director grants/revokes a scenario-scoped role for a user account.
+ * (This is the "Ops is a moderator tag applied by M" primitive.)
+ */
+mModeRoutes.post('/scenario/user-role', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{ scenario_id?: number; callsign: string; role: string; enabled: boolean }>();
+
+  const scenarioId = body.scenario_id || auth.scenario_id;
+  const callsign = String(body.callsign || '').trim();
+  const role = String(body.role || '').trim();
+  const enabled = !!body.enabled;
+
+  if (!scenarioId || !callsign || !role) {
+    return c.json({ error: 'BAD_REQUEST', message: 'scenario_id, callsign, role required' }, 400);
+  }
+
+  const user = await getUserByCallsign(c.env.DB, callsign);
+  if (!user) return c.json({ error: 'NOT_FOUND', message: `No user with callsign ${callsign}` }, 404);
+
+  if (enabled) {
+    await grantScenarioUserRole(c.env.DB, scenarioId, user.id, role);
+  } else {
+    await revokeScenarioUserRole(c.env.DB, scenarioId, user.id, role);
+  }
+
+  const event = await insertEvent(c.env.DB, scenarioId, auth.actor_id, 'scenario_user_role', {
+    callsign,
+    user_id: user.id,
+    role,
+    enabled,
+    set_by: auth.callsign,
+    ts: Date.now(),
+  });
+
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${scenarioId}`);
+  const room = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'event',
+      data: { ...event, payload: JSON.parse(event.payload) },
+      timestamp: Date.now(),
+    }),
+  }));
+
+  return c.json({ ok: true });
 });
 
 // --- UGRS Grid ---

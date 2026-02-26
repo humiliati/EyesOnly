@@ -178,9 +178,15 @@
                 <!-- Register Form -->
                 <div id="register-form" class="auth-form" style="display: none;">
                   <div class="form-field">
-                    <label for="register-username">USERNAME</label>
-                    <input type="text" id="register-username" placeholder="3-20 characters, alphanumeric" autocomplete="off" />
-                    <span class="field-validation" id="username-validation"></span>
+                    <label for="register-username-preset">ACCOUNT NAME</label>
+                    <select id="register-username-preset" class="auth-select">
+                      <option value="" selected>SELECT AN ACCOUNT NAME…</option>
+                      <option value="__custom__">CUSTOM…</option>
+                    </select>
+                    <div id="register-username-custom-wrapper" style="display:none; margin-top:6px;">
+                      <input type="text" id="register-username" placeholder="3-20 characters, alphanumeric" autocomplete="off" />
+                      <span class="field-validation" id="username-validation"></span>
+                    </div>
                   </div>
                   <div class="form-field">
                     <label for="register-callsign-preset">CALLSIGN</label>
@@ -188,6 +194,7 @@
                       <option value="" selected>SELECT A CALLSIGN…</option>
                       <option value="__custom__">CUSTOM…</option>
                     </select>
+                    <div class="field-validation" style="opacity:0.75; font-size: 11px; margin-top:4px;">If taken, we’ll append “-2”.</div>
                     <div id="register-callsign-custom-wrapper" style="display:none; margin-top:6px;">
                       <input type="text" id="register-callsign" placeholder="Custom callsign" autocomplete="off" />
                       <div class="field-validation" style="opacity:0.75; font-size: 11px; margin-top:4px;">If taken, we’ll append “-2”.</div>

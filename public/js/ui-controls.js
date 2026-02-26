@@ -977,6 +977,81 @@
       });
     }
 
+    // Account name presets (mobile-friendly)
+    (function initUsernamePresets() {
+      var preset = document.getElementById('register-username-preset');
+      var customWrap = document.getElementById('register-username-custom-wrapper');
+      var customInput = document.getElementById('register-username');
+      if (!preset) return;
+
+      var PRESETS = [
+        '007','RED','BLUE','SOLID SNAKE','LARA CROFT','SAMUS','RAIDEN','FOXHOUND','NOMAD','RAVEN',
+        'ECHO','NIFTY','MOK','AWOL','GHOST','SCOUT','MEDIC','HEAVY','TECH','VIPER',
+        'HOUND','WRAITH','ORACLE','SABER','FALCON','HUNTER','SPECTER','KILO','SIGMA','TANGO'
+      ];
+
+      function usernameFromPreset(s) {
+        try {
+          var u = String(s || '').trim().toLowerCase();
+          u = u.replace(/\s+/g, '_');
+          u = u.replace(/[^a-z0-9_]/g, '');
+          u = u.replace(/_+/g, '_');
+          u = u.replace(/^_+|_+$/g, '');
+          if (u.length > 20) u = u.slice(0, 20);
+          // Ensure minimum length (server requires 3)
+          if (u.length > 0 && u.length < 3) u = (u + '___').slice(0, 3);
+          return u;
+        } catch (e0) {
+          return '';
+        }
+      }
+
+      // populate (keep placeholder + custom)
+      try {
+        for (var i = 0; i < PRESETS.length; i++) {
+          var opt = document.createElement('option');
+          opt.value = PRESETS[i];
+          opt.textContent = PRESETS[i];
+          preset.insertBefore(opt, preset.querySelector('option[value="__custom__"]'));
+        }
+      } catch (e1) {}
+
+      function showCustom(on) {
+        if (customWrap) customWrap.style.display = on ? 'block' : 'none';
+        if (customInput) {
+          if (on) {
+            setTimeout(function() { try { customInput.focus(); } catch (e2) {} }, 0);
+          } else {
+            customInput.value = customInput.value || '';
+          }
+        }
+      }
+
+      preset.addEventListener('change', function() {
+        var v = (preset.value || '').trim();
+        if (v === '__custom__') {
+          showCustom(true);
+          return;
+        }
+
+        showCustom(false);
+        if (customInput) {
+          customInput.value = usernameFromPreset(v);
+          try { validateUsername(); } catch (e3) {}
+        }
+
+        // If callsign is still unset, auto-pick the same preset callsign.
+        try {
+          var csPreset = document.getElementById('register-callsign-preset');
+          var csInput = document.getElementById('register-callsign');
+          if (csPreset && (!csPreset.value || csPreset.value === '')) {
+            csPreset.value = v;
+            if (csInput) csInput.value = v;
+          }
+        } catch (e4) {}
+      });
+    })();
+
     // Callsign presets (mobile-friendly)
     (function initCallsignPresets() {
       var preset = document.getElementById('register-callsign-preset');
@@ -1029,8 +1104,8 @@
       registerUsername.addEventListener('input', validateUsername);
       registerUsername.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
-          var callsignInput = document.getElementById('register-callsign');
-          if (callsignInput) callsignInput.focus();
+          var callsignPreset = document.getElementById('register-callsign-preset');
+          if (callsignPreset) callsignPreset.focus();
         }
       });
     }
