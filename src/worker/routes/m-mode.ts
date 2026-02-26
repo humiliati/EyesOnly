@@ -25,6 +25,8 @@ import {
   insertEvent,
   getEvents,
   listDeadDrops,
+  createDeadDrop,
+  deleteDeadDrop,
   createJoinCode,
   hashPassword,
   getGridCells,
@@ -232,6 +234,84 @@ mModeRoutes.post('/actor', async (c) => {
   }
 
   return c.json({ actor }, 201);
+});
+
+// --- Dead Drops (Director Authority) ---
+
+/**
+ * POST /api/m/dead-drop
+ * Director creates a dead drop.
+ * NOTE: Ops actors can also place/retrieve via /api/ops/dead-drop.
+ */
+mModeRoutes.post('/dead-drop', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{
+    scenario_id?: number;
+    lane_id: string;
+    label: string;
+    lat?: number;
+    lng?: number;
+  }>();
+
+  const scenarioId = body.scenario_id || auth.scenario_id;
+  if (!scenarioId || !body.lane_id || !body.label) {
+    return c.json({ error: 'BAD_REQUEST', message: 'scenario_id, lane_id, label are required' }, 400);
+  }
+
+  const drop = await createDeadDrop(c.env.DB, scenarioId, body.lane_id, body.label, auth.actor_id, body.lat, body.lng);
+
+  // Log + broadcast
+  const event = await insertEvent(c.env.DB, scenarioId, auth.actor_id, 'dead_drop_placed', {
+    dead_drop_id: drop.id,
+    lane_id: body.lane_id,
+    label: drop.label,
+    lat: drop.lat,
+    lng: drop.lng,
+    placed_by: auth.callsign,
+  });
+
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${scenarioId}`);
+  const room = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'event',
+      data: { ...event, payload: JSON.parse(event.payload) },
+      timestamp: Date.now(),
+    }),
+  }));
+
+  return c.json({ ok: true, dead_drop: drop });
+});
+
+/**
+ * DELETE /api/m/dead-drop/:id
+ * Director deletes a dead drop (admin cleanup).
+ */
+mModeRoutes.delete('/dead-drop/:id', async (c) => {
+  const auth = c.get('auth');
+  const id = parseInt(c.req.param('id'), 10);
+  if (!id) return c.json({ error: 'BAD_REQUEST', message: 'id required' }, 400);
+
+  await deleteDeadDrop(c.env.DB, auth.scenario_id, id);
+
+  const event = await insertEvent(c.env.DB, auth.scenario_id, auth.actor_id, 'dead_drop_deleted', {
+    dead_drop_id: id,
+    deleted_by: auth.callsign,
+  });
+
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+  const room = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'event',
+      data: { ...event, payload: JSON.parse(event.payload) },
+      timestamp: Date.now(),
+    }),
+  }));
+
+  return c.json({ ok: true });
 });
 
 // --- Event Injection ---

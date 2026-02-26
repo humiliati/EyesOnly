@@ -276,6 +276,13 @@ export async function retrieveDeadDrop(db: D1Database, id: number, retrievedBy: 
     .run();
 }
 
+export async function deleteDeadDrop(db: D1Database, scenarioId: number, id: number): Promise<void> {
+  await db
+    .prepare('DELETE FROM dead_drops WHERE scenario_id = ? AND id = ?')
+    .bind(scenarioId, id)
+    .run();
+}
+
 export async function listDeadDrops(db: D1Database, scenarioId: number): Promise<DeadDropRow[]> {
   const result = await db
     .prepare('SELECT * FROM dead_drops WHERE scenario_id = ? ORDER BY created_at DESC')
