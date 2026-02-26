@@ -82,6 +82,14 @@ var RogueSidebar = (function() {
     if (!_container) return;
     if (_container.dataset.rogueSidebarActive !== '1') {
       _container.dataset.rogueSidebarActive = '1';
+
+      // When the rogue sidebar takes over the left column, ensure the NCH overlay is
+      // available (it lives outside the control rail, but should feel like the same surface).
+      try {
+        if (typeof NonCombatHUD !== 'undefined' && typeof NonCombatHUD.setMinimized === 'function') {
+          NonCombatHUD.setMinimized(false);
+        }
+      } catch (e0) {}
     }
 
     _render();
@@ -89,6 +97,19 @@ var RogueSidebar = (function() {
 
   function _render() {
     if (!_container) return;
+
+    // Fetch refs early so we can enforce first-pickup UX.
+    var items = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentInventory) ? (GAMESTATE.getPersistentInventory() || []) : [];
+    var cards = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentCards) ? (GAMESTATE.getPersistentCards() || []) : [];
+
+    // New-player UX: if items just became non-empty (e.g., first key pickup), force items view.
+    try {
+      if ((_lastItemsLen === null || _lastItemsLen === 0) && items.length > 0) {
+        _prefs.view = 'items';
+        _prefs.itemOffset = 0;
+        _savePrefs();
+      }
+    } catch (e0) {}
 
     var view = _prefs.view === 'items' ? 'items' : 'cards';
 
@@ -98,8 +119,6 @@ var RogueSidebar = (function() {
     } catch (e0) { strActive = false; }
 
     // Fetch refs
-    var items = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentInventory) ? (GAMESTATE.getPersistentInventory() || []) : [];
-    var cards = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentCards) ? (GAMESTATE.getPersistentCards() || []) : [];
     var activeItem = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) ? GAMESTATE.getActiveItem() : null;
 
     // STR combat view: left column becomes redacted BACKUP deck surface

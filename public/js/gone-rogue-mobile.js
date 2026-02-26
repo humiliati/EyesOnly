@@ -311,6 +311,20 @@ const GoneRogueMobile = (function () {
       // Only handle keyboard if Gone Rogue is active
       if (typeof GoneRogue === 'undefined' || !GoneRogue.isActive()) return;
 
+      // Never steal WASD/arrow keys from text inputs (onboarding / callsign entry, etc.)
+      try {
+        var ae = document.activeElement;
+        var t = e && e.target ? e.target : null;
+        function isTypingEl(el) {
+          if (!el) return false;
+          var tag = (el.tagName || '').toLowerCase();
+          if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+          if (el.isContentEditable) return true;
+          return false;
+        }
+        if (isTypingEl(ae) || isTypingEl(t)) return;
+      } catch (e0) {}
+
       // Check if we're in STR combat - allow card selection but not movement
       var inStrCombat = GoneRogue.isStrCombatActive && GoneRogue.isStrCombatActive();
 
