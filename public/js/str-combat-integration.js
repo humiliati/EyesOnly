@@ -171,47 +171,38 @@
   var _lastResolvingTurn = false;
   var _lastHandSig = null;
   var _endOfTurnPushDone = false; // Guard: only push oldest card once per resolution cycle
-  var _lastRound = -1; // Track round number for per-turn draw reset
 
   function _showHandFan(combatState) {
-    // ── Per-turn draw flag reset ──
-    // When the round number changes, reset the backup draw flag so the player
-    // can draw once from the left column (reserve slots) each turn.
+    // ── Per-turn draw reset via CardStateAuthority ──
     var currentRound = (typeof combatState.round === 'number' && isFinite(combatState.round)) ? combatState.round : 1;
-    if (currentRound !== _lastRound) {
-      _lastRound = currentRound;
-      try {
-        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.resetTurnBackupDrawFlag === 'function') {
-          GAMESTATE.resetTurnBackupDrawFlag();
-          console.log('[STRIntegration] Round ' + currentRound + ': reset per-turn backup draw flag');
-        }
-      } catch (e) {}
+    if (typeof CardStateAuthority !== 'undefined') {
+      CardStateAuthority.checkRoundChange(currentRound);
     }
 
-    // Get canonical hand cards from GAMESTATE (mirrors NCH)
+    // Get canonical hand cards via CardStateAuthority (single source of truth)
     var cards = [];
     var sigParts = [];
-    if (typeof GAMESTATE !== 'undefined') {
+    if (typeof CardStateAuthority !== 'undefined') {
+      cards = CardStateAuthority.expandHandForDisplay();
+      sigParts = [CardStateAuthority.getSignature()];
+      if (cards.length === 0) {
+        sigParts = ['canonical:empty'];
+      }
+    } else if (typeof GAMESTATE !== 'undefined') {
+      // Legacy fallback if CardStateAuthority not loaded yet
       var refs = (typeof GAMESTATE.getCardsInHand === 'function') ? GAMESTATE.getCardsInHand() : [];
-
       for (var i = 0; i < refs.length; i++) {
         var ref = refs[i];
         if (!ref || !ref.id) continue;
         var qty = (typeof ref.qty === 'number' ? ref.qty : 1);
         qty = Math.max(1, qty);
         sigParts.push(ref.id + 'x' + qty);
-
         var def = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) ? GoneRogueDataRegistry.getCard(ref.id) : null;
         if (!def) def = { id: ref.id, name: ref.id, emoji: '🃏', effects: [] };
-
-        // Expand qty into individual UI card entries for now (stable by order)
         for (var q = 0; q < qty; q++) {
           cards.push(Object.assign({}, def, { id: ref.id }));
         }
       }
-
-      // Do NOT fall back to legacy loose inventory in STR combat.
-      // If canonical hand is empty or unplayable, provide the BLVCK fallback so combat never softlocks.
       if (cards.length === 0) {
         sigParts = ['canonical:empty'];
       }
@@ -231,6 +222,11 @@
     }
 
     function _canAffordCard(def) {
+      // Prefer CardStateAuthority (single affordability check)
+      if (typeof CardStateAuthority !== 'undefined' && typeof CardStateAuthority.canAffordCard === 'function') {
+        return CardStateAuthority.canAffordCard(def);
+      }
+      // Legacy fallback
       try {
         var costs = Array.isArray(def.costs) ? def.costs : null;
         if (!costs || !costs.length) return true;
@@ -286,16 +282,20 @@
       if (_lastResolvingTurn && !_endOfTurnPushDone) {
         _endOfTurnPushDone = true;
         try {
-          if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.pushOldestHandCardToBackup === 'function') {
-            var pushResult = GAMESTATE.pushOldestHandCardToBackup();
+          if (typeof CardStateAuthority !== 'undefined') {
+            var pushResult = CardStateAuthority.pushOldestHandToBackup();
             if (pushResult && pushResult.success) {
               var pushedId = (pushResult.returnedCard && pushResult.returnedCard.id) || '?';
               console.log('[STRIntegration] End-of-turn: pushed oldest hand card "' + pushedId + '" back to backup');
-              // Note: pushOldestHandCardToBackup already dispatches rogue-hand-changed internally
+            }
+          } else if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.pushOldestHandCardToBackup === 'function') {
+            var pushResult2 = GAMESTATE.pushOldestHandCardToBackup();
+            if (pushResult2 && pushResult2.success) {
+              console.log('[STRIntegration] End-of-turn: pushed oldest hand card back to backup (legacy path)');
             }
           }
         } catch (e3) {
-          console.warn('[STRIntegration] pushOldestHandCardToBackup error:', e3);
+          console.warn('[STRIntegration] pushOldestHandToBackup error:', e3);
         }
       }
     }
@@ -366,16 +366,33 @@
   }
 
   function _showBackupActions(combatState) {
-    // Legacy backup action container fed looseInventory and conflicts with canonical hand.
-    // Replaced by GAMESTATE.backupCards + STRCombatWindow "DRAW 1".
+    // Left column: show with combat mode rendering (handled by backup-action-container's mode detection)
     if (typeof BackupActionContainer !== 'undefined') {
-      BackupActionContainer.hide();
+      if (!BackupActionContainer.isVisible()) {
+        BackupActionContainer.show();
+      }
+      // Trigger re-render (signature-based, will skip if unchanged)
+      if (typeof BackupActionContainer.render === 'function') {
+        BackupActionContainer.render();
+      }
+    }
+
+    // Enemy hand display in backup scroll space
+    if (typeof EnemyHandDisplay !== 'undefined') {
+      if (!EnemyHandDisplay.isVisible()) {
+        EnemyHandDisplay.show();
+      }
+      EnemyHandDisplay.updateFromCombatState(combatState);
     }
   }
 
   function _hideBackupActions() {
-    if (typeof BackupActionContainer === 'undefined') return;
-    BackupActionContainer.hide();
+    if (typeof BackupActionContainer !== 'undefined') {
+      BackupActionContainer.hide();
+    }
+    if (typeof EnemyHandDisplay !== 'undefined') {
+      EnemyHandDisplay.hide();
+    }
   }
 
   /**

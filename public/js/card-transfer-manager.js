@@ -1,0 +1,390 @@
+/**
+ * CardTransferManager — Cross-container drag & drop for NCH mode.
+ *
+ * Handles all card transfers between hand fan, backup scroll/halo,
+ * left column, vault, and map. All transfers write through
+ * CardStateAuthority → GAMESTATE → event → re-render.
+ *
+ * During STR-combat, only left-column → hand (draw) is allowed,
+ * and that goes through CardStateAuthority.drawFromBackup().
+ *
+ * Roadmap ref: Phase 1.3
+ */
+var CardTransferManager = (function() {
+  'use strict';
+
+  // ── Active drag state ──────────────────────────────────────
+
+  var _drag = null;  // { source, index, cardId, cardRef, ghostEl }
+
+  // ── Drop zone registry ─────────────────────────────────────
+  // Each zone: { element, id, accepts: fn(drag) → bool, onDrop: fn(drag, e) }
+  var _dropZones = [];
+
+  /**
+   * Register a drop zone.
+   * @param {HTMLElement} element
+   * @param {string} id - e.g. 'hand-fan', 'backup-halo', 'backup-leftcol', 'map', 'vault'
+   * @param {Function} accepts - fn(drag) → bool
+   * @param {Function} onDrop - fn(drag, event) → void
+   */
+  function registerDropZone(element, id, accepts, onDrop) {
+    if (!element) return;
+    _dropZones.push({ element: element, id: id, accepts: accepts, onDrop: onDrop });
+
+    // Standard HTML5 drag events
+    element.addEventListener('dragover', function(e) {
+      if (!_drag) return;
+      var zone = _findZone(element);
+      if (zone && zone.accepts(_drag)) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        element.classList.add('ctm-drop-highlight');
+      }
+    });
+
+    element.addEventListener('dragleave', function(e) {
+      element.classList.remove('ctm-drop-highlight');
+    });
+
+    element.addEventListener('drop', function(e) {
+      e.preventDefault();
+      element.classList.remove('ctm-drop-highlight');
+      if (!_drag) {
+        // Try to reconstruct from dataTransfer
+        try {
+          var data = JSON.parse(e.dataTransfer.getData('text/plain'));
+          if (data && data.source && data.cardId !== undefined) {
+            _drag = {
+              source: data.source,
+              index: data.index,
+              cardId: data.cardId,
+              cardRef: data
+            };
+          }
+        } catch (err) {}
+      }
+      if (!_drag) return;
+      var zone = _findZone(element);
+      if (zone && zone.accepts(_drag)) {
+        zone.onDrop(_drag, e);
+      }
+      _drag = null;
+    });
+  }
+
+  function _findZone(el) {
+    for (var i = 0; i < _dropZones.length; i++) {
+      if (_dropZones[i].element === el) return _dropZones[i];
+    }
+    return null;
+  }
+
+  function _findZoneById(id) {
+    for (var i = 0; i < _dropZones.length; i++) {
+      if (_dropZones[i].id === id) return _dropZones[i];
+    }
+    return null;
+  }
+
+  /**
+   * Unregister a drop zone.
+   */
+  function unregisterDropZone(element) {
+    _dropZones = _dropZones.filter(function(z) { return z.element !== element; });
+  }
+
+  // ── Drag start (called by source components) ──────────────
+
+  /**
+   * Begin a drag operation. Source components call this on pointerdown/dragstart.
+   * @param {object} dragInfo - { source: 'hand'|'backup'|'vault', index: number, cardId: string, cardRef: object }
+   */
+  function startDrag(dragInfo) {
+    _drag = dragInfo;
+  }
+
+  /**
+   * Cancel current drag.
+   */
+  function cancelDrag() {
+    if (_drag && _drag.ghostEl) {
+      try { _drag.ghostEl.remove(); } catch (e) {}
+    }
+    _drag = null;
+    // Remove all highlights
+    for (var i = 0; i < _dropZones.length; i++) {
+      try { _dropZones[i].element.classList.remove('ctm-drop-highlight'); } catch (e2) {}
+    }
+  }
+
+  function getActiveDrag() {
+    return _drag;
+  }
+
+  // ── Transfer Operations (all go through CardStateAuthority) ──
+
+  /**
+   * Move card from backup to hand.
+   * @param {number} backupIndex
+   * @returns {boolean}
+   */
+  function backupToHand(backupIndex) {
+    if (typeof CardStateAuthority === 'undefined') return false;
+    if (CardStateAuthority.isCombat()) {
+      // In combat, must use drawFromBackup
+      return CardStateAuthority.drawFromBackup(backupIndex, 'pick');
+    }
+    return CardStateAuthority.moveBackupToHand(backupIndex);
+  }
+
+  /**
+   * Move card from hand to backup.
+   * @param {number} handIndex
+   * @returns {boolean}
+   */
+  function handToBackup(handIndex) {
+    if (typeof CardStateAuthority === 'undefined') return false;
+    if (CardStateAuthority.isCombat()) return false; // Cannot during combat
+    return CardStateAuthority.moveHandToBackup(handIndex);
+  }
+
+  /**
+   * Reorder backup deck: move card at fromIndex to toIndex.
+   * @param {number} fromIndex
+   * @param {number} toIndex
+   */
+  function reorderBackup(fromIndex, toIndex) {
+    if (typeof CardStateAuthority === 'undefined') return;
+    if (CardStateAuthority.isCombat()) return; // Cannot reorder during combat
+    CardStateAuthority.reorderBackup(fromIndex, toIndex);
+  }
+
+  /**
+   * Move card from hand to vault (persistent stash).
+   * @param {number} handIndex
+   * @param {number} qty
+   * @returns {boolean}
+   */
+  function handToVault(handIndex, qty) {
+    if (typeof CardStateAuthority === 'undefined') return false;
+    return CardStateAuthority.moveHandToVault(handIndex, qty);
+  }
+
+  /**
+   * Move card from backup to vault.
+   * @param {number} backupIndex
+   * @returns {boolean}
+   */
+  function backupToVault(backupIndex) {
+    if (typeof CardStateAuthority === 'undefined') return false;
+    return CardStateAuthority.moveBackupToVault(backupIndex);
+  }
+
+  /**
+   * Move card from vault to hand.
+   * @param {string} cardId
+   * @param {number} qty
+   * @returns {boolean}
+   */
+  function vaultToHand(cardId, qty) {
+    if (typeof CardStateAuthority === 'undefined') return false;
+    return CardStateAuthority.moveVaultToHand(cardId, qty);
+  }
+
+  /**
+   * Move card from vault to backup.
+   * @param {string} cardId
+   * @returns {boolean}
+   */
+  function vaultToBackup(cardId) {
+    if (typeof CardStateAuthority === 'undefined') return false;
+    return CardStateAuthority.moveVaultToBackup(cardId);
+  }
+
+  /**
+   * Deploy card to map (ground effect). Triggers NCH minimize.
+   * @param {string} source - 'hand' | 'backup'
+   * @param {number} index
+   * @param {number} mapX
+   * @param {number} mapY
+   * @returns {boolean}
+   */
+  function deployToMap(source, index, mapX, mapY) {
+    if (typeof CardStateAuthority === 'undefined') return false;
+
+    var cardId = null;
+    if (source === 'hand') {
+      var hand = CardStateAuthority.getHand();
+      if (index >= 0 && index < hand.length) cardId = hand[index].id;
+    } else if (source === 'backup') {
+      var backup = CardStateAuthority.getBackup();
+      if (index >= 0 && index < backup.length) cardId = backup[index].id;
+    }
+
+    if (!cardId) return false;
+
+    // Apply the card effect on the map
+    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.applyNonCombatCardAt === 'function') {
+      GoneRogue.applyNonCombatCardAt(cardId, mapX, mapY);
+    }
+
+    // Consume from source
+    if (source === 'hand') {
+      CardStateAuthority.consumeFromHand(index, 1);
+    } else if (source === 'backup') {
+      CardStateAuthority.removeBackupCard(index);
+    }
+
+    // Emit deploy event (triggers NCH minimize animation in Phase 2)
+    if (typeof NonCombatEventBus !== 'undefined') {
+      NonCombatEventBus.emit('card:deployed-to-map', {
+        source: source,
+        index: index,
+        cardId: cardId,
+        mapX: mapX,
+        mapY: mapY
+      });
+    }
+
+    return true;
+  }
+
+  // ── Default Drop Zone Factories ────────────────────────────
+
+  /**
+   * Create standard accepts/onDrop for hand fan drop zone.
+   */
+  function createHandFanDropHandlers() {
+    return {
+      accepts: function(drag) {
+        if (CardStateAuthority.isCombat() && drag.source !== 'backup-leftcol') return false;
+        return (drag.source === 'backup' || drag.source === 'backup-leftcol' || drag.source === 'vault');
+      },
+      onDrop: function(drag, e) {
+        if (drag.source === 'backup' || drag.source === 'backup-leftcol') {
+          backupToHand(drag.index);
+        } else if (drag.source === 'vault') {
+          vaultToHand(drag.cardId, 1);
+        }
+      }
+    };
+  }
+
+  /**
+   * Create standard accepts/onDrop for backup/halo drop zone.
+   */
+  function createBackupDropHandlers() {
+    return {
+      accepts: function(drag) {
+        if (CardStateAuthority.isCombat()) return false;
+        return (drag.source === 'hand' || drag.source === 'vault' || drag.source === 'backup');
+      },
+      onDrop: function(drag, e) {
+        if (drag.source === 'hand') {
+          handToBackup(drag.index);
+        } else if (drag.source === 'vault') {
+          vaultToBackup(drag.cardId);
+        } else if (drag.source === 'backup') {
+          // Reorder: determine target index from drop position
+          var targetIndex = _inferDropIndex(e);
+          if (targetIndex >= 0) {
+            reorderBackup(drag.index, targetIndex);
+          }
+        }
+      }
+    };
+  }
+
+  /**
+   * Create standard accepts/onDrop for vault drop zone.
+   */
+  function createVaultDropHandlers() {
+    return {
+      accepts: function(drag) {
+        if (CardStateAuthority.isCombat()) return false;
+        return (drag.source === 'hand' || drag.source === 'backup');
+      },
+      onDrop: function(drag, e) {
+        if (drag.source === 'hand') {
+          handToVault(drag.index, 1);
+        } else if (drag.source === 'backup') {
+          backupToVault(drag.index);
+        }
+      }
+    };
+  }
+
+  /**
+   * Create standard accepts/onDrop for map drop zone.
+   */
+  function createMapDropHandlers() {
+    return {
+      accepts: function(drag) {
+        return (drag.source === 'hand' || drag.source === 'backup');
+      },
+      onDrop: function(drag, e) {
+        // Determine map coordinates from drop position
+        var coords = _getMapCoordsFromEvent(e);
+        if (coords) {
+          deployToMap(drag.source, drag.index, coords.x, coords.y);
+        }
+      }
+    };
+  }
+
+  // ── Helpers ────────────────────────────────────────────────
+
+  function _inferDropIndex(e) {
+    // Try to get slot index from the drop target
+    var el = e.target;
+    while (el) {
+      if (el.dataset && el.dataset.slotIndex !== undefined) {
+        return parseInt(el.dataset.slotIndex, 10);
+      }
+      if (el.dataset && el.dataset.cardIndex !== undefined) {
+        return parseInt(el.dataset.cardIndex, 10);
+      }
+      el = el.parentElement;
+    }
+    return -1;
+  }
+
+  function _getMapCoordsFromEvent(e) {
+    // Try GoneRogue's coordinate system
+    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.screenToGrid === 'function') {
+      return GoneRogue.screenToGrid(e.clientX, e.clientY);
+    }
+    return null;
+  }
+
+  // ── Public API ─────────────────────────────────────────────
+
+  return {
+    // Drag lifecycle
+    startDrag: startDrag,
+    cancelDrag: cancelDrag,
+    getActiveDrag: getActiveDrag,
+
+    // Drop zone registry
+    registerDropZone: registerDropZone,
+    unregisterDropZone: unregisterDropZone,
+
+    // Direct transfer operations
+    backupToHand: backupToHand,
+    handToBackup: handToBackup,
+    reorderBackup: reorderBackup,
+    handToVault: handToVault,
+    backupToVault: backupToVault,
+    vaultToHand: vaultToHand,
+    vaultToBackup: vaultToBackup,
+    deployToMap: deployToMap,
+
+    // Drop handler factories
+    createHandFanDropHandlers: createHandFanDropHandlers,
+    createBackupDropHandlers: createBackupDropHandlers,
+    createVaultDropHandlers: createVaultDropHandlers,
+    createMapDropHandlers: createMapDropHandlers
+  };
+
+})();

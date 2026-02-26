@@ -37,7 +37,15 @@ var NonCombatHUD = (function() {
     _createExpanded();
     _attachGlobalListeners();
 
-    // Subscribe to state changes
+    // Subscribe to CardStateAuthority events (primary)
+    if (typeof CardStateAuthority !== 'undefined') {
+      CardStateAuthority.on('hand:changed', function() { _renderAll(); });
+      CardStateAuthority.on('backup:changed', function() { _renderAll(); });
+      CardStateAuthority.on('vault:changed', function() { _renderAll(); });
+      CardStateAuthority.on('draw:executed', function() { _renderAll(); });
+    }
+
+    // Legacy subscribers (backward compat)
     if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.subscribe) {
       NonCombatStateStore.subscribe(function() { _renderAll(); });
     }
@@ -230,9 +238,8 @@ var NonCombatHUD = (function() {
   // ─── DATA HELPERS ───────────────────────────────────────
 
   function _getHand() {
-    if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getCardsInHand) {
-      return GAMESTATE.getCardsInHand();
-    }
+    if (typeof CardStateAuthority !== 'undefined') return CardStateAuthority.getHand();
+    if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getCardsInHand) return GAMESTATE.getCardsInHand();
     if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.getState) {
       var st = NonCombatStateStore.getState();
       return Array.isArray(st.cardsInHand) ? st.cardsInHand : [];
@@ -241,9 +248,8 @@ var NonCombatHUD = (function() {
   }
 
   function _getBackup() {
-    if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getBackupCards) {
-      return GAMESTATE.getBackupCards();
-    }
+    if (typeof CardStateAuthority !== 'undefined') return CardStateAuthority.getBackup();
+    if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getBackupCards) return GAMESTATE.getBackupCards();
     if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.getState) {
       var st = NonCombatStateStore.getState();
       return Array.isArray(st.backupCards) ? st.backupCards : [];
@@ -252,23 +258,20 @@ var NonCombatHUD = (function() {
   }
 
   function _getMaxBackup() {
-    if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getMaxBackupSlots) {
-      return GAMESTATE.getMaxBackupSlots();
-    }
+    if (typeof CardStateAuthority !== 'undefined') return CardStateAuthority.getMaxBackupSlots();
+    if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getMaxBackupSlots) return GAMESTATE.getMaxBackupSlots();
     return 25;
   }
 
   function _getVaultCards() {
-    if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentCards) {
-      return GAMESTATE.getPersistentCards();
-    }
+    if (typeof CardStateAuthority !== 'undefined') return CardStateAuthority.getVault();
+    if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentCards) return GAMESTATE.getPersistentCards();
     return [];
   }
 
   function _getCardDef(id) {
-    if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) {
-      return GoneRogueDataRegistry.getCard(id);
-    }
+    if (typeof CardStateAuthority !== 'undefined') return CardStateAuthority.getCardDef(id);
+    if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) return GoneRogueDataRegistry.getCard(id);
     return null;
   }
 
@@ -309,7 +312,9 @@ var NonCombatHUD = (function() {
   function _renderExpanded() {
     _renderEquipped();
     _renderHand();
-    _renderDrawBar();
+    // Draw bar is mode-gated: REMOVED from NCH (lives in left column only).
+    // In NCH the full backup scroll gives direct access — no draw row needed.
+    _hideDrawBarInNCH();
     _renderBackup();
     _renderVault();
   }
@@ -414,10 +419,21 @@ var NonCombatHUD = (function() {
     return false;
   }
 
-  // ─── RENDER: DRAW BAR ────────────────────────────────────
+  // ─── DRAW BAR (mode-gated: hidden in NCH) ────────────────
+
+  function _hideDrawBarInNCH() {
+    // The draw bar zone should be hidden in NCH mode.
+    // Drawing in NCH is done by dragging from the backup scroll to the hand.
+    // In STR-combat, draw is handled by left column slot 6.
+    var drawZone = _expanded ? _expanded.querySelector('.nch-zone-drawbar') : null;
+    if (drawZone) {
+      drawZone.style.display = 'none';
+    }
+  }
 
   var DRAW_BAR_SIZE = 5; // max visible draw buttons
 
+  /** @deprecated — Draw bar is now hidden in NCH. Kept for legacy compat if re-enabled. */
   function _renderDrawBar() {
     var drawbar = _expanded ? _expanded.querySelector('#nch-drawbar') : null;
     var countEl = _expanded ? _expanded.querySelector('#nch-draw-count') : null;
@@ -542,71 +558,48 @@ var NonCombatHUD = (function() {
 
   // ─── DRAW BAR ACTIONS ─────────────────────────────────────
 
+  /** @deprecated — Draw bar hidden in NCH. Kept for legacy draw bar if re-enabled. */
   function _onDrawButtonClick(backupIndex) {
-    if (typeof GAMESTATE === 'undefined') return;
-
-    // If hand is full, auto-push oldest card to backup first
-    var hand = _getHand();
-    var maxHand = 5;
-    try { if (GAMESTATE.getState) { var s = GAMESTATE.getState(); maxHand = s.maxHandSize || 5; } } catch (e) {}
-
-    if (hand.length >= maxHand) {
-      try { GAMESTATE.pushOldestHandCardToBackup(); } catch (e) {}
-    }
-
-    // Draw from backup to hand
-    try {
-      var result = GAMESTATE.moveBackupIndexToHand(backupIndex);
-      if (result && result.success !== false) {
-        // Animate draw: add .drawing class to the button briefly
-        var drawbar = _expanded ? _expanded.querySelector('#nch-drawbar') : null;
-        if (drawbar) {
-          var btns = drawbar.querySelectorAll('.nch-draw-btn');
-          if (btns[backupIndex]) {
-            btns[backupIndex].classList.add('drawing');
-          }
-        }
-
-        // Tooltip feedback
-        if (typeof TooltipSystem !== 'undefined') {
-          TooltipSystem.showPersistent('\uD83C\uDCCF DRAWN \u2192 HAND', 700);
-        }
+    // Route through CardStateAuthority
+    if (typeof CardStateAuthority !== 'undefined') {
+      var hand = CardStateAuthority.getHand();
+      if (hand.length >= CardStateAuthority.getMaxHandSize()) {
+        CardStateAuthority.pushOldestHandToBackup();
       }
-    } catch (e) {
-      console.warn('[NCH] Draw failed:', e);
+      CardStateAuthority.moveBackupToHand(backupIndex);
+    } else if (typeof GAMESTATE !== 'undefined') {
+      var hand2 = _getHand();
+      var maxHand = 5;
+      try { if (GAMESTATE.getState) { var s = GAMESTATE.getState(); maxHand = s.maxHandSize || 5; } } catch (e) {}
+      if (hand2.length >= maxHand) {
+        try { GAMESTATE.pushOldestHandCardToBackup(); } catch (e) {}
+      }
+      try { GAMESTATE.moveBackupIndexToHand(backupIndex); } catch (e) {}
     }
-
-    // Re-render after short animation delay
+    if (typeof TooltipSystem !== 'undefined') {
+      TooltipSystem.showPersistent('\uD83C\uDCCF DRAWN \u2192 HAND', 700);
+    }
     setTimeout(function() { _renderAll(); }, 150);
   }
 
   function _onShuffleClick() {
-    if (typeof GAMESTATE === 'undefined' || typeof GAMESTATE.shuffleBackupDeck !== 'function') return;
-
-    // Visual: add scatter animation
-    var drawbar = _expanded ? _expanded.querySelector('#nch-drawbar') : null;
-    if (drawbar) {
-      var btns = drawbar.querySelectorAll('.nch-draw-btn');
-      for (var i = 0; i < btns.length; i++) {
-        btns[i].classList.add('shuffling');
-      }
-    }
-
-    // Shuffle after brief visual
-    setTimeout(function() {
+    if (typeof CardStateAuthority !== 'undefined') {
+      CardStateAuthority.shuffleBackup();
+    } else if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.shuffleBackupDeck === 'function') {
       GAMESTATE.shuffleBackupDeck();
-      if (typeof TooltipSystem !== 'undefined') {
-        TooltipSystem.showPersistent('\uD83D\uDD00 Deck shuffled', 700);
-      }
-      // rogue-hand-changed event triggers _renderAll
-    }, 200);
+    }
+    if (typeof TooltipSystem !== 'undefined') {
+      TooltipSystem.showPersistent('\uD83D\uDD00 Deck shuffled', 700);
+    }
   }
 
   function _onSortClick() {
-    if (typeof GAMESTATE === 'undefined' || typeof GAMESTATE.sortBackupDeck !== 'function') return;
     if (!_isSortUnlocked()) return;
-
-    GAMESTATE.sortBackupDeck('quality');
+    if (typeof CardStateAuthority !== 'undefined') {
+      CardStateAuthority.sortBackup('quality');
+    } else if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.sortBackupDeck === 'function') {
+      GAMESTATE.sortBackupDeck('quality');
+    }
     if (typeof TooltipSystem !== 'undefined') {
       TooltipSystem.showPersistent('\uD83D\uDCD1 Deck sorted by quality', 700);
     }
@@ -890,9 +883,17 @@ var NonCombatHUD = (function() {
 
     var ok = false;
 
+    // ── All transfers routed through CardTransferManager / CardStateAuthority ──
+    var _useCTM = (typeof CardTransferManager !== 'undefined');
+    var _useCSA = (typeof CardStateAuthority !== 'undefined');
+
     // ── HAND → BACKUP ──
     if (_drag.kind === 'hand' && (droppedOnBackup || droppedOnSidebar)) {
-      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.moveHandIndexToBackup) {
+      if (_useCTM) {
+        ok = CardTransferManager.handToBackup(_drag.index);
+      } else if (_useCSA) {
+        ok = CardStateAuthority.moveHandToBackup(_drag.index);
+      } else if (typeof GAMESTATE !== 'undefined' && GAMESTATE.moveHandIndexToBackup) {
         ok = !!GAMESTATE.moveHandIndexToBackup(_drag.index).success;
       }
       _showDragResult(ok, 'Moved to backup', 'Backup full or invalid');
@@ -903,7 +904,11 @@ var NonCombatHUD = (function() {
 
     // ── BACKUP → HAND ──
     if (_drag.kind === 'backup' && droppedOnHand) {
-      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.moveBackupIndexToHand) {
+      if (_useCTM) {
+        ok = CardTransferManager.backupToHand(_drag.index);
+      } else if (_useCSA) {
+        ok = CardStateAuthority.moveBackupToHand(_drag.index);
+      } else if (typeof GAMESTATE !== 'undefined' && GAMESTATE.moveBackupIndexToHand) {
         ok = !!GAMESTATE.moveBackupIndexToHand(_drag.index).success;
       }
       _showDragResult(ok, 'Moved to hand', 'Cannot move to hand');
@@ -914,21 +919,16 @@ var NonCombatHUD = (function() {
 
     // ── HAND → VAULT ──
     if (_drag.kind === 'hand' && droppedOnVault) {
-      // Remove from hand, add to persistent
-      if (typeof GAMESTATE !== 'undefined') {
-        // First move to persistent cards
-        if (GAMESTATE.addPersistentCard) {
-          ok = true;
-          try {
-            GAMESTATE.addPersistentCard(_drag.id, 1);
-            // Remove from hand
-            if (GAMESTATE.consumeCardFromHand) {
-              GAMESTATE.consumeCardFromHand(_drag.index, 1);
-            } else if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.consumeHandIndex) {
-              NonCombatStateStore.consumeHandIndex(_drag.index, 1);
-            }
-          } catch (ex) { ok = false; }
-        }
+      if (_useCTM) {
+        ok = CardTransferManager.handToVault(_drag.index, 1);
+      } else if (_useCSA) {
+        ok = CardStateAuthority.moveHandToVault(_drag.index, 1);
+      } else if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addPersistentCard) {
+        ok = true;
+        try {
+          GAMESTATE.addPersistentCard(_drag.id, 1);
+          if (GAMESTATE.consumeCardFromHand) GAMESTATE.consumeCardFromHand(_drag.index, 1);
+        } catch (ex) { ok = false; }
       }
       _showDragResult(ok, 'Vaulted!', 'Cannot vault card');
       _drag = null;
@@ -938,32 +938,15 @@ var NonCombatHUD = (function() {
 
     // ── BACKUP → VAULT ──
     if (_drag.kind === 'backup' && droppedOnVault) {
-      if (typeof GAMESTATE !== 'undefined') {
+      if (_useCTM) {
+        ok = CardTransferManager.backupToVault(_drag.index);
+      } else if (_useCSA) {
+        ok = CardStateAuthority.moveBackupToVault(_drag.index);
+      } else if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addPersistentCard) {
         ok = true;
         try {
-          if (GAMESTATE.addPersistentCard) GAMESTATE.addPersistentCard(_drag.id, 1);
-          // Remove from backup by index
-          var bCards = GAMESTATE.getBackupCards();
-          if (bCards[_drag.index]) {
-            // Direct state manipulation via moveBackupIndexToHand then to persistent
-            // Simpler: just splice from backup array if we have access
-            if (GAMESTATE.removeBackupCard) {
-              GAMESTATE.removeBackupCard(_drag.index);
-            } else if (GAMESTATE.moveBackupIndexToHand) {
-              // Move to hand then immediately to persistent
-              GAMESTATE.moveBackupIndexToHand(_drag.index);
-              // The card is now in hand — it was already added to persistent above
-              // We need to remove the duplicate from hand
-              var handNow = GAMESTATE.getCardsInHand();
-              for (var hi = handNow.length - 1; hi >= 0; hi--) {
-                if (handNow[hi] && handNow[hi].id === _drag.id) {
-                  if (GAMESTATE.consumeCardFromHand) GAMESTATE.consumeCardFromHand(hi, 1);
-                  else if (typeof NonCombatStateStore !== 'undefined') NonCombatStateStore.consumeHandIndex(hi, 1);
-                  break;
-                }
-              }
-            }
-          }
+          GAMESTATE.addPersistentCard(_drag.id, 1);
+          if (GAMESTATE.removeBackupCard) GAMESTATE.removeBackupCard(_drag.index);
         } catch (ex) { ok = false; }
       }
       _showDragResult(ok, 'Vaulted from backup!', 'Cannot vault');
@@ -974,7 +957,11 @@ var NonCombatHUD = (function() {
 
     // ── VAULT → BACKUP ──
     if (_drag.kind === 'vault' && (droppedOnBackup || droppedOnSidebar)) {
-      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.moveStashCardToBackup) {
+      if (_useCTM) {
+        ok = CardTransferManager.vaultToBackup(_drag.id);
+      } else if (_useCSA) {
+        ok = CardStateAuthority.moveVaultToBackup(_drag.id);
+      } else if (typeof GAMESTATE !== 'undefined' && GAMESTATE.moveStashCardToBackup) {
         ok = !!GAMESTATE.moveStashCardToBackup(_drag.id).success;
       }
       _showDragResult(ok, 'Moved to backup', 'Cannot move to backup');
@@ -985,7 +972,11 @@ var NonCombatHUD = (function() {
 
     // ── VAULT → HAND ──
     if (_drag.kind === 'vault' && droppedOnHand) {
-      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addCardToHand) {
+      if (_useCTM) {
+        ok = CardTransferManager.vaultToHand(_drag.id, 1);
+      } else if (_useCSA) {
+        ok = CardStateAuthority.moveVaultToHand(_drag.id, 1);
+      } else if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addCardToHand) {
         ok = !!GAMESTATE.addCardToHand(_drag.id, 1).success;
       }
       _showDragResult(ok, 'Added to hand', 'Cannot add to hand');
@@ -1014,23 +1005,24 @@ var NonCombatHUD = (function() {
     // ── WORLD MAP DROP (ground effects) ──
     var coords = _screenToGrid(e.clientX, e.clientY);
     if (coords && (_drag.kind === 'hand' || _drag.kind === 'backup')) {
-      if (typeof GoneRogue !== 'undefined' && GoneRogue.applyNonCombatCardAt) {
-        ok = GoneRogue.applyNonCombatCardAt(_drag.id, coords.x, coords.y);
-      }
-      if (ok) {
-        // Consume the card
-        if (_drag.kind === 'hand') {
-          if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.consumeHandIndex) {
-            NonCombatStateStore.consumeHandIndex(_drag.index, 1);
-          }
-        } else if (_drag.kind === 'backup') {
-          if (typeof NonCombatStateStore !== 'undefined' && NonCombatStateStore.consumeBackupIndex) {
-            NonCombatStateStore.consumeBackupIndex(_drag.index);
+      if (_useCTM) {
+        ok = CardTransferManager.deployToMap(_drag.kind, _drag.index, coords.x, coords.y);
+      } else {
+        if (typeof GoneRogue !== 'undefined' && GoneRogue.applyNonCombatCardAt) {
+          ok = GoneRogue.applyNonCombatCardAt(_drag.id, coords.x, coords.y);
+        }
+        if (ok) {
+          // Consume through CardStateAuthority
+          if (_useCSA) {
+            if (_drag.kind === 'hand') CardStateAuthority.consumeFromHand(_drag.index, 1);
+            else CardStateAuthority.removeBackupCard(_drag.index);
+          } else if (typeof NonCombatStateStore !== 'undefined') {
+            if (_drag.kind === 'hand') NonCombatStateStore.consumeHandIndex(_drag.index, 1);
+            else NonCombatStateStore.consumeBackupIndex(_drag.index);
           }
         }
-        // Minimize NCH to show map effect
-        _collapse('world_fire');
       }
+      if (ok) _collapse('world_fire');
       _showDragResult(ok, 'Deployed!', 'Invalid drop');
       _drag = null;
       _renderAll();
