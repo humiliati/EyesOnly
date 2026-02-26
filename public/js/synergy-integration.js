@@ -45,6 +45,16 @@ const SynergyIntegration = (function () {
       _combatActive = true;
       console.log('[SynergyIntegration] Combat synergy tracking started');
     }
+
+    // Reset cascade resolver for new combat
+    if (typeof CascadeResolver !== 'undefined' && CascadeResolver.reset) {
+      CascadeResolver.reset();
+    }
+
+    // Clear burn pile for new combat
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.clearBurnPile === 'function') {
+      GAMESTATE.clearBurnPile();
+    }
   }
 
   /**
@@ -64,6 +74,10 @@ const SynergyIntegration = (function () {
   function resetTurn() {
     if (_combatActive && typeof SynergyEngine !== 'undefined' && SynergyEngine.resetTurn) {
       SynergyEngine.resetTurn();
+    }
+    // Reset cascade depth counter each turn
+    if (typeof CascadeResolver !== 'undefined' && CascadeResolver.resetTurn) {
+      CascadeResolver.resetTurn();
     }
   }
 

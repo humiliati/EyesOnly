@@ -9735,10 +9735,42 @@ _incrementPityTimers();
     // 3D printer (🕋) hook: if active, and this card spent ammo/battery, print extra cards then consume the printer.
     _maybeTrigger3dPrinter(cardId, card);
 
+    // ── Synergy detection ──────────────────────────────────
+    var synergyResult = null;
+    var synergyBonuses = null;
+    try {
+      if (typeof SynergyIntegration !== 'undefined' && typeof SynergyIntegration.processCardPlay === 'function') {
+        synergyResult = SynergyIntegration.processCardPlay(card, {
+          player: _player,
+          enemy: _strCombatEnemy,
+          round: _strCombatRound
+        });
+        if (synergyResult && synergyResult.activeBonuses) {
+          synergyBonuses = synergyResult.activeBonuses;
+        }
+      }
+    } catch (eSyn) {
+      console.warn('[GoneRogue] Synergy check error:', eSyn);
+    }
+
     var lines = [];
     lines.push('🃏 ' + (card.emoji || '🃏') + ' ' + (card.name || cardId));
 
-    // Apply effects (v0 subset)
+    // Log synergy activation
+    if (synergyResult && synergyResult.synergies && synergyResult.synergies.length > 0) {
+      for (var si = 0; si < synergyResult.synergies.length; si++) {
+        var syn = synergyResult.synergies[si];
+        lines.push('⚡ SYNERGY: ' + (syn.definition ? syn.definition.name : 'Unknown'));
+      }
+      // Dispatch synergy event for UI feedback
+      try {
+        window.dispatchEvent(new CustomEvent('rogue-synergy-triggered', {
+          detail: { synergies: synergyResult.synergies, bonuses: synergyBonuses, card: card }
+        }));
+      } catch (eEv) {}
+    }
+
+    // Apply effects (v0 subset) — enhanced by synergy bonuses
     var enemy = _strCombatEnemy;
     for (var i = 0; i < (card.effects || []).length; i++) {
       var eff = card.effects[i];
@@ -9746,6 +9778,15 @@ _incrementPityTimers();
 
       if (eff.type === 'damage') {
         var dmg = Number(eff.value || 0);
+        // Apply synergy damage bonuses
+        if (synergyBonuses) {
+          if (synergyBonuses.damageMultiplier && synergyBonuses.damageMultiplier !== 1.0) {
+            dmg = Math.floor(dmg * synergyBonuses.damageMultiplier);
+          }
+          if (synergyBonuses.damageBonus) {
+            dmg += synergyBonuses.damageBonus;
+          }
+        }
         if (enemy && isFinite(dmg)) {
           enemy.hp = Math.max(0, (enemy.hp || 0) - dmg);
           lines.push('⚔️ ' + dmg + ' damage');
@@ -9759,6 +9800,70 @@ _incrementPityTimers();
           _player.hp = Math.min(_player.maxHp || 10, (_player.hp || 0) + heal);
           lines.push('🩹 +' + heal + ' HP');
         }
+      }
+    }
+
+    // Apply synergy post-effects (draw card, energy refund, etc.)
+    if (synergyBonuses) {
+      if (synergyBonuses.drawCard) {
+        try {
+          if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.drawOneFromBackupPerTurn === 'function') {
+            var drawResult = GAMESTATE.drawOneFromBackupPerTurn();
+            if (drawResult && drawResult.success) {
+              lines.push('🃏 Synergy draw: +1 card from backup');
+            }
+          }
+        } catch (eDraw) {}
+      }
+      if (synergyBonuses.energyRefund && synergyBonuses.energyRefund > 0) {
+        try {
+          if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addEnergy === 'function') {
+            GAMESTATE.addEnergy(synergyBonuses.energyRefund);
+            lines.push('⚡ +' + synergyBonuses.energyRefund + ' energy refund');
+          }
+        } catch (eRef) {}
+      }
+    }
+
+    // ── Cascade resolution ──────────────────────────────────
+    if (synergyResult && synergyResult.synergies && synergyResult.synergies.length > 0) {
+      try {
+        if (typeof CascadeResolver !== 'undefined' && typeof CascadeResolver.resolve === 'function') {
+          for (var ci = 0; ci < synergyResult.synergies.length; ci++) {
+            var cascadeResult = CascadeResolver.resolve(synergyResult.synergies[ci], card, {
+              player: _player,
+              enemy: _strCombatEnemy,
+              round: _strCombatRound
+            });
+            if (cascadeResult && cascadeResult.results && cascadeResult.results.length > 0) {
+              for (var cr = 0; cr < cascadeResult.results.length; cr++) {
+                var cEffect = cascadeResult.results[cr];
+                lines.push('🔗 CASCADE: ' + (cEffect.description || cEffect.type));
+                // Apply cascade effects
+                if (cEffect.drawCard) {
+                  var cDraw = GAMESTATE.drawOneFromBackupPerTurn();
+                  if (cDraw && cDraw.success) lines.push('🃏 Cascade draw: +1 card');
+                }
+                if (cEffect.focusGain && typeof GAMESTATE.addFocus === 'function') {
+                  GAMESTATE.addFocus(cEffect.focusGain);
+                  lines.push('🧠 +' + cEffect.focusGain + ' focus');
+                }
+                if (cEffect.enemySkip) {
+                  if (_strCombatEnemy) _strCombatEnemy._skipNextTurn = true;
+                  lines.push('⏭️ Enemy will skip next turn');
+                }
+              }
+              // Dispatch cascade event
+              try {
+                window.dispatchEvent(new CustomEvent('rogue-cascade-triggered', {
+                  detail: { depth: cascadeResult.depth, results: cascadeResult.results, card: card }
+                }));
+              } catch (eCas) {}
+            }
+          }
+        }
+      } catch (eCascade) {
+        console.warn('[GoneRogue] Cascade resolver error:', eCascade);
       }
     }
 

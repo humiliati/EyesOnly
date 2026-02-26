@@ -42,7 +42,15 @@ const SynergyEngine = (function () {
     AGGRESSIVE: 'aggressive',
     DEFENSIVE: 'defensive',
     MOBILE: 'mobile',
-    CONTROL: 'control'
+    CONTROL: 'control',
+
+    // Spy Layer (tag-combo system)
+    BALLISTIC: 'ballistic',        // 🟥 Firearms, kinetic
+    WET: 'wet',                    // 🟦 Water, chemical
+    ELECTRICAL: 'electrical',      // 🟨 Shock, EMP
+    COVERT: 'covert',              // 🟪 Stealth, intel
+    IMPROVISED: 'improvised',      // 🟩 Jury-rigged, junk
+    BLACK_MARKET: 'black_market'   // ⬛ Illegal, volatile
   };
 
   // Synergy definitions (enabler -> payoff relationships)
@@ -150,7 +158,99 @@ const SynergyEngine = (function () {
         ammoRefund: 0.5,  // 50% chance to refund ammo
         damageBonus: 3
       },
+      cascadeChance: 0,
       description: 'Sustained fire after ammo generation has 50% chance to refund ammo and deals +3 damage'
+    },
+
+    // ─── SPY LAYER TAG-COMBO SYNERGIES ──────────────────────
+
+    // 🟦 Wet + 🟥 Ballistic → Flash Boil
+    FLASH_BOIL: {
+      name: 'Flash Boil',
+      type: SYNERGY_TYPES.SEQUENTIAL,
+      enablerTags: [SYNERGY_TAGS.WET],
+      payoffTags: [SYNERGY_TAGS.BALLISTIC],
+      bonus: {
+        damageBonus: 6,
+        applyDot: { type: 'fire', damage: 2, turns: 2 }
+      },
+      cascadeChance: 0,
+      description: '🟦+🟥 Wet target hit with ballistic: +6 damage, fire DoT'
+    },
+
+    // 🟩 Improvised + 🟪 Covert → Stealth Cascade
+    STEALTH_CASCADE: {
+      name: 'Stealth Cascade',
+      type: SYNERGY_TYPES.SEQUENTIAL,
+      enablerTags: [SYNERGY_TAGS.IMPROVISED],
+      payoffTags: [SYNERGY_TAGS.COVERT],
+      bonus: {
+        drawCard: true,
+        stealthBonus: 1
+      },
+      cascadeChance: 0.2,
+      description: '🟩+🟪 Improvised setup into covert action: draw 1 card, +1 stealth turn'
+    },
+
+    // 🟥 Ballistic × 2 → Overkill
+    OVERKILL: {
+      name: 'Overkill',
+      type: SYNERGY_TYPES.IMMEDIATE,
+      enablerTags: [SYNERGY_TAGS.BALLISTIC],
+      payoffTags: [SYNERGY_TAGS.BALLISTIC],
+      bonus: {
+        damageMultiplier: 1.25,
+        enemyDamageReduction: -0.25
+      },
+      cascadeChance: 0,
+      description: '🟥×2 Consecutive ballistic: +25% damage, enemy damage reduced 25%'
+    },
+
+    // 🟨 Electrical + 🟦 Wet → Electrocution
+    ELECTROCUTION: {
+      name: 'Electrocution',
+      type: SYNERGY_TYPES.SEQUENTIAL,
+      enablerTags: [SYNERGY_TAGS.ELECTRICAL],
+      payoffTags: [SYNERGY_TAGS.WET],
+      bonus: {
+        damageBonus: 4,
+        enemyStun: 1
+      },
+      cascadeChance: 0,
+      description: '🟨+🟦 Electrical into wet: +4 damage, enemy stunned 1 turn'
+    },
+
+    // 🟩 Improvised + 🟨 Electrical → Jury-Rig Surge
+    JURY_RIG_SURGE: {
+      name: 'Jury-Rig Surge',
+      type: SYNERGY_TYPES.SEQUENTIAL,
+      enablerTags: [SYNERGY_TAGS.IMPROVISED],
+      payoffTags: [SYNERGY_TAGS.ELECTRICAL],
+      bonus: {
+        drawCard: true,
+        damageBonus: 2
+      },
+      cascadeChance: 0.3,
+      description: '🟩+🟨 Improvised electrical: draw 1, +2 damage, 30% chain'
+    },
+
+    // ⬛ Black Market + any tag → Contraband Boost
+    CONTRABAND_BOOST: {
+      name: 'Contraband Boost',
+      type: SYNERGY_TYPES.IMMEDIATE,
+      enablerTags: [SYNERGY_TAGS.BLACK_MARKET],
+      payoffTags: [
+        SYNERGY_TAGS.BALLISTIC, SYNERGY_TAGS.WET, SYNERGY_TAGS.ELECTRICAL,
+        SYNERGY_TAGS.COVERT, SYNERGY_TAGS.IMPROVISED,
+        SYNERGY_TAGS.FIRE, SYNERGY_TAGS.EXPLOSIVE, SYNERGY_TAGS.TECH,
+        SYNERGY_TAGS.MELEE, SYNERGY_TAGS.RANGED
+      ],
+      bonus: {
+        damageBonus: 3,
+        costReduction: 1
+      },
+      cascadeChance: 0,
+      description: '⬛ Black market gear boosts any attack: +3 damage, -1 cost'
     }
   };
 

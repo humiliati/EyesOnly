@@ -61,6 +61,7 @@ const GAMESTATE = (function () {
     // Card hand and backup deck (lost on death per spec)
     cardsInHand: [],               // Cards in play hand (drawn for immediate use)
     backupCards: [],               // Backup deck (configurable size, default empty)
+    burnPile: [],                  // Cards consumed/destroyed this combat (reset between combats)
 
     // Structured key counters — single source of truth for UI hooks
     // Tier 1 (ammo): lost on death.  Tier 2/3: persist across death.
@@ -627,10 +628,17 @@ const GAMESTATE = (function () {
       ref.qty = (ref.qty || 1) - take;
       if (ref.qty <= 0) _state.cardsInHand.splice(i, 1);
 
+      // Track in burn pile (consumed cards this combat)
+      if (!Array.isArray(_state.burnPile)) _state.burnPile = [];
+      for (var bp = 0; bp < take; bp++) {
+        _state.burnPile.push({ id: cardId, timestamp: Date.now() });
+      }
+
       _saveState();
       try {
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'consume', cardId: cardId, qty: take } }));
+          window.dispatchEvent(new CustomEvent('rogue-burn-pile-changed', { detail: { cardId: cardId, burnPileSize: _state.burnPile.length } }));
         }
       } catch (e2) {}
 
@@ -860,6 +868,32 @@ const GAMESTATE = (function () {
     } catch (e2) {}
 
     return { success: true };
+  }
+
+  // ─── BURN PILE ──────────────────────────────────────────
+
+  /**
+   * Get copy of burn pile (cards consumed this combat).
+   * @returns {Array} Array of { id, timestamp }
+   */
+  function getBurnPile() {
+    return Array.isArray(_state.burnPile) ? _state.burnPile.slice() : [];
+  }
+
+  /**
+   * Get number of cards in burn pile.
+   * @returns {number}
+   */
+  function getBurnPileCount() {
+    return Array.isArray(_state.burnPile) ? _state.burnPile.length : 0;
+  }
+
+  /**
+   * Clear burn pile. Called between combats.
+   */
+  function clearBurnPile() {
+    _state.burnPile = [];
+    _saveState();
   }
 
   /**
@@ -2242,6 +2276,9 @@ const GAMESTATE = (function () {
     markBackupDrawUsedThisTurn: markBackupDrawUsedThisTurn,
     enforceHandOverflow: enforceHandOverflow,
     acquireNewCardDuringCombat: acquireNewCardDuringCombat,
+    getBurnPile: getBurnPile,
+    getBurnPileCount: getBurnPileCount,
+    clearBurnPile: clearBurnPile,
     getMaxBackupSlots: getMaxBackupSlots,
     setMaxBackupSlots: setMaxBackupSlots,
     shuffleBackupDeck: shuffleBackupDeck,

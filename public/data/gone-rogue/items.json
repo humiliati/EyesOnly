@@ -340,5 +340,65 @@
     "consumeOnUse": true,
     "tier": 3,
     "_designNote": "Stackable quest item. Turn in 3 to Runesmith for rare card upgrade. Rolls from late-game boss loot table."
+  },
+
+  {
+    "id": "ITM-041",
+    "name": "Suppressor Oil",
+    "emoji": "🧯",
+    "type": "equipment",
+    "rarity": "uncommon",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "active",
+    "effects": [{ "type": "cascade_enabler", "condition": "on_synergy_resolve", "effect": "cancel_alert_draw_1", "tags": ["wet", "fire"] }],
+    "synergyTags": ["covert"],
+    "description": "If fire played after water: cancel alert, trigger stealth bonus, draw 1 card.",
+    "_designNote": "Cascade enabler. Tag-filtered: only triggers on wet+fire synergy chains."
+  },
+
+  {
+    "id": "ITM-042",
+    "name": "Dead Drop Cache",
+    "emoji": "💣",
+    "type": "equipment",
+    "rarity": "rare",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "active",
+    "effects": [{ "type": "cascade_enabler", "condition": "on_synergy_resolve", "effect": "draw_1_chain_30" }],
+    "synergyTags": ["covert", "black_market"],
+    "description": "When a synergy auto-resolves: draw 1 additional card, 30% chance to chain again.",
+    "_designNote": "Core cascade enabler. Makes synergy builds self-sustaining. Recursive chain capped at 5 depth."
+  },
+
+  {
+    "id": "ITM-043",
+    "name": "Tripwire Array",
+    "emoji": "🪤",
+    "type": "equipment",
+    "rarity": "uncommon",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "active",
+    "effects": [{ "type": "cascade_enabler", "condition": "on_enemy_skip", "effect": "focus_1_draw_1" }],
+    "synergyTags": ["improvised", "defensive"],
+    "description": "If enemy skips turn: gain 1 Focus, draw 1 card.",
+    "_designNote": "Reactive cascade enabler. Pairs with stun/skip synergies for focus generation loops."
+  },
+
+  {
+    "id": "ITM-044",
+    "name": "Signal Jammer",
+    "emoji": "📡",
+    "type": "equipment",
+    "rarity": "rare",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "active",
+    "effects": [{ "type": "cascade_enabler", "condition": "on_multi_resolve", "effect": "enemy_skip_50" }],
+    "synergyTags": ["electrical", "covert"],
+    "description": "If 2+ cards auto-resolve this turn: enemy loses next turn (50%). Stacks with Bump Stock.",
+    "_designNote": "Multi-resolve cascade enabler. Rewards synergy-heavy turns with control. 50% roll prevents guaranteed lockout."
   }
 ]
