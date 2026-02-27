@@ -261,9 +261,20 @@ var NonCombatHUD = (function() {
   }
 
   function _getVaultCards() {
-    if (typeof CardStateAuthority !== 'undefined') return CardStateAuthority.getVault();
-    if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentCards) return GAMESTATE.getPersistentCards();
-    return [];
+    // Combine persistent items (ITM-*) + persistent cards (ACT-*) for unified vault view
+    var items = [];
+    var cards = [];
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getPersistentInventory === 'function') {
+      var inv = GAMESTATE.getPersistentInventory();
+      if (Array.isArray(inv)) items = inv;
+    }
+    if (typeof CardStateAuthority !== 'undefined') {
+      cards = CardStateAuthority.getVault();
+    } else if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentCards) {
+      var v = GAMESTATE.getPersistentCards();
+      if (Array.isArray(v)) cards = v;
+    }
+    return items.concat(cards);
   }
 
   function _getCardDef(id) {

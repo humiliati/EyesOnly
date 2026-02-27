@@ -53,6 +53,10 @@ var BackupActionContainer = (function() {
       CardStateAuthority.on('draw:reset', function() { if (_isVisible) { _lastSig = null; _render(); } });
       CardStateAuthority.on('equipped:changed', function() { if (_isVisible) { _lastSig = null; _render(); } });
     }
+
+    // Fallback: GAMESTATE window events (catches changes CSA doesn't emit for)
+    window.addEventListener('rogue-hand-changed', function() { if (_isVisible) { _lastSig = null; _render(); } });
+    window.addEventListener('rogue-active-item-changed', function() { if (_isVisible) { _lastSig = null; _render(); } });
   }
 
   // ── Visibility ────────────────────────────────────────────
@@ -109,18 +113,30 @@ var BackupActionContainer = (function() {
   }
 
   /**
-   * Returns item/vault inventory cards for slots 0-4 when swapper is in 'items' mode.
-   * These are the account-level persistent cards (shared across platforms).
+   * Returns combined item/vault inventory for slots 0-4 when swapper is in 'items' mode.
+   * Merges persistent cards (ACT-*) + persistent items (ITM-*) into a single list.
+   * Items appear first (more actionable), then cards.
    */
   function _getItemCards() {
+    var items = [];
+    var cards = [];
+
+    // Gather ITM-* items from persistent inventory
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getPersistentInventory === 'function') {
+      var inv = GAMESTATE.getPersistentInventory();
+      if (Array.isArray(inv)) items = inv;
+    }
+
+    // Gather ACT-* cards from vault (persistentCards)
     if (typeof CardStateAuthority !== 'undefined') {
-      return CardStateAuthority.getVault().slice(0, 5);
-    }
-    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getPersistentCards === 'function') {
+      cards = CardStateAuthority.getVault();
+    } else if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getPersistentCards === 'function') {
       var v = GAMESTATE.getPersistentCards();
-      return Array.isArray(v) ? v.slice(0, 5) : [];
+      if (Array.isArray(v)) cards = v;
     }
-    return [];
+
+    // Combine: items first, then cards
+    return items.concat(cards).slice(0, 5);
   }
 
   /**
@@ -177,6 +193,15 @@ var BackupActionContainer = (function() {
     parts.push('mode:' + (_isCombat() ? 'combat' : 'gr'));
     parts.push('s5:' + _slot5Mode);
     parts.push('src:' + (_slot5Mode === 'items' ? 'vault' : 'backup'));
+    // Include total vault+inventory count so signature changes when items beyond top-5 change
+    if (_slot5Mode === 'items') {
+      var vLen = 0, iLen = 0;
+      try {
+        if (typeof CardStateAuthority !== 'undefined') vLen = CardStateAuthority.getVault().length;
+        if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentInventory) iLen = GAMESTATE.getPersistentInventory().length;
+      } catch (se) {}
+      parts.push('vtot:' + (vLen + iLen));
+    }
     if (_isCombat() && typeof CardStateAuthority !== 'undefined') {
       parts.push('dr:' + CardStateAuthority.getTurnDrawsRemaining());
       parts.push('mod:' + CardStateAuthority.getEquippedDrawModifier());
@@ -231,10 +256,23 @@ var BackupActionContainer = (function() {
 
     var def = _getCardDef(cardRef.id) || {};
     var name = def.name || cardRef.id || (source === 'items' ? 'Item' : 'Backup');
-    var emoji = def.emoji || '🃏';
 
-    // Abbreviation for mobile portrait
+    // Items mode: cards (ACT-*) show joker emoji, items (ITM-*) show actual emoji
+    var isCard = (cardRef.id && cardRef.id.indexOf('ACT-') === 0);
+    var isItem = (cardRef.id && cardRef.id.indexOf('ITM-') === 0);
+    var emoji;
+    if (source === 'items') {
+      emoji = isCard ? '\uD83C\uDCCF' : (def.emoji || '\uD83C\uDCCF');
+    } else {
+      emoji = def.emoji || '\uD83C\uDCCF';
+    }
+
+    // Abbreviation: items mode uses micro abbreviation (6 chars) for small buttons;
+    // combat portrait uses 4 chars; otherwise full name
     var maxLen = 0;
+    if (source === 'items') {
+      maxLen = 6; // micro abbreviation for left column vault buttons
+    }
     try {
       var isPortrait = (window.innerHeight > window.innerWidth);
       if (isPortrait && inCombat) maxLen = 4;
@@ -246,8 +284,12 @@ var BackupActionContainer = (function() {
       name = name.substring(0, maxLen);
     }
 
-    var typeIcon = (source === 'items') ? '🎒' :
-      (def.type && ('' + def.type).toLowerCase().indexOf('attack') !== -1) ? '⚔️' : '⚡';
+    var typeIcon;
+    if (source === 'items') {
+      typeIcon = isCard ? '\uD83C\uDCCF' : '\uD83C\uDF92'; // cards: joker, items: backpack
+    } else {
+      typeIcon = (def.type && ('' + def.type).toLowerCase().indexOf('attack') !== -1) ? '⚔️' : '⚡';
+    }
 
     if (inCombat) {
       // Combat: 60×84 thumbnail with cost pip
