@@ -194,9 +194,24 @@ var CardStateAuthority = (function() {
    * Called from integration layer's 100ms poll.
    */
   function checkRoundChange(currentRound) {
-    if (currentRound !== _lastKnownRound && currentRound > 0) {
+    if (currentRound !== _lastKnownRound && currentRound >= 0) {
       resetTurnDraws(currentRound);
     }
+  }
+
+  /**
+   * Reset draw tracking for a new combat encounter.
+   * Must be called at combat entry so _lastKnownRound doesn't carry over
+   * from a previous combat (which would skip draw resets on matching rounds).
+   */
+  function resetCombatDrawState() {
+    _lastKnownRound = -1;
+    _turnDrawsRemaining = _turnDrawsMax;
+    // Also reset GAMESTATE backup draw flag
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.resetTurnBackupDrawFlag === 'function') {
+      GAMESTATE.resetTurnBackupDrawFlag();
+    }
+    _emit('draw:reset', { round: 0, drawsRemaining: _turnDrawsRemaining });
   }
 
   // ── Hand Mutations ─────────────────────────────────────────
@@ -665,12 +680,17 @@ var CardStateAuthority = (function() {
     }
 
     if (typeof GAMESTATE === 'undefined') return false;
-    if (typeof GAMESTATE.addCardToHand !== 'function') return false;
 
-    // Add to hand FIRST (safe — can always remove later if vault removal fails)
-    var addResult = GAMESTATE.addCardToHand(cardId, qty);
-    // addCardToHand may not return a result object on all code paths — treat as success if no error thrown
-    var addedOk = (addResult === undefined) || !!(addResult && addResult.success !== false);
+    // Use insertCardToHandTop which does NOT internally consume from vault
+    // (addCardToHand internally calls removePersistentCard which double-removes)
+    var addedOk = false;
+    if (typeof GAMESTATE.insertCardToHandTop === 'function') {
+      var addResult = GAMESTATE.insertCardToHandTop(cardId, qty);
+      addedOk = !!(addResult && addResult.success);
+    } else if (typeof GAMESTATE.addCardToHand === 'function') {
+      var addResult2 = GAMESTATE.addCardToHand(cardId, qty);
+      addedOk = (addResult2 === undefined) || !!(addResult2 && addResult2.success !== false);
+    }
 
     if (!addedOk) {
       console.warn('[CSA] moveVaultToHand: addCardToHand failed', cardId);
@@ -1063,6 +1083,144 @@ var CardStateAuthority = (function() {
     return expanded;
   }
 
+  // ── Cascade Vault→Hand (with overflow) ─────────────────────
+
+  /**
+   * Move a vault card into hand, cascading the last hand card to backup
+   * if hand is already full. If backup is over cap, its last card is
+   * incinerated.
+   */
+  function cascadeVaultToHandTop(cardId) {
+    if (!cardId) return false;
+    var hand = getHand();
+    if (hand.length >= getMaxHandSize()) {
+      var lastHandIdx = hand.length - 1;
+      var cascadeOk = moveHandToBackup(lastHandIdx);
+      if (!cascadeOk) {
+        _emit('transfer:rejected', { reason: 'cascade_failed', from: 'vault', cardId: cardId });
+        return false;
+      }
+    }
+    return moveVaultToHand(cardId, 1);
+  }
+
+  // ── BLVCK Struggle Card Lifecycle ─────────────────────────
+  //
+  // ACT-000 "BLVCK" is a zero-cost 1-damage fallback card that appears when
+  // the player has no playable cards (empty hand or all cards unaffordable).
+  // It ejects the last hand card to backup on insertion (if hand is full)
+  // and auto-removes when the player regains resources to play any card.
+
+  var BLVCK_ID = 'ACT-000';
+
+  function _handHasBlvck() {
+    var hand = getHand();
+    for (var i = 0; i < hand.length; i++) {
+      if (hand[i] && hand[i].id === BLVCK_ID) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Check if the hand is "stranded" — no affordable/playable cards.
+   * Returns true when stranded (empty hand or all cards unaffordable).
+   * A hand with only BLVCK doesn't count as having playable cards.
+   */
+  function _isStranded() {
+    var hand = getHand();
+    var nonBlvck = [];
+    for (var i = 0; i < hand.length; i++) {
+      if (hand[i] && hand[i].id !== BLVCK_ID) nonBlvck.push(hand[i]);
+    }
+    if (nonBlvck.length === 0) return true; // empty or only BLVCK → stranded
+
+    for (var j = 0; j < nonBlvck.length; j++) {
+      var def = getCardDef(nonBlvck[j].id);
+      if (canAffordCard(def)) return false; // at least one playable → NOT stranded
+    }
+    return true; // none affordable → stranded
+  }
+
+  /**
+   * Inject BLVCK into hand. If hand is full, ejects last card to backup
+   * (backup ejects its last card to incinerator if over cap).
+   */
+  function _injectBlvck() {
+    if (_handHasBlvck()) return; // already present
+
+    var hand = getHand();
+    var maxHand = getMaxHandSize();
+
+    // If hand is full, eject last non-BLVCK card to backup
+    if (hand.length >= maxHand) {
+      var lastIdx = hand.length - 1;
+      moveHandToBackup(lastIdx); // backup overflow auto-incinerates
+    }
+
+    // Insert BLVCK at position 0 (hand top)
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.insertCardToHandTop === 'function') {
+      GAMESTATE.insertCardToHandTop(BLVCK_ID, 1);
+    } else {
+      addCardToHand(BLVCK_ID, 1);
+    }
+
+    _syncNonCombatStore();
+    _emit('hand:changed', { action: 'blvck_inject', cardId: BLVCK_ID, hand: getHand() });
+
+    try {
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showPersistent('■ STRUGGLE — no playable cards', 1100);
+      }
+    } catch (e) {}
+  }
+
+  /**
+   * Remove BLVCK from hand (player regained resources or drew a playable card).
+   */
+  function _removeBlvck() {
+    if (!_handHasBlvck()) return;
+
+    var hand = getHand();
+    for (var i = 0; i < hand.length; i++) {
+      if (hand[i] && hand[i].id === BLVCK_ID) {
+        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.removeCardFromHandByIndex === 'function') {
+          GAMESTATE.removeCardFromHandByIndex(i);
+        }
+        break;
+      }
+    }
+
+    _syncNonCombatStore();
+    _emit('hand:changed', { action: 'blvck_remove', cardId: BLVCK_ID, hand: getHand() });
+  }
+
+  /**
+   * Check and update BLVCK state. Call on resource changes, hand changes, etc.
+   * - Stranded + no BLVCK → inject
+   * - Not stranded + has BLVCK → remove
+   * Skips during STR combat (combat has its own BLVCK injection in str-combat-integration).
+   */
+  function checkBlvckState() {
+    var stranded = _isStranded();
+    var hasBlvck = _handHasBlvck();
+
+    if (isCombat()) {
+      // During STR combat: only REMOVE BLVCK if player is no longer stranded
+      // (e.g., drew a playable card). Combat's own display-only fallback handles injection.
+      if (!stranded && hasBlvck) {
+        _removeBlvck();
+      }
+      return;
+    }
+
+    // Non-combat: full inject/remove lifecycle
+    if (stranded && !hasBlvck) {
+      _injectBlvck();
+    } else if (!stranded && hasBlvck) {
+      _removeBlvck();
+    }
+  }
+
   // ── Public API ─────────────────────────────────────────────
 
   return {
@@ -1124,12 +1282,22 @@ var CardStateAuthority = (function() {
     // Vault disposal
     disposeFromVault: disposeFromVault,
 
+    // Cascade vault→hand (with overflow)
+    cascadeVaultToHandTop: cascadeVaultToHandTop,
+
     // Combat draw (item-aware)
     drawFromBackup: drawFromBackup,
     getTurnDrawsRemaining: getTurnDrawsRemaining,
     resetTurnDraws: resetTurnDraws,
     checkRoundChange: checkRoundChange,
-    getLastKnownRound: getLastKnownRound
+    getLastKnownRound: getLastKnownRound,
+    resetCombatDrawState: resetCombatDrawState,
+
+    // BLVCK struggle card lifecycle
+    checkBlvckState: checkBlvckState,
+    isHandStranded: _isStranded,
+    hasBlvck: _handHasBlvck,
+    BLVCK_ID: BLVCK_ID
   };
 
 })();

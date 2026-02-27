@@ -39,7 +39,15 @@ var NonCombatHUD = (function() {
 
     // Subscribe to CardStateAuthority events (primary)
     if (typeof CardStateAuthority !== 'undefined') {
-      CardStateAuthority.on('hand:changed', function() { _renderAll(); });
+      CardStateAuthority.on('hand:changed', function() {
+        // BLVCK check on every hand change (card played, moved, drawn, etc.)
+        try {
+          if (typeof CardStateAuthority.checkBlvckState === 'function') {
+            CardStateAuthority.checkBlvckState();
+          }
+        } catch (e) {}
+        _renderAll();
+      });
       CardStateAuthority.on('backup:changed', function() { _renderAll(); });
       CardStateAuthority.on('vault:changed', function() { _renderAll(); });
       CardStateAuthority.on('draw:executed', function() { _renderAll(); });
@@ -52,7 +60,15 @@ var NonCombatHUD = (function() {
 
     // React to GAMESTATE events
     if (typeof window !== 'undefined') {
-      window.addEventListener('rogue-hand-changed', function() { _renderAll(); });
+      window.addEventListener('rogue-hand-changed', function() {
+        // BLVCK removal check: also fires during STR combat after backup draws
+        try {
+          if (typeof CardStateAuthority !== 'undefined' && typeof CardStateAuthority.checkBlvckState === 'function') {
+            CardStateAuthority.checkBlvckState();
+          }
+        } catch (e) {}
+        _renderAll();
+      });
       window.addEventListener('rogue-active-item-changed', function() { _renderAll(); });
       window.addEventListener('gone-rogue-registry-ready', function() { _renderAll(); });
       window.addEventListener('rogue-card-incinerated', function(e) { _showIncinerationEffect(e.detail); });
@@ -196,21 +212,52 @@ var NonCombatHUD = (function() {
     var hand = _getHand();
     var count = hand.length;
 
-    // Update joker stack (max 8 visual jokers)
+    // Determine stranded state and which cards are BLVCK
+    var stranded = false;
+    var blvckId = (typeof CardStateAuthority !== 'undefined' && CardStateAuthority.BLVCK_ID)
+      ? CardStateAuthority.BLVCK_ID : 'ACT-000';
+    try {
+      if (typeof CardStateAuthority !== 'undefined' && CardStateAuthority.isHandStranded) {
+        stranded = CardStateAuthority.isHandStranded();
+      }
+    } catch (e) {}
+
+    // Build a per-card "is this BLVCK?" map
+    var blvckMap = [];
+    for (var bi = 0; bi < hand.length; bi++) {
+      blvckMap.push(!!(hand[bi] && hand[bi].id === blvckId));
+    }
+
+    // Stranded with no usable cards and empty/only-BLVCK: show single greyed joker
+    var allBlvckOrEmpty = (count === 0) || blvckMap.every(function(b) { return b; });
+
     var stackEl = _capsule.querySelector('#nch-capsule-stack');
-    if (stackEl) {
+    if (!stackEl) return;
+
+    // Build signature to avoid unnecessary rebuilds
+    var sig = count + ':' + (stranded ? '1' : '0') + ':' + blvckMap.join('');
+    if (stackEl.dataset.sig === sig) return;
+    stackEl.dataset.sig = sig;
+
+    stackEl.innerHTML = '';
+
+    if (stranded && allBlvckOrEmpty) {
+      // Single greyed-out joker — hand is unusable
+      stackEl.style.width = '20px';
+      var gj = document.createElement('div');
+      gj.className = 'nch-capsule-joker joker-0 nch-joker-greyed';
+      gj.textContent = '\uD83C\uDCCF'; // 🃏
+      stackEl.appendChild(gj);
+    } else {
+      // Normal stack with per-card greying for BLVCK entries
       var numJokers = Math.min(count, 8);
-      // Only rebuild if count changed
-      if (stackEl.children.length !== numJokers) {
-        stackEl.innerHTML = '';
-        // Size the container: first card 20px + (n-1)*6px advance
-        stackEl.style.width = (numJokers > 0 ? (20 + (numJokers - 1) * 6) : 20) + 'px';
-        for (var i = 0; i < numJokers; i++) {
-          var j = document.createElement('div');
-          j.className = 'nch-capsule-joker joker-' + i;
-          j.textContent = '\uD83C\uDCCF'; // 🃏
-          stackEl.appendChild(j);
-        }
+      stackEl.style.width = (numJokers > 0 ? (20 + (numJokers - 1) * 6) : 20) + 'px';
+      for (var i = 0; i < numJokers; i++) {
+        var j = document.createElement('div');
+        j.className = 'nch-capsule-joker joker-' + i;
+        if (blvckMap[i]) j.classList.add('nch-joker-greyed');
+        j.textContent = '\uD83C\uDCCF'; // 🃏
+        stackEl.appendChild(j);
       }
     }
   }
@@ -322,6 +369,13 @@ var NonCombatHUD = (function() {
         _expanded.classList.remove('nch-locked');
         // Ghost cursor removed (keep normal cursor).
       }
+    }
+
+    // BLVCK lifecycle: check on every poll tick (350ms) so inject/remove
+    // reacts to resource changes, hand changes, and card movements.
+    if (!strActive && typeof CardStateAuthority !== 'undefined' &&
+        typeof CardStateAuthority.checkBlvckState === 'function') {
+      try { CardStateAuthority.checkBlvckState(); } catch (blvckErr) {}
     }
 
     if (_isExpanded) {
@@ -486,14 +540,28 @@ var NonCombatHUD = (function() {
       return;
     }
 
+    var blvckId2 = (typeof CardStateAuthority !== 'undefined' && CardStateAuthority.BLVCK_ID)
+      ? CardStateAuthority.BLVCK_ID : 'ACT-000';
+
     for (var i = 0; i < hand.length; i++) {
       var ref = hand[i];
       if (!ref || !ref.id) continue;
+
+      var isBlvck = (ref.id === blvckId2);
       var cardDef = _getCardDef(ref.id);
       var merged = Object.assign({}, cardDef || {}, { id: ref.id, qty: ref.qty });
 
       var wrapper;
-      if (typeof SharedCardRenderer !== 'undefined' && SharedCardRenderer.createCardElement) {
+      if (isBlvck) {
+        // BLVCK struggle card: dark, minimal, distinctive
+        wrapper = document.createElement('div');
+        wrapper.className = 'hand-card-wrapper nch-blvck-card';
+        wrapper.innerHTML =
+          '<div class="hand-card" style="background:rgba(20,20,20,0.95);border-color:rgba(80,80,80,0.5);">' +
+            '<div class="hand-card-artwork"><div class="hand-card-emoji" style="filter:grayscale(1) brightness(0.4);font-size:28px;">\u25A0</div></div>' +
+            '<div class="hand-card-name" style="color:rgba(120,120,120,0.8);font-size:10px;">BLVCK</div>' +
+          '</div>';
+      } else if (typeof SharedCardRenderer !== 'undefined' && SharedCardRenderer.createCardElement) {
         wrapper = SharedCardRenderer.createCardElement(merged, i, 'nch-hand');
       } else {
         wrapper = document.createElement('div');

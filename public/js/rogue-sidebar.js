@@ -206,8 +206,15 @@ var RogueSidebar = (function() {
       drawBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         if (drawBtn.disabled) return;
-        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.drawOneFromBackupOncePerCombat === 'function') {
-          GAMESTATE.drawOneFromBackupOncePerCombat();
+        var drawRes = null;
+        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.drawOneFromBackupPerTurn === 'function') {
+          drawRes = GAMESTATE.drawOneFromBackupPerTurn();
+        } else if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.drawOneFromBackupOncePerCombat === 'function') {
+          drawRes = GAMESTATE.drawOneFromBackupOncePerCombat();
+        }
+        // Notify hand changed so BLVCK can auto-remove if drawn card is playable
+        if (drawRes && drawRes.success) {
+          try { window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'sidebar-str-draw', cardId: drawRes.cardId } })); } catch (e0) {}
         }
         // force refresh
         _lastSignature = null;
@@ -372,15 +379,40 @@ var RogueSidebar = (function() {
           }
 
           if (isVaultCard) {
-            // Vault cards: click to move back to hand (via CSA)
+            // Vault cards: drag to NCH hand/backup/capsule, or click to cascade into hand
             btn.classList.add('vault-card');
+
+            // Drag handler: use NCH external drag engine for vault cards
+            btn.addEventListener('pointerdown', function(e) {
+              if (!e || e.pointerType === 'touch') return;
+              if (e.button !== undefined && e.button !== 0) return;
+
+              var vIdx = Number(e.currentTarget.dataset.index);
+              var vRef = items[vIdx] || null;
+              var vId = vRef ? vRef.id : null;
+              if (!vId) return;
+
+              var vDef = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) ? GoneRogueDataRegistry.getCard(vId) : null;
+              var vEmoji = (vDef && vDef.emoji) ? vDef.emoji : '🃏';
+
+              try {
+                if (typeof NonCombatHUD !== 'undefined' && typeof NonCombatHUD.startExternalDrag === 'function') {
+                  NonCombatHUD.startExternalDrag({ kind: 'vault', id: vId, emoji: vEmoji }, e);
+                  return;
+                }
+              } catch (e0) {}
+            });
+
+            // Click fallback: cascade vault card into hand (bumps last card to backup if full)
             btn.addEventListener('click', function(e) {
               e.stopPropagation();
               var id = (items[Number(e.currentTarget.dataset.index)] || {}).id;
               if (!id) return;
 
               var ok = false;
-              if (typeof CardStateAuthority !== 'undefined' && typeof CardStateAuthority.moveVaultToHand === 'function') {
+              if (typeof CardStateAuthority !== 'undefined' && typeof CardStateAuthority.cascadeVaultToHandTop === 'function') {
+                ok = !!CardStateAuthority.cascadeVaultToHandTop(id);
+              } else if (typeof CardStateAuthority !== 'undefined' && typeof CardStateAuthority.moveVaultToHand === 'function') {
                 ok = !!CardStateAuthority.moveVaultToHand(id, 1);
               }
               if (ok) {

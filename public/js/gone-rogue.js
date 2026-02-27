@@ -10231,9 +10231,12 @@ _incrementPityTimers();
       }
     } catch (e) {}
 
-    // Canonical: reset once-per-combat backup draw flag
+    // Canonical: reset draw state for new combat via CSA (resets _lastKnownRound
+    // so per-turn draw resets work correctly across multiple combats).
     try {
-      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.resetCombatBackupDrawFlag === 'function') {
+      if (typeof CardStateAuthority !== 'undefined' && typeof CardStateAuthority.resetCombatDrawState === 'function') {
+        CardStateAuthority.resetCombatDrawState();
+      } else if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.resetCombatBackupDrawFlag === 'function') {
         GAMESTATE.resetCombatBackupDrawFlag();
       }
     } catch (e0) {}

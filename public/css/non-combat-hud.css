@@ -74,6 +74,12 @@
 .nch-capsule-wrapper:hover .nch-capsule-joker.joker-6 { left: 48px; top: 4px; }
 .nch-capsule-wrapper:hover .nch-capsule-joker.joker-7 { left: 56px; top: 2px; }
 
+/* Greyed joker for BLVCK / unusable cards */
+.nch-joker-greyed {
+  filter: grayscale(1) brightness(0.5) drop-shadow(1px 1px 2px rgba(0,0,0,0.7));
+  opacity: 0.55;
+}
+
 /* ============================================================
    2. EXPANDED OVERLAY
    ============================================================ */
