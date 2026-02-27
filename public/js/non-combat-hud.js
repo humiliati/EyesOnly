@@ -267,8 +267,22 @@ var NonCombatHUD = (function() {
   }
 
   function _getCardDef(id) {
-    if (typeof CardStateAuthority !== 'undefined') return CardStateAuthority.getCardDef(id);
-    if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) return GoneRogueDataRegistry.getCard(id);
+    // Try card registry first (ACT-*)
+    if (typeof CardStateAuthority !== 'undefined') {
+      var def = CardStateAuthority.getCardDef(id);
+      if (def) return def;
+    }
+    if (typeof GoneRogueDataRegistry !== 'undefined') {
+      if (GoneRogueDataRegistry.getCard) {
+        var cDef = GoneRogueDataRegistry.getCard(id);
+        if (cDef) return cDef;
+      }
+      // Fallback: try item registry (ITM-*) for vault items
+      if (GoneRogueDataRegistry.getItem) {
+        var iDef = GoneRogueDataRegistry.getItem(id);
+        if (iDef) return iDef;
+      }
+    }
     return null;
   }
 
@@ -777,31 +791,38 @@ var NonCombatHUD = (function() {
       slot.dataset.vaultIndex = i;
 
       if (ref && ref.id) {
+        // Items (ITM-*) show their actual emoji; cards (ACT-*) show joker back
+        var isItem = (ref.id.indexOf('ITM-') === 0);
         var cardDef = _getCardDef(ref.id);
+        var itemDef = null;
+        if (isItem && typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
+          itemDef = GoneRogueDataRegistry.getItem(ref.id);
+        }
+        var defToUse = itemDef || cardDef;
+        var em = (defToUse && defToUse.emoji) ? defToUse.emoji : '\uD83C\uDCCF';
+        var nm = (defToUse && defToUse.name) ? defToUse.name : ref.id;
 
-        // Joker face (default visible)
-        var joker = document.createElement('div');
-        joker.className = 'nch-vault-joker';
-        joker.textContent = '\uD83C\uDCCF'; // 🃏
-        slot.appendChild(joker);
+        // Default face: items show their emoji, cards show joker back
+        var face = document.createElement('div');
+        face.className = 'nch-vault-joker';
+        face.textContent = isItem ? em : '\uD83C\uDCCF'; // Items: actual emoji, Cards: 🃏
+        slot.appendChild(face);
 
-        // Portrait (visible on hover)
+        // Portrait (visible on hover) — always show full detail
         var portrait = document.createElement('div');
         portrait.className = 'nch-vault-portrait';
-        var em = (cardDef && cardDef.emoji) ? cardDef.emoji : '\uD83C\uDCCF';
-        var nm = (cardDef && cardDef.name) ? cardDef.name : ref.id;
         portrait.innerHTML = '<div style="font-size:20px;">' + em + '</div><div style="font-size:8px;color:rgba(191,255,227,0.9);margin-top:2px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:54px;">' + nm + '</div>';
         slot.appendChild(portrait);
 
-        // Drag handler (vault → backup)
-        (function(idx, cardRef, cDef) {
+        // Drag handler (vault → hand/backup)
+        (function(idx, cardRef, def0) {
           slot.addEventListener('pointerdown', function(e) {
             if (e.button !== undefined && e.button !== 0) return;
             if (_expanded && _expanded.classList.contains('nch-locked')) return;
-            var emj = (cDef && cDef.emoji) ? cDef.emoji : '\uD83C\uDCCF';
+            var emj = (def0 && def0.emoji) ? def0.emoji : '\uD83C\uDCCF';
             _startDrag({ kind: 'vault', index: idx, id: cardRef.id, emoji: emj }, e);
           });
-        })(i, ref, cardDef);
+        })(i, ref, defToUse);
       } else {
         slot.textContent = '\u2014'; // —
       }

@@ -134,9 +134,21 @@ var BackupActionContainer = (function() {
   }
 
   function _getCardDef(cardId) {
-    if (typeof CardStateAuthority !== 'undefined') return CardStateAuthority.getCardDef(cardId);
-    if (typeof GoneRogueDataRegistry !== 'undefined' && typeof GoneRogueDataRegistry.getCard === 'function') {
-      return GoneRogueDataRegistry.getCard(cardId);
+    // Try card registry first (ACT-*)
+    if (typeof CardStateAuthority !== 'undefined') {
+      var def = CardStateAuthority.getCardDef(cardId);
+      if (def) return def;
+    }
+    if (typeof GoneRogueDataRegistry !== 'undefined') {
+      if (typeof GoneRogueDataRegistry.getCard === 'function') {
+        var cDef = GoneRogueDataRegistry.getCard(cardId);
+        if (cDef) return cDef;
+      }
+      // Fallback: try item registry (ITM-*) for vault items
+      if (typeof GoneRogueDataRegistry.getItem === 'function') {
+        var iDef = GoneRogueDataRegistry.getItem(cardId);
+        if (iDef) return iDef;
+      }
     }
     return null;
   }

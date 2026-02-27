@@ -198,32 +198,41 @@ var CardStateAuthority = (function() {
 
   function addCardToHand(cardId, qty) {
     qty = qty || 1;
-    var success = false;
+    var ok = false;
     if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addCardToHand === 'function') {
-      success = GAMESTATE.addCardToHand(cardId, qty);
+      var result = GAMESTATE.addCardToHand(cardId, qty);
+      ok = !!(result && result.success) || (result === true);
     } else if (typeof NonCombatStateStore !== 'undefined') {
-      success = NonCombatStateStore.addCardToHand(cardId, qty);
+      ok = !!NonCombatStateStore.addCardToHand(cardId, qty);
     }
-    if (success !== false) {
+    if (ok) {
       _syncNonCombatStore();
       _emit('hand:changed', { action: 'add', cardId: cardId, qty: qty, hand: getHand() });
     }
-    return success;
+    return ok;
   }
 
   function consumeFromHand(handIndex, qty) {
     qty = qty || 1;
+    // Resolve card ID from index — GAMESTATE.consumeCardFromHand expects cardId, not index
+    var hand = getHand();
+    if (handIndex < 0 || handIndex >= hand.length) return false;
+    var card = hand[handIndex];
+    if (!card || !card.id) return false;
+
     var success = false;
     if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.consumeCardFromHand === 'function') {
-      success = GAMESTATE.consumeCardFromHand(handIndex, qty);
+      success = GAMESTATE.consumeCardFromHand(card.id, qty);
     } else if (typeof NonCombatStateStore !== 'undefined') {
       success = NonCombatStateStore.consumeHandIndex(handIndex, qty);
     }
-    if (success !== false) {
+    // GAMESTATE returns { success: true/false } objects — check .success property
+    var ok = (success && success.success) || (success === true);
+    if (ok) {
       _syncNonCombatStore();
       _emit('hand:changed', { action: 'consume', index: handIndex, qty: qty, hand: getHand() });
     }
-    return success;
+    return ok;
   }
 
   // ── Backup Mutations ───────────────────────────────────────
@@ -231,11 +240,12 @@ var CardStateAuthority = (function() {
   function removeBackupCard(backupIndex) {
     var success = false;
     if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.removeBackupCard === 'function') {
-      success = GAMESTATE.removeBackupCard(backupIndex);
+      var result = GAMESTATE.removeBackupCard(backupIndex);
+      success = !!(result && result.success);
     } else if (typeof NonCombatStateStore !== 'undefined') {
       success = NonCombatStateStore.consumeBackupIndex(backupIndex);
     }
-    if (success !== false) {
+    if (success) {
       _syncNonCombatStore();
       _emit('backup:changed', { action: 'remove', index: backupIndex, backup: getBackup() });
     }
@@ -255,16 +265,17 @@ var CardStateAuthority = (function() {
       _emit('transfer:rejected', { reason: 'hand_full', from: 'backup', index: backupIndex });
       return false;
     }
-    var success = false;
+    var ok = false;
     if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.moveBackupIndexToHand === 'function') {
-      success = GAMESTATE.moveBackupIndexToHand(backupIndex);
+      var result = GAMESTATE.moveBackupIndexToHand(backupIndex);
+      ok = !!(result && result.success) || (result === true);
     }
-    if (success !== false) {
+    if (ok) {
       _syncNonCombatStore();
       _emit('hand:changed', { action: 'from_backup', index: backupIndex, hand: getHand() });
       _emit('backup:changed', { action: 'to_hand', index: backupIndex, backup: getBackup() });
     }
-    return success;
+    return ok;
   }
 
   /**
@@ -312,15 +323,22 @@ var CardStateAuthority = (function() {
       backupIndex = newIdx;
     }
 
-    // Remove from backup
-    removeBackupCard(backupIndex);
+    // Remove from backup first
+    var removed = removeBackupCard(backupIndex);
+    if (!removed) {
+      _emit('transfer:rejected', { reason: 'backup_remove_failed', from: 'backup', cardId: cardId });
+      return false;
+    }
 
     // Insert at hand[0] via GAMESTATE
+    var inserted = false;
     if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.insertCardToHandTop === 'function') {
-      GAMESTATE.insertCardToHandTop(cardId, qty);
-    } else {
-      // Fallback: regular add (won't be at top, but at least card isn't lost)
-      addCardToHand(cardId, qty);
+      var insResult = GAMESTATE.insertCardToHandTop(cardId, qty);
+      inserted = !!(insResult && insResult.success);
+    }
+    if (!inserted) {
+      // Fallback: regular add (won't be at top, but card isn't lost)
+      inserted = addCardToHand(cardId, qty);
     }
 
     _syncNonCombatStore();
@@ -335,16 +353,17 @@ var CardStateAuthority = (function() {
    * @returns {boolean} success
    */
   function moveHandToBackup(handIndex) {
-    var success = false;
+    var ok = false;
     if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.moveHandIndexToBackup === 'function') {
-      success = GAMESTATE.moveHandIndexToBackup(handIndex);
+      var result = GAMESTATE.moveHandIndexToBackup(handIndex);
+      ok = !!(result && result.success) || (result === true);
     }
-    if (success !== false) {
+    if (ok) {
       _syncNonCombatStore();
       _emit('hand:changed', { action: 'to_backup', index: handIndex, hand: getHand() });
       _emit('backup:changed', { action: 'from_hand', index: handIndex, backup: getBackup() });
     }
-    return success;
+    return ok;
   }
 
   /**
@@ -515,11 +534,13 @@ var CardStateAuthority = (function() {
   function _removeFromVault(cardId, qty) {
     qty = qty || 1;
     if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.removePersistentCard === 'function') {
-      return GAMESTATE.removePersistentCard(cardId, qty) !== false;
+      var r1 = GAMESTATE.removePersistentCard(cardId, qty);
+      return !!(r1 && r1.success);
     }
     // Fallback: try consumePersistentCard
     if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.consumePersistentCard === 'function') {
-      return GAMESTATE.consumePersistentCard(cardId, qty) !== false;
+      var r2 = GAMESTATE.consumePersistentCard(cardId, qty);
+      return !!(r2 && r2.success);
     }
     // Last resort: try to manipulate the array directly
     if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getPersistentCards === 'function' &&
@@ -555,17 +576,20 @@ var CardStateAuthority = (function() {
       return false;
     }
 
-    var success = false;
+    // GAMESTATE.addPersistentCard returns { success: true/false } — check .success property
+    var added = false;
     if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addPersistentCard === 'function') {
-      success = GAMESTATE.addPersistentCard(card.id, qty);
-      if (success !== false) {
+      var result = GAMESTATE.addPersistentCard(card.id, qty);
+      added = !!(result && result.success);
+      if (added) {
         consumeFromHand(handIndex, qty);
       }
     }
-    if (success !== false) {
+    if (added) {
+      _syncNonCombatStore();
       _emit('vault:changed', { action: 'from_hand', cardId: card.id, vault: getVault() });
     }
-    return success;
+    return added;
   }
 
   function moveBackupToVault(backupIndex) {
@@ -580,17 +604,19 @@ var CardStateAuthority = (function() {
       return false;
     }
 
-    var success = false;
+    // GAMESTATE.addPersistentCard returns { success: true/false } — check .success property
+    var added = false;
     if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addPersistentCard === 'function') {
-      success = GAMESTATE.addPersistentCard(card.id, card.qty || 1);
-      if (success !== false) {
+      var result = GAMESTATE.addPersistentCard(card.id, card.qty || 1);
+      added = !!(result && result.success);
+      if (added) {
         removeBackupCard(backupIndex);
       }
     }
-    if (success !== false) {
+    if (added) {
       _emit('vault:changed', { action: 'from_backup', cardId: card.id, vault: getVault() });
     }
-    return success;
+    return added;
   }
 
   /**
@@ -762,8 +788,8 @@ var CardStateAuthority = (function() {
       }
 
       if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addPersistentCard === 'function') {
-        var ok = GAMESTATE.addPersistentCard(cardId, 1);
-        if (ok !== false) {
+        var addResult = GAMESTATE.addPersistentCard(cardId, 1);
+        if (!!(addResult && addResult.success)) {
           _syncNonCombatStore();
           result.success = true;
           result.destination = 'vault';

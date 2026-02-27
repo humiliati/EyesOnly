@@ -785,6 +785,34 @@ const GAMESTATE = (function () {
     return { success: true };
   }
 
+  /**
+   * Remove a card from backup deck by index (splice removal).
+   * Does NOT move it anywhere — caller is responsible for destination.
+   * @param {number} backupIndex
+   * @returns {{ success: boolean, card?: object }}
+   */
+  function removeBackupCard(backupIndex) {
+    var idx = Number(backupIndex);
+    if (!isFinite(idx) || idx < 0) return { success: false };
+
+    if (!Array.isArray(_state.backupCards)) _state.backupCards = [];
+    if (idx >= _state.backupCards.length) return { success: false };
+
+    var ref = _state.backupCards[idx];
+    if (!ref) return { success: false };
+
+    _state.backupCards.splice(idx, 1);
+    _saveState();
+
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'backup_remove', cardId: ref.id, idx: idx } }));
+      }
+    } catch (e2) {}
+
+    return { success: true, card: ref };
+  }
+
   function moveBackupIndexToHand(backupIndex) {
     var idx = Number(backupIndex);
     if (!isFinite(idx) || idx < 0) return { success: false };
@@ -2342,6 +2370,7 @@ const GAMESTATE = (function () {
     consumeCardFromHand: consumeCardFromHand,
     returnCardFromHandToStash: returnCardFromHandToStash,
     moveHandIndexToBackup: moveHandIndexToBackup,
+    removeBackupCard: removeBackupCard,
     moveBackupIndexToHand: moveBackupIndexToHand,
     moveStashCardToBackup: moveStashCardToBackup,
     resetCombatBackupDrawFlag: resetCombatBackupDrawFlag,
