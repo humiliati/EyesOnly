@@ -485,10 +485,8 @@ const GoneRogueMobile = (function () {
     inited: false
   };
 
-  // NOTE: camera-window rendering was removed for stability.
-  // Reintroduce only when world is larger than viewport and we have a proper viewport shell.
   function _useCameraWindow(grid, viewW, viewH) {
-    return false;
+    return grid.length > viewH || (grid[0] && grid[0].length > viewW);
   }
 
   function _renderWithCanvas(grid, player, enemies, items, breakables, projectiles, muzzleFlash, impactEffects, currencies, colorCycleTime) {
@@ -499,8 +497,8 @@ const GoneRogueMobile = (function () {
     var viewH = _canvasRenderer ? (_canvasRenderer.height || 20) : 20;
     var cellSize = _canvasRenderer ? (_canvasRenderer.cellSize || 20) : 20;
 
-    var cameraWindow = false;
-    _cameraState.windowActive = false;
+    var cameraWindow = _useCameraWindow(grid, viewW, viewH);
+    _cameraState.windowActive = cameraWindow;
 
     // Camera target in world cell coords (center player)
     var px = player ? (player.visualX !== undefined ? player.visualX : player.x) : 0;
@@ -525,6 +523,12 @@ const GoneRogueMobile = (function () {
 
       var originXf = _cameraState.cx - (viewW / 2);
       var originYf = _cameraState.cy - (viewH / 2);
+
+      // Clamp to map bounds so camera never reveals void beyond grid edges
+      var gridW = grid[0] ? grid[0].length : viewW;
+      var gridH = grid.length;
+      originXf = Math.max(0, Math.min(gridW - viewW, originXf));
+      originYf = Math.max(0, Math.min(gridH - viewH, originYf));
 
       originXi = Math.floor(originXf);
       originYi = Math.floor(originYf);
@@ -948,24 +952,16 @@ const GoneRogueMobile = (function () {
   function _applyMobileCanvasFollow(player, viewW, viewH, cellSize) {
     if (!_canvasRenderer || !player) return;
 
-    // Only on small portrait screens.
+    // Use a lower zoom on desktop, higher on mobile portrait
+    var z = 1.2;
     try {
-      if (!(window.matchMedia && window.matchMedia('(max-width: 700px) and (orientation: portrait)').matches)) {
-        // Ensure no residual transform
-        var c0 = _canvasRenderer.getCanvas();
-        if (c0) c0.style.transform = '';
-        return;
+      if (window.matchMedia && window.matchMedia('(max-width: 700px) and (orientation: portrait)').matches) {
+        z = 1.5;
       }
     } catch (e0) {}
 
     var canvas = _canvasRenderer.getCanvas();
     if (!canvas || !_gridContainer) return;
-
-    // Desired zoom: show fewer than 40x20 tiles by scaling up and cropping.
-    // Zoomed-in viewport (show fewer than 40x20 tiles)
-    var z = 1.5;
-
-    // Smooth-follow the camera offset so it doesn't "click" tile-to-tile
     if (!_followState) {
       _followState = { tx: 0, ty: 0, inited: false };
     }
