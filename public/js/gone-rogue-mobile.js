@@ -769,9 +769,12 @@ const GoneRogueMobile = (function () {
     // Add projectiles
     if (projectiles) {
       projectiles.forEach(function(projectile) {
-        var vx = _toViewX(projectile.x);
-        var vy = _toViewY(projectile.y);
-        if (!_inView(vx, vy)) return;
+        var pX = projectile.fx !== undefined ? projectile.fx : projectile.x;
+        var pY = projectile.fy !== undefined ? projectile.fy : projectile.y;
+        var vx = _toViewX(pX);
+        var vy = _toViewY(pY);
+        // Round for culling check only
+        if (!_inView(Math.round(vx), Math.round(vy))) return;
         entities.push({
           x: vx,
           y: vy,

@@ -13,5 +13,66 @@
 
   "ITM-011": {"name":"Panda Plushie","emoji":"🐼","acquired":"Toy Store","type":"lure","spend_effect":"A soft decoy with a hard label stitched inside.","tags":["panda","chen"],"notes":"Fictional plot device."},
   "ITM-012": {"name":"Lab Coat","emoji":"🥼","acquired":"Clinic","type":"disguise","spend_effect":"You look like you belong where you shouldn’t.","tags":["disguise","lab"],"notes":"Fictional prop."},
-  "ITM-013": {"name":"ID Badge (Dr. Hoffman)","emoji":"💳","acquired":"Clinic","type":"credential","spend_effect":"A barcode that passes. For now.","tags":["disguise","access"],"notes":"Fictional prop."}
+  "ITM-013": {"name":"ID Badge (Dr. Hoffman)","emoji":"💳","acquired":"Clinic","type":"credential","spend_effect":"A barcode that passes. For now.","tags":["disguise","access"],"notes":"Fictional prop."},
+
+  "ITM-DEMO-001": {
+    "name": "Field Ration",
+    "emoji": "🥫",
+    "type": "consumable",
+    "description": "Standard issue caloric intake.",
+    "rarity": {"tier": "common", "weight": 50, "ladder_locked": false},
+    "season": {"id": "S01", "name": "Dead Signal", "limited": false, "reprintable": true},
+    "progression": {"collectible": true, "ladder_track": "tier_1", "first_completion_drop": false, "bind_on_acquire": false},
+    "visual": {"emoji": "🥫", "card_frame": "common_gray"}
+  },
+  "ITM-DEMO-002": {
+    "name": "Tungsten Round",
+    "emoji": "🪨",
+    "type": "ammo",
+    "description": "Armor-piercing capability for standard sidearms.",
+    "rarity": {"tier": "uncommon", "weight": 30, "ladder_locked": false},
+    "season": {"id": "S01", "name": "Dead Signal", "limited": false, "reprintable": true},
+    "progression": {"collectible": true, "ladder_track": "tier_1", "first_completion_drop": false, "bind_on_acquire": false},
+    "visual": {"emoji": "🪨", "card_frame": "uncommon_green"}
+  },
+  "ITM-DEMO-003": {
+    "name": "Encrypted Drive",
+    "emoji": "💾",
+    "type": "artifact",
+    "description": "Contains intercepted comms from sector 7.",
+    "rarity": {"tier": "rare", "weight": 10, "ladder_locked": false},
+    "season": {"id": "S01", "name": "Dead Signal", "limited": true, "reprintable": false},
+    "progression": {"collectible": true, "ladder_track": "tier_2", "first_completion_drop": false, "bind_on_acquire": false},
+    "visual": {"emoji": "💾", "card_frame": "rare_blue"}
+  },
+  "ITM-DEMO-004": {
+    "name": "Director's Comm Link",
+    "emoji": "🎙️",
+    "type": "relic",
+    "description": "Direct line to high command.",
+    "rarity": {"tier": "epic", "weight": 5, "ladder_locked": false},
+    "season": {"id": "S01", "name": "Dead Signal", "limited": true, "reprintable": false},
+    "progression": {"collectible": true, "ladder_track": "tier_3", "first_completion_drop": true, "bind_on_acquire": true},
+    "visual": {"emoji": "🎙️", "card_frame": "epic_purple"}
+  },
+  "ITM-DEMO-005": {
+    "name": "The Kaniksu Protocol",
+    "emoji": "📜",
+    "type": "artifact",
+    "description": "The founding document of the rogue agency.",
+    "rarity": {"tier": "legendary", "weight": 1, "ladder_locked": true},
+    "season": {"id": "S01", "name": "Dead Signal", "limited": true, "reprintable": false},
+    "progression": {"collectible": true, "ladder_track": null, "first_completion_drop": true, "bind_on_acquire": true},
+    "visual": {"emoji": "📜", "animation_profile": "gold_shine", "card_frame": "legendary_gold"}
+  },
+  "ITM-DEMO-006": {
+    "name": "Zero-Day Exploit",
+    "emoji": "💻",
+    "type": "relic",
+    "description": "Bypasses all kernel security.",
+    "rarity": {"tier": "mythic", "weight": 0.1, "ladder_locked": true},
+    "season": {"id": "S01", "name": "Dead Signal", "limited": true, "reprintable": false},
+    "progression": {"collectible": true, "ladder_track": null, "first_completion_drop": true, "bind_on_acquire": true},
+    "visual": {"emoji": "💻", "animation_profile": "mythic_glitch", "card_frame": "mythic_red"}
+  }
 }
