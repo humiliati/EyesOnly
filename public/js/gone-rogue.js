@@ -1526,13 +1526,9 @@ const GoneRogue = (function () {
       GoneRogueMobile.show();
       _updateMobileGrid();
 
-      // Show left column action buttons via BackupActionContainer (new unified overlay).
-      // This replaces legacy ReserveSlots which showed stale actionButtonCards data.
-      if (typeof BackupActionContainer !== 'undefined') {
-        BackupActionContainer.show();
-      }
-      // Legacy ReserveSlots is no longer shown at game start — BackupActionContainer
-      // reads from CardStateAuthority (vault items / backup cards) for true state.
+      // BAC floating popup is RETIRED. RogueSidebar (embedded in terminal
+      // control rail) now owns the left-column card/item display.
+      // BAC stays hidden; RogueSidebar auto-renders via its own _tick() interval.
 
       // Suppress mobile keyboard when interactive grid is active
       if (typeof Terminal !== 'undefined' && typeof Terminal.suppressMobileKeyboard === 'function') {
@@ -11817,10 +11813,8 @@ _incrementPityTimers();
       }
     } catch (e0) {}
 
-    // Restore left column for non-combat mode (combat hide cleared it)
-    if (_useInteractiveGrid && typeof BackupActionContainer !== 'undefined') {
-      BackupActionContainer.show();
-    }
+    // BAC floating popup is RETIRED — RogueSidebar handles left column.
+    // No need to show BAC after combat ends.
 
     // Resume game loop
     if (!_gameLoopActive) {

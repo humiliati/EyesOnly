@@ -236,14 +236,17 @@ var NonCombatHUD = (function() {
     } else {
       if (_expanded) _expanded.style.display = 'none';
       if (_capsule) _capsule.style.display = 'flex';
+      // Keep capsule count fresh on every visibility poll
+      _renderCapsule();
     }
 
-    // Safety net: ensure left column (BAC) is visible in non-combat.
-    // After combat ends, BAC.hide() fires but BAC.show() may not follow.
+    // BAC floating popup is RETIRED — RogueSidebar (embedded in terminal
+    // control rail) now owns the left-column card/item display.
+    // Ensure BAC stays hidden so it doesn't overlap RogueSidebar.
     if (!strActive && typeof BackupActionContainer !== 'undefined' &&
         typeof BackupActionContainer.isVisible === 'function' &&
-        !BackupActionContainer.isVisible()) {
-      BackupActionContainer.show();
+        BackupActionContainer.isVisible()) {
+      BackupActionContainer.hide();
     }
   }
 

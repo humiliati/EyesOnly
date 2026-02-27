@@ -366,17 +366,11 @@
   }
 
   function _showBackupActions(combatState) {
-    // Left column: show with combat mode rendering (handled by backup-action-container's mode detection)
-    if (typeof BackupActionContainer !== 'undefined') {
-      if (!BackupActionContainer.isVisible()) {
-        BackupActionContainer.show();
-      }
-      // Trigger re-render (signature-based, will skip if unchanged)
-      if (typeof BackupActionContainer.render === 'function') {
-        BackupActionContainer.render();
-      }
+    // BAC floating popup is RETIRED — RogueSidebar handles left column in both
+    // combat and non-combat modes. Ensure BAC stays hidden during combat.
+    if (typeof BackupActionContainer !== 'undefined' && BackupActionContainer.isVisible()) {
+      BackupActionContainer.hide();
     }
-
     // Enemy hand display in backup scroll space
     if (typeof EnemyHandDisplay !== 'undefined') {
       if (!EnemyHandDisplay.isVisible()) {

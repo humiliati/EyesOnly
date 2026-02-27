@@ -62,6 +62,21 @@ var RogueSidebar = (function() {
     });
 
     setInterval(_tick, 250);
+
+    // Immediate re-render on CSA vault/hand/backup changes (supplements the 250ms poll)
+    window.addEventListener('csa-event', function(ev) {
+      var t = ev && ev.detail && ev.detail.type;
+      if (t === 'vault:changed' || t === 'hand:changed' || t === 'backup:changed') {
+        _lastSignature = null;
+        _render();
+      }
+    });
+
+    // Re-render when data registry loads card/item definitions
+    window.addEventListener('gone-rogue-registry-ready', function() {
+      _lastSignature = null;
+      _render();
+    });
   }
 
   function _tick() {
@@ -80,15 +95,9 @@ var RogueSidebar = (function() {
       return;
     }
 
-    // If BackupActionContainer is visible, it owns the left column overlay.
-    // Don't render the legacy sidebar — it would show stale/conflicting data.
-    if (typeof BackupActionContainer !== 'undefined' && typeof BackupActionContainer.isVisible === 'function' && BackupActionContainer.isVisible()) {
-      // Hide our container so it doesn't overlap
-      if (_container) _container.style.display = 'none';
-      return;
-    } else {
-      if (_container) _container.style.display = '';
-    }
+    // RogueSidebar is now the PRIMARY left-column display.
+    // BAC floating popup is retired — ensure we're always visible when rogue is active.
+    if (_container) _container.style.display = '';
 
     if (!_container) return;
     if (_container.dataset.rogueSidebarActive !== '1') {
@@ -107,7 +116,17 @@ var RogueSidebar = (function() {
     if (!_container) return;
 
     // Fetch refs early so we can enforce first-pickup UX.
-    var items = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentInventory) ? (GAMESTATE.getPersistentInventory() || []) : [];
+    // Items view combines BOTH persistent items (ITM-*) and vault cards (ACT-*),
+    // mirroring BAC's _getItemCards() logic. Items appear first, then vault cards.
+    var rawItems = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentInventory) ? (GAMESTATE.getPersistentInventory() || []) : [];
+    var vaultCards = [];
+    if (typeof CardStateAuthority !== 'undefined' && typeof CardStateAuthority.getVault === 'function') {
+      vaultCards = CardStateAuthority.getVault() || [];
+    } else if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getPersistentCards === 'function') {
+      vaultCards = GAMESTATE.getPersistentCards() || [];
+    }
+    var items = rawItems.concat(vaultCards);
+
     // The "cards" view shows the NCH backup deck (canonical, shared with NCH panel).
     var backupCards = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getBackupCards) ? (GAMESTATE.getBackupCards() || []) : [];
 
@@ -290,35 +309,70 @@ var RogueSidebar = (function() {
         btn.disabled = true;
       } else {
         if (view === 'items') {
-          var item = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) ? GoneRogueDataRegistry.getItem(ref.id) : null;
-          var nm = item ? item.name : ref.id;
-          var em = item ? item.emoji : '📦';
+          // Differentiate ACT-* vault cards from ITM-* items
+          var isVaultCard = !!(ref.id && ref.id.indexOf('ACT-') === 0);
+          var def = null;
+          if (isVaultCard) {
+            // Vault card: look up from card registry, display with joker emoji
+            def = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) ? GoneRogueDataRegistry.getCard(ref.id) : null;
+            if (def && def._missing) def = null; // registry not loaded yet
+          } else {
+            // Regular item: look up from item registry
+            def = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) ? GoneRogueDataRegistry.getItem(ref.id) : null;
+            if (def && def._missing) def = null;
+          }
+          var nm = def ? def.name : ref.id;
+          var em = isVaultCard ? '🃏' : (def ? def.emoji : '📦');
           btn.innerHTML = '<span class="rs-emoji">' + em + '</span><span class="rs-label">' + nm + '</span>';
 
-          if (item && item.equipSlot && item.equipSlot !== 'none') {
+          if (!isVaultCard && def && def.equipSlot && def.equipSlot !== 'none') {
             btn.classList.add('equippable');
           }
 
-          if (activeItem && activeItem.id === ref.id) {
+          if (!isVaultCard && activeItem && activeItem.id === ref.id) {
             btn.classList.add('selected');
           }
 
-          btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            var id = (items[Number(e.currentTarget.dataset.index)] || {}).id;
-            if (!id) return;
+          if (isVaultCard) {
+            // Vault cards: click to move back to hand (via CSA)
+            btn.classList.add('vault-card');
+            btn.addEventListener('click', function(e) {
+              e.stopPropagation();
+              var id = (items[Number(e.currentTarget.dataset.index)] || {}).id;
+              if (!id) return;
 
-            var active = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) ? GAMESTATE.getActiveItem() : null;
-            if (active && active.id === id) {
-              GAMESTATE.clearActiveItem();
-            } else {
-              GAMESTATE.setActiveItem({ id: id, qty: 1 });
-            }
+              var ok = false;
+              if (typeof CardStateAuthority !== 'undefined' && typeof CardStateAuthority.moveVaultToHand === 'function') {
+                ok = !!CardStateAuthority.moveVaultToHand(id, 1);
+              }
+              if (ok) {
+                if (typeof TooltipSystem !== 'undefined') TooltipSystem.showPersistent('🃏 → Hand', 650);
+              } else {
+                if (typeof TooltipSystem !== 'undefined') TooltipSystem.showPersistent('❌ Hand full', 900);
+              }
 
-            // Force refresh to reflect selection state
-            _lastSignature = null;
-            _render();
-          });
+              _lastSignature = null;
+              _render();
+            });
+          } else {
+            // Regular items: click to equip/unequip (original behavior)
+            btn.addEventListener('click', function(e) {
+              e.stopPropagation();
+              var id = (items[Number(e.currentTarget.dataset.index)] || {}).id;
+              if (!id) return;
+
+              var active = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) ? GAMESTATE.getActiveItem() : null;
+              if (active && active.id === id) {
+                GAMESTATE.clearActiveItem();
+              } else {
+                GAMESTATE.setActiveItem({ id: id, qty: 1 });
+              }
+
+              // Force refresh to reflect selection state
+              _lastSignature = null;
+              _render();
+            });
+          }
         } else {
           var card = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) ? GoneRogueDataRegistry.getCard(ref.id) : null;
           var nm2 = card ? card.name : ref.id;
