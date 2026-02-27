@@ -5,6 +5,34 @@
    ============================================================ */
 
 var RogueSidebar = (function() {
+  // STR draw feedback: lightweight "ghost joker" cursor helper.
+  // We DO NOT hide the real cursor (precision matters); we only show a small
+  // trailing 🃏 while hovering the STR DRAW button to convey "random card".
+  var _ghostEl = null;
+  var _ghostMoveHandler = null;
+
+  function _activateGhostJokerCursor() {
+    if (_ghostEl) return;
+    _ghostEl = document.createElement('div');
+    _ghostEl.className = 'rs-ghost-joker';
+    _ghostEl.textContent = '🃏';
+    document.body.appendChild(_ghostEl);
+
+    _ghostMoveHandler = function(e) {
+      if (!_ghostEl) return;
+      _ghostEl.style.left = (e.clientX + 14) + 'px';
+      _ghostEl.style.top = (e.clientY + 14) + 'px';
+    };
+    document.addEventListener('pointermove', _ghostMoveHandler);
+  }
+
+  function _deactivateGhostJokerCursor() {
+    if (_ghostEl && _ghostEl.parentNode) _ghostEl.parentNode.removeChild(_ghostEl);
+    _ghostEl = null;
+    if (_ghostMoveHandler) document.removeEventListener('pointermove', _ghostMoveHandler);
+    _ghostMoveHandler = null;
+  }
+
   'use strict';
 
   var _container = null;
@@ -149,6 +177,9 @@ var RogueSidebar = (function() {
     // Fetch refs
     var activeItem = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) ? GAMESTATE.getActiveItem() : null;
 
+    // Ensure any prior STR draw hover cursor is cleared when switching modes.
+    _deactivateGhostJokerCursor();
+
     // STR combat view: left column becomes redacted BACKUP deck surface
     if (strActive) {
       var backup = (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getBackupCards === 'function') ? (GAMESTATE.getBackupCards() || []) : [];
@@ -181,6 +212,13 @@ var RogueSidebar = (function() {
         // force refresh
         _lastSignature = null;
         _render();
+      });
+      // Hover feedback: show a joker "ghost" cursor to reinforce randomness.
+      drawBtn.addEventListener('pointerenter', function() {
+        if (!drawBtn.disabled) _activateGhostJokerCursor();
+      });
+      drawBtn.addEventListener('pointerleave', function() {
+        _deactivateGhostJokerCursor();
       });
       _container.appendChild(drawBtn);
 

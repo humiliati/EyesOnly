@@ -112,3 +112,19 @@
   box-shadow: 0 0 8px var(--glow-drag-target);
   border-color: var(--frame-card-drag-target);
 }
+
+/* STR draw feedback: ghost joker cursor.
+   Note: we intentionally keep the real cursor visible for precision.
+*/
+.rs-ghost-joker {
+  position: fixed;
+  z-index: 99998;
+  pointer-events: none;
+  font-size: 22px;
+  opacity: 0.55;
+  transform: rotate(-8deg) scale(0.9);
+  transition: opacity 0.12s, transform 0.12s;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+  user-select: none;
+  -webkit-user-select: none;
+}
