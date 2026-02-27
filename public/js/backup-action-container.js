@@ -90,6 +90,8 @@ var BackupActionContainer = (function() {
       if (legacySlots) legacySlots.style.display = 'none';
     } catch (e0) {}
 
+    // Force fresh render — vault/hand data may have changed while hidden
+    _lastSig = null;
     _render();
   }
 
@@ -898,6 +900,12 @@ var BackupActionContainer = (function() {
         console.log('[BAC:forceRender] vis:', _isVisible, '| s5:', _slot5Mode,
           '| vaultLen:', vc, '| invLen:', ic, '| container:', !!_container);
       } catch (fr) {}
+      // Ensure container is visible — callers (NCH vault transfers) expect the
+      // left column to be on-screen immediately after forceRender.
+      if (_container && !_isVisible) {
+        _isVisible = true;
+        _container.style.display = 'flex';
+      }
       _lastSig = null; _render();
     },
     getSlot5Mode: function() { return _slot5Mode; }

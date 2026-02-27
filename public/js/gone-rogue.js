@@ -11817,6 +11817,11 @@ _incrementPityTimers();
       }
     } catch (e0) {}
 
+    // Restore left column for non-combat mode (combat hide cleared it)
+    if (_useInteractiveGrid && typeof BackupActionContainer !== 'undefined') {
+      BackupActionContainer.show();
+    }
+
     // Resume game loop
     if (!_gameLoopActive) {
       _startGameLoop();

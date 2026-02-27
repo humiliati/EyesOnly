@@ -237,6 +237,14 @@ var NonCombatHUD = (function() {
       if (_expanded) _expanded.style.display = 'none';
       if (_capsule) _capsule.style.display = 'flex';
     }
+
+    // Safety net: ensure left column (BAC) is visible in non-combat.
+    // After combat ends, BAC.hide() fires but BAC.show() may not follow.
+    if (!strActive && typeof BackupActionContainer !== 'undefined' &&
+        typeof BackupActionContainer.isVisible === 'function' &&
+        !BackupActionContainer.isVisible()) {
+      BackupActionContainer.show();
+    }
   }
 
   // ─── DATA HELPERS ───────────────────────────────────────
