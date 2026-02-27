@@ -17,6 +17,34 @@ const CanvasRenderer = (function() {
     EMOJI: 'emoji'
   };
 
+  // ── Phase 3.2: Item Twinkle State ─────────────────────────────────────────
+  // Tracks per-position bobbing phases so collectibles, currencies, and
+  // interactive items gently pulse/shimmer on the ground.
+  var _twinklePhases = {}; // key: "x,y" → float phase (radians)
+
+  // Prime-number multipliers for stable per-tile phase seeding (avoids grid-aligned sync)
+  var TWINKLE_SEED_X = 1.7;
+  var TWINKLE_SEED_Y = 3.1;
+
+  /**
+   * Advance twinkle phases for the given set of ground entities.
+   * Called once per renderGrid() invocation for non-enemy entities.
+   * @param {Array} entities
+   */
+  function _advanceTwinklePhases(entities) {
+    if (!entities) return;
+    for (var i = 0; i < entities.length; i++) {
+      var e = entities[i];
+      if (!e || e.isEnemy) continue;
+      var key = e.x + ',' + e.y;
+      if (_twinklePhases[key] === undefined) {
+        // Seed with a stable per-position offset so items don't all pulse together
+        _twinklePhases[key] = ((e.x * TWINKLE_SEED_X + e.y * TWINKLE_SEED_Y) % (Math.PI * 2));
+      }
+      _twinklePhases[key] += 0.04; // ~2.4 rad/s at 60fps → ~2.5s cycle
+    }
+  }
+
   /**
    * CanvasRenderer class - High-performance grid renderer
    */
@@ -104,6 +132,9 @@ const CanvasRenderer = (function() {
     if (this.enableLighting && typeof LightingSystem !== 'undefined') {
       this._renderLighting(renderData.grid);
     }
+
+    // Advance twinkle phases for ground items / collectibles (Phase 3.2)
+    _advanceTwinklePhases(renderData.entities);
 
     this._renderEntities(renderData.entities);
     this._renderPets(renderData.pets);
@@ -374,7 +405,9 @@ const CanvasRenderer = (function() {
   };
 
   /**
-   * Render entities (enemies, NPCs)
+   * Render entities (enemies, NPCs, items, collectibles).
+   * Non-enemy entities (items, currencies, collectibles) receive a
+   * gentle twinkle/pulse via globalAlpha oscillation (Phase 3.2).
    * @param {Array} entities - Array of entity objects { x, y, char, color }
    */
   CanvasRenderer.prototype._renderEntities = function(entities) {
@@ -387,6 +420,18 @@ const CanvasRenderer = (function() {
       var centerX = (entity.x + 0.5) * this.cellSize;
       var centerY = (entity.y + 0.5) * this.cellSize;
 
+      // Draw ground drop shadow beneath entity
+      this._drawDropShadow(centerX, (entity.y + 0.78) * this.cellSize, this.cellSize * 0.32, this.cellSize * 0.11, 0.28);
+
+      // Phase 3.2: twinkle pulse for ground items / collectibles (not enemies)
+      var savedAlpha = this.ctx.globalAlpha;
+      if (!entity.isEnemy) {
+        var key = entity.x + ',' + entity.y;
+        var phase = _twinklePhases[key] || 0;
+        // Gentle oscillation: alpha between 0.78 and 1.0
+        this.ctx.globalAlpha = 0.78 + 0.22 * (0.5 + 0.5 * Math.sin(phase));
+      }
+
       // Render entity character/emoji
       this.ctx.fillStyle = entity.color || '#FF0000';
 
@@ -398,8 +443,9 @@ const CanvasRenderer = (function() {
 
       this.ctx.fillText(entity.char || '?', centerX, centerY);
 
-      // Reset shadow
+      // Reset shadow and alpha
       this.ctx.shadowBlur = 0;
+      this.ctx.globalAlpha = savedAlpha;
     }
   };
 
@@ -412,6 +458,9 @@ const CanvasRenderer = (function() {
 
     var centerX = (player.x + 0.5) * this.cellSize;
     var centerY = (player.y + 0.5) * this.cellSize;
+
+    // Draw ground drop shadow beneath player
+    this._drawDropShadow(centerX, (player.y + 0.78) * this.cellSize, this.cellSize * 0.36, this.cellSize * 0.13, 0.35);
 
     // Render player with distinctive glow
     this.ctx.fillStyle = player.color || '#00FF00';
@@ -457,6 +506,10 @@ const CanvasRenderer = (function() {
 
       var centerX = (pet.x + 0.5) * this.cellSize;
       var centerY = (pet.y + 0.5) * this.cellSize;
+
+      // Draw ground drop shadow beneath pet (scaled by pet opacity)
+      var shadowAlpha = 0.25 * (pet.opacity !== undefined ? pet.opacity : 1);
+      this._drawDropShadow(centerX, (pet.y + 0.78) * this.cellSize, this.cellSize * 0.30, this.cellSize * 0.10, shadowAlpha);
 
       // Save current alpha
       var oldAlpha = this.ctx.globalAlpha;
@@ -525,6 +578,27 @@ const CanvasRenderer = (function() {
       this.ctx.shadowBlur = 0;
       this.ctx.globalAlpha = oldAlpha;
     }
+  };
+
+  /**
+   * Draw an elliptical drop shadow at a given ground position.
+   * Used by entity, player, and pet renderers for a consistent fake-3D shadow.
+   * @param {number} centerX - Horizontal center of shadow
+   * @param {number} groundY - Vertical ground position (Y of shadow center)
+   * @param {number} radiusX - Half-width of ellipse
+   * @param {number} radiusY - Half-height of ellipse
+   * @param {number} opacity - Shadow alpha (0–1)
+   */
+  CanvasRenderer.prototype._drawDropShadow = function(centerX, groundY, radiusX, radiusY, opacity) {
+    if (opacity <= 0) return;
+    this.ctx.save();
+    this.ctx.globalAlpha = opacity;
+    this.ctx.shadowBlur = 0;
+    this.ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    this.ctx.beginPath();
+    this.ctx.ellipse(centerX, groundY, radiusX, radiusY, 0, 0, Math.PI * 2);
+    this.ctx.fill();
+    this.ctx.restore();
   };
 
   /**

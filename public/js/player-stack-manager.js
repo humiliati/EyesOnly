@@ -112,6 +112,23 @@ const PlayerStackManager = (function() {
     var pancakeHeight = 6;
     var baseY = screenY - (cellSize * 2.4); // Above player head
 
+    // Draw single ground shadow below the stack with fade-in/out tied to stack lifecycle
+    var now = Date.now();
+    var newestAge = now - _stack[_stack.length - 1].collectedAt;
+    var fadeIn = Math.min(1, newestAge / 300); // fade in over 300ms on new pickup
+    var oldestAge = now - _stack[0].collectedAt;
+    var fadeOut = Math.max(0, 1 - Math.max(0, oldestAge - (_decayMs - 600)) / 600); // fade out in last 600ms
+    var shadowOpacity = 0.32 * fadeIn * fadeOut;
+    if (shadowOpacity > 0.005) {
+      ctx.save();
+      ctx.globalAlpha = shadowOpacity;
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.beginPath();
+      ctx.ellipse(screenX, screenY + cellSize * 0.3, cellSize * 0.4, cellSize * 0.14, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
     for (var i = _stack.length - 1; i >= 0; i--) {
       var item = _stack[i];
       var scale = item.currentScale || 1;
@@ -123,12 +140,6 @@ const PlayerStackManager = (function() {
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(item.rotation || 0);
-
-      // Shadow
-      ctx.fillStyle = 'rgba(0,0,0,0.2)';
-      ctx.beginPath();
-      ctx.ellipse(2, 2, size / 2, size / 4, 0, 0, Math.PI * 2);
-      ctx.fill();
 
       // Emoji
       ctx.font = size + 'px system-ui, Arial, sans-serif';

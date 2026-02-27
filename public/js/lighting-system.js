@@ -6,6 +6,30 @@
 const LightingSystem = (function() {
   'use strict';
 
+  // ── Phase 1.1: Tile Opacity System ─────────────────────────────────────────
+  // How much each tile type attenuates a light ray (0 = clear, 1 = fully opaque).
+  const TILE_OPACITY = {
+    WALL:      1.0, // Fully opaque — blocks all light
+    FLOOR:     0.0, // Transparent — light passes through freely
+    SHADOW:    0.3, // Semi-transparent stealth tile
+    BREAKABLE: 0.7, // Boxes/crates partially block light
+    SMOKE:     0.5  // Smoke diffuses light
+  };
+
+  /**
+   * Return the light-blocking opacity for a tile cell.
+   * @param {Object|null} tile - Tile data { type, isBreakable, hasSmoke }
+   * @returns {number} 0 (transparent) – 1 (fully opaque)
+   */
+  function getTileOpacity(tile) {
+    if (!tile) return TILE_OPACITY.FLOOR;
+    if (tile.type === 'wall')      return TILE_OPACITY.WALL;
+    if (tile.type === 'shadow')    return TILE_OPACITY.SHADOW;
+    if (tile.isBreakable)          return TILE_OPACITY.BREAKABLE;
+    if (tile.hasSmoke)             return TILE_OPACITY.SMOKE;
+    return TILE_OPACITY.FLOOR;
+  }
+
   // Light source definitions
   const LIGHT_SOURCES = {
     // Player light sources (items)
@@ -193,6 +217,34 @@ const LightingSystem = (function() {
   var _darknessMultiplier = 1.0; // For uber boss darkness effect
   var _frameCount = 0; // For flicker animation
 
+  // ── Phase 3.3: Lighting Interpolator ───────────────────────────────────────
+  // Smoothly transitions lighting when the map changes (player moves into/out of lit areas).
+  var _interpEnabled = true;       // Whether interpolation is active
+  var _interpPrevMap = {};         // Previous lighting snapshot
+  var _interpProgress = 1.0;      // 0 = fully on previous map, 1 = fully on current map
+  var _interpSpeed = 0.08;        // Progress increment per updateLightMap() call (~12 frames to settle)
+
+  /**
+   * Step the interpolation forward by one tick.
+   * Captures the current _lightMap as the previous baseline before it is overwritten.
+   * Called automatically by updateLightMap(), before _lightMap is reassigned.
+   */
+  function _stepInterpolation() {
+    if (!_interpEnabled) return;
+    // Always snapshot the currently-settled map as the previous baseline
+    _interpPrevMap = (_interpProgress >= 1.0) ? _lightMap : _interpPrevMap;
+    _interpProgress = 0.0;
+  }
+
+  /**
+   * Enable or disable smooth lighting transitions.
+   * @param {boolean} enabled
+   */
+  function setLightingInterpolation(enabled) {
+    _interpEnabled = !!enabled;
+    if (!enabled) _interpProgress = 1.0;
+  }
+
   /**
    * Initialize lighting system
    */
@@ -201,6 +253,8 @@ const LightingSystem = (function() {
     _lightSources = [];
     _frameCount = 0;
     _darknessMultiplier = 1.0;
+    _interpPrevMap = {};
+    _interpProgress = 1.0;
   }
 
   /**
@@ -447,6 +501,12 @@ const LightingSystem = (function() {
    */
   function updateLightMap(gridWidth, gridHeight, blockers) {
     _frameCount++;
+
+    // Capture the current map as the interpolation baseline before overwriting it
+    if (_interpEnabled) {
+      _stepInterpolation();
+    }
+
     _lightMap = {};
 
     var biomeConfig = BIOME_LIGHTING[_currentBiome];
@@ -496,17 +556,38 @@ const LightingSystem = (function() {
         };
       }
     }
+
+    // Step interpolation progress forward so the renderer converges to the new map
+    if (_interpEnabled && _interpProgress < 1.0) {
+      _interpProgress = Math.min(1.0, _interpProgress + _interpSpeed);
+    }
   }
 
   /**
-   * Get light level at a position
+   * Get light level at a position.
+   * When lighting interpolation is enabled, the returned intensity is lerped
+   * between the previous map and the current map for a smooth transition.
    * @param {number} x - X position
    * @param {number} y - Y position
    * @returns {Object} { intensity: 0-1, color: "#rrggbb", sources: [] }
    */
   function getLightAt(x, y) {
     var key = x + ',' + y;
-    return _lightMap[key] || { intensity: 0, color: '#000000', sources: [] };
+    var current = _lightMap[key] || { intensity: 0, color: '#000000', sources: [], sightCone: 0 };
+
+    if (!_interpEnabled || _interpProgress >= 1.0) {
+      return current;
+    }
+
+    // Lerp intensity between previous and current snapshot
+    var prev = _interpPrevMap[key] || { intensity: 0, color: '#000000', sightCone: 0 };
+    var t = _interpProgress;
+    return {
+      intensity: prev.intensity + (current.intensity - prev.intensity) * t,
+      color: current.color,
+      sources: current.sources,
+      sightCone: prev.sightCone + (current.sightCone - prev.sightCone) * t
+    };
   }
 
   /**
@@ -662,6 +743,11 @@ const LightingSystem = (function() {
     updateEnemyLights: updateEnemyLights,
     updatePlayerLight: updatePlayerLight,
     getLightSources: function() { return _lightSources; },
+    // Phase 1.1: Tile opacity helpers
+    TILE_OPACITY: TILE_OPACITY,
+    getTileOpacity: getTileOpacity,
+    // Phase 3.3: Lighting interpolation control
+    setLightingInterpolation: setLightingInterpolation,
     LIGHT_SOURCES: LIGHT_SOURCES,
     BIOME_LIGHTING: BIOME_LIGHTING
   };
