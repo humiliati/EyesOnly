@@ -10,7 +10,7 @@
 .nch-capsule-wrapper {
   position: fixed;
   bottom: 20px;
-  left: 20px;
+  left: 140px;  /* Clear left column (BAC) at left:16px + 110px width */
   z-index: 1801;
   width: auto;
   height: auto;
@@ -842,7 +842,7 @@ body.nch-ghost-cursor-active .nch-draw-btn-hover ~ .nch-ghost-joker {
 
   .nch-capsule-wrapper {
     bottom: calc(12px + env(safe-area-inset-bottom));
-    left: 12px;
+    left: 130px;  /* Clear left column (BAC) on mobile too */
   }
 }
 

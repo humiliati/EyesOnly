@@ -69,6 +69,15 @@ var BackupActionContainer = (function() {
         _render();
       }
     });
+
+    // Re-render when data registry finishes loading card/item definitions.
+    // Without this, cards rendered before fetch completes show ❓ missing entries.
+    window.addEventListener('gone-rogue-registry-ready', function() {
+      if (_isVisible) {
+        _lastSig = null;
+        _render();
+      }
+    });
   }
 
   // ── Visibility ────────────────────────────────────────────
@@ -167,17 +176,17 @@ var BackupActionContainer = (function() {
     // Try card registry first (ACT-*)
     if (typeof CardStateAuthority !== 'undefined') {
       var def = CardStateAuthority.getCardDef(cardId);
-      if (def) return def;
+      if (def && !def._missing) return def;
     }
     if (typeof GoneRogueDataRegistry !== 'undefined') {
       if (typeof GoneRogueDataRegistry.getCard === 'function') {
         var cDef = GoneRogueDataRegistry.getCard(cardId);
-        if (cDef) return cDef;
+        if (cDef && !cDef._missing) return cDef;
       }
       // Fallback: try item registry (ITM-*) for vault items
       if (typeof GoneRogueDataRegistry.getItem === 'function') {
         var iDef = GoneRogueDataRegistry.getItem(cardId);
-        if (iDef) return iDef;
+        if (iDef && !iDef._missing) return iDef;
       }
     }
     return null;
@@ -274,6 +283,8 @@ var BackupActionContainer = (function() {
     if (source === 'items') slot.classList.add('backup-slot-item');
 
     var def = _getCardDef(cardRef.id) || {};
+    // If registry hasn't loaded yet, def will be {} — use joker + short id as placeholder
+    var defLoaded = !!(def.name);
     var name = def.name || cardRef.id || (source === 'items' ? 'Item' : 'Backup');
 
     // Items mode: cards (ACT-*) show joker emoji, items (ITM-*) show actual emoji

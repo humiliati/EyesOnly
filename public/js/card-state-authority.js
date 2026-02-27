@@ -667,14 +667,35 @@ var CardStateAuthority = (function() {
     if (typeof GAMESTATE === 'undefined') return false;
     if (typeof GAMESTATE.addCardToHand !== 'function') return false;
 
-    // First remove from vault, then add to hand (atomic move)
-    var removed = _removeFromVault(cardId, qty);
-    if (!removed) {
-      console.warn('[CardStateAuthority] moveVaultToHand: failed to remove from vault', cardId);
+    // Add to hand FIRST (safe — can always remove later if vault removal fails)
+    var addResult = GAMESTATE.addCardToHand(cardId, qty);
+    // addCardToHand may not return a result object on all code paths — treat as success if no error thrown
+    var addedOk = (addResult === undefined) || !!(addResult && addResult.success !== false);
+
+    if (!addedOk) {
+      console.warn('[CSA] moveVaultToHand: addCardToHand failed', cardId);
       return false;
     }
 
-    GAMESTATE.addCardToHand(cardId, qty);
+    // Now remove from vault — if this fails, rollback hand addition
+    var removed = _removeFromVault(cardId, qty);
+    if (!removed) {
+      console.warn('[CSA] moveVaultToHand: vault removal failed, rolling back hand add', cardId);
+      // Rollback: remove the card we just added to hand
+      try {
+        var rollbackHand = getHand();
+        for (var ri = rollbackHand.length - 1; ri >= 0; ri--) {
+          if (rollbackHand[ri] && rollbackHand[ri].id === cardId) {
+            if (typeof GAMESTATE.removeCardFromHandByIndex === 'function') {
+              GAMESTATE.removeCardFromHandByIndex(ri);
+            }
+            break;
+          }
+        }
+      } catch (rbErr) {}
+      return false;
+    }
+
     _syncNonCombatStore();
     _emit('hand:changed', { action: 'from_vault', cardId: cardId, hand: getHand() });
     _emit('vault:changed', { action: 'to_hand', cardId: cardId, vault: getVault() });
