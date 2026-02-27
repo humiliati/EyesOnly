@@ -128,11 +128,6 @@ const CanvasRenderer = (function() {
     // Render in layers
     this._renderTiles(renderData.grid);
 
-    // Apply lighting overlay if enabled
-    if (this.enableLighting && typeof LightingSystem !== 'undefined') {
-      this._renderLighting(renderData.grid);
-    }
-
     // Advance twinkle phases for ground items / collectibles (Phase 3.2)
     _advanceTwinklePhases(renderData.entities);
 
@@ -144,6 +139,15 @@ const CanvasRenderer = (function() {
     this._renderPancakeStack(renderData.player);
 
     this._renderEffects(renderData.effects);
+
+    // Apply lighting passes AFTER all world/entity rendering so darkness acts as
+    // a gameplay-visible stealth mask that affects everything the player can see.
+    if (this.enableLighting && typeof LightingSystem !== 'undefined') {
+      // Pass 1: darkness mask (per-tile darkness overlay + sight cone tint)
+      this._renderDarknessMask(renderData.grid);
+      // Pass 2: additive emissive glows (can spill onto entities)
+      this._renderSourceGlows(renderData.grid);
+    }
   };
 
   /**
@@ -278,10 +282,11 @@ const CanvasRenderer = (function() {
   };
 
   /**
-   * Render lighting overlay
+   * Render darkness mask overlay (per-tile darkness + enemy sight cone tint).
+   * Called AFTER all world/entity rendering so it acts as a stealth visibility mask.
    * @param {Array} grid - 2D array of tile data
    */
-  CanvasRenderer.prototype._renderLighting = function(grid) {
+  CanvasRenderer.prototype._renderDarknessMask = function(grid) {
     // Use source-over for direct darkness overlay (visible shadow gradients)
     this.ctx.globalCompositeOperation = 'source-over';
 
@@ -294,11 +299,11 @@ const CanvasRenderer = (function() {
         // Calculate darkness level (inverse of light intensity)
         var darkness = 1 - light.intensity;
 
+        var pixelX = x * this.cellSize;
+        var pixelY = y * this.cellSize;
+
         // Only render darkness overlay if there's significant darkness
         if (darkness > 0.05) {
-          var pixelX = x * this.cellSize;
-          var pixelY = y * this.cellSize;
-
           // Apply darkness overlay — 70% max for visible shadows while staying playable
           var alpha = darkness * 0.7;
 
@@ -317,8 +322,6 @@ const CanvasRenderer = (function() {
           this.ctx.fillRect(pixelX, pixelY, this.cellSize, this.cellSize);
         }
 
-        // (Light source glows are now rendered as unified gradients below)
-
         // Render enemy sight cone as a red-tinted shadow overlay (darkens, not brightens)
         if (light.sightCone && light.sightCone > 0.01) {
           var coneAlpha = light.sightCone * 0.35; // Subtle red tint
@@ -328,8 +331,8 @@ const CanvasRenderer = (function() {
       }
     }
 
-    // Render unified source-centered light glows (smooth gradients from each source)
-    this._renderSourceGlows(grid);
+    // Restore composite operation after darkness mask pass
+    this.ctx.globalCompositeOperation = 'source-over';
   };
 
   /**
