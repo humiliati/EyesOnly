@@ -1585,6 +1585,11 @@ const GoneRogueMobile = (function () {
           }
         } catch (e3) {}
 
+        // Reset NCH capsule to its default bottom-right position
+        if (typeof NonCombatHUD !== 'undefined' && typeof NonCombatHUD.resetCapsulePosition === 'function') {
+          NonCombatHUD.resetCapsulePosition();
+        }
+
         return;
       }
 

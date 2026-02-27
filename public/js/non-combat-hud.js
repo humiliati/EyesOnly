@@ -80,6 +80,51 @@ var NonCombatHUD = (function() {
 
   // ─── CAPSULE (closed state) ─────────────────────────────
 
+  var CAPSULE_POS_KEY = 'EYESONLY_NCH_CAPSULE_POS_V1';
+  var _capsuleDrag = null; // { startX, startY, origLeft, origTop, moved }
+
+  function _loadCapsulePos() {
+    try {
+      var raw = localStorage.getItem(CAPSULE_POS_KEY);
+      if (raw) return JSON.parse(raw); // { left, top }
+    } catch (e) {}
+    return null;
+  }
+  function _saveCapsulePos(left, top) {
+    try { localStorage.setItem(CAPSULE_POS_KEY, JSON.stringify({ left: left, top: top })); } catch (e) {}
+  }
+  function _clearCapsulePos() {
+    try { localStorage.removeItem(CAPSULE_POS_KEY); } catch (e) {}
+  }
+
+  function _applyCapsulePos() {
+    if (!_capsule) return;
+    var pos = _loadCapsulePos();
+    if (pos && typeof pos.left === 'number' && typeof pos.top === 'number') {
+      // User-saved position: switch from bottom/right to top/left
+      _capsule.style.bottom = 'auto';
+      _capsule.style.right = 'auto';
+      _capsule.style.left = Math.max(0, Math.min(pos.left, window.innerWidth - 40)) + 'px';
+      _capsule.style.top = Math.max(0, Math.min(pos.top, window.innerHeight - 40)) + 'px';
+    } else {
+      // Default: bottom-right above footer tooltip expander
+      _capsule.style.left = '';
+      _capsule.style.top = '';
+      _capsule.style.bottom = '';
+      _capsule.style.right = '';
+    }
+  }
+
+  function resetCapsulePosition() {
+    _clearCapsulePos();
+    if (_capsule) {
+      _capsule.style.left = '';
+      _capsule.style.top = '';
+      _capsule.style.bottom = '';
+      _capsule.style.right = '';
+    }
+  }
+
   function _createCapsule() {
     _capsule = document.createElement('div');
     _capsule.className = 'nch-capsule-wrapper';
@@ -87,10 +132,63 @@ var NonCombatHUD = (function() {
     _capsule.innerHTML =
       '<div class="nch-capsule">' +
         '<div class="nch-capsule-stack" id="nch-capsule-stack"></div>' +
-        '<div class="nch-capsule-count" id="nch-capsule-count">0</div>' +
       '</div>';
-    _capsule.addEventListener('click', function() { _expand('capsule_click'); });
+
+    // Drag support (works for pointer on desktop + touch on mobile)
+    _capsule.addEventListener('pointerdown', function(e) {
+      // Only primary button (or touch)
+      if (e.button && e.button !== 0) return;
+      e.preventDefault();
+      var rect = _capsule.getBoundingClientRect();
+      _capsuleDrag = {
+        startX: e.clientX,
+        startY: e.clientY,
+        origLeft: rect.left,
+        origTop: rect.top,
+        moved: false
+      };
+      _capsule.classList.add('nch-dragging');
+      _capsule.setPointerCapture(e.pointerId);
+    });
+
+    _capsule.addEventListener('pointermove', function(e) {
+      if (!_capsuleDrag) return;
+      var dx = e.clientX - _capsuleDrag.startX;
+      var dy = e.clientY - _capsuleDrag.startY;
+      if (!_capsuleDrag.moved && Math.sqrt(dx * dx + dy * dy) < 6) return;
+      _capsuleDrag.moved = true;
+      var newLeft = _capsuleDrag.origLeft + dx;
+      var newTop = _capsuleDrag.origTop + dy;
+      // Clamp to viewport
+      newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - 40));
+      newTop = Math.max(0, Math.min(newTop, window.innerHeight - 40));
+      _capsule.style.bottom = 'auto';
+      _capsule.style.right = 'auto';
+      _capsule.style.left = newLeft + 'px';
+      _capsule.style.top = newTop + 'px';
+    });
+
+    _capsule.addEventListener('pointerup', function(e) {
+      if (!_capsuleDrag) return;
+      _capsule.classList.remove('nch-dragging');
+      if (_capsuleDrag.moved) {
+        // Save position
+        var rect = _capsule.getBoundingClientRect();
+        _saveCapsulePos(rect.left, rect.top);
+      } else {
+        // Click (no drag) → expand NCH
+        _expand('capsule_click');
+      }
+      _capsuleDrag = null;
+    });
+
+    _capsule.addEventListener('pointercancel', function() {
+      _capsule.classList.remove('nch-dragging');
+      _capsuleDrag = null;
+    });
+
     document.body.appendChild(_capsule);
+    _applyCapsulePos();
   }
 
   function _renderCapsule() {
@@ -98,20 +196,18 @@ var NonCombatHUD = (function() {
     var hand = _getHand();
     var count = hand.length;
 
-    // Update count
-    var countEl = _capsule.querySelector('#nch-capsule-count');
-    if (countEl) countEl.textContent = String(count);
-
-    // Update joker stack (max 5 visual jokers)
+    // Update joker stack (max 8 visual jokers)
     var stackEl = _capsule.querySelector('#nch-capsule-stack');
     if (stackEl) {
-      var numJokers = Math.min(count, 5);
+      var numJokers = Math.min(count, 8);
       // Only rebuild if count changed
       if (stackEl.children.length !== numJokers) {
         stackEl.innerHTML = '';
+        // Size the container: first card 20px + (n-1)*6px advance
+        stackEl.style.width = (numJokers > 0 ? (20 + (numJokers - 1) * 6) : 20) + 'px';
         for (var i = 0; i < numJokers; i++) {
           var j = document.createElement('div');
-          j.className = 'nch-capsule-joker nch-capsule-joker-' + i;
+          j.className = 'nch-capsule-joker joker-' + i;
           j.textContent = '\uD83C\uDCCF'; // 🃏
           stackEl.appendChild(j);
         }
@@ -1380,6 +1476,7 @@ var NonCombatHUD = (function() {
     init: init,
     setMinimized: setMinimized,
     startExternalDrag: startExternalDrag,
+    resetCapsulePosition: resetCapsulePosition,
     screenToGrid: _screenToGrid,
     isCardDeployable: _isCardDeployable
   };
