@@ -268,6 +268,68 @@ var CardStateAuthority = (function() {
   }
 
   /**
+   * Cascade a backup card to the TOP of hand (index 0).
+   * If hand is full, the last hand card moves to backup top first.
+   * GAMESTATE.moveHandIndexToBackup auto-incinerates if backup overflows (25 cap).
+   * @param {number} backupIndex - index in backup array
+   * @returns {boolean} success
+   */
+  function cascadeBackupToHandTop(backupIndex) {
+    var backup = getBackup();
+    if (!backup || backupIndex < 0 || backupIndex >= backup.length) return false;
+
+    var cardRef = backup[backupIndex];
+    if (!cardRef || !cardRef.id) return false;
+
+    var hand = getHand();
+    var cardId = cardRef.id;
+    var qty = cardRef.qty || 1;
+
+    // If hand full: cascade last hand card → backup top (with auto-incinerate)
+    if (hand.length >= getMaxHandSize()) {
+      var lastHandIdx = hand.length - 1;
+      // moveHandToBackup uses GAMESTATE.moveHandIndexToBackup which:
+      //   - unshifts to backup top
+      //   - auto-pops backup bottom if over 25 cap
+      //   - fires rogue-card-incinerated event if overflow
+      var cascadeOk = moveHandToBackup(lastHandIdx);
+      if (!cascadeOk) {
+        _emit('transfer:rejected', { reason: 'cascade_failed', from: 'backup', cardId: cardId });
+        return false;
+      }
+      // Re-read backup after cascade — index may have shifted
+      backup = getBackup();
+      // Find the card in updated backup (index shifted if card was before backupIndex)
+      var newIdx = -1;
+      for (var i = 0; i < backup.length; i++) {
+        if (backup[i] && backup[i].id === cardId) { newIdx = i; break; }
+      }
+      if (newIdx < 0) {
+        // Card no longer found — may have been the one incinerated in cascade
+        _emit('transfer:rejected', { reason: 'card_lost_in_cascade', from: 'backup', cardId: cardId });
+        return false;
+      }
+      backupIndex = newIdx;
+    }
+
+    // Remove from backup
+    removeBackupCard(backupIndex);
+
+    // Insert at hand[0] via GAMESTATE
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.insertCardToHandTop === 'function') {
+      GAMESTATE.insertCardToHandTop(cardId, qty);
+    } else {
+      // Fallback: regular add (won't be at top, but at least card isn't lost)
+      addCardToHand(cardId, qty);
+    }
+
+    _syncNonCombatStore();
+    _emit('hand:changed', { action: 'cascade_from_backup', cardId: cardId, hand: getHand() });
+    _emit('backup:changed', { action: 'cascade_to_hand', cardId: cardId, backup: getBackup() });
+    return true;
+  }
+
+  /**
    * Move a card from hand to backup deck.
    * @param {number} handIndex - index in hand array
    * @returns {boolean} success
@@ -963,6 +1025,7 @@ var CardStateAuthority = (function() {
 
     // Cross-container transfers
     moveBackupToHand: moveBackupToHand,
+    cascadeBackupToHandTop: cascadeBackupToHandTop,
     moveHandToBackup: moveHandToBackup,
     pushOldestHandToBackup: pushOldestHandToBackup,
     moveHandToVault: moveHandToVault,

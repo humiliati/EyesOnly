@@ -139,6 +139,17 @@ var CardTransferManager = (function() {
   }
 
   /**
+   * Cascade backup card to TOP of hand (index 0).
+   * If hand full, last hand card moves to backup; backup overflow incinerates.
+   * @param {number} backupIndex
+   * @returns {boolean}
+   */
+  function cascadeToHandTop(backupIndex) {
+    if (typeof CardStateAuthority === 'undefined') return false;
+    return CardStateAuthority.cascadeBackupToHandTop(backupIndex);
+  }
+
+  /**
    * Move card from hand to backup.
    * @param {number} handIndex
    * @returns {boolean}
@@ -444,6 +455,7 @@ var CardTransferManager = (function() {
 
     // Direct transfer operations
     backupToHand: backupToHand,
+    cascadeToHandTop: cascadeToHandTop,
     handToBackup: handToBackup,
     reorderBackup: reorderBackup,
     handToVault: handToVault,

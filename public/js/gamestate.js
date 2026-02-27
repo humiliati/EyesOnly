@@ -653,6 +653,43 @@ const GAMESTATE = (function () {
     return { success: true };
   }
 
+  /**
+   * Insert a card at position 0 of the hand (top / front).
+   * Does NOT consume from stash — caller is responsible for removing from source.
+   * Does NOT enforce hand overflow — caller handles cascade if needed.
+   * @param {string} cardId
+   * @param {number} qty
+   * @returns {{ success: boolean }}
+   */
+  function insertCardToHandTop(cardId, qty) {
+    qty = (typeof qty === 'number' ? qty : 1);
+    qty = Math.max(1, qty);
+
+    if (!Array.isArray(_state.cardsInHand)) _state.cardsInHand = [];
+
+    var existing = _state.cardsInHand.find(function(r) { return r && r.id === cardId; });
+    if (existing) {
+      existing.qty = (existing.qty || 0) + qty;
+      // Move to front if not already there
+      var idx = _state.cardsInHand.indexOf(existing);
+      if (idx > 0) {
+        _state.cardsInHand.splice(idx, 1);
+        _state.cardsInHand.unshift(existing);
+      }
+    } else {
+      _state.cardsInHand.unshift({ id: cardId, qty: qty, meta: { t: Date.now() } });
+    }
+
+    _saveState();
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('rogue-hand-changed', { detail: { source: 'insert_top', cardId: cardId, qty: qty } }));
+      }
+    } catch (e2) {}
+
+    return { success: true };
+  }
+
   function consumeCardFromHand(cardId, qty) {
     qty = (typeof qty === 'number' ? qty : 1);
     qty = Math.max(1, qty);
@@ -2301,6 +2338,7 @@ const GAMESTATE = (function () {
     getCardsInHand: getCardsInHand,
     getBackupCards: getBackupCards,
     addCardToHand: addCardToHand,
+    insertCardToHandTop: insertCardToHandTop,
     consumeCardFromHand: consumeCardFromHand,
     returnCardFromHandToStash: returnCardFromHandToStash,
     moveHandIndexToBackup: moveHandIndexToBackup,

@@ -496,11 +496,54 @@ var BackupActionContainer = (function() {
     var _startY = 0;
     var _dragging = false;
 
+    // Temp-minimize state: collapse NCH after extended drag outside its bounds
+    var _minimizeTimer = null;
+    var _tempMinimized = false;
+    var _wasExpandedBefore = false;
+    var MINIMIZE_DELAY = 1500; // ms before auto-collapse
+    var OUTSIDE_MARGIN = 80;  // px from NCH edge before timer starts
+
     slot.addEventListener('pointerdown', function(e) {
       if (e.button !== undefined && e.button !== 0) return;
       _startX = e.clientX;
       _startY = e.clientY;
       _dragging = false;
+      _tempMinimized = false;
+      _wasExpandedBefore = false;
+
+      function _isPointerOutsideNCH(px, py) {
+        var nchEl = document.getElementById('nch-expanded');
+        if (!nchEl || nchEl.style.display === 'none') return true;
+        var rect = nchEl.getBoundingClientRect();
+        return (px < rect.left - OUTSIDE_MARGIN || px > rect.right + OUTSIDE_MARGIN ||
+                py < rect.top - OUTSIDE_MARGIN || py > rect.bottom + OUTSIDE_MARGIN);
+      }
+
+      function _clearMinimizeTimer() {
+        if (_minimizeTimer) { clearTimeout(_minimizeTimer); _minimizeTimer = null; }
+      }
+
+      function _startMinimizeTimer() {
+        _clearMinimizeTimer();
+        _minimizeTimer = setTimeout(function() {
+          if (_dragging && !_tempMinimized) {
+            _tempMinimized = true;
+            if (typeof NonCombatHUD !== 'undefined') {
+              NonCombatHUD.setMinimized(true, 'drag_temp');
+            }
+          }
+        }, MINIMIZE_DELAY);
+      }
+
+      function _restoreNCH() {
+        _clearMinimizeTimer();
+        if (_tempMinimized && _wasExpandedBefore) {
+          _tempMinimized = false;
+          if (typeof NonCombatHUD !== 'undefined') {
+            NonCombatHUD.setMinimized(false, 'drag_restore');
+          }
+        }
+      }
 
       function onMove(ev) {
         var dx = ev.clientX - _startX;
@@ -509,11 +552,15 @@ var BackupActionContainer = (function() {
           _dragging = true;
           _ghostEl = document.createElement('div');
           _ghostEl.className = 'backup-drag-ghost';
-          _ghostEl.innerHTML = '<div class="backup-ghost-emoji">' + (def.emoji || '🃏') + '</div>';
+          _ghostEl.innerHTML = '<div class="backup-ghost-emoji">' + (def.emoji || '\uD83C\uDCCF') + '</div>';
           _ghostEl.style.cssText = 'position:fixed;width:48px;height:64px;pointer-events:none;z-index:99999;opacity:0.85;';
           _ghostEl.style.left = (ev.clientX - 24) + 'px';
           _ghostEl.style.top = (ev.clientY - 32) + 'px';
           document.body.appendChild(_ghostEl);
+
+          // Remember NCH expanded state at drag start
+          var nchEl = document.getElementById('nch-expanded');
+          _wasExpandedBefore = !!(nchEl && nchEl.style.display !== 'none');
 
           // Notify CardTransferManager
           if (typeof CardTransferManager !== 'undefined') {
@@ -529,89 +576,156 @@ var BackupActionContainer = (function() {
         if (_dragging && _ghostEl) {
           _ghostEl.style.left = (ev.clientX - 24) + 'px';
           _ghostEl.style.top = (ev.clientY - 32) + 'px';
+
+          // Temp-minimize logic: if pointer stays outside NCH for MINIMIZE_DELAY ms
+          if (!_tempMinimized && _isPointerOutsideNCH(ev.clientX, ev.clientY)) {
+            if (!_minimizeTimer) _startMinimizeTimer();
+          } else if (!_tempMinimized) {
+            // Back inside NCH — cancel timer
+            _clearMinimizeTimer();
+          }
         }
       }
 
       function onUp(ev) {
         document.removeEventListener('pointermove', onMove);
         document.removeEventListener('pointerup', onUp);
+        _clearMinimizeTimer();
         if (_ghostEl) {
           _ghostEl.remove();
           _ghostEl = null;
         }
-        if (!_dragging) return;
+        if (!_dragging) {
+          _restoreNCH();
+          return;
+        }
 
-        var dropTarget = document.elementFromPoint(ev.clientX, ev.clientY);
+        var dropTarget = null;
+        try { dropTarget = document.elementFromPoint(ev.clientX, ev.clientY); } catch (ex) {}
+        var handled = false;
 
-        // Drop on equip slot → equip item (items source only)
-        if (dropTarget && source === 'items' && _isEquipSlotElement(dropTarget)) {
+        // ── 1. Drop on equip slot → equip item (items source only) ──
+        if (!handled && dropTarget && source === 'items' && _isEquipSlotElement(dropTarget)) {
           if (typeof CardTransferManager !== 'undefined') {
             CardTransferManager.equipFromVault(cardRef.id);
           } else if (typeof CardStateAuthority !== 'undefined') {
             CardStateAuthority.equipItemFromVault(cardRef.id);
           }
-          _notify('🎒 Item → equipped');
-          if (typeof CardTransferManager !== 'undefined') CardTransferManager.cancelDrag();
-          return;
+          _notify('\uD83C\uDF92 Item \u2192 equipped');
+          handled = true;
         }
 
-        // Drop on hand fan → transfer to hand
-        if (dropTarget && _isHandFanElement(dropTarget)) {
+        // ── 2. Drop on hand fan → transfer to hand ──
+        if (!handled && dropTarget && _isHandFanElement(dropTarget)) {
           if (source === 'items') {
-            if (typeof CardTransferManager !== 'undefined') {
-              CardTransferManager.vaultToHand(cardRef.id, 1);
-            } else if (typeof CardStateAuthority !== 'undefined') {
-              CardStateAuthority.moveVaultToHand(cardRef.id, 1);
-            }
-            _notify('🎒 Item → hand');
+            if (typeof CardTransferManager !== 'undefined') CardTransferManager.vaultToHand(cardRef.id, 1);
+            else if (typeof CardStateAuthority !== 'undefined') CardStateAuthority.moveVaultToHand(cardRef.id, 1);
+            _notify('\uD83C\uDF92 Item \u2192 hand');
           } else {
-            if (typeof CardTransferManager !== 'undefined') {
-              CardTransferManager.backupToHand(index);
-            } else if (typeof CardStateAuthority !== 'undefined') {
-              CardStateAuthority.moveBackupToHand(index);
-            }
-            _notify('🎴 Backup → hand');
+            if (typeof CardTransferManager !== 'undefined') CardTransferManager.backupToHand(index);
+            else if (typeof CardStateAuthority !== 'undefined') CardStateAuthority.moveBackupToHand(index);
+            _notify('\uD83C\uDCB4 Backup \u2192 hand');
           }
-          if (typeof CardTransferManager !== 'undefined') CardTransferManager.cancelDrag();
-          return;
+          handled = true;
         }
 
-        // Drop on NCH expanded zones → delegate to NCH drop handling
-        if (dropTarget && dropTarget.closest) {
+        // ── 3. Drop on NCH expanded zones ──
+        if (!handled && dropTarget && dropTarget.closest) {
           var equipZone = dropTarget.closest('[data-dropzone="equip"]');
           var backupZone = dropTarget.closest('[data-dropzone="backup"]');
           var handZone = dropTarget.closest('[data-dropzone="hand"]');
           var vaultZone = dropTarget.closest('[data-dropzone="vault"]');
 
           if (equipZone && source === 'items') {
-            // Item → equip slot
             if (typeof CardTransferManager !== 'undefined') CardTransferManager.equipFromVault(cardRef.id);
             else if (typeof CardStateAuthority !== 'undefined') CardStateAuthority.equipItemFromVault(cardRef.id);
-            _notify('🎒 Item → equipped');
+            _notify('\uD83C\uDF92 Item \u2192 equipped');
+            handled = true;
           } else if (handZone) {
-            // Same as hand fan drop
             if (source === 'items') {
               if (typeof CardTransferManager !== 'undefined') CardTransferManager.vaultToHand(cardRef.id, 1);
               else if (typeof CardStateAuthority !== 'undefined') CardStateAuthority.moveVaultToHand(cardRef.id, 1);
-              _notify('🎒 Item → hand');
+              _notify('\uD83C\uDF92 Item \u2192 hand');
             } else {
               if (typeof CardTransferManager !== 'undefined') CardTransferManager.backupToHand(index);
               else if (typeof CardStateAuthority !== 'undefined') CardStateAuthority.moveBackupToHand(index);
-              _notify('🎴 Backup → hand');
+              _notify('\uD83C\uDCB4 Backup \u2192 hand');
             }
+            handled = true;
           } else if (backupZone && source === 'items') {
-            // Item → backup deck
             if (typeof CardTransferManager !== 'undefined') CardTransferManager.vaultToBackup(cardRef.id);
             else if (typeof CardStateAuthority !== 'undefined') CardStateAuthority.moveVaultToBackup(cardRef.id);
-            _notify('🎒 Item → backup deck');
+            _notify('\uD83C\uDF92 Item \u2192 backup deck');
+            handled = true;
           } else if (vaultZone && source === 'backup') {
-            // Backup → vault
             if (typeof CardTransferManager !== 'undefined') CardTransferManager.backupToVault(index);
             else if (typeof CardStateAuthority !== 'undefined') CardStateAuthority.moveBackupToVault(index);
-            _notify('🎴 Backup → vault');
+            _notify('\uD83C\uDCB4 Backup \u2192 vault');
+            handled = true;
           }
         }
 
+        // ── 4. Drop on NCH capsule (minimized) → cascade to hand top ──
+        if (!handled && dropTarget && dropTarget.closest && dropTarget.closest('.nch-capsule-wrapper')) {
+          if (source === 'backup') {
+            if (typeof CardStateAuthority !== 'undefined') {
+              var cascadeOk = CardStateAuthority.cascadeBackupToHandTop(index);
+              _notify(cascadeOk ? '\uD83C\uDCB4 Card \u2192 hand (top)' : '\u274C Cannot place in hand');
+            }
+          } else if (source === 'items') {
+            // Item dropped on capsule → move vault to hand
+            if (typeof CardTransferManager !== 'undefined') CardTransferManager.vaultToHand(cardRef.id, 1);
+            else if (typeof CardStateAuthority !== 'undefined') CardStateAuthority.moveVaultToHand(cardRef.id, 1);
+            _notify('\uD83C\uDF92 Item \u2192 hand');
+          }
+          handled = true;
+        }
+
+        // ── 5. Drop on world map → deploy or incinerate ──
+        if (!handled && source === 'backup') {
+          var coords = null;
+          if (typeof NonCombatHUD !== 'undefined' && NonCombatHUD.screenToGrid) {
+            coords = NonCombatHUD.screenToGrid(ev.clientX, ev.clientY);
+          }
+          if (coords) {
+            var deployable = (typeof NonCombatHUD !== 'undefined' && NonCombatHUD.isCardDeployable)
+              ? NonCombatHUD.isCardDeployable(cardRef.id) : false;
+
+            if (deployable) {
+              // Try deploying card at map tile
+              var deployOk = false;
+              if (typeof GoneRogue !== 'undefined' && GoneRogue.applyNonCombatCardAt) {
+                deployOk = GoneRogue.applyNonCombatCardAt(cardRef.id, coords.x, coords.y);
+              }
+              if (deployOk) {
+                // Consume from backup
+                if (typeof CardStateAuthority !== 'undefined') CardStateAuthority.removeBackupCard(index);
+                _notify('\uD83D\uDDFA\uFE0F Deployed to map');
+              } else {
+                _notify('\u274C Invalid tile');
+              }
+            } else {
+              // Invalid card for map → incinerate
+              if (typeof CardStateAuthority !== 'undefined') {
+                CardStateAuthority.removeBackupCard(index);
+              }
+              // Fire incineration event
+              try {
+                window.dispatchEvent(new CustomEvent('rogue-card-incinerated', {
+                  detail: { card: { id: cardRef.id, qty: 1 }, source: 'invalid_map_drop' }
+                }));
+              } catch (incErr) {}
+              _notify('\uD83D\uDD25 Incinerated (invalid for map)');
+            }
+            handled = true;
+          }
+        }
+
+        // ── 6. Drop outside everything → card stays (no-op) ──
+        // If not handled, card returns to its slot — nothing happens.
+
+        // Cleanup
+        _restoreNCH();
         if (typeof CardTransferManager !== 'undefined') {
           CardTransferManager.cancelDrag();
         }

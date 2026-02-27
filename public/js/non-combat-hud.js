@@ -1170,11 +1170,33 @@ var NonCombatHUD = (function() {
     }, 650);
   }
 
+  // ─── Card Deployability Check ──────────────────────────
+
+  /**
+   * Check if a card can be deployed onto the world map.
+   * Cards with groundEffectId or targetType are map-deployable.
+   * @param {string} cardId
+   * @returns {boolean}
+   */
+  function _isCardDeployable(cardId) {
+    if (!cardId) return false;
+    var def = _getCardDef(cardId);
+    if (!def) return false;
+    // Cards with ground effects or target types can be deployed
+    if (def.groundEffectId) return true;
+    if (def.targetType === 'ground' || def.targetType === 'area') return true;
+    // Items are not map-deployable from backup
+    if (def.type === 'item' || def.type === 'equip') return false;
+    return false;
+  }
+
   // ─── PUBLIC API ─────────────────────────────────────────
 
   return {
     init: init,
     setMinimized: setMinimized,
-    startExternalDrag: startExternalDrag
+    startExternalDrag: startExternalDrag,
+    screenToGrid: _screenToGrid,
+    isCardDeployable: _isCardDeployable
   };
 })();
