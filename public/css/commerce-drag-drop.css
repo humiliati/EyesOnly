@@ -166,6 +166,57 @@
   }
 }
 
+/* ========== DISPOSING CONTEXT - Recycling Bin Transformation ========== */
+.debrief-screen.context-disposing {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 107, 53, 0.10) 0%,
+    rgba(200, 80, 30, 0.08) 100%
+  );
+  border: 2px solid rgba(255, 107, 53, 0.45);
+  box-shadow: 0 0 14px rgba(255, 107, 53, 0.25);
+  transition: all 0.2s ease;
+}
+
+.debrief-screen.context-disposing::before {
+  content: '\u267B\uFE0F';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 42px;
+  opacity: 0.55;
+  animation: recycle-bob 1.2s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.debrief-screen.context-disposing::after {
+  content: 'DROP TO DISPOSE';
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: #FF6B35;
+  letter-spacing: 2px;
+  font-family: 'Courier New', monospace;
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0.7;
+}
+
+@keyframes recycle-bob {
+  0%, 100% {
+    transform: translate(-50%, -50%) translateY(0px) rotate(0deg);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translate(-50%, -50%) translateY(-5px) rotate(8deg);
+    opacity: 0.7;
+  }
+}
+
 /* ========== DISABLED CONTEXT ========== */
 .debrief-screen.context-disabled {
   background: rgba(64, 64, 64, 0.10);

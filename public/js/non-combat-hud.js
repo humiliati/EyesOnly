@@ -1069,6 +1069,10 @@ var NonCombatHUD = (function() {
   var DRAG_MINIMIZE_DELAY = 1500; // ms outside NCH before collapse
   var DRAG_OUTSIDE_MARGIN = 80;   // px margin from NCH edge
 
+  // ── Debrief feed disposal hover state ──
+  var _dragOverDebrief = false;
+  var _debriefScreenEl = null; // cached ref to #debrief-screen
+
   function _isDragOutsideNCH(px, py) {
     if (!_expanded || _expanded.style.display === 'none') return true;
     var rect = _expanded.getBoundingClientRect();
@@ -1102,6 +1106,37 @@ var NonCombatHUD = (function() {
     }
   }
 
+  // ── Debrief disposal hover helpers ──
+  function _getDebriefScreen() {
+    if (!_debriefScreenEl) _debriefScreenEl = document.getElementById('debrief-screen');
+    return _debriefScreenEl;
+  }
+
+  function _isDragOverDebriefFeed(clientX, clientY) {
+    var ds = _getDebriefScreen();
+    if (!ds) return false;
+    var r = ds.getBoundingClientRect();
+    return clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
+  }
+
+  function _setDebriefDisposingPreview(show) {
+    var ds = _getDebriefScreen();
+    if (!ds) return;
+    if (show && !_dragOverDebrief) {
+      _dragOverDebrief = true;
+      ds.classList.add('context-disposing');
+    } else if (!show && _dragOverDebrief) {
+      _dragOverDebrief = false;
+      ds.classList.remove('context-disposing');
+    }
+  }
+
+  function _clearDebriefDisposingPreview() {
+    _dragOverDebrief = false;
+    var ds = _getDebriefScreen();
+    if (ds) ds.classList.remove('context-disposing');
+  }
+
   function _onDragMove(e) {
     if (!_drag) return;
     var dx = e.clientX - _drag.startX;
@@ -1116,6 +1151,9 @@ var NonCombatHUD = (function() {
     if (_drag.dragging && _drag.ghostEl) {
       _drag.ghostEl.style.left = e.clientX + 'px';
       _drag.ghostEl.style.top = e.clientY + 'px';
+
+      // Debrief feed disposal preview (recycling bin hover)
+      _setDebriefDisposingPreview(_isDragOverDebriefFeed(e.clientX, e.clientY));
 
       // Temp-minimize: if pointer stays outside NCH for DRAG_MINIMIZE_DELAY
       if (!_dragTempMinimized && _isExpanded && _isDragOutsideNCH(e.clientX, e.clientY)) {
@@ -1143,6 +1181,7 @@ var NonCombatHUD = (function() {
     document.removeEventListener('pointerup', _onDragUp);
     document.removeEventListener('pointercancel', _onDragUp);
     _clearDragMinimizeTimer();
+    _clearDebriefDisposingPreview();
 
     // Clean up ghost
     if (_drag.ghostEl && _drag.ghostEl.parentNode) {
@@ -1354,6 +1393,58 @@ var NonCombatHUD = (function() {
         ok = true;
       }
       _showDragResult(ok, 'Card \u2192 hand (top)', 'Cannot place in hand');
+      _restoreDragMinimize();
+      _drag = null;
+      _renderAll();
+      return;
+    }
+
+    // ── DEBRIEF FEED DROP (dispose / incinerate card) ──
+    var droppedOnDebrief = _isDragOverDebriefFeed(e.clientX, e.clientY);
+    if (droppedOnDebrief && (_drag.kind === 'hand' || _drag.kind === 'backup' || _drag.kind === 'vault')) {
+      _clearDebriefDisposingPreview();
+
+      // Remove card from its source container
+      if (_useCSA) {
+        if (_drag.kind === 'hand') {
+          CardStateAuthority.consumeFromHand(_drag.index, 1);
+        } else if (_drag.kind === 'backup') {
+          CardStateAuthority.removeBackupCard(_drag.index);
+        } else if (_drag.kind === 'vault') {
+          // Vault disposal — remove 1 qty
+          if (typeof CardStateAuthority.disposeFromVault === 'function') {
+            CardStateAuthority.disposeFromVault(_drag.id);
+          } else if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.removePersistentCard === 'function') {
+            GAMESTATE.removePersistentCard(_drag.id, 1);
+          }
+        }
+      }
+
+      // Fire incinerator animation on debrief screen
+      var ds = _getDebriefScreen();
+      if (ds) {
+        ds.classList.add('incinerator-active');
+        setTimeout(function() { ds.classList.remove('incinerator-active'); }, 600);
+      }
+      // Also fire via DebriefFeedController if available
+      if (typeof DebriefFeedController !== 'undefined' && typeof DebriefFeedController.flashIncinerator === 'function') {
+        DebriefFeedController.flashIncinerator({ kind: 'disposal', durationMs: 600 });
+      }
+
+      // Dispatch incineration event for passive item triggers (Scrapper Core etc.)
+      try {
+        window.dispatchEvent(new CustomEvent('rogue-card-incinerated', {
+          detail: { card: { id: _drag.id, qty: 1 }, source: 'debrief_disposal' }
+        }));
+      } catch (incErr) {}
+
+      // Passive items (Scrapper Core) trigger
+      if (typeof PassiveItemsSystem !== 'undefined' && typeof PassiveItemsSystem.handleDisposal === 'function') {
+        try { PassiveItemsSystem.handleDisposal({ id: _drag.id, name: _drag.id }, 'debrief_disposal'); } catch (pe) {}
+      }
+
+      ok = true;
+      _showDragResult(true, '\uD83D\uDD25 Disposed!', 'Cannot dispose');
       _restoreDragMinimize();
       _drag = null;
       _renderAll();
