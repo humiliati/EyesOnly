@@ -1208,6 +1208,18 @@ var NonCombatHUD = (function() {
         'capsule:', droppedOnCapsule, 'CTM:', _useCTM, 'CSA:', _useCSA);
     } catch (dbg) {}
 
+    // ── BLVCK GUARD: struggle card cannot leave the hand ──
+    // Dragging BLVCK anywhere just snaps it back; it's a transient placeholder.
+    var _blvckId = (typeof CardStateAuthority !== 'undefined' && CardStateAuthority.BLVCK_ID)
+      ? CardStateAuthority.BLVCK_ID : 'ACT-000';
+    if (_drag.kind === 'hand' && _drag.id === _blvckId) {
+      _showDragResult(false, null, '■ BLVCK can\u2019t be moved');
+      _restoreDragMinimize();
+      _drag = null;
+      _renderAll();
+      return;
+    }
+
     // ── HAND → BACKUP (NCH backup zone OR left column in backup mode) ──
     if (_drag.kind === 'hand' && (droppedOnBackup || droppedOnLeftBackup)) {
       if (_useCTM) {
