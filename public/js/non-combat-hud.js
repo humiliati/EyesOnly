@@ -177,9 +177,8 @@ var NonCombatHUD = (function() {
     if (_capsule) _capsule.style.display = 'none';
     if (_expanded) _expanded.style.display = 'flex';
     _renderExpanded();
-    // Activate ghost cursor when expanded with drawable cards
-    var backup = _getBackup();
-    if (backup.length > 0) _activateGhostCursor();
+    // Ghost cursor removed (cursor: none + emoji cursor caused lag/confusion).
+    // Keep normal system cursor when expanded.
   }
 
   function _collapse(reason) {
@@ -187,7 +186,7 @@ var NonCombatHUD = (function() {
     _prefs.expanded = false;
     _savePrefs();
     if (_expanded) _expanded.style.display = 'none';
-    _deactivateGhostCursor();
+    // Ghost cursor removed (keep normal cursor).
     // Capsule visibility handled by _pollVisibility
   }
 
@@ -225,8 +224,7 @@ var NonCombatHUD = (function() {
         _deactivateGhostCursor();
       } else {
         _expanded.classList.remove('nch-locked');
-        // Re-activate ghost cursor if expanded and has cards
-        if (_isExpanded && _getBackup().length > 0 && !_ghostEl) _activateGhostCursor();
+        // Ghost cursor removed (keep normal cursor).
       }
     }
 
@@ -1004,13 +1002,29 @@ var NonCombatHUD = (function() {
     var droppedOnBackup = !!(el && el.closest && el.closest('[data-dropzone="backup"]'));
     var droppedOnVault = !!(el && el.closest && el.closest('[data-dropzone="vault"]'));
 
-    // Left column (BackupActionContainer) — route by its current mode
-    var droppedOnLeftCol = !!(el && el.closest && el.closest('#backup-action-container'));
+    // Left column — detect both BAC (legacy) and RogueSidebar (primary)
+    var droppedOnLeftCol = !!(el && el.closest && (
+      el.closest('#backup-action-container') ||
+      el.closest('[data-rogue-sidebar-active="1"]')
+    ));
+    // Determine RogueSidebar's current view (items vs cards)
     var leftColMode = 'items'; // default
-    if (droppedOnLeftCol && typeof BackupActionContainer !== 'undefined' && BackupActionContainer.getSlot5Mode) {
-      leftColMode = BackupActionContainer.getSlot5Mode();
+    if (droppedOnLeftCol) {
+      // Check RogueSidebar view preference
+      try {
+        var rsPrefs = localStorage.getItem('EYESONLY_ROGUE_SIDEBAR_PREFS_V1');
+        if (rsPrefs) {
+          var parsed = JSON.parse(rsPrefs);
+          if (parsed && parsed.view === 'cards') leftColMode = 'backup';
+        }
+      } catch (lce) {}
+      // BAC fallback (legacy)
+      if (typeof BackupActionContainer !== 'undefined' && BackupActionContainer.getSlot5Mode) {
+        var bacMode = BackupActionContainer.getSlot5Mode();
+        if (bacMode === 'backup') leftColMode = 'backup';
+      }
     }
-    // Left column in items mode = vault; in backup mode = backup
+    // Left column in items mode = vault; in cards/backup mode = backup
     var droppedOnLeftVault = droppedOnLeftCol && (leftColMode === 'items');
     var droppedOnLeftBackup = droppedOnLeftCol && (leftColMode === 'backup');
 
@@ -1042,7 +1056,7 @@ var NonCombatHUD = (function() {
       _restoreDragMinimize();
       _drag = null;
       _renderAll();
-      if (ok && typeof BackupActionContainer !== 'undefined') BackupActionContainer.forceRender();
+      // BAC retired — RogueSidebar updates via csa-event listener
       return;
     }
 
@@ -1057,7 +1071,7 @@ var NonCombatHUD = (function() {
       _restoreDragMinimize();
       _drag = null;
       _renderAll();
-      if (ok && typeof BackupActionContainer !== 'undefined') BackupActionContainer.forceRender();
+      // BAC retired — RogueSidebar updates via csa-event listener
       return;
     }
 
@@ -1078,10 +1092,7 @@ var NonCombatHUD = (function() {
       _restoreDragMinimize();
       _drag = null;
       _renderAll();
-      if (ok && typeof BackupActionContainer !== 'undefined') {
-        BackupActionContainer.forceRender();
-        setTimeout(function() { BackupActionContainer.forceRender(); }, 60);
-      }
+      // BAC retired — RogueSidebar updates via csa-event listener
       return;
     }
 
@@ -1102,10 +1113,7 @@ var NonCombatHUD = (function() {
       _restoreDragMinimize();
       _drag = null;
       _renderAll();
-      if (ok && typeof BackupActionContainer !== 'undefined') {
-        BackupActionContainer.forceRender();
-        setTimeout(function() { BackupActionContainer.forceRender(); }, 60);
-      }
+      // BAC retired — RogueSidebar updates via csa-event listener
       return;
     }
 
@@ -1120,16 +1128,15 @@ var NonCombatHUD = (function() {
       _restoreDragMinimize();
       _drag = null;
       _renderAll();
-      if (ok && typeof BackupActionContainer !== 'undefined') {
-        BackupActionContainer.forceRender();
-        setTimeout(function() { BackupActionContainer.forceRender(); }, 60);
-      }
+      // BAC retired — RogueSidebar updates via csa-event listener
       return;
     }
 
-    // ── VAULT → HAND ──
+    // ── VAULT → HAND (with cascade if hand is full) ──
     if (_drag.kind === 'vault' && droppedOnHand) {
-      if (_useCTM) {
+      if (_useCSA && typeof CardStateAuthority.cascadeVaultToHandTop === 'function') {
+        ok = CardStateAuthority.cascadeVaultToHandTop(_drag.id);
+      } else if (_useCTM) {
         ok = CardTransferManager.vaultToHand(_drag.id, 1);
       } else if (_useCSA) {
         ok = CardStateAuthority.moveVaultToHand(_drag.id, 1);
@@ -1138,10 +1145,6 @@ var NonCombatHUD = (function() {
       _restoreDragMinimize();
       _drag = null;
       _renderAll();
-      if (ok && typeof BackupActionContainer !== 'undefined') {
-        BackupActionContainer.forceRender();
-        setTimeout(function() { BackupActionContainer.forceRender(); }, 60);
-      }
       return;
     }
 
@@ -1162,9 +1165,14 @@ var NonCombatHUD = (function() {
     }
 
     // ── CAPSULE DROP (minimized NCH) → cascade to hand top ──
-    if (droppedOnCapsule && (_drag.kind === 'hand' || _drag.kind === 'backup')) {
+    if (droppedOnCapsule && (_drag.kind === 'hand' || _drag.kind === 'backup' || _drag.kind === 'vault')) {
       if (_drag.kind === 'backup' && _useCSA) {
         ok = CardStateAuthority.cascadeBackupToHandTop(_drag.index);
+      } else if (_drag.kind === 'vault' && _useCSA) {
+        // Vault card → hand with cascade (moves last hand card to backup if full)
+        ok = (typeof CardStateAuthority.cascadeVaultToHandTop === 'function')
+          ? CardStateAuthority.cascadeVaultToHandTop(_drag.id)
+          : CardStateAuthority.moveVaultToHand(_drag.id, 1);
       } else if (_drag.kind === 'hand') {
         // Hand card dropped on capsule — it's already in hand, just re-expand
         ok = true;

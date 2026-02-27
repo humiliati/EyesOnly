@@ -425,34 +425,10 @@
    3c. GHOST JOKER CURSOR
    ============================================================ */
 
-body.nch-ghost-cursor-active #nch-expanded {
-  cursor: none;
-}
-
-.nch-ghost-joker {
-  position: fixed;
-  z-index: 99998;
-  pointer-events: none;
-  font-size: 24px;
-  opacity: 0.5;
-  transform: rotate(-8deg) scale(0.85);
-  transition: opacity 0.15s, transform 0.15s;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.nch-ghost-joker.nch-ghost-known {
-  opacity: 0.75;
-  transform: rotate(-3deg) scale(1.0);
-}
-
-/* Brighten ghost when over draw buttons */
-body.nch-ghost-cursor-active .nch-draw-btn:hover ~ .nch-ghost-joker,
-body.nch-ghost-cursor-active .nch-draw-btn-hover ~ .nch-ghost-joker {
-  opacity: 0.85;
-  transform: rotate(-4deg) scale(1.1);
-}
+/* Ghost joker cursor intentionally removed.
+   Reason: hiding the real cursor and replacing it with an emoji cursor felt laggy
+   and reduced precision during deck management.
+*/
 
 /* ============================================================
    4. BACKUP DECK ZONE (Zone 2 — Middle, Scrollable Band)
