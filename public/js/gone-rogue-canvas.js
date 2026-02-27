@@ -387,6 +387,9 @@ const CanvasRenderer = (function() {
       var centerX = (entity.x + 0.5) * this.cellSize;
       var centerY = (entity.y + 0.5) * this.cellSize;
 
+      // Draw ground drop shadow beneath entity
+      this._drawDropShadow(centerX, (entity.y + 0.78) * this.cellSize, this.cellSize * 0.32, this.cellSize * 0.11, 0.28);
+
       // Render entity character/emoji
       this.ctx.fillStyle = entity.color || '#FF0000';
 
@@ -412,6 +415,9 @@ const CanvasRenderer = (function() {
 
     var centerX = (player.x + 0.5) * this.cellSize;
     var centerY = (player.y + 0.5) * this.cellSize;
+
+    // Draw ground drop shadow beneath player
+    this._drawDropShadow(centerX, (player.y + 0.78) * this.cellSize, this.cellSize * 0.36, this.cellSize * 0.13, 0.35);
 
     // Render player with distinctive glow
     this.ctx.fillStyle = player.color || '#00FF00';
@@ -457,6 +463,10 @@ const CanvasRenderer = (function() {
 
       var centerX = (pet.x + 0.5) * this.cellSize;
       var centerY = (pet.y + 0.5) * this.cellSize;
+
+      // Draw ground drop shadow beneath pet (scaled by pet opacity)
+      var shadowAlpha = 0.25 * (pet.opacity !== undefined ? pet.opacity : 1);
+      this._drawDropShadow(centerX, (pet.y + 0.78) * this.cellSize, this.cellSize * 0.30, this.cellSize * 0.10, shadowAlpha);
 
       // Save current alpha
       var oldAlpha = this.ctx.globalAlpha;
@@ -525,6 +535,27 @@ const CanvasRenderer = (function() {
       this.ctx.shadowBlur = 0;
       this.ctx.globalAlpha = oldAlpha;
     }
+  };
+
+  /**
+   * Draw an elliptical drop shadow at a given ground position.
+   * Used by entity, player, and pet renderers for a consistent fake-3D shadow.
+   * @param {number} centerX - Horizontal center of shadow
+   * @param {number} groundY - Vertical ground position (Y of shadow center)
+   * @param {number} radiusX - Half-width of ellipse
+   * @param {number} radiusY - Half-height of ellipse
+   * @param {number} opacity - Shadow alpha (0–1)
+   */
+  CanvasRenderer.prototype._drawDropShadow = function(centerX, groundY, radiusX, radiusY, opacity) {
+    if (opacity <= 0) return;
+    this.ctx.save();
+    this.ctx.globalAlpha = opacity;
+    this.ctx.shadowBlur = 0;
+    this.ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    this.ctx.beginPath();
+    this.ctx.ellipse(centerX, groundY, radiusX, radiusY, 0, 0, Math.PI * 2);
+    this.ctx.fill();
+    this.ctx.restore();
   };
 
   /**
