@@ -408,9 +408,9 @@ const LightingSystem = (function() {
 
     // Check line of sight using Bresenham raycasting
     if (blockers && blockers.length > 0) {
-      if (!_hasLineOfSight(source.x, source.y, targetX, targetY, blockers)) {
-        return 0;
-      }
+      var opacity = _hasLineOfSight(source.x, source.y, targetX, targetY, blockers);
+      intensity *= (1 - opacity);
+      if (intensity <= 0) return 0;
     }
 
     return intensity;
@@ -425,7 +425,7 @@ const LightingSystem = (function() {
     var blockerSet = {};
     for (var i = 0; i < blockers.length; i++) {
       var key = blockers[i].x + ',' + blockers[i].y;
-      blockerSet[key] = true;
+      blockerSet[key] = blockers[i].opacity !== undefined ? blockers[i].opacity : 1.0;
     }
 
     // Bresenham's line algorithm
@@ -438,12 +438,17 @@ const LightingSystem = (function() {
     var x = x0;
     var y = y0;
 
+    var accumulatedOpacity = 0.0;
+
     while (true) {
       // Don't check the source or target positions themselves
       if ((x !== x0 || y !== y0) && (x !== x1 || y !== y1)) {
         var key = x + ',' + y;
-        if (blockerSet[key]) {
-          return false; // Line is blocked
+        if (blockerSet[key] !== undefined) {
+          accumulatedOpacity += blockerSet[key];
+          if (accumulatedOpacity >= 1.0) {
+            return 1.0; // Line is fully blocked
+          }
         }
       }
 
@@ -463,7 +468,7 @@ const LightingSystem = (function() {
       }
     }
 
-    return true; // No blockers found
+    return accumulatedOpacity;
   }
 
   /**

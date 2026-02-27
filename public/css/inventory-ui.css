@@ -1,0 +1,170 @@
+/* Collectible Gallery UI */
+.collectible-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  padding: 15px;
+  overflow-y: auto;
+  align-content: flex-start;
+  width: 100%;
+  height: 100%;
+}
+
+.collectible-card {
+  background: rgba(10, 20, 10, 0.9);
+  border: 1px solid #333;
+  border-radius: 4px;
+  width: 160px;
+  height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px;
+  position: relative;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+}
+
+.collectible-card:hover {
+  transform: scale(1.05);
+  z-index: 10;
+}
+
+.collectible-card.rarity-common {
+  border-color: #888;
+  box-shadow: 0 0 5px #888;
+}
+
+.collectible-card.rarity-uncommon {
+  border-color: #2ECC40;
+  box-shadow: 0 0 8px #2ECC40;
+}
+
+.collectible-card.rarity-rare {
+  border-color: #0074D9;
+  box-shadow: 0 0 12px #0074D9;
+}
+
+.collectible-card.rarity-epic {
+  border-color: #B10DC9;
+  box-shadow: 0 0 16px #B10DC9;
+}
+
+.collectible-card.rarity-legendary {
+  border-color: #FFDC00;
+  box-shadow: 0 0 20px #FFDC00;
+}
+
+.collectible-card.rarity-mythic {
+  border-color: #FF4136;
+  box-shadow: 0 0 25px #FF4136;
+  animation: mythic-pulse 2s infinite alternate;
+}
+
+@keyframes mythic-pulse {
+  0% { box-shadow: 0 0 15px #FF4136; }
+  100% { box-shadow: 0 0 30px #FF4136, inset 0 0 10px rgba(255,65,54,0.3); }
+}
+
+.collectible-emoji {
+  font-size: 48px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+.collectible-name {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  font-weight: bold;
+  text-align: center;
+  color: #fff;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+
+.collectible-badge {
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+}
+
+.rarity-common .collectible-badge { background: #333; color: #ccc; }
+.rarity-uncommon .collectible-badge { background: #114411; color: #2ECC40; border: 1px solid #2ECC40; }
+.rarity-rare .collectible-badge { background: #002244; color: #0074D9; border: 1px solid #0074D9; }
+.rarity-epic .collectible-badge { background: #330044; color: #B10DC9; border: 1px solid #B10DC9; }
+.rarity-legendary .collectible-badge { background: #443300; color: #FFDC00; border: 1px solid #FFDC00; }
+.rarity-mythic .collectible-badge { background: #440000; color: #FF4136; border: 1px solid #FF4136; }
+
+.collectible-desc {
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  color: #aaa;
+  text-align: center;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.collectible-acquired {
+  position: absolute;
+  bottom: 5px;
+  font-size: 8px;
+  color: #555;
+}
+
+/* Notification Toast */
+#item-grant-toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(10, 20, 10, 0.95);
+  border: 1px solid #21ff90;
+  box-shadow: 0 0 15px rgba(33, 255, 144, 0.5);
+  padding: 15px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  z-index: 10000;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+#item-grant-toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.toast-icon {
+  font-size: 32px;
+}
+
+.toast-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.toast-title {
+  color: #21ff90;
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.toast-item-name {
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  font-weight: bold;
+}

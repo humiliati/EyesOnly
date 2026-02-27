@@ -2765,7 +2765,7 @@ const GoneRogue = (function () {
       // Always include player/enemy lights
       _updatePlayerLight();
       LightingSystem.updateEnemyLights(_enemies);
-      LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, walls);
+      LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, _getAllLightBlockers(walls));
 
       var playerLight = LightingSystem.getLightAt(_player.x, _player.y);
       console.log('[Lighting] Tutorial floor ' + _floor + ': biome=' + biomeName +
@@ -3231,7 +3231,7 @@ _incrementPityTimers();
       LightingSystem.updateEnemyLights(_enemies);
 
       // Calculate initial light map
-      LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, walls);
+      LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, _getAllLightBlockers(walls));
 
       var playerLight = LightingSystem.getLightAt(_player.x, _player.y);
       console.log('[Lighting] Floor ' + _floor + ': biome=' + biomeName +
@@ -6647,7 +6647,7 @@ _incrementPityTimers();
         LightingSystem.generateBiomeLights(GRID_WIDTH, GRID_HEIGHT, pseudoRooms, _wallCache);
         LightingSystem.addLightSource(_player.x, _player.y, 'CAMPFIRE');
         _updatePlayerLight();
-        LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, _wallCache);
+        LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, _getAllLightBlockers(_wallCache));
       }
 
       // Initialize movement at new position
@@ -8156,7 +8156,7 @@ _incrementPityTimers();
       if (_lightMapTickCounter >= 5) {
         _lightMapTickCounter = 0;
         var _lt0 = (typeof EYESONLY_PERF !== 'undefined') ? performance.now() : 0;
-        LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, _wallCache);
+        LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, _getAllLightBlockers(_wallCache));
         if (_lt0 && typeof EYESONLY_PERF !== 'undefined') {
           EYESONLY_PERF.mark('lighting.updateLightMapMs', performance.now() - _lt0);
         }
@@ -8350,6 +8350,28 @@ _incrementPityTimers();
         }
       }
     }
+  }
+
+  function _getAllLightBlockers(baseWalls) {
+    var blockers = baseWalls ? baseWalls.slice() : [];
+    if (typeof _breakables !== 'undefined' && Array.isArray(_breakables)) {
+      for (var i = 0; i < _breakables.length; i++) {
+        var b = _breakables[i];
+        if (b && b.hp > 0) {
+          blockers.push({ x: b.x, y: b.y, opacity: 0.7 });
+        }
+      }
+    }
+    if (typeof GroundEffects !== 'undefined' && typeof GroundEffects.getActiveEffects === 'function') {
+      var effects = GroundEffects.getActiveEffects();
+      for (var k in effects) {
+        if (effects[k] && effects[k].type === 'smoke') {
+          var parts = k.split(',');
+          blockers.push({ x: parseInt(parts[0], 10), y: parseInt(parts[1], 10), opacity: 0.5 });
+        }
+      }
+    }
+    return blockers;
   }
 
   /**
@@ -9026,15 +9048,25 @@ _incrementPityTimers();
   function _fireProjectile(cmd) {
     var dir = _parseDirection(cmd);
 
+    var len = Math.sqrt(dir.dx * dir.dx + dir.dy * dir.dy) || 1;
+    var vx = dir.dx / len;
+    var vy = dir.dy / len;
+
     var projectile = {
       x: _player.x,
       y: _player.y,
+      fx: _player.x,
+      fy: _player.y,
       dx: dir.dx,
       dy: dir.dy,
+      vx: vx,
+      vy: vy,
+      speed: 1.0,
+      bounces: 3,
       glyph: _getProjectileGlyph(dir.direction),
       emoji: '💥',
-      range: 10,
-      power: 2,
+      range: 15,
+      power: 3,
       owner: 'player'
     };
 
@@ -9074,32 +9106,35 @@ _incrementPityTimers();
 
     var dx = targetX - _player.x;
     var dy = targetY - _player.y;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist === 0) return;
 
-    if (dx === 0 && dy === 0) return;
+    var vx = dx / dist;
+    var vy = dy / dist;
 
-    // Prefer 8-directional aim, fall back to dominant axis if needed
-    var stepX = dx === 0 ? 0 : (dx > 0 ? 1 : -1);
-    var stepY = dy === 0 ? 0 : (dy > 0 ? 1 : -1);
-
+    // We can infer a rough directional glyph based on dominant axis
     var dirName = 'east';
-    if (stepX === 0 && stepY === -1) dirName = 'north';
-    else if (stepX === 0 && stepY === 1) dirName = 'south';
-    else if (stepX === 1 && stepY === 0) dirName = 'east';
-    else if (stepX === -1 && stepY === 0) dirName = 'west';
-    else if (stepX === 1 && stepY === -1) dirName = 'northeast';
-    else if (stepX === -1 && stepY === -1) dirName = 'northwest';
-    else if (stepX === 1 && stepY === 1) dirName = 'southeast';
-    else if (stepX === -1 && stepY === 1) dirName = 'southwest';
+    if (Math.abs(dx) > Math.abs(dy)) {
+      dirName = dx > 0 ? 'east' : 'west';
+    } else {
+      dirName = dy > 0 ? 'south' : 'north';
+    }
 
     var projectile = {
       x: _player.x,
       y: _player.y,
-      dx: stepX,
-      dy: stepY,
+      fx: _player.x,
+      fy: _player.y,
+      dx: dx,
+      dy: dy,
+      vx: vx,
+      vy: vy,
+      speed: 1.0,
+      bounces: 3, // Multi-bounce ricochet enabled!
       glyph: _getProjectileGlyph(dirName),
       emoji: '💥',
-      range: 10,
-      power: 2,
+      range: 15,
+      power: 3, // Higher starting power to survive damage falloff
       owner: 'player'
     };
 
@@ -9174,20 +9209,55 @@ _incrementPityTimers();
   function _advanceProjectile(projectile) {
     if (!projectile) return { alive: false };
 
-    var nextX = projectile.x + projectile.dx;
-    var nextY = projectile.y + projectile.dy;
+    // Initialize float coords if missing
+    if (projectile.fx === undefined) projectile.fx = projectile.x;
+    if (projectile.fy === undefined) projectile.fy = projectile.y;
+    
+    if (projectile.vx === undefined) {
+      var len = Math.sqrt(projectile.dx * projectile.dx + projectile.dy * projectile.dy) || 1;
+      projectile.vx = projectile.dx / len;
+      projectile.vy = projectile.dy / len;
+      projectile.speed = 1.0;
+      projectile.bounces = projectile.bounces || 0;
+    }
+
+    var nextFx = projectile.fx + projectile.vx * (projectile.speed || 1.0);
+    var nextFy = projectile.fy + projectile.vy * (projectile.speed || 1.0);
+    var nextX = Math.round(nextFx);
+    var nextY = Math.round(nextFy);
 
     if (!_isInsideBounds(nextX, nextY)) {
       // Miss - went out of bounds
-      _addImpactEffect(projectile.x, projectile.y, 'miss');
+      _addImpactEffect(Math.round(projectile.fx), Math.round(projectile.fy), 'miss');
       return { alive: false };
     }
 
     var tile = _grid[nextY][nextX];
     if (tile === TILES.WALL) {
-      // Hit wall
-      _addImpactEffect(nextX, nextY, 'wall');
-      return { alive: false };
+      if ((projectile.bounces || 0) > 0) {
+        // Bounce (mirror across normal)
+        var curX = Math.round(projectile.fx);
+        var curY = Math.round(projectile.fy);
+        if (curX !== nextX && _grid[curY] && _grid[curY][nextX] === TILES.WALL) {
+          projectile.vx *= -1; // Hit vertical wall
+        } else if (curY !== nextY && _grid[nextY] && _grid[nextY][curX] === TILES.WALL) {
+          projectile.vy *= -1; // Hit horizontal wall
+        } else {
+          // Corner hit
+          projectile.vx *= -1;
+          projectile.vy *= -1;
+        }
+        projectile.bounces--;
+        projectile.power = Math.max(1, (projectile.power || 1) - 1); // Damage falloff per bounce
+        _addImpactEffect(nextX, nextY, 'wall'); // spark effect for bounce
+        
+        // Don't advance position into the wall, let next tick move it along new velocity
+        return { alive: true };
+      } else {
+        // Hit wall without bouncing
+        _addImpactEffect(nextX, nextY, 'wall');
+        return { alive: false };
+      }
     }
 
     var breakable = _getBreakableAt(nextX, nextY);
@@ -9221,9 +9291,11 @@ _incrementPityTimers();
       return { alive: false };
     }
 
+    projectile.fx = nextFx;
+    projectile.fy = nextFy;
     projectile.x = nextX;
     projectile.y = nextY;
-    projectile.range = (projectile.range || 1) - 1;
+    projectile.range = (projectile.range || 1) - (projectile.speed || 1);
 
     // Check if projectile expired (ran out of range)
     if (projectile.range <= 0) {

@@ -304,6 +304,16 @@ export async function injectEvent(eventType: string, payload: Record<string, unk
   if (state.scenarioId) fetchEventLog();
 }
 
+export async function grantItems(callsign: string, items: Array<{ item_id: string; metadata?: any }>, sourceEventId?: number): Promise<boolean> {
+  try {
+    const res = await mFetch('/m/inventory/grant', {
+      method: 'POST',
+      body: JSON.stringify({ callsign, items, source_event_id: sourceEventId }),
+    });
+    return res.ok;
+  } catch { return false; }
+}
+
 // --- Escalation ---
 
 export async function escalate(tier: number, message?: string): Promise<void> {

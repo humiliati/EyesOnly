@@ -10,6 +10,7 @@ import {
   addLane, addActor,
   injectEvent, escalate,
   generateJoinCode, fetchScenarios,
+  grantItems,
 } from '../store';
 
 export function ControlPanel() {
@@ -24,6 +25,7 @@ export function ControlPanel() {
       <ScenarioSection />
       <LaneSection />
       <ActorSection />
+      <ItemGrantSection />
       <EscalationSection />
       <EventInjectSection />
       <JoinCodeSection />
@@ -278,6 +280,67 @@ function JoinCodeSection() {
           {code}
         </div>
       )}
+    </div>
+  );
+}
+
+function ItemGrantSection() {
+  const [s, setS] = useState(getState());
+  const [items, setItems] = useState<Record<string, any>>({});
+  const [selectedItem, setSelectedItem] = useState('');
+  const [targetActor, setTargetActor] = useState('');
+  const [status, setStatus] = useState('');
+
+  useEffect(() => subscribe(() => setS(getState())), []);
+
+  useEffect(() => {
+    fetch('/data/arg_items.json')
+      .then(r => r.json())
+      .then(d => {
+        setItems(d);
+        if (Object.keys(d).length > 0) setSelectedItem(Object.keys(d)[0]);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleGrant = async () => {
+    if (!targetActor || !selectedItem) return;
+    setStatus('Granting...');
+    const ok = await grantItems(targetActor, [{ item_id: selectedItem }]);
+    if (ok) {
+      setStatus('Granted!');
+      setTimeout(() => setStatus(''), 2000);
+    } else {
+      setStatus('Error');
+    }
+  };
+
+  const actors = s.lanes.flatMap(l => l.actors).concat(s.unassignedActors);
+
+  return (
+    <div class="ctrl-section">
+      <h3>GRANT ITEM</h3>
+      <div class="ctrl-row">
+        <div class="ctrl-field">
+          <label>OPERATIVE</label>
+          <select value={targetActor} onChange={(e) => setTargetActor((e.target as HTMLSelectElement).value)}>
+            <option value="">Select...</option>
+            {actors.map(a => <option key={a.id} value={a.callsign}>{a.callsign}</option>)}
+          </select>
+        </div>
+        <div class="ctrl-field">
+          <label>ITEM</label>
+          <select value={selectedItem} onChange={(e) => setSelectedItem((e.target as HTMLSelectElement).value)}>
+            {Object.entries(items).map(([id, def]) => (
+              <option key={id} value={id}>{def.emoji} {def.name || id}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div class="ctrl-row" style={{ marginTop: '6px', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: '10px', color: status === 'Error' ? '#ff3333' : '#33ff33' }}>{status}</span>
+        <button class="ctrl-btn" onClick={handleGrant} disabled={!targetActor || !selectedItem}>GRANT</button>
+      </div>
     </div>
   );
 }
