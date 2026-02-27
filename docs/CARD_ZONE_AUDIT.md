@@ -10,9 +10,9 @@ This document provides a comprehensive audit of the card zone boundaries and equ
 
 The system defines the following card zones:
 
-- **HAND (Loose Inventory)**: 8 slots maximum, lost on death
-- **ACTION_BUTTONS**: Variable capacity (base 4 + equipment bonuses), persistent during combat
-- **INVENTORY (Persistent)**: 9-12 slots, safe across death, accessible only at bonfire/shop
+- **HAND (Loose Inventory)**: ~~8 slots maximum~~ **CANON: 5 slots** (`maxHandSize: 5` in gamestate.js), lost on death
+- **ACTION_BUTTONS**: ~~Variable capacity (base 4 + equipment bonuses)~~ **CANON: Left Column / RogueSidebar has 6 fixed slots** (`rogue-sidebar.js`). BAC retired.
+- **INVENTORY (Persistent / Card Vault)**: 9-12 slots, safe across death, accessible only at bonfire/shop
 - **ACTIVE_ITEM**: Equipment slot for items like trench coat
 - **DISCARD**: Consumed cards (not yet fully implemented)
 - **EXHAUST**: Exhausted cards (not yet fully implemented)
@@ -48,9 +48,9 @@ The zone manager tracks different game states to enforce context-sensitive rules
 
 ### 3.1 Base Capacity
 
-- **Default Action Button Slots**: 4 slots
-- **Loose Inventory (Hand)**: 8 slots (fixed)
-- **Persistent Inventory**: 9-12 slots (expandable via cryptos)
+- **Default Action Button Slots**: ~~4 slots~~ **CANON: 6 slots (RogueSidebar)**
+- **Loose Inventory (Hand)**: ~~8 slots (fixed)~~ **CANON: 5 slots** (`maxHandSize: 5`)
+- **Persistent Inventory (Card Vault)**: 9-12 slots (expandable via cryptos)
 
 ### 3.2 Equipment Modifiers
 

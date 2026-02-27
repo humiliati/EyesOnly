@@ -1,22 +1,36 @@
-# NCH ↔ Combat Card System Roadmap
+# NCH ↔ Combat Card System Roadmap  *(CANONICAL REFERENCE)*
+
+> **Status:** This is the canonical architectural document for the card HUD system.
+> For ASCII layout diagrams, see **[UI-CANON.md](UI-CANON.md)**.
+> Last verified against codebase: 2026-02-27.
 
 **Two-phase plan to fix state bindings and rebuild animations**
 
 ---
 
-## Architecture Snapshot
+## Architecture Snapshot *(Verified Constants)*
 
-| Container | Cards | Accessibility |
+| Container | Capacity | Code Source |
 |---|---|---|
+| **Hand Fan** (player) | 5 cards (`maxHandSize: 5`) | `gamestate.js` line 28 |
+| **Backup Scroll** (full deck) | 25 cards (`maxBackupSlots: 25`) | `gamestate.js` line 29 |
+| **Card Vault** (persistent inventory) | 9-12 slots (`persistentSlots: 9`, `maxPersistentSlots: 12`) | `gamestate.js` lines 24-25 |
+| **Left Column / RogueSidebar** | 6 button slots | `rogue-sidebar.js` |
+| **NCH Capsule** (joker stack) | Up to 8 jokers displayed | `non-combat-hud.js` `Math.min(count, 8)` |
+| **Draw per turn** (STR combat) | 1 default (`cardDrawPerTurn: 1`) | `gamestate.js` line 30 |
+| **BLVCK struggle card** | `ACT-000` zero-cost 1-dmg | `card-state-authority.js` |
 
-| **Hand Fan** IN GONE ROGUE MINIGAME NOT COMBAT | 5 [expandable w/ items] | default minimized in gone rogue minigame, minimizes to bottom right NCH capsule overlay joker.emoji stack |
-| **Hand Fan** STR-COMBAT | 5 [expandable w/ items] | default visible unless turn is resolving (attacks animating on enemy or player (timer hit zero)) in which case it's temporarily minimized to bottom right like nch animation collapse |
+### Container Modes
 
-| **Left Column** IN GONE ROGUE MINIGAME NOT COMBAT (backup deck top) | 6 button slots (top 5 cards + a single items.inventory/backup.card containers swapper button) | Full access |
-| **Left Column** STR-COMBAT (backup deck top redacted) | 6 button slots (top 5 cards possible to draw + a single drawx[variable based on items, default 1] button) | default draw button grabs any one of any visible cards from deck top in STR-combat. dragging and dropping on any card container behaves like the draw button[variable, based on items (true joker item toggled from equipped item slot = draw anywhere from the deck not just top cards) (magifying glass item toggled from equipped item slot = draw exactly the card you're selecting from the deck top, or a true joker from anywhere in the deck with the draw button)] |
+| Container | IN GONE ROGUE (Non-Combat) | IN STR-COMBAT |
+|---|---|---|
+| **Hand Fan** | 5 cards [expandable w/ items]. Default minimized to NCH capsule joker stack (bottom-right). | 5 cards [expandable w/ items]. Default visible unless resolving (attacks animating), temporarily minimized to joker stack during resolve phase. |
+| **Left Column (RogueSidebar)** | 6 slots: top 5 backup cards + 1 items/backup swapper button. Full access. | 6 slots: top 5 drawable cards + 1 draw button (`drawx[N]`, default N=1, item-variable). |
+| **Backup Scroll** | 25 cards. Fully expands when NCH maximized. Solitaire tableau view. | LOCKED/invisible. Space TO BE repurposed for enemy hand fan (hidden joker backs, revealable/stealable/destroyable with items). |
+| **Card Vault** | Persistent inventory. 9-12 slots. Visible in NCH maximized view. Drag to/from hand and backup. | Not directly accessible during combat. |
+| **Debrief Feed** | Displays MOK avatar / resource feed / API submenu. Disposal drop zone (recycling bin preview on hover, incinerator animation on drop). | Self-target drop zone during STR combat (healing/resource cards). |
 
-| **Backup Scroll** IN GONE ROGUE MINIGAME NOT COMBAT (full deck) | 25 [expandable w/ items] | Fully expands out of combat when maximized (NCH) |
-| **Backup Scroll** STR-COMBAT (locked, invisible, interface with deck through backup deck top redacted) | # of attack cards enemy is holding (using) | backup scroll space is TO BE used in STR combat to show enemy hand without hiding/covering enemy intent patterns. the enemy cards display as hidden by default, "back of the card" joker.emojis that can be revealed or stolen or destroyed with items  | 
+> ~~**LEGACY NOTE:** Previous docs referencing `BackupActionContainer` (BAC), `reserve-slots.js`, or "8 card hand max" are STALE. BAC is retired; RogueSidebar (`rogue-sidebar.js`) is the primary left column. Hand max is 5, not 8.~~
 
 
 
@@ -36,25 +50,25 @@ NCH (Non-Combat)          STR-Combat
 
 ---
 
-## Root Cause Analysis
+## Root Cause Analysis *(Historical — largely resolved)*
 
-The regressions stem from **three competing state sources** with no single authority:
+The regressions stemmed from **three competing state sources** with no single authority:
 
-1. `NonCombatStateStore.backupCards` / `.cardsInHand` — NCH reads from here
-2. `GAMESTATE.getCardsInHand()` / `.backupCards` — Combat hand fan reads from here
-3. `BackupActionContainer._cards` / `._slots` — Left column maintains its own local copy
+1. ~~`NonCombatStateStore.backupCards` / `.cardsInHand` — NCH reads from here~~ → **RESOLVED:** NCH now reads from `CardStateAuthority` which wraps `GAMESTATE`
+2. ~~`GAMESTATE.getCardsInHand()` / `.backupCards` — Combat hand fan reads from here~~ → **RESOLVED:** Both NCH and combat read through CSA
+3. ~~`BackupActionContainer._cards` / `._slots` — Left column maintains its own local copy~~ → **RESOLVED:** BAC retired. RogueSidebar reads from CSA events
 
-There is no reconciliation layer. When the mode flips between NCH and STR-combat, each component snapshots its own state independently, so edits made in one (drag reorder in NCH, draw in combat) are invisible to the others.
+~~There is no reconciliation layer.~~ **RESOLVED:** `CardStateAuthority` (`card-state-authority.js`) is the reconciliation layer. All components subscribe to CSA events (`hand:changed`, `backup:changed`, `vault:changed`, `draw:reset`).
 
-The "draw row" appearing in NCH-maximized is a symptom: the NCH rebuild path doesn't gate UI elements by mode, so combat-only affordances bleed through.
+~~The "draw row" appearing in NCH-maximized is a symptom~~ → **RESOLVED:** Mode-gated UI implemented.
 
 ---
 
-## Phase 1 — Bindings Check (State & Sync)
+## Phase 1 — Bindings Check (State & Sync) ✅ LARGELY COMPLETE
 
 **Goal:** Every component reads from one canonical source. Drag, drop, draw, and reorder operations propagate correctly across all containers in both modes. No UI elements appear outside their correct mode.
 
-### 1.1 — Unify Card State Authority
+### 1.1 — Unify Card State Authority ✅ DONE
 
 **Single source of truth:** `GAMESTATE` becomes the only authority for both hand and backup deck contents. `NonCombatStateStore` becomes a read-through cache that subscribes to `GAMESTATE` change events.
 
@@ -65,7 +79,7 @@ The "draw row" appearing in NCH-maximized is a symptom: the NCH rebuild path doe
 
 **Deliverable:** Single `CardStateAuthority` module that wraps `GAMESTATE` card arrays and emits change events.
 
-### 1.2 — Left Column ↔ Backup Deck Sync (Mode-Aware Slot 6)
+### 1.2 — Left Column ↔ Backup Deck Sync (Mode-Aware Slot 6) ✅ DONE
 
 **Problem:** Left column slots are populated independently of the backup scroll order, and slot 6 behavior differs by mode but isn't gated.
 
@@ -84,7 +98,7 @@ The "draw row" appearing in NCH-maximized is a symptom: the NCH rebuild path doe
 - `non-combat-event-bus.js` — add `backup:reorder`, `backup:draw`, `hand:update`, `slot6:swap` events
 - `str-combat-integration.js` — wire equipped item checks for draw-modifier logic
 
-### 1.3 — Drag & Drop Between Inventories (NCH)
+### 1.3 — Drag & Drop Between Inventories (NCH) ✅ DONE
 
 **Problem:** Drag-and-drop between hand fan, backup scroll, and left column doesn't properly move cards.
 
@@ -107,7 +121,7 @@ Each transfer writes to `GAMESTATE` arrays → event fires → all containers re
 - `non-combat-hud.js` — register drop zones, delegate to `CardTransferManager`
 - `backup-action-container.js` — register as drop target for reorder
 
-### 1.4 — Combat Draw Logic (Item-Modified)
+### 1.4 — Combat Draw Logic (Item-Modified) ✅ DONE (per-turn draw, item modifiers partial)
 
 **Problem:** Drawing from backup during combat doesn't respect deck order or item modifiers.
 
@@ -125,7 +139,7 @@ Each transfer writes to `GAMESTATE` arrays → event fires → all containers re
 - `backup-action-container.js` — draw action routes through item-aware `GAMESTATE.drawBackupCard(index, mode)`
 - New methods on GAMESTATE: `drawBackupCard(index, mode)`, `resetTurnDraws()`, `getEquippedDrawModifier()`
 
-### 1.5 — Mode-Gated UI Elements
+### 1.5 — Mode-Gated UI Elements ✅ DONE (enemy hand fan display is NEXT)
 
 **Problem:** NCH maximized shows a "draw row" that should only exist in left column during STR-combat. Hand fan defaults to visible in GR but should default to minimized (joker stack).
 
@@ -157,7 +171,7 @@ if (mode === 'combat') {
 - `str-combat-integration.js` — wire enemy card count into backup scroll space renderer
 - New: enemy hand display logic (can live in `str-combat-window.js` or extracted to `enemy-hand-display.js`)
 
-### 1.6 — Combat Cursor Ghost for Left Column Draw
+### 1.6 — Combat Cursor Ghost for Left Column Draw ✅ DONE (ghost joker cursor in RogueSidebar)
 
 **Problem:** During STR-combat, dragging from left column should show the card thumbnail as cursor ghost, not the default drag image.
 
@@ -321,27 +335,23 @@ Phase 1 (Bindings)                    Phase 2 (Animations)
 
 ---
 
-## New Files Summary
+## Files Summary *(Actual Implementation State)*
 
-| File | Phase | Purpose |
+| File | Status | Purpose |
 |---|---|---|
-| `card-state-authority.js` | 1.1 | Single source of truth wrapper around GAMESTATE |
-| `card-transfer-manager.js` | 1.3 | Cross-container drag/drop operations |
-| `enemy-hand-display.js` | 1.5 | Enemy hidden cards in backup scroll space during combat |
-| `hand-fan-renderer.js` | 2.2 | Shared fan layout logic (combat + NCH) |
-| `backup-halo-renderer.js` | 2.3 | Halo/ring renderer for backup scroll |
-
-## Modified Files Summary
-
-| File | Phase(s) | Changes |
-|---|---|---|
-| `non-combat-hud.js` | 1.1, 1.3, 1.5, 2.1, 2.2, 2.3, 2.4 | Heaviest changes — state source swap, new renderers, collapse anim |
-| `non-combat-hud.css` | 2.1, 2.3, 2.4 | Joker stack, halo arc, collapse keyframes |
-| `backup-action-container.js` | 1.2, 1.4, 1.6, 2.5 | Rewrite as GAMESTATE view + dual render mode |
-| `backup-action-container.css` | 2.5 | Combat thumbnail styles |
-| `hand-fan-component.js` | 1.3, 1.6, 2.2 | Drop zone registration, delegate to shared renderer |
-| `str-combat-integration.js` | 1.1, 1.4 | Remove local state, use CardStateAuthority |
-| `non-combat-event-bus.js` | 1.2 | New event types for backup/hand sync |
+| `card-state-authority.js` | ✅ EXISTS | Single source of truth. Events: `hand:changed`, `backup:changed`, `vault:changed`, `draw:reset`, `card:disposed`. BLVCK lifecycle. |
+| `card-transfer-manager.js` | ✅ EXISTS | Cross-container drag/drop operations (hand↔backup↔vault) |
+| `rogue-sidebar.js` | ✅ EXISTS | **Replaced** `backup-action-container.js`. 6-slot left column. Mode-aware (items/cards swap in GR, draw button in STR). |
+| `enemy-hand-display.js` | ✅ EXISTS (shell) | Enemy hidden cards display — needs wiring to enemy card decks (Phase 0 from ENEMY_CARDS.md) |
+| `non-combat-hud.js` | ✅ EXISTS | NCH capsule + solitaire tableau. Pointer-based drag system. Debrief disposal drop zone. BLVCK rendering. |
+| `hand-fan-component.js` | ✅ EXISTS | STR combat hand fan. Card selection, targeting, multi-card play. |
+| `str-combat-integration.js` | ✅ EXISTS | 100ms poll. Wires CSA round changes. Display-only BLVCK fallback in combat. |
+| `str-combat-window.js` | ✅ EXISTS | Combat popup. HP bars, intent display, timer, minimize/maximize. |
+| `debrief-feed-controller.js` | ✅ EXISTS | MOK/Resources/Video display. `flashIncinerator()`. Context switching. |
+| `card-disposal-system.js` | ✅ EXISTS | Legacy HTML5 drag disposal (disconnected from NCH pointer drag — disposal now handled directly in NCH `_onDragUp`). |
+| ~~`backup-action-container.js`~~ | ⚠️ RETIRED | Superseded by `rogue-sidebar.js`. File still exists but is not the primary left column. |
+| ~~`hand-fan-renderer.js`~~ | ❌ NOT YET | Planned shared fan renderer (Phase 2.2) |
+| ~~`backup-halo-renderer.js`~~ | ❌ NOT YET | Planned halo ring renderer (Phase 2.3) |
 
 ---
 
@@ -352,19 +362,23 @@ Phase 1 (Bindings)                    Phase 2 (Animations)
 **Phase 1 solves this structurally** by making `CardStateAuthority` the only write path. Components become pure views that re-render on events. No component holds mutable card state locally.
 
 **Testing checkpoints after Phase 1:**
-- [ ] NCH hand fan shows same cards as `GAMESTATE.getCardsInHand()`
-- [ ] Left column slots 1-5 match `GAMESTATE.backupCards[0..4]` at all times
-- [ ] NCH slot 6 = inventory/backup swapper (no draw behavior)
-- [ ] Combat slot 6 = drawx1 button (default, no items)
-- [ ] Combat draw: tap any slot 1-5 picks that specific card into hand
-- [ ] True Joker equipped: draw button opens full deck picker
-- [ ] Magnifying Glass equipped: tap slot = exact pick; draw button = find true joker
-- [ ] Drag card from backup to hand in NCH → both containers update
-- [ ] Enter combat → hand fan shows pre-arranged hand, left column shows backup top
-- [ ] Enter combat → backup scroll space shows enemy hidden cards (🃏 backs)
-- [ ] Exit combat → NCH reflects all changes made during combat
-- [ ] No "draw row" visible anywhere in NCH
-- [ ] Hand fan defaults to minimized (joker stack) in GR non-combat
+- [x] NCH hand fan shows same cards as `GAMESTATE.getCardsInHand()` — via CSA
+- [x] Left column slots 1-5 match `GAMESTATE.backupCards[0..4]` at all times — RogueSidebar
+- [x] NCH slot 6 = inventory/backup swapper (no draw behavior) — RogueSidebar toggle
+- [x] Combat slot 6 = drawx1 button (default, no items) — RogueSidebar STR draw btn
+- [x] Combat draw: tap any slot 1-5 picks that specific card into hand
+- [ ] True Joker equipped: draw button opens full deck picker — **ITEM MODIFIER NOT YET IMPL**
+- [ ] Magnifying Glass equipped: tap slot = exact pick; draw button = find true joker — **NOT YET IMPL**
+- [x] Drag card from backup to hand in NCH → both containers update
+- [x] Enter combat → hand fan shows pre-arranged hand, left column shows backup top
+- [ ] Enter combat → backup scroll space shows enemy hidden cards (🃏 backs) — **NEXT: enemy hand fan**
+- [x] Exit combat → NCH reflects all changes made during combat
+- [x] No "draw row" visible anywhere in NCH
+- [x] Hand fan defaults to minimized (joker stack) in GR non-combat
+- [x] BLVCK struggle card injects when stranded, removes when playable card enters hand
+- [x] BLVCK card cannot be dragged out of hand
+- [x] Per-turn draw resets correctly on each STR combat round
+- [x] Debrief feed disposal: recycling bin preview on drag-over, incinerator on drop
 
 **Testing checkpoints after Phase 2:**
 - [ ] NCH minimize shows joker stack with correct card count
