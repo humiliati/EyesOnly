@@ -56,6 +56,13 @@ var NonCombatHUD = (function() {
       window.addEventListener('rogue-active-item-changed', function() { _renderAll(); });
       window.addEventListener('gone-rogue-registry-ready', function() { _renderAll(); });
       window.addEventListener('rogue-card-incinerated', function(e) { _showIncinerationEffect(e.detail); });
+      // Belt-and-suspenders: CSA window-level event fallback
+      window.addEventListener('csa-event', function(ev) {
+        var t = ev && ev.detail && ev.detail.type;
+        if (t === 'vault:changed' || t === 'hand:changed' || t === 'backup:changed') {
+          _renderAll();
+        }
+      });
     }
 
     // Visibility polling (show/hide based on GoneRogue active + STR combat state)
@@ -1050,12 +1057,20 @@ var NonCombatHUD = (function() {
       } else if (_useCSA) {
         ok = CardStateAuthority.moveHandToVault(_drag.index, 1);
       }
-      try { console.log('[NCH:DragDrop] hand→vault result:', ok); } catch (d) {}
+      try {
+        var vLen = (typeof CardStateAuthority !== 'undefined') ? CardStateAuthority.getVault().length : -1;
+        console.log('[NCH:DragDrop] hand→vault result:', ok,
+          '| vaultLen:', vLen, '| droppedOnVault:', droppedOnVault,
+          '| droppedOnLeftVault:', droppedOnLeftVault);
+      } catch (d) {}
       _showDragResult(ok, 'Vaulted!', 'Cannot vault card');
       _restoreDragMinimize();
       _drag = null;
       _renderAll();
-      if (ok && typeof BackupActionContainer !== 'undefined') BackupActionContainer.forceRender();
+      if (ok && typeof BackupActionContainer !== 'undefined') {
+        BackupActionContainer.forceRender();
+        setTimeout(function() { BackupActionContainer.forceRender(); }, 60);
+      }
       return;
     }
 
@@ -1066,11 +1081,20 @@ var NonCombatHUD = (function() {
       } else if (_useCSA) {
         ok = CardStateAuthority.moveBackupToVault(_drag.index);
       }
+      try {
+        var vLen2 = (typeof CardStateAuthority !== 'undefined') ? CardStateAuthority.getVault().length : -1;
+        console.log('[NCH:DragDrop] backup→vault result:', ok,
+          '| vaultLen:', vLen2, '| droppedOnVault:', droppedOnVault,
+          '| droppedOnLeftVault:', droppedOnLeftVault);
+      } catch (d2) {}
       _showDragResult(ok, 'Vaulted from backup!', 'Cannot vault');
       _restoreDragMinimize();
       _drag = null;
       _renderAll();
-      if (ok && typeof BackupActionContainer !== 'undefined') BackupActionContainer.forceRender();
+      if (ok && typeof BackupActionContainer !== 'undefined') {
+        BackupActionContainer.forceRender();
+        setTimeout(function() { BackupActionContainer.forceRender(); }, 60);
+      }
       return;
     }
 
@@ -1085,7 +1109,10 @@ var NonCombatHUD = (function() {
       _restoreDragMinimize();
       _drag = null;
       _renderAll();
-      if (ok && typeof BackupActionContainer !== 'undefined') BackupActionContainer.forceRender();
+      if (ok && typeof BackupActionContainer !== 'undefined') {
+        BackupActionContainer.forceRender();
+        setTimeout(function() { BackupActionContainer.forceRender(); }, 60);
+      }
       return;
     }
 
@@ -1100,7 +1127,10 @@ var NonCombatHUD = (function() {
       _restoreDragMinimize();
       _drag = null;
       _renderAll();
-      if (ok && typeof BackupActionContainer !== 'undefined') BackupActionContainer.forceRender();
+      if (ok && typeof BackupActionContainer !== 'undefined') {
+        BackupActionContainer.forceRender();
+        setTimeout(function() { BackupActionContainer.forceRender(); }, 60);
+      }
       return;
     }
 

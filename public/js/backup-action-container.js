@@ -57,6 +57,18 @@ var BackupActionContainer = (function() {
     // Fallback: GAMESTATE window events (catches changes CSA doesn't emit for)
     window.addEventListener('rogue-hand-changed', function() { if (_isVisible) { _lastSig = null; _render(); } });
     window.addEventListener('rogue-active-item-changed', function() { if (_isVisible) { _lastSig = null; _render(); } });
+
+    // Belt-and-suspenders: CSA window-level event fallback.
+    // If the .on() subscriptions above didn't connect (load-order race),
+    // this guarantees BAC re-renders on vault/hand/backup changes.
+    window.addEventListener('csa-event', function(ev) {
+      if (!_isVisible) return;
+      var t = ev && ev.detail && ev.detail.type;
+      if (t === 'vault:changed' || t === 'hand:changed' || t === 'backup:changed') {
+        _lastSig = null;
+        _render();
+      }
+    });
   }
 
   // ── Visibility ────────────────────────────────────────────
@@ -224,6 +236,11 @@ var BackupActionContainer = (function() {
     var slotCards = _getSlotCards();
     var inCombat = _isCombat();
     var source = (inCombat || _slot5Mode === 'backup') ? 'backup' : 'items';
+    try {
+      console.log('[BAC:render] source:', source, '| s5:', _slot5Mode,
+        '| slotCount:', slotCards.length, '| sig:', sig.substring(0, 60),
+        '| ids:', slotCards.map(function(c) { return c && c.id; }).join(','));
+    } catch (rl) {}
 
     // Slots 0-4: cards from active source (backup deck top OR item vault)
     for (var i = 0; i < 5; i++) {
@@ -874,7 +891,15 @@ var BackupActionContainer = (function() {
     drawCardForRound: drawCardForRound,
     getCards: getCards,
     render: _render,
-    forceRender: function() { _lastSig = null; _render(); },
+    forceRender: function() {
+      try {
+        var vc = (typeof CardStateAuthority !== 'undefined') ? CardStateAuthority.getVault().length : -1;
+        var ic = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentInventory) ? GAMESTATE.getPersistentInventory().length : -1;
+        console.log('[BAC:forceRender] vis:', _isVisible, '| s5:', _slot5Mode,
+          '| vaultLen:', vc, '| invLen:', ic, '| container:', !!_container);
+      } catch (fr) {}
+      _lastSig = null; _render();
+    },
     getSlot5Mode: function() { return _slot5Mode; }
   };
 })();

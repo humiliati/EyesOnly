@@ -786,6 +786,35 @@ const GAMESTATE = (function () {
   }
 
   /**
+   * Remove a card from hand by index (clean splice — does NOT add to burn pile).
+   * Used for vault transfers where the card is preserved, not consumed.
+   * @param {number} handIndex
+   * @returns {{ success: boolean, card?: object }}
+   */
+  function removeCardFromHandByIndex(handIndex) {
+    var idx = Number(handIndex);
+    if (!isFinite(idx) || idx < 0) return { success: false };
+    if (!Array.isArray(_state.cardsInHand)) _state.cardsInHand = [];
+    if (idx >= _state.cardsInHand.length) return { success: false };
+
+    var ref = _state.cardsInHand[idx];
+    if (!ref || !ref.id) return { success: false };
+
+    _state.cardsInHand.splice(idx, 1);
+    _saveState();
+
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('rogue-hand-changed', {
+          detail: { source: 'vault_transfer', cardId: ref.id }
+        }));
+      }
+    } catch (e2) {}
+
+    return { success: true, card: ref };
+  }
+
+  /**
    * Remove a card from backup deck by index (splice removal).
    * Does NOT move it anywhere — caller is responsible for destination.
    * @param {number} backupIndex
@@ -2368,6 +2397,7 @@ const GAMESTATE = (function () {
     addCardToHand: addCardToHand,
     insertCardToHandTop: insertCardToHandTop,
     consumeCardFromHand: consumeCardFromHand,
+    removeCardFromHandByIndex: removeCardFromHandByIndex,
     returnCardFromHandToStash: returnCardFromHandToStash,
     moveHandIndexToBackup: moveHandIndexToBackup,
     removeBackupCard: removeBackupCard,

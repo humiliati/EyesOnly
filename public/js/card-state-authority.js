@@ -43,6 +43,11 @@ var CardStateAuthority = (function() {
     if (typeof NonCombatEventBus !== 'undefined') {
       try { NonCombatEventBus.emit('csa:' + type, payload); } catch (e3) {}
     }
+    // Window-level fallback event — guarantees BAC / NCH can re-render even if
+    // .on() subscriptions didn't connect (e.g., load-order race).
+    try {
+      window.dispatchEvent(new CustomEvent('csa-event', { detail: { type: type, payload: payload } }));
+    } catch (e4) {}
   }
 
   // ── Mode ───────────────────────────────────────────────────
@@ -582,12 +587,32 @@ var CardStateAuthority = (function() {
       var result = GAMESTATE.addPersistentCard(card.id, qty);
       added = !!(result && result.success);
       if (added) {
-        consumeFromHand(handIndex, qty);
+        // Use clean removal (no burn pile) — card is being transferred, not consumed
+        var removed = false;
+        if (typeof GAMESTATE.removeCardFromHandByIndex === 'function') {
+          var rmResult = GAMESTATE.removeCardFromHandByIndex(handIndex);
+          removed = !!(rmResult && rmResult.success);
+        } else {
+          // Fallback: consumeFromHand (adds to burn pile — not ideal but functional)
+          removed = consumeFromHand(handIndex, qty);
+        }
+        if (!removed) {
+          // Card was added to vault but couldn't be removed from hand — revert vault add
+          try { GAMESTATE.removePersistentCard(card.id, qty); } catch (rv) {}
+          added = false;
+        }
       }
     }
     if (added) {
       _syncNonCombatStore();
+      try { console.log('[CSA] moveHandToVault OK | cardId:', card.id,
+        '| vaultLen:', getVault().length, '| handLen:', getHand().length,
+        '| emitting vault:changed + hand:changed'); } catch (lg) {}
+      _emit('hand:changed', { action: 'transfer_to_vault', index: handIndex, cardId: card.id, hand: getHand() });
       _emit('vault:changed', { action: 'from_hand', cardId: card.id, vault: getVault() });
+    } else {
+      try { console.log('[CSA] moveHandToVault FAILED | cardId:', card.id,
+        '| isVaultFull:', isVaultFull()); } catch (lg2) {}
     }
     return added;
   }
@@ -615,7 +640,12 @@ var CardStateAuthority = (function() {
     }
     if (added) {
       _syncNonCombatStore();
+      try { console.log('[CSA] moveBackupToVault OK | cardId:', card.id,
+        '| vaultLen:', getVault().length, '| emitting vault:changed'); } catch (lg) {}
       _emit('vault:changed', { action: 'from_backup', cardId: card.id, vault: getVault() });
+    } else {
+      try { console.log('[CSA] moveBackupToVault FAILED | cardId:', card.id,
+        '| isVaultFull:', isVaultFull()); } catch (lg2) {}
     }
     return added;
   }
