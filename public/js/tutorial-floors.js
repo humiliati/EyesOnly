@@ -205,26 +205,28 @@ var TutorialFloors = (function() {
   };
 
   /**
-   * Floor 2: The Gate — Chip's Challenge-style key+gate mechanic
+   * Floor 2: The Gate — breakable barricade (projectile tutorial)
    *
    * Teaching objectives:
-   * - Items can be equipped to the active item slot (header icon)
-   * - Toggling the active item arms it (like 3D printer workflow)
-   * - Armed key + interact on gate = gate poofs away
-   * - Breakables may hide important items
+   * - Breakables can block progress (and can be cleared with normal attacks/projectiles)
+   * - Breakables may hide useful items
+   *
+   * Note:
+   * We previously used a key+locked-gate here, but it proved too easy to miss in
+   * playtests (and in some OS emoji stacks the gate read as "solid wall").
+   * Key+gate is now introduced more explicitly on Floor 3.
    *
    * Layout (hourglass shape):
-   * - Wide top half: player spawn (back door) + key behind breakables on right
-   * - Narrow bottleneck at center: locked gate (🚧) blocks passage
-   * - Wide bottom half: forward exit (floor 3 door) visible through gate
-   * - Both doors always visible from spawn — forward door just unreachable
+   * - Wide top half: player spawn (back door) + gentle breadcrumb toward the pinch
+   * - Narrow bottleneck at center: a breakable barricade blocks passage
+   * - Wide bottom half: forward exit (floor 3 door) beyond the barricade
    *
    * Template fills entire 20×40 grid → templateFillsGrid=true → no anchor shifting.
    */
   var FLOOR_2_LAYOUT = {
     floorNumber: 2,
     name: 'The Gate',
-    description: 'Find the key, equip it, and unlock the gate to proceed.',
+    description: 'A barricade blocks the pinch. Clear it with normal attacks/projectiles to proceed.',
 
     // 20 rows × 40 cols — fills grid exactly, no shifting applied
     // '#' = wall, '.' = floor, 'P' = player spawn, 'E' = exit
@@ -274,44 +276,28 @@ var TutorialFloors = (function() {
         name: 'Elder',
         direction: 'east',
         dialogues: [
-          'That gate blocks the only way through...',
-          'I heard something shiny fell behind those bushes to the east.',
-          'Try equipping it from your items — tap the icon in your header!'
+          'That pinch is blocked by a barricade...',
+          'You can break it with normal attacks or projectiles.',
+          'Smash a few crates if you want supplies first.'
         ],
-        pointsAt: { x: 34, y: 5 }
+        pointsAt: { x: 20, y: 8 }
       }
     ],
 
-    // Locked gate at the hourglass bottleneck — 4 tiles wide, fully blocks the passage
-    lockedGate: {
+    // Breakable barricade at the hourglass bottleneck — always visible and always solvable.
+    // Uses a single emoji (no stacked overlap) to avoid OS-dependent rendering failures.
+    tutorialGate: {
       positions: [
-        { x: 18, y: 8 },
         { x: 19, y: 8 },
-        { x: 20, y: 8 },
-        { x: 21, y: 8 }
+        { x: 20, y: 8 }
       ],
-      emoji: '🚧',
-      name: 'Locked Gate',
-      requiresKey: 'rusty_key',
-      message: 'A sturdy gate blocks the passage. You need a key to open it.'
-    },
-
-    // Key hidden behind breakable bushes on the right side of the top half
-    keyBreakable: {
-      x: 34,
-      y: 5,
-      emoji: '🌸',
-      name: 'Glinting Flower Patch',
+      emoji: '🪵',
+      name: 'Wooden Barricade',
       hp: 2,
-      drops: {
-        item: 'rusty_key',
-        currency: [5, 10]
-      },
-      message: 'Something metallic glints among the petals...',
-      highlight: true
+      message: 'A wooden barricade blocks the pinch. Break it to proceed.'
     },
 
-    // Breakable bushes forming a small wall guarding the key
+    // Breakables on the right side (reward / practice), but no key on Floor 2.
     breakables: [
       { x: 32, y: 4, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
       { x: 33, y: 4, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
@@ -331,15 +317,15 @@ var TutorialFloors = (function() {
       { x: 20, y: 14, type: 'FOOD', emoji: '☕', name: 'Hot Coffee',
         customData: { foodId: 'FOOD_COFFEE' } },
       { x: 15, y: 3, type: 'SIGN', emoji: '🪧', name: 'Hint Sign',
-        text: 'Break the bushes on the right to find the key! Equip it, then use it on the gate.' }
+        text: 'A barricade blocks the pinch. Break it with normal attacks/projectiles to proceed.' }
     ],
 
-    // Breadcrumb pickups leading player toward the key alcove
+    // Breadcrumb pickups leading player toward the pinch
     breadcrumbPickups: [
       { x: 12, y: 3, amount: 3 },
       { x: 20, y: 3, amount: 3 },
-      { x: 28, y: 4, amount: 5 },
-      { x: 30, y: 5, amount: 5 }
+      { x: 22, y: 6, amount: 3 },
+      { x: 20, y: 7, amount: 3 }
     ],
 
     enemies: [],
@@ -375,14 +361,14 @@ var TutorialFloors = (function() {
       '#......................................#',
       '#...................P..................#',
       '#......................................#',
+      '#.............####....####.............#',
+      '#.............#..#....#..#.............#',
+      '#.............#..#LLLL#..#.............#',
+      '#.............#..#....#..#.............#',
+      '#.............####....####.............#',
       '#......................................#',
-      '#...🐌.................🐝..............#',
-      '#......................................#',
-      '#......................................#',
-      '#......................................#',
-      '#.................🐛...................#',
-      '#......................................#',
-      '#......................................#',
+      '#..................##..................#',
+      '#..................##..................#',
       '#......................................#',
       '#...................E..................#',
       '#......................................#',
@@ -391,14 +377,15 @@ var TutorialFloors = (function() {
 
     // Player spawns at the back/entry door near the arrival point
     player: { x: 20, y: 5 },
-    // Forward exit should be elsewhere (seek it out)
-    exit: { x: 34, y: 17 },
+    // Exit is beyond the key gate + combat gate
+    exit: { x: 20, y: 16 },
 
     // No buildings or decorations (combat focus)
     buildings: [],
     decorations: [],
 
     // Friendly gate NPC (Pokemon-style) that teaches STR combat before leaving
+    // (This is the first time we *force* combat.)
     npcs: [
       {
         id: 'TUTORIAL-GATE-01',
@@ -417,12 +404,41 @@ var TutorialFloors = (function() {
           width: 2
         },
         dialogues: [
-          '🧑‍🏫 You can\'t leave yet. Show me you can fight.',
-          '🧑‍🏫 Tip: you can soften a target before combat \u2014 but only one trick, once.'
+          '🧑‍🏫 Not so fast. Past this point, creatures will fight back.',
+          '🧑‍🏫 Prove you can handle yourself.'
         ],
         reward: { currency: 15 }
       }
     ],
+
+    // Vertical funnel key gate (teaches equip + interact) before the combat gate.
+    lockedGate: {
+      positions: [
+        { x: 20, y: 9 },
+        { x: 21, y: 9 }
+      ],
+      emoji: '🚧',
+      name: 'Locked Gate',
+      requiresKey: 'rusty_key',
+      message: 'A locked gate blocks the passage. You need a key to open it.'
+    },
+
+    // Key hidden behind a breakable cluster (enemies nearby, but combat not forced yet)
+    keyBreakable: {
+      x: 10,
+      y: 9,
+      emoji: '📦',
+      name: 'Marked Crate',
+      hp: 2,
+      drops: {
+        item: 'rusty_key',
+        currency: [5, 10]
+      },
+      message: 'A key clinks inside the crate...',
+      highlight: true
+    },
+
+    // Key cluster bushes are included in the main breakables list below.
 
     // Weak tutorial enemies
     enemies: [
@@ -444,22 +460,17 @@ var TutorialFloors = (function() {
         }
       },
       {
-        x: 24,
-        y: 8,
+        x: 12,
+        y: 9,
         emoji: '🐝',
         name: 'Drowsy Bee',
         hp: 2,
         maxHp: 2,
         attack: 1,
         defense: 0,
-        sightRange: 3, // Medium sight cone
-        patrolType: 'circular',
-        patrolPath: [
-          { x: 24, y: 8 },
-          { x: 26, y: 8 },
-          { x: 26, y: 10 },
-          { x: 24, y: 10 }
-        ],
+        sightRange: 2, // Keep small so player can choose to engage or slip past
+        patrolType: 'stationary',
+        patrolPath: [],
         orientation: 'south',
         dropTable: {
           currency: [10, 15],
@@ -467,8 +478,8 @@ var TutorialFloors = (function() {
         }
       },
       {
-        x: 18,
-        y: 12,
+        x: 8,
+        y: 10,
         emoji: '🐛',
         name: 'Lazy Caterpillar',
         hp: 3,
@@ -486,7 +497,13 @@ var TutorialFloors = (function() {
     ],
 
     // Breakables with guaranteed attack cards for practice
+    // (Also includes the key cluster bushes around the marked crate.)
     breakables: [
+      // Key cluster bushes (guarding the marked crate at 10,9)
+      { x: 9, y: 9, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [1, 2] } },
+      { x: 11, y: 9, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [1, 2] } },
+      { x: 10, y: 8, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [1, 2] } },
+      { x: 10, y: 10, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [1, 2] } },
       {
         x: 12, y: 4,
         emoji: '🌸',
