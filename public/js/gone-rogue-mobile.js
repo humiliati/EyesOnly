@@ -2073,20 +2073,25 @@ const GoneRogueMobile = (function () {
     } catch (err) { /* ignore */ }
 
     if (_desktopFishingActive && _fishingPath.length > 0) {
+      // Fishing completed — execute path and suppress the follow-up click
       _hideFishingPath();
       _desktopFishingActive = false;
-
-      // Prevent the subsequent click from also firing movement
       _suppressNextClick = true;
-
       if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleFishingMove === 'function') {
         GoneRogue.handleFishingMove(_fishingPath, _runMode);
       } else {
         var destination = _fishingPath[_fishingPath.length - 1];
         _processGridInput(destination.x, destination.y, _runMode);
       }
-
       _fishingPath = [];
+    } else {
+      // Drag didn't reach fishing threshold — clean up fishing state
+      // but do NOT suppress the upcoming click event, so it falls through
+      // to _handleGridClick → _processGridInput for tap-to-move
+      _desktopFishingActive = false;
+      _fishingPath = [];
+      _hideFishingPath();
+      // Deliberately NOT setting _suppressNextClick here
     }
   }
 
@@ -3473,6 +3478,39 @@ const GoneRogueMobile = (function () {
     _fishingPath = [];
   }
 
+  /**
+   * Controller hook – tap-to-move to a specific tile.
+   *
+   * Call this when the QuadStick (or other Gamepad-API adapter) triggers
+   * a single-step move (e.g. Button A).  Routes through _processGridInput
+   * so all target-type checks (enemy → shoot, breakable → kick/shoot,
+   * interactive → interact, empty → move) are applied identically to a
+   * touch-tap or mouse-click.
+   *
+   * No-op when GoneRogue is not loaded.
+   *
+   * @param {number} x - Target grid X coordinate
+   * @param {number} y - Target grid Y coordinate
+   */
+  function controllerTapMove(x, y) {
+    if (typeof GoneRogue === 'undefined') return;
+    _processGridInput(x, y, _runMode);
+  }
+
+  /**
+   * Controller hook – set sprint mode for the next movement.
+   *
+   * Call this when the QuadStick (or other Gamepad-API adapter) activates
+   * sprint (e.g. double-puff).  The sprint flag persists until the next
+   * movement is executed, at which point it resets to false (matching
+   * double-tap behaviour).
+   *
+   * @param {boolean} sprint - Whether to sprint
+   */
+  function setControllerSprint(sprint) {
+    _runMode = !!sprint;
+  }
+
   return {
     init: init,
     renderGrid: renderGrid,
@@ -3484,6 +3522,8 @@ const GoneRogueMobile = (function () {
     // QuadStick / Gamepad-API controller hooks
     beginFishingFromPlayer: beginFishingFromPlayer,
     updateFishingTarget: updateFishingTarget,
-    commitFishingTarget: commitFishingTarget
+    commitFishingTarget: commitFishingTarget,
+    controllerTapMove: controllerTapMove,
+    setControllerSprint: setControllerSprint
   };
 })();
