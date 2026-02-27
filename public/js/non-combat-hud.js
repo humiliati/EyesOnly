@@ -836,6 +836,7 @@ var NonCombatHUD = (function() {
 
   function _startDrag(payload, e) {
     if (_drag) return; // already dragging
+    try { console.log('[NCH:Drag] START', payload.kind, payload.index, payload.id); } catch (d) {}
 
     _drag = Object.assign({
       ghostEl: null,
@@ -991,6 +992,15 @@ var NonCombatHUD = (function() {
     var _useCTM = (typeof CardTransferManager !== 'undefined');
     var _useCSA = (typeof CardStateAuthority !== 'undefined');
 
+    // Debug trace — drop zone detection
+    try {
+      console.log('[NCH:DragDrop]', _drag.kind, _drag.index, _drag.id,
+        '→ el:', el ? el.tagName + '.' + el.className.split(' ')[0] : 'null',
+        '| hand:', droppedOnHand, 'backup:', droppedOnBackup, 'vault:', droppedOnVault,
+        'leftCol:', droppedOnLeftCol, 'leftMode:', leftColMode,
+        'capsule:', droppedOnCapsule, 'CTM:', _useCTM, 'CSA:', _useCSA);
+    } catch (dbg) {}
+
     // ── HAND → BACKUP (NCH backup zone OR left column in backup mode) ──
     if (_drag.kind === 'hand' && (droppedOnBackup || droppedOnLeftBackup)) {
       if (_useCTM) {
@@ -998,6 +1008,7 @@ var NonCombatHUD = (function() {
       } else if (_useCSA) {
         ok = CardStateAuthority.moveHandToBackup(_drag.index);
       }
+      try { console.log('[NCH:DragDrop] hand→backup result:', ok); } catch (d) {}
       _showDragResult(ok, 'Moved to backup', 'Backup full or invalid');
       _restoreDragMinimize();
       _drag = null;
@@ -1026,6 +1037,7 @@ var NonCombatHUD = (function() {
       } else if (_useCSA) {
         ok = CardStateAuthority.moveHandToVault(_drag.index, 1);
       }
+      try { console.log('[NCH:DragDrop] hand→vault result:', ok); } catch (d) {}
       _showDragResult(ok, 'Vaulted!', 'Cannot vault card');
       _restoreDragMinimize();
       _drag = null;

@@ -614,6 +614,7 @@ var CardStateAuthority = (function() {
       }
     }
     if (added) {
+      _syncNonCombatStore();
       _emit('vault:changed', { action: 'from_backup', cardId: card.id, vault: getVault() });
     }
     return added;

@@ -242,6 +242,10 @@
 
 .nch-hand-container .hand-card-wrapper {
   flex: 0 0 auto;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .nch-hand-container .hand-card-wrapper:hover {
@@ -507,6 +511,10 @@ body.nch-ghost-cursor-active .nch-draw-btn-hover ~ .nch-ghost-joker {
 .nch-backup-scroller .hand-card-wrapper {
   flex: 0 0 100px;
   transform-origin: bottom center;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .nch-backup-scroller .hand-card {
@@ -640,6 +648,9 @@ body.nch-ghost-cursor-active .nch-draw-btn-hover ~ .nch-ghost-joker {
   cursor: grab;
   transition: all 0.25s ease;
   overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .nch-vault-slot:hover {
