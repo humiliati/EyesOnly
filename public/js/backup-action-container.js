@@ -606,7 +606,9 @@ var BackupActionContainer = (function() {
           _dragging = true;
           _ghostEl = document.createElement('div');
           _ghostEl.className = 'backup-drag-ghost';
-          _ghostEl.innerHTML = '<div class="backup-ghost-emoji">' + (def.emoji || '\uD83C\uDCCF') + '</div>';
+          var ghostEmoji = (source === 'items' && cardRef.id && cardRef.id.indexOf('ACT-') === 0)
+            ? '\uD83C\uDCCF' : (def.emoji || '\uD83C\uDCCF');
+          _ghostEl.innerHTML = '<div class="backup-ghost-emoji">' + ghostEmoji + '</div>';
           _ghostEl.style.cssText = 'position:fixed;width:48px;height:64px;pointer-events:none;z-index:99999;opacity:0.85;';
           _ghostEl.style.left = (ev.clientX - 24) + 'px';
           _ghostEl.style.top = (ev.clientY - 32) + 'px';
@@ -778,10 +780,14 @@ var BackupActionContainer = (function() {
         // ── 6. Drop outside everything → card stays (no-op) ──
         // If not handled, card returns to its slot — nothing happens.
 
-        // Cleanup
+        // Cleanup — force re-render of left column + NCH after any transfer
         _restoreNCH();
         if (typeof CardTransferManager !== 'undefined') {
           CardTransferManager.cancelDrag();
+        }
+        if (handled) {
+          _lastSig = null;
+          _render();
         }
       }
 
@@ -868,6 +874,7 @@ var BackupActionContainer = (function() {
     drawCardForRound: drawCardForRound,
     getCards: getCards,
     render: _render,
+    forceRender: function() { _lastSig = null; _render(); },
     getSlot5Mode: function() { return _slot5Mode; }
   };
 })();

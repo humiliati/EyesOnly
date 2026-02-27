@@ -1024,6 +1024,7 @@ var NonCombatHUD = (function() {
       _restoreDragMinimize();
       _drag = null;
       _renderAll();
+      if (ok && typeof BackupActionContainer !== 'undefined') BackupActionContainer.forceRender();
       return;
     }
 
@@ -1038,6 +1039,7 @@ var NonCombatHUD = (function() {
       _restoreDragMinimize();
       _drag = null;
       _renderAll();
+      if (ok && typeof BackupActionContainer !== 'undefined') BackupActionContainer.forceRender();
       return;
     }
 
@@ -1053,6 +1055,7 @@ var NonCombatHUD = (function() {
       _restoreDragMinimize();
       _drag = null;
       _renderAll();
+      if (ok && typeof BackupActionContainer !== 'undefined') BackupActionContainer.forceRender();
       return;
     }
 
@@ -1067,6 +1070,7 @@ var NonCombatHUD = (function() {
       _restoreDragMinimize();
       _drag = null;
       _renderAll();
+      if (ok && typeof BackupActionContainer !== 'undefined') BackupActionContainer.forceRender();
       return;
     }
 
@@ -1081,6 +1085,7 @@ var NonCombatHUD = (function() {
       _restoreDragMinimize();
       _drag = null;
       _renderAll();
+      if (ok && typeof BackupActionContainer !== 'undefined') BackupActionContainer.forceRender();
       return;
     }
 
@@ -1095,6 +1100,7 @@ var NonCombatHUD = (function() {
       _restoreDragMinimize();
       _drag = null;
       _renderAll();
+      if (ok && typeof BackupActionContainer !== 'undefined') BackupActionContainer.forceRender();
       return;
     }
 
