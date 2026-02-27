@@ -849,6 +849,46 @@ var NonCombatHUD = (function() {
     _drag.ghostEl = ghost;
   }
 
+  // ── Temp-minimize during drag (collapse NCH to reveal map) ──
+  var _dragMinimizeTimer = null;
+  var _dragTempMinimized = false;
+  var _dragWasExpanded = false;
+  var DRAG_MINIMIZE_DELAY = 1500; // ms outside NCH before collapse
+  var DRAG_OUTSIDE_MARGIN = 80;   // px margin from NCH edge
+
+  function _isDragOutsideNCH(px, py) {
+    if (!_expanded || _expanded.style.display === 'none') return true;
+    var rect = _expanded.getBoundingClientRect();
+    return (px < rect.left - DRAG_OUTSIDE_MARGIN || px > rect.right + DRAG_OUTSIDE_MARGIN ||
+            py < rect.top - DRAG_OUTSIDE_MARGIN || py > rect.bottom + DRAG_OUTSIDE_MARGIN);
+  }
+
+  function _clearDragMinimizeTimer() {
+    if (_dragMinimizeTimer) { clearTimeout(_dragMinimizeTimer); _dragMinimizeTimer = null; }
+  }
+
+  function _startDragMinimizeTimer() {
+    _clearDragMinimizeTimer();
+    _dragMinimizeTimer = setTimeout(function() {
+      if (_drag && _drag.dragging && !_dragTempMinimized && _isExpanded) {
+        _dragTempMinimized = true;
+        _collapse('drag_temp');
+      }
+    }, DRAG_MINIMIZE_DELAY);
+  }
+
+  function _restoreDragMinimize() {
+    _clearDragMinimizeTimer();
+    if (_dragTempMinimized && _dragWasExpanded) {
+      _dragTempMinimized = false;
+      _dragWasExpanded = false;
+      _expand('drag_restore');
+    } else {
+      _dragTempMinimized = false;
+      _dragWasExpanded = false;
+    }
+  }
+
   function _onDragMove(e) {
     if (!_drag) return;
     var dx = e.clientX - _drag.startX;
@@ -857,10 +897,20 @@ var NonCombatHUD = (function() {
       _drag.dragging = true;
       _ensureGhost(e.clientX, e.clientY);
       _highlightDropZones(true);
+      // Remember expanded state at drag start
+      _dragWasExpanded = _isExpanded;
     }
     if (_drag.dragging && _drag.ghostEl) {
       _drag.ghostEl.style.left = e.clientX + 'px';
       _drag.ghostEl.style.top = e.clientY + 'px';
+
+      // Temp-minimize: if pointer stays outside NCH for DRAG_MINIMIZE_DELAY
+      if (!_dragTempMinimized && _isExpanded && _isDragOutsideNCH(e.clientX, e.clientY)) {
+        if (!_dragMinimizeTimer) _startDragMinimizeTimer();
+      } else if (!_dragTempMinimized && !_isDragOutsideNCH(e.clientX, e.clientY)) {
+        // Pointer back inside → cancel timer
+        _clearDragMinimizeTimer();
+      }
     }
   }
 
@@ -879,6 +929,7 @@ var NonCombatHUD = (function() {
     document.removeEventListener('pointermove', _onDragMove);
     document.removeEventListener('pointerup', _onDragUp);
     document.removeEventListener('pointercancel', _onDragUp);
+    _clearDragMinimizeTimer();
 
     // Clean up ghost
     if (_drag.ghostEl && _drag.ghostEl.parentNode) {
@@ -888,6 +939,7 @@ var NonCombatHUD = (function() {
     _highlightDropZones(false);
 
     if (!_drag.dragging) {
+      _restoreDragMinimize();
       _drag = null;
       return;
     }
@@ -896,28 +948,37 @@ var NonCombatHUD = (function() {
     var el = null;
     try { el = document.elementFromPoint(e.clientX, e.clientY); } catch (ex) {}
 
+    // NCH internal drop zones
     var droppedOnHand = !!(el && el.closest && el.closest('[data-dropzone="hand"]'));
     var droppedOnBackup = !!(el && el.closest && el.closest('[data-dropzone="backup"]'));
     var droppedOnVault = !!(el && el.closest && el.closest('[data-dropzone="vault"]'));
-    // Left column sidebar is also a backup zone
-    var droppedOnSidebar = !!(el && el.closest && el.closest('[data-dropzone="backup"]'));
+
+    // Left column (BackupActionContainer) — route by its current mode
+    var droppedOnLeftCol = !!(el && el.closest && el.closest('#backup-action-container'));
+    var leftColMode = 'items'; // default
+    if (droppedOnLeftCol && typeof BackupActionContainer !== 'undefined' && BackupActionContainer.getSlot5Mode) {
+      leftColMode = BackupActionContainer.getSlot5Mode();
+    }
+    // Left column in items mode = vault; in backup mode = backup
+    var droppedOnLeftVault = droppedOnLeftCol && (leftColMode === 'items');
+    var droppedOnLeftBackup = droppedOnLeftCol && (leftColMode === 'backup');
+
+    // NCH capsule (minimized state) — for cascade-to-hand-top
+    var droppedOnCapsule = !!(el && el.closest && el.closest('.nch-capsule-wrapper'));
 
     var ok = false;
-
-    // ── All transfers routed through CardTransferManager / CardStateAuthority ──
     var _useCTM = (typeof CardTransferManager !== 'undefined');
     var _useCSA = (typeof CardStateAuthority !== 'undefined');
 
-    // ── HAND → BACKUP ──
-    if (_drag.kind === 'hand' && (droppedOnBackup || droppedOnSidebar)) {
+    // ── HAND → BACKUP (NCH backup zone OR left column in backup mode) ──
+    if (_drag.kind === 'hand' && (droppedOnBackup || droppedOnLeftBackup)) {
       if (_useCTM) {
         ok = CardTransferManager.handToBackup(_drag.index);
       } else if (_useCSA) {
         ok = CardStateAuthority.moveHandToBackup(_drag.index);
-      } else if (typeof GAMESTATE !== 'undefined' && GAMESTATE.moveHandIndexToBackup) {
-        ok = !!GAMESTATE.moveHandIndexToBackup(_drag.index).success;
       }
       _showDragResult(ok, 'Moved to backup', 'Backup full or invalid');
+      _restoreDragMinimize();
       _drag = null;
       _renderAll();
       return;
@@ -929,52 +990,51 @@ var NonCombatHUD = (function() {
         ok = CardTransferManager.backupToHand(_drag.index);
       } else if (_useCSA) {
         ok = CardStateAuthority.moveBackupToHand(_drag.index);
-      } else if (typeof GAMESTATE !== 'undefined' && GAMESTATE.moveBackupIndexToHand) {
-        ok = !!GAMESTATE.moveBackupIndexToHand(_drag.index).success;
       }
       _showDragResult(ok, 'Moved to hand', 'Cannot move to hand');
+      _restoreDragMinimize();
       _drag = null;
       _renderAll();
       return;
     }
 
-    // ── HAND → VAULT ──
-    if (_drag.kind === 'hand' && droppedOnVault) {
+    // ── HAND → VAULT (NCH vault zone OR left column in items mode) ──
+    if (_drag.kind === 'hand' && (droppedOnVault || droppedOnLeftVault)) {
       if (_useCTM) {
         ok = CardTransferManager.handToVault(_drag.index, 1);
       } else if (_useCSA) {
         ok = CardStateAuthority.moveHandToVault(_drag.index, 1);
       }
-      // No GAMESTATE-direct fallback — that path caused duplication
       _showDragResult(ok, 'Vaulted!', 'Cannot vault card');
+      _restoreDragMinimize();
       _drag = null;
       _renderAll();
       return;
     }
 
-    // ── BACKUP → VAULT ──
-    if (_drag.kind === 'backup' && droppedOnVault) {
+    // ── BACKUP → VAULT (NCH vault zone OR left column in items mode) ──
+    if (_drag.kind === 'backup' && (droppedOnVault || droppedOnLeftVault)) {
       if (_useCTM) {
         ok = CardTransferManager.backupToVault(_drag.index);
       } else if (_useCSA) {
         ok = CardStateAuthority.moveBackupToVault(_drag.index);
       }
-      // No GAMESTATE-direct fallback — that path caused duplication
       _showDragResult(ok, 'Vaulted from backup!', 'Cannot vault');
+      _restoreDragMinimize();
       _drag = null;
       _renderAll();
       return;
     }
 
-    // ── VAULT → BACKUP ──
-    if (_drag.kind === 'vault' && (droppedOnBackup || droppedOnSidebar)) {
+    // ── VAULT → BACKUP (NCH backup zone OR left column in backup mode) ──
+    if (_drag.kind === 'vault' && (droppedOnBackup || droppedOnLeftBackup)) {
       if (_useCTM) {
         ok = CardTransferManager.vaultToBackup(_drag.id);
       } else if (_useCSA) {
         ok = CardStateAuthority.moveVaultToBackup(_drag.id);
       }
-      // No GAMESTATE-direct fallback — that path caused duplication
       _showDragResult(ok, 'Moved to backup', 'Cannot move to backup');
+      _restoreDragMinimize();
       _drag = null;
       _renderAll();
       return;
@@ -987,57 +1047,80 @@ var NonCombatHUD = (function() {
       } else if (_useCSA) {
         ok = CardStateAuthority.moveVaultToHand(_drag.id, 1);
       }
-      // No GAMESTATE-direct fallback — that path was ADD-only (no vault removal = dupe)
       _showDragResult(ok, 'Added to hand', 'Cannot add to hand');
+      _restoreDragMinimize();
       _drag = null;
       _renderAll();
       return;
     }
 
     // ── STASH CARD (external) → HAND or BACKUP ──
-    // Route through CardStateAuthority for proper move semantics
     if (_drag.kind === 'stash_card') {
       if (droppedOnHand) {
-        if (_useCSA) {
-          ok = CardStateAuthority.moveVaultToHand(_drag.id, 1);
-        } else if (_useCTM) {
-          ok = CardTransferManager.vaultToHand(_drag.id, 1);
-        }
-      } else if (droppedOnBackup) {
-        if (_useCSA) {
-          ok = CardStateAuthority.moveVaultToBackup(_drag.id);
-        } else if (_useCTM) {
-          ok = CardTransferManager.vaultToBackup(_drag.id);
-        }
+        if (_useCSA) ok = CardStateAuthority.moveVaultToHand(_drag.id, 1);
+        else if (_useCTM) ok = CardTransferManager.vaultToHand(_drag.id, 1);
+      } else if (droppedOnBackup || droppedOnLeftBackup) {
+        if (_useCSA) ok = CardStateAuthority.moveVaultToBackup(_drag.id);
+        else if (_useCTM) ok = CardTransferManager.vaultToBackup(_drag.id);
       }
       _showDragResult(ok, 'Card placed', 'Cannot place card');
+      _restoreDragMinimize();
       _drag = null;
       _renderAll();
       return;
     }
 
-    // ── WORLD MAP DROP (ground effects) ──
+    // ── CAPSULE DROP (minimized NCH) → cascade to hand top ──
+    if (droppedOnCapsule && (_drag.kind === 'hand' || _drag.kind === 'backup')) {
+      if (_drag.kind === 'backup' && _useCSA) {
+        ok = CardStateAuthority.cascadeBackupToHandTop(_drag.index);
+      } else if (_drag.kind === 'hand') {
+        // Hand card dropped on capsule — it's already in hand, just re-expand
+        ok = true;
+      }
+      _showDragResult(ok, 'Card \u2192 hand (top)', 'Cannot place in hand');
+      _restoreDragMinimize();
+      _drag = null;
+      _renderAll();
+      return;
+    }
+
+    // ── WORLD MAP DROP (deploy or incinerate) ──
     var coords = _screenToGrid(e.clientX, e.clientY);
     if (coords && (_drag.kind === 'hand' || _drag.kind === 'backup')) {
-      if (_useCTM) {
-        ok = CardTransferManager.deployToMap(_drag.kind, _drag.index, coords.x, coords.y);
-      } else {
-        if (typeof GoneRogue !== 'undefined' && GoneRogue.applyNonCombatCardAt) {
-          ok = GoneRogue.applyNonCombatCardAt(_drag.id, coords.x, coords.y);
-        }
-        if (ok) {
-          // Consume through CardStateAuthority
-          if (_useCSA) {
+      var deployable = _isCardDeployable(_drag.id);
+
+      if (deployable) {
+        // Try deploying card at map tile
+        if (_useCTM) {
+          ok = CardTransferManager.deployToMap(_drag.kind, _drag.index, coords.x, coords.y);
+        } else {
+          if (typeof GoneRogue !== 'undefined' && GoneRogue.applyNonCombatCardAt) {
+            ok = GoneRogue.applyNonCombatCardAt(_drag.id, coords.x, coords.y);
+          }
+          if (ok && _useCSA) {
             if (_drag.kind === 'hand') CardStateAuthority.consumeFromHand(_drag.index, 1);
             else CardStateAuthority.removeBackupCard(_drag.index);
-          } else if (typeof NonCombatStateStore !== 'undefined') {
-            if (_drag.kind === 'hand') NonCombatStateStore.consumeHandIndex(_drag.index, 1);
-            else NonCombatStateStore.consumeBackupIndex(_drag.index);
           }
         }
+        if (ok) _collapse('world_fire');
+        _showDragResult(ok, 'Deployed!', 'Invalid tile');
+      } else {
+        // Non-deployable card dropped on map → incinerate
+        if (_useCSA) {
+          if (_drag.kind === 'hand') CardStateAuthority.consumeFromHand(_drag.index, 1);
+          else CardStateAuthority.removeBackupCard(_drag.index);
+        }
+        try {
+          window.dispatchEvent(new CustomEvent('rogue-card-incinerated', {
+            detail: { card: { id: _drag.id, qty: 1 }, source: 'invalid_map_drop' }
+          }));
+        } catch (incErr) {}
+        ok = true;
+        _showDragResult(true, '\uD83D\uDD25 Incinerated', 'Cannot incinerate');
       }
-      if (ok) _collapse('world_fire');
-      _showDragResult(ok, 'Deployed!', 'Invalid drop');
+
+      _restoreDragMinimize();
       _drag = null;
       _renderAll();
       return;
@@ -1060,15 +1143,17 @@ var NonCombatHUD = (function() {
         }
       }
       if (ok) _collapse('item_fire');
+      _restoreDragMinimize();
       _drag = null;
       _renderAll();
       return;
     }
 
-    // No valid drop
+    // No valid drop — card stays in place
     if (typeof TooltipSystem !== 'undefined') {
       TooltipSystem.showPersistent('\u274C Invalid drop', 800);
     }
+    _restoreDragMinimize();
     _drag = null;
   }
 

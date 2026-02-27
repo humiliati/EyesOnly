@@ -813,6 +813,7 @@ var BackupActionContainer = (function() {
     resetForCombat: resetForCombat,
     drawCardForRound: drawCardForRound,
     getCards: getCards,
-    render: _render
+    render: _render,
+    getSlot5Mode: function() { return _slot5Mode; }
   };
 })();
