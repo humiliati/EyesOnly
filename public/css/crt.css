@@ -1646,13 +1646,15 @@ body.amber-mode #scanlines::after {
   body.mode-gone-rogue #crt-screen,
   body.in-gone-rogue #crt-screen,
   body.gone-rogue-active #crt-screen {
-    padding: 4px;
+    /* Remove bottom deadspace so the footer can kiss the device edge */
+    padding: 4px 4px 0 4px;
   }
 
   body.mode-gone-rogue #crt-frame,
   body.in-gone-rogue #crt-frame,
   body.gone-rogue-active #crt-frame {
-    padding: 6px;
+    /* Keep top/sides, kill bottom padding to remove the after-footer band */
+    padding: 6px 6px 0 6px;
     gap: 6px;
   }
 
@@ -1919,8 +1921,11 @@ body.amber-mode #scanlines::after {
   /* Tighten the input bar itself (removes deadspace above/below tooltip area) */
   body.gone-rogue-active #input-line {
     margin-top: 2px;
+    margin-bottom: 0;
     padding: 0.18em 0.35em;
     min-height: 1.1em;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
   }
 
   /* Hide terminal text chrome in portrait rogue; the grid is the product surface */
@@ -1936,6 +1941,8 @@ body.amber-mode #scanlines::after {
   body.gone-rogue-active #mok-interjections {
     padding: 0px 2px;
     max-height: 22px;
+    margin-bottom: 0;
+    border-bottom: 0;
     overflow: hidden;
     line-height: 1;
     position: relative;

@@ -1513,10 +1513,10 @@
     order: 3;
   }
 
-  /* Ensure the #log-column has enough space and proper scrolling */
+  /* Let the footer touch the device bottom (remove after-footer dead band).
+     If we need extra clearance later, add it to the footer itself, not the whole log column. */
   body.gone-rogue-active #log-column {
-    /* Add padding so the grid/input aren't trapped behind mobile browser chrome */
-    padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
 
