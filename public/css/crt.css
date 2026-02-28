@@ -222,12 +222,16 @@ body.gone-rogue-active #scanlines::after {
   padding: 10px;
   box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.55), 0 0 14px rgba(0, 255, 90, 0.05);
   min-height: 0;
+  position: relative;
+  z-index: 20; /* Ensure control rail stays above overlays */
 }
 
 .control-buttons {
   display: grid;
   grid-auto-rows: minmax(32px, 1fr);
   gap: 8px;
+  position: relative;
+  z-index: 21; /* Ensure buttons stay above debrief and other overlays */
 }
 
 .control-buttons button {
@@ -1635,7 +1639,7 @@ body.amber-mode #scanlines::after {
     overflow: hidden;
     width: 100%;
     max-height: none;
-    z-index: auto;
+    z-index: 20; /* Keep control rail above debrief overlay */
     flex-direction: row;
     align-items: stretch;
     background: transparent;
@@ -1667,6 +1671,8 @@ body.amber-mode #scanlines::after {
     background: var(--panel-bg);
     border: 1px solid var(--panel-border-soft);
     border-radius: 8px;
+    position: relative;
+    z-index: 21; /* Ensure buttons stay visible above debrief overlay */
   }
 
   body.mode-gone-rogue .control-buttons button,
@@ -1704,7 +1710,7 @@ body.amber-mode #scanlines::after {
     width: var(--rogue-debrief-pct, 34%);
     max-height: 100%;
     height: 100%;
-    z-index: auto;
+    z-index: 15; /* Below control buttons but above normal content */
     max-width: none;
     flex: 0 0 auto;
     min-height: 0;
@@ -1741,9 +1747,11 @@ body.amber-mode #scanlines::after {
     top: 0;
     width: 100% !important;
     max-height: 100% !important;
-    z-index: 10 !important;
+    z-index: 15 !important; /* Below control buttons (z-index 21) but above normal content */
     overflow-y: auto !important;
     background: rgba(6, 14, 9, 0.95) !important;
+    /* Ensure pointer events don't block buttons */
+    pointer-events: auto;
   }
 
   body.mode-gone-rogue .debrief-window .debrief-label,
