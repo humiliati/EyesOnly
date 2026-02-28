@@ -84,14 +84,12 @@ var TutorialFloors = (function() {
       { x: 4, y: 2, emoji: '🏠', name: 'Village House' },
       { x: 8, y: 2, emoji: '🏠', name: 'Village House' },
       { x: 4, y: 4, emoji: '🏡', name: 'Village Cottage' },
-      { x: 8, y: 4, emoji: '⛪', name: 'Village Chapel' },
-      { x: 12, y: 2, emoji: '🏪', name: 'Village Shop' }
+      { x: 8, y: 4, emoji: '⛪', name: 'Village Chapel' }
     ],
 
     // Building doors (interactive doors leading to building interiors)
     buildingDoors: [
-      { x: 8, y: 5, buildingId: 'BLD-002' },
-      { x: 12, y: 3, buildingId: 'BLD-003' }
+      { x: 8, y: 5, buildingId: 'BLD-002' }
     ],
 
     // Decorations (visual overlay, walkable)
@@ -727,7 +725,7 @@ var TutorialFloors = (function() {
     enemies: []
   };
   if (typeof InteriorFloors !== 'undefined') {
-    InteriorFloors.registerAuthoredLayout('1.3', SHOP_INTERIOR_LAYOUT);
+    InteriorFloors.registerAuthoredLayout('0.3', SHOP_INTERIOR_LAYOUT);
   }
 
 
@@ -827,12 +825,20 @@ var TutorialFloors = (function() {
       { x: 9, y: 5, emoji: '🏚️', name: 'Old Tavern' },
       { x: 10, y: 5, emoji: '🏚️', name: 'Old Tavern' },
       { x: 11, y: 5, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 12, y: 5, emoji: '🏚️', name: 'Old Tavern' }
+      { x: 12, y: 5, emoji: '🏚️', name: 'Old Tavern' },
+      // Shop building near the exit (right side of the road)
+      { x: 33, y: 9, emoji: '🏪', name: 'Village Shop' },
+      { x: 34, y: 9, emoji: '🏪', name: 'Village Shop' },
+      { x: 35, y: 9, emoji: '🏪', name: 'Village Shop' },
+      { x: 33, y: 10, emoji: '🏪', name: 'Village Shop' },
+      { x: 34, y: 10, emoji: '🏪', name: 'Village Shop' },
+      { x: 35, y: 10, emoji: '🏪', name: 'Village Shop' }
     ],
 
     // Tavern entrance door — at the doorway gap in the south wall (6,5)
     buildingDoors: [
-      { x: 6, y: 5, buildingId: 'BLD-TAVERN', targetFloorId: '0.1' }
+      { x: 6, y: 5, buildingId: 'BLD-TAVERN', targetFloorId: '0.1' },
+      { x: 34, y: 11, buildingId: 'BLD-003' }
     ],
 
     // Decorations (visual overlay, walkable)

@@ -46,7 +46,7 @@
     "clusterWidth": 3,
     "interactiveIndex": 1,
     "orientation": "horizontal",
-    "interiorFloorId": "1.3",
+    "interiorFloorId": "0.3",
     "enterHint": "↔️",
     "nested": []
   }
