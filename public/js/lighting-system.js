@@ -172,39 +172,39 @@ const LightingSystem = (function() {
   // Lower ambient = darker base, makes environmental lights punch through harder
   const BIOME_LIGHTING = {
     GREY_CAVE: {
-      ambientLight: 0.12, // Deep cave — nearly dark, lights are lifelines
+      ambientLight: 0.10, // Deep cave — nearly dark, lights are lifelines
       lightRatio: 0.5,
       lightSources: ['LAVA_LAMP', 'CAMPFIRE', 'LAVA_FLOOR']
     },
     OFFICE: {
-      ambientLight: 0.18, // Dim emergency lighting — monitors glow visibly
+      ambientLight: 0.15, // Dim emergency lighting — monitors glow visibly
       lightRatio: 0.5,
       lightSources: ['MONITOR']
     },
     MALL: {
-      ambientLight: 0.20, // Partial power outage — bulbs matter
+      ambientLight: 0.17, // Partial power outage — bulbs matter
       lightRatio: 0.8,
       lightSources: ['LIGHT_BULB']
     },
     INDUSTRIAL: {
-      ambientLight: 0.10, // Near-blackout — fires cast dramatic pools
+      ambientLight: 0.085, // Near-blackout — fires cast dramatic pools
       lightRatio: 0.4,
       lightSources: ['FIRE', 'LAVA_FLOOR']
     },
     AEROSPACE: {
-      ambientLight: 0.22, // Sterile low-power backup lighting
+      ambientLight: 0.19, // Sterile low-power backup lighting
       lightRatio: 0.9,
       lightSources: ['LIGHT_BULB']
     },
 
     // Forest variants (tutorial floors are mostly one big room, so we guarantee at least one lit room)
     COZY_FOREST_DAY: {
-      ambientLight: 0.45, // Daylight — still bright but not washed out
+      ambientLight: 0.38, // Daylight — still bright but not washed out
       lightRatio: 1.0,
       lightSources: ['LAMP_POST', 'TORCH', 'CAMPFIRE']
     },
     COZY_FOREST_NIGHT: {
-      ambientLight: 0.10, // Deep night — torches are critical
+      ambientLight: 0.085, // Deep night — torches are critical
       lightRatio: 1.0,
       lightSources: ['TORCH', 'CAMPFIRE']
     }
