@@ -64,6 +64,27 @@
 }
 
 @media (max-width: 600px) and (orientation: portrait) {
+  /* Restore 2×3 grid: override the flex-column rule (which has higher specificity
+     from the ID selector) back to a 2-column CSS grid in portrait mode. */
+  #control-rail .control-buttons[data-rogue-sidebar-active="1"] {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-auto-rows: minmax(26px, auto);
+    align-content: start;
+    gap: 2px;
+  }
+
+  /* Compact rogue sidebar buttons for the narrow 2-column portrait layout */
+  .rogue-sidebar-btn {
+    min-height: 26px;
+    width: auto;
+    padding: 2px 4px;
+    font-size: 0.75em;
+    min-width: 0;
+    max-width: none;
+    gap: 4px;
+  }
+
   /* Mobile portrait: left column emojis must be much smaller */
   body.mode-gone-rogue .rogue-sidebar-btn .rs-emoji,
   body.in-gone-rogue .rogue-sidebar-btn .rs-emoji,
@@ -75,6 +96,9 @@
   body.in-gone-rogue .rogue-sidebar-btn .rs-label,
   body.gone-rogue-active .rogue-sidebar-btn .rs-label {
     font-size: 0.75em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
