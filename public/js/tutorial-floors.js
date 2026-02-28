@@ -84,12 +84,14 @@ var TutorialFloors = (function() {
       { x: 4, y: 2, emoji: '🏠', name: 'Village House' },
       { x: 8, y: 2, emoji: '🏠', name: 'Village House' },
       { x: 4, y: 4, emoji: '🏡', name: 'Village Cottage' },
-      { x: 8, y: 4, emoji: '⛪', name: 'Village Chapel' }
+      { x: 8, y: 4, emoji: '⛪', name: 'Village Chapel' },
+      { x: 12, y: 2, emoji: '🏪', name: 'Village Shop' }
     ],
 
     // Building doors (interactive doors leading to building interiors)
     buildingDoors: [
-      { x: 8, y: 5, buildingId: 'BLD-002' }
+      { x: 8, y: 5, buildingId: 'BLD-002' },
+      { x: 12, y: 3, buildingId: 'BLD-003' }
     ],
 
     // Decorations (visual overlay, walkable)
@@ -620,6 +622,112 @@ var TutorialFloors = (function() {
   };
   if (typeof InteriorFloors !== 'undefined') {
     InteriorFloors.registerAuthoredLayout('1.2', CHURCH_INTERIOR_LAYOUT);
+  }
+
+  /**
+   * Shop Interior Layout — Cozy merchant shop with counter and shopkeeper
+   *
+   * Design inspired by early Zelda shops:
+   * - Small, intimate space (roughly 15x10 center area)
+   * - Counter in the upper-middle area with shopkeeper behind it
+   * - Player spawns near the bottom
+   * - Exit door at the bottom-center
+   * - Display shelves and decorations around the walls
+   * - Shop interaction triggered by talking to the shopkeeper NPC
+   *
+   * This shop serves dual purposes:
+   * 1. Development tool for rapid playtesting (granted items from M console)
+   * 2. Easter egg for players with basic cards for sale
+   */
+  var SHOP_INTERIOR_LAYOUT = {
+    name: 'Village Shop',
+    template: [
+      '########################################',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#..........########..........########..#',
+      '#..........#......#..........#......#..#',
+      '#..........#..🧑..#..........#......#..#',
+      '#..........########..........########..#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '########################################'
+    ],
+    player: { x: 20, y: 16 },
+    exit: { x: 20, y: 18 },
+    buildingDoors: [],
+    npcs: [{
+      id: 'NPC-SHOPKEEPER',
+      x: 17,
+      y: 6,
+      emoji: '🧙',
+      name: 'Merchant',
+      direction: 'south',
+      dialogues: [
+        'Welcome to my humble shop! I have goods from near and far.',
+        'These wares may help you on your journey through the forest.',
+        'Some say I have items that can only be found here... care to browse?'
+      ],
+      gate: null,
+      reward: null,
+      shopkeeper: true // Special flag to trigger shop UI
+    }],
+    decorations: [
+      // Counter/display case - left side
+      { x: 11, y: 4, emoji: '📦' }, { x: 12, y: 4, emoji: '📦' }, { x: 13, y: 4, emoji: '📦' },
+      { x: 14, y: 4, emoji: '📦' }, { x: 15, y: 4, emoji: '📦' }, { x: 16, y: 4, emoji: '📦' },
+      { x: 17, y: 4, emoji: '📦' }, { x: 18, y: 4, emoji: '📦' },
+      // Counter surface - left display
+      { x: 11, y: 5, emoji: '🏺' }, { x: 12, y: 5, emoji: '🎒' }, { x: 13, y: 5, emoji: '🗡️' },
+      { x: 14, y: 5, emoji: '🛡️' }, { x: 15, y: 5, emoji: '💎' }, { x: 16, y: 5, emoji: '🔮' },
+      { x: 18, y: 5, emoji: '🧪' },
+      // Counter back wall
+      { x: 11, y: 6, emoji: '🪵' }, { x: 12, y: 6, emoji: '🪵' }, { x: 13, y: 6, emoji: '🪵' },
+      { x: 14, y: 6, emoji: '🪵' }, { x: 15, y: 6, emoji: '🪵' }, { x: 16, y: 6, emoji: '🪵' },
+      { x: 18, y: 6, emoji: '🪵' },
+      { x: 11, y: 7, emoji: '🪵' }, { x: 12, y: 7, emoji: '🪵' }, { x: 13, y: 7, emoji: '🪵' },
+      { x: 14, y: 7, emoji: '🪵' }, { x: 15, y: 7, emoji: '🪵' }, { x: 16, y: 7, emoji: '🪵' },
+      { x: 17, y: 7, emoji: '🪵' }, { x: 18, y: 7, emoji: '🪵' },
+      // Right side display
+      { x: 22, y: 4, emoji: '📦' }, { x: 23, y: 4, emoji: '📦' }, { x: 24, y: 4, emoji: '📦' },
+      { x: 25, y: 4, emoji: '📦' }, { x: 26, y: 4, emoji: '📦' }, { x: 27, y: 4, emoji: '📦' },
+      { x: 28, y: 4, emoji: '📦' },
+      { x: 22, y: 5, emoji: '🍎' }, { x: 23, y: 5, emoji: '🍞' }, { x: 24, y: 5, emoji: '🧀' },
+      { x: 25, y: 5, emoji: '🥖' }, { x: 26, y: 5, emoji: '🍖' }, { x: 27, y: 5, emoji: '🥤' },
+      { x: 28, y: 5, emoji: '🍺' },
+      { x: 22, y: 6, emoji: '🪵' }, { x: 23, y: 6, emoji: '🪵' }, { x: 24, y: 6, emoji: '🪵' },
+      { x: 25, y: 6, emoji: '🪵' }, { x: 26, y: 6, emoji: '🪵' }, { x: 27, y: 6, emoji: '🪵' },
+      { x: 28, y: 6, emoji: '🪵' },
+      { x: 22, y: 7, emoji: '🪵' }, { x: 23, y: 7, emoji: '🪵' }, { x: 24, y: 7, emoji: '🪵' },
+      { x: 25, y: 7, emoji: '🪵' }, { x: 26, y: 7, emoji: '🪵' }, { x: 27, y: 7, emoji: '🪵' },
+      { x: 28, y: 7, emoji: '🪵' },
+      // Wall shelves - left wall
+      { x: 3, y: 3, emoji: '🕯️' }, { x: 3, y: 5, emoji: '📜' }, { x: 3, y: 7, emoji: '🕯️' },
+      { x: 3, y: 9, emoji: '🏺' }, { x: 3, y: 11, emoji: '🕯️' },
+      // Wall shelves - right wall
+      { x: 36, y: 3, emoji: '🕯️' }, { x: 36, y: 5, emoji: '🗡️' }, { x: 36, y: 7, emoji: '🕯️' },
+      { x: 36, y: 9, emoji: '🛡️' }, { x: 36, y: 11, emoji: '🕯️' },
+      // Rugs/floor decoration
+      { x: 19, y: 10, emoji: '🟫' }, { x: 20, y: 10, emoji: '🟫' }, { x: 21, y: 10, emoji: '🟫' },
+      { x: 19, y: 11, emoji: '🟫' }, { x: 20, y: 11, emoji: '🟫' }, { x: 21, y: 11, emoji: '🟫' },
+      { x: 19, y: 12, emoji: '🟫' }, { x: 20, y: 12, emoji: '🟫' }, { x: 21, y: 12, emoji: '🟫' }
+    ],
+    breakables: [],
+    currencies: [],
+    enemies: []
+  };
+  if (typeof InteriorFloors !== 'undefined') {
+    InteriorFloors.registerAuthoredLayout('1.3', SHOP_INTERIOR_LAYOUT);
   }
 
 

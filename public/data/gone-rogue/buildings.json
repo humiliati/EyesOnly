@@ -38,5 +38,16 @@
         "gen": "catacombs"
       }
     ]
+  },
+  {
+    "id": "BLD-003",
+    "name": "Shop",
+    "emoji": "🏪",
+    "clusterWidth": 3,
+    "interactiveIndex": 1,
+    "orientation": "horizontal",
+    "interiorFloorId": "1.3",
+    "enterHint": "↔️",
+    "nested": []
   }
 ]
