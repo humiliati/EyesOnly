@@ -655,3 +655,65 @@ Disposable+Covert now refunds 1 Focus. Design: "composure from clean tradecraft.
 | Energy | 0 | 0 | 0 |
 
 Energy has no combo loop — it's managed by card costs and turn economy, not the synergy system.
+
+---
+
+## Phase 6 — Environment Synergy Cards (Basic Attack Type)
+
+> **Goal:** Add basic attack-type enemy cards with long but simple synergy chains that involve status modifiers or one-time-use attacks, contextually relevant to the environment. Focus on Environment Synergy and ENEMY_AI via BIOME_SYSTEMS.
+
+### New Enemy Cards
+
+| ID | Name | Emoji | Intent Type | Tags | Synergy Tags | Rarity | Steal Value |
+|---|---|---|---|---|---|---|---|
+| EATK-021 | Rope | 🪢 | GRAPPLE | melee, control, setup, bind | control, improvised, bind, ranged_chain | common | 2 |
+| EATK-022 | Broken Lever | 🔧 | GRAPPLE | melee, improvised, black_market | melee, improvised, black_market, chain, structural | common | 3 |
+| EATK-023 | Secret Button | 🗿 | ENVIRONMENTAL_TRIGGER | utility, covert, black_market, environmental | black_market, covert, environmental_trigger, structural | rare | 4 |
+
+#### EATK-021 — Rope (Bind)
+
+- **Effect chain**: `bound` status (2 turns) + self `setup_ranged` buff (+20 accuracy, 1 turn)
+- **Synergy**: Naturally chains with Basic Shot / Pistol Shot (EATK-001) in the next action — the bind holds the player still while the accuracy window is open. Fires the **Bind & Blast** tag combo (`bind` + `ranged_chain`, requires `bound` status on target).
+- **Environment synergy**: BIND_TERRAIN biome variant extends bound duration by +1 and amplifies the accuracy window.
+- **Design note**: Teaches setup → payoff sequencing. Long synergy chain but each link is obvious: bind first, then shoot.
+
+#### EATK-022 — Broken Lever
+
+- **Effect chain**: `damage` (2) + `stagger` (1 turn) + `environment_interact` (jams nearest door/gate for 1 round, value=1)
+- **Synergy**: `melee` + `black_market` tags fire existing **Combo Strike** and **Contraband Hack** combos. `improvised` + `black_market` fires **Contraband Hack** (Salvage Rights follow-up). Stealing it removes an enemy's black-market chain anchor.
+- **Environment synergy**: INDUSTRIAL_DEBRIS biome variant grants +1 damage on debris tiles and raises lever-jam probability to 50%.
+- **Design note**: Improvised weapon that doubles as an environmental interaction. Junkyard, construction, and warehouse biomes.
+
+#### EATK-023 — Secret Button (Statue Bust)
+
+- **Effect chain**: `cover_disrupted` (2 turns on area) + `environment_trigger` (secret passage, 1-tile radius) + `repositioned` (self, 1 turn)
+- **Synergy**: `black_market` + `covert` tags fire existing **Silent Recovery** combo. `environmental_trigger` + `covert` fires the new **Ghost Passage** combo (stealth preserved + silent reposition + noise −5). Zero alert generated — purely covert.
+- **Environment synergy**: HIDDEN_CHAMBER biome variant makes Secret Button available only on `carved_walls`/`statue_tiles` ground, and sets `alertGenerationMultiplier: 0` for all enemy actions while in the chamber.
+- **Design note**: Stealing Secret Button gives the player access to the same passage network — powerful mid-combat reposition. Only available in catacombs, manor, or black-market biomes.
+
+### New Enemy Decks
+
+| Deck Key | Cards | Hand Size | Exposed Tags | Chain Design |
+|---|---|---|---|---|
+| WAREHOUSE_ENFORCER | EATK-021 (guaranteed) × 1, EATK-001 × 2 | 3 | disarm, improvised | Rope bind opener → double Pistol Shot with +20 accuracy. Pure bind→blast chain. |
+| BLACK_MARKET_FENCE | EATK-022, EATK-019, EATK-020 | 3 | bribe, pickpocket, sleight | Broken Lever stagger + Coin Toss distraction + Flee escape. `black_market + improvised` fires Contraband Hack. |
+| CATACOMB_SENTINEL | EATK-023 (guaranteed) × 1, EATK-010, EATK-013, EATK-009 | 4 | hack, bribe | Secret Button guaranteed opener (silent cover disruption + reposition) + Spotlight detection + Shield Wall + Grapple flanking. Near-statue biomes only. |
+
+**Updated deck:** JUNKYARD_SCAVENGER now includes EATK-022 (Broken Lever) as the fourth card in its fixed 4-card hand, adding `black_market + improvised` synergy chain capability.
+
+### New Tag Synergy Combos
+
+Three new combos added to `public/data/gone-rogue/tag-synergy-data.json`:
+
+| Combo | Tags | Condition | Effect |
+|---|---|---|---|
+| **Bind & Blast** | `bind` + `ranged_chain` | `requireTargetStatus: bound` | +20 accuracy for next ranged attack; target gains `exposed` (1 turn) |
+| **Salvage Rights** | `structural` + `black_market` | `requirePreviousTag: melee` | Drops 2 scrap resource; staggers enemy (1 turn) |
+| **Ghost Passage** | `environmental_trigger` + `covert` | `requireStatus: undetected OR requireGroundEffect: statue_tiles` | Stealth preserved (1 turn); silent reposition; noise −5 |
+
+### Updated Stress Test Counts (Post Phase 6)
+
+- Enemy cards: **20 → 23** (EATK-021, EATK-022, EATK-023 added)
+- Enemy decks: **37 → 41** (WAREHOUSE_ENFORCER, BLACK_MARKET_FENCE, CATACOMB_SENTINEL added; JUNKYARD_SCAVENGER updated)
+- Tag synergy combos: **35 → 38** (Bind & Blast, Salvage Rights, Ghost Passage added)
+- New tags introduced: `bind`, `ranged_chain`, `structural`, `environmental_trigger`
