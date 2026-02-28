@@ -749,11 +749,22 @@ const GoneRogueMobile = (function () {
         var posKey = vx + ',' + vy;
         if (itemPositions[posKey]) return; // Skip if already rendered
         itemPositions[posKey] = true;
+
+        // Battery gems use cyan glyph, other items use emoji or default
+        var char = item.glyph || item.emoji || '💎';
+        var color = '#00FFFF'; // Default cyan
+
+        // Battery cells (gems) use battery cyan color
+        if (item.type === 'gem') {
+          char = item.glyph || '◈';
+          color = '#00FFA6'; // Battery cyan from RESOURCE_COLORS
+        }
+
         entities.push({
           x: vx,
           y: vy,
-          char: item.emoji || '💎',
-          color: '#00FFFF'
+          char: char,
+          color: color
         });
       });
     }

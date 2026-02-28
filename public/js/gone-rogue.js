@@ -6027,28 +6027,35 @@ _incrementPityTimers();
       _items = _items.filter(function(i) { return i !== item; });
 
       if (typeof OverheadAnimator !== 'undefined') {
-        OverheadAnimator.showExpression(_player.x, _player.y, 'LOOT', 800, '💎');
+        OverheadAnimator.showExpression(_player.x, _player.y, 'LOOT', 800, '◈');
       }
 
       if (typeof TooltipSystem !== 'undefined') {
-        TooltipSystem.showAction('item-pickup', { name: '💎 Battery +' + gemAmount });
+        TooltipSystem.showAction('item-pickup', { name: '◈ Battery +' + gemAmount });
       }
 
       if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-        UIControls.updateMokInterjection('💎 Battery +' + gemAmount);
+        UIControls.updateMokInterjection('◈ Battery +' + gemAmount);
       }
 
-      // Pancake stacker for gems
+      // Pancake stacker for battery gems (cyan glyph)
       try {
         if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-          PancakeStack.addPancake('💎');
+          PancakeStack.addPancake('◈');
         } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-          PlayerStackManager.addPancake('💎');
+          PlayerStackManager.addPancake('◈');
         }
       } catch (ePancake) {}
 
+      // Trigger debrief feed battery recharge pulse
+      try {
+        if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.triggerBatteryRecharge) {
+          DebriefFeedController.triggerBatteryRecharge();
+        }
+      } catch (eDebrief) {}
+
       return {
-        lines: ['PICKED UP: 💎 Battery +' + gemAmount, ''].concat(_renderGrid()),
+        lines: ['PICKED UP: ◈ Battery +' + gemAmount, ''].concat(_renderGrid()),
         prompt: getPrompt(),
         stayActive: true
       };
@@ -9268,8 +9275,8 @@ _incrementPityTimers();
                   amount: 1,
                   spawnTime: Date.now(),
                   decayTime: 45000,
-                  emoji: '💎',
-                  name: 'Energy Gem'
+                  glyph: '◈',
+                  name: 'Battery Cell'
                 });
               }
 
@@ -9344,8 +9351,8 @@ _incrementPityTimers();
                 amount: 1,
                 spawnTime: Date.now(),
                 decayTime: 45000, // 45 second decay
-                emoji: '💎',
-                name: 'Energy Gem'
+                glyph: '◈',
+                name: 'Battery Cell'
               });
             }
 

@@ -29,10 +29,8 @@ These collectible types use emoji for clear, recognizable visual representation:
 
 4. **Items/Equipment** (💎 specific items)
    - Special items and equipment may use emoji
-   - **Gems (💎)**: Battery recharge collectibles that restore the Battery resource
-   - Dropped from breakables with 15% chance
-   - Type: `'gem'`, recharges battery via `GAMESTATE.rechargeBattery()`
-   - Rendering: Purple glow (`#aa66ff`) on mobile
+   - **Note**: Battery cells (◈) are NOT emoji - they are cyan ASCII glyphs
+   - Example: Other gems/crystals may use 💎 for decorative purposes
 
 5. **Card Drops** (🃏 🎴)
    - Playing cards and special cards
@@ -59,12 +57,17 @@ These collectible types use ASCII characters with specific resource colors for e
    - Dropped from breakables with 60% chance
    - Type: `'ammo'`, adds to ammo counter via `GAMESTATE.addAmmo()`
 
-3. **Battery/Energy** (💎 gem collectible - uses emoji)
-   - **Collectible**: Gems (💎) are the battery recharge items
-   - **NOT ASCII monochrome** - gems use emoji for clarity
-   - Color: Purple glow `#aa66ff` on mobile
-   - Type: `'gem'`, recharges battery via `GAMESTATE.rechargeBattery()`
-   - Background: `#1a0a2a` (dark purple)
+3. **Battery/Energy** (◈ battery cell - cyan ASCII glyph)
+   - **Glyph**: `◈` (U+25C8, white diamond containing black small diamond)
+   - **Color**: `#00FFA6` (cyan-green) per RESOURCE_COLORS
+   - **Type**: `'gem'` (item type that recharges battery)
+   - **Purpose**: Recharges battery resource for tech cards
+   - **Collection**: Gem pickup calls `GAMESTATE.rechargeBattery(amount)`
+   - **Consumption**: `GAMESTATE.useBattery(amount)`
+   - **Drop Rate**: 15% from breakables
+   - **Visual**: ASCII monochrome (NO emoji) with cyan color
+   - **Name**: "Battery Cell" (was "Energy Gem")
+   - **Animation**: Triggers debrief feed battery signal recharge pulse ((( )))
    - **Important**: Battery is a separate resource from Ammo
    - Battery is consumed by tech cards (EMP Blast, System Crash, Chain Lightning)
    - Ammo is consumed by weapon attacks
@@ -113,15 +116,16 @@ RESOURCE_COLORS = {
 - **Visual**: Monochrome ASCII (no emoji)
 
 ### Battery (Tech Resource)
-- **Collectible**: Gem emoji `💎` with purple glow `#aa66ff`
+- **Collectible**: Battery Cell glyph `◈` with cyan color `#00FFA6`
 - **Resource Type**: `'gem'` (item type that recharges battery)
 - **Purpose**: Used for tech cards (EMP Blast, System Crash, Chain Lightning, etc.)
-- **Collection**: Gem pickup calls `GAMESTATE.rechargeBattery(amount)`
+- **Collection**: Battery cell pickup calls `GAMESTATE.rechargeBattery(amount)`
 - **Consumption**: `GAMESTATE.useBattery(amount)`
 - **Drop Rate**: 15% from breakables
-- **Visual**: Emoji (💎) with purple glow, NOT monochrome
+- **Visual**: ASCII monochrome `◈` with cyan color (NO emoji)
+- **Debrief Feed**: Triggers battery signal recharge pulse animation ((( )))
 
-**Note**: The term "battery ammo" is a misnomer. Battery and ammo are completely separate resources. Gems (💎) recharge your battery resource, while ammo pickups (؋) add to your weapon ammunition.
+**Note**: Battery cells are now consistent with currency (¢) and ammo (؋) as ASCII monochrome collectibles.
 
 ## Implementation Files
 
@@ -139,14 +143,17 @@ RESOURCE_COLORS = {
 - **Color**: `#DA70D6`
 - **Background**: `#2a0a2a`
 
-### Battery Recharge / Gems (Emoji)
+### Battery Recharge / Battery Cells (ASCII Monochrome)
 - **File**: `public/js/gone-rogue.js`
-- **Spawn**: Lines 9262-9273 (from breakables, 15% chance)
-- **Pickup**: Lines 6018-6055 (calls `GAMESTATE.rechargeBattery()`)
-- **Emoji**: `💎`
+- **Spawn**: Lines 9269-9280, 9345-9356 (from breakables, 15% chance)
+- **Pickup**: Lines 6018-6062 (calls `GAMESTATE.rechargeBattery()`)
+- **Glyph**: `◈`
 - **Type**: `'gem'`
-- **Rendering**: `gone-rogue-mobile.js` lines 598-602 (purple glow)
-- **UI Feedback**: Shows "💎 Battery +X" message
+- **Color**: `#00FFA6` (cyan from RESOURCE_COLORS)
+- **Rendering**: `gone-rogue-mobile.js` lines 743-770 (cyan ASCII glyph)
+- **UI Feedback**: Shows "◈ Battery +X" message
+- **Debrief Integration**: Triggers `DebriefFeedController.triggerBatteryRecharge()`
+- **Animation**: Battery signal pulse ((( ))) in debrief feed
 
 ### Food (Emoji)
 - **File**: `public/js/expression-database.js`
