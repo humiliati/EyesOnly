@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Collectibles Dual-Render Bug Visual Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: monospace;
+      background: #1a1a1a;
+      color: #00ff00;
+      padding: 20px;
+    }
+    h1 { color: #00ffff; }
+    h2 { color: #ffff00; margin-top: 30px; }
+    .test-section {
+      border: 1px solid #444;
+      padding: 15px;
+      margin: 15px 0;
+      background: #222;
+    }
+    .status {
+      padding: 5px 10px;
+      margin: 5px 0;
+      border-radius: 3px;
+    }
+    .pass { background: #004400; color: #00ff00; }
+    .fail { background: #440000; color: #ff0000; }
+    .pending { background: #444400; color: #ffff00; }
+    #game-container {
+      margin: 20px 0;
+      border: 2px solid #444;
+    }
+    .instructions {
+      background: #333;
+      padding: 10px;
+      margin: 10px 0;
+      border-left: 3px solid #00ffff;
+    }
+    button {
+      background: #444;
+      color: #00ff00;
+      border: 1px solid #00ff00;
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+      font-family: monospace;
+    }
+    button:hover {
+      background: #00ff00;
+      color: #000;
+    }
+    .bug-demo {
+      background: #440000;
+      border: 2px solid #ff0000;
+      padding: 10px;
+      margin: 10px 0;
+    }
+    .fix-demo {
+      background: #004400;
+      border: 2px solid #00ff00;
+      padding: 10px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🐛 Collectibles Dual-Render Bug Visual Test</h1>
+
+  <div class="instructions">
+    <strong>Purpose:</strong> This test visually demonstrates both collectibles bugs:
+    <ul>
+      <li><strong>Bug #1:</strong> Currency shows dual animation (yellow "+3¢" + lingering green "¢")</li>
+      <li><strong>Bug #2:</strong> Food/Interactive items remain visible after collection</li>
+    </ul>
+    <strong>How to use:</strong>
+    <ol>
+      <li>Click "Run Bug Demo" to see the bugs in action</li>
+      <li>Move player over currency and food items</li>
+      <li>Observe: currency glyph lingers on map + food items don't disappear</li>
+      <li>Click "Run Fixed Version" to see the correct behavior</li>
+    </ol>
+  </div>
+
+  <h2>Test Results</h2>
+  <div id="test-results"></div>
+
+  <h2>Bug Demonstration</h2>
+  <button onclick="runBugDemo()">🐛 Run Bug Demo (Broken)</button>
+  <button onclick="runFixedDemo()">✅ Run Fixed Version</button>
+  <button onclick="resetTest()">🔄 Reset</button>
+
+  <div id="game-container"></div>
+
+  <h2>Technical Details</h2>
+  <div class="test-section">
+    <h3>Bug #1: Dual Currency Animation</h3>
+    <p><strong>Root Cause:</strong> Currency objects stay in _currencies[] array with collected=true flag,
+    but renderer doesn't check this flag.</p>
+    <pre style="color: #ff6666;">
+// BROKEN CODE (gone-rogue-mobile.js ~L725-736):
+currencies.forEach(function(currency) {
+  var vx = _toViewX(currency.x);
+  var vy = _toViewY(currency.y);
+  if (!_inView(vx, vy)) return;
+  entities.push({  // ← Renders ALL currencies, even collected ones!
+    x: vx, y: vy,
+    char: currency.glyph || '¢',
+    color: '#FFFF00'
+  });
+});
+    </pre>
+    <p><strong>Fix:</strong> Filter out collected currencies in the rendering loop.</p>
+    <pre style="color: #66ff66;">
+// FIXED CODE:
+currencies.forEach(function(currency) {
+  if (currency.collected) return;  // ← Skip collected currencies!
+  var vx = _toViewX(currency.x);
+  var vy = _toViewY(currency.y);
+  if (!_inView(vx, vy)) return;
+  entities.push({
+    x: vx, y: vy,
+    char: currency.glyph || '¢',
+    color: '#FFFF00'
+  });
+});
+    </pre>
+  </div>
+
+  <div class="test-section">
+    <h3>Bug #2: Food/Interactive Items Not Removed</h3>
+    <p><strong>Root Cause:</strong> Items are rendered from BOTH _items[] AND InteractiveItems._interactiveItems[].
+    Collection removes from one but not the other.</p>
+    <pre style="color: #ff6666;">
+// BROKEN: Two separate rendering loops (gone-rogue-mobile.js L739-751, L787-799)
+// Render from _items[]
+items.forEach(function(item) { entities.push({...}); });
+// ...
+// Render from InteractiveItems (separate system!)
+interactiveItems.forEach(function(item) { entities.push({...}); });
+    </pre>
+    <p><strong>Fix:</strong> Deduplicate items by position before rendering, or ensure removal from both systems.</p>
+  </div>
+
+  <!-- Load Dependencies -->
+  <script src="../js/overhead-animator.js"></script>
+  <script src="../js/interactive-items.js"></script>
+
+  <script>
+    // Simple test harness
+    let testResults = [];
+    let currentMode = 'none';
+
+    function log(message, status = 'pending') {
+      const result = { message, status, timestamp: new Date().toISOString() };
+      testResults.push(result);
+      updateResults();
+      console.log(`[${status.toUpperCase()}] ${message}`);
+    }
+
+    function updateResults() {
+      const container = document.getElementById('test-results');
+      container.innerHTML = testResults.map(r =>
+        `<div class="status ${r.status}">[${r.status.toUpperCase()}] ${r.message}</div>`
+      ).join('');
+    }
+
+    // Simplified mock of the game engine to demonstrate the bugs
+    class MockGameEngine {
+      constructor(isBuggy) {
+        this.isBuggy = isBuggy;
+        this.currencies = [];
+        this.items = [];
+        this.interactiveItems = [];
+        this.player = { x: 5, y: 5 };
+        this.entities = [];
+
+        // Spawn test collectibles
+        this.spawnTestCollectibles();
+      }
+
+      spawnTestCollectibles() {
+        // Spawn currency at (6, 5) - right of player
+        this.currencies.push({
+          x: 6, y: 5,
+          amount: 3,
+          glyph: '¢',
+          collected: false,
+          id: 'curr1'
+        });
+
+        // Spawn food item at (5, 4) - above player
+        const foodItem = {
+          x: 5, y: 4,
+          type: 'FOOD',
+          emoji: '🍎',
+          id: 'food1',
+          autoPickup: true
+        };
+        this.items.push(foodItem);
+        this.interactiveItems.push(foodItem); // Bug: in both arrays!
+      }
+
+      movePlayer(dx, dy) {
+        const newX = this.player.x + dx;
+        const newY = this.player.y + dy;
+
+        // Check currency pickup
+        const currency = this.currencies.find(c => c.x === newX && c.y === newY);
+        if (currency && !currency.collected) {
+          log(`Currency collected at (${newX}, ${newY})`, 'pass');
+
+          if (this.isBuggy) {
+            // BUG: Mark as collected but DON'T remove from array
+            currency.collected = true;
+            log('⚠️ BUG: Currency marked collected=true but stays in array', 'fail');
+          } else {
+            // FIX: Remove from array immediately
+            this.currencies = this.currencies.filter(c => c.id !== currency.id);
+            log('✅ FIX: Currency removed from array immediately', 'pass');
+          }
+
+          // Show overhead animation (this always works correctly)
+          if (typeof OverheadAnimator !== 'undefined') {
+            OverheadAnimator.showCurrencyPickup(newX, newY, currency.amount);
+          }
+        }
+
+        // Check food item pickup
+        const foodIdx = this.items.findIndex(i => i.x === newX && i.y === newY);
+        const interactiveFoodIdx = this.interactiveItems.findIndex(i => i.x === newX && i.y === newY);
+
+        if (foodIdx !== -1) {
+          const food = this.items[foodIdx];
+          log(`Food collected at (${newX}, ${newY})`, 'pass');
+
+          if (this.isBuggy) {
+            // BUG: Remove from items[] but forget about interactiveItems[]
+            this.items.splice(foodIdx, 1);
+            log('⚠️ BUG: Removed from items[] but still in interactiveItems[]', 'fail');
+          } else {
+            // FIX: Remove from BOTH arrays
+            this.items.splice(foodIdx, 1);
+            if (interactiveFoodIdx !== -1) {
+              this.interactiveItems.splice(interactiveFoodIdx, 1);
+            }
+            log('✅ FIX: Removed from both items[] and interactiveItems[]', 'pass');
+          }
+
+          // Show overhead animation
+          if (typeof OverheadAnimator !== 'undefined') {
+            OverheadAnimator.showExpression(newX, newY, food.emoji, 'LOOT');
+          }
+        }
+
+        this.player.x = newX;
+        this.player.y = newY;
+        this.render();
+      }
+
+      render() {
+        this.entities = [];
+
+        // Render currencies
+        this.currencies.forEach(currency => {
+          if (this.isBuggy) {
+            // BUG: Render ALL currencies without checking collected flag
+            this.entities.push({
+              x: currency.x, y: currency.y,
+              char: currency.glyph,
+              color: '#FFFF00',
+              type: 'currency'
+            });
+          } else {
+            // FIX: Skip collected currencies
+            if (currency.collected) return;
+            this.entities.push({
+              x: currency.x, y: currency.y,
+              char: currency.glyph,
+              color: '#FFFF00',
+              type: 'currency'
+            });
+          }
+        });
+
+        // Render items from items[]
+        this.items.forEach(item => {
+          this.entities.push({
+            x: item.x, y: item.y,
+            char: item.emoji,
+            color: '#00FFFF',
+            type: 'item'
+          });
+        });
+
+        // Render items from interactiveItems[] (BUG: separate rendering!)
+        this.interactiveItems.forEach(item => {
+          this.entities.push({
+            x: item.x, y: item.y,
+            char: item.emoji,
+            color: '#00FFFF',
+            type: 'interactive'
+          });
+        });
+
+        this.draw();
+      }
+
+      draw() {
+        const container = document.getElementById('game-container');
+        const width = 11;
+        const height = 11;
+
+        let html = '<div style="font-size: 24px; line-height: 1.2; background: #000; padding: 10px; font-family: monospace;">';
+
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            let char = '·';
+            let color = '#333';
+
+            // Check for entities at this position
+            const entity = this.entities.find(e => e.x === x && e.y === y);
+            if (entity) {
+              char = entity.char;
+              color = entity.color;
+
+              // Highlight bug: show both items from different arrays
+              const dupes = this.entities.filter(e => e.x === x && e.y === y);
+              if (dupes.length > 1 && this.isBuggy) {
+                char += `<sup style="color: #ff0000; font-size: 12px;">×${dupes.length}</sup>`;
+              }
+            }
+
+            // Player
+            if (this.player.x === x && this.player.y === y) {
+              char = '@';
+              color = '#00ff00';
+            }
+
+            html += `<span style="color: ${color}">${char}</span>`;
+          }
+          html += '<br>';
+        }
+
+        html += '</div>';
+        html += '<div style="margin-top: 10px; color: #aaa;">';
+        html += `<div>Player @ (${this.player.x}, ${this.player.y})</div>`;
+        html += `<div>Currencies in array: ${this.currencies.length} (collected: ${this.currencies.filter(c => c.collected).length})</div>`;
+        html += `<div>Items in _items[]: ${this.items.length}</div>`;
+        html += `<div>Items in interactiveItems[]: ${this.interactiveItems.length}</div>`;
+        html += `<div>Total entities rendered: ${this.entities.length}</div>`;
+        html += '</div>';
+
+        html += '<div style="margin-top: 10px;">';
+        html += '<button onclick="game.movePlayer(0, -1)">↑ Up</button>';
+        html += '<button onclick="game.movePlayer(-1, 0)">← Left</button>';
+        html += '<button onclick="game.movePlayer(1, 0)">→ Right</button>';
+        html += '<button onclick="game.movePlayer(0, 1)">↓ Down</button>';
+        html += '</div>';
+
+        container.innerHTML = html;
+      }
+    }
+
+    let game = null;
+
+    function runBugDemo() {
+      testResults = [];
+      log('Starting BUGGY version demo...', 'fail');
+      game = new MockGameEngine(true);
+      game.render();
+
+      const container = document.getElementById('game-container');
+      container.className = 'bug-demo';
+
+      log('Instructions: Move player RIGHT to collect currency, then UP to collect food', 'pending');
+      log('Observe: Currency stays visible after collection (dual render bug)', 'pending');
+      log('Observe: Food emoji appears twice (from both arrays)', 'pending');
+    }
+
+    function runFixedDemo() {
+      testResults = [];
+      log('Starting FIXED version demo...', 'pass');
+      game = new MockGameEngine(false);
+      game.render();
+
+      const container = document.getElementById('game-container');
+      container.className = 'fix-demo';
+
+      log('Instructions: Move player RIGHT to collect currency, then UP to collect food', 'pending');
+      log('Observe: Currency disappears immediately after collection ✅', 'pending');
+      log('Observe: Food emoji disappears after collection ✅', 'pending');
+    }
+
+    function resetTest() {
+      testResults = [];
+      game = null;
+      document.getElementById('game-container').innerHTML = '<p style="padding: 20px; color: #888;">Click "Run Bug Demo" or "Run Fixed Version" to start</p>';
+      document.getElementById('test-results').innerHTML = '';
+    }
+
+    // Initialize
+    resetTest();
+  </script>
+</body>
+</html>
