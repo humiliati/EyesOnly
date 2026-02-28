@@ -8,44 +8,62 @@
     "cards": [
       "EATK-013",
       "EATK-001",
-      "EATK-011",
-      "EATK-024"
+      "EATK-011"
     ],
     "exposedTags": [
       "disarm"
     ],
-    "_combo": "Anchor: Safety Interlock gates Aimed Shot one-shot. Steal the interlock = they can only pistol+shield.",
-    "_note": "Defensive guard variant. Shield Wall + Pistol + Aimed Shot + Safety Interlock."
+    "_note": "Defensive guard variant. Shield Wall + Pistol + Aimed Shot."
+  },
+  "BLACK_MARKET_FENCE": {
+    "cards": [
+      "EATK-022",
+      "EATK-019",
+      "EATK-020"
+    ],
+    "exposedTags": [
+      "bribe",
+      "pickpocket",
+      "sleight"
+    ],
+    "_note": "Black market operative: Broken Lever improvised melee stagger, Coin Toss distraction, Flee escape. black_market + improvised tags chain into Contraband Hack combo. Stealing any card degrades escape plan."
+  },
+  "CATACOMB_SENTINEL": {
+    "cards": [
+      "EATK-023",
+      "EATK-010",
+      "EATK-013",
+      "EATK-009"
+    ],
+    "exposedTags": [
+      "hack",
+      "bribe"
+    ],
+    "_note": "Catacomb statue guardian. Guarantees Secret Button opens secret passage (disrupts cover, repositions enemy). Spotlight + Shield Wall + Grapple cover the flanks. Covert + black_market tags on Secret Button enable Silent Recovery combo. Near-statue biome only."
   },
   "CHEM_TECH": {
     "cards": [
       "EATK-006",
       "EATK-007",
-      "EATK-010",
-      "EATK-026",
-      "EATK-021"
+      "EATK-010"
     ],
     "exposedTags": [
       "hack",
       "disarm"
     ],
-    "_combo": "Anchor: Capacitor Bank stores charges for Taze chain. Fuel: Dead Battery feeds Overload Cannon threshold. Steal battery = starve cannon, steal capacitor = disable charge buildup.",
-    "_note": "Status-control tech. Chemical + Taze + Spotlight + Capacitor Bank + Dead Battery."
+    "_note": "Status-control tech. Chemical + Taze + Spotlight."
   },
   "CHURCH_CATACOMBS_WARDEN": {
     "cards": [
       "EATK-010",
       "EATK-007",
-      "EATK-013",
-      "EATK-028",
-      "EATK-022"
+      "EATK-013"
     ],
     "exposedTags": [
       "hack",
       "disarm"
     ],
-    "_combo": "Anchor: Flicker Relay gates Cultist Zeal (dark-powered burst). Fuel: Broken Bulb increases darkness damage. Cursed: Flicker hurts own accuracy. Steal Relay = ritual fails, steal Bulb = darkness starved.",
-    "_note": "Catacombs warden: reveal/expose + stun + defensive wall + Flicker Relay + Broken Bulb."
+    "_note": "Catacombs warden: reveal/expose + stun + defensive wall."
   },
   "CIVILIAN_BRAWLER": {
     "cards": [
@@ -137,17 +155,13 @@
     "cards": [
       "EATK-017",
       "EATK-010",
-      "EATK-011",
-      "EATK-024",
-      "EATK-025",
-      "EATK-029"
+      "EATK-011"
     ],
     "exposedTags": [
       "hack",
       "disarm"
     ],
-    "_combo": "Anchor: Safety Interlock gates Aimed Shot. Signal Amplifier gates reinforcement calls. Defense: Noise Gate protects from sonic. Steal Noise Gate = complete your Ultrasonic chain. Steal Interlock = neuter burst. Steal Signal = cut comms.",
-    "_note": "Server room security: paint/spotlight + aimed shot + Safety Interlock + Signal Amplifier + Noise Gate."
+    "_note": "Server room security: paint/spotlight + aimed shot (high detection)."
   },
   "DROWSY_BEE": {
     "cards": [
@@ -162,15 +176,13 @@
     "cards": [
       "EATK-005",
       "EATK-008",
-      "EATK-009",
-      "EATK-027"
+      "EATK-009"
     ],
     "exposedTags": [
       "intimidate",
       "disarm"
     ],
-    "_combo": "Cursed Anchor: Overclock Core gates Frenzy (double speed) but costs 2 HP per play. Dilemma: steal to prevent burst OR leave it and let self-damage whittle them down.",
-    "_note": "Fight club: heavy hit + knife + grapple + Overclock Core."
+    "_note": "Fight club: heavy hit + knife + grapple. Steal disarm options."
   },
   "GENERIC_FLOOR_10": {
     "cards": [
@@ -188,47 +200,38 @@
     "cards": [
       "EATK-001",
       "EATK-002",
-      "EATK-008",
-      "EATK-021"
+      "EATK-008"
     ],
     "exposedTags": [
       "disarm",
       "sleight"
     ],
-    "_combo": "Fuel: Dead Battery pads hand, feeds Overload Cannon threshold at higher floors.",
-    "_note": "Pistol + Burst + Knife + Dead Battery. Junk padding starts appearing."
+    "_note": "Pistol + Burst + Knife. Mixed ranged/melee."
   },
   "GENERIC_FLOOR_20": {
     "cards": [
       "EATK-002",
       "EATK-011",
       "EATK-008",
-      "EATK-013",
-      "EATK-024",
-      "EATK-023"
+      "EATK-013"
     ],
     "exposedTags": [
       "disarm",
       "hack"
     ],
-    "_combo": "Anchor: Safety Interlock gates Aimed Shot. Fuel: Loose Wiring extends chain lightning. First real combo dependency encounter.",
-    "_note": "Burst + Aimed + Knife + Shield + Safety Interlock + Loose Wiring."
+    "_note": "Burst + Aimed + Knife + Shield. Defensive variety."
   },
   "GENERIC_FLOOR_25": {
     "cards": [
       "EATK-002",
       "EATK-011",
       "EATK-003",
-      "EATK-007",
-      "EATK-024",
-      "EATK-026",
-      "EATK-021"
+      "EATK-007"
     ],
     "exposedTags": [
       "hack"
     ],
-    "_combo": "Anchor: Safety Interlock gates Grenade+Aimed Shot. Capacitor Bank stores charges for Taze chain. Fuel: Dead Battery feeds Overload Cannon. Full combo dependency pattern.",
-    "_note": "Burst + Aimed + Grenade + Taze + Safety Interlock + Capacitor Bank + Dead Battery."
+    "_note": "Burst + Aimed + Grenade + Taze. Escalating danger."
   },
   "GENERIC_FLOOR_30": {
     "cards": [
@@ -236,14 +239,10 @@
       "EATK-003",
       "EATK-007",
       "EATK-002",
-      "EATK-013",
-      "EATK-024",
-      "EATK-026",
-      "EATK-030"
+      "EATK-013"
     ],
     "exposedTags": [],
-    "_combo": "Full combo ecosystem. Anchor: Safety Interlock + Capacitor Bank gate burst + electrical. Defense: Thermal Stabilizer prevents overheating. Steal Stabilizer = complete your Overload Grid chain. Steal Interlock = neuter burst. No exposed tags — hard to steal from.",
-    "_note": "Full 8-card hand. Late-game guards with combo dependencies + defensive steal-target."
+    "_note": "Full 5-card hand. Late-game guards are tough to steal from."
   },
   "GENERIC_FLOOR_5": {
     "cards": [
@@ -260,15 +259,12 @@
     "cards": [
       "EATK-018",
       "EATK-018",
-      "EATK-008",
-      "EATK-024",
-      "EATK-027"
+      "EATK-008"
     ],
     "exposedTags": [
       "sleight"
     ],
-    "_combo": "Anchor: Safety Interlock gates Shadow Strike one-shots. Cursed: Overclock Core enables Frenzy (double strike speed) but costs 2 HP. Steal Interlock = no burst. Leave Overclock = they self-damage. Glass cannon with self-destruct timer.",
-    "_note": "2x Shadow Strike + Knife + Safety Interlock + Overclock Core. High risk/reward."
+    "_note": "2x Shadow Strike + Knife. Glass cannon ambusher."
   },
   "GRANNY": {
     "cards": [
@@ -284,13 +280,10 @@
       "EATK-013",
       "EATK-013",
       "EATK-005",
-      "EATK-001",
-      "EATK-030",
-      "EATK-023"
+      "EATK-001"
     ],
     "exposedTags": [],
-    "_combo": "Defense: Thermal Stabilizer prevents overheating from tanking fire. Fuel: Loose Wiring adds chain spread. Steal Stabilizer = complete your Overload Grid chain. Still no exposed tags — brute force only.",
-    "_note": "2x Shield Wall + Axe + Pistol + Thermal Stabilizer + Loose Wiring. Tank with steal-target defense."
+    "_note": "2x Shield Wall + Axe + Pistol. Tank. Hard to steal from."
   },
   "HOMEOWNER_DEFENDER": {
     "cards": [
@@ -318,14 +311,15 @@
     "cards": [
       "EATK-009",
       "EATK-008",
-      "EATK-019"
+      "EATK-019",
+      "EATK-022"
     ],
     "exposedTags": [
       "pickpocket",
       "sleight",
       "bribe"
     ],
-    "_note": "Junkyard: improvised grabs + knife + coin tricks."
+    "_note": "Junkyard: improvised grabs + knife + coin tricks + broken lever. fixed 4-card hand. black_market + improvised synergy chain via Broken Lever (Contraband Hack + Shrapnel Spray). Easy to steal from — 3 exposed tags."
   },
   "LAZY_CATERPILLAR": {
     "cards": [
@@ -353,16 +347,12 @@
     "cards": [
       "EATK-012",
       "EATK-012",
-      "EATK-003",
-      "EATK-030",
-      "EATK-022",
-      "EATK-022"
+      "EATK-003"
     ],
     "exposedTags": [
       "disarm"
     ],
-    "_combo": "Defense: Thermal Stabilizer prevents self-burn from own incendiaries. Fuel: 2x Broken Bulb darkens area for fire visibility advantage. Steal Stabilizer = they take self-burn damage. Steal Bulbs = fuel your Prism Mine Lumen chain.",
-    "_note": "2x Incendiary + Frag + Thermal Stabilizer + 2x Broken Bulb. Fire specialist with darkness fuel."
+    "_note": "2x Incendiary + Frag. Fire-focused devastation."
   },
   "SLEEPY_SNAIL": {
     "cards": [
@@ -377,16 +367,13 @@
     "cards": [
       "EATK-016",
       "EATK-001",
-      "EATK-007",
-      "EATK-027",
-      "EATK-023"
+      "EATK-007"
     ],
     "exposedTags": [
       "disarm",
       "intimidate"
     ],
-    "_combo": "Cursed: Overclock Core enables Frenzy Ram Charge (devastating charge combo) but costs 2 HP per activation. Fuel: Loose Wiring adds electrical stun to charge path.",
-    "_note": "Ram + Pistol + Taze + Overclock Core + Loose Wiring. Aggressive charger with self-destruct."
+    "_note": "Charges through smoke and stuns. Ram + Pistol + Taze."
   },
   "SMOKE_SPOTTER": {
     "cards": [
@@ -403,31 +390,25 @@
     "cards": [
       "EATK-018",
       "EATK-008",
-      "EATK-009",
-      "EATK-028",
-      "EATK-022"
+      "EATK-009"
     ],
     "exposedTags": [
       "sleight",
       "pickpocket"
     ],
-    "_combo": "Cursed Anchor: Flicker Relay gates darkness-empowered Shadow Strike but hurts own accuracy. Fuel: Broken Bulb deepens darkness. Steal Relay = get light manipulation tool + break their ritual. Steal Bulb = starve darkness + gain Lumens.",
-    "_note": "Shadow Strike + Knife + Grapple + Flicker Relay + Broken Bulb. Darkness-empowered stalker."
+    "_note": "Prefers smoke + close range. Shadow Strike + Knife + Grapple."
   },
   "SPOTTER_DRONE": {
     "cards": [
       "EATK-017",
       "EATK-010",
-      "EATK-001",
-      "EATK-025",
-      "EATK-029"
+      "EATK-001"
     ],
     "exposedTags": [
       "hack",
       "disarm"
     ],
-    "_combo": "Anchor: Signal Amplifier gates reinforcement calls. Defense: Noise Gate dampens sonic attacks. Steal Signal = cut comms (no backup). Steal Noise Gate = complete your Ultrasonic chain.",
-    "_note": "Paint Target + Spotlight + Pistol + Signal Amplifier + Noise Gate. Detection + comms specialist."
+    "_note": "Paint Target + Spotlight + Pistol. Detection specialist."
   },
   "TAVERN_BASEMENT_ROWDY": {
     "cards": [
@@ -466,57 +447,17 @@
     ],
     "_note": "Coin Toss + 2x Flee. Wants to escape, not fight. Easy to steal from."
   },
-  "SURVEILLANCE_COMMANDER": {
+  "WAREHOUSE_ENFORCER": {
     "cards": [
-      "EATK-017",
-      "EATK-011",
-      "EATK-007",
-      "EATK-025",
-      "EATK-024",
-      "EATK-026",
-      "EATK-029",
       "EATK-021",
-      "EATK-021"
+      "EATK-001",
+      "EATK-001"
     ],
     "exposedTags": [
-      "hack",
-      "disarm"
+      "disarm",
+      "improvised"
     ],
-    "_combo": "FLAGSHIP ECOSYSTEM DECK. Anchor: Safety Interlock gates Aimed Shot. Signal Amplifier gates reinforcements. Capacitor Bank stores charges for electrical burst. Fuel: 2x Dead Battery feeds Overload Cannon threshold. Defense: Noise Gate dampens sonic attacks. Steal priority matrix: Noise Gate = complete Ultrasonic chain. Signal Amplifier = cut comms. Safety Interlock = neuter burst. Dead Battery = free battery + starve cannon. Capacitor Bank = 2 battery + disable charges.",
-    "_note": "Elite surveillance: Paint Target + Aimed Shot + Taze + Signal Amplifier + Safety Interlock + Capacitor Bank + Noise Gate + 2x Dead Battery. Full combo dependency ecosystem."
+    "_note": "Rope bind + double Pistol Shot chain. Guarantees Rope opens with bind-setup, then two Pistol Shots land with +20 accuracy bonus. Warehouse / transit choke-point enemies."
   },
-  "ELECTRICAL_OVERSEER": {
-    "cards": [
-      "EATK-007",
-      "EATK-007",
-      "EATK-002",
-      "EATK-026",
-      "EATK-026",
-      "EATK-021",
-      "EATK-021",
-      "EATK-023",
-      "EATK-030"
-    ],
-    "exposedTags": [
-      "hack"
-    ],
-    "_combo": "Double Capacitor Bank = rapid charge buildup. 2x Dead Battery + Loose Wiring = triple electrical fuel. 2x Taze chains with stored charges. Thermal Stabilizer prevents self-damage from electrical overload. Steal Stabilizer = complete YOUR Overload chain + they start self-damaging. Steal Capacitors = starve all electrical combos.",
-    "_note": "Elite electrical: 2x Taze + Burst + 2x Capacitor Bank + 2x Dead Battery + Loose Wiring + Thermal Stabilizer."
-  },
-  "CULT_ACOLYTE": {
-    "cards": [
-      "EATK-018",
-      "EATK-008",
-      "EATK-028",
-      "EATK-022",
-      "EATK-022"
-    ],
-    "exposedTags": [
-      "sleight",
-      "pickpocket"
-    ],
-    "_combo": "Cursed Anchor: Flicker Relay gates Cultist Zeal but costs -15% accuracy. Fuel: 2x Broken Bulb deepens darkness for Zeal power. Steal Relay = free light manipulation tool + break ritual. Steal Bulbs = starve darkness + gain Lumens for Prism Mine.",
-    "_note": "Cult acolyte: Shadow Strike + Knife + Flicker Relay + 2x Broken Bulb. Darkness ritualist."
-  },
-  "_catalogNote": "Bootstrapped from runtime enemy-cards.json + enemy-decks.json. Edit this file going forward; run scripts/build-enemy-catalog.mjs.\n\n[onboarding] Expanded with civilian/location decks + archetypes for catacombs/tavern/datacenter/hydroponics/homes/fightclubs/junkyards.\n\n[phase3.5] Added combo dependency ecosystem: junk cards (EATK-021/022/023), responsibility cards (EATK-024/025/026), cursed responsibility (EATK-027/028), steal-to-complete (EATK-029/030). Pattern: Combo = Anchor + Fuel + Payoff. New elite decks: SURVEILLANCE_COMMANDER, ELECTRICAL_OVERSEER, CULT_ACOLYTE."
+  "_catalogNote": "Bootstrapped from runtime enemy-cards.json + enemy-decks.json. Edit this file going forward; run scripts/build-enemy-catalog.mjs.\n\n[onboarding] Expanded with civilian/location decks + archetypes for catacombs/tavern/datacenter/hydroponics/homes/fightclubs/junkyards.\n\n[environment-synergy] Added EATK-021 Rope (bind→ranged chain), EATK-022 Broken Lever (melee/black_market), EATK-023 Secret Button (covert/black_market/environmental). New decks: WAREHOUSE_ENFORCER (bind+shot chain), BLACK_MARKET_FENCE, CATACOMB_SENTINEL. Updated JUNKYARD_SCAVENGER. New BIOME_SYSTEMS variants: BIND_TERRAIN, INDUSTRIAL_DEBRIS, HIDDEN_CHAMBER."
 }

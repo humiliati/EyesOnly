@@ -836,6 +836,71 @@ This doesn't guarantee the player finds or uses them, but ensures the ingredient
 
 ---
 
+## Enemy Catalog Variants (BIOME_SYSTEMS Integration)
+
+Enemy behavior and available cards can be patched at runtime by the ground-effect layer using the `variants` block in `public/data/gone-rogue/enemy-catalog.json`. The following variants were added as part of the **Environment Synergy** work (Phase 6 of the enemy card system):
+
+### BIND_TERRAIN
+
+| Property | Value |
+|---|---|
+| **Ground effects** | `bind_terrain`, `tangled_debris` |
+| **Cards added** | EATK-021 (Rope) |
+| **Exposed tags added** | `improvised` |
+| **Stat mods** | `bindDurationBonus: 1`, `setupRangedAccuracyBonus: 10` |
+
+**Behavior**: Rope-trap floors, tangled debris fields, and choke-point corridors. Enemy Rope bind lasts 1 extra round and the `setup_ranged` accuracy window is amplified by +10. Player movement already penalized by the ground effect — the bind combo punishes standing still.
+
+**Biomes**: Warehouse interiors, transit tunnels, forest underbrush, catacombs tight corridors.
+
+### INDUSTRIAL_DEBRIS
+
+| Property | Value |
+|---|---|
+| **Ground effects** | `debris`, `rubble` |
+| **Cards added** | EATK-022 (Broken Lever) |
+| **Exposed tags added** | `improvised` |
+| **Stat mods** | `improvisedDamageBonus: 1`, `leverJamChance: 0.5` |
+
+**Behavior**: Cluttered industrial floors — rubble, broken equipment, scattered scrap. Improvised-tagged enemy cards deal +1 damage. Broken Lever's `environment_interact` effect has a 50% chance to jam the nearest door, blocking player escape routes.
+
+**Biomes**: Junkyard, construction site, abandoned factory, transit infrastructure damage zones.
+
+### HIDDEN_CHAMBER
+
+| Property | Value |
+|---|---|
+| **Ground effects** | `carved_walls`, `statue_tiles` |
+| **Cards added** | EATK-023 (Secret Button) |
+| **Exposed tags added** | `bribe` |
+| **Stat mods** | `covertActionBonus: 0.2`, `alertGenerationMultiplier: 0.0` |
+
+**Behavior**: Carved stone halls with hidden mechanisms — statue niches, pressure plates, concealed alcoves. Secret Button unlocked only on these tile types. `alertGenerationMultiplier: 0.0` makes all enemy actions completely silent while inside a hidden chamber. Stealing Secret Button gives the player access to the same passage network for a mid-combat reposition.
+
+**Biomes**: Church catacombs, manor chapels, black-market vaults, underground shrines.
+
+### Existing Light-Behavior Variants
+
+The following variants were added in the lighting-system phase and remain unchanged:
+
+| Variant | Behavior summary |
+|---|---|
+| SURVEILLANCE_NODE | Ignores broken lights; infrared mode in darkness; hack/disable exposed |
+| ADAPTIVE_DRONE | Moves toward brightest tile; no panic; hack/emp exposed |
+| FLASHLIGHT_GUARD | Clusters in lit tiles; +acc in light, −acc in dark; intimidate exposed |
+| INVESTIGATIVE_TECHNICIAN | Moves toward broken-light anomaly; alert on investigation; hack exposed |
+| PARANOID_CULTIST | Gains Zeal on flicker; panics on total darkness; hybrid fear threshold |
+
+### Build Workflow
+
+```bash
+# After editing enemy-catalog.json variants, regenerate runtime files:
+npm run build:enemyCatalog
+# Outputs: enemy-cards.json (23 cards), enemy-decks.json (41 decks)
+```
+
+---
+
 ## Known Issues
 
 ### Minor Issues
@@ -938,8 +1003,11 @@ Implementation based on design specifications from issue #47 ("Generic suggestio
 **Biome-Specific Card Drops**:
 Implementation based on GONE_ROGUE_DECKBUILDER_GAP_ANALYSIS.md Issue 2 (Procedural Reward / Encounter Tightening) and CARD_DB_TODO.md Section 10 (Biome Card Drop System Gap Analysis).
 
+**Enemy Catalog Variants (BIND_TERRAIN, INDUSTRIAL_DEBRIS, HIDDEN_CHAMBER)**:
+Added as part of the Environment Synergy / BIOME_SYSTEMS integration work (Phase 6 enemy cards). See `docs/ENEMY_CARDS.md` Phase 6 section for full card and deck details.
+
 ---
 
-**Document Version**: 1.1
-**Last Updated**: 2026-02-20
+**Document Version**: 1.2
+**Last Updated**: 2026-02-28
 **Status**: Complete consolidated guide

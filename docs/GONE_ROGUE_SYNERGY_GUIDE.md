@@ -220,6 +220,12 @@ Cards now have synergy tags that enable the existing synergy-engine.js to detect
 - `mobile` - Movement-based
 - `control` - Enemy manipulation
 
+#### Environment Synergy (Phase 6)
+- `bind` - Applies `bound` status; enables ranged follow-up chains
+- `ranged_chain` - Ranged card that benefits from a preceding bind/setup effect
+- `structural` - Interacts with level structures (levers, doors, gates)
+- `environmental_trigger` - Activates a hidden mechanism or tile-based event (secret passage, trap release)
+
 ### Cards with Synergy Tags
 
 #### Attack Cards
@@ -275,6 +281,24 @@ Aim (precision, combo_starter) → Single Shot (ranged, precision) = Critical hi
 // Tags required: chain aggressive actions
 // Bonus: +2 damage per stack, max +10
 Close Distance (aggressive) → Melee Strike (aggressive) = Momentum bonus
+```
+
+#### Bind & Blast (Environment Synergy — Phase 6)
+```javascript
+// Tags required: bind → ranged_chain (target must have 'bound' status)
+// Bonus: +20 accuracy for next ranged attack; target gains Exposed (1 turn)
+// Enemy card chain: Rope (bind, ranged_chain) → Pistol Shot / Basic Shot (ranged)
+Rope (bind) → Pistol Shot (ranged_chain) = Bind & Blast combo
+```
+
+#### Ghost Passage (Covert Environment — Phase 6)
+```javascript
+// Tags required: environmental_trigger + covert
+// Condition: undetected OR on statue_tiles ground
+// Bonus: stealth preserved (1 turn); silent reposition; noise −5
+// Enemy card: Secret Button (covert, environmental_trigger)
+// Player use: stolen Secret Button lets player reposition via same passage network
+Secret Button (environmental_trigger, covert) [while undetected] = Ghost Passage combo
 ```
 
 ---
