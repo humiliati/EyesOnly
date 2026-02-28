@@ -169,41 +169,42 @@ const LightingSystem = (function() {
   };
 
   // Biome-specific ambient light levels and light source types
+  // Lower ambient = darker base, makes environmental lights punch through harder
   const BIOME_LIGHTING = {
     GREY_CAVE: {
-      ambientLight: 0.25, // Raised from 0.1
-      lightRatio: 0.5, // 50% lit areas, 50% dark areas
+      ambientLight: 0.12, // Deep cave — nearly dark, lights are lifelines
+      lightRatio: 0.5,
       lightSources: ['LAVA_LAMP', 'CAMPFIRE', 'LAVA_FLOOR']
     },
     OFFICE: {
-      ambientLight: 0.35, // Raised from 0.15
-      lightRatio: 0.5, // 50/50 mix
+      ambientLight: 0.18, // Dim emergency lighting — monitors glow visibly
+      lightRatio: 0.5,
       lightSources: ['MONITOR']
     },
     MALL: {
-      ambientLight: 0.3, // Raised from 0.25
-      lightRatio: 0.8, // 80% lit, 20% dark (power out)
+      ambientLight: 0.20, // Partial power outage — bulbs matter
+      lightRatio: 0.8,
       lightSources: ['LIGHT_BULB']
     },
     INDUSTRIAL: {
-      ambientLight: 0.22, // Raised from 0.12
-      lightRatio: 0.4, // 40% lit, 60% dark
-      lightSources: ['FIRE', 'LAVA_FLOOR'] // Fire and acid spills
+      ambientLight: 0.10, // Near-blackout — fires cast dramatic pools
+      lightRatio: 0.4,
+      lightSources: ['FIRE', 'LAVA_FLOOR']
     },
     AEROSPACE: {
-      ambientLight: 0.35, // Raised from 0.3
-      lightRatio: 0.9, // 90% lit, 10% dark
+      ambientLight: 0.22, // Sterile low-power backup lighting
+      lightRatio: 0.9,
       lightSources: ['LIGHT_BULB']
     },
 
     // Forest variants (tutorial floors are mostly one big room, so we guarantee at least one lit room)
     COZY_FOREST_DAY: {
-      ambientLight: 0.6,
+      ambientLight: 0.45, // Daylight — still bright but not washed out
       lightRatio: 1.0,
       lightSources: ['LAMP_POST', 'TORCH', 'CAMPFIRE']
     },
     COZY_FOREST_NIGHT: {
-      ambientLight: 0.22,
+      ambientLight: 0.10, // Deep night — torches are critical
       lightRatio: 1.0,
       lightSources: ['TORCH', 'CAMPFIRE']
     }
@@ -617,9 +618,10 @@ const LightingSystem = (function() {
       }
     }
 
-    // Calculate base intensity with distance falloff (inverse square law)
-    var falloff = 1 - (dist / lightDef.radius);
-    falloff = falloff * falloff; // Square for more realistic falloff
+    // Calculate base intensity with distance falloff
+    // Cubic curve with inner plateau: strong near source, sharp cutoff at edge
+    var t = dist / lightDef.radius;             // 0 at source, 1 at radius edge
+    var falloff = Math.max(0, 1 - t * t * t);  // Cubic: holds bright longer, drops fast at edge
 
     var intensity = lightDef.intensity * falloff;
 
