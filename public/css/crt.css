@@ -1535,20 +1535,20 @@ body.amber-mode #scanlines::after {
     display: none !important;
   }
 
-  /* Shrink header center (active item + currency) in portrait rogue */
+  /* Header center: right-align and shrink by real sizing (NOT transform),
+     because transform scaling preserves layout height and creates dead bands. */
   body.mode-gone-rogue #mok-header .mok-header-center,
   body.in-gone-rogue #mok-header .mok-header-center,
   body.gone-rogue-active #mok-header .mok-header-center {
-    transform: scale(var(--header-center-scale, 1));
-    transform-origin: top center;
+    margin-left: auto;
+    transform: none !important;
   }
 
   body.mode-gone-rogue #mok-header .header-chip,
   body.in-gone-rogue #mok-header .header-chip,
   body.gone-rogue-active #mok-header .header-chip {
-    transform: scale(var(--header-chip-scale, 1));
-    transform-origin: top right;
-    padding: 2px 4px !important;
+    transform: none !important;
+    padding: 2px 6px !important;
     min-height: 18px !important;
     font-size: 10px !important;
     display: inline-flex !important; /* ensure AWOL stays visible */
@@ -1588,9 +1588,41 @@ body.amber-mode #scanlines::after {
   }
 
   /* Hide verbose header copy; keep only tiny icons */
+  /* Mobile Gone Rogue: show callsign (tiny) in header for orientation + identity.
+     We hide the verbose header title/prefix but keep the callsign itself. */
   body.mode-gone-rogue .mok-header-copy,
   body.in-gone-rogue .mok-header-copy,
   body.gone-rogue-active .mok-header-copy {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  body.mode-gone-rogue .mok-header-title,
+  body.in-gone-rogue .mok-header-title,
+  body.gone-rogue-active .mok-header-title {
+    display: none;
+  }
+
+  body.mode-gone-rogue .mok-header-sub,
+  body.in-gone-rogue .mok-header-sub,
+  body.gone-rogue-active .mok-header-sub {
+    font-family: 'Consolas', 'Lucida Console', 'Courier New', monospace;
+    font-size: 10px;
+    line-height: 1;
+    color: rgba(191, 255, 227, 0.9);
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 42vw;
+  }
+
+  body.mode-gone-rogue .mok-header-sub-prefix,
+  body.in-gone-rogue .mok-header-sub-prefix,
+  body.gone-rogue-active .mok-header-sub-prefix {
     display: none;
   }
   body.mode-gone-rogue .active-item-label,
@@ -1882,6 +1914,13 @@ body.amber-mode #scanlines::after {
   body.gone-rogue-active #input-line,
   body.gone-rogue-active #mobile-input {
     order: 2;
+  }
+
+  /* Tighten the input bar itself (removes deadspace above/below tooltip area) */
+  body.gone-rogue-active #input-line {
+    margin-top: 2px;
+    padding: 0.18em 0.35em;
+    min-height: 1.1em;
   }
 
   /* Hide terminal text chrome in portrait rogue; the grid is the product surface */
