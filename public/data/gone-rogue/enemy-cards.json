@@ -648,5 +648,305 @@
     "rarity": "elite",
     "stealValue": 4,
     "_designNote": "Treasure Goblin tries to escape combat. 40% chance per round."
+  },
+
+  {
+    "id": "EATK-021",
+    "name": "Dead Battery",
+    "emoji": "🔌",
+    "intentType": "JUNK",
+    "targetType": "none",
+    "damage": 0,
+    "accuracy": 0,
+    "speed": 0,
+    "effects": [],
+    "tags": ["junk", "electrical", "tech"],
+    "synergyTags": ["electrical", "tech", "dead_weight"],
+    "rarity": "common",
+    "stealValue": 1,
+    "cardRole": "junk",
+    "enemyUse": {
+      "comboRole": "fuel",
+      "feedsCombo": "Overload Cannon",
+      "threshold": 3,
+      "thresholdNote": "Enemy needs 3+ Dead Batteries in discard to fire Overload Cannon (massive burst)."
+    },
+    "playerUse": {
+      "convertsTo": "battery",
+      "convertValue": 1,
+      "convertCost": 0,
+      "synergyWith": ["Ultrasonic Weapon", "Feedback Microphone", "Battery Spill"],
+      "note": "Free battery resource. Fuels Ultrasonic chain. Detonates on Conductive Ground for area stun."
+    },
+    "_designNote": "Junk card that pads enemy hand. Dead weight in combat — does nothing when played. But enemy hoards them for Overload Cannon threshold. Stealing starves that combo. Player gets free battery fuel."
+  },
+  {
+    "id": "EATK-022",
+    "name": "Broken Bulb",
+    "emoji": "💡",
+    "intentType": "JUNK",
+    "targetType": "none",
+    "damage": 0,
+    "accuracy": 0,
+    "speed": 0,
+    "effects": [],
+    "tags": ["junk", "light", "fragile"],
+    "synergyTags": ["light_manipulation", "darkness", "dead_weight"],
+    "rarity": "common",
+    "stealValue": 1,
+    "cardRole": "junk",
+    "enemyUse": {
+      "comboRole": "fuel",
+      "feedsCombo": "Desperation Grid",
+      "note": "Enemy uses broken light sources to increase darkness damage multiplier. More bulbs = darker = stronger dark attacks."
+    },
+    "playerUse": {
+      "convertsTo": "destroyed_light_source",
+      "convertValue": 1,
+      "synergyWith": ["Prism Mine", "Solar Flare Step", "Dark Veil"],
+      "note": "Counts as destroyed light source. +1 Lumen with Prism Mine on Darkened Ground. Shadow-tag damage bonus."
+    },
+    "_designNote": "Junk card. Enemy uses broken bulbs to weaponize darkness. Player steals them to fuel the Prism Mine / Solar Flare Step light-manipulation chain. Dual-use: enemy wants darkness, player wants Lumens."
+  },
+  {
+    "id": "EATK-023",
+    "name": "Loose Wiring",
+    "emoji": "📎",
+    "intentType": "JUNK",
+    "targetType": "none",
+    "damage": 0,
+    "accuracy": 0,
+    "speed": 0,
+    "effects": [],
+    "tags": ["junk", "electrical", "hazard"],
+    "synergyTags": ["electrical", "tech", "dead_weight", "chain"],
+    "rarity": "common",
+    "stealValue": 1,
+    "cardRole": "junk",
+    "enemyUse": {
+      "comboRole": "fuel",
+      "feedsCombo": "Chain Lightning Spread",
+      "note": "Enemy uses loose wiring to extend chain lightning arc range. Each wire in hand = +1 bounce."
+    },
+    "playerUse": {
+      "convertsTo": "conductive_ground_modifier",
+      "synergyWith": ["Overload Grid", "Battery Spill"],
+      "note": "Converts Conductive Ground tile to also apply 15% stun chance per step. Amplifies Overload Grid chain lightning damage by +1 per wire."
+    },
+    "_designNote": "Junk card. Enemy uses wires to spread chain lightning further. Player steals to amp Overload Grid and add stun to Conductive Ground. Electrical synergy fuel."
+  },
+
+  {
+    "id": "EATK-024",
+    "name": "Safety Interlock",
+    "emoji": "🔴",
+    "intentType": "RESPONSIBILITY",
+    "targetType": "self",
+    "damage": 0,
+    "accuracy": 100,
+    "speed": 6,
+    "effects": [
+      { "type": "combo_gate", "gates": "one_shot_attacks", "mode": "required" },
+      { "type": "defense_buff", "value": 1, "duration": 1 }
+    ],
+    "tags": ["defensive", "combo_anchor", "tech", "safety"],
+    "synergyTags": ["defensive", "control", "combo_anchor"],
+    "rarity": "uncommon",
+    "stealValue": 3,
+    "cardRole": "responsibility",
+    "enemyUse": {
+      "comboRole": "anchor",
+      "gatesCombo": ["Aimed Shot", "Frag Grenade", "Shadow Strike"],
+      "note": "Must be played before any one-shot attack fires. Without it, burst cards are locked. The enemy's safety check."
+    },
+    "playerUse": {
+      "convertsTo": null,
+      "note": "Stealing removes the interlock — enemy's burst attacks are permanently gated. They can still use basic attacks but lose all one-shot capability."
+    },
+    "_designNote": "Responsibility card. The 'safety switch' that permits burst damage. Enemy MUST play this before Aimed Shot / Frag / Shadow Strike can activate. Steal it = neuter their burst forever. They keep attacking with basics but can never combo-kill you."
+  },
+  {
+    "id": "EATK-025",
+    "name": "Signal Amplifier",
+    "emoji": "🛰",
+    "intentType": "RESPONSIBILITY",
+    "targetType": "self",
+    "damage": 0,
+    "accuracy": 100,
+    "speed": 5,
+    "effects": [
+      { "type": "combo_gate", "gates": "reinforcement_call", "mode": "required" },
+      { "type": "alert", "value": 2 }
+    ],
+    "tags": ["utility", "combo_anchor", "tech", "alert"],
+    "synergyTags": ["tech", "covert", "combo_anchor", "hack"],
+    "rarity": "rare",
+    "stealValue": 4,
+    "cardRole": "responsibility",
+    "enemyUse": {
+      "comboRole": "anchor",
+      "gatesCombo": ["reinforcement_call"],
+      "note": "Must be active before enemy can call reinforcements. Without it, they fight alone. Each play raises alert by 2."
+    },
+    "playerUse": {
+      "convertsTo": null,
+      "note": "Stealing cuts their comms. No reinforcements can arrive. Also reduces future alert gain from this encounter."
+    },
+    "_designNote": "Responsibility card. Gates the reinforcement mechanic. Enemy plays this to enable backup-calling. Steal it = they're isolated. High stealValue because cutting comms is strategically huge."
+  },
+  {
+    "id": "EATK-026",
+    "name": "Capacitor Bank",
+    "emoji": "🔋",
+    "intentType": "RESPONSIBILITY",
+    "targetType": "self",
+    "damage": 0,
+    "accuracy": 100,
+    "speed": 4,
+    "effects": [
+      { "type": "charge_store", "maxCharges": 3, "chargePerTurn": 1 },
+      { "type": "combo_gate", "gates": "charged_attacks", "mode": "required" }
+    ],
+    "tags": ["utility", "combo_anchor", "tech", "electrical"],
+    "synergyTags": ["electrical", "tech", "combo_anchor", "charge"],
+    "rarity": "uncommon",
+    "stealValue": 3,
+    "cardRole": "responsibility",
+    "enemyUse": {
+      "comboRole": "anchor",
+      "gatesCombo": ["Overload Cannon", "Chain Lightning Spread"],
+      "note": "Stores 1 charge per turn up to 3. Charged attacks consume charges. Without it, electrical combos can't fire."
+    },
+    "playerUse": {
+      "convertsTo": "battery",
+      "convertValue": 2,
+      "note": "Stealing gives 2 battery immediately. Also removes enemy's charge-storage, disabling all electrical combo payoffs."
+    },
+    "_designNote": "Responsibility card. The battery pack that fuels electrical combos. Enemy charges it over turns, then spends charges on big attacks. Steal = instant battery for you + their electrical chain collapses. Double value: resource gain + combo disruption."
+  },
+
+  {
+    "id": "EATK-027",
+    "name": "Overclock Core",
+    "emoji": "☢",
+    "intentType": "CURSED_RESPONSIBILITY",
+    "targetType": "self",
+    "damage": 0,
+    "accuracy": 100,
+    "speed": 6,
+    "effects": [
+      { "type": "self_buff", "stat": "speed", "value": 2, "duration": 2 },
+      { "type": "self_damage", "value": 2, "trigger": "on_play" },
+      { "type": "combo_gate", "gates": "frenzy_attacks", "mode": "required" }
+    ],
+    "tags": ["buff", "cursed", "combo_anchor", "tech"],
+    "synergyTags": ["aggressive", "tech", "combo_anchor", "frenzy"],
+    "rarity": "rare",
+    "stealValue": 2,
+    "cardRole": "cursed_responsibility",
+    "enemyUse": {
+      "comboRole": "anchor",
+      "gatesCombo": ["Frenzy"],
+      "selfCost": "2 HP per play",
+      "note": "Enables Frenzy mode: double attack speed for 2 turns. But costs 2 HP each time played. Enemy needs it to go berserk but it's killing them slowly."
+    },
+    "playerUse": {
+      "convertsTo": null,
+      "dilemma": "Stealing removes enemy's Frenzy but also means they stop self-damaging. Sometimes better to leave it — they'll kill themselves.",
+      "note": "Strategic choice: steal to prevent burst OR leave it and let the self-damage whittle them down."
+    },
+    "_designNote": "Cursed responsibility. Enemy NEEDS this for Frenzy mode but takes 2 HP per activation. Creates a genuine steal dilemma: take it to prevent burst, or leave it and let them self-destruct? Smart players read enemy HP and decide."
+  },
+  {
+    "id": "EATK-028",
+    "name": "Flicker Relay",
+    "emoji": "🕯",
+    "intentType": "CURSED_RESPONSIBILITY",
+    "targetType": "self",
+    "damage": 0,
+    "accuracy": 100,
+    "speed": 5,
+    "effects": [
+      { "type": "light_manipulation", "mode": "flicker", "range": 2, "duration": 2 },
+      { "type": "self_accuracy_penalty", "value": -15 },
+      { "type": "combo_gate", "gates": "cultist_zeal", "mode": "required" }
+    ],
+    "tags": ["utility", "cursed", "combo_anchor", "light"],
+    "synergyTags": ["light_manipulation", "darkness", "combo_anchor", "occult"],
+    "rarity": "rare",
+    "stealValue": 2,
+    "cardRole": "cursed_responsibility",
+    "enemyUse": {
+      "comboRole": "anchor",
+      "gatesCombo": ["Cultist Zeal"],
+      "selfCost": "-15% accuracy",
+      "note": "Makes lights flicker in 2-tile radius. Gates Cultist Zeal (massive dark-powered attack). But the flicker makes the enemy's OWN aim worse."
+    },
+    "playerUse": {
+      "convertsTo": "light_flicker_tool",
+      "synergyWith": ["Dark Veil", "Prism Mine", "Tactical Spotlight"],
+      "note": "Stolen Flicker Relay becomes a light manipulation tool. Flicker lights without enemy accuracy penalty. Pairs with Prism Mine for Lumen farming."
+    },
+    "_designNote": "Cursed responsibility. Enemy needs flickering lights for Cultist Zeal (occult attack) but the instability hurts their own accuracy. Steal = you get a light manipulation tool with no downside + their ritual fails. Leave it = they suffer accuracy but can still channel Zeal."
+  },
+
+  {
+    "id": "EATK-029",
+    "name": "Noise Gate",
+    "emoji": "🎛",
+    "intentType": "STEAL_TARGET",
+    "targetType": "self",
+    "damage": 0,
+    "accuracy": 100,
+    "speed": 4,
+    "effects": [
+      { "type": "sonic_dampening", "value": 0.5 },
+      { "type": "noise_reduction", "value": -3, "scope": "self" }
+    ],
+    "tags": ["defensive", "tech", "sonic", "dampening"],
+    "synergyTags": ["sonic", "tech", "defensive", "resonance"],
+    "rarity": "uncommon",
+    "stealValue": 4,
+    "cardRole": "steal_to_complete",
+    "enemyUse": {
+      "purpose": "defense",
+      "note": "Halves incoming sonic damage. Reduces noise generated by enemy actions by 3. Protects them from player's Ultrasonic chain."
+    },
+    "playerUse": {
+      "completesEngine": "Ultrasonic Feedback Chain",
+      "synergyWith": ["Ultrasonic Weapon", "Feedback Microphone", "Loop Recorder"],
+      "note": "Stolen Noise Gate becomes the missing piece of the Ultrasonic chain. Prevents sonic damage stacking from hurting you + reduces your noise footprint. The card they use to defend becomes your offense amplifier."
+    },
+    "_designNote": "Steal-to-complete card. Enemy uses it defensively to survive sonic attacks. Player steals it to complete the Ultrasonic Feedback Chain — it becomes the resonance dampener that lets you spam sonic cards without self-damage or noise. The enemy's shield becomes your engine piece."
+  },
+  {
+    "id": "EATK-030",
+    "name": "Thermal Stabilizer",
+    "emoji": "🧊",
+    "intentType": "STEAL_TARGET",
+    "targetType": "self",
+    "damage": 0,
+    "accuracy": 100,
+    "speed": 4,
+    "effects": [
+      { "type": "heat_reduction", "value": 2 },
+      { "type": "fire_resistance", "value": 0.5 },
+      { "type": "cooldown_reduction", "value": 1 }
+    ],
+    "tags": ["defensive", "tech", "thermal", "cooldown"],
+    "synergyTags": ["tech", "defensive", "fire", "electrical"],
+    "rarity": "uncommon",
+    "stealValue": 4,
+    "cardRole": "steal_to_complete",
+    "enemyUse": {
+      "purpose": "defense",
+      "note": "Prevents overheating from rapid-fire electrical attacks. Halves fire damage taken. Reduces cooldown of charged abilities by 1 turn."
+    },
+    "playerUse": {
+      "completesEngine": "Overload Grid Chain",
+      "synergyWith": ["Overload Grid", "Battery Spill", "Prism Mine"],
+      "note": "Stolen Thermal Stabilizer prevents Overload Grid from self-damaging on high light counts. Lets you chain electrical combos without overheating. The card that kept them safe now keeps YOU safe while you overload."
+    },
+    "_designNote": "Steal-to-complete card. Enemy uses it to survive their own electrical/fire attacks without overheating. Player steals it to safely spam Overload Grid + Battery Spill combos. Without it, high-Lumen Overload Grid chains deal self-damage. With it, unlimited electrical carnage."
   }
 ]

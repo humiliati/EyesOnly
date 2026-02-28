@@ -1,0 +1,612 @@
+{
+  "_schema": {
+    "tagA": "First tag in the pair (order-independent — engine checks both directions)",
+    "tagB": "Second tag in the pair",
+    "name": "Human-readable combo name shown in combat log",
+    "emoji": "Visual indicator for the combo pop-up",
+    "priority": "Resolution order (lower = resolves first). Same priority = simultaneous.",
+    "effects": "Array of effects applied when combo triggers",
+    "conditions": "Optional extra conditions beyond just having both tags",
+    "discoveryHint": "Flavor text shown first time player triggers this combo",
+    "tier": "intro | intermediate | advanced — when player typically discovers this",
+    "tagRisks._schema": {
+      "tag": "The tag that carries risk when overcommitted",
+      "threshold": "Number of cards with this tag played same turn before risk activates",
+      "riskEffect": "Penalty applied when threshold exceeded",
+      "counterTag": "Tag that naturally counters or mitigates this risk",
+      "resourceDrain": "Optional resource cost for overcommit (uses existing ammo/battery/focus/fatigue)"
+    }
+  },
+
+  "tagRisks": [
+    {
+      "tag": "ballistic",
+      "threshold": 3,
+      "name": "Overexertion",
+      "emoji": "💢",
+      "riskEffect": [
+        { "type": "fatigue", "value": 2 },
+        { "type": "status", "status": "accuracy_down", "value": -10, "duration": 1 }
+      ],
+      "counterTag": "improvised",
+      "counterEffect": { "type": "negate_risk", "note": "Improvised cards reduce Overexertion: junk absorbs recoil" },
+      "resourceDrain": { "kind": "fatigue", "amount": 2 },
+      "_designNote": "3+ ballistic cards same turn = Overexertion. Fatigue +2, accuracy drops. Overkill is strong but chain too many physical attacks and you gas out. Improvised cards (junk) absorb the recoil. Teaches restraint — two 🟥 is Overkill (good), three is reckless."
+    },
+    {
+      "tag": "electrical",
+      "threshold": 3,
+      "name": "Feedback Burn",
+      "emoji": "⚡💀",
+      "riskEffect": [
+        { "type": "self_damage", "value": 2 },
+        { "type": "resource_drain", "kind": "battery", "amount": 1 }
+      ],
+      "counterTag": "wet",
+      "counterEffect": { "type": "reduce_risk", "reduction": 0.5, "note": "Wet tag acts as heat sink, halves Feedback Burn self-damage" },
+      "resourceDrain": { "kind": "battery", "amount": 1 },
+      "_designNote": "3+ electrical cards same turn = Feedback Burn. Self-damage 2 + burns 1 battery. The Arc Surge / Overcharge combo ceiling has a price. Wet cards ground the circuit (half self-damage). Thermal Stabilizer (stolen enemy card) fully negates this. Creates the risk/reward ceiling for Overload Grid chains."
+    },
+    {
+      "tag": "covert",
+      "threshold": 3,
+      "name": "Exposure Risk",
+      "emoji": "👁️",
+      "riskEffect": [
+        { "type": "remove_stealth", "target": "self" },
+        { "type": "status", "status": "exposed", "duration": 2 }
+      ],
+      "counterTag": "black_market",
+      "counterEffect": { "type": "negate_risk", "note": "Black Market connections keep your cover intact" },
+      "_designNote": "3+ covert cards same turn = Exposure Risk. Too much sneaky activity draws attention — auto-revealed + Exposed for 2 turns. Ghost Protocol (🟪x2) is safe, but adding a third covert card blows your cover. Black Market cards (illegal contacts) suppress the exposure. Teaches: stealth is a precision tool, not a spam strategy."
+    },
+    {
+      "tag": "wet",
+      "threshold": 3,
+      "name": "Slip Hazard",
+      "emoji": "💦⚠️",
+      "riskEffect": [
+        { "type": "status", "status": "prone", "chance": 0.30, "duration": 1, "target": "self" },
+        { "type": "movement_penalty", "value": -1, "duration": 1 }
+      ],
+      "counterTag": "electrical",
+      "counterEffect": { "type": "redirect_risk", "note": "Electrical turns the flood into a weapon — risk redirected to all enemies as chain damage" },
+      "_designNote": "3+ wet cards = Slip Hazard. 30% chance you slip (prone = vulnerable) + movement penalty. Flood (🟦x2) is powerful setup, but triple-stacking makes the water dangerous for you too. Electrical follow-up converts YOUR hazard into THEIR problem. Teaches: Wet is setup fuel, not a main course."
+    },
+    {
+      "tag": "improvised",
+      "threshold": 3,
+      "name": "Instability",
+      "emoji": "🟩💥",
+      "riskEffect": [
+        { "type": "random_penalty", "pool": ["damage_reduced_50", "self_damage_1", "card_fizzle_30", "bonus_random_effect"] }
+      ],
+      "counterTag": "electrical",
+      "counterEffect": { "type": "stabilize", "note": "Electrical precision stabilizes improvised chaos — instability becomes controlled demolition" },
+      "_designNote": "3+ improvised cards = Instability roll. Random outcome from a pool: could reduce combo damage, self-damage, fizzle a card, OR randomly bonus you. High variance. Electrical cards stabilize the chaos. Teaches: junk builds are chaotic — lean into it or ground it with tech."
+    },
+    {
+      "tag": "black_market",
+      "threshold": 2,
+      "name": "Heat Score",
+      "emoji": "⬛🔍",
+      "riskEffect": [
+        { "type": "alert", "value": 3 },
+        { "type": "status", "status": "tracked", "duration": 3 }
+      ],
+      "counterTag": "covert",
+      "counterEffect": { "type": "reduce_risk", "reduction": 0.5, "note": "Covert tradecraft halves Heat Score — you know how to cover your tracks" },
+      "resourceDrain": { "kind": "focus", "amount": 1 },
+      "_designNote": "Only 2+ black_market cards triggers Heat Score (lower threshold — illegal gear attracts attention fast). Alert +3, Tracked for 3 turns. Covert cards halve the penalty. Focus drained by paranoia. Deep Cover (⬛x2) is powerful but paints a target. Teaches: Black Market is the premium amplifier, not a foundation — splash it, don't stack it."
+    }
+  ],
+
+  "combos": [
+    {
+      "id": "COMBO-001",
+      "tagA": "wet",
+      "tagB": "electrical",
+      "name": "Arc Surge",
+      "emoji": "⚡💧",
+      "priority": 1,
+      "tier": "intro",
+      "effects": [
+        { "type": "chain_lightning", "chance": 0.50, "bounces": 1, "damage": 3 },
+        { "type": "stun_guarantee", "target": "wet_enemies", "duration": 1 }
+      ],
+      "discoveryHint": "Water conducts electricity — Wet enemies take guaranteed stun and lightning arcs to nearby targets.",
+      "_designNote": "THE tutorial combo. First Wet enemy + Static Shock = 'oh, water makes electricity stronger'. Pokémon Water+Electric logic."
+    },
+    {
+      "id": "COMBO-002",
+      "tagA": "wet",
+      "tagB": "ballistic",
+      "name": "Steam Burst",
+      "emoji": "💨🔥",
+      "priority": 2,
+      "tier": "intro",
+      "effects": [
+        { "type": "bonus_damage", "value": 5 },
+        { "type": "knockback", "distance": 1 },
+        { "type": "remove_status", "status": "wet" }
+      ],
+      "conditions": {
+        "requireStatus": "burn_or_fire_tag"
+      },
+      "discoveryHint": "Fire meets water — steam explosion knocks enemies back and deals bonus impact damage.",
+      "_designNote": "Water + Fire(ballistic) = steam explosion. Removes Wet status but deals burst. Teaches status consumption — combos can eat statuses for big payoffs."
+    },
+    {
+      "id": "COMBO-003",
+      "tagA": "ballistic",
+      "tagB": "ballistic",
+      "name": "Overkill",
+      "emoji": "💥💥",
+      "priority": 3,
+      "tier": "intro",
+      "effects": [
+        { "type": "armor_pierce", "value": 0.30 },
+        { "type": "bonus_damage", "value": 2 }
+      ],
+      "conditions": {
+        "requireSameTurn": true,
+        "minCards": 2
+      },
+      "discoveryHint": "Double physical force overwhelms armor — 30% damage reduction ignored plus bonus impact.",
+      "_designNote": "🟥x2 same turn = Overkill. Quick Strike + Fireball in same turn triggers this. Teaches 'play two of the same type for a bonus'. Simple, satisfying."
+    },
+    {
+      "id": "COMBO-004",
+      "tagA": "covert",
+      "tagB": "ballistic",
+      "name": "Backstab",
+      "emoji": "🗡🟣",
+      "priority": 2,
+      "tier": "intro",
+      "effects": [
+        { "type": "damage_multiplier", "value": 2.0, "condition": "from_stealth" },
+        { "type": "remove_stealth", "target": "self" }
+      ],
+      "conditions": {
+        "requireStatus": "stealth"
+      },
+      "discoveryHint": "Strike from the shadows — double damage when attacking from stealth. Reveals your position.",
+      "_designNote": "🟪+🟥 from stealth = Backstab. Poison Dart (covert) then Quick Strike (ballistic) while stealthed = massive hit. Teaches stealth-as-resource: you spend it for burst."
+    },
+    {
+      "id": "COMBO-005",
+      "tagA": "covert",
+      "tagB": "ballistic",
+      "name": "Poison Ignition",
+      "emoji": "🟣🔥",
+      "priority": 1,
+      "tier": "intro",
+      "effects": [
+        { "type": "consume_status", "status": "poison" },
+        { "type": "aoe_damage", "value": 6, "radius": 1 },
+        { "type": "knockback", "distance": 1 }
+      ],
+      "conditions": {
+        "requireTargetStatus": "poison",
+        "requireTag": "fire"
+      },
+      "discoveryHint": "Poison ignites! The toxin detonates — AoE burst clears poison but deals massive area damage.",
+      "_designNote": "Poison + Fire → Explosion. Specifically: target must have Poison status AND incoming card has fire synergyTag. Consumes poison for AoE burst. Pokémon logic: poison is flammable. Teaches status-as-fuel."
+    },
+    {
+      "id": "COMBO-006",
+      "tagA": "improvised",
+      "tagB": "covert",
+      "name": "Stealth Cascade",
+      "emoji": "🎭🟩",
+      "priority": 4,
+      "tier": "intermediate",
+      "effects": [
+        { "type": "stealth_bonus", "value": 0.15 },
+        { "type": "next_attack_backstab", "value": true },
+        { "type": "noise_reduction", "value": -2 }
+      ],
+      "discoveryHint": "Improvised misdirection chains into deeper concealment — next attack gains Backstab bonus.",
+      "_designNote": "🟩+🟪 = Stealth Cascade. Conceal (covert+improvised) self-combos. Smoke Bomb → Venom Shiv also triggers. Teaches that setup cards chain into payoff cards."
+    },
+    {
+      "id": "COMBO-007",
+      "tagA": "improvised",
+      "tagB": "electrical",
+      "name": "Short Circuit",
+      "emoji": "🟩⚡",
+      "priority": 3,
+      "tier": "intermediate",
+      "effects": [
+        { "type": "disable_enemy_tech", "duration": 2 },
+        { "type": "bonus_damage", "value": 3, "condition": "target_has_tech_tag" }
+      ],
+      "discoveryHint": "Jury-rigged electronics overload enemy tech — disables tech-tagged abilities for 2 turns.",
+      "_designNote": "🟩+🟨 = Short Circuit. Molotov (improvised) + Static Shock (electrical) = disable enemy tech cards. Counters tech-heavy enemies like Datacenter Security and Chem Tech."
+    },
+    {
+      "id": "COMBO-008",
+      "tagA": "improvised",
+      "tagB": "ballistic",
+      "name": "Shrapnel Spray",
+      "emoji": "🟩💥",
+      "priority": 4,
+      "tier": "intermediate",
+      "effects": [
+        { "type": "multi_hit", "hits": 3, "damage": 2 },
+        { "type": "status", "status": "bleed", "duration": 2, "tickDamage": 1 }
+      ],
+      "discoveryHint": "Improvised projectiles fragment into shrapnel — multiple small hits that cause bleeding.",
+      "_designNote": "🟩+🟥 = Shrapnel. Molotov (improvised+ballistic) self-combos into multi-hit + bleed. Teaches that dual-tag cards can trigger their OWN combos."
+    },
+    {
+      "id": "COMBO-009",
+      "tagA": "wet",
+      "tagB": "covert",
+      "name": "Toxic Dissolution",
+      "emoji": "💧🟣",
+      "priority": 5,
+      "tier": "intermediate",
+      "effects": [
+        { "type": "extend_status", "status": "poison", "bonus_duration": 2 },
+        { "type": "status", "status": "corrode", "duration": 2, "armorReduction": 1 }
+      ],
+      "conditions": {
+        "requireTargetStatus": "poison"
+      },
+      "discoveryHint": "Water dissolves the toxin deeper into the target — poison lasts longer and corrodes armor.",
+      "_designNote": "🟦+🟪 = Toxic Dissolution. Water Splash on poisoned target = extended poison + armor corrode. Teaches that order matters: poison first, then water to extend. Alternative to Poison Ignition (extend vs detonate)."
+    },
+    {
+      "id": "COMBO-010",
+      "tagA": "electrical",
+      "tagB": "electrical",
+      "name": "Overcharge",
+      "emoji": "⚡⚡",
+      "priority": 2,
+      "tier": "intermediate",
+      "effects": [
+        { "type": "bonus_damage", "value": 4 },
+        { "type": "chain_lightning", "chance": 0.75, "bounces": 2, "damage": 2 },
+        { "type": "self_damage", "value": 1 }
+      ],
+      "conditions": {
+        "requireSameTurn": true,
+        "minCards": 2
+      },
+      "discoveryHint": "Double electrical surge overcharges the field — massive chain lightning but the feedback stings you too.",
+      "_designNote": "🟨x2 same turn = Overcharge. Like Overkill but for electrical — bigger chain lightning, costs 1 self-damage. Teaches risk/reward: double-down for power but take feedback. Pairs with Thermal Stabilizer (stolen enemy card negates self-damage)."
+    },
+    {
+      "id": "COMBO-011",
+      "tagA": "wet",
+      "tagB": "wet",
+      "name": "Flood",
+      "emoji": "💧💧",
+      "priority": 5,
+      "tier": "intermediate",
+      "effects": [
+        { "type": "ground_effect", "effectType": "FLOODED", "radius": 2 },
+        { "type": "status", "status": "wet", "duration": 3, "target": "all_in_area" },
+        { "type": "movement_penalty", "value": -1, "target": "all" }
+      ],
+      "conditions": {
+        "requireSameTurn": true,
+        "minCards": 2
+      },
+      "discoveryHint": "Double water floods the area — everyone gets soaked and movement slows. Perfect setup for electrical follow-up.",
+      "_designNote": "🟦x2 = Flood. Creates large Flooded ground + Wet on everyone. Massive setup for next-turn electrical combos. Teaches 'invest this turn, payoff next turn' patience."
+    },
+    {
+      "id": "COMBO-012",
+      "tagA": "covert",
+      "tagB": "covert",
+      "name": "Ghost Protocol",
+      "emoji": "🟣🟣",
+      "priority": 6,
+      "tier": "advanced",
+      "effects": [
+        { "type": "full_stealth", "duration": 2 },
+        { "type": "next_two_attacks_backstab", "value": true },
+        { "type": "noise_immunity", "duration": 1 }
+      ],
+      "conditions": {
+        "requireSameTurn": true,
+        "minCards": 2
+      },
+      "discoveryHint": "Double covert triggers Ghost Protocol — full stealth for 2 turns with Backstab on your next two attacks. Silent.",
+      "_designNote": "🟪x2 = Ghost Protocol. The ultimate stealth commitment. 2 turns of full stealth + double Backstab. Noise immunity means no detection. Advanced players stack Poison Dart + Conceal for massive burst setup."
+    },
+    {
+      "id": "COMBO-013",
+      "tagA": "improvised",
+      "tagB": "wet",
+      "name": "Slick Trap",
+      "emoji": "🟩💧",
+      "priority": 5,
+      "tier": "advanced",
+      "effects": [
+        { "type": "ground_effect", "effectType": "SLIPPERY", "radius": 1 },
+        { "type": "status", "status": "prone", "chance": 0.40, "duration": 1 },
+        { "type": "bonus_damage_to_prone", "value": 3 }
+      ],
+      "discoveryHint": "Improvised slip hazard — enemies risk falling prone. Prone enemies take bonus damage from follow-up attacks.",
+      "_designNote": "🟩+🟦 = Slick Trap. Creates slippery ground. Prone enemies take +3 from next hit. Teaches ground-based positional play at advanced level."
+    },
+    {
+      "id": "COMBO-014",
+      "tagA": "improvised",
+      "tagB": "improvised",
+      "name": "Jury Rig",
+      "emoji": "🟩🟩",
+      "priority": 7,
+      "tier": "advanced",
+      "effects": [
+        { "type": "random_bonus", "pool": ["damage_5", "heal_3", "stun_1", "stealth_0.2"] },
+        { "type": "cost_reduction_next", "amount": 1 }
+      ],
+      "conditions": {
+        "requireSameTurn": true,
+        "minCards": 2
+      },
+      "discoveryHint": "Double improvised triggers a Jury Rig — chaotic bonus effect plus your next card costs 1 less. Unpredictable but fun.",
+      "_designNote": "🟩x2 = Jury Rig. Random bonus from a pool + cost reduction. The 'chaos' combo for Improvised builds. Rewards players who lean into junk-tag synergies from stolen enemy cards (Dead Battery, Loose Wiring have improvised affinity)."
+    },
+
+    {
+      "id": "COMBO-015",
+      "tagA": "black_market",
+      "tagB": "covert",
+      "name": "Silent Recovery",
+      "emoji": "⬛🟣",
+      "priority": 4,
+      "tier": "intermediate",
+      "effects": [
+        { "type": "stealth_preserve", "value": true },
+        { "type": "noise_reduction", "value": -3 },
+        { "type": "bonus_heal", "value": 2 }
+      ],
+      "discoveryHint": "Black market goods used covertly — heal without breaking stealth, reduced noise, bonus recovery.",
+      "_designNote": "⬛+🟪 = Silent Recovery. Dry Martini + any Covert card = heal without revealing position. Teaches that Black Market cards have stealth affinity — luxury goods are discreet."
+    },
+    {
+      "id": "COMBO-016",
+      "tagA": "black_market",
+      "tagB": "ballistic",
+      "name": "Silent Detonation",
+      "emoji": "⬛💥",
+      "priority": 3,
+      "tier": "advanced",
+      "effects": [
+        { "type": "noise_immunity", "duration": 1 },
+        { "type": "bonus_damage", "value": 3 },
+        { "type": "no_alert_gain", "value": true }
+      ],
+      "conditions": {
+        "requireStatus": "stealth"
+      },
+      "discoveryHint": "Black market explosives are engineered for silence — no noise, no alert, just damage. The professional's choice.",
+      "_designNote": "⬛+🟥 from stealth = Silent Detonation. Exploding Cufflink (black_market+ballistic) self-combos when played from stealth: no noise generated, no alert increase. The Q-branch special."
+    },
+    {
+      "id": "COMBO-017",
+      "tagA": "black_market",
+      "tagB": "electrical",
+      "name": "Smuggled Tech",
+      "emoji": "⬛🟨",
+      "priority": 5,
+      "tier": "advanced",
+      "effects": [
+        { "type": "cost_reduction_next", "tag": "electrical", "amount": 1 },
+        { "type": "bonus_duration", "tag": "electrical", "value": 1 }
+      ],
+      "discoveryHint": "Black market tech is overclocked — electrical effects cost less and last longer. Illegal but effective.",
+      "_designNote": "⬛+🟨 = Smuggled Tech. Next electrical card costs 1 less + electrical status effects last 1 turn longer. Teaches that Black Market enhances other tags — it's the 'premium modifier' element."
+    },
+    {
+      "id": "COMBO-018",
+      "tagA": "black_market",
+      "tagB": "black_market",
+      "name": "Deep Cover",
+      "emoji": "⬛⬛",
+      "priority": 6,
+      "tier": "advanced",
+      "effects": [
+        { "type": "full_stealth", "duration": 1 },
+        { "type": "currency_bonus", "value": 5 },
+        { "type": "next_steal_guaranteed", "value": true }
+      ],
+      "conditions": {
+        "requireSameTurn": true,
+        "minCards": 2
+      },
+      "discoveryHint": "Double black market triggers Deep Cover — instant stealth, bonus currency, and your next steal attempt is guaranteed.",
+      "_designNote": "⬛x2 = Deep Cover. The underworld commitment combo. Full stealth + bonus cash + guaranteed steal. Rewards players who invest in Black Market cards. Pairs with Treasure Goblin encounters for maximum loot."
+    },
+    {
+      "id": "COMBO-019",
+      "tagA": "black_market",
+      "tagB": "improvised",
+      "name": "Contraband Hack",
+      "emoji": "⬛🟩",
+      "priority": 5,
+      "tier": "intermediate",
+      "effects": [
+        { "type": "generate_card", "cardTag": "random", "count": 1, "rarity": "uncommon" },
+        { "type": "cost_reduction_next", "amount": 1 }
+      ],
+      "discoveryHint": "Black market parts jury-rigged together — generates a random uncommon card. The street engineer's hustle.",
+      "_designNote": "⬛+🟩 = Contraband Hack. Generate random uncommon card + cost reduction. The 'resourceful criminal' combo. Dry Martini + Field Stitch Kit or Gentleman's Feint triggers this. Teaches cross-archetype deck building."
+    },
+    {
+      "id": "COMBO-020",
+      "tagA": "improvised",
+      "tagB": "electrical",
+      "name": "Adrenal Surge",
+      "emoji": "🟩⚡",
+      "priority": 4,
+      "tier": "intermediate",
+      "effects": [
+        { "type": "bonus_action", "value": 1, "nextTurn": true },
+        { "type": "status", "status": "energized", "duration": 1 }
+      ],
+      "conditions": {
+        "requireCardTag": "medical"
+      },
+      "discoveryHint": "Improvised medical gear meets electrical charge — adrenaline surge grants an extra action next turn.",
+      "_designNote": "🟩+🟨 when medical tag present = Adrenal Surge. Field Stitch Kit (improvised+medical) + any electrical card = +1 action next turn. Specific: needs the medical tag too. Teaches three-way synergy reading."
+    },
+    {
+      "id": "COMBO-021",
+      "tagA": "ballistic",
+      "tagB": "electrical",
+      "name": "Ignition Mark",
+      "emoji": "🟥🟨",
+      "priority": 3,
+      "tier": "intermediate",
+      "effects": [
+        { "type": "guaranteed_crit", "value": true },
+        { "type": "status", "status": "overloaded", "duration": 1 }
+      ],
+      "conditions": {
+        "requireTargetStatus": "marked"
+      },
+      "discoveryHint": "Electrical charge meets a marked target — guaranteed critical hit plus overload. The sniper-hacker one-two punch.",
+      "_designNote": "🟥+🟨 on Marked target = Ignition Mark. Laser Pen (ballistic, applies Marked) → Taser Baton/Static Shock (electrical) = guaranteed crit. Teaches setup→payoff with specific status requirements."
+    },
+    {
+      "id": "COMBO-022",
+      "tagA": "black_market",
+      "tagB": "wet",
+      "name": "Slipped Mickey",
+      "emoji": "⬛💧",
+      "priority": 5,
+      "tier": "advanced",
+      "effects": [
+        { "type": "status", "status": "confused", "duration": 2 },
+        { "type": "status", "status": "accuracy_down", "value": -20, "duration": 2 }
+      ],
+      "discoveryHint": "Black market substances dissolved in water — the target is confused and disoriented. Classic spy drugging.",
+      "_designNote": "⬛+🟦 = Slipped Mickey. Dry Martini + Water Splash = enemy confused + accuracy down for 2 turns. The classic 'slip something in their drink' spy move. Thematic, effective, teaches Black Market as the social manipulation element."
+    },
+
+    {
+      "id": "COMBO-023",
+      "tagA": "wet",
+      "tagB": "ballistic",
+      "name": "Steam Exposure",
+      "emoji": "💨🟥",
+      "priority": 3,
+      "tier": "intermediate",
+      "effects": [
+        { "type": "status", "status": "steam_exposed", "duration": 1 },
+        { "type": "vulnerability", "damageBonus": 1, "duration": 1 }
+      ],
+      "conditions": {
+        "requireTargetStatus": "wet",
+        "noFireTag": true
+      },
+      "discoveryHint": "Hitting a Wet target with force creates steam — they're exposed and take +1 damage from the next hit.",
+      "_designNote": "Wet counterplay. When 🟦 target is hit by 🟥 WITHOUT fire tag: Steam Exposure (not full Steam Burst). Wet is no longer pure upside — physical hits convert Wet into vulnerability. Teaches: Wet has a downside if you don't follow up with electrical."
+    },
+    {
+      "id": "COMBO-024",
+      "tagA": "improvised",
+      "tagB": "electrical",
+      "name": "Short Circuit Risk",
+      "emoji": "🟩⚡💀",
+      "priority": 2,
+      "tier": "intermediate",
+      "effects": [
+        { "type": "self_damage", "value": 1, "chance": 0.25 },
+        { "type": "disable_tag", "tag": "electrical", "duration": 1, "chance": 0.25 }
+      ],
+      "conditions": {
+        "requireBothFromSameCard": false,
+        "onlyIfNoCounterTag": "wet"
+      },
+      "discoveryHint": "Improvised gear doesn't play well with electricity — 25% chance of short circuit self-damage or disabling the electrical tag.",
+      "_designNote": "Electrical counterplay via improvised interaction. When 🟩+🟨 collide WITHOUT a Wet grounding tag: 25% chance of backfire. This makes Short Circuit (COMBO-007) a risk/reward combo — you get the tech-disabling benefit but might hurt yourself. Wet cards ground the circuit (eliminate the risk). Creates a natural counter triangle: Electrical > Wet > Improvised > Electrical."
+    },
+    {
+      "id": "COMBO-025",
+      "tagA": "disposable",
+      "tagB": "ballistic",
+      "name": "Expendable Ordnance",
+      "emoji": "🔸💥",
+      "priority": 4,
+      "tier": "intermediate",
+      "effects": [
+        { "type": "bonus_damage", "value": 4 },
+        { "type": "resource_refund", "kind": "ammo", "amount": 1 },
+        { "type": "armor_pierce", "value": 0.20 }
+      ],
+      "discoveryHint": "Disposable weapons hit harder when you're not holding back — bonus damage, pierced armor, and salvaged ammo.",
+      "_designNote": "THE core 'disposable as ammo' combo. Exploding Cufflink self-combos (ballistic+disposable in synergyTags). Also fires cross-card: Flashbang + Quick Strike same turn. Ammo refund makes disposable-ballistic plays resource-positive. Teaches: burning cards IS the resource loop."
+    },
+    {
+      "id": "COMBO-026",
+      "tagA": "disposable",
+      "tagB": "covert",
+      "name": "Burn Notice",
+      "emoji": "🔸🟣",
+      "priority": 5,
+      "tier": "intermediate",
+      "effects": [
+        { "type": "stealth_bonus", "value": 0.15 },
+        { "type": "next_attack_backstab", "value": true },
+        { "type": "noise_reduction", "value": -2 }
+      ],
+      "discoveryHint": "Spent assets leave no trail — temporary stealth and a clean exit. The agency disavows all knowledge.",
+      "_designNote": "Disposable + covert = Burn Notice. 4 cards self-combo: Violin Wire, Stolen Technique, Fumbled Grab, Sabotage (all have disposable+covert in synergyTags). Also cross-card: any disposable + any covert card. Makes the 'use it and lose it' spy fantasy tangible. Noise reduction means disposable ops are quieter. Stacks with Ghost Protocol for massive stealth burst."
+    },
+    {
+      "id": "COMBO-027",
+      "tagA": "disposable",
+      "tagB": "electrical",
+      "name": "Overclocked Gadget",
+      "emoji": "🔸⚡",
+      "priority": 3,
+      "tier": "intermediate",
+      "effects": [
+        { "type": "stun_guarantee", "target": "primary", "duration": 1 },
+        { "type": "resource_refund", "kind": "battery", "amount": 1 }
+      ],
+      "discoveryHint": "Burning out the gadget overloads the circuit — guaranteed stun and some juice salvaged from the wreckage.",
+      "_designNote": "Camera Flash self-combos (electrical+disposable). Cross-card: Sabotage + Static Shock, Recon Scan + Taser Baton. Battery refund makes disposable-tech plays sustainable. The 'overclock a gadget to destruction' trope. Pairs with Surge Protector for near-infinite electrical chains."
+    },
+    {
+      "id": "COMBO-028",
+      "tagA": "disposable",
+      "tagB": "black_market",
+      "name": "Dead Drop",
+      "emoji": "🔸⬛",
+      "priority": 4,
+      "tier": "advanced",
+      "effects": [
+        { "type": "currency_bonus", "value": 3 },
+        { "type": "reveal_random_enemy_card", "count": 1 },
+        { "type": "generate_intel", "value": true }
+      ],
+      "discoveryHint": "Disposable black market goods leave a dead drop behind — cash and intel from the wreckage.",
+      "_designNote": "Exploding Cufflink self-combos (black_market+disposable). Cross-card: any disposable + Dry Martini. Currency generation makes disposable builds fund themselves — burn cards, gain money, buy more cards. The spy's economic engine. Intel reveal adds tactical value to every burn."
+    },
+    {
+      "id": "COMBO-029",
+      "tagA": "disposable",
+      "tagB": "improvised",
+      "name": "Field Salvage",
+      "emoji": "🔸🟩",
+      "priority": 6,
+      "tier": "intermediate",
+      "effects": [
+        { "type": "generate_card", "cardTag": "random_common", "count": 1 },
+        { "type": "cost_reduction_next", "amount": 1 }
+      ],
+      "discoveryHint": "Scrapping disposable gear yields spare parts — a new improvised tool and cheaper follow-up.",
+      "_designNote": "Pure cross-card combo: any disposable + any improvised (Molotov, Conceal, Field Stitch Kit, Gentleman's Feint, Containment Protocol). Generates a random common card + cost reduction. The 'dumpster dive' combo — burn something, find something new. Feeds Jury Rig (🟩x2) if generated card is also improvised. Self-sustaining junk loop."
+    }
+  ],
+
+  "_catalogNote": "Tag Synergy Combo System v4.0. v1: Core Pokémon-logic combos. v2: Black Market tag combos. v3: Counterplay depth — tag risk profiles, counterplay cards, risk/reward punishment combos. v4: Disposable-as-ammo system — 5 new combos (COMBO-025 through COMBO-029) making one-time-use cards the fuel for tag synergies. Every disposable card now feeds at least one combo via its tag pair. Resource refund loops (ammo from ballistic burns, battery from electrical burns, currency from black market burns, cards from improvised burns) make disposable-heavy play self-sustaining."
+}

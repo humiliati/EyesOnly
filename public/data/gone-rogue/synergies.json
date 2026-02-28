@@ -100,5 +100,61 @@
     ],
     "tags": ["sonic", "chain", "combo", "tech"],
     "_designNote": "Loop Recorder echoes Sonic tag. If Sonic tag played twice in sequence, next Sonic card is free and applies Overdrive (Sonic Ground duration +1). Can chain up to 3 times."
+  },
+  {
+    "id": "SYN-200",
+    "name": "Vest Detonation",
+    "itemId": "ITM-085",
+    "cardId": "ACT-058",
+    "trigger": "item_on_consume",
+    "visual": "🦺🧨",
+    "effects": [
+      { "type": "aoe_splash_override", "damage": 6 },
+      { "type": "ground_effect", "effectType": "FIRE", "radius": 1, "duration": 2 }
+    ],
+    "tags": ["explosive", "disposable", "combo"],
+    "_designNote": "Demolition Vest + Exploding Cufflink. Splash doubles from 3→6, creates FIRE ground. The ultimate disposable burst: 12 direct + 6 splash + fire ground + Expendable Ordnance combo (+4 damage + ammo refund). Total: 22 damage from one card play with the right loadout."
+  },
+  {
+    "id": "SYN-201",
+    "name": "Recycled Assassination",
+    "itemId": "ITM-086",
+    "cardId": "ACT-059",
+    "trigger": "item_save_consume",
+    "visual": "♻️🎻",
+    "effects": [
+      { "type": "execute_threshold_bonus", "value": 0.05 },
+      { "type": "status", "status": "bleed", "duration": 2, "tickDamage": 1, "target": "all_enemies" }
+    ],
+    "tags": ["assassination", "disposable", "combo"],
+    "_designNote": "Recycler + Violin Wire. If Recycler saves the Wire: execute threshold rises 15%→20% next use AND applies bleed to ALL enemies (the wire whips around). Repeated saves keep raising threshold (cap 30%). The patient assassin's loop — keep the Wire alive, it gets deadlier."
+  },
+  {
+    "id": "SYN-202",
+    "name": "Bandolier Barrage",
+    "itemId": "ITM-084",
+    "cardId": "ACT-011",
+    "trigger": "item_on_consume",
+    "visual": "🎒🎇",
+    "effects": [
+      { "type": "resource_refund_guaranteed", "kind": "ammo", "amount": 1 },
+      { "type": "noise_reduction", "value": -2 }
+    ],
+    "tags": ["escape", "disposable", "combo"],
+    "_designNote": "Bandolier + Chaff Flare. Guaranteed ammo refund (overrides 30% chance) + noise reduced by 2. Chaff Flare becomes: flee, noise +2 (instead of +4), ammo cost 0. The quiet escape artist's loadout."
+  },
+  {
+    "id": "SYN-203",
+    "name": "Overclocked Flash",
+    "itemId": "ITM-086",
+    "cardId": "ACT-060",
+    "trigger": "item_save_consume",
+    "visual": "♻️🎥",
+    "effects": [
+      { "type": "blind_duration_bonus", "value": 1 },
+      { "type": "status", "status": "dazed", "duration": 1, "target": "all_enemies" }
+    ],
+    "tags": ["electrical", "disposable", "combo", "gadget"],
+    "_designNote": "Recycler + Camera Flash. If Recycler saves Camera Flash: Blind extends to 2 turns AND all enemies get Dazed (accuracy -10%). The flash bulb overheats but keeps working — gets more powerful with each save. Tourist weapon becomes spy weapon."
   }
 ]

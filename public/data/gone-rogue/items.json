@@ -547,5 +547,124 @@
     "synergyTags": ["utility", "escape", "preservation"],
     "description": "Escape items rarely break. 60% flight save, 20% save on all disposables.",
     "_designNote": "Upgraded Cargo Webbing. Higher flight-card save rate plus a small chance to save ANY disposable card (grenades, etc). Save rate stacks with card quality bonuses."
+  },
+
+  {
+    "id": "ITM-080",
+    "name": "Surge Protector",
+    "emoji": "🔌",
+    "type": "equipment",
+    "rarity": "uncommon",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      { "type": "tag_risk_reduction", "tag": "electrical", "reduction": 0.5 },
+      { "type": "battery_save", "chance": 0.20 }
+    ],
+    "synergyTags": ["electrical", "tech", "defensive"],
+    "description": "Feedback Burn self-damage halved. 20% chance electrical cards don't consume battery.",
+    "_designNote": "Passive counterplay item. Halves the Feedback Burn tag risk for electrical overcommit. Also 20% battery save — makes electrical chains more sustainable. Pairs with Thermal Stabilizer (stolen) for full electrical immunity."
+  },
+  {
+    "id": "ITM-081",
+    "name": "Concealment Network",
+    "emoji": "🕶",
+    "type": "equipment",
+    "rarity": "rare",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      { "type": "tag_risk_threshold_increase", "tag": "covert", "bonus": 1 },
+      { "type": "exposure_resist", "chance": 0.30 }
+    ],
+    "synergyTags": ["covert", "stealth", "defensive"],
+    "description": "Exposure Risk threshold increased by 1. 30% chance to resist forced reveal.",
+    "_designNote": "Passive counterplay item. Raises Covert Exposure Risk threshold from 3 to 4 (one more stealth card before blowing cover). 30% resist forced reveals (Counter-Intel Sweep, enemy detection). Lets stealth builds go deeper without getting punished."
+  },
+  {
+    "id": "ITM-082",
+    "name": "Recoil Dampener",
+    "emoji": "🔫",
+    "type": "equipment",
+    "rarity": "uncommon",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      { "type": "tag_risk_reduction", "tag": "ballistic", "reduction": 0.5 },
+      { "type": "fatigue_save", "chance": 0.25 }
+    ],
+    "synergyTags": ["ballistic", "defensive"],
+    "description": "Overexertion fatigue halved. 25% chance ballistic cards don't add fatigue.",
+    "_designNote": "Passive counterplay item. Halves Overexertion fatigue from ballistic overcommit. 25% fatigue save on all ballistic plays. Lets Overkill chains extend into triple-🟥 territory safely."
+  },
+  {
+    "id": "ITM-083",
+    "name": "Burnt Contacts",
+    "emoji": "📱",
+    "type": "equipment",
+    "rarity": "rare",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      { "type": "tag_risk_threshold_increase", "tag": "black_market", "bonus": 1 },
+      { "type": "alert_reduction", "value": -2, "trigger": "on_black_market_play" }
+    ],
+    "synergyTags": ["black_market", "covert", "defensive"],
+    "description": "Heat Score threshold raised by 1. Black Market cards reduce alert by 2 instead of raising it.",
+    "_designNote": "Passive counterplay item. Raises Black Market Heat Score threshold from 2 to 3. Each Black Market card now REDUCES alert by 2 (your contacts cover your tracks). Flips the risk profile — Black Market becomes safer but still dangerous at 3+. The 'deep cover agent' item."
+  },
+
+  {
+    "id": "ITM-084",
+    "name": "Bandolier",
+    "emoji": "🎒",
+    "type": "equipment",
+    "rarity": "uncommon",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      { "type": "on_consume_card", "effect": "resource_refund", "chance": 0.30, "refundType": "spent" }
+    ],
+    "synergyTags": ["disposable", "ballistic", "utility"],
+    "description": "30% chance spent resources refund when a disposable card is consumed. Burn cards, get ammo back.",
+    "_designNote": "Core disposable-as-ammo enabler. When any consumesOnPlay card is consumed, 30% chance the resource it cost (ammo or battery) is refunded. Chaff Flare (1 ammo) → 30% free. Sabotage (1 battery) → 30% free. Stacks with Expendable Ordnance combo refund for near-guaranteed ammo return on ballistic disposables. The 'reload belt' fantasy."
+  },
+  {
+    "id": "ITM-085",
+    "name": "Demolition Vest",
+    "emoji": "🦺",
+    "type": "equipment",
+    "rarity": "rare",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      { "type": "on_consume_card", "effect": "aoe_splash", "damage": 3, "requireTag": "ballistic_or_explosive" },
+      { "type": "on_consume_card", "effect": "aoe_splash", "damage": 1, "requireTag": "any" }
+    ],
+    "synergyTags": ["disposable", "ballistic", "explosive", "aoe"],
+    "description": "Disposable cards explode on exit. Ballistic/explosive: 3 splash. All others: 1 splash. Everything is a grenade.",
+    "_designNote": "Turns EVERY disposable card into a grenade. Ballistic/explosive disposables (Exploding Cufflink, Flashbang) deal 3 AoE splash on consumption. ALL other disposables deal 1 splash. Pairs with Expendable Ordnance for +4 damage + 3 splash + ammo refund from a single Exploding Cufflink play. The Michael Bay item — everything explodes."
+  },
+  {
+    "id": "ITM-086",
+    "name": "Recycler",
+    "emoji": "♻️",
+    "type": "equipment",
+    "rarity": "epic",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      { "type": "consume_save", "rarity_scaling": true, "rates": { "common": 0.20, "uncommon": 0.30, "rare": 0.40 } }
+    ],
+    "synergyTags": ["disposable", "tech", "preservation"],
+    "description": "Disposable cards sometimes survive. Save rate scales with card rarity: common 20%, uncommon 30%, rare 40%.",
+    "_designNote": "THE 'item quality matters' item. Higher rarity disposable cards are more likely to survive consumption. Common junk (Fumbled Grab, Smoke Bomb) = 20% save. Uncommon utility (Sabotage, Recon Scan, Camera Flash) = 30%. Rare finishers (Exploding Cufflink, Violin Wire) = 40%. This is the quality-scales-with-rarity loop the user asked for. Upgraded Cargo Webbing for combat disposables (Cargo Webbing only saves flight cards). Pairs with Demolition Vest: even if Recycler saves the card, the splash still fires."
   }
 ]

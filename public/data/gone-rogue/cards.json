@@ -319,6 +319,7 @@
       { "type": "destroy_enemy_card", "count": 1, "prefer": "highest_damage" }
     ],
     "preCombat": false,
+    "tags": ["covert"],
     "synergyTags": ["sabotage", "tech", "disposable", "covert"],
     "_designNote": "Phase 3 destroy card. Burns 1 battery, destroys the highest-damage enemy card. Consumed after use. Triggers card_killed combat event → enemy goes >:( enraged. The 'sabotage' synergyTag also enables destroy-interactability on all enemy cards for the rest of the turn via EnemyCardInteractability."
   },
@@ -370,7 +371,466 @@
       { "type": "ambient_boost", "value": 1.0, "duration": 1 }
     ],
     "preCombat": false,
-    "synergyTags": ["loud", "light_manipulation", "disposable", "attack"],
+    "tags": ["ballistic"],
+    "synergyTags": ["loud", "light_manipulation", "disposable", "attack", "ballistic"],
     "_designNote": "Opposite of Dark Veil. Burns 1 ammo, maxes ambient light for 1 round (blinding flash), reveals all enemy cards, 50% chance enemy loses their turn. Loud — generates noise. Consumed after use. Synergizes with Overload Grid (more active lights = more chain lightning)."
+  },
+
+  {
+    "id": "ACT-040",
+    "name": "Fireball",
+    "emoji": "🔥",
+    "targetType": "enemy",
+    "cost": 1,
+    "costs": null,
+    "rarity": "common",
+    "effects": [
+      { "type": "damage", "value": 8 },
+      { "type": "status", "status": "burn", "duration": 2, "tickDamage": 2 }
+    ],
+    "preCombat": false,
+    "tags": ["ballistic"],
+    "synergyTags": ["ballistic", "fire", "aoe"],
+    "_designNote": "Soft intro tier. Looks simple: deal 8, apply Burn. Hidden: 🟥+🟥→Overkill, 🟦+🟥→Steam Burst (explosion), Poison+Fire→Impact+Knockback. Player learns fire tag naturally."
+  },
+  {
+    "id": "ACT-041",
+    "name": "Water Splash",
+    "emoji": "💧",
+    "targetType": "enemy",
+    "cost": 1,
+    "costs": null,
+    "rarity": "common",
+    "effects": [
+      { "type": "damage", "value": 5 },
+      { "type": "status", "status": "wet", "duration": 2 }
+    ],
+    "preCombat": false,
+    "tags": ["wet"],
+    "synergyTags": ["wet", "control", "conductive"],
+    "_designNote": "Soft intro tier. Deal 5, apply Wet. Hidden: 🟦+🟨→Electrical Surge (chain lightning), 🟦+🟥→Steam Burst. Makes enemies conductive — next electrical card gets bonus. First encounter teaches Wet+Static naturally."
+  },
+  {
+    "id": "ACT-042",
+    "name": "Static Shock",
+    "emoji": "⚡",
+    "targetType": "enemy",
+    "cost": 1,
+    "costs": null,
+    "rarity": "common",
+    "effects": [
+      { "type": "damage", "value": 6 },
+      { "type": "status", "status": "stun", "chance": 0.20, "duration": 1 }
+    ],
+    "preCombat": false,
+    "tags": ["electrical"],
+    "synergyTags": ["electrical", "tech", "chain"],
+    "_designNote": "Soft intro tier. Deal 6, 20% stun. Hidden: 🟨+🟦→Chain Lightning (arcs to adjacent), 🟨 on Conductive Ground→AoE stun. Natural discovery: hit a Wet enemy with this and watch lightning chain."
+  },
+  {
+    "id": "ACT-043",
+    "name": "Quick Strike",
+    "emoji": "🗡",
+    "targetType": "enemy",
+    "cost": 1,
+    "costs": null,
+    "rarity": "common",
+    "effects": [
+      { "type": "damage", "value": 7 }
+    ],
+    "preCombat": false,
+    "tags": ["ballistic"],
+    "synergyTags": ["ballistic", "melee", "fast"],
+    "_designNote": "Soft intro tier. Pure 7 damage, no frills. Hidden: 🟥x2 same turn→Overkill (ignores 30% damage reduction), 🟪+🟥→Backstab (double damage from stealth). The 'honest' attack — teaches double-ballistic Overkill naturally."
+  },
+  {
+    "id": "ACT-044",
+    "name": "Poison Dart",
+    "emoji": "🟣",
+    "targetType": "enemy",
+    "cost": 1,
+    "costs": null,
+    "rarity": "common",
+    "effects": [
+      { "type": "status", "status": "poison", "duration": 3, "tickDamage": 2 }
+    ],
+    "preCombat": false,
+    "tags": ["covert"],
+    "synergyTags": ["covert", "poison", "stealth"],
+    "_designNote": "Soft intro tier. Apply Poison 3 turns. Hidden: Poison+Fire→Explosion (removes poison, deals AoE burst), 🟩+🟪→Stealth Cascade (next attack gains Backstab). Teaches DOT patience + combo ignition."
+  },
+
+  {
+    "id": "ACT-045",
+    "name": "Molotov",
+    "emoji": "🧯",
+    "targetType": "enemy",
+    "cost": 1,
+    "costs": null,
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "status", "status": "burn", "duration": 3, "tickDamage": 2 },
+      { "type": "ground_effect", "effectType": "FIRE", "radius": 1 }
+    ],
+    "preCombat": false,
+    "tags": ["improvised", "ballistic"],
+    "synergyTags": ["improvised", "ballistic", "fire", "aoe", "hazard"],
+    "_designNote": "Intermediate tier. First DUAL-TAG card player sees. 🟩+🟥. Creates fire ground + 3-turn burn. Now player sees two tags on one card and starts noticing the pattern. 🟩+🟪→Stealth Cascade, 🟥+🟥→Overkill, 🟩+🟨→Short Circuit."
+  },
+  {
+    "id": "ACT-046",
+    "name": "Taser Baton",
+    "emoji": "🔌",
+    "targetType": "enemy",
+    "cost": 1,
+    "costs": null,
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "damage", "value": 5 },
+      { "type": "status", "status": "stun", "chance": 0.40, "duration": 1 }
+    ],
+    "preCombat": false,
+    "tags": ["ballistic", "electrical"],
+    "synergyTags": ["ballistic", "electrical", "melee", "tech", "control"],
+    "_designNote": "Intermediate tier. 🟥+🟨 dual-tag. Player experiments: Taser after Water Splash = surprise stun spike (Wet+Electrical triggers Arc Surge). Reveals that tag combos cross card boundaries. 40% stun base, but guaranteed stun on Wet targets."
+  },
+  {
+    "id": "ACT-047",
+    "name": "Venom Shiv",
+    "emoji": "🗡",
+    "targetType": "enemy",
+    "cost": 1,
+    "costs": null,
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "damage", "value": 4 },
+      { "type": "status", "status": "poison", "duration": 2, "tickDamage": 2 }
+    ],
+    "preCombat": false,
+    "tags": ["covert", "ballistic"],
+    "synergyTags": ["covert", "ballistic", "poison", "melee", "stealth"],
+    "_designNote": "Intermediate tier. 🟪+🟥 dual-tag. Backstab potential (🟪+🟥→Backstab from stealth). Poison+Fire→Explosion cross-card combo. Teaches that Covert cards have offensive AND synergy value."
+  },
+  {
+    "id": "ACT-048",
+    "name": "Spark Puddle",
+    "emoji": "💦",
+    "targetType": "ground",
+    "cost": 1,
+    "costs": null,
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "ground_effect", "effectType": "CONDUCTIVE", "radius": 1 },
+      { "type": "status", "status": "wet", "duration": 1, "target": "enemies_in_area" }
+    ],
+    "preCombat": true,
+    "tags": ["wet", "electrical"],
+    "synergyTags": ["wet", "electrical", "conductive", "hazard", "setup"],
+    "_designNote": "Intermediate tier. 🟦+🟨 dual-tag. Creates conductive puddle ground. Enemies stepping in get Wet. Follow up with any electrical card for guaranteed Chain Lightning. The combo enabler — teaches ground-based setups."
+  },
+  {
+    "id": "ACT-049",
+    "name": "Conceal",
+    "emoji": "🎭",
+    "targetType": "self",
+    "cost": 1,
+    "costs": null,
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "stealth_bonus", "value": 0.30 },
+      { "type": "next_attack_backstab", "value": true }
+    ],
+    "preCombat": true,
+    "tags": ["covert", "improvised"],
+    "synergyTags": ["covert", "improvised", "stealth", "setup"],
+    "_designNote": "Intermediate tier. 🟪+🟩 dual-tag. Grants stealth + Backstab on next attack. If followed by any Improvised card: Stealth Cascade triggers (chain stealth bonuses). Teaches Covert+Improvised synergy."
+  },
+
+  {
+    "id": "ACT-050",
+    "name": "Smoke Screen Waltz",
+    "emoji": "🧥",
+    "targetType": "self",
+    "cost": 1,
+    "costs": null,
+    "rarity": "common",
+    "effects": [
+      { "type": "evasion", "charges": 2 },
+      { "type": "ground_effect", "effectType": "OBSCURED", "radius": 1, "duration": 1 },
+      { "type": "conditional_bonus", "condition": "in_darkness", "effect": { "type": "evasion", "charges": 1 } }
+    ],
+    "preCombat": false,
+    "tags": ["covert"],
+    "synergyTags": ["covert", "stealth", "smoke", "defensive"],
+    "_designNote": "Defensive status intro. Gain 2 Evasion charges (next 2 attacks miss) + Obscured Ground. In Darkness: bonus +1 Evasion. 🟪+🟩→Stealth Cascade, 🟪+🟥→Backstab bonus. Soft intro to stealth layering — player learns evasion stacking."
+  },
+  {
+    "id": "ACT-051",
+    "name": "Gentleman's Feint",
+    "emoji": "🎩",
+    "targetType": "self",
+    "cost": 1,
+    "costs": null,
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "negate_attack", "maxDamage": 10, "charges": 1 },
+      { "type": "on_negate", "effect": { "type": "generate_card", "cardTag": "improvised", "count": 1 } }
+    ],
+    "preCombat": false,
+    "tags": ["improvised"],
+    "synergyTags": ["improvised", "defensive", "counter", "sleight"],
+    "_designNote": "Defensive engine card. Negate next attack under 10 damage. If negated: gain 1 random Improvised card. Feels classy, fuels engine. 🟩+🟪→Stealth Cascade, 🟩+🟥→Ricochet counter. Teaches reactive play — take hit, generate value."
+  },
+  {
+    "id": "ACT-052",
+    "name": "Mirror Compact",
+    "emoji": "🪞",
+    "targetType": "self",
+    "cost": 2,
+    "costs": null,
+    "rarity": "rare",
+    "effects": [
+      { "type": "reflect_attack", "reflectTypes": ["ballistic", "electrical"], "charges": 1 },
+      { "type": "on_reflect", "effect": { "type": "inherit_tags", "fromReflected": true } }
+    ],
+    "preCombat": false,
+    "tags": ["covert"],
+    "synergyTags": ["covert", "defensive", "counter", "gadget"],
+    "_designNote": "007 gadget energy. Reflect next Ballistic or Electrical attack back at enemy. Reflected 🟨 on 🟦 target → chain lightning. Reflected 🟥 counts toward Overkill. The reflected attack inherits its tags for combo purposes — reflected electricity on a Wet enemy chains."
+  },
+
+  {
+    "id": "ACT-053",
+    "name": "Dry Martini",
+    "emoji": "🍸",
+    "targetType": "self",
+    "cost": 1,
+    "costs": null,
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "hp", "value": 6 },
+      { "type": "remove_status", "statuses": ["fear", "panic"] },
+      { "type": "conditional_bonus", "condition": "after_kill", "effect": { "type": "hp", "value": 2 } }
+    ],
+    "preCombat": false,
+    "tags": ["black_market"],
+    "synergyTags": ["black_market", "medical", "luxury"],
+    "_designNote": "Heal 6 + remove Fear/Panic. After a kill: +2 bonus heal (shaken, not stirred). ⬛+🟪→Silent Recovery (heal without breaking stealth). Spy fantasy: composed agent sips a drink after the job."
+  },
+  {
+    "id": "ACT-054",
+    "name": "Field Stitch Kit",
+    "emoji": "🩹",
+    "targetType": "self",
+    "cost": 1,
+    "costs": null,
+    "rarity": "common",
+    "effects": [
+      { "type": "hp", "value": 4 },
+      { "type": "remove_status", "statuses": ["bleed"] }
+    ],
+    "preCombat": false,
+    "tags": ["improvised"],
+    "synergyTags": ["improvised", "medical"],
+    "_designNote": "Basic reliable heal. Heal 4 + remove Bleed. 🟩+🟨→Adrenal Surge (+1 action next turn). Genre-familiar: every spy movie has the patching-up-in-the-safehouse moment."
+  },
+
+  {
+    "id": "ACT-055",
+    "name": "Laser Pen",
+    "emoji": "🎯",
+    "targetType": "enemy",
+    "cost": 1,
+    "costs": null,
+    "rarity": "common",
+    "effects": [
+      { "type": "status", "status": "marked", "duration": 1 },
+      { "type": "marked_bonus", "damageMultiplier": 1.5 }
+    ],
+    "preCombat": true,
+    "tags": ["ballistic"],
+    "synergyTags": ["ballistic", "precision", "setup", "gadget"],
+    "_designNote": "Apply Marked: next attack deals +50% damage. Clean iconic gadget. 🟥x2→Overkill. 🟨+🟥→Ignition Mark (marked + electrical = guaranteed crit). Teaches the setup→payoff rhythm with a single-tag card."
+  },
+  {
+    "id": "ACT-056",
+    "name": "Venom Ring",
+    "emoji": "🐍",
+    "targetType": "enemy",
+    "cost": 1,
+    "costs": null,
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "status", "status": "poison", "duration": 4, "tickDamage": 2 },
+      { "type": "conditional_bonus", "condition": "target_wet", "effect": { "type": "extend_status", "status": "poison", "bonus_duration": 4 } }
+    ],
+    "preCombat": false,
+    "tags": ["covert"],
+    "synergyTags": ["covert", "poison", "assassination"],
+    "_designNote": "Elegant assassination. Poison 4 turns. If target already Wet → double poison duration (8 turns). Poison+Fire→Explosion. 🟪+🟩→Stealth Cascade. The classic poison ring handshake — patient assassin's tool."
+  },
+  {
+    "id": "ACT-057",
+    "name": "Magnetic Disruptor",
+    "emoji": "🧲",
+    "targetType": "enemy",
+    "cost": 2,
+    "costs": null,
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "status", "status": "accuracy_down", "value": -25, "duration": 2 },
+      { "type": "conditional_bonus", "condition": "target_has_tag_surveillance", "effect": { "type": "status", "status": "disabled", "duration": 1 } },
+      { "type": "conditional_bonus", "condition": "on_conductive_ground", "effect": { "type": "aoe_status", "status": "accuracy_down", "value": -15, "radius": 1 } }
+    ],
+    "preCombat": false,
+    "tags": ["electrical"],
+    "synergyTags": ["electrical", "tech", "control", "gadget"],
+    "_designNote": "Reduce enemy accuracy for 2 turns. Surveillance enemies get disabled for 1 turn. On Conductive Ground: AoE accuracy debuff spreads. 🟨+🟦→Arc Spread. Anti-tech gadget — counters Spotter Drones and Datacenter Security."
+  },
+
+  {
+    "id": "ACT-058",
+    "name": "Exploding Cufflink",
+    "emoji": "🧨",
+    "targetType": "enemy",
+    "cost": 0,
+    "costs": null,
+    "consumesOnPlay": true,
+    "rarity": "rare",
+    "effects": [
+      { "type": "damage", "value": 12 },
+      { "type": "remove_from_deck", "permanent": true }
+    ],
+    "preCombat": false,
+    "tags": ["ballistic", "black_market"],
+    "synergyTags": ["ballistic", "black_market", "disposable", "explosive"],
+    "_designNote": "Premium disposable. Deal 12 damage, permanently remove self from deck. 🟥x2→Overkill. ⬛+🟪→Silent Detonation (no alert if played from stealth). Feels premium: you save it for the perfect moment. The gadget Q would disapprove of."
+  },
+  {
+    "id": "ACT-059",
+    "name": "Violin Wire",
+    "emoji": "🎻",
+    "targetType": "enemy",
+    "cost": 0,
+    "costs": null,
+    "consumesOnPlay": true,
+    "rarity": "rare",
+    "effects": [
+      { "type": "execute", "hpThreshold": 0.15 },
+      { "type": "on_fail", "effect": { "type": "status", "status": "bleed", "duration": 3, "tickDamage": 2 } }
+    ],
+    "preCombat": false,
+    "tags": ["covert"],
+    "synergyTags": ["covert", "assassination", "melee", "disposable"],
+    "_designNote": "Instant execute if target below 15% HP. If fails: apply Bleed 3. Pink Panther assassination energy. Best paired with Poison Dart → whittle → execute. The wire garrote is the spy's signature finisher. Consumed on use."
+  },
+  {
+    "id": "ACT-060",
+    "name": "Camera Flash",
+    "emoji": "🎥",
+    "targetType": "enemy",
+    "cost": 1,
+    "costs": null,
+    "consumesOnPlay": true,
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "status", "status": "blind", "duration": 1 },
+      { "type": "conditional_bonus", "condition": "on_darkened_ground", "effect": { "type": "status", "status": "panic", "duration": 1 } },
+      { "type": "conditional_bonus", "condition": "during_stealth_cascade", "effect": { "type": "next_attack_backstab_multiplier", "value": 2.0 } }
+    ],
+    "preCombat": false,
+    "tags": ["electrical"],
+    "synergyTags": ["electrical", "light_manipulation", "disposable", "gadget"],
+    "_designNote": "Apply Blind 1 turn. In Darkened Ground: also apply Panic (flash in total darkness is terrifying). During Stealth Cascade: double Backstab multiplier. 🟨+🟦→Stunning Arc. The tourist's weapon — nobody suspects the camera."
+  },
+
+  {
+    "id": "ACT-061",
+    "name": "Panther's Exit",
+    "emoji": "🐆",
+    "targetType": "self",
+    "cost": 2,
+    "costs": null,
+    "rarity": "rare",
+    "effects": [
+      { "type": "remove_all_debuffs" },
+      { "type": "status", "status": "untargetable", "duration": 1 },
+      { "type": "conditional_bonus", "condition": "after_kill", "effect": { "type": "generate_card", "cardTag": "improvised", "count": 1 } }
+    ],
+    "preCombat": false,
+    "tags": ["covert"],
+    "synergyTags": ["covert", "defensive", "escape", "luxury"],
+    "_designNote": "Smooth escape energy. Remove all debuffs + become Untargetable for 1 turn. After a kill: gain an Improvised card. The cinematic 'walk away from the explosion without looking back' card. High cost (2) but total reset + invulnerability."
+  },
+
+  {
+    "id": "ACT-070",
+    "name": "Tag Jammer",
+    "emoji": "📵",
+    "targetType": "enemy",
+    "cost": 0,
+    "costs": [{ "kind": "battery", "amount": 1 }],
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "suppress_tag", "count": 1, "duration": 1 },
+      { "type": "bonus_damage", "value": 2, "condition": "suppressed_tag_was_active" }
+    ],
+    "preCombat": false,
+    "tags": ["electrical"],
+    "synergyTags": ["electrical", "tech", "control", "counter"],
+    "_designNote": "Universal counterspell. Costs 1 battery to disable ONE tag on the target for this turn. If that tag was about to participate in a combo, bonus 2 damage (disruption reward). Against enemy cards: suppresses their strongest synergy tag. In auto-resolve: engine skips combos involving the suppressed tag. The 'Negate' card — you spend battery to break their chain."
+  },
+  {
+    "id": "ACT-071",
+    "name": "Grounding Wire",
+    "emoji": "🔌",
+    "targetType": "ground",
+    "cost": 1,
+    "costs": null,
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "suppress_all_tag", "tag": "electrical", "duration": 1 },
+      { "type": "remove_status", "statuses": ["wet"] },
+      { "type": "ground_effect", "effectType": "GROUNDED", "radius": 1, "duration": 2 }
+    ],
+    "preCombat": true,
+    "tags": ["wet"],
+    "synergyTags": ["wet", "defensive", "counter", "tech"],
+    "_designNote": "Soft tech against electrical chains. Removes all Wet statuses (kills Arc Surge setup) + suppresses electrical tag bonuses this turn + creates Grounded Ground (electrical damage halved in area for 2 turns). Costs focus to use strategically. Doesn't HARD counter — just softens. Wet tag means it still feeds combos if you sequence it right."
+  },
+  {
+    "id": "ACT-072",
+    "name": "Counter-Intel Sweep",
+    "emoji": "🔍",
+    "targetType": "self",
+    "cost": 0,
+    "costs": [{ "kind": "ammo", "amount": 1 }],
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "reveal_all_covert", "duration": 1 },
+      { "type": "suppress_tag", "tag": "covert", "scope": "enemy", "duration": 1 },
+      { "type": "bonus_damage_to_revealed", "value": 3 }
+    ],
+    "preCombat": false,
+    "tags": ["ballistic"],
+    "synergyTags": ["ballistic", "intel", "counter", "precision"],
+    "_designNote": "Anti-stealth sweeper. Burns 1 ammo to reveal ALL covert-tagged enemy cards before auto-resolve. Suppresses covert tag on enemy side (no Stealth Cascade, no Backstab). +3 damage to anything revealed this way. Ballistic tag means it feeds Overkill if paired. The loud, aggressive counter to stealth builds."
+  },
+  {
+    "id": "ACT-073",
+    "name": "Containment Protocol",
+    "emoji": "🛡",
+    "targetType": "self",
+    "cost": 1,
+    "costs": null,
+    "rarity": "rare",
+    "effects": [
+      { "type": "negate_tag_risk", "scope": "self", "duration": 1 },
+      { "type": "redirect_instability", "target": "enemy", "chance": 0.40 }
+    ],
+    "preCombat": true,
+    "tags": ["improvised"],
+    "synergyTags": ["improvised", "defensive", "counter", "control"],
+    "_designNote": "The skill-based risk management card. Cancels YOUR tag risk penalties this turn (no Overexertion, no Feedback Burn, no Exposure Risk, no Instability, no Heat Score). 40% chance to redirect Instability rolls to the enemy instead. Improvised tag means it feeds Stealth Cascade and Jury Rig. The card that lets you go all-in on a tag without paying the overcommit price — but only for one turn."
   }
 ]
