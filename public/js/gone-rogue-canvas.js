@@ -131,12 +131,13 @@ const CanvasRenderer = (function() {
     // Advance twinkle phases for ground items / collectibles (Phase 3.2)
     _advanceTwinklePhases(renderData.entities);
 
-    this._renderEntities(renderData.entities);
-    this._renderPets(renderData.pets);
-    this._renderPlayer(renderData.player);
+    // Render entities WITHOUT shadows first (shadows will be drawn after lighting)
+    this._renderEntities(renderData.entities, true);
+    this._renderPets(renderData.pets, true);
+    this._renderPlayer(renderData.player, true);
 
-    // Render pancake stack above player head
-    this._renderPancakeStack(renderData.player);
+    // Render pancake stack above player head (without shadow first)
+    this._renderPancakeStack(renderData.player, true);
 
     this._renderEffects(renderData.effects);
 
@@ -153,6 +154,10 @@ const CanvasRenderer = (function() {
       // Pass 2: additive emissive glows (can spill onto entities)
       this._renderSourceGlows(renderData.grid);
     }
+
+    // Render all shadows AFTER lighting/darkness passes so they remain visible
+    // and properly darken the ground beneath entities regardless of lighting
+    this._renderAllShadows(renderData.entities, renderData.pets, renderData.player);
   };
 
   /**
@@ -490,8 +495,9 @@ const CanvasRenderer = (function() {
    * Non-enemy entities (items, currencies, collectibles) receive a
    * gentle twinkle/pulse via globalAlpha oscillation (Phase 3.2).
    * @param {Array} entities - Array of entity objects { x, y, char, color }
+   * @param {boolean} skipShadows - If true, skip drawing shadows (they'll be drawn later)
    */
-  CanvasRenderer.prototype._renderEntities = function(entities) {
+  CanvasRenderer.prototype._renderEntities = function(entities, skipShadows) {
     if (!entities || entities.length === 0) return;
 
     for (var i = 0; i < entities.length; i++) {
@@ -501,8 +507,10 @@ const CanvasRenderer = (function() {
       var centerX = (entity.x + 0.5) * this.cellSize;
       var centerY = (entity.y + 0.5) * this.cellSize;
 
-      // Draw ground drop shadow beneath entity
-      this._drawDropShadow(centerX, (entity.y + 0.78) * this.cellSize, this.cellSize * 0.32, this.cellSize * 0.11, 0.28);
+      // Draw ground drop shadow beneath entity (unless skipped)
+      if (!skipShadows) {
+        this._drawDropShadow(centerX, (entity.y + 0.78) * this.cellSize, this.cellSize * 0.32, this.cellSize * 0.11, 0.28);
+      }
 
       // Phase 3.2: twinkle pulse for ground items / collectibles (not enemies)
       var savedAlpha = this.ctx.globalAlpha;
@@ -533,15 +541,18 @@ const CanvasRenderer = (function() {
   /**
    * Render player
    * @param {Object} player - Player object { x, y, char, color }
+   * @param {boolean} skipShadows - If true, skip drawing shadows (they'll be drawn later)
    */
-  CanvasRenderer.prototype._renderPlayer = function(player) {
+  CanvasRenderer.prototype._renderPlayer = function(player, skipShadows) {
     if (!player || player.x === undefined || player.y === undefined) return;
 
     var centerX = (player.x + 0.5) * this.cellSize;
     var centerY = (player.y + 0.5) * this.cellSize;
 
-    // Draw ground drop shadow beneath player
-    this._drawDropShadow(centerX, (player.y + 0.78) * this.cellSize, this.cellSize * 0.36, this.cellSize * 0.13, 0.35);
+    // Draw ground drop shadow beneath player (unless skipped)
+    if (!skipShadows) {
+      this._drawDropShadow(centerX, (player.y + 0.78) * this.cellSize, this.cellSize * 0.36, this.cellSize * 0.13, 0.35);
+    }
 
     // Render player with distinctive glow
     this.ctx.fillStyle = player.color || '#00FF00';
@@ -559,8 +570,9 @@ const CanvasRenderer = (function() {
    * Delegates to the PlayerStackManager singleton which manages
    * update + draw for the persistent emoji stack.
    * @param {Object} player - Player object { x, y }
+   * @param {boolean} skipShadows - If true, skip drawing shadows (they'll be drawn later)
    */
-  CanvasRenderer.prototype._renderPancakeStack = function(player) {
+  CanvasRenderer.prototype._renderPancakeStack = function(player, skipShadows) {
     if (!player || player.x === undefined || player.y === undefined) return;
     if (typeof PlayerStackManager === 'undefined' || !PlayerStackManager.render) return;
 
@@ -571,14 +583,15 @@ const CanvasRenderer = (function() {
     var screenX = (player.x + 0.5) * this.cellSize;
     var screenY = (player.y + 0.5) * this.cellSize;
 
-    PlayerStackManager.render(this.ctx, screenX, screenY, this.cellSize);
+    PlayerStackManager.render(this.ctx, screenX, screenY, this.cellSize, skipShadows);
   };
 
   /**
    * Render pets (follower companions)
    * @param {Array} pets - Array of pet objects { x, y, emoji, opacity, type }
+   * @param {boolean} skipShadows - If true, skip drawing shadows (they'll be drawn later)
    */
-  CanvasRenderer.prototype._renderPets = function(pets) {
+  CanvasRenderer.prototype._renderPets = function(pets, skipShadows) {
     if (!pets || pets.length === 0) return;
 
     for (var i = 0; i < pets.length; i++) {
@@ -588,9 +601,11 @@ const CanvasRenderer = (function() {
       var centerX = (pet.x + 0.5) * this.cellSize;
       var centerY = (pet.y + 0.5) * this.cellSize;
 
-      // Draw ground drop shadow beneath pet (scaled by pet opacity)
-      var shadowAlpha = 0.25 * (pet.opacity !== undefined ? pet.opacity : 1);
-      this._drawDropShadow(centerX, (pet.y + 0.78) * this.cellSize, this.cellSize * 0.30, this.cellSize * 0.10, shadowAlpha);
+      // Draw ground drop shadow beneath pet (scaled by pet opacity) (unless skipped)
+      if (!skipShadows) {
+        var shadowAlpha = 0.25 * (pet.opacity !== undefined ? pet.opacity : 1);
+        this._drawDropShadow(centerX, (pet.y + 0.78) * this.cellSize, this.cellSize * 0.30, this.cellSize * 0.10, shadowAlpha);
+      }
 
       // Save current alpha
       var oldAlpha = this.ctx.globalAlpha;
@@ -691,6 +706,75 @@ const CanvasRenderer = (function() {
     this.ctx.ellipse(centerX, groundY, radiusX, radiusY, 0, 0, Math.PI * 2);
     this.ctx.fill();
     this.ctx.restore();
+  };
+
+  /**
+   * Render all entity shadows AFTER lighting passes.
+   * Shadows are drawn last so they remain visible on top of darkness overlays,
+   * using multiply composite to darken the ground beneath entities.
+   * This ensures shadows are always visible regardless of lighting conditions.
+   *
+   * @param {Array} entities - Array of entity objects
+   * @param {Array} pets - Array of pet objects
+   * @param {Object} player - Player object
+   */
+  CanvasRenderer.prototype._renderAllShadows = function(entities, pets, player) {
+    // Use multiply composite so shadows darken what's beneath them
+    var prevComp = this.ctx.globalCompositeOperation;
+    this.ctx.globalCompositeOperation = 'multiply';
+
+    // Draw entity shadows
+    if (entities && entities.length > 0) {
+      for (var i = 0; i < entities.length; i++) {
+        var entity = entities[i];
+        if (!entity || entity.x === undefined || entity.y === undefined) continue;
+        var centerX = (entity.x + 0.5) * this.cellSize;
+        this._drawDropShadow(centerX, (entity.y + 0.78) * this.cellSize, this.cellSize * 0.32, this.cellSize * 0.11, 0.28);
+      }
+    }
+
+    // Draw pet shadows
+    if (pets && pets.length > 0) {
+      for (var i = 0; i < pets.length; i++) {
+        var pet = pets[i];
+        if (!pet || pet.x === undefined || pet.y === undefined) continue;
+        var centerX = (pet.x + 0.5) * this.cellSize;
+        var shadowAlpha = 0.25 * (pet.opacity !== undefined ? pet.opacity : 1);
+        this._drawDropShadow(centerX, (pet.y + 0.78) * this.cellSize, this.cellSize * 0.30, this.cellSize * 0.10, shadowAlpha);
+      }
+    }
+
+    // Draw player shadow
+    if (player && player.x !== undefined && player.y !== undefined) {
+      var centerX = (player.x + 0.5) * this.cellSize;
+      this._drawDropShadow(centerX, (player.y + 0.78) * this.cellSize, this.cellSize * 0.36, this.cellSize * 0.13, 0.35);
+    }
+
+    // Draw pancake stack shadow
+    if (player && player.x !== undefined && player.y !== undefined) {
+      if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.getStackCount && PlayerStackManager.getStackCount() > 0) {
+        var screenX = (player.x + 0.5) * this.cellSize;
+        var screenY = (player.y + 0.5) * this.cellSize;
+
+        // Replicate pancake shadow logic
+        var now = Date.now();
+        var stack = PlayerStackManager.getStack();
+        if (stack && stack.length > 0) {
+          var newestAge = now - stack[stack.length - 1].collectedAt;
+          var fadeIn = Math.min(1, newestAge / 300);
+          var oldestAge = now - stack[0].collectedAt;
+          var decayMs = 4000; // From PlayerStackManager._decayMs
+          var fadeOut = Math.max(0, 1 - Math.max(0, oldestAge - (decayMs - 600)) / 600);
+          var shadowOpacity = 0.35 * fadeIn * fadeOut;
+          if (shadowOpacity > 0.005) {
+            this._drawDropShadow(screenX, screenY + this.cellSize * 0.28, this.cellSize * 0.38, this.cellSize * 0.13, shadowOpacity);
+          }
+        }
+      }
+    }
+
+    // Restore composite operation
+    this.ctx.globalCompositeOperation = prevComp;
   };
 
   /**

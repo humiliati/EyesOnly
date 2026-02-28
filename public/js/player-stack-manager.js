@@ -105,8 +105,9 @@ const PlayerStackManager = (function() {
    * @param {number} screenX  - center X of player in canvas px
    * @param {number} screenY  - center Y of player in canvas px
    * @param {number} cellSize - size of a grid cell in canvas px
+   * @param {boolean} skipShadows - If true, skip drawing shadows (they'll be drawn later)
    */
-  function render(ctx, screenX, screenY, cellSize) {
+  function render(ctx, screenX, screenY, cellSize, skipShadows) {
     if (_stack.length === 0) return;
 
     var pancakeHeight = 6;
@@ -114,23 +115,25 @@ const PlayerStackManager = (function() {
 
     // Draw single ground shadow below the stack with fade-in/out tied to stack lifecycle
     // Using consistent ellipse shadow technique (matches player/entity shadows)
-    var now = Date.now();
-    var newestAge = now - _stack[_stack.length - 1].collectedAt;
-    var fadeIn = Math.min(1, newestAge / 300); // fade in over 300ms on new pickup
-    var oldestAge = now - _stack[0].collectedAt;
-    var fadeOut = Math.max(0, 1 - Math.max(0, oldestAge - (_decayMs - 600)) / 600); // fade out in last 600ms
-    var shadowOpacity = 0.35 * fadeIn * fadeOut; // Match player shadow base opacity
-    if (shadowOpacity > 0.005) {
-      ctx.save();
-      ctx.globalAlpha = shadowOpacity;
-      ctx.shadowBlur = 0; // Ensure no blur for flat ground shadow
-      ctx.fillStyle = 'rgba(0,0,0,0.55)';
-      ctx.beginPath();
-      // Use consistent Y offset: screenY already includes (player.y + 0.5) * cellSize,
-      // so adding 0.28 * cellSize gives (player.y + 0.78) * cellSize total
-      ctx.ellipse(screenX, screenY + cellSize * 0.28, cellSize * 0.38, cellSize * 0.13, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+    if (!skipShadows) {
+      var now = Date.now();
+      var newestAge = now - _stack[_stack.length - 1].collectedAt;
+      var fadeIn = Math.min(1, newestAge / 300); // fade in over 300ms on new pickup
+      var oldestAge = now - _stack[0].collectedAt;
+      var fadeOut = Math.max(0, 1 - Math.max(0, oldestAge - (_decayMs - 600)) / 600); // fade out in last 600ms
+      var shadowOpacity = 0.35 * fadeIn * fadeOut; // Match player shadow base opacity
+      if (shadowOpacity > 0.005) {
+        ctx.save();
+        ctx.globalAlpha = shadowOpacity;
+        ctx.shadowBlur = 0; // Ensure no blur for flat ground shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.beginPath();
+        // Use consistent Y offset: screenY already includes (player.y + 0.5) * cellSize,
+        // so adding 0.28 * cellSize gives (player.y + 0.78) * cellSize total
+        ctx.ellipse(screenX, screenY + cellSize * 0.28, cellSize * 0.38, cellSize * 0.13, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
     }
 
     for (var i = _stack.length - 1; i >= 0; i--) {
