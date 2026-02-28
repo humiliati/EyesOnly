@@ -740,6 +740,25 @@ Goal: Designers can add/modify cards without JavaScript expertise.
    - Add tile interactions
    - Add visual rendering
 
+### ✅ Completed — Environment Synergy Basic Attack Cards (Phase 6)
+
+The following work from the "basic attack type cards with environment synergy" requirement is complete:
+
+- ✅ **EATK-021 Rope** — bind status modifier chains with basic ranged attacks via `setup_ranged` buff. Fires Bind & Blast combo (`bind` + `ranged_chain`).
+- ✅ **EATK-022 Broken Lever** — improvised melee with `environment_interact` (lever jam) and `black_market` tag. Fires Contraband Hack + Combo Strike combos.
+- ✅ **EATK-023 Secret Button** — one-time covert environmental trigger (statue bust). Fires Silent Recovery + Ghost Passage combos. Zero alert generation.
+- ✅ **WAREHOUSE_ENFORCER deck** — bind + ranged chain deck (Rope → double Pistol Shot).
+- ✅ **BLACK_MARKET_FENCE deck** — black_market improvised pattern (Broken Lever + Coin Toss + Flee).
+- ✅ **CATACOMB_SENTINEL deck** — covert environmental deck (Secret Button + detection support).
+- ✅ **JUNKYARD_SCAVENGER deck** — updated to include Broken Lever.
+- ✅ **BIND_TERRAIN biome variant** — BIOME_SYSTEMS ground-effect patch for rope/bind environments.
+- ✅ **INDUSTRIAL_DEBRIS biome variant** — BIOME_SYSTEMS patch for rubble/debris environments.
+- ✅ **HIDDEN_CHAMBER biome variant** — BIOME_SYSTEMS patch for carved_walls/statue_tiles; all actions silent.
+- ✅ **3 new tag synergy combos** — Bind & Blast, Salvage Rights, Ghost Passage.
+- ✅ **Catalog built** — `npm run build:enemyCatalog` → 23 cards, 41 decks.
+
+See `docs/ENEMY_CARDS.md` Phase 6 section and `docs/BIOME_SYSTEMS.md` Enemy Catalog Variants section for full details.
+
 ### Long-Term Goals (Next Quarter)
 
 7. **Complete Hand/Action Bar System**
@@ -1704,6 +1723,6 @@ Each resource has its own unique color that represents the resource type itself,
 
 ---
 
-**Document Version:** 1.1
-**Last Updated:** 2026-02-19
-**Status:** Complete gap analysis with STR out-of-combat extension and environmental action buttons
+**Document Version:** 1.2
+**Last Updated:** 2026-02-28
+**Status:** Complete gap analysis with STR out-of-combat extension, environmental action buttons, and Phase 6 environment-synergy basic attack cards
