@@ -12,7 +12,9 @@
     "typecheck": "tsc --noEmit",
     "db:migrate": "wrangler d1 execute database_id --remote --file=migrations/0001_init.sql",
     "db:migrate:local": "wrangler d1 execute database_id --local --file=migrations/0001_init.sql",
-    "types": "wrangler types"
+    "types": "wrangler types",
+    "build:enemyCatalog": "node scripts/build-enemy-catalog.mjs",
+    "init:enemyCatalog": "node scripts/init-enemy-catalog-from-runtime.mjs"
   },
   "dependencies": {
     "hono": "^4.7.0",
