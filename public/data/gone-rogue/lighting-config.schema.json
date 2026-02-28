@@ -1,0 +1,351 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Lighting Configuration",
+  "description": "Configuration for the lighting engine including environmental lights, breakables, and progression",
+  "type": "object",
+  "required": ["version", "global", "emission", "envLights", "interactiveLights", "progression", "validation"],
+  "properties": {
+    "version": {
+      "type": "number",
+      "description": "Schema version number"
+    },
+    "global": {
+      "type": "object",
+      "required": ["enabled", "ambientDarkness", "gamma", "maxLightRadius", "falloff", "tileAlphaMin", "tileAlphaMax"],
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Master toggle for lighting system"
+        },
+        "ambientDarkness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Base darkness applied everywhere before lights (higher = darker world)"
+        },
+        "gamma": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 3,
+          "description": "Perceptual curve for light to brightness"
+        },
+        "maxLightRadius": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Hard cap on any light radius"
+        },
+        "falloff": {
+          "type": "string",
+          "enum": ["linear", "quadratic", "smoothstep"],
+          "description": "How light decays with distance"
+        },
+        "tileAlphaMin": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Minimum darkness alpha for fully lit tiles"
+        },
+        "tileAlphaMax": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Maximum darkness alpha for unlit tiles"
+        }
+      }
+    },
+    "emission": {
+      "type": "object",
+      "required": ["lightIntensityScale", "colorBleed", "flicker", "defaultLight"],
+      "properties": {
+        "lightIntensityScale": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Global multiplier for all light intensities"
+        },
+        "colorBleed": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "How strongly colored lights tint vs just brighten"
+        },
+        "flicker": {
+          "type": "object",
+          "required": ["enabled", "strength", "speed"],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "strength": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "speed": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        "defaultLight": {
+          "type": "object",
+          "required": ["radius", "intensity"],
+          "properties": {
+            "radius": {
+              "type": "number",
+              "minimum": 1
+            },
+            "intensity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        }
+      }
+    },
+    "envLights": {
+      "type": "object",
+      "required": ["renderEmoji", "bulbs"],
+      "properties": {
+        "renderEmoji": {
+          "type": "object",
+          "required": ["enabled", "visibleChanceBase", "hideIfTileOccupied", "hideIfContains", "layer", "opacity", "offsetPx"],
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Can fully disable env light emoji rendering while keeping light emission"
+            },
+            "visibleChanceBase": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Baseline chance an env light shows its emoji"
+            },
+            "hideIfTileOccupied": {
+              "type": "boolean",
+              "description": "If true, hide emoji when tile also contains door/item/breakable/etc"
+            },
+            "hideIfContains": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Explicit occupancy classes that force hide"
+            },
+            "layer": {
+              "type": "string",
+              "enum": ["below_items", "below_doors", "below_all", "above_all"],
+              "description": "Default render layer for visible env light emojis"
+            },
+            "opacity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "If visible, allow lowering opacity instead of hiding"
+            },
+            "offsetPx": {
+              "type": "object",
+              "required": ["x", "y"],
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                }
+              },
+              "description": "Optional slight offset so lights don't sit directly on top of items"
+            }
+          }
+        },
+        "bulbs": {
+          "type": "object",
+          "required": ["emojiSet", "renderUpsideDown", "layer", "hideIfTileOccupied"],
+          "properties": {
+            "emojiSet": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Which emojis count as bulbs"
+            },
+            "renderUpsideDown": {
+              "type": "boolean",
+              "description": "Applies transform (rotate 180deg) to bulb glyph"
+            },
+            "layer": {
+              "type": "string",
+              "enum": ["below_items", "below_doors", "below_all", "above_all"],
+              "description": "Bulbs draw on top (except critical-occlusion rules)"
+            },
+            "hideIfTileOccupied": {
+              "type": "boolean",
+              "description": "Still hide bulbs if they share tile with keys/doors"
+            }
+          }
+        }
+      }
+    },
+    "interactiveLights": {
+      "type": "object",
+      "required": ["enabled", "visibleChanceMultiplier", "breakableDefaultHp", "actions", "onBreak", "smotherRadius"],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "visibleChanceMultiplier": {
+          "type": "number",
+          "minimum": 1,
+          "description": "If a light is interactive/breakable, increase its chance to render emoji"
+        },
+        "breakableDefaultHp": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Default HP for breakable lights"
+        },
+        "actions": {
+          "type": "object",
+          "required": ["smother", "smash", "disable"],
+          "properties": {
+            "smother": {
+              "type": "boolean"
+            },
+            "smash": {
+              "type": "boolean"
+            },
+            "disable": {
+              "type": "boolean"
+            }
+          }
+        },
+        "onBreak": {
+          "type": "object",
+          "required": ["removeLight", "spawnSmoke", "dropLoot"],
+          "properties": {
+            "removeLight": {
+              "type": "boolean"
+            },
+            "spawnSmoke": {
+              "type": "boolean"
+            },
+            "dropLoot": {
+              "type": "boolean"
+            }
+          }
+        },
+        "smotherRadius": {
+          "type": "number",
+          "minimum": 0,
+          "description": "If smothering affects nearby lights"
+        }
+      }
+    },
+    "progression": {
+      "type": "object",
+      "required": ["enabled", "visibleChanceByFloor", "interactiveShareByFloor", "hazardShareByFloor"],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "visibleChanceByFloor": {
+          "type": "object",
+          "required": ["floorStart", "floorEnd", "start", "end", "curve"],
+          "properties": {
+            "floorStart": {
+              "type": "number"
+            },
+            "floorEnd": {
+              "type": "number"
+            },
+            "start": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "end": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "curve": {
+              "type": "string",
+              "enum": ["linear", "easeIn", "easeOut", "easeInOut"]
+            }
+          }
+        },
+        "interactiveShareByFloor": {
+          "type": "object",
+          "required": ["floorStart", "floorEnd", "start", "end", "curve"],
+          "properties": {
+            "floorStart": {
+              "type": "number"
+            },
+            "floorEnd": {
+              "type": "number"
+            },
+            "start": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "end": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "curve": {
+              "type": "string",
+              "enum": ["linear", "easeIn", "easeOut", "easeInOut"]
+            }
+          }
+        },
+        "hazardShareByFloor": {
+          "type": "object",
+          "required": ["floorStart", "floorEnd", "start", "end", "curve"],
+          "properties": {
+            "floorStart": {
+              "type": "number"
+            },
+            "floorEnd": {
+              "type": "number"
+            },
+            "start": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "end": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "curve": {
+              "type": "string",
+              "enum": ["linear", "easeIn", "easeOut", "easeInOut"]
+            }
+          }
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "required": ["maxLightsPerFloor", "maxVisibleEmojiLightsPerScreen", "debugOverlay"],
+      "properties": {
+        "maxLightsPerFloor": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Hard cap to prevent spam"
+        },
+        "maxVisibleEmojiLightsPerScreen": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Soft cap; excess lights become hidden-emoji lights"
+        },
+        "debugOverlay": {
+          "type": "boolean",
+          "description": "Show light radii / tile brightness values for tuning"
+        }
+      }
+    }
+  }
+}

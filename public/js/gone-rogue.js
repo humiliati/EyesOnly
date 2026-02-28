@@ -1322,6 +1322,20 @@ const GoneRogue = (function () {
     // Initialize lighting system if available
     if (typeof LightingSystem !== 'undefined') {
       LightingSystem.init();
+
+      // Load lighting configuration from registry if available
+      if (typeof GoneRogueDataRegistry !== 'undefined') {
+        GoneRogueDataRegistry.ready().then(function() {
+          var lightingConfig = GoneRogueDataRegistry.getLightingConfig();
+          if (lightingConfig) {
+            LightingSystem.setConfig(lightingConfig);
+            console.log('[GoneRogue] Lighting configuration loaded');
+          }
+        }).catch(function(err) {
+          console.warn('[GoneRogue] Failed to load lighting config:', err);
+        });
+      }
+
       console.log('[GoneRogue] Lighting system initialized');
     }
 
@@ -3200,6 +3214,9 @@ _incrementPityTimers();
 
     // Generate lighting for this floor
     if (typeof LightingSystem !== 'undefined') {
+      // Set floor number for progression scaling
+      LightingSystem.setFloor(_floor);
+
       // Set biome for lighting
       var biome;
       var biomeName;
@@ -3239,8 +3256,8 @@ _incrementPityTimers();
       _rebuildWallCache();
       var walls = _wallCache;
 
-      // Generate biome-specific light sources
-      LightingSystem.generateBiomeLights(GRID_WIDTH, GRID_HEIGHT, rooms, walls);
+      // Generate biome-specific light sources (pass grid for occupancy checking)
+      LightingSystem.generateBiomeLights(GRID_WIDTH, GRID_HEIGHT, rooms, walls, _grid);
       _updatePlayerLight();
 
       // Update enemy lights

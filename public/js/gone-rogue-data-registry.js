@@ -19,7 +19,8 @@ var GoneRogueDataRegistry = (function() {
     synergies: [],
     buildings: [],
     enemyCards: [],
-    enemyDecks: {}
+    enemyDecks: {},
+    lightingConfig: null
   };
 
   var _byId = {
@@ -144,7 +145,8 @@ var GoneRogueDataRegistry = (function() {
       _fetchJson(BASE + 'synergies.json').catch(function() { return []; }),
       _fetchJson(BASE + 'buildings.json').catch(function() { return []; }),
       _fetchJson(BASE + 'enemy-cards.json').catch(function() { return []; }),
-      _fetchJson(BASE + 'enemy-decks.json').catch(function() { return {}; })
+      _fetchJson(BASE + 'enemy-decks.json').catch(function() { return {}; }),
+      _fetchJson(BASE + 'lighting-config.json').catch(function() { return null; })
     ]).then(function(arr) {
       _db.items = Array.isArray(arr[0]) ? arr[0] : [];
       _db.cards = Array.isArray(arr[1]) ? arr[1] : [];
@@ -154,6 +156,7 @@ var GoneRogueDataRegistry = (function() {
       _db.buildings = Array.isArray(arr[5]) ? arr[5] : [];
       _db.enemyCards = Array.isArray(arr[6]) ? arr[6] : [];
       _db.enemyDecks = (arr[7] && typeof arr[7] === 'object' && !Array.isArray(arr[7])) ? arr[7] : {};
+      _db.lightingConfig = (arr[8] && typeof arr[8] === 'object') ? arr[8] : null;
 
       _index();
       _validateLightweight();
@@ -168,7 +171,8 @@ var GoneRogueDataRegistry = (function() {
         synergies: _db.synergies.length,
         buildings: _db.buildings.length,
         enemyCards: _db.enemyCards.length,
-        enemyDecks: Object.keys(_db.enemyDecks).filter(function(k) { return k !== '_schema'; }).length
+        enemyDecks: Object.keys(_db.enemyDecks).filter(function(k) { return k !== '_schema'; }).length,
+        lightingConfig: _db.lightingConfig ? 1 : 0
       };
 
       if (typeof NonCombatEventBus !== 'undefined') {
@@ -299,6 +303,10 @@ var GoneRogueDataRegistry = (function() {
     load().catch(function() {});
   }
 
+  function getLightingConfig() {
+    return _db.lightingConfig;
+  }
+
   function ready() {
     return load();
   }
@@ -323,6 +331,7 @@ var GoneRogueDataRegistry = (function() {
     getEnemyCard: getEnemyCard,
     listEnemyCards: listEnemyCards,
     getEnemyDeck: getEnemyDeck,
-    listEnemyDeckTypes: listEnemyDeckTypes
+    listEnemyDeckTypes: listEnemyDeckTypes,
+    getLightingConfig: getLightingConfig
   };
 })();

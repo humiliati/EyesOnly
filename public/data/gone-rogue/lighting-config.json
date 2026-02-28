@@ -1,0 +1,94 @@
+{
+  "version": 1,
+
+  "global": {
+    "enabled": true,
+    "ambientDarkness": 0.65,
+    "gamma": 1.35,
+    "maxLightRadius": 10,
+    "falloff": "smoothstep",
+    "tileAlphaMin": 0.05,
+    "tileAlphaMax": 0.92
+  },
+
+  "emission": {
+    "lightIntensityScale": 1.0,
+    "colorBleed": 0.25,
+    "flicker": {
+      "enabled": true,
+      "strength": 0.15,
+      "speed": 1.0
+    },
+    "defaultLight": {
+      "radius": 5,
+      "intensity": 1.0
+    }
+  },
+
+  "envLights": {
+    "renderEmoji": {
+      "enabled": true,
+      "visibleChanceBase": 0.30,
+      "hideIfTileOccupied": true,
+      "hideIfContains": ["door", "exit", "keyItem", "interactiveItem", "breakable", "npc", "enemy", "player"],
+      "layer": "below_items",
+      "opacity": 0.75,
+      "offsetPx": { "x": 0, "y": 0 }
+    },
+
+    "bulbs": {
+      "emojiSet": ["💡"],
+      "renderUpsideDown": true,
+      "layer": "above_all",
+      "hideIfTileOccupied": true
+    }
+  },
+
+  "interactiveLights": {
+    "enabled": true,
+    "visibleChanceMultiplier": 1.8,
+    "breakableDefaultHp": 2,
+    "actions": {
+      "smother": true,
+      "smash": true,
+      "disable": false
+    },
+    "onBreak": {
+      "removeLight": true,
+      "spawnSmoke": true,
+      "dropLoot": false
+    },
+    "smotherRadius": 0
+  },
+
+  "progression": {
+    "enabled": true,
+    "visibleChanceByFloor": {
+      "floorStart": 1,
+      "floorEnd": 30,
+      "start": 0.20,
+      "end": 0.45,
+      "curve": "easeInOut"
+    },
+    "interactiveShareByFloor": {
+      "floorStart": 1,
+      "floorEnd": 30,
+      "start": 0.25,
+      "end": 0.70,
+      "curve": "easeOut"
+    },
+    "hazardShareByFloor": {
+      "floorStart": 1,
+      "floorEnd": 30,
+      "start": 0.05,
+      "end": 0.20,
+      "curve": "easeIn"
+    }
+  },
+
+  "validation": {
+    "maxLightsPerFloor": 120,
+    "maxVisibleEmojiLightsPerScreen": 25,
+    "debugOverlay": false
+  }
+}
