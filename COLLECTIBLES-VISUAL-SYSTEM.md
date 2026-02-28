@@ -25,10 +25,14 @@ These collectible types use emoji for clear, recognizable visual representation:
 3. **Key Ammo** (⚡ 🔋 specific ammo types)
    - Special ammunition types may use emoji if thematically appropriate
    - Example: energy ammo might use ⚡
+   - **Note**: This refers to special ammo types, NOT battery recharge items
 
 4. **Items/Equipment** (💎 specific items)
    - Special items and equipment may use emoji
-   - Example: gems/crystals use 💎
+   - **Gems (💎)**: Battery recharge collectibles that restore the Battery resource
+   - Dropped from breakables with 15% chance
+   - Type: `'gem'`, recharges battery via `GAMESTATE.rechargeBattery()`
+   - Rendering: Purple glow (`#aa66ff`) on mobile
 
 5. **Card Drops** (🃏 🎴)
    - Playing cards and special cards
@@ -50,14 +54,20 @@ These collectible types use ASCII characters with specific resource colors for e
    - Glyph: `؋` (U+060B, Afghani sign)
    - Color: `#DA70D6` (magenta/orchid) per RESOURCE_COLORS
    - No emoji - ASCII only
-   - Represents ammunition pickups
+   - Represents **weapon ammunition** pickups (NOT battery)
    - Background: `#2a0a2a` (dark magenta)
+   - Dropped from breakables with 60% chance
+   - Type: `'ammo'`, adds to ammo counter via `GAMESTATE.addAmmo()`
 
-3. **Battery/Energy** (⚡ or custom glyph)
-   - Glyph: Custom battery symbol or ⚡
-   - Color: `#00FFA6` (cyan-green) per RESOURCE_COLORS
-   - Used for battery recharge pickups
+3. **Battery/Energy** (💎 gem collectible - uses emoji)
+   - **Collectible**: Gems (💎) are the battery recharge items
+   - **NOT ASCII monochrome** - gems use emoji for clarity
+   - Color: Purple glow `#aa66ff` on mobile
+   - Type: `'gem'`, recharges battery via `GAMESTATE.rechargeBattery()`
    - Background: `#1a0a2a` (dark purple)
+   - **Important**: Battery is a separate resource from Ammo
+   - Battery is consumed by tech cards (EMP Blast, System Crash, Chain Lightning)
+   - Ammo is consumed by weapon attacks
 
 4. **HP/Health**
    - Glyph: ♥ or +
@@ -89,6 +99,30 @@ RESOURCE_COLORS = {
 }
 ```
 
+## Important Distinction: Battery vs Ammo
+
+**These are TWO SEPARATE resources with different collectibles:**
+
+### Ammo (Weapon Ammunition)
+- **Collectible**: ASCII glyph `؋` with magenta color `#DA70D6`
+- **Resource Type**: `'ammo'`
+- **Purpose**: Used for weapon attacks
+- **Collection**: `GAMESTATE.addAmmo(amount)`
+- **Consumption**: `GAMESTATE.useAmmo(amount)`
+- **Drop Rate**: 60% from breakables
+- **Visual**: Monochrome ASCII (no emoji)
+
+### Battery (Tech Resource)
+- **Collectible**: Gem emoji `💎` with purple glow `#aa66ff`
+- **Resource Type**: `'gem'` (item type that recharges battery)
+- **Purpose**: Used for tech cards (EMP Blast, System Crash, Chain Lightning, etc.)
+- **Collection**: Gem pickup calls `GAMESTATE.rechargeBattery(amount)`
+- **Consumption**: `GAMESTATE.useBattery(amount)`
+- **Drop Rate**: 15% from breakables
+- **Visual**: Emoji (💎) with purple glow, NOT monochrome
+
+**Note**: The term "battery ammo" is a misnomer. Battery and ammo are completely separate resources. Gems (💎) recharge your battery resource, while ammo pickups (؋) add to your weapon ammunition.
+
 ## Implementation Files
 
 ### Currency (ASCII Monochrome)
@@ -104,6 +138,15 @@ RESOURCE_COLORS = {
 - **Glyph**: `؋`
 - **Color**: `#DA70D6`
 - **Background**: `#2a0a2a`
+
+### Battery Recharge / Gems (Emoji)
+- **File**: `public/js/gone-rogue.js`
+- **Spawn**: Lines 9262-9273 (from breakables, 15% chance)
+- **Pickup**: Lines 6018-6055 (calls `GAMESTATE.rechargeBattery()`)
+- **Emoji**: `💎`
+- **Type**: `'gem'`
+- **Rendering**: `gone-rogue-mobile.js` lines 598-602 (purple glow)
+- **UI Feedback**: Shows "💎 Battery +X" message
 
 ### Food (Emoji)
 - **File**: `public/js/expression-database.js`
