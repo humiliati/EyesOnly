@@ -12,6 +12,9 @@
       { "type": "damage", "value": 2 }
     ],
     "tags": ["ranged", "basic"],
+    "synergyTags": ["ballistic", "ranged"],
+    "rarity": "common",
+    "stealValue": 1,
     "_designNote": "Bread-and-butter enemy attack. Every guard has one."
   },
   {
@@ -28,6 +31,9 @@
       { "type": "damage", "value": 1, "hits": 3 }
     ],
     "tags": ["ranged", "multi-hit", "suppressive"],
+    "synergyTags": ["ballistic", "ranged", "burst", "sustained"],
+    "rarity": "uncommon",
+    "stealValue": 2,
     "_designNote": "3 shots at 1 dmg each. Low accuracy per hit but punishes no-dodge."
   },
   {
@@ -44,6 +50,9 @@
       { "type": "aoe", "radius": 2 }
     ],
     "tags": ["ranged", "explosive", "aoe"],
+    "synergyTags": ["explosive", "aoe", "ballistic"],
+    "rarity": "rare",
+    "stealValue": 3,
     "_designNote": "High damage, telegraphed. Player should flee or interrupt."
   },
   {
@@ -60,6 +69,9 @@
       { "type": "status", "status": "bleed", "duration": 2, "tickDamage": 1 }
     ],
     "tags": ["ranged", "precision", "bleed"],
+    "synergyTags": ["precision", "ranged", "covert"],
+    "rarity": "uncommon",
+    "stealValue": 2,
     "_designNote": "Precision + bleed DOT. Forest enemies. Silent."
   },
   {
@@ -75,6 +87,9 @@
       { "type": "damage", "value": 5 }
     ],
     "tags": ["melee", "heavy", "slow"],
+    "synergyTags": ["melee", "aggressive"],
+    "rarity": "uncommon",
+    "stealValue": 2,
     "_designNote": "Big melee hit. Slow and telegraphed but hurts."
   },
   {
@@ -91,6 +106,9 @@
       { "type": "status", "status": "poison", "duration": 3, "tickDamage": 2 }
     ],
     "tags": ["ranged", "chemical", "dot"],
+    "synergyTags": ["wet", "tech"],
+    "rarity": "rare",
+    "stealValue": 3,
     "_designNote": "Low upfront but poison ticks hard over 3 rounds."
   },
   {
@@ -107,6 +125,9 @@
       { "type": "status", "status": "stun", "duration": 1 }
     ],
     "tags": ["melee", "stun", "control"],
+    "synergyTags": ["electrical", "control", "tech"],
+    "rarity": "rare",
+    "stealValue": 3,
     "_designNote": "Stuns player for 1 round. Low damage but tempo-destroying."
   },
   {
@@ -122,6 +143,9 @@
       { "type": "damage", "value": 2 }
     ],
     "tags": ["melee", "fast", "basic"],
+    "synergyTags": ["melee", "covert"],
+    "rarity": "common",
+    "stealValue": 1,
     "_designNote": "Fast melee. High accuracy, low damage. Street-level enemies."
   },
   {
@@ -138,6 +162,9 @@
       { "type": "damage", "value": 1 }
     ],
     "tags": ["melee", "control", "setup"],
+    "synergyTags": ["control", "improvised"],
+    "rarity": "uncommon",
+    "stealValue": 2,
     "_designNote": "Pins player for 2 rounds. Follow-up attacks get bonus accuracy."
   },
   {
@@ -154,6 +181,9 @@
       { "type": "alert", "value": 3 }
     ],
     "tags": ["utility", "detection", "alert"],
+    "synergyTags": ["covert", "control"],
+    "rarity": "rare",
+    "stealValue": 3,
     "_designNote": "No damage. Reveals player position and raises alert. Spotter enemy."
   },
   {
@@ -169,6 +199,9 @@
       { "type": "damage", "value": 4 }
     ],
     "tags": ["ranged", "precision", "slow"],
+    "synergyTags": ["precision", "ranged", "ballistic"],
+    "rarity": "rare",
+    "stealValue": 3,
     "_designNote": "Slowest attack but highest accuracy + strong damage. Sniper-type."
   },
   {
@@ -186,6 +219,9 @@
       { "type": "ground_effect", "effectType": "FIRE", "radius": 1 }
     ],
     "tags": ["ranged", "fire", "dot", "area_denial"],
+    "synergyTags": ["fire", "aoe", "aggressive"],
+    "rarity": "rare",
+    "stealValue": 3,
     "_designNote": "Burn DOT + leaves fire tile. Pyromaniac signature."
   },
   {
@@ -201,6 +237,9 @@
       { "type": "defense_buff", "value": 3, "duration": 2 }
     ],
     "tags": ["defensive", "buff", "tank"],
+    "synergyTags": ["defensive", "control"],
+    "rarity": "uncommon",
+    "stealValue": 2,
     "_designNote": "Raises defense for 2 rounds. Heavy Drifter signature."
   },
   {
@@ -216,6 +255,9 @@
       { "type": "damage", "value": 1 }
     ],
     "tags": ["melee", "weak", "tutorial"],
+    "synergyTags": ["melee"],
+    "rarity": "common",
+    "stealValue": 0,
     "_designNote": "Weakest attack in the game. Tutorial critters only."
   },
   {
@@ -232,6 +274,9 @@
       { "type": "status", "status": "poison", "duration": 1, "tickDamage": 1 }
     ],
     "tags": ["melee", "weak", "tutorial", "poison"],
+    "synergyTags": ["melee", "wet"],
+    "rarity": "common",
+    "stealValue": 0,
     "_designNote": "Tutorial bee attack. Tiny poison tick teaches DOT awareness."
   },
   {
@@ -248,6 +293,9 @@
       { "type": "knockback", "distance": 1 }
     ],
     "tags": ["melee", "charge", "knockback"],
+    "synergyTags": ["control", "aggressive"],
+    "rarity": "uncommon",
+    "stealValue": 2,
     "_designNote": "Transit Enforcer lane charge. Knocks player back 1 tile."
   },
   {
@@ -264,6 +312,9 @@
       { "type": "alert", "value": 5 }
     ],
     "tags": ["utility", "detection", "mark"],
+    "synergyTags": ["tech", "covert", "electrical"],
+    "rarity": "rare",
+    "stealValue": 3,
     "_designNote": "Spotter Drone signature. Marks player for +dmg from other enemies."
   },
   {
@@ -280,6 +331,9 @@
       { "type": "status", "status": "revealed", "duration": 1 }
     ],
     "tags": ["melee", "stealth", "ambush"],
+    "synergyTags": ["covert", "melee", "combo_finisher"],
+    "rarity": "elite",
+    "stealValue": 4,
     "_designNote": "Ghost Operative signature. High damage from stealth, reveals player."
   },
   {
@@ -296,6 +350,9 @@
       { "type": "currency_scatter", "amount": 5 }
     ],
     "tags": ["ranged", "trick", "goblin"],
+    "synergyTags": ["black_market", "covert", "improvised"],
+    "rarity": "rare",
+    "stealValue": 3,
     "_designNote": "Treasure Goblin distraction. Low damage but scatters bait currency."
   },
   {
@@ -311,6 +368,9 @@
       { "type": "enemy_flee_attempt", "successRate": 0.40 }
     ],
     "tags": ["defensive", "escape", "goblin"],
+    "synergyTags": ["black_market", "covert", "defensive"],
+    "rarity": "elite",
+    "stealValue": 4,
     "_designNote": "Treasure Goblin tries to escape combat. 40% chance per round."
   }
 ]
