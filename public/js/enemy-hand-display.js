@@ -64,20 +64,52 @@ var EnemyHandDisplay = (function() {
       return;
     }
 
-    var cardCount = combatState.enemy.cardCount || combatState.enemy.attackCount || 0;
+    var enemy = combatState.enemy;
+    var deck = Array.isArray(enemy.cardDeck) ? enemy.cardDeck : [];
 
-    // Build enemy card array
+    // Phase 2: build from real cardDeck (stolen slots show as destroyed)
+    // Fallback to generic count if no deck hydrated
     var newCards = [];
-    for (var i = 0; i < cardCount; i++) {
-      // Preserve revealed state from existing cards
-      var existing = _enemyCards[i];
-      newCards.push({
-        index: i,
-        hidden: existing ? existing.hidden : true,
-        emoji: existing && !existing.hidden ? (existing.emoji || '❓') : '🃏',
-        name: existing && !existing.hidden ? (existing.name || 'Enemy Card') : '???',
-        destroyed: existing ? !!existing.destroyed : false
-      });
+
+    if (deck.length > 0) {
+      for (var i = 0; i < deck.length; i++) {
+        var slot = deck[i];
+        var existing = _enemyCards[i];
+        var isStolen = !!(slot && slot.stolen);
+        var cardId = (slot && slot.id) ? slot.id : null;
+
+        // Resolve card def for revealed state
+        var cardDef = null;
+        if (cardId && typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getEnemyCard) {
+          try { cardDef = GoneRogueDataRegistry.getEnemyCard(cardId); } catch (e) {}
+          if (cardDef && cardDef._missing) cardDef = null;
+        }
+
+        newCards.push({
+          index: i,
+          cardId: cardId,
+          hidden: existing ? existing.hidden : true,
+          emoji: existing && !existing.hidden ? (existing.emoji || '❓') : '🃏',
+          name: existing && !existing.hidden ? (existing.name || 'Enemy Card') : '???',
+          destroyed: isStolen || (existing ? !!existing.destroyed : false),
+          _def: cardDef  // cached for reveal/steal/destroy
+        });
+      }
+    } else {
+      // Legacy fallback: generic count-based
+      var cardCount = enemy.cardCount || enemy.attackCount || 0;
+      for (var j = 0; j < cardCount; j++) {
+        var existingJ = _enemyCards[j];
+        newCards.push({
+          index: j,
+          cardId: null,
+          hidden: existingJ ? existingJ.hidden : true,
+          emoji: existingJ && !existingJ.hidden ? (existingJ.emoji || '❓') : '🃏',
+          name: existingJ && !existingJ.hidden ? (existingJ.name || 'Enemy Card') : '???',
+          destroyed: existingJ ? !!existingJ.destroyed : false,
+          _def: null
+        });
+      }
     }
 
     _enemyCards = newCards;

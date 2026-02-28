@@ -10821,6 +10821,11 @@ _incrementPityTimers();
     _strCombatAmmoSpent = 0; // Reset ammo tracking for this encounter
     _strCombatPhase = 'countdown'; // Will transition to 'selecting' after countdown completes
 
+    // Phase 2: compute cardCount from hydrated deck (remaining non-stolen cards)
+    if (Array.isArray(enemy.cardDeck) && enemy.cardDeck.length) {
+      enemy.cardCount = enemy.cardDeck.filter(function(s) { return !s.stolen; }).length;
+    }
+
     // Initialize enemy intent state if system available
     if (typeof EnemyIntentSystem !== 'undefined') {
       var enemyNextCard = _getEnemyAICard();
