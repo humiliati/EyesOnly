@@ -414,10 +414,21 @@
     }
     // Enemy hand display in backup scroll space
     if (typeof EnemyHandDisplay !== 'undefined') {
-      if (!EnemyHandDisplay.isVisible()) {
+      var wasHidden = !EnemyHandDisplay.isVisible();
+      if (wasHidden) {
         EnemyHandDisplay.show();
       }
       EnemyHandDisplay.updateFromCombatState(combatState);
+
+      // Phase 4: Compute interactability + auto-reveal on first show
+      if (typeof EnemyCardInteractionHandler !== 'undefined') {
+        if (wasHidden) {
+          // First combat frame: run auto-reveal (Wire Tap, etc.)
+          EnemyCardInteractionHandler.runAutoReveal(combatState);
+        }
+        // Every frame: update interactability state
+        EnemyCardInteractionHandler.computeInteractability(combatState);
+      }
     }
   }
 

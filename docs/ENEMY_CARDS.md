@@ -378,6 +378,7 @@ Phase 0 (Data)                    Phase 1 (Map)                   Phase 2 (Comba
 |`public/js/enemy-deck-hydrator.js`|1.1|Attaches card decks to spawned enemies|
 |`public/js/enemy-steal-system.js`|1.2|Pre-combat card stealing via item tags|
 |`public/js/enemy-card-interactability.js`|3.2|Computes which enemy cards are interactable|
+|`public/js/enemy-card-interaction-handler.js`|4.1, 4.2|Context menu, action dispatch, interactability compute loop|
 
 ## Modified Files Summary
 

@@ -187,6 +187,137 @@
   50%      { border-color: rgba(255, 200, 0, 0.9); box-shadow: 0 0 8px rgba(255, 200, 0, 0.25); }
 }
 
+/* ── Phase 4: Context Menu ───────────────────────────────────── */
+
+.enemy-card-context-menu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 160px;
+  max-width: 220px;
+  background: rgba(0, 0, 0, 0.92);
+  border: 1px solid rgba(0, 255, 65, 0.4);
+  border-radius: 6px;
+  padding: 0;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.6),
+    0 0 12px rgba(0, 255, 65, 0.08);
+  font-family: 'Classic Console Neue', 'Courier New', monospace;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: ecm-appear 0.15s ease-out;
+}
+
+@keyframes ecm-appear {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.ecm-header {
+  font-size: 0.7em;
+  color: rgba(0, 255, 65, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 8px 12px 4px;
+  white-space: nowrap;
+}
+
+.ecm-divider {
+  height: 1px;
+  background: rgba(0, 255, 65, 0.15);
+  margin: 2px 8px 4px;
+}
+
+.ecm-action {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: rgba(0, 255, 65, 0.85);
+  font-family: 'Classic Console Neue', 'Courier New', monospace;
+  font-size: 0.75em;
+  text-align: left;
+  cursor: pointer;
+  gap: 8px;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.ecm-action:hover {
+  background: rgba(0, 255, 65, 0.08);
+  color: rgba(0, 255, 180, 1.0);
+}
+
+.ecm-action:active {
+  background: rgba(0, 255, 65, 0.15);
+}
+
+.ecm-action:last-child {
+  border-radius: 0 0 6px 6px;
+}
+
+.ecm-action-emoji {
+  font-size: 1.2em;
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.ecm-action-label {
+  font-weight: bold;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.ecm-action-sub {
+  font-size: 0.85em;
+  color: rgba(0, 255, 65, 0.4);
+  margin-left: auto;
+}
+
+/* Action-specific hover colors */
+.ecm-action-reveal:hover { color: rgba(255, 200, 0, 1.0); background: rgba(255, 200, 0, 0.06); }
+.ecm-action-steal:hover  { color: rgba(0, 220, 255, 1.0); background: rgba(0, 220, 255, 0.06); }
+.ecm-action-destroy:hover { color: rgba(255, 60, 60, 1.0); background: rgba(255, 60, 60, 0.06); }
+
+/* ── Phase 4: Toast feedback ─────────────────────────────────── */
+
+.enemy-card-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  z-index: 9998;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(0, 255, 65, 0.3);
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-family: 'Classic Console Neue', 'Courier New', monospace;
+  font-size: 0.75em;
+  color: rgba(0, 255, 65, 0.9);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+}
+
+.enemy-card-toast.ecm-toast-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── Phase 4: Revealed card interactability (re-steal from revealed) ── */
+
+.enemy-card-slot.enemy-card-revealed.enemy-card-interactable {
+  cursor: pointer;
+  animation: enemy-card-pulse 1.8s ease-in-out infinite;
+}
+
+.enemy-card-slot.enemy-card-revealed.enemy-card-interactable[data-action="steal"] {
+  border-color: rgba(0, 220, 255, 0.6);
+  animation-name: enemy-card-pulse-steal;
+}
+
 /* ── Mobile portrait compact ─────────────────────────────────── */
 @media (max-width: 600px) and (orientation: portrait) {
   .enemy-card-slot {
