@@ -757,6 +757,86 @@ function renderFrame() {
 
 ---
 
+### 3.4 Destructible Light Sources (Stealth Interaction)
+
+**Goal**: Allow player to destroy environmental light sources to create tactical darkness.
+
+**Status**: 🔴 Spec ready, implementation pending
+
+**Design Intent:**
+
+This is a stealth game. The player sees a room with a 💡 and a 💻 illuminating an enemy patrol route. They have a `Single Shot` card equipped. They tap the 💡 — a projectile fires, the bulb shatters (💥 blink animation), `LightingSystem.removeLightSource(x, y)` is called, and the room plunges into partial darkness. The player now has `getDarknessStealthBonus()` advantage to sneak past. **This makes Part 1's visible light source emojis tactically meaningful.**
+
+**Hooks into existing systems:**
+- `LightingSystem.removeLightSource(x, y)` — already exists
+- Breakable system (`_breakables[]`, `_damageBreakable()`) — already exists
+- Projectile targeting (`fireProjectileAtTarget()`) — already exists
+- Phase 3.3 interpolation — smoothly fades destroyed source area to darkness
+- `getDarknessStealthBonus()` — immediately benefits from new darkness
+
+**Light Source Breakable Properties:**
+
+| Light Type | Emoji | HP | Destructible? | Noise on Break | Drop | Stealth Impact |
+|---|---|---|---|---|---|---|
+| 💡 LIGHT_BULB | 💡 | 1 | ✅ Projectile only (overhead, can't kick) | 2 (glass shatter) | None | High — removes ceiling light |
+| 💻 MONITOR | 💻 | 2 | ✅ Projectile or kick | 3 (electronics sparking) | Chance of `Thumb Drive` key item (5%) | Medium — removes desk-area light |
+| 💻 TERMINAL | 💻 | 3 | ✅ Projectile only (mounted) | 3 | Chance of `Keycard` (3%) if `TERMINAL_GATE` exists on floor | High — may disable gate-linked terminal |
+| 🕯️ TORCH | 🕯️ | 1 | ✅ Kick, projectile, or **smother** (walk onto + interact) | 0 (silent smother!) | None | Low — small radius |
+| 🏮 LAMP_POST | 🏮 | 2 | ✅ Kick or projectile | 1 (quiet topple) | None | Medium |
+| 🔥 FIRE | 🔥 | N/A | ❌ Not breakable — use `Water Bottle` card to extinguish | N/A | N/A | Uses existing `GroundEffects.extinguishFire()` |
+| 🏕️ CAMPFIRE | 🏕️ | N/A | ❌ Not breakable — use `Water Bottle` card to extinguish | N/A | N/A | Same as FIRE |
+| 🪔 LAVA_LAMP | 🪔 | 1 | ✅ Kick or projectile | 1 | None | Low |
+| 🌋 LAVA_FLOOR | 🌋 | N/A | ❌ Indestructible terrain | N/A | N/A | N/A |
+
+**Implementation Approach:**
+
+1. Add `LIGHT_SOURCE_BREAKABLE_PROPS` lookup table to `lighting-system.js`
+2. In `gone-rogue.js`, after `generateBiomeLights()`, register light sources as breakables
+3. In `_damageBreakable()`, add `isLightSource` hook to call `removeLightSource()` and raise noise
+4. Add smother interaction for `smotherable` breakables on hold-tap (already wired in Part 2)
+5. In `ground-effects.js`, wire `extinguishFire()` to also call `removeLightSource()` for FIRE/CAMPFIRE (✅ done in Part 2)
+
+**Card-Specific Interactions:**
+
+| Card | Effect on Light Sources |
+|---|---|
+| `Single Shot` 🎯 | Standard projectile → damages breakable light normally |
+| `Grenade` 💣 | AoE destroys ALL light sources in radius 2 — massive darkness bomb (high noise!) |
+| `Water Bottle` 💧 | Extinguishes FIRE and CAMPFIRE light sources via existing `GroundEffects.extinguishFire()` — also calls `removeLightSource()` (✅ done in Part 2) |
+| `Smoke Bomb Mk0` 💨 | Does NOT destroy lights, but `SMOKE` tile opacity (0.5) reduces their effective radius via Phase 1.2 ray-casting |
+| `Oil Slick` 🛢️ | No direct effect, but if ignited near a light source, fire spread could mask the area |
+| `EMP` (future) | Destroys all electronic light sources (MONITOR, TERMINAL) in radius — silent |
+
+**Files to modify:**
+- `public/js/lighting-system.js` — Add `LIGHT_SOURCE_BREAKABLE_PROPS` constant
+- `public/js/gone-rogue.js` — Register light sources as breakables after `generateBiomeLights()`; add `isLightSource` hook in `_damageBreakable()`
+- `public/js/gone-rogue-mobile.js` — Smother interaction (hold-tap on adjacent smotherable); respect `kickable: false` in kick handler
+- ✅ `public/js/ground-effects.js` — Wire `extinguishFire()` to also call `removeLightSource()` (done in Part 2)
+
+**Acceptance Criteria:**
+- [ ] Tapping a 💡 from range fires a projectile that destroys it (1 HP, noise 2)
+- [ ] Destroyed light source area smoothly fades to darkness over ~12 frames (Phase 3.3 interpolation)
+- [ ] `getDarknessStealthBonus()` returns higher bonus in newly-darkened tiles
+- [ ] Destroying a 💻 MONITOR has 5% chance to drop `Thumb Drive` key item
+- [ ] Destroying a 💻 TERMINAL has 3% chance to drop `Keycard` if `TERMINAL_GATE` exists on floor
+- [ ] TORCH (🕯️) can be silently smothered with 0 noise via adjacent hold-tap interact
+- [ ] LIGHT_BULB and TERMINAL cannot be kicked (overhead/mounted) — only projectile
+- [ ] `Water Bottle` card extinguishes FIRE/CAMPFIRE and removes their light emission (✅ wired in Part 2)
+- [ ] Grenade AoE destroys all breakable light sources within blast radius
+- [ ] Enemy awareness increases based on destruction noise value
+- [ ] LAVA_FLOOR (🌋) is indestructible — no breakable registered
+- [ ] All destruction uses existing 💥 blink animation (TORCH uses 💨 instead)
+- [ ] A* pathfinding treats destroyed light positions as normal floor (no longer hazardous for FIRE types after extinguish)
+
+**Cross-references to other phases:**
+
+This completes the following items in earlier phases:
+
+- **Phase 1.1** (line 97): "Breakable objects cast shadows" — light-source breakables now have `TILE_OPACITY.BREAKABLE` (0.7) and when destroyed, the shadow cast by the breakable also disappears (double visual feedback: light goes out + shadow obstacle removed)
+- **Gameplay Tests** (line 1152): "Stealth mechanics still work with new lighting" — destroying light sources directly feeds `getDarknessStealthBonus()`, making stealth + lighting fully integrated
+
+---
+
 ## Phase 4: Paper Mario Mobile Controls
 
 ### 4.1 Single-Input Control Scheme
