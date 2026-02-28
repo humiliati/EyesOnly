@@ -185,6 +185,203 @@ RESOURCE_COLORS = {
 3. **Enemy glow** only applies to enemies, not collectibles
 4. **Drop shadows** on all ground entities for depth
 
+## Pancake Stacker System
+
+The **Pancake Stacker** is a Z-axis visual feedback system that displays collected items stacked vertically above the player's head. It provides immediate, persistent visual confirmation of recent pickups.
+
+### Architecture
+
+The system uses a two-layer architecture:
+
+1. **PancakeStack** (`public/js/pancake-stack.js`) - Thin wrapper singleton
+   - Provides public API: `addPancake()`, `update()`, `render()`, `getStackCount()`, `clearStack()`
+   - Delegates to PlayerStackManager for all operations
+   - Maintains backward compatibility
+
+2. **PlayerStackManager** (`public/js/player-stack-manager.js`) - Core implementation
+   - Singleton managing the stack array and lifecycle
+   - Handles animations, decay, rendering
+   - Contains all business logic
+
+### Visual Behavior
+
+#### Stacking Mechanics
+- **Maximum Height**: 12 items
+- **Position**: Items render at `screenY - (cellSize * 2.4)` above player head
+- **Spacing**: 6px vertical spacing between stacked items (`pancakeHeight = 6`)
+- **Overflow**: Oldest items are removed when stack exceeds max height
+
+#### Animations
+
+1. **Pickup Animation** (200ms ease-out-back)
+   - Items scale from 0 to 1 with elastic bounce
+   - Easing formula: `1 + 2.7 * (progress - 1)^3 + 1.7 * (progress - 1)^2`
+
+2. **Bobbing Animation** (continuous)
+   - Sine wave vertical oscillation: `sin((now / 1000) * bobSpeed + bobPhase) * 1.5`
+   - Each item has randomized `bobSpeed` (1.5-2.5) and `bobPhase` (0-2π)
+   - Creates organic, non-synchronized movement
+
+3. **Decay Animation** (4 seconds total)
+   - Items automatically fade and drop off after 4000ms
+   - Fade-in: 300ms on new pickup
+   - Fade-out: Last 600ms before removal
+   - Ground shadow opacity tied to lifecycle
+
+#### Visual Effects
+
+- **Glow Effect**: Newest item (top of stack) has amber glow
+  - Shadow color: `rgba(255,180,80,0.6)`
+  - Shadow blur: 6px
+
+- **Ground Shadow**: Single ellipse shadow for entire stack
+  - Base opacity: 0.35
+  - Fades in/out with stack lifecycle
+  - Position: `screenY + cellSize * 0.28`
+  - Size: `cellSize * 0.38` (width) × `cellSize * 0.13` (height)
+
+- **Wobble**: Slight horizontal offset per item
+  - Offset: `sin(layer * 1.2) * 2`
+  - Creates natural stacking variation
+
+- **Rotation**: Subtle rotation per item
+  - Rotation: `sin(layer * 0.5) * 0.1` radians
+
+### Integration with Collectibles
+
+All collectible types integrate with the pancake stacker through `PancakeStack.addPancake()` calls:
+
+#### Currency (ASCII Monochrome)
+```javascript
+// gone-rogue.js:5063-5066
+if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+  PancakeStack.addPancake('¢');
+}
+```
+
+#### Ammo (ASCII Monochrome)
+```javascript
+// gone-rogue.js:6004-6007
+if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+  PancakeStack.addPancake('؋');
+}
+```
+
+#### Battery (ASCII Monochrome - Cyan Glyph)
+```javascript
+// gone-rogue.js:6043-6046
+if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+  PancakeStack.addPancake('◈');
+}
+```
+
+#### Food Items (Emoji)
+```javascript
+// gone-rogue.js:5572-5575
+if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+  PancakeStack.addPancake(result.emoji || '🍎');
+}
+```
+
+#### Keys (Emoji)
+```javascript
+// gone-rogue.js:6216-6219
+if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
+  PlayerStackManager.addPancake(item.emoji || '🔑');
+}
+```
+
+#### Card Drops (Emoji)
+```javascript
+// gone-rogue.js:6180-6183
+if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+  PancakeStack.addPancake(cardEmoji);
+}
+```
+
+### Stack Item Structure
+
+Each item in the stack is represented as:
+
+```javascript
+{
+  emoji: '¢',                    // Glyph or emoji character
+  collectedAt: Date.now(),       // Timestamp for decay calculation
+  offsetX: 0,                    // Horizontal wobble offset
+  offsetY: 0,                    // Vertical bobbing offset
+  layer: 0,                      // Z-index (0 = bottom, higher = top)
+  bobPhase: 3.14,                // Sine wave phase offset
+  bobSpeed: 2.1,                 // Bobbing frequency multiplier
+  currentScale: 1.0,             // Current scale (for pickup animation)
+  rotation: 0.05                 // Rotation in radians
+}
+```
+
+### Rendering Pipeline
+
+1. **Canvas Native Renderer** (`gone-rogue-canvas.js`)
+   - Calls `PlayerStackManager.render(ctx, screenX, screenY, cellSize, skipShadows)`
+   - Renders stack above player sprite
+
+2. **Mobile Renderer** (`gone-rogue-mobile.js`)
+   - Also uses `PlayerStackManager.render()` for consistency
+   - Same visual behavior across all platforms
+
+3. **Update Loop**
+   - Game loop calls `PlayerStackManager.update(now)` each frame
+   - Updates bobbing animations
+   - Removes expired items (> 4 seconds old)
+   - Re-indexes layer values after decay
+
+### Usage Pattern
+
+Standard pattern for adding items to the stack:
+
+```javascript
+// Check for PancakeStack wrapper first (preferred)
+if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+  PancakeStack.addPancake(glyphOrEmoji);
+}
+// Fallback to PlayerStackManager directly
+else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
+  PlayerStackManager.addPancake(glyphOrEmoji);
+}
+```
+
+### Configuration
+
+Key constants in `player-stack-manager.js`:
+
+```javascript
+var _maxStackHeight = 12;     // Maximum items in stack
+var _wobbleIntensity = 2;     // Horizontal wobble magnitude
+var _decayMs = 4000;          // Item lifetime (4 seconds)
+var pancakeHeight = 6;        // Vertical spacing between items
+var baseY = screenY - (cellSize * 2.4);  // Base position above player
+```
+
+### Benefits of Pancake Stacker
+
+1. **Immediate Feedback**: Players see what they collected instantly
+2. **Persistence**: Items remain visible for 4 seconds (unlike 800ms overhead animations)
+3. **Stack Visualization**: Multiple rapid pickups create satisfying visual "tower"
+4. **Resource Awareness**: Glyphs match resource colors (¢ yellow, ؋ magenta, ◈ cyan)
+5. **Combat Context**: Helps players track ammo/battery pickups during fights
+6. **Universal Support**: Works with all collectible types (emoji + ASCII monochrome)
+
+### Pancake Stacker vs Overhead Animator
+
+| Feature | Pancake Stacker | Overhead Animator |
+|---------|----------------|-------------------|
+| **Duration** | 4 seconds | 800ms |
+| **Animation** | Bobbing + decay | Bounce/float up |
+| **Purpose** | Persistent tracking | Immediate feedback |
+| **Stacking** | Vertical tower | Tight -12px spacing |
+| **Display** | Character/glyph only | Text + glyph (e.g., "+3¢") |
+| **Lifecycle** | Automatic decay | One-shot animation |
+
+**Both systems work together**: Overhead Animator shows pickup event, Pancake Stacker provides ongoing awareness.
+
 ## Testing
 
 ### Visual Test
