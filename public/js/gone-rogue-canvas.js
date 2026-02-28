@@ -140,6 +140,11 @@ const CanvasRenderer = (function() {
 
     this._renderEffects(renderData.effects);
 
+    // Render light source emojis BEFORE lighting passes so they are darkened/lit properly
+    if (this.enableLighting && typeof LightingSystem !== 'undefined') {
+      this._renderLightSourceEmojis(renderData.grid);
+    }
+
     // Apply lighting passes AFTER all world/entity rendering so darkness acts as
     // a gameplay-visible stealth mask that affects everything the player can see.
     if (this.enableLighting && typeof LightingSystem !== 'undefined') {
@@ -370,6 +375,76 @@ const CanvasRenderer = (function() {
     }
 
     this.ctx.globalCompositeOperation = prevComp;
+  };
+
+  /**
+   * Render light source emojis at their origin positions.
+   * Each source gets its emoji with a colored glow halo matching its light color.
+   * Flickering sources pulse in sync with the lighting system's flicker math.
+   * @param {Array} grid - 2D array of tile data
+   */
+  CanvasRenderer.prototype._renderLightSourceEmojis = function(grid) {
+    if (typeof LightingSystem === 'undefined') return;
+
+    var lightSources = LightingSystem.getLightSourcePositions();
+    if (!lightSources || lightSources.length === 0) return;
+
+    var frameCount = LightingSystem.getFrameCount();
+
+    for (var i = 0; i < lightSources.length; i++) {
+      var source = lightSources[i];
+
+      // Convert world coords to view coords
+      var viewX = source.x - (this._worldOriginX || 0);
+      var viewY = source.y - (this._worldOriginY || 0);
+
+      // Skip if out of visible area
+      if (viewX < 0 || viewX >= grid[0].length || viewY < 0 || viewY >= grid.length) {
+        continue;
+      }
+
+      var centerX = (viewX + 0.5) * this.cellSize;
+      var centerY = (viewY + 0.5) * this.cellSize;
+
+      // Parse light color for glow halo
+      var r = parseInt(source.color.substr(1, 2), 16);
+      var g = parseInt(source.color.substr(3, 2), 16);
+      var b = parseInt(source.color.substr(5, 2), 16);
+
+      // Calculate flicker alpha if source flickers
+      var alpha = 1.0;
+      if (source.flickerRate > 0) {
+        var flicker = Math.sin(source.flickerPhase + frameCount * 0.1) * source.flickerRate;
+        alpha = 1 + flicker;
+        alpha = Math.max(0.5, Math.min(1.0, alpha)); // Clamp to prevent invisible or over-bright
+      }
+
+      // Draw colored glow halo around the emoji (subtle radial gradient)
+      var glowRadius = this.cellSize * 0.8;
+      var grad = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, glowRadius);
+      var glowAlpha = alpha * 0.4; // Subtle glow
+      grad.addColorStop(0, 'rgba(' + r + ',' + g + ',' + b + ',' + glowAlpha + ')');
+      grad.addColorStop(0.6, 'rgba(' + r + ',' + g + ',' + b + ',' + (glowAlpha * 0.3) + ')');
+      grad.addColorStop(1, 'rgba(' + r + ',' + g + ',' + b + ',0)');
+
+      this.ctx.fillStyle = grad;
+      this.ctx.fillRect(centerX - glowRadius, centerY - glowRadius, glowRadius * 2, glowRadius * 2);
+
+      // Draw the emoji with flicker-synced alpha
+      var oldAlpha = this.ctx.globalAlpha;
+      this.ctx.globalAlpha = alpha;
+
+      // Add a subtle glow effect on the emoji itself
+      this.ctx.shadowColor = source.color;
+      this.ctx.shadowBlur = 4;
+
+      this.ctx.fillStyle = '#FFFFFF'; // Emoji renders in white, glow provides color
+      this.ctx.fillText(source.emoji, centerX, centerY);
+
+      // Reset
+      this.ctx.shadowBlur = 0;
+      this.ctx.globalAlpha = oldAlpha;
+    }
   };
 
   /**

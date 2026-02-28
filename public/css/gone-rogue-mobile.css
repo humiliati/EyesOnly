@@ -1607,3 +1607,112 @@
 .rogue-cell.aoe-far {
   background: rgba(255, 255, 255, 0.035);
 }
+
+/* ============================================================
+   Environmental Damage UI - Part 3
+   Screen edge vignettes, player hit animations
+   ============================================================ */
+
+/* Damage vignette overlay - appears when player takes environmental damage */
+.damage-vignette {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.4s ease-out;
+}
+
+/* Fire damage - red-orange vignette */
+.damage-vignette.fire-damage {
+  background: radial-gradient(circle, transparent 50%, rgba(255, 60, 0, 0.3) 100%);
+  opacity: 1;
+}
+
+/* Lava damage - deep red vignette, more intense */
+.damage-vignette.lava-damage {
+  background: radial-gradient(circle, transparent 50%, rgba(200, 0, 0, 0.4) 100%);
+  opacity: 1;
+}
+
+/* Campfire standing damage - amber vignette, gentler */
+.damage-vignette.campfire-damage {
+  background: radial-gradient(circle, transparent 50%, rgba(255, 170, 0, 0.25) 100%);
+  opacity: 1;
+}
+
+/* Player hit flash animation - applied to player emoji */
+@keyframes player-hit-flash {
+  0% {
+    filter: brightness(1);
+    transform: translate(0, 0);
+  }
+  10% {
+    filter: brightness(1.8);
+    transform: translate(2px, -1px);
+  }
+  20% {
+    filter: brightness(1.8);
+    transform: translate(-2px, 1px);
+  }
+  40% {
+    filter: brightness(1.6);
+    transform: translate(1px, -2px);
+  }
+  60% {
+    filter: brightness(1.4);
+    transform: translate(-1px, 2px);
+  }
+  80% {
+    filter: brightness(1.2);
+    transform: translate(1px, 1px);
+  }
+  100% {
+    filter: brightness(1);
+    transform: translate(0, 0);
+  }
+}
+
+.player-hit-animation {
+  animation: player-hit-flash 0.3s ease-out;
+}
+
+/* HP bar damage flash - applied to HP indicator element */
+@keyframes hp-bar-flash {
+  0%, 100% {
+    box-shadow: none;
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(255, 0, 0, 0.8), inset 0 0 5px rgba(255, 0, 0, 0.5);
+  }
+}
+
+.hp-bar-damage-flash {
+  animation: hp-bar-flash 0.5s ease-in-out;
+}
+
+/* Delayed HP drain effect - the red segment lingers before shrinking */
+@keyframes hp-drain-delay {
+  0% {
+    width: var(--hp-lost-width);
+    opacity: 0.8;
+  }
+  70% {
+    width: var(--hp-lost-width);
+    opacity: 0.8;
+  }
+  100% {
+    width: 0;
+    opacity: 0;
+  }
+}
+
+.hp-drain-segment {
+  position: absolute;
+  height: 100%;
+  background: rgba(255, 0, 0, 0.6);
+  animation: hp-drain-delay 0.6s ease-out forwards;
+}
