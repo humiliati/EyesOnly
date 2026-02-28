@@ -5492,11 +5492,97 @@ _incrementPityTimers();
     // Door hint popups when approaching
     _maybeHintNearbyDoors();
 
-    // NOTE: Collectible pickups (currency, food, floor items) are now handled exclusively
-    // in _movePlayer() to prevent duplicate animations. _checkPlayerInteractions() is called
-    // during smooth movement and should only handle tile-based interactions (doors, shops).
-    // Previously, both _checkPlayerInteractions() and _movePlayer() were handling pickups,
-    // causing double animations and state issues.
+    // NOTE: Collectible pickups must be handled in BOTH _checkPlayerInteractions() (for smooth
+    // movement) AND _movePlayer() (for command-based movement). The previous fix removed pickups
+    // from _checkPlayerInteractions() which broke pickups during smooth movement (tap-to-move).
+    // To prevent duplicate animations, we need both code paths to handle pickups.
+
+    // Check for currency pickup
+    var cryptoPickup = _currencies.find(function(c) { return c.x === x && c.y === y; });
+    if (cryptoPickup) {
+      if (typeof GAMESTATE !== 'undefined') {
+        var result = GAMESTATE.addCryptos(cryptoPickup.amount);
+      }
+      // Track for highscore
+      _currencyCollected += cryptoPickup.amount;
+      // Remove currency from floor
+      _currencies = _currencies.filter(function(c) { return c.x !== x || c.y !== y; });
+
+      // Set player currency collection state for animation
+      _player.collectingCurrency = true;
+      _player.currencyCollectTime = Date.now();
+
+      // Show overhead currency animation
+      if (typeof OverheadAnimator !== 'undefined') {
+        OverheadAnimator.showCurrencyPickup(_player.x, _player.y, cryptoPickup.amount);
+      }
+
+      // MOK interjection for currency pickup
+      if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+        var cryptoMsg = cryptoPickup.amount === 1 ? '¢1 Collected' : '¢' + cryptoPickup.amount + ' Collected';
+        UIControls.updateMokInterjection(cryptoMsg);
+      }
+
+      // Tooltip: Currency pickup
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showAction('currency-pickup', { amount: cryptoPickup.amount });
+      }
+
+      // Pancake stacker for currency
+      try {
+        if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+          PancakeStack.addPancake('¢');
+        } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
+          PlayerStackManager.addPancake('¢');
+        }
+      } catch (ePancake) {}
+    }
+
+    // Check for food item pickup (auto-pickup from interactive items)
+    if (typeof InteractiveItems !== 'undefined') {
+      var foodItem = InteractiveItems.getItemAt(x, y);
+      if (foodItem && foodItem.autoPickup && foodItem.type === 'FOOD') {
+        // Apply food effects
+        if (typeof FoodDatabase !== 'undefined' && foodItem.customData && foodItem.customData.foodId) {
+          var result = FoodDatabase.applyFoodEffects(foodItem.customData.foodId, _player);
+          if (result.success) {
+            // Show overhead animation with food emoji
+            if (typeof OverheadAnimator !== 'undefined') {
+              OverheadAnimator.showExpression(x, y, 'LOOT', 1000, result.emoji);
+            }
+
+            // Block sprint temporarily after food pickup (0.9 second delay)
+            // This prevents immediate fatigue refill during sprint, causing delayed food buff effect
+            if (typeof GAMESTATE !== 'undefined' && GAMESTATE.blockSprintTemporarily) {
+              GAMESTATE.blockSprintTemporarily(900);
+            }
+
+            // MOK interjection for food pickup
+            if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+              UIControls.updateMokInterjection(result.emoji + ' ' + result.foodName + ' consumed');
+            }
+
+            // Tooltip: Food effects
+            if (typeof TooltipSystem !== 'undefined' && result.tooltipText) {
+              TooltipSystem.showGeneric(result.tooltipText, 2000);
+            }
+
+            // Pancake stacker animation for food
+            try {
+              if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+                PancakeStack.addPancake(result.emoji || '🍎');
+              } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
+                PlayerStackManager.addPancake(result.emoji || '🍎');
+              }
+            } catch (ePancake) {}
+
+            // Remove food item from world (clean disappearance)
+            InteractiveItems.removeItem(foodItem.id);
+            console.log('[GoneRogue] Food consumed:', result.foodName);
+          }
+        }
+      }
+    }
 
     // Discovery reveal
     _revealDiscovery(x, y);
