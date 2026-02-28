@@ -28,6 +28,35 @@ Based on my deep dive into your codebase, here's a phased roadmap that builds on
 
 ---
 
+## Designer Workflow (Enemy Catalog)
+
+Enemy card/deck data now has a **designer-facing source of truth**:
+
+- `public/data/gone-rogue/enemy-catalog.json` (edit this)
+- `public/data/gone-rogue/enemy-catalog.schema.json` (schema for validation/tooling)
+
+From the catalog we **generate** the runtime tables consumed by `GoneRogueDataRegistry`:
+
+- `public/data/gone-rogue/enemy-cards.json`
+- `public/data/gone-rogue/enemy-decks.json`
+
+### Commands
+
+```bash
+# (One-time) Bootstrap the catalog from existing runtime files
+npm run init:enemyCatalog
+
+# Build runtime enemy-cards.json + enemy-decks.json from the catalog
+npm run build:enemyCatalog
+```
+
+### Notes
+- Treat `enemy-catalog.json` as the file designers edit.
+- `enemy-cards.json` / `enemy-decks.json` are build outputs.
+- The build script performs lightweight validation (missing cards, bad keys, etc.).
+
+---
+
 ## Phase 0 — Enemy Attack Card Database
 
 > **Goal:** Define enemy attacks as cards in the same format as player cards, stored per-enemy-type.
