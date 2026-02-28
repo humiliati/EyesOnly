@@ -379,8 +379,34 @@ var baseY = screenY - (cellSize * 2.4);  // Base position above player
 | **Stacking** | Vertical tower | Tight -12px spacing |
 | **Display** | Character/glyph only | Text + glyph (e.g., "+3¢") |
 | **Lifecycle** | Automatic decay | One-shot animation |
+| **Canvas Support** | ✅ Fully integrated | ✅ Fully integrated (as of 2026-02-28) |
+| **Mobile Support** | ✅ Via effects array | ✅ Fully integrated |
 
 **Both systems work together**: Overhead Animator shows pickup event, Pancake Stacker provides ongoing awareness.
+
+**Important**: For unified overhead animation guidance and preventing creation of third animation systems, see `OVERHEAD-ANIMATION-UNIFIED-ROADMAP.md`.
+
+### Unified Overhead Animation Doctrine
+
+To prevent accidental creation of duplicate animation systems:
+
+1. **Use PancakeStack for**: Collectible items that need persistent tracking (4s lifetime)
+   - Currency, ammo, battery, food, keys, cards
+   - Items that should appear in visual inventory above player head
+
+2. **Use OverheadAnimator for**: All other temporary overhead feedback (<2s lifetime)
+   - Event notifications ("+3¢" text)
+   - NPC expressions and reactions
+   - Status effects (🔥, ❄️, ⚡)
+   - Environment interactions (lever pulled, door opened)
+   - Combat feedback (critical hits, misses)
+   - Tool usage (lockpicking, hacking)
+
+3. **Do NOT create new overhead animation systems**
+   - Extend OverheadAnimator for new use cases
+   - See `OVERHEAD-ANIMATION-UNIFIED-ROADMAP.md` for implementation guide
+
+**Quick Reference**: When implementing new game mechanics (ropes, levers, tools), always use `OverheadAnimator.showGenericExpression()` for overhead feedback rather than creating a new animation system.
 
 ## Testing
 

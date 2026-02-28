@@ -108,7 +108,54 @@ const CanvasRenderer = (function() {
     // Render pancake stack above player head (without shadow first)
     this._renderPancakeStack(renderData.player, true);
 
-    this._renderEffects(renderData.effects);
+    // Integrate OverheadAnimator into effects array for canvas rendering
+    // This ensures parity with mobile renderer (gone-rogue-mobile.js:828-868)
+    var effects = renderData.effects || [];
+    if (typeof OverheadAnimator !== 'undefined' && typeof OverheadAnimator.getAllAnimations === 'function') {
+      try {
+        var currentTime = Date.now();
+        OverheadAnimator.update(currentTime);
+        var animations = OverheadAnimator.getAllAnimations();
+
+        for (var akey in animations) {
+          var parts = akey.split(',');
+          var ax = parseInt(parts[0]);
+          var ay = parseInt(parts[1]);
+          var anim = animations[akey];
+
+          // Convert world coords to local grid coords (accounting for world origin)
+          var localX = ax - this._worldOriginX;
+          var localY = ay - this._worldOriginY;
+
+          var list = Array.isArray(anim) ? anim : [anim];
+          for (var li = 0; li < list.length; li++) {
+            var a1 = list[li];
+            if (!a1) continue;
+
+            var transform = (typeof OverheadAnimator.calculateAnimationTransform === 'function')
+              ? OverheadAnimator.calculateAnimationTransform(a1, currentTime)
+              : { x: 0, y: -12, opacity: 1, scale: 1 };
+
+            // Convert pixel offset to cell offset
+            var dyCells = (transform.y || 0) / this.cellSize;
+            var dxCells = (transform.x || 0) / this.cellSize;
+
+            effects.push({
+              x: localX + dxCells,
+              y: localY - 0.6 + dyCells, // -0.6 to position above entity center
+              char: a1.text || a1.emoji,
+              color: a1.color || '#FFFFFF',
+              glow: true,
+              alpha: (transform.opacity !== undefined ? transform.opacity : 1)
+            });
+          }
+        }
+      } catch (e) {
+        // Silently fail if OverheadAnimator has issues
+      }
+    }
+
+    this._renderEffects(effects);
 
     // Render light source emojis BEFORE lighting passes so they are darkened/lit properly
     if (this.enableLighting && typeof LightingSystem !== 'undefined') {

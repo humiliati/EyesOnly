@@ -202,9 +202,10 @@ const OverheadAnimator = (function() {
    * @param {number} y - Entity Y position
    * @param {string} statusKey - Key from EXPRESSIONS object
    */
-  // Show multiple stacked expressions at once ("pancake stacker")
+  // Show multiple stacked text lines at once (e.g., loot summary)
+  // NOTE: This is NOT related to the PancakeStack/PlayerStackManager system
   // stacks: [{ text|emoji, color, duration }]
-  function showPancakeStacks(x, y, stacks, duration) {
+  function showStackedText(x, y, stacks, duration) {
     if (!Array.isArray(stacks) || !stacks.length) return;
     var now = Date.now();
     var anims = [];
@@ -220,7 +221,7 @@ const OverheadAnimator = (function() {
         color: s.color || '#ffffff',
         startTime: now,
         duration: (typeof s.duration === 'number' ? s.duration : (duration || 1100)),
-        data: { desc: 'pancake', stackIndex: i, stackCount: stacks.length }
+        data: { desc: 'stacked_text', stackIndex: i, stackCount: stacks.length }
       });
     }
 
@@ -439,7 +440,8 @@ const OverheadAnimator = (function() {
     showCurrencyPickup: showCurrencyPickup,
     showExpression: showExpression,
     showGenericExpression: showGenericExpression,
-    showPancakeStacks: showPancakeStacks,
+    showStackedText: showStackedText,
+    showPancakeStacks: showStackedText, // Deprecated alias for backward compatibility
     showStatus: showStatus,
     showSpeech: showSpeech,
     clearAnimation: clearAnimation,
