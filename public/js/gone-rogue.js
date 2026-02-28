@@ -2320,6 +2320,9 @@ const GoneRogue = (function () {
     _player.x = floorData.player.x;
     _player.y = floorData.player.y;
 
+    // Save spawn mode so later adjacency logic can use the correct anchor door.
+    var _doorTransitionMode = _spawnFromLastExitPos; // 'advance' | 'retreat' | null
+
     // If we just used a door, spawn ON the corresponding door tile, but protect against
     // immediate re-trigger until the player steps off and returns.
     try {
@@ -2375,30 +2378,33 @@ const GoneRogue = (function () {
 
     // If player spawned too close to the forward exit, move them (and entry door) away.
     // This prevents the "spawn next to next-floor door" stacking bug on floor 2.
-    try {
-      var distSpawnExit = Math.abs(_player.x - exitX) + Math.abs(_player.y - exitY);
-      if (distSpawnExit <= 2) {
-        var sx0 = _player.x;
-        var sy0 = _player.y;
-        var moved = false;
-        for (var r = 1; r <= 10 && !moved; r++) {
-          for (var dy = -r; dy <= r && !moved; dy++) {
-            for (var dx = -r; dx <= r && !moved; dx++) {
-              var tx = sx0 + dx;
-              var ty = sy0 + dy;
-              if (tx <= 0 || tx >= GRID_WIDTH - 1 || ty <= 0 || ty >= GRID_HEIGHT - 1) continue;
-              if (!_grid[ty] || _grid[ty][tx] !== TILES.EMPTY) continue;
-              var d2 = Math.abs(tx - exitX) + Math.abs(ty - exitY);
-              if (d2 >= 4) {
-                _player.x = tx;
-                _player.y = ty;
-                moved = true;
+    // Skip this for retreat: the player SHOULD be near the exit when returning.
+    if (_doorTransitionMode !== 'retreat') {
+      try {
+        var distSpawnExit = Math.abs(_player.x - exitX) + Math.abs(_player.y - exitY);
+        if (distSpawnExit <= 2) {
+          var sx0 = _player.x;
+          var sy0 = _player.y;
+          var moved = false;
+          for (var r = 1; r <= 10 && !moved; r++) {
+            for (var dy = -r; dy <= r && !moved; dy++) {
+              for (var dx = -r; dx <= r && !moved; dx++) {
+                var tx = sx0 + dx;
+                var ty = sy0 + dy;
+                if (tx <= 0 || tx >= GRID_WIDTH - 1 || ty <= 0 || ty >= GRID_HEIGHT - 1) continue;
+                if (!_grid[ty] || _grid[ty][tx] !== TILES.EMPTY) continue;
+                var d2 = Math.abs(tx - exitX) + Math.abs(ty - exitY);
+                if (d2 >= 4) {
+                  _player.x = tx;
+                  _player.y = ty;
+                  moved = true;
+                }
               }
             }
           }
         }
-      }
-    } catch (e0) {}
+      } catch (e0) {}
+    }
 
     // Mark entry/return door at the entry point, but DO NOT spawn the player on top of it.
     // (player glyph hides the door tile, making it look like there is only one door).
@@ -2456,13 +2462,20 @@ const GoneRogue = (function () {
     _grid[backY][backX] = TILES.DOOR;
     _tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
 
-    // Spawn player adjacent to the back door (so the back door is visible & interactable)
+    // Spawn player adjacent to the door they just came through.
+    // On retreat: anchor near the forward exit (so the player is close to where they left).
+    // On advance/first-visit: anchor near the back door (so the return door is visible).
     try {
+      var _anchorX = (_doorTransitionMode === 'retreat') ? exitX : backX;
+      var _anchorY = (_doorTransitionMode === 'retreat') ? exitY : backY;
+      var _avoidX  = (_doorTransitionMode === 'retreat') ? backX  : exitX;
+      var _avoidY  = (_doorTransitionMode === 'retreat') ? backY  : exitY;
+
       var spawnChoices = [
-        { x: backX - 1, y: backY },
-        { x: backX + 1, y: backY },
-        { x: backX, y: backY - 1 },
-        { x: backX, y: backY + 1 }
+        { x: _anchorX - 1, y: _anchorY },
+        { x: _anchorX + 1, y: _anchorY },
+        { x: _anchorX, y: _anchorY - 1 },
+        { x: _anchorX, y: _anchorY + 1 }
       ];
 
       var picked = null;
@@ -2470,7 +2483,7 @@ const GoneRogue = (function () {
         var s = spawnChoices[si];
         if (s.x <= 0 || s.x >= GRID_WIDTH - 1 || s.y <= 0 || s.y >= GRID_HEIGHT - 1) continue;
         if (!_grid[s.y] || _grid[s.y][s.x] !== TILES.EMPTY) continue;
-        if (Math.abs(s.x - exitX) + Math.abs(s.y - exitY) <= 2) continue;
+        if (Math.abs(s.x - _avoidX) + Math.abs(s.y - _avoidY) <= 2) continue;
         picked = s;
         break;
       }
@@ -2789,9 +2802,12 @@ const GoneRogue = (function () {
       var pseudoRooms = [{ x: 1, y: 1, width: GRID_WIDTH - 2, height: GRID_HEIGHT - 2 }];
       LightingSystem.generateBiomeLights(GRID_WIDTH, GRID_HEIGHT, pseudoRooms, walls);
 
-      // Guarantee light sources near player spawn and exit for visibility
+      // Guarantee light sources near player spawn and exit for visibility.
+      // Place the exit light ADJACENT to the door (not on it) so it doesn't cover the door emoji.
       LightingSystem.addLightSource(_player.x, _player.y, 'CAMPFIRE');
-      LightingSystem.addLightSource(exitX, exitY, 'LIGHT_BULB');
+      var exitLightX = (exitX + 1 < GRID_WIDTH - 1) ? exitX + 1 : exitX - 1;
+      var exitLightY = exitY;
+      LightingSystem.addLightSource(exitLightX, exitLightY, 'LIGHT_BULB');
 
       // Always include player/enemy lights
       _updatePlayerLight();
