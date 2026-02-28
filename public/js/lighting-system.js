@@ -209,6 +209,91 @@ const LightingSystem = (function() {
     }
   };
 
+  // Light source breakable properties (for interactive/destructible lights)
+  const LIGHT_SOURCE_BREAKABLE_PROPS = {
+    LIGHT_BULB: {
+      hp: 1,
+      kickable: false, // Overhead, can't kick
+      smotherable: false,
+      noise: 2, // Glass shatter
+      dropChance: 0, // No drops
+      dropType: null,
+      destroyEmoji: '💥'
+    },
+    MONITOR: {
+      hp: 2,
+      kickable: true, // Can kick or shoot
+      smotherable: false,
+      noise: 3, // Electronics sparking
+      dropChance: 0.05, // 5% chance
+      dropType: 'ITM-001', // Thumb Drive (example)
+      destroyEmoji: '💥'
+    },
+    TERMINAL: {
+      hp: 3,
+      kickable: false, // Mounted, projectile only
+      smotherable: false,
+      noise: 3,
+      dropChance: 0.03, // 3% chance
+      dropType: 'ITM-002', // Keycard (example)
+      destroyEmoji: '💥'
+    },
+    TORCH: {
+      hp: 1,
+      kickable: true,
+      smotherable: true, // Can smother silently
+      noise: 0, // Silent smother
+      dropChance: 0,
+      dropType: null,
+      destroyEmoji: '💨'
+    },
+    LAMP_POST: {
+      hp: 2,
+      kickable: true,
+      smotherable: false,
+      noise: 1, // Quiet topple
+      dropChance: 0,
+      dropType: null,
+      destroyEmoji: '💥'
+    },
+    LAVA_LAMP: {
+      hp: 1,
+      kickable: true,
+      smotherable: false,
+      noise: 1,
+      dropChance: 0,
+      dropType: null,
+      destroyEmoji: '💥'
+    },
+    CAMPFIRE: {
+      hp: 0, // Indestructible by kick/projectile, use Water Bottle card
+      kickable: false,
+      smotherable: false,
+      noise: 0,
+      dropChance: 0,
+      dropType: null,
+      destroyEmoji: null
+    },
+    FIRE: {
+      hp: 0, // Indestructible by kick/projectile, use Water Bottle card
+      kickable: false,
+      smotherable: false,
+      noise: 0,
+      dropChance: 0,
+      dropType: null,
+      destroyEmoji: null
+    },
+    LAVA_FLOOR: {
+      hp: 0, // Indestructible terrain
+      kickable: false,
+      smotherable: false,
+      noise: 0,
+      dropChance: 0,
+      dropType: null,
+      destroyEmoji: null
+    }
+  };
+
   // State
   var _lightMap = {}; // key: "x,y", value: { intensity: 0-1, color: "#rrggbb", sources: [] }
   var _lightSources = []; // Array of active light sources: { x, y, type, direction?, flickerPhase, visible?, interactive? }
@@ -359,6 +444,25 @@ const LightingSystem = (function() {
     }
 
     return false;
+  }
+
+  /**
+   * Get breakable properties for a light source type.
+   * @param {string} lightType - Light source type
+   * @returns {Object|null} Breakable properties or null if not breakable
+   */
+  function getBreakableProps(lightType) {
+    return LIGHT_SOURCE_BREAKABLE_PROPS[lightType] || null;
+  }
+
+  /**
+   * Check if a light source type is breakable.
+   * @param {string} lightType - Light source type
+   * @returns {boolean} True if breakable
+   */
+  function isBreakable(lightType) {
+    var props = LIGHT_SOURCE_BREAKABLE_PROPS[lightType];
+    return props && props.hp > 0;
   }
 
   /**
@@ -951,13 +1055,16 @@ const LightingSystem = (function() {
     getLightSources: function() { return _lightSources; },
     getLightSourcePositions: getLightSourcePositions,
     getFrameCount: function() { return _frameCount; },
+    getBreakableProps: getBreakableProps,
+    isBreakable: isBreakable,
     // Phase 1.1: Tile opacity helpers
     TILE_OPACITY: TILE_OPACITY,
     getTileOpacity: getTileOpacity,
     // Phase 3.3: Lighting interpolation control
     setLightingInterpolation: setLightingInterpolation,
     LIGHT_SOURCES: LIGHT_SOURCES,
-    BIOME_LIGHTING: BIOME_LIGHTING
+    BIOME_LIGHTING: BIOME_LIGHTING,
+    LIGHT_SOURCE_BREAKABLE_PROPS: LIGHT_SOURCE_BREAKABLE_PROPS
   };
 })();
 
