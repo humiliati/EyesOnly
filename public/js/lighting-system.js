@@ -714,6 +714,33 @@ const LightingSystem = (function() {
   }
 
   /**
+   * Get environmental light source positions for rendering.
+   * Returns only environmental lights (not player/enemy lights).
+   * @returns {Array} Array of {x, y, type, emoji, color, flickerPhase} for rendering
+   */
+  function getLightSourcePositions() {
+    var environmentalTypes = ['LIGHT_BULB', 'MONITOR', 'TERMINAL', 'FIRE', 'CAMPFIRE',
+                               'TORCH', 'LAMP_POST', 'LAVA_LAMP', 'LAVA_FLOOR'];
+
+    return _lightSources
+      .filter(function(source) {
+        return environmentalTypes.indexOf(source.type) !== -1;
+      })
+      .map(function(source) {
+        var lightDef = LIGHT_SOURCES[source.type];
+        return {
+          x: source.x,
+          y: source.y,
+          type: source.type,
+          emoji: lightDef.emoji,
+          color: lightDef.color,
+          flickerRate: lightDef.flickerRate,
+          flickerPhase: source.flickerPhase
+        };
+      });
+  }
+
+  /**
    * Add player light source if they have a light item equipped
    * @param {number} x - Player X position
    * @param {number} y - Player Y position
@@ -748,6 +775,8 @@ const LightingSystem = (function() {
     updateEnemyLights: updateEnemyLights,
     updatePlayerLight: updatePlayerLight,
     getLightSources: function() { return _lightSources; },
+    getLightSourcePositions: getLightSourcePositions,
+    getFrameCount: function() { return _frameCount; },
     // Phase 1.1: Tile opacity helpers
     TILE_OPACITY: TILE_OPACITY,
     getTileOpacity: getTileOpacity,

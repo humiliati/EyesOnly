@@ -277,6 +277,12 @@ const GroundEffects = (function () {
       removeGroundEffect(x, y);
       // Replace with steam
       setGroundEffect(x, y, GROUND_TYPES.STEAM);
+
+      // Also remove the light emission if LightingSystem is available
+      if (typeof LightingSystem !== 'undefined' && LightingSystem.removeLightSource) {
+        LightingSystem.removeLightSource(x, y);
+      }
+
       return true;
     }
     return false;

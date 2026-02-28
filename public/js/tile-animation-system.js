@@ -151,7 +151,17 @@ const TileAnimationSystem = (function() {
     '🌸': { speed: 0.95, name: 'Flower Clearing', healing: 1 },
     '🍄': { speed: 0.85, name: 'Mushroom Circle' },
     '🛍️': { speed: 0.90, name: 'Display Area' },
-    '🛢️': { speed: 0.70, name: 'Oil Slick', ignitable: true }
+    '🛢️': { speed: 0.70, name: 'Oil Slick', ignitable: true },
+
+    // Light source emojis (environmental)
+    '🕯️': { speed: 1.0, name: 'Torch', kickable: true }, // Safe to walk on, can nudge
+    '🏮': { speed: 0.9, name: 'Lamp Post', draggable: true }, // Slight slowdown, can push
+    '🔥': { speed: 0.4, name: 'Fire', damage: 2 }, // Hazardous, severe slowdown
+    '🏕️': { speed: 0.65, name: 'Campfire', standingDamage: 1, standingTurns: 2 }, // Delayed damage
+    '💻': { speed: 1.0, name: 'Monitor', blocks: true }, // Impassable furniture
+    '🪔': { speed: 1.0, name: 'Lava Lamp', kickable: true }, // Safe, decorative
+    '🌋': { speed: 0.35, name: 'Lava Floor', damage: 3 }, // Most dangerous
+    '💡': { speed: 1.0, name: 'Light Bulb' } // Overhead, no collision
   };
 
   // Emojis that cause TOTAL collision (no passing)
