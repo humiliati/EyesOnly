@@ -382,18 +382,18 @@ const OverheadAnimator = (function() {
 
     switch (animation.type) {
       case 'CURRENCY_PICKUP':
-        // Bounce up and fade out
+        // Bounce up and fade out - starts tight above player head
         var bounceHeight = 20; // pixels
         var bounceProgress = Math.sin(progress * Math.PI); // 0 -> 1 -> 0
-        transform.y = -bounceHeight * bounceProgress;
+        transform.y = -20 - (bounceHeight * bounceProgress); // Start at -20px, bounce to -40px
         transform.opacity = 1.0 - progress; // Fade out as it rises
         transform.scale = 1.0 + (0.2 * bounceProgress); // Slight scale
         break;
 
       case 'EXPRESSION':
-        // Gentle float up and fade
-        var floatHeight = 10;
-        transform.y = -floatHeight * progress;
+        // Gentle float up and fade - starts tight above player head
+        var floatHeight = 30;
+        transform.y = -20 - (floatHeight * progress); // Start at -20px, float to -50px
         transform.opacity = 1.0 - (progress * 0.7); // Fade out gradually
         break;
 
@@ -422,9 +422,11 @@ const OverheadAnimator = (function() {
       if (animation && animation.data && typeof animation.data.stackIndex === 'number') {
         var idx = animation.data.stackIndex;
         var stackCount = animation.data.stackCount || 1;
-        // Center stacks horizontally over entity, and stagger vertically
-        transform.x += (idx - ((stackCount - 1) / 2)) * 10;
-        transform.y += -idx * 10;
+        // Tight vertical stacking: items render closely above player head
+        // No horizontal spreading - all items centered over player
+        // Stack spacing: 12px between items (tight but readable)
+        // Bottom item starts at -20px (just above player head)
+        transform.y += -20 - (idx * 12);
       }
     } catch (e0) {}
 
