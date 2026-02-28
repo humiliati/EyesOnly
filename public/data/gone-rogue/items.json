@@ -435,5 +435,38 @@
     "synergyTags": ["utility", "collection", "loot"],
     "description": "Powerful attraction field. Currency, ammo, and loose items pulled from 5 tiles.",
     "_designNote": "Upgraded magnet. Also pulls loose card/item drops. Staggered collection (250ms intervals) for visual satisfaction."
+  },
+  {
+    "id": "ITM-060",
+    "name": "Cargo Webbing",
+    "emoji": "🪢",
+    "type": "equipment",
+    "rarity": "uncommon",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      { "type": "flight_save", "saveRate": 0.35 }
+    ],
+    "synergyTags": ["utility", "escape", "preservation"],
+    "description": "Disposable escape items sometimes survive use. 35% save rate.",
+    "_designNote": "Prevents one-time-use flight cards (Smoke Bomb Mk0, Chaff Flare) from being consumed on play. Save rate scales with card quality. Does not affect Cyanide Capsule (already reusable). Upgrade: Tactical Harness (60% rate + items)."
+  },
+  {
+    "id": "ITM-061",
+    "name": "Tactical Harness",
+    "emoji": "🎒",
+    "type": "equipment",
+    "rarity": "rare",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      { "type": "flight_save", "saveRate": 0.60 },
+      { "type": "flight_save_disposables", "saveRate": 0.20 }
+    ],
+    "synergyTags": ["utility", "escape", "preservation"],
+    "description": "Escape items rarely break. 60% flight save, 20% save on all disposables.",
+    "_designNote": "Upgraded Cargo Webbing. Higher flight-card save rate plus a small chance to save ANY disposable card (grenades, etc). Save rate stacks with card quality bonuses."
   }
 ]

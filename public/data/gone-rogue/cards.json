@@ -58,5 +58,58 @@
     ],
     "preCombat": true,
     "synergyTags": ["stealth", "box", "ambush"]
+  },
+  {
+    "id": "ACT-010",
+    "name": "Smoke Bomb Mk0",
+    "emoji": "💨",
+    "targetType": "self",
+    "cost": 0,
+    "costs": null,
+    "consumesOnPlay": true,
+    "rarity": "common",
+    "effects": [
+      { "type": "flee", "guaranteed": true },
+      { "type": "fatigue", "value": 3 }
+    ],
+    "preCombat": false,
+    "synergyTags": ["escape", "disposable", "starter"],
+    "_designNote": "One-time-use starter flight card. Guaranteed escape from combat. Costs 3 fatigue as the adrenaline tax. Can be saved by Cargo Webbing passive."
+  },
+  {
+    "id": "ACT-011",
+    "name": "Chaff Flare",
+    "emoji": "🎇",
+    "targetType": "self",
+    "cost": 0,
+    "costs": [
+      { "kind": "ammo", "amount": 1 }
+    ],
+    "consumesOnPlay": true,
+    "rarity": "common",
+    "effects": [
+      { "type": "flee", "guaranteed": true },
+      { "type": "noise", "value": 4 }
+    ],
+    "preCombat": false,
+    "synergyTags": ["escape", "disposable", "starter", "loud"],
+    "_designNote": "One-time-use starter flight card. Burns 1 ammo and raises alert +4 noise. Louder escape option than Smoke Bomb. Can be saved by Cargo Webbing passive."
+  },
+  {
+    "id": "ACT-012",
+    "name": "Cyanide Capsule",
+    "emoji": "🦷",
+    "targetType": "self",
+    "cost": 0,
+    "costs": null,
+    "consumesOnPlay": false,
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "flee", "guaranteed": true },
+      { "type": "self_damage", "value": 13 }
+    ],
+    "preCombat": false,
+    "synergyTags": ["escape", "reusable", "desperate", "medical"],
+    "_designNote": "Reusable flee card. Bites a cyanide capsule tooth — costs 13 HP (brutal) but always gets you out. Not consumed, so it stays in your hand. High risk, high reliability. The self_damage can kill you if HP is too low."
   }
 ]

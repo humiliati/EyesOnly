@@ -1172,6 +1172,49 @@ const CardSystem = (function () {
         defense: 1,            // Minor defense bonus
         stealth: 1             // Helps blend in urban environments
       }
+    },
+
+    // ========== FLIGHT / ESCAPE CARDS ==========
+    'Smoke Bomb Mk0': {
+      category: 'movement',
+      type: 'movement',
+      name: 'Smoke Bomb Mk0',
+      emoji: '💨',
+      lifecycleType: 'disposable',
+      baseStats: {
+        flee: true,        // Triggers guaranteed combat escape
+        fatigue: 3,        // Adrenaline tax
+        noise: 1,          // Quiet escape
+        speed: 5
+      },
+      synergyTags: ['escape', 'disposable', 'starter']
+    },
+    'Chaff Flare': {
+      category: 'movement',
+      type: 'movement',
+      name: 'Chaff Flare',
+      emoji: '🎇',
+      lifecycleType: 'disposable',
+      baseStats: {
+        flee: true,        // Triggers guaranteed combat escape
+        noise: 4,          // Loud — raises alert level
+        speed: 5
+      },
+      resourceCost: { ammo: 1 },  // Burns 1 ammo
+      synergyTags: ['escape', 'disposable', 'starter', 'loud']
+    },
+    'Cyanide Capsule': {
+      category: 'movement',
+      type: 'movement',
+      name: 'Cyanide Capsule',
+      emoji: '🦷',
+      lifecycleType: 'persistent',  // Reusable — stays in hand
+      baseStats: {
+        flee: true,        // Triggers guaranteed combat escape
+        selfDamage: 13,    // Brutal HP cost
+        speed: 6           // Fastest escape option
+      },
+      synergyTags: ['escape', 'reusable', 'desperate', 'medical']
     }
   };
 

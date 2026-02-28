@@ -1420,8 +1420,13 @@ const GoneRogue = (function () {
       if (typeof CardSystem !== 'undefined') {
         var looseInventory = GAMESTATE.getLooseInventory();
         if (looseInventory.length === 0) {
-          // Define guaranteed 3 starter cards (includes 1 consumable grenade)
-          var starterCards = ['Single Shot', 'Dodge', 'Grenade'];
+          // Define guaranteed 3 starter cards
+          // Slot 1: always Single Shot (core attack)
+          // Slot 2: always Dodge (core defense)
+          // Slot 3: random from consumable pool (grenade or flight card)
+          var slot3Pool = ['Grenade', 'Smoke Bomb Mk0', 'Chaff Flare'];
+          var slot3Pick = slot3Pool[Math.floor(_rng() * slot3Pool.length)];
+          var starterCards = ['Single Shot', 'Dodge', slot3Pick];
 
           // Add the 3 starter cards to loose inventory
           for (var c = 0; c < starterCards.length; c++) {
@@ -1431,10 +1436,12 @@ const GoneRogue = (function () {
             }
           }
 
+          // Build display string for the 3rd card
+          var slot3Emoji = slot3Pick === 'Grenade' ? '💣' : (slot3Pick === 'Smoke Bomb Mk0' ? '💨' : '🎇');
           lines.push('');
           lines.push('  📦 STARTER LOADOUT DEPLOYED');
           lines.push('  3 COMBAT CARDS ADDED TO INVENTORY');
-          lines.push('  🎯 Single Shot | 💨 Dodge | 💣 Grenade (1x use)');
+          lines.push('  🎯 Single Shot | 💨 Dodge | ' + slot3Emoji + ' ' + slot3Pick + ' (1x use)');
           lines.push('');
         }
       }
@@ -10012,6 +10019,7 @@ _incrementPityTimers();
     }
 
     // Apply effects (v0 subset) — enhanced by synergy bonuses
+    var _cardTriggeredFlee = false;
     var enemy = _strCombatEnemy;
     for (var i = 0; i < (card.effects || []).length; i++) {
       var eff = card.effects[i];
@@ -10041,6 +10049,31 @@ _incrementPityTimers();
           _player.hp = Math.min(_player.maxHp || 10, (_player.hp || 0) + heal);
           lines.push('🩹 +' + heal + ' HP');
         }
+      } else if (eff.type === 'self_damage') {
+        // Self-inflicted HP damage (e.g. Cyanide Capsule)
+        var selfDmg = Number(eff.value || 0);
+        if (_player && isFinite(selfDmg) && selfDmg > 0) {
+          _player.hp = Math.max(0, (_player.hp || 0) - selfDmg);
+          lines.push('💀 -' + selfDmg + ' HP (self)');
+        }
+      } else if (eff.type === 'fatigue') {
+        // Fatigue cost (e.g. Smoke Bomb adrenaline tax)
+        var fatVal = Number(eff.value || 0);
+        if (_player && isFinite(fatVal) && fatVal > 0) {
+          _player.fatigue = Math.min(100, (_player.fatigue || 0) + fatVal);
+          lines.push('😮‍💨 +' + fatVal + ' fatigue');
+        }
+      } else if (eff.type === 'noise') {
+        // Noise burst (raises alert level)
+        var noiseVal = Number(eff.value || 0);
+        if (isFinite(noiseVal) && noiseVal > 0) {
+          _alertLevel = Math.min(100, (_alertLevel || 0) + noiseVal);
+          lines.push('📢 +' + noiseVal + ' noise (alert: ' + _alertLevel + ')');
+        }
+      } else if (eff.type === 'flee') {
+        // Guaranteed escape — flag for post-effect processing
+        _cardTriggeredFlee = true;
+        lines.push('🏃 ESCAPE TRIGGERED');
       }
     }
 
@@ -10110,9 +10143,37 @@ _incrementPityTimers();
 
     var consumes = (typeof card.consumesOnPlay === 'boolean') ? card.consumesOnPlay : !(costs && costs.length);
     if (consumes) {
-      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.consumeCardFromHand === 'function') {
-        GAMESTATE.consumeCardFromHand(cardId, 1);
+      // ── Flight-saver check: equipped passive may prevent consumption ──
+      var saved = false;
+      try {
+        if (typeof PassiveItemsSystem !== 'undefined' && typeof PassiveItemsSystem.tryFlightSave === 'function') {
+          saved = PassiveItemsSystem.tryFlightSave(card, card.qualityName || card.quality || '');
+        }
+      } catch (eSave) {}
+
+      if (saved) {
+        lines.push('🪢 SAVED! Card survives use');
+      } else {
+        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.consumeCardFromHand === 'function') {
+          GAMESTATE.consumeCardFromHand(cardId, 1);
+        }
       }
+    }
+
+    // ── Flee exit: if any effect triggered a flee, exit combat now ──
+    if (_cardTriggeredFlee) {
+      // Check if self-damage killed the player before they could flee
+      if (_player && _player.hp <= 0) {
+        _player.hp = 0;
+        lines.push('💀 Died before escaping...');
+        _strCombatLog = (_strCombatLog || []).concat(lines);
+        return _handlePlayerDeath('combat_damage', { enemy: _strCombatEnemy });
+      }
+
+      lines.push('');
+      _strCombatLog = (_strCombatLog || []).concat(lines);
+      var fleeResult = _exitStrCombat('fled');
+      return { success: true, consumed: consumes && !saved, lines: lines.concat(fleeResult.lines || []), exited: true };
     }
 
     // End conditions (so we don't rely on the legacy per-round resolver to exit)
@@ -12085,28 +12146,20 @@ _incrementPityTimers();
       }
       // If STRVictorySequence not available, fall through to standard cleanup
 
-    } else if (reason === 'medbed_soft_defeat') {
-      _combatPhaseTooltip('defeat', 'Medbed stabilized');
-      lines.push('🛏️ MEDBED STABILIZED');
-      lines.push('└─ Soft reset engaged');
-      lines.push('');
-      lines.push('Respawning in: 3…');
-      lines.push('Respawning in: 2…');
-      lines.push('Respawning in: 1…');
-    } else if (reason === 'npc_gate_soft_defeat') {
-      _combatPhaseTooltip('defeat', 'Training match');
-      lines.push('💀 DEFEAT (TRAINING MATCH)');
-      lines.push('└─ Resetting position…');
-      lines.push('');
-      lines.push('Respawning in: 3…');
-      lines.push('Respawning in: 2…');
-      lines.push('Respawning in: 1…');
-    } else if (reason === 'fled') {
-      lines.push('🏃 FLED COMBAT!');
-      lines.push('└─ Repositioned to safety');
+    } else if (reason === 'medbed_soft_defeat' || reason === 'npc_gate_soft_defeat' || reason === 'fled') {
 
-      // Move player back one space
-      if (_player.lastMoveDirection) {
+      // ── Build context for animated exit sequence ──
+      var _exitCtx = {
+        playerHp: _player ? _player.hp : 0,
+        playerMaxHp: _player ? (_player.maxHp || 10) : 10,
+        enemyEmoji: _strCombatEnemy ? (_strCombatEnemy.emoji || '👾') : '👾',
+        enemyName: _strCombatEnemy ? (_strCombatEnemy.name || 'Enemy') : 'Enemy',
+        gateNpcName: (_strCombatEnemy && _strCombatEnemy._npcGateId) ? _strCombatEnemy.name : null,
+        round: _strCombatRound
+      };
+
+      // Fled: reposition player before animation starts
+      if (reason === 'fled' && _player.lastMoveDirection) {
         var reverseDir = {
           'north': { dx: 0, dy: 1 },
           'south': { dx: 0, dy: -1 },
@@ -12119,13 +12172,73 @@ _incrementPityTimers();
           _player.y += move.dy;
         }
       }
+
+      // Medbed: restore HP to 50%
+      if (reason === 'medbed_soft_defeat' && _player) {
+        _player.hp = Math.ceil((_player.maxHp || 10) * 0.5);
+      }
+
+      // Tooltip for defeat paths
+      if (reason === 'medbed_soft_defeat') {
+        _combatPhaseTooltip('defeat', 'Medbed stabilized');
+        lines.push('🛏️ MEDBED STABILIZED');
+      } else if (reason === 'npc_gate_soft_defeat') {
+        _combatPhaseTooltip('defeat', 'Training match');
+        lines.push('💀 DEFEAT (TRAINING MATCH)');
+      } else {
+        lines.push('🏃 FLED COMBAT!');
+      }
+
+      // ── Fire animated exit sequence (defers cleanup) ──
+      if (typeof STRExitSequence !== 'undefined' && typeof STRExitSequence.play === 'function') {
+
+        // Hide combat UI before animation plays
+        try {
+          if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.hide === 'function') {
+            STRCombatWindow.hide();
+          }
+          if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.hide === 'function') {
+            HandFanComponent.hide();
+            if (typeof HandFanComponent.clearSelection === 'function') HandFanComponent.clearSelection();
+          }
+        } catch (e0) {}
+
+        STRExitSequence.play(reason, _exitCtx, function() {
+          // ── Deferred cleanup (runs after exit animation) ──
+          _strCombatActive = false;
+          _strCombatPhase = 'idle';
+          _strCombatEnemy = null;
+          _strCombatAdvantage = 'neutral';
+          _strCombatRound = 0;
+          _strCombatLog = [];
+
+          _disableCombatZoom();
+
+          try {
+            if (typeof BackupActionContainer !== 'undefined' && typeof BackupActionContainer.hide === 'function') {
+              BackupActionContainer.hide();
+            }
+          } catch (e1) {}
+
+          if (!_gameLoopActive) _startGameLoop();
+          _saveState();
+        });
+
+        // Return early — cleanup is deferred to the callback
+        return {
+          lines: lines.concat(_renderGrid()),
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+      // If STRExitSequence not available, fall through to standard cleanup
     }
 
     lines.push('');
     lines.push('Movement unlocked. Returning to realtime grid...');
     lines.push('');
 
-    // Reset combat state
+    // Reset combat state (fallback path — only reached if animated sequences unavailable)
     _strCombatActive = false;
     _strCombatPhase = 'idle';
     _strCombatEnemy = null;
@@ -12151,9 +12264,6 @@ _incrementPityTimers();
         BackupActionContainer.hide();
       }
     } catch (e0) {}
-
-    // BAC floating popup is RETIRED — RogueSidebar handles left column.
-    // No need to show BAC after combat ends.
 
     // Resume game loop
     if (!_gameLoopActive) {

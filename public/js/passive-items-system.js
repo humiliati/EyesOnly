@@ -315,6 +315,43 @@ const PassiveItemsSystem = (function() {
       upgrade_path: null,
       stackable: false,
       slot: 'passive_equipment'
+    },
+
+    // ── Flight-saver passives ──
+    CARGO_WEBBING: {
+      id: 'cargo_webbing',
+      name: 'Cargo Webbing',
+      emoji: '🪢',
+      description: 'Disposable escape items sometimes survive use. 35% save rate.',
+      trigger_event: TRIGGER_EVENTS.ON_CARD_CONSUMED,
+      is_active_effect: true,
+      // Flight save properties
+      flight_save_rate: 0.35,        // Base chance to save a flight card from consumption
+      saves_flight_cards: true,       // Only applies to cards with flee: true
+      saves_all_disposables: false,   // Does NOT save grenades etc.
+      quality_bonus: true,            // Card quality affects save rate (+5% per quality tier)
+      // Equipment properties
+      upgrade_path: 'tactical_harness',
+      stackable: false,
+      slot: 'passive_equipment'
+    },
+    TACTICAL_HARNESS: {
+      id: 'tactical_harness',
+      name: 'Tactical Harness',
+      emoji: '🎒',
+      description: 'Escape items rarely break. 60% flight save, 20% on all disposables.',
+      trigger_event: TRIGGER_EVENTS.ON_CARD_CONSUMED,
+      is_active_effect: true,
+      // Flight save properties
+      flight_save_rate: 0.60,          // Higher base rate for flight cards
+      saves_flight_cards: true,
+      saves_all_disposables: true,     // Also saves ANY disposable card (grenades, etc.)
+      disposable_save_rate: 0.20,      // Lower rate for non-flight disposables
+      quality_bonus: true,             // Card quality bonus applies
+      // Equipment properties
+      upgrade_path: null,
+      stackable: false,
+      slot: 'passive_equipment'
     }
   };
 
@@ -949,6 +986,61 @@ const PassiveItemsSystem = (function() {
     return null;
   }
 
+  /**
+   * Check if an equipped flight-saver passive should prevent a disposable card
+   * from being consumed. Returns true if the card is "saved" (not consumed).
+   *
+   * @param {Object} card — the card being played (needs synergyTags or baseStats.flee)
+   * @param {string} [qualityName] — card quality tier for bonus calculation
+   * @returns {boolean} true if the card should NOT be consumed
+   */
+  function tryFlightSave(card, qualityName) {
+    if (!card) return false;
+
+    // Determine if the card is a flight card
+    var isFlightCard = false;
+    if (card.synergyTags && card.synergyTags.indexOf('escape') >= 0) isFlightCard = true;
+    if (card.baseStats && card.baseStats.flee) isFlightCard = true;
+    if (card.effects) {
+      for (var e = 0; e < card.effects.length; e++) {
+        if (card.effects[e] && card.effects[e].type === 'flee') isFlightCard = true;
+      }
+    }
+
+    // Quality bonus: +5% per tier above common
+    var qualityBonus = 0;
+    if (qualityName) {
+      var tiers = ['cracked', 'worn', 'standard', 'fine', 'superior', 'elite', 'masterwork'];
+      var tierIdx = tiers.indexOf(qualityName.toLowerCase());
+      if (tierIdx > 2) { // Above 'standard'
+        qualityBonus = (tierIdx - 2) * 0.05;
+      }
+    }
+
+    for (var i = 0; i < _equippedPassives.length; i++) {
+      var item = PASSIVE_ITEMS_DB[_equippedPassives[i].toUpperCase()];
+      if (!item) continue;
+
+      if (isFlightCard && item.saves_flight_cards && item.flight_save_rate) {
+        var rate = item.flight_save_rate + (item.quality_bonus ? qualityBonus : 0);
+        if (Math.random() < rate) {
+          console.log('[PassiveItemsSystem] Flight save! ' + item.name + ' protected ' + (card.name || 'card') + ' (rate: ' + (rate * 100).toFixed(0) + '%)');
+          return true;
+        }
+      }
+
+      if (!isFlightCard && item.saves_all_disposables && item.disposable_save_rate) {
+        var dRate = item.disposable_save_rate + (item.quality_bonus ? qualityBonus : 0);
+        if (Math.random() < dRate) {
+          console.log('[PassiveItemsSystem] Disposable save! ' + item.name + ' protected ' + (card.name || 'card') + ' (rate: ' + (dRate * 100).toFixed(0) + '%)');
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
   // Public API
   return {
     init: init,
@@ -970,6 +1062,7 @@ const PassiveItemsSystem = (function() {
     checkAndBreakItems: checkAndBreakItems,
     resetRunState: resetRunState,
     tryPreventCombatDeath: tryPreventCombatDeath,
+    tryFlightSave: tryFlightSave,
     TRIGGER_EVENTS: TRIGGER_EVENTS,
     PASSIVE_ITEMS_DB: PASSIVE_ITEMS_DB
   };
