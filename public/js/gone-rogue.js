@@ -3807,6 +3807,13 @@ _incrementPityTimers();
       var patrolType = _choosePatrolType(difficulty, room);
       var enemy = _createEnemy(x, y, patrolType, room);
 
+      // Phase 1 (ENEMY_CARDS.md): attach enemy card deck + exposedTags for theft/combat.
+      try {
+        if (typeof EnemyDeckHydrator !== 'undefined' && EnemyDeckHydrator.hydrate) {
+          EnemyDeckHydrator.hydrate(enemy, _floor);
+        }
+      } catch (e0) {}
+
       _enemies.push(enemy);
       _totalEnemiesSpawned++; // Track for highscore
     }

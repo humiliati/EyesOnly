@@ -57,7 +57,7 @@
   },
   {
     "id": "ITM-005",
-    "name": "3D Printer (Kaaba)",
+    "name": "3D Printer",
     "emoji": "🕋",
     "type": "equipment",
     "rarity": "legendary",
@@ -71,7 +71,7 @@
     "description": "Consumes itself to print extra action cards when you spend ammo/battery. Mostly prints lower-quality substitutes."
   },
   {
-    "id": "ITM-PICKPOCKET-GLOVES",
+    "id": "ITM-006",
     "name": "Pickpocket Gloves",
     "emoji": "🧤",
     "type": "equipment",

@@ -114,7 +114,7 @@ const EliteEnemies = (function () {
       return null;
     }
 
-    return {
+    var elite = {
       x: x,
       y: y,
       hp: template.hp,
@@ -141,8 +141,20 @@ const EliteEnemies = (function () {
 
       // Visual state for pulsing effect
       glowPhase: 0,
-      glowColor: '#ff00ff'
+      glowColor: '#ff00ff',
+
+      // Enemy deck key (Phase 1)
+      deckType: type
     };
+
+    // Phase 1: attach enemy card deck + exposedTags
+    try {
+      if (typeof EnemyDeckHydrator !== 'undefined' && EnemyDeckHydrator.hydrate) {
+        EnemyDeckHydrator.hydrate(elite, floorNum);
+      }
+    } catch (e0) {}
+
+    return elite;
   }
 
   /**
