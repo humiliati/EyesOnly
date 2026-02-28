@@ -309,9 +309,8 @@ const CanvasRenderer = (function() {
 
         // Only render darkness overlay if there's significant darkness
         if (darkness > 0.05) {
-          // Apply darkness overlay — 88% max for deep shadows that lights cut through
-          // Uses a power curve so mid-range darkens faster → sharper light/dark boundary
-          var alpha = Math.pow(darkness, 0.75) * 0.88;
+          // Apply darkness overlay — 73% max with power curve for sharper light/dark boundary
+          var alpha = Math.pow(darkness, 0.75) * 0.73;
 
           // Parse light color for tinting
           var r = parseInt(light.color.substr(1, 2), 16);
@@ -367,8 +366,8 @@ const CanvasRenderer = (function() {
           var g = parseInt(light.color.substr(3, 2), 16);
           var b = parseInt(light.color.substr(5, 2), 16);
           
-          // Scale glow by intensity — stronger for visible light pools cutting darkness
-          var alpha = light.intensity * 0.35;
+          // Scale glow by intensity
+          var alpha = light.intensity * 0.24;
           this.ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
           this.ctx.fillRect(pixelX, pixelY, this.cellSize, this.cellSize);
         }

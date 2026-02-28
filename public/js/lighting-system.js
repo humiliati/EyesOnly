@@ -618,10 +618,9 @@ const LightingSystem = (function() {
       }
     }
 
-    // Calculate base intensity with distance falloff
-    // Cubic curve with inner plateau: strong near source, sharp cutoff at edge
-    var t = dist / lightDef.radius;             // 0 at source, 1 at radius edge
-    var falloff = Math.max(0, 1 - t * t * t);  // Cubic: holds bright longer, drops fast at edge
+    // Calculate base intensity with distance falloff (inverse square law)
+    var falloff = 1 - (dist / lightDef.radius);
+    falloff = falloff * falloff; // Quadratic: smooth realistic falloff
 
     var intensity = lightDef.intensity * falloff;
 
