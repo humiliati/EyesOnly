@@ -17,34 +17,6 @@ const CanvasRenderer = (function() {
     EMOJI: 'emoji'
   };
 
-  // ── Phase 3.2: Item Twinkle State ─────────────────────────────────────────
-  // Tracks per-position bobbing phases so collectibles, currencies, and
-  // interactive items gently pulse/shimmer on the ground.
-  var _twinklePhases = {}; // key: "x,y" → float phase (radians)
-
-  // Prime-number multipliers for stable per-tile phase seeding (avoids grid-aligned sync)
-  var TWINKLE_SEED_X = 1.7;
-  var TWINKLE_SEED_Y = 3.1;
-
-  /**
-   * Advance twinkle phases for the given set of ground entities.
-   * Called once per renderGrid() invocation for non-enemy entities.
-   * @param {Array} entities
-   */
-  function _advanceTwinklePhases(entities) {
-    if (!entities) return;
-    for (var i = 0; i < entities.length; i++) {
-      var e = entities[i];
-      if (!e || e.isEnemy) continue;
-      var key = e.x + ',' + e.y;
-      if (_twinklePhases[key] === undefined) {
-        // Seed with a stable per-position offset so items don't all pulse together
-        _twinklePhases[key] = ((e.x * TWINKLE_SEED_X + e.y * TWINKLE_SEED_Y) % (Math.PI * 2));
-      }
-      _twinklePhases[key] += 0.04; // ~2.4 rad/s at 60fps → ~2.5s cycle
-    }
-  }
-
   /**
    * CanvasRenderer class - High-performance grid renderer
    */
@@ -127,9 +99,6 @@ const CanvasRenderer = (function() {
 
     // Render in layers
     this._renderTiles(renderData.grid);
-
-    // Advance twinkle phases for ground items / collectibles (Phase 3.2)
-    _advanceTwinklePhases(renderData.entities);
 
     // Render entities WITHOUT shadows first (shadows will be drawn after lighting)
     this._renderEntities(renderData.entities, true);
@@ -512,15 +481,6 @@ const CanvasRenderer = (function() {
         this._drawDropShadow(centerX, (entity.y + 0.78) * this.cellSize, this.cellSize * 0.32, this.cellSize * 0.11, 0.28);
       }
 
-      // Phase 3.2: twinkle pulse for ground items / collectibles (not enemies)
-      var savedAlpha = this.ctx.globalAlpha;
-      if (!entity.isEnemy) {
-        var key = entity.x + ',' + entity.y;
-        var phase = _twinklePhases[key] || 0;
-        // Gentle oscillation: alpha between 0.78 and 1.0
-        this.ctx.globalAlpha = 0.78 + 0.22 * (0.5 + 0.5 * Math.sin(phase));
-      }
-
       // Render entity character/emoji
       this.ctx.fillStyle = entity.color || '#FF0000';
 
@@ -532,9 +492,8 @@ const CanvasRenderer = (function() {
 
       this.ctx.fillText(entity.char || '?', centerX, centerY);
 
-      // Reset shadow and alpha
+      // Reset shadow
       this.ctx.shadowBlur = 0;
-      this.ctx.globalAlpha = savedAlpha;
     }
   };
 
