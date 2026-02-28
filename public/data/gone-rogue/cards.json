@@ -111,5 +111,37 @@
     "preCombat": false,
     "synergyTags": ["escape", "reusable", "desperate", "medical"],
     "_designNote": "Reusable flee card. Bites a cyanide capsule tooth — costs 13 HP (brutal) but always gets you out. Not consumed, so it stays in your hand. High risk, high reliability. The self_damage can kill you if HP is too low."
+  },
+  {
+    "id": "ACT-020",
+    "name": "Fumbled Grab",
+    "emoji": "🧤",
+    "targetType": "self",
+    "cost": 0,
+    "costs": null,
+    "consumesOnPlay": true,
+    "rarity": "common",
+    "effects": [
+      { "type": "noise", "value": 2 }
+    ],
+    "preCombat": true,
+    "synergyTags": ["disposable", "covert", "pickpocket"],
+    "_designNote": "Consolation card for failed pickpocket attempts. Adds a little noise — theft has risk."
+  },
+  {
+    "id": "ACT-021",
+    "name": "Stolen Technique",
+    "emoji": "🃏",
+    "targetType": "enemy",
+    "cost": 0,
+    "costs": null,
+    "consumesOnPlay": true,
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "damage", "value": 3 }
+    ],
+    "preCombat": true,
+    "synergyTags": ["disposable", "covert", "pickpocket", "sleight", "combo_finisher"],
+    "_designNote": "Generic permanent-steal reward card. Represents lifted enemy technique without requiring full EATK->ACT mapping yet."
   }
 ]

@@ -71,6 +71,22 @@
     "description": "Consumes itself to print extra action cards when you spend ammo/battery. Mostly prints lower-quality substitutes."
   },
   {
+    "id": "ITM-PICKPOCKET-GLOVES",
+    "name": "Pickpocket Gloves",
+    "emoji": "🧤",
+    "type": "equipment",
+    "rarity": "uncommon",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "active",
+    "effects": [
+      { "type": "theft", "mode": "pickpocket" }
+    ],
+    "stealTags": ["pickpocket", "sleight"],
+    "synergyTags": ["covert", "pickpocket", "sleight"],
+    "description": "Lets you pickpocket exposed enemy cards when adjacent. The enemy still gets angry if you fumble."
+  },
+  {
     "id": "ITM-998",
     "name": "Amazon Box",
     "emoji": "📦",

@@ -1650,6 +1650,11 @@ const GoneRogue = (function () {
       return _handleInteraction();
     }
 
+    // Theft command (pre-combat): attempt to pickpocket an adjacent enemy if player has a theft tool equipped.
+    if (cmd === 'steal' || cmd === 'pickpocket') {
+      return _attemptPickpocket();
+    }
+
     // Bonfire vendor commands
     if (cmd === 'vendor' || cmd === 'shop' || cmd === 'merchant') {
       return _showVendor();
@@ -1704,6 +1709,7 @@ const GoneRogue = (function () {
       '  EXTRACT            - Extract from exit point',
       '  STATUS             - Show player stats',
       '  INVENTORY          - Show inventory',
+      '  STEAL              - Pickpocket adjacent enemy (requires Pickpocket Gloves equipped)',
       '',
       'BONFIRE COMMANDS (Floors 10, 16, 22):',
       '  VENDOR/SHOP        - View vendor inventory',
@@ -6177,6 +6183,54 @@ _incrementPityTimers();
       prompt: getPrompt(),
       stayActive: true
     };
+  }
+
+  function _attemptPickpocket() {
+    if (typeof EnemyStealSystem === 'undefined') {
+      return { lines: ['STEAL SYSTEM UNAVAILABLE', ''], prompt: getPrompt(), stayActive: true };
+    }
+
+    if (_strCombatActive) {
+      return { lines: ['CAN\'T STEAL IN STR COMBAT', ''], prompt: getPrompt(), stayActive: true };
+    }
+
+    var activeItem = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) ? GAMESTATE.getActiveItem() : null;
+    var res = EnemyStealSystem.attempt({
+      player: _player,
+      enemies: _enemies,
+      activeItem: activeItem,
+      getEnemyDeck: (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getEnemyDeck) ? GoneRogueDataRegistry.getEnemyDeck : null
+    });
+
+    if (!res || !res.ok) {
+      return { lines: ['STEAL FAILED', ''], prompt: getPrompt(), stayActive: true };
+    }
+
+    // Award a disposable card into player hand/backup pipeline.
+    // NOTE: this is the "permanent" steal mechanic: the card becomes part of your run deck.
+    var awardId = res.cardId;
+    if (awardId && typeof GAMESTATE !== 'undefined' && GAMESTATE.addPrintedCards) {
+      GAMESTATE.addPrintedCards(awardId, 1, { preferHand: true });
+    }
+
+    // Feedback
+    try {
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showPersistent('🧤 ' + (res.success ? 'STOLEN' : 'FUMBLED'), 700);
+      }
+    } catch (e0) {}
+
+    var lines = [];
+    lines.push(res.message || (res.success ? 'STOLEN' : 'FUMBLED'));
+    if (awardId) {
+      var def = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) ? GoneRogueDataRegistry.getCard(awardId) : null;
+      var em = def && def.emoji ? def.emoji : '🃏';
+      var nm = def && def.name ? def.name : awardId;
+      lines.push('→ ' + em + ' ' + nm);
+    }
+    lines.push('');
+
+    return { lines: lines.concat(_renderGrid()), prompt: getPrompt(), stayActive: true };
   }
 
   function _attemptExtract() {

@@ -144,6 +144,27 @@ userAuthRoutes.post('/login', async (c) => {
   // Create session token
   const { token } = await createUserSession(c.env.DB, user.id);
 
+  // Seed pickpocket gloves for established accounts (economy-driven onboarding).
+  // Idempotent: only grants if missing.
+  try {
+    const cryptos = Math.max(0, Math.floor(Number(user.cryptos || 0) || 0));
+    const SEED_THRESHOLD = 100;
+    const SEED_ITEM_ID = 'ITM-PICKPOCKET-GLOVES';
+    if (cryptos >= SEED_THRESHOLD) {
+      const inv = await getUserInventory(c.env.DB, user.id);
+      const has = (inv || []).some((r: any) => r && r.item_id === SEED_ITEM_ID);
+      if (!has) {
+        await grantInventoryItem(c.env.DB, user.id, SEED_ITEM_ID, {
+          itemType: 'persistent',
+          quantity: 1,
+          metadata: { version: 1, seeded: true, seeded_reason: 'cryptos_threshold', seeded_at: Date.now() }
+        });
+      }
+    }
+  } catch (e0) {
+    // Non-fatal: login must still succeed.
+  }
+
   return c.json({
     session_token: token,
     user: {

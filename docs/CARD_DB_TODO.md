@@ -39,6 +39,38 @@ This analysis identifies what can be cleanly imported, what needs adaptation, an
 
 ---
 
+## 0. Solitaire Flow Synergy Chains (Onboarding Priority)
+
+Goal: make the **Solitare/NCH deck management loop** feel like a synergy engine, not a chore.
+Designers should be able to add cards that naturally form "chains" players discover through:
+- hand → backup → vault flows
+- draw/print decisions
+- theft rewards (enemy cards) feeding into the same pipelines
+
+### Recommended chain primitives (engine-facing tags)
+
+Add/standardize these `synergyTags` across player cards/items:
+- `solitaire:draw` (creates a new option)
+- `solitaire:promote` (moves a card to hand-top / makes it live)
+- `solitaire:compress` (reduces clutter: combine, burn, or convert)
+- `solitaire:stash` (secure a value card into persistent/vault)
+- `solitaire:shuffle` (reorders to recover tempo)
+- `solitaire:theft` (cards obtained by stealing; should be precious)
+
+### Example chains (what we should intentionally support)
+- **Draw → Promote → Finish**: `solitaire:draw` → `solitaire:promote` → `combo_finisher`
+- **Theft → Covert payoff**: `pickpocket` → `covert` (already in SynergyEngine)
+- **Shuffle → Sustained**: `solitaire:shuffle` → `sustained`
+- **Stash → Defensive reset**: `solitaire:stash` → `defensive`
+
+### Validation checklist
+- A new player can, within 2 minutes:
+  - see a clear reason to open NCH
+  - perform 1 meaningful hand/backup operation
+  - experience 1 synergy payoff (visual + mechanical)
+
+---
+
 ## 1. Resource System Gap Analysis
 
 ### 1.1 Existing Resources (Implemented)
