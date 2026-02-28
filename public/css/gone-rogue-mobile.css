@@ -1515,7 +1515,8 @@
 
   /* Ensure the #log-column has enough space and proper scrolling */
   body.gone-rogue-active #log-column {
-    padding-bottom: 40px; /* Add padding to prevent footer overlap */
+    /* Add padding so the grid/input aren't trapped behind mobile browser chrome */
+    padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px));
   }
 }
 
