@@ -1646,15 +1646,15 @@ body.amber-mode #scanlines::after {
   body.mode-gone-rogue #crt-screen,
   body.in-gone-rogue #crt-screen,
   body.gone-rogue-active #crt-screen {
-    /* Remove bottom deadspace so the footer can kiss the device edge */
-    padding: 4px 4px 0 4px;
+    /* Keep 1px breathing room at the bottom so it doesn't feel clipped */
+    padding: 4px 4px 1px 4px;
   }
 
   body.mode-gone-rogue #crt-frame,
   body.in-gone-rogue #crt-frame,
   body.gone-rogue-active #crt-frame {
-    /* Keep top/sides, kill bottom padding to remove the after-footer band */
-    padding: 6px 6px 0 6px;
+    /* Keep top/sides, but leave 1px at the bottom so it doesn't feel clipped */
+    padding: 6px 6px 1px 6px;
     gap: 6px;
   }
 
