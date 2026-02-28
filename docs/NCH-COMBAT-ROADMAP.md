@@ -48,6 +48,20 @@ NCH (Non-Combat)          STR-Combat
 └─────────────────┘       └─────────────────┘
 ```
 
+### STR Hand Fan Phase State Machine *(NEW 2026-02-28)*
+
+Phase variable: `_strCombatPhase` in `gone-rogue.js` — exposed via `getStrCombatState().phase` and `setStrCombatPhase()`.
+
+```
+IDLE → COUNTDOWN → SELECTING ⇄ RESOLVING → POST_RESOLVE → SELECTING (loop)
+                                                    ↓
+                                               combat exit → IDLE
+```
+
+Full diagram and phase table in **[UI-CANON.md §13](UI-CANON.md#13-str-hand-fan-state-machine)**.
+
+Key fix (2026-02-28): `show()` and `restore()` in `hand-fan-component.js` now force-clear stale `forwards`-filled CSS animation state (transform/opacity), preventing invisible fan after a previous combat's resolution cycle.
+
 ---
 
 ## Root Cause Analysis *(Historical — largely resolved)*

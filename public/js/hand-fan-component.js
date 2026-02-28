@@ -116,6 +116,14 @@ const HandFanComponent = (function () {
     _mode = 'combat';
     _position = 'centered';
 
+    // Clear any stale minimized state from a previous combat's resolution.
+    // The CSS animation's `forwards` fill can leave scale(0.2) / opacity(0.3)
+    // baked in even after class removal — force-clear inline overrides too.
+    _fanContainer.classList.remove('hand-fan-minimized');
+    _fanContainer.classList.remove('hand-fan-collapsing');
+    _fanContainer.style.transform = '';
+    _fanContainer.style.opacity = '';
+
     _renderCards();
     _fanContainer.style.display = 'flex';
     _fanContainer.classList.add('hand-fan-appear');
@@ -134,7 +142,11 @@ const HandFanComponent = (function () {
     setTimeout(function() {
       _fanContainer.style.display = 'none';
       _fanContainer.classList.remove('hand-fan-disappear');
-      _fanContainer.classList.remove('hand-fan-minimized'); // Remove minimized state
+      _fanContainer.classList.remove('hand-fan-minimized');
+      _fanContainer.classList.remove('hand-fan-collapsing');
+      // Clear any residual animation state so the next show() starts clean
+      _fanContainer.style.transform = '';
+      _fanContainer.style.opacity = '';
     }, 300);
   }
 
@@ -301,6 +313,11 @@ const HandFanComponent = (function () {
    */
   function restore() {
     _fanContainer.classList.remove('hand-fan-minimized');
+    _fanContainer.classList.remove('hand-fan-collapsing');
+    // Force-clear any residual transform/opacity from the `forwards`-filled
+    // CSS animation or the Web Animations API collapse.
+    _fanContainer.style.transform = '';
+    _fanContainer.style.opacity = '';
   }
 
   /**
@@ -1054,6 +1071,8 @@ const HandFanComponent = (function () {
       // Select (max 5 cards)
       if (_selectedCards.length < 5) {
         _selectedCards.push(index);
+        // Check for instant-resolution passive items (e.g. Redneck Obliterator)
+        if (_checkInstantResolveHook()) return;
       }
     }
 
@@ -1102,6 +1121,39 @@ const HandFanComponent = (function () {
 
     // Fallback: full re-render (initial render, or DOM is in unexpected state)
     _renderCards();
+  }
+
+  /**
+   * Check for instant-resolution item hook.
+   * Passive items with `instantResolve: true` (e.g. Redneck Obliterator) trigger
+   * immediate card play when any card is selected, bypassing the timer.
+   * PVE only — PVP is a future TODO.
+   */
+  function _checkInstantResolveHook() {
+    if (_selectedCards.length === 0) return;
+    try {
+      if (typeof PassiveItemsSystem !== 'undefined' &&
+          typeof PassiveItemsSystem.hasTraitActive === 'function' &&
+          PassiveItemsSystem.hasTraitActive('instantResolve')) {
+        console.log('[HandFan] Instant-resolve item active — auto-committing ' + _selectedCards.length + ' card(s)');
+        // Brief visual flash before auto-commit
+        setTimeout(function() {
+          playSelectedCards();
+        }, 200);
+        return true;
+      }
+    } catch (e) {}
+    // Also check via custom event for extensibility
+    try {
+      var evt = new CustomEvent('hand-fan-card-selected', {
+        detail: {
+          selectedCount: _selectedCards.length,
+          cards: _selectedCards.map(function(idx) { return _cards[idx]; })
+        }
+      });
+      window.dispatchEvent(evt);
+    } catch (e2) {}
+    return false;
   }
 
   /**

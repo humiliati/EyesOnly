@@ -453,3 +453,75 @@ STR Combat (self-target):      │  (orange→red flash)  │
 | "Action Buttons" | **Left Column / RogueSidebar** | Mode-aware: items view, cards view, or STR draw. |
 | `NonCombatStateStore` | **CardStateAuthority (CSA)** | CSA is the canonical state source. NCStateStore is read-through cache. |
 | HTML5 drag events (dragover/drop) | **Pointer events** (pointerdown/move/up) | NCH uses pointer-based drag. CardDisposalSystem's HTML5 drag is disconnected. |
+
+---
+
+## 13. STR Hand Fan State Machine
+
+The hand fan follows a strict phase lifecycle during STR combat.
+Phase variable: `_strCombatPhase` in `gone-rogue.js`, exposed via `getStrCombatState().phase`.
+
+```
+                    ┌─────────┐
+                    │  IDLE   │  (no combat)
+                    └────┬────┘
+                         │ _enterStrCombat()
+                         ▼
+                    ┌──────────┐
+                    │COUNTDOWN │  3-2-1 overlay (STRCombatWindow)
+                    │          │  Hand fan: HIDDEN
+                    └────┬─────┘
+                         │ countdown finishes → setStrCombatPhase('selecting')
+                         ▼
+              ┌─────────────────────┐
+         ┌───►│     SELECTING       │  Hand fan: EXPANDED (visible, interactive)
+         │    │                     │  NCH: accessible (capsule or expanded)
+         │    │  Timer running      │  BLVCK injected if stranded
+         │    └──────────┬──────────┘
+         │               │ timer expires / instant-resolve item / playSelectedCards()
+         │               ▼
+         │    ┌─────────────────────┐
+         │    │     RESOLVING       │  Hand fan: MINIMIZED (joker stack, no interaction)
+         │    │                     │  NCH: LOCKED (dimmed, pointer-events:none)
+         │    │  Cards + synergies  │  Combat animations play
+         │    │  applied            │
+         │    └──────────┬──────────┘
+         │               │ round resolution complete
+         │               ▼
+         │    ┌─────────────────────┐
+         │    │   POST_RESOLVE      │  Hand fan: RE-EXPANDING (600ms transition)
+         │    │                     │  Oldest hand card → backup (push cycle)
+         │    │                     │  BLVCK re-evaluated (stranded check)
+         │    │                     │  Disposals + resource exchange applied
+         │    └──────────┬──────────┘
+         │               │ 600ms timeout → phase = 'selecting'
+         └───────────────┘
+
+         On combat exit → phase = 'idle', fan hidden
+```
+
+### Phase Values
+
+| Phase | `_strCombatPhase` | HandFan State | NCH State | Integration Behavior |
+|---|---|---|---|---|
+| **IDLE** | `'idle'` | Hidden | Normal capsule/expanded | No combat poll |
+| **COUNTDOWN** | `'countdown'` | Hidden (not shown) | Normal | `_showHandFan` returns early |
+| **SELECTING** | `'selecting'` | Expanded, interactive | Accessible | Cards shown, timer running, BLVCK check |
+| **RESOLVING** | `'resolving'` | Minimized (joker stack) | Locked | `minimize()` called, animations play |
+| **POST_RESOLVE** | `'post_resolve'` | Re-expanding | Transitioning | `restore()` called, push oldest card, BLVCK re-check |
+
+### Instant-Resolution Items (PVE)
+
+Items with `instantResolve: true` trait (e.g. Redneck Obliterator) bypass the timer:
+when a card is selected in the hand fan, `playSelectedCards()` fires immediately.
+Hook: `_checkInstantResolveHook()` in `hand-fan-component.js`.
+PVP instant-resolve is a future TODO.
+
+### Key Files
+
+| File | Role |
+|---|---|
+| `gone-rogue.js` | Sets `_strCombatPhase`, exposes via `getStrCombatState()` and `setStrCombatPhase()` |
+| `str-combat-integration.js` | 100ms poll reads phase, drives HandFan show/minimize/restore, detects countdown→selecting |
+| `hand-fan-component.js` | `show()` clears stale minimized state, `restore()` force-clears animation fill, `_checkInstantResolveHook()` |
+| `str-combat-window.js` | 3-2-1 countdown overlay, timer, `_onTimerExpired` → `handleStrTimerExpired` |

@@ -11975,14 +11975,6 @@ _incrementPityTimers();
     };
   }
 
-  /**
-   * Set STR combat phase (called by str-combat-integration.js for countdown→selecting transition)
-   * Valid phases: 'idle', 'countdown', 'selecting', 'resolving', 'post_resolve'
-   */
-  function setStrCombatPhase(phase) {
-    _strCombatPhase = phase;
-  }
-
   // ============================================================
   // END STR COMBAT SYSTEM
   // ============================================================
@@ -13278,7 +13270,6 @@ _incrementPityTimers();
     stepProjectiles: stepProjectiles,
     isStrCombatActive: isStrCombatActive,
     getStrCombatState: getStrCombatState,
-    setStrCombatPhase: setStrCombatPhase,
     passStrTurn: function() {
       // Pass player's combat turn — enemy attacks unopposed (called on timer expiry)
       if (_strCombatActive) {

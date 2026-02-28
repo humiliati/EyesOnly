@@ -94,6 +94,19 @@
     var safeRound = (typeof combatState.round === 'number' && isFinite(combatState.round)) ? combatState.round : 1;
     var safeFloor = (typeof combatState.floor === 'number' && isFinite(combatState.floor)) ? combatState.floor : 1;
 
+    // Detect countdown → selecting transition:
+    // Once the STRCombatWindow timer is running (timeRemaining > 0 and window visible),
+    // the countdown overlay has finished → transition to card selection phase.
+    if (combatState.phase === 'countdown' && STRCombatWindow.isVisible()) {
+      var rem = (typeof STRCombatWindow.getTimeRemainingMs === 'function') ? STRCombatWindow.getTimeRemainingMs() : 0;
+      if (rem > 0) {
+        // Countdown done, timer started — promote to selecting
+        if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.setStrCombatPhase === 'function') {
+          GoneRogue.setStrCombatPhase('selecting');
+        }
+      }
+    }
+
     if (!STRCombatWindow.isVisible()) {
       // Determine enemy type for timer duration
       var enemyType = 'standard';
@@ -278,20 +291,29 @@
       } catch (e2) {}
     }
 
-    // Check if we're in turn resolution phase
-    var isResolvingTurn = combatState.phase === 'resolving' || combatState.isResolvingTurn;
+    // ── Phase-aware hand fan state machine ──
+    var phase = combatState.phase || 'selecting';
+    var isResolvingTurn = (phase === 'resolving');
+
+    // During countdown phase: don't show the hand fan yet — wait for 'selecting'
+    if (phase === 'countdown') {
+      _lastResolvingTurn = false;
+      return; // Hand fan appears once countdown completes (phase → 'selecting')
+    }
 
     if (isResolvingTurn) {
       // Minimize hand during turn resolution to show enemy animations
-      HandFanComponent.minimize();
+      if (HandFanComponent.isVisible()) {
+        HandFanComponent.minimize();
+      }
       // Reset guard so we can push once when resolution ends
       _endOfTurnPushDone = false;
     } else {
-      // Restore hand when not resolving
+      // Restore hand when not resolving (covers 'selecting' and 'post_resolve')
       HandFanComponent.restore();
 
       // ── End-of-turn cycle: oldest hand card returns to backup ──
-      // Fires once on the resolving→idle edge.
+      // Fires once on the resolving→selecting/post_resolve edge.
       if (_lastResolvingTurn && !_endOfTurnPushDone) {
         _endOfTurnPushDone = true;
         try {
@@ -310,6 +332,12 @@
         } catch (e3) {
           console.warn('[STRIntegration] pushOldestHandToBackup error:', e3);
         }
+
+        // ── BLVCK re-check on re-expand ──
+        // After disposals and resource exchanges, the hand may be empty or
+        // all remaining cards unaffordable → re-evaluate stranded state.
+        // The next poll iteration will pick up the updated card list and
+        // inject BLVCK via the stranded-check above if needed.
       }
     }
 
@@ -321,7 +349,7 @@
     }
     _lastResolvingTurn = !!isResolvingTurn;
 
-    // If fan isn't visible yet, show it.
+    // If fan isn't visible yet, show it (clears any stale minimized state internally).
     // If visible: only update cards when the hand signature changes (prevents selection jitter).
     if (!HandFanComponent.isVisible()) {
       HandFanComponent.show(cards);
