@@ -100,7 +100,19 @@ var TutorialFloors = (function() {
       // Zone 2: Orchard/garden atmosphere
       { x: 32, y: 3, emoji: '🪑', name: 'Bench' },
       // Zone 3: Hidden grove atmosphere
-      { x: 3, y: 15, emoji: '🏮', name: 'Hidden Lantern' }
+      { x: 3, y: 15, emoji: '🏮', name: 'Hidden Lantern' },
+      // Scene cluster: "two trees and a rock" framing the Hollow Log at (3,13)
+      { x: 2, y: 12, emoji: '🌲', name: 'Pine Tree' },
+      { x: 4, y: 12, emoji: '🌲', name: 'Pine Tree' },
+      { x: 2, y: 14, emoji: '🪨', name: 'Rock' },
+      // Scene cluster: "two rocks and a leaf" framing the Wooden Crate at (23,13)
+      { x: 22, y: 13, emoji: '🪨', name: 'Rock' },
+      { x: 24, y: 13, emoji: '🪨', name: 'Rock' },
+      { x: 23, y: 14, emoji: '🍃', name: 'Fallen Leaf' },
+      // Scene cluster: "a tree, a leaf, and a flower" framing the Flower Patch at (22,5)
+      { x: 21, y: 4, emoji: '🌳', name: 'Oak Tree' },
+      { x: 23, y: 6, emoji: '🍃', name: 'Fallen Leaf' },
+      { x: 21, y: 6, emoji: '🌸', name: 'Wild Flower' }
     ],
 
     // Interactive items (use InteractiveItems system)
@@ -118,8 +130,8 @@ var TutorialFloors = (function() {
       // Zone 1: Water fountain near village
       { x: 10, y: 8, type: 'FOOD', emoji: '💧', name: 'Spring Water',
         customData: { foodId: 'FOOD_WATER' } },
-      // Zone 3: Hidden grove snack
-      { x: 5, y: 14, type: 'FOOD', emoji: '🍬', name: 'Forest Candy',
+      // Zone 3: Hidden grove snack — moved off the bush breakable at (5,14)
+      { x: 4, y: 15, type: 'FOOD', emoji: '🍬', name: 'Forest Candy',
         customData: { foodId: 'FOOD_CANDY' } },
       // Zone 3: Hidden grove discovery
       { x: 7, y: 15, type: 'AREA_OF_INTEREST', emoji: '❓', name: 'Strange Marking',
@@ -265,7 +277,11 @@ var TutorialFloors = (function() {
     decorations: [
       // Breadcrumb trail toward the key alcove (right side)
       { x: 15, y: 3, emoji: '🪧', name: 'Hint Sign' },
-      { x: 25, y: 4, emoji: '🏮', name: 'Lantern' }
+      { x: 25, y: 4, emoji: '🏮', name: 'Lantern' },
+      // Scene cluster: "two rocks and a leaf" framing the Picnic Basket at (18,7)
+      { x: 17, y: 7, emoji: '🪨', name: 'Rock' },
+      { x: 19, y: 7, emoji: '🪨', name: 'Rock' },
+      { x: 18, y: 6, emoji: '🍃', name: 'Fallen Leaf' }
     ],
 
     // Single helpful NPC — points player toward key
@@ -380,9 +396,18 @@ var TutorialFloors = (function() {
     // Exit is beyond the key gate + combat gate
     exit: { x: 20, y: 16 },
 
-    // No buildings or decorations (combat focus)
+    // No buildings — combat focus; add minimal scene clusters around key breakables
     buildings: [],
-    decorations: [],
+    decorations: [
+      // Scene cluster: "two ferns and a flower" framing the Picnic Basket at (28,4)
+      { x: 27, y: 4, emoji: '🌿', name: 'Fern' },
+      { x: 29, y: 4, emoji: '🌿', name: 'Fern' },
+      { x: 28, y: 3, emoji: '🌸', name: 'Wild Flower' },
+      // Scene cluster: "two rocks and a leaf" framing the Hollow Log at (32,10)
+      { x: 31, y: 10, emoji: '🪨', name: 'Rock' },
+      { x: 33, y: 10, emoji: '🪨', name: 'Rock' },
+      { x: 32, y: 9, emoji: '🍃', name: 'Fallen Leaf' }
+    ],
 
     // Friendly gate NPC (Pokemon-style) that teaches STR combat before leaving
     // (This is the first time we *force* combat.)
@@ -838,7 +863,7 @@ var TutorialFloors = (function() {
     // Tavern entrance door — at the doorway gap in the south wall (6,5)
     buildingDoors: [
       { x: 6, y: 5, buildingId: 'BLD-TAVERN', targetFloorId: '0.1' },
-      { x: 34, y: 11, buildingId: 'BLD-003' }
+      { x: 34, y: 11, buildingId: 'BLD-003', targetFloorId: '0.3' }
     ],
 
     // Decorations (visual overlay, walkable)
@@ -848,10 +873,10 @@ var TutorialFloors = (function() {
       { x: 22, y: 2, emoji: '🌲', name: 'Pine Tree' },
       { x: 30, y: 4, emoji: '🌳', name: 'Oak Tree' },
       { x: 35, y: 2, emoji: '🌲', name: 'Pine Tree' },
-      // Lanterns along the path
+      // Lanterns along the path — kept away from exit/door columns
       { x: 10, y: 8, emoji: '🏮', name: 'Lantern' },
       { x: 20, y: 8, emoji: '🏮', name: 'Lantern' },
-      { x: 30, y: 8, emoji: '🏮', name: 'Lantern' },
+      { x: 27, y: 8, emoji: '🏮', name: 'Lantern' },
       // Scenery
       { x: 14, y: 14, emoji: '🪨', name: 'Boulder' },
       { x: 25, y: 15, emoji: '🌿', name: 'Fern' },
