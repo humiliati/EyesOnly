@@ -575,6 +575,227 @@ _visitedBiomes = [];      // All visited biomes
 
 ---
 
+## Environmental Puzzles TODO
+
+### Overview
+
+Environmental puzzles transform ground effects, lighting, and interactive items from passive hazards into active tactical tools — bringing Commandos-style stealth problem-solving to each biome. Every puzzle should be **readable** (player can see the solution elements), **plannable** (player forms a strategy before acting), and **multi-solution** (at least 2 valid approaches).
+
+See [ENEMY_AI.md](./ENEMY_AI.md) for the full enemy behavior roadmap that these puzzles depend on.
+
+### Design Rules
+
+1. **No new tile types** — puzzles use existing ground effects (fire, water, oil, smoke, electrified) and stealth tiles (shadow, grass, cover)
+2. **No new item systems** — puzzles use existing cards (Cigarettes, Lure, Oil Slick, Lighter, Water Bottle, Grenade) via a new `USE [item] [direction]` command
+3. **Enemies must react** — puzzles only work if enemies avoid hazards, investigate disturbances, and propagate alerts (see ENEMY_AI.md Phases 1-2)
+4. **Tutorial floors are hand-crafted** — puzzle floors use `tutorial-floors.js` contrived layout system, not procedural generation
+5. **Procgen floors get puzzle _ingredients_** — procedural floors scatter ground effect tiles + items that allow emergent puzzle-solving, but don't guarantee solvable set-pieces
+
+---
+
+### Puzzle Vocabulary
+
+These are the atomic interactions that combine into puzzles. All use existing systems.
+
+#### Distraction Loop (Lure + Investigation)
+- **Setup**: Enemy patrols near player's desired path
+- **Action**: Player uses Lure card → creates noise at target location
+- **Result**: Enemy enters INVESTIGATING state, walks toward noise source
+- **Window**: 3-5 turns to cross while enemy is diverted
+- **Systems**: Lure card (existing), Investigation behavior (ENEMY_AI.md §1.3)
+
+#### Smoke Screen (Cigarettes + Vision Block)
+- **Setup**: Open area with enemy sight coverage, no concealment tiles
+- **Action**: Player uses Cigarettes → SMOKE ground effect at player position
+- **Result**: Smoke blocks enemy LOS through affected tiles; also blocks alert cascade propagation
+- **Window**: 5 turns before smoke dissipates
+- **Systems**: Cigarettes card (existing), Smoke stealth bonus -40% (existing), alert cascade blocking (ENEMY_AI.md §1.2)
+
+#### Fire Funnel (Oil + Lighter + Enemy Avoidance)
+- **Setup**: Oil tiles placed between player and enemies, lighter available
+- **Action**: Player uses Lighter on oil → FIRE spreads across connected oil tiles
+- **Result**: Enemies pathfind around fire (ENEMY_AI.md §2.1), creating a new safe corridor
+- **Duration**: 8 turns of fire, then extinguishes
+- **Chain**: If water is adjacent to fire → STEAM (acts as smoke, 3 turns)
+- **Systems**: Oil tiles (existing), Lighter item (existing), fire spread (existing per tutorial doc), enemy avoidance (ENEMY_AI.md §2.1)
+
+#### Darkness Drop (Shootable Lights + Stealth)
+- **Setup**: Well-lit room with environmental light sources, enemy patrols the lit zone
+- **Action**: Player shoots light source (💡, 💻, 🪔) → area goes dark
+- **Result**: Darkness stealth bonus activates (up to +50%), player can cross formerly-lit zone unseen
+- **Noise tradeoff**: Breaking a light generates noise (8-12), may trigger investigation
+- **Systems**: LightingSystem (existing), breakable system (existing for crates/barrels, extend to lights), darkness stealth bonus (existing)
+
+#### Wet Trap (Water + Tazer/Electric + Chain Stun)
+- **Setup**: Water tiles in a chokepoint, enemies patrol through water
+- **Action**: Wait for enemy to step into water, then use Tazer card or throw battery
+- **Result**: ELECTRIFIED WATER → all entities in connected water tiles are stunned for 1 round
+- **Systems**: Water tiles (existing), Electrified Water (existing per tutorial doc), Tazer weapon (existing in enemy intent system)
+
+#### Silent Takedown (Steal + Sleeping + Body Hiding)
+- **Setup**: Isolated enemy away from patrol routes of other enemies
+- **Action**: Approach from behind (UNAWARE), use STEAL with intimidate tool → enemy becomes SLEEPING
+- **Result**: Enemy neutralized for 10 turns; if another enemy passes within 2 tiles, they discover the body and go ALERTED
+- **Mitigation**: Neutralize enemies near cover/rooms where patrols don't pass
+- **Systems**: Theft system (existing), intimidate stealTag (extend existing), body discovery (ENEMY_AI.md §4.2)
+
+#### Concealment Burn (Lighter + Grass)
+- **Setup**: Grass tiles providing stealth bonus, but also blocking player's desired path or hiding an enemy
+- **Action**: Use Lighter on grass → grass burns away (FIRE, 5 turns), then tile becomes EMPTY
+- **Result**: Removes concealment permanently; useful if grass is helping an enemy hide, or to create a fire barrier
+- **Tradeoff**: Destroys YOUR stealth option too — irreversible
+- **Systems**: Grass tiles (existing), Lighter (existing), fire (existing)
+
+---
+
+### Biome Puzzle Profiles
+
+Each biome should feature puzzles that emphasize its environmental identity.
+
+#### Forest (Floors 1-3) — "Patrol Gap" Puzzles
+- **Primary tools**: Grass (concealment), Lure (distraction), Cigarettes (smoke)
+- **Signature puzzle**: Time patrol gaps through grass corridors, use Lure to extend the window
+- **Ground effects available**: Grass, Water (streams), Shadow (tree canopy)
+- **Puzzle density**: LOW (1 set-piece per floor, tutorial pacing)
+- **Card drops support**: Silent Shot (2.0x weight in cave, usable here), Lure (1.5x cave), Cigarettes (1.8x cave/1.5x forest)
+
+#### Grey Cave (Floor 4) — "Darkness Maze" Puzzles
+- **Primary tools**: Shootable lights (lava lamps, campfires), Lighter (temporary light), NVG
+- **Signature puzzle**: Destroy lights to create dark corridors, navigate with minimal light, avoid enemy sight cones in remaining lit areas
+- **Ground effects available**: Shadow (dense), Lava (hazard), minimal water
+- **Puzzle density**: MEDIUM (cave is already the stealth-focused biome)
+- **Card drops support**: Silent Shot (2.0x), Prone (1.5x), Dive Cover (1.5x)
+
+#### Shopping Mall (Floors 5-9) — "Fire Funnel" Puzzles
+- **Primary tools**: Oil slicks, Lighter, Water Bottle (extinguish), fire barriers
+- **Signature puzzle**: Mall is too bright for stealth → must use fire to redirect enemy patrols instead of hiding
+- **Ground effects available**: Oil (from maintenance areas), Debris, some Water (fountains)
+- **Puzzle density**: MEDIUM (transition from pure stealth to environmental manipulation)
+- **Card drops support**: Energy Drink (1.8x), Burst Shot (1.5x), Strafe (1.5x)
+- **Special**: Light Bulbs (💡) are shootable, but mall has 80% lit ratio — shooting one doesn't create enough darkness alone
+
+#### Office (Floors 10-15) — "Hack & Dark" Puzzles
+- **Primary tools**: Jammer (disable enemy sight), shoot monitors (create darkness), Virus (confuse patrol)
+- **Signature puzzle**: Offices have predictable monitor-lit corridors. Shoot monitors for darkness, use Jammer to temporarily blind a guard, cross in the dark
+- **Ground effects available**: Minimal (clean offices), some Debris
+- **Puzzle density**: HIGH (office layouts have cubicle walls creating interesting LOS puzzles)
+- **Card drops support**: Jammer (1.8x), Virus (1.8x), Logic Hack (1.5x), Overwatch (1.5x)
+
+#### Industrial (Floors 16-22) — "Chain Reaction" Puzzles
+- **Primary tools**: ALL ground effect tools — Oil, Fire, Water, Electric, Smoke
+- **Signature puzzle**: Set up multi-step chain reactions: Oil → Fire → Steam (smoke cover) → cross; or Water → Tazer → stun multiple enemies
+- **Ground effects available**: Oil (abundant), Fire (hazards), Water (coolant), all chain combinations possible
+- **Puzzle density**: HIGH (this is the "mastery" biome where all systems converge)
+- **Card drops support**: Explosive Shot (1.8x), Grenade (1.8x), Suppressive Fire (1.5x)
+
+#### Aerospace (Floors 23-30) — "Precision Run" Puzzles
+- **Primary tools**: Everything learned, but with tighter margins
+- **Signature puzzle**: High visibility, dense patrols, minimal ground effects. Must execute a precise sequence combining all previously learned techniques
+- **Ground effects available**: Minimal (museum is clean), some imported via biome bleed
+- **Puzzle density**: VERY HIGH (endgame tests all skills)
+- **Card drops support**: Aim (1.8x), Overwatch (1.8x), High Ground (1.8x)
+- **Special**: Floor 30 boss has 50% darkness multiplier on ALL lights — unique environmental shift
+
+---
+
+### Procedural Floor Puzzle Ingredients
+
+For non-tutorial floors, the procedural generator should scatter puzzle ingredients that allow emergent Commandos-style play without guaranteeing a designed set-piece.
+
+#### Ingredient Spawn Rules (add to `_generateFloor`)
+
+```
+PER BIOME:
+──────────
+Forest:     2-4 grass clusters, 1-2 water tiles, 0-1 oil tile
+Cave:       3-5 shadow clusters, 1-2 lava tiles, 1 shootable light per room
+Mall:       2-3 oil tiles, 1-2 water tiles (fountains), lights everywhere
+Office:     1 monitor per room (shootable), 1-2 debris clusters
+Industrial: 3-5 oil tiles, 2-3 water tiles, 1-2 fire tiles, 1 electric source
+Aerospace:  1-2 of anything (sparse), mostly clean
+
+PER FLOOR (any biome):
+──────────────────────
+1 Lure card drop (weighted by biome)
+1 smoke-capable item (Cigarettes or Smoke Bomb)
+At least 1 ground-effect-creating item in floor loot
+```
+
+#### Item Placement Heuristic
+
+Place ground effect items **near the situations they solve**:
+- Oil tiles near **narrow corridors** (fire funnel potential)
+- Water tiles near **enemy patrol overlaps** (wet trap potential)
+- Smoke-capable items near **open areas with no concealment** (smoke screen potential)
+- Lure cards near **stationary enemies blocking key paths** (distraction potential)
+
+This doesn't guarantee the player finds or uses them, but ensures the ingredients for emergent puzzle-solving are present.
+
+---
+
+### Implementation Checklist
+
+#### Phase A: Foundation (enables any puzzle to work)
+- [ ] `USE [item] [direction]` command in exploration mode
+- [ ] Items with `groundEffect` property create ground effects on use
+- [ ] Enemies check ground effects before moving (avoidance)
+- [ ] Enemies investigate disturbance locations (noise sources)
+
+#### Phase B: Tutorial Puzzles (hand-crafted set-pieces)
+- [ ] Floor 2 layout in `tutorial-floors.js`: "The Watchtower" (patrol timing + concealment)
+- [ ] Floor 3 layout in `tutorial-floors.js`: "The Distraction" (item → ground effect → patrol manipulation)
+- [ ] Floor 4 layout in `tutorial-floors.js`: "The Alert Chain" (cascade + smoke blocking)
+- [ ] Each puzzle floor includes MOK interjection hints (e.g., "💭 That oil looks flammable...")
+
+#### Phase C: Procedural Ingredients (emergent puzzle support)
+- [ ] Ground effect ingredient spawn rules per biome (see table above)
+- [ ] Item placement heuristic (items near relevant terrain)
+- [ ] Biome card drop tables updated with puzzle-relevant items
+- [ ] At least 1 Lure + 1 smoke item guaranteed per procedural floor
+
+#### Phase D: Polish (readability + feedback)
+- [ ] Overhead animator shows ground effect creation (🔥 when oil ignites, 💨 when smoke appears)
+- [ ] MOK tooltip when player stands near usable item + relevant terrain ("Oil nearby — USE LIGHTER to ignite")
+- [ ] Enemy overhead shows investigation target (🔍 when walking toward disturbance)
+- [ ] Sound indicators: noise radius preview when selecting a noisy action
+
+---
+
+### Testing Scenarios
+
+#### Scenario 1: Smoke Bypass
+1. Player has Cigarettes card
+2. Enemy patrols corridor with no concealment
+3. Player uses Cigarettes → smoke appears
+4. Verify: enemy cannot detect player through smoke
+5. Verify: smoke dissipates after 5 turns
+6. Verify: enemy resumes normal patrol after smoke clears
+
+#### Scenario 2: Fire Funnel
+1. Floor has oil tiles in a corridor
+2. Player has Lighter
+3. Player ignites oil → fire spreads to connected oil tiles
+4. Verify: enemy pathfinds around fire
+5. Verify: fire burns out after 8 turns
+6. Verify: if water is adjacent, steam (smoke) is created
+
+#### Scenario 3: Alert Cascade + Smoke Block
+1. Three enemies: E1 near player, E2 5 tiles from E1, E3 5 tiles from E2
+2. Smoke tiles between E1 and E2
+3. Player alerts E1
+4. Verify: E1 goes ALERTED
+5. Verify: E2 does NOT receive cascade (smoke blocks)
+6. Verify: E3 does NOT receive cascade (E2 never alerted)
+
+#### Scenario 4: Silent Takedown + Body Discovery
+1. Enemy A patrols near enemy B (stationary)
+2. Player neutralizes enemy B (STEAL → SLEEPING)
+3. Enemy A's patrol passes within 2 tiles of sleeping B
+4. Verify: A discovers body, goes ALERTED
+5. Test mitigation: neutralize B behind cover where A doesn't patrol
+
+---
+
 ## Future Enhancements
 
 ### Potential Additions
