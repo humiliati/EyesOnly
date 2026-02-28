@@ -17,7 +17,13 @@ const GroundEffects = (function () {
     GLASS: 'glass',
     SODA_SPILL: 'soda_spill',
     STEAM: 'steam',
-    ICE: 'ice'
+    ICE: 'ice',
+    DARKENED: 'darkened',
+    CONDUCTIVE: 'conductive',
+    RADIANT: 'radiant',
+    OBSCURED: 'obscured',
+    SONIC: 'sonic',
+    RESONANCE: 'resonance'
   };
 
   // Ground effect definitions
@@ -115,6 +121,66 @@ const GroundEffects = (function () {
       accuracyPenaltyPct: 12,    // -12% hit chance
       evasionPenaltyPts: 2,      // -2 evasion points (each = 5% miss)
       description: 'Frozen surface (fast but slippery)'
+    },
+    DARKENED: {
+      emoji: '🌑',
+      char: '▓',
+      color: '#1a1a2e',
+      lightLevel: 0,             // Floor light level reduced to 0
+      stealthBonus: 0.25,        // +25% stealth
+      shadowBoost: 1,            // Shadow-type cards gain +1 effect
+      disableSolar: true,        // Solar-type cards disabled
+      description: 'Darkened ground - stealth boosted, shadow cards enhanced'
+    },
+    CONDUCTIVE: {
+      emoji: '⚡',
+      char: '≋',
+      color: '#4169e1',
+      electricalAmplify: 2.0,    // 2x electrical effects
+      metalVulnerability: 1.5,   // Metal-tag enemies take bonus damage
+      shockDamage: 1,            // Player also vulnerable
+      description: 'Conductive field - electricity effects doubled'
+    },
+    RADIANT: {
+      emoji: '🌞',
+      char: '◈',
+      color: '#ffeb3b',
+      lightLevel: 10,            // Maximum light level
+      shadowDamage: 2,           // Damage to shadow-aligned enemies
+      removeStealth: true,       // Removes stealth
+      accuracyBonus: 10,         // +10% accuracy
+      description: 'Radiant ground - bright luminous tiles'
+    },
+    OBSCURED: {
+      emoji: '💨',
+      char: '≈',
+      color: '#808080',
+      accuracyPenalty: -15,      // -15% accuracy for all units
+      visibilityReduction: -50,  // -50% visibility
+      stealthBonus: 0.15,        // +15% stealth
+      dissipates: true,
+      lifetime: 8,               // Seconds before dissipating
+      description: 'Dense smoke cloud - heavily obscured'
+    },
+    SONIC: {
+      emoji: '🔊',
+      char: '~',
+      color: '#9c27b0',
+      sonicAmplify: 1.5,         // 1.5x sonic effects
+      accuracyPenalty: -3,       // -3% accuracy (minor disorient)
+      applyRinging: true,        // Applies ringing status
+      lifetime: 8,               // Seconds
+      description: 'Sonic vibrations - amplifies sound effects'
+    },
+    RESONANCE: {
+      emoji: '🎤',
+      char: '◊',
+      color: '#e91e63',
+      costReduction: 99,         // Next Sonic card costs 0
+      sonicTag: true,            // Applies to sonic tag
+      lightInteractionBoost: 2.0, // 2x light interactions
+      lifetime: 6,               // Seconds
+      description: 'Resonance field - free sonic cards'
     }
   };
 

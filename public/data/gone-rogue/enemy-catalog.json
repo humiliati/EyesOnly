@@ -1317,7 +1317,122 @@
       ]
     }
   },
-  "variants": {},
+  "variants": {
+    "SURVEILLANCE_NODE": {
+      "name": "Surveillance Node",
+      "description": "Static surveillance systems. Cameras, drones, automated turrets. Ignores emotional triggers. Does not reposition when lights break. Switches to Infrared Mode if lightSources == 0.",
+      "lightBehavior": {
+        "type": "surveillance",
+        "fearThreshold": 0.0,
+        "curiosityThreshold": 0.0,
+        "prefersLight": false,
+        "investigatesLightBreak": false,
+        "infraredOnDarkness": true
+      },
+      "patch": {
+        "addExposedTags": ["hack", "disable"],
+        "statMods": {
+          "accuracyInDarkness": 1.15
+        }
+      },
+      "whenGroundEffects": ["darkened"],
+      "_designNote": "Destroying lights weakens humans but does NOT scare surveillance. May actually buff certain machines with infrared mode."
+    },
+    "ADAPTIVE_DRONE": {
+      "name": "Adaptive Drone",
+      "description": "Patrol AI that recalculates pathing if darkness spreads. Moves toward brightest tile to maintain scanning grid. Does not panic - it optimizes.",
+      "lightBehavior": {
+        "type": "surveillance",
+        "fearThreshold": 0.0,
+        "curiosityThreshold": 0.0,
+        "prefersLight": true,
+        "investigatesLightBreak": false,
+        "moveToBrightestTile": true
+      },
+      "patch": {
+        "addExposedTags": ["hack", "emp"],
+        "statMods": {
+          "moveSpeed": 1.2,
+          "sightRange": 1.3
+        }
+      },
+      "_designNote": "Recalculates pathing to brightest tile when darkness spreads. Optimizes rather than panics."
+    },
+    "FLASHLIGHT_GUARD": {
+      "name": "Flashlight Guard",
+      "description": "Security guard with survival instincts. Photophilic safety bias - if light breaks, moves toward remaining lit tiles and clusters with other guards.",
+      "lightBehavior": {
+        "type": "concerned",
+        "fearThreshold": 0.6,
+        "curiosityThreshold": 0.2,
+        "prefersLight": true,
+        "investigatesLightBreak": false,
+        "clusterInLight": true
+      },
+      "patch": {
+        "deckOverride": {},
+        "addCards": ["EATK-010"],
+        "addExposedTags": ["intimidate"],
+        "statMods": {
+          "accuracyInLight": 1.1,
+          "accuracyInDarkness": 0.8
+        }
+      },
+      "whenGroundEffects": ["darkened"],
+      "_designNote": "Breaking lights forces clustering, creates AoE opportunities, makes them predictable. In Light: +Accuracy, -Fear. In Darkness: -Accuracy, may apply Concerned status, may skip aggressive action."
+    },
+    "INVESTIGATIVE_TECHNICIAN": {
+      "name": "Investigative Technician",
+      "description": "Techs, detectives, cultists, scientists. Anomaly-seeking behavior - moves toward tile where light was destroyed. If multiple lights break, moves to most recent.",
+      "lightBehavior": {
+        "type": "curious",
+        "fearThreshold": 0.3,
+        "curiosityThreshold": 0.8,
+        "prefersLight": false,
+        "investigatesLightBreak": true,
+        "moveToAnomalyLocation": true
+      },
+      "patch": {
+        "addCards": ["EATK-010", "EATK-017"],
+        "addExposedTags": ["hack"],
+        "statMods": {
+          "damageOnAlert": 1.2
+        }
+      },
+      "whenLightBroken": {
+        "applyAlert": true,
+        "investigateAggressively": true
+      },
+      "_designNote": "Light breaks: Retreat to light (Concerned) vs Advance to darkness (Curious). Darkness spreads: Defensive (Concerned) vs Investigative (Curious). Flash event: Shield eyes (Concerned) vs Study effect (Curious). No light sources: Hide (Concerned) vs Patrol anomaly zone (Curious)."
+    },
+    "PARANOID_CULTIST": {
+      "name": "Paranoid Cultist",
+      "description": "Hybrid archetype. Fears darkness but worships flickering lights. Nonlinear reactions to flicker vs full blackout, controlled vs chaotic lighting.",
+      "lightBehavior": {
+        "type": "hybrid",
+        "fearThreshold": 0.7,
+        "curiosityThreshold": 0.5,
+        "prefersLight": true,
+        "investigatesLightBreak": false,
+        "worshipsFlicker": true
+      },
+      "patch": {
+        "addCards": ["EATK-006", "EATK-007"],
+        "statMods": {
+          "zealOnFlicker": 1.3,
+          "panicOnTotalDarkness": 0.6
+        }
+      },
+      "whenLightFlicker": {
+        "gainZeal": true
+      },
+      "whenGroundEffects": ["darkened"],
+      "reactionOverride": {
+        "enterPanic": true
+      },
+      "_designNote": "If lightFlicker: gain Zeal. If totalDarkness: enter Panic. Creates nonlinear reactions to flicker vs full blackout."
+    }
+  },
   "spawnBands": [
     {
       "floors": [

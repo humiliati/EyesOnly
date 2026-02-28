@@ -143,5 +143,166 @@
     "preCombat": true,
     "synergyTags": ["disposable", "covert", "pickpocket", "sleight", "combo_finisher"],
     "_designNote": "Generic permanent-steal reward card. Represents lifted enemy technique without requiring full EATK->ACT mapping yet."
+  },
+  {
+    "id": "ACT-100",
+    "name": "Ultrasonic Weapon",
+    "emoji": "🔊",
+    "targetType": "area",
+    "cost": 0,
+    "costs": [
+      { "kind": "battery", "amount": 2 }
+    ],
+    "rarity": "rare",
+    "groundEffectId": "EFF-006",
+    "effects": [
+      { "type": "shatter_lights", "value": 99 },
+      { "type": "battery_burn_per_light", "value": 1 },
+      { "type": "status", "status": "ringing", "duration": 2, "target": "all" },
+      { "type": "remove_stealth", "target": "enemy" }
+    ],
+    "preCombat": true,
+    "synergyTags": ["sonic", "tech", "light_manipulation", "aoe"],
+    "_designNote": "Core card of Ultrasonic Feedback Chain. Burns battery per light source, shatters all bulbs, creates Sonic Ground Effect. Synergizes with Feedback Microphone for free cast."
+  },
+  {
+    "id": "ACT-101",
+    "name": "Feedback Microphone",
+    "emoji": "🎤",
+    "targetType": "self",
+    "cost": 0,
+    "costs": [
+      { "kind": "battery", "amount": 1 }
+    ],
+    "rarity": "uncommon",
+    "groundEffectId": "EFF-007",
+    "effects": [
+      { "type": "cost_reduction_next", "tag": "sonic", "amount": 99 },
+      { "type": "light_interaction_boost", "multiplier": 2.0, "duration": 1 }
+    ],
+    "preCombat": true,
+    "synergyTags": ["sonic", "tech", "combo_starter", "resonance"],
+    "_designNote": "Enabler card. Creates Resonance ground effect. Next Sonic card costs 0 battery. Doubles light-based interactions this round."
+  },
+  {
+    "id": "ACT-102",
+    "name": "Battery Spill",
+    "emoji": "🔋",
+    "targetType": "ground",
+    "cost": 1,
+    "costs": null,
+    "rarity": "common",
+    "groundEffectId": "EFF-003",
+    "effects": [
+      { "type": "light_instability", "value": true },
+      { "type": "electrical_vulnerability", "multiplier": 1.5 }
+    ],
+    "preCombat": true,
+    "synergyTags": ["electrical", "tech", "combo_starter", "hazard"],
+    "_designNote": "Creates Conductive Field. All light sources become unstable. Sets up Overload Grid combo."
+  },
+  {
+    "id": "ACT-103",
+    "name": "Overload Grid",
+    "emoji": "⚡",
+    "targetType": "area",
+    "cost": 3,
+    "costs": null,
+    "rarity": "rare",
+    "effects": [
+      { "type": "chain_lightning_per_light", "damage": 2 },
+      { "type": "status", "status": "shock", "duration": 1, "target": "enemy" },
+      { "type": "consume_lights", "value": 99 },
+      { "type": "blinding_flash_threshold", "lightCount": 4, "accuracyPenalty": -50 }
+    ],
+    "preCombat": false,
+    "synergyTags": ["electrical", "tech", "combo_finisher", "aoe"],
+    "_designNote": "Payoff card. For each active light source: chain lightning arcs across Conductive Ground. If 4+ lights: creates Blinding Flash (enemy accuracy -50%)."
+  },
+  {
+    "id": "ACT-104",
+    "name": "Prism Mine",
+    "emoji": "🔆",
+    "targetType": "ground",
+    "cost": 2,
+    "costs": null,
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "plant_prism_node", "value": 1 },
+      { "type": "convert_lights_to_lumens", "ratio": 1 },
+      { "type": "fractured_refraction", "groundType": "darkened", "bonus": 1 }
+    ],
+    "preCombat": true,
+    "synergyTags": ["light_manipulation", "setup", "solar", "tech"],
+    "_designNote": "Plants reflective nodes on floor. Converts light sources into Stored Lumens (stacking resource). Broken bulbs on Darkened Ground count as +1 Lumen."
+  },
+  {
+    "id": "ACT-105",
+    "name": "Solar Flare Step",
+    "emoji": "🌞",
+    "targetType": "ground",
+    "cost": 1,
+    "costs": null,
+    "rarity": "uncommon",
+    "groundEffectId": "EFF-004",
+    "effects": [
+      { "type": "consume_lumens", "value": 99 },
+      { "type": "damage_per_lumen", "value": 2, "target": "shadow_enemies" }
+    ],
+    "preCombat": false,
+    "synergyTags": ["solar", "light_manipulation", "combo_finisher"],
+    "_designNote": "Consumes all Stored Lumens. Creates Radiant Ground. Damages shadow-aligned enemies based on Lumens consumed."
+  },
+  {
+    "id": "ACT-106",
+    "name": "Smoke Bomb",
+    "emoji": "💨",
+    "targetType": "ground",
+    "cost": 1,
+    "costs": null,
+    "rarity": "common",
+    "groundEffectId": "EFF-005",
+    "effects": [
+      { "type": "accuracy", "value": -15, "target": "all" },
+      { "type": "stealth_bonus", "value": 0.15 }
+    ],
+    "preCombat": true,
+    "synergyTags": ["smoke", "stealth", "combo_starter", "covert"],
+    "_designNote": "Creates Obscured Ground. Heavy accuracy penalty for all units. Sets up Tactical Spotlight combo for positional light control."
+  },
+  {
+    "id": "ACT-107",
+    "name": "Tactical Spotlight",
+    "emoji": "🔦",
+    "targetType": "ground",
+    "cost": 2,
+    "costs": null,
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "redirect_light", "targetTile": 1 },
+      { "type": "concentrate_brightness", "multiplier": 3.0 },
+      { "type": "shadow_non_spotlight", "value": true },
+      { "type": "overexpose_spotlight", "critBonus": 1.5 }
+    ],
+    "preCombat": true,
+    "synergyTags": ["light_manipulation", "tactical", "combo_finisher"],
+    "_designNote": "Redirects all light to 1 tile. Creates Overexposed spotlight tile (enemies take +crit damage) and Shadowed non-spotlight tiles (enemies have miss chance)."
+  },
+  {
+    "id": "ACT-108",
+    "name": "Loop Recorder",
+    "emoji": "📼",
+    "targetType": "self",
+    "cost": 1,
+    "costs": null,
+    "rarity": "rare",
+    "effects": [
+      { "type": "store_last_tag", "value": true },
+      { "type": "echo_tag", "duration": 2 },
+      { "type": "free_play_on_repeat", "tag": "sonic" }
+    ],
+    "preCombat": false,
+    "synergyTags": ["sonic", "tech", "combo_starter", "chain"],
+    "_designNote": "Stores last played tag. If Sonic tag played twice in sequence (or Loop Recorder echoes Sonic), next Sonic card is free and applies Overdrive (Sonic Ground duration +1)."
   }
 ]
