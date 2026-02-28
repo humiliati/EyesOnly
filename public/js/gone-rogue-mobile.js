@@ -723,6 +723,8 @@ const GoneRogueMobile = (function () {
     // Add currencies
     if (currencies) {
       currencies.forEach(function(currency) {
+        // Skip collected currencies to prevent dual rendering bug
+        if (currency.collected) return;
         var vx = _toViewX(currency.x);
         var vy = _toViewY(currency.y);
         if (!_inView(vx, vy)) return;
@@ -735,12 +737,18 @@ const GoneRogueMobile = (function () {
       });
     }
 
+    // Track positions of items to prevent duplicate rendering (Bug #2 fix)
+    var itemPositions = {};
+
     // Add items
     if (items) {
       items.forEach(function(item) {
         var vx = _toViewX(item.x);
         var vy = _toViewY(item.y);
         if (!_inView(vx, vy)) return;
+        var posKey = vx + ',' + vy;
+        if (itemPositions[posKey]) return; // Skip if already rendered
+        itemPositions[posKey] = true;
         entities.push({
           x: vx,
           y: vy,
@@ -784,13 +792,16 @@ const GoneRogueMobile = (function () {
       });
     }
 
-    // Add interactive items
+    // Add interactive items (deduplication prevents dual rendering with items[])
     if (typeof InteractiveItems !== 'undefined') {
       var interactiveItems = InteractiveItems.getAllItems();
       interactiveItems.forEach(function(item) {
         var vx = _toViewX(item.x);
         var vy = _toViewY(item.y);
         if (!_inView(vx, vy)) return;
+        var posKey = vx + ',' + vy;
+        if (itemPositions[posKey]) return; // Skip if already rendered from items[]
+        itemPositions[posKey] = true;
         entities.push({
           x: vx,
           y: vy,
