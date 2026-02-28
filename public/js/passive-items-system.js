@@ -277,6 +277,44 @@ const PassiveItemsSystem = (function() {
       stackable: false,
       slot: 'passive_equipment',
       is_active_effect: true
+    },
+
+    // Collection / loot system items
+    MAGNET: {
+      id: 'magnet',
+      name: 'Magnet',
+      emoji: '🧲',
+      description: 'Nearby currency and ammo fly to you. Collection range: 3 tiles.',
+      trigger_event: TRIGGER_EVENTS.ON_EQUIP,
+      is_active_effect: true,
+      // Magnet properties
+      collection_range: 3,         // Tiles — Chebyshev distance
+      collection_interval_ms: 400, // Collect one node every 400ms (staggered)
+      collects_currency: true,
+      collects_ammo: true,
+      collects_items: false,       // Upgrade unlocks item collection
+      // Equipment properties
+      upgrade_path: 'magnet_plus',
+      stackable: false,
+      slot: 'passive_equipment'
+    },
+    MAGNET_PLUS: {
+      id: 'magnet_plus',
+      name: 'Magnet+',
+      emoji: '🧲',
+      description: 'Powerful attraction field. Range: 5 tiles. Also pulls loose items. [UPGRADED]',
+      trigger_event: TRIGGER_EVENTS.ON_EQUIP,
+      is_active_effect: true,
+      // Magnet properties
+      collection_range: 5,         // Wider range
+      collection_interval_ms: 250, // Faster collection
+      collects_currency: true,
+      collects_ammo: true,
+      collects_items: true,        // Also pulls loose item drops
+      // Equipment properties
+      upgrade_path: null,
+      stackable: false,
+      slot: 'passive_equipment'
     }
   };
 
@@ -882,6 +920,35 @@ const PassiveItemsSystem = (function() {
     return brokenItems;
   }
 
+  /**
+   * Check if any equipped passive has a specific boolean trait active.
+   * Used by external systems (e.g. HandFanComponent's instantResolve check).
+   * @param {string} traitName — property name to check (e.g. 'instantResolve', 'silent_sprint')
+   * @returns {boolean}
+   */
+  function hasTraitActive(traitName) {
+    for (var i = 0; i < _equippedPassives.length; i++) {
+      var item = PASSIVE_ITEMS_DB[_equippedPassives[i].toUpperCase()];
+      if (item && item[traitName]) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Get the magnet config if a magnet item is equipped.
+   * Returns null if no magnet is equipped.
+   * @returns {Object|null} magnet item definition with collection_range etc.
+   */
+  function getEquippedMagnet() {
+    for (var i = 0; i < _equippedPassives.length; i++) {
+      var item = PASSIVE_ITEMS_DB[_equippedPassives[i].toUpperCase()];
+      if (item && item.collection_range && item.collects_currency) {
+        return item;
+      }
+    }
+    return null;
+  }
+
   // Public API
   return {
     init: init,
@@ -889,6 +956,8 @@ const PassiveItemsSystem = (function() {
     unequipPassive: unequipPassive,
     getEquippedPassives: getEquippedPassives,
     hasSynergy: hasSynergy,
+    hasTraitActive: hasTraitActive,
+    getEquippedMagnet: getEquippedMagnet,
     handleDisposal: handleDisposal,
     handlePurchase: handlePurchase,
     increasePassiveSlots: increasePassiveSlots,

@@ -4886,6 +4886,171 @@ _incrementPityTimers();
     });
   }
 
+  // ── Magnet auto-collect state ──
+  var _magnetLastCollectTime = 0;   // Timestamp of last magnet pull
+  var _magnetPullingIds = [];        // Indices being pulled this frame (for stagger)
+
+  /**
+   * Magnet auto-collect: if the player has a Magnet equipped, periodically
+   * pull nearby scattered currency/ammo toward the player and collect them.
+   * Uses Chebyshev distance (king-move radius) so diagonal tiles are in range.
+   *
+   * @param {number} now — Date.now() from the game loop
+   */
+  function _magnetAutoCollect(now) {
+    if (!_player || _strCombatActive) return;
+
+    // Check if player has a magnet
+    var magnet = null;
+    try {
+      if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.getEquippedMagnet) {
+        magnet = PassiveItemsSystem.getEquippedMagnet();
+      }
+    } catch (e) { return; }
+    if (!magnet) return;
+
+    // Throttle by collection_interval_ms (default 400ms)
+    var interval = magnet.collection_interval_ms || 400;
+    if (now - _magnetLastCollectTime < interval) return;
+
+    var range = magnet.collection_range || 3;
+    var px = _player.x;
+    var py = _player.y;
+
+    // Find all currencies within Chebyshev distance
+    var inRange = [];
+    for (var ci = 0; ci < _currencies.length; ci++) {
+      var c = _currencies[ci];
+      if (!c || c.collected) continue;
+      var dx = Math.abs(c.x - px);
+      var dy = Math.abs(c.y - py);
+      var dist = Math.max(dx, dy); // Chebyshev
+      if (dist > 0 && dist <= range) {
+        inRange.push({ idx: ci, dist: dist, currency: c });
+      }
+    }
+
+    if (inRange.length === 0) return;
+
+    // Sort nearest first so closest get pulled first
+    inRange.sort(function(a, b) { return a.dist - b.dist; });
+
+    // Collect the nearest one this tick (staggered pull, one per interval)
+    var target = inRange[0];
+    var c = target.currency;
+    _magnetLastCollectTime = now;
+
+    // Determine if ammo or currency
+    if (c._isAmmo) {
+      // Ammo collection
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addAmmo) {
+        GAMESTATE.addAmmo(c.amount);
+      }
+    } else {
+      // Currency collection
+      if (typeof GAMESTATE !== 'undefined') {
+        GAMESTATE.addCryptos(c.amount);
+      }
+      _currencyCollected += c.amount;
+    }
+
+    // Show overhead pickup animation at the currency's position (flies to player)
+    if (typeof OverheadAnimator !== 'undefined') {
+      if (c._isAmmo) {
+        OverheadAnimator.showGenericExpression(c.x, c.y, '؋', 600);
+      } else {
+        OverheadAnimator.showCurrencyPickup(c.x, c.y, c.amount);
+      }
+    }
+
+    // Collection state for animation
+    _player.collectingCurrency = true;
+    _player.currencyCollectTime = now;
+
+    // Pancake stacker feedback
+    try {
+      var glyph = c._isAmmo ? '؋' : '¢';
+      if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+        PancakeStack.addPancake(glyph);
+      } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
+        PlayerStackManager.addPancake(glyph);
+      }
+    } catch (ePancake) {}
+
+    // Remove from currencies array
+    _currencies.splice(target.idx, 1);
+  }
+
+  /**
+   * Scatter post-combat currency/ammo nodes around the defeated enemy's position.
+   * Nodes bounce and spread 1-3 tiles in random directions so the player
+   * has to chase them down (unless they have a magnet equipped).
+   */
+  function _scatterPostCombatNodes(enemy, victoryCtx) {
+    if (!enemy) return;
+    var cx = enemy.x || 0;
+    var cy = enemy.y || 0;
+
+    // Determine how many scatter nodes (1-3)
+    var nodeCount = 1;
+    var totalValue = (victoryCtx.lootCurrency || 0) + (victoryCtx.lootAmmo || 0) * 2;
+    if (totalValue > 30) nodeCount = 2;
+    if (totalValue > 80 || victoryCtx.isBoss) nodeCount = 3;
+
+    // Scatter directions (random adjacent tiles)
+    var dirs = [
+      { dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
+      { dx: -1, dy: -1 }, { dx: 1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: 1 }
+    ];
+
+    // Shuffle directions
+    for (var s = dirs.length - 1; s > 0; s--) {
+      var j = Math.floor(_rng() * (s + 1));
+      var tmp = dirs[s]; dirs[s] = dirs[j]; dirs[j] = tmp;
+    }
+
+    for (var n = 0; n < nodeCount; n++) {
+      var dir = dirs[n % dirs.length];
+      var nx = cx + dir.dx;
+      var ny = cy + dir.dy;
+
+      // Bounds check
+      if (ny < 0 || ny >= _grid.length || nx < 0 || nx >= _grid[0].length) {
+        nx = cx; ny = cy;
+      }
+      // Don't scatter onto walls
+      if (_grid[ny] && _grid[ny][nx] === TILES.WALL) {
+        nx = cx; ny = cy;
+      }
+
+      // Split loot across nodes
+      if (victoryCtx.lootCurrency > 0) {
+        var share = Math.ceil(victoryCtx.lootCurrency / nodeCount);
+        _currencies.push({
+          x: nx, y: ny,
+          amount: Math.min(share, victoryCtx.lootCurrency),
+          glyph: '¢',
+          emoji: '💰',
+          spawnTime: Date.now(),
+          decayTime: 25000, // 25s to chase
+          _scattered: true  // Flag for visual flair in renderer
+        });
+      }
+      if (victoryCtx.lootAmmo > 0 && n === 0) {
+        _currencies.push({
+          x: nx, y: ny,
+          amount: victoryCtx.lootAmmo,
+          glyph: '؋',
+          emoji: '؋',
+          spawnTime: Date.now(),
+          decayTime: 25000,
+          _scattered: true,
+          _isAmmo: true
+        });
+      }
+    }
+  }
+
   function _renderGrid() {
     var lines = [''];
 
@@ -8104,6 +8269,9 @@ _incrementPityTimers();
       }
       return true; // Keep currency without decay timers
     });
+
+    // ── Magnet auto-collect: pull nearby scattered currency/ammo to player ──
+    _magnetAutoCollect(now);
 
     // Update color cycle timer for visual feedback
     _enemyColorCycleTime += deltaMs;
@@ -11595,6 +11763,28 @@ _incrementPityTimers();
       lines.push('✅ COMBAT VICTORY!');
       lines.push('└─ Enemy neutralized');
 
+      // ── Capture victory context for animated sequence ──
+      var _victoryCtx = {
+        enemyEmoji: _strCombatEnemy ? (_strCombatEnemy.emoji || '👾') : '👾',
+        enemyName: _strCombatEnemy ? (_strCombatEnemy.name || 'Enemy') : 'Enemy',
+        playerHp: _player ? _player.hp : 10,
+        playerMaxHp: _player ? (_player.maxHp || 10) : 10,
+        combatLog: _strCombatLog.slice(), // snapshot
+        round: _strCombatRound,
+        advantage: _strCombatAdvantage,
+        usedBlvck: _strCombatLog.some(function(l) { return l && (l.indexOf('BLVCK') >= 0 || l.indexOf('STRUGGLE') >= 0); }),
+        statusEffects: [],
+        lootCards: [],
+        lootCurrency: 0,
+        lootAmmo: 0,
+        lootCharms: [],
+        stolenCards: [],
+        overkill: _strCombatEnemy ? (_strCombatEnemy.hp < -(_strCombatEnemy.maxHp || 5)) : false,
+        isBoss: !!(_bossFloorActive && _activeBoss),
+        enemyX: _strCombatEnemy ? _strCombatEnemy.x : _player.x,
+        enemyY: _strCombatEnemy ? _strCombatEnemy.y : _player.y
+      };
+
       // NPC gate combat (friendly / defeatable)
       if (_strCombatEnemy && _strCombatEnemy._npcGateId) {
         var gateNpc = _getNpcById(_strCombatEnemy._npcGateId);
@@ -11660,6 +11850,7 @@ _incrementPityTimers();
         // Auto-collect ammo drops
         GAMESTATE.addAmmo(ammoDrops);
         lines.push('؋ AMMO RECOVERED: +' + ammoDrops + ' (' + _strCombatAmmoSpent + ' spent in combat)');
+        _victoryCtx.lootAmmo = ammoDrops;
 
         // Report to debrief feed
         if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
@@ -11670,8 +11861,9 @@ _incrementPityTimers();
 
       // Spawn standard loot (currency, cards, charms)
       if (deathResult && deathResult.loot) {
-        // Currency
+        // Currency — defer to scatter system (post-victory)
         if (deathResult.loot.currency > 0) {
+          _victoryCtx.lootCurrency += deathResult.loot.currency;
           _spawnCurrency(_strCombatEnemy.x, _strCombatEnemy.y, deathResult.loot.currency);
         }
 
@@ -11690,6 +11882,7 @@ _incrementPityTimers();
                   spawnTime: Date.now(),
                   decayTime: 30000 // 30 second decay
                 });
+                _victoryCtx.lootCards.push({ emoji: card.emoji || '🎴', name: card.name || 'Card', quality: card.quality || '' });
               }
             }
           });
@@ -11709,6 +11902,7 @@ _incrementPityTimers();
                   spawnTime: Date.now(),
                   decayTime: 30000 // 30 second decay
                 });
+                _victoryCtx.lootCharms.push({ emoji: charm.emoji || '💎', name: charm.name || 'Charm' });
               }
             }
           });
@@ -11772,6 +11966,7 @@ _incrementPityTimers();
                   decayTime: 60000 // Boss loot lasts 60 seconds
                 });
                 lines.push('🎴 Boss dropped: ' + card.emoji + ' ' + card.name + ' (' + card.quality + ')');
+                _victoryCtx.lootCards.push({ emoji: card.emoji || '🎴', name: card.name || 'Boss Card', quality: card.quality || '' });
               }
             } else if (lootItem.type === 'whisper') {
               lines.push('✨ WHISPER ITEM: ' + lootItem.item);
@@ -11840,6 +12035,56 @@ _incrementPityTimers();
       if (enemyIndex > -1) {
         _enemies[enemyIndex].hp = 0;
       }
+
+      // ── Fire animated victory sequence (defers cleanup) ──
+      if (typeof STRVictorySequence !== 'undefined' && typeof STRVictorySequence.play === 'function') {
+        var _capturedEnemy = _strCombatEnemy;
+        var _capturedLines = lines.slice();
+
+        // Hide the STR combat window timer (sequence takes over the visual)
+        try {
+          if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.hide === 'function') {
+            STRCombatWindow.hide();
+          }
+          if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.hide === 'function') {
+            HandFanComponent.hide();
+            if (typeof HandFanComponent.clearSelection === 'function') HandFanComponent.clearSelection();
+          }
+        } catch (e0) {}
+
+        STRVictorySequence.play(_victoryCtx, function() {
+          // ── Deferred cleanup (runs after victory animation) ──
+          _strCombatActive = false;
+          _strCombatPhase = 'idle';
+          _strCombatEnemy = null;
+          _strCombatAdvantage = 'neutral';
+          _strCombatRound = 0;
+          _strCombatLog = [];
+
+          _disableCombatZoom();
+
+          try {
+            if (typeof BackupActionContainer !== 'undefined' && typeof BackupActionContainer.hide === 'function') {
+              BackupActionContainer.hide();
+            }
+          } catch (e1) {}
+
+          if (!_gameLoopActive) _startGameLoop();
+          _saveState();
+
+          // ── Post-combat scatter: currency/ammo nodes pop and bounce ──
+          _scatterPostCombatNodes(_capturedEnemy, _victoryCtx);
+        });
+
+        // Return early — cleanup is deferred to the callback
+        return {
+          lines: lines.concat(_renderGrid()),
+          prompt: getPrompt(),
+          stayActive: true
+        };
+      }
+      // If STRVictorySequence not available, fall through to standard cleanup
+
     } else if (reason === 'medbed_soft_defeat') {
       _combatPhaseTooltip('defeat', 'Medbed stabilized');
       lines.push('🛏️ MEDBED STABILIZED');

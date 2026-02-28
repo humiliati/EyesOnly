@@ -400,5 +400,40 @@
     "synergyTags": ["electrical", "covert"],
     "description": "If 2+ cards auto-resolve this turn: enemy loses next turn (50%). Stacks with Bump Stock.",
     "_designNote": "Multi-resolve cascade enabler. Rewards synergy-heavy turns with control. 50% roll prevents guaranteed lockout."
+  },
+  {
+    "id": "ITM-050",
+    "name": "Magnet",
+    "emoji": "🧲",
+    "type": "equipment",
+    "rarity": "uncommon",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      { "type": "auto_collect", "target": "currency", "range": 3 },
+      { "type": "auto_collect", "target": "ammo", "range": 3 }
+    ],
+    "synergyTags": ["utility", "collection", "loot"],
+    "description": "Nearby currency and ammo fly to you. Walk past, don't stop.",
+    "_designNote": "Post-combat scatter QoL. Base range 3 tiles (Chebyshev). Upgrade extends to 5 and adds loose item collection."
+  },
+  {
+    "id": "ITM-051",
+    "name": "Magnet+",
+    "emoji": "🧲",
+    "type": "equipment",
+    "rarity": "rare",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      { "type": "auto_collect", "target": "currency", "range": 5 },
+      { "type": "auto_collect", "target": "ammo", "range": 5 },
+      { "type": "auto_collect", "target": "items", "range": 5 }
+    ],
+    "synergyTags": ["utility", "collection", "loot"],
+    "description": "Powerful attraction field. Currency, ammo, and loose items pulled from 5 tiles.",
+    "_designNote": "Upgraded magnet. Also pulls loose card/item drops. Staggered collection (250ms intervals) for visual satisfaction."
   }
 ]
