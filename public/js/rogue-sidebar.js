@@ -95,6 +95,10 @@ var RogueSidebar = (function() {
     return name;
   }
 
+  function _isRogueActive() {
+    return typeof GoneRogue !== 'undefined' && typeof GoneRogue.isActive === 'function' && GoneRogue.isActive();
+  }
+
   function init() {
     if (_container) return;
     _loadPrefs();
@@ -164,7 +168,7 @@ var RogueSidebar = (function() {
       return;
     }
 
-    var rogueActive = (typeof GoneRogue !== 'undefined' && typeof GoneRogue.isActive === 'function' && GoneRogue.isActive());
+    var rogueActive = _isRogueActive();
 
     if (!rogueActive) {
       if (_container && _originalHtml !== null && _container.dataset.rogueSidebarActive === '1') {
@@ -194,6 +198,12 @@ var RogueSidebar = (function() {
 
   function _render() {
     if (!_container) return;
+
+    // Guard: only render rogue sidebar content when Gone Rogue is actually active.
+    // Event handlers (csa-event, gone-rogue-registry-ready, resize, debrief) fire
+    // regardless of game state; without this check they would replace the default
+    // action buttons with empty rogue-sidebar slots on the front page.
+    if (!_isRogueActive()) return;
 
     // Fetch refs early so we can enforce first-pickup UX.
     // Items view combines BOTH persistent items (ITM-*) and vault cards (ACT-*),

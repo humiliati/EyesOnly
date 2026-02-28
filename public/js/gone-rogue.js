@@ -2667,6 +2667,7 @@ const GoneRogue = (function () {
           dialogues: Array.isArray(npc.dialogues) ? npc.dialogues.slice() : [],
           gate: npc.gate || null,
           reward: npc.reward || null,
+          shopkeeper: npc.shopkeeper || false,
           state: {
             released: false,
             rewardGiven: false,
@@ -5681,6 +5682,30 @@ _incrementPityTimers();
       }
     }
 
+    // Check if player is adjacent to a shopkeeper NPC - open shop interface
+    if (_npcs && _npcs.length > 0) {
+      for (var i = 0; i < _npcs.length; i++) {
+        var npc = _npcs[i];
+        if (npc.shopkeeper) {
+          var distX = Math.abs(npc.x - newX);
+          var distY = Math.abs(npc.y - newY);
+          // Check if player is adjacent (including diagonals)
+          if (distX <= 1 && distY <= 1 && !(distX === 0 && distY === 0)) {
+            // Player is adjacent to shopkeeper - open shop
+            if (typeof ShopSystem !== 'undefined') {
+              ShopSystem.openShop(ShopSystem.SHOP_TYPES.STANDARD, _floor);
+
+              // Show tooltip hint
+              if (typeof TooltipSystem !== 'undefined') {
+                TooltipSystem.showGeneric('🧙 ' + npc.name + ': Welcome to my shop!', 2000);
+              }
+            }
+            break; // Only trigger one shop at a time
+          }
+        }
+      }
+    }
+
     // Check for currency pickup
     var cryptoPickup = _currencies.find(function(c) { return c.x === newX && c.y === newY; });
     var cryptoMessage = null;
@@ -6955,6 +6980,7 @@ _incrementPityTimers();
             direction: (npc.direction || 'south').toLowerCase(),
             dialogues: Array.isArray(npc.dialogues) ? npc.dialogues.slice() : [],
             gate: npc.gate || null, reward: npc.reward || null,
+            shopkeeper: npc.shopkeeper || false,
             state: { released: false, rewardGiven: false, lastWarnTurn: -999, lastTalkTurn: -999 }
           };
           _npcs.push(npcObj);
