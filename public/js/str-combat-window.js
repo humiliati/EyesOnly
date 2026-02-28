@@ -123,6 +123,38 @@ const STRCombatWindow = (function () {
   }
 
   /**
+   * Show the combat window without the 3-2-1 countdown (for mid-combat re-shows).
+   * @param {Object} combatState - Current combat state
+   */
+  function showWithoutCountdown(combatState) {
+    _combatState = combatState;
+    _isVisible = true;
+    _isMinimized = false;
+
+    // Set timer based on enemy type, scaled by floor number
+    _currentEnemyType = combatState.enemyType || 'standard';
+    var baseMs = TIMER_DURATIONS[_currentEnemyType] || TIMER_DURATIONS.standard;
+    _timerDuration = _scaleTimerForFloor(baseMs, combatState.floor || 1, combatState.difficultyTier || 1);
+    _timeRemaining = _timerDuration;
+
+    // Render window content immediately (no countdown overlay)
+    _renderWindow();
+
+    // Start intent glyph animator (animated faces + weapons)
+    _startIntentAnimator();
+
+    // Show window with animation
+    _windowContainer.style.display = 'block';
+    _windowContainer.classList.add('str-window-appear');
+
+    // Start turn timer
+    _startTimer();
+
+    // Remove background tint if it exists
+    document.body.classList.remove('str-combat-minimized-state');
+  }
+
+  /**
    * Show a full-screen 3-2-1 countdown overlay before combat begins.
    * Sequence: 3 (1s) → 2 (1s) → 1 (1s) → FIGHT! (0.5s) → fade-out (0.4s) → callback.
    * Total pre-combat delay: ~3.9 seconds.
@@ -829,6 +861,7 @@ const STRCombatWindow = (function () {
   return {
     init: init,
     show: show,
+    showWithoutCountdown: showWithoutCountdown,
     hide: hide,
     minimize: minimize,
     maximize: maximize,

@@ -63,6 +63,7 @@
    * @param {Object} combatState - Current combat state
    */
   var _lastWindowSig = null;
+  var _combatSessionActive = false;
 
   function _sig(combatState, enemyType) {
     try {
@@ -125,7 +126,14 @@
         countdownMessages: combatState.countdownMessages || null
       };
 
-      STRCombatWindow.show(windowState);
+      if (_combatSessionActive) {
+        // Mid-combat re-show: skip the 3-2-1 countdown
+        STRCombatWindow.showWithoutCountdown(windowState);
+      } else {
+        // First display of this encounter: full countdown
+        STRCombatWindow.show(windowState);
+        _combatSessionActive = true;
+      }
       _lastWindowSig = _sig(combatState, enemyType);
     } else {
       // Update existing window (only when state meaningfully changes)
@@ -161,6 +169,11 @@
   function _hideCombatWindow() {
     if (STRCombatWindow.isVisible()) {
       STRCombatWindow.hide();
+    }
+    _combatSessionActive = false;
+    _lastWindowSig = null;
+    if (typeof CardStateAuthority !== 'undefined' && typeof CardStateAuthority.resetCombatDrawState === 'function') {
+      CardStateAuthority.resetCombatDrawState();
     }
   }
 
