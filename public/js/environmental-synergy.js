@@ -100,6 +100,30 @@ const EnvironmentalSynergy = (function() {
         compatibleGates: ['FACTORY_GATE', 'HAZARD_DOOR'],
         consumeOnUse: false,
         biome: 'INDUSTRIAL'
+      },
+
+      // --- Tier 3: Quest keys (persistent, NPC turn-in for card upgrade reward) ---
+      BLACKSMITH_HAMMER: {
+        itemId: 'KEY_030',
+        tier: 3,
+        registryId: 'ITM-030',
+        emoji: '🔨',
+        name: 'Blacksmith\'s Hammer',
+        description: 'A master blacksmith\'s hammer. Return it to the forge for a powerful reward.',
+        npcTarget: 'BLACKSMITH',
+        consumeOnUse: true
+      },
+      RUNE_FRAGMENT: {
+        itemId: 'KEY_031',
+        tier: 3,
+        registryId: 'ITM-031',
+        emoji: '💎',
+        name: 'Rune Fragment',
+        description: 'A shard of crystallized power. A runesmith could fuse this into something greater.',
+        npcTarget: 'RUNESMITH',
+        consumeOnUse: true,
+        stackable: true,
+        maxStack: 3
       }
     },
 

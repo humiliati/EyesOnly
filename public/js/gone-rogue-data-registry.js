@@ -17,7 +17,9 @@ var GoneRogueDataRegistry = (function() {
     statuses: [],
     groundEffects: [],
     synergies: [],
-    buildings: []
+    buildings: [],
+    enemyCards: [],
+    enemyDecks: {}
   };
 
   var _byId = {
@@ -26,7 +28,8 @@ var GoneRogueDataRegistry = (function() {
     statuses: {},
     groundEffects: {},
     synergies: {},
-    buildings: {}
+    buildings: {},
+    enemyCards: {}
   };
 
   function _createMissingEntry(id, type) {
@@ -54,6 +57,8 @@ var GoneRogueDataRegistry = (function() {
     _byId.groundEffects = idx(_db.groundEffects, {});
     _byId.synergies = idx(_db.synergies, {});
     _byId.buildings = idx(_db.buildings, {});
+    _byId.enemyCards = idx(_db.enemyCards, {});
+    // enemyDecks is already keyed by enemy type, no re-index needed
   }
 
   function _fetchJson(path) {
@@ -97,6 +102,8 @@ var GoneRogueDataRegistry = (function() {
     check(_db.synergies, 'synergy', 'synergies.json', /^SYN-\d{3}$/, ['name']);
     check(_db.buildings, 'building', 'buildings.json', /^BLD-\d{3}$/, ['name', 'emoji', 'interiorFloorId']);
 
+    check(_db.enemyCards, 'enemyCard', 'enemy-cards.json', /^EATK-\d{3}$/, ['name', 'emoji', 'intentType']);
+
     // Deeper building validation: nested parent linkage + floorId prefixing
     try {
       for (var bi = 0; bi < _db.buildings.length; bi++) {
@@ -122,7 +129,7 @@ var GoneRogueDataRegistry = (function() {
 
   var info = {
     loadedAt: null,
-    counts: { items: 0, cards: 0, statuses: 0, groundEffects: 0, synergies: 0, buildings: 0 }
+    counts: { items: 0, cards: 0, statuses: 0, groundEffects: 0, synergies: 0, buildings: 0, enemyCards: 0, enemyDecks: 0 }
   };
 
   function load() {
@@ -135,7 +142,9 @@ var GoneRogueDataRegistry = (function() {
       _fetchJson(BASE + 'statuses.json').catch(function() { return []; }),
       _fetchJson(BASE + 'ground_effects.json').catch(function() { return []; }),
       _fetchJson(BASE + 'synergies.json').catch(function() { return []; }),
-      _fetchJson(BASE + 'buildings.json').catch(function() { return []; })
+      _fetchJson(BASE + 'buildings.json').catch(function() { return []; }),
+      _fetchJson(BASE + 'enemy-cards.json').catch(function() { return []; }),
+      _fetchJson(BASE + 'enemy-decks.json').catch(function() { return {}; })
     ]).then(function(arr) {
       _db.items = Array.isArray(arr[0]) ? arr[0] : [];
       _db.cards = Array.isArray(arr[1]) ? arr[1] : [];
@@ -143,6 +152,8 @@ var GoneRogueDataRegistry = (function() {
       _db.groundEffects = Array.isArray(arr[3]) ? arr[3] : [];
       _db.synergies = Array.isArray(arr[4]) ? arr[4] : [];
       _db.buildings = Array.isArray(arr[5]) ? arr[5] : [];
+      _db.enemyCards = Array.isArray(arr[6]) ? arr[6] : [];
+      _db.enemyDecks = (arr[7] && typeof arr[7] === 'object' && !Array.isArray(arr[7])) ? arr[7] : {};
 
       _index();
       _validateLightweight();
@@ -155,7 +166,9 @@ var GoneRogueDataRegistry = (function() {
         statuses: _db.statuses.length,
         groundEffects: _db.groundEffects.length,
         synergies: _db.synergies.length,
-        buildings: _db.buildings.length
+        buildings: _db.buildings.length,
+        enemyCards: _db.enemyCards.length,
+        enemyDecks: Object.keys(_db.enemyDecks).filter(function(k) { return k !== '_schema'; }).length
       };
 
       if (typeof NonCombatEventBus !== 'undefined') {
@@ -184,6 +197,17 @@ var GoneRogueDataRegistry = (function() {
   function getSynergy(id) { return _byId.synergies[id] || _createMissingEntry(id, 'synergy'); }
   function getBuilding(id) { return _byId.buildings[id] || _createMissingEntry(id, 'building'); }
   function listBuildings() { return Array.isArray(_db.buildings) ? _db.buildings.slice() : []; }
+
+  // ── Enemy card/deck accessors ──
+  function getEnemyCard(id) { return _byId.enemyCards[id] || _createMissingEntry(id, 'enemy_card'); }
+  function listEnemyCards() { return Array.isArray(_db.enemyCards) ? _db.enemyCards.slice() : []; }
+  function getEnemyDeck(enemyType) {
+    var key = (enemyType || '').toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+    return _db.enemyDecks[key] || null;
+  }
+  function listEnemyDeckTypes() {
+    return Object.keys(_db.enemyDecks).filter(function(k) { return k !== '_schema'; });
+  }
   function listInteractiveBuildings() {
     return listBuildings().filter(function(b) { return b && b.interiorFloorId && b.interiorFloorId !== 'none'; });
   }
@@ -266,6 +290,10 @@ var GoneRogueDataRegistry = (function() {
     listInteractiveBuildings: listInteractiveBuildings,
     listCards: listCards,
     listItems: listItems,
-    findSynergiesFor: findSynergiesFor
+    findSynergiesFor: findSynergiesFor,
+    getEnemyCard: getEnemyCard,
+    listEnemyCards: listEnemyCards,
+    getEnemyDeck: getEnemyDeck,
+    listEnemyDeckTypes: listEnemyDeckTypes
   };
 })();

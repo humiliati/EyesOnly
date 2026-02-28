@@ -1,0 +1,86 @@
+{
+  "_schema": {
+    "cards": "Array of EATK-* IDs (duplicates = multiple copies in hand)",
+    "exposedTags": "Tags that match player item stealTags for pre-combat stealing",
+    "deckSize": "Optional override — if set, randomly draws N from cards pool each combat"
+  },
+
+  "SLEEPY_SNAIL": {
+    "cards": ["EATK-014"],
+    "exposedTags": ["pickpocket"],
+    "_note": "1 weak card. Tutorial punching bag."
+  },
+  "DROWSY_BEE": {
+    "cards": ["EATK-015"],
+    "exposedTags": ["pickpocket"],
+    "_note": "1 card with minor poison. Teaches DOT."
+  },
+  "LAZY_CATERPILLAR": {
+    "cards": ["EATK-014", "EATK-014"],
+    "exposedTags": ["pickpocket", "intimidate"],
+    "_note": "2 copies of Nibble. Slightly more durable tutorial enemy."
+  },
+
+  "GENERIC_FLOOR_5": {
+    "cards": ["EATK-001", "EATK-008"],
+    "exposedTags": ["pickpocket", "disarm"],
+    "_note": "Pistol + Knife. Basic two-card guard."
+  },
+  "GENERIC_FLOOR_10": {
+    "cards": ["EATK-001", "EATK-001", "EATK-008"],
+    "exposedTags": ["pickpocket", "disarm"],
+    "_note": "2x Pistol + Knife. Slightly stronger."
+  },
+  "GENERIC_FLOOR_15": {
+    "cards": ["EATK-001", "EATK-002", "EATK-008"],
+    "exposedTags": ["disarm", "sleight"],
+    "_note": "Pistol + Burst + Knife. Mixed ranged/melee."
+  },
+  "GENERIC_FLOOR_20": {
+    "cards": ["EATK-002", "EATK-011", "EATK-008", "EATK-013"],
+    "exposedTags": ["disarm", "hack"],
+    "_note": "Burst + Aimed + Knife + Shield. Defensive variety."
+  },
+  "GENERIC_FLOOR_25": {
+    "cards": ["EATK-002", "EATK-011", "EATK-003", "EATK-007"],
+    "exposedTags": ["hack"],
+    "_note": "Burst + Aimed + Grenade + Taze. Escalating danger."
+  },
+  "GENERIC_FLOOR_30": {
+    "cards": ["EATK-011", "EATK-003", "EATK-007", "EATK-002", "EATK-013"],
+    "exposedTags": [],
+    "_note": "Full 5-card hand. Late-game guards are tough to steal from."
+  },
+
+  "TRANSIT_ENFORCER": {
+    "cards": ["EATK-016", "EATK-001", "EATK-016"],
+    "exposedTags": ["disarm", "intimidate"],
+    "_note": "2x Ram Charge + Pistol. Lane charger pattern."
+  },
+  "SPOTTER_DRONE": {
+    "cards": ["EATK-017", "EATK-010", "EATK-001"],
+    "exposedTags": ["hack", "disarm"],
+    "_note": "Paint Target + Spotlight + Pistol. Detection specialist."
+  },
+  "PYROMANIAC": {
+    "cards": ["EATK-012", "EATK-012", "EATK-003"],
+    "exposedTags": ["disarm"],
+    "_note": "2x Incendiary + Frag. Fire-focused devastation."
+  },
+  "HEAVY_DRIFTER": {
+    "cards": ["EATK-013", "EATK-013", "EATK-005", "EATK-001"],
+    "exposedTags": [],
+    "_note": "2x Shield Wall + Axe + Pistol. Tank. Hard to steal from."
+  },
+  "GHOST_OPERATIVE": {
+    "cards": ["EATK-018", "EATK-018", "EATK-008"],
+    "exposedTags": ["sleight"],
+    "_note": "2x Shadow Strike + Knife. Glass cannon ambusher."
+  },
+
+  "TREASURE_GOBLIN": {
+    "cards": ["EATK-019", "EATK-020", "EATK-020"],
+    "exposedTags": ["pickpocket", "sleight", "bribe"],
+    "_note": "Coin Toss + 2x Flee. Wants to escape, not fight. Easy to steal from."
+  }
+}

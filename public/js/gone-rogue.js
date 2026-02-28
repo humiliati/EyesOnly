@@ -1767,7 +1767,8 @@ const GoneRogue = (function () {
       lines.push('PERSISTENT (' + persistent.length + '/' + GAMESTATE.getState().persistentSlots + '):');
       if (persistent.length) {
         persistent.forEach(function(item, i) {
-          lines.push('  ' + (i+1) + '. ' + item.emoji + ' ' + item.name + ' [' + item.qualityName + ']');
+          var label = item.qualityName || item.rarity || item.subtype || '';
+          lines.push('  ' + (i+1) + '. ' + (item.emoji || '📦') + ' ' + (item.name || 'Item') + (label ? ' [' + label + ']' : ''));
         });
       } else {
         lines.push('  [EMPTY]');
@@ -1777,7 +1778,8 @@ const GoneRogue = (function () {
       lines.push('LOOSE CARRY (' + loose.length + '/' + GAMESTATE.getState().looseSlots + '):');
       if (loose.length) {
         loose.forEach(function(item, i) {
-          lines.push('  ' + (i+1) + '. ' + item.emoji + ' ' + item.name + ' [' + item.qualityName + ']');
+          var label = item.qualityName || item.rarity || '';
+          lines.push('  ' + (i+1) + '. ' + (item.emoji || '📦') + ' ' + (item.name || 'Item') + (label ? ' [' + label + ']' : ''));
         });
       } else {
         lines.push('  [EMPTY]');
@@ -5949,10 +5951,75 @@ _incrementPityTimers();
           name: item.name || 'Key',
           description: item.description || '',
           tier: item.tier || 1,
-          subtype: item.subtype || null
+          subtype: item.subtype || null,
+          npcTarget: item.npcTarget || null
         };
-        // Resolve tier from EnvironmentalSynergy if not explicitly set
-        if (!item.tier && typeof EnvironmentalSynergy !== 'undefined' && EnvironmentalSynergy.getKeyDefinitions) {
+
+        // ── Resolve full definition from items.json registry ──
+        // Spawned items (from tutorial-floors, loot tables, etc.) are lightweight.
+        // Merge the master definition from GoneRogueDataRegistry to fill in
+        // effects, description, rarity, and other metadata.
+        try {
+          if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.listItems) {
+            var allItems = GoneRogueDataRegistry.listItems();
+            var registryDef = null;
+
+            // Match by registryId if the spawn provides one
+            if (item.registryId) {
+              registryDef = GoneRogueDataRegistry.getItem(item.registryId);
+              if (registryDef && registryDef._missing) registryDef = null;
+            }
+
+            // Fallback: match by name (case-insensitive)
+            if (!registryDef) {
+              var targetName = (item.name || '').toLowerCase();
+              for (var ri = 0; ri < allItems.length; ri++) {
+                if (allItems[ri] && (allItems[ri].name || '').toLowerCase() === targetName && allItems[ri].type === 'key') {
+                  registryDef = allItems[ri];
+                  break;
+                }
+              }
+            }
+
+            // Fallback: match by keyType → name heuristic (BLACKSMITH_HAMMER → "blacksmith's hammer")
+            if (!registryDef && nonCardPayload.keyType) {
+              var heuristicName = nonCardPayload.keyType.toLowerCase().replace(/_/g, ' ');
+              for (var ri2 = 0; ri2 < allItems.length; ri2++) {
+                var candidateName = (allItems[ri2].name || '').toLowerCase().replace(/[^a-z0-9 ]/g, '');
+                if (candidateName.indexOf(heuristicName) >= 0 && allItems[ri2].type === 'key') {
+                  registryDef = allItems[ri2];
+                  break;
+                }
+              }
+            }
+
+            // Merge registry definition into payload (registry wins for missing fields)
+            if (registryDef && !registryDef._missing) {
+              nonCardPayload.registryId = registryDef.id || null;
+              if (!nonCardPayload.description && registryDef.description) nonCardPayload.description = registryDef.description;
+              if (!nonCardPayload.effects && registryDef.effects) nonCardPayload.effects = registryDef.effects;
+              if (!nonCardPayload.rarity) nonCardPayload.rarity = registryDef.rarity || null;
+              if (!nonCardPayload.synergyTags && registryDef.synergyTags) nonCardPayload.synergyTags = registryDef.synergyTags;
+              if (!nonCardPayload.npcTarget && registryDef.effects) {
+                for (var ei2 = 0; ei2 < registryDef.effects.length; ei2++) {
+                  if (registryDef.effects[ei2] && registryDef.effects[ei2].npcTarget) {
+                    nonCardPayload.npcTarget = registryDef.effects[ei2].npcTarget;
+                    break;
+                  }
+                }
+              }
+              if (registryDef.tier) nonCardPayload.tier = registryDef.tier;
+              if (registryDef.equipSlot) nonCardPayload.equipSlot = registryDef.equipSlot;
+              if (registryDef.consumeOnUse !== undefined) nonCardPayload.consumeOnUse = registryDef.consumeOnUse;
+              console.log('[GoneRogue] Key item resolved from registry:', registryDef.id, registryDef.name);
+            }
+          }
+        } catch (eResolve) {
+          console.warn('[GoneRogue] Key item registry resolve error:', eResolve);
+        }
+
+        // Resolve tier from EnvironmentalSynergy if still not set
+        if (!item.tier && !nonCardPayload.tier && typeof EnvironmentalSynergy !== 'undefined' && EnvironmentalSynergy.getKeyDefinitions) {
           try {
             var keyDefs = EnvironmentalSynergy.getKeyDefinitions();
             var kt = (nonCardPayload.keyType || '').toUpperCase().replace(/[^A-Z0-9_]/g, '_');
@@ -5961,6 +6028,10 @@ _incrementPityTimers();
             }
           } catch (eTier) {}
         }
+
+        // Set qualityName for display (keys use tier label, not card quality)
+        var tierNames = { 1: 'Ammo Key', 2: 'Gate Key', 3: 'Quest Item' };
+        nonCardPayload.qualityName = tierNames[nonCardPayload.tier] || 'Key';
       } else if (!nonCardPayload) {
         nonCardPayload = {
           type: item.type || 'item',
@@ -6046,14 +6117,18 @@ _incrementPityTimers();
           } catch (eAnim) {}
 
           try {
-            var npcTarget = '';
-            if (item.effects && item.effects.length) {
-              for (var ei = 0; ei < item.effects.length; ei++) {
-                if (item.effects[ei].npcTarget) { npcTarget = item.effects[ei].npcTarget; break; }
+            // Resolve npcTarget from payload (already merged from registry) or spawn effects
+            var npcTarget = nonCardPayload.npcTarget || item.npcTarget || '';
+            if (!npcTarget && nonCardPayload.effects && nonCardPayload.effects.length) {
+              for (var ei = 0; ei < nonCardPayload.effects.length; ei++) {
+                if (nonCardPayload.effects[ei] && nonCardPayload.effects[ei].npcTarget) {
+                  npcTarget = nonCardPayload.effects[ei].npcTarget;
+                  break;
+                }
               }
             }
             if (typeof TooltipSystem !== 'undefined') {
-              var questMsg = '❗ QUEST ITEM — ' + (item.name || 'Item');
+              var questMsg = '❗ QUEST ITEM — ' + (nonCardPayload.name || item.name || 'Item');
               if (npcTarget) questMsg += ' — Return to ' + npcTarget;
               TooltipSystem.show(questMsg, 3500);
             }
