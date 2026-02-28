@@ -10,5 +10,90 @@
     "effects": [
       { "type": "accuracy", "value": -5 }
     ]
+  },
+  {
+    "id": "EFF-002",
+    "name": "Darkened Ground",
+    "emoji": "🌑",
+    "description": "Floor light level reduced to 0. Stealth boosted. Shadow-type cards gain +1 effect. Solar-type cards disabled.",
+    "radius": 2,
+    "lifetimeSec": 15,
+    "tags": ["darkness", "stealth", "light_state"],
+    "effects": [
+      { "type": "light_level", "value": 0 },
+      { "type": "stealth_bonus", "value": 0.25 },
+      { "type": "shadow_boost", "value": 1 },
+      { "type": "disable_tag", "tag": "solar" }
+    ]
+  },
+  {
+    "id": "EFF-003",
+    "name": "Conductive Field",
+    "emoji": "⚡",
+    "description": "All electricity effects double. Metal-tag enemies take bonus damage. Player also vulnerable.",
+    "radius": 3,
+    "lifetimeSec": 12,
+    "tags": ["electrical", "conductive", "hazard"],
+    "effects": [
+      { "type": "electrical_amplify", "multiplier": 2.0 },
+      { "type": "metal_vulnerability", "value": 1.5 },
+      { "type": "shock_damage", "value": 1 }
+    ]
+  },
+  {
+    "id": "EFF-004",
+    "name": "Radiant Ground",
+    "emoji": "🌞",
+    "description": "Bright luminous tiles. Damages shadow-aligned enemies. Removes stealth.",
+    "radius": 2,
+    "lifetimeSec": 10,
+    "tags": ["light", "radiant", "anti_stealth"],
+    "effects": [
+      { "type": "light_level", "value": 10 },
+      { "type": "shadow_damage", "value": 2 },
+      { "type": "remove_stealth", "value": true },
+      { "type": "accuracy_bonus", "value": 10 }
+    ]
+  },
+  {
+    "id": "EFF-005",
+    "name": "Obscured Ground",
+    "emoji": "💨",
+    "description": "Dense smoke cloud. All tiles heavily obscured. Accuracy penalty for all units.",
+    "radius": 3,
+    "lifetimeSec": 8,
+    "tags": ["obscure", "smoke", "vision"],
+    "effects": [
+      { "type": "accuracy", "value": -15 },
+      { "type": "visibility", "value": -50 },
+      { "type": "stealth_bonus", "value": 0.15 }
+    ]
+  },
+  {
+    "id": "EFF-006",
+    "name": "Sonic Ground Effect",
+    "emoji": "🔊",
+    "description": "Residual sonic vibrations. Amplifies sound-based effects. Applies minor disorient.",
+    "radius": 2,
+    "lifetimeSec": 8,
+    "tags": ["sonic", "sound", "disorient"],
+    "effects": [
+      { "type": "sonic_amplify", "multiplier": 1.5 },
+      { "type": "accuracy", "value": -3 },
+      { "type": "status", "status": "ringing", "duration": 2 }
+    ]
+  },
+  {
+    "id": "EFF-007",
+    "name": "Resonance",
+    "emoji": "🎤",
+    "description": "Sonic resonance field. Next Sonic card costs 0. Doubles light-based interactions.",
+    "radius": 1,
+    "lifetimeSec": 6,
+    "tags": ["resonance", "sonic", "amplifier"],
+    "effects": [
+      { "type": "cost_reduction", "tag": "sonic", "amount": 99 },
+      { "type": "light_interaction_boost", "multiplier": 2.0 }
+    ]
   }
 ]

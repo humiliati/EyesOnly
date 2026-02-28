@@ -1322,6 +1322,20 @@ const GoneRogue = (function () {
     // Initialize lighting system if available
     if (typeof LightingSystem !== 'undefined') {
       LightingSystem.init();
+
+      // Load lighting configuration from registry if available
+      if (typeof GoneRogueDataRegistry !== 'undefined') {
+        GoneRogueDataRegistry.ready().then(function() {
+          var lightingConfig = GoneRogueDataRegistry.getLightingConfig();
+          if (lightingConfig) {
+            LightingSystem.setConfig(lightingConfig);
+            console.log('[GoneRogue] Lighting configuration loaded');
+          }
+        }).catch(function(err) {
+          console.warn('[GoneRogue] Failed to load lighting config:', err);
+        });
+      }
+
       console.log('[GoneRogue] Lighting system initialized');
     }
 
@@ -3200,6 +3214,9 @@ _incrementPityTimers();
 
     // Generate lighting for this floor
     if (typeof LightingSystem !== 'undefined') {
+      // Set floor number for progression scaling
+      LightingSystem.setFloor(_floor);
+
       // Set biome for lighting
       var biome;
       var biomeName;
@@ -3239,9 +3256,43 @@ _incrementPityTimers();
       _rebuildWallCache();
       var walls = _wallCache;
 
-      // Generate biome-specific light sources
-      LightingSystem.generateBiomeLights(GRID_WIDTH, GRID_HEIGHT, rooms, walls);
+      // Generate biome-specific light sources (pass grid for occupancy checking)
+      LightingSystem.generateBiomeLights(GRID_WIDTH, GRID_HEIGHT, rooms, walls, _grid);
       _updatePlayerLight();
+
+      // Register interactive/breakable light sources as breakables
+      var lightingConfig = LightingSystem.getConfig();
+      if (lightingConfig && lightingConfig.interactiveLights && lightingConfig.interactiveLights.enabled) {
+        var lightSources = LightingSystem.getLightSources();
+        for (var i = 0; i < lightSources.length; i++) {
+          var lightSource = lightSources[i];
+          if (lightSource.interactive) {
+            var breakableProps = LightingSystem.getBreakableProps(lightSource.type);
+            if (breakableProps && breakableProps.hp > 0) {
+              var lightDef = LightingSystem.LIGHT_SOURCES[lightSource.type];
+              _breakables.push({
+                x: lightSource.x,
+                y: lightSource.y,
+                hp: breakableProps.hp,
+                maxHp: breakableProps.hp,
+                emoji: lightDef.emoji,
+                color: lightDef.color,
+                name: lightDef.name || 'Light Source',
+                type: 'light_source',
+                lightType: lightSource.type,
+                isLightSource: true,
+                kickable: breakableProps.kickable,
+                smotherable: breakableProps.smotherable,
+                noise: breakableProps.noise,
+                dropChance: breakableProps.dropChance,
+                dropType: breakableProps.dropType,
+                destroyEmoji: breakableProps.destroyEmoji
+              });
+            }
+          }
+        }
+        console.log('[Lighting] Registered', _breakables.filter(function(b) { return b.isLightSource; }).length, 'interactive light sources as breakables');
+      }
 
       // Update enemy lights
       LightingSystem.updateEnemyLights(_enemies);
@@ -9087,6 +9138,45 @@ _incrementPityTimers();
         if (breakable.destroying) {
           _grid[breakable.y][breakable.x] = breakable.destroyedGlyph || TILES.DEBRIS;
           breakable.destroying = false;
+
+          // Handle light source destruction
+          if (breakable.isLightSource && typeof LightingSystem !== 'undefined') {
+            LightingSystem.removeLightSource(breakable.x, breakable.y);
+
+            // Raise noise if configured
+            if (breakable.noise > 0) {
+              _raiseNoise(breakable.x, breakable.y, breakable.noise);
+            }
+
+            // Spawn smoke if configured
+            var lightingConfig = LightingSystem.getConfig();
+            if (lightingConfig && lightingConfig.interactiveLights && lightingConfig.interactiveLights.onBreak.spawnSmoke) {
+              if (typeof GroundEffects !== 'undefined' && GroundEffects.addEffect) {
+                GroundEffects.addEffect(breakable.x, breakable.y, 'SMOKE');
+              }
+            }
+
+            // Drop loot if chance succeeds
+            if (breakable.dropChance > 0 && Math.random() < breakable.dropChance && breakable.dropType) {
+              _items.push({
+                x: breakable.x,
+                y: breakable.y,
+                type: 'item',
+                itemId: breakable.dropType,
+                spawnTime: Date.now(),
+                decayTime: 60000,
+                emoji: '💾', // Placeholder, should be resolved from data
+                name: 'Item'
+              });
+              console.log('[Lighting] Destroyed light source dropped:', breakable.dropType);
+            }
+
+            // Update light map immediately
+            _rebuildWallCache();
+            LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, _getAllLightBlockers(_wallCache));
+
+            console.log('[Lighting] Removed light source at', breakable.x, ',', breakable.y);
+          }
 
           // Use LootTableManager if available
           if (typeof LootTableManager !== 'undefined' && LootTableManager.rollBreakableLoot) {

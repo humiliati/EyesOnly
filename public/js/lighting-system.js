@@ -209,13 +209,100 @@ const LightingSystem = (function() {
     }
   };
 
+  // Light source breakable properties (for interactive/destructible lights)
+  const LIGHT_SOURCE_BREAKABLE_PROPS = {
+    LIGHT_BULB: {
+      hp: 1,
+      kickable: false, // Overhead, can't kick
+      smotherable: false,
+      noise: 2, // Glass shatter
+      dropChance: 0, // No drops
+      dropType: null,
+      destroyEmoji: '💥'
+    },
+    MONITOR: {
+      hp: 2,
+      kickable: true, // Can kick or shoot
+      smotherable: false,
+      noise: 3, // Electronics sparking
+      dropChance: 0.05, // 5% chance
+      dropType: 'ITM-001', // Thumb Drive (example)
+      destroyEmoji: '💥'
+    },
+    TERMINAL: {
+      hp: 3,
+      kickable: false, // Mounted, projectile only
+      smotherable: false,
+      noise: 3,
+      dropChance: 0.03, // 3% chance
+      dropType: 'ITM-002', // Keycard (example)
+      destroyEmoji: '💥'
+    },
+    TORCH: {
+      hp: 1,
+      kickable: true,
+      smotherable: true, // Can smother silently
+      noise: 0, // Silent smother
+      dropChance: 0,
+      dropType: null,
+      destroyEmoji: '💨'
+    },
+    LAMP_POST: {
+      hp: 2,
+      kickable: true,
+      smotherable: false,
+      noise: 1, // Quiet topple
+      dropChance: 0,
+      dropType: null,
+      destroyEmoji: '💥'
+    },
+    LAVA_LAMP: {
+      hp: 1,
+      kickable: true,
+      smotherable: false,
+      noise: 1,
+      dropChance: 0,
+      dropType: null,
+      destroyEmoji: '💥'
+    },
+    CAMPFIRE: {
+      hp: 0, // Indestructible by kick/projectile, use Water Bottle card
+      kickable: false,
+      smotherable: false,
+      noise: 0,
+      dropChance: 0,
+      dropType: null,
+      destroyEmoji: null
+    },
+    FIRE: {
+      hp: 0, // Indestructible by kick/projectile, use Water Bottle card
+      kickable: false,
+      smotherable: false,
+      noise: 0,
+      dropChance: 0,
+      dropType: null,
+      destroyEmoji: null
+    },
+    LAVA_FLOOR: {
+      hp: 0, // Indestructible terrain
+      kickable: false,
+      smotherable: false,
+      noise: 0,
+      dropChance: 0,
+      dropType: null,
+      destroyEmoji: null
+    }
+  };
+
   // State
   var _lightMap = {}; // key: "x,y", value: { intensity: 0-1, color: "#rrggbb", sources: [] }
-  var _lightSources = []; // Array of active light sources: { x, y, type, direction?, flickerPhase }
+  var _lightSources = []; // Array of active light sources: { x, y, type, direction?, flickerPhase, visible?, interactive? }
   var _currentBiome = 'GREY_CAVE';
   var _playerLightItem = null; // Current light item equipped by player
   var _darknessMultiplier = 1.0; // For uber boss darkness effect
   var _frameCount = 0; // For flicker animation
+  var _currentFloor = 1; // For progression scaling
+  var _config = null; // Lighting configuration from JSON
 
   // ── Phase 3.3: Lighting Interpolator ───────────────────────────────────────
   // Smoothly transitions lighting when the map changes (player moves into/out of lit areas).
@@ -243,6 +330,139 @@ const LightingSystem = (function() {
   function setLightingInterpolation(enabled) {
     _interpEnabled = !!enabled;
     if (!enabled) _interpProgress = 1.0;
+  }
+
+  /**
+   * Load and apply lighting configuration.
+   * @param {Object} config - Configuration object from lighting-config.json
+   */
+  function setConfig(config) {
+    _config = config;
+  }
+
+  /**
+   * Get current lighting configuration.
+   * @returns {Object|null} Current configuration
+   */
+  function getConfig() {
+    return _config;
+  }
+
+  /**
+   * Set current floor number for progression scaling.
+   * @param {number} floorNum - Floor number
+   */
+  function setFloor(floorNum) {
+    _currentFloor = Math.max(1, floorNum);
+  }
+
+  /**
+   * Calculate progression value based on floor using configured curve.
+   * @param {Object} progressionConfig - { floorStart, floorEnd, start, end, curve }
+   * @param {number} currentFloor - Current floor number
+   * @returns {number} Interpolated value between start and end
+   */
+  function _calculateProgression(progressionConfig, currentFloor) {
+    if (!progressionConfig) return progressionConfig.start || 0;
+
+    var floorStart = progressionConfig.floorStart || 1;
+    var floorEnd = progressionConfig.floorEnd || 30;
+    var start = progressionConfig.start || 0;
+    var end = progressionConfig.end || 1;
+    var curve = progressionConfig.curve || 'linear';
+
+    // Clamp floor to range
+    var t = (currentFloor - floorStart) / (floorEnd - floorStart);
+    t = Math.max(0, Math.min(1, t));
+
+    // Apply easing curve
+    var easedT = t;
+    if (curve === 'easeIn') {
+      easedT = t * t;
+    } else if (curve === 'easeOut') {
+      easedT = 1 - Math.pow(1 - t, 2);
+    } else if (curve === 'easeInOut') {
+      easedT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    }
+
+    return start + (end - start) * easedT;
+  }
+
+  /**
+   * Get visible chance for environmental lights based on configuration and floor.
+   * @returns {number} Chance (0-1) that a light should have visible emoji
+   */
+  function _getVisibleChance() {
+    if (!_config || !_config.envLights || !_config.envLights.renderEmoji) {
+      return 0.30; // Default fallback
+    }
+
+    var baseChance = _config.envLights.renderEmoji.visibleChanceBase || 0.30;
+
+    // Apply floor progression if enabled
+    if (_config.progression && _config.progression.enabled && _config.progression.visibleChanceByFloor) {
+      return _calculateProgression(_config.progression.visibleChanceByFloor, _currentFloor);
+    }
+
+    return baseChance;
+  }
+
+  /**
+   * Check if a light emoji should be hidden due to tile occupancy.
+   * @param {number} x - X position
+   * @param {number} y - Y position
+   * @param {Array} grid - Grid data to check occupancy
+   * @returns {boolean} True if emoji should be hidden
+   */
+  function _shouldHideEmojiForOccupancy(x, y, grid) {
+    if (!_config || !_config.envLights || !_config.envLights.renderEmoji) {
+      return false;
+    }
+
+    var cfg = _config.envLights.renderEmoji;
+    if (!cfg.hideIfTileOccupied) {
+      return false;
+    }
+
+    // Check if tile has any of the occupancy types that force hide
+    var tile = grid && grid[y] && grid[y][x];
+    if (!tile) return false;
+
+    var hideClasses = cfg.hideIfContains || [];
+    for (var i = 0; i < hideClasses.length; i++) {
+      var classType = hideClasses[i];
+      // Check various tile properties that might match occupancy classes
+      if (tile.type === classType) return true;
+      if (tile.isDoor && classType === 'door') return true;
+      if (tile.isExit && classType === 'exit') return true;
+      if (tile.isKeyItem && classType === 'keyItem') return true;
+      if (tile.isInteractive && classType === 'interactiveItem') return true;
+      if (tile.isBreakable && classType === 'breakable') return true;
+      if (tile.hasEnemy && classType === 'enemy') return true;
+      if (tile.hasNPC && classType === 'npc') return true;
+      if (tile.hasPlayer && classType === 'player') return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Get breakable properties for a light source type.
+   * @param {string} lightType - Light source type
+   * @returns {Object|null} Breakable properties or null if not breakable
+   */
+  function getBreakableProps(lightType) {
+    return LIGHT_SOURCE_BREAKABLE_PROPS[lightType] || null;
+  }
+
+  /**
+   * Check if a light source type is breakable.
+   * @param {string} lightType - Light source type
+   * @returns {boolean} True if breakable
+   */
+  function isBreakable(lightType) {
+    var props = LIGHT_SOURCE_BREAKABLE_PROPS[lightType];
+    return props && props.hp > 0;
   }
 
   /**
@@ -291,8 +511,10 @@ const LightingSystem = (function() {
    * @param {number} y - Y position
    * @param {string} type - Light source type from LIGHT_SOURCES
    * @param {string} direction - Optional direction for directional lights (north, south, east, west)
+   * @param {boolean} visible - Optional flag for whether emoji should be rendered
+   * @param {boolean} interactive - Optional flag for whether light is breakable/interactive
    */
-  function addLightSource(x, y, type, direction) {
+  function addLightSource(x, y, type, direction, visible, interactive) {
     if (!LIGHT_SOURCES[type]) {
       return;
     }
@@ -302,7 +524,9 @@ const LightingSystem = (function() {
       y: y,
       type: type,
       direction: direction || null,
-      flickerPhase: Math.random() * Math.PI * 2 // Random starting phase
+      flickerPhase: Math.random() * Math.PI * 2, // Random starting phase
+      visible: visible !== false, // Default true if not specified
+      interactive: interactive || false
     });
   }
 
@@ -628,8 +852,9 @@ const LightingSystem = (function() {
    * @param {number} gridHeight - Height of grid
    * @param {Array} rooms - Array of room objects with bounds
    * @param {Array} walls - Array of {x, y} wall positions
+   * @param {Array} grid - Optional grid data for occupancy checking
    */
-  function generateBiomeLights(gridWidth, gridHeight, rooms, walls) {
+  function generateBiomeLights(gridWidth, gridHeight, rooms, walls, grid) {
     clearLightSources();
 
     var biomeConfig = BIOME_LIGHTING[_currentBiome];
@@ -655,6 +880,13 @@ const LightingSystem = (function() {
       var idx = Math.floor(Math.random() * availableRooms.length);
       roomsToLight.push(availableRooms[idx]);
       availableRooms.splice(idx, 1);
+    }
+
+    // Get configuration values
+    var visibleChance = _getVisibleChance();
+    var interactiveShare = 0.25; // Default
+    if (_config && _config.progression && _config.progression.enabled && _config.progression.interactiveShareByFloor) {
+      interactiveShare = _calculateProgression(_config.progression.interactiveShareByFloor, _currentFloor);
     }
 
     // Place lights in selected rooms
@@ -685,7 +917,25 @@ const LightingSystem = (function() {
         }
 
         if (validPos) {
-          addLightSource(lx, ly, lightType);
+          // Determine if this light is interactive/breakable
+          var isInteractive = Math.random() < interactiveShare;
+
+          // Determine if emoji should be visible
+          var shouldBeVisible = Math.random() < visibleChance;
+
+          // Apply interactive multiplier to visible chance
+          if (isInteractive && _config && _config.interactiveLights && _config.interactiveLights.visibleChanceMultiplier) {
+            shouldBeVisible = Math.random() < (visibleChance * _config.interactiveLights.visibleChanceMultiplier);
+          }
+
+          // Check for occupancy-based hiding (requires grid data)
+          if (shouldBeVisible && grid) {
+            if (_shouldHideEmojiForOccupancy(lx, ly, grid)) {
+              shouldBeVisible = false;
+            }
+          }
+
+          addLightSource(lx, ly, lightType, null, shouldBeVisible, isInteractive);
         }
       }
     });
@@ -716,11 +966,20 @@ const LightingSystem = (function() {
   /**
    * Get environmental light source positions for rendering.
    * Returns only environmental lights (not player/enemy lights).
-   * @returns {Array} Array of {x, y, type, emoji, color, flickerPhase} for rendering
+   * Respects visibility configuration and occupancy rules.
+   * @param {Array} grid - Optional grid for runtime occupancy checks
+   * @returns {Array} Array of {x, y, type, emoji, color, flickerPhase, visible, interactive, isBulb, layer, opacity} for rendering
    */
-  function getLightSourcePositions() {
+  function getLightSourcePositions(grid) {
     var environmentalTypes = ['LIGHT_BULB', 'MONITOR', 'TERMINAL', 'FIRE', 'CAMPFIRE',
                                'TORCH', 'LAMP_POST', 'LAVA_LAMP', 'LAVA_FLOOR'];
+
+    var cfg = _config;
+    var bulbSet = (cfg && cfg.envLights && cfg.envLights.bulbs) ? cfg.envLights.bulbs.emojiSet : ['💡'];
+    var defaultLayer = (cfg && cfg.envLights && cfg.envLights.renderEmoji) ? cfg.envLights.renderEmoji.layer : 'below_items';
+    var defaultOpacity = (cfg && cfg.envLights && cfg.envLights.renderEmoji) ? cfg.envLights.renderEmoji.opacity : 0.75;
+    var bulbLayer = (cfg && cfg.envLights && cfg.envLights.bulbs) ? cfg.envLights.bulbs.layer : 'above_all';
+    var bulbHideIfOccupied = (cfg && cfg.envLights && cfg.envLights.bulbs) ? cfg.envLights.bulbs.hideIfTileOccupied : true;
 
     return _lightSources
       .filter(function(source) {
@@ -728,6 +987,17 @@ const LightingSystem = (function() {
       })
       .map(function(source) {
         var lightDef = LIGHT_SOURCES[source.type];
+        var isBulb = bulbSet.indexOf(lightDef.emoji) !== -1;
+        var layer = isBulb ? bulbLayer : defaultLayer;
+        var visible = source.visible;
+
+        // Runtime occupancy check if grid provided
+        if (visible && grid && bulbHideIfOccupied && isBulb) {
+          if (_shouldHideEmojiForOccupancy(source.x, source.y, grid)) {
+            visible = false;
+          }
+        }
+
         return {
           x: source.x,
           y: source.y,
@@ -735,7 +1005,12 @@ const LightingSystem = (function() {
           emoji: lightDef.emoji,
           color: lightDef.color,
           flickerRate: lightDef.flickerRate,
-          flickerPhase: source.flickerPhase
+          flickerPhase: source.flickerPhase,
+          visible: visible,
+          interactive: source.interactive,
+          isBulb: isBulb,
+          layer: layer,
+          opacity: defaultOpacity
         };
       });
   }
@@ -764,6 +1039,9 @@ const LightingSystem = (function() {
     setBiome: setBiome,
     setPlayerLight: setPlayerLight,
     setDarknessMultiplier: setDarknessMultiplier,
+    setFloor: setFloor,
+    setConfig: setConfig,
+    getConfig: getConfig,
     addLightSource: addLightSource,
     removeLightSource: removeLightSource,
     clearLightSources: clearLightSources,
@@ -777,13 +1055,16 @@ const LightingSystem = (function() {
     getLightSources: function() { return _lightSources; },
     getLightSourcePositions: getLightSourcePositions,
     getFrameCount: function() { return _frameCount; },
+    getBreakableProps: getBreakableProps,
+    isBreakable: isBreakable,
     // Phase 1.1: Tile opacity helpers
     TILE_OPACITY: TILE_OPACITY,
     getTileOpacity: getTileOpacity,
     // Phase 3.3: Lighting interpolation control
     setLightingInterpolation: setLightingInterpolation,
     LIGHT_SOURCES: LIGHT_SOURCES,
-    BIOME_LIGHTING: BIOME_LIGHTING
+    BIOME_LIGHTING: BIOME_LIGHTING,
+    LIGHT_SOURCE_BREAKABLE_PROPS: LIGHT_SOURCE_BREAKABLE_PROPS
   };
 })();
 

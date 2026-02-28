@@ -21,5 +21,84 @@
       { "type": "ambush_crit", "multiplier": 2.0 }
     ],
     "tags": ["stealth", "box", "ambush"]
+  },
+  {
+    "id": "SYN-100",
+    "name": "Ultrasonic Feedback Chain",
+    "cardId": "ACT-101",
+    "cardId2": "ACT-100",
+    "trigger": "card_then_card",
+    "visual": "🔊💥",
+    "effects": [
+      { "type": "cost_override", "cardId": "ACT-100", "newCost": 0 },
+      { "type": "light_explosion", "damage": 3, "target": "enemy" },
+      { "type": "burn_on_destroyed_light", "value": 2 },
+      { "type": "remove_stealth_all", "value": true },
+      { "type": "create_darkened_ground", "perLight": 1 }
+    ],
+    "tags": ["sonic", "light_manipulation", "combo"],
+    "_designNote": "Feedback Microphone → Ultrasonic Weapon. Free cast, all lights explode dealing burn damage to enemies, removes enemy stealth, creates Darkened Ground per destroyed light."
+  },
+  {
+    "id": "SYN-101",
+    "name": "Battery Overload Cascade",
+    "cardId": "ACT-102",
+    "cardId2": "ACT-103",
+    "trigger": "card_then_card",
+    "visual": "⚡🔥",
+    "effects": [
+      { "type": "arena_wide_spread", "value": true },
+      { "type": "arc_damage_multiplier", "basedOn": "lightCount", "damagePerLight": 2 },
+      { "type": "blinding_flash", "lightThreshold": 4, "accuracyPenalty": -50, "duration": 2 }
+    ],
+    "tags": ["electrical", "light_manipulation", "combo", "aoe"],
+    "_designNote": "Battery Spill → Overload Grid. If Conductive Ground exists, Overload spreads across entire arena. Light count multiplies arc damage. 4+ lights creates Blinding Flash."
+  },
+  {
+    "id": "SYN-102",
+    "name": "Fractured Light Harvest",
+    "cardId": "ACT-104",
+    "cardId2": "ACT-105",
+    "trigger": "card_then_card",
+    "visual": "🔆🌞",
+    "effects": [
+      { "type": "delayed_combo_payoff", "value": true },
+      { "type": "darkened_ground_bonus", "lumenBonus": 1, "perBrokenBulb": true },
+      { "type": "radiant_burst_damage", "basedOn": "storedLumens", "damagePerLumen": 2 }
+    ],
+    "tags": ["solar", "light_manipulation", "combo"],
+    "_designNote": "Prism Mine → Solar Flare Step. If Ultrasonic Weapon shattered bulbs earlier creating Darkened Ground, each broken bulb counts as +1 Stored Lumen for delayed combo payoff."
+  },
+  {
+    "id": "SYN-103",
+    "name": "Smoke & Spotlight Control",
+    "cardId": "ACT-106",
+    "cardId2": "ACT-107",
+    "trigger": "card_then_card",
+    "visual": "💨🔦",
+    "effects": [
+      { "type": "positional_light_economy", "value": true },
+      { "type": "shadow_all_non_spotlight", "missChance": 0.30 },
+      { "type": "overexpose_spotlight", "critDamageBonus": 1.5 },
+      { "type": "spotlight_concentration", "brightnessFactor": 3.0 }
+    ],
+    "tags": ["tactical", "light_manipulation", "combo", "positional"],
+    "_designNote": "Smoke Bomb → Tactical Spotlight. All non-spotlight tiles become Shadowed (enemies have 30% miss chance). Spotlight tile becomes Overexposed (enemies take +50% crit damage)."
+  },
+  {
+    "id": "SYN-104",
+    "name": "Feedback Loop Exploit",
+    "cardId": "ACT-108",
+    "cardId2": "ACT-101",
+    "trigger": "combo_chain",
+    "visual": "📼🔊",
+    "effects": [
+      { "type": "free_play", "tag": "sonic", "value": true },
+      { "type": "apply_overdrive", "value": true },
+      { "type": "sonic_ground_duration", "bonus": 1 },
+      { "type": "resonance_chain", "maxChain": 3 }
+    ],
+    "tags": ["sonic", "chain", "combo", "tech"],
+    "_designNote": "Loop Recorder echoes Sonic tag. If Sonic tag played twice in sequence, next Sonic card is free and applies Overdrive (Sonic Ground duration +1). Can chain up to 3 times."
   }
 ]
