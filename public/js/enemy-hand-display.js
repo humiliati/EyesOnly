@@ -12,7 +12,8 @@ var EnemyHandDisplay = (function() {
 
   var _container = null;
   var _isVisible = false;
-  var _enemyCards = [];  // Array of { id, hidden: bool, emoji, name }
+  var _enemyCards = [];  // Array of { index, cardId, hidden, emoji, name, destroyed, _def }
+  var _interactability = []; // From EnemyCardInteractability.compute() — [{ index, canReveal, canSteal, canDestroy, primaryAction }]
   var _lastSig = '';
 
   // ── Init ──────────────────────────────────────────────────
@@ -175,8 +176,11 @@ var EnemyHandDisplay = (function() {
   function _render() {
     if (!_container) return;
 
-    var sig = _enemyCards.map(function(c) {
-      return (c.hidden ? 'H' : 'R') + (c.destroyed ? 'D' : '') + c.index;
+    // Build signature that includes interactability state
+    var sig = _enemyCards.map(function(c, idx) {
+      var ia = _interactability[idx];
+      var actionKey = (ia && ia.primaryAction) ? ia.primaryAction[0] : 'n';
+      return (c.hidden ? 'H' : 'R') + (c.destroyed ? 'D' : '') + actionKey + c.index;
     }).join('|');
     if (sig === _lastSig) return;
     _lastSig = sig;
@@ -198,25 +202,66 @@ var EnemyHandDisplay = (function() {
 
     for (var i = 0; i < _enemyCards.length; i++) {
       var card = _enemyCards[i];
+      var ia = _interactability[i] || { canReveal: false, canSteal: false, canDestroy: false, primaryAction: null };
       var el = document.createElement('div');
       el.className = 'enemy-card-slot';
       el.dataset.enemyCardIndex = String(i);
 
       if (card.destroyed) {
+        // ── Destroyed / Stolen ──
         el.classList.add('enemy-card-destroyed');
         el.innerHTML = '<span class="enemy-card-glyph">💀</span>';
-      } else if (card.hidden) {
-        el.classList.add('enemy-card-hidden');
-        el.innerHTML = '<span class="enemy-card-glyph">🃏</span>';
-      } else {
+
+      } else if (!card.hidden) {
+        // ── Revealed (face-up) ──
         el.classList.add('enemy-card-revealed');
         el.innerHTML =
           '<span class="enemy-card-glyph">' + card.emoji + '</span>' +
           '<span class="enemy-card-name">' + card.name + '</span>';
+
+      } else if (ia.primaryAction) {
+        // ── Hidden + Interactable ──
+        el.classList.add('enemy-card-interactable');
+        el.dataset.action = ia.primaryAction; // CSS uses [data-action] for color tint
+        el.innerHTML = '<span class="enemy-card-glyph">🃏</span>';
+
+        // Click → dispatch interaction event (Phase 4 consumes this)
+        (function(index, interactInfo) {
+          el.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (typeof NonCombatEventBus !== 'undefined') {
+              NonCombatEventBus.emit('enemy-card:interact', {
+                index: index,
+                canReveal: interactInfo.canReveal,
+                canSteal: interactInfo.canSteal,
+                canDestroy: interactInfo.canDestroy,
+                primaryAction: interactInfo.primaryAction
+              });
+            }
+          });
+        })(i, ia);
+
+      } else {
+        // ── Hidden + Non-interactable (BLVCK) ──
+        el.classList.add('enemy-card-blvck');
+        el.innerHTML = '<span class="enemy-card-glyph">🃏</span>';
       }
 
       _container.appendChild(el);
     }
+  }
+
+  // ── Interactability ──────────────────────────────────────
+
+  /**
+   * Set interactability state for enemy cards.
+   * Called by combat integration each round after EnemyCardInteractability.compute().
+   * @param {Array} interactArr - [{ index, canReveal, canSteal, canDestroy, primaryAction }]
+   */
+  function setInteractability(interactArr) {
+    _interactability = Array.isArray(interactArr) ? interactArr : [];
+    _lastSig = ''; // Force re-render
+    if (_isVisible) _render();
   }
 
   // ── Public API ────────────────────────────────────────────
@@ -227,6 +272,7 @@ var EnemyHandDisplay = (function() {
     hide: hide,
     isVisible: isVisible,
     updateFromCombatState: updateFromCombatState,
+    setInteractability: setInteractability,
     revealCard: revealCard,
     stealCard: stealCard,
     destroyCard: destroyCard,

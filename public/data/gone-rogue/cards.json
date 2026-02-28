@@ -304,5 +304,73 @@
     "preCombat": false,
     "synergyTags": ["sonic", "tech", "combo_starter", "chain"],
     "_designNote": "Stores last played tag. If Sonic tag played twice in sequence (or Loop Recorder echoes Sonic), next Sonic card is free and applies Overdrive (Sonic Ground duration +1)."
+  },
+
+  {
+    "id": "ACT-030",
+    "name": "Sabotage",
+    "emoji": "💣",
+    "targetType": "enemy_card",
+    "cost": 0,
+    "costs": [{ "kind": "battery", "amount": 1 }],
+    "consumesOnPlay": true,
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "destroy_enemy_card", "count": 1, "prefer": "highest_damage" }
+    ],
+    "preCombat": false,
+    "synergyTags": ["sabotage", "tech", "disposable", "covert"],
+    "_designNote": "Phase 3 destroy card. Burns 1 battery, destroys the highest-damage enemy card. Consumed after use. Triggers card_killed combat event → enemy goes >:( enraged. The 'sabotage' synergyTag also enables destroy-interactability on all enemy cards for the rest of the turn via EnemyCardInteractability."
+  },
+  {
+    "id": "ACT-031",
+    "name": "Recon Scan",
+    "emoji": "📡",
+    "targetType": "self",
+    "cost": 0,
+    "costs": [{ "kind": "battery", "amount": 1 }],
+    "consumesOnPlay": true,
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "reveal_all_enemy_cards", "duration": 1 }
+    ],
+    "preCombat": false,
+    "synergyTags": ["intel", "tech", "disposable", "scout"],
+    "_designNote": "Phase 3 reveal card. Burns 1 battery, flips ALL enemy cards face-up for the current round. Full intel burst. Consumed after use. Pairs with Scout Scope (item reveals specific cards passively, this card reveals all at once)."
+  },
+  {
+    "id": "ACT-032",
+    "name": "Dark Veil",
+    "emoji": "🌑",
+    "targetType": "ground",
+    "cost": 1,
+    "costs": null,
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "ambient_reduction", "value": 0.5, "duration": 3 },
+      { "type": "stealth_bonus", "value": 0.20 },
+      { "type": "enemy_accuracy_penalty", "value": -20 }
+    ],
+    "preCombat": true,
+    "synergyTags": ["darkness", "stealth", "combo_starter", "covert"],
+    "_designNote": "Lighting system interaction card. Halves ambient light (darknessMultiplier *= 0.5) for 3 rounds. Massive stealth bonus + enemy accuracy penalty. Pairs with Thermal Goggles: player gets full reveal + accuracy/stealth bonuses in darkness while enemy is blind. Opposite of Flashbang."
+  },
+  {
+    "id": "ACT-033",
+    "name": "Flashbang",
+    "emoji": "💥",
+    "targetType": "area",
+    "cost": 0,
+    "costs": [{ "kind": "ammo", "amount": 1 }],
+    "consumesOnPlay": true,
+    "rarity": "common",
+    "effects": [
+      { "type": "reveal_all_enemy_cards", "duration": 1 },
+      { "type": "enemy_skip_turn", "chance": 0.5 },
+      { "type": "ambient_boost", "value": 1.0, "duration": 1 }
+    ],
+    "preCombat": false,
+    "synergyTags": ["loud", "light_manipulation", "disposable", "attack"],
+    "_designNote": "Opposite of Dark Veil. Burns 1 ammo, maxes ambient light for 1 round (blinding flash), reveals all enemy cards, 50% chance enemy loses their turn. Loud — generates noise. Consumed after use. Synergizes with Overload Grid (more active lights = more chain lightning)."
   }
 ]

@@ -1,0 +1,206 @@
+/* ============================================================
+   Enemy Hand Display — Visual states for enemy cards in STR combat
+   Phase 3 of ENEMY_CARDS.md roadmap.
+
+   States:
+     .enemy-card-blvck         Hidden + non-interactable (greyed BLVCK joker)
+     .enemy-card-interactable  Hidden + interactable (bright joker, pulsing border)
+     .enemy-card-revealed      Face-up (card emoji + name visible)
+     .enemy-card-destroyed     Stolen or destroyed (skull, faded)
+   ============================================================ */
+
+/* ── Container ───────────────────────────────────────────────── */
+
+.enemy-hand-display {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 4px;
+  padding: 4px 6px;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.enemy-hand-empty {
+  font-family: 'Classic Console Neue', 'Courier New', monospace;
+  font-size: 0.7em;
+  color: rgba(0, 255, 65, 0.25);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px;
+}
+
+/* ── Header label ────────────────────────────────────────────── */
+
+.enemy-hand-label {
+  font-family: 'Classic Console Neue', 'Courier New', monospace;
+  font-size: 0.65em;
+  color: rgba(0, 255, 65, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  padding: 2px 4px;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+/* ── Card slot (shared base) ─────────────────────────────────── */
+
+.enemy-card-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 48px;
+  border: 1px solid rgba(0, 255, 65, 0.15);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
+  transition: border-color 0.2s ease,
+              opacity 0.2s ease,
+              transform 0.15s ease,
+              filter 0.2s ease;
+  position: relative;
+}
+
+.enemy-card-glyph {
+  font-size: 1.4em;
+  line-height: 1;
+  text-align: center;
+  pointer-events: none;
+}
+
+.enemy-card-name {
+  font-family: 'Classic Console Neue', 'Courier New', monospace;
+  font-size: 0.45em;
+  color: rgba(0, 255, 65, 0.7);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 34px;
+  line-height: 1.1;
+  margin-top: 1px;
+  pointer-events: none;
+}
+
+/* ── State: BLVCK (hidden + non-interactable) ────────────────── */
+/* Greyed joker — reuses visual language from .nch-joker-greyed   */
+
+.enemy-card-slot.enemy-card-blvck {
+  border-color: rgba(0, 255, 65, 0.06);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.enemy-card-slot.enemy-card-blvck .enemy-card-glyph {
+  filter: grayscale(1) brightness(0.5) drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.7));
+  opacity: 0.55;
+}
+
+/* ── State: Interactable (hidden + player can act on it) ─────── */
+/* Bright joker with pulsing green border                         */
+
+.enemy-card-slot.enemy-card-interactable {
+  border-color: rgba(0, 255, 65, 0.6);
+  cursor: pointer;
+  animation: enemy-card-pulse 1.8s ease-in-out infinite;
+}
+
+.enemy-card-slot.enemy-card-interactable .enemy-card-glyph {
+  filter: none;
+  opacity: 1.0;
+}
+
+.enemy-card-slot.enemy-card-interactable:hover {
+  border-color: rgba(0, 255, 180, 0.9);
+  transform: scale(1.08);
+  background: rgba(0, 255, 65, 0.06);
+}
+
+.enemy-card-slot.enemy-card-interactable:active {
+  transform: scale(0.95);
+}
+
+@keyframes enemy-card-pulse {
+  0%, 100% { border-color: rgba(0, 255, 65, 0.6); box-shadow: 0 0 4px rgba(0, 255, 65, 0.1); }
+  50%      { border-color: rgba(0, 255, 65, 0.9); box-shadow: 0 0 8px rgba(0, 255, 65, 0.25); }
+}
+
+/* ── State: Revealed (face-up card) ──────────────────────────── */
+
+.enemy-card-slot.enemy-card-revealed {
+  border-color: rgba(255, 170, 50, 0.6);
+  background: rgba(255, 170, 50, 0.06);
+  cursor: default;
+}
+
+.enemy-card-slot.enemy-card-revealed .enemy-card-glyph {
+  filter: none;
+  opacity: 1.0;
+}
+
+/* ── State: Destroyed / Stolen ───────────────────────────────── */
+
+.enemy-card-slot.enemy-card-destroyed {
+  border-color: rgba(255, 0, 0, 0.12);
+  opacity: 0.3;
+  pointer-events: none;
+  cursor: default;
+}
+
+.enemy-card-slot.enemy-card-destroyed .enemy-card-glyph {
+  filter: grayscale(1) brightness(0.4);
+}
+
+/* ── Reveal sub-types (optional color tint by action) ────────── */
+/* Steal-interactable: cyan tint */
+.enemy-card-slot.enemy-card-interactable[data-action="steal"] {
+  border-color: rgba(0, 220, 255, 0.6);
+  animation-name: enemy-card-pulse-steal;
+}
+@keyframes enemy-card-pulse-steal {
+  0%, 100% { border-color: rgba(0, 220, 255, 0.6); box-shadow: 0 0 4px rgba(0, 220, 255, 0.1); }
+  50%      { border-color: rgba(0, 220, 255, 0.9); box-shadow: 0 0 8px rgba(0, 220, 255, 0.25); }
+}
+
+/* Destroy-interactable: red tint */
+.enemy-card-slot.enemy-card-interactable[data-action="destroy"] {
+  border-color: rgba(255, 60, 60, 0.6);
+  animation-name: enemy-card-pulse-destroy;
+}
+@keyframes enemy-card-pulse-destroy {
+  0%, 100% { border-color: rgba(255, 60, 60, 0.6); box-shadow: 0 0 4px rgba(255, 60, 60, 0.1); }
+  50%      { border-color: rgba(255, 60, 60, 0.9); box-shadow: 0 0 8px rgba(255, 60, 60, 0.25); }
+}
+
+/* Reveal-interactable: yellow tint */
+.enemy-card-slot.enemy-card-interactable[data-action="reveal"] {
+  border-color: rgba(255, 200, 0, 0.6);
+  animation-name: enemy-card-pulse-reveal;
+}
+@keyframes enemy-card-pulse-reveal {
+  0%, 100% { border-color: rgba(255, 200, 0, 0.6); box-shadow: 0 0 4px rgba(255, 200, 0, 0.1); }
+  50%      { border-color: rgba(255, 200, 0, 0.9); box-shadow: 0 0 8px rgba(255, 200, 0, 0.25); }
+}
+
+/* ── Mobile portrait compact ─────────────────────────────────── */
+@media (max-width: 600px) and (orientation: portrait) {
+  .enemy-card-slot {
+    width: 28px;
+    height: 38px;
+  }
+  .enemy-card-glyph {
+    font-size: 1.1em;
+  }
+  .enemy-card-name {
+    font-size: 0.35em;
+    max-width: 26px;
+  }
+  .enemy-hand-label {
+    font-size: 0.55em;
+  }
+}
