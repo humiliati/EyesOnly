@@ -1,0 +1,964 @@
+{
+  "version": 1,
+  "notes": "Bootstrapped from runtime enemy-cards.json + enemy-decks.json. Edit this file going forward; run scripts/build-enemy-catalog.mjs.",
+  "cards": {
+    "EATK-001": {
+      "name": "Pistol Shot",
+      "emoji": "🔫",
+      "intentType": "PISTOL",
+      "targetType": "player",
+      "damage": 2,
+      "accuracy": 70,
+      "speed": 3,
+      "effects": [
+        {
+          "type": "damage",
+          "value": 2
+        }
+      ],
+      "tags": [
+        "ranged",
+        "basic"
+      ],
+      "synergyTags": [
+        "ballistic",
+        "ranged",
+        "disarm"
+      ],
+      "rarity": "common",
+      "stealValue": 1,
+      "_designNote": "Bread-and-butter enemy attack. Every guard has one."
+    },
+    "EATK-002": {
+      "name": "Burst Fire",
+      "emoji": "🔫",
+      "intentType": "SMG",
+      "targetType": "player",
+      "damage": 1,
+      "accuracy": 55,
+      "speed": 4,
+      "hits": 3,
+      "effects": [
+        {
+          "type": "damage",
+          "value": 1,
+          "hits": 3
+        }
+      ],
+      "tags": [
+        "ranged",
+        "multi-hit",
+        "suppressive"
+      ],
+      "synergyTags": [
+        "ballistic",
+        "ranged",
+        "burst",
+        "sustained"
+      ],
+      "rarity": "uncommon",
+      "stealValue": 2,
+      "_designNote": "3 shots at 1 dmg each. Low accuracy per hit but punishes no-dodge."
+    },
+    "EATK-003": {
+      "name": "Frag Grenade",
+      "emoji": "💣",
+      "intentType": "GRENADE",
+      "targetType": "player",
+      "damage": 4,
+      "accuracy": 65,
+      "speed": 2,
+      "effects": [
+        {
+          "type": "damage",
+          "value": 4
+        },
+        {
+          "type": "aoe",
+          "radius": 2
+        }
+      ],
+      "tags": [
+        "ranged",
+        "explosive",
+        "aoe"
+      ],
+      "synergyTags": [
+        "explosive",
+        "aoe",
+        "ballistic"
+      ],
+      "rarity": "rare",
+      "stealValue": 3,
+      "_designNote": "High damage, telegraphed. Player should flee or interrupt."
+    },
+    "EATK-004": {
+      "name": "Arrow Shot",
+      "emoji": "🏹",
+      "intentType": "BOW",
+      "targetType": "player",
+      "damage": 3,
+      "accuracy": 75,
+      "speed": 3,
+      "effects": [
+        {
+          "type": "damage",
+          "value": 3
+        },
+        {
+          "type": "status",
+          "status": "bleed",
+          "duration": 2,
+          "tickDamage": 1
+        }
+      ],
+      "tags": [
+        "ranged",
+        "precision",
+        "bleed"
+      ],
+      "synergyTags": [
+        "precision",
+        "ranged",
+        "covert"
+      ],
+      "rarity": "uncommon",
+      "stealValue": 2,
+      "_designNote": "Precision + bleed DOT. Forest enemies. Silent."
+    },
+    "EATK-005": {
+      "name": "Axe Swing",
+      "emoji": "🪓",
+      "intentType": "AXE",
+      "targetType": "player",
+      "damage": 5,
+      "accuracy": 60,
+      "speed": 2,
+      "effects": [
+        {
+          "type": "damage",
+          "value": 5
+        }
+      ],
+      "tags": [
+        "melee",
+        "heavy",
+        "slow"
+      ],
+      "synergyTags": [
+        "melee",
+        "aggressive"
+      ],
+      "rarity": "uncommon",
+      "stealValue": 2,
+      "_designNote": "Big melee hit. Slow and telegraphed but hurts."
+    },
+    "EATK-006": {
+      "name": "Chemical Splash",
+      "emoji": "🧪",
+      "intentType": "CHEMICAL",
+      "targetType": "player",
+      "damage": 1,
+      "accuracy": 80,
+      "speed": 3,
+      "effects": [
+        {
+          "type": "damage",
+          "value": 1
+        },
+        {
+          "type": "status",
+          "status": "poison",
+          "duration": 3,
+          "tickDamage": 2
+        }
+      ],
+      "tags": [
+        "ranged",
+        "chemical",
+        "dot"
+      ],
+      "synergyTags": [
+        "wet",
+        "tech"
+      ],
+      "rarity": "rare",
+      "stealValue": 3,
+      "_designNote": "Low upfront but poison ticks hard over 3 rounds."
+    },
+    "EATK-007": {
+      "name": "Taze",
+      "emoji": "⚡",
+      "intentType": "TAZER",
+      "targetType": "player",
+      "damage": 1,
+      "accuracy": 75,
+      "speed": 4,
+      "effects": [
+        {
+          "type": "damage",
+          "value": 1
+        },
+        {
+          "type": "status",
+          "status": "stun",
+          "duration": 1
+        }
+      ],
+      "tags": [
+        "melee",
+        "stun",
+        "control"
+      ],
+      "synergyTags": [
+        "electrical",
+        "control",
+        "tech",
+        "disarm"
+      ],
+      "rarity": "rare",
+      "stealValue": 3,
+      "_designNote": "Stuns player for 1 round. Low damage but tempo-destroying."
+    },
+    "EATK-008": {
+      "name": "Knife Slash",
+      "emoji": "🔪",
+      "intentType": "KNIFE",
+      "targetType": "player",
+      "damage": 2,
+      "accuracy": 80,
+      "speed": 5,
+      "effects": [
+        {
+          "type": "damage",
+          "value": 2
+        }
+      ],
+      "tags": [
+        "melee",
+        "fast",
+        "basic"
+      ],
+      "synergyTags": [
+        "melee",
+        "covert",
+        "sleight",
+        "pickpocket"
+      ],
+      "rarity": "common",
+      "stealValue": 1,
+      "_designNote": "Fast melee. High accuracy, low damage. Street-level enemies."
+    },
+    "EATK-009": {
+      "name": "Grapple",
+      "emoji": "⛓️",
+      "intentType": "GRAPPLE",
+      "targetType": "player",
+      "damage": 0,
+      "accuracy": 65,
+      "speed": 2,
+      "effects": [
+        {
+          "type": "status",
+          "status": "immobilize",
+          "duration": 2
+        },
+        {
+          "type": "damage",
+          "value": 1
+        }
+      ],
+      "tags": [
+        "melee",
+        "control",
+        "setup"
+      ],
+      "synergyTags": [
+        "control",
+        "improvised"
+      ],
+      "rarity": "uncommon",
+      "stealValue": 2,
+      "_designNote": "Pins player for 2 rounds. Follow-up attacks get bonus accuracy."
+    },
+    "EATK-010": {
+      "name": "Spotlight",
+      "emoji": "🔦",
+      "intentType": "FLASHLIGHT",
+      "targetType": "player",
+      "damage": 0,
+      "accuracy": 90,
+      "speed": 5,
+      "effects": [
+        {
+          "type": "status",
+          "status": "exposed",
+          "duration": 2
+        },
+        {
+          "type": "alert",
+          "value": 3
+        }
+      ],
+      "tags": [
+        "utility",
+        "detection",
+        "alert"
+      ],
+      "synergyTags": [
+        "covert",
+        "control",
+        "hack"
+      ],
+      "rarity": "rare",
+      "stealValue": 3,
+      "_designNote": "No damage. Reveals player position and raises alert. Spotter enemy."
+    },
+    "EATK-011": {
+      "name": "Aimed Shot",
+      "emoji": "🎯",
+      "intentType": "TARGET",
+      "targetType": "player",
+      "damage": 4,
+      "accuracy": 85,
+      "speed": 1,
+      "effects": [
+        {
+          "type": "damage",
+          "value": 4
+        }
+      ],
+      "tags": [
+        "ranged",
+        "precision",
+        "slow"
+      ],
+      "synergyTags": [
+        "precision",
+        "ranged",
+        "ballistic"
+      ],
+      "rarity": "rare",
+      "stealValue": 3,
+      "_designNote": "Slowest attack but highest accuracy + strong damage. Sniper-type."
+    },
+    "EATK-012": {
+      "name": "Incendiary",
+      "emoji": "🔥",
+      "intentType": "FIRE",
+      "targetType": "player",
+      "damage": 2,
+      "accuracy": 70,
+      "speed": 3,
+      "effects": [
+        {
+          "type": "damage",
+          "value": 2
+        },
+        {
+          "type": "status",
+          "status": "burn",
+          "duration": 2,
+          "tickDamage": 2
+        },
+        {
+          "type": "ground_effect",
+          "effectType": "FIRE",
+          "radius": 1
+        }
+      ],
+      "tags": [
+        "ranged",
+        "fire",
+        "dot",
+        "area_denial"
+      ],
+      "synergyTags": [
+        "fire",
+        "aoe",
+        "aggressive"
+      ],
+      "rarity": "rare",
+      "stealValue": 3,
+      "_designNote": "Burn DOT + leaves fire tile. Pyromaniac signature."
+    },
+    "EATK-013": {
+      "name": "Shield Wall",
+      "emoji": "🛡️",
+      "intentType": "SHIELD",
+      "targetType": "self",
+      "damage": 0,
+      "accuracy": 100,
+      "speed": 4,
+      "effects": [
+        {
+          "type": "defense_buff",
+          "value": 3,
+          "duration": 2
+        }
+      ],
+      "tags": [
+        "defensive",
+        "buff",
+        "tank"
+      ],
+      "synergyTags": [
+        "defensive",
+        "control"
+      ],
+      "rarity": "uncommon",
+      "stealValue": 2,
+      "_designNote": "Raises defense for 2 rounds. Heavy Drifter signature."
+    },
+    "EATK-014": {
+      "name": "Nibble",
+      "emoji": "🐛",
+      "intentType": "KNIFE",
+      "targetType": "player",
+      "damage": 1,
+      "accuracy": 90,
+      "speed": 1,
+      "effects": [
+        {
+          "type": "damage",
+          "value": 1
+        }
+      ],
+      "tags": [
+        "melee",
+        "weak",
+        "tutorial"
+      ],
+      "synergyTags": [
+        "melee"
+      ],
+      "rarity": "common",
+      "stealValue": 0,
+      "_designNote": "Weakest attack in the game. Tutorial critters only."
+    },
+    "EATK-015": {
+      "name": "Sting",
+      "emoji": "🐝",
+      "intentType": "KNIFE",
+      "targetType": "player",
+      "damage": 1,
+      "accuracy": 85,
+      "speed": 3,
+      "effects": [
+        {
+          "type": "damage",
+          "value": 1
+        },
+        {
+          "type": "status",
+          "status": "poison",
+          "duration": 1,
+          "tickDamage": 1
+        }
+      ],
+      "tags": [
+        "melee",
+        "weak",
+        "tutorial",
+        "poison"
+      ],
+      "synergyTags": [
+        "melee",
+        "wet"
+      ],
+      "rarity": "common",
+      "stealValue": 0,
+      "_designNote": "Tutorial bee attack. Tiny poison tick teaches DOT awareness."
+    },
+    "EATK-016": {
+      "name": "Ram Charge",
+      "emoji": "🚧",
+      "intentType": "GRAPPLE",
+      "targetType": "player",
+      "damage": 3,
+      "accuracy": 70,
+      "speed": 5,
+      "effects": [
+        {
+          "type": "damage",
+          "value": 3
+        },
+        {
+          "type": "knockback",
+          "distance": 1
+        }
+      ],
+      "tags": [
+        "melee",
+        "charge",
+        "knockback"
+      ],
+      "synergyTags": [
+        "control",
+        "aggressive",
+        "intimidate"
+      ],
+      "rarity": "uncommon",
+      "stealValue": 2,
+      "_designNote": "Transit Enforcer lane charge. Knocks player back 1 tile."
+    },
+    "EATK-017": {
+      "name": "Paint Target",
+      "emoji": "📡",
+      "intentType": "FLASHLIGHT",
+      "targetType": "player",
+      "damage": 0,
+      "accuracy": 95,
+      "speed": 5,
+      "effects": [
+        {
+          "type": "status",
+          "status": "marked",
+          "duration": 3
+        },
+        {
+          "type": "alert",
+          "value": 5
+        }
+      ],
+      "tags": [
+        "utility",
+        "detection",
+        "mark"
+      ],
+      "synergyTags": [
+        "tech",
+        "covert",
+        "electrical",
+        "hack"
+      ],
+      "rarity": "rare",
+      "stealValue": 3,
+      "_designNote": "Spotter Drone signature. Marks player for +dmg from other enemies."
+    },
+    "EATK-018": {
+      "name": "Shadow Strike",
+      "emoji": "👤",
+      "intentType": "KNIFE",
+      "targetType": "player",
+      "damage": 4,
+      "accuracy": 90,
+      "speed": 5,
+      "effects": [
+        {
+          "type": "damage",
+          "value": 4
+        },
+        {
+          "type": "status",
+          "status": "revealed",
+          "duration": 1
+        }
+      ],
+      "tags": [
+        "melee",
+        "stealth",
+        "ambush"
+      ],
+      "synergyTags": [
+        "covert",
+        "melee",
+        "combo_finisher"
+      ],
+      "rarity": "elite",
+      "stealValue": 4,
+      "_designNote": "Ghost Operative signature. High damage from stealth, reveals player."
+    },
+    "EATK-019": {
+      "name": "Coin Toss",
+      "emoji": "🪙",
+      "intentType": "PISTOL",
+      "targetType": "player",
+      "damage": 1,
+      "accuracy": 50,
+      "speed": 6,
+      "effects": [
+        {
+          "type": "damage",
+          "value": 1
+        },
+        {
+          "type": "currency_scatter",
+          "amount": 5
+        }
+      ],
+      "tags": [
+        "ranged",
+        "trick",
+        "goblin"
+      ],
+      "synergyTags": [
+        "black_market",
+        "covert",
+        "improvised",
+        "bribe",
+        "pickpocket"
+      ],
+      "rarity": "rare",
+      "stealValue": 3,
+      "_designNote": "Treasure Goblin distraction. Low damage but scatters bait currency."
+    },
+    "EATK-020": {
+      "name": "Flee!",
+      "emoji": "💰",
+      "intentType": "SHIELD",
+      "targetType": "self",
+      "damage": 0,
+      "accuracy": 100,
+      "speed": 6,
+      "effects": [
+        {
+          "type": "enemy_flee_attempt",
+          "successRate": 0.4
+        }
+      ],
+      "tags": [
+        "defensive",
+        "escape",
+        "goblin"
+      ],
+      "synergyTags": [
+        "black_market",
+        "covert",
+        "defensive",
+        "bribe"
+      ],
+      "rarity": "elite",
+      "stealValue": 4,
+      "_designNote": "Treasure Goblin tries to escape combat. 40% chance per round."
+    }
+  },
+  "decks": {
+    "SLEEPY_SNAIL": {
+      "keyName": "SLEEPY_SNAIL",
+      "pool": [
+        "EATK-014"
+      ],
+      "handSize": 1,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "pickpocket"
+      ],
+      "note": "1 weak card. Tutorial punching bag."
+    },
+    "DROWSY_BEE": {
+      "keyName": "DROWSY_BEE",
+      "pool": [
+        "EATK-015"
+      ],
+      "handSize": 1,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "pickpocket"
+      ],
+      "note": "1 card with minor poison. Teaches DOT."
+    },
+    "LAZY_CATERPILLAR": {
+      "keyName": "LAZY_CATERPILLAR",
+      "pool": [
+        "EATK-014",
+        "EATK-014"
+      ],
+      "handSize": 2,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "pickpocket",
+        "intimidate"
+      ],
+      "note": "2 copies of Nibble. Slightly more durable tutorial enemy."
+    },
+    "GENERIC_FLOOR_5": {
+      "keyName": "GENERIC_FLOOR_5",
+      "pool": [
+        "EATK-001",
+        "EATK-008"
+      ],
+      "handSize": 2,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "pickpocket",
+        "disarm"
+      ],
+      "note": "Pistol + Knife. Basic two-card guard."
+    },
+    "GENERIC_FLOOR_10": {
+      "keyName": "GENERIC_FLOOR_10",
+      "pool": [
+        "EATK-001",
+        "EATK-001",
+        "EATK-008"
+      ],
+      "handSize": 3,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "pickpocket",
+        "disarm"
+      ],
+      "note": "2x Pistol + Knife. Slightly stronger."
+    },
+    "GENERIC_FLOOR_15": {
+      "keyName": "GENERIC_FLOOR_15",
+      "pool": [
+        "EATK-001",
+        "EATK-002",
+        "EATK-008"
+      ],
+      "handSize": 3,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "disarm",
+        "sleight"
+      ],
+      "note": "Pistol + Burst + Knife. Mixed ranged/melee."
+    },
+    "GENERIC_FLOOR_20": {
+      "keyName": "GENERIC_FLOOR_20",
+      "pool": [
+        "EATK-002",
+        "EATK-011",
+        "EATK-008",
+        "EATK-013"
+      ],
+      "handSize": 4,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "disarm",
+        "hack"
+      ],
+      "note": "Burst + Aimed + Knife + Shield. Defensive variety."
+    },
+    "GENERIC_FLOOR_25": {
+      "keyName": "GENERIC_FLOOR_25",
+      "pool": [
+        "EATK-002",
+        "EATK-011",
+        "EATK-003",
+        "EATK-007"
+      ],
+      "handSize": 4,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "hack"
+      ],
+      "note": "Burst + Aimed + Grenade + Taze. Escalating danger."
+    },
+    "GENERIC_FLOOR_30": {
+      "keyName": "GENERIC_FLOOR_30",
+      "pool": [
+        "EATK-011",
+        "EATK-003",
+        "EATK-007",
+        "EATK-002",
+        "EATK-013"
+      ],
+      "handSize": 5,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [],
+      "note": "Full 5-card hand. Late-game guards are tough to steal from."
+    },
+    "TRANSIT_ENFORCER": {
+      "keyName": "TRANSIT_ENFORCER",
+      "pool": [
+        "EATK-016",
+        "EATK-001",
+        "EATK-016"
+      ],
+      "handSize": 3,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "disarm",
+        "intimidate"
+      ],
+      "note": "2x Ram Charge + Pistol. Lane charger pattern."
+    },
+    "SPOTTER_DRONE": {
+      "keyName": "SPOTTER_DRONE",
+      "pool": [
+        "EATK-017",
+        "EATK-010",
+        "EATK-001"
+      ],
+      "handSize": 3,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "hack",
+        "disarm"
+      ],
+      "note": "Paint Target + Spotlight + Pistol. Detection specialist."
+    },
+    "PYROMANIAC": {
+      "keyName": "PYROMANIAC",
+      "pool": [
+        "EATK-012",
+        "EATK-012",
+        "EATK-003"
+      ],
+      "handSize": 3,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "disarm"
+      ],
+      "note": "2x Incendiary + Frag. Fire-focused devastation."
+    },
+    "HEAVY_DRIFTER": {
+      "keyName": "HEAVY_DRIFTER",
+      "pool": [
+        "EATK-013",
+        "EATK-013",
+        "EATK-005",
+        "EATK-001"
+      ],
+      "handSize": 4,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [],
+      "note": "2x Shield Wall + Axe + Pistol. Tank. Hard to steal from."
+    },
+    "GHOST_OPERATIVE": {
+      "keyName": "GHOST_OPERATIVE",
+      "pool": [
+        "EATK-018",
+        "EATK-018",
+        "EATK-008"
+      ],
+      "handSize": 3,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "sleight"
+      ],
+      "note": "2x Shadow Strike + Knife. Glass cannon ambusher."
+    },
+    "TREASURE_GOBLIN": {
+      "keyName": "TREASURE_GOBLIN",
+      "pool": [
+        "EATK-019",
+        "EATK-020",
+        "EATK-020"
+      ],
+      "handSize": 3,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "pickpocket",
+        "sleight",
+        "bribe"
+      ],
+      "note": "Coin Toss + 2x Flee. Wants to escape, not fight. Easy to steal from."
+    },
+    "SMOKE_STALKER": {
+      "keyName": "SMOKE_STALKER",
+      "pool": [
+        "EATK-018",
+        "EATK-008",
+        "EATK-009"
+      ],
+      "handSize": 3,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "sleight",
+        "pickpocket"
+      ],
+      "note": "Prefers smoke + close range. Shadow Strike + Knife + Grapple."
+    },
+    "SMOKE_SPOTTER": {
+      "keyName": "SMOKE_SPOTTER",
+      "pool": [
+        "EATK-010",
+        "EATK-017",
+        "EATK-001"
+      ],
+      "handSize": 3,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "hack"
+      ],
+      "note": "Turns smoke into a detection net. Spotlight + Paint Target + Pistol."
+    },
+    "SMOKE_ENFORCER": {
+      "keyName": "SMOKE_ENFORCER",
+      "pool": [
+        "EATK-016",
+        "EATK-001",
+        "EATK-007"
+      ],
+      "handSize": 3,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "disarm",
+        "intimidate"
+      ],
+      "note": "Charges through smoke and stuns. Ram + Pistol + Taze."
+    },
+    "CONTRABAND_RUNNER": {
+      "keyName": "CONTRABAND_RUNNER",
+      "pool": [
+        "EATK-019",
+        "EATK-008",
+        "EATK-020"
+      ],
+      "handSize": 3,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "pickpocket",
+        "bribe"
+      ],
+      "note": "Mid-tier thief. Coin Toss distraction + Knife + Flee."
+    },
+    "ARMORED_GUARD": {
+      "keyName": "ARMORED_GUARD",
+      "pool": [
+        "EATK-013",
+        "EATK-001",
+        "EATK-011"
+      ],
+      "handSize": 3,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "disarm"
+      ],
+      "note": "Defensive guard variant. Shield Wall + Pistol + Aimed Shot."
+    },
+    "CHEM_TECH": {
+      "keyName": "CHEM_TECH",
+      "pool": [
+        "EATK-006",
+        "EATK-007",
+        "EATK-010"
+      ],
+      "handSize": 3,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "hack",
+        "disarm"
+      ],
+      "note": "Status-control tech. Chemical + Taze + Spotlight."
+    }
+  },
+  "archetypes": {},
+  "variants": {},
+  "spawnBands": []
+}
