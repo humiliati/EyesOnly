@@ -1911,7 +1911,6 @@ body.amber-mode #scanlines::after {
   body.gone-rogue-active #rogue-grid-mobile {
     margin: 0 !important;
     order: 1;
-    overflow: hidden; /* Clip zoomed/panned canvas within frame */
   }
 
   body.gone-rogue-active #input-line,
@@ -2496,8 +2495,6 @@ body.in-gone-rogue #log-column {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
-
-
 
 /* ============================================================
    MOBILE KEYBOARD VISIBILITY HANDLING
