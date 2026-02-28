@@ -296,9 +296,11 @@ function ItemGrantSection() {
   useEffect(() => {
     fetch('/data/arg_items.json')
       .then(r => r.json())
-      .then(d => {
-        setItems(d);
-        if (Object.keys(d).length > 0) setSelectedItem(Object.keys(d)[0]);
+      .then((d: any) => {
+        const obj = (d && typeof d === 'object') ? (d as Record<string, any>) : {};
+        setItems(obj);
+        const keys = Object.keys(obj);
+        if (keys.length > 0) setSelectedItem(keys[0]);
       })
       .catch(() => {});
   }, []);

@@ -12,7 +12,7 @@
       { "type": "damage", "value": 2 }
     ],
     "tags": ["ranged", "basic"],
-    "synergyTags": ["ballistic", "ranged"],
+    "synergyTags": ["ballistic", "ranged", "disarm"],
     "rarity": "common",
     "stealValue": 1,
     "_designNote": "Bread-and-butter enemy attack. Every guard has one."
@@ -125,7 +125,7 @@
       { "type": "status", "status": "stun", "duration": 1 }
     ],
     "tags": ["melee", "stun", "control"],
-    "synergyTags": ["electrical", "control", "tech"],
+    "synergyTags": ["electrical", "control", "tech", "disarm"],
     "rarity": "rare",
     "stealValue": 3,
     "_designNote": "Stuns player for 1 round. Low damage but tempo-destroying."
@@ -143,7 +143,7 @@
       { "type": "damage", "value": 2 }
     ],
     "tags": ["melee", "fast", "basic"],
-    "synergyTags": ["melee", "covert"],
+    "synergyTags": ["melee", "covert", "sleight", "pickpocket"],
     "rarity": "common",
     "stealValue": 1,
     "_designNote": "Fast melee. High accuracy, low damage. Street-level enemies."
@@ -181,7 +181,7 @@
       { "type": "alert", "value": 3 }
     ],
     "tags": ["utility", "detection", "alert"],
-    "synergyTags": ["covert", "control"],
+    "synergyTags": ["covert", "control", "hack"],
     "rarity": "rare",
     "stealValue": 3,
     "_designNote": "No damage. Reveals player position and raises alert. Spotter enemy."
@@ -293,7 +293,7 @@
       { "type": "knockback", "distance": 1 }
     ],
     "tags": ["melee", "charge", "knockback"],
-    "synergyTags": ["control", "aggressive"],
+    "synergyTags": ["control", "aggressive", "intimidate"],
     "rarity": "uncommon",
     "stealValue": 2,
     "_designNote": "Transit Enforcer lane charge. Knocks player back 1 tile."
@@ -312,7 +312,7 @@
       { "type": "alert", "value": 5 }
     ],
     "tags": ["utility", "detection", "mark"],
-    "synergyTags": ["tech", "covert", "electrical"],
+    "synergyTags": ["tech", "covert", "electrical", "hack"],
     "rarity": "rare",
     "stealValue": 3,
     "_designNote": "Spotter Drone signature. Marks player for +dmg from other enemies."
@@ -350,7 +350,7 @@
       { "type": "currency_scatter", "amount": 5 }
     ],
     "tags": ["ranged", "trick", "goblin"],
-    "synergyTags": ["black_market", "covert", "improvised"],
+    "synergyTags": ["black_market", "covert", "improvised", "bribe", "pickpocket"],
     "rarity": "rare",
     "stealValue": 3,
     "_designNote": "Treasure Goblin distraction. Low damage but scatters bait currency."
@@ -368,7 +368,7 @@
       { "type": "enemy_flee_attempt", "successRate": 0.40 }
     ],
     "tags": ["defensive", "escape", "goblin"],
-    "synergyTags": ["black_market", "covert", "defensive"],
+    "synergyTags": ["black_market", "covert", "defensive", "bribe"],
     "rarity": "elite",
     "stealValue": 4,
     "_designNote": "Treasure Goblin tries to escape combat. 40% chance per round."

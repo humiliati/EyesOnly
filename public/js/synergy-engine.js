@@ -50,7 +50,15 @@ const SynergyEngine = (function () {
     ELECTRICAL: 'electrical',      // 🟨 Shock, EMP
     COVERT: 'covert',              // 🟪 Stealth, intel
     IMPROVISED: 'improvised',      // 🟩 Jury-rigged, junk
-    BLACK_MARKET: 'black_market'   // ⬛ Illegal, volatile
+    BLACK_MARKET: 'black_market',  // ⬛ Illegal, volatile
+
+    // Theft layer (pre-combat + in-combat stealing hooks)
+    PICKPOCKET: 'pickpocket',
+    DISARM: 'disarm',
+    SLEIGHT: 'sleight',
+    HACK: 'hack',
+    INTIMIDATE: 'intimidate',
+    BRIBE: 'bribe'
   };
 
   // Synergy definitions (enabler -> payoff relationships)
@@ -160,6 +168,90 @@ const SynergyEngine = (function () {
       },
       cascadeChance: 0,
       description: 'Sustained fire after ammo generation has 50% chance to refund ammo and deals +3 damage'
+    },
+
+    // ─── THEFT TAG SYNERGIES ───────────────────────────────
+
+    // pickpocket → covert payoff: draw + reduce cost (reward theft builds)
+    FIVE_FINGER_DISCOUNT: {
+      name: 'Five-Finger Discount',
+      type: SYNERGY_TYPES.SEQUENTIAL,
+      enablerTags: [SYNERGY_TAGS.PICKPOCKET],
+      payoffTags: [SYNERGY_TAGS.COVERT],
+      bonus: {
+        drawCard: true,
+        costReduction: 1
+      },
+      cascadeChance: 0.15,
+      description: 'Pickpocket setup into covert action: draw 1 and -1 cost (15% chain)'
+    },
+
+    // disarm → ballistic payoff: +damage + speed (tempo swing)
+    DISARMING_OPENING: {
+      name: 'Disarming Opening',
+      type: SYNERGY_TYPES.SEQUENTIAL,
+      enablerTags: [SYNERGY_TAGS.DISARM],
+      payoffTags: [SYNERGY_TAGS.BALLISTIC],
+      bonus: {
+        damageBonus: 2,
+        speedBonus: 1
+      },
+      cascadeChance: 0,
+      description: 'Disarm into ballistic: +2 damage and +1 speed'
+    },
+
+    // hack → tech/electrical payoff: disrupt + draw
+    SILENT_OVERRIDE: {
+      name: 'Silent Override',
+      type: SYNERGY_TYPES.SEQUENTIAL,
+      enablerTags: [SYNERGY_TAGS.HACK],
+      payoffTags: [SYNERGY_TAGS.TECH, SYNERGY_TAGS.ELECTRICAL],
+      bonus: {
+        applyDisrupt: true,
+        drawCard: true
+      },
+      cascadeChance: 0,
+      description: 'Hack into tech/electrical: disrupt the enemy and draw 1'
+    },
+
+    // sleight → black market payoff: refund energy + draw
+    CONTRABAND_SLEIGHT: {
+      name: 'Contraband Sleight',
+      type: SYNERGY_TYPES.SEQUENTIAL,
+      enablerTags: [SYNERGY_TAGS.SLEIGHT],
+      payoffTags: [SYNERGY_TAGS.BLACK_MARKET],
+      bonus: {
+        energyRefund: 1,
+        drawCard: true
+      },
+      cascadeChance: 0.1,
+      description: 'Sleight into black market: refund 1 energy and draw 1 (10% chain)'
+    },
+
+    // intimidate → aggressive payoff: multiplier
+    PRESSURE_POINT: {
+      name: 'Pressure Point',
+      type: SYNERGY_TYPES.SEQUENTIAL,
+      enablerTags: [SYNERGY_TAGS.INTIMIDATE],
+      payoffTags: [SYNERGY_TAGS.AGGRESSIVE],
+      bonus: {
+        damageMultiplier: 1.35
+      },
+      cascadeChance: 0,
+      description: 'Intimidation into aggression: +35% damage'
+    },
+
+    // bribe → defensive payoff: cost reduction (escape / stall builds)
+    PAYOFF_PROTOCOL: {
+      name: 'Payoff Protocol',
+      type: SYNERGY_TYPES.IMMEDIATE,
+      enablerTags: [SYNERGY_TAGS.BRIBE],
+      payoffTags: [SYNERGY_TAGS.DEFENSIVE, SYNERGY_TAGS.COVERT],
+      bonus: {
+        costReduction: 1
+      },
+      cascadeChance: 0,
+      description: 'Bribe into defense/covert: -1 cost'
     },
 
     // ─── SPY LAYER TAG-COMBO SYNERGIES ──────────────────────

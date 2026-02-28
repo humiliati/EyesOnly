@@ -82,5 +82,39 @@
     "cards": ["EATK-019", "EATK-020", "EATK-020"],
     "exposedTags": ["pickpocket", "sleight", "bribe"],
     "_note": "Coin Toss + 2x Flee. Wants to escape, not fight. Easy to steal from."
+  },
+
+  "_note_phase1": "Additional enemy deck types (Phase 1 expansion). Ground-effect variants: right now the only canonical ground effect in-data is Smoke (EFF-001). These variants are designed to feel different when fighting in/around smoke without requiring engine changes.",
+
+  "SMOKE_STALKER": {
+    "cards": ["EATK-018", "EATK-008", "EATK-009"],
+    "exposedTags": ["sleight", "pickpocket"],
+    "_note": "Prefers smoke + close range. Shadow Strike + Knife + Grapple."
+  },
+  "SMOKE_SPOTTER": {
+    "cards": ["EATK-010", "EATK-017", "EATK-001"],
+    "exposedTags": ["hack"],
+    "_note": "Turns smoke into a detection net. Spotlight + Paint Target + Pistol."
+  },
+  "SMOKE_ENFORCER": {
+    "cards": ["EATK-016", "EATK-001", "EATK-007"],
+    "exposedTags": ["disarm", "intimidate"],
+    "_note": "Charges through smoke and stuns. Ram + Pistol + Taze."
+  },
+
+  "CONTRABAND_RUNNER": {
+    "cards": ["EATK-019", "EATK-008", "EATK-020"],
+    "exposedTags": ["pickpocket", "bribe"],
+    "_note": "Mid-tier thief. Coin Toss distraction + Knife + Flee."
+  },
+  "ARMORED_GUARD": {
+    "cards": ["EATK-013", "EATK-001", "EATK-011"],
+    "exposedTags": ["disarm"],
+    "_note": "Defensive guard variant. Shield Wall + Pistol + Aimed Shot."
+  },
+  "CHEM_TECH": {
+    "cards": ["EATK-006", "EATK-007", "EATK-010"],
+    "exposedTags": ["hack", "disarm"],
+    "_note": "Status-control tech. Chemical + Taze + Spotlight."
   }
 }
