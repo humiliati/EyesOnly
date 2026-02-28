@@ -75,13 +75,20 @@ var RogueSidebar = (function() {
    * @param {string} name - Full item/card name
    * @returns {string} Display name appropriate for current viewport
    */
+  // When debrief is minimized on mobile portrait, we have more room for labels
+  // so we can use 6-char abbreviated names instead of 4-char micro names.
+  var _debriefIsMinimized = false;
+
   function _getViewportName(name) {
     if (!name) return '';
     try {
       var isPortrait = window.matchMedia ? window.matchMedia('(orientation: portrait)').matches : (window.innerHeight > window.innerWidth);
       var isSmallScreen = window.innerWidth <= 767;
       if (typeof NameUtils !== 'undefined' && NameUtils.abbreviate) {
-        if (isPortrait && isSmallScreen) return NameUtils.abbreviate(name, 4);
+        if (isPortrait && isSmallScreen) {
+          // Debrief minimized → more label room → use 6-char abbreviator
+          return NameUtils.abbreviate(name, _debriefIsMinimized ? 6 : 4);
+        }
         if (isSmallScreen) return NameUtils.abbreviate(name, 6);
       }
     } catch (e) {}
@@ -137,6 +144,18 @@ var RogueSidebar = (function() {
         _lastSignature = null;
         _render();
       }, RESIZE_DEBOUNCE_MS);
+    });
+
+    // Debrief minimize/maximize → switch abbreviation length and re-render
+    window.addEventListener('debrief:minimized', function() {
+      _debriefIsMinimized = true;
+      _lastSignature = null;
+      _render();
+    });
+    window.addEventListener('debrief:maximized', function() {
+      _debriefIsMinimized = false;
+      _lastSignature = null;
+      _render();
     });
   }
 

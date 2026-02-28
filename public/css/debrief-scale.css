@@ -11,7 +11,7 @@
 /* In mobile portrait (especially rogue), shrink further */
 @media (max-width: 600px) and (orientation: portrait) {
   :root {
-    --debrief-scale: 0.55; /* additional ~45% shrink */
+    --debrief-scale: 0.42; /* compact: match button column height */
   }
 }
 
@@ -23,6 +23,13 @@
   overflow: auto;
   padding: 6px;
   z-index: 2;
+}
+
+/* Mobile portrait: tighter debrief content */
+@media (max-width: 600px) and (orientation: portrait) {
+  .debrief-feed-content-container {
+    padding: 2px;
+  }
 }
 
 /* Keep avatar as a footer element */

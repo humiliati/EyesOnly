@@ -39,6 +39,8 @@ const Terminal = (function () {
   let _mobileKeyboardSuppressed = false;
   let _keyboardVisible = false;
   let _originalViewportHeight = null;
+  let _kbDebounceTimer = null;       // Debounce for visualViewport resize (Android fix)
+  let _kbRafPending = false;         // RAF guard for class toggle batching
 
   /**
    * Initialize the terminal, bind to DOM elements.
@@ -177,7 +179,12 @@ const Terminal = (function () {
     // Keyboard is visible if viewport height is significantly less than window height
     var isKeyboardVisible = (windowHeight - viewportHeight) > KEYBOARD_HEIGHT_THRESHOLD;
 
-    _updateKeyboardState(isKeyboardVisible);
+    // Debounce: Android fires 3-5 resize events per keystroke during keyboard animation.
+    // Coalesce into a single state change after 350ms of stability.
+    clearTimeout(_kbDebounceTimer);
+    _kbDebounceTimer = setTimeout(function() {
+      _updateKeyboardState(isKeyboardVisible);
+    }, 350);
   }
 
   /**
@@ -243,21 +250,26 @@ const Terminal = (function () {
    */
   function _updateKeyboardState(isVisible) {
     if (_keyboardVisible === isVisible) return;
-    
+
     _keyboardVisible = isVisible;
 
     // Don't apply keyboard styles in Gone Rogue mode (it has its own input handling)
-    var isInGoneRogue = document.body.classList.contains('mode-gone-rogue') || 
+    var isInGoneRogue = document.body.classList.contains('mode-gone-rogue') ||
                         document.body.classList.contains('in-gone-rogue');
-    
+
     if (isInGoneRogue) return;
 
-    // Toggle body class for CSS styling
-    if (isVisible) {
-      document.body.classList.add('keyboard-visible');
-    } else {
-      document.body.classList.remove('keyboard-visible');
-    }
+    // Batch class toggle into a single paint frame to avoid mid-layout reflow
+    if (_kbRafPending) return;
+    _kbRafPending = true;
+    requestAnimationFrame(function() {
+      _kbRafPending = false;
+      if (isVisible) {
+        document.body.classList.add('keyboard-visible');
+      } else {
+        document.body.classList.remove('keyboard-visible');
+      }
+    });
   }
 
   /**
@@ -285,6 +297,8 @@ const Terminal = (function () {
    */
   function _focusMobileInput() {
     if (_mobileInputEl && _isMobile && !_mobileKeyboardSuppressed) {
+      // Skip if already focused — re-focusing causes Android blur→focus cycle
+      if (document.activeElement === _mobileInputEl) return;
       _mobileInputEl.value = _inputBuffer;
       _mobileInputEl.focus();
     }

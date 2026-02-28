@@ -1478,6 +1478,7 @@ body.amber-mode #scanlines::after {
   #control-rail {
     padding: 6px;
     gap: 6px;
+    position: relative; /* anchor for debrief-maximized overlay */
   }
 
   /* Tighten MOK interjections (footer tooltip bar) in portrait */
@@ -1618,7 +1619,7 @@ body.amber-mode #scanlines::after {
     /* Header is hidden. The first row was previously "auto" but nothing was
        assigned to it, so it became a phantom empty band. Keep it at 0.
        Torso holds controls+debrief; legs holds the game surface. */
-    grid-template-rows: 0px clamp(140px, 18vh, 240px) 1fr;
+    grid-template-rows: 0px clamp(120px, 16vh, 200px) 1fr;
     gap: 6px;
   }
 
@@ -1642,7 +1643,7 @@ body.amber-mode #scanlines::after {
     border-radius: 0;
     overflow: hidden;
     /* Match the torso band allocation above */
-    height: clamp(140px, 18vh, 240px);
+    height: clamp(120px, 16vh, 200px);
     min-height: 0;
   }
 
@@ -1693,10 +1694,10 @@ body.amber-mode #scanlines::after {
     right: auto;
     top: auto;
     width: var(--rogue-debrief-pct, 34%);
-    max-height: none;
+    max-height: 100%;
     z-index: auto;
     max-width: none;
-    flex: 0 0 auto;
+    flex: 1 1 auto;    /* mutual pressure: fills remaining torso band height */
     min-height: 0;
     overflow: hidden;
     background: rgba(0,0,0,0.18);
@@ -1704,6 +1705,36 @@ body.amber-mode #scanlines::after {
     border-radius: 10px;
     padding: 4px;
     gap: 4px;
+    transition: height 0.2s ease, max-height 0.2s ease;
+  }
+
+  /* Debrief label: tappable toggle in portrait (all modes) */
+  .debrief-window .debrief-label {
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: rgba(28, 255, 155, 0.15);
+  }
+
+  /* Debrief minimized: collapse to label-only bar */
+  .debrief-window.debrief-minimized {
+    max-height: 22px !important;
+    overflow: hidden !important;
+    flex: 0 0 22px !important;
+  }
+  .debrief-window.debrief-minimized .debrief-screen {
+    display: none;
+  }
+
+  /* Debrief maximized: overlay buttons without pushing them */
+  .debrief-window.debrief-maximized {
+    position: absolute !important;
+    right: 0;
+    top: 0;
+    width: 100% !important;
+    max-height: 100% !important;
+    z-index: 10 !important;
+    overflow-y: auto !important;
+    background: rgba(6, 14, 9, 0.95) !important;
   }
 
   body.mode-gone-rogue .debrief-window .debrief-label,
@@ -1741,24 +1772,25 @@ body.amber-mode #scanlines::after {
   .debrief-nav-list {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    margin-bottom: 6px;
+    gap: 1px;            /* was 4px — 30% row height shrink */
+    margin-bottom: 2px;  /* was 6px */
   }
 
   .debrief-nav-row {
     border: 0;
     border-radius: 0;
-    padding: 2px 4px;
+    padding: 1px 3px;    /* was 2px 4px */
     font-family: var(--font-legible, 'Classic Console Neue', 'Courier New', monospace);
-    font-size: 13px;
+    font-size: 11px;     /* was 13px — much smaller on mobile */
     font-weight: 750;
     color: rgba(191, 255, 227, 0.95);
     background: transparent;
-    touch-action: pan-y; /* allow drag scroll */
+    touch-action: pan-y;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.02em; /* was 0.03em */
+    line-height: 1.1;
   }
 
   @media (min-width: 900px) {
@@ -1831,6 +1863,45 @@ body.amber-mode #scanlines::after {
   body.gone-rogue-active #terminal > :not(#rogue-grid-mobile):not(#mobile-input):not(#input-line) {
     display: none !important;
   }
+
+  /* ── Problem 4: Squish tooltip footer so map viewport reaches every corner ── */
+  body.gone-rogue-active #mok-interjections {
+    padding: 1px 3px;
+    max-height: 36px;
+    overflow: hidden;
+    line-height: 1.1;
+  }
+  body.gone-rogue-active .interject-label {
+    margin-bottom: 0;
+    font-size: 0.65em;
+    line-height: 1;
+  }
+  body.gone-rogue-active .interject-body {
+    font-size: 0.8em;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  body.gone-rogue-active .mok-footer-controls {
+    margin-top: 1px;
+    gap: 1px;
+  }
+  body.gone-rogue-active .hand-fan-toggle {
+    padding: 1px 3px;
+  }
+  body.gone-rogue-active .hand-fan-icon {
+    font-size: 0.9em;
+  }
+}
+
+/* ── Landscape footer squish ── */
+@media (max-height: 500px) and (orientation: landscape) {
+  #mok-interjections { padding: 1px 3px; max-height: 28px; overflow: hidden; }
+  .interject-label { display: none; }
+  .interject-body { font-size: 0.75em; line-height: 1; }
+  .mok-footer-controls { margin-top: 0; }
 }
 
 /* --- Print (disable for classified documents) --- */
@@ -2412,9 +2483,13 @@ body.in-gone-rogue #log-column {
     min-height: 24px;
   }
 
-  /* Hide debrief window when keyboard visible to maximize terminal space */
+  /* Scale debrief instead of hiding when keyboard visible — avoids full reflow
+     that causes Android keyboard dismissal cycle (transform is compositor-only). */
   body.keyboard-visible .debrief-window {
-    display: none;
+    transform: scale(0.6);
+    transform-origin: top right;
+    pointer-events: none;
+    opacity: 0.7;
   }
 
   /* Maximize terminal space when keyboard visible */

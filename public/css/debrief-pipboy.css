@@ -24,6 +24,7 @@
   opacity: 0.9;
   letter-spacing: 0.04em;
   font-weight: 650;
+  line-height: 1.1;
 }
 
 /* Per-row color grammar */
@@ -124,3 +125,10 @@ body.gone-rogue-active .debrief-feed-content .resource-value { opacity: 0.75; }
 /* SIGNAL row: no label; summary left-aligned */
 .debrief-nav-row[data-row="signal"] .debrief-row-label { display: none; }
 .debrief-nav-row[data-row="signal"] .debrief-row-summary { text-align: left; }
+
+/* Device battery depleted: signal row goes grey, pulse stops, non-interactive */
+.debrief-nav-row.row-signal.signal-depleted {
+  filter: grayscale(1) brightness(0.5);
+  animation: none !important;
+  pointer-events: none;
+}

@@ -268,6 +268,54 @@ const DebriefFeedController = (function() {
       document.addEventListener('pointercancel', onUp);
       ev.preventDefault();
     });
+
+    // ── Tap-to-toggle: minimized ↔ maximized (mobile portrait) ──
+    // Works in both rogue and non-rogue modes on mobile portrait.
+    // Minimized = label-only 22px bar, screen hidden.
+    // Maximized = overlay that overlaps control-buttons, z-index 10.
+    var _debriefMinimized = false;
+    var _dragMoved = false;
+    var _tapStartX = 0;
+    var _tapStartY = 0;
+
+    label.addEventListener('pointerdown', function(ev) {
+      _dragMoved = false;
+      _tapStartX = ev.clientX || 0;
+      _tapStartY = ev.clientY || 0;
+    });
+
+    label.addEventListener('pointermove', function(ev) {
+      var dx = Math.abs((ev.clientX || 0) - _tapStartX);
+      var dy = Math.abs((ev.clientY || 0) - _tapStartY);
+      if (dx > 6 || dy > 6) _dragMoved = true;
+    });
+
+    label.addEventListener('click', function(ev) {
+      if (!_isPortrait()) return;
+      // Don't toggle if user was dragging to resize
+      if (_dragMoved) return;
+
+      _debriefMinimized = !_debriefMinimized;
+
+      if (_debriefMinimized) {
+        win.classList.add('debrief-minimized');
+        win.classList.remove('debrief-maximized');
+        try { window.dispatchEvent(new CustomEvent('debrief:minimized')); } catch (e) {}
+      } else {
+        win.classList.remove('debrief-minimized');
+        win.classList.add('debrief-maximized');
+        try { window.dispatchEvent(new CustomEvent('debrief:maximized')); } catch (e) {}
+      }
+    });
+
+    // Double-tap restores to normal (neither min nor max)
+    label.addEventListener('dblclick', function(ev) {
+      if (!_isPortrait()) return;
+      _debriefMinimized = false;
+      win.classList.remove('debrief-minimized');
+      win.classList.remove('debrief-maximized');
+      try { window.dispatchEvent(new CustomEvent('debrief:maximized')); } catch (e) {}
+    });
   }
 
   /**
@@ -668,16 +716,37 @@ const DebriefFeedController = (function() {
       // Signal summary (battery-driven pulse, 3-tier speed)
 
       // Signal summary (battery-driven pulse, 3-tier speed)
+      // Center of ((( ))) shows real device battery: [===] full, [==-] mid, [=--] low, [---] empty
       try {
         var sumS = document.getElementById('debrief-summary-signal');
         if (sumS) {
           (function() {
-            // Keep the signal summary width stable so the row stays visible.
-            // Pulse is color/glow-driven (CSS), not "extra-long" ASCII frames.
-            var _frames = ['(((', '(((', '(((', '((('];
             var _timer = null;
             var _frameIx = 0;
 
+            // ── Device battery (real hardware) ──
+            var _deviceBatt = { level: 1.0, charging: false, supported: false };
+            try {
+              if (navigator.getBattery) {
+                navigator.getBattery().then(function(batt) {
+                  _deviceBatt.supported = true;
+                  _deviceBatt.level = batt.level;
+                  _deviceBatt.charging = batt.charging;
+                  batt.addEventListener('levelchange', function() { _deviceBatt.level = batt.level; });
+                  batt.addEventListener('chargingchange', function() { _deviceBatt.charging = batt.charging; });
+                }).catch(function() {});
+              }
+            } catch (eBatt) {}
+
+            function _deviceBar() {
+              var lv = _deviceBatt.level;
+              if (lv >= 0.67) return '[===]';
+              if (lv >= 0.34) return '[==-]';
+              if (lv > 0.05) return '[=--]';
+              return '[---]';
+            }
+
+            // ── In-game battery (resource) ──
             function _getBatt() {
               var st = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getState) ? GAMESTATE.getState() : {};
               var batt = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getBattery) ? GAMESTATE.getBattery() : (st.battery || 0);
@@ -685,73 +754,69 @@ const DebriefFeedController = (function() {
               return { batt: batt || 0, maxB: maxB || 5 };
             }
 
-            function _bar(cur, max, w) {
-              w = w || 6;
-              max = max || 1;
-              cur = Math.max(0, Math.min(max, cur));
-              var filled = Math.round((cur / max) * w);
-              var s = '';
-              for (var i = 0; i < w; i++) s += (i < filled) ? '█' : '░';
-              return s;
-            }
-
             function _tierFromPct(pct) {
               return (pct <= 0.34) ? 'LOW' : (pct <= 0.67) ? 'MID' : 'HIGH';
             }
 
             function _speedForTier(tier) {
-              // cheap hooks later: faster = stronger
               if (tier === 'HIGH') return 170;
               if (tier === 'MID') return 320;
               return 520;
             }
 
-            var _timerMs = 0; // Track interval speed separately (setInterval returns a number, can't set props on it)
+            var _timerMs = 0;
 
             function _renderOnce() {
               var b = _getBatt();
               var pct = b.maxB ? (b.batt / b.maxB) : 0;
               var tier = _tierFromPct(pct);
+              var devBar = _deviceBar();
+              var rowElS = null;
+              try { rowElS = document.querySelector('.debrief-nav-row[data-row="signal"]'); } catch (e0) {}
+
+              // Device battery depleted: grey out entire row, stop pulse
+              if (_deviceBatt.level <= 0.05 && _deviceBatt.supported) {
+                sumS.textContent = '(((' + devBar + ')))';
+                if (rowElS) {
+                  rowElS.classList.add('signal-depleted');
+                  rowElS.classList.remove('signal-pulse');
+                }
+                if (_timer) { clearInterval(_timer); _timer = null; }
+                return;
+              }
+
+              // Remove depleted if battery recovered
+              if (rowElS) rowElS.classList.remove('signal-depleted');
 
               if (b.batt <= 0) {
-                // Battery=0: powered down
-                // Display empty battery ascii in stable signal wrapper
-                sumS.textContent = '(((' + _bar(0, b.maxB, 6) + ')))';
+                // In-game battery = 0: powered down avatar
+                sumS.textContent = '(((' + devBar + ')))';
                 try {
                   var av = document.getElementById('mok-avatar');
-                  if (av) {
-                    av.classList.add('mok-powered-down');
-                    av.setAttribute('aria-disabled', 'true');
-                  }
-                } catch (e0) {}
+                  if (av) { av.classList.add('mok-powered-down'); av.setAttribute('aria-disabled', 'true'); }
+                } catch (e1) {}
                 if (_timer) { clearInterval(_timer); _timer = null; }
                 return;
               }
 
               try {
                 var av2 = document.getElementById('mok-avatar');
-                if (av2) {
-                  av2.classList.remove('mok-powered-down');
-                  av2.removeAttribute('aria-disabled');
-                }
-              } catch (e1) {}
+                if (av2) { av2.classList.remove('mok-powered-down'); av2.removeAttribute('aria-disabled'); }
+              } catch (e2) {}
 
-              var frame = _frames[_frameIx % _frames.length];
               _frameIx++;
 
-              // Stable-width signal grammar: "(((" + battery bar + ")))".
-              // Pulse is via CSS class toggled each tick; do not append variable-length frames.
-              sumS.textContent = '(((' + _bar(b.batt, b.maxB, 6) + ')))';
+              // Stable-width signal grammar: "(((" + device battery bar + ")))".
+              sumS.textContent = '(((' + devBar + ')))';
 
-              // Toggle pulse class for color/glow (no width expansion).
-              try {
-                var rowElS = document.querySelector('.debrief-nav-row[data-row="signal"]');
-                if (rowElS) {
+              // Toggle pulse class for color/glow
+              if (rowElS) {
+                try {
                   rowElS.classList.remove('signal-pulse');
                   void rowElS.offsetWidth;
                   rowElS.classList.add('signal-pulse');
-                }
-              } catch (e5) {}
+                } catch (e5) {}
+              }
 
               // adjust interval if tier changed
               var want = _speedForTier(tier);
@@ -765,7 +830,7 @@ const DebriefFeedController = (function() {
             // Kill previous timer if re-rendering
             try {
               if (sumS._pulseTimer) clearInterval(sumS._pulseTimer);
-            } catch (e2) {}
+            } catch (e3) {}
 
             _renderOnce();
             sumS._pulseTimer = _timer;
