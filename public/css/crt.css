@@ -1664,7 +1664,7 @@ body.amber-mode #scanlines::after {
     /* Header is hidden. The first row was previously "auto" but nothing was
        assigned to it, so it became a phantom empty band. Keep it at 0.
        Torso holds controls+debrief; legs holds the game surface. */
-    grid-template-rows: 0px clamp(120px, 16vh, 200px) 1fr;
+    grid-template-rows: 0px clamp(96px, 14vh, 170px) 1fr;
     gap: 6px;
   }
 
@@ -1688,7 +1688,7 @@ body.amber-mode #scanlines::after {
     border-radius: 0;
     overflow: hidden;
     /* Match the torso band allocation above */
-    height: clamp(120px, 16vh, 200px);
+    height: clamp(96px, 14vh, 170px);
     min-height: 0;
     /* Ensure no gaps between children */
     gap: 2px;
@@ -1697,7 +1697,7 @@ body.amber-mode #scanlines::after {
   body.mode-gone-rogue .control-buttons,
   body.in-gone-rogue .control-buttons,
   body.gone-rogue-active .control-buttons {
-    width: calc(100% - var(--rogue-debrief-pct, 34%) - 2px);
+    width: calc(100% - var(--rogue-debrief-pct, 28%) - 2px);
     max-width: 100%;
     box-sizing: border-box;
     overflow: hidden;
@@ -1748,7 +1748,7 @@ body.amber-mode #scanlines::after {
     position: relative;
     right: auto;
     top: auto;
-    width: var(--rogue-debrief-pct, 34%);
+    width: var(--rogue-debrief-pct, 28%);
     max-height: 100%;
     height: 100%;
     z-index: 15; /* Below control buttons but above normal content */
@@ -1934,8 +1934,8 @@ body.amber-mode #scanlines::after {
 
   /* ── Problem 4: Squish tooltip footer so map viewport reaches every corner ── */
   body.gone-rogue-active #mok-interjections {
-    padding: 1px 3px;
-    max-height: 28px;
+    padding: 0px 2px;
+    max-height: 22px;
     overflow: hidden;
     line-height: 1;
     position: relative;
@@ -2557,16 +2557,17 @@ body.in-gone-rogue #log-column {
 
   /* Scale debrief instead of hiding when keyboard visible — avoids full reflow
      that causes Android keyboard dismissal cycle (transform is compositor-only). */
+  /* Keyboard: avoid transform scaling (it leaves layout deadspace).
+     Keep debrief present but visually deemphasized while typing. */
   body.keyboard-visible .debrief-window {
-    transform: scale(0.6);
-    transform-origin: top right;
+    transform: none !important;
     pointer-events: none;
     opacity: 0.7;
   }
 
   /* Maximize terminal space when keyboard visible */
   body.keyboard-visible #monitor-shell {
-    max-height: calc(100vh - 30px); /* Account for tiny header */
+    max-height: calc(100dvh - 30px); /* Account for tiny header */
     overflow: hidden;
   }
 
@@ -2606,7 +2607,7 @@ body.in-gone-rogue #log-column {
 
   /* Make sure #crt-frame adjusts properly */
   body.keyboard-visible #crt-frame {
-    max-height: 100vh;
+    max-height: 100dvh;
     overflow: hidden;
     display: flex;
     flex-direction: column;

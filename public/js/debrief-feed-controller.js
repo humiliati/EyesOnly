@@ -225,14 +225,14 @@ const DebriefFeedController = (function() {
       if (isFinite(saved)) _applyPct(saved);
     } catch (e) {}
 
-    // Tap toggles expanded (30% <-> 50%)
+    // Tap toggles expanded (default smaller on mobile)
     win.addEventListener('click', function(e) {
       if (!_isRogue() || !_isPortrait()) return;
       if (e && e.target && e.target.closest && e.target.closest('button, a, input, textarea, select')) return;
 
       var expanded = body.classList.toggle('rogue-debrief-expanded');
-      if (expanded) _applyPct(50);
-      else _applyPct(30);
+      if (expanded) _applyPct(46);
+      else _applyPct(26);
     });
 
     // Drag on label to resize
@@ -300,10 +300,20 @@ const DebriefFeedController = (function() {
       if (_debriefMinimized) {
         win.classList.add('debrief-minimized');
         win.classList.remove('debrief-maximized');
+        try {
+          document.body && document.body.classList.add('rogue-debrief-minimized');
+          // When minimized, reclaim width for the action buttons.
+          _applyPct(14);
+        } catch (e0) {}
         try { window.dispatchEvent(new CustomEvent('debrief:minimized')); } catch (e) {}
       } else {
         win.classList.remove('debrief-minimized');
         win.classList.add('debrief-maximized');
+        try {
+          document.body && document.body.classList.remove('rogue-debrief-minimized');
+          // Keep max readable but avoid eating the torso.
+          _applyPct(26);
+        } catch (e1) {}
         try { window.dispatchEvent(new CustomEvent('debrief:maximized')); } catch (e) {}
       }
     });
@@ -314,6 +324,10 @@ const DebriefFeedController = (function() {
       _debriefMinimized = false;
       win.classList.remove('debrief-minimized');
       win.classList.remove('debrief-maximized');
+      try {
+        document.body && document.body.classList.remove('rogue-debrief-minimized');
+        _applyPct(26);
+      } catch (e0) {}
       try { window.dispatchEvent(new CustomEvent('debrief:maximized')); } catch (e) {}
     });
   }
