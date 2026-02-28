@@ -38,6 +38,7 @@ var RogueSidebar = (function() {
   var _container = null;
   var _originalHtml = null;
   var _interactionLockUntil = 0;
+  var RESIZE_DEBOUNCE_MS = 120;
 
   var PREF_KEY = 'EYESONLY_ROGUE_SIDEBAR_PREFS_V1';
   var _prefs = {
@@ -65,6 +66,27 @@ var RogueSidebar = (function() {
 
   var _lastSignature = null;
   var _lastItemsLen = null;
+
+  /**
+   * Viewport-aware name helper: uses NameUtils (if loaded) to apply
+   * the micro-abbreviator (4 chars) in portrait and the standard
+   * abbreviator (6 chars) in landscape small-screen mode.
+   * Falls back gracefully when NameUtils is not yet available.
+   * @param {string} name - Full item/card name
+   * @returns {string} Display name appropriate for current viewport
+   */
+  function _getViewportName(name) {
+    if (!name) return '';
+    try {
+      var isPortrait = window.matchMedia ? window.matchMedia('(orientation: portrait)').matches : (window.innerHeight > window.innerWidth);
+      var isSmallScreen = window.innerWidth <= 767;
+      if (typeof NameUtils !== 'undefined' && NameUtils.abbreviate) {
+        if (isPortrait && isSmallScreen) return NameUtils.abbreviate(name, 4);
+        if (isSmallScreen) return NameUtils.abbreviate(name, 6);
+      }
+    } catch (e) {}
+    return name;
+  }
 
   function init() {
     if (_container) return;
@@ -104,6 +126,17 @@ var RogueSidebar = (function() {
     window.addEventListener('gone-rogue-registry-ready', function() {
       _lastSignature = null;
       _render();
+    });
+
+    // Re-render on orientation/resize so viewport-aware abbreviation updates
+    var _orientResizeDebounce = null;
+    window.addEventListener('resize', function() {
+      if (_orientResizeDebounce) clearTimeout(_orientResizeDebounce);
+      _orientResizeDebounce = setTimeout(function() {
+        _orientResizeDebounce = null;
+        _lastSignature = null;
+        _render();
+      }, RESIZE_DEBOUNCE_MS);
     });
   }
 
@@ -366,7 +399,7 @@ var RogueSidebar = (function() {
             def = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) ? GoneRogueDataRegistry.getItem(ref.id) : null;
             if (def && def._missing) def = null;
           }
-          var nm = def ? def.name : ref.id;
+          var nm = _getViewportName(def ? def.name : ref.id);
           var em = isVaultCard ? '🃏' : (def ? def.emoji : '📦');
           btn.innerHTML = '<span class="rs-emoji">' + em + '</span><span class="rs-label">' + nm + '</span>';
 
@@ -445,7 +478,7 @@ var RogueSidebar = (function() {
           }
         } else {
           var card = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) ? GoneRogueDataRegistry.getCard(ref.id) : null;
-          var nm2 = card ? card.name : ref.id;
+          var nm2 = _getViewportName(card ? card.name : ref.id);
           var em2 = card ? card.emoji : '🃏';
           var qty = ref.qty || 1;
 

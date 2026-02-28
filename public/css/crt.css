@@ -1454,6 +1454,55 @@ body.amber-mode #scanlines::after {
   }
 }
 
+/* --- General portrait compact layout (all game states) --- */
+@media (max-width: 600px) and (orientation: portrait) {
+  /* 2×N grid for action buttons in ALL states (rogue and non-rogue) */
+  .control-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-auto-rows: minmax(26px, auto);
+    align-content: start;
+    gap: 2px;
+  }
+
+  .control-buttons button {
+    min-height: 26px;
+    width: auto;
+    padding: 2px 4px;
+    font-size: 0.75em;
+    min-width: 0;
+    max-width: none;
+  }
+
+  /* Tighten control-rail padding in portrait to save vertical space */
+  #control-rail {
+    padding: 6px;
+    gap: 6px;
+  }
+
+  /* Tighten MOK interjections (footer tooltip bar) in portrait */
+  #mok-interjections {
+    padding: 4px 6px;
+  }
+
+  /* Shrink equipped item slot frame + emoji further in portrait (all states) */
+  .active-item-display {
+    width: 28px;
+    height: 28px;
+    font-size: 1.0em;
+    border-width: 1px;
+    border-radius: 5px;
+  }
+
+  .active-item-label {
+    display: none;
+  }
+
+  .active-item-slot {
+    gap: 2px;
+  }
+}
+
 /* --- Gone Rogue portrait layout (mobile) --- */
 @media (max-width: 600px) and (orientation: portrait) {
   body.mode-gone-rogue,
@@ -1945,9 +1994,9 @@ body.amber-mode #scanlines::after {
   
   /* Active item slot reduction */
   .active-item-display {
-    width: 42px;
-    height: 42px;
-    font-size: 1.5em;
+    width: 34px;
+    height: 34px;
+    font-size: 1.2em;
   }
   
   .active-item-label {
@@ -1980,9 +2029,9 @@ body.amber-mode #scanlines::after {
   
   body.mode-gone-rogue .active-item-display,
   body.in-gone-rogue .active-item-display {
-    width: 36px;
-    height: 36px;
-    font-size: 1.3em;
+    width: 28px;
+    height: 28px;
+    font-size: 1.0em;
     border-width: 1px;
   }
   
@@ -2023,9 +2072,9 @@ body.amber-mode #scanlines::after {
   }
   
   .active-item-display {
-    width: 32px;
-    height: 32px;
-    font-size: 1.2em;
+    width: 26px;
+    height: 26px;
+    font-size: 1.0em;
   }
   
   .active-item-label {
