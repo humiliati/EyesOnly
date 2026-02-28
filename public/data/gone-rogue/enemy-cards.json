@@ -648,5 +648,129 @@
     "rarity": "elite",
     "stealValue": 4,
     "_designNote": "Treasure Goblin tries to escape combat. 40% chance per round."
+  },
+  {
+    "id": "EATK-021",
+    "name": "Rope",
+    "emoji": "🪢",
+    "intentType": "GRAPPLE",
+    "targetType": "player",
+    "damage": 0,
+    "accuracy": 72,
+    "speed": 3,
+    "effects": [
+      {
+        "type": "status",
+        "status": "bound",
+        "duration": 2
+      },
+      {
+        "type": "status",
+        "status": "setup_ranged",
+        "scope": "self",
+        "duration": 1,
+        "bonusAccuracy": 20
+      }
+    ],
+    "tags": [
+      "melee",
+      "control",
+      "setup",
+      "bind"
+    ],
+    "synergyTags": [
+      "control",
+      "improvised",
+      "bind",
+      "ranged_chain"
+    ],
+    "rarity": "common",
+    "stealValue": 2,
+    "_designNote": "Binds player for 2 rounds (immobilize). Grants self +20 ranged accuracy for 1 turn — naturally chains with Basic Shot or Pistol Shot follow-ups. BIND_TERRAIN biome variant extends bound duration by 1 and amplifies the accuracy window."
+  },
+  {
+    "id": "EATK-022",
+    "name": "Broken Lever",
+    "emoji": "🔧",
+    "intentType": "GRAPPLE",
+    "targetType": "player",
+    "damage": 2,
+    "accuracy": 65,
+    "speed": 4,
+    "effects": [
+      {
+        "type": "damage",
+        "value": 2
+      },
+      {
+        "type": "status",
+        "status": "stagger",
+        "duration": 1
+      },
+      {
+        "type": "environment_interact",
+        "interactionType": "lever",
+        "value": 1,
+        "valueNote": "1 = jam nearest door/gate mechanism for 1 combat round"
+      }
+    ],
+    "tags": [
+      "melee",
+      "improvised",
+      "black_market"
+    ],
+    "synergyTags": [
+      "melee",
+      "improvised",
+      "black_market",
+      "chain",
+      "structural"
+    ],
+    "rarity": "common",
+    "stealValue": 3,
+    "_designNote": "Improvised melee with a broken lever. Staggers player opening follow-up chain windows. environment_interact value:1 jams the nearest door/gate for 1 round (blocks escape route). black_market tag triggers Contraband Hack and related market synergies. INDUSTRIAL_DEBRIS biome variant grants +1 damage on debris tiles."
+  },
+  {
+    "id": "EATK-023",
+    "name": "Secret Button",
+    "emoji": "🗿",
+    "intentType": "ENVIRONMENTAL_TRIGGER",
+    "targetType": "area",
+    "damage": 0,
+    "accuracy": 100,
+    "speed": 2,
+    "effects": [
+      {
+        "type": "status",
+        "status": "cover_disrupted",
+        "duration": 2
+      },
+      {
+        "type": "environment_trigger",
+        "triggerType": "secret_passage",
+        "radiusTiles": 1
+      },
+      {
+        "type": "status",
+        "status": "repositioned",
+        "scope": "self",
+        "duration": 1
+      }
+    ],
+    "tags": [
+      "utility",
+      "covert",
+      "black_market",
+      "environmental"
+    ],
+    "synergyTags": [
+      "black_market",
+      "covert",
+      "environmental_trigger",
+      "structural"
+    ],
+    "rarity": "rare",
+    "stealValue": 4,
+    "_designNote": "Activates a hidden mechanism in a statue bust. Disrupts player cover for 2 turns and opens a secret route for the enemy to reposition silently. No alert generated — purely covert. black_market + covert tags fire Silent Recovery combo. Environment synergy: only available near statue/bust tiles in catacombs, manor, or black market biomes."
   }
 ]

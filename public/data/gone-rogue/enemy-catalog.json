@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "notes": "Bootstrapped from runtime enemy-cards.json + enemy-decks.json. Edit this file going forward; run scripts/build-enemy-catalog.mjs.\n\n[onboarding] Expanded with civilian/location decks + archetypes for catacombs/tavern/datacenter/hydroponics/homes/fightclubs/junkyards.",
+  "notes": "Bootstrapped from runtime enemy-cards.json + enemy-decks.json. Edit this file going forward; run scripts/build-enemy-catalog.mjs.\n\n[onboarding] Expanded with civilian/location decks + archetypes for catacombs/tavern/datacenter/hydroponics/homes/fightclubs/junkyards.\n\n[environment-synergy] Added EATK-021 Rope (bind\u2192ranged chain), EATK-022 Broken Lever (melee/black_market), EATK-023 Secret Button (covert/black_market/environmental). New decks: WAREHOUSE_ENFORCER (bind+shot chain), BLACK_MARKET_FENCE, CATACOMB_SENTINEL. Updated JUNKYARD_SCAVENGER. New BIOME_SYSTEMS variants: BIND_TERRAIN, INDUSTRIAL_DEBRIS, HIDDEN_CHAMBER.",
   "cards": {
     "EATK-001": {
       "name": "Pistol Shot",
-      "emoji": "🔫",
+      "emoji": "\ud83d\udd2b",
       "intentType": "PISTOL",
       "targetType": "player",
       "damage": 2,
@@ -31,7 +31,7 @@
     },
     "EATK-002": {
       "name": "Burst Fire",
-      "emoji": "🔫",
+      "emoji": "\ud83d\udd2b",
       "intentType": "SMG",
       "targetType": "player",
       "damage": 1,
@@ -62,7 +62,7 @@
     },
     "EATK-003": {
       "name": "Frag Grenade",
-      "emoji": "💣",
+      "emoji": "\ud83d\udca3",
       "intentType": "GRENADE",
       "targetType": "player",
       "damage": 4,
@@ -94,7 +94,7 @@
     },
     "EATK-004": {
       "name": "Arrow Shot",
-      "emoji": "🏹",
+      "emoji": "\ud83c\udff9",
       "intentType": "BOW",
       "targetType": "player",
       "damage": 3,
@@ -128,7 +128,7 @@
     },
     "EATK-005": {
       "name": "Axe Swing",
-      "emoji": "🪓",
+      "emoji": "\ud83e\ude93",
       "intentType": "AXE",
       "targetType": "player",
       "damage": 5,
@@ -155,7 +155,7 @@
     },
     "EATK-006": {
       "name": "Chemical Splash",
-      "emoji": "🧪",
+      "emoji": "\ud83e\uddea",
       "intentType": "CHEMICAL",
       "targetType": "player",
       "damage": 1,
@@ -188,7 +188,7 @@
     },
     "EATK-007": {
       "name": "Taze",
-      "emoji": "⚡",
+      "emoji": "\u26a1",
       "intentType": "TAZER",
       "targetType": "player",
       "damage": 1,
@@ -222,7 +222,7 @@
     },
     "EATK-008": {
       "name": "Knife Slash",
-      "emoji": "🔪",
+      "emoji": "\ud83d\udd2a",
       "intentType": "KNIFE",
       "targetType": "player",
       "damage": 2,
@@ -251,7 +251,7 @@
     },
     "EATK-009": {
       "name": "Grapple",
-      "emoji": "⛓️",
+      "emoji": "\u26d3\ufe0f",
       "intentType": "GRAPPLE",
       "targetType": "player",
       "damage": 0,
@@ -283,7 +283,7 @@
     },
     "EATK-010": {
       "name": "Spotlight",
-      "emoji": "🔦",
+      "emoji": "\ud83d\udd26",
       "intentType": "FLASHLIGHT",
       "targetType": "player",
       "damage": 0,
@@ -316,7 +316,7 @@
     },
     "EATK-011": {
       "name": "Aimed Shot",
-      "emoji": "🎯",
+      "emoji": "\ud83c\udfaf",
       "intentType": "TARGET",
       "targetType": "player",
       "damage": 4,
@@ -344,7 +344,7 @@
     },
     "EATK-012": {
       "name": "Incendiary",
-      "emoji": "🔥",
+      "emoji": "\ud83d\udd25",
       "intentType": "FIRE",
       "targetType": "player",
       "damage": 2,
@@ -384,7 +384,7 @@
     },
     "EATK-013": {
       "name": "Shield Wall",
-      "emoji": "🛡️",
+      "emoji": "\ud83d\udee1\ufe0f",
       "intentType": "SHIELD",
       "targetType": "self",
       "damage": 0,
@@ -412,7 +412,7 @@
     },
     "EATK-014": {
       "name": "Nibble",
-      "emoji": "🐛",
+      "emoji": "\ud83d\udc1b",
       "intentType": "KNIFE",
       "targetType": "player",
       "damage": 1,
@@ -438,7 +438,7 @@
     },
     "EATK-015": {
       "name": "Sting",
-      "emoji": "🐝",
+      "emoji": "\ud83d\udc1d",
       "intentType": "KNIFE",
       "targetType": "player",
       "damage": 1,
@@ -472,7 +472,7 @@
     },
     "EATK-016": {
       "name": "Ram Charge",
-      "emoji": "🚧",
+      "emoji": "\ud83d\udea7",
       "intentType": "GRAPPLE",
       "targetType": "player",
       "damage": 3,
@@ -504,7 +504,7 @@
     },
     "EATK-017": {
       "name": "Paint Target",
-      "emoji": "📡",
+      "emoji": "\ud83d\udce1",
       "intentType": "FLASHLIGHT",
       "targetType": "player",
       "damage": 0,
@@ -538,7 +538,7 @@
     },
     "EATK-018": {
       "name": "Shadow Strike",
-      "emoji": "👤",
+      "emoji": "\ud83d\udc64",
       "intentType": "KNIFE",
       "targetType": "player",
       "damage": 4,
@@ -571,7 +571,7 @@
     },
     "EATK-019": {
       "name": "Coin Toss",
-      "emoji": "🪙",
+      "emoji": "\ud83e\ude99",
       "intentType": "PISTOL",
       "targetType": "player",
       "damage": 1,
@@ -605,7 +605,7 @@
     },
     "EATK-020": {
       "name": "Flee!",
-      "emoji": "💰",
+      "emoji": "\ud83d\udcb0",
       "intentType": "SHIELD",
       "targetType": "self",
       "damage": 0,
@@ -631,6 +631,127 @@
       "rarity": "elite",
       "stealValue": 4,
       "_designNote": "Treasure Goblin tries to escape combat. 40% chance per round."
+    },
+    "EATK-021": {
+      "name": "Rope",
+      "emoji": "\ud83e\udea2",
+      "intentType": "GRAPPLE",
+      "targetType": "player",
+      "damage": 0,
+      "accuracy": 72,
+      "speed": 3,
+      "effects": [
+        {
+          "type": "status",
+          "status": "bound",
+          "duration": 2
+        },
+        {
+          "type": "status",
+          "status": "setup_ranged",
+          "scope": "self",
+          "duration": 1,
+          "bonusAccuracy": 20
+        }
+      ],
+      "tags": [
+        "melee",
+        "control",
+        "setup",
+        "bind"
+      ],
+      "synergyTags": [
+        "control",
+        "improvised",
+        "bind",
+        "ranged_chain"
+      ],
+      "rarity": "common",
+      "stealValue": 2,
+      "_designNote": "Binds player for 2 rounds (immobilize). Grants self +20 ranged accuracy for 1 turn \u2014 naturally chains with Basic Shot or Pistol Shot follow-ups. BIND_TERRAIN biome variant extends bound duration by 1 and amplifies the accuracy window."
+    },
+    "EATK-022": {
+      "name": "Broken Lever",
+      "emoji": "\ud83d\udd27",
+      "intentType": "GRAPPLE",
+      "targetType": "player",
+      "damage": 2,
+      "accuracy": 65,
+      "speed": 4,
+      "effects": [
+        {
+          "type": "damage",
+          "value": 2
+        },
+        {
+          "type": "status",
+          "status": "stagger",
+          "duration": 1
+        },
+        {
+          "type": "environment_interact",
+          "interactionType": "lever",
+          "value": 1,
+          "valueNote": "1 = jam nearest door/gate mechanism for 1 combat round"
+        }
+      ],
+      "tags": [
+        "melee",
+        "improvised",
+        "black_market"
+      ],
+      "synergyTags": [
+        "melee",
+        "improvised",
+        "black_market",
+        "chain",
+        "structural"
+      ],
+      "rarity": "common",
+      "stealValue": 3,
+      "_designNote": "Improvised melee with a broken lever. Staggers player opening follow-up chain windows. environment_interact value:1 jams the nearest door/gate for 1 round (blocks escape route). black_market tag triggers Contraband Hack and related market synergies. INDUSTRIAL_DEBRIS biome variant grants +1 damage on debris tiles."
+    },
+    "EATK-023": {
+      "name": "Secret Button",
+      "emoji": "\ud83d\uddff",
+      "intentType": "ENVIRONMENTAL_TRIGGER",
+      "targetType": "area",
+      "damage": 0,
+      "accuracy": 100,
+      "speed": 2,
+      "effects": [
+        {
+          "type": "status",
+          "status": "cover_disrupted",
+          "duration": 2
+        },
+        {
+          "type": "environment_trigger",
+          "triggerType": "secret_passage",
+          "radiusTiles": 1
+        },
+        {
+          "type": "status",
+          "status": "repositioned",
+          "scope": "self",
+          "duration": 1
+        }
+      ],
+      "tags": [
+        "utility",
+        "covert",
+        "black_market",
+        "environmental"
+      ],
+      "synergyTags": [
+        "black_market",
+        "covert",
+        "environmental_trigger",
+        "structural"
+      ],
+      "rarity": "rare",
+      "stealValue": 4,
+      "_designNote": "Activates a hidden mechanism in a statue bust. Disrupts player cover for 2 turns and opens a secret route for the enemy to reposition silently. No alert generated \u2014 purely covert. black_market + covert tags fire Silent Recovery combo. Environment synergy: only available near statue/bust tiles in catacombs, manor, or black market biomes."
     }
   },
   "decks": {
@@ -1122,9 +1243,10 @@
       "pool": [
         "EATK-009",
         "EATK-008",
-        "EATK-019"
+        "EATK-019",
+        "EATK-022"
       ],
-      "handSize": 3,
+      "handSize": 4,
       "deckMode": "fixed",
       "guarantees": [],
       "exposedTags": [
@@ -1132,7 +1254,7 @@
         "sleight",
         "bribe"
       ],
-      "note": "Junkyard: improvised grabs + knife + coin tricks."
+      "note": "Junkyard: improvised grabs + knife + coin tricks + broken lever. fixed 4-card hand. black_market + improvised synergy chain via Broken Lever (Contraband Hack + Shrapnel Spray). Easy to steal from \u2014 3 exposed tags."
     },
     "TAVERN_BASEMENT_ROWDY": {
       "keyName": "TAVERN_BASEMENT_ROWDY",
@@ -1197,6 +1319,60 @@
         "sleight"
       ],
       "note": "Hydroponics worker-tech: chemical splash + flashlight + knife."
+    },
+    "WAREHOUSE_ENFORCER": {
+      "keyName": "WAREHOUSE_ENFORCER",
+      "pool": [
+        "EATK-021",
+        "EATK-001",
+        "EATK-001"
+      ],
+      "handSize": 3,
+      "deckMode": "fixed",
+      "guarantees": [
+        "EATK-021"
+      ],
+      "exposedTags": [
+        "disarm",
+        "improvised"
+      ],
+      "note": "Rope bind + double Pistol Shot chain. Guarantees Rope opens with bind-setup, then two Pistol Shots land with +20 accuracy bonus. Warehouse / transit choke-point enemies."
+    },
+    "BLACK_MARKET_FENCE": {
+      "keyName": "BLACK_MARKET_FENCE",
+      "pool": [
+        "EATK-022",
+        "EATK-019",
+        "EATK-020"
+      ],
+      "handSize": 3,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "bribe",
+        "pickpocket",
+        "sleight"
+      ],
+      "note": "Black market operative: Broken Lever improvised melee stagger, Coin Toss distraction, Flee escape. black_market + improvised tags chain into Contraband Hack combo. Stealing any card degrades escape plan."
+    },
+    "CATACOMB_SENTINEL": {
+      "keyName": "CATACOMB_SENTINEL",
+      "pool": [
+        "EATK-023",
+        "EATK-010",
+        "EATK-013",
+        "EATK-009"
+      ],
+      "handSize": 4,
+      "deckMode": "fixed",
+      "guarantees": [
+        "EATK-023"
+      ],
+      "exposedTags": [
+        "hack",
+        "bribe"
+      ],
+      "note": "Catacomb statue guardian. Guarantees Secret Button opens secret passage (disrupts cover, repositions enemy). Spotlight + Shield Wall + Grapple cover the flanks. Covert + black_market tags on Secret Button enable Silent Recovery combo. Near-statue biome only."
     }
   },
   "archetypes": {
@@ -1330,12 +1506,17 @@
         "infraredOnDarkness": true
       },
       "patch": {
-        "addExposedTags": ["hack", "disable"],
+        "addExposedTags": [
+          "hack",
+          "disable"
+        ],
         "statMods": {
           "accuracyInDarkness": 1.15
         }
       },
-      "whenGroundEffects": ["darkened"],
+      "whenGroundEffects": [
+        "darkened"
+      ],
       "_designNote": "Destroying lights weakens humans but does NOT scare surveillance. May actually buff certain machines with infrared mode."
     },
     "ADAPTIVE_DRONE": {
@@ -1350,7 +1531,10 @@
         "moveToBrightestTile": true
       },
       "patch": {
-        "addExposedTags": ["hack", "emp"],
+        "addExposedTags": [
+          "hack",
+          "emp"
+        ],
         "statMods": {
           "moveSpeed": 1.2,
           "sightRange": 1.3
@@ -1371,14 +1555,20 @@
       },
       "patch": {
         "deckOverride": {},
-        "addCards": ["EATK-010"],
-        "addExposedTags": ["intimidate"],
+        "addCards": [
+          "EATK-010"
+        ],
+        "addExposedTags": [
+          "intimidate"
+        ],
         "statMods": {
           "accuracyInLight": 1.1,
           "accuracyInDarkness": 0.8
         }
       },
-      "whenGroundEffects": ["darkened"],
+      "whenGroundEffects": [
+        "darkened"
+      ],
       "_designNote": "Breaking lights forces clustering, creates AoE opportunities, makes them predictable. In Light: +Accuracy, -Fear. In Darkness: -Accuracy, may apply Concerned status, may skip aggressive action."
     },
     "INVESTIGATIVE_TECHNICIAN": {
@@ -1393,8 +1583,13 @@
         "moveToAnomalyLocation": true
       },
       "patch": {
-        "addCards": ["EATK-010", "EATK-017"],
-        "addExposedTags": ["hack"],
+        "addCards": [
+          "EATK-010",
+          "EATK-017"
+        ],
+        "addExposedTags": [
+          "hack"
+        ],
         "statMods": {
           "damageOnAlert": 1.2
         }
@@ -1417,7 +1612,10 @@
         "worshipsFlicker": true
       },
       "patch": {
-        "addCards": ["EATK-006", "EATK-007"],
+        "addCards": [
+          "EATK-006",
+          "EATK-007"
+        ],
         "statMods": {
           "zealOnFlicker": 1.3,
           "panicOnTotalDarkness": 0.6
@@ -1426,11 +1624,98 @@
       "whenLightFlicker": {
         "gainZeal": true
       },
-      "whenGroundEffects": ["darkened"],
+      "whenGroundEffects": [
+        "darkened"
+      ],
       "reactionOverride": {
         "enterPanic": true
       },
       "_designNote": "If lightFlicker: gain Zeal. If totalDarkness: enter Panic. Creates nonlinear reactions to flicker vs full blackout."
+    },
+    "BIND_TERRAIN": {
+      "name": "Bind Terrain",
+      "description": "Rope traps, tangled debris, or narrow choke-point corridors. Enemies using bind cards get extended effect duration and accuracy-chain bonus amplified. Player movement is already penalized by the ground effect.",
+      "lightBehavior": {
+        "type": "neutral",
+        "fearThreshold": 0.0,
+        "curiosityThreshold": 0.0,
+        "prefersLight": false,
+        "investigatesLightBreak": false
+      },
+      "whenGroundEffects": [
+        "bind_terrain",
+        "tangled_debris"
+      ],
+      "patch": {
+        "addCards": [
+          "EATK-021"
+        ],
+        "addExposedTags": [
+          "improvised"
+        ],
+        "statMods": {
+          "bindDurationBonus": 1,
+          "setupRangedAccuracyBonus": 10
+        }
+      },
+      "_designNote": "Tight warehouse corridors, rope-trap floors, tangled debris fields. Enemy Rope bind lasts 1 extra round and the setup_ranged accuracy window extends. Player in bind_terrain already has movement penalty \u2014 the Rope combo punishes standing still."
+    },
+    "INDUSTRIAL_DEBRIS": {
+      "name": "Industrial Debris",
+      "description": "Cluttered industrial floors \u2014 rubble, broken equipment, scattered scrap. Improvised-tagged enemies deal bonus damage and black_market items surface. Enemy Broken Lever interactions can jam door/gate mechanisms.",
+      "lightBehavior": {
+        "type": "neutral",
+        "fearThreshold": 0.0,
+        "curiosityThreshold": 0.0,
+        "prefersLight": false,
+        "investigatesLightBreak": false
+      },
+      "whenGroundEffects": [
+        "debris",
+        "rubble"
+      ],
+      "patch": {
+        "addCards": [
+          "EATK-022"
+        ],
+        "addExposedTags": [
+          "improvised"
+        ],
+        "statMods": {
+          "improvisedDamageBonus": 1,
+          "leverJamChance": 0.5
+        }
+      },
+      "_designNote": "Junkyard, construction site, abandoned factory biomes. Broken Lever deals +1 damage on debris tiles (improvised weapon amplification). 50% chance the lever interaction jams the nearest door, blocking player escape route. black_market + improvised tags chain into Contraband Hack and Shrapnel Spray combos."
+    },
+    "HIDDEN_CHAMBER": {
+      "name": "Hidden Chamber",
+      "description": "Carved stone walls with hidden mechanisms \u2014 statue niches, pressure plates, concealed alcoves. Enemies with environmental_trigger cards can activate secret passages and disrupt cover silently.",
+      "lightBehavior": {
+        "type": "curious",
+        "fearThreshold": 0.3,
+        "curiosityThreshold": 0.8,
+        "prefersLight": false,
+        "investigatesLightBreak": false,
+        "moveToAnomalyLocation": false
+      },
+      "whenGroundEffects": [
+        "carved_walls",
+        "statue_tiles"
+      ],
+      "patch": {
+        "addCards": [
+          "EATK-023"
+        ],
+        "addExposedTags": [
+          "bribe"
+        ],
+        "statMods": {
+          "covertActionBonus": 0.2,
+          "alertGenerationMultiplier": 0.0
+        }
+      },
+      "_designNote": "Catacomb halls, manor chapels, hidden black market vaults. Secret Button becomes available only on carved_walls/statue_tiles ground. alertGenerationMultiplier 0.0 = all actions by this enemy are silent while in hidden chamber. Stealing Secret Button gives player access to the same passage network \u2014 powerful mid-combat reposition."
     }
   },
   "spawnBands": [

@@ -15,6 +15,32 @@
     ],
     "_note": "Defensive guard variant. Shield Wall + Pistol + Aimed Shot."
   },
+  "BLACK_MARKET_FENCE": {
+    "cards": [
+      "EATK-022",
+      "EATK-019",
+      "EATK-020"
+    ],
+    "exposedTags": [
+      "bribe",
+      "pickpocket",
+      "sleight"
+    ],
+    "_note": "Black market operative: Broken Lever improvised melee stagger, Coin Toss distraction, Flee escape. black_market + improvised tags chain into Contraband Hack combo. Stealing any card degrades escape plan."
+  },
+  "CATACOMB_SENTINEL": {
+    "cards": [
+      "EATK-023",
+      "EATK-010",
+      "EATK-013",
+      "EATK-009"
+    ],
+    "exposedTags": [
+      "hack",
+      "bribe"
+    ],
+    "_note": "Catacomb statue guardian. Guarantees Secret Button opens secret passage (disrupts cover, repositions enemy). Spotlight + Shield Wall + Grapple cover the flanks. Covert + black_market tags on Secret Button enable Silent Recovery combo. Near-statue biome only."
+  },
   "CHEM_TECH": {
     "cards": [
       "EATK-006",
@@ -285,14 +311,15 @@
     "cards": [
       "EATK-009",
       "EATK-008",
-      "EATK-019"
+      "EATK-019",
+      "EATK-022"
     ],
     "exposedTags": [
       "pickpocket",
       "sleight",
       "bribe"
     ],
-    "_note": "Junkyard: improvised grabs + knife + coin tricks."
+    "_note": "Junkyard: improvised grabs + knife + coin tricks + broken lever. fixed 4-card hand. black_market + improvised synergy chain via Broken Lever (Contraband Hack + Shrapnel Spray). Easy to steal from — 3 exposed tags."
   },
   "LAZY_CATERPILLAR": {
     "cards": [
@@ -420,5 +447,17 @@
     ],
     "_note": "Coin Toss + 2x Flee. Wants to escape, not fight. Easy to steal from."
   },
-  "_catalogNote": "Bootstrapped from runtime enemy-cards.json + enemy-decks.json. Edit this file going forward; run scripts/build-enemy-catalog.mjs.\n\n[onboarding] Expanded with civilian/location decks + archetypes for catacombs/tavern/datacenter/hydroponics/homes/fightclubs/junkyards."
+  "WAREHOUSE_ENFORCER": {
+    "cards": [
+      "EATK-021",
+      "EATK-001",
+      "EATK-001"
+    ],
+    "exposedTags": [
+      "disarm",
+      "improvised"
+    ],
+    "_note": "Rope bind + double Pistol Shot chain. Guarantees Rope opens with bind-setup, then two Pistol Shots land with +20 accuracy bonus. Warehouse / transit choke-point enemies."
+  },
+  "_catalogNote": "Bootstrapped from runtime enemy-cards.json + enemy-decks.json. Edit this file going forward; run scripts/build-enemy-catalog.mjs.\n\n[onboarding] Expanded with civilian/location decks + archetypes for catacombs/tavern/datacenter/hydroponics/homes/fightclubs/junkyards.\n\n[environment-synergy] Added EATK-021 Rope (bind→ranged chain), EATK-022 Broken Lever (melee/black_market), EATK-023 Secret Button (covert/black_market/environmental). New decks: WAREHOUSE_ENFORCER (bind+shot chain), BLACK_MARKET_FENCE, CATACOMB_SENTINEL. Updated JUNKYARD_SCAVENGER. New BIOME_SYSTEMS variants: BIND_TERRAIN, INDUSTRIAL_DEBRIS, HIDDEN_CHAMBER."
 }
