@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "notes": "Bootstrapped from runtime enemy-cards.json + enemy-decks.json. Edit this file going forward; run scripts/build-enemy-catalog.mjs.",
+  "notes": "Bootstrapped from runtime enemy-cards.json + enemy-decks.json. Edit this file going forward; run scripts/build-enemy-catalog.mjs.\n\n[onboarding] Expanded with civilian/location decks + archetypes for catacombs/tavern/datacenter/hydroponics/homes/fightclubs/junkyards.",
   "cards": {
     "EATK-001": {
       "name": "Pistol Shot",
@@ -956,9 +956,401 @@
         "disarm"
       ],
       "note": "Status-control tech. Chemical + Taze + Spotlight."
+    },
+    "CIVILIAN_TYPE_A": {
+      "keyName": "CIVILIAN_TYPE_A",
+      "pool": [
+        "EATK-008"
+      ],
+      "handSize": 1,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "pickpocket"
+      ],
+      "note": "Baseline civilian: panics and lashes out with a small knife."
+    },
+    "CIVILIAN_TYPE_B": {
+      "keyName": "CIVILIAN_TYPE_B",
+      "pool": [
+        "EATK-009",
+        "EATK-008"
+      ],
+      "handSize": 2,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "sleight",
+        "pickpocket"
+      ],
+      "note": "Grabby civilian: grapple + knife. Mostly control."
+    },
+    "CIVILIAN_TYPE_C": {
+      "keyName": "CIVILIAN_TYPE_C",
+      "pool": [
+        "EATK-019",
+        "EATK-008"
+      ],
+      "handSize": 2,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "bribe",
+        "pickpocket"
+      ],
+      "note": "Shady civilian: coin toss distraction + knife. Loot-flavored."
+    },
+    "CIVILIAN_BRAWLER": {
+      "keyName": "CIVILIAN_BRAWLER",
+      "pool": [
+        "EATK-005",
+        "EATK-009"
+      ],
+      "handSize": 2,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "intimidate"
+      ],
+      "note": "Brawler: heavy swing + grapple. Fight-club vibe."
+    },
+    "CIVILIAN_TWEAKER": {
+      "keyName": "CIVILIAN_TWEAKER",
+      "pool": [
+        "EATK-008",
+        "EATK-008",
+        "EATK-009"
+      ],
+      "handSize": 3,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "sleight",
+        "pickpocket"
+      ],
+      "note": "Unstable speed: double knife + grapple."
+    },
+    "CIVILIAN_SCRAPPER": {
+      "keyName": "CIVILIAN_SCRAPPER",
+      "pool": [
+        "EATK-009",
+        "EATK-016"
+      ],
+      "handSize": 2,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "intimidate",
+        "disarm"
+      ],
+      "note": "Scrapper: improvised control + shove/charge."
+    },
+    "CONSTRUCTION_WORKER": {
+      "keyName": "CONSTRUCTION_WORKER",
+      "pool": [
+        "EATK-005",
+        "EATK-013"
+      ],
+      "handSize": 2,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "intimidate"
+      ],
+      "note": "Worker with gear: axe tool swing + brief defensive brace."
+    },
+    "GRANNY": {
+      "keyName": "GRANNY",
+      "pool": [
+        "EATK-010"
+      ],
+      "handSize": 1,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "bribe"
+      ],
+      "note": "Granny with a flashlight: exposes player (low damage but high stealth impact)."
+    },
+    "PUNKS_PAIR": {
+      "keyName": "PUNKS_PAIR",
+      "pool": [
+        "EATK-008",
+        "EATK-002"
+      ],
+      "handSize": 2,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "pickpocket",
+        "disarm"
+      ],
+      "note": "Two-punks vibe: knife + burst fire."
+    },
+    "HOMEOWNER_DEFENDER": {
+      "keyName": "HOMEOWNER_DEFENDER",
+      "pool": [
+        "EATK-001",
+        "EATK-013"
+      ],
+      "handSize": 2,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "bribe"
+      ],
+      "note": "Home defense: pistol + defensive stance. Easy to de-escalate (bribe)."
+    },
+    "FIGHT_CLUB_THUG": {
+      "keyName": "FIGHT_CLUB_THUG",
+      "pool": [
+        "EATK-005",
+        "EATK-008",
+        "EATK-009"
+      ],
+      "handSize": 3,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "intimidate",
+        "disarm"
+      ],
+      "note": "Fight club: heavy hit + knife + grapple. Steal disarm options."
+    },
+    "JUNKYARD_SCAVENGER": {
+      "keyName": "JUNKYARD_SCAVENGER",
+      "pool": [
+        "EATK-009",
+        "EATK-008",
+        "EATK-019"
+      ],
+      "handSize": 3,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "pickpocket",
+        "sleight",
+        "bribe"
+      ],
+      "note": "Junkyard: improvised grabs + knife + coin tricks."
+    },
+    "TAVERN_BASEMENT_ROWDY": {
+      "keyName": "TAVERN_BASEMENT_ROWDY",
+      "pool": [
+        "EATK-009",
+        "EATK-008",
+        "EATK-013"
+      ],
+      "handSize": 3,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "pickpocket",
+        "intimidate"
+      ],
+      "note": "Basement rowdy: grapple + knife + brace."
+    },
+    "CHURCH_CATACOMBS_WARDEN": {
+      "keyName": "CHURCH_CATACOMBS_WARDEN",
+      "pool": [
+        "EATK-010",
+        "EATK-007",
+        "EATK-013"
+      ],
+      "handSize": 3,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "hack",
+        "disarm"
+      ],
+      "note": "Catacombs warden: reveal/expose + stun + defensive wall."
+    },
+    "DATACENTER_SECURITY": {
+      "keyName": "DATACENTER_SECURITY",
+      "pool": [
+        "EATK-017",
+        "EATK-010",
+        "EATK-011"
+      ],
+      "handSize": 3,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "hack",
+        "disarm"
+      ],
+      "note": "Server room security: paint/spotlight + aimed shot (high detection)."
+    },
+    "HYDROPONICS_TECH": {
+      "keyName": "HYDROPONICS_TECH",
+      "pool": [
+        "EATK-006",
+        "EATK-010",
+        "EATK-008"
+      ],
+      "handSize": 3,
+      "deckMode": "fixed",
+      "guarantees": [],
+      "exposedTags": [
+        "hack",
+        "sleight"
+      ],
+      "note": "Hydroponics worker-tech: chemical splash + flashlight + knife."
     }
   },
-  "archetypes": {},
+  "archetypes": {
+    "CIVILIAN": {
+      "name": "Civilian",
+      "description": "Non-military actors. Low lethality but can create chaos if mishandled.",
+      "baseStats": {
+        "hp": [
+          2,
+          6
+        ],
+        "sightRange": [
+          2,
+          5
+        ],
+        "moveSpeed": [
+          0.8,
+          1.2
+        ]
+      },
+      "deckByFloor": [
+        {
+          "maxFloor": 5,
+          "deck": "CIVILIAN_TYPE_A"
+        },
+        {
+          "maxFloor": 10,
+          "deck": "CIVILIAN_TYPE_B"
+        },
+        {
+          "maxFloor": 30,
+          "deck": "CIVILIAN_TYPE_C"
+        }
+      ]
+    },
+    "FIGHTER": {
+      "name": "Civilian Fighter",
+      "description": "Fight clubs / rowdies / scrappers. High control and melee pressure.",
+      "baseStats": {
+        "hp": [
+          5,
+          12
+        ],
+        "sightRange": [
+          3,
+          6
+        ],
+        "moveSpeed": [
+          0.9,
+          1.3
+        ]
+      },
+      "deckByFloor": [
+        {
+          "maxFloor": 10,
+          "deck": "CIVILIAN_BRAWLER"
+        },
+        {
+          "maxFloor": 30,
+          "deck": "FIGHT_CLUB_THUG"
+        }
+      ]
+    },
+    "SECURITY": {
+      "name": "Security",
+      "description": "Guards + facility security. Detection-forward decks.",
+      "baseStats": {
+        "hp": [
+          4,
+          10
+        ],
+        "sightRange": [
+          5,
+          10
+        ],
+        "moveSpeed": [
+          0.9,
+          1.1
+        ]
+      },
+      "deckByFloor": [
+        {
+          "maxFloor": 10,
+          "deck": "GENERIC_FLOOR_10"
+        },
+        {
+          "maxFloor": 20,
+          "deck": "ARMORED_GUARD"
+        },
+        {
+          "maxFloor": 30,
+          "deck": "DATACENTER_SECURITY"
+        }
+      ]
+    },
+    "CATACOMBS": {
+      "name": "Catacombs Inhabitants",
+      "description": "Low light, tight spaces: stun/expose/defense patterns.",
+      "baseStats": {
+        "hp": [
+          4,
+          11
+        ],
+        "sightRange": [
+          4,
+          9
+        ],
+        "moveSpeed": [
+          0.8,
+          1.1
+        ]
+      },
+      "deckByFloor": [
+        {
+          "maxFloor": 30,
+          "deck": "CHURCH_CATACOMBS_WARDEN"
+        }
+      ]
+    }
+  },
   "variants": {},
-  "spawnBands": []
+  "spawnBands": [
+    {
+      "floors": [
+        1,
+        5
+      ],
+      "weights": {
+        "CIVILIAN": 6,
+        "SECURITY": 4,
+        "FIGHTER": 1
+      }
+    },
+    {
+      "floors": [
+        6,
+        12
+      ],
+      "weights": {
+        "CIVILIAN": 4,
+        "SECURITY": 6,
+        "FIGHTER": 2
+      }
+    },
+    {
+      "floors": [
+        13,
+        30
+      ],
+      "weights": {
+        "SECURITY": 7,
+        "FIGHTER": 3,
+        "CATACOMBS": 1
+      }
+    }
+  ]
 }
