@@ -8,7 +8,8 @@
    - If enemy deck exposes any matching tag, grant a "stolen" disposable card.
    - If mismatch, grant a generic disposable (consolation) so the action never feels dead.
 
-   This module is intentionally lightweight and does NOT mutate enemy decks yet.
+   This module is intentionally lightweight; it DOES mark a stolen slot on the
+   target enemy when enemy.cardDeck is present, so later combat can reflect it.
    ============================================================ */
 
 var EnemyStealSystem = (function() {
@@ -32,7 +33,8 @@ var EnemyStealSystem = (function() {
    * @param {Array}  ctx.enemies
    * @param {Function} ctx.getEnemyDeck (enemyType)->{cards,exposedTags}
    * @param {Object|null} ctx.activeItem
-   * @returns {{ ok:boolean, success:boolean, cardId?:string, enemy?:any, message:string }}
+   * @param {Function} [ctx.getEnemyCard] (cardId)->enemyCard
+   * @returns {{ ok:boolean, success:boolean, cardId?:string, enemy?:any, message:string, stolenEnemyCardId?:string }}
    */
   function attempt(ctx) {
     if (!ctx || !ctx.player || !Array.isArray(ctx.enemies)) {
@@ -79,12 +81,39 @@ var EnemyStealSystem = (function() {
       };
     }
 
+    // Attempt to steal a specific enemy card if the enemy has a hydrated deck.
+    var stolenId = null;
+    try {
+      if (Array.isArray(target.cardDeck) && target.cardDeck.length) {
+        // Prefer highest stealValue among available cards.
+        var best = null;
+        for (var si = 0; si < target.cardDeck.length; si++) {
+          var slot = target.cardDeck[si];
+          if (!slot || !slot.id || slot.stolen) continue;
+          var ev = 0;
+          try {
+            if (typeof ctx.getEnemyCard === 'function') {
+              var cdef = ctx.getEnemyCard(slot.id);
+              ev = cdef && typeof cdef.stealValue === 'number' ? cdef.stealValue : 0;
+            }
+          } catch (e1) { ev = 0; }
+          if (!best || ev > best.v) best = { i: si, id: slot.id, v: ev };
+        }
+        if (best && best.id) {
+          stolenId = best.id;
+          // Mark stolen so future systems can reflect it.
+          try { target.cardDeck[best.i].stolen = true; } catch (e2) {}
+        }
+      }
+    } catch (e0) {}
+
     return {
       ok: true,
       success: true,
-      cardId: DEFAULT_SUCCESS_CARD,
+      cardId: stolenId || DEFAULT_SUCCESS_CARD,
+      stolenEnemyCardId: stolenId || null,
       enemy: target,
-      message: 'STOLEN — you lifted a technique'
+      message: stolenId ? ('STOLEN — you lifted ' + stolenId) : 'STOLEN — you lifted a technique'
     };
   }
 

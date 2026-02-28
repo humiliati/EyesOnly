@@ -190,7 +190,36 @@ var GoneRogueDataRegistry = (function() {
   function isLoaded() { return _loaded; }
 
   function getItem(id) { return _byId.items[id] || _createMissingEntry(id, 'item'); }
-  function getCard(id) { return _byId.cards[id] || _createMissingEntry(id, 'card'); }
+  function _convertEnemyCardToPlayerCard(enemyCard) {
+    if (!enemyCard || !enemyCard.id) return null;
+
+    // Convert EATK-* shape into a player-card-like shape used across UI/combat.
+    return {
+      id: enemyCard.id,
+      name: enemyCard.name || enemyCard.id,
+      emoji: enemyCard.emoji || '🃏',
+      targetType: (enemyCard.targetType === 'self') ? 'self' : 'enemy',
+      cost: 0,
+      costs: null,
+      consumesOnPlay: true,
+      rarity: enemyCard.rarity || 'uncommon',
+      effects: Array.isArray(enemyCard.effects) ? enemyCard.effects : [{ type: 'damage', value: Math.max(1, Number(enemyCard.damage || 1) || 1) }],
+      preCombat: true,
+      synergyTags: Array.isArray(enemyCard.synergyTags) ? enemyCard.synergyTags : [],
+      _enemyCard: true
+    };
+  }
+
+  function getCard(id) {
+    // Allow stolen enemy cards (EATK-###) to behave as player cards.
+    if (typeof id === 'string' && /^EATK-\d{3}$/.test(id)) {
+      var ec = getEnemyCard(id);
+      if (ec && !ec._missing) {
+        return _convertEnemyCardToPlayerCard(ec);
+      }
+    }
+    return _byId.cards[id] || _createMissingEntry(id, 'card');
+  }
   function listCards() { return Array.isArray(_db.cards) ? _db.cards.slice() : []; }
   function getStatus(id) { return _byId.statuses[id] || _createMissingEntry(id, 'status'); }
   function getGroundEffect(id) { return _byId.groundEffects[id] || _createMissingEntry(id, 'ground_effect'); }
