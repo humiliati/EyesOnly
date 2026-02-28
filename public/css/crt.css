@@ -1911,6 +1911,7 @@ body.amber-mode #scanlines::after {
   body.gone-rogue-active #rogue-grid-mobile {
     margin: 0 !important;
     order: 1;
+    overflow: hidden; /* Clip zoomed/panned canvas within frame */
   }
 
   body.gone-rogue-active #input-line,
@@ -2494,6 +2495,132 @@ body.in-gone-rogue #log-column {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+/* ============================================================
+   DESKTOP GONE-ROGUE: Contain game canvas within terminal frame
+   The canvas uses transform: scale() translate() for camera
+   zoom/pan which causes it to paint outside its container when
+   overflow is visible. On desktop the portrait media query
+   doesn't fire, so these rules handle landscape/wide viewports.
+   ============================================================ */
+@media (min-aspect-ratio: 1/1) {
+  /* Collapse to single-column so the game surface fills the terminal.
+     Keep control-rail as a compact top band, game surface takes the rest. */
+  body.mode-gone-rogue #monitor-body,
+  body.in-gone-rogue #monitor-body,
+  body.gone-rogue-active #monitor-body {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: clamp(80px, 12vh, 140px) 1fr;
+    gap: 6px;
+    overflow: hidden; /* Override global overflow-y: auto for containment */
+  }
+
+  /* Control rail becomes horizontal top band */
+  body.mode-gone-rogue #control-rail,
+  body.in-gone-rogue #control-rail,
+  body.gone-rogue-active #control-rail {
+    grid-row: 1;
+    width: 100%;
+    max-height: none;
+    overflow: hidden;
+    flex-direction: row;
+    align-items: stretch;
+    height: clamp(80px, 12vh, 140px);
+    min-height: 0;
+    gap: 2px;
+  }
+
+  /* Log column fills remaining space as the game surface */
+  body.mode-gone-rogue #log-column,
+  body.in-gone-rogue #log-column,
+  body.gone-rogue-active #log-column {
+    grid-row: 2;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Strip log-frame chrome — the game IS the terminal now */
+  body.mode-gone-rogue .log-frame,
+  body.in-gone-rogue .log-frame,
+  body.gone-rogue-active .log-frame {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    overflow: hidden;
+  }
+
+  /* Terminal: flex column, overflow hidden clips the zoomed canvas */
+  body.mode-gone-rogue #terminal,
+  body.in-gone-rogue #terminal,
+  body.gone-rogue-active #terminal {
+    min-height: 0;
+    height: 100%;
+    padding: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  /* Grid container: MUST clip the scaled/translated canvas.
+     The canvas uses transform: scale() translate() for camera pan —
+     overflow: hidden is what keeps it inside the terminal frame. */
+  body.mode-gone-rogue .rogue-grid-mobile,
+  body.in-gone-rogue .rogue-grid-mobile,
+  body.gone-rogue-active .rogue-grid-mobile {
+    overflow: hidden;
+    max-width: 100%;
+    width: 100%;
+    flex: 1;
+    margin: 0;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    background: #0a0a0a;
+  }
+
+  /* Canvas element fills its container */
+  body.mode-gone-rogue .rogue-canvas,
+  body.in-gone-rogue .rogue-canvas,
+  body.gone-rogue-active .rogue-canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  /* Hide terminal text behind the game — session restored, typed input, etc.
+     are covered by the fullscreen game canvas as if it loaded over the CLI */
+  body.mode-gone-rogue #terminal > :not(#rogue-grid-mobile):not(#mobile-input):not(#input-line),
+  body.in-gone-rogue #terminal > :not(#rogue-grid-mobile):not(#mobile-input):not(#input-line),
+  body.gone-rogue-active #terminal > :not(#rogue-grid-mobile):not(#mobile-input):not(#input-line) {
+    display: none !important;
+  }
+
+  /* Game grid comes first, input bar tucks underneath */
+  body.gone-rogue-active #rogue-grid-mobile {
+    order: 1;
+  }
+  body.gone-rogue-active #input-line,
+  body.gone-rogue-active #mobile-input {
+    order: 2;
+  }
+
+  /* Squish MOK footer on desktop too */
+  body.gone-rogue-active #mok-interjections {
+    padding: 0px 4px;
+    max-height: 24px;
+    margin-bottom: 0;
+    overflow: hidden;
+    line-height: 1;
+  }
 }
 
 /* ============================================================
