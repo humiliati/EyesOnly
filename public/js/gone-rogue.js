@@ -5492,85 +5492,11 @@ _incrementPityTimers();
     // Door hint popups when approaching
     _maybeHintNearbyDoors();
 
-    // Currency pickup
-    var cryptoPickup = _currencies.find(function(c) { return c.x === x && c.y === y; });
-    if (cryptoPickup) {
-      if (typeof GAMESTATE !== 'undefined') {
-        GAMESTATE.addCryptos(cryptoPickup.amount);
-      }
-      _currencyCollected += cryptoPickup.amount;
-      _currencies = _currencies.filter(function(c) { return c.x !== x || c.y !== y; });
-
-      _player.collectingCurrency = true;
-      _player.currencyCollectTime = Date.now();
-
-      if (typeof OverheadAnimator !== 'undefined') {
-        OverheadAnimator.showCurrencyPickup(x, y, cryptoPickup.amount);
-      }
-
-      if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-        var cryptoMsg = cryptoPickup.amount === 1 ? '¢1 Collected' : '¢' + cryptoPickup.amount + ' Collected';
-        UIControls.updateMokInterjection(cryptoMsg);
-      }
-
-      if (typeof TooltipSystem !== 'undefined') {
-        TooltipSystem.showAction('currency-pickup', { amount: cryptoPickup.amount });
-      }
-
-      // Pancake stacker for currency
-      try {
-        if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-          PancakeStack.addPancake('¢');
-        } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-          PlayerStackManager.addPancake('¢');
-        }
-      } catch (ePancake) {}
-    }
-
-    // Food auto-pickup
-    if (typeof InteractiveItems !== 'undefined') {
-      var foodItem = InteractiveItems.getItemAt(x, y);
-      if (foodItem && foodItem.autoPickup && foodItem.type === 'FOOD') {
-        if (typeof FoodDatabase !== 'undefined' && foodItem.customData && foodItem.customData.foodId) {
-          var result = FoodDatabase.applyFoodEffects(foodItem.customData.foodId, _player);
-          if (result && result.success) {
-            if (typeof OverheadAnimator !== 'undefined') {
-              OverheadAnimator.showExpression(x, y, 'LOOT', 1000, result.emoji);
-            }
-            if (typeof GAMESTATE !== 'undefined' && GAMESTATE.blockSprintTemporarily) {
-              GAMESTATE.blockSprintTemporarily(900);
-            }
-            if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-              UIControls.updateMokInterjection(result.emoji + ' ' + result.foodName + ' consumed');
-            }
-            if (typeof TooltipSystem !== 'undefined' && result.tooltipText) {
-              TooltipSystem.showGeneric(result.tooltipText, 2000);
-            }
-            // Pancake stacker animation for food
-            try {
-              if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-                PancakeStack.addPancake(result.emoji || '🍎');
-              } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-                PlayerStackManager.addPancake(result.emoji || '🍎');
-              }
-            } catch (ePancake) {}
-            InteractiveItems.removeItem(foodItem.id);
-          }
-        }
-      }
-    }
-
-    // Auto-pickup floor items (cards, keys, gems) when player walks onto them
-    var floorItem = _items.find(function(i) { return i.x === x && i.y === y; });
-    if (floorItem) {
-      var pickupResult = _pickupItem();
-      if (pickupResult && pickupResult.lines && pickupResult.lines[0] !== 'NO ITEM HERE') {
-        // Show overhead loot animation
-        if (typeof OverheadAnimator !== 'undefined') {
-          OverheadAnimator.showExpression(x, y, 'LOOT', 800, floorItem.emoji || '✨');
-        }
-      }
-    }
+    // NOTE: Collectible pickups (currency, food, floor items) are now handled exclusively
+    // in _movePlayer() to prevent duplicate animations. _checkPlayerInteractions() is called
+    // during smooth movement and should only handle tile-based interactions (doors, shops).
+    // Previously, both _checkPlayerInteractions() and _movePlayer() were handling pickups,
+    // causing double animations and state issues.
 
     // Discovery reveal
     _revealDiscovery(x, y);
