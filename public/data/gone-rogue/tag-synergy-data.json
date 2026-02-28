@@ -657,8 +657,57 @@
       },
       "discoveryHint": "A silent electrical charge from the shadows — guaranteed stun and disable without breaking cover's silence.",
       "_designNote": "Electrical+Covert from stealth = Silent Surge. Taser Baton (ballistic+electrical) + Poison Dart (covert) after Conceal. Or Spark Puddle (wet+electrical) + Smoke Bomb (covert). Noise reduction means the electrical attack is quiet. Fills the gap between Smuggled Tech (⬛+🟨) and Backstab (🟪+🟥) — gives electrical builds a stealth option. Advanced tier because it requires stealth setup."
+    },
+    {
+      "id": "COMBO-033",
+      "tagA": "melee",
+      "tagB": "melee",
+      "name": "Combo Strike",
+      "emoji": "👊👊",
+      "priority": 3,
+      "tier": "intro",
+      "effects": [
+        { "type": "bonus_hit", "damage": 5 },
+        { "type": "status", "status": "stagger", "chance": 0.5, "duration": 1 }
+      ],
+      "conditions": { "requireSameTurn": true, "minCards": 2 },
+      "discoveryHint": "Back-to-back melee — the momentum builds into a free finishing blow that staggers the target.",
+      "_designNote": "melee×2 same turn = Combo Strike. Like Overkill (ballistic×2) but for hand-to-hand. Jab→Haymaker, Jab→Jab, Quick Strike→Taser Baton all trigger this. Most intuitive discovery: punch twice to unlock free third hit. Teaching: same-tag-twice = escalation, the universal combo grammar."
+    },
+    {
+      "id": "COMBO-034",
+      "tagA": "melee",
+      "tagB": "covert",
+      "name": "CQC Takedown",
+      "emoji": "🤫👊",
+      "priority": 2,
+      "tier": "intermediate",
+      "effects": [
+        { "type": "execute_threshold_bonus", "value": 0.10 },
+        { "type": "status", "status": "bleed", "duration": 2, "tickDamage": 1 },
+        { "type": "noise_reduction", "value": -2 }
+      ],
+      "discoveryHint": "Strike quietly and the target never sees it coming — execute window opens wider and they're left bleeding.",
+      "_designNote": "Melee+Covert = CQC Takedown. The stealth-action genre signature move. Sleeper Hold (melee+covert) self-combos. Venom Shiv (covert+ballistic+melee) also fires this. Cross-card: Jab/Haymaker + Poison Dart/Conceal. Execute threshold bonus rewards patiently whittling the target down. Bleed ensures even a failed takedown bleeds out over time. Noise reduction fits the silent killer fantasy."
+    },
+    {
+      "id": "COMBO-035",
+      "tagA": "fire",
+      "tagB": "fire",
+      "name": "Inferno",
+      "emoji": "🔥🔥",
+      "priority": 4,
+      "tier": "intermediate",
+      "effects": [
+        { "type": "aoe_burn_spread", "radius": 1 },
+        { "type": "status", "status": "burn", "duration": 1, "tickDamage": 2, "target": "all_in_area" },
+        { "type": "bonus_damage", "value": 3 }
+      ],
+      "conditions": { "requireSameTurn": true, "minCards": 2 },
+      "discoveryHint": "Two flames merge — fire spreads to all nearby enemies and burns hotter than either alone.",
+      "_designNote": "fire×2 same turn = Inferno. Fireball→Incendiary Round, Molotov→Fireball, Incendiary Round×2. AoE burn spread punishes enemies clustered together. Like Overkill/Overcharge for fire tag — same-tag-twice escalation. Teaches: fire cards feed each other. Incentivizes fire-heavy builds and makes the Pyromaniac encounter symmetrically playable — they Inferno you, you can Inferno them."
     }
   ],
 
-  "_catalogNote": "Tag Synergy Combo System v5.0. v1: Core Pokémon-logic combos. v2: Black Market tag combos. v3: Counterplay depth — tag risk profiles, counterplay cards, risk/reward punishment combos. v4: Disposable-as-ammo system — 5 new combos (COMBO-025 through COMBO-029) making one-time-use cards the fuel for tag synergies. v5: Stress-test remediation — COMBO-026 Burn Notice gained focus refund (all disposable combos now have resource feedback), COMBO-030 Evidence Wash completes disposable+wet matrix, COMBO-031 Controlled Burn gives fire tag a direct combo path (was condition-only), COMBO-032 Silent Surge fills electrical+covert gap. 32 combos total. Resource refund loops cover all 4 resources: ammo (ballistic), battery (electrical), currency (black_market), focus (covert), cards (improvised)."
+  "_catalogNote": "Tag Synergy Combo System v6.0. v1: Core Pokémon-logic combos. v2: Black Market tag combos. v3: Counterplay depth — tag risk profiles, counterplay cards, risk/reward punishment combos. v4: Disposable-as-ammo system — 5 new combos (COMBO-025 through COMBO-029) making one-time-use cards the fuel for tag synergies. v5: Stress-test remediation — COMBO-026 Burn Notice gained focus refund, COMBO-030 Evidence Wash, COMBO-031 Controlled Burn, COMBO-032 Silent Surge. v6: CQC expansion — COMBO-033 Combo Strike (melee×2, intro), COMBO-034 CQC Takedown (melee+covert, intermediate), COMBO-035 Inferno (fire×2, intermediate). 35 combos total. Melee tag now has full combo ecosystem matching ballistic/electrical/covert patterns."
 }
