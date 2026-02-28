@@ -666,5 +666,72 @@
     "synergyTags": ["disposable", "tech", "preservation"],
     "description": "Disposable cards sometimes survive. Save rate scales with card rarity: common 20%, uncommon 30%, rare 40%.",
     "_designNote": "THE 'item quality matters' item. Higher rarity disposable cards are more likely to survive consumption. Common junk (Fumbled Grab, Smoke Bomb) = 20% save. Uncommon utility (Sabotage, Recon Scan, Camera Flash) = 30%. Rare finishers (Exploding Cufflink, Violin Wire) = 40%. This is the quality-scales-with-rarity loop the user asked for. Upgraded Cargo Webbing for combat disposables (Cargo Webbing only saves flight cards). Pairs with Demolition Vest: even if Recycler saves the card, the splash still fires."
+  },
+  {
+    "id": "ITM-087",
+    "name": "Pattern Lens",
+    "emoji": "🧠",
+    "type": "equipment",
+    "rarity": "uncommon",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      { "type": "momentum_visibility", "value": true },
+      { "type": "reveal_momentum_threshold", "threshold": 3 }
+    ],
+    "synergyTags": ["surveillance", "tech", "intel"],
+    "description": "See momentum counters on enemy cards. Auto-reveal cards at Momentum 3+.",
+    "_designNote": "Phase 5 Information Duel clarity item. Makes momentum dots visible and auto-reveals enemy cards that reach Momentum 3+, letting the player see the pattern developing. Doesn't grant extra interactions — just information. See the rhythm, don't control it."
+  },
+  {
+    "id": "ITM-088",
+    "name": "Dampener Coil",
+    "emoji": "🛡",
+    "type": "equipment",
+    "rarity": "rare",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      { "type": "overload_damage_reduction", "value": 0.15 },
+      { "type": "escalation_slow", "value": 1 }
+    ],
+    "synergyTags": ["tech", "defense", "electrical"],
+    "description": "Reduce Overload damage by 15%. Escalation clock ticks slower (+1 grace turn).",
+    "_designNote": "Phase 5 survivability relic. Mitigates but doesn't eliminate Overload spikes. The escalation slow gives 1 extra turn before payoff damage kicks in. Paired with Pattern Lens: see the pattern coming, survive the spike, then counter."
+  },
+  {
+    "id": "ITM-089",
+    "name": "Precision Tools",
+    "emoji": "🎯",
+    "type": "equipment",
+    "rarity": "rare",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      { "type": "destroy_reduces_rage", "value": 1 },
+      { "type": "destroy_momentum_bonus", "value": 1 }
+    ],
+    "synergyTags": ["tech", "covert", "precision"],
+    "description": "Destroying Payoff-role cards reduces Rage spike by 1. +1 disruption bonus from momentum.",
+    "_designNote": "Phase 5 precision relic. Surgical players who target Payoff-role slots (the finisher in Anchor→Fuel→Payoff) take less Rage backlash. Also boosts momentum-based disruption bonus. Rewards pattern reading + precise targeting. The scalpel item."
+  },
+  {
+    "id": "ITM-090",
+    "name": "Scrambler Chip",
+    "emoji": "📡",
+    "type": "equipment",
+    "rarity": "epic",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      { "type": "interaction_charge_bonus", "value": 1 }
+    ],
+    "synergyTags": ["tech", "electrical", "intel"],
+    "description": "Gain +1 interaction charge per turn. Two shots at the enemy's hand.",
+    "_designNote": "Phase 5 interaction economy item. Epic rarity because 2 charges/turn fundamentally changes the duel — you can reveal THEN steal on the same turn, or destroy two cards. Very strong but costs the passive slot. The keystone item for heavy-interaction builds."
   }
 ]

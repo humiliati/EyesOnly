@@ -318,6 +318,75 @@
   animation-name: enemy-card-pulse-steal;
 }
 
+/* ══════════════════════════════════════════════════════════════ */
+/* ── Phase 5: Information Duel (Canon-Compliant)                */
+/* ── NO standalone HUD. State lives on existing surfaces.       */
+/* ══════════════════════════════════════════════════════════════ */
+
+/* ── Momentum dots (per enemy card slot) ── */
+.idh-momentum-indicator {
+  position: absolute;
+  bottom: 1px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.idh-momentum-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(0, 255, 65, 0.7);
+  box-shadow: 0 0 3px rgba(0, 255, 65, 0.3);
+}
+
+/* Momentum tag color overrides via data attribute */
+.enemy-card-slot[data-momentum-tag="ballistic"] .idh-momentum-dot { background: rgba(255, 80, 80, 0.8); }
+.enemy-card-slot[data-momentum-tag="wet"] .idh-momentum-dot { background: rgba(80, 160, 255, 0.8); }
+.enemy-card-slot[data-momentum-tag="electrical"] .idh-momentum-dot { background: rgba(255, 220, 0, 0.8); }
+.enemy-card-slot[data-momentum-tag="covert"] .idh-momentum-dot { background: rgba(180, 0, 255, 0.8); }
+.enemy-card-slot[data-momentum-tag="improvised"] .idh-momentum-dot { background: rgba(80, 200, 80, 0.8); }
+.enemy-card-slot[data-momentum-tag="black_market"] .idh-momentum-dot { background: rgba(60, 60, 60, 0.8); }
+
+/* ── Power fantasy flash ── */
+.idh-power-flash {
+  position: fixed;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10000;
+  font-family: 'Classic Console Neue', 'Courier New', monospace;
+  font-size: 2.5em;
+  font-weight: bold;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 20px currentColor,
+    0 0 40px currentColor,
+    0 2px 8px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.idh-power-flash.idh-hidden {
+  display: none;
+}
+
+.idh-power-flash.idh-flash-animate {
+  display: block;
+  animation: idh-flash-anim 1.2s ease-out forwards;
+}
+
+@keyframes idh-flash-anim {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  15%  { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+  30%  { transform: translate(-50%, -50%) scale(1.0); }
+  80%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.0) translateY(-20px); }
+}
+
 /* ── Mobile portrait compact ─────────────────────────────────── */
 @media (max-width: 600px) and (orientation: portrait) {
   .enemy-card-slot {

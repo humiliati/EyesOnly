@@ -635,9 +635,54 @@ body.str-combat-minimized-state::before {
   .str-combat-window,
   .str-combat-minimized,
   .str-hp-bar,
-  .str-timer-value {
+  .str-timer-value,
+  .str-combat-window.str-frame-overload {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+/* ============================================================
+   Phase 5: Information Duel — Frame Tint States
+   Shifts the combat window border color to reflect duel tension.
+   Applied by InformationDuelHUD._updateFrameTint().
+   ============================================================ */
+
+/* Escalation urgent: border shifts toward red */
+.str-combat-window.str-frame-escalation {
+  border-color: #ff6644;
+  box-shadow:
+    0 0 30px rgba(255, 102, 68, 0.5),
+    inset 0 0 20px rgba(255, 102, 68, 0.06);
+  transition: border-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+/* Overload eligible (rising): border shifts toward bright yellow */
+.str-combat-window.str-frame-overload-rising {
+  border-color: #ffdd00;
+  box-shadow:
+    0 0 30px rgba(255, 221, 0, 0.5),
+    inset 0 0 20px rgba(255, 221, 0, 0.06);
+  transition: border-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+/* Overload active: pulsing white-yellow */
+.str-combat-window.str-frame-overload {
+  animation: str-frame-overload-pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes str-frame-overload-pulse {
+  0%, 100% {
+    border-color: #ffdd00;
+    box-shadow:
+      0 0 30px rgba(255, 221, 0, 0.5),
+      inset 0 0 20px rgba(255, 221, 0, 0.06);
+  }
+  50% {
+    border-color: #ffffaa;
+    box-shadow:
+      0 0 50px rgba(255, 255, 170, 0.7),
+      inset 0 0 30px rgba(255, 255, 170, 0.1);
   }
 }
 

@@ -115,8 +115,39 @@ var EnemyCardInteractability = (function() {
         continue;
       }
 
-      // Already revealed — no interaction needed (Phase 4 may add re-steal from revealed)
+      // ── Phase 5: Two-Stage Pipeline ──
+      // Revealed cards become stealable on later turns via InformationDuelEngine
       if (!card.hidden) {
+        // Check if this revealed card is now stealable (two-stage pipeline)
+        var twoStageSteal = false;
+        if (typeof InformationDuelEngine !== 'undefined' && InformationDuelEngine.isRevealedStealable) {
+          twoStageSteal = InformationDuelEngine.isRevealedStealable(result.index);
+        }
+
+        if (twoStageSteal) {
+          // Revealed + stealable: check if player has steal capability
+          if (Array.isArray(equipped.stealTags) && equipped.stealTags.length > 0) {
+            if (_tagsOverlap(equipped.stealTags, exposedTags)) {
+              result.canSteal = true;
+              result.primaryAction = 'steal';
+            }
+          }
+        }
+
+        // Also allow destroy on revealed cards (always available if player has means)
+        if (Array.isArray(equipped.destroyTags) && equipped.destroyTags.length > 0) {
+          var revealedDef = _resolveCardDef(card);
+          var revealedTags = _getCardTags(revealedDef);
+          if (revealedTags.length === 0 || _tagsOverlap(equipped.destroyTags, revealedTags)) {
+            result.canDestroy = true;
+            if (!result.primaryAction) result.primaryAction = 'destroy';
+          }
+        }
+        if (playedSabotage) {
+          result.canDestroy = true;
+          if (!result.primaryAction) result.primaryAction = 'destroy';
+        }
+
         results.push(result);
         continue;
       }

@@ -187,7 +187,23 @@ var EnemyCardInteractionHandler = (function() {
     if (!_currentInteraction) return;
     var index = _currentInteraction.index;
 
+    // ── Phase 5: Interaction Charge check ──
+    if (typeof InformationDuelEngine !== 'undefined' && InformationDuelEngine.canInteract) {
+      if (!InformationDuelEngine.canInteract()) {
+        _showToast('⚡ No interaction charges remaining this turn');
+        _hideMenu();
+        return;
+      }
+      // Spend a charge
+      InformationDuelEngine.spendCharge();
+    }
+
     console.log('[EnemyCardInteractionHandler] Executing: ' + actionKey + ' on card #' + index);
+
+    // ── Phase 5: Track player action for AI adaptation ──
+    if (typeof InformationDuelEngine !== 'undefined' && InformationDuelEngine.trackPlayerAction) {
+      InformationDuelEngine.trackPlayerAction(actionKey);
+    }
 
     switch (actionKey) {
       case 'reveal':
@@ -201,7 +217,55 @@ var EnemyCardInteractionHandler = (function() {
         break;
     }
 
+    // ── Phase 5: Apply Intent Mutation ──
+    if (typeof InformationDuelEngine !== 'undefined' && InformationDuelEngine.applyMutation) {
+      var mutationResult = InformationDuelEngine.applyMutation(actionKey);
+      if (mutationResult && mutationResult.faceExpression) {
+        _applyMutationFace(mutationResult);
+      }
+    }
+
+    // ── Phase 5: Emit charge state for HUD update ──
+    _emitChargeState();
+
     _hideMenu();
+  }
+
+  /**
+   * Apply mutation face expression to the enemy.
+   * @param {Object} mutationResult - From InformationDuelEngine.applyMutation()
+   */
+  function _applyMutationFace(mutationResult) {
+    try {
+      if (typeof GoneRogue !== 'undefined' && GoneRogue.getStrCombatState) {
+        var state = GoneRogue.getStrCombatState();
+        var enemy = state ? state.enemy : null;
+        if (enemy && enemy.intentState && mutationResult.faceExpression) {
+          enemy.intentState.expression = mutationResult.faceExpression;
+        }
+      }
+    } catch (e) {}
+
+    // Show mutation toast
+    var display = (typeof InformationDuelEngine !== 'undefined') ?
+      InformationDuelEngine.getMutationDisplay() : null;
+    if (display) {
+      _showToast(display.emoji + ' Enemy ' + display.label + ' x' + display.stacks + ' — ' + display.description);
+    }
+  }
+
+  /**
+   * Emit current charge state for HUD rendering.
+   */
+  function _emitChargeState() {
+    try {
+      if (typeof InformationDuelEngine !== 'undefined' && typeof NonCombatEventBus !== 'undefined') {
+        var snapshot = InformationDuelEngine.getSnapshot();
+        if (snapshot) {
+          NonCombatEventBus.emit('duel:state-update', snapshot);
+        }
+      }
+    } catch (e) {}
   }
 
   /**
@@ -233,6 +297,11 @@ var EnemyCardInteractionHandler = (function() {
 
     EnemyHandDisplay.revealCard(index, cardInfo);
 
+    // ── Phase 5: Mark as revealed for two-stage pipeline ──
+    if (typeof InformationDuelEngine !== 'undefined' && InformationDuelEngine.markRevealed) {
+      InformationDuelEngine.markRevealed(index);
+    }
+
     // Toast feedback
     _showToast('👁️ Revealed: ' + cardInfo.emoji + ' ' + cardInfo.name);
   }
@@ -263,6 +332,11 @@ var EnemyCardInteractionHandler = (function() {
     var cardName = stolenCard.name || 'Enemy Card';
     if (stolenCard._def && stolenCard._def.name) cardName = stolenCard._def.name;
 
+    // ── Phase 5: Clear momentum for stolen slot ──
+    if (typeof InformationDuelEngine !== 'undefined' && InformationDuelEngine.clearSlotMomentum) {
+      InformationDuelEngine.clearSlotMomentum(index);
+    }
+
     _showToast('🤏 Stolen: ' + (stolenCard.emoji || '🃏') + ' ' + cardName);
 
     // Re-compute interactability after state change
@@ -276,6 +350,12 @@ var EnemyCardInteractionHandler = (function() {
   function _doDestroy(index) {
     if (typeof EnemyHandDisplay === 'undefined') return;
 
+    // ── Phase 5: Calculate disruption bonus from momentum ──
+    var disruptBonus = 0;
+    if (typeof InformationDuelEngine !== 'undefined' && InformationDuelEngine.getDestroyDisruptionBonus) {
+      disruptBonus = InformationDuelEngine.getDestroyDisruptionBonus(index);
+    }
+
     EnemyHandDisplay.destroyCard(index);
 
     // Decrement enemy cardCount
@@ -284,7 +364,25 @@ var EnemyCardInteractionHandler = (function() {
     // Trigger card_killed on the enemy (face goes >:( enraged)
     _triggerCardKilled();
 
-    _showToast('💥 Destroyed enemy card — enemy is ENRAGED');
+    // ── Phase 5: Flag this turn as having a destroy (for escalation) ──
+    try {
+      if (typeof NonCombatEventBus !== 'undefined') {
+        NonCombatEventBus._lastDestroyThisTurn = true;
+      }
+    } catch (e) {}
+
+    // ── Phase 5: Clear momentum for destroyed slot ──
+    if (typeof InformationDuelEngine !== 'undefined' && InformationDuelEngine.clearSlotMomentum) {
+      InformationDuelEngine.clearSlotMomentum(index);
+    }
+
+    // ── Phase 5: Feed overload on combo destruction ──
+    if (typeof InformationDuelEngine !== 'undefined' && InformationDuelEngine.feedOverload) {
+      InformationDuelEngine.feedOverload('combo');
+    }
+
+    var disruptMsg = disruptBonus > 0 ? ' (Momentum +' + disruptBonus + ' disruption!)' : '';
+    _showToast('💥 Destroyed enemy card — enemy is ENRAGED' + disruptMsg);
 
     // Re-compute interactability after state change
     _computeInteractability();

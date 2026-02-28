@@ -555,10 +555,11 @@
       "effects": [
         { "type": "stealth_bonus", "value": 0.15 },
         { "type": "next_attack_backstab", "value": true },
-        { "type": "noise_reduction", "value": -2 }
+        { "type": "noise_reduction", "value": -2 },
+        { "type": "resource_refund", "kind": "focus", "amount": 1 }
       ],
-      "discoveryHint": "Spent assets leave no trail — temporary stealth and a clean exit. The agency disavows all knowledge.",
-      "_designNote": "Disposable + covert = Burn Notice. 4 cards self-combo: Violin Wire, Stolen Technique, Fumbled Grab, Sabotage (all have disposable+covert in synergyTags). Also cross-card: any disposable + any covert card. Makes the 'use it and lose it' spy fantasy tangible. Noise reduction means disposable ops are quieter. Stacks with Ghost Protocol for massive stealth burst."
+      "discoveryHint": "Spent assets leave no trail — temporary stealth, a clean exit, and composure regained. The agency disavows all knowledge.",
+      "_designNote": "Disposable + covert = Burn Notice. 4 cards self-combo: Violin Wire, Stolen Technique, Fumbled Grab, Sabotage (all have disposable+covert in synergyTags). Also cross-card: any disposable + any covert card. Makes the 'use it and lose it' spy fantasy tangible. Noise reduction means disposable ops are quieter. Focus refund (composure from clean tradecraft) matches the resource loop pattern of all other disposable combos. Stacks with Ghost Protocol for massive stealth burst."
     },
     {
       "id": "COMBO-027",
@@ -605,8 +606,59 @@
       ],
       "discoveryHint": "Scrapping disposable gear yields spare parts — a new improvised tool and cheaper follow-up.",
       "_designNote": "Pure cross-card combo: any disposable + any improvised (Molotov, Conceal, Field Stitch Kit, Gentleman's Feint, Containment Protocol). Generates a random common card + cost reduction. The 'dumpster dive' combo — burn something, find something new. Feeds Jury Rig (🟩x2) if generated card is also improvised. Self-sustaining junk loop."
+    },
+    {
+      "id": "COMBO-030",
+      "tagA": "disposable",
+      "tagB": "wet",
+      "name": "Evidence Wash",
+      "emoji": "🔸💧",
+      "priority": 5,
+      "tier": "intermediate",
+      "effects": [
+        { "type": "remove_status", "statuses": ["marked", "tracked", "exposed"] },
+        { "type": "stealth_bonus", "value": 0.10 },
+        { "type": "resource_refund", "kind": "focus", "amount": 1 }
+      ],
+      "discoveryHint": "Disposable evidence meets water — all traces washed away. Marks, tracking, exposure cleared.",
+      "_designNote": "Disposable+Wet = Evidence Wash. Disposable item + Water Splash or Spark Puddle = cleanse all tracking debuffs. Focus refund from the 'clean getaway' composure. Completes the disposable combo matrix: now every core tag (ballistic, electrical, covert, black_market, improvised, wet) has a disposable partner combo."
+    },
+    {
+      "id": "COMBO-031",
+      "tagA": "fire",
+      "tagB": "improvised",
+      "name": "Controlled Burn",
+      "emoji": "🔥🟩",
+      "priority": 4,
+      "tier": "intermediate",
+      "effects": [
+        { "type": "ground_effect", "effectType": "FIRE", "radius": 1, "duration": 2 },
+        { "type": "damage_over_time_area", "tickDamage": 2, "duration": 2 },
+        { "type": "cost_reduction_next", "tag": "improvised", "amount": 1 }
+      ],
+      "discoveryHint": "Improvised accelerants turn a small flame into a controlled inferno — area denial plus cheaper follow-up.",
+      "_designNote": "Fire+Improvised = Controlled Burn. Molotov (both tags) self-combos. Cross-card: Fireball + Conceal, Fireball + Field Stitch Kit. Creates fire ground + DoT. The 'fire' tag had 4+ cards but was only accessible via Poison Ignition conditions — this gives it a direct combo path. Cost reduction rewards improvised chains."
+    },
+    {
+      "id": "COMBO-032",
+      "tagA": "electrical",
+      "tagB": "covert",
+      "name": "Silent Surge",
+      "emoji": "⚡🟣",
+      "priority": 3,
+      "tier": "advanced",
+      "effects": [
+        { "type": "stun_guarantee", "target": "primary", "duration": 1 },
+        { "type": "noise_reduction", "value": -3 },
+        { "type": "status", "status": "disabled", "duration": 1 }
+      ],
+      "conditions": {
+        "requireStatus": "stealth"
+      },
+      "discoveryHint": "A silent electrical charge from the shadows — guaranteed stun and disable without breaking cover's silence.",
+      "_designNote": "Electrical+Covert from stealth = Silent Surge. Taser Baton (ballistic+electrical) + Poison Dart (covert) after Conceal. Or Spark Puddle (wet+electrical) + Smoke Bomb (covert). Noise reduction means the electrical attack is quiet. Fills the gap between Smuggled Tech (⬛+🟨) and Backstab (🟪+🟥) — gives electrical builds a stealth option. Advanced tier because it requires stealth setup."
     }
   ],
 
-  "_catalogNote": "Tag Synergy Combo System v4.0. v1: Core Pokémon-logic combos. v2: Black Market tag combos. v3: Counterplay depth — tag risk profiles, counterplay cards, risk/reward punishment combos. v4: Disposable-as-ammo system — 5 new combos (COMBO-025 through COMBO-029) making one-time-use cards the fuel for tag synergies. Every disposable card now feeds at least one combo via its tag pair. Resource refund loops (ammo from ballistic burns, battery from electrical burns, currency from black market burns, cards from improvised burns) make disposable-heavy play self-sustaining."
+  "_catalogNote": "Tag Synergy Combo System v5.0. v1: Core Pokémon-logic combos. v2: Black Market tag combos. v3: Counterplay depth — tag risk profiles, counterplay cards, risk/reward punishment combos. v4: Disposable-as-ammo system — 5 new combos (COMBO-025 through COMBO-029) making one-time-use cards the fuel for tag synergies. v5: Stress-test remediation — COMBO-026 Burn Notice gained focus refund (all disposable combos now have resource feedback), COMBO-030 Evidence Wash completes disposable+wet matrix, COMBO-031 Controlled Burn gives fire tag a direct combo path (was condition-only), COMBO-032 Silent Surge fills electrical+covert gap. 32 combos total. Resource refund loops cover all 4 resources: ammo (ballistic), battery (electrical), currency (black_market), focus (covert), cards (improvised)."
 }

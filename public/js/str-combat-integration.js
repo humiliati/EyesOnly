@@ -316,6 +316,24 @@
       // Fires once on the resolving→selecting/post_resolve edge.
       if (_lastResolvingTurn && !_endOfTurnPushDone) {
         _endOfTurnPushDone = true;
+
+        // Phase 5: Advance duel turn (refill charges, escalation, momentum, AI adapt)
+        try {
+          if (typeof InformationDuelEngine !== 'undefined' && InformationDuelEngine.advanceTurn) {
+            var _enemyCards = (typeof EnemyHandDisplay !== 'undefined' && EnemyHandDisplay.getEnemyCards) ?
+              EnemyHandDisplay.getEnemyCards() : [];
+            // Check if player destroyed a card this turn (tracked by interaction handler)
+            var _destroyedThisTurn = false;
+            try {
+              if (typeof NonCombatEventBus !== 'undefined' && NonCombatEventBus._lastDestroyThisTurn) {
+                _destroyedThisTurn = true;
+                NonCombatEventBus._lastDestroyThisTurn = false;
+              }
+            } catch (e5) {}
+            InformationDuelEngine.advanceTurn(_destroyedThisTurn, _enemyCards);
+          }
+        } catch (e5b) {}
+
         try {
           if (typeof CardStateAuthority !== 'undefined') {
             var pushResult = CardStateAuthority.pushOldestHandToBackup();
@@ -420,6 +438,11 @@
       }
       EnemyHandDisplay.updateFromCombatState(combatState);
 
+      // Phase 5: Start InformationDuelEngine on first combat frame
+      if (wasHidden && typeof InformationDuelEngine !== 'undefined') {
+        InformationDuelEngine.startCombat();
+      }
+
       // Phase 4: Compute interactability + auto-reveal on first show
       if (typeof EnemyCardInteractionHandler !== 'undefined') {
         if (wasHidden) {
@@ -428,6 +451,11 @@
         }
         // Every frame: update interactability state
         EnemyCardInteractionHandler.computeInteractability(combatState);
+      }
+
+      // Phase 5: Render duel HUD
+      if (typeof InformationDuelEngine !== 'undefined' && typeof InformationDuelHUD !== 'undefined') {
+        InformationDuelHUD.render(InformationDuelEngine.getSnapshot());
       }
     }
   }
@@ -438,6 +466,10 @@
     }
     if (typeof EnemyHandDisplay !== 'undefined') {
       EnemyHandDisplay.hide();
+    }
+    // Phase 5: End duel engine on combat end
+    if (typeof InformationDuelEngine !== 'undefined' && InformationDuelEngine.endCombat) {
+      InformationDuelEngine.endCombat();
     }
   }
 

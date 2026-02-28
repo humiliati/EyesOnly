@@ -428,3 +428,230 @@ Phase 0 (Data)                    Phase 1 (Map)                   Phase 2 (Comba
 - [ ]  Steal removes joker, adds card to player hand, decrements enemy hand count label
 - [ ]  Destroy removes joker, triggers `card_killed` → enemy face goes `>:(`
 - [ ]  Reveal flips joker to show actual card emoji + name
+---
+
+## Phase 5 — Information Duel System
+
+> **Goal:** Transform enemy card interactions from an "Interrupt Engine" into a psychological "Information Duel" with multi-turn memory, escalation pressure, adaptive AI, and constrained interaction economy.
+
+### 5.1 — Interaction Charges (GAP 3)
+
+One interaction charge per turn (reveal OR steal OR destroy). Items can add bonus charges.
+
+- [x] `InformationDuelEngine.canInteract()` / `spendCharge()` — charge gate before any action
+- [x] `_computeMaxCharges()` — reads `interaction_charge_bonus` effects from items
+- [x] Charges refill on `advanceTurn()` (resolving to selecting edge)
+- [x] Toast "No interaction charges remaining" when blocked
+- [x] New item: ITM-090 Scrambler Chip (epic) — +1 charge/turn
+
+### 5.2 — Intent Mutation System (GAP 1)
+
+Enemy mechanical states triggered by player interactions:
+
+| Action | Mutation | Effect |
+|---|---|---|
+| Destroy | RAGE | +10% damage per stack (caps at 3 = +30%) |
+| Steal | PARANOIA | Hides extra card(s) per stack |
+| Reveal | ADAPTATION | At 2+ stacks, swaps combo ordering |
+
+- [x] `applyMutation(actionType)` — stacking same type, switching on different
+- [x] `getMutationDisplay()` — emoji + label + stack count for HUD
+- [x] Face expression override via `_applyMutationFace()` — Enraged / Alert / Determined
+- [x] New item: ITM-089 Precision Tools — destroy reduces Rage spike by 1
+
+### 5.3 — Intent Momentum (Multi-Turn Tag Tracking)
+
+Per-slot tag momentum: each turn a tag survives in a slot, it gains +1 Momentum.
+
+- [x] `updateMomentum(enemyCards)` — called on turn advance
+- [x] `getSlotMomentum(index)` / `getAllMomentum()` — read momentum state
+- [x] `getDestroyDisruptionBonus(index)` — high-momentum slots give disruption bonus
+- [x] `clearSlotMomentum(index)` — reset on destroy/steal
+- [x] Momentum dots rendered per-slot (color-coded by dominant tag)
+- [x] New item: ITM-087 Pattern Lens — see momentum + auto-reveal at Momentum 3+
+
+### 5.4 — Hidden Escalation Clock
+
+Prevents defensive stall meta. +1 per turn without a destroy.
+
+- [x] `advanceEscalation(destroyedThisTurn)` — tracks turns since destroy
+- [x] At Escalation 3+: all Payoff tags gain +1 damage per point above threshold
+- [x] HUD bar with urgent-red pulse near threshold
+- [x] New item: ITM-088 Dampener Coil — 15% Overload reduction + 1 grace turn
+
+### 5.5 — Overload Meter
+
+Global tension gauge fed by momentum reaching 2, combo resolves, and instability triggers.
+
+- [x] `feedOverload(source, amount)` — increment meter
+- [x] At 5: Overload Eligible (next combo turn)
+- [x] At 7: Overload Active (all combo effects +1, instability checks doubled)
+- [x] `resolveOverload()` — resets meter, decays all momentum by 1
+- [x] No back-to-back Overload (reset to 0 after trigger)
+- [x] HUD bar with yellow-pulse animation at active state
+
+### 5.6 — Two-Stage Interaction Pipeline (GAP 2)
+
+Revealed cards become stealable on subsequent turns.
+
+- [x] `markRevealed(slotIndex)` — records turn of reveal
+- [x] `isRevealedStealable(slotIndex)` — true if revealed on a previous turn
+- [x] `enemy-card-interactability.js` updated: revealed + stealable check
+- [x] Existing CSS `.enemy-card-revealed.enemy-card-interactable[data-action="steal"]` already supports visual
+
+### 5.7 — Adaptive Pattern AI
+
+Enemy adjusts behavior every 3 turns based on player interaction patterns.
+
+- [x] `trackPlayerAction(actionType)` — accumulates destroy/steal/reveal counts
+- [x] `checkAIAdaptation()` — triggers at interval, applies adaptations
+- [x] `getAIAdaptations()` — active adaptations for combat behavior
+- [x] Emits `ai:adapted` event for UI feedback
+
+### 5.8 — Information Duel HUD
+
+Visual layer rendering duel state into combat UI.
+
+- [x] Charge pips (active / grey spent)
+- [x] Mutation badge (emoji + label + stacks, color-coded)
+- [x] Escalation bar (amber to red near threshold)
+- [x] Overload meter (blue to yellow to pulsing at active)
+- [x] Momentum dots per card slot (color-coded by dominant tag)
+- [x] Power fantasy flash: "INTENT DENIED" (destroy), "CARD SEIZED" (steal), "OVERLOAD"
+
+### 5.9 — Phase 5 Items
+
+| Item | Rarity | Effect |
+|---|---|---|
+| ITM-087 Pattern Lens | Uncommon | See momentum counters; auto-reveal at Momentum 3+ |
+| ITM-088 Dampener Coil | Rare | -15% Overload damage; escalation +1 grace turn |
+| ITM-089 Precision Tools | Rare | Destroy Payoff reduces Rage by 1; +1 momentum disruption |
+| ITM-090 Scrambler Chip | Epic | +1 interaction charge per turn |
+
+### New Files (Phase 5)
+
+| File | Sub-phase | Purpose |
+|---|---|---|
+| `public/js/information-duel-engine.js` | 5.1-5.7 | Core engine: charges, mutation, momentum, escalation, overload, AI |
+| `public/js/information-duel-hud.js` | 5.8 | Visual HUD rendering for duel state |
+
+### Modified Files (Phase 5)
+
+| File | Changes |
+|---|---|
+| `enemy-card-interactability.js` | Two-stage pipeline: revealed cards now stealable/destroyable |
+| `enemy-card-interaction-handler.js` | Charge gate, mutation triggers, momentum disruption, overload feed |
+| `str-combat-integration.js` | Duel engine lifecycle (start/advance/end), HUD rendering |
+| `enemy-hand-display.css` | Phase 5 HUD styles, momentum dots, power flash animation |
+| `items.json` | 4 new items (ITM-087 through ITM-090) |
+| `index.html` | Script tags for information-duel-engine.js + information-duel-hud.js |
+
+### 5.10 — Canon-Compliance Refactor (HUD Gutting)
+
+> **Goal:** All Information Duel visual state routed through existing canon surfaces per UI-CANON.md. No standalone bars, badges, or new HUD containers.
+
+| Duel State | Canon Surface | Method |
+|---|---|---|
+| **Charges** | Debrief Feed resource row | Same `█░` block format as HP/Ammo/Energy |
+| **Escalation** | STR combat window frame border | `str-frame-escalation` — border shifts gold→red |
+| **Overload rising** | STR combat window frame border | `str-frame-overload-rising` — border shifts gold→bright yellow |
+| **Overload active** | STR combat window frame border | `str-frame-overload` — pulsing white-yellow animation |
+| **Mutation** | Enemy kaomoji face expression | `EnemyIntentSystem.FACE_EXPRESSIONS` (ENRAGED/ALERT/DETERMINED) |
+| **Momentum** | Dots on enemy card slots | `.idh-momentum-dot` color-coded by dominant tag |
+| **Details** | Tooltip on enemy card hover | `TooltipSystem.showPersistent()` shows momentum/mutation/escalation |
+| **Power flash** | Temporary overlay (1.2s) | "INTENT DENIED", "CARD SEIZED", "OVERLOAD" |
+
+**Gutted CSS (~170 lines removed):**
+- `.info-duel-hud`, `.idh-top-row`, `.idh-charge-pips`, `.idh-charge-pip`
+- `.idh-mutation-badge` and all children
+- `.idh-bottom-row`, `.idh-escalation`, `.idh-overload` and all children
+- All associated `@keyframes` (idh-mutation-pulse, idh-esc-urgent, idh-ovl-active)
+
+**Kept:**
+- `.idh-momentum-indicator`, `.idh-momentum-dot` (on existing enemy card slots)
+- `.idh-power-flash` (temporary, no persistent clutter)
+
+**Added to `str-combat-window.css`:**
+- `.str-frame-escalation` — red border tint + glow
+- `.str-frame-overload-rising` — bright yellow border tint
+- `.str-frame-overload` + `@keyframes str-frame-overload-pulse` — pulsing white-yellow
+- `prefers-reduced-motion` coverage for overload pulse
+
+
+---
+
+## Phase 5.11 — Synergy Ecosystem Stress Test & Remediation
+
+### Stress Test System
+New headless synergy stress-test engine (`public/tests/test-synergy-stress.js`) with 11 test suites:
+1. **Dead-End Tags** — tags appearing on cards but not in any combo or risk
+2. **Orphan Cards** — cards whose tags never fire a combo
+3. **Supply/Demand Gap** — combos that can't be built from available cards
+4. **Enemy Deck Combo Coverage** — internal combo potential per deck
+5. **Information Duel Interaction Budget** — charges vs high-value targets
+6. **Tag Risk Threshold Reachability** — can each risk actually fire?
+7. **Self-Combo Cards** — dual-tag cards that trigger their own combo
+8. **Resource Loop Sustainability** — disposable combos self-fund?
+9. **Steal Priority Matrix** — ranked steal targets per complex deck
+10. **Duel Edge Cases** — small decks, momentum, escalation pressure
+11. **Cross-Ecosystem Combo Chains** — status produce/consume chains
+
+Runners: `test-synergy-stress.html` (browser), `run-synergy-stress.js` (Node.js CLI).
+
+### Initial Run Results (Pre-Fix)
+- **69 passed, 0 failed, 42 warnings** across 111 tests
+- 32 dead-end synergy tags (mostly functional role tags)
+- 11 orphan player cards, 5 orphan enemy cards
+- Burn Notice (COMBO-026) lacked resource feedback
+- 0 energy/focus combo generators
+- `fire` tag had no direct combo path (condition-only via Poison Ignition)
+
+### Fixes Applied (v5.0)
+
+#### COMBO-026 Burn Notice — Focus Refund Added
+Disposable+Covert now refunds 1 Focus. Design: "composure from clean tradecraft." All 5 disposable combos now have resource feedback:
+- ballistic → ammo refund (Expendable Ordnance)
+- electrical → battery refund (Overclocked Gadget)
+- black_market → currency bonus (Dead Drop)
+- improvised → card generation (Field Salvage)
+- covert → **focus refund** (Burn Notice) ← NEW
+
+#### COMBO-030 Evidence Wash (NEW)
+`disposable + wet` — Remove marked/tracked/exposed statuses + stealth bonus + focus refund. Completes the disposable matrix: every core tag now has a disposable partner combo.
+
+#### COMBO-031 Controlled Burn (NEW)
+`fire + improvised` — Creates fire ground + DoT area + cost reduction for next improvised card. Molotov (both tags) self-combos. Gives `fire` tag a direct combo path (was previously condition-only via Poison Ignition).
+
+#### COMBO-032 Silent Surge (NEW)
+`electrical + covert` (requires stealth) — Guaranteed stun + disable + noise reduction. Fills the electrical+covert gap. Advanced tier because it requires stealth setup.
+
+### Post-Fix Results
+- **77 passed, 0 failed, 40 warnings** across 117 tests
+- Dead-end tags: 32 → 1 (only `burst` on 1 card)
+- Burn Notice resource gap: FIXED
+- Fire tag dead-end: FIXED
+- Combo count: 29 → 32
+- Focus now has 2 combo generators (Burn Notice + Evidence Wash) + 1 risk drain
+
+### Remaining Warnings (By Design)
+
+| Category | Count | Status |
+|----------|-------|--------|
+| Orphan player cards (starter/tutorial) | 5 | Intentional — BLVCK, Field Dressing, Basic Shot, Cardboard Box, Cyanide Capsule are role cards |
+| Orphan player cards (Ultrasonic chain) | 6 | Intentional — sonic/light cards are their own subsystem |
+| Orphan enemy cards | 4 | Intentional — Axe Swing, Shield Wall, Nibble, Ram Charge are melee role cards |
+| Small decks (≤2 cards) | 13 | Intentional — civilians/critters don't need duel depth |
+| Elite decks exceeding interaction budget | 5 | Intentional — Scrambler Chip (+1 charge/turn) is the answer |
+| Status prerequisites from card effects | 4 | By design — stealth, poison, marked, burn come from cards not combos |
+| Decks with no exposed tags | 2 | Design debt — GENERIC_FLOOR_30 and HEAVY_DRIFTER need exposedTags |
+
+### Resource Loop Coverage (Post-Fix)
+
+| Resource | Combo Generators | Risk Drains | Net |
+|----------|-----------------|-------------|-----|
+| Ammo | 1 (Expendable Ordnance) | 0 | +1 |
+| Battery | 1 (Overclocked Gadget) | 1 (Feedback Burn) | 0 |
+| Focus | 2 (Burn Notice, Evidence Wash) | 1 (Heat Score) | +1 |
+| Energy | 0 | 0 | 0 |
+
+Energy has no combo loop — it's managed by card costs and turn economy, not the synergy system.
