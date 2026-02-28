@@ -39,11 +39,24 @@
   }
 
   function init() {
-    // Wire up control buttons
-    var buttons = document.querySelectorAll('.control-buttons button');
-    buttons.forEach(function (btn) {
-      btn.addEventListener('click', handleButtonClick);
-    });
+    // Wire up control buttons via event delegation on the stable #control-rail
+    // parent.  This ensures buttons remain functional even after rogue-sidebar
+    // restores _originalHtml (which recreates button elements without listeners).
+    var controlRail = document.getElementById('control-rail');
+    if (controlRail) {
+      controlRail.addEventListener('click', function(e) {
+        var btn = e.target.closest('button[data-action]');
+        if (btn && controlRail.contains(btn)) {
+          handleButtonClick(e);
+        }
+      });
+    } else {
+      // Fallback: direct binding when control-rail is unavailable
+      var buttons = document.querySelectorAll('.control-buttons button');
+      buttons.forEach(function (btn) {
+        btn.addEventListener('click', handleButtonClick);
+      });
+    }
 
     // Initialize inventory grid
     populateInventory();
@@ -176,7 +189,10 @@
   }
 
   function handleButtonClick(e) {
-    var action = e.target.getAttribute('data-action');
+    // Support both direct clicks (e.target is the button) and delegated clicks
+    // (e.target may be a child element of the button, e.g. a <span> inside it).
+    var btn = (e.target && e.target.closest) ? (e.target.closest('[data-action]') || e.target) : e.target;
+    var action = btn ? btn.getAttribute('data-action') : null;
     var isInStreetChronicles = typeof StreetChronicles !== 'undefined' && StreetChronicles.isActive();
     var isInLoginShell = typeof LoginShell !== 'undefined' && LoginShell.isActive();
 
