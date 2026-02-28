@@ -5057,13 +5057,17 @@ _incrementPityTimers();
     _player.collectingCurrency = true;
     _player.currencyCollectTime = now;
 
-    // Pancake stacker feedback
+    // Pancake stacker feedback — currency (¢) no longer uses PancakeStack
+    // (ghost glyph fix: OverheadAnimator "+3¢" is sufficient for currency feedback,
+    //  PancakeStack reserved for physical inventory items like cards/keys/food)
+    // Only ammo still uses PancakeStack (it's a physical resource)
     try {
-      var glyph = c._isAmmo ? '؋' : '¢';
-      if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-        PancakeStack.addPancake(glyph);
-      } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-        PlayerStackManager.addPancake(glyph);
+      if (c._isAmmo) {
+        if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+          PancakeStack.addPancake('؋');
+        } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
+          PlayerStackManager.addPancake('؋');
+        }
       }
     } catch (ePancake) {}
 
@@ -5528,14 +5532,8 @@ _incrementPityTimers();
         TooltipSystem.showAction('currency-pickup', { amount: cryptoPickup.amount });
       }
 
-      // Pancake stacker for currency
-      try {
-        if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-          PancakeStack.addPancake('¢');
-        } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-          PlayerStackManager.addPancake('¢');
-        }
-      } catch (ePancake) {}
+      // PancakeStack removed for currency — OverheadAnimator "+N¢" is sufficient
+      // (ghost glyph fix: persistent ¢ glyph was hovering disembodied above player)
     }
 
     // Check for food item pickup (auto-pickup from interactive items)
@@ -5767,14 +5765,8 @@ _incrementPityTimers();
         TooltipSystem.showAction('currency-pickup', { amount: cryptoPickup.amount });
       }
 
-      // Pancake stacker for currency
-      try {
-        if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-          PancakeStack.addPancake('¢');
-        } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-          PlayerStackManager.addPancake('¢');
-        }
-      } catch (ePancake) {}
+      // PancakeStack removed for currency — OverheadAnimator "+N¢" is sufficient
+      // (ghost glyph fix: persistent ¢ glyph was hovering disembodied above player)
     }
 
     // Check for food item pickup (auto-pickup from interactive items)
@@ -8127,15 +8119,15 @@ _incrementPityTimers();
         }
       }
 
-      // Pancake stacker: show distinct category stacks above the drop.
+      // Loot summary: show stacked text above the drop position
       try {
-        if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showPancakeStacks) {
+        if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showStackedText) {
           var stacks = [];
           if (deathResult.loot.currency > 0) stacks.push({ text: 'CR+' + deathResult.loot.currency, color: '#FFFFFF' });
           if (deathResult.loot.ammo && deathResult.loot.ammo > 0) stacks.push({ text: 'AM+' + deathResult.loot.ammo, color: '#FFFFFF' });
           if (_dropCountCards > 0) stacks.push({ text: 'CD+' + _dropCountCards, color: '#FFFFFF' });
           if (_dropCountItems > 0) stacks.push({ text: 'IT+' + _dropCountItems, color: '#FFFFFF' });
-          if (stacks.length) OverheadAnimator.showPancakeStacks(enemy.x, enemy.y, stacks, 1200);
+          if (stacks.length) OverheadAnimator.showStackedText(enemy.x, enemy.y, stacks, 1200);
         }
       } catch (eLoot0) {}
     }

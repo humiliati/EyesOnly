@@ -441,7 +441,6 @@ const OverheadAnimator = (function() {
     showExpression: showExpression,
     showGenericExpression: showGenericExpression,
     showStackedText: showStackedText,
-    showPancakeStacks: showStackedText, // Deprecated alias for backward compatibility
     showStatus: showStatus,
     showSpeech: showSpeech,
     clearAnimation: clearAnimation,
