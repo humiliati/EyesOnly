@@ -341,67 +341,32 @@ const CanvasRenderer = (function() {
    * instead of per-tile orbs.
    */
   CanvasRenderer.prototype._renderSourceGlows = function(grid) {
-    if (typeof LightingSystem === 'undefined' || !LightingSystem.getLightSources) return;
+    if (typeof LightingSystem === 'undefined') return;
 
-    var sources = LightingSystem.getLightSources();
-    if (!sources || sources.length === 0) return;
-
-    var LIGHT_DEFS = LightingSystem.LIGHT_SOURCES;
     var prevComp = this.ctx.globalCompositeOperation;
     this.ctx.globalCompositeOperation = 'lighter';
 
-    var originX = this._worldOriginX || 0;
-    var originY = this._worldOriginY || 0;
+    for (var y = 0; y < grid.length; y++) {
+      for (var x = 0; x < grid[y].length; x++) {
+        var wx = x + (this._worldOriginX || 0);
+        var wy = y + (this._worldOriginY || 0);
+        var light = LightingSystem.getLightAt(wx, wy);
 
-    for (var i = 0; i < sources.length; i++) {
-      var src = sources[i];
-      // Skip sight cones — those are rendered as red overlays per tile
-      if (src.type === 'SIGHT_CONE') continue;
-
-      // Look up the light definition for radius and color
-      var def = LIGHT_DEFS[src.type];
-      if (!def) continue;
-
-      // Convert world position to canvas pixel position
-      var screenX = (src.x - originX + 0.5) * this.cellSize;
-      var screenY = (src.y - originY + 0.5) * this.cellSize;
-
-      // Radius in pixels — covers the full light radius in tile units
-      var radiusPx = def.radius * this.cellSize;
-
-      // Skip sources off-screen
-      if (screenX + radiusPx < 0 || screenX - radiusPx > this.width * this.cellSize) continue;
-      if (screenY + radiusPx < 0 || screenY - radiusPx > this.height * this.cellSize) continue;
-
-      // Parse light color
-      var color = def.color || '#ffffff';
-      var r = parseInt(color.substr(1, 2), 16);
-      var g = parseInt(color.substr(3, 2), 16);
-      var b = parseInt(color.substr(5, 2), 16);
-
-      // Apply flicker variance
-      var intensityMod = def.intensity;
-      if (def.flickerRate > 0 && src.flickerPhase !== undefined) {
-        var flicker = Math.sin(src.flickerPhase * 0.1) * def.flickerRate;
-        intensityMod = Math.max(0.1, intensityMod + flicker);
+        // Only add glow if there's significant light and it has a color
+        if (light.intensity > 0.05 && light.color && light.color !== '#000000' && light.color !== '#888888') {
+          var pixelX = x * this.cellSize;
+          var pixelY = y * this.cellSize;
+          
+          var r = parseInt(light.color.substr(1, 2), 16);
+          var g = parseInt(light.color.substr(3, 2), 16);
+          var b = parseInt(light.color.substr(5, 2), 16);
+          
+          // Scale glow by intensity
+          var alpha = light.intensity * 0.2; 
+          this.ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+          this.ctx.fillRect(pixelX, pixelY, this.cellSize, this.cellSize);
+        }
       }
-
-      var alpha = intensityMod * 0.25;
-
-      // Create one large radial gradient centered on the light source
-      var gradient = this.ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, radiusPx);
-      gradient.addColorStop(0.0, 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')');
-      gradient.addColorStop(0.3, 'rgba(' + r + ',' + g + ',' + b + ',' + (alpha * 0.6) + ')');
-      gradient.addColorStop(0.7, 'rgba(' + r + ',' + g + ',' + b + ',' + (alpha * 0.2) + ')');
-      gradient.addColorStop(1.0, 'rgba(' + r + ',' + g + ',' + b + ',0)');
-
-      this.ctx.fillStyle = gradient;
-      this.ctx.fillRect(
-        screenX - radiusPx,
-        screenY - radiusPx,
-        radiusPx * 2,
-        radiusPx * 2
-      );
     }
 
     this.ctx.globalCompositeOperation = prevComp;
