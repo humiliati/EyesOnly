@@ -832,5 +832,75 @@
     "tags": ["improvised"],
     "synergyTags": ["improvised", "defensive", "counter", "control"],
     "_designNote": "The skill-based risk management card. Cancels YOUR tag risk penalties this turn (no Overexertion, no Feedback Burn, no Exposure Risk, no Instability, no Heat Score). 40% chance to redirect Instability rolls to the enemy instead. Improvised tag means it feeds Stealth Cascade and Jury Rig. The card that lets you go all-in on a tag without paying the overcommit price — but only for one turn."
+  },
+
+  {
+    "id": "ACT-062",
+    "name": "Jab",
+    "emoji": "👊",
+    "targetType": "enemy",
+    "cost": 0,
+    "costs": null,
+    "rarity": "common",
+    "effects": [
+      { "type": "damage", "value": 5 }
+    ],
+    "preCombat": false,
+    "tags": ["ballistic", "melee"],
+    "synergyTags": ["melee", "ballistic", "fast"],
+    "_designNote": "Intro melee card. Free punch — 0 cost entry. melee+melee→Combo Strike (chain two Jabs or Jab→Haymaker for free finishing blow + stagger). ballistic+ballistic→Overkill. Most natural discovery for new players: punch twice, get rewarded. Equivalent to Basic Shot but for hand-to-hand — the fallback melee option."
+  },
+
+  {
+    "id": "ACT-063",
+    "name": "Haymaker",
+    "emoji": "🥊",
+    "targetType": "enemy",
+    "cost": 1,
+    "costs": null,
+    "rarity": "common",
+    "effects": [
+      { "type": "damage", "value": 9 }
+    ],
+    "preCombat": false,
+    "tags": ["ballistic", "melee"],
+    "synergyTags": ["melee", "ballistic", "control"],
+    "_designNote": "Heavy melee punch. Jab→Haymaker fires melee+melee→Combo Strike (free 5 dmg stagger). ballistic+ballistic→Overkill for armor pierce. melee+covert→CQC Takedown if paired with a covert card before this lands. The classic one-two punch — intuitive to any player who has ever played a fighting game. Teaches: same tag twice = escalation, the core combo grammar."
+  },
+
+  {
+    "id": "ACT-064",
+    "name": "Sleeper Hold",
+    "emoji": "😴",
+    "targetType": "enemy",
+    "cost": 1,
+    "costs": null,
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "damage", "value": 4 },
+      { "type": "status", "status": "stun", "duration": 2, "chance": 0.75 }
+    ],
+    "preCombat": false,
+    "tags": ["covert", "melee"],
+    "synergyTags": ["melee", "covert", "stealth", "control"],
+    "_designNote": "Silent takedown — grab from behind and squeeze. melee+covert→CQC Takedown (execute threshold +10%, bleed 2, noise -2). melee+melee→Combo Strike (with Jab or Haymaker). covert+ballistic→Backstab from stealth. The stealth-action genre's signature move: silent choke-out. Dual-tag (melee+covert) means it self-combos for CQC Takedown and chains into every melee sequence."
+  },
+
+  {
+    "id": "ACT-065",
+    "name": "Incendiary Round",
+    "emoji": "🔥",
+    "targetType": "enemy",
+    "cost": 1,
+    "costs": null,
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "damage", "value": 6 },
+      { "type": "status", "status": "burn", "duration": 2, "tickDamage": 2 }
+    ],
+    "preCombat": false,
+    "tags": ["ballistic", "fire"],
+    "synergyTags": ["fire", "ballistic"],
+    "_designNote": "Fire bullet. fire+fire→Inferno (with Fireball or Molotov → spreads burn AoE to all nearby enemies + bonus damage). fire+improvised→Controlled Burn (with Molotov or Field Stitch Kit). ballistic+ballistic→Overkill. Teaching: gun+fire = fire gun. The obvious military-action-movie weapon that makes the fire ecosystem more accessible to new players. A third fire card ensures Inferno is reliably reachable in any deck with fire ambitions."
   }
 ]
