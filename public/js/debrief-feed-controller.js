@@ -1195,6 +1195,32 @@ const DebriefFeedController = (function() {
     }, opts.durationMs || 450);
   }
 
+  /**
+   * Trigger battery recharge pulse animation
+   * Called when battery collectible is picked up
+   */
+  function triggerBatteryRecharge() {
+    try {
+      var rowElS = document.querySelector('.debrief-nav-row[data-row="signal"]');
+      if (rowElS) {
+        // Force a recharge pulse (stronger than normal pulse)
+        rowElS.classList.remove('signal-pulse');
+        rowElS.classList.add('signal-recharge-pulse');
+
+        // Reflow to restart animation
+        void rowElS.offsetWidth;
+
+        // Remove recharge pulse after animation completes
+        setTimeout(function() {
+          rowElS.classList.remove('signal-recharge-pulse');
+          rowElS.classList.add('signal-pulse');
+        }, 500);
+      }
+    } catch (e) {
+      console.warn('[DebriefFeedController] Failed to trigger battery recharge pulse:', e);
+    }
+  }
+
   // Public API
   return {
     init: init,
@@ -1212,7 +1238,8 @@ const DebriefFeedController = (function() {
 
     // Visual feedback hooks
     showSynergyOverlay: showSynergyOverlay,
-    flashIncinerator: flashIncinerator
+    flashIncinerator: flashIncinerator,
+    triggerBatteryRecharge: triggerBatteryRecharge
   };
 })();
 

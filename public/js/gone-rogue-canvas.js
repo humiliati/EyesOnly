@@ -17,34 +17,6 @@ const CanvasRenderer = (function() {
     EMOJI: 'emoji'
   };
 
-  // ── Phase 3.2: Item Twinkle State ─────────────────────────────────────────
-  // Tracks per-position bobbing phases so collectibles, currencies, and
-  // interactive items gently pulse/shimmer on the ground.
-  var _twinklePhases = {}; // key: "x,y" → float phase (radians)
-
-  // Prime-number multipliers for stable per-tile phase seeding (avoids grid-aligned sync)
-  var TWINKLE_SEED_X = 1.7;
-  var TWINKLE_SEED_Y = 3.1;
-
-  /**
-   * Advance twinkle phases for the given set of ground entities.
-   * Called once per renderGrid() invocation for non-enemy entities.
-   * @param {Array} entities
-   */
-  function _advanceTwinklePhases(entities) {
-    if (!entities) return;
-    for (var i = 0; i < entities.length; i++) {
-      var e = entities[i];
-      if (!e || e.isEnemy) continue;
-      var key = e.x + ',' + e.y;
-      if (_twinklePhases[key] === undefined) {
-        // Seed with a stable per-position offset so items don't all pulse together
-        _twinklePhases[key] = ((e.x * TWINKLE_SEED_X + e.y * TWINKLE_SEED_Y) % (Math.PI * 2));
-      }
-      _twinklePhases[key] += 0.04; // ~2.4 rad/s at 60fps → ~2.5s cycle
-    }
-  }
-
   /**
    * CanvasRenderer class - High-performance grid renderer
    */
@@ -128,9 +100,6 @@ const CanvasRenderer = (function() {
     // Render in layers
     this._renderTiles(renderData.grid);
 
-    // Advance twinkle phases for ground items / collectibles (Phase 3.2)
-    _advanceTwinklePhases(renderData.entities);
-
     // Render entities WITHOUT shadows first (shadows will be drawn after lighting)
     this._renderEntities(renderData.entities, true);
     this._renderPets(renderData.pets, true);
@@ -139,7 +108,54 @@ const CanvasRenderer = (function() {
     // Render pancake stack above player head (without shadow first)
     this._renderPancakeStack(renderData.player, true);
 
-    this._renderEffects(renderData.effects);
+    // Integrate OverheadAnimator into effects array for canvas rendering
+    // This ensures parity with mobile renderer (gone-rogue-mobile.js:828-868)
+    var effects = renderData.effects || [];
+    if (typeof OverheadAnimator !== 'undefined' && typeof OverheadAnimator.getAllAnimations === 'function') {
+      try {
+        var currentTime = Date.now();
+        OverheadAnimator.update(currentTime);
+        var animations = OverheadAnimator.getAllAnimations();
+
+        for (var akey in animations) {
+          var parts = akey.split(',');
+          var ax = parseInt(parts[0]);
+          var ay = parseInt(parts[1]);
+          var anim = animations[akey];
+
+          // Convert world coords to local grid coords (accounting for world origin)
+          var localX = ax - this._worldOriginX;
+          var localY = ay - this._worldOriginY;
+
+          var list = Array.isArray(anim) ? anim : [anim];
+          for (var li = 0; li < list.length; li++) {
+            var a1 = list[li];
+            if (!a1) continue;
+
+            var transform = (typeof OverheadAnimator.calculateAnimationTransform === 'function')
+              ? OverheadAnimator.calculateAnimationTransform(a1, currentTime)
+              : { x: 0, y: -12, opacity: 1, scale: 1 };
+
+            // Convert pixel offset to cell offset
+            var dyCells = (transform.y || 0) / this.cellSize;
+            var dxCells = (transform.x || 0) / this.cellSize;
+
+            effects.push({
+              x: localX + dxCells,
+              y: localY - 0.6 + dyCells, // -0.6 to position above entity center
+              char: a1.text || a1.emoji,
+              color: a1.color || '#FFFFFF',
+              glow: true,
+              alpha: (transform.opacity !== undefined ? transform.opacity : 1)
+            });
+          }
+        }
+      } catch (e) {
+        // Silently fail if OverheadAnimator has issues
+      }
+    }
+
+    this._renderEffects(effects);
 
     // Render light source emojis BEFORE lighting passes so they are darkened/lit properly
     if (this.enableLighting && typeof LightingSystem !== 'undefined') {
@@ -512,15 +528,6 @@ const CanvasRenderer = (function() {
         this._drawDropShadow(centerX, (entity.y + 0.78) * this.cellSize, this.cellSize * 0.32, this.cellSize * 0.11, 0.28);
       }
 
-      // Phase 3.2: twinkle pulse for ground items / collectibles (not enemies)
-      var savedAlpha = this.ctx.globalAlpha;
-      if (!entity.isEnemy) {
-        var key = entity.x + ',' + entity.y;
-        var phase = _twinklePhases[key] || 0;
-        // Gentle oscillation: alpha between 0.78 and 1.0
-        this.ctx.globalAlpha = 0.78 + 0.22 * (0.5 + 0.5 * Math.sin(phase));
-      }
-
       // Render entity character/emoji
       this.ctx.fillStyle = entity.color || '#FF0000';
 
@@ -532,9 +539,8 @@ const CanvasRenderer = (function() {
 
       this.ctx.fillText(entity.char || '?', centerX, centerY);
 
-      // Reset shadow and alpha
+      // Reset shadow
       this.ctx.shadowBlur = 0;
-      this.ctx.globalAlpha = savedAlpha;
     }
   };
 
