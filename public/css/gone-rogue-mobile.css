@@ -21,13 +21,15 @@
   border: 2px solid #1cff9b;
   box-shadow: 0 0 20px rgba(28, 255, 155, 0.3);
   font-family: 'Courier New', monospace;
-  touch-action: none;
+  touch-action: pan-y pan-x;
   user-select: none;
   transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-  overflow: hidden; /* Prevent grid from extending beyond container */
+  overflow: visible; /* Allow grid to be fully visible */
   box-sizing: border-box;
   position: relative; /* Ensure proper positioning context */
   z-index: 10; /* Prioritize grid over other terminal content */
+  /* Ensure grid can be scrolled to on mobile */
+  min-height: min-content;
 }
 
 /* Combat Zoom Effect - Desktop & Mobile */
@@ -1486,10 +1488,11 @@
     order: 1; /* Grid appears first */
     flex-shrink: 0; /* Don't shrink the grid */
     margin-bottom: 8px; /* Space between grid and terminal */
-    position: sticky; /* Stick to top when scrolling */
-    top: 0;
-    background: #0a0a0a; /* Ensure it has a background when sticky */
-    /* z-index not needed - flexbox order handles layout */
+    position: relative; /* Changed from sticky to allow full scrolling */
+    top: auto;
+    background: #0a0a0a; /* Ensure it has a background */
+    /* Add bottom padding to prevent cutoff by footer */
+    padding-bottom: 8px;
   }
 
   /* Rogue cards should also be prioritized */
@@ -1508,6 +1511,11 @@
   body.mode-gone-rogue #input-line,
   body.in-gone-rogue #input-line {
     order: 3;
+  }
+
+  /* Ensure the #log-column has enough space and proper scrolling */
+  body.gone-rogue-active #log-column {
+    padding-bottom: 40px; /* Add padding to prevent footer overlap */
   }
 }
 

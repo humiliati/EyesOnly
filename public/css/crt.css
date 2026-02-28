@@ -1645,20 +1645,28 @@ body.amber-mode #scanlines::after {
     /* Match the torso band allocation above */
     height: clamp(120px, 16vh, 200px);
     min-height: 0;
+    /* Ensure no gaps between children */
+    gap: 2px;
   }
 
   body.mode-gone-rogue .control-buttons,
   body.in-gone-rogue .control-buttons,
   body.gone-rogue-active .control-buttons {
-    width: calc(100% - var(--rogue-debrief-pct, 34%));
+    width: calc(100% - var(--rogue-debrief-pct, 34%) - 2px);
     max-width: 100%;
     box-sizing: border-box;
     overflow: hidden;
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-auto-rows: minmax(26px, auto);
-    align-content: start;
+    grid-template-rows: repeat(3, 1fr);
+    align-content: stretch;
     gap: 2px;
+    height: 100%;
+    padding: 4px;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border-soft);
+    border-radius: 8px;
   }
 
   body.mode-gone-rogue .control-buttons button,
@@ -1695,9 +1703,10 @@ body.amber-mode #scanlines::after {
     top: auto;
     width: var(--rogue-debrief-pct, 34%);
     max-height: 100%;
+    height: 100%;
     z-index: auto;
     max-width: none;
-    flex: 1 1 auto;    /* mutual pressure: fills remaining torso band height */
+    flex: 0 0 auto;
     min-height: 0;
     overflow: hidden;
     background: rgba(0,0,0,0.18);
@@ -1817,7 +1826,10 @@ body.amber-mode #scanlines::after {
   body.gone-rogue-active #log-column {
     grid-row: 3;
     min-height: 0;
-    overflow: hidden;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
   }
 
   body.mode-gone-rogue #terminal,
@@ -1867,32 +1879,36 @@ body.amber-mode #scanlines::after {
   /* ── Problem 4: Squish tooltip footer so map viewport reaches every corner ── */
   body.gone-rogue-active #mok-interjections {
     padding: 1px 3px;
-    max-height: 36px;
+    max-height: 28px;
     overflow: hidden;
-    line-height: 1.1;
+    line-height: 1;
+    position: relative;
+    z-index: 5; /* Lower than grid to prevent blocking */
   }
   body.gone-rogue-active .interject-label {
     margin-bottom: 0;
-    font-size: 0.65em;
+    font-size: 0.6em;
     line-height: 1;
+    display: none; /* Hide label on mobile to save space */
   }
   body.gone-rogue-active .interject-body {
-    font-size: 0.8em;
-    line-height: 1.1;
+    font-size: 0.75em;
+    line-height: 1;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 100%;
   }
   body.gone-rogue-active .mok-footer-controls {
-    margin-top: 1px;
+    margin-top: 0;
     gap: 1px;
   }
   body.gone-rogue-active .hand-fan-toggle {
     padding: 1px 3px;
+    font-size: 0.8em;
   }
   body.gone-rogue-active .hand-fan-icon {
-    font-size: 0.9em;
+    font-size: 0.8em;
   }
 }
 
