@@ -1484,6 +1484,23 @@ body.amber-mode #scanlines::after {
   #mok-interjections {
     padding: 4px 6px;
   }
+
+  /* Shrink equipped item slot frame + emoji further in portrait (all states) */
+  .active-item-display {
+    width: 28px;
+    height: 28px;
+    font-size: 1.0em;
+    border-width: 1px;
+    border-radius: 5px;
+  }
+
+  .active-item-label {
+    display: none;
+  }
+
+  .active-item-slot {
+    gap: 2px;
+  }
 }
 
 /* --- Gone Rogue portrait layout (mobile) --- */
@@ -1977,9 +1994,9 @@ body.amber-mode #scanlines::after {
   
   /* Active item slot reduction */
   .active-item-display {
-    width: 42px;
-    height: 42px;
-    font-size: 1.5em;
+    width: 34px;
+    height: 34px;
+    font-size: 1.2em;
   }
   
   .active-item-label {
@@ -2012,9 +2029,9 @@ body.amber-mode #scanlines::after {
   
   body.mode-gone-rogue .active-item-display,
   body.in-gone-rogue .active-item-display {
-    width: 36px;
-    height: 36px;
-    font-size: 1.3em;
+    width: 28px;
+    height: 28px;
+    font-size: 1.0em;
     border-width: 1px;
   }
   
@@ -2055,9 +2072,9 @@ body.amber-mode #scanlines::after {
   }
   
   .active-item-display {
-    width: 32px;
-    height: 32px;
-    font-size: 1.2em;
+    width: 26px;
+    height: 26px;
+    font-size: 1.0em;
   }
   
   .active-item-label {

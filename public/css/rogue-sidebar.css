@@ -85,20 +85,30 @@
     gap: 4px;
   }
 
-  /* Mobile portrait: left column emojis must be much smaller */
-  body.mode-gone-rogue .rogue-sidebar-btn .rs-emoji,
-  body.in-gone-rogue .rogue-sidebar-btn .rs-emoji,
-  body.gone-rogue-active .rogue-sidebar-btn .rs-emoji {
+  /* Shrink emoji for ALL states in portrait (not just rogue body classes) */
+  .rogue-sidebar-btn .rs-emoji {
     font-size: 12px;
   }
 
-  body.mode-gone-rogue .rogue-sidebar-btn .rs-label,
-  body.in-gone-rogue .rogue-sidebar-btn .rs-label,
-  body.gone-rogue-active .rogue-sidebar-btn .rs-label {
+  .rogue-sidebar-btn .rs-label {
     font-size: 0.75em;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+}
+
+/* Landscape small-screen: moderate emoji shrink */
+@media (max-width: 767px) and (orientation: landscape) {
+  .rogue-sidebar-btn .rs-emoji {
+    font-size: 16px;
+  }
+
+  .rogue-sidebar-btn {
+    min-height: 32px;
+    padding: 4px 6px;
+    font-size: 0.8em;
+    gap: 6px;
   }
 }
 
