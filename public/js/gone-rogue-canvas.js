@@ -663,19 +663,30 @@ const CanvasRenderer = (function() {
 
   /**
    * Draw an elliptical drop shadow at a given ground position.
-   * Used by entity, player, and pet renderers for a consistent fake-3D shadow.
-   * @param {number} centerX - Horizontal center of shadow
-   * @param {number} groundY - Vertical ground position (Y of shadow center)
-   * @param {number} radiusX - Half-width of ellipse
-   * @param {number} radiusY - Half-height of ellipse
-   * @param {number} opacity - Shadow alpha (0–1)
+   *
+   * Universal shadow system for all game entities (player, enemies, NPCs, pets, collectibles).
+   * Uses flat ellipse geometry (NOT canvas shadowBlur) for accurate ground-plane shadows
+   * that create fake-3D/isometric visual depth. Compliant with Terraria lighting spec
+   * (docs/TERRARIA_LIGHTING_TODO.md Phase 1.3, visual polish).
+   *
+   * Standard parameters by entity type:
+   * - Player: groundY = (y + 0.78) * cellSize, radiusX = 0.36 * cellSize, radiusY = 0.13 * cellSize, opacity = 0.35
+   * - Entities: groundY = (y + 0.78) * cellSize, radiusX = 0.32 * cellSize, radiusY = 0.11 * cellSize, opacity = 0.28
+   * - Pets: groundY = (y + 0.78) * cellSize, radiusX = 0.30 * cellSize, radiusY = 0.10 * cellSize, opacity = 0.25 * pet.opacity
+   * - Pancake stack: inline render at screenY + 0.28 * cellSize (= player.y + 0.78 total), radiusX = 0.38 * cellSize, radiusY = 0.13 * cellSize, opacity = 0.35 * fadeIn * fadeOut
+   *
+   * @param {number} centerX - Horizontal center of shadow in canvas pixel space
+   * @param {number} groundY - Vertical ground position (Y of shadow center) in canvas pixel space
+   * @param {number} radiusX - Half-width of ellipse in pixels
+   * @param {number} radiusY - Half-height of ellipse in pixels (smaller than radiusX for perspective)
+   * @param {number} opacity - Shadow alpha (0–1), modulates base shadow darkness
    */
   CanvasRenderer.prototype._drawDropShadow = function(centerX, groundY, radiusX, radiusY, opacity) {
     if (opacity <= 0) return;
     this.ctx.save();
     this.ctx.globalAlpha = opacity;
-    this.ctx.shadowBlur = 0;
-    this.ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    this.ctx.shadowBlur = 0; // Critical: no blur for flat ground shadow (shadowBlur reserved for glow effects)
+    this.ctx.fillStyle = 'rgba(0,0,0,0.55)'; // Semi-transparent black (base darkness before opacity multiplier)
     this.ctx.beginPath();
     this.ctx.ellipse(centerX, groundY, radiusX, radiusY, 0, 0, Math.PI * 2);
     this.ctx.fill();
