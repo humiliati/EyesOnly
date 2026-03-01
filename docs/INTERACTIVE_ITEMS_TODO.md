@@ -1,7 +1,7 @@
 # Interactive Items & Overhead Animator - Engineering Integration Guide
 
 ## Overview
-This document outlines the integration points for the new Overhead Animator and Interactive Items systems. These systems provide visual feedback for player interactions and enable designer-friendly item placement without code changes.
+This checklist is now largely **implemented in code**. OverheadAnimator is integrated in both renderers, and InteractiveItems/ItemSpawner are initialized and serialized in `gone-rogue.js` with tap/command interactions wired. The remaining items below are kept as a quick status reference.
 
 ---
 
@@ -34,267 +34,43 @@ This document outlines the integration points for the new Overhead Animator and 
 
 ---
 
-### 2.2 Game Engine Initialization
-**File:** `/home/runner/work/EyesOnly/EyesOnly/public/js/gone-rogue.js`
-
-#### Location: `start()` function (around line 303)
-
-```javascript
-// Initialize overhead animator
-if (typeof OverheadAnimator !== 'undefined') {
-  OverheadAnimator.init();
-  console.log('[GoneRogue] Overhead animator initialized');
-}
-
-// Initialize interactive items
-if (typeof InteractiveItems !== 'undefined') {
-  InteractiveItems.init();
-  console.log('[GoneRogue] Interactive items initialized');
-}
-
-// Initialize item spawner
-if (typeof ItemSpawner !== 'undefined') {
-  ItemSpawner.init();
-  console.log('[GoneRogue] Item spawner initialized');
-}
-```
-
-**Priority:** HIGH
-**Estimated Time:** 10 minutes
+### 2.2 Game Engine Initialization — ✅ Implemented
+Initialized in `gone-rogue.js` `start()` and floor bootstrap paths (`WorldItems.init()`, `InteractiveItems.init()`, `ItemSpawner.init()`). No action needed.
 
 ---
 
-### 2.3 Floor Generation Integration
-**File:** `/home/runner/work/EyesOnly/EyesOnly/public/js/gone-rogue.js`
-
-#### Location: `_generateFloor()` function (around line 750)
-
-Add after enemy placement:
-
-```javascript
-// Step 13: Spawn interactive items
-if (typeof ItemSpawner !== 'undefined' && typeof InteractiveItems !== 'undefined') {
-  var spawnedItems = ItemSpawner.spawnItemsForFloor(_floor, rooms, _grid);
-  spawnedItems.forEach(function(item) {
-    InteractiveItems.addItem(item);
-  });
-  console.log('[GoneRogue] Spawned', spawnedItems.length, 'interactive items');
-}
-```
-
-**Priority:** HIGH
-**Estimated Time:** 15 minutes
-**Note:** Requires access to `rooms` array from generation
+### 2.3 Floor Generation Integration — ✅ Implemented
+`_generateFloor()` already calls `ItemSpawner.spawnItemsForFloor()` and pushes into `InteractiveItems`. Logged spawn counts remain available for debugging.
 
 ---
 
-### 2.4 Currency Pickup Animation
-**File:** `/home/runner/work/EyesOnly/EyesOnly/public/js/gone-rogue.js`
-
-#### Location: Currency collection logic (around line 1700-1750)
-
-Find the code that handles currency pickup (look for `_currencies` collection):
-
-```javascript
-// When player picks up currency
-if (typeof OverheadAnimator !== 'undefined') {
-  OverheadAnimator.showCurrencyPickup(_player.x, _player.y, currencyAmount);
-}
-```
-
-**Priority:** MEDIUM
-**Estimated Time:** 10 minutes
-**Search Pattern:** Look for `_currencies` array and pickup logic
+### 2.4 Currency Pickup Animation — ✅ Implemented
+Currency pickup path uses `OverheadAnimator.showCurrencyPickup()` and PancakeStack; verified by `verify-collectibles-improvements.js` (stack spacing + starting offset).
 
 ---
 
-### 2.5 Enemy Alert Expression
-**File:** `/home/runner/work/EyesOnly/EyesOnly/public/js/gone-rogue.js`
-
-#### Location: Enemy awareness system (around line 2832-2864)
-
-In `_updateEnemyAwareness()` function:
-
-```javascript
-// When enemy becomes alerted (awareness crosses threshold)
-if (enemy.awareness >= 71 && previousAwareness < 71) {
-  if (typeof OverheadAnimator !== 'undefined') {
-    OverheadAnimator.showExpression(enemy.x, enemy.y, 'ALERT', 1000);
-  }
-}
-```
-
-**Priority:** HIGH
-**Estimated Time:** 15 minutes
-**Note:** Need to track previous awareness state
+### 2.5 Enemy Alert Expression — ✅ Implemented
+Alert/panic expressions are already wired through `OverheadAnimator.showExpression()` in the enemy awareness pipeline; no additional code work pending.
 
 ---
 
-### 2.6 Interactive Item Rendering
-**File:** `/home/runner/work/EyesOnly/EyesOnly/public/js/gone-rogue-mobile.js`
-
-#### Location: `renderGrid()` function (around line 190)
-
-Add after breakable/item rendering:
-
-```javascript
-// Render interactive items
-if (typeof InteractiveItems !== 'undefined') {
-  var interactiveItems = InteractiveItems.getAllItems();
-  interactiveItems.forEach(function(item) {
-    if (item.x === x && item.y === y) {
-      cell.textContent = item.emoji;
-      cell.classList.add('cell-interactive-item');
-
-      // Add interaction indicator if player is in range
-      if (player && typeof InteractiveItems.canInteractWith === 'function') {
-        if (InteractiveItems.canInteractWith(player.x, player.y, item)) {
-          cell.classList.add('interactive-in-range');
-        }
-      }
-    }
-  });
-}
-```
-
-**Priority:** HIGH
-**Estimated Time:** 20 minutes
+### 2.6 Interactive Item Rendering — ✅ Implemented
+Mobile renderer draws interactive items and range indicators via `InteractiveItems.getAllItems()`; tap-to-interact hooks live in `_processGridInput()`.
 
 ---
 
-### 2.7 Overhead Animation Rendering
-**File:** `/home/runner/work/EyesOnly/EyesOnly/public/js/gone-rogue-mobile.js`
-
-#### Location: `renderGrid()` function - AFTER grid cells are created
-
-```javascript
-// Render overhead animations
-if (typeof OverheadAnimator !== 'undefined') {
-  var currentTime = Date.now();
-  OverheadAnimator.update(currentTime);
-
-  var animations = OverheadAnimator.getAllAnimations();
-  for (var key in animations) {
-    var parts = key.split(',');
-    var animX = parseInt(parts[0]);
-    var animY = parseInt(parts[1]);
-    var anim = animations[key];
-
-    // Find corresponding cell
-    var cellIndex = animY * grid[0].length + animX;
-    var cell = _gridContainer.children[cellIndex];
-
-    if (cell) {
-      var transform = OverheadAnimator.calculateAnimationTransform(anim, currentTime);
-
-      // Create animation element
-      var animEl = document.createElement('div');
-      animEl.className = 'overhead-animation ' + anim.type.toLowerCase().replace(/_/g, '-');
-      animEl.textContent = anim.text || anim.emoji;
-      animEl.style.color = anim.color;
-      animEl.style.opacity = transform.opacity;
-      animEl.style.transform = 'translate(' + transform.x + 'px, ' + transform.y + 'px) scale(' + transform.scale + ')';
-
-      cell.appendChild(animEl);
-    }
-  }
-}
-```
-
-**Priority:** HIGH
-**Estimated Time:** 30 minutes
-**Note:** Performance-sensitive - may need optimization
+### 2.7 Overhead Animation Rendering — ✅ Implemented
+Mobile grid renders OverheadAnimator animations; canvas parity also complete (see roadmap Phase 1). No further action.
 
 ---
 
-### 2.8 Interactive Item Command Handler
-**File:** `/home/runner/work/EyesOnly/EyesOnly/public/js/gone-rogue.js`
-
-#### Location: `process()` function command handling (around line 400-500)
-
-Add new command:
-
-```javascript
-if (cmd === 'interact' || cmd === 'examine' || cmd === 'read') {
-  return _handleInteraction();
-}
-```
-
-Then add new function:
-
-```javascript
-function _handleInteraction() {
-  if (typeof InteractiveItems === 'undefined') {
-    return { lines: ['Nothing to interact with'], prompt: getPrompt(), stayActive: true };
-  }
-
-  // Find nearest interactive item
-  var nearestItem = InteractiveItems.getNearestItem(_player.x, _player.y);
-
-  if (!nearestItem) {
-    return { lines: ['Nothing nearby to interact with'], prompt: getPrompt(), stayActive: true };
-  }
-
-  if (!InteractiveItems.canInteractWith(_player.x, _player.y, nearestItem)) {
-    return { lines: ['Too far away to interact'], prompt: getPrompt(), stayActive: true };
-  }
-
-  // Perform interaction
-  var result = InteractiveItems.interact(nearestItem, _player);
-
-  if (result.success) {
-    // Show overhead animation
-    if (result.animation && typeof OverheadAnimator !== 'undefined') {
-      OverheadAnimator.showExpression(
-        _player.x,
-        _player.y,
-        result.animation.expressionKey,
-        result.animation.duration
-      );
-    }
-
-    // Show tooltip
-    if (result.tooltip && typeof TooltipSystem !== 'undefined') {
-      TooltipSystem.show(result.tooltip.message, result.tooltip.duration);
-    }
-
-    return {
-      lines: ['Interacted with ' + nearestItem.name, '', nearestItem.text],
-      prompt: getPrompt(),
-      stayActive: true
-    };
-  }
-
-  return { lines: ['Cannot interact with that'], prompt: getPrompt(), stayActive: true };
-}
-```
-
-**Priority:** HIGH
-**Estimated Time:** 25 minutes
+### 2.8 Interactive Item Command Handler — ✅ Implemented
+`process()` supports `interact/read/examine` with `_handleInteraction()` (tooltip + OverheadAnimator expression). Nearest-item detection and range gating are already present.
 
 ---
 
-### 2.9 Tap-to-Interact (Mobile)
-**File:** `/home/runner/work/EyesOnly/EyesOnly/public/js/gone-rogue-mobile.js`
-
-#### Location: `_processGridInput()` function (around line 531)
-
-Before tap-to-move logic:
-
-```javascript
-// Check if tapping interactive item
-if (typeof InteractiveItems !== 'undefined') {
-  var item = InteractiveItems.getItemAt(x, y);
-  if (item && InteractiveItems.canInteractWith(player.x, player.y, item)) {
-    // Trigger interaction
-    GoneRogue.process('interact');
-    return;
-  }
-}
-```
-
-**Priority:** MEDIUM
-**Estimated Time:** 15 minutes
+### 2.9 Tap-to-Interact (Mobile) — ✅ Implemented
+`_processGridInput()` checks `InteractiveItems.getItemAt()` and dispatches `process('interact')` when in range.
 
 ---
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document defines the visual representation rules for all collectible items in the game, ensuring consistency and clarity for players.
+This document defines the visual representation rules for all collectible items in the game, ensuring consistency and clarity for players. PancakeStack is the reliable overhead layer for pickups; OverheadAnimator popups are currently dependable only for currency collection and door/lock indication.
 
 ## Visual Representation Rules
 

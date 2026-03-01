@@ -543,6 +543,138 @@
       'ACCESS_CARD can unlock AEROSPACE_DOOR (should pass if gate exists)'
     );
 
+    console.log('\n--- Test 18: Locked Chest + Key Ammo Compatibility ---');
+
+    var lockedChest = gateDefs.LOCKED_CHEST;
+    assert(
+      lockedChest !== undefined,
+      'LOCKED_CHEST is defined'
+    );
+
+    assertIncludes(
+      (lockedChest.requiredKeys || []).join(','),
+      'RUSTY_KEY',
+      'LOCKED_CHEST accepts RUSTY_KEY'
+    );
+
+    assertIncludes(
+      (lockedChest.requiredKeys || []).join(','),
+      'BRONZE_KEY',
+      'LOCKED_CHEST accepts BRONZE_KEY'
+    );
+
+    assertIncludes(
+      (lockedChest.requiredKeys || []).join(','),
+      'MASTER_KEY',
+      'LOCKED_CHEST accepts MASTER_KEY'
+    );
+
+    assert(
+      EnvironmentalSynergy.canUnlock('RUSTY_KEY', 'LOCKED_CHEST'),
+      'RUSTY_KEY can unlock LOCKED_CHEST'
+    );
+
+    assert(
+      EnvironmentalSynergy.canUnlock('BRONZE_KEY', 'LOCKED_CHEST'),
+      'BRONZE_KEY can unlock LOCKED_CHEST'
+    );
+
+    assert(
+      EnvironmentalSynergy.canUnlock('MASTER_KEY', 'LOCKED_CHEST'),
+      'MASTER_KEY can unlock LOCKED_CHEST'
+    );
+
+    assert(
+      !EnvironmentalSynergy.canUnlock('KEYCARD', 'LOCKED_CHEST'),
+      'KEYCARD cannot unlock LOCKED_CHEST'
+    );
+
+    var chestResult = EnvironmentalSynergy.attemptUnlock('RUSTY_KEY', { x: 1, y: 1, type: 'LOCKED_CHEST' });
+    assert(
+      chestResult && chestResult.success,
+      'attemptUnlock succeeds for RUSTY_KEY on LOCKED_CHEST'
+    );
+
+    assertEqual(
+      chestResult.consumeKey,
+      true,
+      'Tier 1 ammo keys are consumed when opening locked chests'
+    );
+
+    var masterResult = EnvironmentalSynergy.attemptUnlock('MASTER_KEY', { x: 2, y: 2, type: 'LOCKED_CHEST' });
+    assert(
+      masterResult && masterResult.success,
+      'attemptUnlock succeeds for MASTER_KEY on LOCKED_CHEST'
+    );
+
+    assertEqual(
+      masterResult.consumeKey,
+      false,
+      'Master Key is not consumed when opening locked chests'
+    );
+
+    console.log('\n--- Test 19: Quest Key NPC Routing ---');
+
+    var blacksmithKey = keyDefs.BLACKSMITH_HAMMER;
+    assert(
+      blacksmithKey !== undefined,
+      'BLACKSMITH_HAMMER quest key is defined'
+    );
+
+    assertEqual(
+      blacksmithKey.tier,
+      3,
+      'BLACKSMITH_HAMMER is Tier 3 (quest)'
+    );
+
+    assertEqual(
+      blacksmithKey.npcTarget,
+      'BLACKSMITH',
+      'BLACKSMITH_HAMMER targets BLACKSMITH NPC'
+    );
+
+    assertEqual(
+      blacksmithKey.consumeOnUse,
+      true,
+      'BLACKSMITH_HAMMER is consumed on NPC turn-in'
+    );
+
+    var runeFragment = keyDefs.RUNE_FRAGMENT;
+    assert(
+      runeFragment !== undefined,
+      'RUNE_FRAGMENT quest key is defined'
+    );
+
+    assertEqual(
+      runeFragment.tier,
+      3,
+      'RUNE_FRAGMENT is Tier 3 (quest)'
+    );
+
+    assertEqual(
+      runeFragment.npcTarget,
+      'RUNESMITH',
+      'RUNE_FRAGMENT targets RUNESMITH NPC'
+    );
+
+    assertEqual(
+      runeFragment.consumeOnUse,
+      true,
+      'RUNE_FRAGMENT is consumed on NPC turn-in'
+    );
+
+    assertEqual(
+      runeFragment.stackable,
+      true,
+      'RUNE_FRAGMENT stacks for multi-piece quest turn-ins'
+    );
+
+    assertEqual(
+      runeFragment.maxStack,
+      3,
+      'RUNE_FRAGMENT stack cap enforced at 3'
+    );
+
     console.log('\n========================================');
     console.log('TEST SUMMARY');
     console.log('========================================');

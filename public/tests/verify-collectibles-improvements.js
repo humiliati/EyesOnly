@@ -83,8 +83,9 @@ function main() {
   const canvasJsPath = path.join(__dirname, '..', 'js', 'gone-rogue-canvas.js');
   const animatorJsPath = path.join(__dirname, '..', 'js', 'overhead-animator.js');
   const rogueJsPath = path.join(__dirname, '..', 'js', 'gone-rogue.js');
-  const visualDocPath = path.join(__dirname, '..', '..', 'COLLECTIBLES-VISUAL-SYSTEM.md');
-  const bugFixDocPath = path.join(__dirname, '..', '..', 'COLLECTIBLES-BUG-FIX.md');
+  const visualDocPath = path.join(__dirname, '..', '..', 'docs', 'COLLECTIBLES-VISUAL-SYSTEM.md');
+  const bugFixDocPath = path.join(__dirname, '..', '..', 'docs', 'COLLECTIBLES-BUG-FIX.md');
+  const roadmapDocPath = path.join(__dirname, '..', '..', 'docs', 'OVERHEAD-ANIMATION-UNIFIED-ROADMAP.md');
 
   let passCount = 0;
   let failCount = 0;
@@ -225,6 +226,51 @@ function main() {
     passCount++;
   } else {
     log('  ✗ FAIL: Bug fix documentation not found', 'red');
+    failCount++;
+  }
+
+  // Test 12: OverheadAnimator integrated into canvas renderer (Phase 1 parity)
+  log('\nTest 12: Canvas integrates OverheadAnimator (Phase 1)', 'blue');
+  log('  Checking: gone-rogue-canvas.js pulls OverheadAnimator animations', 'yellow');
+  if (checkPatternInFile(
+    canvasJsPath,
+    /OverheadAnimator\.getAllAnimations\(\)/,
+    '  Canvas renderer pulls OverheadAnimator animations for parity'
+  )) {
+    passCount++;
+  } else {
+    failCount++;
+  }
+
+  // Test 13: Renamed showStackedText API present (Phase 2)
+  log('\nTest 13: OverheadAnimator.showStackedText canon (Phase 2)', 'blue');
+  log('  Checking: showStackedText exported and legacy name absent', 'yellow');
+  const hasStacked = checkPatternInFile(
+    animatorJsPath,
+    /showStackedText\s*:\s*showStackedText/,
+    '  showStackedText export present'
+  );
+  const noLegacy = checkPatternNotInFile(
+    animatorJsPath,
+    /showPancakeStacks/,
+    '  Legacy showPancakeStacks removed'
+  );
+  if (hasStacked && noLegacy) {
+    passCount++;
+  } else {
+    failCount++;
+  }
+
+  // Test 14: Roadmap documents Phase 1/2 completion
+  log('\nTest 14: Roadmap documents Phase 1/2 completion', 'blue');
+  log('  Checking: OVERHEAD-ANIMATION-UNIFIED-ROADMAP marks Phase 1/2 done', 'yellow');
+  if (checkPatternInFile(
+    roadmapDocPath,
+    /Phase 1: Fix Rendering Parity.*✅ DONE[\s\S]*Phase 2: Fix Naming Confusion.*✅ DONE/s,
+    '  Roadmap marks Phase 1 and Phase 2 as done'
+  )) {
+    passCount++;
+  } else {
     failCount++;
   }
 

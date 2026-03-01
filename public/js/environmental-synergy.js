@@ -23,7 +23,7 @@ const EnvironmentalSynergy = (function() {
         emoji: '🔑',
         name: 'Rusty Key',
         description: 'An old, rusted key. Might open something...',
-        compatibleGates: ['WOODEN_GATE', 'OLD_DOOR'],
+        compatibleGates: ['WOODEN_GATE', 'OLD_DOOR', 'LOCKED_CHEST'],
         consumeOnUse: true
       },
       BRONZE_KEY: {
@@ -32,7 +32,7 @@ const EnvironmentalSynergy = (function() {
         emoji: '🗝️',
         name: 'Bronze Key',
         description: 'A tarnished bronze key with ornate markings.',
-        compatibleGates: ['BRONZE_GATE', 'MUSEUM_DOOR'],
+        compatibleGates: ['BRONZE_GATE', 'MUSEUM_DOOR', 'LOCKED_CHEST'],
         consumeOnUse: true
       },
 
@@ -54,7 +54,7 @@ const EnvironmentalSynergy = (function() {
         emoji: '🔐',
         name: 'Master Key',
         description: 'Opens all standard locks.',
-        compatibleGates: ['WOODEN_GATE', 'OLD_DOOR', 'BRONZE_GATE', 'SECURITY_DOOR', 'TERMINAL_GATE'],
+        compatibleGates: ['WOODEN_GATE', 'OLD_DOOR', 'BRONZE_GATE', 'SECURITY_DOOR', 'TERMINAL_GATE', 'LOCKED_CHEST'],
         consumeOnUse: false
       },
       THUMB_DRIVE: {
@@ -340,6 +340,14 @@ const EnvironmentalSynergy = (function() {
   }
 
   /**
+   * Get snapshot of registered gates (for tests/tools)
+   * @returns {Array} Active gate objects
+   */
+  function getRegisteredGates() {
+    return _activeGates.slice();
+  }
+
+  /**
    * Check if a key can unlock a gate
    * @param {string} keyId - Key item ID
    * @param {string} gateType - Gate type
@@ -535,6 +543,7 @@ const EnvironmentalSynergy = (function() {
     getGatesForBiome: getGatesForBiome,
     isKeyItem: isKeyItem,
     getKeyInfo: getKeyInfo,
+    getRegisteredGates: getRegisteredGates,
     serialize: serialize,
     deserialize: deserialize
   };
