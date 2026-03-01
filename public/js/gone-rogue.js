@@ -5538,6 +5538,31 @@ _incrementPityTimers();
       // (ghost glyph fix: persistent ¢ glyph was hovering disembodied above player)
     }
 
+    // Check for ammo item auto-pickup (floor drops from breakables)
+    var ammoFloorItem = _items.find(function(i) { return i.x === x && i.y === y && i.type === 'ammo'; });
+    if (ammoFloorItem) {
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addAmmo) {
+        GAMESTATE.addAmmo(ammoFloorItem.amount);
+      }
+      _items = WorldItems.filterFloorItems(function(i) { return i !== ammoFloorItem; });
+      if (typeof OverheadAnimator !== 'undefined') {
+        OverheadAnimator.showGenericExpression(x, y, '؋', 800, '#DA70D6');
+      }
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showAction('item-pickup', { name: 'Ammo +' + ammoFloorItem.amount });
+      }
+      if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+        UIControls.updateMokInterjection('؋ Ammo +' + ammoFloorItem.amount);
+      }
+      try {
+        if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+          PancakeStack.addPancake('؋');
+        } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
+          PlayerStackManager.addPancake('؋');
+        }
+      } catch (ePancake) {}
+    }
+
     // Check for food item pickup (auto-pickup from interactive items)
     if (typeof InteractiveItems !== 'undefined') {
       var foodItem = InteractiveItems.getItemAt(x, y);
@@ -5769,6 +5794,31 @@ _incrementPityTimers();
 
       // PancakeStack removed for currency — OverheadAnimator "+N¢" is sufficient
       // (ghost glyph fix: persistent ¢ glyph was hovering disembodied above player)
+    }
+
+    // Check for ammo item auto-pickup (floor drops from breakables)
+    var ammoFloorItem = _items.find(function(i) { return i.x === newX && i.y === newY && i.type === 'ammo'; });
+    if (ammoFloorItem) {
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addAmmo) {
+        GAMESTATE.addAmmo(ammoFloorItem.amount);
+      }
+      _items = WorldItems.filterFloorItems(function(i) { return i !== ammoFloorItem; });
+      if (typeof OverheadAnimator !== 'undefined') {
+        OverheadAnimator.showGenericExpression(newX, newY, '؋', 800, '#DA70D6');
+      }
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showAction('item-pickup', { name: 'Ammo +' + ammoFloorItem.amount });
+      }
+      if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+        UIControls.updateMokInterjection('؋ Ammo +' + ammoFloorItem.amount);
+      }
+      try {
+        if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+          PancakeStack.addPancake('؋');
+        } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
+          PlayerStackManager.addPancake('؋');
+        }
+      } catch (ePancake) {}
     }
 
     // Check for food item pickup (auto-pickup from interactive items)
