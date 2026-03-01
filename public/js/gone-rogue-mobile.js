@@ -590,7 +590,7 @@ const GoneRogueMobile = (function () {
               cellData.bg = '#3d2800';
               cellData.color = '#ffaa00';
               cellData.glow = '#ff8800'; // custom flag for canvas glow pass
-            } else if (tile === '؋') {
+            } else if (tile === '⁍') {
               // Ammo pickup — magenta per RESOURCE_COLOR_SYSTEM.md
               cellData.bg = '#2a0a2a';
               cellData.color = '#DA70D6';
@@ -737,8 +737,11 @@ const GoneRogueMobile = (function () {
             char = item.glyph || '◈';
             color = '#00FFA6'; // Battery cyan from RESOURCE_COLORS
           } else if (item.type === 'ammo') {
-            char = item.glyph || item.emoji || '؋';
+            char = item.glyph || item.emoji || '⁍';
             color = '#DA70D6'; // Magenta per RESOURCE_COLOR_SYSTEM.md
+          } else if (item.type === 'card' || (item.card && !item.type)) {
+            char = '🂠';
+            color = '#800080'; // Cards purple per RESOURCE_COLOR_SYSTEM
           } else {
             char = item.glyph || item.emoji || '💎';
             color = '#00FFFF';
@@ -766,8 +769,20 @@ const GoneRogueMobile = (function () {
           var vx = _toViewX(item.x);
           var vy = _toViewY(item.y);
           if (!_inView(vx, vy)) return;
-          var char = item.type === 'gem' ? (item.glyph || '◈') : (item.glyph || item.emoji || '💎');
-          var color = item.type === 'gem' ? '#00FFA6' : (item.type === 'ammo' ? '#DA70D6' : '#00FFFF');
+          var char, color;
+          if (item.type === 'gem') {
+            char = item.glyph || '◈';
+            color = '#00FFA6';
+          } else if (item.type === 'ammo') {
+            char = item.glyph || item.emoji || '⁍';
+            color = '#DA70D6';
+          } else if (item.type === 'card' || (item.card && !item.type)) {
+            char = '🂠';
+            color = '#800080'; // Cards purple per RESOURCE_COLOR_SYSTEM
+          } else {
+            char = item.glyph || item.emoji || '💎';
+            color = '#00FFFF';
+          }
           entities.push({ x: vx, y: vy, char: char, color: color });
         });
       }

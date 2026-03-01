@@ -49,9 +49,10 @@ function _getResourceColor(resourceName) {
     'Focus': '#FFF9B0',
     'Battery': '#00FFA6',
     'Fatigue': '#A0522D',
-    'Ammo': '#DA70D6'
+    'Ammo': '#DA70D6',
     'Currency': '#FFFF00',
-    'KeyAmmo': '#FF8A3D',
+    'key_ammo': '#FF8A3D',
+    'Cards': '#800080'
   };
   return colors[resourceName] || '#FFFFFF';
 }

@@ -5053,7 +5053,7 @@ _incrementPityTimers();
     // Show overhead pickup animation at the currency's position (flies to player)
     if (typeof OverheadAnimator !== 'undefined') {
       if (c._isAmmo) {
-        OverheadAnimator.showGenericExpression(c.x, c.y, '؋', 600);
+        OverheadAnimator.showGenericExpression(c.x, c.y, '⁍', 600);
       } else {
         OverheadAnimator.showCurrencyPickup(c.x, c.y, c.amount);
       }
@@ -5070,9 +5070,9 @@ _incrementPityTimers();
     try {
       if (c._isAmmo) {
         if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-          PancakeStack.addPancake('؋');
+          PancakeStack.addPancake('⁍');
         } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-          PlayerStackManager.addPancake('؋');
+          PlayerStackManager.addPancake('⁍');
         }
       }
     } catch (ePancake) {}
@@ -5140,8 +5140,8 @@ _incrementPityTimers();
         _currencies.push({
           x: nx, y: ny,
           amount: victoryCtx.lootAmmo,
-          glyph: '؋',
-          emoji: '؋',
+          glyph: '⁍',
+          emoji: '⁍',
           spawnTime: Date.now(),
           decayTime: 25000,
           _scattered: true,
@@ -6076,12 +6076,12 @@ _incrementPityTimers();
       }
 
       if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-        UIControls.updateMokInterjection('؋ Ammo +' + item.amount);
+        UIControls.updateMokInterjection('⁍ Ammo +' + item.amount);
       }
 
       // Overhead animation with RESOURCE_COLOR magenta
       if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
-        OverheadAnimator.showGenericExpression(_player.x, _player.y, '؋', 800, '#DA70D6');
+        OverheadAnimator.showGenericExpression(_player.x, _player.y, '⁍', 800, '#DA70D6');
       }
 
       // Report to debrief feed with resource-colored frame flash
@@ -6095,14 +6095,14 @@ _incrementPityTimers();
       // Pancake stacker for ammo
       try {
         if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-          PancakeStack.addPancake('؋');
+          PancakeStack.addPancake('⁍');
         } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-          PlayerStackManager.addPancake('؋');
+          PlayerStackManager.addPancake('⁍');
         }
       } catch (ePancake) {}
 
       return {
-        lines: ['PICKED UP: ؋ Ammo +' + item.amount, ''].concat(_renderGrid()),
+        lines: ['PICKED UP: ⁍ Ammo +' + item.amount, ''].concat(_renderGrid()),
         prompt: getPrompt(),
         stayActive: true
       };
@@ -6285,6 +6285,19 @@ _incrementPityTimers();
             PlayerStackManager.addPancake(cardEmoji);
           }
         } catch (ePancake) {}
+        // Overhead animation: monochrome card symbol in Cards purple
+        try {
+          if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+            OverheadAnimator.showGenericExpression(_player.x, _player.y, '🂠', 800, '#800080');
+          }
+        } catch (eCardOH) {}
+        // Report card pickup to debrief feed
+        try {
+          if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
+            var cardName = (item.card && item.card.name) ? item.card.name : 'Card';
+            DebriefFeedController.reportResourceChange('Cards', 0, 1, '🂠 ' + cardName);
+          }
+        } catch (eCardDebrief) {}
       } else if (item.type === 'key' && keyTier >= 2) {
         // TIER 2+ (key_items): Door/gate keys and quest items go to persistent inventory
         if (GAMESTATE.addToPersistent) {
@@ -6378,10 +6391,10 @@ _incrementPityTimers();
         else {
           try {
             if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
-              OverheadAnimator.showGenericExpression(_player.x, _player.y, item.emoji || '🔑', 800, '#FFD700');
+              OverheadAnimator.showGenericExpression(_player.x, _player.y, item.emoji || '🗝', 800, '#FF8A3D');
             }
             if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-              PancakeStack.addPancake(item.emoji || '🔑');
+              PancakeStack.addPancake(item.emoji || '🗝');
             } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
               PlayerStackManager.addPancake(item.emoji || '🔑');
             }
@@ -9401,7 +9414,7 @@ _incrementPityTimers();
                   amount: rolledLoot.ammo,
                   spawnTime: Date.now(),
                   decayTime: LootTableManager.getDecayTime('ammo') * 1000 || 60000,
-                  emoji: '؋',
+                  emoji: '⁍',
                   name: 'Ammo (' + rolledLoot.ammo + ')'
                 });
               }
@@ -9477,7 +9490,7 @@ _incrementPityTimers();
                 amount: ammoAmount,
                 spawnTime: Date.now(),
                 decayTime: 60000, // 60 second decay for resources
-                emoji: '؋',
+                emoji: '⁍',
                 name: 'Ammo (' + ammoAmount + ')'
               });
             }
@@ -12346,7 +12359,7 @@ _incrementPityTimers();
       if (ammoDrops > 0) {
         // Auto-collect ammo drops
         GAMESTATE.addAmmo(ammoDrops);
-        lines.push('؋ AMMO RECOVERED: +' + ammoDrops + ' (' + _strCombatAmmoSpent + ' spent in combat)');
+        lines.push('⁍ AMMO RECOVERED: +' + ammoDrops + ' (' + _strCombatAmmoSpent + ' spent in combat)');
         _victoryCtx.lootAmmo = ammoDrops;
 
         // Report to debrief feed
@@ -13362,7 +13375,7 @@ _incrementPityTimers();
       var maxFatigue = state.maxFatigue  || 100;
       var focus   = GAMESTATE.getFocus   ? GAMESTATE.getFocus()   : 0;
 
-      if (ammo <= 0)                               warnings.push('؋ no ammo');
+      if (ammo <= 0)                               warnings.push('⁍ no ammo');
       if (energy <= 0)                             warnings.push('⚡ no energy');
       if (focus <= 0)                              warnings.push('🎯 no focus');
       if (fatigue >= maxFatigue * 0.8)             warnings.push('🏋️  extreme fatigue');

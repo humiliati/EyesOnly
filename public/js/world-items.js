@@ -1,7 +1,7 @@
 /* ============================================================
    EYES ONLY - WorldItems Manager
    Unified single source of truth for all collectible ground items:
-   currencies (¢), ammo (؋), floor items (cards, gems, keys),
+   currencies (¢), ammo (⁍), floor items (cards, gems, keys),
    and interactive items (food, books, terminals, etc.)
    ============================================================ */
 
@@ -10,7 +10,7 @@ var WorldItems = (function () {
 
   // ── Internal state ────────────────────────────────────────────
   var _floorItems = [];  // Cards, ammo, gems, keys (was _items in gone-rogue.js)
-  var _currencies = [];  // Currency / ammo drops ¢ ؋ (was _currencies in gone-rogue.js)
+  var _currencies = [];  // Currency / ammo drops ¢ ⁍ (was _currencies in gone-rogue.js)
 
   // ── Lifecycle ─────────────────────────────────────────────────
 
@@ -65,7 +65,7 @@ var WorldItems = (function () {
    *
    * Each entry is a shallow copy of the source object augmented with a
    * `_wt` (world-type) tag so the renderer can select colour / glyph:
-   *   'currency'    – rendered as yellow ¢ / magenta ؋
+   *   'currency'    – rendered as yellow ¢ / magenta ⁍
    *   'item'        – rendered as cyan gem / emoji card loot
    *   'interactive' – rendered as item emoji (food, etc.)
    */

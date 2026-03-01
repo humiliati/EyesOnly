@@ -20,7 +20,7 @@ This document provides a **designer-facing roadmap** for unifying the two existi
 #### 2. **PancakeStack/PlayerStackManager** (`public/js/pancake-stack.js` + `player-stack-manager.js`)
 **Purpose**: Persistent inventory tracking above player head
 **Duration**: 4000ms (persistent feedback)
-**Display**: Glyph only (e.g., "¢", "؋", "◈")
+**Display**: Glyph only (e.g., "¢", "⁍", "◈")
 **Use Cases**: Recently collected items (currency, ammo, battery, food, keys, cards)
 **Rendering**: Integrated in **canvas renderer** (lines 534-546 in gone-rogue-canvas.js)
 
@@ -277,7 +277,7 @@ Need overhead animation?
 OverheadAnimator.showCurrencyPickup(_player.x, _player.y, amount);
 
 // Ammo — magenta RESOURCE_COLOR
-OverheadAnimator.showGenericExpression(x, y, '؋', 800, '#DA70D6');
+OverheadAnimator.showGenericExpression(x, y, '⁍', 800, '#DA70D6');
 DebriefFeedController.reportResourceChange('Ammo', oldAmmo, newAmmo, 'Ammo +N');
 
 // Battery — cyan-green RESOURCE_COLOR
@@ -413,7 +413,7 @@ OverheadAnimator.showExpression(x, y, 'LOOT', 4000, '¢');
 
 1. **All overhead animations now use `showGenericExpression()` with explicit RESOURCE_COLOR** — NOT `showExpression('LOOT')`:
    - Currency: `showCurrencyPickup()` → `#FFFF00` (already working)
-   - Ammo: `showGenericExpression(x, y, '؋', 800, '#DA70D6')` — magenta
+   - Ammo: `showGenericExpression(x, y, '⁍', 800, '#DA70D6')` — magenta
    - Battery: `showGenericExpression(x, y, '◈', 800, '#00FFA6')` — cyan-green
    - Food (health/status/special): `showGenericExpression(x, y, emoji, 1000, '#FF6B9D')` — HP pink
    - Food (energy category): `showGenericExpression(x, y, emoji, 1000, '#A0522D')` — Fatigue brown
@@ -479,7 +479,7 @@ The key system has three tiers with distinct storage, tooltip, and overhead anim
 - All key tiers trigger `OverheadAnimator.showGenericExpression` on pickup (per system doctrine)
 - All key tiers add a glyph to PancakeStack on pickup (per system doctrine)
 - Battery/gem always uses hardcoded `◈` — never `item.emoji` or `item.glyph`
-- Weapon ammo uses hardcoded `؋` with magenta color `#DA70D6`
+- Weapon ammo uses hardcoded `⁍` with magenta color `#DA70D6`
 
 ---
 

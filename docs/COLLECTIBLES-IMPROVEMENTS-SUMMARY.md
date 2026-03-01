@@ -49,7 +49,7 @@ This document summarizes the improvements made to the collectibles system to fix
 
 **Monochrome ASCII Collectibles** (use ASCII + resource colors):
 - Currency: `¢` with `#FFFF00` (yellow)
-- Ammo: `؋` with `#DA70D6` (magenta)
+- Ammo: `⁍` with `#DA70D6` (magenta)
 - Battery: `◈` with `#00FFA6` (cyan-green)
 - HP: `♥` with `#FF6B9D` (pink)
 - Focus: `◉` with `#FFF9B0` (yellow-white)
@@ -131,7 +131,7 @@ Tests verify:
 - [x] No alpha/twinkle effects on ground items
 - [x] Food items show correct emoji and disappear immediately on walkover
 - [x] Tapping a food tile moves player to tile (does not `interact`)
-- [x] Ammo drops show magenta ؋ (not cyan)
+- [x] Ammo drops show magenta ⁍ (not cyan)
 - [x] Ammo drops auto-collect on walkover
 - [x] Battery cells auto-collect with ◈ cyan animation on walkover
 - [x] Card drops auto-collect on walkover

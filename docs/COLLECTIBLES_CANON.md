@@ -48,7 +48,7 @@ All collectibles follow at least this 6-step pipeline. Currency is the gold stan
 ### 2. Ammo (⁍)
 - **GAMESTATE method**: `addAmmo(amount)`
 - **Removal**: `WorldItems.filterFloorItems()`
-- **Overhead**: `OverheadAnimator.showGenericExpression(x, y, '؋', 800, '#DA70D6')`
+- **Overhead**: `OverheadAnimator.showGenericExpression(x, y, '⁍', 800, '#DA70D6')`
 - **Debrief**: `reportResourceChange('Ammo', old, new, reason)` — magenta frame flash
 - **Color**: `#DA70D6` magenta
 
@@ -61,25 +61,32 @@ All collectibles follow at least this 6-step pipeline. Currency is the gold stan
 
 ### 4. Food (emoji)
 - **Source**: `FoodDatabase.applyFoodEffects(foodId, player)`
-- **Effects**: HP restoration, fatigue reduction, ammo bonus, currency bonus, status removal
+- **Effects**: HP, Fatigue, Focus, Energy, Ammo bonus, Currency bonus, status removal
 - **Removal**: `InteractiveItems.removeItem(foodItem.id)`
-- **Overhead**: `OverheadAnimator.showGenericExpression(x, y, emoji, 1000, primaryColor)` — color depends on food category:
-  - `category: 'health'` / `'status'` / `'special'` → HP Pink `#FF6B9D`
-  - `category: 'energy'` → Fatigue Brown `#A0522D`
+- **Overhead**: `OverheadAnimator.showGenericExpression(x, y, emoji, 1000, primaryColor)` — glow under emoji matches primary effect:
+  - HP-primary foods → HP Pink `#FF6B9D` glow
+  - Fatigue-primary foods → Fatigue Brown `#A0522D` glow
+  - Focus-primary foods → Focus Yellow-White `#FFF9B0` glow
+  - Energy-primary foods → Energy Blue `#00D4FF` glow
 - **Debrief**: Reports **each changed resource individually** with its own RESOURCE_COLOR:
-  - HP changed → `reportResourceChange('HP', before, after, foodName)` — `#FF6B9D` frame flash
-  - Fatigue changed → `reportResourceChange('Fatigue', before, after, foodName)` — `#A0522D` frame flash
-  - Ammo changed (Field Ration) → `reportResourceChange('Ammo', before, after, foodName)` — `#DA70D6` frame flash
-  - Currency changed (Candy) → `reportResourceChange('Currency', before, after, foodName)` — `#FFFF00` frame flash
+  - HP changed → `reportResourceChange('HP', ...)` — `#FF6B9D` frame flash — **HOT**: ticks slowly over time
+  - Fatigue changed → `reportResourceChange('Fatigue', ...)` — `#A0522D` frame flash — **HOT**: ticks slowly over time
+  - Focus changed → `reportResourceChange('Focus', ...)` — `#FFF9B0` frame flash — instant update
+  - Energy changed → `reportResourceChange('Energy', ...)` — `#00D4FF` frame flash — instant update
+  - Ammo changed → `reportResourceChange('Ammo', ...)` — `#DA70D6` frame flash
+  - Currency changed → `reportResourceChange('Currency', ...)` — `#FFFF00` frame flash
 - **Tooltip**: `TooltipSystem.showGeneric(tooltipText, 2000)` — shows all effects ("+20 HP, -15 Fatigue")
 - **Note**: Food items are InteractiveItems with `autoPickup: true`
+- **HP tracking**: HP lives on `_player.hp`/`_player.maxHp` in gone-rogue.js (NOT in gamestate.js). Debrief-feed-controller.js pulls from `GoneRogue.getPlayer()`. See Resource Management section below.
 
-### 5. Cards
+### 5. Cards (🂠)
+- **Symbol on map**: Monochrome card symbol `🂠` in Card Purple `#800080` (NOT card emoji — emoji reserved for NCH capsule hand display)
 - **Pickup**: `GAMESTATE.addCard(card)` — tries hand first
-- **Overflow**: If hand full, last card goes to backup deck
-- **Deck overflow**: Last card in deck ejected and incinerated (debrief flash animation)
-- **Overhead**: PancakeStack with card emoji
-- **No RESOURCE_COLOR** — cards are not resources
+- **Overflow**: If hand full, oldest card pushed from hand to backup deck (left column). Oldest card in deck pushed to incinerator
+- **NCH Capsule**: Equipped hand shown as 🃏 joker emojis; new card pickup triggers "shift down" animation pushing oldest joker off to deck
+- **Overhead**: `OverheadAnimator.showGenericExpression(x, y, '🂠', 800, '#800080')` — purple
+- **Debrief**: `reportResourceChange('Cards', old, new, cardName)` — purple frame flash
+- **Color**: `#800080` card purple
 
 ### 6. Items
 - **Pickup**: `GAMESTATE.addToLoose(item)` — card vault / items inventory (account-wide shared bag)
@@ -96,12 +103,13 @@ All collectibles follow at least this 6-step pipeline. Currency is the gold stan
 - **Color**: `#FFD700` gold
 
 ### 8. Key Ammo (Tier 1)
+- **Symbol**: 🗝
 - **Pickup**: Counted as resource, NOT placed in inventory
 - **GAMESTATE method**: `addKeyCount(keyType, tier)`
-- **Debrief**: `reportResourceChange('key_ammo', oldTotal, newTotal, keyName)`
+- **Debrief**: `reportResourceChange('key_ammo', oldTotal, newTotal, keyName)` — bright orange frame flash
 - **Purpose**: Thief mechanics in STR combat (todo), auto-unlock chests on map walkover if player has key (todo)
-- **Overhead**: Gold `#FFD700` expression, 800ms
-- **Color**: `#FFD700` gold
+- **Overhead**: `OverheadAnimator.showGenericExpression(x, y, emoji, 800, '#FF8A3D')` — bright orange
+- **Color**: `#FF8A3D` bright orange
 
 ### 9. Quest Keys (Tier 3)
 - **Pickup**: `GAMESTATE.addToPersistent(item)` — NO auto-equip
@@ -114,7 +122,7 @@ All collectibles follow at least this 6-step pipeline. Currency is the gold stan
 
 ## RESOURCE_COLORS — Single Source of Truth
 
-Defined in `debrief-feed-renderer.js` `_getResourceColor()`:
+Defined in `debrief-feed-renderer.js` `_getResourceColor()` and `debrief-feed-controller.js` RESOURCE_COLORS:
 
 ```
 HP:       #FF6B9D  (vibrant pink)
@@ -123,11 +131,31 @@ Focus:    #FFF9B0  (bright yellow-white)
 Battery:  #00FFA6  (sickly cyan-green)
 Fatigue:  #A0522D  (earthy brown)
 Ammo:     #DA70D6  (magenta-purple)
-Currency: #FFFF00  (yellow)
+Currency: #FFFF00  (twinkly gold)
 Key Ammo: #FF8A3D  (bright orange)
+Cards:    #800080  (card purple)
 ```
 
 These colors are permanent per resource. No percentage-based color changes. Frame animations provide gain/loss feedback using the resource's own color.
+
+---
+
+## Resource Management — Where Resources Live
+
+| Resource | Managed By | Getter | Notes |
+|----------|-----------|--------|-------|
+| **HP** | `_player.hp` / `_player.maxHp` in gone-rogue.js | `GoneRogue.getPlayer().hp` | NOT in gamestate.js. Debrief pulls via `GoneRogue.getPlayer()` |
+| **Energy** | `_state.playerEnergy` in gamestate.js | `GAMESTATE.getEnergy()` | Also on `_player.energy` in gone-rogue.js |
+| **Focus** | `_state.playerFocus` in gamestate.js | `GAMESTATE.getFocus()` | Also on `_player.focus` in gone-rogue.js |
+| **Battery** | `_state.playerBattery` in gamestate.js | `GAMESTATE.getBattery()` | |
+| **Fatigue** | `_state.playerFatigue` in gamestate.js | `GAMESTATE.getFatigue()` | |
+| **Ammo** | `_state.playerAmmo` in gamestate.js | `GAMESTATE.getAmmo()` | |
+| **Currency** | `_state.cryptos` in gamestate.js | `GAMESTATE.getCryptos()` | |
+| **Key Ammo** | `_state.keyCounts` in gamestate.js | `GAMESTATE.getTotalKeyAmmo()` | |
+
+**Known issue**: `debrief-feed-renderer.js _getResources()` references `state.playerHP` which does not exist in gamestate.js — falls back to 12. The debrief-feed-controller.js correctly sources HP from `GoneRogue.getPlayer()` and overrides this.
+
+**HP HOT behavior**: HP and Fatigue changes from food should tick slowly in the debrief display (heal-over-time). Focus and Energy food changes update instantly. HOT animation is not yet implemented in code — currently all food effects report instantly.
 
 ---
 

@@ -49,12 +49,16 @@ This guide documents the implementation of the food system with picnic blanket s
 
 ### Food Categories
 
-| Category | Purpose | Examples |
-|----------|---------|----------|
-| **health** | HP restoration | Apple, Bread, Pizza, Burger, Sushi |
-| **energy** | Fatigue reduction | Coffee, Energy Drink, Tea |
-| **special** | Multi-effect | Field Ration (HP+Ammo), Candy (HP+Currency) |
-| **status** | Status removal | Water (removes burning/poisoned) |
+| Category | Primary Effect | RESOURCE_COLOR Glow | Debrief Behavior | Examples |
+|----------|---------------|--------------------|--------------------|----------|
+| **health** | HP restoration | HP Pink `#FF6B9D` | HP ticks slowly (HOT), Fatigue ticks slowly (HOT) | Apple, Bread, Pizza, Burger, Sushi |
+| **energy** | Fatigue reduction | Fatigue Brown `#A0522D` | HP ticks slowly (HOT), Fatigue ticks slowly (HOT) | Coffee, Energy Drink, Tea |
+| **focus** | Focus restoration | Focus Yellow-White `#FFF9B0` | Focus updates instantly | (future items) |
+| **energy_restore** | Energy restoration | Energy Blue `#00D4FF` | Energy updates instantly | (future items) |
+| **special** | Multi-effect | HP Pink `#FF6B9D` | Per-effect (HP/Fatigue HOT, others instant) | Field Ration (HP+Ammo), Candy (HP+Currency) |
+| **status** | Status removal | HP Pink `#FF6B9D` | Per-effect | Water (removes burning/poisoned) |
+
+> **Debrief HOT behavior**: HP and Fatigue changes from food tick slowly over time in the debrief row display. Focus and Energy changes update instantly. HOT animation is defined in canon but not yet implemented in code — currently all effects report instantly.
 
 ### Implemented Food Items (13 total)
 
@@ -219,7 +223,7 @@ OverheadAnimator.showExpression(x, y, 'LOOT', 1000);
 
 // Resource pickup — use showGenericExpression with explicit RESOURCE_COLOR
 OverheadAnimator.showGenericExpression(x, y, '🍎', 1000, '#FF6B9D');  // Food: HP pink
-OverheadAnimator.showGenericExpression(x, y, '؋', 800, '#DA70D6');    // Ammo: magenta
+OverheadAnimator.showGenericExpression(x, y, '⁍', 800, '#DA70D6');    // Ammo: magenta
 OverheadAnimator.showGenericExpression(x, y, '◈', 800, '#00FFA6');    // Battery: cyan-green
 ```
 

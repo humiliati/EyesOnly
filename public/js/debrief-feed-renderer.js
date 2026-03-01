@@ -124,7 +124,7 @@ const DebriefFeedRenderer = (function() {
 
     html += _renderResourceBar('Battery', resources.battery, resources.maxBattery, '🔋', false);
     html += _renderResourceBar('Fatigue', resources.fatigue, resources.maxFatigue, '🏋️', false);
-    html += _renderResourceBar('Ammo', resources.ammo, resources.maxAmmo, '؋', false);
+    html += _renderResourceBar('Ammo', resources.ammo, resources.maxAmmo, '⁍', false);
 
     html += '</div>';
     return html;
@@ -143,7 +143,10 @@ const DebriefFeedRenderer = (function() {
       'Focus': '#FFF9B0',        // Bright yellow-white
       'Battery': '#00FFA6',      // Sickly green-cyan
       'Fatigue': '#A0522D',      // Earthy brown
-      'Ammo': '#DA70D6'          // Magenta-purple (special ammo flow)
+      'Ammo': '#DA70D6',         // Magenta-purple (special ammo flow)
+      'Currency': '#FFFF00',     // Twinkly gold
+      'key_ammo': '#FF8A3D',     // Bright orange (Tier 1 keys)
+      'Cards': '#800080'         // Card purple
     };
 
     return colors[resourceName] || '#FFFFFF';  // Default to white if unknown

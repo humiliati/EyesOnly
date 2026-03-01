@@ -186,7 +186,7 @@ var color = item.type === 'gem' ? '#00FFA6' : '#00FFFF';  // ← Same problem
     char = item.glyph || '◈';
     color = '#00FFA6';
   } else if (item.type === 'ammo') {
-    char = item.glyph || item.emoji || '؋';
+    char = item.glyph || item.emoji || '⁍';
     color = '#DA70D6';  // ← Magenta per RESOURCE_COLOR_SYSTEM.md
   } else {
     char = item.glyph || item.emoji || '💎';
@@ -433,7 +433,7 @@ Results: **19/19 tests passing** ✅
 - [ ] Walk over special food (Field Ration 🥫) → HP pink animation, debrief shows HP + Fatigue + Ammo changes
 - [ ] Walk over special food (Candy 🍬) → HP pink animation, debrief shows HP + Fatigue + Currency changes
 - [ ] Tap food item tile → player moves to tile, food auto-collects (does not `interact`)
-- [ ] Walk over ammo drop → item disappears, `؋` animation plays with magenta color
+- [ ] Walk over ammo drop → item disappears, `⁍` animation plays with magenta color
 - [ ] Walk over battery cell → item disappears, `◈` animation plays with cyan color
 - [ ] Walk over card drop → item disappears, card added to hand
 - [ ] Walk over Rusty Key (Tier 1) → tooltip shows `🔑 KEY AMMO: Rusty Key`, quality label `[KEY AMMO]`, debrief `🔑x1`

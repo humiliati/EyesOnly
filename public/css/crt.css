@@ -3499,6 +3499,18 @@ body.cascade-active {
   --resource-color: #DA70D6;
 }
 
+.resource-row[data-resource="Currency"] {
+  --resource-color: #FFFF00;
+}
+
+.resource-row[data-resource="key_ammo"] {
+  --resource-color: #FF8A3D;
+}
+
+.resource-row[data-resource="Cards"] {
+  --resource-color: #800080;
+}
+
 .resource-row.gaining,
 .resource-row.losing {
   color: var(--resource-color);

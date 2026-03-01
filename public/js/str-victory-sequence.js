@@ -343,7 +343,7 @@ var STRVictorySequence = (function () {
       rewards.push({ emoji: '💰', text: '+' + _ctx.lootCurrency + ' crypto', type: 'currency' });
     }
     if (_ctx.lootAmmo > 0) {
-      rewards.push({ emoji: '؋', text: '+' + _ctx.lootAmmo + ' ammo', type: 'ammo' });
+      rewards.push({ emoji: '⁍', text: '+' + _ctx.lootAmmo + ' ammo', type: 'ammo' });
     }
     (_ctx.lootCards || []).forEach(function(c) {
       rewards.push({ emoji: c.emoji || '🎴', text: c.name + (c.quality ? ' (' + c.quality + ')' : ''), type: 'card' });
@@ -495,7 +495,7 @@ var STRVictorySequence = (function () {
 
     // Ammo recovered
     if (_ctx.lootAmmo > 0) {
-      parts.push('<span class="sv-tally-item sv-positive">؋ +' + _ctx.lootAmmo + '</span>');
+      parts.push('<span class="sv-tally-item sv-positive">⁍ +' + _ctx.lootAmmo + '</span>');
     }
 
     // Rounds survived

@@ -60,8 +60,8 @@ These collectible types use ASCII characters with specific resource colors for e
    - Spawned by: `_spawnCurrency()` in gone-rogue.js
    - Example: +3¢ pickup animation
 
-2. **Ammo** (؋)
-   - Glyph: `؋` (U+060B, Afghani sign)
+2. **Ammo** (⁍)
+   - Glyph: `⁍` (U+060B, Afghani sign)
    - Color: `#DA70D6` (magenta/orchid) per RESOURCE_COLORS
    - No emoji - ASCII only
    - Represents **weapon ammunition** pickups (NOT battery)
@@ -122,7 +122,7 @@ RESOURCE_COLORS = {
 **These are TWO SEPARATE resources with different collectibles:**
 
 ### Ammo (Weapon Ammunition)
-- **Collectible**: ASCII glyph `؋` with magenta color `#DA70D6`
+- **Collectible**: ASCII glyph `⁍` with magenta color `#DA70D6`
 - **Resource Type**: `'ammo'`
 - **Purpose**: Used for weapon attacks
 - **Collection**: `GAMESTATE.addAmmo(amount)`
@@ -140,7 +140,7 @@ RESOURCE_COLORS = {
 - **Visual**: ASCII monochrome `◈` with cyan color (NO emoji)
 - **Debrief Feed**: Triggers battery signal recharge pulse animation ((( )))
 
-**Note**: Battery cells are now consistent with currency (¢) and ammo (؋) as ASCII monochrome collectibles.
+**Note**: Battery cells are now consistent with currency (¢) and ammo (⁍) as ASCII monochrome collectibles.
 
 ## Implementation Files
 
@@ -154,7 +154,7 @@ RESOURCE_COLORS = {
 ### Ammo (ASCII Monochrome)
 - **File**: `public/js/gone-rogue-mobile.js`
 - **Rendering**: `WorldItems.getAllForRendering()` loop — `type === 'ammo'` branch
-- **Glyph**: `؋`
+- **Glyph**: `⁍`
 - **Color**: `#DA70D6`
 - **Background**: `#2a0a2a`
 - **Auto-pickup**: `_checkPlayerInteractions` and `_movePlayer` call `_pickupItem()` on any floor item
@@ -237,7 +237,7 @@ RESOURCE_COLORS = {
 | Collectible | Type | Auto-Pickup Path |
 |-------------|------|-----------------|
 | Currency (¢) | `currency` | `_checkPlayerInteractions` / `_movePlayer` direct logic |
-| Ammo (؋) | `item` / `ammo` | `_checkPlayerInteractions` / `_movePlayer` → `_pickupItem()` |
+| Ammo (⁍) | `item` / `ammo` | `_checkPlayerInteractions` / `_movePlayer` → `_pickupItem()` |
 | Battery (◈) | `item` / `gem` | `_checkPlayerInteractions` / `_movePlayer` → `_pickupItem()` |
 | Card (🃏) | `item` / card | `_checkPlayerInteractions` / `_movePlayer` → `_pickupItem()` |
 | Key Ammo 🔑 (Tier 1) | `item` / `key` / tier 1 | `_checkPlayerInteractions` / `_movePlayer` → `_pickupItem()` → resource counter + debrief feed |
@@ -252,7 +252,7 @@ The `_pickupItem()` function is the single implementation for all non-currency, 
 ### Overhead Pickup Animations — RESOURCE_COLOR Canon
 - **File**: `public/js/overhead-animator.js`
 - **Currency**: `showCurrencyPickup()` → "+X¢" yellow `#FFFF00` bounce animation
-- **Ammo**: `showGenericExpression(x, y, '؋', 800, '#DA70D6')` — magenta
+- **Ammo**: `showGenericExpression(x, y, '⁍', 800, '#DA70D6')` — magenta
 - **Battery**: `showGenericExpression(x, y, '◈', 800, '#00FFA6')` — cyan-green
 - **Food (health/status/special)**: `showGenericExpression(x, y, emoji, 1000, '#FF6B9D')` — HP pink
 - **Food (energy)**: `showGenericExpression(x, y, emoji, 1000, '#A0522D')` — Fatigue brown
@@ -353,7 +353,7 @@ if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
 ```javascript
 // gone-rogue.js:6004-6007
 if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-  PancakeStack.addPancake('؋');
+  PancakeStack.addPancake('⁍');
 }
 ```
 
@@ -456,7 +456,7 @@ var baseY = screenY - (cellSize * 2.4);  // Base position above player
 1. **Immediate Feedback**: Players see what they collected instantly
 2. **Persistence**: Items remain visible for 4 seconds (unlike 800ms overhead animations)
 3. **Stack Visualization**: Multiple rapid pickups create satisfying visual "tower"
-4. **Resource Awareness**: Glyphs match resource colors (¢ yellow, ؋ magenta, ◈ cyan)
+4. **Resource Awareness**: Glyphs match resource colors (¢ yellow, ⁍ magenta, ◈ cyan)
 5. **Combat Context**: Helps players track ammo/battery pickups during fights
 6. **Universal Support**: Works with all collectible types (emoji + ASCII monochrome)
 
@@ -511,7 +511,7 @@ Run: `node public/tests/verify-collectibles-fix.js`
 - [x] Currency shows yellow ¢ (not green, not emoji)
 - [x] Currency pickup shows "+X¢" overhead animation
 - [x] No lingering currency glyphs after pickup
-- [x] Ammo shows magenta ؋ (not cyan)
+- [x] Ammo shows magenta ⁍ (not cyan)
 - [x] Ammo auto-collects when player walks over it
 - [x] Battery animates with ◈ cyan symbol (not item emoji)
 - [x] Battery auto-collects when player walks over it

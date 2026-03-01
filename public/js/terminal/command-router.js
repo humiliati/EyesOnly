@@ -124,7 +124,7 @@ const TerminalCommandRouter = (function() {
       var cryptos = (GAMESTATE.getCryptos) ? GAMESTATE.getCryptos() : 0;
       lines.push('  Currency:  ¢' + cryptos);
 
-      if (GAMESTATE.getAmmo) lines.push('  Ammo:      ؋' + GAMESTATE.getAmmo());
+      if (GAMESTATE.getAmmo) lines.push('  Ammo:      ⁍' + GAMESTATE.getAmmo());
       if (GAMESTATE.getEnergy) lines.push('  Energy:    ⚡' + GAMESTATE.getEnergy());
       if (GAMESTATE.getFocus) lines.push('  Focus:     🎯' + GAMESTATE.getFocus());
       if (GAMESTATE.getBattery) lines.push('  Battery:   🔋' + GAMESTATE.getBattery());

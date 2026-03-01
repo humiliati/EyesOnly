@@ -1079,7 +1079,7 @@ const DebriefFeedController = (function() {
     var RESOURCE_COLORS = {
       'HP': '#FF6B9D', 'Energy': '#00D4FF', 'Focus': '#FFF9B0',
       'Battery': '#00FFA6', 'Fatigue': '#A0522D', 'Ammo': '#DA70D6',
-      'Currency': '#FFFF00', 'key_ammo': '#FFD700'
+      'Currency': '#FFFF00', 'key_ammo': '#FF8A3D', 'Cards': '#800080'
     };
 
     // Pulse the debrief frame with RESOURCE_COLOR-specific glow
