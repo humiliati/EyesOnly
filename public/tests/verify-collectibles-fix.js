@@ -86,7 +86,7 @@ function main() {
   const rogueJsPath    = path.join(__dirname, '..', 'js', 'gone-rogue.js');
   const mobileJsPath   = path.join(__dirname, '..', 'js', 'gone-rogue-mobile.js');
   const testHtmlPath   = path.join(__dirname, 'test-collectibles-dual-render-bug.html');
-  const docPath        = path.join(__dirname, '..', '..', 'COLLECTIBLES-BUG-FIX.md');
+  const docPath        = path.join(__dirname, '..', '..', 'docs', 'COLLECTIBLES-BUG-FIX.md');
 
   let passCount = 0;
   let failCount = 0;
@@ -96,7 +96,7 @@ function main() {
   log('  Checking: world-items.js exists and exposes WorldItems', 'yellow');
   if (checkPatternInFile(
     worldItemsPath,
-    /const\s+WorldItems\s*=\s*\(function/,
+    /(var|const)\s+WorldItems\s*=\s*\(function/,
     '  WorldItems singleton module created'
   )) {
     passCount++;
@@ -122,7 +122,7 @@ function main() {
   log('  Checking: _items = WorldItems.getFloorItems()', 'yellow');
   if (checkPatternInFile(
     rogueJsPath,
-    /var\s+_items\s*=\s*WorldItems\.getFloorItems\(\)/,
+    /_items\s*=\s*WorldItems\.getFloorItems\(\)/,
     '  _items initialised from WorldItems.getFloorItems()'
   )) {
     passCount++;
@@ -135,7 +135,7 @@ function main() {
   log('  Checking: _currencies = WorldItems.getCurrencies()', 'yellow');
   if (checkPatternInFile(
     rogueJsPath,
-    /var\s+_currencies\s*=\s*WorldItems\.getCurrencies\(\)/,
+    /_currencies\s*=\s*WorldItems\.getCurrencies\(\)/,
     '  _currencies initialised from WorldItems.getCurrencies()'
   )) {
     passCount++;
