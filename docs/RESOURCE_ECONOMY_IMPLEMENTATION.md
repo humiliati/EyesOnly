@@ -1,14 +1,14 @@
 # Resource Economy Implementation Summary
 
 **Date:** 2026-02-19  
-**Status:** ✅ COMPLETE  
+**Status:** ✅ COMPLETE (canon-aligned with RESOURCE_COLOR system and key ammo tracking)  
 **PR Branch:** copilot/update-combat-card-issuance
 
 ---
 
 ## Overview
 
-This document summarizes the implementation of balanced resource economies for all game resources (Ammo, Battery, Fatigue, Energy, Focus) to ensure lean, strategic gameplay for MVP playtesting.
+This document summarizes the implementation of balanced resource economies for all game resources (Ammo, Battery, Fatigue, Energy, Focus, Key Ammo) to ensure lean, strategic gameplay for MVP playtesting. Visual/reporting feedback is aligned to the RESOURCE_COLOR canon used by DebriefFeed and OverheadAnimator.
 
 ---
 
@@ -170,6 +170,7 @@ function _useUtility(card) {
 **New Methods:**
 - `addEnergy(amount)` - Restore energy
 - `addFocus(amount)` - Restore focus
+- `addKeyCount(keyType, tier)` - Track Tier 1 key ammo resource counter (DebriefFeed reports `key_ammo` with `#FF8A3D`)
 
 **Enhanced Methods:**
 - `reduceFatigue(amount)` - Already existed, now used
