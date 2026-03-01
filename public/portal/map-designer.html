@@ -18,7 +18,9 @@
                 <option value="floor3">Floor 3</option>
                 <option value="church">Church Interior</option>
             </select>
+            <button id="load-tutorial-floor-btn" class="btn btn-primary">Load Tutorial Floor</button>
             <button id="load-btn" class="btn btn-primary">Load</button>
+            <button id="save-btn" class="btn btn-primary">Save</button>
             <button id="export-btn" class="btn btn-primary">Export</button>
             <button id="import-btn" class="btn btn-primary">Import</button>
             <input type="file" id="import-file" accept=".json" style="display:none;">
@@ -64,6 +66,9 @@
                     <button class="palette-btn entity-btn" data-tool="currency" title="Currency">💰</button>
                     <button class="palette-btn entity-btn" data-tool="decoration" title="Decoration">🪴</button>
                     <button class="palette-btn entity-btn" data-tool="building" title="Building">🏠</button>
+                    <button class="palette-btn entity-btn" data-tool="vent" title="Vent">V</button>
+                    <button class="palette-btn entity-btn" data-tool="collectible" title="Collectible">C</button>
+                    <button class="palette-btn entity-btn" data-tool="puzzle_element" title="Puzzle Element">P</button>
                 </div>
             </div>
 
@@ -133,6 +138,10 @@
                 <button id="apply-props" class="btn btn-primary" style="display:none;">Apply</button>
                 <button id="delete-entity" class="btn btn-danger" style="display:none;">Delete</button>
             </div>
+            <div class="palette-section">
+                <h3>ASCII Layout</h3>
+                <textarea id="ascii-layout" rows="10" style="width: 90%;"></textarea>
+            </div>
         </aside>
     </div>
 
@@ -141,5 +150,6 @@
     <script src="../js/catacombs-generator.js"></script>
     <script src="../js/tutorial-floors.js"></script>
     <script src="js/map-designer.js"></script>
+    <script src="../js/tutorial-floors.js"></script>
 </body>
 </html>

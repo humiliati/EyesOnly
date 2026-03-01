@@ -48,6 +48,7 @@
     const applyPropsBtn = document.getElementById('apply-props');
     const deleteEntityBtn = document.getElementById('delete-entity');
     const inspectorContent = document.getElementById('inspector-content');
+    const asciiLayout = document.getElementById('ascii-layout');
 
     // ==================== INITIALIZATION ====================
     function initGrid() {
@@ -74,6 +75,18 @@
         state.selectedTool = 'floor';
         state.selectedEntity = null;
         state.selectedEntityId = null;
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const floorId = urlParams.get('floorId');
+        if (floorId) {
+            const floorData = localStorage.getItem(floorId);
+            if (floorData) {
+                loadFloorData(JSON.parse(floorData));
+            } else {
+                state.floorName = floorId;
+                floorNameInput.value = floorId;
+            }
+        }
 
         setupEventListeners();
         render();
@@ -134,7 +147,9 @@
         floorSelector.addEventListener('change', loadFloorBySelector);
 
         // Load, Export, Import
+        document.getElementById('load-tutorial-floor-btn').addEventListener('click', loadTutorialFloor);
         loadBtn.addEventListener('click', showLoadDialog);
+        document.getElementById('save-btn').addEventListener('click', saveFloor);
         exportBtn.addEventListener('click', exportFloor);
         importBtn.addEventListener('click', () => importFileInput.click());
         importFileInput.addEventListener('change', importFloor);
@@ -142,6 +157,9 @@
         // Inspector controls
         applyPropsBtn.addEventListener('click', applyEntityProperties);
         deleteEntityBtn.addEventListener('click', deleteSelectedEntity);
+
+        // ASCII Layout
+        asciiLayout.addEventListener('input', updateGridFromAscii);
 
         // Keyboard shortcuts
         document.addEventListener('keydown', handleKeyboardShortcuts);
@@ -202,7 +220,7 @@
 
     function handleToolAction(pos) {
         const isTerrain = ['floor', 'wall', 'water', 'eraser'].includes(state.selectedTool);
-        const isEntity = ['player', 'enemy', 'npc', 'breakable', 'currency', 'decoration', 'building', 'door-forward', 'door-back', 'door-building'].includes(state.selectedTool);
+        const isEntity = ['player', 'enemy', 'npc', 'breakable', 'currency', 'decoration', 'building', 'door-forward', 'door-back', 'door-building', 'vent', 'collectible', 'puzzle_element'].includes(state.selectedTool);
 
         if (isTerrain) {
             applyTerrainBrush(pos);
@@ -332,6 +350,25 @@
                     targetX: 5,
                     targetY: 5
                 };
+            case 'vent':
+                return {
+                    ...baseEntity,
+                    name: 'Vent',
+                    quality: 'Standard'
+                };
+            case 'collectible':
+                return {
+                    ...baseEntity,
+                    name: 'Collectible',
+                    collectibleId: 'collectible_1'
+                };
+            case 'puzzle_element':
+                return {
+                    ...baseEntity,
+                    name: 'Puzzle Element',
+                    puzzleType: 'lever',
+                    puzzleId: 'puzzle_1'
+                };
             default:
                 return baseEntity;
         }
@@ -348,7 +385,10 @@
             'building': '🏠',
             'door-forward': '→',
             'door-back': '←',
-            'door-building': 'B'
+            'door-building': 'B',
+            'vent': 'V',
+            'collectible': 'C',
+            'puzzle_element': 'P'
         };
         return emojiMap[type] || '?';
     }
@@ -393,6 +433,7 @@
                 fields.push(createField('number', 'Attack', 'entity_attack', entity.attack).element);
                 fields.push(createField('number', 'Defense', 'entity_defense', entity.defense).element);
                 fields.push(createField('number', 'Sight Range', 'entity_sight', entity.sightRange).element);
+                fields.push(createField('textarea', 'Patrol Path', 'entity_patrol', entity.patrolPath.join('\n')).element);
                 break;
             case 'breakable':
                 fields.push(createField('number', 'HP', 'entity_hp', entity.hp).element);
@@ -417,6 +458,16 @@
                 if (entity.type === 'door-building') {
                     fields.push(createField('text', 'Building ID', 'entity_building_id', entity.buildingId || '').element);
                 }
+                break;
+            case 'vent':
+                fields.push(createField('text', 'Quality', 'entity_quality', entity.quality).element);
+                break;
+            case 'collectible':
+                fields.push(createField('text', 'Collectible ID', 'entity_collectible_id', entity.collectibleId).element);
+                break;
+            case 'puzzle_element':
+                fields.push(createField('text', 'Puzzle Type', 'entity_puzzle_type', entity.puzzleType).element);
+                fields.push(createField('text', 'Puzzle ID', 'entity_puzzle_id', entity.puzzleId).element);
                 break;
         }
 
@@ -461,6 +512,10 @@
                 entity.attack = parseInt(document.getElementById('entity_attack')?.value || entity.attack);
                 entity.defense = parseInt(document.getElementById('entity_defense')?.value || entity.defense);
                 entity.sightRange = parseInt(document.getElementById('entity_sight')?.value || entity.sightRange);
+                entity.patrolPath = document.getElementById('entity_patrol')?.value.split('\n').map(line => {
+                    const parts = line.split(',');
+                    return { x: parseInt(parts[0]), y: parseInt(parts[1]) };
+                }) || entity.patrolPath;
                 break;
             case 'breakable':
                 entity.hp = parseInt(document.getElementById('entity_hp')?.value || entity.hp);
@@ -485,6 +540,16 @@
                 if (entity.type === 'door-building') {
                     entity.buildingId = document.getElementById('entity_building_id')?.value || entity.buildingId;
                 }
+                break;
+            case 'vent':
+                entity.quality = document.getElementById('entity_quality')?.value || entity.quality;
+                break;
+            case 'collectible':
+                entity.collectibleId = document.getElementById('entity_collectible_id')?.value || entity.collectibleId;
+                break;
+            case 'puzzle_element':
+                entity.puzzleType = document.getElementById('entity_puzzle_type')?.value || entity.puzzleType;
+                entity.puzzleId = document.getElementById('entity_puzzle_id')?.value || entity.puzzleId;
                 break;
         }
 
@@ -566,6 +631,25 @@
             ctx.lineWidth = 2;
             ctx.strokeRect(e.x * cellSize, e.y * cellSize, cellSize, cellSize);
         }
+
+        updateAsciiFromGrid();
+    }
+
+    // ==================== ASCII LAYOUT ====================
+    function updateAsciiFromGrid() {
+        asciiLayout.value = state.grid.map(row => row.join('')).join('\n');
+    }
+
+    function updateGridFromAscii() {
+        const lines = asciiLayout.value.split('\n');
+        for (let y = 0; y < GRID_HEIGHT; y++) {
+            if (lines[y]) {
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    state.grid[y][x] = lines[y][x] || '.';
+                }
+            }
+        }
+        render();
     }
 
     // ==================== FILE OPERATIONS ====================
@@ -589,6 +673,28 @@
         a.download = (state.floorName || 'floor') + '.json';
         a.click();
         URL.revokeObjectURL(url);
+    }
+
+    function saveFloor() {
+        const floorData = {
+            name: state.floorName,
+            number: state.floorNumber,
+            width: GRID_WIDTH,
+            height: GRID_HEIGHT,
+            grid: state.grid,
+            entities: state.entities,
+            playerSpawn: state.playerSpawn,
+            exitPos: state.exitPos
+        };
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const floorId = urlParams.get('floorId');
+        if (floorId) {
+            localStorage.setItem(floorId, JSON.stringify(floorData));
+            alert('Floor saved!');
+        } else {
+            alert('Cannot save a floor that was not opened from the World Designer.');
+        }
     }
 
     function importFloor(e) {
@@ -653,6 +759,76 @@
 
     function showLoadDialog() {
         alert('Load functionality would open a floor selection dialog');
+    }
+
+    function loadTutorialFloor() {
+        const value = floorSelector.value;
+        if (!window.TutorialFloors) {
+            alert('TutorialFloors module not loaded');
+            return;
+        }
+
+        let floorData = null;
+
+        switch (value) {
+            case 'floor1':
+                floorData = window.TutorialFloors.FLOOR_1_LAYOUT;
+                break;
+            case 'floor2':
+                floorData = window.TutorialFloors.FLOOR_2_LAYOUT;
+                break;
+            case 'floor3':
+                floorData = window.TutorialFloors.FLOOR_3_LAYOUT;
+                break;
+            case 'church':
+                // Assuming you have a layout for the church
+                break;
+        }
+
+        if (floorData) {
+            const convertedData = convertTutorialToDesignerFormat(floorData);
+            loadFloorData(convertedData);
+        }
+    }
+
+    function convertTutorialToDesignerFormat(tutorialData) {
+        const designerData = {
+            name: tutorialData.name,
+            number: tutorialData.floor,
+            width: GRID_WIDTH,
+            height: GRID_HEIGHT,
+            grid: [],
+            entities: [],
+            playerSpawn: tutorialData.player,
+            exitPos: tutorialData.exit
+        };
+
+        // Initialize grid
+        for (let y = 0; y < GRID_HEIGHT; y++) {
+            const row = [];
+            for (let x = 0; x < GRID_WIDTH; x++) {
+                row.push('.');
+            }
+            designerData.grid.push(row);
+        }
+
+        // Add entities from tutorial data
+        // This is a simplified conversion and might need to be expanded
+        tutorialData.breakables.forEach(b => {
+            designerData.entities.push({
+                id: `breakable-${b.x}-${b.y}`,
+                type: 'breakable',
+                x: b.x,
+                y: b.y,
+                emoji: b.emoji,
+                name: b.name,
+                hp: b.hp,
+                currencyDrop: b.drops.currency[0],
+                cardDrops: []
+            });
+        });
+
+        return designerData;
     }
 
     // ==================== KEYBOARD SHORTCUTS ====================
