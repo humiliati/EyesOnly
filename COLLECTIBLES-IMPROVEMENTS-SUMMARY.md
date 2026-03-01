@@ -141,6 +141,28 @@ Tests verify:
 - [x] Quest Key (Tier 3): `❗ QUEST ITEM` tooltip with NPC target
 - [x] All animations consistent and readable
 
+### 8. RESOURCE_COLOR Pipeline Unification ✅ FIXED (2026-03-01)
+**Problem**: Multiple collectible pickups used `showExpression('LOOT')` which applies cyan `#00FFFF` — the wrong color for every resource type. Food only reported HP changes to the debrief feed, even though food can also modify Fatigue, Ammo, and Currency. The `_movePlayer` food pickup path was completely unfixed (still using LOOT cyan). Energy-category foods (Coffee, Energy Drink, Tea) showed HP pink instead of Fatigue brown.
+
+**Fix**:
+- **All overhead animations** now use `showGenericExpression()` with explicit RESOURCE_COLOR hex values:
+  - Ammo: `#DA70D6` magenta
+  - Battery: `#00FFA6` cyan-green
+  - Food (health/status/special): `#FF6B9D` HP pink
+  - Food (energy): `#A0522D` Fatigue brown
+- **All resource pickups** call `DebriefFeedController.reportResourceChange()` with per-resource RESOURCE_COLOR frame flash
+- **Food reports every changed resource individually**:
+  - Captures before-values for HP, Fatigue, Ammo, Currency
+  - After `applyFoodEffects()`, compares each and reports any that changed
+  - Field Ration (+35 HP, -20 Fatigue, +3 Ammo) → three debrief reports with three different colors
+  - Candy (+5 HP, -5 Fatigue, +10¢) → three debrief reports
+- **Enhanced `reportResourceChange()`**: RESOURCE_COLORS lookup table, box-shadow flash on `#debrief-screen`, `.gaining`/`.losing` CSS class on resource rows
+- **Both food code paths fixed**: `_checkPlayerInteractions` AND `_movePlayer` now have identical unified logic
+- **All collectibles have tooltip reports**: Ammo, Battery, Food, Keys all show appropriate tooltips
+
+**Files Changed**: `public/js/gone-rogue.js`, `public/js/debrief-feed-controller.js`, `public/index.html` (cache-busters)
+**Canon Reference**: `docs/COLLECTIBLES_CANON.md`
+
 ---
 
 ## Technical Details
@@ -229,3 +251,4 @@ if (_items.find(function(i) { return i.x === x && i.y === y; })) {
 7. `afcf229` — Fix food persistence and ammo cyan color/non-interactive collectible bugs
 8. `611ccc4` — Unify all floor collectibles to auto-pickup on walkover; fix `_pickupItem` crash for keys
 9. `d41e807` — Implement key_ammo/key_item tier distinction — tooltip, debrief feed routing, inventory separation
+10. `pending` — Unify RESOURCE_COLOR pipeline: per-effect food debrief, energy category overhead brown, fix _movePlayer LOOT cyan

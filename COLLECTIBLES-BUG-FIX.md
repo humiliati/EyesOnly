@@ -4,13 +4,15 @@
 
 ## Summary
 
-Fixed five critical bugs in the collectibles system across two phases:
+Fixed seven bugs in the collectibles system across three phases:
 
 1. **Bug #1: Dual Currency Animation** - Yellow "+3¢" animation shown alongside lingering green "¢" glyph
 2. **Bug #2: Food/Interactive Items Not Removed** - Items remain visible on map after collection animation
 3. **Bug #3: Food Tap-Handler Persistence** - Tapping a food item triggered `interact` instead of movement; item never removed from map
 4. **Bug #4: Ammo Drops Rendered Cyan** - Ammo floor drops displayed with `#00FFFF` (cyan) instead of `#DA70D6` (magenta per `RESOURCE_COLOR_SYSTEM.md`)
 5. **Bug #5: Floor Items Not Auto-Collected** - Ammo, gems/batteries, cards, and keys required manual `pickup` command; incompatible with keyboard-hidden mobile UI
+6. **Bug #6: Key Tier Routing** - All key tiers treated identically; Tier 1 keys incorrectly stored in inventory
+7. **Bug #7: Food Overhead Color Wrong + Debrief Only Reports HP** - `_movePlayer` path still used LOOT cyan; energy foods showed HP pink; only HP reported to debrief (not Fatigue/Ammo/Currency)
 
 ## Root Cause Analysis
 
@@ -322,6 +324,59 @@ var pickupQuality = item.type === 'key' && keyTier <= 1 ? ' [KEY AMMO]' : ' [KEY
 - ✅ `pickupQuality` shows `[KEY AMMO]` or `[KEY ITEM]` in pickup log line
 - ✅ MOK interjection shows `Key Ammo:` or `Key Item:` prefix
 
+### Bug #7: Food Overhead Color Wrong + Debrief Only Reports HP (2026-03-01)
+
+**Problem**: Three issues from the initial RESOURCE_COLOR pipeline fix:
+
+1. **`_movePlayer` food path completely unfixed**: The food pickup code in `_movePlayer` (command movement) still used `OverheadAnimator.showExpression(newX, newY, 'LOOT', 1000, result.emoji)` — cyan `#00FFFF` color. Only `_checkPlayerInteractions` (smooth movement) was updated.
+
+2. **Food debrief only reported HP**: The debrief feed `reportResourceChange()` was only called for HP changes, but food can modify **four resources**: HP, Fatigue, Ammo (Field Ration), and Currency (Candy). Energy drinks reducing fatigue by 30 showed no debrief update at all.
+
+3. **All food used HP pink overhead**: Energy-category foods (Coffee ☕, Energy Drink 🥤, Tea 🍵) — whose primary purpose is fatigue reduction — showed HP pink `#FF6B9D` overhead animation instead of Fatigue brown `#A0522D`.
+
+**Location**: `/public/js/gone-rogue.js` — both `_checkPlayerInteractions` and `_movePlayer` food pickup blocks
+
+**Before** (`_movePlayer` — completely unfixed):
+```javascript
+OverheadAnimator.showExpression(newX, newY, 'LOOT', 1000, result.emoji);
+// No debrief reporting at all
+```
+
+**Before** (`_checkPlayerInteractions` — only HP reported):
+```javascript
+OverheadAnimator.showGenericExpression(x, y, result.emoji, 1000, '#FF6B9D'); // Always HP pink
+// Only HP reported:
+if (hpAfter !== hpBefore) {
+  DebriefFeedController.reportResourceChange('HP', hpBefore, hpAfter, result.foodName);
+}
+```
+
+**After** (both paths now identical):
+```javascript
+// Determine primary color from food category
+var foodDef = FoodDatabase.getFoodItem(foodItem.customData.foodId);
+var primaryColor = '#FF6B9D'; // HP pink default
+if (foodDef && foodDef.category === 'energy') {
+  primaryColor = '#A0522D'; // Fatigue brown for energy foods
+}
+OverheadAnimator.showGenericExpression(x, y, result.emoji, 1000, primaryColor);
+
+// Capture before-values for ALL resources, report EACH that changed:
+// HP → reportResourceChange('HP', ...) — #FF6B9D
+// Fatigue → reportResourceChange('Fatigue', ...) — #A0522D
+// Ammo → reportResourceChange('Ammo', ...) — #DA70D6
+// Currency → reportResourceChange('Currency', ...) — #FFFF00
+```
+
+**Result**:
+- ✅ Both `_checkPlayerInteractions` and `_movePlayer` food paths use identical unified logic
+- ✅ Energy foods (Coffee, Energy Drink, Tea) show Fatigue brown `#A0522D` overhead animation
+- ✅ Health/status/special foods show HP pink `#FF6B9D` overhead animation
+- ✅ ALL resource changes from food are reported to debrief feed with correct RESOURCE_COLOR
+- ✅ Field Ration (+35 HP, -20 Fatigue, +3 Ammo) fires three debrief reports
+- ✅ Candy (+5 HP, -5 Fatigue, +10¢) fires three debrief reports
+- ✅ `showExpression('LOOT')` fully eliminated from all collectible pickup paths
+
 ---
 
 ## Changes Made
@@ -373,7 +428,10 @@ Results: **19/19 tests passing** ✅
 > **Note**: Key tier routing (Bug #6) is verified via manual checklist only — automated tests for `getTotalKeyAmmo()`, debrief feed `🔑x{N}`, and key-ammo vs key-item tooltip routing are not yet implemented.
 
 ### Manual Testing Checklist
-- [ ] Walk over food item → item disappears, LOOT animation plays, HP/fatigue modified
+- [ ] Walk over health food (Apple 🍎) → item disappears, HP pink animation, debrief shows HP + Fatigue changes
+- [ ] Walk over energy food (Coffee ☕) → item disappears, Fatigue brown animation, debrief shows HP + Fatigue changes
+- [ ] Walk over special food (Field Ration 🥫) → HP pink animation, debrief shows HP + Fatigue + Ammo changes
+- [ ] Walk over special food (Candy 🍬) → HP pink animation, debrief shows HP + Fatigue + Currency changes
 - [ ] Tap food item tile → player moves to tile, food auto-collects (does not `interact`)
 - [ ] Walk over ammo drop → item disappears, `؋` animation plays with magenta color
 - [ ] Walk over battery cell → item disappears, `◈` animation plays with cyan color
@@ -400,4 +458,6 @@ The `WorldItems` singleton is the single source of truth for all floor collectib
 - Commit afcf229: Fix food persistence and ammo cyan color/non-interactive collectible bugs
 - Commit 611ccc4: Unify all floor collectibles to auto-pickup on walkover; fix `_pickupItem` crash for keys
 - Commit d41e807: Implement key_ammo/key_item tier distinction — tooltip, debrief feed routing, inventory separation
+- Pending: RESOURCE_COLOR pipeline unification — per-effect food debrief, energy category overhead brown, fix _movePlayer LOOT cyan
+- Canon Reference: `docs/COLLECTIBLES_CANON.md` — authoritative collectible category definitions
 - Test File: `/public/tests/test-collectibles-dual-render-bug.html`

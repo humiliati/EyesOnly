@@ -5553,12 +5553,48 @@ _incrementPityTimers();
       if (foodItem && foodItem.autoPickup && foodItem.type === 'FOOD') {
         // Apply food effects
         if (typeof FoodDatabase !== 'undefined' && foodItem.customData && foodItem.customData.foodId) {
+          // Capture before-values for ALL resources food can modify
+          var hpBefore = _player.hp || 0;
+          var fatigueBefore = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getFatigue) ? GAMESTATE.getFatigue() : 0;
+          var ammoBefore = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo) ? GAMESTATE.getAmmo() : 0;
+          var cryptosBefore = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getCryptos) ? GAMESTATE.getCryptos() : 0;
+
           var result = FoodDatabase.applyFoodEffects(foodItem.customData.foodId, _player);
           if (result.success) {
-            // Show overhead animation with food emoji
-            if (typeof OverheadAnimator !== 'undefined') {
-              OverheadAnimator.showExpression(x, y, 'LOOT', 1000, result.emoji);
+            // Determine primary effect for overhead animation RESOURCE_COLOR
+            // energy category → Fatigue brown; health/status → HP pink; special → HP pink
+            var foodDef = FoodDatabase.getFoodItem(foodItem.customData.foodId);
+            var primaryColor = '#FF6B9D'; // HP pink default
+            if (foodDef && foodDef.category === 'energy') {
+              primaryColor = '#A0522D'; // Fatigue brown
             }
+
+            // Show overhead animation with category-appropriate RESOURCE_COLOR
+            if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+              OverheadAnimator.showGenericExpression(x, y, result.emoji, 1000, primaryColor);
+            }
+
+            // Report EACH changed resource to debrief feed with its own RESOURCE_COLOR
+            try {
+              if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
+                var hpAfter = _player.hp || 0;
+                if (hpAfter !== hpBefore) {
+                  DebriefFeedController.reportResourceChange('HP', hpBefore, hpAfter, result.foodName || 'Food');
+                }
+                var fatigueAfter = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getFatigue) ? GAMESTATE.getFatigue() : 0;
+                if (fatigueAfter !== fatigueBefore) {
+                  DebriefFeedController.reportResourceChange('Fatigue', fatigueBefore, fatigueAfter, result.foodName || 'Food');
+                }
+                var ammoAfter = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo) ? GAMESTATE.getAmmo() : 0;
+                if (ammoAfter !== ammoBefore) {
+                  DebriefFeedController.reportResourceChange('Ammo', ammoBefore, ammoAfter, result.foodName || 'Food');
+                }
+                var cryptosAfter = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getCryptos) ? GAMESTATE.getCryptos() : 0;
+                if (cryptosAfter !== cryptosBefore) {
+                  DebriefFeedController.reportResourceChange('Currency', cryptosBefore, cryptosAfter, result.foodName || 'Food');
+                }
+              }
+            } catch (eDebrief) {}
 
             // Block sprint temporarily after food pickup (0.9 second delay)
             // This prevents immediate fatigue refill during sprint, causing delayed food buff effect
@@ -5571,7 +5607,7 @@ _incrementPityTimers();
               UIControls.updateMokInterjection(result.emoji + ' ' + result.foodName + ' consumed');
             }
 
-            // Tooltip: Food effects
+            // Tooltip: Food effects (always show — contains all effect details)
             if (typeof TooltipSystem !== 'undefined' && result.tooltipText) {
               TooltipSystem.showGeneric(result.tooltipText, 2000);
             }
@@ -5792,12 +5828,47 @@ _incrementPityTimers();
       if (foodItem && foodItem.autoPickup && foodItem.type === 'FOOD') {
         // Apply food effects
         if (typeof FoodDatabase !== 'undefined' && foodItem.customData && foodItem.customData.foodId) {
+          // Capture before-values for ALL resources food can modify
+          var hpBeforeFood = _player.hp || 0;
+          var fatigueBeforeFood = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getFatigue) ? GAMESTATE.getFatigue() : 0;
+          var ammoBeforeFood = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo) ? GAMESTATE.getAmmo() : 0;
+          var cryptosBeforeFood = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getCryptos) ? GAMESTATE.getCryptos() : 0;
+
           var result = FoodDatabase.applyFoodEffects(foodItem.customData.foodId, _player);
           if (result.success) {
-            // Show overhead animation with food emoji
-            if (typeof OverheadAnimator !== 'undefined') {
-              OverheadAnimator.showExpression(newX, newY, 'LOOT', 1000, result.emoji);
+            // Determine primary effect for overhead animation RESOURCE_COLOR
+            var foodDefMv = FoodDatabase.getFoodItem(foodItem.customData.foodId);
+            var primaryColorMv = '#FF6B9D'; // HP pink default
+            if (foodDefMv && foodDefMv.category === 'energy') {
+              primaryColorMv = '#A0522D'; // Fatigue brown
             }
+
+            // Show overhead animation with category-appropriate RESOURCE_COLOR
+            if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+              OverheadAnimator.showGenericExpression(newX, newY, result.emoji, 1000, primaryColorMv);
+            }
+
+            // Report EACH changed resource to debrief feed with its own RESOURCE_COLOR
+            try {
+              if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
+                var hpAfterFood = _player.hp || 0;
+                if (hpAfterFood !== hpBeforeFood) {
+                  DebriefFeedController.reportResourceChange('HP', hpBeforeFood, hpAfterFood, result.foodName || 'Food');
+                }
+                var fatigueAfterFood = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getFatigue) ? GAMESTATE.getFatigue() : 0;
+                if (fatigueAfterFood !== fatigueBeforeFood) {
+                  DebriefFeedController.reportResourceChange('Fatigue', fatigueBeforeFood, fatigueAfterFood, result.foodName || 'Food');
+                }
+                var ammoAfterFood = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo) ? GAMESTATE.getAmmo() : 0;
+                if (ammoAfterFood !== ammoBeforeFood) {
+                  DebriefFeedController.reportResourceChange('Ammo', ammoBeforeFood, ammoAfterFood, result.foodName || 'Food');
+                }
+                var cryptosAfterFood = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getCryptos) ? GAMESTATE.getCryptos() : 0;
+                if (cryptosAfterFood !== cryptosBeforeFood) {
+                  DebriefFeedController.reportResourceChange('Currency', cryptosBeforeFood, cryptosAfterFood, result.foodName || 'Food');
+                }
+              }
+            } catch (eDebrief) {}
 
             // Block sprint temporarily after food pickup (0.9 second delay)
             // This prevents immediate fatigue refill during sprint, causing delayed food buff effect
@@ -5810,7 +5881,7 @@ _incrementPityTimers();
               UIControls.updateMokInterjection(result.emoji + ' ' + result.foodName + ' consumed');
             }
 
-            // Tooltip: Food effects
+            // Tooltip: Food effects (always show — contains all effect details)
             if (typeof TooltipSystem !== 'undefined' && result.tooltipText) {
               TooltipSystem.showGeneric(result.tooltipText, 2000);
             }
@@ -6008,6 +6079,19 @@ _incrementPityTimers();
         UIControls.updateMokInterjection('؋ Ammo +' + item.amount);
       }
 
+      // Overhead animation with RESOURCE_COLOR magenta
+      if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+        OverheadAnimator.showGenericExpression(_player.x, _player.y, '؋', 800, '#DA70D6');
+      }
+
+      // Report to debrief feed with resource-colored frame flash
+      try {
+        if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
+          var newAmmo = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo) ? GAMESTATE.getAmmo() : 0;
+          DebriefFeedController.reportResourceChange('Ammo', newAmmo - item.amount, newAmmo, 'Ammo +' + item.amount);
+        }
+      } catch (eDebrief) {}
+
       // Pancake stacker for ammo
       try {
         if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
@@ -6035,9 +6119,18 @@ _incrementPityTimers();
       // Remove gem from floor
       _items = WorldItems.filterFloorItems(function(i) { return i !== item; });
 
-      if (typeof OverheadAnimator !== 'undefined') {
-        OverheadAnimator.showExpression(_player.x, _player.y, 'LOOT', 800, '◈');
+      // Overhead animation with RESOURCE_COLOR cyan-green (NOT cyan LOOT)
+      if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+        OverheadAnimator.showGenericExpression(_player.x, _player.y, '◈', 800, '#00FFA6');
       }
+
+      // Report to debrief feed with resource-colored frame flash
+      try {
+        if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
+          var newBattery = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getBattery) ? GAMESTATE.getBattery() : 0;
+          DebriefFeedController.reportResourceChange('Battery', newBattery - gemAmount, newBattery, '◈ Battery +' + gemAmount);
+        }
+      } catch (eDebrief) {}
 
       if (typeof TooltipSystem !== 'undefined') {
         TooltipSystem.showAction('item-pickup', { name: '◈ Battery +' + gemAmount });

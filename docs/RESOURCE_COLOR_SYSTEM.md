@@ -92,6 +92,12 @@ Use `/public/tests/test-resource-colors.html` to:
 - **Fatigue (Brown)**: Earthy, heavy, weariness
 - **Ammo (Magenta)**: Valuable, special, flows like currency
 
+## Collectible Categories
+
+All 9 canonical collectible categories and their RESOURCE_COLOR mappings are documented in `COLLECTIBLES_CANON.md`. Resource pickups (currency, ammo, battery, food) must use their RESOURCE_COLOR for overhead animations via `OverheadAnimator.showGenericExpression()` and debrief frame flash via `DebriefFeedController.reportResourceChange()`.
+
+**DO NOT** use `showExpression('LOOT')` for resource pickups — it uses cyan `#00ffff` which does not match any RESOURCE_COLOR.
+
 ## Migration Notes
 
 **Breaking Change**: Previous percentage-based coloring (green/yellow/red) has been removed.

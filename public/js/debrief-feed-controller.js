@@ -1075,23 +1075,50 @@ const DebriefFeedController = (function() {
       UIControls.updateMokInterjection(message);
     }
 
-    // Pulse the debrief window on resource changes (monochrome)
+    // RESOURCE_COLOR lookup for frame flash
+    var RESOURCE_COLORS = {
+      'HP': '#FF6B9D', 'Energy': '#00D4FF', 'Focus': '#FFF9B0',
+      'Battery': '#00FFA6', 'Fatigue': '#A0522D', 'Ammo': '#DA70D6',
+      'Currency': '#FFFF00', 'key_ammo': '#FFD700'
+    };
+
+    // Pulse the debrief frame with RESOURCE_COLOR-specific glow
     try {
       if (_debriefScreen) {
+        var flashColor = RESOURCE_COLORS[resourceType] || (change >= 0 ? '#1cff9b' : '#ff4444');
+        // Remove old pulse classes
         _debriefScreen.classList.remove('debrief-pulse-pos');
         _debriefScreen.classList.remove('debrief-pulse-neg');
+        // Apply color-specific box-shadow flash on the debrief frame
+        _debriefScreen.style.boxShadow = '0 0 12px ' + flashColor + ', inset 0 0 8px ' + flashColor;
+        // Also apply brightness pulse for emphasis
         var cls = change >= 0 ? 'debrief-pulse-pos' : 'debrief-pulse-neg';
-        // restart animation
         void _debriefScreen.offsetWidth;
         _debriefScreen.classList.add(cls);
         setTimeout(function() {
           try {
             _debriefScreen.classList.remove('debrief-pulse-pos');
             _debriefScreen.classList.remove('debrief-pulse-neg');
+            _debriefScreen.style.boxShadow = '';
           } catch (eP0) {}
-        }, 260);
+        }, 300);
       }
     } catch (eP1) {}
+
+    // Flash the specific resource row with its RESOURCE_COLOR (.gaining/.losing CSS)
+    try {
+      var rowSelector = '.resource-row[data-resource="' + resourceType + '"]';
+      var resourceRow = document.querySelector(rowSelector);
+      if (resourceRow) {
+        var animClass = change >= 0 ? 'gaining' : 'losing';
+        resourceRow.classList.remove('gaining', 'losing');
+        void resourceRow.offsetWidth;
+        resourceRow.classList.add(animClass);
+        setTimeout(function() {
+          try { resourceRow.classList.remove('gaining', 'losing'); } catch (e) {}
+        }, 600);
+      }
+    } catch (eRow) {}
 
     // If in resource display mode, refresh to show updated values
     if (_currentDisplay === 'resources' && typeof DebriefFeedRenderer !== 'undefined') {

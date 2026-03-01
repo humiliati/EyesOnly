@@ -173,15 +173,26 @@ RESOURCE_COLORS = {
 
 ### Food (Emoji)
 - **File**: `public/js/food-database.js`
-- **Database**: FOOD_ITEMS
+- **Database**: FOOD_ITEMS — 13 items across 4 categories: `health`, `energy`, `special`, `status`
 - **System**: InteractiveItems module — items with `autoPickup: true`
-- **Auto-pickup**: Player walking onto tile triggers `_checkPlayerInteractions` → food removed + LOOT animation
+- **Auto-pickup**: Player walking onto tile triggers `_checkPlayerInteractions` → food removed + overhead animation
 - **Tap behavior**: Tapping a food tile initiates movement (does NOT call `interact`); item collected on arrival
+- **Overhead animation**: `showGenericExpression()` with category-specific RESOURCE_COLOR:
+  - `category: 'health'` / `'status'` / `'special'` → **HP Pink `#FF6B9D`**
+  - `category: 'energy'` (Coffee, Energy Drink, Tea) → **Fatigue Brown `#A0522D`**
+- **Debrief reporting**: Each changed resource reports individually:
+  - HP change → `reportResourceChange('HP', ...)` — `#FF6B9D` frame flash
+  - Fatigue change → `reportResourceChange('Fatigue', ...)` — `#A0522D` frame flash
+  - Ammo change (Field Ration) → `reportResourceChange('Ammo', ...)` — `#DA70D6` frame flash
+  - Currency change (Candy) → `reportResourceChange('Currency', ...)` — `#FFFF00` frame flash
+- **Tooltip**: `TooltipSystem.showGeneric(tooltipText, 2000)` — shows all effect details
 - **Examples**:
-  - Apple: 🍎
-  - Pineapple: 🍍
-  - Bread: 🍞
-  - Meat: 🍖
+  - Apple: 🍎 (health, +10 HP, -5 Fatigue)
+  - Coffee: ☕ (energy, +5 HP, -25 Fatigue → overhead brown)
+  - Field Ration: 🥫 (special, +35 HP, -20 Fatigue, +3 Ammo → overhead pink, debrief reports HP+Fatigue+Ammo)
+  - Candy: 🍬 (special, +5 HP, -5 Fatigue, +10¢ → overhead pink, debrief reports HP+Fatigue+Currency)
+
+> **DO NOT** use `showExpression('LOOT')` for food pickups. LOOT uses cyan `#00ffff`. See `docs/COLLECTIBLES_CANON.md`.
 
 ### Key Ammo — Tier 1 (Consumable Chest Keys)
 - **Defined in**: `public/js/environmental-synergy.js` — `KEY_ITEMS.RUSTY_KEY`, `KEY_ITEMS.BRONZE_KEY`
@@ -238,11 +249,25 @@ The `_pickupItem()` function is the single implementation for all non-currency, 
 
 ## Animation System
 
-### Overhead Pickup Animations
+### Overhead Pickup Animations — RESOURCE_COLOR Canon
 - **File**: `public/js/overhead-animator.js`
-- **Currency**: Shows "+X¢" with bounce animation (lines 113-143)
-- **Food**: Shows food emoji with float animation
-- **Stacking**: Multiple pickups stack vertically above player (lines 207-230)
+- **Currency**: `showCurrencyPickup()` → "+X¢" yellow `#FFFF00` bounce animation
+- **Ammo**: `showGenericExpression(x, y, '؋', 800, '#DA70D6')` — magenta
+- **Battery**: `showGenericExpression(x, y, '◈', 800, '#00FFA6')` — cyan-green
+- **Food (health/status/special)**: `showGenericExpression(x, y, emoji, 1000, '#FF6B9D')` — HP pink
+- **Food (energy)**: `showGenericExpression(x, y, emoji, 1000, '#A0522D')` — Fatigue brown
+- **Key Ammo (T1)**: `showGenericExpression(x, y, emoji, 800, '#FFD700')` — gold
+- **Key Items (T2)**: `showGenericExpression(x, y, emoji, 1200, '#FFD700')` — gold
+- **Quest Keys (T3)**: `showGenericExpression(x, y, '❗', 1500, '#FF4444')` — red
+- **Stacking**: Multiple pickups stack vertically above player
+- **Anti-pattern**: DO NOT use `showExpression('LOOT')` for resource pickups — LOOT = cyan `#00ffff`
+
+### Debrief Feed Integration — Per-Resource Frame Flash
+- **File**: `public/js/debrief-feed-controller.js` → `reportResourceChange()`
+- **RESOURCE_COLORS lookup**: HP=#FF6B9D, Fatigue=#A0522D, Ammo=#DA70D6, Battery=#00FFA6, Currency=#FFFF00, key_ammo=#FFD700
+- **Frame flash**: Box-shadow on `#debrief-screen` in resource-specific color
+- **Row highlight**: `.gaining`/`.losing` CSS class on `.resource-row[data-resource="X"]`
+- **Food**: Reports each changed resource individually (HP, Fatigue, Ammo, Currency)
 
 ### Rendering Rules
 1. **No twinkle/pulse effects** on ground items (removed to prevent rendering bugs)

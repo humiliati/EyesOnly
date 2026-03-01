@@ -271,11 +271,24 @@ Need overhead animation?
 
 ### Code Examples
 
-#### Collectible Pickup (Currency, Ammo, Battery)
+#### Collectible Pickup — Use RESOURCE_COLOR, NOT showExpression('LOOT')
 ```javascript
-// Always trigger BOTH systems for collectibles
+// Currency — specialized method
 OverheadAnimator.showCurrencyPickup(_player.x, _player.y, amount);
-PancakeStack.addPancake('¢');
+
+// Ammo — magenta RESOURCE_COLOR
+OverheadAnimator.showGenericExpression(x, y, '؋', 800, '#DA70D6');
+DebriefFeedController.reportResourceChange('Ammo', oldAmmo, newAmmo, 'Ammo +N');
+
+// Battery — cyan-green RESOURCE_COLOR
+OverheadAnimator.showGenericExpression(x, y, '◈', 800, '#00FFA6');
+DebriefFeedController.reportResourceChange('Battery', oldBat, newBat, '◈ Battery +N');
+
+// Food (health) — HP pink
+OverheadAnimator.showGenericExpression(x, y, emoji, 1000, '#FF6B9D');
+// Food (energy) — Fatigue brown
+OverheadAnimator.showGenericExpression(x, y, emoji, 1000, '#A0522D');
+// Food reports EACH changed resource individually to debrief feed
 ```
 
 #### Environment Interaction (Lever Pulled)
@@ -389,6 +402,38 @@ OverheadAnimator.showExpression(x, y, 'LOOT', 4000, '¢');
 4. **`_pickupItem` key crash fix** (`gone-rogue.js`): Terminal MOK interjection and `return` statement now use guarded locals (`pickupEmoji`, `pickupDisplayName`, `pickupQuality`) that fall back gracefully for non-card items.
 
 5. **Key tier routing** (`gone-rogue.js`, `tooltip-system.js`, `gamestate.js`, `debrief-feed-controller.js`): All three key tiers now route to distinct destinations — see key tier details below.
+
+---
+
+## RESOURCE_COLOR Unified Pipeline ✅ Done (2026-03-01)
+
+**Context**: Collectible pickups were using `showExpression('LOOT')` which applied cyan `#00FFFF` — wrong for all resources. The debrief feed also lacked per-resource color flashing.
+
+**Changes made** (see `docs/COLLECTIBLES_CANON.md` for authoritative reference):
+
+1. **All overhead animations now use `showGenericExpression()` with explicit RESOURCE_COLOR** — NOT `showExpression('LOOT')`:
+   - Currency: `showCurrencyPickup()` → `#FFFF00` (already working)
+   - Ammo: `showGenericExpression(x, y, '؋', 800, '#DA70D6')` — magenta
+   - Battery: `showGenericExpression(x, y, '◈', 800, '#00FFA6')` — cyan-green
+   - Food (health/status/special): `showGenericExpression(x, y, emoji, 1000, '#FF6B9D')` — HP pink
+   - Food (energy category): `showGenericExpression(x, y, emoji, 1000, '#A0522D')` — Fatigue brown
+
+2. **All resource pickups report to `DebriefFeedController.reportResourceChange()`** with RESOURCE_COLOR frame flash:
+   - Ammo, Battery, HP, Fatigue, Currency each flash their own canonical color
+   - Food reports **every changed resource individually** (HP, Fatigue, Ammo, Currency) — not just HP
+
+3. **Enhanced `reportResourceChange()` in `debrief-feed-controller.js`**:
+   - RESOURCE_COLORS lookup table for box-shadow frame flash
+   - `.gaining`/`.losing` CSS class applied to `.resource-row[data-resource="X"]` elements
+
+4. **All collectibles have tooltip reports**:
+   - Ammo: `TooltipSystem.showAction('item-pickup', { name: 'Ammo +N' })`
+   - Battery: `TooltipSystem.showAction('item-pickup', { name: '◈ Battery +N' })`
+   - Food: `TooltipSystem.showGeneric(tooltipText, 2000)` — e.g., "+20 HP, -15 Fatigue"
+   - Key Ammo: `TooltipSystem.showAction('key-ammo-pickup', { name })`
+   - Key Items: `TooltipSystem.showAction('key-item-pickup', { name })`
+
+> **Anti-pattern**: DO NOT use `showExpression('LOOT')` for any resource pickup. See `docs/COLLECTIBLES_CANON.md` Anti-Patterns section.
 
 ---
 
@@ -507,6 +552,7 @@ If you're implementing a new game mechanic and unsure which system to use:
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2026-02-28
+**Document Version**: 1.1
+**Last Updated**: 2026-03-01
 **Status**: Draft → Review → Implementation
+**Canon Reference**: See `docs/COLLECTIBLES_CANON.md` for authoritative collectible category definitions and unified pickup pipeline

@@ -133,11 +133,19 @@ FoodDatabase.getPicnicBlanket()                 // Get picnic blanket def
 if (typeof InteractiveItems !== 'undefined') {
   var foodItem = InteractiveItems.getItemAt(newX, newY);
   if (foodItem && foodItem.autoPickup && foodItem.type === 'FOOD') {
-    // Apply food effects
+    var hpBefore = _player.hp || 0;
     var result = FoodDatabase.applyFoodEffects(foodItem.customData.foodId, _player);
     if (result.success) {
-      // Show overhead animation with food emoji
-      OverheadAnimator.showExpression(newX, newY, 'LOOT', 1000, result.emoji);
+      // Overhead animation with RESOURCE_COLOR HP pink (NOT showExpression('LOOT'))
+      OverheadAnimator.showGenericExpression(x, y, result.emoji, 1000, '#FF6B9D');
+
+      // Report to debrief feed with HP pink frame flash
+      if (typeof DebriefFeedController !== 'undefined') {
+        var hpAfter = _player.hp || 0;
+        if (hpAfter !== hpBefore) {
+          DebriefFeedController.reportResourceChange('HP', hpBefore, hpAfter, result.foodName);
+        }
+      }
 
       // MOK interjection
       UIControls.updateMokInterjection(result.emoji + ' ' + result.foodName + ' consumed');
@@ -158,20 +166,27 @@ if (typeof InteractiveItems !== 'undefined') {
 2. **Validation**: Check `autoPickup` flag and `type === 'FOOD'`
 3. **Effect Application**: Apply HP/fatigue/ammo/currency changes
 4. **Visual Feedback**:
-   - Overhead animation shows food emoji
+   - Overhead animation shows food emoji with **category-specific RESOURCE_COLOR**:
+     - `category: 'health'` / `'status'` / `'special'` → **HP pink `#FF6B9D`**
+     - `category: 'energy'` (Coffee, Energy Drink, Tea) → **Fatigue brown `#A0522D`**
+   - Debrief feed reports **each changed resource individually** with its own RESOURCE_COLOR:
+     - HP → `#FF6B9D` pink, Fatigue → `#A0522D` brown, Ammo → `#DA70D6` magenta, Currency → `#FFFF00` yellow
    - MOK interjection displays "[emoji] [name] consumed"
    - Tooltip shows effect text ("+20 HP, -15 Fatigue")
 5. **Removal**: Item removed from InteractiveItems array (clean disappearance)
 
+> **Important**: Food pickups use `showGenericExpression()` with explicit RESOURCE_COLOR, NOT `showExpression('LOOT')`. Energy foods use Fatigue brown, not HP pink. See `COLLECTIBLES_CANON.md` for the unified pickup pipeline.
+
 ### Similarities to Currency/Ammo
 
-| Feature | Currency | Ammo | Food |
-|---------|----------|------|------|
-| Auto-pickup | ✅ | ✅ | ✅ |
-| Overhead animation | ✅ (¢ symbol) | ⚠️ (limited) | ✅ (food emoji) |
-| MOK feedback | ✅ | ❌ | ✅ |
-| Tooltip | ✅ | ❌ | ✅ |
-| Clean removal | ✅ | ✅ | ✅ |
+| Feature | Currency | Ammo | Battery | Food |
+|---------|----------|------|---------|------|
+| Auto-pickup | ✅ | ✅ | ✅ | ✅ |
+| RESOURCE_COLOR overhead | ✅ #FFFF00 | ✅ #DA70D6 | ✅ #00FFA6 | ✅ #FF6B9D |
+| Debrief reportResourceChange | ✅ | ✅ | ✅ | ✅ |
+| MOK feedback | ✅ | ✅ | — | ✅ |
+| Tooltip | ✅ | — | ✅ | ✅ |
+| Clean removal | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -199,12 +214,16 @@ function showExpression(x, y, expressionKey, duration, customEmoji) {
 
 **Usage**:
 ```javascript
-// Standard expression
+// Standard expression (uses EXPRESSIONS dictionary color — NOT for resource pickups)
 OverheadAnimator.showExpression(x, y, 'LOOT', 1000);
 
-// Custom emoji (food pickup)
-OverheadAnimator.showExpression(x, y, 'LOOT', 1000, '🍎');
+// Resource pickup — use showGenericExpression with explicit RESOURCE_COLOR
+OverheadAnimator.showGenericExpression(x, y, '🍎', 1000, '#FF6B9D');  // Food: HP pink
+OverheadAnimator.showGenericExpression(x, y, '؋', 800, '#DA70D6');    // Ammo: magenta
+OverheadAnimator.showGenericExpression(x, y, '◈', 800, '#00FFA6');    // Battery: cyan-green
 ```
+
+> **DO NOT** use `showExpression('LOOT')` for resource pickups — LOOT uses cyan `#00ffff` which does not match any RESOURCE_COLOR. See `COLLECTIBLES_CANON.md`.
 
 ### 4.2 Water Slowdown Visual Feedback
 
@@ -466,9 +485,9 @@ Store these facts for future sessions:
 
 1. **Food System**: 13 food items with auto-pickup, biome-aware spawning
 2. **Picnic Blanket**: Spawns 2-3 food items within radius 2, 50% movement penalty
-3. **Auto-Pickup**: Food behaves like currency/ammo, clean disappearance
+3. **Auto-Pickup**: Food behaves like currency/ammo/battery — unified pickup pipeline (see `COLLECTIBLES_CANON.md`)
 4. **Visual Feedback**: Water slowdown = blue wave animation on frame
-5. **Custom Emoji**: OverheadAnimator.showExpression supports custom emoji parameter
+5. **RESOURCE_COLOR**: All resource pickups use `showGenericExpression()` with their canonical RESOURCE_COLOR, NOT `showExpression('LOOT')`
 6. **Design Rule**: ASCII floors, emoji interactives, no ghost collision emojis
 
 ---
