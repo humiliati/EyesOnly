@@ -13,8 +13,9 @@ These collectible types use emoji for clear, recognizable visual representation:
 1. **Food Items** (🍎 🍞 🍖 🍕 🍰 etc.)
    - All food items use their corresponding emoji
    - Examples: Apple 🍎, Bread 🍞, Meat 🍖
-   - Database: `expression-database.js` FOOD_ITEMS
+   - Database: `food-database.js` FOOD_ITEMS (also referenced via `expression-database.js`)
    - Rendered via: InteractiveItems system
+   - **Auto-pickup**: Food items with `autoPickup: true` are collected automatically when the player walks onto the tile — no `interact` command needed
 
 2. **Keys** (🔑 🗝️)
    - Standard keys: 🔑
@@ -56,6 +57,7 @@ These collectible types use ASCII characters with specific resource colors for e
    - Background: `#2a0a2a` (dark magenta)
    - Dropped from breakables with 60% chance
    - Type: `'ammo'`, adds to ammo counter via `GAMESTATE.addAmmo()`
+   - **Auto-pickup**: Collected automatically when player walks onto tile via `_pickupItem()`
 
 3. **Battery/Energy** (◈ battery cell - cyan ASCII glyph)
    - **Glyph**: `◈` (U+25C8, white diamond containing black small diamond)
@@ -68,6 +70,8 @@ These collectible types use ASCII characters with specific resource colors for e
    - **Visual**: ASCII monochrome (NO emoji) with cyan color
    - **Name**: "Battery Cell" (was "Energy Gem")
    - **Animation**: Triggers debrief feed battery signal recharge pulse ((( )))
+   - **Overhead animation**: Always uses hardcoded `◈` cyan symbol — never `item.emoji` or `item.glyph`
+   - **Auto-pickup**: Collected automatically when player walks onto tile via `_pickupItem()`
    - **Important**: Battery is a separate resource from Ammo
    - Battery is consumed by tech cards (EMP Blast, System Crash, Chain Lightning)
    - Ammo is consumed by weapon attacks
@@ -138,10 +142,11 @@ RESOURCE_COLORS = {
 
 ### Ammo (ASCII Monochrome)
 - **File**: `public/js/gone-rogue-mobile.js`
-- **Rendering**: Lines 594-602
+- **Rendering**: `WorldItems.getAllForRendering()` loop — `type === 'ammo'` branch
 - **Glyph**: `؋`
 - **Color**: `#DA70D6`
 - **Background**: `#2a0a2a`
+- **Auto-pickup**: `_checkPlayerInteractions` and `_movePlayer` call `_pickupItem()` on any floor item
 
 ### Battery Recharge / Battery Cells (ASCII Monochrome)
 - **File**: `public/js/gone-rogue.js`
@@ -156,9 +161,11 @@ RESOURCE_COLORS = {
 - **Animation**: Battery signal pulse ((( ))) in debrief feed
 
 ### Food (Emoji)
-- **File**: `public/js/expression-database.js`
-- **Database**: FOOD_ITEMS (lines 14-80)
-- **System**: InteractiveItems module
+- **File**: `public/js/food-database.js`
+- **Database**: FOOD_ITEMS
+- **System**: InteractiveItems module — items with `autoPickup: true`
+- **Auto-pickup**: Player walking onto tile triggers `_checkPlayerInteractions` → food removed + LOOT animation
+- **Tap behavior**: Tapping a food tile initiates movement (does NOT call `interact`); item collected on arrival
 - **Examples**:
   - Apple: 🍎
   - Pineapple: 🍍
@@ -170,6 +177,21 @@ RESOURCE_COLORS = {
 - **Standard key**: 🔑
 - **Rare key**: 🗝️
 - **Color**: `#FFD700` (gold)
+
+## Universal Auto-Pickup Doctrine
+
+**All collectibles in gone-rogue are automatically collected when the player walks, runs, taps, drags, or otherwise moves onto their tile. No typing is ever required.**
+
+| Collectible | Type | Auto-Pickup Path |
+|-------------|------|-----------------|
+| Currency (¢) | `currency` | `_checkPlayerInteractions` / `_movePlayer` direct logic |
+| Ammo (؋) | `item` / `ammo` | `_checkPlayerInteractions` / `_movePlayer` → `_pickupItem()` |
+| Battery (◈) | `item` / `gem` | `_checkPlayerInteractions` / `_movePlayer` → `_pickupItem()` |
+| Card (🃏) | `item` / card | `_checkPlayerInteractions` / `_movePlayer` → `_pickupItem()` |
+| Key (🔑) | `item` / `key` | `_checkPlayerInteractions` / `_movePlayer` → `_pickupItem()` |
+| Food (🍎) | `interactive` / `FOOD` | `_checkPlayerInteractions` / `_movePlayer` → food auto-pickup block |
+
+The `_pickupItem()` function is the single implementation for all non-currency, non-food floor items. Both movement code paths (`_checkPlayerInteractions` for smooth movement and `_movePlayer` for command movement) call it whenever any floor item is present at the player's position.
 
 ## Animation System
 
@@ -417,14 +439,19 @@ Run: `public/tests/test-collectibles-dual-render-bug.html`
 Run: `node public/tests/verify-collectibles-fix.js`
 
 ### Manual Testing Checklist
-- [ ] Currency shows yellow ¢ (not green, not emoji)
-- [ ] Currency pickup shows "+X¢" overhead animation
-- [ ] No lingering currency glyphs after pickup
-- [ ] Ammo shows magenta ؋
-- [ ] Food items show correct emoji
-- [ ] Keys show 🔑 or 🗝️
-- [ ] Multiple pickups stack tightly above player
-- [ ] No alpha/twinkle effects on ground items
+- [x] Currency shows yellow ¢ (not green, not emoji)
+- [x] Currency pickup shows "+X¢" overhead animation
+- [x] No lingering currency glyphs after pickup
+- [x] Ammo shows magenta ؋ (not cyan)
+- [x] Ammo auto-collects when player walks over it
+- [x] Battery animates with ◈ cyan symbol (not item emoji)
+- [x] Battery auto-collects when player walks over it
+- [x] Food items show correct emoji and disappear on walkover
+- [x] Tapping a food tile moves player to tile (does not trigger `interact`)
+- [x] Card drops auto-collect when player walks over them
+- [x] Keys show 🔑 or 🗝️ and auto-collect with gold overhead animation
+- [x] Multiple pickups stack tightly above player
+- [x] No alpha/twinkle effects on ground items
 
 ## Migration Guide
 
