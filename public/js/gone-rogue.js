@@ -35,6 +35,8 @@ var GoneRogue = (function () {
     positionHistory: [] // Position history buffer for pet following (max 16 entries)
   };
 
+  var _ropeManager = null;
+
   var _enemies = [];
   var _npcs = []; // NPCs on floor (tutorial gates, etc.)
   // NOTE: Don't touch WorldItems at script-load time.
@@ -3030,6 +3032,17 @@ var GoneRogue = (function () {
     _bossHazards = [];
     _bossEnvironment = {};
     _playerMoveLocked = false;
+
+    _ropeManager = new RopeManager(_player);
+    const ropeItem = {
+        id: 'rope-1',
+        type: 'item',
+        name: 'Rope',
+        emoji: '➰',
+        x: 5,
+        y: 5
+    };
+    WorldItems.addItem(ropeItem);
 
     // Reset forest biome state
     _forestBuildings = [];

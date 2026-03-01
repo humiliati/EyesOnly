@@ -40,6 +40,9 @@ This document outlines the design for a set of testing floors that will be used 
 
 *   Cigarettes (for creating smoke screens)
 *   Lure (for distracting enemies)
+*   Rope
+*   Lever
+*   Button
 
 ### 3.2. Test Floor 2: "The Distraction"
 
