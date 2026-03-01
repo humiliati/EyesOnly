@@ -6,6 +6,11 @@
 /**
  * INTEGRATION GUIDE: Z-Axis Stacking System
  *
+ * NOTE: PancakeStack/PlayerStackManager remain the primary, reliable
+ * overhead feedback for collectibles. OverheadAnimator text popups are
+ * only guaranteed for currency collection and door/gate lock indicators;
+ * do not rely on transient overhead text for other pickups.
+ *
  * This file demonstrates how to integrate the player stack system
  * into the main Gone Rogue game loop.
  */
