@@ -7177,7 +7177,7 @@ _incrementPityTimers();
         });
       }
 
-      // Place quest key items (tutorialPickups with type 'key')
+      // Place tutorial pickups (keys, currency, cards, ammo, battery, items)
       if (floorData.tutorialPickups) {
         floorData.tutorialPickups.forEach(function(pickup) {
           if (pickup.type === 'key') {
@@ -7196,6 +7196,32 @@ _incrementPityTimers();
             _currencies.push({ x: pickup.x, y: pickup.y, amount: pickup.amount, collected: false });
           } else if (pickup.type === 'card' && pickup.guaranteed) {
             _items.push({ x: pickup.x, y: pickup.y, type: 'card', card: 'strike', collected: false });
+          } else if (pickup.type === 'ammo') {
+            _items.push({
+              x: pickup.x, y: pickup.y,
+              type: 'ammo',
+              amount: pickup.amount || 1,
+              emoji: pickup.emoji || '؋',
+              name: pickup.name || 'Ammo',
+              collected: false
+            });
+          } else if (pickup.type === 'gem') {
+            _items.push({
+              x: pickup.x, y: pickup.y,
+              type: 'gem',
+              amount: pickup.amount || 1,
+              glyph: pickup.glyph || '◈',
+              name: pickup.name || 'Battery Cell',
+              collected: false
+            });
+          } else if (pickup.type === 'item') {
+            _items.push({
+              x: pickup.x, y: pickup.y,
+              type: 'item',
+              emoji: pickup.emoji || '📦',
+              name: pickup.name || 'Item',
+              collected: false
+            });
           }
         });
       }

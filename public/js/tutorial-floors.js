@@ -1012,10 +1012,12 @@ var TutorialFloors = (function() {
 
   // =========================================================================
   // Tavern Basement Layout (Floor ID: "0.1.1")
-  // Dark cellar with the BLACKSMITH_HAMMER quest key at the far end.
+  // Collectibles Playtest Space — two identical rows of all 11 collectible types
+  // centered in the room for validating pickup behavior.
+  // Original quest key (BLACKSMITH_HAMMER) retained at far end.
   // =========================================================================
   var TAVERN_BASEMENT_LAYOUT = {
-    name: 'Tavern Basement',
+    name: 'Tavern Basement — Collectibles Test',
     template: [
       '########################################',
       '#......................................#',
@@ -1059,23 +1061,37 @@ var TutorialFloors = (function() {
       { x: 38, y: 14, emoji: '🔥', name: 'Wall Torch' }
     ],
 
+    // Food collectibles are interactive items (autoPickup: true)
+    // Row 1 (y=9) and Row 2 (y=10): HP food, fatigue food, junk/no-stat food
     interactiveItems: [
-      { x: 20, y: 10, type: 'SIGN', emoji: '🪧', name: 'Scratched Note',
-        text: 'Mara hid the hammer here before she left. "For the one who returns to the forge."' }
+      { x: 20, y: 7, type: 'SIGN', emoji: '🪧', name: 'Scratched Note',
+        text: 'Mara hid the hammer here before she left. "For the one who returns to the forge."' },
+      // === Collectibles Test Row 1 (y=9) — food items ===
+      { x: 15, y: 9, type: 'FOOD', emoji: '🍎', name: 'Test Apple (HP)',
+        customData: { foodId: 'FOOD_APPLE' } },
+      { x: 16, y: 9, type: 'FOOD', emoji: '☕', name: 'Test Coffee (Fatigue)',
+        customData: { foodId: 'FOOD_COFFEE' } },
+      { x: 17, y: 9, type: 'FOOD', emoji: '💧', name: 'Test Water (Junk)',
+        customData: { foodId: 'FOOD_WATER' } },
+      // === Collectibles Test Row 2 (y=10) — food items (identical) ===
+      { x: 15, y: 10, type: 'FOOD', emoji: '🍎', name: 'Test Apple (HP)',
+        customData: { foodId: 'FOOD_APPLE' } },
+      { x: 16, y: 10, type: 'FOOD', emoji: '☕', name: 'Test Coffee (Fatigue)',
+        customData: { foodId: 'FOOD_COFFEE' } },
+      { x: 17, y: 10, type: 'FOOD', emoji: '💧', name: 'Test Water (Junk)',
+        customData: { foodId: 'FOOD_WATER' } }
     ],
 
     breakables: [
-      { x: 10, y: 9, emoji: '📦', name: 'Rotting Crate', hp: 1, drops: { currency: [5, 10] } },
-      { x: 11, y: 9, emoji: '📦', name: 'Rotting Crate', hp: 1, drops: { currency: [5, 10] } },
-      { x: 28, y: 9, emoji: '🛢️', name: 'Rusted Barrel', hp: 1, drops: { currency: [3, 8] } },
-      { x: 29, y: 9, emoji: '🛢️', name: 'Rusted Barrel', hp: 1, drops: { currency: [3, 8] } },
       // Crates guarding the hammer alcove
       { x: 34, y: 1, emoji: '📦', name: 'Heavy Crate', hp: 2, drops: { currency: [5, 12] } },
       { x: 35, y: 1, emoji: '📦', name: 'Heavy Crate', hp: 2, drops: { currency: [5, 12] } }
     ],
 
-    // The BLACKSMITH_HAMMER quest key — freely pickable at the end of the basement
+    // The BLACKSMITH_HAMMER quest key (original) + collectibles test rows
+    // Row layout (x=15..25): food food food keyAmmo questKey doorKey item card crypto ammo battery
     tutorialPickups: [
+      // Original quest key at far end
       {
         x: 37, y: 2,
         type: 'key',
@@ -1085,15 +1101,50 @@ var TutorialFloors = (function() {
         emoji: '🔨',
         name: 'Blacksmith\'s Hammer',
         npcTarget: 'BLACKSMITH'
-      }
+      },
+      // === Collectibles Test Row 1 (y=9) — non-food items ===
+      // Key Ammo (Tier 1)
+      { x: 18, y: 9, type: 'key', keyType: 'RUSTY_KEY', tier: 1, subtype: 'ammo',
+        emoji: '🔑', name: 'Rusty Key' },
+      // Quest Key (Tier 3)
+      { x: 19, y: 9, type: 'key', keyType: 'RUNE_FRAGMENT', tier: 3, subtype: 'quest',
+        emoji: '💎', name: 'Rune Fragment', npcTarget: 'RUNESMITH' },
+      // Door Key (Tier 2) — crowbar/tool key
+      { x: 20, y: 9, type: 'key', keyType: 'INDUSTRIAL_PASS', tier: 2, subtype: 'door',
+        emoji: '🔧', name: 'Industrial Pass' },
+      // Item (random seed drop)
+      { x: 21, y: 9, type: 'item', emoji: '📦', name: 'Random Item' },
+      // Card (random seed drop)
+      { x: 22, y: 9, type: 'card', guaranteed: true },
+      // Currency
+      { x: 23, y: 9, type: 'currency', amount: 10 },
+      // Ammo
+      { x: 24, y: 9, type: 'ammo', amount: 3, emoji: '؋', name: 'Ammo (3)' },
+      // Battery
+      { x: 25, y: 9, type: 'gem', amount: 1, glyph: '◈', name: 'Battery Cell' },
+      // === Collectibles Test Row 2 (y=10) — identical non-food items ===
+      // Key Ammo (Tier 1)
+      { x: 18, y: 10, type: 'key', keyType: 'RUSTY_KEY', tier: 1, subtype: 'ammo',
+        emoji: '🔑', name: 'Rusty Key' },
+      // Quest Key (Tier 3)
+      { x: 19, y: 10, type: 'key', keyType: 'RUNE_FRAGMENT', tier: 3, subtype: 'quest',
+        emoji: '💎', name: 'Rune Fragment', npcTarget: 'RUNESMITH' },
+      // Door Key (Tier 2) — crowbar/tool key
+      { x: 20, y: 10, type: 'key', keyType: 'INDUSTRIAL_PASS', tier: 2, subtype: 'door',
+        emoji: '🔧', name: 'Industrial Pass' },
+      // Item (random seed drop)
+      { x: 21, y: 10, type: 'item', emoji: '📦', name: 'Random Item' },
+      // Card (random seed drop)
+      { x: 22, y: 10, type: 'card', guaranteed: true },
+      // Currency
+      { x: 23, y: 10, type: 'currency', amount: 10 },
+      // Ammo
+      { x: 24, y: 10, type: 'ammo', amount: 3, emoji: '؋', name: 'Ammo (3)' },
+      // Battery
+      { x: 25, y: 10, type: 'gem', amount: 1, glyph: '◈', name: 'Battery Cell' }
     ],
 
-    currencies: [
-      { x: 15, y: 5, amount: 8 },
-      { x: 25, y: 5, amount: 8 },
-      { x: 15, y: 14, amount: 8 },
-      { x: 25, y: 14, amount: 8 }
-    ],
+    currencies: [],
     enemies: []
   };
 

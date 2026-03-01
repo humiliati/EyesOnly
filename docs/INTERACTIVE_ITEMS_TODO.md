@@ -495,6 +495,30 @@ fetch('data/item-definitions.json')
 - [ ] Animation prefab system for designers
 - [ ] Visual item placement editor tool
 
+### 7.3 Collectibles Playtest TODOs (Floor 0.1.1 — Tavern Basement)
+
+#### Chest Unlocking via Key Ammo (Tier 1)
+- [ ] Implement locked chest interactive item type that requires key ammo to open
+- [ ] Add locked chests to floor 0.1.1 test space that consume Tier 1 keys (RUSTY_KEY) on use
+- [ ] Chest should call `GAMESTATE.getKeyCount(keyType)` to check if player has required key ammo
+- [ ] On successful unlock: consume key via `GAMESTATE.consumeKey(keyType)`, play chest-open animation, drop chest loot
+- [ ] On failed unlock (no key): show tooltip "🔑 Requires Rusty Key" and leave chest locked
+- [ ] Verify debrief feed shows key_ammo count decrement on chest unlock
+
+#### Door Key (Tier 2) Validation
+- [ ] Place a locked gate/door in floor 0.1.1 test space that requires INDUSTRIAL_PASS to open
+- [ ] Validate Tier 2 key auto-equips to active slot on pickup (`GAMESTATE.setActiveItem`)
+- [ ] Validate equipped key unlocks compatible gate on interact (`EnvironmentalSynergy.canUnlock`)
+- [ ] Validate Tier 2 key persists in persistent inventory after use (NOT consumed)
+- [ ] Validate Tier 2 key survives player death
+
+#### Quest Key (Tier 3) Validation
+- [ ] Verify RUNE_FRAGMENT pickup stores in persistent inventory (`GAMESTATE.addToPersistent`)
+- [ ] Verify quest key does NOT auto-equip (unlike Tier 2)
+- [ ] Verify overhead animation shows red `❗` expression at 1500ms with `#FF4444`
+- [ ] Verify tooltip shows `❗ QUEST ITEM — Rune Fragment — Return to RUNESMITH`
+- [ ] Place test NPC (RUNESMITH) in floor 0.1.1 for turn-in validation (future)
+
 ---
 
 ## 8. Debug Commands
