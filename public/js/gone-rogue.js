@@ -5538,6 +5538,11 @@ _incrementPityTimers();
       // (ghost glyph fix: persistent ¢ glyph was hovering disembodied above player)
     }
 
+    // Auto-pickup any floor item at player position (ammo, gem/battery, cards, keys)
+    if (_items.find(function(i) { return i.x === x && i.y === y; })) {
+      _pickupItem();
+    }
+
     // Check for food item pickup (auto-pickup from interactive items)
     if (typeof InteractiveItems !== 'undefined') {
       var foodItem = InteractiveItems.getItemAt(x, y);
@@ -5769,6 +5774,12 @@ _incrementPityTimers();
 
       // PancakeStack removed for currency — OverheadAnimator "+N¢" is sufficient
       // (ghost glyph fix: persistent ¢ glyph was hovering disembodied above player)
+    }
+
+    // Auto-pickup any floor item at new position (ammo, gem/battery, cards, keys)
+    // _player.x/y is already updated to newX/newY at this point
+    if (_items.find(function(i) { return i.x === newX && i.y === newY; })) {
+      _pickupItem();
     }
 
     // Check for food item pickup (auto-pickup from interactive items)
@@ -6178,23 +6189,35 @@ _incrementPityTimers();
           }
         } catch (ePancake) {}
       } else if (item.type === 'key' && keyTier >= 2) {
-        // TIER 2+: Door/gate keys and quest items go to persistent inventory (safe across death)
+        // TIER 2+ (key_items): Door/gate keys and quest items go to persistent inventory
         if (GAMESTATE.addToPersistent) {
           result = GAMESTATE.addToPersistent(nonCardPayload);
         } else {
           result = GAMESTATE.addToLoose(nonCardPayload);
         }
+      } else if (item.type === 'key') {
+        // TIER 1 (key_ammo): Tracked as a resource counter visible in debrief feed.
+        // These consumable chest/lock keys do NOT go to inventory — they are counted
+        // like ammo and reported via DebriefFeedController.reportResourceChange.
+        result = { success: true, message: 'Key ammo counted' };
       } else {
-        // TIER 1 (ammo keys) and non-key items go to loose inventory (lost on death)
-        result = GAMESTATE.addToLoose(nonCardPayload);
-      }
 
       // KEY COUNTER: Increment structured key counter on successful pickup
       if (item.type === 'key' && result && result.success) {
         try {
           if (GAMESTATE.addKeyCount) {
             var countKeyType = nonCardPayload.keyType || item.keyType || item.itemId || 'UNKNOWN';
+            var oldKeyAmmoTotal = (keyTier <= 1 && GAMESTATE.getTotalKeyAmmo) ? GAMESTATE.getTotalKeyAmmo() : 0;
             GAMESTATE.addKeyCount(countKeyType, keyTier || 1);
+            // TIER 1 (key_ammo): report resource change to debrief feed
+            if (keyTier <= 1) {
+              try {
+                var newKeyAmmoTotal = GAMESTATE.getTotalKeyAmmo ? GAMESTATE.getTotalKeyAmmo() : oldKeyAmmoTotal + 1;
+                if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
+                  DebriefFeedController.reportResourceChange('key_ammo', oldKeyAmmoTotal, newKeyAmmoTotal, nonCardPayload.name || item.name || 'Key');
+                }
+              } catch (eKAReport) {}
+            }
           }
         } catch (eKeyCount) {}
       }
@@ -6252,7 +6275,19 @@ _incrementPityTimers();
             }
           } catch (eQuest) {}
         }
-        // TIER 1 (ammo): no special effects, just goes to loose inventory silently
+        // TIER 1 (ammo key / low-tier key): show overhead key emoji so player sees auto-pickup
+        else {
+          try {
+            if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+              OverheadAnimator.showGenericExpression(_player.x, _player.y, item.emoji || '🔑', 800, '#FFD700');
+            }
+            if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+              PancakeStack.addPancake(item.emoji || '🔑');
+            } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
+              PlayerStackManager.addPancake(item.emoji || '🔑');
+            }
+          } catch (eAnim) {}
+        }
       }
 
       if (!result.success) {
@@ -6277,21 +6312,32 @@ _incrementPityTimers();
     if (typeof TooltipSystem !== 'undefined') {
       if (item.card && (item.card.type === 'attack' || item.card.type === 'support')) {
         TooltipSystem.showAction('card-pickup', { name: item.card.name });
+      } else if (item.type === 'key' && keyTier <= 1) {
+        var nm = (nonCardPayload && nonCardPayload.name) ? nonCardPayload.name : (item.name || 'Key');
+        TooltipSystem.showAction('key-ammo-pickup', { name: nm });
+      } else if (item.type === 'key' && keyTier >= 2) {
+        var nm = (nonCardPayload && nonCardPayload.name) ? nonCardPayload.name : (item.name || 'Key');
+        TooltipSystem.showAction('key-item-pickup', { name: nm });
       } else {
         var nm = (item.card && item.card.name) ? item.card.name : (item.name || 'Item');
         TooltipSystem.showAction('item-pickup', { name: nm });
       }
     }
 
+    var pickupEmoji = (item.card && item.card.emoji) ? item.card.emoji : (item.emoji || (item.type === 'key' ? '🔑' : '📦'));
+    var pickupDisplayName = (item.card && item.card.name) ? item.card.name : (item.name || 'Item');
+    var pickupQuality = (item.card && item.card.qualityName) ? ' [' + item.card.qualityName + ']'
+      : (item.type === 'key' && keyTier <= 1 ? ' [KEY AMMO]' : (item.type === 'key' ? ' [KEY ITEM]' : ''));
+
     // MOK interjection for card/item pickup
     if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-      var pickupType = isCard ? 'Card' : 'Item';
+      var pickupType = isCard ? 'Card' : (item.type === 'key' && keyTier <= 1 ? 'Key Ammo' : (item.type === 'key' ? 'Key Item' : 'Item'));
       var locationInfo = (isCard && result && result.location) ? ' → ' + result.location.toUpperCase() : '';
-      UIControls.updateMokInterjection(pickupType + ': ' + item.card.name + locationInfo);
+      UIControls.updateMokInterjection(pickupType + ': ' + pickupDisplayName + locationInfo);
     }
 
     return {
-      lines: ['PICKED UP: ' + item.card.emoji + ' ' + item.card.name + ' [' + item.card.qualityName + ']', ''].concat(_renderGrid()),
+      lines: ['PICKED UP: ' + pickupEmoji + ' ' + pickupDisplayName + pickupQuality, ''].concat(_renderGrid()),
       prompt: getPrompt(),
       stayActive: true
     };

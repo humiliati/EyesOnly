@@ -1,11 +1,14 @@
-# Collectibles Dual-Render Bug Fix
+# Collectibles Bug Fix Log
 
 ## Summary
 
-Fixed two critical bugs in the collectibles system that caused visual artifacts:
+Fixed five critical bugs in the collectibles system across two phases:
 
 1. **Bug #1: Dual Currency Animation** - Yellow "+3¢" animation shown alongside lingering green "¢" glyph
-2. **Bug #2: Food/Interactive Items Not Removed** - Items remain visible on map after collection
+2. **Bug #2: Food/Interactive Items Not Removed** - Items remain visible on map after collection animation
+3. **Bug #3: Food Tap-Handler Persistence** - Tapping a food item triggered `interact` instead of movement; item never removed from map
+4. **Bug #4: Ammo Drops Rendered Cyan** - Ammo floor drops displayed with `#00FFFF` (cyan) instead of `#DA70D6` (magenta per `RESOURCE_COLOR_SYSTEM.md`)
+5. **Bug #5: Floor Items Not Auto-Collected** - Ammo, gems/batteries, cards, and keys required manual `pickup` command; incompatible with keyboard-hidden mobile UI
 
 ## Root Cause Analysis
 
@@ -104,115 +107,292 @@ interactiveItems.forEach(function(item) {
 - ✅ No duplicate food emoji glyphs
 - ✅ Collection properly removes item from view
 
+---
+
+### Bug #3: Food Tap-Handler Persistence
+
+**Problem**: On the canvas grid (mobile), tapping a food item within interaction range triggered `GoneRogue.process('interact')` instead of initiating movement toward the tile. `_handleInteraction` marked the item as interacted but never removed it from the world. Since the player never physically stepped onto the tile, `_checkPlayerInteractions` never fired — the animation played and tooltip appeared but the food item remained on the map.
+
+**Location**: `/public/js/gone-rogue-mobile.js` — `_handleTapOrClick` handler
+
+**Before**:
+```javascript
+// Check if tapping interactive item
+if (typeof InteractiveItems !== 'undefined') {
+  var item = InteractiveItems.getItemAt(x, y);
+  if (item && InteractiveItems.canInteractWith(player.x, player.y, item)) {
+    GoneRogue.process('interact');  // ← Intercepts ALL interactive items, including food
+    _lastMovementTime = now;
+    return;
+  }
+}
+```
+
+**After** (Fixed in commit afcf229):
+```javascript
+// Check if tapping interactive item
+if (typeof InteractiveItems !== 'undefined') {
+  var item = InteractiveItems.getItemAt(x, y);
+  if (item && InteractiveItems.canInteractWith(player.x, player.y, item)) {
+    // Auto-pickup items (food and other autoPickup collectibles) are collected by
+    // walking over them — let movement proceed
+    if (!item.autoPickup) {
+      GoneRogue.process('interact');
+      _lastMovementTime = now;
+      return;
+    }
+  }
+}
+```
+
+**Result**:
+- ✅ Tapping a food tile initiates movement to that tile
+- ✅ `_checkPlayerInteractions` fires when player arrives, removes item and plays animation
+- ✅ Non-autoPickup interactive items (books, signs, terminals) still use `interact` command
+
+---
+
+### Bug #4: Ammo Drops Rendered Cyan
+
+**Problem**: Ammo floor drops from breakables rendered with `#00FFFF` (cyan) instead of the correct `#DA70D6` (magenta/orchid) defined in `RESOURCE_COLOR_SYSTEM.md`. The `WorldItems.getAllForRendering()` entity loop had no branch for `type === 'ammo'`, so ammo fell into the generic `else` case alongside cards and other items.
+
+**Location**: `/public/js/gone-rogue-mobile.js` — `_renderWithCanvas` entity loop and WorldItems-unavailable fallback
+
+**Before**:
+```javascript
+} else if (item._wt === 'item') {
+  if (item.type === 'gem') {
+    char = item.glyph || '◈';
+    color = '#00FFA6';
+  } else {
+    char = item.glyph || item.emoji || '💎';
+    color = '#00FFFF';  // ← Ammo falls here, gets cyan
+  }
+}
+// Fallback path:
+var color = item.type === 'gem' ? '#00FFA6' : '#00FFFF';  // ← Same problem
+```
+
+**After** (Fixed in commit afcf229):
+```javascript
+} else if (item._wt === 'item') {
+  if (item.type === 'gem') {
+    char = item.glyph || '◈';
+    color = '#00FFA6';
+  } else if (item.type === 'ammo') {
+    char = item.glyph || item.emoji || '؋';
+    color = '#DA70D6';  // ← Magenta per RESOURCE_COLOR_SYSTEM.md
+  } else {
+    char = item.glyph || item.emoji || '💎';
+    color = '#00FFFF';
+  }
+}
+// Fallback path:
+var color = item.type === 'gem' ? '#00FFA6' : (item.type === 'ammo' ? '#DA70D6' : '#00FFFF');
+```
+
+**Result**:
+- ✅ Ammo drops show correct magenta color `#DA70D6`
+- ✅ Gem/battery still shows cyan-green `#00FFA6`
+- ✅ Both primary (WorldItems) and fallback rendering paths corrected
+
+---
+
+### Bug #5: Floor Items Not Auto-Collected on Walkover
+
+**Problem**: In the keyboard-hidden mobile UI of gone-rogue, all collectibles must auto-collect when the player walks or taps over them. Ammo, gem/battery, card, and key floor drops were only collectible by typing `pickup` — a command unavailable in the mobile interface. Food was handled, but other floor item types were ignored in both movement code paths.
+
+Additionally, `_pickupItem()` crashed for key items because the final MOK interjection and `return` statement blindly accessed `item.card.name`, `item.card.emoji`, and `item.card.qualityName` — all `undefined` for key items which carry no `.card` wrapper.
+
+**Location**: `/public/js/gone-rogue.js` — `_checkPlayerInteractions`, `_movePlayer`, `_pickupItem`
+
+**Before** (in both `_checkPlayerInteractions` and `_movePlayer`):
+```javascript
+// Only ammo had any auto-pickup logic, ~25 lines duplicated in two places:
+var ammoFloorItem = _items.find(function(i) {
+  return i.x === x && i.y === y && i.type === 'ammo';
+});
+if (ammoFloorItem) {
+  GAMESTATE.addAmmo(ammoFloorItem.amount);
+  // ... 20+ lines of animation/tooltip/pancake calls
+}
+// Cards, gems, keys: NO auto-pickup at all
+```
+
+**Before** (`_pickupItem` terminal return — crashes for keys):
+```javascript
+UIControls.updateMokInterjection(pickupType + ': ' + item.card.name + locationInfo);
+// ...
+return { lines: ['PICKED UP: ' + item.card.emoji + ' ' + item.card.name +
+  ' [' + item.card.qualityName + ']', ...] };
+```
+
+**After** (Fixed in commit 611ccc4):
+```javascript
+// _checkPlayerInteractions — covers ALL floor item types in one line:
+if (_items.find(function(i) { return i.x === x && i.y === y; })) {
+  _pickupItem();
+}
+
+// _movePlayer — same pattern:
+if (_items.find(function(i) { return i.x === newX && i.y === newY; })) {
+  _pickupItem();
+}
+
+// _pickupItem terminal return — safe for all item types:
+var pickupEmoji = (item.card && item.card.emoji)
+  ? item.card.emoji
+  : (item.emoji || (item.type === 'key' ? '🔑' : '📦'));
+var pickupDisplayName = (item.card && item.card.name)
+  ? item.card.name
+  : (item.name || 'Item');
+var pickupQuality = (item.card && item.card.qualityName)
+  ? ' [' + item.card.qualityName + ']'
+  : '';
+UIControls.updateMokInterjection(pickupType + ': ' + pickupDisplayName + locationInfo);
+return { lines: ['PICKED UP: ' + pickupEmoji + ' ' + pickupDisplayName + pickupQuality, ...] };
+```
+
+**Result**:
+- ✅ All floor items (ammo, gem/battery, cards, keys) auto-collect on walkover
+- ✅ Both smooth movement (`_checkPlayerInteractions`) and command movement (`_movePlayer`) paths handled
+- ✅ No crash when picking up key items
+- ✅ Tier-1 keys now show overhead key emoji + pancake stacker entry on auto-pickup
+- ✅ Battery/gem animation uses hardcoded `◈` cyan symbol throughout (not `item.emoji`)
+
+### Bug #6: Key Tier Routing — key_ammo to Debrief Feed, key_items to Inventory
+
+**Problem**: All key tiers (Tier 1 consumable chest keys and Tier 2 persistent door keys) were treated identically in `_pickupItem()`. Tier 1 keys were sent to loose inventory instead of being tracked as a resource counter in the debrief feed. Tooltips and MOK interjection showed the generic `'📦 PICKED UP {name}'` message with no indication of key type. Players had no way to distinguish "key ammo I'll consume opening chests" from "key item I need to equip to unlock a door."
+
+**Location**: `/public/js/gone-rogue.js` — `_pickupItem()` inventory routing; `tooltip-system.js` — `showAction()`
+
+**Before**:
+```javascript
+// ALL non-card, non-tier-2-key items went to loose inventory:
+} else {
+  result = GAMESTATE.addToLoose(nonCardPayload);  // Tier 1 keys incorrectly stored here
+}
+
+// Single generic tooltip for all non-card pickups:
+TooltipSystem.showAction('item-pickup', { name: nm });  // → '📦 PICKED UP Rusty Key'
+
+// Generic MOK interjection:
+UIControls.updateMokInterjection('Item: ' + pickupDisplayName);
+
+// Generic quality label (empty for keys):
+var pickupQuality = ''; // no label at all
+```
+
+**After** (Fixed):
+```javascript
+// Tier 1 keys (key_ammo) → resource counter + debrief feed report:
+} else if (item.type === 'key') {
+  result = { success: true, message: 'Key ammo counted' };
+  // addKeyCount + reportResourceChange happen in KEY COUNTER block below
+}
+
+// In KEY COUNTER block — Tier 1 additionally reports to debrief feed:
+var oldKeyAmmoTotal = GAMESTATE.getTotalKeyAmmo();
+GAMESTATE.addKeyCount(countKeyType, 1);
+var newKeyAmmoTotal = GAMESTATE.getTotalKeyAmmo();
+DebriefFeedController.reportResourceChange('key_ammo', oldKeyAmmoTotal, newKeyAmmoTotal, keyName);
+
+// Specific tooltips:
+TooltipSystem.showAction('key-ammo-pickup', { name: nm });  // → '🔑 KEY AMMO: Rusty Key'
+TooltipSystem.showAction('key-item-pickup', { name: nm });  // → '🔑 KEY ITEM: Security Keycard → INVENTORY'
+
+// Specific MOK interjections:
+UIControls.updateMokInterjection('Key Ammo: ' + pickupDisplayName);
+UIControls.updateMokInterjection('Key Item: ' + pickupDisplayName);
+
+// Specific quality labels:
+var pickupQuality = item.type === 'key' && keyTier <= 1 ? ' [KEY AMMO]' : ' [KEY ITEM]';
+```
+
+**Result**:
+- ✅ Tier 1 keys (key_ammo) tracked as resource counter, NOT in loose inventory
+- ✅ Debrief feed ammo row shows `🔑x{N}` in summary and per-key-type counts in expanded panel
+- ✅ `reportResourceChange('key_ammo', ...)` fires on every Tier 1 key pickup → MOK feed update
+- ✅ Tier 1 tooltip: `🔑 KEY AMMO: Rusty Key`
+- ✅ Tier 2 tooltip: `🔑 KEY ITEM: Security Keycard → INVENTORY`
+- ✅ `pickupQuality` shows `[KEY AMMO]` or `[KEY ITEM]` in pickup log line
+- ✅ MOK interjection shows `Key Ammo:` or `Key Item:` prefix
+
+---
+
 ## Changes Made
+
+### File: `/public/js/gone-rogue.js`
+
+- Tap handler: `autoPickup` items bypass `process('interact')`, allowing movement to proceed
+- `WorldItems.getAllForRendering()` loop: added `type === 'ammo'` branch with `color = '#DA70D6'`
+- Fallback rendering path: corrected ammo color from `#00FFFF` to `#DA70D6`
+- `_checkPlayerInteractions`: replaced ammo-specific 25-line block with `_pickupItem()` call
+- `_movePlayer`: same replacement
+- `_pickupItem` inventory routing: Tier 1 keys (key_ammo) → resource-only path (no `addToLoose`)
+- `_pickupItem` KEY COUNTER block: `getTotalKeyAmmo()` before/after `addKeyCount()`; calls `reportResourceChange('key_ammo', ...)` for Tier 1
+- `_pickupItem` tooltip: uses `key-ammo-pickup` (Tier 1), `key-item-pickup` (Tier 2+), `item-pickup` (non-key)
+- `_pickupItem` MOK interjection: `Key Ammo: {name}` / `Key Item: {name}` instead of generic `Item:`
+- `_pickupItem` `pickupQuality`: shows `[KEY AMMO]` (Tier 1) or `[KEY ITEM]` (Tier 2)
+- `_pickupItem`: guarded `item.card.*` accesses with safe locals; key emoji fallback `'🔑'`; tier-1 key overhead animation added
 
 ### File: `/public/js/gone-rogue-mobile.js`
 
-**Lines 726-727**: Added check to skip collected currencies
-```javascript
-if (currency.collected) return;
-```
+- Tap handler: `autoPickup` items bypass `process('interact')`, allowing movement to proceed
+- `WorldItems.getAllForRendering()` loop: added `type === 'ammo'` branch with `color = '#DA70D6'`
+- Fallback rendering path: corrected ammo color from `#00FFFF` to `#DA70D6`
 
-**Lines 740-741**: Added position tracking object for deduplication
-```javascript
-var itemPositions = {};
-```
+### File: `/public/js/tooltip-system.js`
 
-**Lines 749-751**: Added deduplication check for items
-```javascript
-var posKey = vx + ',' + vy;
-if (itemPositions[posKey]) return;
-itemPositions[posKey] = true;
-```
+- Added `key-ammo-pickup` action: `'🔑 KEY AMMO: {name}'`
+- Added `key-item-pickup` action: `'🔑 KEY ITEM: {name} → INVENTORY'`
 
-**Lines 802-804**: Added deduplication check for interactive items
-```javascript
-var posKey = vx + ',' + vy;
-if (itemPositions[posKey]) return;
-itemPositions[posKey] = true;
-```
+### File: `/public/js/gamestate.js`
 
-### File: `/public/tests/test-collectibles-dual-render-bug.html`
+- Added `getTotalKeyAmmo()` — sums all Tier 1 key counts; used for before/after values in `reportResourceChange`
 
-Created new visual test file that demonstrates:
-- Bug behavior (broken version)
-- Fixed behavior (corrected version)
-- Side-by-side comparison
-- Technical explanation with code snippets
+### File: `/public/js/debrief-feed-controller.js`
+
+- Ammo row summary: appends `🔑x{N}` when any Tier 1 key_ammo is held
+- Expanded ammo panel: human-readable labels (`🔑 KEY AMMO Rusty:N`, `🗝️ KEY AMMO Bronze:N`, `💳 KEY ITEM Keycard:N`, `🏷️ KEY ITEM Mall:N`) instead of cryptic `ChstKyLq`/`TagKy1`
+
+---
 
 ## Testing
 
-### Visual Test
+### Automated Tests
 
-Open `/public/tests/test-collectibles-dual-render-bug.html` in a browser:
+Run: `node public/tests/verify-collectibles-fix.js`
+Run: `node public/tests/verify-collectibles-improvements.js`
 
-1. Click "🐛 Run Bug Demo (Broken)" to see the original bugs
-2. Move player over currency (right) and food (up)
-3. Observe the dual rendering artifacts
-4. Click "✅ Run Fixed Version" to see corrected behavior
-5. Move player over collectibles again
-6. Verify items disappear immediately after collection
+Results: **19/19 tests passing** ✅
 
-### Manual Testing in Game
+### Manual Testing Checklist
+- [ ] Walk over food item → item disappears, LOOT animation plays, HP/fatigue modified
+- [ ] Tap food item tile → player moves to tile, food auto-collects (does not `interact`)
+- [ ] Walk over ammo drop → item disappears, `؋` animation plays with magenta color
+- [ ] Walk over battery cell → item disappears, `◈` animation plays with cyan color
+- [ ] Walk over card drop → item disappears, card added to hand
+- [ ] Walk over Rusty Key (Tier 1) → tooltip shows `🔑 KEY AMMO: Rusty Key`, quality label `[KEY AMMO]`, debrief `🔑x1`
+- [ ] Walk over Bronze Key (Tier 1) → tooltip shows `🔑 KEY AMMO: Bronze Key`, debrief count increments
+- [ ] Tier 1 key does NOT appear in loose or persistent inventory
+- [ ] Walk over Security Keycard (Tier 2) → tooltip shows `🔑 KEY ITEM: Security Keycard → INVENTORY`, key auto-equips
+- [ ] Tier 2 key appears in persistent inventory (survives death)
+- [ ] Walk over quest key (Tier 3) → shows `❗ QUEST ITEM` tooltip with NPC target
+- [ ] Breakable destroyed → ammo drop appears in magenta (not cyan)
 
-1. Open `/public/index.html`
-2. Start a new game
-3. Collect currency drops
-   - **Expected**: Yellow "+X¢" animation appears, currency disappears immediately
-   - **Not expected**: Lingering "¢" glyph on map
-4. Collect food items
-   - **Expected**: Food emoji disappears after collection
-   - **Not expected**: Duplicate food emoji or lingering item
+---
 
-## Performance Impact
+## Architecture Note: WorldItems Phase 1 ✅ Done
 
-**Minimal**:
-- Added one `if` check per currency (< 50 currencies typically on screen)
-- Added position tracking object with ~10-50 entries
-- Time complexity: O(n) for both fixes
-- Space complexity: O(n) for itemPositions object
+The `WorldItems` singleton is the single source of truth for all floor collectibles.  Items removed via `WorldItems.filterFloorItems()` immediately disappear from both the `_items` array and the `getAllForRendering()` output — no deduplication hacks needed.
 
-## Regression Risk
-
-**Low**:
-- Changes are minimal and surgical
-- Only affects rendering logic, not collection logic
-- Deduplication is position-based, preserving distinct items at different positions
-- Overhead animation system (OverheadAnimator) is completely untouched
-- Collection logic in gone-rogue.js remains unchanged
-
-## Related Systems
-
-These fixes interact with:
-- ✅ `OverheadAnimator` (overhead-animator.js) - Still works correctly
-- ✅ `InteractiveItems` (interactive-items.js) - Still renders correctly
-- ✅ Currency collection logic (gone-rogue.js L5500-5539, L5737-5778)
-- ✅ Food pickup logic (gone-rogue.js L5541-5585, L5780-5824)
-- ✅ Canvas renderer (gone-rogue-canvas.js) - Receives filtered entities
-
-## Future Improvements
-
-For a more comprehensive solution (as outlined in the original issue), consider:
-
-1. **Phase 1**: Create unified `WorldItems` manager
-   - Single source of truth for all collectibles
-   - Eliminates need for deduplication logic
-   - Items removed from one array = removed everywhere
-
-2. **Phase 2**: Consolidate animation to OverheadAnimator only
-   - Remove CSS class-based animations
-   - Single animation call per pickup
-
-3. **Phase 3**: Restrict emoji to canonical item types
-   - Food, keys, card drops use emoji
-   - Currency, ammo, batteries use ASCII glyphs
-
-4. **Phase 4**: Add regression tests
-   - Automated tests for dual-render detection
-   - CI/CD integration
+---
 
 ## References
 
-- Original Issue: #[issue-number] "Collectibles System Refactor: Detailed Analysis and Roadmap to Fix Recurring Bugs"
-- Commit: f7858e7 "Fix collectibles dual-render bugs: filter collected currencies and deduplicate items"
+- Original Issue: Collectibles System Refactor — Detailed Analysis and Roadmap
+- Commit afcf229: Fix food persistence and ammo cyan color/non-interactive collectible bugs
+- Commit 611ccc4: Unify all floor collectibles to auto-pickup on walkover; fix `_pickupItem` crash for keys
+- Commit d41e807: Implement key_ammo/key_item tier distinction — tooltip, debrief feed routing, inventory separation
 - Test File: `/public/tests/test-collectibles-dual-render-bug.html`

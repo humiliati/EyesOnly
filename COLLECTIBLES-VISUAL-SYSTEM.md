@@ -13,24 +13,35 @@ These collectible types use emoji for clear, recognizable visual representation:
 1. **Food Items** (🍎 🍞 🍖 🍕 🍰 etc.)
    - All food items use their corresponding emoji
    - Examples: Apple 🍎, Bread 🍞, Meat 🍖
-   - Database: `expression-database.js` FOOD_ITEMS
+   - Database: `food-database.js` FOOD_ITEMS (also referenced via `expression-database.js`)
    - Rendered via: InteractiveItems system
+   - **Auto-pickup**: Food items with `autoPickup: true` are collected automatically when the player walks onto the tile — no `interact` command needed
 
-2. **Keys** (🔑 🗝️)
-   - Standard keys: 🔑
-   - Special/rare keys: 🗝️
-   - Used for unlocking doors and chests
-   - Color: #FFD700 (gold)
+2. **Key Items — Tier 2: Gate/Door Keys** (💳 🔐 🏷️ 🔧 💾 🎫 🔑 🗝️)
+   - Persistent door and gate keys that survive death
+   - Examples: Security Keycard 💳, Master Key 🔐, Mall Security Tag 🏷️, Industrial Pass 🔧, Thumb Drive 💾, Access Card 🎫
+   - Auto-equip to active slot on pickup
+   - **Storage**: Persistent inventory (`GAMESTATE.addToPersistent()`)
+   - **Tooltip**: `🔑 KEY ITEM: {name} → INVENTORY`
+   - **Quality label**: `[KEY ITEM]`
+   - Color: `#FFD700` (gold)
 
-3. **Key Ammo** (⚡ 🔋 specific ammo types)
-   - Special ammunition types may use emoji if thematically appropriate
-   - Example: energy ammo might use ⚡
-   - **Note**: This refers to special ammo types, NOT battery recharge items
+3. **Key Ammo — Tier 1: Consumable Chest/Lock Keys** (🔑 🗝️)
+   - Consumable keys for chests and simple locks; used in thieving mechanics
+   - Examples: Rusty Key 🔑 (KEY_002), Bronze Key 🗝️ (KEY_004)
+   - `consumeOnUse: true` — consumed when a chest/lock is opened
+   - **Storage**: Resource counter in debrief feed (`GAMESTATE.addKeyCount()` + `getTotalKeyAmmo()`), NOT inventory
+   - **Tooltip**: `🔑 KEY AMMO: {name}`
+   - **Quality label**: `[KEY AMMO]`
+   - **Debrief feed**: Ammo row summary shows `🔑x{N}`; expanded panel shows `🔑 KEY AMMO Rusty:N` / `🗝️ KEY AMMO Bronze:N`
+   - Triggers `DebriefFeedController.reportResourceChange('key_ammo', old, new, keyName)`
 
-4. **Items/Equipment** (💎 specific items)
-   - Special items and equipment may use emoji
-   - **Note**: Battery cells (◈) are NOT emoji - they are cyan ASCII glyphs
-   - Example: Other gems/crystals may use 💎 for decorative purposes
+4. **Quest Keys — Tier 3** (❗ 🔨 💎)
+   - Quest items for NPC turn-in (reward: card upgrade)
+   - Examples: Blacksmith's Hammer 🔨, Rune Fragment 💎
+   - **Storage**: Persistent inventory (`GAMESTATE.addToPersistent()`)
+   - **Tooltip**: `❗ QUEST ITEM — {name} — Return to {NPC}` (via `TooltipSystem.show()`, 3500ms)
+   - No auto-equip; no debrief resource row
 
 5. **Card Drops** (🃏 🎴)
    - Playing cards and special cards
@@ -56,6 +67,7 @@ These collectible types use ASCII characters with specific resource colors for e
    - Background: `#2a0a2a` (dark magenta)
    - Dropped from breakables with 60% chance
    - Type: `'ammo'`, adds to ammo counter via `GAMESTATE.addAmmo()`
+   - **Auto-pickup**: Collected automatically when player walks onto tile via `_pickupItem()`
 
 3. **Battery/Energy** (◈ battery cell - cyan ASCII glyph)
    - **Glyph**: `◈` (U+25C8, white diamond containing black small diamond)
@@ -68,6 +80,8 @@ These collectible types use ASCII characters with specific resource colors for e
    - **Visual**: ASCII monochrome (NO emoji) with cyan color
    - **Name**: "Battery Cell" (was "Energy Gem")
    - **Animation**: Triggers debrief feed battery signal recharge pulse ((( )))
+   - **Overhead animation**: Always uses hardcoded `◈` cyan symbol — never `item.emoji` or `item.glyph`
+   - **Auto-pickup**: Collected automatically when player walks onto tile via `_pickupItem()`
    - **Important**: Battery is a separate resource from Ammo
    - Battery is consumed by tech cards (EMP Blast, System Crash, Chain Lightning)
    - Ammo is consumed by weapon attacks
@@ -138,10 +152,11 @@ RESOURCE_COLORS = {
 
 ### Ammo (ASCII Monochrome)
 - **File**: `public/js/gone-rogue-mobile.js`
-- **Rendering**: Lines 594-602
+- **Rendering**: `WorldItems.getAllForRendering()` loop — `type === 'ammo'` branch
 - **Glyph**: `؋`
 - **Color**: `#DA70D6`
 - **Background**: `#2a0a2a`
+- **Auto-pickup**: `_checkPlayerInteractions` and `_movePlayer` call `_pickupItem()` on any floor item
 
 ### Battery Recharge / Battery Cells (ASCII Monochrome)
 - **File**: `public/js/gone-rogue.js`
@@ -156,20 +171,69 @@ RESOURCE_COLORS = {
 - **Animation**: Battery signal pulse ((( ))) in debrief feed
 
 ### Food (Emoji)
-- **File**: `public/js/expression-database.js`
-- **Database**: FOOD_ITEMS (lines 14-80)
-- **System**: InteractiveItems module
+- **File**: `public/js/food-database.js`
+- **Database**: FOOD_ITEMS
+- **System**: InteractiveItems module — items with `autoPickup: true`
+- **Auto-pickup**: Player walking onto tile triggers `_checkPlayerInteractions` → food removed + LOOT animation
+- **Tap behavior**: Tapping a food tile initiates movement (does NOT call `interact`); item collected on arrival
 - **Examples**:
   - Apple: 🍎
   - Pineapple: 🍍
   - Bread: 🍞
   - Meat: 🍖
 
-### Keys (Emoji)
-- **Spawned by**: `_spawnKey()` in gone-rogue.js (line 4855)
-- **Standard key**: 🔑
-- **Rare key**: 🗝️
-- **Color**: `#FFD700` (gold)
+### Key Ammo — Tier 1 (Consumable Chest Keys)
+- **Defined in**: `public/js/environmental-synergy.js` — `KEY_ITEMS.RUSTY_KEY`, `KEY_ITEMS.BRONZE_KEY`
+- **Tier**: 1 (`consumeOnUse: true`)
+- **Key IDs**: `KEY_002` (Rusty Key 🔑), `KEY_004` (Bronze Key 🗝️)
+- **Compatible gates**: `WOODEN_GATE`, `OLD_DOOR`, `BRONZE_GATE`, `MUSEUM_DOOR`
+- **Storage**: `GAMESTATE.addKeyCount(keyType, 1)` — resource counter, NOT inventory
+- **Debrief feed**: `DebriefFeedController.reportResourceChange('key_ammo', oldTotal, newTotal, keyName)` on every pickup
+- **Tooltip action**: `TooltipSystem.showAction('key-ammo-pickup', { name: keyName })`
+- **MOK interjection**: `Key Ammo: {name}`
+- **Quality label**: `[KEY AMMO]`
+- **Overhead animation**: Gold expression `item.emoji || '🔑'` via `OverheadAnimator.showGenericExpression` (800ms)
+- **PancakeStack**: Adds `item.emoji || '🔑'`
+
+### Key Items — Tier 2 (Persistent Door/Gate Keys)
+- **Defined in**: `public/js/environmental-synergy.js` — `KEY_ITEMS.KEYCARD`, `KEY_ITEMS.MASTER_KEY`, etc.
+- **Tier**: 2 (`consumeOnUse: false`)
+- **Registry IDs**: `ITM-011` through `ITM-016`
+- **Compatible gates**: `SECURITY_DOOR`, `LAB_ENTRANCE`, `FLOOR_ELEVATOR`, `MALL_GATE`, `FACTORY_GATE`, etc.
+- **Storage**: `GAMESTATE.addToPersistent(nonCardPayload)` — persistent inventory, survives death
+- **Auto-equip**: `GAMESTATE.setActiveItem()` / `UIControls.setActiveItem()` on pickup
+- **Tooltip action**: `TooltipSystem.showAction('key-item-pickup', { name: keyName })`
+- **Tooltip show**: `TooltipSystem.show('🔑 KEY EQUIPPED — Tap header icon near the gate!', 2500)`
+- **MOK interjection**: `Key Item: {name}`
+- **Quality label**: `[KEY ITEM]`
+- **Overhead animation**: Gold expression `item.emoji || '🔑'` via `OverheadAnimator.showGenericExpression` (1200ms)
+- **PancakeStack**: Adds `item.emoji || '🔑'`
+
+### Quest Keys — Tier 3 (NPC Turn-In)
+- **Defined in**: `public/js/environmental-synergy.js` — `KEY_ITEMS.BLACKSMITH_HAMMER`, `KEY_ITEMS.RUNE_FRAGMENT`
+- **Tier**: 3 (`consumeOnUse: true` for turn-in)
+- **Registry IDs**: `ITM-030`, `ITM-031`
+- **Storage**: `GAMESTATE.addToPersistent(nonCardPayload)` — persistent inventory
+- **Tooltip show**: `TooltipSystem.show('❗ QUEST ITEM — {name} — Return to {NPC}', 3500)`
+- **MOK interjection**: `Key Item: {name}` (same as Tier 2, no special branch)
+- **Overhead animation**: Red `❗` via `OverheadAnimator.showGenericExpression` (1500ms, `#FF4444`)
+
+## Universal Auto-Pickup Doctrine
+
+**All collectibles in gone-rogue are automatically collected when the player walks, runs, taps, drags, or otherwise moves onto their tile. No typing is ever required.**
+
+| Collectible | Type | Auto-Pickup Path |
+|-------------|------|-----------------|
+| Currency (¢) | `currency` | `_checkPlayerInteractions` / `_movePlayer` direct logic |
+| Ammo (؋) | `item` / `ammo` | `_checkPlayerInteractions` / `_movePlayer` → `_pickupItem()` |
+| Battery (◈) | `item` / `gem` | `_checkPlayerInteractions` / `_movePlayer` → `_pickupItem()` |
+| Card (🃏) | `item` / card | `_checkPlayerInteractions` / `_movePlayer` → `_pickupItem()` |
+| Key Ammo 🔑 (Tier 1) | `item` / `key` / tier 1 | `_checkPlayerInteractions` / `_movePlayer` → `_pickupItem()` → resource counter + debrief feed |
+| Key Item 💳 (Tier 2) | `item` / `key` / tier 2 | `_checkPlayerInteractions` / `_movePlayer` → `_pickupItem()` → persistent inventory |
+| Quest Key ❗ (Tier 3) | `item` / `key` / tier 3 | `_checkPlayerInteractions` / `_movePlayer` → `_pickupItem()` → persistent inventory |
+| Food (🍎) | `interactive` / `FOOD` | `_checkPlayerInteractions` / `_movePlayer` → food auto-pickup block |
+
+The `_pickupItem()` function is the single implementation for all non-currency, non-food floor items. Both movement code paths (`_checkPlayerInteractions` for smooth movement and `_movePlayer` for command movement) call it whenever any floor item is present at the player's position.
 
 ## Animation System
 
@@ -283,12 +347,13 @@ if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
 }
 ```
 
-#### Keys (Emoji)
+#### Keys (Emoji) — Tier 1 & 2
 ```javascript
-// gone-rogue.js:6216-6219
-if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-  PlayerStackManager.addPancake(item.emoji || '🔑');
+// gone-rogue.js — Tier 1 (key_ammo) and Tier 2 (key_item) both add to PancakeStack:
+if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+  PancakeStack.addPancake(item.emoji || '🔑');
 }
+// Tier 2 additionally auto-equips to active slot; Tier 1 additionally calls reportResourceChange
 ```
 
 #### Card Drops (Emoji)
@@ -391,7 +456,7 @@ var baseY = screenY - (cellSize * 2.4);  // Base position above player
 To prevent accidental creation of duplicate animation systems:
 
 1. **Use PancakeStack for**: Collectible items that need persistent tracking (4s lifetime)
-   - Currency, ammo, battery, food, keys, cards
+   - Currency, weapon ammo, battery, food, key_ammo, key_items, cards
    - Items that should appear in visual inventory above player head
 
 2. **Use OverheadAnimator for**: All other temporary overhead feedback (<2s lifetime)
@@ -417,14 +482,26 @@ Run: `public/tests/test-collectibles-dual-render-bug.html`
 Run: `node public/tests/verify-collectibles-fix.js`
 
 ### Manual Testing Checklist
-- [ ] Currency shows yellow ¢ (not green, not emoji)
-- [ ] Currency pickup shows "+X¢" overhead animation
-- [ ] No lingering currency glyphs after pickup
-- [ ] Ammo shows magenta ؋
-- [ ] Food items show correct emoji
-- [ ] Keys show 🔑 or 🗝️
-- [ ] Multiple pickups stack tightly above player
-- [ ] No alpha/twinkle effects on ground items
+- [x] Currency shows yellow ¢ (not green, not emoji)
+- [x] Currency pickup shows "+X¢" overhead animation
+- [x] No lingering currency glyphs after pickup
+- [x] Ammo shows magenta ؋ (not cyan)
+- [x] Ammo auto-collects when player walks over it
+- [x] Battery animates with ◈ cyan symbol (not item emoji)
+- [x] Battery auto-collects when player walks over it
+- [x] Food items show correct emoji and disappear on walkover
+- [x] Tapping a food tile moves player to tile (does not trigger `interact`)
+- [x] Card drops auto-collect when player walks over them
+- [x] Key Ammo (Tier 1): tooltip shows `🔑 KEY AMMO: {name}`, quality label `[KEY AMMO]`
+- [x] Key Ammo (Tier 1): debrief ammo row summary shows `🔑x{N}`
+- [x] Key Ammo (Tier 1): `reportResourceChange('key_ammo', ...)` fires on pickup
+- [x] Key Ammo (Tier 1): does NOT appear in loose or persistent inventory
+- [x] Key Item (Tier 2): tooltip shows `🔑 KEY ITEM: {name} → INVENTORY`, quality label `[KEY ITEM]`
+- [x] Key Item (Tier 2): auto-equips to active slot + shows equipped tooltip
+- [x] Key Item (Tier 2): appears in persistent inventory (survives death)
+- [x] Quest Key (Tier 3): shows `❗ QUEST ITEM — {name} — Return to {NPC}` tooltip (3500ms)
+- [x] Multiple pickups stack tightly above player
+- [x] No alpha/twinkle effects on ground items
 
 ## Migration Guide
 

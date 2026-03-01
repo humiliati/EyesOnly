@@ -296,6 +296,14 @@ const TooltipSystem = (function() {
         var itemName = (data && data.name) || 'ITEM';
         message = '📦 PICKED UP ' + itemName;
         break;
+      case 'key-ammo-pickup':
+        var keyAmmoName = (data && data.name) || 'KEY';
+        message = '🔑 KEY AMMO: ' + keyAmmoName;
+        break;
+      case 'key-item-pickup':
+        var keyItemName = (data && data.name) || 'KEY';
+        message = '🔑 KEY ITEM: ' + keyItemName + ' → INVENTORY';
+        break;
       case 'card-pickup':
         var cardName = (data && data.name) || 'CARD';
         message = '🃏 PICKED UP ' + cardName;

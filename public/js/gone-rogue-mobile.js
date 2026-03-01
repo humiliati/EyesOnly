@@ -736,6 +736,9 @@ const GoneRogueMobile = (function () {
           if (item.type === 'gem') {
             char = item.glyph || '◈';
             color = '#00FFA6'; // Battery cyan from RESOURCE_COLORS
+          } else if (item.type === 'ammo') {
+            char = item.glyph || item.emoji || '؋';
+            color = '#DA70D6'; // Magenta per RESOURCE_COLOR_SYSTEM.md
           } else {
             char = item.glyph || item.emoji || '💎';
             color = '#00FFFF';
@@ -764,7 +767,7 @@ const GoneRogueMobile = (function () {
           var vy = _toViewY(item.y);
           if (!_inView(vx, vy)) return;
           var char = item.type === 'gem' ? (item.glyph || '◈') : (item.glyph || item.emoji || '💎');
-          var color = item.type === 'gem' ? '#00FFA6' : '#00FFFF';
+          var color = item.type === 'gem' ? '#00FFA6' : (item.type === 'ammo' ? '#DA70D6' : '#00FFFF');
           entities.push({ x: vx, y: vy, char: char, color: color });
         });
       }
@@ -1622,10 +1625,12 @@ const GoneRogueMobile = (function () {
         if (typeof InteractiveItems !== 'undefined') {
           var item = InteractiveItems.getItemAt(x, y);
           if (item && InteractiveItems.canInteractWith(player.x, player.y, item)) {
-            // Trigger interaction
-            GoneRogue.process('interact');
-            _lastMovementTime = now; // Track as movement-like action
-            return;
+            // Auto-pickup items (food and other autoPickup collectibles) are collected by walking over them — let movement proceed
+            if (!item.autoPickup) {
+              GoneRogue.process('interact');
+              _lastMovementTime = now; // Track as movement-like action
+              return;
+            }
           }
         }
       }

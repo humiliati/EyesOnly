@@ -2239,6 +2239,19 @@ const GAMESTATE = (function () {
   }
 
   /**
+   * Get total count of all Tier-1 (ammo) keys held.
+   * Used to supply old/new values for DebriefFeedController.reportResourceChange.
+   * @returns {Number}
+   */
+  function getTotalKeyAmmo() {
+    _ensureKeysObj();
+    var bucket = _state.keys.ammo || {};
+    var total = 0;
+    for (var k in bucket) { if (bucket.hasOwnProperty(k)) total += (bucket[k] || 0); }
+    return total;
+  }
+
+  /**
    * Rebuild key counters from current inventory arrays.
    * Safety net — call after load or suspected desync.
    */
@@ -2494,6 +2507,7 @@ const GAMESTATE = (function () {
     removeKeyCount: removeKeyCount,
     getKeyCounts: getKeyCounts,
     getKeyCount: getKeyCount,
+    getTotalKeyAmmo: getTotalKeyAmmo,
     rebuildKeyCounts: rebuildKeyCounts
   };
 })();

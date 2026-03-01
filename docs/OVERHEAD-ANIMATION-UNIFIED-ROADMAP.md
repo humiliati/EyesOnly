@@ -93,50 +93,44 @@ This document provides a **designer-facing roadmap** for unifying the two existi
 
 ## Unified Roadmap
 
-### Phase 1: Fix Rendering Parity (Immediate - High Priority)
+### Phase 1: Fix Rendering Parity (Immediate - High Priority) ✅ DONE
 
 **Goal**: Ensure consistent experience across mobile and canvas renderers
 
 **Tasks**:
-- [ ] **Add OverheadAnimator integration to canvas renderer**
+- [x] **Add OverheadAnimator integration to canvas renderer**
   - Location: `public/js/gone-rogue-canvas.js` around line 111
-  - Copy integration pattern from mobile renderer (lines 828-868)
-  - Call `OverheadAnimator.update(currentTime)` in render loop
-  - Call `OverheadAnimator.getAllAnimations()` and convert to effects
-  - Render effects via `_renderEffects()` pipeline
+  - Calls `OverheadAnimator.update(currentTime)` in render loop
+  - Calls `OverheadAnimator.getAllAnimations()` and converts to effects
+  - Renders effects via `_renderEffects()` pipeline
 
-- [ ] **Test parity**
-  - Verify "+3¢" text appears in both mobile and canvas
-  - Verify overhead expressions work in canvas (NPC reactions, status)
-  - Verify both PancakeStack and OverheadAnimator render correctly
+- [x] **Test parity**
+  - Currency "+3¢" text appears in both mobile and canvas ✅
+  - Overhead expressions work in canvas (NPC reactions, status) ✅
+  - Both PancakeStack and OverheadAnimator render correctly ✅
 
 **Files Modified**:
 - `public/js/gone-rogue-canvas.js`
 
-**Expected Outcome**:
-- Canvas players see same overhead animations as mobile players
-- Both PancakeStack glyphs and OverheadAnimator text visible
+**Expected Outcome**: ✅ Achieved — canvas players see same overhead animations as mobile players
 
 ---
 
-### Phase 2: Fix Naming Confusion (Immediate - Low Risk)
+### Phase 2: Fix Naming Confusion (Immediate - Low Risk) ✅ DONE
 
 **Goal**: Rename misleading method to prevent developer confusion
 
 **Tasks**:
-- [ ] **Rename `OverheadAnimator.showPancakeStacks()`**
-  - New name: `showStackedText()` or `showMultilineText()`
-  - Update method name in `overhead-animator.js` (line 207)
-  - Update call sites in `gone-rogue.js` (lines 7711-7717)
-  - Update any documentation references
+- [x] **Rename `OverheadAnimator.showPancakeStacks()` → `showStackedText()`**
+  - Renamed in `overhead-animator.js`
+  - Call sites updated in `gone-rogue.js`
+  - All documentation references updated
 
 **Files Modified**:
 - `public/js/overhead-animator.js`
 - `public/js/gone-rogue.js`
 
-**Expected Outcome**:
-- Clear distinction between OverheadAnimator methods and PancakeStack system
-- Reduced developer confusion
+**Expected Outcome**: ✅ Achieved — `showStackedText()` clearly distinguishes OverheadAnimator multi-line text from PancakeStack inventory glyphs
 
 ---
 
@@ -235,9 +229,9 @@ This document provides a **designer-facing roadmap** for unifying the two existi
 
 ## Implementation Priority
 
-### Immediate (Week 1)
-1. ✅ **Phase 1**: Fix canvas renderer parity (HIGH PRIORITY)
-2. ✅ **Phase 2**: Rename confusing method (LOW RISK)
+### Immediate (Week 1) — ✅ Complete
+1. ✅ **Phase 1**: Canvas renderer parity — OverheadAnimator integrated in canvas renderer
+2. ✅ **Phase 2**: `showPancakeStacks` renamed to `showStackedText`
 
 ### Short-term (Week 2-3)
 3. **Phase 3**: Document designer guidelines
@@ -355,26 +349,91 @@ OverheadAnimator.showExpression(x, y, 'LOOT', 4000, '¢');
 
 ## Testing Checklist
 
-### Phase 1 Verification
-- [ ] Currency pickup shows "+3¢" text in canvas renderer
-- [ ] Currency pickup shows "¢" glyph in PancakeStack
-- [ ] NPC expressions visible in canvas (!, ?, 💤)
-- [ ] Status effects visible in canvas (🔥, ❄️, ⚡)
-- [ ] Food pickups show emoji in both mobile and canvas
-- [ ] No console errors during animations
-- [ ] Performance impact minimal (<5ms per frame)
+### Phase 1 Verification ✅
+- [x] Currency pickup shows "+3¢" text in canvas renderer
+- [x] Currency pickup shows "¢" glyph in PancakeStack
+- [x] NPC expressions visible in canvas (!, ?, 💤)
+- [x] Status effects visible in canvas (🔥, ❄️, ⚡)
+- [x] Food pickups show emoji in both mobile and canvas
+- [x] No console errors during animations
+- [x] Performance impact minimal (<5ms per frame)
 
-### Phase 2 Verification
-- [ ] Method renamed successfully (no references to old name)
-- [ ] Enemy loot summary still works (multi-line text display)
-- [ ] No breaking changes to existing functionality
+### Phase 2 Verification ✅
+- [x] Method renamed successfully — `showStackedText` replaces `showPancakeStacks`
+- [x] Enemy loot summary still works (multi-line text display)
+- [x] No breaking changes to existing functionality
 
-### Visual Regression
-- [ ] PancakeStack still renders correctly
-- [ ] Bobbing animation still works
-- [ ] 4-second decay still works
-- [ ] Ground shadow still renders
-- [ ] Newest item glow still works
+### Visual Regression ✅
+- [x] PancakeStack still renders correctly
+- [x] Bobbing animation still works
+- [x] 4-second decay still works
+- [x] Ground shadow still renders
+- [x] Newest item glow still works
+
+---
+
+---
+
+## Collectibles Auto-Pickup Unification ✅ Done
+
+**Context**: Before this work, gone-rogue's keyboard-hidden mobile interface had no way to collect most floor items. Only food and currency were auto-collected on walkover; ammo, gems/batteries, cards, and keys required typing `pickup`.
+
+**Changes made** (see `COLLECTIBLES-BUG-FIX.md` for full detail):
+
+1. **Food tap-handler fix** (`gone-rogue-mobile.js`): Tap handler now skips `process('interact')` for `autoPickup: true` items, letting smooth movement deliver the player to the tile.
+
+2. **Ammo color fix** (`gone-rogue-mobile.js`): Ammo drops now render with correct `#DA70D6` magenta per `RESOURCE_COLOR_SYSTEM.md` — not cyan `#00FFFF`.
+
+3. **Universal auto-pickup** (`gone-rogue.js`): Both `_checkPlayerInteractions` (smooth movement) and `_movePlayer` (command movement) now call `_pickupItem()` whenever any floor item is present at the player's position. This covers ammo, gem/battery (`◈` cyan symbol), cards, and all key tiers.
+
+4. **`_pickupItem` key crash fix** (`gone-rogue.js`): Terminal MOK interjection and `return` statement now use guarded locals (`pickupEmoji`, `pickupDisplayName`, `pickupQuality`) that fall back gracefully for non-card items.
+
+5. **Key tier routing** (`gone-rogue.js`, `tooltip-system.js`, `gamestate.js`, `debrief-feed-controller.js`): All three key tiers now route to distinct destinations — see key tier details below.
+
+---
+
+## Key Tier System ✅ Done
+
+The key system has three tiers with distinct storage, tooltip, and overhead animation behavior:
+
+### Tier 1 — key_ammo (Consumable Chest/Lock Keys)
+- **Examples**: Rusty Key 🔑, Bronze Key 🗝️
+- **Mechanics**: Used for chests and simple locks; consumed on use; thieving support
+- **Storage**: Resource counter only — `GAMESTATE.addKeyCount(keyType, 1)`. NOT stored in inventory
+- **Debrief feed**: `DebriefFeedController.reportResourceChange('key_ammo', old, new, name)` on every pickup; ammo row summary shows `🔑x{N}`; expanded panel shows `🔑 KEY AMMO Rusty:N`
+- **Tooltip**: `TooltipSystem.showAction('key-ammo-pickup', { name })` → `'🔑 KEY AMMO: Rusty Key'`
+- **MOK interjection**: `Key Ammo: {name}`
+- **Quality label**: `[KEY AMMO]` in pickup log
+- **Overhead anim**: Gold 🔑 expression, 800ms
+- **PancakeStack**: `item.emoji || '🔑'`
+- **`getTotalKeyAmmo()`**: Returns sum of all Tier 1 key counts (used for resource-change delta)
+
+### Tier 2 — key_items (Persistent Door/Gate Keys)
+- **Examples**: Security Keycard 💳, Master Key 🔐, Mall Tag 🏷️, Industrial Pass 🔧
+- **Mechanics**: Unlock physical doors and gates; survive death; equip+toggle workflow
+- **Storage**: `GAMESTATE.addToPersistent(nonCardPayload)` — persistent inventory
+- **Auto-equip**: `GAMESTATE.setActiveItem()` + `UIControls.setActiveItem()` on pickup
+- **Tooltip**: `TooltipSystem.showAction('key-item-pickup', { name })` → `'🔑 KEY ITEM: Security Keycard → INVENTORY'`; `TooltipSystem.show('🔑 KEY EQUIPPED — Tap header icon near the gate!', 2500)`
+- **MOK interjection**: `Key Item: {name}`
+- **Quality label**: `[KEY ITEM]` in pickup log
+- **Overhead anim**: Gold 🔑 expression, 1200ms
+- **PancakeStack**: `item.emoji || '🔑'`
+
+### Tier 3 — Quest Keys (NPC Turn-In Items)
+- **Examples**: Blacksmith's Hammer 🔨, Rune Fragment 💎
+- **Mechanics**: Persistent quest items for NPC turn-in (reward: card upgrade)
+- **Storage**: `GAMESTATE.addToPersistent(nonCardPayload)` — persistent inventory
+- **Tooltip**: `TooltipSystem.show('❗ QUEST ITEM — {name} — Return to {NPC}', 3500)`
+- **Overhead anim**: Red ❗ expression, 1500ms
+- **No debrief resource row**; **no auto-equip**
+
+---
+
+**Overhead animation behavior** (all tiers):
+- All key tiers trigger `OverheadAnimator.showGenericExpression` on pickup (per system doctrine)
+- All key tiers add a glyph to PancakeStack on pickup (per system doctrine)
+- Battery/gem always uses hardcoded `◈` — never `item.emoji` or `item.glyph`
+- Weapon ammo uses hardcoded `؋` with magenta color `#DA70D6`
 
 ---
 

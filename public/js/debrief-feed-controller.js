@@ -581,10 +581,13 @@ const DebriefFeedController = (function() {
         if (amEl) {
           var ammo = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo) ? GAMESTATE.getAmmo() : (st.ammo || 0);
           var maxA = st.maxAmmo || 20;
-          amEl.textContent = _renderBarLine('A', ammo, maxA, 6);
+          var keyAmmoTotal = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getTotalKeyAmmo) ? GAMESTATE.getTotalKeyAmmo() : 0;
+          var ammoSummary = _renderBarLine('A', ammo, maxA, 6);
+          if (keyAmmoTotal > 0) ammoSummary += ' 🔑x' + keyAmmoTotal;
+          amEl.textContent = ammoSummary;
         }
 
-        // Ammo panel: keys by tier bucket
+        // Ammo panel: weapon ammo bar + key_ammo resource + key_item counts
         var aPanel = document.getElementById('debrief-panel-ammo');
         if (aPanel && _rowExpanded.ammo) {
           var linesA = [];
@@ -593,19 +596,18 @@ const DebriefFeedController = (function() {
           linesA.push('|_' + _renderBarLine('A', ammo2, maxA2, 6));
 
           var kc = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getKeyCounts) ? GAMESTATE.getKeyCounts() : null;
-          // Designer-named sublines: show only if >0
+          // key_ammo (Tier 1) — consumable chest/lock keys, tracked as resource
           function addKeyLine(label, bucket, keyType) {
             try {
               var n = kc && kc[bucket] && kc[bucket][keyType] ? kc[bucket][keyType] : 0;
-              if (n > 0) linesA.push('|_' + label + n);
+              if (n > 0) linesA.push('|_' + label + ':' + n);
             } catch (e0) {}
           }
-          // Use your tier buckets (ammo/gate/quest). Labels are spec-level.
-          // If keyTypes differ, counts still show when present.
-          addKeyLine('ChstKyLq', 'ammo', 'RUSTY_KEY');
-          addKeyLine('ChstKyHq', 'ammo', 'BRONZE_KEY');
-          addKeyLine('TagKy1', 'gate', 'KEYCARD');
-          addKeyLine('TagKy2', 'gate', 'MALL_KEY');
+          addKeyLine('🔑 KEY AMMO Rusty', 'ammo', 'RUSTY_KEY');
+          addKeyLine('🗝️ KEY AMMO Bronze', 'ammo', 'BRONZE_KEY');
+          // key_items (Tier 2) — persistent door/gate keys tracked for awareness
+          addKeyLine('💳 KEY ITEM Keycard', 'gate', 'KEYCARD');
+          addKeyLine('🏷️ KEY ITEM Mall', 'gate', 'MALL_KEY');
 
           aPanel.textContent = linesA.join('\n');
         } else if (aPanel) {
