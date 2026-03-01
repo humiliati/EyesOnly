@@ -5,7 +5,7 @@
    and interactive items (food, books, terminals, etc.)
    ============================================================ */
 
-const WorldItems = (function () {
+var WorldItems = (function () {
   'use strict';
 
   // ── Internal state ────────────────────────────────────────────
