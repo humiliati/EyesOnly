@@ -2513,10 +2513,20 @@ body.in-gone-rogue #log-column {
     position: relative;
     z-index: 0;
     overflow: hidden;         /* primary clip */
+
+    /* Frame follows terminal width */
     width: 100%;
     max-width: 100%;
     min-width: 0;
     box-sizing: border-box;
+
+    /* Important: pin the render surface to the top-left of the frame.
+       This prevents the "big left gutter" that happens when the canvas
+       ends up centered or baseline-aligned inside the container. */
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    line-height: 0; /* kill inline baseline gaps */
   }
 
   /* Canvas: avoid CSS-resizing the canvas box (can desync with JS camera math).
@@ -2529,7 +2539,10 @@ body.in-gone-rogue #log-column {
     z-index: 1;
     display: block;
     margin: 0;
-    max-width: none;
+    flex: 0 0 auto;
+    align-self: flex-start;
+
+    /* Don't let the browser "center" scaling around the midpoint */
     transform-origin: 0 0 !important;
     will-change: transform;
   }
