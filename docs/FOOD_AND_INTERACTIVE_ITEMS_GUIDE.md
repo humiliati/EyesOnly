@@ -133,18 +133,36 @@ FoodDatabase.getPicnicBlanket()                 // Get picnic blanket def
 if (typeof InteractiveItems !== 'undefined') {
   var foodItem = InteractiveItems.getItemAt(newX, newY);
   if (foodItem && foodItem.autoPickup && foodItem.type === 'FOOD') {
+    // Capture before-values for ALL resources
     var hpBefore = _player.hp || 0;
+    var fatigueBefore = _player.fatigue || 0;
+    var ammoBefore = GAMESTATE.getAmmo ? GAMESTATE.getAmmo() : 0;
+    var cryptosBefore = GAMESTATE.getCryptos ? GAMESTATE.getCryptos() : 0;
+
     var result = FoodDatabase.applyFoodEffects(foodItem.customData.foodId, _player);
     if (result.success) {
-      // Overhead animation with RESOURCE_COLOR HP pink (NOT showExpression('LOOT'))
-      OverheadAnimator.showGenericExpression(x, y, result.emoji, 1000, '#FF6B9D');
+      // Determine overhead color from food category (per COLLECTIBLES_CANON.md)
+      var foodDef = FoodDatabase.getFoodItem(foodItem.customData.foodId);
+      var primaryColor = '#FF6B9D'; // HP pink default
+      if (foodDef && foodDef.category === 'energy') {
+        primaryColor = '#A0522D'; // Fatigue brown for energy foods
+      }
+      OverheadAnimator.showGenericExpression(x, y, result.emoji, 1000, primaryColor);
 
-      // Report to debrief feed with HP pink frame flash
+      // Report EACH changed resource individually to debrief feed
       if (typeof DebriefFeedController !== 'undefined') {
         var hpAfter = _player.hp || 0;
-        if (hpAfter !== hpBefore) {
+        var fatigueAfter = _player.fatigue || 0;
+        var ammoAfter = GAMESTATE.getAmmo ? GAMESTATE.getAmmo() : 0;
+        var cryptosAfter = GAMESTATE.getCryptos ? GAMESTATE.getCryptos() : 0;
+        if (hpAfter !== hpBefore)
           DebriefFeedController.reportResourceChange('HP', hpBefore, hpAfter, result.foodName);
-        }
+        if (fatigueAfter !== fatigueBefore)
+          DebriefFeedController.reportResourceChange('Fatigue', fatigueBefore, fatigueAfter, result.foodName);
+        if (ammoAfter !== ammoBefore)
+          DebriefFeedController.reportResourceChange('Ammo', ammoBefore, ammoAfter, result.foodName);
+        if (cryptosAfter !== cryptosBefore)
+          DebriefFeedController.reportResourceChange('Currency', cryptosBefore, cryptosAfter, result.foodName);
       }
 
       // MOK interjection

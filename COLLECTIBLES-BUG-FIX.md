@@ -1,6 +1,6 @@
 # Collectibles Bug Fix Log
 
-> **Scope**: This document tracks **bug fixes** only. For non-bug improvements (overhead stacking, visual polish), see `COLLECTIBLES-IMPROVEMENTS-SUMMARY.md`.
+> **Scope**: This document tracks **bug fixes** only. For visual system details, see `COLLECTIBLES-VISUAL-SYSTEM.md`. For the unified animation roadmap, see `OVERHEAD-ANIMATION-UNIFIED-ROADMAP.md`.
 
 ## Summary
 
@@ -57,7 +57,7 @@ currencies.forEach(function(currency) {
 - ✅ Currency glyph immediately disappears from map after collection
 - ✅ No more lingering "¢" glyphs drifting on screen
 
-> **See also**: IMPROVEMENTS-SUMMARY #1 — the twinkle alpha oscillation in `gone-rogue-canvas.js` was a second contributor to this lingering-glyph symptom.
+> **See also**: The twinkle alpha oscillation removal in `gone-rogue-canvas.js` was a second contributor to this lingering-glyph symptom. Details in `COLLECTIBLES-VISUAL-SYSTEM.md`.
 
 ### Bug #2: Food/Interactive Items Dual Rendering
 
@@ -458,6 +458,6 @@ The `WorldItems` singleton is the single source of truth for all floor collectib
 - Commit afcf229: Fix food persistence and ammo cyan color/non-interactive collectible bugs
 - Commit 611ccc4: Unify all floor collectibles to auto-pickup on walkover; fix `_pickupItem` crash for keys
 - Commit d41e807: Implement key_ammo/key_item tier distinction — tooltip, debrief feed routing, inventory separation
-- Pending: RESOURCE_COLOR pipeline unification — per-effect food debrief, energy category overhead brown, fix _movePlayer LOOT cyan
+- Commit (Bug #7): RESOURCE_COLOR pipeline unification — per-effect food debrief, energy category overhead brown, fix _movePlayer LOOT cyan
 - Canon Reference: `docs/COLLECTIBLES_CANON.md` — authoritative collectible category definitions
 - Test File: `/public/tests/test-collectibles-dual-render-bug.html`
