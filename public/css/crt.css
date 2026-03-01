@@ -2519,16 +2519,19 @@ body.in-gone-rogue #log-column {
     box-sizing: border-box;
   }
 
-  /* Force the render surface to fill the available frame width.
-     (Canvas often has a fixed width/height attribute; CSS width ensures it
-      visually scales with its container without changing the internal buffer.) */
+  /* Canvas: avoid CSS-resizing the canvas box (can desync with JS camera math).
+     Instead, keep it at its intrinsic size but ensure:
+     - it doesn't create extra inline gaps
+     - transforms scale/pan from top-left (prevents "gutter" from origin drift)
+     - it remains clipped by the frame. */
   body.gone-rogue-active #rogue-grid-mobile canvas {
     position: relative;
     z-index: 1;
     display: block;
-    width: 100% !important;
-    max-width: 100%;
-    height: auto !important;
+    margin: 0;
+    max-width: none;
+    transform-origin: 0 0 !important;
+    will-change: transform;
   }
 
   /* Any HUD overlay inside the grid should sit above the canvas */
