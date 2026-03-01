@@ -1,0 +1,31 @@
+{
+  "TILES": {
+    "EMPTY": ".",
+    "WALL": "█",
+    "PLAYER": "🥷",
+    "ENEMY": "🪖",
+    "ITEM": "💎",
+    "EXIT": "🚪",
+    "COVER": "▓",
+    "BREAKABLE": "📦",
+    "DEBRIS": "░",
+    "PROJECTILE": "💥",
+    "DOOR": "🚪",
+    "VENT": "V",
+    "SHADOW": "░",
+    "SMOKE": "≈",
+    "GRASS": ",",
+    "HAZARD": "▒",
+    "WATER": "~",
+    "SHOP": "🏪",
+    "BLACK_MARKET": "👤"
+  },
+  "TILE_EFFECTS": {
+    "SHADOW": { "stealthBonus": 30, "emoji": "⬛" },
+    "SMOKE": { "stealthBonus": 40, "movePenalty": 0, "emoji": "🌫️" },
+    "GRASS": { "stealthBonus": 20, "emoji": "🟩" },
+    "HAZARD": { "damage": 1, "emoji": "🟥" },
+    "WATER": { "movePenalty": 1, "emoji": "🟦" },
+    "COVER": { "blocksLOS": true, "emoji": "▓" }
+  }
+}

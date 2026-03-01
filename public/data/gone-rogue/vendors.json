@@ -1,0 +1,34 @@
+{
+  "VENDOR_TYPES": {
+    "SCRAP_MERCHANT": {
+      "name": "Scrap Merchant",
+      "emoji": "🧑‍💼",
+      "description": "Sells cheap junk cards and supplies",
+      "priceMultiplier": 0.7,
+      "qualityRange": [30, 70]
+    },
+    "ARMS_DEALER": {
+      "name": "Arms Dealer",
+      "emoji": "🔫",
+      "description": "Sells attack cards and explosives",
+      "priceMultiplier": 1.2,
+      "qualityRange": [50, 85],
+      "cardFilter": ["attack"]
+    },
+    "GHOST_BROKER": {
+      "name": "Ghost Broker",
+      "emoji": "👻",
+      "description": "Sells stealth and silent cards",
+      "priceMultiplier": 1.5,
+      "qualityRange": [60, 90],
+      "cardFilter": ["stealth", "movement"]
+    },
+    "RELIC_SMUGGLER": {
+      "name": "Relic Smuggler",
+      "emoji": "💎",
+      "description": "Sells rare charms and inventory expanders",
+      "priceMultiplier": 2.0,
+      "qualityRange": [70, 95]
+    }
+  }
+}

@@ -1,96 +1,4 @@
-/* ============================================================
-   EYES ONLY - Gone Rogue Mode Engine
-   ASCII stealth roguelike inside terminal column
-   ============================================================ */
 
-var GoneRogue = (function () {
-  'use strict';
-
-  var STORAGE_KEY = 'eyesonly_rogue_state';
-  var _active = false;
-  var _loaded = false;
-
-  // Grid configuration (mobile-first)
-  var GRID_WIDTH = 40;
-  var GRID_HEIGHT = 20;
-
-  var _grid = [];
-  var _player = {
-    x: 5,
-    y: 10,
-    hp: 10,
-    maxHp: 10,
-    energy: 5,
-    maxEnergy: 5,
-    stealth: 3,
-    detection: 0,
-    lastMoveDirection: null, // Track last move direction for flanking logic (north, south, east, west)
-    str: 5, // Strength for combat
-    dex: 5, // Dexterity for hit/dodge
-    initiative: 0, // Initiative bonus
-    combatEntries: 0, // Track total combat entries (for boss mythic conditions)
-    lastCardType: null, // Track last card used (for boss mythic conditions)
-    collectingCurrency: false, // Track currency collection for animation
-    currencyCollectTime: 0, // Timestamp of last currency collection
-    positionHistory: [] // Position history buffer for pet following (max 16 entries)
-  };
-
-  var _ropeManager = null;
-
-  var _enemies = [];
-  var _npcs = []; // NPCs on floor (tutorial gates, etc.)
-  // NOTE: Don't touch WorldItems at script-load time.
-  // Some pages load GoneRogue before WorldItems is initialized; referencing it
-  // here prevents the entire module from registering (breaking requestRogue).
-  // We sync with WorldItems lazily when the game starts / floor loads.
-  var _items = [];
-  var _projectiles = [];
-  var _breakables = [];
-  var _currencies = [];
-  var _shops = []; // Shop objects on floor (🏪 or 👤)
-  var _placedBoxes = []; // Deployable box entities placed on the map {id, x, y, quality, state, discoveryCount}
-  var _playerInBox = null; // Box entity the player is currently hiding inside (or null)
-  var _turn = 0;
-  var _floor = 1;
-  var _alertLevel = 'safe'; // safe, caution, danger
-  var _useInteractiveGrid = false; // Use interactive DOM grid instead of text-only
-  var _muzzleFlash = null; // Track muzzle flash {x, y, time}
-  var _impactEffects = []; // Track impact effects {x, y, type, time}
-
-  // Performance caches — rebuilt on floor generation, reused every tick
-  var _wallCache = []; // Cached wall positions for LightingSystem (avoids 800-iteration scan per tick)
-  var _lightMapTickCounter = 0; // Throttle full light-map recalc to every 5 ticks (~500ms)
-
-  // Game loop state
-  var _gameLoopActive = false;
-  var _lastTickTime = 0;
-  var _tickInterval = 100; // ms between ticks (10 ticks per second)
-  var _animationFrameId = null;
-  var _projectileTickAccum = 0; // Accumulator for projectile speed throttle (ms)
-  var _projectileAdvanceInterval = 150; // Advance projectiles every 150ms for visible animation
-  var _enemyColorCycleTime = 0;
-
-  // STR Combat state (Simultaneous Turn Resolution)
-  var _strCombatActive = false;
-  var _strCombatEnemy = null; // Enemy in current STR combat
-  var _strCombatAdvantage = 'neutral'; // 'ambush', 'neutral', 'disadvantaged', 'flanked'
-  var _strCombatRound = 0;
-  var _strCombatLog = []; // Combat log messages
-  var _strCombatAmmoSpent = 0; // Track ammo spent in this combat encounter
-  var _strCombatContext = null; // Countdown context messages built at combat entry
-  var _strCombatEntryPos = null; // {x,y} where combat began (for soft resets)
-  var _strCombatPhase = 'idle'; // Phase state machine: idle → countdown → selecting → resolving → post_resolve → selecting (loop)
-
-  // Performance caches
-  var _stealthBonusCache = null; // { bonus, px, py } — invalidated when player moves
-
-  // Boss encounter state
-  var _activeBoss = null; // Current boss instance (from BossEncounters module)
-  var _bossFloorActive = false; // Is this a boss floor
-  var _bossDefeated = false; // Has boss been defeated this floor
-  var _bossHazards = []; // Boss-specific hazards (trains, drones, etc.)
-  var _bossEnvironment = {}; // Boss-specific environment data
-  var _playerMoveLocked = false; // Set by Asteroids boss; disables walk commands
   var _scriptedWalk = false; // True during Floor 0 auto-walk (disables player click input)
   var _scriptedWalkTarget = null; // {x, y} target for scripted walk
 
@@ -168,449 +76,22 @@ var GoneRogue = (function () {
     healing: 0
   };
 
-  var TILES = {
-    EMPTY: '.',
-    WALL: '█',
-    PLAYER: '🥷',
-    ENEMY: '🪖',
-    ITEM: '💎',
-    EXIT: '🚪',
-    COVER: '▓',
-    BREAKABLE: '📦',
-    DEBRIS: '░',
-    PROJECTILE: '💥',
-    // Door emoji for all doors; behavior determined by tile metadata + overhead popup hints
-    DOOR: '🚪',
-    VENT: 'V',
-    SHADOW: '░',
-    SMOKE: '≈',
-    GRASS: ',',
-    HAZARD: '▒',
-    WATER: '~',
-    SHOP: '🏪',
-    BLACK_MARKET: '👤'
-  };
 
-  // Tile metadata and effects
-  var TILE_EFFECTS = {
-    SHADOW: { stealthBonus: 30, emoji: '⬛' }, // -30% enemy detection range
-    SMOKE: { stealthBonus: 40, movePenalty: 0, emoji: '🌫️' }, // Fog/smoke
-    GRASS: { stealthBonus: 20, emoji: '🟩' }, // Grass/vegetation
-    HAZARD: { damage: 1, emoji: '🟥' }, // Fire/acid/toxic
-    WATER: { movePenalty: 1, emoji: '🟦' }, // Slow movement
-    COVER: { blocksLOS: true, emoji: '▓' } // Full cover
-  };
 
   // Map generation config
   var _tileMetadata = {}; // Stores tile-specific data (e.g., which tiles are shadow zones)
+  var BIOMES = {};
 
-  // Enemy awareness states
-  var AWARENESS_STATES = {
-    UNAWARE: { min: 0, max: 30, color: '#00ff00', name: 'UNAWARE' },
-    SUSPICIOUS: { min: 31, max: 70, color: '#ffaa00', name: 'SUSPICIOUS' },
-    ALERTED: { min: 71, max: 100, color: '#ff0000', name: 'ALERTED' },
-    ENGAGED: { min: 100, max: 999, color: '#ff00ff', name: 'ENGAGED' }
-  };
 
-  // Enemy path types
-  var PATH_TYPES = {
-    PATROL: 'patrol',        // A→B→C→B (reverse on endpoint)
-    CIRCULAR: 'circular',    // A→B→C→A (loop)
-    ELLIPSE: 'ellipse',      // Elliptical path
-    STATIONARY: 'stationary' // Rotate in place
-  };
 
-  // Floor types for run structure
-  var FLOOR_TYPES = {
-    TUTORIAL: 'tutorial',           // Floors 1-2: no enemies, learn movement
-    GHOST: 'ghost',                 // Floors 3-4: cameras only, no combat
-    STEALTH: 'stealth',             // Floors 5-9: light stealth
-    BONFIRE: 'bonfire',             // Floors 10, 16, 22: safe hub with vendor
-    COMBAT: 'combat',               // Standard combat floors
-    EXPLORATION: 'exploration',     // High loot, few/no enemies
-    BOSS: 'boss',                   // Boss encounter floors
-    FINAL: 'final'                  // Floor 30: final boss
-  };
 
-  // Biome types for environmental variety
-  var BIOMES = {
-    FOREST: {
-      name: 'Cozy Forest',
-      wallChar: '🌳',
-      floorChar: ',',
-      description: 'Welcoming woodland with tall grass',
-      floorRange: [1, 3], // Starting biome for new players
-      wallDensity: 2, // Number of additional scatter trees per wall tile
-
-      // Wall tile distribution for natural variety
-      wallTiles: [
-        { char: '🌳', weight: 40 },
-        { char: '🌲', weight: 30 },
-        { char: '🪵', weight: 15 },
-        { char: '🪨', weight: 10 },
-        { char: '🌿', weight: 5 }
-      ],
-
-      // Floor tile variety - ASCII only (no emoji floors per design rules)
-      floorTiles: [
-        { char: ',', weight: 50, animated: true },        // Grass (standard) - animated wave
-        { char: '`', weight: 25, animated: true },        // Grass variation
-        { char: '\'', weight: 15, animated: true },       // Grass variation
-        { char: '"', weight: 5, animated: true },         // Dense grass - slower movement
-        { char: '·', weight: 5 }                          // Dirt patch - no animation
-      ],
-
-      // Expanded props with breakable gates and obstacles
-      // Note: 🌿 Bush is now a PROP (breakable) not a floor tile
-      props: [
-        { emoji: '🚧', name: 'Wooden Gate', breakable: true, hp: 3, blocksPath: true, drops: ['wood', 'coins'] },
-        { emoji: '🌳', name: 'Tree Trunk', breakable: true, hp: 4, blocksPath: true, drops: ['wood', 'apples'] },
-        { emoji: '🌲', name: 'Tree Canopy', breakable: true, hp: 6, blocksPath: true, drops: ['wood', 'sap'] },
-        { emoji: '🌿', name: 'Bush', breakable: true, hp: 2, blocksPath: false, ghostCollision: true, drops: ['berries', 'sticks'] },
-        { emoji: '🪵', name: 'Hollow Log', breakable: true, hp: 2, blocksPath: true, drops: ['wood', 'insects'] },
-        { emoji: '🪨', name: 'Boulder', breakable: true, hp: 5, blocksPath: true, drops: ['stone', 'gems'] },
-        { emoji: '⛰️', name: 'Ridge', breakable: false, blocksPath: true },
-        { emoji: '📦', name: 'Wooden Box', breakable: true, hp: 2, blocksPath: true, drops: ['supplies'] },
-        { emoji: '🧺', name: 'Picnic Blanket', breakable: false, blocksPath: false, ghostCollision: true, movePenalty: 0.3 }
-      ],
-
-      // Interactive objects (non-breakable interactions)
-      interactiveObjects: [
-        { emoji: '🪧', name: 'Sign Post', interact: 'read', effect: 'shows_direction', blocksPath: true },
-        { emoji: '📬', name: 'Mailbox', interact: 'open', effect: 'gives_letter', blocksPath: true },
-        { emoji: '🫐', name: 'Berry Bush', interact: 'harvest', effect: 'gives_berries', blocksPath: false, ghostCollision: true },
-        { emoji: '🍎', name: 'Apple Tree', interact: 'shake', effect: 'drops_apples', blocksPath: true }
-      ],
-
-      // Tile effects for environmental interaction - ASCII only
-      tileEffects: {
-        ',': { stealth: 20, moveMod: 0.85, name: 'Grass', animated: true },
-        '`': { stealth: 20, moveMod: 0.85, name: 'Grass', animated: true },
-        '\'': { stealth: 20, moveMod: 0.85, name: 'Grass', animated: true },
-        '"': { stealth: 40, moveMod: 0.80, name: 'Dense Grass', animated: true },
-        '·': { stealth: 10, moveMod: 0.95, name: 'Dirt Patch' }
-      },
-
-      // Village features (no threats)
-      spawnFeatures: {
-        villageCluster: true,
-        buildings: ['🏠', '⛪', '🏪', '🏡'],
-        friendlyNPCs: ['👨', '👩', '🧓', '👶'],
-        decorations: ['🪧', '📬', '🏮', '⛲', '🪑'],
-        landmarks: [
-          { emoji: '🏔️', name: 'Mountain Tower', visibility: 15 },
-          { emoji: '🌳', name: 'Giant Tree', visibility: 12 },
-          { emoji: '🏛️', name: 'Ruin', visibility: 10 }
-        ]
-      },
-
-      // No real combat threats
-      enemies: [],
-      enemyDensity: 0.0,
-
-      // Background gradient (135-degree axial, matching gambling card convention)
-      backgroundGradient: {
-        night: { start: '#061206', end: '#0d2a12' },  // Deep forest shadow to moonlit glade
-        day:   { start: '#081a08', end: '#1e4a1e' }   // Dark canopy to dappled sunlight clearing
-      }
-    },
-    GREY_CAVE: {
-      name: 'Grey Cave',
-      wallChar: '█',
-      floorChar: '.',
-      description: 'Dark underground tunnels with water pools',
-      floorRange: [4, 4], // Used for floor 4 and secret areas
-
-      // Cave floor tiles with water and hazards
-      floorTiles: [
-        { char: '.', weight: 60 },                // Stone floor
-        { char: '·', weight: 15 },                // Gravel
-        { char: '~', weight: 15, animated: true }, // Water pools - slow movement
-        { char: '☣', weight: 5, animated: true },  // Toxic waste - damage + slow
-        { char: '░', weight: 5 }                   // Debris
-      ],
-
-      // Tile effects
-      tileEffects: {
-        '.': { stealth: 5, moveMod: 1.0, name: 'Stone Floor' },
-        '·': { stealth: 10, moveMod: 0.95, name: 'Gravel' },
-        '~': { stealth: 0, moveMod: 0.60, name: 'Water', animated: true },
-        '≈': { stealth: 0, moveMod: 0.60, name: 'Water', animated: true },
-        '☣': { stealth: 0, moveMod: 0.60, damage: 1, name: 'Toxic Waste', animated: true },
-        'o': { stealth: 0, moveMod: 0.60, damage: 1, name: 'Toxic', animated: true },
-        '°': { stealth: 0, moveMod: 0.60, damage: 1, name: 'Toxic', animated: true },
-        '░': { stealth: 5, moveMod: 0.90, name: 'Debris' }
-      },
-
-      props: [
-        { emoji: '🪨', name: 'Boulder', breakable: true, hp: 2, blocksPath: true },
-        { emoji: '💧', name: 'Water Drip', breakable: false, blocksPath: true }
-      ],
-
-      backgroundGradient: {
-        night: { start: '#0a0a0f', end: '#0f0a1a' },  // Dark blue-grey
-        day:   { start: '#0a0a0f', end: '#0f0a1a' }   // Caves are always dark
-      }
-    },
-    OFFICE: {
-      name: 'Commercial Office',
-      wallChar: '█',
-      floorChar: '.',
-      description: 'Corporate cubicles and conference rooms',
-      floorRange: [5, 9],
-
-      // Floor tile variety for office environments - ASCII only
-      floorTiles: [
-        { char: '.', weight: 70 },        // Standard floor
-        { char: '▬', weight: 20 },        // Walkway - slight speedup
-        { char: '·', weight: 10 }         // Concrete
-      ],
-
-      // Wall variations for office areas
-      wallTiles: [
-        { char: '█', weight: 60 },        // Solid wall
-        { char: '▓', weight: 20 },        // Cubicle wall (low)
-        { char: '🪟', weight: 15 },       // Glass wall (transparent)
-        { char: '🚪', weight: 5 }         // Office door
-      ],
-
-      // Expanded props with office furniture and equipment
-      props: [
-        { emoji: '📂', name: 'Filing Cabinet', breakable: true, hp: 2, drops: ['documents', 'items'] },
-        { emoji: '🖨️', name: 'Photocopier', breakable: true, hp: 3, drops: ['toner'], explodes: true },
-        { emoji: '🪑', name: 'Office Chair', breakable: false, provides: 'cover' },
-        { emoji: '💼', name: 'Briefcase', breakable: true, hp: 1, drops: ['papers'] },
-        { emoji: '🖥️', name: 'Desk', breakable: true, hp: 3, provides: 'cover', drops: ['supplies'] },
-        { emoji: '💧', name: 'Water Cooler', interact: 'drink', healing: 5 },
-        { emoji: '🥤', name: 'Vending Machine', breakable: true, hp: 4, drops: ['drinks', 'snacks'] },
-        { emoji: '🖥️', name: 'Server Rack', interact: 'hack', effect: 'reveals_map' },
-        { emoji: '💻', name: 'Terminal', breakable: true, hp: 2, drops: ['thumb_drive'], glows: true, lightType: 'TERMINAL' }
-      ],
-
-      // Interactive objects for office exploration
-      interactiveObjects: [
-        { emoji: '💻', name: 'Terminal', interact: 'hack', effects: ['map_reveal', 'enemy_intel', 'door_unlock', 'transmission'] },
-        { emoji: '🚪', name: 'Locked Door', interact: 'unlock', requires: 'keycard' },
-        { emoji: '🪟', name: 'Glass Window', transparent: true, blocks: 'projectiles' },
-        { emoji: '▓', name: 'Cubicle Cluster', provides: 'cover', slowsMovement: true }
-      ],
-
-      // Tile effects for office stealth gameplay - ASCII only
-      tileEffects: {
-        '.': { stealth: 5, moveMod: 1.0, name: 'Office Floor' },
-        '▬': { stealth: 0, moveMod: 1.1, name: 'Walkway' },      // Slight speedup
-        '·': { stealth: 10, moveMod: 1.0, name: 'Concrete' }
-      },
-
-      // Special office features
-      spawnFeatures: {
-        unreachableRooms: true,          // Visible through glass
-        terminals: 3,                     // Hackable terminals per floor
-        lockedDoors: 2,                   // Requires keycards
-        coverClusters: true               // Desk arrangements
-      },
-
-      backgroundGradient: {
-        night: { start: '#0a0a0a', end: '#0f0f15' },  // Near-black to dark grey-blue
-        day:   { start: '#0a0a12', end: '#12121a' }   // Subtle blue tint
-      }
-    },
-    MALL: {
-      name: 'Shopping Mall',
-      wallChar: '█',
-      floorChar: '.',
-      description: 'Abandoned retail stores',
-      floorRange: [11, 15],
-
-      // Floor tile variety for mall environments - ASCII only
-      floorTiles: [
-        { char: '.', weight: 70 },        // Standard mall floor
-        { char: '▬', weight: 20 },        // Walkway
-        { char: '·', weight: 10 }         // Tile floor
-      ],
-
-      // Expanded props with breakable-rich environment
-      props: [
-        { emoji: '🛍️', name: 'Shopping Bag', breakable: true, hp: 1, drops: ['random'] },
-        { emoji: '🧸', name: 'Toy', breakable: true, hp: 1, drops: ['toys'] },
-        { emoji: '🥫', name: 'Canned Food', breakable: true, hp: 1, drops: ['food'] },
-        { emoji: '👗', name: 'Clothing Display', breakable: true, hp: 1, drops: ['clothes'] },
-        { emoji: '👟', name: 'Shoe Rack', breakable: true, hp: 2, drops: ['shoes', 'coins'] },
-        { emoji: '💍', name: 'Jewelry Display', breakable: true, hp: 1, drops: ['gems', 'coins'], rare: true },
-        { emoji: '🛒', name: 'Shopping Cart', breakable: true, hp: 2, provides: 'mobile_cover', drops: ['items'] },
-        { emoji: '📰', name: 'Magazine Rack', breakable: true, hp: 1, drops: ['hints'] },
-        { emoji: '🎁', name: 'Gift Wrap Station', breakable: true, hp: 2, drops: ['wrapped_gifts'], surprise: true }
-      ],
-
-      // Interactive objects for mall navigation
-      interactiveObjects: [
-        { emoji: '🏪', name: 'Storefront', type: 'various', contains: 'multiple_displays' },
-        { emoji: '🛍️', name: 'Display Rack', contains: 'breakables' },
-        { emoji: '👕', name: 'Clothing Rack', provides: 'concealment' },
-        { emoji: '🧍', name: 'Mannequin', decorative: true, sometimes: 'hostile' },
-        { emoji: '🪧', name: 'Sign', provides: 'navigation_hints' },
-        { emoji: '📋', name: 'Directory', interact: 'read', shows: 'local_map' },
-        { emoji: '🔼', name: 'Escalator', vertical: true, bidirectional: true }
-      ],
-
-      // Tile effects for mall - ASCII only
-      tileEffects: {
-        '.': { stealth: 5, moveMod: 1.0, name: 'Mall Floor' },
-        '▬': { stealth: 0, moveMod: 1.05, name: 'Walkway' },
-        '·': { stealth: 5, moveMod: 1.0, name: 'Tile Floor' }
-      },
-
-      // Special mall features
-      spawnFeatures: {
-        mazeLayout: true,                 // Dead ends and detours
-        stores: 8,                        // Store count per floor
-        deadEnds: 5,                      // Intentional dead ends
-        escapeRoutes: 3,                  // Guaranteed exits
-        directories: 2,                   // Navigation aids
-        escalators: 2                     // Vertical movement
-      },
-
-      backgroundGradient: {
-        night: { start: '#0a0a0a', end: '#1a0a0a' },  // Dark to dark-red tint
-        day:   { start: '#0f0a0a', end: '#1a1010' }   // Warmer dark red
-      }
-    },
-    INDUSTRIAL: {
-      name: 'Industrial Complex',
-      wallChar: '█',
-      floorChar: '.',
-      description: 'Hazardous factory floor',
-      floorRange: [17, 21],
-
-      // Floor tile variety with hazards - ASCII only with animations
-      floorTiles: [
-        { char: '.', weight: 45 },                  // Standard industrial floor
-        { char: '·', weight: 15 },                  // Concrete
-        { char: '▪', weight: 15 },                  // Metal walkway
-        { char: '_', weight: 10, animated: true },  // Oil slick (ignitable, animated)
-        { char: '~', weight: 8, animated: true },   // Water (electrifiable)
-        { char: '^', weight: 4, animated: true },   // Fire (spreads on oil)
-        { char: '░', weight: 3 }                    // Debris/ash
-      ],
-
-      // Hazardous environment props
-      props: [
-        { emoji: '🛢️', name: 'Oil Drum', breakable: true, hp: 2, drops: ['oil'], explodes: 'fire', ignitable: true },
-        { emoji: '⚡', name: 'Exposed Wiring', breakable: false, hazard: 'electric' },
-        { emoji: '🔥', name: 'Vent Steam', breakable: false, hazard: 'heat', areadenial: true },
-        { emoji: '🧪', name: 'Chemical Tank', breakable: true, hp: 3, drops: ['acid'], hazard: 'acid' },
-        { emoji: '🛤️', name: 'Pipeline', interact: 'damage', effect: 'releases_steam' },
-        { emoji: '🤖', name: 'Robot Wreckage', breakable: true, hp: 4, drops: ['scrap', 'parts'], sometimes: 'hostile' },
-        { emoji: '⏩', name: 'Conveyor Belt', interact: 'walk', effect: 'speed_boost', reversible: true },
-        { emoji: '🌫️', name: 'Vent Cover', breakable: true, hp: 3, requiresCrowbar: true, opensVent: true, drops: ['vent_access'] }
-      ],
-
-      // Interactive hazard objects
-      interactiveObjects: [
-        { emoji: '🎛️', name: 'Valve', interact: 'turn', effect: 'controls_flow' },
-        { emoji: '🎚️', name: 'Control Panel', interact: 'activate', effect: 'activates_deactivates' },
-        { emoji: '🔥', name: 'Furnace', interact: 'ignite', effect: 'creates_fire', provides: 'light' }
-      ],
-
-      // Tile effects with hazards - ASCII only
-      tileEffects: {
-        '.': { stealth: 5, moveMod: 1.0, name: 'Industrial Floor' },
-        '·': { stealth: 5, moveMod: 1.0, name: 'Concrete' },
-        '▪': { stealth: 0, moveMod: 1.0, name: 'Metal Walkway' },
-        '_': { stealth: 5, moveMod: 0.70, ignitable: true, name: 'Oil Slick', animated: true },
-        '~': { stealth: 0, moveMod: 0.60, electrifiable: true, name: 'Water', animated: true },
-        '≈': { stealth: 0, moveMod: 0.60, electrifiable: true, name: 'Water', animated: true },
-        '^': { stealth: 0, moveMod: 0.40, damage: 2, spreads: true, name: 'Fire', animated: true },
-        '*': { stealth: 0, moveMod: 0.40, damage: 2, spreads: true, name: 'Fire', animated: true },
-        '░': { stealth: 5, moveMod: 0.90, name: 'Debris/Ash' }
-      },
-
-      // Ignition system properties
-      ignitionSystem: {
-        enabled: true,
-        spreadChance: 0.3,
-        burnDuration: 10,
-        damagePerTurn: 2,
-        lightRadius: 4,
-        smokeRadius: 6,
-        spreadTargets: ['🛢️', '🪵', '📦']  // What fire spreads to
-      },
-
-      // Special industrial features
-      spawnFeatures: {
-        hazardZones: true,               // Lava/acid hazard areas
-        narrowWalkways: true,            // 1-tile wide paths
-        ignitionChains: true,            // Oil spill fire spreads
-        verticalHazards: true,           // Collapsing tiles
-        controlPanels: 3                 // Hackable environmental controls
-      },
-
-      backgroundGradient: {
-        night: { start: '#0a0a08', end: '#1a1508' },  // Dark to amber-tinted
-        day:   { start: '#0f0e08', end: '#1a1a0a' }   // Warm industrial yellow
-      }
-    },
-    AEROSPACE: {
-      name: 'Aerospace Museum',
-      wallChar: '█',
-      floorChar: '.',
-      description: 'Vast halls with missile displays',
-      floorRange: [23, 30],
-      props: [
-        { emoji: '🚀', name: 'Rocket Scaffold', breakable: false },
-        { emoji: '✈️', name: 'Hanging Plane', breakable: false }
-      ],
-
-      backgroundGradient: {
-        night: { start: '#08080f', end: '#0f0f1a' },  // Deep space blue
-        day:   { start: '#0a0a12', end: '#141420' }   // Lighter space blue
-      }
-    }
-  };
-
-  // Bonfire floors (safe hubs with vendors)
-  var BONFIRE_FLOORS = [10, 16, 22];
-
-  // Boss floors
-  var BOSS_FLOORS = [10, 16, 22, 30];
 
   // Vendor state
   var _vendor = null;
   var _vendorInventory = [];
+  var VENDOR_TYPES = {};
 
-  // Vendor types with different personalities
-  var VENDOR_TYPES = {
-    SCRAP_MERCHANT: {
-      name: 'Scrap Merchant',
-      emoji: '🧑‍💼',
-      description: 'Sells cheap junk cards and supplies',
-      priceMultiplier: 0.7,
-      qualityRange: [30, 70] // Low quality items
-    },
-    ARMS_DEALER: {
-      name: 'Arms Dealer',
-      emoji: '🔫',
-      description: 'Sells attack cards and explosives',
-      priceMultiplier: 1.2,
-      qualityRange: [50, 85],
-      cardFilter: ['attack']
-    },
-    GHOST_BROKER: {
-      name: 'Ghost Broker',
-      emoji: '👻',
-      description: 'Sells stealth and silent cards',
-      priceMultiplier: 1.5,
-      qualityRange: [60, 90],
-      cardFilter: ['stealth', 'movement']
-    },
-    RELIC_SMUGGLER: {
-      name: 'Relic Smuggler',
-      emoji: '💎',
-      description: 'Sells rare charms and inventory expanders',
-      priceMultiplier: 2.0,
-      qualityRange: [70, 95]
-    }
-  };
+
 
   // ============================================================
   // EXPLORATION FRAMEWORK
@@ -1183,17 +664,85 @@ var GoneRogue = (function () {
   }
 
   function init() {
-    _loadState();
+    var biomesPromise = fetch('../data/gone-rogue/biomes.json')
+      .then(function(response) {
+        if (!response.ok) {
+          throw new Error('HTTP error ' + response.status);
+        }
+        return response.json();
+      })
+      .then(function(json) {
+        BIOMES = json;
+        console.log('[GoneRogue] Biomes loaded successfully.');
+      });
 
-    // Enable interactive grid UI for all platforms (desktop and mobile)
-    _useInteractiveGrid = (typeof GoneRogueMobile !== 'undefined');
+    var tilesPromise = fetch('../data/gone-rogue/tiles.json')
+      .then(function(response) {
+        if (!response.ok) {
+          throw new Error('HTTP error ' + response.status);
+        }
+        return response.json();
+      })
+      .then(function(json) {
+        TILES = json.TILES;
+        TILE_EFFECTS = json.TILE_EFFECTS;
+        console.log('[GoneRogue] Tiles loaded successfully.');
+      });
 
-    // Initialize interactive grid UI if available
-    if (_useInteractiveGrid) {
-      GoneRogueMobile.init();
-    }
+    var enemiesPromise = fetch('../data/gone-rogue/enemies.json')
+      .then(function(response) {
+        if (!response.ok) {
+          throw new Error('HTTP error ' + response.status);
+        }
+        return response.json();
+      })
+      .then(function(json) {
+        AWARENESS_STATES = json.AWARENESS_STATES;
+        PATH_TYPES = json.PATH_TYPES;
+        console.log('[GoneRogue] Enemies loaded successfully.');
+      });
 
-    return Promise.resolve();
+    var floorsPromise = fetch('../data/gone-rogue/floors.json')
+      .then(function(response) {
+        if (!response.ok) {
+          throw new Error('HTTP error ' + response.status);
+        }
+        return response.json();
+      })
+      .then(function(json) {
+        FLOOR_TYPES = json.FLOOR_TYPES;
+        BONFIRE_FLOORS = json.BONFIRE_FLOORS;
+        BOSS_FLOORS = json.BOSS_FLOORS;
+        console.log('[GoneRogue] Floors loaded successfully.');
+      });
+
+    var vendorsPromise = fetch('../data/gone-rogue/vendors.json')
+      .then(function(response) {
+        if (!response.ok) {
+          throw new Error('HTTP error ' + response.status);
+        }
+        return response.json();
+      })
+      .then(function(json) {
+        VENDOR_TYPES = json.VENDOR_TYPES;
+        console.log('[GoneRogue] Vendors loaded successfully.');
+      });
+
+    return Promise.all([biomesPromise, tilesPromise, enemiesPromise, floorsPromise, vendorsPromise])
+      .then(function() {
+        _loadState();
+
+        // Enable interactive grid UI for all platforms (desktop and mobile)
+        _useInteractiveGrid = (typeof GoneRogueMobile !== 'undefined');
+
+        // Initialize interactive grid UI if available
+        if (_useInteractiveGrid) {
+          GoneRogueMobile.init();
+        }
+      })
+      .catch(function(error) {
+        console.error('[GoneRogue] Could not load game data:', error);
+      });
   }
 
   /**
