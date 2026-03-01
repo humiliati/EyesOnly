@@ -2502,31 +2502,39 @@ body.in-gone-rogue #log-column {
    This avoids the heavy-handed desktop patch that broke layout.
 */
 @media (min-width: 768px) {
+  /* Desktop containment strategy:
+     - Let the *frame* (#rogue-grid-mobile) hug the canvas' real drawing size
+       (so we don't create deadspace inside the neon border)
+     - Center that frame inside the terminal surface.
+
+     This avoids fighting the game's JS camera math (it sets an inline
+     transform on the canvas: scale(...) translate(...)).
+  */
   body.gone-rogue-active #terminal {
     overflow: hidden;         /* clip any transformed children */
     isolation: isolate;       /* new stacking context for sane z-index */
+
+    /* Center the game surface inside the terminal */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
-  /* Make the neon frame (rogue-grid-mobile) size to the terminal surface,
-     not to the intrinsic game/map dimensions. */
   body.gone-rogue-active #rogue-grid-mobile {
     position: relative;
     z-index: 0;
     overflow: hidden;         /* primary clip */
 
-    /* Frame follows terminal width */
-    width: 100%;
+    /* Hug content (canvas) so border doesn't span empty space */
+    width: fit-content;
     max-width: 100%;
     min-width: 0;
     box-sizing: border-box;
 
-    /* Important: pin the render surface to the top-left of the frame.
-       This prevents the "big left gutter" that happens when the canvas
-       ends up centered or baseline-aligned inside the container. */
-    display: flex;
-    align-items: flex-start;
-    justify-content: flex-start;
-    line-height: 0; /* kill inline baseline gaps */
+    /* Ensure canvas sits at top-left within the frame */
+    display: grid;
+    place-items: start;
+    line-height: 0;
   }
 
   /* Canvas: avoid CSS-resizing the canvas box (can desync with JS camera math).
