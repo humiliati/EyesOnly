@@ -82,11 +82,10 @@ Resource rows have:
 
 ## Visual Testing
 
-Use `/public/tests/test-resource-colors.html` to:
-1. View all resource colors side-by-side
-2. Compare with incinerator colors to verify no conflicts
-3. Test frame animations interactively
-4. See live debrief feed with actual resource bars
+Use `node public/tests/test-resource-colors.js` to audit the canonical RESOURCE_COLOR mappings against the debrief-feed implementation:
+1. Verifies all nine resources (HP, Energy, Focus, Battery, Fatigue, Ammo, Currency, Key Ammo, Cards) exist
+2. Confirms each hex code matches canon and key ammo uses bright orange `#FF8A3D`
+3. Ensures no unexpected resource entries have drifted into the map
 
 ## Color Psychology
 
@@ -114,4 +113,3 @@ All 9 canonical collectible categories and their RESOURCE_COLOR mappings are doc
 - No confusion with incinerator animation
 - Consistent visual language
 - Frame animations provide better feedback for resource changes
-
