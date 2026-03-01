@@ -3,7 +3,7 @@
    ASCII stealth roguelike inside terminal column
    ============================================================ */
 
-const GoneRogue = (function () {
+var GoneRogue = (function () {
   'use strict';
 
   var STORAGE_KEY = 'eyesonly_rogue_state';
