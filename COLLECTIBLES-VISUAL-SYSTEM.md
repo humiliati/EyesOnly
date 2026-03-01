@@ -24,11 +24,12 @@ These collectible types use emoji for clear, recognizable visual representation:
    - **Storage**: Persistent inventory (`GAMESTATE.addToPersistent()`)
    - **Tooltip**: `🔑 KEY ITEM: {name} → INVENTORY`
    - **Quality label**: `[KEY ITEM]`
-   - Color: `#FFD700` (gold)
+   - Color: `#FFD700` (gold) — overhead animation tint via `showGenericExpression`
 
 3. **Key Ammo — Tier 1: Consumable Chest/Lock Keys** (🔑 🗝️)
    - Consumable keys for chests and simple locks; used in thieving mechanics
    - Examples: Rusty Key 🔑 (KEY_002), Bronze Key 🗝️ (KEY_004)
+   - Color: `#FFD700` (gold) — overhead animation tint via `showGenericExpression`
    - `consumeOnUse: true` — consumed when a chest/lock is opened
    - **Storage**: Resource counter in debrief feed (`GAMESTATE.addKeyCount()` + `getTotalKeyAmmo()`), NOT inventory
    - **Tooltip**: `🔑 KEY AMMO: {name}`
@@ -108,9 +109,9 @@ From `docs/RESOURCE_COLOR_SYSTEM.md`:
 ```javascript
 RESOURCE_COLORS = {
   'HP': '#FF6B9D',         // Vibrant Pink
-  'Energy': '#00D4FF',      // Electric Blue (Cyan)
+  'Energy': '#00D4FF',      // Electric Blue — UI-only (energy bar); no floor collectible uses this color
   'Focus': '#FFF9B0',       // Bright Yellow-White
-  'Battery': '#00FFA6',     // Sickly Green-Cyan
+  'Battery': '#00FFA6',     // Cyan-Green
   'Fatigue': '#A0522D',     // Earthy Brown
   'Ammo': '#DA70D6'         // Magenta-Purple
 }
@@ -130,7 +131,7 @@ RESOURCE_COLORS = {
 - **Visual**: Monochrome ASCII (no emoji)
 
 ### Battery (Tech Resource)
-- **Collectible**: Battery Cell glyph `◈` with cyan color `#00FFA6`
+- **Collectible**: Battery Cell glyph `◈` with cyan-green color `#00FFA6`
 - **Resource Type**: `'gem'` (item type that recharges battery)
 - **Purpose**: Used for tech cards (EMP Blast, System Crash, Chain Lightning, etc.)
 - **Collection**: Battery cell pickup calls `GAMESTATE.rechargeBattery(amount)`
@@ -164,7 +165,7 @@ RESOURCE_COLORS = {
 - **Pickup**: Lines 6018-6062 (calls `GAMESTATE.rechargeBattery()`)
 - **Glyph**: `◈`
 - **Type**: `'gem'`
-- **Color**: `#00FFA6` (cyan from RESOURCE_COLORS)
+- **Color**: `#00FFA6` (cyan-green from RESOURCE_COLORS)
 - **Rendering**: `gone-rogue-mobile.js` lines 743-770 (cyan ASCII glyph)
 - **UI Feedback**: Shows "◈ Battery +X" message
 - **Debrief Integration**: Triggers `DebriefFeedController.triggerBatteryRecharge()`
@@ -215,7 +216,7 @@ RESOURCE_COLORS = {
 - **Registry IDs**: `ITM-030`, `ITM-031`
 - **Storage**: `GAMESTATE.addToPersistent(nonCardPayload)` — persistent inventory
 - **Tooltip show**: `TooltipSystem.show('❗ QUEST ITEM — {name} — Return to {NPC}', 3500)`
-- **MOK interjection**: `Key Item: {name}` (same as Tier 2, no special branch)
+- **MOK interjection**: `Key Item: {name}` (shares Tier 2 prefix — consider adding `Quest Item:` prefix in future work)
 - **Overhead animation**: Red `❗` via `OverheadAnimator.showGenericExpression` (1500ms, `#FF4444`)
 
 ## Universal Auto-Pickup Doctrine
@@ -441,7 +442,7 @@ var baseY = screenY - (cellSize * 2.4);  // Base position above player
 | **Duration** | 4 seconds | 800ms |
 | **Animation** | Bobbing + decay | Bounce/float up |
 | **Purpose** | Persistent tracking | Immediate feedback |
-| **Stacking** | Vertical tower | Tight -12px spacing |
+| **Stacking** | Vertical tower | 12px vertical spacing |
 | **Display** | Character/glyph only | Text + glyph (e.g., "+3¢") |
 | **Lifecycle** | Automatic decay | One-shot animation |
 | **Canvas Support** | ✅ Fully integrated | ✅ Fully integrated (as of 2026-02-28) |
@@ -543,8 +544,8 @@ Example:
 
 ## Future Enhancements
 
-See `COLLECTIBLES-BUG-FIX.md` for roadmap:
-- Phase 1: Unified WorldItems manager
-- Phase 2: Consolidated animation system
-- Phase 3: Complete emoji restriction enforcement
-- Phase 4: Automated regression tests
+WorldItems roadmap (distinct from the Animation Unification phases in `OVERHEAD-ANIMATION-UNIFIED-ROADMAP.md`):
+- WorldItems Phase 1: Unified WorldItems manager ✅ Done (see `COLLECTIBLES-BUG-FIX.md` Architecture Note)
+- WorldItems Phase 2: Consolidated animation system (future)
+- WorldItems Phase 3: Complete emoji restriction enforcement (future)
+- WorldItems Phase 4: Automated regression tests (future)

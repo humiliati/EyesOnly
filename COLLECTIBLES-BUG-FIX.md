@@ -1,5 +1,7 @@
 # Collectibles Bug Fix Log
 
+> **Scope**: This document tracks **bug fixes** only. For non-bug improvements (overhead stacking, visual polish), see `COLLECTIBLES-IMPROVEMENTS-SUMMARY.md`.
+
 ## Summary
 
 Fixed five critical bugs in the collectibles system across two phases:
@@ -52,6 +54,8 @@ currencies.forEach(function(currency) {
 - ✅ Overhead animation still works correctly (OverheadAnimator.showCurrencyPickup)
 - ✅ Currency glyph immediately disappears from map after collection
 - ✅ No more lingering "¢" glyphs drifting on screen
+
+> **See also**: IMPROVEMENTS-SUMMARY #1 — the twinkle alpha oscillation in `gone-rogue-canvas.js` was a second contributor to this lingering-glyph symptom.
 
 ### Bug #2: Food/Interactive Items Dual Rendering
 
@@ -324,7 +328,6 @@ var pickupQuality = item.type === 'key' && keyTier <= 1 ? ' [KEY AMMO]' : ' [KEY
 
 ### File: `/public/js/gone-rogue.js`
 
-- Tap handler: `autoPickup` items bypass `process('interact')`, allowing movement to proceed
 - `WorldItems.getAllForRendering()` loop: added `type === 'ammo'` branch with `color = '#DA70D6'`
 - Fallback rendering path: corrected ammo color from `#00FFFF` to `#DA70D6`
 - `_checkPlayerInteractions`: replaced ammo-specific 25-line block with `_pickupItem()` call
@@ -366,6 +369,8 @@ Run: `node public/tests/verify-collectibles-fix.js`
 Run: `node public/tests/verify-collectibles-improvements.js`
 
 Results: **19/19 tests passing** ✅
+
+> **Note**: Key tier routing (Bug #6) is verified via manual checklist only — automated tests for `getTotalKeyAmmo()`, debrief feed `🔑x{N}`, and key-ammo vs key-item tooltip routing are not yet implemented.
 
 ### Manual Testing Checklist
 - [ ] Walk over food item → item disappears, LOOT animation plays, HP/fatigue modified

@@ -404,7 +404,7 @@ The key system has three tiers with distinct storage, tooltip, and overhead anim
 - **Tooltip**: `TooltipSystem.showAction('key-ammo-pickup', { name })` → `'🔑 KEY AMMO: Rusty Key'`
 - **MOK interjection**: `Key Ammo: {name}`
 - **Quality label**: `[KEY AMMO]` in pickup log
-- **Overhead anim**: Gold 🔑 expression, 800ms
+- **Overhead anim**: Gold (`#FFD700`) 🔑 expression, 800ms
 - **PancakeStack**: `item.emoji || '🔑'`
 - **`getTotalKeyAmmo()`**: Returns sum of all Tier 1 key counts (used for resource-change delta)
 
@@ -424,6 +424,7 @@ The key system has three tiers with distinct storage, tooltip, and overhead anim
 - **Mechanics**: Persistent quest items for NPC turn-in (reward: card upgrade)
 - **Storage**: `GAMESTATE.addToPersistent(nonCardPayload)` — persistent inventory
 - **Tooltip**: `TooltipSystem.show('❗ QUEST ITEM — {name} — Return to {NPC}', 3500)`
+- **MOK interjection**: `Key Item: {name}` (shares Tier 2 prefix — consider adding `Quest Item:` prefix in future work)
 - **Overhead anim**: Red ❗ expression, 1500ms
 - **No debrief resource row**; **no auto-equip**
 
@@ -478,8 +479,8 @@ The key system has three tiers with distinct storage, tooltip, and overhead anim
 | **Update** | On-demand | Every frame |
 | **Glow** | None | Newest item only |
 | **Shadow** | None | Single ellipse |
-| **Canvas** | **MISSING** | ✅ Integrated |
-| **Mobile** | ✅ Integrated | Via effects array |
+| **Canvas** | ✅ Integrated (Phase 1) | ✅ Integrated |
+| **Mobile** | ✅ Integrated | ✅ Integrated |
 
 ### Architecture Differences
 

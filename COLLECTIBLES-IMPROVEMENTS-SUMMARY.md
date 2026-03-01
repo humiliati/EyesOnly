@@ -18,6 +18,8 @@ This document summarizes the improvements made to the collectibles system to fix
 
 **Files Changed**: `public/js/gone-rogue-canvas.js`
 
+> **See also**: BUG-FIX #1 — the `collected` flag filter in `gone-rogue-mobile.js` was the primary fix for the dual-render variant of this lingering-glyph bug.
+
 ### 2. Overhead Animation Stacking ✅ IMPROVED
 **Problem**: Multiple pickup animations would spread horizontally and weren't positioned consistently tight above the player's head.
 
@@ -103,6 +105,8 @@ Run: `node public/tests/verify-collectibles-improvements.js`
 Run: `node public/tests/verify-collectibles-fix.js`
 
 Results: **19/19 tests passing** ✅
+
+> **Note**: Key tier routing (Issue #7) is verified via manual checklist only — automated tests for `getTotalKeyAmmo()`, debrief feed `🔑x{N}`, and key-ammo vs key-item tooltip routing are not yet implemented.
 
 Tests verify:
 1. Twinkle alpha oscillation removed
