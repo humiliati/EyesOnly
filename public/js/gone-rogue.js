@@ -3,10 +3,8 @@
    ASCII stealth roguelike inside terminal column
    ============================================================ */
 
-console.log('[GoneRogue] Script file loaded, executing IIFE...');
 var GoneRogue = (function () {
   'use strict';
-  console.log('[GoneRogue] Inside IIFE, beginning module definition...');
 
   var STORAGE_KEY = 'eyesonly_rogue_state';
   var _active = false;
@@ -6207,6 +6205,8 @@ _incrementPityTimers();
         // like ammo and reported via DebriefFeedController.reportResourceChange.
         result = { success: true, message: 'Key ammo counted' };
       } else {
+        result = { success: true, message: 'Item picked up' };
+      }
 
       // KEY COUNTER: Increment structured key counter on successful pickup
       if (item.type === 'key' && result && result.success) {
@@ -14028,6 +14028,5 @@ _incrementPityTimers();
       resetToState: resetToState
     }
   };
-}
 })();
-console.log('[GoneRogue] IIFE complete. typeof GoneRogue:', typeof GoneRogue);
+
