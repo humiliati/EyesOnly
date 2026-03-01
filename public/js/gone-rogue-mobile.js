@@ -720,53 +720,54 @@ const GoneRogueMobile = (function () {
       });
     }
 
-    // Add currencies
-    if (currencies) {
-      currencies.forEach(function(currency) {
-        // Skip collected currencies to prevent dual rendering bug
-        if (currency.collected) return;
-        var vx = _toViewX(currency.x);
-        var vy = _toViewY(currency.y);
-        if (!_inView(vx, vy)) return;
-        entities.push({
-          x: vx,
-          y: vy,
-          char: currency.glyph || '¢',
-          color: '#FFFF00'
-        });
-      });
-    }
-
-    // Track positions of items to prevent duplicate rendering (Bug #2 fix)
-    var itemPositions = {};
-
-    // Add items
-    if (items) {
-      items.forEach(function(item) {
+    // Add all ground items from WorldItems (single source of truth)
+    // Replaces the former separate loops for currencies, floor items, and interactive items.
+    if (typeof WorldItems !== 'undefined') {
+      WorldItems.getAllForRendering().forEach(function(item) {
         var vx = _toViewX(item.x);
         var vy = _toViewY(item.y);
         if (!_inView(vx, vy)) return;
-        var posKey = vx + ',' + vy;
-        if (itemPositions[posKey]) return; // Skip if already rendered
-        itemPositions[posKey] = true;
 
-        // Battery gems use cyan glyph, other items use emoji or default
-        var char = item.glyph || item.emoji || '💎';
-        var color = '#00FFFF'; // Default cyan
-
-        // Battery cells (gems) use battery cyan color
-        if (item.type === 'gem') {
-          char = item.glyph || '◈';
-          color = '#00FFA6'; // Battery cyan from RESOURCE_COLORS
+        var char, color;
+        if (item._wt === 'currency') {
+          char = item.glyph || '¢';
+          color = '#FFFF00';
+        } else if (item._wt === 'item') {
+          if (item.type === 'gem') {
+            char = item.glyph || '◈';
+            color = '#00FFA6'; // Battery cyan from RESOURCE_COLORS
+          } else {
+            char = item.glyph || item.emoji || '💎';
+            color = '#00FFFF';
+          }
+        } else { // 'interactive'
+          char = item.emoji;
+          color = '#00FFFF';
         }
 
-        entities.push({
-          x: vx,
-          y: vy,
-          char: char,
-          color: color
-        });
+        entities.push({ x: vx, y: vy, char: char, color: color });
       });
+    } else {
+      // Fallback when WorldItems is unavailable
+      if (currencies) {
+        currencies.forEach(function(currency) {
+          if (currency.collected) return;
+          var vx = _toViewX(currency.x);
+          var vy = _toViewY(currency.y);
+          if (!_inView(vx, vy)) return;
+          entities.push({ x: vx, y: vy, char: currency.glyph || '¢', color: '#FFFF00' });
+        });
+      }
+      if (items) {
+        items.forEach(function(item) {
+          var vx = _toViewX(item.x);
+          var vy = _toViewY(item.y);
+          if (!_inView(vx, vy)) return;
+          var char = item.type === 'gem' ? (item.glyph || '◈') : (item.glyph || item.emoji || '💎');
+          var color = item.type === 'gem' ? '#00FFA6' : '#00FFFF';
+          entities.push({ x: vx, y: vy, char: char, color: color });
+        });
+      }
     }
 
     // Add placed boxes
@@ -799,25 +800,6 @@ const GoneRogueMobile = (function () {
           y: vy,
           char: projectile.emoji || projectile.glyph || '💥',
           color: '#FF00FF'
-        });
-      });
-    }
-
-    // Add interactive items (deduplication prevents dual rendering with items[])
-    if (typeof InteractiveItems !== 'undefined') {
-      var interactiveItems = InteractiveItems.getAllItems();
-      interactiveItems.forEach(function(item) {
-        var vx = _toViewX(item.x);
-        var vy = _toViewY(item.y);
-        if (!_inView(vx, vy)) return;
-        var posKey = vx + ',' + vy;
-        if (itemPositions[posKey]) return; // Skip if already rendered from items[]
-        itemPositions[posKey] = true;
-        entities.push({
-          x: vx,
-          y: vy,
-          char: item.emoji,
-          color: '#00FFFF'
         });
       });
     }

@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 
 /**
- * Automated verification script for collectibles dual-render bug fixes
+ * Automated verification script for collectibles system fixes
  *
- * Checks that the fixes are properly applied in the codebase:
- * 1. Currency rendering checks for collected flag
- * 2. Item rendering uses deduplication
+ * Phase 1 – WorldItems consolidation checks:
+ * 1. WorldItems module exists
+ * 2. gone-rogue.js uses WorldItems for floor items
+ * 3. gone-rogue.js uses WorldItems for currencies
+ * 4. gone-rogue-mobile.js uses WorldItems.getAllForRendering() as single render source
+ * 5. itemPositions deduplication hack has been removed (superseded by WorldItems)
+ * 6. Visual test file exists
+ * 7. Documentation exists
  *
  * Run: node public/tests/verify-collectibles-fix.js
  */
@@ -54,72 +59,118 @@ function checkPatternInFile(filepath, pattern, description) {
   }
 }
 
+function checkPatternNotInFile(filepath, pattern, description) {
+  if (!checkFileExists(filepath)) {
+    log(`✗ FAIL: File not found: ${filepath}`, 'red');
+    return false;
+  }
+
+  const content = fs.readFileSync(filepath, 'utf8');
+  const regex = new RegExp(pattern, 's');
+
+  if (!regex.test(content)) {
+    log(`✓ PASS: ${description}`, 'green');
+    return true;
+  } else {
+    log(`✗ FAIL: ${description} (pattern still present)`, 'red');
+    return false;
+  }
+}
+
 function main() {
   log('\n═══════════════════════════════════════════════════════', 'cyan');
-  log('Collectibles Dual-Render Bug Fix Verification', 'cyan');
+  log('Collectibles System – Phase 1 WorldItems Verification', 'cyan');
   log('═══════════════════════════════════════════════════════\n', 'cyan');
 
-  const mobileJsPath = path.join(__dirname, '..', 'js', 'gone-rogue-mobile.js');
-  const testHtmlPath = path.join(__dirname, 'test-collectibles-dual-render-bug.html');
-  const docPath = path.join(__dirname, '..', '..', 'COLLECTIBLES-BUG-FIX.md');
+  const worldItemsPath = path.join(__dirname, '..', 'js', 'world-items.js');
+  const rogueJsPath    = path.join(__dirname, '..', 'js', 'gone-rogue.js');
+  const mobileJsPath   = path.join(__dirname, '..', 'js', 'gone-rogue-mobile.js');
+  const testHtmlPath   = path.join(__dirname, 'test-collectibles-dual-render-bug.html');
+  const docPath        = path.join(__dirname, '..', '..', 'COLLECTIBLES-BUG-FIX.md');
 
   let passCount = 0;
   let failCount = 0;
 
-  // Test 1: Check for currency collected flag filter
-  log('Test 1: Currency collected flag filter', 'blue');
-  log('  Checking: gone-rogue-mobile.js has "if (currency.collected) return;"', 'yellow');
+  // Test 1: WorldItems module exists
+  log('Test 1: WorldItems module', 'blue');
+  log('  Checking: world-items.js exists and exposes WorldItems', 'yellow');
   if (checkPatternInFile(
-    mobileJsPath,
-    /currencies\.forEach\(function\(currency\)\s*\{[^}]*if\s*\(\s*currency\.collected\s*\)\s*return/,
-    '  Currency rendering checks collected flag'
+    worldItemsPath,
+    /const\s+WorldItems\s*=\s*\(function/,
+    '  WorldItems singleton module created'
   )) {
     passCount++;
   } else {
     failCount++;
   }
 
-  // Test 2: Check for item position tracking
-  log('\nTest 2: Item position deduplication', 'blue');
-  log('  Checking: gone-rogue-mobile.js has "var itemPositions = {};"', 'yellow');
+  // Test 2: WorldItems exposes getAllForRendering
+  log('\nTest 2: WorldItems.getAllForRendering', 'blue');
+  log('  Checking: world-items.js has getAllForRendering function', 'yellow');
   if (checkPatternInFile(
+    worldItemsPath,
+    /function\s+getAllForRendering/,
+    '  WorldItems.getAllForRendering() defined'
+  )) {
+    passCount++;
+  } else {
+    failCount++;
+  }
+
+  // Test 3: gone-rogue.js delegates _items to WorldItems
+  log('\nTest 3: gone-rogue.js uses WorldItems for floor items', 'blue');
+  log('  Checking: _items = WorldItems.getFloorItems()', 'yellow');
+  if (checkPatternInFile(
+    rogueJsPath,
+    /var\s+_items\s*=\s*WorldItems\.getFloorItems\(\)/,
+    '  _items initialised from WorldItems.getFloorItems()'
+  )) {
+    passCount++;
+  } else {
+    failCount++;
+  }
+
+  // Test 4: gone-rogue.js delegates _currencies to WorldItems
+  log('\nTest 4: gone-rogue.js uses WorldItems for currencies', 'blue');
+  log('  Checking: _currencies = WorldItems.getCurrencies()', 'yellow');
+  if (checkPatternInFile(
+    rogueJsPath,
+    /var\s+_currencies\s*=\s*WorldItems\.getCurrencies\(\)/,
+    '  _currencies initialised from WorldItems.getCurrencies()'
+  )) {
+    passCount++;
+  } else {
+    failCount++;
+  }
+
+  // Test 5: gone-rogue-mobile.js uses WorldItems.getAllForRendering()
+  log('\nTest 5: Renderer uses WorldItems.getAllForRendering()', 'blue');
+  log('  Checking: gone-rogue-mobile.js calls WorldItems.getAllForRendering()', 'yellow');
+  if (checkPatternInFile(
+    mobileJsPath,
+    /WorldItems\.getAllForRendering\(\)/,
+    '  Renderer calls WorldItems.getAllForRendering() as single source'
+  )) {
+    passCount++;
+  } else {
+    failCount++;
+  }
+
+  // Test 6: itemPositions deduplication hack removed
+  log('\nTest 6: itemPositions hack removed', 'blue');
+  log('  Checking: gone-rogue-mobile.js no longer uses itemPositions dedup', 'yellow');
+  if (checkPatternNotInFile(
     mobileJsPath,
     /var\s+itemPositions\s*=\s*\{\}/,
-    '  Item position tracking initialized'
+    '  itemPositions deduplication hack removed (superseded by WorldItems)'
   )) {
     passCount++;
   } else {
     failCount++;
   }
 
-  // Test 3: Check items loop uses deduplication
-  log('\nTest 3: Items array deduplication check', 'blue');
-  log('  Checking: items.forEach checks itemPositions before rendering', 'yellow');
-  if (checkPatternInFile(
-    mobileJsPath,
-    /items\.forEach\(function\(item\)\s*\{[^}]*var\s+posKey[^}]*if\s*\(\s*itemPositions\[posKey\]\s*\)/,
-    '  Items rendering uses deduplication'
-  )) {
-    passCount++;
-  } else {
-    failCount++;
-  }
-
-  // Test 4: Check interactive items loop uses deduplication
-  log('\nTest 4: Interactive items deduplication check', 'blue');
-  log('  Checking: interactiveItems.forEach checks itemPositions', 'yellow');
-  if (checkPatternInFile(
-    mobileJsPath,
-    /interactiveItems\.forEach\(function\(item\)\s*\{[^}]*var\s+posKey[^}]*if\s*\(\s*itemPositions\[posKey\]\s*\)/,
-    '  Interactive items rendering uses deduplication'
-  )) {
-    passCount++;
-  } else {
-    failCount++;
-  }
-
-  // Test 5: Check visual test file exists
-  log('\nTest 5: Visual test file', 'blue');
+  // Test 7: Check visual test file exists
+  log('\nTest 7: Visual test file', 'blue');
   log('  Checking: test-collectibles-dual-render-bug.html exists', 'yellow');
   if (checkFileExists(testHtmlPath)) {
     log('  ✓ PASS: Visual test file exists', 'green');
@@ -129,8 +180,8 @@ function main() {
     failCount++;
   }
 
-  // Test 6: Check documentation exists
-  log('\nTest 6: Documentation', 'blue');
+  // Test 8: Check documentation exists
+  log('\nTest 8: Documentation', 'blue');
   log('  Checking: COLLECTIBLES-BUG-FIX.md exists', 'yellow');
   if (checkFileExists(docPath)) {
     log('  ✓ PASS: Documentation exists', 'green');
@@ -151,10 +202,10 @@ function main() {
   log(`Failed: ${failCount}`, failCount > 0 ? 'red' : 'green');
 
   if (failCount === 0) {
-    log('\n✓ All verifications passed! Fixes are correctly applied.', 'green');
+    log('\n✓ All verifications passed! WorldItems Phase 1 is correctly implemented.', 'green');
     process.exit(0);
   } else {
-    log('\n✗ Some verifications failed. Please review the fixes.', 'red');
+    log('\n✗ Some verifications failed. Please review the WorldItems implementation.', 'red');
     process.exit(1);
   }
 }

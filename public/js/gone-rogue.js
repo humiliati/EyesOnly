@@ -37,10 +37,10 @@ const GoneRogue = (function () {
 
   var _enemies = [];
   var _npcs = []; // NPCs on floor (tutorial gates, etc.)
-  var _items = [];
+  var _items = WorldItems.getFloorItems();        // Managed by WorldItems (single source of truth)
   var _projectiles = [];
   var _breakables = [];
-  var _currencies = []; // Currency drops on floor (yellow dots ¢)
+  var _currencies = WorldItems.getCurrencies();  // Currency drops on floor (yellow dots ¢) — managed by WorldItems
   var _shops = []; // Shop objects on floor (🏪 or 👤)
   var _placedBoxes = []; // Deployable box entities placed on the map {id, x, y, quality, state, discoveryCount}
   var _playerInBox = null; // Box entity the player is currently hiding inside (or null)
@@ -2541,7 +2541,7 @@ const GoneRogue = (function () {
     } catch (e01) {}
     try {
       if (Array.isArray(_items)) {
-        _items = _items.filter(function(it) { return it && !((it.x === exitX && it.y === exitY) || (it.x === backX && it.y === backY)); });
+        _items = WorldItems.filterFloorItems(function(it) { return it && !((it.x === exitX && it.y === exitY) || (it.x === backX && it.y === backY)); });
       }
     } catch (e02) {}
     try {
@@ -2917,10 +2917,10 @@ const GoneRogue = (function () {
         _breakables = _breakables.filter(function(bb) { return bb && !((bb.x === exitX && bb.y === exitY) || (bb.x === backX && bb.y === backY)); });
       }
       if (Array.isArray(_items)) {
-        _items = _items.filter(function(it) { return it && !((it.x === exitX && it.y === exitY) || (it.x === backX && it.y === backY)); });
+        _items = WorldItems.filterFloorItems(function(it) { return it && !((it.x === exitX && it.y === exitY) || (it.x === backX && it.y === backY)); });
       }
       if (Array.isArray(_currencies)) {
-        _currencies = _currencies.filter(function(cc) { return cc && !((cc.x === exitX && cc.y === exitY) || (cc.x === backX && cc.y === backY)); });
+        _currencies = WorldItems.filterCurrencies(function(cc) { return cc && !((cc.x === exitX && cc.y === exitY) || (cc.x === backX && cc.y === backY)); });
       }
       if (Array.isArray(_enemies)) {
         _enemies = _enemies.filter(function(en) { return en && !((en.x === exitX && en.y === exitY) || (en.x === backX && en.y === backY)); });
@@ -3013,7 +3013,9 @@ const GoneRogue = (function () {
     // Initialize generation state
     _projectiles = [];
     _breakables = [];
-    _items = [];
+    WorldItems.init();
+    _items = WorldItems.getFloorItems();
+    _currencies = WorldItems.getCurrencies();
     _enemies = [];
     _npcs = [];
     _shops = [];
@@ -5510,7 +5512,7 @@ _incrementPityTimers();
       // Track for highscore
       _currencyCollected += cryptoPickup.amount;
       // Remove currency from floor
-      _currencies = _currencies.filter(function(c) { return c.x !== x || c.y !== y; });
+      _currencies = WorldItems.filterCurrencies(function(c) { return c.x !== x || c.y !== y; });
 
       // Set player currency collection state for animation
       _player.collectingCurrency = true;
@@ -5743,7 +5745,7 @@ _incrementPityTimers();
       // Track for highscore
       _currencyCollected += cryptoPickup.amount;
       // Remove currency from floor
-      _currencies = _currencies.filter(function(c) { return c.x !== newX || c.y !== newY; });
+      _currencies = WorldItems.filterCurrencies(function(c) { return c.x !== newX || c.y !== newY; });
 
       // Set player currency collection state for animation
       _player.collectingCurrency = true;
@@ -5980,7 +5982,7 @@ _incrementPityTimers();
       }
 
       // Remove ammo from floor
-      _items = _items.filter(function(i) { return i !== item; });
+      _items = WorldItems.filterFloorItems(function(i) { return i !== item; });
 
       // Tooltip and MOK interjection
       if (typeof TooltipSystem !== 'undefined') {
@@ -6016,7 +6018,7 @@ _incrementPityTimers();
       }
 
       // Remove gem from floor
-      _items = _items.filter(function(i) { return i !== item; });
+      _items = WorldItems.filterFloorItems(function(i) { return i !== item; });
 
       if (typeof OverheadAnimator !== 'undefined') {
         OverheadAnimator.showExpression(_player.x, _player.y, 'LOOT', 800, '◈');
@@ -6269,7 +6271,7 @@ _incrementPityTimers();
     }
 
     // Remove item from floor
-    _items = _items.filter(function(i) { return i !== item; });
+    _items = WorldItems.filterFloorItems(function(i) { return i !== item; });
 
     // Tooltip: Item/card pickup
     if (typeof TooltipSystem !== 'undefined') {
@@ -6931,8 +6933,9 @@ _incrementPityTimers();
       // Reset state arrays for interior
       _enemies = [];
       _breakables = [];
-      _items = [];
-      _currencies = [];
+      WorldItems.init();
+      _items = WorldItems.getFloorItems();
+      _currencies = WorldItems.getCurrencies();
       _npcs = [];
       _forestBuildings = [];
       _tileMetadata = {};
@@ -8501,7 +8504,7 @@ _incrementPityTimers();
       }
     }
     var now = Date.now();
-    _items = _items.filter(function(item) {
+    _items = WorldItems.filterFloorItems(function(item) {
       if (item.spawnTime && item.decayTime) {
         var age = now - item.spawnTime;
         return age < item.decayTime;
@@ -8510,7 +8513,7 @@ _incrementPityTimers();
     });
 
     // Update currency decay timers
-    _currencies = _currencies.filter(function(currency) {
+    _currencies = WorldItems.filterCurrencies(function(currency) {
       if (currency.spawnTime && currency.decayTime) {
         var age = now - currency.spawnTime;
         return age < currency.decayTime;
@@ -9865,7 +9868,10 @@ _incrementPityTimers();
         }
       } catch (e0) {}
       if (parsed.enemies) _enemies = parsed.enemies;
-      if (parsed.items) _items = parsed.items;
+      if (parsed.items) {
+        WorldItems.setFloorItems(parsed.items);
+        _items = WorldItems.getFloorItems();
+      }
       if (parsed.projectiles) _projectiles = parsed.projectiles;
       if (parsed.breakables) _breakables = parsed.breakables;
       if (parsed.turn) _turn = parsed.turn;
@@ -13764,8 +13770,10 @@ _incrementPityTimers();
       // Restore other state
       _breakables = state.breakables ? state.breakables.slice() : [];
       _projectiles = state.projectiles ? state.projectiles.slice() : [];
-      _items = state.items ? state.items.slice() : [];
-      _currencies = state.currencies ? state.currencies.slice() : [];
+      WorldItems.setFloorItems(state.items ? state.items.slice() : []);
+      _items = WorldItems.getFloorItems();
+      WorldItems.setCurrencies(state.currencies ? state.currencies.slice() : []);
+      _currencies = WorldItems.getCurrencies();
       _strCombatActive = state.strCombatActive;
       _alertLevel = state.alertLevel;
       _bossFloorActive = state.bossFloorActive;
