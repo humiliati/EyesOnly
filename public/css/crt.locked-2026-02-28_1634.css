@@ -1,0 +1,3967 @@
+/* ============================================================
+   EYES ONLY - CRT Terminal Stylesheet
+   Visual direction: Westwood Studios C&C (1995-98), Red Alert
+   briefing screens, Cold War command terminals, CRT phosphor
+   ============================================================ */
+
+/* --- CSS Custom Properties --- */
+:root {
+  /* Primary phosphor colors - amber CRT */
+  --phosphor:        #33ff33;
+  --phosphor-dim:    #1a9c1a;
+  --phosphor-bright: #66ff66;
+  --phosphor-glow:   rgba(51, 255, 51, 0.15);
+
+  /* Amber mode (alternate, activated by hidden command) */
+  --amber:           #ffb000;
+  --amber-dim:       #996a00;
+  --amber-bright:    #ffc640;
+  --amber-glow:      rgba(255, 176, 0, 0.15);
+
+  /* Background - deep CRT black with slight warmth */
+  --bg:              #0a0a0a;
+  --bg-screen:       #050805;
+
+  /* Timing */
+  --cursor-blink:    1s;
+  --scanline-speed:  8s;
+
+  /* CRT geometry */
+  --barrel-amount:   3px;
+  --scanline-opacity: 0.12;
+  --glow-spread:     4px;
+
+  /* Monitor framing */
+  --frame-padding: clamp(10px, 2vw, 18px);
+  --panel-bg: #061208;
+  --panel-border: rgba(51, 255, 51, 0.25);
+  --panel-border-soft: rgba(51, 255, 51, 0.12);
+}
+
+/* --- Reset --- */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* --- Base --- */
+html, body {
+  width: 100%;
+  /* Use dynamic viewport units on mobile so fixed CRT container doesn't
+     clip content behind the browser UI (address bar / bottom controls). */
+  height: 100dvh;
+  min-height: 100svh;
+  overflow: hidden;
+  background: #000;
+  font-family: 'Courier New', 'Lucida Console', 'Consolas', monospace;
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--phosphor);
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+/* --- CRT Screen Container --- */
+#crt-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  /* Mobile viewport correctness:
+     Use dynamic viewport units so the usable height tracks browser UI.
+     (Fixes "bottom of game screen unreachable" issues on mobile portrait.) */
+  height: 100dvh;
+  min-height: 100svh;
+  background: var(--bg-screen);
+  overflow: hidden;
+  padding: var(--frame-padding);
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Barrel Distortion (CSS approximation) --- */
+#crt-screen::before {
+  content: '';
+  position: absolute;
+  top: -2%;
+  left: -2%;
+  width: 104%;
+  height: 104%;
+  border-radius: 50% / 10%;
+  box-shadow:
+    inset 0 0 70px 36px rgba(0, 0, 0, 0.7),
+    inset 0 0 14px 8px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* --- Scanlines Overlay --- */
+#scanlines {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 90;
+  overflow: hidden;
+}
+
+/* Horizontal scanlines */
+#scanlines::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 1px,
+    rgba(0, 0, 0, var(--scanline-opacity)) 1px,
+    rgba(0, 0, 0, var(--scanline-opacity)) 2px
+  );
+  animation: scanline-flicker 0.05s infinite;
+}
+
+/* Rolling scanline bar */
+#scanlines::after {
+  content: '';
+  position: absolute;
+  top: -100%;
+  left: 0;
+  width: 100%;
+  height: 40%;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(51, 255, 51, 0.02) 40%,
+    rgba(51, 255, 51, 0.04) 50%,
+    rgba(51, 255, 51, 0.02) 60%,
+    transparent 100%
+  );
+  animation: scanline-roll var(--scanline-speed) linear infinite;
+}
+
+/* Performance optimization: disable scanlines during Gone Rogue gameplay */
+body.gone-rogue-active #scanlines::before,
+body.gone-rogue-active #scanlines::after {
+  animation: none !important;
+  opacity: 0;
+}
+
+/* --- Phosphor Glow Layer --- */
+#phosphor-glow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 80;
+  background: radial-gradient(
+    ellipse at center,
+    var(--phosphor-glow) 0%,
+    transparent 70%
+  );
+  opacity: 0.3;
+}
+
+/* --- Vignette --- */
+#vignette {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 95;
+  box-shadow: inset 0 0 150px 60px rgba(0, 0, 0, 0.7);
+}
+
+/* --- Framing for layout --- */
+#crt-frame {
+  position: relative;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  /* Match dynamic viewport height to avoid mobile bottom cutoff */
+  height: 100dvh;
+  min-height: 100svh;
+  padding: clamp(8px, 1.5vw, 16px);
+  background: radial-gradient(circle at 30% 20%, rgba(51, 255, 51, 0.02), transparent 28%),
+              linear-gradient(135deg, rgba(10, 20, 12, 0.9), rgba(4, 10, 6, 0.94));
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  box-shadow:
+    inset 0 0 18px rgba(0, 0, 0, 0.55),
+    0 0 0 2px rgba(0, 0, 0, 0.35),
+    0 0 32px rgba(0, 255, 120, 0.05);
+  overflow: visible;
+}
+
+/* --- Monitor Layout --- */
+#monitor-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  flex: 1;
+}
+
+#monitor-body {
+  display: grid;
+  grid-template-columns: minmax(86px, 18vw) 1fr;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+}
+
+#control-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.55), 0 0 14px rgba(0, 255, 90, 0.05);
+  min-height: 0;
+  position: relative;
+  z-index: 20; /* Ensure control rail stays above overlays */
+}
+
+.control-buttons {
+  display: grid;
+  grid-auto-rows: minmax(32px, 1fr);
+  gap: 8px;
+  position: relative;
+  z-index: 21; /* Ensure buttons stay above debrief and other overlays */
+}
+
+.control-buttons button {
+  width: 100%;
+  background: rgba(8, 24, 12, 0.85);
+  color: var(--phosphor);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 6px 4px;
+  font-family: inherit;
+  font-size: 0.9em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5), 0 0 10px rgba(0, 255, 90, 0.08);
+}
+
+.control-buttons button:hover,
+.control-buttons button:focus-visible {
+  background: rgba(14, 42, 24, 0.95);
+  border-color: var(--phosphor-bright);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+/* Kernel button - disabled by default */
+.control-buttons button.kernel-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  background: rgba(8, 24, 12, 0.5);
+  color: #555;
+}
+
+.control-buttons button.kernel-btn:disabled:hover {
+  transform: none;
+  border-color: var(--panel-border);
+  background: rgba(8, 24, 12, 0.5);
+}
+
+/* Kernel button - enabled state */
+.control-buttons button.kernel-btn.enabled {
+  border-color: rgba(255, 100, 255, 0.6);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5), 0 0 12px rgba(255, 100, 255, 0.15);
+}
+
+.control-buttons button.kernel-btn.enabled:hover {
+  border-color: rgba(255, 100, 255, 0.9);
+  background: rgba(30, 12, 30, 0.95);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5), 0 0 16px rgba(255, 100, 255, 0.3);
+}
+
+/* Authentication button - logged in state */
+.control-buttons button[data-action="login"].auth-logged-in {
+  border-color: rgba(255, 170, 0, 0.6);
+  color: var(--amber);
+}
+
+.control-buttons button[data-action="login"].auth-logged-in:hover {
+  border-color: var(--amber);
+  background: rgba(40, 30, 12, 0.95);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5), 0 0 12px rgba(255, 170, 0, 0.2);
+}
+
+.debrief-window {
+  background: linear-gradient(160deg, rgba(10, 18, 12, 0.9), rgba(4, 8, 6, 0.95));
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative; /* default (index/street): stay inside control rail */
+  min-height: 0;
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.65);
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+/* Gone Rogue: debrief becomes a floating fixed element (adaptive) */
+body.mode-gone-rogue .debrief-window,
+body.in-gone-rogue .debrief-window {
+  position: fixed;
+  z-index: 700;
+  max-width: min(360px, calc(100vw - 32px));
+}
+
+/* Adaptive positioning for the floating debrief feed (rogue only) */
+@media (min-aspect-ratio: 1/1) {
+  body.mode-gone-rogue .debrief-window,
+  body.in-gone-rogue .debrief-window {
+    left: 16px;
+    bottom: 16px;
+    top: auto;
+    right: auto;
+  }
+}
+
+@media (max-aspect-ratio: 1/1) {
+  body.mode-gone-rogue .debrief-window,
+  body.in-gone-rogue .debrief-window {
+    right: 12px;
+    top: 64px; /* below header */
+    left: auto;
+    bottom: auto;
+  }
+}
+
+.debrief-window.expanded {
+  transform: scale(1.35);
+  transform-origin: top left;
+  box-shadow: 0 0 0 1px var(--panel-border), 0 12px 28px rgba(0, 0, 0, 0.45);
+
+  /* Default: above rail content */
+  position: relative;
+  z-index: 150;
+}
+
+body.mode-gone-rogue .debrief-window.expanded,
+body.in-gone-rogue .debrief-window.expanded {
+  /* Rogue: floating element expands above UI */
+  position: fixed;
+  z-index: 950;
+}
+
+.debrief-window.expanded .debrief-screen {
+  max-width: 640px;
+}
+
+.debrief-label {
+  font-size: 0.78em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--phosphor-dim);
+  margin: 0;
+  padding: 0;
+  line-height: 1.05;
+}
+
+.debrief-screen {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  min-width: 80px;
+  max-width: 320px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: radial-gradient(circle at 20% 20%, rgba(51, 255, 120, 0.08), rgba(0, 0, 0, 0.92) 70%);
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.65), 0 0 10px rgba(0, 255, 90, 0.08);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  color: var(--phosphor-dim);
+  font-size: 0.86em;
+  text-transform: uppercase;
+}
+
+.debrief-screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0px,
+    rgba(0, 0, 0, 0) 2px,
+    rgba(0, 0, 0, 0.2) 3px,
+    rgba(0, 0, 0, 0.2) 4px
+  );
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.debrief-placeholder {
+  position: relative;
+  z-index: 1;
+}
+
+/* MOK Avatar in debrief screen */
+#mok-avatar {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+}
+
+#mok-avatar.mok-powered-down {
+  opacity: 0.55;
+  filter: grayscale(1) contrast(0.9);
+  pointer-events: none;
+}
+
+#mok-avatar {
+  height: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: transform 120ms ease;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+#mok-avatar:focus-visible {
+  outline: 2px solid var(--phosphor);
+  outline-offset: 3px;
+}
+
+#mok-avatar:hover {
+  transform: scale(1.02);
+}
+
+.mok-avatar-svg {
+  width: 90%;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 120, 0.12));
+}
+
+.mok-avatar-glyph {
+  transform-origin: center;
+  transition: transform 160ms ease, opacity 160ms ease;
+  transform: translate(0, 0);
+  opacity: 0.75;
+}
+
+.mok-avatar-core {
+  animation: core-breathe 3s ease-in-out infinite;
+  transform-origin: center;
+}
+
+#mok-avatar.idle .mok-avatar-glyph {
+  opacity: 0.75;
+  transform: translate(0, 0);
+}
+
+#mok-avatar.typing .mok-avatar-glyph {
+  animation: glyph-pulse 1.8s ease-in-out infinite;
+  transform: translate(0, 0);
+}
+
+#mok-avatar.output .mok-avatar-glyph {
+  animation: glyph-output 0.8s linear infinite;
+  opacity: 1;
+  transform: translate(0, 0);
+}
+
+#mok-avatar.active .mok-avatar-glyph {
+  animation: glyph-active-flash 0.2s steps(2,end) infinite;
+  transform: translate(0, 0) scale(1.05);
+}
+
+#log-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.log-frame {
+  flex: 1;
+  min-height: 0;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+}
+
+#mok-header.monitor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: linear-gradient(90deg, rgba(8, 16, 10, 0.94), rgba(6, 14, 9, 0.9));
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.55), 0 0 16px rgba(0, 255, 90, 0.08);
+}
+
+.mok-header-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mok-header-title {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.95em;
+}
+
+.mok-header-sub {
+  color: var(--phosphor-dim);
+  font-size: 0.82em;
+}
+
+.mok-header-right {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Active item slot in header */
+.mok-header-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.active-item-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.active-item-slot:hover {
+  transform: translateY(-1px);
+}
+
+/* Drag-over visual feedback */
+.active-item-slot.drag-over {
+  background: rgba(255, 153, 0, 0.2);
+  border: 2px dashed #ff9800;
+  box-shadow: 0 0 10px rgba(255, 153, 0, 0.4);
+  border-radius: 4px;
+}
+
+.active-item-label {
+  font-size: 0.65em;
+  letter-spacing: 0.1em;
+  color: var(--phosphor-dim);
+  text-transform: uppercase;
+}
+
+.active-item-display {
+  width: 50px;
+  height: 50px;
+  border: 2px solid var(--panel-border);
+  border-radius: 8px;
+  background: rgba(8, 24, 12, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8em;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.6);
+}
+
+.active-item-display.has-item {
+  border-color: var(--phosphor-bright);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.6), 0 0 12px rgba(0, 255, 90, 0.2);
+}
+
+@keyframes equipFlash {
+  0% { box-shadow: inset 0 0 8px rgba(0,0,0,0.6), 0 0 0 rgba(0,255,166,0); }
+  45% { box-shadow: inset 0 0 8px rgba(0,0,0,0.6), 0 0 16px rgba(0,255,166,0.35); }
+  100% { box-shadow: inset 0 0 8px rgba(0,0,0,0.6), 0 0 0 rgba(0,255,166,0); }
+}
+
+.active-item-display.equip-flash {
+  animation: equipFlash 420ms ease-out;
+}
+
+.active-item-display .empty-slot-indicator {
+  color: var(--panel-border);
+  font-size: 2em;
+}
+
+.active-item-display.context-live {
+  border-color: rgba(255, 80, 80, 0.8);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.6), 0 0 12px rgba(255, 80, 80, 0.2);
+}
+
+.active-item-display.context-street {
+  border-color: rgba(255, 220, 80, 0.8);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.6), 0 0 12px rgba(255, 220, 80, 0.2);
+}
+
+.active-item-display.context-both {
+  border-color: rgba(80, 255, 140, 0.8);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.6), 0 0 12px rgba(80, 255, 140, 0.2);
+}
+
+.currency-display {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7em;
+  color: var(--phosphor-dim);
+  margin-top: 4px;
+  padding: 2px 6px;
+  background: rgba(8, 24, 12, 0.5);
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
+.currency-symbol {
+  color: var(--phosphor-bright);
+  font-weight: bold;
+  font-size: 1.1em;
+}
+
+.currency-value {
+  font-family: 'Courier New', monospace;
+  color: var(--phosphor);
+  letter-spacing: 0.02em;
+}
+
+/* Currency ticker animation - subtle slot machine effect */
+.currency-ticker-active {
+  animation: currency-ticker-pulse 0.6s ease-out;
+}
+
+@keyframes currency-ticker-pulse {
+  0% {
+    color: var(--phosphor);
+    text-shadow: 0 0 4px var(--phosphor-glow);
+  }
+  20% {
+    color: var(--phosphor-bright);
+    text-shadow: 0 0 8px rgba(51, 255, 51, 0.4);
+    transform: translateY(-1px);
+  }
+  40% {
+    color: var(--phosphor-bright);
+    text-shadow: 0 0 6px rgba(51, 255, 51, 0.3);
+  }
+  100% {
+    color: var(--phosphor);
+    text-shadow: 0 0 4px var(--phosphor-glow);
+    transform: translateY(0);
+  }
+}
+
+.header-chip {
+  border: 1px solid var(--panel-border);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(6, 14, 8, 0.7);
+  text-transform: uppercase;
+  font-size: 0.78em;
+  letter-spacing: 0.08em;
+  color: var(--phosphor);
+}
+
+.header-chip.soft {
+  color: var(--phosphor-dim);
+  border-color: var(--panel-border-soft);
+}
+
+/* Accountability indicator with animated icon */
+.accountability-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.accountability-indicator:hover {
+  background: rgba(51, 255, 51, 0.1);
+  border-color: var(--panel-border);
+}
+
+.accountability-label {
+  font-size: 0.85em;
+}
+
+.accountability-icon {
+  font-size: 1.2em;
+  line-height: 1;
+}
+
+/* Tier-based icon colors (overrides animation) */
+.accountability-icon.tier-1 {
+  color: #33ff33;
+  filter: drop-shadow(0 0 4px #33ff33);
+  animation: none;
+}
+
+.accountability-icon.tier-2 {
+  color: #ffb000;
+  filter: drop-shadow(0 0 4px #ffb000);
+  animation: none;
+}
+
+.accountability-icon.tier-3 {
+  color: #ff3333;
+  filter: drop-shadow(0 0 4px #ff3333);
+  animation: none;
+}
+
+/* Default animation when no tier selected */
+.accountability-icon:not(.tier-1):not(.tier-2):not(.tier-3) {
+  animation: accountability-cycle 9s ease-in-out infinite;
+}
+
+@keyframes accountability-cycle {
+  0%, 33% { color: #33ff33; filter: drop-shadow(0 0 4px #33ff33); } /* Green */
+  33%, 66% { color: #ffb000; filter: drop-shadow(0 0 4px #ffb000); } /* Amber */
+  66%, 100% { color: #ff3333; filter: drop-shadow(0 0 4px #ff3333); } /* Red */
+}
+
+/* AWOL Difficulty Selector Tooltip */
+.awol-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 280px;
+  background: rgba(8, 24, 12, 0.98);
+  border: 2px solid var(--panel-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+  z-index: 9999;
+  font-family: var(--font);
+}
+
+.awol-tooltip-header {
+  padding: 8px 12px;
+  background: rgba(20, 60, 30, 0.6);
+  border-bottom: 1px solid var(--panel-border);
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  color: var(--phosphor);
+  text-transform: uppercase;
+}
+
+.awol-tooltip-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.awol-option {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.awol-option-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.awol-option-value {
+  font-size: 12px;
+  color: var(--phosphor);
+  font-weight: bold;
+}
+
+.difficulty-toggle-group {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+.difficulty-btn {
+  flex: 1;
+  padding: 8px 12px;
+  background: rgba(20, 40, 25, 0.6);
+  border: 2px solid rgba(51, 255, 51, 0.3);
+  border-radius: 4px;
+  color: rgba(51, 255, 51, 0.5);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.difficulty-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  border-color: rgba(100, 100, 100, 0.3);
+  color: rgba(100, 100, 100, 0.5);
+}
+
+.difficulty-btn:not(:disabled):hover {
+  background: rgba(51, 255, 51, 0.15);
+  border-color: rgba(51, 255, 51, 0.6);
+  box-shadow: 0 0 8px rgba(51, 255, 51, 0.3);
+}
+
+.difficulty-btn.tier-1:not(:disabled) {
+  border-color: #33ff33;
+  color: #33ff33;
+}
+
+.difficulty-btn.tier-2:not(:disabled) {
+  border-color: #ffb000;
+  color: #ffb000;
+}
+
+.difficulty-btn.tier-3:not(:disabled) {
+  border-color: #ff3333;
+  color: #ff3333;
+}
+
+.difficulty-btn.active {
+  background: rgba(51, 255, 51, 0.25);
+  border-width: 3px;
+  box-shadow: 0 0 12px rgba(51, 255, 51, 0.5), inset 0 0 8px rgba(51, 255, 51, 0.3);
+}
+
+.difficulty-btn.active.tier-1 {
+  background: rgba(51, 255, 51, 0.25);
+  box-shadow: 0 0 12px rgba(51, 255, 51, 0.5), inset 0 0 8px rgba(51, 255, 51, 0.3);
+}
+
+.difficulty-btn.active.tier-2 {
+  background: rgba(255, 176, 0, 0.25);
+  box-shadow: 0 0 12px rgba(255, 176, 0, 0.5), inset 0 0 8px rgba(255, 176, 0, 0.3);
+}
+
+.difficulty-btn.active.tier-3 {
+  background: rgba(255, 51, 51, 0.25);
+  box-shadow: 0 0 12px rgba(255, 51, 51, 0.5), inset 0 0 8px rgba(255, 51, 51, 0.3);
+}
+
+.difficulty-tier {
+  display: block;
+}
+
+/* Inventory Grid Styles */
+.inventory-grid {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 260px;
+  flex: 1;
+}
+
+.inventory-label {
+  font-size: 0.82em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--phosphor-dim);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--panel-border-soft);
+}
+
+.inventory-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  gap: 8px;
+  flex: 1;
+}
+
+.inventory-item {
+  aspect-ratio: 1;
+  background: rgba(8, 24, 12, 0.85);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  font-size: 2em;
+  cursor: pointer;
+  transition: all 120ms ease;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5), 0 0 10px rgba(0, 255, 90, 0.08);
+}
+
+.inventory-item:hover,
+.inventory-item:focus-visible {
+  background: rgba(14, 42, 24, 0.95);
+  border-color: var(--phosphor-bright);
+  outline: none;
+  transform: translateY(-2px);
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.6), 0 0 18px rgba(0, 255, 90, 0.15);
+}
+
+.inventory-item.selected {
+  border-color: var(--phosphor-bright);
+  background: rgba(14, 42, 24, 0.95);
+  box-shadow: inset 0 0 12px rgba(0, 255, 120, 0.3), 0 0 18px rgba(0, 255, 90, 0.2);
+}
+
+.inventory-item-empty {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.inventory-item-empty:hover {
+  transform: none;
+  background: rgba(8, 24, 12, 0.85);
+  border-color: var(--panel-border);
+}
+
+/* Context color coding for inventory items */
+.inventory-item.context-live {
+  border-color: rgba(255, 50, 50, 0.6);
+  box-shadow: inset 0 0 8px rgba(255, 50, 50, 0.15);
+}
+
+.inventory-item.context-live:hover,
+.inventory-item.context-live:focus-visible {
+  border-color: rgba(255, 80, 80, 0.9);
+  box-shadow: inset 0 0 12px rgba(255, 50, 50, 0.25), 0 0 18px rgba(255, 80, 80, 0.2);
+}
+
+.inventory-item.context-live.selected {
+  border-color: rgba(255, 80, 80, 0.9);
+  box-shadow: inset 0 0 12px rgba(255, 50, 50, 0.4), 0 0 18px rgba(255, 80, 80, 0.3);
+}
+
+.inventory-item.context-street {
+  border-color: rgba(255, 200, 50, 0.6);
+  box-shadow: inset 0 0 8px rgba(255, 200, 50, 0.15);
+}
+
+.inventory-item.context-street:hover,
+.inventory-item.context-street:focus-visible {
+  border-color: rgba(255, 220, 80, 0.9);
+  box-shadow: inset 0 0 12px rgba(255, 200, 50, 0.25), 0 0 18px rgba(255, 220, 80, 0.2);
+}
+
+.inventory-item.context-street.selected {
+  border-color: rgba(255, 220, 80, 0.9);
+  box-shadow: inset 0 0 12px rgba(255, 200, 50, 0.4), 0 0 18px rgba(255, 220, 80, 0.3);
+}
+
+.inventory-item.context-both {
+  border-color: rgba(50, 255, 120, 0.6);
+  box-shadow: inset 0 0 8px rgba(50, 255, 120, 0.15);
+}
+
+.inventory-item.context-both:hover,
+.inventory-item.context-both:focus-visible {
+  border-color: rgba(80, 255, 140, 0.9);
+  box-shadow: inset 0 0 12px rgba(50, 255, 120, 0.25), 0 0 18px rgba(80, 255, 140, 0.2);
+}
+
+.inventory-item.context-both.selected {
+  border-color: rgba(80, 255, 140, 0.9);
+  box-shadow: inset 0 0 12px rgba(50, 255, 120, 0.4), 0 0 18px rgba(80, 255, 140, 0.3);
+}
+
+
+#mok-interjections {
+  background: linear-gradient(135deg, rgba(6, 14, 9, 0.92), rgba(4, 9, 6, 0.96));
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.55), 0 0 10px rgba(0, 255, 90, 0.06);
+}
+
+.interject-label {
+  font-size: 0.75em;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--phosphor-dim);
+  margin-bottom: 3px;
+}
+
+.interject-body {
+  color: var(--phosphor);
+  min-height: 1.4em;
+  text-shadow: 0 0 var(--glow-spread) var(--phosphor-glow);
+  display: inline-block;
+  max-width: calc(100% - 100px);
+}
+
+/* MOK Footer Controls - Card Button */
+.mok-footer-controls {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.hand-fan-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+.hand-fan-toggle:hover {
+  background: rgba(51, 255, 51, 0.1);
+  border-color: var(--panel-border);
+}
+
+.hand-fan-toggle:active {
+  background: rgba(51, 255, 51, 0.2);
+  transform: scale(0.98);
+}
+
+.hand-fan-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.hand-fan-icon {
+  font-size: 1.1em;
+  line-height: 1;
+  filter: drop-shadow(0 0 2px rgba(51, 255, 51, 0.4));
+}
+
+.hand-fan-label {
+  font-size: 0.7em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--phosphor);
+}
+
+/* Show only in Gone Rogue mode */
+body:not(.mode-gone-rogue):not(.in-gone-rogue) .hand-fan-toggle {
+  display: none;
+}
+
+/* --- Terminal Output Area --- */
+#terminal {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  flex: 1;
+  min-height: 260px;
+  padding: clamp(12px, 2vw, 22px);
+  margin: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  background: linear-gradient(180deg, rgba(6, 14, 8, 0.92), rgba(4, 8, 6, 0.96));
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 8px;
+  box-shadow:
+    inset 0 0 12px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(0, 0, 0, 0.5),
+    0 0 26px rgba(0, 255, 90, 0.05);
+
+  /* Phosphor text glow */
+  text-shadow:
+    0 0 var(--glow-spread) var(--phosphor-glow),
+    0 0 calc(var(--glow-spread) * 2) var(--phosphor-glow);
+}
+
+#terminal::-webkit-scrollbar {
+  display: none;
+}
+
+/* --- Terminal Lines --- */
+.line {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  min-height: 1.4em;
+  opacity: 0;
+  animation: line-appear 0.05s forwards;
+}
+
+.line.instant {
+  opacity: 1;
+  animation: none;
+}
+
+/* --- Title Display --- */
+.title-text {
+  font-size: 1.5em;
+  letter-spacing: 0.15em;
+  font-weight: bold;
+  text-shadow:
+    0 0 8px var(--phosphor-glow),
+    0 0 16px var(--phosphor-glow),
+    0 0 32px var(--phosphor-glow);
+}
+
+/* --- Blinking Cursor --- */
+.cursor {
+  display: inline-block;
+  width: 0.7em;
+  padding: 0 0.05em;
+  margin-left: 0.05em;
+  animation: cursor-blink var(--cursor-blink) step-end infinite;
+  background: rgba(51, 255, 51, 0.18);
+  border: 1px solid var(--phosphor-dim);
+  border-radius: 2px;
+  box-shadow: 0 0 6px var(--phosphor-glow);
+}
+
+.cursor::after {
+  content: '_';
+}
+
+/* --- Input Line --- */
+#input-line {
+  display: flex;
+  align-items: baseline;
+  min-height: 1.4em;
+  margin-top: 6px;
+  padding: 0.35em 0.55em;
+  background: rgba(6, 16, 9, 0.85);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 255, 90, 0.08);
+}
+
+#input-prompt {
+  white-space: pre;
+  color: var(--phosphor);
+}
+
+#input-buffer {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--phosphor);
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  caret-color: transparent;
+  text-shadow: inherit;
+  -webkit-font-smoothing: none;
+  letter-spacing: 0.02em;
+}
+
+#input-cursor {
+  display: inline-block;
+  animation: cursor-blink var(--cursor-blink) step-end infinite;
+  background: rgba(51, 255, 51, 0.18);
+  border: 1px solid var(--phosphor-dim);
+  border-radius: 2px;
+  width: 0.7em;
+  text-align: center;
+  box-shadow: 0 0 6px var(--phosphor-glow);
+}
+
+#input-cursor::after {
+  content: '_';
+}
+
+/* --- Hidden Mobile Input --- */
+#mobile-input {
+  position: fixed;
+  left: -9999px;
+  top: 50%;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  font-size: 16px; /* prevents iOS zoom on focus */
+  border: none;
+  outline: none;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* --- System Messages --- */
+.system-msg {
+  color: var(--phosphor-dim);
+}
+
+.system-msg.highlight {
+  color: var(--phosphor-bright);
+  text-shadow:
+    0 0 8px var(--phosphor-glow),
+    0 0 16px var(--phosphor-glow);
+}
+
+.system-msg.error {
+  color: #ff3333;
+  text-shadow: 0 0 8px rgba(255, 50, 50, 0.3);
+}
+
+.system-msg.classified {
+  color: var(--phosphor-bright);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* --- Header / Inverse Text --- */
+.inverse {
+  background: var(--phosphor);
+  color: var(--bg);
+  display: inline;
+  padding: 0 0.3em;
+  text-shadow: none;
+}
+
+/* --- Boot Sequence Specific --- */
+.boot-line {
+  color: var(--phosphor-dim);
+  font-size: 0.85em;
+}
+
+.progress-bar {
+  color: var(--phosphor-dim);
+}
+
+.progress-bar .filled {
+  color: var(--phosphor);
+}
+
+/* --- Classification Banner --- */
+.classification-banner {
+  text-align: center;
+  padding: 0.5em 0;
+  letter-spacing: 0.3em;
+  font-weight: bold;
+  color: var(--phosphor-bright);
+  text-shadow:
+    0 0 10px var(--phosphor-glow),
+    0 0 20px var(--phosphor-glow);
+  border-top: 1px solid var(--phosphor-dim);
+  border-bottom: 1px solid var(--phosphor-dim);
+  margin: 0.5em 0;
+}
+
+/* --- Mission Briefing --- */
+.briefing-header {
+  border-bottom: 1px solid var(--phosphor-dim);
+  padding-bottom: 0.3em;
+  margin-bottom: 0.5em;
+  letter-spacing: 0.2em;
+}
+
+.briefing-body {
+  padding-left: 2em;
+  color: var(--phosphor);
+}
+
+.briefing-codename {
+  color: var(--phosphor-bright);
+  font-weight: bold;
+  letter-spacing: 0.15em;
+}
+
+/* --- Amber Mode (toggled via hidden command) --- */
+body.amber-mode {
+  --phosphor:        var(--amber);
+  --phosphor-dim:    var(--amber-dim);
+  --phosphor-bright: var(--amber-bright);
+  --phosphor-glow:   var(--amber-glow);
+}
+
+body.amber-mode #scanlines::after {
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(255, 176, 0, 0.02) 40%,
+    rgba(255, 176, 0, 0.04) 50%,
+    rgba(255, 176, 0, 0.02) 60%,
+    transparent 100%
+  );
+}
+
+/* --- Screen Flicker Effect (triggered on state transitions) --- */
+.screen-flicker {
+  animation: flicker-burst 0.3s ease-out;
+}
+
+/* --- Animations --- */
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes scanline-roll {
+  0%   { top: -40%; }
+  100% { top: 100%; }
+}
+
+@keyframes scanline-flicker {
+  0%   { opacity: 1; }
+  50%  { opacity: 0.97; }
+  100% { opacity: 1; }
+}
+
+@keyframes line-appear {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes flicker-burst {
+  0%   { opacity: 1; }
+  10%  { opacity: 0.6; }
+  20%  { opacity: 1; }
+  30%  { opacity: 0.8; }
+  50%  { opacity: 1; }
+  70%  { opacity: 0.9; }
+  100% { opacity: 1; }
+}
+
+/* --- Glitch Effect (used during ACCESS GRANTED) --- */
+@keyframes glitch {
+  0%   { transform: translate(0); }
+  20%  { transform: translate(-2px, 1px); }
+  40%  { transform: translate(2px, -1px); }
+  60%  { transform: translate(-1px, 2px); }
+  80%  { transform: translate(1px, -2px); }
+  100% { transform: translate(0); }
+}
+
+.glitch-text {
+  animation: glitch 0.1s ease-in-out 3;
+}
+
+@keyframes core-breathe {
+  0% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
+  100% { opacity: 0.6; transform: scale(1); }
+}
+
+@keyframes glyph-pulse {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.85; }
+  45% { transform: translate(0, 0) scale(1.04); opacity: 1; }
+  100% { transform: translate(0, 0) scale(1); opacity: 0.85; }
+}
+
+@keyframes glyph-output {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(0, 0) scale(1.08); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes glyph-active-flash {
+  0%   { opacity: 1; }
+  50%  { opacity: 0.2; }
+  100% { opacity: 1; }
+}
+
+/* --- Responsive --- */
+@media (max-width: 900px) {
+  #monitor-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  #control-rail {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+  .control-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .control-buttons button {
+    flex: 1 1 auto;
+    min-width: 80px;
+    max-width: calc(50% - 4px); /* Wrap after 2 buttons per row */
+  }
+  .debrief-window {
+    flex: 1;
+    max-width: none;
+  }
+}
+
+@media (max-width: 700px) {
+  #crt-screen {
+    padding: 8px;
+  }
+  #crt-frame {
+    padding: 8px;
+  }
+  #monitor-top {
+    min-height: 96px;
+  }
+  #terminal {
+    min-height: 200px;
+    padding: 12px;
+  }
+  #crt-screen::before {
+    box-shadow:
+      inset 0 0 50px 26px rgba(0, 0, 0, 0.55),
+      inset 0 0 10px 6px rgba(0, 0, 0, 0.28);
+  }
+}
+
+@media (max-width: 600px) {
+  html, body {
+    font-size: 13px;
+  }
+  #crt-frame {
+    gap: 10px;
+  }
+  #monitor-top {
+    min-height: 90px;
+  }
+  #monitor-body {
+    gap: 10px;
+  }
+  #terminal {
+    padding: 12px;
+  }
+  .title-text {
+    font-size: 1.2em;
+  }
+}
+
+@media (max-width: 400px) {
+  html, body {
+    font-size: 11px;
+  }
+}
+
+/* --- General portrait compact layout (all game states) --- */
+@media (max-width: 600px) and (orientation: portrait) {
+  /* 2×N grid for action buttons in ALL states (rogue and non-rogue) */
+  .control-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-auto-rows: minmax(26px, auto);
+    align-content: start;
+    gap: 2px;
+  }
+
+  .control-buttons button {
+    min-height: 26px;
+    width: auto;
+    padding: 2px 4px;
+    font-size: 0.75em;
+    min-width: 0;
+    max-width: none;
+  }
+
+  /* Tighten control-rail padding in portrait to save vertical space */
+  #control-rail {
+    padding: 6px;
+    gap: 6px;
+    position: relative; /* anchor for debrief-maximized overlay */
+  }
+
+  /* Tighten MOK interjections (footer tooltip bar) in portrait */
+  #mok-interjections {
+    padding: 4px 6px;
+  }
+
+  /* Shrink equipped item slot frame + emoji further in portrait (all states) */
+  .active-item-display {
+    width: 28px;
+    height: 28px;
+    font-size: 1.0em;
+    border-width: 1px;
+    border-radius: 5px;
+  }
+
+  .active-item-label {
+    display: none;
+  }
+
+  .active-item-slot {
+    gap: 2px;
+  }
+}
+
+/* --- Gone Rogue portrait layout (mobile) --- */
+@media (max-width: 600px) and (orientation: portrait) {
+  body.mode-gone-rogue,
+  body.in-gone-rogue,
+  body.gone-rogue-active {
+    --rogue-emoji-scale: 0.5; /* shrink emoji render size up to 50% when needed */
+    --header-chip-scale: 0.5; /* shrink header action chip (AWOL) */
+    --header-center-scale: 0.6; /* shrink active item + currency frames */
+    --hud-emoji-scale: 0.3; /* shrink HUD emoji list (items/resources) */
+  }
+
+  /* Hide MOK swapper header in portrait rogue; resources should be first and uninterrupted */
+  body.mode-gone-rogue .debrief-resources-header,
+  body.in-gone-rogue .debrief-resources-header,
+  body.gone-rogue-active .debrief-resources-header {
+    display: none !important;
+  }
+
+  /* Header center: right-align and shrink by real sizing (NOT transform),
+     because transform scaling preserves layout height and creates dead bands. */
+  body.mode-gone-rogue #mok-header .mok-header-center,
+  body.in-gone-rogue #mok-header .mok-header-center,
+  body.gone-rogue-active #mok-header .mok-header-center {
+    margin-left: auto;
+    transform: none !important;
+  }
+
+  body.mode-gone-rogue #mok-header .header-chip,
+  body.in-gone-rogue #mok-header .header-chip,
+  body.gone-rogue-active #mok-header .header-chip {
+    transform: none !important;
+    padding: 2px 6px !important;
+    min-height: 18px !important;
+    font-size: 10px !important;
+    display: inline-flex !important; /* ensure AWOL stays visible */
+  }
+
+  body.mode-gone-rogue #mok-header .header-chip .accountability-icon,
+  body.in-gone-rogue #mok-header .header-chip .accountability-icon,
+  body.gone-rogue-active #mok-header .header-chip .accountability-icon {
+    font-size: 10px !important;
+  }
+  body.mode-gone-rogue #mok-header.monitor-header,
+  body.in-gone-rogue #mok-header.monitor-header,
+  body.gone-rogue-active #mok-header.monitor-header {
+    min-height: 16px;
+    padding: 1px 4px;
+    gap: 6px;
+  }
+
+  body.mode-gone-rogue #mok-header .mok-header-left,
+  body.in-gone-rogue #mok-header .mok-header-left,
+  body.gone-rogue-active #mok-header .mok-header-left {
+    gap: 6px;
+  }
+
+  body.mode-gone-rogue #mok-header .mok-header-center,
+  body.in-gone-rogue #mok-header .mok-header-center,
+  body.gone-rogue-active #mok-header .mok-header-center {
+    min-height: 0;
+  }
+
+  /* Keep AWOL button present + tappable even when header is squished */
+  body.mode-gone-rogue #awol-button,
+  body.in-gone-rogue #awol-button,
+  body.gone-rogue-active #awol-button {
+    padding: 2px 6px;
+    min-height: 18px;
+  }
+
+  /* Hide verbose header copy; keep only tiny icons */
+  /* Mobile Gone Rogue: show callsign (tiny) in header for orientation + identity.
+     We hide the verbose header title/prefix but keep the callsign itself. */
+  body.mode-gone-rogue .mok-header-copy,
+  body.in-gone-rogue .mok-header-copy,
+  body.gone-rogue-active .mok-header-copy {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  body.mode-gone-rogue .mok-header-title,
+  body.in-gone-rogue .mok-header-title,
+  body.gone-rogue-active .mok-header-title {
+    display: none;
+  }
+
+  body.mode-gone-rogue .mok-header-sub,
+  body.in-gone-rogue .mok-header-sub,
+  body.gone-rogue-active .mok-header-sub {
+    font-family: 'Consolas', 'Lucida Console', 'Courier New', monospace;
+    font-size: 10px;
+    line-height: 1;
+    color: rgba(191, 255, 227, 0.9);
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 42vw;
+  }
+
+  body.mode-gone-rogue .mok-header-sub-prefix,
+  body.in-gone-rogue .mok-header-sub-prefix,
+  body.gone-rogue-active .mok-header-sub-prefix {
+    display: none;
+  }
+  body.mode-gone-rogue .active-item-label,
+  body.in-gone-rogue .active-item-label,
+  body.gone-rogue-active .active-item-label {
+    display: none;
+  }
+  body.mode-gone-rogue #currency-display,
+  body.in-gone-rogue #currency-display,
+  body.gone-rogue-active #currency-display {
+    display: none;
+  }
+
+  /* 4-band vertical budget: header + torso + legs + footer (footer handled by NCH pill/tooltips) */
+  body.mode-gone-rogue #monitor-top,
+  body.in-gone-rogue #monitor-top,
+  body.gone-rogue-active #monitor-top {
+    display: none; /* kill dead header band in rogue portrait */
+  }
+
+  body.mode-gone-rogue #crt-screen,
+  body.in-gone-rogue #crt-screen,
+  body.gone-rogue-active #crt-screen {
+    /* Keep 1px breathing room at the bottom so it doesn't feel clipped */
+    padding: 4px 4px 1px 4px;
+  }
+
+  body.mode-gone-rogue #crt-frame,
+  body.in-gone-rogue #crt-frame,
+  body.gone-rogue-active #crt-frame {
+    /* Keep top/sides, but leave 1px at the bottom so it doesn't feel clipped */
+    padding: 6px 6px 1px 6px;
+    gap: 6px;
+  }
+
+  body.mode-gone-rogue #monitor-body,
+  body.in-gone-rogue #monitor-body,
+  body.gone-rogue-active #monitor-body {
+    display: grid;
+    grid-template-columns: 1fr;
+    /* Header is hidden. The first row was previously "auto" but nothing was
+       assigned to it, so it became a phantom empty band. Keep it at 0.
+       Torso holds controls+debrief; legs holds the game surface. */
+    grid-template-rows: 0px clamp(96px, 14vh, 170px) 1fr;
+    gap: 6px;
+  }
+
+  /* Torso: controls + debrief split (no overlay) */
+  body.mode-gone-rogue #control-rail,
+  body.in-gone-rogue #control-rail,
+  body.gone-rogue-active #control-rail {
+    grid-row: 2;
+    position: relative;
+    left: auto;
+    top: auto;
+    right: auto;
+    overflow: hidden;
+    width: 100%;
+    max-height: none;
+    z-index: 20; /* Keep control rail above debrief overlay */
+    flex-direction: row;
+    align-items: stretch;
+    background: transparent;
+    backdrop-filter: none;
+    border-radius: 0;
+    overflow: hidden;
+    /* Match the torso band allocation above */
+    height: clamp(96px, 14vh, 170px);
+    min-height: 0;
+    /* Ensure no gaps between children */
+    gap: 2px;
+  }
+
+  body.mode-gone-rogue .control-buttons,
+  body.in-gone-rogue .control-buttons,
+  body.gone-rogue-active .control-buttons {
+    width: calc(100% - var(--rogue-debrief-pct, 28%) - 2px);
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-auto-rows: minmax(26px, auto);
+    grid-template-rows: repeat(3, 1fr);
+    align-content: stretch;
+    gap: 2px;
+    height: 100%;
+    padding: 4px;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border-soft);
+    border-radius: 8px;
+    position: relative;
+    z-index: 21; /* Ensure buttons stay visible above debrief overlay */
+  }
+
+  body.mode-gone-rogue .control-buttons button,
+  body.in-gone-rogue .control-buttons button,
+  body.gone-rogue-active .control-buttons button {
+    min-height: 26px;
+    padding: 2px 4px;
+    font-size: 0.80em;
+  }
+
+  /* Shrink HUD emojis (inventory/resource lists) */
+  body.mode-gone-rogue .rogue-inventory-item .item-emoji,
+  body.in-gone-rogue .rogue-inventory-item .item-emoji,
+  body.gone-rogue-active .rogue-inventory-item .item-emoji,
+  body.mode-gone-rogue .card-emoji,
+  body.in-gone-rogue .card-emoji,
+  body.gone-rogue-active .card-emoji {
+    font-size: calc(32px * var(--hud-emoji-scale, 1)) !important;
+    margin-bottom: 2px !important;
+  }
+
+  body.mode-gone-rogue .rogue-inventory-item,
+  body.in-gone-rogue .rogue-inventory-item,
+  body.gone-rogue-active .rogue-inventory-item {
+    padding: 4px 4px !important;
+    gap: 4px !important;
+  }
+
+  body.mode-gone-rogue .debrief-window,
+  body.in-gone-rogue .debrief-window,
+  body.gone-rogue-active .debrief-window {
+    position: relative;
+    right: auto;
+    top: auto;
+    width: var(--rogue-debrief-pct, 28%);
+    max-height: 100%;
+    height: 100%;
+    z-index: 15; /* Below control buttons but above normal content */
+    max-width: none;
+    flex: 0 0 auto;
+    min-height: 0;
+    overflow: hidden;
+    background: rgba(0,0,0,0.18);
+    backdrop-filter: blur(1px);
+    border-radius: 10px;
+    padding: 4px;
+    gap: 4px;
+    transition: height 0.2s ease, max-height 0.2s ease;
+  }
+
+  /* Debrief label: tappable toggle in portrait (all modes) */
+  .debrief-window .debrief-label {
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: rgba(28, 255, 155, 0.15);
+  }
+
+  /* Debrief minimized: collapse to label-only bar */
+  .debrief-window.debrief-minimized {
+    max-height: 22px !important;
+    overflow: hidden !important;
+    flex: 0 0 22px !important;
+  }
+  .debrief-window.debrief-minimized .debrief-screen {
+    display: none;
+  }
+
+  /* Debrief maximized: overlay buttons without pushing them */
+  .debrief-window.debrief-maximized {
+    position: absolute !important;
+    right: 0;
+    top: 0;
+    width: 100% !important;
+    max-height: 100% !important;
+    z-index: 15 !important; /* Below control buttons (z-index 21) but above normal content */
+    overflow-y: auto !important;
+    background: rgba(6, 14, 9, 0.95) !important;
+    /* Ensure pointer events don't block buttons */
+    pointer-events: auto;
+  }
+
+  body.mode-gone-rogue .debrief-window .debrief-label,
+  body.in-gone-rogue .debrief-window .debrief-label,
+  body.gone-rogue-active .debrief-window .debrief-label {
+    margin: 0;
+    padding: 0;
+    line-height: 1.1;
+  }
+
+  /* Encourage status-strip feel */
+  body.mode-gone-rogue .debrief-window .debrief-label,
+  body.in-gone-rogue .debrief-window .debrief-label,
+  body.gone-rogue-active .debrief-window .debrief-label {
+    cursor: ew-resize;
+    user-select: none;
+  }
+
+  body.mode-gone-rogue .debrief-window .debrief-screen,
+  body.in-gone-rogue .debrief-window .debrief-screen,
+  body.gone-rogue-active .debrief-window .debrief-screen {
+    min-height: 0;
+    max-width: 100%;
+    aspect-ratio: auto; /* stop forcing tall CRT box */
+    height: 100%;
+
+    /* Allow drag-scroll on mobile (the rows are the product surface). */
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+  }
+
+  .debrief-nav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;            /* was 4px — 30% row height shrink */
+    margin-bottom: 2px;  /* was 6px */
+  }
+
+  .debrief-nav-row {
+    border: 0;
+    border-radius: 0;
+    padding: 1px 3px;    /* was 2px 4px */
+    font-family: var(--font-legible, 'Classic Console Neue', 'Courier New', monospace);
+    font-size: 11px;     /* was 13px — much smaller on mobile */
+    font-weight: 750;
+    color: rgba(191, 255, 227, 0.95);
+    background: transparent;
+    touch-action: pan-y;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    letter-spacing: 0.02em; /* was 0.03em */
+    line-height: 1.1;
+  }
+
+  @media (min-width: 900px) {
+    .debrief-nav-row { font-size: 15px; }
+  }
+
+  .debrief-nav-row.highlighted {
+    border: 0;
+    box-shadow: none;
+    background: rgba(28, 255, 155, 0.06);
+  }
+
+  .debrief-mini-block {
+    border: 1px solid rgba(28, 255, 155, 0.18);
+    border-radius: 10px;
+    padding: 8px;
+    background: rgba(0,0,0,0.22);
+    font-size: 11px;
+  }
+
+  /* Legs: terminal area should give map maximum room */
+  body.mode-gone-rogue #log-column,
+  body.in-gone-rogue #log-column,
+  body.gone-rogue-active #log-column {
+    grid-row: 3;
+    min-height: 0;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+  }
+
+  body.mode-gone-rogue #terminal,
+  body.in-gone-rogue #terminal,
+  body.gone-rogue-active #terminal {
+    min-height: 0;
+    height: 100%;
+    padding: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  /* Legs chrome collapse: remove the "log-frame" padding/border so the grid
+     reads as the product surface (reduces perceived dead space). */
+  body.mode-gone-rogue .log-frame,
+  body.in-gone-rogue .log-frame,
+  body.gone-rogue-active .log-frame {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  body.gone-rogue-active #rogue-grid-mobile {
+    margin: 0 !important;
+    order: 1;
+    overflow: hidden; /* Clip zoomed/panned canvas within frame */
+  }
+
+  body.gone-rogue-active #input-line,
+  body.gone-rogue-active #mobile-input {
+    order: 2;
+  }
+
+  /* Tighten the input bar itself (removes deadspace above/below tooltip area) */
+  body.gone-rogue-active #input-line {
+    margin-top: 2px;
+    margin-bottom: 0;
+    padding: 0.18em 0.35em;
+    min-height: 1.1em;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  /* Hide terminal text chrome in portrait rogue; the grid is the product surface */
+  /* In this build terminal output lines are appended directly under #terminal.
+     In portrait rogue, hide terminal chatter so the game surface is visible. */
+  body.mode-gone-rogue #terminal > :not(#rogue-grid-mobile):not(#mobile-input):not(#input-line),
+  body.in-gone-rogue #terminal > :not(#rogue-grid-mobile):not(#mobile-input):not(#input-line),
+  body.gone-rogue-active #terminal > :not(#rogue-grid-mobile):not(#mobile-input):not(#input-line) {
+    display: none !important;
+  }
+
+  /* ── Problem 4: Squish tooltip footer so map viewport reaches every corner ── */
+  body.gone-rogue-active #mok-interjections {
+    padding: 0px 2px;
+    max-height: 22px;
+    margin-bottom: 0;
+    border-bottom: 0;
+    overflow: hidden;
+    line-height: 1;
+    position: relative;
+    z-index: 5; /* Lower than grid to prevent blocking */
+  }
+  body.gone-rogue-active .interject-label {
+    margin-bottom: 0;
+    font-size: 0.6em;
+    line-height: 1;
+    display: none; /* Hide label on mobile to save space */
+  }
+  body.gone-rogue-active .interject-body {
+    font-size: 0.75em;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  body.gone-rogue-active .mok-footer-controls {
+    margin-top: 0;
+    gap: 1px;
+  }
+  body.gone-rogue-active .hand-fan-toggle {
+    padding: 1px 3px;
+    font-size: 0.8em;
+  }
+  body.gone-rogue-active .hand-fan-icon {
+    font-size: 0.8em;
+  }
+}
+
+/* ── Landscape footer squish ── */
+@media (max-height: 500px) and (orientation: landscape) {
+  #mok-interjections { padding: 1px 3px; max-height: 28px; overflow: hidden; }
+  .interject-label { display: none; }
+  .interject-body { font-size: 0.75em; line-height: 1; }
+  .mok-footer-controls { margin-top: 0; }
+}
+
+/* --- Print (disable for classified documents) --- */
+@media print {
+  body::before {
+    content: 'CLASSIFIED - UNAUTHORIZED REPRODUCTION PROHIBITED';
+    display: block;
+    text-align: center;
+    font-size: 2em;
+    padding: 2em;
+  }
+  #terminal, #scanlines, #phosphor-glow, #vignette {
+    display: none !important;
+  }
+}
+
+/* --- STR Combat Visual Effects --- */
+.monitor-header.attackFlash {
+  animation: combat-flash 0.5s ease;
+}
+
+@keyframes combat-flash {
+  0% {
+    background: rgba(255, 0, 0, 0);
+    box-shadow: none;
+  }
+  25% {
+    background: rgba(255, 28, 74, 0.3);
+    box-shadow: 0 0 20px rgba(255, 28, 74, 0.6), inset 0 0 20px rgba(255, 28, 74, 0.3);
+  }
+  50% {
+    background: rgba(255, 28, 74, 0.15);
+    box-shadow: 0 0 15px rgba(255, 28, 74, 0.4), inset 0 0 10px rgba(255, 28, 74, 0.2);
+  }
+  100% {
+    background: rgba(255, 0, 0, 0);
+    box-shadow: none;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE LAYOUT & MOBILE VIEWPORT PRIORITY
+   Requirements: Currency/ticker collision fix + header squash
+   ============================================================ */
+
+/* --- Tablet Breakpoint (768px - 1023px) --- */
+@media (max-width: 1023px) {
+  /* Accountability ticker collapses to icon-only */
+  .accountability-indicator {
+    position: relative;
+  }
+  
+  .accountability-label {
+    display: none; /* Hide label text on tablet */
+  }
+  
+  /* AWOL tooltip adjustments for tablet */
+  .awol-tooltip {
+    min-width: 240px;
+    right: -10px;
+  }
+  
+  .accountability-icon {
+    font-size: 1.4em;
+    cursor: help; /* Indicate tooltip available */
+  }
+  
+  /* Add tooltip on hover for collapsed state */
+  .accountability-indicator:hover::after {
+    content: '[un]accountable';
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    padding: 4px 8px;
+    background: rgba(8, 24, 12, 0.95);
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    font-size: 0.7em;
+    white-space: nowrap;
+    z-index: 200;
+    pointer-events: none;
+    animation: tooltip-in 0.2s ease-out;
+  }
+  
+  @keyframes tooltip-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* --- Mobile Breakpoint (< 768px) --- */
+@media (max-width: 767px) {
+  /* Header padding reduction */
+  #mok-header.monitor-header {
+    padding: 6px 10px;
+    gap: 8px;
+  }
+  
+  .mok-header-title {
+    font-size: 0.85em;
+  }
+  
+  .mok-header-sub {
+    font-size: 0.72em;
+  }
+  
+  /* Currency display size reduction */
+  .currency-display {
+    font-size: 0.6em;
+    padding: 2px 4px;
+  }
+  
+  .currency-symbol {
+    font-size: 1em;
+  }
+  
+  /* Accountability ticker becomes nested indicator */
+  .accountability-indicator {
+    position: absolute;
+    right: -4px;
+    top: -4px;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--bg);
+    border-radius: 50%;
+    padding: 0;
+    background: rgba(6, 14, 8, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .mok-header-right {
+    position: relative;
+  }
+  
+  .accountability-label {
+    display: none;
+  }
+  
+  .accountability-icon {
+    font-size: 0.9em;
+  }
+  
+  /* AWOL tooltip adjustments for mobile */
+  .awol-tooltip {
+    position: fixed;
+    top: 60px !important;
+    right: 10px !important;
+    left: 10px !important;
+    min-width: auto;
+    max-width: calc(100vw - 20px);
+  }
+  
+  /* Active item slot reduction */
+  .active-item-display {
+    width: 34px;
+    height: 34px;
+    font-size: 1.2em;
+  }
+  
+  .active-item-label {
+    font-size: 0.6em;
+  }
+}
+
+/* --- Gone Rogue Mode Header Squash (Mobile) --- */
+@media (max-width: 767px) {
+  body.mode-gone-rogue #mok-header.monitor-header,
+  body.in-gone-rogue #mok-header.monitor-header {
+    padding: 4px 8px;
+    min-height: 32px;
+  }
+  
+  body.mode-gone-rogue .mok-header-title,
+  body.in-gone-rogue .mok-header-title {
+    font-size: 0.75em;
+  }
+  
+  body.mode-gone-rogue .mok-header-sub,
+  body.in-gone-rogue .mok-header-sub {
+    font-size: 0.65em;
+  }
+  
+  body.mode-gone-rogue .currency-display,
+  body.in-gone-rogue .currency-display {
+    font-size: 0.55em;
+  }
+  
+  body.mode-gone-rogue .active-item-display,
+  body.in-gone-rogue .active-item-display {
+    width: 28px;
+    height: 28px;
+    font-size: 1.0em;
+    border-width: 1px;
+  }
+  
+  body.mode-gone-rogue .active-item-label,
+  body.in-gone-rogue .active-item-label {
+    font-size: 0.55em;
+  }
+  
+  body.mode-gone-rogue .accountability-indicator,
+  body.in-gone-rogue .accountability-indicator {
+    width: 12px;
+    height: 12px;
+    right: -2px;
+    top: -2px;
+  }
+  
+  body.mode-gone-rogue .accountability-icon,
+  body.in-gone-rogue .accountability-icon {
+    font-size: 0.7em;
+  }
+}
+
+/* --- Landscape Mobile (height < 500px) --- */
+@media (max-height: 500px) and (orientation: landscape) {
+  /* Aggressive header squashing for landscape */
+  #mok-header.monitor-header {
+    padding: 2px 6px;
+    min-height: 28px;
+    gap: 6px;
+  }
+  
+  .mok-header-title {
+    font-size: 0.7em;
+  }
+  
+  .mok-header-sub {
+    font-size: 0.6em;
+  }
+  
+  .active-item-display {
+    width: 26px;
+    height: 26px;
+    font-size: 1.0em;
+  }
+  
+  .active-item-label {
+    display: none; /* Hide label in landscape */
+  }
+  
+  .currency-display {
+    font-size: 0.5em;
+  }
+  
+  /* Ensure game screen is scrollable */
+  #log-column {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .log-frame {
+    max-height: calc(100vh - 40px); /* 40px = estimated header height in landscape */
+    overflow-y: auto;
+  }
+}
+
+/* --- Terminal/Game Screen Touch Scrolling --- */
+@media (max-width: 767px) {
+  #log-column {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  
+  .log-frame {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  #terminal {
+    min-height: 100%;
+  }
+}
+
+/* Rogue portrait: layout debug (opt-in)
+   Add `layout-debug` class to <body> to see which container owns the dead space.
+   Example: `document.body.classList.add('layout-debug')` */
+@media (max-width: 767px) and (orientation: portrait) {
+  body.layout-debug #monitor-body { outline: 2px solid rgba(255, 0, 0, 0.65); }
+  body.layout-debug #control-rail { outline: 2px solid rgba(0, 212, 255, 0.65); background: rgba(0, 212, 255, 0.04); }
+  body.layout-debug #log-column { outline: 2px solid rgba(255, 235, 59, 0.65); background: rgba(255, 235, 59, 0.03); }
+  body.layout-debug #terminal { outline: 2px solid rgba(255, 105, 180, 0.55); background: rgba(255, 105, 180, 0.02); }
+  body.layout-debug #rogue-grid-mobile { outline: 2px solid rgba(28, 255, 155, 0.75); }
+  body.layout-debug #debrief-window { outline: 2px solid rgba(218, 112, 214, 0.65); }
+}
+
+/* --- Control Rail Button Transformation for Gone Rogue --- */
+@media (max-width: 767px) {
+  body.mode-gone-rogue .control-buttons button,
+  body.in-gone-rogue .control-buttons button {
+    font-size: 0.7em;
+    padding: 6px 8px;
+  }
+}
+
+/* ============================================================
+   GONE ROGUE MODE: RESERVE CARD SLOTS
+   Transform left column buttons into card management interface
+   ============================================================ */
+
+/* Reserve card slots - maintain natural grid behavior for collapsing
+   against debrief feed, just like in normal mode */
+body.mode-gone-rogue .control-buttons,
+body.in-gone-rogue .control-buttons {
+  /* Keep the default grid display from line 220-224 */
+  /* This allows natural collapsing behavior against debrief feed */
+  display: grid;
+  grid-auto-rows: minmax(32px, 1fr);
+  gap: 8px;
+}
+
+/* Reserve card slot styling */
+.reserve-card-slot {
+  position: relative;
+  width: 100%;
+  min-height: 60px;
+  background: rgba(8, 24, 12, 0.85);
+  border: 2px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5), 0 0 10px rgba(0, 255, 90, 0.08);
+}
+
+.reserve-card-slot:hover {
+  border-color: var(--phosphor-bright);
+  background: rgba(14, 42, 24, 0.95);
+  transform: translateY(-2px);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5), 0 0 16px rgba(0, 255, 90, 0.2);
+}
+
+.reserve-card-slot.empty {
+  opacity: 0.5;
+  border-style: dashed;
+}
+
+.reserve-card-slot.empty:hover {
+  opacity: 0.7;
+}
+
+/* Card thumbnail in reserve slot */
+.reserve-card-thumbnail {
+  font-size: 1.5em;
+  margin-bottom: 4px;
+}
+
+.reserve-card-name {
+  font-size: 0.65em;
+  text-align: center;
+  color: var(--phosphor-dim);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.reserve-card-cost {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 0.6em;
+  padding: 2px 4px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 3px;
+  color: var(--amber);
+}
+
+/* Cycle control button */
+.reserve-cycle-btn {
+  background: rgba(8, 24, 12, 0.9);
+  border: 2px solid var(--panel-border-soft);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 44px;
+}
+
+.reserve-cycle-btn:hover {
+  border-color: var(--phosphor);
+  background: rgba(14, 42, 24, 0.95);
+  transform: scale(1.05);
+}
+
+.reserve-cycle-icon {
+  font-size: 1.2em;
+  color: var(--phosphor-dim);
+}
+
+.reserve-cycle-btn:hover .reserve-cycle-icon {
+  color: var(--phosphor-bright);
+}
+
+/* Hide non-Gone Rogue buttons when in Gone Rogue mode (except back button) */
+body.mode-gone-rogue .control-buttons button[data-action="map"],
+body.mode-gone-rogue .control-buttons button[data-action="login"],
+body.mode-gone-rogue .control-buttons button[data-action="inventory"],
+body.mode-gone-rogue .control-buttons button[data-action="score"],
+body.mode-gone-rogue .control-buttons button[data-action="kernel"],
+body.in-gone-rogue .control-buttons button[data-action="map"],
+body.in-gone-rogue .control-buttons button[data-action="login"],
+body.in-gone-rogue .control-buttons button[data-action="inventory"],
+body.in-gone-rogue .control-buttons button[data-action="score"],
+body.in-gone-rogue .control-buttons button[data-action="kernel"] {
+  display: none;
+}
+
+/* Keep back button visible for exiting Gone Rogue */
+body.mode-gone-rogue .control-buttons button[data-action="back"],
+body.in-gone-rogue .control-buttons button[data-action="back"] {
+  display: block;
+  order: -1; /* Show first */
+  background: rgba(255, 51, 51, 0.15);
+  border-color: rgba(255, 51, 51, 0.5);
+  color: #ff6666;
+}
+
+/* Reserve card slot container */
+#reserve-slots-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+/* Long-press tooltip */
+.reserve-card-tooltip {
+  position: fixed;
+  z-index: 300;
+  background: rgba(8, 24, 12, 0.98);
+  border: 2px solid var(--phosphor-bright);
+  border-radius: 8px;
+  padding: 12px;
+  max-width: 280px;
+  box-shadow: 0 0 20px rgba(0, 255, 90, 0.3);
+  animation: tooltip-in 0.2s ease-out;
+  pointer-events: none;
+}
+
+.reserve-card-tooltip-title {
+  font-size: 1em;
+  font-weight: bold;
+  color: var(--phosphor-bright);
+  margin-bottom: 6px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.reserve-card-tooltip-description {
+  font-size: 0.85em;
+  color: var(--phosphor-dim);
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+
+.reserve-card-tooltip-stats {
+  font-size: 0.75em;
+  color: var(--phosphor);
+  border-top: 1px solid var(--panel-border);
+  padding-top: 6px;
+}
+
+.reserve-card-tooltip-stat {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+/* Mobile adjustments for reserve slots */
+@media (max-width: 767px) {
+  .reserve-card-slot {
+    min-height: 50px;
+  }
+  
+  .reserve-card-thumbnail {
+    font-size: 1.3em;
+  }
+  
+  .reserve-card-name {
+    font-size: 0.6em;
+  }
+}
+
+/* --- Priority: Game Screen Must Always Be Accessible --- */
+body.mode-gone-rogue #monitor-body,
+body.in-gone-rogue #monitor-body {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+body.mode-gone-rogue #log-column,
+body.in-gone-rogue #log-column {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* --- Desktop gone-rogue containment (do NOT reflow layout) ---
+   Goal: keep transformed map/canvas + HUD clipped inside the terminal frame.
+   This avoids the heavy-handed desktop patch that broke layout.
+*/
+@media (min-width: 768px) {
+  /* Desktop containment strategy:
+     - Let the *frame* (#rogue-grid-mobile) hug the canvas' real drawing size
+       (so we don't create deadspace inside the neon border)
+     - Center that frame inside the terminal surface.
+
+     This avoids fighting the game's JS camera math (it sets an inline
+     transform on the canvas: scale(...) translate(...)).
+  */
+  body.gone-rogue-active #terminal {
+    overflow: hidden;         /* clip any transformed children */
+    isolation: isolate;       /* new stacking context for sane z-index */
+
+    /* Center the game surface inside the terminal */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  body.gone-rogue-active #rogue-grid-mobile {
+    position: relative;
+    z-index: 0;
+    overflow: hidden;         /* primary clip */
+
+    /* Hug content (canvas) so border doesn't span empty space */
+    width: fit-content;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+
+    /* Ensure canvas sits at top-left within the frame */
+    display: grid;
+    place-items: start;
+    line-height: 0;
+  }
+
+  /* Canvas: avoid CSS-resizing the canvas box (can desync with JS camera math).
+     Instead, keep it at its intrinsic size but ensure:
+     - it doesn't create extra inline gaps
+     - transforms scale/pan from top-left (prevents "gutter" from origin drift)
+     - it remains clipped by the frame. */
+  body.gone-rogue-active #rogue-grid-mobile canvas {
+    position: relative;
+    z-index: 1;
+    display: block;
+    margin: 0;
+    flex: 0 0 auto;
+    align-self: flex-start;
+
+    /* Don't let the browser "center" scaling around the midpoint */
+    transform-origin: 0 0 !important;
+    will-change: transform;
+  }
+
+  /* Any HUD overlay inside the grid should sit above the canvas */
+  body.gone-rogue-active #rogue-grid-mobile [class*='hud'],
+  body.gone-rogue-active #rogue-grid-mobile [id*='hud'],
+  body.gone-rogue-active #rogue-grid-mobile [class*='overlay'],
+  body.gone-rogue-active #rogue-grid-mobile [id*='overlay'] {
+    position: relative;
+    z-index: 2;
+  }
+}
+
+
+/* ============================================================
+   MOBILE KEYBOARD VISIBILITY HANDLING
+   Squash header, control rail, and debrief when keyboard is active
+   to keep terminal input visible
+   ============================================================ */
+
+@media (max-width: 767px) {
+  /* When keyboard is visible on mobile */
+  body.keyboard-visible {
+    /* Ensure layout doesn't overflow */
+    overflow: hidden;
+  }
+
+  /* Drastically reduce header size when keyboard is visible */
+  body.keyboard-visible #mok-header.monitor-header {
+    padding: 2px 6px;
+    min-height: 24px;
+    gap: 4px;
+    transition: all 0.2s ease;
+  }
+
+  body.keyboard-visible .mok-header-title {
+    font-size: 0.65em;
+  }
+
+  body.keyboard-visible .mok-header-sub {
+    display: none; /* Hide subtitle to save space */
+  }
+
+  body.keyboard-visible .currency-display {
+    font-size: 0.5em;
+    padding: 1px 3px;
+  }
+
+  body.keyboard-visible .active-item-display {
+    width: 28px;
+    height: 28px;
+    font-size: 1em;
+  }
+
+  body.keyboard-visible .active-item-label {
+    display: none; /* Hide label to save space */
+  }
+
+  body.keyboard-visible .accountability-indicator {
+    width: 10px;
+    height: 10px;
+  }
+
+  /* Minimize control rail when keyboard visible */
+  body.keyboard-visible #control-rail {
+    padding: 4px;
+    gap: 4px;
+    min-height: auto;
+  }
+
+  body.keyboard-visible .control-buttons {
+    gap: 3px;
+  }
+
+  body.keyboard-visible .control-buttons button {
+    font-size: 0.65em;
+    padding: 3px 2px;
+    min-height: 24px;
+  }
+
+  /* Scale debrief instead of hiding when keyboard visible — avoids full reflow
+     that causes Android keyboard dismissal cycle (transform is compositor-only). */
+  /* Keyboard: avoid transform scaling (it leaves layout deadspace).
+     Keep debrief present but visually deemphasized while typing. */
+  body.keyboard-visible .debrief-window {
+    transform: none !important;
+    pointer-events: none;
+    opacity: 0.7;
+  }
+
+  /* Maximize terminal space when keyboard visible */
+  body.keyboard-visible #monitor-shell {
+    max-height: calc(100dvh - 30px); /* Account for tiny header */
+    overflow: hidden;
+  }
+
+  body.keyboard-visible #monitor-body {
+    gap: 6px;
+    min-height: 0;
+  }
+
+  body.keyboard-visible #log-column {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.keyboard-visible .log-frame {
+    padding: 6px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  body.keyboard-visible #terminal {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Ensure input line is visible at bottom */
+  body.keyboard-visible #input-line {
+    position: sticky;
+    bottom: 0;
+    background: var(--panel-bg);
+    padding: 4px 0;
+    margin-top: auto;
+  }
+
+  /* Make sure #crt-frame adjusts properly */
+  body.keyboard-visible #crt-frame {
+    max-height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Reduce padding on crt-screen */
+  body.keyboard-visible #crt-screen {
+    padding: 4px;
+  }
+}
+
+/* Additional adjustments for very small viewports when keyboard is visible */
+@media (max-width: 767px) and (max-height: 500px) {
+  body.keyboard-visible #mok-header.monitor-header {
+    padding: 1px 4px;
+    min-height: 20px;
+  }
+
+  body.keyboard-visible .mok-header-title {
+    font-size: 0.6em;
+  }
+
+  body.keyboard-visible .control-buttons button {
+    font-size: 0.6em;
+    padding: 2px 1px;
+    min-height: 20px;
+  }
+}
+
+/* ============================================================
+   LOGIN/REGISTER OVERLAY STYLES
+   ============================================================ */
+
+.login-overlay {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 260px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.login-overlay-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.login-overlay-header {
+  text-align: center;
+  border-bottom: 1px solid var(--panel-border-soft);
+  padding-bottom: 12px;
+}
+
+.login-overlay-title {
+  font-size: 1.1em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--phosphor);
+  font-weight: bold;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field label {
+  font-size: 0.82em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--phosphor-dim);
+}
+
+.form-field input {
+  background: rgba(8, 24, 12, 0.85);
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  padding: 8px 12px;
+  color: var(--phosphor);
+  font-family: 'Courier New', monospace;
+  font-size: 1em;
+  transition: all 150ms ease;
+}
+
+.form-field input:focus {
+  outline: none;
+  border-color: var(--phosphor);
+  box-shadow: 0 0 8px rgba(51, 255, 51, 0.3);
+  background: rgba(8, 24, 12, 0.95);
+}
+
+.form-field input::placeholder {
+  color: var(--phosphor-dim);
+  opacity: 0.5;
+}
+
+.field-validation {
+  font-size: 0.75em;
+  color: #ff6666;
+  min-height: 1.2em;
+  letter-spacing: 0.05em;
+}
+
+.field-validation.valid {
+  color: var(--phosphor);
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.form-btn {
+  flex: 1;
+  padding: 10px 16px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  background: rgba(8, 24, 12, 0.85);
+  color: var(--phosphor-dim);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.form-btn:hover {
+  border-color: var(--phosphor);
+  color: var(--phosphor);
+  background: rgba(12, 32, 16, 0.95);
+}
+
+.form-btn.primary {
+  border-color: var(--phosphor);
+  color: var(--phosphor);
+  background: rgba(12, 32, 16, 0.95);
+}
+
+.form-btn.primary:hover {
+  box-shadow: 0 0 12px rgba(51, 255, 51, 0.3);
+  background: rgba(16, 40, 20, 1);
+}
+
+.form-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.test-accounts-section {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 6px;
+}
+
+.test-accounts-label {
+  font-size: 0.85em;
+  letter-spacing: 0.05em;
+  color: var(--phosphor-dim);
+  margin-bottom: 8px;
+}
+
+.test-accounts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.test-account-item {
+  font-size: 0.8em;
+  color: var(--phosphor);
+  font-family: 'Courier New', monospace;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+  border-left: 2px solid var(--panel-border);
+}
+
+.test-account-value {
+  color: var(--phosphor-bright);
+  font-weight: bold;
+}
+
+.test-accounts-note {
+  font-size: 0.72em;
+  color: var(--phosphor-dim);
+  line-height: 1.4;
+  letter-spacing: 0.03em;
+}
+
+/* ============================================================
+   Gone Rogue Action Button Styles
+   ============================================================ */
+
+/* Base Gone Rogue button - matches control button dimensions */
+.gone-rogue-btn {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 0.85em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+  transition: all 120ms ease;
+}
+
+/* Card slot button specific styling */
+.card-slot-btn {
+  background: rgba(8, 24, 12, 0.85);
+  border-color: var(--panel-border);
+}
+
+.card-slot-btn:hover:not(:disabled) {
+  background: rgba(16, 40, 20, 0.95);
+  border-color: var(--phosphor);
+  box-shadow: 0 0 8px rgba(51, 255, 51, 0.3);
+}
+
+.card-slot-btn:active:not(:disabled) {
+  transform: scale(0.96);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5);
+}
+
+.card-slot-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Card emoji styling */
+.card-emoji {
+  font-size: 1.2em;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* Card abbreviated name styling */
+.card-abbrev {
+  font-size: 0.75em;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1;
+  text-shadow: 0 0 4px currentColor;
+}
+
+/* Empty slot placeholder */
+.card-empty {
+  font-size: 1.5em;
+  color: var(--phosphor-dim);
+  opacity: 0.3;
+}
+
+/* Sort/cycle button styling */
+.sort-btn {
+  font-size: 1.1em;
+  font-weight: bold;
+  letter-spacing: -0.1em;
+  background: rgba(16, 32, 20, 0.9);
+}
+
+.sort-btn:hover {
+  background: rgba(24, 48, 28, 1);
+  border-color: var(--phosphor);
+  box-shadow: 0 0 8px rgba(51, 255, 51, 0.3);
+}
+
+.sort-btn:active {
+  transform: scale(0.94);
+}
+
+/* Reserve card tooltip */
+.reserve-card-tooltip {
+  position: fixed;
+  background: rgba(8, 20, 12, 0.98);
+  border: 2px solid var(--phosphor);
+  border-radius: 8px;
+  padding: 12px;
+  max-width: 280px;
+  z-index: 10000;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8), 0 0 20px rgba(51, 255, 51, 0.2);
+  pointer-events: none;
+  font-size: 0.85em;
+}
+
+.reserve-card-tooltip-title {
+  font-size: 1em;
+  font-weight: bold;
+  color: var(--phosphor-bright);
+  margin-bottom: 8px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.reserve-card-tooltip-description {
+  color: var(--phosphor);
+  line-height: 1.4;
+  margin-bottom: 8px;
+  font-size: 0.9em;
+}
+
+.reserve-card-tooltip-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px solid var(--panel-border-soft);
+  padding-top: 8px;
+}
+
+.reserve-card-tooltip-stat {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85em;
+  color: var(--phosphor-dim);
+}
+
+.reserve-card-tooltip-stat span:first-child {
+  color: var(--phosphor-dim);
+}
+
+.reserve-card-tooltip-stat span:last-child {
+  color: var(--phosphor-bright);
+  font-weight: bold;
+}
+
+/* ============================================================
+   SYNERGY + CASCADE VISUAL FEEDBACK
+   ============================================================ */
+
+/* Synergy trigger flash — golden border on STR combat window */
+.str-synergy-flash {
+  animation: synergy-flash-anim 0.5s ease-out;
+}
+
+@keyframes synergy-flash-anim {
+  0% { box-shadow: 0 0 0 2px rgba(255, 215, 0, 0); }
+  30% { box-shadow: 0 0 20px 4px rgba(255, 215, 0, 0.6); }
+  100% { box-shadow: 0 0 0 2px rgba(255, 215, 0, 0); }
+}
+
+/* Cascade chain glow — stacking orange pulse */
+.str-cascade-chain {
+  animation: cascade-pulse-anim 0.4s ease-out;
+}
+
+@keyframes cascade-pulse-anim {
+  0% { box-shadow: inset 0 0 0 0 rgba(255, 152, 0, 0); }
+  40% { box-shadow: inset 0 0 30px 5px rgba(255, 152, 0, 0.3); }
+  100% { box-shadow: inset 0 0 0 0 rgba(255, 152, 0, 0); }
+}
+
+/* Cascade depth indicator — border color intensifies with depth */
+.str-cascade-depth-1 { border-color: rgba(255, 152, 0, 0.3); }
+.str-cascade-depth-2 { border-color: rgba(255, 152, 0, 0.5); }
+.str-cascade-depth-3 { border-color: rgba(255, 87, 34, 0.6); }
+.str-cascade-depth-4 { border-color: rgba(244, 67, 54, 0.7); }
+.str-cascade-depth-5 { border-color: rgba(211, 47, 47, 0.9); }
+
+/* Screen-edge cascade pulse (viewport-level effect) */
+@keyframes cascade-screen-pulse {
+  0% { box-shadow: inset 0 0 0 0 rgba(255, 152, 0, 0); }
+  50% { box-shadow: inset 0 0 60px 10px rgba(255, 152, 0, 0.15); }
+  100% { box-shadow: inset 0 0 0 0 rgba(255, 152, 0, 0); }
+}
+
+body.cascade-active {
+  animation: cascade-screen-pulse 0.6s ease-out;
+}
+
+/* Synergy tag color indicators */
+.synergy-tag-ballistic { color: #ef5350; }
+.synergy-tag-wet { color: #42a5f5; }
+.synergy-tag-electrical { color: #ffee58; }
+.synergy-tag-covert { color: #ab47bc; }
+.synergy-tag-improvised { color: #66bb6a; }
+.synergy-tag-black_market { color: #78909c; }
+
+/* Burn pile counter badge */
+.burn-pile-badge {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  background: rgba(255, 87, 34, 0.8);
+  color: #fff;
+  font-size: 9px;
+  font-family: 'Courier New', monospace;
+  padding: 1px 4px;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+/* ============================================================
+   STR COMBAT LEFT COLUMN — INTERACTIVE DRAW UX
+   ============================================================ */
+
+/* Draw-ready indicator pulse */
+.draw-ready-indicator {
+  color: #4fc3f7;
+  font-weight: bold;
+  animation: draw-ready-pulse 1.5s ease-in-out infinite;
+}
+
+.draw-spent-indicator {
+  color: #666;
+  font-style: italic;
+}
+
+@keyframes draw-ready-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1.0; text-shadow: 0 0 6px rgba(79, 195, 247, 0.5); }
+}
+
+/* Draw-eligible slot — interactive during STR */
+.backup-preview-slot.draw-eligible {
+  cursor: pointer;
+  border-color: rgba(79, 195, 247, 0.3);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+
+.backup-preview-slot.draw-eligible:hover {
+  border-color: rgba(79, 195, 247, 0.7);
+  box-shadow: 0 0 10px rgba(79, 195, 247, 0.25);
+  transform: scale(1.04);
+}
+
+/* Hold-to-draw feedback (300ms hold) */
+.backup-preview-slot.draw-holding {
+  border-color: #ff5722 !important;
+  box-shadow: 0 0 12px rgba(255, 87, 34, 0.4) !important;
+  animation: draw-hold-pulse 0.3s linear;
+}
+
+@keyframes draw-hold-pulse {
+  0% { box-shadow: 0 0 4px rgba(255, 87, 34, 0.2); }
+  100% { box-shadow: 0 0 16px rgba(255, 87, 34, 0.6); }
+}
+
+/* Draw confirmed — green flash */
+.backup-preview-slot.draw-confirmed {
+  border-color: #4caf50 !important;
+  box-shadow: 0 0 14px rgba(76, 175, 80, 0.5) !important;
+  animation: draw-confirm-flash 0.3s ease-out;
+}
+
+@keyframes draw-confirm-flash {
+  0% { background: rgba(76, 175, 80, 0.3); }
+  100% { background: rgba(8, 24, 12, 0.85); }
+}
+
+/* Active draw slot — fading out */
+.backup-preview-slot.draw-active {
+  opacity: 0.3 !important;
+  transform: scale(0.9);
+  transition: opacity 0.4s, transform 0.4s;
+}
+
+/* Red pulse border on container when draw is available */
+#reserve-slots-container.str-draw-ready {
+  border-left: 2px solid transparent;
+  animation: str-draw-border-pulse 2s ease-in-out infinite;
+}
+
+@keyframes str-draw-border-pulse {
+  0%, 100% { border-left-color: transparent; }
+  50% { border-left-color: rgba(255, 87, 34, 0.4); }
+}
+
+/* Ghost 🃏 element for draw cycling animation */
+.reserve-draw-ghost {
+  position: fixed;
+  z-index: 99999;
+  font-size: 2em;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  text-shadow: 0 0 10px rgba(79, 195, 247, 0.6);
+  transition: opacity 0.15s;
+  opacity: 0.9;
+}
+
+/* Ghost fly-upward animation after settling */
+.reserve-draw-ghost.reserve-draw-ghost-fly {
+  animation: reserve-ghost-fly-up 0.4s ease-in forwards;
+}
+
+@keyframes reserve-ghost-fly-up {
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
+  60% { transform: translate(-50%, -200%) scale(0.7); opacity: 0.6; }
+  100% { transform: translate(-50%, -400%) scale(0.4); opacity: 0; }
+}
+
+/* Slot shift animation after draw */
+#reserve-slots-container.slots-shifting .backup-preview-slot {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* ============================================================
+   CARD RESOURCE VALIDATION AND DISPOSAL SYSTEM
+   ============================================================ */
+
+/* Grey-out state for cards with insufficient resources */
+.card-insufficient-resources {
+  opacity: 0.4;
+  filter: grayscale(0.8);
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+
+.card-insufficient-resources::after {
+  content: '🚫';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+  opacity: 0.6;
+}
+
+/* Shake animation for invalid actions */
+@keyframes card-shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+.card-shake {
+  animation: card-shake 0.4s ease-out;
+}
+
+/* Incinerator animation for card disposal */
+@keyframes incinerator-flash {
+  0% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+  10% {
+    background-color: rgba(255, 165, 0, 0.8);
+    box-shadow: 0 0 20px rgba(255, 165, 0, 0.6);
+  }
+  30% {
+    background-color: rgba(255, 69, 0, 0.9);
+    box-shadow: 0 0 30px rgba(255, 69, 0, 0.8);
+  }
+  60% {
+    background-color: rgba(139, 0, 0, 0.6);
+    box-shadow: 0 0 15px rgba(139, 0, 0, 0.5);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+@keyframes burn-away {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+.incinerator-active {
+  animation: incinerator-flash 0.4s ease-out forwards;
+  position: relative;
+}
+
+.incinerator-active::after {
+  content: '♻️';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 32px;
+  animation: burn-away 0.3s ease-out 0.2s forwards;
+  pointer-events: none;
+}
+
+/* Intensity variants */
+.incinerator-single {
+  filter: brightness(1.2);
+}
+
+.incinerator-combat {
+  filter: brightness(1.4);
+}
+
+.incinerator-batch {
+  filter: brightness(1.6);
+  animation-duration: 0.6s;
+}
+
+/* Drag preview for disposal */
+.drag-preview-recycling {
+  opacity: 0.7;
+  transform: scale(0.8);
+  filter: brightness(1.2);
+}
+
+.drag-preview-recycling::after {
+  content: '♻️';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 48px;
+}
+
+/* ============================================================
+   DEBRIEF FEED RESOURCE DISPLAY
+   ============================================================ */
+
+.debrief-feed-resources {
+  font-family: 'Courier New', monospace;
+  font-size: 0.85em;
+  line-height: 1.6;
+  padding: 8px;
+}
+
+.resource-section {
+  margin-bottom: 8px;
+}
+
+.resource-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+.resource-icon {
+  font-size: 1.2em;
+  width: 20px;
+  text-align: center;
+}
+
+.resource-name {
+  color: var(--phosphor-dim);
+  min-width: 60px;
+  font-size: 0.9em;
+}
+
+.resource-bar-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  font-family: monospace;
+  letter-spacing: 0.05em;
+}
+
+.resource-bar-filled {
+  color: var(--phosphor);
+  text-shadow: 0 0 4px var(--phosphor-glow);
+}
+
+.resource-value {
+  color: var(--phosphor-bright);
+  margin-left: 6px;
+  font-weight: bold;
+  min-width: 45px;
+  text-align: right;
+}
+
+.resource-divider {
+  height: 1px;
+  background: var(--panel-border-soft);
+  margin: 6px 0;
+}
+
+/* Cycle button for secondary resources */
+.resource-cycle-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 8px;
+  margin: 6px 0;
+  background: rgba(8, 20, 12, 0.5);
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 4px;
+  color: var(--phosphor-dim);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.85em;
+}
+
+.resource-cycle-button:hover {
+  background: rgba(14, 30, 18, 0.7);
+  border-color: var(--phosphor);
+  color: var(--phosphor-bright);
+}
+
+.cycle-icon {
+  font-weight: bold;
+}
+
+/* Debrief feed states */
+.debrief-feed.minimized {
+  flex: 0 0 auto;
+  max-height: 100px;
+  overflow: hidden;
+}
+
+.debrief-feed.expanded {
+  flex: 1 1 auto;
+  min-height: 200px;
+}
+
+/* Resource frame animations for gain/loss feedback */
+.resource-row {
+  position: relative;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 2px 4px;
+  transition: border-color 0.3s ease;
+}
+
+/* Gaining resource - frame pulses with resource color */
+@keyframes resource-gain-pulse {
+  0% {
+    border-color: transparent;
+    box-shadow: none;
+  }
+  50% {
+    border-color: currentColor;
+    box-shadow: 0 0 8px currentColor;
+  }
+  100% {
+    border-color: transparent;
+    box-shadow: none;
+  }
+}
+
+/* Losing resource - frame flashes then fades */
+@keyframes resource-loss-flash {
+  0% {
+    border-color: transparent;
+    box-shadow: none;
+  }
+  20% {
+    border-color: currentColor;
+    box-shadow: 0 0 6px currentColor;
+  }
+  100% {
+    border-color: transparent;
+    box-shadow: none;
+  }
+}
+
+/* Apply animations with specific resource colors */
+.resource-row.gaining {
+  animation: resource-gain-pulse 0.6s ease-out;
+}
+
+.resource-row.losing {
+  animation: resource-loss-flash 0.4s ease-out;
+}
+
+/* Resource-specific frame colors (using CSS variables for easier dynamic application) */
+.resource-row[data-resource="HP"] {
+  --resource-color: #FF6B9D;
+}
+
+.resource-row[data-resource="Energy"] {
+  --resource-color: #00D4FF;
+}
+
+.resource-row[data-resource="Focus"] {
+  --resource-color: #FFF9B0;
+}
+
+.resource-row[data-resource="Battery"] {
+  --resource-color: #00FFA6;
+}
+
+.resource-row[data-resource="Fatigue"] {
+  --resource-color: #A0522D;
+}
+
+.resource-row[data-resource="Ammo"] {
+  --resource-color: #DA70D6;
+}
+
+.resource-row.gaining,
+.resource-row.losing {
+  color: var(--resource-color);
+}
+
+/* Status effects display */
+.status-effects-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.status-effect {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  background: rgba(8, 20, 12, 0.6);
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 3px;
+  font-size: 0.85em;
+}
+
+.status-effect.buff {
+  border-color: rgba(0, 255, 0, 0.3);
+  color: var(--phosphor-bright);
+}
+
+.status-effect.debuff {
+  border-color: rgba(255, 0, 0, 0.3);
+  color: #ff6b6b;
+}
+
+.effect-icon {
+  font-size: 1.1em;
+}
+
+.effect-duration {
+  color: var(--phosphor-dim);
+  margin-left: 2px;
+  font-size: 0.9em;
+}
+
+.stack-count {
+  color: var(--phosphor-bright);
+  font-weight: bold;
+  margin-left: 2px;
+}
+
+/* ============================================================
+   DRAG-TO-DEBRIEF DISPOSAL SYSTEM
+   ============================================================ */
+
+/* Dragging state for cards */
+.card-dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+/* Debrief feed as drop target */
+.debrief-drop-target {
+  background: rgba(255, 165, 0, 0.2);
+  box-shadow: 0 0 20px rgba(255, 165, 0, 0.4);
+  outline: 2px dashed rgba(255, 165, 0, 0.6);
+  outline-offset: 4px;
+}
+
+/* STR combat: debrief as SELF target (blue tint) */
+.debrief-drop-target-self {
+  background: rgba(0, 140, 255, 0.18);
+  box-shadow: 0 0 20px rgba(0, 140, 255, 0.28);
+  outline: 2px dashed rgba(0, 140, 255, 0.55);
+  outline-offset: 4px;
+}
+
+.debrief-drop-target-invalid {
+  background: rgba(255, 28, 74, 0.16);
+  box-shadow: 0 0 18px rgba(255, 28, 74, 0.28);
+  outline: 2px dashed rgba(255, 28, 74, 0.55);
+  outline-offset: 4px;
+}
+
+/* Drag preview with recycling icon already defined above */
+/* See .drag-preview-recycling class */
+
+/* Draggable cursor */
+.hand-card[draggable="true"] {
+  cursor: grab;
+}
+
+.hand-card[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* ============================================================
+   MOK AI INTERFACE SYSTEM
+   ============================================================ */
+
+/* MOK Visual Container */
+.mok-visual-container {
+  width: 100%;
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Pentagram Wrapper - Creates "zoomed in" effect */
+.mok-pentagram-wrapper {
+  position: relative;
+  width: 300px;
+  height: 300px;
+  transform: scale(1.8);
+  overflow: hidden;
+}
+
+/* MOK Pentagram Structure */
+.mok-pentagram {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Interior Triangle - LED Glow Area */
+.mok-triangle-glow {
+  font-size: 120px;
+  line-height: 1;
+  color: var(--mok-primary-glow, #00FF88);
+  text-shadow:
+    0 0 10px var(--mok-primary-glow, #00FF88),
+    0 0 20px var(--mok-secondary-glow, #00CC66),
+    0 0 30px var(--mok-secondary-glow, #00CC66),
+    0 0 40px var(--mok-primary-glow, #00FF88);
+  filter: drop-shadow(0 0 15px var(--mok-primary-glow, #00FF88));
+  transition: all 0.3s ease-out;
+  animation: mok-pulse-idle 4s ease-in-out infinite;
+}
+
+/* Glow State Animations */
+@keyframes mok-pulse-idle {
+  0%, 100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes mok-pulse-talking {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(0.98);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes mok-pulse-warning {
+  0%, 100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes mok-pulse-error {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Glow State Classes */
+.glow-talking {
+  animation: mok-pulse-talking 0.5s ease-in-out infinite;
+}
+
+.glow-processing {
+  animation: mok-pulse-idle 2s ease-in-out infinite;
+}
+
+.glow-warning {
+  animation: mok-pulse-warning 1s ease-in-out infinite;
+}
+
+.glow-error {
+  animation: mok-pulse-error 0.3s ease-in-out infinite;
+}
+
+.glow-sleep {
+  animation: mok-pulse-idle 8s ease-in-out infinite;
+  opacity: 0.4;
+}
+
+/* MOK Interjection Area */
+.mok-interjection {
+  padding: 8px 12px;
+  text-align: center;
+  color: var(--phosphor);
+  font-size: 0.9em;
+  min-height: 30px;
+  line-height: 1.4;
+}
+
+/* Kernel API Status */
+.kernel-api-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--panel-border-soft);
+  margin: 8px 0;
+  font-size: 0.85em;
+}
+
+.kernel-icon {
+  font-size: 1.2em;
+}
+
+.kernel-text {
+  color: var(--phosphor);
+}
+
+/* Debrief Display Containers */
+.debrief-mok-display,
+.debrief-resources-display,
+.debrief-video-display {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+
+  /* Ensure content renders above the debrief scanline overlay (::after) */
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+}
+
+/* Debrief Cycle Button */
+.debrief-cycle-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--panel-border);
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: auto;
+  font-size: 0.9em;
+}
+
+/* In resources view, the swapper sits in a header row (avoid pushing to bottom). */
+.debrief-resources-display .debrief-cycle-button {
+  margin-top: 0;
+}
+
+.debrief-resources-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid rgba(28, 255, 155, 0.18);
+}
+
+.debrief-mok-swapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(28, 255, 155, 0.30);
+  background: rgba(0,0,0,0.28);
+  color: rgba(191, 255, 227, 0.95);
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.debrief-mok-swapper:hover {
+  border-color: rgba(28, 255, 155, 0.55);
+  background: rgba(28, 255, 155, 0.06);
+}
+
+.debrief-mok-swapper .mok-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(28, 255, 155, 0.85);
+  box-shadow: 0 0 10px rgba(28, 255, 155, 0.28);
+}
+
+.debrief-mok-swapper .mok-label {
+  letter-spacing: 1px;
+}
+
+.debrief-cycle-button:hover {
+  background: rgba(51, 255, 51, 0.1);
+  border-color: var(--phosphor);
+}
+
+.debrief-cycle-button .cycle-icon {
+  color: var(--phosphor-bright);
+  font-size: 1.1em;
+}
+
+.debrief-cycle-button .cycle-text {
+  color: var(--phosphor);
+}
+
+/* Resources Content Area */
+#debrief-resources-content {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden; /* prevent grey scroll wheel in debrief */
+  padding: 4px;
+  box-sizing: border-box;
+}
+
+/* Synergy overlap overlay (keys+gates/chests/vents) */
+.debrief-resources-display {
+  position: relative;
+}
+
+#debrief-synergy-overlay.debrief-synergy-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.98);
+  transition: opacity 140ms ease, transform 140ms ease;
+  z-index: 10;
+}
+
+#debrief-synergy-overlay.debrief-synergy-overlay.synergy-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+#debrief-synergy-overlay .synergy-pair {
+  font-size: 28px;
+  letter-spacing: 2px;
+  padding: 8px 14px;
+  border: 1px solid rgba(0, 255, 136, 0.35);
+  background: rgba(0, 0, 0, 0.65);
+  box-shadow: 0 0 18px rgba(0, 255, 136, 0.25);
+}
+
+#debrief-synergy-overlay.synergy-kind-chest .synergy-pair {
+  border-color: rgba(255, 235, 59, 0.45);
+  box-shadow: 0 0 18px rgba(255, 235, 59, 0.25);
+}
+
+#debrief-synergy-overlay.synergy-kind-vent .synergy-pair {
+  border-color: rgba(0, 212, 255, 0.45);
+  box-shadow: 0 0 18px rgba(0, 212, 255, 0.25);
+}
+
+/* Frame/background accent on the debrief window */
+#debrief-window.synergy-frame-gate {
+  box-shadow: 0 0 28px rgba(0, 255, 136, 0.25), inset 0 0 18px rgba(0, 255, 136, 0.18);
+}
+
+#debrief-window.synergy-frame-chest {
+  box-shadow: 0 0 28px rgba(255, 235, 59, 0.25), inset 0 0 18px rgba(255, 235, 59, 0.18);
+}
+
+#debrief-window.synergy-frame-vent {
+  box-shadow: 0 0 28px rgba(0, 212, 255, 0.25), inset 0 0 18px rgba(0, 212, 255, 0.18);
+}
+
+/* Video Player Container */
+.video-player-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.8);
+  color: var(--phosphor);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .mok-pentagram-wrapper {
+    width: 200px;
+    height: 200px;
+    transform: scale(1.5);
+  }
+
+  .mok-triangle-glow {
+    font-size: 80px;
+  }
+
+  .kernel-api-status {
+    font-size: 0.75em;
+  }
+
+  .mok-interjection {
+    font-size: 0.8em;
+  }
+}
+
+/* ============================================================
+   Water Slowdown Visual Feedback
+   Blue wave roll down animation on window frame
+   ============================================================ */
+
+@keyframes water-wave-roll {
+  0% {
+    box-shadow: inset 0 -100% 0 0 rgba(74, 144, 226, 0);
+  }
+  25% {
+    box-shadow: inset 0 -75% 0 0 rgba(74, 144, 226, 0.3);
+  }
+  50% {
+    box-shadow: inset 0 -50% 0 0 rgba(74, 144, 226, 0.5);
+  }
+  75% {
+    box-shadow: inset 0 -25% 0 0 rgba(74, 144, 226, 0.3);
+  }
+  100% {
+    box-shadow: inset 0 0 0 0 rgba(74, 144, 226, 0);
+  }
+}
+
+.water-slowdown-effect {
+  animation: water-wave-roll 1s ease-out;
+  border-color: rgba(74, 144, 226, 0.6) !important;
+}
+
+.water-slowdown-effect::before {
+  animation: water-wave-roll 1s ease-out;
+}
+
+/* AWOL tooltip livehelp link */
+.awol-livehelp-link {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-decoration: underline;
+  cursor: pointer;
+  outline-offset: 2px;
+}
+
+.awol-livehelp-link:hover,
+.awol-livehelp-link:focus {
+  color: var(--phosphor);
+  text-shadow: 0 0 6px var(--phosphor);
+}
+
+.awol-livehelp-link:focus-visible {
+  outline: 1px solid var(--phosphor);
+}
