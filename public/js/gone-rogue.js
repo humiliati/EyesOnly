@@ -37,10 +37,14 @@ const GoneRogue = (function () {
 
   var _enemies = [];
   var _npcs = []; // NPCs on floor (tutorial gates, etc.)
-  var _items = WorldItems.getFloorItems();        // Managed by WorldItems (single source of truth)
+  // NOTE: Don't touch WorldItems at script-load time.
+  // Some pages load GoneRogue before WorldItems is initialized; referencing it
+  // here prevents the entire module from registering (breaking requestRogue).
+  // We sync with WorldItems lazily when the game starts / floor loads.
+  var _items = [];
   var _projectiles = [];
   var _breakables = [];
-  var _currencies = WorldItems.getCurrencies();  // Currency drops on floor (yellow dots ¢) — managed by WorldItems
+  var _currencies = [];
   var _shops = []; // Shop objects on floor (🏪 or 👤)
   var _placedBoxes = []; // Deployable box entities placed on the map {id, x, y, quality, state, discoveryCount}
   var _playerInBox = null; // Box entity the player is currently hiding inside (or null)
