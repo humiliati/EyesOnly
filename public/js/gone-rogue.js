@@ -5538,29 +5538,9 @@ _incrementPityTimers();
       // (ghost glyph fix: persistent ¢ glyph was hovering disembodied above player)
     }
 
-    // Check for ammo item auto-pickup (floor drops from breakables)
-    var ammoFloorItem = _items.find(function(i) { return i.x === x && i.y === y && i.type === 'ammo'; });
-    if (ammoFloorItem) {
-      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addAmmo) {
-        GAMESTATE.addAmmo(ammoFloorItem.amount);
-      }
-      _items = WorldItems.filterFloorItems(function(i) { return i !== ammoFloorItem; });
-      if (typeof OverheadAnimator !== 'undefined') {
-        OverheadAnimator.showGenericExpression(x, y, '؋', 800, '#DA70D6');
-      }
-      if (typeof TooltipSystem !== 'undefined') {
-        TooltipSystem.showAction('item-pickup', { name: 'Ammo +' + ammoFloorItem.amount });
-      }
-      if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-        UIControls.updateMokInterjection('؋ Ammo +' + ammoFloorItem.amount);
-      }
-      try {
-        if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-          PancakeStack.addPancake('؋');
-        } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-          PlayerStackManager.addPancake('؋');
-        }
-      } catch (ePancake) {}
+    // Auto-pickup any floor item at player position (ammo, gem/battery, cards, keys)
+    if (_items.find(function(i) { return i.x === x && i.y === y; })) {
+      _pickupItem();
     }
 
     // Check for food item pickup (auto-pickup from interactive items)
@@ -5796,29 +5776,10 @@ _incrementPityTimers();
       // (ghost glyph fix: persistent ¢ glyph was hovering disembodied above player)
     }
 
-    // Check for ammo item auto-pickup (floor drops from breakables)
-    var ammoFloorItem = _items.find(function(i) { return i.x === newX && i.y === newY && i.type === 'ammo'; });
-    if (ammoFloorItem) {
-      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addAmmo) {
-        GAMESTATE.addAmmo(ammoFloorItem.amount);
-      }
-      _items = WorldItems.filterFloorItems(function(i) { return i !== ammoFloorItem; });
-      if (typeof OverheadAnimator !== 'undefined') {
-        OverheadAnimator.showGenericExpression(newX, newY, '؋', 800, '#DA70D6');
-      }
-      if (typeof TooltipSystem !== 'undefined') {
-        TooltipSystem.showAction('item-pickup', { name: 'Ammo +' + ammoFloorItem.amount });
-      }
-      if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-        UIControls.updateMokInterjection('؋ Ammo +' + ammoFloorItem.amount);
-      }
-      try {
-        if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-          PancakeStack.addPancake('؋');
-        } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-          PlayerStackManager.addPancake('؋');
-        }
-      } catch (ePancake) {}
+    // Auto-pickup any floor item at new position (ammo, gem/battery, cards, keys)
+    // _player.x/y is already updated to newX/newY at this point
+    if (_items.find(function(i) { return i.x === newX && i.y === newY; })) {
+      _pickupItem();
     }
 
     // Check for food item pickup (auto-pickup from interactive items)
@@ -6302,7 +6263,19 @@ _incrementPityTimers();
             }
           } catch (eQuest) {}
         }
-        // TIER 1 (ammo): no special effects, just goes to loose inventory silently
+        // TIER 1 (ammo key / low-tier key): show overhead key emoji so player sees auto-pickup
+        else {
+          try {
+            if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+              OverheadAnimator.showGenericExpression(_player.x, _player.y, item.emoji || '🔑', 800, '#FFD700');
+            }
+            if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+              PancakeStack.addPancake(item.emoji || '🔑');
+            } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
+              PlayerStackManager.addPancake(item.emoji || '🔑');
+            }
+          } catch (eAnim) {}
+        }
       }
 
       if (!result.success) {
@@ -6333,15 +6306,19 @@ _incrementPityTimers();
       }
     }
 
+    var pickupEmoji = (item.card && item.card.emoji) ? item.card.emoji : (item.emoji || (item.type === 'key' ? '🔑' : '📦'));
+    var pickupDisplayName = (item.card && item.card.name) ? item.card.name : (item.name || 'Item');
+    var pickupQuality = (item.card && item.card.qualityName) ? ' [' + item.card.qualityName + ']' : '';
+
     // MOK interjection for card/item pickup
     if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
       var pickupType = isCard ? 'Card' : 'Item';
       var locationInfo = (isCard && result && result.location) ? ' → ' + result.location.toUpperCase() : '';
-      UIControls.updateMokInterjection(pickupType + ': ' + item.card.name + locationInfo);
+      UIControls.updateMokInterjection(pickupType + ': ' + pickupDisplayName + locationInfo);
     }
 
     return {
-      lines: ['PICKED UP: ' + item.card.emoji + ' ' + item.card.name + ' [' + item.card.qualityName + ']', ''].concat(_renderGrid()),
+      lines: ['PICKED UP: ' + pickupEmoji + ' ' + pickupDisplayName + pickupQuality, ''].concat(_renderGrid()),
       prompt: getPrompt(),
       stayActive: true
     };
