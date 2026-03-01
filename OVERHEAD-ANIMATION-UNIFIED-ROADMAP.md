@@ -384,15 +384,56 @@ OverheadAnimator.showExpression(x, y, 'LOOT', 4000, '¢');
 
 2. **Ammo color fix** (`gone-rogue-mobile.js`): Ammo drops now render with correct `#DA70D6` magenta per `RESOURCE_COLOR_SYSTEM.md` — not cyan `#00FFFF`.
 
-3. **Universal auto-pickup** (`gone-rogue.js`): Both `_checkPlayerInteractions` (smooth movement) and `_movePlayer` (command movement) now call `_pickupItem()` whenever any floor item is present at the player's position. This covers ammo, gem/battery (`◈` cyan symbol), cards, and keys.
+3. **Universal auto-pickup** (`gone-rogue.js`): Both `_checkPlayerInteractions` (smooth movement) and `_movePlayer` (command movement) now call `_pickupItem()` whenever any floor item is present at the player's position. This covers ammo, gem/battery (`◈` cyan symbol), cards, and all key tiers.
 
 4. **`_pickupItem` key crash fix** (`gone-rogue.js`): Terminal MOK interjection and `return` statement now use guarded locals (`pickupEmoji`, `pickupDisplayName`, `pickupQuality`) that fall back gracefully for non-card items.
 
-**Overhead animation behavior** (unchanged):
-- All collectibles trigger OverheadAnimator expression on pickup (per system doctrine)
-- All collectibles add a glyph to PancakeStack on pickup (per system doctrine)
+5. **Key tier routing** (`gone-rogue.js`, `tooltip-system.js`, `gamestate.js`, `debrief-feed-controller.js`): All three key tiers now route to distinct destinations — see key tier details below.
+
+---
+
+## Key Tier System ✅ Done
+
+The key system has three tiers with distinct storage, tooltip, and overhead animation behavior:
+
+### Tier 1 — key_ammo (Consumable Chest/Lock Keys)
+- **Examples**: Rusty Key 🔑, Bronze Key 🗝️
+- **Mechanics**: Used for chests and simple locks; consumed on use; thieving support
+- **Storage**: Resource counter only — `GAMESTATE.addKeyCount(keyType, 1)`. NOT stored in inventory
+- **Debrief feed**: `DebriefFeedController.reportResourceChange('key_ammo', old, new, name)` on every pickup; ammo row summary shows `🔑x{N}`; expanded panel shows `🔑 KEY AMMO Rusty:N`
+- **Tooltip**: `TooltipSystem.showAction('key-ammo-pickup', { name })` → `'🔑 KEY AMMO: Rusty Key'`
+- **MOK interjection**: `Key Ammo: {name}`
+- **Quality label**: `[KEY AMMO]` in pickup log
+- **Overhead anim**: Gold 🔑 expression, 800ms
+- **PancakeStack**: `item.emoji || '🔑'`
+- **`getTotalKeyAmmo()`**: Returns sum of all Tier 1 key counts (used for resource-change delta)
+
+### Tier 2 — key_items (Persistent Door/Gate Keys)
+- **Examples**: Security Keycard 💳, Master Key 🔐, Mall Tag 🏷️, Industrial Pass 🔧
+- **Mechanics**: Unlock physical doors and gates; survive death; equip+toggle workflow
+- **Storage**: `GAMESTATE.addToPersistent(nonCardPayload)` — persistent inventory
+- **Auto-equip**: `GAMESTATE.setActiveItem()` + `UIControls.setActiveItem()` on pickup
+- **Tooltip**: `TooltipSystem.showAction('key-item-pickup', { name })` → `'🔑 KEY ITEM: Security Keycard → INVENTORY'`; `TooltipSystem.show('🔑 KEY EQUIPPED — Tap header icon near the gate!', 2500)`
+- **MOK interjection**: `Key Item: {name}`
+- **Quality label**: `[KEY ITEM]` in pickup log
+- **Overhead anim**: Gold 🔑 expression, 1200ms
+- **PancakeStack**: `item.emoji || '🔑'`
+
+### Tier 3 — Quest Keys (NPC Turn-In Items)
+- **Examples**: Blacksmith's Hammer 🔨, Rune Fragment 💎
+- **Mechanics**: Persistent quest items for NPC turn-in (reward: card upgrade)
+- **Storage**: `GAMESTATE.addToPersistent(nonCardPayload)` — persistent inventory
+- **Tooltip**: `TooltipSystem.show('❗ QUEST ITEM — {name} — Return to {NPC}', 3500)`
+- **Overhead anim**: Red ❗ expression, 1500ms
+- **No debrief resource row**; **no auto-equip**
+
+---
+
+**Overhead animation behavior** (all tiers):
+- All key tiers trigger `OverheadAnimator.showGenericExpression` on pickup (per system doctrine)
+- All key tiers add a glyph to PancakeStack on pickup (per system doctrine)
 - Battery/gem always uses hardcoded `◈` — never `item.emoji` or `item.glyph`
-- Ammo uses hardcoded `؋` with magenta color `#DA70D6`
+- Weapon ammo uses hardcoded `؋` with magenta color `#DA70D6`
 
 ---
 

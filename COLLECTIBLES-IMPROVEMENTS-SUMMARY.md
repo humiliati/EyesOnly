@@ -79,9 +79,24 @@ This document summarizes the improvements made to the collectibles system to fix
 
 **Files Changed**: `public/js/gone-rogue.js`
 
----
+### 7. Key Tier Routing — key_ammo to Debrief Feed, key_items to Inventory ✅ FIXED
 
-## Verification
+**Problem**: `_pickupItem()` treated all keys identically regardless of tier. Tier 1 consumable chest keys (key_ammo) went to loose inventory just like Tier 2 door keys. All keys showed the generic `📦 PICKED UP {name}` tooltip with no type indication. Players could not distinguish "ammo I'll consume at a chest" from "door key I need to equip."
+
+**Fix**:
+- **Tooltip system** (`tooltip-system.js`): Added two dedicated action types:
+  - `key-ammo-pickup` → `🔑 KEY AMMO: {name}` (Tier 1)
+  - `key-item-pickup` → `🔑 KEY ITEM: {name} → INVENTORY` (Tier 2+)
+- **GAMESTATE** (`gamestate.js`): Added `getTotalKeyAmmo()` — sums all Tier 1 key counts for resource-change delta
+- **Inventory routing** (`gone-rogue.js`): Tier 1 keys no longer call `addToLoose()`; result is a synthetic `{ success: true }` — key tracked only as resource counter via `addKeyCount()`
+- **Debrief feed report** (`gone-rogue.js`): KEY COUNTER block calls `DebriefFeedController.reportResourceChange('key_ammo', old, new, keyName)` for Tier 1 keys
+- **Debrief feed display** (`debrief-feed-controller.js`): Ammo row summary appends `🔑x{N}`; expanded panel uses human-readable labels (`🔑 KEY AMMO Rusty:N`, `💳 KEY ITEM Keycard:N`)
+- **MOK interjection**: Shows `Key Ammo: {name}` or `Key Item: {name}` instead of generic `Item:`
+- **Quality label**: `pickupQuality` shows `[KEY AMMO]` or `[KEY ITEM]` in pickup log line
+
+**Files Changed**: `public/js/gone-rogue.js`, `public/js/tooltip-system.js`, `public/js/gamestate.js`, `public/js/debrief-feed-controller.js`
+
+---
 
 ### Automated Tests
 Run: `node public/tests/verify-collectibles-improvements.js`
@@ -116,7 +131,10 @@ Tests verify:
 - [x] Ammo drops auto-collect on walkover
 - [x] Battery cells auto-collect with ◈ cyan animation on walkover
 - [x] Card drops auto-collect on walkover
-- [x] Keys auto-collect on walkover with gold overhead animation
+- [x] Key Ammo (Tier 1): tooltip `🔑 KEY AMMO: {name}`, quality `[KEY AMMO]`, NOT in inventory
+- [x] Key Ammo (Tier 1): debrief ammo row shows `🔑x{N}` in summary
+- [x] Key Item (Tier 2): tooltip `🔑 KEY ITEM: {name} → INVENTORY`, auto-equips, in persistent inventory
+- [x] Quest Key (Tier 3): `❗ QUEST ITEM` tooltip with NPC target
 - [x] All animations consistent and readable
 
 ---
@@ -206,3 +224,4 @@ if (_items.find(function(i) { return i.x === x && i.y === y; })) {
 6. `4db3a65` — Add comprehensive verification test for collectibles improvements
 7. `afcf229` — Fix food persistence and ammo cyan color/non-interactive collectible bugs
 8. `611ccc4` — Unify all floor collectibles to auto-pickup on walkover; fix `_pickupItem` crash for keys
+9. `d41e807` — Implement key_ammo/key_item tier distinction — tooltip, debrief feed routing, inventory separation

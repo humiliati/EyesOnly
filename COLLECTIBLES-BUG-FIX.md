@@ -260,9 +260,81 @@ return { lines: ['PICKED UP: ' + pickupEmoji + ' ' + pickupDisplayName + pickupQ
 - ✅ Tier-1 keys now show overhead key emoji + pancake stacker entry on auto-pickup
 - ✅ Battery/gem animation uses hardcoded `◈` cyan symbol throughout (not `item.emoji`)
 
+### Bug #6: Key Tier Routing — key_ammo to Debrief Feed, key_items to Inventory
+
+**Problem**: All key tiers (Tier 1 consumable chest keys and Tier 2 persistent door keys) were treated identically in `_pickupItem()`. Tier 1 keys were sent to loose inventory instead of being tracked as a resource counter in the debrief feed. Tooltips and MOK interjection showed the generic `'📦 PICKED UP {name}'` message with no indication of key type. Players had no way to distinguish "key ammo I'll consume opening chests" from "key item I need to equip to unlock a door."
+
+**Location**: `/public/js/gone-rogue.js` — `_pickupItem()` inventory routing; `tooltip-system.js` — `showAction()`
+
+**Before**:
+```javascript
+// ALL non-card, non-tier-2-key items went to loose inventory:
+} else {
+  result = GAMESTATE.addToLoose(nonCardPayload);  // Tier 1 keys incorrectly stored here
+}
+
+// Single generic tooltip for all non-card pickups:
+TooltipSystem.showAction('item-pickup', { name: nm });  // → '📦 PICKED UP Rusty Key'
+
+// Generic MOK interjection:
+UIControls.updateMokInterjection('Item: ' + pickupDisplayName);
+
+// Generic quality label (empty for keys):
+var pickupQuality = ''; // no label at all
+```
+
+**After** (Fixed):
+```javascript
+// Tier 1 keys (key_ammo) → resource counter + debrief feed report:
+} else if (item.type === 'key') {
+  result = { success: true, message: 'Key ammo counted' };
+  // addKeyCount + reportResourceChange happen in KEY COUNTER block below
+}
+
+// In KEY COUNTER block — Tier 1 additionally reports to debrief feed:
+var oldKeyAmmoTotal = GAMESTATE.getTotalKeyAmmo();
+GAMESTATE.addKeyCount(countKeyType, 1);
+var newKeyAmmoTotal = GAMESTATE.getTotalKeyAmmo();
+DebriefFeedController.reportResourceChange('key_ammo', oldKeyAmmoTotal, newKeyAmmoTotal, keyName);
+
+// Specific tooltips:
+TooltipSystem.showAction('key-ammo-pickup', { name: nm });  // → '🔑 KEY AMMO: Rusty Key'
+TooltipSystem.showAction('key-item-pickup', { name: nm });  // → '🔑 KEY ITEM: Security Keycard → INVENTORY'
+
+// Specific MOK interjections:
+UIControls.updateMokInterjection('Key Ammo: ' + pickupDisplayName);
+UIControls.updateMokInterjection('Key Item: ' + pickupDisplayName);
+
+// Specific quality labels:
+var pickupQuality = item.type === 'key' && keyTier <= 1 ? ' [KEY AMMO]' : ' [KEY ITEM]';
+```
+
+**Result**:
+- ✅ Tier 1 keys (key_ammo) tracked as resource counter, NOT in loose inventory
+- ✅ Debrief feed ammo row shows `🔑x{N}` in summary and per-key-type counts in expanded panel
+- ✅ `reportResourceChange('key_ammo', ...)` fires on every Tier 1 key pickup → MOK feed update
+- ✅ Tier 1 tooltip: `🔑 KEY AMMO: Rusty Key`
+- ✅ Tier 2 tooltip: `🔑 KEY ITEM: Security Keycard → INVENTORY`
+- ✅ `pickupQuality` shows `[KEY AMMO]` or `[KEY ITEM]` in pickup log line
+- ✅ MOK interjection shows `Key Ammo:` or `Key Item:` prefix
+
 ---
 
 ## Changes Made
+
+### File: `/public/js/gone-rogue.js`
+
+- Tap handler: `autoPickup` items bypass `process('interact')`, allowing movement to proceed
+- `WorldItems.getAllForRendering()` loop: added `type === 'ammo'` branch with `color = '#DA70D6'`
+- Fallback rendering path: corrected ammo color from `#00FFFF` to `#DA70D6`
+- `_checkPlayerInteractions`: replaced ammo-specific 25-line block with `_pickupItem()` call
+- `_movePlayer`: same replacement
+- `_pickupItem` inventory routing: Tier 1 keys (key_ammo) → resource-only path (no `addToLoose`)
+- `_pickupItem` KEY COUNTER block: `getTotalKeyAmmo()` before/after `addKeyCount()`; calls `reportResourceChange('key_ammo', ...)` for Tier 1
+- `_pickupItem` tooltip: uses `key-ammo-pickup` (Tier 1), `key-item-pickup` (Tier 2+), `item-pickup` (non-key)
+- `_pickupItem` MOK interjection: `Key Ammo: {name}` / `Key Item: {name}` instead of generic `Item:`
+- `_pickupItem` `pickupQuality`: shows `[KEY AMMO]` (Tier 1) or `[KEY ITEM]` (Tier 2)
+- `_pickupItem`: guarded `item.card.*` accesses with safe locals; key emoji fallback `'🔑'`; tier-1 key overhead animation added
 
 ### File: `/public/js/gone-rogue-mobile.js`
 
@@ -270,11 +342,19 @@ return { lines: ['PICKED UP: ' + pickupEmoji + ' ' + pickupDisplayName + pickupQ
 - `WorldItems.getAllForRendering()` loop: added `type === 'ammo'` branch with `color = '#DA70D6'`
 - Fallback rendering path: corrected ammo color from `#00FFFF` to `#DA70D6`
 
-### File: `/public/js/gone-rogue.js`
+### File: `/public/js/tooltip-system.js`
 
-- `_checkPlayerInteractions`: replaced ammo-specific 25-line block with `_pickupItem()` call
-- `_movePlayer`: same replacement
-- `_pickupItem`: guarded `item.card.*` accesses with safe locals; key emoji fallback `'🔑'`; tier-1 key overhead animation added
+- Added `key-ammo-pickup` action: `'🔑 KEY AMMO: {name}'`
+- Added `key-item-pickup` action: `'🔑 KEY ITEM: {name} → INVENTORY'`
+
+### File: `/public/js/gamestate.js`
+
+- Added `getTotalKeyAmmo()` — sums all Tier 1 key counts; used for before/after values in `reportResourceChange`
+
+### File: `/public/js/debrief-feed-controller.js`
+
+- Ammo row summary: appends `🔑x{N}` when any Tier 1 key_ammo is held
+- Expanded ammo panel: human-readable labels (`🔑 KEY AMMO Rusty:N`, `🗝️ KEY AMMO Bronze:N`, `💳 KEY ITEM Keycard:N`, `🏷️ KEY ITEM Mall:N`) instead of cryptic `ChstKyLq`/`TagKy1`
 
 ---
 
@@ -293,7 +373,12 @@ Results: **19/19 tests passing** ✅
 - [ ] Walk over ammo drop → item disappears, `؋` animation plays with magenta color
 - [ ] Walk over battery cell → item disappears, `◈` animation plays with cyan color
 - [ ] Walk over card drop → item disappears, card added to hand
-- [ ] Walk over key → item disappears, key animation plays with gold color
+- [ ] Walk over Rusty Key (Tier 1) → tooltip shows `🔑 KEY AMMO: Rusty Key`, quality label `[KEY AMMO]`, debrief `🔑x1`
+- [ ] Walk over Bronze Key (Tier 1) → tooltip shows `🔑 KEY AMMO: Bronze Key`, debrief count increments
+- [ ] Tier 1 key does NOT appear in loose or persistent inventory
+- [ ] Walk over Security Keycard (Tier 2) → tooltip shows `🔑 KEY ITEM: Security Keycard → INVENTORY`, key auto-equips
+- [ ] Tier 2 key appears in persistent inventory (survives death)
+- [ ] Walk over quest key (Tier 3) → shows `❗ QUEST ITEM` tooltip with NPC target
 - [ ] Breakable destroyed → ammo drop appears in magenta (not cyan)
 
 ---
@@ -309,4 +394,5 @@ The `WorldItems` singleton is the single source of truth for all floor collectib
 - Original Issue: Collectibles System Refactor — Detailed Analysis and Roadmap
 - Commit afcf229: Fix food persistence and ammo cyan color/non-interactive collectible bugs
 - Commit 611ccc4: Unify all floor collectibles to auto-pickup on walkover; fix `_pickupItem` crash for keys
+- Commit d41e807: Implement key_ammo/key_item tier distinction — tooltip, debrief feed routing, inventory separation
 - Test File: `/public/tests/test-collectibles-dual-render-bug.html`
