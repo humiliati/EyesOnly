@@ -11,21 +11,21 @@ Only these 9 categories exist. Any collectible not in one of these categories is
 
 | # | Category | Symbol | RESOURCE_COLOR | Hex | Pickup Behavior |
 |---|----------|--------|---------------|-----|-----------------|
-| 1 | **Currency** | ¢ | Yellow | `#FFFF00` | Instant resource pickup |
-| 2 | **Ammo** | ؋ | Magenta | `#DA70D6` | Instant resource pickup |
-| 3 | **Battery** | ◈ | Cyan-Green | `#00FFA6` | Instant resource pickup |
-| 4 | **Food** | emoji | Per-category | HP`#FF6B9D` / Fatigue`#A0522D` | Instant; debrief per-effect |
-| 5 | **Cards** | emoji | — | — | Hand / backup deck / incinerate |
-| 6 | **Items** | emoji | — | — | Card vault inventory |
-| 7 | **Key Items** (T2) | emoji | Gold | `#FFD700` | Equipped slot / inventory |
-| 8 | **Key Ammo** (T1) | emoji | Gold | `#FFD700` | Resource counter (debrief) |
-| 9 | **Quest Keys** (T3) | emoji | Red | `#FF4444` | Inventory |
+| 1 | **Currency** | ¢ | Yellow | `#FFFF00` | Instant resource pickup, currency counter ticks update |
+| 2 | **Ammo** | ⁍ | Magenta | `#DA70D6` | Instant resource pickup, debief feed frame flashes corresponding color, ammo row in debreif feed updates |
+| 3 | **Battery** | ◈ | Cyan | `#00FFA6` | Instant resource pickup, debreif feed frame flashes corresponding color, battery row in debrief feed updates |
+| 4 | **Food** | Per-category emoji | HP`#FF6B9D` glow under the emoji / Fatigue`#A0522D`glow under the emoji / Focus `#FFF9B0` glow under the emoji / Energy `#00D4FF` glow under the emoji| HP, Fatigue, Focus, Energy instant resource pickup, debrief frame flashes resource color per-effect on pickup, debreif row ticks update for focus & energy instantly - HP and Fatigue debreif row ticks update slowly and deliberately over time (HOTs) |
+| 5 | **Cards** | 🂠 | Purple | `#800080` | Instant resource pickup to hand which pushes oldest card to backup deck, oldest card in deck pushes to incinerate |
+| 6 | **Items** | 🎒 | White glow under emoji |  | Card vault item inventory |
+| 7 | **Key Items** (T2) | Per-category emoji | Gold glow under emoji | `#FFD700` | Instant resource pickup to equipped item slot, which pushes existing equipped item card vault item inventory, oldest item in the inventory pushes to incincerator |
+| 8 | **Key Ammo** (T1) | 🗝 | Gold | `#FFD700` | debreif feed frame flashes corresponding color, Resource counter in debrief feed updates |
+| 9 | **Quest Keys** (T3) | Per-category emoji | Red glow under emoji | `#FF4444` | must be clicked on to be picked up, lack of inventory room prints tooltip notification |
 
 ---
 
 ## Unified Pickup Pipeline
 
-All collectibles follow this 6-step pipeline. Currency is the gold standard implementation.
+All collectibles follow at least this 6-step pipeline. Currency is the gold standard implementation.
 
 1. **Detect** item at player position
 2. **Apply** resource via GAMESTATE method
@@ -45,7 +45,7 @@ All collectibles follow this 6-step pipeline. Currency is the gold standard impl
 - **Debrief**: Updates crypto counter
 - **Color**: `#FFFF00` yellow
 
-### 2. Ammo (؋)
+### 2. Ammo (⁍)
 - **GAMESTATE method**: `addAmmo(amount)`
 - **Removal**: `WorldItems.filterFloorItems()`
 - **Overhead**: `OverheadAnimator.showGenericExpression(x, y, '؋', 800, '#DA70D6')`
@@ -124,6 +124,7 @@ Battery:  #00FFA6  (sickly cyan-green)
 Fatigue:  #A0522D  (earthy brown)
 Ammo:     #DA70D6  (magenta-purple)
 Currency: #FFFF00  (yellow)
+Key Ammo: #FF8A3D  (bright orange)
 ```
 
 These colors are permanent per resource. No percentage-based color changes. Frame animations provide gain/loss feedback using the resource's own color.
@@ -132,8 +133,6 @@ These colors are permanent per resource. No percentage-based color changes. Fram
 
 ## Anti-Patterns (DO NOT)
 
-- DO NOT use `showExpression('LOOT')` for collectible pickups — LOOT uses #00ffff cyan which is wrong for most resources
-- DO NOT use generic green (#00ff00) or cyan (#00ffff) for pickup animations
 - DO NOT add collectible types outside the 9 canonical categories
 - DO NOT skip the debrief feed reportResourceChange call for resource pickups
 - DO NOT use hardcoded colors — always reference RESOURCE_COLORS

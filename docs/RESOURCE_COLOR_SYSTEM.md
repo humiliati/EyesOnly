@@ -17,11 +17,13 @@ This document describes the resource-specific color palette system implemented t
 | Resource | Color Name | Hex Code | Visual Description |
 |----------|-----------|----------|-------------------|
 | **HP** | Vibrant Pink | `#FF6B9D` | Health pink - not critical red, stays consistent |
-| **Energy** | Electric Blue | `#00D4FF` | Bright cyan electric, energetic feeling |
+| **Energy** | Electric Blue | `#00D4FF` | Bright electric blue, energetic feeling |
 | **Focus** | Bright Yellow-White | `#FFF9B0` | Almost white, represents sharp focus |
 | **Battery** | Sickly Green-Cyan | `#00FFA6` | Toxic green with cyan undertone |
 | **Fatigue** | Earthy Brown | `#A0522D` | Brown representing exhaustion |
 | **Ammo** | Magenta-Purple | `#DA70D6` | Special ammo flows like currency, bright and nice |
+| **Currency** | Yellow Gold | `#FFFF00` | Twinkly Gold |
+| **Key Ammo** (Tier 1 Key) | `#FF8A3D` | Bright Orange |
 
 ## Frame Animation System
 
@@ -48,6 +50,8 @@ function _getResourceColor(resourceName) {
     'Battery': '#00FFA6',
     'Fatigue': '#A0522D',
     'Ammo': '#DA70D6'
+    'Currency': '#FFFF00',
+    'KeyAmmo': '#FF8A3D',
   };
   return colors[resourceName] || '#FFFFFF';
 }
@@ -86,17 +90,19 @@ Use `/public/tests/test-resource-colors.html` to:
 ## Color Psychology
 
 - **HP (Pink)**: Softer than critical red, maintains health association without panic
-- **Energy (Cyan)**: Electric, technological, movement
+- **Energy (Electric Blue)**: Electric, technological, movement
 - **Focus (Yellow-White)**: Clarity, concentration, brightness
 - **Battery (Toxic Green)**: Artificial, technological, limited resource
 - **Fatigue (Brown)**: Earthy, heavy, weariness
 - **Ammo (Magenta)**: Valuable, special, flows like currency
+- **Currency (Yellow-Gold)**: Twinkle yellow, irresistable Gold
+- **Key Ammo (Tier 1 Key)**: Hunter orange, distintict
+
 
 ## Collectible Categories
 
 All 9 canonical collectible categories and their RESOURCE_COLOR mappings are documented in `COLLECTIBLES_CANON.md`. Resource pickups (currency, ammo, battery, food) must use their RESOURCE_COLOR for overhead animations via `OverheadAnimator.showGenericExpression()` and debrief frame flash via `DebriefFeedController.reportResourceChange()`.
 
-**DO NOT** use `showExpression('LOOT')` for resource pickups — it uses cyan `#00ffff` which does not match any RESOURCE_COLOR.
 
 ## Migration Notes
 
@@ -108,4 +114,3 @@ All 9 canonical collectible categories and their RESOURCE_COLOR mappings are doc
 - Consistent visual language
 - Frame animations provide better feedback for resource changes
 
-**Compatibility**: The `isHP` parameter in `_renderResourceBar` is now unused but kept for backward compatibility.
