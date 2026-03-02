@@ -27,7 +27,8 @@ var FloorGenCore = (function() {
         x: 5,
         y: 5
     };
-    ctx.syncItems().addItem(ropeItem);
+    ctx.syncItems();
+    WorldItems.addItem(ropeItem);
 
     // Reset forest biome state
     ctx.setForestBuildings([]);
