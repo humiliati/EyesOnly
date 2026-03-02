@@ -37,6 +37,11 @@ var WorldItems = (function () {
   function getFloorItems() { return _floorItems; }
   function getCurrencies()  { return _currencies; }
 
+  // ── Single-item add ───────────────────────────────────────────
+
+  function addItem(item) { _floorItems.push(item); }
+  function addCurrency(entry) { _currencies.push(entry); }
+
   // ── Bulk set (used for save/load restore) ─────────────────────
 
   function setFloorItems(arr) { _floorItems = arr || []; }
@@ -103,6 +108,8 @@ var WorldItems = (function () {
     clearCurrencies:  clearCurrencies,
     getFloorItems:    getFloorItems,
     getCurrencies:    getCurrencies,
+    addItem:          addItem,
+    addCurrency:      addCurrency,
     setFloorItems:    setFloorItems,
     setCurrencies:    setCurrencies,
     filterFloorItems: filterFloorItems,
