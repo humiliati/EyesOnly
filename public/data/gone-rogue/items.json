@@ -733,5 +733,51 @@
     "synergyTags": ["tech", "electrical", "intel"],
     "description": "Gain +1 interaction charge per turn. Two shots at the enemy's hand.",
     "_designNote": "Phase 5 interaction economy item. Epic rarity because 2 charges/turn fundamentally changes the duel — you can reveal THEN steal on the same turn, or destroy two cards. Very strong but costs the passive slot. The keystone item for heavy-interaction builds."
+  },
+  {
+    "id": "ITM-091",
+    "name": "Auto Sears",
+    "emoji": "⚙️",
+    "type": "equipment",
+    "rarity": "rare",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      { "type": "swipeActivate" }
+    ],
+    "synergyTags": ["weapon", "combat", "modifier"],
+    "description": "Full auto. Swipe cards to push-resolve them instantly."
+  },
+  {
+    "id": "ITM-092",
+    "name": "Bump Stock",
+    "emoji": "🔫",
+    "type": "equipment",
+    "rarity": "uncommon",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      { "type": "swipeActivate", "categories": ["attack", "interrupt"] }
+    ],
+    "synergyTags": ["weapon", "combat", "modifier"],
+    "description": "Swipe attack cards for immediate push rounds."
+  },
+  {
+    "id": "ITM-093",
+    "name": "Redneck Obliterator",
+    "emoji": "💥",
+    "type": "equipment",
+    "rarity": "epic",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      { "type": "instantResolve" },
+      { "type": "swipeActivate" }
+    ],
+    "synergyTags": ["weapon", "combat", "modifier"],
+    "description": "Instant resolve on tap. Swipe to push-resolve directionally."
   }
 ]

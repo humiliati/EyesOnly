@@ -11,46 +11,33 @@ var CardActionSystem = (function () {
   'use strict';
 
   // ------------------------------------------------------------------
-  // getCardAction — map swipe direction + card category to action type
+  // getCardAction — map swipe direction to action type (directional model)
   // ------------------------------------------------------------------
   function getCardAction(card, direction) {
-    var category = typeof CardSystem !== 'undefined' ? CardSystem.getCardCategory(card) : card.type;
-
-    // Interrupt cards (up/right/left)
-    if (category === 'interrupt') {
-      if (direction === 'up' || direction === 'right' || direction === 'left') {
-        return { type: 'interrupt', card: card };
-      }
-    }
-    // Defense cards (up/left)
-    else if (category === 'defense' || card.type === 'stance') {
-      if (direction === 'up' || direction === 'left') {
+    // Swipe DOWN: defensive/self effects when swipeActivate passive is equipped,
+    // otherwise legacy discard behavior.
+    if (direction === 'down') {
+      if (typeof PassiveItemsSystem !== 'undefined' &&
+          typeof PassiveItemsSystem.hasTraitActive === 'function' &&
+          PassiveItemsSystem.hasTraitActive('swipeActivate')) {
         return { type: 'defense', card: card };
       }
-    }
-    // Movement cards (up/left/right)
-    else if (category === 'movement') {
-      if (direction === 'up' || direction === 'left' || direction === 'right') {
-        return { type: 'movement', card: card };
-      }
-    }
-    // Attack cards (up/right)
-    else if (category === 'attack' || card.type === 'attack') {
-      if (direction === 'up' || direction === 'right') {
-        return { type: 'attack', card: card };
-      }
-    }
-    // Setup/Utility cards (up)
-    else if (category === 'setup' || card.type === 'utility') {
-      if (direction === 'up') {
-        return { type: 'use', card: card };
-      }
-    }
-
-    if (direction === 'down') {
       return { type: 'discard', card: card };
     }
 
+    // All other swipe directions require swipeActivate passive.
+    if (typeof PassiveItemsSystem === 'undefined' ||
+        typeof PassiveItemsSystem.hasTraitActive !== 'function' ||
+        !PassiveItemsSystem.hasTraitActive('swipeActivate')) {
+      return { type: 'none' };
+    }
+
+    // Swipe UP = offensive push round (attack/interrupt).
+    if (direction === 'up') {
+      return { type: 'attack', card: card };
+    }
+
+    // Swipe LEFT/RIGHT = no action.
     return { type: 'none' };
   }
 
