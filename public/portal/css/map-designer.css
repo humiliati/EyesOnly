@@ -439,10 +439,11 @@ body {
 
 .draggable-item {
     padding: 16px;
-    border: 1px solid #ccc;
-    background: #f9f9f9;
+    border: 2px solid #000;
     cursor: grab;
     text-align: center;
+    color: white;
+    text-shadow: 1px 1px 2px black;
 }
 
 #world-canvas {
@@ -470,12 +471,38 @@ body {
 }
 
 .world-node {
-    position: absolute;
+    position: absolute !important; /* Override jsPlumb defaults */
     padding: 16px;
-    border: 1px solid #000;
-    background: #f0f0f0;
+    border: 2px solid #000;
     text-align: center;
     z-index: 2;
+    color: white;
+    text-shadow: 1px 1px 2px black;
+}
+
+/* Floor Colors (Cool) */
+.floor-0-color { background-color: #A8E6CF; border-color: #7dcaa8; }
+.floor-color { background-color: #74C3A3; border-color: #4b9e7b; }
+.bonfire-color { background-color: #63BCC9; border-color: #3e95a2; }
+.vents-color { background-color: #A2D5F2; border-color: #7ab3d0; }
+.boss-color { background-color: #588C9E; border-color: #3c6b7a; }
+.floor-999-color { background-color: #7C72A0; border-color: #564f77; }
+
+/* Building Colors (Warm) */
+.building-simple-color { background-color: #FFD3B5; border-color: #d8a88c; }
+.building-vertical-color { background-color: #FFAAA5; border-color: #d98681; }
+.building-horizontal-color { background-color: #FF8B94; border-color: #d86971; }
+
+#selection-marquee {
+    position: absolute;
+    border: 1px dashed #000;
+    background: rgba(0,0,0,0.1);
+    display: none;
+    z-index: 9999;
+}
+
+.panning {
+    cursor: grab;
 }
 
 .jtk-connector {

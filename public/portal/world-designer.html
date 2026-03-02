@@ -22,13 +22,23 @@
             <div class="palette-section">
                 <h3>Draggable Items</h3>
                 <div class="palette-grid">
-                    <div class="draggable-item" draggable="true" data-item-type="floor">Floor</div>
-                    <div class="draggable-item" draggable="true" data-item-type="building">Building</div>
-                    <div class="draggable-item" draggable="true" data-item-type="floor-0">Floor 0</div>
-                    <div class="draggable-item" draggable="true" data-item-type="floor-999">Floor 999</div>
-                    <div class="draggable-item" draggable="true" data-item-type="bonfire">Bonfire</div>
-                    <div class="draggable-item" draggable="true" data-item-type="vents">Vents</div>
-                    <div class="draggable-item" draggable="true" data-item-type="boss">Boss</div>
+                    <div class="draggable-item floor-0-color" draggable="true" data-item-type="floor-0">Floor 0 (Start)</div>
+                    <div class="draggable-item floor-color" draggable="true" data-item-type="floor">Floor</div>
+                    <div class="draggable-item bonfire-color" draggable="true" data-item-type="bonfire">Bonfire</div>
+                    <div class="draggable-item vents-color" draggable="true" data-item-type="vents">Vents</div>
+                    <div class="draggable-item boss-color" draggable="true" data-item-type="boss">Boss</div>
+                    <div class="draggable-item floor-999-color" draggable="true" data-item-type="floor-999">Floor 999 (End)</div>
+                    <div class="draggable-item building-simple-color" draggable="true" data-item-type="BuildingSimple">Simple Building</div>
+                    <div class="draggable-item building-vertical-color" draggable="true" data-item-type="BuildingVertical">Vertical Building</div>
+                    <div class="draggable-item building-horizontal-color" draggable="true" data-item-type="BuildingHorizontal">Horizontal Building</div>
+                </div>
+            </div>
+            <div class="palette-section">
+                <h3>Canvas Tools</h3>
+                <div class="palette-grid">
+                    <button id="pan-tool-btn">Pan</button>
+                    <button id="grid-toggle-btn">Grid</button>
+                    <button id="snap-toggle-btn">Snap</button>
                 </div>
             </div>
         </aside>
@@ -41,6 +51,7 @@
                 <button id="clear-selection-btn" class="btn btn-secondary">Clear Selection</button>
             </div>
             <div id="world-canvas" style="width: 100%; height: 100%; position: relative;"></div>
+            <div id="selection-marquee"></div>
         </main>
 
         <aside class="property-inspector">
@@ -55,12 +66,12 @@
                         <p>Select a node to view properties</p>
                     </div>
                 </div>
-                <button id="delete-btn" class="btn btn-danger" style="display:none;">Delete</button>
             </div>
             <div id="notes-tab" class="tab-content">
                 <h3>Notes</h3>
-                <textarea id="node-notes" style="width: 100%; height: 200px;"></textarea>
+                <textarea id="node-notes" style="width: 100%; height: 200px;" placeholder="Add notes here..."></textarea>
             </div>
+            <button id="delete-btn" class="btn btn-danger" style="display:none;">Delete</button>
         </aside>
     </div>
 

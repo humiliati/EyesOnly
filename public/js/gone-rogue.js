@@ -2858,314 +2858,26 @@ _incrementPityTimers();
    * Ensures gate is on a direct path between player and exit
    * Spawns tutorial pickups (currency, ammo, card) behind the gate
    */
-  function _placeTutorialGate(exitX, exitY) {
-    // Find a position on the path to the exit (roughly 60-70% of the way there)
-    var dx = exitX - _player.x;
-    var dy = exitY - _player.y;
-    var gateX = Math.floor(_player.x + dx * 0.65);
-    var gateY = Math.floor(_player.y + dy * 0.65);
-
-    // Ensure gate is on a floor tile and not too close to player or exit
-    var minDistFromPlayer = 5;
-    var minDistFromExit = 5;
-    var validPosition = false;
-    var attempts = 0;
-
-    while (!validPosition && attempts < 50) {
-      if (_grid[gateY] && _grid[gateY][gateX] === TILES.EMPTY) {
-        var distToPlayer = Math.abs(gateX - _player.x) + Math.abs(gateY - _player.y);
-        var distToExit = Math.abs(gateX - exitX) + Math.abs(gateY - exitY);
-
-        if (distToPlayer >= minDistFromPlayer && distToExit >= minDistFromExit) {
-          validPosition = true;
-        }
-      }
-
-      if (!validPosition) {
-        // Try a nearby position
-        gateX = Math.floor(_player.x + dx * (0.5 + _rng() * 0.3));
-        gateY = Math.floor(_player.y + dy * (0.5 + _rng() * 0.3));
-        gateX = Math.max(2, Math.min(GRID_WIDTH - 3, gateX));
-        gateY = Math.max(2, Math.min(GRID_HEIGHT - 3, gateY));
-      }
-
-      attempts++;
-    }
-
-    // Place the gate (wooden gate from forest biome)
-    var gateBreakable = {
-      x: gateX,
-      y: gateY,
-      hp: 2,
-      maxHp: 2,
-      glyph: TILES.BREAKABLE,
-      destroyedGlyph: TILES.DEBRIS,
-      emoji: '🚧',
-      name: 'Wooden Gate',
-      tag: 'tutorial_gate',
-      isTutorialGate: true,
-      type: 'WOODEN_GATE' // Gate type for environmental synergy
+  // ── BiomeGateSystem delegation ──
+  function _biomeGateCtx() {
+    return {
+      player: _player, grid: _grid, breakables: _breakables, items: _items,
+      runState: _runState, floor: _floor, TILES: TILES, BOSS_FLOORS: BOSS_FLOORS,
+      rng: _rng, spawnCurrency: _spawnCurrency,
+      getPlayerKeys: _getPlayerKeys, countUnmatchedKeys: _countUnmatchedKeys,
+      playerHasKeyForBiome: _playerHasKeyForBiome, getBiomeForKey: _getBiomeForKey,
+      weightedBiomeRoll: _weightedBiomeRoll
     };
-
-    _breakables.push(gateBreakable);
-    _grid[gateY][gateX] = TILES.BREAKABLE;
-
-    // Register with environmental synergy system
-    if (typeof EnvironmentalSynergy !== 'undefined') {
-      EnvironmentalSynergy.registerGate({
-        x: gateX,
-        y: gateY,
-        type: 'WOODEN_GATE'
-      });
-      console.log('[GoneRogue] Registered tutorial gate with environmental synergy');
-    }
-
-    // Spawn RUSTY_KEY near player spawn (so they can unlock the gate)
-    var keyX = _player.x + (_rng() > 0.5 ? 2 : -2);
-    var keyY = _player.y + (_rng() > 0.5 ? 1 : -1);
-
-    // Ensure key position is valid
-    if (keyX >= 1 && keyX < GRID_WIDTH - 1 && keyY >= 1 && keyY < GRID_HEIGHT - 1 &&
-        _grid[keyY] && _grid[keyY][keyX] === TILES.EMPTY) {
-
-      // Add key as interactive item
-      if (typeof InteractiveItems !== 'undefined') {
-        InteractiveItems.addItem({
-          x: keyX,
-          y: keyY,
-          itemId: 'RUSTY_KEY',
-          type: 'key',
-          emoji: '🔑',
-          name: 'Rusty Key',
-          description: 'An old, rusted key. Might open something...',
-          tag: 'tutorial_key'
-        });
-        console.log('[GoneRogue] Spawned tutorial key at', keyX, keyY);
-      }
-    }
-
-    // Spawn tutorial pickups behind the gate (towards the exit)
-    var pickupX = gateX + Math.sign(dx);
-    var pickupY = gateY + Math.sign(dy);
-
-    // Ensure pickup position is valid
-    if (pickupX < 1 || pickupX >= GRID_WIDTH - 1) pickupX = gateX;
-    if (pickupY < 1 || pickupY >= GRID_HEIGHT - 1) pickupY = gateY;
-
-    // Spawn currency (50 cryptos)
-    _spawnCurrency(pickupX, pickupY, 50);
-
-    // Spawn ammo pickup (add to items array)
-    // We'll create the ammo item similar to how items are placed
-    var ammoOffsetX = Math.sign(dx) !== 0 ? Math.sign(dx) : 1;
-    var ammoX = pickupX + ammoOffsetX;
-    var ammoY = pickupY;
-
-    if (ammoX >= 1 && ammoX < GRID_WIDTH - 1 && _grid[ammoY] && _grid[ammoY][ammoX] === TILES.EMPTY) {
-      _items.push({
-        x: ammoX,
-        y: ammoY,
-        type: 'ammo',
-        name: 'Ammo Box',
-        emoji: '📦',
-        amount: 10,
-        tag: 'tutorial_ammo'
-      });
-    }
-
-    // Spawn card pickup
-    var cardOffsetY = Math.sign(dy) !== 0 ? Math.sign(dy) : 1;
-    var cardX = pickupX;
-    var cardY = pickupY + cardOffsetY;
-
-    if (cardY >= 1 && cardY < GRID_HEIGHT - 1 && _grid[cardY] && _grid[cardY][cardX] === TILES.EMPTY) {
-      _items.push({
-        x: cardX,
-        y: cardY,
-        type: 'card',
-        name: 'Card',
-        emoji: '🃏',
-        tag: 'tutorial_card',
-        cardQuality: 50 // Medium quality for tutorial
-      });
+  }
+  function _placeTutorialGate(exitX, exitY) {
+    if (typeof BiomeGateSystem !== 'undefined') {
+      BiomeGateSystem.placeTutorialGate(exitX, exitY, _biomeGateCtx());
     }
   }
-
-  /**
-   * Context-aware biome gate spawn system
-   * Implements dynamic weighting, pity timers, and soft-lock prevention
-   * @param {Array} rooms - Room objects
-   * @param {number} exitX - Exit X position
-   * @param {number} exitY - Exit Y position
-   * @param {Object} biome - Current biome
-   */
   function _placeBiomeGates(rooms, exitX, exitY, biome) {
-    if (typeof EnvironmentalSynergy === 'undefined') {
-      return;
+    if (typeof BiomeGateSystem !== 'undefined') {
+      BiomeGateSystem.placeBiomeGates(rooms, exitX, exitY, biome, _biomeGateCtx());
     }
-
-    // RULE 1: Floor Eligibility
-    // Gates cannot spawn until after floor 1, first combat victory, or first bonfire
-    var eligible = _floor > 1 && (_runState.firstCombatVictory || _runState.firstBonfire);
-    if (!eligible || _floor <= 4 || BOSS_FLOORS.indexOf(_floor) !== -1) {
-      _runState.floorsSinceGate++;
-      return; // Skip tutorial, ghost, and boss floors
-    }
-
-    // Update biome cooldowns
-    for (var biomeName in _runState.biomeEntryCooldowns) {
-      if (_runState.biomeEntryCooldowns[biomeName] > 0) {
-        _runState.biomeEntryCooldowns[biomeName]--;
-      }
-    }
-
-    // RULE 2: Calculate gate spawn chance based on run depth
-    var baseChance = 0;
-    if (_floor === 2) baseChance = 0.18;
-    else if (_floor === 3) baseChance = 0.28;
-    else if (_floor === 4) baseChance = 0.38;
-    else baseChance = 0.45; // Cap at 45%
-
-    // RULE 4: Pity Timer - Force gate spawn after 3 floors without
-    var forceGate = _runState.floorsSinceGate >= 3;
-
-    // RULE 8: Soft-Lock Prevention - Force matching gate if player has 2+ keys without match for 3 floors
-    var playerKeys = _getPlayerKeys();
-    var unmatchedKeys = _countUnmatchedKeys(playerKeys);
-    var forceSoftLockPrevention = unmatchedKeys >= 2 && _runState.floorsSinceGate >= 3;
-
-    if (!forceGate && !forceSoftLockPrevention && _rng() > baseChance) {
-      _runState.floorsSinceGate++;
-      return; // No gate this floor
-    }
-
-    // RULE 5: Calculate biome weights dynamically
-    var biomeWeights = {
-      'Commercial Office': 30,
-      'Shopping Mall': 25,
-      'Industrial Complex': 25,
-      'Aerospace Museum': 20
-    };
-
-    // Adjust weights based on player context
-    for (var targetBiome in biomeWeights) {
-      // If player has matching key: +15 weight (creates "destiny" feeling)
-      if (_playerHasKeyForBiome(playerKeys, targetBiome)) {
-        biomeWeights[targetBiome] += 15;
-      }
-
-      // If player recently visited (cooldown active): -25 weight
-      if (_runState.biomeEntryCooldowns[targetBiome] > 0) {
-        biomeWeights[targetBiome] = Math.max(0, biomeWeights[targetBiome] - 25);
-      }
-
-      // If player has never visited this run: +20 weight
-      if (_runState.visitedGateBiomes.indexOf(targetBiome) === -1) {
-        biomeWeights[targetBiome] += 20;
-      }
-    }
-
-    // If forcing soft-lock prevention, boost matching biome weights dramatically
-    if (forceSoftLockPrevention) {
-      for (var key in playerKeys) {
-        var matchingBiome = _getBiomeForKey(playerKeys[key]);
-        if (matchingBiome && biomeWeights[matchingBiome] !== undefined) {
-          biomeWeights[matchingBiome] += 50; // Strong boost for matching
-        }
-      }
-    }
-
-    // Pick biome using weighted roll
-    var selectedBiome = _weightedBiomeRoll(biomeWeights);
-    if (!selectedBiome) {
-      _runState.floorsSinceGate++;
-      return; // No valid biome found
-    }
-
-    // Get gates for selected biome
-    var availableGates = EnvironmentalSynergy.getGatesForBiome(selectedBiome.toUpperCase().replace(/ /g, '_'));
-    if (availableGates.length === 0) {
-      availableGates = ['WOODEN_GATE', 'OLD_DOOR']; // Fallback
-    }
-
-    // Pick a random gate type
-    var gateType = availableGates[Math.floor(_rng() * availableGates.length)];
-    var gateDef = EnvironmentalSynergy.getGateDefinitions()[gateType];
-    if (!gateDef) {
-      _runState.floorsSinceGate++;
-      return;
-    }
-
-    // Find a good position (between player and exit, not too close to either)
-    var dx = exitX - _player.x;
-    var dy = exitY - _player.y;
-    var gateX = Math.floor(_player.x + dx * (0.4 + _rng() * 0.3)); // 40-70% of the way
-    var gateY = Math.floor(_player.y + dy * (0.4 + _rng() * 0.3));
-
-    // Ensure gate is on a floor tile and not too close
-    var attempts = 0;
-    var validPosition = false;
-    while (!validPosition && attempts < 50) {
-      if (_grid[gateY] && _grid[gateY][gateX] === TILES.EMPTY) {
-        var distToPlayer = Math.abs(gateX - _player.x) + Math.abs(gateY - _player.y);
-        var distToExit = Math.abs(gateX - exitX) + Math.abs(gateY - exitY);
-
-        if (distToPlayer >= 8 && distToExit >= 8) {
-          validPosition = true;
-        }
-      }
-
-      if (!validPosition) {
-        gateX = Math.floor(_player.x + dx * (0.4 + _rng() * 0.3));
-        gateY = Math.floor(_player.y + dy * (0.4 + _rng() * 0.3));
-        attempts++;
-      }
-    }
-
-    if (!validPosition) {
-      console.log('[GoneRogue] Could not find valid gate position');
-      _runState.floorsSinceGate++;
-      return;
-    }
-
-    // Create gate as a breakable
-    var gateBreakable = {
-      x: gateX,
-      y: gateY,
-      hp: 3,
-      maxHp: 3,
-      glyph: TILES.BREAKABLE,
-      destroyedGlyph: TILES.DEBRIS,
-      emoji: gateDef.emoji,
-      name: gateDef.name,
-      tag: 'gate_' + gateType,
-      isGate: true,
-      gateType: gateType,
-      targetBiome: selectedBiome
-    };
-
-    _breakables.push(gateBreakable);
-    _grid[gateY][gateX] = TILES.BREAKABLE;
-
-    // Register with environmental synergy system
-    EnvironmentalSynergy.registerGate({
-      x: gateX,
-      y: gateY,
-      type: gateType
-    });
-
-    // Add lighting for terminal gates
-    if (gateDef.glowColor && typeof LightingSystem !== 'undefined') {
-      LightingSystem.addLightSource(gateX, gateY, 'TERMINAL');
-    }
-
-    // Update run state
-    _runState.floorsSinceGate = 0;
-    _runState.gatesSpawnedThisRun++;
-    _runState.lastBiomeEntered = selectedBiome;
-    _runState.biomeEntryCooldowns[selectedBiome] = 2; // 2-floor cooldown
-
-    console.log('[GoneRogue] Placed', gateDef.name, 'for', selectedBiome, 'at', gateX, gateY, 'on floor', _floor, forceGate ? '(FORCED)' : '');
   }
 
   /**
@@ -4725,235 +4437,50 @@ _incrementPityTimers();
     }, 260);
   }
 
-  function _exitInteriorFloor() {
-    if (_interiorFloorStack.length === 0) return;
-
-    var prev = _interiorFloorStack.pop();
-    _currentInteriorFloorId = prev.floorId;
-
-    console.log('[GoneRogue] Exiting interior, returning to ' + (prev.floorId || 'main floor ' + prev.mainFloor));
-
-    // Fade-out
-    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      var gridContainer = document.getElementById('rogue-grid-mobile');
-      if (gridContainer) {
-        gridContainer.style.opacity = '0';
-        gridContainer.style.transition = 'opacity 0.25s ease-out';
-      }
-    }
-
-    setTimeout(function() {
-      if (prev.floorId) {
-        // Returning to a parent interior (e.g. basement → tavern)
-        _enterInteriorFloor(prev.floorId);
-      } else {
-        // Returning to main floor — regenerate it
-        _floor = prev.mainFloor;
-        _lastExitPos = { x: prev.playerX, y: prev.playerY };
-        _spawnFromLastExitPos = 'retreat';
-        _turn = 0;
-        _generateFloor();
-        _startGameLoop();
-      }
-
-      // Fade-in
-      if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-        var gridContainer = document.getElementById('rogue-grid-mobile');
-        if (gridContainer) {
-          gridContainer.style.opacity = '1';
-          gridContainer.style.transition = 'opacity 0.25s ease-in';
-        }
-      }
-    }, 260);
-  }
-
-  function _retreatFloor() {
-    // If inside an interior floor, exit the interior instead of retreating main floors
-    if (_currentInteriorFloorId) {
-      _exitInteriorFloor();
-      return;
-    }
-
-    if (_floor <= 0) return;
-
-    // Remember where we are so the previous floor can spawn us near the return door
-    try { _lastExitPos = { x: _player.x, y: _player.y }; } catch (e0) {}
-    _spawnFromLastExitPos = 'retreat';
-
-    // Fade-out effect
-    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      var gridContainer = document.getElementById('rogue-grid-mobile');
-      if (gridContainer) {
-        gridContainer.style.opacity = '0';
-        gridContainer.style.transition = 'opacity 0.25s ease-out';
-      }
-    }
-
-    setTimeout(function() {
-      _floor = Math.max(0, _floor - 1);
-      _turn = 0;
-      _generateFloor();
-      _startGameLoop();
-      _saveState();
-
-      // Fade-in
-      if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-        var gridContainer = document.getElementById('rogue-grid-mobile');
-        if (gridContainer) {
-          gridContainer.style.opacity = '1';
-          gridContainer.style.transition = 'opacity 0.25s ease-in';
-        }
-      }
-    }, 260);
-  }
-
-  function _advanceFloor() {
-    // Check for queued secret floor BEFORE normal floor generation
-    var secretFloorData = null;
-    if (typeof SecretFloors !== 'undefined' && SecretFloors.hasQueuedSecretFloor()) {
-      secretFloorData = SecretFloors.popSecretFloor();
-      console.log('[GoneRogue] Secret floor triggered:', secretFloorData.type);
-    }
-
-    // Check for low HP + high gold trigger (15% chance when conditions met)
-    if (!secretFloorData && typeof SecretFloors !== 'undefined') {
-      var triggerResult = SecretFloors.triggerSecretFloor(
-        SecretFloors.TRIGGER_TYPES.LOW_HP_HIGH_GOLD,
-        {
-          playerHp: _player.hp,
-          playerMaxHp: _player.maxHp,
-          playerGold: _player.cryptos
-        }
-      );
-
-      if (triggerResult.success) {
-        secretFloorData = SecretFloors.popSecretFloor();
-        console.log('[GoneRogue] Low HP + High Gold secret floor triggered:', secretFloorData.type);
-      }
-    }
-
-    // Apply fade-out effect before transitioning
-    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      var gridContainer = document.getElementById('rogue-grid-mobile');
-      if (gridContainer) {
-        gridContainer.style.opacity = '0';
-        gridContainer.style.transition = 'opacity 0.3s ease-out';
-      }
-    }
-
-    // Remember which door/exit we used (for retreat/backtracking only)
-    try {
-      _lastExitPos = { x: _player.x, y: _player.y };
-    } catch (e0) {}
-    _spawnFromLastExitPos = 'advance';
-
-    // Wait for fade-out to complete before generating new floor
-    setTimeout(function() {
-      var isSecretFloor = !!secretFloorData;
-      var secretFloorType = isSecretFloor ? secretFloorData.type : null;
-
-      // Only advance floor number if NOT a secret floor
-      if (!isSecretFloor) {
-        _floor++;
-      }
-      _turn = 0;
-
-      // Reset vendor for new bonfire
-      if (typeof VendorSystem !== 'undefined') VendorSystem.reset();
-      _vendor = null;
-      _vendorInventory = [];
-
-      // Heal player slightly between floors (10-20% of max HP)
-      var healAmount = Math.floor(_player.maxHp * (0.1 + _rng() * 0.1));
-      _player.hp = Math.min(_player.maxHp, _player.hp + healAmount);
-
-      // Apply desired UBER difficulty on spawn boundary (before floor generation)
-      // so it affects enemies/loot/etc for the new floor without biome teleport.
-      if (!isSecretFloor) {
-        _applyDesiredDifficultyTier('advance_floor');
-      }
-
-      // Generate next floor (moved BEFORE card delivery logic)
-      if (isSecretFloor) {
-        _generateFloor(secretFloorData);
-      } else {
-        _generateFloor();
-      }
-      _startGameLoop();
-      _saveState();
-
-      // Initialize lines array for messaging
-      var lines = [];
-
-      if (isSecretFloor) {
-        // Secret floor messaging
-        lines.push('');
-        lines.push('⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️');
-
-        if (secretFloorType === SecretFloors.SECRET_FLOOR_TYPES.UBER_MEGA) {
-          lines.push('  REALITY BREACH DETECTED');
-          lines.push('  YOU SHOULD NOT BE HERE');
-          lines.push('  SYSTEM INTEGRITY: 12%');
-        } else if (secretFloorType === SecretFloors.SECRET_FLOOR_TYPES.GOBLIN_VAULT) {
-          lines.push('  ANOMALY DETECTED');
-          lines.push('  SPACE WARPING...');
-          lines.push('  TREASURE VAULT MANIFESTED');
-        } else if (secretFloorType === SecretFloors.SECRET_FLOOR_TYPES.GRAY_CAVE_HIDDEN) {
-          lines.push('  HIDDEN PATH REVEALED');
-          lines.push('  GRAY CAVE PASSAGE');
-        }
-
-        lines.push('⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️');
-        lines.push('');
-        lines.push('  HP RESTORED: +' + healAmount);
-        lines.push('');
-
-        // Mark that we've entered a secret floor
-        SecretFloors.clearCurrentSecretFloor();
-
-      } else {
-        // Normal floor messaging
-        lines.push('');
-        lines.push('═══════════════════════════════════════');
-        lines.push('  FLOOR ' + _floor + ' - EXTRACTION SUCCESSFUL');
-        lines.push('═══════════════════════════════════════');
-        lines.push('');
-        lines.push('  HP RESTORED: +' + healAmount);
-        lines.push('  INFILTRATING DEEPER...');
-        lines.push('');
-      }
-
-      // Show mobile UI with fade-in effect
-      if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-        GoneRogueMobile.show();
-        _updateMobileGrid();
-
-        var gridContainer = document.getElementById('rogue-grid-mobile');
-        if (gridContainer) {
-          // Fade in the new floor
-          setTimeout(function() {
-            gridContainer.style.opacity = '1';
-            gridContainer.style.transition = 'opacity 0.3s ease-in';
-          }, 50);
-        }
-      }
-
-      // Return result for text-based mode
-      if (!_useInteractiveGrid) {
-        return {
-          lines: lines.concat(_renderGrid()),
-          prompt: getPrompt(),
-          stayActive: true
-        };
-      }
-    }, 300); // Match fade-out duration
-
-    // Immediately return for interactive mode
+  // ── FloorTransitionSystem delegation ──
+  function _floorTransitionCtx() {
     return {
-      lines: ['EXTRACTING...'],
-      prompt: getPrompt(),
-      stayActive: true
+      player: _player, interiorFloorStack: _interiorFloorStack,
+      useInteractiveGrid: _useInteractiveGrid, rng: _rng,
+      get floor() { return _floor; },
+      set floor(v) { _floor = v; },
+      get turn() { return _turn; },
+      set turn(v) { _turn = v; },
+      get currentInteriorFloorId() { return _currentInteriorFloorId; },
+      set currentInteriorFloorId(v) { _currentInteriorFloorId = v; },
+      get lastExitPos() { return _lastExitPos; },
+      set lastExitPos(v) { _lastExitPos = v; },
+      get spawnFromLastExitPos() { return _spawnFromLastExitPos; },
+      set spawnFromLastExitPos(v) { _spawnFromLastExitPos = v; },
+      get vendor() { return _vendor; },
+      set vendor(v) { _vendor = v; },
+      get vendorInventory() { return _vendorInventory; },
+      set vendorInventory(v) { _vendorInventory = v; },
+      enterInteriorFloor: _enterInteriorFloor,
+      generateFloor: _generateFloor,
+      startGameLoop: _startGameLoop,
+      saveState: _saveState,
+      renderGrid: _renderGrid,
+      getPrompt: getPrompt,
+      applyDesiredDifficultyTier: _applyDesiredDifficultyTier,
+      updateMobileGrid: (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') ? _updateMobileGrid : null
     };
+  }
+  function _exitInteriorFloor() {
+    if (typeof FloorTransitionSystem !== 'undefined') {
+      FloorTransitionSystem.exitInteriorFloor(_floorTransitionCtx());
+    }
+  }
+  function _retreatFloor() {
+    if (typeof FloorTransitionSystem !== 'undefined') {
+      FloorTransitionSystem.retreatFloor(_floorTransitionCtx());
+    }
+  }
+  function _advanceFloor() {
+    if (typeof FloorTransitionSystem !== 'undefined') {
+      return FloorTransitionSystem.advanceFloor(_floorTransitionCtx());
+    }
+    return { lines: ['EXTRACTING...'], prompt: getPrompt(), stayActive: true };
   }
 
   /**
@@ -5105,81 +4632,33 @@ _incrementPityTimers();
    * @param {Object} context - Additional context {enemy, damage}
    * @returns {Object} Action object with death screen
    */
+  // ── DeathExitSystem context builder ──
+  function _deathExitCtx() {
+    return {
+      player: _player, items: _items, runState: _runState,
+      floor: _floor, runStartTime: _runStartTime, runCompleted: _runCompleted,
+      enemiesKilled: _enemiesKilled, currencyCollected: _currencyCollected,
+      totalEnemiesSpawned: _totalEnemiesSpawned,
+      totalBreakableDamage: _totalBreakableDamage,
+      damageMitigated: _damageMitigated,
+      strCombatActive: _strCombatActive, strCombatEnemy: _strCombatEnemy,
+      get playerDeaths() { return _playerDeaths; },
+      set playerDeaths(v) { _playerDeaths = v; },
+      submitHighscore: _submitHighscore,
+      spawnCurrency: _spawnCurrency,
+      stopGameLoop: _stopGameLoop,
+      setActive: function(v) { _active = v; },
+      setStrCombatActive: function(v) { _strCombatActive = v; },
+      setStrCombatPhase: function(v) { _strCombatPhase = v; },
+      setStrCombatEnemy: function(v) { _strCombatEnemy = v; },
+      hideMobileUI: (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') ? function() { GoneRogueMobile.hide(); } : null
+    };
+  }
+
   function _handlePlayerDeath(reason, context) {
-    context = context || {};
-
-    // Increment player death counter
-    _playerDeaths++;
-
-    // Use DeathHandler if available
-    var deathResult;
-    if (typeof DeathHandler !== 'undefined') {
-      deathResult = DeathHandler.handlePlayerDeath(
-        _player,
-        reason,
-        {
-          enemy: context.enemy,
-          floor: _floor,
-          damage: context.damage,
-          location: { x: _player.x, y: _player.y }
-        }
-      );
-    } else {
-      // Fallback death handling
-      deathResult = {
-        messages: [
-          '',
-          '═══════════════════════════════════',
-          '        💀 SIGNAL LOST 💀',
-          '═══════════════════════════════════',
-          '',
-          'You have been defeated.',
-          'Floor reached: ' + _floor,
-          ''
-        ]
-      };
+    if (typeof DeathExitSystem !== 'undefined') {
+      return DeathExitSystem.handlePlayerDeath(reason, context, _deathExitCtx());
     }
-
-    // Submit highscore on death
-    if (typeof HighscoreState !== 'undefined') {
-      _submitHighscore();
-    }
-
-    // Record run in player profile (death = not success)
-    if (typeof TerminalCommandRouter !== 'undefined' && TerminalCommandRouter.recordRun) {
-      TerminalCommandRouter.recordRun({ success: false, floor: _floor, deaths: 1 });
-    }
-
-    // Build death cause string
-    var causeStr = '// SIGNAL LOST';
-    if (reason === 'combat_damage' && context.enemy) {
-      causeStr = '// KILLED BY ' + (context.enemy.name || 'HOSTILE').toUpperCase();
-    } else if (reason === 'burning') {
-      causeStr = '// BURNED TO DEATH';
-    } else if (reason === 'toxin') {
-      causeStr = '// TOXIC EXPOSURE';
-    } else if (reason === 'trap') {
-      causeStr = '// CAUGHT IN TRAP';
-    } else if (reason === 'environmental_hazard') {
-      causeStr = '// ENVIRONMENTAL HAZARD';
-    }
-
-    // Calculate currency penalty preview (actual penalty applied in GAMESTATE.exitRogueMode)
-    var currencyBefore = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getCryptos) ? GAMESTATE.getCryptos() : 0;
-    var currencyLost = Math.floor(currencyBefore * 0.5);
-
-    // Show YOU DIED full-screen overlay with run stats
-    if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.showDeathScreen === 'function') {
-      STRCombatWindow.showDeathScreen({
-        floor: _floor,
-        enemiesKilled: _enemiesKilled,
-        runTimeMs: _runStartTime ? (Date.now() - _runStartTime) : 0,
-        currencyLost: currencyLost,
-        cause: causeStr
-      });
-    }
-
-    // Exit rogue mode (applies inventory wipe + currency penalty)
     return _exitRogue(false);
   }
 
@@ -5191,241 +4670,22 @@ _incrementPityTimers();
    * @returns {Object} Death result with loot info
    */
   function _handleEnemyDeath(enemy, source, context) {
-    context = context || {};
-
-    // Use DeathHandler if available
-    var deathResult;
-    if (typeof DeathHandler !== 'undefined') {
-      deathResult = DeathHandler.handleEnemyDeath(
-        enemy,
-        source,
-        {
-          player: _player,
-          damage: context.damage,
-          location: { x: enemy.x, y: enemy.y },
-          hazardType: context.hazardType,
-          bossLoot: context.bossLoot
-        }
-      );
-    } else {
-      // Fallback death handling
-      deathResult = {
-        playerCredit: source === 'player' || source === 'player_environment',
-        loot: {
-          cards: [],
-          charms: [],
-          currency: 0,
-          xp: 0
-        },
-        messages: []
-      };
+    if (typeof DeathExitSystem !== 'undefined') {
+      return DeathExitSystem.handleEnemyDeath(enemy, source, context, _deathExitCtx());
     }
-
-    // Update kill counter if player gets credit
-    if (deathResult.playerCredit) {
-      _enemiesKilled++;
-
-      // Track first combat victory for gate eligibility
-      if (!_runState.firstCombatVictory) {
-        _runState.firstCombatVictory = true;
-        console.log('[GoneRogue] First combat victory achieved - gates now eligible');
-      }
-    }
-
-    // Spawn loot
-    if (deathResult.loot) {
-      // Spawn currency
-      if (deathResult.loot.currency > 0) {
-        _spawnCurrency(enemy.x, enemy.y, deathResult.loot.currency);
-      }
-
-      // Spawn ammo (if provided by DeathHandler)
-      if (deathResult.loot.ammo && deathResult.loot.ammo > 0) {
-        _items.push({
-          x: enemy.x,
-          y: enemy.y,
-          type: 'ammo',
-          amount: deathResult.loot.ammo,
-          spawnTime: Date.now(),
-          decayTime: 30000,
-          emoji: '📦',
-          name: 'Ammo (' + deathResult.loot.ammo + ')'
-        });
-      }
-
-      // Spawn cards
-      var _dropCountCards = 0;
-      if (deathResult.loot.cards && deathResult.loot.cards.length > 0 && typeof CardSystem !== 'undefined') {
-        for (var i = 0; i < deathResult.loot.cards.length; i++) {
-          if (deathResult.loot.cards[i].shouldDrop) {
-            var baseType = CardSystem.getRandomBaseCard();
-            var card = CardSystem.rollCard(baseType);
-            if (card) {
-              _dropCountCards++;
-              _items.push({
-                x: enemy.x,
-                y: enemy.y,
-                type: 'card',
-                card: card,
-                spawnTime: Date.now(),
-                decayTime: 30000
-              });
-            }
-          }
-        }
-      }
-
-      // Spawn charms
-      var _dropCountItems = 0;
-      if (deathResult.loot.charms && deathResult.loot.charms.length > 0 && typeof CardSystem !== 'undefined') {
-        for (var j = 0; j < deathResult.loot.charms.length; j++) {
-          if (deathResult.loot.charms[j].shouldDrop) {
-            var charm = CardSystem.rollCommonCharm();
-            if (charm) {
-              _dropCountItems++;
-              _items.push({
-                x: enemy.x,
-                y: enemy.y,
-                type: 'charm',
-                card: charm,
-                spawnTime: Date.now(),
-                decayTime: 30000
-              });
-            }
-          }
-        }
-      }
-
-      // Loot summary: show stacked text above the drop position
-      try {
-        if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showStackedText) {
-          var stacks = [];
-          if (deathResult.loot.currency > 0) stacks.push({ text: 'CR+' + deathResult.loot.currency, color: '#FFFFFF' });
-          if (deathResult.loot.ammo && deathResult.loot.ammo > 0) stacks.push({ text: 'AM+' + deathResult.loot.ammo, color: '#FFFFFF' });
-          if (_dropCountCards > 0) stacks.push({ text: 'CD+' + _dropCountCards, color: '#FFFFFF' });
-          if (_dropCountItems > 0) stacks.push({ text: 'IT+' + _dropCountItems, color: '#FFFFFF' });
-          if (stacks.length) OverheadAnimator.showStackedText(enemy.x, enemy.y, stacks, 1200);
-        }
-      } catch (eLoot0) {}
-    }
-
-    // If the dying enemy was the active STR combat target, hard-clear STR state.
-    // This prevents "ghost" STR windows when enemies die through non-STR pipelines.
-    try {
-      if (_strCombatActive && _strCombatEnemy && enemy && _strCombatEnemy === enemy) {
-        if (typeof StrCombatEngine !== 'undefined') StrCombatEngine.forceReset();
-        _strCombatActive = false;
-        _strCombatPhase = 'idle';
-        _strCombatEnemy = null;
-        if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.hide === 'function') {
-          STRCombatWindow.hide();
-        }
-        if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.hide === 'function') {
-          HandFanComponent.hide();
-          if (typeof HandFanComponent.clearSelection === 'function') HandFanComponent.clearSelection();
-        }
-        if (typeof BackupActionContainer !== 'undefined' && typeof BackupActionContainer.hide === 'function') {
-          BackupActionContainer.hide();
-        }
-      }
-    } catch (e0) {}
-
-    return deathResult;
+    // Minimal fallback
+    if (source === 'player' || source === 'player_environment') _enemiesKilled++;
+    return { playerCredit: true, loot: { cards: [], charms: [], currency: 0, xp: 0 }, messages: [] };
   }
 
   function _exitRogue(success) {
+    if (typeof DeathExitSystem !== 'undefined') {
+      return DeathExitSystem.exitRogue(success, _deathExitCtx());
+    }
+    // Minimal fallback
     _active = false;
     _stopGameLoop();
-
-    // Ensure STR combat UI is fully cleared
-    if (typeof StrCombatEngine !== 'undefined') StrCombatEngine.forceReset();
-    _strCombatActive = false;
-    _strCombatPhase = 'idle';
-    _strCombatEnemy = null;
-    try {
-      if (typeof STRCombatWindow !== 'undefined' && STRCombatWindow.hide) STRCombatWindow.hide();
-      if (typeof HandFanComponent !== 'undefined' && HandFanComponent.hide) HandFanComponent.hide();
-      if (typeof BackupActionContainer !== 'undefined' && BackupActionContainer.hide) BackupActionContainer.hide();
-    } catch (e0) {}
-
-    // Re-enable scanlines when returning to terminal
-    document.body.classList.remove('gone-rogue-active');
-
-    // Submit highscore if extraction was successful
-    if (success && typeof HighscoreState !== 'undefined') {
-      _submitHighscore();
-    }
-
-    // Record run in player profile
-    if (typeof TerminalCommandRouter !== 'undefined' && TerminalCommandRouter.recordRun) {
-      TerminalCommandRouter.recordRun({ success: success, floor: _floor, deaths: 0 });
-    }
-
-    // Show post-run summary screen
-    if (typeof RunSummary !== 'undefined' && RunSummary.show) {
-      // Check if a tier was just unlocked (set by floor-30 extraction handler)
-      var _rsPrevTier = 0;
-      var _rsNewTier = 0;
-      if (typeof TerminalCommandRouter !== 'undefined' && TerminalCommandRouter.getPlayerState) {
-        var _rsPs = TerminalCommandRouter.getPlayerState();
-        _rsNewTier = _rsPs.completedTiers || 0;
-      }
-
-      RunSummary.show({
-        success: success,
-        floor: _floor,
-        duration: _runStartTime ? (Date.now() - _runStartTime) : 0,
-        kills: _enemiesKilled || 0,
-        currency: _currencyCollected || 0,
-        score: (typeof HighscoreState !== 'undefined' && success)
-          ? HighscoreState.calculateGoneRogueScore({
-              currencyFound: _currencyCollected, interactivesUsed: 0,
-              enemiesAvoided: Math.max(0, _totalEnemiesSpawned - _enemiesKilled),
-              breakableDamage: _totalBreakableDamage, damageMitigated: _damageMitigated
-            }) : 0,
-        tierUp: success && _runCompleted && _rsNewTier > 0,
-        newTier: _rsNewTier
-      });
-    }
-
-    // Restore mobile keyboard behavior when exiting
-    if (typeof Terminal !== 'undefined' && typeof Terminal.restoreMobileKeyboard === 'function') {
-      Terminal.restoreMobileKeyboard();
-    }
-
-    // Hide mobile UI
-    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      GoneRogueMobile.hide();
-    }
-
-    // Hide reserve card slots
-    if (typeof ReserveSlots !== 'undefined') {
-      ReserveSlots.hide();
-    }
-
-    // Switch debrief feed back to MOK display
-    if (typeof DebriefFeedController !== 'undefined') {
-      DebriefFeedController.setMode('mainMenu');
-    }
-
-    var result = {
-      success: success,
-      unlockedSlot: success,
-      extractedItem: null
-    };
-
-    if (typeof GAMESTATE !== 'undefined') {
-      var exitResult = GAMESTATE.exitRogueMode(result);
-      return {
-        lines: exitResult.lines,
-        stayActive: false
-      };
-    }
-
-    return {
-      lines: ['', 'EXITING GONE ROGUE', 'RETURNING TO STREET CHRONICLES', ''],
-      stayActive: false
-    };
+    return { lines: ['', 'EXITING GONE ROGUE', ''], stayActive: false };
   }
 
   /**
@@ -6061,290 +5321,26 @@ _incrementPityTimers();
     if (typeof BoxDeployment !== 'undefined') { BoxDeployment.checkEnemyBoxInteraction(enemy, _boxDeployCtx()); _syncBoxState(); return; }
   }
 
+  // ── BreakableSystem delegation ──
+  function _breakableCtx() {
+    return {
+      grid: _grid, items: _items, TILES: TILES, rng: _rng,
+      GRID_WIDTH: GRID_WIDTH, GRID_HEIGHT: GRID_HEIGHT,
+      get totalBreakableDamage() { return _totalBreakableDamage; },
+      set totalBreakableDamage(v) { _totalBreakableDamage = v; },
+      get floor() { return _floor; },
+      wallCache: _wallCache,
+      spawnCurrency: _spawnCurrency,
+      raiseNoise: _raiseNoise,
+      rebuildWallCache: _rebuildWallCache,
+      getAllLightBlockers: _getAllLightBlockers,
+      getBiome: _getBiome,
+      updateMobileGrid: (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') ? _updateMobileGrid : null
+    };
+  }
   function _damageBreakable(breakable, amount) {
-    breakable.hp = Math.max(0, (breakable.hp || 0) - amount);
-
-    // Track for highscore
-    _totalBreakableDamage += amount;
-
-    // Add hit animation state
-    breakable.hitTime = Date.now();
-    breakable.blinkCount = 0;
-
-    if (breakable.hp === 0) {
-      // Mark for destruction but delay it for animation
-      breakable.destroying = true;
-      breakable.destroyStartTime = Date.now();
-
-      // Schedule the actual destruction after animation completes (2 blinks * 200ms each = 400ms)
-      setTimeout(function() {
-        if (breakable.destroying) {
-          _grid[breakable.y][breakable.x] = breakable.destroyedGlyph || TILES.DEBRIS;
-          breakable.destroying = false;
-
-          // Handle light source destruction
-          if (breakable.isLightSource && typeof LightingSystem !== 'undefined') {
-            LightingSystem.removeLightSource(breakable.x, breakable.y);
-
-            // Raise noise if configured
-            if (breakable.noise > 0) {
-              _raiseNoise(breakable.x, breakable.y, breakable.noise);
-            }
-
-            // Spawn smoke if configured
-            var lightingConfig = LightingSystem.getConfig();
-            if (lightingConfig && lightingConfig.interactiveLights && lightingConfig.interactiveLights.onBreak.spawnSmoke) {
-              if (typeof GroundEffects !== 'undefined' && GroundEffects.addEffect) {
-                GroundEffects.addEffect(breakable.x, breakable.y, 'SMOKE');
-              }
-            }
-
-            // Drop loot if chance succeeds
-            if (breakable.dropChance > 0 && Math.random() < breakable.dropChance && breakable.dropType) {
-              _items.push({
-                x: breakable.x,
-                y: breakable.y,
-                type: 'item',
-                itemId: breakable.dropType,
-                spawnTime: Date.now(),
-                decayTime: 60000,
-                emoji: '💾', // Placeholder, should be resolved from data
-                name: 'Item'
-              });
-              console.log('[Lighting] Destroyed light source dropped:', breakable.dropType);
-            }
-
-            // Update light map immediately
-            _rebuildWallCache();
-            LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, _getAllLightBlockers(_wallCache));
-
-            console.log('[Lighting] Removed light source at', breakable.x, ',', breakable.y);
-          }
-
-          // Use LootTableManager if available
-          if (typeof LootTableManager !== 'undefined' && LootTableManager.rollBreakableLoot) {
-            var breakableType = breakable.type || 'default';
-            var currentBiome = _getBiome(_floor) || 'COZY_FOREST';
-
-            var rolledLoot = LootTableManager.rollBreakableLoot(breakableType, currentBiome);
-
-            if (rolledLoot) {
-              // Spawn currency
-              if (rolledLoot.currency > 0) {
-                _spawnCurrency(breakable.x, breakable.y, rolledLoot.currency);
-              }
-
-              // Spawn ammo
-              if (rolledLoot.ammo > 0) {
-                _items.push({
-                  x: breakable.x,
-                  y: breakable.y,
-                  type: 'ammo',
-                  amount: rolledLoot.ammo,
-                  spawnTime: Date.now(),
-                  decayTime: LootTableManager.getDecayTime('ammo') * 1000 || 60000,
-                  emoji: '⁍',
-                  name: 'Ammo (' + rolledLoot.ammo + ')'
-                });
-              }
-
-              // Spawn gem (15% chance — battery recharge collectible)
-              if (_rng() < 0.15) {
-                _items.push({
-                  x: breakable.x,
-                  y: breakable.y,
-                  type: 'gem',
-                  amount: 1,
-                  spawnTime: Date.now(),
-                  decayTime: 45000,
-                  glyph: '◈',
-                  name: 'Battery Cell'
-                });
-              }
-
-              // Spawn items (cards, charms, etc.)
-              if (rolledLoot.items && rolledLoot.items.length > 0) {
-                rolledLoot.items.forEach(function(item) {
-                  if (item.type === 'card' && item.card) {
-                    _items.push({
-                      x: breakable.x,
-                      y: breakable.y,
-                      type: 'card',
-                      card: item.card,
-                      spawnTime: Date.now(),
-                      decayTime: LootTableManager.getDecayTime('card') * 1000 || 30000
-                    });
-                  } else if (item.type === 'charm' && item.card) {
-                    _items.push({
-                      x: breakable.x,
-                      y: breakable.y,
-                      type: 'charm',
-                      card: item.card,
-                      spawnTime: Date.now(),
-                      decayTime: LootTableManager.getDecayTime('charm') * 1000 || 30000
-                    });
-                  } else {
-                    // Generic item
-                    _items.push({
-                      x: breakable.x,
-                      y: breakable.y,
-                      type: item.type || 'item',
-                      item: item,
-                      emoji: item.emoji || '📦',
-                      name: item.name || 'Item',
-                      spawnTime: Date.now(),
-                      decayTime: 60000
-                    });
-                  }
-                });
-              }
-            }
-          } else {
-            // Fallback to hardcoded loot if LootTableManager not available
-            // Drop currency (cryptos) when breakable is destroyed
-            var dropChance = _rng();
-            if (dropChance < 0.7) { // 70% chance to drop currency
-              var cryptoAmount = Math.floor(_rng() * 3) + 1; // 1-3 cryptos
-              _spawnCurrency(breakable.x, breakable.y, cryptoAmount);
-            }
-
-            // 60% chance to drop ammo (3/5 or 6/10 breakables contain ammo)
-            // Average of 1.2 ammo per drop (1 or 2 ammo with weighted distribution)
-            if (_rng() < 0.6) {
-              var ammoAmount = _rng() < 0.8 ? 1 : 2; // 80% chance 1 ammo, 20% chance 2 ammo = 1.2 avg
-              _items.push({
-                x: breakable.x,
-                y: breakable.y,
-                type: 'ammo',
-                amount: ammoAmount,
-                spawnTime: Date.now(),
-                decayTime: 60000, // 60 second decay for resources
-                emoji: '⁍',
-                name: 'Ammo (' + ammoAmount + ')'
-              });
-            }
-
-            // 15% chance to drop gem (battery recharge)
-            if (_rng() < 0.15) {
-              _items.push({
-                x: breakable.x,
-                y: breakable.y,
-                type: 'gem',
-                amount: 1,
-                spawnTime: Date.now(),
-                decayTime: 45000, // 45 second decay
-                glyph: '◈',
-                name: 'Battery Cell'
-              });
-            }
-
-            // Check for key item drops from specific breakables
-            if (typeof EnvironmentalSynergy !== 'undefined' && breakable.name) {
-              var keyDropped = false;
-
-              // Tutorial / designer-defined key breakables can explicitly drop a key by id
-              if (breakable.drops && breakable.drops.item) {
-                var requested = ('' + breakable.drops.item).toUpperCase().replace(/[^A-Z0-9_]/g, '_');
-                // Common aliases
-                if (requested === 'RUSTY_KEY' || requested === 'RUSTYKEY' || requested === 'RUSTY__KEY') requested = 'RUSTY_KEY';
-
-                var keyDefs2 = EnvironmentalSynergy.getKeyDefinitions();
-                var def2 = keyDefs2[requested];
-                if (def2) {
-                  _items.push({
-                    x: breakable.x,
-                    y: breakable.y,
-                    type: 'key',
-                    keyType: requested,
-                    emoji: def2.emoji,
-                    name: def2.name,
-                    description: def2.description,
-                    spawnTime: Date.now(),
-                    decayTime: 60000
-                  });
-                  keyDropped = true;
-                }
-              }
-
-              // Terminal breakables can drop thumb drives (OFFICE biome)
-              if (breakable.name === 'Terminal' && _rng() < 0.15) { // 15% chance
-                var keyDefs = EnvironmentalSynergy.getKeyDefinitions();
-                if (keyDefs.THUMB_DRIVE) {
-                  _items.push({
-                    x: breakable.x,
-                    y: breakable.y,
-                    type: 'key',
-                    keyType: 'THUMB_DRIVE',
-                    emoji: keyDefs.THUMB_DRIVE.emoji,
-                    name: keyDefs.THUMB_DRIVE.name,
-                    description: keyDefs.THUMB_DRIVE.description,
-                    spawnTime: Date.now(),
-                    decayTime: 120000 // 2 minute decay
-                  });
-                  keyDropped = true;
-                  console.log('[GoneRogue] Thumb drive dropped from terminal at', breakable.x, breakable.y);
-                }
-              }
-
-              // Wooden gates/boxes can drop rusty keys (FOREST biome)
-              if (!keyDropped && (breakable.name === 'Wooden Gate' || breakable.name === 'Wooden Box') && _rng() < 0.10) {
-                var keyDefs = EnvironmentalSynergy.getKeyDefinitions();
-                if (keyDefs.RUSTY_KEY) {
-                  _items.push({
-                    x: breakable.x,
-                    y: breakable.y,
-                    type: 'key',
-                    keyType: 'RUSTY_KEY',
-                    emoji: keyDefs.RUSTY_KEY.emoji,
-                    name: keyDefs.RUSTY_KEY.name,
-                    description: keyDefs.RUSTY_KEY.description,
-                    spawnTime: Date.now(),
-                    decayTime: 120000
-                  });
-                  keyDropped = true;
-                  console.log('[GoneRogue] Rusty key dropped at', breakable.x, breakable.y);
-                }
-              }
-            }
-
-            // 30% chance to drop a card
-            if (_rng() < 0.3 && typeof CardSystem !== 'undefined') {
-              var baseType = CardSystem.getRandomBaseCard();
-              var card = CardSystem.rollCard(baseType);
-              if (card) {
-                _items.push({
-                  x: breakable.x,
-                  y: breakable.y,
-                  type: 'card',
-                  card: card,
-                  spawnTime: Date.now(),
-                  decayTime: 30000 // 30 second decay
-                });
-              }
-            }
-
-            // 25% chance to drop a charm (similar frequency to cards)
-            if (_rng() < 0.25 && typeof CardSystem !== 'undefined') {
-              var charm = CardSystem.rollCommonCharm();
-              if (charm) {
-                _items.push({
-                  x: breakable.x,
-                  y: breakable.y,
-                  type: 'charm',
-                  card: charm, // Reuse card structure for charms
-                  spawnTime: Date.now(),
-                  decayTime: 30000 // 30 second decay
-                });
-              }
-            }
-          }
-
-          // Trigger re-render
-          if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-            _updateMobileGrid();
-          }
-        }
-      }, 400); // 2 blinks at 200ms each
+    if (typeof BreakableSystem !== 'undefined') {
+      BreakableSystem.damageBreakable(breakable, amount, _breakableCtx());
     }
   }
 
@@ -6713,26 +5709,11 @@ _incrementPityTimers();
   }
 
   function _canAffordCosts(costs) {
-    if (!costs || !costs.length) return { canAfford: true, missing: [] };
-    if (typeof GAMESTATE === 'undefined') return { canAfford: false, missing: costs.slice() };
-
-    var missing = [];
-    for (var i = 0; i < costs.length; i++) {
-      var c = costs[i];
-      if (!c || !c.kind) continue;
-      var need = Number(c.amount || 0);
-      if (!isFinite(need) || need <= 0) continue;
-
-      var have = 0;
-      if (c.kind === 'ammo' && typeof GAMESTATE.getAmmo === 'function') have = GAMESTATE.getAmmo();
-      else if (c.kind === 'battery' && typeof GAMESTATE.getBattery === 'function') have = GAMESTATE.getBattery();
-      else if (c.kind === 'energy' && typeof GAMESTATE.getEnergy === 'function') have = GAMESTATE.getEnergy();
-      else if (c.kind === 'focus' && typeof GAMESTATE.getFocus === 'function') have = GAMESTATE.getFocus();
-
-      if (have < need) missing.push({ kind: c.kind, amount: need, have: have });
+    if (typeof CostPrinterSystem !== 'undefined') {
+      return CostPrinterSystem.canAffordCosts(costs);
     }
-
-    return { canAfford: missing.length === 0, missing: missing };
+    if (!costs || !costs.length) return { canAfford: true, missing: [] };
+    return { canAfford: false, missing: costs.slice() };
   }
 
   function _consumeCosts(costs) {
@@ -6742,91 +5723,9 @@ _incrementPityTimers();
   }
 
   function _maybeTrigger3dPrinter(triggerCardId, triggerCard) {
-    try {
-      if (typeof GAMESTATE === 'undefined' || !GAMESTATE.getActiveItem) return;
-      var active = GAMESTATE.getActiveItem();
-      if (!active || !active.id) return;
-      if (typeof GoneRogueDataRegistry === 'undefined' || !GoneRogueDataRegistry.getItem) return;
-
-      var item = GoneRogueDataRegistry.getItem(active.id);
-      if (!item || item._missing) return;
-
-      // Identify the 3D printer via its effect tag
-      var isPrinter = false;
-      if (Array.isArray(item.effects)) {
-        for (var i = 0; i < item.effects.length; i++) {
-          if (item.effects[i] && item.effects[i].type === 'printer_3d') { isPrinter = true; break; }
-        }
-      }
-      if (!isPrinter) return;
-
-      // Must be armed/toggled first (primary method for consuming/using active items)
-      var armed = !!(active.meta && active.meta.toggled);
-      if (!armed) return;
-
-      // Trigger only on ammo/battery spending cards (per design)
-      var costs = triggerCard && Array.isArray(triggerCard.costs) ? triggerCard.costs : [];
-      var spends = false;
-      for (var j = 0; j < costs.length; j++) {
-        var c = costs[j];
-        if (!c || !c.kind) continue;
-        if (c.kind === 'ammo' || c.kind === 'battery') { spends = true; break; }
-      }
-      if (!spends) return;
-
-      // Determine printer quality (rarity)
-      var qMap = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
-      var qp = qMap[String(item.rarity || 'common').toLowerCase()];
-      if (!isFinite(qp)) qp = 0;
-
-      // Choose output quality (biased down)
-      var roll = Math.random();
-      var qo = 0;
-      if (roll < 0.70) qo = 0;
-      else if (roll < 0.88) qo = 1;
-      else if (roll < 0.96) qo = 2;
-      else if (roll < 0.99) qo = 3;
-      else qo = 4;
-      if (qo > qp) qo = qp;
-
-      // Armed mode: duplicate the card you're interfacing with.
-      var pick = triggerCard;
-      if (!pick || !pick.id) return;
-
-      // Treat output quality as the picked card's rarity for proximity math
-      var qMap2 = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
-      qo = qMap2[String(pick.rarity || 'common').toLowerCase()];
-      if (!isFinite(qo)) qo = 0;
-      if (qo > qp) qo = qp;
-
-      // Determine print count based on quality distance
-      var d = qp - qo;
-      function rint(a, b) {
-        a = Math.floor(a); b = Math.floor(b);
-        return a + Math.floor(Math.random() * (b - a + 1));
-      }
-      var n = 2;
-      if (d >= 3) n = rint(12, 21);
-      else if (d === 2) n = rint(8, 16);
-      else if (d === 1) n = rint(4, 10);
-      else n = rint(1, 3);
-
-      // Add printed cards to CH/NCH hand then overflow to backup, discarding oldest backup when full.
-      if (typeof GAMESTATE.addPrintedCards === 'function') {
-        GAMESTATE.addPrintedCards(pick.id, n, { preferHand: true });
-      }
-
-      // Consume the printer
-      if (typeof GAMESTATE.consumeActiveItem === 'function') {
-        GAMESTATE.consumeActiveItem();
-      } else if (typeof GAMESTATE.clearActiveItem === 'function') {
-        GAMESTATE.clearActiveItem();
-      }
-
-      if (typeof TooltipSystem !== 'undefined' && TooltipSystem.showPersistent) {
-        TooltipSystem.showPersistent('🕋 DUPED x' + n + ' ' + (pick.emoji || '🃏') + ' ' + (pick.name || pick.id), 1600);
-      }
-    } catch (e0) {}
+    if (typeof CostPrinterSystem !== 'undefined') {
+      return CostPrinterSystem.maybeTrigger3dPrinter(triggerCardId, triggerCard);
+    }
   }
 
   function playCardFromHand(cardId) {
@@ -7599,114 +6498,20 @@ _incrementPityTimers();
    * @param {string} trigger - Combat trigger type
    * @returns {{ beat3: string, beat2: string, beat1: string }}
    */
+  // ── CombatNarrationSystem delegation ──
+  function _combatNarrationCtx() {
+    return {
+      player: _player, grid: _grid, TILES: TILES,
+      strCombatAdvantage: _strCombatAdvantage,
+      getPlayerStealthBonus: _getPlayerStealthBonus,
+      checkFlanking: _checkFlanking
+    };
+  }
   function _buildCountdownMessages(enemy, trigger) {
-    // ── BEAT 3 : Stealth / Environment ─────────────────────────────────────
-    var beat3 = '';
-
-    var tile = (_grid[_player.y] && _grid[_player.y][_player.x]) || '';
-    var groundEffect = (typeof GroundEffects !== 'undefined')
-      ? GroundEffects.getGroundEffect(_player.x, _player.y)
-      : null;
-    var stealthBonus = _getPlayerStealthBonus();
-
-    if (groundEffect) {
-      var gt = groundEffect.type;
-      if (gt === 'fire' || gt === 'oil_ignited') {
-        beat3 = '🔥 you were standing in fire';
-      } else if (gt === 'industrial_waste') {
-        beat3 = '☢️  you were standing in toxic waste';
-      } else if (gt === 'water') {
-        if (groundEffect.electrified) {
-          beat3 = '⚡ you were standing in electrified water';
-        } else {
-          beat3 = '💧 you were splashing in water';
-        }
-      } else if (gt === 'glass') {
-        beat3 = '🪟 you were crunching on broken glass';
-      } else if (gt === 'soda_spill') {
-        beat3 = '🧃 you were slipping in a soda spill';
-      } else if (gt === 'steam') {
-        beat3 = '♨️  you were hidden in steam';
-      } else if (gt === 'oil') {
-        beat3 = '🛢️  you were standing in an oil slick';
-      }
+    if (typeof CombatNarrationSystem !== 'undefined') {
+      return CombatNarrationSystem.buildCountdownMessages(enemy, trigger, _combatNarrationCtx());
     }
-
-    if (!beat3) {
-      if (tile === TILES.SHADOW) {
-        beat3 = '⬛ you were cloaked in shadow';
-      } else if (tile === TILES.SMOKE) {
-        beat3 = '🌫️  you were hidden in smoke';
-      } else if (tile === TILES.GRASS) {
-        beat3 = '🟩 you were crouched in the grass';
-      } else if (tile === TILES.WATER) {
-        beat3 = '💧 you were splashing in water';
-      } else if (stealthBonus >= 30) {
-        beat3 = '🌑 darkness gave you cover (+' + stealthBonus + '% stealth)';
-      } else if (stealthBonus > 0) {
-        beat3 = '👁 partial cover (+' + stealthBonus + '% stealth)';
-      } else {
-        beat3 = '👁 no cover — fully exposed';
-      }
-    }
-
-    // ── BEAT 2 : Flank / Advantage ─────────────────────────────────────────
-    var beat2 = '';
-    var advantage = _strCombatAdvantage;
-    var enemyAwareness = enemy ? (enemy.awareness || 0) : 0;
-    var isFlanking = _checkFlanking(_player, enemy);
-    var enemyInitiated = trigger === 'enemy_attack' || trigger === 'enemy_sighting' || trigger === 'enemy_projectile';
-
-    if (advantage === 'ambush') {
-      if (isFlanking) {
-        beat2 = '🎯 you struck from behind — they never saw it coming';
-      } else {
-        beat2 = '🎯 you caught them completely unaware';
-      }
-    } else if (advantage === 'flanked') {
-      beat2 = '❌ you were hit from behind — enemy flanked you';
-    } else if (advantage === 'disadvantaged') {
-      if (enemyAwareness >= 70) {
-        beat2 = '⚠️  the enemy was fully alerted to your position';
-      } else {
-        beat2 = '⚠️  you were caught in the open';
-      }
-    } else {
-      // neutral
-      if (enemyInitiated) {
-        beat2 = '⚔️  they spotted you — head-on engagement';
-      } else {
-        beat2 = '⚔️  you faced them head-on';
-      }
-    }
-
-    // ── BEAT 1 : Critical Resource Warnings ─────────────────────────────────
-    var beat1 = '';
-    var warnings = [];
-
-    if (typeof GAMESTATE !== 'undefined') {
-      var ammo    = GAMESTATE.getAmmo    ? GAMESTATE.getAmmo()    : 0;
-      var energy  = GAMESTATE.getEnergy  ? GAMESTATE.getEnergy()  : 0;
-      var fatigue = GAMESTATE.getFatigue ? GAMESTATE.getFatigue() : 0;
-      var state   = GAMESTATE.getState   ? GAMESTATE.getState()   : {};
-      var maxFatigue = state.maxFatigue  || 100;
-      var focus   = GAMESTATE.getFocus   ? GAMESTATE.getFocus()   : 0;
-
-      if (ammo <= 0)                               warnings.push('⁍ no ammo');
-      if (energy <= 0)                             warnings.push('⚡ no energy');
-      if (focus <= 0)                              warnings.push('🎯 no focus');
-      if (fatigue >= maxFatigue * 0.8)             warnings.push('🏋️  extreme fatigue');
-    }
-
-    if (warnings.length === 0) {
-      beat1 = '✅ all systems combat-ready';
-    } else if (warnings.length === 1) {
-      beat1 = warnings[0] + ' — limited options';
-    } else {
-      beat1 = warnings.join('  ·  ');
-    }
-
-    return { beat3: beat3, beat2: beat2, beat1: beat1 };
+    return { beat3: '', beat2: '', beat1: '' };
   }
 
   /**

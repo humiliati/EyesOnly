@@ -55,22 +55,22 @@
                     const size = this.gridSize * this.zoomLevel;
                     worldCanvas.style.backgroundSize = `${size}px ${size}px`;
                 },
-                snapToGrid: function(pixelX, pixelY, gridWidth = 1, gridHeight = 1) {
-                    const size = this.gridSize * this.zoomLevel;
+                snapToGrid: function(pixelX, pixelY) {
+                    const size = this.gridSize;
                     const gridX = Math.round(pixelX / size);
                     const gridY = Math.round(pixelY / size);
                     return { x: gridX * size, y: gridY * size };
                 },
                 setZoom: function(level) {
-                    this.zoomLevel = level;
+                    this.zoomLevel = Math.max(0.2, Math.min(level, 3)); // Clamp zoom level
                     this.updateGrid();
+                    instance.setZoom(this.zoomLevel);
                 }
             };
 
             GridManager.init();
 
             let nodeCounter = 0;
-            let floorCounter = 0;
 
             // Drag and Drop
             document.querySelectorAll('.draggable-item').forEach(item => {
@@ -86,64 +86,144 @@
             worldCanvas.addEventListener('drop', (e) => {
                 e.preventDefault();
                 const itemType = e.dataTransfer.getData('text/plain');
-                const pos = GridManager.snapToGrid(e.clientX - worldCanvas.getBoundingClientRect().left, e.clientY - worldCanvas.getBoundingClientRect().top);
+                
+                // Correctly calculate canvas-relative coordinates
+                const canvasRect = worldCanvas.getBoundingClientRect();
+                const dropX = e.clientX - canvasRect.left;
+                const dropY = e.clientY - canvasRect.top;
+
+                // Account for jsPlumb zoom
+                const zoomedX = dropX / instance.getZoom();
+                const zoomedY = dropY / instance.getZoom();
+
+                const pos = snapToGrid ? GridManager.snapToGrid(zoomedX, zoomedY) : { x: zoomedX, y: zoomedY };
                 addBlock(itemType, pos.x, pos.y);
             });
 
             function addBlock(type, x, y) {
                 const id = `${type}-${nodeCounter++}`;
                 const block = document.createElement('div');
-                block.className = 'world-node'; // Re-using for now
+                block.className = 'world-node';
                 block.id = id;
                 block.style.left = `${x}px`;
                 block.style.top = `${y}px`;
                 block.dataset.type = type;
 
-                if (type === 'floor' || type.startsWith('floor-') || type === 'bonfire' || type === 'vents' || type === 'boss') {
-                    block.style.width = `${GridManager.gridSize * 2}px`;
-                    block.style.height = `${GridManager.gridSize}px`;
-                    block.innerHTML = `<strong>${type.replace('-',' ')}</strong>`;
+                let doorCount = 0;
+                let gridWidth = 2;
+                let gridHeight = 1;
 
-                    // Add doors
-                    const door1 = document.createElement('div');
-                    door1.className = 'door';
-                    block.appendChild(door1);
+                switch (type) {
+                    // Floors
+                    case 'floor-0':
+                        block.classList.add('floor-0-color');
+                        block.innerHTML = `<strong>Start Floor</strong>`;
+                        doorCount = 1;
+                        break;
+                    case 'floor':
+                        block.classList.add('floor-color');
+                        block.innerHTML = `<strong>Floor</strong>`;
+                        doorCount = 2;
+                        break;
+                    case 'bonfire':
+                        block.classList.add('bonfire-color');
+                        block.innerHTML = `<strong>Bonfire</strong>`;
+                        doorCount = 2;
+                        break;
+                    case 'vents':
+                        block.classList.add('vents-color');
+                        block.innerHTML = `<strong>Vents</strong>`;
+                        doorCount = 2;
+                        break;
+                    case 'boss':
+                        block.classList.add('boss-color');
+                        block.innerHTML = `<strong>Boss</strong>`;
+                        doorCount = 1;
+                        break;
+                    case 'floor-999':
+                        block.classList.add('floor-999-color');
+                        block.innerHTML = `<strong>End Floor</strong>`;
+                        doorCount = 1;
+                        break;
 
-                    if (floorCounter > 0) { // All floors except the first get 2 doors
-                        const door2 = document.createElement('div');
-                        door2.className = 'door';
-                        door2.style.left = 'calc(100% - 10px)';
-                        block.appendChild(door2);
-                    }
-                    floorCounter++;
+                    // Buildings
+                    case 'BuildingSimple':
+                        block.classList.add('building-simple-color');
+                        block.innerHTML = `<strong>Simple Building</strong>`;
+                        block.dataset.nestedInteriors = 0;
+                        doorCount = 1;
+                        break;
+                    case 'BuildingVertical':
+                        block.classList.add('building-vertical-color');
+                        block.innerHTML = `<strong>Vertical Building</strong>`;
+                        block.dataset.nestedInteriors = 0;
+                        doorCount = 1;
+                        break;
+                    case 'BuildingHorizontal':
+                        block.classList.add('building-horizontal-color');
+                        block.innerHTML = `<strong>Horizontal Building</strong>`;
+                        block.dataset.nestedInteriors = 0;
+                        doorCount = 1;
+                        break;
+                }
 
-                } else if (type === 'building') {
-                    block.dataset.nestedInteriors = 0;
-                    block.style.width = `${GridManager.gridSize * 2}px`;
-                    block.style.height = `${GridManager.gridSize}px`;
-                    block.innerHTML = `<strong>Building</strong>`;
+                block.style.width = `${GridManager.gridSize * gridWidth}px`;
+                block.style.height = `${GridManager.gridSize * gridHeight}px`;
+
+                // Add doors
+                for (let i = 0; i < doorCount; i++) {
+                    const door = document.createElement('div');
+                    door.className = 'door';
+                    // Simple positioning for now, can be improved
+                    door.style.left = `${(i * 100 / (doorCount || 1))}px`;
+                    block.appendChild(door);
                 }
 
                 worldCanvas.appendChild(block);
-                instance.draggable(id);
+                instance.draggable(id, {
+                    grid: [GridManager.gridSize, GridManager.gridSize],
+                    drag: (e) => {
+                        if (e.el.classList.contains('selected')) {
+                            const selected = document.querySelectorAll('.selected');
+                            selected.forEach(node => {
+                                if (node.id !== e.el.id) {
+                                    const style = window.getComputedStyle(node);
+                                    const x = parseInt(style.getPropertyValue('left'), 10);
+                                    const y = parseInt(style.getPropertyValue('top'), 10);
+                                    node.style.left = `${x + e.e.movementX}px`;
+                                    node.style.top = `${y + e.e.movementY}px`;
+                                    instance.revalidate(node.id);
+                                }
+                            });
+                        }
+                    }
+                });
 
-                if (type === 'floor' || type.startsWith('floor-') || type === 'bonfire' || type === 'vents' || type === 'boss') {
-                    const doors = block.querySelectorAll('.door');
-                    doors.forEach((door, index) => {
-                        instance.addEndpoint(door, {
-                            anchor: 'Center',
-                            isSource: true,
-                            isTarget: true
-                        });
-                    });
-                }
+                const doors = block.querySelectorAll('.door');
+                doors.forEach((door) => {
+                    instance.addEndpoint(door, { anchor: 'Center', isSource: true, isTarget: true });
+                });
             }
 
             worldCanvas.addEventListener('click', (e) => {
                 if (e.target.classList.contains('world-node')) {
-                    document.querySelectorAll('.world-node').forEach(n => n.classList.remove('selected'));
-                    e.target.classList.add('selected');
-                    showInspector(e.target);
+                    if (!e.ctrlKey && !e.metaKey) {
+                        clearInspector();
+                    }
+
+                    if (e.target.classList.contains('selected')) {
+                        e.target.classList.remove('selected');
+                    } else {
+                        e.target.classList.add('selected');
+                    }
+
+                    const selectedNodes = document.querySelectorAll('.selected');
+                    if (selectedNodes.length > 0) {
+                        showInspector(selectedNodes[0]); // For now, show inspector for the first selected item
+                    } else {
+                        clearInspector();
+                    }
+
                 } else if (e.target.classList.contains('door')) {
                     // Do nothing, let jsPlumb handle it
                 } else if (e.target.closest('.world-node')) {
@@ -152,7 +232,6 @@
                         addNodeButton(parent, e.clientX - parent.getBoundingClientRect().left, e.clientY - parent.getBoundingClientRect().top);
                     }
                 } else {
-                    document.querySelectorAll('.world-node').forEach(n => n.classList.remove('selected'));
                     clearInspector();
                 }
             });
@@ -181,6 +260,8 @@
             // Function to show the property inspector
             function showInspector(element) {
                 let id, type, name, content;
+                const propertiesTab = document.getElementById('properties-tab');
+                const notesTextarea = document.getElementById('node-notes');
 
                 if (element.classList.contains('world-node')) {
                     id = element.id;
@@ -193,65 +274,55 @@
                         <div><label><strong>Name:</strong> <input type="text" id="prop-name" value="${name}"></label></div>
                     `;
 
-                    if (type === 'floor') {
-                        const biome = element.dataset.biome || 'Cozy Forest';
-                        const generationType = element.dataset.generationType || 'contrived';
-                        content += `
-                            <div><label><strong>Biome:</strong> 
-                                <select id="prop-biome">
-                                    <option value="Cozy Forest" ${biome === 'Cozy Forest' ? 'selected' : ''}>Cozy Forest</option>
-                                    <option value="Grey Cave" ${biome === 'Grey Cave' ? 'selected' : ''}>Grey Cave</option>
-                                    <option value="Shopping Mall" ${biome === 'Shopping Mall' ? 'selected' : ''}>Shopping Mall</option>
-                                    <option value="Commercial Office" ${biome === 'Commercial Office' ? 'selected' : ''}>Commercial Office</option>
-                                    <option value="Industrial Complex" ${biome === 'Industrial Complex' ? 'selected' : ''}>Industrial Complex</option>
-                                    <option value="Aerospace Museum" ${biome === 'Aerospace Museum' ? 'selected' : ''}>Aerospace Museum</option>
-                                </select>
-                            </label></div>
-                            <div><label><strong>Generation:</strong> 
-                                <select id="prop-generation">
-                                    <option value="contrived" ${generationType === 'contrived' ? 'selected' : ''}>Contrived</option>
-                                    <option value="procedural" ${generationType === 'procedural' ? 'selected' : ''}>Procedural</option>
-                                </select>
-                            </label></div>
-                        `;
-                    } else if (type === 'building') {
+                    if (type.includes('Building')) {
                         content += `<button id="add-interior-btn">Add Interior</button>`;
+                    } else if (type === 'bonfire') {
+                        content += `<div><label><strong>Bonfire Type:</strong> <select id="prop-bonfire-type"><option>Healing</option><option>Resource</option><option>Shop</option><option>Save Point</option></select></label></div>`;
                     }
                 } else if (element.classList.contains('node-button')) {
                     id = element.parentElement.id + '-' + Array.from(element.parentElement.querySelectorAll('.node-button')).indexOf(element);
                     type = 'Node Button';
-
-                    content = `
-                        <div><strong>ID:</strong> ${id}</div>
-                        <div><strong>Type:</strong> ${type}</div>
-                    `;
+                    content = `<div><strong>ID:</strong> ${id}</div><div><strong>Type:</strong> ${type}</div>`;
                 }
 
-                inspectorContent.innerHTML = content;
+                propertiesTab.innerHTML = content;
+                notesTextarea.value = element.dataset.notes || '';
                 document.getElementById('delete-btn').style.display = 'block';
 
+                // Add event listeners for the new properties
                 if (element.classList.contains('world-node')) {
-                    document.getElementById('prop-name').addEventListener('input', (e) => {
-                        element.querySelector('strong').innerText = e.target.value;
-                    });
-
-                    if (element.dataset.type === 'floor') {
-                        document.getElementById('prop-biome').addEventListener('change', (e) => {
-                            element.dataset.biome = e.target.value;
-                        });
-
-                        document.getElementById('prop-generation').addEventListener('change', (e) => {
-                            element.dataset.generationType = e.target.value;
-                        });
-                    } else if (element.dataset.type === 'building') {
-                        document.getElementById('add-interior-btn').addEventListener('click', () => {
-                            let nestedInteriors = parseInt(element.dataset.nestedInteriors || '0');
-                            nestedInteriors++;
-                            element.dataset.nestedInteriors = nestedInteriors;
-                            element.style.width = `${GridManager.gridSize * (2 + nestedInteriors)}px`;
+                    const nameInput = document.getElementById('prop-name');
+                    if (nameInput) {
+                        nameInput.addEventListener('input', (e) => {
+                            element.querySelector('strong').innerText = e.target.value;
                         });
                     }
+
+                    if (element.dataset.type.includes('Building')) {
+                        const addInteriorBtn = document.getElementById('add-interior-btn');
+                        if (addInteriorBtn) {
+                            addInteriorBtn.addEventListener('click', () => {
+                                let nestedInteriors = parseInt(element.dataset.nestedInteriors || '0');
+                                nestedInteriors++;
+                                element.dataset.nestedInteriors = nestedInteriors;
+                                element.style.width = `${GridManager.gridSize * (2 + nestedInteriors)}px`;
+                                instance.revalidate(element.id);
+                            });
+                        }
+                    } else if (element.dataset.type === 'bonfire') {
+                        const bonfireTypeSelect = document.getElementById('prop-bonfire-type');
+                        if (bonfireTypeSelect) {
+                            bonfireTypeSelect.value = element.dataset.bonfireType || 'Healing';
+                            bonfireTypeSelect.addEventListener('change', (e) => {
+                                element.dataset.bonfireType = e.target.value;
+                            });
+                        }
+                    }
                 }
+
+                notesTextarea.oninput = (e) => {
+                    element.dataset.notes = e.target.value;
+                };
             }
 
             document.getElementById('delete-btn').addEventListener('click', () => {
@@ -267,10 +338,22 @@
             });
 
             function clearInspector() {
-                inspectorContent.innerHTML = '<div class="inspector-empty"><p>Select an element to view properties</p></div>';
+                document.getElementById('properties-tab').innerHTML = '<div class="inspector-empty"><p>Select an element to view properties</p></div>';
+                document.getElementById('node-notes').value = '';
                 document.getElementById('delete-btn').style.display = 'none';
                 document.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
             }
+
+            // Tab functionality
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tabId = btn.dataset.tab;
+                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
 
             // Zoom
             document.getElementById('zoom-in-btn').addEventListener('click', () => {
@@ -278,6 +361,114 @@
             });
             document.getElementById('zoom-out-btn').addEventListener('click', () => {
                 GridManager.setZoom(GridManager.zoomLevel - 0.1);
+            });
+
+            let isPanning = false;
+            let panStart = { x: 0, y: 0 };
+
+            const panToolBtn = document.getElementById('pan-tool-btn');
+            panToolBtn.addEventListener('click', () => {
+                isPanning = !isPanning;
+                panToolBtn.classList.toggle('active', isPanning);
+                worldCanvas.classList.toggle('panning', isPanning);
+            });
+
+            worldCanvas.addEventListener('mousedown', (e) => {
+                if (isPanning) {
+                    panStart.x = e.clientX;
+                    panStart.y = e.clientY;
+                    return;
+                }
+
+                if (e.target === worldCanvas) {
+                    isMarqueeSelecting = true;
+                    marquee.style.display = 'block';
+                    marqueeStart.x = e.clientX;
+                    marqueeStart.y = e.clientY;
+                }
+            });
+
+            worldCanvas.addEventListener('mousemove', (e) => {
+                if (isMarqueeSelecting) {
+                    const x = Math.min(e.clientX, marqueeStart.x);
+                    const y = Math.min(e.clientY, marqueeStart.y);
+                    const width = Math.abs(e.clientX - marqueeStart.x);
+                    const height = Math.abs(e.clientY - marqueeStart.y);
+                    marquee.style.left = `${x}px`;
+                    marquee.style.top = `${y}px`;
+                    marquee.style.width = `${width}px`;
+                    marquee.style.height = `${height}px`;
+                }
+            });
+
+            worldCanvas.addEventListener('mouseup', (e) => {
+                if (isMarqueeSelecting) {
+                    isMarqueeSelecting = false;
+                    marquee.style.display = 'none';
+
+                    const marqueeRect = marquee.getBoundingClientRect();
+                    const newSelection = [];
+                    document.querySelectorAll('.world-node').forEach(node => {
+                        const nodeRect = node.getBoundingClientRect();
+                        if (rectsIntersect(marqueeRect, nodeRect)) {
+                            newSelection.push(node);
+                        }
+                    });
+
+                    if (!e.ctrlKey && !e.metaKey) {
+                        clearInspector();
+                    }
+
+                    newSelection.forEach(node => {
+                        if (!node.classList.contains('selected')) {
+                            node.classList.add('selected');
+                        }
+                    });
+
+                    if (newSelection.length > 0) {
+                        showInspector(newSelection[0]); // For now, show inspector for the first selected item
+                    }
+                }
+            });
+
+            function rectsIntersect(r1, r2) {
+                return !(r2.left > r1.right || r2.right < r1.left || r2.top > r1.bottom || r2.bottom < r1.top);
+            }
+
+            let isMarqueeSelecting = false;
+            const marquee = document.getElementById('selection-marquee');
+            const marqueeStart = { x: 0, y: 0 };
+
+            worldCanvas.addEventListener('mousemove', (e) => {
+                if (isPanning && e.buttons === 1) {
+                    const dx = e.clientX - panStart.x;
+                    const dy = e.clientY - panStart.y;
+
+                    const currentX = parseInt(worldCanvas.style.backgroundPositionX || 0);
+                    const currentY = parseInt(worldCanvas.style.backgroundPositionY || 0);
+
+                    worldCanvas.style.backgroundPositionX = `${currentX + dx}px`;
+                    worldCanvas.style.backgroundPositionY = `${currentY + dy}px`;
+
+                    instance.repaintEverything();
+                    panStart.x = e.clientX;
+                    panStart.y = e.clientY;
+                }
+            });
+
+            let gridVisible = true;
+            const gridToggleBtn = document.getElementById('grid-toggle-btn');
+            gridToggleBtn.addEventListener('click', () => {
+                gridVisible = !gridVisible;
+                worldCanvas.style.backgroundImage = gridVisible ? '' : 'none';
+                gridToggleBtn.classList.toggle('active', gridVisible);
+            });
+
+            let snapToGrid = true;
+            const snapToggleBtn = document.getElementById('snap-toggle-btn');
+            snapToggleBtn.addEventListener('click', () => {
+                snapToGrid = !snapToGrid;
+                snapToggleBtn.classList.toggle('active', snapToGrid);
             });
 
 
