@@ -19,8 +19,9 @@ var TutorialFloorGen = (function() {
     // Continuity is handled by spawning near the correct door.
     var floorData = TutorialFloors.generateContrivedFloor(layout);
 
-    // Apply grid
+    // Apply grid (setGrid updates the monolith closure var; also update ctx snapshot)
     ctx.setGrid(floorData.grid);
+    ctx.grid = floorData.grid;
 
     // Place player: continuity via door-consistent spawning (no template shifting).
     ctx.player.x = floorData.player.x;

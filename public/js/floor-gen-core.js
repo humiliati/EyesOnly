@@ -127,7 +127,9 @@ var FloorGenCore = (function() {
       attempt++;
 
       // Step 1: Create empty grid
-      ctx.setGrid(ctx.createEmptyGrid());
+      var newGrid = ctx.createEmptyGrid();
+      ctx.setGrid(newGrid);
+      ctx.grid = newGrid;
 
       // Step 2: Generate rooms (varies by floor type)
       var rooms = ctx.generateRooms(floorType);
