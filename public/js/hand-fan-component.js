@@ -897,6 +897,14 @@ const HandFanComponent = (function () {
         return;
       }
 
+      // If a swipe gesture was just handled, suppress the follow-on click.
+      var lastSwipe = Number(cardEl.dataset.lastSwipeTs || 0);
+      if (lastSwipe && Date.now() - lastSwipe < 800) {
+        try { delete cardEl.dataset.lastSwipeTs; } catch (e0) {}
+        if (e && e.preventDefault) e.preventDefault();
+        return;
+      }
+
       // If we queued a selection during an animation on pointerdown, suppress
       // the subsequent click (otherwise it toggles twice and feels like
       // triple-click is required).
@@ -1012,6 +1020,49 @@ const HandFanComponent = (function () {
 
       _toggleCardSelection(index);
     });
+
+    // Swipe gesture detection for directional card actions (requires swipeActivate passive).
+    // Up = offensive push round; Down = defensive/self effects (or discard if no qualifying passive).
+    // Left/Right are ignored. Uses a one-shot pointerup listener to avoid accumulating window listeners.
+    (function() {
+      var SWIPE_THRESHOLD = 30;
+
+      cardEl.addEventListener('pointerdown', function(e) {
+        if (_mode !== 'combat') return;
+        if (e && e.button != null && e.button !== 0) return;
+
+        var startX = e.clientX;
+        var startY = e.clientY;
+        var pointerId = e.pointerId;
+
+        function onSwipeEnd(ev) {
+          if (ev.pointerId !== pointerId) return;
+          window.removeEventListener('pointerup', onSwipeEnd, true);
+          window.removeEventListener('pointercancel', onSwipeEnd, true);
+
+          if (cardEl.dataset.unaffordable === 'true') return;
+
+          var dx = ev.clientX - startX;
+          var dy = ev.clientY - startY;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < SWIPE_THRESHOLD) return;
+
+          // Determine primary direction (vertical only; ignore horizontal swipes)
+          if (Math.abs(dy) <= Math.abs(dx)) return;
+
+          var direction = dy < 0 ? 'up' : 'down';
+
+          if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleCardSwipe === 'function') {
+            // Mark swipe to suppress the follow-on click event
+            try { cardEl.dataset.lastSwipeTs = String(Date.now()); } catch (e0) {}
+            GoneRogue.handleCardSwipe(index, direction);
+          }
+        }
+
+        window.addEventListener('pointerup', onSwipeEnd, true);
+        window.addEventListener('pointercancel', onSwipeEnd, true);
+      });
+    })();
 
     // Drag handlers for disposal system and commerce
     cardEl.addEventListener('dragstart', function(e) {

@@ -352,6 +352,44 @@ const PassiveItemsSystem = (function() {
       upgrade_path: null,
       stackable: false,
       slot: 'passive_equipment'
+    },
+    AUTO_SEARS: {
+      id: 'auto_sears',
+      name: 'Auto Sears',
+      emoji: '⚙️',
+      description: 'Full auto. Swipe cards to push-resolve them instantly.',
+      trigger_event: TRIGGER_EVENTS.ON_EQUIP,
+      swipeActivate: true,
+      slot: 'passive_equipment',
+      stackable: false,
+      is_active_effect: true,
+      breaks_on_combat: false
+    },
+    BUMP_STOCK: {
+      id: 'bump_stock',
+      name: 'Bump Stock',
+      emoji: '🔫',
+      description: 'Swipe attack cards for immediate push rounds.',
+      trigger_event: TRIGGER_EVENTS.ON_EQUIP,
+      swipeActivate: true,
+      swipeCategories: ['attack', 'interrupt'],
+      slot: 'passive_equipment',
+      stackable: false,
+      is_active_effect: true,
+      breaks_on_combat: false
+    },
+    REDNECK_OBLITERATOR: {
+      id: 'redneck_obliterator',
+      name: 'Redneck Obliterator',
+      emoji: '💥',
+      description: 'Instant resolve on tap. Swipe to push-resolve directionally.',
+      trigger_event: TRIGGER_EVENTS.ON_EQUIP,
+      instantResolve: true,
+      swipeActivate: true,
+      slot: 'passive_equipment',
+      stackable: false,
+      is_active_effect: true,
+      breaks_on_combat: false
     }
   };
 
