@@ -1622,7 +1622,14 @@ var GoneRogue = (function () {
       renderGrid: _renderGrid,
       getPrompt: getPrompt,
       applyDesiredDifficultyTier: _applyDesiredDifficultyTier,
-      updateMobileGrid: (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') ? _updateMobileGrid : null
+      updateMobileGrid: (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') ? _updateMobileGrid : null,
+      // Function-style accessors for FloorTransitionSystem compatibility
+      getFloor: function() { return _floor; },
+      setFloor: function(v) { _floor = v; },
+      setTurn: function(v) { _turn = v; },
+      setLastExitPos: function(v) { _lastExitPos = v; },
+      setSpawnFromLastExitPos: function(v) { _spawnFromLastExitPos = v; },
+      setCurrentInteriorFloorId: function(v) { _currentInteriorFloorId = v; }
     };
   }
   function _exitInteriorFloor() {
