@@ -9407,6 +9407,7 @@ _incrementPityTimers();
       _syncCombatState();
       return result;
     }
+    return { lines: ['[Combat module not loaded]'], prompt: _getPrompt(), stayActive: false };
   }
 
   function _calculateAdvantage(player, enemy, trigger) {
@@ -9453,6 +9454,7 @@ _incrementPityTimers();
       _syncCombatState();
       return result;
     }
+    return { lines: ['[Combat module not loaded]'], prompt: _getPrompt(), stayActive: false };
   }
 
   function _executeMultiCardRound(playerCards) {
@@ -9461,6 +9463,7 @@ _incrementPityTimers();
       _syncCombatState();
       return result;
     }
+    return { lines: ['[Combat module not loaded]'], prompt: _getPrompt(), stayActive: false };
   }
 
   function _executeStrRound(initiator, card) {
@@ -9469,6 +9472,7 @@ _incrementPityTimers();
       _syncCombatState();
       return result;
     }
+    return { lines: ['[Combat module not loaded]'], prompt: _getPrompt(), stayActive: false };
   }
 
   function _playerStrAttack(card) {
@@ -9477,6 +9481,7 @@ _incrementPityTimers();
       _syncCombatState();
       return result;
     }
+    return { lines: ['[Combat module not loaded]'], prompt: _getPrompt(), stayActive: false };
   }
 
   function _enemyStrAttack() {
@@ -9485,6 +9490,7 @@ _incrementPityTimers();
       _syncCombatState();
       return result;
     }
+    return { lines: ['[Combat module not loaded]'], prompt: _getPrompt(), stayActive: false };
   }
 
   function _calculateHit(attacker, defender, advantage) {
@@ -9514,6 +9520,7 @@ _incrementPityTimers();
       _syncCombatState();
       return result;
     }
+    return { lines: [], prompt: _getPrompt(), stayActive: false };
   }
 
   function _showStrCombatUIWithLog(logLines) {
@@ -9522,6 +9529,7 @@ _incrementPityTimers();
       _syncCombatState();
       return result;
     }
+    return { lines: logLines || [], prompt: _getPrompt(), stayActive: false };
   }
 
   function _exitStrCombat(reason) {
@@ -9530,6 +9538,7 @@ _incrementPityTimers();
       _syncCombatState();
       return result;
     }
+    return { lines: ['[Combat module not loaded]'], prompt: _getPrompt(), stayActive: false };
   }
 
   function _triggerCombatFlash() {
