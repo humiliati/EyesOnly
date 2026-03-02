@@ -4584,24 +4584,27 @@ _incrementPityTimers();
     }
   }
 
+  // ── LockedGateSystem context builder ──
+  function _lockedGateCtx() {
+    return {
+      player: _player, grid: _grid, tileMetadata: _tileMetadata,
+      items: _items, impactEffects: _impactEffects,
+      TILES: TILES, rng: _rng,
+      getPrompt: getPrompt, renderGrid: _renderGrid, saveState: _saveState,
+      rebuildWallCache: _rebuildWallCache,
+      getPlayerKeys: _getPlayerKeys, getKeyTier: _getKeyTier,
+      consumeActiveItemIfMatches: _consumeActiveItemIfMatches,
+      consumeKeyFromInventory: _consumeKeyFromInventory,
+      spawnCurrency: _spawnCurrency,
+      handleVentInteraction: _handleVentInteraction,
+      updateMobileGrid: (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') ? _updateMobileGrid : null
+    };
+  }
+
   function _findAdjacentLockedGate() {
-    var dirs = [
-      { dx: 0, dy: -1 },
-      { dx: 1, dy: 0 },
-      { dx: 0, dy: 1 },
-      { dx: -1, dy: 0 }
-    ];
-
-    for (var i = 0; i < dirs.length; i++) {
-      var x = _player.x + dirs[i].dx;
-      var y = _player.y + dirs[i].dy;
-      var key = x + ',' + y;
-      var meta = _tileMetadata[key];
-      if (meta && meta.type === 'locked_gate') {
-        return { x: x, y: y, meta: meta };
-      }
+    if (typeof LockedGateSystem !== 'undefined') {
+      return LockedGateSystem.findAdjacentLockedGate(_lockedGateCtx());
     }
-
     return null;
   }
 
@@ -4621,207 +4624,20 @@ _incrementPityTimers();
   }
 
   function _attemptUnlockLockedGate(gx, gy, meta, opts) {
-    opts = opts || {};
-
-    var required = meta.requiredKey || 'RUSTY_KEY';
-    var accepts = meta.acceptsKeys || null;
-    var playerKeys = _getPlayerKeys();
-
-    // Locked chest supports multiple acceptable keys
-    if (accepts && accepts.length) {
-      var hasAny = false;
-      for (var ai = 0; ai < accepts.length; ai++) {
-        if (playerKeys.indexOf(accepts[ai]) !== -1) {
-          required = accepts[ai];
-          hasAny = true;
-          break;
-        }
-      }
-      if (!hasAny) {
-        return {
-          lines: [
-            (meta.emoji || '🧰') + ' ' + (meta.name || 'LOCKED CHEST'),
-            'LOCKED — NEEDS A KEY',
-            ''],
-          prompt: getPrompt(),
-          stayActive: true
-        };
-      }
-    } else {
-      if (playerKeys.indexOf(required) === -1) {
-        return {
-          lines: [
-            (meta.emoji || '🚪') + ' ' + (meta.name || 'LOCKED DOOR'),
-            'LOCKED — REQUIRES KEY: ' + required,
-            ''],
-          prompt: getPrompt(),
-          stayActive: true
-        };
-      }
+    if (typeof LockedGateSystem !== 'undefined') {
+      return LockedGateSystem.attemptUnlockLockedGate(gx, gy, meta, opts, _lockedGateCtx());
     }
-
-    // Tier-aware key consumption:
-    // Tier 1 (ammo): consume from loose inventory first, then persistent
-    // Tier 2 (gate): consume from active slot if equipped, else loose/persistent
-    // Tier 3 (quest): NEVER consumed by gates — only via NPC turn-in
-    var keyTier = _getKeyTier(required);
-    if (keyTier >= 3) {
-      // Quest keys can't open gates — shouldn't reach here, but guard anyway
-      return {
-        lines: [
-          (meta.emoji || '🚪') + ' ' + (meta.name || 'LOCKED DOOR'),
-          'This lock requires a different key.',
-          ''],
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    if (opts.consumeFromActiveSlot) {
-      _consumeActiveItemIfMatches(required);
-    } else {
-      _consumeKeyFromInventory(required);
-    }
-
-    // If this was a chest, spawn loot before opening
-    if (meta.type === 'locked_chest') {
-      // Basic reward: a little currency + a card roll
-      _spawnCurrency(gx, gy, 12 + Math.floor(_rng() * 10));
-
-      if (typeof CardSystem !== 'undefined') {
-        var baseType = CardSystem.getRandomBaseCard ? CardSystem.getRandomBaseCard() : null;
-        if (baseType && CardSystem.rollCard) {
-          var card = CardSystem.rollCard(baseType);
-          if (card) {
-            _items.push({ x: gx, y: gy, type: 'card', card: card, spawnTime: Date.now(), decayTime: 30000 });
-          }
-        }
-      }
-    }
-
-    // Open the tile
-    _grid[gy][gx] = TILES.EMPTY;
-    delete _tileMetadata[gx + ',' + gy];
-    _rebuildWallCache();
-
-    // POOF EFFECT: Chip's Challenge style gate vanish (💨)
-    try {
-      var poofEffect = { x: gx, y: gy, type: 'poof', time: Date.now(), char: '💨' };
-      _impactEffects.push(poofEffect);
-      setTimeout(function() {
-        var idx = _impactEffects.indexOf(poofEffect);
-        if (idx > -1) _impactEffects.splice(idx, 1);
-      }, 400);
-      // Also show overhead expression for extra oomph
-      if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
-        OverheadAnimator.showGenericExpression(gx, gy, '💨', 800, '#AAAAAA');
-      }
-    } catch (ePoof) { /* visual only, don't break unlock */ }
-
-    // If this was a multi-tile gate (lockedGate with positions array), poof ALL positions
-    try {
-      if (meta.positions && Array.isArray(meta.positions)) {
-        meta.positions.forEach(function(pos) {
-          if (pos.x === gx && pos.y === gy) return; // Already poofed above
-          _grid[pos.y][pos.x] = TILES.EMPTY;
-          delete _tileMetadata[pos.x + ',' + pos.y];
-          var mEffect = { x: pos.x, y: pos.y, type: 'poof', time: Date.now(), char: '💨' };
-          _impactEffects.push(mEffect);
-          setTimeout(function() {
-            var mi = _impactEffects.indexOf(mEffect);
-            if (mi > -1) _impactEffects.splice(mi, 1);
-          }, 400);
-        });
-        _rebuildWallCache();
-      }
-    } catch (eMulti) { /* visual only */ }
-
-    if (typeof TooltipSystem !== 'undefined') {
-      TooltipSystem.show((meta.emoji || '🚪') + ' UNLOCKED', 1500);
-    }
-
-    // Debrief synergy overlap + incinerator flash (key consumed)
-    if (typeof DebriefFeedController !== 'undefined') {
-      var kind = (meta.type === 'locked_chest') ? 'chest' : 'gate';
-      DebriefFeedController.showSynergyOverlay({
-        kind: kind,
-        keyEmoji: '🗝',
-        gateEmoji: (meta.emoji || '🚪')
-      });
-      DebriefFeedController.flashIncinerator({ kind: 'key' });
-    }
-
-    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      _updateMobileGrid();
-    }
-
-    _saveState();
-
-    return {
-      lines: ['UNLOCKED: ' + (meta.emoji || '🚪') + ' ' + (meta.name || 'Door'), ''].concat(_renderGrid()),
-      prompt: getPrompt(),
-      stayActive: true
-    };
+    return { lines: ['GATE SYSTEM UNAVAILABLE'], prompt: getPrompt(), stayActive: true };
   }
 
   /**
    * Handle interaction with interactive items
    */
   function _handleInteraction() {
-    // First check if player is on a vent tile
-    var playerTile = _grid[_player.y][_player.x];
-    if (playerTile === TILES.VENT) {
-      return _handleVentInteraction();
+    if (typeof LockedGateSystem !== 'undefined') {
+      return LockedGateSystem.handleInteraction(_lockedGateCtx());
     }
-
-    // Locked gates/doors (tutorial + occasional chip-style challenge)
-    var locked = _findAdjacentLockedGate();
-    if (locked) {
-      return _attemptUnlockLockedGate(locked.x, locked.y, locked.meta);
-    }
-
-    if (typeof InteractiveItems === 'undefined') {
-      return { lines: ['Nothing to interact with'], prompt: getPrompt(), stayActive: true };
-    }
-
-    // Find nearest interactive item
-    var nearestItem = InteractiveItems.getNearestItem(_player.x, _player.y);
-
-    if (!nearestItem) {
-      return { lines: ['Nothing nearby to interact with'], prompt: getPrompt(), stayActive: true };
-    }
-
-    if (!InteractiveItems.canInteractWith(_player.x, _player.y, nearestItem)) {
-      return { lines: ['Too far away to interact'], prompt: getPrompt(), stayActive: true };
-    }
-
-    // Perform interaction
-    var result = InteractiveItems.interact(nearestItem, _player);
-
-    if (result.success) {
-      // Show overhead animation
-      if (result.animation && typeof OverheadAnimator !== 'undefined') {
-        OverheadAnimator.showExpression(
-          _player.x,
-          _player.y,
-          result.animation.expressionKey,
-          result.animation.duration
-        );
-      }
-
-      // Show tooltip
-      if (result.tooltip && typeof TooltipSystem !== 'undefined') {
-        TooltipSystem.show(result.tooltip.message, result.tooltip.duration);
-      }
-
-      return {
-        lines: ['Interacted with ' + nearestItem.name, '', nearestItem.text],
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    return { lines: ['Cannot interact with that'], prompt: getPrompt(), stayActive: true };
+    return { lines: ['Nothing to interact with'], prompt: getPrompt(), stayActive: true };
   }
 
   // =========================================================================
@@ -7852,267 +7668,50 @@ _incrementPityTimers();
    * Trigger active item usage (called when clicking active slot with inventory closed)
    * Implements ground effects, buffs, healing, etc.
    */
+  // ── ActiveItemSystem context builder ──
+  function _activeItemCtx() {
+    return {
+      player: _player, active: _active, tileMetadata: _tileMetadata, rng: _rng,
+      getPrompt: getPrompt, renderGrid: _renderGrid,
+      findAdjacentLockedGate: _findAdjacentLockedGate,
+      attemptUnlockLockedGate: _attemptUnlockLockedGate,
+      electrifyWater: _electrifyWater,
+      updateMobileGrid: (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') ? _updateMobileGrid : null
+    };
+  }
+
   function triggerActiveItem() {
-    if (typeof GAMESTATE === 'undefined') {
-      return {
-        lines: ['GAMESTATE UNAVAILABLE'],
-        prompt: getPrompt(),
-        stayActive: true
-      };
+    if (typeof ActiveItemSystem !== 'undefined') {
+      return ActiveItemSystem.triggerActiveItem(_activeItemCtx());
     }
-
-    var activeItem = GAMESTATE.getActiveItem();
-    if (!activeItem) {
-      return {
-        lines: ['NO ACTIVE ITEM', 'Equip an item from inventory first'],
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    // Keys: first applicable encounter = adjacent locked gate
-    if (activeItem.type === 'key') {
-      var locked = _findAdjacentLockedGate();
-      if (locked) {
-        return _attemptUnlockLockedGate(locked.x, locked.y, locked.meta, { consumeFromActiveSlot: true });
-      }
-
-      return {
-        lines: ['🗝 NO LOCK IN RANGE', 'Stand next to a door/chest to use a key.', ''].concat(_renderGrid()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    // Determine targeting: player tile + adjacent tiles
-    var targetTiles = [
-      { x: _player.x, y: _player.y }, // Player tile
-      { x: _player.x + 1, y: _player.y }, // Right
-      { x: _player.x - 1, y: _player.y }, // Left
-      { x: _player.x, y: _player.y + 1 }, // Down
-      { x: _player.x, y: _player.y - 1 }  // Up
-    ];
-
-    // Resolve item-to-ground interaction
-    var result = _resolveGroundInteraction(activeItem, targetTiles);
-
-    // Update mobile grid if active
-    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      _updateMobileGrid();
-    }
-
-    return result;
+    return { lines: ['NO ACTIVE ITEM'], prompt: getPrompt(), stayActive: true };
   }
 
   /**
    * Use active item at a specific grid target (drag/drop targeting)
    */
   function applyNonCombatCardAt(cardId, targetX, targetY) {
-    if (!_active) return false;
-
-    if (typeof GoneRogueDataRegistry === 'undefined' || !GoneRogueDataRegistry.getCard) {
-      return false;
+    if (typeof ActiveItemSystem !== 'undefined') {
+      return ActiveItemSystem.applyNonCombatCardAt(cardId, targetX, targetY, _activeItemCtx());
     }
-
-    var card = GoneRogueDataRegistry.getCard(cardId);
-    if (!card || card._missing) {
-      if (typeof TooltipSystem !== 'undefined') {
-        TooltipSystem.showPersistent('❌ Missing card: ' + cardId, 1200);
-      }
-      return false;
-    }
-
-    // v0: ground effects only (if defined)
-    if ((card.targetType === 'ground' || card.targetType === 'area') && card.groundEffectId) {
-      if (typeof GroundEffects !== 'undefined' && GroundEffects.setGroundEffect) {
-        GroundEffects.setGroundEffect(targetX, targetY, card.groundEffectId.replace('EFF-', '')); // best-effort mapping
-        if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-          _updateMobileGrid();
-        }
-        if (typeof TooltipSystem !== 'undefined') {
-          TooltipSystem.showPersistent('🟢 DEPLOYED: ' + (card.emoji || '🃏') + ' ' + card.name, 900);
-        }
-        return true;
-      }
-    }
-
-    // v0 fallback: preview-only
-    if (typeof TooltipSystem !== 'undefined') {
-      TooltipSystem.showPersistent('ℹ️ ' + (card.emoji || '🃏') + ' ' + card.name + ' (no non-combat resolver yet)', 1200);
-    }
-
     return false;
   }
 
   function useActiveItemAt(targetX, targetY) {
-    if (!_active) return;
-    if (typeof GAMESTATE === 'undefined') return;
-
-    var activeItem = GAMESTATE.getActiveItem ? GAMESTATE.getActiveItem() : null;
-    if (!activeItem) {
-      return {
-        lines: ['NO ACTIVE ITEM', 'Equip an item first', ''].concat(_renderGrid()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
+    if (typeof ActiveItemSystem !== 'undefined') {
+      return ActiveItemSystem.useActiveItemAt(targetX, targetY, _activeItemCtx());
     }
-
-    // Keys: resolve lock near target, but enforce player proximity
-    if (activeItem.type === 'key') {
-      var lock = _findLockedGateNearTarget(targetX, targetY, 1);
-      if (!lock) {
-        return {
-          lines: ['NO LOCK AT TARGET', 'Drag onto a door/chest tile to use a key.', ''].concat(_renderGrid()),
-          prompt: getPrompt(),
-          stayActive: true
-        };
-      }
-
-      var dist = Math.abs(lock.x - _player.x) + Math.abs(lock.y - _player.y);
-      if (dist > 1) {
-        return {
-          lines: ['TOO FAR', 'Stand next to the lock to use a key.', ''].concat(_renderGrid()),
-          prompt: getPrompt(),
-          stayActive: true
-        };
-      }
-
-      return _attemptUnlockLockedGate(lock.x, lock.y, lock.meta, { consumeFromActiveSlot: true });
-    }
-
-    // Non-key items: fall back to existing "first applicable" targeting
-    return triggerActiveItem();
+    return { lines: ['NO ACTIVE ITEM'], prompt: getPrompt(), stayActive: true };
   }
 
   function _findLockedGateNearTarget(tx, ty, radius) {
-    radius = (typeof radius === 'number') ? radius : 1;
-    for (var dy = -radius; dy <= radius; dy++) {
-      for (var dx = -radius; dx <= radius; dx++) {
-        var x = tx + dx;
-        var y = ty + dy;
-        var key = x + ',' + y;
-        var meta = _tileMetadata[key];
-        if (meta && meta.type === 'locked_gate') {
-          return { x: x, y: y, meta: meta };
-        }
-      }
+    if (typeof ActiveItemSystem !== 'undefined') {
+      return ActiveItemSystem.findLockedGateNearTarget(tx, ty, radius, { tileMetadata: _tileMetadata });
     }
     return null;
   }
 
-  /**
-   * Resolve interaction between active item and ground tiles
-   * @param {Object} item - Active item
-   * @param {Array} tiles - Array of {x, y} target tiles
-   * @returns {Object} - Command result
-   */
-  function _resolveGroundInteraction(item, tiles) {
-    if (!item || !tiles || typeof GroundEffects === 'undefined') {
-      return {
-        lines: ['CANNOT USE ITEM HERE'],
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    var itemName = item.name ? item.name.toLowerCase() : '';
-    var messages = [];
-    var effectApplied = false;
-
-    // LIGHTER: Ignite flammable surfaces (oil)
-    if (itemName.indexOf('lighter') !== -1 || itemName.indexOf('🔥') !== -1) {
-      for (var i = 0; i < tiles.length; i++) {
-        var tile = tiles[i];
-        if (tile.x < 0 || tile.x >= GRID_WIDTH || tile.y < 0 || tile.y >= GRID_HEIGHT) continue;
-
-        var groundEffect = GroundEffects.getGroundEffect(tile.x, tile.y);
-        if (groundEffect && groundEffect.canIgnite) {
-          // Ignite oil
-          GroundEffects.igniteOil(tile.x, tile.y);
-          messages.push('🔥 IGNITED OIL at (' + tile.x + ',' + tile.y + ')');
-          effectApplied = true;
-        } else if (!groundEffect || groundEffect.type === 'normal') {
-          // Create small fire on empty tile
-          GroundEffects.setGroundEffect(tile.x, tile.y, 'FIRE');
-          messages.push('🔥 LIT FIRE at (' + tile.x + ',' + tile.y + ')');
-          effectApplied = true;
-        }
-      }
-
-      if (!effectApplied) {
-        messages.push('💡 LIGHTER: No flammable surfaces nearby');
-      }
-    }
-    // WATER BOTTLE: Extinguish fire, create water
-    else if (itemName.indexOf('water') !== -1 || itemName.indexOf('bottle') !== -1 || itemName.indexOf('💧') !== -1) {
-      for (var i = 0; i < tiles.length; i++) {
-        var tile = tiles[i];
-        if (tile.x < 0 || tile.x >= GRID_WIDTH || tile.y < 0 || tile.y >= GRID_HEIGHT) continue;
-
-        var groundEffect = GroundEffects.getGroundEffect(tile.x, tile.y);
-        if (groundEffect && (groundEffect.type === 'FIRE' || groundEffect.type === 'OIL_IGNITED')) {
-          // Extinguish fire
-          GroundEffects.extinguishFire(tile.x, tile.y);
-          messages.push('💧 EXTINGUISHED FIRE at (' + tile.x + ',' + tile.y + ')');
-          effectApplied = true;
-        } else if (!groundEffect || groundEffect.type === 'normal') {
-          // Create water
-          GroundEffects.setGroundEffect(tile.x, tile.y, 'WATER');
-          messages.push('💧 WATER SPILLED at (' + tile.x + ',' + tile.y + ')');
-          effectApplied = true;
-        }
-      }
-
-      if (!effectApplied) {
-        messages.push('💧 WATER: No fires to extinguish');
-      }
-    }
-    // TAZER/SHOCK: Electrify conductive surfaces (water, rail)
-    else if (itemName.indexOf('tazer') !== -1 || itemName.indexOf('taser') !== -1 ||
-             itemName.indexOf('shock') !== -1 || itemName.indexOf('⚡') !== -1) {
-      for (var i = 0; i < tiles.length; i++) {
-        var tile = tiles[i];
-        if (tile.x < 0 || tile.x >= GRID_WIDTH || tile.y < 0 || tile.y >= GRID_HEIGHT) continue;
-
-        var groundEffect = GroundEffects.getGroundEffect(tile.x, tile.y);
-        if (groundEffect && (groundEffect.type === 'WATER' || groundEffect.conductive)) {
-          // Electrify water (spread to adjacent water tiles)
-          _electrifyWater(tile.x, tile.y, 2); // 2 tile radius spread
-          messages.push('⚡ ELECTRIFIED WATER at (' + tile.x + ',' + tile.y + ')');
-          effectApplied = true;
-        }
-      }
-
-      if (!effectApplied) {
-        messages.push('⚡ TAZER: No conductive surfaces nearby');
-      }
-    }
-    // HEALING ITEMS: Restore HP
-    else if (itemName.indexOf('medkit') !== -1 || itemName.indexOf('bandage') !== -1 ||
-             itemName.indexOf('heal') !== -1 || itemName.indexOf('💊') !== -1) {
-      var healAmount = 20 + Math.floor(_rng() * 11); // 20-30 HP
-      _player.hp = Math.min(_player.hp + healAmount, _player.maxHp);
-      messages.push('💊 HEALED: +' + healAmount + ' HP');
-      messages.push('HP: ' + _player.hp + '/' + _player.maxHp);
-      effectApplied = true;
-    }
-    // DEFAULT: Item has passive effect or no ground interaction
-    else {
-      messages.push('📦 ' + item.emoji + ' ' + item.name);
-      messages.push('This item provides passive benefits while equipped');
-      effectApplied = true;
-    }
-
-    if (messages.length === 0) {
-      messages.push('ITEM USED: ' + item.name);
-    }
-
-    return {
-      lines: messages.concat(['']).concat(_renderGrid()),
-      prompt: getPrompt(),
-      stayActive: true
-    };
-  }
+  function _resolveGroundInteraction(item, tiles) { /* delegated to ActiveItemSystem */ }
 
   /**
    * Electrify water tiles in radius (for tazer effect)
