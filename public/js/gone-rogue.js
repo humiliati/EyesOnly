@@ -3292,9 +3292,24 @@ _incrementPityTimers();
     if (typeof RenderingUI !== 'undefined') { RenderingUI.updateSeedDisplay(_currentSeedPhrase, _difficultyTier); return; }
   }
 
+  // ── NpcGateSystem context builder ──
+  function _npcGateCtx() {
+    return {
+      player: _player, grid: _grid, npcs: _npcs,
+      tileMetadata: _tileMetadata, TILES: TILES,
+      turn: _turn,
+      npcShowEmoji: _npcShowEmoji, npcSay: _npcSay,
+      enterStrCombat: function(enemy, trigger) {
+        if (!_strCombatActive) return _enterStrCombat(enemy, trigger);
+      },
+      get lastDoorHintAtMs() { return _lastDoorHintAtMs; },
+      set lastDoorHintAtMs(v) { _lastDoorHintAtMs = v; }
+    };
+  }
+
   function _getNpcById(npcId) {
-    for (var i = 0; i < _npcs.length; i++) {
-      if (_npcs[i].id === npcId) return _npcs[i];
+    if (typeof NpcGateSystem !== 'undefined') {
+      return NpcGateSystem.getNpcById(npcId, _npcGateCtx());
     }
     return null;
   }
@@ -3312,52 +3327,15 @@ _incrementPityTimers();
   }
 
   function _clearNpcGateZones(npcId) {
-    for (var k in _tileMetadata) {
-      if (!_tileMetadata.hasOwnProperty(k)) continue;
-      var md = _tileMetadata[k];
-      if (md && (md.type === 'npc_gate_warning' || md.type === 'npc_gate_trigger') && md.npcId === npcId) {
-        delete _tileMetadata[k];
-      }
+    if (typeof NpcGateSystem !== 'undefined') {
+      return NpcGateSystem.clearNpcGateZones(npcId, _npcGateCtx());
     }
   }
 
   function _startNpcGateCombat(npc) {
-    if (!npc) return;
-
-    // Combat initialize
-    _npcShowEmoji(npc, '🥊', 900);
-
-    // Print a short line (avoid spam)
-    if (_turn - npc.state.lastTalkTurn > 6) {
-      npc.state.lastTalkTurn = _turn;
-      if (npc.dialogues && npc.dialogues.length) {
-        _npcSay(npc, npc.dialogues[0]);
-      } else {
-        _npcSay(npc, npc.emoji + ' ' + npc.name + ': Spar?');
-      }
+    if (typeof NpcGateSystem !== 'undefined') {
+      return NpcGateSystem.startNpcGateCombat(npc, _npcGateCtx());
     }
-
-    // Create a combat proxy using enemy-shaped stats
-    var enemy = {
-      x: npc.x,
-      y: npc.y,
-      emoji: npc.emoji,
-      name: npc.name,
-      hp: 18,
-      maxHp: 18,
-      str: 4,
-      dex: 2,
-      initiative: 0,
-      awareness: 0,
-      orientation: npc.direction || 'south',
-      sightRange: 0,
-      dead: false,
-      isTreasureGoblin: false,
-      _npcGateId: npc.id,
-      _npcGateType: (npc.gate && npc.gate.type) ? npc.gate.type : 'friendly'
-    };
-
-    _enterStrCombat(enemy, 'collision');
   }
 
   /**
@@ -4450,137 +4428,30 @@ _incrementPityTimers();
   /**
    * Handle vent interaction and bypass attempt
    */
-  function _handleVentInteraction() {
-    // Find vent at player position
-    var vent = null;
-    for (var i = 0; i < _vents.length; i++) {
-      if (_vents[i].x === _player.x && _vents[i].y === _player.y) {
-        vent = _vents[i];
-        break;
-      }
-    }
-
-    if (!vent || vent.used) {
-      return { lines: ['This vent is no longer functional'], prompt: getPrompt(), stayActive: true };
-    }
-
-    // Mark as discovered
-    if (!vent.discovered) {
-      vent.discovered = true;
-      return {
-        lines: [
-          'You found a vent!',
-          '',
-          'Quality: ' + (vent.quality === 'rusty' ? 'Rusty (Lower Success)' : 'Standard'),
-          'Destination: Floor ' + (_floor + 2),
-          '',
-          'Use INTERACT again to attempt bypass',
-          'or move away to continue normally'
-        ],
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    // Calculate bypass success chance
-    var bypassChance = 0.75; // Base 75%
-    bypassChance -= (_ventUseCount * 0.05); // -5% per prior vent use
-    bypassChance -= (_floor * 0.01); // -1% per floor depth
-
-    // Rusty vents have worse odds
-    if (vent.quality === 'rusty') {
-      bypassChance -= 0.05;
-    }
-
-    // Difficulty tier affects success rate
-    bypassChance -= (_difficultyTier - 1) * 0.05; // -5% per tier above 1
-
-    // Clamp to minimum 25%
-    bypassChance = Math.max(0.25, bypassChance);
-
-    // Attempt bypass
-    var success = _rng() < bypassChance;
-    vent.used = true;
-    _ventUseCount++;
-
-    if (success) {
-      // Success: Skip to floor N+2
-      var lines = [
-        'VENT BYPASS SUCCESSFUL!',
-        '',
-        'You navigate through the vent system.',
-        'Emerging on floor ' + (_floor + 2) + '...',
-        '',
-        'Floor ' + (_floor + 1) + ' cleared automatically (50% XP awarded)'
-      ];
-
-      // Award 50% XP for skipped floor
-      _awardSkippedFloorXP();
-
-      // Advance floor by 2
-      _floor++;
-
-      // Remove the vent tile
-      _grid[_player.y][_player.x] = TILES.EMPTY;
-
-      // Generate next floor
-      setTimeout(function() {
-        _advanceFloor();
-      }, 100);
-
-      return { lines: lines, prompt: getPrompt(), stayActive: true };
-    } else {
-      // Failure: Backtrack 3 floors with penalty enemies
-      var backtrackFloors = Math.min(3, _floor - 1);
-      var targetFloor = Math.max(1, _floor - backtrackFloors);
-
-      var lines = [
-        'VENT MALFUNCTION!',
-        '',
-        'The vent collapses behind you!',
-        'You tumble backwards through the system...',
-        '',
-        'Landed on floor ' + targetFloor,
-        'WARNING: Penalty enemies active!'
-      ];
-
-      // Mark floors as penalty
-      for (var i = 0; i < backtrackFloors; i++) {
-        var penaltyFloor = targetFloor + i;
-        if (_penaltyFloors.indexOf(penaltyFloor) === -1) {
-          _penaltyFloors.push(penaltyFloor);
-        }
-      }
-
-      // Backtrack floor
-      _floor = targetFloor - 1; // Will be incremented by advanceFloor
-
-      // Player takes minor damage from the fall
-      _player.hp = Math.max(1, _player.hp - 2);
-
-      // Remove the vent tile
-      _grid[_player.y][_player.x] = TILES.EMPTY;
-
-      // Generate penalty floor
-      setTimeout(function() {
-        _advanceFloor();
-      }, 100);
-
-      return { lines: lines, prompt: getPrompt(), stayActive: true };
-    }
+  // ── VentSystem context builder ──
+  function _ventCtx() {
+    return {
+      player: _player, grid: _grid, vents: _vents,
+      penaltyFloors: _penaltyFloors, TILES: TILES, rng: _rng,
+      getPrompt: getPrompt, advanceFloor: _advanceFloor,
+      get floor() { return _floor; },
+      set floor(v) { _floor = v; },
+      get ventUseCount() { return _ventUseCount; },
+      set ventUseCount(v) { _ventUseCount = v; },
+      get difficultyTier() { return _difficultyTier; }
+    };
   }
 
-  /**
-   * Award XP for skipped floor
-   */
-  function _awardSkippedFloorXP() {
-    // Calculate XP based on skipped floor
-    var baseXP = 50 + (_floor * 10);
-    var skippedXP = Math.floor(baseXP * 0.5);
+  function _handleVentInteraction() {
+    if (typeof VentSystem !== 'undefined') {
+      return VentSystem.handleVentInteraction(_ventCtx());
+    }
+    return { lines: ['VENT SYSTEM UNAVAILABLE'], prompt: getPrompt(), stayActive: true };
+  }
 
-    // Award to gamestate if available
-    if (typeof GAMESTATE !== 'undefined' && GAMESTATE.awardExperience) {
-      GAMESTATE.awardExperience(skippedXP);
+  function _awardSkippedFloorXP() {
+    if (typeof VentSystem !== 'undefined') {
+      return VentSystem.awardSkippedFloorXP(_floor);
     }
   }
 
@@ -6832,42 +6703,9 @@ _incrementPityTimers();
    * Check if position is walkable
    */
   function _maybeHintNearbyDoors() {
-    try {
-      if (typeof OverheadAnimator === 'undefined') return;
-      var now = Date.now();
-      if (now - _lastDoorHintAtMs < 350) return;
-
-      // Scan a small radius around player for door tiles/metadata
-      for (var dy = -2; dy <= 2; dy++) {
-        for (var dx = -2; dx <= 2; dx++) {
-          var x = _player.x + dx;
-          var y = _player.y + dy;
-          if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) continue;
-
-          var tile = _grid[y] ? _grid[y][x] : null;
-          if (tile !== TILES.EXIT && tile !== TILES.DOOR) continue;
-
-          var md = _tileMetadata[x + ',' + y];
-          var kind = null;
-          if (md && md.type === 'door') {
-            kind = md.doorKind;
-          } else if (md && md.type === 'building_door') {
-            kind = 'building';
-          } else if (tile === TILES.EXIT) {
-            kind = 'forward';
-          }
-          if (!kind) continue;
-
-          var emoji = (kind === 'building') ? '↔️' :
-                      (kind === 'back') ? '↩️' :
-                      (kind === 'forward') ? '↪️' :
-                      (kind === 'interior_exit') ? '↩️' : '↕️';
-          OverheadAnimator.showGenericExpression(x, y, emoji, 650);
-          _lastDoorHintAtMs = now;
-          return;
-        }
-      }
-    } catch (e0) {}
+    if (typeof NpcGateSystem !== 'undefined') {
+      return NpcGateSystem.maybeHintNearbyDoors(_npcGateCtx());
+    }
   }
 
   function isWalkable(x, y) {
