@@ -1176,1056 +1176,17 @@ var GoneRogue = (function () {
    * Uses TutorialFloors module for designer-friendly level definitions
    */
   function _generateContrivedTutorialFloor() {
-    if (typeof TutorialFloors === 'undefined') {
-      console.warn('[TutorialFloors] Module not loaded, falling back to procedural generation');
-      return;
+    if (typeof TutorialFloorGen !== 'undefined') {
+      return TutorialFloorGen.generateContrivedTutorialFloor(_tutorialFloorGenCtx());
     }
-
-    var layout = TutorialFloors.getFloorLayout(_floor);
-    if (!layout) {
-      console.warn('[TutorialFloors] No layout found for floor ' + _floor);
-      return;
-    }
-
-    console.log('[TutorialFloors] Generating contrived floor ' + _floor + ': ' + layout.name);
-
-    // Generate floor data from authored layout (do not shift full-grid templates).
-    // Continuity is handled by spawning near the correct door.
-    var floorData = TutorialFloors.generateContrivedFloor(layout);
-
-    // Apply grid
-    _grid = floorData.grid;
-
-    // Place player: continuity via door-consistent spawning (no template shifting).
-    _player.x = floorData.player.x;
-    _player.y = floorData.player.y;
-
-    // Save spawn mode so later adjacency logic can use the correct anchor door.
-    var _doorTransitionMode = _spawnFromLastExitPos; // 'advance' | 'retreat' | null
-
-    // If we just used a door, spawn ON the corresponding door tile, but protect against
-    // immediate re-trigger until the player steps off and returns.
-    try {
-      if (_spawnFromLastExitPos) {
-        var targetDoorKind = (_spawnFromLastExitPos === 'retreat') ? 'forward' : 'back';
-        var doorX = (targetDoorKind === 'forward') ? floorData.exit.x : floorData.player.x;
-        var doorY = (targetDoorKind === 'forward') ? floorData.exit.y : floorData.player.y;
-
-        _player.x = doorX;
-        _player.y = doorY;
-        _doorSpawnProtect = { x: doorX, y: doorY };
-      }
-    } catch (e0) {}
-
-    _spawnFromLastExitPos = null;
-    _ensurePlayerOnEmptyTile();
-
-    // Place exit (forward)
-    var exitX = floorData.exit.x;
-    var exitY = floorData.exit.y;
-
-    function _findNearestEmptyDoorSpot(x0, y0, avoidX, avoidY, minDist) {
-      var best = null;
-      for (var r = 0; r <= 12; r++) {
-        for (var dy = -r; dy <= r; dy++) {
-          for (var dx = -r; dx <= r; dx++) {
-            var tx = x0 + dx;
-            var ty = y0 + dy;
-            if (tx <= 0 || tx >= GRID_WIDTH - 1 || ty <= 0 || ty >= GRID_HEIGHT - 1) continue;
-            if (!_grid[ty] || _grid[ty][tx] !== TILES.EMPTY) continue;
-            if (typeof avoidX === 'number' && typeof avoidY === 'number') {
-              var dist = Math.abs(tx - avoidX) + Math.abs(ty - avoidY);
-              if (dist < (minDist || 0)) continue;
-            }
-            best = { x: tx, y: ty };
-            return best;
-          }
-        }
-      }
-      return best;
-    }
-
-    // If exit coords landed on a wall/obstacle (e.g. after shift), carve it to empty.
-    // Tutorial floors are authored; we prefer deterministic doors over relocation.
-    if (exitX <= 0) exitX = 1;
-    if (exitX >= GRID_WIDTH - 1) exitX = GRID_WIDTH - 2;
-    if (exitY <= 0) exitY = 1;
-    if (exitY >= GRID_HEIGHT - 1) exitY = GRID_HEIGHT - 2;
-    if (_grid[exitY]) _grid[exitY][exitX] = TILES.EMPTY;
-
-    _grid[exitY][exitX] = TILES.EXIT;
-    _tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'forward' };
-
-    // If player spawned too close to the forward exit, move them (and entry door) away.
-    // This prevents the "spawn next to next-floor door" stacking bug on floor 2.
-    // Skip this for retreat: the player SHOULD be near the exit when returning.
-    if (_doorTransitionMode !== 'retreat') {
-      try {
-        var distSpawnExit = Math.abs(_player.x - exitX) + Math.abs(_player.y - exitY);
-        if (distSpawnExit <= 2) {
-          var sx0 = _player.x;
-          var sy0 = _player.y;
-          var moved = false;
-          for (var r = 1; r <= 10 && !moved; r++) {
-            for (var dy = -r; dy <= r && !moved; dy++) {
-              for (var dx = -r; dx <= r && !moved; dx++) {
-                var tx = sx0 + dx;
-                var ty = sy0 + dy;
-                if (tx <= 0 || tx >= GRID_WIDTH - 1 || ty <= 0 || ty >= GRID_HEIGHT - 1) continue;
-                if (!_grid[ty] || _grid[ty][tx] !== TILES.EMPTY) continue;
-                var d2 = Math.abs(tx - exitX) + Math.abs(ty - exitY);
-                if (d2 >= 4) {
-                  _player.x = tx;
-                  _player.y = ty;
-                  moved = true;
-                }
-              }
-            }
-          }
-        }
-      } catch (e0) {}
-    }
-
-    // Mark entry/return door at the entry point, but DO NOT spawn the player on top of it.
-    // (player glyph hides the door tile, making it look like there is only one door).
-    var backX = floorData.player.x;
-    var backY = floorData.player.y;
-
-    // Back door must always exist. Clamp + carve to empty (deterministic).
-    if (backX <= 0) backX = 1;
-    if (backX >= GRID_WIDTH - 1) backX = GRID_WIDTH - 2;
-    if (backY <= 0) backY = 1;
-    if (backY >= GRID_HEIGHT - 1) backY = GRID_HEIGHT - 2;
-    if (_grid[backY]) _grid[backY][backX] = TILES.EMPTY;
-
-    function _tryMoveBackDoorAwayFrom(x0, y0, avoidX, avoidY, minDist) {
-      var moved = false;
-      for (var r = 1; r <= 6 && !moved; r++) {
-        for (var dy = -r; dy <= r && !moved; dy++) {
-          for (var dx = -r; dx <= r && !moved; dx++) {
-            var tx = x0 + dx;
-            var ty = y0 + dy;
-            if (tx <= 0 || tx >= GRID_WIDTH - 1 || ty <= 0 || ty >= GRID_HEIGHT - 1) continue;
-            if (!_grid[ty] || _grid[ty][tx] !== TILES.EMPTY) continue;
-
-            // Avoid placing the back door under visual clutter (trees/buildings overlays)
-            var blocked = false;
-            if (_forestBuildings && _forestBuildings.length) {
-              for (var bi = 0; bi < _forestBuildings.length; bi++) {
-                if (_forestBuildings[bi].x === tx && _forestBuildings[bi].y === ty) { blocked = true; break; }
-              }
-            }
-            if (blocked) continue;
-
-            var dist = Math.abs(tx - avoidX) + Math.abs(ty - avoidY);
-            if (dist >= (minDist || 0)) {
-              backX = tx;
-              backY = ty;
-              moved = true;
-            }
-          }
-        }
-      }
-      return moved;
-    }
-
-    // If spawn overlaps the forward exit, push the back door to a nearby empty tile
-    if (backX === exitX && backY === exitY) {
-      _tryMoveBackDoorAwayFrom(backX, backY, exitX, exitY, 1);
-    }
-
-    // If back door is too close to forward exit (stacked/adjacent confusion), separate them.
-    if (Math.abs(backX - exitX) + Math.abs(backY - exitY) <= 2) {
-      _tryMoveBackDoorAwayFrom(backX, backY, exitX, exitY, 4);
-    }
-
-    _grid[backY][backX] = TILES.DOOR;
-    _tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
-
-    // Spawn player adjacent to the door they just came through.
-    // On retreat: anchor near the forward exit (so the player is close to where they left).
-    // On advance/first-visit: anchor near the back door (so the return door is visible).
-    try {
-      var _anchorX = (_doorTransitionMode === 'retreat') ? exitX : backX;
-      var _anchorY = (_doorTransitionMode === 'retreat') ? exitY : backY;
-      var _avoidX  = (_doorTransitionMode === 'retreat') ? backX  : exitX;
-      var _avoidY  = (_doorTransitionMode === 'retreat') ? backY  : exitY;
-
-      var spawnChoices = [
-        { x: _anchorX - 1, y: _anchorY },
-        { x: _anchorX + 1, y: _anchorY },
-        { x: _anchorX, y: _anchorY - 1 },
-        { x: _anchorX, y: _anchorY + 1 }
-      ];
-
-      var picked = null;
-      for (var si = 0; si < spawnChoices.length; si++) {
-        var s = spawnChoices[si];
-        if (s.x <= 0 || s.x >= GRID_WIDTH - 1 || s.y <= 0 || s.y >= GRID_HEIGHT - 1) continue;
-        if (!_grid[s.y] || _grid[s.y][s.x] !== TILES.EMPTY) continue;
-        if (Math.abs(s.x - _avoidX) + Math.abs(s.y - _avoidY) <= 2) continue;
-        picked = s;
-        break;
-      }
-
-      if (picked) {
-        _player.x = picked.x;
-        _player.y = picked.y;
-      }
-    } catch (e0) {}
-
-    // Place buildings (visual overlay)
-    _forestBuildings = [];
-    floorData.buildings.forEach(function(building) {
-      // Never overwrite/cover door tiles
-      if ((building.x === exitX && building.y === exitY) || (building.x === backX && building.y === backY)) {
-        return;
-      }
-      _grid[building.y][building.x] = TILES.WALL; // Impassable
-      _forestBuildings.push({ x: building.x, y: building.y, emoji: building.emoji });
-    });
-
-    // Re-assert door tiles after any template/building mutations
-    _grid[exitY][exitX] = TILES.EXIT;
-    _tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'forward' };
-    _grid[backY][backX] = TILES.DOOR;
-    _tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
-
-    // Place decorations (visual overlay, walkable)
-    floorData.decorations.forEach(function(deco) {
-      if ((deco.x === exitX && deco.y === exitY) || (deco.x === backX && deco.y === backY)) return;
-      _forestBuildings.push({ x: deco.x, y: deco.y, emoji: deco.emoji });
-    });
-
-    // Re-assert doors again after decorations too (decor overlays can visually hide doors; metadata must remain stable)
-    _grid[exitY][exitX] = TILES.EXIT;
-    _tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'forward' };
-    _grid[backY][backX] = TILES.DOOR;
-    _tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
-
-    // Ensure no visual overlay (buildings/decorations) sits on top of a door tile.
-    try {
-      if (_forestBuildings && _forestBuildings.length) {
-        _forestBuildings = _forestBuildings.filter(function(b) {
-          if (!b) return false;
-          return !((b.x === exitX && b.y === exitY) || (b.x === backX && b.y === backY));
-        });
-      }
-    } catch (e00) {}
-
-    // Ensure no entities/breakables/items sit on door tiles either (they render above tiles and can hide doors).
-    try {
-      if (Array.isArray(_breakables)) {
-        _breakables = _breakables.filter(function(bb) { return bb && !((bb.x === exitX && bb.y === exitY) || (bb.x === backX && bb.y === backY)); });
-      }
-    } catch (e01) {}
-    try {
-      if (Array.isArray(_items)) {
-        _items = WorldItems.filterFloorItems(function(it) { return it && !((it.x === exitX && it.y === exitY) || (it.x === backX && it.y === backY)); });
-      }
-    } catch (e02) {}
-    try {
-      if (Array.isArray(_enemies)) {
-        _enemies = _enemies.filter(function(en) { return en && !((en.x === exitX && en.y === exitY) || (en.x === backX && en.y === backY)); });
-      }
-    } catch (e03) {}
-
-    // If the player is currently standing on the back door, show a one-shot hint so it isn't "invisible" under the player glyph.
-    try {
-      if (_player && _player.x === backX && _player.y === backY && typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
-        OverheadAnimator.showGenericExpression(backX, backY, '↩️', 900);
-      }
-    } catch (e0) {}
-
-    // Place breakables
-    floorData.breakables.forEach(function(breakable) {
-      _breakables.push({
-        x: breakable.x,
-        y: breakable.y,
-        hp: breakable.hp,
-        maxHp: breakable.hp,
-        glyph: TILES.BREAKABLE,
-        destroyedGlyph: TILES.DEBRIS,
-        emoji: breakable.emoji,
-        name: breakable.name,
-        tag: 'tutorial_breakable_' + _breakables.length,
-        drops: breakable.drops
-      });
-    });
-
-    // Place tutorial gate (floor 1)
-    if (floorData.tutorialGate) {
-      floorData.tutorialGate.positions.forEach(function(pos) {
-        _breakables.push({
-          x: pos.x,
-          y: pos.y,
-          hp: floorData.tutorialGate.hp,
-          maxHp: floorData.tutorialGate.hp,
-          glyph: TILES.BREAKABLE,
-          destroyedGlyph: TILES.DEBRIS,
-          emoji: floorData.tutorialGate.emoji,
-          name: floorData.tutorialGate.name,
-          tag: 'tutorial_gate_' + pos.x + '_' + pos.y
-        });
-      });
-
-      // Place tutorial pickups behind gate
-      if (floorData.tutorialPickups) {
-        floorData.tutorialPickups.forEach(function(pickup) {
-          if (pickup.type === 'currency') {
-            _currencies.push({
-              x: pickup.x,
-              y: pickup.y,
-              amount: pickup.amount,
-              collected: false
-            });
-          } else if (pickup.type === 'card' && pickup.guaranteed) {
-            // Place guaranteed card pickup
-            _items.push({
-              x: pickup.x,
-              y: pickup.y,
-              type: 'card',
-              card: 'strike', // Default tutorial card
-              collected: false
-            });
-          }
-        });
-      }
-    }
-
-    // Place locked gate (floor 2)
-    // Implemented as a wall tile with metadata so it renders as a door and can be unlocked via INTERACT.
-    if (floorData.lockedGate) {
-      floorData.lockedGate.positions.forEach(function(pos) {
-        _grid[pos.y][pos.x] = TILES.WALL; // blocked until unlocked
-
-        var k = pos.x + ',' + pos.y;
-        var req = (floorData.lockedGate.requiredKey || floorData.lockedGate.requiresKey || 'RUSTY_KEY');
-        req = ('' + req).toUpperCase().replace(/[^A-Z0-9_]/g, '_');
-
-        _tileMetadata[k] = {
-          type: 'locked_gate',
-          requiredKey: req,
-          emoji: (floorData.lockedGate.emoji || '🚪'),
-          name: (floorData.lockedGate.name || 'Locked Door'),
-          positions: floorData.lockedGate.positions // multi-tile reference for poof effect
-        };
-      });
-    }
-
-    if (floorData.keyBreakable) {
-      var keyObj = floorData.keyBreakable;
-      _breakables.push({
-        x: keyObj.x,
-        y: keyObj.y,
-        hp: keyObj.hp,
-        maxHp: keyObj.hp,
-        glyph: TILES.BREAKABLE,
-        destroyedGlyph: TILES.DEBRIS,
-        emoji: keyObj.emoji,
-        name: keyObj.name,
-        tag: 'key_breakable',
-        drops: keyObj.drops
-      });
-    }
-
-    // Place locked chests (floor 1+)
-    if (floorData.lockedChests && floorData.lockedChests.length) {
-      floorData.lockedChests.forEach(function(ch) {
-        // Mark as blocked until opened
-        _grid[ch.y][ch.x] = TILES.WALL;
-        _tileMetadata[ch.x + ',' + ch.y] = {
-          type: 'locked_chest',
-          emoji: ch.emoji || '🧰',
-          name: ch.name || 'Locked Chest',
-          acceptsKeys: ch.acceptsKeys || ['RUSTY_KEY'],
-          message: ch.message || null
-        };
-      });
-    }
-
-    // Place tutorial NPCs / gate NPCs
-    if (floorData.npcs && floorData.npcs.length) {
-      floorData.npcs.forEach(function(npc) {
-        var npcId = npc.id || ('NPC-' + npc.x + '-' + npc.y);
-        var dir = (npc.direction || 'south').toLowerCase();
-
-        var npcObj = {
-          id: npcId,
-          x: npc.x,
-          y: npc.y,
-          emoji: npc.emoji || '🧑',
-          name: npc.name || 'NPC',
-          direction: dir,
-          dialogues: Array.isArray(npc.dialogues) ? npc.dialogues.slice() : [],
-          gate: npc.gate || null,
-          reward: npc.reward || null,
-          shopkeeper: npc.shopkeeper || false,
-          state: {
-            released: false,
-            rewardGiven: false,
-            lastWarnTurn: -999,
-            lastTalkTurn: -999
-          }
-        };
-
-        _npcs.push(npcObj);
-
-        // Occupy NPC tile
-        _grid[npcObj.y][npcObj.x] = TILES.WALL;
-        _tileMetadata[npcObj.x + ',' + npcObj.y] = {
-          type: 'npc',
-          npcId: npcObj.id,
-          emoji: npcObj.emoji,
-          name: npcObj.name
-        };
-
-        // Project gate warning/trigger zones
-        if (npcObj.gate && npcObj.gate.type && !npcObj.state.released) {
-          var wDist = (npcObj.gate.warningDistance != null) ? npcObj.gate.warningDistance : 6;
-          var tDist = (npcObj.gate.triggerDistance != null) ? npcObj.gate.triggerDistance : 3;
-          var width = (npcObj.gate.width != null) ? npcObj.gate.width : 2;
-
-          function _markZone(dist, zoneType) {
-            for (var f = 1; f <= dist; f++) {
-              for (var s = -width; s <= width; s++) {
-                var zx = npcObj.x;
-                var zy = npcObj.y;
-
-                if (dir === 'north') {
-                  zx = npcObj.x + s;
-                  zy = npcObj.y - f;
-                } else if (dir === 'south') {
-                  zx = npcObj.x + s;
-                  zy = npcObj.y + f;
-                } else if (dir === 'east') {
-                  zx = npcObj.x + f;
-                  zy = npcObj.y + s;
-                } else if (dir === 'west') {
-                  zx = npcObj.x - f;
-                  zy = npcObj.y + s;
-                }
-
-                if (zx < 0 || zx >= GRID_WIDTH || zy < 0 || zy >= GRID_HEIGHT) continue;
-                // Don't overwrite actual walls/breakables/locked gates/chests
-                if (_grid[zy][zx] === TILES.WALL) continue;
-
-                var key = zx + ',' + zy;
-                // Trigger zone wins over warning zone
-                if (zoneType === 'npc_gate_trigger') {
-                  _tileMetadata[key] = { type: 'npc_gate_trigger', npcId: npcObj.id };
-                } else {
-                  if (!_tileMetadata[key]) {
-                    _tileMetadata[key] = { type: 'npc_gate_warning', npcId: npcObj.id };
-                  }
-                }
-              }
-            }
-          }
-
-          _markZone(wDist, 'npc_gate_warning');
-          _markZone(tDist, 'npc_gate_trigger');
-        }
-      });
-    }
-
-    // Place enemies (intended for floor 3)
-    // Enforce: no enemies on Cozy Forest tutorial floors until floor 3.
-    var tutorialEnemies = (Array.isArray(floorData.enemies) ? floorData.enemies : []);
-    if (_floor < 3) tutorialEnemies = [];
-
-    tutorialEnemies.forEach(function(enemy) {
-      var enemyObj = {
-        x: enemy.x,
-        y: enemy.y,
-        hp: enemy.hp,
-        maxHp: enemy.maxHp,
-        str: enemy.attack,
-        dex: enemy.defense,
-        awareness: 0,
-        orientation: enemy.orientation || 'south',
-        sightRange: enemy.sightRange || 3,
-        emoji: enemy.emoji,
-        name: enemy.name,
-        dropTable: enemy.dropTable,
-        dead: false,
-        isTreasureGoblin: false
-      };
-
-      // Setup patrol path
-      if (enemy.patrolType === 'stationary') {
-        enemyObj.path = { type: PATH_TYPES.STATIONARY };
-      } else if (enemy.patrolType === 'circular' && enemy.patrolPath) {
-        enemyObj.path = {
-          type: PATH_TYPES.CIRCULAR,
-          points: enemy.patrolPath,
-          currentIndex: 0
-        };
-      }
-
-      _enemies.push(enemyObj);
-    });
-
-    // Tutorial lighting: contrived floors return early from _generateFloor(),
-    // so we must generate lighting here.
-    if (typeof LightingSystem !== 'undefined') {
-      // Alternate day/night by floor number (simple variant)
-      var biomeName = (_floor % 2 === 1) ? 'COZY_FOREST_DAY' : 'COZY_FOREST_NIGHT';
-      LightingSystem.setBiome(biomeName);
-      LightingSystem.setDarknessMultiplier(1.0);
-
-      // Build wall cache from the current grid and generate a few environmental lights.
-      _rebuildWallCache();
-      var walls = _wallCache;
-
-      // Use a pseudo-room covering the interior so lights place even without procedural rooms.
-      var pseudoRooms = [{ x: 1, y: 1, width: GRID_WIDTH - 2, height: GRID_HEIGHT - 2 }];
-      LightingSystem.generateBiomeLights(GRID_WIDTH, GRID_HEIGHT, pseudoRooms, walls);
-
-      // Guarantee light sources near player spawn and exit for visibility.
-      // Place the exit light ADJACENT to the door (not on it) so it doesn't cover the door emoji.
-      LightingSystem.addLightSource(_player.x, _player.y, 'CAMPFIRE');
-      var exitLightX = (exitX + 1 < GRID_WIDTH - 1) ? exitX + 1 : exitX - 1;
-      var exitLightY = exitY;
-      LightingSystem.addLightSource(exitLightX, exitLightY, 'LIGHT_BULB');
-
-      // Always include player/enemy lights
-      _updatePlayerLight();
-      LightingSystem.updateEnemyLights(_enemies);
-      LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, _getAllLightBlockers(walls));
-
-      var playerLight = LightingSystem.getLightAt(_player.x, _player.y);
-      console.log('[Lighting] Tutorial floor ' + _floor + ': biome=' + biomeName +
-        ', playerIntensity=' + playerLight.intensity.toFixed(2) +
-        ', sources=' + (playerLight.sources ? playerLight.sources.join(',') : 'none'));
-    }
-
-    // Place NPCs (floor 2)
-    // TODO: Implement NPC system
-    if (floorData.npcs && floorData.npcs.length > 0) {
-      console.log('[TutorialFloors] NPCs defined but NPC system not yet implemented');
-    }
-
-    // Place building doors (tavern, church, etc.) — special door tiles leading to interior floors
-    if (floorData.buildingDoors && floorData.buildingDoors.length > 0) {
-      floorData.buildingDoors.forEach(function(bd) {
-        if (!bd || typeof bd.x !== 'number' || typeof bd.y !== 'number') return;
-        if (bd.x < 0 || bd.x >= GRID_WIDTH || bd.y < 0 || bd.y >= GRID_HEIGHT) return;
-
-        // Carve the door tile to empty first, then stamp as a door
-        _grid[bd.y][bd.x] = TILES.DOOR;
-        _tileMetadata[bd.x + ',' + bd.y] = {
-          type: 'building_door',
-          doorKind: 'building',
-          buildingId: bd.buildingId || null,
-          targetFloorId: bd.targetFloorId || null,
-          emoji: '🚪',
-          name: (bd.buildingId || 'Building') + ' Entrance'
-        };
-
-        console.log('[TutorialFloors] Placed building door at (' + bd.x + ',' + bd.y + ') → ' + (bd.targetFloorId || 'unknown'));
-      });
-    }
-
-    // Place interactive items (signs, books, food, area-of-interest)
-    if (floorData.interactiveItems && typeof InteractiveItems !== 'undefined') {
-      floorData.interactiveItems.forEach(function(itemDef) {
-        var item = InteractiveItems.createItem(itemDef.type, itemDef.x, itemDef.y, {
-          text: itemDef.text || '',
-          emoji: itemDef.emoji,
-          name: itemDef.name,
-          customData: itemDef.customData
-        });
-        if (item) {
-          InteractiveItems.addItem(item);
-        }
-      });
-      console.log('[TutorialFloors] Placed ' + floorData.interactiveItems.length + ' interactive items');
-    }
-
-    // Place water tiles
-    if (floorData.waterTiles) {
-      floorData.waterTiles.forEach(function(w) {
-        if (w.y >= 0 && w.y < GRID_HEIGHT && w.x >= 0 && w.x < GRID_WIDTH) {
-          _grid[w.y][w.x] = '~';
-        }
-      });
-      console.log('[TutorialFloors] Placed ' + floorData.waterTiles.length + ' water tiles');
-    }
-
-    // Place breadcrumb pickups (small currency rewards along exploration paths)
-    if (floorData.breadcrumbPickups) {
-      floorData.breadcrumbPickups.forEach(function(pickup) {
-        _currencies.push({
-          x: pickup.x,
-          y: pickup.y,
-          amount: pickup.amount || 3,
-          collected: false
-        });
-      });
-      console.log('[TutorialFloors] Placed ' + floorData.breadcrumbPickups.length + ' breadcrumb pickups');
-    }
-
-    // Final tutorial door guarantee: after ALL placements (breakables/items/currency/water/etc),
-    // force door tiles+metadata and remove anything that could render over them.
-    try {
-      // Never allow back+forward doors to overlap (confusing + can cause spawn-on-exit).
-      if (exitX === backX && exitY === backY) {
-        var moved = _findNearestEmptyDoorSpot(exitX, exitY, backX, backY, 6);
-        if (moved) { exitX = moved.x; exitY = moved.y; }
-      }
-
-      // Never allow the player to spawn on top of the forward/advance door.
-      if (_player && _player.x === exitX && _player.y === exitY) {
-        var sp = _findNearestEmptyDoorSpot(_player.x, _player.y, exitX, exitY, 2);
-        if (sp) { _player.x = sp.x; _player.y = sp.y; }
-      }
-
-      // Carve
-      if (_grid && _grid[exitY]) _grid[exitY][exitX] = TILES.EXIT;
-      _tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'forward' };
-      if (_grid && _grid[backY]) _grid[backY][backX] = TILES.DOOR;
-      _tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
-
-      // Remove overlays/entities from door positions
-      if (_forestBuildings && _forestBuildings.length) {
-        _forestBuildings = _forestBuildings.filter(function(b) {
-          return b && !((b.x === exitX && b.y === exitY) || (b.x === backX && b.y === backY));
-        });
-      }
-      if (Array.isArray(_breakables)) {
-        _breakables = _breakables.filter(function(bb) { return bb && !((bb.x === exitX && bb.y === exitY) || (bb.x === backX && bb.y === backY)); });
-      }
-      if (Array.isArray(_items)) {
-        _items = WorldItems.filterFloorItems(function(it) { return it && !((it.x === exitX && it.y === exitY) || (it.x === backX && it.y === backY)); });
-      }
-      if (Array.isArray(_currencies)) {
-        _currencies = WorldItems.filterCurrencies(function(cc) { return cc && !((cc.x === exitX && cc.y === exitY) || (cc.x === backX && cc.y === backY)); });
-      }
-      if (Array.isArray(_enemies)) {
-        _enemies = _enemies.filter(function(en) { return en && !((en.x === exitX && en.y === exitY) || (en.x === backX && en.y === backY)); });
-      }
-
-      // Relocate any NPCs sitting on door tiles (the DOM renderer draws NPC emoji on top
-      // of the tile, hiding the door even when the grid tile is correctly set to 🚪).
-      if (Array.isArray(_npcs)) {
-        _npcs.forEach(function(npc) {
-          if (!npc) return;
-          var onDoor = (npc.x === exitX && npc.y === exitY) || (npc.x === backX && npc.y === backY);
-          if (!onDoor) return;
-
-          // Try to move the NPC to an adjacent empty tile
-          var dirs = [
-            { dx: -1, dy: 0 }, { dx: 1, dy: 0 },
-            { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
-            { dx: -1, dy: -1 }, { dx: 1, dy: -1 },
-            { dx: -1, dy: 1 }, { dx: 1, dy: 1 }
-          ];
-          var oldX = npc.x, oldY = npc.y;
-          var relocated = false;
-          for (var di = 0; di < dirs.length; di++) {
-            var nx = oldX + dirs[di].dx;
-            var ny = oldY + dirs[di].dy;
-            if (nx <= 0 || nx >= GRID_WIDTH - 1 || ny <= 0 || ny >= GRID_HEIGHT - 1) continue;
-            if (!_grid[ny] || (_grid[ny][nx] !== TILES.EMPTY && _grid[ny][nx] !== TILES.GRASS)) continue;
-            // Don't relocate onto a door
-            if ((nx === exitX && ny === exitY) || (nx === backX && ny === backY)) continue;
-            // Don't relocate onto a live breakable
-            var bb0 = _getBreakableAt ? _getBreakableAt(nx, ny) : null;
-            if (bb0 && bb0.hp > 0) continue;
-
-            // Move NPC to new position (NPCs are visual; do NOT mutate grid tiles)
-            npc.x = nx;
-            npc.y = ny;
-            relocated = true;
-            console.log('[TutorialFloors] Relocated NPC ' + npc.name + ' from (' + oldX + ',' + oldY + ') to (' + nx + ',' + ny + ') to avoid door collision');
-            break;
-          }
-          if (!relocated) {
-            console.warn('[TutorialFloors] Could not relocate NPC ' + npc.name + ' off door at (' + oldX + ',' + oldY + ')');
-          }
-        });
-      }
-
-      // Final re-stamp doors after ALL entity relocations to guarantee grid+metadata integrity.
-      if (_grid && _grid[exitY]) _grid[exitY][exitX] = TILES.EXIT;
-      _tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'forward' };
-      if (_grid && _grid[backY]) _grid[backY][backX] = TILES.DOOR;
-      _tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
-
-      // Debug: count door tiles in grid
-      var doorCount = 0;
-      for (var yy = 0; yy < GRID_HEIGHT; yy++) {
-        for (var xx = 0; xx < GRID_WIDTH; xx++) {
-          if (_grid[yy] && (_grid[yy][xx] === TILES.EXIT || _grid[yy][xx] === TILES.DOOR)) doorCount++;
-        }
-      }
-      console.log('[TutorialFloors] Doors stamped: back=(' + backX + ',' + backY + ') forward=(' + exitX + ',' + exitY + ') count=' + doorCount);
-    } catch (eDoor) {}
-
-    // Build biome visual grid for forest biome
-    var forestBiome = BIOMES.FOREST;
-    _buildBiomeVisualGrid(forestBiome);
-    _buildTileRenderObjects(forestBiome);
-
-    // Build biome background gradient (day for odd floors, night for even)
-    var isNightFloor = (_floor % 2 === 0);
-    _buildBiomeBackgroundColors(forestBiome, isNightFloor);
-
-    // Cache walls for lighting system
-    _cachedWalls = [];
-    for (var cy = 0; cy < GRID_HEIGHT; cy++) {
-      for (var cx = 0; cx < GRID_WIDTH; cx++) {
-        if (_grid[cy][cx] === TILES.WALL) {
-          _cachedWalls.push({ x: cx, y: cy });
-        }
-      }
-    }
-
-    console.log('[TutorialFloors] Floor generated successfully');
-    console.log('[TutorialFloors] Buildings: ' + _forestBuildings.length + ', Breakables: ' + _breakables.length + ', Enemies: ' + _enemies.length);
-    if (_enemies.length > 0 && _floor < 3) {
-      console.warn('[TutorialFloors] BUG: ' + _enemies.length + ' enemies on floor ' + _floor + ' (should be 0 for floors < 3)');
-    }
+    console.warn('[GoneRogue] TutorialFloorGen module not loaded');
   }
 
   function _generateFloor(secretFloorData) {
-    // Initialize generation state
-    _projectiles = [];
-    _breakables = [];
-    WorldItems.init();
-    _items = WorldItems.getFloorItems();
-    _currencies = WorldItems.getCurrencies();
-    _enemies = [];
-    _npcs = [];
-    _shops = [];
-    _tileMetadata = {};
-    _activeBoss = null;
-    _bossFloorActive = false;
-    _bossDefeated = false;
-    _bossHazards = [];
-    _bossEnvironment = {};
-    _playerMoveLocked = false;
-
-    _ropeManager = new RopeManager(_player);
-    const ropeItem = {
-        id: 'rope-1',
-        type: 'item',
-        name: 'Rope',
-        emoji: '➰',
-        x: 5,
-        y: 5
-    };
-    WorldItems.addItem(ropeItem);
-
-    // Reset forest biome state
-    _forestBuildings = [];
-    _biomeVisualGrid = null;
-    _biomeBackgroundColors = null;
-    _tileRenderObjects = null;
-    _cachedWalls = [];
-
-    // Invalidate per-floor caches
-    _stealthBonusCache = null;
-    _activeSecretFloor = null;
-
-// Invalidate per-floor caches
-_stealthBonusCache = null;
-_activeSecretFloor = null;
-
-// Clear environmental synergy state (must happen even on early-return floors)
-if (typeof EnvironmentalSynergy !== 'undefined') {
-  EnvironmentalSynergy.clearGates();
-}
-
-// Determine if secret floor
-var isSecretFloor = !!secretFloorData;
-
-// Check for contrived tutorial floors (floors 1-3).
-// On Uber 1+ (_difficultyTier >= 2), skip tutorials — use procedural Forest instead.
-if (
-  !isSecretFloor &&
-  _difficultyTier <= 1 &&
-  typeof TutorialFloors !== 'undefined' &&
-  TutorialFloors.isContrivedFloor(_floor)
-) {
-  _generateContrivedTutorialFloor();
-  return;
-}
-
-// Diagnostic: if floor < 3 but TutorialFloors didn't catch it, log why
-if (_floor < 3 && !isSecretFloor) {
-  console.warn('[GoneRogue] Floor ' + _floor + ' using PROCEDURAL path (TutorialFloors ' +
-    (typeof TutorialFloors === 'undefined' ? 'NOT LOADED' : 'loaded but isContrivedFloor=' + TutorialFloors.isContrivedFloor(_floor)) + ')');
-}
-
-// Increment pity timers for card drop tracking (skip contrived tutorial floors)
-_incrementPityTimers();
-
-    // Clear environmental synergy state
-    if (typeof EnvironmentalSynergy !== 'undefined') {
-      EnvironmentalSynergy.clearGates();
+    if (typeof FloorGenCore !== 'undefined') {
+      return FloorGenCore.generateFloor(secretFloorData, _floorGenCoreCtx());
     }
-
-    // Determine floor type
-    var floorType;
-
-    if (isSecretFloor) {
-      // Set active secret floor
-      _activeSecretFloor = secretFloorData.type;
-
-      // Secret floors use special type based on secret floor data
-      if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.UBER_MEGA) {
-        floorType = FLOOR_TYPES.BOSS; // Uber Mega is boss-like
-      } else if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.GOBLIN_VAULT) {
-        floorType = FLOOR_TYPES.EXPLORATION; // Goblin vault is maze-like
-      } else if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.GRAY_CAVE_HIDDEN) {
-        floorType = FLOOR_TYPES.EXPLORATION; // Gray cave is safe exploration
-      }
-    } else {
-      floorType = _getFloorType(_floor);
-
-      // Track first bonfire visit for gate eligibility
-      if (floorType === FLOOR_TYPES.BONFIRE && !_runState.firstBonfire) {
-        _runState.firstBonfire = true;
-        console.log('[GoneRogue] First bonfire reached - gates now eligible');
-      }
-    }
-
-    // Check if this is a boss floor (or secret boss floor)
-    if (floorType === FLOOR_TYPES.BOSS && typeof BossEncounters !== 'undefined') {
-      _bossFloorActive = true;
-
-      // Spawn hidden boss for secret floors
-      if (isSecretFloor) {
-        if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.UBER_MEGA) {
-          _activeBoss = new BossEncounters.UberMegaBoss(_floor);
-        } else if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.GOBLIN_VAULT) {
-          _activeBoss = new BossEncounters.TreasureGoblinKingBoss(_floor);
-        }
-      } else {
-        // Normal boss for regular boss floors
-        _activeBoss = BossEncounters.createBossForFloor(_floor);
-      }
-    }
-
-    var maxAttempts = 10;
-    var attempt = 0;
-    var validMap = false;
-    var exitX, exitY; // Store exit location for tutorial gate placement
-
-    // Try to generate a valid map (with stealth path validation)
-    while (!validMap && attempt < maxAttempts) {
-      attempt++;
-
-      // Step 1: Create empty grid
-      _grid = _createEmptyGrid();
-
-      // Step 2: Generate rooms (varies by floor type)
-      var rooms = _generateRooms(floorType);
-
-      // Step 3: Connect rooms with corridors
-      _connectRooms(rooms);
-
-      // Step 4: Add branch connections for loops
-      _addBranchConnections(rooms);
-
-      // Step 5: Place cover
-      _placeCover();
-
-      // Step 6: Place shadow zones
-      _placeShadowZones();
-
-      // Step 7: Place environmental tiles
-      _placeEnvironmentalTiles();
-
-      // Step 8: Place player and exit
-      var spawnData = _placePlayerAndExit(rooms);
-      _player.x = spawnData.playerX;
-      _player.y = spawnData.playerY;
-      _ensurePlayerOnEmptyTile();
-      exitX = spawnData.exitX;
-      exitY = spawnData.exitY;
-
-      // Step 9: Place enemies (based on floor type)
-      _placeEnemies(rooms, floorType);
-
-      // Step 9b: Initialize boss if this is a boss floor
-      if (_bossFloorActive && _activeBoss) {
-        var bossInit = _activeBoss.initialize(_grid, _player);
-        if (bossInit.success) {
-          _bossEnvironment = bossInit;
-          // Boss floor skips normal stealth validation
-          validMap = true;
-        }
-      } else {
-        // Step 10: Validate stealth path (non-boss floors only)
-        validMap = _validateStealthPath(_player.x, _player.y, exitX, exitY);
-      }
-
-      if (!validMap && attempt < maxAttempts) {
-        console.log('Map validation failed, regenerating... (attempt ' + attempt + ')');
-      }
-    }
-
-    if (!validMap) {
-      console.warn('Could not generate fully valid map after ' + maxAttempts + ' attempts. Using current map.');
-    }
-
-    // Forest biome: place village cluster and pre-compute visual grid
-    if (!isSecretFloor) {
-      var floorBiome = _getBiome(_floor);
-      if (floorBiome.spawnFeatures && floorBiome.spawnFeatures.villageCluster) {
-        _placeVillageCluster(floorBiome);
-      }
-      _buildBiomeVisualGrid(floorBiome);
-      _buildTileRenderObjects(floorBiome);
-
-      // Build biome background gradient (day for odd floors, night for even)
-      var isNightFloor = (_floor % 2 === 0);
-      _buildBiomeBackgroundColors(floorBiome, isNightFloor);
-
-      // Generate discoveries and environmental details for exploration framework
-      _generateDiscoveries(rooms, floorBiome);
-      for (var i = 0; i < rooms.length; i++) {
-        _initializeEnvironmentalDetails(rooms[i], floorBiome);
-      }
-    }
-
-    // Place breakables (deterministic for tests)
-    _spawnBreakables();
-
-    // Tutorial floors: Place guaranteed gate with tutorial pickups
-    if (floorType === FLOOR_TYPES.TUTORIAL) {
-      _placeTutorialGate(exitX, exitY);
-    }
-
-    // Place biome-specific gates on regular floors
-    if (floorType !== FLOOR_TYPES.TUTORIAL) {
-      _placeBiomeGates(rooms, exitX, exitY, floorBiome);
-    }
-
-    // Spawn context-aware keys (separate from gates, loosely coupled)
-    if (floorType !== FLOOR_TYPES.TUTORIAL) {
-      _spawnContextAwareKey(rooms);
-    }
-
-    // Place items (increased loot for exploration floors)
-    _placeItems(floorType);
-
-    // Step 13: Spawn interactive items
-    if (typeof ItemSpawner !== 'undefined' && typeof InteractiveItems !== 'undefined') {
-      var spawnedItems = ItemSpawner.spawnItemsForFloor(_floor, rooms, _grid);
-      spawnedItems.forEach(function(item) {
-        InteractiveItems.addItem(item);
-      });
-      console.log('[GoneRogue] Spawned', spawnedItems.length, 'interactive items');
-    }
-
-    // Generate lighting for this floor
-    if (typeof LightingSystem !== 'undefined') {
-      // Set floor number for progression scaling
-      LightingSystem.setFloor(_floor);
-
-      // Set biome for lighting
-      var biome;
-      var biomeName;
-
-      if (isSecretFloor) {
-        // Secret floors have special biomes
-        if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.UBER_MEGA) {
-          biomeName = 'UBER_MEGA'; // Reality-breaking dark
-        } else if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.GOBLIN_VAULT) {
-          biomeName = 'GOBLIN_VAULT'; // Golden treasure lighting
-        } else if (secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.GRAY_CAVE_HIDDEN) {
-          biomeName = 'GRAY_CAVE'; // Faint violet
-        }
-      } else {
-        biome = _getBiome(_floor);
-        biomeName = biome.name.toUpperCase().replace(/ /g, '_');
-
-        // Forest tutorial floors: ensure we use a lighting profile that actually includes environmental lights.
-        if (biomeName === 'COZY_FOREST') {
-          // Simple variant: alternate day/night by floor number
-          biomeName = (_floor % 2 === 1) ? 'COZY_FOREST_DAY' : 'COZY_FOREST_NIGHT';
-        }
-      }
-
-      LightingSystem.setBiome(biomeName);
-
-      // Apply darkness multiplier for uber mega
-      if (isSecretFloor && secretFloorData.type === SecretFloors.SECRET_FLOOR_TYPES.UBER_MEGA) {
-        LightingSystem.setDarknessMultiplier(0.3); // Extreme darkness (70% darker)
-      } else if (_floor === 30 && _bossFloorActive) {
-        LightingSystem.setDarknessMultiplier(0.5); // Nerf light by 50%
-      } else {
-        LightingSystem.setDarknessMultiplier(1.0);
-      }
-
-      // Collect wall positions for light blocking and cache them for per-tick use
-      _rebuildWallCache();
-      var walls = _wallCache;
-
-      // Generate biome-specific light sources (pass grid for occupancy checking)
-      LightingSystem.generateBiomeLights(GRID_WIDTH, GRID_HEIGHT, rooms, walls, _grid);
-      _updatePlayerLight();
-
-      // Register interactive/breakable light sources as breakables
-      var lightingConfig = LightingSystem.getConfig();
-      if (lightingConfig && lightingConfig.interactiveLights && lightingConfig.interactiveLights.enabled) {
-        var lightSources = LightingSystem.getLightSources();
-        for (var i = 0; i < lightSources.length; i++) {
-          var lightSource = lightSources[i];
-          if (lightSource.interactive) {
-            var breakableProps = LightingSystem.getBreakableProps(lightSource.type);
-            if (breakableProps && breakableProps.hp > 0) {
-              var lightDef = LightingSystem.LIGHT_SOURCES[lightSource.type];
-              _breakables.push({
-                x: lightSource.x,
-                y: lightSource.y,
-                hp: breakableProps.hp,
-                maxHp: breakableProps.hp,
-                emoji: lightDef.emoji,
-                color: lightDef.color,
-                name: lightDef.name || 'Light Source',
-                type: 'light_source',
-                lightType: lightSource.type,
-                isLightSource: true,
-                kickable: breakableProps.kickable,
-                smotherable: breakableProps.smotherable,
-                noise: breakableProps.noise,
-                dropChance: breakableProps.dropChance,
-                dropType: breakableProps.dropType,
-                destroyEmoji: breakableProps.destroyEmoji
-              });
-            }
-          }
-        }
-        console.log('[Lighting] Registered', _breakables.filter(function(b) { return b.isLightSource; }).length, 'interactive light sources as breakables');
-      }
-
-      // Update enemy lights
-      LightingSystem.updateEnemyLights(_enemies);
-
-      // Calculate initial light map
-      LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, _getAllLightBlockers(walls));
-
-      var playerLight = LightingSystem.getLightAt(_player.x, _player.y);
-      console.log('[Lighting] Floor ' + _floor + ': biome=' + biomeName +
-        ', playerIntensity=' + playerLight.intensity.toFixed(2) +
-        ', sources=' + (playerLight.sources ? playerLight.sources.join(',') : 'none'));
-    }
-
-    // Spawn shops
-    _spawnShops(rooms, floorType);
-
-    // Spawn vents (15% chance, not on bonfire or tutorial floors)
-    _spawnVents(rooms, floorType);
-
-    // Apply biome bleed if we have a previous biome tracked
-    _applyBiomeBleed(rooms);
-
-    _turn = 0;
+    console.warn('[GoneRogue] FloorGenCore module not loaded');
   }
 
   function _createEmptyGrid() {
@@ -3983,6 +2944,115 @@ _incrementPityTimers();
       setBossFloorActive: function(v) { _bossFloorActive = v; },
       syncItems: function() { _items = WorldItems.getFloorItems(); },
       syncCurrencies: function() { _currencies = WorldItems.getCurrencies(); }
+    };
+  }
+
+  function _tutorialFloorGenCtx() {
+    return {
+      TILES: TILES,
+      GRID_WIDTH: GRID_WIDTH,
+      GRID_HEIGHT: GRID_HEIGHT,
+      BIOMES: BIOMES,
+      PATH_TYPES: PATH_TYPES,
+      player: _player,
+      grid: _grid,
+      tileMetadata: _tileMetadata,
+      breakables: _breakables,
+      enemies: _enemies,
+      npcs: _npcs,
+      items: _items,
+      currencies: _currencies,
+      forestBuildings: _forestBuildings,
+      getFloor: function() { return _floor; },
+      getSpawnFromLastExitPos: function() { return _spawnFromLastExitPos; },
+      setSpawnFromLastExitPos: function(v) { _spawnFromLastExitPos = v; },
+      setDoorSpawnProtect: function(v) { _doorSpawnProtect = v; },
+      setGrid: function(v) { _grid = v; },
+      setForestBuildings: function(v) { _forestBuildings = v; },
+      setItems: function(v) { _items = v; },
+      setCachedWalls: function(v) { _cachedWalls = v; },
+      ensurePlayerOnEmptyTile: _ensurePlayerOnEmptyTile,
+      buildBiomeVisualGrid: _buildBiomeVisualGrid,
+      buildTileRenderObjects: _buildTileRenderObjects,
+      buildBiomeBackgroundColors: _buildBiomeBackgroundColors,
+      rebuildWallCache: _rebuildWallCache,
+      getWallCache: function() { return _wallCache; },
+      updatePlayerLight: _updatePlayerLight,
+      getAllLightBlockers: _getAllLightBlockers,
+      getBreakableAt: _getBreakableAt
+    };
+  }
+
+  function _floorGenCoreCtx() {
+    return {
+      FLOOR_TYPES: FLOOR_TYPES,
+      TILES: TILES,
+      GRID_WIDTH: GRID_WIDTH,
+      GRID_HEIGHT: GRID_HEIGHT,
+      player: _player,
+      grid: _grid,
+      breakables: _breakables,
+      runState: _runState,
+      getFloor: function() { return _floor; },
+      getDifficultyTier: function() { return _difficultyTier; },
+      getActiveBoss: function() { return _activeBoss; },
+      setGrid: function(v) { _grid = v; },
+      setProjectiles: function(v) { _projectiles = v; },
+      setBreakables: function(v) { _breakables = v; },
+      setEnemies: function(v) { _enemies = v; },
+      setNpcs: function(v) { _npcs = v; },
+      setShops: function(v) { _shops = v; },
+      setTileMetadata: function(v) { _tileMetadata = v; },
+      setActiveBoss: function(v) { _activeBoss = v; },
+      setBossFloorActive: function(v) { _bossFloorActive = v; },
+      setBossDefeated: function(v) { _bossDefeated = v; },
+      setBossHazards: function(v) { _bossHazards = v; },
+      setBossEnvironment: function(v) { _bossEnvironment = v; },
+      setPlayerMoveLocked: function(v) { _playerMoveLocked = v; },
+      setRopeManager: function(v) { _ropeManager = v; },
+      setForestBuildings: function(v) { _forestBuildings = v; },
+      setBiomeVisualGrid: function(v) { _biomeVisualGrid = v; },
+      setBiomeBackgroundColors: function(v) { _biomeBackgroundColors = v; },
+      setTileRenderObjects: function(v) { _tileRenderObjects = v; },
+      setCachedWalls: function(v) { _cachedWalls = v; },
+      setStealthBonusCache: function(v) { _stealthBonusCache = v; },
+      setActiveSecretFloor: function(v) { _activeSecretFloor = v; },
+      setTurn: function(v) { _turn = v; },
+      syncItems: function() { _items = WorldItems.getFloorItems(); },
+      syncCurrencies: function() { _currencies = WorldItems.getCurrencies(); },
+      getFloorType: _getFloorType,
+      getBiome: _getBiome,
+      generateContrivedTutorialFloor: _generateContrivedTutorialFloor,
+      incrementPityTimers: _incrementPityTimers,
+      createEmptyGrid: _createEmptyGrid,
+      generateRooms: _generateRooms,
+      connectRooms: _connectRooms,
+      addBranchConnections: _addBranchConnections,
+      placeCover: _placeCover,
+      placeShadowZones: _placeShadowZones,
+      placeEnvironmentalTiles: _placeEnvironmentalTiles,
+      placePlayerAndExit: _placePlayerAndExit,
+      ensurePlayerOnEmptyTile: _ensurePlayerOnEmptyTile,
+      placeEnemies: _placeEnemies,
+      validateStealthPath: _validateStealthPath,
+      placeVillageCluster: _placeVillageCluster,
+      buildBiomeVisualGrid: _buildBiomeVisualGrid,
+      buildTileRenderObjects: _buildTileRenderObjects,
+      buildBiomeBackgroundColors: _buildBiomeBackgroundColors,
+      generateDiscoveries: _generateDiscoveries,
+      initializeEnvironmentalDetails: _initializeEnvironmentalDetails,
+      spawnBreakables: _spawnBreakables,
+      placeTutorialGate: _placeTutorialGate,
+      placeBiomeGates: _placeBiomeGates,
+      spawnContextAwareKey: _spawnContextAwareKey,
+      placeItems: _placeItems,
+      spawnShops: _spawnShops,
+      spawnVents: _spawnVents,
+      applyBiomeBleed: _applyBiomeBleed,
+      rebuildWallCache: _rebuildWallCache,
+      getWallCache: function() { return _wallCache; },
+      updatePlayerLight: _updatePlayerLight,
+      getAllLightBlockers: _getAllLightBlockers
     };
   }
 
