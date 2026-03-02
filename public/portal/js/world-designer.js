@@ -266,7 +266,8 @@
                 if (element.classList.contains('world-node')) {
                     id = element.id;
                     type = element.dataset.type;
-                    name = element.querySelector('strong').innerText;
+                    const nameEl = element.querySelector('strong');
+                    name = nameEl ? nameEl.innerText : '';
 
                     content = `
                         <div><strong>ID:</strong> ${id}</div>
@@ -401,7 +402,7 @@
                 }
             });
 
-            worldCanvas.addEventListener('mouseup', (e) => {
+            window.addEventListener('mouseup', (e) => {
                 if (isMarqueeSelecting) {
                     isMarqueeSelecting = false;
                     marquee.style.display = 'none';

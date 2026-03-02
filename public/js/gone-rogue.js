@@ -1138,231 +1138,23 @@ var GoneRogue = (function () {
    * Called immediately for returning players, or after character creation for new ones.
    */
   function _beginGameplay() {
-    // Sync difficulty from AWOL button state (authoritative source of truth).
-    // Handles auto-advance after tier completion and manual toggling between runs.
-    if (typeof AWOLDifficulty !== 'undefined' && AWOLDifficulty.getCurrentTier) {
-      _desiredDifficultyTier = AWOLDifficulty.getCurrentTier();
+    if (typeof BeginGameplaySystem !== 'undefined') {
+      return BeginGameplaySystem.beginGameplay(_beginGameplayCtx());
     }
-
-    // Apply desired UBER difficulty on run start (before initial floor generation)
-    _applyDesiredDifficultyTier('start_run');
-
-    // Generate initial floor
     _generateFloor();
-
-    // Start game loop
     _startGameLoop();
-
-    // Floor 0 scripted walk: auto-path the player toward the exit (Floor 1 door).
-    // Player control is disabled until they reach Floor 1.
-    if (_floor === 0) {
-      _scriptedWalk = true;
-      try {
-        // Find the forward exit position from current grid
-        var exitTarget = null;
-        for (var sy = 0; sy < GRID_HEIGHT && !exitTarget; sy++) {
-          for (var sx = 0; sx < GRID_WIDTH && !exitTarget; sx++) {
-            if (_grid[sy] && (_grid[sy][sx] === TILES.EXIT)) {
-              var mk = sx + ',' + sy;
-              if (_tileMetadata[mk] && _tileMetadata[mk].doorKind === 'forward') {
-                exitTarget = { x: sx, y: sy };
-              }
-            }
-          }
-        }
-        if (exitTarget) {
-          _scriptedWalkTarget = exitTarget;
-          // Delay slightly so the grid renders before the walk starts
-          setTimeout(function() {
-            if (typeof GoneRogueMovement !== 'undefined' && GoneRogueMovement.setTarget) {
-              // Must init movement system at player pos before setting a target
-              GoneRogueMovement.init(_player.x, _player.y);
-              // collisionCheck(x,y) returns true if BLOCKED (matches findPath convention)
-              var pathFound = GoneRogueMovement.setTarget(exitTarget.x, exitTarget.y, function(x, y) {
-                return !_isWalkable(x, y);
-              }, false);
-              // If pathfinding failed, abort scripted walk so player isn't stuck
-              if (!pathFound) {
-                console.warn('[GoneRogue] Scripted walk: no path to exit, aborting');
-                _scriptedWalk = false;
-                _scriptedWalkTarget = null;
-              }
-            }
-          }, 600);
-        }
-      } catch (eScripted) {
-        console.warn('[GoneRogue] Scripted walk setup error:', eScripted);
-        _scriptedWalk = false;
-      }
-    }
-
-    // Use mobile UI if available
-    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      GoneRogueMobile.show();
-      _updateMobileGrid();
-
-      // BAC floating popup is RETIRED. RogueSidebar (embedded in terminal
-      // control rail) now owns the left-column card/item display.
-      // BAC stays hidden; RogueSidebar auto-renders via its own _tick() interval.
-
-      // Suppress mobile keyboard when interactive grid is active
-      if (typeof Terminal !== 'undefined' && typeof Terminal.suppressMobileKeyboard === 'function') {
-        Terminal.suppressMobileKeyboard();
-      }
-
-      // Hide input line since grid is the input mechanism
-      if (typeof Terminal !== 'undefined' && typeof Terminal.hideInput === 'function') {
-        Terminal.hideInput();
-      }
-
-      // Switch debrief feed to resource display for Gone Rogue
-      if (typeof DebriefFeedController !== 'undefined') {
-        DebriefFeedController.setMode('goneRogue');
-      }
-
-      return {
-        lines: [],
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    // Switch debrief feed to resource display for Gone Rogue
-    if (typeof DebriefFeedController !== 'undefined') {
-      DebriefFeedController.setMode('goneRogue');
-    }
-
-    return {
-      lines: _renderGrid(),
-      prompt: getPrompt(),
-      stayActive: true
-    };
+    return { lines: _renderGrid(), prompt: getPrompt(), stayActive: true };
   }
 
   /**
    * Process player command
    */
   function process(raw) {
+    if (typeof CommandProcessSystem !== 'undefined') {
+      return CommandProcessSystem.process(raw, _commandProcessCtx());
+    }
     if (!_active) return { lines: ['ROGUE MODE INACTIVE', ''], stayActive: false };
-
-    var cmd = (raw || '').trim().toLowerCase();
-
-    if (!cmd) {
-      return { lines: [''], prompt: getPrompt(), stayActive: true };
-    }
-
-    // AGENT commands - check for agent control
-    if (cmd.indexOf('agent') === 0) {
-      return _handleAgentCommand(cmd);
-    }
-
-    // FLEE command during STR combat
-    if (cmd === 'flee' && _strCombatActive) {
-      // Tooltip: Fleeing combat
-      if (typeof TooltipSystem !== 'undefined') {
-        TooltipSystem.showAction('flee');
-      }
-      return _exitStrCombat('fled');
-    }
-
-    if (cmd === 'exit' || cmd === 'quit') {
-      return _exitRogue(false);
-    }
-
-    if (cmd === 'help') {
-      return { lines: _helpLines(), prompt: getPrompt(), stayActive: true };
-    }
-
-    if (cmd === 'status' || cmd === 'stats') {
-      return { lines: _statusLines(), prompt: getPrompt(), stayActive: true };
-    }
-
-    if (cmd === 'inventory' || cmd === 'inv') {
-      return { lines: _inventoryLines(), prompt: getPrompt(), stayActive: true };
-    }
-
-    if (cmd.indexOf('shoot') === 0 || cmd.indexOf('fire') === 0) {
-      return _fireProjectile(cmd);
-    }
-
-    if (cmd.indexOf('kick') === 0 || cmd.indexOf('boot') === 0) {
-      return _kickBreakable(cmd);
-    }
-
-    // Movement commands
-    if (cmd === 'n' || cmd === 'north' || cmd === 'w') {
-      return _movePlayer(0, -1);
-    }
-    if (cmd === 's' || cmd === 'south' || cmd === 'x') {
-      return _movePlayer(0, 1);
-    }
-    if (cmd === 'e' || cmd === 'east' || cmd === 'd') {
-      return _movePlayer(1, 0);
-    }
-    if (cmd === 'west' || cmd === 'a') {
-      return _movePlayer(-1, 0);
-    }
-
-    // Action commands
-    if (cmd === 'take' || cmd === 'pickup' || cmd === 'get') {
-      return _pickupItem();
-    }
-
-    if (cmd === 'extract') {
-      return _attemptExtract();
-    }
-
-    // Interactive item commands
-    if (cmd === 'interact' || cmd === 'examine' || cmd === 'read') {
-      return _handleInteraction();
-    }
-
-    // Theft command (pre-combat): attempt to pickpocket an adjacent enemy if player has a theft tool equipped.
-    if (cmd === 'steal' || cmd === 'pickpocket') {
-      return _attemptPickpocket();
-    }
-
-    // Bonfire vendor commands
-    if (cmd === 'vendor' || cmd === 'shop' || cmd === 'merchant') {
-      return _showVendor();
-    }
-
-    if (cmd.indexOf('buy') === 0) {
-      return _buyFromVendor(cmd);
-    }
-
-    if (cmd === 'heal') {
-      return _healAtBonfire();
-    }
-
-    if (cmd.indexOf('gamble') === 0) {
-      return _gambleCard();
-    }
-
-    // Inventory transfer commands (bonfire only)
-    if (cmd.indexOf('stash') === 0) {
-      return _stashCard(cmd);
-    }
-
-    if (cmd.indexOf('retrieve') === 0 || cmd.indexOf('withdraw') === 0) {
-      return _retrieveCard(cmd);
-    }
-
-    // Equip item to active slot
-    if (cmd.indexOf('equip') === 0) {
-      return _equipItem(cmd);
-    }
-
-    // Unequip active item
-    if (cmd === 'unequip') {
-      return _unequipItem();
-    }
-
-    return {
-      lines: ['UNKNOWN COMMAND: ' + cmd, 'TYPE HELP FOR COMMANDS', ''],
-      prompt: getPrompt(),
-      stayActive: true
-    };
+    return { lines: ['[Command system not loaded]'], prompt: getPrompt(), stayActive: true };
   }
 
   function _helpLines() {
@@ -3068,221 +2860,41 @@ _incrementPityTimers();
     return true;
   }
 
+  // ── PlayerInteractionSystem delegation ──
+  function _playerInteractionCtx() {
+    return {
+      player: _player, grid: _grid, items: _items, enemies: _enemies,
+      currencies: _currencies, shops: _shops, tileMetadata: _tileMetadata,
+      TILES: TILES, GRID_WIDTH: GRID_WIDTH, GRID_HEIGHT: GRID_HEIGHT,
+      get floor() { return _floor; },
+      get playerInBox() { return _playerInBox; },
+      incrementTurn: function() { _turn++; },
+      updatePositionHistory: _updatePositionHistory,
+      getDoorSpawnProtect: function() { return _doorSpawnProtect; },
+      clearDoorSpawnProtect: function() { _doorSpawnProtect = null; },
+      getTileMetadata: function(x, y) { return _tileMetadata[x + ',' + y]; },
+      retreatFloor: _retreatFloor,
+      attemptExtract: _attemptExtract,
+      exitInteriorFloor: _exitInteriorFloor,
+      enterInteriorFloor: _enterInteriorFloor,
+      maybeHintNearbyDoors: _maybeHintNearbyDoors,
+      pickupItem: _pickupItem,
+      revealDiscovery: _revealDiscovery,
+      getBoxAt: _getBoxAt,
+      playerEnterBox: _playerEnterBox,
+      playerExitBox: _playerExitBox,
+      enterStrCombat: function(enemy, trigger) {
+        if (!_strCombatActive) _enterStrCombat(enemy, trigger);
+      },
+      addCurrencyCollected: function(amt) { _currencyCollected += amt; },
+      filterCurrencies: function(x, y) {
+        _currencies = WorldItems.filterCurrencies(function(c) { return c.x !== x || c.y !== y; });
+      }
+    };
+  }
   function _checkPlayerInteractions() {
-    // Interactions after arriving on a tile via smooth movement (GoneRogueMovement).
-    var x = _player.x;
-    var y = _player.y;
-
-    // Update turn + pet following history
-    _turn++;
-    _updatePositionHistory();
-
-    // Bounds safety
-    if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) return;
-
-    var tile = _grid[y] ? _grid[y][x] : null;
-
-    // Door/Exit tile (🚪): behavior determined by tile metadata (back/forward/unknown)
-    if (tile === TILES.EXIT || tile === TILES.DOOR) {
-      // Spawn protection: if we spawned onto this door tile, require the player to step off and return.
-      try {
-        if (_doorSpawnProtect && _doorSpawnProtect.x === x && _doorSpawnProtect.y === y) {
-          return;
-        }
-      } catch (e0) {}
-
-      var md = _tileMetadata[x + ',' + y];
-      if (md && md.type === 'door') {
-        if (md.doorKind === 'back') {
-          _retreatFloor();
-          return;
-        }
-        if (md.doorKind === 'forward') {
-          _attemptExtract();
-          return;
-        }
-        if (md.doorKind === 'interior_exit') {
-          _exitInteriorFloor();
-          return;
-        }
-        // Unknown/joker door: fall through for now
-      }
-
-      // Building door → enter interior floor (tavern, church, etc.)
-      if (md && md.type === 'building_door' && md.targetFloorId) {
-        _enterInteriorFloor(md.targetFloorId);
-        return;
-      }
-
-      // Default: treat as forward exit
-      if (tile === TILES.EXIT) {
-        _attemptExtract();
-        return;
-      }
-    } else {
-      // Clear spawn protection once the player steps off the door.
-      _doorSpawnProtect = null;
-    }
-
-    // Shop tile
-    if (tile === TILES.SHOP || tile === TILES.BLACK_MARKET) {
-      var shopObj = _shops.find(function(s) { return s.x === x && s.y === y; });
-      if (shopObj && typeof ShopSystem !== 'undefined' && !shopObj.opened) {
-        var shopType = tile === TILES.BLACK_MARKET ? ShopSystem.SHOP_TYPES.BLACK_MARKET : ShopSystem.SHOP_TYPES.STANDARD;
-        ShopSystem.openShop(shopType, _floor);
-        shopObj.opened = true;
-      }
-    }
-
-    // Door hint popups when approaching
-    _maybeHintNearbyDoors();
-
-    // NOTE: Collectible pickups must be handled in BOTH _checkPlayerInteractions() (for smooth
-    // movement) AND _movePlayer() (for command-based movement). The previous fix removed pickups
-    // from _checkPlayerInteractions() which broke pickups during smooth movement (tap-to-move).
-    // To prevent duplicate animations, we need both code paths to handle pickups.
-
-    // Check for currency pickup
-    var cryptoPickup = _currencies.find(function(c) { return c.x === x && c.y === y; });
-    if (cryptoPickup) {
-      if (typeof GAMESTATE !== 'undefined') {
-        var result = GAMESTATE.addCryptos(cryptoPickup.amount);
-      }
-      // Track for highscore
-      _currencyCollected += cryptoPickup.amount;
-      // Remove currency from floor
-      _currencies = WorldItems.filterCurrencies(function(c) { return c.x !== x || c.y !== y; });
-
-      // Set player currency collection state for animation
-      _player.collectingCurrency = true;
-      _player.currencyCollectTime = Date.now();
-
-      // Show overhead currency animation
-      if (typeof OverheadAnimator !== 'undefined') {
-        OverheadAnimator.showCurrencyPickup(_player.x, _player.y, cryptoPickup.amount);
-      }
-
-      // MOK interjection for currency pickup
-      if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-        var cryptoMsg = cryptoPickup.amount === 1 ? '¢1 Collected' : '¢' + cryptoPickup.amount + ' Collected';
-        UIControls.updateMokInterjection(cryptoMsg);
-      }
-
-      // Tooltip: Currency pickup
-      if (typeof TooltipSystem !== 'undefined') {
-        TooltipSystem.showAction('currency-pickup', { amount: cryptoPickup.amount });
-      }
-
-      // PancakeStack removed for currency — OverheadAnimator "+N¢" is sufficient
-      // (ghost glyph fix: persistent ¢ glyph was hovering disembodied above player)
-    }
-
-    // Auto-pickup any floor item at player position (ammo, gem/battery, cards, keys)
-    if (_items.find(function(i) { return i.x === x && i.y === y; })) {
-      _pickupItem();
-    }
-
-    // Check for food item pickup (auto-pickup from interactive items)
-    if (typeof InteractiveItems !== 'undefined') {
-      var foodItem = InteractiveItems.getItemAt(x, y);
-      if (foodItem && foodItem.autoPickup && foodItem.type === 'FOOD') {
-        // Apply food effects
-        if (typeof FoodDatabase !== 'undefined' && foodItem.customData && foodItem.customData.foodId) {
-          // Capture before-values for ALL resources food can modify
-          var hpBefore = _player.hp || 0;
-          var fatigueBefore = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getFatigue) ? GAMESTATE.getFatigue() : 0;
-          var ammoBefore = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo) ? GAMESTATE.getAmmo() : 0;
-          var cryptosBefore = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getCryptos) ? GAMESTATE.getCryptos() : 0;
-
-          var result = FoodDatabase.applyFoodEffects(foodItem.customData.foodId, _player);
-          if (result.success) {
-            // Determine primary effect for overhead animation RESOURCE_COLOR
-            // energy category → Fatigue brown; health/status → HP pink; special → HP pink
-            var foodDef = FoodDatabase.getFoodItem(foodItem.customData.foodId);
-            var primaryColor = '#FF6B9D'; // HP pink default
-            if (foodDef && foodDef.category === 'energy') {
-              primaryColor = '#A0522D'; // Fatigue brown
-            }
-
-            // Show overhead animation with category-appropriate RESOURCE_COLOR
-            if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
-              OverheadAnimator.showGenericExpression(x, y, result.emoji, 1000, primaryColor);
-            }
-
-            // Report EACH changed resource to debrief feed with its own RESOURCE_COLOR
-            try {
-              if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
-                var hpAfter = _player.hp || 0;
-                if (hpAfter !== hpBefore) {
-                  DebriefFeedController.reportResourceChange('HP', hpBefore, hpAfter, result.foodName || 'Food');
-                }
-                var fatigueAfter = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getFatigue) ? GAMESTATE.getFatigue() : 0;
-                if (fatigueAfter !== fatigueBefore) {
-                  DebriefFeedController.reportResourceChange('Fatigue', fatigueBefore, fatigueAfter, result.foodName || 'Food');
-                }
-                var ammoAfter = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo) ? GAMESTATE.getAmmo() : 0;
-                if (ammoAfter !== ammoBefore) {
-                  DebriefFeedController.reportResourceChange('Ammo', ammoBefore, ammoAfter, result.foodName || 'Food');
-                }
-                var cryptosAfter = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getCryptos) ? GAMESTATE.getCryptos() : 0;
-                if (cryptosAfter !== cryptosBefore) {
-                  DebriefFeedController.reportResourceChange('Currency', cryptosBefore, cryptosAfter, result.foodName || 'Food');
-                }
-              }
-            } catch (eDebrief) {}
-
-            // Block sprint temporarily after food pickup (0.9 second delay)
-            // This prevents immediate fatigue refill during sprint, causing delayed food buff effect
-            if (typeof GAMESTATE !== 'undefined' && GAMESTATE.blockSprintTemporarily) {
-              GAMESTATE.blockSprintTemporarily(900);
-            }
-
-            // MOK interjection for food pickup
-            if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-              UIControls.updateMokInterjection(result.emoji + ' ' + result.foodName + ' consumed');
-            }
-
-            // Tooltip: Food effects (always show — contains all effect details)
-            if (typeof TooltipSystem !== 'undefined' && result.tooltipText) {
-              TooltipSystem.showGeneric(result.tooltipText, 2000);
-            }
-
-            // Pancake stacker animation for food
-            try {
-              if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-                PancakeStack.addPancake(result.emoji || '🍎');
-              } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-                PlayerStackManager.addPancake(result.emoji || '🍎');
-              }
-            } catch (ePancake) {}
-
-            // Remove food item from world (clean disappearance)
-            InteractiveItems.removeItem(foodItem.id);
-            console.log('[GoneRogue] Food consumed:', result.foodName);
-          }
-        }
-      }
-    }
-
-    // Discovery reveal
-    _revealDiscovery(x, y);
-
-    // Box auto-exit: player has moved off the box tile they were hiding in
-    if (_playerInBox && (_player.x !== _playerInBox.x || _player.y !== _playerInBox.y)) {
-      _playerExitBox('voluntary');
-    }
-
-    // Box auto-enter: player steps onto a placed empty box
-    var _boxUnderPlayer = _getBoxAt(x, y);
-    if (_boxUnderPlayer && _boxUnderPlayer.state === 'empty' && !_playerInBox) {
-      _playerEnterBox(_boxUnderPlayer);
-    }
-
-    // Enemy collision -> enter STR combat
-    var hitEnemy = _enemies.find(function(e) { return e.x === x && e.y === y && e.hp > 0; });
-    if (hitEnemy) {
-      _enterStrCombat(hitEnemy, 'collision');
-      return;
+    if (typeof PlayerInteractionSystem !== 'undefined') {
+      PlayerInteractionSystem.checkPlayerInteractions(_playerInteractionCtx());
     }
   }
 
@@ -3640,500 +3252,35 @@ _incrementPityTimers();
     else _alertLevel = 'safe';
   }
 
-  function _pickupItem() {
-    var item = _items.find(function(i) { return i.x === _player.x && i.y === _player.y; });
-    if (!item) {
-      return {
-        lines: ['NO ITEM HERE', ''].concat(_renderGrid()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    // Handle ammo pickup (auto-collect)
-    if (item.type === 'ammo') {
-      if (typeof GAMESTATE !== 'undefined') {
-        GAMESTATE.addAmmo(item.amount);
-      }
-
-      // Remove ammo from floor
-      _items = WorldItems.filterFloorItems(function(i) { return i !== item; });
-
-      // Tooltip and MOK interjection
-      if (typeof TooltipSystem !== 'undefined') {
-        TooltipSystem.showAction('item-pickup', { name: 'Ammo +' + item.amount });
-      }
-
-      if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-        UIControls.updateMokInterjection('⁍ Ammo +' + item.amount);
-      }
-
-      // Overhead animation with RESOURCE_COLOR magenta
-      if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
-        OverheadAnimator.showGenericExpression(_player.x, _player.y, '⁍', 800, '#DA70D6');
-      }
-
-      // Report to debrief feed with resource-colored frame flash
-      try {
-        if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
-          var newAmmo = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo) ? GAMESTATE.getAmmo() : 0;
-          DebriefFeedController.reportResourceChange('Ammo', newAmmo - item.amount, newAmmo, 'Ammo +' + item.amount);
-        }
-      } catch (eDebrief) {}
-
-      // Pancake stacker for ammo
-      try {
-        if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-          PancakeStack.addPancake('⁍');
-        } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-          PlayerStackManager.addPancake('⁍');
-        }
-      } catch (ePancake) {}
-
-      return {
-        lines: ['PICKED UP: ⁍ Ammo +' + item.amount, ''].concat(_renderGrid()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    // Handle gem pickup — restores battery resource
-    if (item.type === 'gem') {
-      var gemAmount = item.amount || 1;
-
-      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.rechargeBattery) {
-        GAMESTATE.rechargeBattery(gemAmount);
-      }
-
-      // Remove gem from floor
-      _items = WorldItems.filterFloorItems(function(i) { return i !== item; });
-
-      // Overhead animation with RESOURCE_COLOR cyan-green (NOT cyan LOOT)
-      if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
-        OverheadAnimator.showGenericExpression(_player.x, _player.y, '◈', 800, '#00FFA6');
-      }
-
-      // Report to debrief feed with resource-colored frame flash
-      try {
-        if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
-          var newBattery = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getBattery) ? GAMESTATE.getBattery() : 0;
-          DebriefFeedController.reportResourceChange('Battery', newBattery - gemAmount, newBattery, '◈ Battery +' + gemAmount);
-        }
-      } catch (eDebrief) {}
-
-      if (typeof TooltipSystem !== 'undefined') {
-        TooltipSystem.showAction('item-pickup', { name: '◈ Battery +' + gemAmount });
-      }
-
-      if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-        UIControls.updateMokInterjection('◈ Battery +' + gemAmount);
-      }
-
-      // Pancake stacker for battery gems (cyan glyph)
-      try {
-        if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-          PancakeStack.addPancake('◈');
-        } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-          PlayerStackManager.addPancake('◈');
-        }
-      } catch (ePancake) {}
-
-      // Trigger debrief feed battery recharge pulse
-      try {
-        if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.triggerBatteryRecharge) {
-          DebriefFeedController.triggerBatteryRecharge();
-        }
-      } catch (eDebrief) {}
-
-      return {
-        lines: ['PICKED UP: ◈ Battery +' + gemAmount, ''].concat(_renderGrid()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    // Check if item is a card (attack/support) or regular item
-    var isCard = item.card && (item.card.type === 'attack' || item.card.type === 'support');
-
-    // Normalize non-card pickups: some world drops (keys, etc.) are not wrapped in item.card
-    var nonCardPayload = item.card;
-    if (!isCard) {
-      if (item.type === 'key') {
-        nonCardPayload = {
-          type: 'key',
-          keyType: item.keyType || item.itemId || 'UNKNOWN_KEY',
-          emoji: item.emoji || '🗝',
-          name: item.name || 'Key',
-          description: item.description || '',
-          tier: item.tier || 1,
-          subtype: item.subtype || null,
-          npcTarget: item.npcTarget || null
-        };
-
-        // ── Resolve full definition from items.json registry ──
-        // Spawned items (from tutorial-floors, loot tables, etc.) are lightweight.
-        // Merge the master definition from GoneRogueDataRegistry to fill in
-        // effects, description, rarity, and other metadata.
-        try {
-          if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.listItems) {
-            var allItems = GoneRogueDataRegistry.listItems();
-            var registryDef = null;
-
-            // Match by registryId if the spawn provides one
-            if (item.registryId) {
-              registryDef = GoneRogueDataRegistry.getItem(item.registryId);
-              if (registryDef && registryDef._missing) registryDef = null;
-            }
-
-            // Fallback: match by name (case-insensitive)
-            if (!registryDef) {
-              var targetName = (item.name || '').toLowerCase();
-              for (var ri = 0; ri < allItems.length; ri++) {
-                if (allItems[ri] && (allItems[ri].name || '').toLowerCase() === targetName && allItems[ri].type === 'key') {
-                  registryDef = allItems[ri];
-                  break;
-                }
-              }
-            }
-
-            // Fallback: match by keyType → name heuristic (BLACKSMITH_HAMMER → "blacksmith's hammer")
-            if (!registryDef && nonCardPayload.keyType) {
-              var heuristicName = nonCardPayload.keyType.toLowerCase().replace(/_/g, ' ');
-              for (var ri2 = 0; ri2 < allItems.length; ri2++) {
-                var candidateName = (allItems[ri2].name || '').toLowerCase().replace(/[^a-z0-9 ]/g, '');
-                if (candidateName.indexOf(heuristicName) >= 0 && allItems[ri2].type === 'key') {
-                  registryDef = allItems[ri2];
-                  break;
-                }
-              }
-            }
-
-            // Merge registry definition into payload (registry wins for missing fields)
-            if (registryDef && !registryDef._missing) {
-              nonCardPayload.registryId = registryDef.id || null;
-              if (!nonCardPayload.description && registryDef.description) nonCardPayload.description = registryDef.description;
-              if (!nonCardPayload.effects && registryDef.effects) nonCardPayload.effects = registryDef.effects;
-              if (!nonCardPayload.rarity) nonCardPayload.rarity = registryDef.rarity || null;
-              if (!nonCardPayload.synergyTags && registryDef.synergyTags) nonCardPayload.synergyTags = registryDef.synergyTags;
-              if (!nonCardPayload.npcTarget && registryDef.effects) {
-                for (var ei2 = 0; ei2 < registryDef.effects.length; ei2++) {
-                  if (registryDef.effects[ei2] && registryDef.effects[ei2].npcTarget) {
-                    nonCardPayload.npcTarget = registryDef.effects[ei2].npcTarget;
-                    break;
-                  }
-                }
-              }
-              if (registryDef.tier) nonCardPayload.tier = registryDef.tier;
-              if (registryDef.equipSlot) nonCardPayload.equipSlot = registryDef.equipSlot;
-              if (registryDef.consumeOnUse !== undefined) nonCardPayload.consumeOnUse = registryDef.consumeOnUse;
-              console.log('[GoneRogue] Key item resolved from registry:', registryDef.id, registryDef.name);
-            }
-          }
-        } catch (eResolve) {
-          console.warn('[GoneRogue] Key item registry resolve error:', eResolve);
-        }
-
-        // Resolve tier from EnvironmentalSynergy if still not set
-        if (!item.tier && !nonCardPayload.tier && typeof EnvironmentalSynergy !== 'undefined' && EnvironmentalSynergy.getKeyDefinitions) {
-          try {
-            var keyDefs = EnvironmentalSynergy.getKeyDefinitions();
-            var kt = (nonCardPayload.keyType || '').toUpperCase().replace(/[^A-Z0-9_]/g, '_');
-            if (keyDefs[kt] && keyDefs[kt].tier) {
-              nonCardPayload.tier = keyDefs[kt].tier;
-            }
-          } catch (eTier) {}
-        }
-
-        // Set qualityName for display (keys use tier label, not card quality)
-        var tierNames = { 1: 'Ammo Key', 2: 'Gate Key', 3: 'Quest Item' };
-        nonCardPayload.qualityName = tierNames[nonCardPayload.tier] || 'Key';
-      } else if (!nonCardPayload) {
-        nonCardPayload = {
-          type: item.type || 'item',
-          emoji: item.emoji || '📦',
-          name: item.name || 'Item',
-          description: item.description || ''
-        };
-      }
-    }
-
-    // Add to appropriate inventory
-    if (typeof GAMESTATE !== 'undefined') {
-      var result;
-      var keyTier = (nonCardPayload && nonCardPayload.tier) ? nonCardPayload.tier : 0;
-
-      if (isCard) {
-        // NEW LOOT FLOW: Cards go to hand first, then action buttons
-        result = GAMESTATE.addCard(item.card);
-        // Pancake stacker for card pickup
-        try {
-          var cardEmoji = (item.card && item.card.emoji) ? item.card.emoji : '🃏';
-          if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-            PancakeStack.addPancake(cardEmoji);
-          } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-            PlayerStackManager.addPancake(cardEmoji);
-          }
-        } catch (ePancake) {}
-        // Overhead animation: monochrome card symbol in Cards purple
-        try {
-          if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
-            OverheadAnimator.showGenericExpression(_player.x, _player.y, '🂠', 800, '#800080');
-          }
-        } catch (eCardOH) {}
-        // Report card pickup to debrief feed
-        try {
-          if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
-            var cardName = (item.card && item.card.name) ? item.card.name : 'Card';
-            DebriefFeedController.reportResourceChange('Cards', 0, 1, '🂠 ' + cardName);
-          }
-        } catch (eCardDebrief) {}
-      } else if (item.type === 'key' && keyTier >= 2) {
-        // TIER 2+ (key_items): Door/gate keys and quest items go to persistent inventory
-        if (GAMESTATE.addToPersistent) {
-          result = GAMESTATE.addToPersistent(nonCardPayload);
-        } else {
-          result = GAMESTATE.addToLoose(nonCardPayload);
-        }
-      } else if (item.type === 'key') {
-        // TIER 1 (key_ammo): Tracked as a resource counter visible in debrief feed.
-        // These consumable chest/lock keys do NOT go to inventory — they are counted
-        // like ammo and reported via DebriefFeedController.reportResourceChange.
-        result = { success: true, message: 'Key ammo counted' };
-      } else {
-        result = { success: true, message: 'Item picked up' };
-      }
-
-      // KEY COUNTER: Increment structured key counter on successful pickup
-      if (item.type === 'key' && result && result.success) {
-        try {
-          if (GAMESTATE.addKeyCount) {
-            var countKeyType = nonCardPayload.keyType || item.keyType || item.itemId || 'UNKNOWN';
-            var oldKeyAmmoTotal = (keyTier <= 1 && GAMESTATE.getTotalKeyAmmo) ? GAMESTATE.getTotalKeyAmmo() : 0;
-            GAMESTATE.addKeyCount(countKeyType, keyTier || 1);
-            // TIER 1 (key_ammo): report resource change to debrief feed
-            if (keyTier <= 1) {
-              try {
-                var newKeyAmmoTotal = GAMESTATE.getTotalKeyAmmo ? GAMESTATE.getTotalKeyAmmo() : oldKeyAmmoTotal + 1;
-                if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
-                  DebriefFeedController.reportResourceChange('key_ammo', oldKeyAmmoTotal, newKeyAmmoTotal, nonCardPayload.name || item.name || 'Key');
-                }
-              } catch (eKAReport) {}
-            }
-          }
-        } catch (eKeyCount) {}
-      }
-
-      // KEY PICKUP ENHANCEMENTS — behavior varies by tier
-      if (item.type === 'key' && result && result.success) {
-        if (keyTier >= 2 && keyTier < 3) {
-          // TIER 2 (gate key): overhead stacker animation + auto-equip to active slot
-          try {
-            if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
-              OverheadAnimator.showGenericExpression(_player.x, _player.y, item.emoji || '🔑', 1200, '#FFD700');
-            }
-            if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-              PlayerStackManager.addPancake(item.emoji || '🔑');
-            } else if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-              PancakeStack.addPancake(item.emoji || '🔑');
-            }
-          } catch (eAnim) {}
-
-          try {
-            if (GAMESTATE.setActiveItem) {
-              GAMESTATE.setActiveItem(nonCardPayload);
-              if (typeof UIControls !== 'undefined' && UIControls.setActiveItem) {
-                UIControls.setActiveItem(nonCardPayload);
-              }
-              if (typeof TooltipSystem !== 'undefined') {
-                TooltipSystem.show('🔑 KEY EQUIPPED — Tap header icon near the gate!', 2500);
-              }
-            }
-          } catch (eEquip) {}
-
-        } else if (keyTier >= 3) {
-          // TIER 3 (quest key): special overhead animation, NO auto-equip, quest tooltip
-          try {
-            if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
-              OverheadAnimator.showGenericExpression(_player.x, _player.y, '❗', 1500, '#FF4444');
-            }
-          } catch (eAnim) {}
-
-          try {
-            // Resolve npcTarget from payload (already merged from registry) or spawn effects
-            var npcTarget = nonCardPayload.npcTarget || item.npcTarget || '';
-            if (!npcTarget && nonCardPayload.effects && nonCardPayload.effects.length) {
-              for (var ei = 0; ei < nonCardPayload.effects.length; ei++) {
-                if (nonCardPayload.effects[ei] && nonCardPayload.effects[ei].npcTarget) {
-                  npcTarget = nonCardPayload.effects[ei].npcTarget;
-                  break;
-                }
-              }
-            }
-            if (typeof TooltipSystem !== 'undefined') {
-              var questMsg = '❗ QUEST ITEM — ' + (nonCardPayload.name || item.name || 'Item');
-              if (npcTarget) questMsg += ' — Return to ' + npcTarget;
-              TooltipSystem.show(questMsg, 3500);
-            }
-          } catch (eQuest) {}
-        }
-        // TIER 1 (ammo key / low-tier key): show overhead key emoji so player sees auto-pickup
-        else {
-          try {
-            if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
-              OverheadAnimator.showGenericExpression(_player.x, _player.y, item.emoji || '🗝', 800, '#FF8A3D');
-            }
-            if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-              PancakeStack.addPancake(item.emoji || '🗝');
-            } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-              PlayerStackManager.addPancake(item.emoji || '🔑');
-            }
-          } catch (eAnim) {}
-        }
-      }
-
-      if (!result.success) {
-        return {
-          lines: [result.message, 'DROP SOMETHING FIRST', ''].concat(_renderGrid()),
-          prompt: getPrompt(),
-          stayActive: true
-        };
-      }
-
-      // Show where card was added (hand vs action buttons)
-      if (isCard && result.location) {
-        var locationMsg = result.location === 'hand' ? '[Added to HAND]' : '[Added to ACTION BUTTONS]';
-        _lastPickupMessage = locationMsg;
-      }
-    }
-
-    // Remove item from floor
-    _items = WorldItems.filterFloorItems(function(i) { return i !== item; });
-
-    // Tooltip: Item/card pickup
-    if (typeof TooltipSystem !== 'undefined') {
-      if (item.card && (item.card.type === 'attack' || item.card.type === 'support')) {
-        TooltipSystem.showAction('card-pickup', { name: item.card.name });
-      } else if (item.type === 'key' && keyTier <= 1) {
-        var nm = (nonCardPayload && nonCardPayload.name) ? nonCardPayload.name : (item.name || 'Key');
-        TooltipSystem.showAction('key-ammo-pickup', { name: nm });
-      } else if (item.type === 'key' && keyTier >= 2) {
-        var nm = (nonCardPayload && nonCardPayload.name) ? nonCardPayload.name : (item.name || 'Key');
-        TooltipSystem.showAction('key-item-pickup', { name: nm });
-      } else {
-        var nm = (item.card && item.card.name) ? item.card.name : (item.name || 'Item');
-        TooltipSystem.showAction('item-pickup', { name: nm });
-      }
-    }
-
-    var pickupEmoji = (item.card && item.card.emoji) ? item.card.emoji : (item.emoji || (item.type === 'key' ? '🔑' : '📦'));
-    var pickupDisplayName = (item.card && item.card.name) ? item.card.name : (item.name || 'Item');
-    var pickupQuality = (item.card && item.card.qualityName) ? ' [' + item.card.qualityName + ']'
-      : (item.type === 'key' && keyTier <= 1 ? ' [KEY AMMO]' : (item.type === 'key' ? ' [KEY ITEM]' : ''));
-
-    // MOK interjection for card/item pickup
-    if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-      var pickupType = isCard ? 'Card' : (item.type === 'key' && keyTier <= 1 ? 'Key Ammo' : (item.type === 'key' ? 'Key Item' : 'Item'));
-      var locationInfo = (isCard && result && result.location) ? ' → ' + result.location.toUpperCase() : '';
-      UIControls.updateMokInterjection(pickupType + ': ' + pickupDisplayName + locationInfo);
-    }
-
+  // ── PickupSystem delegation ──
+  function _pickupCtx() {
     return {
-      lines: ['PICKED UP: ' + pickupEmoji + ' ' + pickupDisplayName + pickupQuality, ''].concat(_renderGrid()),
-      prompt: getPrompt(),
-      stayActive: true
+      player: _player, items: _items,
+      renderGrid: _renderGrid, getPrompt: getPrompt,
+      setLastPickupMessage: function(msg) { _lastPickupMessage = msg; },
+      filterItems: function(item) {
+        _items = WorldItems.filterFloorItems(function(i) { return i !== item; });
+      }
     };
+  }
+  function _pickupItem() {
+    if (typeof PickupSystem !== 'undefined') {
+      return PickupSystem.pickupItem(_pickupCtx());
+    }
+    return { lines: ['PICKUP SYSTEM UNAVAILABLE'], prompt: getPrompt(), stayActive: true };
   }
 
   function _attemptPickpocket() {
-    if (typeof EnemyStealSystem === 'undefined') {
-      return { lines: ['STEAL SYSTEM UNAVAILABLE', ''], prompt: getPrompt(), stayActive: true };
+    if (typeof PlayerActionSystem !== 'undefined') {
+      return PlayerActionSystem.attemptPickpocket(_playerActionCtx());
     }
-
-    if (_strCombatActive) {
-      return { lines: ['CAN\'T STEAL IN STR COMBAT', ''], prompt: getPrompt(), stayActive: true };
-    }
-
-    var activeItem = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) ? GAMESTATE.getActiveItem() : null;
-    var res = EnemyStealSystem.attempt({
-      player: _player,
-      enemies: _enemies,
-      activeItem: activeItem,
-      getEnemyDeck: (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getEnemyDeck) ? GoneRogueDataRegistry.getEnemyDeck : null,
-      getEnemyCard: (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getEnemyCard) ? GoneRogueDataRegistry.getEnemyCard : null
-    });
-
-    if (!res || !res.ok) {
-      return { lines: ['STEAL FAILED', ''], prompt: getPrompt(), stayActive: true };
-    }
-
-    // Award a disposable card into player hand/backup pipeline.
-    // NOTE: this is the "permanent" steal mechanic: the card becomes part of your run deck.
-    var awardId = res.cardId;
-    if (awardId && typeof GAMESTATE !== 'undefined' && GAMESTATE.addPrintedCards) {
-      GAMESTATE.addPrintedCards(awardId, 1, { preferHand: true });
-    }
-
-    // Feedback
-    try {
-      if (typeof TooltipSystem !== 'undefined') {
-        TooltipSystem.showPersistent('🧤 ' + (res.success ? 'STOLEN' : 'FUMBLED'), 700);
-      }
-    } catch (e0) {}
-
-    var lines = [];
-    lines.push(res.message || (res.success ? 'STOLEN' : 'FUMBLED'));
-    if (awardId) {
-      var def = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) ? GoneRogueDataRegistry.getCard(awardId) : null;
-      var em = def && def.emoji ? def.emoji : '🃏';
-      var nm = def && def.name ? def.name : awardId;
-      lines.push('→ ' + em + ' ' + nm);
-    }
-    lines.push('');
-
-    return { lines: lines.concat(_renderGrid()), prompt: getPrompt(), stayActive: true };
+    return { lines: ['STEAL SYSTEM UNAVAILABLE', ''], prompt: getPrompt(), stayActive: true };
   }
 
   function _attemptExtract() {
-    var tile = _grid[_player.y][_player.x];
-    if (tile !== TILES.EXIT) {
-      return {
-        lines: ['NO EXIT HERE', 'FIND THE EXTRACTION POINT (🚪)', ''].concat(_renderGrid()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
+    if (typeof PlayerActionSystem !== 'undefined') {
+      return PlayerActionSystem.attemptExtract(_playerActionCtx());
     }
-
-    // Check if this is the final floor (30) or if player wants to extract early
-    var MAX_FLOORS = 30;
-    if (_floor >= MAX_FLOORS) {
-      _runCompleted = true; // Mark run as completed for highscore
-
-      // Mark difficulty tier as completed
-      if (typeof AWOLDifficulty !== 'undefined' && _difficultyTier >= 1 && _difficultyTier <= 3) {
-        AWOLDifficulty.markTierCompleted(_difficultyTier);
-      }
-
-      // Unlock avatar tier matching difficulty completed (tier 1-3 → avatar tiers 1-3)
-      var _prevTier = 0;
-      if (typeof TerminalCommandRouter !== 'undefined' && TerminalCommandRouter.completeTier) {
-        _prevTier = TerminalCommandRouter.getPlayerState().completedTiers || 0;
-        TerminalCommandRouter.completeTier(_difficultyTier);
-      }
-
-      // Show tier-up announcement if a new tier was unlocked
-      var _newTier = (typeof TerminalCommandRouter !== 'undefined' && TerminalCommandRouter.getPlayerState)
-        ? TerminalCommandRouter.getPlayerState().completedTiers : 0;
-      if (_newTier > _prevTier && typeof TierUpAnnouncement !== 'undefined' && TierUpAnnouncement.show) {
-        TierUpAnnouncement.show({
-          tier: _newTier,
-          onComplete: function () { /* announcement done, rogue already exiting */ }
-        });
-      }
-
-      return _exitRogue(true);
-    }
-
-    // Advance to next floor
     return _advanceFloor();
   }
 
@@ -4230,211 +3377,42 @@ _incrementPityTimers();
   var _interiorFloorStack = []; // Stack of { floorId, playerPos } for nested interiors
   var _currentInteriorFloorId = null; // Current interior floor ID (null if on main floor)
 
+  // ── InteriorFloorSystem delegation ──
+  function _interiorFloorCtx() {
+    return {
+      player: _player, interiorFloorStack: _interiorFloorStack,
+      useInteractiveGrid: _useInteractiveGrid,
+      TILES: TILES, GRID_WIDTH: GRID_WIDTH, GRID_HEIGHT: GRID_HEIGHT,
+      get currentInteriorFloorId() { return _currentInteriorFloorId; },
+      set currentInteriorFloorId(v) { _currentInteriorFloorId = v; },
+      get floor() { return _floor; },
+      setGrid: function(g) { _grid = g; },
+      getGrid: function() { return _grid; },
+      setEnemies: function(e) { _enemies = e; },
+      setBreakables: function(b) { _breakables = b; },
+      getBreakables: function() { return _breakables; },
+      syncWorldItems: function() { _items = WorldItems.getFloorItems(); _currencies = WorldItems.getCurrencies(); },
+      getItems: function() { return _items; },
+      getCurrencies: function() { return _currencies; },
+      setNpcs: function(n) { _npcs = n; },
+      getNpcs: function() { return _npcs; },
+      setForestBuildings: function(f) { _forestBuildings = f; },
+      addForestBuilding: function(b) { _forestBuildings.push(b); },
+      setTileMetadata: function(m) { _tileMetadata = m; },
+      setTileMetadataAt: function(x, y, val) { _tileMetadata[x + ',' + y] = val; },
+      clearVisualCaches: function() { _biomeVisualGrid = null; _biomeBackgroundColors = null; _tileRenderObjects = null; _cachedWalls = []; },
+      ensurePlayerOnEmptyTile: _ensurePlayerOnEmptyTile,
+      rebuildWallCache: _rebuildWallCache,
+      getWallCache: function() { return _wallCache; },
+      getAllLightBlockers: _getAllLightBlockers,
+      updatePlayerLight: _updatePlayerLight,
+      startGameLoop: _startGameLoop
+    };
+  }
   function _enterInteriorFloor(targetFloorId) {
-    if (!targetFloorId) return;
-    if (typeof InteriorFloors === 'undefined') {
-      console.warn('[GoneRogue] InteriorFloors module not loaded');
-      return;
+    if (typeof InteriorFloorSystem !== 'undefined') {
+      InteriorFloorSystem.enterInteriorFloor(targetFloorId, _interiorFloorCtx());
     }
-
-    var layout = InteriorFloors.getAuthoredLayout(targetFloorId);
-    if (!layout) {
-      console.warn('[GoneRogue] No authored layout for interior: ' + targetFloorId);
-      return;
-    }
-
-    console.log('[GoneRogue] Entering interior floor: ' + targetFloorId);
-
-    // Save current state to the stack so we can return
-    _interiorFloorStack.push({
-      floorId: _currentInteriorFloorId,
-      mainFloor: _floor,
-      playerX: _player.x,
-      playerY: _player.y
-    });
-    _currentInteriorFloorId = targetFloorId;
-
-    // Fade-out effect
-    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      var gridContainer = document.getElementById('rogue-grid-mobile');
-      if (gridContainer) {
-        gridContainer.style.opacity = '0';
-        gridContainer.style.transition = 'opacity 0.25s ease-out';
-      }
-    }
-
-    setTimeout(function() {
-      // Generate the interior floor using the authored layout
-      var floorData = TutorialFloors.generateContrivedFloor(layout);
-
-      // Apply grid
-      _grid = floorData.grid;
-
-      // Place player at interior spawn
-      _player.x = floorData.player.x;
-      _player.y = floorData.player.y;
-      _ensurePlayerOnEmptyTile();
-
-      // Reset state arrays for interior
-      _enemies = [];
-      _breakables = [];
-      WorldItems.init();
-      _items = WorldItems.getFloorItems();
-      _currencies = WorldItems.getCurrencies();
-      _npcs = [];
-      _forestBuildings = [];
-      _tileMetadata = {};
-
-      // CRITICAL: Clear pre-computed visual grids so the renderer uses the NEW _grid
-      // instead of the stale biome visual grid from the previous floor.
-      _biomeVisualGrid = null;
-      _biomeBackgroundColors = null;
-      _tileRenderObjects = null;
-      _cachedWalls = [];
-
-      // Place exit door (back to parent floor)
-      var exitX = floorData.exit.x;
-      var exitY = floorData.exit.y;
-      if (exitX >= 0 && exitX < GRID_WIDTH && exitY >= 0 && exitY < GRID_HEIGHT) {
-        _grid[exitY][exitX] = TILES.DOOR;
-        _tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'interior_exit' };
-      }
-
-      // Place decorations
-      if (floorData.decorations) {
-        floorData.decorations.forEach(function(deco) {
-          _forestBuildings.push({ x: deco.x, y: deco.y, emoji: deco.emoji });
-        });
-      }
-
-      // Place breakables
-      if (floorData.breakables) {
-        floorData.breakables.forEach(function(breakable) {
-          _breakables.push({
-            x: breakable.x, y: breakable.y,
-            hp: breakable.hp, maxHp: breakable.hp,
-            glyph: TILES.BREAKABLE, destroyedGlyph: TILES.DEBRIS,
-            emoji: breakable.emoji, name: breakable.name,
-            tag: 'interior_breakable_' + _breakables.length,
-            drops: breakable.drops
-          });
-        });
-      }
-
-      // Place currencies
-      if (layout.currencies) {
-        layout.currencies.forEach(function(c) {
-          _currencies.push({ x: c.x, y: c.y, amount: c.amount || 3, collected: false });
-        });
-      }
-
-      // Place building doors (for nested interiors, e.g. tavern → basement)
-      if (floorData.buildingDoors && floorData.buildingDoors.length > 0) {
-        floorData.buildingDoors.forEach(function(bd) {
-          if (!bd || typeof bd.x !== 'number' || typeof bd.y !== 'number') return;
-          if (bd.x < 0 || bd.x >= GRID_WIDTH || bd.y < 0 || bd.y >= GRID_HEIGHT) return;
-          _grid[bd.y][bd.x] = TILES.DOOR;
-          _tileMetadata[bd.x + ',' + bd.y] = {
-            type: 'building_door',
-            doorKind: 'building',
-            buildingId: bd.buildingId || null,
-            targetFloorId: bd.targetFloorId || null,
-            emoji: '🚪',
-            name: (bd.buildingId || 'Building') + ' Entrance'
-          };
-        });
-      }
-
-      // Place NPCs
-      if (floorData.npcs && floorData.npcs.length > 0) {
-        floorData.npcs.forEach(function(npc) {
-          var npcObj = {
-            id: npc.id || ('NPC-' + npc.x + '-' + npc.y),
-            x: npc.x, y: npc.y,
-            emoji: npc.emoji || '🧑', name: npc.name || 'NPC',
-            direction: (npc.direction || 'south').toLowerCase(),
-            dialogues: Array.isArray(npc.dialogues) ? npc.dialogues.slice() : [],
-            gate: npc.gate || null, reward: npc.reward || null,
-            shopkeeper: npc.shopkeeper || false,
-            state: { released: false, rewardGiven: false, lastWarnTurn: -999, lastTalkTurn: -999 }
-          };
-          _npcs.push(npcObj);
-          _grid[npcObj.y][npcObj.x] = TILES.WALL;
-          _tileMetadata[npcObj.x + ',' + npcObj.y] = {
-            type: 'npc', npcId: npcObj.id, emoji: npcObj.emoji, name: npcObj.name
-          };
-        });
-      }
-
-      // Place interactive items
-      if (floorData.interactiveItems && typeof InteractiveItems !== 'undefined') {
-        floorData.interactiveItems.forEach(function(itemDef) {
-          var item = InteractiveItems.createItem(itemDef.type, itemDef.x, itemDef.y, {
-            text: itemDef.text || '', emoji: itemDef.emoji, name: itemDef.name,
-            customData: itemDef.customData
-          });
-          if (item) InteractiveItems.addItem(item);
-        });
-      }
-
-      // Place quest key items (tutorialPickups with type 'key')
-      if (floorData.tutorialPickups) {
-        floorData.tutorialPickups.forEach(function(pickup) {
-          if (pickup.type === 'key') {
-            _items.push({
-              x: pickup.x, y: pickup.y,
-              type: 'key',
-              keyType: pickup.keyType || 'UNKNOWN_KEY',
-              tier: pickup.tier || 3,
-              subtype: pickup.subtype || 'quest',
-              emoji: pickup.emoji || '🔑',
-              name: pickup.name || 'Key',
-              npcTarget: pickup.npcTarget || null,
-              collected: false
-            });
-          } else if (pickup.type === 'currency') {
-            _currencies.push({ x: pickup.x, y: pickup.y, amount: pickup.amount, collected: false });
-          } else if (pickup.type === 'card' && pickup.guaranteed) {
-            _items.push({ x: pickup.x, y: pickup.y, type: 'card', card: 'strike', collected: false });
-          }
-        });
-      }
-
-      // Lighting for interior
-      if (typeof LightingSystem !== 'undefined') {
-        LightingSystem.setBiome('COZY_FOREST_NIGHT');
-        LightingSystem.setDarknessMultiplier(1.2);
-        _rebuildWallCache();
-        var pseudoRooms = [{ x: 1, y: 1, width: GRID_WIDTH - 2, height: GRID_HEIGHT - 2 }];
-        LightingSystem.generateBiomeLights(GRID_WIDTH, GRID_HEIGHT, pseudoRooms, _wallCache);
-        LightingSystem.addLightSource(_player.x, _player.y, 'CAMPFIRE');
-        _updatePlayerLight();
-        LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, _getAllLightBlockers(_wallCache));
-      }
-
-      // Initialize movement at new position
-      if (typeof GoneRogueMovement !== 'undefined') {
-        GoneRogueMovement.init(_player.x, _player.y);
-      }
-
-      _startGameLoop();
-
-      // Fade-in
-      if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-        var gridContainer = document.getElementById('rogue-grid-mobile');
-        if (gridContainer) {
-          gridContainer.style.opacity = '1';
-          gridContainer.style.transition = 'opacity 0.25s ease-in';
-        }
-      }
-
-      // Show interior name
-      if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-        UIControls.updateMokInterjection('📍 ' + (layout.name || 'Interior'));
-      }
-
-      console.log('[GoneRogue] Interior floor loaded: ' + targetFloorId);
-    }, 260);
   }
 
   // ── FloorTransitionSystem delegation ──
@@ -4557,72 +3535,20 @@ _incrementPityTimers();
   /**
    * Submit highscore at end of run
    */
+  // ── HighscoreSystem delegation ──
+  function _highscoreCtx() {
+    return {
+      floor: _floor, runStartTime: _runStartTime, runCompleted: _runCompleted,
+      playerDeaths: _playerDeaths, enemiesKilled: _enemiesKilled,
+      totalEnemiesSpawned: _totalEnemiesSpawned,
+      currencyCollected: _currencyCollected, totalDamageDealt: _totalDamageDealt,
+      maxSingleHit: _maxSingleHit, damageMitigated: _damageMitigated,
+      totalBreakableDamage: _totalBreakableDamage
+    };
+  }
   function _submitHighscore() {
-    // Determine if this is an agent or human run
-    var mode = 'human';
-    if (typeof AgentIntegration !== 'undefined' && AgentIntegration.isActive()) {
-      mode = 'agent';
-    }
-
-    // Get display name — prefer account username, fall back to local callsign
-    var displayName = 'Anonymous';
-    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getAccount === 'function') {
-      var account = GAMESTATE.getAccount();
-      if (account && account.username) {
-        displayName = account.username;
-      }
-    }
-    // Fallback: use local player callsign from TerminalCommandRouter
-    if (displayName === 'Anonymous' && typeof TerminalCommandRouter !== 'undefined' && TerminalCommandRouter.getPlayerState) {
-      var _pState = TerminalCommandRouter.getPlayerState();
-      if (_pState.callsign) {
-        displayName = _pState.callsign;
-      }
-    }
-
-    // Calculate enemies avoided (spawned but not killed)
-    var enemiesAvoided = Math.max(0, _totalEnemiesSpawned - _enemiesKilled);
-
-    // Prepare run data for score calculation
-    var runData = {
-      currencyFound: _currencyCollected,
-      interactivesFound: (typeof InteractiveItems !== 'undefined' && InteractiveItems.getInteractionCount) ? InteractiveItems.getInteractionCount() : 0,
-      enemiesAvoided: enemiesAvoided,
-      breakableDamage: _totalBreakableDamage,
-      damageMitigated: _damageMitigated
-    };
-
-    // Calculate score
-    var score = HighscoreState.calculateGoneRogueScore(runData);
-
-    // Prepare entry
-    var entry = {
-      game_id: 'gone_rogue',
-      mode: mode,
-      display_name: displayName,
-      score: score,
-      metadata: {
-        completions: _runCompleted ? 1 : 0,
-        final_floor: _floor,
-        player_deaths: _playerDeaths,
-        enemies_killed: _enemiesKilled,
-        enemies_avoided: enemiesAvoided,
-        currency_collected: _currencyCollected,
-        total_damage_dealt: _totalDamageDealt,
-        most_damage_dealt_single_action: _maxSingleHit,
-        damage_mitigated: _damageMitigated,
-        breakables_destroyed: _totalBreakableDamage,
-        run_duration_ms: _runStartTime ? (Date.now() - _runStartTime) : 0
-      }
-    };
-
-    // Submit to HighscoreState
-    var result = HighscoreState.submitHighscore(entry);
-
-    if (result.success) {
-      console.log('[GoneRogue] Highscore submitted:', score, 'Entry ID:', result.entry_id);
-    } else {
-      console.error('[GoneRogue] Failed to submit highscore:', result.error);
+    if (typeof HighscoreSystem !== 'undefined') {
+      HighscoreSystem.submitHighscore(_highscoreCtx());
     }
   }
 
@@ -4743,289 +3669,8 @@ _incrementPityTimers();
    * Update all game state (enemies, awareness, etc.)
    */
   function _updateGameState(deltaMs) {
-    // Update smooth movement system
-    if (typeof GoneRogueMovement !== 'undefined' && GoneRogueMovement.isMoving()) {
-      var collisionCheck = function(x, y) {
-        return !_isWalkable(x, y);
-      };
-
-      GoneRogueMovement.update(collisionCheck);
-
-      // Update player position from movement system
-      var logical = GoneRogueMovement.getLogicalPosition();
-      var visual = GoneRogueMovement.getVisualPosition();
-
-      // Check if logical position changed (player reached next tile)
-      if (_player.x !== logical.x || _player.y !== logical.y) {
-        // Update player grid position
-        var oldX = _player.x;
-        var oldY = _player.y;
-        _player.x = logical.x;
-        _player.y = logical.y;
-
-        // Update last move direction for flanking
-        if (logical.x > oldX) _player.lastMoveDirection = 'east';
-        else if (logical.x < oldX) _player.lastMoveDirection = 'west';
-        else if (logical.y > oldY) _player.lastMoveDirection = 'south';
-        else if (logical.y < oldY) _player.lastMoveDirection = 'north';
-
-        // Check for items, currency, enemies at new position
-        _checkPlayerInteractions();
-
-        // Floor 0 scripted walk: two-phase system (tavern pause → exit stop)
-        if (_scriptedWalk && _scriptedWalkTarget) {
-          if (_player.x === _scriptedWalkTarget.x && _player.y === _scriptedWalkTarget.y) {
-            if (typeof GoneRogueMovement !== 'undefined') GoneRogueMovement.stop();
-
-            if (_scriptedWalkPhase === 1) {
-              // Phase 1 complete: arrived at tavern door — pause and show hint
-              _scriptedWalkPhase = 2;
-              _scriptedWalk = false;
-              _scriptedWalkTarget = null;
-              _showTutorialHint('tavern_hint', '👆 Tap to explore the tavern — or wait to continue', 3500);
-
-              // After 3.5s pause, resume walk toward exit
-              setTimeout(function() {
-                if (_scriptedWalkPhase === 2 && _scriptedWalkExitTarget) {
-                  _scriptedWalkPhase = 3;
-                  _scriptedWalk = true;
-                  _scriptedWalkTarget = _scriptedWalkExitTarget;
-                  if (typeof GoneRogueMovement !== 'undefined') {
-                    GoneRogueMovement.startMoveTo(_scriptedWalkTarget.x, _scriptedWalkTarget.y);
-                  }
-                }
-              }, 3500);
-            } else if (_scriptedWalkPhase === 3) {
-              // Phase 3 complete: arrived at exit — stop and let player tap the door
-              _scriptedWalk = false;
-              _scriptedWalkTarget = null;
-              _scriptedWalkPhase = 0;
-              _showTutorialHint('exit_hint', '🚪 Tap the door to enter the forest', 4000);
-              // Player must tap exit door themselves — no auto-advance
-            } else {
-              // Fallback: clear scripted walk
-              _scriptedWalk = false;
-              _scriptedWalkTarget = null;
-            }
-          }
-        }
-      }
-
-      // Store visual position for rendering
-      _player.visualX = visual.x;
-      _player.visualY = visual.y;
-
-      // Update tooltip positions for continuous movement
-      if (typeof TooltipThumb !== 'undefined') {
-        var playerPos = { x: visual.x, y: visual.y };
-        TooltipThumb.updatePosition('player', playerPos);
-      }
-
-      // Update mobile UI with new positions
-      if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-        _updateMobileGrid();
-      }
-    }
-
-    // Update pets based on player position history
-    if (typeof PetFollower !== 'undefined') {
-      var currentTime = Date.now();
-      PetFollower.updatePets(_player.positionHistory, currentTime);
-
-      // Check for breakables near humanoid pets
-      PetFollower.checkBreakables(_breakables, function(breakable, index) {
-        // Pet breaks a breakable
-        _breakables.splice(index, 1);
-        console.log('[Pet] Broke breakable at', breakable.x, breakable.y);
-
-        // Optional: trigger overhead animation
-        if (typeof OverheadAnimator !== 'undefined') {
-          OverheadAnimator.showGenericExpression(breakable.x, breakable.y, '💥', 800);
-        }
-      });
-    }
-
-    // Update enemy positions and awareness
-    var _ep0 = (typeof EYESONLY_PERF !== 'undefined') ? performance.now() : 0;
-    _enemies.forEach(function(enemy) {
-      if (enemy.hp <= 0) return;
-
-      // Check treasure goblin timeout (15 seconds to kill)
-      if (enemy.isTreasureGoblin && enemy.goblinSpawnTime && typeof SecretFloors !== 'undefined') {
-        var goblinAge = (Date.now() - enemy.goblinSpawnTime) / 1000; // Age in seconds
-        var goblinTimeout = 15; // 15 seconds to kill
-
-        if (goblinAge > goblinTimeout) {
-          // Goblin escaped! Trigger secret floor
-          var triggerResult = SecretFloors.triggerSecretFloor(
-            SecretFloors.TRIGGER_TYPES.GOBLIN_TIMEOUT,
-            {
-              goblinTimeExpired: true
-            }
-          );
-
-          if (triggerResult.success) {
-            console.log('[GoneRogue] Treasure goblin escaped - secret floor triggered!');
-          }
-
-          // Remove the goblin (it escaped)
-          enemy.hp = 0;
-        }
-      }
-
-      // Update Elite enemies with special behavior
-      if (enemy.isElite && typeof EliteEnemies !== 'undefined') {
-        EliteEnemies.updateElite(enemy, _player, _grid, deltaMs);
-      }
-
-      // Update enemy pathing
-      _updateEnemyPath(enemy, deltaMs);
-
-      // Box interaction: check when enemy arrives at a new integer tile
-      if (enemy.x !== enemy._lastBoxCheckX || enemy.y !== enemy._lastBoxCheckY) {
-        enemy._lastBoxCheckX = enemy.x;
-        enemy._lastBoxCheckY = enemy.y;
-        _checkEnemyBoxInteraction(enemy);
-      }
-
-      // Update awareness decay
-      _updateEnemyAwareness(enemy, deltaMs);
-
-      // Coarse distance pre-cull: skip expensive sight-cone check for enemies
-      // that are provably beyond the maximum possible sight range.
-      // Uses squared-distance to avoid Math.sqrt — max base sight is 5 tiles,
-      // plus up to 5 tiles of darkness bonus gives an effective cap of 10.
-      var dxCull = _player.x - enemy.x;
-      var dyCull = _player.y - enemy.y;
-      if (dxCull * dxCull + dyCull * dyCull <= 100) { // 10² = 100
-        // Check if player is in sight cone
-        if (_isPlayerInSightCone(enemy)) {
-          _increaseEnemyAwareness(enemy, 10); // Increase awareness when player spotted
-          if (!_strCombatActive) {
-            _enterStrCombat(enemy, 'enemy_sighting');
-          }
-        }
-      }
-    });
-    if (_ep0 && typeof EYESONLY_PERF !== 'undefined') {
-      EYESONLY_PERF.mark('rogue.enemyPathMs', performance.now() - _ep0);
-    }
-
-    // Throttle projectile advancement so they're visually animated
-    _projectileTickAccum += deltaMs;
-    if (_projectiles.length > 0 && _projectileTickAccum >= _projectileAdvanceInterval) {
-      _projectileTickAccum = 0;
-      _updateProjectiles(deltaMs);
-    } else if (_projectiles.length === 0) {
-      _projectileTickAccum = 0;
-    }
-
-    // Let the active boss inject real-time hazard projectiles into the
-    // existing projectile pipeline each tick (no new engine required).
-    if (_bossFloorActive && _activeBoss && !_bossDefeated &&
-        typeof _activeBoss.updateRealTime === 'function') {
-      var bossRt = _activeBoss.updateRealTime(deltaMs, {
-        player: _player,
-        grid: _grid,
-        enemies: _enemies
-      });
-      if (bossRt && bossRt.bossProjectiles && bossRt.bossProjectiles.length) {
-        bossRt.bossProjectiles.forEach(function(p) {
-          if (typeof ProjectileSystem !== 'undefined') { ProjectileSystem.addProjectile(p); }
-          else { _projectiles.push(p); }
-        });
-        if (typeof ProjectileSystem !== 'undefined') _syncProjectileState();
-      }
-      // Apply move-lock state for Asteroids boss
-      if (_activeBoss.playerMoveLocked !== undefined) {
-        _playerMoveLocked = !!_activeBoss.playerMoveLocked;
-      }
-    }
-    var now = Date.now();
-    _items = WorldItems.filterFloorItems(function(item) {
-      if (item.spawnTime && item.decayTime) {
-        var age = now - item.spawnTime;
-        return age < item.decayTime;
-      }
-      return true; // Keep items without decay timers
-    });
-
-    // Update currency decay timers
-    _currencies = WorldItems.filterCurrencies(function(currency) {
-      if (currency.spawnTime && currency.decayTime) {
-        var age = now - currency.spawnTime;
-        return age < currency.decayTime;
-      }
-      return true; // Keep currency without decay timers
-    });
-
-    // ── Magnet auto-collect: pull nearby scattered currency/ammo to player ──
-    _magnetAutoCollect(now);
-
-    // Update color cycle timer for visual feedback
-    _enemyColorCycleTime += deltaMs;
-
-    // Update ground effects system (spreading fire, dissipating steam, etc.)
-    if (typeof GroundEffects !== 'undefined') {
-      GroundEffects.update(deltaMs, GRID_WIDTH, GRID_HEIGHT);
-
-      // Apply ground effect damage to player
-      var playerGroundDamage = GroundEffects.getDamage(_player.x, _player.y);
-      if (playerGroundDamage > 0) {
-        _player.hp = Math.max(0, _player.hp - playerGroundDamage);
-        if (_player.hp <= 0) {
-          // Player died from ground effect
-          return _handlePlayerDeath('environmental_hazard');
-        }
-      }
-
-      // Apply ground effect damage to enemies
-      _enemies.forEach(function(enemy) {
-        if (enemy.hp <= 0) return;
-        var enemyGroundDamage = GroundEffects.getDamage(enemy.x, enemy.y);
-        if (enemyGroundDamage > 0) {
-          var hpBefore = enemy.hp;
-          enemy.hp = Math.max(0, enemy.hp - enemyGroundDamage);
-
-          // Check if enemy died from ground effect
-          if (enemy.hp <= 0 && hpBefore > 0) {
-            // Determine if player gets credit for this death
-            // For now, assume ground effects are passive (no player credit)
-            // Future: track player-triggered ground effects (fire spread, etc.)
-            _handleEnemyDeath(enemy, 'environment', {
-              location: { x: enemy.x, y: enemy.y },
-              hazardType: 'ground_effect',
-              damage: enemyGroundDamage
-            });
-          }
-        }
-      });
-    }
-
-    // Update lighting system
-    if (typeof LightingSystem !== 'undefined') {
-      // Update player light position
-      _updatePlayerLight();
-
-      // Update enemy lights
-      LightingSystem.updateEnemyLights(_enemies);
-
-      // Throttle full light-map recalculation to every 5 ticks (~500ms at 10 FPS).
-      // Walls are static per floor — _wallCache is built once in _generateFloor.
-      _lightMapTickCounter++;
-      if (_lightMapTickCounter >= 5) {
-        _lightMapTickCounter = 0;
-        var _lt0 = (typeof EYESONLY_PERF !== 'undefined') ? performance.now() : 0;
-        LightingSystem.updateLightMap(GRID_WIDTH, GRID_HEIGHT, _getAllLightBlockers(_wallCache));
-        if (_lt0 && typeof EYESONLY_PERF !== 'undefined') {
-          EYESONLY_PERF.mark('lighting.updateLightMapMs', performance.now() - _lt0);
-        }
-      }
-    }
-
-    // Re-render if using interactive grid
-    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      _updateMobileGrid();
+    if (typeof GameTickSystem !== 'undefined') {
+      return GameTickSystem.updateGameState(deltaMs, _gameTickCtx());
     }
   }
 
@@ -5159,65 +3804,20 @@ _incrementPityTimers();
   /**
    * Get player stealth bonus from current tile
    */
+  // ── StealthSystem delegation ──
+  function _stealthCtx() {
+    return {
+      player: _player, grid: _grid, tileMetadata: _tileMetadata,
+      TILES: TILES, playerInBox: _playerInBox,
+      getStealthBonusCache: function() { return _stealthBonusCache; },
+      setStealthBonusCache: function(v) { _stealthBonusCache = v; }
+    };
+  }
   function _getPlayerStealthBonus() {
-    // Return cached value if player hasn't moved since last computation.
-    // The cache is keyed on player grid position — any tile change invalidates it.
-    if (_stealthBonusCache &&
-        _stealthBonusCache.px === _player.x &&
-        _stealthBonusCache.py === _player.y) {
-      return _stealthBonusCache.bonus;
+    if (typeof StealthSystem !== 'undefined') {
+      return StealthSystem.getPlayerStealthBonus(_stealthCtx());
     }
-
-    var tile = _grid[_player.y][_player.x];
-    var key = _player.x + ',' + _player.y;
-    var metadata = _tileMetadata[key];
-
-    var bonus = 0;
-
-    // Tile-based stealth bonuses
-    if (tile === TILES.SHADOW && metadata && metadata.stealthBonus) {
-      bonus += metadata.stealthBonus; // 30%
-    } else if (tile === TILES.GRASS && metadata && metadata.stealthBonus) {
-      bonus += metadata.stealthBonus; // 20%
-    } else if (tile === TILES.SMOKE && metadata && metadata.stealthBonus) {
-      bonus += metadata.stealthBonus; // 40%
-    }
-
-    // Darkness-based stealth bonus (from lighting system)
-    if (typeof LightingSystem !== 'undefined') {
-      var darknessBonus = LightingSystem.getDarknessStealthBonus(_player.x, _player.y);
-      bonus += darknessBonus; // 0-50% based on darkness
-    }
-
-    // Charm bonuses from inventory (charms work from inventory, not active slot)
-    if (typeof GAMESTATE !== 'undefined') {
-      var persistent = GAMESTATE.getPersistentInventory();
-      var loose = GAMESTATE.getLooseInventory();
-      var allItems = persistent.concat(loose);
-
-      allItems.forEach(function(item) {
-        if (item && item.category === 'charm' && item.stats && item.stats.stealth) {
-          bonus += item.stats.stealth;
-        }
-      });
-    }
-
-    // Passive item bonuses (e.g., Cardboard Box)
-    if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.getEquippedStealthBonus) {
-      var passiveBonus = PassiveItemsSystem.getEquippedStealthBonus(_player.quality || 50);
-      bonus += passiveBonus;
-    }
-
-    // Deployed box bonus: even if the random evasion roll in _isPlayerInSightCone
-    // fails, the box still reduces enemy effective sight range significantly.
-    if (_playerInBox) {
-      bonus += 70; // large range reduction regardless of evasion roll
-    }
-
-    // Cache result for this player position
-    _stealthBonusCache = { bonus: bonus, px: _player.x, py: _player.y };
-
-    return bonus;
+    return 0;
   }
 
   function _checkLineOfSight(x1, y1, x2, y2) {
@@ -5526,172 +4126,14 @@ _incrementPityTimers();
    * Handle tap-to-move from mobile UI
    */
   function handleTapMove(targetX, targetY, runMode) {
-    if (!_active) return;
-
-    // Floor 0 scripted walk — ignore player input until auto-walk completes
-    if (_scriptedWalk) return;
-
-    // Asteroids boss locks player movement — tap only activates cards
-    if (_playerMoveLocked) {
-      return {
-        lines: ['⚓ GRAVITY ANCHOR — movement disabled. Use cards to fight!', ''].concat(_renderGrid()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
+    if (typeof TapMoveSystem !== 'undefined') {
+      return TapMoveSystem.handleTapMove(targetX, targetY, runMode, _tapMoveCtx());
     }
-
-    // Check if clicking on a breakable - kick it instead of moving
-    var breakableAtTarget = _getBreakableAt(targetX, targetY);
-    if (breakableAtTarget && breakableAtTarget.hp > 0) {
-      // Calculate direction to breakable
-      var dx = targetX - _player.x;
-      var dy = targetY - _player.y;
-
-      // Only kick if adjacent (1 tile away)
-      if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 && (dx !== 0 || dy !== 0)) {
-        _damageBreakable(breakableAtTarget, 2);
-        _saveState();
-
-        if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-          _updateMobileGrid();
-        }
-
-        return {
-          lines: ['🥾 BOOTED ' + (breakableAtTarget.emoji || '📦') + ' (HP ' + breakableAtTarget.hp + ')', ''].concat(_renderGrid()),
-          prompt: getPrompt(),
-          stayActive: true
-        };
-      }
-    }
-
-    // Route tap-to-move through smooth movement system when available
-    if (typeof GoneRogueMovement !== 'undefined') {
-      GoneRogueMovement.init(_player.x, _player.y);
-
-      var collisionCheck = function(x, y) {
-        return !_isWalkable(x, y);
-      };
-
-      // Terrain penalty callback used by sprint movement
-      collisionCheck.getTileMovePenalty = function(x, y) {
-        if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) return 0;
-        var tile = _grid[y][x];
-
-        if (tile === TILES.WATER && TILE_EFFECTS.WATER) {
-          return TILE_EFFECTS.WATER.movePenalty || 0;
-        }
-
-        var key = x + ',' + y;
-        if (_tileMetadata[key] && _tileMetadata[key].movePenalty) {
-          return _tileMetadata[key].movePenalty;
-        }
-
-        // GroundEffects movement penalty (can be negative e.g. ICE)
-        if (typeof GroundEffects !== 'undefined' && typeof GroundEffects.getMovementPenalty === 'function') {
-          return GroundEffects.getMovementPenalty(x, y) || 0;
-        }
-
-        return 0;
-      };
-
-      GoneRogueMovement.setTarget(targetX, targetY, collisionCheck, !!runMode);
-
-      if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-        _updateMobileGrid();
-      }
-
-      return {
-        lines: ['Moving...', ''].concat(_renderGrid()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    // Fallback: instant single-step move
-    var dx = targetX - _player.x;
-    var dy = targetY - _player.y;
-
-    // Normalize to -1, 0, or 1
-    var stepX = dx === 0 ? 0 : (dx > 0 ? 1 : -1);
-    var stepY = dy === 0 ? 0 : (dy > 0 ? 1 : -1);
-
-    var moveResult = _movePlayer(stepX, stepY, runMode);
-
-    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      _updateMobileGrid();
-    }
-
-    return moveResult;
   }
 
-  /**
-   * Handle fishing move from mobile UI (smooth movement along path)
-   */
   function handleFishingMove(path, isSprinting) {
-    if (!_active) return;
-    if (!path || path.length === 0) return;
-
-    // Validate every waypoint in the path is walkable — reject paths that
-    // cut through walls (safety net against pathfinder fallback bugs).
-    for (var pi = 0; pi < path.length; pi++) {
-      if (!_isWalkable(path[pi].x, path[pi].y)) {
-        // Trim path to the last walkable waypoint before the wall
-        path = path.slice(0, pi);
-        break;
-      }
-    }
-    if (path.length === 0) return;
-
-    // Initialize movement system if not already
-    if (typeof GoneRogueMovement !== 'undefined') {
-      GoneRogueMovement.init(_player.x, _player.y);
-
-      // Set target with collision checking and terrain penalty callbacks
-      var collisionCheck = function(x, y) {
-        return !_isWalkable(x, y);
-      };
-
-      // Attach getTileMovePenalty as a property of the callback function
-      collisionCheck.getTileMovePenalty = function(x, y) {
-        // Get tile at position
-        if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) return 0;
-        var tile = _grid[y][x];
-
-        // Check TILE_EFFECTS for move penalty
-        if (tile === TILES.WATER && TILE_EFFECTS.WATER) {
-          return TILE_EFFECTS.WATER.movePenalty || 0;
-        }
-
-        // Check tile metadata for custom penalties
-        var key = x + ',' + y;
-        if (_tileMetadata[key] && _tileMetadata[key].movePenalty) {
-          return _tileMetadata[key].movePenalty;
-        }
-
-        // GroundEffects movement penalty (can be negative e.g. ICE)
-        if (typeof GroundEffects !== 'undefined' && typeof GroundEffects.getMovementPenalty === 'function') {
-          return GroundEffects.getMovementPenalty(x, y) || 0;
-        }
-
-        return 0; // No penalty
-      };
-
-      var destination = path[path.length - 1];
-      GoneRogueMovement.setTarget(destination.x, destination.y, collisionCheck, isSprinting);
-
-      // Update mobile UI to start animation
-      if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-        _updateMobileGrid();
-      }
-
-      return {
-        lines: ['Moving...', ''].concat(_renderGrid()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    } else {
-      // Fallback to instant move
-      return handleTapMove(path[path.length - 1].x, path[path.length - 1].y, isSprinting || false);
+    if (typeof TapMoveSystem !== 'undefined') {
+      return TapMoveSystem.handleFishingMove(path, isSprinting, _tapMoveCtx());
     }
   }
 
@@ -5729,259 +4171,16 @@ _incrementPityTimers();
   }
 
   function playCardFromHand(cardId) {
-    if (!_active || !_strCombatActive) {
-      return { success: false, reason: 'not_in_combat' };
+    if (typeof CardPlaySystem !== 'undefined') {
+      return CardPlaySystem.playCardFromHand(cardId, _cardPlayCtx());
     }
-    if (!cardId || typeof GoneRogueDataRegistry === 'undefined' || !GoneRogueDataRegistry.getCard) {
-      return { success: false, reason: 'missing_registry' };
-    }
-
-    var card = GoneRogueDataRegistry.getCard(cardId);
-    if (!card || card._missing) {
-      return { success: false, reason: 'missing_card' };
-    }
-
-    var costs = Array.isArray(card.costs) ? card.costs : null;
-    var affordability = _canAffordCosts(costs);
-    if (!affordability.canAfford) {
-      return { success: false, reason: 'insufficient_resources', missing: affordability.missing, costs: costs };
-    }
-
-    if (costs && costs.length) {
-      var spent = _consumeCosts(costs);
-      if (!spent.success) {
-        return { success: false, reason: 'cost_spend_failed', costs: costs };
-      }
-    }
-
-    // 3D printer (🕋) hook: if active, and this card spent ammo/battery, print extra cards then consume the printer.
-    _maybeTrigger3dPrinter(cardId, card);
-
-    // ── Synergy detection ──────────────────────────────────
-    var synergyResult = null;
-    var synergyBonuses = null;
-    try {
-      if (typeof SynergyIntegration !== 'undefined' && typeof SynergyIntegration.processCardPlay === 'function') {
-        synergyResult = SynergyIntegration.processCardPlay(card, {
-          player: _player,
-          enemy: _strCombatEnemy,
-          round: _strCombatRound
-        });
-        if (synergyResult && synergyResult.activeBonuses) {
-          synergyBonuses = synergyResult.activeBonuses;
-        }
-      }
-    } catch (eSyn) {
-      console.warn('[GoneRogue] Synergy check error:', eSyn);
-    }
-
-    var lines = [];
-    lines.push('🃏 ' + (card.emoji || '🃏') + ' ' + (card.name || cardId));
-
-    // Log synergy activation
-    if (synergyResult && synergyResult.synergies && synergyResult.synergies.length > 0) {
-      for (var si = 0; si < synergyResult.synergies.length; si++) {
-        var syn = synergyResult.synergies[si];
-        lines.push('⚡ SYNERGY: ' + (syn.definition ? syn.definition.name : 'Unknown'));
-      }
-      // Dispatch synergy event for UI feedback
-      try {
-        window.dispatchEvent(new CustomEvent('rogue-synergy-triggered', {
-          detail: { synergies: synergyResult.synergies, bonuses: synergyBonuses, card: card }
-        }));
-      } catch (eEv) {}
-    }
-
-    // Apply effects (v0 subset) — enhanced by synergy bonuses
-    var _cardTriggeredFlee = false;
-    var enemy = _strCombatEnemy;
-    for (var i = 0; i < (card.effects || []).length; i++) {
-      var eff = card.effects[i];
-      if (!eff || !eff.type) continue;
-
-      if (eff.type === 'damage') {
-        var dmg = Number(eff.value || 0);
-        // Apply synergy damage bonuses
-        if (synergyBonuses) {
-          if (synergyBonuses.damageMultiplier && synergyBonuses.damageMultiplier !== 1.0) {
-            dmg = Math.floor(dmg * synergyBonuses.damageMultiplier);
-          }
-          if (synergyBonuses.damageBonus) {
-            dmg += synergyBonuses.damageBonus;
-          }
-        }
-        if (enemy && isFinite(dmg)) {
-          enemy.hp = Math.max(0, (enemy.hp || 0) - dmg);
-          lines.push('⚔️ ' + dmg + ' damage');
-          if (typeof EnemyIntentSystem !== 'undefined' && enemy.intentState) {
-            enemy.intentState.expression = EnemyIntentSystem.onCombatEvent(enemy, 'took_damage');
-          }
-        }
-      } else if (eff.type === 'hp') {
-        var heal = Number(eff.value || 0);
-        if (isFinite(heal)) {
-          _player.hp = Math.min(_player.maxHp || 10, (_player.hp || 0) + heal);
-          lines.push('🩹 +' + heal + ' HP');
-        }
-      } else if (eff.type === 'self_damage') {
-        // Self-inflicted HP damage (e.g. Cyanide Capsule)
-        var selfDmg = Number(eff.value || 0);
-        if (_player && isFinite(selfDmg) && selfDmg > 0) {
-          _player.hp = Math.max(0, (_player.hp || 0) - selfDmg);
-          lines.push('💀 -' + selfDmg + ' HP (self)');
-        }
-      } else if (eff.type === 'fatigue') {
-        // Fatigue cost (e.g. Smoke Bomb adrenaline tax)
-        var fatVal = Number(eff.value || 0);
-        if (_player && isFinite(fatVal) && fatVal > 0) {
-          _player.fatigue = Math.min(100, (_player.fatigue || 0) + fatVal);
-          lines.push('😮‍💨 +' + fatVal + ' fatigue');
-        }
-      } else if (eff.type === 'noise') {
-        // Noise burst (raises alert level)
-        var noiseVal = Number(eff.value || 0);
-        if (isFinite(noiseVal) && noiseVal > 0) {
-          _alertLevel = Math.min(100, (_alertLevel || 0) + noiseVal);
-          lines.push('📢 +' + noiseVal + ' noise (alert: ' + _alertLevel + ')');
-        }
-      } else if (eff.type === 'flee') {
-        // Guaranteed escape — flag for post-effect processing
-        _cardTriggeredFlee = true;
-        lines.push('🏃 ESCAPE TRIGGERED');
-      }
-    }
-
-    // Apply synergy post-effects (draw card, energy refund, etc.)
-    if (synergyBonuses) {
-      if (synergyBonuses.drawCard) {
-        try {
-          if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.drawOneFromBackupPerTurn === 'function') {
-            var drawResult = GAMESTATE.drawOneFromBackupPerTurn();
-            if (drawResult && drawResult.success) {
-              lines.push('🃏 Synergy draw: +1 card from backup');
-            }
-          }
-        } catch (eDraw) {}
-      }
-      if (synergyBonuses.energyRefund && synergyBonuses.energyRefund > 0) {
-        try {
-          if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addEnergy === 'function') {
-            GAMESTATE.addEnergy(synergyBonuses.energyRefund);
-            lines.push('⚡ +' + synergyBonuses.energyRefund + ' energy refund');
-          }
-        } catch (eRef) {}
-      }
-    }
-
-    // ── Cascade resolution ──────────────────────────────────
-    if (synergyResult && synergyResult.synergies && synergyResult.synergies.length > 0) {
-      try {
-        if (typeof CascadeResolver !== 'undefined' && typeof CascadeResolver.resolve === 'function') {
-          for (var ci = 0; ci < synergyResult.synergies.length; ci++) {
-            var cascadeResult = CascadeResolver.resolve(synergyResult.synergies[ci], card, {
-              player: _player,
-              enemy: _strCombatEnemy,
-              round: _strCombatRound
-            });
-            if (cascadeResult && cascadeResult.results && cascadeResult.results.length > 0) {
-              for (var cr = 0; cr < cascadeResult.results.length; cr++) {
-                var cEffect = cascadeResult.results[cr];
-                lines.push('🔗 CASCADE: ' + (cEffect.description || cEffect.type));
-                // Apply cascade effects
-                if (cEffect.drawCard) {
-                  var cDraw = GAMESTATE.drawOneFromBackupPerTurn();
-                  if (cDraw && cDraw.success) lines.push('🃏 Cascade draw: +1 card');
-                }
-                if (cEffect.focusGain && typeof GAMESTATE.addFocus === 'function') {
-                  GAMESTATE.addFocus(cEffect.focusGain);
-                  lines.push('🧠 +' + cEffect.focusGain + ' focus');
-                }
-                if (cEffect.enemySkip) {
-                  if (_strCombatEnemy) _strCombatEnemy._skipNextTurn = true;
-                  lines.push('⏭️ Enemy will skip next turn');
-                }
-              }
-              // Dispatch cascade event
-              try {
-                window.dispatchEvent(new CustomEvent('rogue-cascade-triggered', {
-                  detail: { depth: cascadeResult.depth, results: cascadeResult.results, card: card }
-                }));
-              } catch (eCas) {}
-            }
-          }
-        }
-      } catch (eCascade) {
-        console.warn('[GoneRogue] Cascade resolver error:', eCascade);
-      }
-    }
-
-    var consumes = (typeof card.consumesOnPlay === 'boolean') ? card.consumesOnPlay : !(costs && costs.length);
-    if (consumes) {
-      // ── Flight-saver check: equipped passive may prevent consumption ──
-      var saved = false;
-      try {
-        if (typeof PassiveItemsSystem !== 'undefined' && typeof PassiveItemsSystem.tryFlightSave === 'function') {
-          saved = PassiveItemsSystem.tryFlightSave(card, card.qualityName || card.quality || '');
-        }
-      } catch (eSave) {}
-
-      if (saved) {
-        lines.push('🪢 SAVED! Card survives use');
-      } else {
-        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.consumeCardFromHand === 'function') {
-          GAMESTATE.consumeCardFromHand(cardId, 1);
-        }
-      }
-    }
-
-    // ── Flee exit: if any effect triggered a flee, exit combat now ──
-    if (_cardTriggeredFlee) {
-      // Check if self-damage killed the player before they could flee
-      if (_player && _player.hp <= 0) {
-        _player.hp = 0;
-        lines.push('💀 Died before escaping...');
-        _strCombatLog = (_strCombatLog || []).concat(lines);
-        return _handlePlayerDeath('combat_damage', { enemy: _strCombatEnemy });
-      }
-
-      lines.push('');
-      _strCombatLog = (_strCombatLog || []).concat(lines);
-      var fleeResult = _exitStrCombat('fled');
-      return { success: true, consumed: consumes && !saved, lines: lines.concat(fleeResult.lines || []), exited: true };
-    }
-
-    // End conditions (so we don't rely on the legacy per-round resolver to exit)
-    if (_strCombatEnemy && _strCombatEnemy.hp <= 0) {
-      lines.push('');
-      lines.push('🏁 ENEMY DEFEATED');
-      var exitResult = _exitStrCombat('player_victory');
-      return { success: true, consumed: consumes, lines: lines.concat(exitResult.lines || []), exited: true };
-    }
-
-    if (_player && _player.hp <= 0) {
-      // Clamp to prevent negative HP looping
-      _player.hp = 0;
-      return _handlePlayerDeath('combat_damage', { enemy: _strCombatEnemy });
-    }
-
-    _strCombatLog = (_strCombatLog || []).concat(lines);
-
-    // Trigger re-render
-    if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.show === 'function') {
-      STRCombatWindow.show({
-        active: true,
-        enemy: _strCombatEnemy,
-        player: _player,
-        advantage: _strCombatAdvantage,
-        round: _strCombatRound,
-        log: _strCombatLog
-      });
-    }
-
-    return { success: true, consumed: consumes, lines: lines };
+    return { success: false, reason: 'module_not_loaded' };
   }
 
   function playCardsFromHand(cardIds) {
+    if (typeof CardPlaySystem !== 'undefined') {
+      return CardPlaySystem.playCardsFromHand(cardIds, _cardPlayCtx());
+    }
     if (!cardIds || !cardIds.length) return { success: false };
     var res = { success: true, results: [] };
     for (var i = 0; i < cardIds.length; i++) {
@@ -6059,6 +4258,179 @@ _incrementPityTimers();
       return CardActionSystem.executeCardAction(action, _cardActionCtx());
     }
     return { lines: [''], prompt: getPrompt(), stayActive: true };
+  }
+
+  // ── CardPlaySystem context builder ──
+  function _cardPlayCtx() {
+    return {
+      get active() { return _active; },
+      get strCombatActive() { return _strCombatActive; },
+      player: _player,
+      get strCombatEnemy() { return _strCombatEnemy; },
+      get strCombatRound() { return _strCombatRound; },
+      get strCombatAdvantage() { return _strCombatAdvantage; },
+      getAlertLevel: function() { return _alertLevel; },
+      setAlertLevel: function(v) { _alertLevel = v; },
+      getStrCombatLog: function() { return _strCombatLog; },
+      appendStrCombatLog: function(lines) { _strCombatLog = (_strCombatLog || []).concat(lines); },
+      canAffordCosts: _canAffordCosts,
+      consumeCosts: _consumeCosts,
+      maybeTrigger3dPrinter: _maybeTrigger3dPrinter,
+      exitStrCombat: _exitStrCombat,
+      handlePlayerDeath: _handlePlayerDeath
+    };
+  }
+
+  // ── TapMoveSystem context builder ──
+  function _tapMoveCtx() {
+    return {
+      get active() { return _active; },
+      get scriptedWalk() { return _scriptedWalk; },
+      get playerMoveLocked() { return _playerMoveLocked; },
+      player: _player,
+      grid: _grid,
+      tileMetadata: _tileMetadata,
+      GRID_WIDTH: GRID_WIDTH,
+      GRID_HEIGHT: GRID_HEIGHT,
+      TILES: TILES,
+      TILE_EFFECTS: TILE_EFFECTS,
+      get useInteractiveGrid() { return _useInteractiveGrid; },
+      isWalkable: _isWalkable,
+      getBreakableAt: _getBreakableAt,
+      damageBreakable: _damageBreakable,
+      movePlayer: _movePlayer,
+      saveState: _saveState,
+      renderGrid: _renderGrid,
+      updateMobileGrid: _updateMobileGrid,
+      getPrompt: getPrompt
+    };
+  }
+
+  // ── BeginGameplaySystem context builder ──
+  function _beginGameplayCtx() {
+    return {
+      player: _player,
+      grid: _grid,
+      tileMetadata: _tileMetadata,
+      GRID_WIDTH: GRID_WIDTH,
+      GRID_HEIGHT: GRID_HEIGHT,
+      TILES: TILES,
+      get useInteractiveGrid() { return _useInteractiveGrid; },
+      getFloor: function() { return _floor; },
+      setDesiredDifficultyTier: function(v) { _desiredDifficultyTier = v; },
+      applyDesiredDifficultyTier: _applyDesiredDifficultyTier,
+      generateFloor: _generateFloor,
+      startGameLoop: _startGameLoop,
+      setScriptedWalk: function(v) { _scriptedWalk = v; },
+      setScriptedWalkTarget: function(v) { _scriptedWalkTarget = v; },
+      isWalkable: _isWalkable,
+      updateMobileGrid: _updateMobileGrid,
+      renderGrid: _renderGrid,
+      getPrompt: getPrompt
+    };
+  }
+
+  // ── CommandProcessSystem context builder ──
+  function _commandProcessCtx() {
+    return {
+      get active() { return _active; },
+      get strCombatActive() { return _strCombatActive; },
+      getPrompt: getPrompt,
+      handleAgentCommand: _handleAgentCommand,
+      exitStrCombat: _exitStrCombat,
+      exitRogue: _exitRogue,
+      helpLines: _helpLines,
+      statusLines: _statusLines,
+      inventoryLines: _inventoryLines,
+      fireProjectile: _fireProjectile,
+      kickBreakable: _kickBreakable,
+      movePlayer: _movePlayer,
+      pickupItem: _pickupItem,
+      attemptExtract: _attemptExtract,
+      handleInteraction: _handleInteraction,
+      attemptPickpocket: _attemptPickpocket,
+      showVendor: _showVendor,
+      buyFromVendor: _buyFromVendor,
+      healAtBonfire: _healAtBonfire,
+      gambleCard: _gambleCard,
+      stashCard: _stashCard,
+      retrieveCard: _retrieveCard,
+      equipItem: _equipItem,
+      unequipItem: _unequipItem
+    };
+  }
+
+  // ── GameTickSystem context builder ──
+  function _gameTickCtx() {
+    return {
+      player: _player,
+      grid: _grid,
+      enemies: _enemies,
+      breakables: _breakables,
+      projectiles: _projectiles,
+      GRID_WIDTH: GRID_WIDTH,
+      GRID_HEIGHT: GRID_HEIGHT,
+      get useInteractiveGrid() { return _useInteractiveGrid; },
+      get strCombatActive() { return _strCombatActive; },
+      get bossFloorActive() { return _bossFloorActive; },
+      get bossDefeated() { return _bossDefeated; },
+      get projectileAdvanceInterval() { return _projectileAdvanceInterval; },
+      isWalkable: _isWalkable,
+      checkPlayerInteractions: _checkPlayerInteractions,
+      updateMobileGrid: _updateMobileGrid,
+      updateEnemyPath: _updateEnemyPath,
+      checkEnemyBoxInteraction: _checkEnemyBoxInteraction,
+      updateEnemyAwareness: _updateEnemyAwareness,
+      isPlayerInSightCone: _isPlayerInSightCone,
+      increaseEnemyAwareness: _increaseEnemyAwareness,
+      enterStrCombat: _enterStrCombat,
+      updateProjectiles: _updateProjectiles,
+      syncProjectileState: _syncProjectileState,
+      updatePlayerLight: _updatePlayerLight,
+      getAllLightBlockers: function() { return _getAllLightBlockers(_wallCache); },
+      handlePlayerDeath: _handlePlayerDeath,
+      handleEnemyDeath: _handleEnemyDeath,
+      magnetAutoCollect: _magnetAutoCollect,
+      showTutorialHint: _showTutorialHint,
+      getActiveBoss: function() { return _activeBoss; },
+      setPlayerMoveLocked: function(v) { _playerMoveLocked = v; },
+      getScriptedWalk: function() { return _scriptedWalk; },
+      setScriptedWalk: function(v) { _scriptedWalk = v; },
+      getScriptedWalkTarget: function() { return _scriptedWalkTarget; },
+      setScriptedWalkTarget: function(v) { _scriptedWalkTarget = v; },
+      getScriptedWalkPhase: function() { return _scriptedWalkPhase; },
+      setScriptedWalkPhase: function(v) { _scriptedWalkPhase = v; },
+      getScriptedWalkExitTarget: function() { return _scriptedWalkExitTarget; },
+      getProjectileTickAccum: function() { return _projectileTickAccum; },
+      addProjectileTickAccum: function(v) { _projectileTickAccum += v; },
+      resetProjectileTickAccum: function() { _projectileTickAccum = 0; },
+      addEnemyColorCycleTime: function(v) { _enemyColorCycleTime += v; },
+      getLightMapTickCounter: function() { return _lightMapTickCounter; },
+      incrementLightMapTickCounter: function() { _lightMapTickCounter++; },
+      resetLightMapTickCounter: function() { _lightMapTickCounter = 0; },
+      setItems: function(v) { _items = v; },
+      setCurrencies: function(v) { _currencies = v; },
+      filterFloorItems: function(fn) { return WorldItems.filterFloorItems(fn); },
+      filterCurrencies: function(fn) { return WorldItems.filterCurrencies(fn); }
+    };
+  }
+
+  // ── PlayerActionSystem context builder ──
+  function _playerActionCtx() {
+    return {
+      player: _player,
+      grid: _grid,
+      enemies: _enemies,
+      TILES: TILES,
+      get strCombatActive() { return _strCombatActive; },
+      getFloor: function() { return _floor; },
+      getDifficultyTier: function() { return _difficultyTier; },
+      setRunCompleted: function(v) { _runCompleted = v; },
+      getPrompt: getPrompt,
+      renderGrid: _renderGrid,
+      exitRogue: _exitRogue,
+      advanceFloor: _advanceFloor
+    };
   }
 
   function _performAttack(card) {
@@ -6517,191 +4889,12 @@ _incrementPityTimers();
   /**
    * Handle agent control commands
    */
+  // ── AgentCommandSystem delegation ──
   function _handleAgentCommand(cmd) {
-    if (typeof AgentIntegration === 'undefined') {
-      return {
-        lines: [
-          '',
-          'AGENT SYSTEM NOT AVAILABLE',
-          'Required modules not loaded',
-          ''
-        ],
-        prompt: getPrompt(),
-        stayActive: true
-      };
+    if (typeof AgentCommandSystem !== 'undefined') {
+      return AgentCommandSystem.handleAgentCommand(cmd, { getPrompt: getPrompt });
     }
-
-    var parts = cmd.split(' ');
-    var subCommand = parts[1] ? parts[1].toLowerCase() : '';
-
-    if (subCommand === 'natural') {
-      // Start agent in natural play mode
-      var started = AgentIntegration.startAgentTakeover('natural');
-      if (started) {
-        return {
-          lines: [
-            '',
-            '🤖 MOK AGENT ACTIVATED - NATURAL MODE',
-            '',
-            '[MOK]: "Control transferred. Beginning natural play protocol."',
-            '[MOK]: "I will explore thoroughly and generate MVP report."',
-            '',
-            'The agent will now play for you.',
-            'Watch the MOK interjection field for real-time updates.',
-            '',
-            'Type AGENT STOP to return control',
-            ''
-          ],
-          prompt: getPrompt(),
-          stayActive: true
-        };
-      } else {
-        return {
-          lines: ['', 'Failed to start agent', ''],
-          prompt: getPrompt(),
-          stayActive: true
-        };
-      }
-    }
-
-    else if (subCommand === 'developer' || subCommand === 'dev') {
-      // Start agent in developer mode
-      var started = AgentIntegration.startAgentTakeover('developer');
-      if (started) {
-        return {
-          lines: [
-            '',
-            '🤖 DEVELOPER AGENT ACTIVATED - FAST MODE',
-            '',
-            '[DEV]: "Control transferred. Running optimal pathfinding."',
-            '[DEV]: "This mode skips exploration for quick testing."',
-            '',
-            'The agent will now play for you.',
-            'This mode is significantly faster than natural play.',
-            '',
-            'Type AGENT STOP to return control',
-            ''
-          ],
-          prompt: getPrompt(),
-          stayActive: true
-        };
-      } else {
-        return {
-          lines: ['', 'Failed to start agent', ''],
-          prompt: getPrompt(),
-          stayActive: true
-        };
-      }
-    }
-
-    else if (subCommand === 'stop') {
-      // Stop agent
-      AgentIntegration.stopAgentTakeover();
-      return {
-        lines: [
-          '',
-          '🛑 AGENT CONTROL RELEASED',
-          '',
-          'Manual control restored.',
-          'MVP report has been generated (check terminal).',
-          ''
-        ],
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    else if (subCommand === 'pause') {
-      // Pause/resume agent
-      AgentIntegration.togglePause();
-      var report = AgentIntegration.getReport();
-      var status = report && report.outcome === 'in_progress' ? 'paused' : 'resumed';
-      return {
-        lines: [
-          '',
-          status === 'paused' ? '⏸️  Agent paused' : '▶️  Agent resumed',
-          ''
-        ],
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    else if (subCommand === 'report') {
-      // Show current report
-      var report = AgentIntegration.getReport();
-      if (!report) {
-        return {
-          lines: ['', 'No agent report available', ''],
-          prompt: getPrompt(),
-          stayActive: true
-        };
-      }
-
-      var lines = [
-        '',
-        'CURRENT AGENT METRICS:',
-        '————————————————————————————————',
-        'Mode: ' + report.mode.toUpperCase(),
-        'Status: ' + report.outcome.toUpperCase(),
-        'Actions Executed: ' + report.actionsExecuted,
-        'Floors Completed: ' + report.floorsCompleted,
-        'Tiles Visited: ' + report.tilesVisited,
-        'Failed Actions: ' + report.failedActions,
-        ''
-      ];
-
-      return {
-        lines: lines,
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    else if (subCommand === 'mode') {
-      // Show current mode
-      if (AgentIntegration.isActive()) {
-        var mode = AgentIntegration.getMode();
-        return {
-          lines: [
-            '',
-            'AGENT MODE: ' + mode.toUpperCase(),
-            '',
-            mode === 'natural'
-              ? 'Natural human-like play with thorough exploration'
-              : 'Fast developer mode with optimal pathfinding',
-            ''
-          ],
-          prompt: getPrompt(),
-          stayActive: true
-        };
-      } else {
-        return {
-          lines: ['', 'Agent not active', ''],
-          prompt: getPrompt(),
-          stayActive: true
-        };
-      }
-    }
-
-    else {
-      // Unknown agent subcommand
-      return {
-        lines: [
-          '',
-          'AGENT COMMANDS:',
-          '  AGENT NATURAL   - Start natural play mode',
-          '  AGENT DEVELOPER - Start fast testing mode',
-          '  AGENT STOP      - Stop agent control',
-          '  AGENT PAUSE     - Pause/resume agent',
-          '  AGENT REPORT    - Show current metrics',
-          '  AGENT MODE      - Show current mode',
-          ''
-        ],
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
+    return { lines: ['AGENT SYSTEM NOT AVAILABLE'], prompt: getPrompt(), stayActive: true };
   }
 
   // ============================================================
