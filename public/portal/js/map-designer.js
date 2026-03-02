@@ -649,7 +649,7 @@
                 }
             }
         }
-        render();
+        render(); // Add this line
     }
 
     // ==================== FILE OPERATIONS ====================

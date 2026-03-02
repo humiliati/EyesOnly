@@ -6,13 +6,16 @@
         const inspectorContent = document.getElementById('inspector-content');
 
         jsPlumb.ready(function() {
+            const GRID_SIZE = 20;
             const instance = jsPlumb.getInstance({
                 Container: worldCanvas,
-                DragOptions: { cursor: 'pointer', zIndex: 2000 },
+                DragOptions: { cursor: 'pointer', zIndex: 2000, grid: [GRID_SIZE, GRID_SIZE] },
                 ConnectionOverlays: [
                     [ 'Arrow', { location: 1, width: 10, length: 10, id: 'arrow' } ]
                 ]
-                const worldSelector = document.getElementById('world-selector');
+            });
+
+            const worldSelector = document.getElementById('world-selector');
 
             function populateWorldSelector() {
                 // This would be an API call in a real application
@@ -43,6 +46,12 @@
             // Function to add a new node
             function addNode(type, name, top, left) {
                 const id = `node-${nodeCounter++}`;
+
+                if (top === undefined || left === undefined) {
+                    const existingNodes = worldCanvas.querySelectorAll('.world-node').length;
+                    top = GRID_SIZE * 3 + (existingNodes % 10) * (GRID_SIZE * 3);
+                    left = GRID_SIZE * 3 + Math.floor(existingNodes / 10) * (GRID_SIZE * 10);
+                }
                 const node = document.createElement('div');
                 node.className = 'world-node';
                 node.id = id;
@@ -50,8 +59,23 @@
                 node.style.left = `${left}px`;
                 node.innerHTML = `<strong>${name}</strong><br>(${type})`;
                 node.dataset.type = type;
-                node.dataset.biome = 'Cozy Forest';
-                node.dataset.generationType = 'contrived';
+
+                switch (type) {
+                    case 'Step':
+                        node.style.backgroundColor = '#aaffaa'; // Green
+                        break;
+                    case 'Transition':
+                        node.style.backgroundColor = '#ffffaa'; // Yellow
+                        node.className += ' diamond';
+                        break;
+                    case 'Parallel':
+                        node.style.backgroundColor = '#aaaaff'; // Blue
+                        break;
+                    case 'Convergence':
+                        node.style.backgroundColor = '#ffaaaa'; // Red
+                        break;
+                }
+
                 worldCanvas.appendChild(node);
 
                 instance.addEndpoint(id, { anchor: 'Top' });
@@ -71,63 +95,97 @@
             // Function to show the property inspector
             function showInspector(id, type, name) {
                 const node = document.getElementById(id);
-                const biome = node.dataset.biome;
-                const generationType = node.dataset.generationType;
 
-                inspectorContent.innerHTML = `
+                let content = `
                     <div><strong>ID:</strong> ${id}</div>
                     <div><strong>Type:</strong> ${type}</div>
                     <div><label><strong>Name:</strong> <input type="text" id="prop-name" value="${name}"></label></div>
-                    <div><label><strong>Biome:</strong> 
-                        <select id="prop-biome">
-                            <option value="Cozy Forest" ${biome === 'Cozy Forest' ? 'selected' : ''}>Cozy Forest</option>
-                            <option value="Grey Cave" ${biome === 'Grey Cave' ? 'selected' : ''}>Grey Cave</option>
-                            <option value="Shopping Mall" ${biome === 'Shopping Mall' ? 'selected' : ''}>Shopping Mall</option>
-                            <option value="Commercial Office" ${biome === 'Commercial Office' ? 'selected' : ''}>Commercial Office</option>
-                            <option value="Industrial Complex" ${biome === 'Industrial Complex' ? 'selected' : ''}>Industrial Complex</option>
-                            <option value="Aerospace Museum" ${biome === 'Aerospace Museum' ? 'selected' : ''}>Aerospace Museum</option>
-                        </select>
-                    </label></div>
-                    <div><label><strong>Generation:</strong> 
-                        <select id="prop-generation">
-                            <option value="contrived" ${generationType === 'contrived' ? 'selected' : ''}>Contrived</option>
-                            <option value="procedural" ${generationType === 'procedural' ? 'selected' : ''}>Procedural</option>
-                        </select>
-                    </label></div>
-                    <button id="edit-layout-btn" class="btn btn-primary" ${generationType === 'procedural' ? 'disabled' : ''}>Edit Layout</button>
                 `;
 
-                document.getElementById('edit-layout-btn').addEventListener('click', function() {
-                    const floorData = {
-                        name: document.getElementById('prop-name').value,
-                        biome: document.getElementById('prop-biome').value,
-                        generationType: document.getElementById('prop-generation').value
-                    };
-                    localStorage.setItem(id, JSON.stringify(floorData));
-                    window.open(`map-designer.html?floorId=${id}`, '_blank');
-                });
+                if (type === 'Step') {
+                    const biome = node.dataset.biome || 'Cozy Forest';
+                    const generationType = node.dataset.generationType || 'contrived';
+                    content += `
+                        <div><label><strong>Biome:</strong> 
+                            <select id="prop-biome">
+                                <option value="Cozy Forest" ${biome === 'Cozy Forest' ? 'selected' : ''}>Cozy Forest</option>
+                                <option value="Grey Cave" ${biome === 'Grey Cave' ? 'selected' : ''}>Grey Cave</option>
+                                <option value="Shopping Mall" ${biome === 'Shopping Mall' ? 'selected' : ''}>Shopping Mall</option>
+                                <option value="Commercial Office" ${biome === 'Commercial Office' ? 'selected' : ''}>Commercial Office</option>
+                                <option value="Industrial Complex" ${biome === 'Industrial Complex' ? 'selected' : ''}>Industrial Complex</option>
+                                <option value="Aerospace Museum" ${biome === 'Aerospace Museum' ? 'selected' : ''}>Aerospace Museum</option>
+                            </select>
+                        </label></div>
+                        <div><label><strong>Generation:</strong> 
+                            <select id="prop-generation">
+                                <option value="contrived" ${generationType === 'contrived' ? 'selected' : ''}>Contrived</option>
+                                <option value="procedural" ${generationType === 'procedural' ? 'selected' : ''}>Procedural</option>
+                            </select>
+                        </label></div>
+                        <button id="edit-layout-btn" class="btn btn-primary" ${generationType === 'procedural' ? 'disabled' : ''}>Edit Layout</button>
+                    `;
+                } else if (type === 'Transition') {
+                    const condition = node.dataset.condition || '';
+                    content += `
+                        <div><label><strong>Condition:</strong> <input type="text" id="prop-condition" value="${condition}"></label></div>
+                    `;
+                }
+
+                inspectorContent.innerHTML = content;
 
                 document.getElementById('prop-name').addEventListener('input', (e) => {
                     node.querySelector('strong').innerText = e.target.value;
                 });
 
-                document.getElementById('prop-biome').addEventListener('change', (e) => {
-                    node.dataset.biome = e.target.value;
-                });
+                if (type === 'Step') {
+                    document.getElementById('edit-layout-btn').addEventListener('click', function() {
+                        const floorData = {
+                            name: document.getElementById('prop-name').value,
+                            biome: document.getElementById('prop-biome').value,
+                            generationType: document.getElementById('prop-generation').value
+                        };
+                        localStorage.setItem(id, JSON.stringify(floorData));
+                        window.open(`map-designer.html?floorId=${id}`, '_blank');
+                    });
 
-                document.getElementById('prop-generation').addEventListener('change', (e) => {
-                    node.dataset.generationType = e.target.value;
-                    document.getElementById('edit-layout-btn').disabled = e.target.value === 'procedural';
-                });
+                    document.getElementById('prop-biome').addEventListener('change', (e) => {
+                        node.dataset.biome = e.target.value;
+                    });
+
+                    document.getElementById('prop-generation').addEventListener('change', (e) => {
+                        node.dataset.generationType = e.target.value;
+                        document.getElementById('edit-layout-btn').disabled = e.target.value === 'procedural';
+                    });
+                } else if (type === 'Transition') {
+                    document.getElementById('prop-condition').addEventListener('input', (e) => {
+                        node.dataset.condition = e.target.value;
+                    });
+                }
             }
 
             // Add tool event listeners
             document.querySelector('[data-tool="add-floor"]').addEventListener('click', function() {
-                addNode('Floor', 'New Floor', 100, 100);
+                addNode('Floor', 'New Floor');
             });
 
             document.querySelector('[data-tool="add-building"]').addEventListener('click', function() {
-                addNode('Building', 'New Building', 200, 200);
+                addNode('Building', 'New Building', undefined, undefined);
+            });
+
+            document.querySelector('[data-tool="add-step"]').addEventListener('click', function() {
+                addNode('Step', 'New Step');
+            });
+
+            document.querySelector('[data-tool="add-transition"]').addEventListener('click', function() {
+                addNode('Transition', 'New Transition');
+            });
+
+            document.querySelector('[data-tool="add-parallel"]').addEventListener('click', function() {
+                addNode('Parallel', 'New Parallel Branch');
+            });
+
+            document.querySelector('[data-tool="add-convergence"]').addEventListener('click', function() {
+                addNode('Convergence', 'New Convergence');
             });
 
             document.getElementById('export-world-btn').addEventListener('click', exportWorld);

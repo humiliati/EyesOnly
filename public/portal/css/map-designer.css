@@ -396,6 +396,19 @@ body {
     background: #ff9933;
 }
 
+.world-node.diamond {
+    transform: rotate(45deg);
+    width: 100px;
+    height: 100px;
+    line-height: 100px;
+    text-align: center;
+}
+
+.world-node.diamond strong {
+    transform: rotate(-45deg);
+    display: inline-block;
+}
+
 /* Responsive adjustments */
 @media (max-width: 1200px) {
     .palette-sidebar {

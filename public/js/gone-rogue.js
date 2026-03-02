@@ -1,3 +1,80 @@
+/* ============================================================
+   EYES ONLY - Gone Rogue Mode Engine
+   ASCII stealth roguelike inside terminal column
+   ============================================================ */
+
+var GoneRogue = (function () {
+  'use strict';
+
+  var STORAGE_KEY = 'eyesonly_rogue_state';
+  var _active = false;
+  var _loaded = false;
+
+  // Grid configuration (mobile-first)
+  var GRID_WIDTH = 40;
+  var GRID_HEIGHT = 20;
+
+  var _grid = [];
+  var _player = {
+    x: 5,
+    y: 10,
+    hp: 10,
+    maxHp: 10,
+    energy: 5,
+    maxEnergy: 5,
+    stealth: 3,
+    detection: 0,
+    lastMoveDirection: null,
+    str: 5,
+    dex: 5,
+    initiative: 0,
+    combatEntries: 0,
+    lastCardType: null,
+    collectingCurrency: false,
+    currencyCollectTime: 0,
+    positionHistory: []
+  };
+
+  var _ropeManager = null;
+
+  var _enemies = [];
+  var _npcs = [];
+
+  var _placedBoxes = [];
+  var _playerInBox = null;
+  var TILES = {};
+  var TILE_EFFECTS = {};
+  var AWARENESS_STATES = {};
+  var PATH_TYPES = {};
+  var FLOOR_TYPES = {};
+  var BONFIRE_FLOORS = [];
+  var BOSS_FLOORS = [];
+  var _turn = 0;
+  var _floor = 1;
+  var _alertLevel = 'safe';
+  var _useInteractiveGrid = false;
+  var _muzzleFlash = null;
+  var _impactEffects = [];
+
+  var _wallCache = [];
+  var _lightMapTickCounter = 0;
+
+  var _gameLoopActive = false;
+  var _lastTickTime = 0;
+  var _tickInterval = 100;
+  var _animationFrameId = null;
+  var _projectileTickAccum = 0;
+  var _projectileAdvanceInterval = 150;
+  var _enemyColorCycleTime = 0;
+
+  var _stealthBonusCache = null;
+
+  var _activeBoss = null;
+  var _bossFloorActive = false;
+  var _bossDefeated = false;
+  var _bossHazards = [];
+  var _bossEnvironment = {};
+  var _playerMoveLocked = false;
 
   var _scriptedWalk = false; // True during Floor 0 auto-walk (disables player click input)
   var _scriptedWalkTarget = null; // {x, y} target for scripted walk

@@ -53,3 +53,733 @@ Each contrived floor will also have its own individual JSON file (e.g., `Floor1.
 4.  **Enhance the Map Designer to support ASCII-style floor layouts.**
 5.  **Integrate the World Designer and the Map Designer.**
 6.  **Implement the world export functionality.**
+
+
+🏗 WORLD BUILDING ENGINE (WBE)
+Sequential Function Chart–Driven Narrative Flow System
+1️⃣ Core Philosophy
+
+Your world is not random.
+
+It is a state machine with spatial embodiment.
+
+Each floor is a:
+
+Step (State) in a Sequential Function Chart
+
+Transitions are:
+
+Narrative or mechanical conditions
+
+2️⃣ Top-Level Architecture
+┌────────────────────────────────────┐
+│        World Building Engine       │
+├────────────────────────────────────┤
+│                                    │
+│  Narrative Flow Graph (SFC)        │
+│       ↓                            │
+│  Floor Resolver                    │
+│       ↓                            │
+│  Map Template Loader OR Proc Gen   │
+│       ↓                            │
+│  Validation + Synergy Pass         │
+│       ↓                            │
+│  Runtime Floor Instance            │
+└────────────────────────────────────┘
+3️⃣ SFC-Based Designer View
+
+Designer sees something like:
+
+[Start]
+   |
+   v
+[Intro Floor]
+   |
+   v
+[Key Obtained]
+   |
+   +----> [Gate Branch]
+   |
+   +----> [NPC Quest Branch]
+   |
+   v
+[Convergence Floor]
+   |
+   v
+[Boss or Narrative Event]
+
+This mimics industrial sequential function charts.
+
+4️⃣ Core Node Types (GRAFCET Style)
+
+Your system should support:
+
+🟩 Step Node (Floor State)
+
+Represents:
+
+A floor
+
+A narrative beat
+
+A world condition
+
+Contains:
+
+{
+  id,
+  floorType: "template" | "procedural",
+  difficultyTier,
+  requiredPlayerState,
+  allowedSynergies,
+  narrativeTags
+}
+🔶 Transition Node
+
+Represents:
+
+Condition to move to next floor
+
+Example:
+
+{
+  condition: "player.hasKey('red')",
+  or: ["npcQuestComplete", "ventBypassUsed"]
+}
+
+Transitions evaluate after floor completion.
+
+🔁 Parallel Branch Node
+
+Supports:
+
+Multiple active quest lines
+
+Optional exploration branches
+
+Risk/reward splits
+
+Like PLC parallel branches.
+
+🔷 Convergence Node
+
+Waits until:
+
+All required branches complete
+
+Or at least one branch complete (configurable)
+
+5️⃣ Environmental Synergy System
+
+Now we embed your key logic.
+
+🔐 Key + Gate
+
+Template contract:
+
+{
+  synergyType: "keyGate",
+  keyId: "blue",
+  gateId: "blueDoor"
+}
+
+Validation ensures:
+
+Key exists before gate
+
+Gate not reachable before key unless bypass intended
+
+🧍 Quest Key + NPC
+{
+  synergyType: "questGate",
+  npcId: "mechanic",
+  questId: "repairLift"
+}
+
+Transition requires:
+
+NPC interaction
+
+Quest flag set
+
+🌬 Vent Bypass
+{
+  synergyType: "ventBypass",
+  requiresUpgrade: "crawlKit"
+}
+
+Procedural generation must check:
+
+Does player have crawlKit tier?
+
+If not, disable vent link
+
+🔘 Secret Button Bypass
+{
+  synergyType: "secretBypass",
+  revealCondition: "ropeInteract",
+  targetGate: "northDoor"
+}
+
+These are alternate transitions in SFC.
+
+6️⃣ Contrived vs Procedural Floor Selection
+
+Each Step Node decides:
+
+if (node.floorType === "template")
+    loadTemplate(node.templateId)
+else
+    generateProceduralFloor(node.seedModifiers)
+
+Seed modifiers may include:
+
+Enemy density
+
+Anchor density
+
+Rope allowed
+
+Narrative tension level
+
+7️⃣ Narrative Context-Aware Generation
+
+Procedural floor generator receives:
+
+{
+  tensionLevel,
+  playerHealthState,
+  narrativeAct,
+  ropeTier,
+  questFlags
+}
+
+Example logic:
+
+If tensionLevel high:
+
+Reduce bypasses
+
+Increase chokepoints
+
+Reduce rope anchors
+
+If exploration phase:
+
+Increase optional vents
+
+Add secret rope triggers
+
+Add dual-path branches
+
+8️⃣ Designer Visual Language
+
+Your editor should visually resemble:
+
+[STEP] ──(transition)──> [STEP]
+    |                         |
+   (branch)                (parallel)
+    |                         |
+   [STEP]                  [STEP]
+
+Color code:
+
+Color	Meaning
+Green	Step
+Yellow	Transition
+Blue	Optional Branch
+Red	Gate Condition
+Purple	Narrative Trigger
+
+This makes it feel industrial and intentional.
+
+9️⃣ Validation Layer (Critical)
+
+Before runtime:
+
+Run validation pass:
+
+A. Synergy Validation
+
+Every gate must have a key or bypass
+
+Every quest gate must reference valid NPC
+
+B. Rope Safety Validation
+
+Rope bypass cannot invalidate primary key progression unless intended
+
+Anchor density within budget
+
+C. Dead-End Detection
+
+No unreachable steps
+
+No infinite branch loops
+
+🔟 Player Experience Balancer
+
+Add flow shaping variables:
+
+Variable	Effect
+tensionLevel	Controls density & bypass availability
+randomnessBias	% procedural vs template
+narrativeWeight	Controls forced beats
+explorationBias	Increases optional branches
+
+This lets you shift between:
+
+Carefully contrived chapter
+
+Chaotic procedural dungeon
+
+Hybrid
+
+1️⃣1️⃣ Example Hybrid Flow
+[Act 2 Start - Template]
+   |
+   v
+[Procedural Exploration Cluster]
+   |
+   +----> Optional Secret Branch
+   |
+   v
+[Quest NPC Floor - Template]
+   |
+   v
+[High Tension Procedural]
+   |
+   v
+[Boss Template]
+
+Templates anchor narrative.
+Procedural fills breathing space.
+
+1️⃣2️⃣ Designer Power Guardrails
+
+Designer cannot:
+
+Create transition without condition
+
+Place gate without key or bypass
+
+Enable rope bypass on mandatory narrative gate unless flagged
+
+Procedural engine cannot:
+
+Spawn more anchors than ropeTier allows
+
+Bypass boss gate unintentionally
+
+Place secret bypass before narrative reveal
+
+1️⃣3️⃣ Mental Model
+
+This is not a dungeon generator.
+
+It is:
+
+A programmable world-state machine
+that manifests as floors.
+
+It behaves like a PLC controlling narrative tension.
+
+
+Below is a fully polished, production-ready designer-facing control list for your World Builder GRAFCET Editor — modeled after a Schneider EcoStruxure Control Expert / RSLogix 5000 style Sequential Function Chart (SFC) environment, but adapted for game world design.
+
+This assumes:
+
+Emoji-based DOM canvas maps
+
+Rope system (ropeManager)
+
+Environmental synergy system (key+gate, vent bypass, secret button, etc.)
+
+Mixed handcrafted + procedural floors
+
+Seed-aware world generation
+
+🎛 WORLD BUILDER GRAFCET – DESIGNER TOOLBAR
+🧱 1. STRUCTURE PANEL (Flow Construction)
+
+These are the core SFC-style building blocks.
+
+➕ Step Node
+
+Creates a world state (floor, room, encounter, event).
+
+Label field
+
+Narrative tag dropdown
+
+Difficulty tier selector
+
+Template / Procedural toggle
+
+🔀 Transition
+
+Conditional flow logic between steps.
+
+Boolean condition builder
+
+Context-aware conditions
+
+Player state reference
+
+RNG % gate
+
+Seed dependency toggle
+
+⬅ Parallel Split (AND)
+
+Branch player into simultaneous world states.
+
+➡ Parallel Join
+
+Merge parallel branches.
+
+🔁 Loop Connector
+
+Repeat until condition met.
+
+🎲 Random Branch
+
+Weighted distribution split.
+
+Adjustable weights
+
+Seed stable toggle
+
+Player context adaptive toggle
+
+🗺 MAP GENERATION PANEL
+🏗 Floor Type Selector
+
+Template Floor
+
+Procedural Floor
+
+Hybrid (template shell + procedural internals)
+
+🌱 Seed Controls
+
+Lock seed
+
+Generate new seed
+
+Contextual seed (player state driven)
+
+Deterministic preview toggle
+
+🧩 Template Selector
+
+Load template
+
+Edit template
+
+Mark as boss template
+
+Mark as narrative anchor
+
+🧠 ENVIRONMENTAL SYNERGY PANEL
+
+This is your core mechanic integration layer.
+
+🔑 Key + Gate Linker
+
+Create Key
+
+Assign Gate
+
+Soft gate (optional)
+
+Hard gate (mandatory)
+
+Multi-key lock
+
+Timed unlock
+
+Destroy on use toggle
+
+🧑‍🤝‍🧑 Quest Key + NPC Binder
+
+Assign NPC
+
+Dialogue trigger
+
+Quest state requirement
+
+Betrayal branch
+
+Death persistence rule
+
+🕳 Vent Bypass Node
+
+Requires rope?
+
+Requires size modifier?
+
+One-way / two-way
+
+Noise generation toggle
+
+🔘 Secret Button
+
+Hidden by default
+
+Visibility condition
+
+Rope operable
+
+Line of sight required
+
+Emits audio cue
+
+🪜 Ladder / Bridge Pull
+
+Rope required
+
+Physics drop animation
+
+One time use
+
+Resettable
+
+Multiplayer visible state
+
+🪢 Tripwire / Net
+
+Deployable by player
+
+AI triggered
+
+Single use
+
+Resettable
+
+Enemy faction filter
+
+🪢 ROPE SYSTEM PANEL (RopeManager Controls)
+
+Integrates your existing overhead rope emoji animation.
+
+🎣 Rope Action Node
+
+Deploy Tripline
+
+Deploy Net
+
+Pull Object
+
+Bind Enemy
+
+Operate Lever
+
+Trigger Hidden
+
+📏 Rope Length Settings
+
+Max length
+
+Shrink rate
+
+Auto retract
+
+Break under tension toggle
+
+🎭 Visual Settings
+
+Emoji type override
+
+Max scale (1.3)
+
+Min scale (.1)
+
+Glow when active
+
+Snap animation style
+
+🎮 PLAYER CONTEXT CONDITIONS
+🧍 Player State Conditions
+
+Has rope?
+
+Has key?
+
+Inventory contains X?
+
+Reputation state
+
+Health threshold
+
+Stealth mode
+
+Alarm active?
+
+🤖 AI Context
+
+Faction hostility
+
+Alert level
+
+Patrol state
+
+Boss alive?
+
+Reinforcement enabled?
+
+📖 NARRATIVE PANEL
+🗨 Dialogue Trigger
+
+Pre-step
+
+On entry
+
+On exit
+
+Conditional branch
+
+Randomized flavor lines
+
+📜 Narrative Tone Slider
+
+Contrived
+
+Semi-random
+
+Emergent
+
+Chaos
+
+Affects procedural weighting.
+
+🎛 BALANCE & DIFFICULTY PANEL
+📈 Difficulty Curve
+
+Linear
+
+Spike
+
+Wave
+
+Context reactive
+
+💀 Failure Handling
+
+Soft fail
+
+Hard fail
+
+Loop retry
+
+World mutation on fail
+
+Spawn alternate path
+
+🧪 DEBUG & VALIDATION PANEL
+🔎 Flow Validator
+
+Checks:
+
+Unreachable steps
+
+Infinite loops
+
+Unsolvable gates
+
+Missing keys
+
+Rope deadlocks
+
+Procedural contradictions
+
+🧬 Seed Simulator
+
+Run 1000 seeds and:
+
+Visualize path variance
+
+Measure average length
+
+Detect dead branches
+
+Detect exploit loops
+
+👁 Designer Preview Mode
+
+Play from selected node
+
+Force condition true/false
+
+Visual rope overlay test
+
+Simulate player inventory
+
+🛡 ABUSE PREVENTION PANEL
+🚫 Exploit Detection
+
+Soft lock risk
+
+Rope bypass abuse
+
+Gate stacking abuse
+
+Infinite farm detection
+
+🎯 Player Intent Analyzer
+
+Flags:
+
+Sequence breaking
+
+Rope cheesing
+
+Key hoarding
+
+Loop farming
+
+🎨 POLISH PANEL
+✨ Visual FX Attach
+
+Screen shake
+
+Rope tension spark
+
+Dust burst
+
+Audio cue
+
+Mini camera zoom
+
+🎵 Audio Binding
+
+Attach SFX
+
+Attach ambient trigger
+
+Tension escalation
+
+🧩 EXPORT / VERSIONING PANEL
+💾 Save as Template
+🌍 Save as Procedural Pattern
+🔁 Fork World Graph
+🧠 Compare Versions
+📦 Export Seed Pack
+🧪 Snapshot Playtest
+🏗 If Fully Polished, Designers Would See:
+
+Drag-and-drop SFC canvas
+
+Step nodes styled like industrial GRAFCET blocks
+
+Condition diamonds
+
+Parallel bars
+
+Rope interactions visually linked with curved cable lines
+
+Context validation warnings in red
+
+Replay seed preview heatmap
+
+Interactive simulation playback
