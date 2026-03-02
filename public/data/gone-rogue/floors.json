@@ -1,0 +1,14 @@
+{
+  "FLOOR_TYPES": {
+    "TUTORIAL": "tutorial",
+    "GHOST": "ghost",
+    "STEALTH": "stealth",
+    "BONFIRE": "bonfire",
+    "COMBAT": "combat",
+    "EXPLORATION": "exploration",
+    "BOSS": "boss",
+    "FINAL": "final"
+  },
+  "BONFIRE_FLOORS": [10, 16, 22],
+  "BOSS_FLOORS": [10, 16, 22, 30]
+}

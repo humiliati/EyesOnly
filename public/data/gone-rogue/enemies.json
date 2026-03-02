@@ -1,0 +1,14 @@
+{
+  "AWARENESS_STATES": {
+    "UNAWARE": { "min": 0, "max": 30, "color": "#00ff00", "name": "UNAWARE" },
+    "SUSPICIOUS": { "min": 31, "max": 70, "color": "#ffaa00", "name": "SUSPICIOUS" },
+    "ALERTED": { "min": 71, "max": 100, "color": "#ff0000", "name": "ALERTED" },
+    "ENGAGED": { "min": 100, "max": 999, "color": "#ff00ff", "name": "ENGAGED" }
+  },
+  "PATH_TYPES": {
+    "PATROL": "patrol",
+    "CIRCULAR": "circular",
+    "ELLIPSE": "ellipse",
+    "STATIONARY": "stationary"
+  }
+}

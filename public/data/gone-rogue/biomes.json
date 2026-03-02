@@ -1,0 +1,273 @@
+{
+    "FOREST": {
+      "name": "Cozy Forest",
+      "wallChar": "🌳",
+      "floorChar": ",",
+      "description": "Welcoming woodland with tall grass",
+      "floorRange": [1, 3],
+      "wallDensity": 2,
+      "wallTiles": [
+        { "char": "🌳", "weight": 40 },
+        { "char": "🌲", "weight": 30 },
+        { "char": "🪵", "weight": 15 },
+        { "char": "🪨", "weight": 10 },
+        { "char": "🌿", "weight": 5 }
+      ],
+      "floorTiles": [
+        { "char": ",", "weight": 50, "animated": true },
+        { "char": "`", "weight": 25, "animated": true },
+        { "char": "'", "weight": 15, "animated": true },
+        { "char": "\"", "weight": 5, "animated": true },
+        { "char": "·", "weight": 5 }
+      ],
+      "props": [
+        { "emoji": "🚧", "name": "Wooden Gate", "breakable": true, "hp": 3, "blocksPath": true, "drops": ["wood", "coins"] },
+        { "emoji": "🌳", "name": "Tree Trunk", "breakable": true, "hp": 4, "blocksPath": true, "drops": ["wood", "apples"] },
+        { "emoji": "🌲", "name": "Tree Canopy", "breakable": true, "hp": 6, "blocksPath": true, "drops": ["wood", "sap"] },
+        { "emoji": "🌿", "name": "Bush", "breakable": true, "hp": 2, "blocksPath": false, "ghostCollision": true, "drops": ["berries", "sticks"] },
+        { "emoji": "🪵", "name": "Hollow Log", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["wood", "insects"] },
+        { "emoji": "🪨", "name": "Boulder", "breakable": true, "hp": 5, "blocksPath": true, "drops": ["stone", "gems"] },
+        { "emoji": "⛰️", "name": "Ridge", "breakable": false, "blocksPath": true },
+        { "emoji": "📦", "name": "Wooden Box", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies"] },
+        { "emoji": "🧺", "name": "Picnic Blanket", "breakable": false, "blocksPath": false, "ghostCollision": true, "movePenalty": 0.3 }
+      ],
+      "interactiveObjects": [
+        { "emoji": "🪧", "name": "Sign Post", "interact": "read", "effect": "shows_direction", "blocksPath": true },
+        { "emoji": "📬", "name": "Mailbox", "interact": "open", "effect": "gives_letter", "blocksPath": true },
+        { "emoji": "🫐", "name": "Berry Bush", "interact": "harvest", "effect": "gives_berries", "blocksPath": false, "ghostCollision": true },
+        { "emoji": "🍎", "name": "Apple Tree", "interact": "shake", "effect": "drops_apples", "blocksPath": true }
+      ],
+      "tileEffects": {
+        ",": { "stealth": 20, "moveMod": 0.85, "name": "Grass", "animated": true },
+        "`": { "stealth": 20, "moveMod": 0.85, "name": "Grass", "animated": true },
+        "'": { "stealth": 20, "moveMod": 0.85, "name": "Grass", "animated": true },
+        "\"": { "stealth": 40, "moveMod": 0.80, "name": "Dense Grass", "animated": true },
+        "·": { "stealth": 10, "moveMod": 0.95, "name": "Dirt Patch" }
+      },
+      "spawnFeatures": {
+        "villageCluster": true,
+        "buildings": ["🏠", "⛪", "🏪", "🏡"],
+        "friendlyNPCs": ["👨", "👩", "🧓", "👶"],
+        "decorations": ["🪧", "📬", "🏮", "⛲", "🪑"],
+        "landmarks": [
+          { "emoji": "🏔️", "name": "Mountain Tower", "visibility": 15 },
+          { "emoji": "🌳", "name": "Giant Tree", "visibility": 12 },
+          { "emoji": "🏛️", "name": "Ruin", "visibility": 10 }
+        ]
+      },
+      "enemies": [],
+      "enemyDensity": 0.0,
+      "backgroundGradient": {
+        "night": { "start": "#061206", "end": "#0d2a12" },
+        "day":   { "start": "#081a08", "end": "#1e4a1e" }
+      }
+    },
+    "GREY_CAVE": {
+      "name": "Grey Cave",
+      "wallChar": "█",
+      "floorChar": ".",
+      "description": "Dark underground tunnels with water pools",
+      "floorRange": [4, 4],
+      "floorTiles": [
+        { "char": ".", "weight": 60 },
+        { "char": "·", "weight": 15 },
+        { "char": "~", "weight": 15, "animated": true },
+        { "char": "☣", "weight": 5, "animated": true },
+        { "char": "░", "weight": 5 }
+      ],
+      "tileEffects": {
+        ".": { "stealth": 5, "moveMod": 1.0, "name": "Stone Floor" },
+        "·": { "stealth": 10, "moveMod": 0.95, "name": "Gravel" },
+        "~": { "stealth": 0, "moveMod": 0.60, "name": "Water", "animated": true },
+        "≈": { "stealth": 0, "moveMod": 0.60, "name": "Water", "animated": true },
+        "☣": { "stealth": 0, "moveMod": 0.60, "damage": 1, "name": "Toxic Waste", "animated": true },
+        "o": { "stealth": 0, "moveMod": 0.60, "damage": 1, "name": "Toxic", "animated": true },
+        "°": { "stealth": 0, "moveMod": 0.60, "damage": 1, "name": "Toxic", "animated": true },
+        "░": { "stealth": 5, "moveMod": 0.90, "name": "Debris" }
+      },
+      "props": [
+        { "emoji": "🪨", "name": "Boulder", "breakable": true, "hp": 2, "blocksPath": true },
+        { "emoji": "💧", "name": "Water Drip", "breakable": false, "blocksPath": true }
+      ],
+      "backgroundGradient": {
+        "night": { "start": "#0a0a0f", "end": "#0f0a1a" },
+        "day":   { "start": "#0a0a0f", "end": "#0f0a1a" }
+      }
+    },
+    "OFFICE": {
+      "name": "Commercial Office",
+      "wallChar": "█",
+      "floorChar": ".",
+      "description": "Corporate cubicles and conference rooms",
+      "floorRange": [5, 9],
+      "floorTiles": [
+        { "char": ".", "weight": 70 },
+        { "char": "▬", "weight": 20 },
+        { "char": "·", "weight": 10 }
+      ],
+      "wallTiles": [
+        { "char": "█", "weight": 60 },
+        { "char": "▓", "weight": 20 },
+        { "char": "🪟", "weight": 15 },
+        { "char": "🚪", "weight": 5 }
+      ],
+      "props": [
+        { "emoji": "📂", "name": "Filing Cabinet", "breakable": true, "hp": 2, "drops": ["documents", "items"] },
+        { "emoji": "🖨️", "name": "Photocopier", "breakable": true, "hp": 3, "drops": ["toner"], "explodes": true },
+        { "emoji": "🪑", "name": "Office Chair", "breakable": false, "provides": "cover" },
+        { "emoji": "💼", "name": "Briefcase", "breakable": true, "hp": 1, "drops": ["papers"] },
+        { "emoji": "🖥️", "name": "Desk", "breakable": true, "hp": 3, "provides": "cover", "drops": ["supplies"] },
+        { "emoji": "💧", "name": "Water Cooler", "interact": "drink", "healing": 5 },
+        { "emoji": "🥤", "name": "Vending Machine", "breakable": true, "hp": 4, "drops": ["drinks", "snacks"] },
+        { "emoji": "🖥️", "name": "Server Rack", "interact": "hack", "effect": "reveals_map" },
+        { "emoji": "💻", "name": "Terminal", "breakable": true, "hp": 2, "drops": ["thumb_drive"], "glows": true, "lightType": "TERMINAL" }
+      ],
+      "interactiveObjects": [
+        { "emoji": "💻", "name": "Terminal", "interact": "hack", "effects": ["map_reveal", "enemy_intel", "door_unlock", "transmission"] },
+        { "emoji": "🚪", "name": "Locked Door", "interact": "unlock", "requires": "keycard" },
+        { "emoji": "🪟", "name": "Glass Window", "transparent": true, "blocks": "projectiles" },
+        { "emoji": "▓", "name": "Cubicle Cluster", "provides": "cover", "slowsMovement": true }
+      ],
+      "tileEffects": {
+        ".": { "stealth": 5, "moveMod": 1.0, "name": "Office Floor" },
+        "▬": { "stealth": 0, "moveMod": 1.1, "name": "Walkway" },
+        "·": { "stealth": 10, "moveMod": 1.0, "name": "Concrete" }
+      },
+      "spawnFeatures": {
+        "unreachableRooms": true,
+        "terminals": 3,
+        "lockedDoors": 2,
+        "coverClusters": true
+      },
+      "backgroundGradient": {
+        "night": { "start": "#0a0a0a", "end": "#0f0f15" },
+        "day":   { "start": "#0a0a12", "end": "#12121a" }
+      }
+    },
+    "MALL": {
+      "name": "Shopping Mall",
+      "wallChar": "█",
+      "floorChar": ".",
+      "description": "Abandoned retail stores",
+      "floorRange": [11, 15],
+      "floorTiles": [
+        { "char": ".", "weight": 70 },
+        { "char": "▬", "weight": 20 },
+        { "char": "·", "weight": 10 }
+      ],
+      "props": [
+        { "emoji": "🛍️", "name": "Shopping Bag", "breakable": true, "hp": 1, "drops": ["random"] },
+        { "emoji": "🧸", "name": "Toy", "breakable": true, "hp": 1, "drops": ["toys"] },
+        { "emoji": "🥫", "name": "Canned Food", "breakable": true, "hp": 1, "drops": ["food"] },
+        { "emoji": "👗", "name": "Clothing Display", "breakable": true, "hp": 1, "drops": ["clothes"] },
+        { "emoji": "👟", "name": "Shoe Rack", "breakable": true, "hp": 2, "drops": ["shoes", "coins"] },
+        { "emoji": "💍", "name": "Jewelry Display", "breakable": true, "hp": 1, "drops": ["gems", "coins"], "rare": true },
+        { "emoji": "🛒", "name": "Shopping Cart", "breakable": true, "hp": 2, "provides": "mobile_cover", "drops": ["items"] },
+        { "emoji": "📰", "name": "Magazine Rack", "breakable": true, "hp": 1, "drops": ["hints"] },
+        { "emoji": "🎁", "name": "Gift Wrap Station", "breakable": true, "hp": 2, "drops": ["wrapped_gifts"], "surprise": true }
+      ],
+      "interactiveObjects": [
+        { "emoji": "🏪", "name": "Storefront", "type": "various", "contains": "multiple_displays" },
+        { "emoji": "🛍️", "name": "Display Rack", "contains": "breakables" },
+        { "emoji": "👕", "name": "Clothing Rack", "provides": "concealment" },
+        { "emoji": "🧍", "name": "Mannequin", "decorative": true, "sometimes": "hostile" },
+        { "emoji": "🪧", "name": "Sign", "provides": "navigation_hints" },
+        { "emoji": "📋", "name": "Directory", "interact": "read", "shows": "local_map" },
+        { "emoji": "🔼", "name": "Escalator", "vertical": true, "bidirectional": true }
+      ],
+      "tileEffects": {
+        ".": { "stealth": 5, "moveMod": 1.0, "name": "Mall Floor" },
+        "▬": { "stealth": 0, "moveMod": 1.05, "name": "Walkway" },
+        "·": { "stealth": 5, "moveMod": 1.0, "name": "Tile Floor" }
+      },
+      "spawnFeatures": {
+        "mazeLayout": true,
+        "stores": 8,
+        "deadEnds": 5,
+        "escapeRoutes": 3,
+        "directories": 2,
+        "escalators": 2
+      },
+      "backgroundGradient": {
+        "night": { "start": "#0a0a0a", "end": "#1a0a0a" },
+        "day":   { "start": "#0f0a0a", "end": "#1a1010" }
+      }
+    },
+    "INDUSTRIAL": {
+      "name": "Industrial Complex",
+      "wallChar": "█",
+      "floorChar": ".",
+      "description": "Hazardous factory floor",
+      "floorRange": [17, 21],
+      "floorTiles": [
+        { "char": ".", "weight": 45 },
+        { "char": "·", "weight": 15 },
+        { "char": "▪", "weight": 15 },
+        { "char": "_", "weight": 10, "animated": true },
+        { "char": "~", "weight": 8, "animated": true },
+        { "char": "^", "weight": 4, "animated": true },
+        { "char": "░", "weight": 3 }
+      ],
+      "props": [
+        { "emoji": "🛢️", "name": "Oil Drum", "breakable": true, "hp": 2, "drops": ["oil"], "explodes": "fire", "ignitable": true },
+        { "emoji": "⚡", "name": "Exposed Wiring", "breakable": false, "hazard": "electric" },
+        { "emoji": "🔥", "name": "Vent Steam", "breakable": false, "hazard": "heat", "areadenial": true },
+        { "emoji": "🧪", "name": "Chemical Tank", "breakable": true, "hp": 3, "drops": ["acid"], "hazard": "acid" },
+        { "emoji": "🛤️", "name": "Pipeline", "interact": "damage", "effect": "releases_steam" },
+        { "emoji": "🤖", "name": "Robot Wreckage", "breakable": true, "hp": 4, "drops": ["scrap", "parts"], "sometimes": "hostile" },
+        { "emoji": "⏩", "name": "Conveyor Belt", "interact": "walk", "effect": "speed_boost", "reversible": true },
+        { "emoji": "🌫️", "name": "Vent Cover", "breakable": true, "hp": 3, "requiresCrowbar": true, "opensVent": true, "drops": ["vent_access"] }
+      ],
+      "interactiveObjects": [
+        { "emoji": "🎛️", "name": "Valve", "interact": "turn", "effect": "controls_flow" },
+        { "emoji": "🎚️", "name": "Control Panel", "interact": "activate", "effect": "activates_deactivates" },
+        { "emoji": "🔥", "name": "Furnace", "interact": "ignite", "effect": "creates_fire", "provides": "light" }
+      ],
+      "tileEffects": {
+        ".": { "stealth": 5, "moveMod": 1.0, "name": "Industrial Floor" },
+        "·": { "stealth": 5, "moveMod": 1.0, "name": "Concrete" },
+        "▪": { "stealth": 0, "moveMod": 1.0, "name": "Metal Walkway" },
+        "_": { "stealth": 5, "moveMod": 0.70, "ignitable": true, "name": "Oil Slick", "animated": true },
+        "~": { "stealth": 0, "moveMod": 0.60, "electrifiable": true, "name": "Water", "animated": true },
+        "≈": { "stealth": 0, "moveMod": 0.60, "electrifiable": true, "name": "Water", "animated": true },
+        "^": { "stealth": 0, "moveMod": 0.40, "damage": 2, "spreads": true, "name": "Fire", "animated": true },
+        "*": { "stealth": 0, "moveMod": 0.40, "damage": 2, "spreads": true, "name": "Fire", "animated": true },
+        "░": { "stealth": 5, "moveMod": 0.90, "name": "Debris/Ash" }
+      },
+      "ignitionSystem": {
+        "enabled": true,
+        "spreadChance": 0.3,
+        "burnDuration": 10,
+        "damagePerTurn": 2,
+        "lightRadius": 4,
+        "smokeRadius": 6,
+        "spreadTargets": ["🛢️", "🪵", "📦"]
+      },
+      "spawnFeatures": {
+        "hazardZones": true,
+        "narrowWalkways": true,
+        "ignitionChains": true,
+        "verticalHazards": true,
+        "controlPanels": 3
+      },
+      "backgroundGradient": {
+        "night": { "start": "#0a0a08", "end": "#1a1508" },
+        "day":   { "start": "#0f0e08", "end": "#1a1a0a" }
+      }
+    },
+    "AEROSPACE": {
+      "name": "Aerospace Museum",
+      "wallChar": "█",
+      "floorChar": ".",
+      "description": "Vast halls with missile displays",
+      "floorRange": [23, 30],
+      "props": [
+        { "emoji": "🚀", "name": "Rocket Scaffold", "breakable": false },
+        { "emoji": "✈️", "name": "Hanging Plane", "breakable": false }
+      ],
+      "backgroundGradient": {
+        "night": { "start": "#08080f", "end": "#0f0f1a" },
+        "day":   { "start": "#0a0a12", "end": "#141420" }
+      }
+    }
+}
