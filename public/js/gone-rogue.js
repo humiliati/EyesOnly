@@ -3254,447 +3254,87 @@ _incrementPityTimers();
   /**
    * Helper: Get player's current keys from inventory
    */
-  function _getPlayerKeys(opts) {
-    opts = opts || {};
-    var excludeQuest = opts.excludeQuest !== false; // Default: exclude quest keys from gate matching
-    var keys = [];
-    if (typeof InteractiveItems !== 'undefined') {
-      var items = InteractiveItems.getAllItems();
-      for (var i = 0; i < items.length; i++) {
-        if (items[i].type === 'key') {
-          if (excludeQuest && items[i].subtype === 'quest') continue;
-          keys.push(items[i].keyType || items[i].itemId);
-        }
-      }
-    }
-    // Also check GAMESTATE inventory
-    if (typeof GAMESTATE !== 'undefined') {
-      var loose = GAMESTATE.getLooseInventory();
-      var persistent = GAMESTATE.getPersistentInventory();
-      var allItems = loose.concat(persistent);
-      for (var j = 0; j < allItems.length; j++) {
-        if (allItems[j].type === 'key') {
-          if (excludeQuest && allItems[j].subtype === 'quest') continue;
-          keys.push(allItems[j].keyType || allItems[j].itemId);
-        }
-      }
-    }
-    return keys;
+  // ── Key/Loot Gen delegation stubs (Phase 6) ──────────────
+  function _keyLootCtx() {
+    return {
+      floor: _floor, rng: _rng, grid: _grid, player: _player,
+      items: _items, runState: _runState, TILES: TILES
+    };
   }
 
-  /**
-   * Helper: Get the tier of a key by its keyType identifier.
-   * Tier 1 = ammo/breakable (KEY_XX2, KEY_XX4), Tier 2 = gate/door (ITM-01X), Tier 3 = quest (ITM-03X)
-   * Falls back to checking EnvironmentalSynergy definitions, then inventory item metadata.
-   */
+  function _getPlayerKeys(opts) {
+    if (typeof KeyLootGen !== 'undefined') return KeyLootGen.getPlayerKeys(opts);
+    return [];
+  }
+
   function _getKeyTier(keyType) {
-    // Check EnvironmentalSynergy definitions first (authoritative for tier)
-    if (typeof EnvironmentalSynergy !== 'undefined' && EnvironmentalSynergy.getKeyDefinitions) {
-      var defs = EnvironmentalSynergy.getKeyDefinitions();
-      for (var k in defs) {
-        if (defs.hasOwnProperty(k)) {
-          var def = defs[k];
-          if (k === keyType || def.itemId === keyType || def.registryId === keyType) {
-            return def.tier || 1;
-          }
-        }
-      }
-    }
-    // Check player's inventory for the item's tier metadata
-    if (typeof GAMESTATE !== 'undefined') {
-      var all = (GAMESTATE.getLooseInventory ? GAMESTATE.getLooseInventory() : [])
-        .concat(GAMESTATE.getPersistentInventory ? GAMESTATE.getPersistentInventory() : []);
-      for (var i = 0; i < all.length; i++) {
-        var it = all[i];
-        if (it && it.type === 'key') {
-          var id = it.keyType || it.registryId || it.itemId;
-          if (id === keyType && it.tier) return it.tier;
-        }
-      }
-    }
-    // Default: tier 1 (ammo keys — most permissive)
+    if (typeof KeyLootGen !== 'undefined') return KeyLootGen.getKeyTier(keyType);
     return 1;
   }
 
-  /**
-   * Helper: Check if player has key for specific biome
-   */
   function _playerHasKeyForBiome(playerKeys, biomeName) {
-    var biomeToKey = {
-      'Commercial Office': 'KEYCARD',
-      'Shopping Mall': 'MALL_KEY',
-      'Industrial Complex': 'INDUSTRIAL_PASS',
-      'Aerospace Museum': 'ACCESS_CARD'
-    };
-    var requiredKey = biomeToKey[biomeName];
-    if (!requiredKey) return false;
-    return playerKeys.indexOf(requiredKey) !== -1;
+    if (typeof KeyLootGen !== 'undefined') return KeyLootGen.playerHasKeyForBiome(playerKeys, biomeName);
+    return false;
   }
 
-  /**
-   * Helper: Get biome name for a key type
-   */
   function _getBiomeForKey(keyType) {
-    var keyToBiome = {
-      'KEYCARD': 'Commercial Office',
-      'THUMB_DRIVE': 'Commercial Office',
-      'MALL_KEY': 'Shopping Mall',
-      'INDUSTRIAL_PASS': 'Industrial Complex',
-      'ACCESS_CARD': 'Aerospace Museum'
-    };
-    return keyToBiome[keyType] || null;
+    if (typeof KeyLootGen !== 'undefined') return KeyLootGen.getBiomeForKey(keyType);
+    return null;
   }
 
-  /**
-   * Helper: Count keys that don't have matching gates available
-   */
   function _countUnmatchedKeys(playerKeys) {
-    var unmatched = 0;
-    for (var i = 0; i < playerKeys.length; i++) {
-      var biome = _getBiomeForKey(playerKeys[i]);
-      if (biome && _runState.visitedGateBiomes.indexOf(biome) === -1) {
-        unmatched++;
-      }
-    }
-    return unmatched;
+    if (typeof KeyLootGen !== 'undefined') return KeyLootGen.countUnmatchedKeys(playerKeys, _runState.visitedGateBiomes);
+    return 0;
   }
 
-  /**
-   * Helper: Weighted biome roll
-   */
   function _weightedBiomeRoll(weights) {
-    var totalWeight = 0;
-    for (var biome in weights) {
-      totalWeight += weights[biome];
-    }
-    if (totalWeight <= 0) return null;
-
-    var roll = _rng() * totalWeight;
-    var cumulative = 0;
-    for (var b in weights) {
-      cumulative += weights[b];
-      if (roll < cumulative) {
-        return b;
-      }
-    }
+    if (typeof KeyLootGen !== 'undefined') return KeyLootGen.weightedRoll(weights, _rng);
     return null;
   }
 
-  /**
-   * Context-aware key spawn system
-   * Implements dynamic drop rates, inventory bonuses, and pity timers
-   * Called during floor generation to potentially spawn a key
-   */
   function _spawnContextAwareKey(rooms) {
-    if (typeof EnvironmentalSynergy === 'undefined' || !rooms || rooms.length === 0) {
+    if (typeof KeyLootGen !== 'undefined') {
+      var ctx = _keyLootCtx();
+      ctx.rooms = rooms;
+      KeyLootGen.spawnContextAwareKey(ctx);
       return;
     }
-
-    // Skip tutorial and early floors
-    if (_floor <= 1) {
-      _runState.floorsSinceKey++;
-      return;
-    }
-
-    // RULE 3: Calculate key spawn chance based on run depth
-    var baseChance = 0;
-    if (_floor === 1) baseChance = 0.25;
-    else if (_floor === 2) baseChance = 0.35;
-    else baseChance = 0.45; // Floor 3+
-
-    // Adjust based on player's key inventory
-    var playerKeys = _getPlayerKeys();
-
-    // If player holds no keys: +20% bonus
-    if (playerKeys.length === 0) {
-      baseChance += 0.20;
-    }
-
-    // If player holds unused key: -10% penalty (to avoid key hoarding)
-    var hasUnusedKey = _countUnmatchedKeys(playerKeys) > 0;
-    if (hasUnusedKey) {
-      baseChance -= 0.10;
-    }
-
-    // RULE 4: Pity Timer - Force key spawn after 3 floors without
-    var forceKey = _runState.floorsSinceKey >= 3;
-
-    if (!forceKey && _rng() > baseChance) {
-      _runState.floorsSinceKey++;
-      return; // No key this floor
-    }
-
-    // Determine which key type to drop (biome-weighted)
-    var keyWeights = {
-      'KEYCARD': 30,        // Office
-      'ACCESS_CARD': 25,    // Aerospace
-      'INDUSTRIAL_PASS': 25, // Industrial
-      'MALL_KEY': 20        // Mall
-    };
-
-    // Boost weight for keys player doesn't have
-    for (var keyType in keyWeights) {
-      if (playerKeys.indexOf(keyType) === -1) {
-        keyWeights[keyType] += 15; // Player doesn't have this key yet
-      }
-    }
-
-    // Pick key using weighted roll
-    var selectedKeyType = _weightedKeyRoll(keyWeights);
-    if (!selectedKeyType) {
-      _runState.floorsSinceKey++;
-      return;
-    }
-
-    var keyDef = EnvironmentalSynergy.getKeyDefinitions()[selectedKeyType];
-    if (!keyDef) {
-      _runState.floorsSinceKey++;
-      return;
-    }
-
-    // Find a good spawn position (in a random room, away from player)
-    var roomIndex = Math.floor(_rng() * rooms.length);
-    var room = rooms[roomIndex];
-    var keyX = room.x + 2 + Math.floor(_rng() * (room.w - 4));
-    var keyY = room.y + 2 + Math.floor(_rng() * (room.h - 4));
-
-    // Ensure valid position
-    var attempts = 0;
-    while (attempts < 20) {
-      if (_grid[keyY] && _grid[keyY][keyX] === TILES.EMPTY) {
-        var distToPlayer = Math.abs(keyX - _player.x) + Math.abs(keyY - _player.y);
-        if (distToPlayer >= 5) {
-          break; // Valid position found
-        }
-      }
-      keyX = room.x + 2 + Math.floor(_rng() * (room.w - 4));
-      keyY = room.y + 2 + Math.floor(_rng() * (room.h - 4));
-      attempts++;
-    }
-
-    // Spawn the key
-    _items.push({
-      x: keyX,
-      y: keyY,
-      type: 'key',
-      keyType: selectedKeyType,
-      emoji: keyDef.emoji,
-      name: keyDef.name,
-      description: keyDef.description,
-      spawnTime: Date.now(),
-      decayTime: 180000 // 3 minute decay (longer for context keys)
-    });
-
-    // Update run state
-    _runState.floorsSinceKey = 0;
-    _runState.keysFoundThisRun++;
-    _runState.keysOwned.push(selectedKeyType);
-
-    console.log('[GoneRogue] Spawned context-aware key:', keyDef.name, 'at', keyX, keyY, 'on floor', _floor, forceKey ? '(FORCED)' : '');
   }
 
-  /**
-   * Helper: Weighted key roll
-   */
   function _weightedKeyRoll(weights) {
-    var totalWeight = 0;
-    for (var keyType in weights) {
-      totalWeight += weights[keyType];
-    }
-    if (totalWeight <= 0) return null;
-
-    var roll = _rng() * totalWeight;
-    var cumulative = 0;
-    for (var k in weights) {
-      cumulative += weights[k];
-      if (roll < cumulative) {
-        return k;
-      }
-    }
+    if (typeof KeyLootGen !== 'undefined') return KeyLootGen.weightedRoll(weights, _rng);
     return null;
   }
 
-  /**
-   * Spawn currency (cryptos ¢) at a location
-   */
+  // ── Currency Spawning delegation stubs (Phase 6) ─────────
+  function _currencyCtx() {
+    return {
+      currencies: _currencies, grid: _grid, rng: _rng, TILES: TILES,
+      player: _player, strCombatActive: _strCombatActive,
+      currencyCollected: _currencyCollected
+    };
+  }
+
   function _spawnCurrency(x, y, amount) {
-    _currencies.push({
-      x: x,
-      y: y,
-      amount: amount,
-      glyph: '¢',
-      emoji: '💰',
-      spawnTime: Date.now(),
-      decayTime: 20000 // 20 second decay for currency
-    });
+    if (typeof CurrencySpawning !== 'undefined') {
+      CurrencySpawning.spawnCurrency(x, y, amount, _currencyCtx());
+      return;
+    }
+    _currencies.push({ x: x, y: y, amount: amount, glyph: '¢', emoji: '💰', spawnTime: Date.now(), decayTime: 20000 });
   }
 
-  // ── Magnet auto-collect state ──
-  var _magnetLastCollectTime = 0;   // Timestamp of last magnet pull
-  var _magnetPullingIds = [];        // Indices being pulled this frame (for stagger)
-
-  /**
-   * Magnet auto-collect: if the player has a Magnet equipped, periodically
-   * pull nearby scattered currency/ammo toward the player and collect them.
-   * Uses Chebyshev distance (king-move radius) so diagonal tiles are in range.
-   *
-   * @param {number} now — Date.now() from the game loop
-   */
   function _magnetAutoCollect(now) {
-    if (!_player || _strCombatActive) return;
-
-    // Check if player has a magnet
-    var magnet = null;
-    try {
-      if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.getEquippedMagnet) {
-        magnet = PassiveItemsSystem.getEquippedMagnet();
-      }
-    } catch (e) { return; }
-    if (!magnet) return;
-
-    // Throttle by collection_interval_ms (default 400ms)
-    var interval = magnet.collection_interval_ms || 400;
-    if (now - _magnetLastCollectTime < interval) return;
-
-    var range = magnet.collection_range || 3;
-    var px = _player.x;
-    var py = _player.y;
-
-    // Find all currencies within Chebyshev distance
-    var inRange = [];
-    for (var ci = 0; ci < _currencies.length; ci++) {
-      var c = _currencies[ci];
-      if (!c || c.collected) continue;
-      var dx = Math.abs(c.x - px);
-      var dy = Math.abs(c.y - py);
-      var dist = Math.max(dx, dy); // Chebyshev
-      if (dist > 0 && dist <= range) {
-        inRange.push({ idx: ci, dist: dist, currency: c });
-      }
+    if (typeof CurrencySpawning !== 'undefined') {
+      var ctx = _currencyCtx();
+      _currencyCollected = CurrencySpawning.magnetAutoCollect(now, ctx);
+      return;
     }
-
-    if (inRange.length === 0) return;
-
-    // Sort nearest first so closest get pulled first
-    inRange.sort(function(a, b) { return a.dist - b.dist; });
-
-    // Collect the nearest one this tick (staggered pull, one per interval)
-    var target = inRange[0];
-    var c = target.currency;
-    _magnetLastCollectTime = now;
-
-    // Determine if ammo or currency
-    if (c._isAmmo) {
-      // Ammo collection
-      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addAmmo) {
-        GAMESTATE.addAmmo(c.amount);
-      }
-    } else {
-      // Currency collection
-      if (typeof GAMESTATE !== 'undefined') {
-        GAMESTATE.addCryptos(c.amount);
-      }
-      _currencyCollected += c.amount;
-    }
-
-    // Show overhead pickup animation at the currency's position (flies to player)
-    if (typeof OverheadAnimator !== 'undefined') {
-      if (c._isAmmo) {
-        OverheadAnimator.showGenericExpression(c.x, c.y, '⁍', 600);
-      } else {
-        OverheadAnimator.showCurrencyPickup(c.x, c.y, c.amount);
-      }
-    }
-
-    // Collection state for animation
-    _player.collectingCurrency = true;
-    _player.currencyCollectTime = now;
-
-    // Pancake stacker feedback — currency (¢) no longer uses PancakeStack
-    // (ghost glyph fix: OverheadAnimator "+3¢" is sufficient for currency feedback,
-    //  PancakeStack reserved for physical inventory items like cards/keys/food)
-    // Only ammo still uses PancakeStack (it's a physical resource)
-    try {
-      if (c._isAmmo) {
-        if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-          PancakeStack.addPancake('⁍');
-        } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-          PlayerStackManager.addPancake('⁍');
-        }
-      }
-    } catch (ePancake) {}
-
-    // Remove from currencies array
-    _currencies.splice(target.idx, 1);
   }
 
-  /**
-   * Scatter post-combat currency/ammo nodes around the defeated enemy's position.
-   * Nodes bounce and spread 1-3 tiles in random directions so the player
-   * has to chase them down (unless they have a magnet equipped).
-   */
   function _scatterPostCombatNodes(enemy, victoryCtx) {
-    if (!enemy) return;
-    var cx = enemy.x || 0;
-    var cy = enemy.y || 0;
-
-    // Determine how many scatter nodes (1-3)
-    var nodeCount = 1;
-    var totalValue = (victoryCtx.lootCurrency || 0) + (victoryCtx.lootAmmo || 0) * 2;
-    if (totalValue > 30) nodeCount = 2;
-    if (totalValue > 80 || victoryCtx.isBoss) nodeCount = 3;
-
-    // Scatter directions (random adjacent tiles)
-    var dirs = [
-      { dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
-      { dx: -1, dy: -1 }, { dx: 1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: 1 }
-    ];
-
-    // Shuffle directions
-    for (var s = dirs.length - 1; s > 0; s--) {
-      var j = Math.floor(_rng() * (s + 1));
-      var tmp = dirs[s]; dirs[s] = dirs[j]; dirs[j] = tmp;
-    }
-
-    for (var n = 0; n < nodeCount; n++) {
-      var dir = dirs[n % dirs.length];
-      var nx = cx + dir.dx;
-      var ny = cy + dir.dy;
-
-      // Bounds check
-      if (ny < 0 || ny >= _grid.length || nx < 0 || nx >= _grid[0].length) {
-        nx = cx; ny = cy;
-      }
-      // Don't scatter onto walls
-      if (_grid[ny] && _grid[ny][nx] === TILES.WALL) {
-        nx = cx; ny = cy;
-      }
-
-      // Split loot across nodes
-      if (victoryCtx.lootCurrency > 0) {
-        var share = Math.ceil(victoryCtx.lootCurrency / nodeCount);
-        _currencies.push({
-          x: nx, y: ny,
-          amount: Math.min(share, victoryCtx.lootCurrency),
-          glyph: '¢',
-          emoji: '💰',
-          spawnTime: Date.now(),
-          decayTime: 25000, // 25s to chase
-          _scattered: true  // Flag for visual flair in renderer
-        });
-      }
-      if (victoryCtx.lootAmmo > 0 && n === 0) {
-        _currencies.push({
-          x: nx, y: ny,
-          amount: victoryCtx.lootAmmo,
-          glyph: '⁍',
-          emoji: '⁍',
-          spawnTime: Date.now(),
-          decayTime: 25000,
-          _scattered: true,
-          _isAmmo: true
-        });
-      }
+    if (typeof CurrencySpawning !== 'undefined') {
+      CurrencySpawning.scatterPostCombatNodes(enemy, victoryCtx, _currencyCtx());
+      return;
     }
   }
 
@@ -7202,8 +6842,10 @@ _incrementPityTimers();
       });
       if (bossRt && bossRt.bossProjectiles && bossRt.bossProjectiles.length) {
         bossRt.bossProjectiles.forEach(function(p) {
-          _projectiles.push(p);
+          if (typeof ProjectileSystem !== 'undefined') { ProjectileSystem.addProjectile(p); }
+          else { _projectiles.push(p); }
         });
+        if (typeof ProjectileSystem !== 'undefined') _syncProjectileState();
       }
       // Apply move-lock state for Asteroids boss
       if (_activeBoss.playerMoveLocked !== undefined) {
@@ -7907,131 +7549,56 @@ _incrementPityTimers();
     return directions['east'];
   }
 
+  // ── Projectile System delegation stubs (Phase 6) ──────────
+  function _projectileCtx() {
+    return {
+      player: _player, grid: _grid, enemies: _enemies, breakables: _breakables,
+      active: _active, TILES: TILES, impactEffects: _impactEffects,
+      parseDirection: _parseDirection,
+      isInsideBounds: _isInsideBounds,
+      getBreakableAt: _getBreakableAt,
+      damageBreakable: _damageBreakable,
+      enterStrCombat: function(enemy, trigger, card) {
+        if (!_strCombatActive) return _enterStrCombat(enemy, trigger, card);
+      }
+    };
+  }
+  function _syncProjectileState() {
+    if (typeof ProjectileSystem === 'undefined') return;
+    _projectiles = ProjectileSystem.getProjectiles();
+    _muzzleFlash = ProjectileSystem.getMuzzleFlash();
+  }
+
   function _getProjectileGlyph(direction) {
     var glyphs = {
-      'north': '↑',
-      'south': '↓',
-      'east': '→',
-      'west': '←',
-      'northeast': './',
-      'northwest': '/',
-      'southeast': '.\\',
-      'southwest': '\\'
+      'north': '↑', 'south': '↓', 'east': '→', 'west': '←',
+      'northeast': './', 'northwest': '/', 'southeast': '.\\', 'southwest': '\\'
     };
-
     return glyphs[direction] || TILES.PROJECTILE;
   }
 
   function _fireProjectile(cmd) {
-    var dir = _parseDirection(cmd);
-
-    var len = Math.sqrt(dir.dx * dir.dx + dir.dy * dir.dy) || 1;
-    var vx = dir.dx / len;
-    var vy = dir.dy / len;
-
-    var projectile = {
-      x: _player.x,
-      y: _player.y,
-      fx: _player.x,
-      fy: _player.y,
-      dx: dir.dx,
-      dy: dir.dy,
-      vx: vx,
-      vy: vy,
-      speed: 1.0,
-      bounces: 3,
-      glyph: _getProjectileGlyph(dir.direction),
-      emoji: '💥',
-      range: 15,
-      power: 3,
-      owner: 'player'
-    };
-
-    // Add muzzle flash at player position
-    _muzzleFlash = {
-      x: _player.x,
-      y: _player.y,
-      time: Date.now()
-    };
-
-    // Auto-clear muzzle flash after 300ms
-    setTimeout(function() {
-      _muzzleFlash = null;
-    }, 300);
-
-    _projectiles.push(projectile);
-    // Don't advance immediately — let the game loop advance one tile per tick
-    // so the projectile is visually animated across frames.
-    _saveState();
-
-    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      _updateMobileGrid();
+    if (typeof ProjectileSystem !== 'undefined') {
+      var result = ProjectileSystem.fireProjectile(cmd, _projectileCtx());
+      _syncProjectileState();
+      _saveState();
+      if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') _updateMobileGrid();
+      if (!result) return { lines: ['MISFIRE', ''].concat(_renderGrid()), prompt: getPrompt(), stayActive: true };
+      return { lines: ['FIRING ' + result.glyph + ' ' + result.direction.toUpperCase(), ''].concat(_renderGrid()), prompt: getPrompt(), stayActive: true };
     }
-
-    return {
-      lines: ['FIRING ' + projectile.glyph + ' ' + dir.direction.toUpperCase(), ''].concat(_renderGrid()),
-      prompt: getPrompt(),
-      stayActive: true
-    };
+    // Inline fallback (should not reach in production)
+    return { lines: ['[Projectile module not loaded]', ''].concat(_renderGrid()), prompt: getPrompt(), stayActive: true };
   }
 
-  /**
-   * Fire a projectile toward a clicked target coordinate (used by desktop/mobile grid input)
-   */
   function fireProjectileAtTarget(targetX, targetY) {
-    if (!_active || !_player) return;
-
-    var dx = targetX - _player.x;
-    var dy = targetY - _player.y;
-    var dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist === 0) return;
-
-    var vx = dx / dist;
-    var vy = dy / dist;
-
-    // We can infer a rough directional glyph based on dominant axis
-    var dirName = 'east';
-    if (Math.abs(dx) > Math.abs(dy)) {
-      dirName = dx > 0 ? 'east' : 'west';
-    } else {
-      dirName = dy > 0 ? 'south' : 'north';
+    if (typeof ProjectileSystem !== 'undefined') {
+      var result = ProjectileSystem.fireProjectileAtTarget(targetX, targetY, _projectileCtx());
+      _syncProjectileState();
+      if (!result) return;
+      _saveState();
+      if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') _updateMobileGrid();
+      return { lines: ['FIRING ' + result.glyph + ' AT TARGET', ''].concat(_renderGrid()), prompt: getPrompt(), stayActive: true };
     }
-
-    var projectile = {
-      x: _player.x,
-      y: _player.y,
-      fx: _player.x,
-      fy: _player.y,
-      dx: dx,
-      dy: dy,
-      vx: vx,
-      vy: vy,
-      speed: 1.0,
-      bounces: 3, // Multi-bounce ricochet enabled!
-      glyph: _getProjectileGlyph(dirName),
-      emoji: '💥',
-      range: 15,
-      power: 3, // Higher starting power to survive damage falloff
-      owner: 'player'
-    };
-
-    // Muzzle flash at player position
-    _muzzleFlash = { x: _player.x, y: _player.y, time: Date.now() };
-    setTimeout(function() { _muzzleFlash = null; }, 300);
-
-    _projectiles.push(projectile);
-    // Don't advance immediately — let the game loop animate the projectile per tick.
-    _saveState();
-
-    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      _updateMobileGrid();
-    }
-
-    return {
-      lines: ['FIRING ' + projectile.glyph + ' AT TARGET', ''].concat(_renderGrid()),
-      prompt: getPrompt(),
-      stayActive: true
-    };
   }
 
   function _kickBreakable(cmd) {
@@ -8063,169 +7630,24 @@ _incrementPityTimers();
   }
 
   function _updateProjectiles(deltaMs, steps) {
-    var iterations = steps || 1;
-    var action = null;
-
-    for (var i = 0; i < iterations; i++) {
-      var survivors = [];
-      for (var j = 0; j < _projectiles.length; j++) {
-        var result = _advanceProjectile(_projectiles[j]);
-        if (result && result.action && !action) {
-          action = result.action;
-        }
-        if (result && result.alive) {
-          survivors.push(_projectiles[j]);
-        }
-      }
-      _projectiles = survivors;
+    if (typeof ProjectileSystem !== 'undefined') {
+      var action = ProjectileSystem.updateProjectiles(deltaMs, steps, _projectileCtx());
+      _syncProjectileState();
+      return action;
     }
-
-    return action;
+    return null;
   }
 
-  function _advanceProjectile(projectile) {
-    if (!projectile) return { alive: false };
-
-    // Initialize float coords if missing
-    if (projectile.fx === undefined) projectile.fx = projectile.x;
-    if (projectile.fy === undefined) projectile.fy = projectile.y;
-    
-    if (projectile.vx === undefined) {
-      var len = Math.sqrt(projectile.dx * projectile.dx + projectile.dy * projectile.dy) || 1;
-      projectile.vx = projectile.dx / len;
-      projectile.vy = projectile.dy / len;
-      projectile.speed = 1.0;
-      projectile.bounces = projectile.bounces || 0;
-    }
-
-    var nextFx = projectile.fx + projectile.vx * (projectile.speed || 1.0);
-    var nextFy = projectile.fy + projectile.vy * (projectile.speed || 1.0);
-    var nextX = Math.round(nextFx);
-    var nextY = Math.round(nextFy);
-
-    if (!_isInsideBounds(nextX, nextY)) {
-      // Miss - went out of bounds
-      _addImpactEffect(Math.round(projectile.fx), Math.round(projectile.fy), 'miss');
-      return { alive: false };
-    }
-
-    var tile = _grid[nextY][nextX];
-    if (tile === TILES.WALL) {
-      if ((projectile.bounces || 0) > 0) {
-        // Bounce (mirror across normal)
-        var curX = Math.round(projectile.fx);
-        var curY = Math.round(projectile.fy);
-        if (curX !== nextX && _grid[curY] && _grid[curY][nextX] === TILES.WALL) {
-          projectile.vx *= -1; // Hit vertical wall
-        } else if (curY !== nextY && _grid[nextY] && _grid[nextY][curX] === TILES.WALL) {
-          projectile.vy *= -1; // Hit horizontal wall
-        } else {
-          // Corner hit
-          projectile.vx *= -1;
-          projectile.vy *= -1;
-        }
-        projectile.bounces--;
-        projectile.power = Math.max(1, (projectile.power || 1) - 1); // Damage falloff per bounce
-        _addImpactEffect(nextX, nextY, 'wall'); // spark effect for bounce
-        
-        // Don't advance position into the wall, let next tick move it along new velocity
-        return { alive: true };
-      } else {
-        // Hit wall without bouncing
-        _addImpactEffect(nextX, nextY, 'wall');
-        return { alive: false };
-      }
-    }
-
-    var breakable = _getBreakableAt(nextX, nextY);
-    if (breakable && breakable.hp > 0) {
-      _damageBreakable(breakable, projectile.power || 1);
-      // Hit breakable
-      _addImpactEffect(nextX, nextY, 'breakable');
-      return { alive: false };
-    }
-
-    var enemy = _enemies.find(function(e) { return e.x === nextX && e.y === nextY && e.hp > 0; });
-    if (enemy) {
-      if (projectile.owner === 'player') {
-        // Hit enemy
-        _addImpactEffect(nextX, nextY, 'enemy');
-        return { alive: false, action: _enterStrCombat(enemy, 'player_attack', projectile.card) };
-      }
-      enemy.hp = Math.max(0, enemy.hp - (projectile.power || 1));
-      _addImpactEffect(nextX, nextY, 'enemy');
-      return { alive: false };
-    }
-
-    var hitsPlayer = (_player.x === nextX && _player.y === nextY);
-    if (hitsPlayer) {
-      if (projectile.owner !== 'player') {
-        var sourceEnemy = projectile.sourceEnemy || _enemies.find(function(e) { return e.hp > 0; });
-        if (sourceEnemy) {
-          return { alive: false, action: _enterStrCombat(sourceEnemy, 'enemy_attack') };
-        }
-      }
-      return { alive: false };
-    }
-
-    projectile.fx = nextFx;
-    projectile.fy = nextFy;
-    projectile.x = nextX;
-    projectile.y = nextY;
-    projectile.range = (projectile.range || 1) - (projectile.speed || 1);
-
-    // Check if projectile expired (ran out of range)
-    if (projectile.range <= 0) {
-      // Miss - expired without hitting anything
-      _addImpactEffect(nextX, nextY, 'miss');
-      return { alive: false };
-    }
-
-    return { alive: true };
-  }
-
-  /**
-   * Add impact effect for rendering
-   */
-  function _addImpactEffect(x, y, type) {
-    // Assign visual char based on impact type for canvas rendering
-    var impactChar = '💥';
-    if (type === 'breakable') impactChar = '💫';
-    else if (type === 'enemy') impactChar = '💥';
-    else if (type === 'wall') impactChar = '✨';
-    else if (type === 'miss') impactChar = '💨';
-    else if (type === 'poof') impactChar = '💨';
-
-    var effect = {
-      x: x,
-      y: y,
-      type: type, // 'breakable', 'enemy', 'wall', 'miss', 'poof'
-      char: impactChar,
-      time: Date.now()
-    };
-    _impactEffects.push(effect);
-
-    // Auto-clear this specific impact effect after 400ms
-    setTimeout(function() {
-      var index = _impactEffects.indexOf(effect);
-      if (index > -1) {
-        _impactEffects.splice(index, 1);
-      }
-    }, 400);
-  }
+  // _advanceProjectile and _addImpactEffect — now in ProjectileSystem module
 
   function stepProjectiles(steps) {
-    var action = _updateProjectiles(0, steps || 1);
-
-    if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      _updateMobileGrid();
+    if (typeof ProjectileSystem !== 'undefined') {
+      var result = ProjectileSystem.stepProjectiles(steps, _projectileCtx());
+      _syncProjectileState();
+      if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') _updateMobileGrid();
+      return result;
     }
-
-    return {
-      projectiles: _projectiles,
-      breakables: _breakables,
-      action: action
-    };
+    return { projectiles: _projectiles, breakables: _breakables, action: null };
   }
 
   // ── Save/Load delegation stubs ───────────────────────────
