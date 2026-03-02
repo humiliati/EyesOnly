@@ -366,6 +366,9 @@
     <span class="subbar-sep">|</span>
     <button class="subbar-btn" onclick="addBeatManual()">+ ADD BEAT</button>
     <button class="subbar-btn" onclick="clearBeats()">CLEAR</button>
+    <span class="subbar-sep">|</span>
+    <button class="subbar-btn" onclick="zoomOut()">-</button>
+    <button class="subbar-btn" onclick="zoomIn()">+</button>
   </div>
 
   <!-- THREE COLUMNS -->
@@ -544,8 +547,16 @@
           </div>
 
           <div class="prop-section">
-            <h4>EXPORT</h4>
+            <h4>NOTES</h4>
+            <div class="prop-row">
+              <textarea id="prop-notes" rows="3" oninput="syncBeatProp('notes', this.value)" placeholder="Add any design notes here..."></textarea>
+            </div>
+          </div>
+
+          <div class="prop-section">
+            <h4>EXPORT & ACTIONS</h4>
             <button class="export-btn" onclick="exportSingleBeat()">COPY BEAT JSON</button>
+            <button class="export-btn amber" style="margin-top: 4px;" onclick="deleteSelectedBeat()">DELETE BEAT</button>
           </div>
 
         </div>
@@ -580,6 +591,7 @@
 var beats = [];        // Array of beat objects
 var selectedBeatId = null;
 var currentView = 'swimlane';
+var zoomLevel = 1;
 
 // ===== BEAT SCHEMA =====
 function makeBeat(id, overrides) {
@@ -778,6 +790,7 @@ var BEAT_LABELS = { pm: 'PERSONAL MEET', dd: 'DEAD DROP', rv: 'RENDEZVOUS', exfi
 
 function renderBoard() {
   var board = document.getElementById('beat-board');
+  board.style.transform = `scale(${zoomLevel})`;
   var empty = document.getElementById('board-empty');
   var beatCount = document.getElementById('beat-count-display');
   var laneCount = document.getElementById('board-lane-count');
@@ -947,6 +960,7 @@ function selectBeat(id) {
   document.getElementById('prop-detail').value = beat.detail;
   document.getElementById('prop-tension').value = String(beat.tension_delta);
   document.getElementById('prop-phase').value = String(beat.phase);
+  document.getElementById('prop-notes').value = beat.notes || '';
 
   // Type pills
   document.querySelectorAll('.type-pill').forEach(function(p) {
@@ -1033,6 +1047,27 @@ function clearBeats() {
   document.getElementById('prop-content').style.display = 'none';
   document.getElementById('prop-beat-id').textContent = '—';
   renderBoard();
+}
+
+function deleteSelectedBeat() {
+  if (!selectedBeatId) return;
+  if (!confirm('Delete beat #' + selectedBeatId + '?')) return;
+  beats = beats.filter(function(b) { return b.id !== selectedBeatId; });
+  selectedBeatId = null;
+  document.getElementById('prop-empty').style.display = '';
+  document.getElementById('prop-content').style.display = 'none';
+  document.getElementById('prop-beat-id').textContent = '—';
+  renderBoard();
+}
+
+function zoomIn() {
+    zoomLevel = Math.min(zoomLevel + 0.1, 2);
+    renderBoard();
+}
+
+function zoomOut() {
+    zoomLevel = Math.max(zoomLevel - 0.1, 0.5);
+    renderBoard();
 }
 
 // ===== TEMPLATES =====

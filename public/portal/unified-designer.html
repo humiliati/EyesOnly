@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unified Designer</title>
+    <link rel="stylesheet" href="css/unified-designer.css">
+</head>
+<body>
+    <header class="unified-header">
+        <h1>Unified Designer</h1>
+        <nav>
+            <button class="nav-btn active" data-designer="asset">Asset Designer</button>
+            <button class="nav-btn" data-designer="map">Map Designer</button>
+            <button class="nav-btn" data-designer="world">World Designer</button>
+        </nav>
+        <button id="export-all-btn" class="btn btn-primary">Export All</button>
+    </header>
+
+    <main class="designer-frame">
+        <iframe id="designer-iframe" src="asset-designer.html"></iframe>
+    </main>
+
+    <script src="js/unified-designer.js"></script>
+</body>
+</html>

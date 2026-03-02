@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map Designer Portal</title>
+    <link rel="stylesheet" href="css/map-designer.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="designer-header">
+        <h1>Map Designer Portal</h1>
+        <div class="header-controls">
+            <select id="floor-selector" class="floor-selector">
+                <option value="new">New Floor</option>
+                <option value="floor1">Floor 1</option>
+                <option value="floor2">Floor 2</option>
+                <option value="floor3">Floor 3</option>
+                <option value="church">Church Interior</option>
+            </select>
+            <button id="load-tutorial-floor-btn" class="btn btn-primary">Load Tutorial Floor</button>
+            <button id="load-btn" class="btn btn-primary">Load</button>
+            <button id="save-btn" class="btn btn-primary">Save</button>
+            <button id="export-btn" class="btn btn-primary">Export</button>
+            <button id="import-btn" class="btn btn-primary">Import</button>
+            <input type="file" id="import-file" accept=".json" style="display:none;">
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="designer-container">
+        <!-- Left Palette Sidebar -->
+        <aside class="palette-sidebar">
+            <div class="palette-section">
+                <h3>Terrain Tools</h3>
+                <div class="palette-grid">
+                    <button class="palette-btn" data-tool="floor" title="Floor">.</button>
+                    <button class="palette-btn" data-tool="wall" title="Wall">#</button>
+                    <button class="palette-btn" data-tool="water" title="Water">~</button>
+                    <button class="palette-btn" data-tool="eraser" title="Eraser">C</button>
+                </div>
+            </div>
+
+            <div class="palette-section">
+                <h3>Door Tools</h3>
+                <div class="palette-grid">
+                    <button class="palette-btn entity-btn" data-tool="door-forward" title="Forward Door">→</button>
+                    <button class="palette-btn entity-btn" data-tool="door-back" title="Back Door">←</button>
+                    <button class="palette-btn entity-btn" data-tool="door-building" title="Building Door">B</button>
+                </div>
+            </div>
+
+            <div class="palette-section">
+                <h3>Entity Tools</h3>
+                <div class="palette-grid">
+                    <button class="palette-btn entity-btn" data-tool="player" title="Player">👤</button>
+                    <button class="palette-btn entity-btn" data-tool="enemy" title="Enemy">👹</button>
+                    <button class="palette-btn entity-btn" data-tool="npc" title="NPC">🧙</button>
+                </div>
+            </div>
+
+            <div class="palette-section">
+                <h3>Object Tools</h3>
+                <div class="palette-grid">
+                    <button class="palette-btn entity-btn" data-tool="breakable" title="Breakable">📦</button>
+                    <button class="palette-btn entity-btn" data-tool="currency" title="Currency">💰</button>
+                    <button class="palette-btn entity-btn" data-tool="decoration" title="Decoration">🪴</button>
+                    <button class="palette-btn entity-btn" data-tool="building" title="Building">🏠</button>
+                    <button class="palette-btn entity-btn" data-tool="vent" title="Vent">V</button>
+                    <button class="palette-btn entity-btn" data-tool="collectible" title="Collectible">C</button>
+                    <button class="palette-btn entity-btn" data-tool="puzzle_element" title="Puzzle Element">P</button>
+                </div>
+            </div>
+
+            <div class="palette-section">
+                <h3>Brush Settings</h3>
+                <div class="brush-control">
+                    <label for="brush-size">Size:</label>
+                    <input type="range" id="brush-size" min="1" max="5" value="1">
+                    <span id="brush-size-display">1</span>
+                </div>
+            </div>
+
+            <div class="palette-section">
+                <h3>Assets</h3>
+                <div id="asset-palette" class="palette-grid"></div>
+            </div>
+
+            <div class="palette-section">
+                <h3>Floor Info</h3>
+                <div class="floor-info">
+                    <div class="info-row">
+                        <label>Name:</label>
+                        <input type="text" id="floor-name" placeholder="Floor Name" value="Untitled">
+                    </div>
+                    <div class="info-row">
+                        <label>Number:</label>
+                        <input type="number" id="floor-number" min="1" value="1">
+                    </div>
+                    <div class="info-row">
+                        <label>Width:</label>
+                        <span id="floor-width">40</span>
+                    </div>
+                    <div class="info-row">
+                        <label>Height:</label>
+                        <span id="floor-height">20</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Center Canvas Area -->
+        <main class="canvas-area">
+            <div class="canvas-toolbar">
+                <button id="zoom-in" class="btn btn-secondary" title="Zoom In">+</button>
+                <button id="zoom-out" class="btn btn-secondary" title="Zoom Out">−</button>
+                <label class="toggle-label">
+                    <input type="checkbox" id="show-grid" checked>
+                    <span>Grid</span>
+                </label>
+                <label class="toggle-label">
+                    <input type="checkbox" id="show-metadata">
+                    <span>Metadata</span>
+                </label>
+            </div>
+            <div class="canvas-container">
+                <canvas id="map-canvas" width="800" height="400"></canvas>
+            </div>
+            <div class="canvas-footer">
+                <span id="cursor-pos">X: 0 Y: 0</span>
+            </div>
+        </main>
+
+        <!-- Right Property Inspector -->
+        <aside class="property-inspector">
+            <h3>Properties</h3>
+            <div id="inspector-content">
+                <div class="inspector-empty">
+                    <p>Select an entity to view properties</p>
+                </div>
+            </div>
+            <div class="inspector-controls">
+                <button id="apply-props" class="btn btn-primary" style="display:none;">Apply</button>
+                <button id="delete-entity" class="btn btn-danger" style="display:none;">Delete</button>
+            </div>
+            <div class="palette-section">
+                <h3>ASCII Layout</h3>
+                <textarea id="ascii-layout" rows="10" style="width: 90%;"></textarea>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../js/interior-floors.js"></script>
+    <script src="../js/catacombs-generator.js"></script>
+    <script src="../js/tutorial-floors.js"></script>
+    <script src="js/unified-data-manager.js"></script>
+    <script src="js/map-designer.js"></script>
+    <script src="../js/tutorial-floors.js"></script>
+</body>
+</html>

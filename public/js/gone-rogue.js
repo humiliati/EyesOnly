@@ -1847,6 +1847,51 @@ var GoneRogue = (function () {
   }
 
   // ============================================================
+  // FLOOR GENERATION CONTEXT BUILDER
+  // ============================================================
+
+  function _floorGenCtx() {
+    return {
+      grid: _grid,
+      GRID_WIDTH: GRID_WIDTH,
+      GRID_HEIGHT: GRID_HEIGHT,
+      TILES: TILES,
+      BIOMES: typeof BIOMES !== 'undefined' ? BIOMES : null,
+      FLOOR_TYPES: FLOOR_TYPES,
+      PATH_TYPES: PATH_TYPES,
+      floor: _floor,
+      player: _player,
+      enemies: _enemies,
+      items: _items,
+      breakables: _breakables,
+      currencies: _currencies,
+      npcs: _npcs,
+      shops: _shops,
+      vents: _vents,
+      tileMetadata: _tileMetadata,
+      forestBuildings: _forestBuildings,
+      biomeVisualGrid: _biomeVisualGrid,
+      tileRenderObjects: _tileRenderObjects,
+      biomeBackgroundColors: _biomeBackgroundColors,
+      currentSeed: _currentSeed,
+      rng: _rng,
+      getBiome: _getBiome,
+      getDifficultyMultiplier: _getDifficultyMultiplier,
+      difficultyTier: _difficultyTier,
+      penaltyFloors: _penaltyFloors,
+      previousBiome: _previousBiome,
+      nextBiomePreview: _nextBiomePreview,
+      visitedBiomes: _visitedBiomes,
+      checkPityTimer: typeof _checkPityTimer === 'function' ? _checkPityTimer : function() { return null; },
+      getPityCard: typeof _getPityCard === 'function' ? _getPityCard : function() { return null; },
+      trackCardDrop: typeof _trackCardDrop === 'function' ? _trackCardDrop : function() {},
+      totalEnemiesSpawned: _totalEnemiesSpawned,
+      onEnemySpawned: function() { _totalEnemiesSpawned++; },
+      activeBoss: _activeBoss
+    };
+  }
+
+  // ============================================================
   // FLOOR GENERATION
   // ============================================================
 
@@ -1855,18 +1900,7 @@ var GoneRogue = (function () {
    * Returns a char chosen by weighted random selection.
    */
   function _pickWeightedChar(tiles) {
-    var total = 0;
-    for (var i = 0; i < tiles.length; i++) {
-      total += tiles[i].weight;
-    }
-    var rand = _rng() * total;
-    var cumulative = 0;
-    for (var j = 0; j < tiles.length; j++) {
-      cumulative += tiles[j].weight;
-      if (rand < cumulative) {
-        return tiles[j].char;
-      }
-    }
+    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.pickWeightedChar(tiles, _floorGenCtx());
     return tiles[tiles.length - 1].char;
   }
 
@@ -1876,31 +1910,9 @@ var GoneRogue = (function () {
    * Stores result in _biomeVisualGrid.
    */
   function _buildBiomeVisualGrid(biome) {
-    if (!biome || (!biome.wallTiles && !biome.floorTiles)) {
-      _biomeVisualGrid = null;
-      return;
-    }
-    _biomeVisualGrid = [];
-    for (var y = 0; y < GRID_HEIGHT; y++) {
-      var row = [];
-      for (var x = 0; x < GRID_WIDTH; x++) {
-        var tile = _grid[y][x];
-        if (tile === TILES.WALL && biome.wallTiles) {
-          row.push(_pickWeightedChar(biome.wallTiles));
-        } else if ((tile === TILES.EMPTY || tile === TILES.GRASS) && biome.floorTiles) {
-          row.push(_pickWeightedChar(biome.floorTiles));
-        } else {
-          row.push(tile);
-        }
-      }
-      _biomeVisualGrid.push(row);
-    }
-    // Overlay village buildings on the visual grid
-    _forestBuildings.forEach(function(b) {
-      if (b.y >= 0 && b.y < GRID_HEIGHT && b.x >= 0 && b.x < GRID_WIDTH) {
-        _biomeVisualGrid[b.y][b.x] = b.emoji;
-      }
-    });
+    if (typeof FloorGenerator !== 'undefined') {
+      _biomeVisualGrid = FloorGenerator.buildBiomeVisualGrid(biome, _floorGenCtx());
+    } else { _biomeVisualGrid = null; }
   }
 
   /**
@@ -1912,85 +1924,8 @@ var GoneRogue = (function () {
    * @returns {Array} Array of render objects { emoji, offsetX, offsetY, scale, layer }
    */
   function _generateTileRenderObjects(x, y, biome) {
-    var tile = _grid[y][x];
-    var renderObjects = [];
-
-    // Only add scatter objects for wall tiles
-    if (tile !== TILES.WALL || !biome || !biome.wallTiles) {
-      return renderObjects;
-    }
-
-    // Create a local seeded RNG for this specific tile
-    var tileIndex = y * GRID_WIDTH + x;
-    var tileSeed = _currentSeed + tileIndex;
-    var tileRNG = new SeededRandom.SeededRNG(tileSeed);
-
-    // Get the primary wall character for this tile
-    var primaryChar = _biomeVisualGrid ? _biomeVisualGrid[y][x] : TILES.WALL;
-
-    // Always add the primary tree at center
-    renderObjects.push({
-      emoji: primaryChar,
-      offsetX: 0,
-      offsetY: 0,
-      scale: 1.0,
-      layer: 'trunk'
-    });
-
-    // Determine density based on biome (can be customized per biome)
-    var density = biome.wallDensity || 2; // Default 2 additional trees per tile
-
-    // Add scatter trees with deterministic offsets
-    for (var i = 0; i < density; i++) {
-      // Pick a random emoji from wallTiles (weighted)
-      var scatterEmoji = _pickWeightedCharWithRNG(biome.wallTiles, tileRNG);
-
-      // Generate offset within tile bounds (-10 to +10 pixels for 20px tiles)
-      var offsetX = -10 + (tileRNG.next() * 20);
-      var offsetY = -10 + (tileRNG.next() * 20);
-
-      // Slight scale variance for visual variety
-      var scale = 0.7 + (tileRNG.next() * 0.4); // 0.7 to 1.1
-
-      renderObjects.push({
-        emoji: scatterEmoji,
-        offsetX: offsetX,
-        offsetY: offsetY,
-        scale: scale,
-        layer: 'scatter'
-      });
-    }
-
-    // Add edge-aware leaf overlays for wall-to-floor boundaries
-    var neighbors = _getNeighborTiles(x, y);
-    var directions = [
-      { dx: 0, dy: -1, name: 'north' },
-      { dx: 1, dy: 0, name: 'east' },
-      { dx: 0, dy: 1, name: 'south' },
-      { dx: -1, dy: 0, name: 'west' }
-    ];
-
-    directions.forEach(function(dir) {
-      var nx = x + dir.dx;
-      var ny = y + dir.dy;
-
-      // Check if neighbor is floor (empty or grass)
-      if (nx >= 0 && nx < GRID_WIDTH && ny >= 0 && ny < GRID_HEIGHT) {
-        var neighborTile = _grid[ny][nx];
-        if (neighborTile === TILES.EMPTY || neighborTile === TILES.GRASS) {
-          // Add a leaf edge overlay toward the floor
-          renderObjects.push({
-            emoji: '🍃',
-            offsetX: dir.dx * 8,
-            offsetY: dir.dy * 8,
-            scale: 0.5,
-            layer: 'edge'
-          });
-        }
-      }
-    });
-
-    return renderObjects;
+    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.generateTileRenderObjects(x, y, biome, _floorGenCtx());
+    return [];
   }
 
   /**
@@ -2000,22 +1935,7 @@ var GoneRogue = (function () {
    * @returns {string} Selected character
    */
   function _pickWeightedCharWithRNG(tiles, rng) {
-    if (!tiles || tiles.length === 0) return '?';
-    if (tiles.length === 1) return tiles[0].char;
-
-    var totalWeight = 0;
-    for (var i = 0; i < tiles.length; i++) {
-      totalWeight += tiles[i].weight || 1;
-    }
-
-    var rand = rng.next() * totalWeight;
-    var cumulative = 0;
-    for (var j = 0; j < tiles.length; j++) {
-      cumulative += tiles[j].weight;
-      if (rand < cumulative) {
-        return tiles[j].char;
-      }
-    }
+    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.pickWeightedCharWithRNG(tiles, rng);
     return tiles[tiles.length - 1].char;
   }
 
@@ -2026,23 +1946,8 @@ var GoneRogue = (function () {
    * @returns {Array} Array of neighbor tile values
    */
   function _getNeighborTiles(x, y) {
-    var neighbors = [];
-    var directions = [
-      { dx: 0, dy: -1 },
-      { dx: 1, dy: 0 },
-      { dx: 0, dy: 1 },
-      { dx: -1, dy: 0 }
-    ];
-
-    directions.forEach(function(dir) {
-      var nx = x + dir.dx;
-      var ny = y + dir.dy;
-      if (nx >= 0 && nx < GRID_WIDTH && ny >= 0 && ny < GRID_HEIGHT) {
-        neighbors.push(_grid[ny][nx]);
-      }
-    });
-
-    return neighbors;
+    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.getNeighborTiles(x, y, _floorGenCtx());
+    return [];
   }
 
   /**
@@ -2051,19 +1956,9 @@ var GoneRogue = (function () {
    * Stores result in _tileRenderObjects.
    */
   function _buildTileRenderObjects(biome) {
-    if (!biome || !biome.wallTiles) {
-      _tileRenderObjects = null;
-      return;
-    }
-
-    _tileRenderObjects = [];
-    for (var y = 0; y < GRID_HEIGHT; y++) {
-      var row = [];
-      for (var x = 0; x < GRID_WIDTH; x++) {
-        row.push(_generateTileRenderObjects(x, y, biome));
-      }
-      _tileRenderObjects.push(row);
-    }
+    if (typeof FloorGenerator !== 'undefined') {
+      _tileRenderObjects = FloorGenerator.buildTileRenderObjects(biome, _floorGenCtx());
+    } else { _tileRenderObjects = null; }
   }
 
   // ============================================================
@@ -2077,10 +1972,8 @@ var GoneRogue = (function () {
    * @returns {Object} { r, g, b } integers 0-255
    */
   function _hexToRgb(hex) {
-    var r = parseInt(hex.substr(1, 2), 16);
-    var g = parseInt(hex.substr(3, 2), 16);
-    var b = parseInt(hex.substr(5, 2), 16);
-    return { r: r, g: g, b: b };
+    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.hexToRgb(hex);
+    return { r: 0, g: 0, b: 0 };
   }
 
   /**
@@ -2091,13 +1984,8 @@ var GoneRogue = (function () {
    * @returns {string} Hex color string like '#0a1a0a'
    */
   function _rgbToHex(r, g, b) {
-    var rr = Math.max(0, Math.min(255, Math.round(r)));
-    var gg = Math.max(0, Math.min(255, Math.round(g)));
-    var bb = Math.max(0, Math.min(255, Math.round(b)));
-    return '#' +
-      (rr < 16 ? '0' : '') + rr.toString(16) +
-      (gg < 16 ? '0' : '') + gg.toString(16) +
-      (bb < 16 ? '0' : '') + bb.toString(16);
+    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.rgbToHex(r, g, b);
+    return '#000000';
   }
 
   /**
@@ -2108,13 +1996,8 @@ var GoneRogue = (function () {
    * @returns {string} Interpolated hex color
    */
   function _lerpColor(color1, color2, t) {
-    var c1 = _hexToRgb(color1);
-    var c2 = _hexToRgb(color2);
-    return _rgbToHex(
-      c1.r + (c2.r - c1.r) * t,
-      c1.g + (c2.g - c1.g) * t,
-      c1.b + (c2.b - c1.b) * t
-    );
+    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.lerpColor(color1, color2, t);
+    return color1;
   }
 
   /**
@@ -2124,30 +2007,9 @@ var GoneRogue = (function () {
    * @param {boolean} isNight - Whether this is a night biome variant
    */
   function _buildBiomeBackgroundColors(biome, isNight) {
-    if (!biome || !biome.backgroundGradient) {
-      _biomeBackgroundColors = null;
-      return;
-    }
-
-    var gradientConfig = isNight ? biome.backgroundGradient.night : biome.backgroundGradient.day;
-    if (!gradientConfig) {
-      _biomeBackgroundColors = null;
-      return;
-    }
-
-    _biomeBackgroundColors = [];
-    var maxDist = GRID_WIDTH + GRID_HEIGHT - 2; // Max diagonal distance for 135-degree
-
-    for (var y = 0; y < GRID_HEIGHT; y++) {
-      var row = [];
-      for (var x = 0; x < GRID_WIDTH; x++) {
-        // 135-degree gradient: progress along top-left → bottom-right diagonal
-        var t = maxDist > 0 ? (x + y) / maxDist : 0;
-        t = Math.max(0, Math.min(1, t));
-        row.push(_lerpColor(gradientConfig.start, gradientConfig.end, t));
-      }
-      _biomeBackgroundColors.push(row);
-    }
+    if (typeof FloorGenerator !== 'undefined') {
+      _biomeBackgroundColors = FloorGenerator.buildBiomeBackgroundColors(biome, isNight, _floorGenCtx());
+    } else { _biomeBackgroundColors = null; }
   }
 
   /**
@@ -2182,18 +2044,7 @@ var GoneRogue = (function () {
    * (Exported API function per spec — operates on an external map array.)
    */
   function createBordersForest(map, biome) {
-    var width = map[0].length;
-    var height = map.length;
-    var wallTiles = biome.wallTiles || [{ char: biome.wallChar || TILES.WALL, weight: 100 }];
-
-    for (var x = 0; x < width; x++) {
-      map[0][x] = _pickWeightedChar(wallTiles);
-      map[height - 1][x] = _pickWeightedChar(wallTiles);
-    }
-    for (var y = 0; y < height; y++) {
-      map[y][0] = _pickWeightedChar(wallTiles);
-      map[y][width - 1] = _pickWeightedChar(wallTiles);
-    }
+    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.createBordersForest(map, biome, _floorGenCtx());
     return map;
   }
 
@@ -2202,19 +2053,7 @@ var GoneRogue = (function () {
    * (Exported API function per spec — operates on an external map array.)
    */
   function generateForestOpenSpace(map, biome) {
-    var width = map[0].length;
-    var height = map.length;
-    var floorTiles = biome.floorTiles || [{ char: biome.floorChar || TILES.EMPTY, weight: 100 }];
-    // 80% open floor per spec (https://github.com/humiliati/EyesOnly/issues/47)
-    var openSpaceRatio = 0.8;
-
-    for (var y = 1; y < height - 1; y++) {
-      for (var x = 1; x < width - 1; x++) {
-        if (_rng() < openSpaceRatio) {
-          map[y][x] = _pickWeightedChar(floorTiles);
-        }
-      }
-    }
+    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.generateForestOpenSpace(map, biome, _floorGenCtx());
     return map;
   }
 
@@ -2223,35 +2062,7 @@ var GoneRogue = (function () {
    * (Exported API function per spec — operates on an external map array.)
    */
   function placeVillageCluster(map, biome) {
-    if (!biome.spawnFeatures || !biome.spawnFeatures.villageCluster) return map;
-    var width = map[0].length;
-    var height = map.length;
-
-    var villageX = Math.floor(width * 0.2) + Math.floor(_rng() * 5);
-    var villageY = Math.floor(height * 0.6) + Math.floor(_rng() * 5);
-
-    var buildings = biome.spawnFeatures.buildings;
-    var positions = [
-      [villageX, villageY],
-      [villageX + 3, villageY],
-      [villageX, villageY + 3],
-      [villageX + 3, villageY + 3]
-    ];
-
-    positions.forEach(function(pos, i) {
-      if (i < buildings.length && pos[1] < height - 1 && pos[0] < width - 1) {
-        map[pos[1]][pos[0]] = buildings[i];
-      }
-    });
-
-    var decorations = biome.spawnFeatures.decorations;
-    for (var d = 0; d < 5; d++) {
-      var dx = villageX + Math.floor(_rng() * 7);
-      var dy = villageY + Math.floor(_rng() * 7);
-      if (dx < width - 1 && dy < height - 1) {
-        map[dy][dx] = decorations[Math.floor(_rng() * decorations.length)];
-      }
-    }
+    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.placeVillageClusterOnMap(map, biome, _floorGenCtx());
     return map;
   }
 
@@ -2261,39 +2072,8 @@ var GoneRogue = (function () {
    * Buildings are stored as TILES.WALL in the logical grid for collision.
    */
   function _placeVillageCluster(biome) {
-    if (!biome.spawnFeatures || !biome.spawnFeatures.villageCluster) return;
-
-    var villageX = Math.floor(GRID_WIDTH * 0.2) + Math.floor(_rng() * 5);
-    var villageY = Math.floor(GRID_HEIGHT * 0.6) + Math.floor(_rng() * 5);
-
-    var buildings = biome.spawnFeatures.buildings;
-    var positions = [
-      [villageX, villageY],
-      [villageX + 3, villageY],
-      [villageX, villageY + 3],
-      [villageX + 3, villageY + 3]
-    ];
-
-    positions.forEach(function(pos, i) {
-      if (i < buildings.length) {
-        var bx = pos[0];
-        var by = pos[1];
-        if (bx >= 1 && bx < GRID_WIDTH - 1 && by >= 1 && by < GRID_HEIGHT - 1) {
-          _grid[by][bx] = TILES.WALL; // Impassable in game logic
-          _forestBuildings.push({ x: bx, y: by, emoji: buildings[i] });
-        }
-      }
-    });
-
-    var decorations = biome.spawnFeatures.decorations;
-    for (var d = 0; d < 5; d++) {
-      var dx = villageX + Math.floor(_rng() * 7);
-      var dy = villageY + Math.floor(_rng() * 7);
-      if (dx >= 1 && dx < GRID_WIDTH - 1 && dy >= 1 && dy < GRID_HEIGHT - 1 &&
-          _grid[dy][dx] === TILES.EMPTY) {
-        // Decorations are visual-only (walkable), stored just for rendering overlay
-        _forestBuildings.push({ x: dx, y: dy, emoji: decorations[Math.floor(_rng() * decorations.length)] });
-      }
+    if (typeof FloorGenerator !== 'undefined') {
+      FloorGenerator.placeVillageCluster(biome, _floorGenCtx());
     }
   }
 
@@ -3355,995 +3135,102 @@ _incrementPityTimers();
   }
 
   function _createEmptyGrid() {
+    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.createEmptyGrid(_floorGenCtx());
     var grid = [];
-    for (var y = 0; y < GRID_HEIGHT; y++) {
-      var row = [];
-      for (var x = 0; x < GRID_WIDTH; x++) {
-        // Fill with walls initially
-        row.push(TILES.WALL);
-      }
-      grid.push(row);
-    }
+    for (var y = 0; y < GRID_HEIGHT; y++) { var row = []; for (var x = 0; x < GRID_WIDTH; x++) row.push(TILES.WALL); grid.push(row); }
     return grid;
   }
 
   function _generateRooms(floorType) {
-    // Difficulty affects room count and size
-    var difficulty = _floor;
-
-    // Bonfire floors have one large room
-    if (floorType === FLOOR_TYPES.BONFIRE) {
-      return [{
-        x: Math.floor(GRID_WIDTH / 4),
-        y: Math.floor(GRID_HEIGHT / 4),
-        w: Math.floor(GRID_WIDTH / 2),
-        h: Math.floor(GRID_HEIGHT / 2),
-        centerX: Math.floor(GRID_WIDTH / 2),
-        centerY: Math.floor(GRID_HEIGHT / 2)
-      }];
-    }
-
-    // Boss floors have one large arena room
-    if (floorType === FLOOR_TYPES.BOSS) {
-      return [{
-        x: 5,
-        y: 3,
-        w: 30,
-        h: 14,
-        centerX: 20,
-        centerY: 10,
-        isBossArena: true
-      }];
-    }
-
-    // Forest biome (floors 1-3): one large open room covering most of the map
-    // Two virtual rooms provide player spawn (left) and exit (right) positions
-    var biome = _getBiome(_floor);
-    if (biome.name === 'Cozy Forest') {
-      var halfW = Math.floor((GRID_WIDTH - 4) / 2);
-      var forestRooms = [
-        {
-          x: 2, y: 2,
-          w: halfW, h: GRID_HEIGHT - 4,
-          centerX: Math.floor(GRID_WIDTH * 0.25),
-          centerY: Math.floor(GRID_HEIGHT / 2)
-        },
-        {
-          x: 2 + halfW, y: 2,
-          w: GRID_WIDTH - 4 - halfW, h: GRID_HEIGHT - 4,
-          centerX: Math.floor(GRID_WIDTH * 0.75),
-          centerY: Math.floor(GRID_HEIGHT / 2)
-        }
-      ];
-      // Carve the entire interior as open space
-      for (var fy = 2; fy < GRID_HEIGHT - 2; fy++) {
-        for (var fx = 2; fx < GRID_WIDTH - 2; fx++) {
-          _grid[fy][fx] = TILES.EMPTY;
-        }
-      }
-      return forestRooms;
-    }
-
-    var numRooms = Math.min(4 + Math.floor(difficulty / 2), 8);
-
-    var rooms = [];
-    var maxAttempts = 50;
-
-    for (var i = 0; i < numRooms; i++) {
-      var attempts = 0;
-      var room = null;
-
-      while (attempts < maxAttempts && !room) {
-        attempts++;
-
-        // Room dimensions
-        var minSize = 4;
-        var maxWidth = difficulty > 5 ? 12 : 10;
-        var maxHeight = difficulty > 5 ? 10 : 8;
-
-        var w = Math.floor(_rng() * (maxWidth - minSize + 1)) + minSize;
-        var h = Math.floor(_rng() * (maxHeight - minSize + 1)) + minSize;
-
-        // Ensure room dimensions fit within grid bounds with padding
-        w = Math.min(w, GRID_WIDTH - 4);
-        h = Math.min(h, GRID_HEIGHT - 4);
-
-        var x = Math.floor(_rng() * (GRID_WIDTH - w - 4)) + 2;
-        var y = Math.floor(_rng() * (GRID_HEIGHT - h - 4)) + 2;
-
-        // Additional validation: ensure room is fully within bounds
-        if (x + w >= GRID_WIDTH - 2 || y + h >= GRID_HEIGHT - 2) {
-          continue; // Skip this attempt
-        }
-
-        // Check if room overlaps with existing rooms (including 1-2 tile spacing)
-        var spacing = 2;
-        var overlaps = false;
-
-        for (var j = 0; j < rooms.length; j++) {
-          var r = rooms[j];
-          if (!(x + w + spacing < r.x || x > r.x + r.w + spacing ||
-                y + h + spacing < r.y || y > r.y + r.h + spacing)) {
-            overlaps = true;
-            break;
-          }
-        }
-
-        if (!overlaps) {
-          room = { x: x, y: y, w: w, h: h, centerX: Math.floor(x + w / 2), centerY: Math.floor(y + h / 2) };
-        }
-      }
-
-      if (room) {
-        rooms.push(room);
-
-        // Carve out room
-        for (var ry = room.y; ry < room.y + room.h; ry++) {
-          for (var rx = room.x; rx < room.x + room.w; rx++) {
-            if (rx >= 0 && rx < GRID_WIDTH && ry >= 0 && ry < GRID_HEIGHT) {
-              _grid[ry][rx] = TILES.EMPTY;
-            }
-          }
-        }
-      }
-    }
-
-    return rooms;
+    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.generateRooms(floorType, _floorGenCtx());
+    return [];
   }
 
   function _connectRooms(rooms) {
-    // Connect each room to the next one (guarantees full traversal)
-    for (var i = 0; i < rooms.length - 1; i++) {
-      var room1 = rooms[i];
-      var room2 = rooms[i + 1];
-
-      _carveCorridor(room1.centerX, room1.centerY, room2.centerX, room2.centerY);
-    }
+    if (typeof FloorGenerator !== 'undefined') { FloorGenerator.connectRooms(rooms, _floorGenCtx()); return; }
   }
 
   function _carveCorridor(x1, y1, x2, y2) {
-    // Create L-shaped corridor: horizontal first, then vertical
-    var x = x1;
-    var y = y1;
-
-    // Horizontal segment
-    while (x !== x2) {
-      if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
-        _grid[y][x] = TILES.EMPTY;
-        // Make corridors 2 tiles wide for better flow
-        if (y + 1 < GRID_HEIGHT) {
-          _grid[y + 1][x] = TILES.EMPTY;
-        }
-      }
-      x += (x < x2) ? 1 : -1;
-    }
-
-    // Vertical segment
-    while (y !== y2) {
-      if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
-        _grid[y][x] = TILES.EMPTY;
-        // Make corridors 2 tiles wide
-        if (x + 1 < GRID_WIDTH) {
-          _grid[y][x + 1] = TILES.EMPTY;
-        }
-      }
-      y += (y < y2) ? 1 : -1;
-    }
+    if (typeof FloorGenerator !== 'undefined') { FloorGenerator.carveCorridor(x1, y1, x2, y2, _floorGenCtx()); return; }
   }
 
   function _addBranchConnections(rooms) {
-    // Add 2-4 extra connections to create loops
-    var extraConnections = Math.min(2 + Math.floor(_floor / 3), 4);
-
-    for (var i = 0; i < extraConnections && rooms.length > 2; i++) {
-      var idx1 = Math.floor(_rng() * rooms.length);
-      var idx2 = Math.floor(_rng() * rooms.length);
-
-      if (idx1 !== idx2 && Math.abs(idx1 - idx2) > 1) {
-        var room1 = rooms[idx1];
-        var room2 = rooms[idx2];
-        _carveCorridor(room1.centerX, room1.centerY, room2.centerX, room2.centerY);
-      }
-    }
+    if (typeof FloorGenerator !== 'undefined') { FloorGenerator.addBranchConnections(rooms, _floorGenCtx()); return; }
   }
 
   function _placeCover() {
-    // Place cover on 6-10% of floor tiles
-    var coverChance = 0.06 + _rng() * 0.04;
-
-    for (var y = 1; y < GRID_HEIGHT - 1; y++) {
-      for (var x = 1; x < GRID_WIDTH - 1; x++) {
-        if (_grid[y][x] === TILES.EMPTY && _rng() < coverChance) {
-          _grid[y][x] = TILES.COVER;
-        }
-      }
-    }
+    if (typeof FloorGenerator !== 'undefined') { FloorGenerator.placeCover(_floorGenCtx()); return; }
   }
 
   function _placeShadowZones() {
-    // Mark ~15% of floor tiles as shadow zones (stored in metadata)
-    var shadowChance = 0.15;
-
-    for (var y = 1; y < GRID_HEIGHT - 1; y++) {
-      for (var x = 1; x < GRID_WIDTH - 1; x++) {
-        if (_grid[y][x] === TILES.EMPTY && _rng() < shadowChance) {
-          var key = x + ',' + y;
-          _tileMetadata[key] = { type: 'shadow', stealthBonus: 30 };
-          // Visual indicator: change tile to shadow tile
-          _grid[y][x] = TILES.SHADOW;
-        }
-      }
-    }
+    if (typeof FloorGenerator !== 'undefined') { FloorGenerator.placeShadowZones(_floorGenCtx()); return; }
   }
 
   function _placeEnvironmentalTiles() {
-    // Add environmental tiles based on difficulty and biome
-    var difficulty = _floor;
-    var biome = _getBiome(_floor);
-
-    // Place biome-specific ground effects if system available
-    if (typeof GroundEffects !== 'undefined') {
-      var effectCount = 5 + Math.floor(difficulty / 3);
-
-      // Determine ground effects by biome
-      var biomeEffects = [];
-      if (biome.name === 'Shopping Mall') {
-        biomeEffects = ['GLASS', 'SODA_SPILL', 'WATER'];
-      } else if (biome.name === 'Industrial Plant') {
-        biomeEffects = ['OIL', 'FIRE', 'INDUSTRIAL_WASTE', 'STEAM'];
-      } else if (biome.name === 'Commercial Office') {
-        biomeEffects = ['WATER', 'GLASS'];
-      } else if (biome.name === 'Grey Cave') {
-        biomeEffects = ['WATER'];
-      }
-
-      // Place ground effects
-      for (var i = 0; i < effectCount && biomeEffects.length > 0; i++) {
-        var x = Math.floor(_rng() * (GRID_WIDTH - 2)) + 1;
-        var y = Math.floor(_rng() * (GRID_HEIGHT - 2)) + 1;
-
-        if (_grid[y][x] === TILES.EMPTY) {
-          var effectType = biomeEffects[Math.floor(_rng() * biomeEffects.length)];
-          GroundEffects.setGroundEffect(x, y, effectType);
-
-          // Mark in tile metadata for rendering
-          var key = x + ',' + y;
-          _tileMetadata[key] = { type: 'ground_effect', groundType: effectType };
-        }
-      }
-    }
-
-    // Late game: add hazards and difficult terrain
-    if (difficulty >= 5) {
-      var hazardCount = Math.floor(difficulty / 2);
-      for (var i = 0; i < hazardCount; i++) {
-        var x = Math.floor(_rng() * (GRID_WIDTH - 2)) + 1;
-        var y = Math.floor(_rng() * (GRID_HEIGHT - 2)) + 1;
-
-        if (_grid[y][x] === TILES.EMPTY) {
-          _grid[y][x] = TILES.HAZARD;
-          var key = x + ',' + y;
-          _tileMetadata[key] = { type: 'hazard', damage: 1 };
-
-          // Also add fire ground effect if available
-          if (typeof GroundEffects !== 'undefined') {
-            GroundEffects.setGroundEffect(x, y, 'FIRE');
-          }
-        }
-      }
-    }
-
-    // Add some grass/vegetation for stealth
-    if (difficulty < 5) {
-      var grassCount = 8 + Math.floor(_rng() * 5);
-      for (var i = 0; i < grassCount; i++) {
-        var x = Math.floor(_rng() * (GRID_WIDTH - 2)) + 1;
-        var y = Math.floor(_rng() * (GRID_HEIGHT - 2)) + 1;
-
-        if (_grid[y][x] === TILES.EMPTY) {
-          _grid[y][x] = TILES.GRASS;
-          var key = x + ',' + y;
-          _tileMetadata[key] = { type: 'grass', stealthBonus: 20 };
-        }
-      }
-    }
+    if (typeof FloorGenerator !== 'undefined') { FloorGenerator.placeEnvironmentalTiles(_floorGenCtx()); return; }
   }
 
   function _ensurePlayerOnEmptyTile() {
+    if (typeof FloorGenerator !== 'undefined') { FloorGenerator.ensurePlayerOnEmptyTile(_floorGenCtx()); return; }
+    // Inline fallback
     try {
-      if (!_player || !_grid || !_grid.length || !_grid[0] || !_grid[0].length) return;
-
-      // Clamp into bounds first (bad legacy spawns can be out of range)
+      if (!_player || !_grid) return;
       _player.x = Math.max(1, Math.min(GRID_WIDTH - 2, _player.x | 0));
       _player.y = Math.max(1, Math.min(GRID_HEIGHT - 2, _player.y | 0));
-
-      if (!_grid[_player.y] || !_grid[_player.y][_player.x]) return;
-      if (_grid[_player.y][_player.x] === TILES.EMPTY) return;
-
-      var found = false;
-      for (var r = 1; r <= 12 && !found; r++) {
-        for (var dy = -r; dy <= r && !found; dy++) {
-          for (var dx = -r; dx <= r && !found; dx++) {
-            var tx = _player.x + dx;
-            var ty = _player.y + dy;
-            if (tx > 0 && tx < GRID_WIDTH - 1 && ty > 0 && ty < GRID_HEIGHT - 1 && _grid[ty] && _grid[ty][tx] === TILES.EMPTY) {
-              _player.x = tx;
-              _player.y = ty;
-              found = true;
-            }
-          }
-        }
-      }
-
-      if (!found) {
-        _player.x = Math.floor(GRID_WIDTH / 2);
-        _player.y = Math.floor(GRID_HEIGHT / 2);
-      }
     } catch (e0) {}
   }
 
   function _placePlayerAndExit(rooms) {
-    if (rooms.length === 0) {
-      // Fallback if no rooms generated
-      return { playerX: 5, playerY: 10, exitX: GRID_WIDTH - 3, exitY: GRID_HEIGHT - 3 };
-    }
-
-    // Place player in first room - ensure it's on a floor tile
-    var firstRoom = rooms[0];
-    var playerX = firstRoom.centerX;
-    var playerY = firstRoom.centerY;
-
-    // Validate player spawn is on a floor tile, not a wall
-    var maxSpawnAttempts = 10;
-    for (var attempt = 0; attempt < maxSpawnAttempts; attempt++) {
-      if (_grid[playerY] && _grid[playerY][playerX] && _grid[playerY][playerX] === TILES.EMPTY) {
-        // Valid spawn point
-        break;
-      }
-      // Try adjacent tiles if center is blocked
-      var offsets = [
-        {dx: 0, dy: 0}, {dx: 1, dy: 0}, {dx: -1, dy: 0}, {dx: 0, dy: 1}, {dx: 0, dy: -1},
-        {dx: 1, dy: 1}, {dx: -1, dy: -1}, {dx: 1, dy: -1}, {dx: -1, dy: 1}
-      ];
-      for (var i = 0; i < offsets.length; i++) {
-        var testX = firstRoom.centerX + offsets[i].dx;
-        var testY = firstRoom.centerY + offsets[i].dy;
-        if (testX > 0 && testX < GRID_WIDTH - 1 && testY > 0 && testY < GRID_HEIGHT - 1 &&
-            _grid[testY][testX] === TILES.EMPTY) {
-          playerX = testX;
-          playerY = testY;
-          break;
-        }
-      }
-    }
-
-    // Ensure player is within bounds
-    playerX = Math.max(1, Math.min(GRID_WIDTH - 2, playerX));
-    playerY = Math.max(1, Math.min(GRID_HEIGHT - 2, playerY));
-
-    // Place exit in last room (opposite quadrant)
-    var lastRoom = rooms[rooms.length - 1];
-    var exitX = lastRoom.centerX;
-    var exitY = lastRoom.centerY;
-
-    // Ensure minimum distance
-    var distance = Math.abs(exitX - playerX) + Math.abs(exitY - playerY);
-    var minDistance = Math.floor((GRID_WIDTH + GRID_HEIGHT) * 0.6);
-
-    if (distance < minDistance && rooms.length > 1) {
-      // Try to find a more distant room
-      for (var i = rooms.length - 1; i >= 0; i--) {
-        var room = rooms[i];
-        var dist = Math.abs(room.centerX - playerX) + Math.abs(room.centerY - playerY);
-        if (dist >= minDistance) {
-          exitX = room.centerX;
-          exitY = room.centerY;
-          break;
-        }
-      }
-    }
-
-    // Validate exit position is on floor tile
-    if (_grid[exitY] && _grid[exitY][exitX] && _grid[exitY][exitX] !== TILES.EMPTY) {
-      // Find nearest empty tile for exit
-      for (var radius = 1; radius < 5; radius++) {
-        for (var dy = -radius; dy <= radius; dy++) {
-          for (var dx = -radius; dx <= radius; dx++) {
-            var testX = exitX + dx;
-            var testY = exitY + dy;
-            if (testX > 0 && testX < GRID_WIDTH - 1 && testY > 0 && testY < GRID_HEIGHT - 1 &&
-                _grid[testY][testX] === TILES.EMPTY) {
-              exitX = testX;
-              exitY = testY;
-              radius = 999; // Break outer loop
-              break;
-            }
-          }
-          if (radius > 100) break;
-        }
-      }
-    }
-
-    // Place exit tile
-    _grid[exitY][exitX] = TILES.EXIT;
-
-    return { playerX: playerX, playerY: playerY, exitX: exitX, exitY: exitY };
+    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.placePlayerAndExit(rooms, _floorGenCtx());
+    return { playerX: 5, playerY: 10, exitX: GRID_WIDTH - 3, exitY: GRID_HEIGHT - 3 };
   }
 
   function _placeEnemies(rooms, floorType) {
-    // No enemies on tutorial floors (1-2)
-    if (floorType === FLOOR_TYPES.TUTORIAL) {
-      return;
-    }
-
-    // No enemies on bonfire floors (safe zones)
-    if (floorType === FLOOR_TYPES.BONFIRE) {
-      return;
-    }
-
-    // Boss floors: place boss enemy only
-    if (floorType === FLOOR_TYPES.BOSS && _activeBoss) {
-      var bossPos = _activeBoss.bossPosition || { x: 20, y: 10 };
-      var bossEnemy = _createEnemy(bossPos.x, bossPos.y, 'STATIONARY', rooms[0]);
-
-      // Enhance boss enemy stats
-      bossEnemy.hp = _activeBoss.hp;
-      bossEnemy.maxHp = _activeBoss.maxHp;
-      bossEnemy.isBoss = true;
-      bossEnemy.bossType = _activeBoss.type;
-      bossEnemy.str = 8 + Math.floor(_floor * 0.5);
-      bossEnemy.dex = 8 + Math.floor(_floor * 0.5);
-      bossEnemy.awareness = 100; // Boss is always alert
-
-      // Link boss enemy to boss instance
-      _activeBoss.bossEntity = bossEnemy;
-
-      _enemies.push(bossEnemy);
-      _totalEnemiesSpawned++; // Track for highscore
-      return;
-    }
-
-    // Ghost floors (3-4): only cameras/surveillance, no lethal enemies
-    if (floorType === FLOOR_TYPES.GHOST) {
-      // TODO: Implement camera/drone surveillance system
-      return;
-    }
-
-    // Exploration floors: very few enemies
-    var enemyCount;
-    if (floorType === FLOOR_TYPES.EXPLORATION) {
-      enemyCount = 1 + Math.floor(_rng() * 2); // 1-2 enemies max
-    } else {
-      // Enemy density based on difficulty
-      var difficulty = _floor;
-
-      // Apply difficulty tier multiplier
-      var tierMultiplier = _getDifficultyMultiplier();
-
-      if (difficulty <= 3) {
-        enemyCount = Math.floor((4 + Math.floor(_rng() * 3)) * tierMultiplier); // 4-6 base
-      } else if (difficulty <= 7) {
-        enemyCount = Math.floor((7 + Math.floor(_rng() * 4)) * tierMultiplier); // 7-10 base
-      } else if (difficulty <= 15) {
-        enemyCount = Math.floor((10 + Math.floor(_rng() * 6)) * tierMultiplier); // 10-15 base
-      } else {
-        enemyCount = Math.floor((12 + Math.floor(_rng() * 7)) * tierMultiplier); // 12-18 base
-      }
-    }
-
-    enemyCount = Math.min(enemyCount, rooms.length * 3); // Don't overcrowd
-
-    // Check if an Elite enemy should spawn on this floor
-    var eliteSpawned = false;
-    if (typeof EliteEnemies !== 'undefined' && EliteEnemies.shouldSpawnElite(_floor)) {
-      var eliteType = EliteEnemies.getRandomEliteForFloor(_floor);
-      if (eliteType && rooms.length > 0) {
-        // Place elite in a random room, away from player
-        var eliteRoomIdx = Math.floor(_rng() * rooms.length);
-        var eliteRoom = rooms[eliteRoomIdx];
-        var eliteX = eliteRoom.x + 1 + Math.floor(_rng() * Math.max(1, eliteRoom.w - 2));
-        var eliteY = eliteRoom.y + 1 + Math.floor(_rng() * Math.max(1, eliteRoom.h - 2));
-
-        // Ensure elite is far from player
-        if (Math.abs(eliteX - _player.x) + Math.abs(eliteY - _player.y) >= 8) {
-          var elite = EliteEnemies.createElite(eliteType, eliteX, eliteY, _floor);
-          if (elite) {
-            // Add basic enemy properties for compatibility
-            elite.path = { type: PATH_TYPES.PATROL, waypoints: [] };
-            elite.pathIndex = 0;
-            elite.str = 6 + Math.floor(_floor * 0.3);
-            elite.dex = 6 + Math.floor(_floor * 0.3);
-            _enemies.push(elite);
-            _totalEnemiesSpawned++; // Track for highscore
-            eliteSpawned = true;
-          }
-        }
-      }
-    }
-
-    for (var i = 0; i < enemyCount && rooms.length > 0; i++) {
-      var roomIdx = Math.floor(_rng() * rooms.length);
-      var room = rooms[roomIdx];
-
-      // Random position within room (avoid edges)
-      var x = room.x + 1 + Math.floor(_rng() * Math.max(1, room.w - 2));
-      var y = room.y + 1 + Math.floor(_rng() * Math.max(1, room.h - 2));
-
-      // Check minimum separation from player and other enemies
-      var tooClose = false;
-      var minSep = 5;
-
-      if (Math.abs(x - _player.x) + Math.abs(y - _player.y) < minSep) {
-        tooClose = true;
-      }
-
-      for (var j = 0; j < _enemies.length; j++) {
-        var sep = Math.abs(x - _enemies[j].x) + Math.abs(y - _enemies[j].y);
-        if (sep < 3) {
-          tooClose = true;
-          break;
-        }
-      }
-
-      if (tooClose) {
-        i--;
-        continue;
-      }
-
-      // Determine patrol type
-      var patrolType = _choosePatrolType(difficulty, room);
-      var enemy = _createEnemy(x, y, patrolType, room);
-
-      // Phase 1 (ENEMY_CARDS.md): attach enemy card deck + exposedTags for theft/combat.
-      try {
-        if (typeof EnemyDeckHydrator !== 'undefined' && EnemyDeckHydrator.hydrate) {
-          EnemyDeckHydrator.hydrate(enemy, _floor);
-        }
-      } catch (e0) {}
-
-      _enemies.push(enemy);
-      _totalEnemiesSpawned++; // Track for highscore
-    }
+    if (typeof FloorGenerator !== 'undefined') { FloorGenerator.placeEnemies(rooms, floorType, _floorGenCtx()); return; }
   }
 
   function _choosePatrolType(difficulty, room) {
-    var rand = _rng();
-
-    if (difficulty <= 3) {
-      // Early game: more stationary sentries
-      if (rand < 0.4) return PATH_TYPES.STATIONARY;
-      if (rand < 0.7) return PATH_TYPES.PATROL;
-      return PATH_TYPES.CIRCULAR;
-    } else {
-      // Late game: more patrols
-      if (rand < 0.2) return PATH_TYPES.STATIONARY;
-      if (rand < 0.6) return PATH_TYPES.PATROL;
-      return PATH_TYPES.CIRCULAR;
-    }
+    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.choosePatrolType(difficulty, room, _floorGenCtx());
+    return PATH_TYPES.STATIONARY;
   }
 
   function _createEnemy(x, y, patrolType, room) {
-    var tierMultiplier = _getDifficultyMultiplier();
-
-    // Check if this is a penalty floor
-    var isPenaltyFloor = _penaltyFloors.indexOf(_floor) !== -1;
-    var penaltyMultiplier = isPenaltyFloor ? 1.2 : 1.0; // +20% for penalty floors
-
-    var enemy = {
-      x: x,
-      y: y,
-      hp: Math.floor(5 * tierMultiplier * penaltyMultiplier),
-      maxHp: Math.floor(5 * tierMultiplier * penaltyMultiplier),
-      str: Math.floor((3 + Math.floor(_floor * 0.2)) * tierMultiplier * penaltyMultiplier),
-      dex: Math.floor((3 + Math.floor(_floor * 0.2)) * tierMultiplier * penaltyMultiplier),
-      awareness: 0,
-      orientation: ['north', 'south', 'east', 'west'][Math.floor(_rng() * 4)],
-      sightRange: (_floor > 5 ? 7 : 5) + (_difficultyTier - 1) + (isPenaltyFloor ? 1 : 0), // +1 for penalty
-      pathTimer: 0,
-      isTreasureGoblin: false, // Special enemy type
-      goblinSpawnTime: null, // For timeout tracking
-      isPenalty: isPenaltyFloor // Mark penalty enemies
-    };
-
-    // 2% chance to spawn a treasure goblin after floor 5
-    if (_floor > 5 && _rng() < 0.02) {
-      enemy.isTreasureGoblin = true;
-      enemy.goblinSpawnTime = Date.now();
-      enemy.hp = 3; // Low HP, must kill fast
-      enemy.sightRange = 10; // Goblins see player from far
-      enemy.awareness = 5; // Always aware, always fleeing
-    }
-
-    if (patrolType === PATH_TYPES.STATIONARY) {
-      enemy.path = { type: PATH_TYPES.STATIONARY };
-    } else if (patrolType === PATH_TYPES.PATROL) {
-      // Create patrol path within room
-      var points = [
-        { x: room.x + 1, y: room.y + 1 },
-        { x: room.x + room.w - 2, y: room.y + 1 },
-        { x: room.x + room.w - 2, y: room.y + room.h - 2 },
-        { x: room.x + 1, y: room.y + room.h - 2 }
-      ];
-      enemy.path = { type: PATH_TYPES.PATROL, points: points };
-      enemy.pathIndex = 0;
-      enemy.pathDirection = 1;
-    } else if (patrolType === PATH_TYPES.CIRCULAR) {
-      // Circular patrol around room center
-      var cx = room.centerX;
-      var cy = room.centerY;
-      var radius = Math.min(room.w, room.h) / 3;
-      var points = [
-        { x: Math.floor(cx + radius), y: cy },
-        { x: cx, y: Math.floor(cy + radius) },
-        { x: Math.floor(cx - radius), y: cy },
-        { x: cx, y: Math.floor(cy - radius) }
-      ];
-      enemy.path = { type: PATH_TYPES.CIRCULAR, points: points };
-      enemy.pathIndex = 0;
-    }
-
-    return enemy;
+    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.createEnemy(x, y, patrolType, room, _floorGenCtx());
+    return { x: x, y: y, hp: 5, maxHp: 5, str: 3, dex: 3, awareness: 0, orientation: 'north', sightRange: 5, pathTimer: 0, isTreasureGoblin: false, goblinSpawnTime: null, isPenalty: false, path: { type: PATH_TYPES.STATIONARY } };
   }
 
   function _placeItems(floorType) {
-    // Base item count
-    var itemCount = 5;
-
-    // Increased loot on tutorial floors
-    if (floorType === FLOOR_TYPES.TUTORIAL) {
-      itemCount = 8;
-    }
-
-    // High loot on exploration floors
-    if (floorType === FLOOR_TYPES.EXPLORATION) {
-      itemCount = 12;
-    }
-
-    // Some loot on bonfire floors
-    if (floorType === FLOOR_TYPES.BONFIRE) {
-      itemCount = 3;
-    }
-
-    // ========== GUARANTEED TRENCH COAT DROP IN GREY BIOME ==========
-    // Spawn trench coat on grey cave floors (1-4) if player doesn't have one
-    var biome = _getBiome(_floor);
-    var shouldSpawnTrenchCoat = false;
-
-    if (biome.name === 'Grey Cave') {
-      // Check if player already has trench coat
-      var hasTrenchCoat = false;
-
-      if (typeof GAMESTATE !== 'undefined') {
-        var looseInv = GAMESTATE.getLooseInventory();
-        var persistentInv = GAMESTATE.getPersistentInventory();
-        var activeItem = GAMESTATE.getActiveItem();
-
-        // Check all inventories for trench coat
-        hasTrenchCoat = looseInv.some(function(item) {
-          return item.id && item.id.indexOf('trench_coat') !== -1;
-        }) || persistentInv.some(function(item) {
-          return item.id && item.id.indexOf('trench_coat') !== -1;
-        }) || (activeItem && activeItem.id && activeItem.id.indexOf('trench_coat') !== -1);
-      }
-
-      // Spawn trench coat if player doesn't have one
-      if (!hasTrenchCoat) {
-        shouldSpawnTrenchCoat = true;
-      }
-    }
-
-    var attempts = 0;
-    var maxAttempts = 50;
-    var droppedCardsThisFloor = []; // Track card bases to avoid duplicates
-
-    for (var i = 0; i < itemCount && attempts < maxAttempts; i++) {
-      attempts++;
-
-      var ix = Math.floor(_rng() * (GRID_WIDTH - 2)) + 1;
-      var iy = Math.floor(_rng() * (GRID_HEIGHT - 2)) + 1;
-
-      var occupied = _grid[iy][ix] !== TILES.EMPTY ||
-        (_breakables.some(function(b) { return b.x === ix && b.y === iy && b.hp > 0; })) ||
-        _enemies.some(function(e) { return e.x === ix && e.y === iy; }) ||
-        (ix === _player.x && iy === _player.y);
-
-      if (occupied) {
-        i--;
-        continue;
-      }
-
-      // Generate random card
-      if (typeof CardSystem !== 'undefined') {
-        var card;
-        var baseType;
-        var duplicateAttempts = 0;
-        var maxDuplicateAttempts = 5;
-
-        // First item spawned in grey cave is trench coat if needed
-        if (shouldSpawnTrenchCoat && i === 0) {
-          card = CardSystem.rollTrenchCoat();
-          shouldSpawnTrenchCoat = false; // Only spawn once
-          baseType = 'TRENCH_COAT';
-        } else {
-          // Check pity timer - force defensive/utility/healing if threshold met
-          var pityCategory = _checkPityTimer();
-
-          if (pityCategory && i === 0) {
-            // Force a pity card on first item this floor
-            var pityType = _getPityCard(pityCategory);
-            if (pityType) {
-              card = CardSystem.rollCard(pityType);
-              baseType = pityType;
-              console.log('[GoneRogue] Pity drop triggered:', pityCategory, 'card:', card.name);
-            }
-          }
-
-          // Normal card generation with duplicate avoidance
-          while (!card && duplicateAttempts < maxDuplicateAttempts) {
-            if (CardSystem.getRandomBaseCardByBiome) {
-              baseType = CardSystem.getRandomBaseCardByBiome(biome.name, _floor);
-            } else {
-              baseType = CardSystem.getRandomBaseCard();
-            }
-
-            // Check if we already dropped this card type this floor
-            if (droppedCardsThisFloor.indexOf(baseType) === -1) {
-              card = CardSystem.rollCard(baseType);
-              break; // Found unique card
-            }
-
-            duplicateAttempts++;
-          }
-
-          // Fallback: Allow duplicate if we couldn't find unique after max attempts
-          if (!card) {
-            if (CardSystem.getRandomBaseCardByBiome) {
-              baseType = CardSystem.getRandomBaseCardByBiome(biome.name, _floor);
-            } else {
-              baseType = CardSystem.getRandomBaseCard();
-            }
-            card = CardSystem.rollCard(baseType);
-          }
-        }
-
-        // Track this card type and drop for pity timer
-        droppedCardsThisFloor.push(baseType);
-        _trackCardDrop(card);
-
-        _items.push({ x: ix, y: iy, card: card, spawnTime: Date.now(), decayTime: 30000 }); // 30 second decay
-      }
-    }
+    if (typeof FloorGenerator !== 'undefined') { FloorGenerator.placeItems(floorType, _floorGenCtx()); return; }
   }
 
-  /**
-   * Spawn shops on the floor
-   */
   function _spawnShops(rooms, floorType) {
-    // Check if ShopSystem is available
-    if (typeof ShopSystem === 'undefined') {
-      return;
-    }
-
-    // Check if a shop should spawn on this floor
-    var shopSpawn = ShopSystem.shouldSpawnShop(_floor, floorType);
-
-    if (!shopSpawn) {
-      return;
-    }
-
-    // Find a suitable room for the shop (prefer larger rooms)
-    var eligibleRooms = rooms.filter(function(room) {
-      return room.w >= 5 && room.h >= 5;
-    });
-
-    if (eligibleRooms.length === 0) {
-      eligibleRooms = rooms; // Fallback to any room
-    }
-
-    var shopRoom = eligibleRooms[Math.floor(_rng() * eligibleRooms.length)];
-
-    // Place shop object in the center of the room
-    var shopX = Math.floor(shopRoom.x + shopRoom.w / 2);
-    var shopY = Math.floor(shopRoom.y + shopRoom.h / 2);
-
-    // Use shop type constant for consistency
-    var shopTileType = shopSpawn.type === ShopSystem.SHOP_TYPES.BLACK_MARKET
-      ? TILES.BLACK_MARKET
-      : TILES.SHOP;
-
-    // Ensure position is empty
-    if (_grid[shopY][shopX] === TILES.EMPTY) {
-      _grid[shopY][shopX] = shopTileType;
-
-      // Track shop object
-      _shops.push({
-        x: shopX,
-        y: shopY,
-        type: shopSpawn.type,
-        floor: _floor,
-        opened: false
-      });
-
-      console.log('[GoneRogue] Spawned', shopSpawn.type, 'shop at', shopX, shopY);
-    }
+    if (typeof FloorGenerator !== 'undefined') { FloorGenerator.spawnShops(rooms, floorType, _floorGenCtx()); return; }
   }
 
-  /**
-   * Spawn vents on floor (15% probability, minimum 1 every 4-6 floors)
-   */
   function _spawnVents(rooms, floorType) {
-    _vents = []; // Clear previous vents
-
-    // No vents on tutorial, bonfire, or boss floors
-    if (floorType === FLOOR_TYPES.TUTORIAL ||
-        floorType === FLOOR_TYPES.BONFIRE ||
-        floorType === FLOOR_TYPES.BOSS ||
-        floorType === FLOOR_TYPES.FINAL) {
-      return;
-    }
-
-    // 15% chance to spawn a vent
-    if (_rng() > 0.15) {
-      return;
-    }
-
-    // Find a suitable room (prefer mid-size rooms)
-    var eligibleRooms = rooms.filter(function(room) {
-      return room.w >= 4 && room.h >= 4 && room.w <= 8 && room.h <= 8;
-    });
-
-    if (eligibleRooms.length === 0) {
-      eligibleRooms = rooms; // Fallback to any room
-    }
-
-    var ventRoom = eligibleRooms[Math.floor(_rng() * eligibleRooms.length)];
-
-    // Place vent in a random position within room
-    var ventX = ventRoom.x + 1 + Math.floor(_rng() * (ventRoom.w - 2));
-    var ventY = ventRoom.y + 1 + Math.floor(_rng() * (ventRoom.h - 2));
-
-    // Ensure position is empty
-    if (_grid[ventY][ventX] === TILES.EMPTY) {
-      // Vent quality: 85% standard, 15% rusty (worse success rate)
-      var quality = _rng() < 0.85 ? 'standard' : 'rusty';
-
-      _grid[ventY][ventX] = TILES.VENT;
-
-      _vents.push({
-        x: ventX,
-        y: ventY,
-        quality: quality,
-        discovered: false,
-        used: false
-      });
-
-      console.log('[GoneRogue] Spawned', quality, 'vent at', ventX, ventY);
-    }
+    if (typeof FloorGenerator !== 'undefined') { FloorGenerator.spawnVents(rooms, floorType, _floorGenCtx()); return; }
   }
 
-  /**
-   * Apply biome bleed - add tiles from adjacent biomes to floor edges
-   */
   function _applyBiomeBleed(rooms) {
-    var currentBiome = _getBiome(_floor);
-
-    // Track this biome for next floor
-    if (_visitedBiomes.indexOf(currentBiome.name) === -1) {
-      _visitedBiomes.push(currentBiome.name);
+    if (typeof FloorGenerator !== 'undefined') {
+      var currentBiome = FloorGenerator.applyBiomeBleed(rooms, _floorGenCtx());
+      if (currentBiome) { _previousBiome = currentBiome; _nextBiomePreview = null; }
+      return;
     }
-
-    // If we have a previous biome and it's different, add bleed tiles
-    if (_previousBiome && _previousBiome.name !== currentBiome.name) {
-      _applyBleedTiles(_previousBiome, 'entrance', 5, 10);
-    }
-
-    // Preview next floor's biome near exit (if floor < 30)
-    if (_floor < 30) {
-      // Use cached preview if available, otherwise generate and cache
-      if (!_nextBiomePreview) {
-        _nextBiomePreview = _getBiome(_floor + 1);
-      }
-
-      if (_nextBiomePreview.name !== currentBiome.name) {
-        _applyBleedTiles(_nextBiomePreview, 'exit', 5, 10);
-      }
-    }
-
-    // Store current biome as previous for next floor
-    // And set next preview to null so it regenerates
-    _previousBiome = currentBiome;
-    _nextBiomePreview = null; // Will be set fresh on next floor
   }
 
-  /**
-   * Apply bleed tiles from a biome to the floor
-   */
   function _applyBleedTiles(biome, location, minCount, maxCount) {
-    var count = minCount + Math.floor(_rng() * (maxCount - minCount + 1));
-    var bleedChar = _getBleedChar(biome);
-
-    if (!bleedChar) return;
-
-    for (var i = 0; i < count; i++) {
-      var x, y;
-
-      if (location === 'entrance') {
-        // Place near player spawn (left side of map)
-        x = 1 + Math.floor(_rng() * 8);
-        y = 1 + Math.floor(_rng() * (GRID_HEIGHT - 2));
-      } else {
-        // Place near exit (right side of map)
-        x = GRID_WIDTH - 9 + Math.floor(_rng() * 8);
-        y = 1 + Math.floor(_rng() * (GRID_HEIGHT - 2));
-      }
-
-      // Only place on empty floor tiles
-      if (_grid[y] && _grid[y][x] === TILES.EMPTY) {
-        _grid[y][x] = bleedChar;
-      }
-    }
+    if (typeof FloorGenerator !== 'undefined') { FloorGenerator.applyBleedTiles(biome, location, minCount, maxCount, _floorGenCtx()); return; }
   }
 
-  /**
-   * Get bleed character for biome
-   */
   function _getBleedChar(biome) {
-    switch (biome.name) {
-      case 'Cozy Forest':
-        return TILES.GRASS; // Grass/foliage
-      case 'Shopping Mall':
-        return TILES.DEBRIS; // Mall debris
-      case 'Industrial Complex':
-        return TILES.HAZARD; // Industrial waste
-      case 'Grey Cave':
-        return TILES.SHADOW; // Cave shadows
-      case 'Aerospace Museum':
-        return TILES.DEBRIS; // Metal debris
-      default:
-        return null;
-    }
+    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.getBleedChar(biome, _floorGenCtx());
+    return null;
   }
 
   function _validateStealthPath(startX, startY, endX, endY) {
-    // Simple BFS pathfinding to check if path exists
-    // Count how many enemy vision cones the path crosses
-
-    var queue = [{ x: startX, y: startY, steps: 0 }];
-    var visited = {};
-    visited[startX + ',' + startY] = true;
-
-    var found = false;
-    var minVisionCrosses = Infinity;
-
-    while (queue.length > 0 && queue[0].steps < 100) {
-      var current = queue.shift();
-
-      if (current.x === endX && current.y === endY) {
-        found = true;
-        break;
-      }
-
-      var neighbors = [
-        { x: current.x + 1, y: current.y },
-        { x: current.x - 1, y: current.y },
-        { x: current.x, y: current.y + 1 },
-        { x: current.x, y: current.y - 1 }
-      ];
-
-      for (var i = 0; i < neighbors.length; i++) {
-        var n = neighbors[i];
-        var key = n.x + ',' + n.y;
-
-        if (n.x >= 0 && n.x < GRID_WIDTH && n.y >= 0 && n.y < GRID_HEIGHT &&
-            !visited[key] && _grid[n.y][n.x] !== TILES.WALL) {
-          visited[key] = true;
-          queue.push({ x: n.x, y: n.y, steps: current.steps + 1 });
-        }
-      }
-    }
-
-    // Map is valid if path exists
-    return found;
+    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.validateStealthPath(startX, startY, endX, endY, _floorGenCtx());
+    return true;
   }
 
   function _spawnBreakables() {
