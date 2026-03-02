@@ -2534,7 +2534,7 @@ var GoneRogue = (function () {
       handlePlayerDeath: _handlePlayerDeath,
       handleEnemyDeath: _handleEnemyDeath,
       magnetAutoCollect: _magnetAutoCollect,
-      showTutorialHint: _showTutorialHint,
+      showTutorialHint: function() { /* TODO: Implement tutorial hint system */ },
       getActiveBoss: function() { return _activeBoss; },
       setPlayerMoveLocked: function(v) { _playerMoveLocked = v; },
       getScriptedWalk: function() { return _scriptedWalk; },
