@@ -1,929 +1,169 @@
-🧬 Hybrid Seed Architecture v3
-(Structural + Param, Strict F+1 Only)
-1️⃣ Core Rule (Hard Constraint)
+# Hybrid Seed Architecture and Live Moderation System
 
-At runtime:
+This document outlines the architecture for a hybrid procedural generation and live moderation system. The system is designed to be both predictable and dynamic, allowing for real-time adjustments to the game world while maintaining fairness and replayability.
 
-allowedFloorIndexForParamMutation = currentFloorIndex + 1
+## 1. Core Principles
 
-Enforcement:
+The Hybrid Seed Architecture is built on a set of core principles that ensure a balance between predictability, fairness, and dynamic gameplay:
 
-if (mutation.floorIndex !== currentFloorIndex + 1) {
-   rejectMutation("Param mutations only allowed on F+1")
+*   **Predictable by Default:** All runs are deterministic by default, based on a single base seed.
+*   **Controlled Mutability:** Live moderation (both human and agent-driven) is possible, but it is strictly controlled and logged.
+*   **Single-Step Horizon:** Mutations are only allowed on the next floor (F+1), preventing retroactive changes and far-future stacking.
+*   **Player Agency:** Players can find and use items that allow them to influence the mutation system, giving them a degree of control over the game's dynamism.
+*   **Transparent Scoring:** The high score system clearly distinguishes between different run types, ensuring competitive integrity.
+
+## 2. Hybrid Seed Architecture
+
+The Hybrid Seed Architecture is the foundation of the system. It combines a base seed with a series of mutation logs to create a complete and replayable record of each run.
+
+### 2.1. Run Model
+
+Each run is represented by a `Run` object with the following structure:
+
+```javascript
+{
+  "runId": "string",
+  "baseSeed": "string",
+  "runClass": "RunClass",
+  "mutationLog": [
+    // StructuralMutationEvent objects
+  ],
+  "paramOverlayLog": [
+    // ParamMutationEvent objects
+  ],
+  "mutationBudgetRemaining": "number",
+  "structuralHash": "string",
+  "paramHash": "string",
+  "resolvedHash": "string"
 }
+```
 
-No override.
-No backdoor.
-No batch apply.
+*   **`baseSeed`:** The initial seed for the run, which determines the deterministic generation of all floors.
+*   **`runClass`:** The integrity class of the run (e.g., `STATIC`, `HUMAN_MODERATED`).
+*   **`mutationLog`:** A log of all structural mutations that have been applied to the run.
+*   **`paramOverlayLog`:** A log of all parameter mutations that have been applied to the run.
+*   **`mutationBudgetRemaining`:** The remaining budget for parameter mutations on the current floor.
+*   **Hashes:** A series of hashes that can be used to verify the integrity of the run data.
 
-2️⃣ Why This Is Powerful
+### 2.2. Floor Resolution
 
-This rule guarantees:
+When a floor is resolved, the following steps are taken:
 
-No mid-floor manipulation
+1.  The base parameters for the floor are generated from the `baseSeed` and the difficulty band.
+2.  Any `ParamMutationEvents` for the current floor are applied.
+3.  The final parameters are clamped to their allowed ranges.
+### 2.3. Engineering Considerations
 
-No retroactive difficulty shaping
+The `Run` model will be implemented as an extension of the `world.json` file that is exported from the `unified-designer`. The `exportWorld` function in `world-designer.js` will be modified to include the `baseSeed`, `runClass`, and other relevant fields.
 
-No far-future pre-stacking
+The floor resolution logic will be implemented in the game engine, and it will be responsible for applying the `ParamMutationEvents` from the `paramOverlayLog` to the base floor data.
 
-No multi-floor hidden drift
+## 3. Mutation Rules and Budget
 
-Replay remains trivial
+To ensure that live moderation is fair and predictable, the system enforces a strict set of rules for all mutations.
 
-Leaderboard legitimacy preserved
+### 3.1. Strict F+1 Mutation
 
-It also keeps UI clean:
+The most important rule is that all mutations (both structural and parameter-based) are only allowed on the next floor (F+1). This has several key benefits:
 
-Only F+1 ever shows param drift indicator.
+*   **No mid-floor manipulation:** The current floor can never be changed while the player is on it.
+*   **No retroactive changes:** Past floors cannot be altered.
+*   **No far-future stacking:** Designers and agents cannot pre-stack a series of mutations deep into the run.
 
-3️⃣ Updated Run Model
-Run {
-  runId: string
-  baseSeed: string
-  runClass: RunClass
-  mutationLog: StructuralMutationEvent[]
-  paramOverlayLog: ParamMutationEvent[]
-  mutationBudgetRemaining: number
-  structuralHash: string
-  paramHash: string
-  resolvedHash: string
-}
+This rule is enforced by the `rejectMutation` function, which will reject any mutation that does not target the `currentFloorIndex + 1`.
 
-No floorIntents array needed long-term if you resolve on demand.
+### 3.2. Mutation Budget
 
-4️⃣ Param Mutation Lifecycle
-Player on Floor N
+To prevent abuse, each floor has a `paramBudget` that limits the amount of parameter drift that can be applied. The total weighted drift for all parameter mutations on a floor cannot exceed this budget. ### 3.3. Engineering Considerations
 
-System state:
+The "Strict F+1 Mutation" and "Mutation Budget" rules will be enforced by the M-Console's UI and the underlying game engine. The "BIG BROTHER" mode in the M-Console (implemented in `scenario-designer.html`) is the gateway to all live manipulation features. The `rejectMutation` function will be implemented in the game engine and will be responsible for validating all mutation requests.
 
-currentFloor = N
-paramMutableFloor = N + 1
+## 4. Player-Driven Manipulation
 
-Designer or Agent may:
+Players can find and use special items that allow them to influence the mutation system, giving them a degree of control over the game's dynamism.
 
-Adjust enemy density
+### 4.1. They Live Glasses (Foresight)
 
-Adjust awareness
+The "They Live Glasses" are a player item that extends the mutation window to F+2, allowing the player to see and influence the floor after the next one. This provides a greater degree of foresight and control, but it comes with trade-offs.
 
-Adjust loot
+#### 4.1.1. Mechanics
 
-Adjust puzzle timer
+*   **Extended Window:** When equipped, the mutable floor window is extended to `F+2`.
+*   **Limited Scope:** Mutations at F+2 are limited to parameter changes only. Structural changes are not allowed.
+*   **Window Collapse:** The F+2 window is not permanent. It can collapse based on a variety of factors, such as time, player actions, or resource drain.
 
-etc.
+#### 4.1.2. Player State
 
-Once player transitions to N+1:
+The player's `futureVision` state is updated to reflect the extended window:
 
-→ Param layer is locked
-→ paramMutableFloor updates to N+2
-→ New budget window opens
+```javascript
+{
+  "maxWindow": 2,
+  "currentWindow": 2,
+  "closesAtFloor": null,
+  "expiresAtTime": "timestamp",
+  "energy": 100,
+#### 4.1.3. Engineering Considerations
 
-This creates a clean rolling moderation window.
+The `futureVision` object will be added to the player's data model in the game engine. The game engine will be responsible for enforcing the extended mutation window and the window collapse logic.
 
-5️⃣ Param Overlay Resolution
+### 4.2. Winston Smith's Diary (Entropy)
 
-When resolving F+1:
+The "Winston Smith's Diary" is a counter-item to the "They Live Glasses." It introduces "entropy" into the system, making future floors less predictable and hindering the effectiveness of live moderation.
 
-BaseParams(seed + difficultyBand)
-    ↓
-Apply ParamMutationEvents where floorIndex === F+1
-    ↓
-Clamp to allowed range
-    ↓
-Compute paramHash
+#### 4.2.1. Mechanics
 
-After player enters F+1:
+*   **Mutation Fog:** The Diary does not block mutations directly, but it corrupts foresight. When the Diary is active, the M-Console will see conflicting branches and flickering template options, and seed resolution will be delayed.
+*   **Entropy Injection:** The Diary introduces an `entropyWeight` into the floor resolution process. Instead of resolving to a single, deterministic template, the system will resolve to a weighted random selection of templates.
+*   **Ack Disruption:** The Diary can also disrupt the M-Console's ping and acknowledgment system, causing delayed or ghost acks and reducing the designer's confidence in the player's position.
 
-Freeze param events for that floor permanently.
+#### 4.2.2. Player State
 
-6️⃣ Mutation Budget (Recommended Strongly)
+The player's `entropyField` state is updated to reflect the Diary's influence:
 
-To prevent subtle stacking abuse:
+```javascript
+{
+  "strength": 0.35,
+  "sourceItemId": "winston_diary",
+#### 4.2.3. Engineering Considerations
 
-Each floor gets a param budget.
+The `entropyField` object will be added to the player's data model in the game engine. The game engine will be responsible for implementing the "Mutation Fog," "Entropy Injection," and "Ack Disruption" mechanics.
 
-Example:
+## 5. Leaderboard Integrity
 
-maxParamDriftPerFloor = 0.40
+To ensure competitive integrity, the high score system clearly distinguishes between different run types based on their "Run Integrity Class."
 
-Or weighted:
+### 5.1. Run Integrity Classes
 
-enemyDensity weight = 1.0
-lootRate weight = 0.8
-awareness weight = 1.2
+*   **Class A (Static):** A deterministic run with no live manipulation.
+*   **Class B (Human-Moderated):** A run that was manipulated by a human designer.
+*   **Class C (Agent-Moderated):** A run that was manipulated by the Live Agentic Moderator.
+*   **Class D (Hybrid):** A run that was manipulated by a combination of human and agent intervention.
 
-Total weighted drift cannot exceed budget.
+### 5.2. Scoreboard Layout
 
-Example enforcement:
+The high score board is divided into separate tabs for each run integrity class. This ensures that players are only competing against others who played under the same conditions.
 
-if (currentFloorParamDrift + newDrift > maxBudget)
-    rejectMutation("Param budget exceeded")
-7️⃣ Structural Mutation Rule
+### 5.3. Public Transparency
 
-You now need symmetry.
+### 5.4. Engineering Considerations
 
-I recommend:
+The `runClass` will be a property of the `Run` model, and it will be set by the game engine based on whether the run has been manipulated. The high score board will need to be implemented on the game's backend, and it will need to be able to filter and display runs based on their `runClass`.
 
-Structural mutations also limited to F+1 only.
+## 6. M-Console Integration
 
-Otherwise you create a loophole:
+The M-Console provides a UI for designers and agents to interact with the Hybrid Seed Architecture and Live Moderation System.
 
-Designer preloads F+2, F+3 stacked traps.
+### 6.1. "BIG BROTHER" Mode
 
-If you want maximum cleanliness:
+As described in the "Live Agentic Game Moderation System" document, the "BIG BROTHER" mode in the AWOL tab is the gateway to all live manipulation features. It is a global toggle that enables or disables the M-Console's ability to ping player accounts and mutate future floors.
 
-All mutation types only apply to F+1.
+### 6.2. F+1 Mutation UI
 
-This keeps your system elegant.
+When "BIG BROTHER" mode is active, the M-Console will display a new UI for the F+1 floor, which includes:
 
-8️⃣ Leaderboard Integrity Impact
+*   **Param Delta Meter:** A meter that shows the current parameter drift for the floor.
+*   **Mutation Budget Bar:** A bar that shows the remaining budget for parameter mutations.
+### 6.3. Engineering Considerations
 
-Because param mutation is constrained:
-
-You can safely:
-
-Partition leaderboard by runClass
-OR
-
-Display paramDrift per run
-OR
-
-Allow filtering by drift threshold
-
-Since drift only occurs on F+1 windows, abuse is minimal.
-
-9️⃣ Replay Simplicity
-
-Replay logic becomes extremely simple:
-
-For each floor:
-
-Generate base structure.
-
-Apply structural mutations recorded for that floor.
-
-Apply param mutations recorded for that floor.
-
-Lock.
-
-No runtime branching complexity.
-
-No mid-floor param deltas.
-
-No event stream injection complexity.
-
-🔟 M Console UI Implication
-
-In AWOL → BIG BROTHER mode:
-
-Only F+1 shows:
-
-Param Delta Meter
-
-Mutation Budget Bar
-
-Structural Edit Icon
-
-All other floors are visually locked.
-
-This keeps UI calm and self-explanatory.
-
-1️⃣1️⃣ Edge Case Handling
-If player speed-runs floor instantly:
-
-If player transitions to F+1 before commit:
-
-Pending param edits discarded
-
-Mutation window closes
-
-Log event invalidated
-
-Enforce atomic commit:
-
-commitParamMutation()
-
-Must occur before floor transition.
-
-1️⃣2️⃣ Concurrency Safeguard
-
-If multiplayer:
-
-Each player run has independent paramMutableFloor.
-
-Never share param overlays across players unless explicitly merging runs.
-
-1️⃣3️⃣ Refactor Tasks (Clear Engineering Work)
-Task A
-
-Add paramMutableFloorIndex to RunState.
-
-Task B
-
-Update param mutation validator to enforce:
-
-floorIndex === paramMutableFloorIndex
-Task C
-
-Freeze floor param mutations on floor entry event.
-
-Task D
-
-Add paramDriftPerFloor calculation.
-
-Task E
-
-Expose mutationBudgetRemaining in M Console.
-
-1️⃣4️⃣ Psychological Advantage
-
-Because changes only affect F+1:
-
-Moderation feels:
-
-Responsive
-
-Not manipulative
-
-Not pre-scripted
-
-Not stacked against player
-
-It feels like:
-
-“The tower reacts to me one step ahead.”
-
-Which is exactly your design goal.
-
-1️⃣5️⃣ This Also Future-Proofs AI Mode
-
-Agent moderation becomes extremely safe:
-
-Agent cannot rewrite tower
-
-Agent cannot pre-stack 5 floors
-
-Agent cannot manipulate current fight
-
-Agent can only nudge the next step
-
-That keeps autonomy controlled.
-
-Final Strategic Question
-
-Now that mutation is strictly F+1 only:
-
-Do you want:
-
-A) Mutation window closes the moment player reaches exit trigger
-or
-B) Mutation window closes when player crosses 50% progress threshold
-
-That choice affects how reactive moderation feels.
-
-what would a player item that adjusts mutation window look like? THEY LIVE GLASSES we build for F+2   that has a window that closes based on player item
-
-Love this. This is a mechanically honest way to expose system manipulation to the player without breaking trust.
-
-You already defined the rule:
-
-🔒 Param mutation only affects future floors
-🎯 Default scope = Player Floor + 1
-👁 “They Live Glasses” extend mutation window to F + 2
-🪟 Window closes based on item logic
-
-Let’s design this cleanly across UX, systems, rules, and anti-abuse.
-
-👓 THEY LIVE GLASSES
-Future Floor Mutation Window Extender (F+2)
-1. Core Design Principle
-
-Without the item:
-
-Current Floor:        F
-Mutable Floor:        F+1
-Locked Floors:        F+2+
-
-With THEY LIVE GLASSES equipped:
-
-Current Floor:        F
-Mutable Floors:       F+1, F+2
-Locked Floors:        F+3+
-
-But only while the “vision window” is open.
-
-2. Player-Facing UX
-Visual Layer
-
-When equipped:
-
-Slight chromatic aberration / scanline effect
-
-Future floor silhouettes visible in minimap
-
-F+2 floor node glows in grafecet subway map
-
-Mutation window indicator bar
-
-Mutation Window Indicator (Critical)
-
-Add UI element:
-
-[ FUTURE VISION WINDOW ]
-F+1  ██████████  (open)
-F+2  █████░░░░░  (closing)
-
-F+2 slowly decays.
-
-When closed:
-
-F+2  LOCKED
-3. Window Closing Logic Options
-
-You have multiple tunable mechanics. Pick one or combine:
-
-Option A: Time-Based Collapse
-
-Window closes after X seconds on floor F.
-
-Example:
-
-60 seconds real-time
-
-Or closes when player exits combat
-
-Or closes after first mutation event
-
-Very clean and predictable.
-
-Option B: Interaction-Based Collapse
-
-Window closes when:
-
-Player pulls a lever
-
-Player opens a key gate
-
-Player triggers combat
-
-Player crosses midpoint trigger
-
-This makes it strategic.
-
-Option C: Resource Drain
-
-THEY LIVE GLASSES have:
-
-Future Vision Energy: 100%
-Each mutation: -25%
-Revealing F+2: -10%
-Taking damage: -5%
-
-When 0 → F+2 locks.
-
-This adds risk.
-
-4. What Mutations Are Allowed at F+2?
-
-Important constraint:
-
-F+2 mutations should be weaker than F+1.
-
-Example rule:
-
-Floor	Mutation Depth
-F+1	Full template swap
-F+2	Parameter mutation only
-F+3+	Read-only
-
-So:
-
-F+1 → Swap template, enemy type, gate layout
-F+2 → Adjust density, trap frequency, lighting, synergy weight
-
-This prevents broken foresight exploitation.
-
-5. Backend Architecture (Actionable)
-
-You’ll need to refactor mutation windows into a scoped policy object.
-
-Add to Player State
-player.futureVision = {
-    maxWindow: 1,          // default
-    currentWindow: 1,
-    closesAtFloor: null,
-    expiresAtTime: null,
-    energy: 100,
-    sourceItemId: null
-}
-When THEY LIVE GLASSES equipped:
-player.futureVision.maxWindow = 2
-player.futureVision.currentWindow = 2
-player.futureVision.sourceItemId = "they_live_glasses"
-player.futureVision.expiresAtTime = now + 60s
-Mutation Validator Update
-
-Currently you likely have:
-
-canMutate(targetFloor):
-    return targetFloor <= player.floor + 1
-
-Refactor to:
-
-canMutate(targetFloor):
-    return targetFloor <= player.floor + player.futureVision.currentWindow
-On Collapse Event
-collapseFutureVision():
-    player.futureVision.currentWindow = 1
-
-Or:
-
-player.futureVision.currentWindow = 0
-
-If you want hard shutdown.
-
-6. Hybrid Seed Architecture Impact
-
-This must integrate with your hybrid seed system.
-
-You previously defined:
-
-BaseSeed
-
-FloorSeed[n]
-
-ParamMutationLog[n]
-
-Now add:
-
-MutationWindowScope {
-    playerId
-    floorOrigin
-    maxScope
-    activeScope
-    expiryReason
-}
-
-Critical rule:
-
-Mutations applied while F+2 window is open must be tagged:
-
-mutation.scope = "extended"
-mutation.sourceItem = "they_live_glasses"
-
-This allows:
-
-Gone Rogue scoreboard segmentation
-
-Replay validation
-
-Anti-cheat auditing
-
-7. Gone Rogue Highscore Interaction
-
-If player uses THEY LIVE GLASSES:
-
-Scoreboard flag:
-
-Mode: BIG BROTHER
-Future Window: Extended
-
-You can segment:
-
-Pure Seed Run
-
-F+1 Mutations
-
-F+2 Vision Runs
-
-Full Manipulated Big Brother
-
-Clean separation = no controversy.
-
-8. Grafecet / Subway Map Integration
-
-In designer mode:
-
-F+2 node visually:
-
-Pulsing wireframe
-
-Labeled “VISION-UNSTABLE”
-
-Countdown ring
-
-When it locks:
-
-Node greys out
-
-Mutation buttons disabled
-
-Very satisfying.
-
-9. Abuse Prevention
-
-Potential exploit:
-Player camps F forever and manipulates F+2 infinitely.
-
-Prevent with:
-
-Hard timer
-
-Collapse on first combat
-
-One mutation per future floor
-
-Mutation budget cap
-
-Example:
-
-Max F+2 Mutations: 2
-After that → LOCK
-10. Higher-Tier Variants
-
-You now have an item ladder:
-
-Item	Window	Behavior
-THEY LIVE GLASSES	+1 floor	F+2 param mutation
-ORACLE VISOR	+2 floors	F+3 read-only
-ARCHITECT CROWN	+2 floors	One template swap at F+2
-
-Scales beautifully.
-
-11. Narrative Justification (Optional but Powerful)
-
-THEY LIVE GLASSES let player see the manipulation grid
-
-They expose world builder wires
-
-Reality “hasn’t collapsed yet” two floors ahead
-
-Mechanically honest and thematically aligned with Big Brother mode.
-
-12. Clean Rule Summary (Repo-Ready)
-
-Add to system rules:
-
-Mutation Window Rule
-
-Default: Player may mutate Floor +1 only.
-
-Extended windows must originate from an item or system state.
-
-Mutation window may never affect current floor.
-
-Mutation window collapses on:
-
-Floor transition
-
-Timer expiration
-
-Resource depletion
-
-All extended mutations must be logged with source attribution.
-
-If you want next, we can design:
-
-👁 The counter-item that blocks Big Brother vision
-
-🧠 A skill tree around mutation control
-
-🎮 PvP where players sabotage each other’s F+2
-
-🧩 A diagram of how mutation windows interact with world engine graph resolution
-
-This system is elegant because it:
-
-Preserves seed integrity
-
-Creates tension
-
-Enables strategic manipulation
-
-Segments competitive fairness cleanly
-
-You’re building a world where reality is editable — but only briefly.
-
-That’s powerful.
-
-let's design the counter item that hinders big brother vision Winston Smith's Diary. 
-
-Perfect.
-
-If THEY LIVE GLASSES expand manipulation forward,
-then Winston Smith’s Diary should resist surveillance and destabilize predictive control.
-
-This is not just a counter-item — it’s a philosophical inversion.
-
-Glasses = see ahead
-Diary = create uncertainty
-
-📓 Winston Smith’s Diary
-Anti-Big Brother Entropy Artifact
-Core Design Intent
-
-The Diary introduces narrative noise that interferes with forward floor synthesis.
-
-It does NOT block mutation directly.
-
-It corrupts foresight.
-
-1. Mechanical Role
-
-When active:
-
-Big Brother cannot cleanly resolve F+1 / F+2
-
-Mutation windows degrade
-
-Designer/Agent predictions become probabilistic
-
-Floor templates gain entropy weighting
-
-This creates uncertainty instead of brute denial.
-
-2. Primary Effect: Mutation Fog
-
-Without Diary:
-
-Player Floor: F
-Mutable: F+1 (default)
-Extended: F+2 (with glasses)
-
-With Diary active:
-
-F+1: Partially Observable
-F+2: Noisy Projection
-
-Meaning:
-
-M Console sees conflicting branches
-
-Grafecet nodes flicker between template options
-
-Seed resolution becomes delayed
-
-3. Clean Mechanical Options
-
-Choose one or combine.
-
-Option A — Window Collapse Interference
-
-If player has THEY LIVE GLASSES:
-
-Diary causes:
-
-Extended window collapses 50% faster
-
-If no glasses:
-
-F+1 mutation chance has 30% misfire
-
-A mutation may:
-
-Partially apply
-
-Apply with random variance
-
-Fail and consume budget
-
-Option B — Entropy Injection
-
-Diary introduces:
-
-entropyWeight += X
-
-When world builder resolves next floor:
-
-Instead of:
-
-resolve(template_A)
-
-It becomes:
-
-resolve(weighted_random(template_A, template_B, template_shadow))
-
-Player becomes harder to predict.
-
-This directly counters real-time adaptive moderation.
-
-Option C — Ack Disruption (AWOL Tab Interaction)
-
-If Big Brother mode is active:
-
-Diary causes:
-
-M Console ping → delayed ack
-or
-M Console ping → ghost ack
-
-Designer sees:
-
-Player position jitter
-
-Mutation requests desync
-
-Confidence meter drops
-
-Very thematic.
-
-4. Visual UX Layer
-
-When Diary is equipped:
-
-Screen subtle ink bleed effect
-
-HUD flickers briefly
-
-Grafecet nodes display handwritten overlays
-
-F+1 node shows:
-
-RESOLUTION UNSTABLE
-
-If Big Brother is active:
-
-M Console UI shows:
-
-SURVEILLANCE CONFIDENCE: 62%
-
-Confidence fluctuates.
-
-5. Backend Implementation (Actionable)
-
-Add to player state:
-
-player.entropyField = {
-    strength: 0.35,
-    sourceItemId: "winston_diary",
-    affectsFloors: 1
-}
-
-Modify mutation resolution:
-
-resolveFloor(floorIndex):
-
-    entropy = player.entropyField?.strength ?? 0
-
-    if entropy > 0:
-        seed = mixSeedWithEntropy(baseSeed, entropy)
-
-    return buildFloor(seed)
-6. Hybrid Seed Architecture Update
-
-Extend mutation log:
-
-FloorResolutionContext {
-    baseSeed
-    mutationLog
-    entropyModifiers
-    surveillanceConfidence
-}
-
-If Diary active:
-
-context.entropyModifiers.push({
-    source: "winston_diary",
-    strength: 0.35
-})
-
-Important:
-Entropy must be deterministic per seed + item state.
-
-No pure RNG.
-
-Otherwise replays break.
-
-7. Big Brother Scoreboard Impact
-
-Scoreboard tags:
-
-Mode	Label
-No mutation	PURE
-F+1 mutation	MODERATED
-F+2 mutation	EXTENDED
-Diary active	ENTROPIC
-
-Entropic runs are marked as:
-
-UNTRACKED PREDICTION RUN
-
-Or:
-
-ANTI-SURVEILLANCE RUN
-8. Hard Counter vs Soft Counter
-
-Important design decision:
-
-Diary should NOT:
-
-❌ Disable Big Brother
-❌ Remove mutation windows entirely
-
-It should:
-
-✅ Reduce confidence
-✅ Introduce variance
-✅ Limit predictive optimization
-
-This keeps both items viable.
-
-9. Advanced Variant
-
-Level 2 Diary:
-
-Reflects one mutation attempt
-
-Corrupts next floor template selection
-
-Scrambles synergy weighting (key+gate, vent bypass, secret button bias)
-
-10. Interaction With THEY LIVE GLASSES
-
-If both equipped:
-
-Conflict system triggers.
-
-Choose one:
-
-Option A: Cancel Out
-
-Glasses + Diary → revert to default F+1
-
-Option B: Instability Mode (more interesting)
-
-Both active:
-
-Future window opens to F+2
-BUT
-Each mutation increases entropy
-
-You get power + instability.
-
-That’s elegant.
-
-11. Designer / M Console View
-
-In Grafecet subway map:
-
-Nodes display:
-
-Solid = stable
-
-Wireframe = future
-
-Scribbled = entropic
-
-M Console shows:
-
-PREDICTION DRIFT: +18%
-
-If drift exceeds threshold:
-
-Big Brother suggestions become disabled.
-
-12. Abuse Prevention
-
-Potential exploit:
-Player uses Diary to force high-randomization easy floors.
-
-Prevent with:
-
-Entropy increases difficulty weight slightly
-
-High entropy floors bias toward complexity
-
-Or entropy increases unknowns but not difficulty downgrade
-
-Entropy ≠ easier
-Entropy = less predictable
-
-13. Narrative Flavor
-
-Diary represents:
-
-Private thought
-
-Undocumented state
-
-Off-graph logic
-
-Unmonitored variance
-
-Glasses see the system.
-Diary writes outside it.
-
-Perfect thematic duality.
-
-14. Clean Repo-Ready Rule
-
-Add to mutation spec:
-
-Entropy Injection Rule
-
-Entropy may only affect future floors.
-
-Entropy must be deterministic given seed + player state.
-
-Entropy may not reduce difficulty below seed baseline.
-
-Entropy reduces surveillance confidence metrics.
+The M-Console UI described in this document is a more advanced version of the `scenario-designer.html` file. The existing code in `scenario-designer.html` can be used as a starting point for implementing the new features, such as the "Param Delta Meter," "Mutation Budget Bar," and "Structural Edit Icon."

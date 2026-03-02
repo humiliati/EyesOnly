@@ -659,68 +659,24 @@ var GoneRogue = (function () {
     }
   }
 
-  /**
-   * Categorize card for pity timer tracking
-   * NOTE: Kept in monolith — card drop system, not discovery
-   */
+  // ── Pity System delegation stubs ──────────────────────────
   function _categorizeCardForPity(card) {
-    if (!card) return 'other';
-    var type = card.type || card.category || '';
-    var name = card.name || '';
-
-    if (type === 'defense' || name.match(/Block|Shield|Dodge|Cover|Evade|Prone/i)) {
-      return 'defensive';
-    }
-    if (name.match(/Ration|Katchup|Medical|Heal|Health/i)) {
-      return 'healing';
-    }
-    if (type === 'utility' || name.match(/Cigarette|Energy Drink|Retreat|Lure|Smoke/i)) {
-      return 'utility';
-    }
+    if (typeof PitySystem !== 'undefined') return PitySystem.categorizeCardForPity(card);
     return 'other';
   }
-
   function _trackCardDrop(card) {
-    var category = _categorizeCardForPity(card);
-    _recentCardDrops.push({
-      type: card.type || 'unknown',
-      category: category,
-      floor: _floor,
-      name: card.name
-    });
-    if (_recentCardDrops.length > 5) {
-      _recentCardDrops.shift();
-    }
-    if (category !== 'other') {
-      _pitySince[category] = 0;
-    }
+    if (typeof PitySystem !== 'undefined') { PitySystem.trackCardDrop(card, _floor); return; }
   }
-
   function _checkPityTimer() {
-    var PITY_THRESHOLD = 3;
-    for (var category in _pitySince) {
-      if (_pitySince[category] >= PITY_THRESHOLD) {
-        return category;
-      }
-    }
+    if (typeof PitySystem !== 'undefined') return PitySystem.checkPityTimer();
     return null;
   }
-
   function _getPityCard(category) {
-    var pityCards = {
-      defensive: ['Block', 'Dodge', 'PRONE', 'DIVE_FOR_COVER'],
-      utility: ['CIGARETTES', 'RETREAT', 'LURE', 'ENERGY_DRINK'],
-      healing: ['RATIONS', 'KATCHUP', 'MEDICAL_KIT']
-    };
-    var cards = pityCards[category] || [];
-    if (cards.length === 0) return null;
-    return cards[Math.floor(_rng() * cards.length)];
+    if (typeof PitySystem !== 'undefined') return PitySystem.getPityCard(category, _rng);
+    return null;
   }
-
   function _incrementPityTimers() {
-    for (var category in _pitySince) {
-      _pitySince[category]++;
-    }
+    if (typeof PitySystem !== 'undefined') { PitySystem.incrementPityTimers(); return; }
   }
 
   // ── Discovery delegation stubs ─────────────────────────────
@@ -7595,132 +7551,43 @@ _incrementPityTimers();
     'legendary': 0.00
   };
 
-  function _getBoxAt(x, y) {
-    return _placedBoxes.find(function(b) { return b.x === x && b.y === y; }) || null;
-  }
-
-  function _isValidBoxPlacement(x, y) {
-    if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) return false;
-    if (!_grid[y] || _grid[y][x] === TILES.WALL) return false;
-    if (_getBoxAt(x, y)) return false; // already a box here
-    var hasEnemy = _enemies.some(function(e) { return e.x === x && e.y === y && e.hp > 0; });
-    if (hasEnemy) return false;
-    return true;
-  }
-
-  function _placeBoxAt(x, y, quality, itemId) {
-    var box = {
-      id: 'box_' + Date.now() + '_' + x + '_' + y,
-      x: x,
-      y: y,
-      quality: quality || 'common',
-      state: 'empty',
-      discoveryCount: 0,
-      isIdentified: false,
-      sourceItemId: itemId,
-      placedAtMs: Date.now()
+  // ── Box Deployment delegation stubs ──────────────────────
+  function _boxDeployCtx() {
+    return {
+      grid: _grid, GRID_WIDTH: GRID_WIDTH, GRID_HEIGHT: GRID_HEIGHT, TILES: TILES,
+      enemies: _enemies, impactEffects: _impactEffects,
+      invalidateStealthCache: function() { _stealthBonusCache = null; },
+      enterCombat: function(enemy, trigger, card) { if (!_strCombatActive) _enterStrCombat(enemy, trigger, card); }
     };
-    _placedBoxes.push(box);
-    return box;
   }
-
+  function _syncBoxState() {
+    if (typeof BoxDeployment === 'undefined') return;
+    _playerInBox = BoxDeployment.getPlayerInBox();
+    _placedBoxes = BoxDeployment.getPlacedBoxes();
+  }
+  function _getBoxAt(x, y) {
+    if (typeof BoxDeployment !== 'undefined') return BoxDeployment.getBoxAt(x, y);
+    return null;
+  }
+  function _isValidBoxPlacement(x, y) {
+    if (typeof BoxDeployment !== 'undefined') return BoxDeployment.isValidBoxPlacement(x, y, _boxDeployCtx());
+    return false;
+  }
+  function _placeBoxAt(x, y, quality, itemId) {
+    if (typeof BoxDeployment !== 'undefined') { var box = BoxDeployment.placeBoxAt(x, y, quality, itemId); _syncBoxState(); return box; }
+    return null;
+  }
   function _destroyBox(box) {
-    _placedBoxes = _placedBoxes.filter(function(b) { return b.id !== box.id; });
-
-    // Visual feedback: brief poof at box position (non-projectile)
-    try {
-      var effect = { x: box.x, y: box.y, type: 'poof', time: Date.now(), char: '💨' };
-      _impactEffects.push(effect);
-      setTimeout(function() {
-        var index = _impactEffects.indexOf(effect);
-        if (index > -1) _impactEffects.splice(index, 1);
-      }, 320);
-    } catch (e0) {}
-
-    if (typeof OverheadAnimator !== 'undefined') {
-      OverheadAnimator.showExpression(box.x, box.y, 'SURPRISED', 800, '📦💥');
-    }
+    if (typeof BoxDeployment !== 'undefined') { BoxDeployment.destroyBox(box, _boxDeployCtx()); _syncBoxState(); return; }
   }
-
   function _playerEnterBox(box) {
-    _playerInBox = box;
-    box.state = 'occupied';
-
-    // Sneak-in bonus: entering within 2s of placement reduces enemy notice chance.
-    // TODO: consider see-sawing this with LOS evasion or sight range instead.
-    box._sneakBonusActive = false;
-    try {
-      if (box.placedAtMs && (Date.now() - box.placedAtMs) <= 2000) {
-        box._sneakBonusActive = true;
-      }
-    } catch (e0) {}
-
-    // Transform avatar
-    if (typeof GoneRogueEffectInterpreter !== 'undefined') {
-      GoneRogueEffectInterpreter.executeEffect({ type: 'avatar_transform', char: '📦' }, { equipping: true });
-    }
-    // Invalidate stealth cache so box bonus is applied on next check
-    _stealthBonusCache = null;
-    if (typeof TooltipSystem !== 'undefined') {
-      TooltipSystem.showGeneric('📦 Inside box — stay still', 1600);
-    }
+    if (typeof BoxDeployment !== 'undefined') { BoxDeployment.playerEnterBox(box, _boxDeployCtx()); _syncBoxState(); return; }
   }
-
   function _playerExitBox(reason) {
-    var box = _playerInBox;
-    if (!box) return;
-    _playerInBox = null;
-    box.state = 'empty';
-    // Restore avatar
-    if (typeof GoneRogueEffectInterpreter !== 'undefined') {
-      GoneRogueEffectInterpreter.executeEffect({ type: 'avatar_transform' }, { equipping: false });
-    }
-    _stealthBonusCache = null;
-    // Legendary boxes survive combat forced exit; all others are consumed on exit
-    if (reason !== 'legendary_combat') {
-      _destroyBox(box);
-    }
+    if (typeof BoxDeployment !== 'undefined') { BoxDeployment.playerExitBox(reason, _boxDeployCtx()); _syncBoxState(); return; }
   }
-
   function _checkEnemyBoxInteraction(enemy) {
-    var box = _getBoxAt(enemy.x, enemy.y);
-    if (!box) return;
-
-    if (box.state === 'occupied') {
-      // Player is hiding — evasion roll
-      var evasionChance = _BOX_EVASION_CHANCE[box.quality] || 0.85;
-      if (Math.random() < evasionChance) {
-        // Enemy fails to detect player
-        if (typeof OverheadAnimator !== 'undefined') {
-          OverheadAnimator.showExpression(enemy.x, enemy.y, 'QUESTION');
-        }
-      } else {
-        // Enemy detects player — trigger combat
-        _playerExitBox('combat');
-        if (!_strCombatActive) {
-          _enterStrCombat(enemy, 'box_discover', null);
-        }
-      }
-    } else if (box.state === 'empty') {
-      if (box.quality === 'legendary') return; // legendary boxes are never interacted with
-
-      var noticeChance = _BOX_NOTICE_CHANCE[box.quality] || 0.50;
-      if (box._sneakBonusActive) {
-        noticeChance = noticeChance * 0.55;
-      }
-      if (Math.random() < noticeChance) {
-        if (typeof OverheadAnimator !== 'undefined') {
-          OverheadAnimator.showExpression(enemy.x, enemy.y, 'QUESTION');
-        }
-        box.discoveryCount = (box.discoveryCount || 0) + 1;
-      }
-
-      // Walk-over destruction
-      var walkOverChance = _BOX_WALK_OVER_CHANCE[box.quality] || 0.70;
-      if (Math.random() < walkOverChance) {
-        _destroyBox(box);
-      }
-    }
+    if (typeof BoxDeployment !== 'undefined') { BoxDeployment.checkEnemyBoxInteraction(enemy, _boxDeployCtx()); _syncBoxState(); return; }
   }
 
   function _damageBreakable(breakable, amount) {
@@ -8361,79 +8228,51 @@ _incrementPityTimers();
     };
   }
 
-  function _saveState() {
-    try {
-      var state = {
-        active: _active,
-        player: _player,
-        enemies: _enemies,
-        items: _items,
-        projectiles: _projectiles,
-        breakables: _breakables,
-        turn: _turn,
-        floor: _floor
-      };
-
-      // Save interactive items
-      if (typeof InteractiveItems !== 'undefined') {
-        state.interactiveItems = InteractiveItems.serialize();
-      }
-
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (e) { /* ignore */ }
+  // ── Save/Load delegation stubs ───────────────────────────
+  function _saveLoadCtx() {
+    return {
+      active: _active, player: _player, enemies: _enemies, items: _items,
+      projectiles: _projectiles, breakables: _breakables, turn: _turn, floor: _floor,
+      grid: _grid, TILES: TILES, GRID_WIDTH: GRID_WIDTH, GRID_HEIGHT: GRID_HEIGHT
+    };
   }
-
-  function _loadState() {
+  function _saveState() {
+    if (typeof SaveLoad !== 'undefined') { SaveLoad.saveState(_saveLoadCtx()); return; }
     try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      var parsed = JSON.parse(raw);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        active: _active, player: _player, enemies: _enemies, items: _items,
+        projectiles: _projectiles, breakables: _breakables, turn: _turn, floor: _floor
+      }));
+    } catch (e) {}
+  }
+  function _loadState() {
+    if (typeof SaveLoad !== 'undefined') {
+      var parsed = SaveLoad.loadState(_saveLoadCtx());
+      if (!parsed) return;
       if (parsed.player) _player = parsed.player;
-
-      // Hard clamp: never allow restored player spawn to be inside walls.
-      // Camera + fullscreen makes bad legacy positions very visible.
-      try {
-        if (_player && _grid && _grid[_player.y] && _grid[_player.y][_player.x] && _grid[_player.y][_player.x] !== TILES.EMPTY) {
-          // Attempt to snap to nearest empty tile (spiral search)
-          var found = false;
-          for (var r = 1; r <= 10 && !found; r++) {
-            for (var dy = -r; dy <= r && !found; dy++) {
-              for (var dx = -r; dx <= r && !found; dx++) {
-                var tx = _player.x + dx;
-                var ty = _player.y + dy;
-                if (tx > 0 && tx < GRID_WIDTH - 1 && ty > 0 && ty < GRID_HEIGHT - 1 && _grid[ty] && _grid[ty][tx] === TILES.EMPTY) {
-                  _player.x = tx;
-                  _player.y = ty;
-                  found = true;
-                }
-              }
-            }
-          }
-          if (!found) {
-            // fall back to safe-ish center
-            _player.x = Math.floor(GRID_WIDTH / 2);
-            _player.y = Math.floor(GRID_HEIGHT / 2);
-          }
-        }
-      } catch (e0) {}
       if (parsed.enemies) _enemies = parsed.enemies;
-      if (parsed.items) {
-        WorldItems.setFloorItems(parsed.items);
-        _items = WorldItems.getFloorItems();
-      }
+      if (parsed.items) { WorldItems.setFloorItems(parsed.items); _items = WorldItems.getFloorItems(); }
       if (parsed.projectiles) _projectiles = parsed.projectiles;
       if (parsed.breakables) _breakables = parsed.breakables;
       if (parsed.turn) _turn = parsed.turn;
       if (parsed.floor) _floor = parsed.floor;
-
-      // Restore interactive items
-      if (parsed.interactiveItems && typeof InteractiveItems !== 'undefined') {
-        InteractiveItems.deserialize(parsed.interactiveItems);
-      }
-
-      // DO NOT restore active state - user must explicitly enter rogue mode
+      if (parsed.interactiveItems && typeof InteractiveItems !== 'undefined') InteractiveItems.deserialize(parsed.interactiveItems);
       _active = false;
-    } catch (e) { /* ignore */ }
+      return;
+    }
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      var p = JSON.parse(raw);
+      if (p.player) _player = p.player;
+      if (p.enemies) _enemies = p.enemies;
+      if (p.items) { WorldItems.setFloorItems(p.items); _items = WorldItems.getFloorItems(); }
+      if (p.projectiles) _projectiles = p.projectiles;
+      if (p.breakables) _breakables = p.breakables;
+      if (p.turn) _turn = p.turn;
+      if (p.floor) _floor = p.floor;
+      _active = false;
+    } catch (e) {}
   }
 
   /**
