@@ -613,70 +613,22 @@ var GoneRogue = (function () {
   };
 
   // ============================================================
-  // EXPLORATION FRAMEWORK
-  // Core exploration mechanics with discovery tiers and rewards
+  // EXPLORATION FRAMEWORK — Delegated to DiscoverySystem module
+  // See public/js/discovery-system.js for full implementation
   // ============================================================
 
-  /**
-   * Discovery tier definitions following the visibility spectrum
-   */
-  var DISCOVERY_TIERS = {
-    SURFACE: {
-      name: 'Surface',
-      frequency: 0.40,
-      visibility: 'immediate',
-      rewardTypes: ['currency', 'consumable'],
-      description: 'Immediately visible, modest rewards'
-    },
-    SEMI_HIDDEN: {
-      name: 'Semi-Hidden',
-      frequency: 0.30,
-      visibility: 'minimal_investigation',
-      rewardTypes: ['cards', 'equipment', 'currency'],
-      description: 'Requires minimal investigation'
-    },
-    CONCEALED: {
-      name: 'Concealed',
-      frequency: 0.20,
-      visibility: 'deliberate_action',
-      rewardTypes: ['rare_cards', 'equipment'],
-      description: 'Requires deliberate action to uncover'
-    },
-    HIDDEN: {
-      name: 'Hidden',
-      frequency: 0.08,
-      visibility: 'outside_context',
-      rewardTypes: ['legendary_items', 'secrets'],
-      description: 'Requires outside-context knowledge'
-    },
-    META: {
-      name: 'Meta',
-      frequency: 0.02,
-      visibility: 'multi_run',
-      rewardTypes: ['narrative', 'achievements'],
-      description: 'Multi-run discoveries'
-    }
-  };
+  // Constants: delegate to module, keep local refs for return object
+  var DISCOVERY_TIERS = (typeof DiscoverySystem !== 'undefined') ? DiscoverySystem.DISCOVERY_TIERS : {};
+  var DETAIL_LAYERS = (typeof DiscoverySystem !== 'undefined') ? DiscoverySystem.DETAIL_LAYERS : {};
 
-  /**
-   * Discovery placement state for current floor
-   */
-  var _discoveries = []; // { x, y, tier, revealed, contents, type }
-  var _metaDiscoveries = []; // Persistent cross-run discoveries
-
-  /**
-   * Environmental detail layer system
-   */
-  var DETAIL_LAYERS = {
-    STRUCTURAL: 'structural',    // Walls, floor, doors, major features
-    FUNCTIONAL: 'functional',    // Purpose-specific details (desks, displays, equipment)
-    NARRATIVE: 'narrative'       // Story-specific details (struggle evidence, personal items)
-  };
-
-  var _environmentalDetails = {}; // Stores details by layer
+  // Local state refs (DiscoverySystem owns the real state)
+  var _discoveries = [];
+  var _metaDiscoveries = [];
+  var _environmentalDetails = {};
 
   /**
    * RNG helper - uses SeededRNG if available, falls back to Math.random()
+   * NOTE: Kept in monolith because many non-discovery functions use it
    */
   function _rng() {
     if (typeof SeededRNG !== 'undefined' && SeededRNG.random) {
@@ -687,6 +639,7 @@ var GoneRogue = (function () {
 
   /**
    * Update player position history for pet following
+   * NOTE: Kept in monolith — player movement, not discovery
    */
   function _updatePositionHistory() {
     var HISTORY_SIZE = 16;
@@ -695,14 +648,12 @@ var GoneRogue = (function () {
       _player.positionHistory = [];
     }
 
-    // Push current position to history
     _player.positionHistory.unshift({
       x: _player.x,
       y: _player.y,
       facing: _player.lastMoveDirection || 'south'
     });
 
-    // Trim history to max size
     if (_player.positionHistory.length > HISTORY_SIZE) {
       _player.positionHistory.pop();
     }
@@ -710,6 +661,7 @@ var GoneRogue = (function () {
 
   /**
    * Categorize card for pity timer tracking
+   * NOTE: Kept in monolith — card drop system, not discovery
    */
   function _categorizeCardForPity(card) {
     if (!card) return 'other';
@@ -728,9 +680,6 @@ var GoneRogue = (function () {
     return 'other';
   }
 
-  /**
-   * Track card drop for pity timer
-   */
   function _trackCardDrop(card) {
     var category = _categorizeCardForPity(card);
     _recentCardDrops.push({
@@ -747,9 +696,6 @@ var GoneRogue = (function () {
     }
   }
 
-  /**
-   * Check if pity timer should force a specific card type
-   */
   function _checkPityTimer() {
     var PITY_THRESHOLD = 3;
     for (var category in _pitySince) {
@@ -760,9 +706,6 @@ var GoneRogue = (function () {
     return null;
   }
 
-  /**
-   * Get a card of specific pity category
-   */
   function _getPityCard(category) {
     var pityCards = {
       defensive: ['Block', 'Dodge', 'PRONE', 'DIVE_FOR_COVER'],
@@ -774,304 +717,52 @@ var GoneRogue = (function () {
     return cards[Math.floor(_rng() * cards.length)];
   }
 
-  /**
-   * Increment pity timers (call at start of each floor)
-   */
   function _incrementPityTimers() {
     for (var category in _pitySince) {
       _pitySince[category]++;
     }
   }
 
-  /**
-   * Generate discoveries for current floor based on tier distribution
-   */
-  function _generateDiscoveries(rooms, biome) {
-    _discoveries = [];
+  // ── Discovery delegation stubs ─────────────────────────────
 
-    // Calculate total discoveries based on floor size and difficulty
-    var totalDiscoveries = Math.floor(rooms.length * 1.5) + Math.floor(_difficultyTier * 0.5);
-
-    for (var i = 0; i < totalDiscoveries; i++) {
-      var tier = _selectDiscoveryTier();
-      var room = rooms[Math.floor(_rng() * rooms.length)];
-      var pos = _findDiscoveryPosition(room, tier);
-
-      if (pos) {
-        _discoveries.push({
-          x: pos.x,
-          y: pos.y,
-          tier: tier,
-          revealed: tier.visibility === 'immediate',
-          contents: _generateDiscoveryContents(tier, biome),
-          type: _selectDiscoveryType(tier, biome),
-          interacted: false
-        });
-      }
-    }
-  }
-
-  /**
-   * Select discovery tier based on frequency distribution
-   */
-  function _selectDiscoveryTier() {
-    var roll = _rng();
-    var cumulative = 0;
-
-    var tiers = [
-      DISCOVERY_TIERS.SURFACE,
-      DISCOVERY_TIERS.SEMI_HIDDEN,
-      DISCOVERY_TIERS.CONCEALED,
-      DISCOVERY_TIERS.HIDDEN,
-      DISCOVERY_TIERS.META
-    ];
-
-    for (var i = 0; i < tiers.length; i++) {
-      cumulative += tiers[i].frequency;
-      if (roll <= cumulative) {
-        return tiers[i];
-      }
-    }
-
-    return DISCOVERY_TIERS.SURFACE;
-  }
-
-  /**
-   * Find appropriate position for discovery based on tier
-   */
-  function _findDiscoveryPosition(room, tier) {
-    var attempts = 0;
-    var maxAttempts = 20;
-
-    while (attempts < maxAttempts) {
-      var x = room.x + Math.floor(_rng() * room.width);
-      var y = room.y + Math.floor(_rng() * room.height);
-
-      // Check if position is valid (walkable, not occupied)
-      if (_grid[y] && _grid[y][x] === TILES.EMPTY) {
-        // For concealed/hidden discoveries, prefer corners or edges
-        if (tier === DISCOVERY_TIERS.CONCEALED || tier === DISCOVERY_TIERS.HIDDEN) {
-          var isEdge = (x === room.x || x === room.x + room.width - 1 ||
-                       y === room.y || y === room.y + room.height - 1);
-          if (isEdge || attempts > 10) {
-            return { x: x, y: y };
-          }
-        } else {
-          return { x: x, y: y };
-        }
-      }
-      attempts++;
-    }
-
-    return null;
-  }
-
-  /**
-   * Generate discovery contents based on tier and biome
-   */
-  function _generateDiscoveryContents(tier, biome) {
-    var contents = {
-      currency: 0,
-      items: [],
-      cards: [],
-      narrative: null
-    };
-
-    switch (tier) {
-      case DISCOVERY_TIERS.SURFACE:
-        contents.currency = Math.floor(_rng() * 20) + 5;
-        break;
-      case DISCOVERY_TIERS.SEMI_HIDDEN:
-        contents.currency = Math.floor(_rng() * 40) + 15;
-        if (_rng() < 0.3) {
-          contents.cards.push('random_card');
-        }
-        break;
-      case DISCOVERY_TIERS.CONCEALED:
-        contents.currency = Math.floor(_rng() * 80) + 30;
-        if (_rng() < 0.5) {
-          contents.cards.push('rare_card');
-        }
-        break;
-      case DISCOVERY_TIERS.HIDDEN:
-        contents.currency = Math.floor(_rng() * 150) + 50;
-        contents.cards.push('legendary_card');
-        break;
-      case DISCOVERY_TIERS.META:
-        contents.narrative = _generateMetaNarrative(biome);
-        break;
-    }
-
-    return contents;
-  }
-
-  /**
-   * Select discovery type based on tier and biome
-   */
-  function _selectDiscoveryType(tier, biome) {
-    var types = {
-      SURFACE: ['breakable_container', 'visible_treasure', 'obvious_crate'],
-      SEMI_HIDDEN: ['locked_door', 'debris_pile', 'dark_corner'],
-      CONCEALED: ['fake_wall', 'terminal_secret', 'breakable_pattern'],
-      HIDDEN: ['puzzle_solution', 'secret_room', 'environmental_hint'],
-      META: ['lore_fragment', 'achievement_unlock', 'cross_run_hint']
-    };
-
-    var tierTypes = types[tier.name.toUpperCase().replace('-', '_')];
-    if (tierTypes && tierTypes.length > 0) {
-      return tierTypes[Math.floor(_rng() * tierTypes.length)];
-    }
-
-    return 'breakable_container';
-  }
-
-  /**
-   * Generate meta-narrative content for cross-run discoveries
-   */
-  function _generateMetaNarrative(biome) {
-    var narratives = [
-      'You notice a pattern in the wall structure...',
-      'A faded message hints at something deeper...',
-      'The environment suggests a hidden connection...',
-      'Something about this place feels familiar...'
-    ];
-
-    return narratives[Math.floor(_rng() * narratives.length)];
-  }
-
-  /**
-   * Initialize environmental detail layers for a room
-   */
-  function _initializeEnvironmentalDetails(room, biome) {
-    var roomKey = room.x + '_' + room.y;
-
-    _environmentalDetails[roomKey] = {
-      structural: _generateStructuralLayer(room, biome),
-      functional: _generateFunctionalLayer(room, biome),
-      narrative: _generateNarrativeLayer(room, biome)
-    };
-  }
-
-  /**
-   * Generate structural layer details (always present)
-   */
-  function _generateStructuralLayer(room, biome) {
+  /** Build context object for DiscoverySystem calls */
+  function _discoveryContext() {
     return {
-      walls: true,
-      floor: true,
-      ceiling: true,
-      doors: room.doors || [],
-      majorFeatures: []
+      floor: _floor,
+      difficultyTier: _difficultyTier,
+      grid: _grid,
+      TILES: TILES,
+      BIOMES: BIOMES,
+      GRID_WIDTH: GRID_WIDTH,
+      items: _items,
+      spawnCurrency: _spawnCurrency,
+      Terminal: (typeof Terminal !== 'undefined') ? Terminal : null
     };
   }
 
-  /**
-   * Generate functional layer details (purpose-specific)
-   */
-  function _generateFunctionalLayer(room, biome) {
-    var functional = {
-      furniture: [],
-      equipment: [],
-      storage: []
-    };
-
-    // Biome-specific functional details
-    if (biome === BIOMES.OFFICE) {
-      functional.furniture = ['desks', 'chairs', 'cubicles'];
-      functional.equipment = ['terminals', 'printers', 'phones'];
-    } else if (biome === BIOMES.MALL) {
-      functional.furniture = ['displays', 'racks', 'counters'];
-      functional.equipment = ['registers', 'mannequins'];
-    } else if (biome === BIOMES.INDUSTRIAL) {
-      functional.equipment = ['machinery', 'conveyors', 'pipes'];
+  function _generateDiscoveries(rooms, biome) {
+    if (typeof DiscoverySystem !== 'undefined' && DiscoverySystem.generateDiscoveries) {
+      _discoveries = DiscoverySystem.generateDiscoveries(rooms, biome, _discoveryContext());
+    } else {
+      _discoveries = [];
     }
-
-    return functional;
   }
 
-  /**
-   * Generate narrative layer details (story-specific)
-   */
-  function _generateNarrativeLayer(room, biome) {
-    var narrative = {
-      evidence: [],
-      personalItems: [],
-      environmentalChanges: []
-    };
-
-    // Random chance for narrative elements
-    if (_rng() < 0.3) {
-      narrative.evidence.push('struggle_marks');
-    }
-    if (_rng() < 0.2) {
-      narrative.personalItems.push('abandoned_photo');
-    }
-    if (_rng() < 0.25) {
-      narrative.environmentalChanges.push('water_damage');
-    }
-
-    return narrative;
-  }
-
-  /**
-   * Reveal discovery when player interacts with it
-   */
   function _revealDiscovery(x, y) {
-    for (var i = 0; i < _discoveries.length; i++) {
-      var discovery = _discoveries[i];
-      if (discovery.x === x && discovery.y === y && !discovery.revealed) {
-        discovery.revealed = true;
-        discovery.interacted = true;
-        _grantDiscoveryRewards(discovery);
-        return true;
-      }
+    if (typeof DiscoverySystem !== 'undefined' && DiscoverySystem.revealDiscovery) {
+      return DiscoverySystem.revealDiscovery(x, y, _discoveryContext());
     }
     return false;
   }
 
-  /**
-   * Grant rewards from discovered content
-   */
-  function _grantDiscoveryRewards(discovery) {
-    var contents = discovery.contents;
-
-    if (contents.currency > 0) {
-      _spawnCurrency(discovery.x, discovery.y, contents.currency);
-    }
-
-    if (contents.cards && contents.cards.length > 0) {
-      // Spawn card items at discovery location
-      for (var i = 0; i < contents.cards.length; i++) {
-        _spawnDiscoveryCard(discovery.x, discovery.y);
-      }
-    }
-
-    if (contents.narrative) {
-      _displayNarrative(contents.narrative);
-    }
-  }
-
-  /**
-   * Spawn a card from discovery
-   */
-  function _spawnDiscoveryCard(x, y) {
-    // Integrate with existing item spawning system
-    var offset = _items.length % 2 === 0 ? 1 : -1;
-    var spawnX = Math.max(1, Math.min(GRID_WIDTH - 2, x + offset));
-    _items.push({ x: spawnX, y: y, quality: _rng() });
-  }
-
-  /**
-   * Display narrative message to player
-   */
-  function _displayNarrative(narrative) {
-    if (typeof Terminal !== 'undefined' && Terminal.print) {
-      Terminal.print(narrative, 'narrative');
+  function _initializeEnvironmentalDetails(room, biome) {
+    if (typeof DiscoverySystem !== 'undefined' && DiscoverySystem.initializeEnvironmentalDetails) {
+      DiscoverySystem.initializeEnvironmentalDetails(room, biome, _discoveryContext());
     }
   }
 
   // ============================================================
-  // END EXPLORATION FRAMEWORK
+  // END EXPLORATION FRAMEWORK (delegated)
   // ============================================================
 
   /**
@@ -7197,6 +6888,7 @@ _incrementPityTimers();
     // This prevents "ghost" STR windows when enemies die through non-STR pipelines.
     try {
       if (_strCombatActive && _strCombatEnemy && enemy && _strCombatEnemy === enemy) {
+        if (typeof StrCombatEngine !== 'undefined') StrCombatEngine.forceReset();
         _strCombatActive = false;
         _strCombatPhase = 'idle';
         _strCombatEnemy = null;
@@ -7221,6 +6913,7 @@ _incrementPityTimers();
     _stopGameLoop();
 
     // Ensure STR combat UI is fully cleared
+    if (typeof StrCombatEngine !== 'undefined') StrCombatEngine.forceReset();
     _strCombatActive = false;
     _strCombatPhase = 'idle';
     _strCombatEnemy = null;
@@ -7649,169 +7342,52 @@ _incrementPityTimers();
     }
   }
 
-  /**
-   * Update enemy path movement
-   */
+  // ============================================================
+  // ENEMY AI — Delegated to EnemyAISystem module
+  // See public/js/enemy-ai-system.js for full implementation
+  // ============================================================
+
+  /** Build context object for EnemyAISystem calls */
+  function _enemyAIContext() {
+    return {
+      grid: _grid,
+      GRID_WIDTH: GRID_WIDTH,
+      GRID_HEIGHT: GRID_HEIGHT,
+      TILES: TILES,
+      PATH_TYPES: PATH_TYPES,
+      AWARENESS_STATES: AWARENESS_STATES,
+      player: _player,
+      playerInBox: _playerInBox,
+      BOX_EVASION_CHANCE: _BOX_EVASION_CHANCE,
+      getPlayerStealthBonus: _getPlayerStealthBonus
+    };
+  }
+
   function _updateEnemyPath(enemy, deltaMs) {
-    if (!enemy.path) return;
-
-    enemy.pathTimer = (enemy.pathTimer || 0) + deltaMs;
-
-    // Move every 500ms
-    if (enemy.pathTimer >= 500) {
-      enemy.pathTimer = 0;
-
-      if (enemy.path.type === PATH_TYPES.PATROL) {
-        _moveEnemyPatrol(enemy);
-      } else if (enemy.path.type === PATH_TYPES.CIRCULAR) {
-        _moveEnemyCircular(enemy);
-      } else if (enemy.path.type === PATH_TYPES.ELLIPSE) {
-        _moveEnemyEllipse(enemy);
-      } else if (enemy.path.type === PATH_TYPES.STATIONARY) {
-        _rotateEnemyInPlace(enemy);
-      }
+    if (typeof EnemyAISystem !== 'undefined') {
+      EnemyAISystem.updateEnemyPath(enemy, deltaMs, _enemyAIContext());
     }
   }
 
-  /**
-   * Move enemy along patrol path (A→B→C→B)
-   */
-  function _moveEnemyPatrol(enemy) {
-    if (!enemy.path.points || enemy.path.points.length < 2) return;
-
-    var currentIndex = enemy.pathIndex || 0;
-    var direction = enemy.pathDirection || 1;
-
-    // Move to next point
-    currentIndex += direction;
-
-    // Reverse at endpoints
-    if (currentIndex >= enemy.path.points.length) {
-      currentIndex = enemy.path.points.length - 2;
-      direction = -1;
-    } else if (currentIndex < 0) {
-      currentIndex = 1;
-      direction = 1;
-    }
-
-    enemy.pathIndex = currentIndex;
-    enemy.pathDirection = direction;
-
-    var point = enemy.path.points[currentIndex];
-    _moveEnemyToPoint(enemy, point);
-  }
-
-  /**
-   * Move enemy along circular path (A→B→C→A)
-   */
-  function _moveEnemyCircular(enemy) {
-    if (!enemy.path.points || enemy.path.points.length < 2) return;
-
-    var currentIndex = (enemy.pathIndex || 0) + 1;
-    if (currentIndex >= enemy.path.points.length) {
-      currentIndex = 0;
-    }
-
-    enemy.pathIndex = currentIndex;
-    var point = enemy.path.points[currentIndex];
-    _moveEnemyToPoint(enemy, point);
-  }
-
-  /**
-   * Move enemy along ellipse path
-   */
-  function _moveEnemyEllipse(enemy) {
-    if (!enemy.path.ellipse) return;
-
-    var angle = (enemy.pathAngle || 0) + 0.1; // Increment angle
-    if (angle >= Math.PI * 2) angle = 0;
-
-    enemy.pathAngle = angle;
-
-    var cx = enemy.path.ellipse.cx;
-    var cy = enemy.path.ellipse.cy;
-    var rx = enemy.path.ellipse.rx;
-    var ry = enemy.path.ellipse.ry;
-
-    var x = Math.floor(cx + rx * Math.cos(angle));
-    var y = Math.floor(cy + ry * Math.sin(angle));
-
-    _moveEnemyToPoint(enemy, { x: x, y: y });
-  }
-
-  /**
-   * Rotate enemy in place (change orientation)
-   */
-  function _rotateEnemyInPlace(enemy) {
-    // Rotate orientation clockwise
-    var orientations = ['north', 'east', 'south', 'west'];
-    var currentIndex = orientations.indexOf(enemy.orientation || 'north');
-    var nextIndex = (currentIndex + 1) % orientations.length;
-    enemy.orientation = orientations[nextIndex];
-  }
-
-  /**
-   * Move enemy to specific point (if not blocked)
-   */
-  function _moveEnemyToPoint(enemy, point) {
-    // Check if point is valid and not blocked
-    if (point.x < 0 || point.x >= GRID_WIDTH || point.y < 0 || point.y >= GRID_HEIGHT) return;
-    if (_grid[point.y][point.x] === TILES.WALL) return;
-
-    // Update orientation based on movement direction
-    var dx = point.x - enemy.x;
-    var dy = point.y - enemy.y;
-    if (Math.abs(dx) > Math.abs(dy)) {
-      enemy.orientation = dx > 0 ? 'east' : 'west';
-    } else {
-      enemy.orientation = dy > 0 ? 'south' : 'north';
-    }
-
-    enemy.x = point.x;
-    enemy.y = point.y;
-  }
-
-  /**
-   * Update enemy awareness (decay over time)
-   */
   function _updateEnemyAwareness(enemy, deltaMs) {
-    if (!enemy.awareness) enemy.awareness = 0;
-
-    // Decay awareness by 5 points per second
-    var decay = (5 * deltaMs) / 1000;
-    enemy.awareness = Math.max(0, enemy.awareness - decay);
-  }
-
-  /**
-   * Increase enemy awareness
-   */
-  function _increaseEnemyAwareness(enemy, amount) {
-    var previousAwareness = enemy.awareness || 0;
-    enemy.awareness = Math.min(150, previousAwareness + amount);
-
-    // Show alert expression when crossing into ALERTED state
-    if (previousAwareness < AWARENESS_STATES.ALERTED.min && enemy.awareness >= AWARENESS_STATES.ALERTED.min) {
-      if (typeof OverheadAnimator !== 'undefined') {
-        OverheadAnimator.showExpression(enemy.x, enemy.y, 'ALERT', 1000);
-      }
+    if (typeof EnemyAISystem !== 'undefined') {
+      EnemyAISystem.updateEnemyAwareness(enemy, deltaMs);
     }
   }
 
-  /**
-   * Get enemy awareness state
-   */
-  function _getEnemyAwarenessState(enemy) {
-    var awareness = enemy.awareness || 0;
+  function _increaseEnemyAwareness(enemy, amount) {
+    if (typeof EnemyAISystem !== 'undefined') {
+      EnemyAISystem.increaseEnemyAwareness(enemy, amount, _enemyAIContext());
+    }
+  }
 
-    if (awareness >= AWARENESS_STATES.ENGAGED.min) return AWARENESS_STATES.ENGAGED;
-    if (awareness >= AWARENESS_STATES.ALERTED.min) return AWARENESS_STATES.ALERTED;
-    if (awareness >= AWARENESS_STATES.SUSPICIOUS.min) return AWARENESS_STATES.SUSPICIOUS;
+  function _getEnemyAwarenessState(enemy) {
+    if (typeof EnemyAISystem !== 'undefined') {
+      return EnemyAISystem.getEnemyAwarenessState(enemy, _enemyAIContext());
+    }
     return AWARENESS_STATES.UNAWARE;
   }
 
-  /**
-   * Get enemy awareness state (exposed for external use)
-   */
   function getEnemyAwarenessState(enemy) {
     return _getEnemyAwarenessState(enemy);
   }
@@ -7886,65 +7462,11 @@ _incrementPityTimers();
     LightingSystem.updatePlayerLight(_player.x, _player.y, _player.lastMoveDirection || 'north');
   }
 
-  /**
-   * Check if player is in enemy sight cone
-   */
   function _isPlayerInSightCone(enemy) {
-    if (!enemy.orientation) return false;
-
-    var dx = _player.x - enemy.x;
-    var dy = _player.y - enemy.y;
-
-    // Cheap Manhattan-distance pre-filter: skip all expensive checks when
-    // the player is definitely beyond the maximum possible sight range.
-    // Max base sight range is 8; stealth can halve it but never extends it.
-    var maxPossibleSightRange = (enemy.sightRange || 5) + 1;
-    if (Math.abs(dx) > maxPossibleSightRange || Math.abs(dy) > maxPossibleSightRange) {
-      return false;
+    if (typeof EnemyAISystem !== 'undefined') {
+      return EnemyAISystem.isPlayerInSightCone(enemy, _enemyAIContext());
     }
-
-    var distanceSq = dx * dx + dy * dy;
-
-    // Sight cone range (modified by player's tile stealth bonus)
-    var baseSightRange = enemy.sightRange || 5;
-    var stealthBonus = _getPlayerStealthBonus();
-    var effectiveSightRange = baseSightRange * (1 - stealthBonus / 100);
-
-    // Compare squared distances to avoid Math.sqrt
-    if (distanceSq > effectiveSightRange * effectiveSightRange) return false;
-
-    // Check if cover blocks line of sight
-    if (_checkLineOfSight(enemy.x, enemy.y, _player.x, _player.y)) {
-      return false; // LOS blocked by cover
-    }
-
-    // Box evasion: player hiding in a placed box gets a probabilistic LOS block
-    if (_playerInBox) {
-      var boxEvasion = _BOX_EVASION_CHANCE[_playerInBox.quality] || 0.85;
-      if (Math.random() < boxEvasion) {
-        return false; // enemy fails to see through box
-      }
-    }
-
-    // Calculate angle to player
-    var angleToPlayer = Math.atan2(dy, dx);
-
-    // Enemy orientation angles
-    var orientationAngles = {
-      'east': 0,
-      'south': Math.PI / 2,
-      'west': Math.PI,
-      'north': -Math.PI / 2
-    };
-
-    var orientationAngle = orientationAngles[enemy.orientation] || 0;
-    var coneAngle = Math.PI / 3; // 60 degree cone
-
-    // Normalize angle difference
-    var angleDiff = Math.abs(angleToPlayer - orientationAngle);
-    while (angleDiff > Math.PI) angleDiff = Math.abs(angleDiff - 2 * Math.PI);
-
-    return angleDiff <= coneAngle / 2;
+    return false;
   }
 
   /**
@@ -8011,42 +7533,11 @@ _incrementPityTimers();
     return bonus;
   }
 
-  /**
-   * Check if line of sight is blocked by cover
-   * Returns true if blocked, false if clear
-   */
   function _checkLineOfSight(x1, y1, x2, y2) {
-    // Simple raycast to check for cover
-    var dx = Math.abs(x2 - x1);
-    var dy = Math.abs(y2 - y1);
-    var sx = x1 < x2 ? 1 : -1;
-    var sy = y1 < y2 ? 1 : -1;
-    var err = dx - dy;
-
-    var x = x1;
-    var y = y1;
-
-    while (!(x === x2 && y === y2)) {
-      // Check if this tile blocks LOS
-      if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
-        var tile = _grid[y][x];
-        if (tile === TILES.COVER || tile === TILES.WALL) {
-          return true; // LOS blocked
-        }
-      }
-
-      var e2 = 2 * err;
-      if (e2 > -dy) {
-        err -= dy;
-        x += sx;
-      }
-      if (e2 < dx) {
-        err += dx;
-        y += sy;
-      }
+    if (typeof EnemyAISystem !== 'undefined') {
+      return EnemyAISystem.checkLineOfSight(x1, y1, x2, y2, _enemyAIContext());
     }
-
-    return false; // LOS clear
+    return false;
   }
 
   function _isInsideBounds(x, y) {
@@ -9845,1807 +9336,208 @@ _incrementPityTimers();
   }
 
   // ============================================================
-  // STR COMBAT SYSTEM (Simultaneous Turn Resolution)
+  // STR COMBAT SYSTEM — Delegated to StrCombatEngine module
   // ============================================================
 
-  /**
-   * Enter STR combat mode
-   * @param {Object} enemy - Enemy to engage in combat
-   * @param {String} trigger - How combat was triggered ('collision', 'player_attack', 'enemy_attack')
-   * @param {Object} card - Optional card used to initiate combat
-   */
+  /** Build context object for StrCombatEngine calls */
+  function _strCombatCtx() {
+    return {
+      player: _player,
+      enemies: _enemies,
+      grid: _grid,
+      items: _items,
+      npcs: _npcs,
+      tileMetadata: _tileMetadata,
+      floor: _floor,
+      bossFloorActive: _bossFloorActive,
+      activeBoss: _activeBoss,
+      bossDefeated: _bossDefeated,
+      bossEnvironment: _bossEnvironment,
+      playerInBox: _playerInBox,
+      TILES: TILES,
+      FLOOR_TYPES: FLOOR_TYPES,
+      AWARENESS_STATES: AWARENESS_STATES,
+      // Callbacks into monolith
+      handleEnemyDeath: _handleEnemyDeath,
+      handlePlayerDeath: _handlePlayerDeath,
+      scatterPostCombatNodes: _scatterPostCombatNodes,
+      spawnCurrency: _spawnCurrency,
+      renderGrid: _renderGrid,
+      getPrompt: getPrompt,
+      startGameLoop: _startGameLoop,
+      pauseGameLoop: _pauseGameLoop,
+      saveState: _saveState,
+      enableCombatZoom: _enableCombatZoom,
+      disableCombatZoom: _disableCombatZoom,
+      combatPhaseTooltip: _combatPhaseTooltip,
+      buildCountdownMessages: _buildCountdownMessages,
+      applyGroundEffectModifiers: _applyGroundEffectModifiers,
+      getFloorType: _getFloorType,
+      playerExitBox: _playerExitBox,
+      getNpcById: _getNpcById,
+      clearNpcGateZones: _clearNpcGateZones,
+      // Stat tracking callbacks
+      onEnemyKilled: function() { _enemiesKilled++; },
+      onDamageDealt: function(dmg) {
+        _totalDamageDealt += dmg;
+        if (dmg > _maxSingleHit) _maxSingleHit = dmg;
+      },
+      onDamageMitigated: function(amt) { _damageMitigated += amt; },
+      onBossDefeated: function() { _bossDefeated = true; }
+    };
+  }
+
+  /** Sync monolith shadow vars from StrCombatEngine module state */
+  function _syncCombatState() {
+    if (typeof StrCombatEngine === 'undefined') return;
+    _strCombatActive = StrCombatEngine.isActive();
+    _strCombatEnemy = StrCombatEngine.getEnemy();
+    _strCombatPhase = StrCombatEngine.getPhase();
+    _strCombatRound = StrCombatEngine.getRound();
+    _strCombatLog = StrCombatEngine.getLog();
+    _strCombatAdvantage = StrCombatEngine.getAdvantage();
+    _strCombatAmmoSpent = StrCombatEngine.getAmmoSpent();
+    _strCombatEntryPos = StrCombatEngine.getEntryPos();
+    _strCombatContext = StrCombatEngine.getContext();
+  }
+
   function _enterStrCombat(enemy, trigger, card) {
-    // Break passive items that break on combat
-    if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.checkAndBreakItems) {
-      PassiveItemsSystem.checkAndBreakItems('combat');
-    }
-
-    // Break-on-combat effect interpreter (e.g., Amazon Box breaks on first encounter)
-    try {
-      if (typeof GoneRogueEffectInterpreter !== 'undefined' && GoneRogueEffectInterpreter.shouldBreakOnCombat && GoneRogueEffectInterpreter.shouldBreakOnCombat()) {
-        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getActiveItem === 'function') {
-          var activeRef = GAMESTATE.getActiveItem();
-          if (activeRef && activeRef.id) {
-            GAMESTATE.clearActiveItem();
-            if (GoneRogueEffectInterpreter.clearBreakOnCombat) {
-              GoneRogueEffectInterpreter.clearBreakOnCombat();
-            }
-
-            if (typeof TooltipSystem !== 'undefined') {
-              TooltipSystem.showPersistent('💥 BOX BROKE ON COMBAT INITIATION', 1400);
-            }
-          }
-        }
-      }
-    } catch (e) {}
-
-    // Canonical: reset draw state for new combat via CSA (resets _lastKnownRound
-    // so per-turn draw resets work correctly across multiple combats).
-    try {
-      if (typeof CardStateAuthority !== 'undefined' && typeof CardStateAuthority.resetCombatDrawState === 'function') {
-        CardStateAuthority.resetCombatDrawState();
-      } else if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.resetCombatBackupDrawFlag === 'function') {
-        GAMESTATE.resetCombatBackupDrawFlag();
-      }
-    } catch (e0) {}
-
-    // Deployed box: exit if player is hiding inside one
-    if (_playerInBox) {
-      var _combatBox = _playerInBox;
-      if (_combatBox.quality === 'legendary') {
-        _playerExitBox('legendary_combat'); // legendary box survives
-        if (typeof TooltipSystem !== 'undefined') {
-          TooltipSystem.showPersistent('📦 Legendary box persists!', 1400);
-        }
-      } else {
-        _playerExitBox('combat'); // box is destroyed
-        if (typeof TooltipSystem !== 'undefined') {
-          TooltipSystem.showPersistent('💥 BOX DESTROYED ON COMBAT', 1400);
-        }
-      }
-    }
-
-    // Freeze realtime game loop
-    if (_gameLoopActive) {
-      _pauseGameLoop();
-    }
-
-    // Check for combat in no-combat zone trigger (bonfire floors)
-    var floorType = _getFloorType(_floor);
-    if (floorType === FLOOR_TYPES.BONFIRE && typeof SecretFloors !== 'undefined') {
-      var triggerResult = SecretFloors.triggerSecretFloor(
-        SecretFloors.TRIGGER_TYPES.COMBAT_NO_COMBAT_ZONE,
-        {
-          inNoCombatZone: true
-        }
-      );
-
-      if (triggerResult.success) {
-        // Secret floor will trigger on next elevator use
-        console.log('[GoneRogue] Combat in no-combat zone triggered secret floor');
-      }
-    }
-
-    // Track combat entry for mythic conditions
-    _player.combatEntries++;
-
-    // Initialize combat state
-    _strCombatActive = true;
-    _strCombatEnemy = enemy;
-    _strCombatEntryPos = { x: _player.x, y: _player.y };
-    _strCombatRound = 0;
-    _strCombatLog = [];
-    _strCombatAmmoSpent = 0; // Reset ammo tracking for this encounter
-    _strCombatPhase = 'countdown'; // Will transition to 'selecting' after countdown completes
-
-    // Phase 2: compute cardCount from hydrated deck (remaining non-stolen cards)
-    if (Array.isArray(enemy.cardDeck) && enemy.cardDeck.length) {
-      enemy.cardCount = enemy.cardDeck.filter(function(s) { return !s.stolen; }).length;
-    }
-
-    // Initialize enemy intent state if system available
-    if (typeof EnemyIntentSystem !== 'undefined') {
-      var enemyNextCard = _getEnemyAICard();
-      enemy.intentState = EnemyIntentSystem.createIntentState(enemy, enemyNextCard);
-    }
-
-    // Tooltip: Engaging enemy
-    if (typeof TooltipSystem !== 'undefined') {
-      TooltipSystem.showAction('combat-enter');
-    }
-
-    // Calculate advantage state
-    _strCombatAdvantage = _calculateAdvantage(_player, enemy, trigger);
-
-    // Phase tooltip: initiative
-    _combatPhaseTooltip('initiative', 'Advantage: ' + _strCombatAdvantage.toUpperCase(), 1800);
-
-    // Update intent based on advantage (ambush reaction)
-    if (typeof EnemyIntentSystem !== 'undefined' && _strCombatAdvantage === 'ambush') {
-      enemy.intentState.expression = EnemyIntentSystem.onCombatEvent(enemy, 'ambushed');
-    }
-
-    // Scan 3x3 tiles around player for ground effects and apply combat modifiers
-    _applyGroundEffectModifiers();
-
-    // Apply pet combat modifiers (Mega tier only)
-    if (typeof PetFollower !== 'undefined') {
-      var combatContext = {
-        playerAccuracy: 0,
-        playerCritMultiplier: 0,
-        enemyStatus: enemy.statusEffects || {},
-        petAutoStrike: false,
-        petStrikeDamage: 0
-      };
-
-      PetFollower.applyCombatModifiers(combatContext);
-
-      // Apply modifiers to player/combat state
-      if (combatContext.playerAccuracy > 0) {
-        _player.accuracyBonus = (_player.accuracyBonus || 0) + combatContext.playerAccuracy;
-        _strCombatLog.push('🐾 Pet grants +' + combatContext.playerAccuracy.toFixed(0) + '% accuracy!');
-      }
-      if (combatContext.playerCritMultiplier > 0) {
-        _player.critBonus = (_player.critBonus || 0) + combatContext.playerCritMultiplier;
-      }
-      if (combatContext.petAutoStrike) {
-        enemy.hp -= combatContext.petStrikeDamage;
-        _strCombatLog.push('🔫 Pet auto-strike! ' + combatContext.petStrikeDamage + ' damage!');
-      }
-    }
-
-    // Build countdown context messages (3/2/1 beat annotations)
-    _strCombatContext = _buildCountdownMessages(enemy, trigger);
-
-    // Add combat entry message with emoji
-    var advantageEmoji = _getAdvantageEmoji(_strCombatAdvantage);
-    _strCombatLog.push('⚔️  STR COMBAT INITIATED ' + advantageEmoji);
-    _strCombatLog.push('└─ Advantage: ' + _strCombatAdvantage.toUpperCase());
-    _strCombatLog.push('');
-
-    // Apply initiative rules
-    var playerGoesFirst = false;
-    if (_strCombatAdvantage === 'ambush') {
-      _strCombatLog.push('🎯 PLAYER AMBUSH! Free opening attack!');
-      playerGoesFirst = true;
-    } else if (_strCombatAdvantage === 'flanked' || _strCombatAdvantage === 'disadvantaged') {
-      _strCombatLog.push('⚠️  ENEMY HAS ADVANTAGE! They attack first!');
-      playerGoesFirst = false;
-    } else {
-      playerGoesFirst = _player.initiative >= (enemy.initiative || 0);
-    }
-
-    // Enable combat zoom/focus for both desktop and mobile
-    _enableCombatZoom();
-
-    // Execute first round
-    if (playerGoesFirst && trigger === 'player_attack' && card) {
-      // Player initiated with attack card
-      return _executeStrRound('player', card);
-    } else if (!playerGoesFirst) {
-      // Enemy goes first
-      return _executeStrRound('enemy');
-    } else {
-      // Show combat UI and wait for player action
-      return _showStrCombatUI();
+    if (typeof StrCombatEngine !== 'undefined') {
+      var result = StrCombatEngine.enterCombat(enemy, trigger, card, _strCombatCtx());
+      _syncCombatState();
+      return result;
     }
   }
 
-  /**
-   * Calculate advantage state based on positioning and awareness
-   */
   function _calculateAdvantage(player, enemy, trigger) {
-    var distance = _distanceBetween(player, enemy);
-    var bracket = _getDistanceBracket(distance);
-    var enemyAware = (enemy.awareness || 0) >= AWARENESS_STATES.SUSPICIOUS.min;
-    var playerInitiated = trigger === 'player_attack' || trigger === 'collision';
-    var enemyInitiated = trigger === 'enemy_attack' || trigger === 'enemy_sighting' || trigger === 'enemy_projectile';
-
-    // Player Ambush: attacking from stealth or behind at melee
-    if (playerInitiated && bracket === 'melee' && !enemyAware) {
-      return 'ambush';
+    if (typeof StrCombatEngine !== 'undefined') {
+      return StrCombatEngine.calculateAdvantage(player, enemy, trigger, _strCombatCtx());
     }
-
-    // Check if player is attacking from behind (flanking)
-    var isFlanking = _checkFlanking(player, enemy);
-    if (playerInitiated && isFlanking) {
-      return 'ambush';
-    }
-
-    // Check if player is flanked/disadvantaged
-    var playerFlanked = _checkFlanking(enemy, player);
-    if (enemyInitiated && bracket === 'melee' && playerFlanked) {
-      return 'flanked';
-    }
-
-    // Enemy alerted = player disadvantaged
-    if (enemyInitiated && enemy.awareness >= 70) {
-      return 'disadvantaged';
-    }
-
-    // Default: neutral
     return 'neutral';
   }
 
-  /**
-   * Check if attacker is flanking target based on facing and approach direction
-   */
   function _checkFlanking(attacker, target) {
-    var opposites = {
-      'north': 'south',
-      'south': 'north',
-      'east': 'west',
-      'west': 'east'
-    };
-
-    var targetFacing = target.orientation || target.lastMoveDirection;
-    if (!targetFacing) return false;
-
-    // Approach direction: use attacker last move if present, otherwise relative position
-    var approachDirection = attacker.lastMoveDirection;
-    if (!approachDirection && typeof attacker.x === 'number' && typeof target.x === 'number') {
-      var dx = target.x - attacker.x;
-      var dy = target.y - attacker.y;
-      if (Math.abs(dx) > Math.abs(dy)) {
-        approachDirection = dx > 0 ? 'east' : 'west';
-      } else if (Math.abs(dy) > 0) {
-        approachDirection = dy > 0 ? 'south' : 'north';
-      }
+    if (typeof StrCombatEngine !== 'undefined') {
+      return StrCombatEngine.checkFlanking(attacker, target);
     }
-
-    if (!approachDirection) return false;
-
-    var opposite = opposites[targetFacing];
-    return approachDirection === opposite;
+    return false;
   }
 
-  /**
-   * Get emoji for advantage state
-   */
   function _getAdvantageEmoji(advantage) {
-    switch (advantage) {
-      case 'ambush': return '🎯';
-      case 'neutral': return '⚔️';
-      case 'disadvantaged': return '⚠️';
-      case 'flanked': return '❌';
-      default: return '⚔️';
+    if (typeof StrCombatEngine !== 'undefined') {
+      return StrCombatEngine.getAdvantageEmoji(advantage);
     }
+    return '⚔️';
   }
 
   function _distanceBetween(a, b) {
+    if (typeof StrCombatEngine !== 'undefined') {
+      return StrCombatEngine.distanceBetween(a, b);
+    }
     return Math.abs((a.x || 0) - (b.x || 0)) + Math.abs((a.y || 0) - (b.y || 0));
   }
 
   function _getDistanceBracket(distance) {
+    if (typeof StrCombatEngine !== 'undefined') {
+      return StrCombatEngine.getDistanceBracket(distance);
+    }
     if (distance <= 1) return 'melee';
     if (distance <= 3) return 'close';
     if (distance <= 6) return 'mid';
     return 'far';
   }
 
-  /**
-   * Execute a round of STR combat with simultaneous resolution
-   * @param {Object} playerCard - Card player is using
-   * @param {Object} enemyCard - Card enemy is using (from AI)
-   */
   function _executeSimultaneousRound(playerCard, enemyCard) {
-    _strCombatPhase = 'resolving';
-    _strCombatRound++;
-
-    var actions = [];
-
-    // Create player action
-    if (playerCard) {
-      var category = typeof CardSystem !== 'undefined' ? CardSystem.getCardCategory(playerCard) : 'attack';
-      var priority = typeof CardSystem !== 'undefined' ? CardSystem.getCardPriority(category) : 4;
-      var speed = (playerCard.stats && playerCard.stats.speed) || _player.initiative || 0;
-
-      actions.push({
-        actor: 'player',
-        card: playerCard,
-        category: category,
-        priority: priority,
-        speed: speed
-      });
+    if (typeof StrCombatEngine !== 'undefined') {
+      var result = StrCombatEngine.executeSimultaneousRound(playerCard, enemyCard, _strCombatCtx());
+      _syncCombatState();
+      return result;
     }
-
-    // Create enemy action (simplified AI)
-    if (enemyCard) {
-      var enemyCategory = typeof CardSystem !== 'undefined' ? CardSystem.getCardCategory(enemyCard) : 'attack';
-      var enemyPriority = typeof CardSystem !== 'undefined' ? CardSystem.getCardPriority(enemyCategory) : 4;
-      var enemySpeed = (enemyCard.stats && enemyCard.stats.speed) || _strCombatEnemy.initiative || 0;
-
-      actions.push({
-        actor: 'enemy',
-        card: enemyCard,
-        category: enemyCategory,
-        priority: enemyPriority,
-        speed: enemySpeed
-      });
-    }
-
-    // Sort by priority (lower priority number executes first), then by speed (higher speed breaks ties)
-    actions.sort(function(a, b) {
-      if (a.priority !== b.priority) {
-        return a.priority - b.priority; // Lower priority executes first
-      }
-      return b.speed - a.speed; // Higher speed breaks ties
-    });
-
-    // Execute actions in order
-    var lines = [];
-    lines.push('═══ ROUND ' + _strCombatRound + ' RESOLUTION ═══');
-    lines.push('');
-
-    for (var i = 0; i < actions.length; i++) {
-      var action = actions[i];
-      var result = _resolveAction(action);
-
-      if (result && result.lines) {
-        lines = lines.concat(result.lines);
-      }
-
-      // Check for combat end conditions
-      if (_strCombatEnemy.hp <= 0) {
-        lines.push('');
-        lines.push('💀 ENEMY DEFEATED!');
-        _enemiesKilled++; // Track for highscore
-        var exitResult = _exitStrCombat('player_victory');
-        return {
-          lines: lines.concat(exitResult.lines || []),
-          stayActive: exitResult.stayActive
-        };
-      }
-
-      if (_player.hp <= 0) {
-        lines.push('');
-        lines.push('💀 YOU HAVE BEEN DEFEATED...');
-        return _handlePlayerDeath('combat_damage', { enemy: _strCombatEnemy });
-      }
-    }
-
-    // Continue combat
-    lines.push('');
-    lines.push('═══════════════════════════');
-    lines.push('');
-
-    // Update enemy intent for next round
-    if (typeof EnemyIntentSystem !== 'undefined' && _strCombatEnemy.intentState) {
-      var nextEnemyCard = _getEnemyAICard();
-      _strCombatEnemy.intentState = EnemyIntentSystem.createIntentState(_strCombatEnemy, nextEnemyCard);
-    }
-
-    return _showStrCombatUIWithLog(lines);
   }
 
-  /**
-   * Execute a multi-card combat round (player plays multiple cards, enemy plays one)
-   * @param {Array} playerCards - Array of cards player is using
-   */
   function _executeMultiCardRound(playerCards) {
-    _strCombatPhase = 'resolving';
-    _strCombatRound++;
-
-    var actions = [];
-
-    // Create player actions for each selected card
-    for (var i = 0; i < playerCards.length; i++) {
-      var card = playerCards[i];
-      var category = typeof CardSystem !== 'undefined' ? CardSystem.getCardCategory(card) : 'attack';
-      var priority = typeof CardSystem !== 'undefined' ? CardSystem.getCardPriority(category) : 4;
-      var speed = (card.stats && card.stats.speed) || _player.initiative || 0;
-
-      actions.push({
-        actor: 'player',
-        card: card,
-        category: category,
-        priority: priority,
-        speed: speed
-      });
+    if (typeof StrCombatEngine !== 'undefined') {
+      var result = StrCombatEngine.executeMultiCardRound(playerCards, _strCombatCtx());
+      _syncCombatState();
+      return result;
     }
-
-    // Get enemy AI card
-    var enemyCard = _getEnemyAICard();
-    if (enemyCard) {
-      var enemyCategory = typeof CardSystem !== 'undefined' ? CardSystem.getCardCategory(enemyCard) : 'attack';
-      var enemyPriority = typeof CardSystem !== 'undefined' ? CardSystem.getCardPriority(enemyCategory) : 4;
-      var enemySpeed = (enemyCard.stats && enemyCard.stats.speed) || _strCombatEnemy.initiative || 0;
-
-      actions.push({
-        actor: 'enemy',
-        card: enemyCard,
-        category: enemyCategory,
-        priority: enemyPriority,
-        speed: enemySpeed
-      });
-    }
-
-    // Sort by priority (lower executes first), then by speed (higher breaks ties)
-    actions.sort(function(a, b) {
-      if (a.priority !== b.priority) {
-        return a.priority - b.priority;
-      }
-      return b.speed - a.speed;
-    });
-
-    // Execute actions in order
-    var lines = [];
-    lines.push('═══ ROUND ' + _strCombatRound + ' RESOLUTION ═══');
-    lines.push('💥 MULTI-CARD COMBO: ' + playerCards.length + ' cards');
-    lines.push('');
-
-    for (var j = 0; j < actions.length; j++) {
-      var action = actions[j];
-      var result = _resolveAction(action);
-
-      if (result && result.lines) {
-        lines = lines.concat(result.lines);
-      }
-
-      // Check for combat end conditions
-      if (_strCombatEnemy.hp <= 0) {
-        lines.push('');
-        lines.push('💀 ENEMY DEFEATED!');
-        _enemiesKilled++;
-        var exitResult = _exitStrCombat('player_victory');
-        return {
-          lines: lines.concat(exitResult.lines || []),
-          stayActive: exitResult.stayActive
-        };
-      }
-
-      if (_player.hp <= 0) {
-        lines.push('');
-        lines.push('💀 YOU HAVE BEEN DEFEATED...');
-        return _handlePlayerDeath('combat_damage', { enemy: _strCombatEnemy });
-      }
-    }
-
-    // Continue combat
-    lines.push('');
-    lines.push('═══════════════════════════');
-    lines.push('');
-
-    // Update enemy intent for next round
-    if (typeof EnemyIntentSystem !== 'undefined' && _strCombatEnemy.intentState) {
-      var nextEnemyCard = _getEnemyAICard();
-      _strCombatEnemy.intentState = EnemyIntentSystem.createIntentState(_strCombatEnemy, nextEnemyCard);
-    }
-
-    return _showStrCombatUIWithLog(lines);
   }
 
-  /**
-   * Resolve a single action in the priority queue
-   * @param {Object} action - Action object with actor, card, category, priority, speed
-   */
-  function _resolveAction(action) {
-    var lines = [];
-    var actor = action.actor === 'player' ? _player : _strCombatEnemy;
-    var target = action.actor === 'player' ? _strCombatEnemy : _player;
-    var card = action.card;
-    var category = action.category;
-
-    // Display action header with priority indicator
-    var priorityLabel = {
-      interrupt: '🚨 INTERRUPT',
-      defense: '🛡️  DEFENSE',
-      movement: '🏃 MOVEMENT',
-      attack: '⚔️  ATTACK',
-      setup: '🔧 SETUP'
-    }[category] || '❓ ACTION';
-
-    var actorName = action.actor === 'player' ? 'PLAYER' : 'ENEMY';
-
-    // Add enemy intent expression if available
-    var expressionGlyph = '';
-    if (action.actor === 'enemy' && typeof EnemyIntentSystem !== 'undefined' && _strCombatEnemy.intentState) {
-      expressionGlyph = ' [' + _strCombatEnemy.intentState.expression.glyph + ']';
-    }
-
-    lines.push(priorityLabel + ' — ' + actorName + expressionGlyph + ': ' + card.emoji + ' ' + card.name);
-
-    // Resolve based on category
-    switch (category) {
-      case 'interrupt':
-        lines = lines.concat(_resolveInterruptAction(actor, target, card));
-        break;
-      case 'defense':
-        lines = lines.concat(_resolveDefenseAction(actor, target, card));
-        break;
-      case 'movement':
-        lines = lines.concat(_resolveMovementAction(actor, target, card));
-        break;
-      case 'attack':
-        lines = lines.concat(_resolveAttackAction(actor, target, card));
-        break;
-      case 'setup':
-        lines = lines.concat(_resolveSetupAction(actor, target, card));
-        break;
-      default:
-        lines.push('└─ Unknown action type');
-    }
-
-    lines.push('');
-    return { lines: lines };
-  }
-
-  /**
-   * Resolve interrupt action
-   */
-  function _resolveInterruptAction(actor, target, card) {
-    var lines = [];
-
-    // Track last card type for boss mythic conditions
-    if (actor === _player) {
-      _player.lastCardType = card.type || card.name;
-    }
-
-    // Boss-specific card interactions for interrupt cards
-    if (_bossFloorActive && _activeBoss && actor === _player) {
-      var bossInteraction = _handleBossCardInteraction(card, target);
-      if (bossInteraction.handled) {
-        return bossInteraction.lines;
-      }
-    }
-
-    // Interrupt actions execute before other actions
-    if (card.name === 'Dive for Cover') {
-      var defense = card.stats.defense || 5;
-      var evasion = card.stats.evasion || 3;
-      actor.tempDefense = (actor.tempDefense || 0) + defense;
-      actor.tempEvasion = (actor.tempEvasion || 0) + evasion;
-      lines.push('├─ Gained +' + defense + ' defense, +' + evasion + ' evasion');
-    } else if (card.name === 'Jam Weapon') {
-      target.weaponJammed = true;
-      lines.push('├─ Target\'s weapon jammed! Next attack canceled');
-    } else if (card.name === 'Overwatch Shot') {
-      // Immediate attack with bonus
-      var damage = card.stats.damage || 3;
-      target.hp -= damage;
-      lines.push('├─ Dealt ' + damage + ' damage (preemptive strike)');
-      lines.push('└─ Target HP: ' + Math.max(0, target.hp) + '/' + (target.maxHp || 5));
-    } else {
-      lines.push('└─ Interrupt executed');
-    }
-
-    return lines;
-  }
-
-  /**
-   * Resolve defense action
-   */
-  function _resolveDefenseAction(actor, target, card) {
-    var lines = [];
-
-    var defense = card.stats.defense || 0;
-    var evasion = card.stats.evasion || 0;
-
-    if (defense > 0) {
-      actor.tempDefense = (actor.tempDefense || 0) + defense;
-      lines.push('├─ Gained +' + defense + ' defense');
-    }
-    if (evasion > 0) {
-      actor.tempEvasion = (actor.tempEvasion || 0) + evasion;
-      lines.push('├─ Gained +' + evasion + ' evasion');
-    }
-
-    var stealth = card.stats.stealth || 0;
-    if (stealth > 0) {
-      actor.stealth = Math.min((actor.maxStealth || 5), (actor.stealth || 0) + stealth);
-      lines.push('└─ Stealth increased');
-    }
-
-    return lines;
-  }
-
-  /**
-   * Resolve movement action
-   */
-  function _resolveMovementAction(actor, target, card) {
-    var lines = [];
-
-    var distance = card.stats.distance || 0;
-    var evasion = card.stats.evasion || 0;
-
-    if (distance !== 0) {
-      // Movement affects distance (abstracted in STR combat)
-      lines.push('├─ Position adjusted (' + (distance > 0 ? 'closing' : 'retreating') + ')');
-    }
-
-    if (evasion > 0) {
-      actor.tempEvasion = (actor.tempEvasion || 0) + evasion;
-      lines.push('└─ Gained +' + evasion + ' evasion from movement');
-    }
-
-    return lines;
-  }
-
-  /**
-   * Resolve attack action
-   */
-  function _resolveAttackAction(actor, target, card) {
-    var lines = [];
-
-    // Track last card type for boss mythic conditions
-    if (actor === _player) {
-      _player.lastCardType = card.type || card.name;
-    }
-
-    // Check if weapon is jammed
-    if (actor.weaponJammed) {
-      lines.push('└─ Attack failed! Weapon is jammed');
-      actor.weaponJammed = false; // Clear jam
-      return lines;
-    }
-
-    // Boss-specific card interactions
-    if (_bossFloorActive && _activeBoss && actor === _player) {
-      var bossInteraction = _handleBossCardInteraction(card, target);
-      if (bossInteraction.handled) {
-        return bossInteraction.lines;
-      }
-    }
-
-    // Calculate hit with target's temp evasion
-    var advantage = actor === _player ? _strCombatAdvantage :
-                    (_strCombatAdvantage === 'ambush' ? 'flanked' :
-                     _strCombatAdvantage === 'flanked' ? 'ambush' : 'neutral');
-
-    var hitResult = _calculateHit(actor, target, advantage);
-    var evasionBonus = (target.tempEvasion || 0) * 5; // Each evasion point = 5% miss chance
-    hitResult.target += evasionBonus;
-
-    // Check if attack hit (considering evasion)
-    if (!hitResult.hit || hitResult.roll < hitResult.target) {
-      lines.push('├─ MISS! (Roll: ' + hitResult.roll + ' vs ' + hitResult.target + ')');
-      if (evasionBonus > 0) {
-        lines.push('└─ Target evaded with +' + evasionBonus + '% evasion bonus');
-      }
-      return lines;
-    }
-
-    // Calculate damage reduced by defense
-    var damageResult = _calculateDamage(actor, target, advantage, card, hitResult.crit);
-    var defenseReduction = (target.tempDefense || 0);
-    var finalDamage = Math.max(1, damageResult.damage - defenseReduction);
-
-    target.hp -= finalDamage;
-
-    // Update enemy intent expression when taking damage
-    if (target === _strCombatEnemy && typeof EnemyIntentSystem !== 'undefined' && _strCombatEnemy.intentState) {
-      _strCombatEnemy.intentState.expression = EnemyIntentSystem.onCombatEvent(_strCombatEnemy, 'took_damage');
-    }
-
-    // Track damage for highscore (only player damage to enemies)
-    if (actor === _player && target === _strCombatEnemy) {
-      _totalDamageDealt += finalDamage;
-      if (finalDamage > _maxSingleHit) {
-        _maxSingleHit = finalDamage;
-      }
-    }
-    // Track damage mitigation (only enemy attacks on player)
-    if (actor === _strCombatEnemy && target === _player && defenseReduction > 0) {
-      _damageMitigated += defenseReduction;
-    }
-
-    var critEmoji = hitResult.crit ? ' 💥 CRIT!' : '';
-    lines.push('├─ HIT!' + critEmoji + ' (Roll: ' + hitResult.roll + ' vs ' + hitResult.target + ')');
-    lines.push('├─ Damage: ' + damageResult.damage + (defenseReduction > 0 ? ' - ' + defenseReduction + ' defense' : ''));
-    lines.push('└─ Final: ' + finalDamage + ' damage → Target HP: ' + Math.max(0, target.hp) + '/' + (target.maxHp || 5));
-
-    return lines;
-  }
-
-  /**
-   * Resolve setup/utility action
-   */
-  function _resolveSetupAction(actor, target, card) {
-    var lines = [];
-
-    // Track last card type for boss mythic conditions
-    if (actor === _player) {
-      _player.lastCardType = card.type || card.name;
-    }
-
-    // Boss-specific card interactions for setup cards
-    if (_bossFloorActive && _activeBoss && actor === _player) {
-      var bossInteraction = _handleBossCardInteraction(card, target);
-      if (bossInteraction.handled) {
-        return bossInteraction.lines;
-      }
-    }
-
-    var hp = card.stats.hp || 0;
-    if (hp > 0) {
-      actor.hp = Math.min((actor.maxHp || 10), actor.hp + hp);
-      lines.push('├─ Healed ' + hp + ' HP → ' + actor.hp + '/' + (actor.maxHp || 10));
-    }
-
-    // Use camelCase stat names
-    var attackBoost = card.stats.attackBoost || card.stats.attack_boost || 0;
-    if (attackBoost > 0) {
-      actor.tempAttackBoost = (actor.tempAttackBoost || 0) + attackBoost;
-      lines.push('├─ Gained +' + attackBoost + ' attack power (next turn)');
-    }
-
-    var speedBoost = card.stats.speedBoost || card.stats.speed_boost || 0;
-    if (speedBoost > 0) {
-      actor.tempSpeedBoost = (actor.tempSpeedBoost || 0) + speedBoost;
-      lines.push('├─ Gained +' + speedBoost + ' speed (next turn)');
-    }
-
-    var accuracyBoost = card.stats.accuracyBoost || card.stats.accuracy_boost || 0;
-    if (accuracyBoost > 0) {
-      actor.tempAccuracyBoost = (actor.tempAccuracyBoost || 0) + accuracyBoost;
-      lines.push('└─ Gained +' + accuracyBoost + '% accuracy (next turn)');
-    }
-
-    return lines;
-  }
-
-  /**
-   * Handle boss-specific card interactions
-   */
-  function _handleBossCardInteraction(card, target) {
-    var lines = [];
-    var handled = false;
-
-    if (!_activeBoss) {
-      return { handled: false, lines: [] };
-    }
-
-    var cardName = card.name;
-    var gameState = {
-      player: _player,
-      enemy: target,
-      grid: _grid,
-      bossEnvironment: _bossEnvironment
-    };
-
-    // LURE card interaction
-    if (cardName === 'Lure') {
-      handled = true;
-      lines.push('├─ Using LURE on boss...');
-      var playerAction = {
-        type: 'LURE',
-        target: 'TRAIN_PATH',
-        card: card
-      };
-      var exploitResult = _activeBoss.checkExploit(playerAction, gameState);
-      if (exploitResult.exploited) {
-        lines.push('├─ ' + exploitResult.message);
-        if (exploitResult.damage) {
-          target.hp = Math.max(0, target.hp - exploitResult.damage);
-          lines.push('└─ Boss HP: ' + target.hp + '/' + _activeBoss.maxHp);
-        }
-      } else {
-        lines.push('└─ Lure had no effect (boss not in position)');
-      }
-    }
-
-    // GRENADE card interaction
-    else if (cardName === 'Grenade') {
-      handled = true;
-      lines.push('├─ Throwing Grenade at boss environment...');
-      var playerAction = {
-        type: 'Grenade',
-        targetX: target.x || 20,
-        targetY: target.y || 10,
-        card: card
-      };
-      var exploitResult = _activeBoss.checkExploit(playerAction, gameState);
-      if (exploitResult.exploited) {
-        lines.push('├─ ' + exploitResult.message);
-        if (exploitResult.shieldDown || exploitResult.bunkerDown) {
-          // Environmental damage - apply some damage to boss
-          var damage = card.stats.damage || 6;
-          target.hp = Math.max(0, target.hp - damage);
-          lines.push('└─ Boss HP: ' + target.hp + '/' + _activeBoss.maxHp);
-        }
-      } else {
-        // Standard grenade damage
-        var damage = card.stats.damage || 6;
-        target.hp = Math.max(0, target.hp - damage);
-        lines.push('├─ Grenade explodes! ' + damage + ' damage');
-        lines.push('└─ Boss HP: ' + target.hp + '/' + _activeBoss.maxHp);
-      }
-    }
-
-    // JAMMER card interaction
-    else if (cardName === 'Jammer') {
-      handled = true;
-      lines.push('├─ Activating JAMMER on boss systems...');
-      var playerAction = {
-        type: 'JAMMER',
-        card: card
-      };
-      var exploitResult = _activeBoss.checkExploit(playerAction, gameState);
-      if (exploitResult.exploited) {
-        lines.push('├─ ' + exploitResult.message);
-        lines.push('└─ Boss systems disrupted!');
-      } else {
-        target.weaponJammed = true;
-        lines.push('└─ Boss weapon systems jammed for 1 turn');
-      }
-    }
-
-    // VIRUS card interaction
-    else if (cardName === 'Virus') {
-      handled = true;
-      lines.push('├─ Uploading VIRUS to boss systems...');
-      var damage = card.stats.damage || 2;
-      target.hp = Math.max(0, target.hp - damage);
-      target.virusDOT = (card.stats.dot || 3);
-      target.virusDuration = (card.stats.duration || 3);
-      lines.push('├─ Initial damage: ' + damage);
-      lines.push('├─ Virus will deal ' + target.virusDOT + ' damage for ' + target.virusDuration + ' turns');
-      lines.push('└─ Boss HP: ' + target.hp + '/' + _activeBoss.maxHp);
-    }
-
-    // HIGH_GROUND card interaction
-    else if (cardName === 'High Ground') {
-      handled = true;
-      lines.push('├─ Taking HIGH GROUND position...');
-      var playerAction = {
-        type: 'HIGH_GROUND',
-        target: 'CARRIER',
-        card: card
-      };
-      var exploitResult = _activeBoss.checkExploit(playerAction, gameState);
-      if (exploitResult.exploited && exploitResult.bypassShield) {
-        lines.push('├─ ' + exploitResult.message);
-        var damage = exploitResult.damage || (card.stats.damage || 4) * 2;
-        target.hp = Math.max(0, target.hp - damage);
-        lines.push('└─ Piercing damage: ' + damage + ' → Boss HP: ' + target.hp + '/' + _activeBoss.maxHp);
-      } else {
-        var damage = card.stats.damage || 4;
-        target.hp = Math.max(0, target.hp - damage);
-        lines.push('├─ Piercing shot: ' + damage + ' damage');
-        lines.push('└─ Boss HP: ' + target.hp + '/' + _activeBoss.maxHp);
-      }
-    }
-
-    // LOGIC_HACK card interaction
-    else if (cardName === 'Logic Hack') {
-      handled = true;
-      lines.push('├─ Executing LOGIC HACK on boss systems...');
-      var targetNode = Math.floor(_rng() * 8); // Random node 0-7
-      var playerAction = {
-        type: 'LOGIC_HACK',
-        targetNode: targetNode,
-        card: card
-      };
-      var exploitResult = _activeBoss.checkExploit(playerAction, gameState);
-      if (exploitResult.exploited) {
-        lines.push('├─ ' + exploitResult.message);
-        lines.push('└─ Boss defenses manipulated!');
-      } else {
-        lines.push('└─ Hack had no effect (wrong boss type)');
-      }
-    }
-
-    // MELEE_STRIKE card interaction
-    else if (cardName === 'Melee Strike') {
-      // Track as melee for mythic conditions
-      _player.lastCardType = 'MELEE';
-      // Let it fall through to standard attack resolution
-      return { handled: false, lines: [] };
-    }
-
-    // CAMERA card interaction (Sniper Boss — accumulates accuracy penalties)
-    else if (cardName === 'Camera') {
-      handled = true;
-      lines.push('├─ 📷 Photographing boss position...');
-      var exploitResult = _activeBoss.checkExploit({ type: 'CAMERA', card: card }, gameState);
-      if (exploitResult.exploited) {
-        lines.push('├─ ' + exploitResult.message);
-        if (exploitResult.atMaxPenalty) {
-          lines.push('└─ ⚡ Boss fully exposed — attack now!');
-        }
-      } else {
-        lines.push('└─ Camera has no effect on this boss type.');
-      }
-    }
-
-    // FRAGMENT SHOWER card interaction (Asteroids Boss — clears incoming hazards)
-    else if (cardName === 'Fragment Shower') {
-      handled = true;
-      lines.push('├─ 💫 Launching fragment shower...');
-      var playerAction = {
-        type: 'FRAGMENT_SHOWER',
-        targetX: target ? (target.x || 20) : 20,
-        targetY: target ? (target.y || 10) : 10,
-        card: card
-      };
-      var exploitResult = _activeBoss.checkExploit(playerAction, gameState);
-      var damage = (card.stats && card.stats.damage) || 3;
-      if (exploitResult.exploited) {
-        lines.push('├─ ' + exploitResult.message);
-      }
-      if (target) {
-        target.hp = Math.max(0, target.hp - damage);
-        lines.push('└─ ' + damage + ' damage → Boss HP: ' + target.hp + '/' + _activeBoss.maxHp);
-      }
-    }
-
-    // SUPPRESSION FIRE card interaction (Tower Offense Boss — suppresses volleys)
-    else if (cardName === 'Suppression Fire') {
-      handled = true;
-      lines.push('├─ 🔥 Opening suppression fire...');
-      var exploitResult = _activeBoss.checkExploit({ type: 'SUPPRESSION_FIRE', card: card }, gameState);
-      var damage = (card.stats && card.stats.damage) || 2;
-      if (exploitResult.exploited) {
-        lines.push('├─ ' + exploitResult.message);
-      }
-      if (target) {
-        target.hp = Math.max(0, target.hp - damage);
-        lines.push('└─ ' + damage + ' damage → Boss HP: ' + target.hp + '/' + _activeBoss.maxHp);
-      }
-    }
-
-    return { handled: handled, lines: lines };
-  }
-
-  /**
-   * Show STR combat UI with additional log lines
-   */
-  function _showStrCombatUIWithLog(logLines) {
-    // Transition from resolving → post_resolve → selecting
-    _strCombatPhase = 'post_resolve';
-    // Allow a brief window for the integration poll to detect post_resolve,
-    // then settle into selecting for the next round.
-    setTimeout(function() { if (_strCombatActive) _strCombatPhase = 'selecting'; }, 600);
-    _combatPhaseTooltip('resolution');
-    var lines = logLines || [];
-
-    // Add current combat state
-    lines.push('╔═══════════════════════════╗');
-    lines.push('║  PLAYER: ' + _player.hp + '/' + (_player.maxHp || 10) + ' HP         ║');
-    lines.push('║  ENEMY:  ' + _strCombatEnemy.hp + '/' + (_strCombatEnemy.maxHp || 5) + ' HP         ║');
-    lines.push('╚═══════════════════════════╝');
-    lines.push('');
-    lines.push('🃏 Use attack card (swipe/click) to strike');
-    lines.push('🛡️  Use defense card to defend');
-    lines.push('🏃 Type FLEE to attempt escape');
-    lines.push('');
-
-    // Clear temp effects for next round
-    _player.tempDefense = 0;
-    _player.tempEvasion = 0;
-    _strCombatEnemy.tempDefense = 0;
-    _strCombatEnemy.tempEvasion = 0;
-
-    // Show grid underneath
-    lines = lines.concat(_renderGrid());
-
-    // Trigger header flash if UI exists
-    _triggerCombatFlash();
-
-    return {
-      lines: lines,
-      prompt: getPrompt(),
-      stayActive: true
-    };
-  }
-
-  /**
-   * Simple enemy AI: select a card to use
-   * @returns {Object} Simulated enemy card
-   */
-  function _getEnemyAICard() {
-    // Simple AI: choose based on HP and situation
-    var enemy = _strCombatEnemy;
-    var enemyHpPercent = (enemy.hp / (enemy.maxHp || 5)) * 100;
-
-    // If low HP, prefer defense/healing
-    if (enemyHpPercent < 30) {
-      var roll = _rng();
-      if (roll < 0.4 && typeof CardSystem !== 'undefined') {
-        // Try to defend
-        return CardSystem.rollCard('Dodge');
-      } else if (roll < 0.7 && typeof CardSystem !== 'undefined') {
-        return CardSystem.rollCard('Prone');
-      }
-    }
-
-    // If healthy, prefer attacks
-    if (enemyHpPercent > 50) {
-      var attackRoll = _rng();
-      if (typeof CardSystem !== 'undefined') {
-        if (attackRoll < 0.5) {
-          return CardSystem.rollCard('Single Shot');
-        } else if (attackRoll < 0.8) {
-          return CardSystem.rollCard('Burst Shot');
-        } else {
-          return CardSystem.rollCard('Overwatch');
-        }
-      }
-    }
-
-    // Default: basic attack
-    if (typeof CardSystem !== 'undefined') {
-      return CardSystem.rollCard('Single Shot');
-    }
-
-    // Fallback: create a basic attack card
-    return {
-      name: 'Basic Attack',
-      emoji: '🔫',
-      type: 'attack',
-      category: 'attack',
-      stats: { damage: 2, accuracy: 70, energy: 1, speed: 2 }
-    };
-  }
-
-  /**
-   * Execute a round of STR combat (legacy single-action system)
-   */
   function _executeStrRound(initiator, card) {
-    _strCombatPhase = 'resolving';
-    _strCombatRound++;
-
-    if (initiator === 'player') {
-      return _playerStrAttack(card);
-    } else {
-      return _enemyStrAttack();
+    if (typeof StrCombatEngine !== 'undefined') {
+      var result = StrCombatEngine.executeRound(initiator, card, _strCombatCtx());
+      _syncCombatState();
+      return result;
     }
   }
 
-  /**
-   * Player attack in STR combat
-   */
   function _playerStrAttack(card) {
-    var enemy = _strCombatEnemy;
-    if (!enemy || enemy.hp <= 0) {
-      return _exitStrCombat('player_victory');
+    if (typeof StrCombatEngine !== 'undefined') {
+      var result = StrCombatEngine.playerAttack(card, _strCombatCtx());
+      _syncCombatState();
+      return result;
     }
-
-    // Track ammo spent if card has ammo cost
-    if (card && card.resourceCost && card.resourceCost.ammo) {
-      _strCombatAmmoSpent += card.resourceCost.ammo;
-    } else if (card && card.baseStats && card.baseStats.ammo) {
-      // Legacy ammo tracking from baseStats
-      _strCombatAmmoSpent += card.baseStats.ammo;
-    }
-
-    // Calculate hit
-    var hitResult = _calculateHit(_player, enemy, _strCombatAdvantage);
-
-    if (!hitResult.hit) {
-      _strCombatLog.push('💨 PLAYER MISS!');
-      _strCombatLog.push('');
-
-      // Enemy counter-attack
-      return _enemyStrAttack();
-    }
-
-    // Calculate damage
-    var damageResult = _calculateDamage(_player, enemy, _strCombatAdvantage, card, hitResult.crit);
-    enemy.hp -= damageResult.damage;
-
-    // Log attack
-    var critEmoji = hitResult.crit ? ' 💥 CRIT!' : '';
-    _strCombatLog.push('⚡ PLAYER ATTACK' + critEmoji);
-    _strCombatLog.push('├─ Hit: ' + (hitResult.roll || 0) + ' vs ' + (hitResult.target || 0));
-    _strCombatLog.push('└─ Damage: ' + damageResult.damage + ' HP');
-    if (damageResult.bonuses.length > 0) {
-      _strCombatLog.push('   └─ Bonuses: ' + damageResult.bonuses.join(', '));
-    }
-    _strCombatLog.push('');
-
-    // Check if enemy defeated
-    if (enemy.hp <= 0) {
-      _strCombatLog.push('💀 ENEMY DEFEATED!');
-      return _exitStrCombat('player_victory');
-    }
-
-    // Enemy counter-attack
-    return _enemyStrAttack();
   }
 
-  /**
-   * Enemy attack in STR combat
-   */
   function _enemyStrAttack() {
-    var enemy = _strCombatEnemy;
-    if (!enemy || enemy.hp <= 0) {
-      return _exitStrCombat('player_victory');
+    if (typeof StrCombatEngine !== 'undefined') {
+      var result = StrCombatEngine.enemyAttack(_strCombatCtx());
+      _syncCombatState();
+      return result;
     }
-
-    // Calculate hit (reverse advantage for enemy)
-    var reverseAdvantage = _strCombatAdvantage === 'flanked' ? 'ambush' :
-                          _strCombatAdvantage === 'ambush' ? 'flanked' : 'neutral';
-    var hitResult = _calculateHit(enemy, _player, reverseAdvantage);
-
-    if (!hitResult.hit) {
-      _strCombatLog.push('💨 ENEMY MISS!');
-      _strCombatLog.push('');
-      return _showStrCombatUI();
-    }
-
-    // Calculate damage
-    var damageResult = _calculateDamage(enemy, _player, reverseAdvantage, null, hitResult.crit);
-    _player.hp -= damageResult.damage;
-
-    // Log attack
-    var critEmoji = hitResult.crit ? ' 💥 CRIT!' : '';
-    _strCombatLog.push('🗡️  ENEMY ATTACK' + critEmoji);
-    _strCombatLog.push('├─ Hit: ' + (hitResult.roll || 0) + ' vs ' + (hitResult.target || 0));
-    _strCombatLog.push('└─ Damage: ' + damageResult.damage + ' HP');
-    _strCombatLog.push('');
-
-    // Check if player defeated
-    if (_player.hp <= 0) {
-      _strCombatLog.push('💀 YOU HAVE BEEN DEFEATED...');
-
-      // Medbed: passive death-prevention / soft reset
-      if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.tryPreventCombatDeath) {
-        var medbed = PassiveItemsSystem.tryPreventCombatDeath({
-          player: _player,
-          enemy: _strCombatEnemy,
-          context: { floor: _floor, entryPos: _strCombatEntryPos }
-        });
-
-        if (medbed && medbed.prevented) {
-          if (medbed.mode === 'full') {
-            _strCombatLog.push('🛏️ MEDBED: FULL HEAL TRIGGERED');
-            _strCombatLog.push('└─ HP restored to ' + _player.hp + '/' + _player.maxHp);
-            _strCombatLog.push('');
-            return _showStrCombatUI();
-          }
-
-          // Stabilize mode exits combat and resets position
-          return _exitStrCombat('medbed_soft_defeat');
-        }
-      }
-
-      // Default: soft reset for friendly NPC gate combats (tutorial sparring)
-      if (_strCombatEnemy && _strCombatEnemy._npcGateId) {
-        // Restore player and reposition to combat entry
-        _player.hp = _player.maxHp;
-        if (_strCombatEntryPos) {
-          _player.x = _strCombatEntryPos.x;
-          _player.y = _strCombatEntryPos.y;
-        }
-        return _exitStrCombat('npc_gate_soft_defeat');
-      }
-
-      return _handlePlayerDeath('combat_damage', { enemy: _strCombatEnemy });
-    }
-
-    // Continue combat - show UI for player's turn
-    return _showStrCombatUI();
   }
 
-  /**
-   * Calculate hit chance and roll
-   */
   function _calculateHit(attacker, defender, advantage) {
-    var baseHitChance = 70; // Base 70% hit chance
-    var attackerDex = attacker.dex || 5;
-    var defenderDex = defender.dex || 5;
-    var distance = _distanceBetween(attacker, defender);
-    var bracket = _getDistanceBracket(distance);
-
-    // Advantage modifiers
-    var advantageBonus = 0;
-    var critThreshold = 95; // Base crit on 95+
-
-    if (advantage === 'ambush') {
-      advantageBonus = 40;
-      critThreshold = Math.max(5, critThreshold - 30); // Easier crits when ambushing
-    } else if (advantage === 'flanked' || advantage === 'disadvantaged') {
-      advantageBonus = -25;
-      critThreshold = 98; // Harder crits when disadvantaged
+    if (typeof StrCombatEngine !== 'undefined') {
+      return StrCombatEngine.calculateHit(attacker, defender, advantage);
     }
-
-    var distancePenalty = {
-      melee: 0,
-      close: 5,
-      mid: 15,
-      far: 35
-    }[bracket] || 0;
-
-    // Accuracy modifiers (percent)
-    var accBonus = (attacker.accuracyBonus || 0) + (attacker.tempAccuracyBoost || 0);
-
-    // Calculate hit chance
-    var hitChance = baseHitChance + (attackerDex - defenderDex) * 2 + advantageBonus - distancePenalty + accBonus;
-    hitChance = Math.max(5, Math.min(95, hitChance)); // Clamp between 5-95%
-
-    // Roll d100
-    var roll = Math.floor(_rng() * 100) + 1;
-
-    return {
-      hit: roll <= hitChance,
-      crit: roll >= critThreshold,
-      roll: roll,
-      target: hitChance
-    };
+    return { hit: false, crit: false, roll: 0, target: 70 };
   }
 
-  /**
-   * Calculate damage dealt
-   */
   function _calculateDamage(attacker, defender, advantage, card, isCrit) {
-    var baseDamage = 2;
-    var attackerStr = attacker.str || 5;
-    var defenderStr = defender.str || 5;
-    var bonuses = [];
-
-    // Card damage
-    if (card && card.stats && card.stats.damage) {
-      baseDamage = card.stats.damage;
-      bonuses.push('Card: ' + card.stats.damage);
+    if (typeof StrCombatEngine !== 'undefined') {
+      return StrCombatEngine.calculateDamage(attacker, defender, advantage, card, isCrit);
     }
-
-    // Strength modifier
-    var strMod = Math.floor((attackerStr - defenderStr) / 2);
-    baseDamage += strMod;
-    if (strMod > 0) {
-      bonuses.push('STR: +' + strMod);
-    }
-
-    // Advantage damage modifiers
-    if (advantage === 'ambush') {
-      baseDamage += 2;
-      bonuses.push('Ambush: +2');
-    } else if (advantage === 'flanked') {
-      baseDamage -= 1;
-      bonuses.push('Flanked: -1');
-    }
-
-    // Minimum 1 damage
-    baseDamage = Math.max(1, baseDamage);
-
-    if (isCrit) {
-      baseDamage = Math.ceil(baseDamage * 1.75);
-      bonuses.push('CRIT x1.75');
-    }
-
-    return {
-      damage: baseDamage,
-      bonuses: bonuses
-    };
+    return { damage: 1, bonuses: [] };
   }
 
-  /**
-   * Show STR combat UI and wait for player action
-   */
+  function _getEnemyAICard() {
+    if (typeof StrCombatEngine !== 'undefined') {
+      return StrCombatEngine.getEnemyAICard();
+    }
+    return { name: 'Basic Attack', emoji: '\uD83D\uDD2B', type: 'attack', category: 'attack', stats: { damage: 2, accuracy: 70, energy: 1, speed: 2 } };
+  }
+
   function _showStrCombatUI() {
-    // Phase transition: countdown → selecting happens in str-combat-integration.js
-    // once the STRCombatWindow countdown finishes and the timer starts.
-    // If no countdown was shown (e.g., mid-combat re-show), set 'selecting' now.
-    if (_strCombatPhase !== 'countdown') {
-      _strCombatPhase = 'selecting';
+    if (typeof StrCombatEngine !== 'undefined') {
+      var result = StrCombatEngine.showCombatUI(_strCombatCtx());
+      _syncCombatState();
+      return result;
     }
-    _combatPhaseTooltip('cardplay');
-    var lines = [];
-    lines.push('═══════════════════════════════════════');
-    lines.push('⚔️  STR COMBAT - ROUND ' + _strCombatRound);
-    lines.push('═══════════════════════════════════════');
-    lines.push('');
-
-    // Combat log
-    _strCombatLog.forEach(function(logLine) {
-      lines.push(logLine);
-    });
-
-    lines.push('───────────────────────────────────────');
-
-    // Display enemy intent if system available
-    var intentDisplay = '';
-    if (typeof EnemyIntentSystem !== 'undefined' && _strCombatEnemy.intentState) {
-      intentDisplay = '  ' + EnemyIntentSystem.formatIntentDisplay(_strCombatEnemy.intentState);
-    }
-
-    lines.push('PLAYER HP: ' + _player.hp + '/' + _player.maxHp + ' ❤️   |   ENEMY HP: ' + _strCombatEnemy.hp + '/5 💀' + intentDisplay);
-    lines.push('Advantage: ' + _strCombatAdvantage.toUpperCase() + ' ' + _getAdvantageEmoji(_strCombatAdvantage));
-    lines.push('───────────────────────────────────────');
-    lines.push('');
-    lines.push('🃏 Use attack card (swipe/click) to strike');
-    lines.push('🛡️  Use stance card to defend (+stealth)');
-    lines.push('🏃 Type FLEE to attempt escape');
-    lines.push('');
-
-    // Show grid underneath
-    lines = lines.concat(_renderGrid());
-
-    // Trigger header flash if UI exists
-    _triggerCombatFlash();
-
-    return {
-      lines: lines,
-      prompt: getPrompt(),
-      stayActive: true
-    };
   }
 
-  /**
-   * Exit STR combat and return to realtime
-   */
+  function _showStrCombatUIWithLog(logLines) {
+    if (typeof StrCombatEngine !== 'undefined') {
+      var result = StrCombatEngine.showCombatUIWithLog(logLines, _strCombatCtx());
+      _syncCombatState();
+      return result;
+    }
+  }
+
   function _exitStrCombat(reason) {
-    var lines = [];
-
-    if (reason === 'player_victory') {
-      _combatPhaseTooltip('victory');
-      lines.push('✅ COMBAT VICTORY!');
-      lines.push('└─ Enemy neutralized');
-
-      // ── Capture victory context for animated sequence ──
-      var _victoryCtx = {
-        enemyEmoji: _strCombatEnemy ? (_strCombatEnemy.emoji || '👾') : '👾',
-        enemyName: _strCombatEnemy ? (_strCombatEnemy.name || 'Enemy') : 'Enemy',
-        playerHp: _player ? _player.hp : 10,
-        playerMaxHp: _player ? (_player.maxHp || 10) : 10,
-        combatLog: _strCombatLog.slice(), // snapshot
-        round: _strCombatRound,
-        advantage: _strCombatAdvantage,
-        usedBlvck: _strCombatLog.some(function(l) { return l && (l.indexOf('BLVCK') >= 0 || l.indexOf('STRUGGLE') >= 0); }),
-        statusEffects: [],
-        lootCards: [],
-        lootCurrency: 0,
-        lootAmmo: 0,
-        lootCharms: [],
-        stolenCards: [],
-        overkill: _strCombatEnemy ? (_strCombatEnemy.hp < -(_strCombatEnemy.maxHp || 5)) : false,
-        isBoss: !!(_bossFloorActive && _activeBoss),
-        enemyX: _strCombatEnemy ? _strCombatEnemy.x : _player.x,
-        enemyY: _strCombatEnemy ? _strCombatEnemy.y : _player.y
-      };
-
-      // NPC gate combat (friendly / defeatable)
-      if (_strCombatEnemy && _strCombatEnemy._npcGateId) {
-        var gateNpc = _getNpcById(_strCombatEnemy._npcGateId);
-        if (gateNpc) {
-          // Release wall permanently
-          gateNpc.state.released = true;
-          _clearNpcGateZones(gateNpc.id);
-
-          if (_strCombatEnemy._npcGateType === 'defeatable') {
-            // Remove NPC entirely
-            _npcs = _npcs.filter(function(n) { return n.id !== gateNpc.id; });
-            delete _tileMetadata[gateNpc.x + ',' + gateNpc.y];
-            // Clear the NPC tile so passage is open — but preserve door tiles!
-            var npcTile = _grid[gateNpc.y][gateNpc.x];
-            if (npcTile !== TILES.EXIT && npcTile !== TILES.DOOR) {
-              _grid[gateNpc.y][gateNpc.x] = TILES.EMPTY;
-            }
-            lines.push('🧱 GATE REMOVED: ' + gateNpc.name + ' yields the path.');
-          } else {
-            lines.push('🟢 GATE RELEASED: ' + gateNpc.name + ' lets you pass.');
-          }
-
-          // First-win reward (friendly gates teach + reward)
-          if (!gateNpc.state.rewardGiven && gateNpc.reward) {
-            gateNpc.state.rewardGiven = true;
-            if (gateNpc.reward.currency) {
-              GAMESTATE.addMoney(gateNpc.reward.currency);
-              lines.push('💰 REWARD: +' + gateNpc.reward.currency);
-            }
-          }
-
-          // Debrief feedback
-          if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.showSynergyOverlay) {
-            DebriefFeedController.showSynergyOverlay({
-              kind: 'gate',
-              keyEmoji: '🥊',
-              gateEmoji: '🚧',
-              text: 'Gate cleared'
-            });
-          }
-        }
-
-        // Skip normal enemy death/loot pipeline
-        // (gate NPCs are training/gating entities, not standard enemies)
-      } else {
-        // Handle enemy death through centralized death system
-        var deathResult = _handleEnemyDeath(_strCombatEnemy, 'player', {
-          player: _player,
-          location: { x: _strCombatEnemy.x, y: _strCombatEnemy.y }
-        });
-
-
-      // Add standard loot messages from death handler
-      if (deathResult && deathResult.messages && deathResult.messages.length > 0) {
-        deathResult.messages.forEach(function(msg) {
-          if (msg) lines.push(msg);
-        });
-      }
-
-      // Calculate ammo drops based on ammo spent (1 ammo drop per 3 ammo spent)
-      var ammoDrops = Math.floor(_strCombatAmmoSpent / 3);
-      if (ammoDrops > 0) {
-        // Auto-collect ammo drops
-        GAMESTATE.addAmmo(ammoDrops);
-        lines.push('⁍ AMMO RECOVERED: +' + ammoDrops + ' (' + _strCombatAmmoSpent + ' spent in combat)');
-        _victoryCtx.lootAmmo = ammoDrops;
-
-        // Report to debrief feed
-        if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
-          var currentAmmo = GAMESTATE.getAmmo ? GAMESTATE.getAmmo() : 0;
-          DebriefFeedController.reportResourceChange('ammo', currentAmmo - ammoDrops, currentAmmo, 'Enemy Defeated');
-        }
-      }
-
-      // Spawn standard loot (currency, cards, charms)
-      if (deathResult && deathResult.loot) {
-        // Currency — defer to scatter system (post-victory)
-        if (deathResult.loot.currency > 0) {
-          _victoryCtx.lootCurrency += deathResult.loot.currency;
-          _spawnCurrency(_strCombatEnemy.x, _strCombatEnemy.y, deathResult.loot.currency);
-        }
-
-        // Cards
-        if (deathResult.loot.cards && deathResult.loot.cards.length > 0) {
-          deathResult.loot.cards.forEach(function(cardDrop) {
-            if (cardDrop.shouldDrop && typeof CardSystem !== 'undefined') {
-              var baseType = CardSystem.getRandomBaseCard();
-              var card = CardSystem.rollCard(baseType);
-              if (card) {
-                _items.push({
-                  x: _strCombatEnemy.x,
-                  y: _strCombatEnemy.y,
-                  type: 'card',
-                  card: card,
-                  spawnTime: Date.now(),
-                  decayTime: 30000 // 30 second decay
-                });
-                _victoryCtx.lootCards.push({ emoji: card.emoji || '🎴', name: card.name || 'Card', quality: card.quality || '' });
-              }
-            }
-          });
-        }
-
-        // Charms
-        if (deathResult.loot.charms && deathResult.loot.charms.length > 0) {
-          deathResult.loot.charms.forEach(function(charmDrop) {
-            if (charmDrop.shouldDrop && typeof CardSystem !== 'undefined') {
-              var charm = CardSystem.rollCommonCharm();
-              if (charm) {
-                _items.push({
-                  x: _strCombatEnemy.x,
-                  y: _strCombatEnemy.y,
-                  type: 'charm',
-                  card: charm,
-                  spawnTime: Date.now(),
-                  decayTime: 30000 // 30 second decay
-                });
-                _victoryCtx.lootCharms.push({ emoji: charm.emoji || '💎', name: charm.name || 'Charm' });
-              }
-            }
-          });
-        }
-      }
-
-      // Check if this was a boss fight (special boss loot handling)
-      if (_bossFloorActive && _activeBoss && !_bossDefeated) {
-        _bossDefeated = true;
-        lines.push('');
-        lines.push('🏆 BOSS DEFEATED!');
-
-        // Check for boss overkill (200%+ damage) for secret floor trigger
-        if (typeof SecretFloors !== 'undefined' && _strCombatEnemy) {
-          var totalDamageDealt = _activeBoss.maxHp; // Boss HP that was depleted
-          var overkillThreshold = _activeBoss.maxHp * 2; // 200% of max HP
-
-          if (totalDamageDealt >= overkillThreshold) {
-            var triggerResult = SecretFloors.triggerSecretFloor(
-              SecretFloors.TRIGGER_TYPES.BOSS_OVERKILL,
-              {
-                damageDealt: totalDamageDealt,
-                bossMaxHp: _activeBoss.maxHp
-              }
-            );
-
-            if (triggerResult.success) {
-              lines.push('');
-              lines.push(triggerResult.message);
-              lines.push('└─ Reality feels unstable...');
-            } else if (triggerResult.suspicion) {
-              lines.push('└─ Something feels... wrong. [' + triggerResult.suspicion + '/' + triggerResult.threshold + ']');
-            }
-          }
-        }
-
-        // Generate boss special loot (narrative drops)
-        var bossLoot = _activeBoss.onDefeat(_player);
-        lines.push('');
-
-        // Process boss narrative loot (whispers, mythic, rumors)
-        if (bossLoot.loot && bossLoot.loot.length > 0) {
-          bossLoot.loot.forEach(function(lootItem) {
-            if (lootItem.type === 'card') {
-              var card;
-              if (typeof CardSystem !== 'undefined') {
-                var baseType = CardSystem.getRandomBaseCard();
-                card = CardSystem.rollCard(baseType);
-                // Force quality if specified
-                if (lootItem.quality) {
-                  card.quality = lootItem.quality;
-                }
-              }
-              if (card) {
-                _items.push({
-                  x: _strCombatEnemy.x,
-                  y: _strCombatEnemy.y,
-                  type: 'card',
-                  card: card,
-                  spawnTime: Date.now(),
-                  decayTime: 60000 // Boss loot lasts 60 seconds
-                });
-                lines.push('🎴 Boss dropped: ' + card.emoji + ' ' + card.name + ' (' + card.quality + ')');
-                _victoryCtx.lootCards.push({ emoji: card.emoji || '🎴', name: card.name || 'Boss Card', quality: card.quality || '' });
-              }
-            } else if (lootItem.type === 'whisper') {
-              lines.push('✨ WHISPER ITEM: ' + lootItem.item);
-              // Spawn as special loot
-              _spawnCurrency(_strCombatEnemy.x, _strCombatEnemy.y, 50); // Extra cryptos for whisper
-            } else if (lootItem.type === 'mythic') {
-              lines.push('');
-              lines.push('⚡⚡⚡ MYTHIC CONDITION MET! ⚡⚡⚡');
-              lines.push('💎 MYTHIC DROP: ' + lootItem.item);
-              lines.push('');
-              // Spawn legendary card
-              if (typeof CardSystem !== 'undefined') {
-                var legendaryCard = CardSystem.rollCard('Inventory Charm'); // Guaranteed inventory charm
-                _items.push({
-                  x: _strCombatEnemy.x,
-                  y: _strCombatEnemy.y,
-                  type: 'card',
-                  card: legendaryCard,
-                  spawnTime: Date.now(),
-                  decayTime: 120000 // Mythic loot lasts 2 minutes
-                });
-              }
-            } else if (lootItem.type === 'rumor') {
-              lines.push('');
-              lines.push('📜 ' + lootItem.message);
-              lines.push('');
-            }
-          });
-        }
-
-        // Check for Impossible Charm drop (very rare)
-        if (_activeBoss && typeof CardSystem !== 'undefined') {
-          var isUberMega = _activeBoss.type === 'UBER_MEGA';
-          var isFinalBoss = _floor === 30;
-          var impossibleCharmChance = 0;
-
-          if (isUberMega) {
-            impossibleCharmChance = 0.05; // 5% chance from Uber Mega
-          } else if (isFinalBoss) {
-            impossibleCharmChance = 0.10; // 10% chance from final boss
-          }
-
-          if (impossibleCharmChance > 0 && _rng() < impossibleCharmChance) {
-            var impossibleCharm = CardSystem.rollImpossibleCharm();
-            _items.push({
-              x: _strCombatEnemy.x,
-              y: _strCombatEnemy.y,
-              type: 'charm',
-              card: impossibleCharm,
-              spawnTime: Date.now(),
-              decayTime: 120000 // 2 minutes to pick up
-            });
-            lines.push('');
-            lines.push('💠💠💠 IMPOSSIBLE BINARY CHARM DROPPED! 💠💠💠');
-            lines.push('└─ A legendary artifact materializes...');
-            lines.push('');
-          }
-        }
-      }
-
-      // Close normal-enemy victory branch (NPC gates skip this branch)
-      }
-
-      // Remove defeated enemy from map
-      var enemyIndex = _enemies.indexOf(_strCombatEnemy);
-      if (enemyIndex > -1) {
-        _enemies[enemyIndex].hp = 0;
-      }
-
-      // ── Fire animated victory sequence (defers cleanup) ──
-      if (typeof STRVictorySequence !== 'undefined' && typeof STRVictorySequence.play === 'function') {
-        var _capturedEnemy = _strCombatEnemy;
-        var _capturedLines = lines.slice();
-
-        // Hide the STR combat window timer (sequence takes over the visual)
-        try {
-          if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.hide === 'function') {
-            STRCombatWindow.hide();
-          }
-          if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.hide === 'function') {
-            HandFanComponent.hide();
-            if (typeof HandFanComponent.clearSelection === 'function') HandFanComponent.clearSelection();
-          }
-        } catch (e0) {}
-
-        STRVictorySequence.play(_victoryCtx, function() {
-          // ── Deferred cleanup (runs after victory animation) ──
-          _strCombatActive = false;
-          _strCombatPhase = 'idle';
-          _strCombatEnemy = null;
-          _strCombatAdvantage = 'neutral';
-          _strCombatRound = 0;
-          _strCombatLog = [];
-
-          _disableCombatZoom();
-
-          try {
-            if (typeof BackupActionContainer !== 'undefined' && typeof BackupActionContainer.hide === 'function') {
-              BackupActionContainer.hide();
-            }
-          } catch (e1) {}
-
-          if (!_gameLoopActive) _startGameLoop();
-          _saveState();
-
-          // ── Post-combat scatter: currency/ammo nodes pop and bounce ──
-          _scatterPostCombatNodes(_capturedEnemy, _victoryCtx);
-        });
-
-        // Return early — cleanup is deferred to the callback
-        return {
-          lines: lines.concat(_renderGrid()),
-          prompt: getPrompt(),
-          stayActive: true
-        };
-      }
-      // If STRVictorySequence not available, fall through to standard cleanup
-
-    } else if (reason === 'medbed_soft_defeat' || reason === 'npc_gate_soft_defeat' || reason === 'fled') {
-
-      // ── Build context for animated exit sequence ──
-      var _exitCtx = {
-        playerHp: _player ? _player.hp : 0,
-        playerMaxHp: _player ? (_player.maxHp || 10) : 10,
-        enemyEmoji: _strCombatEnemy ? (_strCombatEnemy.emoji || '👾') : '👾',
-        enemyName: _strCombatEnemy ? (_strCombatEnemy.name || 'Enemy') : 'Enemy',
-        gateNpcName: (_strCombatEnemy && _strCombatEnemy._npcGateId) ? _strCombatEnemy.name : null,
-        round: _strCombatRound
-      };
-
-      // Fled: reposition player before animation starts
-      if (reason === 'fled' && _player.lastMoveDirection) {
-        var reverseDir = {
-          'north': { dx: 0, dy: 1 },
-          'south': { dx: 0, dy: -1 },
-          'east': { dx: -1, dy: 0 },
-          'west': { dx: 1, dy: 0 }
-        };
-        var move = reverseDir[_player.lastMoveDirection];
-        if (move) {
-          _player.x += move.dx;
-          _player.y += move.dy;
-        }
-      }
-
-      // Medbed: restore HP to 50%
-      if (reason === 'medbed_soft_defeat' && _player) {
-        _player.hp = Math.ceil((_player.maxHp || 10) * 0.5);
-      }
-
-      // Tooltip for defeat paths
-      if (reason === 'medbed_soft_defeat') {
-        _combatPhaseTooltip('defeat', 'Medbed stabilized');
-        lines.push('🛏️ MEDBED STABILIZED');
-      } else if (reason === 'npc_gate_soft_defeat') {
-        _combatPhaseTooltip('defeat', 'Training match');
-        lines.push('💀 DEFEAT (TRAINING MATCH)');
-      } else {
-        lines.push('🏃 FLED COMBAT!');
-      }
-
-      // ── Fire animated exit sequence (defers cleanup) ──
-      if (typeof STRExitSequence !== 'undefined' && typeof STRExitSequence.play === 'function') {
-
-        // Hide combat UI before animation plays
-        try {
-          if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.hide === 'function') {
-            STRCombatWindow.hide();
-          }
-          if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.hide === 'function') {
-            HandFanComponent.hide();
-            if (typeof HandFanComponent.clearSelection === 'function') HandFanComponent.clearSelection();
-          }
-        } catch (e0) {}
-
-        STRExitSequence.play(reason, _exitCtx, function() {
-          // ── Deferred cleanup (runs after exit animation) ──
-          _strCombatActive = false;
-          _strCombatPhase = 'idle';
-          _strCombatEnemy = null;
-          _strCombatAdvantage = 'neutral';
-          _strCombatRound = 0;
-          _strCombatLog = [];
-
-          _disableCombatZoom();
-
-          try {
-            if (typeof BackupActionContainer !== 'undefined' && typeof BackupActionContainer.hide === 'function') {
-              BackupActionContainer.hide();
-            }
-          } catch (e1) {}
-
-          if (!_gameLoopActive) _startGameLoop();
-          _saveState();
-        });
-
-        // Return early — cleanup is deferred to the callback
-        return {
-          lines: lines.concat(_renderGrid()),
-          prompt: getPrompt(),
-          stayActive: true
-        };
-      }
-      // If STRExitSequence not available, fall through to standard cleanup
+    if (typeof StrCombatEngine !== 'undefined') {
+      var result = StrCombatEngine.exitCombat(reason, _strCombatCtx());
+      _syncCombatState();
+      return result;
     }
-
-    lines.push('');
-    lines.push('Movement unlocked. Returning to realtime grid...');
-    lines.push('');
-
-    // Reset combat state (fallback path — only reached if animated sequences unavailable)
-    _strCombatActive = false;
-    _strCombatPhase = 'idle';
-    _strCombatEnemy = null;
-    _strCombatAdvantage = 'neutral';
-    _strCombatRound = 0;
-    _strCombatLog = [];
-
-    // Disable combat zoom
-    _disableCombatZoom();
-
-    // Ensure combat UI is cleared
-    try {
-      if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.hide === 'function') {
-        STRCombatWindow.hide();
-      }
-      if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.hide === 'function') {
-        HandFanComponent.hide();
-        if (typeof HandFanComponent.clearSelection === 'function') {
-          HandFanComponent.clearSelection();
-        }
-      }
-      if (typeof BackupActionContainer !== 'undefined' && typeof BackupActionContainer.hide === 'function') {
-        BackupActionContainer.hide();
-      }
-    } catch (e0) {}
-
-    // Resume game loop
-    if (!_gameLoopActive) {
-      _startGameLoop();
-    }
-
-    _saveState();
-
-    return {
-      lines: lines.concat(_renderGrid()),
-      prompt: getPrompt(),
-      stayActive: true
-    };
   }
 
-  /**
-   * Trigger combat flash effect on header
-   */
   function _triggerCombatFlash() {
-    if (typeof document === 'undefined') return;
-
-    var header = document.querySelector('.monitor-header') || document.querySelector('#mok-header');
-    if (header) {
-      header.classList.add('attackFlash');
-      setTimeout(function() {
-        header.classList.remove('attackFlash');
-      }, 500);
+    if (typeof StrCombatEngine !== 'undefined') {
+      StrCombatEngine.triggerCombatFlash();
     }
   }
 
-  /**
-   * Pause game loop (for STR combat)
-   */
   function _pauseGameLoop() {
     if (_animationFrameId) {
       cancelAnimationFrame(_animationFrameId);
@@ -11654,17 +9546,17 @@ _incrementPityTimers();
     _gameLoopActive = false;
   }
 
-  /**
-   * Check if STR combat is active
-   */
   function isStrCombatActive() {
+    if (typeof StrCombatEngine !== 'undefined') {
+      return StrCombatEngine.isActive();
+    }
     return _strCombatActive;
   }
 
-  /**
-   * Get STR combat state (for mobile UI)
-   */
   function getStrCombatState() {
+    if (typeof StrCombatEngine !== 'undefined') {
+      return StrCombatEngine.getState(_strCombatCtx());
+    }
     return {
       active: _strCombatActive,
       enemy: _strCombatEnemy,
@@ -11679,12 +9571,11 @@ _incrementPityTimers();
     };
   }
 
-  /**
-   * Set STR combat phase (called by str-combat-integration.js for countdown→selecting transition)
-   * Valid phases: 'idle', 'countdown', 'selecting', 'resolving', 'post_resolve'
-   */
   function setStrCombatPhase(phase) {
     _strCombatPhase = phase;
+    if (typeof StrCombatEngine !== 'undefined') {
+      StrCombatEngine.setPhase(phase);
+    }
   }
 
   // ============================================================
