@@ -13,7 +13,10 @@
                 ConnectionOverlays: [
                     [ 'Arrow', { location: 1, width: 10, length: 10, id: 'arrow' } ]
                 ]
+                instance.bind('connection', (info) => {
+                console.log('Connection established:', info.connection);
             });
+        });
 
             const worldSelector = document.getElementById('world-selector');
 
@@ -41,98 +44,154 @@
 
             populateWorldSelector();
 
+            const GridManager = {
+                gridSize: 50,
+                zoomLevel: 1,
+                init: function() {
+                    this.updateGrid();
+                },
+                updateGrid: function() {
+                    const size = this.gridSize * this.zoomLevel;
+                    worldCanvas.style.backgroundSize = `${size}px ${size}px`;
+                },
+                snapToGrid: function(pixelX, pixelY) {
+                    const size = this.gridSize * this.zoomLevel;
+                    const gridX = Math.round(pixelX / size);
+                    const gridY = Math.round(pixelY / size);
+                    return { x: gridX * size, y: gridY * size };
+                },
+                setZoom: function(level) {
+                    this.zoomLevel = level;
+                    this.updateGrid();
+                }
+            };
+
+            GridManager.init();
+
             let nodeCounter = 0;
-            let zoomLevel = 1;
-            let selectedNodes = [];
+            let floorCounter = 0;
 
-            // Function to add a new node
-            function addNode(type, name, top, left) {
-                const id = `node-${nodeCounter++}`;
+            // Drag and Drop
+            document.querySelectorAll('.draggable-item').forEach(item => {
+                item.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', e.target.dataset.itemType);
+                });
+            });
 
-                if (top === undefined || left === undefined) {
-                    const existingNodes = worldCanvas.querySelectorAll('.world-node').length;
-                    top = GRID_SIZE * 3 + (existingNodes % 10) * (GRID_SIZE * 3);
-                    left = GRID_SIZE * 3 + Math.floor(existingNodes / 10) * (GRID_SIZE * 10);
+            worldCanvas.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            });
+
+            worldCanvas.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const itemType = e.dataTransfer.getData('text/plain');
+                const pos = GridManager.snapToGrid(e.clientX - worldCanvas.getBoundingClientRect().left, e.clientY - worldCanvas.getBoundingClientRect().top);
+                addBlock(itemType, pos.x, pos.y);
+            });
+
+            function addBlock(type, x, y) {
+                const id = `${type}-${nodeCounter++}`;
+                const block = document.createElement('div');
+                block.className = 'world-node'; // Re-using for now
+                block.id = id;
+                block.style.left = `${x}px`;
+                block.style.top = `${y}px`;
+                block.dataset.type = type;
+
+                if (type === 'floor') {
+                    block.style.width = `${GridManager.gridSize * 2}px`;
+                    block.style.height = `${GridManager.gridSize}px`;
+                    block.innerHTML = `<strong>Floor ${floorCounter++}</strong>`;
+
+                    // Add doors
+                    const door1 = document.createElement('div');
+                    door1.className = 'door';
+                    block.appendChild(door1);
+
+                    if (floorCounter > 1) {
+                        const door2 = document.createElement('div');
+                        door2.className = 'door';
+                        door2.style.left = 'calc(100% - 10px)';
+                        block.appendChild(door2);
+                    }
+                } else if (type === 'building') {
+                    block.style.width = `${GridManager.gridSize * 2}px`;
+                    block.style.height = `${GridManager.gridSize}px`;
+                    block.innerHTML = `<strong>Building</strong>`;
                 }
-                const node = document.createElement('div');
-                node.className = 'world-node';
-                node.id = id;
-                node.style.top = `${top}px`;
-                node.style.left = `${left}px`;
-                node.innerHTML = `<strong>${name}</strong><br>(${type})`;
-                node.dataset.type = type;
 
-                switch (type) {
-                    case 'Step':
-                        node.style.backgroundColor = '#aaffaa'; // Green
-                        break;
-                    case 'Transition':
-                        node.style.backgroundColor = '#ffffaa'; // Yellow
-                        node.className += ' diamond';
-                        break;
-                    case 'Parallel':
-                        node.style.backgroundColor = '#aaaaff'; // Blue
-                        break;
-                    case 'Convergence':
-                        node.style.backgroundColor = '#ffaaaa'; // Red
-                        break;
-                }
-
-                worldCanvas.appendChild(node);
-
-                instance.addEndpoint(id, { anchor: 'Top' });
-                instance.addEndpoint(id, { anchor: 'Bottom' });
-                instance.addEndpoint(id, { anchor: 'Left' });
-                instance.addEndpoint(id, { anchor: 'Right' });
-
+                worldCanvas.appendChild(block);
                 instance.draggable(id);
 
-                node.addEventListener('click', function(e) {
-                    if (e.ctrlKey || e.metaKey) {
-                        if (selectedNodes.includes(id)) {
-                            selectedNodes = selectedNodes.filter(nodeId => nodeId !== id);
-                            node.classList.remove('selected');
-                        } else {
-                            selectedNodes.push(id);
-                            node.classList.add('selected');
-                        }
-                    } else {
-                        selectedNodes.forEach(nodeId => {
-                            const el = document.getElementById(nodeId);
-                            if (el) el.classList.remove('selected');
+                if (type === 'floor') {
+                    const doors = block.querySelectorAll('.door');
+                    doors.forEach((door, index) => {
+                        instance.addEndpoint(door, {
+                            anchor: 'Center',
+                            isSource: true,
+                            isTarget: true
                         });
-                        selectedNodes = [id];
-                        node.classList.add('selected');
+                    });
+                }
+            }
+
+            worldCanvas.addEventListener('click', (e) => {
+                if (e.target.classList.contains('world-node')) {
+                    document.querySelectorAll('.world-node').forEach(n => n.classList.remove('selected'));
+                    e.target.classList.add('selected');
+                    showInspector(e.target);
+                } else if (e.target.classList.contains('door')) {
+                    // Do nothing, let jsPlumb handle it
+                } else if (e.target.closest('.world-node')) {
+                    const parent = e.target.closest('.world-node');
+                    if (parent.classList.contains('selected')) {
+                        addNodeButton(parent, e.clientX - parent.getBoundingClientRect().left, e.clientY - parent.getBoundingClientRect().top);
                     }
-                    showInspector(selectedNodes);
+                } else {
+                    document.querySelectorAll('.world-node').forEach(n => n.classList.remove('selected'));
+                    clearInspector();
+                }
+            });
+
+            function addNodeButton(parent, x, y) {
+                const button = document.createElement('button');
+                button.className = 'node-button';
+                button.style.left = `${x}px`;
+                button.style.top = `${y}px`;
+                parent.appendChild(button);
+
+                instance.addEndpoint(button, {
+                    anchor: 'Center',
+                    isSource: true,
+                    isTarget: true
                 });
 
-                return node;
+                button.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent the parent from being selected
+                    document.querySelectorAll('.node-button').forEach(b => b.classList.remove('selected'));
+                    button.classList.add('selected');
+                    showInspector(button);
+                });
             }
 
             // Function to show the property inspector
-            function showInspector(selectedIds) {
-                const deleteBtn = document.getElementById('delete-btn');
-                if (selectedIds.length === 0) {
-                    clearInspector();
-                    return;
-                }
+            function showInspector(element) {
+                let id, type, name, content;
 
-                if (selectedIds.length === 1) {
-                    const id = selectedIds[0];
-                    const node = document.getElementById(id);
-                    const type = node.dataset.type;
-                    const name = node.querySelector('strong').innerText;
+                if (element.classList.contains('world-node')) {
+                    id = element.id;
+                    type = element.dataset.type;
+                    name = element.querySelector('strong').innerText;
 
-                    let content = `
+                    content = `
                         <div><strong>ID:</strong> ${id}</div>
                         <div><strong>Type:</strong> ${type}</div>
                         <div><label><strong>Name:</strong> <input type="text" id="prop-name" value="${name}"></label></div>
                     `;
 
-                    if (type === 'Step') {
-                        const biome = node.dataset.biome || 'Cozy Forest';
-                        const generationType = node.dataset.generationType || 'contrived';
+                    if (type === 'floor') {
+                        const biome = element.dataset.biome || 'Cozy Forest';
+                        const generationType = element.dataset.generationType || 'contrived';
                         content += `
                             <div><label><strong>Biome:</strong> 
                                 <select id="prop-biome">
@@ -150,162 +209,65 @@
                                     <option value="procedural" ${generationType === 'procedural' ? 'selected' : ''}>Procedural</option>
                                 </select>
                             </label></div>
-                            <div><label><strong>Map:</strong>
-                                <select id="prop-map"></select>
-                            </label></div>
-                            <button id="edit-layout-btn" class="btn btn-primary" ${generationType === 'procedural' ? 'disabled' : ''}>Edit Layout</button>
-                        `;
-                    } else if (type === 'Transition') {
-                        const condition = node.dataset.condition || '';
-                        content += `
-                            <div><label><strong>Condition:</strong> <input type="text" id="prop-condition" value="${condition}"></label></div>
                         `;
                     }
+                } else if (element.classList.contains('node-button')) {
+                    id = element.parentElement.id + '-' + Array.from(element.parentElement.querySelectorAll('.node-button')).indexOf(element);
+                    type = 'Node Button';
 
-                    inspectorContent.innerHTML = content;
-                    document.getElementById('node-notes').value = node.dataset.notes || '';
+                    content = `
+                        <div><strong>ID:</strong> ${id}</div>
+                        <div><strong>Type:</strong> ${type}</div>
+                    `;
+                }
 
+                inspectorContent.innerHTML = content;
+                document.getElementById('delete-btn').style.display = 'block';
+
+                if (element.classList.contains('world-node')) {
                     document.getElementById('prop-name').addEventListener('input', (e) => {
-                        node.querySelector('strong').innerText = e.target.value;
+                        element.querySelector('strong').innerText = e.target.value;
                     });
 
-                    if (type === 'Step') {
-                        document.getElementById('edit-layout-btn').addEventListener('click', function() {
-                            const floorData = {
-                                name: document.getElementById('prop-name').value,
-                                biome: document.getElementById('prop-biome').value,
-                                generationType: document.getElementById('prop-generation').value
-                            };
-                            localStorage.setItem(id, JSON.stringify(floorData));
-                            window.open(`map-designer.html?floorId=${id}`, '_blank');
-                        });
-
+                    if (element.dataset.type === 'floor') {
                         document.getElementById('prop-biome').addEventListener('change', (e) => {
-                            node.dataset.biome = e.target.value;
+                            element.dataset.biome = e.target.value;
                         });
 
                         document.getElementById('prop-generation').addEventListener('change', (e) => {
-                            node.dataset.generationType = e.target.value;
-                            document.getElementById('edit-layout-btn').disabled = e.target.value === 'procedural';
-                        });
-
-                        const mapSelect = document.getElementById('prop-map');
-                        const floors = UnifiedDataManager.getAllFloors();
-                        for (const floorName in floors) {
-                            const option = document.createElement('option');
-                            option.value = floorName;
-                            option.textContent = floorName;
-                            if (node.dataset.map === floorName) {
-                                option.selected = true;
-                            }
-                            mapSelect.appendChild(option);
-                        }
-
-                        mapSelect.addEventListener('change', (e) => {
-                            node.dataset.map = e.target.value;
-                        });
-                    } else if (type === 'Transition') {
-                        document.getElementById('prop-condition').addEventListener('input', (e) => {
-                            node.dataset.condition = e.target.value;
+                            element.dataset.generationType = e.target.value;
                         });
                     }
-
-                } else {
-                    inspectorContent.innerHTML = `<div>${selectedIds.length} nodes selected</div>`;
-                    document.getElementById('node-notes').value = '';
                 }
-
-                deleteBtn.style.display = 'block';
             }
+
+            document.getElementById('delete-btn').addEventListener('click', () => {
+                const selected = document.querySelector('.selected');
+                if (selected) {
+                    if (selected.classList.contains('node-button')) {
+                        selected.remove();
+                    } else {
+                        instance.remove(selected);
+                    }
+                    clearInspector();
+                }
+            });
 
             function clearInspector() {
-                inspectorContent.innerHTML = '<div class="inspector-empty"><p>Select a node to view properties</p></div>';
+                inspectorContent.innerHTML = '<div class="inspector-empty"><p>Select an element to view properties</p></div>';
                 document.getElementById('delete-btn').style.display = 'none';
-                document.getElementById('node-notes').value = '';
+                document.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
             }
-
-            document.getElementById('node-notes').addEventListener('input', (e) => {
-                if (selectedNodes.length === 1) {
-                    const node = document.getElementById(selectedNodes[0]);
-                    if (node) {
-                        node.dataset.notes = e.target.value;
-                    }
-                }
-            });
-
-            // Add tool event listeners
-            document.querySelector('[data-tool="add-floor"]').addEventListener('click', function() {
-                addNode('Floor', 'New Floor');
-            });
-
-            document.querySelector('[data-tool="add-building"]').addEventListener('click', function() {
-                addNode('Building', 'New Building', undefined, undefined);
-            });
-
-            document.querySelector('[data-tool="add-step"]').addEventListener('click', function() {
-                addNode('Step', 'New Step');
-            });
-
-            document.querySelector('[data-tool="add-transition"]').addEventListener('click', function() {
-                addNode('Transition', 'New Transition');
-            });
-
-            document.querySelector('[data-tool="add-parallel"]').addEventListener('click', function() {
-                addNode('Parallel', 'New Parallel Branch');
-            });
-
-            document.querySelector('[data-tool="add-convergence"]').addEventListener('click', function() {
-                addNode('Convergence', 'New Convergence');
-            });
-
-            document.getElementById('export-world-btn').addEventListener('click', exportWorld);
-
-            const importBtn = document.getElementById('import-world-btn');
-            const importFileInput = document.getElementById('import-file');
-            importBtn.addEventListener('click', () => importFileInput.click());
-            importFileInput.addEventListener('change', importWorld);
-
-            // Tabs
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const tab = btn.dataset.tab;
-                    document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
-                    btn.classList.add('active');
-                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                    document.getElementById(`${tab}-tab`).classList.add('active');
-                });
-            });
 
             // Zoom
             document.getElementById('zoom-in-btn').addEventListener('click', () => {
-                zoomLevel = Math.min(zoomLevel + 0.1, 2);
-                instance.setZoom(zoomLevel);
+                GridManager.setZoom(GridManager.zoomLevel + 0.1);
             });
             document.getElementById('zoom-out-btn').addEventListener('click', () => {
-                zoomLevel = Math.max(zoomLevel - 0.1, 0.5);
-                instance.setZoom(zoomLevel);
+                GridManager.setZoom(GridManager.zoomLevel - 0.1);
             });
 
-            // Selection
-            document.getElementById('select-all-btn').addEventListener('click', () => {
-                selectedNodes = Object.keys(instance.getManagedElements());
-                document.querySelectorAll('.world-node').forEach(node => node.classList.add('selected'));
-            });
-            document.getElementById('clear-selection-btn').addEventListener('click', () => {
-                selectedNodes = [];
-                document.querySelectorAll('.world-node.selected').forEach(node => node.classList.remove('selected'));
-            });
 
-            // Delete
-            document.getElementById('delete-btn').addEventListener('click', () => {
-                if (selectedNodes.length > 0) {
-                    if (confirm(`Delete ${selectedNodes.length} node(s)?`)) {
-                        selectedNodes.forEach(nodeId => instance.remove(nodeId));
-                        selectedNodes = [];
-                        clearInspector();
-                    }
-                }
-            });
         });
 
         function exportWorld() {

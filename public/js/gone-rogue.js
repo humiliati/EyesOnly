@@ -1366,101 +1366,18 @@ var GoneRogue = (function () {
   }
 
   function _helpLines() {
-    return [
-      '',
-      'GONE ROGUE COMMANDS:',
-      '  N/S/E/W (or WASD)  - Move',
-      '  SHOOT <dir>        - Fire projectile (ascii/emoji)',
-      '  KICK <dir>         - Boot adjacent breakable',
-      '  TAKE/PICKUP        - Pick up item',
-      '  EXTRACT            - Extract from exit point',
-      '  STATUS             - Show player stats',
-      '  INVENTORY          - Show inventory',
-      '  STEAL              - Pickpocket adjacent enemy (requires Pickpocket Gloves equipped)',
-      '',
-      'BONFIRE COMMANDS (Floors 10, 16, 22):',
-      '  VENDOR/SHOP        - View vendor inventory',
-      '  BUY <number>       - Purchase item from vendor',
-      '  HEAL               - Restore HP for ¢30',
-      '  GAMBLE             - Roll random card for ¢100',
-      '  STASH <number>     - Move loose item to persistent storage',
-      '  RETRIEVE <number>  - Move persistent item to loose carry',
-      '  EQUIP <number>     - Equip persistent item to active slot',
-      '  UNEQUIP            - Unequip active item',
-      '',
-      '  HELP               - This help',
-      '  EXIT               - Return to Street Chronicles',
-      '',
-      'LEGEND:',
-      '  🥷 = You        🪖 = Enemy      💎 = Item',
-      '  🚪 = Exit       █ = Wall       ▓ = Cover',
-      '  ░ = Shadow     , = Grass      ≈ = Smoke',
-      '  ▒ = Hazard     📦 = Breakable',
-      '',
-      'TERRAIN EFFECTS:',
-      '  Shadow/Grass/Smoke = Stealth bonus',
-      '  Hazard = Damage on contact',
-      '  Cover = Blocks enemy vision',
-      ''
-    ];
+    if (typeof RenderingUI !== 'undefined') return RenderingUI.helpLines();
+    return ['[Help not available]'];
   }
 
   function _statusLines() {
-    return [
-      '',
-      'PLAYER STATUS:',
-      '  HP: ' + _player.hp + '/' + _player.maxHp,
-      '  Energy: ' + _player.energy + '/' + _player.maxEnergy,
-      '  Stealth: ' + _player.stealth,
-      '  Detection: ' + _player.detection,
-      '  Floor: ' + _floor,
-      '  Turn: ' + _turn,
-      ''
-    ];
+    if (typeof RenderingUI !== 'undefined') return RenderingUI.statusLines({ player: _player, floor: _floor, turn: _turn });
+    return ['[Status not available]'];
   }
 
   function _inventoryLines() {
-    var lines = ['', 'INVENTORY:'];
-
-    if (typeof GAMESTATE !== 'undefined') {
-      var persistent = GAMESTATE.getPersistentInventory();
-      var loose = GAMESTATE.getLooseInventory();
-      var activeItem = GAMESTATE.getActiveItem();
-
-      // Show active item slot
-      lines.push('');
-      lines.push('ACTIVE SLOT:');
-      if (activeItem) {
-        lines.push('  ⚡ ' + activeItem.emoji + ' ' + activeItem.name + ' [EQUIPPED]');
-      } else {
-        lines.push('  [EMPTY - Use EQUIP command]');
-      }
-
-      lines.push('');
-      lines.push('PERSISTENT (' + persistent.length + '/' + GAMESTATE.getState().persistentSlots + '):');
-      if (persistent.length) {
-        persistent.forEach(function(item, i) {
-          var label = item.qualityName || item.rarity || item.subtype || '';
-          lines.push('  ' + (i+1) + '. ' + (item.emoji || '📦') + ' ' + (item.name || 'Item') + (label ? ' [' + label + ']' : ''));
-        });
-      } else {
-        lines.push('  [EMPTY]');
-      }
-
-      lines.push('');
-      lines.push('LOOSE CARRY (' + loose.length + '/' + GAMESTATE.getState().looseSlots + '):');
-      if (loose.length) {
-        loose.forEach(function(item, i) {
-          var label = item.qualityName || item.rarity || '';
-          lines.push('  ' + (i+1) + '. ' + (item.emoji || '📦') + ' ' + (item.name || 'Item') + (label ? ' [' + label + ']' : ''));
-        });
-      } else {
-        lines.push('  [EMPTY]');
-      }
-    }
-
-    lines.push('');
-    return lines;
+    if (typeof RenderingUI !== 'undefined') return RenderingUI.inventoryLines();
+    return ['[Inventory not available]'];
   }
 
   // ============================================================
@@ -3338,125 +3255,23 @@ _incrementPityTimers();
     }
   }
 
+  // ── Rendering/UI delegation stubs (Phase 7) ──────────────
+  function _renderCtx() {
+    return {
+      grid: _grid, biomeVisualGrid: _biomeVisualGrid, breakables: _breakables,
+      tileMetadata: _tileMetadata, enemies: _enemies, items: _items,
+      projectiles: _projectiles, player: _player, floor: _floor, turn: _turn,
+      alertLevel: _alertLevel, strCombatActive: _strCombatActive,
+      bossFloorActive: _bossFloorActive, bossDefeated: _bossDefeated,
+      activeBoss: _activeBoss, activeSecretFloor: _activeSecretFloor,
+      penaltyFloors: _penaltyFloors, TILES: TILES,
+      GRID_WIDTH: GRID_WIDTH, GRID_HEIGHT: GRID_HEIGHT, getBiome: _getBiome
+    };
+  }
+
   function _renderGrid() {
-    var lines = [''];
-
-    // Copy grid for rendering (use biome visual grid if available for forest floors)
-    var display = (_biomeVisualGrid ? _biomeVisualGrid : _grid).map(function(row) { return row.slice(); });
-
-    // Place breakables
-    _breakables.forEach(function(breakable) {
-      if (breakable.hp > 0) {
-        display[breakable.y][breakable.x] = breakable.glyph || TILES.BREAKABLE;
-      } else if (breakable.destroyedGlyph) {
-        display[breakable.y][breakable.x] = breakable.destroyedGlyph;
-      }
-    });
-
-    // Place metadata-driven overlays (doors/chests/NPCs)
-    for (var mk in _tileMetadata) {
-      if (_tileMetadata.hasOwnProperty(mk)) {
-        var md = _tileMetadata[mk];
-        if (!md) continue;
-
-        if (md.type === 'locked_gate' || md.type === 'locked_chest' || md.type === 'npc') {
-          var parts = mk.split(',');
-          var mx = parseInt(parts[0]);
-          var my = parseInt(parts[1]);
-          if (display[my] && typeof display[my][mx] !== 'undefined') {
-            if (md.type === 'locked_gate') {
-              display[my][mx] = md.emoji || '🚪';
-            } else if (md.type === 'locked_chest') {
-              display[my][mx] = md.emoji || '🧰';
-            } else if (md.type === 'npc') {
-              display[my][mx] = md.emoji || '🧑';
-            }
-          }
-        }
-      }
-    }
-
-    // Place enemies
-    _enemies.forEach(function(enemy) {
-      if (enemy.hp > 0) {
-        display[enemy.y][enemy.x] = TILES.ENEMY;
-      }
-    });
-
-    // Place pets
-    if (typeof PetFollower !== 'undefined') {
-      var activePets = PetFollower.getActivePets();
-      activePets.forEach(function(pet) {
-        if (pet.alive) {
-          var petX = Math.round(pet.x);
-          var petY = Math.round(pet.y);
-          if (petY >= 0 && petY < GRID_HEIGHT && petX >= 0 && petX < GRID_WIDTH) {
-            display[petY][petX] = pet.emoji || '🐾';
-          }
-        }
-      });
-    }
-
-    // Place items — use item-specific emoji if available, fallback to TILES.ITEM
-    _items.forEach(function(item) {
-      display[item.y][item.x] = item.emoji || TILES.ITEM;
-    });
-
-    // Place projectiles
-    _projectiles.forEach(function(projectile) {
-      display[projectile.y][projectile.x] = projectile.glyph || TILES.PROJECTILE;
-    });
-
-    // Place player (check for avatar override from passive items)
-    var playerAvatar = TILES.PLAYER;
-    if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.getPlayerAvatarOverride) {
-      var override = PassiveItemsSystem.getPlayerAvatarOverride();
-      if (override) {
-        playerAvatar = override;
-      }
-    }
-    display[_player.y][_player.x] = playerAvatar;
-
-    // Render grid
-    for (var y = 0; y < GRID_HEIGHT; y++) {
-      lines.push(display[y].join(''));
-    }
-
-    lines.push('');
-    var biome = _getBiome(_floor);
-    var floorLabel;
-
-    // Show secret floor name if active
-    if (_activeSecretFloor) {
-      if (_activeSecretFloor === SecretFloors.SECRET_FLOOR_TYPES.UBER_MEGA) {
-        floorLabel = 'SECRET: ⚠️ UBER MEGA ⚠️';
-      } else if (_activeSecretFloor === SecretFloors.SECRET_FLOOR_TYPES.GOBLIN_VAULT) {
-        floorLabel = 'SECRET: 💰 Goblin Vault 💰';
-      } else if (_activeSecretFloor === SecretFloors.SECRET_FLOOR_TYPES.GRAY_CAVE_HIDDEN) {
-        floorLabel = 'SECRET: 🌫️ Gray Cave 🌫️';
-      }
-    } else {
-      floorLabel = 'Floor: ' + _floor + ' | ' + biome.name;
-    }
-
-    if (_bossFloorActive && !_bossDefeated) {
-      floorLabel += ' 👹 BOSS FLOOR';
-    } else if (_bossFloorActive && _bossDefeated) {
-      floorLabel += ' ✅ BOSS DEFEATED';
-    }
-
-    // Show penalty floor indicator
-    if (_penaltyFloors.indexOf(_floor) !== -1) {
-      floorLabel += ' 🔻 PENALTY';
-    }
-
-    lines.push('HP: ' + _player.hp + '/' + _player.maxHp + ' | ' + floorLabel + ' | Turn: ' + _turn);
-    if (_bossFloorActive && _activeBoss && !_bossDefeated) {
-      lines.push('⚠️  Boss: ' + _activeBoss.type + ' | Phase: ' + _activeBoss.phase);
-    }
-    lines.push('');
-
-    return lines;
+    if (typeof RenderingUI !== 'undefined') return RenderingUI.renderGrid(_renderCtx());
+    return ['[Rendering module not loaded]'];
   }
 
   /**
@@ -3469,43 +3284,12 @@ _incrementPityTimers();
     }
   }
 
-  /**
-   * Update reserve card slots with current hand
-   */
   function _updateReserveSlots() {
-    if (typeof ReserveSlots === 'undefined' || typeof GAMESTATE === 'undefined') return;
-
-    // Get loose inventory (current hand)
-    var loose = GAMESTATE.getLooseInventory();
-
-    // Convert to card format for reserve slots
-    var cards = loose.map(function(item) {
-      return {
-        id: item.id,
-        name: item.name || 'Card',
-        icon: item.emoji || item.icon || '🃏',
-        emoji: item.emoji || item.icon || '🃏',
-        description: item.description || '',
-        cost: item.cost || null,
-        damage: item.damage || null,
-        range: item.range || null
-      };
-    });
-
-    ReserveSlots.setReserveCards(cards);
+    if (typeof RenderingUI !== 'undefined') { RenderingUI.updateReserveSlots(); return; }
   }
 
-  /**
-   * Update seed display in AWOL button tooltip
-   */
   function _updateSeedDisplay() {
-    var awolButton = document.getElementById('awol-button');
-    if (!awolButton) return;
-
-    if (_currentSeedPhrase) {
-      var difficulty = ['STANDARD', 'ADVANCED', 'EXTREME'][_difficultyTier - 1];
-      awolButton.setAttribute('title', 'AWOL status — Click to configure difficulty\nSeed: ' + _currentSeedPhrase);
-    }
+    if (typeof RenderingUI !== 'undefined') { RenderingUI.updateSeedDisplay(_currentSeedPhrase, _difficultyTier); return; }
   }
 
   function _getNpcById(npcId) {
@@ -3516,41 +3300,15 @@ _incrementPityTimers();
   }
 
   function _npcShowEmoji(npc, emoji, ms) {
-    if (!npc) return;
-    if (typeof OverheadAnimator !== 'undefined') {
-      OverheadAnimator.showGenericExpression(npc.x, npc.y, emoji, ms || 800);
-    }
+    if (typeof RenderingUI !== 'undefined') { RenderingUI.npcShowEmoji(npc, emoji, ms); return; }
   }
 
   function _npcSay(npc, text) {
-    if (!npc || !text) return;
-    if (typeof TooltipSystem !== 'undefined') {
-      // Use persistent tooltip so the player can glance back
-      TooltipSystem.showPersistent(text, 2400);
-    }
+    if (typeof RenderingUI !== 'undefined') { RenderingUI.npcSay(npc, text); return; }
   }
 
   function _combatPhaseTooltip(phase, details, ms) {
-    if (typeof TooltipSystem === 'undefined') return;
-
-    var label = ('' + phase).toUpperCase();
-    var msg = '';
-
-    if (label === 'INITIATIVE') {
-      msg = '⚡ INITIATIVE — ' + (details || 'engaging');
-    } else if (label === 'CARDPLAY') {
-      msg = '🃏 CARD PLAY — ' + (details || 'choose your action');
-    } else if (label === 'RESOLUTION') {
-      msg = '💥 RESOLUTION — ' + (details || 'calculating damage');
-    } else if (label === 'VICTORY') {
-      msg = '🏁 VICTORY — ' + (details || 'encounter cleared');
-    } else if (label === 'DEFEAT') {
-      msg = '☠️ DEFEAT — ' + (details || 'recovering');
-    } else {
-      msg = label + (details ? (': ' + details) : '');
-    }
-
-    TooltipSystem.showPersistent(msg, ms || 1600);
+    if (typeof RenderingUI !== 'undefined') { RenderingUI.combatPhaseTooltip(phase, details, ms); return; }
   }
 
   function _clearNpcGateZones(npcId) {
@@ -4225,17 +3983,14 @@ _incrementPityTimers();
     }
   }
 
-  /**
-   * Update alert level based on detection
-   */
   function _updateAlertLevel() {
-    if (_player.detection >= 8) {
-      _alertLevel = 'danger';
-    } else if (_player.detection >= 4) {
-      _alertLevel = 'caution';
-    } else {
-      _alertLevel = 'safe';
+    if (typeof RenderingUI !== 'undefined') {
+      _alertLevel = RenderingUI.updateAlertLevel({ player: _player });
+      return;
     }
+    if (_player.detection >= 8) _alertLevel = 'danger';
+    else if (_player.detection >= 4) _alertLevel = 'caution';
+    else _alertLevel = 'safe';
   }
 
   function _pickupItem() {

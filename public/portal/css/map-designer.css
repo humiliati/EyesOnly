@@ -437,8 +437,48 @@ body {
     padding: 16px;
 }
 
-.tab-content.active {
-    display: block;
+.draggable-item {
+    padding: 16px;
+    border: 1px solid #ccc;
+    background: #f9f9f9;
+    cursor: grab;
+    text-align: center;
+}
+
+#world-canvas {
+    background-image: linear-gradient(#ccc 1px, transparent 1px), linear-gradient(90deg, #ccc 1px, transparent 1px);
+    background-size: 50px 50px;
+}
+
+.door {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: #fff;
+    border: 1px solid #000;
+    top: calc(50% - 5px);
+}
+
+.node-button {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: #ff0000;
+    border: 1px solid #000;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.jtk-connector {
+    z-index: 4;
+}
+
+.jtk-endpoint {
+    z-index: 5;
+}
+
+.jtk-overlay {
+    z-index: 6;
 }
 
 /* Responsive adjustments */
