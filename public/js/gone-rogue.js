@@ -724,109 +724,29 @@ var GoneRogue = (function () {
   /**
    * Determine floor type based on floor number
    */
+  function _biomeConfigCtx() {
+    return {
+      FLOOR_TYPES: FLOOR_TYPES,
+      BIOMES: BIOMES,
+      BONFIRE_FLOORS: BONFIRE_FLOORS,
+      BOSS_FLOORS: BOSS_FLOORS,
+      rng: _rng,
+      getDifficultyTier: function() { return _difficultyTier; }
+    };
+  }
+
   function _getFloorType(floorNum) {
-    // On Uber 1+, early floors use stealth (enemies spawn) instead of tutorial (safe)
-    if (floorNum <= 2) return (_difficultyTier <= 1) ? FLOOR_TYPES.TUTORIAL : FLOOR_TYPES.STEALTH;
-    if (floorNum <= 4) return FLOOR_TYPES.GHOST;
-    if (BONFIRE_FLOORS.indexOf(floorNum) !== -1) return FLOOR_TYPES.BONFIRE;
-    if (floorNum === 30) return FLOOR_TYPES.FINAL;
-    if (BOSS_FLOORS.indexOf(floorNum) !== -1) return FLOOR_TYPES.BOSS;
-
-    // Random exploration floors (5% chance on floors 15+)
-    if (floorNum >= 15 && _rng() < 0.05) return FLOOR_TYPES.EXPLORATION;
-
-    // Light stealth early
-    if (floorNum <= 9) return FLOOR_TYPES.STEALTH;
-
-    // Standard combat floors
+    if (typeof BiomeConfig !== 'undefined') {
+      return BiomeConfig.getFloorType(floorNum, _biomeConfigCtx());
+    }
     return FLOOR_TYPES.COMBAT;
   }
 
-  /**
-   * Determine biome based on floor number
-   */
-  /**
-   * Get biome for floor using weighted random selection (floor shuffling)
-   * Floors 1-3 are always Forest for new player experience
-   * Other floors use weighted probabilities based on depth
-   */
   function _getBiome(floorNum) {
-    // Floors 1-3: Always Forest (tutorial/starting experience)
-    if (floorNum <= 3) return BIOMES.FOREST;
-
-    // Floor 4: Special Grey Cave floor
-    if (floorNum === 4) return BIOMES.GREY_CAVE;
-
-    // Boss floors: Use boss-appropriate biomes (Aerospace for high floors)
-    if (BOSS_FLOORS.indexOf(floorNum) !== -1 && floorNum >= 23) {
-      return BIOMES.AEROSPACE;
+    if (typeof BiomeConfig !== 'undefined') {
+      return BiomeConfig.getBiome(floorNum, _biomeConfigCtx());
     }
-
-    // Weighted biome selection based on floor depth
-    var weights = {};
-
-    if (floorNum >= 5 && floorNum <= 6) {
-      // Early game: Forest dominant
-      weights = {
-        FOREST: 60,
-        MALL: 20,
-        INDUSTRIAL: 15,
-        GREY_CAVE: 5
-      };
-    } else if (floorNum >= 7 && floorNum <= 9) {
-      // Mid-early game: Mall becomes common
-      weights = {
-        FOREST: 25,
-        MALL: 35,
-        INDUSTRIAL: 30,
-        GREY_CAVE: 10
-      };
-    } else if (floorNum >= 10 && floorNum <= 15) {
-      // Mid game: Industrial rises
-      weights = {
-        FOREST: 10,
-        MALL: 25,
-        INDUSTRIAL: 40,
-        GREY_CAVE: 15,
-        AEROSPACE: 10
-      };
-    } else if (floorNum >= 16 && floorNum <= 22) {
-      // Late game: Mix with Aerospace
-      weights = {
-        FOREST: 5,
-        MALL: 20,
-        INDUSTRIAL: 35,
-        GREY_CAVE: 10,
-        AEROSPACE: 30
-      };
-    } else {
-      // Endgame: Aerospace dominant
-      weights = {
-        MALL: 10,
-        INDUSTRIAL: 20,
-        AEROSPACE: 70
-      };
-    }
-
-    // Calculate total weight
-    var totalWeight = 0;
-    for (var key in weights) {
-      totalWeight += weights[key];
-    }
-
-    // Select random biome based on weights
-    var rand = _rng() * totalWeight;
-    var cumulative = 0;
-
-    for (var biomeKey in weights) {
-      cumulative += weights[biomeKey];
-      if (rand <= cumulative) {
-        return BIOMES[biomeKey];
-      }
-    }
-
-    // Fallback (should never happen)
-    return BIOMES.OFFICE;
+    return BIOMES.FOREST;
   }
 
   function init() {
@@ -838,6 +758,14 @@ var GoneRogue = (function () {
     // Initialize interactive grid UI if available
     if (_useInteractiveGrid) {
       GoneRogueMobile.init();
+    }
+
+    // Initialize GameLoop module
+    if (typeof GameLoop !== 'undefined') {
+      GameLoop.init({
+        updateGameState: _updateGameState,
+        onStart: function() { _enemyColorCycleTime = 0; _lightMapTickCounter = 0; }
+      });
     }
 
     return Promise.resolve();
@@ -994,143 +922,52 @@ var GoneRogue = (function () {
    * Returns a char chosen by weighted random selection.
    */
   function _pickWeightedChar(tiles) {
-    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.pickWeightedChar(tiles, _floorGenCtx());
+    if (typeof BiomeVisuals !== 'undefined') return BiomeVisuals.pickWeightedChar(tiles, _floorGenCtx());
     return tiles[tiles.length - 1].char;
   }
-
-  /**
-   * Build the biome visual grid: pre-compute wall/floor char substitutions
-   * so the display is stable across render calls (no flickering).
-   * Stores result in _biomeVisualGrid.
-   */
   function _buildBiomeVisualGrid(biome) {
-    if (typeof FloorGenerator !== 'undefined') {
-      _biomeVisualGrid = FloorGenerator.buildBiomeVisualGrid(biome, _floorGenCtx());
-    } else { _biomeVisualGrid = null; }
+    if (typeof BiomeVisuals !== 'undefined') { BiomeVisuals.buildBiomeVisualGrid(biome, _floorGenCtx()); _biomeVisualGrid = BiomeVisuals.getBiomeVisualGrid(); }
+    else { _biomeVisualGrid = null; }
   }
-
-  /**
-   * Generate render objects for a single tile with seeded scatter.
-   * Creates multiple visual objects per wall tile for density without changing collision.
-   * @param {number} x - Tile X position
-   * @param {number} y - Tile Y position
-   * @param {Object} biome - Current biome definition
-   * @returns {Array} Array of render objects { emoji, offsetX, offsetY, scale, layer }
-   */
   function _generateTileRenderObjects(x, y, biome) {
-    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.generateTileRenderObjects(x, y, biome, _floorGenCtx());
+    if (typeof BiomeVisuals !== 'undefined') return BiomeVisuals.generateTileRenderObjects(x, y, biome, _floorGenCtx());
     return [];
   }
-
-  /**
-   * Helper to pick weighted character using provided RNG instance
-   * @param {Array} tiles - Array of { char, weight }
-   * @param {SeededRNG} rng - RNG instance to use
-   * @returns {string} Selected character
-   */
   function _pickWeightedCharWithRNG(tiles, rng) {
-    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.pickWeightedCharWithRNG(tiles, rng);
+    if (typeof BiomeVisuals !== 'undefined') return BiomeVisuals.pickWeightedCharWithRNG(tiles, rng);
     return tiles[tiles.length - 1].char;
   }
-
-  /**
-   * Get neighbor tiles for a position
-   * @param {number} x - Tile X position
-   * @param {number} y - Tile Y position
-   * @returns {Array} Array of neighbor tile values
-   */
   function _getNeighborTiles(x, y) {
-    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.getNeighborTiles(x, y, _floorGenCtx());
+    if (typeof BiomeVisuals !== 'undefined') return BiomeVisuals.getNeighborTiles(x, y, _floorGenCtx());
     return [];
   }
-
-  /**
-   * Build tile render objects grid: pre-compute visual scatter objects
-   * for each tile to create dense forest walls without changing collision.
-   * Stores result in _tileRenderObjects.
-   */
   function _buildTileRenderObjects(biome) {
-    if (typeof FloorGenerator !== 'undefined') {
-      _tileRenderObjects = FloorGenerator.buildTileRenderObjects(biome, _floorGenCtx());
-    } else { _tileRenderObjects = null; }
+    if (typeof BiomeVisuals !== 'undefined') { BiomeVisuals.buildTileRenderObjects(biome, _floorGenCtx()); _tileRenderObjects = BiomeVisuals.getRenderObjectsGrid(); }
+    else { _tileRenderObjects = null; }
   }
-
-  // ============================================================
-  // BIOME BACKGROUND GRADIENT SYSTEM
-  // 135-degree axial gradient per biome (matches gambling card convention)
-  // ============================================================
-
-  /**
-   * Parse hex color string to RGB object
-   * @param {string} hex - Color string like '#0a1a0a'
-   * @returns {Object} { r, g, b } integers 0-255
-   */
   function _hexToRgb(hex) {
-    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.hexToRgb(hex);
+    if (typeof BiomeVisuals !== 'undefined') return BiomeVisuals.hexToRgb(hex);
     return { r: 0, g: 0, b: 0 };
   }
-
-  /**
-   * Convert RGB values to hex color string
-   * @param {number} r - Red 0-255
-   * @param {number} g - Green 0-255
-   * @param {number} b - Blue 0-255
-   * @returns {string} Hex color string like '#0a1a0a'
-   */
   function _rgbToHex(r, g, b) {
-    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.rgbToHex(r, g, b);
+    if (typeof BiomeVisuals !== 'undefined') return BiomeVisuals.rgbToHex(r, g, b);
     return '#000000';
   }
-
-  /**
-   * Linear interpolate between two hex colors
-   * @param {string} color1 - Start hex color
-   * @param {string} color2 - End hex color
-   * @param {number} t - Interpolation factor 0.0 to 1.0
-   * @returns {string} Interpolated hex color
-   */
   function _lerpColor(color1, color2, t) {
-    if (typeof FloorGenerator !== 'undefined') return FloorGenerator.lerpColor(color1, color2, t);
+    if (typeof BiomeVisuals !== 'undefined') return BiomeVisuals.lerpColor(color1, color2, t);
     return color1;
   }
-
-  /**
-   * Pre-compute per-tile background colors for the current biome gradient.
-   * Uses 135-degree axial gradient (top-left to bottom-right diagonal).
-   * @param {Object} biome - Biome definition with backgroundGradient
-   * @param {boolean} isNight - Whether this is a night biome variant
-   */
   function _buildBiomeBackgroundColors(biome, isNight) {
-    if (typeof FloorGenerator !== 'undefined') {
-      _biomeBackgroundColors = FloorGenerator.buildBiomeBackgroundColors(biome, isNight, _floorGenCtx());
-    } else { _biomeBackgroundColors = null; }
+    if (typeof BiomeVisuals !== 'undefined') { BiomeVisuals.buildBiomeBackgroundColors(biome, isNight, _floorGenCtx()); _biomeBackgroundColors = BiomeVisuals.getBackgroundColorsGrid(); }
+    else { _biomeBackgroundColors = null; }
   }
-
-  /**
-   * Get the biome background color for a specific tile position.
-   * Returns null if no gradient is active.
-   * @param {number} x - Grid X coordinate
-   * @param {number} y - Grid Y coordinate
-   * @returns {string|null} Hex color or null
-   */
   function getBiomeBackgroundColor(x, y) {
-    if (!_biomeBackgroundColors) return null;
-    if (y < 0 || y >= _biomeBackgroundColors.length) return null;
-    if (x < 0 || x >= _biomeBackgroundColors[y].length) return null;
-    return _biomeBackgroundColors[y][x];
+    if (typeof BiomeVisuals !== 'undefined') return BiomeVisuals.getBiomeBackgroundColor(x, y);
+    return null;
   }
-
-  /**
-   * Get tile render objects for a specific tile position
-   * @param {number} x - Tile X position
-   * @param {number} y - Tile Y position
-   * @returns {Array|null} Array of render objects or null
-   */
   function getTileRenderObjects(x, y) {
-    if (!_tileRenderObjects) return null;
-    if (y < 0 || y >= _tileRenderObjects.length) return null;
-    if (x < 0 || x >= _tileRenderObjects[y].length) return null;
-    return _tileRenderObjects[y][x];
+    if (typeof BiomeVisuals !== 'undefined') return BiomeVisuals.getTileRenderObjects(x, y);
+    return null;
   }
 
   /**
@@ -1289,59 +1126,15 @@ var GoneRogue = (function () {
   }
 
   function _spawnBreakables() {
-    // Get current biome
-    var biome = _getBiome(_floor);
-
-    // Spawn biome-specific breakables
-    _breakables = [];
-
-    // Spawn 8-12 random breakables from the biome's prop list
-    var breakableCount = 8 + Math.floor(_rng() * 5);
-    var breakableProps = biome.props.filter(function(p) { return p.breakable; });
-
-    if (breakableProps.length === 0) {
-      // Fallback to generic crates if biome has no breakable props
-      breakableProps = [{ emoji: '📦', name: 'Crate', breakable: true, hp: 2 }];
+    if (typeof BreakableSpawner !== 'undefined') {
+      return BreakableSpawner.spawnBreakables({
+        TILES: TILES, GRID_WIDTH: GRID_WIDTH, GRID_HEIGHT: GRID_HEIGHT,
+        rng: _rng, player: _player, grid: _grid,
+        getFloor: function() { return _floor; },
+        getBiome: _getBiome,
+        setBreakables: function(v) { _breakables = v; }
+      });
     }
-
-    for (var i = 0; i < breakableCount; i++) {
-      var attempts = 0;
-      var placed = false;
-
-      while (!placed && attempts < 50) {
-        var x = 2 + Math.floor(_rng() * (GRID_WIDTH - 4));
-        var y = 2 + Math.floor(_rng() * (GRID_HEIGHT - 4));
-
-        // Check if position is valid (floor tile, not player, not exit, not occupied)
-        if (_grid[y] && _grid[y][x] === TILES.EMPTY &&
-            !(x === _player.x && y === _player.y) &&
-            !_breakables.find(function(b) { return b.x === x && b.y === y; })) {
-
-          var propTemplate = breakableProps[Math.floor(_rng() * breakableProps.length)];
-          _breakables.push({
-            x: x,
-            y: y,
-            hp: propTemplate.hp,
-            maxHp: propTemplate.hp,
-            glyph: TILES.BREAKABLE,
-            destroyedGlyph: TILES.DEBRIS,
-            emoji: propTemplate.emoji,
-            name: propTemplate.name,
-            tag: 'biome_prop_' + i
-          });
-
-          placed = true;
-        }
-        attempts++;
-      }
-    }
-
-    // Place on grid
-    _breakables.forEach(function(breakable) {
-      if (_grid[breakable.y] && _grid[breakable.y][breakable.x]) {
-        _grid[breakable.y][breakable.x] = TILES.BREAKABLE;
-      }
-    });
   }
 
   /**
@@ -2006,51 +1799,13 @@ var GoneRogue = (function () {
    * Start the game loop
    */
   function _startGameLoop() {
-    if (_gameLoopActive) return;
+    if (typeof GameLoop !== 'undefined') { GameLoop.start(); return; }
     _gameLoopActive = true;
-    _lastTickTime = Date.now();
-    _enemyColorCycleTime = 0;
-    _lightMapTickCounter = 0;
-    _gameLoopTick();
   }
 
-  /**
-   * Stop the game loop
-   */
   function _stopGameLoop() {
+    if (typeof GameLoop !== 'undefined') { GameLoop.stop(); return; }
     _gameLoopActive = false;
-    if (_animationFrameId) {
-      cancelAnimationFrame(_animationFrameId);
-      _animationFrameId = null;
-    }
-  }
-
-  /**
-   * Main game loop tick
-   */
-  function _gameLoopTick() {
-    if (!_gameLoopActive) return;
-
-    try {
-      var now = Date.now();
-      var delta = now - _lastTickTime;
-
-      // Process game updates if enough time has passed
-      if (delta >= _tickInterval) {
-        var _t0 = (typeof EYESONLY_PERF !== 'undefined') ? performance.now() : 0;
-        _updateGameState(delta);
-        if (_t0 && typeof EYESONLY_PERF !== 'undefined') {
-          EYESONLY_PERF.mark('rogue.gameTickMs', performance.now() - _t0);
-        }
-        _lastTickTime = now;
-      }
-    } catch (e) {
-      // Keep the loop alive even if an update throws, so the world doesn't hard-freeze.
-      try { console.error('[GoneRogue] game loop tick error:', e); } catch (e2) {}
-    }
-
-    // Schedule next tick
-    _animationFrameId = requestAnimationFrame(_gameLoopTick);
   }
 
   /**
@@ -3304,10 +3059,7 @@ var GoneRogue = (function () {
   }
 
   function _pauseGameLoop() {
-    if (_animationFrameId) {
-      cancelAnimationFrame(_animationFrameId);
-      _animationFrameId = null;
-    }
+    if (typeof GameLoop !== 'undefined') { GameLoop.pause(); return; }
     _gameLoopActive = false;
   }
 

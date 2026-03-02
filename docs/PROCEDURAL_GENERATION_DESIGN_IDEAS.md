@@ -1,169 +1,549 @@
-# Hybrid Seed Architecture and Live Moderation System
+# Procedural Generation Roadmap — Actionable Implementation Plan
 
-This document outlines the architecture for a hybrid procedural generation and live moderation system. The system is designed to be both predictable and dynamic, allowing for real-time adjustments to the game world while maintaining fairness and replayability.
+> **Status:** Roadmap Draft  
+> **Last Updated:** 2026-03-02  
+> **Purpose:** Transform biome topology patterns into implementable phases
 
-## 1. Core Principles
+---
 
-The Hybrid Seed Architecture is built on a set of core principles that ensure a balance between predictability, fairness, and dynamic gameplay:
+## 🚀 Quick Start — Implementation Phases
 
-*   **Predictable by Default:** All runs are deterministic by default, based on a single base seed.
-*   **Controlled Mutability:** Live moderation (both human and agent-driven) is possible, but it is strictly controlled and logged.
-*   **Single-Step Horizon:** Mutations are only allowed on the next floor (F+1), preventing retroactive changes and far-future stacking.
-*   **Player Agency:** Players can find and use items that allow them to influence the mutation system, giving them a degree of control over the game's dynamism.
-*   **Transparent Scoring:** The high score system clearly distinguishes between different run types, ensuring competitive integrity.
+```
+Phase 1: Scalar Field Foundation
+        │
+        ├─► 1.1 ScalarField class (Float32Array)
+        ├─► 1.2 BasePattern interface
+        └─► 1.3 Integration with floor-gen-core.js
 
-## 2. Hybrid Seed Architecture
+Phase 2: Pattern Modules
+        │
+        ├─► 2.1 ReactionDiffusion (spots/stripes)
+        ├─► 2.2 Voronoi (district/territory)
+        ├─► 2.3 Radial (boss/anomaly)
+        ├─► 2.4 Branch/DLA (frontier)
+        └─► 2.5 Biome-to-Pattern mapping
 
-The Hybrid Seed Architecture is the foundation of the system. It combines a base seed with a series of mutation logs to create a complete and replayable record of each run.
+Phase 3: Constraint & Tile Classification
+        │
+        ├─► 3.1 Connectivity enforcement
+        ├─► 3.2 Corridor compression (chokepoints)
+        ├─► 3.3 Basin detection (narrative anchors)
+        └─► 3.4 Curvature-aware spawns
 
-### 2.1. Run Model
+Phase 4: Pressure Fields & Dynamic Mutation
+        │
+        ├─► 4.1 Faction pressure layers
+        ├─► 4.2 Resource gradients
+        ├─► 4.3 In-run mutation events
+        └─► 4.4 Persistent world drift
 
-Each run is represented by a `Run` object with the following structure:
+Phase 5: Designer Integration
+        │
+        ├─► 5.1 World Designer pattern config
+        ├─► 5.2 Export extensions
+        └─► 5.3 M-Console hooks
+```
+
+---
+
+## Phase 1: Scalar Field Foundation
+
+### 1.1 Core Data Model
+
+Create `public/js/pattern-engine/ScalarField.js`:
 
 ```javascript
-{
-  "runId": "string",
-  "baseSeed": "string",
-  "runClass": "RunClass",
-  "mutationLog": [
-    // StructuralMutationEvent objects
-  ],
-  "paramOverlayLog": [
-    // ParamMutationEvent objects
-  ],
-  "mutationBudgetRemaining": "number",
-  "structuralHash": "string",
-  "paramHash": "string",
-  "resolvedHash": "string"
+// Core scalar field container
+export class ScalarField {
+  constructor(width, height) {
+    this.width = width;
+    this.height = height;
+    this.data = new Float32Array(width * height);
+  }
+
+  index(x, y) {
+    return y * this.width + x;
+  }
+
+  get(x, y) {
+    return this.data[this.index(x, y)];
+  }
+
+  set(x, y, value) {
+    this.data[this.index(x, y)] = value;
+  }
+
+  forEach(callback) {
+    for (let i = 0; i < this.data.length; i++) {
+      callback(this.data[i], i);
+    }
+  }
 }
 ```
 
-*   **`baseSeed`:** The initial seed for the run, which determines the deterministic generation of all floors.
-*   **`runClass`:** The integrity class of the run (e.g., `STATIC`, `HUMAN_MODERATED`).
-*   **`mutationLog`:** A log of all structural mutations that have been applied to the run.
-*   **`paramOverlayLog`:** A log of all parameter mutations that have been applied to the run.
-*   **`mutationBudgetRemaining`:** The remaining budget for parameter mutations on the current floor.
-*   **Hashes:** A series of hashes that can be used to verify the integrity of the run data.
+**Target:** <10ms generation for 128×128
 
-### 2.2. Floor Resolution
+### 1.2 Base Pattern Interface
 
-When a floor is resolved, the following steps are taken:
+Create `public/js/pattern-engine/BasePattern.js`:
 
-1.  The base parameters for the floor are generated from the `baseSeed` and the difficulty band.
-2.  Any `ParamMutationEvents` for the current floor are applied.
-3.  The final parameters are clamped to their allowed ranges.
-### 2.3. Engineering Considerations
+```javascript
+export class BasePattern {
+  constructor(seed, width, height, params = {}) {
+    this.seed = seed;
+    this.width = width;
+    this.height = height;
+    this.params = params;
+  }
 
-The `Run` model will be implemented as an extension of the `world.json` file that is exported from the `unified-designer`. The `exportWorld` function in `world-designer.js` will be modified to include the `baseSeed`, `runClass`, and other relevant fields.
+  generate() {
+    throw new Error("generate() must be implemented");
+  }
+}
+```
 
-The floor resolution logic will be implemented in the game engine, and it will be responsible for applying the `ParamMutationEvents` from the `paramOverlayLog` to the base floor data.
+### 1.3 Integration with floor-gen-core.js
 
-## 3. Mutation Rules and Budget
+Modify `public/js/floor-gen-core.js` to add pattern generation step:
 
-To ensure that live moderation is fair and predictable, the system enforces a strict set of rules for all mutations.
+```javascript
+// Add after ctx.setGrid(ctx.createEmptyGrid());
+if (ctx.isProceduralFloor()) {
+  const patternConfig = ctx.getPatternConfig(ctx.getFloor());
+  const field = PatternEngine.create(
+    patternConfig.type,
+    ctx.getBaseSeed(),
+    40,  // grid width
+    20,  // grid height
+    patternConfig.params
+  ).generate();
+  
+  ctx.applyFieldToGrid(field, patternConfig.tileMapping);
+}
+```
 
-### 3.1. Strict F+1 Mutation
+---
 
-The most important rule is that all mutations (both structural and parameter-based) are only allowed on the next floor (F+1). This has several key benefits:
+## Phase 2: Pattern Modules
 
-*   **No mid-floor manipulation:** The current floor can never be changed while the player is on it.
-*   **No retroactive changes:** Past floors cannot be altered.
-*   **No far-future stacking:** Designers and agents cannot pre-stack a series of mutations deep into the run.
+### 2.1 Reaction Diffusion (Spots / Stripes)
 
-This rule is enforced by the `rejectMutation` function, which will reject any mutation that does not target the `currentFloorIndex + 1`.
+Create `public/js/pattern-engine/ReactionDiffusionPattern.js`:
 
-### 3.2. Mutation Budget
+```javascript
+import { ScalarField } from "./ScalarField.js";
+import { BasePattern } from "./BasePattern.js";
 
-To prevent abuse, each floor has a `paramBudget` that limits the amount of parameter drift that can be applied. The total weighted drift for all parameter mutations on a floor cannot exceed this budget. ### 3.3. Engineering Considerations
+export class ReactionDiffusionPattern extends BasePattern {
+  generate() {
+    const A = new Float32Array(this.width * this.height);
+    const B = new Float32Array(this.width * this.height);
 
-The "Strict F+1 Mutation" and "Mutation Budget" rules will be enforced by the M-Console's UI and the underlying game engine. The "BIG BROTHER" mode in the M-Console (implemented in `scenario-designer.html`) is the gateway to all live manipulation features. The `rejectMutation` function will be implemented in the game engine and will be responsible for validating all mutation requests.
+    const {
+      feed = 0.055,
+      kill = 0.062,
+      diffA = 1.0,
+      diffB = 0.5,
+      iterations = 200
+    } = this.params;
 
-## 4. Player-Driven Manipulation
+    // Initialize
+    for (let i = 0; i < A.length; i++) {
+      A[i] = 1;
+      B[i] = 0;
+    }
 
-Players can find and use special items that allow them to influence the mutation system, giving them a degree of control over the game's dynamism.
+    // Seed center disturbance
+    const center = (this.height / 2 | 0) * this.width + (this.width / 2 | 0);
+    B[center] = 1;
 
-### 4.1. They Live Glasses (Foresight)
+    for (let t = 0; t < iterations; t++) {
+      this.step(A, B, diffA, diffB, feed, kill);
+    }
 
-The "They Live Glasses" are a player item that extends the mutation window to F+2, allowing the player to see and influence the floor after the next one. This provides a greater degree of foresight and control, but it comes with trade-offs.
+    const field = new ScalarField(this.width, this.height);
+    field.data.set(B);
+    return field;
+  }
 
-#### 4.1.1. Mechanics
+  step(A, B, diffA, diffB, feed, kill) {
+    const w = this.width;
+    const h = this.height;
 
-*   **Extended Window:** When equipped, the mutable floor window is extended to `F+2`.
-*   **Limited Scope:** Mutations at F+2 are limited to parameter changes only. Structural changes are not allowed.
-*   **Window Collapse:** The F+2 window is not permanent. It can collapse based on a variety of factors, such as time, player actions, or resource drain.
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x;
 
-#### 4.1.2. Player State
+        const lapA = (A[i - 1] + A[i + 1] + A[i - w] + A[i + w] - 4 * A[i]);
+        const lapB = (B[i - 1] + B[i + 1] + B[i - w] + B[i + w] - 4 * B[i]);
 
-The player's `futureVision` state is updated to reflect the extended window:
+        const a = A[i];
+        const b = B[i];
+        const reaction = a * b * b;
+
+        A[i] += diffA * lapA - reaction + feed * (1 - a);
+        B[i] += diffB * lapB + reaction - (kill + feed) * b;
+      }
+    }
+  }
+}
+```
+
+**Topology Control:**
+| Feed | Kill | Result |
+|------|------|--------|
+| 0.055 | 0.062 | Spots |
+| 0.030 | 0.055 | Stripes |
+| 0.025 | 0.060 | Labyrinths |
+
+### 2.2 Voronoi Pattern
+
+```javascript
+export class VoronoiPattern extends BasePattern {
+  generate() {
+    const field = new ScalarField(this.width, this.height);
+    const points = this.generatePoints(this.params.cells || 8);
+
+    for (let y = 0; y < this.height; y++) {
+      for (let x = 0; x < this.width; x++) {
+        let minDist = Infinity;
+        for (let p of points) {
+          const dx = x - p.x;
+          const dy = y - p.y;
+          const d = dx * dx + dy * dy;
+          if (d < minDist) minDist = d;
+        }
+        field.set(x, y, Math.sqrt(minDist));
+      }
+    }
+    return field;
+  }
+}
+```
+
+### 2.3 Radial Pattern
+
+```javascript
+export class RadialPattern extends BasePattern {
+  generate() {
+    const field = new ScalarField(this.width, this.height);
+    const cx = this.width / 2;
+    const cy = this.height / 2;
+
+    for (let y = 0; y < this.height; y++) {
+      for (let x = 0; x < this.width; x++) {
+        const dx = x - cx;
+        const dy = y - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        field.set(x, y, dist);
+      }
+    }
+    return field;
+  }
+}
+```
+
+### 2.4 Biome-to-Pattern Mapping
+
+| Biome | Pattern Type | Parameters | Use Case |
+|-------|--------------|------------|----------|
+| Forest | ReactionDiffusion | spots (0.055/0.062) | Clustered hiding |
+| Grey Cave | ReactionDiffusion | labyrinth (0.025/0.060) | Maze navigation |
+| Mall | Voronoi | 6-8 cells | District shopping |
+| Office | Voronoi | 4-6 cells | Cubicle territories |
+| Industrial | Voronoi + Branch | 8 cells, sparse | Chain reactions |
+| Aerospace | Radial | steep gradient | Boss arena |
+| Boss Floors | Radial | very steep | Central threat |
+
+---
+
+## Phase 3: Constraint & Tile Classification
+
+### 3.1 Field Post-Processor
+
+```javascript
+export class FieldPostProcessor {
+  static normalize(field) {
+    let min = Infinity, max = -Infinity;
+    field.forEach(v => {
+      if (v < min) min = v;
+      if (v > max) max = v;
+    });
+    const range = max - min;
+    field.forEach((v, i) => {
+      field.data[i] = (v - min) / range;
+    });
+    return field;
+  }
+
+  static quantize(field, levels = 6) {
+    field.forEach((v, i) => {
+      field.data[i] = Math.floor(v * levels) / levels;
+    });
+    return field;
+  }
+}
+```
+
+### 3.2 Biome Assembler (Tile Classification)
+
+```javascript
+export class BiomeAssembler {
+  static toTiles(field, rules) {
+    const tiles = new Array(field.width * field.height);
+    field.forEach((value, i) => {
+      tiles[i] = rules(value);
+    });
+    return tiles;
+  }
+}
+
+// Example: Forest biome
+const forestTiles = BiomeAssembler.toTiles(field, v => {
+  if (v > 0.7) return "🌲";  // Cluster interior
+  if (v > 0.5) return "🌿";  // Mid-density
+  if (v > 0.3) return "🌱";  // Edge
+  return "🟫";                // Ground
+});
+```
+
+### 3.3 Connectivity Enforcement
+
+```javascript
+function enforceConnectivity(grid, start, exit) {
+  // Find disconnected regions
+  // Run minimal corridor stitching
+  // OR increase diffusion locally
+  
+  // Guarantees:
+  // - Spawn connects to exit
+  // - No sealed loot islands
+  // - Boss accessible
+}
+```
+
+### 3.4 Curvature-Aware Spawns
+
+```javascript
+function applyCurvatureSpawns(grid, field) {
+  // Calculate local curvature at each tile
+  // 
+  // if concave_edge:
+  //     spawn ambusher
+  // if convex_bulk:
+  //     spawn slow heavy
+  //
+  // Enemies now match topology
+}
+```
+
+---
+
+## Phase 4: Pressure Fields & Dynamic Mutation
+
+### 4.1 Layered Field Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    TILE OUTPUT                               │
+├─────────────────────────────────────────────────────────────┤
+│  Resource Gradients    ← moisture, elevation, heat, tech   │
+│  (Modifier layer)                                              │
+├─────────────────────────────────────────────────────────────┤
+│  Pressure Fields        ← Red, Blue, Wild, Corruption       │
+│  (Faction/territory)                                            │
+├─────────────────────────────────────────────────────────────┤
+│  Morphogenesis Layer   ← Reaction-diffusion, Voronoi, etc   │
+│  (Primary structure)                                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 4.2 Biome Identity Schema
+
+```javascript
+const biomeSchema = {
+  morphology_signature: 'reaction_diffusion',
+  pressure_alignment: 'wild',
+  gradient_modifiers: { moisture: 0.8, heat: 0.3 },
+  traversal_cost: 'high',
+  spawn_weights: { ambusher: 0.3, slow: 0.2, elite: 0.1 },
+  mutation_rules: { corruption_spread: 0.05 }
+};
+```
+
+### 4.3 In-Run Mutation Events
+
+```javascript
+// Mutation types for real-time changes
+const mutationTypes = {
+  // Triggerable events:
+  SOLAR_FLARE:     { param: 'anomaly', delta: +0.2 },
+  RELIC_ACTIVATION:{ param: 'diffusion', delta: +0.1 },
+  FACTION_RITUAL:  { param: 'pressure_radius', delta: +2 },
+  
+  // Result:
+  // - Emoji tiles transform live
+  // - Corridors choke
+  // - Safe zones shrink
+};
+```
+
+### 4.4 Pattern Parameter Scaling by Depth
+
+Instead of just stronger enemies, deeper floors modify pattern parameters:
+
+```javascript
+function scalePatternByDepth(basePattern, floor) {
+  const depthMultiplier = floor / 30;  // 0-1 scale
+  
+  return {
+    ...basePattern,
+    spots: { tighter: depthMultiplier * 0.02 },
+    stripes: { narrower: depthMultiplier * 0.05 },
+    voronoi: { cells_shrink: -depthMultiplier * 1 },
+    radial: { steepness: depthMultiplier * 0.3 },
+    branches: { thinner: depthMultiplier * 0.1 }
+  };
+}
+```
+
+---
+
+## Phase 5: Designer Integration
+
+### 5.1 World Designer Node Properties
+
+Extend node data in `world-designer.js`:
 
 ```javascript
 {
-  "maxWindow": 2,
-  "currentWindow": 2,
-  "closesAtFloor": null,
-  "expiresAtTime": "timestamp",
-  "energy": 100,
-#### 4.1.3. Engineering Considerations
+  id: 'node-id',
+  name: 'Floor Name',
+  type: 'step',
+  
+  // NEW: Pattern configuration
+  generationType: 'PROCEDURAL',  // or CONTRIVED
+  patternType: 'REACTION_DIFFUSION',  // VORONOI, RADIAL, BRANCH
+  patternParams: {
+    feed: 0.055,
+    kill: 0.062,
+    iterations: 200
+  },
+  
+  // Tile mapping
+  tileMapping: {
+    high: '🌲',
+    medium: '🌿',
+    low: '🟫'
+  },
+  
+  // Mutation config
+  mutationBudget: 100,
+  enableDrift: true
+}
+```
 
-The `futureVision` object will be added to the player's data model in the game engine. The game engine will be responsible for enforcing the extended mutation window and the window collapse logic.
-
-### 4.2. Winston Smith's Diary (Entropy)
-
-The "Winston Smith's Diary" is a counter-item to the "They Live Glasses." It introduces "entropy" into the system, making future floors less predictable and hindering the effectiveness of live moderation.
-
-#### 4.2.1. Mechanics
-
-*   **Mutation Fog:** The Diary does not block mutations directly, but it corrupts foresight. When the Diary is active, the M-Console will see conflicting branches and flickering template options, and seed resolution will be delayed.
-*   **Entropy Injection:** The Diary introduces an `entropyWeight` into the floor resolution process. Instead of resolving to a single, deterministic template, the system will resolve to a weighted random selection of templates.
-*   **Ack Disruption:** The Diary can also disrupt the M-Console's ping and acknowledgment system, causing delayed or ghost acks and reducing the designer's confidence in the player's position.
-
-#### 4.2.2. Player State
-
-The player's `entropyField` state is updated to reflect the Diary's influence:
+### 5.2 Export Structure
 
 ```javascript
-{
-  "strength": 0.35,
-  "sourceItemId": "winston_diary",
-#### 4.2.3. Engineering Considerations
+function exportWorld() {
+  const worldData = {
+    nodes: [...],
+    connections: [...],
+    
+    // Pattern engine config
+    patternDefaults: {
+      type: 'REACTION_DIFFUSION',
+      params: { feed: 0.055, kill: 0.062, iterations: 200 }
+    },
+    
+    // Per-node overrides
+    nodePatterns: {
+      [nodeId]: { type: 'VORONOI', params: { cells: 6 } }
+    }
+  };
+}
+```
 
-The `entropyField` object will be added to the player's data model in the game engine. The game engine will be responsible for implementing the "Mutation Fog," "Entropy Injection," and "Ack Disruption" mechanics.
+### 5.3 Integration with Existing Systems
 
-## 5. Leaderboard Integrity
+| Component | Integration Point |
+|-----------|-------------------|
+| `biome-config.js` | Use existing biome weights, map to pattern types |
+| `floor-gen-core.js` | Add pattern generation step before room gen |
+| `world-designer.js` | Extend export with patternConfig |
+| `COLLECTIBLES_CANON.md` | Use 9 categories for tile mapping |
 
-To ensure competitive integrity, the high score system clearly distinguishes between different run types based on their "Run Integrity Class."
+---
 
-### 5.1. Run Integrity Classes
+## Reference: Existing Implementation
 
-*   **Class A (Static):** A deterministic run with no live manipulation.
-*   **Class B (Human-Moderated):** A run that was manipulated by a human designer.
-*   **Class C (Agent-Moderated):** A run that was manipulated by the Live Agentic Moderator.
-*   **Class D (Hybrid):** A run that was manipulated by a combination of human and agent intervention.
+### Current Systems (Don't Break)
 
-### 5.2. Scoreboard Layout
+| System | Location | Status |
+|--------|----------|--------|
+| Biome selection | `biome-config.js` | ✅ Implemented |
+| Floor generation | `floor-gen-core.js` | ✅ Implemented |
+| Vents system | `BIOME_SYSTEMS.md` | ✅ Documented |
+| Collectibles | `COLLECTIBLES_CANON.md` | ✅ Documented |
 
-The high score board is divided into separate tabs for each run integrity class. This ensures that players are only competing against others who played under the same conditions.
+### Code Locations
 
-### 5.3. Public Transparency
+```
+public/js/
+├── biome-config.js           # Existing biome weights
+├── floor-gen-core.js          # Existing floor gen
+└── pattern-engine/           # NEW: Pattern modules
+    ├── ScalarField.js
+    ├── BasePattern.js
+    ├── ReactionDiffusionPattern.js
+    ├── VoronoiPattern.js
+    ├── RadialPattern.js
+    ├── FieldPostProcessor.js
+    ├── BiomeAssembler.js
+    └── PatternEngine.js
+```
 
-### 5.4. Engineering Considerations
+---
 
-The `runClass` will be a property of the `Run` model, and it will be set by the game engine based on whether the run has been manipulated. The high score board will need to be implemented on the game's backend, and it will need to be able to filter and display runs based on their `runClass`.
+## Implementation Checklist
 
-## 6. M-Console Integration
+### Phase 1: Foundation
+- [ ] Create ScalarField class
+- [ ] Create BasePattern interface
+- [ ] Add to floor-gen-core.js integration point
+- [ ] Verify <10ms performance
 
-The M-Console provides a UI for designers and agents to interact with the Hybrid Seed Architecture and Live Moderation System.
+### Phase 2: Patterns
+- [ ] Implement ReactionDiffusionPattern
+- [ ] Implement VoronoiPattern
+- [ ] Implement RadialPattern
+- [ ] Create PatternEngine factory
+- [ ] Map biomes to pattern types
 
-### 6.1. "BIG BROTHER" Mode
+### Phase 3: Constraints
+- [ ] Implement FieldPostProcessor (normalize, quantize)
+- [ ] Implement BiomeAssembler
+- [ ] Add connectivity enforcement
+- [ ] Add curvature-aware spawns
 
-As described in the "Live Agentic Game Moderation System" document, the "BIG BROTHER" mode in the AWOL tab is the gateway to all live manipulation features. It is a global toggle that enables or disables the M-Console's ability to ping player accounts and mutate future floors.
+### Phase 4: Dynamic
+- [ ] Add pressure field layer
+- [ ] Add resource gradient layer
+- [ ] Implement mutation events
+- [ ] Add depth-based scaling
 
-### 6.2. F+1 Mutation UI
+### Phase 5: Designer
+- [ ] Extend World Designer node properties
+- [ ] Update exportWorld function
+- [ ] Add M-Console hooks
 
-When "BIG BROTHER" mode is active, the M-Console will display a new UI for the F+1 floor, which includes:
+---
 
-*   **Param Delta Meter:** A meter that shows the current parameter drift for the floor.
-*   **Mutation Budget Bar:** A bar that shows the remaining budget for parameter mutations.
-### 6.3. Engineering Considerations
+## Next Steps
 
-The M-Console UI described in this document is a more advanced version of the `scenario-designer.html` file. The existing code in `scenario-designer.html` can be used as a starting point for implementing the new features, such as the "Param Delta Meter," "Mutation Budget Bar," and "Structural Edit Icon."
+1. **Start with Phase 1** — Create ScalarField class
+2. **Test pattern generation** — Verify <10ms for 128×128
+3. **Integrate with biome-config.js** — Map existing biomes
+4. **Proceed to Phase 3** — Add constraint layer
+5. **Phase 5 last** — Connect to designer tools
