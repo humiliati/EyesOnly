@@ -3917,69 +3917,26 @@ _incrementPityTimers();
   /**
    * Apply tile effects when player enters a tile
    */
-  function _applyTileEffects(x, y) {
-    var tile = _grid[y][x];
-    var key = x + ',' + y;
-    var metadata = _tileMetadata[key];
-    var message = null;
-
-    // Check for ground effects (water, oil, etc.)
-    if (typeof GroundEffects !== 'undefined') {
-      var groundEffect = GroundEffects.getGroundAt(x, y);
-      if (groundEffect && groundEffect.movePenalty) {
-        // Apply visual feedback for water slowdown
-        if (groundEffect.type === 'WATER' || groundEffect.char === '~') {
-          _applyWaterSlowdownEffect();
-        }
-      }
-    }
-
-    // Hazard damage
-    if (tile === TILES.HAZARD || (metadata && metadata.type === 'hazard')) {
-      var damage = metadata ? metadata.damage : 1;
-      _player.hp -= damage;
-      message = '🟥 HAZARD! -' + damage + ' HP';
-
-      if (_player.hp <= 0) {
-        return _handlePlayerDeath('environmental_hazard', {
-          damage: damage,
-          location: { x: _player.x, y: _player.y }
-        });
-      }
-    }
-
-    // Stealth bonuses (applied passively during detection checks)
-    if (tile === TILES.SHADOW || tile === TILES.GRASS || tile === TILES.SMOKE) {
-      if (tile === TILES.SHADOW) {
-        message = '⬛ Entered shadow (stealth +30%)';
-      } else if (tile === TILES.GRASS) {
-        message = '🟩 Grass cover (stealth +20%)';
-      } else if (tile === TILES.SMOKE) {
-        message = '🌫️  Smoke/fog (stealth +40%)';
-      }
-    }
-
-    return message;
+  // ── GroundEffectsSystem context builder ──
+  function _groundEffectsCtx() {
+    return {
+      grid: _grid, tileMetadata: _tileMetadata, player: _player,
+      TILES: TILES, rng: _rng, strCombatEnemy: _strCombatEnemy,
+      handlePlayerDeath: _handlePlayerDeath
+    };
   }
 
-  /**
-   * Apply visual feedback for water slowdown
-   * Blue wave roll down animation on window frame
-   */
-  function _applyWaterSlowdownEffect() {
-    var gameFrame = document.getElementById('game-frame');
-    if (!gameFrame) {
-      gameFrame = document.querySelector('.game-window');
+  function _applyTileEffects(x, y) {
+    if (typeof GroundEffectsSystem !== 'undefined') {
+      return GroundEffectsSystem.applyTileEffects(x, y, _groundEffectsCtx());
     }
+    // fallback: no tile effects
+    return null;
+  }
 
-    if (gameFrame) {
-      // Add water slowdown class for CSS animation
-      gameFrame.classList.add('water-slowdown-effect');
-
-      // Remove class after animation completes (1 second)
-      setTimeout(function() {
-        gameFrame.classList.remove('water-slowdown-effect');
-      }, 1000);
+  function _applyWaterSlowdownEffect() {
+    if (typeof GroundEffectsSystem !== 'undefined') {
+      return GroundEffectsSystem.applyWaterSlowdownEffect();
     }
   }
 
@@ -4649,128 +4606,17 @@ _incrementPityTimers();
   }
 
   function _consumeActiveItemIfMatches(requiredKey) {
-    if (typeof GAMESTATE === 'undefined') return false;
-
-    var active = GAMESTATE.getActiveItem ? GAMESTATE.getActiveItem() : null;
-    if (!active || active.type !== 'key') return false;
-
-    var activeKeyType = active.keyType || active.itemId;
-    if (activeKeyType !== requiredKey) return false;
-
-    // Remove one matching key from persistent inventory (equipped items currently come from persistent)
-    var persistent = GAMESTATE.getPersistentInventory ? GAMESTATE.getPersistentInventory() : [];
-    for (var i = 0; i < persistent.length; i++) {
-      var pit = persistent[i];
-      if (pit && pit.type === 'key' && (pit.keyType || pit.itemId) === requiredKey) {
-        if (GAMESTATE.removePersistentInventoryItem) GAMESTATE.removePersistentInventoryItem(i);
-        break;
-      }
-    }
-
-    if (GAMESTATE.clearActiveItem) GAMESTATE.clearActiveItem();
-
-    // Decrement structured key counter (Tier 2 gate key consumed from active slot)
-    try {
-      if (GAMESTATE.removeKeyCount) GAMESTATE.removeKeyCount(requiredKey, 2);
-    } catch (eKC) {}
-
-    // Update active slot display (header)
-    if (typeof document !== 'undefined') {
-      var activeDisplay = document.getElementById('active-item-display');
-      if (activeDisplay) {
-        activeDisplay.innerHTML = '<span class="empty-slot-indicator">·</span>';
-        activeDisplay.classList.remove('has-item');
-      }
-    }
-
-    // Refresh inventory display if mobile UI present
-    if (typeof GoneRogueMobile !== 'undefined' && GoneRogueMobile.showInventory) {
-      GoneRogueMobile.showInventory();
-    }
-
-    return true;
-  }
-
-  function _consumeKeyFromInventory(requiredKey) {
-    if (typeof GAMESTATE === 'undefined') return false;
-
-    var loose = GAMESTATE.getLooseInventory ? GAMESTATE.getLooseInventory() : [];
-    for (var i = 0; i < loose.length; i++) {
-      var it = loose[i];
-      if (it && it.type === 'key' && (it.keyType || it.itemId) === requiredKey) {
-        if (GAMESTATE.removeFromLoose) GAMESTATE.removeFromLoose(i);
-        // Decrement counter (tier 1 ammo — from loose inventory)
-        try { if (GAMESTATE.removeKeyCount) GAMESTATE.removeKeyCount(requiredKey, it.tier || 1); } catch (e) {}
-        return true;
-      }
-    }
-
-    // Fallback: consume from persistent inventory (keyring slot)
-    var persistent = GAMESTATE.getPersistentInventory ? GAMESTATE.getPersistentInventory() : [];
-    for (var j = 0; j < persistent.length; j++) {
-      var pit = persistent[j];
-      if (pit && pit.type === 'key' && (pit.keyType || pit.itemId) === requiredKey) {
-        if (GAMESTATE.removeFromPersistent) GAMESTATE.removeFromPersistent(j);
-        // Decrement counter (tier 2 gate key — from persistent)
-        try { if (GAMESTATE.removeKeyCount) GAMESTATE.removeKeyCount(requiredKey, pit.tier || 2); } catch (e) {}
-        return true;
-      }
-    }
-
+    if (typeof InventoryManagement !== 'undefined') return InventoryManagement.consumeActiveItemIfMatches(requiredKey);
     return false;
   }
 
-  /**
-   * Consume a Tier 3 quest key via NPC turn-in interaction.
-   * Only called from NPC dialogue callbacks, never from gate unlock.
-   * @param {string} questKeyType - The keyType or registryId to consume
-   * @param {string} npcTarget - The NPC identifier for validation
-   * @returns {object|false} - The consumed item data, or false if not found
-   */
+  function _consumeKeyFromInventory(requiredKey) {
+    if (typeof InventoryManagement !== 'undefined') return InventoryManagement.consumeKeyFromInventory(requiredKey);
+    return false;
+  }
+
   function _consumeQuestItem(questKeyType, npcTarget) {
-    if (typeof GAMESTATE === 'undefined') return false;
-
-    var persistent = GAMESTATE.getPersistentInventory ? GAMESTATE.getPersistentInventory() : [];
-    for (var i = 0; i < persistent.length; i++) {
-      var pit = persistent[i];
-      if (!pit || pit.type !== 'key') continue;
-      if (pit.subtype !== 'quest') continue;
-
-      var keyId = pit.keyType || pit.registryId || pit.itemId;
-      if (keyId !== questKeyType) continue;
-
-      // Validate NPC target matches if provided on the item
-      if (pit.npcTarget && npcTarget && pit.npcTarget !== npcTarget) continue;
-
-      // Found a match — remove from persistent inventory
-      var consumed = JSON.parse(JSON.stringify(pit));
-      if (GAMESTATE.removePersistentInventoryItem) {
-        GAMESTATE.removePersistentInventoryItem(i);
-      } else if (GAMESTATE.removeFromPersistent) {
-        GAMESTATE.removeFromPersistent(i);
-      }
-
-      // Decrement structured key counter (Tier 3 quest key consumed via NPC turn-in)
-      try {
-        if (GAMESTATE.removeKeyCount) GAMESTATE.removeKeyCount(questKeyType, 3);
-      } catch (eKC) {}
-
-      // Visual feedback
-      if (typeof TooltipSystem !== 'undefined') {
-        TooltipSystem.show((pit.emoji || '🔨') + ' TURNED IN', 1500);
-      }
-      if (typeof DebriefFeedController !== 'undefined') {
-        DebriefFeedController.flashIncinerator({ kind: 'quest_key' });
-      }
-
-      // Refresh inventory display
-      if (typeof GoneRogueMobile !== 'undefined' && GoneRogueMobile.showInventory) {
-        GoneRogueMobile.showInventory();
-      }
-
-      return consumed;
-    }
-
+    if (typeof InventoryManagement !== 'undefined') return InventoryManagement.consumeQuestItem(questKeyType, npcTarget);
     return false;
   }
 
@@ -5326,6 +5172,7 @@ _incrementPityTimers();
       _turn = 0;
 
       // Reset vendor for new bonfire
+      if (typeof VendorSystem !== 'undefined') VendorSystem.reset();
       _vendor = null;
       _vendorInventory = [];
 
@@ -5425,532 +5272,72 @@ _incrementPityTimers();
   /**
    * Initialize vendor for bonfire floor
    */
+  // ── Vendor System delegation stubs (Phase 8) ─────────────
+  function _vendorCtx() {
+    return {
+      floor: _floor, player: _player, rng: _rng,
+      VENDOR_TYPES: VENDOR_TYPES, FLOOR_TYPES: FLOOR_TYPES,
+      getFloorType: _getFloorType, getPrompt: getPrompt,
+      renderGrid: _renderGrid, saveState: _saveState
+    };
+  }
+  function _syncVendorState() {
+    if (typeof VendorSystem === 'undefined') return;
+    _vendor = VendorSystem.getVendor();
+    _vendorInventory = VendorSystem.getVendorInventory();
+  }
+
   function _initializeVendor() {
-    // Choose random vendor type
-    var vendorTypes = Object.keys(VENDOR_TYPES);
-    var randomType = vendorTypes[Math.floor(_rng() * vendorTypes.length)];
-    _vendor = VENDOR_TYPES[randomType];
-
-    // Generate vendor inventory (5 cards)
-    _vendorInventory = [];
-    for (var i = 0; i < 5; i++) {
-      if (typeof CardSystem !== 'undefined') {
-        var baseType = CardSystem.getRandomBaseCard();
-        var card = CardSystem.rollCard(baseType);
-
-        // Calculate price based on quality and vendor multiplier
-        var basePrice = 50 + Math.floor((card.quality / 100) * 150);
-        var price = Math.floor(basePrice * _vendor.priceMultiplier);
-
-        _vendorInventory.push({
-          card: card,
-          price: price
-        });
-      }
-    }
+    if (typeof VendorSystem !== 'undefined') { VendorSystem.initializeVendor(_vendorCtx()); _syncVendorState(); return; }
   }
 
-  /**
-   * Show vendor shop
-   */
   function _showVendor() {
-    var floorType = _getFloorType(_floor);
-    if (floorType !== FLOOR_TYPES.BONFIRE) {
-      return {
-        lines: ['NO VENDOR HERE', 'Vendors only appear at bonfire floors (10, 16, 22)', ''].concat(_renderGrid()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    // Initialize vendor if not done yet
-    if (!_vendor) {
-      _initializeVendor();
-    }
-
-    var lines = [
-      '',
-      '═══════════════════════════════════════',
-      '  🔥 BONFIRE VENDOR 🔥',
-      '  ' + _vendor.emoji + ' ' + _vendor.name,
-      '  ' + _vendor.description,
-      '═══════════════════════════════════════',
-      ''
-    ];
-
-    // Show player's cryptos
-    if (typeof GAMESTATE !== 'undefined') {
-      var cryptos = GAMESTATE.getState().cryptos || 0;
-      lines.push('  YOUR CRYPTOS: ¢' + cryptos);
-      lines.push('');
-    }
-
-    // Show vendor inventory
-    lines.push('VENDOR INVENTORY:');
-    _vendorInventory.forEach(function(item, i) {
-      lines.push('  ' + (i+1) + '. ' + item.card.emoji + ' ' + item.card.name + ' [' + item.card.qualityName + '] - ¢' + item.price);
-    });
-
-    lines.push('');
-    lines.push('COMMANDS:');
-    lines.push('  BUY <number>  - Purchase item');
-    lines.push('  HEAL          - Restore 30-50% HP for ¢30');
-    lines.push('  GAMBLE        - Random card roll for ¢100');
-    lines.push('');
-
-    return {
-      lines: lines,
-      prompt: getPrompt(),
-      stayActive: true
-    };
+    if (typeof VendorSystem !== 'undefined') { var r = VendorSystem.showVendor(_vendorCtx()); _syncVendorState(); return r; }
+    return { lines: ['[Vendor module not loaded]'], prompt: getPrompt(), stayActive: true };
   }
 
-  /**
-   * Buy item from vendor
-   */
   function _buyFromVendor(cmd) {
-    var floorType = _getFloorType(_floor);
-    if (floorType !== FLOOR_TYPES.BONFIRE) {
-      return {
-        lines: ['NO VENDOR HERE', ''].concat(_renderGrid()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    if (!_vendor) {
-      _initializeVendor();
-    }
-
-    // Parse item number
-    var parts = cmd.split(' ');
-    var itemNum = parseInt(parts[1]);
-
-    if (isNaN(itemNum) || itemNum < 1 || itemNum > _vendorInventory.length) {
-      return {
-        lines: ['INVALID ITEM NUMBER', 'Use: BUY <1-' + _vendorInventory.length + '>', ''],
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    var item = _vendorInventory[itemNum - 1];
-
-    if (typeof GAMESTATE !== 'undefined') {
-      var state = GAMESTATE.getState();
-      var cryptos = state.cryptos || 0;
-
-      if (cryptos < item.price) {
-        return {
-          lines: ['INSUFFICIENT FUNDS', 'Need ¢' + item.price + ', have ¢' + cryptos, ''],
-          prompt: getPrompt(),
-          stayActive: true
-        };
-      }
-
-      // Add to loose inventory
-      var result = GAMESTATE.addToLoose(item.card);
-      if (!result.success) {
-        return {
-          lines: [result.message, 'DROP SOMETHING FIRST', ''],
-          prompt: getPrompt(),
-          stayActive: true
-        };
-      }
-
-      // Deduct cryptos
-      state.cryptos -= item.price;
-
-      // Remove from vendor inventory
-      _vendorInventory.splice(itemNum - 1, 1);
-
-      _saveState();
-
-      return {
-        lines: ['PURCHASED: ' + item.card.emoji + ' ' + item.card.name, 'Remaining cryptos: ¢' + state.cryptos, ''],
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    return {
-      lines: ['PURCHASE FAILED', ''],
-      prompt: getPrompt(),
-      stayActive: true
-    };
+    if (typeof VendorSystem !== 'undefined') { var r = VendorSystem.buyFromVendor(cmd, _vendorCtx()); _syncVendorState(); return r; }
+    return { lines: ['[Vendor module not loaded]'], prompt: getPrompt(), stayActive: true };
   }
 
-  /**
-   * Heal at bonfire
-   */
   function _healAtBonfire() {
-    var floorType = _getFloorType(_floor);
-    if (floorType !== FLOOR_TYPES.BONFIRE) {
-      return {
-        lines: ['NO BONFIRE HERE', 'Healing only available at bonfire floors', ''].concat(_renderGrid()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    var HEAL_COST = 30;
-
-    if (typeof GAMESTATE !== 'undefined') {
-      var state = GAMESTATE.getState();
-      var cryptos = state.cryptos || 0;
-
-      if (cryptos < HEAL_COST) {
-        return {
-          lines: ['INSUFFICIENT FUNDS', 'Healing costs ¢' + HEAL_COST + ', have ¢' + cryptos, ''],
-          prompt: getPrompt(),
-          stayActive: true
-        };
-      }
-
-      // Heal 30-50% HP
-      var healPercent = 0.3 + _rng() * 0.2;
-      var healAmount = Math.floor(_player.maxHp * healPercent);
-      var oldHp = _player.hp;
-      _player.hp = Math.min(_player.maxHp, _player.hp + healAmount);
-      var actualHeal = _player.hp - oldHp;
-
-      // Deduct cryptos
-      state.cryptos -= HEAL_COST;
-
-      _saveState();
-
-      return {
-        lines: [
-          'HEALED: +' + actualHeal + ' HP',
-          'HP: ' + _player.hp + '/' + _player.maxHp,
-          'Remaining cryptos: ¢' + state.cryptos,
-          ''
-        ],
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    return {
-      lines: ['HEAL FAILED', ''],
-      prompt: getPrompt(),
-      stayActive: true
-    };
+    if (typeof VendorSystem !== 'undefined') return VendorSystem.healAtBonfire(_vendorCtx());
+    return { lines: ['[Vendor module not loaded]'], prompt: getPrompt(), stayActive: true };
   }
 
-  /**
-   * Gamble for a random card
-   */
   function _gambleCard() {
-    var floorType = _getFloorType(_floor);
-    if (floorType !== FLOOR_TYPES.BONFIRE) {
-      return {
-        lines: ['NO VENDOR HERE', 'Gambling only available at bonfire floors', ''].concat(_renderGrid()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
+    if (typeof VendorSystem !== 'undefined') return VendorSystem.gambleCard(_vendorCtx());
+    return { lines: ['[Vendor module not loaded]'], prompt: getPrompt(), stayActive: true };
+  }
 
-    var GAMBLE_COST = 100;
-
-    if (typeof GAMESTATE !== 'undefined' && typeof CardSystem !== 'undefined') {
-      var state = GAMESTATE.getState();
-      var cryptos = state.cryptos || 0;
-
-      if (cryptos < GAMBLE_COST) {
-        return {
-          lines: ['INSUFFICIENT FUNDS', 'Gambling costs ¢' + GAMBLE_COST + ', have ¢' + cryptos, ''],
-          prompt: getPrompt(),
-          stayActive: true
-        };
-      }
-
-      // Roll random card with gambling odds
-      // 70% junk (30-55%), 20% usable (55-75%), 8% strong (75-90%), 1.8% near-perfect (90-97%), 0.2% perfect (97-100%)
-      var rand = _rng() * 100;
-      var targetQuality;
-
-      if (rand < 0.2) {
-        targetQuality = 97 + _rng() * 3; // 97-100% (perfect)
-      } else if (rand < 2) {
-        targetQuality = 90 + _rng() * 7; // 90-97% (near-perfect)
-      } else if (rand < 10) {
-        targetQuality = 75 + _rng() * 15; // 75-90% (strong)
-      } else if (rand < 30) {
-        targetQuality = 55 + _rng() * 20; // 55-75% (usable)
-      } else {
-        targetQuality = 30 + _rng() * 25; // 30-55% (junk)
-      }
-
-      var baseType = CardSystem.getRandomBaseCard();
-      var card = CardSystem.rollCard(baseType);
-
-      // For simplicity, just use the rolled card's quality
-      // The gambling mechanism is about the odds of getting different quality tiers
-
-      // Add to loose inventory
-      var result = GAMESTATE.addToLoose(card);
-      if (!result.success) {
-        return {
-          lines: [result.message, 'DROP SOMETHING FIRST', ''],
-          prompt: getPrompt(),
-          stayActive: true
-        };
-      }
-
-      // Deduct cryptos
-      state.cryptos -= GAMBLE_COST;
-
-      _saveState();
-
-      var qualityDesc = card.quality >= 97 ? '✨ PERFECT ✨' :
-                       card.quality >= 90 ? '🌟 NEAR-PERFECT' :
-                       card.quality >= 75 ? '⭐ STRONG' :
-                       card.quality >= 55 ? '• USABLE' : '• JUNK';
-
-      return {
-        lines: [
-          '🎲 GAMBLE RESULT:',
-          qualityDesc,
-          card.emoji + ' ' + card.name + ' [' + card.qualityName + '] (' + Math.floor(card.quality) + '%)',
-          'Remaining cryptos: ¢' + state.cryptos,
-          ''
-        ],
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
+  // ── Inventory Management delegation stubs (Phase 8) ──────
+  function _invMgmtCtx() {
     return {
-      lines: ['GAMBLE FAILED', ''],
-      prompt: getPrompt(),
-      stayActive: true
+      floor: _floor, getFloorType: _getFloorType, FLOOR_TYPES: FLOOR_TYPES,
+      getPrompt: getPrompt, renderGrid: _renderGrid, inventoryLines: _inventoryLines,
+      updatePlayerLight: _updatePlayerLight
     };
   }
 
-  /**
-   * Stash card from loose carry to persistent inventory (bonfire only)
-   */
   function _stashCard(cmd) {
-    var floorType = _getFloorType(_floor);
-    if (floorType !== FLOOR_TYPES.BONFIRE) {
-      return {
-        lines: ['NO BONFIRE HERE', 'Inventory transfer only available at bonfire floors', ''].concat(_renderGrid()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    if (typeof GAMESTATE === 'undefined') {
-      return {
-        lines: ['GAMESTATE UNAVAILABLE', ''],
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    // Parse item number from command
-    var parts = cmd.split(' ');
-    if (parts.length < 2) {
-      return {
-        lines: ['USAGE: STASH <number>', 'Example: STASH 1', ''].concat(_inventoryLines()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    var itemNum = parseInt(parts[1], 10) - 1; // Convert to 0-indexed
-    var looseInv = GAMESTATE.getLooseInventory();
-
-    if (itemNum < 0 || itemNum >= looseInv.length) {
-      return {
-        lines: ['INVALID ITEM NUMBER', 'Loose carry has ' + looseInv.length + ' items', ''].concat(_inventoryLines()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    var item = looseInv[itemNum];
-
-    // Try to add to persistent
-    var addResult = GAMESTATE.addToPersistent(item);
-    if (!addResult.success) {
-      return {
-        lines: [addResult.message, ''].concat(_inventoryLines()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    // Remove from loose
-    GAMESTATE.removeFromLoose(itemNum);
-
-    return {
-      lines: [
-        '📦 STASHED TO PERSISTENT STORAGE',
-        item.emoji + ' ' + item.name,
-        ''
-      ].concat(_inventoryLines()),
-      prompt: getPrompt(),
-      stayActive: true
-    };
+    if (typeof InventoryManagement !== 'undefined') return InventoryManagement.stashCard(cmd, _invMgmtCtx());
+    return { lines: ['[Inventory module not loaded]'], prompt: getPrompt(), stayActive: true };
   }
 
-  /**
-   * Retrieve card from persistent inventory to loose carry (bonfire only)
-   */
   function _retrieveCard(cmd) {
-    var floorType = _getFloorType(_floor);
-    if (floorType !== FLOOR_TYPES.BONFIRE) {
-      return {
-        lines: ['NO BONFIRE HERE', 'Inventory transfer only available at bonfire floors', ''].concat(_renderGrid()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    if (typeof GAMESTATE === 'undefined') {
-      return {
-        lines: ['GAMESTATE UNAVAILABLE', ''],
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    // Parse item number from command
-    var parts = cmd.split(' ');
-    if (parts.length < 2) {
-      return {
-        lines: ['USAGE: RETRIEVE <number>', 'Example: RETRIEVE 1', ''].concat(_inventoryLines()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    var itemNum = parseInt(parts[1], 10) - 1; // Convert to 0-indexed
-    var persistentInv = GAMESTATE.getPersistentInventory();
-
-    if (itemNum < 0 || itemNum >= persistentInv.length) {
-      return {
-        lines: ['INVALID ITEM NUMBER', 'Persistent storage has ' + persistentInv.length + ' items', ''].concat(_inventoryLines()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    var item = persistentInv[itemNum];
-
-    // Try to add to loose
-    var addResult = GAMESTATE.addToLoose(item);
-    if (!addResult.success) {
-      return {
-        lines: [addResult.message, ''].concat(_inventoryLines()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    // Remove from persistent
-    GAMESTATE.removeFromPersistent(itemNum);
-
-    return {
-      lines: [
-        '🎒 RETRIEVED TO LOOSE CARRY',
-        item.emoji + ' ' + item.name,
-        ''
-      ].concat(_inventoryLines()),
-      prompt: getPrompt(),
-      stayActive: true
-    };
+    if (typeof InventoryManagement !== 'undefined') return InventoryManagement.retrieveCard(cmd, _invMgmtCtx());
+    return { lines: ['[Inventory module not loaded]'], prompt: getPrompt(), stayActive: true };
   }
 
-  /**
-   * Equip item from persistent inventory to active slot
-   */
   function _equipItem(cmd) {
-    if (typeof GAMESTATE === 'undefined') {
-      return {
-        lines: ['GAMESTATE UNAVAILABLE', ''],
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    // Parse item number from command
-    var parts = cmd.split(' ');
-    if (parts.length < 2) {
-      return {
-        lines: ['USAGE: EQUIP <number>', 'Example: EQUIP 1', ''].concat(_inventoryLines()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    var itemNum = parseInt(parts[1], 10) - 1; // Convert to 0-indexed
-    var persistentInv = GAMESTATE.getPersistentInventory();
-
-    if (itemNum < 0 || itemNum >= persistentInv.length) {
-      return {
-        lines: ['INVALID ITEM NUMBER', 'Persistent inventory has ' + persistentInv.length + ' items', ''].concat(_inventoryLines()),
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    var item = persistentInv[itemNum];
-
-    // Set as active item (doesn't remove from inventory)
-    GAMESTATE.setActiveItem(item);
-
-    // Update player light if it's a lighting item
-    _updatePlayerLight();
-
-    return {
-      lines: [
-        '⚡ EQUIPPED TO ACTIVE SLOT',
-        item.emoji + ' ' + item.name,
-        ''
-      ].concat(_inventoryLines()),
-      prompt: getPrompt(),
-      stayActive: true
-    };
+    if (typeof InventoryManagement !== 'undefined') return InventoryManagement.equipItem(cmd, _invMgmtCtx());
+    return { lines: ['[Inventory module not loaded]'], prompt: getPrompt(), stayActive: true };
   }
 
-  /**
-   * Unequip active item
-   */
   function _unequipItem() {
-    if (typeof GAMESTATE === 'undefined') {
-      return {
-        lines: ['GAMESTATE UNAVAILABLE', ''],
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    var activeItem = GAMESTATE.getActiveItem();
-    if (!activeItem) {
-      return {
-        lines: ['NO ITEM EQUIPPED', ''],
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    GAMESTATE.clearActiveItem();
-
-    // Update player light (will clear it)
-    _updatePlayerLight();
-
-    return {
-      lines: [
-        '⚪ UNEQUIPPED',
-        'Active slot cleared',
-        ''
-      ].concat(_inventoryLines()),
-      prompt: getPrompt(),
-      stayActive: true
-    };
+    if (typeof InventoryManagement !== 'undefined') return InventoryManagement.unequipItem(_invMgmtCtx());
+    return { lines: ['[Inventory module not loaded]'], prompt: getPrompt(), stayActive: true };
   }
 
   /**
@@ -7695,26 +7082,9 @@ _incrementPityTimers();
   }
 
   function _consumeCosts(costs) {
+    if (typeof InventoryManagement !== 'undefined') return InventoryManagement.consumeCosts(costs);
     if (!costs || !costs.length) return { success: true };
-    if (typeof GAMESTATE === 'undefined') return { success: false };
-
-    // Spend each resource; if any fails, stop (best effort)
-    for (var i = 0; i < costs.length; i++) {
-      var c = costs[i];
-      if (!c || !c.kind) continue;
-      var amt = Number(c.amount || 0);
-      if (!isFinite(amt) || amt <= 0) continue;
-
-      var ok = true;
-      if (c.kind === 'ammo' && typeof GAMESTATE.useAmmo === 'function') ok = GAMESTATE.useAmmo(amt).success;
-      else if (c.kind === 'battery' && typeof GAMESTATE.useBattery === 'function') ok = GAMESTATE.useBattery(amt).success;
-      else if (c.kind === 'energy' && typeof GAMESTATE.useEnergy === 'function') ok = GAMESTATE.useEnergy(amt).success;
-      else if (c.kind === 'focus' && typeof GAMESTATE.useFocus === 'function') { GAMESTATE.useFocus(amt); ok = true; }
-
-      if (!ok) return { success: false, failed: c };
-    }
-
-    return { success: true };
+    return { success: false };
   }
 
   function _maybeTrigger3dPrinter(triggerCardId, triggerCard) {
@@ -8106,249 +7476,71 @@ _incrementPityTimers();
   /**
    * Map swipe direction to card action
    */
+  // ── CardActionSystem context builder ──
+  function _cardActionCtx() {
+    return {
+      player: _player, enemies: _enemies, floor: _floor,
+      strCombatActive: _strCombatActive,
+      FLOOR_TYPES: FLOOR_TYPES,
+      getFloorType: _getFloorType, getPrompt: getPrompt,
+      renderGrid: _renderGrid, saveState: _saveState,
+      enterStrCombat: function(enemy, trigger, card) {
+        if (!_strCombatActive) return _enterStrCombat(enemy, trigger, card);
+      },
+      executeSimultaneousRound: _executeSimultaneousRound,
+      getEnemyAICard: _getEnemyAICard,
+      get turn() { return _turn; },
+      set turn(v) { _turn = v; }
+    };
+  }
+
   function _getCardAction(card, direction) {
-    // Direction mapping:
-    // up = use/apply
-    // down = discard
-    // left = defensive
-    // right = offensive
-
-    var category = typeof CardSystem !== 'undefined' ? CardSystem.getCardCategory(card) : card.type;
-
-    // Interrupt cards (up/right/left)
-    if (category === 'interrupt') {
-      if (direction === 'up' || direction === 'right' || direction === 'left') {
-        return { type: 'interrupt', card: card };
-      }
+    if (typeof CardActionSystem !== 'undefined') {
+      return CardActionSystem.getCardAction(card, direction);
     }
-    // Defense cards (up/left)
-    else if (category === 'defense' || card.type === 'stance') {
-      if (direction === 'up' || direction === 'left') {
-        return { type: 'defense', card: card };
-      }
-    }
-    // Movement cards (up/left/right)
-    else if (category === 'movement') {
-      if (direction === 'up' || direction === 'left' || direction === 'right') {
-        return { type: 'movement', card: card };
-      }
-    }
-    // Attack cards (up/right)
-    else if (category === 'attack' || card.type === 'attack') {
-      if (direction === 'up' || direction === 'right') {
-        return { type: 'attack', card: card };
-      }
-    }
-    // Setup/Utility cards (up)
-    else if (category === 'setup' || card.type === 'utility') {
-      if (direction === 'up') {
-        return { type: 'use', card: card };
-      }
-    }
-
-    if (direction === 'down') {
-      return { type: 'discard', card: card };
-    }
-
     return { type: 'none' };
   }
 
-  /**
-   * Execute card action
-   */
   function _executeCardAction(action) {
-    if (!action || action.type === 'none') {
-      return {
-        lines: ['INVALID SWIPE', ''],
-        prompt: getPrompt(),
-        stayActive: true
-      };
+    if (typeof CardActionSystem !== 'undefined') {
+      return CardActionSystem.executeCardAction(action, _cardActionCtx());
     }
-
-    // All combat actions now route through the same handlers
-    if (action.type === 'attack' || action.type === 'interrupt') {
-      return _performAttack(action.card);
-    } else if (action.type === 'defense' || action.type === 'stance' || action.type === 'movement') {
-      return _performStance(action.card);
-    } else if (action.type === 'use') {
-      return _useUtility(action.card);
-    } else if (action.type === 'discard') {
-      return _discardCard(action.card);
-    }
-
-    return {
-      lines: [''],
-      prompt: getPrompt(),
-      stayActive: true
-    };
+    return { lines: [''], prompt: getPrompt(), stayActive: true };
   }
 
-  /**
-   * Perform attack with card
-   */
   function _performAttack(card) {
-    // Tooltip: Attacking
-    if (typeof TooltipSystem !== 'undefined') {
-      TooltipSystem.showAction('attack');
+    if (typeof CardActionSystem !== 'undefined') {
+      return CardActionSystem.executeCardAction({ type: 'attack', card: card }, _cardActionCtx());
     }
-
-    // If already in STR combat, use simultaneous resolution
-    if (_strCombatActive) {
-      var enemyCard = _getEnemyAICard();
-      return _executeSimultaneousRound(card, enemyCard);
-    }
-
-    // Find nearest enemy
-    var nearest = _findNearestEnemy();
-    if (!nearest) {
-      return {
-        lines: ['NO ENEMIES IN RANGE', ''],
-        prompt: getPrompt(),
-        stayActive: true
-      };
-    }
-
-    // Trigger STR combat mode with player-initiated attack
-    return _enterStrCombat(nearest, 'player_attack', card);
+    return { lines: [''], prompt: getPrompt(), stayActive: true };
   }
 
-  /**
-   * Perform stance with card
-   */
   function _performStance(card) {
-    // If in STR combat, use simultaneous resolution
-    if (_strCombatActive) {
-      var enemyCard = _getEnemyAICard();
-      return _executeSimultaneousRound(card, enemyCard);
+    if (typeof CardActionSystem !== 'undefined') {
+      return CardActionSystem.executeCardAction({ type: 'defense', card: card }, _cardActionCtx());
     }
-
-    // Outside combat: apply stance benefits
-    _player.stealth += (card.stats.stealth || 1);
-    _turn++;
-    _saveState();
-
-    return {
-      lines: ['STANCE: ' + card.name.toUpperCase(), 'STEALTH +' + (card.stats.stealth || 1), ''].concat(_renderGrid()),
-      prompt: getPrompt(),
-      stayActive: true
-    };
+    return { lines: [''], prompt: getPrompt(), stayActive: true };
   }
 
-  /**
-   * Use utility card
-   */
   function _useUtility(card) {
-    var effects = [];
-
-    // Health restoration
-    if (card.stats.hp) {
-      _player.hp = Math.min(_player.maxHp, _player.hp + card.stats.hp);
-      effects.push('HP +' + card.stats.hp);
+    if (typeof CardActionSystem !== 'undefined') {
+      return CardActionSystem.executeCardAction({ type: 'use', card: card }, _cardActionCtx());
     }
-
-    // Energy restoration
-    if (card.stats.energyBoost) {
-      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addEnergy) {
-        GAMESTATE.addEnergy(card.stats.energyBoost);
-        effects.push('ENERGY +' + card.stats.energyBoost);
-      }
-    }
-
-    // Fatigue reduction
-    if (card.stats.fatigueReduction) {
-      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.reduceFatigue) {
-        GAMESTATE.reduceFatigue(card.stats.fatigueReduction);
-        effects.push('FATIGUE -' + card.stats.fatigueReduction);
-      }
-    }
-
-    // Battery recharge
-    if (card.stats.batteryRecharge) {
-      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.rechargeBattery) {
-        GAMESTATE.rechargeBattery(card.stats.batteryRecharge);
-        effects.push('BATTERY +' + card.stats.batteryRecharge);
-      }
-    }
-
-    // Focus boost
-    if (card.stats.focusBoost) {
-      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addFocus) {
-        GAMESTATE.addFocus(card.stats.focusBoost);
-        effects.push('FOCUS +' + card.stats.focusBoost);
-      }
-    }
-
-    // Ammo restoration
-    if (card.stats.ammoRestore) {
-      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addAmmo) {
-        GAMESTATE.addAmmo(card.stats.ammoRestore);
-        effects.push('AMMO +' + card.stats.ammoRestore);
-      }
-    }
-
-    // Check for wrong item in safe zone trigger
-    var floorType = _getFloorType(_floor);
-    if (floorType === FLOOR_TYPES.BONFIRE && typeof SecretFloors !== 'undefined') {
-      // Using combat cards or certain items in safe zones can trigger secret floors
-      var hasSecretTag = card.category === 'attack' || card.category === 'interrupt' || card.type === 'attack';
-
-      if (hasSecretTag) {
-        var triggerResult = SecretFloors.triggerSecretFloor(
-          SecretFloors.TRIGGER_TYPES.WRONG_ITEM_SAFE_ZONE,
-          {
-            inSafeZone: true,
-            itemHasSecretTag: true
-          }
-        );
-
-        if (triggerResult.success) {
-          // Secret floor will trigger on next elevator use
-          console.log('[GoneRogue] Wrong item in safe zone triggered secret floor');
-        }
-      }
-    }
-
-    _turn++;
-    _saveState();
-
-    var effectsMsg = effects.length > 0 ? effects.join(', ') : '';
-    return {
-      lines: ['USED: ' + card.name.toUpperCase(), effectsMsg, ''].concat(_renderGrid()),
-      prompt: getPrompt(),
-      stayActive: true
-    };
+    return { lines: [''], prompt: getPrompt(), stayActive: true };
   }
 
-  /**
-   * Discard card
-   */
   function _discardCard(card) {
-    // Remove from loose inventory (handled by GAMESTATE)
-    return {
-      lines: ['DISCARDED: ' + card.name, ''],
-      prompt: getPrompt(),
-      stayActive: true
-    };
+    if (typeof CardActionSystem !== 'undefined') {
+      return CardActionSystem.executeCardAction({ type: 'discard', card: card }, _cardActionCtx());
+    }
+    return { lines: ['DISCARDED: ' + card.name, ''], prompt: getPrompt(), stayActive: true };
   }
 
-  /**
-   * Find nearest enemy to player
-   */
   function _findNearestEnemy() {
-    var nearest = null;
-    var minDist = Infinity;
-
-    _enemies.forEach(function(enemy) {
-      if (enemy.hp <= 0) return;
-
-      var dist = Math.abs(enemy.x - _player.x) + Math.abs(enemy.y - _player.y);
-      if (dist < minDist && dist <= 5) {
-        minDist = dist;
-        nearest = enemy;
-      }
-    });
-
-    return nearest;
+    if (typeof CardActionSystem !== 'undefined') {
+      return CardActionSystem.findNearestEnemy({ player: _player, enemies: _enemies });
+    }
+    return null;
   }
 
   // ============================================================
@@ -8929,49 +8121,8 @@ _incrementPityTimers();
    * @param {number} radius - Spread radius
    */
   function _electrifyWater(x, y, radius) {
-    if (typeof GroundEffects === 'undefined') return;
-
-    var queue = [{x: x, y: y, dist: 0}];
-    var visited = {};
-    visited[x + ',' + y] = true;
-
-    while (queue.length > 0) {
-      var current = queue.shift();
-
-      // Apply electrified effect
-      var groundEffect = GroundEffects.getGroundEffect(current.x, current.y);
-      if (groundEffect && groundEffect.type === 'WATER') {
-        // Add electrified property to water
-        GroundEffects.setGroundEffect(current.x, current.y, 'WATER', {
-          electrified: true,
-          electrifiedTime: Date.now(),
-          electrifiedDuration: 6000 // 6 seconds
-        });
-      }
-
-      // Spread to adjacent tiles within radius
-      if (current.dist < radius) {
-        var neighbors = [
-          {x: current.x + 1, y: current.y},
-          {x: current.x - 1, y: current.y},
-          {x: current.x, y: current.y + 1},
-          {x: current.x, y: current.y - 1}
-        ];
-
-        for (var i = 0; i < neighbors.length; i++) {
-          var n = neighbors[i];
-          var key = n.x + ',' + n.y;
-
-          if (n.x >= 0 && n.x < GRID_WIDTH && n.y >= 0 && n.y < GRID_HEIGHT && !visited[key]) {
-            visited[key] = true;
-
-            var neighborEffect = GroundEffects.getGroundEffect(n.x, n.y);
-            if (neighborEffect && (neighborEffect.type === 'WATER' || neighborEffect.conductive)) {
-              queue.push({x: n.x, y: n.y, dist: current.dist + 1});
-            }
-          }
-        }
-      }
+    if (typeof GroundEffectsSystem !== 'undefined') {
+      return GroundEffectsSystem.electrifyWater(x, y, radius);
     }
   }
 
@@ -8988,104 +8139,17 @@ _incrementPityTimers();
    * Scans 3x3 tiles around player and enemy, applies status effects
    */
   function _applyGroundEffectModifiers() {
-    if (typeof GroundEffects === 'undefined') return;
-
-    var playerGroundEffect = GroundEffects.getGroundEffect(_player.x, _player.y);
-    var enemyGroundEffect = null;
-
-    if (_strCombatEnemy) {
-      enemyGroundEffect = GroundEffects.getGroundEffect(_strCombatEnemy.x, _strCombatEnemy.y);
-    }
-
-    // Apply player ground effect modifiers
-    if (playerGroundEffect) {
-      _applyPlayerGroundModifier(playerGroundEffect);
-    }
-
-    // Apply enemy ground effect modifiers
-    if (enemyGroundEffect && _strCombatEnemy) {
-      _applyEnemyGroundModifier(enemyGroundEffect, _strCombatEnemy);
+    if (typeof GroundEffectsSystem !== 'undefined') {
+      var log = GroundEffectsSystem.applyGroundEffectModifiers(_groundEffectsCtx());
+      if (log && log.length) {
+        for (var i = 0; i < log.length; i++) { _strCombatLog.push(log[i]); }
+      }
+      return;
     }
   }
 
-  /**
-   * Apply ground effect modifier to player
-   * @param {Object} effect - Ground effect
-   */
-  function _applyPlayerGroundModifier(effect) {
-    if (!effect) return;
-
-    // FIRE / OIL_IGNITED: Start combat with reduced HP and burn status
-    if (effect.type === 'FIRE' || effect.type === 'OIL_IGNITED') {
-      var burnDamage = Math.floor(_player.maxHp * 0.1); // 10% HP
-      _player.hp = Math.max(1, _player.hp - burnDamage);
-      _strCombatLog.push('🔥 STANDING IN FIRE! -' + burnDamage + ' HP');
-      _strCombatLog.push('└─ Burn status applied');
-    }
-    // ELECTRIFIED WATER: Shock risk, reduced evasion
-    else if (effect.type === 'WATER' && effect.electrified) {
-      _strCombatLog.push('⚡ STANDING IN ELECTRIFIED WATER!');
-      _strCombatLog.push('└─ Shock risk, -20% evasion');
-      // Modifier will be checked during damage calculation
-    }
-    // INDUSTRIAL_WASTE: Random mutation or debuff
-    else if (effect.type === 'INDUSTRIAL_WASTE') {
-      if (_rng() < 0.3) {
-        _strCombatLog.push('☢️  TOXIC WASTE EXPOSURE!');
-        _strCombatLog.push('└─ Random debuff applied');
-        // Could implement specific debuffs here
-      }
-    }
-    // WATER: Movement penalty, reduced evasion
-    else if (effect.type === 'WATER') {
-      _strCombatLog.push('💧 Standing in water: -10% evasion');
-    }
-    // ICE: speed boost but slippery
-    else if (effect.type === 'ICE') {
-      var accPen = (effect.accuracyPenaltyPct != null) ? effect.accuracyPenaltyPct : 12;
-      var evPen = (effect.evasionPenaltyPts != null) ? effect.evasionPenaltyPts : 2;
-      _player.tempAccuracyBoost = (_player.tempAccuracyBoost || 0) - accPen;
-      _player.tempEvasion = (_player.tempEvasion || 0) - evPen;
-      _strCombatLog.push('🧊 ICE: speed up, but slip risk');
-      _strCombatLog.push('└─ Accuracy -' + accPen + '%, Evasion -' + evPen);
-    }
-  }
-
-  /**
-   * Apply ground effect modifier to enemy
-   * @param {Object} effect - Ground effect
-   * @param {Object} enemy - Enemy object
-   */
-  function _applyEnemyGroundModifier(effect, enemy) {
-    if (!effect || !enemy) return;
-
-    // FIRE / OIL_IGNITED: Enemy takes damage, may be stunned
-    if (effect.type === 'FIRE' || effect.type === 'OIL_IGNITED') {
-      var burnDamage = Math.floor(enemy.maxHp * 0.15); // 15% HP for enemies
-      enemy.hp = Math.max(1, enemy.hp - burnDamage);
-      _strCombatLog.push('🔥 ENEMY IN FIRE! -' + burnDamage + ' HP');
-
-      // Weak enemies may be KO'd immediately
-      if (enemy.hp <= burnDamage && enemy.tier === 'SCOUT') {
-        enemy.hp = 0;
-        _strCombatLog.push('└─ Enemy KO\'d by fire!');
-      }
-    }
-    // ELECTRIFIED WATER: Stun enemy for first turn
-    else if (effect.type === 'WATER' && effect.electrified) {
-      _strCombatLog.push('⚡ ENEMY IN ELECTRIFIED WATER!');
-      _strCombatLog.push('└─ Enemy stunned turn 1');
-      enemy.stunnedTurns = 1;
-    }
-    // INDUSTRIAL_WASTE: Random debuff
-    else if (effect.type === 'INDUSTRIAL_WASTE') {
-      if (_rng() < 0.3) {
-        _strCombatLog.push('☢️  Enemy exposed to toxic waste');
-        _strCombatLog.push('└─ Enemy weakened');
-        enemy.weakened = true;
-      }
-    }
-  }
+  function _applyPlayerGroundModifier() { /* delegated to GroundEffectsSystem */ }
+  function _applyEnemyGroundModifier() { /* delegated to GroundEffectsSystem */ }
 
   /**
    * Build the three contextual messages displayed during the 3-2-1 countdown.

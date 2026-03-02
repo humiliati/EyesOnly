@@ -469,6 +469,15 @@ body {
     cursor: pointer;
 }
 
+.world-node {
+    position: absolute;
+    padding: 16px;
+    border: 1px solid #000;
+    background: #f0f0f0;
+    text-align: center;
+    z-index: 2;
+}
+
 .jtk-connector {
     z-index: 4;
 }

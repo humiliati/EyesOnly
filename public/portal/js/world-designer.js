@@ -13,10 +13,11 @@
                 ConnectionOverlays: [
                     [ 'Arrow', { location: 1, width: 10, length: 10, id: 'arrow' } ]
                 ]
-                instance.bind('connection', (info) => {
+            });
+
+            instance.bind('connection', (info) => {
                 console.log('Connection established:', info.connection);
             });
-        });
 
             const worldSelector = document.getElementById('world-selector');
 
@@ -54,7 +55,7 @@
                     const size = this.gridSize * this.zoomLevel;
                     worldCanvas.style.backgroundSize = `${size}px ${size}px`;
                 },
-                snapToGrid: function(pixelX, pixelY) {
+                snapToGrid: function(pixelX, pixelY, gridWidth = 1, gridHeight = 1) {
                     const size = this.gridSize * this.zoomLevel;
                     const gridX = Math.round(pixelX / size);
                     const gridY = Math.round(pixelY / size);
@@ -98,23 +99,26 @@
                 block.style.top = `${y}px`;
                 block.dataset.type = type;
 
-                if (type === 'floor') {
+                if (type === 'floor' || type.startsWith('floor-') || type === 'bonfire' || type === 'vents' || type === 'boss') {
                     block.style.width = `${GridManager.gridSize * 2}px`;
                     block.style.height = `${GridManager.gridSize}px`;
-                    block.innerHTML = `<strong>Floor ${floorCounter++}</strong>`;
+                    block.innerHTML = `<strong>${type.replace('-',' ')}</strong>`;
 
                     // Add doors
                     const door1 = document.createElement('div');
                     door1.className = 'door';
                     block.appendChild(door1);
 
-                    if (floorCounter > 1) {
+                    if (floorCounter > 0) { // All floors except the first get 2 doors
                         const door2 = document.createElement('div');
                         door2.className = 'door';
                         door2.style.left = 'calc(100% - 10px)';
                         block.appendChild(door2);
                     }
+                    floorCounter++;
+
                 } else if (type === 'building') {
+                    block.dataset.nestedInteriors = 0;
                     block.style.width = `${GridManager.gridSize * 2}px`;
                     block.style.height = `${GridManager.gridSize}px`;
                     block.innerHTML = `<strong>Building</strong>`;
@@ -123,7 +127,7 @@
                 worldCanvas.appendChild(block);
                 instance.draggable(id);
 
-                if (type === 'floor') {
+                if (type === 'floor' || type.startsWith('floor-') || type === 'bonfire' || type === 'vents' || type === 'boss') {
                     const doors = block.querySelectorAll('.door');
                     doors.forEach((door, index) => {
                         instance.addEndpoint(door, {
@@ -210,6 +214,8 @@
                                 </select>
                             </label></div>
                         `;
+                    } else if (type === 'building') {
+                        content += `<button id="add-interior-btn">Add Interior</button>`;
                     }
                 } else if (element.classList.contains('node-button')) {
                     id = element.parentElement.id + '-' + Array.from(element.parentElement.querySelectorAll('.node-button')).indexOf(element);
@@ -236,6 +242,13 @@
 
                         document.getElementById('prop-generation').addEventListener('change', (e) => {
                             element.dataset.generationType = e.target.value;
+                        });
+                    } else if (element.dataset.type === 'building') {
+                        document.getElementById('add-interior-btn').addEventListener('click', () => {
+                            let nestedInteriors = parseInt(element.dataset.nestedInteriors || '0');
+                            nestedInteriors++;
+                            element.dataset.nestedInteriors = nestedInteriors;
+                            element.style.width = `${GridManager.gridSize * (2 + nestedInteriors)}px`;
                         });
                     }
                 }
