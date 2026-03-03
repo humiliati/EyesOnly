@@ -141,11 +141,7 @@ var PlayerInteractionSystem = (function() {
       OverheadAnimator.showCurrencyPickup(ctx.player.x, ctx.player.y, cryptoPickup.amount);
     }
 
-    if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-      var cryptoMsg = cryptoPickup.amount === 1 ? '\u00A21 Collected' : '\u00A2' + cryptoPickup.amount + ' Collected';
-      UIControls.updateMokInterjection(cryptoMsg);
-    }
-
+    // Single canonical tooltip for currency pickup
     if (typeof TooltipSystem !== 'undefined') {
       TooltipSystem.showAction('currency-pickup', { amount: cryptoPickup.amount });
     }
@@ -204,12 +200,10 @@ var PlayerInteractionSystem = (function() {
       GAMESTATE.blockSprintTemporarily(900);
     }
 
-    if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-      UIControls.updateMokInterjection(result.emoji + ' ' + result.foodName + ' consumed');
-    }
-
-    if (typeof TooltipSystem !== 'undefined' && result.tooltipText) {
-      TooltipSystem.showGeneric(result.tooltipText, 2000);
+    // Single canonical tooltip for food pickup
+    if (typeof TooltipSystem !== 'undefined') {
+      var foodMsg = result.tooltipText || (result.emoji + ' ' + result.foodName + ' consumed');
+      TooltipSystem.show(foodMsg, 2500);
     }
 
     // NOTE: No PancakeStack call — single pickup = single OverheadAnimator animation only.

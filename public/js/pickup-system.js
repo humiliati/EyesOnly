@@ -92,17 +92,10 @@ var PickupSystem = (function() {
     var pickupQuality = (item.card && item.card.qualityName) ? ' [' + item.card.qualityName + ']'
       : (item.type === 'key' && keyTier <= 1 ? ' [KEY AMMO]' : (item.type === 'key' ? ' [KEY ITEM]' : ''));
 
-    // MOK interjection for card/item pickup
-    // Tier 1 keys skip — reportResourceChange already fires MOK via DebriefFeedController
-    if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-      if (item.type === 'key' && keyTier <= 1) {
-        // Tier 1: MOK already fired by _incrementKeyCounter → reportResourceChange
-      } else {
-        var pickupType = isCard ? 'Card' : (item.type === 'key' ? 'Key Item' : 'Item');
-        var locationInfo = (isCard && result && result.location) ? ' \u2192 ' + result.location.toUpperCase() : '';
-        UIControls.updateMokInterjection(pickupType + ': ' + pickupDisplayName + locationInfo);
-      }
-    }
+    // NOTE: No UIControls.updateMokInterjection here. Single-tooltip-per-pickup
+    // doctrine: _showPickupTooltip (cards/items) and _handleKeyPickupEnhancements
+    // (keys) each fire exactly ONE TooltipSystem call. reportResourceChange handles
+    // debrief feed flash + row highlight without touching the MOK tooltip line.
 
     return {
       lines: ['PICKED UP: ' + pickupEmoji + ' ' + pickupDisplayName + pickupQuality, ''].concat(ctx.renderGrid()),
@@ -120,12 +113,9 @@ var PickupSystem = (function() {
 
     ctx.filterItems(item);
 
+    // Single canonical tooltip for ammo pickup
     if (typeof TooltipSystem !== 'undefined') {
-      TooltipSystem.showAction('item-pickup', { name: 'Ammo +' + item.amount });
-    }
-
-    if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-      UIControls.updateMokInterjection('\u204D Ammo +' + item.amount);
+      TooltipSystem.showAction('item-pickup', { name: '\u204D Ammo +' + item.amount });
     }
 
     // Overhead animation with RESOURCE_COLOR magenta
@@ -173,12 +163,9 @@ var PickupSystem = (function() {
       }
     } catch (eDebrief) {}
 
+    // Single canonical tooltip for battery pickup
     if (typeof TooltipSystem !== 'undefined') {
       TooltipSystem.showAction('item-pickup', { name: '\u25C8 Battery +' + gemAmount });
-    }
-
-    if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-      UIControls.updateMokInterjection('\u25C8 Battery +' + gemAmount);
     }
 
     // NOTE: No PancakeStack call — single pickup = single OverheadAnimator animation only.

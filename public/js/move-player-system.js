@@ -152,11 +152,7 @@ var MovePlayerSystem = (function() {
         OverheadAnimator.showCurrencyPickup(player.x, player.y, cryptoPickup.amount);
       }
 
-      if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-        var cryptoMsg = cryptoPickup.amount === 1 ? '\u00A21 Collected' : '\u00A2' + cryptoPickup.amount + ' Collected';
-        UIControls.updateMokInterjection(cryptoMsg);
-      }
-
+      // Single canonical tooltip for currency pickup
       if (typeof TooltipSystem !== 'undefined') {
         TooltipSystem.showAction('currency-pickup', { amount: cryptoPickup.amount });
       }
@@ -212,12 +208,10 @@ var MovePlayerSystem = (function() {
               GAMESTATE.blockSprintTemporarily(900);
             }
 
-            if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-              UIControls.updateMokInterjection(foodResult.emoji + ' ' + foodResult.foodName + ' consumed');
-            }
-
-            if (typeof TooltipSystem !== 'undefined' && foodResult.tooltipText) {
-              TooltipSystem.showGeneric(foodResult.tooltipText, 2000);
+            // Single canonical tooltip for food pickup
+            if (typeof TooltipSystem !== 'undefined') {
+              var foodMsgMv = foodResult.tooltipText || (foodResult.emoji + ' ' + foodResult.foodName + ' consumed');
+              TooltipSystem.show(foodMsgMv, 2500);
             }
 
             // NOTE: No PancakeStack call — single pickup = single OverheadAnimator animation only.
@@ -233,7 +227,9 @@ var MovePlayerSystem = (function() {
     // Check for discovery reveal
     var discoveryRevealed = ctx.revealDiscovery(newX, newY);
     if (discoveryRevealed) {
-      if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.show('Discovery Found!', 2500);
+      } else if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
         UIControls.updateMokInterjection('Discovery Found!');
       }
     }

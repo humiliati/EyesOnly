@@ -1070,10 +1070,10 @@ const DebriefFeedController = (function() {
       message += ' (' + reason + ')';
     }
 
-    // Show in MOK interjection
-    if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-      UIControls.updateMokInterjection(message);
-    }
+    // NOTE: reportResourceChange does NOT fire MOK interjection.
+    // The single-tooltip-per-pickup doctrine means only the pickup path
+    // fires one TooltipSystem.show/showAction call. This function handles
+    // debrief feed flash + row highlight only.
 
     // RESOURCE_COLOR lookup for frame flash
     var RESOURCE_COLORS = {

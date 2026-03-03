@@ -678,8 +678,68 @@ If you're implementing a new game mechanic and unsure which system to use:
 
 ---
 
-**Document Version**: 1.3
+---
+
+## Canonical Tooltip Pipeline — Single Tooltip Per Pickup (v1.4)
+
+### Doctrine
+
+**Every collectible pickup fires exactly ONE `TooltipSystem.show()` or `TooltipSystem.showAction()` call.** No exceptions.
+
+The MOK interjection field (`#mok-interject-body`) is updated exclusively through TooltipSystem. Direct `UIControls.updateMokInterjection()` calls from pickup paths are prohibited — they route through `TooltipSystem.showPersistent()` which double-fires the history log.
+
+### Separation of Concerns
+
+| System | Responsibility | Fires MOK tooltip? |
+|--------|---------------|-------------------|
+| **TooltipSystem.show/showAction** | Updates MOK interjection text + adds to history | YES — this is the ONE canonical fire |
+| **OverheadAnimator** | Visual emoji animation above player head | No |
+| **DebriefFeedController.reportResourceChange** | Debrief frame flash + row highlight | No (MOK removed in v1.4) |
+| **UIControls.updateMokInterjection** | Routes to TooltipSystem.showPersistent | Only for non-pickup contexts (inventory, discovery) |
+
+### Per-Pickup Canonical Tooltip Source
+
+| Pickup Type | File | Canonical Call | Message Format |
+|-------------|------|---------------|----------------|
+| **Currency** | player-interaction-system.js / move-player-system.js | `TooltipSystem.showAction('currency-pickup', {amount})` | "💰 COLLECTED X CRYPTOS" |
+| **Ammo** | pickup-system.js `_pickupAmmo` | `TooltipSystem.showAction('item-pickup', {name})` | "📦 PICKED UP ⁍ Ammo +X" |
+| **Battery (Gem)** | pickup-system.js `_pickupGem` | `TooltipSystem.showAction('item-pickup', {name})` | "📦 PICKED UP ◈ Battery +X" |
+| **Food** | player-interaction-system.js / move-player-system.js | `TooltipSystem.show(tooltipText, 2500)` | Food's tooltipText or "emoji name consumed" |
+| **Card** | pickup-system.js `_showPickupTooltip` | `TooltipSystem.showAction('card-pickup', {name})` | "🃏 PICKED UP cardName" |
+| **Key Tier 1** | pickup-system.js `_handleKeyPickupEnhancements` | `TooltipSystem.showAction('key-ammo-pickup', {name})` | "🔑 KEY AMMO: keyName" |
+| **Key Tier 2** | pickup-system.js `_handleKeyPickupEnhancements` | `TooltipSystem.show('🔑 KEY EQUIPPED — ...')` | "🔑 KEY EQUIPPED — Tap header..." |
+| **Key Tier 3** | pickup-system.js `_handleKeyPickupEnhancements` | `TooltipSystem.show('❗ QUEST ITEM — ...')` | "❗ QUEST ITEM — name — Return to NPC" |
+| **Generic Item** | pickup-system.js `_showPickupTooltip` | `TooltipSystem.showAction('item-pickup', {name})` | "📦 PICKED UP itemName" |
+
+### What NOT To Do (Anti-patterns)
+
+```javascript
+// ❌ WRONG — fires second tooltip via TooltipSystem.showPersistent internally
+UIControls.updateMokInterjection('Ammo +3');
+TooltipSystem.showAction('item-pickup', { name: 'Ammo +3' });
+
+// ❌ WRONG — reportResourceChange used to fire MOK internally (fixed in v1.4)
+DebriefFeedController.reportResourceChange('Ammo', 5, 8, 'Ammo +3');
+UIControls.updateMokInterjection('Ammo +3');
+
+// ✅ CORRECT — one tooltip, debrief handles its own flash silently
+TooltipSystem.showAction('item-pickup', { name: '⁍ Ammo +3' });
+DebriefFeedController.reportResourceChange('Ammo', 5, 8, 'Ammo +3');
+```
+
+### Adding New Collectible Types
+
+When adding a new collectible pickup:
+1. Add ONE `TooltipSystem.show()` or `TooltipSystem.showAction()` call
+2. Add ONE `OverheadAnimator.showGenericExpression()` call with correct RESOURCE_COLOR
+3. Optionally add `DebriefFeedController.reportResourceChange()` for debrief flash (NO MOK)
+4. Do NOT call `UIControls.updateMokInterjection()` — the tooltip call handles MOK
+5. Add an entry to the Per-Pickup Canonical Tooltip Source table above
+
+---
+
+**Document Version**: 1.4
 **Last Updated**: 2026-03-03
 **Status**: Draft → Review → Implementation
-**Architecture**: v1.3 — Single pickup = single OverheadAnimator animation; PancakeStack for multi-source stacking only
+**Architecture**: v1.4 — Single pickup = single OverheadAnimator animation + single TooltipSystem call; PancakeStack for multi-source stacking only
 **Canon Reference**: See `docs/COLLECTIBLES_CANON.md` for authoritative collectible category definitions and unified pickup pipeline
