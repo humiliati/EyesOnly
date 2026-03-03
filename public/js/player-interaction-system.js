@@ -170,15 +170,8 @@ var PlayerInteractionSystem = (function() {
     var result = FoodDatabase.applyFoodEffects(foodItem.customData.foodId, ctx.player);
     if (!result.success) return;
 
-    // Determine overhead animation color by food category
-    var foodDef = FoodDatabase.getFoodItem(foodItem.customData.foodId);
-    var FOOD_CATEGORY_COLORS = {
-      'health':  '#FF6B9D', // HP pink
-      'energy':  '#00D4FF', // Electric blue
-      'fatigue': '#A0522D', // Earthy brown
-      'inert':   '#CCCCCC'  // Light grey (placeholder)
-    };
-    var primaryColor = (foodDef && FOOD_CATEGORY_COLORS[foodDef.category]) || '#FF6B9D';
+    // Overhead animation color from canonical resourceColor on food item
+    var primaryColor = result.resourceColor || '#FF6B9D';
 
     if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
       OverheadAnimator.showGenericExpression(x, y, result.emoji, 1000, primaryColor);

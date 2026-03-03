@@ -93,10 +93,15 @@ var PickupSystem = (function() {
       : (item.type === 'key' && keyTier <= 1 ? ' [KEY AMMO]' : (item.type === 'key' ? ' [KEY ITEM]' : ''));
 
     // MOK interjection for card/item pickup
+    // Tier 1 keys skip — reportResourceChange already fires MOK via DebriefFeedController
     if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-      var pickupType = isCard ? 'Card' : (item.type === 'key' && keyTier <= 1 ? 'Key Ammo' : (item.type === 'key' ? 'Key Item' : 'Item'));
-      var locationInfo = (isCard && result && result.location) ? ' \u2192 ' + result.location.toUpperCase() : '';
-      UIControls.updateMokInterjection(pickupType + ': ' + pickupDisplayName + locationInfo);
+      if (item.type === 'key' && keyTier <= 1) {
+        // Tier 1: MOK already fired by _incrementKeyCounter → reportResourceChange
+      } else {
+        var pickupType = isCard ? 'Card' : (item.type === 'key' ? 'Key Item' : 'Item');
+        var locationInfo = (isCard && result && result.location) ? ' \u2192 ' + result.location.toUpperCase() : '';
+        UIControls.updateMokInterjection(pickupType + ': ' + pickupDisplayName + locationInfo);
+      }
     }
 
     return {
@@ -386,13 +391,20 @@ var PickupSystem = (function() {
         }
       } catch (eQuest) {}
     } else {
-      // TIER 1 (ammo key / low-tier key): show overhead key emoji
+      // TIER 1 (ammo key / low-tier key): overhead + tooltip
       try {
         if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
           OverheadAnimator.showGenericExpression(item.x, item.y, item.emoji || '\uD83D\uDDDD', 800, '#FF8A3D'); // 🗝
         }
         // NOTE: No PancakeStack — single pickup = single OverheadAnimator animation only.
       } catch (eAnim) {}
+      // Tooltip for Tier 1 (Tier 2/3 handle their own tooltips above)
+      try {
+        if (typeof TooltipSystem !== 'undefined') {
+          var t1Name = (nonCardPayload && nonCardPayload.name) ? nonCardPayload.name : (item.name || 'Key');
+          TooltipSystem.showAction('key-ammo-pickup', { name: t1Name });
+        }
+      } catch (eTooltip) {}
     }
   }
 
@@ -403,12 +415,11 @@ var PickupSystem = (function() {
 
     if (item.card && (item.card.type === 'attack' || item.card.type === 'support')) {
       TooltipSystem.showAction('card-pickup', { name: item.card.name });
-    } else if (item.type === 'key' && keyTier <= 1) {
-      var nm = (nonCardPayload && nonCardPayload.name) ? nonCardPayload.name : (item.name || 'Key');
-      TooltipSystem.showAction('key-ammo-pickup', { name: nm });
-    } else if (item.type === 'key' && keyTier >= 2) {
-      var nm2 = (nonCardPayload && nonCardPayload.name) ? nonCardPayload.name : (item.name || 'Key');
-      TooltipSystem.showAction('key-item-pickup', { name: nm2 });
+    } else if (item.type === 'key') {
+      // Keys handled by _handleKeyPickupEnhancements (Tier 2/3 tooltip)
+      // and _incrementKeyCounter → reportResourceChange (Tier 1 debrief+MOK).
+      // No additional tooltip here — prevents duplicate tooltip/MOK fire.
+      return;
     } else {
       var nm3 = (item.card && item.card.name) ? item.card.name : (item.name || 'Item');
       TooltipSystem.showAction('item-pickup', { name: nm3 });
