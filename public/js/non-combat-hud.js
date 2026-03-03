@@ -464,19 +464,10 @@ var NonCombatHUD = (function() {
   }
 
   function _isPrinterArmed() {
-    try {
-      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) {
-        var ar = GAMESTATE.getActiveItem();
-        if (ar && ar.id && ar.meta && ar.meta.toggled && typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
-          var idef = GoneRogueDataRegistry.getItem(ar.id);
-          if (idef && Array.isArray(idef.effects)) {
-            for (var i = 0; i < idef.effects.length; i++) {
-              if (idef.effects[i] && idef.effects[i].type === 'printer_3d') return true;
-            }
-          }
-        }
-      }
-    } catch (e) {}
+    // Delegate to centralized CostPrinterSystem
+    if (typeof CostPrinterSystem !== 'undefined' && CostPrinterSystem.isPrinterArmed) {
+      return CostPrinterSystem.isPrinterArmed();
+    }
     return false;
   }
 
@@ -579,13 +570,17 @@ var NonCombatHUD = (function() {
         wrapper.appendChild(qBadge);
       }
 
-      // 3D printer badge
-      if (printerArmed && _isAmmoBatteryCard(cardDef)) {
-        wrapper.classList.add('printer-eligible');
-        var px2 = document.createElement('span');
-        px2.className = 'printer-x2';
-        px2.textContent = 'x2';
-        wrapper.appendChild(px2);
+      // 3D printer badge — dynamic suffix from CostPrinterSystem
+      if (printerArmed && cardDef) {
+        var _pSuffix = (typeof CostPrinterSystem !== 'undefined' && CostPrinterSystem.getDisplaySuffix)
+          ? CostPrinterSystem.getDisplaySuffix(cardDef) : '';
+        if (_pSuffix) {
+          wrapper.classList.add('printer-eligible');
+          var px2 = document.createElement('span');
+          px2.className = 'printer-x2';
+          px2.textContent = _pSuffix;
+          wrapper.appendChild(px2);
+        }
       }
 
       // Drag handler
@@ -934,13 +929,17 @@ var NonCombatHUD = (function() {
       // Store card ID on element for shift animation tracking
       wrapper.dataset.cardId = ref.id;
 
-      // 3D printer badge
-      if (printerArmed && _isAmmoBatteryCard(cardDef)) {
-        wrapper.classList.add('printer-eligible');
-        var px2 = document.createElement('span');
-        px2.className = 'printer-x2';
-        px2.textContent = 'x2';
-        wrapper.appendChild(px2);
+      // 3D printer badge — dynamic suffix from CostPrinterSystem
+      if (printerArmed && cardDef) {
+        var _pSuffix2 = (typeof CostPrinterSystem !== 'undefined' && CostPrinterSystem.getDisplaySuffix)
+          ? CostPrinterSystem.getDisplaySuffix(cardDef) : '';
+        if (_pSuffix2) {
+          wrapper.classList.add('printer-eligible');
+          var px2 = document.createElement('span');
+          px2.className = 'printer-x2';
+          px2.textContent = _pSuffix2;
+          wrapper.appendChild(px2);
+        }
       }
 
       // Drag handler

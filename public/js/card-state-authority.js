@@ -316,6 +316,33 @@ var CardStateAuthority = (function() {
     var cardId = cardRef.id;
     var qty = cardRef.qty || 1;
 
+    // ── 3D Printer dupe intercept ──────────────────────────────
+    // If the printer is armed AND the dragged card is eligible (ammo/battery costs),
+    // remove the card from backup, then executeDupe() inserts N individual copies
+    // into hand (with overflow cascade). The original card is consumed by the dupe
+    // (it becomes one of the N copies).
+    if (typeof CostPrinterSystem !== 'undefined' && CostPrinterSystem.isPrinterArmed && CostPrinterSystem.isPrinterArmed()) {
+      var cardDef = null;
+      if (typeof CardStateAuthority !== 'undefined' && CardStateAuthority.hydrateCard) {
+        cardDef = CardStateAuthority.hydrateCard(cardRef);
+      } else if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) {
+        cardDef = GoneRogueDataRegistry.getCard(cardId);
+      }
+      if (cardDef && CostPrinterSystem.executeDupe) {
+        var dupeResult = CostPrinterSystem.executeDupe(cardId, cardDef);
+        if (dupeResult && dupeResult.consumed) {
+          // Remove the original card from backup (dupe already inserted copies)
+          removeBackupCard(backupIndex);
+          _syncNonCombatStore();
+          _emit('hand:changed', { action: 'printer_dupe', cardId: cardId, dupeCount: dupeResult.dupeCount, hand: getHand() });
+          _emit('backup:changed', { action: 'printer_dupe', cardId: cardId, backup: getBackup() });
+          return true;
+        }
+      }
+      // If dupe didn't fire (card not eligible), fall through to normal cascade
+    }
+
+    // ── Normal cascade (non-printer) ───────────────────────────
     // If hand full: cascade last hand card → backup top (with auto-incinerate)
     if (hand.length >= getMaxHandSize()) {
       var lastHandIdx = hand.length - 1;
@@ -456,7 +483,52 @@ var CardStateAuthority = (function() {
       }
     }
 
-    // Execute the draw
+    // ── 3D Printer dupe intercept (combat draw) ──────────────
+    // If printer is armed and card is eligible, dupe fires on combat draw too.
+    // The original draw costs 1 _turnDrawsRemaining. The N-1 extra dupe copies
+    // are "drawing more than allotted" — they don't consume additional draws
+    // but trigger a 'draw:over_allotted' event for the combat engine.
+    if (typeof CostPrinterSystem !== 'undefined' && CostPrinterSystem.isPrinterArmed && CostPrinterSystem.isPrinterArmed()) {
+      var _backup = getBackup();
+      var _cardRef = _backup[selectedIndex];
+      if (_cardRef && _cardRef.id) {
+        var _cDef = null;
+        if (typeof CardStateAuthority !== 'undefined' && CardStateAuthority.hydrateCard) {
+          _cDef = CardStateAuthority.hydrateCard(_cardRef);
+        }
+        if (_cDef && CostPrinterSystem.executeDupe) {
+          var _dupeRes = CostPrinterSystem.executeDupe(_cardRef.id, _cDef);
+          if (_dupeRes && _dupeRes.consumed) {
+            // Remove the original from backup (dupe inserted copies)
+            removeBackupCard(selectedIndex);
+            _turnDrawsRemaining--;
+            _syncNonCombatStore();
+            _emit('draw:executed', {
+              index: selectedIndex,
+              modifier: modifier,
+              mode: mode,
+              drawsRemaining: _turnDrawsRemaining,
+              hand: getHand(),
+              backup: getBackup(),
+              printerDupe: true,
+              dupeCount: _dupeRes.dupeCount
+            });
+            // Signal that extra cards were drawn beyond allotment
+            if (_dupeRes.dupeCount > 1) {
+              _emit('draw:over_allotted', {
+                extraCards: _dupeRes.dupeCount - 1,
+                cardId: _cardRef.id,
+                hand: getHand()
+              });
+            }
+            return true;
+          }
+        }
+      }
+      // If dupe didn't fire, fall through to normal draw
+    }
+
+    // Execute the draw (normal, non-printer)
     var success = moveBackupToHand(selectedIndex);
     if (success) {
       _turnDrawsRemaining--;

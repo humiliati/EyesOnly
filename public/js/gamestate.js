@@ -159,18 +159,8 @@ const GAMESTATE = (function () {
       }
 
       if (refId) {
-        // Check if ref already exists in cardsInHand (avoid duplicates)
-        var exists = false;
-        for (var j = 0; j < _state.cardsInHand.length; j++) {
-          if (_state.cardsInHand[j] && _state.cardsInHand[j].id === refId) {
-            _state.cardsInHand[j].qty = (_state.cardsInHand[j].qty || 1) + 1;
-            exists = true;
-            break;
-          }
-        }
-        if (!exists) {
-          _state.cardsInHand.push({ id: refId, qty: 1, meta: { t: Date.now() } });
-        }
+        // Always insert as individual slot — no stacking, even during migration.
+        _state.cardsInHand.push({ id: refId, qty: 1, meta: { t: Date.now() } });
         migrated++;
       }
     }
@@ -662,28 +652,10 @@ const GAMESTATE = (function () {
     }
 
     function _promoteOrInsertBackup(ref) {
-      // If same card already in backup, stack and move to top.
-      for (var i = 0; i < _state.backupCards.length; i++) {
-        var b = _state.backupCards[i];
-        if (b && b.id === ref.id) {
-          b.qty = (b.qty || 1) + (ref.qty || 1);
-          _touchMeta(b);
-          // move to top
-          _state.backupCards.splice(i, 1);
-          _state.backupCards.unshift(b);
-          // Enforce max size
-          var maxB = _state.maxBackupSlots || 25;
-          while (_state.backupCards.length > maxB) {
-            var dropped = _state.backupCards.pop();
-            if (dropped && dropped.id) res.discarded += 1;
-          }
-          return;
-        }
-      }
+      // Always insert as individual slot at top — no stacking anywhere.
+      _state.backupCards.unshift({ id: ref.id, qty: 1, meta: ref.meta || { t: Date.now() } });
 
-      // Insert at top, discard oldest if needed
-      _state.backupCards.unshift(ref);
-      // Enforce max size
+      // Enforce max size — discard oldest if over cap
       var maxB = _state.maxBackupSlots || 25;
       while (_state.backupCards.length > maxB) {
         var dropped = _state.backupCards.pop();
@@ -694,20 +666,14 @@ const GAMESTATE = (function () {
     function _addOne() {
       // prefer hand if there is space
       if ((_state.cardsInHand.length < maxHand) && opts.preferHand !== false) {
-        var ex = _state.cardsInHand.find(function(r) { return r && r.id === cardId; });
-        if (ex) {
-          ex.qty = (ex.qty || 0) + 1;
-          _touchMeta(ex);
-        } else {
-          var ref = { id: cardId, qty: 1, meta: { t: Date.now() } };
-          // add to top/front
-          _state.cardsInHand.unshift(ref);
-        }
+        // Always insert as individual slot — no stacking anywhere.
+        var ref = { id: cardId, qty: 1, meta: { t: Date.now() } };
+        _state.cardsInHand.unshift(ref);
         res.toHand += 1;
         return;
       }
 
-      // overflow to backup
+      // overflow to backup — individual slot, no stacking
       var bref = { id: cardId, qty: 1, meta: { t: Date.now() } };
       _promoteOrInsertBackup(bref);
       res.toBackup += 1;
@@ -740,9 +706,10 @@ const GAMESTATE = (function () {
 
     if (!Array.isArray(_state.cardsInHand)) _state.cardsInHand = [];
 
-    var existing = _state.cardsInHand.find(function(r) { return r && r.id === cardId; });
-    if (existing) existing.qty = (existing.qty || 0) + qty;
-    else _state.cardsInHand.push({ id: cardId, qty: qty, meta: null });
+    // Always insert as individual slots — no stacking on incoming cards.
+    for (var q = 0; q < qty; q++) {
+      _state.cardsInHand.push({ id: cardId, qty: 1, meta: { t: Date.now() } });
+    }
 
     // Enforce hand overflow at GAMESTATE level
     enforceHandOverflow();
@@ -771,17 +738,9 @@ const GAMESTATE = (function () {
 
     if (!Array.isArray(_state.cardsInHand)) _state.cardsInHand = [];
 
-    var existing = _state.cardsInHand.find(function(r) { return r && r.id === cardId; });
-    if (existing) {
-      existing.qty = (existing.qty || 0) + qty;
-      // Move to front if not already there
-      var idx = _state.cardsInHand.indexOf(existing);
-      if (idx > 0) {
-        _state.cardsInHand.splice(idx, 1);
-        _state.cardsInHand.unshift(existing);
-      }
-    } else {
-      _state.cardsInHand.unshift({ id: cardId, qty: qty, meta: { t: Date.now() } });
+    // Always insert as individual slots at front — no stacking on incoming cards.
+    for (var q = 0; q < qty; q++) {
+      _state.cardsInHand.unshift({ id: cardId, qty: 1, meta: { t: Date.now() } });
     }
 
     _saveState();

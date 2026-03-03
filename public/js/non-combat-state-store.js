@@ -164,22 +164,15 @@ var NonCombatStateStore = (function() {
     var cards = Array.isArray(_state.cardsInHand) ? _state.cardsInHand.slice() : [];
     var selectedIdx = Number(_state.selectedHandIndex || -1);
 
-    var foundIdx = -1;
-    for (var i = 0; i < cards.length; i++) {
-      if (cards[i] && cards[i].id === cardId) {
-        foundIdx = i;
-        cards[i] = Object.assign({}, cards[i], { qty: (cards[i].qty || 0) + qty });
-        break;
-      }
+    // Insert qty individual slots — no stacking
+    var lastIdx = -1;
+    for (var n = 0; n < qty; n++) {
+      cards.push({ id: cardId, qty: 1, meta: null });
+      lastIdx = cards.length - 1;
     }
 
-    if (foundIdx === -1) {
-      cards.push({ id: cardId, qty: qty, meta: null });
-      foundIdx = cards.length - 1;
-    }
-
-    // Auto-select the card we just added/moved (sticky selection for quick backup move)
-    selectedIdx = foundIdx;
+    // Auto-select the last card we just added (sticky selection for quick backup move)
+    selectedIdx = lastIdx;
 
     return modifyState({ cardsInHand: cards, selectedHandIndex: selectedIdx }, triggerEvent || 'hand:add_card', context || { id: cardId, qty: qty });
   }
@@ -256,18 +249,8 @@ var NonCombatStateStore = (function() {
     // Remove from backup slot
     backup.splice(bIdx, 1);
 
-    // Add to hand (stack qty)
-    var found = false;
-    for (var i = 0; i < hand.length; i++) {
-      if (hand[i] && hand[i].id === ref.id) {
-        hand[i] = Object.assign({}, hand[i], { qty: (hand[i].qty || 0) + 1 });
-        found = true;
-        break;
-      }
-    }
-    if (!found) {
-      hand.push({ id: ref.id, qty: 1, meta: ref.meta || null });
-    }
+    // Add to hand as individual slot — no stacking
+    hand.push({ id: ref.id, qty: 1, meta: ref.meta || null });
 
     return modifyState({
       cardsInHand: hand,

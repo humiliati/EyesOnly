@@ -507,11 +507,10 @@ var RogueSidebar = (function() {
 
           var x2 = '';
           try {
-            if (printerArmed && card && Array.isArray(card.costs)) {
-              for (var ci = 0; ci < card.costs.length; ci++) {
-                var cst = card.costs[ci];
-                if (cst && (cst.kind === 'ammo' || cst.kind === 'battery')) { x2 = '<span class="printer-x2">x2</span>'; btn.classList.add('printer-eligible'); break; }
-              }
+            if (printerArmed && card) {
+              var _pSfx = (typeof CostPrinterSystem !== 'undefined' && CostPrinterSystem.getDisplaySuffix)
+                ? CostPrinterSystem.getDisplaySuffix(card) : '';
+              if (_pSfx) { x2 = '<span class="printer-x2">' + _pSfx + '</span>'; btn.classList.add('printer-eligible'); }
             }
           } catch (e1) {}
 
