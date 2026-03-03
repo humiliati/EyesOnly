@@ -382,11 +382,27 @@ const GoneRogueMovement = (function () {
     _currentPathIndex = 0;
   }
 
+  /**
+   * Start moving to a target tile using built-in walkability check.
+   * Convenience wrapper around setTarget for scripted walks and controller hooks.
+   * Uses GoneRogue.isWalkable if available, otherwise allows all tiles.
+   * @param {number} x - Target grid X
+   * @param {number} y - Target grid Y
+   * @param {boolean} [isSprinting] - Whether to sprint
+   */
+  function startMoveTo(x, y, isSprinting) {
+    var collisionCheck = (typeof GoneRogue !== 'undefined' && GoneRogue.isWalkable)
+      ? function(tx, ty) { return !GoneRogue.isWalkable(tx, ty); }
+      : null;
+    setTarget(x, y, collisionCheck, isSprinting || false);
+  }
+
   // Public API
   return {
     init: init,
     findPath: findPath,
     setTarget: setTarget,
+    startMoveTo: startMoveTo,
     update: update,
     stop: stop,
     getVisualPosition: getVisualPosition,
