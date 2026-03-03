@@ -71,7 +71,7 @@ var BreakableSystem = (function() {
 
     // Drop loot if chance succeeds
     if (breakable.dropChance > 0 && Math.random() < breakable.dropChance && breakable.dropType) {
-      ctx.items.push({
+      var lightDropItem = {
         x: breakable.x,
         y: breakable.y,
         type: 'item',
@@ -80,7 +80,8 @@ var BreakableSystem = (function() {
         decayTime: 60000,
         emoji: '\uD83D\uDCBE', // 💾
         name: 'Item'
-      });
+      };
+      if (typeof WorldItems !== 'undefined') { WorldItems.addItem(lightDropItem); } else { ctx.items.push(lightDropItem); }
       console.log('[Lighting] Destroyed light source dropped:', breakable.dropType);
     }
 
@@ -120,7 +121,7 @@ var BreakableSystem = (function() {
 
     // Spawn ammo
     if (rolledLoot.ammo > 0) {
-      ctx.items.push({
+      var ammoLoot = {
         x: breakable.x,
         y: breakable.y,
         type: 'ammo',
@@ -129,12 +130,13 @@ var BreakableSystem = (function() {
         decayTime: LootTableManager.getDecayTime('ammo') * 1000 || 60000,
         emoji: '\u204D', // ⁍
         name: 'Ammo (' + rolledLoot.ammo + ')'
-      });
+      };
+      if (typeof WorldItems !== 'undefined') { WorldItems.addItem(ammoLoot); } else { ctx.items.push(ammoLoot); }
     }
 
     // Spawn gem (15% chance — battery recharge collectible)
     if (ctx.rng() < 0.15) {
-      ctx.items.push({
+      var gemLoot = {
         x: breakable.x,
         y: breakable.y,
         type: 'gem',
@@ -143,33 +145,35 @@ var BreakableSystem = (function() {
         decayTime: 45000,
         glyph: '\u25C8', // ◈
         name: 'Battery Cell'
-      });
+      };
+      if (typeof WorldItems !== 'undefined') { WorldItems.addItem(gemLoot); } else { ctx.items.push(gemLoot); }
     }
 
     // Spawn items (cards, charms, etc.)
     if (rolledLoot.items && rolledLoot.items.length > 0) {
       rolledLoot.items.forEach(function(item) {
+        var lootItem;
         if (item.type === 'card' && item.card) {
-          ctx.items.push({
+          lootItem = {
             x: breakable.x,
             y: breakable.y,
             type: 'card',
             card: item.card,
             spawnTime: Date.now(),
             decayTime: LootTableManager.getDecayTime('card') * 1000 || 30000
-          });
+          };
         } else if (item.type === 'charm' && item.card) {
-          ctx.items.push({
+          lootItem = {
             x: breakable.x,
             y: breakable.y,
             type: 'charm',
             card: item.card,
             spawnTime: Date.now(),
             decayTime: LootTableManager.getDecayTime('charm') * 1000 || 30000
-          });
+          };
         } else {
           // Generic item
-          ctx.items.push({
+          lootItem = {
             x: breakable.x,
             y: breakable.y,
             type: item.type || 'item',
@@ -178,8 +182,9 @@ var BreakableSystem = (function() {
             name: item.name || 'Item',
             spawnTime: Date.now(),
             decayTime: 60000
-          });
+          };
         }
+        if (typeof WorldItems !== 'undefined') { WorldItems.addItem(lootItem); } else { ctx.items.push(lootItem); }
       });
     }
   }
@@ -200,7 +205,7 @@ var BreakableSystem = (function() {
     // 60% chance to drop ammo
     if (rng() < 0.6) {
       var ammoAmount = rng() < 0.8 ? 1 : 2;
-      ctx.items.push({
+      var fallbackAmmo = {
         x: breakable.x,
         y: breakable.y,
         type: 'ammo',
@@ -209,12 +214,13 @@ var BreakableSystem = (function() {
         decayTime: 60000,
         emoji: '\u204D', // ⁍
         name: 'Ammo (' + ammoAmount + ')'
-      });
+      };
+      if (typeof WorldItems !== 'undefined') { WorldItems.addItem(fallbackAmmo); } else { ctx.items.push(fallbackAmmo); }
     }
 
     // 15% chance to drop gem (battery recharge)
     if (rng() < 0.15) {
-      ctx.items.push({
+      var fallbackGem = {
         x: breakable.x,
         y: breakable.y,
         type: 'gem',
@@ -223,7 +229,8 @@ var BreakableSystem = (function() {
         decayTime: 45000,
         glyph: '\u25C8', // ◈
         name: 'Battery Cell'
-      });
+      };
+      if (typeof WorldItems !== 'undefined') { WorldItems.addItem(fallbackGem); } else { ctx.items.push(fallbackGem); }
     }
 
     // Check for key item drops from specific breakables
@@ -234,14 +241,15 @@ var BreakableSystem = (function() {
       var baseType = CardSystem.getRandomBaseCard();
       var card = CardSystem.rollCard(baseType);
       if (card) {
-        ctx.items.push({
+        var fallbackCard = {
           x: breakable.x,
           y: breakable.y,
           type: 'card',
           card: card,
           spawnTime: Date.now(),
           decayTime: 30000
-        });
+        };
+        if (typeof WorldItems !== 'undefined') { WorldItems.addItem(fallbackCard); } else { ctx.items.push(fallbackCard); }
       }
     }
 
@@ -249,14 +257,15 @@ var BreakableSystem = (function() {
     if (rng() < 0.25 && typeof CardSystem !== 'undefined') {
       var charm = CardSystem.rollCommonCharm();
       if (charm) {
-        ctx.items.push({
+        var fallbackCharm = {
           x: breakable.x,
           y: breakable.y,
           type: 'charm',
           card: charm,
           spawnTime: Date.now(),
           decayTime: 30000
-        });
+        };
+        if (typeof WorldItems !== 'undefined') { WorldItems.addItem(fallbackCharm); } else { ctx.items.push(fallbackCharm); }
       }
     }
   }
@@ -278,7 +287,7 @@ var BreakableSystem = (function() {
       var keyDefs2 = EnvironmentalSynergy.getKeyDefinitions();
       var def2 = keyDefs2[requested];
       if (def2) {
-        ctx.items.push({
+        var keyItem2 = {
           x: breakable.x,
           y: breakable.y,
           type: 'key',
@@ -288,7 +297,8 @@ var BreakableSystem = (function() {
           description: def2.description,
           spawnTime: Date.now(),
           decayTime: 60000
-        });
+        };
+        if (typeof WorldItems !== 'undefined') { WorldItems.addItem(keyItem2); } else { ctx.items.push(keyItem2); }
         keyDropped = true;
       }
     }
@@ -297,7 +307,7 @@ var BreakableSystem = (function() {
     if (breakable.name === 'Terminal' && rng() < 0.15) {
       var keyDefs = EnvironmentalSynergy.getKeyDefinitions();
       if (keyDefs.THUMB_DRIVE) {
-        ctx.items.push({
+        var thumbDriveItem = {
           x: breakable.x,
           y: breakable.y,
           type: 'key',
@@ -307,7 +317,8 @@ var BreakableSystem = (function() {
           description: keyDefs.THUMB_DRIVE.description,
           spawnTime: Date.now(),
           decayTime: 120000
-        });
+        };
+        if (typeof WorldItems !== 'undefined') { WorldItems.addItem(thumbDriveItem); } else { ctx.items.push(thumbDriveItem); }
         keyDropped = true;
         console.log('[GoneRogue] Thumb drive dropped from terminal at', breakable.x, breakable.y);
       }
@@ -317,7 +328,7 @@ var BreakableSystem = (function() {
     if (!keyDropped && (breakable.name === 'Wooden Gate' || breakable.name === 'Wooden Box') && rng() < 0.10) {
       var keyDefs3 = EnvironmentalSynergy.getKeyDefinitions();
       if (keyDefs3.RUSTY_KEY) {
-        ctx.items.push({
+        var rustyKeyItem = {
           x: breakable.x,
           y: breakable.y,
           type: 'key',
@@ -327,7 +338,8 @@ var BreakableSystem = (function() {
           description: keyDefs3.RUSTY_KEY.description,
           spawnTime: Date.now(),
           decayTime: 120000
-        });
+        };
+        if (typeof WorldItems !== 'undefined') { WorldItems.addItem(rustyKeyItem); } else { ctx.items.push(rustyKeyItem); }
         console.log('[GoneRogue] Rusty key dropped at', breakable.x, breakable.y);
       }
     }

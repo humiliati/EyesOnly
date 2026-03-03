@@ -1,5 +1,5 @@
 # EYES ONLY — Item Pipeline: Full Lifecycle Audit & Designer Portal Roadmap
-### v1.5 — March 2026 (Phases 1–4 complete + playtesting integration)
+### v1.6 — March 2026 (Phases 1–5 complete + playtesting integration)
 
 ---
 
@@ -471,3 +471,234 @@ A web UI that lets designers:
 ---
 
 *End of document. This roadmap should be updated as phases are completed.*
+
+---
+
+REOPENED 3/3/2026 by MALICE MIZER:
+
+
+## Phase 5: SANITY CHECK — Collectibles Rendering Standardization
+
+### Purpose
+
+Phases 1–4 established the item definition registry, validation, editor, and playtesting integration. However, the **collectibles rendering pipeline** remains inconsistent across types. This pass standardizes how all collectibles render on the map and how they flow into player inventory.
+
+---
+
+### Current Problem
+
+Each collectible type (ammo, currency, key ammo, cards, batteries, food, items) has evolved its own rendering and pickup pipeline:
+
+| Collectible | Map Render | Enemy Drop | Breakable Drop | Inventory Flow |
+|-------------|------------|------------|----------------|----------------|
+| **Currency** | Symbol + ellipse shadow | Direct to inventory | Direct to inventory | Immediate |
+| **Ammo** | ? | ? | ? | ? |
+| **Key Ammo** | ? | ? | ? | ? |
+| **Cards** | ? | ? | ? | ? |
+| **Batteries** | ? | ? | ? | ? |
+| **Items** | ? | ? | ? | ? |
+| **Food** | ? | ? | ? | ? |
+
+If each of these questions has a **totally different answer/mechanical pipeline**, we need to fix it.
+
+---
+
+### Standardization Requirements
+
+#### 1. Resource Symbols (Ammo, Currency, Key Ammo, Batteries)
+
+When spawned on the map or dropped by breakables, render using their **RESOURCE_COLOR symbol** (not emoji):
+
+| Collectible | Symbol | RESOURCE_COLOR |
+|-------------|--------|----------------|
+| **Currency** | ¢ | #FFFF00 (yellow) |
+| **Ammo** | ⁍ | #DA70D6 (magenta) |
+| **Key Ammo** | 🗝 | #FF8A3D (bright orange) |
+| **Batteries** | ◈ | #00FFA6 (cyan-green) |
+
+
+**Rendering rules:**
+- Use symbol character (not emoji)
+- Apply ellipse hand-drawn shadow (see currency collectibles)
+- Gentle bob animation within tile
+- Bob amplitude scales the ellipse shadow proportionally
+- Helps players distinguish collectibles from other emoji on map
+
+#### 2. Emoji-Based Collectibles (Items, Key Items, Quest Keys, Food)
+
+When spawned on map or dropped by enemies/breakables:
+
+| Collectible | Scale | Shadow | Animation |
+|-------------|-------|--------|-----------|
+| **Items** | 0.6x | Ellipse hand shadow | Gentle bob |
+| **Key Items** | 0.6x | Ellipse hand shadow | Gentle bob |
+| **Quest Keys** | 0.6x | Ellipse hand shadow | Gentle bob |
+| **Food** | 0.6x | Ellipse hand shadow | Gentle bob |
+
+**Rendering rules:**
+- Render at **0.6 scale** (60% of normal tile size)
+- Apply ellipse hand-drawn shadow (from currency collectibles)
+- Gentle vertical bob within tile
+- Bob amplitude also scales the ellipse shadow (larger bob = larger shadow)
+- Helps players distinguish collectibles from enemies, decor, terrain
+
+#### 3. Cards
+
+| Context | Render | Scale | Shadow |
+|---------|--------|-------|--------|
+| **On map** | 🂠 symbol | 1.1x | Ellipse hand shadow + gentle bob |
+| **Dropped by enemy** | → Insert directly to player's hand | N/A | N/A |
+| **Dropped by breakable** | Render as on map | 1.1x | Ellipse hand shadow + gentle bob |
+
+---
+
+### Pipeline Unification Questions
+
+Each of these questions MUST have the SAME answer across all collectible types:
+
+| Question | Current State | Target State |
+|----------|--------------|--------------|
+| **When items are spawned on the map, how do they render?** | Varies by type | Uniform: emoji at 0.6x + ellipse shadow + bob |
+| **When items are dropped by enemies, how do they enter the player inventory?** | Varies: some direct, some fail | Uniform: attempt inventory insert, if full → drop on map |
+| **When items are dropped by breakables, how do they render?** | Varies | Uniform: emoji at 0.6x + ellipse shadow + bob |
+| **When items are delivered by quests/NPCs, how do they enter inventory if full?** | Varies | Uniform: attempt inventory insert, if full → notify + drop on map near NPC location |
+| **When cards are dropped by enemies, how do they enter the player hand?** | Should be: direct insert | Must be: direct insert to hand, last card in hands goes to backup deck, last card in backup deck incinerates  we're playing both the debreif feed frame flash animaton for card pickup to hand followed by incineration animation if applicable for ejection of the player's last deck cards |
+| **When cards are dropped by breakables, how do they render?** | ? | Render as 🂠 at 1.1x + ellipse shadow like collectibles with corresponding RESOURCE_COLOR |
+| **When cards are delivered by quests/NPCs, how do they enter hand if full?** | ? | Attempt hand insert, if full → backup deck, if full → incinerate + notify |
+
+---
+
+### Implementation Checklist
+
+#### Resource Symbols (Ammo, Currency, Key Ammo, Batteries)
+- [x] Standardize map rendering to use symbol + ellipse shadow + bob
+- [x] Standardize breakable drop to use same render path
+- [x] Add RESOURCE_COLORS lookup for each type
+- [x] Implement proportional ellipse shadow scaling with bob amplitude
+
+#### Emoji Collectibles (Items, Key Items, Quest Keys, Food)
+- [x] Standardize map rendering to 0.6x scale + ellipse shadow + bob
+- [x] Standardize enemy drop → inventory flow
+- [x] Standardize breakable drop rendering
+- [x] Implement full-to-inventory fallback: drop on map with render
+
+#### Cards
+- [x] Standardize enemy drop → insert to hand (bypass map)
+- [x] Standardize breakable drop → render on map
+- [x] Implement hand-full fallback: backup deck, then incinerate
+
+#### Ground Effect Items
+- [ ] Water items (💧) render with water ground effect
+- [ ] Future oil items render with oil ground effect
+- [ ] Ground effects interact with player movement/combat
+
+### Phase 5 Completion Notes (March 3, 2026)
+
+**Files modified:**
+
+| File | Changes |
+|------|---------|
+| `gone-rogue-mobile.js` (724-830) | Entity building: full collectible classification with scale, bobEnabled, collectibleType. Key tier detection (tier 1 → resource symbol #FF8A3D, tier 2 → emoji #FFD700, tier 3/quest → emoji #FF4444). Food at 0.6x with resourceColor. Cards at 1.1x. Generic items at 0.6x. Interactive items unchanged (no bob/scale). |
+| `gone-rogue-canvas.js` `_setupTextRendering` | Store `_baseFontSize` and `_fontFamily` for per-entity scaling. |
+| `gone-rogue-canvas.js` `_renderEntities` | Per-entity scale via font size change. Bob animation: ±2px sine wave, ~1.6s period, deterministic phase offset by tile position. Shadow scales proportionally with bob amplitude. |
+| `gone-rogue-canvas.js` `_renderAllShadows` | Bob-aware shadow scaling in post-lighting multiply pass (mirrors _renderEntities bob calculation). |
+| `death-exit-system.js` (141-155) | Enemy card drops → GAMESTATE.addCard() direct to hand. Ground-drop fallback if hand full. DebriefFeedController + OverheadAnimator animations on insert. |
+| `str-combat-engine.js` (1177-1293) | Standard, boss, and mythic card drops → direct to hand with ground-drop fallback. Debrief feed animations. |
+
+**Rendering classification summary:**
+
+| Type | Symbol | Color | Scale | Bob | collectibleType |
+|------|--------|-------|-------|-----|----------------|
+| Currency | ¢ | #FFFF00 | 1.0x | ✓ | resource |
+| Ammo | ⁍ | #DA70D6 | 1.0x | ✓ | resource |
+| Key Ammo (tier 1) | 🗝 | #FF8A3D | 1.0x | ✓ | resource |
+| Batteries | ◈ | #00FFA6 | 1.0x | ✓ | resource |
+| Card on map | 🂠 | #800080 | 1.1x | ✓ | card |
+| Key Item (tier 2) | emoji | #FFD700 | 0.6x | ✓ | emoji |
+| Quest Key (tier 3) | emoji | #FF4444 | 0.6x | ✓ | emoji |
+| Food | emoji | resourceColor | 0.6x | ✓ | emoji |
+| Generic item | emoji | resourceColor/#00FFFF | 0.6x | ✓ | emoji |
+| Interactive | emoji | #00FFFF | 1.0x | ✗ | null |
+
+**Not addressed (deferred):**
+- Ground effect items (water 💧, oil) — no ground items of these types exist yet
+- Full NCH backup-deck cascade for card overflow — requires harmonizing cardHand (object) and cardsInHand (ref) hand systems, out of scope for rendering pass
+
+---
+
+### Rendering Specification Reference
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    COLLECTIBLE RENDER                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  SYMBOL TYPES (Currency, Ammo, Key Ammo, Batteries)             │
+│  ─────────────────────────────────────────────────────          │
+│  • Render as symbol character (¢ ⁍ 🗝 ◈)                        │
+│  • Use RESOURCE_COLOR for color                                 │
+│  • Ellipse hand-drawn shadow                                     │
+│  • Gentle vertical bob (amplitude: 1-3px)                        │
+│  • Bob scales ellipse shadow proportionally                      │
+│                                                                  │
+│  EMOJI TYPES (Items, Key Items, Quest Keys, Food)               │
+│  ─────────────────────────────────────────────────────          │
+│  • Render at 0.6x scale                                         │
+│  • Ellipse hand-drawn shadow                                    │
+│  • Gentle vertical bob (amplitude: 1-3px)                        │
+│  • Bob scales ellipse shadow proportionally                      │
+│                                                                  │
+│  CARD TYPES                                                     │
+│  ─────────────────────────────────────────────────────          │
+│  • On map: 🂠 at 1.1x + ellipse shadow + bob                    │
+│  • Enemy drop: → directly to hand (no map render)               │
+│  • Breakable drop: render on map                                 │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+Special considerations: enemy NCH card theif and plant mechanics haven't been sorted or tested, only implimented for reference at 3/2/2026. Ensure the following changes accomodate ENEMY_NCH_INTERACTION_ROADMAP.md
+
+
+---
+
+### File Changes Required
+
+| File | Changes |
+|------|---------|
+| `world-items.js` | Standardize currency/item/cardinground rendering |
+| `loot-table-manager.js` | Unify drop paths for all collectible types |
+| `pickup-system.js` | Unify pickup → inventory flow |
+| `overhead-animator.js` | Add bob animation + ellipse shadow rendering |
+| `gone-rogue-mobile.js` | Update ground collectible rendering |
+| `gone-rogue.js` | Update ground collectible rendering |
+| `biomes.json` | Update breakable loot definitions |
+
+---
+
+### Success Criteria
+
+1. **Single answer per question** — No more varying pipelines per collectible type
+2. **Visual consistency** — All emoji collectibles at 0.6x with shadow + bob
+3. **Symbol consistency** — All resource symbols use RESOURCE_COLOR + shadow + bob
+4. **Predictable flow** — Enemy drops → inventory (or map if full), breakables → map render
+5. **Testable** — Each pipeline path has clear entry/exit points
+
+---
+
+### Related Documentation
+
+- `COLLECTIBLES_CANON.md` — Canonical categories and RESOURCE_COLORS
+- `food-database.js` — Food items with resourceType, resourceColor
+- `overhead-animator.js` — Overhead animation system
+- `PancakeStack` — Multiple animation stacking (speech, rope, collectibles)
+
+
+## Phase 5 or 6:
+
+
+Update FOOD_AND_INTERACTIVE_ITEMS_GUIDE
+Update INTERACTIVE_ITEMS_TODO
+Update STACK_SYSTEM_INTEGRATION
+Update OVERHEAD-ANIMATION-UNIFIED-ROADMAP
+

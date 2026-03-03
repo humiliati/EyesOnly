@@ -216,7 +216,7 @@ var KeyLootGen = (function() {
       attempts++;
     }
 
-    ctx.items.push({
+    var contextKey = {
       x: keyX, y: keyY,
       type: 'key',
       keyType: selectedKeyType,
@@ -225,7 +225,8 @@ var KeyLootGen = (function() {
       description: keyDef.description,
       spawnTime: Date.now(),
       decayTime: 180000
-    });
+    };
+    if (typeof WorldItems !== 'undefined') { WorldItems.addItem(contextKey); } else { ctx.items.push(contextKey); }
 
     ctx.runState.floorsSinceKey = 0;
     ctx.runState.keysFoundThisRun++;

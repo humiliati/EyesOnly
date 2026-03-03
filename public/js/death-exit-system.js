@@ -129,15 +129,16 @@ var DeathExitSystem = (function () {
       }
 
       if (deathResult.loot.ammo && deathResult.loot.ammo > 0) {
-        ctx.items.push({
+        var deathAmmo = {
           x: enemy.x, y: enemy.y, type: 'ammo',
           amount: deathResult.loot.ammo,
           spawnTime: Date.now(), decayTime: 30000,
           emoji: '📦', name: 'Ammo (' + deathResult.loot.ammo + ')'
-        });
+        };
+        if (typeof WorldItems !== 'undefined') { WorldItems.addItem(deathAmmo); } else { ctx.items.push(deathAmmo); }
       }
 
-      // Spawn cards
+      // Spawn cards — Phase 5: insert directly to hand, ground-drop fallback
       var _dropCountCards = 0;
       if (deathResult.loot.cards && deathResult.loot.cards.length > 0 && typeof CardSystem !== 'undefined') {
         for (var i = 0; i < deathResult.loot.cards.length; i++) {
@@ -146,10 +147,26 @@ var DeathExitSystem = (function () {
             var card = CardSystem.rollCard(baseType);
             if (card) {
               _dropCountCards++;
-              ctx.items.push({
-                x: enemy.x, y: enemy.y, type: 'card', card: card,
-                spawnTime: Date.now(), decayTime: 30000
-              });
+              // Try direct hand insert first
+              var cardInsert = (typeof GAMESTATE !== 'undefined' && GAMESTATE.addCard)
+                ? GAMESTATE.addCard(card) : null;
+              if (cardInsert && cardInsert.success) {
+                // Debrief feed + overhead animation for card-to-hand
+                try {
+                  if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
+                    DebriefFeedController.reportResourceChange('Cards', 0, 1, '\uD83C\uDCA0 ' + (card.name || 'Card'));
+                  }
+                } catch (eDF) {}
+                try {
+                  if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+                    OverheadAnimator.showGenericExpression(ctx.player.x, ctx.player.y, '\uD83C\uDCA0', 800, '#800080');
+                  }
+                } catch (eOH) {}
+              } else {
+                // Hand full — drop on ground as fallback
+                var deathCard = { x: enemy.x, y: enemy.y, type: 'card', card: card, spawnTime: Date.now(), decayTime: 30000 };
+                if (typeof WorldItems !== 'undefined') { WorldItems.addItem(deathCard); } else { ctx.items.push(deathCard); }
+              }
             }
           }
         }
@@ -163,10 +180,8 @@ var DeathExitSystem = (function () {
             var charm = CardSystem.rollCommonCharm();
             if (charm) {
               _dropCountItems++;
-              ctx.items.push({
-                x: enemy.x, y: enemy.y, type: 'charm', card: charm,
-                spawnTime: Date.now(), decayTime: 30000
-              });
+              var deathCharm = { x: enemy.x, y: enemy.y, type: 'charm', card: charm, spawnTime: Date.now(), decayTime: 30000 };
+              if (typeof WorldItems !== 'undefined') { WorldItems.addItem(deathCharm); } else { ctx.items.push(deathCharm); }
             }
           }
         }

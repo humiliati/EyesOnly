@@ -82,14 +82,16 @@ var BiomeGateSystem = (function () {
     var ammoX = pickupX + ammoOffsetX;
     var ammoY = pickupY;
     if (ammoX >= 1 && ammoX < GRID_WIDTH - 1 && ctx.grid[ammoY] && ctx.grid[ammoY][ammoX] === ctx.TILES.EMPTY) {
-      ctx.items.push({ x: ammoX, y: ammoY, type: 'ammo', name: 'Ammo Box', emoji: '📦', amount: 10, tag: 'tutorial_ammo' });
+      var tutAmmo = { x: ammoX, y: ammoY, type: 'ammo', name: 'Ammo Box', emoji: '📦', amount: 10, tag: 'tutorial_ammo' };
+      if (typeof WorldItems !== 'undefined') { WorldItems.addItem(tutAmmo); } else { ctx.items.push(tutAmmo); }
     }
 
     var cardOffsetY = Math.sign(dy) !== 0 ? Math.sign(dy) : 1;
     var cardX = pickupX;
     var cardY = pickupY + cardOffsetY;
     if (cardY >= 1 && cardY < GRID_HEIGHT - 1 && ctx.grid[cardY] && ctx.grid[cardY][cardX] === ctx.TILES.EMPTY) {
-      ctx.items.push({ x: cardX, y: cardY, type: 'card', name: 'Card', emoji: '🃏', tag: 'tutorial_card', cardQuality: 50 });
+      var tutCard = { x: cardX, y: cardY, type: 'card', name: 'Card', emoji: '🃏', tag: 'tutorial_card', cardQuality: 50 };
+      if (typeof WorldItems !== 'undefined') { WorldItems.addItem(tutCard); } else { ctx.items.push(tutCard); }
     }
   }
 

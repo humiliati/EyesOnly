@@ -1174,20 +1174,32 @@ var StrCombatEngine = (function () {
             ctx.spawnCurrency(_enemy.x, _enemy.y, deathResult.loot.currency);
           }
 
+          // Phase 5: Enemy card drops → direct to hand, ground-drop fallback
           if (deathResult.loot.cards && deathResult.loot.cards.length > 0) {
             deathResult.loot.cards.forEach(function(cardDrop) {
               if (cardDrop.shouldDrop && typeof CardSystem !== 'undefined') {
                 var baseType = CardSystem.getRandomBaseCard();
                 var card = CardSystem.rollCard(baseType);
                 if (card) {
-                  ctx.items.push({
-                    x: _enemy.x,
-                    y: _enemy.y,
-                    type: 'card',
-                    card: card,
-                    spawnTime: Date.now(),
-                    decayTime: 30000
-                  });
+                  var cardInsert = (typeof GAMESTATE !== 'undefined' && GAMESTATE.addCard)
+                    ? GAMESTATE.addCard(card) : null;
+                  if (cardInsert && cardInsert.success) {
+                    // Debrief feed + overhead animation for card-to-hand
+                    try {
+                      if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
+                        DebriefFeedController.reportResourceChange('Cards', 0, 1, '\uD83C\uDCA0 ' + (card.name || 'Card'));
+                      }
+                    } catch (eDF) {}
+                    try {
+                      if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+                        OverheadAnimator.showGenericExpression(ctx.player.x, ctx.player.y, '\uD83C\uDCA0', 800, '#800080');
+                      }
+                    } catch (eOH) {}
+                  } else {
+                    // Hand full — drop on ground as fallback
+                    var strCardDrop = { x: _enemy.x, y: _enemy.y, type: 'card', card: card, spawnTime: Date.now(), decayTime: 30000 };
+                    if (typeof WorldItems !== 'undefined') { WorldItems.addItem(strCardDrop); } else { ctx.items.push(strCardDrop); }
+                  }
                   _victoryCtx.lootCards.push({ emoji: card.emoji || '🎴', name: card.name || 'Card', quality: card.quality || '' });
                 }
               }
@@ -1199,14 +1211,8 @@ var StrCombatEngine = (function () {
               if (charmDrop.shouldDrop && typeof CardSystem !== 'undefined') {
                 var charm = CardSystem.rollCommonCharm();
                 if (charm) {
-                  ctx.items.push({
-                    x: _enemy.x,
-                    y: _enemy.y,
-                    type: 'charm',
-                    card: charm,
-                    spawnTime: Date.now(),
-                    decayTime: 30000
-                  });
+                  var strCharmDrop = { x: _enemy.x, y: _enemy.y, type: 'charm', card: charm, spawnTime: Date.now(), decayTime: 30000 };
+                  if (typeof WorldItems !== 'undefined') { WorldItems.addItem(strCharmDrop); } else { ctx.items.push(strCharmDrop); }
                   _victoryCtx.lootCharms.push({ emoji: charm.emoji || '💎', name: charm.name || 'Charm' });
                 }
               }
@@ -1257,14 +1263,24 @@ var StrCombatEngine = (function () {
                   }
                 }
                 if (card) {
-                  ctx.items.push({
-                    x: _enemy.x,
-                    y: _enemy.y,
-                    type: 'card',
-                    card: card,
-                    spawnTime: Date.now(),
-                    decayTime: 60000
-                  });
+                  // Phase 5: Boss card → direct to hand, ground-drop fallback
+                  var bossInsert = (typeof GAMESTATE !== 'undefined' && GAMESTATE.addCard)
+                    ? GAMESTATE.addCard(card) : null;
+                  if (bossInsert && bossInsert.success) {
+                    try {
+                      if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
+                        DebriefFeedController.reportResourceChange('Cards', 0, 1, '\uD83C\uDCA0 ' + (card.name || 'Boss Card'));
+                      }
+                    } catch (eDF) {}
+                    try {
+                      if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+                        OverheadAnimator.showGenericExpression(ctx.player.x, ctx.player.y, '\uD83C\uDCA0', 800, '#800080');
+                      }
+                    } catch (eOH) {}
+                  } else {
+                    var bossCardDrop = { x: _enemy.x, y: _enemy.y, type: 'card', card: card, spawnTime: Date.now(), decayTime: 60000 };
+                    if (typeof WorldItems !== 'undefined') { WorldItems.addItem(bossCardDrop); } else { ctx.items.push(bossCardDrop); }
+                  }
                   lines.push('🎴 Boss dropped: ' + card.emoji + ' ' + card.name + ' (' + card.quality + ')');
                   _victoryCtx.lootCards.push({ emoji: card.emoji || '🎴', name: card.name || 'Boss Card', quality: card.quality || '' });
                 }
@@ -1278,14 +1294,19 @@ var StrCombatEngine = (function () {
                 lines.push('');
                 if (typeof CardSystem !== 'undefined') {
                   var legendaryCard = CardSystem.rollCard('Inventory Charm');
-                  ctx.items.push({
-                    x: _enemy.x,
-                    y: _enemy.y,
-                    type: 'card',
-                    card: legendaryCard,
-                    spawnTime: Date.now(),
-                    decayTime: 120000
-                  });
+                  // Phase 5: Mythic card → direct to hand, ground-drop fallback
+                  var mythicInsert = (typeof GAMESTATE !== 'undefined' && GAMESTATE.addCard)
+                    ? GAMESTATE.addCard(legendaryCard) : null;
+                  if (mythicInsert && mythicInsert.success) {
+                    try {
+                      if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
+                        DebriefFeedController.reportResourceChange('Cards', 0, 1, '\uD83C\uDCA0 MYTHIC ' + (legendaryCard.name || 'Card'));
+                      }
+                    } catch (eDF) {}
+                  } else {
+                    var mythicDrop = { x: _enemy.x, y: _enemy.y, type: 'card', card: legendaryCard, spawnTime: Date.now(), decayTime: 120000 };
+                    if (typeof WorldItems !== 'undefined') { WorldItems.addItem(mythicDrop); } else { ctx.items.push(mythicDrop); }
+                  }
                 }
               } else if (lootItem.type === 'rumor') {
                 lines.push('');
@@ -1309,14 +1330,8 @@ var StrCombatEngine = (function () {
 
             if (impossibleCharmChance > 0 && _rng() < impossibleCharmChance) {
               var impossibleCharm = CardSystem.rollImpossibleCharm();
-              ctx.items.push({
-                x: _enemy.x,
-                y: _enemy.y,
-                type: 'charm',
-                card: impossibleCharm,
-                spawnTime: Date.now(),
-                decayTime: 120000
-              });
+              var impossibleDrop = { x: _enemy.x, y: _enemy.y, type: 'charm', card: impossibleCharm, spawnTime: Date.now(), decayTime: 120000 };
+              if (typeof WorldItems !== 'undefined') { WorldItems.addItem(impossibleDrop); } else { ctx.items.push(impossibleDrop); }
               lines.push('');
               lines.push('💠💠💠 IMPOSSIBLE BINARY CHARM DROPPED! 💠💠💠');
               lines.push('└─ A legendary artifact materializes...');

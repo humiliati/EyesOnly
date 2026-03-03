@@ -66,6 +66,10 @@ const CanvasRenderer = (function() {
 
     var fontSize = Math.floor(this.cellSize * scale);
 
+    // Store base font size for per-entity scaling (Phase 5)
+    this._baseFontSize = fontSize;
+    this._fontFamily = (this.renderMode === RENDER_MODE.ASCII) ? FONT_FAMILY : EMOJI_FONT_FAMILY;
+
     if (this.renderMode === RENDER_MODE.ASCII) {
       this.ctx.font = fontSize + 'px ' + FONT_FAMILY;
     } else {
@@ -509,24 +513,60 @@ const CanvasRenderer = (function() {
 
   /**
    * Render entities (enemies, NPCs, items, collectibles).
-   * Non-enemy entities (items, currencies, collectibles) receive a
-   * gentle twinkle/pulse via globalAlpha oscillation (Phase 3.2).
-   * @param {Array} entities - Array of entity objects { x, y, char, color }
+   * Phase 5: Collectibles render with per-entity scale and vertical bob animation.
+   *   - Resource symbols (currency, ammo, batteries, key ammo): 1.0x + bob
+   *   - Emoji collectibles (items, keys, quest keys, food): 0.6x + bob
+   *   - Cards on map: 1.1x + bob
+   *   - Enemies: no bob, glow effect
+   * Bob uses sine wave with deterministic phase offset per tile position.
+   * @param {Array} entities - Array of entity objects { x, y, char, color, scale?, bobEnabled?, collectibleType? }
    * @param {boolean} skipShadows - If true, skip drawing shadows (they'll be drawn later)
    */
   CanvasRenderer.prototype._renderEntities = function(entities, skipShadows) {
     if (!entities || entities.length === 0) return;
 
+    var now = Date.now();
+    var baseFontSize = this._baseFontSize || Math.floor(this.cellSize * 0.8);
+    var fontFamily = this._fontFamily || EMOJI_FONT_FAMILY;
+    var needFontReset = false;
+
     for (var i = 0; i < entities.length; i++) {
       var entity = entities[i];
       if (!entity || entity.x === undefined || entity.y === undefined) continue;
 
+      var scale = entity.scale || 1.0;
       var centerX = (entity.x + 0.5) * this.cellSize;
       var centerY = (entity.y + 0.5) * this.cellSize;
 
+      // Bob animation for collectibles (±2px, ~1.6s period, phase offset by position)
+      var bobOffset = 0;
+      if (entity.bobEnabled) {
+        var phase = ((entity.x * 7 + entity.y * 13) % 100) * 0.1; // 0–10 radians spread
+        bobOffset = Math.sin((now * 0.004) + phase) * 2; // ±2px amplitude
+        centerY += bobOffset;
+      }
+
       // Draw ground drop shadow beneath entity (unless skipped)
       if (!skipShadows) {
-        this._drawDropShadow(centerX, (entity.y + 0.78) * this.cellSize, this.cellSize * 0.32, this.cellSize * 0.11, 0.28);
+        // Bob scales shadow: higher bob = smaller shadow (entity farther from ground)
+        var shadowScale = entity.bobEnabled ? (1 - Math.abs(bobOffset) * 0.04) : 1;
+        this._drawDropShadow(
+          centerX,
+          (entity.y + 0.78) * this.cellSize,
+          this.cellSize * 0.32 * shadowScale,
+          this.cellSize * 0.11 * shadowScale,
+          0.28 * shadowScale
+        );
+      }
+
+      // Apply per-entity font scale if different from base
+      if (scale !== 1.0) {
+        var scaledFontSize = Math.floor(baseFontSize * scale);
+        this.ctx.font = scaledFontSize + 'px ' + fontFamily;
+        needFontReset = true;
+      } else if (needFontReset) {
+        this.ctx.font = baseFontSize + 'px ' + fontFamily;
+        needFontReset = false;
       }
 
       // Render entity character/emoji
@@ -542,6 +582,11 @@ const CanvasRenderer = (function() {
 
       // Reset shadow
       this.ctx.shadowBlur = 0;
+    }
+
+    // Restore base font if last entity was scaled
+    if (needFontReset) {
+      this.ctx.font = baseFontSize + 'px ' + fontFamily;
     }
   };
 
@@ -730,13 +775,26 @@ const CanvasRenderer = (function() {
     var prevComp = this.ctx.globalCompositeOperation;
     this.ctx.globalCompositeOperation = 'multiply';
 
-    // Draw entity shadows
+    // Draw entity shadows (Phase 5: bob-aware shadow scaling for collectibles)
     if (entities && entities.length > 0) {
+      var now = Date.now();
       for (var i = 0; i < entities.length; i++) {
         var entity = entities[i];
         if (!entity || entity.x === undefined || entity.y === undefined) continue;
         var centerX = (entity.x + 0.5) * this.cellSize;
-        this._drawDropShadow(centerX, (entity.y + 0.78) * this.cellSize, this.cellSize * 0.32, this.cellSize * 0.11, 0.28);
+        var shadowScale = 1;
+        if (entity.bobEnabled) {
+          var phase = ((entity.x * 7 + entity.y * 13) % 100) * 0.1;
+          var bobOffset = Math.sin((now * 0.004) + phase) * 2;
+          shadowScale = 1 - Math.abs(bobOffset) * 0.04;
+        }
+        this._drawDropShadow(
+          centerX,
+          (entity.y + 0.78) * this.cellSize,
+          this.cellSize * 0.32 * shadowScale,
+          this.cellSize * 0.11 * shadowScale,
+          0.28 * shadowScale
+        );
       }
     }
 

@@ -106,7 +106,8 @@ var LockedGateSystem = (function () {
         if (baseType && CardSystem.rollCard) {
           var card = CardSystem.rollCard(baseType);
           if (card) {
-            ctx.items.push({ x: gx, y: gy, type: 'card', card: card, spawnTime: Date.now(), decayTime: 30000 });
+            var chestCard = { x: gx, y: gy, type: 'card', card: card, spawnTime: Date.now(), decayTime: 30000 };
+            if (typeof WorldItems !== 'undefined') { WorldItems.addItem(chestCard); } else { ctx.items.push(chestCard); }
           }
         }
       }

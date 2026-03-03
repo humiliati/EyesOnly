@@ -157,13 +157,11 @@ var InteriorFloorSystem = (function() {
         });
       }
 
-      // Place quest key items (tutorialPickups with type 'key')
+      // Place all tutorialPickups via WorldItems (single source of truth)
       if (floorData.tutorialPickups) {
-        var items = ctx.getItems();
-        var currencies2 = ctx.getCurrencies();
         floorData.tutorialPickups.forEach(function(pickup) {
           if (pickup.type === 'key') {
-            items.push({
+            WorldItems.addItem({
               x: pickup.x, y: pickup.y,
               type: 'key',
               keyType: pickup.keyType || 'UNKNOWN_KEY',
@@ -171,15 +169,45 @@ var InteriorFloorSystem = (function() {
               subtype: pickup.subtype || 'quest',
               emoji: pickup.emoji || '\uD83D\uDD11', // 🔑
               name: pickup.name || 'Key',
-              npcTarget: pickup.npcTarget || null,
-              collected: false
+              npcTarget: pickup.npcTarget || null
+            });
+          } else if (pickup.type === 'ammo') {
+            WorldItems.addItem({
+              x: pickup.x, y: pickup.y,
+              type: 'ammo',
+              amount: pickup.amount || 1
+            });
+          } else if (pickup.type === 'gem') {
+            WorldItems.addItem({
+              x: pickup.x, y: pickup.y,
+              type: 'gem',
+              amount: pickup.amount || 1
             });
           } else if (pickup.type === 'currency') {
-            currencies2.push({ x: pickup.x, y: pickup.y, amount: pickup.amount, collected: false });
-          } else if (pickup.type === 'card' && pickup.guaranteed) {
-            items.push({ x: pickup.x, y: pickup.y, type: 'card', card: 'strike', collected: false });
+            WorldItems.addCurrency({ x: pickup.x, y: pickup.y, amount: pickup.amount || 1 });
+          } else if (pickup.type === 'card') {
+            // Resolve a real card definition for card pickups
+            var cardObj = null;
+            try {
+              if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.listCards) {
+                var allCards = GoneRogueDataRegistry.listCards();
+                var targetType = (pickup.cardType || 'ATTACK').toLowerCase();
+                for (var ci = 0; ci < allCards.length; ci++) {
+                  if (allCards[ci] && (allCards[ci].type || '').toLowerCase() === targetType) {
+                    cardObj = { type: allCards[ci].type, id: allCards[ci].id, name: allCards[ci].name, emoji: allCards[ci].emoji, qualityName: allCards[ci].rarity || 'common' };
+                    break;
+                  }
+                }
+              }
+            } catch (eCard) {}
+            if (!cardObj) {
+              cardObj = { type: 'attack', id: 'ACT-001', name: 'Strike', emoji: '\u2694\uFE0F', qualityName: 'common' };
+            }
+            WorldItems.addItem({ x: pickup.x, y: pickup.y, type: 'card', card: cardObj });
           }
         });
+        // Sync _items reference after all WorldItems additions
+        ctx.syncWorldItems();
       }
 
       // Lighting for interior

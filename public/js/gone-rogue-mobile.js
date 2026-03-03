@@ -722,47 +722,107 @@ const GoneRogueMobile = (function () {
     }
 
     // Add all ground items from WorldItems (single source of truth)
-    // Replaces the former separate loops for currencies, floor items, and interactive items.
+    // Phase 5: Collectibles Rendering Standardization
+    //   - Resource symbols (currency, ammo, batteries): symbol char + RESOURCE_COLOR + bob
+    //   - Key ammo (tier 1 keys): 🗝 resource symbol at #FF8A3D + bob
+    //   - Emoji collectibles (items, key items, quest keys, food): 0.6x scale + bob
+    //   - Cards: 🂠 at 1.1x + bob
+    //   - Interactive items: no bob, no scale change
     if (typeof WorldItems !== 'undefined') {
       WorldItems.getAllForRendering().forEach(function(item) {
         var vx = _toViewX(item.x);
         var vy = _toViewY(item.y);
         if (!_inView(vx, vy)) return;
 
-        var char, color;
+        var char, color, scale = 1.0, bobEnabled = false, collectibleType = null;
+
         if (item._wt === 'currency') {
+          // Resource symbol: Currency ¢
           char = item.glyph || '¢';
           color = '#FFFF00';
+          collectibleType = 'resource';
+          bobEnabled = true;
         } else if (item._wt === 'item') {
           if (item.type === 'gem') {
+            // Resource symbol: Batteries ◈
             char = item.glyph || '◈';
-            color = '#00FFA6'; // Battery cyan from RESOURCE_COLORS
+            color = '#00FFA6';
+            collectibleType = 'resource';
+            bobEnabled = true;
           } else if (item.type === 'ammo') {
+            // Resource symbol: Ammo ⁍
             char = item.glyph || item.emoji || '⁍';
-            color = '#DA70D6'; // Magenta per RESOURCE_COLOR_SYSTEM.md
+            color = '#DA70D6';
+            collectibleType = 'resource';
+            bobEnabled = true;
           } else if (item.type === 'card' || (item.card && !item.type)) {
+            // Card: 🂠 at 1.1x scale
             char = '🂠';
-            color = '#800080'; // Cards purple per RESOURCE_COLOR_SYSTEM
+            color = '#800080';
+            scale = 1.1;
+            collectibleType = 'card';
+            bobEnabled = true;
+          } else if (item.type === 'key') {
+            // Keys: classify by tier for render treatment
+            var keyTier = item.tier || 1;
+            if (!item.tier && typeof KeyLootGen !== 'undefined' && KeyLootGen.getKeyTier) {
+              keyTier = KeyLootGen.getKeyTier(item.keyType || '');
+            }
+            if (keyTier === 1) {
+              // Key ammo (tier 1) — resource symbol
+              char = '🗝';
+              color = '#FF8A3D';
+              collectibleType = 'resource';
+            } else if (keyTier >= 3 || item.subtype === 'quest') {
+              // Quest key (tier 3) — emoji collectible
+              char = item.emoji || '🗝';
+              color = '#FF4444';
+              scale = 0.6;
+              collectibleType = 'emoji';
+            } else {
+              // Key item (tier 2) — emoji collectible
+              char = item.emoji || '🗝';
+              color = '#FFD700';
+              scale = 0.6;
+              collectibleType = 'emoji';
+            }
+            bobEnabled = true;
+          } else if (item.type === 'food') {
+            // Food — emoji collectible at 0.6x
+            char = item.emoji || '🍖';
+            color = item.resourceColor || '#FF6B9D';
+            scale = 0.6;
+            collectibleType = 'emoji';
+            bobEnabled = true;
           } else {
+            // Generic item (charms, equipment, etc.) — emoji collectible at 0.6x
             char = item.glyph || item.emoji || '💎';
-            color = '#00FFFF';
+            color = item.resourceColor || '#00FFFF';
+            scale = 0.6;
+            collectibleType = 'emoji';
+            bobEnabled = true;
           }
-        } else { // 'interactive'
+        } else {
+          // Interactive items — no bob, no scale change
           char = item.emoji;
           color = '#00FFFF';
         }
 
-        entities.push({ x: vx, y: vy, char: char, color: color });
+        entities.push({
+          x: vx, y: vy, char: char, color: color,
+          scale: scale, bobEnabled: bobEnabled, collectibleType: collectibleType
+        });
       });
     } else {
-      // Fallback when WorldItems is unavailable
+      // Fallback when WorldItems is unavailable (mirrors Phase 5 classification above)
       if (currencies) {
         currencies.forEach(function(currency) {
           if (currency.collected) return;
           var vx = _toViewX(currency.x);
           var vy = _toViewY(currency.y);
           if (!_inView(vx, vy)) return;
-          entities.push({ x: vx, y: vy, char: currency.glyph || '¢', color: '#FFFF00' });
+          entities.push({ x: vx, y: vy, char: currency.glyph || '¢', color: '#FFFF00',
+            scale: 1.0, bobEnabled: true, collectibleType: 'resource' });
         });
       }
       if (items) {
@@ -770,7 +830,7 @@ const GoneRogueMobile = (function () {
           var vx = _toViewX(item.x);
           var vy = _toViewY(item.y);
           if (!_inView(vx, vy)) return;
-          var char, color;
+          var char, color, scale = 1.0, bobEnabled = true, collectibleType = 'resource';
           if (item.type === 'gem') {
             char = item.glyph || '◈';
             color = '#00FFA6';
@@ -779,12 +839,31 @@ const GoneRogueMobile = (function () {
             color = '#DA70D6';
           } else if (item.type === 'card' || (item.card && !item.type)) {
             char = '🂠';
-            color = '#800080'; // Cards purple per RESOURCE_COLOR_SYSTEM
+            color = '#800080';
+            scale = 1.1;
+            collectibleType = 'card';
+          } else if (item.type === 'key') {
+            var kTier = item.tier || 1;
+            if (!item.tier && typeof KeyLootGen !== 'undefined' && KeyLootGen.getKeyTier) {
+              kTier = KeyLootGen.getKeyTier(item.keyType || '');
+            }
+            if (kTier === 1) {
+              char = '🗝'; color = '#FF8A3D';
+            } else if (kTier >= 3 || item.subtype === 'quest') {
+              char = item.emoji || '🗝'; color = '#FF4444'; scale = 0.6; collectibleType = 'emoji';
+            } else {
+              char = item.emoji || '🗝'; color = '#FFD700'; scale = 0.6; collectibleType = 'emoji';
+            }
+          } else if (item.type === 'food') {
+            char = item.emoji || '🍖'; color = item.resourceColor || '#FF6B9D';
+            scale = 0.6; collectibleType = 'emoji';
           } else {
             char = item.glyph || item.emoji || '💎';
-            color = '#00FFFF';
+            color = item.resourceColor || '#00FFFF';
+            scale = 0.6; collectibleType = 'emoji';
           }
-          entities.push({ x: vx, y: vy, char: char, color: color });
+          entities.push({ x: vx, y: vy, char: char, color: color,
+            scale: scale, bobEnabled: bobEnabled, collectibleType: collectibleType });
         });
       }
     }

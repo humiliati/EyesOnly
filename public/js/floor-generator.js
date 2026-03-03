@@ -668,7 +668,8 @@ var FloorGenerator = (function () {
         }
         droppedCardsThisFloor.push(baseType);
         ctx.trackCardDrop(card);
-        ctx.items.push({ x: ix, y: iy, card: card, spawnTime: Date.now(), decayTime: 30000 });
+        var floorCard = { x: ix, y: iy, type: 'card', card: card, spawnTime: Date.now(), decayTime: 30000 };
+        if (typeof WorldItems !== 'undefined') { WorldItems.addItem(floorCard); } else { ctx.items.push(floorCard); }
       }
     }
   }

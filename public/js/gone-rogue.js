@@ -1386,6 +1386,12 @@ var GoneRogue = (function () {
     };
   }
   function _checkPlayerInteractions() {
+    // Ensure _items is synced with WorldItems before checking interactions
+    // (guards against reference desync from filterFloorItems reassignment)
+    if (typeof WorldItems !== 'undefined') {
+      _items = WorldItems.getFloorItems();
+      _currencies = WorldItems.getCurrencies();
+    }
     if (typeof PlayerInteractionSystem !== 'undefined') {
       PlayerInteractionSystem.checkPlayerInteractions(_playerInteractionCtx());
     }
