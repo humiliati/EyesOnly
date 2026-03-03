@@ -22,8 +22,8 @@ const EnvironmentalSynergy = (function() {
         registryId: 'ITM-017',
         tier: 1,
         emoji: '🔑',
-        name: 'Rusty Key',
-        description: 'An old, rusted key. Might open something...',
+        name: 'Rusty Lockpick',
+        description: 'A bent piece of metal. Single-use, but it gets the job done.',
         compatibleGates: ['WOODEN_GATE', 'OLD_DOOR', 'LOCKED_CHEST'],
         consumeOnUse: true
       },

@@ -1,5 +1,5 @@
 # EYES ONLY — Item Pipeline: Full Lifecycle Audit & Designer Portal Roadmap
-### v1.1 — March 2026 (Phase 1 complete)
+### v1.2 — March 2026 (Phase 1 + Phase 2 complete)
 
 ---
 
@@ -22,7 +22,7 @@ This document traces every item in the game from its **definition** through **sp
 **ID format:** `ITM-XXX` (three-digit zero-padded)
 **Validated by:** `GoneRogueDataRegistry` at load time (`/^ITM-\d{3}$/`)
 
-**Current inventory (50 items):**
+**Current inventory (51 items):**
 
 | Range | Type | Count | Examples |
 |-------|------|-------|---------|
@@ -50,8 +50,8 @@ This is the **authoritative source for key item behavior** — tier, gate compat
 
 | Internal Key | itemId | registryId | Tier | consumeOnUse |
 |-------------|--------|-----------|------|-------------|
-| RUSTY_KEY | KEY_002 | — | 1 | true |
-| BRONZE_KEY | KEY_004 | — | 1 | true |
+| RUSTY_KEY | KEY_002 | ITM-017 | 1 | true |
+| BRONZE_KEY | KEY_004 | ITM-018 | 1 | true |
 | KEYCARD | KEY_003 | ITM-011 | 2 | false |
 | MASTER_KEY | KEY_004 | ITM-012 | 2 | false |
 | THUMB_DRIVE | KEY_005 | ITM-013 | 2 | false |
@@ -61,7 +61,7 @@ This is the **authoritative source for key item behavior** — tier, gate compat
 | BLACKSMITH_HAMMER | KEY_030 | ITM-030 | 3 | true |
 | RUNE_FRAGMENT | KEY_031 | ITM-031 | 3 | true |
 
-**Problem:** Tier 1 keys (RUSTY_KEY, BRONZE_KEY) have **no registryId** and no items.json entry. They exist only in environmental-synergy.js. The pickup system builds a raw payload for them that never hits the registry.
+**✅ Resolved (Phase 1):** Tier 1 keys now have registryId (ITM-017, ITM-018) and items.json entries. env-synergy `init()` merges display fields from registry.
 
 ### 2C. `item-spawner.js` — Interactive Item Definitions (World Objects)
 
@@ -249,10 +249,8 @@ GAMESTATE.consumeActiveItem()              Server-side consume + local inventory
 
 ## 4. Known Gaps & Debt
 
-### 4A. Tier 1 Keys Are Ghosts
-RUSTY_KEY and BRONZE_KEY exist only in `environmental-synergy.js` with no `registryId` and no `items.json` entry. They're consumed as ammo (not stored in inventory), so the registry never sees them, but they can't be looked up or displayed in any item browser.
-
-**Fix:** Add ITM-017 (Rusty Key) and ITM-018 (Bronze Key) to items.json. Add `registryId` to their env-synergy definitions.
+### 4A. ~~Tier 1 Keys Are Ghosts~~ ✅ FIXED (Phase 1)
+ITM-017 (Rusty Lockpick) and ITM-018 (Bronze Key) now exist in items.json with registryId cross-refs. env-synergy `init()` merges display fields from registry.
 
 ### 4B. Three ID Schemes
 - `ITM-XXX` — items.json registry (canonical)
@@ -261,20 +259,16 @@ RUSTY_KEY and BRONZE_KEY exist only in `environmental-synergy.js` with no `regis
 
 World objects don't need to merge — they're a separate concept. But KEY_0XX should be fully cross-referenced to ITM-XXX.
 
-### 4C. Dual-Source Duplication
-Key items have emoji, name, description, tier, and consumeOnUse defined in BOTH `items.json` AND `environmental-synergy.js`. If a designer edits one, the other goes stale.
+### 4C. ~~Dual-Source Duplication~~ ✅ FIXED (Phase 1)
+env-synergy `init()` now overwrites name/emoji/description/tier/consumeOnUse/stackable/maxStack from registry for all keys with `registryId`. items.json is the single source of truth for display fields.
 
-**Fix:** Environmental-synergy should reference `registryId` only and pull all display/behavior fields from the registry at init.
-
-### 4D. `_legacyItemNameToId` Is a Maintenance Hazard
-Every new item with a legacy name path needs a manual entry in this map (currently 11 entries). It's a runtime name→ID lookup in gamestate.js.
+### 4D. ~~`_legacyItemNameToId` Is a Maintenance Hazard~~ ✅ FIXED (Phase 1)
+`_legacyItemNameToId()` now queries `GoneRogueDataRegistry.getItemIdByName()` first (auto-generated from items.json). Hardcoded fallback reduced to 5 safety entries.
 
 **Fix:** Generate this map from items.json at build time, or eliminate legacy name paths entirely.
 
-### 4E. Six Independent Renderers
-Each has its own `_missing` check and fallback emoji. A new item property (e.g. `rarity` coloring) would need to be added to all six.
-
-**Fix:** Create `SharedItemRenderer.createItemElement(ref)` that all six renderers call, similar to `SharedCardRenderer.createCardElement()`.
+### 4E. ~~Six Independent Renderers~~ ✅ FIXED (Phase 1)
+All 6 renderers now call `SharedItemRenderer.resolve()` for data lookup/fallback. DOM creation stays per-renderer but the lookup/fallback logic is unified.
 
 ---
 
@@ -392,11 +386,17 @@ A web UI that lets designers:
 - ✅ Created `SharedItemRenderer` (resolve, abbreviateName, getRarityColor, buildTooltipHtml)
 - ✅ All 6 renderers migrated to `SharedItemRenderer.resolve()` (rogue-sidebar, NCH, BAC, mobile×3)
 
-**Phase 2: Validate (build-time tooling)**
-- JSON schema validator for items.json (required fields, ID format, effect type enum)
-- Orphan detector: items referenced in env-synergy/tutorial-floors but missing from items.json
-- Duplicate detector: same name or emoji in different ID ranges
-- Effect type linter: unknown effect types, missing required params
+**Phase 2: Validate (build-time tooling) — ✅ COMPLETE**
+- ✅ Created `tools/validate-items.js` — single-command validator with 6 checks:
+  - Schema validation: required fields, ID format `/^ITM-\d{3}$/`, enum checks (type, rarity, equipSlot)
+  - Effect type linter: 36 known effect types + per-type required-param checks
+  - Duplicate detector: flags shared names (error) + shared emoji across ID ranges (warn)
+  - Orphan detector: cross-refs env-synergy registryId, gamestate.js legacy map, gone-rogue.js box IDs
+  - Sort order check: warns if items.json is unsorted, `--fix` auto-sorts by ID
+  - ID gap detector: reports holes in ID ranges + next available ID
+- ✅ Fixed duplicate names: ITM-017 "Rusty Key" → "Rusty Lockpick", ITM-999 "Refrigerator Box" → "Refrigerator Box Suit"
+- ✅ Auto-sorted items.json by ID (ITM-000 first through ITM-999)
+- Usage: `node tools/validate-items.js [--fix] [--quiet]`
 
 **Phase 3: Editor (web UI)**
 - React SPA reading items.json directly
@@ -434,6 +434,8 @@ A web UI that lets designers:
 | `js/backup-action-container.js` | BAC slot rendering (legacy) | Reads registry |
 | `js/gone-rogue-mobile.js` | Mobile inventory + equip rendering | Reads registry |
 | `js/card-disposal-system.js` | Card/item disposal (legacy drag system) | Calls removePersistentInventoryItem |
+| `js/shared-item-renderer.js` | Unified item data resolver (Phase 1) | resolve(), getRarityColor(), buildTooltipHtml() |
+| `tools/validate-items.js` | Build-time item validator (Phase 2) | `node tools/validate-items.js [--fix] [--quiet]` |
 | `js/world-items.js` | Ground items/currency management | Floor pickup tracking |
 | `js/tutorial-floors.js` | Hardcoded spawn coordinates | References env-synergy keys |
 | `js/terminal/command-router.js` | Dev mode commands | `dev on` generates test state |

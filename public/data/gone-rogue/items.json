@@ -1,188 +1,5 @@
 [
   {
-    "id": "ITM-001",
-    "name": "Cigarette",
-    "emoji": "🚬",
-    "type": "consumable",
-    "subtype": "vice",
-    "rarity": "common",
-    "stackable": true,
-    "maxStack": 20,
-    "equipSlot": "none",
-    "effects": [
-      { "type": "hp", "value": -1 },
-      { "type": "focus", "value": 1 }
-    ],
-    "synergyTags": ["vice"],
-    "description": "Trade blood for calm. Tap repeatedly, but don’t bottom out."
-  },
-  {
-    "id": "ITM-002",
-    "name": "Radio Transceiver",
-    "emoji": "📻",
-    "type": "equipment",
-    "rarity": "common",
-    "stackable": false,
-    "maxStack": 1,
-    "equipSlot": "active",
-    "effects": [],
-    "synergyTags": ["comms"],
-    "description": "Encrypted communication device."
-  },
-  {
-    "id": "ITM-003",
-    "name": "Surveillance Cam",
-    "emoji": "📷",
-    "type": "equipment",
-    "rarity": "common",
-    "stackable": false,
-    "maxStack": 1,
-    "equipSlot": "active",
-    "effects": [],
-    "synergyTags": ["surveillance"],
-    "description": "Compact surveillance camera."
-  },
-  {
-    "id": "ITM-004",
-    "name": "Personal Journal",
-    "emoji": "📓",
-    "type": "equipment",
-    "rarity": "common",
-    "stackable": false,
-    "maxStack": 1,
-    "equipSlot": "passive",
-    "effects": [],
-    "synergyTags": ["intel"],
-    "description": "Your operational notes and observations."
-  },
-  {
-    "id": "ITM-005",
-    "name": "3D Printer",
-    "emoji": "🕋",
-    "type": "equipment",
-    "rarity": "legendary",
-    "stackable": false,
-    "maxStack": 1,
-    "equipSlot": "active",
-    "effects": [
-      { "type": "printer_3d" }
-    ],
-    "synergyTags": ["fabrication", "printer"],
-    "description": "Consumes itself to print extra action cards when you spend ammo/battery. Mostly prints lower-quality substitutes."
-  },
-  {
-    "id": "ITM-006",
-    "name": "Pickpocket Gloves",
-    "emoji": "🧤",
-    "type": "equipment",
-    "rarity": "uncommon",
-    "stackable": false,
-    "maxStack": 1,
-    "equipSlot": "active",
-    "effects": [
-      { "type": "theft", "mode": "pickpocket" }
-    ],
-    "stealTags": ["pickpocket", "sleight"],
-    "synergyTags": ["covert", "pickpocket", "sleight"],
-    "description": "Lets you pickpocket exposed enemy cards when adjacent. The enemy still gets angry if you fumble."
-  },
-  {
-    "id": "ITM-007",
-    "name": "Scout Scope",
-    "emoji": "🔍",
-    "type": "equipment",
-    "rarity": "uncommon",
-    "stackable": false,
-    "maxStack": 1,
-    "equipSlot": "active",
-    "effects": [{ "type": "reveal", "mode": "scout" }],
-    "revealTags": ["ranged", "basic", "melee", "tech"],
-    "synergyTags": ["intel", "covert", "scout"],
-    "description": "See what they're holding. Equip to reveal enemy cards during combat.",
-    "_designNote": "Phase 3 reveal enabler. revealTags intersect enemy card tags to determine which cards light up as interactable. Broad coverage (ranged+basic+melee+tech) makes it useful across most enemies."
-  },
-  {
-    "id": "ITM-008",
-    "name": "EMP Disruptor",
-    "emoji": "📟",
-    "type": "equipment",
-    "rarity": "rare",
-    "stackable": false,
-    "maxStack": 1,
-    "equipSlot": "active",
-    "effects": [{ "type": "destroy_card", "mode": "emp" }],
-    "destroyTags": ["tech", "ranged", "electrical"],
-    "synergyTags": ["electrical", "sabotage", "tech"],
-    "description": "Fry their tech cards. Destroy enemy cards tagged electronic or ranged. Triggers rage.",
-    "_designNote": "Phase 3 destroy enabler. Narrower tag coverage than Scout Scope — only tech/ranged/electrical. Destroy triggers enemy card_killed event (enemy goes >:( enraged). Pairs with Signal Jammer for combo disruption."
-  },
-  {
-    "id": "ITM-009",
-    "name": "Wire Tap",
-    "emoji": "🎧",
-    "type": "equipment",
-    "rarity": "rare",
-    "stackable": false,
-    "maxStack": 1,
-    "equipSlot": "passive",
-    "effects": [{ "type": "auto_reveal", "count": 1, "trigger": "combat_start" }],
-    "synergyTags": ["intel", "covert", "surveillance"],
-    "description": "Intercepted comms. One random enemy card revealed at combat start.",
-    "_designNote": "Passive auto-reveal. EnemyCardInteractability.autoReveal() checks for this effect. Fires once per combat entry. Stacks with Scout Scope for more intel."
-  },
-  {
-    "id": "ITM-070",
-    "name": "Thermal Goggles",
-    "emoji": "🥽",
-    "type": "equipment",
-    "rarity": "epic",
-    "stackable": false,
-    "maxStack": 1,
-    "equipSlot": "active",
-    "effects": [
-      { "type": "reveal", "mode": "thermal" },
-      { "type": "darkness_accuracy_bonus", "value": 15 },
-      { "type": "stealth_in_darkness_bonus", "value": 10 }
-    ],
-    "revealTags": ["melee", "basic", "ranged", "tech", "explosive", "suppressive"],
-    "synergyTags": ["intel", "covert", "scout", "darkness", "tech"],
-    "description": "Heat signatures cut through darkness. Reveal all enemy cards + accuracy/stealth bonus in dark tiles.",
-    "_designNote": "Epic-tier reveal + darkness synergy. Broadest revealTags coverage (reveals nearly everything). darkness_accuracy_bonus and stealth_in_darkness_bonus reward players who stay in low-ambient tiles. Ties directly into the lowered biome ambient lighting — makes darkness a strategic advantage instead of a handicap."
-  },
-  {
-    "id": "ITM-998",
-    "name": "Amazon Box",
-    "emoji": "📦",
-    "type": "equipment",
-    "rarity": "common",
-    "stackable": false,
-    "maxStack": 1,
-    "equipSlot": "passive",
-    "effects": [
-      { "type": "avatar_transform", "char": "📦", "sprite": "box_amazon" },
-      { "type": "sightline_evasion_modifier", "walk_bonus": 0.15, "sprint_penalty": -0.10 },
-      { "type": "break_on_combat", "condition": "first_encounter" }
-    ],
-    "synergyTags": ["stealth", "box", "camo"],
-    "description": "Standard shipping box. Disposable camouflage."
-  },
-  {
-    "id": "ITM-999",
-    "name": "Refrigerator Box",
-    "emoji": "📦",
-    "type": "equipment",
-    "rarity": "common",
-    "stackable": false,
-    "maxStack": 1,
-    "equipSlot": "passive",
-    "effects": [
-      { "type": "avatar_transform", "char": "📦", "sprite": "box_refrigerator" },
-      { "type": "sightline_evasion_modifier", "walk_bonus": 0.15, "sprint_penalty": -0.10 }
-    ],
-    "synergyTags": ["stealth", "box", "camo"],
-    "description": "Large cardboard camouflage. Better when you take your time."
-  },
-  {
     "id": "ITM-000",
     "name": "[Unknown Legacy Item]",
     "emoji": "❓",
@@ -197,66 +14,202 @@
     "_migrationNote": "Use this ID for unknown items during legacy migration; replace with real IDs when identified"
   },
   {
-    "id": "ITM-020",
-    "name": "Cardboard Box",
-    "emoji": "📦",
-    "type": "deployable",
+    "id": "ITM-001",
+    "name": "Cigarette",
+    "emoji": "🚬",
+    "type": "consumable",
+    "subtype": "vice",
+    "rarity": "common",
+    "stackable": true,
+    "maxStack": 20,
+    "equipSlot": "none",
+    "effects": [
+      {
+        "type": "hp",
+        "value": -1
+      },
+      {
+        "type": "focus",
+        "value": 1
+      }
+    ],
+    "synergyTags": [
+      "vice"
+    ],
+    "description": "Trade blood for calm. Tap repeatedly, but don’t bottom out."
+  },
+  {
+    "id": "ITM-002",
+    "name": "Radio Transceiver",
+    "emoji": "📻",
+    "type": "equipment",
     "rarity": "common",
     "stackable": false,
     "maxStack": 1,
-    "equipSlot": "none",
-    "deployable": true,
-    "boxQuality": "common",
+    "equipSlot": "active",
     "effects": [],
-    "synergyTags": ["stealth", "box", "camo"],
-    "description": "Drop on the map and step inside to hide. Enemies may walk over and destroy it. Consumed on exit."
+    "synergyTags": [
+      "comms"
+    ],
+    "description": "Encrypted communication device."
   },
   {
-    "id": "ITM-021",
-    "name": "Reinforced Box",
-    "emoji": "📦",
-    "type": "deployable",
-    "rarity": "uncommon",
+    "id": "ITM-003",
+    "name": "Surveillance Cam",
+    "emoji": "📷",
+    "type": "equipment",
+    "rarity": "common",
     "stackable": false,
     "maxStack": 1,
-    "equipSlot": "none",
-    "deployable": true,
-    "boxQuality": "uncommon",
+    "equipSlot": "active",
     "effects": [],
-    "synergyTags": ["stealth", "box", "camo"],
-    "description": "Heavy-duty shipping crate. Better evasion and harder to destroy than a common box."
+    "synergyTags": [
+      "surveillance"
+    ],
+    "description": "Compact surveillance camera."
   },
   {
-    "id": "ITM-022",
-    "name": "Tactical Box",
-    "emoji": "📦",
-    "type": "deployable",
-    "rarity": "rare",
+    "id": "ITM-004",
+    "name": "Personal Journal",
+    "emoji": "📓",
+    "type": "equipment",
+    "rarity": "common",
     "stackable": false,
     "maxStack": 1,
-    "equipSlot": "none",
-    "deployable": true,
-    "boxQuality": "rare",
+    "equipSlot": "passive",
     "effects": [],
-    "synergyTags": ["stealth", "box", "camo"],
-    "description": "Military-spec camouflage container. Rarely noticed by patrols. Survives most enemy contact."
+    "synergyTags": [
+      "intel"
+    ],
+    "description": "Your operational notes and observations."
   },
   {
-    "id": "ITM-023",
-    "name": "Refrigerator Box",
-    "emoji": "📦",
-    "type": "deployable",
+    "id": "ITM-005",
+    "name": "3D Printer",
+    "emoji": "🕋",
+    "type": "equipment",
     "rarity": "legendary",
     "stackable": false,
     "maxStack": 1,
-    "equipSlot": "none",
-    "deployable": true,
-    "boxQuality": "legendary",
-    "effects": [],
-    "synergyTags": ["stealth", "box", "camo"],
-    "description": "A legend among boxes. Enemies walk right past it. Persists even after combat. Near-perfect evasion."
+    "equipSlot": "active",
+    "effects": [
+      {
+        "type": "printer_3d"
+      }
+    ],
+    "synergyTags": [
+      "fabrication",
+      "printer"
+    ],
+    "description": "Consumes itself to print extra action cards when you spend ammo/battery. Mostly prints lower-quality substitutes."
   },
-
+  {
+    "id": "ITM-006",
+    "name": "Pickpocket Gloves",
+    "emoji": "🧤",
+    "type": "equipment",
+    "rarity": "uncommon",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "active",
+    "effects": [
+      {
+        "type": "theft",
+        "mode": "pickpocket"
+      }
+    ],
+    "stealTags": [
+      "pickpocket",
+      "sleight"
+    ],
+    "synergyTags": [
+      "covert",
+      "pickpocket",
+      "sleight"
+    ],
+    "description": "Lets you pickpocket exposed enemy cards when adjacent. The enemy still gets angry if you fumble."
+  },
+  {
+    "id": "ITM-007",
+    "name": "Scout Scope",
+    "emoji": "🔍",
+    "type": "equipment",
+    "rarity": "uncommon",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "active",
+    "effects": [
+      {
+        "type": "reveal",
+        "mode": "scout"
+      }
+    ],
+    "revealTags": [
+      "ranged",
+      "basic",
+      "melee",
+      "tech"
+    ],
+    "synergyTags": [
+      "intel",
+      "covert",
+      "scout"
+    ],
+    "description": "See what they're holding. Equip to reveal enemy cards during combat.",
+    "_designNote": "Phase 3 reveal enabler. revealTags intersect enemy card tags to determine which cards light up as interactable. Broad coverage (ranged+basic+melee+tech) makes it useful across most enemies."
+  },
+  {
+    "id": "ITM-008",
+    "name": "EMP Disruptor",
+    "emoji": "📟",
+    "type": "equipment",
+    "rarity": "rare",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "active",
+    "effects": [
+      {
+        "type": "destroy_card",
+        "mode": "emp"
+      }
+    ],
+    "destroyTags": [
+      "tech",
+      "ranged",
+      "electrical"
+    ],
+    "synergyTags": [
+      "electrical",
+      "sabotage",
+      "tech"
+    ],
+    "description": "Fry their tech cards. Destroy enemy cards tagged electronic or ranged. Triggers rage.",
+    "_designNote": "Phase 3 destroy enabler. Narrower tag coverage than Scout Scope — only tech/ranged/electrical. Destroy triggers enemy card_killed event (enemy goes >:( enraged). Pairs with Signal Jammer for combo disruption."
+  },
+  {
+    "id": "ITM-009",
+    "name": "Wire Tap",
+    "emoji": "🎧",
+    "type": "equipment",
+    "rarity": "rare",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      {
+        "type": "auto_reveal",
+        "count": 1,
+        "trigger": "combat_start"
+      }
+    ],
+    "synergyTags": [
+      "intel",
+      "covert",
+      "surveillance"
+    ],
+    "description": "Intercepted comms. One random enemy card revealed at combat start.",
+    "_designNote": "Passive auto-reveal. EnemyCardInteractability.autoReveal() checks for this effect. Fires once per combat entry. Stacks with Scout Scope for more intel."
+  },
   {
     "id": "ITM-010",
     "name": "Rusty Key",
@@ -267,8 +220,20 @@
     "stackable": true,
     "maxStack": 5,
     "equipSlot": "active",
-    "effects": [{ "type": "unlock_gate", "compatibleGates": ["WOODEN_GATE", "OLD_DOOR"] }],
-    "synergyTags": ["key", "gate", "tutorial"],
+    "effects": [
+      {
+        "type": "unlock_gate",
+        "compatibleGates": [
+          "WOODEN_GATE",
+          "OLD_DOOR"
+        ]
+      }
+    ],
+    "synergyTags": [
+      "key",
+      "gate",
+      "tutorial"
+    ],
     "description": "An old rusted key. Equip and use near a locked gate.",
     "consumeOnUse": true,
     "tier": 2,
@@ -284,8 +249,20 @@
     "stackable": false,
     "maxStack": 1,
     "equipSlot": "active",
-    "effects": [{ "type": "unlock_gate", "compatibleGates": ["SECURITY_DOOR", "LAB_ENTRANCE"] }],
-    "synergyTags": ["key", "gate", "office"],
+    "effects": [
+      {
+        "type": "unlock_gate",
+        "compatibleGates": [
+          "SECURITY_DOOR",
+          "LAB_ENTRANCE"
+        ]
+      }
+    ],
+    "synergyTags": [
+      "key",
+      "gate",
+      "office"
+    ],
     "description": "Electronic access card. Still has charge.",
     "consumeOnUse": false,
     "tier": 2
@@ -300,8 +277,23 @@
     "stackable": false,
     "maxStack": 1,
     "equipSlot": "active",
-    "effects": [{ "type": "unlock_gate", "compatibleGates": ["WOODEN_GATE", "OLD_DOOR", "BRONZE_GATE", "SECURITY_DOOR", "TERMINAL_GATE"] }],
-    "synergyTags": ["key", "gate", "master"],
+    "effects": [
+      {
+        "type": "unlock_gate",
+        "compatibleGates": [
+          "WOODEN_GATE",
+          "OLD_DOOR",
+          "BRONZE_GATE",
+          "SECURITY_DOOR",
+          "TERMINAL_GATE"
+        ]
+      }
+    ],
+    "synergyTags": [
+      "key",
+      "gate",
+      "master"
+    ],
     "description": "Opens all standard locks.",
     "consumeOnUse": false,
     "tier": 2
@@ -316,8 +308,21 @@
     "stackable": false,
     "maxStack": 1,
     "equipSlot": "active",
-    "effects": [{ "type": "unlock_gate", "compatibleGates": ["TERMINAL_GATE", "SERVER_RACK"] }],
-    "synergyTags": ["key", "gate", "office", "tech"],
+    "effects": [
+      {
+        "type": "unlock_gate",
+        "compatibleGates": [
+          "TERMINAL_GATE",
+          "SERVER_RACK"
+        ]
+      }
+    ],
+    "synergyTags": [
+      "key",
+      "gate",
+      "office",
+      "tech"
+    ],
     "description": "Contains encrypted access credentials.",
     "consumeOnUse": false,
     "tier": 2
@@ -332,8 +337,20 @@
     "stackable": false,
     "maxStack": 1,
     "equipSlot": "active",
-    "effects": [{ "type": "unlock_gate", "compatibleGates": ["FLOOR_ELEVATOR", "AEROSPACE_DOOR"] }],
-    "synergyTags": ["key", "gate", "aerospace"],
+    "effects": [
+      {
+        "type": "unlock_gate",
+        "compatibleGates": [
+          "FLOOR_ELEVATOR",
+          "AEROSPACE_DOOR"
+        ]
+      }
+    ],
+    "synergyTags": [
+      "key",
+      "gate",
+      "aerospace"
+    ],
     "description": "Aerospace facility access card. Permits elevator use.",
     "consumeOnUse": false,
     "tier": 2
@@ -348,8 +365,20 @@
     "stackable": false,
     "maxStack": 1,
     "equipSlot": "active",
-    "effects": [{ "type": "unlock_gate", "compatibleGates": ["MALL_GATE", "STORE_DOOR"] }],
-    "synergyTags": ["key", "gate", "mall"],
+    "effects": [
+      {
+        "type": "unlock_gate",
+        "compatibleGates": [
+          "MALL_GATE",
+          "STORE_DOOR"
+        ]
+      }
+    ],
+    "synergyTags": [
+      "key",
+      "gate",
+      "mall"
+    ],
     "description": "Security clearance for restricted mall areas.",
     "consumeOnUse": false,
     "tier": 2
@@ -364,15 +393,27 @@
     "stackable": false,
     "maxStack": 1,
     "equipSlot": "active",
-    "effects": [{ "type": "unlock_gate", "compatibleGates": ["FACTORY_GATE", "HAZARD_DOOR"] }],
-    "synergyTags": ["key", "gate", "industrial"],
+    "effects": [
+      {
+        "type": "unlock_gate",
+        "compatibleGates": [
+          "FACTORY_GATE",
+          "HAZARD_DOOR"
+        ]
+      }
+    ],
+    "synergyTags": [
+      "key",
+      "gate",
+      "industrial"
+    ],
     "description": "Worker authorization for restricted industrial zones.",
     "consumeOnUse": false,
     "tier": 2
   },
   {
     "id": "ITM-017",
-    "name": "Rusty Key",
+    "name": "Rusty Lockpick",
     "emoji": "🔑",
     "type": "key",
     "subtype": "gate",
@@ -380,9 +421,22 @@
     "stackable": true,
     "maxStack": 5,
     "equipSlot": "active",
-    "effects": [{ "type": "unlock_gate", "compatibleGates": ["WOODEN_GATE", "OLD_DOOR", "LOCKED_CHEST"] }],
-    "synergyTags": ["key", "gate", "tier1"],
-    "description": "An old, rusted key. Might open something...",
+    "effects": [
+      {
+        "type": "unlock_gate",
+        "compatibleGates": [
+          "WOODEN_GATE",
+          "OLD_DOOR",
+          "LOCKED_CHEST"
+        ]
+      }
+    ],
+    "synergyTags": [
+      "key",
+      "gate",
+      "tier1"
+    ],
+    "description": "A bent piece of metal. Single-use, but it gets the job done.",
     "consumeOnUse": true,
     "tier": 1,
     "_designNote": "Tier 1 ammo key. Consumed on gate unlock. Previously existed only in environmental-synergy.js."
@@ -397,29 +451,102 @@
     "stackable": true,
     "maxStack": 5,
     "equipSlot": "active",
-    "effects": [{ "type": "unlock_gate", "compatibleGates": ["BRONZE_GATE", "MUSEUM_DOOR", "LOCKED_CHEST"] }],
-    "synergyTags": ["key", "gate", "tier1"],
+    "effects": [
+      {
+        "type": "unlock_gate",
+        "compatibleGates": [
+          "BRONZE_GATE",
+          "MUSEUM_DOOR",
+          "LOCKED_CHEST"
+        ]
+      }
+    ],
+    "synergyTags": [
+      "key",
+      "gate",
+      "tier1"
+    ],
     "description": "A tarnished bronze key with ornate markings.",
     "consumeOnUse": true,
     "tier": 1,
     "_designNote": "Tier 1 ammo key. Consumed on gate unlock. Previously existed only in environmental-synergy.js."
   },
-
   {
-    "id": "ITM-040",
-    "name": "Archive Indexer",
-    "emoji": "📑",
-    "type": "equipment",
+    "id": "ITM-020",
+    "name": "Cardboard Box",
+    "emoji": "📦",
+    "type": "deployable",
+    "rarity": "common",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "none",
+    "deployable": true,
+    "boxQuality": "common",
+    "effects": [],
+    "synergyTags": [
+      "stealth",
+      "box",
+      "camo"
+    ],
+    "description": "Drop on the map and step inside to hide. Enemies may walk over and destroy it. Consumed on exit."
+  },
+  {
+    "id": "ITM-021",
+    "name": "Reinforced Box",
+    "emoji": "📦",
+    "type": "deployable",
     "rarity": "uncommon",
     "stackable": false,
     "maxStack": 1,
-    "equipSlot": "active",
-    "effects": [{ "type": "sort_hand" }],
-    "synergyTags": ["intel", "organizer"],
-    "description": "Recovered Field Catalog. See every card you'll draw — but lose the chaos advantage.",
-    "_designNote": "Unlocks sort, shows card faces in draw bar. Replaces shuffle. Trade-off: lose randomness upside."
+    "equipSlot": "none",
+    "deployable": true,
+    "boxQuality": "uncommon",
+    "effects": [],
+    "synergyTags": [
+      "stealth",
+      "box",
+      "camo"
+    ],
+    "description": "Heavy-duty shipping crate. Better evasion and harder to destroy than a common box."
   },
-
+  {
+    "id": "ITM-022",
+    "name": "Tactical Box",
+    "emoji": "📦",
+    "type": "deployable",
+    "rarity": "rare",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "none",
+    "deployable": true,
+    "boxQuality": "rare",
+    "effects": [],
+    "synergyTags": [
+      "stealth",
+      "box",
+      "camo"
+    ],
+    "description": "Military-spec camouflage container. Rarely noticed by patrols. Survives most enemy contact."
+  },
+  {
+    "id": "ITM-023",
+    "name": "Refrigerator Box",
+    "emoji": "📦",
+    "type": "deployable",
+    "rarity": "legendary",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "none",
+    "deployable": true,
+    "boxQuality": "legendary",
+    "effects": [],
+    "synergyTags": [
+      "stealth",
+      "box",
+      "camo"
+    ],
+    "description": "A legend among boxes. Enemies walk right past it. Persists even after combat. Near-perfect evasion."
+  },
   {
     "id": "ITM-030",
     "name": "Blacksmith's Hammer",
@@ -430,8 +557,18 @@
     "stackable": false,
     "maxStack": 1,
     "equipSlot": "active",
-    "effects": [{ "type": "quest_turn_in", "npcTarget": "BLACKSMITH", "rewardType": "card_upgrade" }],
-    "synergyTags": ["quest", "blacksmith", "forge"],
+    "effects": [
+      {
+        "type": "quest_turn_in",
+        "npcTarget": "BLACKSMITH",
+        "rewardType": "card_upgrade"
+      }
+    ],
+    "synergyTags": [
+      "quest",
+      "blacksmith",
+      "forge"
+    ],
     "description": "A master blacksmith's hammer. Return it to the forge for a powerful reward.",
     "consumeOnUse": true,
     "tier": 3,
@@ -447,14 +584,45 @@
     "stackable": true,
     "maxStack": 3,
     "equipSlot": "active",
-    "effects": [{ "type": "quest_turn_in", "npcTarget": "RUNESMITH", "rewardType": "card_upgrade_rare" }],
-    "synergyTags": ["quest", "rune", "forge", "gem"],
+    "effects": [
+      {
+        "type": "quest_turn_in",
+        "npcTarget": "RUNESMITH",
+        "rewardType": "card_upgrade_rare"
+      }
+    ],
+    "synergyTags": [
+      "quest",
+      "rune",
+      "forge",
+      "gem"
+    ],
     "description": "A shard of crystallized power. A runesmith could fuse this into something greater.",
     "consumeOnUse": true,
     "tier": 3,
     "_designNote": "Stackable quest item. Turn in 3 to Runesmith for rare card upgrade. Rolls from late-game boss loot table."
   },
-
+  {
+    "id": "ITM-040",
+    "name": "Archive Indexer",
+    "emoji": "📑",
+    "type": "equipment",
+    "rarity": "uncommon",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "active",
+    "effects": [
+      {
+        "type": "sort_hand"
+      }
+    ],
+    "synergyTags": [
+      "intel",
+      "organizer"
+    ],
+    "description": "Recovered Field Catalog. See every card you'll draw — but lose the chaos advantage.",
+    "_designNote": "Unlocks sort, shows card faces in draw bar. Replaces shuffle. Trade-off: lose randomness upside."
+  },
   {
     "id": "ITM-041",
     "name": "Suppressor Oil",
@@ -464,12 +632,23 @@
     "stackable": false,
     "maxStack": 1,
     "equipSlot": "active",
-    "effects": [{ "type": "cascade_enabler", "condition": "on_synergy_resolve", "effect": "cancel_alert_draw_1", "tags": ["wet", "fire"] }],
-    "synergyTags": ["covert"],
+    "effects": [
+      {
+        "type": "cascade_enabler",
+        "condition": "on_synergy_resolve",
+        "effect": "cancel_alert_draw_1",
+        "tags": [
+          "wet",
+          "fire"
+        ]
+      }
+    ],
+    "synergyTags": [
+      "covert"
+    ],
     "description": "If fire played after water: cancel alert, trigger stealth bonus, draw 1 card.",
     "_designNote": "Cascade enabler. Tag-filtered: only triggers on wet+fire synergy chains."
   },
-
   {
     "id": "ITM-042",
     "name": "Dead Drop Cache",
@@ -479,12 +658,20 @@
     "stackable": false,
     "maxStack": 1,
     "equipSlot": "active",
-    "effects": [{ "type": "cascade_enabler", "condition": "on_synergy_resolve", "effect": "draw_1_chain_30" }],
-    "synergyTags": ["covert", "black_market"],
+    "effects": [
+      {
+        "type": "cascade_enabler",
+        "condition": "on_synergy_resolve",
+        "effect": "draw_1_chain_30"
+      }
+    ],
+    "synergyTags": [
+      "covert",
+      "black_market"
+    ],
     "description": "When a synergy auto-resolves: draw 1 additional card, 30% chance to chain again.",
     "_designNote": "Core cascade enabler. Makes synergy builds self-sustaining. Recursive chain capped at 5 depth."
   },
-
   {
     "id": "ITM-043",
     "name": "Tripwire Array",
@@ -494,12 +681,20 @@
     "stackable": false,
     "maxStack": 1,
     "equipSlot": "active",
-    "effects": [{ "type": "cascade_enabler", "condition": "on_enemy_skip", "effect": "focus_1_draw_1" }],
-    "synergyTags": ["improvised", "defensive"],
+    "effects": [
+      {
+        "type": "cascade_enabler",
+        "condition": "on_enemy_skip",
+        "effect": "focus_1_draw_1"
+      }
+    ],
+    "synergyTags": [
+      "improvised",
+      "defensive"
+    ],
     "description": "If enemy skips turn: gain 1 Focus, draw 1 card.",
     "_designNote": "Reactive cascade enabler. Pairs with stun/skip synergies for focus generation loops."
   },
-
   {
     "id": "ITM-044",
     "name": "Signal Jammer",
@@ -509,8 +704,17 @@
     "stackable": false,
     "maxStack": 1,
     "equipSlot": "active",
-    "effects": [{ "type": "cascade_enabler", "condition": "on_multi_resolve", "effect": "enemy_skip_50" }],
-    "synergyTags": ["electrical", "covert"],
+    "effects": [
+      {
+        "type": "cascade_enabler",
+        "condition": "on_multi_resolve",
+        "effect": "enemy_skip_50"
+      }
+    ],
+    "synergyTags": [
+      "electrical",
+      "covert"
+    ],
     "description": "If 2+ cards auto-resolve this turn: enemy loses next turn (50%). Stacks with Bump Stock.",
     "_designNote": "Multi-resolve cascade enabler. Rewards synergy-heavy turns with control. 50% roll prevents guaranteed lockout."
   },
@@ -524,10 +728,22 @@
     "maxStack": 1,
     "equipSlot": "passive",
     "effects": [
-      { "type": "auto_collect", "target": "currency", "range": 3 },
-      { "type": "auto_collect", "target": "ammo", "range": 3 }
+      {
+        "type": "auto_collect",
+        "target": "currency",
+        "range": 3
+      },
+      {
+        "type": "auto_collect",
+        "target": "ammo",
+        "range": 3
+      }
     ],
-    "synergyTags": ["utility", "collection", "loot"],
+    "synergyTags": [
+      "utility",
+      "collection",
+      "loot"
+    ],
     "description": "Nearby currency and ammo fly to you. Walk past, don't stop.",
     "_designNote": "Post-combat scatter QoL. Base range 3 tiles (Chebyshev). Upgrade extends to 5 and adds loose item collection."
   },
@@ -541,11 +757,27 @@
     "maxStack": 1,
     "equipSlot": "passive",
     "effects": [
-      { "type": "auto_collect", "target": "currency", "range": 5 },
-      { "type": "auto_collect", "target": "ammo", "range": 5 },
-      { "type": "auto_collect", "target": "items", "range": 5 }
+      {
+        "type": "auto_collect",
+        "target": "currency",
+        "range": 5
+      },
+      {
+        "type": "auto_collect",
+        "target": "ammo",
+        "range": 5
+      },
+      {
+        "type": "auto_collect",
+        "target": "items",
+        "range": 5
+      }
     ],
-    "synergyTags": ["utility", "collection", "loot"],
+    "synergyTags": [
+      "utility",
+      "collection",
+      "loot"
+    ],
     "description": "Powerful attraction field. Currency, ammo, and loose items pulled from 5 tiles.",
     "_designNote": "Upgraded magnet. Also pulls loose card/item drops. Staggered collection (250ms intervals) for visual satisfaction."
   },
@@ -559,9 +791,16 @@
     "maxStack": 1,
     "equipSlot": "passive",
     "effects": [
-      { "type": "flight_save", "saveRate": 0.35 }
+      {
+        "type": "flight_save",
+        "saveRate": 0.35
+      }
     ],
-    "synergyTags": ["utility", "escape", "preservation"],
+    "synergyTags": [
+      "utility",
+      "escape",
+      "preservation"
+    ],
     "description": "Disposable escape items sometimes survive use. 35% save rate.",
     "_designNote": "Prevents one-time-use flight cards (Smoke Bomb Mk0, Chaff Flare) from being consumed on play. Save rate scales with card quality. Does not affect Cyanide Capsule (already reusable). Upgrade: Tactical Harness (60% rate + items)."
   },
@@ -575,14 +814,64 @@
     "maxStack": 1,
     "equipSlot": "passive",
     "effects": [
-      { "type": "flight_save", "saveRate": 0.60 },
-      { "type": "flight_save_disposables", "saveRate": 0.20 }
+      {
+        "type": "flight_save",
+        "saveRate": 0.6
+      },
+      {
+        "type": "flight_save_disposables",
+        "saveRate": 0.2
+      }
     ],
-    "synergyTags": ["utility", "escape", "preservation"],
+    "synergyTags": [
+      "utility",
+      "escape",
+      "preservation"
+    ],
     "description": "Escape items rarely break. 60% flight save, 20% save on all disposables.",
     "_designNote": "Upgraded Cargo Webbing. Higher flight-card save rate plus a small chance to save ANY disposable card (grenades, etc). Save rate stacks with card quality bonuses."
   },
-
+  {
+    "id": "ITM-070",
+    "name": "Thermal Goggles",
+    "emoji": "🥽",
+    "type": "equipment",
+    "rarity": "epic",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "active",
+    "effects": [
+      {
+        "type": "reveal",
+        "mode": "thermal"
+      },
+      {
+        "type": "darkness_accuracy_bonus",
+        "value": 15
+      },
+      {
+        "type": "stealth_in_darkness_bonus",
+        "value": 10
+      }
+    ],
+    "revealTags": [
+      "melee",
+      "basic",
+      "ranged",
+      "tech",
+      "explosive",
+      "suppressive"
+    ],
+    "synergyTags": [
+      "intel",
+      "covert",
+      "scout",
+      "darkness",
+      "tech"
+    ],
+    "description": "Heat signatures cut through darkness. Reveal all enemy cards + accuracy/stealth bonus in dark tiles.",
+    "_designNote": "Epic-tier reveal + darkness synergy. Broadest revealTags coverage (reveals nearly everything). darkness_accuracy_bonus and stealth_in_darkness_bonus reward players who stay in low-ambient tiles. Ties directly into the lowered biome ambient lighting — makes darkness a strategic advantage instead of a handicap."
+  },
   {
     "id": "ITM-080",
     "name": "Surge Protector",
@@ -593,10 +882,21 @@
     "maxStack": 1,
     "equipSlot": "passive",
     "effects": [
-      { "type": "tag_risk_reduction", "tag": "electrical", "reduction": 0.5 },
-      { "type": "battery_save", "chance": 0.20 }
+      {
+        "type": "tag_risk_reduction",
+        "tag": "electrical",
+        "reduction": 0.5
+      },
+      {
+        "type": "battery_save",
+        "chance": 0.2
+      }
     ],
-    "synergyTags": ["electrical", "tech", "defensive"],
+    "synergyTags": [
+      "electrical",
+      "tech",
+      "defensive"
+    ],
     "description": "Feedback Burn self-damage halved. 20% chance electrical cards don't consume battery.",
     "_designNote": "Passive counterplay item. Halves the Feedback Burn tag risk for electrical overcommit. Also 20% battery save — makes electrical chains more sustainable. Pairs with Thermal Stabilizer (stolen) for full electrical immunity."
   },
@@ -610,10 +910,21 @@
     "maxStack": 1,
     "equipSlot": "passive",
     "effects": [
-      { "type": "tag_risk_threshold_increase", "tag": "covert", "bonus": 1 },
-      { "type": "exposure_resist", "chance": 0.30 }
+      {
+        "type": "tag_risk_threshold_increase",
+        "tag": "covert",
+        "bonus": 1
+      },
+      {
+        "type": "exposure_resist",
+        "chance": 0.3
+      }
     ],
-    "synergyTags": ["covert", "stealth", "defensive"],
+    "synergyTags": [
+      "covert",
+      "stealth",
+      "defensive"
+    ],
     "description": "Exposure Risk threshold increased by 1. 30% chance to resist forced reveal.",
     "_designNote": "Passive counterplay item. Raises Covert Exposure Risk threshold from 3 to 4 (one more stealth card before blowing cover). 30% resist forced reveals (Counter-Intel Sweep, enemy detection). Lets stealth builds go deeper without getting punished."
   },
@@ -627,10 +938,20 @@
     "maxStack": 1,
     "equipSlot": "passive",
     "effects": [
-      { "type": "tag_risk_reduction", "tag": "ballistic", "reduction": 0.5 },
-      { "type": "fatigue_save", "chance": 0.25 }
+      {
+        "type": "tag_risk_reduction",
+        "tag": "ballistic",
+        "reduction": 0.5
+      },
+      {
+        "type": "fatigue_save",
+        "chance": 0.25
+      }
     ],
-    "synergyTags": ["ballistic", "defensive"],
+    "synergyTags": [
+      "ballistic",
+      "defensive"
+    ],
     "description": "Overexertion fatigue halved. 25% chance ballistic cards don't add fatigue.",
     "_designNote": "Passive counterplay item. Halves Overexertion fatigue from ballistic overcommit. 25% fatigue save on all ballistic plays. Lets Overkill chains extend into triple-🟥 territory safely."
   },
@@ -644,14 +965,25 @@
     "maxStack": 1,
     "equipSlot": "passive",
     "effects": [
-      { "type": "tag_risk_threshold_increase", "tag": "black_market", "bonus": 1 },
-      { "type": "alert_reduction", "value": -2, "trigger": "on_black_market_play" }
+      {
+        "type": "tag_risk_threshold_increase",
+        "tag": "black_market",
+        "bonus": 1
+      },
+      {
+        "type": "alert_reduction",
+        "value": -2,
+        "trigger": "on_black_market_play"
+      }
     ],
-    "synergyTags": ["black_market", "covert", "defensive"],
+    "synergyTags": [
+      "black_market",
+      "covert",
+      "defensive"
+    ],
     "description": "Heat Score threshold raised by 1. Black Market cards reduce alert by 2 instead of raising it.",
     "_designNote": "Passive counterplay item. Raises Black Market Heat Score threshold from 2 to 3. Each Black Market card now REDUCES alert by 2 (your contacts cover your tracks). Flips the risk profile — Black Market becomes safer but still dangerous at 3+. The 'deep cover agent' item."
   },
-
   {
     "id": "ITM-084",
     "name": "Bandolier",
@@ -662,9 +994,18 @@
     "maxStack": 1,
     "equipSlot": "passive",
     "effects": [
-      { "type": "on_consume_card", "effect": "resource_refund", "chance": 0.30, "refundType": "spent" }
+      {
+        "type": "on_consume_card",
+        "effect": "resource_refund",
+        "chance": 0.3,
+        "refundType": "spent"
+      }
     ],
-    "synergyTags": ["disposable", "ballistic", "utility"],
+    "synergyTags": [
+      "disposable",
+      "ballistic",
+      "utility"
+    ],
     "description": "30% chance spent resources refund when a disposable card is consumed. Burn cards, get ammo back.",
     "_designNote": "Core disposable-as-ammo enabler. When any consumesOnPlay card is consumed, 30% chance the resource it cost (ammo or battery) is refunded. Chaff Flare (1 ammo) → 30% free. Sabotage (1 battery) → 30% free. Stacks with Expendable Ordnance combo refund for near-guaranteed ammo return on ballistic disposables. The 'reload belt' fantasy."
   },
@@ -678,10 +1019,25 @@
     "maxStack": 1,
     "equipSlot": "passive",
     "effects": [
-      { "type": "on_consume_card", "effect": "aoe_splash", "damage": 3, "requireTag": "ballistic_or_explosive" },
-      { "type": "on_consume_card", "effect": "aoe_splash", "damage": 1, "requireTag": "any" }
+      {
+        "type": "on_consume_card",
+        "effect": "aoe_splash",
+        "damage": 3,
+        "requireTag": "ballistic_or_explosive"
+      },
+      {
+        "type": "on_consume_card",
+        "effect": "aoe_splash",
+        "damage": 1,
+        "requireTag": "any"
+      }
     ],
-    "synergyTags": ["disposable", "ballistic", "explosive", "aoe"],
+    "synergyTags": [
+      "disposable",
+      "ballistic",
+      "explosive",
+      "aoe"
+    ],
     "description": "Disposable cards explode on exit. Ballistic/explosive: 3 splash. All others: 1 splash. Everything is a grenade.",
     "_designNote": "Turns EVERY disposable card into a grenade. Ballistic/explosive disposables (Exploding Cufflink, Flashbang) deal 3 AoE splash on consumption. ALL other disposables deal 1 splash. Pairs with Expendable Ordnance for +4 damage + 3 splash + ammo refund from a single Exploding Cufflink play. The Michael Bay item — everything explodes."
   },
@@ -695,9 +1051,21 @@
     "maxStack": 1,
     "equipSlot": "passive",
     "effects": [
-      { "type": "consume_save", "rarity_scaling": true, "rates": { "common": 0.20, "uncommon": 0.30, "rare": 0.40 } }
+      {
+        "type": "consume_save",
+        "rarity_scaling": true,
+        "rates": {
+          "common": 0.2,
+          "uncommon": 0.3,
+          "rare": 0.4
+        }
+      }
     ],
-    "synergyTags": ["disposable", "tech", "preservation"],
+    "synergyTags": [
+      "disposable",
+      "tech",
+      "preservation"
+    ],
     "description": "Disposable cards sometimes survive. Save rate scales with card rarity: common 20%, uncommon 30%, rare 40%.",
     "_designNote": "THE 'item quality matters' item. Higher rarity disposable cards are more likely to survive consumption. Common junk (Fumbled Grab, Smoke Bomb) = 20% save. Uncommon utility (Sabotage, Recon Scan, Camera Flash) = 30%. Rare finishers (Exploding Cufflink, Violin Wire) = 40%. This is the quality-scales-with-rarity loop the user asked for. Upgraded Cargo Webbing for combat disposables (Cargo Webbing only saves flight cards). Pairs with Demolition Vest: even if Recycler saves the card, the splash still fires."
   },
@@ -711,10 +1079,20 @@
     "maxStack": 1,
     "equipSlot": "passive",
     "effects": [
-      { "type": "momentum_visibility", "value": true },
-      { "type": "reveal_momentum_threshold", "threshold": 3 }
+      {
+        "type": "momentum_visibility",
+        "value": true
+      },
+      {
+        "type": "reveal_momentum_threshold",
+        "threshold": 3
+      }
     ],
-    "synergyTags": ["surveillance", "tech", "intel"],
+    "synergyTags": [
+      "surveillance",
+      "tech",
+      "intel"
+    ],
     "description": "See momentum counters on enemy cards. Auto-reveal cards at Momentum 3+.",
     "_designNote": "Phase 5 Information Duel clarity item. Makes momentum dots visible and auto-reveals enemy cards that reach Momentum 3+, letting the player see the pattern developing. Doesn't grant extra interactions — just information. See the rhythm, don't control it."
   },
@@ -728,10 +1106,20 @@
     "maxStack": 1,
     "equipSlot": "passive",
     "effects": [
-      { "type": "overload_damage_reduction", "value": 0.15 },
-      { "type": "escalation_slow", "value": 1 }
+      {
+        "type": "overload_damage_reduction",
+        "value": 0.15
+      },
+      {
+        "type": "escalation_slow",
+        "value": 1
+      }
     ],
-    "synergyTags": ["tech", "defense", "electrical"],
+    "synergyTags": [
+      "tech",
+      "defense",
+      "electrical"
+    ],
     "description": "Reduce Overload damage by 15%. Escalation clock ticks slower (+1 grace turn).",
     "_designNote": "Phase 5 survivability relic. Mitigates but doesn't eliminate Overload spikes. The escalation slow gives 1 extra turn before payoff damage kicks in. Paired with Pattern Lens: see the pattern coming, survive the spike, then counter."
   },
@@ -745,10 +1133,20 @@
     "maxStack": 1,
     "equipSlot": "passive",
     "effects": [
-      { "type": "destroy_reduces_rage", "value": 1 },
-      { "type": "destroy_momentum_bonus", "value": 1 }
+      {
+        "type": "destroy_reduces_rage",
+        "value": 1
+      },
+      {
+        "type": "destroy_momentum_bonus",
+        "value": 1
+      }
     ],
-    "synergyTags": ["tech", "covert", "precision"],
+    "synergyTags": [
+      "tech",
+      "covert",
+      "precision"
+    ],
     "description": "Destroying Payoff-role cards reduces Rage spike by 1. +1 disruption bonus from momentum.",
     "_designNote": "Phase 5 precision relic. Surgical players who target Payoff-role slots (the finisher in Anchor→Fuel→Payoff) take less Rage backlash. Also boosts momentum-based disruption bonus. Rewards pattern reading + precise targeting. The scalpel item."
   },
@@ -762,9 +1160,16 @@
     "maxStack": 1,
     "equipSlot": "passive",
     "effects": [
-      { "type": "interaction_charge_bonus", "value": 1 }
+      {
+        "type": "interaction_charge_bonus",
+        "value": 1
+      }
     ],
-    "synergyTags": ["tech", "electrical", "intel"],
+    "synergyTags": [
+      "tech",
+      "electrical",
+      "intel"
+    ],
     "description": "Gain +1 interaction charge per turn. Two shots at the enemy's hand.",
     "_designNote": "Phase 5 interaction economy item. Epic rarity because 2 charges/turn fundamentally changes the duel — you can reveal THEN steal on the same turn, or destroy two cards. Very strong but costs the passive slot. The keystone item for heavy-interaction builds."
   },
@@ -778,9 +1183,15 @@
     "maxStack": 1,
     "equipSlot": "passive",
     "effects": [
-      { "type": "swipeActivate" }
+      {
+        "type": "swipeActivate"
+      }
     ],
-    "synergyTags": ["weapon", "combat", "modifier"],
+    "synergyTags": [
+      "weapon",
+      "combat",
+      "modifier"
+    ],
     "description": "Full auto. Swipe cards to push-resolve them instantly."
   },
   {
@@ -793,9 +1204,19 @@
     "maxStack": 1,
     "equipSlot": "passive",
     "effects": [
-      { "type": "swipeActivate", "categories": ["attack", "interrupt"] }
+      {
+        "type": "swipeActivate",
+        "categories": [
+          "attack",
+          "interrupt"
+        ]
+      }
     ],
-    "synergyTags": ["weapon", "combat", "modifier"],
+    "synergyTags": [
+      "weapon",
+      "combat",
+      "modifier"
+    ],
     "description": "Swipe attack cards for immediate push rounds."
   },
   {
@@ -808,10 +1229,78 @@
     "maxStack": 1,
     "equipSlot": "passive",
     "effects": [
-      { "type": "instantResolve" },
-      { "type": "swipeActivate" }
+      {
+        "type": "instantResolve"
+      },
+      {
+        "type": "swipeActivate"
+      }
     ],
-    "synergyTags": ["weapon", "combat", "modifier"],
+    "synergyTags": [
+      "weapon",
+      "combat",
+      "modifier"
+    ],
     "description": "Instant resolve on tap. Swipe to push-resolve directionally."
+  },
+  {
+    "id": "ITM-998",
+    "name": "Amazon Box",
+    "emoji": "📦",
+    "type": "equipment",
+    "rarity": "common",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      {
+        "type": "avatar_transform",
+        "char": "📦",
+        "sprite": "box_amazon"
+      },
+      {
+        "type": "sightline_evasion_modifier",
+        "walk_bonus": 0.15,
+        "sprint_penalty": -0.1
+      },
+      {
+        "type": "break_on_combat",
+        "condition": "first_encounter"
+      }
+    ],
+    "synergyTags": [
+      "stealth",
+      "box",
+      "camo"
+    ],
+    "description": "Standard shipping box. Disposable camouflage."
+  },
+  {
+    "id": "ITM-999",
+    "name": "Refrigerator Box Suit",
+    "emoji": "📦",
+    "type": "equipment",
+    "rarity": "common",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      {
+        "type": "avatar_transform",
+        "char": "📦",
+        "sprite": "box_refrigerator"
+      },
+      {
+        "type": "sightline_evasion_modifier",
+        "walk_bonus": 0.15,
+        "sprint_penalty": -0.1
+      }
+    ],
+    "synergyTags": [
+      "stealth",
+      "box",
+      "camo"
+    ],
+    "description": "Large cardboard camouflage. Better when you take your time."
   }
 ]
