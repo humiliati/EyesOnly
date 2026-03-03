@@ -2074,15 +2074,35 @@ var GoneRogue = (function () {
     if (typeof BoxDeployment !== 'undefined') { BoxDeployment.checkEnemyBoxInteraction(enemy, _boxDeployCtx()); _syncBoxState(); return; }
   }
 
+  // ── Noise propagation — alerts nearby enemies ──
+  function _raiseNoise(x, y, radius) {
+    if (!_enemies || !_enemies.length) return;
+    _enemies.forEach(function(enemy) {
+      if (enemy.hp <= 0) return;
+      var dist = Math.abs(enemy.x - x) + Math.abs(enemy.y - y);
+      if (dist <= radius) {
+        // Awareness boost scales inversely with distance
+        var amount = Math.max(5, Math.round(20 * (1 - dist / (radius + 1))));
+        if (typeof EnemyAISystem !== 'undefined' && EnemyAISystem.increaseEnemyAwareness) {
+          EnemyAISystem.increaseEnemyAwareness(enemy, amount, { AWARENESS_STATES: AWARENESS_STATES });
+        } else {
+          enemy.awareness = Math.min(150, (enemy.awareness || 0) + amount);
+        }
+      }
+    });
+  }
+
   // ── BreakableSystem delegation ──
   function _breakableCtx() {
     return {
-      grid: _grid, items: _items, TILES: TILES, rng: _rng,
+      get grid() { return _grid; },
+      get items() { return _items; },
+      TILES: TILES, rng: _rng,
       GRID_WIDTH: GRID_WIDTH, GRID_HEIGHT: GRID_HEIGHT,
       get totalBreakableDamage() { return _totalBreakableDamage; },
       set totalBreakableDamage(v) { _totalBreakableDamage = v; },
       get floor() { return _floor; },
-      wallCache: _wallCache,
+      get wallCache() { return _wallCache; },
       spawnCurrency: _spawnCurrency,
       raiseNoise: _raiseNoise,
       rebuildWallCache: _rebuildWallCache,
