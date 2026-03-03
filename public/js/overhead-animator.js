@@ -439,16 +439,20 @@ const OverheadAnimator = (function() {
         break;
     }
 
-    // Pancake stack offsets (multiple independent animations over same tile)
+    // Vertical stacking for multiple concurrent animations at same position.
+    // Each item fans upward with decreasing gaps: first gap ~5px, tapering
+    // toward ~1px so the stack stays tight and feels like a compact fan.
+    // Accumulated offsets: 0, -5, -9, -12, -14.5, -16.5, -18, -19.2, -20.1
     try {
       if (animation && animation.data && typeof animation.data.stackIndex === 'number') {
         var idx = animation.data.stackIndex;
-        var stackCount = animation.data.stackCount || 1;
-        // Tight vertical stacking: items render closely above player head
-        // No horizontal spreading - all items centered over player
-        // Stack spacing: 12px between items (tight but readable)
-        // Bottom item starts at -20px (just above player head)
-        transform.y += -20 - (idx * 12);
+        // Accumulate non-linear gaps: gap(i) = 5 / (1 + i * 0.6)
+        // idx 0 → gap 5.0, idx 1 → gap 3.1, idx 2 → gap 2.3, idx 3 → gap 1.8 ...
+        var accum = 0;
+        for (var si = 0; si < idx; si++) {
+          accum += 5 / (1 + si * 0.6);
+        }
+        transform.y -= accum;
       }
     } catch (e0) {}
 

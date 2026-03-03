@@ -128,7 +128,8 @@ const CanvasRenderer = (function() {
           var localY = ay - this._worldOriginY;
 
           var list = Array.isArray(anim) ? anim : [anim];
-          for (var li = 0; li < list.length; li++) {
+          var stackCount = list.length;
+          for (var li = 0; li < stackCount; li++) {
             var a1 = list[li];
             if (!a1) continue;
 
@@ -142,7 +143,7 @@ const CanvasRenderer = (function() {
 
             effects.push({
               x: localX + dxCells,
-              y: localY - 0.6 + dyCells, // -0.6 to position above entity center
+              y: localY - 0.6 + dyCells, // Stack offset handled by calculateAnimationTransform
               char: a1.text || a1.emoji,
               color: a1.color || '#FFFFFF',
               glow: true,

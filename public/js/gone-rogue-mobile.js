@@ -842,7 +842,8 @@ const GoneRogueMobile = (function () {
           if (!_inView(vx, vy)) continue;
 
           var list = Array.isArray(anim) ? anim : [anim];
-          for (var li = 0; li < list.length; li++) {
+          var stackCountMb = list.length;
+          for (var li = 0; li < stackCountMb; li++) {
             var a1 = list[li];
             if (!a1) continue;
 
@@ -856,7 +857,7 @@ const GoneRogueMobile = (function () {
 
             effects.push({
               x: vx + dxCells,
-              y: vy - 0.6 + dyCells,
+              y: vy - 0.6 + dyCells, // Stack offset handled by calculateAnimationTransform
               char: a1.text || a1.emoji,
               color: a1.color || '#FFFFFF',
               glow: true,
