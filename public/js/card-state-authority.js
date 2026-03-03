@@ -474,6 +474,7 @@ var CardStateAuthority = (function() {
 
   function _findTrueJokerIndex(backup) {
     for (var i = 0; i < backup.length; i++) {
+      if (!backup[i]) continue;
       var id = (backup[i].id || '').toLowerCase();
       if (id.indexOf('true-joker') !== -1 || id.indexOf('truejoker') !== -1 || id === 'act-joker') {
         return i;
@@ -1012,12 +1013,15 @@ var CardStateAuthority = (function() {
     var vault = getVault();
     var parts = [];
     for (var i = 0; i < hand.length; i++) {
+      if (!hand[i] || !hand[i].id) continue;
       parts.push('h:' + hand[i].id + ':' + (hand[i].qty || 1));
     }
     for (var j = 0; j < backup.length; j++) {
+      if (!backup[j] || !backup[j].id) continue;
       parts.push('b:' + backup[j].id + ':' + (backup[j].qty || 1));
     }
     for (var k = 0; k < vault.length; k++) {
+      if (!vault[k] || !vault[k].id) continue;
       parts.push('v:' + vault[k].id + ':' + (vault[k].qty || 1));
     }
     parts.push('m:' + getMode());
@@ -1069,6 +1073,7 @@ var CardStateAuthority = (function() {
     var expanded = [];
     for (var i = 0; i < hand.length; i++) {
       var ref = hand[i];
+      if (!ref || !ref.id) continue;
       var def = getCardDef(ref.id);
       var qty = ref.qty || 1;
       for (var q = 0; q < qty; q++) {
