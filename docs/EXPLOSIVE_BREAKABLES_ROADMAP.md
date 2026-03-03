@@ -293,9 +293,9 @@ Enemies can now carry explosive cards in their inventory:
 // In enemy generation (floor-builder or enemy spawner):
 enemy.inventory = enemy.inventory || [];
 
-// SCOUT tier: 10% chance to carry PIPE_BOMB
-// GUARD tier: 15% chance to carry FRAG_GRENADE
-// ELITE tier: 5% chance to carry C4_CHARGE
+// Common tier: 20% chance to carry PIPE_BOMB
+// Uncommon tier: 35% chance to carry FRAG_GRENADE
+// ELITE tier: 15% chance to carry C4_CHARGE
 if (rng() < explosiveChance[enemy.tier]) {
   enemy.inventory.push({
     type: 'card',

@@ -265,7 +265,7 @@ Refactor `enemy-hand-display.js` rendering from a flat row of small jokers into 
 │                                                      │
 │   [HP BAR]  😡 ENEMY NAME  [INTENT DISPLAY]         │
 │                                                      │
-│   ┌─── ENEMY HAND (NCH-style) ──────────────────┐   │
+│   ┌─── ENEMY HAND (NCH-style but with nodes)─────┐   │
 │   │                                              │   │
 │   │   🃏   🃏   🃏   💀   ░░                    │   │
 │   │   [1]  [2]  [3]  [X]  [+]                   │   │
@@ -280,7 +280,7 @@ Refactor `enemy-hand-display.js` rendering from a flat row of small jokers into 
 
 🃏 = hidden card (bright if interactable, BLVCK if not)
 💀 = destroyed/stolen slot
-░░ = empty slot (plantable during combat if player has charges)
+░░ = empty slot or BLVCK card (plantable during combat if player has charges)
 [+] = planted card (player's card, triggerable)
 ▪  = momentum dots (color-coded by dominant tag)
 ```
@@ -406,7 +406,7 @@ During STR combat, both the player's hand fan (bottom) and the enemy's hand caps
 │  [card] [card] [card] [card] [card] │  ← hand fan component
 │                                      │
 │  LEFT COLUMN                        │
-│  [1][2][3][4][5][DRAW]              │  ← rogue sidebar (backup top 5 + draw)
+│  [1][2][3][4][5][DRAW]              │  ← rogue sidebar (backup top 5 + draw) not on actual STR window but in terminal HUD
 └─────────────────────────────────────┘
 ```
 

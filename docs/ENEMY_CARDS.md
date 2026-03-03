@@ -332,6 +332,20 @@ Code
 └──────────────────────────┘
 ```
 
+When player clicks an enemy BLVCK card (plantable slot) during STR combat (nothing happens if player doesn't have plantable explosives or poisons):
+
+Code
+
+```
+┌──────────────────────────┐
+│  BLVCK.🃏 ENEMY CARD #1   │
+│  ─────────────────────── │
+│  💣 PLANT PIPEBOMB (if in hand)
+│  💣 PLANT C4 (if in hand) |
+└──────────────────────────┘
+```
+
+
 Available actions depend on which items/cards the player has:
 
 |Action|Requires|Effect|
