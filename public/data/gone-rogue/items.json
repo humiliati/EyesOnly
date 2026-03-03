@@ -472,6 +472,33 @@
     "_designNote": "Tier 1 ammo key. Consumed on gate unlock. Previously existed only in environmental-synergy.js."
   },
   {
+    "id": "ITM-019",
+    "name": "Decoy Key",
+    "emoji": "🔑",
+    "type": "key",
+    "subtype": "gate",
+    "rarity": "common",
+    "stackable": true,
+    "maxStack": 3,
+    "equipSlot": "active",
+    "effects": [
+      {
+        "type": "unlock_gate",
+        "compatibleGates": []
+      }
+    ],
+    "synergyTags": [
+      "key",
+      "gate",
+      "decoy",
+      "moderation"
+    ],
+    "description": "Looks like it should fit... but it doesn't.",
+    "consumeOnUse": true,
+    "tier": 1,
+    "_designNote": "LAGM moderation item. Fake key injected by Floor Synthesis Engine to add friction. compatibleGates is empty so it never unlocks anything. Consumed on failed attempt."
+  },
+  {
     "id": "ITM-020",
     "name": "Cardboard Box",
     "emoji": "📦",
@@ -1242,6 +1269,82 @@
       "modifier"
     ],
     "description": "Instant resolve on tap. Swipe to push-resolve directionally."
+  },
+  {
+    "id": "ITM-100",
+    "name": "Fool's Reward",
+    "emoji": "🏆",
+    "type": "consumable",
+    "rarity": "rare",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "none",
+    "effects": [
+      {
+        "type": "focus",
+        "value": -2
+      },
+      {
+        "type": "hp",
+        "value": -1
+      }
+    ],
+    "synergyTags": [
+      "trap",
+      "decoy",
+      "moderation"
+    ],
+    "description": "Glitters like gold but crumbles to dust. A deceptive prize.",
+    "consumeOnUse": true,
+    "_designNote": "LAGM moderation item. Deceptive reward injected by pace controls to punish overconfident speed-runners. Looks like a valuable rare drop but applies negative effects on pickup/use."
+  },
+  {
+    "id": "ITM-101",
+    "name": "They Live Glasses",
+    "emoji": "🕶️",
+    "type": "equipment",
+    "rarity": "epic",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      {
+        "type": "foresight_window",
+        "maxWindow": 2,
+        "collapseMode": "time_or_action"
+      }
+    ],
+    "synergyTags": [
+      "manipulation",
+      "foresight",
+      "moderation"
+    ],
+    "description": "You see the world as it truly is. The next floor's veil lifts — and the one after.",
+    "_designNote": "Player-driven manipulation item (SEED_DESIGN §5.1). Extends mutable floor window to F+2 (param-only). Window can collapse based on time, player actions, or energy drain. Activates futureVision player state."
+  },
+  {
+    "id": "ITM-102",
+    "name": "Winston Smith's Diary",
+    "emoji": "📕",
+    "type": "equipment",
+    "rarity": "epic",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      {
+        "type": "entropy_field",
+        "strength": 0.35,
+        "corruptsForesight": true
+      }
+    ],
+    "synergyTags": [
+      "manipulation",
+      "entropy",
+      "moderation"
+    ],
+    "description": "The pages rewrite themselves. Futures flicker, paths fork, and the watchers lose their grip.",
+    "_designNote": "Player-driven manipulation item (SEED_DESIGN §5.2). Counter-item to They Live Glasses. Injects entropy into floor resolution — M-Console sees mutation fog, conflicting branches, flickering templates, delayed seed resolution, ghost acks. Activates entropyField player state with sourceItemId 'winston_diary'."
   },
   {
     "id": "ITM-998",

@@ -1,5 +1,5 @@
 # EYES ONLY — Item Pipeline: Full Lifecycle Audit & Designer Portal Roadmap
-### v1.2 — March 2026 (Phase 1 + Phase 2 complete)
+### v1.5 — March 2026 (Phases 1–4 complete + playtesting integration)
 
 ---
 
@@ -22,7 +22,7 @@ This document traces every item in the game from its **definition** through **sp
 **ID format:** `ITM-XXX` (three-digit zero-padded)
 **Validated by:** `GoneRogueDataRegistry` at load time (`/^ITM-\d{3}$/`)
 
-**Current inventory (51 items):**
+**Current inventory (55 items):**
 
 | Range | Type | Count | Examples |
 |-------|------|-------|---------|
@@ -31,6 +31,8 @@ This document traces every item in the game from its **definition** through **sp
 | ITM-002–004 | Equipment (starter) | 3 | Radio, Surveillance Cam, Journal |
 | ITM-005–009 | Equipment (combat) | 5 | 3D Printer, Pickpocket Gloves, Scout Scope, EMP, Wire Tap |
 | ITM-010–016 | Keys (gate, tier 2) | 7 | Rusty Key, Keycard, Master Key, Thumb Drive, Access Card, Mall Tag, Industrial Pass |
+| ITM-017–018 | Keys (gate, tier 1) | 2 | Rusty Lockpick, Bronze Key |
+| ITM-019 | Key (decoy, LAGM) | 1 | Decoy Key — fake key injected by moderation layer |
 | ITM-020–023 | Deployable (boxes) | 4 | Cardboard → Legendary Refrigerator Box |
 | ITM-030–031 | Keys (quest, tier 3) | 2 | Blacksmith's Hammer, Rune Fragment |
 | ITM-040–044 | Equipment (cascade) | 5 | Archive Indexer, Suppressor Oil, Dead Drop Cache, Tripwire Array, Signal Jammer |
@@ -38,7 +40,9 @@ This document traces every item in the game from its **definition** through **sp
 | ITM-060–061 | Equipment (flight save) | 2 | Cargo Webbing, Tactical Harness |
 | ITM-070 | Equipment (epic) | 1 | Thermal Goggles |
 | ITM-080–093 | Equipment (passive) | 14 | Surge Protector → Redneck Obliterator |
-| ITM-998–999 | Equipment (transform) | 2 | Amazon Box, Refrigerator Box (wearable) |
+| ITM-100 | Consumable (LAGM) | 1 | Fool's Reward — deceptive reward injected by moderation pace controls |
+| ITM-101–102 | Equipment (player manipulation) | 2 | They Live Glasses (foresight F+2), Winston Smith's Diary (entropy) |
+| ITM-998–999 | Equipment (transform) | 2 | Amazon Box, Refrigerator Box Suit (wearable) |
 
 ### 2B. `environmental-synergy.js` — Key Item Definitions (Parallel Source)
 
@@ -375,6 +379,8 @@ A web UI that lets designers:
 | `instantResolve` | — | ITM-093 |
 | `darkness_accuracy_bonus` | `value` | ITM-070 |
 | `stealth_in_darkness_bonus` | `value` | ITM-070 |
+| `foresight_window` | `maxWindow`, `collapseMode` | ITM-101 They Live Glasses |
+| `entropy_field` | `strength`, `corruptsForesight` | ITM-102 Winston Smith's Diary |
 
 ### 5E. Implementation Phases
 
@@ -398,18 +404,35 @@ A web UI that lets designers:
 - ✅ Auto-sorted items.json by ID (ITM-000 first through ITM-999)
 - Usage: `node tools/validate-items.js [--fix] [--quiet]`
 
-**Phase 3: Editor (web UI)**
-- React SPA reading items.json directly
-- CRUD operations with auto-ID assignment (next available ITM-XXX)
-- Effect builder with type dropdown + dynamic param fields
-- Live preview: inventory slot mockup, tooltip mockup, NCH vault mockup
-- Export button: writes sorted items.json with stable formatting
+**Phase 3: Editor (web UI) — ✅ COMPLETE**
+- ✅ Created `public/item-editor.html` — single-file React SPA (React 18 + Babel via CDN, ~40KB)
+- ✅ Loads `items.json` via fetch on startup, full CRUD with auto-ID assignment (next gap in ITM-XXX)
+- ✅ Searchable sidebar with type + rarity filter chips, rarity-colored item rows
+- ✅ Form editor: identity (id/emoji/name/desc), classification (type/subtype/rarity/slot/stackable/maxStack/tier/consumeOnUse), synergy tags (chip input), effects (dynamic builder), design notes
+- ✅ Effect builder: dropdown of all 36 effect types, dynamic param fields per type (number/string/boolean/string[]/json)
+- ✅ 4 live preview panels: Inventory Slot (emoji + abbreviated name + stack count), Tooltip (rarity-colored header + desc + tags + effects), NCH Vault Grid (3 occupied + 1 empty slot), Sidebar Row (emoji + rarity-colored name + dot)
+- ✅ Export: sorted by ID, cleaned fields, downloads as items.json
+- ✅ Import: load any items.json from disk
+- ✅ Duplicate + Delete with confirmation
+- ✅ Dirty state tracking in status bar, next available ID shown
+- ✅ Integrated into Unified Designer portal: `portal/item-designer.html` loaded via iframe tab
+- ✅ Added "Item Designer" nav button to `portal/unified-designer.html`
+- ✅ `public/item-editor.html` now redirects to portal canonical location
+- ✅ Added LAGM moderation items: ITM-019 (Decoy Key), ITM-100 (Fool's Reward)
+- ✅ Updated validator: empty `compatibleGates` now a warning (for decoy keys), not an error
+- Usage: open `portal/unified-designer.html` → click "Item Designer" tab
 
-**Phase 4: Playtesting Integration**
-- Hot-reload: portal publishes → game reloads registry without restart
-- Item grant console: portal sends item to running game session via WebSocket
-- Loot table editor: visual weight/probability editor for LootTableManager tables
-- Drop preview: simulate N loot rolls and show distribution histogram
+**Phase 4: Playtesting Integration** ✅
+- ✅ Hot-reload: `GoneRogueDataRegistry.reload()` resets `_loaded`, re-fetches all JSON, re-indexes, emits `registry:reloaded` event
+- ✅ BroadcastChannel `gone-rogue-portal` listener in registry: receives `registry-reload` and `grant-item` messages from portal
+- ✅ `portal-bridge.js` — game-side listener for `gone-rogue-grant-item` CustomEvent, routes to `GAMESTATE.addToPersistent()`, auto-refreshes NCH/sidebar/mobile UI
+- ✅ Item grant console in item-designer: "Push to Game" (triggers registry reload) + "Grant" button (sends selected item to player inventory via BroadcastChannel)
+- ✅ Console log panel in item-designer sidebar shows grant results with timestamps
+- ✅ Connection status indicator (green dot when game responds)
+- ✅ Loot table editor: `portal/loot-designer.html` — visual weight/probability editor for all `item_loot_tables`, enemy loot chances with quality weight bars, breakable loot overview, card drop modifiers, economy settings
+- ✅ Drop preview simulator: select any item_loot_table, configure roll count (10–100k), run simulation, view histogram with actual vs. expected distribution
+- ✅ Loot Designer integrated as 6th tab in `portal/unified-designer.html`
+- ✅ Export JSON for modified loot tables
 
 ---
 
@@ -436,6 +459,11 @@ A web UI that lets designers:
 | `js/card-disposal-system.js` | Card/item disposal (legacy drag system) | Calls removePersistentInventoryItem |
 | `js/shared-item-renderer.js` | Unified item data resolver (Phase 1) | resolve(), getRarityColor(), buildTooltipHtml() |
 | `tools/validate-items.js` | Build-time item validator (Phase 2) | `node tools/validate-items.js [--fix] [--quiet]` |
+| `item-editor.html` | Redirect to portal (legacy URL) | Redirects to `portal/item-designer.html` |
+| `portal/item-designer.html` | React item editor SPA (Phase 3) | CRUD + effect builder + 4 live previews |
+| `portal/unified-designer.html` | Unified Designer hub | Iframe nav: Asset, Map, World, Item, **Loot** |
+| `portal/loot-designer.html` | React loot table editor SPA (Phase 4) | Weight editor + drop preview simulator |
+| `js/portal-bridge.js` | Portal ↔ Game bridge (Phase 4) | Grant items, refresh UI on registry reload |
 | `js/world-items.js` | Ground items/currency management | Floor pickup tracking |
 | `js/tutorial-floors.js` | Hardcoded spawn coordinates | References env-synergy keys |
 | `js/terminal/command-router.js` | Dev mode commands | `dev on` generates test state |

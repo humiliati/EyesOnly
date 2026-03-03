@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Item Designer — Unified Designer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+/* ── Reset & base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #0a0a0a; color: #d4d4d4;
+  line-height: 1.5; overflow: hidden; height: 100vh;
+}
+
+/* ── Layout ── */
+.app { display: flex; height: 100vh; }
+.sidebar {
+  width: 280px; min-width: 280px; background: #111;
+  border-right: 1px solid #222; display: flex; flex-direction: column;
+}
+.main-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.editor-area { flex: 1; overflow-y: auto; padding: 20px 24px; }
+.preview-strip {
+  height: 220px; min-height: 220px; background: #0d0d0d;
+  border-top: 1px solid #222; display: flex; gap: 16px;
+  padding: 12px 24px; overflow-x: auto;
+}
+
+/* ── Sidebar ── */
+.sidebar-header {
+  padding: 16px; border-bottom: 1px solid #222;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.sidebar-header h1 {
+  font-size: 14px; font-weight: 700; color: #1cff9b;
+  letter-spacing: 0.5px; text-transform: uppercase;
+}
+.search-box {
+  width: 100%; padding: 6px 10px; background: #1a1a1a;
+  border: 1px solid #333; border-radius: 4px; color: #d4d4d4;
+  font-size: 13px; outline: none;
+}
+.search-box:focus { border-color: #1cff9b; }
+.filter-row { display: flex; gap: 4px; flex-wrap: wrap; }
+.filter-chip {
+  padding: 2px 8px; font-size: 11px; border-radius: 10px;
+  border: 1px solid #333; background: transparent; color: #888;
+  cursor: pointer; transition: all 0.15s;
+}
+.filter-chip.active { border-color: #1cff9b; color: #1cff9b; background: rgba(28,255,155,0.08); }
+.filter-chip:hover { border-color: #555; color: #bbb; }
+
+.item-list { flex: 1; overflow-y: auto; }
+.item-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px; cursor: pointer; border-left: 3px solid transparent;
+  transition: all 0.1s;
+}
+.item-row:hover { background: #1a1a1a; }
+.item-row.selected { background: rgba(28,255,155,0.06); border-left-color: #1cff9b; }
+.item-row .emoji { font-size: 20px; width: 28px; text-align: center; }
+.item-row .meta { flex: 1; min-width: 0; }
+.item-row .meta .name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-row .meta .id { font-size: 10px; color: #666; font-family: monospace; }
+.item-row .rarity-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+}
+
+.sidebar-footer {
+  padding: 12px 16px; border-top: 1px solid #222;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.sidebar-footer .count { font-size: 11px; color: #666; text-align: center; }
+
+/* ── Buttons ── */
+.btn {
+  padding: 6px 14px; border: 1px solid #333; border-radius: 4px;
+  background: #1a1a1a; color: #d4d4d4; font-size: 12px;
+  cursor: pointer; transition: all 0.15s; font-family: inherit;
+}
+.btn:hover { border-color: #555; background: #222; }
+.btn-primary { border-color: #1cff9b; color: #1cff9b; }
+.btn-primary:hover { background: rgba(28,255,155,0.1); }
+.btn-danger { border-color: #ff4444; color: #ff4444; }
+.btn-danger:hover { background: rgba(255,68,68,0.1); }
+.btn-sm { padding: 3px 8px; font-size: 11px; }
+.btn-row { display: flex; gap: 6px; }
+
+/* ── Form fields ── */
+.field { margin-bottom: 14px; }
+.field label {
+  display: block; font-size: 11px; color: #888;
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;
+}
+.field input, .field select, .field textarea {
+  width: 100%; padding: 6px 10px; background: #1a1a1a;
+  border: 1px solid #333; border-radius: 4px; color: #d4d4d4;
+  font-size: 13px; font-family: inherit; outline: none;
+}
+.field input:focus, .field select:focus, .field textarea:focus { border-color: #1cff9b; }
+.field textarea { resize: vertical; min-height: 48px; }
+.field select { cursor: pointer; }
+.field-row { display: flex; gap: 12px; }
+.field-row .field { flex: 1; }
+.field .hint { font-size: 10px; color: #555; margin-top: 2px; }
+.field .checkbox-row {
+  display: flex; align-items: center; gap: 8px; margin-top: 4px;
+}
+.field .checkbox-row input[type="checkbox"] { width: auto; }
+.field .checkbox-row label { margin-bottom: 0; text-transform: none; font-size: 13px; color: #d4d4d4; }
+
+/* ── Tags input ── */
+.tags-input { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.tag-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; background: rgba(28,255,155,0.1);
+  border: 1px solid rgba(28,255,155,0.3); border-radius: 10px;
+  font-size: 11px; color: #1cff9b;
+}
+.tag-chip .remove { cursor: pointer; opacity: 0.6; font-size: 14px; line-height: 1; }
+.tag-chip .remove:hover { opacity: 1; }
+.tags-input input {
+  flex: 1; min-width: 80px; border: none; background: transparent;
+  color: #d4d4d4; font-size: 12px; outline: none; padding: 4px;
+}
+
+/* ── Effects editor ── */
+.effects-list { display: flex; flex-direction: column; gap: 8px; }
+.effect-card {
+  background: #161616; border: 1px solid #2a2a2a; border-radius: 6px;
+  padding: 10px 12px;
+}
+.effect-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.effect-card-header select { flex: 1; }
+.effect-params { display: flex; flex-wrap: wrap; gap: 8px; }
+.effect-params .param-field { flex: 0 0 calc(50% - 4px); }
+.effect-params .param-field label { font-size: 10px; color: #666; }
+.effect-params .param-field input, .effect-params .param-field select {
+  padding: 4px 8px; font-size: 12px;
+}
+
+/* ── Sections ── */
+.section { margin-bottom: 20px; }
+.section-title {
+  font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase;
+  letter-spacing: 0.5px; margin-bottom: 10px; padding-bottom: 4px;
+  border-bottom: 1px solid #222;
+}
+
+/* ── Preview panels ── */
+.preview-panel {
+  flex: 0 0 auto; min-width: 180px; background: #111;
+  border: 1px solid #222; border-radius: 8px; padding: 10px;
+  display: flex; flex-direction: column;
+}
+.preview-panel-title {
+  font-size: 10px; color: #666; text-transform: uppercase;
+  letter-spacing: 0.5px; margin-bottom: 8px; text-align: center;
+}
+
+/* Inventory slot preview */
+.preview-inv-slot {
+  width: 60px; height: 84px; margin: 0 auto;
+  background: rgba(10,10,10,0.5); border: 1px dashed rgba(28,255,155,0.2);
+  border-radius: 6px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; position: relative;
+  overflow: hidden;
+}
+.preview-inv-slot .slot-emoji { font-size: 28px; line-height: 1; }
+.preview-inv-slot .slot-name {
+  font-size: 8px; color: #aaa; text-align: center;
+  padding: 0 2px; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; max-width: 58px; margin-top: 2px;
+}
+.preview-inv-slot .slot-qty {
+  position: absolute; bottom: 2px; right: 4px;
+  font-size: 9px; color: #1cff9b; font-weight: 700;
+}
+
+/* Tooltip preview */
+.preview-tooltip {
+  background: rgba(0,0,0,0.95); border: 1px solid rgba(28,255,155,0.3);
+  border-radius: 6px; padding: 10px 12px; min-width: 200px; max-width: 260px;
+}
+.preview-tooltip .tt-header {
+  font-size: 14px; font-weight: 600; margin-bottom: 4px;
+}
+.preview-tooltip .tt-desc {
+  font-size: 11px; color: #aaa; margin-bottom: 6px; line-height: 1.4;
+}
+.preview-tooltip .tt-tags {
+  font-size: 10px; color: #666; display: flex; flex-wrap: wrap; gap: 4px;
+}
+.preview-tooltip .tt-tag {
+  padding: 1px 6px; border-radius: 8px;
+  border: 1px solid #333; background: rgba(255,255,255,0.03);
+}
+.preview-tooltip .tt-effects {
+  margin-top: 6px; padding-top: 6px; border-top: 1px solid #222;
+  font-size: 10px; color: #888;
+}
+.preview-tooltip .tt-effect { margin-bottom: 2px; }
+.preview-tooltip .tt-effect .etype { color: #1cff9b; }
+
+/* Vault grid preview */
+.preview-vault {
+  display: flex; gap: 6px; align-items: center; justify-content: center;
+  margin-top: 8px; flex-wrap: wrap;
+}
+.preview-vault-slot {
+  width: 48px; height: 64px; background: rgba(10,10,10,0.5);
+  border: 1px dashed rgba(28,255,155,0.2); border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; position: relative;
+}
+.preview-vault-slot.occupied { border-style: solid; border-color: rgba(28,255,155,0.3); }
+.preview-vault-slot.empty { color: rgba(28,255,155,0.2); font-size: 16px; }
+.preview-vault-slot .vname {
+  position: absolute; bottom: 1px; font-size: 7px; color: #888;
+  text-align: center; width: 100%; overflow: hidden; white-space: nowrap;
+  text-overflow: ellipsis; padding: 0 2px;
+}
+
+/* Sidebar row preview */
+.preview-sidebar-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; background: rgba(10,10,10,0.5);
+  border: 1px solid #222; border-radius: 4px; margin-top: 8px;
+}
+.preview-sidebar-row .sr-emoji { font-size: 20px; }
+.preview-sidebar-row .sr-name { font-size: 12px; flex: 1; }
+.preview-sidebar-row .sr-rarity {
+  width: 8px; height: 8px; border-radius: 50%;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #555; }
+
+/* ── Status bar ── */
+.status-bar {
+  height: 28px; background: #111; border-top: 1px solid #222;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px; font-size: 11px; color: #666;
+}
+.status-bar .dirty { color: #ffeb3b; }
+.status-bar .clean { color: #1cff9b; }
+
+/* ── Empty state ── */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; height: 100%; color: #444;
+  font-size: 14px; gap: 8px;
+}
+.empty-state .icon { font-size: 48px; opacity: 0.3; }
+
+/* ── Grant Console ── */
+.grant-console {
+  background: #0d0d0d; border-top: 1px solid #222;
+  padding: 8px 12px; max-height: 140px; overflow-y: auto;
+  font-family: 'Consolas', 'Monaco', monospace; font-size: 11px;
+}
+.grant-console .gc-title {
+  font-size: 10px; color: #666; text-transform: uppercase;
+  letter-spacing: 0.5px; margin-bottom: 4px;
+}
+.grant-console .gc-entry { padding: 2px 0; border-bottom: 1px solid #1a1a1a; }
+.grant-console .gc-entry.success { color: #1cff9b; }
+.grant-console .gc-entry.error { color: #ff4444; }
+.grant-console .gc-entry.info { color: #4fc3f7; }
+.grant-console .gc-time { color: #555; margin-right: 6px; }
+
+/* ── Portal status indicator ── */
+.portal-status {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 16px; font-size: 11px; border-top: 1px solid #222;
+}
+.portal-status .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+}
+.portal-status .dot.connected { background: #1cff9b; }
+.portal-status .dot.disconnected { background: #555; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: 40px; right: 24px;
+  padding: 10px 16px; border-radius: 6px;
+  font-size: 12px; z-index: 100; animation: fadeInUp 0.2s;
+}
+.toast-success { background: rgba(28,255,155,0.15); border: 1px solid #1cff9b; color: #1cff9b; }
+.toast-error { background: rgba(255,68,68,0.15); border: 1px solid #ff4444; color: #ff4444; }
+@keyframes fadeInUp {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useCallback, useMemo, useRef } = React;
+
+// ── Constants ──
+
+const RARITY_COLORS = {
+  common: '#c8c8c8', uncommon: '#4fc3f7', rare: '#ffeb3b',
+  epic: '#ff9800', legendary: '#ffd700'
+};
+
+const VALID_TYPES = ['consumable', 'equipment', 'key', 'deployable', 'resource'];
+const VALID_SUBTYPES = ['', 'vice', 'gate', 'quest'];
+const VALID_RARITIES = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+const VALID_SLOTS = ['none', 'active', 'passive'];
+
+const EFFECT_REGISTRY = {
+  hp:                         { params: [{ key: 'value', type: 'number', label: 'Value' }] },
+  focus:                      { params: [{ key: 'value', type: 'number', label: 'Value' }] },
+  printer_3d:                 { params: [] },
+  theft:                      { params: [{ key: 'mode', type: 'string', label: 'Mode' }] },
+  reveal:                     { params: [{ key: 'mode', type: 'string', label: 'Mode' }] },
+  destroy_card:               { params: [{ key: 'mode', type: 'string', label: 'Mode' }] },
+  auto_reveal:                { params: [{ key: 'count', type: 'number', label: 'Count' }, { key: 'trigger', type: 'string', label: 'Trigger' }] },
+  darkness_accuracy_bonus:    { params: [{ key: 'value', type: 'number', label: 'Value' }] },
+  stealth_in_darkness_bonus:  { params: [{ key: 'value', type: 'number', label: 'Value' }] },
+  avatar_transform:           { params: [{ key: 'char', type: 'string', label: 'Char' }, { key: 'sprite', type: 'string', label: 'Sprite' }] },
+  sightline_evasion_modifier: { params: [{ key: 'walk_bonus', type: 'number', label: 'Walk Bonus' }, { key: 'sprint_penalty', type: 'number', label: 'Sprint Penalty' }] },
+  break_on_combat:            { params: [{ key: 'condition', type: 'string', label: 'Condition' }] },
+  unlock_gate:                { params: [{ key: 'compatibleGates', type: 'string[]', label: 'Compatible Gates' }] },
+  quest_turn_in:              { params: [{ key: 'npcTarget', type: 'string', label: 'NPC Target' }, { key: 'rewardType', type: 'string', label: 'Reward Type' }] },
+  sort_hand:                  { params: [] },
+  cascade_enabler:            { params: [{ key: 'condition', type: 'string', label: 'Condition' }, { key: 'effect', type: 'string', label: 'Effect' }, { key: 'tags', type: 'string[]', label: 'Tags' }] },
+  auto_collect:               { params: [{ key: 'target', type: 'string', label: 'Target' }, { key: 'range', type: 'number', label: 'Range' }] },
+  flight_save:                { params: [{ key: 'saveRate', type: 'number', label: 'Save Rate' }] },
+  flight_save_disposables:    { params: [{ key: 'saveRate', type: 'number', label: 'Save Rate' }] },
+  tag_risk_reduction:         { params: [{ key: 'tag', type: 'string', label: 'Tag' }, { key: 'reduction', type: 'number', label: 'Reduction' }] },
+  battery_save:               { params: [{ key: 'chance', type: 'number', label: 'Chance' }] },
+  tag_risk_threshold_increase:{ params: [{ key: 'tag', type: 'string', label: 'Tag' }, { key: 'bonus', type: 'number', label: 'Bonus' }] },
+  exposure_resist:            { params: [{ key: 'chance', type: 'number', label: 'Chance' }] },
+  fatigue_save:               { params: [{ key: 'chance', type: 'number', label: 'Chance' }] },
+  alert_reduction:            { params: [{ key: 'value', type: 'number', label: 'Value' }, { key: 'trigger', type: 'string', label: 'Trigger' }] },
+  on_consume_card:            { params: [{ key: 'effect', type: 'string', label: 'Effect' }, { key: 'chance', type: 'number', label: 'Chance' }, { key: 'refundType', type: 'string', label: 'Refund Type' }, { key: 'damage', type: 'number', label: 'Damage' }, { key: 'requireTag', type: 'string', label: 'Require Tag' }] },
+  consume_save:               { params: [{ key: 'rarity_scaling', type: 'boolean', label: 'Rarity Scaling' }, { key: 'rates', type: 'json', label: 'Rates (JSON)' }] },
+  momentum_visibility:        { params: [{ key: 'value', type: 'boolean', label: 'Value' }] },
+  reveal_momentum_threshold:  { params: [{ key: 'threshold', type: 'number', label: 'Threshold' }] },
+  overload_damage_reduction:  { params: [{ key: 'value', type: 'number', label: 'Value' }] },
+  escalation_slow:            { params: [{ key: 'value', type: 'number', label: 'Value' }] },
+  destroy_reduces_rage:       { params: [{ key: 'value', type: 'number', label: 'Value' }] },
+  destroy_momentum_bonus:     { params: [{ key: 'value', type: 'number', label: 'Value' }] },
+  interaction_charge_bonus:   { params: [{ key: 'value', type: 'number', label: 'Value' }] },
+  swipeActivate:              { params: [{ key: 'categories', type: 'string[]', label: 'Categories' }] },
+  instantResolve:             { params: [] },
+  foresight_window:           { params: [{ key: 'maxWindow', type: 'number', label: 'Max Window' }, { key: 'collapseMode', type: 'string', label: 'Collapse Mode' }] },
+  entropy_field:              { params: [{ key: 'strength', type: 'number', label: 'Strength' }, { key: 'corruptsForesight', type: 'boolean', label: 'Corrupts Foresight' }] }
+};
+
+const EFFECT_TYPES = Object.keys(EFFECT_REGISTRY).sort();
+
+// ── Helpers ──
+
+function nextId(items) {
+  const used = new Set(items.map(i => i.id));
+  // Try gaps first in the 100-range
+  for (let n = 1; n <= 999; n++) {
+    const id = 'ITM-' + String(n).padStart(3, '0');
+    if (!used.has(id)) return id;
+  }
+  return 'ITM-999'; // shouldn't happen
+}
+
+function makeBlankItem(id) {
+  return {
+    id, name: '', emoji: '', type: 'equipment', subtype: '',
+    rarity: 'common', stackable: false, maxStack: 1, equipSlot: 'none',
+    effects: [], synergyTags: [], description: '',
+    consumeOnUse: false, tier: null, _designNote: ''
+  };
+}
+
+function abbreviateName(name, max) {
+  if (!name || name.length <= max) return name || '';
+  const words = name.split(/\s+/);
+  const abbr = words.map(w => {
+    if (w.length <= 2) return w;
+    return w[0] + [...w.slice(1)].filter(c => !'aeiou'.includes(c.toLowerCase())).join('');
+  }).join(' ');
+  return abbr.length > max ? abbr.slice(0, max) : abbr;
+}
+
+function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
+
+// ── Toast Component ──
+
+function Toast({ message, type, onDone }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 2500);
+    return () => clearTimeout(t);
+  }, [onDone]);
+  return <div className={`toast toast-${type}`}>{message}</div>;
+}
+
+// ── Tags Input ──
+
+function TagsInput({ tags, onChange }) {
+  const [input, setInput] = useState('');
+  const handleKey = (e) => {
+    if ((e.key === 'Enter' || e.key === ',') && input.trim()) {
+      e.preventDefault();
+      const tag = input.trim().toLowerCase();
+      if (!tags.includes(tag)) onChange([...tags, tag]);
+      setInput('');
+    } else if (e.key === 'Backspace' && !input && tags.length) {
+      onChange(tags.slice(0, -1));
+    }
+  };
+  return (
+    <div className="tags-input" style={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 4, padding: '4px 6px' }}>
+      {tags.map((t, i) => (
+        <span key={i} className="tag-chip">
+          {t} <span className="remove" onClick={() => onChange(tags.filter((_, j) => j !== i))}>×</span>
+        </span>
+      ))}
+      <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKey} placeholder="add tag…" />
+    </div>
+  );
+}
+
+// ── Effect Editor ──
+
+function EffectEditor({ effect, index, onChange, onRemove }) {
+  const reg = EFFECT_REGISTRY[effect.type] || { params: [] };
+
+  const updateType = (newType) => {
+    const base = { type: newType };
+    const newReg = EFFECT_REGISTRY[newType] || { params: [] };
+    newReg.params.forEach(p => {
+      if (effect[p.key] !== undefined) base[p.key] = effect[p.key];
+    });
+    onChange(index, base);
+  };
+
+  const updateParam = (key, value, paramType) => {
+    const updated = { ...effect };
+    if (paramType === 'number') {
+      updated[key] = value === '' ? undefined : parseFloat(value);
+    } else if (paramType === 'boolean') {
+      updated[key] = value === 'true';
+    } else if (paramType === 'string[]') {
+      updated[key] = value.split(',').map(s => s.trim()).filter(Boolean);
+    } else if (paramType === 'json') {
+      try { updated[key] = JSON.parse(value); } catch { updated[key] = value; }
+    } else {
+      updated[key] = value;
+    }
+    onChange(index, updated);
+  };
+
+  const renderParamInput = (p) => {
+    const val = effect[p.key];
+    if (p.type === 'boolean') {
+      return (
+        <select value={String(val ?? false)} onChange={e => updateParam(p.key, e.target.value, 'boolean')}>
+          <option value="true">true</option>
+          <option value="false">false</option>
+        </select>
+      );
+    }
+    if (p.type === 'string[]') {
+      return <input value={Array.isArray(val) ? val.join(', ') : (val || '')}
+        onChange={e => updateParam(p.key, e.target.value, 'string[]')} placeholder="comma,separated" />;
+    }
+    if (p.type === 'json') {
+      return <input value={typeof val === 'object' ? JSON.stringify(val) : (val || '')}
+        onChange={e => updateParam(p.key, e.target.value, 'json')} placeholder='{"key": val}' />;
+    }
+    return <input type={p.type === 'number' ? 'number' : 'text'} step="any"
+      value={val ?? ''} onChange={e => updateParam(p.key, e.target.value, p.type)} />;
+  };
+
+  return (
+    <div className="effect-card">
+      <div className="effect-card-header">
+        <select value={effect.type || ''} onChange={e => updateType(e.target.value)}>
+          <option value="">— select effect —</option>
+          {EFFECT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <button className="btn btn-danger btn-sm" onClick={() => onRemove(index)}>×</button>
+      </div>
+      {reg.params.length > 0 && (
+        <div className="effect-params">
+          {reg.params.map(p => (
+            <div key={p.key} className="param-field">
+              <label>{p.label}</label>
+              {renderParamInput(p)}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Preview: Inventory Slot ──
+
+function PreviewInvSlot({ item }) {
+  const color = RARITY_COLORS[item.rarity] || RARITY_COLORS.common;
+  return (
+    <div className="preview-panel">
+      <div className="preview-panel-title">Inventory Slot</div>
+      <div className="preview-inv-slot" style={{ borderColor: `${color}44` }}>
+        <span className="slot-emoji">{item.emoji || '📦'}</span>
+        <span className="slot-name">{abbreviateName(item.name, 10) || '—'}</span>
+        {item.stackable && item.maxStack > 1 && <span className="slot-qty">×{item.maxStack}</span>}
+      </div>
+      <div style={{ textAlign: 'center', marginTop: 8, fontSize: 10, color: RARITY_COLORS[item.rarity] || '#888' }}>
+        {item.rarity}
+      </div>
+    </div>
+  );
+}
+
+// ── Preview: Tooltip ──
+
+function PreviewTooltip({ item }) {
+  const color = RARITY_COLORS[item.rarity] || RARITY_COLORS.common;
+  const tags = [item.rarity, item.type, item.equipSlot !== 'none' ? `slot: ${item.equipSlot}` : null, item.tier ? `tier ${item.tier}` : null].filter(Boolean);
+
+  return (
+    <div className="preview-panel" style={{ minWidth: 240 }}>
+      <div className="preview-panel-title">Tooltip</div>
+      <div className="preview-tooltip">
+        <div className="tt-header" style={{ color }}>{item.emoji || '📦'} {item.name || 'Unnamed'}</div>
+        {item.description && <div className="tt-desc">{item.description}</div>}
+        <div className="tt-tags">
+          {tags.map((t, i) => <span key={i} className="tt-tag">{t}</span>)}
+        </div>
+        {item.effects.length > 0 && (
+          <div className="tt-effects">
+            {item.effects.map((e, i) => (
+              <div key={i} className="tt-effect">
+                <span className="etype">{e.type}</span>
+                {Object.entries(e).filter(([k]) => k !== 'type').map(([k, v]) => (
+                  <span key={k}> {k}={typeof v === 'object' ? JSON.stringify(v) : String(v)}</span>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Preview: Vault Grid ──
+
+function PreviewVault({ item, allItems }) {
+  // Show current item + 2 context slots + 1 empty
+  const otherItems = allItems.filter(i => i.id !== item.id).slice(0, 2);
+  const slots = [...otherItems, item];
+
+  return (
+    <div className="preview-panel" style={{ minWidth: 260 }}>
+      <div className="preview-panel-title">NCH Vault Grid</div>
+      <div className="preview-vault">
+        {slots.map((it, i) => (
+          <div key={i} className="preview-vault-slot occupied"
+            style={{ borderColor: it.id === item.id ? (RARITY_COLORS[it.rarity] || '#1cff9b') + '88' : 'rgba(28,255,155,0.2)' }}>
+            {it.emoji || '📦'}
+            <span className="vname">{abbreviateName(it.name, 7)}</span>
+          </div>
+        ))}
+        <div className="preview-vault-slot empty">+</div>
+      </div>
+    </div>
+  );
+}
+
+// ── Preview: Sidebar Row ──
+
+function PreviewSidebarRow({ item }) {
+  return (
+    <div className="preview-panel" style={{ minWidth: 200 }}>
+      <div className="preview-panel-title">Sidebar Row</div>
+      <div className="preview-sidebar-row">
+        <span className="sr-emoji">{item.emoji || '📦'}</span>
+        <span className="sr-name" style={{ color: RARITY_COLORS[item.rarity] || '#c8c8c8' }}>
+          {item.name || 'Unnamed'}
+        </span>
+        <span className="sr-rarity" style={{ background: RARITY_COLORS[item.rarity] || '#c8c8c8' }} />
+      </div>
+      <div style={{ fontSize: 10, color: '#555', marginTop: 6, textAlign: 'center' }}>
+        {item.id} · {item.type}{item.subtype ? ` / ${item.subtype}` : ''}
+        {item.equipSlot !== 'none' ? ` · ${item.equipSlot}` : ''}
+      </div>
+    </div>
+  );
+}
+
+// ── Item Form ──
+
+function ItemForm({ item, onChange }) {
+  const update = (field, value) => {
+    onChange({ ...item, [field]: value });
+  };
+
+  const updateEffect = (idx, newEff) => {
+    const effs = [...item.effects];
+    effs[idx] = newEff;
+    update('effects', effs);
+  };
+
+  const removeEffect = (idx) => {
+    update('effects', item.effects.filter((_, i) => i !== idx));
+  };
+
+  const addEffect = () => {
+    update('effects', [...item.effects, { type: '' }]);
+  };
+
+  return (
+    <div>
+      {/* Identity */}
+      <div className="section">
+        <div className="section-title">Identity</div>
+        <div className="field-row">
+          <div className="field" style={{ flex: '0 0 100px' }}>
+            <label>ID</label>
+            <input value={item.id} readOnly style={{ color: '#666', cursor: 'not-allowed' }} />
+          </div>
+          <div className="field" style={{ flex: '0 0 70px' }}>
+            <label>Emoji</label>
+            <input value={item.emoji} onChange={e => update('emoji', e.target.value)}
+              style={{ fontSize: 20, textAlign: 'center', padding: '2px 4px' }} />
+          </div>
+          <div className="field">
+            <label>Name</label>
+            <input value={item.name} onChange={e => update('name', e.target.value)} placeholder="Item name" />
+          </div>
+        </div>
+        <div className="field">
+          <label>Description</label>
+          <textarea value={item.description} onChange={e => update('description', e.target.value)}
+            placeholder="Player-facing description" rows={2} />
+        </div>
+      </div>
+
+      {/* Classification */}
+      <div className="section">
+        <div className="section-title">Classification</div>
+        <div className="field-row">
+          <div className="field">
+            <label>Type</label>
+            <select value={item.type} onChange={e => update('type', e.target.value)}>
+              {VALID_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div className="field">
+            <label>Subtype</label>
+            <select value={item.subtype || ''} onChange={e => update('subtype', e.target.value || null)}>
+              {VALID_SUBTYPES.map(t => <option key={t} value={t}>{t || '(none)'}</option>)}
+            </select>
+          </div>
+          <div className="field">
+            <label>Rarity</label>
+            <select value={item.rarity} onChange={e => update('rarity', e.target.value)}>
+              {VALID_RARITIES.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+          <div className="field">
+            <label>Equip Slot</label>
+            <select value={item.equipSlot} onChange={e => update('equipSlot', e.target.value)}>
+              {VALID_SLOTS.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="field-row">
+          <div className="field">
+            <div className="checkbox-row">
+              <input type="checkbox" id="stackable" checked={item.stackable}
+                onChange={e => update('stackable', e.target.checked)} />
+              <label htmlFor="stackable">Stackable</label>
+            </div>
+          </div>
+          <div className="field">
+            <label>Max Stack</label>
+            <input type="number" min={1} max={99} value={item.maxStack}
+              onChange={e => update('maxStack', parseInt(e.target.value) || 1)} />
+          </div>
+          <div className="field">
+            <div className="checkbox-row">
+              <input type="checkbox" id="consumeOnUse" checked={!!item.consumeOnUse}
+                onChange={e => update('consumeOnUse', e.target.checked)} />
+              <label htmlFor="consumeOnUse">Consume on Use</label>
+            </div>
+          </div>
+          <div className="field">
+            <label>Tier</label>
+            <select value={item.tier ?? ''} onChange={e => update('tier', e.target.value ? parseInt(e.target.value) : null)}>
+              <option value="">(none)</option>
+              <option value="1">1 — ammo</option>
+              <option value="2">2 — gate</option>
+              <option value="3">3 — quest</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Synergy Tags */}
+      <div className="section">
+        <div className="section-title">Synergy Tags</div>
+        <div className="field">
+          <TagsInput tags={item.synergyTags || []} onChange={tags => update('synergyTags', tags)} />
+          <div className="hint">Press Enter or comma to add a tag</div>
+        </div>
+      </div>
+
+      {/* Effects */}
+      <div className="section">
+        <div className="section-title">Effects ({item.effects.length})</div>
+        <div className="effects-list">
+          {item.effects.map((eff, i) => (
+            <EffectEditor key={i} effect={eff} index={i} onChange={updateEffect} onRemove={removeEffect} />
+          ))}
+        </div>
+        <button className="btn btn-primary btn-sm" style={{ marginTop: 8 }} onClick={addEffect}>+ Add Effect</button>
+      </div>
+
+      {/* Design Note */}
+      <div className="section">
+        <div className="section-title">Design Note (internal)</div>
+        <div className="field">
+          <textarea value={item._designNote || ''} onChange={e => update('_designNote', e.target.value)}
+            placeholder="Internal notes — stripped from export if prefixed with _" rows={2} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── App ──
+
+function App() {
+  const [items, setItems] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
+  const [dirty, setDirty] = useState(false);
+  const [search, setSearch] = useState('');
+  const [filterType, setFilterType] = useState('');
+  const [filterRarity, setFilterRarity] = useState('');
+  const [toast, setToast] = useState(null);
+  const [loaded, setLoaded] = useState(false);
+  const fileInputRef = useRef(null);
+
+  // Load items.json
+  useEffect(() => {
+    fetch('../data/gone-rogue/items.json')
+      .then(r => r.json())
+      .then(data => { setItems(data); setLoaded(true); })
+      .catch(() => {
+        setToast({ message: 'Could not load items.json — start with empty list or import', type: 'error' });
+        setLoaded(true);
+      });
+  }, []);
+
+  const selectedItem = useMemo(() => items.find(i => i.id === selectedId), [items, selectedId]);
+
+  // Filter & search
+  const filteredItems = useMemo(() => {
+    return items.filter(item => {
+      if (filterType && item.type !== filterType) return false;
+      if (filterRarity && item.rarity !== filterRarity) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        return (item.name || '').toLowerCase().includes(q) ||
+               (item.id || '').toLowerCase().includes(q) ||
+               (item.emoji || '').includes(q) ||
+               (item.description || '').toLowerCase().includes(q);
+      }
+      return true;
+    });
+  }, [items, search, filterType, filterRarity]);
+
+  // CRUD
+  const createItem = useCallback(() => {
+    const id = nextId(items);
+    const newItem = makeBlankItem(id);
+    const updated = [...items, newItem].sort((a, b) => a.id.localeCompare(b.id));
+    setItems(updated);
+    setSelectedId(id);
+    setDirty(true);
+    setToast({ message: `Created ${id}`, type: 'success' });
+  }, [items]);
+
+  const duplicateItem = useCallback(() => {
+    if (!selectedItem) return;
+    const id = nextId(items);
+    const dup = { ...deepClone(selectedItem), id, name: selectedItem.name + ' (copy)' };
+    const updated = [...items, dup].sort((a, b) => a.id.localeCompare(b.id));
+    setItems(updated);
+    setSelectedId(id);
+    setDirty(true);
+    setToast({ message: `Duplicated → ${id}`, type: 'success' });
+  }, [items, selectedItem]);
+
+  const deleteItem = useCallback(() => {
+    if (!selectedId) return;
+    if (!confirm(`Delete ${selectedId}?`)) return;
+    setItems(prev => prev.filter(i => i.id !== selectedId));
+    setSelectedId(null);
+    setDirty(true);
+    setToast({ message: `Deleted ${selectedId}`, type: 'success' });
+  }, [selectedId]);
+
+  const updateItem = useCallback((updated) => {
+    setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
+    setDirty(true);
+  }, []);
+
+  // Export
+  const exportJson = useCallback(() => {
+    const sorted = [...items].sort((a, b) => a.id.localeCompare(b.id));
+    // Clean: remove empty optional fields, ensure consistent shape
+    const cleaned = sorted.map(item => {
+      const out = {
+        id: item.id,
+        name: item.name,
+        emoji: item.emoji,
+        type: item.type,
+      };
+      if (item.subtype) out.subtype = item.subtype;
+      out.rarity = item.rarity;
+      out.stackable = !!item.stackable;
+      out.maxStack = item.maxStack || 1;
+      out.equipSlot = item.equipSlot || 'none';
+      out.effects = (item.effects || []).map(e => {
+        const cleaned = { type: e.type };
+        Object.keys(e).forEach(k => {
+          if (k !== 'type' && e[k] !== undefined && e[k] !== null && e[k] !== '') {
+            cleaned[k] = e[k];
+          }
+        });
+        return cleaned;
+      });
+      out.synergyTags = item.synergyTags || [];
+      out.description = item.description || '';
+      if (item.consumeOnUse) out.consumeOnUse = true;
+      if (item.tier) out.tier = item.tier;
+      if (item._designNote) out._designNote = item._designNote;
+      return out;
+    });
+
+    const json = JSON.stringify(cleaned, null, 2) + '\n';
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'items.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    setDirty(false);
+    setToast({ message: `Exported ${cleaned.length} items`, type: 'success' });
+  }, [items]);
+
+  // Import
+  const importJson = useCallback((e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!Array.isArray(data)) throw new Error('Not an array');
+        setItems(data.sort((a, b) => (a.id || '').localeCompare(b.id || '')));
+        setSelectedId(null);
+        setDirty(false);
+        setToast({ message: `Imported ${data.length} items`, type: 'success' });
+      } catch (err) {
+        setToast({ message: 'Import failed: ' + err.message, type: 'error' });
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }, []);
+
+  // ── Portal ↔ Game Bridge (Phase 4) ──
+  const [consoleLog, setConsoleLog] = useState([]);
+  const [gameConnected, setGameConnected] = useState(false);
+  const portalChannel = useRef(null);
+
+  useEffect(() => {
+    try {
+      portalChannel.current = new BroadcastChannel('gone-rogue-portal');
+      portalChannel.current.onmessage = (ev) => {
+        if (!ev.data) return;
+        if (ev.data.type === 'grant-item-result') {
+          const p = ev.data.payload || {};
+          addConsoleEntry(p.success ? 'success' : 'error', p.message || 'Unknown result');
+          setGameConnected(true);
+        }
+        if (ev.data.type === 'registry-reloaded') {
+          addConsoleEntry('info', 'Game registry reloaded');
+          setGameConnected(true);
+        }
+      };
+      // Ping game to check connection
+      portalChannel.current.postMessage({ type: 'ping' });
+    } catch (e) {}
+    return () => { try { portalChannel.current?.close(); } catch (e) {} };
+  }, []);
+
+  const addConsoleEntry = useCallback((level, message) => {
+    const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+    setConsoleLog(prev => [...prev.slice(-49), { time, level, message }]);
+  }, []);
+
+  const pushToGame = useCallback(() => {
+    try {
+      portalChannel.current?.postMessage({ type: 'registry-reload' });
+      addConsoleEntry('info', 'Sent reload signal to game');
+      setToast({ message: 'Registry reload sent', type: 'success' });
+    } catch (e) {
+      addConsoleEntry('error', 'BroadcastChannel error: ' + e.message);
+    }
+  }, [addConsoleEntry]);
+
+  const grantItem = useCallback(() => {
+    if (!selectedItem) return;
+    try {
+      portalChannel.current?.postMessage({
+        type: 'grant-item',
+        payload: { itemId: selectedItem.id, qty: 1, meta: {} }
+      });
+      addConsoleEntry('info', 'Granting ' + selectedItem.emoji + ' ' + selectedItem.name + ' (' + selectedItem.id + ')');
+    } catch (e) {
+      addConsoleEntry('error', 'Grant failed: ' + e.message);
+    }
+  }, [selectedItem, addConsoleEntry]);
+
+  const toggleFilter = (setter, current, value) => {
+    setter(current === value ? '' : value);
+  };
+
+  if (!loaded) return <div className="empty-state"><div className="icon">⏳</div>Loading items.json…</div>;
+
+  return (
+    <div className="app">
+      {/* Sidebar */}
+      <div className="sidebar">
+        <div className="sidebar-header">
+          <h1>Item Editor</h1>
+          <input className="search-box" placeholder="Search items…" value={search}
+            onChange={e => setSearch(e.target.value)} />
+          <div className="filter-row">
+            {VALID_TYPES.map(t => (
+              <button key={t} className={`filter-chip ${filterType === t ? 'active' : ''}`}
+                onClick={() => toggleFilter(setFilterType, filterType, t)}>{t}</button>
+            ))}
+          </div>
+          <div className="filter-row">
+            {VALID_RARITIES.map(r => (
+              <button key={r} className={`filter-chip ${filterRarity === r ? 'active' : ''}`}
+                onClick={() => toggleFilter(setFilterRarity, filterRarity, r)}
+                style={filterRarity === r ? { borderColor: RARITY_COLORS[r], color: RARITY_COLORS[r] } : {}}>
+                {r}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="item-list">
+          {filteredItems.map(item => (
+            <div key={item.id} className={`item-row ${selectedId === item.id ? 'selected' : ''}`}
+              onClick={() => setSelectedId(item.id)}>
+              <span className="emoji">{item.emoji || '📦'}</span>
+              <div className="meta">
+                <div className="name" style={{ color: RARITY_COLORS[item.rarity] || '#c8c8c8' }}>{item.name || '(unnamed)'}</div>
+                <div className="id">{item.id} · {item.type}</div>
+              </div>
+              <span className="rarity-dot" style={{ background: RARITY_COLORS[item.rarity] || '#c8c8c8' }} />
+            </div>
+          ))}
+          {filteredItems.length === 0 && (
+            <div style={{ padding: 20, color: '#444', textAlign: 'center', fontSize: 13 }}>
+              No items match
+            </div>
+          )}
+        </div>
+
+        <div className="sidebar-footer">
+          <div className="btn-row">
+            <button className="btn btn-primary" style={{ flex: 1 }} onClick={createItem}>+ New</button>
+            <button className="btn" onClick={duplicateItem} disabled={!selectedId}>Dupe</button>
+            <button className="btn btn-danger" onClick={deleteItem} disabled={!selectedId}>Del</button>
+          </div>
+          <div className="btn-row">
+            <button className="btn" style={{ flex: 1 }} onClick={exportJson}>Export JSON</button>
+            <button className="btn" style={{ flex: 1 }} onClick={() => fileInputRef.current?.click()}>Import</button>
+            <input ref={fileInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={importJson} />
+          </div>
+          <div className="btn-row">
+            <button className="btn btn-primary" style={{ flex: 1 }} onClick={pushToGame} title="Tell running game to reload registry data">
+              ↻ Push to Game
+            </button>
+            <button className="btn" onClick={grantItem} disabled={!selectedId} title="Grant selected item to player inventory">
+              🎁 Grant
+            </button>
+          </div>
+          <div className="count">{filteredItems.length} / {items.length} items</div>
+        </div>
+
+        {/* Grant Console */}
+        {consoleLog.length > 0 && (
+          <div className="grant-console">
+            <div className="gc-title">Console</div>
+            {consoleLog.map((entry, i) => (
+              <div key={i} className={`gc-entry ${entry.level}`}>
+                <span className="gc-time">{entry.time}</span>
+                {entry.message}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Connection status */}
+        <div className="portal-status">
+          <span className={`dot ${gameConnected ? 'connected' : 'disconnected'}`} />
+          <span style={{ color: gameConnected ? '#1cff9b' : '#555' }}>
+            {gameConnected ? 'Game connected' : 'No game detected'}
+          </span>
+        </div>
+      </div>
+
+      {/* Main */}
+      <div className="main-panel">
+        <div className="editor-area">
+          {selectedItem ? (
+            <ItemForm item={selectedItem} onChange={updateItem} />
+          ) : (
+            <div className="empty-state">
+              <div className="icon">🎮</div>
+              <div>Select an item or click <strong>+ New</strong></div>
+            </div>
+          )}
+        </div>
+
+        {/* Preview strip */}
+        {selectedItem && (
+          <div className="preview-strip">
+            <PreviewInvSlot item={selectedItem} />
+            <PreviewTooltip item={selectedItem} />
+            <PreviewVault item={selectedItem} allItems={items} />
+            <PreviewSidebarRow item={selectedItem} />
+          </div>
+        )}
+
+        {/* Status bar */}
+        <div className="status-bar">
+          <span>{items.length} items loaded</span>
+          <span className={dirty ? 'dirty' : 'clean'}>
+            {dirty ? '● unsaved changes' : '✓ saved'}
+          </span>
+          <span>Next ID: {nextId(items)}</span>
+        </div>
+      </div>
+
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

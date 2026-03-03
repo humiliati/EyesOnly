@@ -114,7 +114,9 @@ var VALID_EFFECT_TYPES = [
   'destroy_reduces_rage', 'destroy_momentum_bonus',
   'interaction_charge_bonus',
   // Swipe / instant
-  'swipeActivate', 'instantResolve'
+  'swipeActivate', 'instantResolve',
+  // Player-driven manipulation (LAGM)
+  'foresight_window', 'entropy_field'
 ];
 
 // ============================================================
@@ -250,8 +252,10 @@ for (var ei = 0; ei < items.length; ei++) {
         if (typeof eff.value !== 'number') error(eit.id + ' effect "' + eff.type + '" missing "value" (number)');
         break;
       case 'unlock_gate':
-        if (!Array.isArray(eff.compatibleGates) || eff.compatibleGates.length === 0)
+        if (!Array.isArray(eff.compatibleGates))
           error(eit.id + ' effect "unlock_gate" missing "compatibleGates" array');
+        else if (eff.compatibleGates.length === 0)
+          warn(eit.id + ' effect "unlock_gate" has empty compatibleGates (decoy key?)');
         break;
       case 'quest_turn_in':
         if (!eff.npcTarget) error(eit.id + ' effect "quest_turn_in" missing "npcTarget"');
@@ -305,6 +309,12 @@ for (var ei = 0; ei < items.length; ei++) {
         break;
       case 'alert_reduction':
         if (typeof eff.value !== 'number') error(eit.id + ' effect "alert_reduction" missing "value" (number)');
+        break;
+      case 'foresight_window':
+        if (typeof eff.maxWindow !== 'number') error(eit.id + ' effect "foresight_window" missing "maxWindow" (number)');
+        break;
+      case 'entropy_field':
+        if (typeof eff.strength !== 'number') error(eit.id + ' effect "entropy_field" missing "strength" (number)');
         break;
     }
   }

@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loot Designer — Unified Designer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #0a0a0a; color: #d4d4d4;
+  line-height: 1.5; overflow: hidden; height: 100vh;
+}
+
+.app { display: flex; height: 100vh; }
+
+/* Sidebar */
+.sidebar {
+  width: 260px; min-width: 260px; background: #111;
+  border-right: 1px solid #222; display: flex; flex-direction: column;
+}
+.sidebar-header {
+  padding: 16px; border-bottom: 1px solid #222;
+}
+.sidebar-header h1 {
+  font-size: 14px; font-weight: 700; color: #ff9800;
+  letter-spacing: 0.5px; text-transform: uppercase;
+}
+.sidebar-header .sub { font-size: 11px; color: #666; margin-top: 2px; }
+
+.section-list { flex: 1; overflow-y: auto; }
+.section-item {
+  padding: 10px 16px; cursor: pointer; border-left: 3px solid transparent;
+  transition: all 0.1s; font-size: 13px;
+}
+.section-item:hover { background: #1a1a1a; }
+.section-item.active { background: rgba(255,152,0,0.06); border-left-color: #ff9800; color: #ff9800; }
+.section-item .label { font-weight: 500; }
+.section-item .hint { font-size: 10px; color: #555; }
+
+.sidebar-footer {
+  padding: 12px 16px; border-top: 1px solid #222;
+  display: flex; flex-direction: column; gap: 6px;
+}
+
+/* Main */
+.main-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.editor-area { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+/* Buttons */
+.btn {
+  padding: 6px 14px; border: 1px solid #333; border-radius: 4px;
+  background: #1a1a1a; color: #d4d4d4; font-size: 12px;
+  cursor: pointer; transition: all 0.15s; font-family: inherit;
+}
+.btn:hover { border-color: #555; background: #222; }
+.btn-primary { border-color: #ff9800; color: #ff9800; }
+.btn-primary:hover { background: rgba(255,152,0,0.1); }
+.btn-danger { border-color: #ff4444; color: #ff4444; }
+.btn-danger:hover { background: rgba(255,68,68,0.1); }
+.btn-sm { padding: 3px 8px; font-size: 11px; }
+.btn-row { display: flex; gap: 6px; }
+
+/* Weight bar */
+.weight-bar-container { margin-bottom: 16px; }
+.weight-bar {
+  display: flex; height: 32px; border-radius: 6px; overflow: hidden;
+  border: 1px solid #333; margin-bottom: 8px;
+}
+.weight-segment {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600; color: #000;
+  min-width: 2px; transition: width 0.3s;
+  cursor: pointer; position: relative;
+}
+.weight-segment:hover { opacity: 0.8; }
+.weight-segment .pct {
+  pointer-events: none; white-space: nowrap; text-shadow: 0 0 3px rgba(0,0,0,0.5);
+}
+
+/* Weight table */
+.weight-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.weight-table th {
+  text-align: left; padding: 6px 10px; border-bottom: 1px solid #333;
+  font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.weight-table td { padding: 6px 10px; border-bottom: 1px solid #1a1a1a; }
+.weight-table tr:hover td { background: #151515; }
+.weight-table .emoji-cell { width: 36px; font-size: 18px; text-align: center; }
+.weight-table input[type="number"] {
+  width: 70px; padding: 3px 6px; background: #1a1a1a;
+  border: 1px solid #333; border-radius: 3px; color: #d4d4d4;
+  font-size: 12px; text-align: right; outline: none;
+}
+.weight-table input:focus { border-color: #ff9800; }
+.weight-table .pct-cell {
+  width: 60px; text-align: right; font-family: monospace; color: #ff9800;
+}
+.weight-table .color-dot {
+  width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+}
+
+/* Chance editor */
+.chance-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+.chance-card {
+  background: #161616; border: 1px solid #2a2a2a; border-radius: 6px;
+  padding: 12px;
+}
+.chance-card .cc-label {
+  font-size: 12px; font-weight: 600; color: #888;
+  text-transform: uppercase; margin-bottom: 6px;
+}
+.chance-card .cc-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 3px 0; font-size: 13px;
+}
+.chance-card .cc-key { color: #aaa; }
+.chance-card .cc-val { font-family: monospace; color: #ff9800; }
+.chance-card input[type="number"], .chance-card input[type="text"] {
+  width: 70px; padding: 3px 6px; background: #1a1a1a;
+  border: 1px solid #333; border-radius: 3px; color: #d4d4d4;
+  font-size: 12px; text-align: right; outline: none;
+}
+.chance-card input:focus { border-color: #ff9800; }
+.chance-card .enabled-toggle {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 4px;
+}
+.chance-card .enabled-toggle input { width: auto; }
+
+/* Section title */
+.section-title {
+  font-size: 14px; font-weight: 600; color: #ff9800;
+  margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #222;
+}
+.section-desc { font-size: 12px; color: #666; margin-bottom: 16px; }
+
+/* Histogram (drop preview) */
+.histogram { margin-top: 16px; }
+.hist-bar-row {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
+}
+.hist-label { width: 120px; font-size: 11px; text-align: right; color: #aaa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hist-bar-track { flex: 1; height: 18px; background: #1a1a1a; border-radius: 3px; overflow: hidden; }
+.hist-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; display: flex; align-items: center; padding-left: 4px; }
+.hist-bar-fill span { font-size: 9px; color: #000; font-weight: 600; white-space: nowrap; }
+.hist-count { width: 50px; font-size: 11px; color: #888; font-family: monospace; }
+.hist-controls { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.hist-controls label { font-size: 12px; color: #888; }
+.hist-controls input {
+  width: 80px; padding: 4px 8px; background: #1a1a1a;
+  border: 1px solid #333; border-radius: 3px; color: #d4d4d4;
+  font-size: 12px; outline: none;
+}
+
+/* Status bar */
+.status-bar {
+  height: 28px; background: #111; border-top: 1px solid #222;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px; font-size: 11px; color: #666;
+}
+.status-bar .dirty { color: #ffeb3b; }
+.status-bar .clean { color: #1cff9b; }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 40px; right: 24px;
+  padding: 10px 16px; border-radius: 6px;
+  font-size: 12px; z-index: 100; animation: fadeInUp 0.2s;
+}
+.toast-success { background: rgba(255,152,0,0.15); border: 1px solid #ff9800; color: #ff9800; }
+.toast-error { background: rgba(255,68,68,0.15); border: 1px solid #ff4444; color: #ff4444; }
+@keyframes fadeInUp {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #555; }
+
+/* Empty state */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; height: 100%; color: #444;
+  font-size: 14px; gap: 8px;
+}
+.empty-state .icon { font-size: 48px; opacity: 0.3; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useCallback, useMemo, useRef } = React;
+
+// ── Color palette for weight segments ──
+const SEGMENT_COLORS = [
+  '#ff9800', '#4fc3f7', '#1cff9b', '#ff4444', '#ffeb3b',
+  '#e040fb', '#ff6e40', '#69f0ae', '#40c4ff', '#ff80ab',
+  '#b2ff59', '#ffd740', '#8c9eff', '#ea80fc', '#a7ffeb'
+];
+
+function getColor(i) { return SEGMENT_COLORS[i % SEGMENT_COLORS.length]; }
+
+// ── Toast ──
+function Toast({ message, type, onDone }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 2500);
+    return () => clearTimeout(t);
+  }, [onDone]);
+  return <div className={`toast toast-${type}`}>{message}</div>;
+}
+
+// ── Weight Bar Visualization ──
+function WeightBar({ entries, colorOffset = 0 }) {
+  const total = entries.reduce((s, e) => s + (e.weight || 0), 0);
+  if (total === 0) return <div className="weight-bar" style={{ background: '#222' }} />;
+  return (
+    <div className="weight-bar">
+      {entries.map((e, i) => {
+        const pct = ((e.weight / total) * 100);
+        if (pct < 0.5) return null;
+        return (
+          <div key={i} className="weight-segment"
+            style={{ width: pct + '%', background: getColor(i + colorOffset) }}
+            title={`${e.name || e.label}: ${pct.toFixed(1)}%`}>
+            {pct > 6 && <span className="pct">{pct.toFixed(0)}%</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Item Loot Table Editor ──
+function ItemTableEditor({ tableName, entries, onChange, onAddEntry, onRemoveEntry }) {
+  const total = entries.reduce((s, e) => s + (e.weight || 0), 0);
+  return (
+    <div>
+      <div className="section-title">{tableName}</div>
+      <WeightBar entries={entries} />
+      <table className="weight-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Name</th>
+            <th>ID</th>
+            <th>Weight</th>
+            <th>%</th>
+            <th>Qty</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map((entry, i) => {
+            const pct = total > 0 ? ((entry.weight / total) * 100).toFixed(1) : '0.0';
+            return (
+              <tr key={i}>
+                <td className="emoji-cell">
+                  <span className="color-dot" style={{ background: getColor(i) }} />{' '}
+                  {entry.emoji}
+                </td>
+                <td>{entry.name}</td>
+                <td style={{ fontFamily: 'monospace', fontSize: 11, color: '#666' }}>
+                  {entry.registryId || '—'}
+                </td>
+                <td>
+                  <input type="number" min="0" value={entry.weight}
+                    onChange={e => onChange(i, 'weight', parseFloat(e.target.value) || 0)} />
+                </td>
+                <td className="pct-cell">{pct}%</td>
+                <td>
+                  <input type="number" min="1" value={entry.quantity || 1}
+                    onChange={e => onChange(i, 'quantity', parseInt(e.target.value) || 1)}
+                    style={{ width: 50 }} />
+                </td>
+                <td>
+                  <button className="btn btn-danger btn-sm" onClick={() => onRemoveEntry(i)}>×</button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <div style={{ marginTop: 8 }}>
+        <button className="btn btn-sm" onClick={onAddEntry}>+ Add Entry</button>
+        <span style={{ marginLeft: 12, fontSize: 11, color: '#555' }}>
+          Total weight: {total}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── Enemy Loot Chance Editor ──
+function EnemyLootEditor({ tierName, data, onChange }) {
+  if (!data) return null;
+  const fields = Object.keys(data).filter(k => k !== '_designNote');
+  return (
+    <div>
+      <div className="section-title">Enemy: {tierName}</div>
+      <div className="chance-grid">
+        {fields.map(field => {
+          const val = data[field];
+          if (typeof val === 'number') {
+            return (
+              <div key={field} className="chance-card">
+                <div className="cc-label">{field}</div>
+                <div className="cc-row">
+                  <span className="cc-key">Value</span>
+                  <input type="number" value={val}
+                    onChange={e => onChange(field, parseFloat(e.target.value) || 0)} />
+                </div>
+              </div>
+            );
+          }
+          if (typeof val === 'object' && val !== null) {
+            return (
+              <div key={field} className="chance-card">
+                <div className="cc-label">{field}</div>
+                {val.enabled !== undefined && (
+                  <div className="enabled-toggle">
+                    <input type="checkbox" checked={val.enabled}
+                      onChange={e => onChange(field, { ...val, enabled: e.target.checked })} />
+                    <label style={{ fontSize: 11, color: '#888' }}>Enabled</label>
+                  </div>
+                )}
+                {val.chance !== undefined && (
+                  <div className="cc-row">
+                    <span className="cc-key">Chance</span>
+                    <input type="number" step="0.01" min="0" max="1" value={val.chance}
+                      onChange={e => onChange(field, { ...val, chance: parseFloat(e.target.value) || 0 })} />
+                  </div>
+                )}
+                {val.min !== undefined && (
+                  <div className="cc-row">
+                    <span className="cc-key">Min</span>
+                    <input type="number" value={val.min}
+                      onChange={e => onChange(field, { ...val, min: parseInt(e.target.value) || 0 })} />
+                  </div>
+                )}
+                {val.max !== undefined && (
+                  <div className="cc-row">
+                    <span className="cc-key">Max</span>
+                    <input type="number" value={val.max}
+                      onChange={e => onChange(field, { ...val, max: parseInt(e.target.value) || 0 })} />
+                  </div>
+                )}
+                {val.quality_weights && (
+                  <div style={{ marginTop: 6 }}>
+                    <WeightBar entries={Object.entries(val.quality_weights).map(([k, v]) => ({ label: k, weight: v }))} />
+                    {Object.entries(val.quality_weights).map(([qk, qv], qi) => (
+                      <div key={qk} className="cc-row">
+                        <span className="cc-key" style={{ fontSize: 11 }}>
+                          <span className="color-dot" style={{ background: getColor(qi), marginRight: 4 }} />
+                          {qk}
+                        </span>
+                        <input type="number" step="0.1" value={qv}
+                          onChange={e => {
+                            const qw = { ...val.quality_weights, [qk]: parseFloat(e.target.value) || 0 };
+                            onChange(field, { ...val, quality_weights: qw });
+                          }} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {val.types && typeof val.types === 'object' && (
+                  <div style={{ marginTop: 6 }}>
+                    <WeightBar entries={Object.entries(val.types).map(([k, v]) => ({ label: k, weight: v }))} />
+                    {Object.entries(val.types).map(([tk, tv], ti) => (
+                      <div key={tk} className="cc-row">
+                        <span className="cc-key" style={{ fontSize: 11 }}>
+                          <span className="color-dot" style={{ background: getColor(ti), marginRight: 4 }} />
+                          {tk}
+                        </span>
+                        <input type="number" value={tv}
+                          onChange={e => {
+                            const types = { ...val.types, [tk]: parseFloat(e.target.value) || 0 };
+                            onChange(field, { ...val, types });
+                          }} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          }
+          return null;
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Drop Preview Simulator ──
+function DropPreview({ tables }) {
+  const [tableKey, setTableKey] = useState('');
+  const [simCount, setSimCount] = useState(1000);
+  const [results, setResults] = useState(null);
+
+  const tableNames = useMemo(() => Object.keys(tables || {}), [tables]);
+
+  const runSim = useCallback(() => {
+    const entries = tables[tableKey];
+    if (!entries || !entries.length) return;
+    const total = entries.reduce((s, e) => s + (e.weight || 0), 0);
+    if (total === 0) return;
+
+    const counts = {};
+    entries.forEach(e => { counts[e.name] = 0; });
+
+    for (let i = 0; i < simCount; i++) {
+      let roll = Math.random() * total;
+      for (const e of entries) {
+        roll -= (e.weight || 0);
+        if (roll <= 0) { counts[e.name] = (counts[e.name] || 0) + 1; break; }
+      }
+    }
+
+    const sorted = Object.entries(counts)
+      .map(([name, count]) => {
+        const entry = entries.find(e => e.name === name);
+        return {
+          name, count, emoji: entry?.emoji || '?',
+          expected: ((entry?.weight || 0) / total * 100).toFixed(1),
+          actual: ((count / simCount) * 100).toFixed(1)
+        };
+      })
+      .sort((a, b) => b.count - a.count);
+
+    setResults({ sorted, simCount });
+  }, [tableKey, simCount, tables]);
+
+  return (
+    <div>
+      <div className="section-title">Drop Preview Simulator</div>
+      <div className="section-desc">Simulate N loot rolls to visualize actual drop distribution vs. expected weights.</div>
+      <div className="hist-controls">
+        <label>Table:</label>
+        <select value={tableKey} onChange={e => { setTableKey(e.target.value); setResults(null); }}
+          style={{ padding: '4px 8px', background: '#1a1a1a', border: '1px solid #333', borderRadius: 3, color: '#d4d4d4', fontSize: 12 }}>
+          <option value="">Select…</option>
+          {tableNames.map(k => <option key={k} value={k}>{k}</option>)}
+        </select>
+        <label>Rolls:</label>
+        <input type="number" min="10" max="100000" value={simCount}
+          onChange={e => setSimCount(parseInt(e.target.value) || 1000)} />
+        <button className="btn btn-primary btn-sm" onClick={runSim} disabled={!tableKey}>
+          🎲 Simulate
+        </button>
+      </div>
+
+      {results && (
+        <div className="histogram">
+          {results.sorted.map((r, i) => {
+            const maxCount = results.sorted[0].count;
+            const barPct = maxCount > 0 ? (r.count / maxCount * 100) : 0;
+            return (
+              <div key={i} className="hist-bar-row">
+                <div className="hist-label">{r.emoji} {r.name}</div>
+                <div className="hist-bar-track">
+                  <div className="hist-bar-fill" style={{ width: barPct + '%', background: getColor(i) }}>
+                    {barPct > 15 && <span>{r.actual}%</span>}
+                  </div>
+                </div>
+                <div className="hist-count">{r.count}/{results.simCount}</div>
+                <div style={{ width: 60, fontSize: 10, color: '#555', textAlign: 'right' }}>
+                  exp: {r.expected}%
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Economy Settings Editor ──
+function EconomyEditor({ data, onChange }) {
+  if (!data) return null;
+  return (
+    <div>
+      <div className="section-title">Economy Settings</div>
+      <div className="chance-grid">
+        {Object.entries(data).map(([key, val]) => (
+          <div key={key} className="chance-card">
+            <div className="cc-label">{key.replace(/_/g, ' ')}</div>
+            <div className="cc-row">
+              <span className="cc-key">Value</span>
+              {typeof val === 'number' ? (
+                <input type="number" step="0.01" value={val}
+                  onChange={e => onChange(key, parseFloat(e.target.value) || 0)} />
+              ) : Array.isArray(val) ? (
+                <span className="cc-val">[{val.join(', ')}]</span>
+              ) : (
+                <span className="cc-val">{String(val)}</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Main App ──
+function App() {
+  const [tables, setTables] = useState(null);
+  const [dirty, setDirty] = useState(false);
+  const [activeSection, setActiveSection] = useState('item_loot_tables');
+  const [activeSubKey, setActiveSubKey] = useState('');
+  const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    fetch('../data/loot-tables.json')
+      .then(r => r.json())
+      .then(data => setTables(data))
+      .catch(() => setToast({ message: 'Could not load loot-tables.json', type: 'error' }));
+  }, []);
+
+  const sections = useMemo(() => [
+    { key: 'item_loot_tables', label: 'Item Loot Tables', hint: 'Weighted drop pools' },
+    { key: 'enemy_loot', label: 'Enemy Loot', hint: 'Per-tier drop chances' },
+    { key: 'breakable_loot', label: 'Breakable Loot', hint: 'Breakable object drops' },
+    { key: 'card_drop_modifiers', label: 'Card Modifiers', hint: 'Biome & floor scaling' },
+    { key: 'economy_settings', label: 'Economy', hint: 'Shop & currency settings' },
+    { key: 'drop_preview', label: 'Drop Preview', hint: 'Simulate loot rolls' },
+  ], []);
+
+  // Item loot table CRUD
+  const updateTableEntry = useCallback((tableKey, index, field, value) => {
+    setTables(prev => {
+      const next = JSON.parse(JSON.stringify(prev));
+      next.item_loot_tables[tableKey][index][field] = value;
+      return next;
+    });
+    setDirty(true);
+  }, []);
+
+  const addTableEntry = useCallback((tableKey) => {
+    setTables(prev => {
+      const next = JSON.parse(JSON.stringify(prev));
+      next.item_loot_tables[tableKey].push({ emoji: '❓', name: 'New Item', weight: 10, quantity: 1 });
+      return next;
+    });
+    setDirty(true);
+  }, []);
+
+  const removeTableEntry = useCallback((tableKey, index) => {
+    setTables(prev => {
+      const next = JSON.parse(JSON.stringify(prev));
+      next.item_loot_tables[tableKey].splice(index, 1);
+      return next;
+    });
+    setDirty(true);
+  }, []);
+
+  // Enemy loot update
+  const updateEnemyLoot = useCallback((tier, field, value) => {
+    setTables(prev => {
+      const next = JSON.parse(JSON.stringify(prev));
+      next.enemy_loot[tier][field] = value;
+      return next;
+    });
+    setDirty(true);
+  }, []);
+
+  // Economy update
+  const updateEconomy = useCallback((key, value) => {
+    setTables(prev => {
+      const next = JSON.parse(JSON.stringify(prev));
+      next.economy_settings[key] = value;
+      return next;
+    });
+    setDirty(true);
+  }, []);
+
+  // Export
+  const exportJson = useCallback(() => {
+    const json = JSON.stringify(tables, null, 2) + '\n';
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'loot-tables.json'; a.click();
+    URL.revokeObjectURL(url);
+    setDirty(false);
+    setToast({ message: 'Exported loot-tables.json', type: 'success' });
+  }, [tables]);
+
+  // Push to game
+  const pushToGame = useCallback(() => {
+    try {
+      const ch = new BroadcastChannel('gone-rogue-portal');
+      ch.postMessage({ type: 'registry-reload' });
+      ch.close();
+      setToast({ message: 'Reload signal sent', type: 'success' });
+    } catch (e) {}
+  }, []);
+
+  if (!tables) return <div className="empty-state"><div className="icon">⏳</div>Loading loot-tables.json…</div>;
+
+  const renderContent = () => {
+    if (activeSection === 'item_loot_tables') {
+      const tableKeys = Object.keys(tables.item_loot_tables || {});
+      const key = activeSubKey || tableKeys[0] || '';
+      const entries = tables.item_loot_tables[key] || [];
+      return (
+        <div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+            {tableKeys.map(k => (
+              <button key={k}
+                className={`btn btn-sm ${(activeSubKey || tableKeys[0]) === k ? 'btn-primary' : ''}`}
+                onClick={() => setActiveSubKey(k)}>
+                {k} ({(tables.item_loot_tables[k] || []).length})
+              </button>
+            ))}
+          </div>
+          <ItemTableEditor
+            tableName={key}
+            entries={entries}
+            onChange={(i, field, val) => updateTableEntry(key, i, field, val)}
+            onAddEntry={() => addTableEntry(key)}
+            onRemoveEntry={(i) => removeTableEntry(key, i)}
+          />
+        </div>
+      );
+    }
+
+    if (activeSection === 'enemy_loot') {
+      const tiers = Object.keys(tables.enemy_loot || {});
+      const tier = activeSubKey || tiers[0] || '';
+      return (
+        <div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            {tiers.map(t => (
+              <button key={t}
+                className={`btn btn-sm ${(activeSubKey || tiers[0]) === t ? 'btn-primary' : ''}`}
+                onClick={() => setActiveSubKey(t)}>
+                {t}
+              </button>
+            ))}
+          </div>
+          <EnemyLootEditor
+            tierName={tier}
+            data={tables.enemy_loot[tier]}
+            onChange={(field, val) => updateEnemyLoot(tier, field, val)}
+          />
+        </div>
+      );
+    }
+
+    if (activeSection === 'breakable_loot') {
+      return (
+        <div>
+          <div className="section-title">Breakable Loot Configuration</div>
+          <div className="section-desc">Read-only overview of breakable loot by biome. Edit the JSON directly for structural changes.</div>
+          {/* Default chances */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#888', marginBottom: 8 }}>Default Drop Chances</div>
+            <div className="chance-grid">
+              {Object.entries(tables.breakable_loot?.default || {}).map(([key, val]) => (
+                <div key={key} className="chance-card">
+                  <div className="cc-label">{key}</div>
+                  {typeof val === 'object' && val.chance !== undefined && (
+                    <div className="cc-row">
+                      <span className="cc-key">Chance</span>
+                      <span className="cc-val">{(val.chance * 100).toFixed(0)}%</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Biomes */}
+          {Object.entries(tables.breakable_loot?.biomes || {}).map(([biome, biomeData]) => (
+            <div key={biome} style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#ff9800', marginBottom: 6 }}>{biome}</div>
+              <div className="chance-grid">
+                {Object.entries(biomeData.types || {}).map(([typeName, typeData]) => (
+                  <div key={typeName} className="chance-card">
+                    <div className="cc-label">{typeName}</div>
+                    {Object.entries(typeData).filter(([k]) => k !== '_designNote').map(([k, v]) => (
+                      <div key={k} className="cc-row">
+                        <span className="cc-key">{k}</span>
+                        <span className="cc-val">{Array.isArray(v) ? v.join(', ') : String(v)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    if (activeSection === 'card_drop_modifiers') {
+      const mods = tables.card_drop_modifiers || {};
+      return (
+        <div>
+          <div className="section-title">Card Drop Modifiers</div>
+          <div className="section-desc">Biome weights, floor scaling, and combat source multipliers.</div>
+
+          {mods.combat_source && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#888', marginBottom: 8 }}>Combat Source Multipliers</div>
+              <div className="chance-grid">
+                {Object.entries(mods.combat_source).map(([k, v]) => (
+                  <div key={k} className="chance-card">
+                    <div className="cc-label">{k}</div>
+                    <div className="cc-row"><span className="cc-key">Multiplier</span><span className="cc-val">{v}×</span></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {mods.floor_scaling && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#888', marginBottom: 8 }}>Floor Scaling</div>
+              <div className="chance-grid">
+                {Object.entries(mods.floor_scaling).map(([k, v]) => (
+                  <div key={k} className="chance-card">
+                    <div className="cc-label">{k.replace(/_/g, ' ')}</div>
+                    {Object.entries(v).map(([fk, fv]) => (
+                      <div key={fk} className="cc-row">
+                        <span className="cc-key">{fk.replace(/_/g, ' ')}</span>
+                        <span className="cc-val">{Array.isArray(fv) ? fv.join('–') : fv}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {mods.biome_weights && (
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#888', marginBottom: 8 }}>Biome Card Weights</div>
+              {Object.entries(mods.biome_weights).map(([biome, cards]) => (
+                <div key={biome} style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 12, color: '#ff9800', marginBottom: 4 }}>{biome}</div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {Object.entries(cards).map(([card, weight]) => (
+                      <span key={card} style={{
+                        padding: '2px 8px', fontSize: 11, borderRadius: 10,
+                        border: '1px solid #333', background: 'rgba(255,152,0,0.05)', color: '#aaa'
+                      }}>
+                        {card}: <span style={{ color: '#ff9800' }}>{weight}×</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (activeSection === 'economy_settings') {
+      return <EconomyEditor data={tables.economy_settings} onChange={updateEconomy} />;
+    }
+
+    if (activeSection === 'drop_preview') {
+      return <DropPreview tables={tables.item_loot_tables} />;
+    }
+
+    return <div className="empty-state"><div className="icon">📦</div>Select a section</div>;
+  };
+
+  return (
+    <div className="app">
+      <div className="sidebar">
+        <div className="sidebar-header">
+          <h1>Loot Designer</h1>
+          <div className="sub">loot-tables.json editor</div>
+        </div>
+
+        <div className="section-list">
+          {sections.map(s => (
+            <div key={s.key}
+              className={`section-item ${activeSection === s.key ? 'active' : ''}`}
+              onClick={() => { setActiveSection(s.key); setActiveSubKey(''); }}>
+              <div className="label">{s.label}</div>
+              <div className="hint">{s.hint}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="sidebar-footer">
+          <div className="btn-row">
+            <button className="btn btn-primary" style={{ flex: 1 }} onClick={exportJson}>Export JSON</button>
+          </div>
+          <div className="btn-row">
+            <button className="btn" style={{ flex: 1 }} onClick={pushToGame}>↻ Push to Game</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="main-panel">
+        <div className="editor-area">
+          {renderContent()}
+        </div>
+        <div className="status-bar">
+          <span>v{tables.version || '?'}</span>
+          <span className={dirty ? 'dirty' : 'clean'}>
+            {dirty ? '● unsaved changes' : '✓ saved'}
+          </span>
+        </div>
+      </div>
+
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

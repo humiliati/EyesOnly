@@ -202,6 +202,50 @@ var GoneRogueDataRegistry = (function() {
 
   function isLoaded() { return _loaded; }
 
+  /* ── Hot-reload support (Phase 4) ──
+     Allows the designer portal to trigger a full re-fetch of all JSON
+     registries without a page reload. Portal sends a BroadcastChannel
+     message; the game picks it up and refreshes in-memory data.
+  */
+  function reload() {
+    _loaded = false;
+    _loadingPromise = null;
+    return load().then(function(result) {
+      try { console.log('[Registry] Hot-reloaded at ' + new Date().toLocaleTimeString()); } catch (e) {}
+
+      if (typeof NonCombatEventBus !== 'undefined') {
+        NonCombatEventBus.emit('registry:reloaded', { counts: info.counts, reloadedAt: Date.now() });
+      }
+      try {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('gone-rogue-registry-reloaded', { detail: { counts: info.counts, reloadedAt: Date.now() } }));
+        }
+      } catch (err) {}
+
+      return result;
+    });
+  }
+
+  // Listen for portal reload messages via BroadcastChannel
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      var _portalChannel = new BroadcastChannel('gone-rogue-portal');
+      _portalChannel.onmessage = function(ev) {
+        if (!ev.data) return;
+        if (ev.data.type === 'registry-reload') {
+          console.log('[Registry] Reload requested by portal');
+          reload();
+        }
+        if (ev.data.type === 'grant-item' && typeof window !== 'undefined') {
+          // Forward item grant to game via CustomEvent
+          window.dispatchEvent(new CustomEvent('gone-rogue-grant-item', { detail: ev.data.payload }));
+        }
+      };
+    }
+  } catch (bcErr) {
+    try { console.warn('[Registry] BroadcastChannel not available:', bcErr.message); } catch (e) {}
+  }
+
   function getItem(id) { return _byId.items[id] || _createMissingEntry(id, 'item'); }
   function _convertEnemyCardToPlayerCard(enemyCard) {
     if (!enemyCard || !enemyCard.id) return null;
@@ -328,6 +372,7 @@ var GoneRogueDataRegistry = (function() {
 
   return {
     load: load,
+    reload: reload,
     ready: ready,
     info: info,
     isLoaded: isLoaded,
