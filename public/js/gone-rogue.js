@@ -1293,6 +1293,7 @@ var GoneRogue = (function () {
     return {
       player: _player, grid: _grid, npcs: _npcs,
       tileMetadata: _tileMetadata, TILES: TILES,
+      GRID_WIDTH: GRID_WIDTH, GRID_HEIGHT: GRID_HEIGHT,
       turn: _turn,
       npcShowEmoji: _npcShowEmoji, npcSay: _npcSay,
       enterStrCombat: function(enemy, trigger) {
@@ -2462,8 +2463,8 @@ var GoneRogue = (function () {
   function _beginGameplayCtx() {
     return {
       player: _player,
-      grid: _grid,
-      tileMetadata: _tileMetadata,
+      get grid() { return _grid; },
+      get tileMetadata() { return _tileMetadata; },
       GRID_WIDTH: GRID_WIDTH,
       GRID_HEIGHT: GRID_HEIGHT,
       TILES: TILES,

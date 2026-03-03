@@ -88,7 +88,7 @@ var NpcGateSystem = (function () {
         for (var dx = -2; dx <= 2; dx++) {
           var x = ctx.player.x + dx;
           var y = ctx.player.y + dy;
-          if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) continue;
+          if (x < 0 || x >= ctx.GRID_WIDTH || y < 0 || y >= ctx.GRID_HEIGHT) continue;
 
           var tile = ctx.grid[y] ? ctx.grid[y][x] : null;
           if (tile !== ctx.TILES.EXIT && tile !== ctx.TILES.DOOR) continue;
