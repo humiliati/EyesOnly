@@ -32,8 +32,8 @@ Phase 3: Constraint & Tile Classification
 
 Phase 4: Pressure Fields & Dynamic Mutation
         │
-        ├─► 4.1 Faction pressure layers
-        ├─► 4.2 Resource gradients
+        ├─► //// 4.1 Faction pressure layers
+        ├─► //// 4.2 Resource gradients
         ├─► 4.3 In-run mutation events
         └─► 4.4 Persistent world drift
 
