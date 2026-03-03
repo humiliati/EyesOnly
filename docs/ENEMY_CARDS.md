@@ -1,6 +1,39 @@
-# 
+# ENEMY CARDS ROADMAP
 
 Based on my deep dive into your codebase, here's a phased roadmap that builds on your existing systems — `enemy-hand-display.js`, `enemy-intent-system.js`, `card-system.js`, `cards.json`, the NCH/combat roadmap, and the BLVCK/joker emoji infrastructure.
+
+
+---
+
+## Cross-Roadmap Sprint Alignment
+
+> This document is executed primarily during **Sprint 3 [ENI]** of the Cross-Roadmap Execution Order, with dependencies on Sprints 0–2 and downstream consumers in Sprints 4–6.
+
+| Phase | Sprint | Depends On | Unlocks |
+|---|---|---|---|
+| Phase 0 (Enemy Card DB) | Sprint 3 — ENI Phase 1 | IPR Phase 1 (items.json registry), CHH Step 2 (`hydrateCard`) | Phase 1 hydration, all downstream EATK-* lookups |
+| Phase 1 (Wire to Map) | Sprint 3 — ENI Phase 1 | Phase 0, `enemy-deck-hydrator.js` | Pre-combat steal, combat hand, capsule display |
+| Phase 2 (Combat Hand) | Sprint 3 — ENI Phase 3 | CHH Step 2 (`hydrateCard` for EATK-* resolution) | Deck-aware enemy hand in STR combat |
+| Phase 3 (Visuals) | Sprint 3 — ENI Phase 3 | Sprint 0 (NCH left column unblocked) | Interactable jokers, drag+drop testable |
+| Phase 4 (Interactions) | Sprint 3 — ENI Phase 4–5 | Phase 3 visuals, CHH Step 3 (policy flags stub) | Steal/reveal/destroy/plant menus, BLVCK slot planting |
+| Phase 5 (Info Duel) | ✅ Complete | Phase 4 interaction surface | Charges, mutation, momentum, escalation, overload |
+| Phase 5.11 (Stress Test) | ✅ Complete | Phase 5 + all combos | Synergy ecosystem validation (77/0/40) |
+| Phase 6 (Env Synergy) | Sprint 3 — ENI Phase 5 | Phase 0 enemy cards, EB Phase 2 (explosive card defs) | Environment synergy cards, new decks, new combos |
+
+### CHH Integration Points (Card Hand Harmonization)
+
+These items from CARD_HAND_HARMONIZATION_ROADMAP must be complete before the corresponding phase here can execute:
+
+- **CHH Step 2** (`hydrateCard()` + CI-* instances) → Required by Phase 0.3 (registry must resolve EATK-* via same pipeline) and Phase 2 (combat hand hydration)
+- **CHH Step 3** (policy flags stub: `stealable`, `plantable`, `destroyable`, `triggerable`) → Required by Phase 4 (interaction menu reads flags to determine available actions)
+- **CHH Step 5** (GC enemy deck scan) → Required by Phase 4+ (planted CI-* cards in enemy decks must survive garbage collection)
+- **SharedItemRenderer.resolve()** → Phase 3 renderers can use this for EATK-* card display if emoji/name fallback is needed
+
+### EB Integration Points (Explosive Breakables)
+
+- **EB Phase 2** (explosive card definitions in registry) → Required by Phase 6 (environment synergy cards reference explosive tags)
+- **EB Phase 5** (explosive combat card effects) → Required by Phase 4.1 BLVCK plant menu (player must have plantable explosive cards)
+- Explosive inventory percentages: Common 20% PIPE_BOMB, Uncommon 35% FRAG, Elite 15% C4
 
 ---
 
@@ -59,6 +92,8 @@ npm run build:enemyCatalog
 
 ## Phase 0 — Enemy Attack Card Database
 
+> **🗓 Sprint 3 [ENI Phase 1]** — Execute after CHH Steps 1–3 (Sprint 1) are complete. `hydrateCard()` and `getCard()`/`getEnemyCard()` must be operational.
+
 > **Goal:** Define enemy attacks as cards in the same format as player cards, stored per-enemy-type.
 
 ### 0.1 — Create `enemy-cards.json`
@@ -114,6 +149,8 @@ public/js/gone-rogue-data-registry.js
 ---
 
 ## Phase 1 — Wire Enemy Cards to Enemies on the Map
+
+> **🗓 Sprint 3 [ENI Phase 1–2]** — Enemy deck hydration uses the registry loaded in Phase 0. Pre-combat steal flows through `enemy-steal-system.js` and writes `CardRef` entries via the CHH pipeline (not legacy `addPrintedCards`). See THEFT_MECHANICS.md for updated steal acquisition path.
 
 > **Goal:** Each spawned enemy carries an actual array of card IDs (its "deck"), and those cards are stealable outside of combat based on exposed tags.
 
@@ -194,6 +231,8 @@ item-steal-tags-example.json
 
 ## Phase 2 — Enemy Deck Reflected in Combat Hand
 
+> **🗓 Sprint 3 [ENI Phase 3]** — Requires Sprint 0 NCH left column fix so enemy hand is visible alongside action buttons. `hydrateCard()` from CHH Step 2 resolves EATK-* IDs into display data for the enemy hand renderer.
+
 > **Goal:** When STR combat starts, the enemy's redacted hand shows the **remaining** (non-stolen) cards from `enemy.cardDeck`, not just a generic count.
 
 ### 2.1 — Feed Real Deck to `EnemyHandDisplay`
@@ -248,6 +287,8 @@ _strCombatState.enemy.cardCount = enemy.cardDeck.filter(
 ---
 
 ## Phase 3 — Joker Emoji Visuals + Interactability
+
+> **🗓 Sprint 3 [ENI Phase 3]** — The BLVCK vs ordinary joker distinction becomes testable here because Sprint 0 unblocked the left column. `SharedItemRenderer.resolve()` (CHH Step 5) can be used for EATK-* → emoji/name fallback in the render pipeline.
 
 > **Goal:** Enemy cards render as `blvck.joker.emoji` (NCH capsule style) by default, and become interactable (ordinary jokers) based on player's equipped items/played cards.
 
@@ -314,6 +355,8 @@ function _render() {
 
 ## Phase 4 — In-Combat Interactions on Joker Cards
 
+> **🗓 Sprint 3 [ENI Phase 4–5]** — The interaction menu reads **policy flags** (`stealable`, `plantable`, `destroyable`, `triggerable`) from card definitions (CHH Step 3). BLVCK plant menu requires EB Phase 5 explosive combat cards to be available in the player's hand. Steal acquisition must use `CardRef` pipeline, not legacy `GAMESTATE.addPrintedCards`.
+
 > **Goal:** Clicking an interactable enemy joker triggers reveal/steal/destroy based on context.
 
 ### 4.1 — Interaction Menu
@@ -354,6 +397,36 @@ Available actions depend on which items/cards the player has:
 |**Steal**|Pickpocket Gloves equipped OR Sleight card played|Removes card from enemy; adds to player hand via `acquireNewCardDuringCombat()`|
 |**Destroy**|EMP Disruptor equipped OR Sabotage card played|Removes card from enemy; triggers `card_killed` combat event (enemy goes Enraged `>:(`)|
 
+
+### 4.1.1 — Edge Case: BLVCK as Universal Empty Slot Node
+
+> **Policy flags:** `stealable: false, plantable: true, destroyable: false, triggerable: false`
+
+When a player steals **all** real attack cards from an enemy's hand, the enemy hydrates a BLVCK card (`ACT-000`) into the now-empty slot. This card:
+
+- **Cannot be stolen** (`stealable: false`) — prevents infinite steal loops
+- **Acts as a plantable slot** (`plantable: true`) — the player can plant explosives or poisons into it
+- **Cannot be destroyed** (`destroyable: false`) — always occupies at least one slot
+- **Cannot be synergy-triggered** (`triggerable: false`) — no combo potential
+
+**Desperation action:** If the enemy has all real cards stolen AND nothing planted in BLVCK slots, the enemy must play BLVCK as a desperation action:
+- Damage: 0–2 (random)
+- Tags: none
+- Face expression: `(ಥ_ಥ)` (despair)
+- No combo potential, no synergy chains
+
+**Spawn rule:** Every enemy spawns with at least one BLVCK slot (`isBlvckSlot: true` on the first `cardDeck` entry). This ensures planting is always available even before any cards are stolen.
+
+**Data shape:**
+```
+enemy.cardDeck[0] = {
+  id: 'ACT-000',
+  stolen: false,
+  isBlvckSlot: true,
+  planted: null  // becomes { cardId: 'ACT-###', plantedBy: 'player', turn: N }
+}
+```
+
 ### 4.2 — Wire to Existing APIs
 
 The `EnemyHandDisplay` already exposes `revealCard()`, `stealCard()`, and `destroyCard()`. Phase 4 wires the interaction menu to these APIs and adds downstream effects:
@@ -361,6 +434,28 @@ The `EnemyHandDisplay` already exposes `revealCard()`, `stealCard()`, and `
 - **Steal** → `stealCard(index)` → `GAMESTATE.acquireNewCardDuringCombat(cardId, 1)` → enemy `cardCount` decrements
 - **Destroy** → `destroyCard(index)` → `EnemyIntentSystem.onCombatEvent(enemy, 'card_killed')` → enemy face goes `>:(`
 - **Reveal** → `revealCard(index, cardDef)` → enemy card flips to actual emoji
+
+---
+
+
+### 4.2.1 — Edge Case: Synergy-Triggered Planted Explosive Detonation
+
+When an enemy plays a card whose tags form a valid combo with a planted explosive's tags, the explosive **auto-fires at full damage** (no 60% reduction — the enemy triggered it themselves).
+
+**Resolution flow:**
+1. Enemy selects card to play from their hand
+2. Combat resolver evaluates tag combos across ALL cards in play (including planted cards in enemy slots)
+3. If `planted.cardId` resolves to a card with `triggerable: true` AND the played card's tags form a combo with the planted card's tags → **auto-detonate**
+4. Detonation deals full card damage to the enemy (self-inflicted)
+5. Planted card is consumed (removed from slot, CI-* instance garbage-collected)
+
+**C4 exception:** C4_CHARGE has a 1-turn armed delay. If planted this turn, it cannot be synergy-triggered until the next turn. The `planted.turn` field is checked: `currentTurn - planted.turn >= 1`.
+
+**Interaction charge bypass:** Synergy-triggered detonation does NOT consume an interaction charge. It fires during combo resolution, not as a player action. The `triggerable: true` flag is checked during combo resolution phase, not during the manual click phase.
+
+**Combo examples:**
+- Enemy plays EATK-001 (Pistol Shot, tags: `ranged, ballistic`) while player planted FRAG_GRENADE (tags: `explosive, ballistic, aoe`) → `ballistic` tag match → auto-detonate FRAG for 12 AoE damage
+- Enemy plays EATK-022 (Broken Lever, tags: `melee, improvised, black_market`) while player planted PIPE_BOMB (tags: `explosive, improvised, stun`) → `improvised` tag match → auto-detonate PIPE_BOMB for 8 damage + stun
 
 ---
 
@@ -445,6 +540,8 @@ Phase 0 (Data)                    Phase 1 (Map)                   Phase 2 (Comba
 ---
 
 ## Phase 5 — Information Duel System
+
+> **✅ Complete** — All sub-phases (5.1–5.11) implemented and tested. The Information Duel system was built before the cross-roadmap execution order was established. No sprint dependencies remain.
 
 > **Goal:** Transform enemy card interactions from an "Interrupt Engine" into a psychological "Information Duel" with multi-turn memory, escalation pressure, adaptive AI, and constrained interaction economy.
 
@@ -674,6 +771,8 @@ Energy has no combo loop — it's managed by card costs and turn economy, not th
 
 ## Phase 6 — Environment Synergy Cards (Basic Attack Type)
 
+> **🗓 Sprint 3 [ENI Phase 5]** — Environment synergy cards (EATK-021/022/023) depend on EB Phase 2 explosive card definitions being in the registry. New tag synergy combos (Bind & Blast, Salvage Rights, Ghost Passage) must be added to `tag-synergy-data.json` before the stress test rerun.
+
 > **Goal:** Add basic attack-type enemy cards with long but simple synergy chains that involve status modifiers or one-time-use attacks, contextually relevant to the environment. Focus on Environment Synergy and ENEMY_AI via BIOME_SYSTEMS.
 
 ### New Enemy Cards
@@ -731,3 +830,36 @@ Three new combos added to `public/data/gone-rogue/tag-synergy-data.json`:
 - Enemy decks: **37 → 41** (WAREHOUSE_ENFORCER, BLACK_MARKET_FENCE, CATACOMB_SENTINEL added; JUNKYARD_SCAVENGER updated)
 - Tag synergy combos: **35 → 38** (Bind & Blast, Salvage Rights, Ghost Passage added)
 - New tags introduced: `bind`, `ranged_chain`, `structural`, `environmental_trigger`
+
+---
+
+## Sprint Playtest Gates (from Cross-Roadmap Execution Order)
+
+### After Sprint 3 (this document's primary sprint)
+
+The following must all pass before advancing to Sprint 4:
+
+- [ ] `GoneRogueDataRegistry.getEnemyCard('EATK-001')` returns valid definition
+- [ ] `GoneRogueDataRegistry.getEnemyDeck('STANDARD_GUARD')` returns cards + exposedTags
+- [ ] Spawned enemies have `cardDeck` array with at least one BLVCK slot (`isBlvckSlot: true`)
+- [ ] Player with Pickpocket Gloves can steal via tag match → card acquired through `CardRef` pipeline (not `addPrintedCards`)
+- [ ] Stolen card renders correctly in player hand via `hydrateCard()` (EATK-* resolved from registry)
+- [ ] Enemy hand in STR combat shows N jokers where N = remaining non-stolen cards
+- [ ] BLVCK jokers render as greyed; interactable jokers pulse when player has matching tools
+- [ ] Clicking interactable joker → context menu shows available actions based on policy flags
+- [ ] BLVCK slot shows PLANT menu when player holds plantable explosive cards
+- [ ] Planting explosive into BLVCK slot → `planted: { cardId, plantedBy, turn }` written to cardDeck entry
+- [ ] Enemy plays card that tag-matches planted explosive → synergy-triggered detonation at full damage
+- [ ] C4 planted this turn does NOT auto-fire (armed delay check on `planted.turn`)
+- [ ] Enemy with all cards stolen plays BLVCK as desperation action (0–2 dmg, (ಥ_ಥ) face)
+- [ ] Information Duel HUD still functional (charges, mutation, momentum, escalation, overload)
+- [ ] Environment synergy cards (EATK-021/022/023) appear in correct biome enemy decks
+- [ ] Stress test rerun: ≥77 passed, 0 failed (new combos may shift warning count)
+
+### Cross-Sprint Dependencies to Verify
+
+- [ ] CHH Step 2 `hydrateCard()` resolves EATK-* IDs → confirms Sprint 1 foundation
+- [ ] CHH Step 5 GC scan includes enemy decks → planted CI-* cards not garbage-collected
+- [ ] EB Phase 5 explosive cards available in player hand → plantable into BLVCK slots
+- [ ] Sprint 0 NCH left column visible → enemy hand + action buttons both accessible
+
