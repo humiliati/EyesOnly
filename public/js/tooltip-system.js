@@ -11,7 +11,7 @@ const TooltipSystem = (function() {
   var _mokHistoryContainer = null;
   var _isExpanded = false;
   var _messageHistory = [];
-  var MAX_HISTORY_LINES = 30;
+  var MAX_HISTORY_LINES = 256;
   var DEFAULT_MESSAGE = 'Standing by for advisories.';
 
   /**
@@ -28,99 +28,87 @@ const TooltipSystem = (function() {
   }
 
   /**
-   * Create scrollable history container for MOK interjection
+   * Create scrollable history container for MOK interjection.
+   * Layout: toggle button lives in the footer row (always visible).
+   * History panel pops UP from the footer using absolute positioning
+   * so it overlays the game screen, not pushes content down.
    */
   function _createHistoryContainer() {
-    // Check if history container already exists
     var existingContainer = document.getElementById('mok-history-container');
     if (existingContainer) {
       _mokHistoryContainer = existingContainer;
       return;
     }
 
-    // Find the MOK interjection parent element (#mok-interjections)
+    // The MOK interjection parent (#mok-interjections)
     var mokParent = _mokInterjectionElement ? _mokInterjectionElement.parentElement : null;
-    if (!mokParent) {
-      return;
-    }
+    if (!mokParent) return;
 
-    // Create expand/collapse button that will be positioned on the same line
+    // Make parent the positioning anchor for the upward-expanding history
+    mokParent.style.position = 'relative';
+
+    // Create toggle button — stays in the footer row alongside interject-body
     var toggleBtn = document.createElement('button');
     toggleBtn.id = 'mok-history-toggle';
     toggleBtn.className = 'mok-history-toggle';
     toggleBtn.textContent = '▼ History';
     toggleBtn.addEventListener('click', toggleHistory);
 
-    // Insert button right after the interjection body (will be styled to float right)
+    // Insert button right after the interjection body (floats right in footer)
     mokParent.insertBefore(toggleBtn, _mokInterjectionElement.nextSibling);
 
-    // Create history container
+    // Create history container — absolutely positioned ABOVE the footer
     _mokHistoryContainer = document.createElement('div');
     _mokHistoryContainer.id = 'mok-history-container';
     _mokHistoryContainer.className = 'mok-history-container mok-history-collapsed';
-    _mokHistoryContainer.style.display = 'none';
 
-    // Add history content area
+    // History content (scrollable area)
     var historyContent = document.createElement('div');
     historyContent.id = 'mok-history-content';
     historyContent.className = 'mok-history-content';
     _mokHistoryContainer.appendChild(historyContent);
 
-    // Insert history container after the toggle button
-    mokParent.insertBefore(_mokHistoryContainer, toggleBtn.nextSibling);
+    // Append container to parent — CSS positions it above via bottom:100%
+    mokParent.appendChild(_mokHistoryContainer);
   }
 
   /**
    * Get current context (what mode the user is in)
-   * @returns {string} Context name
    */
   function _getCurrentContext() {
-    // Check if Gone Rogue is active
     if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.isActive === 'function') {
       if (GoneRogue.isActive()) {
-        // Check if in STR combat
         if (typeof GoneRogue.isInStrCombat === 'function' && GoneRogue.isInStrCombat()) {
           return 'str-combat';
         }
         return 'gone-rogue';
       }
     }
-
-    // Check if Street Chronicles is active
     if (typeof StreetChronicles !== 'undefined' && typeof StreetChronicles.isActive === 'function') {
       if (StreetChronicles.isActive()) {
         return 'street-chronicles';
       }
     }
-
-    // Default context is terminal/event-log
     return 'terminal';
   }
 
   /**
    * Show a tooltip message with auto-clear
-   * @param {string} message - Message to display
-   * @param {number} durationMs - Duration in milliseconds (default: 2500)
    */
   function show(message, durationMs) {
     if (!_mokInterjectionElement) {
-      init(); // Try to initialize again
+      init();
       if (!_mokInterjectionElement) return;
     }
 
-    // Clear any existing timer
     if (_currentTimer) {
       clearTimeout(_currentTimer);
       _currentTimer = null;
     }
 
-    // Set the message
     _mokInterjectionElement.textContent = message;
-
-    // Add to history
     _addToHistory(message);
 
-    // Set auto-clear timer
     var duration = durationMs || 2500;
     _currentTimer = setTimeout(function() {
       _mokInterjectionElement.textContent = DEFAULT_MESSAGE;
@@ -130,43 +118,34 @@ const TooltipSystem = (function() {
 
   /**
    * Add message to history
-   * @param {string} message - Message to add
    */
   function _addToHistory(message) {
-    // Don't add default message or empty messages
-    if (!message || message === DEFAULT_MESSAGE) {
-      return;
-    }
+    if (!message || message === DEFAULT_MESSAGE) return;
 
-    // Add timestamp
-    var timestamp = new Date().toLocaleTimeString('en-US', { 
-      hour12: false, 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      second: '2-digit' 
+    var timestamp = new Date().toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
     });
 
-    var entry = {
-      time: timestamp,
-      message: message
-    };
+    _messageHistory.unshift({ time: timestamp, message: message });
 
-    // Add to history array
-    _messageHistory.unshift(entry);
-
-    // Keep only MAX_HISTORY_LINES
     if (_messageHistory.length > MAX_HISTORY_LINES) {
       _messageHistory = _messageHistory.slice(0, MAX_HISTORY_LINES);
     }
 
-    // Update history display if expanded
     if (_isExpanded) {
       _renderHistory();
     }
   }
 
   /**
-   * Render message history
+   * Render history with progressive transparency and compaction.
+   *
+   * Rows 0-9   (newest):  full opacity, normal spacing
+   * Rows 10-19 (middle):  fading opacity, slightly compacted
+   * Rows 20+   (oldest):  very transparent, heavily compacted "rolodex" look
    */
   function _renderHistory() {
     if (!_mokHistoryContainer) return;
@@ -177,7 +156,40 @@ const TooltipSystem = (function() {
     var html = '';
     for (var i = 0; i < _messageHistory.length; i++) {
       var entry = _messageHistory[i];
-      html += '<div class="mok-history-entry">';
+
+      // Progressive opacity: newest = 1.0, fading toward 0.15 for oldest
+      var opacity;
+      if (i < 10) {
+        opacity = 1.0 - (i * 0.03);        // 1.0 → 0.73
+      } else if (i < 20) {
+        opacity = 0.7 - ((i - 10) * 0.04);  // 0.7 → 0.34
+      } else {
+        opacity = Math.max(0.15, 0.3 - ((i - 20) * 0.005)); // 0.3 → 0.15
+      }
+
+      // Progressive compaction: tight rows that get tighter
+      var marginTop;
+      var scale;
+      if (i < 10) {
+        marginTop = 0;      // tight, no extra space
+        scale = 1.0;
+      } else if (i < 20) {
+        marginTop = -1;      // start overlapping slightly
+        scale = 0.97;
+      } else {
+        marginTop = -2;      // rolodex overlap
+        scale = 0.94;
+      }
+
+      var style = 'opacity:' + opacity.toFixed(2) + ';';
+      if (marginTop !== 0) {
+        style += 'margin-top:' + marginTop + 'px;';
+      }
+      if (scale !== 1.0) {
+        style += 'transform:scaleY(' + scale + ');transform-origin:bottom;';
+      }
+
+      html += '<div class="mok-history-entry" style="' + style + '">';
       html += '<span class="mok-history-time">[' + entry.time + ']</span> ';
       html += '<span class="mok-history-message">' + entry.message + '</span>';
       html += '</div>';
@@ -189,7 +201,7 @@ const TooltipSystem = (function() {
 
     content.innerHTML = html;
 
-    // Auto-scroll to bottom (newest messages)
+    // Scroll to top (newest first)
     content.scrollTop = 0;
   }
 
@@ -201,17 +213,29 @@ const TooltipSystem = (function() {
 
     var toggleBtn = document.getElementById('mok-history-toggle');
 
+    // The parent (#mok-interjections) may have overflow:hidden and low z-index
+    // from CRT mobile rules. Override when expanding so the upward panel is visible.
+    var mokParent = _mokHistoryContainer ? _mokHistoryContainer.parentElement : null;
+
     if (_isExpanded) {
-      _mokHistoryContainer.style.display = 'block';
       _mokHistoryContainer.classList.remove('mok-history-collapsed');
       _mokHistoryContainer.classList.add('mok-history-expanded');
-      if (toggleBtn) toggleBtn.textContent = '▲ Hide History';
+      if (toggleBtn) toggleBtn.textContent = '▲ Hide';
+      // Override parent constraints so absolute-positioned panel escapes
+      if (mokParent) {
+        mokParent.style.overflow = 'visible';
+        mokParent.style.zIndex = '9000';
+      }
       _renderHistory();
     } else {
-      _mokHistoryContainer.style.display = 'none';
       _mokHistoryContainer.classList.remove('mok-history-expanded');
       _mokHistoryContainer.classList.add('mok-history-collapsed');
       if (toggleBtn) toggleBtn.textContent = '▼ History';
+      // Restore parent overflow so footer stays compact when collapsed
+      if (mokParent) {
+        mokParent.style.overflow = '';
+        mokParent.style.zIndex = '';
+      }
     }
   }
 
@@ -219,20 +243,25 @@ const TooltipSystem = (function() {
    * Collapse history (force to minimized state)
    */
   function collapseHistory() {
-    if (!_isExpanded) return; // Already collapsed
+    if (!_isExpanded) return;
 
     _isExpanded = false;
     var toggleBtn = document.getElementById('mok-history-toggle');
 
-    _mokHistoryContainer.style.display = 'none';
     _mokHistoryContainer.classList.remove('mok-history-expanded');
     _mokHistoryContainer.classList.add('mok-history-collapsed');
     if (toggleBtn) toggleBtn.textContent = '▼ History';
+
+    // Restore parent overflow/z-index
+    var mokParent = _mokHistoryContainer ? _mokHistoryContainer.parentElement : null;
+    if (mokParent) {
+      mokParent.style.overflow = '';
+      mokParent.style.zIndex = '';
+    }
   }
 
   /**
    * Show a persistent tooltip message (stays until replaced)
-   * @param {string} message - Message to display
    */
   function showPersistent(message) {
     if (!_mokInterjectionElement) {
@@ -240,16 +269,12 @@ const TooltipSystem = (function() {
       if (!_mokInterjectionElement) return;
     }
 
-    // Clear any existing timer
     if (_currentTimer) {
       clearTimeout(_currentTimer);
       _currentTimer = null;
     }
 
-    // Set the message without auto-clear
     _mokInterjectionElement.textContent = message;
-
-    // Add to history
     _addToHistory(message);
   }
 
@@ -259,20 +284,16 @@ const TooltipSystem = (function() {
   function clear() {
     if (!_mokInterjectionElement) return;
 
-    // Clear timer if active
     if (_currentTimer) {
       clearTimeout(_currentTimer);
       _currentTimer = null;
     }
 
-    // Reset to default message
     _mokInterjectionElement.textContent = DEFAULT_MESSAGE;
   }
 
   /**
    * Show context-appropriate tooltip
-   * @param {string} action - Action being performed
-   * @param {Object} data - Optional data about the action
    */
   function showAction(action, data) {
     var context = _getCurrentContext();
