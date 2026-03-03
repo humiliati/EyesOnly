@@ -982,16 +982,13 @@ var NonCombatHUD = (function() {
       slot.dataset.vaultIndex = i;
 
       if (ref && ref.id) {
-        // Items (ITM-*) show their actual emoji; cards (ACT-*) show joker back
-        var isItem = (ref.id.indexOf('ITM-') === 0);
-        var cardDef = _getCardDef(ref.id);
-        var itemDef = null;
-        if (isItem && typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
-          itemDef = GoneRogueDataRegistry.getItem(ref.id);
-        }
-        var defToUse = itemDef || cardDef;
-        var em = (defToUse && defToUse.emoji) ? defToUse.emoji : '\uD83C\uDCCF';
-        var nm = (defToUse && defToUse.name) ? defToUse.name : ref.id;
+        // SharedItemRenderer resolves item/card with full fallback chain
+        var resolved = (typeof SharedItemRenderer !== 'undefined')
+          ? SharedItemRenderer.resolve(ref)
+          : { emoji: '🃏', name: ref.id, isItem: (ref.id.indexOf('ITM-') === 0), def: null };
+        var isItem = resolved.isItem;
+        var em = resolved.emoji;
+        var nm = resolved.name;
 
         // Default face: items show their emoji, cards show joker back
         var face = document.createElement('div');
@@ -1005,15 +1002,29 @@ var NonCombatHUD = (function() {
         portrait.innerHTML = '<div style="font-size:20px;">' + em + '</div><div style="font-size:8px;color:rgba(191,255,227,0.9);margin-top:2px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:54px;">' + nm + '</div>';
         slot.appendChild(portrait);
 
-        // Drag handler (vault → hand/backup)
-        (function(idx, cardRef, def0) {
+        // Drag handler — ITM-items use kind:'persistent_item' (index into inventoryPersistent),
+        // ACT-cards use kind:'vault' (index into persistentCards array).
+        var defToUse = resolved.def;
+        (function(idx, cardRef, def0, itemFlag) {
           slot.addEventListener('pointerdown', function(e) {
             if (e.button !== undefined && e.button !== 0) return;
             if (_expanded && _expanded.classList.contains('nch-locked')) return;
             var emj = (def0 && def0.emoji) ? def0.emoji : '\uD83C\uDCCF';
-            _startDrag({ kind: 'vault', index: idx, id: cardRef.id, emoji: emj }, e);
+            if (itemFlag) {
+              // Persistent inventory item — index IS the inventoryPersistent index
+              // (items are prepended in _getVaultCards before cards)
+              _startDrag({ kind: 'persistent_item', index: idx, id: cardRef.id, emoji: emj }, e);
+            } else {
+              // Card — subtract item count to get persistentCards index
+              var itemCount = 0;
+              try {
+                var pInv = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getPersistentInventory) ? GAMESTATE.getPersistentInventory() : [];
+                itemCount = Array.isArray(pInv) ? pInv.length : 0;
+              } catch (ic) {}
+              _startDrag({ kind: 'vault', index: idx - itemCount, id: cardRef.id, emoji: emj }, e);
+            }
           });
-        })(i, ref, defToUse);
+        })(i, ref, defToUse, isItem);
       } else {
         slot.textContent = '\u2014'; // —
       }
@@ -1424,13 +1435,27 @@ var NonCombatHUD = (function() {
           if (backup && backup[_drag.index]) { backup.splice(_drag.index, 1); disposed = true; }
         }
       } else if (_drag.kind === 'vault') {
-        // Vault disposal — remove 1 qty from persistentCards
+        // Vault disposal — try card removal first (CSA → GAMESTATE)
         if (_useCSA && typeof CardStateAuthority.disposeFromVault === 'function') {
           disposed = CardStateAuthority.disposeFromVault(_drag.id);
         }
         if (!disposed && typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.removePersistentCard === 'function') {
           var vr = GAMESTATE.removePersistentCard(_drag.id, 1);
           disposed = !!(vr && vr.success);
+        }
+        // Safety net: if id is an ITM-item that leaked through as vault kind,
+        // find and remove it from inventoryPersistent by id scan.
+        if (!disposed && _drag.id && _drag.id.indexOf('ITM-') === 0) {
+          try {
+            var pInv = GAMESTATE.getPersistentInventory();
+            for (var pi = 0; pi < pInv.length; pi++) {
+              if (pInv[pi] && pInv[pi].id === _drag.id) {
+                GAMESTATE.removePersistentInventoryItem(pi);
+                disposed = true;
+                break;
+              }
+            }
+          } catch (itemFallback) {}
         }
       } else if (_drag.kind === 'persistent_item') {
         // Persistent inventory item (keys, equipment) — remove by index

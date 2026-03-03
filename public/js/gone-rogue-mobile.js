@@ -2889,17 +2889,12 @@ const GoneRogueMobile = (function () {
       itemDiv.className = 'rogue-inventory-item';
       itemDiv.dataset.index = index;
 
-      var item = null;
-      if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
-        item = GoneRogueDataRegistry.getItem(itemRef.id);
-      }
-      // If registry returned a _missing stub or null, fall back to meta or raw ref
-      if (!item || item._missing) item = null;
-      if (!item) item = { name: itemRef.id, emoji: '📦' };
-
-      // Allow migrated legacy overrides (meta carries original name/emoji from pickup)
-      var displayName = (itemRef.meta && itemRef.meta.legacyName) ? itemRef.meta.legacyName : (item.name || itemRef.id);
-      var displayEmoji = (itemRef.meta && itemRef.meta.emoji) ? itemRef.meta.emoji : (item.emoji || '📦');
+      // SharedItemRenderer resolves item with full fallback + meta override chain
+      var resolved = (typeof SharedItemRenderer !== 'undefined')
+        ? SharedItemRenderer.resolve(itemRef)
+        : { emoji: '📦', name: itemRef.id };
+      var displayName = resolved.name;
+      var displayEmoji = resolved.emoji;
 
       // Check if this item is currently equipped
       var isEquipped = activeItemRef && activeItemRef.id === itemRef.id;
@@ -2946,14 +2941,13 @@ const GoneRogueMobile = (function () {
         cardDiv.dataset.cardIndex = cIndex;
         cardDiv.dataset.kind = 'card';
 
-        var card = null;
-        if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) {
-          card = GoneRogueDataRegistry.getCard(cardRef.id);
-        }
-        if (!card) card = { name: cardRef.id, emoji: '🃏' };
-
-        var cEmoji = card.emoji || '🃏';
-        var cName = card.name || cardRef.id;
+        // SharedItemRenderer resolves card with full fallback chain
+        var cardResolved = (typeof SharedItemRenderer !== 'undefined')
+          ? SharedItemRenderer.resolve(cardRef)
+          : { emoji: '🃏', name: cardRef.id, def: null };
+        var card = cardResolved.def || { name: cardResolved.name, emoji: cardResolved.emoji };
+        var cEmoji = cardResolved.emoji;
+        var cName = cardResolved.name;
 
         var emojiSpan2 = document.createElement('span');
         emojiSpan2.className = 'item-emoji';
@@ -3398,15 +3392,13 @@ const GoneRogueMobile = (function () {
 
     GAMESTATE.setActiveItem(itemRef);
 
-    var item = null;
-    if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
-      item = GoneRogueDataRegistry.getItem(itemRef.id);
-    }
-    if (!item || item._missing) item = null;
-    if (!item) item = { name: itemRef.id, emoji: '📦' };
-
-    var displayName = (itemRef.meta && itemRef.meta.legacyName) ? itemRef.meta.legacyName : (item.name || itemRef.id);
-    var displayEmoji = (itemRef.meta && itemRef.meta.emoji) ? itemRef.meta.emoji : (item.emoji || '📦');
+    // SharedItemRenderer resolves item with full fallback + meta override chain
+    var resolved = (typeof SharedItemRenderer !== 'undefined')
+      ? SharedItemRenderer.resolve(itemRef)
+      : { emoji: '📦', name: itemRef.id, def: null };
+    var item = resolved.def || { name: resolved.name, emoji: resolved.emoji };
+    var displayName = resolved.name;
+    var displayEmoji = resolved.emoji;
 
     // Update active item display in header
     var activeDisplay = document.getElementById('active-item-display');

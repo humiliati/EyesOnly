@@ -370,6 +370,40 @@
     "consumeOnUse": false,
     "tier": 2
   },
+  {
+    "id": "ITM-017",
+    "name": "Rusty Key",
+    "emoji": "🔑",
+    "type": "key",
+    "subtype": "gate",
+    "rarity": "common",
+    "stackable": true,
+    "maxStack": 5,
+    "equipSlot": "active",
+    "effects": [{ "type": "unlock_gate", "compatibleGates": ["WOODEN_GATE", "OLD_DOOR", "LOCKED_CHEST"] }],
+    "synergyTags": ["key", "gate", "tier1"],
+    "description": "An old, rusted key. Might open something...",
+    "consumeOnUse": true,
+    "tier": 1,
+    "_designNote": "Tier 1 ammo key. Consumed on gate unlock. Previously existed only in environmental-synergy.js."
+  },
+  {
+    "id": "ITM-018",
+    "name": "Bronze Key",
+    "emoji": "🗝️",
+    "type": "key",
+    "subtype": "gate",
+    "rarity": "common",
+    "stackable": true,
+    "maxStack": 5,
+    "equipSlot": "active",
+    "effects": [{ "type": "unlock_gate", "compatibleGates": ["BRONZE_GATE", "MUSEUM_DOOR", "LOCKED_CHEST"] }],
+    "synergyTags": ["key", "gate", "tier1"],
+    "description": "A tarnished bronze key with ornate markings.",
+    "consumeOnUse": true,
+    "tier": 1,
+    "_designNote": "Tier 1 ammo key. Consumed on gate unlock. Previously existed only in environmental-synergy.js."
+  },
 
   {
     "id": "ITM-040",

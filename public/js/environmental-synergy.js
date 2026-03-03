@@ -19,6 +19,7 @@ const EnvironmentalSynergy = (function() {
       // --- Tier 1: Ammo keys (consumable, breakable drops) ---
       RUSTY_KEY: {
         itemId: 'KEY_002',
+        registryId: 'ITM-017',
         tier: 1,
         emoji: '🔑',
         name: 'Rusty Key',
@@ -28,6 +29,7 @@ const EnvironmentalSynergy = (function() {
       },
       BRONZE_KEY: {
         itemId: 'KEY_004',
+        registryId: 'ITM-018',
         tier: 1,
         emoji: '🗝️',
         name: 'Bronze Key',
@@ -320,7 +322,34 @@ const EnvironmentalSynergy = (function() {
    * Initialize the environmental synergy system
    */
   function init() {
-    console.log('[EnvironmentalSynergy] System initialized');
+    // Merge display/behavior fields from items.json registry into KEY_ITEMS.
+    // For every key with a registryId, the registry is the source of truth
+    // for: name, emoji, description, tier, consumeOnUse, stackable, maxStack.
+    // Fields unique to env-synergy stay here: itemId, registryId, compatibleGates,
+    // npcTarget, biome.
+    var synced = 0;
+    if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.isLoaded()) {
+      var keys = SYNERGY_DEFINITIONS.KEY_ITEMS;
+      for (var keyName in keys) {
+        if (!keys.hasOwnProperty(keyName)) continue;
+        var keyDef = keys[keyName];
+        if (!keyDef || !keyDef.registryId) continue;
+
+        var reg = GoneRogueDataRegistry.getItem(keyDef.registryId);
+        if (!reg || reg._missing) continue;
+
+        // Overwrite duplicated fields from registry (single source of truth)
+        if (reg.name) keyDef.name = reg.name;
+        if (reg.emoji) keyDef.emoji = reg.emoji;
+        if (reg.description) keyDef.description = reg.description;
+        if (typeof reg.tier !== 'undefined') keyDef.tier = reg.tier;
+        if (typeof reg.consumeOnUse !== 'undefined') keyDef.consumeOnUse = reg.consumeOnUse;
+        if (typeof reg.stackable !== 'undefined') keyDef.stackable = reg.stackable;
+        if (typeof reg.maxStack !== 'undefined') keyDef.maxStack = reg.maxStack;
+        synced++;
+      }
+    }
+    console.log('[EnvironmentalSynergy] System initialized — synced ' + synced + ' keys from registry');
   }
 
   /**

@@ -282,19 +282,22 @@ var BackupActionContainer = (function() {
     slot.classList.add('backup-slot-filled');
     if (source === 'items') slot.classList.add('backup-slot-item');
 
-    var def = _getCardDef(cardRef.id) || {};
-    // If registry hasn't loaded yet, def will be {} — use joker + short id as placeholder
-    var defLoaded = !!(def.name);
-    var name = def.name || cardRef.id || (source === 'items' ? 'Item' : 'Backup');
+    // SharedItemRenderer resolves item/card with full fallback chain
+    var resolved = (typeof SharedItemRenderer !== 'undefined')
+      ? SharedItemRenderer.resolve(cardRef)
+      : { emoji: '🃏', name: cardRef.id || 'Backup', isItem: false, isCard: true, def: null, isMissing: true };
+    var def = resolved.def || {};
+    var defLoaded = !resolved.isMissing;
+    var name = resolved.name || (source === 'items' ? 'Item' : 'Backup');
+    var isCard = resolved.isCard;
+    var isItem = resolved.isItem;
 
     // Items mode: cards (ACT-*) show joker emoji, items (ITM-*) show actual emoji
-    var isCard = (cardRef.id && cardRef.id.indexOf('ACT-') === 0);
-    var isItem = (cardRef.id && cardRef.id.indexOf('ITM-') === 0);
     var emoji;
     if (source === 'items') {
-      emoji = isCard ? '\uD83C\uDCCF' : (def.emoji || '\uD83C\uDCCF');
+      emoji = isCard ? '\uD83C\uDCCF' : resolved.emoji;
     } else {
-      emoji = def.emoji || '\uD83C\uDCCF';
+      emoji = resolved.emoji;
     }
 
     // Abbreviation: items mode uses micro abbreviation (6 chars) for small buttons;

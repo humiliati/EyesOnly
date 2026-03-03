@@ -33,6 +33,8 @@ var GoneRogueDataRegistry = (function() {
     enemyCards: {}
   };
 
+  var _nameToId = {};  // item name → ITM-XXX, built at _index() time
+
   function _createMissingEntry(id, type) {
     return {
       id: id,
@@ -60,6 +62,13 @@ var GoneRogueDataRegistry = (function() {
     _byId.buildings = idx(_db.buildings, {});
     _byId.enemyCards = idx(_db.enemyCards, {});
     // enemyDecks is already keyed by enemy type, no re-index needed
+
+    // Build item name→ID map for legacy lookup (used by gamestate._legacyItemNameToId)
+    _nameToId = {};
+    for (var ni = 0; ni < _db.items.length; ni++) {
+      var nit = _db.items[ni];
+      if (nit && nit.name && nit.id) _nameToId[nit.name] = nit.id;
+    }
   }
 
   function _fetchJson(path) {
@@ -311,6 +320,12 @@ var GoneRogueDataRegistry = (function() {
     return load();
   }
 
+  /** Look up an item's ITM-XXX id by its display name. Returns null if not found. */
+  function getItemIdByName(name) {
+    if (!name) return null;
+    return _nameToId[name] || null;
+  }
+
   return {
     load: load,
     ready: ready,
@@ -327,6 +342,7 @@ var GoneRogueDataRegistry = (function() {
     listInteractiveBuildings: listInteractiveBuildings,
     listCards: listCards,
     listItems: listItems,
+    getItemIdByName: getItemIdByName,
     findSynergiesFor: findSynergiesFor,
     getEnemyCard: getEnemyCard,
     listEnemyCards: listEnemyCards,

@@ -416,23 +416,17 @@ var RogueSidebar = (function() {
         btn.disabled = true;
       } else {
         if (view === 'items') {
-          // Differentiate ACT-* vault cards from ITM-* items
-          var isVaultCard = !!(ref.id && ref.id.indexOf('ACT-') === 0);
-          var def = null;
-          if (isVaultCard) {
-            // Vault card: look up from card registry, display with joker emoji
-            def = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) ? GoneRogueDataRegistry.getCard(ref.id) : null;
-            if (def && def._missing) def = null; // registry not loaded yet
-          } else {
-            // Regular item: look up from item registry
-            def = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) ? GoneRogueDataRegistry.getItem(ref.id) : null;
-            if (def && def._missing) def = null;
-          }
-          var nm = _getViewportName(def ? def.name : ref.id);
-          var em = isVaultCard ? '🃏' : (def ? def.emoji : '📦');
+          // SharedItemRenderer resolves item/card with full fallback chain
+          var resolved = (typeof SharedItemRenderer !== 'undefined')
+            ? SharedItemRenderer.resolve(ref)
+            : { emoji: '📦', name: ref.id, isItem: true, isCard: false, equipSlot: 'none', isMissing: true };
+          var isVaultCard = resolved.isCard;
+          // Vault cards always show joker face in sidebar
+          var em = isVaultCard ? '🃏' : resolved.emoji;
+          var nm = _getViewportName(resolved.name);
           btn.innerHTML = '<span class="rs-emoji">' + em + '</span><span class="rs-label">' + nm + '</span>';
 
-          if (!isVaultCard && def && def.equipSlot && def.equipSlot !== 'none') {
+          if (!isVaultCard && resolved.equipSlot && resolved.equipSlot !== 'none') {
             btn.classList.add('equippable');
           }
 

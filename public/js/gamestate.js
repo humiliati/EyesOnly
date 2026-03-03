@@ -1335,23 +1335,20 @@ const GAMESTATE = (function () {
 
   function _legacyItemNameToId(name) {
     if (!name) return null;
-    var map = {
-      // Original legacy items
+    // Primary: auto-generated name→ID map from registry (built at items.json load time)
+    if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItemIdByName) {
+      var regId = GoneRogueDataRegistry.getItemIdByName(name);
+      if (regId) return regId;
+    }
+    // Fallback: hardcoded entries for pre-registry / edge cases
+    var fallback = {
       'Radio Transceiver': 'ITM-002',
       'Surveillance Cam': 'ITM-003',
       'Personal Journal': 'ITM-004',
-      // Gate keys (Tier 2)
-      'Keycard': 'ITM-011',
-      'Master Key': 'ITM-012',
-      'USB Thumb Drive': 'ITM-013',
-      'Access Card': 'ITM-014',
-      'Mall Key': 'ITM-015',
-      'Industrial Pass': 'ITM-016',
-      // Quest keys (Tier 3)
       "Blacksmith's Hammer": 'ITM-030',
       'Rune Fragment': 'ITM-031'
     };
-    return map[name] || null;
+    return fallback[name] || null;
   }
 
   function _migrateInventoryToRefs() {
