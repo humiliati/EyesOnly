@@ -80,7 +80,7 @@ All collectibles follow at least this 6-step pipeline. Currency is the gold stan
 - **HP tracking**: HP lives on `_player.hp`/`_player.maxHp` in gone-rogue.js (NOT in gamestate.js). Debrief-feed-controller.js pulls from `GoneRogue.getPlayer()`. See Resource Management section below.
 
 ### 5. Cards (🂠)
-- **Symbol on map**: Monochrome card symbol `🂠` in Card Purple `#800080` (NOT card emoji — emoji reserved for NCH capsule hand display)
+- **Symbol on map**: Monochrome card symbol `🂠` in Card Purple `#800080` (NOT card emoji — emoji reserved for NCH capsule and enemy hand display)
 - **Pickup**: `GAMESTATE.addCard(card)` — tries hand first
 - **Overflow**: If hand full, oldest card pushed from hand to backup deck (left column). Oldest card in deck pushed to incinerator
 - **NCH Capsule**: Equipped hand shown as 🃏 joker emojis; new card pickup triggers "shift down" animation pushing oldest joker off to deck

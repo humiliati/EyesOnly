@@ -499,3 +499,96 @@ Store these facts for future sessions:
 **Implementation Complete**: 2026-02-20
 **Systems Status**: ✅ Food database, ✅ Picnic blanket, ✅ Auto-pickup, ✅ Visual feedback
 **Next Steps**: Item synergy database for tutorial gates, designer portals
+
+
+
+
+FOR future use:
+
+
+Symbol	Playing card Name	Unicode Number
+🂠	Playing Card Back	&#x1F0A0;
+🂡	Playing Card Ace Of Spades	&#x1F0A1;
+🂢	Playing Card Two Of Spades	&#x1F0A2;
+🂣	Playing Card Three Of Spades	&#x1F0A3;
+🂤	Playing Card Four Of Spades	&#x1F0A4;
+🂥	Playing Card Five Of Spades	&#x1F0A5;
+🂦	Playing Card Six Of Spades	&#x1F0A6;
+🂧	Playing Card Seven Of Spades	&#x1F0A7;
+🂨	Playing Card Eight Of Spades	&#x1F0A8;
+🂩	Playing Card Nine Of Spades	&#x1F0A9;
+🂪	Playing Card Ten Of Spades	&#x1F0AA;
+🂫	Playing Card Jack Of Spades	&#x1F0AB;
+🂬	Playing Card Knight Of Spades	&#x1F0AC;
+🂭	Playing Card Queen Of Spades	&#x1F0AD;
+🂮	Playing Card King Of Spades	&#x1F0AE;
+🂱	Playing Card Ace Of Hearts	&#x1F0B1;
+🂲	Playing Card Two Of Hearts	&#x1F0B2;
+🂳	Playing Card Three Of Hearts	&#x1F0B3;
+🂴	Playing Card Four Of Hearts	&#x1F0B4;
+🂵	Playing Card Five Of Hearts	&#x1F0B5;
+🂶	Playing Card Six Of Hearts	&#x1F0B6;
+
+🂷	Playing Card Seven Of Hearts	&#x1F0B7;
+🂸	Playing Card Eight Of Hearts	&#x1F0B8;
+🂹	Playing Card Nine Of Hearts	&#x1F0B9;
+🂺	Playing Card Ten Of Hearts	&#x1F0BA;
+🂻	Playing Card Jack Of Hearts	&#x1F0BB;
+🂼	Playing Card Knight Of Hearts	&#x1F0BC;
+🂽	Playing Card Queen Of Hearts	&#x1F0BD;
+🂾	Playing Card King Of Hearts	&#x1F0BE;
+
+🃁	Playing Card Ace Of Diamonds	&#x1F0C1;
+🃂	Playing Card Two Of Diamonds	&#x1F0C2;
+🃃	Playing Card Three Of Diamonds	&#x1F0C3;
+🃄	Playing Card Four Of Diamonds	&#x1F0C4;
+🃅	Playing Card Five Of Diamonds	&#x1F0C5;
+🃆	Playing Card Six Of Diamonds	&#x1F0C6;
+🃇	Playing Card Seven Of Diamonds	&#x1F0C7;
+🃈	Playing Card Eight Of Diamonds	&#x1F0C8;
+🃉	Playing Card Nine Of Diamonds	&#x1F0C9;
+🃊	Playing Card Ten Of Diamonds	&#x1F0CA;
+🃋	Playing Card Jack Of Diamonds	&#x1F0CB;
+🃌	Playing Card Knight Of Diamonds	&#x1F0CC;
+
+🃍	Playing Card Queen Of Diamonds	&#x1F0CD;
+🃎	Playing Card King Of Diamonds	&#x1F0CE;
+🃏	Playing Card Black Joker	&#x1F0CF;
+🃑	Playing Card Ace Of Clubs	&#x1F0D1;
+🃒	Playing Card Two Of Clubs	&#x1F0D2;
+🃓	Playing Card Three Of Clubs	&#x1F0D3;
+🃔	Playing Card Four Of Clubs	&#x1F0D4;
+🃕	Playing Card Five Of Clubs	&#x1F0D5;
+🃖	Playing Card Six Of Clubs	&#x1F0D6;
+🃗	Playing Card Seven Of Clubs	&#x1F0D7;
+🃘	Playing Card Eight Of Clubs	&#x1F0D8;
+🃙	Playing Card Nine Of Clubs	&#x1F0D9;
+🃚	Playing Card Ten Of Clubs	&#x1F0DA;
+🃛	Playing Card Jack Of Clubs	&#x1F0DB;
+🃜	Playing Card Knight Of Clubs	&#x1F0DC;
+🃝	Playing Card Queen Of Clubs	&#x1F0DD;
+🃞	Playing Card King Of Clubs	&#x1F0DE;
+🃟	Playing Card White Joker	&#x1F0DF;
+🃠	Playing Card Fool	&#x1F0E0;
+🃡	Playing Card Trump-1	&#x1F0E1;
+🃢	Playing Card Trump-2	&#x1F0E2;
+
+🃣	Playing Card Trump-3	&#x1F0E3;
+🃤	Playing Card Trump-4	&#x1F0E4;
+🃥	Playing Card Trump-5	&#x1F0E5;
+🃦	Playing Card Trump-6	&#x1F0E6;
+🃧	Playing Card Trump-7	&#x1F0E7;
+🃨	Playing Card Trump-8	&#x1F0E8;
+🃩	Playing Card Trump-9	&#x1F0E9;
+🃪	Playing Card Trump-10	&#x1F0EA;
+🃫	Playing Card Trump-11	&#x1F0EB;
+🃬	Playing Card Trump-12	&#x1F0EC;
+🃭	Playing Card Trump-13	&#x1F0ED;
+🃮	Playing Card Trump-14	&#x1F0EE;
+🃯	Playing Card Trump-15	&#x1F0EF;
+🃰	Playing Card Trump-16	&#x1F0F0;
+🃱	Playing Card Trump-17	&#x1F0F1;
+🃲	Playing Card Trump-18	&#x1F0F2;
+🃳	Playing Card Trump-19	&#x1F0F3;
+🃴	Playing Card Trump-20	&#x1F0F4;
+🃵	Playing Card Trump-21	&#x1F0F5;

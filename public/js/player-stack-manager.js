@@ -148,7 +148,9 @@ const PlayerStackManager = (function() {
       ctx.translate(x, y);
       ctx.rotate(item.rotation || 0);
 
-      // Emoji
+      // Emoji — explicit fillStyle prevents color bleed from prior render pass
+      // (e.g. player green #00FF00 leaking into text glyphs like ⁍ or ◈)
+      ctx.fillStyle = '#FFFFFF';
       ctx.font = size + 'px system-ui, Arial, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';

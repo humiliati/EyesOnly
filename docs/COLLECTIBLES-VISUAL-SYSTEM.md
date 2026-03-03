@@ -34,7 +34,7 @@ These collectible types use emoji for clear, recognizable visual representation:
    - **Storage**: Resource counter in debrief feed (`GAMESTATE.addKeyCount()` + `getTotalKeyAmmo()`), NOT inventory
    - **Tooltip**: `🔑 KEY AMMO: {name}`
    - **Quality label**: `[KEY AMMO]`
-   - **Debrief feed**: Ammo row summary shows `🔑x{N}`; expanded panel shows `🔑 KEY AMMO Rusty:N` / `🗝️ KEY AMMO Bronze:N`
+   - **Debrief feed**: summary shows `🔑x{N}` at the end of the ammo row; expanded panel shows `🔑 KEY AMMO Rusty:N` / `🗝️ KEY AMMO Bronze:N`
    - Triggers `DebriefFeedController.reportResourceChange('key_ammo', old, new, keyName)`
 
 4. **Quest Keys — Tier 3** (❗ 🔨 💎)
@@ -44,11 +44,15 @@ These collectible types use emoji for clear, recognizable visual representation:
    - **Tooltip**: `❗ QUEST ITEM — {name} — Return to {NPC}` (via `TooltipSystem.show()`, 3500ms)
    - No auto-equip; no debrief resource row
 
-5. **Card Drops** (🃏 🎴)
-   - Playing cards and special cards
-   - Card backs, card faces
-   - Color: varies by card type
-
+5. **Card Drops** (🂠	Playing Card Back	&#x1F0A0;)
+   - Playing cards when automatically picked up from world map go to hand, last in hand goes to backup deck, last in backup deck is incinerated
+   - Card backs display until picked up
+   - Color: (purple) — overhead animation tint via `showGenericExpression`
+   - **Storage**: New card automatically goes to hand, last card in hand goes to backup deck, last card in backup deck is incinerated
+   - **Tooltip**: `🂠 Got: Card {name}`
+   - **Quality label**: 
+   - **Debrief feed**: gentle purple frame flash followed by incinerator (if applicable)
+  
 ### Monochrome ASCII Collectibles (Use ASCII + Resource Colors)
 
 These collectible types use ASCII characters with specific resource colors for efficiency and clarity:
@@ -61,12 +65,11 @@ These collectible types use ASCII characters with specific resource colors for e
    - Example: +3¢ pickup animation
 
 2. **Ammo** (⁍)
-   - Glyph: `⁍` (U+060B, Afghani sign)
+   - Glyph: `⁍` 
    - Color: `#DA70D6` (magenta/orchid) per RESOURCE_COLORS
    - No emoji - ASCII only
-   - Represents **weapon ammunition** pickups (NOT battery)
-   - Background: `#2a0a2a` (dark magenta)
-   - Dropped from breakables with 60% chance
+   - Represents **weapon ammunition** pickups
+   - Dropped from breakables with varying chance
    - Type: `'ammo'`, adds to ammo counter via `GAMESTATE.addAmmo()`
    - **Auto-pickup**: Collected automatically when player walks onto tile via `_pickupItem()`
 
@@ -88,17 +91,17 @@ These collectible types use ASCII characters with specific resource colors for e
    - Ammo is consumed by weapon attacks
 
 4. **HP/Health**
-   - Glyph: ♥ or +
-   - Color: `#FF6B9D` (vibrant pink) per RESOURCE_COLORS
+   - Glyph: FOOD
+   - Color: `#FF6B9D` (vibrant pink) per RESOURCE_COLORS glow on health emoji
    - Health restoration pickups
 
 5. **Focus**
-   - Glyph: ◉ or ⊙
-   - Color: `#FFF9B0` (bright yellow-white) per RESOURCE_COLORS
+   - Glyph: FOOD.emoji
+   - Color: `#FFF9B0` (bright yellow-white) per RESOURCE_COLORS glow on health emoji
    - Focus point pickups
 
 6. **Other Resources**
-   - Use appropriate ASCII glyphs
+   - Use appropriate ASCII or glyphs
    - Follow RESOURCE_COLORS system colors
    - No emoji unless specifically designed as such
 

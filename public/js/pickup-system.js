@@ -136,7 +136,7 @@ var PickupSystem = (function() {
       }
     } catch (eDebrief) {}
 
-    // Pancake stacker
+    // PancakeStack for persistent inventory tracking (per doctrine: both systems fire)
     try {
       if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
         PancakeStack.addPancake('\u204D');
@@ -388,6 +388,12 @@ var PickupSystem = (function() {
       try {
         if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
           OverheadAnimator.showGenericExpression(item.x, item.y, '\u2757', 1500, '#FF4444'); // ❗
+        }
+        // PancakeStack per doctrine: "All key tiers add a glyph to PancakeStack on pickup"
+        if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
+          PancakeStack.addPancake(item.emoji || '\u2757');
+        } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
+          PlayerStackManager.addPancake(item.emoji || '\u2757');
         }
       } catch (eAnim) {}
 
