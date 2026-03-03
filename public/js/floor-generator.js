@@ -667,6 +667,7 @@ var FloorGenerator = (function () {
           }
         }
         droppedCardsThisFloor.push(baseType);
+        // CHH: card is now a CardRef { id: 'CI-...', qty: 1 } — trackCardDrop accepts both formats
         ctx.trackCardDrop(card);
         var floorCard = { x: ix, y: iy, type: 'card', card: card, spawnTime: Date.now(), decayTime: 30000 };
         if (typeof WorldItems !== 'undefined') { WorldItems.addItem(floorCard); } else { ctx.items.push(floorCard); }

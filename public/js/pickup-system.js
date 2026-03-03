@@ -278,7 +278,15 @@ var PickupSystem = (function() {
     var result;
 
     if (isCard) {
-      result = GAMESTATE.addCard(item.card);
+      // CHH: item.card may be a CardRef { id: 'CI-...', qty: 1 } or legacy full object.
+      // Route through canonical addPrintedCards pipeline (handles hand → backup cascade).
+      var pickupCardId = (item.card && item.card.id) ? item.card.id : null;
+      if (pickupCardId && typeof GAMESTATE !== 'undefined' && GAMESTATE.addPrintedCards) {
+        result = GAMESTATE.addPrintedCards(pickupCardId, 1);
+      } else {
+        // Legacy fallback
+        result = GAMESTATE.addCard(item.card);
+      }
       // NOTE: No PancakeStack call — single pickup = single OverheadAnimator animation only.
       // Overhead animation: monochrome card symbol in Cards purple
       try {
@@ -289,7 +297,10 @@ var PickupSystem = (function() {
       // Report card pickup to debrief feed
       try {
         if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
-          var cardName = (item.card && item.card.name) ? item.card.name : 'Card';
+          // Hydrate for display name
+          var cardDef = (pickupCardId && typeof CardStateAuthority !== 'undefined' && CardStateAuthority.hydrateCard)
+            ? CardStateAuthority.hydrateCard(item.card) : item.card;
+          var cardName = (cardDef && cardDef.name) ? cardDef.name : 'Card';
           DebriefFeedController.reportResourceChange('Cards', 0, 1, '\uD83C\uDCA0 ' + cardName);
         }
       } catch (eCardDebrief) {}

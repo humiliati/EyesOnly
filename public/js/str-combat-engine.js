@@ -1174,20 +1174,23 @@ var StrCombatEngine = (function () {
             ctx.spawnCurrency(_enemy.x, _enemy.y, deathResult.loot.currency);
           }
 
-          // Phase 5: Enemy card drops → direct to hand, ground-drop fallback
+          // Phase 5: Enemy card drops → direct to hand via acquireNewCardDuringCombat (CHH pipeline)
           if (deathResult.loot.cards && deathResult.loot.cards.length > 0) {
             deathResult.loot.cards.forEach(function(cardDrop) {
               if (cardDrop.shouldDrop && typeof CardSystem !== 'undefined') {
                 var baseType = CardSystem.getRandomBaseCard();
-                var card = CardSystem.rollCard(baseType);
-                if (card) {
-                  var cardInsert = (typeof GAMESTATE !== 'undefined' && GAMESTATE.addCard)
-                    ? GAMESTATE.addCard(card) : null;
+                var cardRef = CardSystem.rollCard(baseType, { source: 'enemy_drop', floor: ctx.floor || 0, enemyType: _enemy.name || 'unknown' });
+                if (cardRef && cardRef.id) {
+                  // CHH: Use canonical acquisition pipeline (refs → hand → backup cascade)
+                  var cardInsert = (typeof GAMESTATE !== 'undefined' && GAMESTATE.acquireNewCardDuringCombat)
+                    ? GAMESTATE.acquireNewCardDuringCombat(cardRef.id, 1) : null;
+                  // Hydrate for display info
+                  var cardDef = (typeof CardStateAuthority !== 'undefined' && CardStateAuthority.hydrateCard)
+                    ? CardStateAuthority.hydrateCard(cardRef) : cardRef;
                   if (cardInsert && cardInsert.success) {
-                    // Debrief feed + overhead animation for card-to-hand
                     try {
                       if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
-                        DebriefFeedController.reportResourceChange('Cards', 0, 1, '\uD83C\uDCA0 ' + (card.name || 'Card'));
+                        DebriefFeedController.reportResourceChange('Cards', 0, 1, '\uD83C\uDCA0 ' + ((cardDef && cardDef.name) || 'Card'));
                       }
                     } catch (eDF) {}
                     try {
@@ -1196,11 +1199,11 @@ var StrCombatEngine = (function () {
                       }
                     } catch (eOH) {}
                   } else {
-                    // Hand full — drop on ground as fallback
-                    var strCardDrop = { x: _enemy.x, y: _enemy.y, type: 'card', card: card, spawnTime: Date.now(), decayTime: 30000 };
+                    // Hand full — drop on ground as fallback (embed meta for pickup hydration)
+                    var strCardDrop = { x: _enemy.x, y: _enemy.y, type: 'card', card: cardRef, spawnTime: Date.now(), decayTime: 30000 };
                     if (typeof WorldItems !== 'undefined') { WorldItems.addItem(strCardDrop); } else { ctx.items.push(strCardDrop); }
                   }
-                  _victoryCtx.lootCards.push({ emoji: card.emoji || '🎴', name: card.name || 'Card', quality: card.quality || '' });
+                  _victoryCtx.lootCards.push({ emoji: (cardDef && cardDef.emoji) || '🎴', name: (cardDef && cardDef.name) || 'Card', quality: (cardDef && cardDef.quality) || '' });
                 }
               }
             });

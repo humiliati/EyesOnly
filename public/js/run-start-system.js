@@ -166,9 +166,18 @@ var RunStartSystem = (function() {
           var starterCards = ['Single Shot', 'Dodge', slot3Pick];
 
           for (var c = 0; c < starterCards.length; c++) {
-            var card = CardSystem.rollCard(starterCards[c]);
-            if (card) {
-              GAMESTATE.addToLoose(card);
+            var cardRef = CardSystem.rollCard(starterCards[c], { source: 'starter_loadout', floor: 1 });
+            if (cardRef) {
+              // CHH: rollCard now returns CardRef { id: 'CI-...', qty: 1 }.
+              // addToLoose is legacy (inventoryLoose) — it accepts objects.
+              // Hydrate back to full object for loose inventory compat.
+              var cardObj = (typeof CardStateAuthority !== 'undefined' && CardStateAuthority.hydrateCard)
+                ? CardStateAuthority.hydrateCard(cardRef) : cardRef;
+              if (cardObj) {
+                // Ensure id is set for loose inventory tracking
+                if (!cardObj.id && cardRef.id) cardObj = Object.assign({}, cardObj, { id: cardRef.id });
+                GAMESTATE.addToLoose(cardObj);
+              }
             }
           }
 

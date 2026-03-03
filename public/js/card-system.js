@@ -1317,7 +1317,18 @@ const CardSystem = (function () {
    * Generate a card drop
    * @param {String} baseType - Key from BASE_CARDS
    */
-  function rollCard(baseType) {
+  /**
+   * Generate a card drop.
+   * CHH Step 2: Returns a CardRef { id: 'CI-...', qty: 1 } after
+   * persisting the full instance via GAMESTATE.registerCardInstance().
+   * The returned ref can be used directly with acquireNewCardDuringCombat()
+   * or addPrintedCards(). hydrateCard(ref) resolves it.
+   *
+   * @param {String} baseType - Key from BASE_CARDS
+   * @param {Object} [provenance] - Optional provenance: { source, floor, enemyType }
+   * @returns {Object} CardRef { id: 'CI-...', qty: 1 } or legacy object if GAMESTATE unavailable
+   */
+  function rollCard(baseType, provenance) {
     var baseCard = BASE_CARDS[baseType];
     if (!baseCard) return null;
 
@@ -1325,19 +1336,32 @@ const CardSystem = (function () {
     var stats = rollStats(baseCard, quality);
     var affixes = rollAffixes(quality);
 
-    return {
-      base: baseType,
+    var instance = {
+      baseId: baseType,
       name: baseCard.name,
       emoji: baseCard.emoji,
       type: baseCard.type,
-      category: baseCard.category || baseCard.type, // Include category for priority system
+      category: baseCard.category || baseCard.type,
       quality: quality,
       qualityName: QUALITIES[quality].name,
       qualityColor: QUALITIES[quality].color,
       stats: stats,
       affixes: affixes,
-      id: 'card_' + Date.now() + '_' + _rng().toString(36).substr(2, 9)
+      tags: [],
+      createdAt: Date.now(),
+      seed: _rng(),
+      provenance: provenance || null
     };
+
+    // CHH: Persist as CI-* instance if GAMESTATE is available
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.registerCardInstance === 'function') {
+      var ciId = GAMESTATE.registerCardInstance(instance);
+      return { id: ciId, qty: 1 };
+    }
+
+    // Fallback: legacy anonymous object (pre-CHH compat)
+    instance.id = 'card_' + Date.now() + '_' + _rng().toString(36).substr(2, 9);
+    return instance;
   }
 
   /**

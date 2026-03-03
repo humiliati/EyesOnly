@@ -49,11 +49,17 @@ var SharedItemRenderer = (function() {
 
     var id = ref.id;
     var isItem = (id.indexOf('ITM-') === 0);
-    var isCard = (id.indexOf('ACT-') === 0 || id.indexOf('EATK-') === 0);
+    var isCiInstance = (id.indexOf('CI-') === 0);
+    var isCard = (id.indexOf('ACT-') === 0 || id.indexOf('EATK-') === 0 || isCiInstance);
     var def = null;
 
+    // CHH Step 2: CI-* instances resolve via hydrateCard (CardStateAuthority)
+    if (isCiInstance && typeof CardStateAuthority !== 'undefined' && CardStateAuthority.hydrateCard) {
+      def = CardStateAuthority.hydrateCard(ref);
+    }
+
     // Primary lookup: try item registry first, then card
-    if (typeof GoneRogueDataRegistry !== 'undefined') {
+    if (!def && typeof GoneRogueDataRegistry !== 'undefined') {
       if (isItem && GoneRogueDataRegistry.getItem) {
         def = GoneRogueDataRegistry.getItem(id);
       } else if (GoneRogueDataRegistry.getCard) {

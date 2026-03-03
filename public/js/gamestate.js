@@ -63,6 +63,11 @@ const GAMESTATE = (function () {
     backupCards: [],               // Backup deck (configurable size, default empty)
     burnPile: [],                  // Cards consumed/destroyed this combat (reset between combats)
 
+    // CHH Step 1: Dynamic card instance store (CI-* keyed map)
+    // Persisted in save state. Rolled/procedural cards get a first-class CI-* ID
+    // and are stored here so hydrateCard() can resolve them from any container.
+    cardInstances: {},             // { "CI-<ts>-<rand>": { instanceId, baseId, name, ... } }
+
     // Structured key counters — single source of truth for UI hooks
     // Tier 1 (ammo): lost on death.  Tier 2/3: persist across death.
     keys: {
@@ -75,11 +80,107 @@ const GAMESTATE = (function () {
   function init() {
     _loadState();
     _migrateInventoryToRefs();
+    _migrateCardHandToRefs();   // CHH Step 3: one-time migration
     _ensureDefaultPersistentInventory();
+
+    // Ensure cardInstances map exists (CHH Step 1)
+    if (!_state.cardInstances || typeof _state.cardInstances !== 'object') {
+      _state.cardInstances = {};
+    }
 
     // Initialize UI currency display
     if (typeof UIControls !== 'undefined' && UIControls.updateCurrency) {
       UIControls.updateCurrency(_state.cryptos || 0);
+    }
+  }
+
+  // ── CHH Step 3: One-time cardHand → cardsInHand migration ──
+  /**
+   * Migrates legacy _state.cardHand (array of full card objects) to
+   * _state.cardsInHand (array of CardRefs) with CI-* instances in cardInstances.
+   *
+   * For each card in cardHand:
+   *   - If it has a registry-resolvable ID (ACT-*, EATK-*) → create a ref to that ID
+   *   - Otherwise → register as CI-* instance → create a ref to the CI-* ID
+   *
+   * After migration, cardHand is cleared. This function is idempotent:
+   * it no-ops if cardHand is empty or doesn't exist.
+   */
+  function _migrateCardHandToRefs() {
+    if (!Array.isArray(_state.cardHand) || _state.cardHand.length === 0) return;
+    if (!_state.cardInstances) _state.cardInstances = {};
+    if (!Array.isArray(_state.cardsInHand)) _state.cardsInHand = [];
+
+    var migrated = 0;
+
+    for (var i = 0; i < _state.cardHand.length; i++) {
+      var card = _state.cardHand[i];
+      if (!card) continue;
+
+      var refId = null;
+
+      // Check if this card has a registry-resolvable ID
+      if (card.id && (card.id.indexOf('ACT-') === 0 || card.id.indexOf('EATK-') === 0 || card.id.indexOf('ITM-') === 0)) {
+        refId = card.id;
+      } else if (card.id && card.id.indexOf('CI-') === 0) {
+        // Already a CI-* ID — ensure the instance is registered
+        if (!_state.cardInstances[card.id]) {
+          _state.cardInstances[card.id] = card;
+          card.instanceId = card.id;
+        }
+        refId = card.id;
+      } else {
+        // Legacy anonymous card (card_<ts>_<rand>, charm_<ts>_<rand>, etc.)
+        // Register as a new CI-* instance
+        var ts = Date.now() + i; // offset to avoid collisions
+        var rand = Math.random().toString(36).substr(2, 5);
+        var ciId = 'CI-' + ts + '-' + rand;
+
+        var instance = {
+          instanceId: ciId,
+          baseId: card.base || null,
+          name: card.name || 'Unknown Card',
+          emoji: card.emoji || '🃏',
+          type: card.type || 'unknown',
+          category: card.category || card.type || 'unknown',
+          quality: card.quality || 'STANDARD',
+          qualityName: card.qualityName || 'Standard',
+          qualityColor: card.qualityColor || '#ffffff',
+          stats: card.stats || {},
+          affixes: card.affixes || [],
+          tags: card.tags || [],
+          createdAt: card.createdAt || Date.now(),
+          seed: card.seed || 0,
+          provenance: { source: 'cardHand_migration', migratedFrom: card.id || 'anonymous' }
+        };
+
+        _state.cardInstances[ciId] = instance;
+        refId = ciId;
+      }
+
+      if (refId) {
+        // Check if ref already exists in cardsInHand (avoid duplicates)
+        var exists = false;
+        for (var j = 0; j < _state.cardsInHand.length; j++) {
+          if (_state.cardsInHand[j] && _state.cardsInHand[j].id === refId) {
+            _state.cardsInHand[j].qty = (_state.cardsInHand[j].qty || 1) + 1;
+            exists = true;
+            break;
+          }
+        }
+        if (!exists) {
+          _state.cardsInHand.push({ id: refId, qty: 1, meta: { t: Date.now() } });
+        }
+        migrated++;
+      }
+    }
+
+    // Clear legacy cardHand
+    _state.cardHand = [];
+
+    if (migrated > 0) {
+      console.debug('[GAMESTATE] CHH migration: moved ' + migrated + ' cards from cardHand to cardsInHand + cardInstances');
+      _saveState();
     }
   }
 
@@ -965,6 +1066,169 @@ const GAMESTATE = (function () {
     _saveState();
   }
 
+  // ============================================================
+  // CHH STEP 1: CARD INSTANCE MANAGEMENT (CI-* IDs)
+  // ============================================================
+
+  /**
+   * Mint a CI-* instance ID for a dynamically rolled card and persist it.
+   * The instance is stored in _state.cardInstances and survives save/load.
+   * @param {Object} instance - Full card object (name, emoji, stats, affixes, etc.)
+   *   Optional fields: baseId, provenance
+   * @returns {string} The minted CI-* ID
+   */
+  function registerCardInstance(instance) {
+    if (!instance) return null;
+    if (!_state.cardInstances) _state.cardInstances = {};
+
+    var ts = Date.now();
+    var rand = Math.random().toString(36).substr(2, 5);
+    var id = 'CI-' + ts + '-' + rand;
+
+    instance.instanceId = id;
+    instance.createdAt = instance.createdAt || ts;
+    _state.cardInstances[id] = instance;
+
+    _saveState();
+    return id;
+  }
+
+  /**
+   * Retrieve a CI-* card instance by ID.
+   * O(1) lookup from the cardInstances map.
+   * @param {string} id - CI-* instance ID
+   * @returns {Object|null} The full card instance or null
+   */
+  function getCardInstance(id) {
+    if (!id || !_state.cardInstances) return null;
+    return _state.cardInstances[id] || null;
+  }
+
+  /**
+   * Garbage-collect unreferenced CI-* instances.
+   * Scans ALL player containers AND enemy decks for CI-* refs,
+   * then deletes any cardInstances entries with zero references.
+   * Called on floor transition and save.
+   */
+  function gcCardInstances() {
+    if (!_state.cardInstances) return;
+
+    var referenced = {};
+
+    // Scan player containers for CI-* refs
+    var containers = [
+      _state.cardsInHand,
+      _state.backupCards,
+      _state.persistentCards,
+      _state.burnPile
+    ];
+    for (var c = 0; c < containers.length; c++) {
+      var arr = containers[c];
+      if (!Array.isArray(arr)) continue;
+      for (var i = 0; i < arr.length; i++) {
+        var ref = arr[i];
+        if (ref && ref.id && ref.id.indexOf('CI-') === 0) {
+          referenced[ref.id] = true;
+        }
+      }
+    }
+
+    // Scan enemy decks for planted CI-* refs
+    // enemies live on the current floor context — accessed via GoneRogue if available
+    var enemies = [];
+    try {
+      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.getEnemies === 'function') {
+        enemies = GoneRogue.getEnemies() || [];
+      }
+    } catch (e) {}
+
+    for (var ei = 0; ei < enemies.length; ei++) {
+      var enemy = enemies[ei];
+      if (!enemy || !Array.isArray(enemy.cardDeck)) continue;
+      for (var si = 0; si < enemy.cardDeck.length; si++) {
+        var slot = enemy.cardDeck[si];
+        // Direct CI-* card in enemy deck
+        if (slot && slot.id && slot.id.indexOf('CI-') === 0) {
+          referenced[slot.id] = true;
+        }
+        // Planted CI-* card
+        if (slot && slot.planted && slot.planted.cardId &&
+            slot.planted.cardId.indexOf('CI-') === 0) {
+          referenced[slot.planted.cardId] = true;
+        }
+      }
+    }
+
+    // Delete unreferenced instances
+    var keys = Object.keys(_state.cardInstances);
+    var removed = 0;
+    for (var k = 0; k < keys.length; k++) {
+      if (!referenced[keys[k]]) {
+        delete _state.cardInstances[keys[k]];
+        removed++;
+      }
+    }
+
+    if (removed > 0) {
+      console.debug('[GAMESTATE] gcCardInstances: removed ' + removed + ' orphaned CI-* instances');
+      _saveState();
+    }
+  }
+
+  /**
+   * Plant a card from the player's hand into an enemy's card deck slot.
+   * Writes a planted ref into the first available BLVCK/empty slot.
+   * The CI-* instance (if any) stays in cardInstances — the GC scans enemy decks.
+   * @param {Object} enemy - Enemy object with cardDeck array
+   * @param {Object} cardRef - { id: 'ACT-*' or 'CI-*', qty: 1 }
+   * @returns {{ success: boolean, slotIndex?: number, reason?: string }}
+   */
+  function plantCardOnEnemy(enemy, cardRef) {
+    if (!enemy || !Array.isArray(enemy.cardDeck) || !cardRef || !cardRef.id) {
+      return { success: false, reason: 'invalid_args' };
+    }
+
+    // Find first plantable slot (BLVCK empty slot or empty planted)
+    var targetIdx = -1;
+    for (var i = 0; i < enemy.cardDeck.length; i++) {
+      var slot = enemy.cardDeck[i];
+      if (slot && slot.isBlvckSlot && !slot.planted && !slot.stolen) {
+        targetIdx = i;
+        break;
+      }
+    }
+
+    if (targetIdx < 0) {
+      return { success: false, reason: 'no_plantable_slot' };
+    }
+
+    // Write the plant
+    var currentTurn = 0;
+    try {
+      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.getCurrentTurn === 'function') {
+        currentTurn = GoneRogue.getCurrentTurn() || 0;
+      }
+    } catch (e) {}
+
+    enemy.cardDeck[targetIdx].planted = {
+      cardId: cardRef.id,
+      plantedBy: 'player',
+      turn: currentTurn
+    };
+
+    // Update provenance on the CI-* instance if applicable
+    if (cardRef.id.indexOf('CI-') === 0 && _state.cardInstances[cardRef.id]) {
+      var inst = _state.cardInstances[cardRef.id];
+      if (!inst.provenance) inst.provenance = {};
+      inst.provenance.plantedInto = 'enemy_deck';
+      inst.provenance.enemyName = enemy.name || 'unknown';
+      inst.provenance.plantTurn = currentTurn;
+    }
+
+    _saveState();
+    return { success: true, slotIndex: targetIdx };
+  }
+
   // ─── HAND OVERFLOW ENFORCEMENT ──────────────────────────
 
   /**
@@ -1073,44 +1337,50 @@ const GAMESTATE = (function () {
   }
 
   /**
-   * Add card to hand (play area) - NEW LOOT FLOW
-   * Cards go to hand first, then overflow to action buttons
-   * @param {Object} card - Card object to add
+   * @deprecated CHH Step 3 — Use addPrintedCards(cardId, qty) or acquireNewCardDuringCombat(cardId, qty) instead.
+   * Legacy: Add card to hand (play area) via full object.
+   * Now routes through the canonical ref pipeline if the card has an id.
+   * @param {Object} card - Card object or CardRef to add
    */
   function addToHand(card) {
-    var maxHand = _state.maxHandSize || 5;
+    console.warn('[GAMESTATE] DEPRECATED: addToHand(card) called. Use addPrintedCards(cardId, qty) instead.');
 
-    if (_state.cardHand.length >= maxHand) {
-      // Hand is full, try action buttons
-      return addToActionButtons(card);
+    // CHH compat: if card is a CardRef or has a CI-*/ACT-* id, route through canonical path
+    if (card && card.id && (card.id.indexOf('CI-') === 0 || card.id.indexOf('ACT-') === 0 || card.id.indexOf('EATK-') === 0)) {
+      return addPrintedCards(card.id, card.qty || 1);
     }
 
-    _state.cardHand.push(card);
-    _saveState();
+    // Legacy fallback: register as CI-* then route through canonical path
+    if (card && card.name) {
+      var ciId = registerCardInstance({
+        baseId: card.base || null,
+        name: card.name,
+        emoji: card.emoji || '🃏',
+        type: card.type || 'unknown',
+        category: card.category || card.type || 'unknown',
+        quality: card.quality || 'STANDARD',
+        qualityName: card.qualityName || 'Standard',
+        qualityColor: card.qualityColor || '#ffffff',
+        stats: card.stats || {},
+        affixes: card.affixes || [],
+        tags: card.tags || [],
+        provenance: { source: 'legacy_addToHand' }
+      });
+      if (ciId) return addPrintedCards(ciId, 1);
+    }
 
-    return {
-      success: true,
-      location: 'hand',
-      message: 'Card added to hand: ' + card.name
-    };
+    return { success: false, message: 'Cannot add card — no valid id or name' };
   }
 
   /**
-   * Add card following proper loot flow priority
-   * 1. Try hand first
-   * 2. If hand full, go to action buttons
-   * 3. If both full, return failure
-   * @param {Object} card - Card object to add
+   * @deprecated CHH Step 3 — Use addPrintedCards(cardId, qty) or acquireNewCardDuringCombat(cardId, qty) instead.
+   * Legacy: Add card following proper loot flow priority.
+   * Now delegates to addToHand which routes through canonical pipeline.
+   * @param {Object} card - Card object or CardRef to add
    */
   function addCard(card) {
-    // Try hand first
-    var handResult = addToHand(card);
-    if (handResult.success) {
-      return handResult;
-    }
-
-    // Hand was full, addToHand already tried action buttons
-    return handResult;
+    console.warn('[GAMESTATE] DEPRECATED: addCard(card) called. Use addPrintedCards(cardId, qty) instead.');
+    return addToHand(card);
   }
 
   /**
@@ -1543,6 +1813,15 @@ const GAMESTATE = (function () {
     }
   }
 
+  /**
+   * CHH: Full save with GC pass. Call on floor transitions and explicit saves.
+   * Runs gcCardInstances() before persisting to avoid unbounded instance growth.
+   */
+  function saveWithGC() {
+    gcCardInstances();
+    _saveState();
+  }
+
   function _loadState() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
@@ -1610,6 +1889,7 @@ const GAMESTATE = (function () {
       // Canonical hand + backup (CH/NCH)
       cardsInHand: [],
       backupCards: [],
+      cardInstances: {},
       hasDrawnBackupThisCombat: false,
       playerFatigue: 0,
       maxFatigue: 100,
@@ -2435,6 +2715,13 @@ const GAMESTATE = (function () {
     getPersistentCards: getPersistentCards,
     addPersistentCard: addPersistentCard,
     removePersistentCard: removePersistentCard,
+
+    // CHH Step 1: Card instance management (CI-* IDs)
+    registerCardInstance: registerCardInstance,
+    getCardInstance: getCardInstance,
+    gcCardInstances: gcCardInstances,
+    plantCardOnEnemy: plantCardOnEnemy,
+    saveWithGC: saveWithGC,
 
     // Canonical hand (CH/NCH)
     getCardsInHand: getCardsInHand,

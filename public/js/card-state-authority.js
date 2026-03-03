@@ -1057,11 +1057,50 @@ var CardStateAuthority = (function() {
 
   // ── Card Definition Lookup ─────────────────────────────────
 
-  function getCardDef(cardId) {
-    if (typeof GoneRogueDataRegistry !== 'undefined' && typeof GoneRogueDataRegistry.getCard === 'function') {
-      return GoneRogueDataRegistry.getCard(cardId);
+  // ── CHH Step 2: Universal Hydration ─────────────────────
+  /**
+   * hydrateCard(ref) — Canonical card resolver.
+   * Resolution chain:
+   *   1. CI-* → GAMESTATE.getCardInstance()  (dynamic rolled cards)
+   *   2. Registry ID → GoneRogueDataRegistry.getCard()  (ACT-*, EATK-*, ITM-*)
+   *   3. Fallback → ref.meta  (embedded snapshot for backward compat)
+   *
+   * Every renderer, tooltip, combat system, and UI component should call
+   * hydrateCard(ref) instead of ad-hoc lookups.
+   *
+   * @param {Object|string} ref - CardRef { id, qty?, meta? } or bare string ID
+   * @returns {Object|null} Full card data or null
+   */
+  function hydrateCard(ref) {
+    if (!ref) return null;
+
+    // Accept bare string ID as shorthand
+    var id = (typeof ref === 'string') ? ref : ref.id;
+    if (!id) return null;
+
+    // 1. Dynamic instance (CI-*)
+    if (id.indexOf('CI-') === 0) {
+      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getCardInstance === 'function') {
+        var inst = GAMESTATE.getCardInstance(id);
+        if (inst) return inst;
+      }
     }
+
+    // 2. Registry card (ACT-*, EATK-*, ITM-*, etc.)
+    if (typeof GoneRogueDataRegistry !== 'undefined' && typeof GoneRogueDataRegistry.getCard === 'function') {
+      var reg = GoneRogueDataRegistry.getCard(id);
+      if (reg) return reg;
+    }
+
+    // 3. Fallback: embedded meta (for backward compat with old save data)
+    if (ref.meta && ref.meta.name) return ref.meta;
+
     return null;
+  }
+
+  function getCardDef(cardId) {
+    // Delegate to hydrateCard for unified resolution
+    return hydrateCard(cardId);
   }
 
   /**
@@ -1250,6 +1289,7 @@ var CardStateAuthority = (function() {
     getEquippedDrawModifier: getEquippedDrawModifier,
     getResources: getResources,
     canAffordCard: canAffordCard,
+    hydrateCard: hydrateCard,
     getCardDef: getCardDef,
     expandHandForDisplay: expandHandForDisplay,
     getSignature: getSignature,
