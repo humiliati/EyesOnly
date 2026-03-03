@@ -308,12 +308,15 @@ const GAMESTATE = (function () {
       };
     }
 
-    _state.inventoryPersistent.push(item);
+    // Normalize to { id, qty, meta } ref format so inventory renderers can
+    // resolve via GoneRogueDataRegistry.getItem(ref.id).
+    var ref = _normalizeItemRef(item);
+    _state.inventoryPersistent.push(ref || item);
     _saveState();
 
     return {
       success: true,
-      message: 'Item added to persistent inventory: ' + item.name
+      message: 'Item added to persistent inventory: ' + (item.name || (ref && ref.id) || 'Item')
     };
   }
 
@@ -1283,8 +1286,8 @@ const GAMESTATE = (function () {
   function _normalizeItemRef(item) {
     if (!item) return null;
 
-    // Already a ref
-    if (item.id && typeof item.id === 'string') {
+    // Already a ref — { id: 'ITM-030', qty: 1, meta: {...} }
+    if (item.id && typeof item.id === 'string' && item.id.indexOf('ITM-') === 0) {
       return {
         id: item.id,
         qty: (typeof item.qty === 'number' ? item.qty : 1),
@@ -1292,7 +1295,26 @@ const GAMESTATE = (function () {
       };
     }
 
-    // Legacy object shape
+    // Key / item payload from PickupSystem — has registryId from data registry resolve
+    if (item.registryId && typeof item.registryId === 'string') {
+      return {
+        id: item.registryId,
+        qty: 1,
+        meta: {
+          legacyName: item.name || null,
+          emoji: item.emoji || null,
+          type: item.type || null,
+          description: item.description || null,
+          tier: item.tier || null,
+          keyType: item.keyType || null,
+          subtype: item.subtype || null,
+          npcTarget: item.npcTarget || null,
+          consumeOnUse: item.consumeOnUse || false
+        }
+      };
+    }
+
+    // Legacy object shape — try name-to-id map
     var legacy = item;
     var mappedId = _legacyItemNameToId(legacy.name);
     if (!mappedId) mappedId = 'ITM-000';
@@ -1304,7 +1326,9 @@ const GAMESTATE = (function () {
         legacyName: legacy.name || null,
         emoji: legacy.emoji || null,
         type: legacy.type || null,
-        description: legacy.description || null
+        description: legacy.description || null,
+        tier: legacy.tier || null,
+        keyType: legacy.keyType || null
       }
     };
   }
@@ -1312,9 +1336,20 @@ const GAMESTATE = (function () {
   function _legacyItemNameToId(name) {
     if (!name) return null;
     var map = {
+      // Original legacy items
       'Radio Transceiver': 'ITM-002',
       'Surveillance Cam': 'ITM-003',
-      'Personal Journal': 'ITM-004'
+      'Personal Journal': 'ITM-004',
+      // Gate keys (Tier 2)
+      'Keycard': 'ITM-011',
+      'Master Key': 'ITM-012',
+      'USB Thumb Drive': 'ITM-013',
+      'Access Card': 'ITM-014',
+      'Mall Key': 'ITM-015',
+      'Industrial Pass': 'ITM-016',
+      // Quest keys (Tier 3)
+      "Blacksmith's Hammer": 'ITM-030',
+      'Rune Fragment': 'ITM-031'
     };
     return map[name] || null;
   }

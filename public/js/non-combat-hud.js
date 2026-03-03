@@ -1399,25 +1399,49 @@ var NonCombatHUD = (function() {
       return;
     }
 
-    // ── DEBRIEF FEED DROP (dispose / incinerate card) ──
+    // ── DEBRIEF FEED DROP (dispose / incinerate card or item) ──
     var droppedOnDebrief = _isDragOverDebriefFeed(e.clientX, e.clientY);
-    if (droppedOnDebrief && (_drag.kind === 'hand' || _drag.kind === 'backup' || _drag.kind === 'vault')) {
+    if (droppedOnDebrief && (_drag.kind === 'hand' || _drag.kind === 'backup' || _drag.kind === 'vault' || _drag.kind === 'persistent_item')) {
       _clearDebriefDisposingPreview();
 
-      // Remove card from its source container
-      if (_useCSA) {
-        if (_drag.kind === 'hand') {
+      // Remove card/item from its source container.
+      // CSA path (preferred) with GAMESTATE fallback for each source.
+      var disposed = false;
+      if (_drag.kind === 'hand') {
+        if (_useCSA) {
           CardStateAuthority.consumeFromHand(_drag.index, 1);
-        } else if (_drag.kind === 'backup') {
-          CardStateAuthority.removeBackupCard(_drag.index);
-        } else if (_drag.kind === 'vault') {
-          // Vault disposal — remove 1 qty
-          if (typeof CardStateAuthority.disposeFromVault === 'function') {
-            CardStateAuthority.disposeFromVault(_drag.id);
-          } else if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.removePersistentCard === 'function') {
-            GAMESTATE.removePersistentCard(_drag.id, 1);
-          }
+          disposed = true;
+        } else if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getCardHand) {
+          var hand = GAMESTATE.getCardHand();
+          if (hand && hand[_drag.index]) { hand.splice(_drag.index, 1); disposed = true; }
         }
+      } else if (_drag.kind === 'backup') {
+        if (_useCSA) {
+          CardStateAuthority.removeBackupCard(_drag.index);
+          disposed = true;
+        } else if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getBackupCards) {
+          var backup = GAMESTATE.getBackupCards();
+          if (backup && backup[_drag.index]) { backup.splice(_drag.index, 1); disposed = true; }
+        }
+      } else if (_drag.kind === 'vault') {
+        // Vault disposal — remove 1 qty from persistentCards
+        if (_useCSA && typeof CardStateAuthority.disposeFromVault === 'function') {
+          disposed = CardStateAuthority.disposeFromVault(_drag.id);
+        }
+        if (!disposed && typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.removePersistentCard === 'function') {
+          var vr = GAMESTATE.removePersistentCard(_drag.id, 1);
+          disposed = !!(vr && vr.success);
+        }
+      } else if (_drag.kind === 'persistent_item') {
+        // Persistent inventory item (keys, equipment) — remove by index
+        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.removePersistentInventoryItem === 'function') {
+          GAMESTATE.removePersistentInventoryItem(_drag.index);
+          disposed = true;
+        }
+      }
+
+      if (!disposed) {
+        console.warn('[NCH:Disposal] Failed to remove', _drag.kind, _drag.id, _drag.index);
       }
 
       // Fire incinerator animation on debrief screen
@@ -1426,7 +1450,6 @@ var NonCombatHUD = (function() {
         ds.classList.add('incinerator-active');
         setTimeout(function() { ds.classList.remove('incinerator-active'); }, 600);
       }
-      // Also fire via DebriefFeedController if available
       if (typeof DebriefFeedController !== 'undefined' && typeof DebriefFeedController.flashIncinerator === 'function') {
         DebriefFeedController.flashIncinerator({ kind: 'disposal', durationMs: 600 });
       }
@@ -1438,13 +1461,12 @@ var NonCombatHUD = (function() {
         }));
       } catch (incErr) {}
 
-      // Passive items (Scrapper Core) trigger
       if (typeof PassiveItemsSystem !== 'undefined' && typeof PassiveItemsSystem.handleDisposal === 'function') {
         try { PassiveItemsSystem.handleDisposal({ id: _drag.id, name: _drag.id }, 'debrief_disposal'); } catch (pe) {}
       }
 
       ok = true;
-      _showDragResult(true, '\uD83D\uDD25 Disposed!', 'Cannot dispose');
+      _showDragResult(disposed, '\uD83D\uDD25 Disposed!', 'Cannot dispose');
       _restoreDragMinimize();
       _drag = null;
       _renderAll();

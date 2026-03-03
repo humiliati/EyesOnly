@@ -2893,9 +2893,11 @@ const GoneRogueMobile = (function () {
       if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
         item = GoneRogueDataRegistry.getItem(itemRef.id);
       }
+      // If registry returned a _missing stub or null, fall back to meta or raw ref
+      if (!item || item._missing) item = null;
       if (!item) item = { name: itemRef.id, emoji: '📦' };
 
-      // Allow migrated legacy overrides
+      // Allow migrated legacy overrides (meta carries original name/emoji from pickup)
       var displayName = (itemRef.meta && itemRef.meta.legacyName) ? itemRef.meta.legacyName : (item.name || itemRef.id);
       var displayEmoji = (itemRef.meta && itemRef.meta.emoji) ? itemRef.meta.emoji : (item.emoji || '📦');
 
@@ -3135,7 +3137,8 @@ const GoneRogueMobile = (function () {
       var droppedOnActiveSlot = false;
       if (element) {
         if (element === activeSlot || element === activeDisplay ||
-            activeSlot.contains(element) || activeDisplay.contains(element)) {
+            (activeSlot && activeSlot.contains(element)) ||
+            (activeDisplay && activeDisplay.contains(element))) {
           droppedOnActiveSlot = true;
         }
       }
@@ -3143,6 +3146,32 @@ const GoneRogueMobile = (function () {
       if (droppedOnActiveSlot) {
         // Equip the item
         _equipItemToActiveSlot(_activeDragItem.item);
+      } else {
+        // Check if dropped on debrief feed (incineration) — mirrors pointer handler
+        var debriefScreen = document.getElementById('debrief-screen');
+        var droppedOnDebrief = false;
+        if (element && debriefScreen) {
+          if (element === debriefScreen || debriefScreen.contains(element)) {
+            droppedOnDebrief = true;
+          }
+        }
+
+        if (droppedOnDebrief) {
+          var dragIndex = parseInt(_activeDragItem.element.dataset.index, 10);
+          if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.removePersistentInventoryItem === 'function') {
+            GAMESTATE.removePersistentInventoryItem(dragIndex);
+          }
+          if (debriefScreen) {
+            debriefScreen.classList.add('incinerator-active');
+            setTimeout(function() { debriefScreen.classList.remove('incinerator-active'); }, 600);
+          }
+          if (typeof DebriefFeedController !== 'undefined' && typeof DebriefFeedController.flashIncinerator === 'function') {
+            DebriefFeedController.flashIncinerator({ kind: 'disposal', durationMs: 600 });
+          }
+          if (typeof TooltipSystem !== 'undefined') {
+            TooltipSystem.show('\uD83D\uDD25 Item disposed', 2000);
+          }
+        }
       }
     }
 
@@ -3281,7 +3310,8 @@ const GoneRogueMobile = (function () {
       var droppedOnActiveSlot = false;
       if (element) {
         if (element === activeSlot || element === activeDisplay ||
-            activeSlot.contains(element) || activeDisplay.contains(element)) {
+            (activeSlot && activeSlot.contains(element)) ||
+            (activeDisplay && activeDisplay.contains(element))) {
           droppedOnActiveSlot = true;
         }
       }
@@ -3289,6 +3319,35 @@ const GoneRogueMobile = (function () {
       if (droppedOnActiveSlot) {
         // Equip the item
         _equipItemToActiveSlot(_activeDragItem.item);
+      } else {
+        // Check if dropped on debrief feed (incineration)
+        var debriefScreen = document.getElementById('debrief-screen');
+        var droppedOnDebrief = false;
+        if (element && debriefScreen) {
+          if (element === debriefScreen || debriefScreen.contains(element)) {
+            droppedOnDebrief = true;
+          }
+        }
+
+        if (droppedOnDebrief) {
+          // Remove from persistent inventory
+          var dragIndex = parseInt(_activeDragItem.element.dataset.index, 10);
+          if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.removePersistentInventoryItem === 'function') {
+            GAMESTATE.removePersistentInventoryItem(dragIndex);
+          }
+          // Fire incinerator animation
+          if (debriefScreen) {
+            debriefScreen.classList.add('incinerator-active');
+            setTimeout(function() { debriefScreen.classList.remove('incinerator-active'); }, 600);
+          }
+          if (typeof DebriefFeedController !== 'undefined' && typeof DebriefFeedController.flashIncinerator === 'function') {
+            DebriefFeedController.flashIncinerator({ kind: 'disposal', durationMs: 600 });
+          }
+          // Tooltip
+          if (typeof TooltipSystem !== 'undefined') {
+            TooltipSystem.show('\uD83D\uDD25 Item disposed', 2000);
+          }
+        }
       }
 
       // Reset visual state
@@ -3343,6 +3402,7 @@ const GoneRogueMobile = (function () {
     if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
       item = GoneRogueDataRegistry.getItem(itemRef.id);
     }
+    if (!item || item._missing) item = null;
     if (!item) item = { name: itemRef.id, emoji: '📦' };
 
     var displayName = (itemRef.meta && itemRef.meta.legacyName) ? itemRef.meta.legacyName : (item.name || itemRef.id);
