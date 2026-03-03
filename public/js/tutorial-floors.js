@@ -996,7 +996,7 @@ var TutorialFloors = (function() {
       { x: 1, y: 6, type: 'SIGN', emoji: '🪧', name: 'Row C: Battery',
         text: 'ROW C — BATTERY (GEM): 3 gems (amounts 1, 2, 3). Cyan-green #00FFA6 overhead, battery row flashes.' },
       { x: 1, y: 8, type: 'SIGN', emoji: '🪧', name: 'Row D: Food',
-        text: 'ROW D — FOOD (4 resourceTypes): HP (rice ball, ramen, med kit), Energy (coffee, battery juice), Fatigue (pillow, tea), Inert (MRE wrapper, stale bread).' },
+        text: 'ROW D — FOOD (4 resourceTypes): HP (stew, pizza, burger), Energy (coffee, energy drink), Fatigue (banana, orange), Inert (juice, water).' },
       { x: 1, y: 10, type: 'SIGN', emoji: '🪧', name: 'Row E: Cards',
         text: 'ROW E — CARDS: 1 attack card, 1 support card. Purple #800080 overhead, cards row updates.' },
       { x: 1, y: 12, type: 'SIGN', emoji: '🪧', name: 'Row F: Keys',
@@ -1006,18 +1006,18 @@ var TutorialFloors = (function() {
 
       // Row D: Food items (auto-pickup)
       // HP food (Pink #FF6B9D)
-      { x: 5, y: 8, type: 'FOOD', emoji: '🍙', name: 'Rice Ball', customData: { foodId: 'FOOD_RICE_BALL' } },
-      { x: 7, y: 8, type: 'FOOD', emoji: '🍜', name: 'Ramen Bowl', customData: { foodId: 'FOOD_RAMEN' } },
-      { x: 9, y: 8, type: 'FOOD', emoji: '💊', name: 'Med Kit', customData: { foodId: 'FOOD_MED_KIT' } },
+      { x: 5, y: 8, type: 'FOOD', emoji: '🍲', name: 'Hot Stew', customData: { foodId: 'FOOD_STEW' } },
+      { x: 7, y: 8, type: 'FOOD', emoji: '🍕', name: 'Pizza Slice', customData: { foodId: 'FOOD_PIZZA' } },
+      { x: 9, y: 8, type: 'FOOD', emoji: '🍔', name: 'Hamburger', customData: { foodId: 'FOOD_BURGER' } },
       // Energy food (Blue #00D4FF)
       { x: 13, y: 8, type: 'FOOD', emoji: '☕', name: 'Coffee', customData: { foodId: 'FOOD_COFFEE' } },
-      { x: 15, y: 8, type: 'FOOD', emoji: '🔋', name: 'Battery Juice', customData: { foodId: 'FOOD_ENERGY_DRINK' } },
+      { x: 15, y: 8, type: 'FOOD', emoji: '🥤', name: 'Energy Drink', customData: { foodId: 'FOOD_ENERGY_DRINK' } },
       // Fatigue food (Brown #A0522D)
-      { x: 19, y: 8, type: 'FOOD', emoji: '🛏️', name: 'Sleeping Bag', customData: { foodId: 'FOOD_SLEEPING_BAG' } },
-      { x: 21, y: 8, type: 'FOOD', emoji: '🍵', name: 'Chamomile Tea', customData: { foodId: 'FOOD_TEA' } },
+      { x: 19, y: 8, type: 'FOOD', emoji: '🍌', name: 'Banana', customData: { foodId: 'FOOD_BANANA' } },
+      { x: 21, y: 8, type: 'FOOD', emoji: '🍊', name: 'Orange', customData: { foodId: 'FOOD_ORANGE' } },
       // Inert food (Grey #CCCCCC)
-      { x: 25, y: 8, type: 'FOOD', emoji: '📦', name: 'MRE Wrapper', customData: { foodId: 'FOOD_MRE_WRAPPER' } },
-      { x: 27, y: 8, type: 'FOOD', emoji: '🍞', name: 'Stale Bread', customData: { foodId: 'FOOD_BREAD' } }
+      { x: 25, y: 8, type: 'FOOD', emoji: '🧃', name: 'Fruit Juice', customData: { foodId: 'FOOD_JUICE' } },
+      { x: 27, y: 8, type: 'FOOD', emoji: '💧', name: 'Water Bottle', customData: { foodId: 'FOOD_WATER' } }
     ],
 
     breakables: [],
