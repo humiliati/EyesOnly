@@ -928,85 +928,139 @@ var TutorialFloors = (function() {
 
   // =========================================================================
   // Tavern Interior Layout (Floor ID: "0.1")
-  // Cozy tavern with bar, tables, and a door to the basement.
+  // COLLECTIBLES TEST BLOCKOUT — All collectible types in labeled rows
+  // Tests: single-tooltip-per-pickup, overhead animations, debrief feed, resource counters
   // =========================================================================
   var TAVERN_INTERIOR_LAYOUT = {
-    name: 'Tavern Interior',
+    name: 'Tavern Interior — Collectibles Test Floor',
     template: [
       '########################################',
       '#......................................#',
-      '#..################....................#',
-      '#..################....................#',
+      '# ROW A: CURRENCY..................... #',
       '#......................................#',
+      '# ROW B: AMMO......................... #',
       '#......................................#',
+      '# ROW C: BATTERY (GEM)................ #',
       '#......................................#',
+      '# ROW D: FOOD (4 resourceTypes)....... #',
       '#......................................#',
+      '# ROW E: CARDS........................ #',
       '#......................................#',
+      '# ROW F: KEYS (3 tiers)............... #',
       '#......................................#',
-      '#......................................#',
-      '#......................................#',
-      '#......................................#',
-      '#......................................#',
-      '#......................................#',
+      '# ROW G: STRESS TEST (same tile)...... #',
       '#......................................#',
       '#......................................#',
       '#......................................#',
       '#......................................#',
       '########################################'
     ],
-    player: { x: 20, y: 17 },
-    exit: { x: 20, y: 18 },
+    player: { x: 2, y: 17 },
+    exit: { x: 2, y: 18 },
 
-    // Door to the basement (nested interior 0.1.1)
-    buildingDoors: [
-      { x: 38, y: 10, buildingId: 'BLD-TAVERN-BASEMENT', targetFloorId: '0.1.1' }
-    ],
+    // Door back to floor 0 exterior
+    buildingDoors: [],
 
     npcs: [{
-      id: 'NPC-BARMAID', x: 10, y: 3, emoji: '👩', name: 'Dusty Portrait',
-      direction: 'south',
+      id: 'NPC-TEST-GUIDE', x: 10, y: 17, emoji: '🧙', name: 'Test Guide',
+      direction: 'north',
       dialogues: [
-        'A faded portrait of a woman hangs on the wall.',
-        'Below it reads: "Mara, Keeper of the Forge Key".',
-        'She seems to be holding something behind her back...',
-        'The portrait\'s eyes seem to follow you toward the eastern wall.'
+        'Welcome to the Collectibles Test Floor.',
+        'Each row tests a different collectible type.',
+        'Walk over items to auto-pickup. Watch for:',
+        '- Exactly 1 MOK tooltip per pickup',
+        '- Correct overhead animation color',
+        '- Debrief feed flash and counter update',
+        'Row G tests simultaneous pickup stacking.'
       ],
       gate: null, reward: null
     }],
 
     decorations: [
-      // Bar counter (top area)
-      { x: 3, y: 2, emoji: '🍺', name: 'Beer Tap' },
-      { x: 18, y: 2, emoji: '🍺', name: 'Beer Tap' },
-      // Tables
-      { x: 6, y: 8, emoji: '🪑', name: 'Chair' },
-      { x: 8, y: 8, emoji: '🪑', name: 'Chair' },
-      { x: 7, y: 9, emoji: '🪑', name: 'Chair' },
-      { x: 14, y: 8, emoji: '🪑', name: 'Chair' },
-      { x: 16, y: 8, emoji: '🪑', name: 'Chair' },
-      { x: 15, y: 9, emoji: '🪑', name: 'Chair' },
-      // Fireplace
-      { x: 30, y: 2, emoji: '🔥', name: 'Fireplace' },
-      { x: 31, y: 2, emoji: '🔥', name: 'Fireplace' },
-      // Candles
-      { x: 3, y: 10, emoji: '🕯️', name: 'Candle' },
-      { x: 36, y: 10, emoji: '🕯️', name: 'Candle' },
-      // Basement door hint
-      { x: 37, y: 10, emoji: '🪧', name: 'Sign' }
+      // Row labels (signs on left side)
+      { x: 1, y: 2, emoji: '🪧', name: 'Row A Label' },
+      { x: 1, y: 4, emoji: '🪧', name: 'Row B Label' },
+      { x: 1, y: 6, emoji: '🪧', name: 'Row C Label' },
+      { x: 1, y: 8, emoji: '🪧', name: 'Row D Label' },
+      { x: 1, y: 10, emoji: '🪧', name: 'Row E Label' },
+      { x: 1, y: 12, emoji: '🪧', name: 'Row F Label' },
+      { x: 1, y: 14, emoji: '🪧', name: 'Row G Label' }
     ],
 
     interactiveItems: [
-      { x: 37, y: 10, type: 'SIGN', emoji: '🪧', name: 'Cellar Sign',
-        text: 'CELLAR — Authorized Personnel Only. (The lock is broken.)' }
+      // Row labels (interactive signs)
+      { x: 1, y: 2, type: 'SIGN', emoji: '🪧', name: 'Row A: Currency',
+        text: 'ROW A — CURRENCY: 3 crypto piles (amounts 1, 5, 25). Yellow #FFFF00 overhead, currency counter updates.' },
+      { x: 1, y: 4, type: 'SIGN', emoji: '🪧', name: 'Row B: Ammo',
+        text: 'ROW B — AMMO: 3 ammo pickups (amounts 1, 3, 5). Magenta #DA70D6 overhead, debrief ammo row flashes.' },
+      { x: 1, y: 6, type: 'SIGN', emoji: '🪧', name: 'Row C: Battery',
+        text: 'ROW C — BATTERY (GEM): 3 gems (amounts 1, 2, 3). Cyan-green #00FFA6 overhead, battery row flashes.' },
+      { x: 1, y: 8, type: 'SIGN', emoji: '🪧', name: 'Row D: Food',
+        text: 'ROW D — FOOD (4 resourceTypes): HP (rice ball, ramen, med kit), Energy (coffee, battery juice), Fatigue (pillow, tea), Inert (MRE wrapper, stale bread).' },
+      { x: 1, y: 10, type: 'SIGN', emoji: '🪧', name: 'Row E: Cards',
+        text: 'ROW E — CARDS: 1 attack card, 1 support card. Purple #800080 overhead, cards row updates.' },
+      { x: 1, y: 12, type: 'SIGN', emoji: '🪧', name: 'Row F: Keys',
+        text: 'ROW F — KEYS: Tier 1 (ammo key, orange #FF8A3D), Tier 2 (gate key, gold #FFD700), Tier 3 (quest key, red #FF4444).' },
+      { x: 1, y: 14, type: 'SIGN', emoji: '🪧', name: 'Row G: Stress Test',
+        text: 'ROW G — SIMULTANEOUS PICKUP: Ammo + currency + gem + food all on same/adjacent tiles. Tests overhead stacking (fan spacing) and single-tooltip-per-pickup.' },
+
+      // Row D: Food items (auto-pickup)
+      // HP food (Pink #FF6B9D)
+      { x: 5, y: 8, type: 'FOOD', emoji: '🍙', name: 'Rice Ball', customData: { foodId: 'FOOD_RICE_BALL' } },
+      { x: 7, y: 8, type: 'FOOD', emoji: '🍜', name: 'Ramen Bowl', customData: { foodId: 'FOOD_RAMEN' } },
+      { x: 9, y: 8, type: 'FOOD', emoji: '💊', name: 'Med Kit', customData: { foodId: 'FOOD_MED_KIT' } },
+      // Energy food (Blue #00D4FF)
+      { x: 13, y: 8, type: 'FOOD', emoji: '☕', name: 'Coffee', customData: { foodId: 'FOOD_COFFEE' } },
+      { x: 15, y: 8, type: 'FOOD', emoji: '🔋', name: 'Battery Juice', customData: { foodId: 'FOOD_ENERGY_DRINK' } },
+      // Fatigue food (Brown #A0522D)
+      { x: 19, y: 8, type: 'FOOD', emoji: '🛏️', name: 'Sleeping Bag', customData: { foodId: 'FOOD_SLEEPING_BAG' } },
+      { x: 21, y: 8, type: 'FOOD', emoji: '🍵', name: 'Chamomile Tea', customData: { foodId: 'FOOD_TEA' } },
+      // Inert food (Grey #CCCCCC)
+      { x: 25, y: 8, type: 'FOOD', emoji: '📦', name: 'MRE Wrapper', customData: { foodId: 'FOOD_MRE_WRAPPER' } },
+      { x: 27, y: 8, type: 'FOOD', emoji: '🍞', name: 'Stale Bread', customData: { foodId: 'FOOD_BREAD' } }
     ],
 
-    breakables: [
-      { x: 24, y: 6, emoji: '🍺', name: 'Dusty Barrel', hp: 1, drops: { currency: [2, 5] } },
-      { x: 25, y: 6, emoji: '🍺', name: 'Dusty Barrel', hp: 1, drops: { currency: [2, 5] } },
-      { x: 24, y: 7, emoji: '📦', name: 'Old Crate', hp: 1, drops: { currency: [3, 6] } }
+    breakables: [],
+
+    // Row A: Currency — 3 crypto piles (amounts 1, 5, 25)
+    currencies: [
+      { x: 5, y: 2, amount: 1 },
+      { x: 8, y: 2, amount: 5 },
+      { x: 11, y: 2, amount: 25 },
+      // Row G: Stress test — currency component
+      { x: 5, y: 14, amount: 3 }
     ],
 
-    currencies: [{ x: 7, y: 8, amount: 3 }, { x: 15, y: 8, amount: 3 }],
+    // Row B-G: Ammo, Gems, Cards, Keys in tutorialPickups
+    tutorialPickups: [
+      // Row B: Ammo (magenta #DA70D6) — amounts 1, 3, 5
+      { x: 5, y: 4, type: 'ammo', amount: 1 },
+      { x: 8, y: 4, type: 'ammo', amount: 3 },
+      { x: 11, y: 4, type: 'ammo', amount: 5 },
+
+      // Row C: Battery/Gem (cyan-green #00FFA6) — amounts 1, 2, 3
+      { x: 5, y: 6, type: 'gem', amount: 1 },
+      { x: 8, y: 6, type: 'gem', amount: 2 },
+      { x: 11, y: 6, type: 'gem', amount: 3 },
+
+      // Row E: Cards (purple #800080) — 1 attack card, 1 support card
+      { x: 5, y: 10, type: 'card', guaranteed: true, cardType: 'ATTACK' },
+      { x: 8, y: 10, type: 'card', guaranteed: true, cardType: 'SUPPORT' },
+
+      // Row F: Keys — Tier 1 (ammo key), Tier 2 (gate key), Tier 3 (quest key)
+      // Tier 1: Key ammo (orange #FF8A3D) — consumable chest keys
+      { x: 5, y: 12, type: 'key', keyType: 'RUSTY_KEY', tier: 1, name: 'Rusty Key', emoji: '🗝' },
+      // Tier 2: Key items (gold #FFD700) — persistent door keys, auto-equips
+      { x: 8, y: 12, type: 'key', keyType: 'SECURITY_KEYCARD', tier: 2, name: 'Security Keycard', emoji: '💳' },
+      // Tier 3: Quest keys (red #FF4444) — NPC turn-in items
+      { x: 11, y: 12, type: 'key', keyType: 'QUEST_BLACKSMITH_HAMMER', tier: 3, name: 'Blacksmith Hammer', emoji: '🔨', npcTarget: 'NPC-BLACKSMITH' },
+
+      // Row G: Stress test — multiple items on adjacent tiles
+      // Testing simultaneous pickup with overhead animation stacking
+      { x: 6, y: 14, type: 'ammo', amount: 2 },
+      { x: 7, y: 14, type: 'gem', amount: 1 }
+    ],
+
     enemies: []
   };
 

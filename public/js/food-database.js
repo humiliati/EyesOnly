@@ -635,6 +635,84 @@ const FoodDatabase = (function() {
       biomes: ['forest', 'mall'],
       autoPickup: true,
       groundEffect: 'sticky'
+    },
+    // ═══════════════════════════════════════════════════════════
+    // TEST BLOCKOUT ITEMS (for tavern collectibles test floor)
+    // ═══════════════════════════════════════════════════════════
+    'FOOD_RICE_BALL': {
+      id: 'FOOD_RICE_BALL',
+      name: 'Rice Ball',
+      emoji: '🍙',
+      category: 'food',
+      resourceType: 'HP',
+      resourceColor: FOOD_RESOURCE_COLORS.HP,
+      primaryEffect: 16,
+      effects: { hp: 16, fatigue: -8 },
+      tooltipText: '+16 HP, -8 Fatigue',
+      spawnWeight: 30,
+      biomes: ['all'],
+      autoPickup: true,
+      groundEffect: null
+    },
+    'FOOD_RAMEN': {
+      id: 'FOOD_RAMEN',
+      name: 'Ramen Bowl',
+      emoji: '🍜',
+      category: 'food',
+      resourceType: 'HP',
+      resourceColor: FOOD_RESOURCE_COLORS.HP,
+      primaryEffect: 18,
+      effects: { hp: 18, fatigue: -10 },
+      tooltipText: '+18 HP, -10 Fatigue',
+      spawnWeight: 28,
+      biomes: ['all'],
+      autoPickup: true,
+      groundEffect: null
+    },
+    'FOOD_MED_KIT': {
+      id: 'FOOD_MED_KIT',
+      name: 'Med Kit',
+      emoji: '💊',
+      category: 'special',
+      resourceType: 'HP',
+      resourceColor: FOOD_RESOURCE_COLORS.HP,
+      primaryEffect: 30,
+      effects: { hp: 30, fatigue: -15, removeStatus: ['poisoned', 'bleeding'] },
+      tooltipText: '+30 HP, -15 Fatigue, Cleanse',
+      spawnWeight: 15,
+      biomes: ['all'],
+      autoPickup: true,
+      groundEffect: null
+    },
+    'FOOD_SLEEPING_BAG': {
+      id: 'FOOD_SLEEPING_BAG',
+      name: 'Sleeping Bag',
+      emoji: '🛏️',
+      category: 'energy',
+      resourceType: 'Fatigue',
+      resourceColor: FOOD_RESOURCE_COLORS.Fatigue,
+      primaryEffect: 35,
+      effects: { hp: 5, fatigue: -35 },
+      tooltipText: '+5 HP, -35 Fatigue',
+      spawnWeight: 20,
+      biomes: ['all'],
+      autoPickup: true,
+      groundEffect: null
+    },
+    'FOOD_MRE_WRAPPER': {
+      id: 'FOOD_MRE_WRAPPER',
+      name: 'MRE Wrapper',
+      emoji: '📦',
+      category: 'special',
+      resourceType: 'Inert',
+      resourceColor: FOOD_RESOURCE_COLORS.Inert,
+      primaryEffect: 0,
+      effects: { hp: 2, fatigue: -1 },
+      tooltipText: '+2 HP, -1 Fatigue (mostly empty)',
+      spawnWeight: 10,
+      biomes: ['all'],
+      autoPickup: true,
+      groundEffect: null
     }
   };
 

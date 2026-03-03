@@ -1,5 +1,16 @@
 [
   {
+    "id": "BLD-TAVERN",
+    "name": "Floor 0 Tavern (Test Blockout)",
+    "emoji": "🏚️",
+    "clusterWidth": 1,
+    "interactiveIndex": 0,
+    "orientation": "vertical",
+    "interiorFloorId": "0.1",
+    "enterHint": "↔️",
+    "nested": []
+  },
+  {
     "id": "BLD-001",
     "name": "Tavern",
     "emoji": "🍺",
