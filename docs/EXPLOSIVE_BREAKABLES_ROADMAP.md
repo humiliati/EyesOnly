@@ -24,8 +24,8 @@ Add two barrel variants to the breakable type registry:
 
 | Type | Emoji | HP | Kickable | Noise | Explosive | Blast Radius | Blast Damage | Drop |
 |------|-------|----|----------|-------|-----------|-------------|-------------|------|
-| `BARREL_GREY` | 🪣 | 2 | ✅ | 1 | ❌ | — | — | Standard loot table |
-| `BARREL_RED` | 🛢️ | 1 | ✅ | 4 (boom) | ✅ | 3 tiles | 15-25 HP | No loot (consumed) |
+| `BARREL_GREY` | 🗑️ | 2 | ✅ | 1 | ❌ | — | — | Standard loot table |
+| `BARREL_RED` | 🛢️ | 1 | ✅ | 4 (boom) | ✅ | 2.75 tiles | 9-25 HP | No loot (consumed) |
 
 Grey barrels behave identically to existing breakables — they use the current `_spawnBreakableLoot` path in `breakable-system.js`. Red barrels override the destruction handler.
 
@@ -68,7 +68,7 @@ _detonatedThisTick.add(key);
 - Red barrels spawn in `plant`, `cave`, and `mall` biomes
 - Never spawn adjacent to exits or the player start position
 - Maximum 3 red barrels per floor (tunable in config)
-- Grey barrels spawn in all biomes, higher weight than red
+- Grey barrels 🗑️ spawn in all biomes, higher weight than red
 - Red barrels have a subtle idle animation: the 🛢️ emoji gets a pulsing red CSS glow via a class `explosive-idle` (2s infinite pulse, `box-shadow: 0 0 6px #ff3300`)
 
 ---

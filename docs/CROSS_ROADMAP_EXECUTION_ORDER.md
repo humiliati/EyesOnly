@@ -81,7 +81,7 @@ After Sprint 1, playtesters should be able to: collect enemy card drops into han
 SPRINT 2: Explosive Breakables — Barrels Through Combat Cards
 [EB] Phases 1–5 — Build the explosive systems that the plant-detonate loop depends on. Phase 6 (polish) deferred to Sprint 6.
 Phase 1: Explosive Barrel Breakable Type
-•	BARREL_GREY (inert cover, standard loot) and BARREL_RED (1 HP, blast radius 3, 15-25 damage)
+•	BARREL_GREY (wastebasket.emoji) (inert cover, standard loot) and BARREL_RED (1 HP, blast radius 3, 15-25 damage)
 •	Destruction override: red barrel → _triggerExplosion() instead of normal loot
 •	Chain detonation with per-tick detonation set (infinite loop guard)
 •	Spawning rules: plant/cave/mall biomes, max 3 red barrels per floor
