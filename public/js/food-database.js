@@ -86,12 +86,12 @@ const FoodDatabase = (function() {
       biomes: ['mall', 'museum']
     },
 
-    // Fatigue recovery (coffee/energy)
+    // Fatigue recovery
     'FOOD_COFFEE': {
       id: 'FOOD_COFFEE',
       name: 'Hot Coffee',
       emoji: '☕',
-      category: 'energy',
+      category: 'fatigue',
       autoPickup: true,
       effects: {
         hp: 5,
@@ -105,7 +105,7 @@ const FoodDatabase = (function() {
       id: 'FOOD_ENERGY_DRINK',
       name: 'Energy Drink',
       emoji: '🥤',
-      category: 'energy',
+      category: 'fatigue',
       autoPickup: true,
       effects: {
         hp: 10,
@@ -119,7 +119,7 @@ const FoodDatabase = (function() {
       id: 'FOOD_TEA',
       name: 'Green Tea',
       emoji: '🍵',
-      category: 'energy',
+      category: 'fatigue',
       autoPickup: true,
       effects: {
         hp: 8,
@@ -130,12 +130,12 @@ const FoodDatabase = (function() {
       biomes: ['museum', 'office']
     },
 
-    // Special items (ammo/currency)
+    // Special items (ammo/currency) — health category (HP is primary effect)
     'FOOD_RATION': {
       id: 'FOOD_RATION',
       name: 'Field Ration',
       emoji: '🥫',
-      category: 'special',
+      category: 'health',
       autoPickup: true,
       effects: {
         hp: 35,
@@ -150,7 +150,7 @@ const FoodDatabase = (function() {
       id: 'FOOD_CANDY',
       name: 'Candy',
       emoji: '🍬',
-      category: 'special',
+      category: 'inert',
       autoPickup: true,
       effects: {
         hp: 5,
@@ -176,12 +176,12 @@ const FoodDatabase = (function() {
       biomes: ['office', 'mall']
     },
 
-    // Water (status effect removal)
+    // Water (status effect removal) — inert category (cleanse, minor stats)
     'FOOD_WATER': {
       id: 'FOOD_WATER',
       name: 'Water Bottle',
       emoji: '💧',
-      category: 'status',
+      category: 'inert',
       autoPickup: true,
       effects: {
         hp: 5,
@@ -196,7 +196,7 @@ const FoodDatabase = (function() {
       id: 'FOOD_JUICE',
       name: 'Fruit Juice',
       emoji: '🧃',
-      category: 'status',
+      category: 'inert',
       autoPickup: true,
       effects: {
         hp: 12,

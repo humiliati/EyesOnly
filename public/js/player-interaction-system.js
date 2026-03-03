@@ -170,12 +170,15 @@ var PlayerInteractionSystem = (function() {
     var result = FoodDatabase.applyFoodEffects(foodItem.customData.foodId, ctx.player);
     if (!result.success) return;
 
-    // Determine primary effect color
+    // Determine overhead animation color by food category
     var foodDef = FoodDatabase.getFoodItem(foodItem.customData.foodId);
-    var primaryColor = '#FF6B9D'; // HP pink default
-    if (foodDef && foodDef.category === 'energy') {
-      primaryColor = '#A0522D'; // Fatigue brown
-    }
+    var FOOD_CATEGORY_COLORS = {
+      'health':  '#FF6B9D', // HP pink
+      'energy':  '#00D4FF', // Electric blue
+      'fatigue': '#A0522D', // Earthy brown
+      'inert':   '#CCCCCC'  // Light grey (placeholder)
+    };
+    var primaryColor = (foodDef && FOOD_CATEGORY_COLORS[foodDef.category]) || '#FF6B9D';
 
     if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
       OverheadAnimator.showGenericExpression(x, y, result.emoji, 1000, primaryColor);
@@ -216,14 +219,8 @@ var PlayerInteractionSystem = (function() {
       TooltipSystem.showGeneric(result.tooltipText, 2000);
     }
 
-    // Pancake stacker for food
-    try {
-      if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-        PancakeStack.addPancake(result.emoji || '\uD83C\uDF4E'); // 🍎
-      } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-        PlayerStackManager.addPancake(result.emoji || '\uD83C\uDF4E');
-      }
-    } catch (ePancake) {}
+    // NOTE: No PancakeStack call — single pickup = single OverheadAnimator animation only.
+    // PancakeStack activates only when multiple animations need simultaneous display.
 
     InteractiveItems.removeItem(foodItem.id);
     console.log('[GoneRogue] Food consumed:', result.foodName);

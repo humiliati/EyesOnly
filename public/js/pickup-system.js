@@ -136,14 +136,8 @@ var PickupSystem = (function() {
       }
     } catch (eDebrief) {}
 
-    // PancakeStack for persistent inventory tracking (per doctrine: both systems fire)
-    try {
-      if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-        PancakeStack.addPancake('\u204D');
-      } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-        PlayerStackManager.addPancake('\u204D');
-      }
-    } catch (ePancake) {}
+    // NOTE: No PancakeStack call — single pickup = single OverheadAnimator animation only.
+    // PancakeStack activates only when multiple animations need simultaneous display.
 
     return {
       lines: ['PICKED UP: \u204D Ammo +' + item.amount, ''].concat(ctx.renderGrid()),
@@ -182,13 +176,8 @@ var PickupSystem = (function() {
       UIControls.updateMokInterjection('\u25C8 Battery +' + gemAmount);
     }
 
-    try {
-      if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-        PancakeStack.addPancake('\u25C8');
-      } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-        PlayerStackManager.addPancake('\u25C8');
-      }
-    } catch (ePancake) {}
+    // NOTE: No PancakeStack call — single pickup = single OverheadAnimator animation only.
+    // PancakeStack activates only when multiple animations need simultaneous display.
 
     try {
       if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.triggerBatteryRecharge) {
@@ -298,15 +287,7 @@ var PickupSystem = (function() {
 
     if (isCard) {
       result = GAMESTATE.addCard(item.card);
-      // Pancake stacker for card pickup
-      try {
-        var cardEmoji = (item.card && item.card.emoji) ? item.card.emoji : '\uD83C\uDCCF'; // 🃏
-        if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-          PancakeStack.addPancake(cardEmoji);
-        } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-          PlayerStackManager.addPancake(cardEmoji);
-        }
-      } catch (ePancake) {}
+      // NOTE: No PancakeStack call — single pickup = single OverheadAnimator animation only.
       // Overhead animation: monochrome card symbol in Cards purple
       try {
         if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
@@ -364,11 +345,7 @@ var PickupSystem = (function() {
         if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
           OverheadAnimator.showGenericExpression(item.x, item.y, item.emoji || '\uD83D\uDD11', 1200, '#FFD700'); // 🔑
         }
-        if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-          PlayerStackManager.addPancake(item.emoji || '\uD83D\uDD11');
-        } else if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-          PancakeStack.addPancake(item.emoji || '\uD83D\uDD11');
-        }
+        // NOTE: No PancakeStack — single pickup = single OverheadAnimator animation only.
       } catch (eAnim) {}
 
       try {
@@ -389,12 +366,7 @@ var PickupSystem = (function() {
         if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
           OverheadAnimator.showGenericExpression(item.x, item.y, '\u2757', 1500, '#FF4444'); // ❗
         }
-        // PancakeStack per doctrine: "All key tiers add a glyph to PancakeStack on pickup"
-        if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-          PancakeStack.addPancake(item.emoji || '\u2757');
-        } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-          PlayerStackManager.addPancake(item.emoji || '\u2757');
-        }
+        // NOTE: No PancakeStack — single pickup = single OverheadAnimator animation only.
       } catch (eAnim) {}
 
       try {
@@ -419,11 +391,7 @@ var PickupSystem = (function() {
         if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
           OverheadAnimator.showGenericExpression(item.x, item.y, item.emoji || '\uD83D\uDDDD', 800, '#FF8A3D'); // 🗝
         }
-        if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-          PancakeStack.addPancake(item.emoji || '\uD83D\uDDDD');
-        } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-          PlayerStackManager.addPancake(item.emoji || '\uD83D\uDD11');
-        }
+        // NOTE: No PancakeStack — single pickup = single OverheadAnimator animation only.
       } catch (eAnim) {}
     }
   }

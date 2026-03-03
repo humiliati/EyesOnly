@@ -161,15 +161,8 @@ var CurrencySpawning = (function() {
     ctx.player.collectingCurrency = true;
     ctx.player.currencyCollectTime = now;
 
-    try {
-      if (c._isAmmo) {
-        if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-          PancakeStack.addPancake('\u2041');
-        } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-          PlayerStackManager.addPancake('\u2041');
-        }
-      }
-    } catch (ePancake) {}
+    // NOTE: No PancakeStack call — single pickup = single OverheadAnimator animation only.
+    // PancakeStack activates only when multiple animations need simultaneous display.
 
     ctx.currencies.splice(target.idx, 1);
 

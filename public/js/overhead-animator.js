@@ -193,7 +193,28 @@ const OverheadAnimator = (function() {
     };
 
     var key = x + ',' + y;
-    _activeAnimations[key] = animation;
+    var existing = _activeAnimations[key];
+
+    // Stack concurrent animations instead of overwriting.
+    // Single pickup = single animation; rapid sequential pickups or
+    // multi-source animations (speech + currency + rope) stack into an array.
+    if (existing) {
+      if (Array.isArray(existing)) {
+        animation.data.stackIndex = existing.length;
+        animation.data.stackCount = existing.length + 1;
+        existing.push(animation);
+      } else {
+        // Promote single → array, preserve existing as index 0
+        existing.data = existing.data || {};
+        existing.data.stackIndex = 0;
+        existing.data.stackCount = 2;
+        animation.data.stackIndex = 1;
+        animation.data.stackCount = 2;
+        _activeAnimations[key] = [existing, animation];
+      }
+    } else {
+      _activeAnimations[key] = animation;
+    }
   }
 
   /**

@@ -34,10 +34,10 @@ This document provides a **designer-facing roadmap** for unifying the two existi
    - Items can overlap during animations
    - No coordination between systems
 
-4. **Dual System Overhead**: Every collectible triggers **both** systems (by design)
-   - `OverheadAnimator.showCurrencyPickup()` → "+3¢" text bounce
-   - `PancakeStack.addPancake('¢')` → Glyph stack
-   - This is intentional — see Core Principles §3
+4. ~~**Dual System Overhead**: Every collectible triggers **both** systems~~ ✅ FIXED (v1.3 Architecture)
+   - **New doctrine**: Single pickup = single OverheadAnimator animation only
+   - PancakeStack activates only when multiple animations need simultaneous display (e.g., rope drag + currency + dialogue)
+   - All `PancakeStack.addPancake()` calls removed from single-item pickup paths
 
 5. **Risk of Third System**: Without clear doctrine, developers may create new overhead systems for:
    - Environment interaction feedback (lever pulled, rope climbed)
@@ -53,7 +53,8 @@ This document provides a **designer-facing roadmap** for unifying the two existi
 
 | Use Case | System to Use | Rationale |
 |----------|--------------|-----------|
-| **Collectible pickups** | **Both** (OverheadAnimator + PancakeStack) | OverheadAnimator = "what happened", PancakeStack = "what you have" |
+| **Single collectible pickup** | **OverheadAnimator only** | Single pickup = single animation (v1.3 doctrine) |
+| **Multiple simultaneous animations** | **OverheadAnimator + PancakeStack** | Rope drag + currency, speech + item drop |
 | **Currency text feedback** | **OverheadAnimator** | Quick "+3¢" confirmation text |
 | **NPC expressions** | **OverheadAnimator** | Emotional states, reactions |
 | **Status effects** | **OverheadAnimator** | Burning 🔥, frozen ❄️, stunned 💫 |
@@ -62,27 +63,28 @@ This document provides a **designer-facing roadmap** for unifying the two existi
 | **Combat feedback** | **OverheadAnimator** | Critical hits, misses, dodges |
 | **Achievements** | **OverheadAnimator** | Level up ⬆️, achievement 🏆 |
 
-### Core Principles
+### Core Principles (v1.3 — Unified Architecture)
 
-1. **One System for Persistent Feedback** (PancakeStack)
-   - Use for items that should remain visible for player inventory awareness
-   - 4-second lifetime allows players to track recent pickups during combat
-   - Automatic decay prevents clutter
+1. **Single Pickup = Single OverheadAnimator Animation**
+   - A collectible pickup triggers ONE overhead animation only, at the exact moment of pickup
+   - Uses `OverheadAnimator.showGenericExpression()` with explicit RESOURCE_COLOR
+   - PancakeStack is NOT called for individual pickups
 
-2. **One System for Event Notifications** (OverheadAnimator)
-   - Use for transient events that need immediate feedback but not persistence
-   - Text + emoji for clarity
-   - Short durations (200ms - 2s) keep display clean
+2. **PancakeStack = Multi-Animation Stacking Only**
+   - PancakeStack activates only when multiple animations need simultaneous display
+   - Example scenarios: rope drag + currency pickup, speech bubble + resource drop, NPC dialogue + quest item
+   - Priority ordering: Speech > Rope > Currency when multiple animations coexist
+   - 4-second lifetime with automatic decay
 
-3. **Systems Work Together**
-   - Collectibles trigger **both** systems (by design)
-   - OverheadAnimator shows "what happened" ("+3¢")
-   - PancakeStack shows "what you have" ("¢" in stack)
+3. **OverheadAnimator Stacks Concurrent Animations**
+   - `showGenericExpression()` now pushes to an array instead of overwriting when there's already an active animation at the same position
+   - Rapid sequential pickups (ammo + currency on same tile) stack properly in the OverheadAnimator
+   - The `update()` function already handles array-based expiration
 
 4. **No Third System**
    - All future overhead animations use OverheadAnimator
    - Environment interactions, tools, achievements → OverheadAnimator
-   - Only exception: inventory-style persistent tracking → PancakeStack
+   - PancakeStack reserved exclusively for multi-source simultaneous display
 
 ---
 
@@ -239,23 +241,28 @@ This document provides a **designer-facing roadmap** for unifying the two existi
 
 ## Designer Quick Reference
 
-### Decision Tree
+### Decision Tree (v1.3)
 
 ```
 Need overhead animation?
 │
-├─ Is it a collectible item that goes in inventory?
-│  └─ YES → Use BOTH systems:
-│           1. OverheadAnimator.showGenericExpression(x, y, glyph, duration, RESOURCE_COLOR)
-│           2. PancakeStack.addPancake(glyph)
+├─ Is it a single collectible pickup?
+│  └─ YES → OverheadAnimator ONLY:
+│           OverheadAnimator.showGenericExpression(x, y, glyph, duration, RESOURCE_COLOR)
+│           ❌ Do NOT call PancakeStack.addPancake()
 │
-├─ Is it short-lived event feedback (<2s)?
-│  └─ YES → Use OverheadAnimator.showExpression() or showGenericExpression()
-│           Example: OverheadAnimator.showExpression(x, y, 'ALERT', 1000)
+├─ Are multiple animations firing simultaneously? (rope + currency, speech + item drop)
+│  └─ YES → OverheadAnimator stacks them automatically at the same position key.
+│           PancakeStack may assist for persistent multi-source display.
+│           Priority: Speech > Rope > Currency
 │
 ├─ Is it currency with text ("+3¢")?
 │  └─ YES → Use OverheadAnimator.showCurrencyPickup()
 │           Example: OverheadAnimator.showCurrencyPickup(x, y, 3)
+│
+├─ Is it short-lived event feedback (<2s)?
+│  └─ YES → Use OverheadAnimator.showExpression() or showGenericExpression()
+│           Example: OverheadAnimator.showExpression(x, y, 'ALERT', 1000)
 │
 ├─ Is it environment interaction (lever, rope, door)?
 │  └─ YES → Use OverheadAnimator.showGenericExpression()
@@ -267,32 +274,32 @@ Need overhead animation?
 
 ### Code Examples
 
-#### Collectible Pickup — Use RESOURCE_COLOR, NOT showExpression('LOOT')
+#### Collectible Pickup — OverheadAnimator ONLY (v1.3 doctrine)
 ```javascript
-// Currency — specialized method (OverheadAnimator only; PancakeStack added separately)
+// Currency — specialized method (OverheadAnimator only)
 OverheadAnimator.showCurrencyPickup(_player.x, _player.y, amount);
+// ❌ No PancakeStack.addPancake() — single pickup = single animation
 
 // Ammo — magenta RESOURCE_COLOR
 OverheadAnimator.showGenericExpression(x, y, '⁍', 800, '#DA70D6');
-PancakeStack.addPancake('⁍');
 DebriefFeedController.reportResourceChange('Ammo', oldAmmo, newAmmo, 'Ammo +N');
 
 // Battery — cyan-green RESOURCE_COLOR
 OverheadAnimator.showGenericExpression(x, y, '◈', 800, '#00FFA6');
-PancakeStack.addPancake('◈');
 DebriefFeedController.reportResourceChange('Battery', oldBat, newBat, '◈ Battery +N');
 
 // Food (health) — HP pink
 OverheadAnimator.showGenericExpression(x, y, emoji, 1000, '#FF6B9D');
-PancakeStack.addPancake(emoji);
-// Food (energy) — Fatigue brown
+// Food (energy) — Electric blue
+OverheadAnimator.showGenericExpression(x, y, emoji, 1000, '#00D4FF');
+// Food (fatigue) — Earthy brown
 OverheadAnimator.showGenericExpression(x, y, emoji, 1000, '#A0522D');
-PancakeStack.addPancake(emoji);
+// Food (inert) — Light grey placeholder
+OverheadAnimator.showGenericExpression(x, y, emoji, 1000, '#CCCCCC');
 // Food reports EACH changed resource individually to debrief feed
 
 // Card — Cards purple
 OverheadAnimator.showGenericExpression(x, y, '🂠', 800, '#800080');
-PancakeStack.addPancake(cardEmoji);
 ```
 
 #### Environment Interaction (Lever Pulled)
@@ -461,7 +468,7 @@ The key system has three tiers with distinct storage, tooltip, and overhead anim
 - **MOK interjection**: `Key Ammo: {name}`
 - **Quality label**: `[KEY AMMO]` in pickup log
 - **Overhead anim**: Key Ammo orange (`#FF8A3D`) 🗝 expression, 800ms
-- **PancakeStack**: `item.emoji || '🗝'`
+- **PancakeStack**: None (v1.3 — single pickup = OverheadAnimator only)
 - **`getTotalKeyAmmo()`**: Returns sum of all Tier 1 key counts (used for resource-change delta)
 
 ### Tier 2 — key_items (Persistent Door/Gate Keys)
@@ -473,7 +480,7 @@ The key system has three tiers with distinct storage, tooltip, and overhead anim
 - **MOK interjection**: `Key Item: {name}`
 - **Quality label**: `[KEY ITEM]` in pickup log
 - **Overhead anim**: Gold (`#FFD700`) 🔑 expression, 1200ms
-- **PancakeStack**: `item.emoji || '🔑'`
+- **PancakeStack**: None (v1.3 — single pickup = OverheadAnimator only)
 
 ### Tier 3 — Quest Keys (NPC Turn-In Items)
 - **Examples**: Blacksmith's Hammer 🔨, Rune Fragment 💎
@@ -482,16 +489,17 @@ The key system has three tiers with distinct storage, tooltip, and overhead anim
 - **Tooltip**: `TooltipSystem.show('❗ QUEST ITEM — {name} — Return to {NPC}', 3500)`
 - **MOK interjection**: `Key Item: {name}` (shares Tier 2 prefix — consider adding `Quest Item:` prefix in future work)
 - **Overhead anim**: Red (`#FF4444`) ❗ expression, 1500ms
-- **PancakeStack**: `item.emoji || '❗'`
+- **PancakeStack**: None (v1.3 — single pickup = OverheadAnimator only)
 - **No debrief resource row**; **no auto-equip**
 
 ---
 
-**Overhead animation behavior** (all tiers):
-- All key tiers trigger `OverheadAnimator.showGenericExpression` on pickup (per system doctrine)
-- All key tiers add a glyph to PancakeStack on pickup (per system doctrine)
+**Overhead animation behavior** (all tiers — v1.3):
+- All key tiers trigger `OverheadAnimator.showGenericExpression` on pickup
+- PancakeStack is NOT called for single pickups (v1.3 architecture change)
 - Battery/gem always uses hardcoded `◈` — never `item.emoji` or `item.glyph`
 - Weapon ammo uses hardcoded `⁍` with magenta color `#DA70D6`
+- Concurrent animations at the same position now stack in an array (OverheadAnimator v1.3)
 
 ---
 
@@ -503,21 +511,18 @@ The key system has three tiers with distinct storage, tooltip, and overhead anim
 
 **Fix**: Added `ctx.fillStyle = '#FFFFFF'` before each `ctx.fillText()` call in `PlayerStackManager.render()`.
 
-**Doctrine compliance**: Both systems now fire correctly per Core Principle §3 — OverheadAnimator shows the RESOURCE_COLOR animation, PancakeStack shows a white glyph in the persistent stack. No duplicate animation bug; two distinct visual roles as designed.
+**Doctrine compliance**: Fix remains valid under v1.3 architecture — PancakeStack still renders when multiple animations coexist (multi-source stacking), and the white fillStyle prevents color bleed when it does render.
 
 **Files Modified**:
 - `public/js/player-stack-manager.js`
 
 ---
 
-## Tier 3 Quest Key PancakeStack Fix ✅ Done (2026-03-03)
+## ~~Tier 3 Quest Key PancakeStack Fix~~ ⚠️ Superseded by v1.3 Architecture
 
-**Context**: Doctrine states "All key tiers add a glyph to PancakeStack on pickup" but the Tier 3 quest key handler in `pickup-system.js` only called `OverheadAnimator.showGenericExpression()` — no PancakeStack call. Tiers 1 and 2 both had PancakeStack calls.
+**Context**: Under v1.2 doctrine, all key tiers were supposed to add PancakeStack glyphs. Tier 3 was missing. This was fixed briefly but then **reversed** when the v1.3 architecture removed all PancakeStack calls from single-item pickup paths. The PancakeStack call added here was removed as part of Bug #10.
 
-**Fix**: Added `PancakeStack.addPancake(item.emoji || '❗')` to the Tier 3 handler in `_handleKeyPickupEnhancements()`.
-
-**Files Modified**:
-- `public/js/pickup-system.js`
+**Status**: No longer applicable — v1.3 doctrine says single pickup = single OverheadAnimator only.
 
 ---
 
@@ -535,18 +540,20 @@ The key system has three tiers with distinct storage, tooltip, and overhead anim
 
 **Context**: All pickup logic (ammo, gem/battery, card, key) was extracted from the gone-rogue.js monolith into a dedicated `PickupSystem` IIFE module (`public/js/pickup-system.js`). The monolith's `_pickupItem()` now delegates to `PickupSystem.pickupItem(ctx)`.
 
-**Pickup pipeline per collectible type** (authoritative reference):
+**Pickup pipeline per collectible type** (authoritative reference — v1.3: no PancakeStack for single pickups):
 
-| Type | OverheadAnimator | PancakeStack | DebriefFeed | Tooltip | MOK |
-|------|-----------------|--------------|-------------|---------|-----|
-| **Ammo** | `⁍` magenta `#DA70D6` 800ms | `⁍` | `reportResourceChange('Ammo', ...)` | `'Ammo +N'` | `⁍ Ammo +N` |
-| **Battery** | `◈` cyan-green `#00FFA6` 800ms | `◈` | `reportResourceChange('Battery', ...)` | `'◈ Battery +N'` | `◈ Battery +N` |
-| **Food (health)** | emoji HP pink `#FF6B9D` 1000ms | emoji | Per-resource reports (HP, Fatigue, Ammo, Currency) | `'+20 HP, -15 Fatigue'` | tooltip text |
-| **Food (energy)** | emoji Fatigue brown `#A0522D` 1000ms | emoji | Per-resource reports | `'-20 Fatigue, +2 Energy'` | tooltip text |
-| **Card** | `🂠` Cards purple `#800080` 800ms | card emoji | `reportResourceChange('Cards', ...)` | `card.name` | `Card: name` |
-| **Key Ammo (T1)** | `🗝` orange `#FF8A3D` 800ms | `item.emoji \|\| '🗝'` | `reportResourceChange('key_ammo', ...)` | `'🔑 KEY AMMO: name'` | `Key Ammo: name` |
-| **Key Item (T2)** | `🔑` gold `#FFD700` 1200ms | `item.emoji \|\| '🔑'` | — | `'🔑 KEY ITEM: name → INVENTORY'` | `Key Item: name` |
-| **Quest Key (T3)** | `❗` red `#FF4444` 1500ms | `item.emoji \|\| '❗'` | — | `'❗ QUEST ITEM — name — Return to NPC'` | `Key Item: name` |
+| Type | OverheadAnimator | DebriefFeed | Tooltip | MOK |
+|------|-----------------|-------------|---------|-----|
+| **Ammo** | `⁍` magenta `#DA70D6` 800ms | `reportResourceChange('Ammo', ...)` | `'Ammo +N'` | `⁍ Ammo +N` |
+| **Battery** | `◈` cyan-green `#00FFA6` 800ms | `reportResourceChange('Battery', ...)` | `'◈ Battery +N'` | `◈ Battery +N` |
+| **Food (health)** | emoji HP pink `#FF6B9D` 1000ms | Per-resource reports (HP, Fatigue, Ammo, Currency) | `'+20 HP, -15 Fatigue'` | tooltip text |
+| **Food (energy)** | emoji Electric blue `#00D4FF` 1000ms | Per-resource reports | `'+Energy'` | tooltip text |
+| **Food (fatigue)** | emoji Earthy brown `#A0522D` 1000ms | Per-resource reports | `'-25 Fatigue'` | tooltip text |
+| **Food (inert)** | emoji Light grey `#CCCCCC` 1000ms | Per-resource reports (if any) | `'Cleanse'` / minor | tooltip text |
+| **Card** | `🂠` Cards purple `#800080` 800ms | `reportResourceChange('Cards', ...)` | `card.name` | `Card: name` |
+| **Key Ammo (T1)** | `🗝` orange `#FF8A3D` 800ms | `reportResourceChange('key_ammo', ...)` | `'🔑 KEY AMMO: name'` | `Key Ammo: name` |
+| **Key Item (T2)** | `🔑` gold `#FFD700` 1200ms | — | `'🔑 KEY ITEM: name → INVENTORY'` | `Key Item: name` |
+| **Quest Key (T3)** | `❗` red `#FF4444` 1500ms | — | `'❗ QUEST ITEM — name — Return to NPC'` | `Key Item: name` |
 
 ---
 
@@ -557,10 +564,11 @@ Authoritative source: `RESOURCE_COLOR_SYSTEM.md`
 | Resource | Color Name | Hex Code | Used In |
 |----------|-----------|----------|---------|
 | **HP** | Vibrant Pink | `#FF6B9D` | Food (health) overhead, debrief flash |
-| **Energy** | Electric Blue | `#00D4FF` | Debrief flash |
+| **Energy** | Electric Blue | `#00D4FF` | Food (energy) overhead, debrief flash |
 | **Focus** | Bright Yellow-White | `#FFF9B0` | Debrief flash |
 | **Battery** | Sickly Green-Cyan | `#00FFA6` | Gem overhead, floor render, debrief flash |
-| **Fatigue** | Earthy Brown | `#A0522D` | Food (energy) overhead, debrief flash |
+| **Fatigue** | Earthy Brown | `#A0522D` | Food (fatigue) overhead, debrief flash |
+| **Inert** | Light Grey | `#CCCCCC` | Food (inert) overhead (placeholder) |
 | **Ammo** | Magenta-Purple | `#DA70D6` | Ammo overhead, floor render, debrief flash |
 | **Currency** | Yellow Gold | `#FFFF00` | Currency overhead, floor render, debrief flash |
 | **Key Ammo** | Bright Orange | `#FF8A3D` | Tier 1 key overhead, debrief flash |
@@ -650,6 +658,13 @@ _stack = [{ emoji, collectedAt, offsetX, offsetY, layer, bobPhase, bobSpeed, ...
 - **Decision tree**: Updated to show both systems fire for collectibles
 - **Pickup pipeline table**: Added authoritative per-type reference with all five feedback channels
 
+10. **Bug #10: Unified Architecture — PancakeStack Removal from Single Pickups** (2026-03-03)
+    - **Old doctrine**: Every collectible triggered both OverheadAnimator AND PancakeStack
+    - **New doctrine (v1.3)**: Single pickup = single OverheadAnimator animation only. PancakeStack reserved for multi-source simultaneous display.
+    - **Removed `PancakeStack.addPancake()` from**: `pickup-system.js` (ammo, gem, card, all 3 key tiers), `player-interaction-system.js` (food), `move-player-system.js` (food), `currency-spawning.js` (ammo-from-currency)
+    - **Enhanced `showGenericExpression()`**: Now pushes to array instead of overwriting when animation already exists at same position key. Supports rapid sequential pickups stacking.
+    - **`PlayerStackManager.render()` fillStyle fix preserved**: White `#FFFFFF` fillStyle still applied (Bug #8 fix remains valid)
+
 ---
 
 ## Contact & Feedback
@@ -663,7 +678,8 @@ If you're implementing a new game mechanic and unsure which system to use:
 
 ---
 
-**Document Version**: 1.2
+**Document Version**: 1.3
 **Last Updated**: 2026-03-03
 **Status**: Draft → Review → Implementation
+**Architecture**: v1.3 — Single pickup = single OverheadAnimator animation; PancakeStack for multi-source stacking only
 **Canon Reference**: See `docs/COLLECTIBLES_CANON.md` for authoritative collectible category definitions and unified pickup pipeline

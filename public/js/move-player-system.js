@@ -181,10 +181,13 @@ var MovePlayerSystem = (function() {
           var foodResult = FoodDatabase.applyFoodEffects(foodItem.customData.foodId, player);
           if (foodResult.success) {
             var foodDefMv = FoodDatabase.getFoodItem(foodItem.customData.foodId);
-            var primaryColorMv = '#FF6B9D';
-            if (foodDefMv && foodDefMv.category === 'energy') {
-              primaryColorMv = '#A0522D';
-            }
+            var FOOD_CATEGORY_COLORS_MV = {
+              'health':  '#FF6B9D', // HP pink
+              'energy':  '#00D4FF', // Electric blue
+              'fatigue': '#A0522D', // Earthy brown
+              'inert':   '#CCCCCC'  // Light grey (placeholder)
+            };
+            var primaryColorMv = (foodDefMv && FOOD_CATEGORY_COLORS_MV[foodDefMv.category]) || '#FF6B9D';
 
             if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
               OverheadAnimator.showGenericExpression(newX, newY, foodResult.emoji, 1000, primaryColorMv);
@@ -223,13 +226,8 @@ var MovePlayerSystem = (function() {
               TooltipSystem.showGeneric(foodResult.tooltipText, 2000);
             }
 
-            try {
-              if (typeof PancakeStack !== 'undefined' && PancakeStack.addPancake) {
-                PancakeStack.addPancake(foodResult.emoji || '\uD83C\uDF4E');
-              } else if (typeof PlayerStackManager !== 'undefined' && PlayerStackManager.addPancake) {
-                PlayerStackManager.addPancake(foodResult.emoji || '\uD83C\uDF4E');
-              }
-            } catch (ePancake) {}
+            // NOTE: No PancakeStack call — single pickup = single OverheadAnimator animation only.
+            // PancakeStack activates only when multiple animations need simultaneous display.
 
             InteractiveItems.removeItem(foodItem.id);
             console.log('[GoneRogue] Food consumed:', foodResult.foodName);
