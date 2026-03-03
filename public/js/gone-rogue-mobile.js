@@ -67,6 +67,7 @@ const GoneRogueMobile = (function () {
   var _fishingPathOverlay = null;
   var FISHING_THRESHOLD = 20; // pixels to activate fishing mode
   var FISHING_UPDATE_INTERVAL = 50; // ms between path recalculations
+  var FISHING_SPRINT_DRAG_SPEED = 1.2; // px/ms — rapid drag activates sprint (Phase 5)
 
   // Desktop pointer-based fishing
   var _desktopPointerDown = false;
@@ -917,8 +918,16 @@ const GoneRogueMobile = (function () {
 
     // Smooth visual player position (tile->float) for nicer feel.
     // IMPORTANT: do this BEFORE rendering so the player glyph itself glides.
+    // Phase 1: when GoneRogueMovement is active, player.visualX/Y are already
+    // sub-tile positions — use them directly to prevent double-interpolation
+    // and the resulting snap/lurch on each tile boundary.
     if (player) {
-      if (!_playerVisual.inited) {
+      if (player.visualX !== undefined && player.visualY !== undefined) {
+        // GoneRogueMovement already provided smooth sub-tile positions.
+        _playerVisual.x = player.visualX;
+        _playerVisual.y = player.visualY;
+        _playerVisual.inited = true;
+      } else if (!_playerVisual.inited) {
         _playerVisual.x = player.x;
         _playerVisual.y = player.y;
         _playerVisual.inited = true;
@@ -1652,13 +1661,25 @@ const GoneRogueMobile = (function () {
       }
     }
 
-    // Click-on-enemy: fire projectile instead of moving
+    // Click-on-enemy: adjacent tap triggers steal (Phase 4), ranged tap fires projectile.
     if (typeof GoneRogue !== 'undefined') {
       var enemies = GoneRogue.getEnemies ? GoneRogue.getEnemies() : [];
       if (enemies && enemies.length) {
         for (var i = 0; i < enemies.length; i++) {
           var en = enemies[i];
           if (en && en.hp > 0 && en.x === x && en.y === y) {
+            if (player) {
+              var edx = x - player.x;
+              var edy = y - player.y;
+              var eDist = Math.abs(edx) + Math.abs(edy);
+              // Phase 4: adjacent enemy tap (Manhattan dist ≤ 1) → attempt steal.
+              // Ranged enemy tap fires projectile as before.
+              if (eDist <= 1 && GoneRogue.process) {
+                GoneRogue.process('steal');
+                _lastMovementTime = Date.now();
+                return;
+              }
+            }
             if (typeof GoneRogue.fireProjectileAtTarget === 'function') {
               GoneRogue.fireProjectileAtTarget(x, y);
               _lastMovementTime = Date.now();
@@ -1751,6 +1772,20 @@ const GoneRogueMobile = (function () {
       // Activate fishing mode if drag exceeds threshold
       if (!_fishingActive && distance > FISHING_THRESHOLD) {
         _fishingActive = true;
+
+        // Phase 5: sprint via rapid fishing drag — fast initial drag activates sprint.
+        if (_fishingStart.time) {
+          var elapsed = Date.now() - _fishingStart.time;
+          if (elapsed > 0) {
+            var dragSpeed = distance / elapsed; // pixels per millisecond
+            var canSprint = typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.canSprint === 'function'
+              ? GAMESTATE.canSprint()
+              : true;
+            if (dragSpeed >= FISHING_SPRINT_DRAG_SPEED && canSprint) {
+              _runMode = true;
+            }
+          }
+        }
       }
 
       // If fishing is active, calculate and show path
@@ -1956,8 +1991,8 @@ const GoneRogueMobile = (function () {
     var now = Date.now();
     var cellKey = coords.x + ',' + coords.y;
 
-    // Initialize fishing state
-    _fishingStart = { x: touch.clientX, y: touch.clientY, gridX: coords.x, gridY: coords.y };
+    // Initialize fishing state (Phase 5: include timestamp for sprint-via-drag detection)
+    _fishingStart = { x: touch.clientX, y: touch.clientY, gridX: coords.x, gridY: coords.y, time: now };
     _fishingCurrent = { x: touch.clientX, y: touch.clientY };
     _fishingActive = false; // Will activate if drag exceeds threshold
     _fishingPath = [];
