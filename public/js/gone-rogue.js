@@ -1629,7 +1629,9 @@ var GoneRogue = (function () {
       setTurn: function(v) { _turn = v; },
       setLastExitPos: function(v) { _lastExitPos = v; },
       setSpawnFromLastExitPos: function(v) { _spawnFromLastExitPos = v; },
-      setCurrentInteriorFloorId: function(v) { _currentInteriorFloorId = v; }
+      setCurrentInteriorFloorId: function(v) { _currentInteriorFloorId = v; },
+      resetVendor: function() { _vendor = null; _vendorInventory = []; },
+      showMobileUI: (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') ? function() { GoneRogueMobile.show(); } : null
     };
   }
   function _exitInteriorFloor() {
