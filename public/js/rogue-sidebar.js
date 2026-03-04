@@ -84,22 +84,6 @@ var RogueSidebar = (function() {
   }
 
   /**
-   * Micro-abbreviator: first letters only, max 4 chars
-   * "Energy Drink" → "ED", "Rusty Key" → "RK"
-   */
-  function _microAbbreviate(name) {
-    if (!name) return '';
-    var words = name.split(/\s+/);
-    var result = '';
-    for (var i = 0; i < words.length && result.length < 4; i++) {
-      if (words[i].length > 0) {
-        result += words[i].charAt(0).toUpperCase();
-      }
-    }
-    return result;
-  }
-
-  /**
    * Viewport-aware name helper: uses NameUtils (if loaded) to apply
    * the appropriate abbreviation level based on viewport tier.
    * Falls back gracefully when NameUtils is not yet available.
@@ -107,12 +91,10 @@ var RogueSidebar = (function() {
    *   - Desktop Full: no abbreviation (full name)
    *   - Desktop Compact: standard vowel-drop
    *   - Mobile Landscape: standard vowel-drop  
-   *   - Mobile Portrait: micro-abbreviator (first letters, ~4 chars)
+   *   - Mobile Portrait: standard vowel-drop (same as landscape)
    * @param {string} name - Full item/card name
    * @returns {string} Display name appropriate for current viewport
    */
-  // When debrief is minimized on mobile portrait, we have more room for labels
-  // so we can use 6-char abbreviated names instead of 4-char micro names.
   var _debriefIsMinimized = false;
 
   function _getViewportName(name) {
@@ -126,16 +108,7 @@ var RogueSidebar = (function() {
     }
     
     try {
-      // Mobile Portrait: micro-abbreviator (first letters only)
-      if (tier === 'mobile-portrait') {
-        if (typeof NameUtils !== 'undefined' && NameUtils.abbreviate) {
-          // Use micro-abbreviate for portrait
-          return _microAbbreviate(name);
-        }
-        return name.substring(0, 4);
-      }
-      
-      // Desktop Compact, Mobile Landscape: standard vowel-drop abbreviate
+      // Desktop Compact, Mobile Landscape, Mobile Portrait: standard vowel-drop abbreviate
       // Let CSS container overflow:hidden clip naturally (no ellipsis)
       if (typeof NameUtils !== 'undefined' && NameUtils.abbreviate) {
         return NameUtils.abbreviate(name, 0); // 0 = no length limit, just drop vowels
