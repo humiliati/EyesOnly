@@ -276,15 +276,23 @@ var InventoryManagement = (function() {
   function _matchesQuestKey(rawItem, questKeyType, npcTarget) {
     var item = _hydrateForQuestCheck(rawItem);
     if (!item) return false;
-    // Match by keyType directly
-    var keyId = item.keyType || item.registryId || item.itemId || item.id || '';
+
+    // Collect all possible identifiers — top-level AND inside .meta
+    var m = item.meta || {};
+    var keyId = item.keyType || m.keyType || item.registryId || m.registryId || item.itemId || m.itemId || item.id || '';
+    var itemNpcTarget = item.npcTarget || m.npcTarget || '';
+
     if (keyId === questKeyType) {
-      if (item.npcTarget && npcTarget && item.npcTarget !== npcTarget) return false;
+      if (itemNpcTarget && npcTarget && itemNpcTarget !== npcTarget) return false;
       return true;
     }
-    // Also match by name heuristic (BLACKSMITH_HAMMER → "Blacksmith's Hammer")
-    var nameNorm = (item.name || '').toUpperCase().replace(/[^A-Z0-9]/g, '_');
-    if (nameNorm === questKeyType || nameNorm.indexOf(questKeyType) >= 0) {
+
+    // Name heuristic: normalise both sides and check if either contains the other
+    // "Blacksmith's Hammer" → "BLACKSMITHS_HAMMER" vs "BLACKSMITH_HAMMER"
+    var itemName = item.name || m.legacyName || '';
+    var nameNorm = itemName.toUpperCase().replace(/[^A-Z0-9]/g, '');  // strip ALL non-alnum
+    var questNorm = questKeyType.replace(/[^A-Z0-9]/g, '');           // strip underscores too
+    if (nameNorm && questNorm && (nameNorm === questNorm || nameNorm.indexOf(questNorm) >= 0 || questNorm.indexOf(nameNorm) >= 0)) {
       return true;
     }
     return false;
@@ -296,6 +304,7 @@ var InventoryManagement = (function() {
     // 1) Check active (equipped) item slot first
     if (GAMESTATE.getActiveItem) {
       var activeItem = GAMESTATE.getActiveItem();
+      console.log('[consumeQuestItem] Looking for ' + questKeyType + ' — activeItem:', activeItem ? JSON.stringify({ id: activeItem.id, keyType: activeItem.keyType, meta: activeItem.meta }) : 'null');
       if (activeItem && _matchesQuestKey(activeItem, questKeyType, npcTarget)) {
         var consumed = JSON.parse(JSON.stringify(activeItem));
         // Clear the active item slot

@@ -631,6 +631,20 @@ var RogueSidebar = (function() {
                   }
                 }
 
+                // Check header equipped slot (active-item-slot)
+                var activeSlotEl = document.getElementById('active-item-slot');
+                if (dropEl && activeSlotEl && (dropEl === activeSlotEl || activeSlotEl.contains(dropEl))) {
+                  if (typeof GAMESTATE !== 'undefined' && GAMESTATE.setActiveItem) {
+                    GAMESTATE.setActiveItem({ id: iRef.id, qty: 1 });
+                  }
+                  if (typeof TooltipSystem !== 'undefined') {
+                    TooltipSystem.show((iResolved.emoji || '📦') + ' ' + (iResolved.name || 'Item') + ' equipped', 1500);
+                  }
+                  _lastSignature = null;
+                  _render();
+                  return;
+                }
+
                 // Dropped elsewhere — no action
                 _lastSignature = null;
                 _render();
