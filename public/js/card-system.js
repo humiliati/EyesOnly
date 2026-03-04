@@ -1371,20 +1371,32 @@ const CardSystem = (function () {
     var roll = _rng() * 100;
     var quality = roll <= 97 ? 'CRACKED' : 'PERFECT';
 
-    var charm = {
-      base: 'INVENTORY_CHARM',
+    var instance = {
+      baseId: 'INVENTORY_CHARM',
       name: 'Inventory Charm',
       emoji: '🪬',
       type: 'charm',
+      category: 'charm',
       quality: quality,
       qualityName: QUALITIES[quality].name,
       qualityColor: QUALITIES[quality].color,
       stats: quality === 'PERFECT' ? { slots: 1 } : { slots: 0 },
       affixes: [],
-      id: 'charm_' + Date.now() + '_' + _rng().toString(36).substr(2, 9)
+      tags: [],
+      createdAt: Date.now(),
+      seed: _rng(),
+      provenance: { source: 'rollInventoryCharm' }
     };
 
-    return charm;
+    // CHH Step 3: Persist as CI-* instance if GAMESTATE is available
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.registerCardInstance === 'function') {
+      var ciId = GAMESTATE.registerCardInstance(instance);
+      return { id: ciId, qty: 1 };
+    }
+
+    // Fallback: legacy anonymous object
+    instance.id = 'charm_' + Date.now() + '_' + _rng().toString(36).substr(2, 9);
+    return instance;
   }
 
   /**
@@ -1400,8 +1412,8 @@ const CardSystem = (function () {
     var roll = _rng() * 100;
     var quality = roll <= 97 ? 'CRACKED' : 'WORN';
 
-    var charm = {
-      base: charmType,
+    var instance = {
+      baseId: charmType,
       name: baseCharm.name,
       emoji: baseCharm.emoji,
       type: 'charm',
@@ -1411,10 +1423,21 @@ const CardSystem = (function () {
       qualityColor: QUALITIES[quality].color,
       stats: rollStats(baseCharm.baseStats, quality),
       affixes: [],
-      id: 'charm_' + Date.now() + '_' + _rng().toString(36).substr(2, 9)
+      tags: [],
+      createdAt: Date.now(),
+      seed: _rng(),
+      provenance: { source: 'rollCommonCharm' }
     };
 
-    return charm;
+    // CHH Step 3: Persist as CI-* instance if GAMESTATE is available
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.registerCardInstance === 'function') {
+      var ciId = GAMESTATE.registerCardInstance(instance);
+      return { id: ciId, qty: 1 };
+    }
+
+    // Fallback: legacy anonymous object
+    instance.id = 'charm_' + Date.now() + '_' + _rng().toString(36).substr(2, 9);
+    return instance;
   }
 
   /**
@@ -1422,8 +1445,8 @@ const CardSystem = (function () {
    * Only drops from Uber Mega or final boss
    */
   function rollImpossibleCharm() {
-    var charm = {
-      base: 'IMPOSSIBLE_CHARM',
+    var instance = {
+      baseId: 'IMPOSSIBLE_CHARM',
       name: 'Impossible Binary Charm',
       emoji: '💠',
       type: 'charm',
@@ -1433,10 +1456,21 @@ const CardSystem = (function () {
       qualityColor: QUALITIES.PERFECT.color,
       stats: { impossible: 1 },
       affixes: [],
-      id: 'impossible_' + Date.now() + '_' + _rng().toString(36).substr(2, 9)
+      tags: [],
+      createdAt: Date.now(),
+      seed: _rng(),
+      provenance: { source: 'rollImpossibleCharm' }
     };
 
-    return charm;
+    // CHH Step 3: Persist as CI-* instance if GAMESTATE is available
+    if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.registerCardInstance === 'function') {
+      var ciId = GAMESTATE.registerCardInstance(instance);
+      return { id: ciId, qty: 1 };
+    }
+
+    // Fallback: legacy anonymous object
+    instance.id = 'impossible_' + Date.now() + '_' + _rng().toString(36).substr(2, 9);
+    return instance;
   }
 
   /**

@@ -138,23 +138,26 @@ var DeathExitSystem = (function () {
         if (typeof WorldItems !== 'undefined') { WorldItems.addItem(deathAmmo); } else { ctx.items.push(deathAmmo); }
       }
 
-      // Spawn cards — Phase 5: insert directly to hand, ground-drop fallback
+      // Spawn cards — CHH Step 3: canonical acquireNewCardDuringCombat pipeline
       var _dropCountCards = 0;
       if (deathResult.loot.cards && deathResult.loot.cards.length > 0 && typeof CardSystem !== 'undefined') {
         for (var i = 0; i < deathResult.loot.cards.length; i++) {
           if (deathResult.loot.cards[i].shouldDrop) {
             var baseType = CardSystem.getRandomBaseCard();
-            var card = CardSystem.rollCard(baseType);
-            if (card) {
+            var card = CardSystem.rollCard(baseType, { source: 'enemy_death', floor: ctx.floor || 0 });
+            if (card && card.id) {
               _dropCountCards++;
-              // Try direct hand insert first
-              var cardInsert = (typeof GAMESTATE !== 'undefined' && GAMESTATE.addCard)
-                ? GAMESTATE.addCard(card) : null;
+              // CHH Step 3: Use canonical acquisition pipeline (refs → hand → backup cascade)
+              var cardInsert = (typeof GAMESTATE !== 'undefined' && GAMESTATE.acquireNewCardDuringCombat)
+                ? GAMESTATE.acquireNewCardDuringCombat(card.id, 1) : null;
+              // Hydrate for display info
+              var cardDef = (typeof CardStateAuthority !== 'undefined' && CardStateAuthority.hydrateCard)
+                ? CardStateAuthority.hydrateCard(card) : card;
               if (cardInsert && cardInsert.success) {
                 // Debrief feed + overhead animation for card-to-hand
                 try {
                   if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
-                    DebriefFeedController.reportResourceChange('Cards', 0, 1, '\uD83C\uDCA0 ' + (card.name || 'Card'));
+                    DebriefFeedController.reportResourceChange('Cards', 0, 1, '\uD83C\uDCA0 ' + ((cardDef && cardDef.name) || 'Card'));
                   }
                 } catch (eDF) {}
                 try {

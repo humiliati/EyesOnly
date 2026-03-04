@@ -902,5 +902,65 @@
     "tags": ["ballistic", "fire"],
     "synergyTags": ["fire", "ballistic"],
     "_designNote": "Fire bullet. fire+fire→Inferno (with Fireball or Molotov → spreads burn AoE to all nearby enemies + bonus damage). fire+improvised→Controlled Burn (with Molotov or Field Stitch Kit). ballistic+ballistic→Overkill. Teaching: gun+fire = fire gun. The obvious military-action-movie weapon that makes the fire ecosystem more accessible to new players. A third fire card ensures Inferno is reliably reachable in any deck with fire ambitions."
+  },
+
+  {
+    "id": "ACT-066",
+    "name": "Frag Grenade",
+    "emoji": "💣",
+    "targetType": "enemy",
+    "cost": 3,
+    "costs": null,
+    "rarity": "uncommon",
+    "effects": [
+      { "type": "damage", "value": 12 },
+      { "type": "aoe", "radius": 2 },
+      { "type": "knockback", "tiles": 1 },
+      { "type": "ground_effect", "effect": "FIRE", "chance": 0.30 }
+    ],
+    "preCombat": false,
+    "synergyTags": ["explosive", "aoe", "burst", "fire", "combo_finisher"],
+    "plantable": true,
+    "triggerable": true,
+    "_designNote": "Standard fragmentation grenade. explosive+aoe combo for area denial. Can be planted on enemies and manually detonated. fire+explosive = bigger boom. Planted cards: triggerable=true allows manual detonation in STR combat."
+  },
+  {
+    "id": "ACT-067",
+    "name": "Pipe Bomb",
+    "emoji": "🧨",
+    "targetType": "enemy",
+    "cost": 2,
+    "costs": null,
+    "rarity": "common",
+    "effects": [
+      { "type": "damage", "value": 8 },
+      { "type": "aoe", "radius": 1 },
+      { "type": "status", "status": "stun", "duration": 1 },
+      { "type": "noise", "value": 6 }
+    ],
+    "preCombat": false,
+    "synergyTags": ["explosive", "aoe", "control", "improvised"],
+    "plantable": true,
+    "triggerable": true,
+    "_designNote": "Improvised pipe bomb. Stuns enemy for 1 turn. Louder than frag grenade (noise 6). Improvised tag enables combo with other improvised cards. Can be planted and manually triggered."
+  },
+  {
+    "id": "ACT-068",
+    "name": "C4 Charge",
+    "emoji": "🧱",
+    "targetType": "enemy",
+    "cost": 4,
+    "costs": null,
+    "rarity": "rare",
+    "effects": [
+      { "type": "damage", "value": 20 },
+      { "type": "aoe", "radius": 3 },
+      { "type": "delayed", "turns": 1 }
+    ],
+    "preCombat": false,
+    "synergyTags": ["explosive", "aoe", "burst", "industrial", "combo_finisher"],
+    "plantable": true,
+    "triggerable": true,
+    "_designNote": "Military-grade explosive. Massive AoE (3 tile radius), delayed 1 turn trigger. Can be planted pre-combat and detonates automatically next turn, or manually triggered. industrial tag enables factory/weapon combo. Highest damage in game but slow."
   }
 ]

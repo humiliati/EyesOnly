@@ -1260,19 +1260,24 @@ var StrCombatEngine = (function () {
                 var card;
                 if (typeof CardSystem !== 'undefined') {
                   var baseType = CardSystem.getRandomBaseCard();
-                  card = CardSystem.rollCard(baseType);
-                  if (lootItem.quality) {
-                    card.quality = lootItem.quality;
+                  card = CardSystem.rollCard(baseType, { source: 'boss_drop', floor: ctx.floor || 0, enemyType: _enemy.name || 'boss' });
+                  // CHH Step 3: rollCard returns CI-* ref. Override quality on the instance if needed.
+                  if (card && card.id && lootItem.quality && typeof GAMESTATE !== 'undefined' && GAMESTATE.getCardInstance) {
+                    var bossInst = GAMESTATE.getCardInstance(card.id);
+                    if (bossInst) bossInst.quality = lootItem.quality;
                   }
                 }
-                if (card) {
-                  // Phase 5: Boss card → direct to hand, ground-drop fallback
-                  var bossInsert = (typeof GAMESTATE !== 'undefined' && GAMESTATE.addCard)
-                    ? GAMESTATE.addCard(card) : null;
+                if (card && card.id) {
+                  // CHH Step 3: Boss card → canonical acquireNewCardDuringCombat pipeline
+                  var bossInsert = (typeof GAMESTATE !== 'undefined' && GAMESTATE.acquireNewCardDuringCombat)
+                    ? GAMESTATE.acquireNewCardDuringCombat(card.id, 1) : null;
+                  // Hydrate for display info
+                  var bossCardDef = (typeof CardStateAuthority !== 'undefined' && CardStateAuthority.hydrateCard)
+                    ? CardStateAuthority.hydrateCard(card) : card;
                   if (bossInsert && bossInsert.success) {
                     try {
                       if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
-                        DebriefFeedController.reportResourceChange('Cards', 0, 1, '\uD83C\uDCA0 ' + (card.name || 'Boss Card'));
+                        DebriefFeedController.reportResourceChange('Cards', 0, 1, '\uD83C\uDCA0 ' + ((bossCardDef && bossCardDef.name) || 'Boss Card'));
                       }
                     } catch (eDF) {}
                     try {
@@ -1284,8 +1289,11 @@ var StrCombatEngine = (function () {
                     var bossCardDrop = { x: _enemy.x, y: _enemy.y, type: 'card', card: card, spawnTime: Date.now(), decayTime: 60000 };
                     if (typeof WorldItems !== 'undefined') { WorldItems.addItem(bossCardDrop); } else { ctx.items.push(bossCardDrop); }
                   }
-                  lines.push('🎴 Boss dropped: ' + card.emoji + ' ' + card.name + ' (' + card.quality + ')');
-                  _victoryCtx.lootCards.push({ emoji: card.emoji || '🎴', name: card.name || 'Boss Card', quality: card.quality || '' });
+                  var bossName = (bossCardDef && bossCardDef.name) || 'Boss Card';
+                  var bossEmoji = (bossCardDef && bossCardDef.emoji) || '🎴';
+                  var bossQuality = (bossCardDef && bossCardDef.quality) || '';
+                  lines.push('🎴 Boss dropped: ' + bossEmoji + ' ' + bossName + ' (' + bossQuality + ')');
+                  _victoryCtx.lootCards.push({ emoji: bossEmoji, name: bossName, quality: bossQuality });
                 }
               } else if (lootItem.type === 'whisper') {
                 lines.push('✨ WHISPER ITEM: ' + lootItem.item);
@@ -1296,19 +1304,23 @@ var StrCombatEngine = (function () {
                 lines.push('💎 MYTHIC DROP: ' + lootItem.item);
                 lines.push('');
                 if (typeof CardSystem !== 'undefined') {
-                  var legendaryCard = CardSystem.rollCard('Inventory Charm');
-                  // Phase 5: Mythic card → direct to hand, ground-drop fallback
-                  var mythicInsert = (typeof GAMESTATE !== 'undefined' && GAMESTATE.addCard)
-                    ? GAMESTATE.addCard(legendaryCard) : null;
-                  if (mythicInsert && mythicInsert.success) {
-                    try {
-                      if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
-                        DebriefFeedController.reportResourceChange('Cards', 0, 1, '\uD83C\uDCA0 MYTHIC ' + (legendaryCard.name || 'Card'));
-                      }
-                    } catch (eDF) {}
-                  } else {
-                    var mythicDrop = { x: _enemy.x, y: _enemy.y, type: 'card', card: legendaryCard, spawnTime: Date.now(), decayTime: 120000 };
-                    if (typeof WorldItems !== 'undefined') { WorldItems.addItem(mythicDrop); } else { ctx.items.push(mythicDrop); }
+                  var legendaryCard = CardSystem.rollCard('Inventory Charm', { source: 'mythic_drop', floor: ctx.floor || 0, enemyType: _enemy.name || 'mythic' });
+                  if (legendaryCard && legendaryCard.id) {
+                    // CHH Step 3: Mythic card → canonical acquireNewCardDuringCombat pipeline
+                    var mythicInsert = (typeof GAMESTATE !== 'undefined' && GAMESTATE.acquireNewCardDuringCombat)
+                      ? GAMESTATE.acquireNewCardDuringCombat(legendaryCard.id, 1) : null;
+                    var mythicCardDef = (typeof CardStateAuthority !== 'undefined' && CardStateAuthority.hydrateCard)
+                      ? CardStateAuthority.hydrateCard(legendaryCard) : legendaryCard;
+                    if (mythicInsert && mythicInsert.success) {
+                      try {
+                        if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
+                          DebriefFeedController.reportResourceChange('Cards', 0, 1, '\uD83C\uDCA0 MYTHIC ' + ((mythicCardDef && mythicCardDef.name) || 'Card'));
+                        }
+                      } catch (eDF) {}
+                    } else {
+                      var mythicDrop = { x: _enemy.x, y: _enemy.y, type: 'card', card: legendaryCard, spawnTime: Date.now(), decayTime: 120000 };
+                      if (typeof WorldItems !== 'undefined') { WorldItems.addItem(mythicDrop); } else { ctx.items.push(mythicDrop); }
+                    }
                   }
                 }
               } else if (lootItem.type === 'rumor') {

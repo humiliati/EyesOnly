@@ -780,16 +780,13 @@ const PassiveItemsSystem = (function() {
 
     var state = GAMESTATE.getState();
 
-    // Priority 1: Hand (if < 5)
-    if (state.cardHand && state.cardHand.length < 5) {
-      state.cardHand.push(card);
-
-      // Update hand display
-      if (typeof HandFanComponent !== 'undefined' && HandFanComponent.updateCards) {
-        HandFanComponent.updateCards(state.cardHand);
+    // Priority 1: Hand (via canonical pipeline — CHH Step 3)
+    // Use addToHand which routes through registerCardInstance → addPrintedCards
+    if (typeof GAMESTATE.addToHand === 'function') {
+      var handResult = GAMESTATE.addToHand(card);
+      if (handResult && handResult.success) {
+        return { success: true, location: 'hand' };
       }
-
-      return { success: true, location: 'hand' };
     }
 
     // Priority 2: Action bar (if < 4)

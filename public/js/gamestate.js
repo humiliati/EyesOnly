@@ -1350,10 +1350,11 @@ const GAMESTATE = (function () {
     count = count || _state.cardDrawPerTurn || 1;
     var drawn = [];
     var maxHand = _state.maxHandSize || 5;
+    if (!Array.isArray(_state.cardsInHand)) _state.cardsInHand = [];
 
     for (var i = 0; i < count; i++) {
-      // Check if hand is full
-      if (_state.cardHand.length >= maxHand) {
+      // Check if hand is full (canonical array)
+      if (_state.cardsInHand.length >= maxHand) {
         break;
       }
 
@@ -1364,8 +1365,36 @@ const GAMESTATE = (function () {
 
       // Draw first card from action buttons
       var card = _state.actionButtonCards.shift();
-      _state.cardHand.push(card);
-      drawn.push(card);
+
+      // Convert to CardRef for canonical cardsInHand pipeline
+      var ref;
+      if (card && card.id && (card.id.indexOf('CI-') === 0 || card.id.indexOf('ACT-') === 0 || card.id.indexOf('EATK-') === 0)) {
+        // Already a canonical ref or has canonical id
+        ref = { id: card.id, qty: card.qty || 1, meta: card.meta || null };
+      } else if (card && card.name) {
+        // Legacy full object — register as CI-* instance
+        var ciId = registerCardInstance({
+          baseId: card.base || card.baseId || null,
+          name: card.name,
+          emoji: card.emoji || '🃏',
+          type: card.type || 'unknown',
+          category: card.category || card.type || 'unknown',
+          quality: card.quality || 'STANDARD',
+          qualityName: card.qualityName || 'Standard',
+          qualityColor: card.qualityColor || '#ffffff',
+          stats: card.stats || {},
+          affixes: card.affixes || [],
+          tags: card.tags || [],
+          provenance: { source: 'drawCardsToHand' }
+        });
+        ref = { id: ciId, qty: 1, meta: null };
+      } else {
+        // Last resort fallback — push as-is (shouldn't happen)
+        ref = card;
+      }
+
+      _state.cardsInHand.push(ref);
+      drawn.push(ref);
     }
 
     _saveState();
