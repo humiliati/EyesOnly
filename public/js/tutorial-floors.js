@@ -974,6 +974,18 @@ var TutorialFloors = (function() {
         'Row G tests simultaneous pickup stacking.'
       ],
       gate: null, reward: null
+    }, {
+      id: 'NPC-BLACKSMITH', x: 14, y: 12, emoji: '⚒️', name: 'Blacksmith',
+      direction: 'west',
+      dialogues: [
+        'I\'ve been searching for my hammer everywhere!',
+        'If you find it, bring it back to me.',
+        'I\'ll forge you something special in return.'
+      ],
+      gate: null,
+      reward: { type: 'card_upgrade' },
+      questItem: 'BLACKSMITH_HAMMER',
+      npcTarget: 'BLACKSMITH'
     }],
 
     decorations: [
@@ -1053,7 +1065,7 @@ var TutorialFloors = (function() {
       // Tier 2: Key items (gold #FFD700) — persistent door keys, auto-equips
       { x: 8, y: 12, type: 'key', keyType: 'SECURITY_KEYCARD', tier: 2, name: 'Security Keycard', emoji: '💳' },
       // Tier 3: Quest keys (red #FF4444) — NPC turn-in items
-      { x: 11, y: 12, type: 'key', keyType: 'QUEST_BLACKSMITH_HAMMER', tier: 3, name: 'Blacksmith Hammer', emoji: '🔨', npcTarget: 'NPC-BLACKSMITH' },
+      { x: 11, y: 12, type: 'key', keyType: 'BLACKSMITH_HAMMER', tier: 3, subtype: 'quest', registryId: 'ITM-030', name: 'Blacksmith\'s Hammer', emoji: '🔨', npcTarget: 'BLACKSMITH' },
 
       // Row G: Stress test — multiple items on adjacent tiles
       // Testing simultaneous pickup with overhead animation stacking
@@ -1136,6 +1148,7 @@ var TutorialFloors = (function() {
         keyType: 'BLACKSMITH_HAMMER',
         tier: 3,
         subtype: 'quest',
+        registryId: 'ITM-030',
         emoji: '🔨',
         name: 'Blacksmith\'s Hammer',
         npcTarget: 'BLACKSMITH'

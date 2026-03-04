@@ -337,6 +337,7 @@ var TutorialFloorGen = (function() {
               keyType: pickup.keyType || 'UNKNOWN_KEY',
               tier: pickup.tier || 3,
               subtype: pickup.subtype || 'quest',
+              registryId: pickup.registryId || null,
               emoji: pickup.emoji || '\uD83D\uDD11',
               name: pickup.name || 'Key',
               npcTarget: pickup.npcTarget || null
