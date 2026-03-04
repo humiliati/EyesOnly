@@ -804,6 +804,10 @@ var GoneRogue = (function () {
       _player.lastCardType = null;
       _player.positionHistory = [];
 
+      // Clear scripted walk flag (Floor 0 tutorial auto-walk)
+      _scriptedWalk = false;
+      _scriptedWalkTarget = null;
+
       // Clear run-scoped key inventory
       _runState.keysOwned = [];
       _runState.keysFoundThisRun = 0;

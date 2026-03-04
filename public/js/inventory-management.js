@@ -255,20 +255,78 @@ var InventoryManagement = (function() {
     return false;
   }
 
+  /**
+   * Helper: resolve an item ref to a full item object (for id-only refs)
+   */
+  function _hydrateForQuestCheck(item) {
+    if (!item) return item;
+    // If item already has type/keyType, use it directly
+    if (item.type || item.keyType) return item;
+    // Try to hydrate from registry (item may be a {id, qty} ref)
+    if (item.id && typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
+      var full = GoneRogueDataRegistry.getItem(item.id);
+      if (full) return Object.assign({}, full, item);
+    }
+    return item;
+  }
+
+  /**
+   * Helper: check if an item matches the quest key type
+   */
+  function _matchesQuestKey(rawItem, questKeyType, npcTarget) {
+    var item = _hydrateForQuestCheck(rawItem);
+    if (!item) return false;
+    // Match by keyType directly
+    var keyId = item.keyType || item.registryId || item.itemId || item.id || '';
+    if (keyId === questKeyType) {
+      if (item.npcTarget && npcTarget && item.npcTarget !== npcTarget) return false;
+      return true;
+    }
+    // Also match by name heuristic (BLACKSMITH_HAMMER → "Blacksmith's Hammer")
+    var nameNorm = (item.name || '').toUpperCase().replace(/[^A-Z0-9]/g, '_');
+    if (nameNorm === questKeyType || nameNorm.indexOf(questKeyType) >= 0) {
+      return true;
+    }
+    return false;
+  }
+
   function consumeQuestItem(questKeyType, npcTarget) {
     if (typeof GAMESTATE === 'undefined') return false;
 
+    // 1) Check active (equipped) item slot first
+    if (GAMESTATE.getActiveItem) {
+      var activeItem = GAMESTATE.getActiveItem();
+      if (activeItem && _matchesQuestKey(activeItem, questKeyType, npcTarget)) {
+        var consumed = JSON.parse(JSON.stringify(activeItem));
+        // Clear the active item slot
+        if (GAMESTATE.setActiveItem) {
+          GAMESTATE.setActiveItem(null);
+        }
+        try {
+          if (GAMESTATE.removeKeyCount) GAMESTATE.removeKeyCount(questKeyType, 3);
+        } catch (eKC) {}
+
+        if (typeof TooltipSystem !== 'undefined') {
+          TooltipSystem.show((activeItem.emoji || '\uD83D\uDD28') + ' TURNED IN', 1500);
+        }
+        if (typeof DebriefFeedController !== 'undefined') {
+          DebriefFeedController.flashIncinerator({ kind: 'quest_key' });
+        }
+        if (typeof GoneRogueMobile !== 'undefined' && GoneRogueMobile.showInventory) {
+          GoneRogueMobile.showInventory();
+        }
+        return consumed;
+      }
+    }
+
+    // 2) Check persistent inventory
     var persistent = GAMESTATE.getPersistentInventory ? GAMESTATE.getPersistentInventory() : [];
     for (var i = 0; i < persistent.length; i++) {
       var pit = persistent[i];
-      if (!pit || pit.type !== 'key') continue;
-      if (pit.subtype !== 'quest') continue;
+      if (!pit) continue;
+      if (!_matchesQuestKey(pit, questKeyType, npcTarget)) continue;
 
-      var keyId = pit.keyType || pit.registryId || pit.itemId;
-      if (keyId !== questKeyType) continue;
-      if (pit.npcTarget && npcTarget && pit.npcTarget !== npcTarget) continue;
-
-      var consumed = JSON.parse(JSON.stringify(pit));
+      var consumed2 = JSON.parse(JSON.stringify(pit));
       if (GAMESTATE.removePersistentInventoryItem) {
         GAMESTATE.removePersistentInventoryItem(i);
       } else if (GAMESTATE.removeFromPersistent) {
@@ -285,12 +343,38 @@ var InventoryManagement = (function() {
       if (typeof DebriefFeedController !== 'undefined') {
         DebriefFeedController.flashIncinerator({ kind: 'quest_key' });
       }
-
       if (typeof GoneRogueMobile !== 'undefined' && GoneRogueMobile.showInventory) {
         GoneRogueMobile.showInventory();
       }
 
-      return consumed;
+      return consumed2;
+    }
+
+    // 3) Check loose inventory
+    var loose = GAMESTATE.getLooseInventory ? GAMESTATE.getLooseInventory() : [];
+    for (var j = 0; j < loose.length; j++) {
+      var lit = loose[j];
+      if (!lit) continue;
+      if (!_matchesQuestKey(lit, questKeyType, npcTarget)) continue;
+
+      var consumed3 = JSON.parse(JSON.stringify(lit));
+      if (GAMESTATE.removeFromLoose) GAMESTATE.removeFromLoose(j);
+
+      try {
+        if (GAMESTATE.removeKeyCount) GAMESTATE.removeKeyCount(questKeyType, 3);
+      } catch (eKC) {}
+
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.show((lit.emoji || '\uD83D\uDD28') + ' TURNED IN', 1500);
+      }
+      if (typeof DebriefFeedController !== 'undefined') {
+        DebriefFeedController.flashIncinerator({ kind: 'quest_key' });
+      }
+      if (typeof GoneRogueMobile !== 'undefined' && GoneRogueMobile.showInventory) {
+        GoneRogueMobile.showInventory();
+      }
+
+      return consumed3;
     }
 
     return false;

@@ -23,7 +23,8 @@ const GroundEffects = (function () {
     RADIANT: 'radiant',
     OBSCURED: 'obscured',
     SONIC: 'sonic',
-    RESONANCE: 'resonance'
+    RESONANCE: 'resonance',
+    SMOKE: 'smoke'
   };
 
   // Ground effect definitions
@@ -182,6 +183,16 @@ const GroundEffects = (function () {
       lightInteractionBoost: 2.0, // 2x light interactions
       lifetime: 6,               // Seconds
       description: 'Resonance field - free sonic cards'
+    },
+    SMOKE: {
+      emoji: '💨',
+      char: '░',
+      color: '#888888',
+      damage: 0,                 // No damage — just visual remnant
+      dissipates: true,
+      lifetime: 2,               // Lingers 2 seconds then clears
+      stealthBonus: 0.1,         // Slight concealment in smoke
+      description: 'Lingering smoke from extinguished fire'
     }
   };
 

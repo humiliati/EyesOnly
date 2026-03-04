@@ -53,19 +53,9 @@ var TapMoveSystem = (function() {
     console.log('[TapMove:ENTER] target=' + targetX + ',' + targetY + ' active=' + ctx.active + ' scriptedWalk=' + ctx.scriptedWalk + ' moveLocked=' + ctx.playerMoveLocked);
     if (!ctx.active) { console.log('[TapMove] BLOCKED by !active'); return; }
 
-    // Floor 0 scripted walk — ignore player input until auto-walk completes
-    if (ctx.scriptedWalk) { console.log('[TapMove] BLOCKED by scriptedWalk'); return; }
-
-    // Asteroids boss locks player movement — tap only activates cards
-    if (ctx.playerMoveLocked) {
-      return {
-        lines: ['\u2693 GRAVITY ANCHOR \u2014 movement disabled. Use cards to fight!', ''].concat(ctx.renderGrid()),
-        prompt: ctx.getPrompt(),
-        stayActive: true
-      };
-    }
-
     // Check if clicking on a breakable - kick it instead of moving
+    // NOTE: Kicks are allowed even during scriptedWalk and moveLocked — they
+    // are a local melee action that doesn't relocate the player.
     var breakableAtTarget = ctx.getBreakableAt(targetX, targetY);
     console.log('[TapMove] Target=' + targetX + ',' + targetY + ' breakable=' + (breakableAtTarget ? (breakableAtTarget.name + ' hp=' + breakableAtTarget.hp) : 'none') + ' player=' + ctx.player.x + ',' + ctx.player.y);
     if (breakableAtTarget && breakableAtTarget.hp > 0) {
@@ -111,6 +101,18 @@ var TapMoveSystem = (function() {
           stayActive: true
         };
       }
+    }
+
+    // Floor 0 scripted walk — block movement (but kicks above are allowed)
+    if (ctx.scriptedWalk) { console.log('[TapMove] BLOCKED movement by scriptedWalk'); return; }
+
+    // Asteroids boss locks player movement — tap only activates cards
+    if (ctx.playerMoveLocked) {
+      return {
+        lines: ['\u2693 GRAVITY ANCHOR \u2014 movement disabled. Use cards to fight!', ''].concat(ctx.renderGrid()),
+        prompt: ctx.getPrompt(),
+        stayActive: true
+      };
     }
 
     // Route tap-to-move through smooth movement system when available
