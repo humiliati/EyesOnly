@@ -1510,13 +1510,14 @@ var GoneRogue = (function () {
   function _lockedGateCtx() {
     return {
       player: _player, grid: _grid, tileMetadata: _tileMetadata,
-      items: _items, impactEffects: _impactEffects,
+      items: _items, impactEffects: _impactEffects, npcs: _npcs,
       TILES: TILES, rng: _rng,
       getPrompt: getPrompt, renderGrid: _renderGrid, saveState: _saveState,
       rebuildWallCache: _rebuildWallCache,
       getPlayerKeys: _getPlayerKeys, getKeyTier: _getKeyTier,
       consumeActiveItemIfMatches: _consumeActiveItemIfMatches,
       consumeKeyFromInventory: _consumeKeyFromInventory,
+      consumeQuestItem: _consumeQuestItem,
       spawnCurrency: _spawnCurrency,
       handleVentInteraction: _handleVentInteraction,
       updateMobileGrid: (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') ? _updateMobileGrid : null
@@ -2334,6 +2335,7 @@ var GoneRogue = (function () {
    * Handle tap-to-move from mobile UI
    */
   function handleTapMove(targetX, targetY, runMode) {
+    console.log('[GoneRogue.handleTapMove] x=' + targetX + ' y=' + targetY + ' TapMoveSystem=' + (typeof TapMoveSystem) + ' active=' + _active);
     if (typeof TapMoveSystem !== 'undefined') {
       return TapMoveSystem.handleTapMove(targetX, targetY, runMode, _tapMoveCtx());
     }
@@ -3531,6 +3533,7 @@ var GoneRogue = (function () {
     getBreakables: function() { return _breakables; },
     getBreakableAt: _getBreakableAt,
     removeBreakableAt: _removeBreakableAt,
+    getNpcs: function() { return _npcs; },
 
     // Deployed box system
     isBoxDeployItem: function(itemId) { return _BOX_DEPLOY_IDS.indexOf(itemId) !== -1; },

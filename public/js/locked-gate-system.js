@@ -177,6 +177,89 @@ var LockedGateSystem = (function () {
   }
 
   // ------------------------------------------------------------------
+  // _findAdjacentNpc — scan 4 directions for an NPC
+  // ------------------------------------------------------------------
+  function _findAdjacentNpc(ctx) {
+    var dirs = [
+      { dx: 0, dy: -1 },
+      { dx: 1, dy: 0 },
+      { dx: 0, dy: 1 },
+      { dx: -1, dy: 0 }
+    ];
+    for (var i = 0; i < dirs.length; i++) {
+      var nx = ctx.player.x + dirs[i].dx;
+      var ny = ctx.player.y + dirs[i].dy;
+      for (var j = 0; j < ctx.npcs.length; j++) {
+        if (ctx.npcs[j].x === nx && ctx.npcs[j].y === ny) {
+          return ctx.npcs[j];
+        }
+      }
+    }
+    return null;
+  }
+
+  // ------------------------------------------------------------------
+  // _handleNpcQuestTurnIn — deliver quest item to NPC
+  // ------------------------------------------------------------------
+  function _handleNpcQuestTurnIn(npc, ctx) {
+    var questKeyType = npc.questItem;
+    var npcTarget = npc.npcTarget || npc.id || '';
+    var npcName = npc.name || npc.emoji || 'NPC';
+    var npcEmoji = npc.emoji || '\uD83E\uDDD1';
+
+    // Check if player has the quest item
+    var consumed = null;
+    if (typeof InventoryManagement !== 'undefined' && InventoryManagement.consumeQuestItem) {
+      consumed = InventoryManagement.consumeQuestItem(questKeyType, npcTarget);
+    } else if (ctx.consumeQuestItem) {
+      consumed = ctx.consumeQuestItem(questKeyType, npcTarget);
+    }
+
+    if (!consumed) {
+      // Player doesn't have the quest item
+      console.log('[LockedGate] NPC ' + npcName + ' wants ' + questKeyType + ' but player does not have it');
+      return {
+        lines: [npcEmoji + ' ' + npcName + ': "Bring me the ' + (questKeyType.replace(/_/g, ' ').toLowerCase()) + ' and I can help you."'],
+        prompt: ctx.getPrompt(),
+        stayActive: true
+      };
+    }
+
+    // Quest item delivered!
+    console.log('[LockedGate] Quest turn-in: ' + questKeyType + ' delivered to ' + npcName);
+
+    // Show overhead animation
+    if (typeof OverheadAnimator !== 'undefined') {
+      OverheadAnimator.showExpression(npc.x, npc.y, 'happy', 1500);
+    }
+
+    // Tooltip feedback
+    if (typeof TooltipSystem !== 'undefined') {
+      TooltipSystem.show(npcEmoji + ' ' + npcName + ' received ' + (consumed.emoji || '\uD83D\uDD28') + ' ' + (consumed.name || questKeyType), 2500);
+    }
+
+    // Update mobile grid
+    if (ctx.updateMobileGrid) {
+      ctx.updateMobileGrid();
+    }
+
+    // Refresh inventory display
+    if (typeof GoneRogueMobile !== 'undefined' && GoneRogueMobile.showInventory) {
+      GoneRogueMobile.showInventory();
+    }
+
+    return {
+      lines: [
+        npcEmoji + ' ' + npcName + ': "Excellent! You found it!"',
+        (consumed.emoji || '\uD83D\uDD28') + ' ' + (consumed.name || questKeyType) + ' delivered.',
+        '\u2728 Quest complete!'
+      ],
+      prompt: ctx.getPrompt(),
+      stayActive: true
+    };
+  }
+
+  // ------------------------------------------------------------------
   // handleInteraction — top-level interact command dispatcher
   // ------------------------------------------------------------------
   function handleInteraction(ctx) {
@@ -190,6 +273,14 @@ var LockedGateSystem = (function () {
     var locked = findAdjacentLockedGate(ctx);
     if (locked) {
       return attemptUnlockLockedGate(locked.x, locked.y, locked.meta, {}, ctx);
+    }
+
+    // NPC quest turn-in: check if player is adjacent to an NPC with a questItem
+    if (ctx.npcs && ctx.npcs.length) {
+      var adjNpc = _findAdjacentNpc(ctx);
+      if (adjNpc && adjNpc.questItem) {
+        return _handleNpcQuestTurnIn(adjNpc, ctx);
+      }
     }
 
     if (typeof InteractiveItems === 'undefined') {

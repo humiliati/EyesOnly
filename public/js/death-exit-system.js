@@ -92,6 +92,11 @@ var DeathExitSystem = (function () {
       });
     }
 
+    // Refresh debrief feed to show post-death resource values (HP=0, etc.)
+    if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.refresh) {
+      try { DebriefFeedController.refresh(); } catch (eDF) {}
+    }
+
     // Exit rogue mode
     return exitRogue(false, ctx);
   }

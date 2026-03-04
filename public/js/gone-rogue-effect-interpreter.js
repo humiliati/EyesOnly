@@ -62,6 +62,8 @@ var GoneRogueEffectInterpreter = (function() {
         return _handleEnemyConfuse(effect, context);
       case 'evasion':
         return _handleEvasion(effect, context);
+      case 'quest_turn_in':
+        return _handleQuestTurnIn(effect, context);
       default:
         try { console.warn('[EffectInterpreter] Unknown effect type:', effect.type); } catch (e) {}
         return null;
@@ -123,6 +125,13 @@ var GoneRogueEffectInterpreter = (function() {
     var d = Number(effect.duration || 2);
     _effects.enemyConfuse = { duration: d };
     return { type: 'enemy_confuse', duration: d };
+  }
+
+  function _handleQuestTurnIn(effect, context) {
+    // No-op on equip — quest_turn_in is a marker effect.
+    // Actual turn-in happens via NPC interaction (LockedGateSystem.handleInteraction).
+    // We just acknowledge the effect so it doesn't produce an "Unknown effect" warning.
+    return { type: 'quest_turn_in', npcTarget: effect.npcTarget || null, rewardType: effect.rewardType || null };
   }
 
   function _handleEvasion(effect) {

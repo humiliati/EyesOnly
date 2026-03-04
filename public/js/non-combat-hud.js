@@ -1310,7 +1310,9 @@ var NonCombatHUD = (function() {
     }
 
     // ── HAND → BACKUP (NCH backup zone OR left column in backup mode) ──
-    if (_drag.kind === 'hand' && (droppedOnBackup || droppedOnLeftBackup)) {
+    // Guard: if the left column is in items mode (vault target), don't intercept as backup
+    // even if the NCH backup zone visually overlaps. Left vault takes priority.
+    if (_drag.kind === 'hand' && (droppedOnBackup || droppedOnLeftBackup) && !droppedOnLeftVault) {
       if (_useCTM) {
         ok = CardTransferManager.handToBackup(_drag.index);
       } else if (_useCSA) {
@@ -1385,7 +1387,7 @@ var NonCombatHUD = (function() {
     }
 
     // ── VAULT → BACKUP (NCH backup zone OR left column in backup mode) ──
-    if (_drag.kind === 'vault' && (droppedOnBackup || droppedOnLeftBackup)) {
+    if (_drag.kind === 'vault' && (droppedOnBackup || droppedOnLeftBackup) && !droppedOnLeftVault) {
       if (_useCTM) {
         ok = CardTransferManager.vaultToBackup(_drag.id);
       } else if (_useCSA) {

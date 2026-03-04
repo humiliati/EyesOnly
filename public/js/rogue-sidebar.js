@@ -508,9 +508,14 @@ var RogueSidebar = (function() {
               _render();
             });
           } else {
-            // Regular items: click to equip/unequip (original behavior)
+            // Regular items: click to equip/unequip, drag to incinerator or grid
             btn.addEventListener('click', function(e) {
               e.stopPropagation();
+              // Ignore clicks that were actually drags
+              if (e.currentTarget._wasDragged) {
+                e.currentTarget._wasDragged = false;
+                return;
+              }
               var id = (items[Number(e.currentTarget.dataset.index)] || {}).id;
               if (!id) return;
 
@@ -524,6 +529,115 @@ var RogueSidebar = (function() {
               // Force refresh to reflect selection state
               _lastSignature = null;
               _render();
+            });
+
+            // Drag handler for items: incinerator disposal + key deployment to grid
+            btn.addEventListener('pointerdown', function(e) {
+              if (!e || e.pointerType === 'touch') return;
+              if (e.button !== undefined && e.button !== 0) return;
+
+              var iIdx = Number(e.currentTarget.dataset.index);
+              var iRef = items[iIdx] || null;
+              if (!iRef || !iRef.id) return;
+
+              var iResolved = (typeof SharedItemRenderer !== 'undefined')
+                ? SharedItemRenderer.resolve(iRef)
+                : { emoji: '📦', name: iRef.id };
+
+              var startX = e.clientX;
+              var startY = e.clientY;
+              var dragThreshold = 8;
+              var isDragging = false;
+              var ghost = null;
+              var btnEl = e.currentTarget;
+
+              var handleMove = function(moveE) {
+                var dx = moveE.clientX - startX;
+                var dy = moveE.clientY - startY;
+                if (!isDragging && Math.sqrt(dx * dx + dy * dy) > dragThreshold) {
+                  isDragging = true;
+                  btnEl._wasDragged = true;
+                  ghost = document.createElement('div');
+                  ghost.className = 'nch-drag-ghost';
+                  ghost.textContent = iResolved.emoji || '📦';
+                  ghost.style.position = 'fixed';
+                  ghost.style.zIndex = '99999';
+                  ghost.style.pointerEvents = 'none';
+                  ghost.style.fontSize = '28px';
+                  ghost.style.left = moveE.clientX + 'px';
+                  ghost.style.top = moveE.clientY + 'px';
+                  ghost.style.transform = 'translate(-50%, -50%)';
+                  document.body.appendChild(ghost);
+                }
+                if (isDragging && ghost) {
+                  ghost.style.left = moveE.clientX + 'px';
+                  ghost.style.top = moveE.clientY + 'px';
+                }
+              };
+
+              var handleUp = function(upE) {
+                document.removeEventListener('pointermove', handleMove);
+                document.removeEventListener('pointerup', handleUp);
+                if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
+
+                if (!isDragging) return;
+
+                var dropEl = document.elementFromPoint(upE.clientX, upE.clientY);
+
+                // Check debrief feed (incinerator)
+                var debriefScreen = document.getElementById('debrief-screen');
+                if (dropEl && debriefScreen && (dropEl === debriefScreen || debriefScreen.contains(dropEl))) {
+                  // Incinerate item
+                  if (typeof GAMESTATE !== 'undefined' && GAMESTATE.removePersistentInventoryItem) {
+                    GAMESTATE.removePersistentInventoryItem(iIdx);
+                  }
+                  debriefScreen.classList.add('incinerator-active');
+                  setTimeout(function() { debriefScreen.classList.remove('incinerator-active'); }, 600);
+                  if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.flashIncinerator) {
+                    DebriefFeedController.flashIncinerator({ kind: 'disposal', durationMs: 600 });
+                  }
+                  if (typeof TooltipSystem !== 'undefined') {
+                    TooltipSystem.show('\uD83D\uDD25 ' + (iResolved.name || 'Item') + ' disposed', 2000);
+                  }
+                  _lastSignature = null;
+                  _render();
+                  return;
+                }
+
+                // Check grid drop (key deployment)
+                var gridContainer = document.getElementById('rogue-grid-mobile');
+                if (dropEl && gridContainer && (dropEl === gridContainer || gridContainer.contains(dropEl))) {
+                  // Only deploy key items and quest keys
+                  var resolvedItem = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem)
+                    ? GoneRogueDataRegistry.getItem(iRef.id) : null;
+                  var isKey = (resolvedItem && resolvedItem.type === 'key') || (iRef.type === 'key') || (iRef.subtype === 'quest');
+                  var isDeployable = (typeof GoneRogue !== 'undefined' && GoneRogue.isBoxDeployItem && GoneRogue.isBoxDeployItem(iRef.id));
+
+                  if (isKey || isDeployable) {
+                    // Equip as active item so it's ready to use
+                    if (typeof GAMESTATE !== 'undefined' && GAMESTATE.setActiveItem) {
+                      GAMESTATE.setActiveItem({ id: iRef.id, qty: 1 });
+                    }
+                    // Trigger interact to use the key if adjacent to a gate/NPC
+                    if (typeof GoneRogue !== 'undefined' && GoneRogue.process) {
+                      GoneRogue.process('interact');
+                    }
+                    if (typeof TooltipSystem !== 'undefined') {
+                      TooltipSystem.show((iResolved.emoji || '🔑') + ' ' + (iResolved.name || 'Key') + ' deployed', 1500);
+                    }
+                    _lastSignature = null;
+                    _render();
+                    return;
+                  }
+                }
+
+                // Dropped elsewhere — no action
+                _lastSignature = null;
+                _render();
+              };
+
+              document.addEventListener('pointermove', handleMove);
+              document.addEventListener('pointerup', handleUp);
             });
           }
         } else {

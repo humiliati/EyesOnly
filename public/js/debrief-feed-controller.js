@@ -1117,6 +1117,12 @@ const DebriefFeedController = (function() {
         }, 600);
       }
     } catch (eRow) {}
+
+    // Refresh resource summaries so bar values reflect actual GAMESTATE
+    // (cheap + consistent — same pattern as row click at line 874)
+    if (_currentDisplay === 'resources') {
+      try { _renderResources(); } catch (eRR) {}
+    }
   }
 
   /**

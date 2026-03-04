@@ -1704,6 +1704,7 @@ const GoneRogueMobile = (function () {
    * @param {boolean} runMode - Whether to run to target
    */
   function _processGridInput(x, y, runMode) {
+    console.log('[ProcessGridInput] x=' + x + ' y=' + y + ' runMode=' + runMode);
     if (typeof GoneRogue !== 'undefined') {
       var player = GoneRogue.getPlayer ? GoneRogue.getPlayer() : null;
       var now = Date.now();
@@ -1782,6 +1783,26 @@ const GoneRogueMobile = (function () {
       }
     }
 
+    // Click-on-NPC: adjacent tap triggers interact (quest turn-in, dialogue, etc.)
+    if (typeof GoneRogue !== 'undefined' && player) {
+      var npcs = GoneRogue.getNpcs ? GoneRogue.getNpcs() : [];
+      if (npcs && npcs.length) {
+        for (var ni = 0; ni < npcs.length; ni++) {
+          var npc = npcs[ni];
+          if (npc && npc.x === x && npc.y === y) {
+            var ndx = x - player.x;
+            var ndy = y - player.y;
+            if (Math.abs(ndx) <= 1 && Math.abs(ndy) <= 1) {
+              console.log('[ProcessGridInput] Adjacent NPC tap: ' + (npc.name || npc.id) + ' at ' + x + ',' + y);
+              GoneRogue.process('interact');
+              _lastMovementTime = Date.now();
+              return;
+            }
+          }
+        }
+      }
+    }
+
     // Click-on-enemy: adjacent tap triggers steal (Phase 4), ranged tap fires projectile.
     if (typeof GoneRogue !== 'undefined') {
       var enemies = GoneRogue.getEnemies ? GoneRogue.getEnemies() : [];
@@ -1834,6 +1855,7 @@ const GoneRogueMobile = (function () {
     }
 
     // Send tap-to-move command and track movement time
+    console.log('[ProcessGridInput] Reached handleTapMove dispatch. GoneRogue=' + (typeof GoneRogue) + ' handleTapMove=' + (typeof GoneRogue !== 'undefined' ? typeof GoneRogue.handleTapMove : 'N/A'));
     if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.handleTapMove === 'function') {
       GoneRogue.handleTapMove(x, y, runMode);
       _lastMovementTime = Date.now(); // Track movement time to prevent immediate card fan
@@ -2149,6 +2171,7 @@ const GoneRogueMobile = (function () {
    * Handle grid touch end (execute movement)
    */
   function _handleGridTouchEnd(e) {
+    console.log('[GridTouchEnd] fired. fishingActive=' + _fishingActive + ' pathLen=' + _fishingPath.length);
     e.preventDefault();
     e.stopPropagation();
 
@@ -2293,8 +2316,10 @@ const GoneRogueMobile = (function () {
    * Handle grid click/tap
    */
   function _handleGridClick(e) {
+    console.log('[GridClick] fired. suppressNextClick=' + _suppressNextClick + ' pointerType=' + (e.pointerType || 'click'));
     if (_suppressNextClick) {
       _suppressNextClick = false;
+      console.log('[GridClick] Suppressed by fishing.');
       return;
     }
 
