@@ -431,7 +431,12 @@
   }
 }
 
-/* Card Container */
+/* ─── IDENTITY NOTE: .rogue-cards-mobile ──────────────────────────
+   LEGACY CARD FAN POPUP — fixed-position overlay at bottom of screen.
+   Toggled by .hand-fan-toggle button via _showCardFan().
+   NOT the inventory/equip grid (that's .rogue-inventory-mobile below).
+   NOT the NCH hand zone or left-column Cards view.
+   ─────────────────────────────────────────────────────────────────── */
 .rogue-cards-mobile {
   display: none;
   position: fixed;
@@ -1193,8 +1198,12 @@
 }
 
 /* ============================================================
-   INVENTORY DISPLAY FOR EQUIP/UNEQUIP
-   Persistent inventory grid for tap/drag to active slot
+   IDENTITY NOTE: .rogue-inventory-mobile
+   PERSISTENT INVENTORY / EQUIP GRID — flow-based (margin:auto) popup.
+   Rendered by showInventory(). THIS is the popup that appears during
+   quest key pickup, NPC turn-in, and equipped-slot tap interactions.
+   NOT the card fan (that's .rogue-cards-mobile above).
+   NOT the NCH maximized inventory zone (future).
    ============================================================ */
 
 .rogue-inventory-mobile {
