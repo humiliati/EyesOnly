@@ -450,16 +450,115 @@ In Xbox 360 emulation mode, QuadStick presents itself as a standard Xbox 360 con
 
 ---
 
-## 11. Game Tick Integration
+## 11. Movement Architecture — Visual Position Pipeline
+
+Player rendering goes through **three layers** of visual positioning that all must agree on where the avatar is. Misalignment between any layer causes lurching, snapping, or drift.
+
+### Layer 1 — GoneRogueMovement._visualPosition (source of truth)
+
+`gone-rogue-movement.js` owns the smooth float position. `update()` advances `_visualPosition` along the A*-smoothed path each frame using `speed × deltaTime`.
+
+Logical position (`_logicalPosition`) updates to integer tile coords whenever a waypoint is reached. This triggers game-logic checks (item pickup, enemy encounters, ground effects).
+
+### Layer 2 — player.visualX / player.visualY (bridge)
+
+`game-tick-system.js` reads `GoneRogueMovement.getVisualPosition()` and writes it onto `ctx.player.visualX/Y` every frame. This is the bridge between the movement system and the renderer.
+
+As of 2026-03-04, this write happens at the **top** of `updateGameState()` unconditionally (not just when `isMoving()`). This ensures the renderer always gets fresh coordinates, preventing the 35% LERP fallback from activating when movement pauses between path segments.
+
+### Layer 3 — _playerVisual in gone-rogue-mobile.js (renderer)
+
+The canvas renderer maintains `_playerVisual {x, y, inited}` for smooth camera tracking. When `player.visualX` is defined (Layer 2 is active), `_playerVisual` is set directly from it. When `visualX` is absent, a 35% LERP fallback slowly drifts toward `player.x/y`.
+
+The Layer 2 unconditional-write fix ensures the LERP fallback is never reached during normal gameplay.
+
+### Pipeline diagram
+
+```
+GoneRogueMovement._visualPosition  (float, per-frame)
+        │
+        ▼
+game-tick-system writes player.visualX/Y  (every frame, unconditional)
+        │
+        ▼
+gone-rogue-mobile._playerVisual = player.visualX/Y  (direct assign)
+        │
+        ▼
+canvas render at sub-tile precision
+```
+
+### Known issues fixed (2026-03-04)
+
+**Lurching / pulsing movement** — When travelling more than 2 tiles, the player decelerated at each tile center and re-accelerated from zero, creating a "pulsing" motion. Two root causes:
+
+1. **Lost movement budget at waypoints.** When `moveDistance > distanceToWaypoint`, the excess was clamped and lost. The player burned one frame's budget reaching the waypoint, then started from zero toward the next one. FIX: `update()` now carries leftover movement budget forward through consecutive waypoints in the same frame (up to 8 per frame safety cap).
+
+2. **Redundant intermediate waypoints.** A* generates paths through integer tile centers. A 10-tile straight diagonal walk generated 10 waypoints, each triggering the per-waypoint pause from issue #1. FIX: `_smoothPath()` post-processes the A* output with Bresenham line-of-sight checks. If waypoints A and C have clear LOS, waypoint B is pruned. A 10-tile diagonal now becomes 2 waypoints (start → end).
+
+**Explosion knockback invisible** — `pushEntity()` updated `_player.x/y` but not `GoneRogueMovement._visualPosition` or `player.visualX/Y`. The renderer's LERP-fallback only moved 35% per frame, so the avatar appeared stuck. FIX: `pushEntity()` now calls `GoneRogueMovement.setPosition()` and sets `entity.visualX/Y` directly.
+
+---
+
+## 12. Movement Roadmap — Toward Paper Mario Free-Range
+
+> **Design goal:** Player movement should feel like Paper Mario / TTYD — smooth free-range 360° traversal where the character glides toward the destination along the shortest visible path, with wall-sliding on collision. The grid is for game logic (tile interactions, combat ranges, lighting), not for constraining visual motion.
+
+### Current state (Phase 0 — COMPLETE)
+
+The three fixes above give smooth waypoint-to-waypoint movement with path smoothing. Movement is no longer restricted to tile-center snapping. However, the path itself still routes through integer waypoints — it's just that redundant ones are pruned.
+
+### Phase 1 — Floating-point pathfinding targets (LOW EFFORT)
+
+Currently `findPath()` and `setTarget()` only accept integer coordinates. `_processGridInput` always passes integer grid coords. Allow sub-tile targets: when the player taps a position, pass the floating-point screen-to-world coordinate as the final destination, but use the containing integer tile for A* pathfinding. The last segment of the path becomes a float→float move instead of int→int.
+
+This eliminates the visible "snap to tile center" at the destination.
+
+### Phase 2 — Funnel algorithm for true-shortest-path (MEDIUM EFFORT)
+
+Replace post-hoc LOS smoothing with a proper funnel/string-pulling algorithm on the A* corridor. The funnel algorithm produces the geometrically shortest path through a sequence of traversable tiles, hugging corners precisely. This gives projectile-like straight-line movement wherever possible, with tight curves around obstacles.
+
+Reference: Simple Stupid Funnel Algorithm (Mononen, 2010).
+
+### Phase 3 — Direct-to-target with wall sliding (MEDIUM EFFORT)
+
+For short distances (< 5 tiles) where the destination is in line-of-sight, skip pathfinding entirely. Move the player in a straight line toward the tap point. On wall collision, slide along the wall face (project velocity onto wall tangent). This matches the projectile system's 360° traversal model.
+
+For distances > 5 tiles or when LOS is blocked, fall back to A*+funnel from Phase 2.
+
+### Phase 4 — Analog stick continuous movement (FUTURE)
+
+Xbox controller left stick drives direction + speed continuously instead of tap-to-destination. The player moves in the stick direction each frame, colliding and sliding along walls. No pathfinding needed — movement is fully reactive like a platformer.
+
+This requires the wall-sliding from Phase 3 and a new input mode alongside the existing tap-to-move system.
+
+### Comparison: Player vs Projectile motion
+
+| Aspect | Player (current) | Projectile |
+|---|---|---|
+| Position | Float (sub-tile) after fixes | Float from spawn |
+| Direction | Along A*-smoothed waypoints | Arbitrary 360° from spawn angle |
+| Speed | 8 tiles/sec base, modifiable | 1.0 base (variable) |
+| Collision | Pre-computed path avoids walls | Per-tick raycast + bounce/destroy |
+| Wall interaction | Path routes around walls | Bounce (if bounces > 0) or destroy |
+| Rendering | Through 3-layer pipeline | Direct float render in entity list |
+
+The key architectural difference: projectiles don't pathfind. They launch in a direction and react to collisions per-tick. Phase 3-4 would give the player similar reactive movement for short distances and analog input.
+
+---
+
+## 13. Game Tick Integration
 
 All movement, projectiles, and ground effects tick inside `GameTickSystem.updateGameState()` (game-tick-system.js ~line 15), called every animation frame (~16ms at 60fps).
 
 ### Tick sequence
 
 ```
+0. Sync player.visualX/Y from GoneRogueMovement  (unconditional)
+
 1. Update smooth movement (GoneRogueMovement)
-   · Interpolate player position along path
-   · Sync logical + visual coordinates
+   · Advance _visualPosition along smoothed path
+   · Carry excess budget through consecutive waypoints
+   · Sync logical position at each reached waypoint
    · Check tile interactions at new position
    · Handle scripted walk phase transitions
 
@@ -496,20 +595,21 @@ All movement, projectiles, and ground effects tick inside `GameTickSystem.update
 
 ---
 
-## 12. File Reference
+## 14. File Reference
 
 | File | Responsibility |
 |---|---|
-| `gone-rogue-mobile.js` | Event listeners, coordinate conversion, fishing detection, `_processGridInput` dispatcher |
+| `gone-rogue-mobile.js` | Event listeners, coordinate conversion, fishing detection, `_processGridInput` dispatcher, `_playerVisual` lerp/direct-assign |
 | `tap-move-system.js` | Kick detection, movement routing, fishing path execution |
 | `breakable-system.js` | `kickBreakable()` push + damage, explosion chain, fire spawning |
 | `projectile-system.js` | Fire, advance, collide projectiles |
-| `game-tick-system.js` | Main update loop, movement interpolation, ground DOT |
+| `game-tick-system.js` | Main update loop, movement sync, visual bridge, ground DOT |
 | `gone-rogue.js` | `process()` command router, `handleTapMove()` wrapper, context builders |
+| `gone-rogue-movement.js` | A* pathfinding, path smoothing (LOS), smooth position interpolation, carry-forward budget |
+| `explosion-system.js` | `pushEntity()` with visual snap for knockback |
 | `environmental-drag-drop.js` | Active item drag-to-deploy on grid |
 | `locked-gate-system.js` | Gate unlock, NPC quest turn-in, interact routing |
 | `ui-controls.js` | Header active-item-slot click/toggle handler |
 | `rogue-sidebar.js` | Left column item rendering, drag-to-equip/incinerator/grid |
 | `inventory-management.js` | Quest item consumption, active slot search, key matching |
 | `game-loop.js` | requestAnimationFrame loop, delta timing |
-| `gone-rogue-movement.js` | A* pathfinding, smooth position interpolation |

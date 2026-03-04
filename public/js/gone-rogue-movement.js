@@ -183,8 +183,79 @@ const GoneRogueMovement = (function () {
   }
 
   /**
-   * Set new movement target
-   * Calculates path and starts smooth movement
+   * Smooth an A* path by removing redundant intermediate waypoints.
+   * Uses Bresenham-style line-of-sight checks: if the player can walk in
+   * a straight line from waypoint A to waypoint C without hitting a wall,
+   * waypoint B is redundant and gets pruned.  The result is fewer, more
+   * spread-out waypoints which the movement system traverses in smooth
+   * straight-line segments instead of zigzagging tile-to-tile.
+   *
+   * @param {Array} path - [{x,y}, ...] A* waypoints (integer coords)
+   * @param {Function|null} collisionCheck - returns true if tile is blocked
+   * @returns {Array} smoothed path (subset of original)
+   */
+  function _smoothPath(path, collisionCheck) {
+    if (!collisionCheck || path.length <= 2) return path;
+
+    var smoothed = [path[0]];
+    var anchor = 0;
+
+    while (anchor < path.length - 1) {
+      var farthest = anchor + 1; // at minimum, keep the next waypoint
+
+      // Probe forward: can we skip intermediate points?
+      for (var probe = anchor + 2; probe < path.length; probe++) {
+        if (_hasLineOfSight(path[anchor].x, path[anchor].y, path[probe].x, path[probe].y, collisionCheck)) {
+          farthest = probe;
+        } else {
+          break; // once LOS fails, stop probing (path bends around obstacle)
+        }
+      }
+
+      smoothed.push(path[farthest]);
+      anchor = farthest;
+    }
+
+    return smoothed;
+  }
+
+  /**
+   * Bresenham line-of-sight: walk all integer tiles between (x0,y0) and
+   * (x1,y1). Returns true if NONE of them are blocked by collisionCheck.
+   */
+  function _hasLineOfSight(x0, y0, x1, y1, collisionCheck) {
+    var dx = Math.abs(x1 - x0);
+    var dy = Math.abs(y1 - y0);
+    var sx = x0 < x1 ? 1 : -1;
+    var sy = y0 < y1 ? 1 : -1;
+    var err = dx - dy;
+
+    var cx = x0;
+    var cy = y0;
+
+    while (true) {
+      // Skip start position; check every intermediate + end tile
+      if ((cx !== x0 || cy !== y0) && collisionCheck(cx, cy)) return false;
+
+      if (cx === x1 && cy === y1) break;
+
+      var e2 = 2 * err;
+      // Diagonal movement: check both orthogonal neighbors to prevent
+      // corner-cutting through diagonal wall gaps
+      if (e2 > -dy && e2 < dx) {
+        // Moving diagonally this step
+        if (collisionCheck(cx + sx, cy) && collisionCheck(cx, cy + sy)) return false;
+      }
+      if (e2 > -dy) { err -= dy; cx += sx; }
+      if (e2 < dx) { err += dx; cy += sy; }
+    }
+
+    return true;
+  }
+
+  /**
+   * Set new movement target.
+   * Calculates A* path, smooths it, and starts smooth movement.
    * @param {boolean} isSprinting - Whether player is sprinting (optional)
    */
   function setTarget(targetX, targetY, collisionCheck, isSprinting) {
@@ -194,6 +265,13 @@ const GoneRogueMovement = (function () {
     // Remove first element (current position)
     if (path.length > 0 && path[0].x === _logicalPosition.x && path[0].y === _logicalPosition.y) {
       path.shift();
+    }
+
+    // Smooth: remove redundant intermediate waypoints where line-of-sight
+    // exists.  This turns the A* zigzag into long straight-line segments
+    // giving Paper-Mario-style fluid traversal.
+    if (path.length > 2 && collisionCheck) {
+      path = _smoothPath(path, collisionCheck);
     }
 
     if (path.length > 0) {
@@ -209,78 +287,17 @@ const GoneRogueMovement = (function () {
   }
 
   /**
-   * Update movement interpolation
-   * Call this every frame (requestAnimationFrame)
-   * Returns true if position changed
+   * Compute effective movement speed for this frame (base + sprint + equipment
+   * + terrain modifiers).
    */
-  function update(collisionCheck) {
-    if (!_isMoving || _targetPath.length === 0) {
-      // Snap visual to logical if not moving
-      _visualPosition.x = _logicalPosition.x;
-      _visualPosition.y = _logicalPosition.y;
-      return false;
-    }
-
-    var now = performance.now();
-    var deltaTime = (now - _lastUpdateTime) / 1000; // convert to seconds
-    _lastUpdateTime = now;
-
-    // Drain sprint fatigue if sprinting
-    if (_isSprinting && typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.drainSprintFatigue === 'function') {
-      GAMESTATE.drainSprintFatigue(deltaTime);
-    }
-
-    // Update sprint trail system
-    if (typeof SprintTrailSystem !== 'undefined') {
-      SprintTrailSystem.update(deltaTime, _isSprinting, _visualPosition.x, _visualPosition.y);
-    }
-
-    // Get current target waypoint
-    if (_currentPathIndex >= _targetPath.length) {
-      // Reached end of path
-      _isMoving = false;
-      _logicalPosition.x = _targetPath[_targetPath.length - 1].x;
-      _logicalPosition.y = _targetPath[_targetPath.length - 1].y;
-      _visualPosition.x = _logicalPosition.x;
-      _visualPosition.y = _logicalPosition.y;
-      return true;
-    }
-
-    var target = _targetPath[_currentPathIndex];
-
-    // Calculate direction and distance to target
-    var dx = target.x - _visualPosition.x;
-    var dy = target.y - _visualPosition.y;
-    var distance = Math.sqrt(dx * dx + dy * dy);
-
-    // Check if we've reached this waypoint
-    if (distance < MIN_PATH_DISTANCE) {
-      // Move to next waypoint
-      _currentPathIndex++;
-
-      // Update logical position to this waypoint
-      _logicalPosition.x = target.x;
-      _logicalPosition.y = target.y;
-
-      // Check if path is complete
-      if (_currentPathIndex >= _targetPath.length) {
-        _isMoving = false;
-        _visualPosition.x = _logicalPosition.x;
-        _visualPosition.y = _logicalPosition.y;
-        return true;
-      }
-
-      return true;
-    }
-
-    // Lerp towards target with sprint multiplier, equipment modifiers, and terrain penalties
+  function _getEffectiveSpeed(collisionCheck, targetX, targetY) {
     var currentSpeed = MOVEMENT_SPEED;
 
     if (_isSprinting) {
       var sprintMultiplier = SPRINT_MULTIPLIER;
-      var terrainPenaltyReduction = 0; // Default: no reduction
+      var terrainPenaltyReduction = 0;
 
-      // Apply equipment sprint speed modifiers (Stiletto Slippers, etc.)
+      // Equipment sprint speed modifiers (Stiletto Slippers, etc.)
       if (typeof PassiveItemsSystem !== 'undefined') {
         var equipped = (PassiveItemsSystem.getEquippedItems ? PassiveItemsSystem.getEquippedItems() : []);
         for (var i = 0; i < equipped.length; i++) {
@@ -295,26 +312,116 @@ const GoneRogueMovement = (function () {
 
       currentSpeed *= sprintMultiplier;
 
-      // Apply terrain penalties (water, etc.)
-      // Call getTileMovePenalty if available to get terrain modifier
+      // Terrain penalties (water, etc.)
       if (collisionCheck && typeof collisionCheck.getTileMovePenalty === 'function') {
-        var terrainPenalty = collisionCheck.getTileMovePenalty(Math.floor(target.x), Math.floor(target.y));
+        var terrainPenalty = collisionCheck.getTileMovePenalty(Math.floor(targetX), Math.floor(targetY));
         if (terrainPenalty > 0) {
-          // Reduce penalty based on equipment (Treads boots)
           var effectivePenalty = terrainPenalty * (1 - terrainPenaltyReduction);
-          // Penalty reduces speed multiplicatively (penalty of 1 = 50% speed)
           currentSpeed *= (1 / (1 + effectivePenalty));
         }
       }
     }
 
-    var moveDistance = currentSpeed * deltaTime;
-    if (moveDistance > distance) {
-      moveDistance = distance;
+    return currentSpeed;
+  }
+
+  /**
+   * Update movement interpolation.
+   * Call this every frame (requestAnimationFrame).
+   * Returns true if position changed.
+   *
+   * KEY FIX (2026-03-04): Excess movement at each waypoint is now carried
+   * forward into the next waypoint within the same frame.  Previously the
+   * leftover distance was clamped/lost, which caused visible "lurching" —
+   * the player decelerated as it approached each grid-tile center and then
+   * re-accelerated from zero toward the next one.
+   */
+  function update(collisionCheck) {
+    if (!_isMoving || _targetPath.length === 0) {
+      // Snap visual to logical when idle
+      _visualPosition.x = _logicalPosition.x;
+      _visualPosition.y = _logicalPosition.y;
+      return false;
     }
 
-    _visualPosition.x += (dx / distance) * moveDistance;
-    _visualPosition.y += (dy / distance) * moveDistance;
+    var now = performance.now();
+    var deltaTime = (now - _lastUpdateTime) / 1000; // seconds
+    _lastUpdateTime = now;
+
+    // Drain sprint fatigue
+    if (_isSprinting && typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.drainSprintFatigue === 'function') {
+      GAMESTATE.drainSprintFatigue(deltaTime);
+    }
+
+    // Sprint trail VFX
+    if (typeof SprintTrailSystem !== 'undefined') {
+      SprintTrailSystem.update(deltaTime, _isSprinting, _visualPosition.x, _visualPosition.y);
+    }
+
+    // Compute movement budget for this frame
+    var target = _targetPath[_currentPathIndex];
+    if (!target) {
+      _isMoving = false;
+      return false;
+    }
+
+    var speed = _getEffectiveSpeed(collisionCheck, target.x, target.y);
+    var budget = speed * deltaTime; // tiles remaining to travel this frame
+
+    // ── Consume budget across consecutive waypoints ──────────────────
+    // Instead of stopping at each waypoint and losing the remainder,
+    // carry the leftover into the next segment.  This eliminates the
+    // per-tile deceleration/re-acceleration pulse ("lurching").
+    var MAX_WAYPOINTS_PER_FRAME = 8; // safety cap
+    var waypointsConsumed = 0;
+
+    while (budget > 0 && _currentPathIndex < _targetPath.length && waypointsConsumed < MAX_WAYPOINTS_PER_FRAME) {
+      target = _targetPath[_currentPathIndex];
+
+      var dx = target.x - _visualPosition.x;
+      var dy = target.y - _visualPosition.y;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < MIN_PATH_DISTANCE) {
+        // Already at this waypoint — snap and advance
+        _visualPosition.x = target.x;
+        _visualPosition.y = target.y;
+        _logicalPosition.x = target.x;
+        _logicalPosition.y = target.y;
+        _currentPathIndex++;
+        waypointsConsumed++;
+        continue;
+      }
+
+      if (budget >= dist) {
+        // Enough budget to REACH this waypoint — snap to it, carry remainder
+        _visualPosition.x = target.x;
+        _visualPosition.y = target.y;
+        _logicalPosition.x = target.x;
+        _logicalPosition.y = target.y;
+        budget -= dist;
+        _currentPathIndex++;
+        waypointsConsumed++;
+        // Continue loop — spend leftover budget on next segment
+      } else {
+        // Not enough budget to reach this waypoint — move partially
+        var nx = dx / dist;
+        var ny = dy / dist;
+        _visualPosition.x += nx * budget;
+        _visualPosition.y += ny * budget;
+        budget = 0;
+      }
+    }
+
+    // Check if path is complete
+    if (_currentPathIndex >= _targetPath.length) {
+      var last = _targetPath[_targetPath.length - 1];
+      _isMoving = false;
+      _visualPosition.x = last.x;
+      _visualPosition.y = last.y;
+      _logicalPosition.x = last.x;
+      _logicalPosition.y = last.y;
+    }
 
     return true;
   }

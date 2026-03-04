@@ -13,6 +13,16 @@ var GameTickSystem = (function() {
    * @param {Object} ctx - Context from monolith
    */
   function updateGameState(deltaMs, ctx) {
+    // ── Always sync player.visualX/Y from GoneRogueMovement ──────────
+    // This ensures the renderer's _playerVisual direct-assign path is
+    // always active, preventing the 35%-per-frame LERP fallback that
+    // caused slow drift / pulsing when movement stopped mid-tile.
+    if (typeof GoneRogueMovement !== 'undefined') {
+      var _vis = GoneRogueMovement.getVisualPosition();
+      ctx.player.visualX = _vis.x;
+      ctx.player.visualY = _vis.y;
+    }
+
     // Update smooth movement system
     if (typeof GoneRogueMovement !== 'undefined' && GoneRogueMovement.isMoving()) {
       var collisionCheck = function(x, y) {
