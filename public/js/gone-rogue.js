@@ -2119,7 +2119,11 @@ var GoneRogue = (function () {
       getAllLightBlockers: _getAllLightBlockers,
       getBiome: _getBiome,
       getBreakableAt: _getBreakableAt,
-      updateMobileGrid: (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') ? _updateMobileGrid : null
+      updateMobileGrid: function() {
+        if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+          _updateMobileGrid();
+        }
+      }
     };
   }
   function _damageBreakable(breakable, amount) {

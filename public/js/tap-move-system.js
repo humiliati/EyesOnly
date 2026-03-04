@@ -83,7 +83,7 @@ var TapMoveSystem = (function() {
         } else {
           // Fallback: just damage
           ctx.damageBreakable(breakableAtTarget, 2);
-          kickResult = { damage: .2, pushed: false, pushDist: 0, destroyed: breakableAtTarget.hp <= 0 };
+          kickResult = { damage: 2, pushed: false, pushDist: 0, destroyed: breakableAtTarget.hp <= 0 };
         }
 
         ctx.saveState();

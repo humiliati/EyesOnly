@@ -569,8 +569,12 @@ var BreakableSystem = (function() {
     var kickDamage = 2;
     var result = { damage: kickDamage, pushed: false, pushDist: 0, destroyed: false };
 
+    console.log('[Kick] Kicking ' + (breakable.name || '?') + ' at ' + breakable.x + ',' + breakable.y +
+      ' dir=' + dx + ',' + dy + ' HP=' + breakable.hp + '/' + breakable.maxHp);
+
     // 1. Deal kick damage
     damageBreakable(breakable, kickDamage, ctx);
+    console.log('[Kick] After damage: HP=' + breakable.hp + ' destroying=' + breakable.destroying);
     if (breakable.hp <= 0) {
       result.destroyed = true;
       return result;
