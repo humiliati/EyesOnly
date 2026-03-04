@@ -197,6 +197,22 @@
   animation: breakable-blink 0.2s ease-in-out;
 }
 
+/* Explosive barrel idle pulse — gentle red-to-dark-red glow */
+.cell-explosive-idle {
+  animation: explosive-idle-pulse 2s ease-in-out infinite;
+}
+
+@keyframes explosive-idle-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px #660000);
+    color: #cc2200;
+  }
+  50% {
+    filter: drop-shadow(0 0 6px #ff3300);
+    color: #ff4400;
+  }
+}
+
 .cell-projectile-impact {
   color: #1cff9b;
   animation: impact-flash 0.2s ease-in-out;

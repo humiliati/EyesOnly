@@ -12,7 +12,7 @@ Document Legend & Roadmap Index
 Each roadmap is color-coded throughout this document. Sprint headers use the color of the primary roadmap being executed.
 Abbreviation	Roadmap	Status	Phases/Steps
 CHH	CARD_HAND_HARMONIZATION_ROADMAP	Steps 1–4 done	6 steps (1: cardInstances ✔, 2: hydrateCard ✔, 3: kill cardHand ✔, 4: roll pipeline ✔, 5: persistence, 6: policy flags)
-EB	EXPLOSIVE_BREAKABLES_ROADMAP	Phase 1 IN PROGRESS (CHH 1-3 complete)	6 phases (1: barrels [ACTIVE], 2: ExplosionSystem, 3: VFX, 4: light interact, 5: explosive cards, 6: polish)
+EB	EXPLOSIVE_BREAKABLES_ROADMAP	Phase 1 COMPLETE (2026-03-04)	6 phases (1: barrels ✔, 2: ExplosionSystem, 3: VFX, 4: light interact, 5: explosive cards, 6: polish)
 ENI	ENEMY_NCH_INTERACTION_ROADMAP	Not started	6 phases (1: capsule, 2: interchange UI, 3: combat hand, 4: NCH adjust, 5: items, 6: polish)
 NCR	NCH-COMBAT-ROADMAP	Phase 1 done	Phase 1 (bindings) ✔, Phase 2 (animations) pending
 IPR	ITEM-PIPELINE-ROADMAP	Phases 1–5 done ✔	Phase 5 (collectibles rendering) complete. Phase 5 deferred "backup-deck cascade" resolved by CHH Step 3. Phase 6 (doc updates) deferred. Only ground effect items (water/oil) remain unaddressed — no such items exist yet.
@@ -88,13 +88,15 @@ After Sprint 1, playtesters can: collect enemy card drops into hand, overflow in
 
 SPRINT 2: Explosive Breakables — Barrels Through Combat Cards ← ACTIVE
 [EB] Phases 1–5 — Build the explosive systems that the plant-detonate loop depends on. Phase 6 (polish) deferred to Sprint 6. CHH Steps 1-4 complete. Phase 1 in progress.
-Phase 1: Explosive Barrel Breakable Type ← IN PROGRESS
-•	BARREL_GREY (🗑️) (inert cover, standard loot) and BARREL_RED (🛢️ 1 HP, blast radius 2.75, 9-25 damage)
-•	Destruction override: red barrel → _triggerExplosion() instead of normal loot
-•	Chain detonation with per-tick detonation set (infinite loop guard)
-•	Spawning rules: plant/cave/mall biomes, max 3 red barrels per floor
-•	Readiness: >90% infrastructure exists. breakable-system.js has damageBreakable + loot system. biomes.json already has explodes property on INDUSTRIAL oil drums. GroundEffects FIRE/SMOKE ready. OverheadAnimator 💥 ready. BFS circular radius pattern in electrifyWater() reusable. Noise system integrated.
-•	Work needed: Add explosive property handling to damageBreakable(), add _triggerExplosion(), chain detonation logic, barrel definitions in biome configs, CSS idle glow for red barrels
+Phase 1: Explosive Barrel Breakable Type ✔ COMPLETE (2026-03-04)
+•	BARREL_GREY (🗑️, 2HP, inert cover, standard loot) + BARREL_RED (🛢️, 1HP, explosive, blast radius 2.75, 9-25 damage) ✔
+•	Destruction override: `breakable.explosive` → `_triggerExplosion()` with scorched debris ▓, AoE damage via circular BFS, ground fire/smoke, 💥 overhead, noise radius 8 ✔
+•	Chain detonation with `_detonatedThisTick` object + `_detonationDepth` counter (infinite loop guard, cleared on root cascade exit) ✔
+•	Barrel definitions added to biomes: FOREST, GREY_CAVE, MALL (grey+red), INDUSTRIAL (Oil Drum upgraded to explosive schema + grey barrel) ✔
+•	Spawning rules: maxPerFloor: 3 on red barrels, kickable: true on both types ✔
+•	CSS explosive-idle-pulse animation: 2s infinite red-to-dark-red glow (drop-shadow + color cycle), applied via `cell-explosive-idle` class when `breakable.explosive && hp > 0` ✔
+•	Test barrels placed on tavern collectibles test floor Row H (y:16): 2 grey + 3 red for chain detonation testing ✔
+•	Blast effects per tile: enemy damage (full) + awareness ENGAGED, player damage (50% reduction), breakable chain damage, ground fire (50%) / smoke (30%) / oil ignition / water evaporation ✔
 Phase 2: ExplosionSystem Module
 •	New: explosion-system.js — stateless IIFE, detonate(x, y, radius, damage, ctx)
 •	Circular BFS with damage falloff, per-tile effects (enemy damage, breakable chain, ground fire/smoke, oil ignite, water evaporate)

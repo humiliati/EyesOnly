@@ -29,7 +29,9 @@
         { "emoji": "🪨", "name": "Boulder", "breakable": true, "hp": 5, "blocksPath": true, "drops": ["stone", "gems"] },
         { "emoji": "⛰️", "name": "Ridge", "breakable": false, "blocksPath": true },
         { "emoji": "📦", "name": "Wooden Box", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies"] },
-        { "emoji": "🧺", "name": "Picnic Blanket", "breakable": false, "blocksPath": false, "ghostCollision": true, "movePenalty": 0.3 }
+        { "emoji": "🧺", "name": "Picnic Blanket", "breakable": false, "blocksPath": false, "ghostCollision": true, "movePenalty": 0.3 },
+        { "emoji": "🗑️", "name": "Grey Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies", "coins"], "kickable": true, "noise": 1 },
+        { "emoji": "🛢️", "name": "Red Barrel", "breakable": true, "hp": 1, "blocksPath": true, "explosive": true, "blastRadius": 2.75, "blastDamage": [9, 25], "kickable": true, "noise": 4, "maxPerFloor": 3 }
       ],
       "interactiveObjects": [
         { "emoji": "🪧", "name": "Sign Post", "interact": "read", "effect": "shows_direction", "blocksPath": true },
@@ -87,7 +89,9 @@
       },
       "props": [
         { "emoji": "🪨", "name": "Boulder", "breakable": true, "hp": 2, "blocksPath": true },
-        { "emoji": "💧", "name": "Water Drip", "breakable": false, "blocksPath": true }
+        { "emoji": "💧", "name": "Water Drip", "breakable": false, "blocksPath": true },
+        { "emoji": "🗑️", "name": "Grey Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies", "coins"], "kickable": true, "noise": 1 },
+        { "emoji": "🛢️", "name": "Red Barrel", "breakable": true, "hp": 1, "blocksPath": true, "explosive": true, "blastRadius": 2.75, "blastDamage": [9, 25], "kickable": true, "noise": 4, "maxPerFloor": 3 }
       ],
       "backgroundGradient": {
         "night": { "start": "#0a0a0f", "end": "#0f0a1a" },
@@ -164,7 +168,9 @@
         { "emoji": "💍", "name": "Jewelry Display", "breakable": true, "hp": 1, "drops": ["gems", "coins"], "rare": true },
         { "emoji": "🛒", "name": "Shopping Cart", "breakable": true, "hp": 2, "provides": "mobile_cover", "drops": ["items"] },
         { "emoji": "📰", "name": "Magazine Rack", "breakable": true, "hp": 1, "drops": ["hints"] },
-        { "emoji": "🎁", "name": "Gift Wrap Station", "breakable": true, "hp": 2, "drops": ["wrapped_gifts"], "surprise": true }
+        { "emoji": "🎁", "name": "Gift Wrap Station", "breakable": true, "hp": 2, "drops": ["wrapped_gifts"], "surprise": true },
+        { "emoji": "🗑️", "name": "Grey Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies", "coins"], "kickable": true, "noise": 1 },
+        { "emoji": "🛢️", "name": "Red Barrel", "breakable": true, "hp": 1, "blocksPath": true, "explosive": true, "blastRadius": 2.75, "blastDamage": [9, 25], "kickable": true, "noise": 4, "maxPerFloor": 3 }
       ],
       "interactiveObjects": [
         { "emoji": "🏪", "name": "Storefront", "type": "various", "contains": "multiple_displays" },
@@ -209,7 +215,8 @@
         { "char": "░", "weight": 3 }
       ],
       "props": [
-        { "emoji": "🛢️", "name": "Oil Drum", "breakable": true, "hp": 2, "drops": ["oil"], "explodes": "fire", "ignitable": true },
+        { "emoji": "🛢️", "name": "Oil Drum", "breakable": true, "hp": 1, "explosive": true, "blastRadius": 2.75, "blastDamage": [9, 25], "kickable": true, "noise": 4, "ignitable": true, "maxPerFloor": 3 },
+        { "emoji": "🗑️", "name": "Grey Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies", "coins"], "kickable": true, "noise": 1 },
         { "emoji": "⚡", "name": "Exposed Wiring", "breakable": false, "hazard": "electric" },
         { "emoji": "🔥", "name": "Vent Steam", "breakable": false, "hazard": "heat", "areadenial": true },
         { "emoji": "🧪", "name": "Chemical Tank", "breakable": true, "hp": 3, "drops": ["acid"], "hazard": "acid" },

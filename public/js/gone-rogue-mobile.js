@@ -1363,6 +1363,9 @@ const GoneRogueMobile = (function () {
           } else if (breakable.hp > 0) {
             cell.textContent = breakable.emoji || breakable.glyph || '📦';
             cell.classList.add('cell-breakable');
+            if (breakable.explosive) {
+              cell.classList.add('cell-explosive-idle');
+            }
           } else {
             cell.textContent = breakable.destroyedGlyph || '░';
             cell.classList.add('cell-breakable-broken');

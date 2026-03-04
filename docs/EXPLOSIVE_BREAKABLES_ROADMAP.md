@@ -3,7 +3,7 @@
 **Project**: EyesOnly — Gone Rogue
 **Date**: 2026-03-02
 **Scope**: Explosive barrels, blast physics, screen shake, breakable light polish, explosive cards in STR combat
-**Status**: Ready to start - CHH Steps 1-2 (registerCardInstance, hydrateCard) complete as of 2026-03-03
+**Status**: Phase 1 COMPLETE (2026-03-04). CHH Steps 1-4 complete.
 
 ---
 
@@ -15,7 +15,7 @@ Grey barrels are inert cover. Red barrels detonate on destruction — AoE damage
 
 ---
 
-## Phase 1 — Explosive Barrel Breakable Type
+## Phase 1 — Explosive Barrel Breakable Type ✔ COMPLETE (2026-03-04)
 
 ### 1.1 New Breakable Definitions
 

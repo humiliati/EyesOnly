@@ -1,10 +1,17 @@
 /**
- * BreakableSystem — breakable destruction, loot spawning, and light source cleanup.
+ * BreakableSystem — breakable destruction, loot spawning, light source cleanup,
+ * and explosive barrel detonation with chain reactions.
  * Extracted Phase 14 from gone-rogue.js.
  * Stateless IIFE module — all mutable state via ctx references.
  */
 var BreakableSystem = (function() {
   'use strict';
+
+  // ── Chain detonation loop guard ──
+  // Tracks barrels already detonated this tick to prevent infinite loops.
+  // Cleared at the end of each detonation cascade.
+  var _detonatedThisTick = {};
+  var _detonationDepth = 0;
 
   /**
    * Damage a breakable and handle destruction + loot.
@@ -27,6 +34,17 @@ var BreakableSystem = (function() {
       breakable.destroying = true;
       breakable.destroyStartTime = Date.now();
 
+      // Explosive breakables detonate immediately (no loot, consumed in blast)
+      if (breakable.explosive) {
+        setTimeout(function() {
+          if (breakable.destroying) {
+            breakable.destroying = false;
+            _triggerExplosion(breakable, ctx);
+          }
+        }, 200); // Shorter delay for explosions (1 blink)
+        return;
+      }
+
       // Schedule the actual destruction after animation completes (2 blinks * 200ms each = 400ms)
       setTimeout(function() {
         if (breakable.destroying) {
@@ -45,6 +63,193 @@ var BreakableSystem = (function() {
           }
         }
       }, 400); // 2 blinks at 200ms each
+    }
+  }
+
+  // ── Explosion System (Phase 1 — inline, extracted to ExplosionSystem in Phase 2) ──
+
+  /**
+   * Trigger an explosion at a breakable's position.
+   * Replaces tile with scorched debris, applies AoE damage via circular BFS,
+   * spawns ground fire/smoke, raises noise, and triggers chain detonations.
+   *
+   * @param {Object} breakable - The explosive breakable (must have .explosive, .blastRadius, .blastDamage)
+   * @param {Object} ctx - Game context
+   */
+  function _triggerExplosion(breakable, ctx) {
+    var bx = breakable.x;
+    var by = breakable.y;
+    var key = bx + ',' + by;
+
+    // ── Chain detonation loop guard ──
+    if (_detonatedThisTick[key]) return;
+    _detonatedThisTick[key] = true;
+
+    var isRoot = (_detonationDepth === 0);
+    _detonationDepth++;
+
+    // 1. Replace tile with scorched debris
+    ctx.grid[by][bx] = '▓'; // Scorched variant of DEBRIS
+    breakable.hp = 0;
+    breakable.destroying = false;
+    breakable.detonated = true;
+
+    // 2. Resolve blast parameters
+    var radius = breakable.blastRadius || 2.75;
+    var dmgRange = breakable.blastDamage || [9, 25];
+    var minDmg = (typeof dmgRange[0] === 'number') ? dmgRange[0] : 9;
+    var maxDmg = (typeof dmgRange[1] === 'number') ? dmgRange[1] : 25;
+    var baseDamage = minDmg + Math.floor((ctx.rng ? ctx.rng() : Math.random()) * (maxDmg - minDmg + 1));
+
+    console.log('[Explosion] Red barrel detonated at ' + bx + ',' + by +
+      ' | radius=' + radius + ' baseDmg=' + baseDamage);
+
+    // 3. Raise noise — explosions are LOUD (radius 8 Manhattan)
+    if (ctx.raiseNoise) {
+      ctx.raiseNoise(bx, by, 8);
+    }
+
+    // 4. Overhead explosion emoji at epicenter
+    if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+      OverheadAnimator.showGenericExpression(bx, by, '💥', 600, '#ff6600');
+    }
+
+    // 5. Circular BFS — iterate all tiles within blast radius
+    var queue = [{ x: bx, y: by, dist: 0 }];
+    var visited = {};
+    visited[key] = true;
+
+    while (queue.length > 0) {
+      var current = queue.shift();
+      var cx = current.x;
+      var cy = current.y;
+      var dist = current.dist;
+
+      // Apply blast effects to this tile (skip epicenter for entity damage — barrel is gone)
+      if (dist > 0) {
+        _applyBlastToTile(cx, cy, dist, baseDamage, radius, ctx);
+      }
+
+      // Expand to neighbors if within radius (4-directional)
+      if (dist < radius) {
+        var neighbors = [
+          { x: cx + 1, y: cy },
+          { x: cx - 1, y: cy },
+          { x: cx, y: cy + 1 },
+          { x: cx, y: cy - 1 }
+        ];
+        for (var ni = 0; ni < neighbors.length; ni++) {
+          var n = neighbors[ni];
+          var nk = n.x + ',' + n.y;
+          if (n.x >= 0 && n.x < ctx.GRID_WIDTH && n.y >= 0 && n.y < ctx.GRID_HEIGHT && !visited[nk]) {
+            visited[nk] = true;
+            queue.push({ x: n.x, y: n.y, dist: dist + 1 });
+          }
+        }
+      }
+    }
+
+    // 6. Ground fire at epicenter
+    if (typeof GroundEffects !== 'undefined' && GroundEffects.setGroundEffect) {
+      GroundEffects.setGroundEffect(bx, by, 'FIRE');
+    }
+
+    // 7. Trigger re-render
+    if (ctx.updateMobileGrid) {
+      ctx.updateMobileGrid();
+    }
+
+    // 8. Clear loop guard when root detonation finishes
+    _detonationDepth--;
+    if (isRoot) {
+      _detonatedThisTick = {};
+    }
+  }
+
+  /**
+   * Apply blast effects to a single tile at a given distance from epicenter.
+   * Handles: enemy damage, player damage, breakable chain damage, ground effects.
+   *
+   * @param {number} tx - Tile X
+   * @param {number} ty - Tile Y
+   * @param {number} dist - Distance from epicenter
+   * @param {number} baseDamage - Base damage at epicenter
+   * @param {number} radius - Blast radius
+   * @param {Object} ctx - Game context
+   */
+  function _applyBlastToTile(tx, ty, dist, baseDamage, radius, ctx) {
+    // Damage falloff: full damage at dist=1, zero at dist=radius+1
+    var tileDamage = Math.floor(baseDamage * (1 - dist / (radius + 1)));
+    if (tileDamage <= 0) return;
+
+    // ── Enemy damage ──
+    if (ctx.enemies && ctx.enemies.length) {
+      for (var ei = 0; ei < ctx.enemies.length; ei++) {
+        var enemy = ctx.enemies[ei];
+        if (enemy && enemy.hp > 0 && enemy.x === tx && enemy.y === ty) {
+          enemy.hp = Math.max(0, enemy.hp - tileDamage);
+          console.log('[Explosion] Enemy ' + (enemy.name || '?') + ' took ' + tileDamage + ' blast damage at ' + tx + ',' + ty);
+
+          // Overhead damage indicator
+          if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+            OverheadAnimator.showGenericExpression(tx, ty, '🔥', 400, '#ff3300');
+          }
+
+          // Set awareness to ENGAGED
+          if (typeof EnemyAISystem !== 'undefined' && EnemyAISystem.increaseEnemyAwareness) {
+            EnemyAISystem.increaseEnemyAwareness(enemy, 150, { AWARENESS_STATES: ctx.AWARENESS_STATES });
+          }
+
+          // Handle death
+          if (enemy.hp <= 0) {
+            enemy.dead = true;
+            if (typeof DeathExitSystem !== 'undefined' && DeathExitSystem.handleEnemyDeath) {
+              DeathExitSystem.handleEnemyDeath(enemy, ctx);
+            }
+          }
+        }
+      }
+    }
+
+    // ── Player damage (50% friendly fire reduction) ──
+    if (ctx.player && ctx.player.x === tx && ctx.player.y === ty) {
+      var playerDmg = Math.floor(tileDamage * 0.5);
+      if (playerDmg > 0 && typeof GAMESTATE !== 'undefined') {
+        GAMESTATE.takeDamage(playerDmg);
+        console.log('[Explosion] Player took ' + playerDmg + ' blast damage');
+        if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+          OverheadAnimator.showGenericExpression(tx, ty, '💥', 400, '#ff0000');
+        }
+      }
+    }
+
+    // ── Breakable damage (chain detonation for explosives) ──
+    var breakableAtTile = ctx.getBreakableAt ? ctx.getBreakableAt(tx, ty) : null;
+    if (breakableAtTile && breakableAtTile.hp > 0) {
+      // Recursive call — damageBreakable will trigger _triggerExplosion if explosive
+      damageBreakable(breakableAtTile, tileDamage, ctx);
+    }
+
+    // ── Ground effects: fire (50%) or smoke (30%) on empty floor ──
+    if (typeof GroundEffects !== 'undefined' && GroundEffects.setGroundEffect) {
+      var existingEffect = (typeof GroundEffects.getGroundEffect === 'function')
+        ? GroundEffects.getGroundEffect(tx, ty)
+        : null;
+
+      if (existingEffect && existingEffect.type === 'OIL' && typeof GroundEffects.igniteOil === 'function') {
+        // Ignite oil
+        GroundEffects.igniteOil(tx, ty);
+      } else if (existingEffect && existingEffect.type === 'WATER') {
+        // Evaporate water → steam
+        GroundEffects.setGroundEffect(tx, ty, 'STEAM');
+      } else if (!existingEffect || existingEffect.type === 'NORMAL') {
+        var rng = ctx.rng ? ctx.rng() : Math.random();
+        if (rng < 0.50) {
+          GroundEffects.setGroundEffect(tx, ty, 'FIRE');
+        } else if (rng < 0.80) {
+          GroundEffects.setGroundEffect(tx, ty, 'SMOKE');
+        }
+      }
     }
   }
 

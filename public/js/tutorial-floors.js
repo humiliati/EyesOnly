@@ -1032,7 +1032,14 @@ var TutorialFloors = (function() {
       { x: 27, y: 8, type: 'FOOD', emoji: '💧', name: 'Water Bottle', customData: { foodId: 'FOOD_WATER' } }
     ],
 
-    breakables: [],
+    breakables: [
+      // Row H: Barrels — Grey (inert, 2HP) and Red (explosive, 1HP)
+      { x: 5, y: 16, emoji: '🗑️', name: 'Grey Barrel', hp: 2, drops: { currency: [3, 8] } },
+      { x: 8, y: 16, emoji: '🗑️', name: 'Grey Barrel', hp: 2, drops: { currency: [3, 8] } },
+      { x: 11, y: 16, emoji: '🛢️', name: 'Red Barrel', hp: 1, explosive: true, blastRadius: 2.75, blastDamage: [9, 25], noise: 4 },
+      { x: 14, y: 16, emoji: '🛢️', name: 'Red Barrel', hp: 1, explosive: true, blastRadius: 2.75, blastDamage: [9, 25], noise: 4 },
+      { x: 17, y: 16, emoji: '🛢️', name: 'Red Barrel', hp: 1, explosive: true, blastRadius: 2.75, blastDamage: [9, 25], noise: 4 }
+    ],
 
     // Row A: Currency — 3 crypto piles (amounts 1, 5, 25)
     currencies: [
