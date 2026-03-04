@@ -517,9 +517,11 @@ const CanvasRenderer = (function() {
    *   - Resource symbols (currency, ammo, batteries, key ammo): 1.0x + bob
    *   - Emoji collectibles (items, keys, quest keys, food): 0.6x + bob
    *   - Cards on map: 1.1x + bob
+   *   - Interactive items (buttons, levers, ropes, monitors): pulse animation
    *   - Enemies: no bob, glow effect
    * Bob uses sine wave with deterministic phase offset per tile position.
-   * @param {Array} entities - Array of entity objects { x, y, char, color, scale?, bobEnabled?, collectibleType? }
+   * Pulse uses scale oscillation for interactive-only items.
+   * @param {Array} entities - Array of entity objects { x, y, char, color, scale?, bobEnabled?, pulseEnabled?, collectibleType? }
    * @param {boolean} skipShadows - If true, skip drawing shadows (they'll be drawn later)
    */
   CanvasRenderer.prototype._renderEntities = function(entities, skipShadows) {
@@ -544,6 +546,13 @@ const CanvasRenderer = (function() {
         var phase = ((entity.x * 7 + entity.y * 13) % 100) * 0.1; // 0–10 radians spread
         bobOffset = Math.sin((now * 0.004) + phase) * 2; // ±2px amplitude
         centerY += bobOffset;
+      }
+
+      // Pulse animation for interactive items (grow/shrink scale, ~2s period)
+      if (entity.pulseEnabled) {
+        var pulsePhase = ((entity.x * 5 + entity.y * 11) % 100) * 0.1; // 0–10 radians spread
+        var pulseAmount = Math.sin((now * 0.003) + pulsePhase) * 0.1; // ±10% scale
+        scale *= (1.0 + pulseAmount); // Oscillate between 0.9x and 1.1x
       }
 
       // Draw ground drop shadow beneath entity (unless skipped)
