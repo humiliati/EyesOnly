@@ -1517,6 +1517,53 @@ body.amber-mode #scanlines::after {
   }
 }
 
+/* --- Non-Gone-Rogue Portrait: Horizontal band split (51% buttons / 49% debrief) --- */
+@media (max-width: 600px) and (orientation: portrait) {
+  /* NOT gone-rogue: use horizontal band layout like gone-rogue but for website/ARG mode */
+  body:not(.mode-gone-rogue):not(.in-gone-rogue):not(.gone-rogue-active) #control-rail {
+    flex-direction: row;
+    align-items: stretch;
+    height: auto;
+    min-height: 0;
+    gap: 4px;
+    padding: 4px;
+  }
+
+  /* Buttons take minimum 51% width - ensure labels don't overflow */
+  body:not(.mode-gone-rogue):not(.in-gone-rogue):not(.gone-rogue-active) .control-buttons {
+    flex: 1 1 51%;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(3, 1fr);
+    gap: 2px;
+    padding: 2px;
+    align-content: start;
+  }
+
+  body:not(.mode-gone-rogue):not(.in-gone-rogue):not(.gone-rogue-active) .control-buttons button {
+    min-height: 24px;
+    padding: 2px 4px;
+    font-size: 0.7em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Debrief takes maximum 49% width */
+  body:not(.mode-gone-rogue):not(.in-gone-rogue):not(.gone-rogue-active) .debrief-window {
+    flex: 1 1 49%;
+    min-width: 0;
+    max-width: 49%;
+    overflow: hidden;
+  }
+
+  /* Compact debrief content in portrait */
+  body:not(.mode-gone-rogue):not(.in-gone-rogue):not(.gone-rogue-active) .debrief-screen {
+    font-size: 0.8em;
+  }
+}
+
 /* --- Gone Rogue portrait layout (mobile) --- */
 @media (max-width: 600px) and (orientation: portrait) {
   body.mode-gone-rogue,

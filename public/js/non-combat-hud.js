@@ -954,6 +954,25 @@ var NonCombatHUD = (function() {
 
       scroller.appendChild(wrapper);
     }
+
+    // ── Empty placeholder slots (BLVCK-style) for onboarding + larger drop target ──
+    // Show a few ghost slots after the real cards so the backup zone always has
+    // a usable drop area even when nearly empty. Non-interactive (no drag/click).
+    var MIN_VISIBLE_SLOTS = 5; // minimum total visible slots in backup zone
+    var placeholdersNeeded = Math.max(0, MIN_VISIBLE_SLOTS - backup.length);
+    // Cap to available capacity
+    var capacityRemaining = Math.max(0, maxB - backup.length);
+    placeholdersNeeded = Math.min(placeholdersNeeded, capacityRemaining);
+
+    for (var pi = 0; pi < placeholdersNeeded; pi++) {
+      var ph = document.createElement('div');
+      ph.className = 'hand-card-wrapper nch-backup-placeholder';
+      ph.style.cssText = 'opacity:0.18;pointer-events:none;user-select:none;';
+      ph.innerHTML = '<div class="hand-card" style="border:1px dashed rgba(28,255,155,0.25);background:rgba(0,0,0,0.15);">' +
+        '<div class="hand-card-artwork"><div class="hand-card-emoji" style="opacity:0.3;">■</div></div>' +
+        '<div class="hand-card-name" style="opacity:0.3;font-size:9px;">empty</div></div>';
+      scroller.appendChild(ph);
+    }
   }
 
   // ─── RENDER: VAULT (Zone 3 — persistent card slots) ─────
@@ -1056,6 +1075,10 @@ var NonCombatHUD = (function() {
 
   // Expose for external drags (from left column / reserve slots)
   function startExternalDrag(payload, e) {
+    // Normalize field names: rogue-sidebar sends 'backupIndex', NCH uses 'index'
+    if (payload && payload.backupIndex !== undefined && payload.index === undefined) {
+      payload.index = payload.backupIndex;
+    }
     _startDrag(payload, e);
     // Force expand NCH so drop zones are visible
     if (!_isExpanded) _expand('external_drag');
@@ -1285,9 +1308,11 @@ var NonCombatHUD = (function() {
       return;
     }
 
-    // ── BACKUP → HAND ──
-    if (_drag.kind === 'backup' && droppedOnHand) {
-      if (_useCTM) {
+    // ── BACKUP → HAND (with cascade: if hand is full, pushes oldest card to backup) ──
+    if (_drag.kind === 'backup' && (droppedOnHand || droppedOnCapsule)) {
+      if (_useCSA && typeof CardStateAuthority.cascadeBackupToHandTop === 'function') {
+        ok = CardStateAuthority.cascadeBackupToHandTop(_drag.index);
+      } else if (_useCTM) {
         ok = CardTransferManager.backupToHand(_drag.index);
       } else if (_useCSA) {
         ok = CardStateAuthority.moveBackupToHand(_drag.index);
@@ -1390,10 +1415,9 @@ var NonCombatHUD = (function() {
     }
 
     // ── CAPSULE DROP (minimized NCH) → cascade to hand top ──
-    if (droppedOnCapsule && (_drag.kind === 'hand' || _drag.kind === 'backup' || _drag.kind === 'vault')) {
-      if (_drag.kind === 'backup' && _useCSA) {
-        ok = CardStateAuthority.cascadeBackupToHandTop(_drag.index);
-      } else if (_drag.kind === 'vault' && _useCSA) {
+    // Note: backup→capsule is already handled above (BACKUP → HAND block includes droppedOnCapsule)
+    if (droppedOnCapsule && (_drag.kind === 'hand' || _drag.kind === 'vault')) {
+      if (_drag.kind === 'vault' && _useCSA) {
         // Vault card → hand with cascade (moves last hand card to backup if full)
         ok = (typeof CardStateAuthority.cascadeVaultToHandTop === 'function')
           ? CardStateAuthority.cascadeVaultToHandTop(_drag.id)

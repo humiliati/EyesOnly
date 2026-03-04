@@ -8,10 +8,17 @@
   font-size: calc(1em * var(--debrief-scale, 1));
 }
 
-/* In mobile portrait (especially rogue), shrink further */
+/* In mobile portrait (gone-rogue mode), shrink further */
 @media (max-width: 600px) and (orientation: portrait) {
-  :root {
+  body.mode-gone-rogue,
+  body.in-gone-rogue,
+  body.gone-rogue-active {
     --debrief-scale: 0.42; /* compact: match button column height */
+  }
+
+  /* Non-gone-rogue portrait: gentler shrink (49% width constraint handles excess) */
+  body:not(.mode-gone-rogue):not(.in-gone-rogue):not(.gone-rogue-active) {
+    --debrief-scale: 0.6;
   }
 }
 

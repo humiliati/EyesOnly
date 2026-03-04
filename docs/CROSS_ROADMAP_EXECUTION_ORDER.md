@@ -11,8 +11,8 @@ March 2026  •  Gone Rogue Engine
 Document Legend & Roadmap Index
 Each roadmap is color-coded throughout this document. Sprint headers use the color of the primary roadmap being executed.
 Abbreviation	Roadmap	Status	Phases/Steps
-CHH	CARD_HAND_HARMONIZATION_ROADMAP	Steps 1–3 ready	6 steps (1: cardInstances, 2: hydrateCard, 3: kill cardHand, 4: roll pipeline, 5: persistence, 6: policy flags)
-EB	EXPLOSIVE_BREAKABLES_ROADMAP	Not started	6 phases (1: barrels, 2: ExplosionSystem, 3: VFX, 4: light interact, 5: explosive cards, 6: polish)
+CHH	CARD_HAND_HARMONIZATION_ROADMAP	Steps 1–2, 4 done	6 steps (1: cardInstances, 2: hydrateCard, 3: kill cardHand [PENDING], 4: roll pipeline, 5: persistence, 6: policy flags)
+EB	EXPLOSIVE_BREAKABLES_ROADMAP	Ready to start (CHH 1-2 complete)	6 phases (1: barrels, 2: ExplosionSystem, 3: VFX, 4: light interact, 5: explosive cards, 6: polish)
 ENI	ENEMY_NCH_INTERACTION_ROADMAP	Not started	6 phases (1: capsule, 2: interchange UI, 3: combat hand, 4: NCH adjust, 5: items, 6: polish)
 NCR	NCH-COMBAT-ROADMAP	Phase 1 done	Phase 1 (bindings) ✔, Phase 2 (animations) pending
 IPR	ITEM-PIPELINE-ROADMAP	Phases 1–5 done	Phase 5 (collectibles rendering) complete. Phase 6 (doc updates) deferred.
@@ -25,7 +25,7 @@ Why Not Just Fix NCH Animations First?
 Full NCH animation polish (halo ring, collapse sequences, resolve-phase minimize) is a deep rabbit hole. We need the CHH data model in place before animating card transfers that depend on CI-* hydration. And we need explosive breakables implemented before we can test the plant-detonate loop that the enemy NCH interchange is built around.
 The Staggered Strategy
 •	// Sprint 0 DEFERED TILL LATER: Minimal NCH animation fix — unblock the left column so playtesters can test existing systems while we build new ones
-•	Sprint 1: CHH Steps 1–3 — lay the data foundation (cardInstances, hydrateCard, kill legacy cardHand)
+•	Sprint 1: CHH Steps 1–2, 4 — lay the data foundation (cardInstances, hydrateCard, roll pipeline). Step 3 (kill cardHand) deferred.
 •	Sprint 2: Explosive Breakables Phases 1–5 — build the barrel/explosion/explosive-card systems that the plant mechanic depends on
 •	Sprint 3: Enemy NCH Interaction Phases 1–5 — capsule, interchange UI, STR combat enemy hand, planted card triggers
 •	Sprint 4: NCH Combat Animation full pass — player and enemy hand animations inside and outside STR combat
@@ -53,7 +53,7 @@ Exit Criteria
 •	No halo ring yet — backup scroll stays as existing solitaire tableau temporarily
 
 SPRINT 1: Card Hand Harmonization — Data Foundation
-[CHH] Steps 1–3 — The structural backbone that every subsequent sprint depends on.
+[CHH] Steps 1–2, 4 — The structural backbone that every subsequent sprint depends on. Step 3 (kill cardHand) deferred.
 Step 1: Make Dynamic Cards Persistable
 •	GAMESTATE._state.cardInstances map — key/value store for CI-* instances
 •	registerCardInstance(instance) — mints CI-<timestamp>-<rand> ID, stores in map
@@ -79,7 +79,7 @@ Playtest Gate
 After Sprint 1, playtesters should be able to: collect enemy card drops into hand, overflow into backup, incinerate oldest backup card, and have all cards render correctly through hydrateCard(). The NCH left column is usable (Sprint 0). CI-* cards persist across save/load.
 
 SPRINT 2: Explosive Breakables — Barrels Through Combat Cards
-[EB] Phases 1–5 — Build the explosive systems that the plant-detonate loop depends on. Phase 6 (polish) deferred to Sprint 6.
+[EB] Phases 1–5 — Build the explosive systems that the plant-detonate loop depends on. Phase 6 (polish) deferred to Sprint 6. CHH Steps 1-2 complete - ready to start.
 Phase 1: Explosive Barrel Breakable Type
 •	BARREL_GREY (wastebasket.emoji) (inert cover, standard loot) and BARREL_RED (1 HP, blast radius 3, 15-25 damage)
 •	Destruction override: red barrel → _triggerExplosion() instead of normal loot
@@ -248,13 +248,13 @@ Full Dependency Map
 SPRINT 0  [NCR 2.1, 2.2p]  NCH left column unblock
   |
   v
-SPRINT 1  [CHH 1-3]  cardInstances + hydrateCard + kill cardHand
+SPRINT 1  [CHH 1-2, 4]  cardInstances + hydrateCard + roll pipeline ✓ (Step 3 deferred)
   |
   |--- CHH Step 1 (registerCardInstance) ----+
   |--- CHH Step 2 (hydrateCard)         ----|--- required by Sprint 2 (EB Phase 5)
   |                                          +--- required by Sprint 3 (ENI Phase 1)
   v
-SPRINT 2  [EB 1-5]  barrels + explosions + explosive cards
+SPRINT 2  [EB 1-5]  barrels + explosions + explosive cards  ← READY TO START
   |
   |--- EB Phase 5 (explosive card instances) --+
   |                                             +- required by Sprint 3 (ENI Phase 2
@@ -267,7 +267,7 @@ SPRINT 3  [ENI 1-5]  capsule + interchange + combat hand + BLVCK
 SPRINT 4  [NCR 2.3-2.5]  halo ring + collapse + thumbnails + dual layout
   |
   v
-SPRINT 5  [CHH 4-6]  roll pipeline + persistence + policy flags + BLVCK + synergy trigger
+SPRINT 5  [CHH 3, 5-6]  kill cardHand + persistence + policy flags + BLVCK + synergy trigger
   |
   |--- CHH Step 6 (policy flags) ---+
   |                                  +- required by Sprint 6 (UDG portal editors)
@@ -277,11 +277,11 @@ SPRINT 6  [UDG]  Card Designer + Enemy Card Designer + policy editor + validator
 Sprint Summary
 Sprint	Primary	Phases/Steps	Depends On	Unlocks
 0	NCR	2.1, 2.2 (partial)	NCR Phase 1 (done)	Playtesting: left column visible
-1	CHH	Steps 1–3	Sprint 0	Data foundation for all card systems
-2	EB	Phases 1–5	CHH Steps 1–2	Explosive barrels + cards in pool
+1	CHH	Steps 1–2, 4 ✓	Sprint 0	Data foundation for all card systems
+2	EB	Phases 1–5	CHH Steps 1–2 (done)	Explosive barrels + cards in pool
 3	ENI	Phases 1–5	CHH Steps 1–3, EB Phase 5	Full plant-detonate loop testable
 4	NCR	2.3–2.5 + ENI P4	ENI Phase 4	Full animation polish
-5	CHH	Steps 4–6	Sprints 1–4	Harmonization complete
+5	CHH	Steps 3, 5–6	Sprints 1–4, EB (complete)	Harmonization complete
 6	UDG	Portal expansion	CHH Step 6	Designer-facing for everything
 
 Total scope: CHH 6 steps + EB 5 phases + ENI 5 phases + NCR Phase 2 (6 sub-phases) + UDG 6 sub-sections = ~28 work units across 7 sprints.

@@ -3,6 +3,7 @@
 **Project**: EyesOnly — Gone Rogue
 **Date**: 2026-03-02
 **Scope**: Explosive barrels, blast physics, screen shake, breakable light polish, explosive cards in STR combat
+**Status**: Ready to start - CHH Steps 1-2 (registerCardInstance, hydrateCard) complete as of 2026-03-03
 
 ---
 
@@ -417,10 +418,12 @@ Add explosion tuning to `lighting-config.json` (or a new `explosions-config.json
 
 ## Implementation Order & Dependencies
 
+**Prerequisite: CHH Steps 1-2 (registerCardInstance, hydrateCard) - COMPLETE**
+
 ```
 Phase 1 (Barrel types)
   ├─ No new files, extends breakable-system.js + item-spawner.js
-  └─ Prerequisite: none
+  └─ Prerequisite: CHH Steps 1-2 ✓ (READY TO START)
 
 Phase 2 (ExplosionSystem)
   ├─ New file: explosion-system.js
@@ -439,7 +442,7 @@ Phase 4 (Light interactions)
 
 Phase 5 (Explosive cards + STR combat)
   ├─ Extends: CardSystem, enemy generation, STR combat
-  ├─ Depends on: Phase 2 (for ground effect interactions)
+  ├─ Depends on: CHH Step 1 (registerCardInstance) ✓, Phase 2 (for ground effect interactions)
   └─ Independent of Phase 3/4 (VFX not required for combat cards)
 
 Phase 6 (Polish)
