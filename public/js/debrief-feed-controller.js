@@ -886,7 +886,6 @@ const DebriefFeedController = (function() {
           toggleDisplay();
         });
       }
-    }
 
     _attachEventHandlers();
   }
