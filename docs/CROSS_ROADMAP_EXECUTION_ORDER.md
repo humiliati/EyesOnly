@@ -11,11 +11,11 @@ March 2026  •  Gone Rogue Engine
 Document Legend & Roadmap Index
 Each roadmap is color-coded throughout this document. Sprint headers use the color of the primary roadmap being executed.
 Abbreviation	Roadmap	Status	Phases/Steps
-CHH	CARD_HAND_HARMONIZATION_ROADMAP	Steps 1–2, 4 done	6 steps (1: cardInstances, 2: hydrateCard, 3: kill cardHand [PENDING], 4: roll pipeline, 5: persistence, 6: policy flags)
-EB	EXPLOSIVE_BREAKABLES_ROADMAP	Ready to start (CHH 1-2 complete)	6 phases (1: barrels, 2: ExplosionSystem, 3: VFX, 4: light interact, 5: explosive cards, 6: polish)
+CHH	CARD_HAND_HARMONIZATION_ROADMAP	Steps 1–4 done	6 steps (1: cardInstances ✔, 2: hydrateCard ✔, 3: kill cardHand ✔, 4: roll pipeline ✔, 5: persistence, 6: policy flags)
+EB	EXPLOSIVE_BREAKABLES_ROADMAP	Phase 1 IN PROGRESS (CHH 1-3 complete)	6 phases (1: barrels [ACTIVE], 2: ExplosionSystem, 3: VFX, 4: light interact, 5: explosive cards, 6: polish)
 ENI	ENEMY_NCH_INTERACTION_ROADMAP	Not started	6 phases (1: capsule, 2: interchange UI, 3: combat hand, 4: NCH adjust, 5: items, 6: polish)
 NCR	NCH-COMBAT-ROADMAP	Phase 1 done	Phase 1 (bindings) ✔, Phase 2 (animations) pending
-IPR	ITEM-PIPELINE-ROADMAP	Phases 1–5 done	Phase 5 (collectibles rendering) complete. Phase 6 (doc updates) deferred.
+IPR	ITEM-PIPELINE-ROADMAP	Phases 1–5 done ✔	Phase 5 (collectibles rendering) complete. Phase 5 deferred "backup-deck cascade" resolved by CHH Step 3. Phase 6 (doc updates) deferred. Only ground effect items (water/oil) remain unaddressed — no such items exist yet.
 UDG	UNIFIED_DESIGNER_GUIDE	Portal exists	Asset/Map/World/Item/Loot designers operational. Card + Enemy designers needed.
 
 Strategic Rationale
@@ -52,8 +52,8 @@ Exit Criteria
 •	Joker stack shows correct card count, click expands to hand fan
 •	No halo ring yet — backup scroll stays as existing solitaire tableau temporarily
 
-SPRINT 1: Card Hand Harmonization — Data Foundation
-[CHH] Steps 1–2, 4 — The structural backbone that every subsequent sprint depends on. Step 3 (kill cardHand) deferred.
+SPRINT 1: Card Hand Harmonization — Data Foundation ✔ COMPLETE
+[CHH] Steps 1–4 — The structural backbone that every subsequent sprint depends on.
 Step 1: Make Dynamic Cards Persistable
 •	GAMESTATE._state.cardInstances map — key/value store for CI-* instances
 •	registerCardInstance(instance) — mints CI-<timestamp>-<rand> ID, stores in map
@@ -66,25 +66,35 @@ Step 2: One Hydration Function for Everything
 •	hydrateCard(ref) — CI-* → getCardInstance(), registry → getCard(), fallback → ref.meta
 •	Update all existing consumers: NCH capsule, vault grid, hand fan, tooltip, debrief, shared-item-renderer
 •	Pre-wire 3 future consumers (stubs that will activate in Sprint 3): enemy capsule renderer, NCH interchange UI, planted card trigger system
-Step 3: Kill _state.cardHand
-•	One-time migration: cardHand full objects → refs + CI-* instances in cardsInHand
-•	Deprecate addToHand(card) and addCard(card) — all paths now use acquireNewCardDuringCombat() / addCardToHand()
-•	Verify save/load round-trips correctly with new ref-based hand
-Exit Criteria
-•	_state.cardHand is empty after migration. All cards hydrate through hydrateCard()
-•	Existing combat loot drops work: enemy card drops → direct to hand via refs
-•	Backup deck cascade (hand overflow → backup → incinerate) works for CI-* and ACT-* refs
-•	Save, quit, reload — all cards survive with correct display
-Playtest Gate
-After Sprint 1, playtesters should be able to: collect enemy card drops into hand, overflow into backup, incinerate oldest backup card, and have all cards render correctly through hydrateCard(). The NCH left column is usable (Sprint 0). CI-* cards persist across save/load.
+Step 3: Kill _state.cardHand ✔ COMPLETE (2026-03-04)
+•	One-time migration: cardHand full objects → refs + CI-* instances in cardsInHand ✔
+•	Deprecate addToHand(card) and addCard(card) — all paths now use acquireNewCardDuringCombat() / addCardToHand() ✔
+•	Verify save/load round-trips correctly with new ref-based hand ✔
+•	drawCardsToHand() refactored to use cardsInHand + CI-* conversion ✔
+•	passive-items-system.js _depositCard() routed through canonical pipeline ✔
+•	Boss/mythic loot in str-combat-engine.js migrated to acquireNewCardDuringCombat() ✔
+•	death-exit-system.js enemy death card drop migrated to canonical pipeline ✔
+•	All charm rolls (rollInventoryCharm, rollCommonCharm, rollImpossibleCharm) now register CI-* instances ✔
+•	Universal no-stack rule enforced across ALL containers (cardsInHand, backupCards, persistentCards, inventoryPersistent, actionButtonCards) — every slot is qty: 1 ✔
+•	Legacy save migration unstacks any stacked vault entries on load ✔
+•	Duplicate-in-backup guard removed — same-type cards allowed as individual slots ✔
+Exit Criteria ✔ ALL MET
+•	_state.cardHand is empty after migration. All cards hydrate through hydrateCard() ✔
+•	Existing combat loot drops work: enemy card drops → direct to hand via refs ✔
+•	Backup deck cascade (hand overflow → backup → incinerate) works for CI-* and ACT-* refs ✔
+•	Save, quit, reload — all cards survive with correct display ✔
+Playtest Gate ✔ PASSED
+After Sprint 1, playtesters can: collect enemy card drops into hand, overflow into backup, incinerate oldest backup card, and have all cards render correctly through hydrateCard(). CI-* cards persist across save/load. Left column drag-drop routes correctly between vault and backup based on swapper tab mode.
 
-SPRINT 2: Explosive Breakables — Barrels Through Combat Cards
-[EB] Phases 1–5 — Build the explosive systems that the plant-detonate loop depends on. Phase 6 (polish) deferred to Sprint 6. CHH Steps 1-2 complete - ready to start.
-Phase 1: Explosive Barrel Breakable Type
-•	BARREL_GREY (wastebasket.emoji) (inert cover, standard loot) and BARREL_RED (1 HP, blast radius 3, 15-25 damage)
+SPRINT 2: Explosive Breakables — Barrels Through Combat Cards ← ACTIVE
+[EB] Phases 1–5 — Build the explosive systems that the plant-detonate loop depends on. Phase 6 (polish) deferred to Sprint 6. CHH Steps 1-4 complete. Phase 1 in progress.
+Phase 1: Explosive Barrel Breakable Type ← IN PROGRESS
+•	BARREL_GREY (🗑️) (inert cover, standard loot) and BARREL_RED (🛢️ 1 HP, blast radius 2.75, 9-25 damage)
 •	Destruction override: red barrel → _triggerExplosion() instead of normal loot
 •	Chain detonation with per-tick detonation set (infinite loop guard)
 •	Spawning rules: plant/cave/mall biomes, max 3 red barrels per floor
+•	Readiness: >90% infrastructure exists. breakable-system.js has damageBreakable + loot system. biomes.json already has explodes property on INDUSTRIAL oil drums. GroundEffects FIRE/SMOKE ready. OverheadAnimator 💥 ready. BFS circular radius pattern in electrifyWater() reusable. Noise system integrated.
+•	Work needed: Add explosive property handling to damageBreakable(), add _triggerExplosion(), chain detonation logic, barrel definitions in biome configs, CSS idle glow for red barrels
 Phase 2: ExplosionSystem Module
 •	New: explosion-system.js — stateless IIFE, detonate(x, y, radius, damage, ctx)
 •	Circular BFS with damage falloff, per-tile effects (enemy damage, breakable chain, ground fire/smoke, oil ignite, water evaporate)
@@ -248,13 +258,14 @@ Full Dependency Map
 SPRINT 0  [NCR 2.1, 2.2p]  NCH left column unblock
   |
   v
-SPRINT 1  [CHH 1-2, 4]  cardInstances + hydrateCard + roll pipeline ✓ (Step 3 deferred)
+SPRINT 1  [CHH 1-4]  cardInstances + hydrateCard + kill cardHand + roll pipeline ✔ COMPLETE
   |
   |--- CHH Step 1 (registerCardInstance) ----+
   |--- CHH Step 2 (hydrateCard)         ----|--- required by Sprint 2 (EB Phase 5)
-  |                                          +--- required by Sprint 3 (ENI Phase 1)
+  |--- CHH Step 3 (kill cardHand) ✔     ----|--- required by Sprint 3 (ENI Phase 1)
+  |--- CHH Step 4 (roll pipeline) ✔          +--- all charm/card rolls use CI-*
   v
-SPRINT 2  [EB 1-5]  barrels + explosions + explosive cards  ← READY TO START
+SPRINT 2  [EB 1-5]  barrels + explosions + explosive cards  ← ACTIVE (Phase 1 in progress)
   |
   |--- EB Phase 5 (explosive card instances) --+
   |                                             +- required by Sprint 3 (ENI Phase 2
@@ -267,7 +278,7 @@ SPRINT 3  [ENI 1-5]  capsule + interchange + combat hand + BLVCK
 SPRINT 4  [NCR 2.3-2.5]  halo ring + collapse + thumbnails + dual layout
   |
   v
-SPRINT 5  [CHH 3, 5-6]  kill cardHand + persistence + policy flags + BLVCK + synergy trigger
+SPRINT 5  [CHH 5-6]  persistence + policy flags + BLVCK + synergy trigger (Step 3 completed early in Sprint 1)
   |
   |--- CHH Step 6 (policy flags) ---+
   |                                  +- required by Sprint 6 (UDG portal editors)
@@ -277,11 +288,11 @@ SPRINT 6  [UDG]  Card Designer + Enemy Card Designer + policy editor + validator
 Sprint Summary
 Sprint	Primary	Phases/Steps	Depends On	Unlocks
 0	NCR	2.1, 2.2 (partial)	NCR Phase 1 (done)	Playtesting: left column visible
-1	CHH	Steps 1–2, 4 ✓	Sprint 0	Data foundation for all card systems
-2	EB	Phases 1–5	CHH Steps 1–2 (done)	Explosive barrels + cards in pool
-3	ENI	Phases 1–5	CHH Steps 1–3, EB Phase 5	Full plant-detonate loop testable
+1	CHH	Steps 1–4 ✓	Sprint 0	Data foundation for all card systems
+2	EB	Phases 1–5	CHH Steps 1–4 (done)	Explosive barrels + cards in pool
+3	ENI	Phases 1–5	CHH Steps 1–4, EB Phase 5	Full plant-detonate loop testable
 4	NCR	2.3–2.5 + ENI P4	ENI Phase 4	Full animation polish
-5	CHH	Steps 3, 5–6	Sprints 1–4, EB (complete)	Harmonization complete
+5	CHH	Steps 5–6 (Step 3 done early)	Sprints 1–4, EB (complete)	Harmonization complete
 6	UDG	Portal expansion	CHH Step 6	Designer-facing for everything
 
 Total scope: CHH 6 steps + EB 5 phases + ENI 5 phases + NCR Phase 2 (6 sub-phases) + UDG 6 sub-sections = ~28 work units across 7 sprints.
@@ -294,4 +305,5 @@ ENI Phase 6 (MOK + tooltips + sound)	ENI	Polish, not blocking testability	Sprint
 IPR Phase 6 (doc updates)	IPR	Non-functional	After Sprint 6
 NCR item-modifier draw (True Joker, Mag Glass)	NCR	Partially implemented, not blocking	Sprint 4 or 5
 Ground effect items (water, oil)	IPR	No items of these types exist yet	Post-launch
+~~IPR Phase 5 backup-deck cascade~~	IPR	~~Resolved by CHH Step 3 (2026-03-04)~~	N/A — drawCardsToHand() now uses cardsInHand refs
 

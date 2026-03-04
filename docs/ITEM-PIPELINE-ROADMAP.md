@@ -622,7 +622,7 @@ Each of these questions MUST have the SAME answer across all collectible types:
 
 **Not addressed (deferred):**
 - Ground effect items (water 💧, oil) — no ground items of these types exist yet
-- Full NCH backup-deck cascade for card overflow — requires harmonizing cardHand (object) and cardsInHand (ref) hand systems, out of scope for rendering pass
+- ~~Full NCH backup-deck cascade for card overflow — requires harmonizing cardHand (object) and cardsInHand (ref) hand systems, out of scope for rendering pass~~ ✅ RESOLVED by CHH Step 3 (2026-03-04): drawCardsToHand() now uses canonical cardsInHand refs with full backup overflow + incinerate cascade
 
 ---
 
