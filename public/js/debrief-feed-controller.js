@@ -456,7 +456,7 @@ const DebriefFeedController = (function() {
       function row(rowId, label, summaryId, extraCls) {
         extraCls = extraCls || '';
         var expanded = !!_rowExpanded[rowId];
-        var arrow = expanded ? 'v' : '&gt;';
+        var arrow = expanded ? 'v' : '&gt;'; /* &gt; required for innerHTML context */
         var arrowCls = expanded ? 'arrow-expanded' : 'arrow-collapsed';
         // Use arrow indicator; keep label for signal row (no arrow)
         var displayLabel = label ? ('<span class="debrief-row-arrow ' + arrowCls + '">' + arrow + '</span>' + label) : '';
