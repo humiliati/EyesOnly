@@ -20,8 +20,8 @@ Grey barrels are inert cover. Red barrels detonate on destruction — AoE damage
 ### 1.1 New Breakable Definitions
 
 **File**: `breakable-system.js` + new config in `item-spawner.js`
-
-Add two barrel variants to the breakable type registry:
+(remove existing barrel or wastebasket emoji uses in breakables)
+Add two barrel variants to the breakable type registry :
 
 | Type | Emoji | HP | Kickable | Noise | Explosive | Blast Radius | Blast Damage | Drop |
 |------|-------|----|----------|-------|-----------|-------------|-------------|------|
@@ -66,6 +66,7 @@ _detonatedThisTick.add(key);
 
 ### 1.4 Spawning Rules
 
+- Place 3 barrels for testing on floor 0 tavern
 - Red barrels spawn in `plant`, `cave`, and `mall` biomes
 - Never spawn adjacent to exits or the player start position
 - Maximum 3 red barrels per floor (tunable in config)
