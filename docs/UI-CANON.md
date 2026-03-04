@@ -6,6 +6,33 @@
 
 ---
 
+## 0. MOBILE PORTRAIT LAYOUT (PRIORITY FORMAT) 
+
+---
+
+│ACCOUNT_NAME:PLAYER_NAME [EQUIP.ITEM&TOGGLE] Difficulty SETTING: │
+└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  CONTROL-RAIL (TORSO) - Horizontal Band                         │
+│  ┌────────────────────────┐ ┌─────────────────────────────────┐ │
+│  │ LEFT COLUMN BUTTONS    │ │ DEBRIEF FEED                    │ │
+│  │ [back] [inventory]     │ │                                 │ │
+│  │ [login] [kernel]       │ │ MOK avatar / resources /        │ │
+│  │ [help]  [score]        │ │               everything button │ │
+│  │ (51% min width)        │ │ (49% max width)                 │ │
+│  └────────────────────────┘ └─────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+         ↓ doesn't grow taller ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  TERMINAL MONITOR (log-column)/                                 |
+| 				GAME VIEWPORT-unchanged height    │
+└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  MOK Interjection: TOOLTIP                          [HISTORY ^] │
+
+
+---
+
 ## 1. Full Screen Layout — Non-Combat (Gone Rogue Exploration)
 
 ```

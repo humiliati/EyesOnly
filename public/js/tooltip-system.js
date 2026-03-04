@@ -122,14 +122,14 @@ const TooltipSystem = (function() {
   function _addToHistory(message) {
     if (!message || message === DEFAULT_MESSAGE) return;
 
-    var timestamp = new Date().toLocaleTimeString('en-US', {
+    var now = new Date();
+    var timestamp = now.toLocaleTimeString('en-US', {
       hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
+      hour: 'numeric',
+      minute: '2-digit'
     });
 
-    _messageHistory.unshift({ time: timestamp, message: message });
+    _messageHistory.unshift({ time: timestamp, message: message, timestamp: now.getTime() });
 
     if (_messageHistory.length > MAX_HISTORY_LINES) {
       _messageHistory = _messageHistory.slice(0, MAX_HISTORY_LINES);
@@ -190,7 +190,7 @@ const TooltipSystem = (function() {
       }
 
       html += '<div class="mok-history-entry" style="' + style + '">';
-      html += '<span class="mok-history-time">[' + entry.time + ']</span> ';
+      html += '<span class="mok-history-time">' + entry.time + '</span> ';
       html += '<span class="mok-history-message">' + entry.message + '</span>';
       html += '</div>';
     }
