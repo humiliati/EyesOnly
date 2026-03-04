@@ -212,6 +212,9 @@ var BreakableSystem = (function() {
     }
 
     // ── Player damage (50% friendly fire reduction) ──
+    if (ctx.player && Math.abs(ctx.player.x - tx) <= 1 && Math.abs(ctx.player.y - ty) <= 1) {
+      console.log('[Explosion] Player near blast tile: player=' + ctx.player.x + ',' + ctx.player.y + ' tile=' + tx + ',' + ty + ' match=' + (ctx.player.x === tx && ctx.player.y === ty) + ' tileDmg=' + tileDamage);
+    }
     if (ctx.player && ctx.player.x === tx && ctx.player.y === ty) {
       var playerDmg = Math.floor(tileDamage * 0.5);
       if (playerDmg > 0) {
@@ -566,7 +569,7 @@ var BreakableSystem = (function() {
    * @returns {{ damage: number, pushed: boolean, pushDist: number, destroyed: boolean }}
    */
   function kickBreakable(breakable, dx, dy, ctx) {
-    var kickDamage = 2;
+    var kickDamage = 0.2;
     var result = { damage: kickDamage, pushed: false, pushDist: 0, destroyed: false };
 
     console.log('[Kick] Kicking ' + (breakable.name || '?') + ' at ' + breakable.x + ',' + breakable.y +

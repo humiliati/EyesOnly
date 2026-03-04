@@ -1038,6 +1038,7 @@ var TutorialFloors = (function() {
       { x: 8, y: 16, emoji: '🗑️', name: 'Grey Barrel', hp: 2, drops: { currency: [3, 8] }, kickable: true, destroyedGlyph: '.' },
       { x: 11, y: 16, emoji: '🛢️', name: 'Red Barrel', hp: 1, explosive: true, blastRadius: 2.75, blastDamage: [9, 25], noise: 4, kickable: true },
       { x: 14, y: 16, emoji: '🛢️', name: 'Red Barrel', hp: 1, explosive: true, blastRadius: 2.75, blastDamage: [9, 25], noise: 4, kickable: true },
+      { x: 15, y: 16, emoji: '🛢️', name: 'Red Barrel', hp: 1, explosive: true, blastRadius: 2.75, blastDamage: [9, 25], noise: 4, kickable: true },
       { x: 17, y: 16, emoji: '🛢️', name: 'Red Barrel', hp: 1, explosive: true, blastRadius: 2.75, blastDamage: [9, 25], noise: 4, kickable: true }
     ],
 

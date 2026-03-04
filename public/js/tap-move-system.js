@@ -65,6 +65,7 @@ var TapMoveSystem = (function() {
 
     // Check if clicking on a breakable - kick it instead of moving
     var breakableAtTarget = ctx.getBreakableAt(targetX, targetY);
+    console.log('[TapMove] Target=' + targetX + ',' + targetY + ' breakable=' + (breakableAtTarget ? (breakableAtTarget.name + ' hp=' + breakableAtTarget.hp) : 'none') + ' player=' + ctx.player.x + ',' + ctx.player.y);
     if (breakableAtTarget && breakableAtTarget.hp > 0) {
       // Calculate direction to breakable
       var dx = targetX - ctx.player.x;
@@ -82,8 +83,8 @@ var TapMoveSystem = (function() {
           kickResult = BreakableSystem.kickBreakable(breakableAtTarget, ndx, ndy, ctx);
         } else {
           // Fallback: just damage
-          ctx.damageBreakable(breakableAtTarget, 2);
-          kickResult = { damage: 2, pushed: false, pushDist: 0, destroyed: breakableAtTarget.hp <= 0 };
+          ctx.damageBreakable(breakableAtTarget, 0.2);
+          kickResult = { damage: 0.2, pushed: false, pushDist: 0, destroyed: breakableAtTarget.hp <= 0 };
         }
 
         ctx.saveState();

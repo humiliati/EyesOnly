@@ -88,15 +88,27 @@ var InteriorFloorSystem = (function() {
       if (floorData.breakables) {
         var breakables = ctx.getBreakables();
         floorData.breakables.forEach(function(breakable) {
-          breakables.push({
+          var def = {
             x: breakable.x, y: breakable.y,
             hp: breakable.hp, maxHp: breakable.hp,
-            glyph: ctx.TILES.BREAKABLE, destroyedGlyph: ctx.TILES.DEBRIS,
+            glyph: ctx.TILES.BREAKABLE,
+            destroyedGlyph: breakable.destroyedGlyph || (breakable.explosive ? '\u2593' : ctx.TILES.DEBRIS),
             emoji: breakable.emoji, name: breakable.name,
             tag: 'interior_breakable_' + breakables.length,
             drops: breakable.drops
-          });
+          };
+          // Propagate explosive properties
+          if (breakable.explosive) {
+            def.explosive = true;
+            def.blastRadius = breakable.blastRadius || 2.75;
+            def.blastDamage = breakable.blastDamage || [9, 25];
+          }
+          // Propagate kick and noise
+          if (breakable.kickable) def.kickable = true;
+          if (breakable.noise) def.noise = breakable.noise;
+          breakables.push(def);
         });
+        console.log('[Interior] Placed ' + floorData.breakables.length + ' breakables');
       }
 
       // Place currencies
@@ -136,6 +148,8 @@ var InteriorFloorSystem = (function() {
             dialogues: Array.isArray(npc.dialogues) ? npc.dialogues.slice() : [],
             gate: npc.gate || null, reward: npc.reward || null,
             shopkeeper: npc.shopkeeper || false,
+            questItem: npc.questItem || null,
+            npcTarget: npc.npcTarget || null,
             state: { released: false, rewardGiven: false, lastWarnTurn: -999, lastTalkTurn: -999 }
           };
           npcs.push(npcObj);
@@ -143,7 +157,10 @@ var InteriorFloorSystem = (function() {
           ctx.setTileMetadataAt(npcObj.x, npcObj.y, {
             type: 'npc', npcId: npcObj.id, emoji: npcObj.emoji, name: npcObj.name
           });
+          console.log('[Interior] Placed NPC ' + npcObj.name + ' (' + npcObj.id + ') at ' + npcObj.x + ',' + npcObj.y);
         });
+      } else {
+        console.log('[Interior] No NPCs in floorData (npcs=' + (floorData.npcs ? floorData.npcs.length : 'undefined') + ')');
       }
 
       // Place interactive items
