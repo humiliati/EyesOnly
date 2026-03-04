@@ -112,7 +112,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 16px;
+  padding: 4px 10px;
   border-bottom: 1px solid rgba(28, 255, 155, 0.25);
   background: rgba(0, 0, 0, 0.4);
   flex-shrink: 0;
@@ -131,11 +131,11 @@
   background: transparent;
   border: 1px solid rgba(28, 255, 155, 0.4);
   color: rgba(28, 255, 155, 0.7);
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1;
   transition: all 0.2s;
   padding: 0;
@@ -151,8 +151,8 @@
   flex: 1;
   display: grid;
   grid-template-rows: auto auto 1fr auto;
-  gap: 10px;
-  padding: 12px;
+  gap: 4px;
+  padding: 4px 6px;
   overflow: hidden;
   min-height: 0;
 }
@@ -166,20 +166,20 @@
   flex-direction: column;
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid rgba(28, 255, 155, 0.2);
-  border-radius: 10px;
-  padding: 10px;
+  border-radius: 6px;
+  padding: 4px 6px;
   overflow: hidden;
   min-height: 0;
 }
 
 .nch-zone-label {
   font-family: 'Courier New', monospace;
-  font-size: 10px;
-  letter-spacing: 1.5px;
+  font-size: 9px;
+  letter-spacing: 1px;
   text-transform: uppercase;
   color: rgba(28, 255, 155, 0.6);
-  margin-bottom: 6px;
-  padding-bottom: 4px;
+  margin-bottom: 2px;
+  padding-bottom: 1px;
   border-bottom: 1px solid rgba(28, 255, 155, 0.12);
   flex-shrink: 0;
 }
@@ -187,7 +187,7 @@
 .nch-zone-hand {
   display: flex;
   flex-direction: column;
-  min-height: 180px;
+  min-height: 130px;
   overflow: hidden;
 }
 
@@ -222,7 +222,7 @@
 
 .nch-zone-drawbar {
   min-height: auto;
-  padding: 8px 10px;
+  padding: 2px 6px;
 }
 
 .nch-zone-drawbar .nch-zone-label {
@@ -398,7 +398,7 @@
 
 .nch-zone-backup {
   flex: 1;
-  min-height: 120px;
+  min-height: 80px;
   display: flex;
   flex-direction: column;
 }
@@ -437,7 +437,7 @@
 .nch-backup-scroller {
   display: flex;
   gap: -20px;
-  padding: 8px 32px;
+  padding: 2px 28px;
   overflow-x: auto;
   overflow-y: hidden;
   align-items: flex-end;
@@ -560,7 +560,7 @@
    ============================================================ */
 
 .nch-zone-vault {
-  max-height: 120px;
+  max-height: 100px;
   display: flex;
   flex-direction: column;
 }
@@ -574,8 +574,8 @@
 }
 
 .nch-vault-slot {
-  flex: 0 0 60px;
-  height: 84px;
+  flex: 0 0 52px;
+  height: 72px;
   background: rgba(10, 10, 10, 0.5);
   border: 1px dashed rgba(28, 255, 155, 0.2);
   border-radius: 6px;
@@ -742,18 +742,24 @@
 @media (max-width: 768px) {
   #nch-expanded {
     width: min(98vw, 600px);
-    max-height: min(88vh, 550px);
-    bottom: calc(10px + env(safe-area-inset-bottom));
+    max-height: min(85vh, 500px);
+    bottom: calc(6px + env(safe-area-inset-bottom));
+    /* Shift right to avoid overlapping left column action buttons */
+    left: calc(50% + 20px);
   }
 
   .nch-content {
     grid-template-rows: auto auto 1fr auto;
-    gap: 6px;
-    padding: 8px;
+    gap: 3px;
+    padding: 3px 4px;
+  }
+
+  .nch-zone {
+    padding: 2px 4px;
   }
 
   .nch-zone-hand {
-    min-height: 140px;
+    min-height: 110px;
   }
 
   .nch-draw-btn {

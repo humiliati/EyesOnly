@@ -525,3 +525,222 @@ PVP instant-resolve is a future TODO.
 | `str-combat-integration.js` | 100ms poll reads phase, drives HandFan show/minimize/restore, detects countdown→selecting |
 | `hand-fan-component.js` | `show()` clears stale minimized state, `restore()` force-clears animation fill, `_checkInstantResolveHook()` |
 | `str-combat-window.js` | 3-2-1 countdown overlay, timer, `_onTimerExpired` → `handleStrTimerExpired` |
+
+---
+
+## 14. Abbreviation Pipeline — Viewport-Aware Name Display
+
+### Canonical Functions
+
+| Function | Location | Behavior | Max Length |
+|----------|----------|----------|------------|
+| `NameUtils.abbreviate(name, maxLength)` | `public/js/utils/name-utils.js` | Vowel-drop: keep first letter of each word, remove vowels from rest | Optional (0 = no limit) |
+| `NameUtils.formatForMobile(itemOrId)` | `name-utils.js` | Aggressive abbreviation for mobile | 6 chars |
+| `NameUtils.formatForShop(itemOrId)` | `name-utils.js` | Moderate abbreviation for shops | 8 chars |
+| `NameUtils.getDisplayName(itemOrId, options)` | `name-utils.js` | Unified: converts IDs to names, applies abbreviation | Via options.maxLength |
+
+### Vowel-Drop Convention
+
+```
+"Sold Out"      → "SldOt"
+"Out"           → "Ot"
+"Energy Drink"  → "EnrgyDrnk"
+"Rusty Key"     → "RstyKy"
+"Attack"        → "Attck"
+"inventory"     → "invntry"
+```
+
+### Viewport Tiers & Abbreviation Levels
+
+| Tier | Viewport | Abbreviation Level | CSS Container Behavior |
+|------|----------|-------------------|----------------------|
+| **Desktop Full** | >900px wide | None (full name) | Full button width, text flows naturally |
+| **Desktop Compact** | 600-900px | Standard (abbreviate) | Container clips with `overflow:hidden` |
+| **Mobile Landscape** | <600px landscape | Standard (abbreviate) | 2-column grid, tighter spacing |
+| **Mobile Portrait** | <600px portrait | Micro (first letters only, ~4 chars) | Horizontal band split, aggressive clip |
+
+### Micro-Abbreviator (NEW)
+
+For portrait mode where names must fit in constrained buttons:
+```
+"Energy Drink" → "ED"
+"Rusty Key"    → "RK"
+"Sold Out"     → "SO"
+```
+
+Implementation: Take only the first letter of each word, max 4 characters.
+
+### Components Using Abbreviation
+
+| Component | File | Abbreviation Used |
+|-----------|------|-------------------|
+| RogueSidebar (left column) | `rogue-sidebar.js` | `NameUtils.abbreviate(name, 0)` - vowel drop, CSS clips |
+| Hand Fan (combat) | `hand-fan-component.js` | `formatForMobile()` in portrait |
+| Shop Display | `shop-system.js` | `formatForShop()` |
+| Shared Item Renderer | `shared-item-renderer.js` | `abbreviateName()` |
+| Reserve Slots | `reserve-slots.js` | `_abbreviateCardName()` |
+
+### Qty Badge Overlay
+
+Quantity badges (e.g., "x2") use absolute positioning to avoid taking flex space:
+```css
+.rs-qty-overlay {
+  position: absolute;
+  right: 4px;
+  top: 2px;
+  font-size: 0.7em;
+  opacity: 0.8;
+}
+/* Only show when qty > 1 */
+```
+
+---
+
+## 15. Font Canon
+
+### Font Stack Definitions
+
+| CSS Variable | Font Family | Primary Use | Fallback |
+|--------------|-------------|-------------|----------|
+| `--font-legible` | `'Classic Console Neue', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas` | Tooltips, stats, quick-read information | `'Courier New', monospace` |
+| `--font` | `'Courier New', 'Lucida Console', 'Consolas', monospace` | HUD, titles, narrative text | `monospace` |
+
+### Font Usage Map
+
+| Context | Font | Rationale |
+|---------|------|-----------|
+| Tooltips | `--font-legible` | Quick info scan, high legibility |
+| Stats display | `--font-legible` | Numbers and quick reads |
+| Debrief feed | `--font-legible` | Resource bars, scan-able data |
+| HUD buttons | `--font` | Terminal aesthetic, titles |
+| Narrative text | `--font` | Story elements, MOK dialog |
+| Card names (hand) | `--font` | Consistent with terminal theme |
+| Card names (shop) | `--font-legible` | Quick recognition |
+
+---
+
+## 16. Color Canon
+
+### Primary CRT Palette (Phosphor Green)
+
+| Variable | Hex | Use |
+|----------|-----|-----|
+| `--phosphor` | `#33ff33` | Primary text, active elements |
+| `--phosphor-dim` | `#1a9c1a` | Secondary text, disabled states |
+| `--phosphor-bright` | `#66ff66` | Highlights, hover states |
+| `--phosphor-glow` | `rgba(51, 255, 51, 0.15)` | Glow effects, shadows |
+
+### Amber Mode (Alternate Theme)
+
+| Variable | Hex | Use |
+|----------|-----|-----|
+| `--amber` | `#ffb000` | Primary text in amber mode |
+| `--amber-dim` | `#996a00` | Secondary in amber mode |
+| `--amber-bright` | `#ffc640` | Highlights in amber mode |
+| `--amber-glow` | `rgba(255, 176, 0, 0.15)` | Glow in amber mode |
+
+### Background & Panel
+
+| Variable | Hex | Use |
+|----------|-----|-----|
+| `--bg` | `#0a0a0a` | Page background |
+| `--bg-screen` | `#050805` | CRT screen background |
+| `--panel-bg` | `#061208` | Panel backgrounds |
+| `--panel-border` | `rgba(51, 255, 51, 0.25)` | Panel borders |
+| `--panel-border-soft` | `rgba(51, 255, 51, 0.12)` | Subtle borders |
+
+### Resource Colors (per RESOURCE_COLOR_SYSTEM.md)
+
+| Resource | Hex | Variable Reference |
+|----------|-----|-------------------|
+| HP | `#FF6B9D` | `RESOURCE_COLOR.HP` |
+| Energy | `#00D4FF` | `RESOURCE_COLOR.Energy` |
+| Focus | `#FFF9B0` | `RESOURCE_COLOR.Focus` |
+| Battery | `#00FFA6` | `RESOURCE_COLOR.Battery` |
+| Fatigue | `#A0522D` | `RESOURCE_COLOR.Fatigue` |
+| Ammo | `#DA70D6` | `RESOURCE_COLOR.Ammo` |
+| Currency | `#FFFF00` | `RESOURCE_COLOR.Currency` |
+
+---
+
+## 17. Button Feel — Transitions & Future Sound Hooks
+
+### Transition Timings
+
+| State | Duration | Easing | Property |
+|-------|----------|--------|----------|
+| Hover | 120ms | `ease` | `background`, `border-color`, `transform` |
+| Active/Press | 80ms | `ease-out` | `transform` (slight press) |
+| Focus | 100ms | `ease` | `box-shadow`, `outline` |
+
+### Standard Button Style
+
+```css
+.rogue-sidebar-btn {
+  background: rgba(8, 24, 12, 0.85);
+  border: 1px solid var(--panel-border); /* rgba(51, 255, 51, 0.25) */
+  border-radius: 6px;
+  color: var(--phosphor);
+  font-family: var(--font);
+  padding: 6px 4px;
+  transition: background 120ms ease, border-color 120ms ease, transform 80ms ease-out;
+}
+
+.rogue-sidebar-btn:hover {
+  background: rgba(14, 42, 24, 0.95);
+  border-color: var(--phosphor-bright);
+  transform: translateY(-1px);
+}
+
+.rogue-sidebar-btn:active {
+  transform: translateY(1px);
+}
+```
+
+### Sound Hooks (Future)
+
+Buttons should support optional sound via `data-sound` attribute:
+```html
+<button class="rogue-sidebar-btn" data-sound="button-hover">Inventory</button>
+<button class="rogue-sidebar-btn" data-sound="button-click">Back</button>
+```
+
+Audio system (future implementation) will read `data-sound` on pointer interactions.
+
+### Mobile Touch Feedback
+
+```css
+@media (pointer: coarse) {
+  .rogue-sidebar-btn {
+    min-height: 44px; /* iOS minimum tap target */
+  }
+}
+```
+
+---
+
+## 18. Audit Checklist — Name Display
+
+Components requiring viewport-aware abbreviation review:
+
+- [ ] **Black Market Vendors** (`shop-system.js`) — Currently uses `formatForShop()`, verify portrait behavior
+- [ ] **Enemy Card Interactions** (steal/plant UI) — Per ENEMY_NCH_INTERACTION_ROADMAP
+- [ ] **Stealth Mechanics** — Indicator names for sneak/pickpocket states
+- [ ] **Tooltip Item Names** (`shared-item-renderer.js`) — Should use `formatForMobile()` in portrait
+- [ ] **NCH Capsule Jokers** — Card count display, verify abbreviation
+- [ ] **Reserve Slots** (`reserve-slots.js`) — Backup card display names
+- [ ] **Hand Fan Cards** — Combat card names should abbreviate in portrait
+- [ ] **STR Combat Enemy Hand** — Per ENEMY_CARDS.md Phase 2
+
+### Verification Commands
+
+```bash
+# Test abbreviation functions
+node public/tests/test-name-utils.js
+
+# Verify font loading
+grep -r "Classic Console Neue" public/css/
+
+# Check all button styles use consistent transitions
+grep -A5 "transition:" public/css/rogue-sidebar.css
+```

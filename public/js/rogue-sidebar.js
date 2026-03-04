@@ -68,10 +68,46 @@ var RogueSidebar = (function() {
   var _lastItemsLen = null;
 
   /**
+   * Viewport tier detection for abbreviation level
+   * Returns: 'desktop-full' | 'desktop-compact' | 'mobile-landscape' | 'mobile-portrait'
+   */
+  function _getViewportTier() {
+    var w = window.innerWidth;
+    var h = window.innerHeight;
+    var isPortrait = h > w;
+    var isMobile = w <= 600;
+    
+    if (isMobile) {
+      return isPortrait ? 'mobile-portrait' : 'mobile-landscape';
+    }
+    return w > 900 ? 'desktop-full' : 'desktop-compact';
+  }
+
+  /**
+   * Micro-abbreviator: first letters only, max 4 chars
+   * "Energy Drink" → "ED", "Rusty Key" → "RK"
+   */
+  function _microAbbreviate(name) {
+    if (!name) return '';
+    var words = name.split(/\s+/);
+    var result = '';
+    for (var i = 0; i < words.length && result.length < 4; i++) {
+      if (words[i].length > 0) {
+        result += words[i].charAt(0).toUpperCase();
+      }
+    }
+    return result;
+  }
+
+  /**
    * Viewport-aware name helper: uses NameUtils (if loaded) to apply
-   * the micro-abbreviator (4 chars) in portrait and the standard
-   * abbreviator (6 chars) in landscape small-screen mode.
+   * the appropriate abbreviation level based on viewport tier.
    * Falls back gracefully when NameUtils is not yet available.
+   * Per UI-CANON.md Section 14:
+   *   - Desktop Full: no abbreviation (full name)
+   *   - Desktop Compact: standard vowel-drop
+   *   - Mobile Landscape: standard vowel-drop  
+   *   - Mobile Portrait: micro-abbreviator (first letters, ~4 chars)
    * @param {string} name - Full item/card name
    * @returns {string} Display name appropriate for current viewport
    */
@@ -81,15 +117,28 @@ var RogueSidebar = (function() {
 
   function _getViewportName(name) {
     if (!name) return '';
+    
+    var tier = _getViewportTier();
+    
+    // Desktop Full: no abbreviation - return full name
+    if (tier === 'desktop-full') {
+      return name;
+    }
+    
     try {
-      var isPortrait = window.matchMedia ? window.matchMedia('(orientation: portrait)').matches : (window.innerHeight > window.innerWidth);
-      var isSmallScreen = window.innerWidth <= 767;
-      if (typeof NameUtils !== 'undefined' && NameUtils.abbreviate) {
-        if (isPortrait && isSmallScreen) {
-          // Debrief minimized → more label room → use 6-char abbreviator
-          return NameUtils.abbreviate(name, _debriefIsMinimized ? 6 : 4);
+      // Mobile Portrait: micro-abbreviator (first letters only)
+      if (tier === 'mobile-portrait') {
+        if (typeof NameUtils !== 'undefined' && NameUtils.abbreviate) {
+          // Use micro-abbreviate for portrait
+          return _microAbbreviate(name);
         }
-        if (isSmallScreen) return NameUtils.abbreviate(name, 6);
+        return name.substring(0, 4);
+      }
+      
+      // Desktop Compact, Mobile Landscape: standard vowel-drop abbreviate
+      // Let CSS container overflow:hidden clip naturally (no ellipsis)
+      if (typeof NameUtils !== 'undefined' && NameUtils.abbreviate) {
+        return NameUtils.abbreviate(name, 0); // 0 = no length limit, just drop vowels
       }
     } catch (e) {}
     return name;
@@ -514,7 +563,11 @@ var RogueSidebar = (function() {
             }
           } catch (e1) {}
 
-          btn.innerHTML = '<span class="rs-emoji">' + em2 + '</span><span class="rs-label">' + nm2 + '</span>' + x2 + '<span class="rs-qty">x' + qty + '</span>';
+          // Only show qty badge when qty > 1 (no "x1" clutter).
+          // Qty badge overlaps the label (absolute positioned) rather than taking separate space.
+          var qtyHtml = (qty > 1) ? '<span class="rs-qty-overlay">x' + qty + '</span>' : '';
+          btn.style.position = 'relative';
+          btn.innerHTML = '<span class="rs-emoji">' + em2 + '</span><span class="rs-label">' + nm2 + '</span>' + x2 + qtyHtml;
 
           btn.addEventListener('pointerdown', function(e) {
             if (!e || e.pointerType === 'touch') return;

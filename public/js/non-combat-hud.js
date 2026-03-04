@@ -857,7 +857,12 @@ var NonCombatHUD = (function() {
     var sortUnlocked = _isSortUnlocked();
     var isLocked = !!(_expanded && _expanded.classList.contains('nch-locked'));
 
-    if (countEl) countEl.textContent = backup.length + '/' + maxB;
+    // Count only non-null entries with valid IDs (skip phantom/null slots)
+    var _realCount = 0;
+    for (var ci = 0; ci < backup.length; ci++) {
+      if (backup[ci] && backup[ci].id) _realCount++;
+    }
+    if (countEl) countEl.textContent = _realCount + '/' + maxB;
 
     // Bind shuffle/sort buttons (in backup zone header, bound once)
     var shuffleBtn = _expanded ? _expanded.querySelector('#nch-shuffle-btn') : null;
@@ -959,9 +964,9 @@ var NonCombatHUD = (function() {
     // Show a few ghost slots after the real cards so the backup zone always has
     // a usable drop area even when nearly empty. Non-interactive (no drag/click).
     var MIN_VISIBLE_SLOTS = 5; // minimum total visible slots in backup zone
-    var placeholdersNeeded = Math.max(0, MIN_VISIBLE_SLOTS - backup.length);
+    var placeholdersNeeded = Math.max(0, MIN_VISIBLE_SLOTS - _realCount);
     // Cap to available capacity
-    var capacityRemaining = Math.max(0, maxB - backup.length);
+    var capacityRemaining = Math.max(0, maxB - _realCount);
     placeholdersNeeded = Math.min(placeholdersNeeded, capacityRemaining);
 
     for (var pi = 0; pi < placeholdersNeeded; pi++) {

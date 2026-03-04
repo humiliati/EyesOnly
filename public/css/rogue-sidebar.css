@@ -5,7 +5,7 @@
 #control-rail .control-buttons[data-rogue-sidebar-active="1"] {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 
 .rogue-sidebar-btn {
@@ -91,10 +91,10 @@
   }
 
   .rogue-sidebar-btn .rs-label {
-    font-size: 0.75em;
+    font-size: 0.7em;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
+    min-width: 0;
   }
 }
 
@@ -116,12 +116,32 @@
   flex: 1;
   text-align: left;
   overflow: hidden;
-  text-overflow: ellipsis;
+  /* No text-overflow:ellipsis — vowel-dropped names clip naturally at container edge */
   white-space: nowrap;
+  min-width: 0;
 }
 
+/* Legacy qty span (hidden — replaced by rs-qty-overlay) */
 .rogue-sidebar-btn .rs-qty {
-  opacity: 0.8;
+  display: none;
+}
+
+/* Qty overlay: floats over the label text when qty > 1.
+   Only rendered when qty > 1 so single cards have full label space. */
+.rogue-sidebar-btn .rs-qty-overlay {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.7em;
+  font-weight: bold;
+  color: rgba(28, 255, 155, 0.85);
+  background: rgba(0, 0, 0, 0.7);
+  padding: 0 3px;
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 2;
+  line-height: 1.3;
 }
 
 /* 3D printer eligible glow */
