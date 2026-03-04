@@ -13,7 +13,7 @@
  *
  * Dependencies:
  *   - InformationDuelEngine (getSnapshot)
- *   - DebriefFeedRenderer (resource rendering)
+ *   - DebriefFeedController (resource rendering)
  *   - NonCombatEventBus (events)
  *   - TooltipSystem (hover info)
  *

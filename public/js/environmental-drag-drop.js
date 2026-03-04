@@ -551,11 +551,11 @@ const EnvironmentalDragDrop = (function() {
    * @param {Object} result - Unlock result
    */
   function _displaySynergyInDebriefFeed(result) {
-    if (typeof DebriefFeedRenderer === 'undefined') return;
-
-    // Add message to debrief feed
-    var message = '🔓 ' + result.message;
-    DebriefFeedRenderer.addMessage(message, 'synergy');
+    // Use DebriefFeedController for MOK interjection instead of renderer
+    if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.updateMokInterjection) {
+      var message = '🔓 ' + result.message;
+      DebriefFeedController.updateMokInterjection(message);
+    }
   }
 
   /**

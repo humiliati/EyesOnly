@@ -425,9 +425,8 @@ const DebriefFeedController = (function() {
    * Render resources display
    */
   function _renderResources() {
-    if (typeof DebriefFeedRenderer !== 'undefined') {
-      var html = '<div class="debrief-resources-display">';
-      html += '<div id="debrief-synergy-overlay" class="debrief-synergy-overlay" aria-hidden="true"></div>';
+    var html = '<div class="debrief-resources-display">';
+    html += '<div id="debrief-synergy-overlay" class="debrief-synergy-overlay" aria-hidden="true"></div>';
 
       // NOTE: In Gone Rogue, MOK selection is handled by the [Mok] row.
       // Do not render the old MOK capsule / cycle button header here.
@@ -1119,11 +1118,6 @@ const DebriefFeedController = (function() {
         }, 600);
       }
     } catch (eRow) {}
-
-    // If in resource display mode, refresh to show updated values
-    if (_currentDisplay === 'resources' && typeof DebriefFeedRenderer !== 'undefined') {
-      DebriefFeedRenderer.render();
-    }
   }
 
   /**

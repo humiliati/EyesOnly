@@ -473,28 +473,17 @@ const TestHandFanOutOfCombat = (function() {
     console.log('');
     console.log('=== DEBRIEF FEED & INCINERATOR ANIMATION TESTS ===');
 
-    // Test 5.1: Debrief feed renderer exists
+    // Test 5.1: Debrief feed controller exists (canonical)
     assertExists(
-      typeof DebriefFeedRenderer !== 'undefined',
-      'DebriefFeedRenderer module exists'
+      typeof DebriefFeedController !== 'undefined',
+      'DebriefFeedController module exists'
     );
 
-    // Test 5.2: Can render resource consumption message
-    if (typeof DebriefFeedRenderer !== 'undefined' &&
-        typeof DebriefFeedRenderer.addFeedItem === 'function') {
-      try {
-        DebriefFeedRenderer.addFeedItem({
-          type: 'resource-spend',
-          resource: 'energy',
-          amount: 2,
-          cardName: 'Single Shot'
-        });
-        assertTrue(true, 'DebriefFeedRenderer.addFeedItem() executes');
-      } catch (e) {
-        assertTrue(false, 'DebriefFeedRenderer.addFeedItem() executes');
-        console.error('  Error: ' + e.message);
-      }
-    }
+    // Test 5.2: DebriefFeedRenderer removed (merged into controller)
+    assertTrue(
+      typeof DebriefFeedRenderer === 'undefined',
+      'DebriefFeedRenderer module removed (merged into DebriefFeedController)'
+    );
 
     // Test 5.3: Incinerator animation class exists
     var incineratorClass = 'incinerator-animation';
