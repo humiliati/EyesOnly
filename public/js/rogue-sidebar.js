@@ -253,6 +253,11 @@ var RogueSidebar = (function() {
 
     var view = _prefs.view === 'items' ? 'items' : 'cards';
 
+    // Stamp data attributes so NCH drag-drop can detect the left column
+    // and its current view mode from the DOM (reliable, always current).
+    _container.setAttribute('data-rogue-sidebar-active', '1');
+    _container.setAttribute('data-rogue-sidebar-view', view);
+
     var strActive = false;
     try {
       strActive = (typeof GoneRogue !== 'undefined' && typeof GoneRogue.isStrCombatActive === 'function' && GoneRogue.isStrCombatActive());
@@ -631,6 +636,8 @@ var RogueSidebar = (function() {
   }
 
   return {
-    init: init
+    init: init,
+    /** @returns {'items'|'cards'} Current view mode */
+    getView: function() { return _prefs.view === 'items' ? 'items' : 'cards'; }
   };
 })();

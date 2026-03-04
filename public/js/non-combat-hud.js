@@ -1243,26 +1243,38 @@ var NonCombatHUD = (function() {
     var droppedOnBackup = !!(el && el.closest && el.closest('[data-dropzone="backup"]'));
     var droppedOnVault = !!(el && el.closest && el.closest('[data-dropzone="vault"]'));
 
-    // Left column — detect both BAC (legacy) and RogueSidebar (primary)
-    var droppedOnLeftCol = !!(el && el.closest && (
+    // Left column — detect BAC (legacy), RogueSidebar (data attr), or #control-rail
+    var sidebarEl = el && el.closest ? (
+      el.closest('[data-rogue-sidebar-active="1"]') ||
       el.closest('#backup-action-container') ||
-      el.closest('[data-rogue-sidebar-active="1"]')
-    ));
+      el.closest('#control-rail')
+    ) : null;
+    var droppedOnLeftCol = !!sidebarEl;
+
     // Determine RogueSidebar's current view (items vs cards)
-    var leftColMode = 'items'; // default
+    var leftColMode = 'items'; // default = vault
     if (droppedOnLeftCol) {
-      // Check RogueSidebar view preference
-      try {
-        var rsPrefs = localStorage.getItem('EYESONLY_ROGUE_SIDEBAR_PREFS_V1');
-        if (rsPrefs) {
-          var parsed = JSON.parse(rsPrefs);
-          if (parsed && parsed.view === 'cards') leftColMode = 'backup';
+      // Primary: read DOM attribute stamped by RogueSidebar each render
+      var sidebarViewEl = sidebarEl.closest('[data-rogue-sidebar-view]') ||
+                          (sidebarEl.querySelector ? sidebarEl.querySelector('[data-rogue-sidebar-view]') : null) ||
+                          sidebarEl;
+      var domView = sidebarViewEl ? sidebarViewEl.getAttribute('data-rogue-sidebar-view') : null;
+      if (domView === 'cards') {
+        leftColMode = 'backup';
+      } else if (domView === 'items') {
+        leftColMode = 'items';
+      } else {
+        // Fallback: query RogueSidebar JS API directly
+        try {
+          if (typeof RogueSidebar !== 'undefined' && RogueSidebar.getView) {
+            if (RogueSidebar.getView() === 'cards') leftColMode = 'backup';
+          }
+        } catch (rsErr) {}
+        // BAC fallback (legacy)
+        if (typeof BackupActionContainer !== 'undefined' && BackupActionContainer.getSlot5Mode) {
+          var bacMode = BackupActionContainer.getSlot5Mode();
+          if (bacMode === 'backup') leftColMode = 'backup';
         }
-      } catch (lce) {}
-      // BAC fallback (legacy)
-      if (typeof BackupActionContainer !== 'undefined' && BackupActionContainer.getSlot5Mode) {
-        var bacMode = BackupActionContainer.getSlot5Mode();
-        if (bacMode === 'backup') leftColMode = 'backup';
       }
     }
     // Left column in items mode = vault; in cards/backup mode = backup
