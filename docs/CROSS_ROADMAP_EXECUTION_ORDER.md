@@ -97,6 +97,10 @@ Phase 1: Explosive Barrel Breakable Type ✔ COMPLETE (2026-03-04)
 •	CSS explosive-idle-pulse animation: 2s infinite red-to-dark-red glow (drop-shadow + color cycle), applied via `cell-explosive-idle` class when `breakable.explosive && hp > 0` ✔
 •	Test barrels placed on tavern collectibles test floor Row H (y:16): 2 grey + 3 red for chain detonation testing ✔
 •	Blast effects per tile: enemy damage (full) + awareness ENGAGED, player damage (50% reduction), breakable chain damage, ground fire (50%) / smoke (30%) / oil ignition / water evaporation ✔
+Phase 1 bugfixes (2026-03-04):
+•	Grey barrel scorched tile fix: added `destroyedGlyph: "."` to all 4 biome Grey Barrel entries + tutorial floor defs. Propagation fixed in tutorial-floor-gen.js, breakable-spawner.js. Renderer skips brown `cell-breakable-broken` class for '.' glyphs. ✔
+•	Friendly fire fix: `_breakableCtx()` now exposes `player`, `enemies`, `breakables`, `getBreakableAt`, `AWARENESS_STATES`. Player damage via direct `ctx.player.hp` mutation (GAMESTATE.takeDamage didn't exist). ✔
+•	Kick system: `BreakableSystem.kickBreakable(breakable, dx, dy, ctx)` — 2 damage + 40% push chance (buffable via equipped item `meta.kickBuff`). Pushes 1 tile in kick direction if target walkable. CSS `cell-kick-wobble` / `cell-kick-pushed` animations. Wired into tap-move-system.js + monolith `_kickBreakable()`. `_tapMoveCtx()` expanded with enemies/breakables/rng/raiseNoise. ✔
 Phase 2: ExplosionSystem Module
 •	New: explosion-system.js — stateless IIFE, detonate(x, y, radius, damage, ctx)
 •	Circular BFS with damage falloff, per-tile effects (enemy damage, breakable chain, ground fire/smoke, oil ignite, water evaporate)

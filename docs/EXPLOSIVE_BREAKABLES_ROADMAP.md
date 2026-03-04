@@ -3,7 +3,7 @@
 **Project**: EyesOnly — Gone Rogue
 **Date**: 2026-03-02
 **Scope**: Explosive barrels, blast physics, screen shake, breakable light polish, explosive cards in STR combat
-**Status**: Phase 1 COMPLETE (2026-03-04). CHH Steps 1-4 complete.
+**Status**: Phase 1 COMPLETE (2026-03-04) + bugfixes (2026-03-04). CHH Steps 1-4 complete.
 
 ---
 

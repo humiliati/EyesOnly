@@ -213,6 +213,31 @@
   }
 }
 
+/* Kick wobble animation — brief shake when kicked */
+.cell-kick-wobble {
+  animation: kick-wobble 0.3s ease-out;
+}
+
+@keyframes kick-wobble {
+  0% { transform: translate(0, 0); }
+  15% { transform: translate(-3px, -1px); }
+  30% { transform: translate(3px, 1px); }
+  50% { transform: translate(-2px, 0); }
+  70% { transform: translate(2px, 0); }
+  100% { transform: translate(0, 0); }
+}
+
+/* Kick push slide — slides breakable in push direction */
+.cell-kick-pushed {
+  animation: kick-push 0.25s ease-out;
+}
+
+@keyframes kick-push {
+  0% { opacity: 0.6; transform: scale(0.9); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
 .cell-projectile-impact {
   color: #1cff9b;
   animation: impact-flash 0.2s ease-in-out;

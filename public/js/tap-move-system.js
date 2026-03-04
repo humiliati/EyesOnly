@@ -72,15 +72,38 @@ var TapMoveSystem = (function() {
 
       // Only kick if adjacent (1 tile away)
       if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 && (dx !== 0 || dy !== 0)) {
-        ctx.damageBreakable(breakableAtTarget, 2);
+        // Normalize direction for push
+        var ndx = dx === 0 ? 0 : (dx > 0 ? 1 : -1);
+        var ndy = dy === 0 ? 0 : (dy > 0 ? 1 : -1);
+
+        // Use BreakableSystem.kickBreakable if available (push + damage)
+        var kickResult = null;
+        if (typeof BreakableSystem !== 'undefined' && BreakableSystem.kickBreakable) {
+          kickResult = BreakableSystem.kickBreakable(breakableAtTarget, ndx, ndy, ctx);
+        } else {
+          // Fallback: just damage
+          ctx.damageBreakable(breakableAtTarget, 2);
+          kickResult = { damage: .2, pushed: false, pushDist: 0, destroyed: breakableAtTarget.hp <= 0 };
+        }
+
         ctx.saveState();
 
         if (ctx.useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
           ctx.updateMobileGrid();
         }
 
+        // Build feedback message
+        var kickMsg;
+        if (kickResult.destroyed) {
+          kickMsg = '🥾💥 SMASHED ' + (breakableAtTarget.emoji || '📦') + ' ' + (breakableAtTarget.name || 'breakable');
+        } else if (kickResult.pushed) {
+          kickMsg = '🥾 KICKED ' + (breakableAtTarget.emoji || '📦') + ' (' + kickResult.pushDist + ' tile' + (kickResult.pushDist > 1 ? 's' : '') + ') HP ' + breakableAtTarget.hp;
+        } else {
+          kickMsg = '🥾 BOOTED ' + (breakableAtTarget.emoji || '📦') + ' (HP ' + breakableAtTarget.hp + ')';
+        }
+
         return {
-          lines: ['\uD83E\uDD62 BOOTED ' + (breakableAtTarget.emoji || '\uD83D\uDCE6') + ' (HP ' + breakableAtTarget.hp + ')', ''].concat(ctx.renderGrid()),
+          lines: [kickMsg, ''].concat(ctx.renderGrid()),
           prompt: ctx.getPrompt(),
           stayActive: true
         };

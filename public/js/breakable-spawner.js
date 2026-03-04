@@ -48,17 +48,27 @@ var BreakableSpawner = (function() {
             !breakables.find(function(b) { return b.x === x && b.y === y; })) {
 
           var propTemplate = breakableProps[Math.floor(rng() * breakableProps.length)];
-          breakables.push({
+          var bDef = {
             x: x,
             y: y,
             hp: propTemplate.hp,
             maxHp: propTemplate.hp,
             glyph: TILES.BREAKABLE,
-            destroyedGlyph: TILES.DEBRIS,
+            destroyedGlyph: propTemplate.destroyedGlyph || (propTemplate.explosive ? '▓' : TILES.DEBRIS),
             emoji: propTemplate.emoji,
             name: propTemplate.name,
             tag: 'biome_prop_' + i
-          });
+          };
+          // Propagate explosive properties from biome config
+          if (propTemplate.explosive) {
+            bDef.explosive = true;
+            bDef.blastRadius = propTemplate.blastRadius || 2.75;
+            bDef.blastDamage = propTemplate.blastDamage || [9, 25];
+          }
+          if (propTemplate.kickable) bDef.kickable = true;
+          if (propTemplate.noise) bDef.noise = propTemplate.noise;
+          if (propTemplate.drops) bDef.drops = propTemplate.drops;
+          breakables.push(bDef);
 
           placed = true;
         }

@@ -2103,8 +2103,12 @@ var GoneRogue = (function () {
     return {
       get grid() { return _grid; },
       get items() { return _items; },
+      get player() { return _player; },
+      get enemies() { return _enemies; },
+      get breakables() { return _breakables; },
       TILES: TILES, rng: _rng,
       GRID_WIDTH: GRID_WIDTH, GRID_HEIGHT: GRID_HEIGHT,
+      AWARENESS_STATES: AWARENESS_STATES,
       get totalBreakableDamage() { return _totalBreakableDamage; },
       set totalBreakableDamage(v) { _totalBreakableDamage = v; },
       get floor() { return _floor; },
@@ -2114,6 +2118,7 @@ var GoneRogue = (function () {
       rebuildWallCache: _rebuildWallCache,
       getAllLightBlockers: _getAllLightBlockers,
       getBiome: _getBiome,
+      getBreakableAt: _getBreakableAt,
       updateMobileGrid: (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') ? _updateMobileGrid : null
     };
   }
@@ -2219,15 +2224,31 @@ var GoneRogue = (function () {
       };
     }
 
-    _damageBreakable(target, 2);
+    // Use BreakableSystem.kickBreakable for push + damage
+    var kickResult = null;
+    if (typeof BreakableSystem !== 'undefined' && BreakableSystem.kickBreakable) {
+      kickResult = BreakableSystem.kickBreakable(target, dir.dx, dir.dy, _breakableCtx());
+    } else {
+      _damageBreakable(target, 2);
+      kickResult = { damage: 2, pushed: false, pushDist: 0, destroyed: target.hp <= 0 };
+    }
     _saveState();
 
     if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
       _updateMobileGrid();
     }
 
+    var kickMsg;
+    if (kickResult.destroyed) {
+      kickMsg = '🥾💥 SMASHED ' + (target.emoji || '📦') + ' ' + (target.name || 'breakable');
+    } else if (kickResult.pushed) {
+      kickMsg = '🥾 KICKED ' + (target.emoji || '📦') + ' (' + kickResult.pushDist + ' tile' + (kickResult.pushDist > 1 ? 's' : '') + ') HP ' + target.hp;
+    } else {
+      kickMsg = '🥾 BOOTED ' + (target.emoji || '📦') + ' (HP ' + target.hp + ')';
+    }
+
     return {
-      lines: ['🥾 BOOTED ' + target.emoji + ' (HP ' + target.hp + ')', ''].concat(_renderGrid()),
+      lines: [kickMsg, ''].concat(_renderGrid()),
       prompt: getPrompt(),
       stayActive: true
     };
@@ -2468,15 +2489,27 @@ var GoneRogue = (function () {
       get playerMoveLocked() { return _playerMoveLocked; },
       player: _player,
       grid: _grid,
+      get enemies() { return _enemies; },
+      get breakables() { return _breakables; },
       tileMetadata: _tileMetadata,
       GRID_WIDTH: GRID_WIDTH,
       GRID_HEIGHT: GRID_HEIGHT,
       TILES: TILES,
       TILE_EFFECTS: TILE_EFFECTS,
+      rng: _rng,
+      get totalBreakableDamage() { return _totalBreakableDamage; },
+      set totalBreakableDamage(v) { _totalBreakableDamage = v; },
+      get floor() { return _floor; },
+      get wallCache() { return _wallCache; },
       get useInteractiveGrid() { return _useInteractiveGrid; },
       isWalkable: _isWalkable,
       getBreakableAt: _getBreakableAt,
       damageBreakable: _damageBreakable,
+      spawnCurrency: _spawnCurrency,
+      raiseNoise: _raiseNoise,
+      rebuildWallCache: _rebuildWallCache,
+      getAllLightBlockers: _getAllLightBlockers,
+      getBiome: _getBiome,
       movePlayer: _movePlayer,
       saveState: _saveState,
       renderGrid: _renderGrid,

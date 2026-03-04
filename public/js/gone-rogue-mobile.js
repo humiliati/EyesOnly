@@ -1366,9 +1366,17 @@ const GoneRogueMobile = (function () {
             if (breakable.explosive) {
               cell.classList.add('cell-explosive-idle');
             }
+            // Kick wobble animation (300ms window)
+            if (breakable.kickTime && (Date.now() - breakable.kickTime) < 300) {
+              cell.classList.add(breakable.kickPushed ? 'cell-kick-pushed' : 'cell-kick-wobble');
+            }
           } else {
-            cell.textContent = breakable.destroyedGlyph || '░';
-            cell.classList.add('cell-breakable-broken');
+            var dGlyph = breakable.destroyedGlyph || '░';
+            cell.textContent = dGlyph;
+            // Only apply broken-debris styling for actual debris tiles, not clean floor
+            if (dGlyph !== '.') {
+              cell.classList.add('cell-breakable-broken');
+            }
           }
         } else if (item) {
           cell.textContent = item.emoji || '💎';

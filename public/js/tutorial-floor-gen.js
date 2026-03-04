@@ -272,18 +272,28 @@ var TutorialFloorGen = (function() {
 
     // Place breakables
     floorData.breakables.forEach(function(breakable) {
-      ctx.breakables.push({
+      var def = {
         x: breakable.x,
         y: breakable.y,
         hp: breakable.hp,
         maxHp: breakable.hp,
         glyph: ctx.TILES.BREAKABLE,
-        destroyedGlyph: ctx.TILES.DEBRIS,
+        destroyedGlyph: breakable.destroyedGlyph || (breakable.explosive ? '▓' : ctx.TILES.DEBRIS),
         emoji: breakable.emoji,
         name: breakable.name,
         tag: 'tutorial_breakable_' + ctx.breakables.length,
         drops: breakable.drops
-      });
+      };
+      // Propagate explosive properties
+      if (breakable.explosive) {
+        def.explosive = true;
+        def.blastRadius = breakable.blastRadius || 2.75;
+        def.blastDamage = breakable.blastDamage || [9, 25];
+      }
+      // Propagate kick and noise
+      if (breakable.kickable) def.kickable = true;
+      if (breakable.noise) def.noise = breakable.noise;
+      ctx.breakables.push(def);
     });
 
     // Place tutorial gate (floor 1)

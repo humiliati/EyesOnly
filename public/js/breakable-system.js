@@ -214,11 +214,16 @@ var BreakableSystem = (function() {
     // ── Player damage (50% friendly fire reduction) ──
     if (ctx.player && ctx.player.x === tx && ctx.player.y === ty) {
       var playerDmg = Math.floor(tileDamage * 0.5);
-      if (playerDmg > 0 && typeof GAMESTATE !== 'undefined') {
-        GAMESTATE.takeDamage(playerDmg);
-        console.log('[Explosion] Player took ' + playerDmg + ' blast damage');
+      if (playerDmg > 0) {
+        ctx.player.hp = Math.max(0, (ctx.player.hp || 0) - playerDmg);
+        console.log('[Explosion] Player took ' + playerDmg + ' blast damage → HP ' + ctx.player.hp + '/' + ctx.player.maxHp);
         if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
           OverheadAnimator.showGenericExpression(tx, ty, '💥', 400, '#ff0000');
+        }
+        // Check for death
+        if (ctx.player.hp <= 0) {
+          ctx.player.hp = 0;
+          console.log('[Explosion] Player killed by explosion!');
         }
       }
     }
@@ -550,7 +555,148 @@ var BreakableSystem = (function() {
     }
   }
 
+  /**
+   * Kick a breakable — deal damage + attempt to push it in the kick direction.
+   * Called when player taps an adjacent kickable breakable.
+   *
+   * @param {Object} breakable - The breakable to kick
+   * @param {number} dx - Direction X (-1, 0, or 1)
+   * @param {number} dy - Direction Y (-1, 0, or 1)
+   * @param {Object} ctx - Game context (needs: grid, TILES, GRID_WIDTH, GRID_HEIGHT, isWalkable, getBreakableAt, player)
+   * @returns {{ damage: number, pushed: boolean, pushDist: number, destroyed: boolean }}
+   */
+  function kickBreakable(breakable, dx, dy, ctx) {
+    var kickDamage = 2;
+    var result = { damage: kickDamage, pushed: false, pushDist: 0, destroyed: false };
+
+    // 1. Deal kick damage
+    damageBreakable(breakable, kickDamage, ctx);
+    if (breakable.hp <= 0) {
+      result.destroyed = true;
+      return result;
+    }
+
+    // Set kick animation state
+    breakable.kickTime = Date.now();
+    breakable.kickPushed = false;
+
+    // 2. Only attempt push if kickable
+    if (!breakable.kickable) return result;
+
+    // 3. Calculate push chance (base 40%, buffable by equipped items)
+    var pushChance = 0.40;
+    var maxPushDist = 1;
+
+    // Check for kick-buffing equipped item (legendary boots = 1.5 tile range + higher chance)
+    if (ctx.player && typeof GAMESTATE !== 'undefined' && GAMESTATE.getEquippedItems) {
+      var equipped = GAMESTATE.getEquippedItems();
+      if (equipped) {
+        for (var ei = 0; ei < equipped.length; ei++) {
+          var eq = equipped[ei];
+          if (eq && eq.meta && eq.meta.kickBuff) {
+            pushChance = Math.min(0.90, pushChance + (eq.meta.kickBuff.chanceBonus || 0));
+            maxPushDist = Math.max(maxPushDist, eq.meta.kickBuff.maxDist || 1);
+          }
+        }
+      }
+    }
+
+    // 4. Roll push
+    var rng = ctx.rng ? ctx.rng() : Math.random();
+    if (rng >= pushChance) {
+      // Push failed — show a wobble but no movement
+      if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+        OverheadAnimator.showGenericExpression(breakable.x, breakable.y, '🥾', 300, '#aa8844');
+      }
+      console.log('[Kick] Push failed (roll ' + rng.toFixed(2) + ' >= ' + pushChance.toFixed(2) + ')');
+      return result;
+    }
+
+    // 5. Determine push distance (1 tile normally, up to maxPushDist for buffed kicks)
+    var actualDist = 0;
+    var bx = breakable.x;
+    var by = breakable.y;
+
+    for (var step = 1; step <= Math.ceil(maxPushDist); step++) {
+      var nx = bx + dx * step;
+      var ny = by + dy * step;
+
+      // Bounds check
+      if (nx < 0 || nx >= ctx.GRID_WIDTH || ny < 0 || ny >= ctx.GRID_HEIGHT) break;
+
+      // Check if target tile is walkable (empty floor) and no other breakable there
+      var tileAtTarget = ctx.grid[ny] ? ctx.grid[ny][nx] : null;
+      if (tileAtTarget !== ctx.TILES.EMPTY && tileAtTarget !== ctx.TILES.GRASS) break;
+
+      // Check no breakable already at target
+      if (ctx.getBreakableAt && ctx.getBreakableAt(nx, ny)) break;
+
+      // Check no enemy at target
+      if (ctx.enemies) {
+        var blocked = false;
+        for (var eIdx = 0; eIdx < ctx.enemies.length; eIdx++) {
+          if (ctx.enemies[eIdx] && ctx.enemies[eIdx].x === nx && ctx.enemies[eIdx].y === ny && ctx.enemies[eIdx].hp > 0) {
+            blocked = true;
+            break;
+          }
+        }
+        if (blocked) break;
+      }
+
+      actualDist = step;
+      // Half-tile precision: if maxPushDist is 1.5, allow step 1 always but step 2 only 50%
+      if (step >= maxPushDist && maxPushDist % 1 !== 0) {
+        var halfChance = ctx.rng ? ctx.rng() : Math.random();
+        if (halfChance >= 0.5) break;
+      }
+    }
+
+    if (actualDist > 0) {
+      // 6. Move the breakable
+      var oldX = breakable.x;
+      var oldY = breakable.y;
+      var newX = oldX + dx * actualDist;
+      var newY = oldY + dy * actualDist;
+
+      // Clear old grid position
+      ctx.grid[oldY][oldX] = breakable.destroyedGlyph === '.' ? ctx.TILES.EMPTY : ctx.TILES.EMPTY;
+
+      // Update breakable position
+      breakable.x = newX;
+      breakable.y = newY;
+
+      // Set new grid position
+      ctx.grid[newY][newX] = ctx.TILES.BREAKABLE;
+
+      result.pushed = true;
+      result.pushDist = actualDist;
+      breakable.kickPushed = true;
+
+      // Show push animation
+      if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+        OverheadAnimator.showGenericExpression(newX, newY, '🥾', 400, '#44aa44');
+      }
+
+      // Raise noise from the push
+      if (ctx.raiseNoise) {
+        ctx.raiseNoise(newX, newY, breakable.noise || 2);
+      }
+
+      console.log('[Kick] Pushed ' + breakable.name + ' from ' + oldX + ',' + oldY +
+        ' to ' + newX + ',' + newY + ' (' + actualDist + ' tile' + (actualDist > 1 ? 's' : '') + ')');
+    } else {
+      // Blocked — can't push (wall/obstacle behind)
+      if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+        OverheadAnimator.showGenericExpression(breakable.x, breakable.y, '🥾', 300, '#aa8844');
+      }
+      console.log('[Kick] Push blocked — obstacle behind ' + breakable.name);
+    }
+
+    return result;
+  }
+
   return {
-    damageBreakable: damageBreakable
+    damageBreakable: damageBreakable,
+    kickBreakable: kickBreakable
   };
 })();
