@@ -228,7 +228,7 @@ const GAMESTATE = (function () {
           for (var vi = 0; vi < _state.persistentCards.length; vi++) {
             if (_state.persistentCards[vi] && _state.persistentCards[vi].id === starterIds[si]) {
               var moved = _state.persistentCards.splice(vi, 1)[0];
-              _state.cardsInHand.push({ id: moved.id, qty: moved.qty || 1, meta: { t: Date.now() } });
+              _state.cardsInHand.push({ id: moved.id, qty: 1, meta: { t: Date.now() } });
               break;
             }
           }
@@ -242,9 +242,12 @@ const GAMESTATE = (function () {
     // Do NOT run for V2 starter pack.
     if (!_state._starterCardsSeededV2 && !_state._grantAct002Done) {
       if (!Array.isArray(_state.persistentCards)) _state.persistentCards = [];
-      var has002 = _state.persistentCards.some(function(r) { return r && r.id === 'ACT-002' && (r.qty || 0) > 0; });
+      var has002 = _state.persistentCards.some(function(r) { return r && r.id === 'ACT-002'; });
       if (!has002) {
-        _state.persistentCards.push({ id: 'ACT-002', qty: 5, meta: null });
+        // Insert as 5 individual slots — no stacking
+        for (var s002 = 0; s002 < 5; s002++) {
+          _state.persistentCards.push({ id: 'ACT-002', qty: 1, meta: null });
+        }
         _saveState();
       }
       _state._grantAct002Done = true;
@@ -402,7 +405,10 @@ const GAMESTATE = (function () {
     // Normalize to { id, qty, meta } ref format so inventory renderers can
     // resolve via GoneRogueDataRegistry.getItem(ref.id).
     var ref = _normalizeItemRef(item);
-    _state.inventoryPersistent.push(ref || item);
+    var finalRef = ref || item;
+    // Always qty: 1 — no stacking
+    if (finalRef && typeof finalRef.qty === 'number' && finalRef.qty !== 1) finalRef.qty = 1;
+    _state.inventoryPersistent.push(finalRef);
     _saveState();
 
     return {
@@ -528,30 +534,24 @@ const GAMESTATE = (function () {
     // route it into persistent inventory instead of creating ITM entries in the card stash.
     if (ref.id && ref.id.indexOf('ITM-') === 0) {
       if (!Array.isArray(_state.inventoryPersistent)) _state.inventoryPersistent = [];
-      _state.inventoryPersistent.push({ id: ref.id, qty: qty, meta: ref.meta || null });
+      // Always insert as individual slots — no stacking
+      for (var itmN = 0; itmN < qty; itmN++) {
+        _state.inventoryPersistent.push({ id: ref.id, qty: 1, meta: ref.meta || null });
+      }
       _saveState();
       return { success: true, routed: 'inventoryPersistent' };
     }
 
-    if (ref.id && ref.id.indexOf('ACT-') !== 0) {
+    if (ref.id && ref.id.indexOf('ACT-') !== 0 && ref.id.indexOf('CI-') !== 0 && ref.id.indexOf('EATK-') !== 0) {
       // Unknown type, reject (keeps stash clean)
       return { success: false, reason: 'invalid_card_id' };
     }
 
     if (!_state.persistentCards) _state.persistentCards = [];
 
-    var existing = null;
-    for (var i = 0; i < _state.persistentCards.length; i++) {
-      if (_state.persistentCards[i] && _state.persistentCards[i].id === ref.id) {
-        existing = _state.persistentCards[i];
-        break;
-      }
-    }
-
-    if (existing) {
-      existing.qty = (existing.qty || 0) + qty;
-    } else {
-      _state.persistentCards.push({ id: ref.id, qty: qty, meta: ref.meta || null });
+    // Always insert as individual slots — no stacking, even for same card type.
+    for (var n = 0; n < qty; n++) {
+      _state.persistentCards.push({ id: ref.id, qty: 1, meta: ref.meta || null });
     }
 
     _saveState();
@@ -827,8 +827,8 @@ const GAMESTATE = (function () {
     var ref = _state.cardsInHand[idx];
     if (!ref || !ref.id) return { success: false };
 
-    // Insert at top of backup deck (newest)
-    _state.backupCards.unshift({ id: ref.id, qty: ref.qty || 1, meta: ref.meta || null });
+    // Insert at top of backup deck (newest) — always qty: 1
+    _state.backupCards.unshift({ id: ref.id, qty: 1, meta: ref.meta || null });
     // Enforce max size — incinerate oldest
     var maxB = _state.maxBackupSlots || 25;
     while (_state.backupCards.length > maxB) {
@@ -916,7 +916,7 @@ const GAMESTATE = (function () {
     if (!ref || !ref.id) return { success: false, reason: 'empty' };
 
     if (!Array.isArray(_state.cardsInHand)) _state.cardsInHand = [];
-    _state.cardsInHand.push({ id: ref.id, qty: ref.qty || 1, meta: ref.meta || null });
+    _state.cardsInHand.push({ id: ref.id, qty: 1, meta: ref.meta || null });
     _state.backupCards.splice(idx, 1);  // Remove by splice, not null
 
     // Enforce hand overflow at GAMESTATE level
@@ -994,7 +994,7 @@ const GAMESTATE = (function () {
     var ref = _state.backupCards.splice(0, 1)[0];  // Draw from top (newest)
 
     if (!Array.isArray(_state.cardsInHand)) _state.cardsInHand = [];
-    _state.cardsInHand.push({ id: ref.id, qty: ref.qty || 1, meta: ref.meta || null });
+    _state.cardsInHand.push({ id: ref.id, qty: 1, meta: ref.meta || null });
 
     _state.hasDrawnBackupThisTurn = true;
     _state.hasDrawnBackupThisCombat = true; // backward compat
@@ -1280,6 +1280,8 @@ const GAMESTATE = (function () {
       };
     }
 
+    // Normalize qty to 1 — no stacking in any container
+    if (card && typeof card.qty === 'number' && card.qty !== 1) card.qty = 1;
     _state.actionButtonCards.push(card);
     _saveState();
 
@@ -1369,8 +1371,8 @@ const GAMESTATE = (function () {
       // Convert to CardRef for canonical cardsInHand pipeline
       var ref;
       if (card && card.id && (card.id.indexOf('CI-') === 0 || card.id.indexOf('ACT-') === 0 || card.id.indexOf('EATK-') === 0)) {
-        // Already a canonical ref or has canonical id
-        ref = { id: card.id, qty: card.qty || 1, meta: card.meta || null };
+        // Already a canonical ref or has canonical id — always qty: 1
+        ref = { id: card.id, qty: 1, meta: card.meta || null };
       } else if (card && card.name) {
         // Legacy full object — register as CI-* instance
         var ciId = registerCardInstance({
@@ -1389,8 +1391,9 @@ const GAMESTATE = (function () {
         });
         ref = { id: ciId, qty: 1, meta: null };
       } else {
-        // Last resort fallback — push as-is (shouldn't happen)
+        // Last resort fallback — normalize qty (shouldn't happen)
         ref = card;
+        if (ref && typeof ref.qty === 'number') ref.qty = 1;
       }
 
       _state.cardsInHand.push(ref);
@@ -1645,12 +1648,25 @@ const GAMESTATE = (function () {
         var cref = _state.persistentCards[pc];
         if (!cref || !cref.id) continue;
         if (cref.id.indexOf('ITM-') === 0) {
-          _state.inventoryPersistent.push({ id: cref.id, qty: cref.qty || 1, meta: cref.meta || null });
+          _state.inventoryPersistent.push({ id: cref.id, qty: 1, meta: cref.meta || null });
         } else {
           keep.push(cref);
         }
       }
       _state.persistentCards = keep;
+
+      // Unstack: expand any vault entries with qty > 1 into individual slots.
+      // Legacy saves may have stacked cards from the old addPersistentCard logic.
+      var unstacked = [];
+      for (var us = 0; us < _state.persistentCards.length; us++) {
+        var uc = _state.persistentCards[us];
+        if (!uc || !uc.id) continue;
+        var uq = (typeof uc.qty === 'number' && uc.qty > 1) ? uc.qty : 1;
+        for (var un = 0; un < uq; un++) {
+          unstacked.push({ id: uc.id, qty: 1, meta: uc.meta || null });
+        }
+      }
+      _state.persistentCards = unstacked;
     }
 
     // active slot
@@ -2660,7 +2676,7 @@ const GAMESTATE = (function () {
     }
     var old = _state.cardsInHand.pop();
     if (!Array.isArray(_state.backupCards)) _state.backupCards = [];
-    _state.backupCards.unshift(old);
+    _state.backupCards.unshift({ id: old.id, qty: 1, meta: old.meta || null });
     var maxB = _state.maxBackupSlots || 25;
     while (_state.backupCards.length > maxB) {
       var incinerated = _state.backupCards.pop();
@@ -2674,7 +2690,7 @@ const GAMESTATE = (function () {
   function insertCardAtBackupTop(ref) {
     if (!ref || !ref.id) return { success: false };
     if (!Array.isArray(_state.backupCards)) _state.backupCards = [];
-    _state.backupCards.unshift({ id: ref.id, qty: ref.qty || 1, meta: ref.meta || null });
+    _state.backupCards.unshift({ id: ref.id, qty: 1, meta: ref.meta || null });
     var maxB = _state.maxBackupSlots || 25;
     var discarded = 0;
     while (_state.backupCards.length > maxB) {
