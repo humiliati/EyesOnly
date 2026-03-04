@@ -490,7 +490,7 @@ const GoneRogueMobile = (function () {
     return grid.length > viewH || (grid[0] && grid[0].length > viewW);
   }
 
-  function _renderWithCanvas(grid, player, enemies, items, breakables, projectiles, muzzleFlash, impactEffects, currencies, colorCycleTime) {
+  function _renderWithCanvas(grid, player, enemies, items, breakables, projectiles, muzzleFlash, impactEffects, currencies, colorCycleTime, npcs) {
     // Prepare grid data for canvas renderer
     var canvasGrid = [];
 
@@ -718,6 +718,22 @@ const GoneRogueMobile = (function () {
             color: '#8B4513'
           });
         }
+      });
+    }
+
+    // Add NPCs
+    if (npcs && npcs.length) {
+      npcs.forEach(function(npc) {
+        var vx = _toViewX(npc.x);
+        var vy = _toViewY(npc.y);
+        if (!_inView(vx, vy)) return;
+        entities.push({
+          x: vx,
+          y: vy,
+          char: npc.emoji || '\uD83E\uDDD1',
+          color: '#FFD700',
+          isNpc: true
+        });
       });
     }
 
@@ -1193,7 +1209,7 @@ const GoneRogueMobile = (function () {
 
     // Use canvas renderer if available
     if (_canvasRenderer) {
-      _renderWithCanvas(grid, player, enemies, items, breakables, projectiles, muzzleFlash, impactEffects, currencies, colorCycleTime);
+      _renderWithCanvas(grid, player, enemies, items, breakables, projectiles, muzzleFlash, impactEffects, currencies, colorCycleTime, npcs);
       if (_rg0 && typeof EYESONLY_PERF !== 'undefined') {
         EYESONLY_PERF.mark('rogue.renderGridMs', performance.now() - _rg0);
       }

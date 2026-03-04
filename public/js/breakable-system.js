@@ -109,10 +109,24 @@ var BreakableSystem = (function() {
       ctx.raiseNoise(bx, by, 8);
     }
 
-    // 4. Overhead explosion emoji at epicenter
+    // 4. Overhead explosion emoji at epicenter + screen shake
     if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
       OverheadAnimator.showGenericExpression(bx, by, '💥', 600, '#ff6600');
     }
+
+    // Screen shake for explosion
+    try {
+      var gridEl = document.getElementById('rogue-grid-mobile');
+      if (gridEl) {
+        gridEl.classList.remove('explosion-shake');
+        void gridEl.offsetWidth; // Force reflow to restart animation (chain detonation)
+        gridEl.classList.add('explosion-shake');
+        gridEl.addEventListener('animationend', function onShakeEnd() {
+          gridEl.classList.remove('explosion-shake');
+          gridEl.removeEventListener('animationend', onShakeEnd);
+        });
+      }
+    } catch (eShake) {}
 
     // 5. Circular BFS — iterate all tiles within blast radius
     var queue = [{ x: bx, y: by, dist: 0 }];

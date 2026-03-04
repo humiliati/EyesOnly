@@ -796,6 +796,10 @@ var GoneRogue = (function () {
     }
     _active = true;
     _loaded = true;
+    // Reset death guard for new run
+    if (typeof DeathExitSystem !== 'undefined' && DeathExitSystem.resetDeathGuard) {
+      DeathExitSystem.resetDeathGuard();
+    }
     return _beginGameplay();
   }
 

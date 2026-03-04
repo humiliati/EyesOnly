@@ -11,11 +11,21 @@
 var DeathExitSystem = (function () {
   'use strict';
 
+  // Guard against duplicate death calls (e.g. explosion + fire ground effect in same cycle)
+  var _deathInProgress = false;
+
   // ------------------------------------------------------------------
   // handlePlayerDeath — death screen, highscore, cause string, exit
   // ------------------------------------------------------------------
   function handlePlayerDeath(reason, context, ctx) {
     context = context || {};
+
+    // Guard against double death (e.g. explosion blast + fire ground effect in same tick)
+    if (_deathInProgress) {
+      console.log('[DeathExit] Ignoring duplicate death call: ' + reason);
+      return;
+    }
+    _deathInProgress = true;
 
     ctx.playerDeaths++;
 
@@ -319,6 +329,7 @@ var DeathExitSystem = (function () {
   return {
     handlePlayerDeath: handlePlayerDeath,
     handleEnemyDeath: handleEnemyDeath,
-    exitRogue: exitRogue
+    exitRogue: exitRogue,
+    resetDeathGuard: function() { _deathInProgress = false; }
   };
 })();
