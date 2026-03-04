@@ -430,6 +430,22 @@ var ExplosionSystem = (function() {
         ' from ' + startX + ',' + startY + ' → ' + finalX + ',' + finalY +
         ' (' + actualDist + ' tile' + (actualDist > 1 ? 's' : '') + ')');
 
+      // Sync visual position for player knockback — the renderer uses a LERP
+      // (_playerVisual) that only moves 35% per frame, plus GoneRogueMovement
+      // maintains its own _visualPosition, and game-tick-system writes
+      // player.visualX/Y from GoneRogueMovement each tick. We must snap all
+      // three sources so the avatar teleports to the knockback destination
+      // instead of appearing stuck.
+      if (entity === ctx.player || entity.isPlayer) {
+        // 1. Snap GoneRogueMovement's internal positions
+        if (typeof GoneRogueMovement !== 'undefined' && GoneRogueMovement.setPosition) {
+          GoneRogueMovement.setPosition(finalX, finalY);
+        }
+        // 2. Snap the player's visual hints read by the renderer
+        entity.visualX = finalX;
+        entity.visualY = finalY;
+      }
+
       // Overhead indicator
       if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
         OverheadAnimator.showGenericExpression(finalX, finalY, '💨', 400, '#ffaa00');
