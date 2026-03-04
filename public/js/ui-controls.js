@@ -67,6 +67,8 @@
       activeSlot.addEventListener('click', handleActiveItemClick);
       // Add drag-and-drop support for equipping items
       _initializeActiveSlotDragDrop(activeSlot);
+      // Add pointer-based drag FROM header slot → map/incinerator (NCH pointer system)
+      _initializeActiveSlotPointerDrag(activeSlot);
     }
 
     // Initialize login overlay handlers
@@ -133,6 +135,37 @@
       if (_draggedInventoryItem) {
         _equipInventoryItemToActiveSlot(_draggedInventoryItem);
         _draggedInventoryItem = null;
+      }
+    });
+  }
+
+  /**
+   * Initialize pointer-based drag FROM the header active-item-slot.
+   * This lets the player drag the equipped item to the map (use on tile)
+   * or to the debrief incinerator (dispose). Delegates to NonCombatHUD's
+   * pointer drag system via startExternalDrag.
+   */
+  function _initializeActiveSlotPointerDrag(activeSlot) {
+    var display = activeSlot.querySelector('#active-item-display') || activeSlot;
+    display.addEventListener('pointerdown', function(e) {
+      if (e.button !== undefined && e.button !== 0) return;
+      // Must have an equipped item
+      var activeRef = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem)
+        ? GAMESTATE.getActiveItem() : null;
+      if (!activeRef || !activeRef.id) return;
+      // Resolve display info
+      var resolved = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem)
+        ? GoneRogueDataRegistry.getItem(activeRef.id) : null;
+      var payload = {
+        kind: 'equipped_item',
+        id: activeRef.id,
+        index: -1,
+        emoji: resolved ? resolved.emoji : '\uD83D\uDCE6',
+        name: resolved ? resolved.name : activeRef.id
+      };
+      // Delegate to NCH's pointer drag system
+      if (typeof NonCombatHUD !== 'undefined' && NonCombatHUD.startExternalDrag) {
+        NonCombatHUD.startExternalDrag(payload, e);
       }
     });
   }

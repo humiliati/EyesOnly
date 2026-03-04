@@ -631,11 +631,20 @@ var RogueSidebar = (function() {
                   }
                 }
 
-                // Check header equipped slot (active-item-slot)
+                // Check header equipped slot (active-item-slot) OR NCH equipped slot
                 var activeSlotEl = document.getElementById('active-item-slot');
-                if (dropEl && activeSlotEl && (dropEl === activeSlotEl || activeSlotEl.contains(dropEl))) {
+                var nchEquipEl = document.getElementById('nch-equipped-display');
+                var droppedOnEquip = dropEl && (
+                  (activeSlotEl && (dropEl === activeSlotEl || activeSlotEl.contains(dropEl))) ||
+                  (nchEquipEl && (dropEl === nchEquipEl || nchEquipEl.contains(dropEl)))
+                );
+                if (droppedOnEquip) {
                   if (typeof GAMESTATE !== 'undefined' && GAMESTATE.setActiveItem) {
                     GAMESTATE.setActiveItem({ id: iRef.id, qty: 1 });
+                  }
+                  // Equip-flash animation on header slot
+                  if (typeof NonCombatHUD !== 'undefined' && NonCombatHUD.flashHeaderEquipSlot) {
+                    NonCombatHUD.flashHeaderEquipSlot();
                   }
                   if (typeof TooltipSystem !== 'undefined') {
                     TooltipSystem.show((iResolved.emoji || '📦') + ' ' + (iResolved.name || 'Item') + ' equipped', 1500);

@@ -800,3 +800,29 @@
     font-size: 24px;
   }
 }
+
+/* ── Equipped item slot (interactive) ─────────────────── */
+#nch-equipped-display {
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+  transition: background 0.15s, box-shadow 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+#nch-equipped-display:hover {
+  background: rgba(0, 255, 128, 0.12);
+  box-shadow: 0 0 4px rgba(0, 255, 128, 0.25);
+}
+#nch-equipped-display:active,
+#nch-equipped-display.nch-equipped-active:active {
+  background: rgba(0, 255, 128, 0.22);
+}
+#nch-equipped-display .nch-equipped-emoji {
+  font-size: 1.1em;
+}
+#nch-equipped-display .nch-equipped-empty {
+  opacity: 0.35;
+  font-size: 1.2em;
+}

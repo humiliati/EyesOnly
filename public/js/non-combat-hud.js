@@ -506,9 +506,88 @@ var NonCombatHUD = (function() {
     var active = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) ? GAMESTATE.getActiveItem() : null;
     if (active && active.id) {
       var it = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) ? GoneRogueDataRegistry.getItem(active.id) : null;
-      el.textContent = (it && it.emoji ? it.emoji : '\uD83D\uDCE6') + ' ' + (it && it.name ? it.name : active.id);
+      var emoji = (it && it.emoji ? it.emoji : '\uD83D\uDCE6');
+      var name = (it && it.name ? it.name : active.id);
+      el.innerHTML = '<span class="nch-equipped-emoji">' + emoji + '</span> ' + name;
+      el.classList.add('nch-equipped-active');
+      el.title = 'Click to toggle \u00B7 Drag to map or incinerator';
     } else {
-      el.textContent = '';
+      el.innerHTML = '<span class="nch-equipped-empty">\u00B7</span>';
+      el.classList.remove('nch-equipped-active');
+      el.title = 'No item equipped';
+    }
+
+    // Wire interactive handlers (only once)
+    if (!el._equippedWired) {
+      el._equippedWired = true;
+
+      // Click to toggle/activate (mirrors header active-item-slot click)
+      el.addEventListener('click', function(e) {
+        e.stopPropagation();
+        _handleEquippedSlotClick();
+      });
+
+      // Pointer drag from equipped slot → map or incinerator
+      el.addEventListener('pointerdown', function(e) {
+        if (e.button !== undefined && e.button !== 0) return;
+        var activeRef = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) ? GAMESTATE.getActiveItem() : null;
+        if (!activeRef || !activeRef.id) return;
+        var resolved = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem)
+          ? GoneRogueDataRegistry.getItem(activeRef.id) : null;
+        _startDrag({
+          kind: 'equipped_item',
+          id: activeRef.id,
+          index: -1,
+          emoji: resolved ? resolved.emoji : '\uD83D\uDCE6',
+          name: resolved ? resolved.name : activeRef.id
+        }, e);
+      });
+
+      // Accept drops (equip from NCH card zones — drag card onto equipped slot)
+      el.setAttribute('data-dropzone', 'equipped');
+    }
+  }
+
+  /**
+   * Handle click on the equipped item slot (NCH or header).
+   * Mirrors the handleActiveItemClick logic from ui-controls.js:
+   * inventory open → unequip; inventory closed → toggle/activate.
+   */
+  function _handleEquippedSlotClick() {
+    if (typeof GAMESTATE === 'undefined') return;
+    var activeRef = GAMESTATE.getActiveItem ? GAMESTATE.getActiveItem() : null;
+    if (!activeRef || !activeRef.id) return;
+
+    // Try toggling (3D Printer or other togglable items)
+    var didToggle = false;
+    try {
+      if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
+        var def = GoneRogueDataRegistry.getItem(activeRef.id);
+        var isPrinter = false;
+        if (def && Array.isArray(def.effects)) {
+          for (var ei = 0; ei < def.effects.length; ei++) {
+            if (def.effects[ei] && def.effects[ei].type === 'printer_3d') { isPrinter = true; break; }
+          }
+        }
+        if (isPrinter && GAMESTATE.toggleActiveItemToggled) {
+          var r = GAMESTATE.toggleActiveItemToggled();
+          didToggle = !!(r && r.success);
+          if (typeof TooltipSystem !== 'undefined') {
+            TooltipSystem.show((r && r.toggled) ? '\uD83D\uDD4B 3D PRINTER ARMED' : '\uD83D\uDD4B 3D PRINTER DISARMED', 1500);
+          }
+        }
+      }
+    } catch (e0) {}
+
+    if (!didToggle) {
+      // Fallback: trigger active item use
+      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.triggerActiveItem === 'function') {
+        GoneRogue.triggerActiveItem();
+      } else {
+        if (typeof TooltipSystem !== 'undefined') {
+          TooltipSystem.show('Active: ' + (activeRef.id || 'item'), 1000);
+        }
+      }
     }
   }
 
@@ -1284,6 +1363,12 @@ var NonCombatHUD = (function() {
     // NCH capsule (minimized state) — for cascade-to-hand-top
     var droppedOnCapsule = !!(el && el.closest && el.closest('.nch-capsule-wrapper'));
 
+    // Equipped item slot (either NCH equipped display or header active-item-slot)
+    var droppedOnEquippedSlot = !!(el && (
+      (el.id === 'nch-equipped-display' || (el.closest && el.closest('#nch-equipped-display'))) ||
+      (el.id === 'active-item-slot' || el.id === 'active-item-display' || (el.closest && el.closest('#active-item-slot')))
+    ));
+
     var ok = false;
     var _useCTM = (typeof CardTransferManager !== 'undefined');
     var _useCSA = (typeof CardStateAuthority !== 'undefined');
@@ -1307,6 +1392,26 @@ var NonCombatHUD = (function() {
       _drag = null;
       _renderAll();
       return;
+    }
+
+    // ── ANY → EQUIPPED SLOT (equip item by dragging onto header or NCH equipped display) ──
+    if (droppedOnEquippedSlot && _drag.id) {
+      // Items from persistent inventory can be equipped
+      if (_drag.kind === 'persistent_item' || _drag.kind === 'vault') {
+        if (typeof GAMESTATE !== 'undefined' && GAMESTATE.setActiveItem) {
+          GAMESTATE.setActiveItem({ id: _drag.id, qty: 1 });
+          ok = true;
+        }
+      }
+      if (ok) {
+        // Trigger equip-flash on header display
+        _flashHeaderEquipSlot();
+        _showDragResult(true, 'Equipped!', null);
+        _restoreDragMinimize();
+        _drag = null;
+        _renderAll();
+        return;
+      }
     }
 
     // ── HAND → BACKUP (NCH backup zone OR left column in backup mode) ──
@@ -1454,7 +1559,7 @@ var NonCombatHUD = (function() {
 
     // ── DEBRIEF FEED DROP (dispose / incinerate card or item) ──
     var droppedOnDebrief = _isDragOverDebriefFeed(e.clientX, e.clientY);
-    if (droppedOnDebrief && (_drag.kind === 'hand' || _drag.kind === 'backup' || _drag.kind === 'vault' || _drag.kind === 'persistent_item')) {
+    if (droppedOnDebrief && (_drag.kind === 'hand' || _drag.kind === 'backup' || _drag.kind === 'vault' || _drag.kind === 'persistent_item' || _drag.kind === 'equipped_item')) {
       _clearDebriefDisposingPreview();
 
       // Remove card/item from its source container.
@@ -1504,6 +1609,23 @@ var NonCombatHUD = (function() {
         if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.removePersistentInventoryItem === 'function') {
           GAMESTATE.removePersistentInventoryItem(_drag.index);
           disposed = true;
+        }
+      } else if (_drag.kind === 'equipped_item') {
+        // Equipped (active) item — unequip + remove from persistent inventory
+        if (typeof GAMESTATE !== 'undefined') {
+          GAMESTATE.clearActiveItem();
+          // Also remove from persistent inventory by id scan
+          try {
+            var pInv2 = GAMESTATE.getPersistentInventory();
+            for (var pi2 = 0; pi2 < pInv2.length; pi2++) {
+              if (pInv2[pi2] && pInv2[pi2].id === _drag.id) {
+                GAMESTATE.removePersistentInventoryItem(pi2);
+                disposed = true;
+                break;
+              }
+            }
+          } catch (eqDispose) {}
+          if (!disposed) { disposed = true; } // At minimum the slot was cleared
         }
       }
 
@@ -1616,6 +1738,23 @@ var NonCombatHUD = (function() {
     if (typeof TooltipSystem !== 'undefined') {
       TooltipSystem.showPersistent(ok ? ('\u2705 ' + successMsg) : ('\u274C ' + failMsg), 900);
     }
+  }
+
+  /**
+   * Flash the header active-item-display to confirm equip.
+   * Shared between NCH drag-drop equip and sidebar drag-drop equip.
+   */
+  function _flashHeaderEquipSlot() {
+    try {
+      var display = document.getElementById('active-item-display');
+      if (!display) return;
+      display.classList.remove('equip-flash');
+      void display.offsetWidth; // force reflow
+      display.classList.add('equip-flash');
+      setTimeout(function() {
+        try { display.classList.remove('equip-flash'); } catch (e) {}
+      }, 420);
+    } catch (e) {}
   }
 
   function _screenToGrid(clientX, clientY) {
@@ -1738,6 +1877,7 @@ var NonCombatHUD = (function() {
     startExternalDrag: startExternalDrag,
     resetCapsulePosition: resetCapsulePosition,
     screenToGrid: _screenToGrid,
-    isCardDeployable: _isCardDeployable
+    isCardDeployable: _isCardDeployable,
+    flashHeaderEquipSlot: _flashHeaderEquipSlot
   };
 })();
