@@ -55,7 +55,8 @@ const GroundEffects = (function () {
       emoji: '🔥',
       char: '▒',
       color: '#ff3300',
-      damage: 1,                 // 1 HP per turn
+      damage: 0.3,               // 0.3 HP per tick (DOT — not instakill)
+      damageCooldownMs: 600,     // Apply damage at most every 600ms
       destroysWeakEnemies: true,
       removeStealth: true,       // Fire lights you up
       lightRadius: 3,
@@ -267,6 +268,18 @@ const GroundEffects = (function () {
       if (effect.dissipates && effect.lifetime) {
         var age = (now - effect.spawnTime) / 1000; // Age in seconds
         if (age > effect.lifetime) {
+          // Fire decays to smoke before disappearing
+          if (effect.type === GROUND_TYPES.FIRE && !effect._decayedToSmoke) {
+            effect.type = GROUND_TYPES.SMOKE || 'smoke';
+            effect.emoji = (GROUND_EFFECTS.SMOKE || GROUND_EFFECTS.smoke || { emoji: '💨' }).emoji || '💨';
+            effect.color = '#888888';
+            effect.damage = 0;
+            effect.lightRadius = 0;
+            effect._decayedToSmoke = true;
+            effect.spawnTime = now; // Reset timer for smoke phase
+            effect.lifetime = 2;   // Smoke lingers 2 seconds
+            return;
+          }
           effectsToRemove.push(key);
           return;
         }

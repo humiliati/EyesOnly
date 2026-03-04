@@ -5,6 +5,7 @@
  */
 var TapMoveSystem = (function() {
   'use strict';
+  console.log('[TapMoveSystem] Module loaded (v20260304c)');
 
   /**
    * Build a collision-check function with terrain penalty callback.
@@ -49,10 +50,11 @@ var TapMoveSystem = (function() {
    * @returns {Object|undefined} Terminal response
    */
   function handleTapMove(targetX, targetY, runMode, ctx) {
-    if (!ctx.active) return;
+    console.log('[TapMove:ENTER] target=' + targetX + ',' + targetY + ' active=' + ctx.active + ' scriptedWalk=' + ctx.scriptedWalk + ' moveLocked=' + ctx.playerMoveLocked);
+    if (!ctx.active) { console.log('[TapMove] BLOCKED by !active'); return; }
 
     // Floor 0 scripted walk — ignore player input until auto-walk completes
-    if (ctx.scriptedWalk) return;
+    if (ctx.scriptedWalk) { console.log('[TapMove] BLOCKED by scriptedWalk'); return; }
 
     // Asteroids boss locks player movement — tap only activates cards
     if (ctx.playerMoveLocked) {

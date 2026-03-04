@@ -228,12 +228,36 @@ var GameTickSystem = (function() {
     if (typeof GroundEffects !== 'undefined') {
       GroundEffects.update(deltaMs, ctx.GRID_WIDTH, ctx.GRID_HEIGHT);
 
-      // Apply ground effect damage to player
-      var playerGroundDamage = GroundEffects.getDamage(player.x, player.y);
+      // Apply ground effect damage to player (rate-limited DOT)
+      var playerGroundEffect = GroundEffects.getGroundEffect(player.x, player.y);
+      var playerGroundDamage = playerGroundEffect ? (playerGroundEffect.damage || 0) : 0;
       if (playerGroundDamage > 0) {
-        player.hp = Math.max(0, player.hp - playerGroundDamage);
-        if (player.hp <= 0) {
-          return ctx.handlePlayerDeath('environmental_hazard');
+        // Rate-limit damage (damageCooldownMs) to prevent per-tick instakill
+        var cooldownMs = playerGroundEffect.damageCooldownMs || 0;
+        var _now = Date.now();
+        var canApply = true;
+        if (cooldownMs > 0) {
+          var lastHit = playerGroundEffect._lastDamageTime || 0;
+          if (_now - lastHit < cooldownMs) canApply = false;
+          else playerGroundEffect._lastDamageTime = _now;
+        }
+        if (canApply) {
+          player.hp = Math.max(0, player.hp - playerGroundDamage);
+          // Overhead fire damage animation
+          try {
+            if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+              OverheadAnimator.showGenericExpression(player.x, player.y, '🔥', 350, '#ff3300');
+            }
+          } catch (eOH) {}
+          // Report to debrief feed
+          try {
+            if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
+              DebriefFeedController.reportResourceChange('HP', player.hp + playerGroundDamage, player.hp, '🔥 Burning');
+            }
+          } catch (eDF) {}
+          if (player.hp <= 0) {
+            return ctx.handlePlayerDeath('burning');
+          }
         }
       }
 

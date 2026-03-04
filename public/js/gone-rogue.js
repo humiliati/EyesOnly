@@ -791,6 +791,57 @@ var GoneRogue = (function () {
    * Start Gone Rogue mode
    */
   function start(context) {
+    context = context || {};
+
+    // === NEW RUN RESET ===
+    // On a fresh run (not resume), reset player stats to defaults so that
+    // a previous death doesn't carry over 0 HP / old keys / stale ammo.
+    if (!context.resume) {
+      _player.hp = _player.maxHp || 10;
+      _player.energy = _player.maxEnergy || 5;
+      _player.detection = 0;
+      _player.combatEntries = 0;
+      _player.lastCardType = null;
+      _player.positionHistory = [];
+
+      // Clear run-scoped key inventory
+      _runState.keysOwned = [];
+      _runState.keysFoundThisRun = 0;
+      _runState.floorsSinceGate = 0;
+      _runState.floorsSinceKey = 0;
+      _runState.visitedGateBiomes = [];
+      _runState.lastBiomeEntered = null;
+      _runState.biomeEntryCooldowns = {};
+      _runState.gatesSpawnedThisRun = 0;
+      _runState.firstCombatVictory = false;
+      _runState.firstBonfire = false;
+
+      // Clear stale saved state so _loadState won't resurrect old data
+      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+
+      // Reset GAMESTATE ammo + keys for new run
+      if (typeof GAMESTATE !== 'undefined') {
+        // Ammo: start fresh at 15 (out of 50 max)
+        if (typeof GAMESTATE.addAmmo === 'function' && typeof GAMESTATE.getAmmo === 'function') {
+          var currentAmmo = GAMESTATE.getAmmo();
+          // Use addAmmo to set to 15: delta = 15 - current
+          GAMESTATE.addAmmo(15 - currentAmmo);
+        }
+        // Keys: clear all tiers (via shallow-copy reference trick)
+        try {
+          var gs = GAMESTATE.getState ? GAMESTATE.getState() : null;
+          if (gs && gs.keys) {
+            gs.keys.ammo = {};
+            gs.keys.gate = {};
+            gs.keys.quest = {};
+          }
+        } catch (eKeys) {}
+      }
+
+      console.log('[GoneRogue] New run reset — HP: ' + _player.hp + '/' + _player.maxHp +
+        ', ammo: ' + (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo ? GAMESTATE.getAmmo() : '?'));
+    }
+
     if (typeof RunStartSystem !== 'undefined') {
       return RunStartSystem.start(context, _runStartCtx());
     }

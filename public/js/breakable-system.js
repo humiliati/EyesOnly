@@ -163,9 +163,9 @@ var BreakableSystem = (function() {
       }
     }
 
-    // 6. Ground fire at epicenter
+    // 6. Ground fire at epicenter (permanent — epicenter stays lit)
     if (typeof GroundEffects !== 'undefined' && GroundEffects.setGroundEffect) {
-      GroundEffects.setGroundEffect(bx, by, 'FIRE');
+      GroundEffects.setGroundEffect(bx, by, 'FIRE', { dissipates: false });
     }
 
     // 7. Trigger re-render
@@ -267,7 +267,22 @@ var BreakableSystem = (function() {
       } else if (!existingEffect || existingEffect.type === 'NORMAL') {
         var rng = ctx.rng ? ctx.rng() : Math.random();
         if (rng < 0.50) {
-          GroundEffects.setGroundEffect(tx, ty, 'FIRE');
+          // Distance-based fire decay: outer tiles burn out first, center persists
+          var fireOverrides = { dissipates: true };
+          if (dist <= 0.5) {
+            // Epicenter: permanent fire (no decay)
+            fireOverrides.dissipates = false;
+          } else if (dist <= 1.2) {
+            // Inner ring: very long burn (25-35s) — 2-3 tiles stay dangerous
+            fireOverrides.lifetime = 25 + (rng * 10);
+          } else if (dist <= 2.0) {
+            // Middle ring: moderate burn (8-14s)
+            fireOverrides.lifetime = 8 + (rng * 6);
+          } else {
+            // Outer ring: quick burn (3-6s)
+            fireOverrides.lifetime = 3 + (rng * 3);
+          }
+          GroundEffects.setGroundEffect(tx, ty, 'FIRE', fireOverrides);
         } else if (rng < 0.80) {
           GroundEffects.setGroundEffect(tx, ty, 'SMOKE');
         }

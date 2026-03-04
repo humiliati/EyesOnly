@@ -373,6 +373,12 @@ const GAMESTATE = (function () {
       // Clear loose inventory on death (includes tier-1 ammo keys)
       _state.inventoryLoose = [];
 
+      // Clear all keys on death (ammo keys, gate keys, quest keys)
+      _state.keys = { ammo: {}, gate: {}, quest: {} };
+
+      // Reset ammo to starting value for next run
+      _state.playerAmmo = 15;
+
       // Store currency lost for death screen display
       result.currencyLost = currencyLost;
     }
