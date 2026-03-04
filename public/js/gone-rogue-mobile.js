@@ -802,15 +802,30 @@ const GoneRogueMobile = (function () {
             collectibleType = 'emoji';
             bobEnabled = true;
           }
+        } else if (item._wt === 'interactive') {
+          // Interactive items: classify by type
+          if (item.type === 'FOOD') {
+            // Food items — emoji collectible at 0.6x + bob
+            char = item.emoji || '🍖';
+            color = item.customData && item.customData.resourceColor ? item.customData.resourceColor : '#FF6B9D';
+            scale = 0.6;
+            collectibleType = 'emoji';
+            bobEnabled = true;
+          } else {
+            // Interactive-only items (buttons, levers, ropes, monitors) — pulse instead of bob
+            char = item.emoji;
+            color = '#00FFFF';
+            // No bob — pulse animation will be added separately
+          }
         } else {
-          // Interactive items — no bob, no scale change
-          char = item.emoji;
-          color = '#00FFFF';
+          // Fallback for unknown types
+          char = item.emoji || item.glyph || '?';
+          color = '#FFFFFF';
         }
 
         entities.push({
           x: vx, y: vy, char: char, color: color,
-          scale: scale, bobEnabled: bobEnabled, collectibleType: collectibleType
+          scale: scale, bobEnabled: bobEnabled, pulseEnabled: !bobEnabled && item._wt === 'interactive', collectibleType: collectibleType
         });
       });
     } else {
