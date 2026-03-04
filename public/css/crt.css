@@ -3426,23 +3426,9 @@ body.cascade-active {
   flex: 1;
   display: flex;
   align-items: center;
+  font-family: monospace;
+  letter-spacing: 0.05em;
   min-width: 0;
-}
-
-.resource-bar-container .resource-bar-track {
-  flex: 1;
-  height: 8px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(28, 255, 155, 0.12);
-  border-radius: 2px;
-  overflow: hidden;
-  position: relative;
-}
-
-.resource-bar-container .resource-bar-fill {
-  height: 100%;
-  border-radius: 1px;
-  transition: width 0.35s ease-out;
 }
 
 .resource-bar-filled {
@@ -3724,53 +3710,6 @@ body.cascade-active {
 
 .debrief-line.key-ammo-line:last-child {
   border-bottom: none;
-}
-
-/* Full-width percent-based resource bar rows (Pip-Boy style) */
-.resource-row-bar {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  width: 100%;
-  padding: 2px 0;
-}
-
-.resource-row-glyph {
-  flex: 0 0 auto;
-  width: 1.4em;
-  text-align: center;
-  font-size: 1em;
-}
-
-.resource-bar-track {
-  flex: 1;
-  height: 8px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(28, 255, 155, 0.12);
-  border-radius: 2px;
-  overflow: hidden;
-  position: relative;
-}
-
-.resource-bar-fill {
-  height: 100%;
-  border-radius: 1px;
-  transition: width 0.35s ease-out;
-  animation: bar-fill-glow 2s ease-in-out infinite alternate;
-}
-
-@keyframes bar-fill-glow {
-  0% { filter: brightness(1); }
-  100% { filter: brightness(1.15); }
-}
-
-.resource-bar-pct {
-  flex: 0 0 auto;
-  font-size: 0.85em;
-  min-width: 3.5em;
-  text-align: right;
-  color: var(--phosphor-dim);
-  font-family: 'Courier New', monospace;
 }
 
 /* Accessibility row: use micro-abbreviator sizing */

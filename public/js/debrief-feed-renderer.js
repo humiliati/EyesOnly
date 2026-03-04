@@ -106,9 +106,9 @@ const DebriefFeedRenderer = (function() {
   function _renderPrimaryResources(resources) {
     var html = '<div class="resource-section primary">';
 
-    html += _renderResourceBar('HP', resources.hp, resources.maxHp, '💖', true);
-    html += _renderResourceBar('Energy', resources.energy, resources.maxEnergy, '⚡', false);
-    html += _renderResourceBar('Focus', resources.focus, resources.maxFocus, '🎯', false);
+    html += _renderResourceBar('HP', resources.hp, resources.maxHp, '+', true);
+    html += _renderResourceBar('Energy', resources.energy, resources.maxEnergy, '~', false);
+    html += _renderResourceBar('Focus', resources.focus, resources.maxFocus, '*', false);
 
     html += '</div>';
     return html;
@@ -122,9 +122,9 @@ const DebriefFeedRenderer = (function() {
   function _renderSecondaryResources(resources) {
     var html = '<div class="resource-section secondary">';
 
-    html += _renderResourceBar('Battery', resources.battery, resources.maxBattery, '🔋', false);
-    html += _renderResourceBar('Fatigue', resources.fatigue, resources.maxFatigue, '🏋️', false);
-    html += _renderResourceBar('Ammo', resources.ammo, resources.maxAmmo, '⁍', false);
+    html += _renderResourceBar('Battery', resources.battery, resources.maxBattery, '=', false);
+    html += _renderResourceBar('Fatigue', resources.fatigue, resources.maxFatigue, '#', false);
+    html += _renderResourceBar('Ammo', resources.ammo, resources.maxAmmo, '-', false);
 
     html += '</div>';
     return html;
@@ -163,7 +163,8 @@ const DebriefFeedRenderer = (function() {
    */
   function _renderResourceBar(name, current, max, icon, isHP) {
     var percentage = current / max;
-    var pct = Math.round(percentage * 100);
+    var filledBars = Math.round(percentage * 10);
+    var emptyBars = 10 - filledBars;
 
     // Use resource-specific color (not percentage-based)
     var barColor = _getResourceColor(name);
@@ -172,9 +173,9 @@ const DebriefFeedRenderer = (function() {
     html += '<span class="resource-icon">' + icon + '</span>';
     html += '<span class="resource-name">' + name + '</span>';
     html += '<div class="resource-bar-container">';
-    html += '<div class="resource-bar-track">';
-    html += '<div class="resource-bar-fill" style="width:' + pct + '%;background:' + barColor + ';box-shadow:0 0 6px ' + barColor + '60;"></div>';
-    html += '</div>';
+    html += '<span class="resource-bar-filled" style="color: ' + barColor + '; text-shadow: 0 0 4px ' + barColor + '80">';
+    html += '█'.repeat(filledBars) + '░'.repeat(emptyBars);
+    html += '</span>';
     html += '</div>';
     html += '<span class="resource-value">(' + current + '/' + max + ')</span>';
     html += '</div>';

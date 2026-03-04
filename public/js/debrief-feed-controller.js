@@ -529,27 +529,8 @@ const DebriefFeedController = (function() {
         return head + '[' + bar + ']' + String(cur) + '/' + String(max);
       }
 
-      // HTML percent-bar for expanded panel rows (full-width, colored, animated)
-      function _renderPercentBar(glyph, resourceName, cur, max) {
-        max = (typeof max === 'number' && max > 0) ? max : 1;
-        cur = (typeof cur === 'number') ? cur : 0;
-        cur = Math.max(0, Math.min(max, cur));
-        var pct = Math.round((cur / max) * 100);
-        var RESOURCE_COLORS = {
-          'HP': '#FF6B9D', 'Energy': '#00D4FF', 'Focus': '#FFF9B0',
-          'Battery': '#00FFA6', 'Fatigue': '#A0522D', 'Ammo': '#DA70D6',
-          'Currency': '#FFFF00', 'key_ammo': '#FF8A3D', 'Cards': '#800080'
-        };
-        var color = RESOURCE_COLORS[resourceName] || '#33ff33';
-        var s = '<div class="resource-row-bar" data-resource="' + resourceName + '">';
-        s += '<span class="resource-row-glyph">' + glyph + '</span>';
-        s += '<div class="resource-bar-track">';
-        s += '<div class="resource-bar-fill" style="width:' + pct + '%;background:' + color + ';box-shadow:0 0 6px ' + color + '60;"></div>';
-        s += '</div>';
-        s += '<span class="resource-bar-pct">' + cur + '/' + max + '</span>';
-        s += '</div>';
-        return s;
-      }
+      // HTML percent-bar replaced: use _renderBarLine for monochromatic Unicode block display.
+      // Each resource row uses ASCII art that visually resembles its resource.
 
       function _getRoguePlayer() {
         try {
@@ -592,57 +573,61 @@ const DebriefFeedController = (function() {
       try {
         var st = _getState();
 
-        // Resources macro summary: show HP only (critical)
+        // Resources macro summary: show HP only (critical) — ASCII prefix
         var rSum = document.getElementById('debrief-summary-resources');
-        if (rSum) rSum.textContent = _renderBarLine('♥', st.hp, st.maxHp, 6);
+        if (rSum) rSum.textContent = _renderBarLine('+', st.hp, st.maxHp, 6);
 
-        // Resources panel: HP + Energy + Focus lines (full-width percent bars)
+        // Resources panel: HP + Energy + Focus lines (monochromatic Unicode block bars)
         var rPanel = document.getElementById('debrief-panel-resources');
         if (rPanel && _rowExpanded.resources) {
+          var hpLine  = _renderBarLine('+', st.hp, st.maxHp, 6);
+          var enLine  = _renderBarLine('~', st.energy, st.maxEnergy, 6);
+          var fcLine  = _renderBarLine('*', st.focus, st.maxFocus, 6);
+
           rPanel.innerHTML =
-            _renderPercentBar('♥', 'HP', st.hp, st.maxHp) +
-            _renderPercentBar('E', 'Energy', st.energy, st.maxEnergy) +
-            _renderPercentBar('◎', 'Focus', st.focus, st.maxFocus);
+            '<div class="debrief-line hp">|_' + hpLine + '</div>' +
+            '<div class="debrief-line energy">|_' + enLine + '</div>' +
+            '<div class="debrief-line focus">|_' + fcLine + '</div>';
         } else if (rPanel) {
           rPanel.innerHTML = '';
         }
 
-        // Ammo macro summary
+        // Ammo macro summary — monochromatic, no emoji
         var amEl = document.getElementById('debrief-summary-ammo');
         if (amEl) {
           var ammo = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo) ? GAMESTATE.getAmmo() : (st.ammo || 0);
           var maxA = st.maxAmmo || 20;
           var keyAmmoTotal = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getTotalKeyAmmo) ? GAMESTATE.getTotalKeyAmmo() : 0;
-          var ammoSummary = _renderBarLine('A', ammo, maxA, 6);
-          if (keyAmmoTotal > 0) ammoSummary += ' 🔑x' + keyAmmoTotal;
+          var ammoSummary = _renderBarLine('-', ammo, maxA, 6);
+          if (keyAmmoTotal > 0) ammoSummary += ' k:' + keyAmmoTotal;
           amEl.textContent = ammoSummary;
         }
 
         // Ammo panel: weapon ammo bar + key_ammo resource + key_item counts
-        // Each key ammo item gets its own row for clarity
+        // Each key ammo item gets its own row — ASCII labels, no emoji
         var aPanel = document.getElementById('debrief-panel-ammo');
         if (aPanel && _rowExpanded.ammo) {
           var ammo2 = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo) ? GAMESTATE.getAmmo() : (st.ammo || 0);
           var maxA2 = st.maxAmmo || 20;
 
           var panelHtml = '';
-          panelHtml += _renderPercentBar('⁍', 'Ammo', ammo2, maxA2);
+          panelHtml += '<div class="debrief-line ammo-line">|_' + _renderBarLine('-', ammo2, maxA2, 6) + '</div>';
 
           var kc = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getKeyCounts) ? GAMESTATE.getKeyCounts() : null;
           // key_ammo (Tier 1) — consumable chest/lock keys, tracked as resource
-          function addKeyRow(icon, label, bucket, keyType) {
+          function addKeyRow(ascii, label, bucket, keyType) {
             try {
               var n = kc && kc[bucket] && kc[bucket][keyType] ? kc[bucket][keyType] : 0;
               if (n > 0) {
-                panelHtml += '<div class="debrief-line key-ammo-line" data-resource="key_ammo">' + icon + ' ' + label + ': ' + n + '</div>';
+                panelHtml += '<div class="debrief-line key-ammo-line" data-resource="key_ammo">|_' + ascii + ' ' + label + ':' + n + '</div>';
               }
             } catch (e0) {}
           }
-          addKeyRow('🔑', 'Rusty Key', 'ammo', 'RUSTY_KEY');
-          addKeyRow('🗝️', 'Bronze Key', 'ammo', 'BRONZE_KEY');
+          addKeyRow('k1', 'Rusty', 'ammo', 'RUSTY_KEY');
+          addKeyRow('k2', 'Bronze', 'ammo', 'BRONZE_KEY');
           // key_items (Tier 2) — persistent door/gate keys tracked for awareness
-          addKeyRow('💳', 'Keycard', 'gate', 'KEYCARD');
-          addKeyRow('🏷️', 'Mall Key', 'gate', 'MALL_KEY');
+          addKeyRow('kc', 'Keycard', 'gate', 'KEYCARD');
+          addKeyRow('km', 'Mall', 'gate', 'MALL_KEY');
 
           aPanel.innerHTML = panelHtml;
         } else if (aPanel) {
@@ -949,12 +934,12 @@ const DebriefFeedController = (function() {
   function _renderKernelStatus() {
     // TODO: Connect to actual kernel API system
     var status = 'connected'; // 'connected', 'disconnected', 'error'
-    var statusIcon = status === 'connected' ? '🟢' : status === 'disconnected' ? '🔴' : '🟡';
+    var statusIcon = status === 'connected' ? '[*]' : status === 'disconnected' ? '[x]' : '[!]';
     var statusText = status === 'connected' ? 'Connected' : status === 'disconnected' ? 'Disconnected' : 'Error';
 
     var html = '<div class="kernel-api-status">';
     html += '<span class="kernel-icon">' + statusIcon + '</span>';
-    html += '<span class="kernel-text">Kernel API: ' + statusText + '</span>';
+    html += '<span class="kernel-text"> Kernel API: ' + statusText + '</span>';
     html += '</div>';
 
     return html;
@@ -1167,7 +1152,7 @@ const DebriefFeedController = (function() {
    * @param {Object} resourceChanges - Object with resource changes {ammo: -2, energy: -3, etc.}
    */
   function reportCardPlayed(card, resourceChanges) {
-    var message = '🎴 CARD PLAYED: ' + card.name;
+    var message = '[CARD] ' + card.name;
 
     // Add resource cost details
     if (resourceChanges && Object.keys(resourceChanges).length > 0) {
