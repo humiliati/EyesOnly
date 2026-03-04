@@ -3,7 +3,7 @@
 **Project**: EyesOnly — Gone Rogue
 **Date**: 2026-03-02
 **Scope**: Explosive barrels, blast physics, screen shake, breakable light polish, explosive cards in STR combat
-**Status**: Phase 1 COMPLETE (2026-03-04) + bugfixes (2026-03-04). CHH Steps 1-4 complete.
+**Status**: Phases 1-2 COMPLETE (2026-03-04) + bugfixes (2026-03-04). CHH Steps 1-4 complete.
 
 ---
 
@@ -75,18 +75,20 @@ _detonatedThisTick.add(key);
 
 ---
 
-## Phase 2 — ExplosionSystem Module
+## Phase 2 — ExplosionSystem Module ✔ COMPLETE (2026-03-04)
 
 ### 2.1 New File: `public/js/explosion-system.js`
 
 Stateless IIFE following the project's delegate pattern. Receives all mutable state via `ctx`.
+Chain detonation loop guard (`_detonatedThisCascade`, `_cascadeDepth`, `MAX_CASCADE_DEPTH=5`) extracted from breakable-system.js.
+`breakable-system.js` `_triggerExplosion()` refactored to delegate to `ExplosionSystem.detonate()` with minimal fallback.
 
 **Public API**:
 
 ```javascript
 ExplosionSystem.detonate(x, y, radius, damage, ctx)
-ExplosionSystem.applyBlastToTile(tx, ty, distance, damage, ctx)
-ExplosionSystem.pushEntity(entity, dx, dy, force, ctx)
+ExplosionSystem.applyBlastToTile(tx, ty, distance, baseDamage, radius, ctx)
+ExplosionSystem.pushEntity(entity, epicenterX, epicenterY, force, ctx)
 ```
 
 ### 2.2 `detonate(x, y, radius, damage, ctx)`

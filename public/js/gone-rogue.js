@@ -846,6 +846,11 @@ var GoneRogue = (function () {
         ', ammo: ' + (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo ? GAMESTATE.getAmmo() : '?'));
     }
 
+    // Log system availability
+    if (typeof ExplosionSystem !== 'undefined') {
+      console.log('[GoneRogue] ExplosionSystem loaded (EB Phase 2)');
+    }
+
     if (typeof RunStartSystem !== 'undefined') {
       return RunStartSystem.start(context, _runStartCtx());
     }

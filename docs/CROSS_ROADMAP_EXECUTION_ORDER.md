@@ -12,7 +12,7 @@ Document Legend & Roadmap Index
 Each roadmap is color-coded throughout this document. Sprint headers use the color of the primary roadmap being executed.
 Abbreviation	Roadmap	Status	Phases/Steps
 CHH	CARD_HAND_HARMONIZATION_ROADMAP	Steps 1–4 done	6 steps (1: cardInstances ✔, 2: hydrateCard ✔, 3: kill cardHand ✔, 4: roll pipeline ✔, 5: persistence, 6: policy flags)
-EB	EXPLOSIVE_BREAKABLES_ROADMAP	Phase 1 COMPLETE (2026-03-04)	6 phases (1: barrels ✔, 2: ExplosionSystem, 3: VFX, 4: light interact, 5: explosive cards, 6: polish)
+EB	EXPLOSIVE_BREAKABLES_ROADMAP	Phases 1-2 COMPLETE (2026-03-04)	6 phases (1: barrels ✔, 2: ExplosionSystem ✔, 3: VFX, 4: light interact, 5: explosive cards, 6: polish)
 ENI	ENEMY_NCH_INTERACTION_ROADMAP	Not started	6 phases (1: capsule, 2: interchange UI, 3: combat hand, 4: NCH adjust, 5: items, 6: polish)
 NCR	NCH-COMBAT-ROADMAP	Phase 1 done	Phase 1 (bindings) ✔, Phase 2 (animations) pending
 IPR	ITEM-PIPELINE-ROADMAP	Phases 1–5 done ✔	Phase 5 (collectibles rendering) complete. Phase 5 deferred "backup-deck cascade" resolved by CHH Step 3. Phase 6 (doc updates) deferred. Only ground effect items (water/oil) remain unaddressed — no such items exist yet.
@@ -87,7 +87,7 @@ Playtest Gate ✔ PASSED
 After Sprint 1, playtesters can: collect enemy card drops into hand, overflow into backup, incinerate oldest backup card, and have all cards render correctly through hydrateCard(). CI-* cards persist across save/load. Left column drag-drop routes correctly between vault and backup based on swapper tab mode.
 
 SPRINT 2: Explosive Breakables — Barrels Through Combat Cards ← ACTIVE
-[EB] Phases 1–5 — Build the explosive systems that the plant-detonate loop depends on. Phase 6 (polish) deferred to Sprint 6. CHH Steps 1-4 complete. Phase 1 in progress.
+[EB] Phases 1–5 — Build the explosive systems that the plant-detonate loop depends on. Phase 6 (polish) deferred to Sprint 6. CHH Steps 1-4 complete. Phases 1-2 complete.
 Phase 1: Explosive Barrel Breakable Type ✔ COMPLETE (2026-03-04)
 •	BARREL_GREY (🗑️, 2HP, inert cover, standard loot) + BARREL_RED (🛢️, 1HP, explosive, blast radius 2.75, 9-25 damage) ✔
 •	Destruction override: `breakable.explosive` → `_triggerExplosion()` with scorched debris ▓, AoE damage via circular BFS, ground fire/smoke, 💥 overhead, noise radius 8 ✔
@@ -101,11 +101,18 @@ Phase 1 bugfixes (2026-03-04):
 •	Grey barrel scorched tile fix: added `destroyedGlyph: "."` to all 4 biome Grey Barrel entries + tutorial floor defs. Propagation fixed in tutorial-floor-gen.js, breakable-spawner.js. Renderer skips brown `cell-breakable-broken` class for '.' glyphs. ✔
 •	Friendly fire fix: `_breakableCtx()` now exposes `player`, `enemies`, `breakables`, `getBreakableAt`, `AWARENESS_STATES`. Player damage via direct `ctx.player.hp` mutation (GAMESTATE.takeDamage didn't exist). ✔
 •	Kick system: `BreakableSystem.kickBreakable(breakable, dx, dy, ctx)` — 2 damage + 40% push chance (buffable via equipped item `meta.kickBuff`). Pushes 1 tile in kick direction if target walkable. CSS `cell-kick-wobble` / `cell-kick-pushed` animations. Wired into tap-move-system.js + monolith `_kickBreakable()`. `_tapMoveCtx()` expanded with enemies/breakables/rng/raiseNoise. ✔
-Phase 2: ExplosionSystem Module
-•	New: explosion-system.js — stateless IIFE, detonate(x, y, radius, damage, ctx)
-•	Circular BFS with damage falloff, per-tile effects (enemy damage, breakable chain, ground fire/smoke, oil ignite, water evaporate)
-•	Entity push/knockback (distance-scaled force, wall collision bonus damage)
-•	Noise 8 at epicenter — loudest event in the game
+Phase 2: ExplosionSystem Module ✔ COMPLETE (2026-03-04)
+•	New file: `explosion-system.js` — stateless IIFE with `detonate(x, y, radius, damage, ctx)`, `applyBlastToTile()`, `pushEntity()` ✔
+•	Circular BFS with damage falloff `tileDamage = baseDmg * (1 - dist/(radius+1))`, per-tile effects (enemy damage + ENGAGED awareness, breakable chain, ground fire/smoke, oil ignite, water evaporate, food destruction) ✔
+•	Entity push/knockback: distance-scaled force table (d1→2 tiles, d2→1 tile, d3→0), tile-by-tile walk validation, wall collision +2 bonus damage, entity collision +1 mutual damage, breakable collision ✔
+•	Chain detonation guard: `_detonatedThisCascade` object + `_cascadeDepth` counter + `MAX_CASCADE_DEPTH=5` cap. Moved from breakable-system.js to explosion-system.js ✔
+•	Noise 8 at epicenter — loudest event in the game. All enemies go to at least SUSPICIOUS ✔
+•	Staggered 🔥 overhead ripple: fire emojis radiate outward at 80ms per ring + 15ms stagger per tile ✔
+•	MOK interjection + DebriefFeedController.reportEvent('EXPLOSION') + TooltipSystem hit count ✔
+•	AudioSystem.play('explosion_large') hook for future sound design ✔
+•	breakable-system.js `_triggerExplosion` refactored to delegate to `ExplosionSystem.detonate()` with minimal inline fallback ✔
+•	Script load order: explosion-system.js loads before breakable-system.js in index.html ✔
+•	Cache busters bumped to `?v=20260304e` for explosion-system.js, breakable-system.js, gone-rogue.js ✔
 Phase 3: Visual Effects & Screen Shake
 •	CSS explosion-shake (0.4s) + explosion-flash (0.6s orange-red)
 •	Overhead explosion emoji ripple (staggered fire emojis by distance ring)
@@ -271,7 +278,7 @@ SPRINT 1  [CHH 1-4]  cardInstances + hydrateCard + kill cardHand + roll pipeline
   |--- CHH Step 3 (kill cardHand) ✔     ----|--- required by Sprint 3 (ENI Phase 1)
   |--- CHH Step 4 (roll pipeline) ✔          +--- all charm/card rolls use CI-*
   v
-SPRINT 2  [EB 1-5]  barrels + explosions + explosive cards  ← ACTIVE (Phase 1 in progress)
+SPRINT 2  [EB 1-5]  barrels + explosions + explosive cards  ← ACTIVE (Phases 1-2 complete)
   |
   |--- EB Phase 5 (explosive card instances) --+
   |                                             +- required by Sprint 3 (ENI Phase 2
