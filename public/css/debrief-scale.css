@@ -28,14 +28,14 @@
   min-height: 0;
   width: 100%;
   overflow: auto;
-  padding: 6px;
+  padding: 3px;
   z-index: 2;
 }
 
 /* Mobile portrait: tighter debrief content */
 @media (max-width: 600px) and (orientation: portrait) {
   .debrief-feed-content-container {
-    padding: 2px;
+    padding: 1px;
   }
 }
 

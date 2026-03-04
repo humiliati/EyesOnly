@@ -309,10 +309,10 @@ body.gone-rogue-active #scanlines::after {
   background: linear-gradient(160deg, rgba(10, 18, 12, 0.9), rgba(4, 8, 6, 0.95));
   border: 1px solid var(--panel-border-soft);
   border-radius: 8px;
-  padding: 8px;
+  padding: 6px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
   position: relative; /* default (index/street): stay inside control rail */
   min-height: 0;
   box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.65);
@@ -1881,6 +1881,12 @@ body.amber-mode #scanlines::after {
     flex-direction: column;
     gap: 1px;            /* was 4px — 30% row height shrink */
     margin-bottom: 2px;  /* was 6px */
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    /* Limit visible rows to ~5 on mobile */
+    max-height: clamp(90px, 35dvh, 220px);
   }
 
   .debrief-nav-row {
@@ -1888,7 +1894,7 @@ body.amber-mode #scanlines::after {
     border-radius: 0;
     padding: 1px 3px;    /* was 2px 4px */
     font-family: var(--font-legible, 'Classic Console Neue', 'Courier New', monospace);
-    font-size: 11px;     /* was 13px — much smaller on mobile */
+    font-size: clamp(10px, 2.4vw, 14px);  /* dynamic sizing — ~3-5 rows visible */
     font-weight: 750;
     color: rgba(191, 255, 227, 0.95);
     background: transparent;
@@ -1898,6 +1904,7 @@ body.amber-mode #scanlines::after {
     justify-content: space-between;
     letter-spacing: 0.02em; /* was 0.03em */
     line-height: 1.1;
+    flex-shrink: 0;
   }
 
   @media (min-width: 900px) {
@@ -1908,6 +1915,12 @@ body.amber-mode #scanlines::after {
     border: 0;
     box-shadow: none;
     background: rgba(28, 255, 155, 0.06);
+  }
+
+  /* Expanded row: subtle left accent */
+  .debrief-nav-row.expanded {
+    background: rgba(28, 255, 155, 0.04);
+    border-left: 2px solid rgba(28, 255, 155, 0.25);
   }
 
   .debrief-mini-block {
@@ -3376,10 +3389,10 @@ body.cascade-active {
    ============================================================ */
 
 .debrief-feed-resources {
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-legible, 'Classic Console Neue', 'Courier New', monospace);
   font-size: 0.85em;
-  line-height: 1.6;
-  padding: 8px;
+  line-height: 1.4;
+  padding: 4px;
 }
 
 .resource-section {
@@ -3389,8 +3402,9 @@ body.cascade-active {
 .resource-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin: 4px 0;
+  gap: 4px;
+  margin: 2px 0;
+  width: 100%;
 }
 
 .resource-icon {
@@ -3409,8 +3423,23 @@ body.cascade-active {
   flex: 1;
   display: flex;
   align-items: center;
-  font-family: monospace;
-  letter-spacing: 0.05em;
+  min-width: 0;
+}
+
+.resource-bar-container .resource-bar-track {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(28, 255, 155, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.resource-bar-container .resource-bar-fill {
+  height: 100%;
+  border-radius: 1px;
+  transition: width 0.35s ease-out;
 }
 
 .resource-bar-filled {
@@ -3563,6 +3592,22 @@ body.cascade-active {
   color: var(--resource-color);
 }
 
+/* Signal row pulse and depleted states */
+.debrief-nav-row.signal-pulse {
+  animation: signal-row-pulse 0.3s ease-out;
+}
+
+@keyframes signal-row-pulse {
+  0% { text-shadow: none; }
+  50% { text-shadow: 0 0 6px rgba(0, 255, 166, 0.6); }
+  100% { text-shadow: none; }
+}
+
+.debrief-nav-row.signal-depleted {
+  color: rgba(100, 100, 100, 0.5);
+  opacity: 0.5;
+}
+
 /* Status effects display */
 .status-effects-row {
   display: flex;
@@ -3606,6 +3651,152 @@ body.cascade-active {
   color: var(--phosphor-bright);
   font-weight: bold;
   margin-left: 2px;
+}
+
+/* ============================================================
+   DEBRIEF ROW ARROWS & PANELS (Pip-Boy / Rolodex HUD)
+   ============================================================ */
+
+/* Arrow indicator for expand/collapse */
+.debrief-row-arrow {
+  display: inline-block;
+  width: 1.1em;
+  text-align: center;
+  color: var(--phosphor-dim);
+  font-family: 'Courier New', monospace;
+  margin-right: 2px;
+  transition: color 0.15s ease;
+}
+
+.debrief-row-arrow.arrow-expanded {
+  color: var(--phosphor-bright);
+}
+
+/* Row label & summary layout */
+.debrief-row-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.debrief-row-summary {
+  flex: 1;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* Expanded row panel */
+.debrief-row-panel {
+  padding: 0 2px;
+  overflow: hidden;
+  border-left: 2px solid rgba(28, 255, 155, 0.12);
+  margin-left: 6px;
+}
+
+.debrief-row-panel:not(:empty) {
+  padding: 2px 2px 4px 4px;
+}
+
+/* Panel sub-lines (ammo detail, status lines, etc.) */
+.debrief-line {
+  font-family: var(--font-legible, 'Classic Console Neue', 'Courier New', monospace);
+  font-size: 0.92em;
+  line-height: 1.3;
+  padding: 1px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Key ammo rows — each on its own line */
+.debrief-line.key-ammo-line {
+  color: #FF8A3D;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(255, 138, 61, 0.08);
+}
+
+.debrief-line.key-ammo-line:last-child {
+  border-bottom: none;
+}
+
+/* Full-width percent-based resource bar rows (Pip-Boy style) */
+.resource-row-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 2px 0;
+}
+
+.resource-row-glyph {
+  flex: 0 0 auto;
+  width: 1.4em;
+  text-align: center;
+  font-size: 1em;
+}
+
+.resource-bar-track {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(28, 255, 155, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.resource-bar-fill {
+  height: 100%;
+  border-radius: 1px;
+  transition: width 0.35s ease-out;
+  animation: bar-fill-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes bar-fill-glow {
+  0% { filter: brightness(1); }
+  100% { filter: brightness(1.15); }
+}
+
+.resource-bar-pct {
+  flex: 0 0 auto;
+  font-size: 0.85em;
+  min-width: 3.5em;
+  text-align: right;
+  color: var(--phosphor-dim);
+  font-family: 'Courier New', monospace;
+}
+
+/* Accessibility row: use micro-abbreviator sizing */
+.debrief-nav-row.row-accessibility .debrief-row-label {
+  font-size: 0.95em;
+}
+
+.debrief-acc-link {
+  color: var(--phosphor-bright);
+  text-decoration: none;
+}
+
+.debrief-acc-link:hover {
+  text-decoration: underline;
+}
+
+.debrief-acc-btn {
+  background: none;
+  border: 1px solid var(--panel-border-soft);
+  color: var(--phosphor);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  padding: 0 4px;
+}
+
+.debrief-acc-btn:hover {
+  border-color: var(--phosphor-bright);
+  color: var(--phosphor-bright);
 }
 
 /* ============================================================
@@ -3837,8 +4028,8 @@ body.cascade-active {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 8px;
+  gap: 4px;
+  padding: 4px 6px;
   border-bottom: 1px solid rgba(28, 255, 155, 0.18);
 }
 
@@ -3892,8 +4083,11 @@ body.cascade-active {
   flex: 1;
   min-height: 0;
   width: 100%;
-  overflow: hidden; /* prevent grey scroll wheel in debrief */
-  padding: 4px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 2px;
   box-sizing: border-box;
 }
 
