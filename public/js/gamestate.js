@@ -937,12 +937,7 @@ const GAMESTATE = (function () {
 
     if (!Array.isArray(_state.backupCards)) _state.backupCards = [];
 
-    // Avoid duplicates in backup
-    for (var i = 0; i < _state.backupCards.length; i++) {
-      if (_state.backupCards[i] && _state.backupCards[i].id === cardId) {
-        return { success: false, reason: 'already_in_backup' };
-      }
-    }
+    // No duplicate guard — same-type cards are allowed as individual slots.
 
     // Check if backup is full
     var maxB = _state.maxBackupSlots || 25;

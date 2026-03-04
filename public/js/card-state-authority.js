@@ -809,12 +809,15 @@ var CardStateAuthority = (function() {
     }
 
     if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.moveStashCardToBackup === 'function') {
-      // This GAMESTATE method may handle removal internally
-      GAMESTATE.moveStashCardToBackup(cardId);
-      _syncNonCombatStore();
-      _emit('backup:changed', { action: 'from_vault', cardId: cardId, backup: getBackup() });
-      _emit('vault:changed', { action: 'to_backup', cardId: cardId, vault: getVault() });
-      return true;
+      // This GAMESTATE method handles removal from vault + insertion into backup
+      var stashResult = GAMESTATE.moveStashCardToBackup(cardId);
+      if (stashResult && stashResult.success) {
+        _syncNonCombatStore();
+        _emit('backup:changed', { action: 'from_vault', cardId: cardId, backup: getBackup() });
+        _emit('vault:changed', { action: 'to_backup', cardId: cardId, vault: getVault() });
+        return true;
+      }
+      return false;
     }
 
     // Manual fallback: remove from vault, add to backup
