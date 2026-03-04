@@ -619,7 +619,7 @@ const DebriefFeedController = (function() {
             try {
               var n = kc && kc[bucket] && kc[bucket][keyType] ? kc[bucket][keyType] : 0;
               if (n > 0) {
-                panelHtml += '<div class="debrief-line key-ammo-line" data-resource="key_ammo">|_' + ascii + ' ' + label + ':' + n + '</div>';
+                panelHtml += '<div class="debrief-line key-ammo-line" data-resource="key_ammo">|_' + ascii + ' ' + label + ': ' + n + '</div>';
               }
             } catch (e0) {}
           }
