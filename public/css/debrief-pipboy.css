@@ -23,6 +23,8 @@
   white-space: pre;
   padding: 1px 2px;
   margin: 0;
+  width: 100%;
+  box-sizing: border-box;
   opacity: 0.9;
   /* letter-spacing managed dynamically by _applyAdaptiveSpacing() */
   font-weight: 650;
@@ -70,7 +72,7 @@
 .debrief-acc-btn:hover { opacity: 1; filter: brightness(1.3); }
 
 /* colored sublines inside resources — each row full width in RESOURCE_COLOR */
-.debrief-row-panel .debrief-line { padding: 0; margin: 0; width: 100%; }
+.debrief-row-panel .debrief-line { padding: 0; margin: 0; width: 100%; box-sizing: border-box; }
 .debrief-row-panel .debrief-line.hp { color: #FF6B9D; }
 .debrief-row-panel .debrief-line.energy { color: #00D4FF; }
 .debrief-row-panel .debrief-line.focus { color: #FFF9B0; }

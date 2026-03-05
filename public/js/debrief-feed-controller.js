@@ -77,7 +77,8 @@ const DebriefFeedController = (function() {
     _startIdleSymbolRefresh();
 
     // Adaptive letter-spacing: stretch/squeeze row text to fill frame width
-    _applyAdaptiveSpacing();
+    // Deferred so initial CSS layout has settled
+    requestAnimationFrame(_applyAdaptiveSpacing);
     window.addEventListener('resize', _debounce(_applyAdaptiveSpacing, 150));
     // Also re-apply on orientation change (phone rotation)
     if (typeof screen !== 'undefined' && screen.orientation) {
@@ -102,9 +103,21 @@ const DebriefFeedController = (function() {
    * Adaptive letter-spacing: stretch characters to fill the debrief frame width
    * on wide viewports, squeeze them together (clamped at ~20% overlap) on narrow.
    *
-   * Approach: measure the debrief-screen width, measure the natural text width of
-   * a summary span, compute the per-character letter-spacing needed to fill the row.
+   * Uses canvas measureText for accurate text width measurement (immune to
+   * flex/overflow layout constraints that make scrollWidth unreliable).
    */
+  var _measureCanvas = null;
+  var _measureCtx = null;
+
+  function _measureTextWidth(text, font) {
+    if (!_measureCanvas) {
+      _measureCanvas = document.createElement('canvas');
+      _measureCtx = _measureCanvas.getContext('2d');
+    }
+    _measureCtx.font = font;
+    return _measureCtx.measureText(text).width;
+  }
+
   function _applyAdaptiveSpacing() {
     try {
       var dbScreen = document.getElementById('debrief-screen');
@@ -112,47 +125,52 @@ const DebriefFeedController = (function() {
       var frameW = dbScreen.clientWidth;
       if (!frameW || frameW < 20) return;
 
-      // Target: text should fill ~92% of frame width (leaving padding room)
-      var targetW = frameW * 0.92;
-
       // Get all summary spans and panel lines
       var els = dbScreen.querySelectorAll('.debrief-row-summary, .debrief-row-panel .debrief-line');
       for (var i = 0; i < els.length; i++) {
         var el = els[i];
         var text = el.textContent || '';
         var charCount = text.length;
-        if (charCount < 2) continue;
+        if (charCount < 2) { el.style.letterSpacing = ''; continue; }
 
-        // Measure the natural width of the text with zero letter-spacing
-        el.style.letterSpacing = '0px';
-        var naturalW = el.scrollWidth;
+        // Get the computed font for accurate canvas measurement
+        var cs = getComputedStyle(el);
+        var fontSize = parseFloat(cs.fontSize) || 13;
+        var font = cs.fontWeight + ' ' + fontSize + 'px ' + cs.fontFamily;
 
-        // For panel lines (.debrief-line) inside expanded panels,
-        // use the panel container width instead of the full frame
-        var parentPanel = el.closest('.debrief-row-panel');
-        var rowTargetW = parentPanel ? (parentPanel.clientWidth * 0.92) : targetW;
+        // Measure the true natural width of the text (no layout constraints)
+        var naturalW = _measureTextWidth(text, font);
+        if (naturalW <= 0) continue;
 
-        // For summary spans, account for the label width
+        // Determine the available width this element should fill
+        var availableW;
         if (el.classList.contains('debrief-row-summary')) {
+          // Summary spans: fill from after the label to the row's right edge
           var navRow = el.closest('.debrief-nav-row');
           if (navRow) {
+            var rowW = navRow.clientWidth;
             var label = navRow.querySelector('.debrief-row-label');
             var labelW = label ? label.offsetWidth : 0;
-            rowTargetW = (frameW - labelW - 12) * 0.92; // 12px for padding
+            var rowPad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) || 0;
+            availableW = rowW - labelW - rowPad - 4; // 4px breathing room
+          } else {
+            availableW = frameW - 8;
           }
+        } else {
+          // Panel sub-lines: fill the panel's content width
+          var parentPanel = el.closest('.debrief-row-panel');
+          availableW = parentPanel ? (parentPanel.clientWidth - 6) : (frameW - 8);
         }
 
-        if (naturalW <= 0 || charCount <= 1) continue;
+        if (availableW <= 0) continue;
 
-        // Compute needed extra space distributed across (charCount - 1) gaps
-        var extraSpace = rowTargetW - naturalW;
+        // Compute per-gap letter-spacing to make text fill available width
+        var extraSpace = availableW - naturalW;
         var spacingPx = extraSpace / (charCount - 1);
 
-        // Clamp: min = -0.08em (subtle squeeze, ~20% char overlap),
-        //         max = 0.5em (don't spread too wildly)
-        var fontSize = parseFloat(getComputedStyle(el).fontSize) || 13;
-        var minSpacing = -0.08 * fontSize; // ~20% overlap clamp
-        var maxSpacing = 0.5 * fontSize;   // max stretch
+        // Clamp: min = -0.08em (~20% char overlap), max = 0.5em (readable spread)
+        var minSpacing = -0.08 * fontSize;
+        var maxSpacing = 0.5 * fontSize;
         spacingPx = Math.max(minSpacing, Math.min(maxSpacing, spacingPx));
 
         el.style.letterSpacing = spacingPx.toFixed(2) + 'px';
@@ -1101,8 +1119,9 @@ const DebriefFeedController = (function() {
 
     _attachEventHandlers();
 
-    // Re-apply adaptive letter-spacing after DOM rebuild
-    _applyAdaptiveSpacing();
+    // Re-apply adaptive letter-spacing after DOM rebuild.
+    // Deferred to next frame so CSS layout has settled after innerHTML.
+    requestAnimationFrame(_applyAdaptiveSpacing);
   }
 
   /**
