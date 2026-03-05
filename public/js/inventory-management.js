@@ -319,7 +319,7 @@ var InventoryManagement = (function() {
           TooltipSystem.show((activeItem.emoji || '\uD83D\uDD28') + ' TURNED IN', 1500);
         }
         if (typeof DebriefFeedController !== 'undefined') {
-          DebriefFeedController.flashIncinerator({ kind: 'quest_key' });
+          DebriefFeedController.flashVictoryFrame({ kind: 'quest_key' });
         }
         if (typeof GoneRogueMobile !== 'undefined' && GoneRogueMobile.showInventory) {
           GoneRogueMobile.showInventory();
@@ -350,7 +350,7 @@ var InventoryManagement = (function() {
         TooltipSystem.show((pit.emoji || '\uD83D\uDD28') + ' TURNED IN', 1500);
       }
       if (typeof DebriefFeedController !== 'undefined') {
-        DebriefFeedController.flashIncinerator({ kind: 'quest_key' });
+        DebriefFeedController.flashVictoryFrame({ kind: 'quest_key' });
       }
       if (typeof GoneRogueMobile !== 'undefined' && GoneRogueMobile.showInventory) {
         GoneRogueMobile.showInventory();
@@ -377,7 +377,7 @@ var InventoryManagement = (function() {
         TooltipSystem.show((lit.emoji || '\uD83D\uDD28') + ' TURNED IN', 1500);
       }
       if (typeof DebriefFeedController !== 'undefined') {
-        DebriefFeedController.flashIncinerator({ kind: 'quest_key' });
+        DebriefFeedController.flashVictoryFrame({ kind: 'quest_key' });
       }
       if (typeof GoneRogueMobile !== 'undefined' && GoneRogueMobile.showInventory) {
         GoneRogueMobile.showInventory();

@@ -918,6 +918,13 @@ var TutorialFloors = (function() {
       { x: 27, y: 10, amount: 5 }
     ],
 
+    // Key ammo (T1) collectibles along the road — teaches key resource before Floor 1 gates
+    tutorialPickups: [
+      { x: 12, y: 7, type: 'key', keyType: 'RUSTY_KEY', tier: 1, name: 'Rusty Key', emoji: '🗝' },
+      { x: 18, y: 8, type: 'key', keyType: 'RUSTY_KEY', tier: 1, name: 'Rusty Key', emoji: '🗝' },
+      { x: 24, y: 9, type: 'key', keyType: 'RUSTY_KEY', tier: 1, name: 'Rusty Key', emoji: '🗝' }
+    ],
+
     border: {
       thickness: 1,
       style: 'natural',

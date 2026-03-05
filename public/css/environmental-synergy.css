@@ -231,6 +231,94 @@
   }
 }
 
+/* ========== Victory Frame (Quest Key Turn-In) ========== */
+.victory-frame-active {
+  position: relative;
+  overflow: hidden;
+  animation: victory-gradient-rotate 1.8s ease-in-out;
+}
+
+/* Axial gradient glow — rotating happy colors */
+.victory-frame-active::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  z-index: 99;
+  pointer-events: none;
+  border-radius: inherit;
+  background: conic-gradient(
+    from 0deg,
+    #ff6b9d,
+    #ffd700,
+    #00ffa6,
+    #00d4ff,
+    #da70d6,
+    #ff6b9d
+  );
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  padding: 4px;
+  animation: victory-border-spin 1.8s linear, victory-pulse-glow 0.6s ease-in-out 3;
+}
+
+/* ✨ sparkle emoji burst from center — CSS-only version (JS handles ricochet) */
+.victory-frame-active::after {
+  content: '✨';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  font-size: 48px;
+  transform: translate(-50%, -50%);
+  animation: victory-sparkle-burst 0.8s ease-out;
+  z-index: 200;
+  pointer-events: none;
+}
+
+@keyframes victory-gradient-rotate {
+  0% {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.6), inset 0 0 10px rgba(255, 107, 157, 0.3);
+  }
+  33% {
+    box-shadow: 0 0 30px rgba(0, 255, 166, 0.6), inset 0 0 15px rgba(0, 212, 255, 0.3);
+  }
+  66% {
+    box-shadow: 0 0 30px rgba(218, 112, 214, 0.6), inset 0 0 15px rgba(255, 215, 0, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 0px rgba(255, 215, 0, 0), inset 0 0 0px rgba(0, 0, 0, 0);
+  }
+}
+
+@keyframes victory-border-spin {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+@keyframes victory-pulse-glow {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+@keyframes victory-sparkle-burst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0) rotate(0deg);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.5) rotate(180deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5) rotate(360deg);
+  }
+}
+
 /* ========== Hand Fan Minimized State ========== */
 .hand-fan-minimized {
   transition: all 0.3s ease-out;

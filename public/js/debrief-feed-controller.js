@@ -621,12 +621,24 @@ const DebriefFeedController = (function() {
           rPanel.textContent = '';
         }
 
-        // Ammo macro summary: ammo bar only (no name)
+        // Ammo macro summary: ammo bar + key ammo count (always visible)
         var amEl = document.getElementById('debrief-summary-ammo');
         if (amEl) {
           var ammo = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo) ? GAMESTATE.getAmmo() : (st.ammo || 0);
           var maxA = st.maxAmmo || 20;
-          amEl.textContent = _renderBarLine('ammo', ammo, maxA, 10);
+          var ammoText = _renderBarLine('ammo', ammo, maxA, 10);
+          // Append key ammo count to the macro summary (always visible)
+          try {
+            var kcMacro = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getKeyCounts) ? GAMESTATE.getKeyCounts() : null;
+            var keyTotal = 0;
+            if (kcMacro && kcMacro.ammo) {
+              for (var kBucket in kcMacro.ammo) {
+                if (kcMacro.ammo.hasOwnProperty(kBucket)) keyTotal += (kcMacro.ammo[kBucket] || 0);
+              }
+            }
+            if (keyTotal > 0) ammoText += ' 🝯' + keyTotal;
+          } catch (eKM) {}
+          amEl.textContent = ammoText;
         }
 
         // Ammo panel: ammo bar + key_ammo/key_items on same row (no max resources)
@@ -637,7 +649,7 @@ const DebriefFeedController = (function() {
           var maxA2 = st.maxAmmo || 20;
           linesA.push('<div class="debrief-line ammo resource-row" data-resource="Ammo">' + _renderBarLine('ammo', ammo2, maxA2, 10) + '</div>');
 
-          // Key ammo + key items on same row (no max value resources)
+          // Key ammo row (always visible in expanded panel)
           var kc = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getKeyCounts) ? GAMESTATE.getKeyCounts() : null;
           var keyParts = [];
           function addKeyPart(glyph, bucket, keyType) {
@@ -650,9 +662,9 @@ const DebriefFeedController = (function() {
           addKeyPart('🔑', 'ammo', 'BRONZE_KEY');
           addKeyPart('💳', 'gate', 'KEYCARD');
           addKeyPart('🏷', 'gate', 'MALL_KEY');
-          if (keyParts.length > 0) {
-            linesA.push('<div class="debrief-line key-ammo resource-row" data-resource="key_ammo">' + keyParts.join(' ') + '</div>');
-          }
+          // Always show key ammo row — display "🝯0" if no keys yet
+          var keyText = keyParts.length > 0 ? keyParts.join(' ') : '🝯0';
+          linesA.push('<div class="debrief-line key-ammo resource-row" data-resource="key_ammo">' + keyText + '</div>');
 
           aPanel.innerHTML = linesA.join('');
         } else if (aPanel) {
@@ -1128,7 +1140,8 @@ const DebriefFeedController = (function() {
       focus:   { up: ['◎','◉'], down: ['◉','◎'] },
       fatigue: { up: ['Ȫ','ȫ'], down: ['ȫ','Ȫ'] },
       ammo:    { up: ['⁍','⁌'], down: ['⁌','⁍'] },
-      battery: { up: ['◇','◈'], down: ['◈','◇'] }
+      battery: { up: ['◇','◈'], down: ['◈','◇'] },
+      key_ammo:{ up: ['🝯','🗝'], down: ['🗝','🝯'] }
     };
     var resKey = String(resourceType).toLowerCase();
     var symDef = SYMBOL_DEFS[resKey];
@@ -1290,6 +1303,111 @@ const DebriefFeedController = (function() {
   }
 
   /**
+   * Flash celebratory victory frame for quest key turn-in.
+   * Uses rotating happy-color gradient glow + ✨ sparkle ricochet animation.
+   * Replaces flashIncinerator for quest_key kind.
+   */
+  function flashVictoryFrame(opts) {
+    opts = opts || {};
+    var win = document.getElementById('debrief-window');
+    if (!win) return;
+
+    // Add victory-frame-active CSS class (handles gradient glow + pulse)
+    win.classList.add('victory-frame-active');
+
+    // Spawn sparkle ✨ ricochet emojis inside the debrief window
+    _spawnSparkleRicochet(win, opts.sparkleCount || 6);
+
+    var duration = opts.durationMs || 1800;
+    setTimeout(function() {
+      win.classList.remove('victory-frame-active');
+    }, duration);
+  }
+
+  /**
+   * Spawn ✨ sparkle emojis that accelerate from center and bounce off edges.
+   * Uses projectile-style ricochet physics (velocity reversal on wall hit).
+   */
+  function _spawnSparkleRicochet(container, count) {
+    var rect = container.getBoundingClientRect();
+    var w = rect.width || 200;
+    var h = rect.height || 300;
+    var sparkles = [];
+
+    for (var i = 0; i < count; i++) {
+      var el = document.createElement('span');
+      el.textContent = '✨';
+      el.style.cssText = 'position:absolute;font-size:24px;pointer-events:none;z-index:200;transition:none;will-change:transform;';
+      container.appendChild(el);
+
+      // Start from center with random outward velocity
+      var angle = (Math.PI * 2 * i) / count + (Math.random() * 0.5 - 0.25);
+      var speed = 2 + Math.random() * 3; // pixels per frame
+      sparkles.push({
+        el: el,
+        x: w / 2 - 12,
+        y: h / 2 - 12,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        accel: 1.02, // acceleration factor per frame
+        bounces: 4 + Math.floor(Math.random() * 3),
+        life: 90, // frames (~1.5s at 60fps)
+        opacity: 1
+      });
+    }
+
+    var frame = 0;
+    var maxFrames = 90;
+    var animId;
+
+    function tick() {
+      frame++;
+      var allDead = true;
+
+      for (var s = 0; s < sparkles.length; s++) {
+        var sp = sparkles[s];
+        if (sp.life <= 0) continue;
+        allDead = false;
+
+        // Accelerate
+        sp.vx *= sp.accel;
+        sp.vy *= sp.accel;
+
+        // Move
+        sp.x += sp.vx;
+        sp.y += sp.vy;
+
+        // Ricochet off container edges (projectile-style bounce)
+        if (sp.x < 0) { sp.x = 0; sp.vx *= -1; sp.bounces--; sp.vx *= 0.8; }
+        if (sp.x > w - 24) { sp.x = w - 24; sp.vx *= -1; sp.bounces--; sp.vx *= 0.8; }
+        if (sp.y < 0) { sp.y = 0; sp.vy *= -1; sp.bounces--; sp.vy *= 0.8; }
+        if (sp.y > h - 24) { sp.y = h - 24; sp.vy *= -1; sp.bounces--; sp.vy *= 0.8; }
+
+        // Kill if out of bounces
+        if (sp.bounces <= 0) sp.life = Math.min(sp.life, 10);
+
+        // Fade out in last 20 frames
+        sp.life--;
+        sp.opacity = sp.life > 20 ? 1 : sp.life / 20;
+
+        sp.el.style.transform = 'translate(' + sp.x.toFixed(0) + 'px,' + sp.y.toFixed(0) + 'px)';
+        sp.el.style.opacity = sp.opacity;
+      }
+
+      if (allDead || frame >= maxFrames) {
+        for (var r = 0; r < sparkles.length; r++) {
+          if (sparkles[r].el.parentNode) sparkles[r].el.parentNode.removeChild(sparkles[r].el);
+        }
+        return;
+      }
+
+      animId = requestAnimationFrame(tick);
+    }
+
+    animId = requestAnimationFrame(tick);
+  }
+
+  /**
    * Trigger battery recharge pulse animation
    * Called when battery collectible is picked up
    */
@@ -1333,6 +1451,7 @@ const DebriefFeedController = (function() {
     // Visual feedback hooks
     showSynergyOverlay: showSynergyOverlay,
     flashIncinerator: flashIncinerator,
+    flashVictoryFrame: flashVictoryFrame,
     triggerBatteryRecharge: triggerBatteryRecharge
   };
 })();
