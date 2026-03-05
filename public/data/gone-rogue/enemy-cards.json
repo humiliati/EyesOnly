@@ -772,5 +772,88 @@
     "rarity": "rare",
     "stealValue": 4,
     "_designNote": "Activates a hidden mechanism in a statue bust. Disrupts player cover for 2 turns and opens a secret route for the enemy to reposition silently. No alert generated — purely covert. black_market + covert tags fire Silent Recovery combo. Environment synergy: only available near statue/bust tiles in catacombs, manor, or black market biomes."
+  },
+  {
+    "id": "EATK-024",
+    "name": "Pipe Bomb",
+    "emoji": "🧨",
+    "intentType": "GRENADE",
+    "targetType": "player",
+    "damage": 3,
+    "accuracy": 60,
+    "speed": 2,
+    "effects": [
+      {
+        "type": "damage",
+        "value": 3
+      },
+      {
+        "type": "aoe",
+        "radius": 1
+      },
+      {
+        "type": "status",
+        "status": "stun",
+        "duration": 1
+      },
+      {
+        "type": "noise",
+        "value": 6
+      }
+    ],
+    "tags": [
+      "ranged",
+      "explosive",
+      "aoe",
+      "improvised"
+    ],
+    "synergyTags": [
+      "explosive",
+      "aoe",
+      "control",
+      "improvised"
+    ],
+    "rarity": "uncommon",
+    "stealValue": 2,
+    "_designNote": "Improvised pipe bomb. Lower damage than frag but stuns for 1 turn. Loud (noise 6). Mid-tier enemies carry these. 60% AI damage reduction applies."
+  },
+  {
+    "id": "EATK-025",
+    "name": "C4 Charge",
+    "emoji": "🧱",
+    "intentType": "GRENADE",
+    "targetType": "player",
+    "damage": 8,
+    "accuracy": 55,
+    "speed": 1,
+    "effects": [
+      {
+        "type": "damage",
+        "value": 8
+      },
+      {
+        "type": "aoe",
+        "radius": 3
+      },
+      {
+        "type": "delayed",
+        "turns": 1
+      }
+    ],
+    "tags": [
+      "ranged",
+      "explosive",
+      "aoe",
+      "heavy"
+    ],
+    "synergyTags": [
+      "explosive",
+      "aoe",
+      "burst",
+      "industrial"
+    ],
+    "rarity": "rare",
+    "stealValue": 4,
+    "_designNote": "Military-grade C4. Massive AoE but delayed 1 turn and slowest speed. Heavily telegraphed — gives player a full round to react. 60% AI damage reduction applies. High-tier enemies only."
   }
 ]

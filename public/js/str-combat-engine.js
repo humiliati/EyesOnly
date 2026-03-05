@@ -583,9 +583,68 @@ var StrCombatEngine = (function () {
 
   // ── Enemy AI ──────────────────────────────────────────────
 
+  /**
+   * Check if enemy has an explosive EATK card in their deck and roll for usage.
+   * Returns the EATK card definition or null if no explosive is chosen.
+   */
+  function _tryEnemyExplosiveCard() {
+    if (!_enemy || !_enemy.cardDeck || !_enemy.cardDeck.length) return null;
+    if (typeof GoneRogueDataRegistry === 'undefined') return null;
+
+    // Gather unstolen explosive cards from enemy deck
+    var explosives = [];
+    for (var i = 0; i < _enemy.cardDeck.length; i++) {
+      var slot = _enemy.cardDeck[i];
+      if (slot.stolen) continue;
+      var def = GoneRogueDataRegistry.getEnemyCard ? GoneRogueDataRegistry.getEnemyCard(slot.id) : null;
+      if (!def) continue;
+      var tags = def.tags || [];
+      for (var t = 0; t < tags.length; t++) {
+        if (tags[t] === 'explosive') {
+          explosives.push({ index: i, def: def });
+          break;
+        }
+      }
+    }
+
+    if (!explosives.length) return null;
+
+    // 25% chance per round to use an explosive (telegraphed, so not spammed)
+    if (_rng() > 0.25) return null;
+
+    // Pick a random explosive from available
+    var pick = explosives[Math.floor(_rng() * explosives.length)];
+    // Mark as used (consume from deck for this combat)
+    _enemy.cardDeck[pick.index].stolen = true;
+    _enemy.cardCount = _enemy.cardDeck.filter(function(s) { return !s.stolen; }).length;
+
+    // Flag as explosive for route detection in resolveAction
+    var cardObj = {
+      name: pick.def.name,
+      emoji: pick.def.emoji,
+      type: 'attack',
+      category: 'attack',
+      _isExplosiveEATK: true,
+      _eatkDef: pick.def,
+      stats: {
+        damage: pick.def.damage || 0,
+        accuracy: pick.def.accuracy || 60,
+        energy: 1,
+        speed: pick.def.speed || 2
+      }
+    };
+    return cardObj;
+  }
+
   function getEnemyAICard() {
     var enemy = _enemy;
     var enemyHpPercent = (enemy.hp / (enemy.maxHp || 5)) * 100;
+
+    // ── Explosive card check: mid/high HP enemies may throw explosives ──
+    if (enemyHpPercent > 40) {
+      var explosiveCard = _tryEnemyExplosiveCard();
+      if (explosiveCard) return explosiveCard;
+    }
 
     if (enemyHpPercent < 30) {
       var roll = _rng();
@@ -669,12 +728,30 @@ var StrCombatEngine = (function () {
     lines.push('═══ ROUND ' + _round + ' RESOLUTION ═══');
     lines.push('');
 
+    // ── Tick pending delayed explosives (C4) at round start ──
+    if (typeof CardPlaySystem !== 'undefined' && typeof CardPlaySystem.tickPendingExplosives === 'function') {
+      var tickResult = CardPlaySystem.tickPendingExplosives(ctx);
+      if (tickResult && tickResult.lines && tickResult.lines.length) {
+        lines = lines.concat(tickResult.lines);
+      }
+    }
+
     for (var i = 0; i < actions.length; i++) {
       var action = actions[i];
-      var result = resolveAction(action, ctx);
 
-      if (result && result.lines) {
-        lines = lines.concat(result.lines);
+      // ── Route enemy explosive cards through 60% reduction path ──
+      if (action.actor === 'enemy' && action.card && action.card._isExplosiveEATK) {
+        if (typeof CardPlaySystem !== 'undefined' && typeof CardPlaySystem.playEnemyExplosiveCard === 'function') {
+          var explosiveResult = CardPlaySystem.playEnemyExplosiveCard(action.card._eatkDef, ctx);
+          if (explosiveResult && explosiveResult.lines) {
+            lines = lines.concat(explosiveResult.lines);
+          }
+        }
+      } else {
+        var result = resolveAction(action, ctx);
+        if (result && result.lines) {
+          lines = lines.concat(result.lines);
+        }
       }
 
       if (_enemy.hp <= 0) {
@@ -755,12 +832,30 @@ var StrCombatEngine = (function () {
     lines.push('💥 MULTI-CARD COMBO: ' + playerCards.length + ' cards');
     lines.push('');
 
+    // ── Tick pending delayed explosives (C4) at round start ──
+    if (typeof CardPlaySystem !== 'undefined' && typeof CardPlaySystem.tickPendingExplosives === 'function') {
+      var tickResult2 = CardPlaySystem.tickPendingExplosives(ctx);
+      if (tickResult2 && tickResult2.lines && tickResult2.lines.length) {
+        lines = lines.concat(tickResult2.lines);
+      }
+    }
+
     for (var j = 0; j < actions.length; j++) {
       var action = actions[j];
-      var result = resolveAction(action, ctx);
 
-      if (result && result.lines) {
-        lines = lines.concat(result.lines);
+      // ── Route enemy explosive cards through 60% reduction path ──
+      if (action.actor === 'enemy' && action.card && action.card._isExplosiveEATK) {
+        if (typeof CardPlaySystem !== 'undefined' && typeof CardPlaySystem.playEnemyExplosiveCard === 'function') {
+          var explosiveResult2 = CardPlaySystem.playEnemyExplosiveCard(action.card._eatkDef, ctx);
+          if (explosiveResult2 && explosiveResult2.lines) {
+            lines = lines.concat(explosiveResult2.lines);
+          }
+        }
+      } else {
+        var result = resolveAction(action, ctx);
+        if (result && result.lines) {
+          lines = lines.concat(result.lines);
+        }
       }
 
       if (_enemy.hp <= 0) {

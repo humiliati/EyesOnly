@@ -161,7 +161,7 @@ const TileAnimationSystem = (function() {
     '💻': { speed: 1.0, name: 'Monitor', blocks: true }, // Impassable furniture
     '🪔': { speed: 1.0, name: 'Lava Lamp', kickable: true }, // Safe, decorative
     '🌋': { speed: 0.35, name: 'Lava Floor', damage: 3 }, // Most dangerous
-    '💡': { speed: 1.0, name: 'Light Bulb' } // Overhead, no collision
+    '💡': { speed: 1.0, name: 'Light Bulb', kickable: true } // Fragile, shatter on kick/projectile
   };
 
   // Emojis that cause TOTAL collision (no passing)

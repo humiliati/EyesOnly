@@ -117,7 +117,156 @@ var EnemyStealSystem = (function() {
     };
   }
 
+  /**
+   * Pre-combat plant stub: plant a card from player inventory onto an adjacent enemy.
+   * This is the data-structure foundation for Sprint 3 (ENI Phase 2) interchange UI.
+   * For now, supports planting explosive cards (ACT-066/067/068) as CI-* instances.
+   *
+   * @param {Object} ctx
+   * @param {Object} ctx.player
+   * @param {Array}  ctx.enemies
+   * @param {string} ctx.cardId — the ACT-* or CI-* card ID to plant
+   * @param {Function} [ctx.getCard] — (cardId)->cardDef
+   * @returns {{ ok:boolean, success:boolean, message:string, plantedSlotIndex?:number }}
+   */
+  function plantCard(ctx) {
+    if (!ctx || !ctx.player || !Array.isArray(ctx.enemies) || !ctx.cardId) {
+      return { ok: false, success: false, message: 'PLANT UNAVAILABLE' };
+    }
+
+    // Validate the card is plantable
+    var cardDef = null;
+    try {
+      if (typeof GoneRogueDataRegistry !== 'undefined' && typeof GoneRogueDataRegistry.getCard === 'function') {
+        cardDef = GoneRogueDataRegistry.getCard(ctx.cardId);
+      } else if (typeof ctx.getCard === 'function') {
+        cardDef = ctx.getCard(ctx.cardId);
+      }
+    } catch (e0) {}
+
+    if (!cardDef || cardDef._missing) {
+      // Try CI-* instance lookup
+      try {
+        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getCardInstance === 'function') {
+          var ci = GAMESTATE.getCardInstance(ctx.cardId);
+          if (ci) cardDef = ci;
+        }
+      } catch (e1) {}
+    }
+
+    if (!cardDef) {
+      return { ok: true, success: false, message: 'UNKNOWN CARD — cannot plant' };
+    }
+
+    if (!cardDef.plantable) {
+      return { ok: true, success: false, message: 'CARD NOT PLANTABLE — only explosive cards can be planted' };
+    }
+
+    // Find adjacent enemy
+    var px = ctx.player.x, py = ctx.player.y;
+    var target = null;
+    for (var i = 0; i < ctx.enemies.length; i++) {
+      var e = ctx.enemies[i];
+      if (!e) continue;
+      var dist = Math.abs((e.x || 0) - px) + Math.abs((e.y || 0) - py);
+      if (dist === 1) { target = e; break; }
+    }
+
+    if (!target) {
+      return { ok: true, success: false, message: 'NO ENEMY IN RANGE (stand adjacent)' };
+    }
+
+    // Ensure enemy has a cardDeck
+    if (!Array.isArray(target.cardDeck)) {
+      target.cardDeck = [];
+    }
+
+    // Find a BLVCK slot (ACT-000 with isBlvckSlot) or append one
+    var plantedIndex = -1;
+    for (var si = 0; si < target.cardDeck.length; si++) {
+      var slot = target.cardDeck[si];
+      if (slot && slot.id === 'ACT-000' && slot.isBlvckSlot && !slot.planted) {
+        plantedIndex = si;
+        break;
+      }
+    }
+
+    if (plantedIndex === -1) {
+      // Append a new BLVCK slot and plant into it
+      plantedIndex = target.cardDeck.length;
+      target.cardDeck.push({
+        id: 'ACT-000',
+        isBlvckSlot: true,
+        stolen: false,
+        meta: { t: Date.now() }
+      });
+    }
+
+    // Plant the card
+    target.cardDeck[plantedIndex].planted = {
+      cardId: ctx.cardId,
+      plantedBy: 'player',
+      turn: typeof GAMESTATE !== 'undefined' && GAMESTATE.getTurn ? GAMESTATE.getTurn() : 0,
+      triggerable: cardDef.triggerable || false
+    };
+
+    // Register as CI-* instance if not already (for persistence across save/load)
+    try {
+      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.registerCardInstance === 'function') {
+        if (ctx.cardId.indexOf('CI-') !== 0) {
+          var ciRef = GAMESTATE.registerCardInstance({
+            baseId: ctx.cardId,
+            name: cardDef.name || ctx.cardId,
+            emoji: cardDef.emoji || '💣',
+            plantedInto: target.name || target.enemyType || 'enemy',
+            source: 'plant',
+            floor: typeof GAMESTATE.getFloorNumber === 'function' ? GAMESTATE.getFloorNumber() : 0
+          });
+          if (ciRef && ciRef.id) {
+            target.cardDeck[plantedIndex].planted.cardId = ciRef.id;
+          }
+        }
+      }
+    } catch (eReg) {
+      console.warn('[EnemyStealSystem] CI registration error:', eReg);
+    }
+
+    // Remove from player hand/inventory
+    try {
+      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.consumeCardFromHand === 'function') {
+        GAMESTATE.consumeCardFromHand(ctx.cardId, 1);
+      }
+    } catch (eConsume) {}
+
+    return {
+      ok: true,
+      success: true,
+      plantedSlotIndex: plantedIndex,
+      enemy: target,
+      message: 'PLANTED — ' + (cardDef.emoji || '💣') + ' ' + (cardDef.name || ctx.cardId) + ' hidden in enemy deck'
+    };
+  }
+
+  /**
+   * Check if an enemy has any planted explosive cards (for combat trigger UI).
+   * @param {Object} enemy
+   * @returns {Array} Array of { slotIndex, planted } objects
+   */
+  function getPlantedCards(enemy) {
+    if (!enemy || !Array.isArray(enemy.cardDeck)) return [];
+    var planted = [];
+    for (var i = 0; i < enemy.cardDeck.length; i++) {
+      var slot = enemy.cardDeck[i];
+      if (slot && slot.planted && slot.planted.cardId) {
+        planted.push({ slotIndex: i, planted: slot.planted });
+      }
+    }
+    return planted;
+  }
+
   return {
-    attempt: attempt
+    attempt: attempt,
+    plantCard: plantCard,
+    getPlantedCards: getPlantedCards
   };
 })();

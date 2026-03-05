@@ -213,8 +213,8 @@ const LightingSystem = (function() {
   // Light source breakable properties (for interactive/destructible lights)
   const LIGHT_SOURCE_BREAKABLE_PROPS = {
     LIGHT_BULB: {
-      hp: 1,
-      kickable: false, // Overhead, can't kick
+      hp: 0.01, // Fragile — single kick (0.2) or projectile (1) shatters instantly
+      kickable: true, // Reachable with a kick or projectile
       smotherable: false,
       noise: 2, // Glass shatter
       dropChance: 0, // No drops

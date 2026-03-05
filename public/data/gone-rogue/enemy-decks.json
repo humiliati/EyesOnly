@@ -226,23 +226,25 @@
       "EATK-002",
       "EATK-011",
       "EATK-003",
+      "EATK-024",
       "EATK-007"
     ],
     "exposedTags": [
       "hack"
     ],
-    "_note": "Burst + Aimed + Grenade + Taze. Escalating danger."
+    "_note": "Burst + Aimed + Frag + Pipe Bomb + Taze. Explosive-heavy escalation."
   },
   "GENERIC_FLOOR_30": {
     "cards": [
       "EATK-011",
       "EATK-003",
+      "EATK-025",
       "EATK-007",
       "EATK-002",
       "EATK-013"
     ],
     "exposedTags": [],
-    "_note": "Full 5-card hand. Late-game guards are tough to steal from."
+    "_note": "Full 6-card hand. Frag + C4 + Taze + Burst + Shield. Late-game guards with military explosives."
   },
   "GENERIC_FLOOR_5": {
     "cards": [
@@ -354,6 +356,18 @@
     ],
     "_note": "2x Incendiary + Frag. Fire-focused devastation."
   },
+  "DEMOLITIONS_EXPERT": {
+    "cards": [
+      "EATK-025",
+      "EATK-003",
+      "EATK-024",
+      "EATK-013"
+    ],
+    "exposedTags": [
+      "disarm"
+    ],
+    "_note": "C4 + Frag + Pipe Bomb + Shield. Full explosive loadout. Heavily telegraphed — player should pickpocket explosives pre-combat or flee."
+  },
   "SLEEPY_SNAIL": {
     "cards": [
       "EATK-014"
@@ -459,5 +473,5 @@
     ],
     "_note": "Rope bind + double Pistol Shot chain. Guarantees Rope opens with bind-setup, then two Pistol Shots land with +20 accuracy bonus. Warehouse / transit choke-point enemies."
   },
-  "_catalogNote": "Bootstrapped from runtime enemy-cards.json + enemy-decks.json. Edit this file going forward; run scripts/build-enemy-catalog.mjs.\n\n[onboarding] Expanded with civilian/location decks + archetypes for catacombs/tavern/datacenter/hydroponics/homes/fightclubs/junkyards.\n\n[environment-synergy] Added EATK-021 Rope (bind→ranged chain), EATK-022 Broken Lever (melee/black_market), EATK-023 Secret Button (covert/black_market/environmental). New decks: WAREHOUSE_ENFORCER (bind+shot chain), BLACK_MARKET_FENCE, CATACOMB_SENTINEL. Updated JUNKYARD_SCAVENGER. New BIOME_SYSTEMS variants: BIND_TERRAIN, INDUSTRIAL_DEBRIS, HIDDEN_CHAMBER."
+  "_catalogNote": "Bootstrapped from runtime enemy-cards.json + enemy-decks.json. Edit this file going forward; run scripts/build-enemy-catalog.mjs.\n\n[onboarding] Expanded with civilian/location decks + archetypes for catacombs/tavern/datacenter/hydroponics/homes/fightclubs/junkyards.\n\n[environment-synergy] Added EATK-021 Rope (bind→ranged chain), EATK-022 Broken Lever (melee/black_market), EATK-023 Secret Button (covert/black_market/environmental). New decks: WAREHOUSE_ENFORCER (bind+shot chain), BLACK_MARKET_FENCE, CATACOMB_SENTINEL. Updated JUNKYARD_SCAVENGER. New BIOME_SYSTEMS variants: BIND_TERRAIN, INDUSTRIAL_DEBRIS, HIDDEN_CHAMBER.\n\n[explosive-cards] Added EATK-024 Pipe Bomb (stun+noise, mid-tier), EATK-025 C4 Charge (massive AoE, delayed, high-tier). New deck: DEMOLITIONS_EXPERT (full explosive loadout). Updated GENERIC_FLOOR_25 (+pipe bomb), GENERIC_FLOOR_30 (+C4). Enemy AI applies 60% damage reduction on all explosive cards + telegraph indicator."
 }
