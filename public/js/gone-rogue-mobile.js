@@ -1765,6 +1765,12 @@ const GoneRogueMobile = (function () {
       // Check if tapping self (show card fan)
       // BUT NOT if in STR combat, if clicking on a breakable, or within cooldown after movement
       if (player && player.x === x && player.y === y) {
+        // Drop dragged lantern when player taps self
+        if (typeof LanternDragSystem !== 'undefined' && LanternDragSystem.isDragging()) {
+          LanternDragSystem.drop({});
+          console.log('[GoneRogueMobile] Dropped lantern on self-tap');
+        }
+
         // Tap on player now resets MOK windows instead of showing card fan
         // Card fan is now toggled via the dedicated card button in MOK footer
         console.log('[GoneRogueMobile] Player tapped: resetting MOK windows to default');

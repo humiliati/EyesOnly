@@ -53,7 +53,7 @@ var TapMoveSystem = (function() {
     console.log('[TapMove:ENTER] target=' + targetX + ',' + targetY + ' active=' + ctx.active + ' moveLocked=' + ctx.playerMoveLocked);
     if (!ctx.active) { console.log('[TapMove] BLOCKED by !active'); return; }
 
-    // Check if clicking on a breakable - kick it instead of moving
+    // Check if clicking on a breakable - kick or smother it instead of moving
     // NOTE: Kicks are allowed even during moveLocked — they are a local
     // melee action that doesn't relocate the player.
     var breakableAtTarget = ctx.getBreakableAt(targetX, targetY);
@@ -63,15 +63,72 @@ var TapMoveSystem = (function() {
       var dx = targetX - ctx.player.x;
       var dy = targetY - ctx.player.y;
 
-      // Only kick if adjacent (1 tile away)
+      // Only kick/smother if adjacent (1 tile away)
       if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 && (dx !== 0 || dy !== 0)) {
         // Normalize direction for push
         var ndx = dx === 0 ? 0 : (dx > 0 ? 1 : -1);
         var ndy = dy === 0 ? 0 : (dy > 0 ? 1 : -1);
 
+        // ── Smother check: smotherable torches are silently extinguished ──
+        if (typeof BreakableSystem !== 'undefined' && BreakableSystem.smotherTorch) {
+          var smothered = BreakableSystem.smotherTorch(breakableAtTarget, ctx);
+          if (smothered) {
+            // Snap weapon arrow to interact direction
+            if (typeof PlayerWeaponArrow !== 'undefined') {
+              PlayerWeaponArrow.setInteractDirection(ndx, ndy);
+            }
+            ctx.saveState();
+            if (ctx.useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+              ctx.updateMobileGrid();
+            }
+            return {
+              lines: ['💨 Smothered ' + (breakableAtTarget.emoji || '🕯️') + ' ' + (breakableAtTarget.name || 'torch') + ' silently', ''].concat(ctx.renderGrid()),
+              prompt: ctx.getPrompt(),
+            };
+          }
+        }
+
+        // ── Lantern drag: attach draggable breakable instead of kicking ──
+        if (typeof LanternDragSystem !== 'undefined' && !LanternDragSystem.isDragging() &&
+            LanternDragSystem.isDraggable(breakableAtTarget)) {
+          var attached = LanternDragSystem.tryAttach(breakableAtTarget, ctx);
+          if (attached) {
+            // Move breakable to player's tile and make walkable
+            var oldBX = breakableAtTarget.x;
+            var oldBY = breakableAtTarget.y;
+            if (ctx.grid[oldBY] && ctx.grid[oldBY][oldBX] === ctx.TILES.BREAKABLE) {
+              ctx.grid[oldBY][oldBX] = ctx.TILES.EMPTY;
+            }
+            breakableAtTarget.x = ctx.player.x;
+            breakableAtTarget.y = ctx.player.y;
+            ctx.grid[ctx.player.y][ctx.player.x] = ctx.TILES.BREAKABLE;
+            // Move light source
+            if (typeof LightingSystem !== 'undefined' && LightingSystem.moveLightSource) {
+              LightingSystem.moveLightSource(oldBX, oldBY, ctx.player.x, ctx.player.y);
+            }
+            // Snap weapon arrow to interact direction
+            if (typeof PlayerWeaponArrow !== 'undefined') {
+              PlayerWeaponArrow.setInteractDirection(ndx, ndy);
+            }
+            ctx.saveState();
+            if (ctx.useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+              ctx.updateMobileGrid();
+            }
+            return {
+              lines: ['🏮 Grabbed ' + (breakableAtTarget.name || 'lantern') + ' — dragging it along', ''].concat(ctx.renderGrid()),
+              prompt: ctx.getPrompt(),
+            };
+          }
+        }
+
         // Snap weapon arrow to kick direction
         if (typeof PlayerWeaponArrow !== 'undefined') {
           PlayerWeaponArrow.setKickDirection(ndx, ndy);
+        }
+
+        // ── Drop dragged lantern when kicking another breakable ──
+        if (typeof LanternDragSystem !== 'undefined' && LanternDragSystem.isDragging()) {
+          LanternDragSystem.drop(ctx);
         }
 
         // Use BreakableSystem.kickBreakable if available (push + damage)

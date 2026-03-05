@@ -74,6 +74,14 @@ var GameTickSystem = (function() {
           prevX = tile.x;
           prevY = tile.y;
 
+          // ── Lantern drag: check if player entered a draggable breakable tile ──
+          if (typeof LanternDragSystem !== 'undefined' && !LanternDragSystem.isDragging()) {
+            var _dragBreakable = ctx.getBreakableAt ? ctx.getBreakableAt(tile.x, tile.y) : null;
+            if (_dragBreakable && LanternDragSystem.isDraggable(_dragBreakable)) {
+              LanternDragSystem.tryAttach(_dragBreakable, ctx);
+            }
+          }
+
           // Trigger all tile-arrival interactions (pickups, currency, food, combat, doors)
           ctx.checkPlayerInteractions();
 
@@ -81,6 +89,10 @@ var GameTickSystem = (function() {
           // further tiles — player is now locked in combat
           if (ctx.strCombatActive) {
             GoneRogueMovement.stop();
+            // Drop lantern on combat
+            if (typeof LanternDragSystem !== 'undefined' && LanternDragSystem.isDragging()) {
+              LanternDragSystem.drop(ctx);
+            }
             break;
           }
         }
@@ -108,6 +120,11 @@ var GameTickSystem = (function() {
         }
 
         ctx.checkPlayerInteractions();
+      }
+
+      // ── Update lantern drag (move light source to player tile) ──
+      if (typeof LanternDragSystem !== 'undefined' && LanternDragSystem.isDragging()) {
+        LanternDragSystem.update(ctx);
       }
 
       // Store visual position for rendering

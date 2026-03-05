@@ -543,6 +543,24 @@ const LightingSystem = (function() {
   }
 
   /**
+   * Move a light source from one position to another (e.g. lantern drag).
+   * @param {number} fromX - Old X position
+   * @param {number} fromY - Old Y position
+   * @param {number} toX - New X position
+   * @param {number} toY - New Y position
+   */
+  function moveLightSource(fromX, fromY, toX, toY) {
+    for (var i = 0; i < _lightSources.length; i++) {
+      if (_lightSources[i].x === fromX && _lightSources[i].y === fromY) {
+        _lightSources[i].x = toX;
+        _lightSources[i].y = toY;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * Clear all light sources
    */
   function clearLightSources() {
@@ -1045,6 +1063,7 @@ const LightingSystem = (function() {
     getConfig: getConfig,
     addLightSource: addLightSource,
     removeLightSource: removeLightSource,
+    moveLightSource: moveLightSource,
     clearLightSources: clearLightSources,
     updateLightMap: updateLightMap,
     getLightAt: getLightAt,

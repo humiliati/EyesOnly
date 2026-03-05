@@ -109,30 +109,49 @@ var BreakableSystem = (function() {
 
   /**
    * Handle light source cleanup when a breakable is destroyed.
+   * Type-specific destruction effects:
+   *   CAMPFIRE → scorched tile + smoke clouds (3-tile radius) + fire→smoke lifecycle
+   *   TORCH   → silent smoke puff (💨 overhead) + single smoke cloud
+   *   LAMP_POST → topple noise + glass ground effect
+   *   MONITOR/TERMINAL → spark shower (✨ overhead) + glass ground effect
+   *   LIGHT_BULB → glass shatter ground effect
    */
   function _handleLightSourceDestruction(breakable, ctx) {
     if (!breakable.isLightSource || typeof LightingSystem === 'undefined') return;
 
-    LightingSystem.removeLightSource(breakable.x, breakable.y);
+    var bx = breakable.x;
+    var by = breakable.y;
+    var lightType = breakable.lightType || '';
+
+    LightingSystem.removeLightSource(bx, by);
 
     // Raise noise if configured
     if (breakable.noise > 0 && ctx.raiseNoise) {
-      ctx.raiseNoise(breakable.x, breakable.y, breakable.noise);
+      ctx.raiseNoise(bx, by, breakable.noise);
     }
 
-    // Spawn smoke if configured
-    var lightingConfig = LightingSystem.getConfig();
-    if (lightingConfig && lightingConfig.interactiveLights && lightingConfig.interactiveLights.onBreak.spawnSmoke) {
-      if (typeof GroundEffects !== 'undefined' && GroundEffects.addEffect) {
-        GroundEffects.addEffect(breakable.x, breakable.y, 'SMOKE');
-      }
+    // ── Type-specific destruction VFX ──────────────────────────────
+
+    if (lightType === 'CAMPFIRE') {
+      _destroyCampfire(bx, by, ctx);
+    } else if (lightType === 'TORCH') {
+      _destroyTorch(bx, by, ctx);
+    } else if (lightType === 'LAMP_POST') {
+      _destroyLampPost(bx, by, ctx);
+    } else if (lightType === 'MONITOR' || lightType === 'TERMINAL') {
+      _destroyElectronic(bx, by, lightType, ctx);
+    } else if (lightType === 'LIGHT_BULB') {
+      _destroyLightBulb(bx, by, ctx);
+    } else {
+      // Generic: spawn smoke if configured
+      _spawnGenericLightSmoke(bx, by);
     }
 
     // Drop loot if chance succeeds
     if (breakable.dropChance > 0 && Math.random() < breakable.dropChance && breakable.dropType) {
       var lightDropItem = {
-        x: breakable.x,
-        y: breakable.y,
+        x: bx,
+        y: by,
         type: 'item',
         itemId: breakable.dropType,
         spawnTime: Date.now(),
@@ -148,7 +167,181 @@ var BreakableSystem = (function() {
     ctx.rebuildWallCache();
     LightingSystem.updateLightMap(ctx.GRID_WIDTH, ctx.GRID_HEIGHT, ctx.getAllLightBlockers(ctx.wallCache));
 
-    console.log('[Lighting] Removed light source at', breakable.x, ',', breakable.y);
+    console.log('[Lighting] Removed ' + lightType + ' light source at', bx, ',', by);
+  }
+
+  // ── Campfire destruction: scorched epicenter + smoke cloud burst ──
+  function _destroyCampfire(x, y, ctx) {
+    // Scorched tile at epicenter
+    if (typeof GroundEffects !== 'undefined' && GroundEffects.setGroundEffect) {
+      GroundEffects.setGroundEffect(x, y, 'SCORCHED');
+    }
+
+    // Overhead: extinguish puff
+    if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+      OverheadAnimator.showGenericExpression(x, y, '💨', 600, '#888888');
+    }
+
+    // Smoke clouds in a 2-tile radius (staggered spawn)
+    var dirs8 = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1},
+                 {dx:1,dy:1},{dx:-1,dy:1},{dx:1,dy:-1},{dx:-1,dy:-1}];
+    for (var i = 0; i < dirs8.length; i++) {
+      var sx = x + dirs8[i].dx;
+      var sy = y + dirs8[i].dy;
+      if (sx >= 0 && sx < ctx.GRID_WIDTH && sy >= 0 && sy < ctx.GRID_HEIGHT) {
+        // 60% chance per adjacent tile — creates organic cloud shape
+        if (Math.random() < 0.6) {
+          (function(tx, ty, delay) {
+            setTimeout(function() {
+              if (typeof GroundEffects !== 'undefined' && GroundEffects.setGroundEffect) {
+                GroundEffects.setGroundEffect(tx, ty, 'SMOKE');
+              }
+            }, delay);
+          })(sx, sy, i * 80 + Math.random() * 100);
+        }
+      }
+    }
+
+    // Small chance (30%) to scorch 1-2 adjacent tiles (embers)
+    for (var j = 0; j < 4; j++) {
+      var d = dirs8[j]; // Cardinal only
+      if (Math.random() < 0.3) {
+        var scx = x + d.dx;
+        var scy = y + d.dy;
+        if (scx >= 0 && scx < ctx.GRID_WIDTH && scy >= 0 && scy < ctx.GRID_HEIGHT) {
+          if (typeof GroundEffects !== 'undefined' && GroundEffects.setGroundEffect) {
+            GroundEffects.setGroundEffect(scx, scy, 'SCORCHED');
+          }
+        }
+      }
+    }
+
+    console.log('[Lighting] Campfire extinguished at ' + x + ',' + y + ' — scorched + smoke clouds');
+  }
+
+  // ── Torch destruction: silent smoke puff ──
+  function _destroyTorch(x, y, ctx) {
+    // Silent — noise = 0 already handled above
+    // Single smoke cloud at torch position
+    if (typeof GroundEffects !== 'undefined' && GroundEffects.setGroundEffect) {
+      GroundEffects.setGroundEffect(x, y, 'SMOKE');
+    }
+
+    // Overhead: quiet wisp
+    if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+      OverheadAnimator.showGenericExpression(x, y, '💨', 400, '#aaaaaa');
+    }
+
+    // Small chance (40%) for one adjacent smoke tile
+    var adjDir = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}];
+    var pick = adjDir[Math.floor(Math.random() * adjDir.length)];
+    var nx = x + pick.dx;
+    var ny = y + pick.dy;
+    if (Math.random() < 0.4 && nx >= 0 && nx < ctx.GRID_WIDTH && ny >= 0 && ny < ctx.GRID_HEIGHT) {
+      if (typeof GroundEffects !== 'undefined' && GroundEffects.setGroundEffect) {
+        GroundEffects.setGroundEffect(nx, ny, 'SMOKE');
+      }
+    }
+
+    console.log('[Lighting] Torch smothered silently at ' + x + ',' + y);
+  }
+
+  // ── Lamp post destruction: topple + faint glass ──
+  function _destroyLampPost(x, y, ctx) {
+    if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+      OverheadAnimator.showGenericExpression(x, y, '💥', 400, '#ffbb44');
+    }
+
+    // Glass ground effect at base
+    if (typeof GroundEffects !== 'undefined' && GroundEffects.setGroundEffect) {
+      GroundEffects.setGroundEffect(x, y, 'GLASS');
+    }
+
+    // Small smoke puff from dust
+    var adjDir = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}];
+    var pick = adjDir[Math.floor(Math.random() * adjDir.length)];
+    var nx = x + pick.dx;
+    var ny = y + pick.dy;
+    if (nx >= 0 && nx < ctx.GRID_WIDTH && ny >= 0 && ny < ctx.GRID_HEIGHT) {
+      if (typeof GroundEffects !== 'undefined' && GroundEffects.setGroundEffect) {
+        GroundEffects.setGroundEffect(nx, ny, 'SMOKE');
+      }
+    }
+
+    console.log('[Lighting] Lamp post toppled at ' + x + ',' + y);
+  }
+
+  // ── Electronic destruction: spark shower ──
+  function _destroyElectronic(x, y, lightType, ctx) {
+    if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+      OverheadAnimator.showGenericExpression(x, y, '✨', 600, '#FFD700');
+    }
+
+    // Glass ground effect (screen shatter)
+    if (typeof GroundEffects !== 'undefined' && GroundEffects.setGroundEffect) {
+      GroundEffects.setGroundEffect(x, y, 'GLASS');
+    }
+
+    // Brief smoke from electronics
+    setTimeout(function() {
+      if (typeof GroundEffects !== 'undefined' && GroundEffects.setGroundEffect) {
+        GroundEffects.setGroundEffect(x, y, 'SMOKE');
+      }
+    }, 300);
+
+    console.log('[Lighting] ' + lightType + ' destroyed (spark shower) at ' + x + ',' + y);
+  }
+
+  // ── Light bulb destruction: glass shatter ──
+  function _destroyLightBulb(x, y, ctx) {
+    if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+      OverheadAnimator.showGenericExpression(x, y, '💥', 400, '#FFFFCC');
+    }
+
+    if (typeof GroundEffects !== 'undefined' && GroundEffects.setGroundEffect) {
+      GroundEffects.setGroundEffect(x, y, 'GLASS');
+    }
+
+    console.log('[Lighting] Light bulb shattered at ' + x + ',' + y);
+  }
+
+  // ── Generic light smoke fallback ──
+  function _spawnGenericLightSmoke(x, y) {
+    var lightingConfig = (typeof LightingSystem !== 'undefined') ? LightingSystem.getConfig() : null;
+    if (lightingConfig && lightingConfig.interactiveLights && lightingConfig.interactiveLights.onBreak.spawnSmoke) {
+      if (typeof GroundEffects !== 'undefined' && GroundEffects.setGroundEffect) {
+        GroundEffects.setGroundEffect(x, y, 'SMOKE');
+      }
+    }
+  }
+
+  // ── Smother a torch (silent interaction — hold-tap adjacent torch) ──
+  function smotherTorch(breakable, ctx) {
+    if (!breakable || !breakable.isLightSource) return false;
+    var lightType = breakable.lightType || '';
+    if (lightType !== 'TORCH') return false;
+
+    // Check smotherable property
+    var props = (typeof LightingSystem !== 'undefined') ? LightingSystem.getBreakableProps('TORCH') : null;
+    if (props && !props.smotherable) return false;
+
+    // Destroy the torch silently
+    breakable.hp = 0;
+    breakable.destroying = false;
+
+    // Replace grid tile
+    ctx.grid[breakable.y][breakable.x] = breakable.destroyedGlyph || ctx.TILES.DEBRIS;
+
+    // Use torch-specific destruction effects (silent smoke)
+    _handleLightSourceDestruction(breakable, ctx);
+
+    // Trigger re-render
+    if (ctx.updateMobileGrid) {
+      ctx.updateMobileGrid();
+    }
+
+    console.log('[BreakableSystem] Torch smothered silently at ' + breakable.x + ',' + breakable.y);
+    return true;
   }
 
   /**
@@ -550,6 +743,7 @@ var BreakableSystem = (function() {
 
   return {
     damageBreakable: damageBreakable,
-    kickBreakable: kickBreakable
+    kickBreakable: kickBreakable,
+    smotherTorch: smotherTorch
   };
 })();

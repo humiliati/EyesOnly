@@ -337,6 +337,14 @@ const GoneRogueMovement = (function () {
       }
     }
 
+    // Lantern drag penalty (applies to both walk and sprint)
+    if (typeof LanternDragSystem !== 'undefined' && LanternDragSystem.isDragging()) {
+      var dragPenalty = LanternDragSystem.getDragSpeedPenalty();
+      if (dragPenalty > 0) {
+        currentSpeed *= (1 - dragPenalty);
+      }
+    }
+
     return currentSpeed;
   }
 
