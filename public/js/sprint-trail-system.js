@@ -111,7 +111,7 @@ const SprintTrailSystem = (function() {
   function _getTrailText(layer) {
     var text = '';
     for (var i = 0; i < layer; i++) {
-      text += '(';
+      text += ')';
     }
     return text;
   }
@@ -213,6 +213,8 @@ const SprintTrailSystem = (function() {
     renderToDOM: renderToDOM,
     renderToCanvas: renderToCanvas,
     getCurrentLayer: getCurrentLayer,
-    clear: clear
+    clear: clear,
+    /** Expose raw trail array for renderers that handle coordinates themselves */
+    _getTrails: function() { return _trails; }
   };
 })();

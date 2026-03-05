@@ -729,7 +729,47 @@ If missing, trail particles exist in memory but are never drawn.
 
 ---
 
-## 16. Canonical Input Map (Mobile-First)
+## 16. Player Visual Feedback Systems
+
+Two animation systems provide real-time visual feedback on the canvas renderer. Both were originally DOM-only and were ported to the canvas pipeline on 2026-03-05.
+
+### 16a. Sprint Trail — ))) Parenthesis Decay
+
+**Module:** `sprint-trail-system.js` (standalone IIFE)
+
+When the player sprints, a trail of closing-parenthesis characters renders behind the avatar and fades out over ~0.6 seconds. The number of parentheses builds from `)` to `))))` the longer the sprint continues, then decays when sprinting stops.
+
+**Data flow:**
+1. `GoneRogueMovement.update()` calls `SprintTrailSystem.update(deltaTime, isSprinting, playerX, playerY)` each frame
+2. While sprinting, trail particles are spawned every 0.15s at the player's current visual position (world coords)
+3. `CanvasRenderer._renderSprintTrails()` reads `SprintTrailSystem._getTrails()`, converts world→view-local coordinates, and draws each particle with opacity decay and color glow
+
+**Color modulation:** Default color is `#1cff9b` (cyan-green). `PassiveItemsSystem` equipped items with a `trailColor` property override this — intended for speed boots, fatigue potions, energy items, etc.
+
+| Constant | Value | Purpose |
+|---|---|---|
+| `MAX_TRAIL_LAYERS` | 4 | Maximum `)` count per particle |
+| `TRAIL_DECAY_BASE` | 0.8 | Layer decay rate per second (not sprinting) |
+| `TRAIL_SPAWN_INTERVAL` | 0.15s | New particle every N seconds |
+| `TRAIL_FADE_DURATION` | 0.6s | Each particle's total lifespan |
+
+### 16b. Player Facing Caret + Muzzle Flash
+
+**Rendered by:** `CanvasRenderer._renderPlayer()` in `gone-rogue-canvas.js`
+
+A small directional caret (▴ ▾ ▸ ◂) is drawn on the edge of the player tile in the direction they're facing. The caret serves two purposes: (1) shows the player which way they'll fire projectiles, and (2) flashes bright yellow for 300ms when a projectile is fired ("muzzle flash").
+
+**Data flow:**
+1. `player.lastMoveDirection` is set on every move in `game-tick-system.js` (values: "north", "south", "east", "west")
+2. Passed to canvas renderer as `renderData.player.facing` (via `gone-rogue-mobile.js` render data builder)
+3. `renderData.player.muzzleFlash` is `true` when `muzzleFlash.time` is within 300ms of now (set by `ProjectileSystem.fireProjectile()`)
+4. `_renderPlayer()` draws the caret offset 38% toward the facing edge, with color `#888` normally or `#FFFF66` + yellow glow during muzzle flash
+
+**Dependencies:** `player.lastMoveDirection` is also consumed by `LightingSystem.updatePlayerLight(x, y, direction)` for directional flashlight cones and by `positionHistory[].facing` for pet follower orientation.
+
+---
+
+## 17. Canonical Input Map (Mobile-First)
 
 Complete input gesture → action mapping, including long-press mechanics. All gestures are designed to coexist on mobile touch and map cleanly to gamepad.
 
@@ -765,10 +805,11 @@ Complete input gesture → action mapping, including long-press mechanics. All g
 
 ---
 
-## 17. Changelog
+## 18. Changelog
 
 | Date | Change | Files |
 |---|---|---|
+| 2026-03-05 | **Sprint trail + facing caret ported to canvas.** Sprint trail now renders inside `CanvasRenderer._renderSprintTrails()` with proper world→view coordinate conversion. Facing caret (▴▾▸◂) added to `_renderPlayer()` with muzzle flash glow. `renderData.player` extended with `facing` and `muzzleFlash` fields. | `gone-rogue-canvas.js`, `gone-rogue-mobile.js`, `sprint-trail-system.js` |
 | 2026-03-05 | **Scripted walk gutted.** Removed 3-phase Floor 0 auto-walk state machine. Player has full input control from Frame 1. See docs/PLAYER_ONBOARDING.md for replacement tutorial vision. | `begin-gameplay-system.js`, `game-tick-system.js`, `tap-move-system.js`, `gone-rogue.js` |
 | 2026-03-04 | Fishing teleport fix: all fishing path origins now use visual position via `_getFishingOrigin()` instead of stale logical position | `gone-rogue-mobile.js`, `tap-move-system.js`, `gone-rogue-movement.js` |
 | 2026-03-04 | Equip slot validation: cards and non-equippable items rejected via `GAMESTATE.isEquippable()` at all 4 entry points | `gamestate.js`, `non-combat-hud.js`, `rogue-sidebar.js`, `ui-controls.js` |

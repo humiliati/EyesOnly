@@ -1110,17 +1110,15 @@ const GoneRogueMobile = (function () {
           x: _toViewX(player.visualX !== undefined ? player.visualX : player.x),
           y: _toViewY(player.visualY !== undefined ? player.visualY : player.y),
           char: playerChar,
-          color: '#00FF00'
+          color: '#00FF00',
+          facing: player.lastMoveDirection || null,
+          muzzleFlash: !!(muzzleFlash && (Date.now() - muzzleFlash.time) < 300)
         };
       })() : null
     });
 
-    // Render sprint trails on canvas
-    if (typeof SprintTrailSystem !== 'undefined' && _canvasRenderer && _canvasRenderer.getContext) {
-      var cellWidth = _canvasRenderer.getCellWidth ? _canvasRenderer.getCellWidth() : 32;
-      var cellHeight = _canvasRenderer.getCellHeight ? _canvasRenderer.getCellHeight() : 32;
-      SprintTrailSystem.renderToCanvas(_canvasRenderer.getContext(), cellWidth, cellHeight);
-    }
+    // Sprint trail rendering is now handled inside CanvasRenderer._renderSprintTrails()
+    // as part of the camera-transformed render pipeline (with proper world→view offset).
 
     // Mobile-only: zoomed-in viewport that pans by translating the canvas element under a fixed frame.
     _applyMobileCanvasFollow(player, viewW, viewH, cellSize);

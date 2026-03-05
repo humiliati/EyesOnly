@@ -107,6 +107,10 @@ const CanvasRenderer = (function() {
     // Render entities WITHOUT shadows first (shadows will be drawn after lighting)
     this._renderEntities(renderData.entities, true);
     this._renderPets(renderData.pets, true);
+
+    // Sprint trail renders BEHIND the player (so player overlaps trails)
+    this._renderSprintTrails();
+
     this._renderPlayer(renderData.player, true);
 
     // Render pancake stack above player head (without shadow first)
@@ -600,8 +604,66 @@ const CanvasRenderer = (function() {
   };
 
   /**
+   * Render sprint trail particles (((( behind the sprinting player.
+   * SprintTrailSystem stores positions in world-space, but our canvas
+   * context is camera-transformed to view-local space (world minus origin).
+   * We render manually to apply the offset.
+   */
+  CanvasRenderer.prototype._renderSprintTrails = function() {
+    if (typeof SprintTrailSystem === 'undefined') return;
+    var trails = SprintTrailSystem._getTrails ? SprintTrailSystem._getTrails() : null;
+    if (!trails || trails.length === 0) return;
+
+    var now = performance.now() / 1000;
+    var cs = this.cellSize;
+    var oxW = this._worldOriginX || 0;
+    var oyW = this._worldOriginY || 0;
+
+    for (var i = 0; i < trails.length; i++) {
+      var t = trails[i];
+      var age = now - t.spawnTime;
+      if (age >= t.lifespan) continue;
+      var opacity = Math.max(0, 1 - (age / t.lifespan));
+
+      // Convert world → view-local → pixel
+      var px = (t.x - oxW + 0.5) * cs;
+      var py = (t.y - oyW + 0.5) * cs;
+
+      // Build trail text: "(" repeated by layer count
+      var text = '';
+      for (var j = 0; j < t.layer; j++) text += ')';
+
+      this.ctx.save();
+      this.ctx.globalAlpha = opacity;
+      this.ctx.fillStyle = t.color || '#1cff9b';
+      this.ctx.font = 'bold ' + (12 + (t.layer * 2)) + 'px monospace';
+      this.ctx.textAlign = 'center';
+      this.ctx.textBaseline = 'middle';
+      this.ctx.shadowColor = t.color || '#1cff9b';
+      this.ctx.shadowBlur = 4;
+      this.ctx.fillText(text, px, py);
+      this.ctx.restore();
+    }
+  };
+
+  // ── Facing-caret glyphs ────────────────────────────────────────────
+  var CARET_MAP = {
+    north: '\u25B4', // ▴
+    south: '\u25BE', // ▾
+    east:  '\u25B8', // ▸
+    west:  '\u25C2'  // ◂
+  };
+  // Offset the caret toward the edge the player is facing (fraction of cell)
+  var CARET_OFFSET = {
+    north: { dx: 0,    dy: -0.38 },
+    south: { dx: 0,    dy:  0.38 },
+    east:  { dx: 0.38, dy: 0     },
+    west:  { dx:-0.38, dy: 0     }
+  };
+
+  /**
    * Render player
-   * @param {Object} player - Player object { x, y, char, color }
+   * @param {Object} player - Player object { x, y, char, color, facing, muzzleFlash }
    * @param {boolean} skipShadows - If true, skip drawing shadows (they'll be drawn later)
    */
   CanvasRenderer.prototype._renderPlayer = function(player, skipShadows) {
@@ -624,6 +686,33 @@ const CanvasRenderer = (function() {
 
     // Reset shadow
     this.ctx.shadowBlur = 0;
+
+    // ── Facing caret (directional indicator) ────────────────────────
+    var dir = player.facing;
+    if (dir && CARET_MAP[dir]) {
+      var off = CARET_OFFSET[dir];
+      var caretX = centerX + off.dx * this.cellSize;
+      var caretY = centerY + off.dy * this.cellSize;
+
+      // Muzzle flash: if the player just fired, the caret glows bright
+      var isMuzzleFlash = player.muzzleFlash;
+      var caretColor = isMuzzleFlash ? '#FFFF66' : '#888888';
+      var caretGlow  = isMuzzleFlash ? 12 : 0;
+      var caretAlpha = isMuzzleFlash ? 1.0 : 0.7;
+
+      this.ctx.save();
+      this.ctx.globalAlpha = caretAlpha;
+      this.ctx.fillStyle = caretColor;
+      if (caretGlow > 0) {
+        this.ctx.shadowColor = '#FFFF00';
+        this.ctx.shadowBlur = caretGlow;
+      }
+      this.ctx.font = 'bold ' + Math.round(this.cellSize * 0.35) + 'px monospace';
+      this.ctx.textAlign = 'center';
+      this.ctx.textBaseline = 'middle';
+      this.ctx.fillText(CARET_MAP[dir], caretX, caretY);
+      this.ctx.restore();
+    }
   };
 
   /**
