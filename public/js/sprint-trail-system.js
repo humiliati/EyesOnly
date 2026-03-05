@@ -7,10 +7,10 @@ const SprintTrailSystem = (function() {
   'use strict';
 
   // Trail configuration
-    var MAX_TRAIL_LAYERS = 3; // Maximum parentheses layers: ◦, ◦◦, ◦◦◦, ◦◦◦◦
-  var TRAIL_DECAY_BASE = 0.8; // Base decay rate per second (seconds to full decay)
+    var MAX_TRAIL_LAYERS = 4; // Maximum parentheses layers: ., .., ..., ....
+  var TRAIL_DECAY_BASE = 0.4; // Base decay rate per second (seconds to full decay)
   var TRAIL_SPAWN_INTERVAL = 0.15; // Spawn new trail every N seconds
-  var TRAIL_FADE_DURATION = 0.6; // How long each trail particle lasts
+  var TRAIL_FADE_DURATION = 0.65; // How long each trail particle lasts
 
   // Trail particles array: {x, y, layer, color, spawnTime, lifespan}
   var _trails = [];
@@ -111,7 +111,7 @@ const SprintTrailSystem = (function() {
   function _getTrailText(layer) {
     var text = '';
     for (var i = 0; i < layer; i++) {
-        text += '◦';
+        text += '.';
     }
     return text;
   }
