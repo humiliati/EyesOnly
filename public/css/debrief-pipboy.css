@@ -5,13 +5,15 @@
   color: currentColor;
   font-family: var(--font-legible, 'Classic Console Neue', 'Courier New', monospace);
   font-weight: 750;
+  min-width: 1.2em;
+  text-align: center;
 }
 
 /* Portrait mobile: hide macro labels for resources + ammo, keep PASSIVES/STATUS */
 @media (max-width: 767px) and (orientation: portrait) {
   .debrief-nav-row.row-resources .debrief-row-label,
   .debrief-nav-row.row-ammo .debrief-row-label {
-    display: none !important;
+    min-width: 1em;
   }
 }
 
@@ -27,7 +29,7 @@
   line-height: 1.1;
 }
 
-/* Per-row color grammar */
+/* Per-row color grammar — RESOURCE_COLOR driven */
 .debrief-nav-row.row-resources { color: #FF6B9D; }
 .debrief-nav-row.row-ammo { color: #DA70D6; }
 /* SIGNAL row is battery grammar */
@@ -67,11 +69,13 @@
 }
 .debrief-acc-btn:hover { opacity: 1; filter: brightness(1.3); }
 
-/* colored sublines inside resources */
-.debrief-row-panel .debrief-line { padding: 0; margin: 0; }
+/* colored sublines inside resources — each row full width in RESOURCE_COLOR */
+.debrief-row-panel .debrief-line { padding: 0; margin: 0; width: 100%; }
 .debrief-row-panel .debrief-line.hp { color: #FF6B9D; }
 .debrief-row-panel .debrief-line.energy { color: #00D4FF; }
 .debrief-row-panel .debrief-line.focus { color: #FFF9B0; }
+.debrief-row-panel .debrief-line.ammo { color: #DA70D6; }
+.debrief-row-panel .debrief-line.key-ammo { color: #FF8A3D; }
 
 .debrief-row-summary {
   flex: 1 1 auto;
@@ -131,4 +135,26 @@ body.gone-rogue-active .debrief-feed-content .resource-value { opacity: 0.75; }
   filter: grayscale(1) brightness(0.5);
   animation: none !important;
   pointer-events: none;
+}
+
+/* ── Monochrome symbol idle animation (gentle pulse) ── */
+@keyframes symbolIdlePulse {
+  0%, 100% { opacity: 0.85; filter: brightness(1); }
+  50% { opacity: 1; filter: brightness(1.2); }
+}
+
+/* Resource row panels: full-width lines with per-resource color animation */
+.debrief-row-panel .debrief-line.resource-row {
+  width: 100%;
+  position: relative;
+  transition: color 0.3s ease, text-shadow 0.3s ease;
+  animation: symbolIdlePulse 2.4s ease-in-out infinite;
+}
+
+/* Gaining/losing flash per resource panel line */
+.debrief-row-panel .debrief-line.resource-row.gaining {
+  animation: resource-gain-pulse 0.6s ease-out;
+}
+.debrief-row-panel .debrief-line.resource-row.losing {
+  animation: resource-loss-flash 0.4s ease-out;
 }
