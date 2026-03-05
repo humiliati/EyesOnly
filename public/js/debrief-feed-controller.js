@@ -449,6 +449,18 @@ const DebriefFeedController = (function() {
         return first + rest;
       }
 
+      // Monochrome expand/collapse arrow: '>' collapsed, 'v' expanded
+      function _arrowLabel(rowId, fallbackLabel) {
+        var expanded = !!_rowExpanded[rowId];
+        // Resource/ammo rows use arrow only; non-resource rows use abbreviated label
+        var isResourceRow = (rowId === 'resources' || rowId === 'ammo');
+        if (isResourceRow) {
+          return expanded ? 'v' : '>';
+        }
+        // Non-resource rows: arrow + vowel-dropped abbreviation
+        return (expanded ? 'v' : '>') + abbrKeepFirst(fallbackLabel);
+      }
+
       html += '<div id="debrief-resources-content" class="debrief-resources-content">';
       html +=   '<div class="debrief-nav-list" id="debrief-nav-list" aria-label="Debrief rows">';
 
@@ -463,16 +475,16 @@ const DebriefFeedController = (function() {
         return s;
       }
 
-      // Macro rows
-      html += row('resources', '[' + abbrKeepFirst('resources') + ']', 'debrief-summary-resources', 'row-resources');
-      html += row('ammo', '[' + abbrKeepFirst('ammo') + ']', 'debrief-summary-ammo', 'row-ammo');
+      // Macro rows — arrows replace bracketed category titles
+      html += row('resources', _arrowLabel('resources', 'resources'), 'debrief-summary-resources', 'row-resources');
+      html += row('ammo', _arrowLabel('ammo', 'ammo'), 'debrief-summary-ammo', 'row-ammo');
       // signal row header is the battery-ascii pulse; label hidden in CSS
       html += row('signal', '', 'debrief-summary-signal', 'row-signal');
-      html += row('passives', '[' + abbrKeepFirst('passives') + ']', 'debrief-summary-passives', 'row-passives');
-      html += row('status', '[' + abbrKeepFirst('status') + ']', 'debrief-summary-status', 'row-status');
-      html += row('mok', '[' + abbrKeepFirst('mok') + ']', 'debrief-summary-mok', 'row-mok');
-      html += row('api', '[' + abbrKeepFirst('api') + ']', 'debrief-summary-api', 'row-api');
-      html += row('accessibility', '[' + abbrKeepFirst('accessibility') + ']', 'debrief-summary-accessibility', 'row-accessibility');
+      html += row('passives', _arrowLabel('passives', 'passives'), 'debrief-summary-passives', 'row-passives');
+      html += row('status', _arrowLabel('status', 'status'), 'debrief-summary-status', 'row-status');
+      html += row('mok', _arrowLabel('mok', 'mok'), 'debrief-summary-mok', 'row-mok');
+      html += row('api', _arrowLabel('api', 'api'), 'debrief-summary-api', 'row-api');
+      html += row('accessibility', _arrowLabel('accessibility', 'accessibility'), 'debrief-summary-accessibility', 'row-accessibility');
 
       html +=   '</div>';
       html += '</div>';
@@ -501,18 +513,52 @@ const DebriefFeedController = (function() {
         } catch (eH0) {}
       }
 
-      function _renderBarLine(prefixOrGlyph, cur, max, w) {
-        // Standard compact format: GLYPH[████░░]num/den
-        // If no glyph, fall back to prefix text.
-        w = w || 6;
+      // Monochrome symbol definitions per resource (idle, up, down cycles)
+      var RESOURCE_SYMBOLS = {
+        hp:      { glyph: '♥', idle: ['♥','♥','❣','♥'], up: ['♥','❣','❤'], down: ['❣','♥','❢'] },
+        energy:  { glyph: '△', idle: ['△','◬','△','◬'], up: ['◬','◮'], down: ['◬','◭'] },
+        focus:   { glyph: '◎', idle: ['◎','◉','◎','◉'], up: ['◎','◉'], down: ['◉','◎'] },
+        fatigue: { glyph: 'Ȫ', idle: ['Ȫ','Ȫ','ȫ','Ȫ'], up: ['Ȫ','ȫ'], down: ['ȫ','Ȫ'] },
+        ammo:    { glyph: '⁍', idle: ['⁍','⁍','⁌','⁍'], up: ['⁍','⁌'], down: ['⁌','⁍'] },
+        battery: { glyph: '◈', idle: ['◈','◈','◇','◈'], up: ['◇','◈'], down: ['◈','◇'] }
+      };
+
+      // Resource-change animation tracking (set by reportResourceChange)
+      if (!DebriefFeedController._animStates) DebriefFeedController._animStates = {};
+      var _animStates = DebriefFeedController._animStates;
+
+      function _getSymbol(resKey) {
+        var sym = RESOURCE_SYMBOLS[resKey];
+        if (!sym) return '';
+        var anim = _animStates[resKey];
+        if (anim && anim.frames && anim.idx < anim.frames.length) {
+          var ch = anim.frames[anim.idx];
+          anim.idx++;
+          if (anim.idx >= anim.frames.length) delete _animStates[resKey];
+          return ch;
+        }
+        // Idle: cycle based on timestamp (600ms per frame)
+        var IDLE_FRAME_MS = 600;
+        var tick = Math.floor(Date.now() / IDLE_FRAME_MS) % sym.idle.length;
+        return sym.idle[tick];
+      }
+
+      function _renderBarLine(resKey, cur, max, w) {
+        // Pip-boy format: SYMBOL VALUE███▒░░ (numerator only, no name)
+        w = w || 10;
         max = (typeof max === 'number' && max > 0) ? max : 1;
         cur = (typeof cur === 'number') ? cur : 0;
         cur = Math.max(0, Math.min(max, cur));
-        var filled = Math.round((cur / max) * w);
-        var bar = '█'.repeat(filled) + '░'.repeat(w - filled);
+        var numStr = String(Math.ceil(cur)).padStart(2, '0');
+        var ratio = (cur / max) * w;
+        var fullBlocks = Math.floor(ratio);
+        var partial = ratio - fullBlocks;
+        var bar = '█'.repeat(fullBlocks);
+        if (partial >= 0.25 && fullBlocks < w) { bar += '▒'; fullBlocks++; }
+        bar += '░'.repeat(Math.max(0, w - bar.length));
 
-        var head = String(prefixOrGlyph || '');
-        return head + '[' + bar + ']' + String(cur) + '/' + String(max);
+        var sym = _getSymbol(resKey);
+        return sym + ' ' + numStr + bar;
       }
 
       function _getRoguePlayer() {
@@ -556,59 +602,59 @@ const DebriefFeedController = (function() {
       try {
         var st = _getState();
 
-        // Resources macro summary: show HP only (critical)
+        // Resources macro summary: show HP bar (critical, no name)
         var rSum = document.getElementById('debrief-summary-resources');
-        if (rSum) rSum.textContent = _renderBarLine('♥', st.hp, st.maxHp, 6);
+        if (rSum) rSum.textContent = _renderBarLine('hp', st.hp, st.maxHp, 10);
 
         // Resources panel: HP + Energy + Focus lines (colored via spans)
         var rPanel = document.getElementById('debrief-panel-resources');
         if (rPanel && _rowExpanded.resources) {
-          var hpLine = _renderBarLine('♥', st.hp, st.maxHp, 6);
-          var enLine = _renderBarLine('E', st.energy, st.maxEnergy, 6);
-          var fcLine = _renderBarLine('◎', st.focus, st.maxFocus, 6);
+          var hpLine = _renderBarLine('hp', st.hp, st.maxHp, 10);
+          var enLine = _renderBarLine('energy', st.energy, st.maxEnergy, 10);
+          var fcLine = _renderBarLine('focus', st.focus, st.maxFocus, 10);
 
           rPanel.innerHTML =
-            '<div class="debrief-line hp">|_' + hpLine + '</div>' +
-            '<div class="debrief-line energy">|_' + enLine + '</div>' +
-            '<div class="debrief-line focus">|_' + fcLine + '</div>';
+            '<div class="debrief-line hp resource-row" data-resource="HP">' + hpLine + '</div>' +
+            '<div class="debrief-line energy resource-row" data-resource="Energy">' + enLine + '</div>' +
+            '<div class="debrief-line focus resource-row" data-resource="Focus">' + fcLine + '</div>';
         } else if (rPanel) {
           rPanel.textContent = '';
         }
 
-        // Ammo macro summary
+        // Ammo macro summary: ammo bar only (no name)
         var amEl = document.getElementById('debrief-summary-ammo');
         if (amEl) {
           var ammo = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo) ? GAMESTATE.getAmmo() : (st.ammo || 0);
           var maxA = st.maxAmmo || 20;
-          var keyAmmoTotal = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getTotalKeyAmmo) ? GAMESTATE.getTotalKeyAmmo() : 0;
-          var ammoSummary = _renderBarLine('A', ammo, maxA, 6);
-          if (keyAmmoTotal > 0) ammoSummary += ' 🔑x' + keyAmmoTotal;
-          amEl.textContent = ammoSummary;
+          amEl.textContent = _renderBarLine('ammo', ammo, maxA, 10);
         }
 
-        // Ammo panel: weapon ammo bar + key_ammo resource + key_item counts
+        // Ammo panel: ammo bar + key_ammo/key_items on same row (no max resources)
         var aPanel = document.getElementById('debrief-panel-ammo');
         if (aPanel && _rowExpanded.ammo) {
           var linesA = [];
           var ammo2 = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo) ? GAMESTATE.getAmmo() : (st.ammo || 0);
           var maxA2 = st.maxAmmo || 20;
-          linesA.push('|_' + _renderBarLine('A', ammo2, maxA2, 6));
+          linesA.push('<div class="debrief-line ammo resource-row" data-resource="Ammo">' + _renderBarLine('ammo', ammo2, maxA2, 10) + '</div>');
 
+          // Key ammo + key items on same row (no max value resources)
           var kc = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getKeyCounts) ? GAMESTATE.getKeyCounts() : null;
-          // key_ammo (Tier 1) — consumable chest/lock keys, tracked as resource
-          function addKeyLine(label, bucket, keyType) {
+          var keyParts = [];
+          function addKeyPart(glyph, bucket, keyType) {
             try {
               var n = kc && kc[bucket] && kc[bucket][keyType] ? kc[bucket][keyType] : 0;
-              if (n > 0) linesA.push('|_' + label + ':' + n);
+              if (n > 0) keyParts.push(glyph + 'x' + n);
             } catch (e0) {}
           }
-          addKeyLine('🔑 KEY AMMO Rusty', 'ammo', 'RUSTY_KEY');
-          addKeyLine('🗝️ KEY AMMO Bronze', 'ammo', 'BRONZE_KEY');
-          // key_items (Tier 2) — persistent door/gate keys tracked for awareness
-          addKeyLine('💳 KEY ITEM Keycard', 'gate', 'KEYCARD');
-          addKeyLine('🏷️ KEY ITEM Mall', 'gate', 'MALL_KEY');
+          addKeyPart('🝯', 'ammo', 'RUSTY_KEY');
+          addKeyPart('🔑', 'ammo', 'BRONZE_KEY');
+          addKeyPart('💳', 'gate', 'KEYCARD');
+          addKeyPart('🏷', 'gate', 'MALL_KEY');
+          if (keyParts.length > 0) {
+            linesA.push('<div class="debrief-line key-ammo resource-row" data-resource="key_ammo">' + keyParts.join(' ') + '</div>');
+          }
 
-          aPanel.textContent = linesA.join('\n');
+          aPanel.innerHTML = linesA.join('');
         } else if (aPanel) {
           aPanel.textContent = '';
         }
@@ -729,9 +775,8 @@ const DebriefFeedController = (function() {
       } catch (eACC0) {}
 
       // Signal summary (battery-driven pulse, 3-tier speed)
-
-      // Signal summary (battery-driven pulse, 3-tier speed)
-      // Center of ((( ))) shows real device battery: [===] full, [==-] mid, [=--] low, [---] empty
+      // Diamond fill: [◈◈◈◇◇] when charged, [◇◇◇◇◇] when dead
+      // ((( and ))) pulse gently when battery is alive; pulse stops when dead
       try {
         var sumS = document.getElementById('debrief-summary-signal');
         if (sumS) {
@@ -753,12 +798,12 @@ const DebriefFeedController = (function() {
               }
             } catch (eBatt) {}
 
-            function _deviceBar() {
-              var lv = _deviceBatt.level;
-              if (lv >= 0.67) return '[===]';
-              if (lv >= 0.34) return '[==-]';
-              if (lv > 0.05) return '[=--]';
-              return '[---]';
+            // ── Diamond battery bar ──
+            function _batteryDiamonds(batt, maxB) {
+              maxB = maxB || 5;
+              batt = Math.max(0, Math.min(maxB, batt || 0));
+              var filled = Math.round(batt);
+              return '[' + '◈'.repeat(filled) + '◇'.repeat(maxB - filled) + ']';
             }
 
             // ── In-game battery (resource) ──
@@ -785,13 +830,13 @@ const DebriefFeedController = (function() {
               var b = _getBatt();
               var pct = b.maxB ? (b.batt / b.maxB) : 0;
               var tier = _tierFromPct(pct);
-              var devBar = _deviceBar();
+              var diamonds = _batteryDiamonds(b.batt, b.maxB);
               var rowElS = null;
               try { rowElS = document.querySelector('.debrief-nav-row[data-row="signal"]'); } catch (e0) {}
 
               // Device battery depleted: grey out entire row, stop pulse
               if (_deviceBatt.level <= 0.05 && _deviceBatt.supported) {
-                sumS.textContent = '(((' + devBar + ')))';
+                sumS.textContent = '(((' + diamonds + ')))';
                 if (rowElS) {
                   rowElS.classList.add('signal-depleted');
                   rowElS.classList.remove('signal-pulse');
@@ -804,8 +849,11 @@ const DebriefFeedController = (function() {
               if (rowElS) rowElS.classList.remove('signal-depleted');
 
               if (b.batt <= 0) {
-                // In-game battery = 0: powered down avatar
-                sumS.textContent = '(((' + devBar + ')))';
+                // In-game battery = 0: pulse stops, powered down
+                sumS.textContent = '(((' + diamonds + ')))';
+                if (rowElS) {
+                  rowElS.classList.remove('signal-pulse');
+                }
                 try {
                   var av = document.getElementById('mok-avatar');
                   if (av) { av.classList.add('mok-powered-down'); av.setAttribute('aria-disabled', 'true'); }
@@ -821,10 +869,10 @@ const DebriefFeedController = (function() {
 
               _frameIx++;
 
-              // Stable-width signal grammar: "(((" + device battery bar + ")))".
-              sumS.textContent = '(((' + devBar + ')))';
+              // Diamond battery signal: "(((" + [◈◈◈◇◇] + ")))"
+              sumS.textContent = '(((' + diamonds + ')))';
 
-              // Toggle pulse class for color/glow
+              // Toggle pulse class for gentle color/glow
               if (rowElS) {
                 try {
                   rowElS.classList.remove('signal-pulse');
@@ -1072,6 +1120,24 @@ const DebriefFeedController = (function() {
     // The single-tooltip-per-pickup doctrine means only the pickup path
     // fires one TooltipSystem.show/showAction call. This function handles
     // debrief feed flash + row highlight only.
+
+    // Trigger monochrome symbol animation state (up or down)
+    var SYMBOL_DEFS = {
+      hp:      { up: ['♥','❣','❤'], down: ['❣','♥','❢'] },
+      energy:  { up: ['◬','◮'], down: ['◬','◭'] },
+      focus:   { up: ['◎','◉'], down: ['◉','◎'] },
+      fatigue: { up: ['Ȫ','ȫ'], down: ['ȫ','Ȫ'] },
+      ammo:    { up: ['⁍','⁌'], down: ['⁌','⁍'] },
+      battery: { up: ['◇','◈'], down: ['◈','◇'] }
+    };
+    var resKey = String(resourceType).toLowerCase();
+    var symDef = SYMBOL_DEFS[resKey];
+    if (symDef && DebriefFeedController._animStates) {
+      DebriefFeedController._animStates[resKey] = {
+        frames: change >= 0 ? symDef.up : symDef.down,
+        idx: 0
+      };
+    }
 
     // RESOURCE_COLOR lookup for frame flash
     var RESOURCE_COLORS = {

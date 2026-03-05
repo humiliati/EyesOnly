@@ -28,14 +28,16 @@
   min-height: 0;
   width: 100%;
   overflow: auto;
-  padding: 6px;
+  padding: 3px;           /* was 6px — reduced ~3% for more content space */
   z-index: 2;
+  scroll-behavior: smooth; /* pip-boy smooth scrolling feel */
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Mobile portrait: tighter debrief content */
 @media (max-width: 600px) and (orientation: portrait) {
   .debrief-feed-content-container {
-    padding: 2px;
+    padding: 1px;          /* was 2px — minimized dead space */
   }
 }
 
