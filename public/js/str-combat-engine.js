@@ -646,39 +646,52 @@ var StrCombatEngine = (function () {
       if (explosiveCard) return explosiveCard;
     }
 
+    var rawCard = null;
+
     if (enemyHpPercent < 30) {
       var roll = _rng();
       if (roll < 0.4 && typeof CardSystem !== 'undefined') {
-        return CardSystem.rollCard('Dodge');
+        rawCard = CardSystem.rollCard('Dodge');
       } else if (roll < 0.7 && typeof CardSystem !== 'undefined') {
-        return CardSystem.rollCard('Prone');
+        rawCard = CardSystem.rollCard('Prone');
       }
     }
 
-    if (enemyHpPercent > 50) {
+    if (!rawCard && enemyHpPercent > 50) {
       var attackRoll = _rng();
       if (typeof CardSystem !== 'undefined') {
         if (attackRoll < 0.5) {
-          return CardSystem.rollCard('Single Shot');
+          rawCard = CardSystem.rollCard('Single Shot');
         } else if (attackRoll < 0.8) {
-          return CardSystem.rollCard('Burst Shot');
+          rawCard = CardSystem.rollCard('Burst Shot');
         } else {
-          return CardSystem.rollCard('Overwatch');
+          rawCard = CardSystem.rollCard('Overwatch');
         }
       }
     }
 
-    if (typeof CardSystem !== 'undefined') {
-      return CardSystem.rollCard('Single Shot');
+    if (!rawCard && typeof CardSystem !== 'undefined') {
+      rawCard = CardSystem.rollCard('Single Shot');
     }
 
-    return {
-      name: 'Basic Attack',
-      emoji: '🔫',
-      type: 'attack',
-      category: 'attack',
-      stats: { damage: 2, accuracy: 70, energy: 1, speed: 2 }
-    };
+    if (!rawCard) {
+      return {
+        name: 'Basic Attack',
+        emoji: '🔫',
+        type: 'attack',
+        category: 'attack',
+        stats: { damage: 2, accuracy: 70, energy: 1, speed: 2 }
+      };
+    }
+
+    // CardSystem.rollCard returns CI-* CardRefs when GAMESTATE is available.
+    // Hydrate to full card object so downstream systems (intent, combat) have stats/name/emoji.
+    if (rawCard.id && rawCard.id.indexOf('CI-') === 0 && typeof CardStateAuthority !== 'undefined' && CardStateAuthority.hydrateCard) {
+      var hydrated = CardStateAuthority.hydrateCard(rawCard);
+      if (hydrated && hydrated.stats) return hydrated;
+    }
+
+    return rawCard;
   }
 
   // ── Round Execution ───────────────────────────────────────

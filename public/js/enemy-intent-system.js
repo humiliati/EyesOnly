@@ -216,7 +216,7 @@ var EnemyIntentSystem = (function() {
       expression: expression,
       weapon: weapon,
       intentType: intentType,
-      damageEstimate: card ? (card.stats.damage || 0) : 0,
+      damageEstimate: card && card.stats ? (card.stats.damage || 0) : 0,
       isCharging: false,
       chargeMultiplier: 1.0,
       lastUpdateTime: Date.now(),
