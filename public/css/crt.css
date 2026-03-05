@@ -309,10 +309,10 @@ body.gone-rogue-active #scanlines::after {
   background: linear-gradient(160deg, rgba(10, 18, 12, 0.9), rgba(4, 8, 6, 0.95));
   border: 1px solid var(--panel-border-soft);
   border-radius: 8px;
-  padding: 8px;
+  padding: 5px;          /* was 8px — reduced ~3% for more content space */
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;              /* was 8px — tighter gap between label and screen */
   position: relative; /* default (index/street): stay inside control rail */
   min-height: 0;
   box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.65);
@@ -377,7 +377,7 @@ body.in-gone-rogue .debrief-window.expanded {
   color: var(--phosphor-dim);
   margin: 0;
   padding: 0;
-  line-height: 1.05;
+  line-height: 1;       /* was 1.05 — tighter */
 }
 
 .debrief-screen {
@@ -1874,6 +1874,7 @@ body.amber-mode #scanlines::after {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     touch-action: pan-y;
+    scroll-behavior: smooth; /* pip-boy smooth scrolling */
   }
 
   .debrief-nav-list {
@@ -1886,9 +1887,9 @@ body.amber-mode #scanlines::after {
   .debrief-nav-row {
     border: 0;
     border-radius: 0;
-    padding: 1px 3px;    /* was 2px 4px */
+    padding: 2px 3px;    /* was 1px 3px — slightly more for larger font */
     font-family: var(--font-legible, 'Classic Console Neue', 'Courier New', monospace);
-    font-size: 11px;     /* was 13px — much smaller on mobile */
+    font-size: 13px;     /* was 11px — larger for 3-5 rows visible */
     font-weight: 750;
     color: rgba(191, 255, 227, 0.95);
     background: transparent;
@@ -1897,11 +1898,12 @@ body.amber-mode #scanlines::after {
     align-items: center;
     justify-content: space-between;
     letter-spacing: 0.02em; /* was 0.03em */
-    line-height: 1.1;
+    line-height: 1.2;       /* slightly increased for readability */
+    width: 100%;             /* full width of frame */
   }
 
   @media (min-width: 900px) {
-    .debrief-nav-row { font-size: 15px; }
+    .debrief-nav-row { font-size: 16px; } /* was 15px — larger desktop */
   }
 
   .debrief-nav-row.highlighted {
@@ -3892,9 +3894,12 @@ body.cascade-active {
   flex: 1;
   min-height: 0;
   width: 100%;
-  overflow: hidden; /* prevent grey scroll wheel in debrief */
-  padding: 4px;
+  overflow-y: auto;          /* was hidden — enable scrolling for many rows */
+  overflow-x: hidden;
+  padding: 2px;              /* was 4px — reduce dead space */
   box-sizing: border-box;
+  scroll-behavior: smooth;   /* pip-boy smooth scrolling */
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Synergy overlap overlay (keys+gates/chests/vents) */
