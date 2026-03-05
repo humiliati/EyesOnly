@@ -325,7 +325,7 @@ body.mode-gone-rogue .debrief-window,
 body.in-gone-rogue .debrief-window {
   position: fixed;
   z-index: 700;
-  max-width: min(360px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px); /* was min(360px,...) — fill available viewport */
 }
 
 /* Adaptive positioning for the floating debrief feed (rogue only) */
@@ -367,7 +367,27 @@ body.in-gone-rogue .debrief-window.expanded {
 }
 
 .debrief-window.expanded .debrief-screen {
-  max-width: 640px;
+  max-width: 100%; /* was 640px — fill container on expand */
+}
+
+/* Responsive 4:3 scaling: landscape phones get wider debrief */
+@media (max-width: 900px) and (orientation: landscape) {
+  body.mode-gone-rogue .debrief-window,
+  body.in-gone-rogue .debrief-window,
+  body.gone-rogue-active .debrief-window {
+    max-width: calc(45vw - 16px); /* landscape: wider than portrait */
+  }
+  .debrief-screen {
+    aspect-ratio: 4 / 3; /* maintain ratio even in landscape */
+  }
+}
+
+@media (max-width: 600px) and (orientation: portrait) {
+  body.mode-gone-rogue .debrief-window,
+  body.in-gone-rogue .debrief-window,
+  body.gone-rogue-active .debrief-window {
+    max-width: calc(100vw - 16px); /* portrait: fill width */
+  }
 }
 
 .debrief-label {
@@ -385,7 +405,7 @@ body.in-gone-rogue .debrief-window.expanded {
   width: 100%;
   aspect-ratio: 4 / 3;
   min-width: 80px;
-  max-width: 320px;
+  max-width: none; /* was 320px — now fills container width responsively */
   border: 1px solid var(--panel-border);
   border-radius: 6px;
   background: radial-gradient(circle at 20% 20%, rgba(51, 255, 120, 0.08), rgba(0, 0, 0, 0.92) 70%);
@@ -3900,6 +3920,61 @@ body.cascade-active {
   box-sizing: border-box;
   scroll-behavior: smooth;   /* pip-boy smooth scrolling */
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(28, 255, 155, 0.15) transparent;
+}
+
+/* Translucent minimal scrollbar — practically invisible, implied when needed */
+#debrief-resources-content::-webkit-scrollbar {
+  width: 3px;
+}
+#debrief-resources-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+#debrief-resources-content::-webkit-scrollbar-thumb {
+  background: rgba(28, 255, 155, 0.12);
+  border-radius: 3px;
+}
+#debrief-resources-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(28, 255, 155, 0.25);
+}
+
+/* Also style the debrief-feed-content-container scrollbar */
+.debrief-feed-content-container {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(28, 255, 155, 0.15) transparent;
+}
+.debrief-feed-content-container::-webkit-scrollbar {
+  width: 3px;
+}
+.debrief-feed-content-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+.debrief-feed-content-container::-webkit-scrollbar-thumb {
+  background: rgba(28, 255, 155, 0.12);
+  border-radius: 3px;
+}
+.debrief-feed-content-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(28, 255, 155, 0.25);
+}
+
+/* Debrief window overflow scrollbar (maximized state) */
+.debrief-window {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(28, 255, 155, 0.15) transparent;
+}
+.debrief-window::-webkit-scrollbar {
+  width: 3px;
+}
+.debrief-window::-webkit-scrollbar-track {
+  background: transparent;
+}
+.debrief-window::-webkit-scrollbar-thumb {
+  background: rgba(28, 255, 155, 0.12);
+  border-radius: 3px;
+}
+.debrief-window::-webkit-scrollbar-thumb:hover {
+  background: rgba(28, 255, 155, 0.25);
 }
 
 /* Synergy overlap overlay (keys+gates/chests/vents) */

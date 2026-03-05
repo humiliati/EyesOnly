@@ -71,8 +71,45 @@ const DebriefFeedController = (function() {
     // Initialize display
     _render();
 
+    // Idle symbol refresh: staggered interval so symbols subtly cycle
+    // Uses 1200ms base — each symbol has a different idle frame length (4 frames × 600ms = 2400ms cycle)
+    // so a 1200ms refresh catches every other idle frame transition, feeling organic
+    _startIdleSymbolRefresh();
+
     // Portrait Gone Rogue: tap to expand/collapse debrief width; drag to resize
     _setupPortraitDebriefSizing();
+  }
+
+  var _idleRefreshTimer = null;
+
+  function _startIdleSymbolRefresh() {
+    if (_idleRefreshTimer) clearInterval(_idleRefreshTimer);
+    _idleRefreshTimer = setInterval(function() {
+      // Only refresh if we're in resources display mode (not MOK or video)
+      if (_currentDisplay !== 'resources') return;
+      // Lightweight: update only the summary spans (no full re-render)
+      _refreshSummarySymbols();
+    }, 1200);
+  }
+
+  /**
+   * Lightweight refresh: update only the macro summary text content
+   * so idle symbols cycle without expensive full DOM rebuild.
+   * Avoids full _renderResources() which would tear down + rebuild DOM + re-wire handlers.
+   */
+  function _refreshSummarySymbols() {
+    try {
+      if (!_debriefScreen || _currentDisplay !== 'resources') return;
+
+      // Check if the structure exists (summary spans are in the DOM)
+      var rSum = document.getElementById('debrief-summary-resources');
+      if (!rSum) return; // structure not built yet
+
+      // RESOURCE_SYMBOLS + _getSymbol + _renderBarLine are defined inside _renderResources
+      // scope. To avoid duplicating them, we use a shared reference on the controller object.
+      if (!DebriefFeedController._idleRender) return;
+      DebriefFeedController._idleRender();
+    } catch (e) {}
   }
 
   var _nav = {
@@ -527,6 +564,10 @@ const DebriefFeedController = (function() {
       if (!DebriefFeedController._animStates) DebriefFeedController._animStates = {};
       var _animStates = DebriefFeedController._animStates;
 
+      // Stagger idle symbols: each resource gets a per-key time offset
+      // so they don't all tick at the exact same moment — feels organic
+      var IDLE_OFFSETS = { hp: 0, energy: 200, focus: 400, fatigue: 600, ammo: 150, battery: 350 };
+
       function _getSymbol(resKey) {
         var sym = RESOURCE_SYMBOLS[resKey];
         if (!sym) return '';
@@ -537,9 +578,10 @@ const DebriefFeedController = (function() {
           if (anim.idx >= anim.frames.length) delete _animStates[resKey];
           return ch;
         }
-        // Idle: cycle based on timestamp (600ms per frame)
+        // Idle: cycle based on timestamp with per-resource stagger offset
         var IDLE_FRAME_MS = 600;
-        var tick = Math.floor(Date.now() / IDLE_FRAME_MS) % sym.idle.length;
+        var offset = (IDLE_OFFSETS && IDLE_OFFSETS[resKey]) || 0;
+        var tick = Math.floor((Date.now() + offset) / IDLE_FRAME_MS) % sym.idle.length;
         return sym.idle[tick];
       }
 
@@ -598,6 +640,39 @@ const DebriefFeedController = (function() {
         return st;
       }
 
+      // Register a lightweight idle-render function that only updates textContent
+      // of existing summary spans (no DOM rebuild, no event re-wiring)
+      DebriefFeedController._idleRender = function() {
+        try {
+          var st2 = _getState();
+          var rS = document.getElementById('debrief-summary-resources');
+          if (rS) rS.textContent = _renderBarLine('hp', st2.hp, st2.maxHp, 10);
+
+          var aS = document.getElementById('debrief-summary-ammo');
+          if (aS) {
+            var am = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo) ? GAMESTATE.getAmmo() : (st2.ammo || 0);
+            var mxA = st2.maxAmmo || 20;
+            var txt = _renderBarLine('ammo', am, mxA, 10);
+            try {
+              var kcI = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getKeyCounts) ? GAMESTATE.getKeyCounts() : null;
+              var kT = 0;
+              if (kcI && kcI.ammo) { for (var kb in kcI.ammo) { if (kcI.ammo.hasOwnProperty(kb)) kT += (kcI.ammo[kb] || 0); } }
+              if (kT > 0) txt += ' 🝯' + kT;
+            } catch (eKI) {}
+            aS.textContent = txt;
+          }
+
+          // Also update expanded panel lines if visible
+          var rP = document.getElementById('debrief-panel-resources');
+          if (rP && _rowExpanded.resources) {
+            var enLines = rP.querySelectorAll('.debrief-line.energy');
+            var fcLines = rP.querySelectorAll('.debrief-line.focus');
+            if (enLines.length) enLines[0].textContent = _renderBarLine('energy', st2.energy, st2.maxEnergy, 10);
+            if (fcLines.length) fcLines[0].textContent = _renderBarLine('focus', st2.focus, st2.maxFocus, 10);
+          }
+        } catch (eIdle) {}
+      };
+
       // Summaries + panels
       try {
         var st = _getState();
@@ -606,15 +681,13 @@ const DebriefFeedController = (function() {
         var rSum = document.getElementById('debrief-summary-resources');
         if (rSum) rSum.textContent = _renderBarLine('hp', st.hp, st.maxHp, 10);
 
-        // Resources panel: HP + Energy + Focus lines (colored via spans)
+        // Resources panel: Energy + Focus lines (HP already shown in macro summary)
         var rPanel = document.getElementById('debrief-panel-resources');
         if (rPanel && _rowExpanded.resources) {
-          var hpLine = _renderBarLine('hp', st.hp, st.maxHp, 10);
           var enLine = _renderBarLine('energy', st.energy, st.maxEnergy, 10);
           var fcLine = _renderBarLine('focus', st.focus, st.maxFocus, 10);
 
           rPanel.innerHTML =
-            '<div class="debrief-line hp resource-row" data-resource="HP">' + hpLine + '</div>' +
             '<div class="debrief-line energy resource-row" data-resource="Energy">' + enLine + '</div>' +
             '<div class="debrief-line focus resource-row" data-resource="Focus">' + fcLine + '</div>';
         } else if (rPanel) {
@@ -641,15 +714,12 @@ const DebriefFeedController = (function() {
           amEl.textContent = ammoText;
         }
 
-        // Ammo panel: ammo bar + key_ammo/key_items on same row (no max resources)
+        // Ammo panel: key_ammo/key_items (ammo bar already in macro summary)
         var aPanel = document.getElementById('debrief-panel-ammo');
         if (aPanel && _rowExpanded.ammo) {
           var linesA = [];
-          var ammo2 = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getAmmo) ? GAMESTATE.getAmmo() : (st.ammo || 0);
-          var maxA2 = st.maxAmmo || 20;
-          linesA.push('<div class="debrief-line ammo resource-row" data-resource="Ammo">' + _renderBarLine('ammo', ammo2, maxA2, 10) + '</div>');
 
-          // Key ammo row (always visible in expanded panel)
+          // Key ammo row (ammo bar is already the macro summary — no duplicate)
           var kc = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getKeyCounts) ? GAMESTATE.getKeyCounts() : null;
           var keyParts = [];
           function addKeyPart(glyph, bucket, keyType) {
