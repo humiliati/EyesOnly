@@ -24,7 +24,8 @@ const GroundEffects = (function () {
     OBSCURED: 'obscured',
     SONIC: 'sonic',
     RESONANCE: 'resonance',
-    SMOKE: 'smoke'
+    SMOKE: 'smoke',
+    SCORCHED: 'scorched'
   };
 
   // Ground effect definitions
@@ -193,8 +194,28 @@ const GroundEffects = (function () {
       lifetime: 4,               // Lingers 4 seconds (extended for drift)
       stealthBonus: 0.1,         // Slight concealment in smoke
       description: 'Drifting smoke from extinguished fire'
+    },
+    SCORCHED: {
+      emoji: '',                 // No emoji — scorch mark is ASCII-only
+      char: '▓',
+      color: '#3a2a1a',          // Dark burnt brown
+      damage: 0,
+      movePenalty: 0,
+      stealthBonus: 0,
+      dissipates: true,
+      lifetime: 120,             // Scorch marks persist ~2 minutes
+      description: 'Scorched earth — aftermath of an explosion'
     }
   };
+
+  // ── Type comparison helper ──
+  // GROUND_TYPES values are lowercase ('fire') but setGroundEffect stores
+  // the key as-is ('FIRE'). This helper handles both casings.
+  function _isType(effect, typeConst) {
+    if (!effect) return false;
+    var t = effect.type;
+    return t === typeConst || t === typeConst.toUpperCase();
+  }
 
   // Active ground effects on the map
   var _groundMap = {}; // key: "x,y", value: { type, ... }
@@ -214,13 +235,15 @@ const GroundEffects = (function () {
    * @param {object} overrides - Override default properties
    */
   function setGroundEffect(x, y, type, overrides) {
-    if (!GROUND_EFFECTS[type]) {
+    // Resolve type key: try as-is first, then uppercase (handles GROUND_TYPES values)
+    var resolvedType = GROUND_EFFECTS[type] ? type : type.toUpperCase();
+    if (!GROUND_EFFECTS[resolvedType]) {
       console.warn('[GroundEffects] Unknown ground type:', type);
       return false;
     }
 
     var key = x + ',' + y;
-    var effect = Object.assign({}, GROUND_EFFECTS[type]);
+    var effect = Object.assign({}, GROUND_EFFECTS[resolvedType]);
 
     if (overrides) {
       Object.assign(effect, overrides);
@@ -228,7 +251,7 @@ const GroundEffects = (function () {
 
     effect.x = x;
     effect.y = y;
-    effect.type = type;
+    effect.type = resolvedType; // Always store uppercase key for consistent lookups
     effect.spawnTime = Date.now();
 
     _groundMap[key] = effect;
@@ -262,34 +285,28 @@ const GroundEffects = (function () {
   }
 
   /**
-   * Update ground effects (spreading, dissipating, etc.)
+   * Update ground effects (spreading, dissipating, explosion lifecycle, drift).
    * @param {number} deltaMs - Time since last update
    * @param {number} gridWidth - Grid width
    * @param {number} gridHeight - Grid height
    */
+
   // ── Smoke drift config ──
-  var SMOKE_DRIFT_SPEED = 0.4;     // Tiles per second — slow, atmospheric drift
   var SMOKE_DRIFT_LIFETIME = 4;    // Seconds before smoke fully dissipates
   var SMOKE_DENSE_THRESHOLD = 2;   // Adjacent smoke count to upgrade to OBSCURED
   var SMOKE_DENSE_LIFETIME = 6;    // Dense clouds linger longer
   var SMOKE_VISUAL_CHARS = ['░', '▒', '≈']; // Shape options: "locks in" at spawn
 
-  /**
-   * Pick a random wind-like drift direction for a smoke cloud.
-   * Favors one of 8 compass directions with slight randomness.
-   */
-  function _pickDriftDirection() {
-    var windDirs = [
-      { dx:  1, dy:  0 }, { dx: -1, dy:  0 },
-      { dx:  0, dy:  1 }, { dx:  0, dy: -1 },
-      { dx:  1, dy:  1 }, { dx: -1, dy:  1 },
-      { dx:  1, dy: -1 }, { dx: -1, dy: -1 }
-    ];
-    var d = windDirs[Math.floor(Math.random() * windDirs.length)];
-    // Normalize diagonal so speed is consistent
-    var len = Math.sqrt(d.dx * d.dx + d.dy * d.dy);
-    return { dx: d.dx / len, dy: d.dy / len };
-  }
+  // ── Explosion lifecycle phase timings (Layer B) ──
+  // Phase 1: 0-3s     Red tiles + ASCII smoke chars + fire generating smoke
+  // Phase 2: 3-8s     Outer ring fire tiles rescind (die from outside in)
+  // Phase 3: 8-20s    Inner ring continues, rescinding continues
+  // Phase 4: 20-50s   Only epicenter + 1-ring remain, still producing smoke
+  // Phase 5: 50s+     Epicenter stops smoke, all fire→SCORCHED
+  var EXPLOSION_RESCIND_START_SEC = 3;    // Outer tiles start dying at 3s
+  var EXPLOSION_RESCIND_RATE = 0.15;      // Probability per second to rescind (per tile)
+  var EXPLOSION_EPICENTER_SMOKE_SEC = 30; // Epicenter produces smoke for 30s
+  var EXPLOSION_SCORCH_AFTER_SEC = 35;    // Epicenter becomes scorched at 35s
 
   /**
    * Count adjacent smoke/obscured tiles around a position (for density check).
@@ -300,12 +317,68 @@ const GroundEffects = (function () {
       for (var dy = -1; dy <= 1; dy++) {
         if (dx === 0 && dy === 0) continue;
         var neighbor = _groundMap[(x + dx) + ',' + (y + dy)];
-        if (neighbor && (neighbor.type === GROUND_TYPES.SMOKE || neighbor.type === GROUND_TYPES.OBSCURED)) {
+        if (neighbor && (_isType(neighbor, GROUND_TYPES.SMOKE) || _isType(neighbor, GROUND_TYPES.OBSCURED))) {
           count++;
         }
       }
     }
     return count;
+  }
+
+  /**
+   * Spawn a drifting smoke cloud at position (shared by fire decay + explosion smoke gen).
+   */
+  function _spawnSmoke(x, y, gridWidth, gridHeight) {
+    var key = x + ',' + y;
+    if (_groundMap[key]) return; // Don't overwrite existing effects
+
+    if (x < 0 || x >= gridWidth || y < 0 || y >= gridHeight) return;
+
+    var smokeChar = SMOKE_VISUAL_CHARS[Math.floor(Math.random() * SMOKE_VISUAL_CHARS.length)];
+    var effect = Object.assign({}, GROUND_EFFECTS.SMOKE);
+    effect.x = x;
+    effect.y = y;
+    effect.type = GROUND_TYPES.SMOKE;
+    effect.spawnTime = Date.now();
+    effect._decayedToSmoke = true;
+    effect._smokeChar = smokeChar;
+    effect.char = smokeChar;
+    effect.lifetime = SMOKE_DRIFT_LIFETIME;
+
+    // Use DriftVectorSystem if available, else inline fallback
+    if (typeof DriftVectorSystem !== 'undefined') {
+      DriftVectorSystem.initDriftWindBiased(effect);
+    } else {
+      var dirs8 = [
+        { dx:1,dy:0 },{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1},
+        {dx:1,dy:1},{dx:-1,dy:1},{dx:1,dy:-1},{dx:-1,dy:-1}
+      ];
+      var d = dirs8[Math.floor(Math.random() * dirs8.length)];
+      var len = Math.sqrt(d.dx*d.dx + d.dy*d.dy);
+      effect._driftVX = d.dx / len;
+      effect._driftVY = d.dy / len;
+      effect._driftAccumX = 0;
+      effect._driftAccumY = 0;
+    }
+
+    _groundMap[key] = effect;
+  }
+
+  /**
+   * Convert an explosion fire tile to SCORCHED.
+   */
+  function _scorchTile(effect) {
+    effect.type = GROUND_TYPES.SCORCHED;
+    effect.char = '▓';
+    effect.emoji = '';
+    effect.color = '#3a2a1a';
+    effect.damage = 0;
+    effect.lightRadius = 0;
+    effect._decayedToSmoke = false;
+    effect._explosionFire = false;
+    effect.dissipates = true;
+    effect.lifetime = 120; // 2 minutes
+    effect.spawnTime = Date.now();
   }
 
   function update(deltaMs, gridWidth, gridHeight) {
@@ -315,20 +388,110 @@ const GroundEffects = (function () {
     var effectsToRemove = [];
     var effectsToRelocate = []; // Smoke tiles that need to drift to new positions
 
+    // Drift speed — use DriftVectorSystem constant if available
+    var driftSpeed = (typeof DriftVectorSystem !== 'undefined')
+      ? DriftVectorSystem.DRIFT_SPEED : 0.4;
+
     Object.keys(_groundMap).forEach(function(key) {
       var effect = _groundMap[key];
 
-      // Handle dissipating effects
+      // ════════════════════════════════════════════════════════════════
+      // EXPLOSION FIRE LIFECYCLE (Layer B)
+      // Tagged with _explosionFire by ExplosionSystem.detonate()
+      // ════════════════════════════════════════════════════════════════
+      if (effect._explosionFire && _isType(effect, GROUND_TYPES.FIRE)) {
+        var expAge = (now - effect._explosionSpawnTime) / 1000;
+        var dist = effect._explosionDistance || 0;
+        var maxR = effect._explosionMaxRadius || 3;
+
+        // ── Animated fire char cycling ──
+        // Cycle through fire chars for visual animation on tile
+        var fireChars = ['▒', '░', '▓', '░'];
+        var charIdx = Math.floor((now / 250) + dist * 2) % fireChars.length;
+        effect.char = fireChars[charIdx];
+
+        // ── Smoke generation: fire tiles periodically spawn drifting smoke ──
+        // Rate decreases as fire ages (smoke slows down near end)
+        var smokeGenChance = 0.08 * dtSec; // ~8% per second base rate
+        if (expAge > EXPLOSION_EPICENTER_SMOKE_SEC && dist <= 1) {
+          smokeGenChance = 0.03 * dtSec; // Epicenter slows down
+        }
+        if (Math.random() < smokeGenChance) {
+          // Spawn smoke in a random adjacent empty tile
+          var sdx = Math.floor(Math.random() * 3) - 1;
+          var sdy = Math.floor(Math.random() * 3) - 1;
+          _spawnSmoke(effect.x + sdx, effect.y + sdy, gridWidth, gridHeight);
+        }
+
+        // ── Phase 2+: Outer ring rescinding ──
+        // Non-epicenter tiles start dying after EXPLOSION_RESCIND_START_SEC
+        // Probability scales with distance (farther = dies sooner)
+        if (dist > 0 && expAge > EXPLOSION_RESCIND_START_SEC) {
+          var rescindAge = expAge - EXPLOSION_RESCIND_START_SEC;
+          // Distance-based multiplier: farther tiles rescind faster
+          var distFactor = dist / Math.max(1, maxR);
+          var rescindProb = EXPLOSION_RESCIND_RATE * distFactor * dtSec;
+          // After 2x the start time, force-rescind all non-epicenter tiles
+          if (rescindAge > EXPLOSION_RESCIND_START_SEC * 2) {
+            rescindProb = 0.5 * dtSec;
+          }
+
+          if (Math.random() < rescindProb) {
+            // Fire tile dies → spawn last gasp smoke, then remove
+            _spawnSmoke(effect.x, effect.y, gridWidth, gridHeight);
+
+            // Small chance adjacent tiles become scorched
+            if (dist <= 2 && Math.random() < 0.25) {
+              _scorchTile(effect);
+            } else {
+              effectsToRemove.push(key);
+            }
+            return;
+          }
+        }
+
+        // ── Phase 5: Epicenter tile scorches after long burn ──
+        if (dist <= 0 && expAge > EXPLOSION_SCORCH_AFTER_SEC) {
+          // Epicenter → SCORCHED + scorch adjacent tiles
+          _scorchTile(effect);
+
+          // Scorch up to 4 adjacent tiles
+          var adjDirs = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}];
+          for (var ai = 0; ai < adjDirs.length; ai++) {
+            var ax = effect.x + adjDirs[ai].dx;
+            var ay = effect.y + adjDirs[ai].dy;
+            if (ax >= 0 && ax < gridWidth && ay >= 0 && ay < gridHeight) {
+              var adjKey = ax + ',' + ay;
+              var adjEffect = _groundMap[adjKey];
+              // Only scorch empty tiles or dying fire tiles
+              if (!adjEffect) {
+                var scorchEffect = Object.assign({}, GROUND_EFFECTS.SCORCHED);
+                scorchEffect.x = ax;
+                scorchEffect.y = ay;
+                scorchEffect.type = GROUND_TYPES.SCORCHED;
+                scorchEffect.spawnTime = now;
+                effectsToAdd.push({ x: ax, y: ay, type: 'SCORCHED', _direct: scorchEffect });
+              }
+            }
+          }
+          return;
+        }
+
+        // Explosion fires don't use the normal dissipation path
+        return;
+      }
+
+      // ════════════════════════════════════════════════════════════════
+      // NORMAL DISSIPATION (non-explosion effects)
+      // ════════════════════════════════════════════════════════════════
       if (effect.dissipates && effect.lifetime) {
-        var age = (now - effect.spawnTime) / 1000; // Age in seconds
+        var age = (now - effect.spawnTime) / 1000;
         if (age > effect.lifetime) {
           // Fire decays to drifting smoke before disappearing
-          if (effect.type === GROUND_TYPES.FIRE && !effect._decayedToSmoke) {
-            // Check if this fire tile is part of a cluster (dense smoke)
+          if (_isType(effect, GROUND_TYPES.FIRE) && !effect._decayedToSmoke) {
             var adjacentSmoke = _countAdjacentSmoke(effect.x, effect.y);
             var isDense = adjacentSmoke >= SMOKE_DENSE_THRESHOLD;
 
-            // Upgrade to OBSCURED for dense clusters (better stealth)
             if (isDense) {
               effect.type = GROUND_TYPES.OBSCURED;
               effect.emoji = '🌫️';
@@ -350,17 +513,21 @@ const GroundEffects = (function () {
             effect.dissipates = true;
             effect.spawnTime = now;
 
-            // Lock in shape — pick a random smoke char that won't change
             effect._smokeChar = SMOKE_VISUAL_CHARS[Math.floor(Math.random() * SMOKE_VISUAL_CHARS.length)];
             effect.char = effect._smokeChar;
 
-            // Set drift vector — all tiles in same area share a "wind" direction
-            // (we pick per-tile with slight variance for organic feel)
-            var drift = _pickDriftDirection();
-            effect._driftVX = drift.dx;
-            effect._driftVY = drift.dy;
-            effect._driftAccumX = 0;
-            effect._driftAccumY = 0;
+            if (typeof DriftVectorSystem !== 'undefined') {
+              DriftVectorSystem.initDriftWindBiased(effect);
+            } else {
+              var dirs8f = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1},
+                {dx:1,dy:1},{dx:-1,dy:1},{dx:1,dy:-1},{dx:-1,dy:-1}];
+              var df = dirs8f[Math.floor(Math.random() * dirs8f.length)];
+              var lenf = Math.sqrt(df.dx*df.dx + df.dy*df.dy);
+              effect._driftVX = df.dx / lenf;
+              effect._driftVY = df.dy / lenf;
+              effect._driftAccumX = 0;
+              effect._driftAccumY = 0;
+            }
             return;
           }
           effectsToRemove.push(key);
@@ -368,75 +535,68 @@ const GroundEffects = (function () {
         }
       }
 
-      // ── Smoke drift: slide smoke tiles across the map ──
+      // ════════════════════════════════════════════════════════════════
+      // SMOKE DRIFT (slide smoke tiles across the map)
+      // ════════════════════════════════════════════════════════════════
       if (effect._decayedToSmoke && effect._driftVX !== undefined) {
-        effect._driftAccumX += effect._driftVX * SMOKE_DRIFT_SPEED * dtSec;
-        effect._driftAccumY += effect._driftVY * SMOKE_DRIFT_SPEED * dtSec;
-
-        // Check if accumulated drift has crossed a tile boundary
-        var shiftX = 0, shiftY = 0;
-        if (Math.abs(effect._driftAccumX) >= 1.0) {
-          shiftX = effect._driftAccumX > 0 ? 1 : -1;
-          effect._driftAccumX -= shiftX;
+        // Use DriftVectorSystem.applyDrift if available
+        var shift;
+        if (typeof DriftVectorSystem !== 'undefined') {
+          shift = DriftVectorSystem.applyDrift(effect, dtSec, driftSpeed);
+        } else {
+          effect._driftAccumX += effect._driftVX * driftSpeed * dtSec;
+          effect._driftAccumY += effect._driftVY * driftSpeed * dtSec;
+          shift = { shiftX: 0, shiftY: 0 };
+          if (Math.abs(effect._driftAccumX) >= 1.0) {
+            shift.shiftX = effect._driftAccumX > 0 ? 1 : -1;
+            effect._driftAccumX -= shift.shiftX;
+          }
+          if (Math.abs(effect._driftAccumY) >= 1.0) {
+            shift.shiftY = effect._driftAccumY > 0 ? 1 : -1;
+            effect._driftAccumY -= shift.shiftY;
+          }
         }
-        if (Math.abs(effect._driftAccumY) >= 1.0) {
-          shiftY = effect._driftAccumY > 0 ? 1 : -1;
-          effect._driftAccumY -= shiftY;
-        }
 
-        if (shiftX !== 0 || shiftY !== 0) {
-          var newX = effect.x + shiftX;
-          var newY = effect.y + shiftY;
+        if (shift.shiftX !== 0 || shift.shiftY !== 0) {
+          var newX = effect.x + shift.shiftX;
+          var newY = effect.y + shift.shiftY;
 
-          // Only drift into valid empty tiles (don't overwrite walls, other effects)
           if (newX >= 0 && newX < gridWidth && newY >= 0 && newY < gridHeight) {
             var targetKey = newX + ',' + newY;
             var targetEffect = _groundMap[targetKey];
             if (!targetEffect) {
               effectsToRelocate.push({ oldKey: key, effect: effect, newX: newX, newY: newY });
-            }
-            // If blocked, smoke dissipates slightly faster (loses momentum)
-            else {
+            } else {
               effect.lifetime = Math.max(0.5, effect.lifetime - 0.3);
             }
           } else {
-            // Hit map edge — remove
             effectsToRemove.push(key);
           }
         }
 
-        // Fade smoke opacity as it ages (for renderer — age-based alpha)
+        // Fade smoke opacity as it ages
         var smokeAge = (now - effect.spawnTime) / 1000;
         effect._smokeAlpha = Math.max(0.2, 1 - (smokeAge / effect.lifetime));
       }
 
-      // Handle spreading effects (fire)
+      // ════════════════════════════════════════════════════════════════
+      // FIRE SPREAD (oil ignition, generic fire)
+      // ════════════════════════════════════════════════════════════════
       if (effect.spreads && effect.spreadChance) {
         if (Math.random() < effect.spreadChance * dtSec) {
-          // Try to spread to adjacent tile (8-axis for fire spread)
           var directions = [
-            { dx:  1, dy:  0 }, { dx: -1, dy:  0 },
-            { dx:  0, dy:  1 }, { dx:  0, dy: -1 },
-            { dx:  1, dy:  1 }, { dx: -1, dy:  1 },
-            { dx:  1, dy: -1 }, { dx: -1, dy: -1 }
+            { dx:1,dy:0 },{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1},
+            {dx:1,dy:1},{dx:-1,dy:1},{dx:1,dy:-1},{dx:-1,dy:-1}
           ];
-
           var dir = directions[Math.floor(Math.random() * directions.length)];
-          var newX = effect.x + dir.dx;
-          var newY = effect.y + dir.dy;
+          var spreadX = effect.x + dir.dx;
+          var spreadY = effect.y + dir.dy;
 
-          // Check bounds
-          if (newX >= 0 && newX < gridWidth && newY >= 0 && newY < gridHeight) {
-            var targetKey = newX + ',' + newY;
-            var targetEffect = _groundMap[targetKey];
-
-            // Can spread to oil (ignite it) or empty tiles
-            if (!targetEffect || targetEffect.type === GROUND_TYPES.OIL) {
-              effectsToAdd.push({
-                x: newX,
-                y: newY,
-                type: effect.type
-              });
+          if (spreadX >= 0 && spreadX < gridWidth && spreadY >= 0 && spreadY < gridHeight) {
+            var spreadKey = spreadX + ',' + spreadY;
+            var spreadTarget = _groundMap[spreadKey];
+            if (!spreadTarget || _isType(spreadTarget, GROUND_TYPES.OIL)) {
+              effectsToAdd.push({ x: spreadX, y: spreadY, type: effect.type });
             }
           }
         }
@@ -454,7 +614,6 @@ const GroundEffects = (function () {
       reloc.effect.x = reloc.newX;
       reloc.effect.y = reloc.newY;
       var newKey = reloc.newX + ',' + reloc.newY;
-      // Don't overwrite if something appeared in the target during this tick
       if (!_groundMap[newKey]) {
         _groundMap[newKey] = reloc.effect;
       }
@@ -462,7 +621,15 @@ const GroundEffects = (function () {
 
     // Apply additions
     effectsToAdd.forEach(function(data) {
-      setGroundEffect(data.x, data.y, data.type);
+      if (data._direct) {
+        // Pre-built effect object (e.g. scorch)
+        var dk = data.x + ',' + data.y;
+        if (!_groundMap[dk]) {
+          _groundMap[dk] = data._direct;
+        }
+      } else {
+        setGroundEffect(data.x, data.y, data.type);
+      }
     });
   }
 
@@ -489,10 +656,10 @@ const GroundEffects = (function () {
    */
   function extinguishFire(x, y) {
     var effect = getGroundEffect(x, y);
-    if (effect && (effect.type === GROUND_TYPES.FIRE || effect.type === GROUND_TYPES.OIL_IGNITED)) {
+    if (effect && (_isType(effect, GROUND_TYPES.FIRE) || _isType(effect, GROUND_TYPES.OIL_IGNITED))) {
       removeGroundEffect(x, y);
       // Replace with steam
-      setGroundEffect(x, y, GROUND_TYPES.STEAM);
+      setGroundEffect(x, y, 'STEAM');
 
       // Also remove the light emission if LightingSystem is available
       if (typeof LightingSystem !== 'undefined' && LightingSystem.removeLightSource) {
@@ -557,12 +724,12 @@ const GroundEffects = (function () {
     };
 
     // Oil gives enemy advantage unless player has fire
-    if (effect.type === GROUND_TYPES.OIL) {
+    if (_isType(effect, GROUND_TYPES.OIL)) {
       modifiers.initiative = -1; // Enemy gets +1 initiative
     }
 
     // Fire reduces evasion and may add burn card
-    if (effect.type === GROUND_TYPES.FIRE || effect.type === GROUND_TYPES.OIL_IGNITED) {
+    if (_isType(effect, GROUND_TYPES.FIRE) || _isType(effect, GROUND_TYPES.OIL_IGNITED)) {
       modifiers.evasion = -0.2; // -20% evasion
       if (Math.random() < (effect.burnCardChance || 0)) {
         modifiers.addCard = 'BURN';
@@ -570,17 +737,17 @@ const GroundEffects = (function () {
     }
 
     // Water reduces evasion
-    if (effect.type === GROUND_TYPES.WATER) {
+    if (_isType(effect, GROUND_TYPES.WATER)) {
       modifiers.evasion = effect.evasionPenalty || -0.1;
     }
 
     // Ice: speed up but reduce evasion (accuracy handled at combat layer)
-    if (effect.type === GROUND_TYPES.ICE) {
+    if (_isType(effect, GROUND_TYPES.ICE)) {
       modifiers.evasion = -0.2;
     }
 
     // Industrial waste gives random debuff
-    if (effect.type === GROUND_TYPES.INDUSTRIAL_WASTE) {
+    if (_isType(effect, GROUND_TYPES.INDUSTRIAL_WASTE)) {
       if (Math.random() < (effect.randomDebuffChance || 0.3)) {
         var debuffs = ['POISON', 'WEAK', 'SLOW', 'BLIND'];
         modifiers.debuff = debuffs[Math.floor(Math.random() * debuffs.length)];
@@ -606,7 +773,10 @@ const GroundEffects = (function () {
    * @returns {object|null} - Effect definition
    */
   function getDefinition(type) {
-    return GROUND_EFFECTS[type] || null;
+    // GROUND_EFFECTS keys are uppercase (FIRE, SMOKE, SCORCHED) but
+    // effect.type may be lowercase ('fire', 'smoke', 'scorched') when set
+    // via GROUND_TYPES constants. Try both.
+    return GROUND_EFFECTS[type] || GROUND_EFFECTS[type.toUpperCase()] || null;
   }
 
   function getGroundAt(x, y) {
@@ -616,7 +786,7 @@ const GroundEffects = (function () {
   function freezeAt(x, y, opts) {
     opts = opts || {};
     var effect = getGroundEffect(x, y);
-    if (effect && (effect.type === GROUND_TYPES.WATER || effect.type === GROUND_TYPES.INDUSTRIAL_WASTE)) {
+    if (effect && (_isType(effect, GROUND_TYPES.WATER) || _isType(effect, GROUND_TYPES.INDUSTRIAL_WASTE))) {
       setGroundEffect(x, y, GROUND_TYPES.ICE, {
         dissipates: true,
         lifetime: (typeof opts.lifetime === 'number') ? opts.lifetime : 10
@@ -640,8 +810,8 @@ const GroundEffects = (function () {
   function isLocomotivePassable(x, y) {
     var effect = getGroundEffect(x, y);
     if (!effect) return true;
-    if (effect.type === GROUND_TYPES.ICE) return true;
-    if (effect.type === GROUND_TYPES.WATER || effect.type === GROUND_TYPES.INDUSTRIAL_WASTE) return false;
+    if (_isType(effect, GROUND_TYPES.ICE)) return true;
+    if (_isType(effect, GROUND_TYPES.WATER) || _isType(effect, GROUND_TYPES.INDUSTRIAL_WASTE)) return false;
     return true;
   }
 

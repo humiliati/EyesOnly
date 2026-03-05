@@ -172,9 +172,15 @@ var ExplosionSystem = (function() {
       }
     }
 
-    // ── 10. Permanent ground fire at epicenter ──
+    // ── 10. Permanent ground fire at epicenter (tagged for lifecycle) ──
     if (typeof GroundEffects !== 'undefined' && GroundEffects.setGroundEffect) {
-      GroundEffects.setGroundEffect(x, y, 'FIRE', { dissipates: false });
+      GroundEffects.setGroundEffect(x, y, 'FIRE', {
+        dissipates: false,
+        _explosionFire: true,
+        _explosionDistance: 0,
+        _explosionMaxRadius: radius,
+        _explosionSpawnTime: Date.now()
+      });
     }
 
     // ── 11. MOK + Debrief + Tooltip ──
@@ -233,9 +239,11 @@ var ExplosionSystem = (function() {
           console.log('[ExplosionSystem] Enemy ' + (enemy.name || '?') + ' took ' +
             tileDamage + ' blast dmg at ' + tx + ',' + ty + ' → HP ' + enemy.hp);
 
-          // Overhead damage indicator
+          // Overhead damage indicator (grey puff for reduced visual noise)
           if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
-            OverheadAnimator.showGenericExpression(tx, ty, '🔥', 400, '#ff3300');
+            var dmgEmoji = (distance <= 1) ? '🔥' : '💨';
+            var dmgColor = (distance <= 1) ? '#ff3300' : '#666666';
+            OverheadAnimator.showGenericExpression(tx, ty, dmgEmoji, 350, dmgColor);
           }
 
           // Set awareness to ENGAGED
@@ -524,17 +532,15 @@ var ExplosionSystem = (function() {
     if (!existing || existing.type === 'NORMAL') {
       var rng = ctx.rng ? ctx.rng() : Math.random();
       if (rng < 0.50) {
-        // Distance-based fire lifetime: center burns longest
-        var fireOverrides = { dissipates: true };
-        if (distance <= 0.5) {
-          fireOverrides.dissipates = false; // Epicenter: permanent
-        } else if (distance <= 1.2) {
-          fireOverrides.lifetime = 25 + (rng * 10); // Inner ring: 25-35s
-        } else if (distance <= 2.0) {
-          fireOverrides.lifetime = 8 + (rng * 6); // Mid ring: 8-14s
-        } else {
-          fireOverrides.lifetime = 3 + (rng * 3); // Outer ring: 3-6s
-        }
+        // All explosion fire tiles use the lifecycle system (no normal dissipation)
+        // The lifecycle in ground-effects.js handles phased rescinding + scorch
+        var fireOverrides = {
+          dissipates: false,              // Lifecycle handles removal, not timer
+          _explosionFire: true,           // Tag for lifecycle system
+          _explosionDistance: distance,    // BFS distance from epicenter
+          _explosionMaxRadius: radius,    // Total blast radius
+          _explosionSpawnTime: Date.now() // When this fire was spawned
+        };
         GroundEffects.setGroundEffect(tx, ty, 'FIRE', fireOverrides);
       } else if (rng < 0.80) {
         GroundEffects.setGroundEffect(tx, ty, 'SMOKE');
@@ -593,20 +599,59 @@ var ExplosionSystem = (function() {
    * Spawn staggered 🔥 overhead emojis radiating out from epicenter.
    * Creates a visual ripple effect — each distance ring is delayed.
    */
+  /**
+   * Spawn staggered overhead emojis radiating out from epicenter.
+   * Layer A lifecycle:
+   *   Ring 1: 🔥 bright orange (closest to blast)
+   *   Ring 2+: 💨 grey puff (reduced visual noise — "blvck joker" grey tint)
+   * Duration and color scale with distance — farther = shorter, greyer.
+   */
   function _spawnBlastRipple(epicX, epicY, radius, ctx) {
     if (typeof OverheadAnimator === 'undefined' || !OverheadAnimator.showGenericExpression) return;
 
     var intRadius = Math.ceil(radius);
     for (var d = 1; d <= intRadius; d++) {
       var tiles = _tilesAtDistance(epicX, epicY, d, ctx);
+      // Ring 1 = fire, Ring 2+ = grey puff (less spammy)
+      var ringEmoji = (d <= 1) ? '🔥' : '💨';
+      var ringColor = (d <= 1) ? '#FF8800' : '#777777';
+      var ringDuration = (d <= 1) ? 500 : Math.max(200, 400 - d * 60);
       for (var ti = 0; ti < tiles.length; ti++) {
-        (function(tile, ring, idx) {
+        (function(tile, ring, idx, emoji, color, duration) {
           setTimeout(function() {
-            OverheadAnimator.showGenericExpression(tile.x, tile.y, '🔥', 400, '#FF8800');
+            OverheadAnimator.showGenericExpression(tile.x, tile.y, emoji, duration, color);
           }, ring * 80 + idx * 15);
-        })(tiles[ti], d, ti);
+        })(tiles[ti], d, ti, ringEmoji, ringColor, ringDuration);
       }
     }
+
+    // Layer A Phase 4: After initial blast, spawn flickering tiny fire emojis
+    // that rescind toward epicenter over ~3 seconds
+    var rescindDelay = intRadius * 100 + 500; // After ripple finishes
+    for (var rd = intRadius; rd >= 1; rd--) {
+      var rTiles = _tilesAtDistance(epicX, epicY, rd, ctx);
+      // Only ~30% of tiles get the rescind flicker (less spammy)
+      for (var rti = 0; rti < rTiles.length; rti++) {
+        if (Math.random() > 0.3) continue;
+        (function(tile, ring, delay) {
+          setTimeout(function() {
+            // Small grey puff as the fire "pulls back"
+            OverheadAnimator.showGenericExpression(tile.x, tile.y, '💨', 250, '#555555');
+          }, delay + ring * 200);
+        })(rTiles[rti], rd, rescindDelay);
+      }
+    }
+
+    // Layer A Phase 5-6: Epicenter shrink + final grey puff
+    var epicenterFinalDelay = rescindDelay + (intRadius * 200) + 800;
+    setTimeout(function() {
+      // Small fire flicker at epicenter
+      OverheadAnimator.showGenericExpression(epicX, epicY, '🔥', 600, '#AA5500');
+    }, epicenterFinalDelay);
+    setTimeout(function() {
+      // Final grey puff at epicenter
+      OverheadAnimator.showGenericExpression(epicX, epicY, '💨', 400, '#444444');
+    }, epicenterFinalDelay + 700);
   }
 
   /**

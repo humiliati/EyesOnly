@@ -681,27 +681,37 @@ const GoneRogueMobile = (function () {
         // Get the visual definition for this ground type
         var def = GroundEffects.getDefinition ? GroundEffects.getDefinition(ge.type) : null;
         if (def) {
-          // Drifting smoke: use locked char and fading alpha
+          // ── Layer B rendering: ASCII chars on tiles, emojis via OverheadAnimator ──
+          // Ground effects display as colored tile backgrounds + ASCII symbols.
+          // Emojis (🔥💨 etc.) are handled by OverheadAnimator as Layer A.
+
           if (ge._decayedToSmoke && ge._smokeChar) {
-            cell.char = ge.emoji || ge._smokeChar;
+            // Drifting smoke: locked ASCII char with fading alpha
+            cell.char = ge._smokeChar;
             cell.color = ge.color || def.color || '#888888';
-            // Alpha-blend the smoke color for fading effect
             var smokeA = ge._smokeAlpha !== undefined ? ge._smokeAlpha : 0.7;
             cell.alpha = smokeA;
+          } else if (ge._explosionFire) {
+            // Explosion fire: use the cycling char set by lifecycle in update()
+            cell.char = ge.char || def.char || '▒';
+            cell.color = ge.color || def.color || '#ff3300';
           } else {
-            // Use the emoji if available, otherwise the char
-            cell.char = def.emoji || def.char || cell.char;
-            cell.color = def.color || cell.color;
+            // All other ground effects: prefer ASCII char over emoji for tile display
+            // (emoji layer handled separately by OverheadAnimator where needed)
+            cell.char = ge.char || def.char || def.emoji || cell.char;
+            cell.color = ge.color || def.color || cell.color;
           }
-          // Tint the background slightly with the effect color for visibility
+
+          // Tint the background with the effect color for visibility
           var effectColor = ge.color || def.color;
           if (effectColor && effectColor !== '#000000') {
             if (effectColor.charAt(0) === '#') {
               var gr = parseInt(effectColor.substr(1, 2), 16);
               var gg = parseInt(effectColor.substr(3, 2), 16);
               var gb = parseInt(effectColor.substr(5, 2), 16);
-              // Drifting smoke gets darker, moodier background
-              var bgMul = ge._decayedToSmoke ? 0.1 : 0.2;
+              // Smoke/scorched = darker moody bg; fire = brighter bg
+              var bgMul = (ge._decayedToSmoke || ge.type === 'scorched' || ge.type === 'SCORCHED') ? 0.1 :
+                          ge._explosionFire ? 0.25 : 0.2;
               cell.bg = 'rgb(' + Math.floor(gr * bgMul) + ',' + Math.floor(gg * bgMul) + ',' + Math.floor(gb * bgMul) + ')';
             } else {
               cell.bg = effectColor.replace(')', ', 0.15)').replace('rgb', 'rgba');
