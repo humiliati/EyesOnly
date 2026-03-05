@@ -91,8 +91,6 @@ var GoneRogue = (function () {
   var _bossHazards = []; // Boss-specific hazards (trains, drones, etc.)
   var _bossEnvironment = {}; // Boss-specific environment data
   var _playerMoveLocked = false; // Set by Asteroids boss; disables walk commands
-  var _scriptedWalk = false; // True during Floor 0 auto-walk (disables player click input)
-  var _scriptedWalkTarget = null; // {x, y} target for scripted walk
 
   // Secret floor state
   var _activeSecretFloor = null; // Current secret floor type (if any)
@@ -803,10 +801,6 @@ var GoneRogue = (function () {
       _player.combatEntries = 0;
       _player.lastCardType = null;
       _player.positionHistory = [];
-
-      // Clear scripted walk flag (Floor 0 tutorial auto-walk)
-      _scriptedWalk = false;
-      _scriptedWalkTarget = null;
 
       // Clear run-scoped key inventory
       _runState.keysOwned = [];
@@ -2555,7 +2549,6 @@ var GoneRogue = (function () {
   function _tapMoveCtx() {
     return {
       get active() { return _active; },
-      get scriptedWalk() { return _scriptedWalk; },
       get playerMoveLocked() { return _playerMoveLocked; },
       player: _player,
       grid: _grid,
@@ -2605,8 +2598,6 @@ var GoneRogue = (function () {
       applyDesiredDifficultyTier: _applyDesiredDifficultyTier,
       generateFloor: _generateFloor,
       startGameLoop: _startGameLoop,
-      setScriptedWalk: function(v) { _scriptedWalk = v; },
-      setScriptedWalkTarget: function(v) { _scriptedWalkTarget = v; },
       isWalkable: _isWalkable,
       updateMobileGrid: _updateMobileGrid,
       renderGrid: _renderGrid,
@@ -2675,16 +2666,8 @@ var GoneRogue = (function () {
       handlePlayerDeath: _handlePlayerDeath,
       handleEnemyDeath: _handleEnemyDeath,
       magnetAutoCollect: _magnetAutoCollect,
-      showTutorialHint: function() { /* TODO: Implement tutorial hint system */ },
       getActiveBoss: function() { return _activeBoss; },
       setPlayerMoveLocked: function(v) { _playerMoveLocked = v; },
-      getScriptedWalk: function() { return _scriptedWalk; },
-      setScriptedWalk: function(v) { _scriptedWalk = v; },
-      getScriptedWalkTarget: function() { return _scriptedWalkTarget; },
-      setScriptedWalkTarget: function(v) { _scriptedWalkTarget = v; },
-      getScriptedWalkPhase: function() { return _scriptedWalkPhase; },
-      setScriptedWalkPhase: function(v) { _scriptedWalkPhase = v; },
-      getScriptedWalkExitTarget: function() { return _scriptedWalkExitTarget; },
       getProjectileTickAccum: function() { return _projectileTickAccum; },
       addProjectileTickAccum: function(v) { _projectileTickAccum += v; },
       resetProjectileTickAccum: function() { _projectileTickAccum = 0; },

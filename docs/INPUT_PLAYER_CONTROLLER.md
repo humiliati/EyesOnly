@@ -2,7 +2,7 @@
 
 > **Status:** Living document. Describes the current input → action pipeline as implemented.
 > **Purpose:** Provide architectural context for THIEF_MECHANICS.md (plant/detonate explosives, pickpocket, NCH capsule interaction nodes) and future accessibility controller support (QuadStick FPS, Xbox Adaptive Controller).
-> Last verified against codebase: 2026-03-04.
+> Last verified against codebase: 2026-03-05.
 
 ---
 
@@ -146,7 +146,7 @@ touchend
 
 ## 4. Action: Kick
 
-Kicks are the highest-priority action in `TapMoveSystem.handleTapMove()`. They fire **before** the `scriptedWalk` and `playerMoveLocked` guards, meaning kicks always work regardless of movement restrictions.
+Kicks are the highest-priority action in `TapMoveSystem.handleTapMove()`. They fire **before** the `playerMoveLocked` guard, meaning kicks always work regardless of movement restrictions.
 
 ### Detection (tap-move-system.js ~line 59)
 
@@ -238,7 +238,7 @@ Sprint requires `GAMESTATE.canSprint()` to return true (fatigue check).
 
 1. **Sprint speed is the de-facto default** — `_isSprinting` is being set to `true` implicitly (e.g., via a fishing drag speed ≥ 1.2 px/ms threshold being too easily triggered, or a `runMode` flag defaulting to `true`) so every movement path executes at `MOVEMENT_SPEED × SPRINT_MULTIPLIER = 4.8 tiles/sec` rather than the walk baseline of `3.2 tiles/sec`.
 
-2. **Normal walk speed feels like sprint** — Pre-2026-03-04 the base speed was `8.0 tiles/sec`. That value was confirmed excessive during scripted-walk and fishing interactions and was reduced to `3.2 tiles/sec` (~60% reduction). If the experience of "too fast" persists at 3.2, the underlying issue is likely cause #1 above (sprint leaking into normal movement).
+2. **Normal walk speed feels like sprint** — Pre-2026-03-04 the base speed was `8.0 tiles/sec`. That value was confirmed excessive during fishing interactions and was reduced to `3.2 tiles/sec` (~60% reduction). If the experience of "too fast" persists at 3.2, the underlying issue is likely cause #1 above (sprint leaking into normal movement).
 
 See §15 for the sprint troubleshooting roadmap.
 
@@ -572,7 +572,6 @@ All movement, projectiles, and ground effects tick inside `GameTickSystem.update
    · Carry excess budget through consecutive waypoints
    · Sync logical position at each reached waypoint
    · Check tile interactions at new position
-   · Handle scripted walk phase transitions
 
 2. Update pets (PetFollower)
    · Follow player position history buffer
@@ -631,7 +630,7 @@ All movement, projectiles, and ground effects tick inside `GameTickSystem.update
 
 ## 15. Sprint Troubleshooting Roadmap
 
-> **Context:** As of 2026-03-04 the base walk speed was reduced from `8.0` to `3.2` tiles/sec (~60%) to address excessive player velocity during scripted walks and fishing-drag paths. A concurrent unconfirmed bug may be causing the player to travel at sprint speed by default, making the avatar appear to move even faster than `3.2 × 1.5 = 4.8 tiles/sec`. The sprint trail (parenthesis decay animation from `SprintTrailSystem`) is reportedly not rendering, which could mask whether sprint is active.
+> **Context:** As of 2026-03-04 the base walk speed was reduced from `8.0` to `3.2` tiles/sec (~60%) to address excessive player velocity during fishing-drag paths. The scripted walk system was removed 2026-03-05; player has full control from Frame 1 (see docs/PLAYER_ONBOARDING.md). A concurrent unconfirmed bug may be causing the player to travel at sprint speed by default, making the avatar appear to move even faster than `3.2 × 1.5 = 4.8 tiles/sec`. The sprint trail (parenthesis decay animation from `SprintTrailSystem`) is reportedly not rendering, which could mask whether sprint is active.
 
 ### Diagnostic steps (ordered by effort)
 
@@ -727,3 +726,50 @@ If missing, trail particles exist in memory but are never drawn.
 - [ ] `GAMESTATE.drainSprintFatigue()` is called each frame during sprint, eventually causing `GAMESTATE.canSprint()` to return `false` and stopping sprint.
 - [ ] `_runMode` resets to `false` after each tap/drag action (no sticky sprint).
 - [ ] Fast fishing drag (≥ 1.2 px/ms) correctly activates sprint for that move only, then resets.
+
+---
+
+## 16. Canonical Input Map (Mobile-First)
+
+Complete input gesture → action mapping, including long-press mechanics. All gestures are designed to coexist on mobile touch and map cleanly to gamepad.
+
+| Gesture | Detection | Action | File | Notes |
+|---|---|---|---|---|
+| **Single tap** (empty tile) | `pointerup` < 20px drift, no double-tap | Walk to tile via A* pathfinding | `tap-move-system.js` | Base speed 3.2 tiles/sec |
+| **Single tap** (adjacent breakable) | Same + breakable at target | Kick breakable (push + damage) | `tap-move-system.js` | Highest priority, works during moveLocked |
+| **Single tap** (adjacent NPC) | Same + NPC at target | `GoneRogue.process('interact')` | `gone-rogue-mobile.js` | Opens dialogue / quest turn-in |
+| **Single tap** (adjacent enemy) | Same + enemy at target | `GoneRogue.process('steal')` | `gone-rogue-mobile.js` | Triggers pickpocket attempt |
+| **Single tap** (distant enemy) | Same + enemy > 1 tile | `fireProjectileAtTarget(x,y)` | `gone-rogue-mobile.js` | Ranged attack if projectile available |
+| **Single tap** (self tile) | Same + target = player pos | Reset UI chrome | `gone-rogue-mobile.js` | Closes popups, resets sidebar |
+| **Double tap** (empty tile) | Two taps < 300ms window | Sprint-walk to tile | `gone-rogue-mobile.js` | Speed 4.8 tiles/sec, parenthesis trail |
+| **Double tap + drag** | Double tap then drag | Sprint fishing path | `gone-rogue-mobile.js` | Sprint along drawn path |
+| **Fishing drag** | `pointerdown` + drag > 20px | Draw path, walk along it | `gone-rogue-mobile.js` | Snaps to walkable tiles |
+| **Fast fishing drag** | Drag speed ≥ 1.2 px/ms | Draw path, sprint along it | `gone-rogue-mobile.js` | Auto-sprint detection |
+| **Long press** (adjacent enemy) | Hold 400ms on adj. enemy | Open theft NCH capsule | `gone-rogue-mobile.js` | See THEFT_MECHANICS.md |
+| **Long press** (hand fan) | Hold 180ms on card in hand | Show card details | `gone-rogue-mobile.js` | Tooltip popup |
+| **Long press** (reserve card) | Hold 300ms on reserve slot | Draw card from reserve | `gone-rogue-mobile.js` | — |
+| **Long press** (any tile) | Hold 500ms | Show tile tooltip | `gone-rogue-mobile.js` | Enemy stats, item info |
+
+### Gamepad Mapping (TODO)
+
+| Gamepad | Action | Notes |
+|---|---|---|
+| Left stick | 8-directional movement | See §9 Xbox axis reference |
+| A button | Interact / confirm | Context-sensitive like tap |
+| B button | Cancel / close popup | — |
+| X button | Use active item | Equipped slot in header |
+| Y button | Open inventory | Toggle NCH maximized |
+| RT | Sprint modifier | Hold + left stick |
+| LT | Fishing mode | Hold + right stick to draw path |
+| RB / LB | Cycle active item | — |
+
+---
+
+## 17. Changelog
+
+| Date | Change | Files |
+|---|---|---|
+| 2026-03-05 | **Scripted walk gutted.** Removed 3-phase Floor 0 auto-walk state machine. Player has full input control from Frame 1. See docs/PLAYER_ONBOARDING.md for replacement tutorial vision. | `begin-gameplay-system.js`, `game-tick-system.js`, `tap-move-system.js`, `gone-rogue.js` |
+| 2026-03-04 | Fishing teleport fix: all fishing path origins now use visual position via `_getFishingOrigin()` instead of stale logical position | `gone-rogue-mobile.js`, `tap-move-system.js`, `gone-rogue-movement.js` |
+| 2026-03-04 | Equip slot validation: cards and non-equippable items rejected via `GAMESTATE.isEquippable()` at all 4 entry points | `gamestate.js`, `non-combat-hud.js`, `rogue-sidebar.js`, `ui-controls.js` |
+| 2026-03-04 | Movement speed reduced from 8.0 to 3.2 tiles/sec; carry-forward budget fix for smooth waypoint transitions | `gone-rogue-movement.js` |

@@ -51,45 +51,6 @@ var GameTickSystem = (function() {
 
         // Check for items, currency, enemies at new position
         ctx.checkPlayerInteractions();
-
-        // Floor 0 scripted walk: two-phase system (tavern pause → exit stop)
-        if (ctx.getScriptedWalk() && ctx.getScriptedWalkTarget()) {
-          var swt = ctx.getScriptedWalkTarget();
-          if (ctx.player.x === swt.x && ctx.player.y === swt.y) {
-            if (typeof GoneRogueMovement !== 'undefined') GoneRogueMovement.stop();
-
-            var phase = ctx.getScriptedWalkPhase();
-            if (phase === 1) {
-              // Phase 1 complete: arrived at tavern door — pause and show hint
-              ctx.setScriptedWalkPhase(2);
-              ctx.setScriptedWalk(false);
-              ctx.setScriptedWalkTarget(null);
-              ctx.showTutorialHint('tavern_hint', '\uD83D\uDC46 Tap to explore the tavern \u2014 or wait to continue', 3500);
-
-              // After 3.5s pause, resume walk toward exit
-              setTimeout(function() {
-                if (ctx.getScriptedWalkPhase() === 2 && ctx.getScriptedWalkExitTarget()) {
-                  ctx.setScriptedWalkPhase(3);
-                  ctx.setScriptedWalk(true);
-                  ctx.setScriptedWalkTarget(ctx.getScriptedWalkExitTarget());
-                  if (typeof GoneRogueMovement !== 'undefined') {
-                    GoneRogueMovement.startMoveTo(ctx.getScriptedWalkExitTarget().x, ctx.getScriptedWalkExitTarget().y);
-                  }
-                }
-              }, 3500);
-            } else if (phase === 3) {
-              // Phase 3 complete: arrived at exit — stop and let player tap the door
-              ctx.setScriptedWalk(false);
-              ctx.setScriptedWalkTarget(null);
-              ctx.setScriptedWalkPhase(0);
-              ctx.showTutorialHint('exit_hint', '\uD83D\uDEAA Tap the door to enter the forest', 4000);
-            } else {
-              // Fallback: clear scripted walk
-              ctx.setScriptedWalk(false);
-              ctx.setScriptedWalkTarget(null);
-            }
-          }
-        }
       }
 
       // Store visual position for rendering

@@ -28,58 +28,9 @@ var BeginGameplaySystem = (function() {
     // Start game loop
     ctx.startGameLoop();
 
-    // Floor 0 scripted walk: auto-path the player toward the exit (Floor 1 door).
-    // Player control is disabled until they reach Floor 1.
-    if (ctx.getFloor() === 0) {
-      ctx.setScriptedWalk(true);
-      try {
-        // Find the forward exit position from current grid
-        var exitTarget = null;
-        var GRID_HEIGHT = ctx.GRID_HEIGHT;
-        var GRID_WIDTH = ctx.GRID_WIDTH;
-        var grid = ctx.grid;
-        var TILES = ctx.TILES;
-        var tileMetadata = ctx.tileMetadata;
-
-        for (var sy = 0; sy < GRID_HEIGHT && !exitTarget; sy++) {
-          for (var sx = 0; sx < GRID_WIDTH && !exitTarget; sx++) {
-            if (grid[sy] && (grid[sy][sx] === TILES.EXIT)) {
-              var mk = sx + ',' + sy;
-              if (tileMetadata[mk] && tileMetadata[mk].doorKind === 'forward') {
-                exitTarget = { x: sx, y: sy };
-              }
-            }
-          }
-        }
-        if (exitTarget) {
-          ctx.setScriptedWalkTarget(exitTarget);
-          // Delay slightly so the grid renders before the walk starts
-          var player = ctx.player;
-          var isWalkable = ctx.isWalkable;
-          var setScriptedWalk = ctx.setScriptedWalk;
-          var setScriptedWalkTarget = ctx.setScriptedWalkTarget;
-          setTimeout(function() {
-            if (typeof GoneRogueMovement !== 'undefined' && GoneRogueMovement.setTarget) {
-              // Must init movement system at player pos before setting a target
-              GoneRogueMovement.init(player.x, player.y);
-              // collisionCheck(x,y) returns true if BLOCKED (matches findPath convention)
-              var pathFound = GoneRogueMovement.setTarget(exitTarget.x, exitTarget.y, function(x, y) {
-                return !isWalkable(x, y);
-              }, false);
-              // If pathfinding failed, abort scripted walk so player isn't stuck
-              if (!pathFound) {
-                console.warn('[GoneRogue] Scripted walk: no path to exit, aborting');
-                setScriptedWalk(false);
-                setScriptedWalkTarget(null);
-              }
-            }
-          }, 600);
-        }
-      } catch (eScripted) {
-        console.warn('[GoneRogue] Scripted walk setup error:', eScripted);
-        ctx.setScriptedWalk(false);
-      }
-    }
+    // NOTE: Floor 0 scripted walk was removed (March 2026).
+    // Player now has full input control from the first frame.
+    // See docs/PLAYER_ONBOARDING.md for the replacement tutorial vision.
 
     // Use mobile UI if available
     if (ctx.useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
