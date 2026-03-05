@@ -28,9 +28,13 @@ var BeginGameplaySystem = (function() {
     // Start game loop
     ctx.startGameLoop();
 
-    // NOTE: Floor 0 scripted walk was removed (March 2026).
-    // Player now has full input control from the first frame.
-    // See docs/PLAYER_ONBOARDING.md for the replacement tutorial vision.
+    // Initialize smooth movement system at the player's spawn position.
+    // This must happen after generateFloor() places the player on the grid.
+    // Without this, _visualPosition defaults to (0,0) and the avatar renders
+    // off-screen until the first tap-to-move triggers a lazy init.
+    if (typeof GoneRogueMovement !== 'undefined' && GoneRogueMovement.init) {
+      GoneRogueMovement.init(ctx.player.x, ctx.player.y);
+    }
 
     // Use mobile UI if available
     if (ctx.useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
