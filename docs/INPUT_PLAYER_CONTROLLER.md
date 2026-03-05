@@ -230,6 +230,18 @@ Fishing is a drag-to-path system that lets the player chart a multi-tile route b
 
 Sprint requires `GAMESTATE.canSprint()` to return true (fatigue check).
 
+### ⚠️ Known Issue: Sprint Bug — Trail Not Animating / Possible Default Sprint Speed
+
+**Status:** Under investigation (2026-03-04).
+
+**Symptom:** The player avatar moves at what feels like sprint velocity during normal tap-to-move and fishing-drag interactions, but the `SprintTrailSystem` parenthesis-decay trail does not render. This may indicate one of two root causes:
+
+1. **Sprint speed is the de-facto default** — `_isSprinting` is being set to `true` implicitly (e.g., via a fishing drag speed ≥ 1.2 px/ms threshold being too easily triggered, or a `runMode` flag defaulting to `true`) so every movement path executes at `MOVEMENT_SPEED × SPRINT_MULTIPLIER = 4.8 tiles/sec` rather than the walk baseline of `3.2 tiles/sec`.
+
+2. **Normal walk speed feels like sprint** — Pre-2026-03-04 the base speed was `8.0 tiles/sec`. That value was confirmed excessive during scripted-walk and fishing interactions and was reduced to `3.2 tiles/sec` (~60% reduction). If the experience of "too fast" persists at 3.2, the underlying issue is likely cause #1 above (sprint leaking into normal movement).
+
+See §15 for the sprint troubleshooting roadmap.
+
 ---
 
 ## 6. Action: Projectiles
@@ -537,7 +549,7 @@ This requires the wall-sliding from Phase 3 and a new input mode alongside the e
 |---|---|---|
 | Position | Float (sub-tile) after fixes | Float from spawn |
 | Direction | Along A*-smoothed waypoints | Arbitrary 360° from spawn angle |
-| Speed | 8 tiles/sec base, modifiable | 1.0 base (variable) |
+| Speed | 3.2 tiles/sec base (was 8.0, reduced ~60% on 2026-03-04), modifiable | 1.0 base (variable) |
 | Collision | Pre-computed path avoids walls | Per-tick raycast + bounce/destroy |
 | Wall interaction | Path routes around walls | Bounce (if bounces > 0) or destroy |
 | Rendering | Through 3-layer pipeline | Direct float render in entity list |
@@ -613,3 +625,105 @@ All movement, projectiles, and ground effects tick inside `GameTickSystem.update
 | `rogue-sidebar.js` | Left column item rendering, drag-to-equip/incinerator/grid |
 | `inventory-management.js` | Quest item consumption, active slot search, key matching |
 | `game-loop.js` | requestAnimationFrame loop, delta timing |
+| `sprint-trail-system.js` | Parenthesis trail particles behind sprinting player |
+
+---
+
+## 15. Sprint Troubleshooting Roadmap
+
+> **Context:** As of 2026-03-04 the base walk speed was reduced from `8.0` to `3.2` tiles/sec (~60%) to address excessive player velocity during scripted walks and fishing-drag paths. A concurrent unconfirmed bug may be causing the player to travel at sprint speed by default, making the avatar appear to move even faster than `3.2 × 1.5 = 4.8 tiles/sec`. The sprint trail (parenthesis decay animation from `SprintTrailSystem`) is reportedly not rendering, which could mask whether sprint is active.
+
+### Diagnostic steps (ordered by effort)
+
+#### Step 1 — Confirm whether `_isSprinting` is leaking into normal movement
+
+Add a temporary HUD readout of the sprint flag to the debug overlay (or `console.log` on each `GoneRogueMovement.setTarget()` call):
+
+```javascript
+// gone-rogue-movement.js — inside setTarget(), after line ~281
+console.log('[Movement] setTarget isSprinting=' + _isSprinting + ' speed=' + MOVEMENT_SPEED);
+```
+
+Trigger a normal single-tap move (not double-tap, not fast drag). If the log shows `isSprinting=true`, the flag is leaking — skip to Step 3.
+
+If `isSprinting=false` and movement still feels fast, the base speed at 3.2 may still be too high — reduce `MOVEMENT_SPEED` further and re-test.
+
+#### Step 2 — Confirm `SprintTrailSystem.update()` is being called with `isSprinting=true` when sprinting
+
+`SprintTrailSystem.update()` is called inside `GoneRogueMovement.update()` on every frame. Confirm the call is actually reaching the trail system during an intentional sprint (double-tap):
+
+```javascript
+// sprint-trail-system.js — inside update(), top of function
+console.log('[SprintTrail] isSprinting=' + isSprinting + ' layer=' + _currentLayer.toFixed(2));
+```
+
+If this log never fires, `SprintTrailSystem` is not defined at the time `GoneRogueMovement` runs (load order issue — see Step 4).
+
+If it fires with `isSprinting=false` even during double-tap, the sprint flag is not being forwarded — see Step 3.
+
+#### Step 3 — Trace the sprint flag from input to movement
+
+The sprint flag travels this path:
+
+```
+gone-rogue-mobile.js
+  _runMode = true  (set on double-tap in _handleGridTouchEnd / _handleGridPointerUp)
+       ↓
+GoneRogue.handleFishingMove(path, runMode)   ← runMode = _runMode
+  or
+GoneRogue.handleTapMove(x, y, runMode)
+       ↓
+TapMoveSystem.handleFishingMove(path, isSprinting, ctx)
+  or
+TapMoveSystem.handleTapMove(x, y, runMode, ctx)
+       ↓
+GoneRogueMovement.setTarget(x, y, collisionCheck, isSprinting)
+  → _isSprinting = isSprinting || false
+```
+
+Check each hand-off point with a `console.log` to identify where `true` becomes `false` (sprint lost) or where `false` becomes `true` (sprint injected).
+
+Common leak sources:
+- `_runMode` not being reset to `false` after a sprint activation, so all subsequent taps inherit sprint.
+- `FISHING_SPRINT_DRAG_SPEED` threshold (1.2 px/ms) being too easily reached during normal drags, auto-elevating every fishing move to sprint.
+
+#### Step 4 — Verify script load order for SprintTrailSystem
+
+`SprintTrailSystem` must be defined before `GoneRogueMovement` in the page's script load order (or bundled such that `SprintTrailSystem` exists in scope when `gone-rogue-movement.js` executes). Check `public/index.html` or the bundler entry point:
+
+```html
+<!-- Correct order -->
+<script src="sprint-trail-system.js"></script>
+<script src="gone-rogue-movement.js"></script>
+```
+
+If the order is reversed, the `typeof SprintTrailSystem !== 'undefined'` guard in `GoneRogueMovement.update()` will always be `false` and the trail will silently never render.
+
+#### Step 5 — Verify trail render call reaches the canvas
+
+Even if `SprintTrailSystem` receives updates and spawns trail particles, they must be rendered. Check that the canvas render loop calls `SprintTrailSystem.render()` (or equivalent) after drawing the player. Search `gone-rogue-mobile.js` and `game-tick-system.js` for the render call:
+
+```javascript
+// Should exist in the canvas render path:
+SprintTrailSystem.render(ctx, tileSize, cameraOffsetX, cameraOffsetY);
+```
+
+If missing, trail particles exist in memory but are never drawn.
+
+### Sprint speed constants summary
+
+| Constant | File | Value | Notes |
+|---|---|---|---|
+| `MOVEMENT_SPEED` | `gone-rogue-movement.js:10` | `3.2` tiles/sec | Base walk speed (reduced from 8.0) |
+| `SPRINT_MULTIPLIER` | `gone-rogue-movement.js:11` | `1.5` | Sprint = 4.8 tiles/sec at walk base |
+| `FISHING_SPRINT_DRAG_SPEED` | `gone-rogue-mobile.js:~72` | `1.2 px/ms` | Drag speed threshold to auto-activate sprint |
+| `DOUBLE_TAP_THRESHOLD_MS` | `gone-rogue-mobile.js:13` | `300 ms` | Window for double-tap sprint |
+
+### Acceptance criteria for sprint fully implemented
+
+- [ ] Normal single-tap move travels at `3.2 tiles/sec` with no trail visible.
+- [ ] Double-tap sprint travels at `4.8 tiles/sec` with parenthesis trail visible from frame 1.
+- [ ] Trail decays over ~0.8 seconds after sprint ends (controlled by `TRAIL_DECAY_BASE`).
+- [ ] `GAMESTATE.drainSprintFatigue()` is called each frame during sprint, eventually causing `GAMESTATE.canSprint()` to return `false` and stopping sprint.
+- [ ] `_runMode` resets to `false` after each tap/drag action (no sticky sprint).
+- [ ] Fast fishing drag (≥ 1.2 px/ms) correctly activates sprint for that move only, then resets.
