@@ -135,13 +135,19 @@ var ExplosionSystem = (function() {
         }
       }
 
-      // Expand neighbors if within radius (4-directional BFS)
+      // Expand neighbors if within radius (8-directional BFS — includes diagonals)
+      // Diagonal distance is measured in tiles (Chebyshev), not Euclidean,
+      // so the blast radius forms a diamond→square shape.
       if (dist < radius) {
         var dirs = [
-          { x: cx + 1, y: cy },
-          { x: cx - 1, y: cy },
-          { x: cx, y: cy + 1 },
-          { x: cx, y: cy - 1 }
+          { x: cx + 1, y: cy },     // E
+          { x: cx - 1, y: cy },     // W
+          { x: cx, y: cy + 1 },     // S
+          { x: cx, y: cy - 1 },     // N
+          { x: cx + 1, y: cy + 1 }, // SE
+          { x: cx - 1, y: cy + 1 }, // SW
+          { x: cx + 1, y: cy - 1 }, // NE
+          { x: cx - 1, y: cy - 1 }  // NW
         ];
         for (var di = 0; di < dirs.length; di++) {
           var n = dirs[di];
@@ -560,12 +566,22 @@ var ExplosionSystem = (function() {
     try {
       var gridEl = document.getElementById('rogue-grid-mobile');
       if (gridEl) {
+        // Shake: physical displacement
         gridEl.classList.remove('explosion-shake');
         void gridEl.offsetWidth; // Force reflow to restart animation (chain detonation)
         gridEl.classList.add('explosion-shake');
         gridEl.addEventListener('animationend', function onShakeEnd() {
           gridEl.classList.remove('explosion-shake');
           gridEl.removeEventListener('animationend', onShakeEnd);
+        });
+
+        // Flash: orange-red inset glow (layered on top of shake)
+        gridEl.classList.remove('explosion-flash');
+        void gridEl.offsetWidth;
+        gridEl.classList.add('explosion-flash');
+        gridEl.addEventListener('animationend', function onFlashEnd() {
+          gridEl.classList.remove('explosion-flash');
+          gridEl.removeEventListener('animationend', onFlashEnd);
         });
       }
     } catch (e) {

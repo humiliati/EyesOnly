@@ -113,11 +113,18 @@ Phase 2: ExplosionSystem Module ✔ COMPLETE (2026-03-04)
 •	breakable-system.js `_triggerExplosion` refactored to delegate to `ExplosionSystem.detonate()` with minimal inline fallback ✔
 •	Script load order: explosion-system.js loads before breakable-system.js in index.html ✔
 •	Cache busters bumped to `?v=20260304e` for explosion-system.js, breakable-system.js, gone-rogue.js ✔
-Phase 3: Visual Effects & Screen Shake
-•	CSS explosion-shake (0.4s) + explosion-flash (0.6s orange-red)
-•	Overhead explosion emoji ripple (staggered fire emojis by distance ring)
-•	Breakable light explosion polish (glass shatter, spark shower, darkness ripple)
-•	MOK + debrief + tooltip integration
+Phase 3: Visual Effects & Screen Shake ✔ COMPLETE (2026-03-05)
+•	CSS explosion-shake (0.4s) — implemented in Phase 1.5, verified working ✔
+•	CSS explosion-flash (0.5s orange-red inset glow) — added to gone-rogue-mobile.css, triggered alongside shake in explosion-system.js ✔
+•	Overhead explosion emoji ripple (staggered fire emojis by distance ring) — implemented in Phase 2, verified working ✔
+•	Explosion BFS upgraded from 4-axis to 8-axis (diagonal blast spread) ✔
+•	Fire spread upgraded from 4-axis to 8-axis in ground-effects.js ✔
+•	Fire→smoke decay upgraded: smoke "locks in" shape (░/▒/≈), drifts across map at 0.4 tiles/sec as stealth cover ✔
+•	Dense smoke clusters (≥2 adjacent) upgrade to OBSCURED type (+15% stealth, -50% visibility, 6s lifetime) ✔
+•	Smoke fade-out via per-tile alpha in canvas renderer (hasTileAlpha path in _renderTile) ✔
+•	Kick system verified 8-axis diagonal support (dx/dy normalization in tap-move-system.js already handles diagonals) ✔
+•	MOK + debrief + tooltip integration — implemented in Phase 2 ✔
+•	Breakable light explosion polish (glass shatter, spark shower, darkness ripple) — deferred to Phase 4
 Phase 4: Breakable Lights — More Interactive & Dynamic
 •	Explosion chain with lights (HP-based survival, torch → fire ground)
 •	Kick barrel into breakable light → light damage + possible detonation

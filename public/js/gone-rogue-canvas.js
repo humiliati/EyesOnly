@@ -212,6 +212,13 @@ const CanvasRenderer = (function() {
     var centerX = pixelX + this.cellSize / 2;
     var centerY = pixelY + this.cellSize / 2;
 
+    // Per-tile alpha (used by drifting smoke for fade-out)
+    var hasTileAlpha = tile.alpha !== undefined && tile.alpha < 1;
+    if (hasTileAlpha) {
+      this.ctx.save();
+      this.ctx.globalAlpha = tile.alpha;
+    }
+
     // Render background if specified
     if (tile.bg) {
       this.ctx.fillStyle = tile.bg;
@@ -313,6 +320,11 @@ const CanvasRenderer = (function() {
         // Reset shadow
         this.ctx.shadowBlur = 0;
       }
+    }
+
+    // Restore alpha if we applied per-tile alpha
+    if (hasTileAlpha) {
+      this.ctx.restore();
     }
   };
 

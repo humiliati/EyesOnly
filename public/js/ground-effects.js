@@ -190,9 +190,9 @@ const GroundEffects = (function () {
       color: '#888888',
       damage: 0,                 // No damage — just visual remnant
       dissipates: true,
-      lifetime: 2,               // Lingers 2 seconds then clears
+      lifetime: 4,               // Lingers 4 seconds (extended for drift)
       stealthBonus: 0.1,         // Slight concealment in smoke
-      description: 'Lingering smoke from extinguished fire'
+      description: 'Drifting smoke from extinguished fire'
     }
   };
 
@@ -267,10 +267,53 @@ const GroundEffects = (function () {
    * @param {number} gridWidth - Grid width
    * @param {number} gridHeight - Grid height
    */
+  // ── Smoke drift config ──
+  var SMOKE_DRIFT_SPEED = 0.4;     // Tiles per second — slow, atmospheric drift
+  var SMOKE_DRIFT_LIFETIME = 4;    // Seconds before smoke fully dissipates
+  var SMOKE_DENSE_THRESHOLD = 2;   // Adjacent smoke count to upgrade to OBSCURED
+  var SMOKE_DENSE_LIFETIME = 6;    // Dense clouds linger longer
+  var SMOKE_VISUAL_CHARS = ['░', '▒', '≈']; // Shape options: "locks in" at spawn
+
+  /**
+   * Pick a random wind-like drift direction for a smoke cloud.
+   * Favors one of 8 compass directions with slight randomness.
+   */
+  function _pickDriftDirection() {
+    var windDirs = [
+      { dx:  1, dy:  0 }, { dx: -1, dy:  0 },
+      { dx:  0, dy:  1 }, { dx:  0, dy: -1 },
+      { dx:  1, dy:  1 }, { dx: -1, dy:  1 },
+      { dx:  1, dy: -1 }, { dx: -1, dy: -1 }
+    ];
+    var d = windDirs[Math.floor(Math.random() * windDirs.length)];
+    // Normalize diagonal so speed is consistent
+    var len = Math.sqrt(d.dx * d.dx + d.dy * d.dy);
+    return { dx: d.dx / len, dy: d.dy / len };
+  }
+
+  /**
+   * Count adjacent smoke/obscured tiles around a position (for density check).
+   */
+  function _countAdjacentSmoke(x, y) {
+    var count = 0;
+    for (var dx = -1; dx <= 1; dx++) {
+      for (var dy = -1; dy <= 1; dy++) {
+        if (dx === 0 && dy === 0) continue;
+        var neighbor = _groundMap[(x + dx) + ',' + (y + dy)];
+        if (neighbor && (neighbor.type === GROUND_TYPES.SMOKE || neighbor.type === GROUND_TYPES.OBSCURED)) {
+          count++;
+        }
+      }
+    }
+    return count;
+  }
+
   function update(deltaMs, gridWidth, gridHeight) {
     var now = Date.now();
+    var dtSec = deltaMs / 1000;
     var effectsToAdd = [];
     var effectsToRemove = [];
+    var effectsToRelocate = []; // Smoke tiles that need to drift to new positions
 
     Object.keys(_groundMap).forEach(function(key) {
       var effect = _groundMap[key];
@@ -279,16 +322,45 @@ const GroundEffects = (function () {
       if (effect.dissipates && effect.lifetime) {
         var age = (now - effect.spawnTime) / 1000; // Age in seconds
         if (age > effect.lifetime) {
-          // Fire decays to smoke before disappearing
+          // Fire decays to drifting smoke before disappearing
           if (effect.type === GROUND_TYPES.FIRE && !effect._decayedToSmoke) {
-            effect.type = GROUND_TYPES.SMOKE || 'smoke';
-            effect.emoji = (GROUND_EFFECTS.SMOKE || GROUND_EFFECTS.smoke || { emoji: '💨' }).emoji || '💨';
-            effect.color = '#888888';
+            // Check if this fire tile is part of a cluster (dense smoke)
+            var adjacentSmoke = _countAdjacentSmoke(effect.x, effect.y);
+            var isDense = adjacentSmoke >= SMOKE_DENSE_THRESHOLD;
+
+            // Upgrade to OBSCURED for dense clusters (better stealth)
+            if (isDense) {
+              effect.type = GROUND_TYPES.OBSCURED;
+              effect.emoji = '🌫️';
+              effect.color = '#666666';
+              effect.stealthBonus = 0.15;
+              effect.visibilityReduction = -50;
+              effect.lifetime = SMOKE_DENSE_LIFETIME;
+            } else {
+              effect.type = GROUND_TYPES.SMOKE;
+              effect.emoji = '💨';
+              effect.color = '#888888';
+              effect.stealthBonus = 0.1;
+              effect.lifetime = SMOKE_DRIFT_LIFETIME;
+            }
+
             effect.damage = 0;
             effect.lightRadius = 0;
             effect._decayedToSmoke = true;
-            effect.spawnTime = now; // Reset timer for smoke phase
-            effect.lifetime = 2;   // Smoke lingers 2 seconds
+            effect.dissipates = true;
+            effect.spawnTime = now;
+
+            // Lock in shape — pick a random smoke char that won't change
+            effect._smokeChar = SMOKE_VISUAL_CHARS[Math.floor(Math.random() * SMOKE_VISUAL_CHARS.length)];
+            effect.char = effect._smokeChar;
+
+            // Set drift vector — all tiles in same area share a "wind" direction
+            // (we pick per-tile with slight variance for organic feel)
+            var drift = _pickDriftDirection();
+            effect._driftVX = drift.dx;
+            effect._driftVY = drift.dy;
+            effect._driftAccumX = 0;
+            effect._driftAccumY = 0;
             return;
           }
           effectsToRemove.push(key);
@@ -296,15 +368,57 @@ const GroundEffects = (function () {
         }
       }
 
+      // ── Smoke drift: slide smoke tiles across the map ──
+      if (effect._decayedToSmoke && effect._driftVX !== undefined) {
+        effect._driftAccumX += effect._driftVX * SMOKE_DRIFT_SPEED * dtSec;
+        effect._driftAccumY += effect._driftVY * SMOKE_DRIFT_SPEED * dtSec;
+
+        // Check if accumulated drift has crossed a tile boundary
+        var shiftX = 0, shiftY = 0;
+        if (Math.abs(effect._driftAccumX) >= 1.0) {
+          shiftX = effect._driftAccumX > 0 ? 1 : -1;
+          effect._driftAccumX -= shiftX;
+        }
+        if (Math.abs(effect._driftAccumY) >= 1.0) {
+          shiftY = effect._driftAccumY > 0 ? 1 : -1;
+          effect._driftAccumY -= shiftY;
+        }
+
+        if (shiftX !== 0 || shiftY !== 0) {
+          var newX = effect.x + shiftX;
+          var newY = effect.y + shiftY;
+
+          // Only drift into valid empty tiles (don't overwrite walls, other effects)
+          if (newX >= 0 && newX < gridWidth && newY >= 0 && newY < gridHeight) {
+            var targetKey = newX + ',' + newY;
+            var targetEffect = _groundMap[targetKey];
+            if (!targetEffect) {
+              effectsToRelocate.push({ oldKey: key, effect: effect, newX: newX, newY: newY });
+            }
+            // If blocked, smoke dissipates slightly faster (loses momentum)
+            else {
+              effect.lifetime = Math.max(0.5, effect.lifetime - 0.3);
+            }
+          } else {
+            // Hit map edge — remove
+            effectsToRemove.push(key);
+          }
+        }
+
+        // Fade smoke opacity as it ages (for renderer — age-based alpha)
+        var smokeAge = (now - effect.spawnTime) / 1000;
+        effect._smokeAlpha = Math.max(0.2, 1 - (smokeAge / effect.lifetime));
+      }
+
       // Handle spreading effects (fire)
       if (effect.spreads && effect.spreadChance) {
-        if (Math.random() < effect.spreadChance * (deltaMs / 1000)) {
-          // Try to spread to adjacent tile
+        if (Math.random() < effect.spreadChance * dtSec) {
+          // Try to spread to adjacent tile (8-axis for fire spread)
           var directions = [
-            { dx: 1, dy: 0 },
-            { dx: -1, dy: 0 },
-            { dx: 0, dy: 1 },
-            { dx: 0, dy: -1 }
+            { dx:  1, dy:  0 }, { dx: -1, dy:  0 },
+            { dx:  0, dy:  1 }, { dx:  0, dy: -1 },
+            { dx:  1, dy:  1 }, { dx: -1, dy:  1 },
+            { dx:  1, dy: -1 }, { dx: -1, dy: -1 }
           ];
 
           var dir = directions[Math.floor(Math.random() * directions.length)];
@@ -332,6 +446,18 @@ const GroundEffects = (function () {
     // Apply removals
     effectsToRemove.forEach(function(key) {
       delete _groundMap[key];
+    });
+
+    // Apply smoke relocations (drift)
+    effectsToRelocate.forEach(function(reloc) {
+      delete _groundMap[reloc.oldKey];
+      reloc.effect.x = reloc.newX;
+      reloc.effect.y = reloc.newY;
+      var newKey = reloc.newX + ',' + reloc.newY;
+      // Don't overwrite if something appeared in the target during this tick
+      if (!_groundMap[newKey]) {
+        _groundMap[newKey] = reloc.effect;
+      }
     });
 
     // Apply additions

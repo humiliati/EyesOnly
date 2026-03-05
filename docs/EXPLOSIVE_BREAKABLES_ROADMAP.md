@@ -150,7 +150,17 @@ If an entity is pushed into a wall, it stops at the tile before the wall and tak
 
 ---
 
-## Phase 3 — Visual Effects & Screen Shake
+## Phase 3 — Visual Effects & Screen Shake ✔ COMPLETE (2026-03-05)
+
+> **Implementation notes (2026-03-05):**
+> - Screen shake: Implemented in Phase 1.5, verified working
+> - Frame flash: `.explosion-flash` CSS animation (0.5s ease-out, orange-red inset glow) added to gone-rogue-mobile.css, triggered alongside shake via `_triggerScreenShake()` in explosion-system.js
+> - Overhead emoji ripple: Implemented in Phase 2, verified working
+> - Explosion BFS upgraded from 4-axis to 8-axis (diagonal blast spread)
+> - Fire spread upgraded from 4-axis to 8-axis in ground-effects.js
+> - Fire→smoke decay overhauled: smoke "locks in" random shape char (░/▒/≈), assigned random wind drift vector, drifts at 0.4 tiles/sec across map. Dense clusters (≥2 adjacent smoke) upgrade to OBSCURED type (+15% stealth, -50% visibility, 6s lifetime). Thin wisps stay as SMOKE (+10% stealth, 4s lifetime). Canvas renderer supports per-tile alpha fade-out.
+> - Kick verified to already support 8-axis diagonals (dx/dy normalization in tap-move-system.js)
+> - Glass shatter / spark shower / darkness ripple deferred to Phase 4 (breakable light polish)
 
 ### 3.1 Screen Shake
 
