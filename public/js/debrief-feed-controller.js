@@ -76,8 +76,88 @@ const DebriefFeedController = (function() {
     // so a 1200ms refresh catches every other idle frame transition, feeling organic
     _startIdleSymbolRefresh();
 
+    // Adaptive letter-spacing: stretch/squeeze row text to fill frame width
+    _applyAdaptiveSpacing();
+    window.addEventListener('resize', _debounce(_applyAdaptiveSpacing, 150));
+    // Also re-apply on orientation change (phone rotation)
+    if (typeof screen !== 'undefined' && screen.orientation) {
+      screen.orientation.addEventListener('change', function() {
+        setTimeout(_applyAdaptiveSpacing, 200);
+      });
+    }
+
     // Portrait Gone Rogue: tap to expand/collapse debrief width; drag to resize
     _setupPortraitDebriefSizing();
+  }
+
+  function _debounce(fn, ms) {
+    var timer = null;
+    return function() {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(fn, ms);
+    };
+  }
+
+  /**
+   * Adaptive letter-spacing: stretch characters to fill the debrief frame width
+   * on wide viewports, squeeze them together (clamped at ~20% overlap) on narrow.
+   *
+   * Approach: measure the debrief-screen width, measure the natural text width of
+   * a summary span, compute the per-character letter-spacing needed to fill the row.
+   */
+  function _applyAdaptiveSpacing() {
+    try {
+      var dbScreen = document.getElementById('debrief-screen');
+      if (!dbScreen) return;
+      var frameW = dbScreen.clientWidth;
+      if (!frameW || frameW < 20) return;
+
+      // Target: text should fill ~92% of frame width (leaving padding room)
+      var targetW = frameW * 0.92;
+
+      // Get all summary spans and panel lines
+      var els = dbScreen.querySelectorAll('.debrief-row-summary, .debrief-row-panel .debrief-line');
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        var text = el.textContent || '';
+        var charCount = text.length;
+        if (charCount < 2) continue;
+
+        // Measure the natural width of the text with zero letter-spacing
+        el.style.letterSpacing = '0px';
+        var naturalW = el.scrollWidth;
+
+        // For panel lines (.debrief-line) inside expanded panels,
+        // use the panel container width instead of the full frame
+        var parentPanel = el.closest('.debrief-row-panel');
+        var rowTargetW = parentPanel ? (parentPanel.clientWidth * 0.92) : targetW;
+
+        // For summary spans, account for the label width
+        if (el.classList.contains('debrief-row-summary')) {
+          var navRow = el.closest('.debrief-nav-row');
+          if (navRow) {
+            var label = navRow.querySelector('.debrief-row-label');
+            var labelW = label ? label.offsetWidth : 0;
+            rowTargetW = (frameW - labelW - 12) * 0.92; // 12px for padding
+          }
+        }
+
+        if (naturalW <= 0 || charCount <= 1) continue;
+
+        // Compute needed extra space distributed across (charCount - 1) gaps
+        var extraSpace = rowTargetW - naturalW;
+        var spacingPx = extraSpace / (charCount - 1);
+
+        // Clamp: min = -0.08em (subtle squeeze, ~20% char overlap),
+        //         max = 0.5em (don't spread too wildly)
+        var fontSize = parseFloat(getComputedStyle(el).fontSize) || 13;
+        var minSpacing = -0.08 * fontSize; // ~20% overlap clamp
+        var maxSpacing = 0.5 * fontSize;   // max stretch
+        spacingPx = Math.max(minSpacing, Math.min(maxSpacing, spacingPx));
+
+        el.style.letterSpacing = spacingPx.toFixed(2) + 'px';
+      }
+    } catch (e) {}
   }
 
   var _idleRefreshTimer = null;
@@ -109,6 +189,8 @@ const DebriefFeedController = (function() {
       // scope. To avoid duplicating them, we use a shared reference on the controller object.
       if (!DebriefFeedController._idleRender) return;
       DebriefFeedController._idleRender();
+      // Re-apply spacing in case text changed (symbol cycle changes char count)
+      _applyAdaptiveSpacing();
     } catch (e) {}
   }
 
@@ -1018,6 +1100,9 @@ const DebriefFeedController = (function() {
       }
 
     _attachEventHandlers();
+
+    // Re-apply adaptive letter-spacing after DOM rebuild
+    _applyAdaptiveSpacing();
   }
 
   /**
