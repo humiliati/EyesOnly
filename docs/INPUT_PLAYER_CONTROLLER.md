@@ -753,19 +753,43 @@ When the player sprints, a trail of closing-parenthesis characters renders behin
 | `TRAIL_SPAWN_INTERVAL` | 0.15s | New particle every N seconds |
 | `TRAIL_FADE_DURATION` | 0.6s | Each particle's total lifespan |
 
-### 16b. Player Facing Caret + Muzzle Flash
+### 16b. Orbiting Weapon Arrow (replaced facing caret)
 
-**Rendered by:** `CanvasRenderer._renderPlayer()` in `gone-rogue-canvas.js`
+**Module:** `player-weapon-arrow.js` (standalone IIFE)
+**Rendered by:** `CanvasRenderer._renderPlayer()` → `PlayerWeaponArrow.render()` in `gone-rogue-canvas.js`
 
-A small directional caret (▴ ▾ ▸ ◂) is drawn on the edge of the player tile in the direction they're facing. The caret serves two purposes: (1) shows the player which way they'll fire projectiles, and (2) flashes bright yellow for 300ms when a projectile is fired ("muzzle flash").
+A small monochromatic triangle arrow orbits 360° around the player avatar at 38% cell-radius, showing the current "weapon facing" direction. The arrow smoothly interpolates toward a target angle driven by the highest-priority recent input.
+
+**Input priority (highest first):**
+
+| Priority | Input | Method | Behavior |
+|---|---|---|---|
+| 1 | Projectile fire | `setFireDirection(dir)` | Instant snap + 250ms muzzle flash glow |
+| 2 | Kick breakable | `setKickDirection(dx, dy)` | Instant snap |
+| 3 | Theft / interact | `setInteractDirection(dx, dy)` | Smooth turn (12 rad/s) |
+| 4 | Movement | `setMovementDirection(dir)` | Smooth turn (12 rad/s) |
 
 **Data flow:**
-1. `player.lastMoveDirection` is set on every move in `game-tick-system.js` (values: "north", "south", "east", "west")
-2. Passed to canvas renderer as `renderData.player.facing` (via `gone-rogue-mobile.js` render data builder)
-3. `renderData.player.muzzleFlash` is `true` when `muzzleFlash.time` is within 300ms of now (set by `ProjectileSystem.fireProjectile()`)
-4. `_renderPlayer()` draws the caret offset 38% toward the facing edge, with color `#888` normally or `#FFFF66` + yellow glow during muzzle flash
+1. `game-tick-system.js` calls `PlayerWeaponArrow.update(dt)` every frame (angle interpolation)
+2. `game-tick-system.js` calls `setMovementDirection()` when logical position changes
+3. `projectile-system.js` calls `setFireDirection()` on both `fireProjectile()` and `fireProjectileAtTarget()` — accepts named direction or `{dx,dy}` for precise angles
+4. `tap-move-system.js` calls `setKickDirection(ndx, ndy)` on kick
+5. `gone-rogue-mobile.js` calls `setInteractDirection(dx, dy)` on NPC interact and adjacent enemy steal
+6. `_renderPlayer()` delegates to `PlayerWeaponArrow.render(ctx, centerX, centerY, cellSize)`
 
-**Dependencies:** `player.lastMoveDirection` is also consumed by `LightingSystem.updatePlayerLight(x, y, direction)` for directional flashlight cones and by `positionHistory[].facing` for pet follower orientation.
+**Visual:** Default color `#AAA` at 85% opacity. During muzzle flash (250ms after fire), lerps to `#FFFF66` with yellow glow that fades out. Arrow is a filled triangle with subtle dark outline.
+
+**STR combat integration (TODO):** When entering STR combat, `PlayerWeaponArrow.getAngle()` provides the "toy" orbiting direction which should be averaged with the combat-math `player.lastMoveDirection` (biased toward the toy system) to determine initial combat facing.
+
+**Dependencies:** `player.lastMoveDirection` remains the canonical cardinal direction for combat math, `LightingSystem.updatePlayerLight()`, and `positionHistory[].facing` for pet follower orientation. The weapon arrow is purely visual and does not affect game logic.
+
+### 16c. Projectile Visual Origin Fix
+
+Projectiles spawned while the player is mid-travel along a fishing path now originate from the avatar's current visual position (rounded to nearest tile) instead of the stale logical position. This is the same pattern used by the fishing origin fix.
+
+**Implementation:** `ProjectileSystem._getFiringOrigin(ctx)` reads `GoneRogueMovement.getVisualPosition()` rounded to nearest tile, falling back to `ctx.player.x/y`. Both `fireProjectile()` and `fireProjectileAtTarget()` use this helper for projectile spawn position, direction calculation, and muzzle flash placement.
+
+**Unlocked gameplay:** Player can now strafe via fishing drag while firing projectiles at enemies with single-tap — the "fish and shoot" mobile pattern.
 
 ---
 
@@ -809,7 +833,8 @@ Complete input gesture → action mapping, including long-press mechanics. All g
 
 | Date | Change | Files |
 |---|---|---|
-| 2026-03-05 | **Sprint trail + facing caret ported to canvas.** Sprint trail now renders inside `CanvasRenderer._renderSprintTrails()` with proper world→view coordinate conversion. Facing caret (▴▾▸◂) added to `_renderPlayer()` with muzzle flash glow. `renderData.player` extended with `facing` and `muzzleFlash` fields. | `gone-rogue-canvas.js`, `gone-rogue-mobile.js`, `sprint-trail-system.js` |
+| 2026-03-05 | **Projectile origin fix + orbiting weapon arrow.** Projectiles now spawn from visual position via `_getFiringOrigin()`. Replaced facing caret with `PlayerWeaponArrow` — 360° orbiting triangle driven by movement/fire/kick/interact inputs with smooth interpolation and muzzle flash glow. | `projectile-system.js`, `player-weapon-arrow.js`, `gone-rogue-canvas.js`, `gone-rogue-mobile.js`, `game-tick-system.js`, `tap-move-system.js` |
+| 2026-03-05 | **Sprint trail ported to canvas.** Sprint trail now renders inside `CanvasRenderer._renderSprintTrails()` with proper world→view coordinate conversion. | `gone-rogue-canvas.js`, `sprint-trail-system.js` |
 | 2026-03-05 | **Scripted walk gutted.** Removed 3-phase Floor 0 auto-walk state machine. Player has full input control from Frame 1. See docs/PLAYER_ONBOARDING.md for replacement tutorial vision. | `begin-gameplay-system.js`, `game-tick-system.js`, `tap-move-system.js`, `gone-rogue.js` |
 | 2026-03-04 | Fishing teleport fix: all fishing path origins now use visual position via `_getFishingOrigin()` instead of stale logical position | `gone-rogue-mobile.js`, `tap-move-system.js`, `gone-rogue-movement.js` |
 | 2026-03-04 | Equip slot validation: cards and non-equippable items rejected via `GAMESTATE.isEquippable()` at all 4 entry points | `gamestate.js`, `non-combat-hud.js`, `rogue-sidebar.js`, `ui-controls.js` |

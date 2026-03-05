@@ -13,6 +13,23 @@ var ProjectileSystem = (function() {
 
   // ── Helpers ──
 
+  /**
+   * Get the player's current firing origin position.
+   * When GoneRogueMovement is active and the player is mid-travel,
+   * ctx.player.x/y (logical position) may lag behind the avatar by
+   * several tiles. We use the visual position rounded to nearest tile
+   * for accurate projectile spawn, falling back to logical position.
+   */
+  function _getFiringOrigin(ctx) {
+    if (typeof GoneRogueMovement !== 'undefined' && GoneRogueMovement.getVisualPosition) {
+      var vis = GoneRogueMovement.getVisualPosition();
+      if (vis && isFinite(vis.x) && isFinite(vis.y)) {
+        return { x: Math.round(vis.x), y: Math.round(vis.y) };
+      }
+    }
+    return { x: ctx.player.x, y: ctx.player.y };
+  }
+
   function _getProjectileGlyph(direction) {
     var glyphs = {
       'north': '\u2191',
@@ -149,22 +166,28 @@ var ProjectileSystem = (function() {
    * Returns { glyph, direction } — caller handles renderGrid/getPrompt.
    */
   function fireProjectile(cmd, ctx) {
+    var origin = _getFiringOrigin(ctx);
     var dir = ctx.parseDirection(cmd);
     var len = Math.sqrt(dir.dx * dir.dx + dir.dy * dir.dy) || 1;
     var vx = dir.dx / len;
     var vy = dir.dy / len;
 
     var projectile = {
-      x: ctx.player.x, y: ctx.player.y,
-      fx: ctx.player.x, fy: ctx.player.y,
+      x: origin.x, y: origin.y,
+      fx: origin.x, fy: origin.y,
       dx: dir.dx, dy: dir.dy, vx: vx, vy: vy,
       speed: 1.0, bounces: 3,
       glyph: _getProjectileGlyph(dir.direction),
       emoji: '\uD83D\uDCA5', range: 15, power: 3, owner: 'player'
     };
 
-    _muzzleFlash = { x: ctx.player.x, y: ctx.player.y, time: Date.now() };
+    _muzzleFlash = { x: origin.x, y: origin.y, time: Date.now() };
     setTimeout(function() { _muzzleFlash = null; }, 300);
+
+    // Snap weapon arrow to fire direction
+    if (typeof PlayerWeaponArrow !== 'undefined') {
+      PlayerWeaponArrow.setFireDirection(dir.direction);
+    }
 
     _projectiles.push(projectile);
     return { glyph: projectile.glyph, direction: dir.direction };
@@ -177,8 +200,9 @@ var ProjectileSystem = (function() {
   function fireProjectileAtTarget(targetX, targetY, ctx) {
     if (!ctx.active || !ctx.player) return null;
 
-    var dx = targetX - ctx.player.x;
-    var dy = targetY - ctx.player.y;
+    var origin = _getFiringOrigin(ctx);
+    var dx = targetX - origin.x;
+    var dy = targetY - origin.y;
     var dist = Math.sqrt(dx * dx + dy * dy);
     if (dist === 0) return null;
 
@@ -193,16 +217,21 @@ var ProjectileSystem = (function() {
     }
 
     var projectile = {
-      x: ctx.player.x, y: ctx.player.y,
-      fx: ctx.player.x, fy: ctx.player.y,
+      x: origin.x, y: origin.y,
+      fx: origin.x, fy: origin.y,
       dx: dx, dy: dy, vx: vx, vy: vy,
       speed: 1.0, bounces: 3,
       glyph: _getProjectileGlyph(dirName),
       emoji: '\uD83D\uDCA5', range: 15, power: 3, owner: 'player'
     };
 
-    _muzzleFlash = { x: ctx.player.x, y: ctx.player.y, time: Date.now() };
+    _muzzleFlash = { x: origin.x, y: origin.y, time: Date.now() };
     setTimeout(function() { _muzzleFlash = null; }, 300);
+
+    // Snap weapon arrow toward target (uses dx/dy for precise angle)
+    if (typeof PlayerWeaponArrow !== 'undefined') {
+      PlayerWeaponArrow.setFireDirection({ dx: dx, dy: dy });
+    }
 
     _projectiles.push(projectile);
     return { glyph: projectile.glyph, direction: dirName };

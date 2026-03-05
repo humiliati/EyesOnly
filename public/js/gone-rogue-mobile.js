@@ -1110,9 +1110,7 @@ const GoneRogueMobile = (function () {
           x: _toViewX(player.visualX !== undefined ? player.visualX : player.x),
           y: _toViewY(player.visualY !== undefined ? player.visualY : player.y),
           char: playerChar,
-          color: '#00FF00',
-          facing: player.lastMoveDirection || null,
-          muzzleFlash: !!(muzzleFlash && (Date.now() - muzzleFlash.time) < 300)
+          color: '#00FF00'
         };
       })() : null
     });
@@ -1824,6 +1822,7 @@ const GoneRogueMobile = (function () {
             var ndy = y - player.y;
             if (Math.abs(ndx) <= 1 && Math.abs(ndy) <= 1) {
               console.log('[ProcessGridInput] Adjacent NPC tap: ' + (npc.name || npc.id) + ' at ' + x + ',' + y);
+              if (typeof PlayerWeaponArrow !== 'undefined') PlayerWeaponArrow.setInteractDirection(ndx, ndy);
               GoneRogue.process('interact');
               _lastMovementTime = Date.now();
               return;
@@ -1847,6 +1846,7 @@ const GoneRogueMobile = (function () {
               // Phase 4: adjacent enemy tap (Manhattan dist ≤ 1) → attempt steal.
               // Ranged enemy tap fires projectile as before.
               if (eDist <= 1 && GoneRogue.process) {
+                if (typeof PlayerWeaponArrow !== 'undefined') PlayerWeaponArrow.setInteractDirection(edx, edy);
                 GoneRogue.process('steal');
                 _lastMovementTime = Date.now();
                 return;

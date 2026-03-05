@@ -23,6 +23,11 @@ var GameTickSystem = (function() {
       ctx.player.visualY = _vis.y;
     }
 
+    // Update weapon arrow interpolation each frame
+    if (typeof PlayerWeaponArrow !== 'undefined') {
+      PlayerWeaponArrow.update(deltaMs / 1000);
+    }
+
     // Update smooth movement system
     if (typeof GoneRogueMovement !== 'undefined' && GoneRogueMovement.isMoving()) {
       var collisionCheck = function(x, y) {
@@ -43,11 +48,15 @@ var GameTickSystem = (function() {
         ctx.player.x = logical.x;
         ctx.player.y = logical.y;
 
-        // Update last move direction for flanking
+        // Update last move direction for flanking + weapon arrow
         if (logical.x > oldX) ctx.player.lastMoveDirection = 'east';
         else if (logical.x < oldX) ctx.player.lastMoveDirection = 'west';
         else if (logical.y > oldY) ctx.player.lastMoveDirection = 'south';
         else if (logical.y < oldY) ctx.player.lastMoveDirection = 'north';
+
+        if (typeof PlayerWeaponArrow !== 'undefined') {
+          PlayerWeaponArrow.setMovementDirection(ctx.player.lastMoveDirection);
+        }
 
         // Check for items, currency, enemies at new position
         ctx.checkPlayerInteractions();

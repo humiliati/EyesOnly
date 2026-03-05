@@ -69,6 +69,11 @@ var TapMoveSystem = (function() {
         var ndx = dx === 0 ? 0 : (dx > 0 ? 1 : -1);
         var ndy = dy === 0 ? 0 : (dy > 0 ? 1 : -1);
 
+        // Snap weapon arrow to kick direction
+        if (typeof PlayerWeaponArrow !== 'undefined') {
+          PlayerWeaponArrow.setKickDirection(ndx, ndy);
+        }
+
         // Use BreakableSystem.kickBreakable if available (push + damage)
         var kickResult = null;
         if (typeof BreakableSystem !== 'undefined' && BreakableSystem.kickBreakable) {

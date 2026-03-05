@@ -646,24 +646,9 @@ const CanvasRenderer = (function() {
     }
   };
 
-  // ── Facing-caret glyphs ────────────────────────────────────────────
-  var CARET_MAP = {
-    north: '\u25B4', // ▴
-    south: '\u25BE', // ▾
-    east:  '\u25B8', // ▸
-    west:  '\u25C2'  // ◂
-  };
-  // Offset the caret toward the edge the player is facing (fraction of cell)
-  var CARET_OFFSET = {
-    north: { dx: 0,    dy: -0.38 },
-    south: { dx: 0,    dy:  0.38 },
-    east:  { dx: 0.38, dy: 0     },
-    west:  { dx:-0.38, dy: 0     }
-  };
-
   /**
    * Render player
-   * @param {Object} player - Player object { x, y, char, color, facing, muzzleFlash }
+   * @param {Object} player - Player object { x, y, char, color }
    * @param {boolean} skipShadows - If true, skip drawing shadows (they'll be drawn later)
    */
   CanvasRenderer.prototype._renderPlayer = function(player, skipShadows) {
@@ -687,31 +672,9 @@ const CanvasRenderer = (function() {
     // Reset shadow
     this.ctx.shadowBlur = 0;
 
-    // ── Facing caret (directional indicator) ────────────────────────
-    var dir = player.facing;
-    if (dir && CARET_MAP[dir]) {
-      var off = CARET_OFFSET[dir];
-      var caretX = centerX + off.dx * this.cellSize;
-      var caretY = centerY + off.dy * this.cellSize;
-
-      // Muzzle flash: if the player just fired, the caret glows bright
-      var isMuzzleFlash = player.muzzleFlash;
-      var caretColor = isMuzzleFlash ? '#FFFF66' : '#888888';
-      var caretGlow  = isMuzzleFlash ? 12 : 0;
-      var caretAlpha = isMuzzleFlash ? 1.0 : 0.7;
-
-      this.ctx.save();
-      this.ctx.globalAlpha = caretAlpha;
-      this.ctx.fillStyle = caretColor;
-      if (caretGlow > 0) {
-        this.ctx.shadowColor = '#FFFF00';
-        this.ctx.shadowBlur = caretGlow;
-      }
-      this.ctx.font = 'bold ' + Math.round(this.cellSize * 0.35) + 'px monospace';
-      this.ctx.textAlign = 'center';
-      this.ctx.textBaseline = 'middle';
-      this.ctx.fillText(CARET_MAP[dir], caretX, caretY);
-      this.ctx.restore();
+    // ── Orbiting weapon arrow ───────────────────────────────────────
+    if (typeof PlayerWeaponArrow !== 'undefined') {
+      PlayerWeaponArrow.render(this.ctx, centerX, centerY, this.cellSize);
     }
   };
 
