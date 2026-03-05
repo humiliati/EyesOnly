@@ -1,13 +1,13 @@
-/* ============================================================
+﻿/* ============================================================
    EYES ONLY - Sprint Trail System
-   Visual ((( trail effects behind sprinting player with color coding
+   Visual ◦◦◦ trail effects behind sprinting player with color coding
    ============================================================ */
 
 const SprintTrailSystem = (function() {
   'use strict';
 
   // Trail configuration
-  var MAX_TRAIL_LAYERS = 4; // Maximum parentheses layers: (, ((, (((, ((((
+    var MAX_TRAIL_LAYERS = 3; // Maximum parentheses layers: ◦, ◦◦, ◦◦◦, ◦◦◦◦
   var TRAIL_DECAY_BASE = 0.8; // Base decay rate per second (seconds to full decay)
   var TRAIL_SPAWN_INTERVAL = 0.15; // Spawn new trail every N seconds
   var TRAIL_FADE_DURATION = 0.6; // How long each trail particle lasts
@@ -111,7 +111,7 @@ const SprintTrailSystem = (function() {
   function _getTrailText(layer) {
     var text = '';
     for (var i = 0; i < layer; i++) {
-      text += ')';
+        text += '◦';
     }
     return text;
   }

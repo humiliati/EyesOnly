@@ -40,25 +40,73 @@ var GameTickSystem = (function() {
       var logical = GoneRogueMovement.getLogicalPosition();
       var visual = GoneRogueMovement.getVisualPosition();
 
-      // Check if logical position changed (player reached next tile)
-      if (ctx.player.x !== logical.x || ctx.player.y !== logical.y) {
-        // Update player grid position
-        var oldX = ctx.player.x;
-        var oldY = ctx.player.y;
+      // ── Iterate ALL tiles traversed this frame for interactions ──
+      // The movement system can cross multiple waypoints per frame (carry-forward
+      // budget). We must trigger pickups/interactions at EVERY intermediate tile,
+      // not just the final position. This fixes collectibles being skipped when
+      // the player fishes/paths over them at speed.
+      var tilesThisFrame = GoneRogueMovement.getTilesTraversedThisFrame
+        ? GoneRogueMovement.getTilesTraversedThisFrame()
+        : [];
+
+      // Remember where the player was before this frame for direction tracking
+      var preFrameX = ctx.player.x;
+      var preFrameY = ctx.player.y;
+
+      if (tilesThisFrame.length > 0) {
+        var prevX = preFrameX;
+        var prevY = preFrameY;
+
+        for (var ti = 0; ti < tilesThisFrame.length; ti++) {
+          var tile = tilesThisFrame[ti];
+
+          // Set player position to this tile so checkPlayerInteractions
+          // reads the correct coordinates for pickups, combat, etc.
+          ctx.player.x = tile.x;
+          ctx.player.y = tile.y;
+
+          // Update last move direction from previous position
+          if (tile.x > prevX) ctx.player.lastMoveDirection = 'east';
+          else if (tile.x < prevX) ctx.player.lastMoveDirection = 'west';
+          else if (tile.y > prevY) ctx.player.lastMoveDirection = 'south';
+          else if (tile.y < prevY) ctx.player.lastMoveDirection = 'north';
+
+          prevX = tile.x;
+          prevY = tile.y;
+
+          // Trigger all tile-arrival interactions (pickups, currency, food, combat, doors)
+          ctx.checkPlayerInteractions();
+
+          // If combat was triggered at an intermediate tile, stop processing
+          // further tiles — player is now locked in combat
+          if (ctx.strCombatActive) {
+            GoneRogueMovement.stop();
+            break;
+          }
+        }
+
+        // Update weapon arrow to final facing direction
+        if (typeof PlayerWeaponArrow !== 'undefined') {
+          PlayerWeaponArrow.setMovementDirection(ctx.player.lastMoveDirection);
+        }
+      } else if (ctx.player.x !== logical.x || ctx.player.y !== logical.y) {
+        // Fallback: sub-waypoint movement that crossed a tile boundary
+        // (partial movement landed on new integer tile without reaching a waypoint)
+        var oldPX = ctx.player.x;
+        var oldPY = ctx.player.y;
         ctx.player.x = logical.x;
         ctx.player.y = logical.y;
 
         // Update last move direction for flanking + weapon arrow
-        if (logical.x > oldX) ctx.player.lastMoveDirection = 'east';
-        else if (logical.x < oldX) ctx.player.lastMoveDirection = 'west';
-        else if (logical.y > oldY) ctx.player.lastMoveDirection = 'south';
-        else if (logical.y < oldY) ctx.player.lastMoveDirection = 'north';
+        if (logical.x > oldPX) ctx.player.lastMoveDirection = 'east';
+        else if (logical.x < oldPX) ctx.player.lastMoveDirection = 'west';
+        else if (logical.y > oldPY) ctx.player.lastMoveDirection = 'south';
+        else if (logical.y < oldPY) ctx.player.lastMoveDirection = 'north';
 
         if (typeof PlayerWeaponArrow !== 'undefined') {
           PlayerWeaponArrow.setMovementDirection(ctx.player.lastMoveDirection);
         }
 
-        // Check for items, currency, enemies at new position
         ctx.checkPlayerInteractions();
       }
 

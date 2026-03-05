@@ -470,7 +470,7 @@ Player rendering goes through **three layers** of visual positioning that all mu
 
 `gone-rogue-movement.js` owns the smooth float position. `update()` advances `_visualPosition` along the A*-smoothed path each frame using `speed × deltaTime`.
 
-Logical position (`_logicalPosition`) updates to integer tile coords whenever a waypoint is reached. This triggers game-logic checks (item pickup, enemy encounters, ground effects).
+Logical position (`_logicalPosition`) updates to integer tile coords whenever a waypoint is reached. Each frame, `_tilesTraversedThisFrame[]` records every integer tile crossed (via Bresenham walks between smoothed waypoints). `game-tick-system.js` iterates this array to trigger interactions (item pickup, enemy encounters, ground effects, doors) at every tile — not just the final position. See §16d.
 
 ### Layer 2 — player.visualX / player.visualY (bridge)
 
@@ -484,10 +484,28 @@ The canvas renderer maintains `_playerVisual {x, y, inited}` for smooth camera t
 
 The Layer 2 unconditional-write fix ensures the LERP fallback is never reached during normal gameplay.
 
+### Layer 4 — _tilesTraversedThisFrame (interaction bridge)
+
+`gone-rogue-movement.js` populates `_tilesTraversedThisFrame` during each `update()` call. This array contains every integer tile the player crossed during that frame, in traversal order — including intermediate tiles between smoothed waypoints (enumerated via Bresenham line walk). The array is exposed via `getTilesTraversedThisFrame()`.
+
+`game-tick-system.js` iterates this array and calls `ctx.checkPlayerInteractions()` at **each** tile, temporarily setting `ctx.player.x/y` to that tile. This ensures collectibles, currency, food, doors, and enemy collisions are triggered at every tile along the path, not just the final position.
+
+Without this layer, the carry-forward movement budget (which can cross multiple waypoints per frame) combined with path smoothing (which prunes intermediate waypoints) would skip interactions at tiles between smoothed waypoints. The Bresenham walk fills the gaps.
+
+**Combat interrupt:** If `ctx.strCombatActive` becomes true at any intermediate tile, the loop breaks immediately and `GoneRogueMovement.stop()` halts further movement. The player stays at the combat tile.
+
+**Grapple/harpoon integration (FUTURE):** Any mechanic that moves the player along a path (grappling hook, harpoon pull, knockback slide) can reuse this pattern. Set a movement path via `GoneRogueMovement.setTarget()`, and the `_tilesTraversedThisFrame` array will automatically enumerate all tiles crossed for interaction checks. No special-case code needed in game-tick — the interaction loop is mechanic-agnostic.
+
 ### Pipeline diagram
 
 ```
 GoneRogueMovement._visualPosition  (float, per-frame)
+        │
+        ├─→ _tilesTraversedThisFrame[]  (integer tiles crossed, in order)
+        │         │
+        │         ▼
+        │   game-tick iterates: for each tile → checkPlayerInteractions()
+        │     (pickups, currency, food, combat, doors at EVERY tile)
         │
         ▼
 game-tick-system writes player.visualX/Y  (every frame, unconditional)
@@ -570,8 +588,13 @@ All movement, projectiles, and ground effects tick inside `GameTickSystem.update
 1. Update smooth movement (GoneRogueMovement)
    · Advance _visualPosition along smoothed path
    · Carry excess budget through consecutive waypoints
+   · Record ALL tiles crossed in _tilesTraversedThisFrame
+     (Bresenham walk between smoothed waypoints + partial-move tile crossings)
    · Sync logical position at each reached waypoint
-   · Check tile interactions at new position
+   · Iterate _tilesTraversedThisFrame:
+     for each tile → set player.x/y → checkPlayerInteractions()
+     (pickups, currency, food, doors, enemy combat at every tile)
+   · If STR combat triggers mid-path → stop movement, break loop
 
 2. Update pets (PetFollower)
    · Follow player position history buffer
@@ -614,9 +637,9 @@ All movement, projectiles, and ground effects tick inside `GameTickSystem.update
 | `tap-move-system.js` | Kick detection, movement routing, fishing path execution |
 | `breakable-system.js` | `kickBreakable()` push + damage, explosion chain, fire spawning |
 | `projectile-system.js` | Fire, advance, collide projectiles |
-| `game-tick-system.js` | Main update loop, movement sync, visual bridge, ground DOT |
+| `game-tick-system.js` | Main update loop, movement sync, visual bridge, ground DOT, intermediate-tile interaction loop via `getTilesTraversedThisFrame()` |
 | `gone-rogue.js` | `process()` command router, `handleTapMove()` wrapper, context builders |
-| `gone-rogue-movement.js` | A* pathfinding, path smoothing (LOS), smooth position interpolation, carry-forward budget |
+| `gone-rogue-movement.js` | A* pathfinding, path smoothing (LOS), smooth position interpolation, carry-forward budget, `_tilesTraversedThisFrame` Bresenham tile enumeration, `getTilesTraversedThisFrame()` |
 | `explosion-system.js` | `pushEntity()` with visual snap for knockback |
 | `environmental-drag-drop.js` | Active item drag-to-deploy on grid |
 | `locked-gate-system.js` | Gate unlock, NPC quest turn-in, interact routing |
@@ -791,6 +814,44 @@ Projectiles spawned while the player is mid-travel along a fishing path now orig
 
 **Unlocked gameplay:** Player can now strafe via fishing drag while firing projectiles at enemies with single-tap — the "fish and shoot" mobile pattern.
 
+### 16d. En-Route Collectible Pickup Fix (Tiles Traversed Array)
+
+Previously, collectibles along a fishing path were only picked up near the path origin and termination. Intermediate tiles were skipped because the movement system's carry-forward budget could cross multiple smoothed waypoints in a single frame, and game-tick only checked interactions at the final position.
+
+**Root cause (two compounding factors):**
+
+1. **Carry-forward budget** — `GoneRogueMovement.update()` can consume multiple waypoints per frame. The logical position jumps from the start to the final waypoint reached, skipping intermediate tiles.
+
+2. **Path smoothing** — `_smoothPath()` prunes intermediate A* waypoints where line-of-sight exists. A 10-tile straight path becomes 2 waypoints (start → end). No intermediate integer tiles are waypoints, so they were never visited.
+
+**Fix — `_tilesTraversedThisFrame` + Bresenham walk:**
+
+`GoneRogueMovement.update()` now maintains `_tilesTraversedThisFrame[]`. When any waypoint is reached:
+
+1. `_walkTilesBetween(prevTileX, prevTileY, waypoint.x, waypoint.y)` enumerates every integer tile along the Bresenham line between the previous tile and the waypoint (excluding start, including end).
+2. All enumerated tiles are pushed to `_tilesTraversedThisFrame`.
+3. For partial movement (budget exhausted mid-segment), the rounded visual position is checked — if it crossed into a new integer tile, that tile is also recorded.
+
+`game-tick-system.js` iterates the array, setting `player.x/y` to each tile and calling `checkPlayerInteractions()`. If STR combat triggers at any intermediate tile, `GoneRogueMovement.stop()` halts further movement.
+
+**API for future mechanics:**
+
+```javascript
+// Get all tiles the player crossed this frame (in traversal order)
+GoneRogueMovement.getTilesTraversedThisFrame()
+// Returns: [{x, y}, {x, y}, ...] or [] if player didn't move
+```
+
+Any system that moves the player along a path (grappling hook, harpoon pull, knockback slide, conveyor belt) can leverage this — set the path via `setTarget()` and the tile enumeration + interaction loop happens automatically. No per-mechanic pickup code needed.
+
+**Bresenham helper (private):**
+
+```javascript
+_walkTilesBetween(x0, y0, x1, y1)
+// Returns all integer tiles from (x0,y0) to (x1,y1)
+// Excludes start, includes end. Safety cap: 50 tiles.
+```
+
 ---
 
 ## 17. Canonical Input Map (Mobile-First)
@@ -833,6 +894,7 @@ Complete input gesture → action mapping, including long-press mechanics. All g
 
 | Date | Change | Files |
 |---|---|---|
+| 2026-03-05 | **En-route collectible pickup fix.** Added `_tilesTraversedThisFrame` array + Bresenham `_walkTilesBetween()` to enumerate every integer tile crossed during movement (including between smoothed waypoints). Game-tick now iterates all traversed tiles for interactions instead of only checking the final position. Fishing over collectibles now picks up every one. Combat at intermediate tiles halts movement. | `gone-rogue-movement.js`, `game-tick-system.js` |
 | 2026-03-05 | **Projectile origin fix + orbiting weapon arrow.** Projectiles now spawn from visual position via `_getFiringOrigin()`. Replaced facing caret with `PlayerWeaponArrow` — 360° orbiting triangle driven by movement/fire/kick/interact inputs with smooth interpolation and muzzle flash glow. | `projectile-system.js`, `player-weapon-arrow.js`, `gone-rogue-canvas.js`, `gone-rogue-mobile.js`, `game-tick-system.js`, `tap-move-system.js` |
 | 2026-03-05 | **Sprint trail ported to canvas.** Sprint trail now renders inside `CanvasRenderer._renderSprintTrails()` with proper world→view coordinate conversion. | `gone-rogue-canvas.js`, `sprint-trail-system.js` |
 | 2026-03-05 | **Scripted walk gutted.** Removed 3-phase Floor 0 auto-walk state machine. Player has full input control from Frame 1. See docs/PLAYER_ONBOARDING.md for replacement tutorial vision. | `begin-gameplay-system.js`, `game-tick-system.js`, `tap-move-system.js`, `gone-rogue.js` |

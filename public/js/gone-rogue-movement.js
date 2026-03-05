@@ -19,6 +19,7 @@ const GoneRogueMovement = (function () {
   var _currentPathIndex = 0;
   var _isMoving = false;
   var _isSprinting = false; // sprint mode flag
+  var _tilesTraversedThisFrame = []; // Tiles crossed during latest update() call
   var _lastUpdateTime = 0;
 
   /**
@@ -350,7 +351,41 @@ const GoneRogueMovement = (function () {
    * the player decelerated as it approached each grid-tile center and then
    * re-accelerated from zero toward the next one.
    */
+  /**
+   * Walk a Bresenham line from (x0,y0) to (x1,y1) and return all integer
+   * tiles along the way (excluding the start, including the end).
+   * Used to enumerate every tile the player crosses between smoothed waypoints
+   * so that pickups, combat, and other interactions aren't skipped.
+   */
+  function _walkTilesBetween(x0, y0, x1, y1) {
+    var tiles = [];
+    if (x0 === x1 && y0 === y1) return tiles;
+
+    var dx = Math.abs(x1 - x0);
+    var dy = Math.abs(y1 - y0);
+    var sx = x0 < x1 ? 1 : -1;
+    var sy = y0 < y1 ? 1 : -1;
+    var err = dx - dy;
+    var cx = x0, cy = y0;
+
+    while (true) {
+      var e2 = 2 * err;
+      if (e2 > -dy) { err -= dy; cx += sx; }
+      if (e2 < dx) { err += dx; cy += sy; }
+
+      tiles.push({ x: cx, y: cy });
+
+      if (cx === x1 && cy === y1) break;
+      // Safety cap
+      if (tiles.length > 50) break;
+    }
+
+    return tiles;
+  }
+
   function update(collisionCheck) {
+    _tilesTraversedThisFrame = []; // Reset each frame
+
     if (!_isMoving || _targetPath.length === 0) {
       // Snap visual to logical when idle
       _visualPosition.x = _logicalPosition.x;
@@ -379,6 +414,10 @@ const GoneRogueMovement = (function () {
       return false;
     }
 
+    // Track previous logical tile for Bresenham walk between smoothed waypoints
+    var _prevTileX = _logicalPosition.x;
+    var _prevTileY = _logicalPosition.y;
+
     var speed = _getEffectiveSpeed(collisionCheck, target.x, target.y);
     var budget = speed * deltaTime; // tiles remaining to travel this frame
 
@@ -402,6 +441,13 @@ const GoneRogueMovement = (function () {
         _visualPosition.y = target.y;
         _logicalPosition.x = target.x;
         _logicalPosition.y = target.y;
+        // Walk all integer tiles between previous tile and this waypoint
+        var betweenTiles = _walkTilesBetween(_prevTileX, _prevTileY, target.x, target.y);
+        for (var bi = 0; bi < betweenTiles.length; bi++) {
+          _tilesTraversedThisFrame.push(betweenTiles[bi]);
+        }
+        _prevTileX = target.x;
+        _prevTileY = target.y;
         _currentPathIndex++;
         waypointsConsumed++;
         continue;
@@ -413,6 +459,13 @@ const GoneRogueMovement = (function () {
         _visualPosition.y = target.y;
         _logicalPosition.x = target.x;
         _logicalPosition.y = target.y;
+        // Walk all integer tiles between previous tile and this waypoint
+        var betweenTiles2 = _walkTilesBetween(_prevTileX, _prevTileY, target.x, target.y);
+        for (var bi2 = 0; bi2 < betweenTiles2.length; bi2++) {
+          _tilesTraversedThisFrame.push(betweenTiles2[bi2]);
+        }
+        _prevTileX = target.x;
+        _prevTileY = target.y;
         budget -= dist;
         _currentPathIndex++;
         waypointsConsumed++;
@@ -423,6 +476,16 @@ const GoneRogueMovement = (function () {
         var ny = dy / dist;
         _visualPosition.x += nx * budget;
         _visualPosition.y += ny * budget;
+
+        // Check if partial movement crossed into a new integer tile
+        var newRoundX = Math.round(_visualPosition.x);
+        var newRoundY = Math.round(_visualPosition.y);
+        if (newRoundX !== _prevTileX || newRoundY !== _prevTileY) {
+          _tilesTraversedThisFrame.push({ x: newRoundX, y: newRoundY });
+          _logicalPosition.x = newRoundX;
+          _logicalPosition.y = newRoundY;
+        }
+
         budget = 0;
       }
     }
@@ -518,6 +581,17 @@ const GoneRogueMovement = (function () {
     setTarget(x, y, collisionCheck, isSprinting || false);
   }
 
+  /**
+   * Get all tiles traversed (waypoints reached) during the latest update() call.
+   * Used by game-tick-system to trigger interactions at every intermediate tile
+   * (collectibles, currency, food, enemies, doors) even when the movement budget
+   * carries the player across multiple tiles in a single frame.
+   * @returns {Array} [{x, y}, ...] in traversal order (empty if none)
+   */
+  function getTilesTraversedThisFrame() {
+    return _tilesTraversedThisFrame;
+  }
+
   // Public API
   return {
     init: init,
@@ -531,6 +605,7 @@ const GoneRogueMovement = (function () {
     isMoving: isMoving,
     isSprinting: isSprinting,
     getCurrentPath: getCurrentPath,
-    setPosition: setPosition
+    setPosition: setPosition,
+    getTilesTraversedThisFrame: getTilesTraversedThisFrame
   };
 })();
