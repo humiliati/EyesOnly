@@ -1069,6 +1069,8 @@ const HandFanComponent = (function () {
 
     // Drag handlers for disposal system and commerce
     // Listen on cardWrapper (which has draggable="true") — dragstart fires on the draggable element
+    var cardWrapper = cardEl.parentElement;
+    if (!cardWrapper) return;
     cardWrapper.addEventListener('dragstart', function(e) {
       // Check if shop is open for sell operations
       var isShopOpen = (typeof ShopSystem !== 'undefined' && ShopSystem.isOpen && ShopSystem.isOpen());
