@@ -404,11 +404,41 @@ const GroundEffects = (function () {
         var dist = effect._explosionDistance || 0;
         var maxR = effect._explosionMaxRadius || 3;
 
-        // ── Animated fire char cycling ──
-        // Cycle through fire chars for visual animation on tile
-        var fireChars = ['▒', '░', '▓', '░'];
-        var charIdx = Math.floor((now / 250) + dist * 2) % fireChars.length;
-        effect.char = fireChars[charIdx];
+        // ════════════════════════════════════════════════════════════
+        // Layer A+B tile char: phased emoji → mixed → ASCII
+        //
+        //  Phase 1A (0–3s):  🔥 fire emoji on tile (bright, active)
+        //  Phase 2A (3–5s):  Flicker between 🔥 and ASCII (transition)
+        //  Phase 3A (5s+):   ASCII-only cycling ▒░▓░ (fire burns down)
+        //  Rescind:          💨 grey puff briefly → removed / scorched
+        //
+        // Color also phases: bright red → duller orange-red → dark red
+        // ════════════════════════════════════════════════════════════
+        var EMOJI_PHASE_END   = 3;   // seconds: pure emoji phase
+        var FLICKER_PHASE_END = 5;   // seconds: mixed emoji/ascii phase
+        var fireAsciiChars = ['▒', '░', '▓', '░'];
+        var charCycle = Math.floor((now / 250) + dist * 2) % fireAsciiChars.length;
+
+        if (expAge < EMOJI_PHASE_END) {
+          // Phase 1A: full fire emoji
+          effect.char = '🔥';
+          effect.color = '#ff3300';
+        } else if (expAge < FLICKER_PHASE_END) {
+          // Phase 2A: flicker — alternate emoji and ASCII each 300ms
+          var flickerToggle = Math.floor(now / 300) % 2;
+          effect.char = flickerToggle === 0 ? '🔥' : fireAsciiChars[charCycle];
+          // Color dims toward orange
+          effect.color = '#dd4400';
+        } else {
+          // Phase 3A: ASCII only — fire is burning down
+          effect.char = fireAsciiChars[charCycle];
+          // Outer tiles get dimmer sooner
+          var dimFactor = Math.min(1, expAge / 15);
+          var rVal = Math.max(0x66, Math.floor(0xff - dimFactor * 0x66));
+          var gVal = Math.max(0x11, Math.floor(0x33 - dimFactor * 0x22));
+          effect.color = '#' + rVal.toString(16).padStart(2, '0') +
+                                gVal.toString(16).padStart(2, '0') + '00';
+        }
 
         // ── Smoke generation: fire tiles periodically spawn drifting smoke ──
         // Rate decreases as fire ages (smoke slows down near end)
@@ -417,7 +447,6 @@ const GroundEffects = (function () {
           smokeGenChance = 0.03 * dtSec; // Epicenter slows down
         }
         if (Math.random() < smokeGenChance) {
-          // Spawn smoke in a random adjacent empty tile
           var sdx = Math.floor(Math.random() * 3) - 1;
           var sdy = Math.floor(Math.random() * 3) - 1;
           _spawnSmoke(effect.x + sdx, effect.y + sdy, gridWidth, gridHeight);
@@ -428,7 +457,6 @@ const GroundEffects = (function () {
         // Probability scales with distance (farther = dies sooner)
         if (dist > 0 && expAge > EXPLOSION_RESCIND_START_SEC) {
           var rescindAge = expAge - EXPLOSION_RESCIND_START_SEC;
-          // Distance-based multiplier: farther tiles rescind faster
           var distFactor = dist / Math.max(1, maxR);
           var rescindProb = EXPLOSION_RESCIND_RATE * distFactor * dtSec;
           // After 2x the start time, force-rescind all non-epicenter tiles
@@ -437,7 +465,9 @@ const GroundEffects = (function () {
           }
 
           if (Math.random() < rescindProb) {
-            // Fire tile dies → spawn last gasp smoke, then remove
+            // Fire tile dies → brief grey puff char, then spawn smoke + remove
+            effect.char = '💨';
+            effect.color = '#666666';
             _spawnSmoke(effect.x, effect.y, gridWidth, gridHeight);
 
             // Small chance adjacent tiles become scorched

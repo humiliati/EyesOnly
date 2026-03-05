@@ -681,9 +681,10 @@ const GoneRogueMobile = (function () {
         // Get the visual definition for this ground type
         var def = GroundEffects.getDefinition ? GroundEffects.getDefinition(ge.type) : null;
         if (def) {
-          // ── Layer B rendering: ASCII chars on tiles, emojis via OverheadAnimator ──
-          // Ground effects display as colored tile backgrounds + ASCII symbols.
-          // Emojis (🔥💨 etc.) are handled by OverheadAnimator as Layer A.
+          // ── Layer A+B rendering ──
+          // Explosion fire tiles set their own .char in the lifecycle (emoji→ascii phased).
+          // Drifting smoke uses locked _smokeChar with fading alpha.
+          // Other ground effects use ASCII char (def.char) for tile display.
 
           if (ge._decayedToSmoke && ge._smokeChar) {
             // Drifting smoke: locked ASCII char with fading alpha
@@ -692,12 +693,14 @@ const GoneRogueMobile = (function () {
             var smokeA = ge._smokeAlpha !== undefined ? ge._smokeAlpha : 0.7;
             cell.alpha = smokeA;
           } else if (ge._explosionFire) {
-            // Explosion fire: use the cycling char set by lifecycle in update()
-            cell.char = ge.char || def.char || '▒';
-            cell.color = ge.color || def.color || '#ff3300';
+            // Explosion fire: lifecycle in ground-effects.js update() sets ge.char
+            // to 🔥 (early phase), flickering mix (mid), or ASCII ▒░▓ (late).
+            // ge.color also phases from bright red → dimmer orange → dark red.
+            // We just pass through whatever the lifecycle decided.
+            cell.char = ge.char || '🔥';
+            cell.color = ge.color || '#ff3300';
           } else {
-            // All other ground effects: prefer ASCII char over emoji for tile display
-            // (emoji layer handled separately by OverheadAnimator where needed)
+            // All other ground effects: prefer ASCII char for tile display
             cell.char = ge.char || def.char || def.emoji || cell.char;
             cell.color = ge.color || def.color || cell.color;
           }
