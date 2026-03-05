@@ -1534,6 +1534,29 @@ const GAMESTATE = (function () {
     return _state.activeItemSlot;
   }
 
+  /**
+   * Check if an item id is equippable to the active header slot.
+   * Rejects cards (ACT-/CI-/EATK- prefixes), items with equipSlot "none"
+   * or "passive", and unknown items. Only equipSlot "active" is accepted.
+   * @param {string} id - Item or card id
+   * @returns {boolean}
+   */
+  function isEquippable(id) {
+    if (!id || typeof id !== 'string') return false;
+    // Cards are never equippable to the active item slot
+    if (id.indexOf('ACT-') === 0 || id.indexOf('CI-') === 0 || id.indexOf('EATK-') === 0) return false;
+    // Items must have equipSlot === 'active' in the registry
+    if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
+      var item = GoneRogueDataRegistry.getItem(id);
+      if (item && item.equipSlot === 'active') return true;
+      // If item exists but equipSlot is not 'active', reject
+      if (item) return false;
+    }
+    // Unknown ITM-* items: allow as fallback (legacy / unregistered)
+    if (id.indexOf('ITM-') === 0) return true;
+    return false;
+  }
+
   function toggleActiveItemToggled() {
     if (!_state.activeItemSlot) return { success: false, reason: 'no_active_item' };
     if (!_state.activeItemSlot.meta) _state.activeItemSlot.meta = {};
@@ -2776,6 +2799,7 @@ const GAMESTATE = (function () {
     getActionButtonCapacity: getActionButtonCapacity,
     setActiveItem: setActiveItem,
     getActiveItem: getActiveItem,
+    isEquippable: isEquippable,
     toggleActiveItemToggled: toggleActiveItemToggled,
     clearActiveItem: clearActiveItem,
     consumeActiveItem: consumeActiveItem,

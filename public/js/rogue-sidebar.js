@@ -523,7 +523,12 @@ var RogueSidebar = (function() {
               if (active && active.id === id) {
                 GAMESTATE.clearActiveItem();
               } else {
-                GAMESTATE.setActiveItem({ id: id, qty: 1 });
+                // Only equip items tagged equipSlot:"active" — reject cards & passive items
+                if (typeof GAMESTATE !== 'undefined' && GAMESTATE.isEquippable && !GAMESTATE.isEquippable(id)) {
+                  if (typeof TooltipSystem !== 'undefined') TooltipSystem.show('Can\u2019t equip this item', 1200);
+                } else {
+                  GAMESTATE.setActiveItem({ id: id, qty: 1 });
+                }
               }
 
               // Force refresh to reflect selection state
@@ -639,6 +644,13 @@ var RogueSidebar = (function() {
                   (nchEquipEl && (dropEl === nchEquipEl || nchEquipEl.contains(dropEl)))
                 );
                 if (droppedOnEquip) {
+                  // Only equip items tagged equipSlot:"active" — reject cards & passive items
+                  if (typeof GAMESTATE !== 'undefined' && GAMESTATE.isEquippable && !GAMESTATE.isEquippable(iRef.id)) {
+                    if (typeof TooltipSystem !== 'undefined') TooltipSystem.show('Can\u2019t equip this item', 1200);
+                    _lastSignature = null;
+                    _render();
+                    return;
+                  }
                   if (typeof GAMESTATE !== 'undefined' && GAMESTATE.setActiveItem) {
                     GAMESTATE.setActiveItem({ id: iRef.id, qty: 1 });
                   }

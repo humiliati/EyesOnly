@@ -79,6 +79,26 @@ const GoneRogueMobile = (function () {
   var _activeSlotDrag = null; // { startX, startY, dragging, ghostEl }
 
   /**
+   * Get player's current grid position for fishing path origin.
+   * Uses GoneRogueMovement visual position (rounded to nearest tile) when
+   * available so the fishing line originates where the avatar actually is,
+   * even mid-travel. Falls back to player.x/y (logical grid position).
+   * @returns {{ x: number, y: number }|null}
+   */
+  function _getFishingOrigin() {
+    // Prefer visual position — this updates every frame during movement
+    if (typeof GoneRogueMovement !== 'undefined' && GoneRogueMovement.getVisualPosition) {
+      var vis = GoneRogueMovement.getVisualPosition();
+      if (vis && isFinite(vis.x) && isFinite(vis.y)) {
+        return { x: Math.round(vis.x), y: Math.round(vis.y) };
+      }
+    }
+    // Fallback: logical grid position (may lag behind avatar mid-travel)
+    var player = typeof GoneRogue !== 'undefined' && GoneRogue.getPlayer ? GoneRogue.getPlayer() : null;
+    return player ? { x: player.x, y: player.y } : null;
+  }
+
+  /**
    * Initialize mobile UI
    */
   function init() {
@@ -1950,13 +1970,12 @@ const GoneRogueMobile = (function () {
 
         var targetCoords = _getGridCoordsFromEvent(touch.clientX, touch.clientY);
         if (targetCoords && typeof GoneRogueMovement !== 'undefined') {
-          var player = typeof GoneRogue !== 'undefined' && GoneRogue.getPlayer ? GoneRogue.getPlayer() : null;
-          if (player) {
-            // Calculate path from player to target
+          var origin = _getFishingOrigin();
+          if (origin) {
             var collisionCheck = (typeof GoneRogue !== 'undefined' && GoneRogue.isWalkable)
               ? function(x, y) { return !GoneRogue.isWalkable(x, y); }
               : null;
-            _fishingPath = GoneRogueMovement.findPath(player.x, player.y, targetCoords.x, targetCoords.y, collisionCheck);
+            _fishingPath = GoneRogueMovement.findPath(origin.x, origin.y, targetCoords.x, targetCoords.y, collisionCheck);
 
             // Show path overlay
             _showFishingPath(_fishingPath);
@@ -2070,12 +2089,13 @@ const GoneRogueMobile = (function () {
       return { x: pt.x - originXi, y: pt.y - originYi };
     }
 
-    // Ensure path originates at player tile (some path outputs omit start)
+    // Ensure path originates at player's visual position (some path outputs omit start).
+    // Uses visual position so the fishing line starts from the avatar, even mid-travel.
     try {
-      if (_canvasRenderer && typeof GoneRogue !== 'undefined' && GoneRogue.getPlayer && path && path.length) {
-        var p = GoneRogue.getPlayer();
-        if (p && (path[0].x !== p.x || path[0].y !== p.y)) {
-          path = [{ x: p.x, y: p.y }].concat(path);
+      if (_canvasRenderer && path && path.length) {
+        var origin = _getFishingOrigin();
+        if (origin && (path[0].x !== origin.x || path[0].y !== origin.y)) {
+          path = [{ x: origin.x, y: origin.y }].concat(path);
         }
       }
     } catch (e0) {}
@@ -2273,13 +2293,13 @@ const GoneRogueMobile = (function () {
 
       var targetCoords = _getGridCoordsFromEvent(e.clientX, e.clientY);
       if (targetCoords && typeof GoneRogueMovement !== 'undefined') {
-        var player = typeof GoneRogue !== 'undefined' && GoneRogue.getPlayer ? GoneRogue.getPlayer() : null;
-        if (player) {
+        var origin = _getFishingOrigin();
+        if (origin) {
           var collisionCheck = (typeof GoneRogue !== 'undefined' && GoneRogue.isWalkable)
             ? function(x, y) { return !GoneRogue.isWalkable(x, y); }
             : null;
 
-          _fishingPath = GoneRogueMovement.findPath(player.x, player.y, targetCoords.x, targetCoords.y, collisionCheck);
+          _fishingPath = GoneRogueMovement.findPath(origin.x, origin.y, targetCoords.x, targetCoords.y, collisionCheck);
           _showFishingPath(_fishingPath);
         }
       }
@@ -3743,12 +3763,12 @@ const GoneRogueMobile = (function () {
    */
   function updateFishingTarget(x, y) {
     if (typeof GoneRogue === 'undefined' || typeof GoneRogueMovement === 'undefined') return;
-    var player = GoneRogue.getPlayer ? GoneRogue.getPlayer() : null;
-    if (!player) return;
+    var origin = _getFishingOrigin();
+    if (!origin) return;
     var collisionCheck = GoneRogue.isWalkable
       ? function(cx, cy) { return !GoneRogue.isWalkable(cx, cy); }
       : null;
-    _fishingPath = GoneRogueMovement.findPath(player.x, player.y, x, y, collisionCheck);
+    _fishingPath = GoneRogueMovement.findPath(origin.x, origin.y, x, y, collisionCheck);
     _showFishingPath(_fishingPath);
   }
 
@@ -3771,12 +3791,12 @@ const GoneRogueMobile = (function () {
 
     // Compute path on demand if the caller skipped updateFishingTarget
     if (_fishingPath.length === 0 && typeof GoneRogueMovement !== 'undefined') {
-      var player = GoneRogue.getPlayer ? GoneRogue.getPlayer() : null;
-      if (player) {
+      var origin = _getFishingOrigin();
+      if (origin) {
         var collisionCheck = GoneRogue.isWalkable
           ? function(cx, cy) { return !GoneRogue.isWalkable(cx, cy); }
           : null;
-        _fishingPath = GoneRogueMovement.findPath(player.x, player.y, x, y, collisionCheck);
+        _fishingPath = GoneRogueMovement.findPath(origin.x, origin.y, x, y, collisionCheck);
       }
     }
 

@@ -259,11 +259,25 @@ const GoneRogueMovement = (function () {
    * @param {boolean} isSprinting - Whether player is sprinting (optional)
    */
   function setTarget(targetX, targetY, collisionCheck, isSprinting) {
-    // Calculate path from current logical position
-    var path = findPath(_logicalPosition.x, _logicalPosition.y, targetX, targetY, collisionCheck);
+    // When mid-travel, path from the nearest tile to the visual position
+    // (where the avatar actually is) instead of the stale logical position.
+    // This prevents the "teleport back to start" bug when re-fishing mid-move.
+    var startX, startY;
+    if (_isMoving) {
+      startX = Math.round(_visualPosition.x);
+      startY = Math.round(_visualPosition.y);
+      // Sync logical position to the new origin so waypoint checks are correct
+      _logicalPosition.x = startX;
+      _logicalPosition.y = startY;
+    } else {
+      startX = _logicalPosition.x;
+      startY = _logicalPosition.y;
+    }
+
+    var path = findPath(startX, startY, targetX, targetY, collisionCheck);
 
     // Remove first element (current position)
-    if (path.length > 0 && path[0].x === _logicalPosition.x && path[0].y === _logicalPosition.y) {
+    if (path.length > 0 && path[0].x === startX && path[0].y === startY) {
       path.shift();
     }
 

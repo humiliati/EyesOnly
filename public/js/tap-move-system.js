@@ -115,9 +115,18 @@ var TapMoveSystem = (function() {
       };
     }
 
-    // Route tap-to-move through smooth movement system when available
+    // Route tap-to-move through smooth movement system when available.
+    // If already mid-travel, skip init() to avoid teleporting the avatar
+    // back to the stale logical position.
     if (typeof GoneRogueMovement !== 'undefined') {
-      GoneRogueMovement.init(ctx.player.x, ctx.player.y);
+      if (GoneRogueMovement.isMoving && GoneRogueMovement.isMoving()) {
+        // Already moving — setTarget() will re-path from current visual pos
+      } else {
+        var vis = GoneRogueMovement.getVisualPosition ? GoneRogueMovement.getVisualPosition() : null;
+        var initX = (vis && isFinite(vis.x)) ? Math.round(vis.x) : ctx.player.x;
+        var initY = (vis && isFinite(vis.y)) ? Math.round(vis.y) : ctx.player.y;
+        GoneRogueMovement.init(initX, initY);
+      }
 
       var collisionCheck = _buildCollisionCheck(ctx);
       GoneRogueMovement.setTarget(targetX, targetY, collisionCheck, !!runMode);
@@ -172,9 +181,24 @@ var TapMoveSystem = (function() {
     }
     if (path.length === 0) return;
 
-    // Initialize movement system if not already
+    // Start movement toward the fishing path destination.
+    // If the player is already mid-travel, use their current visual position
+    // as the origin instead of the logical grid position (which may lag behind
+    // the avatar by several tiles). Only call init() when the movement system
+    // has never been initialized (cold start).
     if (typeof GoneRogueMovement !== 'undefined') {
-      GoneRogueMovement.init(ctx.player.x, ctx.player.y);
+      if (GoneRogueMovement.isMoving && GoneRogueMovement.isMoving()) {
+        // Already moving — do NOT call init() which would teleport the avatar
+        // back to the logical position. setTarget() will re-path from the
+        // current visual position.
+      } else {
+        // Cold start — initialize from visual position if available,
+        // otherwise fall back to logical grid position.
+        var vis = GoneRogueMovement.getVisualPosition ? GoneRogueMovement.getVisualPosition() : null;
+        var initX = (vis && isFinite(vis.x)) ? Math.round(vis.x) : ctx.player.x;
+        var initY = (vis && isFinite(vis.y)) ? Math.round(vis.y) : ctx.player.y;
+        GoneRogueMovement.init(initX, initY);
+      }
 
       var collisionCheck = _buildCollisionCheck(ctx);
       var destination = path[path.length - 1];

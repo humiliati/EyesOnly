@@ -182,6 +182,12 @@
     var isInGoneRogue = typeof GoneRogue !== 'undefined' && GoneRogue.isActive();
 
     if (isInGoneRogue && typeof GAMESTATE !== 'undefined') {
+      // Reject cards and non-equippable items (equipSlot !== "active")
+      var _eqId = item.id || item.registryId || null;
+      if (_eqId && GAMESTATE.isEquippable && !GAMESTATE.isEquippable(_eqId)) {
+        if (typeof TooltipSystem !== 'undefined') TooltipSystem.show('Can\u2019t equip this item', 1200);
+        return;
+      }
       // In Gone Rogue mode, use GAMESTATE to set active item
       GAMESTATE.setActiveItem(item);
 

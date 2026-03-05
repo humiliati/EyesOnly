@@ -1396,6 +1396,17 @@ var NonCombatHUD = (function() {
 
     // ── ANY → EQUIPPED SLOT (equip item by dragging onto header or NCH equipped display) ──
     if (droppedOnEquippedSlot && _drag.id) {
+      // Validate: only items with equipSlot "active" can go in the equipped slot.
+      // Cards, passive items, consumables with equipSlot "none" are rejected.
+      var _canEquip = (typeof GAMESTATE !== 'undefined' && GAMESTATE.isEquippable)
+        ? GAMESTATE.isEquippable(_drag.id) : true;
+      if (!_canEquip) {
+        _showDragResult(false, null, 'Can\u2019t equip this');
+        _restoreDragMinimize();
+        _drag = null;
+        _renderAll();
+        return;
+      }
       // Items from persistent inventory can be equipped
       if (_drag.kind === 'persistent_item' || _drag.kind === 'vault') {
         if (typeof GAMESTATE !== 'undefined' && GAMESTATE.setActiveItem) {
