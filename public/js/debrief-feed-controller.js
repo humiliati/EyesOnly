@@ -537,8 +537,9 @@ const DebriefFeedController = (function() {
           if (anim.idx >= anim.frames.length) delete _animStates[resKey];
           return ch;
         }
-        // Idle: cycle based on timestamp
-        var tick = Math.floor(Date.now() / 600) % sym.idle.length;
+        // Idle: cycle based on timestamp (600ms per frame)
+        var IDLE_FRAME_MS = 600;
+        var tick = Math.floor(Date.now() / IDLE_FRAME_MS) % sym.idle.length;
         return sym.idle[tick];
       }
 
@@ -548,11 +549,10 @@ const DebriefFeedController = (function() {
         max = (typeof max === 'number' && max > 0) ? max : 1;
         cur = (typeof cur === 'number') ? cur : 0;
         cur = Math.max(0, Math.min(max, cur));
-        var numStr = String(Math.ceil(cur));
-        if (numStr.length < 2) numStr = '0' + numStr;
-        var filled = Math.round((cur / max) * w);
-        var partial = ((cur / max) * w) - Math.floor((cur / max) * w);
-        var fullBlocks = Math.floor((cur / max) * w);
+        var numStr = String(Math.ceil(cur)).padStart(2, '0');
+        var ratio = (cur / max) * w;
+        var fullBlocks = Math.floor(ratio);
+        var partial = ratio - fullBlocks;
         var bar = '█'.repeat(fullBlocks);
         if (partial >= 0.25 && fullBlocks < w) { bar += '▒'; fullBlocks++; }
         bar += '░'.repeat(Math.max(0, w - bar.length));
@@ -1131,9 +1131,6 @@ const DebriefFeedController = (function() {
       battery: { up: ['◇','◈'], down: ['◈','◇'] }
     };
     var resKey = String(resourceType).toLowerCase();
-    // Map capitalized names to internal keys
-    if (resKey === 'hp') resKey = 'hp';
-    else if (resKey === 'battery') resKey = 'battery';
     var symDef = SYMBOL_DEFS[resKey];
     if (symDef && DebriefFeedController._animStates) {
       DebriefFeedController._animStates[resKey] = {
