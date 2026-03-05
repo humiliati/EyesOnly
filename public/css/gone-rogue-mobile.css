@@ -431,12 +431,9 @@
   }
 }
 
-/* ─── IDENTITY NOTE: .rogue-cards-mobile ──────────────────────────
-   LEGACY CARD FAN POPUP — fixed-position overlay at bottom of screen.
-   Toggled by .hand-fan-toggle button via _showCardFan().
-   NOT the inventory/equip grid (that's .rogue-inventory-mobile below).
-   NOT the NCH hand zone or left-column Cards view.
-   ─────────────────────────────────────────────────────────────────── */
+/* Card Fan Popup — fixed-position overlay toggled by 🃏 CARDS button.
+   Renders the player's hand of cards via _showCardFan().
+   See _showCardFan() in gone-rogue-mobile.js for lifecycle details. */
 .rogue-cards-mobile {
   display: none;
   position: fixed;
@@ -1198,26 +1195,49 @@
 }
 
 /* ============================================================
-   IDENTITY NOTE: .rogue-inventory-mobile
-   PERSISTENT INVENTORY / EQUIP GRID — flow-based (margin:auto) popup.
-   Rendered by showInventory(). THIS is the popup that appears during
-   quest key pickup, NPC turn-in, and equipped-slot tap interactions.
-   NOT the card fan (that's .rogue-cards-mobile above).
-   NOT the NCH maximized inventory zone (future).
+   REDUNDANT: .rogue-inventory-mobile
+   Inventory/equip grid popup — rendered by showInventory().
+   This popup is REDUNDANT with the header → left-column and
+   NCH → header equip flows. It still fires during NPC turn-in
+   and quest key interactions. Should stay hidden. Has a minimize
+   arrow (▾) as safety valve during playtesting before removal.
    ============================================================ */
 
 .rogue-inventory-mobile {
   display: none;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 10px;
-  padding: 15px;
+  position: relative; /* for minimize arrow positioning */
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 8px;
+  padding: 12px 12px 12px 12px;
   background: rgba(0, 0, 0, 0.95);
   border: 2px solid #1cff9b;
   border-radius: 8px;
   box-shadow: 0 0 20px rgba(28, 255, 155, 0.4);
-  margin: 15px auto;
-  max-width: 90vw;
+  margin: 10px auto;
+  max-width: min(90vw, 360px);
+  max-height: min(50vh, 320px);
+  overflow-y: auto;
   font-family: 'Courier New', monospace;
+}
+
+/* Minimize arrow — safety valve to dismiss the redundant popup */
+.rogue-inventory-minimize {
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  background: none;
+  border: none;
+  color: #1cff9b;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  opacity: 0.6;
+  z-index: 1;
+  line-height: 1;
+}
+.rogue-inventory-minimize:hover,
+.rogue-inventory-minimize:active {
+  opacity: 1;
 }
 
 .rogue-inventory-item {

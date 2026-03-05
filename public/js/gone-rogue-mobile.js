@@ -408,46 +408,24 @@ const GoneRogueMobile = (function () {
       }
     }
 
-    // ─── IDENTITY NOTE: _cardContainer ──────────────────────────────
-    // Element: <div id="rogue-cards-mobile" class="rogue-cards-mobile">
-    // PURPOSE: LEGACY CARD FAN POPUP — shows the player's hand of cards
-    //          in a fixed-position overlay at the bottom of the screen.
-    //          Toggled by the .hand-fan-toggle button via _showCardFan().
-    //          CSS: position:fixed, bottom:20px, z-index:1000.
-    //
-    // NOT TO BE CONFUSED WITH:
-    //   • _inventoryContainer (rogue-inventory-mobile) — item/equip grid (see below)
-    //   • NCH Zone 1 (hand row) — card row inside NonCombatHud maximized panel
-    //   • Left-column "Cards" view — sidebar card list in rogue-sidebar.js
-    //   • Header equipped slot (#active-item-slot) — single equipped item in header
-    //
-    // TRIGGER PATH: .hand-fan-toggle button click → _showCardFan()
-    // NO quest/NPC/key interaction triggers this container.
-    // ─────────────────────────────────────────────────────────────────
+    // _cardContainer — Card fan popup (rogue-cards-mobile)
+    // Fixed-position overlay at bottom of screen showing the player's
+    // hand of cards. Toggled by the .hand-fan-toggle (🃏 CARDS) button
+    // via _showCardFan(). CSS: position:fixed, bottom:20px, z-index:1000.
+    // See _showCardFan() for full details and future retirement plan.
     _cardContainer = document.createElement('div');
     _cardContainer.id = 'rogue-cards-mobile';
     _cardContainer.className = 'rogue-cards-mobile';
     _cardContainer.style.display = 'none';
 
-    // ─── IDENTITY NOTE: _inventoryContainer ──────────────────────────
-    // Element: <div id="rogue-inventory-mobile" class="rogue-inventory-mobile">
-    // PURPOSE: PERSISTENT INVENTORY / EQUIP GRID — shows all carried
-    //          items + cards in a CSS-grid popup for tap-to-equip or
-    //          drag-to-active-slot interaction.
-    //          CSS: flow-based (margin:15px auto), NOT fixed-position.
-    //
-    // THIS IS the popup that appears during:
-    //   • Quest key pickup (via inventory-management.js)
-    //   • NPC turn-in interactions (via locked-gate-system.js)
-    //   • Tap on equipped item slot (via ui-controls.js)
-    //   • Any inventory change that calls showInventory()
-    //
-    // NOT TO BE CONFUSED WITH:
-    //   • _cardContainer (rogue-cards-mobile) — legacy card fan popup (see above)
-    //   • NCH maximized inventory zone — future deck/hand UI in NonCombatHud
-    //
-    // TRIGGER PATH: showInventory() — called from inventory-management.js,
-    //   locked-gate-system.js, ui-controls.js, and internal equip handlers.
+    // ─── REDUNDANT: _inventoryContainer (rogue-inventory-mobile) ─────
+    // Inventory/equip grid popup. Rendered by showInventory().
+    // REDUNDANT — equip flow is now handled by header equipped slot →
+    // left-column action buttons and NCH → header. This popup
+    // needlessly appears during NPC turn-in and quest key interactions
+    // (called from inventory-management.js, locked-gate-system.js,
+    // ui-controls.js). Should stay display:none. Has a minimize arrow
+    // as safety valve during playtesting before full removal.
     // ─────────────────────────────────────────────────────────────────
     _inventoryContainer = document.createElement('div');
     _inventoryContainer.id = 'rogue-inventory-mobile';
@@ -2402,30 +2380,21 @@ const GoneRogueMobile = (function () {
   /**
    * Show card fan popup (rogue-cards-mobile).
    *
-   * ── IDENTITY NOTE (2026-03-04) ──────────────────────────────────────
-   * This is the LEGACY CARD FAN POPUP — a fixed-position overlay that
-   * renders loose-inventory cards as swipeable tiles at the bottom of the
-   * screen.  It is a SEPARATE element from:
-   *
-   *   • NCH Zone 1 (hand) — the card row inside the NCH maximized panel
-   *     rendered by NonCombatHUD._renderHand() in non-combat-hud.js.
-   *   • Left-column "Cards" view — the sidebar card list rendered by
-   *     rogue-sidebar.js when the player toggles "← Cards".
-   *   • Header equipped-item slot (#active-item-slot) — the single
-   *     active-item display in the MOK header.
-   *
-   * The popup element is:  <div id="rogue-cards-mobile" class="rogue-cards-mobile">
-   * It lives in the #terminal DOM tree (appended by init() at line ~442).
+   * Card fan overlay — renders loose-inventory cards as swipeable tiles
+   * in a fixed-position bar at the bottom of the screen.
+   * Element: <div id="rogue-cards-mobile" class="rogue-cards-mobile">
    * CSS: position:fixed, bottom:20px, z-index:1000 (gone-rogue-mobile.css).
    *
-   * TRIGGER: _showCardFan() is called when the 🃏 CARDS button in the MOK
-   * footer is clicked (_setupHandFanButton), when pagination cycles, and
-   * when card selection toggles.  It is NOT the NCH hand fan.
+   * Triggered by: 🃏 CARDS button in MOK footer (_setupHandFanButton),
+   * pagination cycling, and card selection toggles.
+   *
+   * Related but separate card UIs:
+   *   • NCH Zone 1 (hand) — NonCombatHUD._renderHand() in non-combat-hud.js
+   *   • Left-column "Cards" view — rogue-sidebar.js
    *
    * TODO: Once NCH Zone 1 fully replaces this popup for all card
    * interactions (play, swipe, multi-select in STR combat), this function
    * and the _cardContainer element can be retired.
-   * ────────────────────────────────────────────────────────────────────
    */
   function _showCardFan() {
     if (!_cardContainer) return;
@@ -3085,19 +3054,13 @@ const GoneRogueMobile = (function () {
     _cardContainer.style.display = 'none';
   }
 
-  // ─── IDENTITY NOTE: showInventory() ───────────────────────────────
+  // ─── REDUNDANT: showInventory() ────────────────────────────────────
   // Renders into _inventoryContainer (id="rogue-inventory-mobile").
-  // This is the PERSISTENT INVENTORY / EQUIP GRID popup — NOT the card
-  // fan. If you see a popup during quest key or NPC turn-in, this is it.
-  //
-  // Callers:
-  //   inventory-management.js  — item pickup / drop / consume
-  //   locked-gate-system.js    — gate key interaction
-  //   ui-controls.js           — equipped slot tap, drag-end refresh
-  //   internal equip handlers  — tap-to-equip, drag-to-equip callbacks
-  //
-  // For the card fan popup, see _showCardFan() which renders into
-  // _cardContainer (id="rogue-cards-mobile").
+  // This equip grid is REDUNDANT — item equipping is now handled by
+  // header → left-column and NCH → header flows. This function still
+  // gets called from inventory-management.js, locked-gate-system.js,
+  // ui-controls.js, and internal equip handlers during NPC/quest
+  // interactions. Slated for removal once all callers are updated.
   // ─────────────────────────────────────────────────────────────────
   function showInventory() {
     if (!_inventoryContainer) {
@@ -3115,6 +3078,17 @@ const GoneRogueMobile = (function () {
 
     // Clear existing inventory display
     _inventoryContainer.innerHTML = '';
+
+    // Minimize arrow — safety valve to dismiss this redundant popup
+    var minimizeBtn = document.createElement('button');
+    minimizeBtn.className = 'rogue-inventory-minimize';
+    minimizeBtn.textContent = '\u25BE'; // ▾
+    minimizeBtn.title = 'Minimize';
+    minimizeBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      _inventoryContainer.style.display = 'none';
+    });
+    _inventoryContainer.appendChild(minimizeBtn);
 
     // Build view model: items + cards (cards are refs resolved via registry)
     var persistentCards = [];
