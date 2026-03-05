@@ -466,6 +466,9 @@ const HandFanComponent = (function () {
       cardWrapper.appendChild(cardEl);
     }
 
+    // Enable HTML5 drag for disposal system
+    cardWrapper.setAttribute('draggable', 'true');
+
     // Apply fan transformation (combat-specific geometry)
     _applyFanTransform(cardWrapper, index, _cards.length);
 
@@ -1065,7 +1068,8 @@ const HandFanComponent = (function () {
     })();
 
     // Drag handlers for disposal system and commerce
-    cardEl.addEventListener('dragstart', function(e) {
+    // Listen on cardWrapper (which has draggable="true") — dragstart fires on the draggable element
+    cardWrapper.addEventListener('dragstart', function(e) {
       // Check if shop is open for sell operations
       var isShopOpen = (typeof ShopSystem !== 'undefined' && ShopSystem.isOpen && ShopSystem.isOpen());
 
@@ -1085,7 +1089,7 @@ const HandFanComponent = (function () {
       }
     });
 
-    cardEl.addEventListener('dragend', function(e) {
+    cardWrapper.addEventListener('dragend', function(e) {
       cardEl.classList.remove('dragging-sell');
 
       // Check if shop is open

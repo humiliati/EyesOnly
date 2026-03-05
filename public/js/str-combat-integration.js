@@ -26,6 +26,28 @@
 
     // Hook into combat state changes
     _hookCombatSystem();
+
+    // Listen for hand overflow events — show tooltip when rightmost card is auto-ejected
+    window.addEventListener('rogue-hand-overflow', function(e) {
+      var detail = e.detail || {};
+      var ejected = detail.ejectedCard;
+      var cardName = '?';
+      if (ejected && ejected.id) {
+        try {
+          if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) {
+            var def = GoneRogueDataRegistry.getCard(ejected.id);
+            if (def && def.name) cardName = def.name;
+            else cardName = ejected.id;
+          } else {
+            cardName = ejected.id;
+          }
+        } catch (eN) { cardName = ejected.id; }
+      }
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showPersistent('📤 Hand full — ' + cardName + ' sent to backup', 1800);
+      }
+      console.log('[STRIntegration] Hand overflow: ejected "' + cardName + '" to backup');
+    });
   }
 
   /**

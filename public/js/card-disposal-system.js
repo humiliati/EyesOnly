@@ -169,7 +169,8 @@ const CardDisposalSystem = (function() {
     _debriefFeedElement.classList.remove('debrief-drop-target', 'debrief-drop-target-self', 'debrief-drop-target-invalid');
 
     if (isOver && _draggedCard) {
-      // In STR combat, debrief is a self-target channel (not disposal)
+      // In STR combat: debrief is a disposal zone (discard to backup)
+      // Self-cast cards get the self-target glow, everything else gets disposal glow
       if (_isStrCombatActive()) {
         if (_isSelfCastCard(_draggedCard.card)) {
           _debriefFeedElement.classList.add('debrief-drop-target-self');
@@ -177,9 +178,11 @@ const CardDisposalSystem = (function() {
             TooltipSystem.showPersistent('🧑 SELF TARGET: drop to apply', 650);
           }
         } else {
-          _debriefFeedElement.classList.add('debrief-drop-target-invalid');
+          // Allow disposal in combat — send card to backup deck
+          _updateDragPreviewToRecycling();
+          _debriefFeedElement.classList.add('debrief-drop-target');
           if (typeof TooltipSystem !== 'undefined') {
-            TooltipSystem.showPersistent('❌ Cannot self-target this card', 650);
+            TooltipSystem.showPersistent('♻️ DISCARD to backup deck', 650);
           }
         }
         return;
@@ -224,7 +227,7 @@ const CardDisposalSystem = (function() {
     var element = _draggedCard.element;
     var source = _draggedCard.source || 'hand';
 
-    // STR combat: debrief drop is SELF target attempt
+    // STR combat: debrief drop is SELF target or DISPOSAL (send to backup)
     if (_isStrCombatActive()) {
       if (_isSelfCastCard(data) && source === 'hand') {
         var result = _applySelfCast(data);
@@ -249,6 +252,58 @@ const CardDisposalSystem = (function() {
           }
         } else {
           _handleInvalidDisposal(data, element, 'self_target_invalid');
+        }
+
+        _draggedCard = null;
+        _handleDragOverDebrief(false);
+        return;
+      }
+
+      // Non-self-cast card in STR combat: discard to backup deck
+      if (source === 'hand') {
+        var discardIdx = _draggedCard.index;
+        var discardOk = false;
+
+        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.moveHandIndexToBackup === 'function') {
+          var moveResult = GAMESTATE.moveHandIndexToBackup(discardIdx);
+          discardOk = moveResult && moveResult.success;
+        }
+
+        if (discardOk) {
+          // Refresh hand fan display
+          if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getCardsInHand === 'function') {
+            var updatedHand = GAMESTATE.getCardsInHand();
+            // Hydrate for display
+            var hydratedHand = [];
+            for (var hi = 0; hi < updatedHand.length; hi++) {
+              var hRef = updatedHand[hi];
+              var hCard = null;
+              try {
+                if (typeof hydrateCard === 'function') {
+                  hCard = hydrateCard(hRef);
+                } else if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) {
+                  hCard = GoneRogueDataRegistry.getCard(hRef.id);
+                }
+              } catch (eH) {}
+              hydratedHand.push(hCard || hRef);
+            }
+            if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.updateCards === 'function') {
+              HandFanComponent.updateCards(hydratedHand);
+            }
+          }
+
+          _triggerIncineratorAnimation();
+
+          if (typeof TooltipSystem !== 'undefined') {
+            TooltipSystem.showPersistent('♻️ Discarded to backup: ' + (data.name || data.id), 1400);
+          }
+
+          // Report to debrief feed
+          if (typeof DebriefFeedController !== 'undefined' && typeof DebriefFeedController.reportEvent === 'function') {
+            DebriefFeedController.reportEvent('CARD_DISCARDED', { cardName: data.name || data.id });
+          }
+        } else {
+          _handleInvalidDisposal(data, element, 'discard_failed');
         }
 
         _draggedCard = null;

@@ -1198,7 +1198,19 @@ const GAMESTATE = (function () {
   function enforceHandOverflow() {
     var maxHand = _state.maxHandSize || 5;
     while (Array.isArray(_state.cardsInHand) && _state.cardsInHand.length > maxHand) {
-      pushOldestHandCardToBackup();
+      var overflowResult = pushOldestHandCardToBackup();
+      // Notify UI of hand overflow for visual feedback
+      if (overflowResult && overflowResult.success) {
+        try {
+          window.dispatchEvent(new CustomEvent('rogue-hand-overflow', {
+            detail: {
+              ejectedCard: overflowResult.returnedCard,
+              handSize: _state.cardsInHand.length,
+              maxHandSize: maxHand
+            }
+          }));
+        } catch (eOv) {}
+      }
     }
   }
 

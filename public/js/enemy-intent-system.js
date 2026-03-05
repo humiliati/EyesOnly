@@ -305,8 +305,8 @@ var EnemyIntentSystem = (function() {
       return null;
     }
 
-    var emoji = card.emoji;
-    var name = card.name.toLowerCase();
+    var emoji = card.emoji || '';
+    var name = (card.name || '').toLowerCase();
 
     // Map card emoji to weapon intent
     if (emoji === '🎯' || name.includes('shot') || name.includes('shoot')) {
