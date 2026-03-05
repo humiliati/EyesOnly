@@ -18,8 +18,6 @@ var GoneRogue = (function () {
   var _player = Player.getPlayer();
 
 
-  var _ropeManager = null;
-
   var _enemies = [];
   var _npcs = []; // NPCs on floor (tutorial gates, etc.)
   // NOTE: Don't touch WorldItems at script-load time.

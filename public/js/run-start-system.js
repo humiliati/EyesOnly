@@ -110,6 +110,7 @@ var RunStartSystem = (function() {
     if (typeof SecretFloors !== 'undefined') { SecretFloors.init(); console.log('[GoneRogue] Secret floors system initialized'); }
     if (typeof GroundEffects !== 'undefined') { GroundEffects.init(); console.log('[GoneRogue] Ground effects system initialized'); }
     if (typeof LanternDragSystem !== 'undefined') { LanternDragSystem.reset(); console.log('[GoneRogue] Lantern drag system reset'); }
+    if (typeof RopeManager !== 'undefined') { RopeManager.reset(); console.log('[GoneRogue] Rope manager reset'); }
     if (typeof OverheadAnimator !== 'undefined') { OverheadAnimator.init(); console.log('[GoneRogue] Overhead animator initialized'); }
 
     if (typeof TooltipThumb !== 'undefined') {

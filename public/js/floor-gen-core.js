@@ -18,18 +18,6 @@ var FloorGenCore = (function() {
     ctx.setBossEnvironment({});
     ctx.setPlayerMoveLocked(false);
 
-    ctx.setRopeManager(new RopeManager(ctx.player));
-    var ropeItem = {
-        id: 'rope-1',
-        type: 'item',
-        name: 'Rope',
-        emoji: '➰',
-        x: 5,
-        y: 5
-    };
-    ctx.syncItems();
-    WorldItems.addItem(ropeItem);
-
     // Reset forest biome state
     ctx.setForestBuildings([]);
     ctx.setBiomeVisualGrid(null);
