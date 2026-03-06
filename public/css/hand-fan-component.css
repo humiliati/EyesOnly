@@ -912,6 +912,47 @@
 }
 
 /* ============================================================
+   Drag Ghost Placeholder
+   Empty dotted outline that holds a card's position while dragging
+   ============================================================ */
+
+.hand-card-drag-placeholder {
+  width: 120px;
+  height: 168px;
+  border: 2px dashed rgba(128, 0, 128, 0.5);
+  border-radius: 8px;
+  background: rgba(128, 0, 128, 0.06);
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+/* Collapse animation when card is deployed/incinerated/discarded */
+.hand-card-drag-placeholder.placeholder-collapsing {
+  animation: placeholder-collapse 0.25s ease-in forwards;
+}
+
+@keyframes placeholder-collapse {
+  0% { width: 120px; opacity: 1; margin-left: 0; }
+  100% { width: 0; opacity: 0; margin-left: -2px; }
+}
+
+@media (max-width: 768px) {
+  .hand-card-drag-placeholder { width: 100px; height: 140px; }
+  @keyframes placeholder-collapse {
+    0% { width: 100px; opacity: 1; margin-left: 0; }
+    100% { width: 0; opacity: 0; margin-left: -2px; }
+  }
+}
+
+@media (max-width: 480px) {
+  .hand-card-drag-placeholder { width: 80px; height: 112px; }
+  @keyframes placeholder-collapse {
+    0% { width: 80px; opacity: 1; margin-left: 0; }
+    100% { width: 0; opacity: 0; margin-left: -2px; }
+  }
+}
+
+/* ============================================================
    Accessibility
    ============================================================ */
 

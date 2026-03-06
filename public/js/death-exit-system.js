@@ -81,6 +81,20 @@ var DeathExitSystem = (function () {
     var currencyBefore = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getCryptos) ? GAMESTATE.getCryptos() : 0;
     var currencyLost = Math.floor(currencyBefore * 0.5);
 
+    // Hide the STR combat window + minimized capsule before the death overlay.
+    // Without this, the combat window/capsule persists behind the death screen
+    // and stays on-screen after the overlay fades.
+    if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.hide === 'function') {
+      STRCombatWindow.hide();
+    }
+    if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.hide === 'function') {
+      HandFanComponent.hide();
+      if (typeof HandFanComponent.clearSelection === 'function') HandFanComponent.clearSelection();
+    }
+    if (typeof BackupActionContainer !== 'undefined' && typeof BackupActionContainer.hide === 'function') {
+      BackupActionContainer.hide();
+    }
+
     // Show death screen overlay
     if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.showDeathScreen === 'function') {
       STRCombatWindow.showDeathScreen({

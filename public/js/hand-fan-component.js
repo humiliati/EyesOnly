@@ -51,6 +51,16 @@ const HandFanComponent = (function () {
     dwellThreshold: 400 // ms the pointer must stay outside before we minimize
   };
 
+  // Card lift-out drag state: tracks the lifted card, its placeholder, and the ghost clone
+  var _liftDrag = {
+    active: false,
+    cardIndex: -1,
+    originalWrapper: null,   // the real card wrapper element (hidden during drag)
+    placeholder: null,       // dotted outline element inserted in its place
+    ghostClone: null,        // off-screen clone used as setDragImage source
+    disposed: false          // true if the card was deployed/incinerated/discarded during this drag
+  };
+
   // Configuration
   var _maxVisibleCards = 5;
   var _cardOverlapPercent = 30; // 30% overlap for fan effect
@@ -1114,6 +1124,54 @@ const HandFanComponent = (function () {
       _html5DragCollapse.collapsed = false;
       _html5DragCollapse.outsideMs = 0;
 
+      // ── Card lift-out: replace card with dotted placeholder, use clone as drag image ──
+      _liftDrag.active = true;
+      _liftDrag.cardIndex = index;
+      _liftDrag.originalWrapper = cardWrapper;
+      _liftDrag.disposed = false;
+
+      // Create a scaled-down clone of the card for the drag ghost image
+      try {
+        var ghost = cardWrapper.cloneNode(true);
+        ghost.style.position = 'absolute';
+        ghost.style.top = '-9999px';
+        ghost.style.left = '-9999px';
+        ghost.style.transform = 'scale(0.85)';
+        ghost.style.opacity = '0.9';
+        ghost.style.pointerEvents = 'none';
+        ghost.style.zIndex = '-1';
+        document.body.appendChild(ghost);
+        _liftDrag.ghostClone = ghost;
+
+        if (e.dataTransfer && e.dataTransfer.setDragImage) {
+          var cardInner = cardWrapper.querySelector('.hand-card');
+          var w = cardInner ? cardInner.offsetWidth : 100;
+          var h = cardInner ? cardInner.offsetHeight : 140;
+          e.dataTransfer.setDragImage(ghost, Math.round(w * 0.42), Math.round(h * 0.5));
+        }
+      } catch (eGhost) {
+        // Fallback: browser default ghost
+      }
+
+      // Insert dotted placeholder where the card was
+      var ph = document.createElement('div');
+      ph.className = 'hand-card-drag-placeholder';
+      // Inherit the fan transform so it sits in the exact same slot
+      ph.style.transform = cardWrapper.style.transform;
+      ph.style.marginLeft = cardWrapper.style.marginLeft;
+      ph.style.zIndex = cardWrapper.style.zIndex;
+      _liftDrag.placeholder = ph;
+
+      if (cardWrapper.parentNode) {
+        cardWrapper.parentNode.insertBefore(ph, cardWrapper);
+      }
+
+      // Hide the real card (but keep in DOM so dragend fires correctly)
+      cardWrapper.style.position = 'absolute';
+      cardWrapper.style.top = '-9999px';
+      cardWrapper.style.left = '-9999px';
+      cardWrapper.style.opacity = '0';
+
       // Check if shop is open for sell operations
       var isShopOpen = (typeof ShopSystem !== 'undefined' && ShopSystem.isOpen && ShopSystem.isOpen());
 
@@ -1178,6 +1236,51 @@ const HandFanComponent = (function () {
       } else if (typeof CardDisposalSystem !== 'undefined') {
         CardDisposalSystem.handleDragEnd();
       }
+
+      // ── Card lift-out cleanup ──
+      // Remove the off-screen ghost clone
+      if (_liftDrag.ghostClone && _liftDrag.ghostClone.parentNode) {
+        _liftDrag.ghostClone.parentNode.removeChild(_liftDrag.ghostClone);
+        _liftDrag.ghostClone = null;
+      }
+
+      // Check if the card was consumed (hand array changed while dragging).
+      // If the card at this index is gone or different, it was deployed/discarded.
+      var cardStillInHand = (_cards && _cards[index] && _cards[index].id === card.id);
+      var wasDisposed = !cardStillInHand;
+
+      if (_liftDrag.placeholder && _liftDrag.placeholder.parentNode) {
+        if (wasDisposed) {
+          // Card was deployed/incinerated/discarded → collapse placeholder with animation
+          _liftDrag.placeholder.classList.add('placeholder-collapsing');
+          var phRef = _liftDrag.placeholder;
+          setTimeout(function() {
+            if (phRef && phRef.parentNode) phRef.parentNode.removeChild(phRef);
+            // Trigger re-render to update fan layout after card removal
+            _renderCards();
+          }, 260);
+        } else {
+          // Card was NOT consumed (dropped back inside STR window or invalid drop)
+          // Restore the real card to its position
+          _liftDrag.placeholder.parentNode.removeChild(_liftDrag.placeholder);
+          cardWrapper.style.position = '';
+          cardWrapper.style.top = '';
+          cardWrapper.style.left = '';
+          cardWrapper.style.opacity = '';
+        }
+      } else {
+        // Placeholder already gone — just restore the card wrapper
+        cardWrapper.style.position = '';
+        cardWrapper.style.top = '';
+        cardWrapper.style.left = '';
+        cardWrapper.style.opacity = '';
+      }
+
+      _liftDrag.active = false;
+      _liftDrag.cardIndex = -1;
+      _liftDrag.originalWrapper = null;
+      _liftDrag.placeholder = null;
+      _liftDrag.disposed = false;
 
       // Restore STR combat window if we collapsed it during this drag
       var wasCollapsed = _html5DragCollapse.collapsed;
