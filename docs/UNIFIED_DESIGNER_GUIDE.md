@@ -46,3 +46,100 @@ Once you have created your assets, maps, and world graph, you can export the ent
 
 1.  In the Unified Designer hub, click the "Export All" button.
 2.  This will generate a single `world.json` file that contains all the data for your game world, including the assets, maps, and the world graph itself. This file can then be loaded by the game engine.
+
+---
+
+## 4. Runtime Pipeline Gaps (Blocking — ENI Phase 0+)
+
+> **Date identified:** 2026-03-06
+> **Severity:** MEDIUM — Blocks any designer workflow that requires equipment/consumable items to drop from breakables on the map.
+> **Affects:** Item drops from breakables, tutorial guaranteed loot, per-breakable loot table configuration for non-key items.
+
+### 4.1. Gap: No Equipment/Consumable Item Drop From Breakables
+
+**What works today:**
+
+| Drop Type | Breakable → WorldItems | Map Render | Player Pickup → Inventory | Debrief Report |
+|---|---|---|---|---|
+| Ammo (resource) | breakable-system.js `_spawnLootTableLoot()` | gone-rogue-mobile.js (⁍ magenta) | pickup-system.js → `GAMESTATE.addAmmo()` | `reportResourceChange('Ammo',...)` |
+| Currency (resource) | breakable-system.js → CurrencySpawning | gone-rogue-mobile.js (¢ yellow) | auto-collect via Magnet or walk-over | `reportResourceChange('Currency',...)` |
+| Battery/Gems (resource) | breakable-system.js `_spawnLootTableLoot()` | gone-rogue-mobile.js (◈ green) | pickup-system.js → `GAMESTATE.rechargeBattery()` | `reportResourceChange('Battery',...)` |
+| Cards | breakable-system.js (30% fallback) | gone-rogue-mobile.js (🂠 purple) | pickup-system.js → `GAMESTATE.addPrintedCards()` | `reportResourceChange('Cards',...)` |
+| Keys (type:'key') | breakable-system.js `_spawnKeyDrops()` | gone-rogue-mobile.js (🔑/🗝 gold) | pickup-system.js → routes by tier (T1=counter, T2=persistent+equip, T3=quest) | `reportResourceChange('key_ammo',...)` |
+
+**What does NOT work:**
+
+| Drop Type | Breakable → WorldItems | Map Render | Player Pickup → Inventory | Debrief Report |
+|---|---|---|---|---|
+| Equipment (ITM-###, type:'equipment') | NO SPAWN PATH | NO RENDER TYPE | Dead-end: line 316 returns `{success:true}` but stores NOTHING | NO REPORT |
+| Consumable (ITM-###, type:'consumable') | NO SPAWN PATH | NO RENDER TYPE | Same dead-end as equipment | NO REPORT |
+
+**Root cause — 3 missing pieces:**
+
+1. **breakable-system.js** has no `_spawnItemDrops()` equivalent for items.json entries. `_spawnKeyDrops()` is hardwired to EnvironmentalSynergy key definitions. `_spawnLootTableLoot()` processes `.ammo`, `.currency`, `.gems`, `.cards`, `.charms` from the LootTableManager roll but has **no `.items` handler** for ITM-### equipment/consumable objects.
+
+2. **pickup-system.js** `_addToInventory()` (line 277) routes cards, keys (T2→persistent, T1→counter), but the `else` fallthrough at line 316 is a no-op: `result = { success: true, message: 'Item picked up' }`. It claims success but **calls no GAMESTATE method to store the item**. There is no `GAMESTATE.addEquipment()` or `GAMESTATE.addConsumable()` method.
+
+3. **GAMESTATE inventory model** only has: `_state.cardsInHand` (CardRefs), `_state.persistentInventory` (T2 keys via `addToPersistent`), `_state.looseItems` (via `addToLoose`). Equipment and consumable items from items.json have **no canonical storage location** in GAMESTATE. The `addToPersistent()` method technically accepts any object but is only ever called for key payloads.
+
+**Designer impact:**
+
+A designer CANNOT currently:
+- Place a breakable that drops a specific ITM-### item (e.g., "this crate drops Skeleton Keyring")
+- Configure per-breakable item loot tables in the Map Designer
+- Make tutorial breakables guarantee specific equipment/consumable drops
+- Drop the Flipper Zero (ITM-103) from a floor 0 breakable
+
+### 4.2. Gap: Tutorial Floor Breakables Use Fallback Loot
+
+Tutorial floors (tutorial-floors.js) define breakables with `drops: { currency: [min, max], cards: chance }` but these go through `_spawnFallbackLoot()` — a hardcoded 60% ammo / 30% card path. They do NOT use LootTableManager. This means:
+
+- No per-breakable loot table override on tutorial floors
+- No way to make a tutorial breakable drop a specific item
+- The `breakable.drops.item` field IS checked by `_spawnKeyDrops()` for keys specifically, but not for equipment/consumable items
+
+### 4.3. Implementation Path (Estimated Scope)
+
+> **Full roadmap:** See `ITEM_DROP_PIPELINE_ROADMAP.md` for phased implementation with code samples, dependency order, and test steps.
+
+To close this gap, the following changes are needed:
+
+**File 1: gamestate.js** — Add equipment/consumable item storage
+- Add `_state.equipment` array (or extend `_state.persistentInventory` to accept all item types)
+- Add `addEquipmentItem(itemDef)` public method
+- Add `addConsumableItem(itemDef)` public method (or unify as `addItem(itemDef)`)
+- Expose in public API
+
+**File 2: pickup-system.js** — Route equipment/consumable pickup to GAMESTATE
+- Replace dead-end at line 316 with: lookup item in items.json by `item.itemId`, call `GAMESTATE.addItem(resolvedItem)`
+- Add overhead animation (item emoji, 800ms, item-type color)
+- Add debrief feed report
+
+**File 3: breakable-system.js** — Add item spawn path
+- Add `_spawnItemDrops(breakable, ctx)` function
+- Check `breakable.drops.itemId` (ITM-### string) for designer-defined guaranteed drops
+- Load item definition from items.json data registry
+- Create world item: `{ x, y, type: 'item', itemId: 'ITM-###', emoji, name, spawnTime, decayTime }`
+- Push to `WorldItems.addItem()`
+- Call from `_spawnBreakableLoot()` after existing loot paths
+
+**File 4: tutorial-floors.js** — Add `drops.itemId` to specific breakables
+- Example: `{ x: 14, y: 5, emoji: '📦', name: 'Supply Crate', hp: 1, drops: { itemId: 'ITM-103' } }`
+
+**File 5: gone-rogue-mobile.js** — Add render case for `_wt: 'item'` world items
+- Render item emoji at tile position (same pattern as key rendering)
+
+**File 6: loot-table-manager.js** — Add item roll support (optional, for random drops)
+- Add `items: [{ id: 'ITM-###', chance: 0.05 }]` to breakable_loot config schema
+- Roll items alongside existing ammo/currency/gem rolls
+
+**Estimated effort:** ~200-300 lines across 4-6 files. Not humungous, but needs to be done correctly to avoid inventory corruption. The key pipeline (`_spawnKeyDrops` → `WorldItems` → `pickup-system` → `addToPersistent`) is the template to follow.
+
+### 4.4. Workaround (Temporary)
+
+Until the full pipeline is built, equipment/consumable items can be granted via:
+- `GAMESTATE.addToPersistent(itemDef)` called directly from a script hook (not from breakable drops)
+- Tutorial floor `tutorialPickups` array with a custom type handler
+- Auto-grant on floor start via a floor init callback
+
+These workarounds bypass the breakable→map→pickup visual flow entirely.

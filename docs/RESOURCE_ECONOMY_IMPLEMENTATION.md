@@ -1,14 +1,14 @@
 # Resource Economy Implementation Summary
 
-**Date:** 2026-02-19  
-**Status:** ✅ COMPLETE (canon-aligned with RESOURCE_COLOR system and key ammo tracking)  
+**Date:** 2026-03-06 (updated from 2026-02-19)
+**Status:** ✅ COMPLETE (canon-aligned with RESOURCE_COLOR system, key ammo tracking, and ENI Phase 0 theft economy)
 **PR Branch:** copilot/update-combat-card-issuance
 
 ---
 
 ## Overview
 
-This document summarizes the implementation of balanced resource economies for all game resources (Ammo, Battery, Fatigue, Energy, Focus, Key Ammo) to ensure lean, strategic gameplay for MVP playtesting. Visual/reporting feedback is aligned to the RESOURCE_COLOR canon used by DebriefFeed and OverheadAnimator.
+This document summarizes the implementation of balanced resource economies for all 9 game resources (HP, Energy, Focus, Battery, Fatigue, Ammo, Currency, Key Ammo, Cards) to ensure lean, strategic gameplay for MVP playtesting. Visual/reporting feedback is aligned to the RESOURCE_COLOR canon used by DebriefFeed and OverheadAnimator.
 
 ---
 
@@ -131,6 +131,145 @@ This document summarizes the implementation of balanced resource economies for a
 
 ---
 
+### 6. Key Ammo Economy (ENI Phase 0)
+
+**Debrief Feed Canon:** Color `#FF8A3D` (orange), symbols `🝯` (up) / `🗝` (down), tracked as `key_ammo` in GAMESTATE.
+
+**3-Tier Key Structure:**
+- **Tier 1 — Resource currency** (`key_ammo`): Collectible resource tracked in `GAMESTATE.keys.ammo`. NOT inventory items. Displayed in debrief feed resource bars. Spent on NCH theft interactions per THEFT_MECHANICS §6. Picked up from breakables, enemy drops, and floor start grants. Stacks like ammo or gold.
+- **Tier 2 — Gate items**: Inventory items that unlock gates/doors/chests (ITM-010 through ITM-019). Occupy active equipment slot. Include Rusty Lockpick (ITM-017), Bronze Key (ITM-018), Security Keycard (ITM-011), Master Key (ITM-012), etc.
+- **Tier 3 — Quest items**: Special turn-in items for NPC rewards (ITM-030 Blacksmith's Hammer, ITM-031 Rune Fragment).
+
+**key_ammo resource pool:**
+- Pool: `GAMESTATE.keys.ammo` (Tier 1 currency, NOT an item)
+- Used for: NCH theft interactions ONLY (not gate unlocks — those use Tier 2 items)
+- Key macro display: `🝯` + count; panel shows `🝯RUSTY`, `🔑BRONZE`, `💳CARD`, `🏷MALL`
+
+**Theft Action Costs (THEFT_MECHANICS §6):**
+- PICKPOCKET (face-down card): 1 key_ammo
+- STEAL (revealed card): 1 key_ammo
+- SWAP (card exchange): 2 key_ammo
+- PLANT: 0 key_ammo (costs the planted card itself)
+- REVEAL: 0 key_ammo (costs 1 interaction charge)
+- BRIBE: 0 key_ammo (costs gold proportional to stealValue)
+
+**Key_ammo consumption rules:**
+- key_ammo consumed on SUCCESS only (pre-combat exploration)
+- key_ammo consumed on CONFIRM (long-press capsule interaction)
+- Without key_ammo: auto-downgrade to FUMBLED GRAB (ACT-020)
+- In STR combat: same key_ammo costs PLUS 1 interaction charge per action
+
+**key_ammo Mitigation Items (ENI Phase 0):**
+- ITM-098 Skeleton Keyring (passive equipment, uncommon): Reduces key_ammo resource spent on theft by 1 (PICKPOCKET/STEAL become free, SWAP drops to 1). Grants +1 key_ammo resource at each floor start. Occupies passive slot.
+- ITM-099 Wax Impression Kit (consumable, uncommon): Grants +2 key_ammo resource instantly. Stackable (max 3). Found in breakables or shop.
+
+**Balance Analysis (5-floor thief run):**
+- Starting key_ammo: ~2 from floor 0 breakables
+- Breakable/chest key_ammo drops: ~1-2 per floor = 5-10 over 5 floors
+- Skeleton Keyring bonus: +5 key_ammo (1 per floor)
+- Total available (with Keyring): ~12-17 key_ammo
+- Theft attempts: ~2-3 per floor = 10-15 attempts
+- Cost without mitigation: 10-15 key_ammo (tight, must choose theft vs saving for later)
+- Cost with Skeleton Keyring: 0 key_ammo for PICKPOCKET/STEAL (free), only SWAP costs 1
+- Design intent: Without Keyring, thief builds run tight on key_ammo. With Keyring, theft is sustainable but the passive slot is occupied (vs combat passives).
+
+**Data changes (items.json):**
+- CORRECTED ITM-017/018/019 from tier 1 → tier 2 (gate keys are items, not currency)
+- Removed `useAsLockpick`, `lockpickUses`, `consumeOnTheft` from ITM-017/018 (T1 keys are resource, not items)
+- Added ITM-098 Skeleton Keyring (passive equipment, key_ammo resource discount)
+- Added ITM-099 Wax Impression Kit (consumable, key_ammo resource grant)
+
+**Code changes pending (enemy-steal-system.js):**
+- `attempt()` must consume from `GAMESTATE.keys.ammo` resource pool (not from inventory items)
+- Wire key_ammo consumption in `gone-rogue.js` → `_attemptPickpocket()` context builder
+- Show "🔒 NO KEY" on capsule nodes when `GAMESTATE.keys.ammo < cost`
+- Overhead animation "🔑→🃏" on successful key_ammo-funded steal
+- Check for Skeleton Keyring passive in inventory to apply `theftKeyAmmoDiscount`
+
+---
+
+### 7. Currency Economy
+
+**Debrief Feed Canon:** Color `#FFFF00` (yellow), tracked as `Currency` in RESOURCE_COLORS.
+
+**Mechanics:**
+- Pool: `GAMESTATE.currency` (gold)
+- Used for: Shop purchases, BRIBE theft action (THEFT_MECHANICS §6)
+- BRIBE cost: proportional to target card's `stealValue`
+
+**Acquisition:**
+- Enemy combat drops (gold coins)
+- Breakable loot
+- Shop sell-back at reduced rate
+
+**Status:** Currency tracking exists in DebriefFeed. Shop system partially implemented. BRIBE action pending Sprint 3 ENI Phase 2.
+
+---
+
+### 8. Cards Resource
+
+**Debrief Feed Canon:** Color `#800080` (purple), tracked as `Cards` in RESOURCE_COLORS.
+
+**Mechanics:**
+- Pool: `GAMESTATE._state.cardsInHand` (CardRef array via CHH pipeline)
+- Displayed as total card count in debrief feed
+- Cards gained/lost per floor tracked as a resource delta
+
+**Acquisition:**
+- STR combat card draw (standard)
+- Theft: PICKPOCKET/STEAL actions acquire enemy cards as CardRefs
+- Post-combat salvage (ENI Phase 5, planned)
+- Breakable/chest card drops
+
+**Loss:**
+- PLANT action (card inserted into enemy deck)
+- Card consumption (consumable/disposable cards)
+- Discard mechanics
+
+---
+
+## Canonical Debrief Feed Resource System
+
+### RESOURCE_COLORS (debrief-feed-controller.js line 1330)
+
+```javascript
+var RESOURCE_COLORS = {
+  'HP':       '#FF6B9D',   // Pink
+  'Energy':   '#00D4FF',   // Cyan
+  'Focus':    '#FFF9B0',   // Pale yellow
+  'Battery':  '#00FFA6',   // Green
+  'Fatigue':  '#A0522D',   // Brown (sienna)
+  'Ammo':     '#DA70D6',   // Orchid purple
+  'Currency': '#FFFF00',   // Yellow
+  'key_ammo': '#FF8A3D',   // Orange
+  'Cards':    '#800080'    // Purple
+};
+```
+
+### RESOURCE_SYMBOLS (debrief-feed-controller.js line 654)
+
+```javascript
+hp       = '♥'
+energy   = '△'
+focus    = '◎'
+fatigue  = 'Ȫ'
+ammo     = '⁍'
+battery  = '◈'
+key_ammo = '🝯' (up) / '🗝' (down)
+currency = (standard gold coin display)
+cards    = (card count display)
+```
+
+### Resource Bar Display Order (debrief-feed-controller.js line 616)
+
+1. Core resources (HP, Energy, Focus, Battery, Fatigue, Ammo)
+2. key_ammo (with tiered key macro: 🝯RUSTY, 🔑BRONZE, 💳CARD, 🏷MALL)
+3. Currency
+4. Cards
+5. Signal / passives / status / mok / api / accessibility bars
+
+---
+
 ## 🔧 Technical Implementation
 
 ### Card System Updates
@@ -195,11 +334,15 @@ function _useUtility(card) {
 
 ### Resource Pressure Points
 
-1. **Ammo:** Balanced for lean gameplay ✓
-2. **Battery:** Rare usage, needs items for tech builds ✓
-3. **Fatigue:** Multiple restore options, manageable ✓
-4. **Energy:** Abundant restore options ✓
-5. **Focus:** Minimal consumption, easy to maintain ✓
+1. **HP (#FF6B9D):** Combat damage primary drain, multiple heal items ✓
+2. **Energy (#00D4FF):** Abundant restore options, full restore post-combat ✓
+3. **Focus (#FFF9B0):** Minimal consumption, easy to maintain ✓
+4. **Battery (#00FFA6):** Rare usage, needs items for tech builds ✓
+5. **Fatigue (#A0522D):** Multiple restore options, manageable ✓
+6. **Ammo (#DA70D6):** Balanced for lean gameplay ✓
+7. **Key Ammo (#FF8A3D):** Tight without mitigation items — forces gate vs theft trade-off ✓ (ENI Phase 0)
+8. **Currency (#FFFF00):** Shop purchases + BRIBE theft action (pending full implementation)
+9. **Cards (#800080):** Deck size tracked as resource delta per floor
 
 ---
 
@@ -265,6 +408,9 @@ function _useUtility(card) {
 
 - `CARD_DB_TODO.md` - Full card system gap analysis
 - `STR_COMBAT_UI_README.md` - Combat system documentation
+- `THEFT_MECHANICS.md` - Theft system, key spending model (§6), plant mechanics
+- `ENEMY_NCH_INTERACTION_ROADMAP.md` - ENI phases 1-5 interaction surface
+- `CROSS_ROADMAP_EXECUTION_ORDER.md` - Sprint ordering and phase dependencies
 - `README.txt` - General game documentation
 
 ---
@@ -278,6 +424,11 @@ All requirements met:
 - ✅ Average 1.2 ammo per drop (80% = 1, 20% = 2)
 - ✅ Battery recharge items implemented
 - ✅ Fatigue replenishment from food/coffee
-- ✅ All resource economies functional
+- ✅ All 9 resource economies documented and canon-aligned with DebriefFeed RESOURCE_COLORS
+- ✅ 3-tier key structure enforced: T1=resource currency (key_ammo), T2=gate items, T3=quest items
+- ✅ ITM-017/018/019 corrected to tier 2 (gate keys are items, not currency)
+- ✅ Key_ammo theft costs defined (THEFT_MECHANICS §6): PICKPOCKET/STEAL=1, SWAP=2, PLANT/REVEAL/BRIBE=0
+- ✅ ITM-098 Skeleton Keyring (passive, key_ammo discount) and ITM-099 Wax Impression Kit (consumable, key_ammo grant) added
+- ✅ RESOURCE_COLORS canonical reference (9 resources) documented from debrief-feed-controller.js
 
-**Status:** Ready for MVP playtesting! 🎮
+**Status:** Ready for MVP playtesting + ENI Phase 0 theft economy data complete!

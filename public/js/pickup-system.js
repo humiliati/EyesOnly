@@ -312,6 +312,69 @@ var PickupSystem = (function() {
       }
     } else if (item.type === 'key') {
       result = { success: true, message: 'Key ammo counted' };
+    } else if (item.itemId || item.type === 'item' || item.type === 'equipment' || item.type === 'consumable') {
+      // ── PHASE 1: Equipment / Consumable item pickup → inventory ──
+      // Resolve full definition from items.json data registry
+      var itemDef = null;
+      var resolveId = item.itemId || (nonCardPayload && nonCardPayload.itemId) || null;
+      if (resolveId && typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
+        try {
+          itemDef = GoneRogueDataRegistry.getItem(resolveId);
+          if (itemDef && itemDef._missing) itemDef = null;
+        } catch (eResolve) {}
+      }
+
+      var inventoryPayload = itemDef || nonCardPayload || item;
+      var equipSlot = inventoryPayload.equipSlot || item.equipSlot || 'none';
+
+      // Equipment with a slot → persistent inventory; consumables/none → loose carry
+      if (equipSlot === 'passive' || equipSlot === 'active') {
+        if (GAMESTATE.addToPersistent) {
+          result = GAMESTATE.addToPersistent(inventoryPayload);
+        } else {
+          result = { success: false, message: 'No persistent inventory method' };
+        }
+      } else {
+        if (GAMESTATE.addToLoose) {
+          result = GAMESTATE.addToLoose(inventoryPayload);
+        } else {
+          result = { success: false, message: 'No loose carry method' };
+        }
+      }
+
+      // Overhead animation — item emoji in white (rarity-tinted if available)
+      if (result && result.success) {
+        var rarityColors = {
+          common: '#CCCCCC', uncommon: '#00CC00',
+          rare: '#3399FF', epic: '#AA00FF', legendary: '#FFD700'
+        };
+        var ohColor = rarityColors[inventoryPayload.rarity || item.rarity] || '#FFFFFF';
+        var ohEmoji = item.emoji || inventoryPayload.emoji || '\uD83D\uDCE6'; // 📦
+        try {
+          if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+            OverheadAnimator.showGenericExpression(ctx.player.x, ctx.player.y, ohEmoji, 1000, ohColor);
+          }
+        } catch (eItemOH) {}
+
+        // Tooltip
+        try {
+          if (typeof TooltipSystem !== 'undefined') {
+            var itemName = inventoryPayload.name || item.name || 'Item';
+            var slotLabel = (equipSlot === 'passive' || equipSlot === 'active') ? ' [EQUIPPED]' : ' [INVENTORY]';
+            TooltipSystem.show(ohEmoji + ' ' + itemName + slotLabel, 2500);
+          }
+        } catch (eItemTT) {}
+
+        // Debrief feed — report as generic item acquisition
+        try {
+          if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
+            DebriefFeedController.reportResourceChange(
+              'Cards', 0, 0,
+              ohEmoji + ' ' + (inventoryPayload.name || item.name || 'Item')
+            );
+          }
+        } catch (eItemDebrief) {}
+      }
     } else {
       result = { success: true, message: 'Item picked up' };
     }

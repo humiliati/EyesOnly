@@ -438,12 +438,12 @@
     "synergyTags": [
       "key",
       "gate",
-      "tier1"
+      "tier2"
     ],
     "description": "A bent piece of metal. Single-use, but it gets the job done.",
     "consumeOnUse": true,
-    "tier": 1,
-    "_designNote": "Tier 1 ammo key. Consumed on gate unlock. Previously existed only in environmental-synergy.js."
+    "tier": 2,
+    "_designNote": "CORRECTED: Tier 2 gate key (consumable). Unlocks WOODEN_GATE, OLD_DOOR, LOCKED_CHEST. T1 keys are resource currency (key_ammo), not items. This is a single-use gate unlocker — same tier as ITM-010 through ITM-016 but disposable."
   },
   {
     "id": "ITM-018",
@@ -468,12 +468,12 @@
     "synergyTags": [
       "key",
       "gate",
-      "tier1"
+      "tier2"
     ],
     "description": "A tarnished bronze key with ornate markings.",
     "consumeOnUse": true,
-    "tier": 1,
-    "_designNote": "Tier 1 ammo key. Consumed on gate unlock. Previously existed only in environmental-synergy.js."
+    "tier": 2,
+    "_designNote": "CORRECTED: Tier 2 gate key (consumable). Unlocks BRONZE_GATE, MUSEUM_DOOR, LOCKED_CHEST. T1 keys are resource currency (key_ammo), not items. This is a single-use gate unlocker."
   },
   {
     "id": "ITM-019",
@@ -499,8 +499,8 @@
     ],
     "description": "Looks like it should fit... but it doesn't.",
     "consumeOnUse": true,
-    "tier": 1,
-    "_designNote": "LAGM moderation item. Fake key injected by Floor Synthesis Engine to add friction. compatibleGates is empty so it never unlocks anything. Consumed on failed attempt."
+    "tier": 2,
+    "_designNote": "LAGM moderation item. Fake key injected by Floor Synthesis Engine to add friction. compatibleGates is empty so it never unlocks anything. Consumed on failed attempt. Tier 2 (gate key shape) but nonfunctional."
   },
   {
     "id": "ITM-020",
@@ -1380,6 +1380,62 @@
     "_designNote": "ENI combined enabler. Epic-tier capstone for card manipulation builds. +4 tile capsule range (total 8), 75% faster idle reveal, and only 10% suspicion chance after steal (down from 20%). The endgame passive for a pure thief build. Competes with combat passives for the slot."
   },
   {
+    "id": "ITM-098",
+    "name": "Skeleton Keyring",
+    "emoji": "🗝",
+    "type": "equipment",
+    "rarity": "uncommon",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      {
+        "type": "theft_key_ammo_discount",
+        "value": 1
+      },
+      {
+        "type": "key_ammo_on_floor_start",
+        "value": 1
+      }
+    ],
+    "synergyTags": [
+      "covert",
+      "theft",
+      "sleight",
+      "economy"
+    ],
+    "theftKeyAmmoDiscount": 1,
+    "keyAmmoPerFloor": 1,
+    "description": "A jangling ring of skeleton picks. Passively reduces key_ammo spent on NCH theft actions by 1 (PICKPOCKET/STEAL become free, SWAP costs 1 instead of 2). Grants +1 key_ammo resource at each floor start.",
+    "_designNote": "ENI Phase 0 key_ammo RESOURCE mitigation. NOT a key item — this is a passive equipment that reduces the key_ammo currency cost of THEFT_MECHANICS §6 interactions. T1 keys are a resource tracked in GAMESTATE.keys.ammo and displayed in debrief feed (#FF8A3D). This item lowers the resource spend, not the item count. Competes with combat passives for the slot."
+  },
+  {
+    "id": "ITM-099",
+    "name": "Wax Impression Kit",
+    "emoji": "🫧",
+    "type": "consumable",
+    "rarity": "uncommon",
+    "stackable": true,
+    "maxStack": 3,
+    "equipSlot": "none",
+    "effects": [
+      {
+        "type": "key_ammo_grant",
+        "value": 2
+      }
+    ],
+    "synergyTags": [
+      "covert",
+      "theft",
+      "craft",
+      "economy"
+    ],
+    "consumeOnUse": true,
+    "grantKeyAmmo": 2,
+    "description": "Soft wax block and mould frame. Use to gain +2 key_ammo resource instantly. Enough for 2 steals or 1 swap.",
+    "_designNote": "ENI Phase 0 key_ammo RESOURCE grant. Consumable that adds 2 to GAMESTATE.keys.ammo (the T1 key currency pool, NOT an inventory item). Found in breakables or shop. Pairs with Skeleton Keyring for a full thief economy build. THEFT_MECHANICS §6 alignment."
+  },
+  {
     "id": "ITM-100",
     "name": "Fool's Reward",
     "emoji": "🏆",
@@ -1454,6 +1510,32 @@
     ],
     "description": "The pages rewrite themselves. Futures flicker, paths fork, and the watchers lose their grip.",
     "_designNote": "Player-driven manipulation item (SEED_DESIGN §5.2). Counter-item to They Live Glasses. Injects entropy into floor resolution — M-Console sees mutation fog, conflicting branches, flickering templates, delayed seed resolution, ghost acks. Activates entropyField player state with sourceItemId 'winston_diary'."
+  },
+  {
+    "id": "ITM-103",
+    "name": "Flipper Zero",
+    "emoji": "📙",
+    "type": "equipment",
+    "rarity": "uncommon",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      {
+        "type": "key_ammo_on_floor_start",
+        "min": 1,
+        "max": 5,
+        "seedrandom": true
+      }
+    ],
+    "synergyTags": [
+      "covert",
+      "theft",
+      "tech",
+      "economy"
+    ],
+    "description": "Compact multi-tool radio. Grants 1-5 key_ammo at each floor start (quality varies by signal strength). Your skeleton key to the airwaves.",
+    "_designNote": "ENI Phase 0 primary key_ammo mitigation. Guaranteed drop from tutorial floor 0 Supply Crate near ancient snail. The 1-5 range uses seedrandom(floorSeed + 'flipper') so the grant is deterministic per floor but varies run-to-run. Average 3/floor over 5 floors. Competes with combat passives for passive slot. BLOCKED by ITEM_DROP_PIPELINE_ROADMAP.md Phases 1-3 (breakable→pickup pipeline not yet built)."
   },
   {
     "id": "ITM-998",
