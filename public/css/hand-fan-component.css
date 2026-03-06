@@ -211,61 +211,77 @@
   will-change: transform;
 }
 
-/* Card background layers with lifecycle-based transparency */
+/* ============================================================
+   Card Background: Resource Color + Lifecycle Transparency
 
-/* Consumable - 15% opacity (almost transparent) */
+   Background color = resource spent (from RESOURCE_COLOR_SYSTEM.md)
+   Background opacity = one-time (~30%) vs reusable (~50%)
+
+   Default (no resource / inert) = grey #808080
+   ============================================================ */
+
+/* CSS custom properties for resource tint (set per card via data-resource) */
+.hand-card { --res-r: 128; --res-g: 128; --res-b: 128; } /* default grey */
+.hand-card[data-resource="energy"]  { --res-r: 0;   --res-g: 212; --res-b: 255; }
+.hand-card[data-resource="ammo"]    { --res-r: 218; --res-g: 112; --res-b: 214; }
+.hand-card[data-resource="battery"] { --res-r: 0;   --res-g: 255; --res-b: 166; }
+.hand-card[data-resource="fatigue"] { --res-r: 160; --res-g: 82;  --res-b: 45;  }
+.hand-card[data-resource="focus"]   { --res-r: 255; --res-g: 249; --res-b: 176; }
+.hand-card[data-resource="hp"]      { --res-r: 255; --res-g: 107; --res-b: 157; }
+.hand-card[data-resource="currency"]{ --res-r: 255; --res-g: 255; --res-b: 0;   }
+.hand-card[data-resource="key_ammo"]{ --res-r: 255; --res-g: 138; --res-b: 61;  }
+.hand-card[data-resource="cards"]   { --res-r: 128; --res-g: 0;   --res-b: 128; }
+
+/* One-time use: consumable + exhaust → 30% opacity (translucent) */
 .hand-card.hand-card-consumable {
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.05) 0%,
-    rgba(255, 255, 255, 0.10) 100%
+    rgba(var(--res-r), var(--res-g), var(--res-b), 0.20) 0%,
+    rgba(var(--res-r), var(--res-g), var(--res-b), 0.30) 100%
   );
-  backdrop-filter: blur(2px);
-  border: 2px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(3px);
+  border: 2px solid rgba(var(--res-r), var(--res-g), var(--res-b), 0.25);
 }
 
-/* Exhaust - 35% opacity (semi-transparent) */
 .hand-card.hand-card-exhaust {
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.20) 0%,
-    rgba(255, 255, 255, 0.30) 100%
+    rgba(var(--res-r), var(--res-g), var(--res-b), 0.22) 0%,
+    rgba(var(--res-r), var(--res-g), var(--res-b), 0.30) 100%
   );
-  backdrop-filter: blur(4px);
-  border: 2px solid rgba(255, 255, 255, 0.30);
+  backdrop-filter: blur(3px);
+  border: 2px solid rgba(var(--res-r), var(--res-g), var(--res-b), 0.28);
 }
 
-/* Power - 55% opacity (moderately transparent) */
+/* Reusable: power, gated, core → 50% opacity (more solid) */
 .hand-card.hand-card-power {
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.40) 0%,
-    rgba(255, 255, 255, 0.55) 100%
+    rgba(var(--res-r), var(--res-g), var(--res-b), 0.40) 0%,
+    rgba(var(--res-r), var(--res-g), var(--res-b), 0.50) 100%
   );
-  backdrop-filter: blur(6px);
-  border: 2px solid rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(5px);
+  border: 2px solid rgba(var(--res-r), var(--res-g), var(--res-b), 0.40);
 }
 
-/* Gated (Ammo/Fatigue) - 45% opacity */
 .hand-card.hand-card-gated {
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.35) 0%,
-    rgba(255, 255, 255, 0.45) 100%
+    rgba(var(--res-r), var(--res-g), var(--res-b), 0.38) 0%,
+    rgba(var(--res-r), var(--res-g), var(--res-b), 0.48) 100%
   );
   backdrop-filter: blur(5px);
-  border: 2px solid rgba(255, 255, 255, 0.40);
+  border: 2px solid rgba(var(--res-r), var(--res-g), var(--res-b), 0.38);
 }
 
-/* Persistent Core - 85% opacity (nearly opaque) */
 .hand-card.hand-card-core {
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.75) 0%,
-    rgba(255, 255, 255, 0.90) 100%
+    rgba(var(--res-r), var(--res-g), var(--res-b), 0.42) 0%,
+    rgba(var(--res-r), var(--res-g), var(--res-b), 0.52) 100%
   );
-  backdrop-filter: blur(8px);
-  border: 2px solid rgba(255, 255, 255, 0.80);
+  backdrop-filter: blur(6px);
+  border: 2px solid rgba(var(--res-r), var(--res-g), var(--res-b), 0.45);
 }
 
 /* Card hover effect */
@@ -383,41 +399,63 @@
   }
 }
 
-/* Quality border colors (overrides transparency borders) */
+/* ============================================================
+   Card Frame: Rarity border + purple-synergy gradient glow
+
+   Frame color = quality/rarity
+   Glow = purple base (#800080) blending toward rarity color
+   Higher rarity → stronger glow
+   ============================================================ */
+
 .hand-card[data-quality="cracked"] {
   border-color: #666 !important;
+  box-shadow: 0 0 4px rgba(128, 0, 128, 0.1);
 }
 
 .hand-card[data-quality="worn"] {
   border-color: #999 !important;
+  box-shadow: 0 0 5px rgba(128, 0, 128, 0.15);
 }
 
 .hand-card[data-quality="standard"] {
   border-color: #fff !important;
+  box-shadow: 0 0 6px rgba(128, 0, 128, 0.2);
 }
 
 .hand-card[data-quality="fine"] {
   border-color: #4fc3f7 !important;
+  box-shadow: 0 0 8px rgba(79, 195, 247, 0.3), 0 0 16px rgba(128, 0, 128, 0.2);
 }
 
 .hand-card[data-quality="superior"] {
   border-color: #ffeb3b !important;
+  box-shadow: 0 0 8px rgba(255, 235, 59, 0.3), 0 0 18px rgba(128, 0, 128, 0.25);
 }
 
 .hand-card[data-quality="elite"] {
   border-color: #ff9800 !important;
+  box-shadow: 0 0 10px rgba(255, 152, 0, 0.35), 0 0 20px rgba(128, 0, 128, 0.3);
 }
 
 .hand-card[data-quality="masterwork"] {
   border-color: #ffd700 !important;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.4), 0 0 24px rgba(128, 0, 128, 0.35);
 }
 
 .hand-card[data-quality="near_perfect"] {
   border-color: #8bc34a !important;
+  box-shadow: 0 0 14px rgba(139, 195, 74, 0.4), 0 0 28px rgba(128, 0, 128, 0.4);
 }
 
 .hand-card[data-quality="perfect"] {
   border-color: #9c27b0 !important;
+  box-shadow: 0 0 16px rgba(156, 39, 176, 0.5), 0 0 32px rgba(128, 0, 128, 0.5);
+  animation: perfect-card-pulse 2s ease-in-out infinite;
+}
+
+@keyframes perfect-card-pulse {
+  0%, 100% { box-shadow: 0 0 16px rgba(156, 39, 176, 0.5), 0 0 32px rgba(128, 0, 128, 0.5); }
+  50% { box-shadow: 0 0 20px rgba(156, 39, 176, 0.7), 0 0 40px rgba(128, 0, 128, 0.6); }
 }
 
 /* ============================================================
@@ -452,6 +490,25 @@
   justify-content: center;
   background: rgba(0, 0, 0, 0.2);
   padding: 10px;
+  position: relative;
+}
+
+/* Emoji header glow by card type: offensive/defensive/environmental */
+.hand-card[data-card-type="attack"] .hand-card-artwork,
+.hand-card[data-card-type="offensive"] .hand-card-artwork {
+  background: radial-gradient(ellipse at center, rgba(255, 68, 68, 0.25) 0%, rgba(0, 0, 0, 0.2) 70%);
+}
+
+.hand-card[data-card-type="defense"] .hand-card-artwork,
+.hand-card[data-card-type="defensive"] .hand-card-artwork,
+.hand-card[data-card-type="shield"] .hand-card-artwork {
+  background: radial-gradient(ellipse at center, rgba(68, 68, 255, 0.25) 0%, rgba(0, 0, 0, 0.2) 70%);
+}
+
+.hand-card[data-card-type="environmental"] .hand-card-artwork,
+.hand-card[data-card-type="utility"] .hand-card-artwork,
+.hand-card[data-card-type="support"] .hand-card-artwork {
+  background: radial-gradient(ellipse at center, rgba(255, 170, 0, 0.25) 0%, rgba(0, 0, 0, 0.2) 70%);
 }
 
 .hand-card-emoji {
@@ -476,7 +533,7 @@
   text-overflow: ellipsis;
 }
 
-/* Effect icons */
+/* Effect icons (legacy) */
 .hand-card-effects {
   position: absolute;
   bottom: 32px;
@@ -496,6 +553,41 @@
   align-items: center;
   justify-content: center;
   font-size: 10px;
+}
+
+/* Passive effect emoji rows — positioned below artwork, above card name */
+.hand-card-passives {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0 4px;
+  min-height: 0;
+}
+
+/* Aggressive passives (damage to enemy): red-tinted bar */
+.hand-card-passive-row {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  height: 12px;
+  overflow: hidden;
+}
+
+.hand-card-passive-row.passive-aggressive {
+  background: rgba(255, 68, 68, 0.15);
+  border-radius: 2px;
+}
+
+/* Self-inflicted passives (cost to self): amber-tinted bar */
+.hand-card-passive-row.passive-self {
+  background: rgba(255, 170, 0, 0.15);
+  border-radius: 2px;
+}
+
+.hand-card-passive-emoji {
+  font-size: 8px;
+  line-height: 1;
+  opacity: 0.85;
 }
 
 /* Selection badge */
@@ -642,51 +734,69 @@
 
 .hand-card-tooltip {
   position: fixed;
-  background: rgba(10, 10, 10, 0.98);
-  border: 2px solid #1cff9b;
-  border-radius: 8px;
-  padding: 12px 16px;
-  max-width: 280px;
+  background: rgba(10, 5, 20, 0.75);
+  border: 1px solid rgba(128, 0, 128, 0.6);
+  border-radius: 6px;
+  padding: 8px 12px;
+  max-width: 240px;
   z-index: 3000;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8), 0 0 20px rgba(28, 255, 155, 0.3);
+  box-shadow: 0 2px 12px rgba(128, 0, 128, 0.25);
   pointer-events: none;
   font-family: 'Courier New', monospace;
+  backdrop-filter: blur(6px);
 }
 
 .tooltip-title {
-  font-size: 14px;
+  font-size: 11px;
   font-weight: bold;
-  color: #1cff9b;
-  margin-bottom: 8px;
+  color: #e0d0ff;
+  margin-bottom: 4px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .tooltip-description {
-  font-size: 12px;
-  color: #fff;
-  line-height: 1.4;
-  margin-bottom: 10px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.3;
+  margin-bottom: 6px;
 }
 
 .tooltip-stats {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  border-top: 1px solid rgba(28, 255, 155, 0.3);
-  padding-top: 8px;
+  gap: 2px;
+  border-top: 1px solid rgba(128, 0, 128, 0.3);
+  padding-top: 4px;
 }
 
 .tooltip-stat {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
-  color: #999;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .tooltip-stat span {
-  color: #1cff9b;
   font-weight: bold;
+}
+
+/* Resource cost color in tooltip */
+.tooltip-stat.tooltip-resource-cost span {
+  /* color set inline via JS from RESOURCE_COLORS */
+}
+
+.tooltip-card-id {
+  font-size: 9px;
+  color: rgba(128, 0, 128, 0.5);
+  margin-top: 4px;
+  text-align: right;
+}
+
+.tooltip-tags {
+  font-size: 9px;
+  color: rgba(200, 160, 255, 0.7);
+  margin-top: 3px;
 }
 
 /* ============================================================

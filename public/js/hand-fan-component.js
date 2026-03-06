@@ -141,6 +141,7 @@ const HandFanComponent = (function () {
    * Hide the hand fan
    */
   function hide() {
+    _hideCardTooltip(); // Kill any lingering tooltip on combat cleanup
     _fanContainer.classList.add('hand-fan-disappear');
 
     setTimeout(function() {
@@ -204,6 +205,7 @@ const HandFanComponent = (function () {
   function minimize() {
     if (!_fanContainer) return;
 
+    _hideCardTooltip(); // Kill tooltip before collapsing
     // Reset z-index layering so next show uses default center-on-top
     _topCardIndex = -1;
 
@@ -1247,6 +1249,24 @@ const HandFanComponent = (function () {
    * @param {Object} card - Card data
    * @param {HTMLElement} cardEl - Card element
    */
+  // Resource color map from RESOURCE_COLOR_SYSTEM.md
+  var RESOURCE_COLORS = {
+    'HP': '#FF6B9D', 'hp': '#FF6B9D',
+    'Energy': '#00D4FF', 'energy': '#00D4FF',
+    'Focus': '#FFF9B0', 'focus': '#FFF9B0',
+    'Battery': '#00FFA6', 'battery': '#00FFA6',
+    'Fatigue': '#A0522D', 'fatigue': '#A0522D',
+    'Ammo': '#DA70D6', 'ammo': '#DA70D6',
+    'Currency': '#FFFF00', 'currency': '#FFFF00',
+    'key_ammo': '#FF8A3D', 'Key Ammo': '#FF8A3D',
+    'Cards': '#800080', 'cards': '#800080'
+  };
+
+  function _getResourceColor(resourceName) {
+    if (!resourceName) return '#808080';
+    return RESOURCE_COLORS[resourceName] || RESOURCE_COLORS[resourceName.toLowerCase()] || '#808080';
+  }
+
   function _showCardTooltip(card, cardEl) {
     // Create tooltip element if it doesn't exist
     var tooltip = document.getElementById('hand-card-tooltip');
@@ -1257,7 +1277,7 @@ const HandFanComponent = (function () {
       document.body.appendChild(tooltip);
     }
 
-    // Build tooltip content
+    // Build CHH-relevant tooltip content
     var html = '';
     html += '<div class="tooltip-title">' + (card.name || 'Unknown Card') + '</div>';
 
@@ -1266,23 +1286,51 @@ const HandFanComponent = (function () {
     }
 
     html += '<div class="tooltip-stats">';
-    if (card.cost !== undefined) {
-      html += '<div class="tooltip-stat">Cost: <span>' + card.cost + '</span></div>';
-    }
-    if (card.damage !== undefined) {
-      html += '<div class="tooltip-stat">Damage: <span>' + card.damage + '</span></div>';
-    }
+
+    // Quality + rarity
     if (card.qualityName) {
-      html += '<div class="tooltip-stat">Quality: <span>' + card.qualityName + '</span></div>';
+      var qColor = (typeof SharedCardRenderer !== 'undefined' && SharedCardRenderer.getQualityBorderColor)
+        ? SharedCardRenderer.getQualityBorderColor(card.qualityName)
+        : '#fff';
+      html += '<div class="tooltip-stat">Quality: <span style="color:' + qColor + '">' + card.qualityName + '</span></div>';
     }
+
+    // Resource cost (color-coded)
+    var costResource = card.costResource || card.resource || card.spendResource || null;
+    if (card.cost !== undefined && card.cost !== null) {
+      var rColor = _getResourceColor(costResource);
+      html += '<div class="tooltip-stat tooltip-resource-cost">Cost: <span style="color:' + rColor + '">' + card.cost + (costResource ? ' ' + costResource : '') + '</span></div>';
+    }
+
+    // Damage
+    if (card.damage !== undefined) {
+      html += '<div class="tooltip-stat">Dmg: <span style="color:#FF6B9D">' + card.damage + '</span></div>';
+    }
+
+    // Lifecycle type
+    var lifecycle = (typeof SharedCardRenderer !== 'undefined' && SharedCardRenderer.getCardLifecycle)
+      ? SharedCardRenderer.getCardLifecycle(card)
+      : (card.lifecycleType || card.lifecycle || 'core');
+    html += '<div class="tooltip-stat">Use: <span>' + lifecycle + '</span></div>';
+
     html += '</div>';
+
+    // Synergy tags
+    if (card.tags && card.tags.length > 0) {
+      html += '<div class="tooltip-tags">' + card.tags.join(' · ') + '</div>';
+    }
+
+    // CardRef ID
+    if (card.id) {
+      html += '<div class="tooltip-card-id">' + card.id + '</div>';
+    }
 
     tooltip.innerHTML = html;
 
     // Position tooltip near card
     var rect = cardEl.getBoundingClientRect();
     tooltip.style.left = (rect.left + rect.width / 2) + 'px';
-    tooltip.style.top = (rect.top - 10) + 'px';
+    tooltip.style.top = (rect.top - 6) + 'px';
     tooltip.style.transform = 'translate(-50%, -100%)';
     tooltip.style.display = 'block';
   }

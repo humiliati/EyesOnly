@@ -142,6 +142,18 @@ var SharedCardRenderer = (function() {
       cardEl.dataset.quality = quality;
     }
 
+    // Resource spend color (for background tint via CSS)
+    var costResource = card.costResource || card.resource || card.spendResource || '';
+    if (costResource) {
+      cardEl.dataset.resource = costResource.toLowerCase();
+    }
+
+    // Card type for emoji header glow (offensive/defensive/environmental)
+    var cardType = card.type || card.cardType || '';
+    if (cardType) {
+      cardEl.dataset.cardType = cardType.toLowerCase();
+    }
+
     // Resource validation (optional — skip for vault/backup preview)
     if (context === 'combat' || context === 'nch-hand') {
       var affordability = validateCardAffordability(card);
@@ -189,9 +201,51 @@ var SharedCardRenderer = (function() {
       cardName = abbreviateCardName(cardName, maxLen);
     }
 
+    // Passive effect emoji rows (between artwork and name)
+    var aggressiveEmojis = [];
+    var selfEmojis = [];
+    if (card.passiveEffects && card.passiveEffects.length > 0) {
+      for (var pe = 0; pe < card.passiveEffects.length; pe++) {
+        var eff = card.passiveEffects[pe];
+        if (eff.target === 'enemy' || eff.target === 'aggressive') {
+          aggressiveEmojis.push(eff.emoji || '⚔️');
+        } else if (eff.target === 'self' || eff.target === 'self-inflicted') {
+          selfEmojis.push(eff.emoji || '💔');
+        }
+      }
+    }
+    // Also check tags for common passive indicators
+    if (card.tags) {
+      var tagArr = card.tags;
+      for (var ti = 0; ti < tagArr.length; ti++) {
+        var tag = tagArr[ti];
+        if (tag === 'burn' || tag === 'poison' || tag === 'bleed') aggressiveEmojis.push({burn:'🔥',poison:'☠️',bleed:'💥'}[tag]);
+        if (tag === 'recoil' || tag === 'fatigue_cost') selfEmojis.push({recoil:'❤️‍🔥',fatigue_cost:'📉'}[tag]);
+      }
+    }
+
+    if (aggressiveEmojis.length > 0 || selfEmojis.length > 0) {
+      html += '<div class="hand-card-passives">';
+      if (aggressiveEmojis.length > 0) {
+        html += '<div class="hand-card-passive-row passive-aggressive">';
+        for (var ae = 0; ae < aggressiveEmojis.length && ae < 4; ae++) {
+          html += '<span class="hand-card-passive-emoji">' + aggressiveEmojis[ae] + '</span>';
+        }
+        html += '</div>';
+      }
+      if (selfEmojis.length > 0) {
+        html += '<div class="hand-card-passive-row passive-self">';
+        for (var se = 0; se < selfEmojis.length && se < 4; se++) {
+          html += '<span class="hand-card-passive-emoji">' + selfEmojis[se] + '</span>';
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+
     html += '<div class="hand-card-name">' + cardName + '</div>';
 
-    // Effect icons
+    // Effect icons (legacy)
     if (card.effects && card.effects.length > 0) {
       html += '<div class="hand-card-effects">';
       var effects = card.effects.slice(0, 3);
