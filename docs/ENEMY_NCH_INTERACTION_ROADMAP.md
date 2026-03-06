@@ -152,21 +152,21 @@ On trigger:
 
 **Files touched:**
 - Modified: `public/js/enemy-steal-system.js` — replace instant resolution with interchange open
-- New: `public/js/nch-interchange.js` — manages the side-by-side UI, drag routing, close/confirm
+- New: `public/js/nch-interchange.js` — manages the over under UI, drag routing, close/confirm
 
-### 2.2 — Side-by-Side Layout
+### 2.2 — OVER UNDER Layout shown side by side
 
 ```
 ┌──────────────────────────────────────────────────────┐
 │                  NCH INTERCHANGE                      │
 │                                                       │
-│   ┌─── PLAYER HAND ───┐    ┌─── ENEMY HAND ───┐     │
-│   │ 🃏 🃏 🃏 🃏 🃏     │    │ 🃏 🃏 🃏 ░░      │     │
-│   │ (your cards)       │    │ (their cards)     │     │
+│   ┌─── PLAYER HAND  ───┐    ┌─── ENEMY HAND  ───┐     │
+│   │ 🃏 🃏 🃏 🃏 🃏       │    │ 🃏 🃏 🃏 ░░         │     │
+│   │ (your cards under) │    │ (their cards)     │     │
 │   │                    │    │                   │     │
 │   │ drag FROM here ────│───→│ drop TO here      │     │
 │   │                    │←───│ drag FROM here    │     │
-│   │  ← drop TO here   │    │                   │     │
+│   │  ← drop TO here    │    │                   │     │
 │   └────────────────────┘    └───────────────────┘     │
 │                                                       │
 │   [CONFIRM]                              [CANCEL]     │
@@ -560,7 +560,7 @@ Phase 1 (Enemy Capsule)           Phase 2 (Interchange)           Phase 3 (Comba
 
 1.1 Capsule renderer ──────────→ 2.1 Interchange trigger          3.1 NCH-style combat layout
     │                                 │                                │
-1.2 Capsule interactability ───→ 2.2 Side-by-side layout          3.2 Planted card triggers
+1.2 Capsule interactability ───→ 2.2 Over under layout          3.2 Planted card triggers
     │                                 │                                │
 1.3 plantSlots data ───────────→ 2.3 Steal drag animation ──────→ 3.3 Round refresh
                                       │                                │
@@ -587,7 +587,7 @@ Phase 4 (Player NCH Adjust)      Phase 5 (Items)                 Phase 6 (Polish
 |------|-------|---------|
 | `public/js/enemy-capsule-renderer.js` | 1.1 | Renders joker-stack capsule above enemies on map |
 | `public/css/enemy-capsule.css` | 1.1 | Capsule positioning, joker sizing, interactability states |
-| `public/js/nch-interchange.js` | 2.1 | Side-by-side steal/plant UI overlay |
+| `public/js/nch-interchange.js` | 2.1 | Over-under steal/plant UI overlay |
 | `public/css/nch-interchange.css` | 2.2 | Interchange layout, drag zones, card flight animations |
 
 ## Modified Files Summary
@@ -629,7 +629,7 @@ Phase 4 (Player NCH Adjust)      Phase 5 (Items)                 Phase 6 (Polish
 
 ### After Phase 2:
 - [ ] STEAL command opens interchange overlay (not instant resolve)
-- [ ] Player hand and enemy hand render side-by-side
+- [ ] Player hand and enemy hand render over under
 - [ ] Drag enemy joker → player hand = steal (card transfers)
 - [ ] Drag player card → enemy empty slot = plant (card transfers)
 - [ ] Cannot plant into occupied enemy slots
