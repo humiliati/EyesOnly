@@ -28,7 +28,16 @@ var PlayerInteractionSystem = (function() {
     if (tile === ctx.TILES.EXIT || tile === ctx.TILES.DOOR) {
       if (_handleDoorTile(x, y, tile, ctx)) return;
     } else {
-      ctx.clearDoorSpawnProtect();
+      // BUG 3 FIX: Decrement the step-count cooldown instead of clearing immediately.
+      // This prevents the door from being re-triggered the moment the player steps off
+      // and immediately steps back on (e.g., when spawned 1 tile away from a door).
+      var dsp = ctx.getDoorSpawnProtect();
+      if (dsp && dsp.stepsRemaining > 0) {
+        dsp.stepsRemaining--;
+        if (dsp.stepsRemaining <= 0) ctx.clearDoorSpawnProtect();
+      } else {
+        ctx.clearDoorSpawnProtect();
+      }
     }
 
     // Shop tile
@@ -76,10 +85,10 @@ var PlayerInteractionSystem = (function() {
    * Handle door/exit tile interaction. Returns true if a transition started.
    */
   function _handleDoorTile(x, y, tile, ctx) {
-    // Spawn protection
+    // Spawn protection: still active if the player is on the protected tile AND steps remain.
     try {
       var dsp = ctx.getDoorSpawnProtect();
-      if (dsp && dsp.x === x && dsp.y === y) {
+      if (dsp && dsp.x === x && dsp.y === y && dsp.stepsRemaining > 0) {
         return false;
       }
     } catch (e0) {}

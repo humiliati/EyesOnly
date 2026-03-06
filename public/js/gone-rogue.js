@@ -127,8 +127,9 @@ var GoneRogue = (function () {
   // When true, the next floor generation should spawn near _lastExitPos (used for retreat/backtracking).
   var _spawnFromLastExitPos = null; // 'advance' | 'retreat' | null
   var _lastDoorHintAtMs = 0;
-  // Door spawn protection: if we spawn directly on a door tile, ignore activation until the player steps off.
-  var _doorSpawnProtect = null; // { x, y }
+  // Door spawn protection: if we spawn directly on a door tile, ignore activation until the player
+  // has taken enough steps away (stepsRemaining cooldown) to prevent accidental re-trigger.
+  var _doorSpawnProtect = null; // { x, y, stepsRemaining: N }
 
   // Forest biome state
   var _forestBuildings = []; // Village buildings {x, y, emoji} for visual overlay
