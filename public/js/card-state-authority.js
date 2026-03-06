@@ -528,6 +528,12 @@ var CardStateAuthority = (function() {
       // If dupe didn't fire, fall through to normal draw
     }
 
+    // Guard: don't draw BLVCK (ACT-000) from backup — it's a virtual fallback
+    if (backup[selectedIndex] && backup[selectedIndex].id === 'ACT-000') {
+      _emit('draw:rejected', { reason: 'blvck_in_backup', index: selectedIndex });
+      return false;
+    }
+
     // Execute the draw (normal, non-printer)
     var success = moveBackupToHand(selectedIndex);
     if (success) {
@@ -540,6 +546,12 @@ var CardStateAuthority = (function() {
         hand: getHand(),
         backup: getBackup()
       });
+
+      // After drawing a real card, re-evaluate BLVCK state.
+      // If the player now has a playable card, BLVCK should vanish.
+      if (typeof checkBlvckState === 'function') {
+        checkBlvckState();
+      }
     }
     return success;
   }

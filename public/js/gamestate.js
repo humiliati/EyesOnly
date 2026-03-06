@@ -832,6 +832,8 @@ const GAMESTATE = (function () {
 
     var ref = _state.cardsInHand[idx];
     if (!ref || !ref.id) return { success: false };
+    // Never move BLVCK (ACT-000) to backup — it's a virtual fallback
+    if (ref.id === 'ACT-000') return { success: false, reason: 'blvck_not_movable' };
 
     // Insert at top of backup deck (newest) — always qty: 1
     _state.backupCards.unshift({ id: ref.id, qty: 1, meta: ref.meta || null });
@@ -2710,7 +2712,21 @@ const GAMESTATE = (function () {
     if (!Array.isArray(_state.cardsInHand) || _state.cardsInHand.length === 0) {
       return { success: false, reason: 'hand_empty' };
     }
-    var old = _state.cardsInHand.pop();
+    // Never push BLVCK (ACT-000) to backup — it's a virtual fallback, not a real card
+    var lastIdx = _state.cardsInHand.length - 1;
+    if (_state.cardsInHand[lastIdx] && _state.cardsInHand[lastIdx].id === 'ACT-000') {
+      // Find the oldest NON-BLVCK card instead
+      var found = -1;
+      for (var bi = _state.cardsInHand.length - 1; bi >= 0; bi--) {
+        if (_state.cardsInHand[bi] && _state.cardsInHand[bi].id !== 'ACT-000') {
+          found = bi;
+          break;
+        }
+      }
+      if (found < 0) return { success: false, reason: 'only_blvck_in_hand' };
+      lastIdx = found;
+    }
+    var old = _state.cardsInHand.splice(lastIdx, 1)[0];
     if (!Array.isArray(_state.backupCards)) _state.backupCards = [];
     _state.backupCards.unshift({ id: old.id, qty: 1, meta: old.meta || null });
     var maxB = _state.maxBackupSlots || 25;
@@ -2725,6 +2741,8 @@ const GAMESTATE = (function () {
 
   function insertCardAtBackupTop(ref) {
     if (!ref || !ref.id) return { success: false };
+    // Never insert BLVCK (ACT-000) into backup — it's a virtual fallback, not a real card
+    if (ref.id === 'ACT-000') return { success: false, reason: 'blvck_not_insertable' };
     if (!Array.isArray(_state.backupCards)) _state.backupCards = [];
     _state.backupCards.unshift({ id: ref.id, qty: 1, meta: ref.meta || null });
     var maxB = _state.maxBackupSlots || 25;
