@@ -112,6 +112,12 @@ This mimics industrial sequential function charts.
 
 4️⃣ Core Node Types (GRAFCET Style)
 
+> **Door Type Symbols:** When the visual node editor phase arrives, the World Building Engine should print the following symbols inside door-type nodes to distinguish their purpose at a glance:
+> - **Return floor door:** `↩️` (return arrow)
+> - **Advance floor door:** `↪️` (forward arrow)
+> - **Building entrance/exit door:** `↔️` (`<->` arrow)
+> - **Inside of buildings:** return/advance floor doors use `↩️` / `↪️` respectively; the exit building door uses `↔️`
+
 Your system should support:
 
 🟩 Step Node (Floor State)
