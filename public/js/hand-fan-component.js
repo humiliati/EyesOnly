@@ -32,6 +32,25 @@ const HandFanComponent = (function () {
   // DOM elements
   var _fanContainer = null;
 
+  // Tooltip hover-dwell state (desktop only: 0.5s dwell with <8px movement)
+  var _tooltipDwell = {
+    timer: null,
+    startX: 0,
+    startY: 0,
+    moveThreshold: 8,    // px — movement beyond this resets the dwell
+    dwellMs: 500,        // ms before tooltip unrolls
+    activeCard: null,     // cardEl currently showing tooltip
+    moveHandler: null     // reference for cleanup
+  };
+
+  // HTML5-drag STR combat minimize state
+  var _html5DragCollapse = {
+    active: false,    // true while an HTML5 drag is in progress
+    collapsed: false, // true if we minimized the STR window during this drag
+    outsideMs: 0,     // timestamp when pointer first exited STR window
+    dwellThreshold: 400 // ms the pointer must stay outside before we minimize
+  };
+
   // Configuration
   var _maxVisibleCards = 5;
   var _cardOverlapPercent = 30; // 30% overlap for fan effect
@@ -1090,6 +1109,11 @@ const HandFanComponent = (function () {
     var cardWrapper = cardEl.parentElement;
     if (!cardWrapper) return;
     cardWrapper.addEventListener('dragstart', function(e) {
+      // Track HTML5 drag for STR window auto-minimize
+      _html5DragCollapse.active = true;
+      _html5DragCollapse.collapsed = false;
+      _html5DragCollapse.outsideMs = 0;
+
       // Check if shop is open for sell operations
       var isShopOpen = (typeof ShopSystem !== 'undefined' && ShopSystem.isOpen && ShopSystem.isOpen());
 
@@ -1109,6 +1133,40 @@ const HandFanComponent = (function () {
       }
     });
 
+    // During HTML5 drag, check if pointer exits STR combat window
+    // and auto-minimize after a dwell threshold so player can reach debrief feed
+    cardWrapper.addEventListener('drag', function(e) {
+      if (!_html5DragCollapse.active || _html5DragCollapse.collapsed) return;
+      if (_mode !== 'combat') return;
+
+      // HTML5 drag events sometimes report 0,0 when off-screen; ignore those
+      if (e.clientX === 0 && e.clientY === 0) return;
+
+      var win = document.getElementById('str-combat-window');
+      if (!win) return;
+      var rect = win.getBoundingClientRect();
+
+      var inside = (e.clientX >= rect.left && e.clientX <= rect.right &&
+                    e.clientY >= rect.top && e.clientY <= rect.bottom);
+
+      if (inside) {
+        // Reset dwell timer when back inside
+        _html5DragCollapse.outsideMs = 0;
+      } else {
+        var now = Date.now();
+        if (!_html5DragCollapse.outsideMs) {
+          _html5DragCollapse.outsideMs = now;
+        } else if (now - _html5DragCollapse.outsideMs >= _html5DragCollapse.dwellThreshold) {
+          // Pointer dwelled outside long enough — minimize
+          if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.minimize === 'function' &&
+              typeof STRCombatWindow.isMinimized === 'function' && !STRCombatWindow.isMinimized()) {
+            STRCombatWindow.minimize();
+            _html5DragCollapse.collapsed = true;
+          }
+        }
+      }
+    });
+
     cardWrapper.addEventListener('dragend', function(e) {
       cardEl.classList.remove('dragging-sell');
 
@@ -1120,14 +1178,32 @@ const HandFanComponent = (function () {
       } else if (typeof CardDisposalSystem !== 'undefined') {
         CardDisposalSystem.handleDragEnd();
       }
+
+      // Restore STR combat window if we collapsed it during this drag
+      var wasCollapsed = _html5DragCollapse.collapsed;
+      _html5DragCollapse.active = false;
+      _html5DragCollapse.collapsed = false;
+      _html5DragCollapse.outsideMs = 0;
+
+      if (wasCollapsed && typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.maximize === 'function') {
+        // Delay restore slightly so player sees disposal/ground effect feedback
+        setTimeout(function() {
+          try { STRCombatWindow.maximize(); } catch (e4) {}
+        }, 600);
+      }
     });
 
-    // Hover tooltip - show card details immediately on mouseenter
-    cardEl.addEventListener('mouseenter', function() {
-      _showCardTooltip(card, cardEl);
+    // Hover tooltip — desktop only, 0.5s dwell with minimal movement triggers unroll.
+    // Resets if cursor moves significantly. Not mobile-accessible (touch has press-hold).
+    cardEl.addEventListener('mouseenter', function(e) {
+      // Skip on touch devices (coarse pointer)
+      if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return;
+
+      _tooltipDwellStart(card, cardEl, e.clientX, e.clientY);
     });
 
     cardEl.addEventListener('mouseleave', function() {
+      _tooltipDwellCancel();
       _hideCardTooltip();
     });
   }
@@ -1203,12 +1279,80 @@ const HandFanComponent = (function () {
         }
       }
 
+      // Synergy underglow: check if 2+ selected cards share synergy tags
+      _updateSynergyUnderglow(wrappers);
+
       // If fast path succeeded, skip full re-render
       if (patchedOk) return;
     }
 
     // Fallback: full re-render (initial render, or DOM is in unexpected state)
     _renderCards();
+  }
+
+  // Synergy tag → color mapping (used for underglow gradient)
+  var SYNERGY_TAG_COLORS = {
+    'energy_gen':      { r: 0,   g: 212, b: 255 },  // cyan
+    'burst':           { r: 255, g: 68,  b: 68  },   // red
+    'battery_gen':     { r: 0,   g: 255, b: 166 },   // green
+    'tech':            { r: 0,   g: 200, b: 255 },   // blue
+    'fire':            { r: 255, g: 120, b: 0   },   // orange
+    'explosive':       { r: 255, g: 60,  b: 0   },   // red-orange
+    'precision':       { r: 255, g: 249, b: 176 },   // pale yellow
+    'ranged':          { r: 200, g: 200, b: 100 },   // olive
+    'aggressive':      { r: 255, g: 50,  b: 50  },   // aggressive red
+    'combo_starter':   { r: 255, g: 215, b: 0   },   // gold
+    'combo_finisher':  { r: 255, g: 215, b: 0   },   // gold
+    'aoe':             { r: 255, g: 100, b: 0   },   // flame
+    'sustained':       { r: 160, g: 82,  b: 45  },   // brown
+    'covert':          { r: 100, g: 100, b: 180 },   // slate blue
+    'pickpocket':      { r: 180, g: 80,  b: 220 },   // violet
+    'disarm':          { r: 200, g: 200, b: 200 }    // silver
+  };
+
+  /**
+   * Check selected cards for shared synergy tags. If 2+ selected cards
+   * share at least one tag, apply synergy-glow class with the tag's color.
+   */
+  function _updateSynergyUnderglow(wrappers) {
+    // Gather synergy tags from selected cards
+    var selectedTags = {}; // tag → count of selected cards with that tag
+    var synergyColor = null;
+
+    for (var si = 0; si < _selectedCards.length; si++) {
+      var cardIdx = _selectedCards[si];
+      var card = _cards[cardIdx];
+      if (!card) continue;
+      var tags = card.synergyTags || card.tags || [];
+      for (var ti = 0; ti < tags.length; ti++) {
+        var tag = tags[ti];
+        selectedTags[tag] = (selectedTags[tag] || 0) + 1;
+        if (selectedTags[tag] >= 2 && !synergyColor) {
+          // Found a shared tag — use its color
+          synergyColor = SYNERGY_TAG_COLORS[tag] || { r: 128, g: 0, b: 128 };
+        }
+      }
+    }
+
+    // Apply or remove glow from all cards
+    for (var wi = 0; wi < wrappers.length; wi++) {
+      var cardEl = wrappers[wi].querySelector('.hand-card');
+      if (!cardEl) continue;
+      var wIdx = parseInt(wrappers[wi].dataset.cardIndex, 10);
+      var isSelected = _selectedCards.indexOf(wIdx) !== -1;
+
+      if (synergyColor && isSelected) {
+        cardEl.classList.add('hand-card-synergy-glow');
+        cardEl.style.setProperty('--synergy-r', String(synergyColor.r));
+        cardEl.style.setProperty('--synergy-g', String(synergyColor.g));
+        cardEl.style.setProperty('--synergy-b', String(synergyColor.b));
+      } else {
+        cardEl.classList.remove('hand-card-synergy-glow');
+        cardEl.style.removeProperty('--synergy-r');
+        cardEl.style.removeProperty('--synergy-g');
+        cardEl.style.removeProperty('--synergy-b');
+      }
+    }
   }
 
   /**
@@ -1265,6 +1409,60 @@ const HandFanComponent = (function () {
   function _getResourceColor(resourceName) {
     if (!resourceName) return '#808080';
     return RESOURCE_COLORS[resourceName] || RESOURCE_COLORS[resourceName.toLowerCase()] || '#808080';
+  }
+
+  /**
+   * Start tooltip dwell timer. After dwellMs with <moveThreshold movement, tooltip unrolls.
+   */
+  function _tooltipDwellStart(card, cardEl, startX, startY) {
+    _tooltipDwellCancel(); // clear any previous
+
+    _tooltipDwell.startX = startX;
+    _tooltipDwell.startY = startY;
+
+    // Track movement — reset dwell if cursor moves too far
+    function onMove(e) {
+      var dx = e.clientX - _tooltipDwell.startX;
+      var dy = e.clientY - _tooltipDwell.startY;
+      if (Math.sqrt(dx * dx + dy * dy) > _tooltipDwell.moveThreshold) {
+        // Moved too far — reset dwell, roll back if already showing
+        _tooltipDwellCancel();
+        _hideCardTooltip();
+        // Restart dwell from new position
+        _tooltipDwell.startX = e.clientX;
+        _tooltipDwell.startY = e.clientY;
+        _tooltipDwell.timer = setTimeout(function() {
+          _tooltipDwell.timer = null;
+          _showCardTooltip(card, cardEl);
+        }, _tooltipDwell.dwellMs);
+        _tooltipDwell.moveHandler = onMove;
+        // Keep the listener active (it's already attached)
+      }
+    }
+
+    _tooltipDwell.moveHandler = onMove;
+    cardEl.addEventListener('mousemove', onMove);
+
+    _tooltipDwell.timer = setTimeout(function() {
+      _tooltipDwell.timer = null;
+      _tooltipDwell.activeCard = cardEl;
+      _showCardTooltip(card, cardEl);
+    }, _tooltipDwell.dwellMs);
+  }
+
+  /**
+   * Cancel tooltip dwell timer and detach mousemove listener.
+   */
+  function _tooltipDwellCancel() {
+    if (_tooltipDwell.timer) {
+      clearTimeout(_tooltipDwell.timer);
+      _tooltipDwell.timer = null;
+    }
+    if (_tooltipDwell.moveHandler && _tooltipDwell.activeCard) {
+      _tooltipDwell.activeCard.removeEventListener('mousemove', _tooltipDwell.moveHandler);
+    }
+    _tooltipDwell.moveHandler = null;
+    _tooltipDwell.activeCard = null;
   }
 
   function _showCardTooltip(card, cardEl) {
@@ -1327,22 +1525,42 @@ const HandFanComponent = (function () {
 
     tooltip.innerHTML = html;
 
-    // Position tooltip near card
+    // Position tooltip above card, centered
     var rect = cardEl.getBoundingClientRect();
     tooltip.style.left = (rect.left + rect.width / 2) + 'px';
     tooltip.style.top = (rect.top - 6) + 'px';
-    tooltip.style.transform = 'translate(-50%, -100%)';
+    tooltip.style.transform = 'translate(-50%, -100%) scaleY(0)';
+    tooltip.style.transformOrigin = 'bottom center';
     tooltip.style.display = 'block';
+    tooltip.style.opacity = '0';
+
+    // Force reflow then trigger unroll
+    void tooltip.offsetWidth;
+    tooltip.style.transition = 'transform 0.2s ease-out, opacity 0.15s ease-out';
+    tooltip.style.transform = 'translate(-50%, -100%) scaleY(1)';
+    tooltip.style.opacity = '1';
+
+    _tooltipDwell.activeCard = cardEl;
   }
 
   /**
-   * Hide card tooltip
+   * Hide card tooltip with roll-back animation
    */
   function _hideCardTooltip() {
+    _tooltipDwellCancel();
+
     var tooltip = document.getElementById('hand-card-tooltip');
-    if (tooltip) {
-      tooltip.style.display = 'none';
-    }
+    if (!tooltip || tooltip.style.display === 'none') return;
+
+    // Roll back up
+    tooltip.style.transition = 'transform 0.15s ease-in, opacity 0.12s ease-in';
+    tooltip.style.transform = 'translate(-50%, -100%) scaleY(0)';
+    tooltip.style.opacity = '0';
+
+    // Remove after animation
+    setTimeout(function() {
+      if (tooltip) tooltip.style.display = 'none';
+    }, 160);
   }
 
   /**

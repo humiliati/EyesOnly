@@ -179,7 +179,7 @@ body.str-combat-minimized-state::before {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  padding: 8px 12px;
   background: linear-gradient(135deg, #1a1506 0%, #2a1a0a 100%);
   border-bottom: 2px solid #ffaa00;
 }
@@ -221,10 +221,10 @@ body.str-combat-minimized-state::before {
 
 /* Window Body */
 .str-window-body {
-  padding: 20px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
   align-items: center;
 }
 
@@ -233,7 +233,7 @@ body.str-combat-minimized-state::before {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   width: 100%;
 }
 
@@ -367,7 +367,7 @@ body.str-combat-minimized-state::before {
 
 /* Window Footer */
 .str-window-footer {
-  padding: 12px 16px;
+  padding: 8px 12px;
   background: rgba(0, 0, 0, 0.3);
   border-top: 2px solid #ffaa00;
   display: flex;
@@ -585,7 +585,7 @@ body.str-combat-minimized-state::before {
   }
 
   .str-window-header {
-    padding: 10px 12px;
+    padding: 6px 10px;
   }
 
   .str-window-title {
@@ -599,8 +599,8 @@ body.str-combat-minimized-state::before {
   }
 
   .str-window-body {
-    padding: 15px;
-    gap: 15px;
+    padding: 10px;
+    gap: 10px;
   }
 
   .str-combatant-emoji {

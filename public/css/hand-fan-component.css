@@ -284,6 +284,45 @@
   border: 2px solid rgba(var(--res-r), var(--res-g), var(--res-b), 0.45);
 }
 
+/* ============================================================
+   Purple Underglow System
+   Default: 2px purple glow on all cards
+   Selected: 4px intensified
+   Synergy combo: 5px animated gradient (purple + synergy colors)
+   ============================================================ */
+
+/* Default 2px purple underglow — applied as box-shadow directly on .hand-card
+   (box-shadow is never clipped by overflow:hidden, unlike pseudo-elements) */
+.hand-card {
+  box-shadow: 0 0 2px rgba(128, 0, 128, 0.35), 0 0 4px rgba(128, 0, 128, 0.2);
+}
+
+/* Synergy combo: 5px with animated shifting colors.
+   JS sets --synergy-r, --synergy-g, --synergy-b on the card when combo detected */
+.hand-card.hand-card-synergy-glow {
+  animation: synergy-underglow-pulse 2s ease-in-out infinite, synergy-underglow-shift 2s ease-in-out infinite;
+}
+
+@keyframes synergy-underglow-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 5px rgba(128, 0, 128, 0.5),
+      0 0 8px rgba(var(--synergy-r, 128), var(--synergy-g, 0), var(--synergy-b, 128), 0.25),
+      0 0 12px rgba(var(--synergy-r, 128), var(--synergy-g, 0), var(--synergy-b, 128), 0.15);
+  }
+  50% {
+    box-shadow:
+      0 0 6px rgba(var(--synergy-r, 128), var(--synergy-g, 0), var(--synergy-b, 128), 0.5),
+      0 0 10px rgba(128, 0, 128, 0.4),
+      0 0 16px rgba(var(--synergy-r, 128), var(--synergy-g, 0), var(--synergy-b, 128), 0.3);
+  }
+}
+
+@keyframes synergy-underglow-shift {
+  0%, 100% { filter: hue-rotate(0deg); }
+  50% { filter: hue-rotate(15deg); }
+}
+
 /* Card hover effect */
 .hand-card-wrapper:hover {
   transform: translateY(calc(var(--fan-ty, 0px) - 20px)) rotate(var(--fan-rot, 0deg)) scale(1.05);
@@ -332,12 +371,15 @@
 }
 
 /* Card selected state — single merged rule; transform is handled entirely
-   by the gentle pulse keyframes so there is no competing static transform. */
+   by the gentle pulse keyframes so there is no competing static transform.
+   Includes 4px purple underglow (intensified from default 2px). */
 .hand-card.hand-card-selected {
   border-color: rgba(28, 255, 155, 0.75) !important;
   box-shadow:
     0 0 0 1px rgba(28, 255, 155, 0.25) inset,
-    0 0 18px rgba(28, 255, 155, 0.35) !important;
+    0 0 18px rgba(28, 255, 155, 0.35),
+    0 0 4px rgba(128, 0, 128, 0.55),
+    0 0 8px rgba(128, 0, 128, 0.3) !important;
   animation: card-selected-pulse 2s ease-in-out infinite;
 }
 
@@ -744,6 +786,8 @@
   pointer-events: none;
   font-family: 'Courier New', monospace;
   backdrop-filter: blur(6px);
+  transform-origin: bottom center;
+  /* JS controls display, transform, opacity, transition for unroll/rollback */
 }
 
 .tooltip-title {
