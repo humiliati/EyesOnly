@@ -90,7 +90,7 @@ var TutorialFloors = (function() {
     // Building doors (interactive doors leading to building interiors)
     buildingDoors: [
       { x: 8, y: 5, buildingId: 'BLD-002', targetFloorId: '1.2' },
-      { x: 4, y: 5, buildingId: 'BLD-003', targetFloorId: '0.3' }
+      { x: 4, y: 5, buildingId: 'BLD-003', targetFloorId: '1.3' }
     ],
 
     // Decorations (visual overlay, walkable)
@@ -247,7 +247,7 @@ var TutorialFloors = (function() {
     template: [
       '########################################',
       '#......................................#',
-      '#..P...................................#',
+      '#...................P..................#',
       '#......................................#',
       '#......................................#',
       '#......................................#',
@@ -276,13 +276,15 @@ var TutorialFloors = (function() {
     buildings: [],
 
     decorations: [
-      // Breadcrumb trail toward the key alcove (right side)
-      { x: 15, y: 3, emoji: '🪧', name: 'Hint Sign' },
       { x: 25, y: 4, emoji: '🏮', name: 'Lantern' },
       // Scene cluster: "two rocks and a leaf" framing the Picnic Basket at (18,7)
       { x: 17, y: 7, emoji: '🪨', name: 'Rock' },
       { x: 19, y: 7, emoji: '🪨', name: 'Rock' },
-      { x: 18, y: 6, emoji: '🍃', name: 'Fallen Leaf' }
+      { x: 18, y: 6, emoji: '🍃', name: 'Fallen Leaf' },
+      // Scene cluster: "two ferns and a flower" near lower reward area
+      { x: 8, y: 14, emoji: '🌿', name: 'Fern' },
+      { x: 10, y: 14, emoji: '🌿', name: 'Fern' },
+      { x: 9, y: 13, emoji: '🌸', name: 'Wild Flower' }
     ],
 
     // Single helpful NPC — points player toward key
@@ -322,17 +324,16 @@ var TutorialFloors = (function() {
       { x: 35, y: 4, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
       { x: 32, y: 5, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
       { x: 35, y: 5, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
-      // A couple bonus breakables near spawn for early currency
+      // Breakables near spawn for early currency
       { x: 10, y: 6, emoji: '📦', name: 'Wooden Crate', hp: 2, drops: { currency: [5, 10], cards: 0.3 } },
-      { x: 18, y: 7, emoji: '🧺', name: 'Picnic Basket', hp: 2, drops: { currency: [5, 10], cards: 0.4 } }
+      // Picnic scene framed by decorations at (17,7), (19,7), (18,6)
+      { x: 18, y: 7, emoji: '🧺', name: 'Picnic Basket', hp: 2, drops: { currency: [5, 10], cards: 0.4 } },
+      // Hidden picnic in the lower reward area (scene cluster at 8-10, 13-14)
+      { x: 9, y: 14, emoji: '🧺', name: 'Picnic Basket', hp: 2, drops: { currency: [8, 15], cards: 0.5 } }
     ],
 
-    // Food collectibles for health/fatigue recovery
+    // Interactive items
     interactiveItems: [
-      { x: 5, y: 3, type: 'FOOD', emoji: '🍎', name: 'Fresh Apple',
-        customData: { foodId: 'FOOD_APPLE' } },
-      { x: 20, y: 14, type: 'FOOD', emoji: '☕', name: 'Hot Coffee',
-        customData: { foodId: 'FOOD_COFFEE' } },
       { x: 15, y: 3, type: 'SIGN', emoji: '🪧', name: 'Hint Sign',
         text: 'A barricade blocks the pinch. Break it with normal attacks/projectiles to proceed.' }
     ],
@@ -373,10 +374,10 @@ var TutorialFloors = (function() {
     template: [
       '########################################',
       '#......................................#',
-      '#......................................#',
-      '#......................................#',
-      '#......................................#',
       '#...................P..................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
       '#......................................#',
       '#.............####....####.............#',
       '#.............#..#....#..#.............#',
@@ -389,11 +390,12 @@ var TutorialFloors = (function() {
       '#......................................#',
       '#...................E..................#',
       '#......................................#',
+      '#......................................#',
       '########################################'
     ],
 
-    // Player spawns at the back/entry door near the arrival point
-    player: { x: 20, y: 5 },
+    // Player spawns at top of arena — clear of all wall structures below
+    player: { x: 20, y: 2 },
     // Exit is beyond the key gate + combat gate
     exit: { x: 20, y: 16 },
 
@@ -551,7 +553,7 @@ var TutorialFloors = (function() {
         }
       },
       {
-        x: 8, y: 10,
+        x: 7, y: 12,
         emoji: '📦',
         name: 'Wooden Crate',
         hp: 2,
@@ -751,7 +753,7 @@ var TutorialFloors = (function() {
     enemies: []
   };
   if (typeof InteriorFloors !== 'undefined') {
-    InteriorFloors.registerAuthoredLayout('0.3', SHOP_INTERIOR_LAYOUT);
+    InteriorFloors.registerAuthoredLayout('1.3', SHOP_INTERIOR_LAYOUT);
   }
 
 
@@ -808,16 +810,69 @@ var TutorialFloors = (function() {
     ],
 
     decorations: [
+      // Tavern entrance lanterns
       { x: 12, y: 7, emoji: '🏮', name: 'Lantern' },
-      { x: 18, y: 7, emoji: '🏮', name: 'Lantern' }
+      { x: 18, y: 7, emoji: '🏮', name: 'Lantern' },
+      // Left forest edge — trees lining the road
+      { x: 2, y: 2, emoji: '🌲', name: 'Pine Tree' },
+      { x: 3, y: 3, emoji: '🌳', name: 'Oak Tree' },
+      { x: 2, y: 5, emoji: '🌿', name: 'Fern' },
+      { x: 3, y: 8, emoji: '🍃', name: 'Fallen Leaf' },
+      { x: 2, y: 11, emoji: '🌲', name: 'Pine Tree' },
+      { x: 3, y: 13, emoji: '🌳', name: 'Oak Tree' },
+      { x: 2, y: 15, emoji: '🪨', name: 'Mossy Rock' },
+      // Right forest edge — trees lining the road
+      { x: 36, y: 2, emoji: '🌲', name: 'Pine Tree' },
+      { x: 37, y: 4, emoji: '🌳', name: 'Oak Tree' },
+      { x: 37, y: 6, emoji: '🌿', name: 'Fern' },
+      { x: 37, y: 9, emoji: '🍃', name: 'Fallen Leaf' },
+      { x: 36, y: 12, emoji: '🌲', name: 'Pine Tree' },
+      { x: 37, y: 14, emoji: '🌳', name: 'Oak Tree' },
+      // Scattered road wildflowers
+      { x: 8, y: 12, emoji: '🌸', name: 'Wild Flower' },
+      { x: 25, y: 5, emoji: '🌸', name: 'Wild Flower' },
+      { x: 22, y: 13, emoji: '🌼', name: 'Dandelion' }
     ],
 
     interactiveItems: [
       { x: 17, y: 7, type: 'SIGN', emoji: '🪧', name: 'Tavern Sign', text: 'The Rusty Mug - Travelers Welcome.' }
     ],
 
-    breakables: [],
-    enemies: [],
+    breakables: [
+      // Left forest: picnic hidden behind a bush cluster (scene: tree at 3,3; fern at 2,5)
+      { x: 3, y: 4, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
+      { x: 3, y: 5, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
+      { x: 3, y: 6, emoji: '🧺', name: 'Picnic Basket', hp: 2, drops: { currency: [10, 20], cards: 0.4 } },
+      // Top-right corner: bushes concealing the elite enemy
+      { x: 34, y: 1, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [1, 3] } },
+      { x: 35, y: 1, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [1, 3] } },
+      { x: 36, y: 1, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [1, 3] } },
+      { x: 37, y: 1, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [1, 3] } }
+    ],
+
+    // Elite enemy tucked in the top-right corner behind the bush cluster.
+    // Punching-bag HP for STR-combat playtesting; very weak attack so it's safe to fight early.
+    enemies: [
+      {
+        x: 37,
+        y: 2,
+        emoji: '🐌',
+        name: 'Ancient Snail',
+        hp: 20,
+        maxHp: 20,
+        attack: 1,        // Intentionally 1 — punching-bag design for STR-combat playtesting
+        defense: 0,
+        elite: true,
+        sightRange: 2,
+        patrolType: 'stationary',
+        orientation: 'west',
+        dropTable: {
+          currency: [30, 50],
+          cards: 0.8
+        }
+      }
+    ],
+
     tutorialPickups: [],
     breadcrumbPickups: [],
 
