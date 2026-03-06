@@ -1429,6 +1429,22 @@ const HandFanComponent = (function () {
   }
 
   /**
+   * Return card IDs (not indices) for the currently selected cards.
+   * Used by handleStrTimerExpired to resolve combat without per-card animation.
+   * @returns {Array<string>} Card IDs for selected cards
+   */
+  function getSelectedCardIds() {
+    var ids = [];
+    for (var i = 0; i < _selectedCards.length; i++) {
+      var idx = _selectedCards[i];
+      if (_cards[idx] && _cards[idx].id) {
+        ids.push(_cards[idx].id);
+      }
+    }
+    return ids;
+  }
+
+  /**
    * Clear card selection
    */
   function clearSelection() {
@@ -1690,6 +1706,7 @@ const HandFanComponent = (function () {
     playSelectedCards: playSelectedCards,
     repopulateCards: repopulateCards,
     getSelectedCards: getSelectedCards,
+    getSelectedCardIds: getSelectedCardIds,
     clearSelection: clearSelection,
     refreshAffordability: refreshAffordability,
     updateMiniIndicator: updateMiniIndicator,

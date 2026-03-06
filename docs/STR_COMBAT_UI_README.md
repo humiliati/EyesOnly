@@ -8,41 +8,270 @@ This implementation provides a Hearthstone-style card display system for STR (Si
 2. **Hand Fan Component** - Hearthstone-style card fan with transparency
 3. **Integration Layer** - Connects new components with existing combat system
 
+---
+
+## Architecture
+
+### Combat Cycle (Canonical)
+
+The STR combat loop follows this exact sequence:
+
+```
+A. Combat starts
+   ├─ Pre-combat world mechanics apply (ground effects, ambush detection)
+   ├─ Advantage determined (ambush / neutral / disadvantaged / flanked)
+   └─ Countdown overlay: 3 → 2 → 1 → FIGHT!
+
+B. Hand fan up, timer counting
+   ├─ Player draws 1 optional card from backup deck
+   ├─ Player selects cards from equipped hand (tap to toggle)
+   ├─ Certain cards/items force timer to zero (e.g. Redneck Obliterator)
+   └─ Synergy combos, when fully selected, may also force resolution
+
+C. Timer expires (or forced to zero)
+
+D. Cards slide away (300 ms toward NCH capsule)
+   └─ Combat resolves in engine (player cards applied → enemy response)
+
+E. Attack lunges (~1.2 s)
+   ├─ First attacker lunge: 500 ms (enemy-first unless player-initiated)
+   ├─ 100 ms stagger
+   ├─ Second attacker lunge: 500 ms
+   └─ Impact flash on advantage indicator
+
+F. Enemy intent system updates
+   ├─ Telegraphs enemy next move (expression + weapon change)
+   └─ On enemy death: death expression animates
+
+G. Round advances
+   └─ Round counter increments, state synced
+
+H. Cards slide back (300 ms)
+   └─ Phase resets to 'selecting', timer restarts
+   └─ → Return to B (loop)
+
+I. Combat ends
+   ├─ Victory: enemy death sequence, loot spill
+   └─ Defeat: camera shake → YOU DIED overlay → respawn
+
+J. Post-combat
+   ├─ Enemy loot deposits on map or directly to player deck/inventory
+   │   (depends on enemy type configuration)
+   └─ Ground effects persist or decay per their durations
+```
+
+### Phase State Machine
+
+```
+idle → countdown → selecting ⇄ resolving → post_resolve → selecting
+                                                              ↓
+                                                           (combat end)
+                                                              ↓
+                                                            idle
+```
+
+| Phase | Owner | Description |
+|-------|-------|-------------|
+| `idle` | StrCombatEngine | No active combat |
+| `countdown` | StrCombatEngine | 3-2-1-FIGHT overlay playing |
+| `selecting` | StrCombatEngine | Player choosing cards, timer running |
+| `resolving` | StrCombatEngine | Combat math executing + animation playing |
+| `post_resolve` | StrCombatEngine | Brief pause (600 ms) before next round |
+
+**Dual phase variables:**
+- `_phase` in `str-combat-engine.js` — authoritative engine phase
+- `_strCombatPhase` in `gone-rogue.js` — synced copy via `_syncCombatState()`
+- Both kept in sync via `GoneRogue.setStrCombatPhase()` / `StrCombatEngine.setPhase()`
+
+### Module Inventory
+
+| Module | File | Role |
+|--------|------|------|
+| STR Combat Engine | `str-combat-engine.js` | Phase state machine, hit/damage math, round execution |
+| STR Combat Window | `str-combat-window.js` | Visual HUD: HP bars, timer, intent display, lunge anims |
+| Hand Fan Component | `hand-fan-component.js` | Hearthstone-style card fan, selection, slide anims |
+| Integration Layer | `str-combat-integration.js` | 100 ms poll bridge between engine and UI components |
+| Enemy Intent System | `enemy-intent-system.js` | Kaomoji expressions, weapon intents, threat levels |
+| Card Play System | `card-play-system.js` | Applies card effects (damage, heal, status, AoE, etc.) |
+| Backup Action Container | `backup-action-container.js` | Expendable side-slots during combat |
+| Information Duel Engine | `information-duel-engine.js` | Charges, mutation, momentum, escalation, overload, AI |
+| Ground Effects System | `ground-effects-system.js` | Environmental tiles: fire, ice, water, electricity |
+| Gone Rogue (host) | `gone-rogue.js` | Game state owner, STR combat entry/exit, loot, victory |
+
+### Cross-System Integration Map
+
+```
+                    ┌──────────────────────┐
+                    │   gone-rogue.js      │
+                    │  (game state owner)  │
+                    └──────────┬───────────┘
+                               │
+              ┌────────────────┼────────────────┐
+              │                │                │
+   ┌──────────▼──────────┐ ┌──▼───────────┐ ┌──▼──────────────┐
+   │ str-combat-engine.js│ │card-play-     │ │information-duel-│
+   │ (phase + math)      │ │system.js      │ │engine.js        │
+   └──────────┬──────────┘ │(card effects) │ │(AI adaptation)  │
+              │            └──────┬────────┘ └────────┬────────┘
+              │                   │                   │
+   ┌──────────▼──────────────────────────────────────────────┐
+   │              str-combat-integration.js                   │
+   │              (100 ms poll — UI orchestrator)             │
+   └────┬─────────────┬──────────────────┬───────────────────┘
+        │             │                  │
+   ┌────▼────┐  ┌─────▼──────┐  ┌───────▼────────────┐
+   │STRCombat│  │HandFan     │  │BackupAction         │
+   │Window   │  │Component   │  │Container            │
+   └────┬────┘  └────────────┘  └─────────────────────┘
+        │
+   ┌────▼──────────┐
+   │EnemyIntent    │
+   │System         │
+   └───────────────┘
+```
+
+---
+
+## Combat Formulas
+
+### Hit Chance
+
+```
+baseHitChance = 70%
+
+Modifiers:
+  + (attacker.dex - defender.dex) * 2     (DEX difference)
+  + advantageBonus:
+      ambush:        +40%
+      neutral:         0%
+      disadvantaged: -25%
+      flanked:       -25%
+  + distancePenalty:
+      melee (≤1):     0%
+      close (2-3):   -5%
+      mid   (4-6):  -15%
+      far   (>6):   -35%
+
+Bounds: clamp(5%, 95%)
+Distance = Manhattan: |a.x - b.x| + |a.y - b.y|
+```
+
+### Critical Hit
+
+```
+baseCritThreshold = 95%
+
+Modifiers:
+  ambush:        threshold - 30  (min 5%)   → easier crits
+  flanked:       threshold = 98%            → harder crits
+  disadvantaged: threshold = 98%
+
+Roll ≥ critThreshold → critical hit
+Critical damage multiplier: 1.75×
+```
+
+### Damage Calculation
+
+```
+baseDamage = 2
+
+Modifiers:
+  + (attacker.str - defender.str) / 2    (STR difference)
+  + ambush bonus:       +2
+  + flanked penalty:    -1
+  × critical multiplier: 1.75 (if crit)
+
+Self-damage threshold: 10% of max HP
+Enemy explosive reduction: 60% (min 1 damage)
+```
+
+### Advantage Types
+
+| Advantage | Hit Bonus | Crit Threshold | Damage Mod |
+|-----------|-----------|----------------|------------|
+| Ambush | +40% | -30 (easier) | +2 |
+| Neutral | 0% | 95% | 0 |
+| Disadvantaged | -25% | 98% (harder) | 0 |
+| Flanked | -25% | 98% (harder) | -1 |
+
+---
+
 ## Components
 
 ### 1. STR Combat Window (`str-combat-window.js`)
 
 A centered combat popup that displays:
 - Enemy and player HP bars
-- **Enemy Intent Display** - Face expression + weapon icon (NEW)
+- **Enemy Intent Display** - Face expression + weapon icon
 - Advantage indicator (Ambush, Neutral, Disadvantaged, Flanked)
 - Round-based timer with enemy-type specific durations
 - Minimize/maximize functionality
 
-#### Features
+#### Timer System
 
-**Enemy Intent System (NEW):**
-- Displays enemy face expression (^_^, >__<, O_O, etc.) and weapon icon (🔫, 💣, 🎯, etc.)
-- Shows below enemy emoji with golden shimmer effect
-- Updates dynamically based on enemy state and planned action
-- Minimized view shows expression glyph only
-- Gracefully handles when intent system is unavailable
+| Enemy Type | Base Duration | Scaled Range (floor-adjusted) |
+|------------|--------------|-------------------------------|
+| Standard | 2000 ms | ~1600–2000 ms |
+| Elite | 2500 ms | ~2000–2500 ms |
+| Boss | 3000 ms | ~2400–3000 ms |
+| Quick (rats, insects) | 1500 ms | ~1200–1500 ms |
+| Puzzle | 2800 ms | ~2240–2800 ms |
 
-**Timer System:**
-- Standard enemies: 2.0 seconds
-- Elite enemies: 2.5 seconds
-- Boss enemies: 3.0 seconds
-- Quick enemies (rats, insects): 1.5 seconds
-- Puzzle enemies: 2.8 seconds
+**Floor-based timer scaling (`_scaleTimerForFloor`):**
 
-**Minimization:**
-- Minimize button in header (↓ icon)
-- Animates to 48×48px indicator in top-right corner
+| Tier | Floors | Tier Base | Formula |
+|------|--------|-----------|---------|
+| T1 | 1–10 | 10000 ms | `tierBase * (1 - progress * 0.20)` |
+| T2 | 11–22 | 7000 ms | blended: `targetBase * 0.85 + enemyBase * 0.15` |
+| T3 | 23–30 | 5000 ms | same blend formula |
+
+Timer updates every 100 ms. Warning color (red) triggers at 30% remaining. Bounce attention animation triggers at 50% remaining, repeats every 3500 ms.
+
+#### Countdown Overlay
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| Beat duration | 1000 ms each | Per-number display time |
+| FIGHT! display | 500 ms | Flash duration |
+| Fade-out | 400 ms | Exit animation |
+| Total pre-combat | ~3900 ms | Full countdown sequence |
+
+#### Minimization
+
+- Minimize button in header (arrow icon)
+- Animates to 48×48px indicator in top-right corner (300 ms transition)
 - Red background tint (8% opacity) when minimized
-- Bounce attention animation triggers at 50% timer remaining
-- Tap or hover to maximize
+- Bounce animation at 50% timer remaining
+- Hover-to-maximize delay: 500 ms
+- Tap to maximize immediately
 
-**Window Sizing:**
+#### Death Screen Sequence
+
+| Step | Timing | Description |
+|------|--------|-------------|
+| Camera shake | 500 ms | Screen vibration effect |
+| YOU DIED delay | 300 ms | Pause before overlay |
+| Overlay display | 4000 ms | Auto-dismiss timer |
+| Vignette fade-out | 600 ms | Exit animation |
+
+#### Victory Sequence
+
+Eye cycling animation plays at 120 ms interval during victory. MEDBED restores 50% of max HP.
+
+#### Lunge Animation Parameters
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| Lunge distance | 38 px (Y-axis) | Emoji travel toward opponent |
+| Lunge scale | 1.25× | Scale at peak |
+| Lunge duration | 500 ms | Full lunge cycle |
+| Lunge easing | `ease-in-out` | CSS timing function |
+| Impact flash delay | 175 ms (35%) | Flash trigger point |
+| Impact flash duration | 250 ms | White brightness flash |
+| Hit shake amplitude | 4 px | Horizontal shake on impact |
+
+#### Window Sizing
+
 - Desktop: 500px max width (85% of viewport)
 - Mobile: 90-95% of viewport width
 - Centered in game window area
@@ -50,37 +279,29 @@ A centered combat popup that displays:
 #### API
 
 ```javascript
-// Initialize (auto-called on page load)
 STRCombatWindow.init();
 
-// Show combat window
 STRCombatWindow.show({
   round: 1,
   enemy: {
     emoji: '👾',
     hp: 5,
     maxHp: 5,
-    intentState: { /* enemy intent state from EnemyIntentSystem */ }
+    intentState: { /* from EnemyIntentSystem */ }
   },
   player: { hp: 10, maxHp: 10 },
   advantage: 'neutral',
   enemyType: 'standard'
 });
 
-// Hide window
 STRCombatWindow.hide();
-
-// Minimize/Maximize
 STRCombatWindow.minimize();
 STRCombatWindow.maximize();
-
-// Update state
 STRCombatWindow.updateState(newState);
-
-// Reset timer for new round
 STRCombatWindow.resetTimer('elite');
+STRCombatWindow.playAttackLunge(who, done);
+STRCombatWindow.flashImpact();
 
-// Check state
 var isMin = STRCombatWindow.isMinimized();
 var isVis = STRCombatWindow.isVisible();
 ```
@@ -91,7 +312,17 @@ A Hearthstone-style card fan with:
 - Radial card arrangement with 30% overlap
 - Card transparency based on lifecycle type
 - Fan positioning over STR window or bottom of screen
-- Card selection and animation sequences
+- Card selection, hold-to-target, and animation sequences
+
+#### Configuration Constants
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `_maxVisibleCards` | 5 | Cards shown in fan |
+| `_cardOverlapPercent` | 30% | Fan overlap amount |
+| `_targeting.holdMs` | 180 ms | Hold duration to enter targeting mode |
+| Resize debounce | 120 ms | Orientation change delay |
+| Reposition check | 220 ms | Secondary layout pass |
 
 #### Card Transparency (Lifecycle-Based)
 
@@ -103,334 +334,251 @@ A Hearthstone-style card fan with:
 | Gated (LIFE_004) | 45% | Semi-opaque | Burst Fire, Tactical Roll |
 | Core (LIFE_005) | 85% | Nearly opaque | Basic Attack, Core Stance |
 
-#### Animation Phases
+#### Animation Timings
 
-1. **Commit** (200ms): Selected cards lift upward
-2. **Resolve** (800-1500ms): Cards fly to center and fade
-3. **Repopulate** (300ms): New cards fade in from center with 50ms stagger
+| Animation | Duration | Description |
+|-----------|----------|-------------|
+| Fan appear | 300 ms | Fade/scale in |
+| Fan disappear | 300 ms | Fade/scale out |
+| Collapse to mini | 250 ms | Scale to 0.4, opacity 0.6 |
+| Slide away | 300 ms | Scale to 0.15, opacity 0.2 (toward NCH) |
+| Slide back | 300 ms | Scale from 0.15 back to 1.0 |
+| Commit phase | 200 ms | Selected cards lift upward |
+| Resolve phase | 800–1500 ms | Cards fly to center and fade |
+| Repopulate | 300 ms | New cards fade in (50 ms stagger) |
+
+#### Hold-to-Target Mode
+
+- **Press-and-hold** (180 ms) enters enemy-targeting mode
+- Hold lifts the card + shows crosshair cursor
+- Dragging outside STR combat window (15% threshold or fast exit) auto-minimizes the window to expose the map
+- Release over enemy plays that single card
+- Release over `.rogue-cell` deploys ground effect (DOM grid only)
+- Release elsewhere cancels
+- On release/cancel, STR window restores if it was minimized by the drag
+- Tap (< 180 ms) still toggles selection for multi-card commits
 
 #### Display Modes
 
-**Combat Mode:**
-- Position: Centered over STR combat window
-- Width: 90% viewport (max 700px)
-- Cards arranged in fan shape
-
-**Contextual Mode:**
-- Position: Bottom of screen
-- Width: 90% viewport (max 600px)
-- Background dimming (40% opacity)
-- Covers mok interjection tooltips
+**Combat Mode:** centered over STR combat window, 90% viewport (max 700px)
+**Contextual Mode:** bottom of screen, 90% viewport (max 600px), 40% background dim
 
 #### API
 
 ```javascript
-// Initialize (auto-called on page load)
 HandFanComponent.init();
-
-// Show fan with cards
 HandFanComponent.show(cardArray);
-
-// Hide fan
 HandFanComponent.hide();
-
-// Set mode and position
 HandFanComponent.setMode('combat', 'centered');
+HandFanComponent.setMode('combat', 'peripheral');
 HandFanComponent.setMode('contextual', 'bottom');
-
-// Update cards
 HandFanComponent.updateCards(newCardArray);
-
-// Play selected cards (triggers animation)
 HandFanComponent.playSelectedCards();
-
-// Repopulate with new cards (after combat round)
 HandFanComponent.repopulateCards(newCardArray);
+HandFanComponent.slideAway(doneCallback);
+HandFanComponent.slideBack(doneCallback);
 
-// Get/clear selection
-var selected = HandFanComponent.getSelectedCards();
+var selected = HandFanComponent.getSelectedCards();      // indices
+var selectedIds = HandFanComponent.getSelectedCardIds(); // card IDs
 HandFanComponent.clearSelection();
 ```
 
 ### 3. Integration Layer (`str-combat-integration.js`)
 
-Automatically connects the new components with GoneRogue's existing combat system:
+Orchestrates UI components by polling engine state every 100 ms.
 
-- Monitors `GoneRogue.isStrCombatActive()` every 100ms
-- Shows/hides STR Combat Window based on combat state
-- Shows/hides Hand Fan based on combat state
-- Syncs hand fan position with window minimize state
-- Handles timer expiration with default card auto-play
-
-#### Automatic Features
-
-The integration layer provides:
-- Seamless component activation when STR combat begins
-- Automatic window/fan positioning based on minimize state
-- Timer expiration handling
-- Multi-card combat execution bridging
-
-## File Structure
+#### Poll Architecture
 
 ```
-public/
-├── js/
-│   ├── str-combat-window.js          # Combat window component
-│   ├── hand-fan-component.js         # Hand fan component
-│   ├── str-combat-integration.js     # Integration layer
-│   ├── gone-rogue.js                 # Existing combat logic
-│   └── gone-rogue-mobile.js          # Existing mobile UI
-├── css/
-│   ├── str-combat-window.css         # Combat window styles
-│   ├── hand-fan-component.css        # Hand fan styles
-│   └── gone-rogue-mobile.css         # Existing mobile styles
-└── index.html                         # Updated with new includes
+setInterval(100 ms) → _updateCombatUI()
+  │
+  ├─ reads GoneRogue.getStrCombatState()
+  │    → { phase, active, round, enemy, player, advantage, enemyType,
+  │        isResolvingTurn }
+  │
+  ├─ detects phase transitions via _lastResolvingTurn tracking
+  │    → isResolvingTurn: false → true = EDGE DETECTED
+  │
+  ├─ if edge detected AND !_resolutionAnimRunning:
+  │    → _playResolutionSequence()
+  │
+  └─ otherwise: sync STRCombatWindow + HandFan state
 ```
 
-## Usage Examples
+#### Resolution Sequence Timeline
 
-### Basic STR Combat Flow
-
-```javascript
-// 1. Combat initiates (handled by GoneRogue)
-GoneRogue.enterStrCombat(enemy, 'player_attack', card);
-
-// 2. Integration layer detects combat state
-// 3. STR Combat Window appears automatically
-// 4. Hand Fan appears with player's cards
-
-// 5. Player selects cards in fan (up to 5)
-// 6. Player clicks PLAY or timer expires
-
-// 7. Cards animate (commit → resolve → repopulate)
-// 8. Combat resolves, new round begins or combat ends
-
-// 9. Window and fan hide when combat ends
+```
+t=0       HandFan.slideAway()              300 ms
+t=300     STRCombatWindow.playAttackLunge() 500 ms  (first attacker)
+t=800     100 ms stagger
+t=900     STRCombatWindow.playAttackLunge() 500 ms  (second attacker)
+t=1400    STRCombatWindow.flashImpact()
+t=1400    500 ms dramatic pause (intent system updates visually)
+t=1900    HandFan.slideBack()              300 ms
+t=2200    Done callback: phase → 'selecting', timer restarts
+          ─────
+          ~2.2 s total (< 3 s budget)
 ```
 
-### Manual Control
+**First attacker determination:** Enemy-first by default. Player-first if `combatState.playerInitiated` is true (synergy combo triggered resolution).
 
-```javascript
-// Show STR window manually
-STRCombatWindow.show({
-  round: 3,
-  enemy: { emoji: '👹', hp: 8, maxHp: 12 },
-  player: { hp: 15, maxHp: 20 },
-  advantage: 'ambush',
-  enemyType: 'elite'
-});
+**`_resolutionAnimRunning` flag:** Set `true` during sequence, prevents poll from interfering.
 
-// Show hand fan manually
-var cards = GAMESTATE.getLooseInventory();
-HandFanComponent.show(cards);
-HandFanComponent.setMode('combat', 'centered');
+#### Timer Expiry Flow
 
-// Handle user interactions
-HandFanComponent.playSelectedCards(); // When player commits
+```
+STRCombatWindow._onTimerExpired()
+  → GoneRogue.handleStrTimerExpired()
+    → str-combat-integration.js handleStrTimerExpired()
+      │
+      ├─ if cards selected:
+      │    HandFan.clearSelection()
+      │    GoneRogue.playCardsFromHand(cardIds)  → CardPlaySystem
+      │    if combat not ended: GoneRogue.passStrTurn()  → enemy turn
+      │
+      └─ if no cards:
+           GoneRogue.passPlayerTurn()  → skip + enemy turn
+      │
+      └─ Both paths set phase to 'resolving'
+         → 100 ms poll detects edge → _playResolutionSequence()
 ```
 
-## Quality Tier Colors
+### 4. Enemy Intent System (`enemy-intent-system.js`)
 
-Cards display border colors based on quality:
+Displays kaomoji face expressions and weapon icons to telegraph enemy actions.
 
-| Quality | Color | Hex |
-|---------|-------|-----|
-| Cracked | Gray | #666 |
-| Worn | Light Gray | #999 |
-| Standard | White | #fff |
-| Fine | Cyan | #4fc3f7 |
-| Superior | Yellow | #ffeb3b |
-| Elite | Orange | #ff9800 |
-| Masterwork | Gold | #ffd700 |
-| Near Perfect | Green | #8bc34a |
-| Perfect | Purple | #9c27b0 |
+#### Face Expressions (13 built-in)
 
-## Responsive Design
+| Key | Glyph | Frames | Emotional State | Threat Level |
+|-----|-------|--------|-----------------|--------------|
+| HAPPY_CALM | `^_^` | `^_^`, `^___^` | content | low |
+| ANGRY_FOCUSED | `>__<` | `>__<`, `>_<` | aggressive | high |
+| SURPRISED | `O_O` | `O_O`, `o_o` | startled | medium |
+| DAZED_STUNNED | `X_X` | `X_X`, `x_x` | incapacitated | none |
+| ENRAGED | `>:(` | `>:(`, `>:<` | berserk | high |
+| BORED_WAITING | `·_·` | `·_·`, `·__·` | passive | low |
+| ANNOYED | `¬_¬` | `¬_¬`, `¬__¬` | irritated | medium |
+| GREEDY | `$_$` | `$_$`, `$__$` | acquisitive | medium |
+| CONFUSED | `@_@` | `@_@`, `@__@` | disoriented | low |
+| SLEEPING | `-_-` | `-_-`, `-__-` | dormant | none |
+| ALERT | `o_o` | `o_o`, `O_O` | watchful | medium |
+| PLEASED | `^w^` | `^w^`, `^_ ^` | satisfied | low |
+| DETERMINED | `•_•` | `•_•`, `•__•` | focused | high |
 
-### Desktop (>768px)
-- Combat window: 500px width
-- Hand fan: 700px max width
-- Cards: 120×168px
-- Hover effects enabled
-- Minimized indicator: top-right corner
+#### Expression Selection by HP
 
-### Mobile (≤768px)
-- Combat window: 90% viewport width
-- Hand fan: 90% viewport width
-- Cards: 100×140px
-- Touch gestures enabled
-- Minimized indicator: top-right corner
+| HP Range | Attack | Defense | Special |
+|----------|--------|---------|---------|
+| < 25% | CONFUSED | CONFUSED | DAZED_STUNNED |
+| 25–50% | varies | varies | varies |
+| 50–75% | varies | varies | varies |
+| > 75% | PLEASED | DETERMINED | ALERT |
 
-### Small Mobile (≤480px)
-- Combat window: 95% viewport width
-- Hand fan: 95% viewport width
-- Cards: 80×112px
-- Optimized touch targets (44px minimum)
+#### Expression Selection by Awareness
 
-## Accessibility
+| Awareness | Expression |
+|-----------|------------|
+| ≥ 80 | ANGRY_FOCUSED |
+| 50–79 | DETERMINED |
+| 20–49 | BORED_WAITING |
+| < 20 | HAPPY_CALM |
 
-- ARIA labels on all interactive elements
-- Keyboard navigation support
-- Focus indicators (2px solid #1cff9b)
-- Screen reader announcements for combat state
-- High contrast mode support
-- Reduced motion support (`prefers-reduced-motion`)
-- Color-independent indicators (icons + colors)
+#### Animation Parameters
 
-## Browser Compatibility
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| Frame cadence | 350 ms | Time per animation frame |
+| Phase offset formula | `(animSeed % 997) * 17 % 400` | Per-enemy desync |
+| Intent update cadence | 250 ms | STR window shimmer refresh |
+| Golden shimmer cycle | 3000 ms | `intent-shimmer` CSS animation |
 
-Tested and supported:
-- Chrome/Edge 90+
-- Firefox 88+
-- Safari 14+
-- Mobile Safari (iOS 14+)
-- Chrome Mobile (Android 10+)
+#### Weapon Intents (13 built-in)
 
-Uses modern CSS features:
-- `backdrop-filter` for blur effects
-- CSS Grid and Flexbox
-- CSS Custom Properties (variables)
-- CSS Animations and Transitions
+Each weapon has: emoji, name, attackPattern (melee/ranged/area), damageType (physical/energy/explosive).
 
-## Performance Considerations
+### 5. Backup Action Container (`backup-action-container.js`)
 
-- Timer updates: 100ms intervals (10 FPS)
-- Combat state checks: 100ms intervals
-- Card animations: Hardware-accelerated transforms
-- Minimal DOM manipulations
-- Efficient event delegation
+#### Configuration
 
-## Troubleshooting
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| Total slots | 6 | 5 cards + 1 action slot |
+| Backup deck view | Top 5 cards | Visible in container |
+| Combat portrait abbreviation | 4 chars | Mobile portrait mode |
+| Items mode abbreviation | 6 chars | Micro abbreviation |
+| Drag ghost size (combat) | 60×84 px | Opacity 0.85 |
+| Drag ghost size (NCH) | 48×64 px | Opacity 0.85 |
+| Minimize delay on long drag | 1500 ms | Auto-minimize threshold |
+| Margin detection | 80 px | Distance from NCH edge |
+| Resize debounce | 120 ms | Orientation change |
 
-### Cards not showing in fan
-- Check `GAMESTATE.getLooseInventory()` returns cards
-- Verify card objects have required properties (name, emoji, lifecycle)
-- Check browser console for errors
+### 6. Information Duel Engine (`information-duel-engine.js`)
 
-### Window not appearing
-- Ensure `GoneRogue.isStrCombatActive()` returns true
-- Check `GoneRogue.getStrCombatState()` returns valid state
-- Verify integration script loaded after components
+#### Sub-Systems
 
-### Animations not working
-- Check browser supports CSS animations
-- Verify `prefers-reduced-motion` not set to reduce
-- Check for JavaScript errors blocking animation code
+| System | Description |
+|--------|-------------|
+| Charges | Resource per turn for interactions |
+| Mutation | Enemy behavioral shifts (rage, paranoia, adaptation) |
+| Momentum | Consecutive action tracking |
+| Escalation | Payoff threshold for combo chains |
+| Overload | High-combo chain trigger |
+| Pipeline | Action queue processing |
+| AI Adaptation | Periodic strategy shifts |
 
-### Timer not counting down
-- Verify enemy type is valid (standard/elite/boss/quick/puzzle)
-- Check timer interval is running (console should show updates)
-- Ensure STR window is visible (not hidden)
+#### Thresholds
 
-### Intent not displaying
-- Ensure `enemy-intent-system.js` is loaded before `str-combat-window.js`
-- Verify enemy object has `intentState` property
-- Check `EnemyIntentSystem.formatIntentDisplay()` returns valid string
-- See ENEMY_INTENT_SYSTEM_GUIDE.md for troubleshooting
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `DEFAULT_CHARGES_PER_TURN` | 1 | Charges gained each turn |
+| `ESCALATION_PAYOFF_THRESHOLD` | 3 | Combos needed for payoff |
+| `OVERLOAD_ELIGIBLE_THRESHOLD` | 5 | Minimum for overload |
+| `OVERLOAD_TRIGGER_THRESHOLD` | 7 | 3-combo chain trigger |
+| `MOMENTUM_DECAY_AFTER_OVERLOAD` | 1 | Reset after overload |
+| `AI_ADAPT_INTERVAL` | 3 turns | AI strategy reassessment |
+| `mutationStacks` cap | 3 | Maximum mutation stacks |
+| RAGE damage bonus | +10% | Per stack multiplier |
 
-## Enemy Intent System Integration
+### 7. Ground Effects System (`ground-effects-system.js`)
 
-### Overview
+#### Effect Damage & Durations
 
-The STR Combat Window now displays enemy intent information, providing Metal Gear Solid-style tactical feedback to players.
+| Effect | Player Damage | Enemy Damage | Duration |
+|--------|--------------|--------------|----------|
+| Fire / Ignited Oil | 10% max HP | 15% max HP | Per-tick |
+| Electrified Water | — | — | 6000 ms |
+| Industrial Waste | — | — | 30% debuff chance |
+| Ice | -12% accuracy, -2 evasion | same | While standing |
+| Water | -10% evasion | same | While standing |
+| Electrified Water | -20% evasion | same | While electrified |
 
-### Features
+Water slowdown animation: 1000 ms. Electricity spread uses 4-directional BFS.
 
-**Main Window Display:**
-- Enemy face expression (e.g., ^_^, >__<, O_O)
-- Weapon icon (e.g., 🔫, 💣, 🎯)
-- Golden shimmer animation effect
-- Updates each combat round
-- Positioned below enemy emoji
+---
 
-**Minimized View:**
-- Shows expression glyph only (space-efficient)
-- Displayed between enemy emoji and timer
-- Maintains golden glow effect
+## Card Play System (`card-play-system.js`)
 
-### Implementation
+Applies card effects without advancing rounds. Effects include:
+- **Damage** — direct HP reduction
+- **Heal** — HP restoration
+- **Status effects** — stun, burn, poison, bleed (default 1 turn)
+- **AoE** — area damage
+- **Knockback** — tile displacement
+- **Ground effects** — deploy environmental tiles
+- **Delayed detonation** — 1-turn fuse explosives
+- **Flee** — exit combat
+- **Cascade draw** — pull from backup deck (synergy bonus)
+- **Energy refund** — synergy-based resource return
 
-The intent display integrates seamlessly with existing systems:
+Enemy explosive self-damage reduced by 60% (minimum 1).
 
-```javascript
-// Integration layer automatically passes intent state
-var windowState = {
-  enemy: {
-    emoji: '👾',
-    hp: 5,
-    maxHp: 5,
-    intentState: combatState.enemy.intentState // From EnemyIntentSystem
-  }
-};
+Pending explosives tick at the start of each STR round.
 
-STRCombatWindow.show(windowState);
-```
-
-**Rendering:**
-```javascript
-// In _renderWindow()
-if (typeof EnemyIntentSystem !== 'undefined' && enemy.intentState) {
-  var intentDisplay = EnemyIntentSystem.formatIntentDisplay(enemy.intentState);
-  html += '<div class="str-intent-display">' + intentDisplay + '</div>';
-}
-```
-
-**Styling:**
-```css
-.str-intent-display {
-  font-size: 24px;
-  color: #ffaa00;
-  text-shadow: 0 0 10px rgba(255, 170, 0, 0.8);
-  animation: intent-shimmer 3s ease-in-out infinite;
-}
-```
-
-### Visual Examples
-
-**Main Window with Intent:**
-```
-┌─────────────────────┐
-│  ⚔️ STR COMBAT - R2 │
-├─────────────────────┤
-│       👾           │ ← Enemy emoji
-│     >__< 🎯        │ ← Intent (angry + aimed shot)
-│  ████████ 3/5 HP   │ ← HP bar
-│                    │
-│        ⚔️          │ ← Advantage
-│      NEUTRAL       │
-│                    │
-│   █████████ 7/10   │ ← Player HP
-│        🧑          │ ← Player emoji
-│                    │
-│  TIME: 1.8s        │ ← Timer
-└─────────────────────┘
-```
-
-**Minimized with Intent:**
-```
-┌──────┐
-│  👾  │ ← Enemy emoji
-│ >__< │ ← Expression only
-│⏱️1.2s│ ← Timer
-│  ↑   │ ← Expand button
-└──────┘
-```
-
-### Dependencies
-
-- **enemy-intent-system.js** - Must be loaded before str-combat-window.js
-- **gone-rogue.js** - Must initialize enemy.intentState on combat entry
-- **EnemyIntentSystem.formatIntentDisplay()** - Formats intent for display
-
-### Related Documentation
-
-- `ENEMY_INTENT_SYSTEM_GUIDE.md` - Complete intent system documentation
-- `INTENT_VISUAL_EXAMPLES.md` - Visual examples of intent in combat
-- Enemy intent updates automatically via `str-combat-integration.js`
+---
 
 ## Resolution Phase Animation
 
-As of Sprint 2, the resolution phase uses a choreographed animation sequence instead of a black screen + countdown. The flow is orchestrated by `_playResolutionSequence()` in `str-combat-integration.js`:
+The resolution phase uses a choreographed animation sequence orchestrated by `_playResolutionSequence()` in `str-combat-integration.js`:
 
 ```
 selecting → resolving edge detected
@@ -446,10 +594,6 @@ selecting → resolving edge detected
                                          ~2.2 s total (< 3 s budget)
 ```
 
-**First attacker determination:** Defaults to enemy-first. If the player triggered resolution via a synergy combo (`combatState.playerInitiated`), the player attacks first.
-
-**Lunge animation:** Each combatant emoji translates 38px toward its opponent and scales to 1.25x, holds briefly, then snaps back. The target gets a brightness flash + horizontal shake on impact (`.str-lunge-hit` CSS class).
-
 ### Related Files
 
 | File | Role |
@@ -459,35 +603,148 @@ selecting → resolving edge detected
 | `str-combat-window.js` | `playAttackLunge(who, done)` / `flashImpact()` |
 | `str-combat-window.css` | `.str-lunge-hit`, `.str-impact-flash` keyframes |
 
+---
+
+## Quality Tier Colors
+
+| Quality | Color | Hex |
+|---------|-------|-----|
+| Cracked | Gray | #666 |
+| Worn | Light Gray | #999 |
+| Standard | White | #fff |
+| Fine | Cyan | #4fc3f7 |
+| Superior | Yellow | #ffeb3b |
+| Elite | Orange | #ff9800 |
+| Masterwork | Gold | #ffd700 |
+| Near Perfect | Green | #8bc34a |
+| Perfect | Purple | #9c27b0 |
+
+---
+
+## Responsive Design
+
+### Desktop (>768px)
+- Combat window: 500px width
+- Hand fan: 700px max width
+- Cards: 120×168px
+- Hover effects enabled
+
+### Mobile (≤768px)
+- Combat window: 90% viewport width
+- Hand fan: 90% viewport width
+- Cards: 100×140px
+- Touch gestures enabled
+
+### Small Mobile (≤480px)
+- Combat window: 95% viewport width
+- Hand fan: 95% viewport width
+- Cards: 80×112px
+- Optimized touch targets (44px minimum)
+
+### Mobile Portrait Abbreviation
+
+When combat UI is minimized/collapsed on mobile portrait, HandFan abbreviates card names (max 4 chars) via `NameUtils.getDisplayName(..., {maxLength})`. Backup Action Container follows the same rule. Auto-updates on orientation change.
+
+---
+
+## Awareness & Detection System
+
+| State | Range | Color | Hex |
+|-------|-------|-------|-----|
+| Unaware | 0–30 | Green | #00ff00 |
+| Suspicious | 31–70 | Orange | #ffaa00 |
+| Alerted | 71–100 | Red | #ff0000 |
+| Engaged | 100+ | Magenta | #ff00ff |
+
+---
+
+## Game Loop Timing
+
+| Interval | Value | Description |
+|----------|-------|-------------|
+| Game tick | 100 ms | Main loop (10 Hz) |
+| Projectile advance | 150 ms | Projectile movement |
+| Light map throttle | Every 5 ticks (~500 ms) | Lighting recalculation |
+| STR integration poll | 100 ms | Combat UI sync |
+| Timer update | 100 ms | Countdown decrement |
+
+---
+
+## Accessibility
+
+- ARIA labels on all interactive elements
+- Keyboard navigation support
+- Focus indicators (2px solid #1cff9b)
+- Screen reader announcements for combat state
+- High contrast mode support
+- Reduced motion support (`prefers-reduced-motion`)
+- Color-independent indicators (icons + colors)
+
+## Browser Compatibility
+
+Tested and supported: Chrome/Edge 90+, Firefox 88+, Safari 14+, Mobile Safari (iOS 14+), Chrome Mobile (Android 10+).
+
+Uses modern CSS features: `backdrop-filter`, CSS Grid/Flexbox, CSS Custom Properties, CSS Animations/Transitions.
+
+## File Structure
+
+```
+public/
+├── js/
+│   ├── str-combat-engine.js          # Phase state machine + combat math
+│   ├── str-combat-window.js          # Visual HUD component
+│   ├── str-combat-integration.js     # 100ms poll bridge
+│   ├── hand-fan-component.js         # Card fan component
+│   ├── backup-action-container.js    # Expendable side-slots
+│   ├── enemy-intent-system.js        # Kaomoji expressions + weapon intents
+│   ├── card-play-system.js           # Card effect application
+│   ├── information-duel-engine.js    # AI adaptation sub-systems
+│   ├── ground-effects-system.js      # Environmental tile effects
+│   ├── gone-rogue.js                 # Host game state
+│   └── gone-rogue-mobile.js          # Mobile UI layer
+├── css/
+│   ├── str-combat-window.css         # Combat window styles
+│   ├── hand-fan-component.css        # Hand fan styles
+│   ├── backup-action-container.css   # Backup container styles
+│   └── gone-rogue-mobile.css         # Mobile styles
+└── index.html                        # Script includes
+```
+
+## Troubleshooting
+
+### Cards not showing in fan
+- Check `GAMESTATE.getLooseInventory()` returns cards
+- Verify card objects have required properties (name, emoji, lifecycle)
+
+### Window not appearing
+- Ensure `GoneRogue.isStrCombatActive()` returns true
+- Check `GoneRogue.getStrCombatState()` returns valid state
+- Verify integration script loaded after components
+
+### Resolution animation not playing
+- Verify `showCombatUI()` preserves `'resolving'` phase (not clobbering to `'selecting'`)
+- Check `_resolutionAnimRunning` flag is not stuck true
+- Ensure `_lastResolvingTurn` tracking detects the false→true edge
+
+### Timer stuck at 0.0
+- Check `handleStrTimerExpired()` is being called
+- Verify `passStrTurn()` or `playCardsFromHand()` sets phase to `'resolving'`
+- Ensure enemy HP > 0 (combat may have ended)
+
+### Intent not displaying
+- Ensure `enemy-intent-system.js` loaded before `str-combat-window.js`
+- Verify enemy object has `intentState` property
+- Check `EnemyIntentSystem.formatIntentDisplay()` returns valid string
+
+---
+
 ## STR Combat Animation Studio (Designer Roadmap)
 
-All timing values, lunge parameters, kaomoji expressions, and weapon intents are identified as **designable seams** in a separate roadmap document. The roadmap specifies five phases to build a visual tuning tool inside the Unified Designer portal:
+All timing values, lunge parameters, kaomoji expressions, and weapon intents are identified as **designable seams** in a separate roadmap document.
 
 **See:** [`STR-HUD-DESIGNER-ROADMAP.md`](STR-HUD-DESIGNER-ROADMAP.md)
 
-Key seams:
-
-- **Resolution timing** — per-enemy-type overrides for slide, lunge, stagger, pause durations
-- **Lunge parameters** — distance, scale, easing, hit flash amplitude
-- **Intent expression palette** — runtime `registerExpression()` / `removeExpression()` hooks so designers can add kaomojis from `INTENT_GLYPH_PALETTE.md` without code changes
-- **Weapon intent mapping** — runtime registration + per-enemy weapon pools
-- **Timer durations** — exposed via `setTimerDuration()` setter
-- **Countdown overlay** — beat timing, flash, fade all extractable to config
-
-The designer tool will live at `public/portal/str-combat-designer.html` and integrate as a new tab in `unified-designer.html`, following the same iframe pattern as Asset/Map/World/Item/Loot designers.
-
-## Future Enhancements
-
-Potential additions:
-- Sound effects for timer ticks, card selections, combat hits
-- Particle effects for card animations
-- Card preview with full stats on long-press
-- Deck building interface integration
-- Replay system for combat sequences
-- Tutorial overlays for first-time users
-- Advanced AI opponent behaviors
-- Per-enemy-type lunge trajectories (sweep, thrust, lob) via `animationHint` field
-- Expression authoring tool importing from `INTENT_GLYPH_PALETTE.md` scratchpad
+---
 
 ## License
 

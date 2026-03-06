@@ -1636,7 +1636,10 @@ var StrCombatEngine = (function () {
   // ── Combat UI ─────────────────────────────────────────────
 
   function showCombatUI(ctx) {
-    if (_phase !== 'countdown') {
+    // Preserve 'resolving' phase so the integration layer's 100ms poll
+    // can detect it and fire _playResolutionSequence(). The poll's done
+    // callback resets phase to 'selecting' after the animation completes.
+    if (_phase !== 'countdown' && _phase !== 'resolving') {
       _phase = 'selecting';
     }
     ctx.combatPhaseTooltip('cardplay');

@@ -445,6 +445,13 @@
               console.warn('[STRIntegration] pushOldestHandToBackup error:', e3);
             }
           }
+
+          // Transition phase back to 'selecting' so the poll restores the
+          // hand fan and STRCombatWindow.updateState detects the new round
+          // number and restarts the timer.
+          if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.setStrCombatPhase === 'function') {
+            GoneRogue.setStrCombatPhase('selecting');
+          }
         });
       }
     } else {
@@ -599,27 +606,64 @@
 
   /**
    * Handle timer expiration.
-   * If the player has cards selected in the hand fan, commit them now.
-   * Otherwise pass the turn (enemy attacks unopposed).
+   *
+   * Resolves the combat turn synchronously (player cards + enemy response),
+   * which leaves the engine phase at 'resolving'. The 100ms poll in
+   * _showHandFan detects the resolving→selecting edge and fires
+   * _playResolutionSequence (slideAway → lunges → slideBack).
+   *
+   * Cycle: B. select → C. timer expires → D. cards slide away, combat
+   * resolves → E. attack lunges → F. intent telegraphs → G. round
+   * advances → H. cards slide back → B.
    */
   function handleStrTimerExpired() {
-    // Play whatever the player has already selected before time ran out
+    // ── 1. Apply player card effects (if any selected) ──
+    var cardIds = [];
     if (typeof HandFanComponent !== 'undefined' &&
-        typeof HandFanComponent.getSelectedCards === 'function' &&
-        typeof HandFanComponent.playSelectedCards === 'function') {
-      var selected = HandFanComponent.getSelectedCards();
-      if (selected.length > 0) {
-        console.log('[STRIntegration] Timer expired - committing ' + selected.length + ' selected card(s)');
-        HandFanComponent.playSelectedCards();
-        return;
-      }
+        typeof HandFanComponent.getSelectedCardIds === 'function') {
+      cardIds = HandFanComponent.getSelectedCardIds();
     }
 
-    // No cards selected — enemy attacks unopposed
-    console.log('[STRIntegration] Timer expired - no selection, passing player turn');
-    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.passPlayerTurn === 'function') {
-      GoneRogue.passPlayerTurn();
+    if (cardIds.length > 0) {
+      console.log('[STRIntegration] Timer expired - committing ' + cardIds.length + ' card(s) + enemy turn');
+
+      // Clear visual selection (no per-card animation — slideAway handles it)
+      if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.clearSelection === 'function') {
+        HandFanComponent.clearSelection();
+      }
+
+      // Apply player card effects (damage, heal, status, consume, etc.)
+      var combatEnded = false;
+      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.playCardsFromHand === 'function') {
+        var playResult = GoneRogue.playCardsFromHand(cardIds);
+        if (playResult && playResult.results) {
+          for (var i = 0; i < playResult.results.length; i++) {
+            if (playResult.results[i] && playResult.results[i].exited) {
+              combatEnded = true;
+              break;
+            }
+          }
+        }
+      }
+
+      // ── 2. Enemy turn (if combat didn't end from player cards) ──
+      if (!combatEnded && typeof GoneRogue !== 'undefined') {
+        var cs = (typeof GoneRogue.getStrCombatState === 'function') ? GoneRogue.getStrCombatState() : null;
+        if (cs && cs.active && cs.enemy && cs.enemy.hp > 0) {
+          if (typeof GoneRogue.passStrTurn === 'function') {
+            GoneRogue.passStrTurn(); // executeRound('enemy') → phase stays 'resolving'
+          }
+        }
+      }
+    } else {
+      // ── No cards selected — enemy attacks unopposed ──
+      console.log('[STRIntegration] Timer expired - no selection, passing player turn');
+      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.passPlayerTurn === 'function') {
+        GoneRogue.passPlayerTurn(); // passStrTurn → executeRound('enemy') → phase stays 'resolving'
+      }
     }
+    // Phase is now 'resolving' (preserved by showCombatUI fix).
+    // The 100ms poll will detect isResolvingTurn and fire _playResolutionSequence.
   }
 
   /**
