@@ -40,7 +40,9 @@ var TutorialFloorGen = (function() {
 
         ctx.player.x = doorX;
         ctx.player.y = doorY;
-        ctx.setDoorSpawnProtect({ x: doorX, y: doorY });
+        // BUG 3 FIX: Include a step-count cooldown so the door cannot be immediately
+        // re-triggered if the player steps off and back in fewer than stepsRemaining moves.
+        ctx.setDoorSpawnProtect({ x: doorX, y: doorY, stepsRemaining: 4 });
       }
     } catch (e0) {}
 
@@ -83,35 +85,33 @@ var TutorialFloorGen = (function() {
     ctx.grid[exitY][exitX] = ctx.TILES.EXIT;
     ctx.tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'forward' };
 
-    // If player spawned too close to the forward exit, move them (and entry door) away.
-    // This prevents the "spawn next to next-floor door" stacking bug on floor 2.
-    // Skip this for retreat: the player SHOULD be near the exit when returning.
-    if (_doorTransitionMode !== 'retreat') {
-      try {
-        var distSpawnExit = Math.abs(ctx.player.x - exitX) + Math.abs(ctx.player.y - exitY);
-        if (distSpawnExit <= 2) {
-          var sx0 = ctx.player.x;
-          var sy0 = ctx.player.y;
-          var moved = false;
-          for (var r = 1; r <= 10 && !moved; r++) {
-            for (var dy = -r; dy <= r && !moved; dy++) {
-              for (var dx = -r; dx <= r && !moved; dx++) {
-                var tx = sx0 + dx;
-                var ty = sy0 + dy;
-                if (tx <= 0 || tx >= ctx.GRID_WIDTH - 1 || ty <= 0 || ty >= ctx.GRID_HEIGHT - 1) continue;
-                if (!ctx.grid[ty] || ctx.grid[ty][tx] !== ctx.TILES.EMPTY) continue;
-                var d2 = Math.abs(tx - exitX) + Math.abs(ty - exitY);
-                if (d2 >= 4) {
-                  ctx.player.x = tx;
-                  ctx.player.y = ty;
-                  moved = true;
-                }
+    // BUG 2 FIX: Always check that the player is not spawned directly on the forward exit,
+    // including during retreat mode. Previously this block was skipped for retreat, which caused
+    // players retreating from floor 1 to spawn on top of floor 2's advance door.
+    try {
+      var distSpawnExit = Math.abs(ctx.player.x - exitX) + Math.abs(ctx.player.y - exitY);
+      if (distSpawnExit <= 2) {
+        var sx0 = ctx.player.x;
+        var sy0 = ctx.player.y;
+        var moved = false;
+        for (var r = 1; r <= 10 && !moved; r++) {
+          for (var dy = -r; dy <= r && !moved; dy++) {
+            for (var dx = -r; dx <= r && !moved; dx++) {
+              var tx = sx0 + dx;
+              var ty = sy0 + dy;
+              if (tx <= 0 || tx >= ctx.GRID_WIDTH - 1 || ty <= 0 || ty >= ctx.GRID_HEIGHT - 1) continue;
+              if (!ctx.grid[ty] || ctx.grid[ty][tx] !== ctx.TILES.EMPTY) continue;
+              var d2 = Math.abs(tx - exitX) + Math.abs(ty - exitY);
+              if (d2 >= 4) {
+                ctx.player.x = tx;
+                ctx.player.y = ty;
+                moved = true;
               }
             }
           }
         }
-      } catch (e0) {}
-    }
+      }
+    } catch (e0) {}
 
     // Mark entry/return door at the entry point, but DO NOT spawn the player on top of it.
     // (player glyph hides the door tile, making it look like there is only one door).
@@ -166,8 +166,12 @@ var TutorialFloorGen = (function() {
       _tryMoveBackDoorAwayFrom(backX, backY, exitX, exitY, 4);
     }
 
-    ctx.grid[backY][backX] = ctx.TILES.DOOR;
-    ctx.tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
+    // BUG 1 FIX: Only stamp the back door if suppressBackDoor is not set.
+    // Floor 0 sets suppressBackDoor=true (there is no previous floor to return to).
+    if (!floorData.suppressBackDoor) {
+      ctx.grid[backY][backX] = ctx.TILES.DOOR;
+      ctx.tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
+    }
 
     // Spawn player adjacent to the door they just came through.
     // On retreat: anchor near the forward exit (so the player is close to where they left).
@@ -215,8 +219,11 @@ var TutorialFloorGen = (function() {
     // Re-assert door tiles after any template/building mutations
     ctx.grid[exitY][exitX] = ctx.TILES.EXIT;
     ctx.tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'forward' };
-    ctx.grid[backY][backX] = ctx.TILES.DOOR;
-    ctx.tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
+    // BUG 1 FIX: Only re-assert back door if it is allowed on this floor.
+    if (!floorData.suppressBackDoor) {
+      ctx.grid[backY][backX] = ctx.TILES.DOOR;
+      ctx.tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
+    }
 
     // Place decorations (visual overlay, walkable)
     floorData.decorations.forEach(function(deco) {
@@ -227,8 +234,11 @@ var TutorialFloorGen = (function() {
     // Re-assert doors again after decorations too (decor overlays can visually hide doors; metadata must remain stable)
     ctx.grid[exitY][exitX] = ctx.TILES.EXIT;
     ctx.tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'forward' };
-    ctx.grid[backY][backX] = ctx.TILES.DOOR;
-    ctx.tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
+    // BUG 1 FIX: Only re-assert back door if it is allowed on this floor.
+    if (!floorData.suppressBackDoor) {
+      ctx.grid[backY][backX] = ctx.TILES.DOOR;
+      ctx.tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
+    }
 
     // Ensure no visual overlay (buildings/decorations) sits on top of a door tile.
     try {
@@ -264,8 +274,9 @@ var TutorialFloorGen = (function() {
     } catch (e03) {}
 
     // If the player is currently standing on the back door, show a one-shot hint so it isn't "invisible" under the player glyph.
+    // BUG 1 FIX: Only show the hint when the back door actually exists on this floor.
     try {
-      if (ctx.player && ctx.player.x === backX && ctx.player.y === backY && typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+      if (!floorData.suppressBackDoor && ctx.player && ctx.player.x === backX && ctx.player.y === backY && typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
         OverheadAnimator.showGenericExpression(backX, backY, '↩️', 900);
       }
     } catch (e0) {}
@@ -655,8 +666,11 @@ var TutorialFloorGen = (function() {
       // Carve
       if (ctx.grid && ctx.grid[exitY]) ctx.grid[exitY][exitX] = ctx.TILES.EXIT;
       ctx.tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'forward' };
-      if (ctx.grid && ctx.grid[backY]) ctx.grid[backY][backX] = ctx.TILES.DOOR;
-      ctx.tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
+      // BUG 1 FIX: Only stamp back door in the final guarantee pass if it is allowed on this floor.
+      if (!floorData.suppressBackDoor) {
+        if (ctx.grid && ctx.grid[backY]) ctx.grid[backY][backX] = ctx.TILES.DOOR;
+        ctx.tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
+      }
 
       // Remove overlays/entities from door positions
       if (ctx.forestBuildings && ctx.forestBuildings.length) {
