@@ -8,9 +8,9 @@
 
 Three interlocking systems that create a unified "card manipulation" surface across the game's two main modes:
 
-1. **Enemy NCH Capsule (Exploration)** — Enemies carry a visible joker-stack capsule identical in shape to the player's NCH. The player can interact with it pre-combat via equipped items (pickpocket, plant, reveal). The capsule shows the enemy's actual hydrated card deck.
+1. **Enemy NCH Capsule (Exploration)** — Enemies carry an invisible joker-stack capsule identical in shape to the player's NCH. The player can cause enemy NCH to appear by use of certain items, by standing idle (time varies with use of passive items) nearby an enemy (passive items to vary this distance) interact with it pre-combat via equipped items (pickpocket, plant, reveal) spending the resource key_ammo along the way. The capsule shows the enemy's actual hydrated card deck with alternating "BLVCK" style joker.emojis for plantable nodes and regular joker.emojis representing enemy cards.
 
-2. **Player NCH Interchange (Exploration)** — When the player initiates a successful steal/plant interaction, both the player's NCH and the enemy's NCH capsule open side-by-side, enabling drag-and-drop card interchange. The player can pull cards out of the enemy's hand (steal) or push cards into empty enemy slots (plant). Animations handle the card flight between capsules.
+2. **Player NCH Interchange (Exploration)** — When the player initiates a successful steal/plant interaction, both the player's NCH and the enemy's NCH capsule open over-under, the enemy's NCH displayed across the top and the player's NCH displayed across the bottom, enabling drag-and-drop card interchange into plantable slots, from enemy inventory, toggle equipped items to destroy enemy cards. The player can pull cards out of the enemy's hand (steal) or push cards into empty enemy slots (plant). Animations handle the card flight between capsules.
 
 3. **STR Combat Enemy Hand (Combat)** — During STR combat, the enemy's hand displays in the backup scroll space (per NCH-COMBAT-ROADMAP §1.5) as interactive card nodes. Each card slot is a player interaction point: reveal, steal, destroy, or trigger planted cards. The display matches the player's NCH capsule visual language (joker stacks, BLVCK greyed states, interactable pulsing).
 

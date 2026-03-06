@@ -357,7 +357,13 @@ const EFFECT_REGISTRY = {
   swipeActivate:              { params: [{ key: 'categories', type: 'string[]', label: 'Categories' }] },
   instantResolve:             { params: [] },
   foresight_window:           { params: [{ key: 'maxWindow', type: 'number', label: 'Max Window' }, { key: 'collapseMode', type: 'string', label: 'Collapse Mode' }] },
-  entropy_field:              { params: [{ key: 'strength', type: 'number', label: 'Strength' }, { key: 'corruptsForesight', type: 'boolean', label: 'Corrupts Foresight' }] }
+  entropy_field:              { params: [{ key: 'strength', type: 'number', label: 'Strength' }, { key: 'corruptsForesight', type: 'boolean', label: 'Corrupts Foresight' }] },
+  // ENI Phase 1: Enemy NCH capsule visibility & interaction
+  capsule_visibility_range:   { params: [{ key: 'value', type: 'number', label: 'Extra Tiles' }] },
+  idle_reveal_speed:          { params: [{ key: 'value', type: 'number', label: 'Speed Mult (0-1)' }] },
+  steal_range_bonus:          { params: [{ key: 'value', type: 'number', label: 'Extra Tiles' }] },
+  plant_range_bonus:          { params: [{ key: 'value', type: 'number', label: 'Extra Tiles' }] },
+  post_steal_awareness_reduction: { params: [{ key: 'value', type: 'number', label: 'Awareness %' }] }
 };
 
 const EFFECT_TYPES = Object.keys(EFFECT_REGISTRY).sort();

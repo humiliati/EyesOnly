@@ -243,10 +243,104 @@ var EnemyCardInteractability = (function() {
     return toReveal;
   }
 
+  // ── Pre-combat capsule interactability ───────────────────
+
+  /**
+   * Compute simplified interactability for the map capsule context.
+   * Used by enemy-capsule-renderer.js to decide joker visual states
+   * (bright/greyed/plantable) during exploration — NOT in combat.
+   *
+   * @param {Object} enemy - Enemy object with cardDeck[], exposedTags[]
+   * @param {Object} playerState
+   *   { equippedItem: { id, stealTags?, plantTags?, revealTags?, destroyTags? } | null,
+   *     passiveItems: [{ id, effects }] }
+   *
+   * @returns {Object}
+   *   { canSteal: boolean,       — at least one card is stealable
+   *     canPlant: boolean,       — at least one slot is plantable
+   *     canReveal: boolean,      — equipped item has revealTags
+   *     stealableCount: number,  — how many cards are stealable
+   *     plantableCount: number,  — how many empty/BLVCK slots accept plants
+   *     capsuleState: string }   — 'interactable' | 'plantable_only' | 'greyed' | 'hostile'
+   */
+  function computePreCombat(enemy, playerState) {
+    var result = {
+      canSteal: false,
+      canPlant: false,
+      canReveal: false,
+      stealableCount: 0,
+      plantableCount: 0,
+      capsuleState: 'greyed'
+    };
+
+    if (!enemy || !Array.isArray(enemy.cardDeck) || !playerState) return result;
+
+    var equipped = playerState.equippedItem || {};
+    var exposedTags = Array.isArray(enemy.exposedTags) ? enemy.exposedTags : [];
+
+    // Enemy awareness check: ENGAGED/ALERTED enemies cannot be interacted with
+    var awareness = enemy.awareness || enemy.awarenessState || 'UNAWARE';
+    if (awareness === 'ENGAGED' || awareness === 'ALERTED' || awareness === 'COMBAT') {
+      result.capsuleState = 'hostile';
+      return result;
+    }
+
+    // Check steal capability: equipped item stealTags intersect enemy.exposedTags
+    var hasStealTool = Array.isArray(equipped.stealTags) && equipped.stealTags.length > 0;
+    var stealTagMatch = hasStealTool && _tagsOverlap(equipped.stealTags, exposedTags);
+
+    // Check plant capability: equipped item has plantTags intersecting enemy.exposedTags
+    var hasPlantTool = Array.isArray(equipped.plantTags) && equipped.plantTags.length > 0;
+    var plantTagMatch = hasPlantTool && _tagsOverlap(equipped.plantTags, exposedTags);
+
+    // Check reveal capability
+    result.canReveal = Array.isArray(equipped.revealTags) && equipped.revealTags.length > 0;
+
+    // Count per-slot stealable and plantable
+    for (var i = 0; i < enemy.cardDeck.length; i++) {
+      var slot = enemy.cardDeck[i];
+
+      // Stolen/destroyed slots are dead
+      if (slot.stolen) continue;
+
+      // Plantable: BLVCK slot or empty slot with no planted card
+      if (slot.isBlvckSlot && !slot.planted) {
+        if (plantTagMatch) {
+          result.plantableCount++;
+          result.canPlant = true;
+        }
+        continue;
+      }
+
+      // Already has a planted card — skip (not stealable, not plantable)
+      if (slot.planted) continue;
+
+      // Regular enemy card — check stealability
+      if (stealTagMatch && slot.id) {
+        result.stealableCount++;
+        result.canSteal = true;
+      }
+    }
+
+    // Determine capsule visual state
+    if (result.canSteal) {
+      result.capsuleState = 'interactable'; // green pulse
+    } else if (result.canPlant) {
+      result.capsuleState = 'plantable_only'; // orange pulse
+    } else if (result.canReveal) {
+      result.capsuleState = 'revealable'; // dim blue
+    } else {
+      result.capsuleState = 'greyed'; // BLVCK style, no interaction
+    }
+
+    return result;
+  }
+
   // ── Public API ────────────────────────────────────────────
 
   return {
     compute: compute,
+    computePreCombat: computePreCombat,
     autoReveal: autoReveal
   };
 

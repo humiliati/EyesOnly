@@ -116,7 +116,11 @@ var VALID_EFFECT_TYPES = [
   // Swipe / instant
   'swipeActivate', 'instantResolve',
   // Player-driven manipulation (LAGM)
-  'foresight_window', 'entropy_field'
+  'foresight_window', 'entropy_field',
+  // ENI Phase 1: Enemy NCH capsule visibility & interaction
+  'capsule_visibility_range', 'idle_reveal_speed',
+  'steal_range_bonus', 'plant_range_bonus',
+  'post_steal_awareness_reduction'
 ];
 
 // ============================================================
@@ -204,6 +208,13 @@ for (var i = 0; i < items.length; i++) {
   if (!Array.isArray(it.synergyTags)) {
     warn(label + ' missing "synergyTags" array (use [] for none)');
   }
+
+  // Tag arrays: validate type if present (stealTags, plantTags, revealTags, destroyTags)
+  ['stealTags', 'plantTags', 'revealTags', 'destroyTags'].forEach(function(tagField) {
+    if (it[tagField] !== undefined && !Array.isArray(it[tagField])) {
+      fail(label + ' "' + tagField + '" should be an array');
+    }
+  });
 
   // Key-specific: tier + consumeOnUse
   if (it.type === 'key') {

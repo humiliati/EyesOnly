@@ -122,12 +122,16 @@
       "pickpocket",
       "sleight"
     ],
+    "plantTags": [
+      "pickpocket",
+      "sleight"
+    ],
     "synergyTags": [
       "covert",
       "pickpocket",
       "sleight"
     ],
-    "description": "Lets you pickpocket exposed enemy cards when adjacent. The enemy still gets angry if you fumble."
+    "description": "Lets you pickpocket exposed enemy cards when adjacent, or plant cards into enemy empty slots. The enemy still gets angry if you fumble."
   },
   {
     "id": "ITM-007",
@@ -1269,6 +1273,111 @@
       "modifier"
     ],
     "description": "Instant resolve on tap. Swipe to push-resolve directionally."
+  },
+  {
+    "id": "ITM-094",
+    "name": "Proximity Sensor",
+    "emoji": "📶",
+    "type": "equipment",
+    "rarity": "uncommon",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      {
+        "type": "capsule_visibility_range",
+        "value": 2
+      }
+    ],
+    "synergyTags": [
+      "intel",
+      "surveillance",
+      "tech"
+    ],
+    "description": "Extends enemy capsule visibility by 2 tiles. See their cards from further away.",
+    "_designNote": "ENI Phase 1 enabler. Default capsule visibility is 4 tiles; this bumps it to 6. Passive slot — opportunity cost is giving up a combat passive. Low risk, information-only benefit."
+  },
+  {
+    "id": "ITM-095",
+    "name": "Patience Module",
+    "emoji": "⏳",
+    "type": "equipment",
+    "rarity": "uncommon",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      {
+        "type": "idle_reveal_speed",
+        "value": 0.5
+      }
+    ],
+    "synergyTags": [
+      "covert",
+      "surveillance",
+      "intel"
+    ],
+    "description": "Idle near enemies to reveal their hand 50% faster. Patience rewarded.",
+    "_designNote": "ENI Phase 1 enabler. Reduces the idle-reveal timer by 50%. Stacks conceptually with proximity — stand close AND idle to reveal their deck. Encourages slow, stealthy play."
+  },
+  {
+    "id": "ITM-096",
+    "name": "Long Arm",
+    "emoji": "🦾",
+    "type": "equipment",
+    "rarity": "rare",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      {
+        "type": "steal_range_bonus",
+        "value": 1
+      },
+      {
+        "type": "plant_range_bonus",
+        "value": 1
+      }
+    ],
+    "synergyTags": [
+      "covert",
+      "pickpocket",
+      "tech"
+    ],
+    "description": "Steal and plant from 2 tiles away instead of adjacent. Long arms, light fingers.",
+    "_designNote": "ENI Phase 2 enabler. Extends steal/plant adjacency requirement from 1 to 2 tiles (Manhattan). Rare rarity — this is powerful because it lets you interact without being in the enemy's immediate detection zone. Requires Pickpocket Gloves still equipped in active slot."
+  },
+  {
+    "id": "ITM-097",
+    "name": "Ghost Echo",
+    "emoji": "👻",
+    "type": "equipment",
+    "rarity": "epic",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "passive",
+    "effects": [
+      {
+        "type": "capsule_visibility_range",
+        "value": 4
+      },
+      {
+        "type": "idle_reveal_speed",
+        "value": 0.75
+      },
+      {
+        "type": "post_steal_awareness_reduction",
+        "value": 0.1
+      }
+    ],
+    "synergyTags": [
+      "covert",
+      "intel",
+      "surveillance",
+      "ghost"
+    ],
+    "description": "See enemy hands from across the room. Idle reveal is lightning fast. Enemies barely notice your theft.",
+    "_designNote": "ENI combined enabler. Epic-tier capstone for card manipulation builds. +4 tile capsule range (total 8), 75% faster idle reveal, and only 10% suspicion chance after steal (down from 20%). The endgame passive for a pure thief build. Competes with combat passives for the slot."
   },
   {
     "id": "ITM-100",

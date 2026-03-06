@@ -5,8 +5,9 @@
    - Uses GoneRogueDataRegistry.getEnemyDeck()
    - Adds:
      enemy.deckType (best-effort)
-     enemy.cardDeck: [{ id:'EATK-###', stolen:false }, ...]
+     enemy.cardDeck: [{ id:'EATK-###', stolen:false, planted:null }, ...]
      enemy.exposedTags: ['pickpocket', ...]
+     + 1 BLVCK slot (ACT-000, isBlvckSlot:true) appended as plantable target
 
    Notes:
    - This does not yet implement in-combat stealing/destroying of specific slots.
@@ -70,7 +71,17 @@ var EnemyDeckHydrator = (function() {
     enemy.exposedTags = (deck && Array.isArray(deck.exposedTags)) ? deck.exposedTags.slice() : [];
 
     enemy.cardDeck = cards.map(function(id) {
-      return { id: id, stolen: false, meta: { t: Date.now() } };
+      return { id: id, stolen: false, planted: null, meta: { t: Date.now() } };
+    });
+
+    // Append one BLVCK empty slot (ACT-000) as the universal plantable target
+    // per CHH Step 6.1 — every enemy gets at least one plantable node
+    enemy.cardDeck.push({
+      id: 'ACT-000',
+      stolen: false,
+      planted: null,
+      isBlvckSlot: true,
+      meta: { t: Date.now() }
     });
 
     return enemy;
