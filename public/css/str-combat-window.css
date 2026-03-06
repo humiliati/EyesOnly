@@ -835,3 +835,31 @@ body.str-combat-minimized-state::before {
   color: #ff4444;
   font-size: 0.85em;
 }
+
+/* ============================================================
+   Attack Lunge Animations (Pokemon-style)
+   ============================================================ */
+
+/* Hit flash on the target combatant */
+.str-lunge-hit {
+  animation: str-hit-flash 0.25s ease-out;
+}
+
+@keyframes str-hit-flash {
+  0%   { filter: brightness(1); transform: translateX(0); }
+  20%  { filter: brightness(2.5) saturate(0); transform: translateX(-4px); }
+  40%  { filter: brightness(2.5) saturate(0); transform: translateX(4px); }
+  60%  { filter: brightness(1.5); transform: translateX(-2px); }
+  100% { filter: brightness(1); transform: translateX(0); }
+}
+
+/* Impact flash on the advantage indicator area */
+.str-impact-flash {
+  animation: str-impact-pulse 0.3s ease-out;
+}
+
+@keyframes str-impact-pulse {
+  0%   { transform: scale(1); filter: brightness(1); }
+  50%  { transform: scale(1.15); filter: brightness(2); }
+  100% { transform: scale(1); filter: brightness(1); }
+}

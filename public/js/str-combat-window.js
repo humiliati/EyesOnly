@@ -857,6 +857,65 @@ const STRCombatWindow = (function () {
     return _timerDuration || 0;
   }
 
+  // ── Pokemon-style attack lunge animations ────────────────
+
+  /**
+   * Play a lunge attack animation on the specified combatant.
+   * The emoji element lurches toward its opponent and snaps back.
+   *
+   * @param {'enemy'|'player'} who - Which combatant attacks
+   * @param {Function} [done] - Callback when animation completes
+   */
+  function playAttackLunge(who, done) {
+    if (!_windowContainer) { if (done) done(); return; }
+
+    var selector = (who === 'enemy') ? '.str-enemy .str-combatant-emoji' : '.str-player .str-combatant-emoji';
+    var emojiEl = _windowContainer.querySelector(selector);
+    if (!emojiEl) { if (done) done(); return; }
+
+    // Enemy lunges DOWN toward player, player lunges UP toward enemy
+    var lungeY = (who === 'enemy') ? 38 : -38;
+
+    try {
+      var anim = emojiEl.animate([
+        { transform: 'translateY(0) scale(1)',        offset: 0 },
+        { transform: 'translateY(' + lungeY + 'px) scale(1.25)', offset: 0.35 },
+        { transform: 'translateY(' + lungeY + 'px) scale(1.25)', offset: 0.45 },
+        { transform: 'translateY(0) scale(1)',        offset: 1.0 }
+      ], {
+        duration: 500,
+        easing: 'ease-in-out',
+        fill: 'none'
+      });
+
+      // Flash the target on impact (at 35-45% of animation)
+      setTimeout(function() {
+        var targetSel = (who === 'enemy') ? '.str-player' : '.str-enemy';
+        var targetEl = _windowContainer.querySelector(targetSel);
+        if (targetEl) {
+          targetEl.classList.add('str-lunge-hit');
+          setTimeout(function() { targetEl.classList.remove('str-lunge-hit'); }, 250);
+        }
+      }, 175);
+
+      anim.onfinish = function() { if (done) done(); };
+    } catch (e) {
+      if (done) done();
+    }
+  }
+
+  /**
+   * Flash the advantage/center area to show impact during resolution.
+   */
+  function flashImpact() {
+    if (!_windowContainer) return;
+    var adv = _windowContainer.querySelector('.str-advantage-indicator');
+    if (adv) {
+      adv.classList.add('str-impact-flash');
+      setTimeout(function() { adv.classList.remove('str-impact-flash'); }, 300);
+    }
+  }
+
   // Public API
   return {
     init: init,
@@ -871,7 +930,9 @@ const STRCombatWindow = (function () {
     isMinimized: isMinimized,
     isVisible: isVisible,
     getTimeRemainingMs: getTimeRemainingMs,
-    getTimerDurationMs: getTimerDurationMs
+    getTimerDurationMs: getTimerDurationMs,
+    playAttackLunge: playAttackLunge,
+    flashImpact: flashImpact
   };
 })();
 

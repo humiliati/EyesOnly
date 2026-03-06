@@ -219,6 +219,59 @@
   var _lastResolvingTurn = false;
   var _lastHandSig = null;
   var _endOfTurnPushDone = false; // Guard: only push oldest card once per resolution cycle
+  var _resolutionAnimRunning = false; // True while the attack-lunge sequence is playing
+
+  /**
+   * Play the full resolution animation sequence (~2.5 s total):
+   *   1. Hand fan slides away toward NCH capsule  (300 ms)
+   *   2. First attacker lunges                    (500 ms, starts at t=300)
+   *   3. Second attacker lunges                   (500 ms, starts at t=700)
+   *   4. Impact flash                             (   at t=1000)
+   *   5. Intent system updates visually           (   at t=1200)
+   *   6. Hand fan slides back                     (300 ms, starts at t=1700)
+   *   → done callback fires at ~t=2000
+   *
+   * @param {boolean} playerFirst - If true, player attacks first
+   * @param {Function} done       - Called when entire sequence finishes
+   */
+  function _playResolutionSequence(playerFirst, done) {
+    var first  = playerFirst ? 'player' : 'enemy';
+    var second = playerFirst ? 'enemy'  : 'player';
+
+    // Step 1: slide hand fan away
+    HandFanComponent.slideAway(function afterSlide() {
+
+      // Step 2: first attacker lunge
+      if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.playAttackLunge === 'function') {
+        STRCombatWindow.playAttackLunge(first, function afterFirst() {
+
+          // Step 3: second attacker lunge (staggered 100ms after first finishes)
+          setTimeout(function() {
+            STRCombatWindow.playAttackLunge(second, function afterSecond() {
+
+              // Step 4: impact flash
+              if (typeof STRCombatWindow.flashImpact === 'function') {
+                STRCombatWindow.flashImpact();
+              }
+
+              // Step 5: intent system update + brief pause before slide-back
+              setTimeout(function() {
+                // Step 6: slide hand fan back
+                HandFanComponent.slideBack(function afterReturn() {
+                  if (done) done();
+                });
+              }, 500); // 500ms pause for intent update + dramatic beat
+            });
+          }, 100);
+        });
+      } else {
+        // STRCombatWindow doesn't have lunge — just wait 1.5s then slide back
+        setTimeout(function() {
+          HandFanComponent.slideBack(function() { if (done) done(); });
+        }, 1500);
+      }
+    });
+  }
 
   function _showHandFan(combatState) {
     // ── Per-turn draw reset via CardStateAuthority ──
@@ -323,61 +376,97 @@
       return; // Hand fan appears once countdown completes (phase → 'selecting')
     }
 
-    if (isResolvingTurn) {
-      // Minimize hand during turn resolution to show enemy animations
-      if (HandFanComponent.isVisible()) {
-        HandFanComponent.minimize();
+    // While the resolution animation sequence is running, skip normal
+    // minimize/restore logic — the animation owns the hand fan.
+    if (_resolutionAnimRunning) {
+      _lastResolvingTurn = !!isResolvingTurn;
+      // Still allow card signature updates below so the fan has fresh cards when it returns.
+    } else if (isResolvingTurn) {
+      // ── RESOLUTION EDGE: selecting → resolving ──
+      // Fire the full animation sequence exactly once per resolution.
+      if (!_lastResolvingTurn) {
+        _resolutionAnimRunning = true;
+        _endOfTurnPushDone = false;
+
+        // Determine first attacker: if player triggered resolution via synergy combo,
+        // player goes first; otherwise enemy leads (default).
+        var playerFirst = !!(combatState.playerInitiated);
+
+        _playResolutionSequence(playerFirst, function onSequenceDone() {
+          _resolutionAnimRunning = false;
+
+          // ── End-of-turn bookkeeping (fires once) ──
+          if (!_endOfTurnPushDone) {
+            _endOfTurnPushDone = true;
+
+            // Phase 5: Advance duel turn
+            try {
+              if (typeof InformationDuelEngine !== 'undefined' && InformationDuelEngine.advanceTurn) {
+                var _enemyCards = (typeof EnemyHandDisplay !== 'undefined' && EnemyHandDisplay.getEnemyCards) ?
+                  EnemyHandDisplay.getEnemyCards() : [];
+                var _destroyedThisTurn = false;
+                try {
+                  if (typeof NonCombatEventBus !== 'undefined' && NonCombatEventBus._lastDestroyThisTurn) {
+                    _destroyedThisTurn = true;
+                    NonCombatEventBus._lastDestroyThisTurn = false;
+                  }
+                } catch (e5) {}
+                InformationDuelEngine.advanceTurn(_destroyedThisTurn, _enemyCards);
+              }
+            } catch (e5b) {}
+
+            try {
+              if (typeof CardStateAuthority !== 'undefined') {
+                var pushResult = CardStateAuthority.pushOldestHandToBackup();
+                if (pushResult && pushResult.success) {
+                  var pushedId = (pushResult.returnedCard && pushResult.returnedCard.id) || '?';
+                  console.log('[STRIntegration] End-of-turn: pushed oldest hand card "' + pushedId + '" back to backup');
+                }
+              } else if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.pushOldestHandCardToBackup === 'function') {
+                var pushResult2 = GAMESTATE.pushOldestHandCardToBackup();
+                if (pushResult2 && pushResult2.success) {
+                  console.log('[STRIntegration] End-of-turn: pushed oldest hand card back to backup (legacy path)');
+                }
+              }
+            } catch (e3) {
+              console.warn('[STRIntegration] pushOldestHandToBackup error:', e3);
+            }
+          }
+        });
       }
-      // Reset guard so we can push once when resolution ends
-      _endOfTurnPushDone = false;
     } else {
-      // Restore hand when not resolving (covers 'selecting' and 'post_resolve')
+      // Selecting / post_resolve — make sure the hand fan is visible
       HandFanComponent.restore();
 
-      // ── End-of-turn cycle: oldest hand card returns to backup ──
-      // Fires once on the resolving→selecting/post_resolve edge.
+      // Edge: resolving → selecting (legacy path for when animation didn't run)
       if (_lastResolvingTurn && !_endOfTurnPushDone) {
         _endOfTurnPushDone = true;
 
-        // Phase 5: Advance duel turn (refill charges, escalation, momentum, AI adapt)
         try {
           if (typeof InformationDuelEngine !== 'undefined' && InformationDuelEngine.advanceTurn) {
-            var _enemyCards = (typeof EnemyHandDisplay !== 'undefined' && EnemyHandDisplay.getEnemyCards) ?
+            var _enemyCards2 = (typeof EnemyHandDisplay !== 'undefined' && EnemyHandDisplay.getEnemyCards) ?
               EnemyHandDisplay.getEnemyCards() : [];
-            // Check if player destroyed a card this turn (tracked by interaction handler)
-            var _destroyedThisTurn = false;
+            var _destroyedThisTurn2 = false;
             try {
               if (typeof NonCombatEventBus !== 'undefined' && NonCombatEventBus._lastDestroyThisTurn) {
-                _destroyedThisTurn = true;
+                _destroyedThisTurn2 = true;
                 NonCombatEventBus._lastDestroyThisTurn = false;
               }
-            } catch (e5) {}
-            InformationDuelEngine.advanceTurn(_destroyedThisTurn, _enemyCards);
+            } catch (e5c) {}
+            InformationDuelEngine.advanceTurn(_destroyedThisTurn2, _enemyCards2);
           }
-        } catch (e5b) {}
+        } catch (e5d) {}
 
         try {
           if (typeof CardStateAuthority !== 'undefined') {
-            var pushResult = CardStateAuthority.pushOldestHandToBackup();
-            if (pushResult && pushResult.success) {
-              var pushedId = (pushResult.returnedCard && pushResult.returnedCard.id) || '?';
-              console.log('[STRIntegration] End-of-turn: pushed oldest hand card "' + pushedId + '" back to backup');
+            var pushResult3 = CardStateAuthority.pushOldestHandToBackup();
+            if (pushResult3 && pushResult3.success) {
+              console.log('[STRIntegration] End-of-turn (legacy): pushed oldest hand card back to backup');
             }
           } else if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.pushOldestHandCardToBackup === 'function') {
-            var pushResult2 = GAMESTATE.pushOldestHandCardToBackup();
-            if (pushResult2 && pushResult2.success) {
-              console.log('[STRIntegration] End-of-turn: pushed oldest hand card back to backup (legacy path)');
-            }
+            GAMESTATE.pushOldestHandCardToBackup();
           }
-        } catch (e3) {
-          console.warn('[STRIntegration] pushOldestHandToBackup error:', e3);
-        }
-
-        // ── BLVCK re-check on re-expand ──
-        // After disposals and resource exchanges, the hand may be empty or
-        // all remaining cards unaffordable → re-evaluate stranded state.
-        // The next poll iteration will pick up the updated card list and
-        // inject BLVCK via the stranded-check above if needed.
+        } catch (e3b) {}
       }
     }
 

@@ -428,6 +428,54 @@ if (typeof EnemyIntentSystem !== 'undefined' && enemy.intentState) {
 - `INTENT_VISUAL_EXAMPLES.md` - Visual examples of intent in combat
 - Enemy intent updates automatically via `str-combat-integration.js`
 
+## Resolution Phase Animation
+
+As of Sprint 2, the resolution phase uses a choreographed animation sequence instead of a black screen + countdown. The flow is orchestrated by `_playResolutionSequence()` in `str-combat-integration.js`:
+
+```
+selecting → resolving edge detected
+  │
+  ├─ 1. HandFanComponent.slideAway()     300 ms   Fan shrinks toward NCH capsule
+  ├─ 2. STRCombatWindow.playAttackLunge() 500 ms   First attacker (Pokemon-style lunge)
+  ├─ 3. 100ms stagger
+  ├─ 4. STRCombatWindow.playAttackLunge() 500 ms   Second attacker lunge
+  ├─ 5. STRCombatWindow.flashImpact()              Impact flash on advantage indicator
+  ├─ 6. 500 ms dramatic pause                      Intent system updates visually
+  └─ 7. HandFanComponent.slideBack()     300 ms   Fan returns, next card selection begins
+                                         ─────
+                                         ~2.2 s total (< 3 s budget)
+```
+
+**First attacker determination:** Defaults to enemy-first. If the player triggered resolution via a synergy combo (`combatState.playerInitiated`), the player attacks first.
+
+**Lunge animation:** Each combatant emoji translates 38px toward its opponent and scales to 1.25x, holds briefly, then snaps back. The target gets a brightness flash + horizontal shake on impact (`.str-lunge-hit` CSS class).
+
+### Related Files
+
+| File | Role |
+|------|------|
+| `str-combat-integration.js` | Orchestrates the full sequence via `_playResolutionSequence()` |
+| `hand-fan-component.js` | `slideAway(done)` / `slideBack(done)` — Web Animations API |
+| `str-combat-window.js` | `playAttackLunge(who, done)` / `flashImpact()` |
+| `str-combat-window.css` | `.str-lunge-hit`, `.str-impact-flash` keyframes |
+
+## STR Combat Animation Studio (Designer Roadmap)
+
+All timing values, lunge parameters, kaomoji expressions, and weapon intents are identified as **designable seams** in a separate roadmap document. The roadmap specifies five phases to build a visual tuning tool inside the Unified Designer portal:
+
+**See:** [`STR-HUD-DESIGNER-ROADMAP.md`](STR-HUD-DESIGNER-ROADMAP.md)
+
+Key seams:
+
+- **Resolution timing** — per-enemy-type overrides for slide, lunge, stagger, pause durations
+- **Lunge parameters** — distance, scale, easing, hit flash amplitude
+- **Intent expression palette** — runtime `registerExpression()` / `removeExpression()` hooks so designers can add kaomojis from `INTENT_GLYPH_PALETTE.md` without code changes
+- **Weapon intent mapping** — runtime registration + per-enemy weapon pools
+- **Timer durations** — exposed via `setTimerDuration()` setter
+- **Countdown overlay** — beat timing, flash, fade all extractable to config
+
+The designer tool will live at `public/portal/str-combat-designer.html` and integrate as a new tab in `unified-designer.html`, following the same iframe pattern as Asset/Map/World/Item/Loot designers.
+
 ## Future Enhancements
 
 Potential additions:
@@ -438,6 +486,8 @@ Potential additions:
 - Replay system for combat sequences
 - Tutorial overlays for first-time users
 - Advanced AI opponent behaviors
+- Per-enemy-type lunge trajectories (sweep, thrust, lob) via `animationHint` field
+- Expression authoring tool importing from `INTENT_GLYPH_PALETTE.md` scratchpad
 
 ## License
 

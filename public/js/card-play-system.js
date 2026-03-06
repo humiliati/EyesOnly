@@ -335,9 +335,9 @@ var CardPlaySystem = (function() {
 
     ctx.appendStrCombatLog(lines);
 
-    // Trigger re-render
-    if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.show === 'function') {
-      STRCombatWindow.show({
+    // Trigger re-render (use updateState to avoid re-triggering the 3-2-1 countdown)
+    if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.updateState === 'function') {
+      STRCombatWindow.updateState({
         active: true,
         enemy: ctx.strCombatEnemy,
         player: ctx.player,

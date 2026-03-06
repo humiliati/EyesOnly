@@ -1584,6 +1584,96 @@ const HandFanComponent = (function () {
     return maxLength ? result.substring(0, maxLength) : result;
   }
 
+  // ── Resolution slide-away / slide-back ──────────────────
+
+  var _slidState = 'visible'; // 'visible' | 'away' | 'animating'
+
+  /**
+   * Slide the hand fan toward the NCH capsule (minimized HUD) position.
+   * Used at the start of the resolution phase so the combat area is clear.
+   * @param {Function} [done] - Callback when slide-away completes
+   */
+  function slideAway(done) {
+    if (!_fanContainer || _slidState === 'away') { if (done) done(); return; }
+    _slidState = 'animating';
+
+    // Find NCH capsule target position
+    var target = document.querySelector('.nch-capsule-wrapper');
+    var tx = 0, ty = 0;
+    if (target && target.getBoundingClientRect) {
+      var tr = target.getBoundingClientRect();
+      var fr = _fanContainer.getBoundingClientRect();
+      tx = (tr.left + tr.width / 2) - (fr.left + fr.width / 2);
+      ty = (tr.top + tr.height / 2) - (fr.top + fr.height / 2);
+    } else {
+      // Fallback: slide down off-screen
+      tx = 0;
+      ty = window.innerHeight;
+    }
+
+    try {
+      var anim = _fanContainer.animate([
+        { transform: 'translate(0px, 0px) scale(1)', opacity: 1 },
+        { transform: 'translate(' + tx.toFixed(1) + 'px,' + ty.toFixed(1) + 'px) scale(0.15)', opacity: 0.2 }
+      ], {
+        duration: 300,
+        easing: 'ease-in',
+        fill: 'forwards'
+      });
+
+      anim.onfinish = function() {
+        _slidState = 'away';
+        _fanContainer.style.pointerEvents = 'none';
+        if (done) done();
+      };
+    } catch (e) {
+      _slidState = 'away';
+      _fanContainer.style.pointerEvents = 'none';
+      if (done) done();
+    }
+  }
+
+  /**
+   * Slide the hand fan back from the NCH capsule position.
+   * Used after the resolution phase completes.
+   * @param {Function} [done] - Callback when slide-back completes
+   */
+  function slideBack(done) {
+    if (!_fanContainer || _slidState === 'visible') { if (done) done(); return; }
+    _slidState = 'animating';
+
+    // Clear the forwards-filled animation state
+    _fanContainer.getAnimations().forEach(function(a) { a.cancel(); });
+    _fanContainer.style.transform = '';
+    _fanContainer.style.opacity = '';
+    _fanContainer.style.pointerEvents = '';
+
+    try {
+      var anim = _fanContainer.animate([
+        { transform: 'scale(0.15)', opacity: 0.2 },
+        { transform: 'scale(1)', opacity: 1 }
+      ], {
+        duration: 300,
+        easing: 'ease-out',
+        fill: 'none'
+      });
+
+      anim.onfinish = function() {
+        _slidState = 'visible';
+        _fanContainer.style.transform = '';
+        _fanContainer.style.opacity = '';
+        if (done) done();
+      };
+    } catch (e) {
+      _slidState = 'visible';
+      _fanContainer.style.transform = '';
+      _fanContainer.style.opacity = '';
+      if (done) done();
+    }
+  }
+
+  function getSlideState() { return _slidState; }
+
   // Public API
   return {
     init: init,
@@ -1604,7 +1694,10 @@ const HandFanComponent = (function () {
     selectContextualCard: selectContextualCard,
     getContextualCard: getContextualCard,
     clearContextualSelection: clearContextualSelection,
-    isContextualMode: isContextualMode
+    isContextualMode: isContextualMode,
+    slideAway: slideAway,
+    slideBack: slideBack,
+    getSlideState: getSlideState
   };
 })();
 
