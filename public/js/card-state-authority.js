@@ -1324,9 +1324,11 @@ var CardStateAuthority = (function() {
     var hasBlvck = _handHasBlvck();
 
     if (isCombat()) {
-      // During STR combat: only REMOVE BLVCK if player is no longer stranded
-      // (e.g., drew a playable card). Combat's own display-only fallback handles injection.
-      if (!stranded && hasBlvck) {
+      // During STR combat: inject BLVCK into actual GAMESTATE hand when stranded
+      // (slot 0, eject last card to backup). Remove when no longer stranded.
+      if (stranded && !hasBlvck) {
+        _injectBlvck();
+      } else if (!stranded && hasBlvck) {
         _removeBlvck();
       }
       return;

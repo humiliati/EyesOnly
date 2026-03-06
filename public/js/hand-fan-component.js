@@ -467,7 +467,11 @@ const HandFanComponent = (function () {
     }
 
     // Enable HTML5 drag for disposal system
-    cardWrapper.setAttribute('draggable', 'true');
+    // BLVCK (ACT-000) struggle card cannot be dragged — it's a non-removable fallback
+    var _isBlvckCard = (card && (card.id === 'ACT-000' || card.name === 'BLVCK'));
+    if (!_isBlvckCard) {
+      cardWrapper.setAttribute('draggable', 'true');
+    }
 
     // Apply fan transformation (combat-specific geometry)
     _applyFanTransform(cardWrapper, index, _cards.length);

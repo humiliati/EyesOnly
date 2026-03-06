@@ -67,9 +67,27 @@ const CardDisposalSystem = (function() {
    * @param {number} index - Index in hand or inventory
    * @param {string} source - 'hand' or 'inventory'
    */
+  // BLVCK card ID — struggle card that cannot be moved/discarded
+  var _BLVCK_ID = (typeof CardStateAuthority !== 'undefined' && CardStateAuthority.BLVCK_ID)
+    ? CardStateAuthority.BLVCK_ID : 'ACT-000';
+
+  function _isBlvckCard(data) {
+    if (!data) return false;
+    return data.id === _BLVCK_ID || data.id === 'ACT-000' || data.name === 'BLVCK';
+  }
+
   function handleDragStart(element, data, index, source) {
     source = source || 'hand';  // Default to hand for backward compatibility
-    
+
+    // ── BLVCK GUARD: struggle card cannot be dragged ──
+    if (_isBlvckCard(data)) {
+      console.log('[CardDisposalSystem] BLVCK card cannot be dragged');
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showPersistent('■ BLVCK cannot be discarded', 1000);
+      }
+      return; // Block drag entirely
+    }
+
     _draggedCard = {
       element: element,
       card: data,  // Can be card or item
@@ -226,6 +244,17 @@ const CardDisposalSystem = (function() {
     var data = _draggedCard.card;
     var element = _draggedCard.element;
     var source = _draggedCard.source || 'hand';
+
+    // ── BLVCK GUARD (belt-and-suspenders): block disposal even if drag somehow started ──
+    if (_isBlvckCard(data)) {
+      console.log('[CardDisposalSystem] BLVCK card cannot be discarded');
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.showPersistent('■ BLVCK cannot be discarded', 1000);
+      }
+      _draggedCard = null;
+      _handleDragOverDebrief(false);
+      return;
+    }
 
     // STR combat: debrief drop is SELF target or DISPOSAL (send to backup)
     if (_isStrCombatActive()) {

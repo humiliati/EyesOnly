@@ -353,10 +353,23 @@
       stranded = !cards.some(function(c) { return c && _canAffordCard(c); });
     }
 
+    // Delegate BLVCK inject/remove to CardStateAuthority (writes to actual GAMESTATE hand)
+    if (typeof CardStateAuthority !== 'undefined' && typeof CardStateAuthority.checkBlvckState === 'function') {
+      CardStateAuthority.checkBlvckState();
+    }
+
     if (stranded) {
-      var fb = _getFallbackCardDef();
-      cards = [Object.assign({}, fb, { id: 'ACT-000' })];
-      sigParts = ['fallback:ACT-000'];
+      // Re-read hand after BLVCK injection so display includes the injected card
+      if (typeof CardStateAuthority !== 'undefined' && typeof CardStateAuthority.expandHandForDisplay === 'function') {
+        cards = CardStateAuthority.expandHandForDisplay();
+        sigParts = [CardStateAuthority.getSignature()];
+      }
+      // If still empty (authority didn't inject), use display-only fallback
+      if (cards.length === 0) {
+        var fb = _getFallbackCardDef();
+        cards = [Object.assign({}, fb, { id: 'ACT-000' })];
+        sigParts = ['fallback:ACT-000'];
+      }
       handSig = sigParts.join('|');
 
       try {

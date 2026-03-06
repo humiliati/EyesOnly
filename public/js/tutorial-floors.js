@@ -89,7 +89,8 @@ var TutorialFloors = (function() {
 
     // Building doors (interactive doors leading to building interiors)
     buildingDoors: [
-      { x: 8, y: 5, buildingId: 'BLD-002' }
+      { x: 8, y: 5, buildingId: 'BLD-002', targetFloorId: '1.2' },
+      { x: 4, y: 5, buildingId: 'BLD-003', targetFloorId: '0.3' }
     ],
 
     // Decorations (visual overlay, walkable)
@@ -768,162 +769,148 @@ var TutorialFloors = (function() {
    */
   var FLOOR_0_LAYOUT = {
     floorNumber: 0,
-    name: 'The Tavern Road',
-    description: 'A quiet forest road leading past an old tavern.',
+    name: 'The Rusty Mug',
+    description: 'A warm tavern. The cellar hides secrets; the front door leads to the village.',
     templateFillsGrid: true,
 
-    // 20 rows × 40 cols — fills grid exactly
-    // Road runs left-to-right through the middle rows
-    // Tavern building in upper-left with a doorway gap at (6,5)
-    // Exit door at (30,10) — visible and within tap radius from spawn
+    // 20 rows × 40 cols — tavern interior
+    // Bar along the top wall, tables in the common room, cellar door bottom-right
+    // Front door (EXIT) bottom-left leads to Floor 1 village
     template: [
       '########################################',
       '#......................................#',
-      '#..############........................#',
-      '#..############........................#',
-      '#..############........................#',
-      '#..###.######..........................#',
-      '#......................................#',
-      '#..P...................................#',
+      '#..################..################..#',
+      '#..#..............#..#..............#..#',
+      '#..#..............#..#..............#..#',
+      '#..####.###########..####.###########..#',
       '#......................................#',
       '#......................................#',
-      '#..............................E.......#',
       '#......................................#',
       '#......................................#',
+      '#..............P.......................#',
       '#......................................#',
       '#......................................#',
       '#......................................#',
       '#......................................#',
       '#......................................#',
+      '#......................................#',
+      '#.......E..........................B...#',
       '#......................................#',
       '########################################'
     ],
 
-    // Player spawns on the left side of the road
-    player: { x: 3, y: 7 },
-    // Exit door visible at center-right — scripted walk targets this door tile
-    exit: { x: 30, y: 10 },
+    // Player spawns in the center of the common room
+    player: { x: 14, y: 10 },
+    // Front door (EXIT) → Floor 1 village
+    exit: { x: 8, y: 17 },
 
-    // Tavern building (visual overlay, impassable) — solid block (3-12, 2-4)
-    // South wall (y=5) has a doorway gap at (6,5)
-    // Template walls handle collision; buildings array adds emoji overlays
+    // Bar counter walls (impassable, visual overlay)
     buildings: [
-      // Top row (y=2): full wall x=3-12
-      { x: 3, y: 2, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 4, y: 2, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 5, y: 2, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 6, y: 2, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 7, y: 2, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 8, y: 2, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 9, y: 2, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 10, y: 2, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 11, y: 2, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 12, y: 2, emoji: '🏚️', name: 'Old Tavern' },
-      // Middle rows (y=3-4): full wall x=3-12
-      { x: 3, y: 3, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 4, y: 3, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 5, y: 3, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 6, y: 3, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 7, y: 3, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 8, y: 3, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 9, y: 3, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 10, y: 3, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 11, y: 3, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 12, y: 3, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 3, y: 4, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 4, y: 4, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 5, y: 4, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 6, y: 4, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 7, y: 4, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 8, y: 4, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 9, y: 4, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 10, y: 4, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 11, y: 4, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 12, y: 4, emoji: '🏚️', name: 'Old Tavern' },
-      // South wall (y=5): gap at x=6 for doorway
-      { x: 3, y: 5, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 4, y: 5, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 5, y: 5, emoji: '🏚️', name: 'Old Tavern' },
-      // (6,5) = doorway — intentionally omitted
-      { x: 7, y: 5, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 8, y: 5, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 9, y: 5, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 10, y: 5, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 11, y: 5, emoji: '🏚️', name: 'Old Tavern' },
-      { x: 12, y: 5, emoji: '🏚️', name: 'Old Tavern' },
-      // Shop building near the exit (right side of the road)
-      { x: 33, y: 9, emoji: '🏪', name: 'Village Shop' },
-      { x: 34, y: 9, emoji: '🏪', name: 'Village Shop' },
-      { x: 35, y: 9, emoji: '🏪', name: 'Village Shop' },
-      { x: 33, y: 10, emoji: '🏪', name: 'Village Shop' },
-      { x: 34, y: 10, emoji: '🏪', name: 'Village Shop' },
-      { x: 35, y: 10, emoji: '🏪', name: 'Village Shop' }
+      // Left bar alcove: top wall (y=2) x=3-18
+      { x: 3, y: 2, emoji: '🍺', name: 'Bar Counter' },
+      { x: 10, y: 2, emoji: '🍺', name: 'Bar Counter' },
+      { x: 17, y: 2, emoji: '🍺', name: 'Bar Counter' },
+      // Right bar alcove: top wall (y=2) x=21-36
+      { x: 21, y: 2, emoji: '🍺', name: 'Bar Counter' },
+      { x: 28, y: 2, emoji: '🍺', name: 'Bar Counter' },
+      { x: 35, y: 2, emoji: '🍺', name: 'Bar Counter' }
     ],
 
-    // Tavern entrance door — at the doorway gap in the south wall (6,5)
+    // Cellar stairs door → Tavern Basement ("0.1.1")
     buildingDoors: [
-      { x: 6, y: 5, buildingId: 'BLD-TAVERN', targetFloorId: '0.1' },
-      { x: 34, y: 11, buildingId: 'BLD-003', targetFloorId: '0.3' }
+      { x: 35, y: 17, buildingId: 'BLD-CELLAR', targetFloorId: '0.1.1' }
     ],
 
     // Decorations (visual overlay, walkable)
     decorations: [
-      // Trees along the road
-      { x: 16, y: 3, emoji: '🌳', name: 'Oak Tree' },
-      { x: 22, y: 2, emoji: '🌲', name: 'Pine Tree' },
-      { x: 30, y: 4, emoji: '🌳', name: 'Oak Tree' },
-      { x: 35, y: 2, emoji: '🌲', name: 'Pine Tree' },
-      // Lanterns along the path — kept away from exit/door columns
-      { x: 10, y: 8, emoji: '🏮', name: 'Lantern' },
-      { x: 20, y: 8, emoji: '🏮', name: 'Lantern' },
-      { x: 27, y: 8, emoji: '🏮', name: 'Lantern' },
-      // Scenery
-      { x: 14, y: 14, emoji: '🪨', name: 'Boulder' },
-      { x: 25, y: 15, emoji: '🌿', name: 'Fern' },
-      { x: 33, y: 13, emoji: '🪨', name: 'Boulder' },
-      // Tavern sign near doorway
-      { x: 6, y: 6, emoji: '🪧', name: 'Tavern Sign' }
+      // Tables and chairs in the common room
+      { x: 6, y: 8, emoji: '🪑', name: 'Chair' },
+      { x: 8, y: 8, emoji: '🪑', name: 'Chair' },
+      { x: 14, y: 8, emoji: '🪑', name: 'Chair' },
+      { x: 16, y: 8, emoji: '🪑', name: 'Chair' },
+      { x: 22, y: 8, emoji: '🪑', name: 'Chair' },
+      { x: 24, y: 8, emoji: '🪑', name: 'Chair' },
+      // Fireplace on the right wall
+      { x: 37, y: 5, emoji: '🔥', name: 'Fireplace' },
+      { x: 37, y: 6, emoji: '🔥', name: 'Fireplace' },
+      // Lanterns for atmosphere
+      { x: 2, y: 8, emoji: '🏮', name: 'Lantern' },
+      { x: 19, y: 8, emoji: '🏮', name: 'Lantern' },
+      { x: 37, y: 10, emoji: '🏮', name: 'Lantern' },
+      // Cellar sign near door
+      { x: 34, y: 16, emoji: '🪧', name: 'Cellar Sign' }
     ],
 
-    // Hint NPC outside the tavern
+    // NPCs
     npcs: [
       {
         id: 'NPC-TAVERN-KEEPER',
-        x: 8, y: 6,
+        x: 6, y: 5,
         emoji: '🧔',
         name: 'Tavern Keeper',
         direction: 'south',
         dialogues: [
-          'Welcome, stranger. The road ahead leads to the forest.',
-          'This old tavern has been here longer than anyone can remember.',
-          'If you ever come back this way, take a look around the cellar...',
-          'They say the previous owner left something valuable down there.'
+          'Welcome to The Rusty Mug, stranger.',
+          'The front door leads out to the village.',
+          'The cellar stairs are in the back — careful down there.',
+          'They say the previous owner left something valuable in the basement.'
         ],
         gate: null, reward: null
+      },
+      {
+        id: 'NPC-BLACKSMITH',
+        x: 24, y: 5,
+        emoji: '⚒️',
+        name: 'Blacksmith',
+        direction: 'south',
+        dialogues: [
+          'I\'ve been searching for my hammer everywhere!',
+          'If you find it, bring it back to me.',
+          'I think I left it somewhere in the cellar...',
+          'I\'ll forge you something special in return.'
+        ],
+        gate: null,
+        reward: { type: 'card_upgrade' },
+        questItem: 'BLACKSMITH_HAMMER',
+        npcTarget: 'BLACKSMITH'
       }
     ],
 
     interactiveItems: [
-      { x: 6, y: 6, type: 'SIGN', emoji: '🪧', name: 'Tavern Sign',
-        text: 'The Rusty Mug — Est. ???. "All adventurers welcome."' }
+      { x: 8, y: 17, type: 'SIGN', emoji: '🚪', name: 'Front Door',
+        text: 'The front door leads out to the village and the forest beyond.' },
+      { x: 34, y: 16, type: 'SIGN', emoji: '🪧', name: 'Cellar Sign',
+        text: 'Cellar — "Staff Only." The lock has been broken for years.' }
     ],
 
-    breakables: [],
-    enemies: [],
+    breakables: [
+      // Barrels in the common room
+      { x: 2, y: 12, emoji: '🗑️', name: 'Old Barrel', hp: 2, drops: { currency: [3, 8] }, kickable: true, destroyedGlyph: '.' },
+      { x: 2, y: 14, emoji: '🗑️', name: 'Old Barrel', hp: 2, drops: { currency: [3, 8] }, kickable: true, destroyedGlyph: '.' },
+      // Crates near the cellar
+      { x: 36, y: 14, emoji: '📦', name: 'Dusty Crate', hp: 1, drops: { currency: [5, 10] }, kickable: true, destroyedGlyph: '.' },
+      { x: 37, y: 14, emoji: '📦', name: 'Dusty Crate', hp: 1, drops: { currency: [5, 10] }, kickable: true, destroyedGlyph: '.' }
+    ],
 
+    // Test enemy: Tavern Rat near cellar entrance
+    enemies: [
+      {
+        x: 30, y: 14, hp: 3, maxHp: 3,
+        attack: 1, defense: 1,
+        emoji: '🐀', name: 'Tavern Rat',
+        sightRange: 3, orientation: 'south',
+        patrolType: 'stationary',
+        dropTable: null
+      }
+    ],
+
+    // Small currency on the floor
     breadcrumbPickups: [
-      { x: 10, y: 7, amount: 3 },
-      { x: 16, y: 8, amount: 3 },
-      { x: 22, y: 9, amount: 3 },
-      { x: 27, y: 10, amount: 5 }
+      { x: 10, y: 10, amount: 3 },
+      { x: 18, y: 10, amount: 3 }
     ],
 
-    // Key ammo (T1) collectibles along the road — teaches key resource before Floor 1 gates
-    tutorialPickups: [
-      { x: 12, y: 7, type: 'key', keyType: 'RUSTY_KEY', tier: 1, name: 'Rusty Key', emoji: '🗝' },
-      { x: 18, y: 8, type: 'key', keyType: 'RUSTY_KEY', tier: 1, name: 'Rusty Key', emoji: '🗝' },
-      { x: 24, y: 9, type: 'key', keyType: 'RUSTY_KEY', tier: 1, name: 'Rusty Key', emoji: '🗝' }
-    ],
+    tutorialPickups: [],
 
     border: {
       thickness: 1,
@@ -1179,9 +1166,10 @@ var TutorialFloors = (function() {
     enemies: []
   };
 
-  // Register tavern interiors with InteriorFloors module
+  // Register tavern basement with InteriorFloors module
+  // NOTE: "0.1" (old collectibles test floor) removed — floor 0 IS the tavern now.
+  // Only the basement ("0.1.1") is registered as an interior sub-floor.
   if (typeof InteriorFloors !== 'undefined') {
-    InteriorFloors.registerAuthoredLayout('0.1', TAVERN_INTERIOR_LAYOUT);
     InteriorFloors.registerAuthoredLayout('0.1.1', TAVERN_BASEMENT_LAYOUT);
   }
 
