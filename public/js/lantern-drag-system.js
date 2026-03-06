@@ -21,7 +21,8 @@ var LanternDragSystem = (function() {
 
   // ── Config ──
   var DRAG_SPEED_PENALTY = 0.10;   // 10% movement speed reduction
-  var DROP_DISTANCE = 8;           // Auto-drop if player drags too far
+  var DROP_DISTANCE = 8;           // Auto-drop if player drags too far (active grab)
+  var WAFT_DISTANCE = 3;           // Auto-drop for passive waft (walk-through)
   var DRAG_GLOW_COLOR = '#ffe7b0'; // Warm lantern glow for overhead
   var DRAG_GLOW_INTERVAL = 2400;   // ms between glow pulses
 
@@ -30,6 +31,7 @@ var LanternDragSystem = (function() {
   var _attachTileX = 0;            // Where the lantern was picked up
   var _attachTileY = 0;
   var _lastGlowTime = 0;
+  var _isPassiveWaft = false;      // true = passive walk-through, false = active tap grab
 
   /**
    * Check if a breakable is draggable (lantern/lamp post).
@@ -45,13 +47,14 @@ var LanternDragSystem = (function() {
 
   /**
    * Attempt to attach a draggable breakable to the player.
-   * Called from game-tick tile traversal when player enters a breakable's tile.
+   * Called from game-tick tile traversal (passive) or tap-move (active).
    *
    * @param {Object} breakable - The breakable at the player's tile
    * @param {Object} ctx - Game context
+   * @param {boolean} [passive] - true if triggered by walking through (shorter waft distance)
    * @returns {boolean} true if attached
    */
-  function tryAttach(breakable, ctx) {
+  function tryAttach(breakable, ctx, passive) {
     if (_draggedBreakable) return false; // Already dragging
     if (!isDraggable(breakable)) return false;
     if (breakable.hp <= 0) return false;
@@ -60,13 +63,15 @@ var LanternDragSystem = (function() {
     _attachTileX = breakable.x;
     _attachTileY = breakable.y;
     _lastGlowTime = Date.now();
+    _isPassiveWaft = !!passive;
 
     // Visual feedback: subtle overhead indicator
     if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
       OverheadAnimator.showGenericExpression(breakable.x, breakable.y, '🏮', 500, DRAG_GLOW_COLOR);
     }
 
-    console.log('[LanternDrag] Attached ' + (breakable.name || 'lantern') +
+    console.log('[LanternDrag] ' + (_isPassiveWaft ? 'Wafted' : 'Grabbed') +
+      ' ' + (breakable.name || 'lantern') +
       ' at ' + breakable.x + ',' + breakable.y);
 
     return true;
@@ -87,8 +92,10 @@ var LanternDragSystem = (function() {
     var by = _draggedBreakable.y;
 
     // Auto-drop if too far from attach point
+    // Passive waft uses shorter distance; active grab uses full distance
+    var maxDist = _isPassiveWaft ? WAFT_DISTANCE : DROP_DISTANCE;
     var dist = Math.abs(px - _attachTileX) + Math.abs(py - _attachTileY);
-    if (dist > DROP_DISTANCE) {
+    if (dist > maxDist) {
       drop(ctx);
       return;
     }
@@ -154,6 +161,7 @@ var LanternDragSystem = (function() {
     _draggedBreakable = null;
     _attachTileX = 0;
     _attachTileY = 0;
+    _isPassiveWaft = false;
   }
 
   /**
@@ -189,6 +197,15 @@ var LanternDragSystem = (function() {
     _draggedBreakable = null;
     _attachTileX = 0;
     _attachTileY = 0;
+    _isPassiveWaft = false;
+  }
+
+  /**
+   * Check if current drag is a passive waft (walk-through) vs active grab (tap).
+   * @returns {boolean}
+   */
+  function isPassiveWaft() {
+    return _isPassiveWaft && !!_draggedBreakable;
   }
 
   return {
@@ -198,6 +215,7 @@ var LanternDragSystem = (function() {
     drop: drop,
     getDragSpeedPenalty: getDragSpeedPenalty,
     isDragging: isDragging,
+    isPassiveWaft: isPassiveWaft,
     getDraggedBreakable: getDraggedBreakable,
     reset: reset
   };

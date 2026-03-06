@@ -81,11 +81,16 @@ var MovePlayerSystem = (function() {
 
     var blockingBreakable = ctx.getBreakableAt(newX, newY);
     if (blockingBreakable && blockingBreakable.hp > 0) {
-      return {
-        lines: [blockingBreakable.emoji + ' BREAKABLE BLOCKS PATH', 'USE SHOOT OR KICK TO CLEAR', ''].concat(ctx.renderGrid()),
-        prompt: ctx.getPrompt(),
-        stayActive: true
-      };
+      // Light-source breakables on walkable tiles don't block movement —
+      // player walks through them (enables passive lantern wafting).
+      // Only non-light-source breakables (barrels, crates, etc.) block.
+      if (!blockingBreakable.isLightSource) {
+        return {
+          lines: [blockingBreakable.emoji + ' BREAKABLE BLOCKS PATH', 'USE SHOOT OR KICK TO CLEAR', ''].concat(ctx.renderGrid()),
+          prompt: ctx.getPrompt(),
+          stayActive: true
+        };
+      }
     }
 
     // Move player

@@ -75,10 +75,11 @@ var GameTickSystem = (function() {
           prevY = tile.y;
 
           // ── Lantern drag: check if player entered a draggable breakable tile ──
+          // Passive waft: player walks through lantern, it drifts along briefly
           if (typeof LanternDragSystem !== 'undefined' && !LanternDragSystem.isDragging()) {
             var _dragBreakable = ctx.getBreakableAt ? ctx.getBreakableAt(tile.x, tile.y) : null;
             if (_dragBreakable && LanternDragSystem.isDraggable(_dragBreakable)) {
-              LanternDragSystem.tryAttach(_dragBreakable, ctx);
+              LanternDragSystem.tryAttach(_dragBreakable, ctx, true); // passive=true
             }
           }
 
