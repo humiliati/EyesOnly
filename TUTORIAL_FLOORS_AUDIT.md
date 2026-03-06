@@ -158,16 +158,20 @@ Both building entrance doors (tavern, church) and floor advance/retreat doors us
 The tile glyphs and overhead animations are identical. The `OverheadAnimator` only shows a generic `↩️` hint for the back door (line 268 of `tutorial-floor-gen.js`). Building doors get no distinct animation.
 
 ### Fix
-1. Add distinct overhead animation for building doors in the rendering/interaction layer:
+1. Add distinct overhead animation for building doors in the rendering/interaction layer, using the following symbols:
+   - **Return floor doors:** `↩️` (return arrow)
+   - **Advance floor doors:** `↪️` (forward arrow)
+   - **Building entrance/exit doors:** `↔️` (`<->` arrow)
+   - **Inside of buildings:** return/advance floor doors use `↩️` / `↪️` respectively; the exit building door uses `↔️`
 
 ```js
-// When player approaches a building door, show a different indicator:
+// When player approaches a door, show a distinct indicator:
 if (md.type === 'building_door') {
-  OverheadAnimator.showGenericExpression(x, y, '🏠', 900); // Building icon
+  OverheadAnimator.showGenericExpression(x, y, '↔️', 900); // Building entrance/exit
 } else if (md.doorKind === 'forward') {
-  OverheadAnimator.showGenericExpression(x, y, '⬇️', 900); // Advance floor
+  OverheadAnimator.showGenericExpression(x, y, '↪️', 900); // Advance floor
 } else if (md.doorKind === 'back') {
-  OverheadAnimator.showGenericExpression(x, y, '⬆️', 900); // Return floor
+  OverheadAnimator.showGenericExpression(x, y, '↩️', 900); // Return floor
 }
 ```
 
