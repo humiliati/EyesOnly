@@ -90,7 +90,7 @@ var TutorialFloors = (function() {
     // Building doors (interactive doors leading to building interiors)
     buildingDoors: [
       { x: 8, y: 5, buildingId: 'BLD-002', targetFloorId: '1.2' },
-      { x: 4, y: 5, buildingId: 'BLD-003', targetFloorId: '0.3' }
+      { x: 4, y: 5, buildingId: 'BLD-003', targetFloorId: '1.3' }
     ],
 
     // Decorations (visual overlay, walkable)
@@ -247,7 +247,7 @@ var TutorialFloors = (function() {
     template: [
       '########################################',
       '#......................................#',
-      '#..P...................................#',
+      '#...................P..................#',
       '#......................................#',
       '#......................................#',
       '#......................................#',
@@ -267,22 +267,24 @@ var TutorialFloors = (function() {
       '########################################'
     ],
 
-    // Player spawns upper-left — sees both doors and the gate bottleneck
-    player: { x: 3, y: 2 },
-    // Forward exit at bottom-center — visible through the hourglass but unreachable
+    // Move the player spawn closer to the center to prevent wall-clip doors
+    player: { x: 20, y: 2 },
+    // Forward exit at bottom-center — visible through the hourglass
     exit: { x: 20, y: 18 },
 
     // No buildings — open field design so both doors + gate are clearly visible
     buildings: [],
 
     decorations: [
-      // Breadcrumb trail toward the key alcove (right side)
-      { x: 15, y: 3, emoji: '🪧', name: 'Hint Sign' },
       { x: 25, y: 4, emoji: '🏮', name: 'Lantern' },
       // Scene cluster: "two rocks and a leaf" framing the Picnic Basket at (18,7)
       { x: 17, y: 7, emoji: '🪨', name: 'Rock' },
       { x: 19, y: 7, emoji: '🪨', name: 'Rock' },
-      { x: 18, y: 6, emoji: '🍃', name: 'Fallen Leaf' }
+      { x: 18, y: 6, emoji: '🍃', name: 'Fallen Leaf' },
+      // Scene cluster: "two ferns and a flower" near lower reward area
+      { x: 8, y: 14, emoji: '🌿', name: 'Fern' },
+      { x: 10, y: 14, emoji: '🌿', name: 'Fern' },
+      { x: 9, y: 13, emoji: '🌸', name: 'Wild Flower' }
     ],
 
     // Single helpful NPC — points player toward key
@@ -322,17 +324,16 @@ var TutorialFloors = (function() {
       { x: 35, y: 4, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
       { x: 32, y: 5, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
       { x: 35, y: 5, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
-      // A couple bonus breakables near spawn for early currency
+      // Breakables near spawn for early currency
       { x: 10, y: 6, emoji: '📦', name: 'Wooden Crate', hp: 2, drops: { currency: [5, 10], cards: 0.3 } },
-      { x: 18, y: 7, emoji: '🧺', name: 'Picnic Basket', hp: 2, drops: { currency: [5, 10], cards: 0.4 } }
+      // Picnic scene framed by decorations at (17,7), (19,7), (18,6)
+      { x: 18, y: 7, emoji: '🧺', name: 'Picnic Basket', hp: 2, drops: { currency: [5, 10], cards: 0.4 } },
+      // Hidden picnic in the lower reward area (scene cluster at 8-10, 13-14)
+      { x: 9, y: 14, emoji: '🧺', name: 'Picnic Basket', hp: 2, drops: { currency: [8, 15], cards: 0.5 } }
     ],
 
-    // Food collectibles for health/fatigue recovery
+    // Interactive items
     interactiveItems: [
-      { x: 5, y: 3, type: 'FOOD', emoji: '🍎', name: 'Fresh Apple',
-        customData: { foodId: 'FOOD_APPLE' } },
-      { x: 20, y: 14, type: 'FOOD', emoji: '☕', name: 'Hot Coffee',
-        customData: { foodId: 'FOOD_COFFEE' } },
       { x: 15, y: 3, type: 'SIGN', emoji: '🪧', name: 'Hint Sign',
         text: 'A barricade blocks the pinch. Break it with normal attacks/projectiles to proceed.' }
     ],
@@ -373,10 +374,10 @@ var TutorialFloors = (function() {
     template: [
       '########################################',
       '#......................................#',
-      '#......................................#',
-      '#......................................#',
-      '#......................................#',
       '#...................P..................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
       '#......................................#',
       '#.............####....####.............#',
       '#.............#..#....#..#.............#',
@@ -389,11 +390,12 @@ var TutorialFloors = (function() {
       '#......................................#',
       '#...................E..................#',
       '#......................................#',
+      '#......................................#',
       '########################################'
     ],
 
-    // Player spawns at the back/entry door near the arrival point
-    player: { x: 20, y: 5 },
+    // Player spawns at top of arena — clear of all wall structures below
+    player: { x: 20, y: 2 },
     // Exit is beyond the key gate + combat gate
     exit: { x: 20, y: 16 },
 
@@ -551,7 +553,7 @@ var TutorialFloors = (function() {
         }
       },
       {
-        x: 8, y: 10,
+        x: 7, y: 12,
         emoji: '📦',
         name: 'Wooden Crate',
         hp: 2,
@@ -751,31 +753,149 @@ var TutorialFloors = (function() {
     enemies: []
   };
   if (typeof InteriorFloors !== 'undefined') {
-    InteriorFloors.registerAuthoredLayout('0.3', SHOP_INTERIOR_LAYOUT);
+    InteriorFloors.registerAuthoredLayout('1.3', SHOP_INTERIOR_LAYOUT);
   }
 
 
   /**
-   * Floor 0: The Tavern Road — Onboarding hub with scripted walk
+   * Floor 0: The Tavern Road — True Starting Area
    *
    * Design:
-   * - Player spawns on the left side of a forest road
-   * - A tavern building sits mid-map (easter egg: explorable interior + basement)
-   * - The road leads east to the Floor 1 exit (scripted auto-walk on first visit)
-   * - No enemies — safe hub area
-   * - Building door leads to tavern interior (floor ID 0.1)
-   *
-   * Template fills entire 20×40 grid → templateFillsGrid=true → no anchor shifting.
+   * - Player spawns on the left side of a forest road (no back door)
+   * - A tavern building sits mid-map
+   * - Building door leads to tavern interior
    */
   var FLOOR_0_LAYOUT = {
     floorNumber: 0,
+    name: 'The Tavern Road',
+    description: 'A quiet forest road. The Rusty Mug tavern stands nearby.',
+    templateFillsGrid: true,
+
+    template: [
+      '########################################',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#.............####.....................#',
+      '#.............#..#.....................#',
+      '#.............####.....................#',
+      '#......................................#',
+      '#......................................#',
+      '#...P..................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#......................................#',
+      '#...................E..................#',
+      '#......................................#',
+      '########################################'
+    ],
+
+    // Player spawns on the road; NO return door logic needed on floor 0
+    player: { x: 4, y: 9 },
+    // Forward door leading to Floor 1
+    exit: { x: 20, y: 17 },
+
+    // The Tavern building shell
+    buildings: [
+      { x: 14, y: 4, emoji: '🏠', name: 'The Rusty Mug' }
+    ],
+
+    // Door to the ACTUAL Tavern Interior (mapped to "0.1")
+    buildingDoors: [
+      { x: 15, y: 7, buildingId: 'BLD-TAVERN', targetFloorId: '0.1' }
+    ],
+
+    decorations: [
+      // Tavern entrance lanterns
+      { x: 12, y: 7, emoji: '🏮', name: 'Lantern' },
+      { x: 18, y: 7, emoji: '🏮', name: 'Lantern' },
+      // Left forest edge — trees lining the road
+      { x: 2, y: 2, emoji: '🌲', name: 'Pine Tree' },
+      { x: 3, y: 3, emoji: '🌳', name: 'Oak Tree' },
+      { x: 2, y: 5, emoji: '🌿', name: 'Fern' },
+      { x: 3, y: 8, emoji: '🍃', name: 'Fallen Leaf' },
+      { x: 2, y: 11, emoji: '🌲', name: 'Pine Tree' },
+      { x: 3, y: 13, emoji: '🌳', name: 'Oak Tree' },
+      { x: 2, y: 15, emoji: '🪨', name: 'Mossy Rock' },
+      // Right forest edge — trees lining the road
+      { x: 36, y: 2, emoji: '🌲', name: 'Pine Tree' },
+      { x: 37, y: 4, emoji: '🌳', name: 'Oak Tree' },
+      { x: 37, y: 6, emoji: '🌿', name: 'Fern' },
+      { x: 37, y: 9, emoji: '🍃', name: 'Fallen Leaf' },
+      { x: 36, y: 12, emoji: '🌲', name: 'Pine Tree' },
+      { x: 37, y: 14, emoji: '🌳', name: 'Oak Tree' },
+      // Scattered road wildflowers
+      { x: 8, y: 12, emoji: '🌸', name: 'Wild Flower' },
+      { x: 25, y: 5, emoji: '🌸', name: 'Wild Flower' },
+      { x: 22, y: 13, emoji: '🌼', name: 'Dandelion' }
+    ],
+
+    interactiveItems: [
+      { x: 17, y: 7, type: 'SIGN', emoji: '🪧', name: 'Tavern Sign', text: 'The Rusty Mug - Travelers Welcome.' }
+    ],
+
+    breakables: [
+      // Left forest: picnic hidden behind a bush cluster (scene: tree at 3,3; fern at 2,5)
+      { x: 3, y: 4, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
+      { x: 3, y: 5, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
+      { x: 3, y: 6, emoji: '🧺', name: 'Picnic Basket', hp: 2, drops: { currency: [10, 20], cards: 0.4 } },
+      // Top-right corner: bushes concealing the elite enemy
+      { x: 34, y: 1, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [1, 3] } },
+      { x: 35, y: 1, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [1, 3] } },
+      { x: 36, y: 1, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [1, 3] } },
+      { x: 37, y: 1, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [1, 3] } }
+    ],
+
+    // Elite enemy tucked in the top-right corner behind the bush cluster.
+    // Punching-bag HP for STR-combat playtesting; very weak attack so it's safe to fight early.
+    enemies: [
+      {
+        x: 37,
+        y: 2,
+        emoji: '🐌',
+        name: 'Ancient Snail',
+        hp: 20,
+        maxHp: 20,
+        attack: 1,        // Intentionally 1 — punching-bag design for STR-combat playtesting
+        defense: 0,
+        elite: true,
+        sightRange: 2,
+        patrolType: 'stationary',
+        orientation: 'west',
+        dropTable: {
+          currency: [30, 50],
+          cards: 0.8
+        }
+      }
+    ],
+
+    tutorialPickups: [],
+    breadcrumbPickups: [],
+
+    border: {
+      thickness: 1,
+      style: 'natural',
+      tiles: ['🌳', '🌲', '🪨']
+    }
+  };
+
+
+  // =========================================================================
+  // Tavern Interior Layout (Floor ID: "0.1")
+  // The Rusty Mug interior — bar, common room, cellar stairs door
+  // =========================================================================
+  var TAVERN_INTERIOR_LAYOUT = {
     name: 'The Rusty Mug',
     description: 'A warm tavern. The cellar hides secrets; the front door leads to the village.',
     templateFillsGrid: true,
 
     // 20 rows × 40 cols — tavern interior
     // Bar along the top wall, tables in the common room, cellar door bottom-right
-    // Front door (EXIT) bottom-left leads to Floor 1 village
+    // Front door (EXIT) bottom-left leads back to the road (Floor 0)
     template: [
       '########################################',
       '#......................................#',
@@ -801,7 +921,7 @@ var TutorialFloors = (function() {
 
     // Player spawns in the center of the common room
     player: { x: 14, y: 10 },
-    // Front door (EXIT) → Floor 1 village
+    // Front door (EXIT) → back to the Tavern Road (Floor 0)
     exit: { x: 8, y: 17 },
 
     // Bar counter walls (impassable, visual overlay)
@@ -892,7 +1012,7 @@ var TutorialFloors = (function() {
       { x: 37, y: 14, emoji: '📦', name: 'Dusty Crate', hp: 1, drops: { currency: [5, 10] }, kickable: true, destroyedGlyph: '.' }
     ],
 
-    // Test enemy: Tavern Rat near cellar entrance
+    // Tavern Rat near cellar entrance
     enemies: [
       {
         x: 30, y: 14, hp: 3, maxHp: 3,
@@ -910,172 +1030,7 @@ var TutorialFloors = (function() {
       { x: 18, y: 10, amount: 3 }
     ],
 
-    tutorialPickups: [],
-
-    border: {
-      thickness: 1,
-      style: 'natural',
-      tiles: ['🌳', '🌲', '🪨']
-    }
-  };
-
-
-  // =========================================================================
-  // Tavern Interior Layout (Floor ID: "0.1")
-  // COLLECTIBLES TEST BLOCKOUT — All collectible types in labeled rows
-  // Tests: single-tooltip-per-pickup, overhead animations, debrief feed, resource counters
-  // =========================================================================
-  var TAVERN_INTERIOR_LAYOUT = {
-    name: 'Tavern Interior — Collectibles Test Floor',
-    template: [
-      '########################################',
-      '#......................................#',
-      '# ROW A: CURRENCY..................... #',
-      '#......................................#',
-      '# ROW B: AMMO......................... #',
-      '#......................................#',
-      '# ROW C: BATTERY (GEM)................ #',
-      '#......................................#',
-      '# ROW D: FOOD (4 resourceTypes)....... #',
-      '#......................................#',
-      '# ROW E: CARDS........................ #',
-      '#......................................#',
-      '# ROW F: KEYS (3 tiers)............... #',
-      '#......................................#',
-      '# ROW G: STRESS TEST (same tile)...... #',
-      '#......................................#',
-      '#......................................#',
-      '#......................................#',
-      '#......................................#',
-      '########################################'
-    ],
-    player: { x: 2, y: 17 },
-    exit: { x: 2, y: 18 },
-
-    // Door back to floor 0 exterior
-    buildingDoors: [],
-
-    npcs: [{
-      id: 'NPC-TEST-GUIDE', x: 10, y: 17, emoji: '🧙', name: 'Test Guide',
-      direction: 'north',
-      dialogues: [
-        'Welcome to the Collectibles Test Floor.',
-        'Each row tests a different collectible type.',
-        'Walk over items to auto-pickup. Watch for:',
-        '- Exactly 1 MOK tooltip per pickup',
-        '- Correct overhead animation color',
-        '- Debrief feed flash and counter update',
-        'Row G tests simultaneous pickup stacking.'
-      ],
-      gate: null, reward: null
-    }, {
-      id: 'NPC-BLACKSMITH', x: 14, y: 12, emoji: '⚒️', name: 'Blacksmith',
-      direction: 'west',
-      dialogues: [
-        'I\'ve been searching for my hammer everywhere!',
-        'If you find it, bring it back to me.',
-        'I\'ll forge you something special in return.'
-      ],
-      gate: null,
-      reward: { type: 'card_upgrade' },
-      questItem: 'BLACKSMITH_HAMMER',
-      npcTarget: 'BLACKSMITH'
-    }],
-
-    decorations: [
-      // Row labels (signs on left side)
-      { x: 1, y: 2, emoji: '🪧', name: 'Row A Label' },
-      { x: 1, y: 4, emoji: '🪧', name: 'Row B Label' },
-      { x: 1, y: 6, emoji: '🪧', name: 'Row C Label' },
-      { x: 1, y: 8, emoji: '🪧', name: 'Row D Label' },
-      { x: 1, y: 10, emoji: '🪧', name: 'Row E Label' },
-      { x: 1, y: 12, emoji: '🪧', name: 'Row F Label' },
-      { x: 1, y: 14, emoji: '🪧', name: 'Row G Label' }
-    ],
-
-    interactiveItems: [
-      // Row labels (interactive signs)
-      { x: 1, y: 2, type: 'SIGN', emoji: '🪧', name: 'Row A: Currency',
-        text: 'ROW A — CURRENCY: 3 crypto piles (amounts 1, 5, 25). Yellow #FFFF00 overhead, currency counter updates.' },
-      { x: 1, y: 4, type: 'SIGN', emoji: '🪧', name: 'Row B: Ammo',
-        text: 'ROW B — AMMO: 3 ammo pickups (amounts 1, 3, 5). Magenta #DA70D6 overhead, debrief ammo row flashes.' },
-      { x: 1, y: 6, type: 'SIGN', emoji: '🪧', name: 'Row C: Battery',
-        text: 'ROW C — BATTERY (GEM): 3 gems (amounts 1, 2, 3). Cyan-green #00FFA6 overhead, battery row flashes.' },
-      { x: 1, y: 8, type: 'SIGN', emoji: '🪧', name: 'Row D: Food',
-        text: 'ROW D — FOOD (4 resourceTypes): HP (stew, pizza, burger), Energy (coffee, energy drink), Fatigue (banana, orange), Inert (juice, water).' },
-      { x: 1, y: 10, type: 'SIGN', emoji: '🪧', name: 'Row E: Cards',
-        text: 'ROW E — CARDS: 1 attack card, 1 support card. Purple #800080 overhead, cards row updates.' },
-      { x: 1, y: 12, type: 'SIGN', emoji: '🪧', name: 'Row F: Keys',
-        text: 'ROW F — KEYS: Tier 1 (ammo key, orange #FF8A3D), Tier 2 (gate key, gold #FFD700), Tier 3 (quest key, red #FF4444).' },
-      { x: 1, y: 14, type: 'SIGN', emoji: '🪧', name: 'Row G: Stress Test',
-        text: 'ROW G — SIMULTANEOUS PICKUP: Ammo + currency + gem + food all on same/adjacent tiles. Tests overhead stacking (fan spacing) and single-tooltip-per-pickup.' },
-
-      // Row D: Food items (auto-pickup)
-      // HP food (Pink #FF6B9D)
-      { x: 5, y: 8, type: 'FOOD', emoji: '🍲', name: 'Hot Stew', customData: { foodId: 'FOOD_STEW' } },
-      { x: 7, y: 8, type: 'FOOD', emoji: '🍕', name: 'Pizza Slice', customData: { foodId: 'FOOD_PIZZA' } },
-      { x: 9, y: 8, type: 'FOOD', emoji: '🍔', name: 'Hamburger', customData: { foodId: 'FOOD_BURGER' } },
-      // Energy food (Blue #00D4FF)
-      { x: 13, y: 8, type: 'FOOD', emoji: '☕', name: 'Coffee', customData: { foodId: 'FOOD_COFFEE' } },
-      { x: 15, y: 8, type: 'FOOD', emoji: '🥤', name: 'Energy Drink', customData: { foodId: 'FOOD_ENERGY_DRINK' } },
-      // Fatigue food (Brown #A0522D)
-      { x: 19, y: 8, type: 'FOOD', emoji: '🍌', name: 'Banana', customData: { foodId: 'FOOD_BANANA' } },
-      { x: 21, y: 8, type: 'FOOD', emoji: '🍊', name: 'Orange', customData: { foodId: 'FOOD_ORANGE' } },
-      // Inert food (Grey #CCCCCC)
-      { x: 25, y: 8, type: 'FOOD', emoji: '🧃', name: 'Fruit Juice', customData: { foodId: 'FOOD_JUICE' } },
-      { x: 27, y: 8, type: 'FOOD', emoji: '💧', name: 'Water Bottle', customData: { foodId: 'FOOD_WATER' } }
-    ],
-
-    breakables: [
-      // Row H: Barrels — Grey (inert, 2HP) and Red (explosive, 1HP)
-      { x: 5, y: 16, emoji: '🗑️', name: 'Grey Barrel', hp: 2, drops: { currency: [3, 8] }, kickable: true, destroyedGlyph: '.' },
-      { x: 8, y: 16, emoji: '🗑️', name: 'Grey Barrel', hp: 2, drops: { currency: [3, 8] }, kickable: true, destroyedGlyph: '.' },
-      { x: 11, y: 16, emoji: '🛢️', name: 'Red Barrel', hp: 1, explosive: true, blastRadius: 2.75, blastDamage: [9, 25], noise: 4, kickable: true },
-      { x: 14, y: 16, emoji: '🛢️', name: 'Red Barrel', hp: 1, explosive: true, blastRadius: 2.75, blastDamage: [9, 25], noise: 4, kickable: true },
-      { x: 15, y: 16, emoji: '🛢️', name: 'Red Barrel', hp: 1, explosive: true, blastRadius: 2.75, blastDamage: [9, 25], noise: 4, kickable: true },
-      { x: 17, y: 16, emoji: '🛢️', name: 'Red Barrel', hp: 1, explosive: true, blastRadius: 2.75, blastDamage: [9, 25], noise: 4, kickable: true }
-    ],
-
-    // Row A: Currency — 3 crypto piles (amounts 1, 5, 25)
-    currencies: [
-      { x: 5, y: 2, amount: 1 },
-      { x: 8, y: 2, amount: 5 },
-      { x: 11, y: 2, amount: 25 },
-      // Row G: Stress test — currency component
-      { x: 5, y: 14, amount: 3 }
-    ],
-
-    // Row B-G: Ammo, Gems, Cards, Keys in tutorialPickups
-    tutorialPickups: [
-      // Row B: Ammo (magenta #DA70D6) — amounts 1, 3, 5
-      { x: 5, y: 4, type: 'ammo', amount: 1 },
-      { x: 8, y: 4, type: 'ammo', amount: 3 },
-      { x: 11, y: 4, type: 'ammo', amount: 5 },
-
-      // Row C: Battery/Gem (cyan-green #00FFA6) — amounts 1, 2, 3
-      { x: 5, y: 6, type: 'gem', amount: 1 },
-      { x: 8, y: 6, type: 'gem', amount: 2 },
-      { x: 11, y: 6, type: 'gem', amount: 3 },
-
-      // Row E: Cards (purple #800080) — 1 attack card, 1 support card
-      { x: 5, y: 10, type: 'card', guaranteed: true, cardType: 'ATTACK' },
-      { x: 8, y: 10, type: 'card', guaranteed: true, cardType: 'SUPPORT' },
-
-      // Row F: Keys — Tier 1 (ammo key), Tier 2 (gate key), Tier 3 (quest key)
-      // Tier 1: Key ammo (orange #FF8A3D) — consumable chest keys
-      { x: 5, y: 12, type: 'key', keyType: 'RUSTY_KEY', tier: 1, name: 'Rusty Key', emoji: '🗝' },
-      // Tier 2: Key items (gold #FFD700) — persistent door keys, auto-equips
-      { x: 8, y: 12, type: 'key', keyType: 'SECURITY_KEYCARD', tier: 2, name: 'Security Keycard', emoji: '💳' },
-      // Tier 3: Quest keys (red #FF4444) — NPC turn-in items
-      { x: 11, y: 12, type: 'key', keyType: 'BLACKSMITH_HAMMER', tier: 3, subtype: 'quest', registryId: 'ITM-030', name: 'Blacksmith\'s Hammer', emoji: '🔨', npcTarget: 'BLACKSMITH' },
-
-      // Row G: Stress test — multiple items on adjacent tiles
-      // Testing simultaneous pickup with overhead animation stacking
-      { x: 6, y: 14, type: 'ammo', amount: 2 },
-      { x: 7, y: 14, type: 'gem', amount: 1 }
-    ],
-
-    enemies: []
+    tutorialPickups: []
   };
 
   // =========================================================================
@@ -1166,10 +1121,11 @@ var TutorialFloors = (function() {
     enemies: []
   };
 
-  // Register tavern basement with InteriorFloors module
-  // NOTE: "0.1" (old collectibles test floor) removed — floor 0 IS the tavern now.
-  // Only the basement ("0.1.1") is registered as an interior sub-floor.
+  // Register interior sub-floors with InteriorFloors module
+  // Architecture: N = floor, N.N = building interior floor 0, N.N.N = building interior floor 1
+  // "0.1" = Tavern Interior (The Rusty Mug), "0.1.1" = Tavern Basement
   if (typeof InteriorFloors !== 'undefined') {
+    InteriorFloors.registerAuthoredLayout('0.1', TAVERN_INTERIOR_LAYOUT);
     InteriorFloors.registerAuthoredLayout('0.1.1', TAVERN_BASEMENT_LAYOUT);
   }
 
@@ -1348,6 +1304,8 @@ var TutorialFloors = (function() {
       grid: grid,
       player: player,
       exit: exit,
+      // Floor 0 is the root node of the map; suppress any back-door generation for the spawn tile.
+      suppressBackDoor: layout.floorNumber === 0,
       buildings: _shiftList(layout.buildings),
       buildingDoors: _shiftList(layout.buildingDoors),
       decorations: _shiftList(layout.decorations),
