@@ -14,6 +14,10 @@ const HandFanComponent = (function () {
   var _animationPhase = 'idle'; // 'idle', 'commit', 'resolve', 'repopulate'
   var _isAnimating = false;
 
+  // Z-index layering: last-clicked card floats to top.
+  // Reset to default (center-on-top) after minimize/maximize cycle.
+  var _topCardIndex = -1; // -1 = default center-on-top layering
+
   // Press-and-hold targeting state (Option 1: tap selects, hold targets)
   var _targeting = {
     active: false,
@@ -199,6 +203,9 @@ const HandFanComponent = (function () {
 
   function minimize() {
     if (!_fanContainer) return;
+
+    // Reset z-index layering so next show uses default center-on-top
+    _topCardIndex = -1;
 
     // Animate toward mini icon, then apply minimized class
     _animateCollapseToMiniIcon(function() {
@@ -519,8 +526,13 @@ const HandFanComponent = (function () {
     var overlapWidth = baseWidth * (_cardOverlapPercent / 100);
     var horizontalSpacing = baseWidth - overlapWidth;
 
-    // Z-index (center cards on top)
-    var zIndex = 100 - Math.abs(offset * 10);
+    // Z-index: last-clicked card floats to top; default is center-on-top.
+    var zIndex;
+    if (_topCardIndex >= 0 && index === _topCardIndex) {
+      zIndex = 200; // above all other cards
+    } else {
+      zIndex = 100 - Math.abs(offset * 10); // default: center highest
+    }
 
     // Expose base transform via CSS variables; CSS handles hover lift.
     wrapper.style.setProperty('--fan-ty', String(verticalOffset) + 'px');
@@ -1137,12 +1149,16 @@ const HandFanComponent = (function () {
       }
     }
 
-    // Fast path: update classes & badges in-place instead of full DOM rebuild.
-    // This prevents the animation restart / visual quiver that occurs when
-    // _renderCards() destroys and re-creates every card element.
+    // Bring last-clicked card to top layer
+    _topCardIndex = index;
+
+    // Fast path: update classes, badges & z-index in-place instead of full
+    // DOM rebuild.  This prevents the animation restart / visual quiver that
+    // occurs when _renderCards() destroys and re-creates every card element.
     if (_fanContainer && _fanContainer.children.length > 0) {
       var wrappers = _fanContainer.querySelectorAll('.hand-card-wrapper');
       var patchedOk = wrappers.length > 0;
+      var total = wrappers.length;
 
       for (var i = 0; i < wrappers.length; i++) {
         var wrapper = wrappers[i];
@@ -1158,6 +1174,15 @@ const HandFanComponent = (function () {
           cardEl.classList.add('hand-card-selected');
         } else {
           cardEl.classList.remove('hand-card-selected');
+        }
+
+        // Update z-index: last-clicked card floats to top
+        var centerIndex = (total - 1) / 2;
+        var offset = wrapperIndex - centerIndex;
+        if (_topCardIndex >= 0 && wrapperIndex === _topCardIndex) {
+          wrapper.style.zIndex = 200;
+        } else {
+          wrapper.style.zIndex = 100 - Math.abs(offset * 10);
         }
 
         // Update or remove selection badge
@@ -1617,6 +1642,9 @@ const HandFanComponent = (function () {
     if (!_fanContainer || _slidState === 'away') { if (done) done(); return; }
     _slidState = 'animating';
 
+    // Reset z-index layering: next round starts with default center-on-top
+    _topCardIndex = -1;
+
     // Find NCH capsule target position
     var target = document.querySelector('.nch-capsule-wrapper');
     var tx = 0, ty = 0;
@@ -1632,23 +1660,31 @@ const HandFanComponent = (function () {
     }
 
     try {
+      // Do NOT use fill:'forwards' — it creates a persistent animation effect
+      // that getAnimations().cancel() may fail to clear in some browsers.
+      // Instead, bake the end state into inline styles in onfinish.
       var anim = _fanContainer.animate([
         { transform: 'translate(0px, 0px) scale(1)', opacity: 1 },
         { transform: 'translate(' + tx.toFixed(1) + 'px,' + ty.toFixed(1) + 'px) scale(0.15)', opacity: 0.2 }
       ], {
         duration: 300,
         easing: 'ease-in',
-        fill: 'forwards'
+        fill: 'none'
       });
 
       anim.onfinish = function() {
-        _slidState = 'away';
+        // Persist end state as inline styles (replaces fill:'forwards')
+        _fanContainer.style.transform = 'translate(' + tx.toFixed(1) + 'px,' + ty.toFixed(1) + 'px) scale(0.15)';
+        _fanContainer.style.opacity = '0.2';
         _fanContainer.style.pointerEvents = 'none';
+        _slidState = 'away';
         if (done) done();
       };
     } catch (e) {
-      _slidState = 'away';
+      _fanContainer.style.transform = 'scale(0.15)';
+      _fanContainer.style.opacity = '0.2';
       _fanContainer.style.pointerEvents = 'none';
+      _slidState = 'away';
       if (done) done();
     }
   }
@@ -1662,16 +1698,33 @@ const HandFanComponent = (function () {
     if (!_fanContainer || _slidState === 'visible') { if (done) done(); return; }
     _slidState = 'animating';
 
-    // Clear the forwards-filled animation state
-    _fanContainer.getAnimations().forEach(function(a) { a.cancel(); });
-    _fanContainer.style.transform = '';
-    _fanContainer.style.opacity = '';
+    // Belt-and-suspenders: cancel any lingering Web Animations API effects
+    // AND clear inline styles that slideAway baked in.
+    try { _fanContainer.getAnimations().forEach(function(a) { a.cancel(); }); } catch (e) {}
     _fanContainer.style.pointerEvents = '';
+
+    // Read the CSS-class transform so keyframes keep the fan centered.
+    // In combat mode _positionRelativeToStrWindow sets translate(-50%,-50%)
+    // as inline style, but we just cancelled/cleared everything. Reapply
+    // the centering transform so the slide-back animation doesn't jump.
+    var cssTransform = 'translate(-50%, -50%)';
+    try {
+      var cs = window.getComputedStyle(_fanContainer);
+      // If the class already supplies a translate via CSS, honour it
+      if (cs.transform && cs.transform !== 'none') {
+        cssTransform = cs.transform;
+      }
+    } catch (e) {}
+
+    // Force the element to its shrunken starting state via inline styles
+    // (not via animation fill) so there's no ambiguity.
+    _fanContainer.style.transform = cssTransform + ' scale(0.15)';
+    _fanContainer.style.opacity = '0.2';
 
     try {
       var anim = _fanContainer.animate([
-        { transform: 'scale(0.15)', opacity: 0.2 },
-        { transform: 'scale(1)', opacity: 1 }
+        { transform: cssTransform + ' scale(0.15)', opacity: 0.2 },
+        { transform: cssTransform + ' scale(1)', opacity: 1 }
       ], {
         duration: 300,
         easing: 'ease-out',
@@ -1680,6 +1733,7 @@ const HandFanComponent = (function () {
 
       anim.onfinish = function() {
         _slidState = 'visible';
+        // Restore to normal: clear inline overrides, let CSS class rule
         _fanContainer.style.transform = '';
         _fanContainer.style.opacity = '';
         if (done) done();
