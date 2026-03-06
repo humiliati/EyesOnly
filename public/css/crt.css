@@ -1578,10 +1578,8 @@ body.amber-mode #scanlines::after {
     overflow: hidden;
   }
 
-  /* Compact debrief content in portrait */
-  body:not(.mode-gone-rogue):not(.in-gone-rogue):not(.gone-rogue-active) .debrief-screen {
-    font-size: 0.8em;
-  }
+  /* Compact debrief content in portrait — row sizing now handled by cqh in debrief-scale.css */
+  /* .debrief-screen font-size override removed; container queries handle scaling */
 }
 
 /* --- Gone Rogue portrait layout (mobile) --- */
@@ -1900,16 +1898,16 @@ body.amber-mode #scanlines::after {
   .debrief-nav-list {
     display: flex;
     flex-direction: column;
-    gap: 1px;            /* was 4px — 30% row height shrink */
+    /* gap: now driven by cqh in debrief-scale.css */
     margin-bottom: 2px;  /* was 6px */
   }
 
   .debrief-nav-row {
     border: 0;
     border-radius: 0;
-    padding: 2px 3px;    /* was 1px 3px — slightly more for larger font */
+    /* padding: now driven by cqh in debrief-scale.css */
     font-family: var(--font-legible, 'Classic Console Neue', 'Courier New', monospace);
-    font-size: 13px;     /* was 11px — larger for 3-5 rows visible */
+    /* font-size: now driven by cqh in debrief-scale.css */
     font-weight: 750;
     color: rgba(191, 255, 227, 0.95);
     background: transparent;
@@ -1918,12 +1916,12 @@ body.amber-mode #scanlines::after {
     align-items: center;
     justify-content: space-between;
     letter-spacing: 0.02em; /* was 0.03em */
-    line-height: 1.2;       /* slightly increased for readability */
+    /* line-height: now set in debrief-scale.css */
     width: 100%;             /* full width of frame */
   }
 
   @media (min-width: 900px) {
-    .debrief-nav-row { font-size: 16px; } /* was 15px — larger desktop */
+    /* .debrief-nav-row font-size: now driven by cqh in debrief-scale.css */
   }
 
   .debrief-nav-row.highlighted {

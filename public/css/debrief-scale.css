@@ -1,47 +1,90 @@
-/* Debrief global scaling + ordering tweaks */
-:root {
-  --debrief-scale: 0.85; /* ~15% shrink baseline */
+/* ═══════════════════════════════════════════════════════════════════
+   Debrief dynamic scaling — container-query-driven row sizing
+
+   The .debrief-screen has aspect-ratio: 4/3, so its height is always
+   proportional to its width. We declare it as a size container and
+   express row dimensions in cqh (container query height units).
+
+   Target: 3.25 – 5 visible rows at any screen size.
+
+   Math:
+     Content area ≈ 78cqh (screen minus header/chrome).
+     Row height  = font-size × line-height + vert-padding + gap
+                 ≈ font × 1.25 + 2 × (1.2cqh) + 0.4cqh
+                 ≈ font × 1.25 + 2.8cqh
+
+     At 12cqh font: row ≈ 15 + 2.8 = 17.8cqh
+     Visible rows  = 78 / 17.8 ≈ 4.4 — right in the 3.25–5 sweet spot.
+
+     The clamp bounds are intentionally wide (8px – 56px) so that
+     proportional cqh scaling does all the real work. The bounds
+     only guard against extreme outliers (tiny thumbnails / 4K
+     ultrawide debrief windows).
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Container declaration ── */
+.debrief-screen {
+  container-type: size;
+  container-name: debrief;
 }
 
-/* Apply shrink to debrief window content via font-size */
+/* ── Row font-size: scales with container height ── */
+.debrief-nav-row {
+  font-size: clamp(8px, 12cqh, 56px) !important;
+  padding: clamp(1px, 1.2cqh, 8px) 3px !important;
+  line-height: 1.25;
+  gap: clamp(0px, 0.3cqh, 2px);
+}
+
+/* Row list gap also scales */
+.debrief-nav-list {
+  gap: clamp(0px, 0.4cqh, 3px);
+}
+
+/* Expanded panels scale with the same container */
+.debrief-row-panel {
+  font-size: clamp(7px, 10cqh, 46px) !important;
+  line-height: 1.2;
+  padding: clamp(0px, 0.5cqh, 3px) clamp(1px, 0.8cqh, 4px);
+}
+
+/* ── Legacy --debrief-scale: still applied to .debrief-window for
+     non-row elements (header label, avatar, etc.) but rows now
+     ignore it — their sizing comes from cqh above. ── */
+:root {
+  --debrief-scale: 0.85;
+}
+
 .debrief-window {
   font-size: calc(1em * var(--debrief-scale, 1));
 }
 
-/* In mobile portrait (gone-rogue mode), shrink further */
+/* Mobile portrait: shrink non-row window chrome only */
 @media (max-width: 600px) and (orientation: portrait) {
   body.mode-gone-rogue,
   body.in-gone-rogue,
   body.gone-rogue-active {
-    --debrief-scale: 0.42; /* compact: match button column height */
+    --debrief-scale: 0.55;
   }
 
-  /* Non-gone-rogue portrait: gentler shrink (49% width constraint handles excess) */
   body:not(.mode-gone-rogue):not(.in-gone-rogue):not(.gone-rogue-active) {
-    --debrief-scale: 0.6;
+    --debrief-scale: 0.65;
   }
 }
 
-/* Make resources scroll above avatar; keep avatar reachable at bottom */
+/* ── Content container ── */
 .debrief-feed-content-container {
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
   overflow: auto;
-  padding: 3px;           /* was 6px — reduced ~3% for more content space */
+  padding: clamp(1px, 0.8cqh, 6px);
   z-index: 2;
-  scroll-behavior: smooth; /* pip-boy smooth scrolling feel */
+  scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
 }
 
-/* Mobile portrait: tighter debrief content */
-@media (max-width: 600px) and (orientation: portrait) {
-  .debrief-feed-content-container {
-    padding: 1px;          /* was 2px — minimized dead space */
-  }
-}
-
-/* Keep avatar as a footer element */
+/* ── Avatar footer ── */
 #mok-avatar {
   flex: 0 0 auto;
 }
