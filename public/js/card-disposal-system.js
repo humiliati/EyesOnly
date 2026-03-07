@@ -83,7 +83,7 @@ const CardDisposalSystem = (function() {
     if (_isBlvckCard(data)) {
       console.log('[CardDisposalSystem] BLVCK card cannot be dragged');
       if (typeof TooltipSystem !== 'undefined') {
-        TooltipSystem.showPersistent('■ BLVCK cannot be discarded', 1000);
+        TooltipSystem.showPersistent('🃏 BLVCK cannot be discarded', 1000);
       }
       return; // Block drag entirely
     }
@@ -249,7 +249,7 @@ const CardDisposalSystem = (function() {
     if (_isBlvckCard(data)) {
       console.log('[CardDisposalSystem] BLVCK card cannot be discarded');
       if (typeof TooltipSystem !== 'undefined') {
-        TooltipSystem.showPersistent('■ BLVCK cannot be discarded', 1000);
+        TooltipSystem.showPersistent('🃏 BLVCK cannot be discarded', 1000);
       }
       _draggedCard = null;
       _handleDragOverDebrief(false);

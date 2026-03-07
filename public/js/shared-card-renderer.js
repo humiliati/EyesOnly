@@ -132,6 +132,11 @@ var SharedCardRenderer = (function() {
     var cardEl = document.createElement('div');
     cardEl.className = 'hand-card';
 
+    // BLVCK identity class — universal "nothing" card gets unique styling
+    if (card.id === 'ACT-000' || card.name === 'BLVCK') {
+      cardEl.classList.add('hand-card-blvck');
+    }
+
     // Lifecycle transparency
     var lifecycle = getCardLifecycle(card);
     cardEl.classList.add('hand-card-' + lifecycle);

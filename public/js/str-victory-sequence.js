@@ -423,7 +423,7 @@ var STRVictorySequence = (function () {
   function _getConditionLabel(condition) {
     switch (condition) {
       case 'pyrrhic': return '🩸 PYRRHIC VICTORY';
-      case 'blvck': return '■ BLVCK PLAY';
+      case 'blvck': return '🃏 BLVCK PLAY';
       case 'status_effect': return '⚡ STATUS KILL';
       default: return '✨ VICTORY';
     }

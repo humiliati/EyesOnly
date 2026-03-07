@@ -343,7 +343,7 @@
           if (d && !d._missing) return d;
         }
       } catch (e0) {}
-      return { id: 'ACT-000', name: 'BLVCK', emoji: '■', targetType: 'enemy', costs: null, effects: [{ type: 'damage', value: 1 }] };
+      return { id: 'ACT-000', name: 'BLVCK', emoji: '🃏', targetType: 'enemy', costs: null, effects: [{ type: 'damage', value: 1 }] };
     }
 
     function _canAffordCard(def) {
@@ -398,7 +398,7 @@
 
       try {
         if (typeof TooltipSystem !== 'undefined') {
-          TooltipSystem.showPersistent('■ STRUGGLE (BLVCK) — no cards available', 1100);
+          TooltipSystem.showPersistent('🃏 STRUGGLE (BLVCK) — no cards available', 1100);
         }
       } catch (e2) {}
     }

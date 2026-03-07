@@ -1300,7 +1300,7 @@ var CardStateAuthority = (function() {
 
     try {
       if (typeof TooltipSystem !== 'undefined') {
-        TooltipSystem.showPersistent('■ STRUGGLE — no playable cards', 1100);
+        TooltipSystem.showPersistent('🃏 STRUGGLE — no playable cards', 1100);
       }
     } catch (e) {}
   }

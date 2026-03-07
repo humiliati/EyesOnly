@@ -207,6 +207,57 @@
 }
 
 /* ============================================================
+   BLVCK (ACT-000) — Universal "Nothing" Card
+   Greyed joker identity: blacker, more transparent, serif font.
+   Per BLVCK_PHILOSOPHY.md — the void card, the struggle card.
+   ============================================================ */
+
+.hand-card.hand-card-blvck {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.82) 0%,
+    rgba(15, 15, 15, 0.72) 50%,
+    rgba(0, 0, 0, 0.88) 100%
+  );
+  border: 1px solid rgba(80, 80, 80, 0.30);
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.6), 0 0 6px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(3px);
+}
+
+.hand-card.hand-card-blvck .hand-card-emoji {
+  opacity: 0.35;
+  filter: grayscale(1) brightness(0.6);
+  font-size: 1.8em;
+}
+
+.hand-card.hand-card-blvck .hand-card-name {
+  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, 'Times New Roman', serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.45;
+  font-size: 10px;
+}
+
+.hand-card.hand-card-blvck .hand-card-cost {
+  opacity: 0.25;
+}
+
+.hand-card.hand-card-blvck .hand-card-effects {
+  opacity: 0.30;
+}
+
+/* BLVCK overrides the purple underglow — no glow, just void shadow */
+.hand-card.hand-card-blvck {
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.6), 0 0 6px rgba(0, 0, 0, 0.3);
+}
+
+/* When selected, BLVCK gets a dim grey border instead of the bright selection */
+.hand-card.hand-card-blvck.hand-card-selected {
+  border-color: rgba(120, 120, 120, 0.45);
+  box-shadow: 0 0 4px rgba(80, 80, 80, 0.4), 0 0 8px rgba(0, 0, 0, 0.4);
+}
+
+/* ============================================================
    Purple Underglow System
    Default: 2px purple glow on all cards
    Selected: 4px intensified

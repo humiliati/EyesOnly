@@ -1229,7 +1229,7 @@ var NonCombatHUD = (function() {
       ph.className = 'hand-card-wrapper nch-backup-placeholder';
       ph.style.cssText = 'opacity:0.18;pointer-events:none;user-select:none;';
       ph.innerHTML = '<div class="hand-card" style="border:1px dashed rgba(28,255,155,0.25);background:rgba(0,0,0,0.15);">' +
-        '<div class="hand-card-artwork"><div class="hand-card-emoji" style="opacity:0.3;">■</div></div>' +
+        '<div class="hand-card-artwork"><div class="hand-card-emoji" style="opacity:0.3;">🃏</div></div>' +
         '<div class="hand-card-name" style="opacity:0.3;font-size:9px;">empty</div></div>';
       scroller.appendChild(ph);
     }
@@ -1563,7 +1563,7 @@ var NonCombatHUD = (function() {
     var _blvckId = (typeof CardStateAuthority !== 'undefined' && CardStateAuthority.BLVCK_ID)
       ? CardStateAuthority.BLVCK_ID : 'ACT-000';
     if (_drag.kind === 'hand' && _drag.id === _blvckId) {
-      _showDragResult(false, null, '■ BLVCK can\u2019t be moved');
+      _showDragResult(false, null, '🃏 BLVCK can\u2019t be moved');
       _restoreDragMinimize();
       _drag = null;
       _renderAll();

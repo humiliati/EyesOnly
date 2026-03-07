@@ -1185,7 +1185,7 @@ var CardDragController = (function() {
         // BLVCK belt-and-suspenders
         if (card.id === 'ACT-000' || card.name === 'BLVCK') {
           if (typeof TooltipSystem !== 'undefined') {
-            TooltipSystem.showPersistent('■ BLVCK cannot be discarded', 1000);
+            TooltipSystem.showPersistent('🃏 BLVCK cannot be discarded', 1000);
           }
           return false;
         }
