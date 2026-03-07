@@ -499,6 +499,80 @@
     }
   },
 
+  "enemy_resource_profiles": {
+    "_designNote": "Maps lootProfile tag → canonical resource drop weights per COLLECTIBLES_CANON. Tier multipliers scale min/max. Enemies without a lootProfile use 'default'.",
+
+    "default": {
+      "currency": { "chance": 1.0, "min": 2, "max": 8 },
+      "ammo":     { "chance": 0.35, "min": 1, "max": 2 },
+      "battery":  { "chance": 0.10, "min": 1, "max": 1 },
+      "key_ammo": { "chance": 0.08, "min": 1, "max": 1 },
+      "food":     { "chance": 0.05, "food_table": "food_loot" }
+    },
+
+    "robotic": {
+      "_designNote": "Robots, drones, turrets — heavy on batteries and key_ammo, no food",
+      "currency": { "chance": 0.80, "min": 3, "max": 12 },
+      "ammo":     { "chance": 0.30, "min": 1, "max": 3 },
+      "battery":  { "chance": 0.45, "min": 1, "max": 2 },
+      "key_ammo": { "chance": 0.15, "min": 1, "max": 1 },
+      "food":     { "chance": 0.0 }
+    },
+
+    "organic": {
+      "_designNote": "Bugs, animals, plant creatures — food-rich, battery-poor",
+      "currency": { "chance": 0.50, "min": 1, "max": 5 },
+      "ammo":     { "chance": 0.15, "min": 1, "max": 1 },
+      "battery":  { "chance": 0.05, "min": 1, "max": 1 },
+      "key_ammo": { "chance": 0.03, "min": 1, "max": 1 },
+      "food":     { "chance": 0.30, "food_table": "food_loot" }
+    },
+
+    "military": {
+      "_designNote": "Guards, soldiers, enforcers — ammo-heavy, moderate currency",
+      "currency": { "chance": 0.90, "min": 5, "max": 15 },
+      "ammo":     { "chance": 0.65, "min": 2, "max": 4 },
+      "battery":  { "chance": 0.12, "min": 1, "max": 1 },
+      "key_ammo": { "chance": 0.18, "min": 1, "max": 2 },
+      "food":     { "chance": 0.08, "food_table": "food_loot" }
+    },
+
+    "tech": {
+      "_designNote": "Hackers, IT workers, datacenter enemies — balanced batteries + ammo",
+      "currency": { "chance": 0.85, "min": 4, "max": 10 },
+      "ammo":     { "chance": 0.25, "min": 1, "max": 2 },
+      "battery":  { "chance": 0.35, "min": 1, "max": 2 },
+      "key_ammo": { "chance": 0.12, "min": 1, "max": 1 },
+      "food":     { "chance": 0.03, "food_table": "food_loot" }
+    },
+
+    "civilian": {
+      "_designNote": "Shopkeepers, bystanders, non-combatants — currency and food, little else",
+      "currency": { "chance": 1.0, "min": 3, "max": 10 },
+      "ammo":     { "chance": 0.10, "min": 1, "max": 1 },
+      "battery":  { "chance": 0.05, "min": 1, "max": 1 },
+      "key_ammo": { "chance": 0.05, "min": 1, "max": 1 },
+      "food":     { "chance": 0.20, "food_table": "food_loot" }
+    },
+
+    "undead": {
+      "_designNote": "Catacomb sentinels, skeletal enemies — key_ammo rich, no food, little ammo",
+      "currency": { "chance": 0.60, "min": 2, "max": 8 },
+      "ammo":     { "chance": 0.10, "min": 1, "max": 1 },
+      "battery":  { "chance": 0.08, "min": 1, "max": 1 },
+      "key_ammo": { "chance": 0.25, "min": 1, "max": 2 },
+      "food":     { "chance": 0.0 }
+    },
+
+    "tier_multipliers": {
+      "_designNote": "Multiply resource min/max by these factors per tier",
+      "standard": 1.0,
+      "elite": 1.8,
+      "boss": 3.5,
+      "scout": 0.6
+    }
+  },
+
   "special_drops": {
     "charm_types": {
       "common": {
@@ -522,10 +596,12 @@
   },
 
   "decay_times": {
-    "currency": 20,
-    "card": 30,
-    "item": 30,
-    "consumable": 30
+    "currency": 30,
+    "card": 45,
+    "charm": 45,
+    "item": 45,
+    "consumable": 45,
+    "ammo": 60
   },
 
   "economy_settings": {

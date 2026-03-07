@@ -27,7 +27,7 @@
   <link rel="stylesheet" href="css/welcome-back.css">
   <link rel="stylesheet" href="css/tier-up-announcement.css">
   <link rel="stylesheet" href="css/run-summary.css">
-  <link rel="stylesheet" href="css/hand-fan-component.css?v=20260307h">
+  <link rel="stylesheet" href="css/hand-fan-component.css?v=20260307i">
   <link rel="stylesheet" href="css/backup-action-container.css">
   <link rel="stylesheet" href="css/shop-system.css">
   <link rel="stylesheet" href="css/commerce-drag-drop.css">
@@ -85,9 +85,10 @@
           </div>
         </div>
         <div class="mok-header-right">
-          <button class="header-chip accountability-indicator" id="awol-button" type="button" title="AWOL status — Click to configure difficulty">
+          <button class="header-chip accountability-indicator" id="awol-button" type="button" title="AWOL — Launch Gone Rogue">
             <span class="accountability-label">AWOL</span>
             <span class="accountability-icon" id="accountability-icon">●</span>
+            <span class="awol-chevron" id="awol-chevron">▾</span>
           </button>
         </div>
       </header>
@@ -230,32 +231,43 @@
               </div>
             </div>
 
-            <!-- AWOL Difficulty Selector Tooltip -->
-            <div id="awol-tooltip" class="awol-tooltip" style="display: none;">
-              <div class="awol-tooltip-header">MISSION PARAMETERS</div>
-              <div class="awol-tooltip-body">
-                <div class="awol-option" id="awol-m-status">
-                  <span class="awol-option-label">M /ops link status:</span>
-                  <span class="awol-option-value" id="m-status-value">OFFLINE</span>
-                  <button class="difficulty-btn awol-pingback-btn" id="awol-pingback-btn" type="button" disabled title="Ping M console and log your position">[M] PING BACK</button>
+            <!-- AWOL Dropdown Launcher -->
+            <div id="awol-dropdown" class="awol-dropdown" style="display: none;">
+              <!-- M status row (shown when M console is connected) -->
+              <div class="awol-dropdown-row awol-m-row" id="awol-m-row" style="display: none;">
+                <span class="awol-m-label">M /ops:</span>
+                <span class="awol-m-value" id="m-status-value">OFFLINE</span>
+                <button class="awol-m-ping" id="awol-pingback-btn" type="button" disabled>[M] PING</button>
+              </div>
+
+              <!-- Tier rows -->
+              <div class="awol-dropdown-row awol-tier-row" data-tier="1" id="awol-tier-0">
+                <span class="awol-tier-arrow" id="awol-tier-0-arrow">▸</span>
+                <span class="awol-tier-label">TRAILHEAD</span>
+                <span class="awol-tier-rogue">ROGUE 0</span>
+              </div>
+              <div class="awol-dropdown-row awol-tier-row" data-tier="2" id="awol-tier-1">
+                <span class="awol-tier-arrow" id="awol-tier-1-arrow"></span>
+                <span class="awol-tier-label">BLACK OPS</span>
+                <span class="awol-tier-rogue">ROGUE 1</span>
+                <span class="awol-tier-lock" id="awol-tier-1-lock">🔒</span>
+              </div>
+              <div class="awol-dropdown-row awol-tier-row" data-tier="3" id="awol-tier-2">
+                <span class="awol-tier-arrow" id="awol-tier-2-arrow"></span>
+                <span class="awol-tier-label">BURN NOTICE</span>
+                <span class="awol-tier-rogue">ROGUE 2</span>
+                <span class="awol-tier-lock" id="awol-tier-2-lock">🔒</span>
+              </div>
+
+              <!-- Expandable seed + launch panel (hidden until tier row clicked) -->
+              <div class="awol-launch-panel" id="awol-launch-panel" style="display: none;">
+                <div class="awol-seed-row">
+                  <label class="awol-seed-label" for="awol-seed-input">SEED:</label>
+                  <input type="text" class="awol-seed-input" id="awol-seed-input"
+                         placeholder="adjective-noun-number" autocomplete="off" spellcheck="false">
+                  <button class="awol-seed-randomize" id="awol-seed-randomize" type="button" title="Randomize seed">⟳</button>
                 </div>
-                <div class="awol-option" id="awol-livehelp-row">
-                  <a href="/livehelp" class="debrief-acc-link awol-livehelp-link" target="_blank" rel="noopener" aria-label="Live ARG help and legal disclaimers (opens in new tab)">Live ARG help &amp; disclaimers &#8599;</a>
-                </div>
-                <div class="awol-option awol-difficulty-selector" id="awol-difficulty">
-                  <span class="awol-option-label">UBER (difficulty, not biome tier):</span>
-                  <div class="difficulty-toggle-group">
-                    <button class="difficulty-btn" data-tier="1" id="diff-t1" disabled>
-                      <span class="difficulty-tier">U0</span>
-                    </button>
-                    <button class="difficulty-btn" data-tier="2" id="diff-t2" disabled>
-                      <span class="difficulty-tier">U1</span>
-                    </button>
-                    <button class="difficulty-btn" data-tier="3" id="diff-t3" disabled>
-                      <span class="difficulty-tier">U2</span>
-                    </button>
-                  </div>
-                </div>
+                <button class="awol-launch-btn" id="awol-launch-btn" type="button">▶ LAUNCH</button>
               </div>
             </div>
           </section>
@@ -352,14 +364,15 @@
   <script src="js/ui/run-summary.js"></script>
   <script src="js/discovery-system.js"></script>
   <script src="js/enemy-ai-system.js"></script>
-  <script src="js/str-combat-engine.js?v=20260306c"></script>
+  <script src="js/loot-spill-system.js?v=20260307k"></script>
+  <script src="js/str-combat-engine.js?v=20260307k"></script>
   <script src="js/floor-generator.js?v=20260302a"></script>
   <script src="js/pity-system.js"></script>
   <script src="js/box-deployment.js"></script>
   <script src="js/save-load.js"></script>
   <script src="js/projectile-system.js?v=20260305b"></script>
   <script src="js/key-loot-gen.js"></script>
-  <script src="js/currency-spawning.js"></script>
+  <script src="js/currency-spawning.js?v=20260307k"></script>
   <script src="js/rendering-ui.js"></script>
   <script src="js/vendor-system.js"></script>
   <script src="js/inventory-management.js?v=20260305g"></script>
@@ -369,20 +382,20 @@
   <script src="js/active-item-system.js"></script>
   <script src="js/vent-system.js"></script>
   <script src="js/npc-gate-system.js"></script>
-  <script src="js/death-exit-system.js?v=20260306h"></script>
+  <script src="js/death-exit-system.js?v=20260307k"></script>
   <script src="js/cost-printer-system.js"></script>
   <script src="js/door-contract-system.js"></script>
   <script src="js/floor-transition-system.js"></script>
   <script src="js/biome-gate-system.js"></script>
   <script src="js/explosion-system.js?v=20260305j"></script>
-  <script src="js/breakable-system.js?v=20260306j"></script>
+  <script src="js/breakable-system.js?v=20260307k"></script>
   <script src="js/lantern-drag-system.js?v=20260306a"></script>
   <script src="js/combat-narration-system.js"></script>
-  <script src="js/pickup-system.js?v=20260306i"></script>
+  <script src="js/pickup-system.js?v=20260307j"></script>
   <script src="js/agent-command-system.js"></script>
   <script src="js/interior-floor-system.js?v=20260304b"></script>
   <script src="js/highscore-system.js"></script>
-  <script src="js/player-interaction-system.js"></script>
+  <script src="js/player-interaction-system.js?v=20260307j"></script>
   <script src="js/stealth-system.js"></script>
   <script src="js/card-play-system.js?v=20260305n"></script>
   <script src="js/tap-move-system.js?v=20260305j"></script>
@@ -391,7 +404,7 @@
   <script src="js/command-process-system.js"></script>
   <script src="js/game-tick-system.js?v=20260306a"></script>
   <script src="js/player-action-system.js"></script>
-  <script src="js/move-player-system.js?v=20260306a"></script>
+  <script src="js/move-player-system.js?v=20260307j"></script>
   <script src="js/agent-api-system.js"></script>
   <script src="js/run-start-system.js?v=20260305k"></script>
   <script src="js/game-state-api.js"></script>
@@ -411,8 +424,8 @@
   <script src="js/biome-visuals.js"></script>
   <script src="js/biome-visual-facade.js"></script>
   <script src="js/game-loop.js"></script>
-  <script src="js/gone-rogue.js?v=20260305k"></script>
-  <script src="js/gone-rogue-mobile.js?v=20260306j"></script>
+  <script src="js/gone-rogue.js?v=20260307k"></script>
+  <script src="js/gone-rogue-mobile.js?v=20260307k"></script>
   <script src="js/str-combat-window.js?v=20260305n"></script>
   <script src="js/backup-action-container.js"></script>
   <script src="js/ground-effect-card-mappings.js"></script>
@@ -433,11 +446,11 @@
   <script src="js/information-duel-hud.js"></script>
   <script src="js/rogue-sidebar.js?v=20260304i"></script>
   <script src="js/non-combat-hud.js?v=20260307h"></script>
-  <script src="js/card-drag-controller.js?v=20260307h"></script>
-  <script src="js/hand-fan-component.js?v=20260307h"></script>
+  <script src="js/card-drag-controller.js?v=20260307i"></script>
+  <script src="js/hand-fan-component.js?v=20260307i"></script>
   <script src="js/str-victory-sequence.js?v=20260307h"></script>
   <script src="js/str-exit-sequence.js"></script>
-  <script src="js/str-combat-integration.js?v=20260307h"></script>
+  <script src="js/str-combat-integration.js?v=20260307i"></script>
   <script src="js/reserve-slots.js"></script>
   <script src="js/login-shell.js"></script>
   <script src="js/api-client.js"></script>

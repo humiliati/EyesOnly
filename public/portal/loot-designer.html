@@ -484,6 +484,154 @@ function DropPreview({ tables }) {
   );
 }
 
+// ── Canonical resource metadata ──
+const RESOURCE_META = {
+  currency: { emoji: '¢', color: '#FFD700', label: 'Currency' },
+  ammo:     { emoji: '⁍', color: '#FF6B35', label: 'Ammo' },
+  battery:  { emoji: '◈', color: '#00BFFF', label: 'Battery' },
+  key_ammo: { emoji: '🗝', color: '#C0C0C0', label: 'Key Ammo' },
+  food:     { emoji: '🍎', color: '#7CFC00', label: 'Food' }
+};
+const RESOURCE_KEYS = ['currency', 'ammo', 'battery', 'key_ammo', 'food'];
+
+// ── Enemy Resource Profile Editor ──
+function EnemyResourceEditor({ profiles, tierMultipliers, onChangeProfile, onChangeTier }) {
+  const [activeProfile, setActiveProfile] = useState('');
+  const profileKeys = Object.keys(profiles || {}).filter(k => k !== '_designNote' && k !== 'tier_multipliers');
+  const selected = activeProfile || profileKeys[0] || '';
+  const profile = profiles[selected] || {};
+  const tierKeys = Object.keys(tierMultipliers || {}).filter(k => k !== '_designNote');
+
+  // Build weight-bar entries from chance values
+  const barEntries = RESOURCE_KEYS.map(rk => ({
+    name: RESOURCE_META[rk].label,
+    weight: (profile[rk] && profile[rk].chance) || 0
+  }));
+
+  return (
+    <div>
+      <div className="section-title">Enemy Resource Profiles</div>
+      <div className="section-desc">
+        Canonical resource drops per enemy archetype (COLLECTIBLES_CANON). Tier multipliers scale min/max amounts.
+      </div>
+
+      {/* Profile tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        {profileKeys.map(pk => (
+          <button key={pk}
+            className={`btn btn-sm ${selected === pk ? 'btn-primary' : ''}`}
+            onClick={() => setActiveProfile(pk)}>
+            {pk}
+          </button>
+        ))}
+      </div>
+
+      {/* Design note */}
+      {profile._designNote && (
+        <div style={{ fontSize: 11, color: '#666', fontStyle: 'italic', marginBottom: 12, padding: '6px 10px', background: '#141414', borderRadius: 4, borderLeft: '3px solid #333' }}>
+          {profile._designNote}
+        </div>
+      )}
+
+      {/* Chance bar */}
+      <div className="weight-bar-container">
+        <div className="weight-bar">
+          {RESOURCE_KEYS.map((rk, i) => {
+            const chance = (profile[rk] && profile[rk].chance) || 0;
+            if (chance <= 0) return null;
+            const totalChance = RESOURCE_KEYS.reduce((s, k) => s + ((profile[k] && profile[k].chance) || 0), 0);
+            const pct = totalChance > 0 ? (chance / totalChance * 100) : 0;
+            return (
+              <div key={rk} className="weight-segment"
+                style={{ width: pct + '%', background: RESOURCE_META[rk].color }}
+                title={`${RESOURCE_META[rk].label}: ${(chance * 100).toFixed(0)}% chance`}>
+                {pct > 8 && <span className="pct">{(chance * 100).toFixed(0)}%</span>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Resource table */}
+      <table className="weight-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Resource</th>
+            <th>Chance</th>
+            <th>Min</th>
+            <th>Max</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {RESOURCE_KEYS.map(rk => {
+            const res = profile[rk] || {};
+            const meta = RESOURCE_META[rk];
+            return (
+              <tr key={rk}>
+                <td className="emoji-cell">
+                  <span className="color-dot" style={{ background: meta.color, marginRight: 4 }} />
+                  {meta.emoji}
+                </td>
+                <td style={{ fontWeight: 500 }}>{meta.label}</td>
+                <td>
+                  <input type="number" step="0.01" min="0" max="1"
+                    value={res.chance || 0}
+                    onChange={e => onChangeProfile(selected, rk, 'chance', parseFloat(e.target.value) || 0)} />
+                </td>
+                <td>
+                  {rk !== 'food' ? (
+                    <input type="number" min="0" value={res.min || 0}
+                      onChange={e => onChangeProfile(selected, rk, 'min', parseInt(e.target.value) || 0)} />
+                  ) : (
+                    <span style={{ fontSize: 11, color: '#555' }}>—</span>
+                  )}
+                </td>
+                <td>
+                  {rk !== 'food' ? (
+                    <input type="number" min="0" value={res.max || 0}
+                      onChange={e => onChangeProfile(selected, rk, 'max', parseInt(e.target.value) || 0)} />
+                  ) : (
+                    <span style={{ fontSize: 11, color: '#555' }}>—</span>
+                  )}
+                </td>
+                <td style={{ fontSize: 11, color: '#555' }}>
+                  {rk === 'food' && res.food_table && ('table: ' + res.food_table)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      {/* Tier multipliers */}
+      <div style={{ marginTop: 24 }}>
+        <div className="section-title" style={{ fontSize: 13 }}>Tier Multipliers</div>
+        <div className="section-desc">Scale resource min/max by enemy tier. Applied at roll time.</div>
+        <div className="chance-grid">
+          {tierKeys.map(tk => (
+            <div key={tk} className="chance-card">
+              <div className="cc-label">{tk}</div>
+              <div className="cc-row">
+                <span className="cc-key">Multiplier</span>
+                <input type="number" step="0.1" min="0" value={tierMultipliers[tk]}
+                  onChange={e => onChangeTier(tk, parseFloat(e.target.value) || 0)} />
+              </div>
+              <div className="cc-row">
+                <span className="cc-key" style={{ fontSize: 10 }}>Preview (5–10 base)</span>
+                <span className="cc-val" style={{ fontSize: 11 }}>
+                  {Math.max(1, Math.round(5 * tierMultipliers[tk]))}–{Math.round(10 * tierMultipliers[tk])}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Economy Settings Editor ──
 function EconomyEditor({ data, onChange }) {
   if (!data) return null;
@@ -531,6 +679,7 @@ function App() {
     { key: 'item_loot_tables', label: 'Item Loot Tables', hint: 'Weighted drop pools' },
     { key: 'enemy_loot', label: 'Enemy Loot', hint: 'Per-tier drop chances' },
     { key: 'breakable_loot', label: 'Breakable Loot', hint: 'Breakable object drops' },
+    { key: 'enemy_resources', label: 'Enemy Resources', hint: 'Archetype resource drops' },
     { key: 'card_drop_modifiers', label: 'Card Modifiers', hint: 'Biome & floor scaling' },
     { key: 'economy_settings', label: 'Economy', hint: 'Shop & currency settings' },
     { key: 'drop_preview', label: 'Drop Preview', hint: 'Simulate loot rolls' },
@@ -569,6 +718,28 @@ function App() {
     setTables(prev => {
       const next = JSON.parse(JSON.stringify(prev));
       next.enemy_loot[tier][field] = value;
+      return next;
+    });
+    setDirty(true);
+  }, []);
+
+  // Enemy resource profile update
+  const updateResourceProfile = useCallback((profileKey, resourceKey, field, value) => {
+    setTables(prev => {
+      const next = JSON.parse(JSON.stringify(prev));
+      if (!next.enemy_resource_profiles[profileKey][resourceKey]) {
+        next.enemy_resource_profiles[profileKey][resourceKey] = {};
+      }
+      next.enemy_resource_profiles[profileKey][resourceKey][field] = value;
+      return next;
+    });
+    setDirty(true);
+  }, []);
+
+  const updateTierMultiplier = useCallback((tierKey, value) => {
+    setTables(prev => {
+      const next = JSON.parse(JSON.stringify(prev));
+      next.enemy_resource_profiles.tier_multipliers[tierKey] = value;
       return next;
     });
     setDirty(true);
@@ -655,6 +826,19 @@ function App() {
             onChange={(field, val) => updateEnemyLoot(tier, field, val)}
           />
         </div>
+      );
+    }
+
+    if (activeSection === 'enemy_resources') {
+      const erp = tables.enemy_resource_profiles || {};
+      const tierMults = erp.tier_multipliers || {};
+      return (
+        <EnemyResourceEditor
+          profiles={erp}
+          tierMultipliers={tierMults}
+          onChangeProfile={updateResourceProfile}
+          onChangeTier={updateTierMultiplier}
+        />
       );
     }
 

@@ -1275,6 +1275,15 @@ var StrCombatEngine = (function () {
           }
         }
 
+        // ── LootSpillSystem: collect ground drops → scatter → place ──
+        var _lootPending = [];
+        var _origAddItem = (typeof WorldItems !== 'undefined') ? WorldItems.addItem : null;
+        var _origItemsPush = ctx.items.push;
+        if (typeof LootSpillSystem !== 'undefined') {
+          if (_origAddItem) { WorldItems.addItem = function(item) { _lootPending.push(item); }; }
+          ctx.items.push = function(item) { _lootPending.push(item); };
+        }
+
         // Spawn standard loot
         if (deathResult && deathResult.loot) {
           if (deathResult.loot.currency > 0) {
@@ -1460,6 +1469,35 @@ var StrCombatEngine = (function () {
               lines.push('└─ A legendary artifact materializes...');
               lines.push('');
             }
+          }
+        }
+      }
+
+      // ── Canonical resource drops (COLLECTIBLES_CANON) ──
+      if (deathResult && deathResult.loot && deathResult.loot.resourceDrops) {
+        for (var rd = 0; rd < deathResult.loot.resourceDrops.length; rd++) {
+          _lootPending.push(deathResult.loot.resourceDrops[rd]);
+        }
+      }
+
+      // ── LootSpillSystem: restore interceptors and scatter collected ground drops ──
+      if (_origAddItem) { WorldItems.addItem = _origAddItem; }
+      ctx.items.push = _origItemsPush;
+      if (_lootPending.length > 0 && typeof LootSpillSystem !== 'undefined') {
+        LootSpillSystem.scatterItems(_enemy.x, _enemy.y, _lootPending, ctx);
+        var ENEMY_DECAY_FLOOR = 45000;
+        for (var lp = 0; lp < _lootPending.length; lp++) {
+          var _lpItem = _lootPending[lp];
+          if (_lpItem.decayTime && _lpItem.decayTime < ENEMY_DECAY_FLOOR) {
+            _lpItem.decayTime = ENEMY_DECAY_FLOOR;
+          }
+          if (_lpItem._isCurrency) {
+            delete _lpItem._isCurrency;
+            if (typeof WorldItems !== 'undefined') { WorldItems.addCurrency(_lpItem); }
+            else { ctx.currencies ? ctx.currencies.push(_lpItem) : void 0; }
+          } else {
+            if (typeof WorldItems !== 'undefined') { WorldItems.addItem(_lpItem); }
+            else { ctx.items.push(_lpItem); }
           }
         }
       }

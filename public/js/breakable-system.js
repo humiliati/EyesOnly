@@ -348,16 +348,78 @@ var BreakableSystem = (function() {
    * Spawn loot from a destroyed breakable.
    */
   function _spawnBreakableLoot(breakable, ctx) {
-    // Use LootTableManager if available
-    if (typeof LootTableManager !== 'undefined' && LootTableManager.rollBreakableLoot) {
-      _spawnLootTableLoot(breakable, ctx);
-    } else {
-      _spawnFallbackLoot(breakable, ctx);
-    }
+    // ── LootSpillSystem integration: collect → scatter → place ──
+    if (typeof LootSpillSystem !== 'undefined') {
+      var pendingItems = [];
 
-    // Phase 2: Designer-defined item drops (drops.itemId = 'ITM-###')
-    // Fires after both loot paths so breakables can drop items alongside normal loot
-    _spawnItemDrop(breakable, ctx);
+      // Temporarily intercept WorldItems.addItem to collect items
+      var origAddItem = (typeof WorldItems !== 'undefined') ? WorldItems.addItem : null;
+      if (origAddItem) {
+        WorldItems.addItem = function(item) { pendingItems.push(item); };
+      }
+
+      // Proxy ctx to intercept spawnCurrency and items.push
+      var collectCtx = {};
+      for (var k in ctx) { collectCtx[k] = ctx[k]; }
+      collectCtx.spawnCurrency = function(x, y, amount) {
+        pendingItems.push({
+          x: x, y: y, amount: amount,
+          glyph: '\u00A2', emoji: '\uD83D\uDCB0',
+          spawnTime: Date.now(), decayTime: 20000,
+          _isCurrency: true
+        });
+      };
+      // Wrap items array to intercept push
+      var origItems = ctx.items;
+      collectCtx.items = {
+        push: function(item) { pendingItems.push(item); },
+        find: origItems.find ? origItems.find.bind(origItems) : undefined,
+        length: origItems.length
+      };
+
+      // Run all loot generation (collected, not yet placed)
+      if (typeof LootTableManager !== 'undefined' && LootTableManager.rollBreakableLoot) {
+        _spawnLootTableLoot(breakable, collectCtx);
+      } else {
+        _spawnFallbackLoot(breakable, collectCtx);
+      }
+      _spawnItemDrop(breakable, collectCtx);
+
+      // Restore WorldItems.addItem
+      if (origAddItem) { WorldItems.addItem = origAddItem; }
+
+      // Scatter all collected items across tiles
+      LootSpillSystem.scatterItems(breakable.x, breakable.y, pendingItems, ctx);
+
+      // Enforce minimum decay floor for breakable loot (45s).
+      // Protects edge case: 3+ breakables with 8+ contents each — player needs
+      // time to walk to scattered tiles and pick everything up before despawn.
+      var BREAKABLE_DECAY_FLOOR = 45000;
+      for (var d = 0; d < pendingItems.length; d++) {
+        if (pendingItems[d].decayTime && pendingItems[d].decayTime < BREAKABLE_DECAY_FLOOR) {
+          pendingItems[d].decayTime = BREAKABLE_DECAY_FLOOR;
+        }
+      }
+
+      // Place scattered items via their proper APIs
+      for (var i = 0; i < pendingItems.length; i++) {
+        var loot = pendingItems[i];
+        if (loot._isCurrency) {
+          delete loot._isCurrency;
+          if (typeof WorldItems !== 'undefined') { WorldItems.addCurrency(loot); } else { ctx.currencies.push(loot); }
+        } else {
+          if (typeof WorldItems !== 'undefined') { WorldItems.addItem(loot); } else { origItems.push(loot); }
+        }
+      }
+    } else {
+      // Fallback: original behavior (no scatter)
+      if (typeof LootTableManager !== 'undefined' && LootTableManager.rollBreakableLoot) {
+        _spawnLootTableLoot(breakable, ctx);
+      } else {
+        _spawnFallbackLoot(breakable, ctx);
+      }
+      _spawnItemDrop(breakable, ctx);
+    }
   }
 
   /**

@@ -918,8 +918,10 @@ var GoneRogue = (function () {
   function _currencyCtx() {
     return {
       currencies: _currencies, grid: _grid, rng: _rng, TILES: TILES,
+      GRID_WIDTH: GRID_WIDTH, GRID_HEIGHT: GRID_HEIGHT,
       player: _player, strCombatActive: _strCombatActive,
-      currencyCollected: _currencyCollected
+      currencyCollected: _currencyCollected,
+      isWalkable: _isWalkable, getBreakableAt: _getBreakableAt
     };
   }
 
@@ -1334,12 +1336,18 @@ var GoneRogue = (function () {
       setSpawnFromLastExitPos: function(v) { DoorContractSystem.setSpawnFromLastExitPos(v); },
       setCurrentInteriorFloorId: function(v) { _currentInteriorFloorId = v; },
       resetVendor: function() { _vendor = null; _vendorInventory = []; },
-      showMobileUI: (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') ? function() { GoneRogueMobile.show(); } : null
+      showMobileUI: (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') ? function() { GoneRogueMobile.show(); } : null,
+      // Tile metadata access for building-return door scanning
+      getAllTileMetadata: function() { return _tileMetadata; },
+      TILES: TILES,
+      GRID_WIDTH: GRID_WIDTH,
+      GRID_HEIGHT: GRID_HEIGHT,
+      getGrid: function() { return _grid; }
     };
   }
-  function _exitInteriorFloor() {
+  function _exitInteriorFloor(exitDoorMeta) {
     if (typeof FloorTransitionSystem !== 'undefined') {
-      FloorTransitionSystem.exitInteriorFloor(_floorTransitionCtx());
+      FloorTransitionSystem.exitInteriorFloor(_floorTransitionCtx(), exitDoorMeta);
     }
   }
   function _retreatFloor() {
@@ -1455,6 +1463,8 @@ var GoneRogue = (function () {
   function _deathExitCtx() {
     return {
       player: _player, items: _items, runState: _runState,
+      grid: _grid, TILES: TILES, GRID_WIDTH: GRID_WIDTH, GRID_HEIGHT: GRID_HEIGHT,
+      isWalkable: _isWalkable, getBreakableAt: _getBreakableAt, rng: _rng,
       floor: _floor, runStartTime: _runStartTime, runCompleted: _runCompleted,
       enemiesKilled: _enemiesKilled, currencyCollected: _currencyCollected,
       totalEnemiesSpawned: _totalEnemiesSpawned,
@@ -1810,6 +1820,7 @@ var GoneRogue = (function () {
       getAllLightBlockers: _getAllLightBlockers,
       getBiome: _getBiome,
       getBreakableAt: _getBreakableAt,
+      isWalkable: _isWalkable,
       updateMobileGrid: function() {
         if (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
           _updateMobileGrid();
@@ -2611,6 +2622,7 @@ var GoneRogue = (function () {
       handlePlayerDeath: _handlePlayerDeath,
       scatterPostCombatNodes: _scatterPostCombatNodes,
       spawnCurrency: _spawnCurrency,
+      isWalkable: _isWalkable,
       renderGrid: _renderGrid,
       getPrompt: getPrompt,
       startGameLoop: _startGameLoop,

@@ -51,8 +51,10 @@ var PlayerInteractionSystem = (function() {
     // Currency pickup
     _handleCurrencyPickup(x, y, ctx);
 
-    // Auto-pickup floor items (ammo, gem, cards, keys)
-    if (ctx.items.find(function(i) { return i.x === x && i.y === y; })) {
+    // Auto-pickup ALL floor items at this tile (ammo, gem, cards, keys).
+    // while-loop ensures multi-content breakables are fully collected in one pass.
+    // pickupItem() removes one item per call via filterItems(), so loop terminates.
+    while (ctx.items.find(function(i) { return i.x === x && i.y === y; })) {
       ctx.pickupItem();
     }
 
@@ -97,7 +99,13 @@ var PlayerInteractionSystem = (function() {
     if (md && md.type === 'door') {
       if (md.doorKind === 'back') { ctx.retreatFloor(); return true; }
       if (md.doorKind === 'forward') { ctx.attemptExtract(); return true; }
-      if (md.doorKind === 'interior_exit') { ctx.exitInteriorFloor(); return true; }
+      if (md.doorKind === 'interior_exit') {
+        // Pass exit door metadata for building return targeting.
+        // If the exit door has a parentBuildingFloorId, it overrides
+        // the stack's enteredViaFloorId (multi-exit / back-door case).
+        ctx.exitInteriorFloor(md);
+        return true;
+      }
     }
 
     // Building door -> enter interior floor

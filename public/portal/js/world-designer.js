@@ -15,8 +15,39 @@
                 ]
             });
 
+            // Door contract type constants for connection metadata
+            const DOOR_CONTRACT_TYPES = {
+                ADVANCE_RETREAT: 'advance_retreat',
+                BUILDING_ENTRY: 'building_entry',
+                INTERIOR_EXIT_OVERRIDE: 'interior_exit_override'
+            };
+
             instance.bind('connection', (info) => {
-                console.log('Connection established:', info.connection);
+                const conn = info.connection;
+                const sourceEl = document.getElementById(conn.sourceId);
+                const targetEl = document.getElementById(conn.targetId);
+
+                // Auto-detect connection type based on node types
+                let contractType = DOOR_CONTRACT_TYPES.ADVANCE_RETREAT;
+                let contractColor = '#33cc33';
+
+                if (sourceEl && targetEl) {
+                    const sourceType = sourceEl.dataset.type || '';
+                    const targetType = targetEl.dataset.type || '';
+
+                    if (sourceType.includes('Building') || targetType.includes('Building')) {
+                        contractType = DOOR_CONTRACT_TYPES.BUILDING_ENTRY;
+                        contractColor = '#3399ff';
+                    }
+                }
+
+                // Store contract type on connection
+                conn.setData({ contractType: contractType });
+
+                // Color the connection
+                conn.setPaintStyle({ stroke: contractColor, strokeWidth: 2 });
+
+                console.log('Connection established:', conn.sourceId, '→', conn.targetId, 'contract:', contractType);
             });
 
             const worldSelector = document.getElementById('world-selector');
@@ -86,7 +117,7 @@
             worldCanvas.addEventListener('drop', (e) => {
                 e.preventDefault();
                 const itemType = e.dataTransfer.getData('text/plain');
-                
+
                 // Correctly calculate canvas-relative coordinates
                 const canvasRect = worldCanvas.getBoundingClientRect();
                 const dropX = e.clientX - canvasRect.left;
@@ -188,10 +219,10 @@
                             selected.forEach(node => {
                                 if (node.id !== e.el.id) {
                                     const style = window.getComputedStyle(node);
-                                    const x = parseInt(style.getPropertyValue('left'), 10);
-                                    const y = parseInt(style.getPropertyValue('top'), 10);
-                                    node.style.left = `${x + e.e.movementX}px`;
-                                    node.style.top = `${y + e.e.movementY}px`;
+                                    const nx = parseInt(style.getPropertyValue('left'), 10);
+                                    const ny = parseInt(style.getPropertyValue('top'), 10);
+                                    node.style.left = `${nx + e.e.movementX}px`;
+                                    node.style.top = `${ny + e.e.movementY}px`;
                                     instance.revalidate(node.id);
                                 }
                             });
@@ -203,6 +234,8 @@
                 doors.forEach((door) => {
                     instance.addEndpoint(door, { anchor: 'Center', isSource: true, isTarget: true });
                 });
+
+                return block; // Return the created block for loadWorldData
             }
 
             worldCanvas.addEventListener('click', (e) => {
@@ -276,9 +309,41 @@
                     `;
 
                     if (type.includes('Building')) {
-                        content += `<button id="add-interior-btn">Add Interior</button>`;
+                        const targetFloorId = element.dataset.targetFloorId || '';
+                        const parentBuildingFloorId = element.dataset.parentBuildingFloorId || '';
+                        content += `
+                            <div><label><strong>Target Floor ID:</strong> <input type="text" id="prop-target-floor-id" value="${targetFloorId}" placeholder="e.g. 1.2, tavern.main"></label></div>
+                            <div><label><strong>Building ID:</strong> <input type="text" id="prop-building-id" value="${element.dataset.buildingId || ''}" placeholder="e.g. BLD-001"></label></div>
+                            <button id="add-interior-btn">Add Interior</button>
+                            <div style="margin-top:8px; padding:6px; background:#1a1a2a; border:1px solid #336; border-radius:3px; font-size:11px; color:#88c; line-height:1.5;">
+                                <b>Building Door Contract:</b><br>
+                                Player enters interior via targetFloorId.<br>
+                                On exit, spawns near THIS building door on parent floor.<br>
+                                targetFloorId is matched in tileMetadata for return positioning.
+                            </div>
+                        `;
+                        if (parentBuildingFloorId) {
+                            content += `
+                                <div><label><strong>Parent Building Floor ID:</strong> <input type="text" id="prop-parent-building-floor-id" value="${parentBuildingFloorId}" placeholder="WBE multi-exit override"></label></div>
+                                <div style="margin-top:4px; padding:6px; background:#2a1a2a; border:1px solid #636; border-radius:3px; font-size:11px; color:#c8c; line-height:1.5;">
+                                    <b>Multi-Exit Override:</b><br>
+                                    parentBuildingFloorId overrides return target for WBE features
+                                    (vents, building-to-building bypass, wall funnels).
+                                </div>
+                            `;
+                        }
                     } else if (type === 'bonfire') {
                         content += `<div><label><strong>Bonfire Type:</strong> <select id="prop-bonfire-type"><option>Healing</option><option>Resource</option><option>Shop</option><option>Save Point</option></select></label></div>`;
+                    } else if (type === 'floor' || type === 'floor-0' || type === 'floor-999' || type === 'boss') {
+                        // Floor-type nodes: show door contract info
+                        content += `
+                            <div style="margin-top:8px; padding:6px; background:#1a2a1a; border:1px solid #363; border-radius:3px; font-size:11px; color:#8a8; line-height:1.5;">
+                                <b>Floor Door Contract:</b><br>
+                                → Forward door: advance to next floor (spawn near ← on target)<br>
+                                ← Back door: retreat to prev floor (spawn near → on target)<br>
+                                Guardrails: ~5 steps before door re-activation
+                            </div>
+                        `;
                     }
                 } else if (element.classList.contains('node-button')) {
                     id = element.parentElement.id + '-' + Array.from(element.parentElement.querySelectorAll('.node-button')).indexOf(element);
@@ -308,6 +373,26 @@
                                 element.dataset.nestedInteriors = nestedInteriors;
                                 element.style.width = `${GridManager.gridSize * (2 + nestedInteriors)}px`;
                                 instance.revalidate(element.id);
+                            });
+                        }
+
+                        // Door contract fields for buildings
+                        const targetFloorIdInput = document.getElementById('prop-target-floor-id');
+                        if (targetFloorIdInput) {
+                            targetFloorIdInput.addEventListener('input', (e) => {
+                                element.dataset.targetFloorId = e.target.value;
+                            });
+                        }
+                        const buildingIdInput = document.getElementById('prop-building-id');
+                        if (buildingIdInput) {
+                            buildingIdInput.addEventListener('input', (e) => {
+                                element.dataset.buildingId = e.target.value;
+                            });
+                        }
+                        const parentBuildingFloorIdInput = document.getElementById('prop-parent-building-floor-id');
+                        if (parentBuildingFloorIdInput) {
+                            parentBuildingFloorIdInput.addEventListener('input', (e) => {
+                                element.dataset.parentBuildingFloorId = e.target.value;
                             });
                         }
                     } else if (element.dataset.type === 'bonfire') {
@@ -374,6 +459,10 @@
                 worldCanvas.classList.toggle('panning', isPanning);
             });
 
+            let isMarqueeSelecting = false;
+            const marquee = document.getElementById('selection-marquee');
+            const marqueeStart = { x: 0, y: 0 };
+
             worldCanvas.addEventListener('mousedown', (e) => {
                 if (isPanning) {
                     panStart.x = e.clientX;
@@ -390,15 +479,32 @@
             });
 
             worldCanvas.addEventListener('mousemove', (e) => {
+                // Marquee selection
                 if (isMarqueeSelecting) {
-                    const x = Math.min(e.clientX, marqueeStart.x);
-                    const y = Math.min(e.clientY, marqueeStart.y);
-                    const width = Math.abs(e.clientX - marqueeStart.x);
-                    const height = Math.abs(e.clientY - marqueeStart.y);
-                    marquee.style.left = `${x}px`;
-                    marquee.style.top = `${y}px`;
-                    marquee.style.width = `${width}px`;
-                    marquee.style.height = `${height}px`;
+                    const mx = Math.min(e.clientX, marqueeStart.x);
+                    const my = Math.min(e.clientY, marqueeStart.y);
+                    const mw = Math.abs(e.clientX - marqueeStart.x);
+                    const mh = Math.abs(e.clientY - marqueeStart.y);
+                    marquee.style.left = `${mx}px`;
+                    marquee.style.top = `${my}px`;
+                    marquee.style.width = `${mw}px`;
+                    marquee.style.height = `${mh}px`;
+                }
+
+                // Panning
+                if (isPanning && e.buttons === 1) {
+                    const dx = e.clientX - panStart.x;
+                    const dy = e.clientY - panStart.y;
+
+                    const currentX = parseInt(worldCanvas.style.backgroundPositionX || 0);
+                    const currentY = parseInt(worldCanvas.style.backgroundPositionY || 0);
+
+                    worldCanvas.style.backgroundPositionX = `${currentX + dx}px`;
+                    worldCanvas.style.backgroundPositionY = `${currentY + dy}px`;
+
+                    instance.repaintEverything();
+                    panStart.x = e.clientX;
+                    panStart.y = e.clientY;
                 }
             });
 
@@ -436,27 +542,6 @@
                 return !(r2.left > r1.right || r2.right < r1.left || r2.top > r1.bottom || r2.bottom < r1.top);
             }
 
-            let isMarqueeSelecting = false;
-            const marquee = document.getElementById('selection-marquee');
-            const marqueeStart = { x: 0, y: 0 };
-
-            worldCanvas.addEventListener('mousemove', (e) => {
-                if (isPanning && e.buttons === 1) {
-                    const dx = e.clientX - panStart.x;
-                    const dy = e.clientY - panStart.y;
-
-                    const currentX = parseInt(worldCanvas.style.backgroundPositionX || 0);
-                    const currentY = parseInt(worldCanvas.style.backgroundPositionY || 0);
-
-                    worldCanvas.style.backgroundPositionX = `${currentX + dx}px`;
-                    worldCanvas.style.backgroundPositionY = `${currentY + dy}px`;
-
-                    instance.repaintEverything();
-                    panStart.x = e.clientX;
-                    panStart.y = e.clientY;
-                }
-            });
-
             let gridVisible = true;
             const gridToggleBtn = document.getElementById('grid-toggle-btn');
             gridToggleBtn.addEventListener('click', () => {
@@ -472,84 +557,138 @@
                 snapToggleBtn.classList.toggle('active', snapToGrid);
             });
 
+            // ==================== EXPORT / IMPORT / LOAD ====================
+            // These must live inside jsPlumb.ready() to access `instance` and `addBlock`.
 
-        });
+            function exportWorld() {
+                const nodes = instance.getManagedElements();
+                const connections = instance.getAllConnections();
 
-        function exportWorld() {
-            const nodes = instance.getManagedElements();
-            const connections = instance.getAllConnections();
+                const worldData = {
+                    nodes: [],
+                    connections: []
+                };
 
-            const worldData = {
-                nodes: [],
-                connections: []
-            };
+                for (const id in nodes) {
+                    const el = nodes[id].el;
+                    const nodeData = {
+                        id: el.id,
+                        name: el.innerText,
+                        top: el.style.top,
+                        left: el.style.left,
+                        type: el.dataset.type,
+                        biome: el.dataset.biome || null,
+                        generationType: el.dataset.generationType || null
+                    };
 
-            for (const id in nodes) {
-                const el = nodes[id].el;
-                worldData.nodes.push({
-                    id: el.id,
-                    name: el.innerText,
-                    top: el.style.top,
-                    left: el.style.left,
-                    type: el.dataset.type,
-                    biome: el.dataset.biome,
-                    generationType: el.dataset.generationType
+                    // Include door contract metadata for buildings
+                    if (el.dataset.type && el.dataset.type.includes('Building')) {
+                        nodeData.targetFloorId = el.dataset.targetFloorId || null;
+                        nodeData.buildingId = el.dataset.buildingId || null;
+                        nodeData.parentBuildingFloorId = el.dataset.parentBuildingFloorId || null;
+                        nodeData.nestedInteriors = parseInt(el.dataset.nestedInteriors || '0');
+                    }
+
+                    worldData.nodes.push(nodeData);
+                }
+
+                connections.forEach(conn => {
+                    const connData = {
+                        from: conn.sourceId,
+                        to: conn.targetId
+                    };
+
+                    // Include door contract type on connection
+                    const data = conn.getData();
+                    if (data && data.contractType) {
+                        connData.contractType = data.contractType;
+                    }
+
+                    worldData.connections.push(connData);
+                });
+
+                const json = JSON.stringify(worldData, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'world.json';
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            function importWorld(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const worldData = JSON.parse(event.target.result);
+                        loadWorldData(worldData);
+                    } catch (err) {
+                        alert('Error importing world: ' + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            function loadWorldData(worldData) {
+                // Clear existing world
+                instance.deleteEveryEndpoint();
+                worldCanvas.innerHTML = '';
+
+                // Create nodes
+                worldData.nodes.forEach(nodeData => {
+                    const block = addBlock(nodeData.type, parseInt(nodeData.left) || 0, parseInt(nodeData.top) || 0);
+                    if (!block) return; // addBlock returns null for unknown types (shouldn't happen)
+
+                    block.id = nodeData.id;
+                    if (nodeData.biome) block.dataset.biome = nodeData.biome;
+                    if (nodeData.generationType) block.dataset.generationType = nodeData.generationType;
+
+                    // Update displayed name if it differs from default
+                    if (nodeData.name) {
+                        const nameEl = block.querySelector('strong');
+                        if (nameEl) nameEl.innerText = nodeData.name;
+                    }
+
+                    // Restore door contract metadata for buildings
+                    if (nodeData.targetFloorId) block.dataset.targetFloorId = nodeData.targetFloorId;
+                    if (nodeData.buildingId) block.dataset.buildingId = nodeData.buildingId;
+                    if (nodeData.parentBuildingFloorId) block.dataset.parentBuildingFloorId = nodeData.parentBuildingFloorId;
+                    if (nodeData.nestedInteriors) {
+                        block.dataset.nestedInteriors = nodeData.nestedInteriors;
+                        // Resize block to match nested interior count
+                        const ni = parseInt(nodeData.nestedInteriors);
+                        if (ni > 0) {
+                            block.style.width = `${GridManager.gridSize * (2 + ni)}px`;
+                        }
+                    }
+                });
+
+                // Create connections
+                worldData.connections.forEach(connData => {
+                    instance.connect({
+                        source: connData.from,
+                        target: connData.to
+                    });
                 });
             }
 
-            connections.forEach(conn => {
-                worldData.connections.push({
-                    from: conn.sourceId,
-                    to: conn.targetId
-                });
-            });
+            // Wire up export/import buttons
+            const exportBtn = document.getElementById('export-world-btn');
+            if (exportBtn) {
+                exportBtn.addEventListener('click', exportWorld);
+            }
 
-            const json = JSON.stringify(worldData, null, 2);
-            const blob = new Blob([json], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'world.json';
-            a.click();
-            URL.revokeObjectURL(url);
-        }
+            const importBtn = document.getElementById('import-world-btn');
+            const importFileInput = document.getElementById('import-file');
+            if (importBtn && importFileInput) {
+                importBtn.addEventListener('click', () => importFileInput.click());
+                importFileInput.addEventListener('change', importWorld);
+            }
 
-        function importWorld(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                try {
-                    const worldData = JSON.parse(event.target.result);
-                    loadWorldData(worldData);
-                } catch (err) {
-                    alert('Error importing world: ' + err.message);
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        function loadWorldData(worldData) {
-            // Clear existing world
-            instance.deleteEveryEndpoint();
-            worldCanvas.innerHTML = '';
-
-            // Create nodes
-            worldData.nodes.forEach(nodeData => {
-                const node = addNode(nodeData.type, nodeData.name, parseInt(nodeData.top), parseInt(nodeData.left));
-                node.id = nodeData.id;
-                node.dataset.biome = nodeData.biome;
-                node.dataset.generationType = nodeData.generationType;
-            });
-
-            // Create connections
-            worldData.connections.forEach(connData => {
-                instance.connect({
-                    source: connData.from,
-                    target: connData.to
-                });
-            });
-        }
-    });
+        }); // end jsPlumb.ready
+    }); // end DOMContentLoaded
 })();

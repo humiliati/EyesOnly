@@ -39,57 +39,73 @@ var CurrencySpawning = (function() {
     var cx = enemy.x || 0;
     var cy = enemy.y || 0;
 
+    // Build currency/ammo nodes to scatter
     var nodeCount = 1;
     var totalValue = (victoryCtx.lootCurrency || 0) + (victoryCtx.lootAmmo || 0) * 2;
     if (totalValue > 30) nodeCount = 2;
     if (totalValue > 80 || victoryCtx.isBoss) nodeCount = 3;
 
-    var dirs = [
-      { dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
-      { dx: -1, dy: -1 }, { dx: 1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: 1 }
-    ];
-
-    // Shuffle directions
-    for (var s = dirs.length - 1; s > 0; s--) {
-      var j = Math.floor(ctx.rng() * (s + 1));
-      var tmp = dirs[s]; dirs[s] = dirs[j]; dirs[j] = tmp;
-    }
+    var pendingNodes = [];
 
     for (var n = 0; n < nodeCount; n++) {
-      var dir = dirs[n % dirs.length];
-      var nx = cx + dir.dx;
-      var ny = cy + dir.dy;
-
-      if (ny < 0 || ny >= ctx.grid.length || nx < 0 || nx >= ctx.grid[0].length) {
-        nx = cx; ny = cy;
-      }
-      if (ctx.grid[ny] && ctx.grid[ny][nx] === ctx.TILES.WALL) {
-        nx = cx; ny = cy;
-      }
-
       if (victoryCtx.lootCurrency > 0) {
         var share = Math.ceil(victoryCtx.lootCurrency / nodeCount);
-        ctx.currencies.push({
-          x: nx, y: ny,
+        pendingNodes.push({
+          x: cx, y: cy,
           amount: Math.min(share, victoryCtx.lootCurrency),
           glyph: '\u00A2',
           emoji: '\uD83D\uDCB0',
           spawnTime: Date.now(),
-          decayTime: 25000,
+          decayTime: 45000,
           _scattered: true
         });
       }
       if (victoryCtx.lootAmmo > 0 && n === 0) {
-        ctx.currencies.push({
-          x: nx, y: ny,
+        pendingNodes.push({
+          x: cx, y: cy,
           amount: victoryCtx.lootAmmo,
           glyph: '\u2041',
           emoji: '\u2041',
           spawnTime: Date.now(),
-          decayTime: 25000,
+          decayTime: 45000,
           _scattered: true,
           _isAmmo: true
         });
+      }
+    }
+
+    if (pendingNodes.length === 0) return;
+
+    // Delegate to LootSpillSystem for scatter if available
+    if (typeof LootSpillSystem !== 'undefined') {
+      LootSpillSystem.scatterItems(cx, cy, pendingNodes, ctx);
+    } else {
+      // Legacy fallback: manual scatter
+      var dirs = [
+        { dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
+        { dx: -1, dy: -1 }, { dx: 1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: 1 }
+      ];
+      for (var s = dirs.length - 1; s > 0; s--) {
+        var j = Math.floor(ctx.rng() * (s + 1));
+        var tmp = dirs[s]; dirs[s] = dirs[j]; dirs[j] = tmp;
+      }
+      for (var i = 0; i < pendingNodes.length; i++) {
+        var dir = dirs[i % dirs.length];
+        var nx = cx + dir.dx;
+        var ny = cy + dir.dy;
+        if (ny < 0 || ny >= ctx.grid.length || nx < 0 || nx >= ctx.grid[0].length) { nx = cx; ny = cy; }
+        if (ctx.grid[ny] && ctx.grid[ny][nx] === ctx.TILES.WALL) { nx = cx; ny = cy; }
+        pendingNodes[i].x = nx;
+        pendingNodes[i].y = ny;
+      }
+    }
+
+    // Place all nodes
+    for (var p = 0; p < pendingNodes.length; p++) {
+      if (typeof WorldItems !== 'undefined') {
+        WorldItems.addCurrency(pendingNodes[p]);
+      } else {
+        ctx.currencies.push(pendingNodes[p]);
       }
     }
   }

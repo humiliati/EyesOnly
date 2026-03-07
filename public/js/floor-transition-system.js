@@ -28,26 +28,111 @@ var FloorTransitionSystem = (function () {
 
   // ------------------------------------------------------------------
   // exitInteriorFloor — pop interior stack, return to parent or main
+  //
+  // Building Return Contract:
+  //   When exiting to a main floor, DO NOT use 'retreat' mode (which
+  //   would spawn near the advance-floor door). Instead, regenerate
+  //   the floor with NO spawn mode (door contract is a no-op), then
+  //   scan tile metadata for the building door that leads to the
+  //   interior we just exited from, and spawn the player near THAT door.
+  //
+  //   This ensures:
+  //     - Exit through same door you entered → spawn near that building door
+  //     - Exit through a back door (future WBE) → spawn near the back door's
+  //       parent-floor position (via its targetFloorId in tile metadata)
   // ------------------------------------------------------------------
-  function exitInteriorFloor(ctx) {
+  function exitInteriorFloor(ctx, exitDoorMeta) {
     if (ctx.interiorFloorStack.length === 0) return;
 
     var prev = ctx.interiorFloorStack.pop();
     ctx.setCurrentInteriorFloorId(prev.floorId);
 
-    console.log('[FloorTransition] Exiting interior, returning to ' + (prev.floorId || 'main floor ' + prev.mainFloor));
+    // Determine which building door on the PARENT floor to spawn near.
+    //
+    // Priority:
+    //   1. exitDoorMeta.parentBuildingFloorId — explicit override from the exit door
+    //      metadata (multi-exit / back-door case, e.g. building-to-building bypass).
+    //   2. prev.enteredViaFloorId — the building we originally entered (same-door exit).
+    //
+    // This architecture supports WBE roadmap features:
+    //   - Vents connecting buildings across floor tiles
+    //   - Building-to-building bypass (enter front, exit back on same floor)
+    //   - Wall funnel: front door building with back door on other side of wall
+    var exitingFromFloorId = (exitDoorMeta && exitDoorMeta.parentBuildingFloorId)
+      ? exitDoorMeta.parentBuildingFloorId
+      : (prev.enteredViaFloorId || null);
+
+    console.log('[FloorTransition] Exiting interior, returning to ' +
+      (prev.floorId || 'main floor ' + prev.mainFloor) +
+      ' (entered via: ' + exitingFromFloorId + ')');
 
     _fadeOut(ctx);
 
     setTimeout(function () {
       if (prev.floorId) {
+        // Returning to a parent interior (nested interior exit)
         ctx.enterInteriorFloor(prev.floorId);
       } else {
+        // Returning to main floor — use building return contract
         ctx.setFloor(prev.mainFloor);
         ctx.setLastExitPos({ x: prev.playerX, y: prev.playerY });
-        ctx.setSpawnFromLastExitPos('retreat');
+
+        // DO NOT set 'retreat' mode — that spawns near the advance door.
+        // Instead, leave mode null so applyDoorContract is a no-op,
+        // then handle building return spawn after floor generation.
+        ctx.setSpawnFromLastExitPos(null);
         ctx.setTurn(0);
         ctx.generateFloor();
+
+        // ── Building Return Spawn ──────────────────────────────────
+        // Scan tile metadata for the building door matching our exit.
+        var buildingDoorPos = null;
+        if (exitingFromFloorId && ctx.getAllTileMetadata) {
+          var allMeta = ctx.getAllTileMetadata();
+          for (var key in allMeta) {
+            var md = allMeta[key];
+            if (md && md.type === 'building_door' && md.targetFloorId === exitingFromFloorId) {
+              var parts = key.split(',');
+              buildingDoorPos = { x: parseInt(parts[0], 10), y: parseInt(parts[1], 10) };
+              console.log('[FloorTransition] Found building door for ' + exitingFromFloorId + ' at (' + buildingDoorPos.x + ',' + buildingDoorPos.y + ')');
+              break;
+            }
+          }
+        }
+
+        if (buildingDoorPos && typeof DoorContractSystem !== 'undefined') {
+          // Spawn player near the building door (no guardrails — can re-enter immediately)
+          var spawnPos = DoorContractSystem.findSpawnNearDoor(
+            ctx.getGrid(), ctx.TILES, ctx.GRID_WIDTH, ctx.GRID_HEIGHT,
+            buildingDoorPos, null, 3
+          );
+          if (spawnPos) {
+            ctx.player.x = spawnPos.x;
+            ctx.player.y = spawnPos.y;
+            console.log('[FloorTransition] Building return: spawned at (' + spawnPos.x + ',' + spawnPos.y + ') near building door');
+          } else {
+            // Fallback: stand on the building door tile
+            ctx.player.x = buildingDoorPos.x;
+            ctx.player.y = buildingDoorPos.y;
+            console.log('[FloorTransition] Building return: fallback to building door tile');
+          }
+        } else {
+          // Fallback: use saved entry position (best effort)
+          ctx.player.x = prev.playerX;
+          ctx.player.y = prev.playerY;
+          console.log('[FloorTransition] Building return: fallback to saved entry pos (' + prev.playerX + ',' + prev.playerY + ')');
+        }
+
+        // Clear any stale spawn protection (building exits have no guardrails)
+        if (typeof DoorContractSystem !== 'undefined') {
+          DoorContractSystem.clearDoorSpawnProtect();
+        }
+
+        // Sync movement system to new position
+        if (typeof GoneRogueMovement !== 'undefined' && GoneRogueMovement.setPosition) {
+          GoneRogueMovement.setPosition(ctx.player.x, ctx.player.y);
+        }
+
         ctx.startGameLoop();
       }
       _fadeIn(ctx);

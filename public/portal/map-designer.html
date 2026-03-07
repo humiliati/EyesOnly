@@ -44,9 +44,18 @@
             <div class="palette-section">
                 <h3>Door Tools</h3>
                 <div class="palette-grid">
-                    <button class="palette-btn entity-btn" data-tool="door-forward" title="Forward Door">→</button>
-                    <button class="palette-btn entity-btn" data-tool="door-back" title="Back Door">←</button>
-                    <button class="palette-btn entity-btn" data-tool="door-building" title="Building Door">B</button>
+                    <button class="palette-btn entity-btn" data-tool="door-forward" title="Forward Door (advance to next floor)">→</button>
+                    <button class="palette-btn entity-btn" data-tool="door-back" title="Back Door (retreat to previous floor)">←</button>
+                    <button class="palette-btn entity-btn" data-tool="door-building" title="Building Door (enter interior via targetFloorId)">🚪</button>
+                    <button class="palette-btn entity-btn" data-tool="door-interior-exit" title="Interior Exit (return to parent floor near building door)">↩</button>
+                </div>
+                <div class="door-contract-legend" style="margin-top:6px; font-size:10px; color:#777; line-height:1.5;">
+                    <div><b>Door Contract:</b></div>
+                    <div>→ Advance: player spawns near ← on next floor</div>
+                    <div>← Retreat: player spawns near → on prev floor</div>
+                    <div>🚪 Building: enters targetFloorId interior</div>
+                    <div>↩ Int. Exit: returns near building door on parent</div>
+                    <div style="margin-top:3px; color:#999;">parentBuildingFloorId overrides return target (WBE multi-exit)</div>
                 </div>
             </div>
 
@@ -121,6 +130,10 @@
                 <label class="toggle-label">
                     <input type="checkbox" id="show-metadata">
                     <span>Metadata</span>
+                </label>
+                <label class="toggle-label">
+                    <input type="checkbox" id="show-door-contracts" checked>
+                    <span>Door Contracts</span>
                 </label>
             </div>
             <div class="canvas-container">

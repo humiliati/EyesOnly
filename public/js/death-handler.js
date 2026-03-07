@@ -156,6 +156,7 @@ const DeathHandler = (function () {
     var loot = {
       cards: [],
       charms: [],
+      resourceDrops: [],
       currency: 0,
       xp: 0
     };
@@ -209,6 +210,12 @@ const DeathHandler = (function () {
             });
           }
         }
+      }
+
+      // Roll canonical resource drops (COLLECTIBLES_CANON) based on enemy lootProfile
+      if (typeof LootTableManager !== 'undefined' && LootTableManager.rollEnemyResourceDrops) {
+        var lootProfile = enemy.lootProfile || enemy.resourceProfile || 'default';
+        loot.resourceDrops = LootTableManager.rollEnemyResourceDrops(enemyTier, lootProfile);
       }
 
       // Boss special loot

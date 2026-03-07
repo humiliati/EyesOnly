@@ -70,10 +70,18 @@
     var combatState = GoneRogue.getStrCombatState && GoneRogue.getStrCombatState();
 
     if (isActive && combatState && combatState.active) {
+      // Ensure CardDragController knows we're in combat for STR collapse + auto-select
+      if (typeof CardDragController !== 'undefined' && typeof CardDragController.setContext === 'function') {
+        CardDragController.setContext('combat');
+      }
       _showCombatWindow(combatState);
       _showHandFan(combatState);
       _showBackupActions(combatState);
     } else {
+      // Return CDC to exploration context
+      if (typeof CardDragController !== 'undefined' && typeof CardDragController.setContext === 'function') {
+        CardDragController.setContext('exploration');
+      }
       _hideCombatWindow();
       _hideHandFan();
       _hideBackupActions();

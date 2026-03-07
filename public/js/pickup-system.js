@@ -466,7 +466,7 @@ var PickupSystem = (function() {
       // TIER 1 (ammo key / low-tier key): overhead + tooltip
       try {
         if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
-          OverheadAnimator.showGenericExpression(item.x, item.y, item.emoji || '\uD83D\uDDDD', 800, '#FF8A3D'); // 🗝
+          OverheadAnimator.showGenericExpression(item.x, item.y, '\uD83D\uDDDD', 800, '#FF8A3D'); // 🗝 — always monochromatic resource glyph, not item.emoji
         }
         // NOTE: No PancakeStack — single pickup = single OverheadAnimator animation only.
       } catch (eAnim) {}

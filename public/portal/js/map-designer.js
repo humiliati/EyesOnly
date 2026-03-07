@@ -11,6 +11,14 @@
         '~': '#1a3a5c'   // Water
     };
 
+    // Door contract color coding for visualization
+    const DOOR_COLORS = {
+        'door-forward': '#33cc33',    // Green — advance
+        'door-back':    '#cc9900',    // Amber — retreat
+        'door-building': '#3399ff',   // Blue — building entry
+        'door-interior-exit': '#cc33ff' // Purple — interior exit
+    };
+
     // ==================== STATE ====================
     const state = {
         grid: [],
@@ -227,7 +235,7 @@
 
     function handleToolAction(pos) {
         const isTerrain = ['floor', 'wall', 'water', 'eraser'].includes(state.selectedTool);
-        const isEntity = ['player', 'enemy', 'npc', 'breakable', 'currency', 'decoration', 'building', 'door-forward', 'door-back', 'door-building', 'vent', 'collectible', 'puzzle_element'].includes(state.selectedTool) || state.selectedTool.startsWith('asset_');
+        const isEntity = ['player', 'enemy', 'npc', 'breakable', 'currency', 'decoration', 'building', 'door-forward', 'door-back', 'door-building', 'door-interior-exit', 'vent', 'collectible', 'puzzle_element'].includes(state.selectedTool) || state.selectedTool.startsWith('asset_');
 
         if (isTerrain) {
             applyTerrainBrush(pos);
@@ -353,9 +361,17 @@
                 return {
                     ...baseEntity,
                     name: 'Door (Building)',
-                    buildingId: 'building_1',
+                    buildingId: 'BLD-001',
+                    targetFloorId: '1.2',
                     targetX: 5,
                     targetY: 5
+                };
+            case 'door-interior-exit':
+                return {
+                    ...baseEntity,
+                    name: 'Interior Exit',
+                    doorKind: 'interior_exit',
+                    parentBuildingFloorId: ''
                 };
             case 'vent':
                 return {
@@ -404,7 +420,8 @@
             'building': '🏠',
             'door-forward': '→',
             'door-back': '←',
-            'door-building': 'B',
+            'door-building': '🚪',
+            'door-interior-exit': '↩',
             'vent': 'V',
             'collectible': 'C',
             'puzzle_element': 'P'
@@ -470,12 +487,49 @@
                 break;
             case 'door-forward':
             case 'door-back':
-            case 'door-building':
                 fields.push(createField('text', 'Target Floor', 'entity_target_floor', entity.targetFloor || '').element);
                 fields.push(createField('number', 'Target X', 'entity_target_x', entity.targetX || 0).element);
                 fields.push(createField('number', 'Target Y', 'entity_target_y', entity.targetY || 0).element);
-                if (entity.type === 'door-building') {
-                    fields.push(createField('text', 'Building ID', 'entity_building_id', entity.buildingId || '').element);
+                // Door contract info (read-only)
+                {
+                    const contractDiv = document.createElement('div');
+                    contractDiv.className = 'property-field door-contract-info';
+                    contractDiv.style.cssText = 'margin-top:8px; padding:6px; background:#1a2a1a; border:1px solid #333; border-radius:3px; font-size:11px; color:#8a8;';
+                    const contractLabel = entity.type === 'door-forward'
+                        ? 'Contract: Advance → spawn near BACK door on next floor'
+                        : 'Contract: Retreat → spawn near FORWARD door on prev floor';
+                    contractDiv.textContent = contractLabel;
+                    fields.push(contractDiv);
+                }
+                break;
+            case 'door-building':
+                fields.push(createField('text', 'Building ID', 'entity_building_id', entity.buildingId || '').element);
+                fields.push(createField('text', 'Target Floor ID', 'entity_target_floor_id', entity.targetFloorId || '').element);
+                fields.push(createField('number', 'Target X', 'entity_target_x', entity.targetX || 0).element);
+                fields.push(createField('number', 'Target Y', 'entity_target_y', entity.targetY || 0).element);
+                {
+                    const contractDiv = document.createElement('div');
+                    contractDiv.className = 'property-field door-contract-info';
+                    contractDiv.style.cssText = 'margin-top:8px; padding:6px; background:#1a1a2a; border:1px solid #336; border-radius:3px; font-size:11px; color:#88c;';
+                    contractDiv.innerHTML = '<b>Building Door Contract:</b><br>' +
+                        'Player enters interior targetFloorId.<br>' +
+                        'On exit, spawns near THIS door on parent floor.<br>' +
+                        'targetFloorId is scanned in tileMetadata to locate return position.';
+                    fields.push(contractDiv);
+                }
+                break;
+            case 'door-interior-exit':
+                fields.push(createField('text', 'Parent Building Floor ID', 'entity_parent_building_floor_id', entity.parentBuildingFloorId || '').element);
+                {
+                    const contractDiv = document.createElement('div');
+                    contractDiv.className = 'property-field door-contract-info';
+                    contractDiv.style.cssText = 'margin-top:8px; padding:6px; background:#2a1a2a; border:1px solid #636; border-radius:3px; font-size:11px; color:#c8c;';
+                    contractDiv.innerHTML = '<b>Interior Exit Contract:</b><br>' +
+                        'Returns player to parent floor.<br>' +
+                        'If parentBuildingFloorId is set, overrides default return target ' +
+                        '(enables multi-exit buildings: vents, back doors, building-to-building bypass).<br>' +
+                        'If empty, returns near the building door the player originally entered from.';
+                    fields.push(contractDiv);
                 }
                 break;
             case 'vent':
@@ -552,13 +606,18 @@
                 break;
             case 'door-forward':
             case 'door-back':
-            case 'door-building':
                 entity.targetFloor = document.getElementById('entity_target_floor')?.value || entity.targetFloor;
                 entity.targetX = parseInt(document.getElementById('entity_target_x')?.value || entity.targetX);
                 entity.targetY = parseInt(document.getElementById('entity_target_y')?.value || entity.targetY);
-                if (entity.type === 'door-building') {
-                    entity.buildingId = document.getElementById('entity_building_id')?.value || entity.buildingId;
-                }
+                break;
+            case 'door-building':
+                entity.buildingId = document.getElementById('entity_building_id')?.value || entity.buildingId;
+                entity.targetFloorId = document.getElementById('entity_target_floor_id')?.value || entity.targetFloorId;
+                entity.targetX = parseInt(document.getElementById('entity_target_x')?.value || entity.targetX);
+                entity.targetY = parseInt(document.getElementById('entity_target_y')?.value || entity.targetY);
+                break;
+            case 'door-interior-exit':
+                entity.parentBuildingFloorId = document.getElementById('entity_parent_building_floor_id')?.value || '';
                 break;
             case 'vent':
                 entity.quality = document.getElementById('entity_quality')?.value || entity.quality;
@@ -635,12 +694,45 @@
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
+        // Door contract visualization layer (draw behind entity glyphs)
+        const showDoorContracts = document.getElementById('show-door-contracts')?.checked;
+        if (showDoorContracts) {
+            renderDoorContracts(cellSize);
+        }
+
         state.entities.forEach(entity => {
+            // Draw colored underlay for door entities
+            const doorColor = DOOR_COLORS[entity.type];
+            if (doorColor) {
+                ctx.fillStyle = doorColor + '33'; // 20% opacity
+                ctx.fillRect(entity.x * cellSize, entity.y * cellSize, cellSize, cellSize);
+                ctx.strokeStyle = doorColor;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(entity.x * cellSize + 1, entity.y * cellSize + 1, cellSize - 2, cellSize - 2);
+            }
+
+            ctx.fillStyle = '#fff';
             ctx.fillText(
                 entity.emoji,
                 (entity.x + 0.5) * cellSize,
                 (entity.y + 0.5) * cellSize
             );
+
+            // Draw targetFloorId label for building doors
+            if (showDoorContracts && entity.type === 'door-building' && entity.targetFloorId) {
+                ctx.fillStyle = '#3399ff';
+                ctx.font = Math.max(8, cellSize * 0.4) + 'px monospace';
+                ctx.fillText(entity.targetFloorId, (entity.x + 0.5) * cellSize, (entity.y + 1) * cellSize + 2);
+                ctx.font = Math.max(12, cellSize - 4) + 'px Arial';
+            }
+
+            // Draw parentBuildingFloorId label for interior exits
+            if (showDoorContracts && entity.type === 'door-interior-exit' && entity.parentBuildingFloorId) {
+                ctx.fillStyle = '#cc33ff';
+                ctx.font = Math.max(8, cellSize * 0.4) + 'px monospace';
+                ctx.fillText('→' + entity.parentBuildingFloorId, (entity.x + 0.5) * cellSize, (entity.y + 1) * cellSize + 2);
+                ctx.font = Math.max(12, cellSize - 4) + 'px Arial';
+            }
         });
 
         // Draw selection highlight
@@ -652,6 +744,108 @@
         }
 
         updateAsciiFromGrid();
+    }
+
+    // ==================== DOOR CONTRACT VISUALIZATION ====================
+    function renderDoorContracts(cellSize) {
+        // Draw connection arrows between related doors to visualize the door contract.
+        // Forward ↔ Back pairs: green dashed line with arrow
+        // Building → Interior Exit pairs: blue dashed line with arrow
+        const doors = state.entities.filter(e =>
+            e.type === 'door-forward' || e.type === 'door-back' ||
+            e.type === 'door-building' || e.type === 'door-interior-exit'
+        );
+
+        if (doors.length === 0) return;
+
+        ctx.save();
+        ctx.setLineDash([4, 3]);
+        ctx.lineWidth = 1.5;
+
+        // 1. Forward ↔ Back door pairs: draw lines between them
+        const forwardDoors = doors.filter(d => d.type === 'door-forward');
+        const backDoors = doors.filter(d => d.type === 'door-back');
+
+        forwardDoors.forEach(fd => {
+            // Pair with the nearest back door (simple heuristic)
+            let nearest = null;
+            let nearestDist = Infinity;
+            backDoors.forEach(bd => {
+                const dist = Math.abs(fd.x - bd.x) + Math.abs(fd.y - bd.y);
+                if (dist < nearestDist) {
+                    nearestDist = dist;
+                    nearest = bd;
+                }
+            });
+
+            if (nearest) {
+                const fx = (fd.x + 0.5) * cellSize;
+                const fy = (fd.y + 0.5) * cellSize;
+                const bx = (nearest.x + 0.5) * cellSize;
+                const by = (nearest.y + 0.5) * cellSize;
+
+                // Draw dashed line
+                ctx.strokeStyle = '#33cc3388';
+                ctx.beginPath();
+                ctx.moveTo(fx, fy);
+                ctx.lineTo(bx, by);
+                ctx.stroke();
+
+                // Contract label at midpoint
+                const mx = (fx + bx) / 2;
+                const my = (fy + by) / 2;
+                ctx.fillStyle = '#33cc33';
+                ctx.font = Math.max(8, cellSize * 0.35) + 'px monospace';
+                ctx.fillText('ADV↔RET', mx, my - 4);
+            }
+        });
+
+        // 2. Building ↔ Interior Exit pairs: match by targetFloorId / parentBuildingFloorId
+        const buildingDoors = doors.filter(d => d.type === 'door-building');
+        const exitDoors = doors.filter(d => d.type === 'door-interior-exit');
+
+        buildingDoors.forEach(bd => {
+            if (!bd.targetFloorId) return;
+
+            // Find interior exits that reference this building (or have no override)
+            exitDoors.forEach(ed => {
+                // If exit has parentBuildingFloorId, only match if it equals this building's targetFloorId
+                // If exit has no override, it implicitly returns to the building it was entered from
+                const shouldConnect = !ed.parentBuildingFloorId || ed.parentBuildingFloorId === bd.targetFloorId;
+                if (!shouldConnect) return;
+
+                const bx = (bd.x + 0.5) * cellSize;
+                const by = (bd.y + 0.5) * cellSize;
+                const ex = (ed.x + 0.5) * cellSize;
+                const ey = (ed.y + 0.5) * cellSize;
+
+                ctx.strokeStyle = '#3399ff88';
+                ctx.beginPath();
+                ctx.moveTo(bx, by);
+                ctx.lineTo(ex, ey);
+                ctx.stroke();
+
+                // Draw arrow at exit end
+                const angle = Math.atan2(ey - by, ex - bx);
+                const arrowLen = 8;
+                ctx.fillStyle = '#3399ff';
+                ctx.beginPath();
+                ctx.moveTo(ex, ey);
+                ctx.lineTo(ex - arrowLen * Math.cos(angle - 0.4), ey - arrowLen * Math.sin(angle - 0.4));
+                ctx.lineTo(ex - arrowLen * Math.cos(angle + 0.4), ey - arrowLen * Math.sin(angle + 0.4));
+                ctx.closePath();
+                ctx.fill();
+
+                // Label
+                const mx = (bx + ex) / 2;
+                const my = (by + ey) / 2;
+                ctx.fillStyle = '#3399ff';
+                ctx.font = Math.max(8, cellSize * 0.35) + 'px monospace';
+                ctx.fillText('🚪→↩', mx, my - 4);
+            });
+        });
+
+        ctx.restore();
     }
 
     // ==================== ASCII LAYOUT ====================
@@ -823,30 +1017,197 @@
             exitPos: tutorialData.exit
         };
 
-        // Initialize grid
-        for (let y = 0; y < GRID_HEIGHT; y++) {
-            const row = [];
-            for (let x = 0; x < GRID_WIDTH; x++) {
-                row.push('.');
+        // Initialize grid from ASCII layout if available
+        if (tutorialData.asciiMap && tutorialData.asciiMap.length > 0) {
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                const row = [];
+                const line = tutorialData.asciiMap[y] || '';
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    row.push(line[x] || '.');
+                }
+                designerData.grid.push(row);
             }
-            designerData.grid.push(row);
+        } else {
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                const row = [];
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    row.push('.');
+                }
+                designerData.grid.push(row);
+            }
         }
 
-        // Add entities from tutorial data
-        // This is a simplified conversion and might need to be expanded
-        tutorialData.breakables.forEach(b => {
+        // Player spawn
+        if (tutorialData.player) {
             designerData.entities.push({
-                id: `breakable-${b.x}-${b.y}`,
-                type: 'breakable',
-                x: b.x,
-                y: b.y,
-                emoji: b.emoji,
-                name: b.name,
-                hp: b.hp,
-                currencyDrop: b.drops.currency[0],
-                cardDrops: []
+                id: `player-spawn`,
+                type: 'player',
+                x: tutorialData.player.x,
+                y: tutorialData.player.y,
+                emoji: '👤',
+                name: 'Player'
             });
-        });
+        }
+
+        // Exit door (forward door)
+        if (tutorialData.exit) {
+            designerData.entities.push({
+                id: `door-forward-exit`,
+                type: 'door-forward',
+                x: tutorialData.exit.x,
+                y: tutorialData.exit.y,
+                emoji: '→',
+                name: 'Door (Forward)',
+                targetFloor: '',
+                targetX: 0,
+                targetY: 0
+            });
+        }
+
+        // Entrance / back door
+        if (tutorialData.entrance) {
+            designerData.entities.push({
+                id: `door-back-entrance`,
+                type: 'door-back',
+                x: tutorialData.entrance.x,
+                y: tutorialData.entrance.y,
+                emoji: '←',
+                name: 'Door (Back)',
+                targetFloor: '',
+                targetX: 0,
+                targetY: 0
+            });
+        }
+
+        // Breakables
+        if (tutorialData.breakables) {
+            tutorialData.breakables.forEach((b, i) => {
+                designerData.entities.push({
+                    id: `breakable-${b.x}-${b.y}`,
+                    type: 'breakable',
+                    x: b.x,
+                    y: b.y,
+                    emoji: b.emoji || '📦',
+                    name: b.name || 'Breakable',
+                    hp: b.hp || 5,
+                    currencyDrop: (b.drops && b.drops.currency) ? b.drops.currency[0] : 0,
+                    cardDrops: []
+                });
+            });
+        }
+
+        // NPCs
+        if (tutorialData.npcs) {
+            tutorialData.npcs.forEach((npc, i) => {
+                designerData.entities.push({
+                    id: npc.id || `npc-${npc.x}-${npc.y}`,
+                    type: 'npc',
+                    x: npc.x,
+                    y: npc.y,
+                    emoji: npc.emoji || '🧙',
+                    name: npc.name || 'NPC',
+                    direction: npc.direction || 'down',
+                    dialogues: npc.dialogues || []
+                });
+            });
+        }
+
+        // Enemies
+        if (tutorialData.enemies) {
+            tutorialData.enemies.forEach((enemy, i) => {
+                designerData.entities.push({
+                    id: enemy.id || `enemy-${enemy.x}-${enemy.y}`,
+                    type: 'enemy',
+                    x: enemy.x,
+                    y: enemy.y,
+                    emoji: enemy.emoji || '👹',
+                    name: enemy.name || 'Enemy',
+                    hp: enemy.hp || 10,
+                    attack: enemy.attack || 3,
+                    defense: enemy.defense || 1,
+                    sightRange: enemy.sightRange || 5,
+                    patrolPath: enemy.patrolPath || []
+                });
+            });
+        }
+
+        // Decorations
+        if (tutorialData.decorations) {
+            tutorialData.decorations.forEach((d, i) => {
+                designerData.entities.push({
+                    id: `decoration-${d.x}-${d.y}`,
+                    type: 'decoration',
+                    x: d.x,
+                    y: d.y,
+                    emoji: d.emoji || '🪴',
+                    name: d.name || 'Decoration'
+                });
+            });
+        }
+
+        // Building doors (door-building type)
+        if (tutorialData.buildingDoors) {
+            tutorialData.buildingDoors.forEach((bd, i) => {
+                designerData.entities.push({
+                    id: bd.buildingId || `door-building-${bd.x}-${bd.y}`,
+                    type: 'door-building',
+                    x: bd.x,
+                    y: bd.y,
+                    emoji: '🚪',
+                    name: 'Door (Building)',
+                    buildingId: bd.buildingId || '',
+                    targetFloorId: bd.targetFloorId || '',
+                    targetX: bd.targetX || 0,
+                    targetY: bd.targetY || 0
+                });
+            });
+        }
+
+        // Interior exit doors
+        if (tutorialData.interiorExits) {
+            tutorialData.interiorExits.forEach((ie, i) => {
+                designerData.entities.push({
+                    id: `door-interior-exit-${ie.x}-${ie.y}`,
+                    type: 'door-interior-exit',
+                    x: ie.x,
+                    y: ie.y,
+                    emoji: '↩',
+                    name: 'Interior Exit',
+                    doorKind: 'interior_exit',
+                    parentBuildingFloorId: ie.parentBuildingFloorId || ''
+                });
+            });
+        }
+
+        // Currencies
+        if (tutorialData.currencies) {
+            tutorialData.currencies.forEach((c, i) => {
+                designerData.entities.push({
+                    id: `currency-${c.x}-${c.y}`,
+                    type: 'currency',
+                    x: c.x,
+                    y: c.y,
+                    emoji: '💰',
+                    name: 'Currency',
+                    amount: c.amount || 1
+                });
+            });
+        }
+
+        // Buildings (forest buildings / building entities)
+        if (tutorialData.buildings) {
+            tutorialData.buildings.forEach((b, i) => {
+                designerData.entities.push({
+                    id: b.buildingId || `building-${b.x}-${b.y}`,
+                    type: 'building',
+                    x: b.x,
+                    y: b.y,
+                    emoji: b.emoji || '🏠',
+                    name: b.name || 'Building',
+                    buildingId: b.buildingId || ''
+                });
+            });
+        }
 
         return designerData;
     }

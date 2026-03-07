@@ -645,10 +645,104 @@ const LootTableManager = (function () {
     return null;
   }
 
+  // ── Canonical resource drops per COLLECTIBLES_CANON ──────────
+  /**
+   * Roll canonical resource drops for a defeated enemy.
+   * Uses enemy_resource_profiles from loot-tables.json.
+   *
+   * @param {string} enemyTier  - 'standard', 'elite', 'boss', 'scout'
+   * @param {string} lootProfile - Enemy archetype: 'default','robotic','organic','military','tech','civilian','undead'
+   * @returns {Array} Array of loot item objects ready for LootSpillSystem.scatterItems()
+   */
+  function rollEnemyResourceDrops(enemyTier, lootProfile) {
+    _ensureLoaded();
+
+    var profiles = _lootTables.enemy_resource_profiles;
+    if (!profiles) return [];
+
+    var profile = profiles[lootProfile || 'default'] || profiles['default'];
+    if (!profile) return [];
+
+    // Tier multiplier scales min/max
+    var tierMult = 1.0;
+    if (profiles.tier_multipliers && profiles.tier_multipliers[enemyTier]) {
+      tierMult = profiles.tier_multipliers[enemyTier];
+    }
+
+    var drops = [];
+    var now = Date.now();
+
+    // Currency (¢)
+    if (profile.currency && profile.currency.chance > 0 && Math.random() < profile.currency.chance) {
+      var cMin = Math.max(1, Math.round(profile.currency.min * tierMult));
+      var cMax = Math.max(cMin, Math.round(profile.currency.max * tierMult));
+      var cAmt = Math.floor(Math.random() * (cMax - cMin + 1)) + cMin;
+      drops.push({
+        x: 0, y: 0, amount: cAmt,
+        glyph: '\u00A2', emoji: '\uD83D\uDCB0',
+        spawnTime: now, decayTime: 45000,
+        _isCurrency: true
+      });
+    }
+
+    // Ammo (⁍)
+    if (profile.ammo && profile.ammo.chance > 0 && Math.random() < profile.ammo.chance) {
+      var aMin = Math.max(1, Math.round(profile.ammo.min * tierMult));
+      var aMax = Math.max(aMin, Math.round(profile.ammo.max * tierMult));
+      var aAmt = Math.floor(Math.random() * (aMax - aMin + 1)) + aMin;
+      drops.push({
+        x: 0, y: 0, type: 'ammo', amount: aAmt,
+        emoji: '\u204D', name: 'Ammo (' + aAmt + ')',
+        spawnTime: now, decayTime: 60000
+      });
+    }
+
+    // Battery (◈)
+    if (profile.battery && profile.battery.chance > 0 && Math.random() < profile.battery.chance) {
+      var bMin = Math.max(1, Math.round(profile.battery.min * tierMult));
+      var bMax = Math.max(bMin, Math.round(profile.battery.max * tierMult));
+      var bAmt = Math.floor(Math.random() * (bMax - bMin + 1)) + bMin;
+      drops.push({
+        x: 0, y: 0, type: 'gem', amount: bAmt,
+        glyph: '\u25C8', name: 'Battery Cell',
+        spawnTime: now, decayTime: 45000
+      });
+    }
+
+    // Key Ammo (🗝)
+    if (profile.key_ammo && profile.key_ammo.chance > 0 && Math.random() < profile.key_ammo.chance) {
+      var kMin = Math.max(1, Math.round(profile.key_ammo.min * tierMult));
+      var kMax = Math.max(kMin, Math.round(profile.key_ammo.max * tierMult));
+      var kAmt = Math.floor(Math.random() * (kMax - kMin + 1)) + kMin;
+      drops.push({
+        x: 0, y: 0, type: 'key', keyType: 'RUSTY_KEY', tier: 1,
+        amount: kAmt, emoji: '\uD83D\uDDDD', name: 'Key Ammo',
+        spawnTime: now, decayTime: 60000
+      });
+    }
+
+    // Food (per-category emoji)
+    if (profile.food && profile.food.chance > 0 && Math.random() < profile.food.chance) {
+      var foodTable = profile.food.food_table || 'food_loot';
+      var foodItem = rollFromItemTable(foodTable);
+      if (foodItem) {
+        drops.push({
+          x: 0, y: 0, type: 'food',
+          emoji: foodItem.emoji || '\uD83C\uDF56', name: foodItem.name || 'Food',
+          foodId: foodItem.registryId || null,
+          spawnTime: now, decayTime: 60000
+        });
+      }
+    }
+
+    return drops;
+  }
+
   // Public API
   return {
     loadLootTables: loadLootTables,
     rollEnemyLoot: rollEnemyLoot,
+    rollEnemyResourceDrops: rollEnemyResourceDrops,
     rollBreakableLoot: rollBreakableLoot,
     rollFromItemTable: rollFromItemTable,
     rollKeyDrop: rollKeyDrop,

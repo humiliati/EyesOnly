@@ -1,7 +1,11 @@
 /* ============================================================
-   EYES ONLY - AWOL Button: UBER Difficulty Selector + M Ping
-   Manages Gone Rogue UBER difficulty (separate from biome tiers) and provides
-   a canonical "check in with M" surface for the ARG (/m console).
+   EYES ONLY - AWOL Launch System: Dropdown Launcher + UBER Difficulty
+   Phase 1: Dropdown with tier rows, seed field, and launch button.
+   Replaces the old tooltip-based difficulty selector.
+
+   Manages Gone Rogue UBER difficulty (separate from biome tiers),
+   provides seed input for deterministic runs, and serves as the
+   primary game entry point via the AWOL header button.
 
    NOTE: M ping + response pressure is currently placeholders/TODOs; UI is
    canonized per stakeholders.
@@ -12,24 +16,31 @@ const AWOLDifficulty = (function () {
 
   var STORAGE_KEY = 'eyesonly_awol_difficulty';
   var _currentTier = 1; // Internally 1..3 maps to Uber 0..2
-  var _tooltipVisible = false;
+  var _dropdownVisible = false;
+  var _expandedTier = null; // Which tier row is expanded (null = none)
   var _completedTiers = []; // Internal completion gates (Tier 1 unlocks Tier 2, etc.)
 
+  // Tier metadata
+  var TIER_LABELS = {
+    1: 'TRAILHEAD',
+    2: 'BLACK OPS',
+    3: 'BURN NOTICE'
+  };
+
   // TODO(stakeholder): real M ping state machine sourced from /m console.
-  // For now, treat "logged in" as "M link active".
   var _lastMPingAt = 0;
 
   /**
-   * Initialize AWOL button and difficulty selector
+   * Initialize AWOL button and dropdown launcher
    */
   function init() {
     _loadState();
     _attachEventListeners();
     _updateUI();
 
-    // Listen for Gone Rogue state changes to show/hide based on context
+    // Listen for Gone Rogue state changes to update UI context
     if (typeof GoneRogue !== 'undefined' && GoneRogue.onStateChange) {
-      GoneRogue.onStateChange(_updateUI);
+      GoneRogue.onStateChange(_onGameStateChange);
     }
   }
 
@@ -41,7 +52,7 @@ const AWOLDifficulty = (function () {
       var saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         var state = JSON.parse(saved);
-        _currentTier = state.currentTier || 0;
+        _currentTier = state.currentTier || 1;
         _completedTiers = state.completedTiers || [];
       }
     } catch (e) {
@@ -65,204 +76,329 @@ const AWOLDifficulty = (function () {
   }
 
   /**
-   * Attach event listeners to AWOL button and difficulty buttons
+   * Attach event listeners
    */
   function _attachEventListeners() {
     var awolButton = document.getElementById('awol-button');
-    var tooltip = document.getElementById('awol-tooltip');
+    var dropdown = document.getElementById('awol-dropdown');
 
-    if (!awolButton || !tooltip) {
-      console.warn('[AWOL] Button or tooltip not found in DOM');
+    if (!awolButton || !dropdown) {
+      console.warn('[AWOL] Button or dropdown not found in DOM');
       return;
     }
 
-    // Toggle tooltip on button click
+    // Toggle dropdown on button click
     awolButton.addEventListener('click', function (e) {
       e.stopPropagation();
-      _toggleTooltip();
+      _toggleDropdown();
     });
+
+    // Tier row click handlers
+    var tierRows = dropdown.querySelectorAll('.awol-tier-row');
+    tierRows.forEach(function (row) {
+      row.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var tier = parseInt(row.dataset.tier, 10);
+        _onTierRowClick(tier);
+      });
+    });
+
+    // Seed randomize button
+    var randomizeBtn = document.getElementById('awol-seed-randomize');
+    if (randomizeBtn) {
+      randomizeBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        _randomizeSeed();
+      });
+    }
+
+    // Launch button
+    var launchBtn = document.getElementById('awol-launch-btn');
+    if (launchBtn) {
+      launchBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        _launchGame();
+      });
+    }
 
     // Ping-back handler (placeholder)
     var pingBtn = document.getElementById('awol-pingback-btn');
     if (pingBtn && !pingBtn._bound) {
       pingBtn._bound = true;
-      pingBtn.addEventListener('click', function(e) {
+      pingBtn.addEventListener('click', function (e) {
         e.stopPropagation();
         _pingMConsole();
       });
     }
 
-    // Close tooltip when clicking outside
+    // Close dropdown when clicking outside
     document.addEventListener('click', function (e) {
-      if (_tooltipVisible && !tooltip.contains(e.target) && !awolButton.contains(e.target)) {
-        _hideTooltip();
+      if (_dropdownVisible && !dropdown.contains(e.target) && !awolButton.contains(e.target)) {
+        _hideDropdown();
       }
     });
 
-    // Difficulty button handlers
-    var diffButtons = document.querySelectorAll('.difficulty-btn');
-    diffButtons.forEach(function (btn) {
-      btn.addEventListener('click', function (e) {
+    // Prevent seed input clicks from closing dropdown
+    var seedInput = document.getElementById('awol-seed-input');
+    if (seedInput) {
+      seedInput.addEventListener('click', function (e) {
         e.stopPropagation();
-        var tier = parseInt(btn.dataset.tier, 10);
-        if (!btn.disabled) {
-          _selectTier(tier);
-        }
       });
-    });
+    }
   }
 
-  /**
-   * Toggle tooltip visibility
-   */
-  function _toggleTooltip() {
-    if (_tooltipVisible) {
-      _hideTooltip();
+  // ─── Dropdown Toggle ───────────────────────────────────────────
+
+  function _toggleDropdown() {
+    if (_dropdownVisible) {
+      _hideDropdown();
     } else {
-      _showTooltip();
+      _showDropdown();
     }
   }
 
-  /**
-   * Show tooltip
-   */
-  function _showTooltip() {
-    var tooltip = document.getElementById('awol-tooltip');
-    if (tooltip) {
-      // Check if Gone Rogue is active before showing
-      var isGoneRogueActive = _isGoneRogueActive();
-      if (isGoneRogueActive) {
-        tooltip.style.display = 'block';
-        _tooltipVisible = true;
-        _updateTooltipContent();
+  function _showDropdown() {
+    var dropdown = document.getElementById('awol-dropdown');
+    var chevron = document.getElementById('awol-chevron');
+    if (!dropdown) return;
+
+    // Dropdown works in BOTH idle and active states (Phase 1: idle only has launch)
+    dropdown.style.display = 'block';
+    _dropdownVisible = true;
+
+    if (chevron) chevron.textContent = '▴';
+
+    // Update tier row states
+    _updateTierRows();
+    _updateMRow();
+
+    // If no tier is expanded and game isn't running, auto-expand the current tier
+    if (!_expandedTier && !_isGoneRogueActive()) {
+      _expandTierRow(_currentTier);
+    }
+  }
+
+  function _hideDropdown() {
+    var dropdown = document.getElementById('awol-dropdown');
+    var chevron = document.getElementById('awol-chevron');
+    if (!dropdown) return;
+
+    dropdown.style.display = 'none';
+    _dropdownVisible = false;
+    _expandedTier = null;
+
+    if (chevron) chevron.textContent = '▾';
+
+    // Collapse launch panel
+    var launchPanel = document.getElementById('awol-launch-panel');
+    if (launchPanel) launchPanel.style.display = 'none';
+  }
+
+  // ─── Tier Row Interaction ──────────────────────────────────────
+
+  function _onTierRowClick(tier) {
+    if (!_isTierUnlocked(tier)) return; // Locked tiers are non-interactive
+
+    // If game is running, just change the difficulty (mid-run adjustment)
+    if (_isGoneRogueActive()) {
+      _selectTier(tier);
+      return;
+    }
+
+    // Select this tier as current
+    _currentTier = tier;
+    _saveState();
+
+    // Expand/collapse: if already expanded, collapse; otherwise expand
+    if (_expandedTier === tier) {
+      _collapseTierRow();
+    } else {
+      _expandTierRow(tier);
+    }
+
+    _updateTierRows();
+  }
+
+  function _expandTierRow(tier) {
+    _expandedTier = tier;
+
+    // Show launch panel below the tier rows
+    var launchPanel = document.getElementById('awol-launch-panel');
+    if (launchPanel) {
+      launchPanel.style.display = 'block';
+
+      // Pre-populate seed if empty
+      var seedInput = document.getElementById('awol-seed-input');
+      if (seedInput && !seedInput.value) {
+        _randomizeSeed();
       }
     }
+
+    _updateTierRows();
   }
 
-  /**
-   * Hide tooltip
-   */
-  function _hideTooltip() {
-    var tooltip = document.getElementById('awol-tooltip');
-    if (tooltip) {
-      tooltip.style.display = 'none';
-      _tooltipVisible = false;
-    }
+  function _collapseTierRow() {
+    _expandedTier = null;
+
+    var launchPanel = document.getElementById('awol-launch-panel');
+    if (launchPanel) launchPanel.style.display = 'none';
+
+    _updateTierRows();
   }
 
-  /**
-   * Check if Gone Rogue is currently active
-   */
-  function _isGoneRogueActive() {
-    // Check if GoneRogue module exists and is active
-    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.isActive === 'function') {
-      return GoneRogue.isActive();
-    }
+  function _updateTierRows() {
+    // Update all three tier rows
+    for (var tier = 1; tier <= 3; tier++) {
+      var uberIndex = tier - 1;
+      var row = document.getElementById('awol-tier-' + uberIndex);
+      if (!row) continue;
 
-    // Fallback: check body class
-    return document.body.classList.contains('mode-gone-rogue') ||
-           document.body.classList.contains('in-gone-rogue');
-  }
+      var arrow = document.getElementById('awol-tier-' + uberIndex + '-arrow');
+      var lock = document.getElementById('awol-tier-' + uberIndex + '-lock');
+      var unlocked = _isTierUnlocked(tier);
 
-  /**
-   * Update tooltip content based on current state
-   */
-  function _updateTooltipContent() {
-    var isLoggedIn = _checkUserLoggedIn();
-    var isScenarioJoined = _checkScenarioJoined();
-
-    // Update M status: OFFLINE unless joined to a scenario
-    var mStatusValue = document.getElementById('m-status-value');
-    var pingBtn = document.getElementById('awol-pingback-btn');
-    if (mStatusValue) {
-      if (isScenarioJoined) {
-        mStatusValue.textContent = _lastMPingAt ? ('ACTIVE — last ping ' + _formatAgeMs(Date.now() - _lastMPingAt) + ' ago') : 'ACTIVE';
-        mStatusValue.style.color = '#00FFA6';
-      } else {
-        mStatusValue.textContent = 'OFFLINE';
-        mStatusValue.style.color = '#ff3333';
-      }
-    }
-
-    if (pingBtn) {
-      pingBtn.disabled = !isScenarioJoined;
-    }
-
-    // Update difficulty button states (gated on user account login)
-    _updateDifficultyButtons(isLoggedIn);
-  }
-
-  /**
-   * Check if user is logged in (user account — allows standalone Rogue play)
-   */
-  function _checkUserLoggedIn() {
-    // Check UserAccount module if available
-    if (typeof UserAccount !== 'undefined' && typeof UserAccount.isLoggedIn === 'function') {
-      return UserAccount.isLoggedIn();
-    }
-    return false;
-  }
-
-  /**
-   * Check if player is joined to a live scenario (enables Live ARG features)
-   */
-  function _checkScenarioJoined() {
-    if (typeof ApiClient !== 'undefined' && typeof ApiClient.isConnected === 'function') {
-      return ApiClient.isConnected();
-    }
-    return false;
-  }
-
-  /**
-   * Update difficulty button states based on login and progression
-   */
-  function _updateDifficultyButtons(isLoggedIn) {
-    var diffButtons = document.querySelectorAll('.difficulty-btn');
-
-    diffButtons.forEach(function (btn) {
-      var tier = parseInt(btn.dataset.tier, 10);
-
-      // Remove all tier classes first
-      btn.classList.remove('tier-1', 'tier-2', 'tier-3', 'active');
-
-      // Add tier class for color
-      btn.classList.add('tier-' + tier);
-
-      if (!isLoggedIn) {
-        // Disable all buttons if not logged in
-        btn.disabled = true;
-      } else {
-        // Enable T1 always for logged-in users
-        if (tier === 1) {
-          btn.disabled = false;
-        }
-        // Enable T2 only if T1 is completed
-        else if (tier === 2) {
-          btn.disabled = !_isTierCompleted(1);
-        }
-        // Enable T3 only if T2 is completed
-        else if (tier === 3) {
-          btn.disabled = !_isTierCompleted(2);
+      // Arrow: ▾ if expanded, ▸ if selected, empty if neither
+      if (arrow) {
+        if (_expandedTier === tier) {
+          arrow.textContent = '▾';
+        } else if (_currentTier === tier) {
+          arrow.textContent = '▸';
+        } else {
+          arrow.textContent = '';
         }
       }
 
-      // Mark active tier
-      if (tier === _currentTier) {
-        btn.classList.add('active');
+      // Lock visibility
+      if (lock) {
+        lock.style.display = unlocked ? 'none' : 'inline';
       }
-    });
+
+      // Row styling
+      row.classList.remove('awol-tier-locked', 'awol-tier-active', 'awol-tier-expanded');
+      if (!unlocked) {
+        row.classList.add('awol-tier-locked');
+      }
+      if (_currentTier === tier) {
+        row.classList.add('awol-tier-active');
+      }
+      if (_expandedTier === tier) {
+        row.classList.add('awol-tier-expanded');
+      }
+
+      // Tier color class
+      row.classList.remove('tier-1', 'tier-2', 'tier-3');
+      row.classList.add('tier-' + tier);
+    }
   }
 
-  /**
-   * Check if a tier has been completed
-   */
+  // ─── Tier Unlocking ────────────────────────────────────────────
+
+  function _isTierUnlocked(tier) {
+    if (tier === 1) return true; // Trailhead is always unlocked
+    // Tier N requires completion of tier N-1
+    return _completedTiers.indexOf(tier - 1) !== -1;
+  }
+
   function _isTierCompleted(tier) {
     return _completedTiers.indexOf(tier) !== -1;
   }
 
-  /**
-   * Select a difficulty tier
-   */
+  // ─── Seed Management ──────────────────────────────────────────
+
+  function _randomizeSeed() {
+    var seedInput = document.getElementById('awol-seed-input');
+    if (!seedInput) return;
+
+    var phrase = '';
+    if (typeof SeededRandom !== 'undefined' && SeededRandom.generateSeedPhrase) {
+      phrase = SeededRandom.generateSeedPhrase(Math.floor(Math.random() * 999999));
+    } else {
+      // Fallback: simple random phrase
+      phrase = 'seed-' + Math.floor(Math.random() * 99999);
+    }
+
+    seedInput.value = phrase;
+  }
+
+  function _standardizeSeed(input) {
+    if (!input || !input.trim()) {
+      // Generate random
+      if (typeof SeededRandom !== 'undefined' && SeededRandom.generateSeedPhrase) {
+        return SeededRandom.generateSeedPhrase(Math.floor(Math.random() * 999999));
+      }
+      return 'seed-' + Math.floor(Math.random() * 99999);
+    }
+
+    var trimmed = input.trim();
+
+    // Check if already a valid seed phrase (adjective-noun-number pattern)
+    if (/^[a-z]+-[a-z]+-\d+$/i.test(trimmed)) {
+      return trimmed.toLowerCase();
+    }
+
+    // Hash arbitrary string to integer seed
+    var hash = 0;
+    for (var i = 0; i < trimmed.length; i++) {
+      hash = ((hash << 5) - hash) + trimmed.charCodeAt(i);
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+
+    if (typeof SeededRandom !== 'undefined' && SeededRandom.generateSeedPhrase) {
+      return SeededRandom.generateSeedPhrase(Math.abs(hash));
+    }
+    return 'seed-' + Math.abs(hash);
+  }
+
+  // ─── Launch Game ───────────────────────────────────────────────
+
+  function _launchGame() {
+    // Don't launch if game is already running
+    if (_isGoneRogueActive()) {
+      console.log('[AWOL] Game already running, ignoring launch');
+      return;
+    }
+
+    var seedInput = document.getElementById('awol-seed-input');
+    var rawSeed = seedInput ? seedInput.value : '';
+
+    // Standardize seed
+    var seed = _standardizeSeed(rawSeed);
+
+    // Update the input field to show the standardized seed
+    if (seedInput) seedInput.value = seed;
+
+    // Set the difficulty tier
+    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.setDifficulty === 'function') {
+      GoneRogue.setDifficulty(_currentTier);
+    }
+
+    // Set the seed
+    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.setSeed === 'function') {
+      GoneRogue.setSeed(seed);
+    }
+
+    // Close dropdown
+    _hideDropdown();
+
+    // Start the game — same code path as terminal `rogue` command
+    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.start === 'function') {
+      console.log('[AWOL] Launching Gone Rogue — Tier: ' + _currentTier +
+        ' (' + TIER_LABELS[_currentTier] + '), Seed: ' + seed);
+
+      // Use same entry path as terminal command
+      // Check if we need to go through GAMESTATE request flow
+      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.requestRogue === 'function') {
+        GAMESTATE.requestRogue();
+      } else {
+        GoneRogue.start({});
+      }
+    } else {
+      console.warn('[AWOL] GoneRogue module not available');
+    }
+  }
+
+  // ─── Tier Selection (mid-run or pre-launch) ────────────────────
+
   function _selectTier(tier) {
     if (tier < 1 || tier > 3) return;
 
@@ -276,41 +412,98 @@ const AWOLDifficulty = (function () {
     }
 
     // Notify via MOK interjection
-    var messages = [
-      '',
-      'UBER 0 selected (baseline).',
-      'UBER 1 selected (hard). Increased enemy awareness + lethality.',
-      'UBER 2 selected (extreme). Maximum threat. Extraction not guaranteed.'
-    ];
+    var uberLevel = tier - 1;
+    var messages = {
+      1: 'UBER 0 selected — ' + TIER_LABELS[1] + ' (baseline).',
+      2: 'UBER 1 selected — ' + TIER_LABELS[2] + '. Increased enemy awareness + lethality.',
+      3: 'UBER 2 selected — ' + TIER_LABELS[3] + '. Maximum threat. Extraction not guaranteed.'
+    };
 
-    if (typeof updateMokInterjection === 'function' && tier >= 1 && tier <= 3) {
-      updateMokInterjection('[AWOL] ' + messages[tier] + ' (Applies on next spawned floor/run; TODO enforce)');
+    if (typeof updateMokInterjection === 'function' && messages[tier]) {
+      var suffix = _isGoneRogueActive() ? ' Applies on next floor.' : '';
+      updateMokInterjection('[AWOL] ' + messages[tier] + suffix);
     }
 
-    // Hide tooltip after selection
-    _hideTooltip();
+    _updateTierRows();
   }
 
-  /**
-   * Update UI elements based on current state
-   */
+  // ─── Game State ────────────────────────────────────────────────
+
+  function _isGoneRogueActive() {
+    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.isActive === 'function') {
+      return GoneRogue.isActive();
+    }
+    return document.body.classList.contains('mode-gone-rogue') ||
+           document.body.classList.contains('in-gone-rogue');
+  }
+
+  function _onGameStateChange() {
+    _updateUI();
+
+    // If game just ended, reset dropdown to idle state
+    if (!_isGoneRogueActive()) {
+      _expandedTier = null;
+    }
+  }
+
+  // ─── UI Updates ────────────────────────────────────────────────
+
   function _updateUI() {
+    // Update tier icon color on the AWOL button
     var accountabilityIcon = document.getElementById('accountability-icon');
-    if (!accountabilityIcon) return;
-
-    // Remove all tier classes
-    accountabilityIcon.classList.remove('tier-1', 'tier-2', 'tier-3');
-
-    // Add current tier class
-    if (_currentTier >= 1 && _currentTier <= 3) {
-      accountabilityIcon.classList.add('tier-' + _currentTier);
+    if (accountabilityIcon) {
+      accountabilityIcon.classList.remove('tier-1', 'tier-2', 'tier-3');
+      if (_currentTier >= 1 && _currentTier <= 3) {
+        accountabilityIcon.classList.add('tier-' + _currentTier);
+      }
     }
 
-    // Update tooltip if visible
-    if (_tooltipVisible) {
-      _updateTooltipContent();
+    // Update dropdown if visible
+    if (_dropdownVisible) {
+      _updateTierRows();
+      _updateMRow();
     }
   }
+
+  // ─── M Status (placeholder) ────────────────────────────────────
+
+  function _updateMRow() {
+    var mRow = document.getElementById('awol-m-row');
+    var isScenarioJoined = _checkScenarioJoined();
+
+    if (mRow) {
+      // Show M row only if scenario is joined
+      mRow.style.display = isScenarioJoined ? 'flex' : 'none';
+    }
+
+    var mStatusValue = document.getElementById('m-status-value');
+    var pingBtn = document.getElementById('awol-pingback-btn');
+
+    if (mStatusValue) {
+      if (isScenarioJoined) {
+        mStatusValue.textContent = _lastMPingAt
+          ? ('ACTIVE — last ping ' + _formatAgeMs(Date.now() - _lastMPingAt) + ' ago')
+          : 'ACTIVE';
+        mStatusValue.style.color = '#00FFA6';
+      } else {
+        mStatusValue.textContent = 'OFFLINE';
+        mStatusValue.style.color = '#ff3333';
+      }
+    }
+
+    if (pingBtn) {
+      pingBtn.disabled = !isScenarioJoined;
+    }
+  }
+
+  function _checkScenarioJoined() {
+    if (typeof ApiClient !== 'undefined' && typeof ApiClient.isConnected === 'function') {
+      return ApiClient.isConnected();
+    }
+    return false;
+  }
+
+  // ─── Completion & Progression ──────────────────────────────────
 
   /**
    * Mark a tier as completed (called by Gone Rogue when player beats floor 30)
@@ -326,7 +519,6 @@ const AWOLDifficulty = (function () {
       // Auto-advance to next uber tier so the player's next run starts harder
       if (nextTier <= 3) {
         _currentTier = nextTier;
-        // Queue the new difficulty for next run start
         if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.setDifficulty === 'function') {
           GoneRogue.setDifficulty(nextTier);
         }
@@ -339,7 +531,7 @@ const AWOLDifficulty = (function () {
       if (typeof updateMokInterjection === 'function') {
         var message = '[AWOL] UBER ' + uberLevel + ' COMPLETED! ';
         if (nextTier <= 3) {
-          message += 'Auto-set to Uber ' + (uberLevel + 1) + ' for next run. Toggle in AWOL to change.';
+          message += TIER_LABELS[nextTier] + ' unlocked. Auto-set to Uber ' + (uberLevel + 1) + ' for next run.';
         } else {
           message += 'All Uber levels conquered. Legendary operative status achieved.';
         }
@@ -366,6 +558,8 @@ const AWOLDifficulty = (function () {
     _updateUI();
   }
 
+  // ─── Helpers ───────────────────────────────────────────────────
+
   function _formatAgeMs(ms) {
     ms = Math.max(0, Number(ms || 0));
     var s = Math.round(ms / 1000);
@@ -388,7 +582,7 @@ const AWOLDifficulty = (function () {
       pingBtn.textContent = 'PING SENT';
       pingBtn.disabled = true;
     }
-    _updateTooltipContent();
+    _updateMRow();
 
     // Send real pingback via ApiClient
     var sent = false;
@@ -405,10 +599,9 @@ const AWOLDifficulty = (function () {
           updateMokInterjection('[M] PING FAILED — Check connection.');
         }
       }).finally(function () {
-        // Re-enable button after brief delay
         setTimeout(function () {
           if (pingBtn) {
-            pingBtn.textContent = '[M] PING BACK';
+            pingBtn.textContent = '[M] PING';
             pingBtn.disabled = !_checkScenarioJoined();
           }
         }, 3000);
@@ -419,7 +612,7 @@ const AWOLDifficulty = (function () {
       updateMokInterjection('[M] PING SENT — Awaiting response.');
       setTimeout(function () {
         if (pingBtn) {
-          pingBtn.textContent = '[M] PING BACK';
+          pingBtn.textContent = '[M] PING';
           pingBtn.disabled = !_checkScenarioJoined();
         }
       }, 3000);

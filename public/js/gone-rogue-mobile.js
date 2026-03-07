@@ -897,8 +897,12 @@ const GoneRogueMobile = (function () {
           color = '#FFFFFF';
         }
 
+        // Apply sub-tile visual offset from LootSpillSystem scatter
+        var ox = (item._spawnOffset && item._spawnOffset.x) ? item._spawnOffset.x : 0;
+        var oy = (item._spawnOffset && item._spawnOffset.y) ? item._spawnOffset.y : 0;
+
         entities.push({
-          x: vx, y: vy, char: char, color: color,
+          x: vx + ox, y: vy + oy, char: char, color: color,
           scale: scale, bobEnabled: bobEnabled, pulseEnabled: !bobEnabled && item._wt === 'interactive', collectibleType: collectibleType
         });
       });
@@ -910,7 +914,9 @@ const GoneRogueMobile = (function () {
           var vx = _toViewX(currency.x);
           var vy = _toViewY(currency.y);
           if (!_inView(vx, vy)) return;
-          entities.push({ x: vx, y: vy, char: currency.glyph || '¢', color: '#FFFF00',
+          var cox = (currency._spawnOffset && currency._spawnOffset.x) ? currency._spawnOffset.x : 0;
+          var coy = (currency._spawnOffset && currency._spawnOffset.y) ? currency._spawnOffset.y : 0;
+          entities.push({ x: vx + cox, y: vy + coy, char: currency.glyph || '¢', color: '#FFFF00',
             scale: 1.0, bobEnabled: true, collectibleType: 'resource' });
         });
       }
@@ -951,7 +957,9 @@ const GoneRogueMobile = (function () {
             color = item.resourceColor || '#00FFFF';
             scale = 0.6; collectibleType = 'emoji';
           }
-          entities.push({ x: vx, y: vy, char: char, color: color,
+          var iox = (item._spawnOffset && item._spawnOffset.x) ? item._spawnOffset.x : 0;
+          var ioy = (item._spawnOffset && item._spawnOffset.y) ? item._spawnOffset.y : 0;
+          entities.push({ x: vx + iox, y: vy + ioy, char: char, color: color,
             scale: scale, bobEnabled: bobEnabled, collectibleType: collectibleType });
         });
       }

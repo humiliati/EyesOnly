@@ -433,10 +433,11 @@ var CardDragController = (function() {
     // Create ghost element
     _state.ghostEl = _createGhost(cardEl, ev.clientX, ev.clientY);
 
-    // Capture pointer for guaranteed delivery
-    if (ev.target && typeof ev.target.setPointerCapture === 'function') {
-      try { ev.target.setPointerCapture(ev.pointerId); } catch (e) {}
-    }
+    // NOTE: Do NOT use setPointerCapture here.
+    // HFC manages the full pointer lifecycle via window-level capture-phase
+    // listeners (pointermove, pointerup, pointercancel). setPointerCapture
+    // would redirect events to the card element, starving the window listeners
+    // and freezing the drag ghost in place — especially on mobile.
 
     console.log('[CardDragController] beginDrag: card=' + (card.id || card.name) +
                 ' source=' + sourceZone + ' index=' + cardIndex);
@@ -526,7 +527,7 @@ var CardDragController = (function() {
 
     if (!dropped) {
       // Auto-select the returned card so it counts for this round's resolution
-      if (_state.context === 'combat' && _state.cardIndex != null) {
+      if (_context === 'combat' && _state.cardIndex != null) {
         try {
           if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.selectCardByIndex === 'function') {
             HandFanComponent.selectCardByIndex(_state.cardIndex);
@@ -585,13 +586,7 @@ var CardDragController = (function() {
       HandFanComponent._dragControllerOwnsMode = false;
     }
 
-    // Release pointer capture
-    if (_state.pointerId != null) {
-      try {
-        var captured = document.querySelector('[data-pointer-captured]');
-        if (captured) captured.releasePointerCapture(_state.pointerId);
-      } catch (e) {}
-    }
+    // (Pointer capture removed — HFC manages pointer lifecycle via window listeners)
 
     _state = null;
   }

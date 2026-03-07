@@ -157,11 +157,20 @@ var DeathExitSystem = (function () {
         ctx.spawnCurrency(enemy.x, enemy.y, deathResult.loot.currency);
       }
 
+      // ── LootSpillSystem: collect ground drops → scatter → place ──
+      var _desPending = [];
+      var _desOrigAddItem = (typeof WorldItems !== 'undefined') ? WorldItems.addItem : null;
+      var _desOrigItemsPush = ctx.items.push;
+      if (typeof LootSpillSystem !== 'undefined') {
+        if (_desOrigAddItem) { WorldItems.addItem = function(item) { _desPending.push(item); }; }
+        ctx.items.push = function(item) { _desPending.push(item); };
+      }
+
       if (deathResult.loot.ammo && deathResult.loot.ammo > 0) {
         var deathAmmo = {
           x: enemy.x, y: enemy.y, type: 'ammo',
           amount: deathResult.loot.ammo,
-          spawnTime: Date.now(), decayTime: 30000,
+          spawnTime: Date.now(), decayTime: 45000,
           emoji: '📦', name: 'Ammo (' + deathResult.loot.ammo + ')'
         };
         if (typeof WorldItems !== 'undefined') { WorldItems.addItem(deathAmmo); } else { ctx.items.push(deathAmmo); }
@@ -196,7 +205,7 @@ var DeathExitSystem = (function () {
                 } catch (eOH) {}
               } else {
                 // Hand full — drop on ground as fallback
-                var deathCard = { x: enemy.x, y: enemy.y, type: 'card', card: card, spawnTime: Date.now(), decayTime: 30000 };
+                var deathCard = { x: enemy.x, y: enemy.y, type: 'card', card: card, spawnTime: Date.now(), decayTime: 45000 };
                 if (typeof WorldItems !== 'undefined') { WorldItems.addItem(deathCard); } else { ctx.items.push(deathCard); }
               }
             }
@@ -212,9 +221,38 @@ var DeathExitSystem = (function () {
             var charm = CardSystem.rollCommonCharm();
             if (charm) {
               _dropCountItems++;
-              var deathCharm = { x: enemy.x, y: enemy.y, type: 'charm', card: charm, spawnTime: Date.now(), decayTime: 30000 };
+              var deathCharm = { x: enemy.x, y: enemy.y, type: 'charm', card: charm, spawnTime: Date.now(), decayTime: 45000 };
               if (typeof WorldItems !== 'undefined') { WorldItems.addItem(deathCharm); } else { ctx.items.push(deathCharm); }
             }
+          }
+        }
+      }
+
+      // ── Canonical resource drops (COLLECTIBLES_CANON) ──
+      if (deathResult.loot.resourceDrops) {
+        for (var rd = 0; rd < deathResult.loot.resourceDrops.length; rd++) {
+          _desPending.push(deathResult.loot.resourceDrops[rd]);
+        }
+      }
+
+      // ── LootSpillSystem: restore interceptors, scatter, and place ──
+      if (_desOrigAddItem) { WorldItems.addItem = _desOrigAddItem; }
+      ctx.items.push = _desOrigItemsPush;
+      if (_desPending.length > 0 && typeof LootSpillSystem !== 'undefined') {
+        LootSpillSystem.scatterItems(enemy.x, enemy.y, _desPending, ctx);
+        var DES_DECAY_FLOOR = 45000;
+        for (var dp = 0; dp < _desPending.length; dp++) {
+          var _dpItem = _desPending[dp];
+          if (_dpItem.decayTime && _dpItem.decayTime < DES_DECAY_FLOOR) {
+            _dpItem.decayTime = DES_DECAY_FLOOR;
+          }
+          if (_dpItem._isCurrency) {
+            delete _dpItem._isCurrency;
+            if (typeof WorldItems !== 'undefined') { WorldItems.addCurrency(_dpItem); }
+            else { ctx.currencies ? ctx.currencies.push(_dpItem) : void 0; }
+          } else {
+            if (typeof WorldItems !== 'undefined') { WorldItems.addItem(_dpItem); }
+            else { ctx.items.push(_dpItem); }
           }
         }
       }

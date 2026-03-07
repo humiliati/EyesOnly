@@ -163,9 +163,10 @@ var MovePlayerSystem = (function() {
       }
     }
 
-    // Auto-pickup any floor item at new position
+    // Auto-pickup ALL floor items at new position (handles multi-content breakables).
+    // while-loop collects every item in one pass; pickupItem() removes one per call.
     var items = ctx.items;
-    if (items.find(function(it) { return it.x === newX && it.y === newY; })) {
+    while (items.find(function(it) { return it.x === newX && it.y === newY; })) {
       ctx.pickupItem();
     }
 

@@ -146,6 +146,13 @@ const HandFanComponent = (function () {
       return;
     }
 
+    // Restore visibility when returning to combat mode (e.g. STR maximize
+    // after the STR-combat-minimize guard above set display:none).
+    if (_mode === 'combat' && _fanContainer && _fanContainer.style.display === 'none') {
+      _fanContainer.style.display = 'flex';
+      _fanContainer.style.pointerEvents = '';
+    }
+
     _updateFanPosition();
 
     // Only re-render when the fan is actually visible. Mode/position changes

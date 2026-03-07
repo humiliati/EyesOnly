@@ -6,9 +6,9 @@ To separate biome progression from global difficulty, we have transitioned the A
 
 | Uber Level | Label | Multipliers | Unlock Condition |
 |------------|-------|-------------|------------------|
-| Uber 0     | Standard | 1.0x Stats | Default |
-| Uber 1     | Elite | 1.3x Stats | Complete Uber 0 (Beat Floor 30) |
-| Uber 2     | Hell | 1.6x Stats | Complete Uber 1 (Beat Floor 30) |
+| Uber 0     | Trailhead | 1.0x Stats | Default |
+| Uber 1     | Black Ops | 1.3x Stats | Complete Uber 0 (Beat Floor 30) |
+| Uber 2     | Burn Notice | 1.6x Stats | Complete Uber 1 (Beat Floor 30) |
 
 **Note**: "Biome Tiers" still refer to the floor ranges (T1: 1-10, T2: 11-22, T3: 23-30) encountered during a single run.
 

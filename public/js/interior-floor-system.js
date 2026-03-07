@@ -53,12 +53,15 @@ var InteriorFloorSystem = (function() {
 
     console.log('[GoneRogue] Entering interior floor: ' + targetFloorId);
 
-    // Save current state to the stack so we can return
+    // Save current state to the stack so we can return.
+    // enteredViaFloorId records WHICH building we entered so that on exit
+    // we can spawn the player near the correct building door on the parent floor.
     ctx.interiorFloorStack.push({
       floorId: ctx.currentInteriorFloorId,
       mainFloor: ctx.floor,
       playerX: ctx.player.x,
-      playerY: ctx.player.y
+      playerY: ctx.player.y,
+      enteredViaFloorId: targetFloorId
     });
     ctx.currentInteriorFloorId = targetFloorId;
 

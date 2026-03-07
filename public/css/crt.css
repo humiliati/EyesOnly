@@ -564,6 +564,7 @@ body.in-gone-rogue .debrief-window.expanded {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  position: relative; /* Anchor for AWOL dropdown */
   justify-content: flex-end;
 }
 
@@ -777,130 +778,282 @@ body.in-gone-rogue .debrief-window.expanded {
   66%, 100% { color: #ff3333; filter: drop-shadow(0 0 4px #ff3333); } /* Red */
 }
 
-/* AWOL Difficulty Selector Tooltip */
-.awol-tooltip {
+/* ── AWOL Dropdown Launcher ────────────────────────────────── */
+
+/* Chevron on the AWOL button */
+.awol-chevron {
+  font-size: 0.75em;
+  margin-left: 2px;
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+
+/* Dropdown container */
+.awol-dropdown {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  min-width: 280px;
+  min-width: 300px;
   background: rgba(8, 24, 12, 0.98);
   border: 2px solid var(--panel-border);
   border-radius: 6px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
   z-index: 9999;
   font-family: var(--font);
+  overflow: hidden;
 }
 
-.awol-tooltip-header {
-  padding: 8px 12px;
-  background: rgba(20, 60, 30, 0.6);
-  border-bottom: 1px solid var(--panel-border);
+/* Shared row style */
+.awol-dropdown-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(51, 255, 51, 0.08);
+  transition: background 0.15s ease;
+}
+
+.awol-dropdown-row:last-child {
+  border-bottom: none;
+}
+
+/* ── M Status Row ──────────────────────────────────────────── */
+.awol-m-row {
   font-size: 11px;
-  font-weight: bold;
-  letter-spacing: 0.1em;
-  color: var(--phosphor);
+  background: rgba(20, 60, 30, 0.3);
+  padding: 8px 14px;
+}
+
+.awol-m-label {
+  color: var(--text-dim);
   text-transform: uppercase;
-}
-
-.awol-tooltip-body {
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.awol-option {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.awol-option-label {
+  letter-spacing: 0.05em;
   font-size: 10px;
+}
+
+.awol-m-value {
+  font-weight: bold;
+  font-size: 11px;
+}
+
+.awol-m-ping {
+  margin-left: auto;
+  padding: 3px 8px;
+  background: rgba(20, 40, 25, 0.6);
+  border: 1px solid var(--panel-border);
+  border-radius: 3px;
+  color: var(--phosphor);
+  font-family: var(--font);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.awol-m-ping:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.awol-m-ping:not(:disabled):hover {
+  background: rgba(51, 255, 51, 0.15);
+  border-color: rgba(51, 255, 51, 0.5);
+}
+
+/* ── Tier Rows ─────────────────────────────────────────────── */
+.awol-tier-row {
+  cursor: pointer;
+  min-height: 44px; /* Mobile touch target */
+}
+
+.awol-tier-row:hover:not(.awol-tier-locked) {
+  background: rgba(51, 255, 51, 0.08);
+}
+
+.awol-tier-arrow {
+  width: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--phosphor);
+  flex-shrink: 0;
+}
+
+.awol-tier-label {
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  flex: 1;
+}
+
+.awol-tier-rogue {
+  font-size: 11px;
   color: var(--text-dim);
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
-.awol-option-value {
+.awol-tier-lock {
   font-size: 12px;
-  color: var(--phosphor);
-  font-weight: bold;
+  margin-left: 4px;
 }
 
-.difficulty-toggle-group {
+/* Tier color coding */
+.awol-tier-row.tier-1 .awol-tier-label {
+  color: #33ff33;
+}
+.awol-tier-row.tier-1 .awol-tier-arrow {
+  color: #33ff33;
+}
+.awol-tier-row.tier-2:not(.awol-tier-locked) .awol-tier-label {
+  color: #ffb000;
+}
+.awol-tier-row.tier-2:not(.awol-tier-locked) .awol-tier-arrow {
+  color: #ffb000;
+}
+.awol-tier-row.tier-3:not(.awol-tier-locked) .awol-tier-label {
+  color: #ff3333;
+}
+.awol-tier-row.tier-3:not(.awol-tier-locked) .awol-tier-arrow {
+  color: #ff3333;
+}
+
+/* Locked tier styling */
+.awol-tier-row.awol-tier-locked {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.awol-tier-row.awol-tier-locked .awol-tier-label {
+  color: rgba(100, 100, 100, 0.7);
+}
+
+.awol-tier-row.awol-tier-locked .awol-tier-rogue {
+  color: rgba(100, 100, 100, 0.5);
+}
+
+/* Active tier glow */
+.awol-tier-row.awol-tier-active {
+  background: rgba(51, 255, 51, 0.05);
+}
+
+.awol-tier-row.awol-tier-active.tier-2 {
+  background: rgba(255, 176, 0, 0.05);
+}
+
+.awol-tier-row.awol-tier-active.tier-3 {
+  background: rgba(255, 51, 51, 0.05);
+}
+
+/* Expanded tier has stronger highlight */
+.awol-tier-row.awol-tier-expanded {
+  background: rgba(51, 255, 51, 0.12);
+  border-bottom-color: rgba(51, 255, 51, 0.15);
+}
+
+.awol-tier-row.awol-tier-expanded.tier-2 {
+  background: rgba(255, 176, 0, 0.12);
+  border-bottom-color: rgba(255, 176, 0, 0.15);
+}
+
+.awol-tier-row.awol-tier-expanded.tier-3 {
+  background: rgba(255, 51, 51, 0.12);
+  border-bottom-color: rgba(255, 51, 51, 0.15);
+}
+
+/* ── Launch Panel (Seed + Launch Button) ──────────────────── */
+.awol-launch-panel {
+  padding: 12px 14px;
+  background: rgba(12, 32, 18, 0.6);
+  border-top: 1px solid rgba(51, 255, 51, 0.12);
   display: flex;
-  gap: 8px;
-  justify-content: flex-start;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.difficulty-btn {
+.awol-seed-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.awol-seed-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+}
+
+.awol-seed-input {
   flex: 1;
-  padding: 8px 12px;
-  background: rgba(20, 40, 25, 0.6);
-  border: 2px solid rgba(51, 255, 51, 0.3);
-  border-radius: 4px;
-  color: rgba(51, 255, 51, 0.5);
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(51, 255, 51, 0.3);
+  border-radius: 3px;
+  color: var(--phosphor);
   font-family: var(--font);
   font-size: 12px;
+  letter-spacing: 0.03em;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.awol-seed-input::placeholder {
+  color: rgba(51, 255, 51, 0.25);
+  font-style: italic;
+}
+
+.awol-seed-input:focus {
+  border-color: rgba(51, 255, 51, 0.7);
+  box-shadow: 0 0 6px rgba(51, 255, 51, 0.2);
+}
+
+.awol-seed-randomize {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: rgba(20, 40, 25, 0.6);
+  border: 1px solid rgba(51, 255, 51, 0.3);
+  border-radius: 3px;
+  color: var(--phosphor);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.awol-seed-randomize:hover {
+  background: rgba(51, 255, 51, 0.15);
+  border-color: rgba(51, 255, 51, 0.6);
+}
+
+.awol-launch-btn {
+  padding: 10px 16px;
+  background: rgba(20, 60, 30, 0.7);
+  border: 2px solid #33ff33;
+  border-radius: 4px;
+  color: #33ff33;
+  font-family: var(--font);
+  font-size: 14px;
   font-weight: bold;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: center;
 }
 
-.difficulty-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-  border-color: rgba(100, 100, 100, 0.3);
-  color: rgba(100, 100, 100, 0.5);
+.awol-launch-btn:hover {
+  background: rgba(51, 255, 51, 0.2);
+  box-shadow: 0 0 12px rgba(51, 255, 51, 0.4), inset 0 0 8px rgba(51, 255, 51, 0.15);
 }
 
-.difficulty-btn:not(:disabled):hover {
-  background: rgba(51, 255, 51, 0.15);
-  border-color: rgba(51, 255, 51, 0.6);
-  box-shadow: 0 0 8px rgba(51, 255, 51, 0.3);
-}
-
-.difficulty-btn.tier-1:not(:disabled) {
-  border-color: #33ff33;
-  color: #33ff33;
-}
-
-.difficulty-btn.tier-2:not(:disabled) {
-  border-color: #ffb000;
-  color: #ffb000;
-}
-
-.difficulty-btn.tier-3:not(:disabled) {
-  border-color: #ff3333;
-  color: #ff3333;
-}
-
-.difficulty-btn.active {
-  background: rgba(51, 255, 51, 0.25);
-  border-width: 3px;
-  box-shadow: 0 0 12px rgba(51, 255, 51, 0.5), inset 0 0 8px rgba(51, 255, 51, 0.3);
-}
-
-.difficulty-btn.active.tier-1 {
-  background: rgba(51, 255, 51, 0.25);
-  box-shadow: 0 0 12px rgba(51, 255, 51, 0.5), inset 0 0 8px rgba(51, 255, 51, 0.3);
-}
-
-.difficulty-btn.active.tier-2 {
-  background: rgba(255, 176, 0, 0.25);
-  box-shadow: 0 0 12px rgba(255, 176, 0, 0.5), inset 0 0 8px rgba(255, 176, 0, 0.3);
-}
-
-.difficulty-btn.active.tier-3 {
-  background: rgba(255, 51, 51, 0.25);
-  box-shadow: 0 0 12px rgba(255, 51, 51, 0.5), inset 0 0 8px rgba(255, 51, 51, 0.3);
-}
-
-.difficulty-tier {
-  display: block;
+.awol-launch-btn:active {
+  background: rgba(51, 255, 51, 0.35);
+  transform: scale(0.98);
 }
 
 /* Inventory Grid Styles */
@@ -2105,8 +2258,8 @@ body.amber-mode #scanlines::after {
     display: none; /* Hide label text on tablet */
   }
   
-  /* AWOL tooltip adjustments for tablet */
-  .awol-tooltip {
+  /* AWOL dropdown adjustments for tablet */
+  .awol-dropdown {
     min-width: 240px;
     right: -10px;
   }
@@ -2200,8 +2353,8 @@ body.amber-mode #scanlines::after {
     font-size: 0.9em;
   }
   
-  /* AWOL tooltip adjustments for mobile */
-  .awol-tooltip {
+  /* AWOL dropdown adjustments for mobile */
+  .awol-dropdown {
     position: fixed;
     top: 60px !important;
     right: 10px !important;
