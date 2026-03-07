@@ -1,207 +1,156 @@
 # 5-Phase Roadmap: Door Contract System & Proc Gen Modularization
 
+> See [WORLD_BUILDING_ENGINE.md](./WORLD_BUILDING_ENGINE.md) for the full WBE design.
+> See [BIOME_SYSTEMS.md](./BIOME_SYSTEMS.md) for biome data (world, boss, interior).
+> See [BUILDING_INTERIOR_SYSTEM.md](./BUILDING_INTERIOR_SYSTEM.md) for interior floor architecture.
+
 ## Context
 
-The monolith `gone-rogue.js` (3,661 lines) holds all door state and delegates to ~40 ctx factory functions. The door contract is systemically broken (BUG 2 in the audit): procedural floors have no retreat door, no guardrails, and no spawn-near-correct-door logic. Building interior doors (BUG 13) also lack their own contract. Meanwhile, the World Building Engine (WBE) needs a clean procedural generation API to support its SFC-based floor resolver.
-
-Floor generation is already ~95% extracted to satellites — the monolith mostly contains ctx factory wrappers (~200 lines of delegation). The 3 door state vars (`_lastExitPos`, `_spawnFromLastExitPos`, `_doorSpawnProtect`) have **zero cross-dependencies** with other monolith state, making extraction clean.
+The monolith `gone-rogue.js` started at 3,661 lines holding all door state and delegating to ~40 ctx factory functions. The door contract was systemically broken (BUG 2 in the audit): procedural floors had no retreat door, no guardrails, and no spawn-near-correct-door logic. Building interior doors (BUG 13) also lacked their own contract. The World Building Engine (WBE) needed a clean procedural generation API to support its SFC-based floor resolver.
 
 All satellites use the established pattern: **IIFE + revealing module, stateless, ctx-driven, loaded before monolith**.
 
 ---
 
-## Phase 1: Extract `door-contract-system.js`
+## Phase 1: Extract `door-contract-system.js` — ✅ COMPLETE
 
 **Goal:** Pull all door state and logic into a single-responsibility module.
 
-**What moves out of the monolith:**
-- 3 closure vars: `_lastExitPos`, `_spawnFromLastExitPos`, `_doorSpawnProtect` (lines ~125-132)
-- Door state getters/setters currently spread across 4 ctx factories: `_playerInteractionCtx`, `_floorTransitionCtx`, `_tutorialFloorGenCtx`, `_runStartCtx`
+**Implemented:** `public/js/door-contract-system.js` (250 lines)
 
-**New module API (`door-contract-system.js`):**
-```js
-var DoorContractSystem = (function() {
-    var _lastExitPos = null;
-    var _spawnFromLastExitPos = null; // 'advance' | 'retreat' | null
-    var _doorSpawnProtect = null;     // { x, y, stepsRemaining, suppressAnimation }
+**API delivered:**
+- State accessors: `getLastExitPos`, `setLastExitPos`, `getSpawnFromLastExitPos`, `setSpawnFromLastExitPos`, `getDoorSpawnProtect`, `setDoorSpawnProtect`, `clearDoorSpawnProtect`, `tickDoorSpawnProtect`, `resetAll`
+- Contract logic: `applyDoorContract(opts)`, `applyBuildingDoorContract(opts)`, `findSpawnNearDoor(grid, TILES, w, h, target, avoid, radius)`
+- Constants: `GUARDRAIL_STEPS`
 
-    // Core contract logic
-    function applyDoorContract(floorData, transitionMode) { ... }
-    function applyBuildingDoorContract(floorData) { ... }
-    function findSpawnNearDoor(grid, targetDoor, avoidDoor, radius) { ... }
-
-    // State accessors (replace monolith getters/setters)
-    function getLastExitPos() { ... }
-    function setLastExitPos(pos) { ... }
-    function getSpawnFromLastExitPos() { ... }
-    function setSpawnFromLastExitPos(mode) { ... }
-    function getDoorSpawnProtect() { ... }
-    function setDoorSpawnProtect(protect) { ... }
-    function clearDoorSpawnProtect() { ... }
-    function tickDoorSpawnProtect() { ... }
-    function resetAll() { ... }
-
-    return { /* public API */ };
-})();
-```
-
-**Monolith changes:**
-- Remove 3 closure vars
-- Update 4 ctx factories to delegate to `DoorContractSystem.*` instead of direct closure access
-- Add `<script>` tag for `door-contract-system.js` before `gone-rogue.js`
-
-**Files touched:**
-- Create: `public/js/door-contract-system.js` (~120 lines)
-- Edit: `public/js/gone-rogue.js` (remove ~30 lines, update 4 ctx factories)
-- Edit: `portal/index.html` (add script tag)
-
-**Verification:** Door state round-trips correctly — advance through forward door, check spawn near retreat door with guardrails active. Retreat back, check spawn near forward door. Enter building, check no guardrails.
+**Monolith changes completed:**
+- 3 closure vars removed from monolith
+- 4 ctx factories updated to delegate to `DoorContractSystem.*`
+- Script tag added to `public/index.html`
 
 ---
 
-## Phase 2: Wire Door Contract into Procedural Generator
+## Phase 2: Wire Door Contract into Procedural Generator — ✅ COMPLETE
 
-**Goal:** Fix the procedural generator gap — currently `floor-generator.js` places ONE exit and no retreat door.
+**Goal:** Fix the procedural generator gap — procedural floors now place both doors and use the contract system.
 
-**Changes to `floor-generator.js` (`placePlayerAndExit`):**
-- Rename/refactor to `placeDoorsAndPlayer()`
-- Place TWO doors: forward (↪️) and back (↩️)
-- Back door placed at opposite end of floor from forward door
-- Call `DoorContractSystem.applyDoorContract()` for spawn positioning
+**Changes delivered:**
 
-**Changes to `floor-gen-core.js`:**
-- Update `_floorGenCoreCtx` to include door contract accessors (currently missing — the gap)
-- After floor generation, call door contract application
+`floor-generator.js` — `placePlayerAndExit()` (name kept for backward compat):
+- Places forward door (↪️) at `lastRoom.center` with metadata `{ type: 'door', doorKind: 'forward' }`
+- Places back door (↩️) near `firstRoom.center` with metadata `{ type: 'door', doorKind: 'back' }`
+- Returns `{ playerX, playerY, exitX, exitY, backX, backY }`
 
-**Changes to `tutorial-floor-gen.js`:**
-- Remove inline door spawn logic (lines 36-46) and BUG 2 FIX patch (lines 88-114)
-- Delegate to `DoorContractSystem.applyDoorContract()` instead
-- Keep back door placement logic (lines 118-174) but route through door contract system
+`floor-gen-core.js`:
+- Calls `DoorContractSystem.applyDoorContract()` after floor generation with full opts
 
-**Files touched:**
-- Edit: `public/js/floor-generator.js` (~40 lines changed in placePlayerAndExit)
-- Edit: `public/js/floor-gen-core.js` (~15 lines, ctx update + contract call)
-- Edit: `public/js/tutorial-floor-gen.js` (~60 lines removed/replaced)
-- Edit: `public/js/gone-rogue.js` (update `_floorGenCoreCtx` factory)
-
-**Verification:** Generate procedural floors 4+ — confirm both doors present, spawn contract correct. Play through tutorial floors 0-3 — confirm no regression. Enter/exit buildings — confirm funnel pattern.
+`tutorial-floor-gen.js`:
+- Inline BUG 2 FIX patch removed
+- Delegates to `DoorContractSystem.applyDoorContract()` for spawn positioning
+- BUG 1 FIX: `suppressBackDoor` guard on final re-stamp section
 
 ---
 
-## Phase 3: Extract Biome Visual Facade
+## Phase 3: Extract Biome Visual Facade — ✅ COMPLETE
 
-**Goal:** Pull the 36-line biome visual delegation wrapper out of the monolith into its own module.
+**Goal:** Pull biome visual delegation wrappers out of the monolith.
 
-**What moves out:**
-- Monolith lines ~985-1020: pure delegation wrappers that forward calls to `BiomeVisuals.*`
-- These are trivial pass-throughs with zero monolith state dependency
+**Implemented:** `public/js/biome-visual-facade.js` (135 lines)
 
-**New module (`biome-visual-facade.js`):**
-```js
-var BiomeVisualFacade = (function() {
-    function applyBiomeVisuals(grid, biomeId) { return BiomeVisuals.apply(grid, biomeId); }
-    function getBiomeTheme(biomeId) { return BiomeVisuals.getTheme(biomeId); }
-    // ... remaining wrappers
-    return { /* public API */ };
-})();
-```
+**API delivered:**
+- Build functions: `buildBiomeVisualGrid(biome, ctx)`, `buildTileRenderObjects(biome, ctx)`, `buildBiomeBackgroundColors(biome, isNight, ctx)`
+- Utilities: `hexToRgb`, `rgbToHex`, `lerpColor`, `getNeighborTiles`
+- State accessors: `getVisualGrid()`, `setVisualGrid()`, `getBackgroundColors()`, `setBackgroundColors()`, `getRenderObjects()`, `setRenderObjects()`, `clearAll()`
 
-**Why:** This is the easiest extraction win (~36 lines, zero state), and the WBE's "Map Template Loader OR Proc Gen" pipeline needs a clean biome visual entry point.
-
-**Files touched:**
-- Create: `public/js/biome-visual-facade.js` (~50 lines)
-- Edit: `public/js/gone-rogue.js` (remove ~36 lines, update ctx factory)
-- Edit: `portal/index.html` (add script tag)
-
-**Verification:** Load any floor — biome visuals render identically. Check all biome types render.
+**WBE integration:** The Map Template Loader and Proc Gen pipeline use this facade for biome visual application. Interior biome resolution in `interior-floor-system.js` calls the ctx-wrapped versions of these functions.
 
 ---
 
-## Phase 4: Create Floor Metadata Registry
+## Phase 4: Create Floor Metadata Registry — ✅ COMPLETE
 
-**Goal:** Build a data-driven registry that the WBE's Floor Resolver can query for floor metadata.
+**Goal:** Build a data-driven registry that the WBE's Floor Resolver can query.
 
-**New module (`floor-metadata-registry.js`):**
-```js
-var FloorMetadataRegistry = (function() {
-    var _registry = {};  // floorId → metadata
+**Implemented:** `public/js/floor-metadata-registry.js` (210 lines)
 
-    function register(floorId, metadata) { ... }
-    function get(floorId) { ... }
-    function getByBiome(biomeId) { ... }
-    function getByType(type) { ... }  // 'template' | 'procedural'
-    function getAllFloorIds() { ... }
-
-    return { register, get, getByBiome, getByType, getAllFloorIds };
-})();
-```
+**API delivered:**
+- `register(floorId, metadata)` / `registerAll(entries)`
+- `get(floorId)` — single floor lookup
+- `getByBiome(biomeId)` / `getByType(type)` / `getByTag(tag)` — filtered queries
+- `registerTutorialFloors()` — auto-registers floors 0-3 and interior floors from TutorialFloors
 
 **Metadata shape (per floor):**
 ```js
 {
-    id: "2",
-    type: "template",          // or "procedural"
-    biomeId: "downtown",
-    difficultyTier: 1,
-    doors: { forward: {x,y}, back: {x,y}, building: [{x,y}] },
-    narrativeTags: ["tutorial", "first_key"],
-    buildingId: null,          // or "church" for interior floors
-    parentFloorId: null        // or "1" for interior floors
+    id, type, name, description, biomeId, difficultyTier,
+    doors: { forward, back, building[] },
+    narrativeTags[], buildingId, parentFloorId, isInterior,
+    suppressBackDoor
 }
 ```
 
-**Why:** The WBE design doc (Section 4) specifies each Step Node contains `{ id, floorType, difficultyTier, requiredPlayerState, allowedSynergies, narrativeTags }`. This registry is where that data lives at runtime. Currently floor metadata is scattered across `tutorial-floors.js` layout objects, `biome-config.js`, and `buildings.json` — no unified source of truth.
-
-**Files touched:**
-- Create: `public/js/floor-metadata-registry.js` (~80 lines)
-- Edit: `public/js/tutorial-floors.js` (register tutorial floor metadata on load)
-- Edit: `portal/index.html` (add script tag)
-
-**Verification:** After page load, `FloorMetadataRegistry.get("0")` returns correct metadata for Floor 0. `getByType("template")` returns floors 0-3. `getByBiome("downtown")` returns matching floors.
+**Registered floors:** Floors 0-3 (tutorial), `1.2` (church), `0.1` (tavern), `0.1.1` (tavern basement), `1.3` (shop)
 
 ---
 
-## Phase 5: Documentation & Monolith Cleanup
+## Phase 5: Documentation & Monolith Cleanup — ⚠️ PARTIAL
 
 **Goal:** Update design docs, clean monolith, verify net line reduction.
 
-**Tasks:**
-1. Update `WORLD_BUILDING_ENGINE.md` Section 6 (Door Contract) to reference `door-contract-system.js` as the implementation
-2. Add new section to WBE doc: "Extracted Modules" listing all new satellites and their APIs
-3. Add cross-references from WBE node types to `FloorMetadataRegistry` fields
-4. Update `TUTORIAL_FLOORS_AUDIT.md` BUG 2 and BUG 13 status to "Fixed" with implementation references
-5. Verify monolith net reduction (~100-130 lines removed)
-6. Run full playthrough: tutorial floors 0-3 → procedural floor 4+ → building enter/exit → retreat back through floors
+**Completed tasks:**
+1. ✅ WBE doc §6 (Door Contract) references `door-contract-system.js` as implementation
+2. ✅ WBE doc "Extracted Modules" section lists all satellites with APIs
+3. ✅ WBE doc cross-references `FloorMetadataRegistry`, `DoorContractSystem`, `BiomeVisualFacade`
+4. ⬜ TUTORIAL_FLOORS_AUDIT.md BUG status markers not yet formally updated (BUGs 1, 2, 4, 8, 9, 10, 11, 12, 13 are all fixed but audit doc doesn't reflect this)
+5. ✅ Monolith reduction verified: 3,661 → 3,263 lines (**398 lines removed**, exceeding the 100-130 estimate)
+6. ⬜ Full playthrough validation not formally recorded
 
-**Files touched:**
-- Edit: `WORLD_BUILDING_ENGINE.md`
-- Edit: `TUTORIAL_FLOORS_AUDIT.md`
-- Edit: `public/js/gone-rogue.js` (final cleanup of orphaned ctx fields)
-
-**Expected monolith reduction:** ~100-130 lines (3 door vars + 4 ctx factory simplifications + 36 biome wrappers + assorted delegation)
+**Remaining Phase 5 work:**
+- Update TUTORIAL_FLOORS_AUDIT.md with fix status for all 13 bugs (8 validated PASS as of 2026-03-06)
+- Record playthrough validation results
 
 ---
 
 ## New Files Created (Summary)
 
-| File | ~Lines | Purpose |
-|------|--------|---------|
-| `door-contract-system.js` | 120 | Door state ownership + contract logic |
-| `biome-visual-facade.js` | 50 | Clean biome visual entry point for WBE |
-| `floor-metadata-registry.js` | 80 | Unified floor metadata for WBE Floor Resolver |
+| File | Planned Lines | Actual Lines | Purpose |
+|------|---------------|--------------|---------|
+| `door-contract-system.js` | ~120 | 250 | Door state ownership + contract logic |
+| `biome-visual-facade.js` | ~50 | 135 | Clean biome visual entry point for WBE |
+| `floor-metadata-registry.js` | ~80 | 210 | Unified floor metadata for WBE Floor Resolver |
+
+## Post-Roadmap Work (Completed Since)
+
+The following work was completed after the original 5-phase roadmap, extending the biome and interior systems:
+
+| Date | Work | Files |
+|------|------|-------|
+| 2026-03-07 | Rethemed all 6 original biomes with Sandpoint narrative names | `biomes.json` |
+| 2026-03-07 | Added 2 new world biomes: LAKE, SKI_MOUNTAIN | `biomes.json` |
+| 2026-03-07 | Created 3 boss arena biomes (Train Depot, Long Bridge, Ski Mountain) | `boss-biomes.json`, `boss-floor-registry.js` |
+| 2026-03-07 | Wired boss biomes into data registry (merged into main biomes map) | `gone-rogue-data-registry.js` |
+| 2026-03-07 | Created 12 interior biome definitions | `interior-biomes.json` |
+| 2026-03-07 | Wired interior biomes into data registry (`getInteriorBiome()`, `getInteriorBiomes()`) | `gone-rogue-data-registry.js` |
+| 2026-03-07 | Added `_resolveInteriorBiome()` — biome resolution for building interiors | `interior-floor-system.js` |
+| 2026-03-07 | Replaced hardcoded lighting with per-interior-biome profiles | `interior-floor-system.js` |
+| 2026-03-07 | Tagged all 4 authored layouts with `interiorBiome` fields | `tutorial-floors.js` |
+| 2026-03-07 | Updated BIOME_SYSTEMS.md, BUILDING_INTERIOR_SYSTEM.md, WBE cross-references | docs/ |
 
 ## Phase Dependencies
 
 ```
-Phase 1 (door-contract-system.js)
+Phase 1 (door-contract-system.js)      ✅
     ↓
-Phase 2 (wire into proc gen + tutorial gen)
+Phase 2 (wire into proc gen)            ✅
     ↓
-Phase 3 (biome visual facade)  ← independent, can parallel with Phase 2
+Phase 3 (biome visual facade)           ✅  (ran parallel with Phase 2)
     ↓
-Phase 4 (floor metadata registry)  ← needs Phase 1-2 door data shapes
+Phase 4 (floor metadata registry)       ✅
     ↓
-Phase 5 (docs + cleanup)
+Phase 5 (docs + cleanup)                ⚠️  (audit doc bug statuses pending)
 ```
 
-Phases 2 and 3 can run in parallel. All others are sequential.
+---
+
+**Document Version**: 2.0
+**Last Updated**: 2026-03-07
+**Status**: Phases 1-4 complete, Phase 5 partial (audit doc update pending)

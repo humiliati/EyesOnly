@@ -207,7 +207,7 @@ The WBE validation layer (section 9️⃣) must include door contract checks:
 | Door Contract | This document §6 | Spawn rules for all floor transitions |
 | Biome Catalog | BIOME_SYSTEMS.md | Step Node biome assignment |
 | Biome Runtime | biomes.json | Visual theming per node |
-| Interior Biomes | interior-biomes.json (proposed) | Building interior visual identity |
+| Interior Biomes | interior-biomes.json (12 biomes, implemented) | Building interior visual identity — resolved by `InteriorFloorSystem._resolveInteriorBiome()` |
 | Building Registry | buildings.json | Building door placement, funnel pattern |
 | Enemy Catalog | enemy-catalog.json | Biome-filtered enemy spawns |
 | Card Drops | BIOME_SYSTEMS.md §6 | Loot table per biome per step |

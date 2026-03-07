@@ -7,6 +7,33 @@ var InteriorFloorSystem = (function() {
   'use strict';
 
   /**
+   * Resolve the interior biome definition for a given floor.
+   * Checks layout.interiorBiome first, then falls back to a default lookup.
+   * @param {string} targetFloorId - The interior floor identifier
+   * @param {Object} layout - The authored layout object
+   * @returns {Object|null} Interior biome definition from interior-biomes.json
+   */
+  function _resolveInteriorBiome(targetFloorId, layout) {
+    if (typeof GoneRogueDataRegistry === 'undefined') return null;
+
+    // 1. Explicit interiorBiome field on the layout
+    if (layout && layout.interiorBiome) {
+      var biome = GoneRogueDataRegistry.getInteriorBiome(layout.interiorBiome);
+      if (biome) return biome;
+    }
+
+    // 2. Infer from targetFloorId prefix (e.g. "tavern.main" → INTERIOR_TAVERN)
+    if (targetFloorId) {
+      var prefix = String(targetFloorId).split('.')[0].toUpperCase();
+      var inferredKey = 'INTERIOR_' + prefix;
+      var inferred = GoneRogueDataRegistry.getInteriorBiome(inferredKey);
+      if (inferred) return inferred;
+    }
+
+    return null;
+  }
+
+  /**
    * Enter an interior floor by its ID.
    * @param {string} targetFloorId - The interior floor identifier
    * @param {Object} ctx - Context from monolith
@@ -84,6 +111,22 @@ var InteriorFloorSystem = (function() {
 
       // CRITICAL: Clear pre-computed visual grids
       ctx.clearVisualCaches();
+
+      // Resolve interior biome and rebuild visual caches with it
+      var interiorBiome = _resolveInteriorBiome(targetFloorId, layout);
+      if (interiorBiome) {
+        if (typeof ctx.buildBiomeVisualGrid === 'function') {
+          ctx.buildBiomeVisualGrid(interiorBiome);
+        }
+        if (typeof ctx.buildTileRenderObjects === 'function') {
+          ctx.buildTileRenderObjects(interiorBiome);
+        }
+        // Interiors are always "night" (indoor lighting)
+        if (typeof ctx.buildBiomeBackgroundColors === 'function') {
+          ctx.buildBiomeBackgroundColors(interiorBiome, true);
+        }
+        console.log('[Interior] Applied interior biome: ' + (interiorBiome.name || targetFloorId));
+      }
 
       // Place exit door (back to parent floor)
       var grid = ctx.getGrid();
@@ -244,10 +287,12 @@ var InteriorFloorSystem = (function() {
         ctx.syncWorldItems();
       }
 
-      // Lighting for interior
+      // Lighting for interior — use biome-specific profile if available
       if (typeof LightingSystem !== 'undefined') {
-        LightingSystem.setBiome('COZY_FOREST_NIGHT');
-        LightingSystem.setDarknessMultiplier(1.2);
+        var lightingBiome = (interiorBiome && interiorBiome.lightingProfile) ? interiorBiome.lightingProfile : 'COZY_FOREST_NIGHT';
+        var darknessMult = (interiorBiome && typeof interiorBiome.darknessMultiplier === 'number') ? interiorBiome.darknessMultiplier : 1.2;
+        LightingSystem.setBiome(lightingBiome);
+        LightingSystem.setDarknessMultiplier(darknessMult);
         ctx.rebuildWallCache();
         var pseudoRooms = [{ x: 1, y: 1, width: ctx.GRID_WIDTH - 2, height: ctx.GRID_HEIGHT - 2 }];
         LightingSystem.generateBiomeLights(ctx.GRID_WIDTH, ctx.GRID_HEIGHT, pseudoRooms, ctx.getWallCache());

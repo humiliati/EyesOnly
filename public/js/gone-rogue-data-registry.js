@@ -21,7 +21,8 @@ var GoneRogueDataRegistry = (function() {
     enemyCards: [],
     enemyDecks: {},
     lightingConfig: null,
-    biomes: null
+    biomes: null,
+    interiorBiomes: null
   };
 
   var _byId = {
@@ -158,7 +159,8 @@ var GoneRogueDataRegistry = (function() {
       _fetchJson(BASE + 'enemy-decks.json').catch(function() { return {}; }),
       _fetchJson(BASE + 'lighting-config.json').catch(function() { return null; }),
       _fetchJson(BASE + 'biomes.json').catch(function() { return null; }),
-      _fetchJson(BASE + 'boss-biomes.json').catch(function() { return null; })
+      _fetchJson(BASE + 'boss-biomes.json').catch(function() { return null; }),
+      _fetchJson(BASE + 'interior-biomes.json').catch(function() { return null; })
     ]).then(function(arr) {
       _db.items = Array.isArray(arr[0]) ? arr[0] : [];
       _db.cards = Array.isArray(arr[1]) ? arr[1] : [];
@@ -181,6 +183,12 @@ var GoneRogueDataRegistry = (function() {
         console.log('[Registry] Merged ' + bossKeys.length + ' boss biomes: ' + bossKeys.join(', '));
       } else if (bossBiomes && !_db.biomes) {
         _db.biomes = bossBiomes;
+      }
+
+      // Load interior biomes (separate from main biomes — keyed by INTERIOR_* ids)
+      _db.interiorBiomes = (arr[11] && typeof arr[11] === 'object' && !Array.isArray(arr[11])) ? arr[11] : null;
+      if (_db.interiorBiomes) {
+        console.log('[Registry] Loaded ' + Object.keys(_db.interiorBiomes).length + ' interior biomes');
       }
 
       _index();
@@ -381,6 +389,14 @@ var GoneRogueDataRegistry = (function() {
     return _db.biomes;
   }
 
+  function getInteriorBiomes() {
+    return _db.interiorBiomes;
+  }
+
+  function getInteriorBiome(id) {
+    return (_db.interiorBiomes && id) ? (_db.interiorBiomes[id] || null) : null;
+  }
+
   function ready() {
     return load();
   }
@@ -415,6 +431,8 @@ var GoneRogueDataRegistry = (function() {
     getEnemyDeck: getEnemyDeck,
     listEnemyDeckTypes: listEnemyDeckTypes,
     getLightingConfig: getLightingConfig,
-    getBiomes: getBiomes
+    getBiomes: getBiomes,
+    getInteriorBiomes: getInteriorBiomes,
+    getInteriorBiome: getInteriorBiome
   };
 })();

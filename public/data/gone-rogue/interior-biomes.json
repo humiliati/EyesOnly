@@ -1,0 +1,475 @@
+{
+    "INTERIOR_TAVERN": {
+        "name": "The Hound's Tooth Pub",
+        "description": "Sandpoint bar — warm wood, firelight, rumors. The first safe house.",
+        "wallChar": "█",
+        "floorChar": ".",
+        "lightingProfile": "TAVERN_WARM",
+        "darknessMultiplier": 0.8,
+        "wallTiles": [
+            { "char": "█", "weight": 40 },
+            { "char": "▓", "weight": 25 },
+            { "char": "🪵", "weight": 20 },
+            { "char": "🚪", "weight": 10 },
+            { "char": "🪟", "weight": 5 }
+        ],
+        "floorTiles": [
+            { "char": ".", "weight": 55 },
+            { "char": "▬", "weight": 25 },
+            { "char": "·", "weight": 20 }
+        ],
+        "props": [
+            { "emoji": "🪑", "name": "Bar Stool", "breakable": true, "hp": 1, "blocksPath": false, "drops": ["wood"] },
+            { "emoji": "🍺", "name": "Ale Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["drinks"] },
+            { "emoji": "🕯️", "name": "Candle", "breakable": true, "hp": 1, "blocksPath": false, "glows": true, "lightType": "CANDLE" },
+            { "emoji": "🪵", "name": "Firewood Stack", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["wood"] },
+            { "emoji": "📜", "name": "Notice Board", "breakable": false, "blocksPath": true },
+            { "emoji": "🗑️", "name": "Grey Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies", "coins"], "kickable": true, "noise": 1, "destroyedGlyph": "." }
+        ],
+        "tileEffects": {
+            ".": { "stealth": 10, "moveMod": 1.0, "name": "Wood Floor" },
+            "▬": { "stealth": 5, "moveMod": 1.0, "name": "Bar Counter" },
+            "·": { "stealth": 10, "moveMod": 1.0, "name": "Sawdust" }
+        },
+        "backgroundGradient": {
+            "night": { "start": "#1a0e05", "end": "#2a1a0a" },
+            "day":   { "start": "#1a0e05", "end": "#2a1a0a" }
+        }
+    },
+
+    "INTERIOR_TAVERN_BASEMENT": {
+        "name": "Hound's Tooth Cellar",
+        "description": "Damp stone cellar beneath the tavern — casks, root vegetables, a locked hatch to somewhere deeper.",
+        "wallChar": "█",
+        "floorChar": ".",
+        "lightingProfile": "CELLAR_DARK",
+        "darknessMultiplier": 1.3,
+        "wallTiles": [
+            { "char": "█", "weight": 45 },
+            { "char": "▓", "weight": 30 },
+            { "char": "🪵", "weight": 15 },
+            { "char": "░", "weight": 10 }
+        ],
+        "floorTiles": [
+            { "char": ".", "weight": 45 },
+            { "char": "·", "weight": 25 },
+            { "char": "░", "weight": 15 },
+            { "char": "_", "weight": 10, "animated": true },
+            { "char": "~", "weight": 5, "animated": true }
+        ],
+        "props": [
+            { "emoji": "🛢️", "name": "Wine Cask", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["drinks"] },
+            { "emoji": "📦", "name": "Root Cellar Crate", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["food", "supplies"] },
+            { "emoji": "🕯️", "name": "Cellar Lamp", "breakable": true, "hp": 1, "blocksPath": false, "glows": true, "lightType": "CANDLE" },
+            { "emoji": "🪵", "name": "Support Beam", "breakable": false, "blocksPath": true },
+            { "emoji": "🗑️", "name": "Grey Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies", "coins"], "kickable": true, "noise": 1, "destroyedGlyph": "." }
+        ],
+        "tileEffects": {
+            ".": { "stealth": 10, "moveMod": 1.0, "name": "Stone Floor" },
+            "·": { "stealth": 10, "moveMod": 0.95, "name": "Damp Stone" },
+            "░": { "stealth": 5, "moveMod": 0.90, "name": "Gravel" },
+            "_": { "stealth": 5, "moveMod": 0.80, "name": "Puddle", "animated": true },
+            "~": { "stealth": 0, "moveMod": 0.60, "name": "Seepage", "animated": true }
+        },
+        "backgroundGradient": {
+            "night": { "start": "#0a0805", "end": "#151008" },
+            "day":   { "start": "#0a0805", "end": "#151008" }
+        }
+    },
+
+    "INTERIOR_CHURCH": {
+        "name": "St. Joseph's Parish",
+        "description": "Sandpoint's Catholic parish — stone walls, stained glass, and the Jesuit thread of the Kaniksu Protocol.",
+        "wallChar": "█",
+        "floorChar": ".",
+        "lightingProfile": "CHURCH_DIM",
+        "darknessMultiplier": 1.0,
+        "wallTiles": [
+            { "char": "█", "weight": 50 },
+            { "char": "▓", "weight": 20 },
+            { "char": "🪟", "weight": 15 },
+            { "char": "⛪", "weight": 10 },
+            { "char": "✝️", "weight": 5 }
+        ],
+        "floorTiles": [
+            { "char": ".", "weight": 60 },
+            { "char": "·", "weight": 25 },
+            { "char": "░", "weight": 15 }
+        ],
+        "props": [
+            { "emoji": "🪑", "name": "Pew", "breakable": false, "blocksPath": true },
+            { "emoji": "🕯️", "name": "Votive Candle", "breakable": true, "hp": 1, "blocksPath": false, "glows": true, "lightType": "CANDLE" },
+            { "emoji": "📖", "name": "Hymnal", "breakable": false, "blocksPath": false },
+            { "emoji": "✝️", "name": "Crucifix", "breakable": false, "blocksPath": true },
+            { "emoji": "🏺", "name": "Holy Water Font", "breakable": false, "blocksPath": true, "interact": "use", "effect": "minor_heal" }
+        ],
+        "tileEffects": {
+            ".": { "stealth": 5, "moveMod": 1.0, "name": "Stone Floor" },
+            "·": { "stealth": 10, "moveMod": 1.0, "name": "Nave Tile" },
+            "░": { "stealth": 5, "moveMod": 0.95, "name": "Altar Step" }
+        },
+        "backgroundGradient": {
+            "night": { "start": "#0a0810", "end": "#151020" },
+            "day":   { "start": "#0a0810", "end": "#151020" }
+        }
+    },
+
+    "INTERIOR_CATACOMBS": {
+        "name": "Jesuit Reliquary",
+        "description": "Fictional catacombs beneath St. Joseph's — where the 400-year Kaniksu Protocol documents are hidden.",
+        "wallChar": "█",
+        "floorChar": ".",
+        "lightingProfile": "CATACOMB_DARK",
+        "darknessMultiplier": 1.5,
+        "wallTiles": [
+            { "char": "█", "weight": 50 },
+            { "char": "▓", "weight": 25 },
+            { "char": "░", "weight": 15 },
+            { "char": "💀", "weight": 5 },
+            { "char": "🪦", "weight": 5 }
+        ],
+        "floorTiles": [
+            { "char": ".", "weight": 50 },
+            { "char": "·", "weight": 20 },
+            { "char": "░", "weight": 15 },
+            { "char": "~", "weight": 10, "animated": true },
+            { "char": "☣", "weight": 5, "animated": true }
+        ],
+        "props": [
+            { "emoji": "💀", "name": "Ossuary Niche", "breakable": false, "blocksPath": true },
+            { "emoji": "🪦", "name": "Stone Sarcophagus", "breakable": true, "hp": 5, "blocksPath": true, "drops": ["relics", "coins"] },
+            { "emoji": "🕯️", "name": "Crypt Torch", "breakable": true, "hp": 1, "blocksPath": false, "glows": true, "lightType": "TORCH" },
+            { "emoji": "📜", "name": "Sealed Document", "breakable": false, "blocksPath": false, "interact": "read", "effect": "lore_fragment" },
+            { "emoji": "🏺", "name": "Relic Urn", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["relics"] }
+        ],
+        "tileEffects": {
+            ".": { "stealth": 5, "moveMod": 1.0, "name": "Stone Floor" },
+            "·": { "stealth": 10, "moveMod": 0.95, "name": "Crumbled Stone" },
+            "░": { "stealth": 5, "moveMod": 0.90, "name": "Debris" },
+            "~": { "stealth": 0, "moveMod": 0.60, "name": "Seepage", "animated": true },
+            "☣": { "stealth": 0, "moveMod": 0.60, "damage": 1, "name": "Toxic Residue", "animated": true }
+        },
+        "backgroundGradient": {
+            "night": { "start": "#050508", "end": "#0a0a12" },
+            "day":   { "start": "#050508", "end": "#0a0a12" }
+        }
+    },
+
+    "INTERIOR_STRIP_MALL": {
+        "name": "Bridge Market Shops",
+        "description": "Individual storefronts within Cedar Street Bridge — Sugar Tooth candy shop, galleries, craft vendors.",
+        "wallChar": "█",
+        "floorChar": ".",
+        "lightingProfile": "RETAIL_BRIGHT",
+        "darknessMultiplier": 0.6,
+        "wallTiles": [
+            { "char": "█", "weight": 40 },
+            { "char": "▓", "weight": 20 },
+            { "char": "🪟", "weight": 25 },
+            { "char": "🚪", "weight": 15 }
+        ],
+        "floorTiles": [
+            { "char": ".", "weight": 60 },
+            { "char": "▬", "weight": 25 },
+            { "char": "·", "weight": 15 }
+        ],
+        "props": [
+            { "emoji": "🛍️", "name": "Shopping Bag", "breakable": true, "hp": 1, "blocksPath": false, "drops": ["random"] },
+            { "emoji": "🍬", "name": "Candy Display", "breakable": true, "hp": 1, "blocksPath": true, "drops": ["food"] },
+            { "emoji": "🖼️", "name": "Art Print", "breakable": true, "hp": 1, "blocksPath": true, "drops": ["coins"] },
+            { "emoji": "🧶", "name": "Craft Bin", "breakable": true, "hp": 1, "blocksPath": false, "drops": ["supplies"] },
+            { "emoji": "💰", "name": "Cash Register", "breakable": true, "hp": 3, "blocksPath": true, "drops": ["coins", "coins"] }
+        ],
+        "tileEffects": {
+            ".": { "stealth": 5, "moveMod": 1.0, "name": "Shop Floor" },
+            "▬": { "stealth": 0, "moveMod": 1.05, "name": "Display Counter" },
+            "·": { "stealth": 5, "moveMod": 1.0, "name": "Tile Floor" }
+        },
+        "backgroundGradient": {
+            "night": { "start": "#0f0a08", "end": "#1a1210" },
+            "day":   { "start": "#0f0a08", "end": "#1a1210" }
+        }
+    },
+
+    "INTERIOR_FACTORY": {
+        "name": "Litehouse Processing Floor",
+        "description": "Inside the dressing factory — vats, coolers, conveyor lines. The $6.2M expansion hides something.",
+        "wallChar": "█",
+        "floorChar": ".",
+        "lightingProfile": "FACTORY_FLUORESCENT",
+        "darknessMultiplier": 0.7,
+        "wallTiles": [
+            { "char": "█", "weight": 50 },
+            { "char": "▓", "weight": 25 },
+            { "char": "🪟", "weight": 10 },
+            { "char": "🚪", "weight": 10 },
+            { "char": "⚡", "weight": 5 }
+        ],
+        "floorTiles": [
+            { "char": ".", "weight": 50 },
+            { "char": "▬", "weight": 20 },
+            { "char": "·", "weight": 15 },
+            { "char": "_", "weight": 10, "animated": true },
+            { "char": "░", "weight": 5 }
+        ],
+        "props": [
+            { "emoji": "🧪", "name": "Mixing Vat", "breakable": true, "hp": 4, "blocksPath": true, "drops": ["chemicals"] },
+            { "emoji": "🥫", "name": "Dressing Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["food"] },
+            { "emoji": "⏩", "name": "Conveyor Belt", "breakable": false, "blocksPath": false, "interact": "walk", "effect": "speed_boost" },
+            { "emoji": "🧊", "name": "Walk-In Cooler", "breakable": false, "blocksPath": true },
+            { "emoji": "💻", "name": "Control Terminal", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["thumb_drive"], "glows": true, "lightType": "TERMINAL" },
+            { "emoji": "🛢️", "name": "Red Barrel", "breakable": true, "hp": 1, "blocksPath": true, "explosive": true, "blastRadius": 2.75, "blastDamage": [9, 25], "kickable": true, "noise": 4, "maxPerFloor": 1 }
+        ],
+        "tileEffects": {
+            ".": { "stealth": 5, "moveMod": 1.0, "name": "Factory Floor" },
+            "▬": { "stealth": 0, "moveMod": 1.1, "name": "Walkway" },
+            "·": { "stealth": 5, "moveMod": 1.0, "name": "Concrete" },
+            "_": { "stealth": 5, "moveMod": 0.70, "ignitable": true, "name": "Spill", "animated": true },
+            "░": { "stealth": 5, "moveMod": 0.90, "name": "Grating" }
+        },
+        "backgroundGradient": {
+            "night": { "start": "#0a0a0a", "end": "#151515" },
+            "day":   { "start": "#0a0a0a", "end": "#151515" }
+        }
+    },
+
+    "INTERIOR_APARTMENT": {
+        "name": "Lakeview Rentals",
+        "description": "Sandpoint residential — views of the lake. Where field agents maintain cover identities.",
+        "wallChar": "█",
+        "floorChar": ".",
+        "lightingProfile": "APARTMENT_COZY",
+        "darknessMultiplier": 0.9,
+        "wallTiles": [
+            { "char": "█", "weight": 40 },
+            { "char": "▓", "weight": 20 },
+            { "char": "🪟", "weight": 25 },
+            { "char": "🚪", "weight": 15 }
+        ],
+        "floorTiles": [
+            { "char": ".", "weight": 55 },
+            { "char": "▬", "weight": 20 },
+            { "char": "·", "weight": 25 }
+        ],
+        "props": [
+            { "emoji": "🛋️", "name": "Couch", "breakable": false, "blocksPath": true, "provides": "cover" },
+            { "emoji": "📺", "name": "Television", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["electronics"] },
+            { "emoji": "🪴", "name": "Houseplant", "breakable": true, "hp": 1, "blocksPath": false, "drops": ["sticks"] },
+            { "emoji": "🛏️", "name": "Bed", "breakable": false, "blocksPath": true },
+            { "emoji": "📂", "name": "File Folder", "breakable": true, "hp": 1, "blocksPath": false, "drops": ["documents"] },
+            { "emoji": "💻", "name": "Laptop", "breakable": true, "hp": 2, "blocksPath": false, "drops": ["thumb_drive"], "glows": true, "lightType": "TERMINAL" }
+        ],
+        "tileEffects": {
+            ".": { "stealth": 10, "moveMod": 1.0, "name": "Carpet" },
+            "▬": { "stealth": 5, "moveMod": 1.0, "name": "Kitchen Tile" },
+            "·": { "stealth": 10, "moveMod": 1.0, "name": "Rug" }
+        },
+        "backgroundGradient": {
+            "night": { "start": "#0a0808", "end": "#181210" },
+            "day":   { "start": "#0a0808", "end": "#181210" }
+        }
+    },
+
+    "INTERIOR_JUNKYARD": {
+        "name": "Shingle Mill Salvage",
+        "description": "Named after Shingle Mill Rd near the gun club — scrap from old lumber mills and rail equipment.",
+        "wallChar": "▓",
+        "floorChar": ".",
+        "lightingProfile": "JUNKYARD_OVERCAST",
+        "darknessMultiplier": 1.1,
+        "wallTiles": [
+            { "char": "▓", "weight": 30 },
+            { "char": "█", "weight": 20 },
+            { "char": "🪵", "weight": 15 },
+            { "char": "📦", "weight": 20 },
+            { "char": "🛤️", "weight": 15 }
+        ],
+        "floorTiles": [
+            { "char": ".", "weight": 40 },
+            { "char": "·", "weight": 25 },
+            { "char": "░", "weight": 20 },
+            { "char": "_", "weight": 10, "animated": true },
+            { "char": "▪", "weight": 5 }
+        ],
+        "props": [
+            { "emoji": "🪵", "name": "Lumber Pile", "breakable": true, "hp": 3, "blocksPath": true, "drops": ["wood", "scrap"] },
+            { "emoji": "📦", "name": "Crate Stack", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies"] },
+            { "emoji": "🛤️", "name": "Rail Scrap", "breakable": false, "blocksPath": true },
+            { "emoji": "🤖", "name": "Machine Wreck", "breakable": true, "hp": 4, "blocksPath": true, "drops": ["scrap", "parts"] },
+            { "emoji": "🛢️", "name": "Red Barrel", "breakable": true, "hp": 1, "blocksPath": true, "explosive": true, "blastRadius": 2.75, "blastDamage": [9, 25], "kickable": true, "noise": 4, "maxPerFloor": 2 },
+            { "emoji": "🗑️", "name": "Grey Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies", "coins"], "kickable": true, "noise": 1, "destroyedGlyph": "." }
+        ],
+        "tileEffects": {
+            ".": { "stealth": 10, "moveMod": 1.0, "name": "Dirt" },
+            "·": { "stealth": 10, "moveMod": 0.95, "name": "Gravel" },
+            "░": { "stealth": 5, "moveMod": 0.90, "name": "Debris" },
+            "_": { "stealth": 5, "moveMod": 0.70, "ignitable": true, "name": "Oil Puddle", "animated": true },
+            "▪": { "stealth": 0, "moveMod": 1.0, "name": "Metal Plate" }
+        },
+        "backgroundGradient": {
+            "night": { "start": "#0a0808", "end": "#181510" },
+            "day":   { "start": "#0a0808", "end": "#181510" }
+        }
+    },
+
+    "INTERIOR_SILO": {
+        "name": "Farragut Submarine Pen",
+        "description": "WWII submarine testing docks beneath Farragut — missile housings, cold steel, deep water.",
+        "wallChar": "█",
+        "floorChar": ".",
+        "lightingProfile": "SUBMARINE_COLD",
+        "darknessMultiplier": 1.4,
+        "wallTiles": [
+            { "char": "█", "weight": 50 },
+            { "char": "▓", "weight": 25 },
+            { "char": "░", "weight": 15 },
+            { "char": "🚀", "weight": 5 },
+            { "char": "⚓", "weight": 5 }
+        ],
+        "floorTiles": [
+            { "char": ".", "weight": 40 },
+            { "char": "▬", "weight": 20 },
+            { "char": "·", "weight": 15 },
+            { "char": "~", "weight": 15, "animated": true },
+            { "char": "░", "weight": 10 }
+        ],
+        "props": [
+            { "emoji": "🚀", "name": "Missile Housing", "breakable": false, "blocksPath": true },
+            { "emoji": "⚓", "name": "Anchor Chain", "breakable": false, "blocksPath": true },
+            { "emoji": "🔦", "name": "Emergency Light", "breakable": true, "hp": 1, "blocksPath": false, "glows": true, "lightType": "EMERGENCY" },
+            { "emoji": "💻", "name": "Command Terminal", "breakable": true, "hp": 3, "blocksPath": true, "drops": ["thumb_drive", "documents"], "glows": true, "lightType": "TERMINAL" },
+            { "emoji": "🛢️", "name": "Red Barrel", "breakable": true, "hp": 1, "blocksPath": true, "explosive": true, "blastRadius": 2.75, "blastDamage": [9, 25], "kickable": true, "noise": 4, "maxPerFloor": 2 }
+        ],
+        "tileEffects": {
+            ".": { "stealth": 5, "moveMod": 1.0, "name": "Steel Deck" },
+            "▬": { "stealth": 0, "moveMod": 1.1, "name": "Gangway" },
+            "·": { "stealth": 5, "moveMod": 1.0, "name": "Grating" },
+            "~": { "stealth": 0, "moveMod": 0.50, "name": "Dock Water", "animated": true },
+            "░": { "stealth": 5, "moveMod": 0.90, "name": "Rust" }
+        },
+        "backgroundGradient": {
+            "night": { "start": "#040608", "end": "#0a0e14" },
+            "day":   { "start": "#040608", "end": "#0a0e14" }
+        }
+    },
+
+    "INTERIOR_SAWMILL": {
+        "name": "Humbird Lumber Mill",
+        "description": "Abandoned Humbird-era mill in the Kaniksu forest — stacked lumber, sawblades, belt conveyors. Weapons cache inside.",
+        "wallChar": "▓",
+        "floorChar": ".",
+        "lightingProfile": "SAWMILL_DUSTY",
+        "darknessMultiplier": 1.0,
+        "wallTiles": [
+            { "char": "▓", "weight": 30 },
+            { "char": "█", "weight": 20 },
+            { "char": "🪵", "weight": 30 },
+            { "char": "🪟", "weight": 10 },
+            { "char": "🚪", "weight": 10 }
+        ],
+        "floorTiles": [
+            { "char": ".", "weight": 40 },
+            { "char": "·", "weight": 25 },
+            { "char": "░", "weight": 15 },
+            { "char": "▬", "weight": 15 },
+            { "char": "_", "weight": 5, "animated": true }
+        ],
+        "props": [
+            { "emoji": "🪵", "name": "Log Stack", "breakable": true, "hp": 3, "blocksPath": true, "drops": ["wood", "wood"] },
+            { "emoji": "🪚", "name": "Circular Saw", "breakable": false, "blocksPath": true, "hazard": "blade" },
+            { "emoji": "⏩", "name": "Belt Conveyor", "breakable": false, "blocksPath": false, "interact": "walk", "effect": "speed_boost" },
+            { "emoji": "📦", "name": "Lumber Crate", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["wood", "supplies"] },
+            { "emoji": "🗑️", "name": "Grey Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies", "coins"], "kickable": true, "noise": 1, "destroyedGlyph": "." },
+            { "emoji": "🛢️", "name": "Red Barrel", "breakable": true, "hp": 1, "blocksPath": true, "explosive": true, "blastRadius": 2.75, "blastDamage": [9, 25], "kickable": true, "noise": 4, "maxPerFloor": 1 }
+        ],
+        "tileEffects": {
+            ".": { "stealth": 10, "moveMod": 1.0, "name": "Wood Floor" },
+            "·": { "stealth": 10, "moveMod": 0.95, "name": "Sawdust" },
+            "░": { "stealth": 5, "moveMod": 0.90, "name": "Wood Shavings" },
+            "▬": { "stealth": 0, "moveMod": 1.1, "name": "Conveyor Track" },
+            "_": { "stealth": 5, "moveMod": 0.70, "ignitable": true, "name": "Sap Puddle", "animated": true }
+        },
+        "backgroundGradient": {
+            "night": { "start": "#0a0805", "end": "#1a1408" },
+            "day":   { "start": "#0a0805", "end": "#1a1408" }
+        }
+    },
+
+    "INTERIOR_RANGE": {
+        "name": "Sandpoint Gun Club",
+        "description": "Shooting range at 1790 East Shingle Mill Rd — lanes, target stands, ammunition lockers. Where agents train.",
+        "wallChar": "█",
+        "floorChar": ".",
+        "lightingProfile": "RANGE_FLUORESCENT",
+        "darknessMultiplier": 0.7,
+        "wallTiles": [
+            { "char": "█", "weight": 50 },
+            { "char": "▓", "weight": 25 },
+            { "char": "🎯", "weight": 10 },
+            { "char": "🚪", "weight": 10 },
+            { "char": "🪟", "weight": 5 }
+        ],
+        "floorTiles": [
+            { "char": ".", "weight": 55 },
+            { "char": "▬", "weight": 20 },
+            { "char": "·", "weight": 15 },
+            { "char": "▪", "weight": 10 }
+        ],
+        "props": [
+            { "emoji": "🎯", "name": "Target Stand", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["scrap"] },
+            { "emoji": "📦", "name": "Ammo Locker", "breakable": true, "hp": 3, "blocksPath": true, "drops": ["ammo", "ammo"] },
+            { "emoji": "🧱", "name": "Ballistic Wall", "breakable": false, "blocksPath": true, "provides": "cover" },
+            { "emoji": "🪑", "name": "Shooting Bench", "breakable": false, "blocksPath": true },
+            { "emoji": "🔊", "name": "Hearing Protection", "breakable": false, "blocksPath": false }
+        ],
+        "tileEffects": {
+            ".": { "stealth": 5, "moveMod": 1.0, "name": "Concrete Floor" },
+            "▬": { "stealth": 0, "moveMod": 1.0, "name": "Lane Divider" },
+            "·": { "stealth": 5, "moveMod": 1.0, "name": "Shell Casings" },
+            "▪": { "stealth": 0, "moveMod": 1.0, "name": "Firing Position" }
+        },
+        "backgroundGradient": {
+            "night": { "start": "#0a0a0a", "end": "#151515" },
+            "day":   { "start": "#0a0a0a", "end": "#151515" }
+        }
+    },
+
+    "INTERIOR_TRAIN_CAR": {
+        "name": "Empire Builder Sleeper",
+        "description": "Amtrak's Empire Builder — narrow passenger car from Sandpoint depot. Meeting a contact aboard.",
+        "wallChar": "█",
+        "floorChar": "▬",
+        "lightingProfile": "TRAIN_CAR_DIM",
+        "darknessMultiplier": 0.9,
+        "layoutHint": "narrow_horizontal",
+        "wallTiles": [
+            { "char": "█", "weight": 50 },
+            { "char": "▓", "weight": 25 },
+            { "char": "🪟", "weight": 20 },
+            { "char": "🚪", "weight": 5 }
+        ],
+        "floorTiles": [
+            { "char": "▬", "weight": 45 },
+            { "char": ".", "weight": 30 },
+            { "char": "·", "weight": 15 },
+            { "char": "░", "weight": 10 }
+        ],
+        "props": [
+            { "emoji": "🪑", "name": "Passenger Seat", "breakable": false, "blocksPath": true },
+            { "emoji": "🧳", "name": "Luggage", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies", "documents"] },
+            { "emoji": "🍽️", "name": "Dining Table", "breakable": false, "blocksPath": true },
+            { "emoji": "🛏️", "name": "Sleeper Berth", "breakable": false, "blocksPath": true, "provides": "cover" },
+            { "emoji": "🚪", "name": "Vestibule Door", "breakable": false, "blocksPath": false }
+        ],
+        "tileEffects": {
+            "▬": { "stealth": 5, "moveMod": 1.0, "name": "Car Floor" },
+            ".": { "stealth": 5, "moveMod": 1.0, "name": "Aisle" },
+            "·": { "stealth": 10, "moveMod": 1.0, "name": "Carpet" },
+            "░": { "stealth": 5, "moveMod": 0.95, "name": "Vestibule" }
+        },
+        "backgroundGradient": {
+            "night": { "start": "#0a0808", "end": "#181410" },
+            "day":   { "start": "#0a0808", "end": "#181410" }
+        }
+    }
+}

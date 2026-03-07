@@ -335,8 +335,12 @@ if (!layout.allowEnemies && ctx.getFloor() < 3) tutorialEnemies = [];
 ## BUG 6 — Tavern floor0.N regression from collectible testing
 
 **Severity:** Medium-High
-**Status:** Partially broken
-**Files:** `interior-floor-system.js`, `tutorial-floors.js` lines 1127–1129
+**Status:** ⚠️ PARTIALLY FIXED (2026-03-07)
+**Files:** `interior-floor-system.js`, `tutorial-floors.js`
+
+**What's fixed:** Floor ID scheme is now internally consistent (`0.1`/`0.1.1`) and documented correctly in `BUILDING_INTERIOR_SYSTEM.md`. All 4 authored layouts have `interiorBiome` fields (INTERIOR_TAVERN, INTERIOR_TAVERN_BASEMENT, INTERIOR_CHURCH, INTERIOR_STRIP_MALL). Floor hierarchy documented: `FloorN → FloorN.N (contrived interior) → FloorN.N.N (proc gen deeper)`.
+
+**Still open:** `WorldItems.init()` on interior entry (line 62 of `interior-floor-system.js`) still wipes all floor items. Needs `WorldItems.initForInterior()` method to scope item reset to interior context only. The `B` marker in tavern template still falls through to TILES.EMPTY.
 
 ### What's happening
 The tavern interior floors are registered as `'0.1'` and `'0.1.1'` (line 1128-1129 of `tutorial-floors.js`), but the building door on floor 0 points to `'0.1'` (line 809). The buildings.json has `BLD-TAVERN` with `interiorFloorId: "0.1"`.
@@ -400,8 +404,10 @@ function getFloorLayout(id) { return _layouts[id] || null; }
 ## BUG 8 — Building interiors render walls as parent biome (no interior biome)
 
 **Severity:** High (visual)
-**Status:** Broken
-**File:** `interior-floor-system.js` lines 68–69, 231–232
+**Status:** ✅ FIXED (2026-03-07)
+**File:** `interior-floor-system.js` (updated)
+
+**Implementation:** Added `_resolveInteriorBiome(targetFloorId, layout)` function to `interior-floor-system.js` — resolves interior biome from layout's `interiorBiome` field (primary) or floor ID prefix inference (fallback). After `ctx.clearVisualCaches()`, the resolved biome is used to rebuild visual caches: `ctx.buildBiomeVisualGrid(interiorBiome)`, `ctx.buildTileRenderObjects(interiorBiome)`, `ctx.buildBiomeBackgroundColors(interiorBiome, true)`. Hardcoded `LightingSystem.setBiome('COZY_FOREST_NIGHT')` replaced with per-biome `lightingProfile` and `darknessMultiplier` from the interior biome definition.
 
 ### What's happening
 When a player enters any building interior (tavern, church basement, etc.), the walls render as raw `█` characters against the parent floor's biome background. There are no interior-specific wall tiles, floor tiles, background gradients, or visual theming. Every interior looks like a generic grey dungeon regardless of the building type.
@@ -449,8 +455,10 @@ LightingSystem.setBiome(lightingBiome);
 ## BUG 9 — No building interior biome definitions exist
 
 **Severity:** High (content gap)
-**Status:** Missing feature
-**Files:** `biomes.json`, new `interior-biomes.json` needed
+**Status:** ✅ FIXED (2026-03-07)
+**Files:** `interior-biomes.json` (created), `gone-rogue-data-registry.js` (wired), `tutorial-floors.js` (interiorBiome fields added)
+
+**Implementation:** Created `public/data/gone-rogue/interior-biomes.json` with **12 interior biome definitions** (exceeding the originally proposed 8): INTERIOR_TAVERN, INTERIOR_TAVERN_BASEMENT, INTERIOR_CHURCH, INTERIOR_CATACOMBS, INTERIOR_STRIP_MALL, INTERIOR_FACTORY, INTERIOR_APARTMENT, INTERIOR_JUNKYARD, INTERIOR_SILO, INTERIOR_SAWMILL, INTERIOR_RANGE, INTERIOR_TRAIN_CAR. Each has wallTiles, floorTiles, props, tileEffects, backgroundGradient, lightingProfile, and darknessMultiplier. Loaded as 12th fetch in `GoneRogueDataRegistry` with `getInteriorBiome(id)` accessor. All 4 authored layouts in `tutorial-floors.js` have `interiorBiome` fields pointing to their respective definitions.
 
 ### What's happening
 `biomes.json` defines 6 exterior/overworld biomes (Forest, Grey Cave, Office, Mall, Industrial, Aerospace) but zero interior biomes. Building interiors have no visual identity system at all.
@@ -831,19 +839,21 @@ Instead of just stronger enemies on deeper floors, pattern parameters tighten: s
 | 3 | Door protection too weak | Medium | player-interaction-system.js | Position-only, needs step count |
 | 4 | No door type animation distinction | Medium | rendering layer | Building vs floor doors look identical |
 | 5 | Floor 0 enemy filtered out | High | tutorial-floor-gen.js:506 | `floor < 3` guard too aggressive |
-| 6 | Tavern interior wipes collectibles | Medium-High | interior-floor-system.js:62 | WorldItems.init() is too broad |
-| 7 | WBE compatibility gaps | Low-Medium | tutorial-floors.js | Missing metadata fields for WBE nodes |
-| 8 | Interior walls default to parent biome | High | interior-floor-system.js:69 | Visual caches cleared but never rebuilt |
-| 9 | No interior biome definitions | High | biomes.json / new file needed | 8 interior biomes proposed |
-| 10 | WBE/docs don't cross-reference systems | Medium | multiple docs | Isolated designs need linking |
+| 6 | Tavern interior wipes collectibles | Medium-High | interior-floor-system.js | ⚠️ PARTIALLY FIXED — floor IDs consistent, interiorBiome fields added; WorldItems.init() scoping still needed |
+| 7 | WBE compatibility gaps | Low-Medium | tutorial-floors.js | ✅ FIXED — FloorMetadataRegistry provides WBE Step Node shape |
+| 8 | Interior walls default to parent biome | High | interior-floor-system.js | ✅ FIXED — _resolveInteriorBiome() + visual cache rebuild + per-biome lighting |
+| 9 | No interior biome definitions | High | interior-biomes.json (created) | ✅ FIXED — 12 interior biomes (exceeded proposed 8) |
+| 10 | WBE/docs don't cross-reference systems | Medium | multiple docs | ✅ FIXED — cross-references added to WBE, BIOME_SYSTEMS, BUILDING_INTERIOR_SYSTEM |
 
 ---
 
 ## BUG 11 — No boss floor biome definitions (Train Depot, Long Bridge)
 
 **Severity:** High (content gap, blocks boss implementation)
-**Status:** Missing
-**Files:** `biomes.json`, `boss-encounters.js`, `BOSS_DESIGN.md`
+**Status:** ✅ FIXED (2026-03-07)
+**Files:** `boss-biomes.json` (created), `gone-rogue-data-registry.js` (wired), `boss-floor-registry.js` (updated)
+
+**Implementation:** Created `public/data/gone-rogue/boss-biomes.json` with 3 boss arena biome definitions (BOSS_TRAIN_DEPOT, BOSS_LONG_BRIDGE, BOSS_SKI_MOUNTAIN). Wired into `GoneRogueDataRegistry` — boss biomes loaded via fetch and merged into main biomes map. `boss-floor-registry.js` updated with `BOSS_BIOMES` constants and `parentBiome` field linking arenas to their world biome parent.
 
 ### What's happening
 `BOSS_DESIGN.md` defines 6 boss minigames (SkiFree, Tower Attack, Frogger/Train Depot, Asteroids, Sniper, Snake) but none of them have corresponding biome definitions. Boss floors currently fall through to the standard biome selection in `biome-config.js` (Aerospace for floors 23+, weighted random otherwise). There are no visual biomes for the train depot crossing, the Long Bridge frogger lane, or any boss-specific arena environment.
@@ -1002,8 +1012,10 @@ Based on Schweitzer Mountain Resort, Idaho's largest ski area, directly above Sa
 ## BUG 12 — Narrative setting not reflected in biome progression
 
 **Severity:** Medium (content/design gap)
-**Status:** Missing
-**Files:** `biomes.json`, `biome-config.js`, narrative docs
+**Status:** ✅ FIXED (2026-03-07)
+**Files:** `biomes.json` (rethemed), `biome-config.js`, `NARRATIVE_ALIGNMENT.md`
+
+**Implementation:** All 6 original biomes rethemed with Sandpoint, Idaho names and lore: Forest → **Kaniksu** (Kaniksu National Forest), Grey Cave → **Bunker Hill** (Silver Valley mining), Office → **Litehouse** (Litehouse Foods HQ), Mall → **Cedar Street** (downtown Sandpoint), Industrial → **Kodiak** (Quest/Daher aircraft factory), Aerospace → **Farragut** (Farragut Naval Training Station). Two new world biomes added: **LAKE** (Lake Pend Oreille) and **SKI_MOUNTAIN** (Schweitzer Mountain Resort). All biome names, descriptions, props, tileEffects, and backgroundGradients updated to reflect real Sandpoint geography and industries.
 
 ### What's happening
 The ARG narrative is set in Sandpoint, Idaho (Operation Kaniksu Eclipse, the Falcon Initiative vs. Kaniksu Network). The street-chronicles system uses real Sandpoint locations (Cedar St, Main St, Waterfront Ave). But the game's biome progression (Forest → Cave → Office → Mall → Industrial → Aerospace) has no relationship to the actual geography or industries of the Sandpoint/Coeur d'Alene area.
@@ -1173,14 +1185,14 @@ function exitInteriorFloor() {
 | 3 | Door protection too weak | Medium | player-interaction-system.js | Position-only, needs step count |
 | 4 | No door type animation distinction | Medium | rendering layer | Building vs floor doors look identical |
 | 5 | Floor 0 enemy filtered out | High | tutorial-floor-gen.js:506 | `floor < 3` guard too aggressive |
-| 6 | Tavern interior wipes collectibles | Medium-High | interior-floor-system.js:62 | WorldItems.init() is too broad |
-| 7 | WBE compatibility gaps | Low-Medium | tutorial-floors.js | Missing metadata fields for WBE nodes |
-| 8 | Interior walls default to parent biome | High | interior-floor-system.js:69 | Visual caches cleared but never rebuilt |
-| 9 | No interior biome definitions | High | biomes.json / new file needed | 8 interior biomes proposed |
-| 10 | WBE/docs don't cross-reference systems | Medium | multiple docs | Isolated designs need linking |
-| 11 | No boss floor biome definitions | High | biomes.json / new file needed | Train Depot, Long Bridge, Ski Mountain proposed |
-| 12 | Narrative setting not in biome progression | Medium | biome-config.js | Sandpoint geography unmapped to biomes |
-| 13 | **Building interior door contract missing** | **High** | interior-floor-system.js, player-interaction-system.js | No guardrails, funnel pattern, spawn-near-exit all unimplemented |
+| 6 | Tavern interior wipes collectibles | Medium-High | interior-floor-system.js | ⚠️ PARTIALLY FIXED — floor IDs consistent, interiorBiome fields added; WorldItems.init() scoping still needed |
+| 7 | WBE compatibility gaps | Low-Medium | tutorial-floors.js | ✅ FIXED — FloorMetadataRegistry provides WBE Step Node shape |
+| 8 | Interior walls default to parent biome | High | interior-floor-system.js | ✅ FIXED — _resolveInteriorBiome() + visual cache rebuild + per-biome lighting |
+| 9 | No interior biome definitions | High | interior-biomes.json (created) | ✅ FIXED — 12 interior biomes (exceeded proposed 8) |
+| 10 | WBE/docs don't cross-reference systems | Medium | multiple docs | ✅ FIXED — cross-references added to WBE, BIOME_SYSTEMS, BUILDING_INTERIOR_SYSTEM |
+| 11 | No boss floor biome definitions | High | boss-biomes.json (created) | ✅ FIXED — 3 boss arena biomes created, wired into registry |
+| 12 | Narrative setting not in biome progression | Medium | biomes.json (rethemed) | ✅ FIXED — all biomes rethemed to Sandpoint geography + 2 new biomes |
+| 13 | **Building interior door contract missing** | **High** | interior-floor-system.js, player-interaction-system.js | API ready (`applyBuildingDoorContract()`), needs wiring |
 
 ---
 
@@ -1193,9 +1205,9 @@ function exitInteriorFloor() {
 5. **BUG 13** (building interior doors) — ✅ **API READY:** `DoorContractSystem.applyBuildingDoorContract()` implements no-guardrail building contract. Needs wiring into `interior-floor-system.js`.
 6. **BUG 4** (door animation) — `suppressAnimation` field now in `_doorSpawnProtect` via DoorContractSystem. Overhead animator needs to read it.
 7. **BUG 7** (WBE compat) — ✅ **IMPLEMENTED:** `FloorMetadataRegistry` provides unified metadata with WBE Step Node shape. Tutorial floors 0-3 and interior floors auto-registered.
-8. **BUG 11** (boss biomes) — create boss arena biome defs for Train Depot, Long Bridge, Ski Mountain
-9. **BUG 9** (interior biome definitions) — create `interior-biomes.json` with 8 interior types
-10. **BUG 8** (interior wall rendering) — wire interior biome into visual cache rebuild
-11. **BUG 6** (tavern WorldItems wipe) — scope `init()` for interior context
-12. **BUG 12** (narrative alignment) — retheme biomes to Sandpoint geography (see NARRATIVE_ALIGNMENT.md)
+8. **BUG 11** (boss biomes) — ✅ **IMPLEMENTED:** `boss-biomes.json` created with 3 arena biomes (BOSS_TRAIN_DEPOT, BOSS_LONG_BRIDGE, BOSS_SKI_MOUNTAIN). Wired into `GoneRogueDataRegistry`, merged into main biomes map. `boss-floor-registry.js` updated with BOSS_BIOMES constants and parentBiome field.
+9. **BUG 9** (interior biome definitions) — ✅ **IMPLEMENTED:** `interior-biomes.json` created with 12 interior biome definitions (exceeding original 8 proposed). Loaded as 12th fetch in data registry. `getInteriorBiome(id)` accessor added.
+10. **BUG 8** (interior wall rendering) — ✅ **IMPLEMENTED:** `_resolveInteriorBiome()` added to `interior-floor-system.js`. After `clearVisualCaches()`, rebuilds biome visual grid, tile render objects, and background colors. Hardcoded lighting replaced with per-biome `lightingProfile` and `darknessMultiplier`.
+11. **BUG 6** (tavern WorldItems wipe) — ⚠️ **PARTIALLY FIXED:** Floor ID scheme consistent (`0.1`/`0.1.1`), `interiorBiome` fields added to all authored layouts. **Still open:** `WorldItems.init()` needs `initForInterior()` method to scope item reset. `B` marker in tavern template still unused.
+12. **BUG 12** (narrative alignment) — ✅ **IMPLEMENTED:** All 6 original biomes rethemed to Sandpoint geography (Kaniksu, Bunker Hill, Litehouse, Cedar Street, Kodiak, Farragut). 2 new world biomes added (LAKE, SKI_MOUNTAIN). See `NARRATIVE_ALIGNMENT.md`.
 13. **BUG 10** (cross-reference docs) — ✅ **IMPLEMENTED:** System cross-references added to WORLD_BUILDING_ENGINE.md "Extracted Modules" section

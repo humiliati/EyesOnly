@@ -585,6 +585,7 @@ var TutorialFloors = (function() {
   // Church Interior Layout (Floor ID: "1.2")
   var CHURCH_INTERIOR_LAYOUT = {
     name: 'Church Interior',
+    interiorBiome: 'INTERIOR_CHURCH',
     template: [
       '########################################',
       '#......................................#',
@@ -667,6 +668,7 @@ var TutorialFloors = (function() {
    */
   var SHOP_INTERIOR_LAYOUT = {
     name: 'Village Shop',
+    interiorBiome: 'INTERIOR_STRIP_MALL',
     template: [
       '########################################',
       '#......................................#',
@@ -891,6 +893,7 @@ var TutorialFloors = (function() {
   // =========================================================================
   var TAVERN_INTERIOR_LAYOUT = {
     name: 'The Rusty Mug',
+    interiorBiome: 'INTERIOR_TAVERN',
     description: 'A warm tavern. The cellar hides secrets; the front door leads to the village.',
     templateFillsGrid: true,
 
@@ -1040,6 +1043,7 @@ var TutorialFloors = (function() {
   // =========================================================================
   var TAVERN_BASEMENT_LAYOUT = {
     name: 'Tavern Basement',
+    interiorBiome: 'INTERIOR_TAVERN_BASEMENT',
     template: [
       '########################################',
       '#......................................#',

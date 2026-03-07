@@ -190,23 +190,25 @@ Instead of fixed biome progression, floors use weighted random selection to prov
 - **Grey Cave**: 10%
 
 #### Floors 10-15 (Mid Game)
-- **Forest**: 10%
-- **Mall**: 25%
-- **Industrial**: 40%
-- **Grey Cave**: 15%
-- **Aerospace**: 10%
+- **Mall (Cedar Street Market)**: 25%
+- **Industrial (Kodiak Assembly)**: 25%
+- **Lake (Pend Oreille)**: 20%
+- **Grey Cave (Bunker Hill)**: 10%
+- **Forest (Kaniksu)**: 10%
+- **Aerospace (Farragut)**: 10%
 
 #### Floors 16-22 (Late Game)
-- **Forest**: 5%
-- **Mall**: 20%
-- **Industrial**: 35%
-- **Grey Cave**: 10%
-- **Aerospace**: 30%
+- **Industrial (Kodiak Assembly)**: 25%
+- **Aerospace (Farragut)**: 25%
+- **Ski Mountain (Schweitzer)**: 20%
+- **Mall (Cedar Street Market)**: 15%
+- **Lake (Pend Oreille)**: 10%
+- **Forest (Kaniksu)**: 5%
 
 #### Floors 23+ (Endgame)
-- **Mall**: 10%
-- **Industrial**: 20%
-- **Aerospace**: 70%
+- **Aerospace (Farragut)**: 70%
+- **Industrial (Kodiak Assembly)**: 20%
+- **Mall (Cedar Street Market)**: 10%
 
 ### Boss Floor Overrides
 Boss floors (10, 16, 22, 30) may use specific biomes appropriate to the boss encounter.
@@ -427,65 +429,53 @@ card = CardSystem.rollCard(baseType);
 
 ## Biome Catalog
 
-### 1. Cozy Forest 🌳
-**Theme**: Natural wilderness, basic survival
-**Atmosphere**: Organic, calming, tutorial-friendly
-**Key Features**:
-- Grass tiles for stealth bonus
-- Tree breakables for cover
-- Natural healing items
+> All biomes are themed around real Sandpoint, Idaho locations. See [WORLD_BUILDING_ENGINE.md](./WORLD_BUILDING_ENGINE.md) for how the WBE Floor Resolver selects biomes per Step Node.
 
-**Drop Focus**: Survival basics, healing, basic weapons
+### World Biomes (biomes.json)
 
-### 2. Grey Cave 🗿
-**Theme**: Dark underground, tactical stealth
-**Atmosphere**: Claustrophobic, high-risk
-**Key Features**:
-- Shadow tiles for high stealth bonus
-- Narrow corridors
-- Trench coat guaranteed spawn
+| Key | Name | Floors | Narrative | Drop Focus |
+|-----|------|--------|-----------|------------|
+| FOREST | Kaniksu Timberland | 1–3 | National forest surrounding Sandpoint; tutorial area | Survival basics, healing |
+| GREY_CAVE | Bunker Hill Mines | 4 | Historic silver mine shafts north of town | Stealth cards, tactical positioning |
+| OFFICE | Litehouse Corporate | 5–9 | Litehouse Foods HQ — Sandpoint's largest employer | Hacking, precision, surveillance |
+| MALL | Cedar Street Market | 11–15 | Cedar Street Bridge shops and galleries | Utility items, urban gear, medical |
+| LAKE | Pend Oreille Lakeshore | 14–15 | Lake Pend Oreille shoreline; water-heavy forest variant with central rivers, shallow crossings, deep water impassable | Water-themed cards, survival |
+| INDUSTRIAL | Kodiak Assembly Plant | 17–21 | Fictional industrial site on the BNSF rail corridor | Explosives, heavy weapons, area control |
+| SKI_MOUNTAIN | Schweitzer Mountain | 20–21 | Schweitzer ski resort above Sandpoint; ice physics (`~` tiles accelerate south at 1.4×), autumn/ice palette | Mobility cards, environmental |
+| AEROSPACE | Farragut Naval Station | 23–30 | WWII naval training station at south end of Lake Pend Oreille | Precision weapons, advanced tech |
 
-**Drop Focus**: Stealth cards, tactical positioning
+### Boss Arena Biomes (boss-biomes.json)
 
-### 3. Shopping Mall 🏬
-**Theme**: Urban commercial, varied equipment
-**Atmosphere**: Open spaces, consumer goods
-**Key Features**:
-- Debris tiles
-- Multiple shops
-- Varied loot density
+Boss arenas are loaded from `boss-biomes.json` and merged into the main biomes map at registry load time. Each has a `parentBiome` linking it to the world biome it inherits visual defaults from.
 
-**Drop Focus**: Utility items, urban gear, medical supplies
+| Key | Name | Shape | Parent | Boss Floor |
+|-----|------|-------|--------|------------|
+| BOSS_TRAIN_DEPOT | Sandpoint Junction | 40×20 regular/XL, intersecting tracks (5H + 3V = ~15 intersections) | INDUSTRIAL | 10 |
+| BOSS_LONG_BRIDGE | The Long Bridge | 60×14 long horizontal, 4 rows water top/bottom (lethal), 6 playable rows with traffic lanes | LAKE | 16 |
+| BOSS_SKI_MOUNTAIN | Schweitzer Descent | 14×60 long vertical, tree walls cols 0-2/11-13, snaking ice streaks, 2× south acceleration | SKI_MOUNTAIN | 22 |
 
-### 4. Commercial Office 🏢
-**Theme**: Corporate space, tech focus
-**Atmosphere**: Structured, technological
-**Key Features**:
-- Clean floors
-- Cubicle layouts
-- Security systems
+See [BOSS_DESIGN.md](./BOSS_DESIGN.md) for full boss encounter specs and [BOSS_ENCOUNTER_IDEAS.md](./BOSS_ENCOUNTER_IDEAS.md) for the candidate pool.
 
-**Drop Focus**: Hacking tools, precision weapons, surveillance
+### Interior Biomes (interior-biomes.json)
 
-### 5. Industrial Complex 🏭
-**Theme**: Manufacturing, heavy ordnance
-**Atmosphere**: Hazardous, industrial
-**Key Features**:
-- Hazard tiles (oil, waste)
-- Heavy machinery
-- Dense enemy patrols
+Interior biomes are loaded separately from world biomes via `GoneRogueDataRegistry.getInteriorBiome(id)`. Each defines wallTiles, floorTiles, props, tileEffects, backgroundGradient, lightingProfile, and darknessMultiplier. The `InteriorFloorSystem._resolveInteriorBiome()` function resolves which interior biome to apply based on the layout's `interiorBiome` field.
 
-**Drop Focus**: Explosives, heavy weapons, area control
+| Key | Name | Lighting | Darkness | Narrative |
+|-----|------|----------|----------|-----------|
+| INTERIOR_TAVERN | The Hound's Tooth Pub | TAVERN_WARM | 0.8 | Sandpoint bar — first safe house |
+| INTERIOR_TAVERN_BASEMENT | Hound's Tooth Cellar | CELLAR_DARK | 1.3 | Damp cellar beneath the tavern |
+| INTERIOR_CHURCH | St. Joseph's Parish | CHURCH_DIM | 1.0 | Catholic parish — Jesuit thread |
+| INTERIOR_CATACOMBS | Jesuit Reliquary | CATACOMB_DARK | 1.5 | Beneath St. Joseph's — Kaniksu Protocol documents |
+| INTERIOR_STRIP_MALL | Bridge Market Shops | RETAIL_BRIGHT | 0.6 | Cedar Street Bridge storefronts |
+| INTERIOR_FACTORY | Litehouse Processing Floor | FACTORY_FLUORESCENT | 0.7 | Dressing factory — vats, coolers |
+| INTERIOR_APARTMENT | Lakeview Rentals | APARTMENT_COZY | 0.9 | Residential — agent cover identities |
+| INTERIOR_JUNKYARD | Shingle Mill Salvage | JUNKYARD_OVERCAST | 1.1 | Scrap from old lumber mills |
+| INTERIOR_SILO | Farragut Submarine Pen | SUBMARINE_COLD | 1.4 | WWII submarine testing docks |
+| INTERIOR_SAWMILL | Humbird Lumber Mill | SAWMILL_DUSTY | 1.0 | Abandoned Humbird-era mill |
+| INTERIOR_RANGE | Sandpoint Gun Club | RANGE_FLUORESCENT | 0.7 | Shooting range — agent training |
+| INTERIOR_TRAIN_CAR | Empire Builder Sleeper | TRAIN_CAR_DIM | 0.9 | Amtrak narrow passenger car |
 
-### 6. Aerospace Museum ✈️
-**Theme**: Military technology, high-tech
-**Atmosphere**: Open displays, strategic
-**Key Features**:
-- Open sight lines
-- High ceilings
-- Advanced positioning
-
-**Drop Focus**: Precision weapons, advanced tech, strategic cards
+See [BUILDING_INTERIOR_SYSTEM.md](./BUILDING_INTERIOR_SYSTEM.md) for the full interior floor hierarchy and biome resolution pipeline.
 
 ---
 
@@ -939,12 +929,14 @@ Floor parity determines variant: `isNight = (_floor % 2 === 0)`
 
 | Biome | Night Start | Night End | Day Start | Day End | Character |
 |-------|-----------|---------|---------|-------|-----------|
-| **Forest** | `#0a1a0a` | `#0d2a0d` | `#0a1a0a` | `#1a3a1a` | Two dark greens / dark to medium green |
-| **Grey Cave** | `#0a0a0f` | `#0f0a1a` | `#0a0a0f` | `#0f0a1a` | Dark blue-grey (always dark) |
-| **Office** | `#0a0a0a` | `#0f0f15` | `#0a0a12` | `#12121a` | Near-black to dark grey-blue |
-| **Mall** | `#0a0a0a` | `#1a0a0a` | `#0f0a0a` | `#1a1010` | Dark to dark-red tint |
-| **Industrial** | `#0a0a08` | `#1a1508` | `#0f0e08` | `#1a1a0a` | Dark to amber-tinted |
-| **Aerospace** | `#08080f` | `#0f0f1a` | `#0a0a12` | `#141420` | Deep space blue |
+| **Kaniksu Timberland** (FOREST) | `#0a1a0a` | `#0d2a0d` | `#0a1a0a` | `#1a3a1a` | Two dark greens / dark to medium green |
+| **Bunker Hill Mines** (GREY_CAVE) | `#0a0a0f` | `#0f0a1a` | `#0a0a0f` | `#0f0a1a` | Dark blue-grey (always dark) |
+| **Litehouse Corporate** (OFFICE) | `#0a0a0a` | `#0f0f15` | `#0a0a12` | `#12121a` | Near-black to dark grey-blue |
+| **Cedar Street Market** (MALL) | `#0a0a0a` | `#1a0a0a` | `#0f0a0a` | `#1a1010` | Dark to dark-red tint |
+| **Kodiak Assembly** (INDUSTRIAL) | `#0a0a08` | `#1a1508` | `#0f0e08` | `#1a1a0a` | Dark to amber-tinted |
+| **Farragut Naval** (AEROSPACE) | `#08080f` | `#0f0f1a` | `#0a0a12` | `#141420` | Deep space blue |
+
+Interior biomes define their own `backgroundGradient` in `interior-biomes.json`. Interiors always use the "night" variant (indoor lighting).
 
 ### Technical Implementation
 
@@ -971,7 +963,40 @@ These tiles ignore the biome gradient and use their own backgrounds:
 
 ---
 
+## WBE Cross-Reference
+
+This document describes the biome data layer. For how biomes integrate into the broader world-building pipeline, see:
+
+| Topic | Document |
+|-------|----------|
+| World Building Engine architecture | [WORLD_BUILDING_ENGINE.md](./WORLD_BUILDING_ENGINE.md) |
+| WBE roadmap and implementation phases | [WORLD_BUILDING_ENGINE_ROADMAP.md](./WORLD_BUILDING_ENGINE_ROADMAP.md) |
+| Building interior system and floor hierarchy | [BUILDING_INTERIOR_SYSTEM.md](./BUILDING_INTERIOR_SYSTEM.md) |
+| Boss encounter design | [BOSS_DESIGN.md](./BOSS_DESIGN.md) |
+| Narrative alignment and Sandpoint setting | [NARRATIVE_ALIGNMENT.md](./NARRATIVE_ALIGNMENT.md) |
+
+### Data Files
+
+| File | Contents | Loaded By |
+|------|----------|-----------|
+| `data/gone-rogue/biomes.json` | 8 world biomes (FOREST through AEROSPACE + LAKE, SKI_MOUNTAIN) | `GoneRogueDataRegistry.getBiomes()` |
+| `data/gone-rogue/boss-biomes.json` | 3 boss arena biomes (merged into main biomes at load) | `GoneRogueDataRegistry.getBiomes()` (post-merge) |
+| `data/gone-rogue/interior-biomes.json` | 12 interior biomes (INTERIOR_TAVERN through INTERIOR_TRAIN_CAR) | `GoneRogueDataRegistry.getInteriorBiome(id)` |
+
+---
+
 ## Changelog
+
+### 2026-03-07
+- ✅ Rethemed all 6 original biomes with Sandpoint narrative names (Kaniksu, Bunker Hill, Litehouse, Cedar Street, Kodiak, Farragut)
+- ✅ Added 2 new world biomes: LAKE (Pend Oreille Lakeshore) and SKI_MOUNTAIN (Schweitzer Mountain)
+- ✅ Created boss-biomes.json with 3 boss arena biomes (Train Depot, Long Bridge, Ski Mountain)
+- ✅ Created interior-biomes.json with 12 interior biome definitions
+- ✅ Wired GoneRogueDataRegistry to load and expose interior biomes
+- ✅ Added InteriorFloorSystem._resolveInteriorBiome() for biome resolution
+- ✅ Replaced hardcoded COZY_FOREST_NIGHT lighting with per-interior-biome lightingProfile and darknessMultiplier
+- ✅ Tagged all 4 authored layouts with interiorBiome fields
+- ✅ Updated biome catalog, weight tables, and gradient table to reflect current state
 
 ### 2026-02-20
 - ✅ Added biome background gradient system (135-degree axial, per-biome day/night configs)
@@ -1008,6 +1033,6 @@ Added as part of the Environment Synergy / BIOME_SYSTEMS integration work (Phase
 
 ---
 
-**Document Version**: 1.2
-**Last Updated**: 2026-02-28
+**Document Version**: 1.3
+**Last Updated**: 2026-03-07
 **Status**: Complete consolidated guide
