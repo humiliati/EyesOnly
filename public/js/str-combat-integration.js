@@ -514,10 +514,10 @@
       }
     }
 
-    // Flash mini indicator on resolution edge
-    if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.flashMiniIndicator === 'function') {
-      if (isResolvingTurn && !_lastResolvingTurn && STRCombatWindow && STRCombatWindow.isMinimized && STRCombatWindow.isMinimized()) {
-        HandFanComponent.flashMiniIndicator('resolution');
+    // Flash combat capsule on resolution edge
+    if (typeof NonCombatHUD !== 'undefined' && typeof NonCombatHUD.flashCombatCapsule === 'function') {
+      if (isResolvingTurn && !_lastResolvingTurn) {
+        NonCombatHUD.flashCombatCapsule();
       }
     }
     _lastResolvingTurn = !!isResolvingTurn;
@@ -549,11 +549,11 @@
       HandFanComponent.setMode('combat', 'peripheral');
     }
 
-    // Update minimized hand-fan indicator (stacked above STR minimized indicator)
-    if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.updateMiniIndicator === 'function') {
-      var emoji = null;
-      if (cards && cards.length) {
-        emoji = cards[0].emoji || cards[0].glyph || '🃏';
+    // Update combat capsule (CH) — per-card intelligent emoji nodes
+    if (typeof NonCombatHUD !== 'undefined' && typeof NonCombatHUD.showCombatCapsule === 'function') {
+      var selectedIds = [];
+      if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.getSelectedCardIds === 'function') {
+        selectedIds = HandFanComponent.getSelectedCardIds();
       }
 
       var pct = null;
@@ -563,11 +563,10 @@
         if (dur > 0) pct = rem / dur;
       }
 
-      HandFanComponent.updateMiniIndicator({
-        visible: !!isMini,
-        emoji: emoji || '🃏',
-        count: (cards && cards.length) ? cards.length : 0,
-        timerPercent: pct
+      NonCombatHUD.showCombatCapsule(cards, {
+        selectedIds: selectedIds,
+        timerPercent: pct,
+        resolving: !!isResolvingTurn
       });
     }
   }
@@ -577,6 +576,11 @@
    */
   function _hideHandFan() {
     HandFanComponent.hide();
+
+    // Clear combat capsule — return NCH capsule to normal joker rendering
+    if (typeof NonCombatHUD !== 'undefined' && typeof NonCombatHUD.hideCombatCapsule === 'function') {
+      NonCombatHUD.hideCombatCapsule();
+    }
   }
 
   function _showBackupActions(combatState) {

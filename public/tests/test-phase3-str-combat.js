@@ -229,14 +229,14 @@
       'NameUtils.getDisplayName() available for combat abbreviation'
     );
 
-    if (typeof HandFanComponent !== 'undefined') {
+    if (typeof NonCombatHUD !== 'undefined') {
       assert(
-        typeof HandFanComponent.updateMiniIndicator === 'function',
-        'HandFanComponent.updateMiniIndicator() exists'
+        typeof NonCombatHUD.showCombatCapsule === 'function',
+        'NonCombatHUD.showCombatCapsule() exists (replaces mini-indicator)'
       );
       assert(
-        typeof HandFanComponent.flashMiniIndicator === 'function',
-        'HandFanComponent.flashMiniIndicator() exists'
+        typeof NonCombatHUD.flashCombatCapsule === 'function',
+        'NonCombatHUD.flashCombatCapsule() exists (replaces mini-indicator)'
       );
     }
 

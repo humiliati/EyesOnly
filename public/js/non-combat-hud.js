@@ -14,6 +14,13 @@ var NonCombatHUD = (function() {
   // Drag state
   var _drag = null; // { kind, index, id, emoji, ghostEl, startX, startY, dragging }
 
+  // ── Combat Capsule state ─────────────────────────────────
+  // When non-null, the capsule renders combat hand with per-card emoji intelligence.
+  // Each joker becomes a node: selected/resolving cards show card.emoji, others show 🃏.
+  // This is the CH (Combat Hand) capsule — visually identical to NCH capsule but card-aware.
+  var _combatCapsule = null;
+  // When active: { cards: [...], selectedIds: [], resolving: false, timerPercent: null }
+
   // Preferences (localStorage)
   var PREF_KEY = 'EYESONLY_NONCOMBAT_HUD_PREFS_V2';
   var _prefs = { expanded: false };
@@ -262,6 +269,171 @@ var NonCombatHUD = (function() {
     }
   }
 
+  // ─── COMBAT CAPSULE (CH) ────────────────────────────────
+  // Reuses the same nch-capsule-wrapper / nch-capsule-stack DOM.
+  // Each joker becomes an "intelligent node":
+  //   - Selected/resolving cards: show card.emoji (🗡️, 🛡️, etc.)
+  //   - Non-selected cards: show 🃏
+  // This unifies the old hand-fan-mini-indicator into the NCH capsule form factor.
+
+  function _timerColorForPercent(pct) {
+    function lerp(a, b, t) { return Math.round(a + (b - a) * t); }
+    var stops = [
+      { p: 1.00, c: [ 76, 175,  80] },
+      { p: 0.80, c: [  0, 150, 136] },
+      { p: 0.60, c: [255, 193,   7] },
+      { p: 0.40, c: [255, 152,   0] },
+      { p: 0.20, c: [255,  87,  34] },
+      { p: 0.10, c: [244,  67,  54] },
+      { p: 0.00, c: [244,  67,  54] }
+    ];
+    pct = Math.max(0, Math.min(1, pct));
+    for (var i = 0; i < stops.length - 1; i++) {
+      var a = stops[i], b = stops[i + 1];
+      if (pct <= a.p && pct >= b.p) {
+        var span = (a.p - b.p) || 1;
+        var t = (a.p - pct) / span;
+        return 'rgb(' + lerp(a.c[0], b.c[0], t) + ',' + lerp(a.c[1], b.c[1], t) + ',' + lerp(a.c[2], b.c[2], t) + ')';
+      }
+    }
+    return 'rgb(244,67,54)';
+  }
+
+  /**
+   * Render the combat-aware capsule into #nch-capsule-stack.
+   * Selected cards transition from 🃏 to their card.emoji.
+   * Resolving cards get a pulse animation class.
+   */
+  function _renderCombatCapsule() {
+    if (!_capsule || !_combatCapsule) return;
+    var stackEl = _capsule.querySelector('#nch-capsule-stack');
+    if (!stackEl) return;
+
+    var cards = _combatCapsule.cards;
+    var selectedIds = _combatCapsule.selectedIds;
+    var count = cards.length;
+
+    // Build signature to avoid unnecessary DOM rebuilds
+    var sig = 'ch:' + count + ':' + selectedIds.join(',') + ':' +
+              (_combatCapsule.resolving ? 'R' : 'S') + ':' +
+              Math.round((_combatCapsule.timerPercent || 0) * 100);
+    if (stackEl.dataset.sig === sig) return;
+    stackEl.dataset.sig = sig;
+
+    stackEl.innerHTML = '';
+    var numSlots = Math.min(count, 8);
+    stackEl.style.width = (numSlots > 0 ? (20 + (numSlots - 1) * 6) : 20) + 'px';
+
+    var blvckId = (typeof CardStateAuthority !== 'undefined' && CardStateAuthority.BLVCK_ID)
+      ? CardStateAuthority.BLVCK_ID : 'ACT-000';
+
+    for (var i = 0; i < numSlots; i++) {
+      var card = cards[i];
+      var isSelected = card && card.id && selectedIds.indexOf(card.id) !== -1;
+      var isBlvck = card && (card.id === blvckId || card.id === 'ACT-000' || card.name === 'BLVCK');
+
+      var j = document.createElement('div');
+      j.className = 'nch-capsule-joker joker-' + i;
+
+      if (isSelected) {
+        // ★ Intelligent node: reveal the card's actual emoji
+        j.textContent = (card.emoji || card.glyph || '\uD83C\uDCCF');
+        j.classList.add('nch-joker-active');
+        if (_combatCapsule.resolving) {
+          j.classList.add('nch-joker-resolving');
+        }
+      } else if (isBlvck) {
+        j.textContent = '\uD83C\uDCCF'; // 🃏
+        j.classList.add('nch-joker-greyed');
+      } else {
+        j.textContent = '\uD83C\uDCCF'; // 🃏
+      }
+
+      stackEl.appendChild(j);
+    }
+
+    // Timer color on capsule border during combat
+    if (_combatCapsule.timerPercent != null) {
+      var col = _timerColorForPercent(_combatCapsule.timerPercent);
+      _capsule.style.outline = '2px solid ' + col;
+      _capsule.style.outlineOffset = '2px';
+    } else {
+      _capsule.style.outline = '';
+      _capsule.style.outlineOffset = '';
+    }
+
+    // Critical pulse class when timer < 20%
+    if (_combatCapsule.timerPercent != null && _combatCapsule.timerPercent < 0.20) {
+      _capsule.classList.add('nch-capsule-critical');
+    } else {
+      _capsule.classList.remove('nch-capsule-critical');
+    }
+  }
+
+  /**
+   * Enter combat capsule mode. The capsule switches from generic jokers
+   * to per-card intelligent nodes. Call on every combat UI update tick.
+   * @param {Array} cards - current hand cards with { id, emoji, glyph, name, ... }
+   * @param {Object} opts - { selectedIds: string[], timerPercent: number|null, resolving: boolean }
+   */
+  function showCombatCapsule(cards, opts) {
+    opts = opts || {};
+    _combatCapsule = {
+      cards: cards || [],
+      selectedIds: opts.selectedIds || [],
+      resolving: !!opts.resolving,
+      timerPercent: opts.timerPercent != null ? opts.timerPercent : null
+    };
+    // Force capsule visible (overrides _pollVisibility hiding during expand)
+    if (_capsule) _capsule.style.display = 'flex';
+    _renderCombatCapsule();
+  }
+
+  /**
+   * Update the combat capsule without creating a new state object.
+   * For lightweight updates (e.g. timer percent only).
+   * @param {Object} opts - partial update { cards?, selectedIds?, timerPercent?, resolving? }
+   */
+  function updateCombatCapsule(opts) {
+    if (!_combatCapsule) return;
+    if (opts.cards != null) _combatCapsule.cards = opts.cards;
+    if (opts.selectedIds != null) _combatCapsule.selectedIds = opts.selectedIds;
+    if (opts.resolving != null) _combatCapsule.resolving = opts.resolving;
+    if (opts.timerPercent != null) _combatCapsule.timerPercent = opts.timerPercent;
+    _renderCombatCapsule();
+  }
+
+  /**
+   * Flash the capsule on resolution edge (replaces old flashMiniIndicator).
+   */
+  function flashCombatCapsule() {
+    if (!_capsule) return;
+    _capsule.classList.remove('nch-capsule-flash');
+    void _capsule.offsetWidth; // force reflow
+    _capsule.classList.add('nch-capsule-flash');
+    setTimeout(function() {
+      try { _capsule.classList.remove('nch-capsule-flash'); } catch (e) {}
+    }, 420);
+  }
+
+  /**
+   * Exit combat capsule mode. Clears combat state, removes timer styling,
+   * returns capsule to normal NCH joker rendering on next poll tick.
+   */
+  function hideCombatCapsule() {
+    _combatCapsule = null;
+    // Clear combat-specific styling
+    if (_capsule) {
+      _capsule.style.outline = '';
+      _capsule.style.outlineOffset = '';
+      _capsule.classList.remove('nch-capsule-critical');
+      _capsule.classList.remove('nch-capsule-flash');
+    }
+    // Force signature reset so _renderCapsule() rebuilds on next poll
+    var stackEl = _capsule ? _capsule.querySelector('#nch-capsule-stack') : null;
+    if (stackEl) stackEl.dataset.sig = '';
+  }
+
   // ─── EXPANDED VIEW ──────────────────────────────────────
 
   function _createExpanded() {
@@ -378,14 +550,18 @@ var NonCombatHUD = (function() {
       try { CardStateAuthority.checkBlvckState(); } catch (blvckErr) {}
     }
 
-    if (_isExpanded) {
+    if (_isExpanded && !_combatCapsule) {
       if (_capsule) _capsule.style.display = 'none';
       if (_expanded) _expanded.style.display = 'flex';
     } else {
       if (_expanded) _expanded.style.display = 'none';
       if (_capsule) _capsule.style.display = 'flex';
-      // Keep capsule count fresh on every visibility poll
-      _renderCapsule();
+      // Combat capsule: render card-aware emojis; normal: render jokers
+      if (_combatCapsule) {
+        _renderCombatCapsule();
+      } else {
+        _renderCapsule();
+      }
     }
 
     // BAC floating popup is RETIRED — RogueSidebar (embedded in terminal
@@ -1889,6 +2065,12 @@ var NonCombatHUD = (function() {
     resetCapsulePosition: resetCapsulePosition,
     screenToGrid: _screenToGrid,
     isCardDeployable: _isCardDeployable,
-    flashHeaderEquipSlot: _flashHeaderEquipSlot
+    flashHeaderEquipSlot: _flashHeaderEquipSlot,
+
+    // Combat Capsule (CH) — unified hand indicator for STR combat
+    showCombatCapsule: showCombatCapsule,
+    updateCombatCapsule: updateCombatCapsule,
+    flashCombatCapsule: flashCombatCapsule,
+    hideCombatCapsule: hideCombatCapsule
   };
 })();

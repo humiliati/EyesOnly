@@ -80,6 +80,45 @@
   opacity: 0.55;
 }
 
+/* ── Combat Capsule (CH) — intelligent joker nodes ──────── */
+
+/* Active node: selected card reveals its actual emoji */
+.nch-joker-active {
+  filter: drop-shadow(0 0 4px rgba(28, 255, 155, 0.6)) drop-shadow(1px 1px 2px rgba(0,0,0,0.7));
+  font-size: 21px;
+}
+
+/* Resolving node: pulse animation during resolution sequence */
+.nch-joker-resolving {
+  animation: nch-joker-resolve-pulse 0.45s ease-in-out infinite alternate;
+}
+
+@keyframes nch-joker-resolve-pulse {
+  from { filter: drop-shadow(0 0 4px rgba(28, 255, 155, 0.6)) brightness(1); }
+  to   { filter: drop-shadow(0 0 10px rgba(255, 193, 7, 0.8)) brightness(1.15); }
+}
+
+/* Timer-critical pulse on the entire capsule wrapper (<20% time) */
+.nch-capsule-critical {
+  animation: nch-capsule-critical-pulse 0.55s ease-in-out infinite;
+}
+
+@keyframes nch-capsule-critical-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+
+/* Resolution edge flash (replaces old mini-indicator flash) */
+.nch-capsule-flash {
+  animation: nch-capsule-incinerator-flash 0.38s ease-out forwards;
+}
+
+@keyframes nch-capsule-incinerator-flash {
+  0%   { filter: brightness(1); }
+  30%  { filter: brightness(2.2) saturate(1.5); }
+  100% { filter: brightness(1); }
+}
+
 /* ============================================================
    2. EXPANDED OVERLAY
    ============================================================ */
