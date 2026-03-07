@@ -868,9 +868,10 @@ const GoneRogueMobile = (function () {
             collectibleType = 'emoji';
             bobEnabled = true;
           } else {
-            // Generic item (charms, equipment, etc.) — emoji collectible at 0.6x
-            char = item.glyph || item.emoji || '💎';
-            color = item.resourceColor || '#00FFFF';
+            // Generic item (charms, equipment, consumables) — emoji collectible at 0.6x
+            // White glow per COLLECTIBLES_CANON §6 Items (NOT cyan #00FFFF)
+            char = item.glyph || item.emoji || '📦';
+            color = item.resourceColor || '#FFFFFF';
             scale = 0.6;
             collectibleType = 'emoji';
             bobEnabled = true;

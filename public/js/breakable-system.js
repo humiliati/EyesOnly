@@ -354,6 +354,10 @@ var BreakableSystem = (function() {
     } else {
       _spawnFallbackLoot(breakable, ctx);
     }
+
+    // Phase 2: Designer-defined item drops (drops.itemId = 'ITM-###')
+    // Fires after both loot paths so breakables can drop items alongside normal loot
+    _spawnItemDrop(breakable, ctx);
   }
 
   /**
@@ -595,6 +599,59 @@ var BreakableSystem = (function() {
         console.log('[GoneRogue] Rusty key dropped at', breakable.x, breakable.y);
       }
     }
+  }
+
+  // ── Phase 2: Equipment / Consumable item drops from breakables ──────────
+
+  /**
+   * Spawn an equipment or consumable item from a breakable with drops.itemId.
+   * Designer-defined: breakable.drops.itemId = 'ITM-###' guarantees that item.
+   * Resolves full definition from GoneRogueDataRegistry (items.json).
+   *
+   * @param {Object} breakable - The destroyed breakable
+   * @param {Object} ctx - Game context
+   */
+  function _spawnItemDrop(breakable, ctx) {
+    if (!breakable.drops || !breakable.drops.itemId) return;
+
+    var itemId = breakable.drops.itemId;
+
+    // Resolve full definition from items.json data registry
+    var itemDef = null;
+    if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem) {
+      try {
+        itemDef = GoneRogueDataRegistry.getItem(itemId);
+        if (itemDef && itemDef._missing) itemDef = null;
+      } catch (eResolve) {
+        console.warn('[BreakableSystem] Error resolving item:', itemId, eResolve);
+      }
+    }
+
+    if (!itemDef) {
+      console.warn('[BreakableSystem] Unknown item drop: ' + itemId + ' — not in data registry');
+      return;
+    }
+
+    var worldItem = {
+      x: breakable.x,
+      y: breakable.y,
+      type: 'item',
+      itemId: itemId,
+      emoji: itemDef.emoji || '\uD83D\uDCE6', // 📦
+      name: itemDef.name || itemId,
+      description: itemDef.description || '',
+      rarity: itemDef.rarity || 'common',
+      spawnTime: Date.now(),
+      decayTime: 120000
+    };
+
+    if (typeof WorldItems !== 'undefined') {
+      WorldItems.addItem(worldItem);
+    } else {
+      ctx.items.push(worldItem);
+    }
+
+    console.log('[BreakableSystem] Item dropped: ' + itemId + ' (' + worldItem.name + ') at ' + breakable.x + ',' + breakable.y);
   }
 
   /**

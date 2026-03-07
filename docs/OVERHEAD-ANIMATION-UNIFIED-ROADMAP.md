@@ -554,6 +554,8 @@ The key system has three tiers with distinct storage, tooltip, and overhead anim
 | **Key Ammo (T1)** | `🗝` orange `#FF8A3D` 800ms | `reportResourceChange('key_ammo', ...)` | `'🔑 KEY AMMO: name'` | `Key Ammo: name` |
 | **Key Item (T2)** | `🔑` gold `#FFD700` 1200ms | — | `'🔑 KEY ITEM: name → INVENTORY'` | `Key Item: name` |
 | **Quest Key (T3)** | `❗` red `#FF4444` 1500ms | — | `'❗ QUEST ITEM — name — Return to NPC'` | `Key Item: name` |
+| **Item (equip)** | emoji rarity-color 1000ms | `reportResourceChange('Cards', 0, 0, emoji+name)` | `emoji name [EQUIPPED]` | tooltip text |
+| **Item (loose)** | emoji rarity-color 1000ms | `reportResourceChange('Cards', 0, 0, emoji+name)` | `emoji name [INVENTORY]` | tooltip text |
 
 ---
 
@@ -738,8 +740,90 @@ When adding a new collectible pickup:
 
 ---
 
-**Document Version**: 1.4
-**Last Updated**: 2026-03-03
+---
+
+## Map Animation Uniformity Audit (2026-03-06)
+
+### Two Animation Families — Bob vs Pulse
+
+The codebase has two distinct animation families for map-rendered objects. This split is intentional and should be preserved:
+
+| Family | Used By | Animation | Period | Phase Formula | Shadow Scaling |
+|--------|---------|-----------|--------|---------------|----------------|
+| **Bob** | All 9 collectible categories | Vertical Y ±2px | ~1.6s (`now*0.004`) | `(x*7+y*13)%100*0.1` | YES — shadow shrinks when high |
+| **Pulse** | Interactables (ropes, buttons, signs, levers, breakable chests) | Scale ±10% | ~2s (`now*0.003`) | `(x*5+y*11)%100*0.1` | NO — constant shadow size |
+
+**Design intent**: Bob communicates "pick me up" (collectible). Pulse communicates "interact with me" (interactable). Players learn this visual language unconsciously.
+
+### Items (Category 6) — Uniformity Check ✅
+
+Items from the Phase 2 item drop pipeline (`_spawnItemDrop`) render identically to other emoji-class collectibles:
+
+| Property | Items | Food | Key T2 | Key T3 | Match? |
+|----------|-------|------|--------|--------|--------|
+| Scale | 0.6x | 0.6x | 0.6x | 0.6x | ✅ |
+| Bob | YES | YES | YES | YES | ✅ |
+| Shadow | Standard ellipse | Standard ellipse | Standard ellipse | Standard ellipse | ✅ |
+| collectibleType | `emoji` | `emoji` | `emoji` | `emoji` | ✅ |
+| Color | `#FFFFFF` white glow | Per-resource | `#FFD700` gold | `#FF4444` red | ✅ Intentional per-type |
+
+**Fix applied (2026-03-06)**: Generic item default color changed from `#00FFFF` cyan to `#FFFFFF` white per COLLECTIBLES_CANON §6. Default emoji changed from `💎` to `📦`.
+
+### Breakable Chests (Upcoming — Key Ammo Interactables)
+
+Breakable chests that require `key_ammo` to unlock are **interactables, NOT collectibles**. They should:
+- **Pulse** (not bob) — they're objects you interact with, not pick up
+- Use standard ellipse shadow with NO inverse scaling
+- Display key_ammo cost via overhead animation or tooltip on approach
+- Break/open animation on key_ammo spend → spawn loot (which DOES bob)
+
+This maintains the visual language: the chest pulses (interact), the loot inside bobs (collect).
+
+### Overhead Animation Priority — Items in the Stack
+
+Items use `showGenericExpression(x, y, emoji, 1000, rarityColor)` with 1000ms duration. In the priority stack:
+
+| Rank | Type | Duration | Notes |
+|------|------|----------|-------|
+| 1 | Quest Key T3 | 1500ms | Longest, most urgent |
+| 2 | Dialogue/Speech | 3000ms | SPEECH type, static position |
+| 3 | Rope interaction | 800ms | Environment interaction |
+| 4 | Key Item T2 | 1200ms | Persistent inventory |
+| **5** | **Items** | **1000ms** | **Rarity-tinted emoji** |
+| 6 | Food | 1000ms | Per-food emoji |
+| 7 | Ammo/Battery/Card | 800ms | Resource symbols |
+| 8 | Key Ammo T1 | 800ms | Orange resource |
+| 9 | Currency | 200–1200ms | "+N¢" text |
+
+**No formal z-index** — priority is implicit from duration and visual weight. Concurrent animations at the same position stack vertically via `stackIndex` with non-linear gap accumulation. The `_animationQueue` prevents currency from overwriting existing animations.
+
+**Cause for differentiation**: Items and food both use 1000ms, but items use rarity-tinted colors while food uses RESOURCE_COLOR. This is correct — items are inventory objects with rarity, food is a resource pickup with effect-based coloring.
+
+### Multi-Drop Same-Tile Rendering
+
+Currently all breakable loot spawns at exact `(breakable.x, breakable.y)` with no sub-pixel offset. When a breakable drops ammo + currency + item simultaneously, they render stacked at exact tile center. This is functional but visually flat.
+
+**Phase 4+ polish**: Sub-pixel jitter at spawn time (±0.2 cells X, ±0.15 cells Y) stored on each world item object. See `COLLECTIBLES_CANON.md` Multi-Drop Scatter section for specification.
+
+---
+
+## Items Pipeline Entry — Pickup System Table Update
+
+Adding Items to the authoritative pickup pipeline table:
+
+| Type | OverheadAnimator | DebriefFeed | Tooltip | MOK |
+|------|-----------------|-------------|---------|-----|
+| **Item (equip)** | emoji rarity-color 1000ms | `reportResourceChange('Cards', 0, 0, emoji+name)` | `emoji name [EQUIPPED]` | tooltip text |
+| **Item (loose)** | emoji rarity-color 1000ms | `reportResourceChange('Cards', 0, 0, emoji+name)` | `emoji name [INVENTORY]` | tooltip text |
+
+**Rarity colors**: common=#CCCCCC, uncommon=#00CC00, rare=#3399FF, epic=#AA00FF, legendary=#FFD700
+
+**Source file**: `pickup-system.js` Phase 1 `_addToInventory()` equipment/consumable branch
+
+---
+
+**Document Version**: 1.5
+**Last Updated**: 2026-03-06
 **Status**: Draft → Review → Implementation
-**Architecture**: v1.4 — Single pickup = single OverheadAnimator animation + single TooltipSystem call; PancakeStack for multi-source stacking only
-**Canon Reference**: See `docs/COLLECTIBLES_CANON.md` for authoritative collectible category definitions and unified pickup pipeline
+**Architecture**: v1.5 — Single pickup = single OverheadAnimator animation + single TooltipSystem call; PancakeStack for multi-source stacking only; Items pipeline integrated (Phase 1+2 done)
+**Canon Reference**: See `docs/COLLECTIBLES_CANON.md` for authoritative collectible category definitions, visual rendering specs, and unified pickup pipeline

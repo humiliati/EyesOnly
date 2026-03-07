@@ -353,7 +353,9 @@ When the player short-presses an adjacent enemy, the dispatch checks equipped it
    → PLANT (auto-plant into nearest BLVCK slot, skip capsule)
 
 4. ELSE:
-   → KICK (default melee, uses kick pipeline from INPUT_PLAYER_CONTROLLER §4)
+   → CQC KICK (default melee — see ENEMY_CQC_SYSTEM.md for item-buffed strikes)
+   → Items with cqcDamage (knives, knuckles, shotguns) modify the kick into a real attack
+   → Resource cost (fatigue, energy, ammo) checked; falls back to bare kick if insufficient
 ```
 
 ### Item data shape

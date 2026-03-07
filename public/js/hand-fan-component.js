@@ -58,7 +58,8 @@ const HandFanComponent = (function () {
     originalWrapper: null,   // the real card wrapper element (hidden during drag)
     placeholder: null,       // dotted outline element inserted in its place
     ghostClone: null,        // off-screen clone used as setDragImage source
-    disposed: false          // true if the card was deployed/incinerated/discarded during this drag
+    disposed: false,         // true if the card was deployed/incinerated/discarded during this drag
+    deferredMode: null       // { mode, position } deferred until dragend to prevent re-render mid-drag
   };
 
   // Configuration
@@ -120,6 +121,20 @@ const HandFanComponent = (function () {
     if (mode === _mode && position === _position) {
       // Still ensure anchoring is up-to-date in combat mode.
       try { if (_mode === 'combat') _positionRelativeToStrWindow(); } catch (e0) {}
+      return;
+    }
+
+    // ── Defer mode change during active HTML5 drag ──
+    // When STR minimizes mid-drag it calls setMode('contextual','bottom').
+    // A full _renderCards() would destroy the placeholder, hidden card wrapper,
+    // and ghost — collapsing the drag state and showing cards as a bottom bar
+    // (the "BLVCK bar" bug).  Save the mode change for dragend instead.
+    if (_liftDrag.active) {
+      _liftDrag.deferredMode = { mode: mode, position: position };
+      // Still update internal state so queries return the right mode,
+      // but do NOT rebuild DOM or reposition the fan.
+      _mode = mode;
+      _position = position;
       return;
     }
 
@@ -1119,10 +1134,32 @@ const HandFanComponent = (function () {
     var cardWrapper = cardEl.parentElement;
     if (!cardWrapper) return;
     cardWrapper.addEventListener('dragstart', function(e) {
+      // ── Cancel pointer-hold targeting if active ──
+      // HTML5 drag and pointer-hold targeting are mutually exclusive.  Without
+      // this, the pointer-hold _maybeCollapseCombatUi velocity check (>=800px/s)
+      // can instantly minimize the STR window the moment drag starts.
+      if (_targeting.active) {
+        _targeting.active = false;
+        _targeting.cardIndex = -1;
+        _targeting.cardId = null;
+        _targeting.pointerId = null;
+        _clearTargetingVisuals(cardEl);
+      }
+      if (_targeting.holdTimer) {
+        clearTimeout(_targeting.holdTimer);
+        _targeting.holdTimer = null;
+      }
+
       // Track HTML5 drag for STR window auto-minimize
       _html5DragCollapse.active = true;
       _html5DragCollapse.collapsed = false;
       _html5DragCollapse.outsideMs = 0;
+
+      // Configure dataTransfer for clean drag feedback
+      try {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', card.id || ('card_' + index));
+      } catch (eDt) {}
 
       // ── Card lift-out: replace card with dotted placeholder, use clone as drag image ──
       _liftDrag.active = true;
@@ -1130,16 +1167,17 @@ const HandFanComponent = (function () {
       _liftDrag.originalWrapper = cardWrapper;
       _liftDrag.disposed = false;
 
-      // Create a scaled-down clone of the card for the drag ghost image
+      // Create a scaled-down clone of the card for the drag ghost image.
+      // The clone must be in the DOM and have layout for setDragImage to work.
+      // We clear inherited fan transforms (rotate, translateY) so the ghost
+      // renders as a clean, upright card at 85% scale.
       try {
         var ghost = cardWrapper.cloneNode(true);
-        ghost.style.position = 'absolute';
-        ghost.style.top = '-9999px';
-        ghost.style.left = '-9999px';
-        ghost.style.transform = 'scale(0.85)';
-        ghost.style.opacity = '0.9';
-        ghost.style.pointerEvents = 'none';
-        ghost.style.zIndex = '-1';
+        ghost.style.cssText = 'position:fixed; top:-9999px; left:-9999px; ' +
+          'transform:scale(0.85); opacity:0.9; pointer-events:none; z-index:-1; ' +
+          'margin-left:0; --fan-ty:0px; --fan-rot:0deg;';
+        // Strip any inherited fan transform from the clone's inline style
+        // (cardWrapper has translateY + rotate baked in)
         document.body.appendChild(ghost);
         _liftDrag.ghostClone = ghost;
 
@@ -1276,11 +1314,15 @@ const HandFanComponent = (function () {
         cardWrapper.style.opacity = '';
       }
 
+      // Capture deferred mode before clearing drag state
+      var deferred = _liftDrag.deferredMode;
+
       _liftDrag.active = false;
       _liftDrag.cardIndex = -1;
       _liftDrag.originalWrapper = null;
       _liftDrag.placeholder = null;
       _liftDrag.disposed = false;
+      _liftDrag.deferredMode = null;
 
       // Restore STR combat window if we collapsed it during this drag
       var wasCollapsed = _html5DragCollapse.collapsed;
@@ -1293,6 +1335,13 @@ const HandFanComponent = (function () {
         setTimeout(function() {
           try { STRCombatWindow.maximize(); } catch (e4) {}
         }, 600);
+      }
+
+      // Apply any deferred mode change that was queued during the drag
+      // (e.g. STR minimize called setMode('contextual','bottom') mid-drag).
+      // Now that drag state is cleaned up, the re-render is safe.
+      if (deferred) {
+        setMode(deferred.mode, deferred.position);
       }
     });
 
