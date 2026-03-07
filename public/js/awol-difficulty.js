@@ -20,6 +20,9 @@ const AWOLDifficulty = (function () {
   var _expandedTier = null; // Which tier row is expanded (null = none)
   var _completedTiers = []; // Internal completion gates (Tier 1 unlocks Tier 2, etc.)
 
+  // Phase 2: Pause state
+  var _isPaused = false;
+
   // Tier metadata
   var TIER_LABELS = {
     1: 'TRAILHEAD',
@@ -87,9 +90,17 @@ const AWOLDifficulty = (function () {
       return;
     }
 
-    // Toggle dropdown on button click
+    // Toggle dropdown on button click — but intercept pause icon clicks
     awolButton.addEventListener('click', function (e) {
       e.stopPropagation();
+
+      // Phase 2: If game is running, check if the pause icon was clicked
+      var pauseIcon = document.getElementById('awol-pause-icon');
+      if (_isGoneRogueActive() && pauseIcon && (e.target === pauseIcon || pauseIcon.contains(e.target))) {
+        _togglePause();
+        return;
+      }
+
       _toggleDropdown();
     });
 
@@ -171,6 +182,24 @@ const AWOLDifficulty = (function () {
     // Update tier row states
     _updateTierRows();
     _updateMRow();
+
+    // Phase 2: If game is running, show run-state dropdown (no launch, read-only seed)
+    if (_isGoneRogueActive()) {
+      dropdown.classList.add('awol-dropdown-running');
+
+      // Show seed read-only during run
+      var seedInput = document.getElementById('awol-seed-input');
+      if (seedInput) seedInput.setAttribute('readonly', 'readonly');
+
+      // Hide launch panel during run
+      var launchPanel = document.getElementById('awol-launch-panel');
+      if (launchPanel) launchPanel.style.display = 'none';
+    } else {
+      dropdown.classList.remove('awol-dropdown-running');
+
+      var seedInputIdle = document.getElementById('awol-seed-input');
+      if (seedInputIdle) seedInputIdle.removeAttribute('readonly');
+    }
 
     // If no tier is expanded and game isn't running, auto-expand the current tier
     if (!_expandedTier && !_isGoneRogueActive()) {
@@ -377,8 +406,10 @@ const AWOLDifficulty = (function () {
       GoneRogue.setSeed(seed);
     }
 
-    // Close dropdown
+    // Close dropdown and set to running state
     _hideDropdown();
+    _isPaused = false;
+    _setButtonState('running');
 
     // Start the game — same code path as terminal `rogue` command
     if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.start === 'function') {
@@ -437,12 +468,106 @@ const AWOLDifficulty = (function () {
            document.body.classList.contains('in-gone-rogue');
   }
 
-  function _onGameStateChange() {
-    _updateUI();
+  function _onGameStateChange(state) {
+    var active = _isGoneRogueActive();
 
-    // If game just ended, reset dropdown to idle state
-    if (!_isGoneRogueActive()) {
+    if (active && !_isPaused) {
+      // Game is running (either just started or resumed)
+      _setButtonState('running');
+    } else if (!active) {
+      // Game ended — reset to idle state
+      _isPaused = false;
       _expandedTier = null;
+      _setButtonState('idle');
+
+      // Remove paused class from grid if present
+      var grid = document.getElementById('rogue-grid-mobile');
+      if (grid) grid.classList.remove('paused');
+    }
+
+    _updateUI();
+  }
+
+  // ─── Phase 2: Pause / Resume ──────────────────────────────────
+
+  function _togglePause() {
+    if (!_isGoneRogueActive()) return;
+
+    if (_isPaused) {
+      _resumeGame();
+    } else {
+      _pauseGame();
+    }
+  }
+
+  function _pauseGame() {
+    if (_isPaused) return;
+    _isPaused = true;
+
+    // Stop the game loop
+    if (typeof GameLoop !== 'undefined' && typeof GameLoop.stop === 'function') {
+      GameLoop.stop();
+    }
+
+    // Dim the grid
+    var grid = document.getElementById('rogue-grid-mobile');
+    if (grid) grid.classList.add('paused');
+
+    _setButtonState('paused');
+    console.log('[AWOL] Game paused');
+  }
+
+  function _resumeGame() {
+    if (!_isPaused) return;
+    _isPaused = false;
+
+    // Resume the game loop
+    if (typeof GameLoop !== 'undefined' && typeof GameLoop.start === 'function') {
+      GameLoop.start();
+    }
+
+    // Un-dim the grid
+    var grid = document.getElementById('rogue-grid-mobile');
+    if (grid) grid.classList.remove('paused');
+
+    _setButtonState('running');
+    console.log('[AWOL] Game resumed');
+  }
+
+  /**
+   * Update AWOL button visual state: 'idle', 'running', or 'paused'
+   */
+  function _setButtonState(state) {
+    var awolButton = document.getElementById('awol-button');
+    var pauseIcon = document.getElementById('awol-pause-icon');
+    var dropdown = document.getElementById('awol-dropdown');
+    if (!awolButton) return;
+
+    // Clear all state classes
+    awolButton.classList.remove('awol-running', 'awol-paused');
+
+    if (state === 'running') {
+      awolButton.classList.add('awol-running');
+      if (pauseIcon) {
+        pauseIcon.style.display = 'inline';
+        pauseIcon.textContent = '\u23F8'; // ⏸
+        pauseIcon.title = 'Pause game';
+      }
+      if (dropdown) dropdown.classList.add('awol-dropdown-running');
+    } else if (state === 'paused') {
+      awolButton.classList.add('awol-paused');
+      if (pauseIcon) {
+        pauseIcon.style.display = 'inline';
+        pauseIcon.textContent = '\u25B6'; // ▶
+        pauseIcon.title = 'Resume game';
+      }
+      if (dropdown) dropdown.classList.add('awol-dropdown-running');
+    } else {
+      // idle
+      if (pauseIcon) {
+        pauseIcon.style.display = 'none';
+      }
+      if (dropdown) dropdown.classList.remove('awol-dropdown-running');
     }
   }
 
@@ -624,7 +749,12 @@ const AWOLDifficulty = (function () {
     init: init,
     getCurrentTier: getCurrentTier,
     markTierCompleted: markTierCompleted,
-    resetProgress: resetProgress
+    resetProgress: resetProgress,
+    // Phase 2
+    isPaused: function () { return _isPaused; },
+    pause: _pauseGame,
+    resume: _resumeGame,
+    togglePause: _togglePause
   };
 })();
 

@@ -77,6 +77,13 @@ var DeathExitSystem = (function () {
       causeStr = '// ENVIRONMENTAL HAZARD';
     }
 
+    // ── Phase C: Player Death Drops ──────────────────────────────
+    // Scatter the player's backup deck, equipped hand, and resources
+    // on the ground at their death location. Skip if bonfired (inventory
+    // persists death when bonfired; bonfires are not yet reachable so
+    // all floors currently save inventory state — that's intentional).
+    _scatterPlayerInventory(ctx);
+
     // Currency penalty preview
     var currencyBefore = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getCryptos) ? GAMESTATE.getCryptos() : 0;
     var currencyLost = Math.floor(currencyBefore * 0.5);
@@ -296,6 +303,147 @@ var DeathExitSystem = (function () {
   // ------------------------------------------------------------------
   // exitRogue — combat cleanup, summary screen, GAMESTATE teardown
   // ------------------------------------------------------------------
+  // ------------------------------------------------------------------
+  // _scatterPlayerInventory — Phase C death drops
+  //
+  // Gathers the player's equipped hand, backup deck, and consumable
+  // resources (ammo, battery), builds ground-drop objects, and scatters
+  // them around the player's death position via LootSpillSystem.
+  //
+  // Bonfire note: The ONLY thing that persists death when bonfired is
+  // the card vault (persistentCards). Everything else — equipped hand,
+  // backup deck, resources — is always lost and scattered on death.
+  // ------------------------------------------------------------------
+  var PLAYER_DROP_DECAY = 60000; // 60s — generous so items are visible during death screen
+
+  function _scatterPlayerInventory(ctx) {
+    if (typeof GAMESTATE === 'undefined') return;
+    if (typeof LootSpillSystem === 'undefined') return;
+
+    var px = ctx.player.x;
+    var py = ctx.player.y;
+
+    var pendingDrops = [];
+    var now = Date.now();
+
+    // ── 1. Equipped hand (cards in hand) ──
+    var hand = GAMESTATE.getCardsInHand ? GAMESTATE.getCardsInHand() : [];
+    for (var h = 0; h < hand.length; h++) {
+      var hRef = hand[h];
+      if (!hRef || !hRef.id) continue;
+
+      // Resolve card definition for display info
+      var hDef = null;
+      if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) {
+        try { hDef = GoneRogueDataRegistry.getCard(hRef.id); } catch (e) {}
+      }
+
+      pendingDrops.push({
+        x: px, y: py,
+        type: 'card',
+        card: hDef || { id: hRef.id, name: hRef.id, emoji: '🂠' },
+        cardRef: hRef,
+        _deathDrop: true,
+        spawnTime: now,
+        decayTime: PLAYER_DROP_DECAY
+      });
+    }
+
+    // ── 2. Backup deck ──
+    var backup = GAMESTATE.getBackupCards ? GAMESTATE.getBackupCards() : [];
+    for (var b = 0; b < backup.length; b++) {
+      var bRef = backup[b];
+      if (!bRef || !bRef.id) continue;
+
+      var bDef = null;
+      if (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getCard) {
+        try { bDef = GoneRogueDataRegistry.getCard(bRef.id); } catch (e) {}
+      }
+
+      pendingDrops.push({
+        x: px, y: py,
+        type: 'card',
+        card: bDef || { id: bRef.id, name: bRef.id, emoji: '🂠' },
+        cardRef: bRef,
+        _deathDrop: true,
+        spawnTime: now,
+        decayTime: PLAYER_DROP_DECAY
+      });
+    }
+
+    // ── 3. Resources: Ammo ──
+    var ammo = GAMESTATE.getAmmo ? GAMESTATE.getAmmo() : 0;
+    if (ammo > 0) {
+      pendingDrops.push({
+        x: px, y: py,
+        type: 'ammo',
+        amount: ammo,
+        emoji: '⁍',
+        name: 'Ammo (' + ammo + ')',
+        _deathDrop: true,
+        _isCurrency: true,
+        spawnTime: now,
+        decayTime: PLAYER_DROP_DECAY
+      });
+    }
+
+    // ── 4. Resources: Battery ──
+    var battery = GAMESTATE.getBattery ? GAMESTATE.getBattery() : 0;
+    if (battery > 0) {
+      pendingDrops.push({
+        x: px, y: py,
+        type: 'gem',
+        amount: battery,
+        glyph: '◈',
+        name: 'Battery Cell (' + battery + ')',
+        _deathDrop: true,
+        spawnTime: now,
+        decayTime: PLAYER_DROP_DECAY
+      });
+    }
+
+    // ── 5. Resources: Currency (visual only — penalty applied separately) ──
+    var cryptos = GAMESTATE.getCryptos ? GAMESTATE.getCryptos() : 0;
+    var currencyDrop = Math.floor(cryptos * 0.5); // Show 50% as scatter (matches penalty)
+    if (currencyDrop > 0) {
+      pendingDrops.push({
+        x: px, y: py,
+        amount: currencyDrop,
+        emoji: '💰',
+        glyph: '¢',
+        name: '¢' + currencyDrop,
+        _deathDrop: true,
+        _isCurrency: true,
+        spawnTime: now,
+        decayTime: PLAYER_DROP_DECAY
+      });
+    }
+
+    if (pendingDrops.length === 0) return;
+
+    console.log('[DeathExit] Scattering ' + pendingDrops.length + ' player death drops at (' + px + ',' + py + ')');
+
+    // ── Scatter via LootSpillSystem ──
+    LootSpillSystem.scatterItems(px, py, pendingDrops, ctx);
+
+    // ── Place items on ground ──
+    for (var d = 0; d < pendingDrops.length; d++) {
+      var drop = pendingDrops[d];
+      if (drop._isCurrency) {
+        delete drop._isCurrency;
+        if (typeof WorldItems !== 'undefined' && WorldItems.addCurrency) {
+          WorldItems.addCurrency(drop);
+        }
+      } else {
+        if (typeof WorldItems !== 'undefined' && WorldItems.addItem) {
+          WorldItems.addItem(drop);
+        } else if (ctx.items) {
+          ctx.items.push(drop);
+        }
+      }
+    }
+  }
+
   function exitRogue(success, ctx) {
     ctx.setActive(false);
     ctx.stopGameLoop();

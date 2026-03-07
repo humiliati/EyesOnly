@@ -1056,6 +1056,91 @@ body.in-gone-rogue .debrief-window.expanded {
   transform: scale(0.98);
 }
 
+/* ── Phase 2: Play/Pause Button Transform ────────────────────── */
+
+/* Pause icon (hidden by default, shown during run) */
+.awol-pause-icon {
+  display: none;
+  font-size: 12px;
+  margin-right: 4px;
+  cursor: pointer;
+  transition: color 0.15s;
+  line-height: 1;
+}
+.awol-pause-icon:hover {
+  color: #fff;
+  text-shadow: 0 0 6px rgba(51, 255, 51, 0.6);
+}
+
+/* Running state: button gains green accent + pause icon appears */
+.accountability-indicator.awol-running .awol-pause-icon {
+  display: inline;
+  color: #33ff33;
+}
+.accountability-indicator.awol-running {
+  border-color: rgba(51, 255, 51, 0.5);
+  box-shadow: 0 0 8px rgba(51, 255, 51, 0.15);
+}
+.accountability-indicator.awol-running .accountability-icon {
+  animation: awol-run-pulse 2s ease-in-out infinite;
+}
+@keyframes awol-run-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Paused state: ▶ resume icon, amber accent */
+.accountability-indicator.awol-paused .awol-pause-icon {
+  display: inline;
+  color: #ffaa00;
+}
+.accountability-indicator.awol-paused {
+  border-color: rgba(255, 170, 0, 0.5);
+  box-shadow: 0 0 8px rgba(255, 170, 0, 0.15);
+}
+.accountability-indicator.awol-paused .accountability-icon {
+  animation: none;
+  opacity: 0.4;
+}
+.accountability-indicator.awol-paused .accountability-label {
+  color: #ffaa00;
+}
+
+/* Dropdown during run: no launch button, seed read-only */
+.awol-dropdown.awol-dropdown-running .awol-launch-panel {
+  display: none !important;
+}
+.awol-dropdown.awol-dropdown-running .awol-seed-input {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* Run info row (shows current seed during run) */
+.awol-run-info {
+  padding: 6px 12px;
+  font-size: 11px;
+  color: #33ff33;
+  border-bottom: 1px solid rgba(51, 255, 51, 0.15);
+  font-family: 'Courier New', monospace;
+}
+.awol-run-info .awol-run-seed-label {
+  color: #666;
+  margin-right: 6px;
+}
+.awol-run-info .awol-run-seed-value {
+  color: #33ff33;
+}
+
+/* Mid-run note about when tier changes take effect */
+.awol-dropdown-note {
+  padding: 6px 12px;
+  font-size: 10px;
+  color: #ffaa00;
+  font-style: italic;
+  text-align: center;
+  border-top: 1px solid rgba(255, 170, 0, 0.15);
+}
+
 /* Inventory Grid Styles */
 .inventory-grid {
   background: var(--panel-bg);

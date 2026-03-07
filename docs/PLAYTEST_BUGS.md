@@ -23,3 +23,5 @@ Deliverable breakables with multiple contents shoud spread their contents out ac
 Problem: when an enemy is defeated (particularly tutorial test floors) its not clear if theyre giving any loot. At some point enemies had a loot popping function where the player has to chase it with corresponding items that magnetically attract collectibles. We want to ensure our entire enemy to loot pipeline stamps out enemies that have uniform loot spilling behavior into adjacent tiles after combat has resolved. If the player is defeated we need the player character to animate like a broken collectible and disappear, dropping their deck, equipped hand, currency, ammo, batteries, and their most recent picked up food emojis dramatically.
 
 Problem: floor 3 npc is not interactive
+Phase C of loot-spill-system.js (player death animation + backup deck, equipped hand, and resources scatter . inventory persists death only when bonfired (bonfires are not yet reachable so all floors are saving inventory state and that's ok))
+

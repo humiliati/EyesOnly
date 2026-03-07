@@ -1053,8 +1053,10 @@ var GoneRogue = (function () {
   // ── PlayerInteractionSystem delegation ──
   function _playerInteractionCtx() {
     return {
-      player: _player, grid: _grid, items: _items, enemies: _enemies,
-      currencies: _currencies, shops: _shops, tileMetadata: _tileMetadata,
+      player: _player, grid: _grid, enemies: _enemies,
+      shops: _shops, tileMetadata: _tileMetadata,
+      get items() { return _items; },
+      get currencies() { return _currencies; },
       TILES: TILES, GRID_WIDTH: GRID_WIDTH, GRID_HEIGHT: GRID_HEIGHT,
       get floor() { return _floor; },
       get playerInBox() { return _playerInBox; },
@@ -1140,7 +1142,8 @@ var GoneRogue = (function () {
   // ── PickupSystem delegation ──
   function _pickupCtx() {
     return {
-      player: _player, items: _items,
+      player: _player,
+      get items() { return _items; },
       renderGrid: _renderGrid, getPrompt: getPrompt,
       setLastPickupMessage: function(msg) { _lastPickupMessage = msg; },
       filterItems: function(item) {
