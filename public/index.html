@@ -91,6 +91,46 @@
             <span class="accountability-icon" id="accountability-icon">●</span>
             <span class="awol-chevron" id="awol-chevron">▾</span>
           </button>
+
+          <!-- AWOL Dropdown Launcher (must be inside .mok-header-right for absolute positioning) -->
+          <div id="awol-dropdown" class="awol-dropdown" style="display: none;">
+            <!-- M status row (shown when M console is connected) -->
+            <div class="awol-dropdown-row awol-m-row" id="awol-m-row" style="display: none;">
+              <span class="awol-m-label">M /ops:</span>
+              <span class="awol-m-value" id="m-status-value">OFFLINE</span>
+              <button class="awol-m-ping" id="awol-pingback-btn" type="button" disabled>[M] PING</button>
+            </div>
+
+            <!-- Tier rows -->
+            <div class="awol-dropdown-row awol-tier-row" data-tier="1" id="awol-tier-0">
+              <span class="awol-tier-arrow" id="awol-tier-0-arrow">▸</span>
+              <span class="awol-tier-label">TRAILHEAD</span>
+              <span class="awol-tier-rogue">ROGUE 0</span>
+            </div>
+            <div class="awol-dropdown-row awol-tier-row" data-tier="2" id="awol-tier-1">
+              <span class="awol-tier-arrow" id="awol-tier-1-arrow"></span>
+              <span class="awol-tier-label">BLACK OPS</span>
+              <span class="awol-tier-rogue">ROGUE 1</span>
+              <span class="awol-tier-lock" id="awol-tier-1-lock">🔒</span>
+            </div>
+            <div class="awol-dropdown-row awol-tier-row" data-tier="3" id="awol-tier-2">
+              <span class="awol-tier-arrow" id="awol-tier-2-arrow"></span>
+              <span class="awol-tier-label">BURN NOTICE</span>
+              <span class="awol-tier-rogue">ROGUE 2</span>
+              <span class="awol-tier-lock" id="awol-tier-2-lock">🔒</span>
+            </div>
+
+            <!-- Expandable seed + launch panel (hidden until tier row clicked) -->
+            <div class="awol-launch-panel" id="awol-launch-panel" style="display: none;">
+              <div class="awol-seed-row">
+                <label class="awol-seed-label" for="awol-seed-input">SEED:</label>
+                <input type="text" class="awol-seed-input" id="awol-seed-input"
+                       placeholder="adjective-noun-number" autocomplete="off" spellcheck="false">
+                <button class="awol-seed-randomize" id="awol-seed-randomize" type="button" title="Randomize seed">⟳</button>
+              </div>
+              <button class="awol-launch-btn" id="awol-launch-btn" type="button">▶ LAUNCH</button>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -232,45 +272,6 @@
               </div>
             </div>
 
-            <!-- AWOL Dropdown Launcher -->
-            <div id="awol-dropdown" class="awol-dropdown" style="display: none;">
-              <!-- M status row (shown when M console is connected) -->
-              <div class="awol-dropdown-row awol-m-row" id="awol-m-row" style="display: none;">
-                <span class="awol-m-label">M /ops:</span>
-                <span class="awol-m-value" id="m-status-value">OFFLINE</span>
-                <button class="awol-m-ping" id="awol-pingback-btn" type="button" disabled>[M] PING</button>
-              </div>
-
-              <!-- Tier rows -->
-              <div class="awol-dropdown-row awol-tier-row" data-tier="1" id="awol-tier-0">
-                <span class="awol-tier-arrow" id="awol-tier-0-arrow">▸</span>
-                <span class="awol-tier-label">TRAILHEAD</span>
-                <span class="awol-tier-rogue">ROGUE 0</span>
-              </div>
-              <div class="awol-dropdown-row awol-tier-row" data-tier="2" id="awol-tier-1">
-                <span class="awol-tier-arrow" id="awol-tier-1-arrow"></span>
-                <span class="awol-tier-label">BLACK OPS</span>
-                <span class="awol-tier-rogue">ROGUE 1</span>
-                <span class="awol-tier-lock" id="awol-tier-1-lock">🔒</span>
-              </div>
-              <div class="awol-dropdown-row awol-tier-row" data-tier="3" id="awol-tier-2">
-                <span class="awol-tier-arrow" id="awol-tier-2-arrow"></span>
-                <span class="awol-tier-label">BURN NOTICE</span>
-                <span class="awol-tier-rogue">ROGUE 2</span>
-                <span class="awol-tier-lock" id="awol-tier-2-lock">🔒</span>
-              </div>
-
-              <!-- Expandable seed + launch panel (hidden until tier row clicked) -->
-              <div class="awol-launch-panel" id="awol-launch-panel" style="display: none;">
-                <div class="awol-seed-row">
-                  <label class="awol-seed-label" for="awol-seed-input">SEED:</label>
-                  <input type="text" class="awol-seed-input" id="awol-seed-input"
-                         placeholder="adjective-noun-number" autocomplete="off" spellcheck="false">
-                  <button class="awol-seed-randomize" id="awol-seed-randomize" type="button" title="Randomize seed">⟳</button>
-                </div>
-                <button class="awol-launch-btn" id="awol-launch-btn" type="button">▶ LAUNCH</button>
-              </div>
-            </div>
           </section>
         </div>
       </div>
