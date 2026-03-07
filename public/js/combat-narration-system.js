@@ -49,7 +49,7 @@ var CombatNarrationSystem = (function() {
       } else if (gt === 'steam') {
         return '\u2668\uFE0F  you were hidden in steam'; // ♨️
       } else if (gt === 'oil') {
-        return '\uD83D\uDEE2\uFE0F  you were standing in an oil slick'; // 🛢️
+        return '💧 you were standing in an oil slick';
       }
     }
 

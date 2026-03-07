@@ -197,6 +197,29 @@
   animation: breakable-blink 0.2s ease-in-out;
 }
 
+/* Oil slick BLVCK droplet — dark pearlescent 💧 using joker greyed filter language.
+   Applied to ground-effect OIL tiles rendered as 💧 emoji.
+   Dark iridescent sheen: near-black with subtle rainbow shimmer on pulse. */
+.cell-oil-slick-blvck {
+  filter: grayscale(0.8) brightness(0.35) contrast(1.4) drop-shadow(0 0 2px rgba(40, 30, 50, 0.9));
+  animation: oil-slick-blvck-shimmer 3s ease-in-out infinite;
+}
+
+@keyframes oil-slick-blvck-shimmer {
+  0%, 100% {
+    filter: grayscale(0.8) brightness(0.35) contrast(1.4) drop-shadow(0 0 2px rgba(40, 30, 50, 0.9));
+    color: #1a1520;
+  }
+  33% {
+    filter: grayscale(0.6) brightness(0.4) contrast(1.3) hue-rotate(20deg) drop-shadow(0 0 3px rgba(60, 40, 80, 0.7));
+    color: #201828;
+  }
+  66% {
+    filter: grayscale(0.7) brightness(0.38) contrast(1.3) hue-rotate(-15deg) drop-shadow(0 0 3px rgba(30, 50, 40, 0.7));
+    color: #182018;
+  }
+}
+
 /* Explosive barrel idle pulse — gentle red-to-dark-red glow */
 .cell-explosive-idle {
   animation: explosive-idle-pulse 2s ease-in-out infinite;

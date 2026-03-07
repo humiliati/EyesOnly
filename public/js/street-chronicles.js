@@ -382,7 +382,12 @@ const StreetChronicles = (function () {
     return [''];
   }
 
+  // Direction parsing — now delegated to DirectionParser (single source of truth)
   function _parseDirection(input) {
+    if (typeof DirectionParser !== 'undefined') {
+      return DirectionParser.parseCardinal(input);
+    }
+    // Inline fallback
     if (/\b(n|north|forward|up)\b/.test(input)) return 'north';
     if (/\b(e|east|right)\b/.test(input)) return 'east';
     if (/\b(s|south|down|back)\b/.test(input)) return 'south';

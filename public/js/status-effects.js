@@ -137,7 +137,7 @@ const StatusEffects = (function () {
     OILED: {
       id: 'STAT_010',
       name: 'Oiled',
-      icon: '🛢️',
+      icon: '💧',
       category: CATEGORIES.ENV,
       defaultDuration: 99, // Until cleaned
       effects: {

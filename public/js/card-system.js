@@ -543,7 +543,7 @@ const CardSystem = (function () {
       category: 'setup',
       type: 'setup',
       name: 'Oil Slick',
-      emoji: '🛢️',
+      emoji: '💧',
       lifecycleType: 'disposable',
       baseStats: {
         range: 2,

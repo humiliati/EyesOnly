@@ -151,7 +151,7 @@ const TileAnimationSystem = (function() {
     '🌸': { speed: 0.95, name: 'Flower Clearing', healing: 1 },
     '🍄': { speed: 0.85, name: 'Mushroom Circle' },
     '🛍️': { speed: 0.90, name: 'Display Area' },
-    '🛢️': { speed: 0.70, name: 'Oil Slick', ignitable: true },
+    '💧': { speed: 0.70, name: 'Oil Slick', ignitable: true, cssClass: 'cell-oil-slick-blvck' },
 
     // Light source emojis (environmental)
     '🕯️': { speed: 1.0, name: 'Torch', kickable: true }, // Safe to walk on, can nudge
@@ -359,7 +359,7 @@ const TileAnimationSystem = (function() {
         var tile = grid[ny][nx];
 
         // Check if tile is oil
-        if (tile === '_' || tile === '🛢️') {
+        if (tile === '_' || tile === '💧') {
           newFires.push({ x: nx, y: ny });
         }
       }

@@ -124,7 +124,9 @@
         { "emoji": "💧", "name": "Water Cooler", "interact": "drink", "healing": 5 },
         { "emoji": "🥤", "name": "Vending Machine", "breakable": true, "hp": 4, "drops": ["drinks", "snacks"] },
         { "emoji": "🖥️", "name": "Server Rack", "interact": "hack", "effect": "reveals_map" },
-        { "emoji": "💻", "name": "Terminal", "breakable": true, "hp": 2, "drops": ["thumb_drive"], "glows": true, "lightType": "TERMINAL" }
+        { "emoji": "💻", "name": "Terminal", "breakable": true, "hp": 2, "drops": ["thumb_drive"], "glows": true, "lightType": "TERMINAL" },
+        { "emoji": "🗑️", "name": "Grey Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies", "coins"], "kickable": true, "noise": 1, "destroyedGlyph": "." },
+        { "emoji": "🛢️", "name": "Red Barrel", "breakable": true, "hp": 1, "blocksPath": true, "explosive": true, "blastRadius": 2.75, "blastDamage": [9, 25], "kickable": true, "noise": 4, "maxPerFloor": 3 }
       ],
       "interactiveObjects": [
         { "emoji": "💻", "name": "Terminal", "interact": "hack", "effects": ["map_reveal", "enemy_intel", "door_unlock", "transmission"] },
@@ -215,7 +217,7 @@
         { "char": "░", "weight": 3 }
       ],
       "props": [
-        { "emoji": "🛢️", "name": "Oil Drum", "breakable": true, "hp": 1, "explosive": true, "blastRadius": 2.75, "blastDamage": [9, 25], "kickable": true, "noise": 4, "ignitable": true, "maxPerFloor": 3 },
+        { "emoji": "🛢️", "name": "Red Barrel", "breakable": true, "hp": 1, "blocksPath": true, "explosive": true, "blastRadius": 2.75, "blastDamage": [9, 25], "kickable": true, "noise": 4, "maxPerFloor": 3 },
         { "emoji": "🗑️", "name": "Grey Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies", "coins"], "kickable": true, "noise": 1, "destroyedGlyph": "." },
         { "emoji": "⚡", "name": "Exposed Wiring", "breakable": false, "hazard": "electric" },
         { "emoji": "🔥", "name": "Vent Steam", "breakable": false, "hazard": "heat", "areadenial": true },
@@ -270,7 +272,9 @@
       "floorRange": [23, 30],
       "props": [
         { "emoji": "🚀", "name": "Rocket Scaffold", "breakable": false },
-        { "emoji": "✈️", "name": "Hanging Plane", "breakable": false }
+        { "emoji": "✈️", "name": "Hanging Plane", "breakable": false },
+        { "emoji": "🗑️", "name": "Grey Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies", "coins"], "kickable": true, "noise": 1, "destroyedGlyph": "." },
+        { "emoji": "🛢️", "name": "Red Barrel", "breakable": true, "hp": 1, "blocksPath": true, "explosive": true, "blastRadius": 2.75, "blastDamage": [9, 25], "kickable": true, "noise": 4, "maxPerFloor": 3 }
       ],
       "backgroundGradient": {
         "night": { "start": "#08080f", "end": "#0f0f1a" },

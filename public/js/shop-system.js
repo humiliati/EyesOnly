@@ -20,7 +20,10 @@ const ShopSystem = (function () {
   var _dimOverlay = null;
 
   // Configuration
-  var BONFIRE_FLOORS = [10, 16, 22]; // Standard shop floors (matching gone-rogue.js)
+  // Bonfire floors — now owned by BonfireFloorRegistry (single source of truth)
+  var BONFIRE_FLOORS = (typeof BonfireFloorRegistry !== 'undefined')
+    ? BonfireFloorRegistry.getFloors()
+    : [10, 16, 22];
   var BLACK_MARKET_CONFIG = {
     spawnChance: 0.18,
     guaranteedFloor: 6,

@@ -99,6 +99,15 @@ var RunStartSystem = (function() {
             LightingSystem.setConfig(lightingConfig);
             console.log('[GoneRogue] Lighting configuration loaded');
           }
+          // Hydrate biome data from registry (single source of truth: biomes.json)
+          if (typeof BiomeDataProvider !== 'undefined') {
+            var biomeData = GoneRogueDataRegistry.getBiomes();
+            if (biomeData) {
+              BiomeDataProvider.hydrate(biomeData);
+            } else {
+              console.warn('[GoneRogue] biomes.json not loaded — using BiomeDataProvider fallback');
+            }
+          }
         }).catch(function(err) {
           console.warn('[GoneRogue] Failed to load lighting config:', err);
         });

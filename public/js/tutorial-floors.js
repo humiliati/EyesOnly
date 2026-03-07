@@ -1090,8 +1090,8 @@ var TutorialFloors = (function() {
     breakables: [
       { x: 10, y: 9, emoji: '📦', name: 'Rotting Crate', hp: 1, drops: { currency: [5, 10] } },
       { x: 11, y: 9, emoji: '📦', name: 'Rotting Crate', hp: 1, drops: { currency: [5, 10] } },
-      { x: 28, y: 9, emoji: '🛢️', name: 'Rusted Barrel', hp: 1, drops: { currency: [3, 8] } },
-      { x: 29, y: 9, emoji: '🛢️', name: 'Rusted Barrel', hp: 1, drops: { currency: [3, 8] } },
+      { x: 28, y: 9, emoji: '🗑️', name: 'Old Barrel', hp: 2, drops: { currency: [3, 8] }, kickable: true, destroyedGlyph: '.' },
+      { x: 29, y: 9, emoji: '🗑️', name: 'Old Barrel', hp: 2, drops: { currency: [3, 8] }, kickable: true, destroyedGlyph: '.' },
       // Crates guarding the hammer alcove
       { x: 34, y: 1, emoji: '📦', name: 'Heavy Crate', hp: 2, drops: { currency: [5, 12] } },
       { x: 35, y: 1, emoji: '📦', name: 'Heavy Crate', hp: 2, drops: { currency: [5, 12] } }

@@ -20,7 +20,8 @@ var GoneRogueDataRegistry = (function() {
     buildings: [],
     enemyCards: [],
     enemyDecks: {},
-    lightingConfig: null
+    lightingConfig: null,
+    biomes: null
   };
 
   var _byId = {
@@ -155,7 +156,8 @@ var GoneRogueDataRegistry = (function() {
       _fetchJson(BASE + 'buildings.json').catch(function() { return []; }),
       _fetchJson(BASE + 'enemy-cards.json').catch(function() { return []; }),
       _fetchJson(BASE + 'enemy-decks.json').catch(function() { return {}; }),
-      _fetchJson(BASE + 'lighting-config.json').catch(function() { return null; })
+      _fetchJson(BASE + 'lighting-config.json').catch(function() { return null; }),
+      _fetchJson(BASE + 'biomes.json').catch(function() { return null; })
     ]).then(function(arr) {
       _db.items = Array.isArray(arr[0]) ? arr[0] : [];
       _db.cards = Array.isArray(arr[1]) ? arr[1] : [];
@@ -166,6 +168,7 @@ var GoneRogueDataRegistry = (function() {
       _db.enemyCards = Array.isArray(arr[6]) ? arr[6] : [];
       _db.enemyDecks = (arr[7] && typeof arr[7] === 'object' && !Array.isArray(arr[7])) ? arr[7] : {};
       _db.lightingConfig = (arr[8] && typeof arr[8] === 'object') ? arr[8] : null;
+      _db.biomes = (arr[9] && typeof arr[9] === 'object' && !Array.isArray(arr[9])) ? arr[9] : null;
 
       _index();
       _validateLightweight();
@@ -181,7 +184,8 @@ var GoneRogueDataRegistry = (function() {
         buildings: _db.buildings.length,
         enemyCards: _db.enemyCards.length,
         enemyDecks: Object.keys(_db.enemyDecks).filter(function(k) { return k !== '_schema'; }).length,
-        lightingConfig: _db.lightingConfig ? 1 : 0
+        lightingConfig: _db.lightingConfig ? 1 : 0,
+        biomes: _db.biomes ? Object.keys(_db.biomes).length : 0
       };
 
       if (typeof NonCombatEventBus !== 'undefined') {
@@ -360,6 +364,10 @@ var GoneRogueDataRegistry = (function() {
     return _db.lightingConfig;
   }
 
+  function getBiomes() {
+    return _db.biomes;
+  }
+
   function ready() {
     return load();
   }
@@ -393,6 +401,7 @@ var GoneRogueDataRegistry = (function() {
     listEnemyCards: listEnemyCards,
     getEnemyDeck: getEnemyDeck,
     listEnemyDeckTypes: listEnemyDeckTypes,
-    getLightingConfig: getLightingConfig
+    getLightingConfig: getLightingConfig,
+    getBiomes: getBiomes
   };
 })();

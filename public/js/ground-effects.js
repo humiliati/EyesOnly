@@ -31,7 +31,7 @@ const GroundEffects = (function () {
   // Ground effect definitions
   var GROUND_EFFECTS = {
     OIL: {
-      emoji: '🛢️',
+      emoji: '💧',
       char: '≈',
       color: '#4a3f35',
       movePenalty: 0.1,          // Slight movement slow
