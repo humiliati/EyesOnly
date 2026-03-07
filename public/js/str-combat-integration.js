@@ -645,6 +645,32 @@
    * advances → H. cards slide back → B.
    */
   function handleStrTimerExpired() {
+    // ── Guard: cancel any active card drag, auto-select the dragged card ──
+    if (typeof CardDragController !== 'undefined' &&
+        typeof CardDragController.isDragging === 'function' &&
+        CardDragController.isDragging()) {
+      var cdcState = (typeof CardDragController.getState === 'function') ? CardDragController.getState() : null;
+      var dragIdx = cdcState ? cdcState.cardIndex : null;
+      console.log('[STRIntegration] Timer expired mid-drag — cancelling drag, auto-selecting card idx=' + dragIdx);
+      if (typeof CardDragController.cancelDrag === 'function') {
+        CardDragController.cancelDrag();
+      }
+      if (dragIdx != null && typeof HandFanComponent !== 'undefined' &&
+          typeof HandFanComponent.selectCardByIndex === 'function') {
+        HandFanComponent.selectCardByIndex(dragIdx);
+      }
+      // Force-maximize STR if it was minimized during drag
+      if (typeof STRCombatWindow !== 'undefined' &&
+          typeof STRCombatWindow.isMinimized === 'function' &&
+          STRCombatWindow.isMinimized()) {
+        STRCombatWindow.maximize();
+      }
+      // Release mode lock
+      if (typeof HandFanComponent !== 'undefined') {
+        HandFanComponent._dragControllerOwnsMode = false;
+      }
+    }
+
     // ── 1. Apply player card effects (if any selected) ──
     var cardIds = [];
     if (typeof HandFanComponent !== 'undefined' &&

@@ -525,6 +525,16 @@ var CardDragController = (function() {
     }
 
     if (!dropped) {
+      // Auto-select the returned card so it counts for this round's resolution
+      if (_state.context === 'combat' && _state.cardIndex != null) {
+        try {
+          if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.selectCardByIndex === 'function') {
+            HandFanComponent.selectCardByIndex(_state.cardIndex);
+          }
+        } catch (e) {
+          console.warn('[CardDragController] endDrag: auto-select failed', e);
+        }
+      }
       // Return card to hand
       _state.phase = 'returning';
       _returnGhostToSlot(function() {

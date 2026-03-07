@@ -50,6 +50,13 @@ const HandFanComponent = (function () {
   var _maxVisibleCards = 5;
   var _cardOverlapPercent = 30; // 30% overlap for fan effect
 
+  // Helper: detect active STR combat (used to suppress fan during combat minimize)
+  function _isStrCombatActive() {
+    try {
+      return typeof GoneRogue !== 'undefined' && GoneRogue.isStrCombatActive && GoneRogue.isStrCombatActive();
+    } catch (e) { return false; }
+  }
+
   /**
    * Initialize the Hand Fan Component
    */
@@ -121,6 +128,15 @@ const HandFanComponent = (function () {
 
     // ── Legacy _liftDrag defer REMOVED (Phase 2) ──
     // CDC's _dragControllerOwnsMode flag above handles this case now.
+
+    // ── During STR combat minimize, the CH capsule handles display ──
+    // Don't show the fan at contextual/bottom position; hide it instead.
+    if (mode === 'contextual' && _isStrCombatActive()) {
+      _mode = mode;
+      _position = position;
+      if (_fanContainer) _fanContainer.style.display = 'none';
+      return;
+    }
 
     _mode = mode;
     _position = position;
@@ -237,9 +253,11 @@ const HandFanComponent = (function () {
     // Reset z-index layering so next show uses default center-on-top
     _topCardIndex = -1;
 
-    // Animate toward mini icon, then apply minimized class
+    // Animate toward mini icon, then apply minimized class and hide.
+    // CH capsule (NonCombatHUD) handles the minimized hand display.
     _animateCollapseToMiniIcon(function() {
       _fanContainer.classList.add('hand-fan-minimized');
+      _fanContainer.style.display = 'none';
     });
   }
 
@@ -251,12 +269,15 @@ const HandFanComponent = (function () {
    * Restore hand from minimized state
    */
   function restore() {
+    if (!_fanContainer) return;
     _fanContainer.classList.remove('hand-fan-minimized');
     _fanContainer.classList.remove('hand-fan-collapsing');
     // Force-clear any residual transform/opacity from the `forwards`-filled
     // CSS animation or the Web Animations API collapse.
     _fanContainer.style.transform = '';
     _fanContainer.style.opacity = '';
+    _fanContainer.style.pointerEvents = '';
+    _fanContainer.style.display = 'flex';
   }
 
   /**
@@ -443,11 +464,15 @@ const HandFanComponent = (function () {
 
     // Rotation angle (degrees)
     var maxRotation = 8; // Maximum rotation at edges
-    var rotation = offset * (maxRotation / centerIndex);
-
-    // Vertical offset (pixels) - creates arc
-    var maxVerticalOffset = 15;
-    var verticalOffset = Math.abs(offset) * (maxVerticalOffset / centerIndex);
+    // Guard: single card (total=1) → centerIndex=0 → avoid division by zero (NaN)
+    var rotation = 0;
+    var verticalOffset = 0;
+    if (centerIndex > 0) {
+      rotation = offset * (maxRotation / centerIndex);
+      // Vertical offset (pixels) - creates arc
+      var maxVerticalOffset = 15;
+      verticalOffset = Math.abs(offset) * (maxVerticalOffset / centerIndex);
+    }
 
     // Horizontal offset for overlap
     var baseWidth = 120; // Card width in px
@@ -836,6 +861,19 @@ const HandFanComponent = (function () {
       _tooltipDwellCancel();
       _hideCardTooltip();
     });
+  }
+
+  /**
+   * Programmatically select a card by index (no toggle — select only).
+   * Used by CardDragController to auto-select a card returned from invalid drop.
+   * @param {number} index - Card index in current hand
+   */
+  function selectCardByIndex(index) {
+    if (index == null || index < 0) return;
+    if (_selectedCards.indexOf(index) !== -1) return; // already selected
+    if (_selectedCards.length >= 5) return; // at max
+    _selectedCards.push(index);
+    _renderCards();
   }
 
   /**
@@ -1569,17 +1607,19 @@ const HandFanComponent = (function () {
       });
 
       anim.onfinish = function() {
-        // Persist end state as inline styles (replaces fill:'forwards')
-        _fanContainer.style.transform = 'translate(' + tx.toFixed(1) + 'px,' + ty.toFixed(1) + 'px) scale(0.15)';
-        _fanContainer.style.opacity = '0.2';
+        // Persist end state then HIDE — CH capsule handles minimized display.
+        _fanContainer.style.transform = '';
+        _fanContainer.style.opacity = '';
         _fanContainer.style.pointerEvents = 'none';
+        _fanContainer.style.display = 'none';
         _slidState = 'away';
         if (done) done();
       };
     } catch (e) {
-      _fanContainer.style.transform = 'scale(0.15)';
-      _fanContainer.style.opacity = '0.2';
+      _fanContainer.style.transform = '';
+      _fanContainer.style.opacity = '';
       _fanContainer.style.pointerEvents = 'none';
+      _fanContainer.style.display = 'none';
       _slidState = 'away';
       if (done) done();
     }
@@ -1598,6 +1638,7 @@ const HandFanComponent = (function () {
     // AND clear inline styles that slideAway baked in.
     try { _fanContainer.getAnimations().forEach(function(a) { a.cancel(); }); } catch (e) {}
     _fanContainer.style.pointerEvents = '';
+    _fanContainer.style.display = 'flex'; // Restore visibility (slideAway hides it)
 
     // Read the CSS-class transform so keyframes keep the fan centered.
     // In combat mode _positionRelativeToStrWindow sets translate(-50%,-50%)
@@ -1697,6 +1738,7 @@ const HandFanComponent = (function () {
     slideBack: slideBack,
     getSlideState: getSlideState,
     cancelActiveDrag: cancelActiveDrag,
+    selectCardByIndex: selectCardByIndex,
     _dragControllerOwnsMode: false  // set by CardDragController during pointer-drag minimize
   };
 })();
