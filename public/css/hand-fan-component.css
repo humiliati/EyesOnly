@@ -1002,3 +1002,24 @@
          mode, so it moves with the STR window on landscape panels.
 
    ============================================================ */
+
+/* ============================================================
+   CardDragController — tap-target accessibility highlights
+   ============================================================ */
+
+.cdc-tap-target-valid {
+  outline: 2px dashed rgba(28, 255, 155, 0.6) !important;
+  outline-offset: 3px;
+  animation: cdc-target-pulse 1.5s ease-in-out infinite;
+}
+
+.cdc-tap-target-active {
+  outline: 3px solid #1cff9b !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 12px rgba(28, 255, 155, 0.5);
+}
+
+@keyframes cdc-target-pulse {
+  0%, 100% { outline-color: rgba(28, 255, 155, 0.6); }
+  50% { outline-color: rgba(28, 255, 155, 0.2); }
+}

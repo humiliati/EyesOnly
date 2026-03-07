@@ -22,7 +22,9 @@ var CardTransferManager = (function() {
   var _dropZones = [];
 
   /**
-   * Register a drop zone.
+   * Register a drop zone (data store only — HTML5 drag listeners removed in Phase 3).
+   * Zone data is kept for factory-based lookups; actual drag is handled by
+   * CardDragController pointer events or component-level pointer handlers.
    * @param {HTMLElement} element
    * @param {string} id - e.g. 'hand-fan', 'backup-halo', 'backup-leftcol', 'map', 'vault'
    * @param {Function} accepts - fn(drag) → bool
@@ -31,46 +33,8 @@ var CardTransferManager = (function() {
   function registerDropZone(element, id, accepts, onDrop) {
     if (!element) return;
     _dropZones.push({ element: element, id: id, accepts: accepts, onDrop: onDrop });
-
-    // Standard HTML5 drag events
-    element.addEventListener('dragover', function(e) {
-      if (!_drag) return;
-      var zone = _findZone(element);
-      if (zone && zone.accepts(_drag)) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        element.classList.add('ctm-drop-highlight');
-      }
-    });
-
-    element.addEventListener('dragleave', function(e) {
-      element.classList.remove('ctm-drop-highlight');
-    });
-
-    element.addEventListener('drop', function(e) {
-      e.preventDefault();
-      element.classList.remove('ctm-drop-highlight');
-      if (!_drag) {
-        // Try to reconstruct from dataTransfer
-        try {
-          var data = JSON.parse(e.dataTransfer.getData('text/plain'));
-          if (data && data.source && data.cardId !== undefined) {
-            _drag = {
-              source: data.source,
-              index: data.index,
-              cardId: data.cardId,
-              cardRef: data
-            };
-          }
-        } catch (err) {}
-      }
-      if (!_drag) return;
-      var zone = _findZone(element);
-      if (zone && zone.accepts(_drag)) {
-        zone.onDrop(_drag, e);
-      }
-      _drag = null;
-    });
+    // NOTE: HTML5 dragover/dragleave/drop listeners removed (Phase 3).
+    // Pointer-based drag is handled by CardDragController or component-level handlers.
   }
 
   function _findZone(el) {
@@ -98,6 +62,8 @@ var CardTransferManager = (function() {
 
   /**
    * Begin a drag operation. Source components call this on pointerdown/dragstart.
+   * NOTE: In Phase 3+, this only stores state for component-level pointer handlers.
+   * CardDragController handles the actual drag lifecycle for hand-fan drags.
    * @param {object} dragInfo - { source: 'hand'|'backup'|'vault', index: number, cardId: string, cardRef: object }
    */
   function startDrag(dragInfo) {
@@ -105,17 +71,13 @@ var CardTransferManager = (function() {
   }
 
   /**
-   * Cancel current drag.
+   * Cancel current drag. Cleans up ghost element if present.
    */
   function cancelDrag() {
     if (_drag && _drag.ghostEl) {
       try { _drag.ghostEl.remove(); } catch (e) {}
     }
     _drag = null;
-    // Remove all highlights
-    for (var i = 0; i < _dropZones.length; i++) {
-      try { _dropZones[i].element.classList.remove('ctm-drop-highlight'); } catch (e2) {}
-    }
   }
 
   function getActiveDrag() {

@@ -238,6 +238,30 @@
     var first  = playerFirst ? 'player' : 'enemy';
     var second = playerFirst ? 'enemy'  : 'player';
 
+    // ── Resolution guards (Phase 5.1) ──
+    // Cancel any active drag so the fan is in a clean, settled state
+    if (typeof CardDragController !== 'undefined' && typeof CardDragController.cancelDrag === 'function') {
+      CardDragController.cancelDrag();
+    }
+    if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.cancelActiveDrag === 'function') {
+      HandFanComponent.cancelActiveDrag();
+    }
+
+    // Force-maximize STR window if it was minimized (e.g. timer expired while browsing map)
+    if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.isMinimized === 'function' && STRCombatWindow.isMinimized()) {
+      // Synchronously flip state so maximize() actually runs
+      STRCombatWindow.maximize();
+      // Restore fan to combat/centered (maximize already does this, but belt-and-suspenders)
+      if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.setMode === 'function') {
+        HandFanComponent.setMode('combat', 'centered');
+      }
+    }
+
+    // Ensure fan is visible and restored before the slide-away animation
+    if (typeof HandFanComponent !== 'undefined') {
+      if (typeof HandFanComponent.restore === 'function') HandFanComponent.restore();
+    }
+
     // Step 1: slide hand fan away
     HandFanComponent.slideAway(function afterSlide() {
 

@@ -43,24 +43,8 @@ const HandFanComponent = (function () {
     moveHandler: null     // reference for cleanup
   };
 
-  // HTML5-drag STR combat minimize state
-  var _html5DragCollapse = {
-    active: false,    // true while an HTML5 drag is in progress
-    collapsed: false, // true if we minimized the STR window during this drag
-    outsideMs: 0,     // timestamp when pointer first exited STR window
-    dwellThreshold: 400 // ms the pointer must stay outside before we minimize
-  };
-
-  // Card lift-out drag state: tracks the lifted card, its placeholder, and the ghost clone
-  var _liftDrag = {
-    active: false,
-    cardIndex: -1,
-    originalWrapper: null,   // the real card wrapper element (hidden during drag)
-    placeholder: null,       // dotted outline element inserted in its place
-    ghostClone: null,        // off-screen clone used as setDragImage source
-    disposed: false,         // true if the card was deployed/incinerated/discarded during this drag
-    deferredMode: null       // { mode, position } deferred until dragend to prevent re-render mid-drag
-  };
+  // ── Legacy drag state DELETED (Phase 3) ──
+  // _html5DragCollapse and _liftDrag fully removed. All drag state lives in CardDragController.
 
   // Configuration
   var _maxVisibleCards = 5;
@@ -124,19 +108,19 @@ const HandFanComponent = (function () {
       return;
     }
 
-    // ── Defer mode change during active HTML5 drag ──
-    // When STR minimizes mid-drag it calls setMode('contextual','bottom').
-    // A full _renderCards() would destroy the placeholder, hidden card wrapper,
-    // and ghost — collapsing the drag state and showing cards as a bottom bar
-    // (the "BLVCK bar" bug).  Save the mode change for dragend instead.
-    if (_liftDrag.active) {
-      _liftDrag.deferredMode = { mode: mode, position: position };
-      // Still update internal state so queries return the right mode,
-      // but do NOT rebuild DOM or reposition the fan.
+    // ── Block mode change when CardDragController owns positioning ──
+    // When CDC minimizes STR during a pointer-drag, it sets this flag to
+    // prevent the resulting setMode('contextual','bottom') from destroying
+    // the fan layout.  The fan stays in combat position with the placeholder
+    // visible; CDC will release the lock on drag finalization.
+    if (HandFanComponent._dragControllerOwnsMode) {
       _mode = mode;
       _position = position;
       return;
     }
+
+    // ── Legacy _liftDrag defer REMOVED (Phase 2) ──
+    // CDC's _dragControllerOwnsMode flag above handles this case now.
 
     _mode = mode;
     _position = position;
@@ -519,12 +503,8 @@ const HandFanComponent = (function () {
       cardWrapper.appendChild(cardEl);
     }
 
-    // Enable HTML5 drag for disposal system
-    // BLVCK (ACT-000) struggle card cannot be dragged — it's a non-removable fallback
-    var _isBlvckCard = (card && (card.id === 'ACT-000' || card.name === 'BLVCK'));
-    if (!_isBlvckCard) {
-      cardWrapper.setAttribute('draggable', 'true');
-    }
+    // HTML5 draggable REMOVED (Phase 2) — all drag is pointer-based via CardDragController.
+    // BLVCK (ACT-000) guard is now in the CDC pointerdown handler (unaffordable check).
 
     // Apply fan transformation (combat-specific geometry)
     _applyFanTransform(cardWrapper, index, _cards.length);
@@ -737,219 +717,11 @@ const HandFanComponent = (function () {
     if (cardEl) cardEl.classList.remove('hand-card-targeting');
   }
 
-  function _beginHoldTargeting(cardEl, index, pointerId) {
-    _targeting.active = true;
-    _targeting.cardIndex = index;
-    _targeting.cardId = (_cards && _cards[index] && _cards[index].id) ? _cards[index].id : null;
-    _targeting.pointerId = pointerId;
-    _targeting.startedAt = Date.now();
-
-    var dragCollapse = {
-      collapsed: false,
-      prevX: null,
-      prevY: null,
-      prevT: null
-    };
-
-    cardEl.classList.add('hand-card-targeting');
-    try { document.body.style.cursor = 'crosshair'; } catch (e) {}
-    _setEnemyHoverState(true, false);
-
-    function _maybeCollapseCombatUi(ev) {
-      if (typeof STRCombatWindow === 'undefined' || typeof STRCombatWindow.isMinimized !== 'function') return;
-
-      // Only collapse if the pointer exits the combat window bounds meaningfully.
-      var win = document.getElementById('str-combat-window');
-      if (!win) return;
-      var rect = win.getBoundingClientRect();
-
-      var dxOut = 0;
-      var dyOut = 0;
-      if (ev.clientX < rect.left) dxOut = rect.left - ev.clientX;
-      else if (ev.clientX > rect.right) dxOut = ev.clientX - rect.right;
-      if (ev.clientY < rect.top) dyOut = rect.top - ev.clientY;
-      else if (ev.clientY > rect.bottom) dyOut = ev.clientY - rect.bottom;
-
-      var outDist = Math.max(dxOut, dyOut);
-      var threshold = Math.round(Math.min(rect.width, rect.height) * 0.15);
-
-      // Velocity supplement
-      var now = Date.now();
-      var speed = 0;
-      if (dragCollapse.prevT != null) {
-        var dt = Math.max(1, now - dragCollapse.prevT);
-        var ddx = ev.clientX - dragCollapse.prevX;
-        var ddy = ev.clientY - dragCollapse.prevY;
-        var dist = Math.sqrt(ddx * ddx + ddy * ddy);
-        speed = (dist / dt) * 1000;
-      }
-      dragCollapse.prevX = ev.clientX;
-      dragCollapse.prevY = ev.clientY;
-      dragCollapse.prevT = now;
-
-      var fastExit = speed >= 800;
-      var exited = outDist >= threshold;
-
-      if (!dragCollapse.collapsed && (exited || fastExit)) {
-        // Collapse only when exiting toward the world/map area (avoid collapsing toward random UI)
-        var grid = document.getElementById('rogue-grid');
-        if (grid) {
-          var g = grid.getBoundingClientRect();
-          var towardGrid = (ev.clientX >= g.left && ev.clientX <= g.right && ev.clientY >= g.top && ev.clientY <= g.bottom);
-          if (towardGrid) {
-            STRCombatWindow.minimize();
-            dragCollapse.collapsed = true;
-          }
-        } else {
-          // If we don't have a grid element, still allow collapse (better than blocking drag)
-          STRCombatWindow.minimize();
-          dragCollapse.collapsed = true;
-        }
-      }
-    }
-
-    // Attach global listeners until release/cancel
-    function onMove(ev) {
-      if (!_targeting.active) return;
-      if (ev.pointerId != null && _targeting.pointerId != null && ev.pointerId !== _targeting.pointerId) return;
-
-      _maybeCollapseCombatUi(ev);
-
-      var overEnemy = _isEnemyUnderPointer(ev.clientX, ev.clientY);
-      _setEnemyHoverState(true, overEnemy);
-
-      // AOE preview for map-deployable cards
-      _scheduleAoePreviewUpdate(ev.clientX, ev.clientY, index);
-    }
-
-    function onUp(ev) {
-      if (!_targeting.active) return;
-      if (ev.pointerId != null && _targeting.pointerId != null && ev.pointerId !== _targeting.pointerId) return;
-
-      var overEnemy = _isEnemyUnderPointer(ev.clientX, ev.clientY);
-      var idx = _targeting.cardIndex;
-      var draggedCardId = _targeting.cardId;
-      _targeting.active = false;
-      _targeting.cardIndex = -1;
-      _targeting.cardId = null;
-      _targeting.pointerId = null;
-
-      window.removeEventListener('pointermove', onMove, true);
-      window.removeEventListener('pointerup', onUp, true);
-      window.removeEventListener('pointercancel', onCancel, true);
-
-      _clearTargetingVisuals(cardEl);
-
-      var didDeployGroundEffect = false;
-
-      // Release over enemy = play immediately (canonical hook)
-      if (overEnemy && typeof GoneRogue !== 'undefined') {
-        var c = _cards && _cards[idx] ? _cards[idx] : null;
-        if (c && c.id && typeof GoneRogue.playCardFromHand === 'function') {
-          GoneRogue.playCardFromHand(c.id);
-          return;
-        }
-        // Legacy indices-based combat path removed; keep id-based only.
-        return;
-      }
-
-      // Drag-to-map ground effects (v1): if released over a grid cell while STR UI is minimized/collapsed
-      try {
-        var elAt = document.elementFromPoint(ev.clientX, ev.clientY);
-        var cell = elAt ? elAt.closest && elAt.closest('.rogue-cell') : null;
-        if (cell && cell.dataset && cell.dataset.x != null && cell.dataset.y != null) {
-          var gx = Number(cell.dataset.x);
-          var gy = Number(cell.dataset.y);
-
-          var mapping = (typeof GroundEffectCardMappings !== 'undefined' && GroundEffectCardMappings.getMappingForCard) ? GroundEffectCardMappings.getMappingForCard(_cards[idx]) : null;
-          if (mapping && typeof GroundEffects !== 'undefined' && typeof GroundEffects.setGroundEffect === 'function') {
-            var overrides = {};
-            if (mapping.lifetimeSec && mapping.lifetimeSec > 0) {
-              overrides.dissipates = true;
-              overrides.lifetime = mapping.lifetimeSec;
-            }
-
-            // Radius v1: apply to a square radius (designer can tune later)
-            var r = Number(mapping.radius || 0);
-            for (var dy = -r; dy <= r; dy++) {
-              for (var dx = -r; dx <= r; dx++) {
-                var tx = gx + dx;
-                var ty = gy + dy;
-
-                // ICE gate: freeze water/toxic waste into ice for locomotive passability
-                if (mapping.type === 'ICE' && typeof GroundEffects.freezeAt === 'function') {
-                  GroundEffects.freezeAt(tx, ty, { lifetime: mapping.lifetimeSec });
-                } else {
-                  GroundEffects.setGroundEffect(tx, ty, mapping.type, overrides);
-                }
-              }
-            }
-
-            // Consume the dragged card by id (safer than index; hand can mutate
-            // during drag due to round resolution / repopulate).
-            if (draggedCardId && typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getLooseInventory === 'function') {
-              var loose = GAMESTATE.getLooseInventory();
-              if (Array.isArray(loose)) {
-                var removeAt = -1;
-                for (var li = 0; li < loose.length; li++) {
-                  if (loose[li] && loose[li].id === draggedCardId) { removeAt = li; break; }
-                }
-                if (removeAt !== -1) {
-                  loose.splice(removeAt, 1);
-                  if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.updateCards === 'function') {
-                    HandFanComponent.updateCards(loose);
-                  }
-                }
-              }
-            }
-
-            if (typeof TooltipSystem !== 'undefined') {
-              TooltipSystem.showPersistent('🌋 DEPLOYED ' + (mapping.type || 'EFFECT') + ' @(' + gx + ',' + gy + ')', 1300);
-            }
-
-            didDeployGroundEffect = true;
-          }
-        }
-      } catch (e) {}
-
-      // Restore full combat window if we collapsed it during this drag.
-      // If we deployed a ground effect, leave the window minimized briefly so
-      // the player can see the map feedback/animation, then pop STR back.
-      if (dragCollapse.collapsed && typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.maximize === 'function') {
-        if (didDeployGroundEffect) {
-          setTimeout(function() {
-            try { STRCombatWindow.maximize(); } catch (e4) {}
-          }, 750);
-        } else {
-          STRCombatWindow.maximize();
-        }
-      }
-    }
-
-    function onCancel(ev) {
-      if (!_targeting.active) return;
-      if (ev.pointerId != null && _targeting.pointerId != null && ev.pointerId !== _targeting.pointerId) return;
-
-      _targeting.active = false;
-      _targeting.cardIndex = -1;
-      _targeting.cardId = null;
-      _targeting.pointerId = null;
-
-      window.removeEventListener('pointermove', onMove, true);
-      window.removeEventListener('pointerup', onUp, true);
-      window.removeEventListener('pointercancel', onCancel, true);
-
-      _clearTargetingVisuals(cardEl);
-
-      if (dragCollapse.collapsed && typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.maximize === 'function') {
-        STRCombatWindow.maximize();
-      }
-    }
-
-    window.addEventListener('pointermove', onMove, true);
-    window.addEventListener('pointerup', onUp, true);
-    window.addEventListener('pointercancel', onCancel, true);
-  }
+  // ── _beginHoldTargeting REMOVED (Phase 2) ──
+  // All targeting/drag logic now lives in CardDragController.
+  // Enemy targeting = 'enemy-avatar' drop zone.
+  // Ground effect deployment = 'map-grid' drop zone.
+  // STR minimize/maximize = CardDragController._handleStrCollapseLogic.
 
   function _attachCardHandlers(cardEl, card, index) {
     // Click to select/deselect (only if affordable)
@@ -1011,51 +783,66 @@ const HandFanComponent = (function () {
       _toggleCardSelection(index);
     });
 
-    // Press-and-hold targeting (enemy default)
+    // ── Unified pointer-drag via CardDragController (Phase 2) ──
+    // Replaces the old press-and-hold targeting system.
+    // Tap (<10px movement) = toggle selection.
+    // Drag (>10px movement) = enter CardDragController drag mode.
     cardEl.addEventListener('pointerdown', function(e) {
       if (_isAnimating) {
-        // Don't drop the first click during repopulate; queue a selection.
-        // Also suppress the follow-on click event to avoid double-toggling.
         try { cardEl.dataset.lastPtrSelectTs = String(Date.now()); } catch (e0) {}
         _toggleCardSelection(index);
         return;
       }
 
-      // Only enable this behavior during STR combat mode
+      // Only enable drag during STR combat mode
       if (_mode !== 'combat') return;
-
-      // Don't start targeting if card is unaffordable
       if (cardEl.dataset.unaffordable === 'true') return;
-
-      // Only primary button
       if (e && e.button != null && e.button !== 0) return;
 
-      // Setup hold timer
-      if (_targeting.holdTimer) {
-        clearTimeout(_targeting.holdTimer);
-        _targeting.holdTimer = null;
-      }
+      // Guard: CardDragController must be loaded
+      if (typeof CardDragController === 'undefined' || !CardDragController.isEnabled()) return;
 
+      var startX = e.clientX, startY = e.clientY;
       var pointerId = e.pointerId;
-      _targeting.pointerId = pointerId;
-      _targeting.holdTimer = setTimeout(function() {
-        _targeting.holdTimer = null;
-        _beginHoldTargeting(cardEl, index, pointerId);
-      }, _targeting.holdMs);
+      var dragStarted = false;
 
-      // If user releases quickly, cancel timer (tap will be handled by click)
-      function cleanup(ev) {
-        if (ev.pointerId != null && pointerId != null && ev.pointerId !== pointerId) return;
-        if (_targeting.holdTimer) {
-          clearTimeout(_targeting.holdTimer);
-          _targeting.holdTimer = null;
+      function onMove(ev) {
+        if (ev.pointerId !== pointerId) return;
+        var dx = ev.clientX - startX;
+        var dy = ev.clientY - startY;
+        if (!dragStarted && Math.sqrt(dx * dx + dy * dy) > 10) {
+          dragStarted = true;
+          CardDragController.beginDrag(cardEl, index, card, 'hand-fan', e);
         }
-        window.removeEventListener('pointerup', cleanup, true);
-        window.removeEventListener('pointercancel', cleanup, true);
+        if (dragStarted) {
+          CardDragController.updateDrag(ev);
+        }
       }
 
-      window.addEventListener('pointerup', cleanup, true);
-      window.addEventListener('pointercancel', cleanup, true);
+      function onUp(ev) {
+        if (ev.pointerId !== pointerId) return;
+        cdcCleanup();
+        if (dragStarted) {
+          CardDragController.endDrag(ev);
+        }
+        // If not dragged, the click handler above handles selection toggle
+      }
+
+      function onCancel(ev) {
+        if (ev.pointerId !== pointerId) return;
+        cdcCleanup();
+        if (dragStarted) CardDragController.cancelDrag();
+      }
+
+      function cdcCleanup() {
+        window.removeEventListener('pointermove', onMove, true);
+        window.removeEventListener('pointerup', onUp, true);
+        window.removeEventListener('pointercancel', onCancel, true);
+      }
+
+      window.addEventListener('pointermove', onMove, true);
+      window.addEventListener('pointerup', onUp, true);
+      window.addEventListener('pointercancel', onCancel, true);
     });
 
     // Touch handlers
@@ -1129,221 +916,10 @@ const HandFanComponent = (function () {
       });
     })();
 
-    // Drag handlers for disposal system and commerce
-    // Listen on cardWrapper (which has draggable="true") — dragstart fires on the draggable element
-    var cardWrapper = cardEl.parentElement;
-    if (!cardWrapper) return;
-    cardWrapper.addEventListener('dragstart', function(e) {
-      // ── Cancel pointer-hold targeting if active ──
-      // HTML5 drag and pointer-hold targeting are mutually exclusive.  Without
-      // this, the pointer-hold _maybeCollapseCombatUi velocity check (>=800px/s)
-      // can instantly minimize the STR window the moment drag starts.
-      if (_targeting.active) {
-        _targeting.active = false;
-        _targeting.cardIndex = -1;
-        _targeting.cardId = null;
-        _targeting.pointerId = null;
-        _clearTargetingVisuals(cardEl);
-      }
-      if (_targeting.holdTimer) {
-        clearTimeout(_targeting.holdTimer);
-        _targeting.holdTimer = null;
-      }
-
-      // Track HTML5 drag for STR window auto-minimize
-      _html5DragCollapse.active = true;
-      _html5DragCollapse.collapsed = false;
-      _html5DragCollapse.outsideMs = 0;
-
-      // Configure dataTransfer for clean drag feedback
-      try {
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', card.id || ('card_' + index));
-      } catch (eDt) {}
-
-      // ── Card lift-out: replace card with dotted placeholder, use clone as drag image ──
-      _liftDrag.active = true;
-      _liftDrag.cardIndex = index;
-      _liftDrag.originalWrapper = cardWrapper;
-      _liftDrag.disposed = false;
-
-      // Create a scaled-down clone of the card for the drag ghost image.
-      // The clone must be in the DOM and have layout for setDragImage to work.
-      // We clear inherited fan transforms (rotate, translateY) so the ghost
-      // renders as a clean, upright card at 85% scale.
-      try {
-        var ghost = cardWrapper.cloneNode(true);
-        ghost.style.cssText = 'position:fixed; top:-9999px; left:-9999px; ' +
-          'transform:scale(0.85); opacity:0.9; pointer-events:none; z-index:-1; ' +
-          'margin-left:0; --fan-ty:0px; --fan-rot:0deg;';
-        // Strip any inherited fan transform from the clone's inline style
-        // (cardWrapper has translateY + rotate baked in)
-        document.body.appendChild(ghost);
-        _liftDrag.ghostClone = ghost;
-
-        if (e.dataTransfer && e.dataTransfer.setDragImage) {
-          var cardInner = cardWrapper.querySelector('.hand-card');
-          var w = cardInner ? cardInner.offsetWidth : 100;
-          var h = cardInner ? cardInner.offsetHeight : 140;
-          e.dataTransfer.setDragImage(ghost, Math.round(w * 0.42), Math.round(h * 0.5));
-        }
-      } catch (eGhost) {
-        // Fallback: browser default ghost
-      }
-
-      // Insert dotted placeholder where the card was
-      var ph = document.createElement('div');
-      ph.className = 'hand-card-drag-placeholder';
-      // Inherit the fan transform so it sits in the exact same slot
-      ph.style.transform = cardWrapper.style.transform;
-      ph.style.marginLeft = cardWrapper.style.marginLeft;
-      ph.style.zIndex = cardWrapper.style.zIndex;
-      _liftDrag.placeholder = ph;
-
-      if (cardWrapper.parentNode) {
-        cardWrapper.parentNode.insertBefore(ph, cardWrapper);
-      }
-
-      // Hide the real card (but keep in DOM so dragend fires correctly)
-      cardWrapper.style.position = 'absolute';
-      cardWrapper.style.top = '-9999px';
-      cardWrapper.style.left = '-9999px';
-      cardWrapper.style.opacity = '0';
-
-      // Check if shop is open for sell operations
-      var isShopOpen = (typeof ShopSystem !== 'undefined' && ShopSystem.isOpen && ShopSystem.isOpen());
-
-      if (isShopOpen && typeof CommerceDragDropSystem !== 'undefined') {
-        // Commerce drag (sell to shop)
-        CommerceDragDropSystem.handleDragStart({
-          sourceZone: 'player_hand',
-          itemId: card.id || ('card_' + index),
-          itemType: 'card',
-          cardData: card,
-          itemPrice: 0  // Will be calculated by system
-        });
-        cardEl.classList.add('dragging-sell');
-      } else if (typeof CardDisposalSystem !== 'undefined') {
-        // Disposal drag (recycle/destroy)
-        CardDisposalSystem.handleDragStart(cardEl, card, index, 'hand');
-      }
-    });
-
-    // During HTML5 drag, check if pointer exits STR combat window
-    // and auto-minimize after a dwell threshold so player can reach debrief feed
-    cardWrapper.addEventListener('drag', function(e) {
-      if (!_html5DragCollapse.active || _html5DragCollapse.collapsed) return;
-      if (_mode !== 'combat') return;
-
-      // HTML5 drag events sometimes report 0,0 when off-screen; ignore those
-      if (e.clientX === 0 && e.clientY === 0) return;
-
-      var win = document.getElementById('str-combat-window');
-      if (!win) return;
-      var rect = win.getBoundingClientRect();
-
-      var inside = (e.clientX >= rect.left && e.clientX <= rect.right &&
-                    e.clientY >= rect.top && e.clientY <= rect.bottom);
-
-      if (inside) {
-        // Reset dwell timer when back inside
-        _html5DragCollapse.outsideMs = 0;
-      } else {
-        var now = Date.now();
-        if (!_html5DragCollapse.outsideMs) {
-          _html5DragCollapse.outsideMs = now;
-        } else if (now - _html5DragCollapse.outsideMs >= _html5DragCollapse.dwellThreshold) {
-          // Pointer dwelled outside long enough — minimize
-          if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.minimize === 'function' &&
-              typeof STRCombatWindow.isMinimized === 'function' && !STRCombatWindow.isMinimized()) {
-            STRCombatWindow.minimize();
-            _html5DragCollapse.collapsed = true;
-          }
-        }
-      }
-    });
-
-    cardWrapper.addEventListener('dragend', function(e) {
-      cardEl.classList.remove('dragging-sell');
-
-      // Check if shop is open
-      var isShopOpen = (typeof ShopSystem !== 'undefined' && ShopSystem.isOpen && ShopSystem.isOpen());
-
-      if (isShopOpen && typeof CommerceDragDropSystem !== 'undefined') {
-        CommerceDragDropSystem.handleDragEnd();
-      } else if (typeof CardDisposalSystem !== 'undefined') {
-        CardDisposalSystem.handleDragEnd();
-      }
-
-      // ── Card lift-out cleanup ──
-      // Remove the off-screen ghost clone
-      if (_liftDrag.ghostClone && _liftDrag.ghostClone.parentNode) {
-        _liftDrag.ghostClone.parentNode.removeChild(_liftDrag.ghostClone);
-        _liftDrag.ghostClone = null;
-      }
-
-      // Check if the card was consumed (hand array changed while dragging).
-      // If the card at this index is gone or different, it was deployed/discarded.
-      var cardStillInHand = (_cards && _cards[index] && _cards[index].id === card.id);
-      var wasDisposed = !cardStillInHand;
-
-      if (_liftDrag.placeholder && _liftDrag.placeholder.parentNode) {
-        if (wasDisposed) {
-          // Card was deployed/incinerated/discarded → collapse placeholder with animation
-          _liftDrag.placeholder.classList.add('placeholder-collapsing');
-          var phRef = _liftDrag.placeholder;
-          setTimeout(function() {
-            if (phRef && phRef.parentNode) phRef.parentNode.removeChild(phRef);
-            // Trigger re-render to update fan layout after card removal
-            _renderCards();
-          }, 260);
-        } else {
-          // Card was NOT consumed (dropped back inside STR window or invalid drop)
-          // Restore the real card to its position
-          _liftDrag.placeholder.parentNode.removeChild(_liftDrag.placeholder);
-          cardWrapper.style.position = '';
-          cardWrapper.style.top = '';
-          cardWrapper.style.left = '';
-          cardWrapper.style.opacity = '';
-        }
-      } else {
-        // Placeholder already gone — just restore the card wrapper
-        cardWrapper.style.position = '';
-        cardWrapper.style.top = '';
-        cardWrapper.style.left = '';
-        cardWrapper.style.opacity = '';
-      }
-
-      // Capture deferred mode before clearing drag state
-      var deferred = _liftDrag.deferredMode;
-
-      _liftDrag.active = false;
-      _liftDrag.cardIndex = -1;
-      _liftDrag.originalWrapper = null;
-      _liftDrag.placeholder = null;
-      _liftDrag.disposed = false;
-      _liftDrag.deferredMode = null;
-
-      // Restore STR combat window if we collapsed it during this drag
-      var wasCollapsed = _html5DragCollapse.collapsed;
-      _html5DragCollapse.active = false;
-      _html5DragCollapse.collapsed = false;
-      _html5DragCollapse.outsideMs = 0;
-
-      if (wasCollapsed && typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.maximize === 'function') {
-        // Delay restore slightly so player sees disposal/ground effect feedback
-        setTimeout(function() {
-          try { STRCombatWindow.maximize(); } catch (e4) {}
-        }, 600);
-      }
-
-      // Apply any deferred mode change that was queued during the drag
-      // (e.g. STR minimize called setMode('contextual','bottom') mid-drag).
-      // Now that drag state is cleaned up, the re-render is safe.
-      if (deferred) {
-        setMode(deferred.mode, deferred.position);
-      }
-    });
+    // ── HTML5 drag handlers REMOVED (Phase 2) ──
+    // All drag is now handled by CardDragController via pointer events.
+    // Disposal, commerce, and ground effect deployment are registered as
+    // drop zone callbacks in CardDragController.
 
     // Hover tooltip — desktop only, 0.5s dwell with minimal movement triggers unroll.
     // Resets if cursor moves significantly. Not mobile-accessible (touch has press-hold).
@@ -2166,6 +1742,35 @@ const HandFanComponent = (function () {
 
   function getSlideState() { return _slidState; }
 
+  /**
+   * Force-cancel any active drag / targeting state.
+   * Called externally by resolution guards so that the hand fan
+   * is in a clean, settled state before resolution animations run.
+   */
+  function cancelActiveDrag() {
+    // 1. Delegate to CardDragController (primary drag system)
+    if (typeof CardDragController !== 'undefined' && typeof CardDragController.cancelDrag === 'function') {
+      CardDragController.cancelDrag();
+    }
+
+    // 2. Cancel legacy targeting state (kept for transition safety)
+    if (_targeting.active) {
+      _targeting.active = false;
+      _targeting.cardIndex = -1;
+      _targeting.cardId = null;
+      _targeting.pointerId = null;
+    }
+    if (_targeting.holdTimer) {
+      clearTimeout(_targeting.holdTimer);
+      _targeting.holdTimer = null;
+    }
+
+    // 3. Clean up any residual enemy hover / AoE preview visuals
+    _setEnemyHoverState(false, false);
+    _clearAoePreview();
+    try { document.body.style.cursor = ''; } catch (e) {}
+  }
+
   // Public API
   return {
     init: init,
@@ -2190,7 +1795,9 @@ const HandFanComponent = (function () {
     isContextualMode: isContextualMode,
     slideAway: slideAway,
     slideBack: slideBack,
-    getSlideState: getSlideState
+    getSlideState: getSlideState,
+    cancelActiveDrag: cancelActiveDrag,
+    _dragControllerOwnsMode: false  // set by CardDragController during pointer-drag minimize
   };
 })();
 
