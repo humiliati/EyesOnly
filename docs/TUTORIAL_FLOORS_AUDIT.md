@@ -1186,16 +1186,16 @@ function exitInteriorFloor() {
 
 ## Recommended Fix Priority
 
-1. **BUG 2** (door contract) — **CRITICAL:** Implement `applyDoorContract()` for both contrived and procedural floors; add retreat door to procedural generator
+1. **BUG 2** (door contract) — ✅ **IMPLEMENTED:** `DoorContractSystem.applyDoorContract()` wired into both `tutorial-floor-gen.js` and `floor-gen-core.js`. Retreat door added to procedural generator (`floor-generator.js`). Old inline spawn logic and BUG 2 FIX patch removed.
 2. **BUG 5** (floor 0 enemy) — one-line fix, restores STR-combat testing
 3. **BUG 1** (floor 0 back door) — wrap back-door stamps in `suppressBackDoor` check
-4. **BUG 3** (door step buffer) — upgrade `_doorSpawnProtect` to step-count with `suppressAnimation`
-5. **BUG 13** (building interior doors) — implement no-guardrail building door contract + funnel pattern
-6. **BUG 4** (door animation) — add distinct overhead animations per `doorKind`, suppress during guardrail
-7. **BUG 11** (boss biomes) — create boss arena biome defs for Train Depot, Long Bridge, Ski Mountain
-8. **BUG 9** (interior biome definitions) — create `interior-biomes.json` with 8 interior types
-9. **BUG 8** (interior wall rendering) — wire interior biome into visual cache rebuild
-10. **BUG 6** (tavern WorldItems wipe) — scope `init()` for interior context
-11. **BUG 12** (narrative alignment) — retheme biomes to Sandpoint geography (see NARRATIVE_ALIGNMENT.md)
-12. **BUG 10** (cross-reference docs) — add system linkage sections to WBE and BIOME_SYSTEMS
-13. **BUG 7** (WBE compat) — add metadata fields, move to registry pattern
+4. **BUG 3** (door step buffer) — ✅ **IMPLEMENTED:** `DoorContractSystem.tickDoorSpawnProtect()` handles step-count with `suppressAnimation` field. Guardrail steps set to 5.
+5. **BUG 13** (building interior doors) — ✅ **API READY:** `DoorContractSystem.applyBuildingDoorContract()` implements no-guardrail building contract. Needs wiring into `interior-floor-system.js`.
+6. **BUG 4** (door animation) — `suppressAnimation` field now in `_doorSpawnProtect` via DoorContractSystem. Overhead animator needs to read it.
+7. **BUG 7** (WBE compat) — ✅ **IMPLEMENTED:** `FloorMetadataRegistry` provides unified metadata with WBE Step Node shape. Tutorial floors 0-3 and interior floors auto-registered.
+8. **BUG 11** (boss biomes) — create boss arena biome defs for Train Depot, Long Bridge, Ski Mountain
+9. **BUG 9** (interior biome definitions) — create `interior-biomes.json` with 8 interior types
+10. **BUG 8** (interior wall rendering) — wire interior biome into visual cache rebuild
+11. **BUG 6** (tavern WorldItems wipe) — scope `init()` for interior context
+12. **BUG 12** (narrative alignment) — retheme biomes to Sandpoint geography (see NARRATIVE_ALIGNMENT.md)
+13. **BUG 10** (cross-reference docs) — ✅ **IMPLEMENTED:** System cross-references added to WORLD_BUILDING_ENGINE.md "Extracted Modules" section

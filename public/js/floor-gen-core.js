@@ -137,13 +137,28 @@ var FloorGenCore = (function() {
       // Step 7: Place environmental tiles
       ctx.placeEnvironmentalTiles();
 
-      // Step 8: Place player and exit
+      // Step 8: Place player and exit (also stamps back door on procedural floors)
       var spawnData = ctx.placePlayerAndExit(rooms);
       ctx.player.x = spawnData.playerX;
       ctx.player.y = spawnData.playerY;
       ctx.ensurePlayerOnEmptyTile();
       exitX = spawnData.exitX;
       exitY = spawnData.exitY;
+
+      // Step 8b: Apply door contract (spawn near correct door based on transition mode)
+      if (typeof DoorContractSystem !== 'undefined') {
+        var backDoorPos = (spawnData.backX != null) ? { x: spawnData.backX, y: spawnData.backY } : null;
+        var forwardDoorPos = { x: exitX, y: exitY };
+        DoorContractSystem.applyDoorContract({
+          grid: ctx.grid,
+          TILES: ctx.TILES,
+          gridW: ctx.GRID_WIDTH,
+          gridH: ctx.GRID_HEIGHT,
+          player: ctx.player,
+          backDoorPos: backDoorPos,
+          forwardDoorPos: forwardDoorPos
+        });
+      }
 
       // Step 9: Place enemies (based on floor type)
       ctx.placeEnemies(rooms, floorType);

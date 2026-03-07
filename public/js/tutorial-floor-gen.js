@@ -23,30 +23,10 @@ var TutorialFloorGen = (function() {
     ctx.setGrid(floorData.grid);
     ctx.grid = floorData.grid;
 
-    // Place player: continuity via door-consistent spawning (no template shifting).
+    // Place player: default position from authored layout.
     ctx.player.x = floorData.player.x;
     ctx.player.y = floorData.player.y;
 
-    // Save spawn mode so later adjacency logic can use the correct anchor door.
-    var _doorTransitionMode = ctx.getSpawnFromLastExitPos(); // 'advance' | 'retreat' | null
-
-    // If we just used a door, spawn ON the corresponding door tile, but protect against
-    // immediate re-trigger until the player steps off and returns.
-    try {
-      if (ctx.getSpawnFromLastExitPos()) {
-        var targetDoorKind = (ctx.getSpawnFromLastExitPos() === 'retreat') ? 'forward' : 'back';
-        var doorX = (targetDoorKind === 'forward') ? floorData.exit.x : floorData.player.x;
-        var doorY = (targetDoorKind === 'forward') ? floorData.exit.y : floorData.player.y;
-
-        ctx.player.x = doorX;
-        ctx.player.y = doorY;
-        // BUG 3 FIX: Include a step-count cooldown so the door cannot be immediately
-        // re-triggered if the player steps off and back in fewer than stepsRemaining moves.
-        ctx.setDoorSpawnProtect({ x: doorX, y: doorY, stepsRemaining: 4 });
-      }
-    } catch (e0) {}
-
-    ctx.setSpawnFromLastExitPos(null);
     ctx.ensurePlayerOnEmptyTile();
 
     // Place exit (forward)
@@ -84,34 +64,6 @@ var TutorialFloorGen = (function() {
 
     ctx.grid[exitY][exitX] = ctx.TILES.EXIT;
     ctx.tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'forward' };
-
-    // BUG 2 FIX: Always check that the player is not spawned directly on the forward exit,
-    // including during retreat mode. Previously this block was skipped for retreat, which caused
-    // players retreating from floor 1 to spawn on top of floor 2's advance door.
-    try {
-      var distSpawnExit = Math.abs(ctx.player.x - exitX) + Math.abs(ctx.player.y - exitY);
-      if (distSpawnExit <= 2) {
-        var sx0 = ctx.player.x;
-        var sy0 = ctx.player.y;
-        var moved = false;
-        for (var r = 1; r <= 10 && !moved; r++) {
-          for (var dy = -r; dy <= r && !moved; dy++) {
-            for (var dx = -r; dx <= r && !moved; dx++) {
-              var tx = sx0 + dx;
-              var ty = sy0 + dy;
-              if (tx <= 0 || tx >= ctx.GRID_WIDTH - 1 || ty <= 0 || ty >= ctx.GRID_HEIGHT - 1) continue;
-              if (!ctx.grid[ty] || ctx.grid[ty][tx] !== ctx.TILES.EMPTY) continue;
-              var d2 = Math.abs(tx - exitX) + Math.abs(ty - exitY);
-              if (d2 >= 4) {
-                ctx.player.x = tx;
-                ctx.player.y = ty;
-                moved = true;
-              }
-            }
-          }
-        }
-      }
-    } catch (e0) {}
 
     // Mark entry/return door at the entry point, but DO NOT spawn the player on top of it.
     // (player glyph hides the door tile, making it look like there is only one door).
@@ -173,37 +125,22 @@ var TutorialFloorGen = (function() {
       ctx.tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
     }
 
-    // Spawn player adjacent to the door they just came through.
-    // On retreat: anchor near the forward exit (so the player is close to where they left).
-    // On advance/first-visit: anchor near the back door (so the return door is visible).
-    try {
-      var _anchorX = (_doorTransitionMode === 'retreat') ? exitX : backX;
-      var _anchorY = (_doorTransitionMode === 'retreat') ? exitY : backY;
-      var _avoidX  = (_doorTransitionMode === 'retreat') ? backX  : exitX;
-      var _avoidY  = (_doorTransitionMode === 'retreat') ? backY  : exitY;
-
-      var spawnChoices = [
-        { x: _anchorX - 1, y: _anchorY },
-        { x: _anchorX + 1, y: _anchorY },
-        { x: _anchorX, y: _anchorY - 1 },
-        { x: _anchorX, y: _anchorY + 1 }
-      ];
-
-      var picked = null;
-      for (var si = 0; si < spawnChoices.length; si++) {
-        var s = spawnChoices[si];
-        if (s.x <= 0 || s.x >= ctx.GRID_WIDTH - 1 || s.y <= 0 || s.y >= ctx.GRID_HEIGHT - 1) continue;
-        if (!ctx.grid[s.y] || ctx.grid[s.y][s.x] !== ctx.TILES.EMPTY) continue;
-        if (Math.abs(s.x - _avoidX) + Math.abs(s.y - _avoidY) <= 2) continue;
-        picked = s;
-        break;
-      }
-
-      if (picked) {
-        ctx.player.x = picked.x;
-        ctx.player.y = picked.y;
-      }
-    } catch (e0) {}
+    // Apply door contract: spawn near correct door based on transition mode.
+    // DoorContractSystem owns the canonical contract logic (advance → near back door,
+    // retreat → near forward door, with guardrail step protection).
+    if (typeof DoorContractSystem !== 'undefined') {
+      var backDoorPos = (!floorData.suppressBackDoor) ? { x: backX, y: backY } : null;
+      var forwardDoorPos = { x: exitX, y: exitY };
+      DoorContractSystem.applyDoorContract({
+        grid: ctx.grid,
+        TILES: ctx.TILES,
+        gridW: ctx.GRID_WIDTH,
+        gridH: ctx.GRID_HEIGHT,
+        player: ctx.player,
+        backDoorPos: backDoorPos,
+        forwardDoorPos: forwardDoorPos
+      });
+    }
 
     // Place buildings (visual overlay)
     ctx.setForestBuildings([]);

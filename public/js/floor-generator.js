@@ -437,7 +437,7 @@ var FloorGenerator = (function () {
   }
 
   function placePlayerAndExit(rooms, ctx) {
-    if (rooms.length === 0) return { playerX: 5, playerY: 10, exitX: ctx.GRID_WIDTH - 3, exitY: ctx.GRID_HEIGHT - 3 };
+    if (rooms.length === 0) return { playerX: 5, playerY: 10, exitX: ctx.GRID_WIDTH - 3, exitY: ctx.GRID_HEIGHT - 3, backX: 5, backY: 10 };
     var firstRoom = rooms[0];
     var playerX = firstRoom.centerX, playerY = firstRoom.centerY;
     var maxSpawnAttempts = 10;
@@ -472,8 +472,38 @@ var FloorGenerator = (function () {
         }
       }
     }
+    // Place forward door (advance exit)
     ctx.grid[exitY][exitX] = ctx.TILES.EXIT;
-    return { playerX: playerX, playerY: playerY, exitX: exitX, exitY: exitY };
+    if (ctx.tileMetadata) ctx.tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'forward' };
+
+    // Place back door (retreat exit) near the player start position.
+    // Find an empty tile adjacent to the player's initial position, away from the forward exit.
+    var backX = playerX, backY = playerY;
+    var bestBackDist = 0;
+    var backFound = false;
+    for (var br = 1; br <= 6 && !backFound; br++) {
+      for (var bdy = -br; bdy <= br; bdy++) {
+        for (var bdx = -br; bdx <= br; bdx++) {
+          if (Math.abs(bdx) !== br && Math.abs(bdy) !== br) continue;
+          var bx = playerX + bdx, by = playerY + bdy;
+          if (bx <= 0 || bx >= ctx.GRID_WIDTH - 1 || by <= 0 || by >= ctx.GRID_HEIGHT - 1) continue;
+          if (!ctx.grid[by] || ctx.grid[by][bx] !== ctx.TILES.EMPTY) continue;
+          // Must not overlap forward exit
+          if (bx === exitX && by === exitY) continue;
+          var dFromExit = Math.abs(bx - exitX) + Math.abs(by - exitY);
+          if (dFromExit > bestBackDist) {
+            backX = bx; backY = by;
+            bestBackDist = dFromExit;
+            backFound = true;
+          }
+        }
+      }
+    }
+    // Stamp back door tile
+    ctx.grid[backY][backX] = ctx.TILES.DOOR;
+    if (ctx.tileMetadata) ctx.tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
+
+    return { playerX: playerX, playerY: playerY, exitX: exitX, exitY: exitY, backX: backX, backY: backY };
   }
 
   // ── Entity Spawning ──

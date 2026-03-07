@@ -1,102 +1,207 @@
-# World Building Engine Implementation Roadmap
+# 5-Phase Roadmap: Door Contract System & Proc Gen Modularization
 
-This roadmap outlines the development plan for the World Building Engine, based on the design considerations in the `WORLD_BUILDING_ENGINE.md` document.
+## Context
 
-## Phase 1: Core Functionality & Basic Editors
+The monolith `gone-rogue.js` (3,661 lines) holds all door state and delegates to ~40 ctx factory functions. The door contract is systemically broken (BUG 2 in the audit): procedural floors have no retreat door, no guardrails, and no spawn-near-correct-door logic. Building interior doors (BUG 13) also lack their own contract. Meanwhile, the World Building Engine (WBE) needs a clean procedural generation API to support its SFC-based floor resolver.
 
-**Objective:** Establish the foundational tools and data structures for the World Building Engine.
+Floor generation is already ~95% extracted to satellites — the monolith mostly contains ctx factory wrappers (~200 lines of delegation). The 3 door state vars (`_lastExitPos`, `_spawnFromLastExitPos`, `_doorSpawnProtect`) have **zero cross-dependencies** with other monolith state, making extraction clean.
 
-- **1.1: World Designer UI:**
-    - Create the basic HTML structure for the World Designer, including the canvas, tool palette, and property inspector.
-    - Implement basic styling using the existing `map-designer.css`.
+All satellites use the established pattern: **IIFE + revealing module, stateless, ctx-driven, loaded before monolith**.
 
-- **1.2: Flowchart Implementation:**
-    - Integrate `jsPlumb` to create a flowchart-style interface for adding and connecting nodes.
-    - Implement basic node types: "Floor" and "Building".
+---
 
-- **1.3: ASCII Map Editor:**
-    - Enhance the existing Map Designer with a text area for ASCII-style floor layouts.
-    - Implement two-way binding between the ASCII editor and the visual tile editor.
+## Phase 1: Extract `door-contract-system.js`
 
-- **1.4: World Data I/O:**
-    - Implement the ability to import and export world data as a `world.json` file.
-    - Implement the ability to save and load individual floor layouts as JSON files.
+**Goal:** Pull all door state and logic into a single-responsibility module.
 
-## Phase 2: Advanced Node Types & SFC Logic
+**What moves out of the monolith:**
+- 3 closure vars: `_lastExitPos`, `_spawnFromLastExitPos`, `_doorSpawnProtect` (lines ~125-132)
+- Door state getters/setters currently spread across 4 ctx factories: `_playerInteractionCtx`, `_floorTransitionCtx`, `_tutorialFloorGenCtx`, `_runStartCtx`
 
-**Objective:** Implement the core Sequential Function Chart (SFC) logic and advanced node types.
+**New module API (`door-contract-system.js`):**
+```js
+var DoorContractSystem = (function() {
+    var _lastExitPos = null;
+    var _spawnFromLastExitPos = null; // 'advance' | 'retreat' | null
+    var _doorSpawnProtect = null;     // { x, y, stepsRemaining, suppressAnimation }
 
-- **2.1: Advanced Node Types:**
-    - Implement the following GRAFCET-style node types in the World Designer:
-        - **Step Node:** Represents a floor, narrative beat, or world condition.
-        - **Transition Node:** Defines the conditions for moving to the next step.
-        - **Parallel Branch Node:** Allows for multiple active quest lines or exploration branches.
-        - **Convergence Node:** Merges parallel branches.
+    // Core contract logic
+    function applyDoorContract(floorData, transitionMode) { ... }
+    function applyBuildingDoorContract(floorData) { ... }
+    function findSpawnNearDoor(grid, targetDoor, avoidDoor, radius) { ... }
 
-- **2.2: SFC Evaluation Engine:**
-    - Create a JavaScript module to evaluate the SFC graph.
-    - The engine will determine the next floor to load based on the current world state and transition conditions.
+    // State accessors (replace monolith getters/setters)
+    function getLastExitPos() { ... }
+    function setLastExitPos(pos) { ... }
+    function getSpawnFromLastExitPos() { ... }
+    function setSpawnFromLastExitPos(mode) { ... }
+    function getDoorSpawnProtect() { ... }
+    function setDoorSpawnProtect(protect) { ... }
+    function clearDoorSpawnProtect() { ... }
+    function tickDoorSpawnProtect() { ... }
+    function resetAll() { ... }
 
-- **2.3: Player State Integration:**
-    - Integrate the SFC evaluation engine with the player's state (e.g., inventory, quest flags).
-    - Transition conditions can now be based on player progress.
+    return { /* public API */ };
+})();
+```
 
-## Phase 3: Environmental Synergy & Gameplay Mechanics
+**Monolith changes:**
+- Remove 3 closure vars
+- Update 4 ctx factories to delegate to `DoorContractSystem.*` instead of direct closure access
+- Add `<script>` tag for `door-contract-system.js` before `gone-rogue.js`
 
-**Objective:** Integrate the core gameplay mechanics and environmental synergies into the World Building Engine.
+**Files touched:**
+- Create: `public/js/door-contract-system.js` (~120 lines)
+- Edit: `public/js/gone-rogue.js` (remove ~30 lines, update 4 ctx factories)
+- Edit: `portal/index.html` (add script tag)
 
-- **3.1: Synergy System Integration:**
-    - Implement UI controls in the World Designer for adding and configuring environmental synergies:
-        - Key + Gate Linker
-        - Quest Key + NPC Binder
-        - Vent Bypass Node
-        - Secret Button
+**Verification:** Door state round-trips correctly — advance through forward door, check spawn near retreat door with guardrails active. Retreat back, check spawn near forward door. Enter building, check no guardrails.
 
-- **3.2: Rope System Integration:**
-    - Add a dedicated Rope System panel to the World Designer.
-    - Allow designers to configure rope actions, length, and visual settings.
+---
 
-- **3.3: Contrived vs. Procedural Generation:**
-    - Implement the logic for selecting between template-based and procedurally generated floors based on the Step Node's properties.
-    - Allow designers to specify seed modifiers for procedural generation.
+## Phase 2: Wire Door Contract into Procedural Generator
 
-## Phase 4: Validation, Debugging & Polish
+**Goal:** Fix the procedural generator gap — currently `floor-generator.js` places ONE exit and no retreat door.
 
-**Objective:** Implement robust validation and debugging tools to ensure world integrity and provide a polished designer experience.
+**Changes to `floor-generator.js` (`placePlayerAndExit`):**
+- Rename/refactor to `placeDoorsAndPlayer()`
+- Place TWO doors: forward (↪️) and back (↩️)
+- Back door placed at opposite end of floor from forward door
+- Call `DoorContractSystem.applyDoorContract()` for spawn positioning
 
-- **4.1: Validation Layer:**
-    - Create a validation pass that checks for common design errors:
-        - Unreachable steps or infinite loops.
-        - Unsolvable gates or missing keys.
-        - Rope system deadlocks.
+**Changes to `floor-gen-core.js`:**
+- Update `_floorGenCoreCtx` to include door contract accessors (currently missing — the gap)
+- After floor generation, call door contract application
 
-- **4.2: Debugging Tools:**
-    - Implement a designer preview mode that allows for:
-        - Playing from a selected node.
-        - Forcing transition conditions to be true or false.
-        - Simulating player inventory.
+**Changes to `tutorial-floor-gen.js`:**
+- Remove inline door spawn logic (lines 36-46) and BUG 2 FIX patch (lines 88-114)
+- Delegate to `DoorContractSystem.applyDoorContract()` instead
+- Keep back door placement logic (lines 118-174) but route through door contract system
 
-- **4.3: Visual Polish:**
-    - Enhance the visual language of the World Designer to clearly distinguish between different node and connection types.
-    - Implement visual effects and audio cues for a more engaging design experience.
+**Files touched:**
+- Edit: `public/js/floor-generator.js` (~40 lines changed in placePlayerAndExit)
+- Edit: `public/js/floor-gen-core.js` (~15 lines, ctx update + contract call)
+- Edit: `public/js/tutorial-floor-gen.js` (~60 lines removed/replaced)
+- Edit: `public/js/gone-rogue.js` (update `_floorGenCoreCtx` factory)
 
-## Phase 5: Advanced Features & Abuse Prevention
+**Verification:** Generate procedural floors 4+ — confirm both doors present, spawn contract correct. Play through tutorial floors 0-3 — confirm no regression. Enter/exit buildings — confirm funnel pattern.
 
-**Objective:** Implement advanced features for narrative control and prevent potential exploits.
+---
 
-- **5.1: Narrative Control:**
-    - Implement a narrative tone slider to influence procedural generation.
-    - Add a dialogue trigger system to the World Designer.
+## Phase 3: Extract Biome Visual Facade
 
-- **5.2: Abuse Prevention:**
-    - Implement an exploit detection system to identify potential issues:
-        - Soft lock risks.
-        - Rope bypass abuse.
-        - Infinite farming loops.
+**Goal:** Pull the 36-line biome visual delegation wrapper out of the monolith into its own module.
 
-- **5.3: Export & Versioning:**
-    - Implement advanced export and versioning features:
-        - Save as Template
-        - Save as Procedural Pattern
-        - Fork World Graph
-        - Compare Versions
+**What moves out:**
+- Monolith lines ~985-1020: pure delegation wrappers that forward calls to `BiomeVisuals.*`
+- These are trivial pass-throughs with zero monolith state dependency
+
+**New module (`biome-visual-facade.js`):**
+```js
+var BiomeVisualFacade = (function() {
+    function applyBiomeVisuals(grid, biomeId) { return BiomeVisuals.apply(grid, biomeId); }
+    function getBiomeTheme(biomeId) { return BiomeVisuals.getTheme(biomeId); }
+    // ... remaining wrappers
+    return { /* public API */ };
+})();
+```
+
+**Why:** This is the easiest extraction win (~36 lines, zero state), and the WBE's "Map Template Loader OR Proc Gen" pipeline needs a clean biome visual entry point.
+
+**Files touched:**
+- Create: `public/js/biome-visual-facade.js` (~50 lines)
+- Edit: `public/js/gone-rogue.js` (remove ~36 lines, update ctx factory)
+- Edit: `portal/index.html` (add script tag)
+
+**Verification:** Load any floor — biome visuals render identically. Check all biome types render.
+
+---
+
+## Phase 4: Create Floor Metadata Registry
+
+**Goal:** Build a data-driven registry that the WBE's Floor Resolver can query for floor metadata.
+
+**New module (`floor-metadata-registry.js`):**
+```js
+var FloorMetadataRegistry = (function() {
+    var _registry = {};  // floorId → metadata
+
+    function register(floorId, metadata) { ... }
+    function get(floorId) { ... }
+    function getByBiome(biomeId) { ... }
+    function getByType(type) { ... }  // 'template' | 'procedural'
+    function getAllFloorIds() { ... }
+
+    return { register, get, getByBiome, getByType, getAllFloorIds };
+})();
+```
+
+**Metadata shape (per floor):**
+```js
+{
+    id: "2",
+    type: "template",          // or "procedural"
+    biomeId: "downtown",
+    difficultyTier: 1,
+    doors: { forward: {x,y}, back: {x,y}, building: [{x,y}] },
+    narrativeTags: ["tutorial", "first_key"],
+    buildingId: null,          // or "church" for interior floors
+    parentFloorId: null        // or "1" for interior floors
+}
+```
+
+**Why:** The WBE design doc (Section 4) specifies each Step Node contains `{ id, floorType, difficultyTier, requiredPlayerState, allowedSynergies, narrativeTags }`. This registry is where that data lives at runtime. Currently floor metadata is scattered across `tutorial-floors.js` layout objects, `biome-config.js`, and `buildings.json` — no unified source of truth.
+
+**Files touched:**
+- Create: `public/js/floor-metadata-registry.js` (~80 lines)
+- Edit: `public/js/tutorial-floors.js` (register tutorial floor metadata on load)
+- Edit: `portal/index.html` (add script tag)
+
+**Verification:** After page load, `FloorMetadataRegistry.get("0")` returns correct metadata for Floor 0. `getByType("template")` returns floors 0-3. `getByBiome("downtown")` returns matching floors.
+
+---
+
+## Phase 5: Documentation & Monolith Cleanup
+
+**Goal:** Update design docs, clean monolith, verify net line reduction.
+
+**Tasks:**
+1. Update `WORLD_BUILDING_ENGINE.md` Section 6 (Door Contract) to reference `door-contract-system.js` as the implementation
+2. Add new section to WBE doc: "Extracted Modules" listing all new satellites and their APIs
+3. Add cross-references from WBE node types to `FloorMetadataRegistry` fields
+4. Update `TUTORIAL_FLOORS_AUDIT.md` BUG 2 and BUG 13 status to "Fixed" with implementation references
+5. Verify monolith net reduction (~100-130 lines removed)
+6. Run full playthrough: tutorial floors 0-3 → procedural floor 4+ → building enter/exit → retreat back through floors
+
+**Files touched:**
+- Edit: `WORLD_BUILDING_ENGINE.md`
+- Edit: `TUTORIAL_FLOORS_AUDIT.md`
+- Edit: `public/js/gone-rogue.js` (final cleanup of orphaned ctx fields)
+
+**Expected monolith reduction:** ~100-130 lines (3 door vars + 4 ctx factory simplifications + 36 biome wrappers + assorted delegation)
+
+---
+
+## New Files Created (Summary)
+
+| File | ~Lines | Purpose |
+|------|--------|---------|
+| `door-contract-system.js` | 120 | Door state ownership + contract logic |
+| `biome-visual-facade.js` | 50 | Clean biome visual entry point for WBE |
+| `floor-metadata-registry.js` | 80 | Unified floor metadata for WBE Floor Resolver |
+
+## Phase Dependencies
+
+```
+Phase 1 (door-contract-system.js)
+    ↓
+Phase 2 (wire into proc gen + tutorial gen)
+    ↓
+Phase 3 (biome visual facade)  ← independent, can parallel with Phase 2
+    ↓
+Phase 4 (floor metadata registry)  ← needs Phase 1-2 door data shapes
+    ↓
+Phase 5 (docs + cleanup)
+```
+
+Phases 2 and 3 can run in parallel. All others are sequential.

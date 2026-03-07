@@ -122,20 +122,17 @@ var GoneRogue = (function () {
     firstBonfire: false        // Whether player has reached first bonfire
   };
 
-  // Last exit position (for door-anchored spawns)
-  var _lastExitPos = null;
-  // When true, the next floor generation should spawn near _lastExitPos (used for retreat/backtracking).
-  var _spawnFromLastExitPos = null; // 'advance' | 'retreat' | null
+  // Door state now owned by DoorContractSystem (door-contract-system.js).
+  // Aliases kept for legacy ctx factory compatibility:
   var _lastDoorHintAtMs = 0;
-  // Door spawn protection: if we spawn directly on a door tile, ignore activation until the player
-  // has taken enough steps away (stepsRemaining cooldown) to prevent accidental re-trigger.
-  var _doorSpawnProtect = null; // { x, y, stepsRemaining: N }
 
   // Forest biome state
   var _forestBuildings = []; // Village buildings {x, y, emoji} for visual overlay
-  var _biomeVisualGrid = null; // Pre-computed visual substitution grid (wall/floor chars)
-  var _biomeBackgroundColors = null; // Pre-computed per-tile background gradient colors (40x20)
-  var _tileRenderObjects = null; // Per-tile render objects for visual density (multi-tree scatter)
+  // Biome visual state now owned by BiomeVisualFacade (biome-visual-facade.js).
+  // Getters delegate to facade for backwards compatibility:
+  var _biomeVisualGrid = null;       // Legacy alias — updated via facade sync
+  var _biomeBackgroundColors = null;  // Legacy alias — updated via facade sync
+  var _tileRenderObjects = null;      // Legacy alias — updated via facade sync
   var _cachedWalls = []; // Lighting/LOS cache (rebuilt per floor)
 
   // Seed-based generation for reproducible runs
@@ -982,48 +979,49 @@ var GoneRogue = (function () {
     if (typeof BiomeVisuals !== 'undefined') return BiomeVisuals.pickWeightedChar(tiles, _floorGenCtx());
     return tiles[tiles.length - 1].char;
   }
+  // Biome visual wrappers — delegate to BiomeVisualFacade, sync legacy aliases.
   function _buildBiomeVisualGrid(biome) {
-    if (typeof BiomeVisuals !== 'undefined') { BiomeVisuals.buildBiomeVisualGrid(biome, _floorGenCtx()); _biomeVisualGrid = BiomeVisuals.getBiomeVisualGrid(); }
+    if (typeof BiomeVisualFacade !== 'undefined') { BiomeVisualFacade.buildBiomeVisualGrid(biome, _floorGenCtx()); _biomeVisualGrid = BiomeVisualFacade.getVisualGrid(); }
     else { _biomeVisualGrid = null; }
   }
   function _generateTileRenderObjects(x, y, biome) {
-    if (typeof BiomeVisuals !== 'undefined') return BiomeVisuals.generateTileRenderObjects(x, y, biome, _floorGenCtx());
+    if (typeof BiomeVisualFacade !== 'undefined') return BiomeVisualFacade.generateTileRenderObjects(x, y, biome, _floorGenCtx());
     return [];
   }
   function _pickWeightedCharWithRNG(tiles, rng) {
-    if (typeof BiomeVisuals !== 'undefined') return BiomeVisuals.pickWeightedCharWithRNG(tiles, rng);
+    if (typeof BiomeVisualFacade !== 'undefined') return BiomeVisualFacade.pickWeightedCharWithRNG(tiles, rng);
     return tiles[tiles.length - 1].char;
   }
   function _getNeighborTiles(x, y) {
-    if (typeof BiomeVisuals !== 'undefined') return BiomeVisuals.getNeighborTiles(x, y, _floorGenCtx());
+    if (typeof BiomeVisualFacade !== 'undefined') return BiomeVisualFacade.getNeighborTiles(x, y, _floorGenCtx());
     return [];
   }
   function _buildTileRenderObjects(biome) {
-    if (typeof BiomeVisuals !== 'undefined') { BiomeVisuals.buildTileRenderObjects(biome, _floorGenCtx()); _tileRenderObjects = BiomeVisuals.getRenderObjectsGrid(); }
+    if (typeof BiomeVisualFacade !== 'undefined') { BiomeVisualFacade.buildTileRenderObjects(biome, _floorGenCtx()); _tileRenderObjects = BiomeVisualFacade.getRenderObjects(); }
     else { _tileRenderObjects = null; }
   }
   function _hexToRgb(hex) {
-    if (typeof BiomeVisuals !== 'undefined') return BiomeVisuals.hexToRgb(hex);
+    if (typeof BiomeVisualFacade !== 'undefined') return BiomeVisualFacade.hexToRgb(hex);
     return { r: 0, g: 0, b: 0 };
   }
   function _rgbToHex(r, g, b) {
-    if (typeof BiomeVisuals !== 'undefined') return BiomeVisuals.rgbToHex(r, g, b);
+    if (typeof BiomeVisualFacade !== 'undefined') return BiomeVisualFacade.rgbToHex(r, g, b);
     return '#000000';
   }
   function _lerpColor(color1, color2, t) {
-    if (typeof BiomeVisuals !== 'undefined') return BiomeVisuals.lerpColor(color1, color2, t);
+    if (typeof BiomeVisualFacade !== 'undefined') return BiomeVisualFacade.lerpColor(color1, color2, t);
     return color1;
   }
   function _buildBiomeBackgroundColors(biome, isNight) {
-    if (typeof BiomeVisuals !== 'undefined') { BiomeVisuals.buildBiomeBackgroundColors(biome, isNight, _floorGenCtx()); _biomeBackgroundColors = BiomeVisuals.getBackgroundColorsGrid(); }
+    if (typeof BiomeVisualFacade !== 'undefined') { BiomeVisualFacade.buildBiomeBackgroundColors(biome, isNight, _floorGenCtx()); _biomeBackgroundColors = BiomeVisualFacade.getBackgroundColors(); }
     else { _biomeBackgroundColors = null; }
   }
   function getBiomeBackgroundColor(x, y) {
-    if (typeof BiomeVisuals !== 'undefined') return BiomeVisuals.getBiomeBackgroundColor(x, y);
+    if (typeof BiomeVisualFacade !== 'undefined') return BiomeVisualFacade.getBiomeBackgroundColor(x, y);
     return null;
   }
   function getTileRenderObjects(x, y) {
-    if (typeof BiomeVisuals !== 'undefined') return BiomeVisuals.getTileRenderObjects(x, y);
+    if (typeof BiomeVisualFacade !== 'undefined') return BiomeVisualFacade.getTileRenderObjects(x, y);
     return null;
   }
 
@@ -1420,8 +1418,8 @@ var GoneRogue = (function () {
       get playerInBox() { return _playerInBox; },
       incrementTurn: function() { _turn++; },
       updatePositionHistory: _updatePositionHistory,
-      getDoorSpawnProtect: function() { return _doorSpawnProtect; },
-      clearDoorSpawnProtect: function() { _doorSpawnProtect = null; },
+      getDoorSpawnProtect: function() { return DoorContractSystem.getDoorSpawnProtect(); },
+      clearDoorSpawnProtect: function() { DoorContractSystem.clearDoorSpawnProtect(); },
       getTileMetadata: function(x, y) { return _tileMetadata[x + ',' + y]; },
       retreatFloor: _retreatFloor,
       attemptExtract: _attemptExtract,
@@ -1646,7 +1644,7 @@ var GoneRogue = (function () {
       addForestBuilding: function(b) { _forestBuildings.push(b); },
       setTileMetadata: function(m) { _tileMetadata = m; },
       setTileMetadataAt: function(x, y, val) { _tileMetadata[x + ',' + y] = val; },
-      clearVisualCaches: function() { _biomeVisualGrid = null; _biomeBackgroundColors = null; _tileRenderObjects = null; _cachedWalls = []; },
+      clearVisualCaches: function() { _biomeVisualGrid = null; _biomeBackgroundColors = null; _tileRenderObjects = null; _cachedWalls = []; if (typeof BiomeVisualFacade !== 'undefined') BiomeVisualFacade.clearAll(); },
       ensurePlayerOnEmptyTile: _ensurePlayerOnEmptyTile,
       rebuildWallCache: _rebuildWallCache,
       getWallCache: function() { return _wallCache; },
@@ -1672,10 +1670,10 @@ var GoneRogue = (function () {
       set turn(v) { _turn = v; },
       get currentInteriorFloorId() { return _currentInteriorFloorId; },
       set currentInteriorFloorId(v) { _currentInteriorFloorId = v; },
-      get lastExitPos() { return _lastExitPos; },
-      set lastExitPos(v) { _lastExitPos = v; },
-      get spawnFromLastExitPos() { return _spawnFromLastExitPos; },
-      set spawnFromLastExitPos(v) { _spawnFromLastExitPos = v; },
+      get lastExitPos() { return DoorContractSystem.getLastExitPos(); },
+      set lastExitPos(v) { DoorContractSystem.setLastExitPos(v); },
+      get spawnFromLastExitPos() { return DoorContractSystem.getSpawnFromLastExitPos(); },
+      set spawnFromLastExitPos(v) { DoorContractSystem.setSpawnFromLastExitPos(v); },
       get vendor() { return _vendor; },
       set vendor(v) { _vendor = v; },
       get vendorInventory() { return _vendorInventory; },
@@ -1692,8 +1690,8 @@ var GoneRogue = (function () {
       getFloor: function() { return _floor; },
       setFloor: function(v) { _floor = v; },
       setTurn: function(v) { _turn = v; },
-      setLastExitPos: function(v) { _lastExitPos = v; },
-      setSpawnFromLastExitPos: function(v) { _spawnFromLastExitPos = v; },
+      setLastExitPos: function(v) { DoorContractSystem.setLastExitPos(v); },
+      setSpawnFromLastExitPos: function(v) { DoorContractSystem.setSpawnFromLastExitPos(v); },
       setCurrentInteriorFloorId: function(v) { _currentInteriorFloorId = v; },
       resetVendor: function() { _vendor = null; _vendorInventory = []; },
       showMobileUI: (_useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') ? function() { GoneRogueMobile.show(); } : null
@@ -2771,7 +2769,7 @@ var GoneRogue = (function () {
       setLoaded: function(v) { _loaded = v; },
       setFloor: function(v) { _floor = v; },
       setTurn: function(v) { _turn = v; },
-      setLastExitPos: function(v) { _lastExitPos = v; },
+      setLastExitPos: function(v) { DoorContractSystem.setLastExitPos(v); },
       setRunStartTime: function(v) { _runStartTime = v; },
       setCurrencyCollected: function(v) { _currencyCollected = v; },
       setTotalEnemiesSpawned: function(v) { _totalEnemiesSpawned = v; },
@@ -2842,9 +2840,9 @@ var GoneRogue = (function () {
       currencies: _currencies,
       forestBuildings: _forestBuildings,
       getFloor: function() { return _floor; },
-      getSpawnFromLastExitPos: function() { return _spawnFromLastExitPos; },
-      setSpawnFromLastExitPos: function(v) { _spawnFromLastExitPos = v; },
-      setDoorSpawnProtect: function(v) { _doorSpawnProtect = v; },
+      getSpawnFromLastExitPos: function() { return DoorContractSystem.getSpawnFromLastExitPos(); },
+      setSpawnFromLastExitPos: function(v) { DoorContractSystem.setSpawnFromLastExitPos(v); },
+      setDoorSpawnProtect: function(v) { DoorContractSystem.setDoorSpawnProtect(v); },
       setGrid: function(v) { _grid = v; },
       setForestBuildings: function(v) { _forestBuildings = v; },
       setItems: function(v) { _items = v; },
@@ -2888,9 +2886,9 @@ var GoneRogue = (function () {
       setBossEnvironment: function(v) { _bossEnvironment = v; },
       setPlayerMoveLocked: function(v) { _playerMoveLocked = v; },
       setForestBuildings: function(v) { _forestBuildings = v; },
-      setBiomeVisualGrid: function(v) { _biomeVisualGrid = v; },
-      setBiomeBackgroundColors: function(v) { _biomeBackgroundColors = v; },
-      setTileRenderObjects: function(v) { _tileRenderObjects = v; },
+      setBiomeVisualGrid: function(v) { _biomeVisualGrid = v; if (typeof BiomeVisualFacade !== 'undefined') BiomeVisualFacade.setVisualGrid(v); },
+      setBiomeBackgroundColors: function(v) { _biomeBackgroundColors = v; if (typeof BiomeVisualFacade !== 'undefined') BiomeVisualFacade.setBackgroundColors(v); },
+      setTileRenderObjects: function(v) { _tileRenderObjects = v; if (typeof BiomeVisualFacade !== 'undefined') BiomeVisualFacade.setRenderObjects(v); },
       setCachedWalls: function(v) { _cachedWalls = v; },
       setStealthBonusCache: function(v) { _stealthBonusCache = v; },
       setActiveSecretFloor: function(v) { _activeSecretFloor = v; },

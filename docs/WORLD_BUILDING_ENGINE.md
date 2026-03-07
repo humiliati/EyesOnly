@@ -950,3 +950,71 @@ Context validation warnings in red
 Replay seed preview heatmap
 
 Interactive simulation playback
+
+---
+
+## Extracted Modules (WBE Infrastructure)
+
+The following modules were extracted from the `gone-rogue.js` monolith to support WBE integration:
+
+### `door-contract-system.js`
+**Purpose:** Owns all door transition state and canonical door contract logic.
+
+**State owned:**
+- `_lastExitPos` — position of the door the player just used
+- `_spawnFromLastExitPos` — 'advance' | 'retreat' | null
+- `_doorSpawnProtect` — guardrail step countdown (prevents accidental re-trigger)
+
+**Key API:**
+- `applyDoorContract(opts)` — applies canonical contract (advance → near back door, retreat → near forward door)
+- `applyBuildingDoorContract(opts)` — building funnel (spawn near exit, no guardrails)
+- `findSpawnNearDoor(grid, TILES, w, h, target, avoid, radius)` — spatial search utility
+- `tickDoorSpawnProtect()` — step countdown for guardrails
+- Get/set accessors for all three state vars
+
+**Consumers:** `floor-gen-core.js`, `tutorial-floor-gen.js`, `player-interaction-system.js`, `floor-transition-system.js` (via monolith ctx)
+
+### `biome-visual-facade.js`
+**Purpose:** Owns biome visual state and wraps `BiomeVisuals` module calls.
+
+**State owned:**
+- `_biomeVisualGrid` — pre-computed visual substitution grid
+- `_biomeBackgroundColors` — per-tile background gradient colors
+- `_tileRenderObjects` — per-tile render objects for visual density
+
+**Key API:**
+- `buildBiomeVisualGrid(biome, ctx)` / `buildTileRenderObjects(biome, ctx)` / `buildBiomeBackgroundColors(biome, isNight, ctx)`
+- Passthrough utility functions: `hexToRgb`, `rgbToHex`, `lerpColor`, `getNeighborTiles`
+- State accessors: `getVisualGrid()`, `getBackgroundColors()`, `getRenderObjects()`, `clearAll()`
+
+**WBE integration:** The Map Template Loader and Proc Gen pipeline use this facade for biome visual application.
+
+### `floor-metadata-registry.js`
+**Purpose:** Unified floor metadata registry for the WBE Floor Resolver.
+
+**Key API:**
+- `register(floorId, metadata)` / `registerAll(entries)` — registration
+- `get(floorId)` — single floor lookup
+- `getByBiome(biomeId)` / `getByType(type)` / `getByTag(tag)` — filtered queries
+- `registerTutorialFloors()` — auto-registers floors 0-3 and interior floors from `TutorialFloors`
+
+**Metadata shape (per floor):**
+```
+{
+  id, type, name, description, biomeId, difficultyTier,
+  doors: { forward, back, building[] },
+  narrativeTags[], buildingId, parentFloorId, isInterior
+}
+```
+
+**WBE integration:** Step Nodes in the GRAFCET editor read/write to this registry. The Floor Resolver queries it to determine floor type, biome, and door layout.
+
+### System Cross-References
+
+| WBE Component | Module | Data Source |
+|---|---|---|
+| Step Node metadata | `FloorMetadataRegistry` | `tutorial-floors.js`, `biome-config.js` |
+| Door Contract | `DoorContractSystem` | Applied by `floor-gen-core.js`, `tutorial-floor-gen.js` |
+| Biome Visuals | `BiomeVisualFacade` → `BiomeVisuals` | `biomes.json` |
+| Floor Type | `BiomeConfig.getFloorType()` | Floor number + difficulty tier |
+| Building Interiors | `interior-floor-system.js` | `buildings.json` |
