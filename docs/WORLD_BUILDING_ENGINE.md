@@ -54,6 +54,167 @@ Each contrived floor will also have its own individual JSON file (e.g., `Floor1.
 5.  **Integrate the World Designer and the Map Designer.**
 6.  **Implement the world export functionality.**
 
+## 6. Door Contract Specification
+
+> **CRITICAL:** This section defines how doors, player spawning, and floor transitions work. Every floor generator (contrived AND procedural) MUST follow these contracts. Violation of the door contract lets players skip floors. See `TUTORIAL_FLOORS_AUDIT.md` BUG 2 and BUG 13 for current violations.
+
+### 6.1. Door Types
+
+The WBE recognizes three categories of doors, each with distinct visual symbols and behavior:
+
+| Door Type | Symbol | Metadata | Purpose |
+|-----------|--------|----------|---------|
+| Advance Floor Door | ↪️ | `{ type: 'door', doorKind: 'forward' }` | Moves player to the next floor (N → N+1) |
+| Retreat Floor Door | ↩️ | `{ type: 'door', doorKind: 'back' }` | Moves player to the previous floor (N → N-1) |
+| Building Door | ↔️ | `{ type: 'building_door', doorKind: 'building' }` | Enters/exits a building interior (N ↔ N.1) |
+| Interior Exit Door | ↔️ | `{ type: 'door', doorKind: 'interior_exit' }` | Exits a building interior back to parent floor |
+
+### 6.2. Floor Door Contract (Advance / Retreat)
+
+Every floor (contrived or procedural) must have exactly TWO floor doors placed at opposite ends of the map:
+- One **advance door** (↪️) — leads forward to floor N+1
+- One **retreat door** (↩️) — leads backward to floor N-1
+
+**Exception:** Floor 0 has NO retreat door (there is no floor -1). The layout sets `suppressBackDoor: true`.
+
+**Spatial invariant:** The advance door and retreat door must be separated by a designer-specified minimum manhattan distance (default: 10+ tiles). This forces the player to traverse the floor.
+
+#### 6.2.1. Advance Transition (Floor N → Floor N+1)
+
+```
+Floor N                          Floor N+1
+┌─────────────────────┐          ┌─────────────────────┐
+│                     │          │                     │
+│  ↩️ retreat         │          │  ↩️ retreat ← SPAWN │
+│                     │          │  (guardrailed ~5    │
+│                     │  ──→     │   steps, anim off)  │
+│                     │          │                     │
+│            ↪️ STEP  │          │            ↪️ advance│
+│         advance ON  │          │         (far away)  │
+└─────────────────────┘          └─────────────────────┘
+```
+
+1. Player steps on ↪️ advance door on floor N
+2. `advanceFloor()` sets `_spawnFromLastExitPos = 'advance'`, generates floor N+1
+3. Floor N+1 generator places both doors, then calls `applyDoorContract('advance')`
+4. Player spawns **adjacent to the ↩️ retreat door** on floor N+1
+5. `doorSpawnProtect` activates on the retreat door: `{ x, y, stepsRemaining: 5, suppressAnimation: true }`
+6. Retreat door animation (↩️) does NOT display while guardrailed
+7. After ~5 steps away, guardrail expires, retreat door becomes active and shows ↩️
+
+#### 6.2.2. Retreat Transition (Floor N → Floor N-1)
+
+Same logic, mirrored: player spawns adjacent to the ↪️ advance door on floor N-1, with guardrails.
+
+#### 6.2.3. Guardrail Rules
+
+- `doorSpawnProtect` is a step-count countdown, NOT position-only
+- Protected door is the one the player spawned near (the one leading BACK to where they came from)
+- While guardrailed: door interaction is blocked AND overhead animation is suppressed
+- Guardrail expires after `stepsRemaining` player moves (not time-based)
+- Guardrail does NOT apply to building doors (see 6.3)
+
+### 6.3. Building Door Contract (Enter / Exit Interiors)
+
+Building doors follow a **fundamentally different contract** from floor doors. Buildings are optional exploration content — the player must be able to immediately exit.
+
+#### 6.3.1. Entering a Building (Parent → Interior)
+
+```
+Parent Floor (N)                 Interior Floor (N.1)
+┌─────────────────────┐          ┌─────────────────────┐
+│                     │          │                     │
+│  ↔️ entrance  STEP  │  ──→     │  ↔️ exit ← SPAWN   │
+│     door      ON    │          │  (NO guardrails!)   │
+│                     │          │  Player can exit    │
+│                     │          │  immediately.       │
+│                     │          │                     │
+└─────────────────────┘          └─────────────────────┘
+```
+
+1. Player steps on ↔️ building door on parent floor
+2. `enterInteriorFloor()` generates the interior floor (N.1)
+3. Player spawns **adjacent to the ↔️ exit door** inside the interior
+4. **NO guardrails** — player can immediately step on exit door to return
+5. Exit door animation (↔️) plays immediately — the door is active from the start
+6. `doorSpawnProtect` is NOT set
+
+#### 6.3.2. The Building Funnel Pattern
+
+Buildings with nested interior floors create a **funnel** — enter through one door, exit through a DIFFERENT door on the parent floor:
+
+```
+Parent Floor (N):
+  [Front Door ↔️ A] ──enter──→ Interior N.1 ──deeper──→ Interior N.1.1
+       (x:15, y:7)                                           │
+                                                        exit building
+                                                             │
+                                                             ▼
+  [Back Door ↔️ B] ←──return────────────────────────────────┘
+       (x:25, y:15)
+```
+
+Each building in `buildings.json` can specify:
+```json
+{
+  "id": "BLD-TAVERN",
+  "entranceDoor": { "x": 15, "y": 7 },
+  "exitDoor": { "x": 25, "y": 15 },
+  "interiorFloorId": "0.1"
+}
+```
+
+When `exitInteriorFloor()` fires from the deepest nested level, the player spawns at the building's `exitDoor` position on the parent floor (NOT at the entrance). If no separate `exitDoor` is defined, the player returns to the entrance position (same door in/out).
+
+#### 6.3.3. Door Contract Comparison Table
+
+| Property | Floor Doors (↪️/↩️) | Building Doors (↔️) |
+|----------|---------------------|---------------------|
+| Guardrails on spawn | Yes (~5 steps) | **No** |
+| Animation on spawn | Suppressed during guardrail | **Always visible** |
+| Spawn position | Adjacent to door leading BACK | Adjacent to EXIT door |
+| Required traversal | Must cross entire floor | Optional — can exit immediately |
+| Funnel pattern | N/A (linear floor chain) | Enter front → exit back |
+| `doorSpawnProtect` | Set with `stepsRemaining` | **Never set** |
+| Validation | Doors must be 10+ tiles apart | Exit door near spawn is correct |
+
+### 6.4. Procedural Generator Door Requirements
+
+The procedural floor generator (`floor-generator.js` → `placePlayerAndExit()`) currently places only ONE exit tile and no retreat door. To comply with the door contract, it must:
+
+1. Place an advance door (↪️) at `lastRoom.center` (existing behavior)
+2. Place a **retreat door (↩️)** at `firstRoom.center` (NEW)
+3. After both doors are placed, call `applyDoorContract(transitionMode)` to position the player
+4. The retreat door must have metadata: `{ type: 'door', doorKind: 'back' }`
+5. Floor 0 procedural (if ever used) must suppress the retreat door
+
+### 6.5. Validation Rules for Door Placement
+
+The WBE validation layer (section 9️⃣) must include door contract checks:
+
+**D. Door Contract Validation**
+- Every non-zero floor must have exactly one advance door and one retreat door
+- Floor 0 must have exactly one advance door and zero retreat doors
+- Advance and retreat doors must be ≥ 10 manhattan distance apart
+- Building interior floors must have at least one exit door (↔️ or `interior_exit`)
+- Building funnel: if `exitDoor` is specified, it must exist as a valid building door on the parent floor
+- No floor may have a door tile with missing or invalid metadata
+
+## System Cross-References
+
+| System | File | WBE Integration |
+|--------|------|----------------|
+| Door Contract | This document §6 | Spawn rules for all floor transitions |
+| Biome Catalog | BIOME_SYSTEMS.md | Step Node biome assignment |
+| Biome Runtime | biomes.json | Visual theming per node |
+| Interior Biomes | interior-biomes.json (proposed) | Building interior visual identity |
+| Building Registry | buildings.json | Building door placement, funnel pattern |
+| Enemy Catalog | enemy-catalog.json | Biome-filtered enemy spawns |
+| Card Drops | BIOME_SYSTEMS.md §6 | Loot table per biome per step |
+| Lighting | lighting-system.js | Per-biome/interior lighting profile |
+| Proc Gen Patterns | PROCEDURAL_GENERATION_DESIGN_IDEAS.md | Pattern type per biome |
+| Tutorial Floors Audit | TUTORIAL_FLOORS_AUDIT.md | BUGs 1-13 affecting WBE integration |
+
 
 🏗 WORLD BUILDING ENGINE (WBE)
 Sequential Function Chart–Driven Narrative Flow System
