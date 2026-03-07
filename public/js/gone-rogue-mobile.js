@@ -1221,24 +1221,31 @@ const GoneRogueMobile = (function () {
     alertLevel = alertLevel || 'safe';
     strCombatActive = strCombatActive || false;
 
-    // Update floor badge with player identity + floor
+    // Update floor badge with player identity + floor (full structure including interior IDs)
     try {
       if (_floorBadgeEl) {
         var _floorNum = '';
-        if (typeof GoneRogue !== 'undefined' && GoneRogue.getFloor) {
-          _floorNum = GoneRogue.getFloor();
-        } else if (typeof GoneRogue !== 'undefined' && GoneRogue.getStrCombatState) {
+        var _interiorId = null;
+        if (typeof GoneRogue !== 'undefined') {
+          if (GoneRogue.getFloor) _floorNum = GoneRogue.getFloor();
+          if (GoneRogue.getCurrentInteriorFloorId) _interiorId = GoneRogue.getCurrentInteriorFloorId();
+        }
+        if (!_floorNum && typeof GoneRogue !== 'undefined' && GoneRogue.getStrCombatState) {
           var st = GoneRogue.getStrCombatState();
           if (st && typeof st.floor === 'number') _floorNum = st.floor;
         }
 
-        // Build badge text: "AVATAR CALLSIGN · F5 · T2"
-        var badgeText = 'FLOOR ' + _floorNum;
+        // Build full floor display: "F0" for main floor, "F0.1.1" for interior
+        // Interior IDs already include the floor prefix (e.g., "0.1" = floor 0 building 1)
+        var _floorDisplay = _interiorId ? _interiorId : String(_floorNum);
+
+        // Build badge text: "AVATAR CALLSIGN · F0.1.1 · T2"
+        var badgeText = 'FLOOR ' + _floorDisplay;
         if (typeof TerminalCommandRouter !== 'undefined' && TerminalCommandRouter.getPlayerState) {
           var _bps = TerminalCommandRouter.getPlayerState();
           if (_bps.callsign) {
             var _bAvatar = _bps.avatarEmoji ? _bps.avatarEmoji + ' ' : '';
-            badgeText = _bAvatar + _bps.callsign + ' · F' + _floorNum + ' · T' + (_bps.completedTiers || 0);
+            badgeText = _bAvatar + _bps.callsign + ' · F' + _floorDisplay + ' · T' + (_bps.completedTiers || 0);
           }
         }
 

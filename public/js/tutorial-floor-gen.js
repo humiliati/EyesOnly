@@ -131,7 +131,13 @@ var TutorialFloorGen = (function() {
     if (typeof DoorContractSystem !== 'undefined') {
       var backDoorPos = (!floorData.suppressBackDoor) ? { x: backX, y: backY } : null;
       var forwardDoorPos = { x: exitX, y: exitY };
-      DoorContractSystem.applyDoorContract({
+      var preContractX = ctx.player.x, preContractY = ctx.player.y;
+      var mode = DoorContractSystem.getSpawnFromLastExitPos();
+      console.log('[TutorialFloorGen] PRE-CONTRACT: mode=' + mode +
+        ', player=(' + preContractX + ',' + preContractY + ')' +
+        ', backDoor=' + (backDoorPos ? '(' + backDoorPos.x + ',' + backDoorPos.y + ')' : 'null') +
+        ', fwdDoor=(' + forwardDoorPos.x + ',' + forwardDoorPos.y + ')');
+      var applied = DoorContractSystem.applyDoorContract({
         grid: ctx.grid,
         TILES: ctx.TILES,
         gridW: ctx.GRID_WIDTH,
@@ -140,6 +146,9 @@ var TutorialFloorGen = (function() {
         backDoorPos: backDoorPos,
         forwardDoorPos: forwardDoorPos
       });
+      console.log('[TutorialFloorGen] POST-CONTRACT: applied=' + applied +
+        ', player=(' + ctx.player.x + ',' + ctx.player.y + ')' +
+        ' (moved ' + (ctx.player.x !== preContractX || ctx.player.y !== preContractY ? 'YES' : 'NO') + ')');
     }
 
     // Place buildings (visual overlay)

@@ -140,7 +140,11 @@ var DoorContractSystem = (function() {
    */
   function applyDoorContract(opts) {
     var mode = _spawnFromLastExitPos;
-    if (!mode) return false;
+    console.log('[DoorContract] applyDoorContract called: mode=' + mode);
+    if (!mode) {
+      console.log('[DoorContract] NO MODE SET — contract not applied. Player stays at (' + opts.player.x + ',' + opts.player.y + ')');
+      return false;
+    }
 
     var targetDoor, avoidDoor;
     if (mode === 'advance') {
@@ -152,12 +156,17 @@ var DoorContractSystem = (function() {
       targetDoor = opts.forwardDoorPos;
       avoidDoor  = opts.backDoorPos;
     } else {
+      console.log('[DoorContract] Unknown mode: ' + mode);
       _spawnFromLastExitPos = null;
       return false;
     }
 
+    console.log('[DoorContract] mode=' + mode +
+      ', targetDoor=' + (targetDoor ? '(' + targetDoor.x + ',' + targetDoor.y + ')' : 'null') +
+      ', avoidDoor=' + (avoidDoor ? '(' + avoidDoor.x + ',' + avoidDoor.y + ')' : 'null'));
+
     if (!targetDoor) {
-      // No target door available (e.g. floor 0 has no back door)
+      console.log('[DoorContract] No target door — contract not applied');
       _spawnFromLastExitPos = null;
       return false;
     }
@@ -168,10 +177,11 @@ var DoorContractSystem = (function() {
     );
 
     if (spawnPos) {
+      console.log('[DoorContract] Spawning player at (' + spawnPos.x + ',' + spawnPos.y + ') near ' + mode + ' target door');
       opts.player.x = spawnPos.x;
       opts.player.y = spawnPos.y;
     } else {
-      // Fallback: place directly on target door tile
+      console.log('[DoorContract] No spawn found — fallback to door tile (' + targetDoor.x + ',' + targetDoor.y + ')');
       opts.player.x = targetDoor.x;
       opts.player.y = targetDoor.y;
     }

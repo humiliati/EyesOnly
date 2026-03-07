@@ -702,7 +702,21 @@ var GoneRogue = (function () {
 
   function _generateFloor(secretFloorData) {
     if (typeof FloorGenCore !== 'undefined') {
-      return FloorGenCore.generateFloor(secretFloorData, _floorGenCoreCtx());
+      var result = FloorGenCore.generateFloor(secretFloorData, _floorGenCoreCtx());
+
+      // BUG FIX: Sync movement system with final player position after floor generation.
+      // Without this, GoneRogueMovement retains _logicalPosition/_visualPosition from the
+      // PREVIOUS floor (typically the forward door the player just used). On the first tick
+      // of the new floor, lines 20-24 of game-tick-system.js set player.visualX/Y from the
+      // stale movement position, making the player APPEAR on the old forward door. Then the
+      // first user tap pathfinds from that stale position, overwriting the door-contract
+      // placement and triggering an immediate re-advance (skipping the entire floor).
+      if (typeof GoneRogueMovement !== 'undefined' && GoneRogueMovement.setPosition) {
+        GoneRogueMovement.setPosition(_player.x, _player.y);
+        console.log('[GoneRogue] Synced movement system to player (' + _player.x + ',' + _player.y + ') after floor gen');
+      }
+
+      return result;
     }
     console.warn('[GoneRogue] FloorGenCore module not loaded');
   }
@@ -3249,6 +3263,10 @@ var GoneRogue = (function () {
 
     // Pet system debug API
     spawnTestPets: spawnTestPets,
+
+    // Floor state API
+    getFloor: function() { return _floor; },
+    getCurrentInteriorFloorId: function() { return _currentInteriorFloorId; },
 
     // Headless mode API (for testing/agent simulation)
     headless: {
