@@ -31,33 +31,40 @@ var OnboardingTutorial = (function() {
   var _phaseTimers = [];    // setTimeout handles for cleanup
   var _inputListener = null;
   var _floor1Hook = false;
+  var _surviveFired = false; // Phase 9 "Survive." fires on floor 0 sprint
 
   // ── CSS injection ─────────────────────────────────────────────────
+  // FIX 1: Cursor positioned on document.body with z-index 99990 (above HUD at 1801)
+  // FIX 2: Glitch flicker changed from rapid infinite to 2 slow flashes over ~2s
   function _injectStyles() {
     if (_styleEl) return;
     _styleEl = document.createElement('style');
     _styleEl.id = 'onboarding-tutorial-styles';
     _styleEl.textContent = [
       '.onboarding-cursor {',
-      '  position: absolute;',
+      '  position: fixed;',
       '  width: 32px; height: 32px;',
       '  background-image: url("' + CURSOR_BASE64 + '");',
       '  background-size: contain;',
       '  background-repeat: no-repeat;',
       '  pointer-events: none;',
-      '  z-index: 2000;',
+      '  z-index: 99990;',
       '  transform: translate(-2px, -2px);',
       '  transition: none;',
       '  image-rendering: pixelated;',
       '}',
+      // FIX 2: Slow glitch — 2 brief flashes across a 2.5s animation, then stops
       '.onboarding-cursor.glitch {',
-      '  animation: onb-glitch 0.15s steps(2) infinite;',
+      '  animation: onb-glitch 2.5s steps(1) forwards;',
       '}',
       '@keyframes onb-glitch {',
-      '  0% { filter: invert(0) hue-rotate(0deg); opacity: 1; }',
-      '  25% { filter: invert(1) hue-rotate(180deg); opacity: 0.7; }',
-      '  50% { filter: invert(0) hue-rotate(0deg); opacity: 1; }',
-      '  75% { filter: invert(1) hue-rotate(90deg); opacity: 0.85; }',
+      '  0%   { filter: invert(0) hue-rotate(0deg); opacity: 1; }',
+      '  20%  { filter: invert(0) hue-rotate(0deg); opacity: 1; }',
+      '  22%  { filter: invert(1) hue-rotate(180deg); opacity: 0.7; }',
+      '  26%  { filter: invert(0) hue-rotate(0deg); opacity: 1; }',
+      '  60%  { filter: invert(0) hue-rotate(0deg); opacity: 1; }',
+      '  62%  { filter: invert(1) hue-rotate(90deg); opacity: 0.8; }',
+      '  66%  { filter: invert(0) hue-rotate(0deg); opacity: 1; }',
       '  100% { filter: invert(0) hue-rotate(0deg); opacity: 1; }',
       '}',
       '.onboarding-cursor.tap-pulse {',
@@ -69,12 +76,12 @@ var OnboardingTutorial = (function() {
       '  100% { transform: translate(-2px, -2px) scale(1); }',
       '}',
       '.onboarding-trail-dot {',
-      '  position: absolute;',
+      '  position: fixed;',
       '  width: 6px; height: 6px;',
       '  border-radius: 50%;',
       '  background: rgba(0, 220, 200, 0.6);',
       '  pointer-events: none;',
-      '  z-index: 1999;',
+      '  z-index: 99989;',
       '  animation: onb-trail-fade 2s ease-out forwards;',
       '}',
       '@keyframes onb-trail-fade {',
@@ -82,12 +89,12 @@ var OnboardingTutorial = (function() {
       '  100% { opacity: 0; transform: scale(0.3); }',
       '}',
       '.onboarding-tap-ring {',
-      '  position: absolute;',
+      '  position: fixed;',
       '  width: 24px; height: 24px;',
       '  border: 2px solid #ffaa00;',
       '  border-radius: 50%;',
       '  pointer-events: none;',
-      '  z-index: 2001;',
+      '  z-index: 99991;',
       '  animation: onb-ring-expand 0.6s ease-out forwards;',
       '}',
       '@keyframes onb-ring-expand {',
@@ -105,13 +112,9 @@ var OnboardingTutorial = (function() {
 
   function _getCellSize() {
     // Derive cell size from grid container dimensions / visible grid cells.
-    // Canvas renderer uses cellSize=20 by default; we can also compute from DOM.
     var container = _getGridContainer();
     if (container && _ctx) {
       var rect = container.getBoundingClientRect();
-      // Estimate from container width and grid viewport
-      var cam = _getCameraOffset();
-      // Use a reasonable viewport width (typically ~20 cells visible)
       var viewW = 20;
       if (rect.width > 0) {
         return Math.round(rect.width / viewW) || 20;
@@ -121,8 +124,6 @@ var OnboardingTutorial = (function() {
   }
 
   function _getCameraOffset() {
-    // Camera state is internal to GoneRogueMobile; we approximate from
-    // player position + viewport.  Safe default: (0,0).
     if (typeof GoneRogueMobile !== 'undefined' && GoneRogueMobile.getCameraState) {
       var cs = GoneRogueMobile.getCameraState();
       return { x: cs.originXi || 0, y: cs.originYi || 0 };
@@ -131,34 +132,35 @@ var OnboardingTutorial = (function() {
   }
 
   /**
-   * Convert grid (tileX, tileY) to pixel position relative to the grid container.
-   * Accounts for camera offset so the cursor tracks the viewport.
+   * FIX 1: Convert grid (tileX, tileY) to VIEWPORT-FIXED pixel position.
+   * Since cursor/trail are now `position: fixed` on document.body,
+   * we need the grid container's bounding rect to get absolute screen coords.
    */
-  function _gridToPixel(tileX, tileY) {
+  function _gridToViewport(tileX, tileY) {
+    var container = _getGridContainer();
+    if (!container) return { px: 0, py: 0 };
+    var rect = container.getBoundingClientRect();
     var cellSize = _getCellSize();
     var cam = _getCameraOffset();
     return {
-      px: (tileX - cam.x) * cellSize,
-      py: (tileY - cam.y) * cellSize
+      px: rect.left + (tileX - cam.x) * cellSize,
+      py: rect.top + (tileY - cam.y) * cellSize
     };
   }
 
   // ── Cursor overlay management ─────────────────────────────────────
+  // FIX 1: Cursor now appended to document.body (escapes grid stacking context)
   function _createCursor() {
     if (_cursorEl) return _cursorEl;
-    var container = _getGridContainer();
-    if (!container) return null;
-
     _cursorEl = document.createElement('div');
     _cursorEl.className = 'onboarding-cursor glitch';
-    container.style.position = 'relative'; // ensure positioning context
-    container.appendChild(_cursorEl);
+    document.body.appendChild(_cursorEl);
     return _cursorEl;
   }
 
   function _positionCursor(tileX, tileY) {
     if (!_cursorEl) return;
-    var pos = _gridToPixel(tileX, tileY);
+    var pos = _gridToViewport(tileX, tileY);
     _cursorEl.style.left = pos.px + 'px';
     _cursorEl.style.top = pos.py + 'px';
   }
@@ -171,16 +173,13 @@ var OnboardingTutorial = (function() {
   }
 
   function _dropTrailDot(tileX, tileY) {
-    var container = _getGridContainer();
-    if (!container) return;
-    var pos = _gridToPixel(tileX, tileY);
+    var pos = _gridToViewport(tileX, tileY);
     var dot = document.createElement('div');
     dot.className = 'onboarding-trail-dot';
-    dot.style.left = (pos.px + 10) + 'px'; // center in cell
+    dot.style.left = (pos.px + 10) + 'px';
     dot.style.top = (pos.py + 10) + 'px';
-    container.appendChild(dot);
+    document.body.appendChild(dot);
     _trailEls.push(dot);
-    // Self-remove after animation
     setTimeout(function() {
       if (dot.parentNode) dot.parentNode.removeChild(dot);
       var idx = _trailEls.indexOf(dot);
@@ -189,15 +188,13 @@ var OnboardingTutorial = (function() {
   }
 
   function _showTapRing(tileX, tileY) {
-    var container = _getGridContainer();
-    if (!container) return;
-    var pos = _gridToPixel(tileX, tileY);
+    var pos = _gridToViewport(tileX, tileY);
     var cellSize = _getCellSize();
     var ring = document.createElement('div');
     ring.className = 'onboarding-tap-ring';
     ring.style.left = (pos.px + cellSize / 2) + 'px';
     ring.style.top = (pos.py + cellSize / 2) + 'px';
-    container.appendChild(ring);
+    document.body.appendChild(ring);
     setTimeout(function() {
       if (ring.parentNode) ring.parentNode.removeChild(ring);
     }, 700);
@@ -238,7 +235,6 @@ var OnboardingTutorial = (function() {
     var container = _getGridContainer();
     if (!container) return;
     _inputListener = function(e) {
-      // Any touch or mouse on the grid = player took control
       _onPlayerInput();
     };
     container.addEventListener('touchstart', _inputListener, { passive: true });
@@ -260,8 +256,6 @@ var OnboardingTutorial = (function() {
     _phase = 1;
     _startTime = Date.now();
     console.log('[Onboarding] Phase 1: player has input, timer started');
-
-    // Schedule Phase 2
     _delay(_phase2, 500);
   }
 
@@ -272,17 +266,16 @@ var OnboardingTutorial = (function() {
     console.log('[Onboarding] Phase 2: tooltip + overhead hint');
 
     if (typeof TooltipSystem !== 'undefined') {
-      TooltipSystem.show('\uD83D\uDC46 Tap + Drag to move', 3000); // 👆
+      TooltipSystem.show('\uD83D\uDC46 Tap + Drag to move', 3000);
     }
+    // FIX 5: Use showGenericExpression per overhead-animation-unified-roadmap doctrine
     if (typeof OverheadAnimator !== 'undefined' && _ctx) {
       OverheadAnimator.showGenericExpression(
         _ctx.player.x, _ctx.player.y,
-        '\uD83D\uDC46', 3000, '#ffff00' // 👆
+        '\uD83D\uDC46', 3000, '#ffff00'
       );
     }
-
-    // Schedule Phase 3
-    _delay(_phase3, 750); // 0.5 + 0.75 = 1.25s total
+    _delay(_phase3, 750);
   }
 
   /** Phase 3: Cursor hijack (t=1.25s) */
@@ -294,12 +287,8 @@ var OnboardingTutorial = (function() {
     _injectStyles();
     _createCursor();
     _positionCursor(_ctx.player.x, _ctx.player.y);
-
-    // Compute path from player to exit
     _computePath();
-
-    // Schedule Phase 4
-    _delay(_phase4, 250); // brief pause before glide starts
+    _delay(_phase4, 250);
   }
 
   /** Phase 4: Cursor glides along A* path to exit door */
@@ -315,7 +304,7 @@ var OnboardingTutorial = (function() {
     }
 
     _cursorPathIndex = 0;
-    var glideSpeed = 2.0; // tiles per second
+    var glideSpeed = 2.0;
     var lastTime = Date.now();
 
     function animateGlide() {
@@ -325,12 +314,10 @@ var OnboardingTutorial = (function() {
       var dt = (now - lastTime) / 1000;
       lastTime = now;
 
-      // Advance along path
       _cursorPathIndex += dt * glideSpeed;
 
       var idx = Math.floor(_cursorPathIndex);
       if (idx >= _path.length - 1) {
-        // Arrived at exit
         var lastWp = _path[_path.length - 1];
         _positionCursor(lastWp.x, lastWp.y);
         _dropTrailDot(lastWp.x, lastWp.y);
@@ -338,7 +325,6 @@ var OnboardingTutorial = (function() {
         return;
       }
 
-      // Interpolate between waypoints
       var frac = _cursorPathIndex - idx;
       var wp0 = _path[idx];
       var wp1 = _path[idx + 1];
@@ -347,7 +333,6 @@ var OnboardingTutorial = (function() {
 
       _positionCursor(interpX, interpY);
 
-      // Drop trail dot at each new integer waypoint
       if (idx > 0 && idx !== _lastTrailIdx) {
         _dropTrailDot(wp0.x, wp0.y);
         _lastTrailIdx = idx;
@@ -366,25 +351,22 @@ var OnboardingTutorial = (function() {
     _phase = 5;
     console.log('[Onboarding] Phase 5: cursor tap demo + fishing line');
 
-    // Tap pulse animation
     if (_cursorEl) {
       _cursorEl.classList.remove('glitch');
       _cursorEl.classList.add('tap-pulse');
     }
     _showTapRing(_exitX, _exitY);
 
-    // Show tooltip
     if (typeof TooltipSystem !== 'undefined') {
-      TooltipSystem.show('\uD83C\uDFA3 Drag to draw a path', 2500); // 🎣
+      TooltipSystem.show('\uD83C\uDFA3 Drag to draw a path', 2500);
     }
 
-    // After tap animation, show fishing line
+    // After tap animation, show fishing line then schedule auto-walk
     _delay(function() {
       if (_playerTookControl) return;
 
-      // Show the fishing path visualization
+      // Show fishing path visualization
       if (_path && _path.length > 1 && typeof GoneRogueMobile !== 'undefined') {
-        // GoneRogueMobile's fishing path expects waypoints
         if (GoneRogueMobile.showFishingPath) {
           GoneRogueMobile.showFishingPath(_path);
         }
@@ -404,9 +386,16 @@ var OnboardingTutorial = (function() {
     _removeCursor();
     _clearTrail();
 
-    // Tooltip
+    // FIX 3: Hide the fishing line BEFORE auto-walk starts.
+    // The static SVG overlay doesn't track camera scrolling, so it would
+    // drift as the camera follows the walking player. Remove it now —
+    // the player already saw the fishing line demo.
+    if (typeof GoneRogueMobile !== 'undefined' && GoneRogueMobile.hideFishingPath) {
+      GoneRogueMobile.hideFishingPath();
+    }
+
     if (typeof TooltipSystem !== 'undefined') {
-      TooltipSystem.show('\u27A1\uFE0F Walking...', 2000); // ➡️
+      TooltipSystem.show('\u27A1\uFE0F Walking...', 2000);
     }
 
     // Trigger movement to exit
@@ -418,8 +407,6 @@ var OnboardingTutorial = (function() {
         return false;
       };
       GoneRogueMovement.setTarget(_exitX, _exitY, collisionCheck, false);
-
-      // Monitor for sprint demo at ~33% progress
       _monitorProgress();
     }
   }
@@ -431,23 +418,19 @@ var OnboardingTutorial = (function() {
     _removeCursor();
     _clearTrail();
 
-    // Hide fishing line if shown
     if (typeof GoneRogueMobile !== 'undefined' && GoneRogueMobile.hideFishingPath) {
       GoneRogueMobile.hideFishingPath();
     }
 
-    // Clear overhead animations from tutorial
     if (typeof OverheadAnimator !== 'undefined' && _ctx) {
       OverheadAnimator.clearAnimation(_ctx.player.x, _ctx.player.y);
     }
 
     if (typeof TooltipSystem !== 'undefined') {
-      TooltipSystem.show('\uD83D\uDC4D Nice! Keep exploring.', 2000); // 👍
+      TooltipSystem.show('\uD83D\uDC4D Nice! Keep exploring.', 2000);
     }
 
     _unbindInputListener();
-
-    // Tutorial is done but stay active for Floor 1 transition hooks
     _phase = 7;
   }
 
@@ -456,6 +439,21 @@ var OnboardingTutorial = (function() {
     if (_playerTookControl) return;
     _phase = 8;
     console.log('[Onboarding] Phase 8: sprint demo');
+
+    // FIX 4: Fire "Survive." tooltip on floor 0 when sprint begins
+    if (!_surviveFired) {
+      _surviveFired = true;
+      if (typeof TooltipSystem !== 'undefined') {
+        TooltipSystem.show('Survive.', 1500);
+      }
+      // FIX 5: Fire overhead "!" per unified roadmap doctrine
+      if (typeof OverheadAnimator !== 'undefined' && _ctx) {
+        OverheadAnimator.showGenericExpression(
+          _ctx.player.x, _ctx.player.y,
+          '\u2757', 1200, '#ff4444'
+        );
+      }
+    }
 
     // Show cursor at exit, double-tap animation
     _injectStyles();
@@ -467,7 +465,7 @@ var OnboardingTutorial = (function() {
     }
     _showTapRing(_exitX, _exitY);
 
-    // Brief delay then second tap
+    // Brief delay then second tap + sprint
     _delay(function() {
       if (_playerTookControl) return;
       _showTapRing(_exitX, _exitY);
@@ -483,14 +481,13 @@ var OnboardingTutorial = (function() {
           }
           return false;
         };
-        GoneRogueMovement.setTarget(_exitX, _exitY, collisionCheck, true); // sprint!
+        GoneRogueMovement.setTarget(_exitX, _exitY, collisionCheck, true);
       }
 
       if (typeof TooltipSystem !== 'undefined') {
-        TooltipSystem.show('\u26A1 Double-tap to sprint!', 2000); // ⚡
+        TooltipSystem.show('\u26A1 Double-tap to sprint!', 2000);
       }
 
-      // Remove cursor after a beat
       _delay(function() {
         _removeCursor();
       }, 800);
@@ -500,7 +497,6 @@ var OnboardingTutorial = (function() {
   /** Monitor auto-walk progress for sprint trigger */
   function _monitorProgress() {
     if (!_path || _path.length < 4) return;
-    var threshold = Math.floor(_path.length / 3);
     var sprintTriggered = false;
 
     function check() {
@@ -510,7 +506,6 @@ var OnboardingTutorial = (function() {
       var pos = GoneRogueMovement.getLogicalPosition();
       if (!pos) { _delay(check, 300); return; }
 
-      // Check if player reached ~1/3 progress
       var dx = pos.x - _ctx.player.x;
       var dy = pos.y - _ctx.player.y;
       var dist = Math.sqrt(dx * dx + dy * dy);
@@ -523,9 +518,7 @@ var OnboardingTutorial = (function() {
         return;
       }
 
-      // Check if movement completed (near exit)
       if (Math.abs(pos.x - _exitX) <= 1 && Math.abs(pos.y - _exitY) <= 1) {
-        // Player arrived at exit — floor transition will happen naturally
         _cleanup();
         return;
       }
@@ -540,32 +533,39 @@ var OnboardingTutorial = (function() {
 
   /**
    * Called externally when a floor transition happens.
-   * If transitioning to Floor 1, fires the dramatic tooltip cascade.
+   * FIX 4: "Survive." now fires on floor 0 during sprint (Phase 8).
+   *         Floor 1 gets only "Evade.", "Resist.", "Extract." — delayed
+   *         enough that the scene transition completes first.
    */
   function onFloorTransition(newFloor, ctx) {
     if (newFloor !== 1) return;
-    if (_floor1Hook) return; // only once
+    if (_floor1Hook) return;
     _floor1Hook = true;
 
     console.log('[Onboarding] Phase 9: Floor 1 transition tooltips');
 
-    var words = ['Survive.', 'Evade.', 'Resist.', 'Extract.'];
+    // FIX 4: Only 3 remaining words on Floor 1 (Survive already shown on Floor 0)
+    var words = ['Evade.', 'Resist.', 'Extract.'];
     var wordDelay = 1500;
     var gapDelay = 300;
+
+    // FIX 4: Delay the first tooltip by 1.5s so the floor transition
+    // animation (fade-out 0.3s + setTimeout 0.3s + fade-in) completes first
+    var transitionBuffer = 1500;
 
     words.forEach(function(word, i) {
       setTimeout(function() {
         if (typeof TooltipSystem !== 'undefined') {
           TooltipSystem.show(word, wordDelay);
         }
-        // Phase 10: overhead "!" for each word
+        // FIX 5: Fire overhead "!" per unified roadmap — OverheadAnimator.showGenericExpression
         if (typeof OverheadAnimator !== 'undefined' && ctx) {
           OverheadAnimator.showGenericExpression(
             ctx.player.x, ctx.player.y,
-            '\u2757', 1200, '#ff4444' // ❗
+            '\u2757', 1200, '#ff4444'
           );
         }
-      }, i * (wordDelay + gapDelay));
+      }, transitionBuffer + i * (wordDelay + gapDelay));
     });
   }
 
@@ -573,7 +573,6 @@ var OnboardingTutorial = (function() {
   function _computePath() {
     if (!_ctx) return;
 
-    // Use GoneRogueMovement A* pathfinder
     if (typeof GoneRogueMovement !== 'undefined' && GoneRogueMovement.findPath) {
       var collisionCheck = function(x, y) {
         if (typeof GoneRogue !== 'undefined' && GoneRogue.isWalkable) {
@@ -590,7 +589,6 @@ var OnboardingTutorial = (function() {
     }
 
     if (!_path || _path.length === 0) {
-      // Fallback: straight line (won't avoid walls but better than nothing)
       _path = [];
       var steps = Math.max(Math.abs(_exitX - _ctx.player.x), Math.abs(_exitY - _ctx.player.y));
       for (var i = 0; i <= steps; i++) {
@@ -620,14 +618,8 @@ var OnboardingTutorial = (function() {
 
   // ── Public API ────────────────────────────────────────────────────
 
-  /**
-   * Start the onboarding tutorial on Floor 0.
-   * @param {Object} ctx - Monolith context (player, grid, floor, etc.)
-   */
   function start(ctx) {
     if (!ctx || ctx.getFloor() !== 0) return;
-
-    // Don't replay on Uber difficulties or if already completed this session
     if (ctx.getDifficultyTier && ctx.getDifficultyTier() > 1) return;
 
     console.log('[Onboarding] Starting Pink Panther tutorial on Floor 0');
@@ -636,29 +628,21 @@ var OnboardingTutorial = (function() {
     _phase = 0;
     _ctx = ctx;
     _floor1Hook = false;
+    _surviveFired = false;
 
-    // Resolve exit position from the grid (find DOOR tile) or use layout default
     _exitX = 20;
     _exitY = 17;
 
-    // Bind input detection
-    // Small delay to let the grid container render
     _delay(function() {
       _bindInputListener();
       _phase1();
     }, 100);
   }
 
-  /**
-   * Check if onboarding is currently active.
-   */
   function isActive() {
     return _active;
   }
 
-  /**
-   * Get current phase number (for debugging / external hooks).
-   */
   function getPhase() {
     return _phase;
   }
