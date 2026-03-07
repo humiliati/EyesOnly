@@ -37,15 +37,34 @@ var FloorGenCore = (function() {
     // Determine if secret floor
     var isSecretFloor = !!secretFloorData;
 
-    // Check for contrived tutorial floors (floors 1-3).
+    // Check for contrived tutorial floors (floors 0-3).
     // On Uber 1+ (ctx.getDifficultyTier() >= 2), skip tutorials — use procedural Forest instead.
-    if (
+    var isContrivedFloor = (
       !isSecretFloor &&
       ctx.getDifficultyTier() <= 1 &&
       typeof TutorialFloors !== 'undefined' &&
       TutorialFloors.isContrivedFloor(ctx.getFloor())
-    ) {
+    );
+
+    if (isContrivedFloor) {
       ctx.generateContrivedTutorialFloor();
+
+      // Proc gen item spawning runs after contrived layout generation.
+      // Terrain, rooms, doors, enemies, breakables are already placed by the contrived layout.
+      // We only add organic loose items (cards, currency) via placeItems().
+      ctx.placeItems(ctx.FLOOR_TYPES.TUTORIAL);
+
+      // Spawn interactive items on contrived floors too
+      if (typeof ItemSpawner !== 'undefined' && typeof InteractiveItems !== 'undefined') {
+        var spawnedItems = ItemSpawner.spawnItemsForFloor(ctx.getFloor(), null, ctx.grid);
+        spawnedItems.forEach(function(item) {
+          InteractiveItems.addItem(item);
+        });
+        if (spawnedItems.length > 0) {
+          console.log('[GoneRogue] Spawned', spawnedItems.length, 'interactive items on contrived floor');
+        }
+      }
+
       return;
     }
 

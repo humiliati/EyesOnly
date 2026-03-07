@@ -163,39 +163,30 @@ var TutorialFloors = (function() {
       message: 'A wooden gate blocks your path. Try breaking it!'
     },
 
-    // Breakable objects — spread across all 4 zones
+    // Breakable objects — spread across all 4 zones (drops handled by proc gen)
     breakables: [
       // Zone 1: Village bushes (easy, near spawn path)
-      { x: 14, y: 3, emoji: '🌿', name: 'Bush', hp: 1, drops: { currency: [3, 5], cards: 0.2 } },
-      { x: 16, y: 7, emoji: '🌿', name: 'Bush', hp: 1, drops: { currency: [3, 5], cards: 0.2 } },
+      { x: 14, y: 3, emoji: '🌿', name: 'Bush', hp: 1 },
+      { x: 16, y: 7, emoji: '🌿', name: 'Bush', hp: 1 },
       // Zone 2: Orchard trees & flowers
-      { x: 24, y: 2, emoji: '🌳', name: 'Apple Tree', hp: 3, drops: { currency: [5, 10], cards: 0.3 } },
-      { x: 28, y: 4, emoji: '🌳', name: 'Apple Tree', hp: 3, drops: { currency: [5, 10], cards: 0.3 } },
-      { x: 32, y: 2, emoji: '🌳', name: 'Apple Tree', hp: 3, drops: { currency: [5, 10], cards: 0.3 } },
-      { x: 22, y: 5, emoji: '🌸', name: 'Flower Patch', hp: 1, drops: { currency: [2, 4], cards: 0.4 } },
-      { x: 35, y: 6, emoji: '🌸', name: 'Flower Patch', hp: 1, drops: { currency: [2, 4], cards: 0.4 } },
-      // Zone 3: Hidden grove (breakable bush wall + rewards inside)
-      { x: 5, y: 11, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 3] } },
-      { x: 5, y: 12, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 3] } },
-      { x: 5, y: 13, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 3] } },
-      { x: 5, y: 14, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 3] } },
-      { x: 3, y: 13, emoji: '🪵', name: 'Hollow Log', hp: 2, drops: { currency: [8, 15], cards: 0.7 } },
-      { x: 3, y: 11, emoji: '🧺', name: 'Picnic Basket', hp: 2, drops: { currency: [10, 20], cards: 0.5 } },
+      { x: 24, y: 2, emoji: '🌳', name: 'Apple Tree', hp: 3 },
+      { x: 28, y: 4, emoji: '🌳', name: 'Apple Tree', hp: 3 },
+      { x: 32, y: 2, emoji: '🌳', name: 'Apple Tree', hp: 3 },
+      { x: 22, y: 5, emoji: '🌸', name: 'Flower Patch', hp: 1 },
+      { x: 35, y: 6, emoji: '🌸', name: 'Flower Patch', hp: 1 },
+      // Zone 3: Hidden grove (breakable bush wall)
+      { x: 5, y: 11, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      { x: 5, y: 12, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      { x: 5, y: 13, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      { x: 5, y: 14, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      { x: 3, y: 13, emoji: '🪵', name: 'Hollow Log', hp: 2 },
+      { x: 3, y: 11, emoji: '🧺', name: 'Picnic Basket', hp: 2 },
       // Zone 4: Near gate
-      { x: 23, y: 13, emoji: '📦', name: 'Wooden Crate', hp: 2, drops: { currency: [5, 10], cards: 0.5 } }
+      { x: 23, y: 13, emoji: '📦', name: 'Wooden Crate', hp: 2 }
     ],
 
-    // Breadcrumb pickups — small currency rewards along paths between zones
-    breadcrumbPickups: [
-      // Path from spawn toward village
-      { x: 25, y: 9, amount: 3 },
-      { x: 20, y: 8, amount: 3 },
-      // Path from village toward orchard
-      { x: 18, y: 3, amount: 3 },
-      { x: 21, y: 3, amount: 3 },
-      // Path toward gate
-      { x: 20, y: 12, amount: 5 }
-    ],
+    // Breadcrumb pickups scrubbed — proc gen handles loose item spawning
+    breadcrumbPickups: [],
 
     // Tutorial pickups (behind gate, guaranteed rewards)
     tutorialPickups: [
@@ -316,20 +307,20 @@ var TutorialFloors = (function() {
       message: 'A wooden barricade blocks the pinch. Break it to proceed.'
     },
 
-    // Breakables on the right side (reward / practice), but no key on Floor 2.
+    // Breakables on the right side (practice), but no key on Floor 2. Drops handled by proc gen.
     breakables: [
-      { x: 32, y: 4, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
-      { x: 33, y: 4, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
-      { x: 34, y: 4, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
-      { x: 35, y: 4, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
-      { x: 32, y: 5, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
-      { x: 35, y: 5, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
-      // Breakables near spawn for early currency
-      { x: 10, y: 6, emoji: '📦', name: 'Wooden Crate', hp: 2, drops: { currency: [5, 10], cards: 0.3 } },
+      { x: 32, y: 4, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      { x: 33, y: 4, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      { x: 34, y: 4, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      { x: 35, y: 4, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      { x: 32, y: 5, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      { x: 35, y: 5, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      // Breakables near spawn
+      { x: 10, y: 6, emoji: '📦', name: 'Wooden Crate', hp: 2 },
       // Picnic scene framed by decorations at (17,7), (19,7), (18,6)
-      { x: 18, y: 7, emoji: '🧺', name: 'Picnic Basket', hp: 2, drops: { currency: [5, 10], cards: 0.4 } },
+      { x: 18, y: 7, emoji: '🧺', name: 'Picnic Basket', hp: 2 },
       // Hidden picnic in the lower reward area (scene cluster at 8-10, 13-14)
-      { x: 9, y: 14, emoji: '🧺', name: 'Picnic Basket', hp: 2, drops: { currency: [8, 15], cards: 0.5 } }
+      { x: 9, y: 14, emoji: '🧺', name: 'Picnic Basket', hp: 2 }
     ],
 
     // Interactive items
@@ -338,13 +329,8 @@ var TutorialFloors = (function() {
         text: 'A barricade blocks the pinch. Break it with normal attacks/projectiles to proceed.' }
     ],
 
-    // Breadcrumb pickups leading player toward the pinch
-    breadcrumbPickups: [
-      { x: 12, y: 3, amount: 3 },
-      { x: 20, y: 3, amount: 3 },
-      { x: 22, y: 6, amount: 3 },
-      { x: 20, y: 7, amount: 3 }
-    ],
+    // Breadcrumb pickups scrubbed — proc gen handles loose item spawning
+    breadcrumbPickups: [],
 
     enemies: [],
 
@@ -524,54 +510,18 @@ var TutorialFloors = (function() {
       }
     ],
 
-    // Breakables with guaranteed attack cards for practice
+    // Breakables around the combat area. Drops handled by proc gen.
     // (Also includes the key cluster bushes around the marked crate.)
     breakables: [
       // Key cluster bushes (guarding the marked crate at 10,9)
-      { x: 9, y: 9, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [1, 2] } },
-      { x: 11, y: 9, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [1, 2] } },
-      { x: 10, y: 8, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [1, 2] } },
-      { x: 10, y: 10, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [1, 2] } },
-      {
-        x: 12, y: 4,
-        emoji: '🌸',
-        name: 'Flower Patch',
-        hp: 1,
-        drops: {
-          card: 'strike',
-          currency: [3, 5]
-        }
-      },
-      {
-        x: 28, y: 4,
-        emoji: '🧺',
-        name: 'Picnic Basket',
-        hp: 2,
-        drops: {
-          card: 'defend',
-          currency: [5, 10]
-        }
-      },
-      {
-        x: 7, y: 12,
-        emoji: '📦',
-        name: 'Wooden Crate',
-        hp: 2,
-        drops: {
-          currency: [5, 10],
-          cards: 0.5
-        }
-      },
-      {
-        x: 32, y: 10,
-        emoji: '🪵',
-        name: 'Hollow Log',
-        hp: 2,
-        drops: {
-          currency: [4, 8],
-          cards: 0.5
-        }
-      }
+      { x: 9, y: 9, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      { x: 11, y: 9, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      { x: 10, y: 8, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      { x: 10, y: 10, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      { x: 12, y: 4, emoji: '🌸', name: 'Flower Patch', hp: 1 },
+      { x: 28, y: 4, emoji: '🧺', name: 'Picnic Basket', hp: 2 },
+      { x: 7, y: 12, emoji: '📦', name: 'Wooden Crate', hp: 2 },
+      { x: 32, y: 10, emoji: '🪵', name: 'Hollow Log', hp: 2 }
     ],
 
     border: {
@@ -639,12 +589,12 @@ var TutorialFloors = (function() {
       { x: 36, y: 7, emoji: '\uD83D\uDD6F\uFE0F' }, { x: 36, y: 13, emoji: '\uD83D\uDD6F\uFE0F' }
     ],
     breakables: [
-      { x: 6, y: 5, emoji: '\uD83D\uDD6F\uFE0F', name: 'Candelabra', hp: 1, drops: { currency: [3, 7] } },
-      { x: 33, y: 5, emoji: '\uD83D\uDD6F\uFE0F', name: 'Candelabra', hp: 1, drops: { currency: [3, 7] } },
-      { x: 6, y: 14, emoji: '\uD83D\uDD6F\uFE0F', name: 'Candelabra', hp: 1, drops: { currency: [3, 7] } },
-      { x: 33, y: 14, emoji: '\uD83D\uDD6F\uFE0F', name: 'Candelabra', hp: 1, drops: { currency: [3, 7] } }
+      { x: 6, y: 5, emoji: '\uD83D\uDD6F\uFE0F', name: 'Candelabra', hp: 1 },
+      { x: 33, y: 5, emoji: '\uD83D\uDD6F\uFE0F', name: 'Candelabra', hp: 1 },
+      { x: 6, y: 14, emoji: '\uD83D\uDD6F\uFE0F', name: 'Candelabra', hp: 1 },
+      { x: 33, y: 14, emoji: '\uD83D\uDD6F\uFE0F', name: 'Candelabra', hp: 1 }
     ],
-    currencies: [{ x: 18, y: 5, amount: 5 }, { x: 22, y: 5, amount: 5 }],
+    currencies: [], // Scrubbed — proc gen handles loose item spawning
     enemies: []
   };
   if (typeof InteriorFloors !== 'undefined') {
@@ -843,14 +793,14 @@ var TutorialFloors = (function() {
 
     breakables: [
       // Left forest: picnic hidden behind a bush cluster (scene: tree at 3,3; fern at 2,5)
-      { x: 3, y: 4, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
-      { x: 3, y: 5, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [2, 4] } },
-      { x: 3, y: 6, emoji: '🧺', name: 'Picnic Basket', hp: 2, drops: { currency: [10, 20], cards: 0.4 } },
+      { x: 3, y: 4, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      { x: 3, y: 5, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      { x: 3, y: 6, emoji: '🧺', name: 'Picnic Basket', hp: 2 },
       // Top-right corner: bushes concealing the elite enemy
-      { x: 34, y: 1, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [1, 3] } },
-      { x: 35, y: 1, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [1, 3] } },
-      { x: 36, y: 1, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [1, 3] } },
-      { x: 37, y: 1, emoji: '🌿', name: 'Thick Bush', hp: 1, drops: { currency: [1, 3] } }
+      { x: 34, y: 1, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      { x: 35, y: 1, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      { x: 36, y: 1, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      { x: 37, y: 1, emoji: '🌿', name: 'Thick Bush', hp: 1 }
     ],
 
     // Elite enemy tucked in the top-right corner behind the bush cluster.
@@ -1009,11 +959,11 @@ var TutorialFloors = (function() {
 
     breakables: [
       // Barrels in the common room
-      { x: 2, y: 12, emoji: '🗑️', name: 'Old Barrel', hp: 2, drops: { currency: [3, 8] }, kickable: true, destroyedGlyph: '.' },
-      { x: 2, y: 14, emoji: '🗑️', name: 'Old Barrel', hp: 2, drops: { currency: [3, 8] }, kickable: true, destroyedGlyph: '.' },
+      { x: 2, y: 12, emoji: '🗑️', name: 'Old Barrel', hp: 2, kickable: true, destroyedGlyph: '.' },
+      { x: 2, y: 14, emoji: '🗑️', name: 'Old Barrel', hp: 2, kickable: true, destroyedGlyph: '.' },
       // Crates near the cellar
-      { x: 36, y: 14, emoji: '📦', name: 'Dusty Crate', hp: 1, drops: { currency: [5, 10] }, kickable: true, destroyedGlyph: '.' },
-      { x: 37, y: 14, emoji: '📦', name: 'Dusty Crate', hp: 1, drops: { currency: [5, 10] }, kickable: true, destroyedGlyph: '.' }
+      { x: 36, y: 14, emoji: '📦', name: 'Dusty Crate', hp: 1, kickable: true, destroyedGlyph: '.' },
+      { x: 37, y: 14, emoji: '📦', name: 'Dusty Crate', hp: 1, kickable: true, destroyedGlyph: '.' }
     ],
 
     // Tavern Rat near cellar entrance
@@ -1028,11 +978,8 @@ var TutorialFloors = (function() {
       }
     ],
 
-    // Small currency on the floor
-    breadcrumbPickups: [
-      { x: 10, y: 10, amount: 3 },
-      { x: 18, y: 10, amount: 3 }
-    ],
+    // Breadcrumb pickups scrubbed — proc gen handles loose item spawning
+    breadcrumbPickups: [],
 
     tutorialPickups: []
   };
@@ -1093,13 +1040,13 @@ var TutorialFloors = (function() {
     ],
 
     breakables: [
-      { x: 10, y: 9, emoji: '📦', name: 'Rotting Crate', hp: 1, drops: { currency: [5, 10] } },
-      { x: 11, y: 9, emoji: '📦', name: 'Rotting Crate', hp: 1, drops: { currency: [5, 10] } },
-      { x: 28, y: 9, emoji: '🗑️', name: 'Old Barrel', hp: 2, drops: { currency: [3, 8] }, kickable: true, destroyedGlyph: '.' },
-      { x: 29, y: 9, emoji: '🗑️', name: 'Old Barrel', hp: 2, drops: { currency: [3, 8] }, kickable: true, destroyedGlyph: '.' },
+      { x: 10, y: 9, emoji: '📦', name: 'Rotting Crate', hp: 1 },
+      { x: 11, y: 9, emoji: '📦', name: 'Rotting Crate', hp: 1 },
+      { x: 28, y: 9, emoji: '🗑️', name: 'Old Barrel', hp: 2, kickable: true, destroyedGlyph: '.' },
+      { x: 29, y: 9, emoji: '🗑️', name: 'Old Barrel', hp: 2, kickable: true, destroyedGlyph: '.' },
       // Crates guarding the hammer alcove
-      { x: 34, y: 1, emoji: '📦', name: 'Heavy Crate', hp: 2, drops: { currency: [5, 12] } },
-      { x: 35, y: 1, emoji: '📦', name: 'Heavy Crate', hp: 2, drops: { currency: [5, 12] } }
+      { x: 34, y: 1, emoji: '📦', name: 'Heavy Crate', hp: 2 },
+      { x: 35, y: 1, emoji: '📦', name: 'Heavy Crate', hp: 2 }
     ],
 
     // The BLACKSMITH_HAMMER quest key — freely pickable at the end of the basement
@@ -1117,12 +1064,7 @@ var TutorialFloors = (function() {
       }
     ],
 
-    currencies: [
-      { x: 15, y: 5, amount: 8 },
-      { x: 25, y: 5, amount: 8 },
-      { x: 15, y: 14, amount: 8 },
-      { x: 25, y: 14, amount: 8 }
-    ],
+    currencies: [], // Scrubbed — proc gen handles loose item spawning
     enemies: []
   };
 

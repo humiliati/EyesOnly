@@ -100,7 +100,11 @@ var InteriorFloorSystem = (function() {
       }
       ctx.ensurePlayerOnEmptyTile();
 
-      // Reset state arrays for interior
+      // Reset state arrays for interior.
+      // WorldItems.init() clears parent floor items — this is safe because:
+      // 1. Main→interior: parent floor regenerates entirely on exit (FloorGenCore.generateFloor)
+      // 2. Interior→nested: parent interior regenerates via re-enter (enterInteriorFloor)
+      // Proc gen handles organic item spawning on all floors including tutorials.
       ctx.setEnemies([]);
       ctx.setBreakables([]);
       WorldItems.init();

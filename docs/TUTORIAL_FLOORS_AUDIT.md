@@ -335,12 +335,20 @@ if (!layout.allowEnemies && ctx.getFloor() < 3) tutorialEnemies = [];
 ## BUG 6 — Tavern floor0.N regression from collectible testing
 
 **Severity:** Medium-High
-**Status:** ⚠️ PARTIALLY FIXED (2026-03-07)
-**Files:** `interior-floor-system.js`, `tutorial-floors.js`
+**Status:** ✅ FIXED (2026-03-07)
+**Files:** `interior-floor-system.js`, `tutorial-floors.js`, `floor-gen-core.js`
 
-**What's fixed:** Floor ID scheme is now internally consistent (`0.1`/`0.1.1`) and documented correctly in `BUILDING_INTERIOR_SYSTEM.md`. All 4 authored layouts have `interiorBiome` fields (INTERIOR_TAVERN, INTERIOR_TAVERN_BASEMENT, INTERIOR_CHURCH, INTERIOR_STRIP_MALL). Floor hierarchy documented: `FloorN → FloorN.N (contrived interior) → FloorN.N.N (proc gen deeper)`.
+**Implementation:** Complete collectible scrub + proc gen wiring:
 
-**Still open:** `WorldItems.init()` on interior entry (line 62 of `interior-floor-system.js`) still wipes all floor items. Needs `WorldItems.initForInterior()` method to scope item reset to interior context only. The `B` marker in tavern template still falls through to TILES.EMPTY.
+1. **Hardcoded collectibles scrubbed from `tutorial-floors.js`**: All `breadcrumbPickups` arrays emptied (floors 1, 2, tavern interior). All direct `currencies` arrays emptied (church interior, tavern basement). All breakable `drops` tables removed (floors 0-3, all interiors). Breakable objects retained for environmental interaction but no longer contain hardcoded loot.
+
+2. **Proc gen item spawning wired for tutorial floors in `floor-gen-core.js`**: Removed the early-return after `generateContrivedTutorialFloor()`. Now calls `ctx.placeItems(TUTORIAL)` after contrived layout generation, giving tutorial floors the same organic card/currency spawning as procedural floors (8 items for TUTORIAL floor type). `ItemSpawner.spawnItemsForFloor()` also called (gracefully no-ops when rooms=null).
+
+3. **Intentional tutorial rewards preserved**: Floor 1 gate pickups (50¢ + guaranteed card), Floor 3 marked crate (rusty_key), tavern basement BLACKSMITH_HAMMER quest key all retained in `tutorialPickups` arrays.
+
+4. **WorldItems.init() scoping resolved**: `WorldItems.init()` clears items on interior entry, but this is now safe because (a) parent floors regenerate entirely on exit via `FloorGenCore.generateFloor()`, and (b) proc gen re-rolls organic items on each floor generation. No `initForInterior()` method needed.
+
+5. **`B` marker in tavern template**: Low-priority cosmetic — falls through to TILES.EMPTY, building door placed via `buildingDoors` array at correct position. Template marker is misleading but non-breaking.
 
 ### What's happening
 The tavern interior floors are registered as `'0.1'` and `'0.1.1'` (line 1128-1129 of `tutorial-floors.js`), but the building door on floor 0 points to `'0.1'` (line 809). The buildings.json has `BLD-TAVERN` with `interiorFloorId: "0.1"`.
@@ -839,7 +847,7 @@ Instead of just stronger enemies on deeper floors, pattern parameters tighten: s
 | 3 | Door protection too weak | Medium | player-interaction-system.js | Position-only, needs step count |
 | 4 | No door type animation distinction | Medium | rendering layer | Building vs floor doors look identical |
 | 5 | Floor 0 enemy filtered out | High | tutorial-floor-gen.js:506 | `floor < 3` guard too aggressive |
-| 6 | Tavern interior wipes collectibles | Medium-High | interior-floor-system.js | ⚠️ PARTIALLY FIXED — floor IDs consistent, interiorBiome fields added; WorldItems.init() scoping still needed |
+| 6 | Tavern interior wipes collectibles | Medium-High | interior-floor-system.js | ✅ FIXED — collectible spam scrubbed, proc gen wired for tutorial floors, WorldItems.init() resolved |
 | 7 | WBE compatibility gaps | Low-Medium | tutorial-floors.js | ✅ FIXED — FloorMetadataRegistry provides WBE Step Node shape |
 | 8 | Interior walls default to parent biome | High | interior-floor-system.js | ✅ FIXED — _resolveInteriorBiome() + visual cache rebuild + per-biome lighting |
 | 9 | No interior biome definitions | High | interior-biomes.json (created) | ✅ FIXED — 12 interior biomes (exceeded proposed 8) |
@@ -1185,7 +1193,7 @@ function exitInteriorFloor() {
 | 3 | Door protection too weak | Medium | player-interaction-system.js | Position-only, needs step count |
 | 4 | No door type animation distinction | Medium | rendering layer | Building vs floor doors look identical |
 | 5 | Floor 0 enemy filtered out | High | tutorial-floor-gen.js:506 | `floor < 3` guard too aggressive |
-| 6 | Tavern interior wipes collectibles | Medium-High | interior-floor-system.js | ⚠️ PARTIALLY FIXED — floor IDs consistent, interiorBiome fields added; WorldItems.init() scoping still needed |
+| 6 | Tavern interior wipes collectibles | Medium-High | interior-floor-system.js | ✅ FIXED — collectible spam scrubbed, proc gen wired for tutorial floors, WorldItems.init() resolved |
 | 7 | WBE compatibility gaps | Low-Medium | tutorial-floors.js | ✅ FIXED — FloorMetadataRegistry provides WBE Step Node shape |
 | 8 | Interior walls default to parent biome | High | interior-floor-system.js | ✅ FIXED — _resolveInteriorBiome() + visual cache rebuild + per-biome lighting |
 | 9 | No interior biome definitions | High | interior-biomes.json (created) | ✅ FIXED — 12 interior biomes (exceeded proposed 8) |
@@ -1208,6 +1216,6 @@ function exitInteriorFloor() {
 8. **BUG 11** (boss biomes) — ✅ **IMPLEMENTED:** `boss-biomes.json` created with 3 arena biomes (BOSS_TRAIN_DEPOT, BOSS_LONG_BRIDGE, BOSS_SKI_MOUNTAIN). Wired into `GoneRogueDataRegistry`, merged into main biomes map. `boss-floor-registry.js` updated with BOSS_BIOMES constants and parentBiome field.
 9. **BUG 9** (interior biome definitions) — ✅ **IMPLEMENTED:** `interior-biomes.json` created with 12 interior biome definitions (exceeding original 8 proposed). Loaded as 12th fetch in data registry. `getInteriorBiome(id)` accessor added.
 10. **BUG 8** (interior wall rendering) — ✅ **IMPLEMENTED:** `_resolveInteriorBiome()` added to `interior-floor-system.js`. After `clearVisualCaches()`, rebuilds biome visual grid, tile render objects, and background colors. Hardcoded lighting replaced with per-biome `lightingProfile` and `darknessMultiplier`.
-11. **BUG 6** (tavern WorldItems wipe) — ⚠️ **PARTIALLY FIXED:** Floor ID scheme consistent (`0.1`/`0.1.1`), `interiorBiome` fields added to all authored layouts. **Still open:** `WorldItems.init()` needs `initForInterior()` method to scope item reset. `B` marker in tavern template still unused.
+11. **BUG 6** (tavern WorldItems wipe) — ✅ **IMPLEMENTED:** Hardcoded collectible spam scrubbed from all tutorial floor layouts (`breadcrumbPickups`, `currencies`, breakable `drops`). Proc gen `placeItems()` wired into contrived floor generation path in `floor-gen-core.js`. Tutorial floors now get organic item spawning. Intentional teaching moments preserved (gate pickups, rusty_key, BLACKSMITH_HAMMER). `WorldItems.init()` scoping resolved — floors regenerate on exit.
 12. **BUG 12** (narrative alignment) — ✅ **IMPLEMENTED:** All 6 original biomes rethemed to Sandpoint geography (Kaniksu, Bunker Hill, Litehouse, Cedar Street, Kodiak, Farragut). 2 new world biomes added (LAKE, SKI_MOUNTAIN). See `NARRATIVE_ALIGNMENT.md`.
 13. **BUG 10** (cross-reference docs) — ✅ **IMPLEMENTED:** System cross-references added to WORLD_BUILDING_ENGINE.md "Extracted Modules" section
