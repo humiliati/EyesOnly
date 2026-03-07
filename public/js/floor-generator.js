@@ -650,6 +650,8 @@ var FloorGenerator = (function () {
     if (floorType === ctx.FLOOR_TYPES.TUTORIAL) itemCount = 8;
     if (floorType === ctx.FLOOR_TYPES.EXPLORATION) itemCount = 12;
     if (floorType === ctx.FLOOR_TYPES.BONFIRE) itemCount = 3;
+    // Floor 0 is the tavern road — very few organic items, player is just learning
+    if (ctx.floor === 0) itemCount = 2;
     var biome = ctx.getBiome(ctx.floor);
     var shouldSpawnTrenchCoat = false;
     if (biome.name === 'Grey Cave') {

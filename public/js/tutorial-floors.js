@@ -1253,6 +1253,9 @@ var TutorialFloors = (function() {
       exit: exit,
       // Floor 0 is the root node of the map; suppress any back-door generation for the spawn tile.
       suppressBackDoor: layout.floorNumber === 0,
+      // Pass through allowEnemies so the floor < 3 guard in tutorial-floor-gen.js
+      // doesn't wipe enemies on floors that explicitly declare them (e.g., floor 0 Ancient Snail)
+      allowEnemies: layout.allowEnemies || false,
       buildings: _shiftList(layout.buildings),
       buildingDoors: _shiftList(layout.buildingDoors),
       decorations: _shiftList(layout.decorations),

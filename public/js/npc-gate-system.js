@@ -115,9 +115,9 @@ var NpcGateSystem = (function () {
           if (!kind) continue;
 
           var emoji = (kind === 'building') ? '↔️' :
+                      (kind === 'interior_exit') ? '↔️' :
                       (kind === 'back') ? '↩️' :
-                      (kind === 'forward') ? '↪️' :
-                      (kind === 'interior_exit') ? '↩️' : '↕️';
+                      (kind === 'forward') ? '↪️' : '↕️';
           OverheadAnimator.showGenericExpression(x, y, emoji, 650);
           ctx.lastDoorHintAtMs = now;
           return;

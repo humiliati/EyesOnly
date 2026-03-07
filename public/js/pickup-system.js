@@ -31,8 +31,10 @@ var PickupSystem = (function() {
       return _pickupGem(item, ctx);
     }
 
-    // Check if item is a card (attack/support) or regular item
-    var isCard = item.card && (item.card.type === 'attack' || item.card.type === 'support');
+    // Check if item is a card. CardSystem.rollCard() returns a CardRef { id, qty } with no .type,
+    // so we also check item.type === 'card' as a reliable fallback for proc-gen floor cards.
+    var isCard = (item.type === 'card' && item.card) ||
+                 (item.card && (item.card.type === 'attack' || item.card.type === 'support'));
 
     // Normalize non-card pickups
     var nonCardPayload = item.card;
@@ -87,8 +89,17 @@ var PickupSystem = (function() {
     // Tooltip: Item/card pickup
     _showPickupTooltip(item, isCard, nonCardPayload, keyTier);
 
-    var pickupEmoji = (item.card && item.card.emoji) ? item.card.emoji : (item.emoji || (item.type === 'key' ? '\uD83D\uDD11' : '\uD83D\uDCE6')); // 🔑 📦
-    var pickupDisplayName = (item.card && item.card.name) ? item.card.name : (item.name || 'Item');
+    // Hydrate CardRef { id, qty } into full card definition for display name/emoji
+    var hydratedCard = null;
+    if (isCard && item.card && item.card.id && typeof CardStateAuthority !== 'undefined' && CardStateAuthority.hydrateCard) {
+      try { hydratedCard = CardStateAuthority.hydrateCard(item.card); } catch (eHydrate) {}
+    }
+    var pickupEmoji = (hydratedCard && hydratedCard.emoji) ? hydratedCard.emoji
+      : (item.card && item.card.emoji) ? item.card.emoji
+      : (item.emoji || (item.type === 'key' ? '\uD83D\uDD11' : '\uD83D\uDCE6')); // 🔑 📦
+    var pickupDisplayName = (hydratedCard && hydratedCard.name) ? hydratedCard.name
+      : (item.card && item.card.name) ? item.card.name
+      : (item.name || 'Item');
     var pickupQuality = (item.card && item.card.qualityName) ? ' [' + item.card.qualityName + ']'
       : (item.type === 'key' && keyTier <= 1 ? ' [KEY AMMO]' : (item.type === 'key' ? ' [KEY ITEM]' : ''));
 

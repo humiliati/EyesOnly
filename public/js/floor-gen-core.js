@@ -2,7 +2,11 @@ var FloorGenCore = (function() {
   'use strict';
 
   function generateFloor(secretFloorData, ctx) {
-    // Initialize generation state
+    // Initialize generation state — clear WorldItems first to prevent leaks from previous floors
+    // (e.g., quest keys from interior visits persisting on the parent floor)
+    if (typeof WorldItems !== 'undefined') {
+      WorldItems.init();
+    }
     ctx.setProjectiles([]);
     ctx.setBreakables([]);
     ctx.syncItems();

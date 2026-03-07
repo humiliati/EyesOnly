@@ -38,18 +38,22 @@ var RenderingUI = (function() {
         var md = ctx.tileMetadata[mk];
         if (!md) continue;
 
-        if (md.type === 'locked_gate' || md.type === 'locked_chest' || md.type === 'npc') {
-          var parts = mk.split(',');
-          var mx = parseInt(parts[0]);
-          var my = parseInt(parts[1]);
-          if (display[my] && typeof display[my][mx] !== 'undefined') {
-            if (md.type === 'locked_gate') {
-              display[my][mx] = md.emoji || '\uD83D\uDEAA';
-            } else if (md.type === 'locked_chest') {
-              display[my][mx] = md.emoji || '\uD83E\uDDF0';
-            } else if (md.type === 'npc') {
-              display[my][mx] = md.emoji || '\uD83E\uDDD1';
-            }
+        var parts = mk.split(',');
+        var mx = parseInt(parts[0]);
+        var my = parseInt(parts[1]);
+        if (display[my] && typeof display[my][mx] !== 'undefined') {
+          if (md.type === 'locked_gate') {
+            display[my][mx] = md.emoji || '\uD83D\uDEAA';
+          } else if (md.type === 'locked_chest') {
+            display[my][mx] = md.emoji || '\uD83E\uDDF0';
+          } else if (md.type === 'npc') {
+            display[my][mx] = md.emoji || '\uD83E\uDDD1';
+          } else if (md.type === 'building_door') {
+            // Building enter/exit doors show ↔️ (bidirectional)
+            display[my][mx] = '\u2194\uFE0F'; // ↔️
+          } else if (md.type === 'door' && md.doorKind === 'interior_exit') {
+            // Interior exit back to parent floor also shows ↔️
+            display[my][mx] = '\u2194\uFE0F'; // ↔️
           }
         }
       }
