@@ -143,6 +143,11 @@ var FloorTransitionSystem = (function () {
       ctx.startGameLoop();
       ctx.saveState();
 
+      // Notify onboarding tutorial of floor transition (Phase 9 tooltips on Floor 1)
+      if (typeof OnboardingTutorial !== 'undefined' && OnboardingTutorial.onFloorTransition) {
+        OnboardingTutorial.onFloorTransition(ctx.getFloor(), ctx);
+      }
+
       // Build messaging
       var lines = [];
       if (isSecretFloor) {

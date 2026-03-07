@@ -1,141 +1,133 @@
-# Player Onboarding — Implementation TODO
+# Player Onboarding — Implementation Roadmap
 
-> Extracted from `PLAYER_ONBOARDING.md` design doc. Tracks actual implementation status
-> against the design specification.
+## Overview
 
-**Last Updated**: 2026-02-25
-**Status**: Planning → Implementation
+Pink Panther Pawprint Tutorial — a 10-phase scripted walkthrough on Floor 0 that teaches tap-to-move, fishing line paths, and floor transitions through a hijacked cursor demonstration.
 
----
-
-## Phase 1: Terminal Entry & Command Router
-
-| Task | Status | File(s) | Notes |
-|------|--------|---------|-------|
-| Create `TerminalCommandRouter` class | ❌ Not started | `public/js/terminal/command-router.js` | Handles `rogue`, `stats`, `inventory`, `highscore`, `quit`, `reset`, `dev` |
-| Add command history (up/down arrow) | ❌ Not started | same | Existing terminal has basic input, needs history stack |
-| Add Tab autocomplete | ❌ Not started | same | Stretch goal |
-| Wire `loadPlayerState()` / `savePlayerState()` | ❌ Not started | same | Uses `localStorage` key `GONE_ROGUE_PLAYER` |
-| Add dev-mode bypass (random avatar + callsign) | ❌ Not started | same | `generateDevPlayerState()` for testing |
-| Terminal CSS styling | ❌ Not started | `public/css/terminal.css` | `.terminal-container`, `.blinking-cursor` |
+**Module:** `onboarding-tutorial.js` (new IIFE)
+**Entry point:** `BeginGameplaySystem.beginGameplay()` → `OnboardingTutorial.start(ctx)` on Floor 0
+**Cursor asset:** `/assets/cursor.cur` (32x32, base64 CSS embed in `CURSOR CSS.txt`)
 
 ---
 
-## Phase 2: Onboarding Splash Screen
+## Phase Map
 
-| Task | Status | File(s) | Notes |
-|------|--------|---------|-------|
-| Create `OnboardingSplash` component | ❌ Not started | `public/js/ui/onboarding-splash.js` | "YOU'VE GONE ROGUE" title + progress bar |
-| Animate in (opacity + scale) | ❌ Not started | same | 500ms ease-out |
-| Animate out (progress fill + fade up) | ❌ Not started | same | 300ms + 400ms |
-| Splash CSS | ❌ Not started | `public/css/onboarding.css` | `.onboarding-overlay`, `.title-accent` (red ROGUE) |
+### Phase 1: Player Has Full Input (t=0)
+- **Status:** Implementing
+- **What:** Game starts normally. Player can tap/drag immediately. No locks.
+- **Implementation:** No-op — default behavior. OnboardingTutorial just starts its internal timer.
+- **File:** `onboarding-tutorial.js` → `start(ctx)` sets `_startTime = Date.now()`
 
----
+### Phase 2: Tooltip + Overhead Hint (t=0.5s)
+- **Status:** Implementing
+- **What:** After 0.5s of no input, show tooltip "Tap + Drag to move" and overhead pointing emoji on player.
+- **Cancel condition:** If player moves before 0.5s, skip to Phase 7 (player already knows).
+- **Implementation:**
+  - `TooltipSystem.show('Tap + Drag to move', 3000)`
+  - `OverheadAnimator.showGenericExpression(player.x, player.y, '👆', 3000, '#ffff00')`
+- **File:** `onboarding-tutorial.js` → `_phase2()`
 
-## Phase 3: Character Selection Screen
+### Phase 3: Cursor Hijack (t=1.25s)
+- **Status:** Implementing
+- **What:** If still no input by 1.25s, render a custom cursor on the grid using cursor.cur asset.
+- **Cancel condition:** Player input → abort hijack, skip to Phase 7.
+- **Implementation:**
+  - Create a floating `<div>` overlay with cursor.cur as background-image (CSS base64 embed)
+  - Position it at player's grid position (pixel coords from grid container)
+  - Add CSS class `onboarding-cursor-hijack` with intermittent inverted-color flicker animation
+  - Set `pointer-events: none` so it doesn't block real touches
+- **File:** `onboarding-tutorial.js` → `_phase3()`, CSS injected via `<style>` tag
 
-| Task | Status | File(s) | Notes |
-|------|--------|---------|-------|
-| Create `CharacterSelectionScreen` component | ❌ Not started | `public/js/ui/character-selection.js` | Card-based avatar grid |
-| Implement 6 avatar definitions | ❌ Not started | same | AVA-001 through AVA-006, progressive unlock |
-| Card flip animation on selection | ❌ Not started | same | `.card-front` ↔ `.card-back` |
-| Callsign input (text field + validation) | ❌ Not started | same | 2-12 chars, uppercase, `ENTER` to confirm |
-| Lock/unlock gating based on `completedTiers` | ❌ Not started | same | Locked cards show 🃏 with lock reason |
-| Character selection CSS | ❌ Not started | `public/css/character-selection.css` | `.avatar-grid`, `.avatar-card`, `.locked-overlay` |
+### Phase 4: Cursor Glides to Exit Door (t=1.5s → ~3s)
+- **Status:** Implementing
+- **What:** Hijacked cursor smoothly glides from player position toward the exit door tile.
+- **Cancel condition:** Player taps anywhere → remove cursor, skip to Phase 7.
+- **Implementation:**
+  - Use `GoneRogueMovement.findPath(player.x, player.y, exit.x, exit.y, collisionCheck)` to get A* path
+  - Animate cursor `<div>` along path waypoints using `requestAnimationFrame` + lerp
+  - Speed: ~2 tiles/sec (slower than player for readability)
+  - Cursor leaves faint trail (small cyan dots at visited waypoints, CSS opacity fade)
+- **File:** `onboarding-tutorial.js` → `_phase4()`
 
-### Avatar Roster
+### Phase 5: Cursor Demonstrates Tap + Fishing Line (arrival at exit)
+- **Status:** Implementing
+- **What:** Cursor arrives near exit door, "taps" (visual pulse animation), then draws fishing line path back.
+- **Cancel condition:** Player taps → remove cursor and fishing line, skip to Phase 7.
+- **Implementation:**
+  - Cursor div plays "tap" animation (scale pulse 1.0 → 1.3 → 1.0, with orange ring)
+  - After tap animation (0.5s), call GoneRogueMobile's fishing path visualization
+  - Show fishing line from player position to exit door
+  - `TooltipSystem.show('Drag to draw a path', 2500)`
+- **File:** `onboarding-tutorial.js` → `_phase5()`
 
-| ID | Name | Emoji | Stats (HP/Luck/Stamina) | Unlock |
-|----|------|-------|------------------------|--------|
-| AVA-001 | Operative | 🕵️ | 10/1/5 | Default |
-| AVA-002 | Medic | 👨‍⚕️ | 12/0/4 | Default |
-| AVA-003 | Scout | 🧭 | 8/2/6 | Complete Tier 1 |
-| AVA-004 | Heavy | 💪 | 15/0/3 | Complete Tier 2 |
-| AVA-005 | Ghost | 👻 | 9/3/5 | Complete Tier 3 |
-| AVA-006 | Tech | 🤖 | 10/1/6 | Complete Tier 4 |
+### Phase 6: Avatar Auto-Walks to Exit (post-fishing-line)
+- **Status:** Implementing
+- **What:** Player avatar begins walking the fishing line path toward exit.
+- **Cancel condition:** Player taps to interrupt → Phase 7.
+- **Implementation:**
+  - `GoneRogueMovement.setTarget(exit.x, exit.y, collisionCheck, false)`
+  - Normal game tick handles the movement and tile interactions
+  - When player reaches exit door tile, normal door transition fires → Floor 1
+  - Remove cursor overlay and fishing line on transition
+- **File:** `onboarding-tutorial.js` → `_phase6()`
 
----
+### Phase 7: Player Took Control (early exit)
+- **Status:** Implementing
+- **What:** Player tapped/moved at any point during Phases 2-6. Clean up all tutorial overlays.
+- **Implementation:**
+  - Remove cursor `<div>` overlay
+  - Hide fishing line if visible
+  - Clear overhead animations from tutorial
+  - Set `_playerTookControl = true` — remaining phases still fire tooltips but no auto-movement
+  - `TooltipSystem.show('Nice! Keep exploring.', 2000)`
+- **File:** `onboarding-tutorial.js` → `_abort()`
 
-## Phase 4: Pre-Start Cutscene & Level Entry
+### Phase 8: Sprint Demonstration (if auto-walk, ~1/3 to exit)
+- **Status:** Implementing
+- **What:** If auto-walk is still active and player is ~1/3 of the way, cursor double-taps exit to switch to sprint.
+- **Implementation:**
+  - Monitor `GoneRogueMovement.getLogicalPosition()` vs path progress
+  - At 33% progress, cursor reappears at exit tile, plays double-tap animation
+  - `GoneRogueMovement.setTarget(exit.x, exit.y, collisionCheck, true)` (isSprinting=true)
+  - `TooltipSystem.show('Double-tap to sprint!', 2000)`
+- **File:** `onboarding-tutorial.js` → `_phase8()`
 
-| Task | Status | File(s) | Notes |
-|------|--------|---------|-------|
-| Create `PreStartCutscene` class | ❌ Not started | `public/js/game/cutscenes/pre-start-cutscene.js` | 4-phase cinematic sequence |
-| Phase 1: Fade to black + selected emoji pulse | ❌ Not started | same | 800ms fade, emoji scale anim |
-| Phase 2: Position player in T1 forest biome | ❌ Not started | same | Load biome, set avatar emoji + stats |
-| Phase 3: Fade in with radial light from player | ❌ Not started | same | 1500ms light expansion anim |
-| Phase 4: Auto-path waypoints with toast messages | ❌ Not started | same | 4 waypoints with control hints |
-| Cutscene CSS | ❌ Not started | `public/css/cutscene.css` | `.cutscene-overlay`, `.light-emitter`, `@keyframes lightExpand` |
+### Phase 9: Floor 1 Transition Tooltips
+- **Status:** Implementing
+- **What:** On Floor 1 entry, show dramatic sequential tooltips: "Survive", "Evade", "Resist", "Extract".
+- **Implementation:**
+  - Hook into floor transition (listen for `ctx.getFloor() === 1` after `generateFloor()`)
+  - Sequential tooltip cascade: each word shown for 1.5s with 0.3s gap
+  - `TooltipSystem.show('Survive.', 1500)` → delay → `TooltipSystem.show('Evade.', 1500)` → etc.
+- **File:** `onboarding-tutorial.js` → `_phase9()`
 
----
-
-## Phase 5: Victory Flow
-
-| Task | Status | File(s) | Notes |
-|------|--------|---------|-------|
-| Create `VictoryFlowController` class | ❌ Not started | `public/js/game/victory-flow.js` | 4-phase victory sequence |
-| Spawn witness NPCs (MOK + operatives) | ❌ Not started | same | Emoji NPCs at completion area |
-| Confetti overlay effect | ❌ Not started | same | 5s duration, multi-color |
-| High score calculation | ❌ Not started | same | `base + time + resource + enemy + efficiency` |
-| Save score + unlock next tier | ❌ Not started | same | `localStorage` persistence |
-| High score popup window | ❌ Not started | `public/js/ui/high-score-popup.js` | Shows breakdown of score |
-| Return to terminal with summary | ❌ Not started | same | Display completed tiers, prompt next mission |
-
----
-
-## Phase 6: Death Handling & "YOU DIED" Screen
-
-| Task | Status | File(s) | Notes |
-|------|--------|---------|-------|
-| Create `DeathHandler` class | ⚠️ Partial | `public/js/game/death-handler.js` | Existing `DeathHandler` module handles some of this |
-| Preserve inventory on death | ⚠️ Partial | same | GAMESTATE already handles persistent vs loose inventory |
-| Death animation (shake + red fade) | ❌ Not started | same | Camera shake 500ms, fade to `#330000` |
-| "YOU DIED" overlay with stats | ❌ Not started | same | Floors cleared, enemies defeated, cards played, run time |
-| Cleanup game state + return to terminal | ❌ Not started | same | Clear hand/backup/equipped, keep persistent inventory |
-
-### Death Preservation Rules
-
-| Slot | On Death |
-|------|----------|
-| Hand (loose inventory) | ❌ LOST |
-| Backup cards | ❌ LOST |
-| Equipped active item | ❌ LOST |
-| Persistent inventory | ✅ KEPT |
-| Currency | ✅ KEPT (50% penalty) |
-| Unlocked avatars | ✅ KEPT |
-| High scores | ✅ KEPT |
-| Ammo keys (Tier 1) | ❌ LOST |
-| Gate keys (Tier 2) | ✅ KEPT |
-| Quest keys (Tier 3) | ✅ KEPT |
-
----
-
-## Integration Dependencies
-
-| Dependency | Status | Notes |
-|------------|--------|-------|
-| `GAMESTATE` persistence layer | ✅ Done | localStorage, inventory management, key counters |
-| `WindowManager` for screen transitions | ❌ Not started | Manages splash, selection, game, score windows |
-| `PassiveItemsSystem` avatar override | ✅ Done | `getPlayerAvatarOverride()` already supports emoji |
-| Tutorial floors (Floor 1-3) | ✅ Done | Hourglass layout, key+gate, food items |
-| Lighting system | ✅ Done | Biome gradients, canvas overlay |
-| Loot table system | ✅ Done | Key drops, quest keys, breakable drops |
+### Phase 10: Player Overhead Reactions
+- **Status:** Implementing
+- **What:** For each Floor 1 tooltip word, show "!" overhead on player.
+- **Implementation:**
+  - `OverheadAnimator.showGenericExpression(player.x, player.y, '!', 1200, '#ff4444')` synced to each tooltip
+- **File:** `onboarding-tutorial.js` → part of `_phase9()`
 
 ---
 
-## Implementation Priority
+## Broader Onboarding Phases (Future Work)
 
-1. **P0 — Core flow**: Terminal router → Onboarding splash → Character selection → Game entry
-2. **P1 — Death handling**: YOU DIED screen → inventory preservation → terminal return
-3. **P2 — Victory flow**: Witness NPCs → confetti → high score → terminal return
-4. **P3 — Polish**: Pre-start cutscene, auto-path tutorial, difficulty selector
+| Phase | Description | Status |
+|-------|-------------|--------|
+| Terminal Entry | ASCII boot sequence, typewriter login | Not started |
+| Splash Screen | Animated title card | Not started |
+| Character Selection | Class/build picker | Not started |
+| Pre-Start Cutscene | Story context before Floor 0 | Not started |
+| Victory Flow | Run completion sequence | Not started |
+| Death Handler | Game over + retry flow | Partial |
 
 ---
 
-## Quick Start for Implementer
+## Files
 
-1. The existing game already launches via `GoneRogue.start()` — the onboarding wraps this with a state check
-2. `GAMESTATE` already has `_loadState()` / `_saveState()` — player state should merge into this
-3. `PassiveItemsSystem.getPlayerAvatarOverride()` is the hook for selected avatar emoji
-4. Death handling partially exists in `DeathHandler` module — extend, don't replace
-5. The terminal UI exists as the main page — command router augments the existing input handler
+| File | Purpose |
+|------|---------|
+| `public/js/onboarding-tutorial.js` | New IIFE module — all 10 phases |
+| `public/js/begin-gameplay-system.js` | Hook: call `OnboardingTutorial.start(ctx)` on Floor 0 |
+| `public/assets/cursor.cur` | 32x32 custom cursor asset |
+| `public/index.html` | Add `<script>` tag for onboarding-tutorial.js |

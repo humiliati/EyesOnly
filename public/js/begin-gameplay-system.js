@@ -56,6 +56,11 @@ var BeginGameplaySystem = (function() {
         DebriefFeedController.setMode('goneRogue');
       }
 
+      // Start onboarding tutorial on Floor 0 (Pink Panther Pawprint)
+      if (typeof OnboardingTutorial !== 'undefined' && ctx.getFloor() === 0) {
+        OnboardingTutorial.start(ctx);
+      }
+
       return {
         lines: [],
         prompt: ctx.getPrompt(),

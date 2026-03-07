@@ -3892,6 +3892,10 @@ const GoneRogueMobile = (function () {
     updateFishingTarget: updateFishingTarget,
     commitFishingTarget: commitFishingTarget,
     controllerTapMove: controllerTapMove,
-    setControllerSprint: setControllerSprint
+    setControllerSprint: setControllerSprint,
+    // Onboarding tutorial hooks
+    showFishingPath: _showFishingPath,
+    hideFishingPath: _hideFishingPath,
+    getCameraState: function() { return _cameraState; }
   };
 })();
