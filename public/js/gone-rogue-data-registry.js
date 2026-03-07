@@ -157,7 +157,8 @@ var GoneRogueDataRegistry = (function() {
       _fetchJson(BASE + 'enemy-cards.json').catch(function() { return []; }),
       _fetchJson(BASE + 'enemy-decks.json').catch(function() { return {}; }),
       _fetchJson(BASE + 'lighting-config.json').catch(function() { return null; }),
-      _fetchJson(BASE + 'biomes.json').catch(function() { return null; })
+      _fetchJson(BASE + 'biomes.json').catch(function() { return null; }),
+      _fetchJson(BASE + 'boss-biomes.json').catch(function() { return null; })
     ]).then(function(arr) {
       _db.items = Array.isArray(arr[0]) ? arr[0] : [];
       _db.cards = Array.isArray(arr[1]) ? arr[1] : [];
@@ -169,6 +170,18 @@ var GoneRogueDataRegistry = (function() {
       _db.enemyDecks = (arr[7] && typeof arr[7] === 'object' && !Array.isArray(arr[7])) ? arr[7] : {};
       _db.lightingConfig = (arr[8] && typeof arr[8] === 'object') ? arr[8] : null;
       _db.biomes = (arr[9] && typeof arr[9] === 'object' && !Array.isArray(arr[9])) ? arr[9] : null;
+
+      // Merge boss biomes into the main biomes map (BUG 11 FIX)
+      var bossBiomes = (arr[10] && typeof arr[10] === 'object' && !Array.isArray(arr[10])) ? arr[10] : null;
+      if (bossBiomes && _db.biomes) {
+        var bossKeys = Object.keys(bossBiomes);
+        for (var bi = 0; bi < bossKeys.length; bi++) {
+          _db.biomes[bossKeys[bi]] = bossBiomes[bossKeys[bi]];
+        }
+        console.log('[Registry] Merged ' + bossKeys.length + ' boss biomes: ' + bossKeys.join(', '));
+      } else if (bossBiomes && !_db.biomes) {
+        _db.biomes = bossBiomes;
+      }
 
       _index();
       _validateLightweight();

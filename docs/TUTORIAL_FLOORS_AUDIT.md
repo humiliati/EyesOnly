@@ -1187,8 +1187,8 @@ function exitInteriorFloor() {
 ## Recommended Fix Priority
 
 1. **BUG 2** (door contract) — ✅ **IMPLEMENTED:** `DoorContractSystem.applyDoorContract()` wired into both `tutorial-floor-gen.js` and `floor-gen-core.js`. Retreat door added to procedural generator (`floor-generator.js`). Old inline spawn logic and BUG 2 FIX patch removed.
-2. **BUG 5** (floor 0 enemy) — one-line fix, restores STR-combat testing
-3. **BUG 1** (floor 0 back door) — wrap back-door stamps in `suppressBackDoor` check
+2. **BUG 5** (floor 0 enemy) — ✅ one-line fix, restores STR-combat testing
+3. **BUG 1** (floor 0 back door) — ✅ wrap back-door stamps in `suppressBackDoor` check
 4. **BUG 3** (door step buffer) — ✅ **IMPLEMENTED:** `DoorContractSystem.tickDoorSpawnProtect()` handles step-count with `suppressAnimation` field. Guardrail steps set to 5.
 5. **BUG 13** (building interior doors) — ✅ **API READY:** `DoorContractSystem.applyBuildingDoorContract()` implements no-guardrail building contract. Needs wiring into `interior-floor-system.js`.
 6. **BUG 4** (door animation) — `suppressAnimation` field now in `_doorSpawnProtect` via DoorContractSystem. Overhead animator needs to read it.

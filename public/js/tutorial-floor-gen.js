@@ -448,10 +448,11 @@ var TutorialFloorGen = (function() {
       });
     }
 
-    // Place enemies (intended for floor 3)
-    // Enforce: no enemies on Cozy Forest tutorial floors until floor 3.
+    // Place enemies (intended for floor 3+, with opt-in for earlier floors).
+    // Floor 0 has an intentional punching-bag enemy (Ancient Snail) for STR-combat testing.
+    // Layouts that need enemies on floors < 3 set allowEnemies: true.
     var tutorialEnemies = (Array.isArray(floorData.enemies) ? floorData.enemies : []);
-    if (ctx.getFloor() < 3) tutorialEnemies = [];
+    if (ctx.getFloor() < 3 && !floorData.allowEnemies) tutorialEnemies = [];
 
     tutorialEnemies.forEach(function(enemy) {
       var enemyObj = {
@@ -680,8 +681,11 @@ var TutorialFloorGen = (function() {
       // Final re-stamp doors after ALL entity relocations to guarantee grid+metadata integrity.
       if (ctx.grid && ctx.grid[exitY]) ctx.grid[exitY][exitX] = ctx.TILES.EXIT;
       ctx.tileMetadata[exitX + ',' + exitY] = { type: 'door', doorKind: 'forward' };
-      if (ctx.grid && ctx.grid[backY]) ctx.grid[backY][backX] = ctx.TILES.DOOR;
-      ctx.tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
+      // BUG 1 FIX: Only re-stamp back door if this floor actually has one.
+      if (!floorData.suppressBackDoor) {
+        if (ctx.grid && ctx.grid[backY]) ctx.grid[backY][backX] = ctx.TILES.DOOR;
+        ctx.tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
+      }
 
       // Debug: count door tiles in grid
       var doorCount = 0;
@@ -715,8 +719,8 @@ var TutorialFloorGen = (function() {
 
     console.log('[TutorialFloors] Floor generated successfully');
     console.log('[TutorialFloors] Buildings: ' + ctx.forestBuildings.length + ', Breakables: ' + ctx.breakables.length + ', Enemies: ' + ctx.enemies.length);
-    if (ctx.enemies.length > 0 && ctx.getFloor() < 3) {
-      console.warn('[TutorialFloors] BUG: ' + ctx.enemies.length + ' enemies on floor ' + ctx.getFloor() + ' (should be 0 for floors < 3)');
+    if (ctx.enemies.length > 0 && ctx.getFloor() < 3 && !floorData.allowEnemies) {
+      console.warn('[TutorialFloors] BUG: ' + ctx.enemies.length + ' enemies on floor ' + ctx.getFloor() + ' (should be 0 for floors < 3 unless allowEnemies is set)');
     }
   }
 

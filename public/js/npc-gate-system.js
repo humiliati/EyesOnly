@@ -93,6 +93,16 @@ var NpcGateSystem = (function () {
           var tile = ctx.grid[y] ? ctx.grid[y][x] : null;
           if (tile !== ctx.TILES.EXIT && tile !== ctx.TILES.DOOR) continue;
 
+          // BUG 4 FIX: Suppress door hint animation for the protected door while
+          // guardrails are active. Prevents visual confusion — player sees animated
+          // door icon and assumes they should interact, but guardrail blocks it.
+          if (typeof DoorContractSystem !== 'undefined') {
+            var dsp = DoorContractSystem.getDoorSpawnProtect();
+            if (dsp && dsp.suppressAnimation && dsp.stepsRemaining > 0) {
+              if (x === dsp.x && y === dsp.y) continue;
+            }
+          }
+
           var md = ctx.tileMetadata[x + ',' + y];
           var kind = null;
           if (md && md.type === 'door') {

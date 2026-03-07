@@ -770,6 +770,7 @@ var TutorialFloors = (function() {
     name: 'The Tavern Road',
     description: 'A quiet forest road. The Rusty Mug tavern stands nearby.',
     templateFillsGrid: true,
+    allowEnemies: true, // Floor 0 has the Ancient Snail punching-bag for STR-combat testing
 
     template: [
       '########################################',

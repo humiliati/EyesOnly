@@ -1,9 +1,9 @@
 {
     "FOREST": {
-      "name": "Cozy Forest",
+      "name": "Kaniksu Timberland",
       "wallChar": "🌳",
       "floorChar": ",",
-      "description": "Welcoming woodland with tall grass",
+      "description": "Deep Bonner County forest — old logging roads, abandoned Humbird-era lumber camps, and Kaniksu Protocol surveillance posts",
       "floorRange": [1, 3],
       "wallDensity": 2,
       "wallTiles": [
@@ -65,10 +65,10 @@
       }
     },
     "GREY_CAVE": {
-      "name": "Grey Cave",
+      "name": "Bunker Hill Mines",
       "wallChar": "█",
       "floorChar": ".",
-      "description": "Dark underground tunnels with water pools",
+      "description": "Abandoned Silver Valley mine shafts east of town — a century of toxic smelter runoff and sealed Jesuit chambers predating the mining operations",
       "floorRange": [4, 4],
       "floorTiles": [
         { "char": ".", "weight": 60 },
@@ -99,10 +99,10 @@
       }
     },
     "OFFICE": {
-      "name": "Commercial Office",
+      "name": "Litehouse Corporate",
       "wallChar": "█",
       "floorChar": ".",
-      "description": "Corporate cubicles and conference rooms",
+      "description": "Litehouse Foods HQ on Ella Ave — behind the cheese aging rooms and shipping docks, encrypted terminals and surveilled corridors",
       "floorRange": [5, 9],
       "floorTiles": [
         { "char": ".", "weight": 70 },
@@ -151,10 +151,10 @@
       }
     },
     "MALL": {
-      "name": "Shopping Mall",
+      "name": "Cedar Street Market",
       "wallChar": "█",
       "floorChar": ".",
-      "description": "Abandoned retail stores",
+      "description": "Sandpoint's Ponte Vecchio–style bridge marketplace over Sand Creek — dead drops in storefronts, faction safe houses behind tourist crowds",
       "floorRange": [11, 15],
       "floorTiles": [
         { "char": ".", "weight": 70 },
@@ -202,10 +202,10 @@
       }
     },
     "INDUSTRIAL": {
-      "name": "Industrial Complex",
+      "name": "Kodiak Assembly Plant",
       "wallChar": "█",
       "floorChar": ".",
-      "description": "Hazardous factory floor",
+      "description": "Daher/Quest Aircraft factory at Sandpoint Airport — conveyor belts, welding bays, fuel storage. Where Project Chimera hardware is fabricated",
       "floorRange": [17, 21],
       "floorTiles": [
         { "char": ".", "weight": 45 },
@@ -264,11 +264,161 @@
         "day":   { "start": "#0f0e08", "end": "#1a1a0a" }
       }
     },
+    "LAKE": {
+      "name": "Pend Oreille Lakeshore",
+      "wallChar": "🌲",
+      "floorChar": ",",
+      "description": "The north shore of Idaho's deepest lake — docks, fishing cabins, and flooded timber along Sand Creek where the Kaniksu Network runs watercraft between safe houses",
+      "floorRange": [14, 15],
+      "wallDensity": 2,
+      "wallTiles": [
+        { "char": "🌲", "weight": 30 },
+        { "char": "🌳", "weight": 20 },
+        { "char": "🪵", "weight": 15 },
+        { "char": "🪨", "weight": 10 },
+        { "char": "🌊", "weight": 15, "animated": true },
+        { "char": "🚣", "weight": 5 },
+        { "char": "⛵", "weight": 5 }
+      ],
+      "floorTiles": [
+        { "char": ",", "weight": 30, "animated": true },
+        { "char": "`", "weight": 15, "animated": true },
+        { "char": "·", "weight": 15 },
+        { "char": "~", "weight": 25, "animated": true },
+        { "char": "≈", "weight": 10, "animated": true },
+        { "char": "░", "weight": 5 }
+      ],
+      "props": [
+        { "emoji": "🌲", "name": "Shoreline Pine", "breakable": true, "hp": 5, "blocksPath": true, "drops": ["wood"] },
+        { "emoji": "🪵", "name": "Driftwood", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["wood"] },
+        { "emoji": "🪨", "name": "Shore Rock", "breakable": true, "hp": 4, "blocksPath": true, "drops": ["stone"] },
+        { "emoji": "⛵", "name": "Beached Boat", "breakable": false, "blocksPath": true, "provides": "cover" },
+        { "emoji": "🚣", "name": "Rowboat", "breakable": false, "blocksPath": true, "provides": "cover" },
+        { "emoji": "🎣", "name": "Fishing Gear", "breakable": true, "hp": 1, "blocksPath": false, "drops": ["bait", "line"] },
+        { "emoji": "🏠", "name": "Lake Cabin", "breakable": false, "blocksPath": true },
+        { "emoji": "🗑️", "name": "Grey Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies", "coins"], "kickable": true, "noise": 1, "destroyedGlyph": "." },
+        { "emoji": "🛢️", "name": "Red Barrel", "breakable": true, "hp": 1, "blocksPath": true, "explosive": true, "blastRadius": 2.75, "blastDamage": [9, 25], "kickable": true, "noise": 4, "maxPerFloor": 2 }
+      ],
+      "interactiveObjects": [
+        { "emoji": "🪧", "name": "Trail Marker", "interact": "read", "effect": "shows_direction", "blocksPath": true },
+        { "emoji": "📬", "name": "Dock Mailbox", "interact": "open", "effect": "gives_letter", "blocksPath": true },
+        { "emoji": "🔔", "name": "Buoy Bell", "interact": "ring", "effect": "alerts_area", "blocksPath": false }
+      ],
+      "tileEffects": {
+        ",": { "stealth": 20, "moveMod": 0.85, "name": "Shore Grass", "animated": true },
+        "`": { "stealth": 20, "moveMod": 0.85, "name": "Shore Grass", "animated": true },
+        "·": { "stealth": 10, "moveMod": 0.95, "name": "Sand" },
+        "~": { "stealth": 0, "moveMod": 0.50, "name": "Shallow Water", "animated": true },
+        "≈": { "stealth": 0, "moveMod": 0.0, "damage": 0, "name": "Deep Water", "animated": true, "impassable": true },
+        "░": { "stealth": 5, "moveMod": 0.90, "name": "Gravel Beach" }
+      },
+      "waterFeatures": {
+        "centralRiver": true,
+        "riverWidth": [3, 5],
+        "riverDirection": "horizontal",
+        "shallowCrossings": 2,
+        "deepWaterImpassable": true,
+        "bridgeChance": 0.4,
+        "dockStructures": true
+      },
+      "spawnFeatures": {
+        "villageCluster": false,
+        "buildings": ["🏠", "🛖"],
+        "friendlyNPCs": ["🧑‍🦰", "🧓"],
+        "decorations": ["🪧", "🎣", "⚓", "🏮"],
+        "landmarks": [
+          { "emoji": "🌊", "name": "Lake Overlook", "visibility": 18 },
+          { "emoji": "🏔️", "name": "Selkirk Ridge", "visibility": 15 },
+          { "emoji": "⛵", "name": "Abandoned Marina", "visibility": 10 }
+        ]
+      },
+      "enemies": [],
+      "enemyDensity": 0.0,
+      "backgroundGradient": {
+        "night": { "start": "#040810", "end": "#081420" },
+        "day":   { "start": "#0a1520", "end": "#1a3040" }
+      }
+    },
+    "SKI_MOUNTAIN": {
+      "name": "Schweitzer Mountain",
+      "wallChar": "🌲",
+      "floorChar": "░",
+      "description": "Idaho's largest ski area above Sandpoint — 2,900 acres of alpine forest, ice-crusted trails, and autumn treeline where the Kaniksu Network caches dead drops at elevation",
+      "floorRange": [20, 21],
+      "wallDensity": 3,
+      "wallTiles": [
+        { "char": "🌲", "weight": 35 },
+        { "char": "🎄", "weight": 15 },
+        { "char": "🍂", "weight": 15 },
+        { "char": "🍁", "weight": 10 },
+        { "char": "🪨", "weight": 15 },
+        { "char": "❄️", "weight": 10 }
+      ],
+      "floorTiles": [
+        { "char": "░", "weight": 35, "animated": true },
+        { "char": "·", "weight": 20 },
+        { "char": "❄️", "weight": 15, "animated": true },
+        { "char": ",", "weight": 10, "animated": true },
+        { "char": "▪", "weight": 10 },
+        { "char": "~", "weight": 10, "animated": true }
+      ],
+      "props": [
+        { "emoji": "🌲", "name": "Alpine Pine", "breakable": false, "blocksPath": true },
+        { "emoji": "🎄", "name": "Snow-Laden Fir", "breakable": true, "hp": 4, "blocksPath": true, "drops": ["wood", "ice"] },
+        { "emoji": "🍂", "name": "Autumn Oak", "breakable": true, "hp": 3, "blocksPath": true, "drops": ["leaves"] },
+        { "emoji": "🍁", "name": "Maple Stand", "breakable": true, "hp": 3, "blocksPath": true, "drops": ["leaves"] },
+        { "emoji": "🪨", "name": "Rock Outcrop", "breakable": false, "blocksPath": true },
+        { "emoji": "🏔️", "name": "Snow Bank", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["ice"] },
+        { "emoji": "🏠", "name": "Ski Patrol Hut", "breakable": false, "blocksPath": true, "provides": "cover" },
+        { "emoji": "🗑️", "name": "Grey Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies", "coins"], "kickable": true, "noise": 1, "destroyedGlyph": "." },
+        { "emoji": "🛢️", "name": "Red Barrel", "breakable": true, "hp": 1, "blocksPath": true, "explosive": true, "blastRadius": 2.75, "blastDamage": [9, 25], "kickable": true, "noise": 4, "maxPerFloor": 2 }
+      ],
+      "interactiveObjects": [
+        { "emoji": "🚡", "name": "Ski Lift", "interact": "ride", "effect": "teleport_uphill", "blocksPath": false },
+        { "emoji": "🪧", "name": "Trail Sign", "interact": "read", "effect": "shows_direction", "blocksPath": true },
+        { "emoji": "📻", "name": "Emergency Radio", "interact": "use", "effect": "calls_patrol", "blocksPath": true }
+      ],
+      "tileEffects": {
+        "░": { "stealth": 10, "moveMod": 1.15, "name": "Snow", "animated": true },
+        "·": { "stealth": 5, "moveMod": 1.0, "name": "Packed Trail" },
+        "❄️": { "stealth": 15, "moveMod": 1.1, "name": "Fresh Powder", "animated": true },
+        ",": { "stealth": 20, "moveMod": 0.85, "name": "Alpine Grass", "animated": true },
+        "▪": { "stealth": 0, "moveMod": 0.80, "name": "Exposed Rock" },
+        "~": { "stealth": 0, "moveMod": 1.4, "accelerate": "south", "name": "Ice Sheet", "animated": true, "tileColor": "#88ccff" }
+      },
+      "icePhysics": {
+        "enabled": true,
+        "iceChar": "~",
+        "accelerateDirection": "south",
+        "accelerateMagnitude": 1.4,
+        "slideChance": 0.6,
+        "slideTiles": 2,
+        "icePatterns": "snaking",
+        "iceDensity": 0.15
+      },
+      "spawnFeatures": {
+        "villageCluster": false,
+        "verticalBias": true,
+        "buildings": ["🏠"],
+        "friendlyNPCs": ["⛷️", "🏂"],
+        "decorations": ["🪧", "🚡", "⛷️", "🏂"],
+        "landmarks": [
+          { "emoji": "🏔️", "name": "Summit Lodge", "visibility": 20 },
+          { "emoji": "🌲", "name": "Treeline Edge", "visibility": 12 }
+        ]
+      },
+      "enemies": [],
+      "enemyDensity": 0.0,
+      "backgroundGradient": {
+        "night": { "start": "#0a1020", "end": "#1a2040" },
+        "day":   { "start": "#c0d8e8", "end": "#90b0c8" }
+      }
+    },
     "AEROSPACE": {
-      "name": "Aerospace Museum",
+      "name": "Farragut Naval Station",
       "wallChar": "█",
       "floorChar": ".",
-      "description": "Vast halls with missile displays",
+      "description": "Decommissioned WWII naval training station at the south end of Lake Pend Oreille — vast underground submarine docks and the Falcon Initiative's hidden command center",
       "floorRange": [23, 30],
       "props": [
         { "emoji": "🚀", "name": "Rocket Scaffold", "breakable": false },

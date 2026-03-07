@@ -51,9 +51,26 @@ var InteriorFloorSystem = (function() {
       // Apply grid
       ctx.setGrid(floorData.grid);
 
-      // Place player at interior spawn
-      ctx.player.x = floorData.player.x;
-      ctx.player.y = floorData.player.y;
+      // Place player at interior spawn — apply building door contract if available.
+      // BUG 13 FIX: Use DoorContractSystem.applyBuildingDoorContract() to spawn
+      // the player adjacent to the exit door with NO guardrails (building funnel).
+      var exitDoorPos = floorData.exit ? { x: floorData.exit.x, y: floorData.exit.y } : null;
+      var buildingContractApplied = false;
+      if (exitDoorPos && typeof DoorContractSystem !== 'undefined') {
+        buildingContractApplied = DoorContractSystem.applyBuildingDoorContract({
+          grid: floorData.grid,
+          TILES: ctx.TILES,
+          gridW: ctx.GRID_WIDTH,
+          gridH: ctx.GRID_HEIGHT,
+          player: ctx.player,
+          exitDoorPos: exitDoorPos
+        });
+      }
+      if (!buildingContractApplied) {
+        // Fallback: use authored spawn position
+        ctx.player.x = floorData.player.x;
+        ctx.player.y = floorData.player.y;
+      }
       ctx.ensurePlayerOnEmptyTile();
 
       // Reset state arrays for interior

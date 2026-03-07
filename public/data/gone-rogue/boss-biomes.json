@@ -1,0 +1,361 @@
+{
+    "BOSS_TRAIN_DEPOT": {
+        "name": "Sandpoint Junction",
+        "type": "boss_arena",
+        "parentBiome": "INDUSTRIAL",
+        "description": "BNSF rail hub where Montana Rail Link joins the main — three converging lines, intersecting tracks, the 1916 brick depot in the background. The meet is compromised.",
+
+        "mapShape": "regular_or_xl",
+        "gridWidth": 40,
+        "gridHeight": 20,
+        "wallChar": "▓",
+        "floorChar": "·",
+        "wallDensity": 1,
+
+        "wallTiles": [
+            { "char": "▓", "weight": 40 },
+            { "char": "█", "weight": 25 },
+            { "char": "📦", "weight": 15 },
+            { "char": "🏗️", "weight": 10 },
+            { "char": "🪵", "weight": 10 }
+        ],
+        "floorTiles": [
+            { "char": "·", "weight": 30 },
+            { "char": "═", "weight": 25, "animated": false },
+            { "char": "║", "weight": 15, "animated": false },
+            { "char": "╬", "weight": 10, "animated": false },
+            { "char": "▬", "weight": 10, "animated": false },
+            { "char": "░", "weight": 10 }
+        ],
+
+        "trackLayout": {
+            "pattern": "intersecting",
+            "horizontalTracks": 5,
+            "verticalTracks": 3,
+            "intersectionChar": "╬",
+            "horizontalChar": "═",
+            "verticalChar": "║",
+            "platformChar": "▬",
+            "gravelChar": "·",
+            "intersectionCount": 15,
+            "safeIslands": 4,
+            "safeIslandSize": [2, 3]
+        },
+
+        "hazardSprites": {
+            "freight": "🚂",
+            "freightCar": "🚃",
+            "amtrak": "🚄",
+            "maintenance": "🏗️",
+            "security": "👮",
+            "handcar": "🛤️"
+        },
+        "hazardBehavior": {
+            "horizontalTrains": {
+                "speed": [1, 3],
+                "direction": "alternating",
+                "gapBetween": [3, 6],
+                "trainLength": [2, 5]
+            },
+            "verticalTrains": {
+                "speed": [1, 2],
+                "direction": "alternating",
+                "gapBetween": [4, 8],
+                "trainLength": [2, 4]
+            },
+            "intersectionDanger": "both_axes_lethal",
+            "expressTrainAlert": true,
+            "expressInterval": 30
+        },
+
+        "props": [
+            { "emoji": "📦", "name": "Cargo Stack", "breakable": false, "blocksPath": true, "provides": "cover" },
+            { "emoji": "🪵", "name": "Railroad Ties", "breakable": false, "blocksPath": false },
+            { "emoji": "🚧", "name": "Rail Barrier", "breakable": true, "hp": 3, "blocksPath": true, "drops": ["scrap"] },
+            { "emoji": "🛢️", "name": "Red Barrel", "breakable": true, "hp": 1, "blocksPath": true, "explosive": true, "blastRadius": 2.75, "blastDamage": [9, 25], "kickable": true, "noise": 4, "maxPerFloor": 2 },
+            { "emoji": "🗑️", "name": "Grey Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies", "coins"], "kickable": true, "noise": 1, "destroyedGlyph": "." }
+        ],
+        "interactiveObjects": [
+            { "emoji": "🔔", "name": "Crossing Bell", "interact": "ring", "effect": "stuns_lane_3s", "blocksPath": true },
+            { "emoji": "🚦", "name": "Signal Light", "interact": "hack", "effect": "stops_track_5s", "blocksPath": true }
+        ],
+        "tileEffects": {
+            "·": { "stealth": 5, "moveMod": 1.0, "name": "Gravel" },
+            "═": { "stealth": 0, "moveMod": 1.0, "name": "H-Track", "hazardLane": true },
+            "║": { "stealth": 0, "moveMod": 1.0, "name": "V-Track", "hazardLane": true },
+            "╬": { "stealth": 0, "moveMod": 0.9, "name": "Intersection", "hazardLane": true, "doubleHazard": true },
+            "▬": { "stealth": 5, "moveMod": 0.95, "name": "Platform" },
+            "░": { "stealth": 10, "moveMod": 0.9, "name": "Ballast" }
+        },
+
+        "spawnFeatures": {
+            "hazardZones": true,
+            "intersectingHazards": true,
+            "safeIslands": true,
+            "playerStart": "south_edge",
+            "extractionPoint": "north_edge"
+        },
+        "bossConfig": {
+            "encounterType": "frogger_intersecting",
+            "bossEntity": "DEPOT_WARDEN",
+            "bossPosition": "far_platform",
+            "trainDamage": 50,
+            "mythicCondition": "TRAIN_IMPACT_KILL",
+            "mythicHint": "RUMOR: If only the Warden had met a harsher fate..."
+        },
+
+        "enemies": [],
+        "enemyDensity": 0.0,
+        "lightingProfile": "DEPOT_INDUSTRIAL",
+        "ambientColor": "#CD853F",
+        "backgroundGradient": {
+            "night": { "start": "#0a0808", "end": "#1a1210" },
+            "day":   { "start": "#2a1a10", "end": "#4a3020" }
+        }
+    },
+
+    "BOSS_LONG_BRIDGE": {
+        "name": "The Long Bridge",
+        "type": "boss_arena",
+        "parentBiome": "LAKE",
+        "description": "2-mile crossing over Lake Pend Oreille — grey asphalt, deadly traffic, water on both sides. Extraction vehicle waits on the Sandpoint side.",
+
+        "mapShape": "long_horizontal",
+        "gridWidth": 60,
+        "gridHeight": 14,
+        "wallChar": "~",
+        "floorChar": "▬",
+        "wallDensity": 0,
+
+        "wallTiles": [
+            { "char": "~", "weight": 40, "animated": true },
+            { "char": "≈", "weight": 30, "animated": true },
+            { "char": "🌊", "weight": 20, "animated": true },
+            { "char": "▒", "weight": 10 }
+        ],
+        "floorTiles": [
+            { "char": "▬", "weight": 50, "animated": false },
+            { "char": "─", "weight": 25, "animated": false },
+            { "char": "░", "weight": 10 },
+            { "char": "▪", "weight": 10 },
+            { "char": "·", "weight": 5 }
+        ],
+
+        "bridgeLayout": {
+            "waterTopRows": 4,
+            "waterBottomRows": 4,
+            "playableRows": 6,
+            "roadLanes": 3,
+            "laneWidth": 1,
+            "medianRow": true,
+            "shoulderRows": 1,
+            "bikePathRow": true,
+            "roadChar": "▬",
+            "medianChar": "▪",
+            "shoulderChar": "░",
+            "waterChars": ["~", "≈", "🌊"],
+            "waterLethal": true,
+            "guardrailChar": "▒"
+        },
+
+        "hazardSprites": {
+            "car": "🚗",
+            "truck": "🚛",
+            "semi": "🚚",
+            "motorcycle": "🏍️",
+            "courier": "🏍️"
+        },
+        "hazardBehavior": {
+            "lane1": { "direction": "east", "speed": [2, 3], "gap": [3, 5], "sprites": ["🚗", "🚛"] },
+            "lane2": { "direction": "west", "speed": [2, 4], "gap": [2, 4], "sprites": ["🚗", "🚚", "🚛"] },
+            "lane3": { "direction": "east", "speed": [3, 5], "gap": [2, 3], "sprites": ["🚗", "🚚"] },
+            "bikePath": { "direction": "west", "speed": [1, 2], "gap": [4, 8], "sprites": ["🏍️"] },
+            "speedEscalation": true,
+            "escalationInterval": 20
+        },
+
+        "props": [
+            { "emoji": "🧱", "name": "Jersey Barrier", "breakable": false, "blocksPath": true, "provides": "cover" },
+            { "emoji": "🔦", "name": "Bridge Light", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["glass"] },
+            { "emoji": "🚧", "name": "Road Barrier", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["scrap"] }
+        ],
+        "interactiveObjects": [
+            { "emoji": "🚦", "name": "Traffic Light", "interact": "hack", "effect": "stops_lane_5s", "blocksPath": true },
+            { "emoji": "📻", "name": "Emergency Radio", "interact": "use", "effect": "warns_traffic_3s", "blocksPath": true }
+        ],
+        "tileEffects": {
+            "▬": { "stealth": 0, "moveMod": 1.0, "name": "Road", "hazardLane": true },
+            "─": { "stealth": 0, "moveMod": 1.0, "name": "Lane Marking", "hazardLane": true },
+            "░": { "stealth": 5, "moveMod": 0.9, "name": "Shoulder" },
+            "▪": { "stealth": 0, "moveMod": 0.85, "name": "Median" },
+            "·": { "stealth": 5, "moveMod": 0.95, "name": "Bike Path" },
+            "~": { "stealth": 0, "moveMod": 0.0, "damage": 99, "name": "Lake Water", "animated": true, "impassable": true },
+            "≈": { "stealth": 0, "moveMod": 0.0, "damage": 99, "name": "Deep Water", "animated": true, "impassable": true },
+            "🌊": { "stealth": 0, "moveMod": 0.0, "damage": 99, "name": "Waves", "animated": true, "impassable": true },
+            "▒": { "stealth": 0, "moveMod": 0.0, "name": "Guardrail", "impassable": true }
+        },
+
+        "spawnFeatures": {
+            "hazardZones": true,
+            "laneHazards": true,
+            "waterBorders": true,
+            "claustrophobic": true,
+            "playerStart": "west_edge",
+            "extractionPoint": "east_edge"
+        },
+        "bossConfig": {
+            "encounterType": "frogger_horizontal",
+            "bossEntity": null,
+            "survivalObjective": true,
+            "crossingDistance": 60,
+            "vehicleDamage": 99,
+            "waterDamage": 99,
+            "mythicCondition": "NO_DAMAGE_CROSSING",
+            "mythicHint": "RUMOR: The bridge never touched them — not once..."
+        },
+
+        "enemies": [],
+        "enemyDensity": 0.0,
+        "lightingProfile": "BRIDGE_TWILIGHT",
+        "ambientColor": "#4682B4",
+        "backgroundGradient": {
+            "night": { "start": "#040810", "end": "#081018" },
+            "day":   { "start": "#102040", "end": "#2a4060" }
+        }
+    },
+
+    "BOSS_SKI_MOUNTAIN": {
+        "name": "Schweitzer Descent",
+        "type": "boss_arena",
+        "parentBiome": "SKI_MOUNTAIN",
+        "description": "The handoff went wrong at the summit lodge. Ski down Schweitzer Mountain — pine walls, snaking ice, a snowmobile enforcer in pursuit. Extraction helicopter at the base.",
+
+        "mapShape": "long_vertical",
+        "gridWidth": 14,
+        "gridHeight": 60,
+        "wallChar": "🌲",
+        "floorChar": "░",
+        "wallDensity": 3,
+        "scrollDirection": "vertical_down",
+
+        "wallTiles": [
+            { "char": "🌲", "weight": 40 },
+            { "char": "🎄", "weight": 15 },
+            { "char": "🍂", "weight": 10 },
+            { "char": "🍁", "weight": 10 },
+            { "char": "🪨", "weight": 15 },
+            { "char": "❄️", "weight": 10 }
+        ],
+        "floorTiles": [
+            { "char": "░", "weight": 40, "animated": true },
+            { "char": "·", "weight": 25 },
+            { "char": "❄️", "weight": 15, "animated": true },
+            { "char": "~", "weight": 15, "animated": true },
+            { "char": "▪", "weight": 5 }
+        ],
+
+        "slopeLayout": {
+            "treeWallColumns": {
+                "leftWall": [0, 2],
+                "rightWall": [11, 13]
+            },
+            "playableColumns": [3, 10],
+            "playableWidth": 8,
+            "obstacleFrequency": 0.30,
+            "obstacleTypes": ["🌲", "🪨", "🏔️", "⛷️"],
+            "iceStreakPattern": "snaking",
+            "iceStreakWidth": [2, 3],
+            "iceStreakChar": "~",
+            "iceStreakFrequency": 0.20,
+            "sectionLength": 12,
+            "sections": [
+                { "name": "Upper Slopes", "difficulty": 1, "obstacleRate": 0.20, "iceRate": 0.10 },
+                { "name": "Treeline Run", "difficulty": 2, "obstacleRate": 0.30, "iceRate": 0.15 },
+                { "name": "Mogul Field", "difficulty": 3, "obstacleRate": 0.40, "iceRate": 0.20 },
+                { "name": "Chute", "difficulty": 4, "obstacleRate": 0.35, "iceRate": 0.30 },
+                { "name": "Base Approach", "difficulty": 5, "obstacleRate": 0.25, "iceRate": 0.25 }
+            ]
+        },
+
+        "icePhysics": {
+            "enabled": true,
+            "iceChar": "~",
+            "tileColor": "#88ccff",
+            "accelerateDirection": "south",
+            "accelerateMagnitude": 2,
+            "slideChance": 0.8,
+            "slideTiles": [2, 4],
+            "controlReduction": 0.5,
+            "chainSlide": true
+        },
+
+        "hazardSprites": {
+            "pursuer": "🏍️",
+            "skier": "⛷️",
+            "snowboarder": "🏂",
+            "avalancheChunk": "🏔️"
+        },
+        "pursuerBehavior": {
+            "sprite": "🏍️",
+            "name": "Kaniksu Enforcer",
+            "startDistance": 8,
+            "speedBase": 0.8,
+            "speedAcceleration": 0.02,
+            "catchDistance": 0,
+            "catchDamage": 25,
+            "slowWhenPlayerFast": true,
+            "pursuerKillable": false,
+            "screenShakeOnClose": true,
+            "redVignetteDistance": 3
+        },
+
+        "props": [
+            { "emoji": "🌲", "name": "Pine Tree", "breakable": false, "blocksPath": true },
+            { "emoji": "🎄", "name": "Snow Fir", "breakable": false, "blocksPath": true },
+            { "emoji": "🪨", "name": "Rock Outcrop", "breakable": false, "blocksPath": true },
+            { "emoji": "🏔️", "name": "Snow Bank", "breakable": true, "hp": 1, "blocksPath": true, "drops": ["ice"], "slowsPlayer": true },
+            { "emoji": "⛷️", "name": "Other Skier", "breakable": false, "blocksPath": false, "ghostCollision": true, "collisionDamage": 5 },
+            { "emoji": "🏠", "name": "Trail Shelter", "breakable": false, "blocksPath": true, "provides": "cover" }
+        ],
+        "interactiveObjects": [
+            { "emoji": "🚡", "name": "Ski Lift Tower", "interact": "grab", "effect": "speed_boost_south", "blocksPath": false },
+            { "emoji": "🪧", "name": "Trail Sign", "interact": "read", "effect": "shows_section", "blocksPath": true }
+        ],
+        "tileEffects": {
+            "░": { "stealth": 10, "moveMod": 1.2, "name": "Snow", "animated": true },
+            "·": { "stealth": 5, "moveMod": 1.0, "name": "Packed Trail" },
+            "❄️": { "stealth": 15, "moveMod": 1.1, "name": "Fresh Powder", "animated": true },
+            "~": { "stealth": 0, "moveMod": 1.5, "accelerate": "south", "name": "Ice Sheet", "animated": true, "tileColor": "#88ccff" },
+            "▪": { "stealth": 0, "moveMod": 0.7, "name": "Exposed Rock" }
+        },
+
+        "spawnFeatures": {
+            "hazardZones": true,
+            "verticalDescent": true,
+            "pursuerChase": true,
+            "playerStart": "north_center",
+            "extractionPoint": "south_center"
+        },
+        "bossConfig": {
+            "encounterType": "skifree_descent",
+            "bossEntity": "KANIKSU_ENFORCER",
+            "pursuitBoss": true,
+            "descentLength": 60,
+            "treeDamage": 10,
+            "rockDamage": 15,
+            "iceSlideDamage": 0,
+            "pursuerCatchDamage": 25,
+            "mythicCondition": "PERFECT_DESCENT_NO_TREE_HIT",
+            "mythicHint": "RUMOR: They say one agent skied the whole mountain without touching a single tree..."
+        },
+
+        "enemies": [],
+        "enemyDensity": 0.0,
+        "lightingProfile": "MOUNTAIN_DAY",
+        "ambientColor": "#d0e8f0",
+        "backgroundGradient": {
+            "night": { "start": "#0a1020", "end": "#1a2040" },
+            "day":   { "start": "#c0d8e8", "end": "#90b0c8" }
+        }
+    }
+}
