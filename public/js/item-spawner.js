@@ -144,7 +144,7 @@ const ItemSpawner = (function() {
       itemId: 'PICNIC_BLANKET',
       itemName: 'Cozy Picnic Blanket',
       category: 'MovementPenalty',
-      baseEmoji: '🧺',
+      baseEmoji: '🎁',
       defaultExpression: 'none',
       interactionType: 'movement_impediment',
       breakable: false,

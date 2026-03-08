@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interior Designer Portal</title>
+    <link rel="stylesheet" href="../css/map-designer.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #1cff9b;
+            overflow: hidden;
+        }
+        
+        .interior-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px;
+            background: #0d1a0d;
+            border-bottom: 1px solid #1cff9b33;
+        }
+        
+        .interior-header h1 {
+            margin: 0;
+            font-size: 16px;
+            color: #1cff9b;
+        }
+        
+        .floor-selector-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .floor-tabs {
+            display: flex;
+            gap: 4px;
+        }
+        
+        .floor-tab {
+            padding: 6px 12px;
+            background: #0a0a0a;
+            border: 1px solid #1cff9b33;
+            color: #1cff9b;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        
+        .floor-tab:hover {
+            background: #1a2a1a;
+        }
+        
+        .floor-tab.active {
+            background: #1cff9b22;
+            border-color: #1cff9b;
+        }
+        
+        .floor-tab.world { border-left: 3px solid #4fc3f7; }
+        .floor-tab.building { border-left: 3px solid #ff9800; }
+        .floor-tab.nested { border-left: 3px solid #e91e63; }
+        
+        .interior-container {
+            display: flex;
+            height: calc(100vh - 50px);
+        }
+        
+        .interior-sidebar {
+            width: 280px;
+            background: #0d1a0d;
+            border-right: 1px solid #1cff9b22;
+            overflow-y: auto;
+            padding: 12px;
+        }
+        
+        .sidebar-section {
+            margin-bottom: 20px;
+        }
+        
+        .sidebar-section h3 {
+            margin: 0 0 8px 0;
+            font-size: 12px;
+            color: #1cff9b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #1cff9b22;
+            padding-bottom: 4px;
+        }
+        
+        .building-templates {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .template-card {
+            padding: 10px;
+            background: #0a0a0a;
+            border: 1px solid #1cff9b22;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .template-card:hover {
+            border-color: #1cff9b;
+            background: #1a2a1a;
+        }
+        
+        .template-card.selected {
+            border-color: #1cff9b;
+            background: #1cff9b15;
+        }
+        
+        .template-card .name {
+            font-weight: bold;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+        
+        .template-card .desc {
+            font-size: 10px;
+            color: #888;
+        }
+        
+        .door-contracts {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .contract-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            background: #0a0a0a;
+            border: 1px solid #1cff9b22;
+            font-size: 11px;
+        }
+        
+        .contract-row .arrow {
+            color: #ff9800;
+            font-weight: bold;
+        }
+        
+        .interior-canvas {
+            flex: 1;
+            position: relative;
+            background: #050805;
+            overflow: hidden;
+        }
+        
+        #grid-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        .floor-vis {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #0d1a0dcc;
+            padding: 10px;
+            border: 1px solid #1cff9b33;
+            font-size: 11px;
+            max-width: 200px;
+        }
+        
+        .floor-vis h4 {
+            margin: 0 0 8px 0;
+            font-size: 11px;
+            color: #ff9800;
+        }
+        
+        .floor-vis-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+            padding: 4px;
+            background: #0a0a0a;
+        }
+        
+        .floor-vis-item.active {
+            background: #1cff9b22;
+            border: 1px solid #1cff9b;
+        }
+        
+        .floor-vis-item .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .floor-vis-item.world .dot { background: #4fc3f7; }
+        .floor-vis-item.building .dot { background: #ff9800; }
+        .floor-vis-item.nested .dot { background: #e91e63; }
+        
+        .interior-properties {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: #0d1a0dcc;
+            padding: 10px;
+            border: 1px solid #1cff9b33;
+            font-size: 11px;
+            min-width: 180px;
+        }
+        
+        .interior-properties h4 {
+            margin: 0 0 8px 0;
+            font-size: 11px;
+            color: #1cff9b;
+        }
+        
+        .property-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            font-size: 10px;
+        }
+        
+        .property-row label {
+            color: #888;
+        }
+        
+        .btn {
+            padding: 6px 12px;
+            background: #1cff9b22;
+            border: 1px solid #1cff9b;
+            color: #1cff9b;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            background: #1cff9b33;
+        }
+        
+        .btn-primary {
+            background: #1cff9b;
+            color: #0a0a0a;
+        }
+        
+        .btn-primary:hover {
+            background: #6bffc8;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="interior-header">
+        <h1>Interior Designer</h1>
+        <div class="floor-selector-row">
+            <span style="font-size:11px;color:#888;">Floors:</span>
+            <div class="floor-tabs">
+                <button class="floor-tab world active" data-floor="N" title="World Floor">N</button>
+                <button class="floor-tab building" data-floor="N.N" title="Building Interior">N.N</button>
+                <button class="floor-tab nested" data-floor="N.N.N" title="Nested Interior">N.N.N</button>
+            </div>
+            <button class="btn" id="add-floor-btn">+ Add Floor</button>
+        </div>
+        <div class="header-controls">
+            <button class="btn" id="load-btn">Load</button>
+            <button class="btn" id="save-btn">Save</button>
+            <button class="btn btn-primary" id="export-btn">Export to World</button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="interior-container">
+        <!-- Left Sidebar -->
+        <aside class="interior-sidebar">
+            <div class="sidebar-section">
+                <h3>Building Templates</h3>
+                <div class="building-templates" id="template-list">
+                    <div class="template-card" data-template="church">
+                        <div class="name">🏛️ Church</div>
+                        <div class="desc">Red crosshatch floors, pews, altar</div>
+                    </div>
+                    <div class="template-card" data-template="tavern">
+                        <div class="name">🍺 Tavern</div>
+                        <div class="desc">Dark wood, bar, tables</div>
+                    </div>
+                    <div class="template-card" data-template="junkyard">
+                        <div class="name">🔧 Junkyard</div>
+                        <div class="desc">Alternating patterns, scrap</div>
+                    </div>
+                    <div class="template-card" data-template="strip_mall">
+                        <div class="name">🏪 Strip Mall</div>
+                        <div class="desc">Lavender herringbone, displays</div>
+                    </div>
+                    <div class="template-card" data-template="house">
+                        <div class="name">🏠 House</div>
+                        <div class="desc">Cozy residential, multiple rooms</div>
+                    </div>
+                    <div class="template-card" data-template="warehouse">
+                        <div class="name">🏭 Warehouse</div>
+                        <div class="desc">Large open space, crates</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sidebar-section">
+                <h3>Interior Properties</h3>
+                <div class="property-row">
+                    <label>Zoom Bias:</label>
+                    <span id="prop-zoom">1.15</span>
+                </div>
+                <div class="property-row">
+                    <label>Prop Density:</label>
+                    <span id="prop-density">0.55</span>
+                </div>
+                <div class="property-row">
+                    <label>Pattern:</label>
+                    <span id="prop-pattern">0.8</span>
+                </div>
+                <div class="property-row">
+                    <label>Lighting:</label>
+                    <span id="prop-lighting">0.7</span>
+                </div>
+            </div>
+            
+            <div class="sidebar-section">
+                <h3>Door Contracts</h3>
+                <div class="door-contracts" id="door-contracts">
+                    <div class="contract-row">
+                        <span>🚪</span>
+                        <span class="arrow">→</span>
+                        <span>Enter Building</span>
+                    </div>
+                    <div class="contract-row">
+                        <span>↩</span>
+                        <span class="arrow">←</span>
+                        <span>Exit to World</span>
+                    </div>
+                    <div class="contract-row">
+                        <span>⬇</span>
+                        <span class="arrow">→</span>
+                        <span>Stairs Down (N.N.N)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sidebar-section">
+                <h3>Structure Grammar</h3>
+                <div id="grammar-config" style="font-size:10px;color:#888;">
+                    <div>Symmetry: <span id="gram-symmetry">true</span></div>
+                    <div>Anchors: <span id="gram-anchors">altar, entrance</span></div>
+                    <div>Door: <span id="gram-door">centered</span></div>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Canvas Area -->
+        <div class="interior-canvas">
+            <canvas id="grid-canvas" width="800" height="600"></canvas>
+            
+            <!-- Floor Visualization -->
+            <div class="floor-vis">
+                <h4>Floor Hierarchy</h4>
+                <div id="floor-visualization">
+                    <div class="floor-vis-item world active">
+                        <span class="dot"></span>
+                        <span>0 - World (Forest)</span>
+                    </div>
+                    <div class="floor-vis-item building">
+                        <span class="dot"></span>
+                        <span>0.1 - Church</span>
+                    </div>
+                    <div class="floor-vis-item nested">
+                        <span class="dot"></span>
+                        <span>0.1.1 - Catacombs</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Properties Panel -->
+            <div class="interior-properties">
+                <h4>Current Floor</h4>
+                <div class="property-row">
+                    <label>Floor ID:</label>
+                    <span id="current-floor-id">0.1</span>
+                </div>
+                <div class="property-row">
+                    <label>Type:</label>
+                    <span id="current-floor-type">Building</span>
+                </div>
+                <div class="property-row">
+                    <label>Template:</label>
+                    <span id="current-template">church</span>
+                </div>
+                <div class="property-row">
+                    <label>Size:</label>
+                    <span id="current-size">12x8</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        const state = {
+            currentFloorLevel: 'N',
+            floors: [
+                { id: '0', level: 'world', name: 'World', template: null, size: { w: 40, h: 25 } },
+                { id: '0.1', level: 'building', name: 'Church', template: 'church', size: { w: 12, h: 8 } },
+                { id: '0.1.1', level: 'nested', name: 'Catacombs', template: 'junkyard', size: { w: 10, h: 6 } }
+            ],
+            selectedTemplate: null,
+            selectedFloor: null
+        };
+        
+        // DOM Elements
+        const canvas = document.getElementById('grid-canvas');
+        const ctx = canvas.getContext('2d');
+        const templateList = document.getElementById('template-list');
+        const floorTabs = document.querySelectorAll('.floor-tab');
+        const floorVis = document.getElementById('floor-visualization');
+        
+        // Initialize
+        function init() {
+            setupEventListeners();
+            renderGrid();
+            updateFloorVis();
+        }
+        
+        function setupEventListeners() {
+            // Floor tab clicks
+            floorTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    floorTabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    state.currentFloorLevel = tab.dataset.floor;
+                    updateCurrentFloor();
+                    renderGrid();
+                });
+            });
+            
+            // Template selection
+            templateList.addEventListener('click', (e) => {
+                const card = e.target.closest('.template-card');
+                if (card) {
+                    document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    state.selectedTemplate = card.dataset.template;
+                    updateGrammarForTemplate(state.selectedTemplate);
+                }
+            });
+            
+            // Add floor button
+            document.getElementById('add-floor-btn').addEventListener('click', addNewFloor);
+            
+            // Save/Load/Export
+            document.getElementById('save-btn').addEventListener('click', saveFloors);
+            document.getElementById('load-btn').addEventListener('click', loadFloors);
+            document.getElementById('export-btn').addEventListener('click', exportToWorld);
+        }
+        
+        function renderGrid() {
+            const floor = getCurrentFloor();
+            if (!floor) return;
+            
+            const cellSize = 32;
+            canvas.width = floor.size.w * cellSize;
+            canvas.height = floor.size.h * cellSize;
+            
+            // Clear
+            ctx.fillStyle = '#050805';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid
+            ctx.strokeStyle = '#1cff9b11';
+            ctx.lineWidth = 1;
+            
+            for (let x = 0; x <= floor.size.w; x++) {
+                ctx.beginPath();
+                ctx.moveTo(x * cellSize, 0);
+                ctx.lineTo(x * cellSize, canvas.height);
+                ctx.stroke();
+            }
+            
+            for (let y = 0; y <= floor.size.h; y++) {
+                ctx.beginPath();
+                ctx.moveTo(0, y * cellSize);
+                ctx.lineTo(canvas.width, y * cellSize);
+                ctx.stroke();
+            }
+            
+            // Draw floor pattern based on template
+            if (floor.template) {
+                drawTemplatePattern(floor.template, floor.size, cellSize);
+            }
+            
+            // Draw border
+            ctx.strokeStyle = '#1cff9b44';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
+        }
+        
+        function drawTemplatePattern(template, size, cellSize) {
+            ctx.font = `${cellSize * 0.7}px serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            const patterns = {
+                church: { char: '╬', color: '#8B0000', density: 0.8 },
+                tavern: { char: '█', color: '#3d2817', density: 0.7 },
+                junkyard: { char: '░', color: '#4a4a4a', density: 0.6 },
+                strip_mall: { char: '╱', color: '#6a5acd', density: 0.5 },
+                house: { char: '.', color: '#2a2a2a', density: 0.4 },
+                warehouse: { char: '▓', color: '#3a3a3a', density: 0.3 }
+            };
+            
+            const pattern = patterns[template] || patterns.house;
+            
+            for (let y = 0; y < size.h; y++) {
+                for (let x = 0; x < size.w; x++) {
+                    if (Math.random() < pattern.density) {
+                        ctx.fillStyle = pattern.color + '88';
+                        ctx.fillText(pattern.char, x * cellSize + cellSize/2, y * cellSize + cellSize/2);
+                    }
+                }
+            }
+        }
+        
+        function getCurrentFloor() {
+            if (state.currentFloorLevel === 'N') return state.floors[0];
+            if (state.currentFloorLevel === 'N.N') return state.floors[1];
+            if (state.currentFloorLevel === 'N.N.N') return state.floors[2];
+            return state.floors[0];
+        }
+        
+        function updateCurrentFloor() {
+            const floor = getCurrentFloor();
+            if (!floor) return;
+            
+            document.getElementById('current-floor-id').textContent = floor.id;
+            document.getElementById('current-floor-type').textContent = 
+                floor.level === 'world' ? 'World' : 
+                floor.level === 'building' ? 'Building' : 'Nested';
+            document.getElementById('current-template').textContent = floor.template || 'none';
+            document.getElementById('current-size').textContent = `${floor.size.w}x${floor.size.h}`;
+        }
+        
+        function updateFloorVis() {
+            floorVis.innerHTML = state.floors.map(f => `
+                <div class="floor-vis-item ${f.level} ${f.id === getCurrentFloor()?.id ? 'active' : ''}">
+                    <span class="dot"></span>
+                    <span>${f.id} - ${f.name}</span>
+                </div>
+            `).join('');
+        }
+        
+        function updateGrammarForTemplate(template) {
+            const grammars = {
+                church: { symmetry: 'true', anchors: 'altar, entrance', door: 'centered' },
+                tavern: { symmetry: 'false', anchors: 'bar, entrance', door: 'offset' },
+                junkyard: { symmetry: 'false', anchors: 'workbench', door: 'random' },
+                strip_mall: { symmetry: 'false', anchors: 'vendor_counter', door: 'centered' },
+                house: { symmetry: 'true', anchors: 'entrance, fireplace', door: 'centered' },
+                warehouse: { symmetry: 'false', anchors: 'entrance', door: 'multiple' }
+            };
+            
+            const g = grammars[template] || grammars.house;
+            document.getElementById('gram-symmetry').textContent = g.symmetry;
+            document.getElementById('gram-anchors').textContent = g.anchors;
+            document.getElementById('gram-door').textContent = g.door;
+        }
+        
+        function addNewFloor() {
+            const parentFloor = state.floors[state.floors.length - 1];
+            const newId = parentFloor.id + '.1';
+            
+            state.floors.push({
+                id: newId,
+                level: 'nested',
+                name: 'New Room',
+                template: 'house',
+                size: { w: 8, h: 6 }
+            });
+            
+            updateFloorVis();
+            renderGrid();
+        }
+        
+        function saveFloors() {
+            const data = JSON.stringify(state.floors, null, 2);
+            localStorage.setItem('interior-designs', data);
+            alert('Interior floors saved!');
+        }
+        
+        function loadFloors() {
+            const data = localStorage.getItem('interior-designs');
+            if (data) {
+                state.floors = JSON.parse(data);
+                updateFloorVis();
+                renderGrid();
+                alert('Interior floors loaded!');
+            } else {
+                alert('No saved designs found.');
+            }
+        }
+        
+        function exportToWorld() {
+            const worldData = {
+                floors: state.floors,
+                type: 'interior-design',
+                version: '1.0'
+            };
+            
+            const blob = new Blob([JSON.stringify(worldData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'interior-designs.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            alert('Exported! Import this in World Designer to use with your world.');
+        }
+        
+        // Start
+        init();
+    </script>
+</body>
+</html>

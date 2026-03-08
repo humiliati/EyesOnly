@@ -31,10 +31,10 @@ const InteractiveItems = (function() {
       lightSource: 'MONITOR' // Can be lit
     },
     SIGN: {
-      emoji: '🪧',
+      emoji: '📋',
       name: 'Sign',
       interactionEmoji: 'READING',
-      tooltipPrefix: '🪧 ',
+      tooltipPrefix: '📋 ',
       canInteract: true,
       breakable: false
     },
@@ -95,10 +95,10 @@ const InteractiveItems = (function() {
       breakable: true
     },
     AREA_OF_INTEREST: {
-      emoji: '❓',
+      emoji: '💠',
       name: 'Point of Interest',
       interactionEmoji: 'INSPECTING',
-      tooltipPrefix: '❓ ',
+      tooltipPrefix: '💠 ',
       canInteract: true,
       breakable: false
     },

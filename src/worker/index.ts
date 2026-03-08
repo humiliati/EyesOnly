@@ -12,6 +12,8 @@ import { opsRoutes } from './routes/ops';
 import { mModeRoutes } from './routes/m-mode';
 import { userAuthRoutes } from './routes/user-auth';
 import { kernelRoutes } from './routes/kernel';
+import { audioRoutes } from './routes/audio';
+import { audioUploadRoutes } from './routes/audio-upload';
 import {
   listActiveScenarios,
   findStaleActors,
@@ -57,6 +59,12 @@ app.route('/api/ops', opsRoutes);
 app.route('/api/m', mModeRoutes);
 app.route('/api/user', userAuthRoutes);
 app.route('/api/kernel', kernelRoutes);
+
+// --- Audio: served from R2 (not static assets) ---
+app.route('/audio', audioRoutes);
+
+// --- Audio Upload API (Sound Designer portal) ---
+app.route('/api/audio', audioUploadRoutes);
 
 // --- Health Check ---
 

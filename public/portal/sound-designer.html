@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sound Designer Portal</title>
+  <link rel="stylesheet" href="css/sound-designer.css">
+</head>
+<body>
+  <div class="portal-container">
+    <header class="portal-header">
+      <h1>🔊 SOUND DESIGNER PORTAL</h1>
+      <div class="header-actions">
+        <button id="refresh-manifest-btn" class="btn-secondary">🔄 Refresh</button>
+        <button id="save-assignments-btn" class="btn-primary">💾 Save Assignments</button>
+        <button id="export-sound-map-btn" class="btn-secondary">📤 Export JSON</button>
+      </div>
+    </header>
+
+    <div class="portal-main">
+      <!-- ============ LEFT: Sound Library ============ -->
+      <aside class="sound-library">
+        <h2>Sound Library</h2>
+        <div class="library-search">
+          <input type="text" id="library-search" placeholder="Search sounds…">
+        </div>
+        <div id="library-categories">
+          <!-- Populated by JS from audio-manifest.json -->
+        </div>
+      </aside>
+
+      <!-- ============ CENTER: Preview / Assign / Upload ============ -->
+      <section class="center-panel">
+        <div class="center-tabs">
+          <button class="center-tab active" data-tab="preview">Preview</button>
+          <button class="center-tab" data-tab="assign">Assign</button>
+          <button class="center-tab" data-tab="upload">Upload</button>
+        </div>
+
+        <!-- ---- Preview Tab ---- -->
+        <div class="tab-panel active" id="tab-preview">
+          <div class="preview-card">
+            <h3>Audio Preview</h3>
+            <div class="waveform-area">
+              <canvas id="waveform-canvas"></canvas>
+              <span class="waveform-placeholder" id="waveform-placeholder">Select a sound to preview</span>
+            </div>
+            <div class="preview-controls">
+              <button class="preview-play-btn" id="preview-play-btn" disabled>▶</button>
+              <div class="preview-info">
+                <div class="name" id="preview-name">—</div>
+                <div class="meta" id="preview-meta">—</div>
+              </div>
+              <div class="preview-volume">
+                <input type="range" id="preview-volume" min="0" max="100" value="80" title="Preview volume">
+              </div>
+            </div>
+          </div>
+
+          <!-- Sound Properties (read-only from manifest) -->
+          <div class="preview-card">
+            <h3>Sound Properties</h3>
+            <div id="sound-properties">
+              <div class="empty-state">
+                <span class="empty-icon">🎵</span>
+                <span class="empty-text">No sound selected</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ---- Assign Tab ---- -->
+        <div class="tab-panel" id="tab-assign">
+          <div class="assignment-section">
+            <h3>Assign Sound to Designer Context</h3>
+            <div class="assignment-context-tabs">
+              <button class="ctx-tab active" data-ctx="asset">Asset Designer</button>
+              <button class="ctx-tab" data-ctx="map">Map Designer</button>
+              <button class="ctx-tab" data-ctx="interior">Interior Designer</button>
+            </div>
+
+            <!-- Asset context assignments -->
+            <div class="ctx-panel active" id="ctx-asset">
+              <div class="assignment-grid" id="asset-assignment-grid">
+                <div class="assign-slot" data-event="on-break">
+                  <span class="slot-label">On Break</span>
+                  <span class="slot-empty" id="asset-on-break-val">drag sound here</span>
+                  <div class="slot-actions">
+                    <button class="slot-btn assign-btn" data-event="on-break">Assign Selected</button>
+                    <button class="slot-btn remove" data-event="on-break" style="display:none">✕</button>
+                  </div>
+                </div>
+                <div class="assign-slot" data-event="on-interact">
+                  <span class="slot-label">On Interact</span>
+                  <span class="slot-empty" id="asset-on-interact-val">drag sound here</span>
+                  <div class="slot-actions">
+                    <button class="slot-btn assign-btn" data-event="on-interact">Assign Selected</button>
+                    <button class="slot-btn remove" data-event="on-interact" style="display:none">✕</button>
+                  </div>
+                </div>
+                <div class="assign-slot" data-event="on-spawn">
+                  <span class="slot-label">On Spawn</span>
+                  <span class="slot-empty" id="asset-on-spawn-val">drag sound here</span>
+                  <div class="slot-actions">
+                    <button class="slot-btn assign-btn" data-event="on-spawn">Assign Selected</button>
+                    <button class="slot-btn remove" data-event="on-spawn" style="display:none">✕</button>
+                  </div>
+                </div>
+                <div class="assign-slot" data-event="ambient-loop">
+                  <span class="slot-label">Ambient Loop</span>
+                  <span class="slot-empty" id="asset-ambient-loop-val">drag sound here</span>
+                  <div class="slot-actions">
+                    <button class="slot-btn assign-btn" data-event="ambient-loop">Assign Selected</button>
+                    <button class="slot-btn remove" data-event="ambient-loop" style="display:none">✕</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Map context assignments -->
+            <div class="ctx-panel" id="ctx-map" style="display:none">
+              <div class="assignment-grid" id="map-assignment-grid">
+                <div class="assign-slot" data-event="bg-music">
+                  <span class="slot-label">Background Music</span>
+                  <span class="slot-empty" id="map-bg-music-val">drag sound here</span>
+                  <div class="slot-actions">
+                    <button class="slot-btn assign-btn" data-event="bg-music">Assign Selected</button>
+                    <button class="slot-btn remove" data-event="bg-music" style="display:none">✕</button>
+                  </div>
+                </div>
+                <div class="assign-slot" data-event="ambient-sfx">
+                  <span class="slot-label">Ambient SFX</span>
+                  <span class="slot-empty" id="map-ambient-sfx-val">drag sound here</span>
+                  <div class="slot-actions">
+                    <button class="slot-btn assign-btn" data-event="ambient-sfx">Assign Selected</button>
+                    <button class="slot-btn remove" data-event="ambient-sfx" style="display:none">✕</button>
+                  </div>
+                </div>
+                <div class="assign-slot" data-event="on-enter">
+                  <span class="slot-label">On Floor Enter</span>
+                  <span class="slot-empty" id="map-on-enter-val">drag sound here</span>
+                  <div class="slot-actions">
+                    <button class="slot-btn assign-btn" data-event="on-enter">Assign Selected</button>
+                    <button class="slot-btn remove" data-event="on-enter" style="display:none">✕</button>
+                  </div>
+                </div>
+                <div class="assign-slot" data-event="on-exit">
+                  <span class="slot-label">On Floor Exit</span>
+                  <span class="slot-empty" id="map-on-exit-val">drag sound here</span>
+                  <div class="slot-actions">
+                    <button class="slot-btn assign-btn" data-event="on-exit">Assign Selected</button>
+                    <button class="slot-btn remove" data-event="on-exit" style="display:none">✕</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Interior context assignments -->
+            <div class="ctx-panel" id="ctx-interior" style="display:none">
+              <div class="assignment-grid" id="interior-assignment-grid">
+                <div class="assign-slot" data-event="room-ambient">
+                  <span class="slot-label">Room Ambient</span>
+                  <span class="slot-empty" id="interior-room-ambient-val">drag sound here</span>
+                  <div class="slot-actions">
+                    <button class="slot-btn assign-btn" data-event="room-ambient">Assign Selected</button>
+                    <button class="slot-btn remove" data-event="room-ambient" style="display:none">✕</button>
+                  </div>
+                </div>
+                <div class="assign-slot" data-event="door-open">
+                  <span class="slot-label">Door Open</span>
+                  <span class="slot-empty" id="interior-door-open-val">drag sound here</span>
+                  <div class="slot-actions">
+                    <button class="slot-btn assign-btn" data-event="door-open">Assign Selected</button>
+                    <button class="slot-btn remove" data-event="door-open" style="display:none">✕</button>
+                  </div>
+                </div>
+                <div class="assign-slot" data-event="door-close">
+                  <span class="slot-label">Door Close</span>
+                  <span class="slot-empty" id="interior-door-close-val">drag sound here</span>
+                  <div class="slot-actions">
+                    <button class="slot-btn assign-btn" data-event="door-close">Assign Selected</button>
+                    <button class="slot-btn remove" data-event="door-close" style="display:none">✕</button>
+                  </div>
+                </div>
+                <div class="assign-slot" data-event="floor-creak">
+                  <span class="slot-label">Floor Creak</span>
+                  <span class="slot-empty" id="interior-floor-creak-val">drag sound here</span>
+                  <div class="slot-actions">
+                    <button class="slot-btn assign-btn" data-event="floor-creak">Assign Selected</button>
+                    <button class="slot-btn remove" data-event="floor-creak" style="display:none">✕</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Target selector -->
+          <div class="assignment-section">
+            <h3>Target Selection</h3>
+            <div class="inspector-field">
+              <label>Designer Context</label>
+              <select id="target-context-select">
+                <option value="">— select context —</option>
+                <option value="asset">Asset (scene object)</option>
+                <option value="map">Map (floor / level)</option>
+                <option value="interior">Interior (building room)</option>
+              </select>
+            </div>
+            <div class="inspector-field">
+              <label>Target Entity</label>
+              <select id="target-entity-select" disabled>
+                <option value="">— select entity —</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- ---- Upload Tab ---- -->
+        <div class="tab-panel" id="tab-upload">
+          <div class="upload-section">
+            <h3>Upload Audio / Video to R2</h3>
+            <div class="upload-dropzone" id="upload-dropzone">
+              <div class="drop-icon">📁</div>
+              <div class="drop-text">Drop audio or video files here</div>
+              <div class="drop-hint">.wav .mp3 .ogg .webm .m4a .mp4 — max 50 MB each</div>
+            </div>
+            <input type="file" id="upload-file-input" multiple accept="audio/*,video/*,.wav,.mp3,.ogg,.webm,.m4a,.mp4" style="display:none">
+            <div class="upload-controls">
+              <select class="upload-dest-select" id="upload-dest-select">
+                <option value="sfx">SFX (audio/sfx/)</option>
+                <option value="music">Music (audio/music/)</option>
+                <option value="video">Video (video/)</option>
+              </select>
+              <button class="btn-primary btn-small" id="upload-start-btn" disabled>Upload All</button>
+            </div>
+            <div class="upload-queue" id="upload-queue"></div>
+          </div>
+
+          <div class="upload-section">
+            <h3>Upload History</h3>
+            <div id="upload-history">
+              <div class="empty-state">
+                <span class="empty-icon">📤</span>
+                <span class="empty-text">No uploads yet this session</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ RIGHT: Inspector ============ -->
+      <aside class="inspector-panel">
+        <h2>Inspector</h2>
+
+        <div class="inspector-section">
+          <h4>Selected Sound</h4>
+          <div id="inspector-selected">
+            <div class="empty-state">
+              <span class="empty-text">Nothing selected</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="inspector-section">
+          <h4>Properties</h4>
+          <div class="inspector-field">
+            <label>Display Name</label>
+            <input type="text" id="insp-display-name" placeholder="—" disabled>
+          </div>
+          <div class="inspector-field">
+            <label>Category</label>
+            <select id="insp-category" disabled>
+              <option value="ui">UI</option>
+              <option value="movement">Movement</option>
+              <option value="combat">Combat</option>
+              <option value="magic">Magic</option>
+              <option value="environment">Environment</option>
+              <option value="collectible">Collectible</option>
+              <option value="creature">Creature</option>
+              <option value="music">Music</option>
+            </select>
+          </div>
+          <div class="inspector-field">
+            <label>Volume Override (0–100)</label>
+            <input type="number" id="insp-volume" min="0" max="100" placeholder="—" disabled>
+          </div>
+          <div class="inspector-field">
+            <label>Loop</label>
+            <select id="insp-loop" disabled>
+              <option value="false">No</option>
+              <option value="true">Yes</option>
+            </select>
+          </div>
+          <div class="inspector-field">
+            <label>Tags</label>
+            <input type="text" id="insp-tags" placeholder="comma-separated" disabled>
+          </div>
+        </div>
+
+        <div class="inspector-section">
+          <h4>Current Assignments</h4>
+          <div class="assignment-list" id="inspector-assignments">
+            <div class="empty-state">
+              <span class="empty-text">No assignments</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="js/unified-data-manager.js"></script>
+  <script src="js/sound-designer.js"></script>
+</body>
+</html>

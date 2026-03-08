@@ -1,0 +1,301 @@
+/* ============================================================
+   EYES ONLY — Audio Controls Widget
+   Sits in .debrief-label row, right-aligned.
+   Phosphor / amber palette from crt.css variables.
+   ============================================================ */
+
+/* ── Header layout: make debrief-label a flex row ───────────── */
+.debrief-label {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  position: relative; /* anchor for .audio-dropdown absolute positioning */
+}
+
+.debrief-label-text {
+  flex: 1;
+  /* Inherit the existing label styles — font-size, letter-spacing,
+     text-transform, color are on .debrief-label already */
+}
+
+/* ── Inline audio cluster (speaker + separator + chevron) ──── */
+.audio-controls-inline {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  margin-left: auto;
+  flex-shrink: 0;
+  /* Prevent debrief-label pointer events (drag-resize) from
+     eating audio button clicks */
+  pointer-events: auto;
+  z-index: 2;
+}
+
+.audio-btn {
+  background: none;
+  border: none;
+  color: var(--phosphor-dim, #1a9c1a);
+  cursor: pointer;
+  padding: 1px 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, text-shadow 0.15s;
+  font-family: var(--font, 'Courier New', monospace);
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.audio-btn:hover,
+.audio-btn:focus-visible {
+  color: var(--phosphor-bright, #66ff66);
+  text-shadow: 0 0 6px var(--phosphor-glow, rgba(51,255,51,0.15));
+  outline: none;
+}
+
+.audio-btn.muted {
+  color: var(--amber-dim, #996a00);
+}
+.audio-btn.muted:hover,
+.audio-btn.muted:focus-visible {
+  color: var(--amber-bright, #ffc640);
+  text-shadow: 0 0 6px var(--amber-glow, rgba(255,176,0,0.15));
+}
+
+/* Long-press visual feedback */
+.audio-btn.pressing {
+  color: var(--phosphor-bright, #66ff66) !important;
+  text-shadow: 0 0 8px var(--phosphor-glow, rgba(51,255,51,0.15)) !important;
+}
+
+/* Speaker SVG icon */
+.audio-btn svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Thin separator pipe */
+.audio-sep {
+  width: 1px;
+  height: 9px;
+  background: var(--panel-border, rgba(51,255,51,0.25));
+  opacity: 0.4;
+  flex-shrink: 0;
+}
+
+/* Chevron arrow */
+.audio-chevron {
+  font-size: 0.55em;
+  transition: transform 0.2s ease;
+  display: inline-block;
+  opacity: 0.7;
+  line-height: 1;
+}
+.audio-chevron.open {
+  transform: rotate(180deg);
+}
+
+
+/* ── Dropdown panel ────────────────────────────────────────── */
+.audio-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  background: var(--bg-screen, #050805);
+  border: 1px solid var(--panel-border, rgba(51,255,51,0.25));
+  border-top: none;
+  z-index: 50;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.22s ease, opacity 0.18s ease, padding 0.22s ease;
+  padding: 0 6px;
+  pointer-events: none;
+}
+
+.audio-dropdown.open {
+  max-height: 200px;
+  opacity: 1;
+  padding: 6px 6px 8px;
+  pointer-events: auto;
+}
+
+/* ── Dropdown rows ─────────────────────────────────────────── */
+.audio-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  font-family: var(--font-legible, 'Classic Console Neue', 'Courier New', monospace);
+  font-size: 0.62em;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.audio-row + .audio-row {
+  border-top: 1px solid var(--panel-border-soft, rgba(51,255,51,0.08));
+  padding-top: 4px;
+}
+
+.audio-row-label {
+  color: var(--phosphor-dim, #1a9c1a);
+  min-width: 36px;
+  flex-shrink: 0;
+  font-size: 0.95em;
+}
+
+/* ── Mute toggle button in dropdown ────────────────────────── */
+.audio-mute-toggle {
+  background: none;
+  border: 1px solid var(--panel-border, rgba(51,255,51,0.25));
+  color: var(--phosphor-dim, #1a9c1a);
+  font-family: var(--font-legible, 'Classic Console Neue', 'Courier New', monospace);
+  font-size: 0.88em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border-radius: 1px;
+  line-height: 1.2;
+}
+.audio-mute-toggle:hover {
+  color: var(--phosphor-bright, #66ff66);
+  border-color: var(--phosphor, #33ff33);
+}
+.audio-mute-toggle.muted {
+  color: var(--amber, #ffb000);
+  border-color: var(--amber-dim, #996a00);
+}
+
+/* ── Volume sliders ────────────────────────────────────────── */
+.audio-slider-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.audio-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 2px;
+  background: rgba(51, 255, 51, 0.12);
+  border-radius: 1px;
+  outline: none;
+  cursor: pointer;
+}
+
+.audio-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 1px;
+  background: var(--phosphor-dim, #1a9c1a);
+  border: 1px solid var(--phosphor, #33ff33);
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.audio-slider::-webkit-slider-thumb:hover {
+  background: var(--phosphor, #33ff33);
+  box-shadow: 0 0 5px var(--phosphor-glow, rgba(51,255,51,0.15));
+}
+.audio-slider::-moz-range-thumb {
+  width: 8px;
+  height: 8px;
+  border-radius: 1px;
+  background: var(--phosphor-dim, #1a9c1a);
+  border: 1px solid var(--phosphor, #33ff33);
+  cursor: pointer;
+}
+
+.audio-slider-val {
+  color: var(--phosphor-dim, #1a9c1a);
+  font-size: 0.82em;
+  min-width: 20px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Disabled sliders when muted */
+.audio-row.disabled .audio-slider {
+  opacity: 0.25;
+  pointer-events: none;
+}
+.audio-row.disabled .audio-slider-val,
+.audio-row.disabled .audio-row-label {
+  opacity: 0.3;
+}
+
+/* ── Track info row ────────────────────────────────────────── */
+.audio-track-info-row {
+  padding-top: 5px !important;
+  border-top: 1px solid rgba(51, 255, 51, 0.12) !important;
+}
+
+.audio-track-info {
+  flex: 1;
+  overflow: hidden;
+}
+
+.audio-track-title {
+  color: var(--phosphor, #33ff33);
+  font-size: 0.88em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+.audio-track-artist {
+  color: var(--phosphor-dim, #1a9c1a);
+  font-size: 0.78em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  margin-top: 1px;
+  opacity: 0.65;
+}
+
+
+/* ── Responsive: scale with debrief container queries ─────── */
+
+/* In Gone Rogue portrait, dropdown fits within the debrief panel */
+@media (max-width: 600px) and (orientation: portrait) {
+  .audio-dropdown.open {
+    max-height: 180px;
+  }
+  .audio-btn svg {
+    width: 10px;
+    height: 10px;
+  }
+  .audio-row {
+    font-size: 0.58em;
+    gap: 4px;
+  }
+  .audio-row-label {
+    min-width: 28px;
+  }
+}
+
+/* When debrief is minimized, hide the dropdown entirely */
+.debrief-window.debrief-minimized .audio-dropdown {
+  display: none !important;
+}
+
+/* Keep audio icon visible even when minimized (quick-mute) */
+.debrief-window.debrief-minimized .audio-controls-inline {
+  display: flex;
+}

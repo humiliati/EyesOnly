@@ -18,6 +18,7 @@
   <link rel="stylesheet" href="css/rogue-floor-badge.css">
   <link rel="stylesheet" href="css/debrief-scale.css">
   <link rel="stylesheet" href="css/fonts-legible.css">
+  <link rel="stylesheet" href="css/audio-controls.css">
   <link rel="stylesheet" href="css/debrief-pipboy.css?v=20260305i">
   <link rel="stylesheet" href="css/str-combat-window.css?v=20260306g">
   <link rel="stylesheet" href="css/str-victory-sequence.css">
@@ -146,7 +147,61 @@
               <button type="button" data-action="score">score</button>
             </div>
             <div class="debrief-window" id="debrief-window" aria-label="Command and Conquer style debrief feed">
-              <div class="debrief-label">debrief feed</div>
+              <div class="debrief-label" id="debrief-label">
+                <span class="debrief-label-text">debrief feed</span>
+                <div class="audio-controls-inline" id="audio-controls-inline">
+                  <!-- Speaker icon: click = mute, long-press = open dropdown -->
+                  <button class="audio-btn" id="audio-speaker-btn" type="button"
+                          aria-label="Toggle mute (click) or expand audio panel (long press)"
+                          title="Click: mute · Long press: expand">
+                    <svg id="audio-icon-on" viewBox="0 0 24 24">
+                      <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="currentColor" stroke="none" opacity="0.7"/>
+                      <path d="M15.5 8.5 C16.8 9.8 17.5 11.5 17.5 12 C17.5 12.5 16.8 14.2 15.5 15.5"/>
+                      <path d="M18.5 5.5 C20.8 7.8 22 10.5 22 12 C22 13.5 20.8 16.2 18.5 18.5" opacity="0.5"/>
+                    </svg>
+                    <svg id="audio-icon-muted" viewBox="0 0 24 24" style="display:none;">
+                      <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="currentColor" stroke="none" opacity="0.4"/>
+                      <line x1="16" y1="9" x2="22" y2="15"/>
+                      <line x1="22" y1="9" x2="16" y2="15"/>
+                    </svg>
+                  </button>
+                  <span class="audio-sep"></span>
+                  <button class="audio-btn" id="audio-chevron-btn" type="button"
+                          aria-label="Expand audio settings">
+                    <span class="audio-chevron" id="audio-chevron">▾</span>
+                  </button>
+                </div>
+                <!-- Audio dropdown panel -->
+                <div class="audio-dropdown" id="audio-dropdown">
+                  <div class="audio-row" id="audio-mute-row">
+                    <span class="audio-row-label">master</span>
+                    <button class="audio-mute-toggle" id="audio-mute-toggle">on</button>
+                  </div>
+                  <div class="audio-row" id="audio-music-row">
+                    <span class="audio-row-label">music</span>
+                    <div class="audio-slider-wrap">
+                      <input type="range" class="audio-slider" id="audio-music-slider"
+                             min="0" max="100" value="70"/>
+                      <span class="audio-slider-val" id="audio-music-val">70</span>
+                    </div>
+                  </div>
+                  <div class="audio-row" id="audio-sfx-row">
+                    <span class="audio-row-label">sfx</span>
+                    <div class="audio-slider-wrap">
+                      <input type="range" class="audio-slider" id="audio-sfx-slider"
+                             min="0" max="100" value="85"/>
+                      <span class="audio-slider-val" id="audio-sfx-val">85</span>
+                    </div>
+                  </div>
+                  <div class="audio-row audio-track-info-row" id="audio-track-row">
+                    <span class="audio-row-label">now</span>
+                    <div class="audio-track-info">
+                      <div class="audio-track-title" id="audio-track-title">—</div>
+                      <div class="audio-track-artist" id="audio-track-artist"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div class="debrief-screen" id="debrief-screen">
                 <button id="mok-avatar" class="mok-avatar idle" type="button" aria-label="MOK avatar; click to ping advisory link">
                   <svg viewBox="0 0 220 120" class="mok-avatar-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -310,7 +365,9 @@
   <script src="js/mok-animation-cycles.js"></script>
   <script src="js/mok-visual-engine.js"></script>
   <script src="js/mok-state-machine.js"></script>
+  <script src="js/audio-system.js"></script>
   <script src="js/debrief-feed-controller.js?v=20260305i"></script>
+  <script src="js/audio-controls-widget.js"></script>
 
   <script src="js/seeded-rng.js"></script>
   <script src="js/pet-follower.js"></script>
@@ -389,6 +446,7 @@
   <script src="js/death-exit-system.js?v=20260307m"></script>
   <script src="js/cost-printer-system.js"></script>
   <script src="js/door-contract-system.js"></script>
+  <script src="js/floor-state-tracker.js"></script>
   <script src="js/floor-transition-system.js"></script>
   <script src="js/biome-gate-system.js"></script>
   <script src="js/explosion-system.js?v=20260305j"></script>

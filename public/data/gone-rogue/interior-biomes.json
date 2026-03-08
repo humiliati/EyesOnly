@@ -9,7 +9,7 @@
         "wallTiles": [
             { "char": "█", "weight": 40 },
             { "char": "▓", "weight": 25 },
-            { "char": "🪵", "weight": 20 },
+            { "char": "🟫", "weight": 20 },
             { "char": "🚪", "weight": 10 },
             { "char": "🪟", "weight": 5 }
         ],
@@ -19,10 +19,10 @@
             { "char": "·", "weight": 20 }
         ],
         "props": [
-            { "emoji": "🪑", "name": "Bar Stool", "breakable": true, "hp": 1, "blocksPath": false, "drops": ["wood"] },
+            { "emoji": "💺", "name": "Bar Stool", "breakable": true, "hp": 1, "blocksPath": false, "drops": ["wood"] },
             { "emoji": "🍺", "name": "Ale Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["drinks"] },
             { "emoji": "🕯️", "name": "Candle", "breakable": true, "hp": 1, "blocksPath": false, "glows": true, "lightType": "CANDLE" },
-            { "emoji": "🪵", "name": "Firewood Stack", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["wood"] },
+            { "emoji": "🟫", "name": "Firewood Stack", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["wood"] },
             { "emoji": "📜", "name": "Notice Board", "breakable": false, "blocksPath": true },
             { "emoji": "🗑️", "name": "Grey Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies", "coins"], "kickable": true, "noise": 1, "destroyedGlyph": "." }
         ],
@@ -47,7 +47,7 @@
         "wallTiles": [
             { "char": "█", "weight": 45 },
             { "char": "▓", "weight": 30 },
-            { "char": "🪵", "weight": 15 },
+            { "char": "🟫", "weight": 15 },
             { "char": "░", "weight": 10 }
         ],
         "floorTiles": [
@@ -61,7 +61,7 @@
             { "emoji": "🛢️", "name": "Wine Cask", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["drinks"] },
             { "emoji": "📦", "name": "Root Cellar Crate", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["food", "supplies"] },
             { "emoji": "🕯️", "name": "Cellar Lamp", "breakable": true, "hp": 1, "blocksPath": false, "glows": true, "lightType": "CANDLE" },
-            { "emoji": "🪵", "name": "Support Beam", "breakable": false, "blocksPath": true },
+            { "emoji": "🟫", "name": "Support Beam", "breakable": false, "blocksPath": true },
             { "emoji": "🗑️", "name": "Grey Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies", "coins"], "kickable": true, "noise": 1, "destroyedGlyph": "." }
         ],
         "tileEffects": {
@@ -97,7 +97,7 @@
             { "char": "░", "weight": 15 }
         ],
         "props": [
-            { "emoji": "🪑", "name": "Pew", "breakable": false, "blocksPath": true },
+            { "emoji": "💺", "name": "Pew", "breakable": false, "blocksPath": true },
             { "emoji": "🕯️", "name": "Votive Candle", "breakable": true, "hp": 1, "blocksPath": false, "glows": true, "lightType": "CANDLE" },
             { "emoji": "📖", "name": "Hymnal", "breakable": false, "blocksPath": false },
             { "emoji": "✝️", "name": "Crucifix", "breakable": false, "blocksPath": true },
@@ -280,7 +280,7 @@
         "wallTiles": [
             { "char": "▓", "weight": 30 },
             { "char": "█", "weight": 20 },
-            { "char": "🪵", "weight": 15 },
+            { "char": "🟫", "weight": 15 },
             { "char": "📦", "weight": 20 },
             { "char": "🛤️", "weight": 15 }
         ],
@@ -292,7 +292,7 @@
             { "char": "▪", "weight": 5 }
         ],
         "props": [
-            { "emoji": "🪵", "name": "Lumber Pile", "breakable": true, "hp": 3, "blocksPath": true, "drops": ["wood", "scrap"] },
+            { "emoji": "🟫", "name": "Lumber Pile", "breakable": true, "hp": 3, "blocksPath": true, "drops": ["wood", "scrap"] },
             { "emoji": "📦", "name": "Crate Stack", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies"] },
             { "emoji": "🛤️", "name": "Rail Scrap", "breakable": false, "blocksPath": true },
             { "emoji": "🤖", "name": "Machine Wreck", "breakable": true, "hp": 4, "blocksPath": true, "drops": ["scrap", "parts"] },
@@ -363,7 +363,7 @@
         "wallTiles": [
             { "char": "▓", "weight": 30 },
             { "char": "█", "weight": 20 },
-            { "char": "🪵", "weight": 30 },
+            { "char": "🟫", "weight": 30 },
             { "char": "🪟", "weight": 10 },
             { "char": "🚪", "weight": 10 }
         ],
@@ -375,7 +375,7 @@
             { "char": "_", "weight": 5, "animated": true }
         ],
         "props": [
-            { "emoji": "🪵", "name": "Log Stack", "breakable": true, "hp": 3, "blocksPath": true, "drops": ["wood", "wood"] },
+            { "emoji": "🟫", "name": "Log Stack", "breakable": true, "hp": 3, "blocksPath": true, "drops": ["wood", "wood"] },
             { "emoji": "🪚", "name": "Circular Saw", "breakable": false, "blocksPath": true, "hazard": "blade" },
             { "emoji": "⏩", "name": "Belt Conveyor", "breakable": false, "blocksPath": false, "interact": "walk", "effect": "speed_boost" },
             { "emoji": "📦", "name": "Lumber Crate", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["wood", "supplies"] },
@@ -419,7 +419,7 @@
             { "emoji": "🎯", "name": "Target Stand", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["scrap"] },
             { "emoji": "📦", "name": "Ammo Locker", "breakable": true, "hp": 3, "blocksPath": true, "drops": ["ammo", "ammo"] },
             { "emoji": "🧱", "name": "Ballistic Wall", "breakable": false, "blocksPath": true, "provides": "cover" },
-            { "emoji": "🪑", "name": "Shooting Bench", "breakable": false, "blocksPath": true },
+            { "emoji": "💺", "name": "Shooting Bench", "breakable": false, "blocksPath": true },
             { "emoji": "🔊", "name": "Hearing Protection", "breakable": false, "blocksPath": false }
         ],
         "tileEffects": {
@@ -455,7 +455,7 @@
             { "char": "░", "weight": 10 }
         ],
         "props": [
-            { "emoji": "🪑", "name": "Passenger Seat", "breakable": false, "blocksPath": true },
+            { "emoji": "💺", "name": "Passenger Seat", "breakable": false, "blocksPath": true },
             { "emoji": "🧳", "name": "Luggage", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies", "documents"] },
             { "emoji": "🍽️", "name": "Dining Table", "breakable": false, "blocksPath": true },
             { "emoji": "🛏️", "name": "Sleeper Berth", "breakable": false, "blocksPath": true, "provides": "cover" },

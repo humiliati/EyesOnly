@@ -29,6 +29,13 @@ dist/
 # Test files
 test-*.html
 
+# Audio assets — served from R2, not git
+# (manifest JSON is committed; WAVs are not)
+public/audio/sfx/
+public/audio/music/
+__MACOSX/
+*.asd
+
 # Python / PyInstaller build artifacts
 .venv_runner_build/
 __pycache__/

@@ -17,7 +17,7 @@
             { "char": "█", "weight": 25 },
             { "char": "📦", "weight": 15 },
             { "char": "🏗️", "weight": 10 },
-            { "char": "🪵", "weight": 10 }
+            { "char": "🟫", "weight": 10 }
         ],
         "floorTiles": [
             { "char": "·", "weight": 30 },
@@ -70,7 +70,7 @@
 
         "props": [
             { "emoji": "📦", "name": "Cargo Stack", "breakable": false, "blocksPath": true, "provides": "cover" },
-            { "emoji": "🪵", "name": "Railroad Ties", "breakable": false, "blocksPath": false },
+            { "emoji": "🟫", "name": "Railroad Ties", "breakable": false, "blocksPath": false },
             { "emoji": "🚧", "name": "Rail Barrier", "breakable": true, "hp": 3, "blocksPath": true, "drops": ["scrap"] },
             { "emoji": "🛢️", "name": "Red Barrel", "breakable": true, "hp": 1, "blocksPath": true, "explosive": true, "blastRadius": 2.75, "blastDamage": [9, 25], "kickable": true, "noise": 4, "maxPerFloor": 2 },
             { "emoji": "🗑️", "name": "Grey Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies", "coins"], "kickable": true, "noise": 1, "destroyedGlyph": "." }
@@ -243,7 +243,7 @@
             { "char": "🎄", "weight": 15 },
             { "char": "🍂", "weight": 10 },
             { "char": "🍁", "weight": 10 },
-            { "char": "🪨", "weight": 15 },
+            { "char": "🗿", "weight": 15 },
             { "char": "❄️", "weight": 10 }
         ],
         "floorTiles": [
@@ -262,7 +262,7 @@
             "playableColumns": [3, 10],
             "playableWidth": 8,
             "obstacleFrequency": 0.30,
-            "obstacleTypes": ["🌲", "🪨", "🏔️", "⛷️"],
+            "obstacleTypes": ["🌲", "🗿", "🏔️", "⛷️"],
             "iceStreakPattern": "snaking",
             "iceStreakWidth": [2, 3],
             "iceStreakChar": "~",
@@ -312,14 +312,14 @@
         "props": [
             { "emoji": "🌲", "name": "Pine Tree", "breakable": false, "blocksPath": true },
             { "emoji": "🎄", "name": "Snow Fir", "breakable": false, "blocksPath": true },
-            { "emoji": "🪨", "name": "Rock Outcrop", "breakable": false, "blocksPath": true },
+            { "emoji": "🗿", "name": "Rock Outcrop", "breakable": false, "blocksPath": true },
             { "emoji": "🏔️", "name": "Snow Bank", "breakable": true, "hp": 1, "blocksPath": true, "drops": ["ice"], "slowsPlayer": true },
             { "emoji": "⛷️", "name": "Other Skier", "breakable": false, "blocksPath": false, "ghostCollision": true, "collisionDamage": 5 },
             { "emoji": "🏠", "name": "Trail Shelter", "breakable": false, "blocksPath": true, "provides": "cover" }
         ],
         "interactiveObjects": [
             { "emoji": "🚡", "name": "Ski Lift Tower", "interact": "grab", "effect": "speed_boost_south", "blocksPath": false },
-            { "emoji": "🪧", "name": "Trail Sign", "interact": "read", "effect": "shows_section", "blocksPath": true }
+            { "emoji": "📋", "name": "Trail Sign", "interact": "read", "effect": "shows_section", "blocksPath": true }
         ],
         "tileEffects": {
             "░": { "stealth": 10, "moveMod": 1.2, "name": "Snow", "animated": true },

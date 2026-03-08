@@ -662,7 +662,7 @@ const FoodDatabase = (function() {
   var PICNIC_BLANKET = {
     id: 'PICNIC_BLANKET',
     name: 'Cozy Picnic Blanket',
-    emoji: '🧺',
+    emoji: '🎁',
     category: 'movement_penalty',
     resourceType: 'Inert',
     resourceColor: FOOD_RESOURCE_COLORS.Inert,

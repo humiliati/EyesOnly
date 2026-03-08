@@ -158,6 +158,12 @@ var FloorTransitionSystem = (function () {
     setTimeout(function () {
       ctx.setFloor(Math.max(0, ctx.getFloor() - 1));
       ctx.setTurn(0);
+
+      // Track floor revisit for gate/breakable respawn rules
+      if (typeof FloorStateTracker !== 'undefined') {
+        FloorStateTracker.incrementVisit(ctx.getFloor());
+      }
+
       ctx.generateFloor();
       ctx.startGameLoop();
       ctx.saveState();
@@ -205,6 +211,11 @@ var FloorTransitionSystem = (function () {
         ctx.setFloor(ctx.getFloor() + 1);
       }
       ctx.setTurn(0);
+
+      // Track floor visit for gate/breakable respawn rules
+      if (typeof FloorStateTracker !== 'undefined') {
+        FloorStateTracker.incrementVisit(ctx.getFloor());
+      }
 
       // Reset vendor
       if (typeof VendorSystem !== 'undefined') VendorSystem.reset();

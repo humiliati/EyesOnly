@@ -434,6 +434,42 @@ Walls use variants to create structural identity:
 
 ---
 
+## Designer Integration: Interior Designer Portal
+
+The Interior Designer is integrated into the Unified Designer at `public/portal/interior-designer.html`.
+
+### Features Implemented
+
+| Feature | Status |
+|---------|--------|
+| Floor hierarchy tabs (N, N.N, N.N.N) | ✅ Done |
+| Building templates (6 types) | ✅ Done |
+| Interior properties panel | ✅ Done |
+| Door contract visualization | ✅ Done |
+| Structure grammar display | ✅ Done |
+| Floor hierarchy visualization | ✅ Done |
+| Save/Load to localStorage | ✅ Done |
+| Export to JSON | ✅ Done |
+
+### How to Use
+
+1. Open `public/portal/unified-designer.html`
+2. Click "Interior Designer" tab
+3. Select floor level using tabs (N = World, N.N = Building, N.N.N = Nested)
+4. Click a building template in the sidebar
+5. View/modify properties (zoom bias, prop density, etc.)
+6. Add more floors with "+ Add Floor" button
+7. Save locally or Export to World Designer
+
+### Integration with World Designer
+
+Export from Interior Designer creates JSON that can be imported into World Designer to define:
+- Building interiors linked to world floor nodes
+- Nested room connections
+- Door contract chains
+
+---
+
 ## 9. Integration Points
 
 ### With NPC_CANON

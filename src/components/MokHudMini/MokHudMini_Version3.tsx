@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "preact/hooks";
 import "./MokHudMini.css";
 
 /**
@@ -173,9 +173,9 @@ export default function MokHudMini({
             </feMerge>
           </filter>
           <mask id="triangle-core-mask">
-            <!-- By default the triangle center is transparent (hollow) -->
+            {/* By default the triangle center is transparent (hollow) */}
             <rect x="0" y="0" width="220" height="48" fill="white" />
-            <!-- small triangle cutout in mask centre (becomes visible by toggling a class that fills it) -->
+            {/* Small triangle cutout in mask centre (becomes visible by toggling a class that fills it) */}
             <g id="core-cutout" transform="translate(110,24)">
               <path d="M0 -16 L-10 6 L10 6 Z" fill="black" />
             </g>

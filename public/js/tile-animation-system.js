@@ -167,7 +167,7 @@ const TileAnimationSystem = (function() {
   // Emojis that cause TOTAL collision (no passing)
   var TOTAL_COLLISION_EMOJIS = [
     // Trees and nature
-    '🌳', '🌲', '🪵', '🪨', '⛰️',
+    '🌳', '🌲', '🟫', '🗿', '⛰️',
 
     // Buildings and structures
     '🏠', '⛪', '🏪', '🏡', '🏛️', '🏔️',
@@ -181,7 +181,7 @@ const TileAnimationSystem = (function() {
     '🧸', '🥫', '🛍️', '🛤️', '🤖',
 
     // Rocks and boulders
-    '🪨',
+    '🗿',
 
     // Props that block
     '📦', // Boxes (breakable but block)
@@ -189,13 +189,13 @@ const TileAnimationSystem = (function() {
 
     // Interactive item holders
     '📬', // Mailbox
-    '🪑', // Furniture
+    '💺', // Furniture
     '🏮', '⛲' // Decorations
   ];
 
   // Emojis that allow ghost collision with heavy movement penalty
   var GHOST_COLLISION_EMOJIS = {
-    '🧺': { speed: 0.3, name: 'Picnic Blanket', tooltip: 'Soft surface' },
+    '🎁': { speed: 0.3, name: 'Picnic Blanket', tooltip: 'Soft surface' },
     '🌿': { speed: 0.6, name: 'Bush', tooltip: 'Dense foliage' },
     '🐾': { speed: 0.8, name: 'Deer Trail', tooltip: 'Animal path' },
     '▓': { speed: 0.5, name: 'Cubicle', tooltip: 'Partial cover' }

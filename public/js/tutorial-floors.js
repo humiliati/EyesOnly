@@ -99,16 +99,16 @@ var TutorialFloors = (function() {
       { x: 6, y: 1, emoji: '⛲', name: 'Fountain' },
       { x: 10, y: 3, emoji: '🏮', name: 'Lantern' },
       // Zone 2: Orchard/garden atmosphere
-      { x: 32, y: 3, emoji: '🪑', name: 'Bench' },
+      { x: 32, y: 3, emoji: '💺', name: 'Bench' },
       // Zone 3: Hidden grove atmosphere
       { x: 3, y: 15, emoji: '🏮', name: 'Hidden Lantern' },
       // Scene cluster: "two trees and a rock" framing the Hollow Log at (3,13)
       { x: 2, y: 12, emoji: '🌲', name: 'Pine Tree' },
       { x: 4, y: 12, emoji: '🌲', name: 'Pine Tree' },
-      { x: 2, y: 14, emoji: '🪨', name: 'Rock' },
+      { x: 2, y: 14, emoji: '🗿', name: 'Rock' },
       // Scene cluster: "two rocks and a leaf" framing the Wooden Crate at (23,13)
-      { x: 22, y: 13, emoji: '🪨', name: 'Rock' },
-      { x: 24, y: 13, emoji: '🪨', name: 'Rock' },
+      { x: 22, y: 13, emoji: '🗿', name: 'Rock' },
+      { x: 24, y: 13, emoji: '🗿', name: 'Rock' },
       { x: 23, y: 14, emoji: '🍃', name: 'Fallen Leaf' },
       // Scene cluster: "a tree, a leaf, and a flower" framing the Flower Patch at (22,5)
       { x: 21, y: 4, emoji: '🌳', name: 'Oak Tree' },
@@ -119,12 +119,12 @@ var TutorialFloors = (function() {
     // Interactive items (use InteractiveItems system)
     interactiveItems: [
       // Zone 1: Tutorial signs & mailbox
-      { x: 12, y: 5, type: 'SIGN', emoji: '🪧', name: 'Sign Post',
+      { x: 12, y: 5, type: 'SIGN', emoji: '📋', name: 'Sign Post',
         text: 'Break bushes to find treasure! Try hitting anything that looks fragile.' },
       { x: 6, y: 3, type: 'SIGN', emoji: '📬', name: 'Mailbox',
         text: 'Welcome to the Cozy Forest village. Explore freely — secrets hide in every corner.' },
       // Zone 2: Orchard sign + berry bush
-      { x: 28, y: 2, type: 'SIGN', emoji: '🪧', name: 'Orchard Sign',
+      { x: 28, y: 2, type: 'SIGN', emoji: '📋', name: 'Orchard Sign',
         text: 'The orchard keeper left berries for travelers. Help yourself!' },
       { x: 26, y: 4, type: 'FOOD', emoji: '🍎', name: 'Fresh Apple',
         customData: { foodId: 'FOOD_APPLE' } },
@@ -135,7 +135,7 @@ var TutorialFloors = (function() {
       { x: 4, y: 15, type: 'FOOD', emoji: '🍬', name: 'Forest Candy',
         customData: { foodId: 'FOOD_CANDY' } },
       // Zone 3: Hidden grove discovery
-      { x: 7, y: 15, type: 'AREA_OF_INTEREST', emoji: '❓', name: 'Strange Marking',
+      { x: 7, y: 15, type: 'AREA_OF_INTEREST', emoji: '💠', name: 'Strange Marking',
         text: 'Something glimmers in the undergrowth... Ancient runes are carved into the stone.' },
       // Zone 4: Exit hint
       { x: 17, y: 15, type: 'BOOK', emoji: '📚', name: 'Weathered Journal',
@@ -179,8 +179,8 @@ var TutorialFloors = (function() {
       { x: 5, y: 12, emoji: '🌿', name: 'Thick Bush', hp: 1 },
       { x: 5, y: 13, emoji: '🌿', name: 'Thick Bush', hp: 1 },
       { x: 5, y: 14, emoji: '🌿', name: 'Thick Bush', hp: 1 },
-      { x: 3, y: 13, emoji: '🪵', name: 'Hollow Log', hp: 2 },
-      { x: 3, y: 11, emoji: '🧺', name: 'Picnic Basket', hp: 2 },
+      { x: 3, y: 13, emoji: '🟫', name: 'Hollow Log', hp: 2 },
+      { x: 3, y: 11, emoji: '🎁', name: 'Picnic Basket', hp: 2 },
       // Zone 4: Near gate
       { x: 23, y: 13, emoji: '📦', name: 'Wooden Crate', hp: 2 }
     ],
@@ -201,7 +201,7 @@ var TutorialFloors = (function() {
     border: {
       thickness: 1,
       style: 'natural', // Mix of tree emojis
-      tiles: ['🌳', '🌲', '🪨']
+      tiles: ['🌳', '🌲', '🗿']
     },
 
     // Tutorial highlight: nearest breakable to spawn gets ❗ pulse on floor load
@@ -243,9 +243,9 @@ var TutorialFloors = (function() {
       '#......................................#',
       '#......................................#',
       '#......................................#',
-      '##########....................##########',
-      '##################LLLL##################',
-      '##########....................##########',
+      '################........################',
+      '##################GGGG##################',
+      '################........################',
       '#####..............................#####',
       '#......................................#',
       '#......................................#',
@@ -269,8 +269,8 @@ var TutorialFloors = (function() {
     decorations: [
       { x: 25, y: 4, emoji: '🏮', name: 'Lantern' },
       // Scene cluster: "two rocks and a leaf" framing the Picnic Basket at (18,7)
-      { x: 17, y: 7, emoji: '🪨', name: 'Rock' },
-      { x: 19, y: 7, emoji: '🪨', name: 'Rock' },
+      { x: 17, y: 7, emoji: '🗿', name: 'Rock' },
+      { x: 19, y: 7, emoji: '🗿', name: 'Rock' },
       { x: 18, y: 6, emoji: '🍃', name: 'Fallen Leaf' },
       // Scene cluster: "two ferns and a flower" near lower reward area
       { x: 8, y: 14, emoji: '🌿', name: 'Fern' },
@@ -323,10 +323,12 @@ var TutorialFloors = (function() {
     // Uses a single emoji (no stacked overlap) to avoid OS-dependent rendering failures.
     tutorialGate: {
       positions: [
+        { x: 18, y: 8 },
         { x: 19, y: 8 },
-        { x: 20, y: 8 }
+        { x: 20, y: 8 },
+        { x: 21, y: 8 }
       ],
-      emoji: '🪵',
+      emoji: '🚧',
       name: 'Wooden Barricade',
       hp: 2,
       message: 'A wooden barricade blocks the pinch. Break it to proceed.'
@@ -343,14 +345,14 @@ var TutorialFloors = (function() {
       // Breakables near spawn
       { x: 10, y: 6, emoji: '📦', name: 'Wooden Crate', hp: 2 },
       // Picnic scene framed by decorations at (17,7), (19,7), (18,6)
-      { x: 18, y: 7, emoji: '🧺', name: 'Picnic Basket', hp: 2 },
+      { x: 18, y: 7, emoji: '🎁', name: 'Picnic Basket', hp: 2 },
       // Hidden picnic in the lower reward area (scene cluster at 8-10, 13-14)
-      { x: 9, y: 14, emoji: '🧺', name: 'Picnic Basket', hp: 2 }
+      { x: 9, y: 14, emoji: '🎁', name: 'Picnic Basket', hp: 2 }
     ],
 
     // Interactive items
     interactiveItems: [
-      { x: 15, y: 3, type: 'SIGN', emoji: '🪧', name: 'Hint Sign',
+      { x: 15, y: 3, type: 'SIGN', emoji: '📋', name: 'Hint Sign',
         text: 'A barricade blocks the pinch. Break it with normal attacks/projectiles to proceed.' }
     ],
 
@@ -362,7 +364,7 @@ var TutorialFloors = (function() {
     border: {
       thickness: 1,
       style: 'natural',
-      tiles: ['🌳', '🌲', '🪨', '🌿']
+      tiles: ['🌳', '🌲', '🗿', '🌿']
     }
   };
 
@@ -392,7 +394,7 @@ var TutorialFloors = (function() {
       '#......................................#',
       '#.............####....####.............#',
       '#.............#..#....#..#.............#',
-      '#.............#..#LLLL#..#.............#',
+      '#.............#..#....#..#.............#',
       '#.............#..#....#..#.............#',
       '#.............####....####.............#',
       '#......................................#',
@@ -418,9 +420,12 @@ var TutorialFloors = (function() {
       { x: 29, y: 4, emoji: '🌿', name: 'Fern' },
       { x: 28, y: 3, emoji: '🌸', name: 'Wild Flower' },
       // Scene cluster: "two rocks and a leaf" framing the Hollow Log at (32,10)
-      { x: 31, y: 10, emoji: '🪨', name: 'Rock' },
-      { x: 33, y: 10, emoji: '🪨', name: 'Rock' },
-      { x: 32, y: 9, emoji: '🍃', name: 'Fallen Leaf' }
+      { x: 31, y: 10, emoji: '🗿', name: 'Rock' },
+      { x: 33, y: 10, emoji: '🗿', name: 'Rock' },
+      { x: 32, y: 9, emoji: '🍃', name: 'Fallen Leaf' },
+      // Visual teaser: sparkles flanking the supply cache behind the locked gate
+      { x: 19, y: 11, emoji: '✨', name: 'Glimmer' },
+      { x: 21, y: 11, emoji: '✨', name: 'Glimmer' }
     ],
 
     // Friendly gate NPC (Pokemon-style) that teaches STR combat before leaving
@@ -499,6 +504,8 @@ var TutorialFloors = (function() {
     // Vertical funnel key gate (teaches equip + interact) before the combat gate.
     lockedGate: {
       positions: [
+        { x: 18, y: 9 },
+        { x: 19, y: 9 },
         { x: 20, y: 9 },
         { x: 21, y: 9 }
       ],
@@ -508,10 +515,10 @@ var TutorialFloors = (function() {
       message: 'A locked gate blocks the passage. You need a key to open it.'
     },
 
-    // Key hidden behind a breakable cluster (enemies nearby, but combat not forced yet)
+    // Key on the player's natural southward path — impossible to miss
     keyBreakable: {
-      x: 10,
-      y: 9,
+      x: 20,
+      y: 5,
       emoji: '📦',
       name: 'Marked Crate',
       hp: 2,
@@ -584,21 +591,24 @@ var TutorialFloors = (function() {
     // Breakables around the combat area. Drops handled by proc gen.
     // (Also includes the key cluster bushes around the marked crate.)
     breakables: [
-      // Key cluster bushes (guarding the marked crate at 10,9)
-      { x: 9, y: 9, emoji: '🌿', name: 'Thick Bush', hp: 1 },
-      { x: 11, y: 9, emoji: '🌿', name: 'Thick Bush', hp: 1 },
-      { x: 10, y: 8, emoji: '🌿', name: 'Thick Bush', hp: 1 },
-      { x: 10, y: 10, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      // Key cluster bushes (guarding the marked crate at 20,5 — player's natural path)
+      { x: 19, y: 5, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      { x: 21, y: 5, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      { x: 20, y: 4, emoji: '🌿', name: 'Thick Bush', hp: 1 },
+      { x: 20, y: 6, emoji: '🌿', name: 'Thick Bush', hp: 1 },
       { x: 12, y: 4, emoji: '🌸', name: 'Flower Patch', hp: 1 },
-      { x: 28, y: 4, emoji: '🧺', name: 'Picnic Basket', hp: 2 },
+      { x: 28, y: 4, emoji: '🎁', name: 'Picnic Basket', hp: 2 },
       { x: 7, y: 12, emoji: '📦', name: 'Wooden Crate', hp: 2 },
-      { x: 32, y: 10, emoji: '🪵', name: 'Hollow Log', hp: 2 }
+      { x: 32, y: 10, emoji: '🟫', name: 'Hollow Log', hp: 2 },
+      // Reward visible behind the locked gate — incentivizes finding the key
+      { x: 20, y: 11, emoji: '🎁', name: 'Supply Cache', hp: 2, highlight: true,
+        lootTable: { currency: [15, 25], cards: 0.8 } }
     ],
 
     border: {
       thickness: 1,
       style: 'natural',
-      tiles: ['🌳', '🌲', '🪨']
+      tiles: ['🌳', '🌲', '🗿']
     }
   };
 
@@ -700,14 +710,14 @@ var TutorialFloors = (function() {
       gate: null, reward: null
     }],
     decorations: [
-      { x: 10, y: 8, emoji: '\uD83E\uDE91' }, { x: 11, y: 8, emoji: '\uD83E\uDE91' },
-      { x: 12, y: 8, emoji: '\uD83E\uDE91' }, { x: 13, y: 8, emoji: '\uD83E\uDE91' },
-      { x: 10, y: 10, emoji: '\uD83E\uDE91' }, { x: 11, y: 10, emoji: '\uD83E\uDE91' },
-      { x: 12, y: 10, emoji: '\uD83E\uDE91' }, { x: 13, y: 10, emoji: '\uD83E\uDE91' },
-      { x: 26, y: 8, emoji: '\uD83E\uDE91' }, { x: 27, y: 8, emoji: '\uD83E\uDE91' },
-      { x: 28, y: 8, emoji: '\uD83E\uDE91' }, { x: 29, y: 8, emoji: '\uD83E\uDE91' },
-      { x: 26, y: 10, emoji: '\uD83E\uDE91' }, { x: 27, y: 10, emoji: '\uD83E\uDE91' },
-      { x: 28, y: 10, emoji: '\uD83E\uDE91' }, { x: 29, y: 10, emoji: '\uD83E\uDE91' },
+      { x: 10, y: 8, emoji: '💺' }, { x: 11, y: 8, emoji: '💺' },
+      { x: 12, y: 8, emoji: '💺' }, { x: 13, y: 8, emoji: '💺' },
+      { x: 10, y: 10, emoji: '💺' }, { x: 11, y: 10, emoji: '💺' },
+      { x: 12, y: 10, emoji: '💺' }, { x: 13, y: 10, emoji: '💺' },
+      { x: 26, y: 8, emoji: '💺' }, { x: 27, y: 8, emoji: '💺' },
+      { x: 28, y: 8, emoji: '💺' }, { x: 29, y: 8, emoji: '💺' },
+      { x: 26, y: 10, emoji: '💺' }, { x: 27, y: 10, emoji: '💺' },
+      { x: 28, y: 10, emoji: '💺' }, { x: 29, y: 10, emoji: '💺' },
       { x: 19, y: 3, emoji: '\uD83D\uDD6F\uFE0F' }, { x: 21, y: 3, emoji: '\uD83D\uDD6F\uFE0F' },
       { x: 20, y: 2, emoji: '\u271D\uFE0F' },
       { x: 3, y: 7, emoji: '\uD83D\uDD6F\uFE0F' }, { x: 3, y: 13, emoji: '\uD83D\uDD6F\uFE0F' },
@@ -795,12 +805,12 @@ var TutorialFloors = (function() {
       { x: 14, y: 5, emoji: '🛡️' }, { x: 15, y: 5, emoji: '💎' }, { x: 16, y: 5, emoji: '🔮' },
       { x: 18, y: 5, emoji: '🧪' },
       // Counter back wall
-      { x: 11, y: 6, emoji: '🪵' }, { x: 12, y: 6, emoji: '🪵' }, { x: 13, y: 6, emoji: '🪵' },
-      { x: 14, y: 6, emoji: '🪵' }, { x: 15, y: 6, emoji: '🪵' }, { x: 16, y: 6, emoji: '🪵' },
-      { x: 18, y: 6, emoji: '🪵' },
-      { x: 11, y: 7, emoji: '🪵' }, { x: 12, y: 7, emoji: '🪵' }, { x: 13, y: 7, emoji: '🪵' },
-      { x: 14, y: 7, emoji: '🪵' }, { x: 15, y: 7, emoji: '🪵' }, { x: 16, y: 7, emoji: '🪵' },
-      { x: 17, y: 7, emoji: '🪵' }, { x: 18, y: 7, emoji: '🪵' },
+      { x: 11, y: 6, emoji: '🟫' }, { x: 12, y: 6, emoji: '🟫' }, { x: 13, y: 6, emoji: '🟫' },
+      { x: 14, y: 6, emoji: '🟫' }, { x: 15, y: 6, emoji: '🟫' }, { x: 16, y: 6, emoji: '🟫' },
+      { x: 18, y: 6, emoji: '🟫' },
+      { x: 11, y: 7, emoji: '🟫' }, { x: 12, y: 7, emoji: '🟫' }, { x: 13, y: 7, emoji: '🟫' },
+      { x: 14, y: 7, emoji: '🟫' }, { x: 15, y: 7, emoji: '🟫' }, { x: 16, y: 7, emoji: '🟫' },
+      { x: 17, y: 7, emoji: '🟫' }, { x: 18, y: 7, emoji: '🟫' },
       // Right side display
       { x: 22, y: 4, emoji: '📦' }, { x: 23, y: 4, emoji: '📦' }, { x: 24, y: 4, emoji: '📦' },
       { x: 25, y: 4, emoji: '📦' }, { x: 26, y: 4, emoji: '📦' }, { x: 27, y: 4, emoji: '📦' },
@@ -808,12 +818,12 @@ var TutorialFloors = (function() {
       { x: 22, y: 5, emoji: '🍎' }, { x: 23, y: 5, emoji: '🍞' }, { x: 24, y: 5, emoji: '🧀' },
       { x: 25, y: 5, emoji: '🥖' }, { x: 26, y: 5, emoji: '🍖' }, { x: 27, y: 5, emoji: '🥤' },
       { x: 28, y: 5, emoji: '🍺' },
-      { x: 22, y: 6, emoji: '🪵' }, { x: 23, y: 6, emoji: '🪵' }, { x: 24, y: 6, emoji: '🪵' },
-      { x: 25, y: 6, emoji: '🪵' }, { x: 26, y: 6, emoji: '🪵' }, { x: 27, y: 6, emoji: '🪵' },
-      { x: 28, y: 6, emoji: '🪵' },
-      { x: 22, y: 7, emoji: '🪵' }, { x: 23, y: 7, emoji: '🪵' }, { x: 24, y: 7, emoji: '🪵' },
-      { x: 25, y: 7, emoji: '🪵' }, { x: 26, y: 7, emoji: '🪵' }, { x: 27, y: 7, emoji: '🪵' },
-      { x: 28, y: 7, emoji: '🪵' },
+      { x: 22, y: 6, emoji: '🟫' }, { x: 23, y: 6, emoji: '🟫' }, { x: 24, y: 6, emoji: '🟫' },
+      { x: 25, y: 6, emoji: '🟫' }, { x: 26, y: 6, emoji: '🟫' }, { x: 27, y: 6, emoji: '🟫' },
+      { x: 28, y: 6, emoji: '🟫' },
+      { x: 22, y: 7, emoji: '🟫' }, { x: 23, y: 7, emoji: '🟫' }, { x: 24, y: 7, emoji: '🟫' },
+      { x: 25, y: 7, emoji: '🟫' }, { x: 26, y: 7, emoji: '🟫' }, { x: 27, y: 7, emoji: '🟫' },
+      { x: 28, y: 7, emoji: '🟫' },
       // Wall shelves - left wall
       { x: 3, y: 3, emoji: '🕯️' }, { x: 3, y: 5, emoji: '📜' }, { x: 3, y: 7, emoji: '🕯️' },
       { x: 3, y: 9, emoji: '🏺' }, { x: 3, y: 11, emoji: '🕯️' },
@@ -898,7 +908,7 @@ var TutorialFloors = (function() {
       { x: 3, y: 8, emoji: '🍃', name: 'Fallen Leaf' },
       { x: 2, y: 11, emoji: '🌲', name: 'Pine Tree' },
       { x: 3, y: 13, emoji: '🌳', name: 'Oak Tree' },
-      { x: 2, y: 15, emoji: '🪨', name: 'Mossy Rock' },
+      { x: 2, y: 15, emoji: '🗿', name: 'Mossy Rock' },
       // Right forest edge — trees lining the road
       { x: 36, y: 2, emoji: '🌲', name: 'Pine Tree' },
       { x: 37, y: 4, emoji: '🌳', name: 'Oak Tree' },
@@ -913,14 +923,14 @@ var TutorialFloors = (function() {
     ],
 
     interactiveItems: [
-      { x: 17, y: 7, type: 'SIGN', emoji: '🪧', name: 'Tavern Sign', text: 'The Rusty Mug - Travelers Welcome.' }
+      { x: 17, y: 7, type: 'SIGN', emoji: '📋', name: 'Tavern Sign', text: 'The Rusty Mug - Travelers Welcome.' }
     ],
 
     breakables: [
       // Left forest: picnic hidden behind a bush cluster (scene: tree at 3,3; fern at 2,5)
       { x: 3, y: 4, emoji: '🌿', name: 'Thick Bush', hp: 1 },
       { x: 3, y: 5, emoji: '🌿', name: 'Thick Bush', hp: 1 },
-      { x: 3, y: 6, emoji: '🧺', name: 'Picnic Basket', hp: 2 },
+      { x: 3, y: 6, emoji: '🎁', name: 'Picnic Basket', hp: 2 },
       // Top-right corner: bushes concealing the elite enemy
       { x: 34, y: 1, emoji: '🌿', name: 'Thick Bush', hp: 1 },
       { x: 35, y: 1, emoji: '🌿', name: 'Thick Bush', hp: 1 },
@@ -957,7 +967,7 @@ var TutorialFloors = (function() {
     border: {
       thickness: 1,
       style: 'natural',
-      tiles: ['🌳', '🌲', '🪨']
+      tiles: ['🌳', '🌲', '🗿']
     }
   };
 
@@ -1023,12 +1033,12 @@ var TutorialFloors = (function() {
     // Decorations (visual overlay, walkable)
     decorations: [
       // Tables and chairs in the common room
-      { x: 6, y: 8, emoji: '🪑', name: 'Chair' },
-      { x: 8, y: 8, emoji: '🪑', name: 'Chair' },
-      { x: 14, y: 8, emoji: '🪑', name: 'Chair' },
-      { x: 16, y: 8, emoji: '🪑', name: 'Chair' },
-      { x: 22, y: 8, emoji: '🪑', name: 'Chair' },
-      { x: 24, y: 8, emoji: '🪑', name: 'Chair' },
+      { x: 6, y: 8, emoji: '💺', name: 'Chair' },
+      { x: 8, y: 8, emoji: '💺', name: 'Chair' },
+      { x: 14, y: 8, emoji: '💺', name: 'Chair' },
+      { x: 16, y: 8, emoji: '💺', name: 'Chair' },
+      { x: 22, y: 8, emoji: '💺', name: 'Chair' },
+      { x: 24, y: 8, emoji: '💺', name: 'Chair' },
       // Fireplace on the right wall
       { x: 37, y: 5, emoji: '🔥', name: 'Fireplace' },
       { x: 37, y: 6, emoji: '🔥', name: 'Fireplace' },
@@ -1037,7 +1047,7 @@ var TutorialFloors = (function() {
       { x: 19, y: 8, emoji: '🏮', name: 'Lantern' },
       { x: 37, y: 10, emoji: '🏮', name: 'Lantern' },
       // Cellar sign near door
-      { x: 34, y: 16, emoji: '🪧', name: 'Cellar Sign' }
+      { x: 34, y: 16, emoji: '📋', name: 'Cellar Sign' }
     ],
 
     // NPCs
@@ -1150,7 +1160,7 @@ var TutorialFloors = (function() {
     interactiveItems: [
       { x: 8, y: 17, type: 'SIGN', emoji: '🚪', name: 'Front Door',
         text: 'The front door leads out to the village and the forest beyond.' },
-      { x: 34, y: 16, type: 'SIGN', emoji: '🪧', name: 'Cellar Sign',
+      { x: 34, y: 16, type: 'SIGN', emoji: '📋', name: 'Cellar Sign',
         text: 'Cellar — "Staff Only." The lock has been broken for years.' }
     ],
 
@@ -1234,7 +1244,7 @@ var TutorialFloors = (function() {
     ],
 
     interactiveItems: [
-      { x: 20, y: 10, type: 'SIGN', emoji: '🪧', name: 'Scratched Note',
+      { x: 20, y: 10, type: 'SIGN', emoji: '📋', name: 'Scratched Note',
         text: 'Mara hid the hammer here before she left. "For the one who returns to the forge."' }
     ],
 

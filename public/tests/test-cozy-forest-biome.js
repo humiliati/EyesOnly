@@ -73,8 +73,8 @@
       wallTiles: [
         { char: '🌳', weight: 40 },
         { char: '🌲', weight: 30 },
-        { char: '🪵', weight: 15 },
-        { char: '🪨', weight: 10 },
+        { char: '🟫', weight: 15 },
+        { char: '🗿', weight: 10 },
         { char: '🌿', weight: 5 }
       ],
       floorTiles: [{ char: ',', weight: 100 }]
@@ -89,7 +89,7 @@
     }
     GoneRogue.createBordersForest(testMap, testBiome);
 
-    var validWallChars = ['🌳', '🌲', '🪵', '🪨', '🌿'];
+    var validWallChars = ['🌳', '🌲', '🟫', '🗿', '🌿'];
     var borderCharsValid = true;
     // Check top border
     for (var x = 0; x < 20; x++) {
@@ -128,7 +128,7 @@
       spawnFeatures: {
         villageCluster: true,
         buildings: ['🏠', '⛪', '🏪', '🏡'],
-        decorations: ['🪧', '📬', '🏮', '⛲', '🪑']
+        decorations: ['📋', '📬', '🏮', '⛲', '💺']
       }
     };
     var villMap = [];
@@ -180,7 +180,7 @@
       Array.isArray(breakables),
       'getBreakables returns an array'
     );
-    var forestEmojis = ['🚧', '🌳', '🪵', '🌿', '📦'];
+    var forestEmojis = ['🚧', '🌳', '🟫', '🌿', '📦'];
     var allForestBreakables = breakables.every(function(b) {
       // Each breakable must have an emoji property matching a forest prop
       return b.emoji && forestEmojis.indexOf(b.emoji) !== -1;

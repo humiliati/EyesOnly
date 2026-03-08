@@ -4,11 +4,15 @@ This guide explains the workflow for using the Unified Designer to create game w
 
 ## 1. The Unified Designer Hub
 
-The `unified-designer.html` file is the central hub for all design activities. It provides a top-level navigation bar to switch between the three main design tools:
+The `unified-designer.html` file is the central hub for all design activities. It provides a top-level navigation bar to switch between the main design tools:
 
 *   **Asset Designer:** For creating and managing scene assets.
 *   **Map Designer:** For creating 2D tile-based maps.
+*   **Interior Designer:** For creating building interiors with floor hierarchy (N, N.N, N.N.N).
 *   **World Designer:** For creating a flowchart-like graph of the game world.
+*   **Item Designer:** For creating and configuring game items (equipment, consumables, keys).
+*   **Loot Designer:** For building loot tables assigned to breakables and enemies.
+*   **Sound Designer:** For previewing, assigning, and uploading audio/video assets.
 
 ## 2. The Asset Pipeline
 
@@ -32,7 +36,16 @@ The Unified Designer implements a clear pipeline for creating and using assets:
 1.  Once you have finished designing your map, give it a unique name in the "Floor Info" section.
 2.  Click the "Save" button. This will save the floor data to local storage and also register it with the `UnifiedDataManager`.
 
-### 2.4. Build Worlds in the World Designer
+### 2.4. Build Interiors in the Interior Designer
+
+1.  Switch to the "Interior Designer" tab.
+2.  Use the floor tabs (N, N.N, N.N.N) to select which floor level to design.
+3.  Select a building template (church, tavern, junkyard, etc.) from the sidebar.
+4.  Configure interior properties (zoom bias, prop density, pattern density, lighting).
+5.  View the floor hierarchy visualization to see how floors connect.
+6.  Click "Export to World" to save as JSON for use in World Designer.
+
+### 2.5. Build Worlds in the World Designer
 
 1.  Switch to the "World Designer" tab.
 2.  Create a "Step" node. This node represents a floor in your game world.
@@ -40,12 +53,36 @@ The Unified Designer implements a clear pipeline for creating and using assets:
 4.  This dropdown will be populated with the floors you saved in the Map Designer.
 5.  Select the desired map from the dropdown to assign it to the "Step" node.
 
+### 2.6. Assign Sounds in the Sound Designer
+
+1.  Switch to the "Sound Designer" tab.
+2.  The left panel shows the **Sound Library** — all sounds from `audio-manifest.json`, grouped by category (UI, Movement, Combat, Magic, Environment, Collectible, Creature, Music).
+3.  Click any sound to select it. The center **Preview** tab shows a waveform visualization and lets you play the sound.
+4.  Switch to the **Assign** tab to link sounds to designer contexts:
+    *   **Asset Designer context:** Assign sounds to asset events (On Break, On Interact, On Spawn, Ambient Loop).
+    *   **Map Designer context:** Assign background music, ambient SFX, floor enter/exit sounds.
+    *   **Interior Designer context:** Assign room ambient, door open/close, floor creak sounds.
+5.  Use the **Target Selection** section to pick a specific asset, floor, or interior from the registries.
+6.  The right **Inspector** panel shows the selected sound's properties and all its current assignments.
+7.  Click "Save Assignments" to persist to localStorage. Click "Export JSON" to download a `sound-assignments.json` file for use by the game engine.
+
+### 2.7. Upload Audio/Video Files
+
+1.  In the Sound Designer, switch to the **Upload** tab.
+2.  Drag and drop audio or video files onto the dropzone (or click to browse). Supported formats: `.wav`, `.mp3`, `.ogg`, `.webm`, `.m4a`, `.mp4`, `.opus`. Max 50 MB per file.
+3.  Select the destination folder from the dropdown: **SFX** (`audio/sfx/`), **Music** (`audio/music/`), or **Video** (`video/`).
+4.  Click "Upload All" to push files to the R2 bucket (`eyesonly-assets`).
+5.  Uploaded files are served at `/audio/sfx/<filename>`, `/audio/music/<filename>`, or `/video/<filename>` via the Cloudflare Worker.
+6.  After uploading new sounds, click "Refresh" to reload the manifest and see them in the library.
+
+> **Note:** Audio assets are stored in Cloudflare R2 (not git) to avoid repository bloat. The `audio-manifest.json` file in `public/audio/` is the committed source of truth for sound names and paths. The batch upload script `scripts/upload-audio-to-r2.sh` can also be used from the command line.
+
 ## 3. Exporting for Deployment
 
-Once you have created your assets, maps, and world graph, you can export the entire world for deployment.
+Once you have created your assets, maps, interiors, and world graph, you can export the entire world for deployment.
 
 1.  In the Unified Designer hub, click the "Export All" button.
-2.  This will generate a single `world.json` file that contains all the data for your game world, including the assets, maps, and the world graph itself. This file can then be loaded by the game engine.
+2.  This will generate a single `world.json` file that contains all the data for your game world, including the assets, maps, interiors, and the world graph itself. This file can then be loaded by the game engine.
 
 ---
 

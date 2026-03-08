@@ -13,6 +13,11 @@ var BeginGameplaySystem = (function() {
    * @returns {Object} Terminal response { lines, prompt, stayActive }
    */
   function beginGameplay(ctx) {
+    // Reset per-run floor state tracking (gates destroyed, breakables, visit counts)
+    if (typeof FloorStateTracker !== 'undefined') {
+      FloorStateTracker.resetAll();
+    }
+
     // Sync difficulty from AWOL button state (authoritative source of truth).
     // Handles auto-advance after tier completion and manual toggling between runs.
     if (typeof AWOLDifficulty !== 'undefined' && AWOLDifficulty.getCurrentTier) {
@@ -21,6 +26,11 @@ var BeginGameplaySystem = (function() {
 
     // Apply desired UBER difficulty on run start (before initial floor generation)
     ctx.applyDesiredDifficultyTier('start_run');
+
+    // Track initial floor visit
+    if (typeof FloorStateTracker !== 'undefined') {
+      FloorStateTracker.incrementVisit(ctx.getFloor());
+    }
 
     // Generate initial floor
     ctx.generateFloor();

@@ -27,13 +27,13 @@
   },
   "ITM-DEMO-002": {
     "name": "Tungsten Round",
-    "emoji": "🪨",
+    "emoji": "🗿",
     "type": "ammo",
     "description": "Armor-piercing capability for standard sidearms.",
     "rarity": {"tier": "uncommon", "weight": 30, "ladder_locked": false},
     "season": {"id": "S01", "name": "Dead Signal", "limited": false, "reprintable": true},
     "progression": {"collectible": true, "ladder_track": "tier_1", "first_completion_drop": false, "bind_on_acquire": false},
-    "visual": {"emoji": "🪨", "card_frame": "uncommon_green"}
+    "visual": {"emoji": "🗿", "card_frame": "uncommon_green"}
   },
   "ITM-DEMO-003": {
     "name": "Encrypted Drive",

@@ -9,8 +9,8 @@
       "wallTiles": [
         { "char": "🌳", "weight": 40 },
         { "char": "🌲", "weight": 30 },
-        { "char": "🪵", "weight": 15 },
-        { "char": "🪨", "weight": 10 },
+        { "char": "🟫", "weight": 15 },
+        { "char": "🗿", "weight": 10 },
         { "char": "🌿", "weight": 5 }
       ],
       "floorTiles": [
@@ -25,16 +25,16 @@
         { "emoji": "🌳", "name": "Tree Trunk", "breakable": true, "hp": 4, "blocksPath": true, "drops": ["wood", "apples"] },
         { "emoji": "🌲", "name": "Tree Canopy", "breakable": true, "hp": 6, "blocksPath": true, "drops": ["wood", "sap"] },
         { "emoji": "🌿", "name": "Bush", "breakable": true, "hp": 2, "blocksPath": false, "ghostCollision": true, "drops": ["berries", "sticks"] },
-        { "emoji": "🪵", "name": "Hollow Log", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["wood", "insects"] },
-        { "emoji": "🪨", "name": "Boulder", "breakable": true, "hp": 5, "blocksPath": true, "drops": ["stone", "gems"] },
+        { "emoji": "🟫", "name": "Hollow Log", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["wood", "insects"] },
+        { "emoji": "🗿", "name": "Boulder", "breakable": true, "hp": 5, "blocksPath": true, "drops": ["stone", "gems"] },
         { "emoji": "⛰️", "name": "Ridge", "breakable": false, "blocksPath": true },
         { "emoji": "📦", "name": "Wooden Box", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies"] },
-        { "emoji": "🧺", "name": "Picnic Blanket", "breakable": false, "blocksPath": false, "ghostCollision": true, "movePenalty": 0.3 },
+        { "emoji": "🎁", "name": "Picnic Blanket", "breakable": false, "blocksPath": false, "ghostCollision": true, "movePenalty": 0.3 },
         { "emoji": "🗑️", "name": "Grey Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies", "coins"], "kickable": true, "noise": 1, "destroyedGlyph": "." },
         { "emoji": "🛢️", "name": "Red Barrel", "breakable": true, "hp": 1, "blocksPath": true, "explosive": true, "blastRadius": 2.75, "blastDamage": [9, 25], "kickable": true, "noise": 4, "maxPerFloor": 3 }
       ],
       "interactiveObjects": [
-        { "emoji": "🪧", "name": "Sign Post", "interact": "read", "effect": "shows_direction", "blocksPath": true },
+        { "emoji": "📋", "name": "Sign Post", "interact": "read", "effect": "shows_direction", "blocksPath": true },
         { "emoji": "📬", "name": "Mailbox", "interact": "open", "effect": "gives_letter", "blocksPath": true },
         { "emoji": "🫐", "name": "Berry Bush", "interact": "harvest", "effect": "gives_berries", "blocksPath": false, "ghostCollision": true },
         { "emoji": "🍎", "name": "Apple Tree", "interact": "shake", "effect": "drops_apples", "blocksPath": true }
@@ -50,7 +50,7 @@
         "villageCluster": true,
         "buildings": ["🏠", "⛪", "🏪", "🏡"],
         "friendlyNPCs": ["👨", "👩", "🧓", "👶"],
-        "decorations": ["🪧", "📬", "🏮", "⛲", "🪑"],
+        "decorations": ["📋", "📬", "🏮", "⛲", "💺"],
         "landmarks": [
           { "emoji": "🏔️", "name": "Mountain Tower", "visibility": 15 },
           { "emoji": "🌳", "name": "Giant Tree", "visibility": 12 },
@@ -88,7 +88,7 @@
         "░": { "stealth": 5, "moveMod": 0.90, "name": "Debris" }
       },
       "props": [
-        { "emoji": "🪨", "name": "Boulder", "breakable": true, "hp": 2, "blocksPath": true },
+        { "emoji": "🗿", "name": "Boulder", "breakable": true, "hp": 2, "blocksPath": true },
         { "emoji": "💧", "name": "Water Drip", "breakable": false, "blocksPath": true },
         { "emoji": "🗑️", "name": "Grey Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies", "coins"], "kickable": true, "noise": 1, "destroyedGlyph": "." },
         { "emoji": "🛢️", "name": "Red Barrel", "breakable": true, "hp": 1, "blocksPath": true, "explosive": true, "blastRadius": 2.75, "blastDamage": [9, 25], "kickable": true, "noise": 4, "maxPerFloor": 3 }
@@ -118,7 +118,7 @@
       "props": [
         { "emoji": "📂", "name": "Filing Cabinet", "breakable": true, "hp": 2, "drops": ["documents", "items"] },
         { "emoji": "🖨️", "name": "Photocopier", "breakable": true, "hp": 3, "drops": ["toner"], "explodes": true },
-        { "emoji": "🪑", "name": "Office Chair", "breakable": false, "provides": "cover" },
+        { "emoji": "💺", "name": "Office Chair", "breakable": false, "provides": "cover" },
         { "emoji": "💼", "name": "Briefcase", "breakable": true, "hp": 1, "drops": ["papers"] },
         { "emoji": "🖥️", "name": "Desk", "breakable": true, "hp": 3, "provides": "cover", "drops": ["supplies"] },
         { "emoji": "💧", "name": "Water Cooler", "interact": "drink", "healing": 5 },
@@ -179,7 +179,7 @@
         { "emoji": "🛍️", "name": "Display Rack", "contains": "breakables" },
         { "emoji": "👕", "name": "Clothing Rack", "provides": "concealment" },
         { "emoji": "🧍", "name": "Mannequin", "decorative": true, "sometimes": "hostile" },
-        { "emoji": "🪧", "name": "Sign", "provides": "navigation_hints" },
+        { "emoji": "📋", "name": "Sign", "provides": "navigation_hints" },
         { "emoji": "📋", "name": "Directory", "interact": "read", "shows": "local_map" },
         { "emoji": "🔼", "name": "Escalator", "vertical": true, "bidirectional": true }
       ],
@@ -250,7 +250,7 @@
         "damagePerTurn": 2,
         "lightRadius": 4,
         "smokeRadius": 6,
-        "spreadTargets": ["🛢️", "🪵", "📦"]
+        "spreadTargets": ["🛢️", "🟫", "📦"]
       },
       "spawnFeatures": {
         "hazardZones": true,
@@ -274,8 +274,8 @@
       "wallTiles": [
         { "char": "🌲", "weight": 30 },
         { "char": "🌳", "weight": 20 },
-        { "char": "🪵", "weight": 15 },
-        { "char": "🪨", "weight": 10 },
+        { "char": "🟫", "weight": 15 },
+        { "char": "🗿", "weight": 10 },
         { "char": "🌊", "weight": 15, "animated": true },
         { "char": "🚣", "weight": 5 },
         { "char": "⛵", "weight": 5 }
@@ -290,8 +290,8 @@
       ],
       "props": [
         { "emoji": "🌲", "name": "Shoreline Pine", "breakable": true, "hp": 5, "blocksPath": true, "drops": ["wood"] },
-        { "emoji": "🪵", "name": "Driftwood", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["wood"] },
-        { "emoji": "🪨", "name": "Shore Rock", "breakable": true, "hp": 4, "blocksPath": true, "drops": ["stone"] },
+        { "emoji": "🟫", "name": "Driftwood", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["wood"] },
+        { "emoji": "🗿", "name": "Shore Rock", "breakable": true, "hp": 4, "blocksPath": true, "drops": ["stone"] },
         { "emoji": "⛵", "name": "Beached Boat", "breakable": false, "blocksPath": true, "provides": "cover" },
         { "emoji": "🚣", "name": "Rowboat", "breakable": false, "blocksPath": true, "provides": "cover" },
         { "emoji": "🎣", "name": "Fishing Gear", "breakable": true, "hp": 1, "blocksPath": false, "drops": ["bait", "line"] },
@@ -300,7 +300,7 @@
         { "emoji": "🛢️", "name": "Red Barrel", "breakable": true, "hp": 1, "blocksPath": true, "explosive": true, "blastRadius": 2.75, "blastDamage": [9, 25], "kickable": true, "noise": 4, "maxPerFloor": 2 }
       ],
       "interactiveObjects": [
-        { "emoji": "🪧", "name": "Trail Marker", "interact": "read", "effect": "shows_direction", "blocksPath": true },
+        { "emoji": "📋", "name": "Trail Marker", "interact": "read", "effect": "shows_direction", "blocksPath": true },
         { "emoji": "📬", "name": "Dock Mailbox", "interact": "open", "effect": "gives_letter", "blocksPath": true },
         { "emoji": "🔔", "name": "Buoy Bell", "interact": "ring", "effect": "alerts_area", "blocksPath": false }
       ],
@@ -325,7 +325,7 @@
         "villageCluster": false,
         "buildings": ["🏠", "🛖"],
         "friendlyNPCs": ["🧑‍🦰", "🧓"],
-        "decorations": ["🪧", "🎣", "⚓", "🏮"],
+        "decorations": ["📋", "🎣", "⚓", "🏮"],
         "landmarks": [
           { "emoji": "🌊", "name": "Lake Overlook", "visibility": 18 },
           { "emoji": "🏔️", "name": "Selkirk Ridge", "visibility": 15 },
@@ -351,7 +351,7 @@
         { "char": "🎄", "weight": 15 },
         { "char": "🍂", "weight": 15 },
         { "char": "🍁", "weight": 10 },
-        { "char": "🪨", "weight": 15 },
+        { "char": "🗿", "weight": 15 },
         { "char": "❄️", "weight": 10 }
       ],
       "floorTiles": [
@@ -367,7 +367,7 @@
         { "emoji": "🎄", "name": "Snow-Laden Fir", "breakable": true, "hp": 4, "blocksPath": true, "drops": ["wood", "ice"] },
         { "emoji": "🍂", "name": "Autumn Oak", "breakable": true, "hp": 3, "blocksPath": true, "drops": ["leaves"] },
         { "emoji": "🍁", "name": "Maple Stand", "breakable": true, "hp": 3, "blocksPath": true, "drops": ["leaves"] },
-        { "emoji": "🪨", "name": "Rock Outcrop", "breakable": false, "blocksPath": true },
+        { "emoji": "🗿", "name": "Rock Outcrop", "breakable": false, "blocksPath": true },
         { "emoji": "🏔️", "name": "Snow Bank", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["ice"] },
         { "emoji": "🏠", "name": "Ski Patrol Hut", "breakable": false, "blocksPath": true, "provides": "cover" },
         { "emoji": "🗑️", "name": "Grey Barrel", "breakable": true, "hp": 2, "blocksPath": true, "drops": ["supplies", "coins"], "kickable": true, "noise": 1, "destroyedGlyph": "." },
@@ -375,7 +375,7 @@
       ],
       "interactiveObjects": [
         { "emoji": "🚡", "name": "Ski Lift", "interact": "ride", "effect": "teleport_uphill", "blocksPath": false },
-        { "emoji": "🪧", "name": "Trail Sign", "interact": "read", "effect": "shows_direction", "blocksPath": true },
+        { "emoji": "📋", "name": "Trail Sign", "interact": "read", "effect": "shows_direction", "blocksPath": true },
         { "emoji": "📻", "name": "Emergency Radio", "interact": "use", "effect": "calls_patrol", "blocksPath": true }
       ],
       "tileEffects": {
@@ -401,7 +401,7 @@
         "verticalBias": true,
         "buildings": ["🏠"],
         "friendlyNPCs": ["⛷️", "🏂"],
-        "decorations": ["🪧", "🚡", "⛷️", "🏂"],
+        "decorations": ["📋", "🚡", "⛷️", "🏂"],
         "landmarks": [
           { "emoji": "🏔️", "name": "Summit Lodge", "visibility": 20 },
           { "emoji": "🌲", "name": "Treeline Edge", "visibility": 12 }

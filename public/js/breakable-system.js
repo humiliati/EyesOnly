@@ -31,6 +31,17 @@ var BreakableSystem = (function() {
       breakable.destroying = true;
       breakable.destroyStartTime = Date.now();
 
+      // Record destruction in floor state tracker for revisit handling
+      if (typeof FloorStateTracker !== 'undefined' && ctx.floor !== undefined) {
+        if (breakable.isGate || breakable.isTutorialGate) {
+          // Gates NEVER respawn on revisit
+          FloorStateTracker.recordGateDestroyed(ctx.floor, breakable.x, breakable.y, breakable.gateType || breakable.type || 'UNKNOWN');
+        } else {
+          // Regular breakables respawn degraded on revisit
+          FloorStateTracker.recordBreakableDestroyed(ctx.floor, breakable.x, breakable.y, breakable.type || 'UNKNOWN', breakable.lootTable || null);
+        }
+      }
+
       // Explosive breakables detonate immediately (no loot, consumed in blast)
       if (breakable.explosive) {
         setTimeout(function() {

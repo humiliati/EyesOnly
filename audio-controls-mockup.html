@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Debrief Feed – Audio Controls Mockup</title>
+<style>
+  /* ── CRT Palette (from your crt.css) ── */
+  :root {
+    --phosphor:        #33ff33;
+    --phosphor-dim:    #1a9c1a;
+    --phosphor-bright: #66ff66;
+    --phosphor-glow:   rgba(51, 255, 51, 0.15);
+    --amber:           #ffb000;
+    --amber-dim:       #996a00;
+    --amber-bright:    #ffc640;
+    --bg-deep:         #060e09;
+    --bg-panel:        rgba(6, 14, 9, 0.95);
+    --border-green:    rgba(51, 255, 51, 0.25);
+    --font-mono:       'Courier New', 'Lucida Console', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #020804;
+    color: var(--phosphor);
+    font-family: var(--font-mono);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  /* ── Context frame ── */
+  .context-note {
+    color: var(--phosphor-dim);
+    font-size: 0.65em;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+    text-align: center;
+    opacity: 0.6;
+  }
+
+  /* ── Debrief window mock ── */
+  .debrief-window {
+    width: 320px;
+    max-width: 90vw;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-green);
+    border-radius: 2px;
+    box-shadow:
+      inset 0 0 20px rgba(0, 0, 0, 0.6),
+      0 0 15px rgba(51, 255, 51, 0.08);
+    overflow: visible;
+    position: relative;
+  }
+
+  /* ── Header row: label + audio controls ── */
+  .debrief-header {
+    display: flex;
+    align-items: center;
+    padding: 6px 8px;
+    gap: 0;
+    user-select: none;
+    position: relative;
+  }
+
+  .debrief-label {
+    font-size: 0.78em;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--phosphor-dim);
+    flex: 1;
+    line-height: 1;
+  }
+
+  /* ── Audio icon cluster (right side of header) ── */
+  .audio-controls-inline {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .audio-btn {
+    background: none;
+    border: none;
+    color: var(--phosphor-dim);
+    cursor: pointer;
+    padding: 2px 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, text-shadow 0.15s;
+    font-family: var(--font-mono);
+    position: relative;
+    line-height: 1;
+  }
+
+  .audio-btn:hover {
+    color: var(--phosphor-bright);
+    text-shadow: 0 0 6px var(--phosphor-glow);
+  }
+
+  .audio-btn.muted {
+    color: var(--amber-dim);
+  }
+  .audio-btn.muted:hover {
+    color: var(--amber-bright);
+    text-shadow: 0 0 6px rgba(255, 176, 0, 0.3);
+  }
+
+  /* Speaker SVG icon */
+  .audio-btn svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* Dropdown chevron */
+  .audio-chevron {
+    font-size: 0.6em;
+    transition: transform 0.2s ease;
+    display: inline-block;
+    opacity: 0.7;
+  }
+  .audio-chevron.open {
+    transform: rotate(180deg);
+  }
+
+  /* Thin separator between icon and chevron */
+  .audio-sep {
+    width: 1px;
+    height: 10px;
+    background: var(--border-green);
+    opacity: 0.4;
+  }
+
+  /* ── Expanded dropdown panel ── */
+  .audio-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: 100%;
+    background: var(--bg-deep);
+    border: 1px solid var(--border-green);
+    border-top: none;
+    z-index: 100;
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transition: max-height 0.25s ease, opacity 0.2s ease, padding 0.25s ease;
+    padding: 0 8px;
+  }
+
+  .audio-dropdown.open {
+    max-height: 220px;
+    opacity: 1;
+    padding: 8px 8px 10px;
+  }
+
+  /* ── Dropdown rows ── */
+  .audio-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 0.68em;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .audio-row + .audio-row {
+    border-top: 1px solid rgba(51, 255, 51, 0.08);
+    padding-top: 5px;
+  }
+
+  .audio-row-label {
+    color: var(--phosphor-dim);
+    min-width: 42px;
+    flex-shrink: 0;
+    font-size: 0.95em;
+  }
+
+  /* ── Mute toggle in dropdown ── */
+  .mute-toggle {
+    background: none;
+    border: 1px solid var(--border-green);
+    color: var(--phosphor-dim);
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-radius: 1px;
+  }
+  .mute-toggle:hover {
+    color: var(--phosphor-bright);
+    border-color: var(--phosphor);
+  }
+  .mute-toggle.muted {
+    color: var(--amber);
+    border-color: var(--amber-dim);
+  }
+
+  /* ── Volume sliders ── */
+  .audio-slider-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .audio-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1;
+    height: 3px;
+    background: rgba(51, 255, 51, 0.15);
+    border-radius: 1px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .audio-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 1px;
+    background: var(--phosphor-dim);
+    border: 1px solid var(--phosphor);
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+  }
+  .audio-slider::-webkit-slider-thumb:hover {
+    background: var(--phosphor);
+    box-shadow: 0 0 6px var(--phosphor-glow);
+  }
+  .audio-slider::-moz-range-thumb {
+    width: 10px;
+    height: 10px;
+    border-radius: 1px;
+    background: var(--phosphor-dim);
+    border: 1px solid var(--phosphor);
+    cursor: pointer;
+  }
+
+  .audio-slider-val {
+    color: var(--phosphor-dim);
+    font-size: 0.85em;
+    min-width: 24px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Muted state for sliders */
+  .audio-row.disabled .audio-slider {
+    opacity: 0.3;
+    pointer-events: none;
+  }
+  .audio-row.disabled .audio-slider-val,
+  .audio-row.disabled .audio-row-label {
+    opacity: 0.35;
+  }
+
+  /* ── Track info row ── */
+  .track-info-row {
+    padding-top: 6px !important;
+    border-top: 1px solid rgba(51, 255, 51, 0.12) !important;
+  }
+
+  .track-info {
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .track-title {
+    color: var(--phosphor);
+    font-size: 0.9em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-transform: none;
+    letter-spacing: 0.02em;
+  }
+
+  .track-artist {
+    color: var(--phosphor-dim);
+    font-size: 0.8em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-transform: none;
+    letter-spacing: 0.02em;
+    margin-top: 1px;
+    opacity: 0.7;
+  }
+
+  /* ── Debrief screen placeholder ── */
+  .debrief-screen-mock {
+    min-height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--phosphor-dim);
+    font-size: 0.65em;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.3;
+    padding: 16px;
+    text-align: center;
+  }
+
+  /* ── Interaction hints ── */
+  .hints {
+    margin-top: 32px;
+    width: 320px;
+    max-width: 90vw;
+  }
+
+  .hints h3 {
+    color: var(--phosphor-dim);
+    font-size: 0.65em;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    font-weight: normal;
+  }
+
+  .hint-row {
+    display: flex;
+    gap: 12px;
+    padding: 4px 0;
+    font-size: 0.62em;
+    letter-spacing: 0.04em;
+    color: var(--phosphor-dim);
+    opacity: 0.6;
+  }
+
+  .hint-key {
+    color: var(--amber-dim);
+    min-width: 110px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+
+  /* ── Long-press visual feedback ── */
+  .audio-btn.pressing {
+    color: var(--phosphor-bright) !important;
+    text-shadow: 0 0 8px var(--phosphor-glow) !important;
+  }
+
+  /* ── Scanline overlay (purely cosmetic) ── */
+  .debrief-window::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.06) 2px,
+      rgba(0, 0, 0, 0.06) 4px
+    );
+    z-index: 200;
+  }
+</style>
+</head>
+<body>
+
+<div class="context-note">
+  audio controls mockup &mdash; debrief feed header
+</div>
+
+<div class="debrief-window" id="debriefWindow">
+
+  <!-- ── Header: label + audio icons ── -->
+  <div class="debrief-header">
+    <div class="debrief-label">debrief feed</div>
+
+    <div class="audio-controls-inline">
+      <!-- Speaker icon: click = mute, long-press = open dropdown -->
+      <button class="audio-btn" id="speakerBtn" type="button"
+              aria-label="Toggle mute (click) or expand audio panel (long press)"
+              title="Click: mute · Long press: expand">
+        <!-- Speaker ON icon -->
+        <svg id="iconOn" viewBox="0 0 24 24">
+          <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="currentColor" stroke="none" opacity="0.7"/>
+          <path d="M15.5 8.5 C16.8 9.8 17.5 11.5 17.5 12 C17.5 12.5 16.8 14.2 15.5 15.5" />
+          <path d="M18.5 5.5 C20.8 7.8 22 10.5 22 12 C22 13.5 20.8 16.2 18.5 18.5" opacity="0.5"/>
+        </svg>
+        <!-- Speaker MUTED icon (hidden by default) -->
+        <svg id="iconMuted" viewBox="0 0 24 24" style="display:none;">
+          <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="currentColor" stroke="none" opacity="0.4"/>
+          <line x1="16" y1="9" x2="22" y2="15" />
+          <line x1="22" y1="9" x2="16" y2="15" />
+        </svg>
+      </button>
+
+      <span class="audio-sep"></span>
+
+      <!-- Dropdown chevron -->
+      <button class="audio-btn" id="chevronBtn" type="button"
+              aria-label="Expand audio settings">
+        <span class="audio-chevron" id="chevron">▾</span>
+      </button>
+    </div>
+
+    <!-- ── Dropdown panel ── -->
+    <div class="audio-dropdown" id="audioDropdown">
+
+      <!-- Row 1: Master mute -->
+      <div class="audio-row" id="muteRow">
+        <span class="audio-row-label">master</span>
+        <button class="mute-toggle" id="muteToggle">on</button>
+      </div>
+
+      <!-- Row 2: Music volume -->
+      <div class="audio-row" id="musicRow">
+        <span class="audio-row-label">music</span>
+        <div class="audio-slider-wrap">
+          <input type="range" class="audio-slider" id="musicSlider"
+                 min="0" max="100" value="70" />
+          <span class="audio-slider-val" id="musicVal">70</span>
+        </div>
+      </div>
+
+      <!-- Row 3: SFX volume -->
+      <div class="audio-row" id="sfxRow">
+        <span class="audio-row-label">sfx</span>
+        <div class="audio-slider-wrap">
+          <input type="range" class="audio-slider" id="sfxSlider"
+                 min="0" max="100" value="85" />
+          <span class="audio-slider-val" id="sfxVal">85</span>
+        </div>
+      </div>
+
+      <!-- Row 4: Now playing / track info -->
+      <div class="audio-row track-info-row">
+        <span class="audio-row-label">now</span>
+        <div class="track-info">
+          <div class="track-title" id="trackTitle">Clubbed to Death</div>
+          <div class="track-artist" id="trackArtist">Rob Dougan &mdash; Matrix OST</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Debrief screen content placeholder ── -->
+  <div class="debrief-screen-mock">
+    [ debrief screen content ]
+  </div>
+
+</div>
+
+<!-- ── Interaction guide ── -->
+<div class="hints">
+  <h3>interaction model</h3>
+  <div class="hint-row">
+    <span class="hint-key">click speaker</span>
+    <span>instant mute / unmute</span>
+  </div>
+  <div class="hint-row">
+    <span class="hint-key">long-press speaker</span>
+    <span>expand audio panel</span>
+  </div>
+  <div class="hint-row">
+    <span class="hint-key">click chevron ▾</span>
+    <span>expand / collapse audio panel</span>
+  </div>
+  <div class="hint-row">
+    <span class="hint-key">music slider</span>
+    <span>background music volume</span>
+  </div>
+  <div class="hint-row">
+    <span class="hint-key">sfx slider</span>
+    <span>sound effects volume</span>
+  </div>
+  <div class="hint-row">
+    <span class="hint-key">now playing</span>
+    <span>track name &amp; artist / video desc</span>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ── State ──
+  var state = {
+    muted: false,
+    dropdownOpen: false,
+    musicVol: 70,
+    sfxVol: 85
+  };
+
+  // ── Elements ──
+  var speakerBtn   = document.getElementById('speakerBtn');
+  var chevronBtn   = document.getElementById('chevronBtn');
+  var chevron      = document.getElementById('chevron');
+  var dropdown     = document.getElementById('audioDropdown');
+  var muteToggle   = document.getElementById('muteToggle');
+  var iconOn       = document.getElementById('iconOn');
+  var iconMuted    = document.getElementById('iconMuted');
+  var musicSlider  = document.getElementById('musicSlider');
+  var sfxSlider    = document.getElementById('sfxSlider');
+  var musicVal     = document.getElementById('musicVal');
+  var sfxVal       = document.getElementById('sfxVal');
+  var musicRow     = document.getElementById('musicRow');
+  var sfxRow       = document.getElementById('sfxRow');
+
+  // ── Long-press detection ──
+  var pressTimer = null;
+  var longPressed = false;
+  var LONG_PRESS_MS = 400;
+
+  function render() {
+    // Icon swap
+    iconOn.style.display    = state.muted ? 'none' : '';
+    iconMuted.style.display = state.muted ? ''     : 'none';
+
+    // Muted class on speaker button
+    speakerBtn.classList.toggle('muted', state.muted);
+
+    // Dropdown mute toggle text
+    muteToggle.textContent = state.muted ? 'muted' : 'on';
+    muteToggle.classList.toggle('muted', state.muted);
+
+    // Dropdown state
+    dropdown.classList.toggle('open', state.dropdownOpen);
+    chevron.classList.toggle('open', state.dropdownOpen);
+
+    // Disable sliders when muted
+    musicRow.classList.toggle('disabled', state.muted);
+    sfxRow.classList.toggle('disabled', state.muted);
+  }
+
+  function toggleMute() {
+    state.muted = !state.muted;
+    render();
+  }
+
+  function toggleDropdown() {
+    state.dropdownOpen = !state.dropdownOpen;
+    render();
+  }
+
+  function openDropdown() {
+    state.dropdownOpen = true;
+    render();
+  }
+
+  // ── Speaker: click = mute, long-press = open dropdown ──
+  speakerBtn.addEventListener('pointerdown', function (e) {
+    longPressed = false;
+    speakerBtn.classList.add('pressing');
+    pressTimer = setTimeout(function () {
+      longPressed = true;
+      speakerBtn.classList.remove('pressing');
+      openDropdown();
+    }, LONG_PRESS_MS);
+  });
+
+  speakerBtn.addEventListener('pointerup', function () {
+    clearTimeout(pressTimer);
+    speakerBtn.classList.remove('pressing');
+    if (!longPressed) {
+      toggleMute();
+    }
+  });
+
+  speakerBtn.addEventListener('pointerleave', function () {
+    clearTimeout(pressTimer);
+    speakerBtn.classList.remove('pressing');
+  });
+
+  // Prevent context menu on long-press (mobile)
+  speakerBtn.addEventListener('contextmenu', function (e) {
+    e.preventDefault();
+  });
+
+  // ── Chevron: click = toggle dropdown ──
+  chevronBtn.addEventListener('click', function () {
+    toggleDropdown();
+  });
+
+  // ── Dropdown mute toggle ──
+  muteToggle.addEventListener('click', function () {
+    toggleMute();
+  });
+
+  // ── Sliders ──
+  musicSlider.addEventListener('input', function () {
+    state.musicVol = this.value;
+    musicVal.textContent = this.value;
+  });
+
+  sfxSlider.addEventListener('input', function () {
+    state.sfxVol = this.value;
+    sfxVal.textContent = this.value;
+  });
+
+  // ── Close dropdown when clicking outside ──
+  document.addEventListener('click', function (e) {
+    var inControls = e.target.closest('.audio-controls-inline') ||
+                     e.target.closest('.audio-dropdown');
+    if (!inControls && state.dropdownOpen) {
+      state.dropdownOpen = false;
+      render();
+    }
+  });
+
+  // Init
+  render();
+})();
+</script>
+</body>
+</html>

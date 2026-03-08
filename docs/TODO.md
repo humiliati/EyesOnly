@@ -82,3 +82,14 @@ Paper Terraria visual/rendering work tracked in [PAPER_TERRARIA_ALIGNED_ROADMAP.
 | 3 | Light orbs + twinkle polish (Phases 3.1-3.2) | ⬜ |
 | 4 | Lighting cache + adaptive FPS (Phase 5) | ⬜ |
 | 5 | Test pages + validation | ⬜ |
+
+Environment Gate Contract tracked in [ENVIRONMENT_GATE_CONTRACT.md](./ENVIRONMENT_GATE_CONTRACT.md):
+
+| Phase | Focus | Status |
+|-------|-------|--------|
+| 1 | Floor State Tracker module | ✅ Done |
+| 2 | Tutorial floor gate fixes (Floors 2-3) | ✅ Done |
+| 3 | Biome gate emoji registry | ⬜ |
+| 4 | Asset Scene Designer composite gates | ⬜ |
+| 5 | Full-span procedural gate placement | ⬜ |
+| 6 | Respawn integration (gates/breakables/enemies) | ⬜ |
