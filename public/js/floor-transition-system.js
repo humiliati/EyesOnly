@@ -53,6 +53,20 @@ var FloorTransitionSystem = (function () {
     SKI_MOUNTAIN: 'music-exterior-night'
   };
 
+  // Interior biome key → music track.  Nested interiors (floor N.N.N)
+  // with their own biome get specific BGM; everything else falls back
+  // to music-default-interior.
+  var _INTERIOR_MUSIC = {
+    INTERIOR_TAVERN:           'music-shop',
+    INTERIOR_TAVERN_BASEMENT:  'music-cave',
+    INTERIOR_CHURCH:           'music-church-catacombs',
+    INTERIOR_STRIP_MALL:       'music-mall',
+    INTERIOR_FACTORY:          'music-industrial',
+    INTERIOR_JUNKYARD:         'music-junkyard',
+    INTERIOR_SILO:             'music-industrial',
+    INTERIOR_SAWMILL:          'music-industrial'
+  };
+
   /**
    * Pick and play the right music track for the current biome + floor.
    * Day/night alternation: even floors are night.
@@ -81,9 +95,17 @@ var FloorTransitionSystem = (function () {
     var biome = null;
     try { biome = ctx.getBiome(floor); } catch (e) {}
 
-    // Interior floors get interior music
+    // Interior floors — resolve biome-specific BGM or fall back to default
     if (ctx.currentInteriorFloorId) {
-      AudioSystem.playMusic('music-default-interior');
+      var interiorTrack = 'music-default-interior';
+      // Try to resolve interior biome from the authored layout
+      if (typeof InteriorFloors !== 'undefined' && InteriorFloors.getAuthoredLayout) {
+        var layout = InteriorFloors.getAuthoredLayout(ctx.currentInteriorFloorId);
+        if (layout && layout.interiorBiome && _INTERIOR_MUSIC[layout.interiorBiome]) {
+          interiorTrack = _INTERIOR_MUSIC[layout.interiorBiome];
+        }
+      }
+      AudioSystem.playMusic(interiorTrack);
       return;
     }
 
@@ -401,6 +423,7 @@ var FloorTransitionSystem = (function () {
   return {
     exitInteriorFloor: exitInteriorFloor,
     retreatFloor: retreatFloor,
-    advanceFloor: advanceFloor
+    advanceFloor: advanceFloor,
+    playBiomeMusic: _playBiomeMusic  // exposed for interior-floor-system entry
   };
 })();

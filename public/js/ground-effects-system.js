@@ -50,9 +50,9 @@ var GroundEffectsSystem = (function () {
         ctx.player.hp -= damage;
         message = '🟥 HAZARD! -' + damage + ' HP';
 
-        // ── Audio: fire/hazard sizzle ──
+        // ── Audio: fire/hazard rumble ──
         if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
-          AudioSystem.playRandom('impact', 4, { volume: 0.4 });
+          AudioSystem.play('rumble-1', { volume: 0.4 });
         }
 
         if (ctx.player.hp <= 0) {

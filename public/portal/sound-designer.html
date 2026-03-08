@@ -22,7 +22,7 @@
       <aside class="sound-library">
         <h2>Sound Library</h2>
         <div class="library-search">
-          <input type="text" id="library-search" placeholder="Search sounds…">
+          <input type="text" id="library-search" placeholder="Search sounds…" aria-label="Search sounds">
         </div>
         <div id="library-categories">
         <div class="category-section">
@@ -291,7 +291,7 @@
                 <div class="meta" id="preview-meta">—</div>
               </div>
               <div class="preview-volume">
-                <input type="range" id="preview-volume" min="0" max="100" value="80" title="Preview volume">
+                <input type="range" id="preview-volume" min="0" max="100" value="80" title="Preview volume" aria-label="Preview volume">
               </div>
             </div>
           </div>
@@ -559,7 +559,7 @@
           <h4>Properties</h4>
           <div class="inspector-field">
             <label>Display Name</label>
-            <input type="text" id="insp-display-name" placeholder="—" disabled>
+            <input type="text" id="insp-display-name" placeholder="—" disabled aria-label="Display name">
           </div>
           <div class="inspector-field">
             <label>Category</label>
@@ -576,7 +576,7 @@
           </div>
           <div class="inspector-field">
             <label>Volume Override (0–100)</label>
-            <input type="number" id="insp-volume" min="0" max="100" placeholder="—" disabled>
+            <input type="number" id="insp-volume" min="0" max="100" placeholder="—" disabled aria-label="Volume">
           </div>
           <div class="inspector-field">
             <label>Loop</label>
@@ -587,7 +587,7 @@
           </div>
           <div class="inspector-field">
             <label>Tags</label>
-            <input type="text" id="insp-tags" placeholder="comma-separated" disabled>
+            <input type="text" id="insp-tags" placeholder="comma-separated" disabled aria-label="Tags">
           </div>
         </div>
 

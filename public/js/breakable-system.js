@@ -238,9 +238,9 @@ var BreakableSystem = (function() {
       }
     }
 
-    // ── Audio: campfire extinguish (fire hiss) ──
-    if (typeof AudioSystem !== 'undefined' && AudioSystem.playRandom) {
-      AudioSystem.playRandom('impact', 4, { volume: 0.35 });
+    // ── Audio: campfire extinguish (fire rumble) ──
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+      AudioSystem.play('rumble-1', { volume: 0.35 });
     }
 
     console.log('[Lighting] Campfire extinguished at ' + x + ',' + y + ' — scorched + smoke clouds');
@@ -326,9 +326,9 @@ var BreakableSystem = (function() {
       }
     }, 300);
 
-    // ── Audio: electronic spark (zap + crackle) ──
-    if (typeof AudioSystem !== 'undefined' && AudioSystem.playRandom) {
-      AudioSystem.playRandom('impact', 4, { volume: 0.45 });
+    // ── Audio: electronic spark (dark particles zap) ──
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+      AudioSystem.play('particles-dark', { volume: 0.45 });
     }
 
     console.log('[Lighting] ' + lightType + ' destroyed (spark shower) at ' + x + ',' + y);

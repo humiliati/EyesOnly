@@ -316,6 +316,11 @@ var InteriorFloorSystem = (function() {
 
       ctx.startGameLoop();
 
+      // ── Audio: interior-specific or default BGM ──
+      if (typeof FloorTransitionSystem !== 'undefined' && FloorTransitionSystem.playBiomeMusic) {
+        FloorTransitionSystem.playBiomeMusic(ctx);
+      }
+
       // Fade-in
       if (ctx.useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
         var gridContainer = document.getElementById('rogue-grid-mobile');

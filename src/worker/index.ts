@@ -33,14 +33,16 @@ const app = new Hono<HonoEnv>();
 // Cloudflare's static asset handler injects a restrictive CSP that
 // blocks our bundled Preact JS. This middleware overrides it.
 
+// Shared CSP applied to all HTML responses
+const APP_CSP = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; connect-src 'self' blob: wss: ws: https://*.cloudflareinsights.com; media-src 'self' blob:; img-src 'self' data: blob:;";
+
 app.use('*', async (c, next) => {
   await next();
   // Override restrictive CSP on HTML pages
   if (c.res.headers.get('content-type')?.includes('text/html')) {
-    c.res.headers.set(
-      'Content-Security-Policy',
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; connect-src 'self' wss: ws: https://*.cloudflareinsights.com; img-src 'self' data: blob:;",
-    );
+    // Remove any ASSETS-injected CSP before setting ours
+    c.res.headers.delete('Content-Security-Policy-Report-Only');
+    c.res.headers.set('Content-Security-Policy', APP_CSP);
   }
 });
 
@@ -89,12 +91,10 @@ app.all('*', async (c) => {
     const response = await c.env.ASSETS.fetch(c.req.raw);
     // Clone response so we can modify headers
     const newResponse = new Response(response.body, response);
-    // Apply CSP override on HTML assets
+    // Apply CSP override on HTML assets (use shared APP_CSP constant)
     if (newResponse.headers.get('content-type')?.includes('text/html')) {
-      newResponse.headers.set(
-        'Content-Security-Policy',
-        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; connect-src 'self' wss: ws: https://*.cloudflareinsights.com; img-src 'self' data: blob:;",
-      );
+      newResponse.headers.delete('Content-Security-Policy-Report-Only');
+      newResponse.headers.set('Content-Security-Policy', APP_CSP);
     }
     return newResponse;
   } catch {
