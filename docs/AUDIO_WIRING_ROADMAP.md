@@ -138,23 +138,23 @@ Day/night alternation: even floors = night.
 
 | Effect | Sound | Where | Status |
 |---|---|---|---|
-| Fire/hazard tile step | `impact-{1..4}` random vol 0.4 | `applyTileEffects()` hazard branch | ✅ |
+| Fire/hazard tile step | `rumble-1` vol 0.4 | `applyTileEffects()` hazard branch | ✅ |
 | Water tile step | `water-{1..3}` random vol 0.3 | `applyTileEffects()` water branch | ✅ |
 | Ice combat modifier | `ice-1` vol 0.3 | `applyPlayerGroundModifier()` ICE branch | ✅ |
 
-**Note:** `fire-sfx` and `ice-{1..2}` keys don't exist in manifest. Used `impact-{1..4}` for fire hazard (searing hit) and `ice-1` for ice slide.
+**Note:** Dedicated fire SFX replaced with `rumble-1` (low rumble conveys heat damage). `ice-1` used for ice slide.
 
 ### 3.3 Light Source Destruction — `breakable-system.js` ✅
 
 | Source Type | Sound | Where | Status |
 |---|---|---|---|
-| Campfire | `impact-{1..4}` random vol 0.35 | `_destroyCampfire()` | ✅ |
+| Campfire | `rumble-1` vol 0.35 | `_destroyCampfire()` | ✅ |
 | Torch | `whoosh-1` vol 0.25 | `_destroyTorch()` | ✅ |
 | Lamp post | `metal-hit-{1..2}` random vol 0.5 | `_destroyLampPost()` | ✅ |
-| Electronic (Monitor/Terminal) | `impact-{1..4}` random vol 0.45 | `_destroyElectronic()` | ✅ |
+| Electronic (Monitor/Terminal) | `particles-dark` vol 0.45 | `_destroyElectronic()` | ✅ |
 | Light bulb | `impact-1` vol 0.4 | `_destroyLightBulb()` | ✅ |
 
-**Note:** `electric-{1..2}` keys don't exist in manifest. Used `impact-{1..4}` as stand-in for electronic sparks. When dedicated fire/electric SFX are added to the manifest, update the calls here.
+**Note:** Campfire destruction uses `rumble-1` (low rumble for fire extinguish). Electronic destruction uses `particles-dark` (digital glitch/spark sound).
 
 ---
 
@@ -337,61 +337,138 @@ Sounds referenced by the explosion system that don't have exact manifest entries
 | `public/portal/js/sound-designer.js` | Portal logic — streaming preview, static library, file:// support |
 | `public/portal/css/sound-designer.css` | Portal styling |
 
+---
 
+## Portal-to-Deployment Pipeline
 
+This section describes the full lifecycle of an audio asset from upload in the Sound Designer portal to playback in the live game.
 
+### Step 1: Upload via Sound Designer Portal
 
-notes:
-[GoneRogueMobile] Canvas renderer initialized
-83The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. <URL>
-information-duel-engine.js:724 [InformationDuelEngine] Combat ended
-loot-table-manager.js:28 [LootTableManager] Loot tables loaded successfully (v1.0.0)
-gone-rogue-data-registry.js:183 [Registry] Merged 3 boss biomes: BOSS_TRAIN_DEPOT, BOSS_LONG_BRIDGE, BOSS_SKI_MOUNTAIN
-gone-rogue-data-registry.js:191 [Registry] Loaded 12 interior biomes
-gone-rogue-data-registry.js:91 [Registry] validate items.json
-gone-rogue-data-registry.js:91 [Registry] validate cards.json
-gone-rogue-data-registry.js:91 [Registry] validate statuses.json
-gone-rogue-data-registry.js:91 [Registry] validate ground_effects.json
-gone-rogue-data-registry.js:91 [Registry] validate synergies.json
-gone-rogue-data-registry.js:91 [Registry] validate buildings.json
-gone-rogue-data-registry.js:91 [Registry] validate enemy-cards.json
-information-duel-engine.js:724 [InformationDuelEngine] Combat ended
-audio-system.js:131  GET https://flapsandseals.com/audio/sfx/whoosh-2.webm 404 (Not Found)
-_loadBuffer @ audio-system.js:131
-play @ audio-system.js:211
-hide @ hand-fan-component.js?v=20260307m:223
-_hideHandFan @ str-combat-integration.js?v=20260307m:597
-_updateCombatUI @ str-combat-integration.js?v=20260307m:86
-(anonymous) @ str-combat-integration.js?v=20260307m:59
-setInterval
-_hookCombatSystem @ str-combat-integration.js?v=20260307m:58
-initIntegration @ str-combat-integration.js?v=20260307m:28
-audio-system.js:145 [AudioSystem] Failed to load /audio/sfx/whoosh-2.webm Error: HTTP 404 for /audio/sfx/whoosh-2.webm
-    at audio-system.js:133:29
-(anonymous) @ audio-system.js:145
-Promise.catch
-_loadBuffer @ audio-system.js:144
-play @ audio-system.js:211
-hide @ hand-fan-component.js?v=20260307m:223
-_hideHandFan @ str-combat-integration.js?v=20260307m:597
-_updateCombatUI @ str-combat-integration.js?v=20260307m:86
-(anonymous) @ str-combat-integration.js?v=20260307m:59
-setInterval
-_hookCombatSystem @ str-combat-integration.js?v=20260307m:58
-initIntegration @ str-combat-integration.js?v=20260307m:28
-42information-duel-engine.js:724 [InformationDuelEngine] Combat ended
-favicon.ico:1  GET https://flapsandseals.com/favicon.ico 404 (Not Found)
-43information-duel-engine.js:724 [InformationDuelEngine] Combat ended
-inventory-ui.js:128 Error: API Client not available
-    at fetchInventory (inventory-ui.js:28:29)
-    at inventory-ui.js:107:14
-(anonymous) @ inventory-ui.js:128
-Promise.catch
-renderGallery @ inventory-ui.js:127
-(anonymous) @ inventory-ui.js:192
-(anonymous) @ inventory-ui.js:187
-attributes
-toggleInventory @ ui-controls.js?v=20260304i:644
-handleButtonClick @ ui-controls.js?v=20260304i:556
-(anonymous) @ ui-controls.js?v=20260304i:50
-487information-duel-engine.js:724 [InformationDuelEngine] Combat ended
+The Sound Designer portal (`public/portal/sound-designer.html`) provides a browser-based interface for browsing, previewing, and uploading audio assets. The portal works both locally (`file://`) and on the production domain (`flapsandseals.com/portal/sound-designer.html`).
+
+To upload a new asset, use the Upload panel in the portal or POST directly to the API:
+
+```
+POST /api/audio/upload
+Content-Type: multipart/form-data
+
+Fields:
+  file:         binary audio data (max 50 MB)
+  destination:  "sfx" | "music" | "video"
+  filename:     original filename (used as R2 key suffix)
+```
+
+The upload handler (`src/worker/routes/audio-upload.ts`) sanitizes the filename, resolves the R2 key prefix (`audio/sfx/`, `audio/music/`, or `video/`), and stores the file in the `eyesonly-assets` R2 bucket with correct `Content-Type` metadata.
+
+Response: `{ ok: true, key: "audio/sfx/my-sound.webm", size: 14832, contentType: "audio/webm" }`
+
+### Step 2: Bulk Transcoding (for raw WAV sources)
+
+When starting from WAV masters (e.g., from a commissioned musician), use the transcoding scripts before upload:
+
+```bash
+# Transcode WAV to Opus/WebM (primary) + MP3 (fallback)
+./scripts/transcode-audio.sh
+
+# Batch upload transcoded files to R2
+./scripts/upload-audio-to-r2.sh
+```
+
+The transcode script converts each WAV to Opus/WebM at 96kbps (music) or 48kbps (SFX), plus an MP3 fallback for older Safari. Output files land in `public/audio/sfx/` or `public/audio/music/` locally.
+
+### Step 3: Register in Manifest
+
+Every sound the game can reference must have an entry in `public/audio/audio-manifest.json` (167 entries as of this writing). Each entry maps a sound ID to its source path, category, and metadata:
+
+```json
+{
+  "whoosh-1": {
+    "src": "/audio/sfx/whoosh_01.webm",
+    "category": "ui",
+    "title": "Whoosh 1"
+  },
+  "music-forest": {
+    "src": "/audio/music/forest_theme.webm",
+    "category": "music",
+    "title": "Forest Theme",
+    "artist": "EyesOnly Audio",
+    "loop": true
+  }
+}
+```
+
+The manifest is loaded by `AudioSystem.init()` on page load. Sound IDs used in code (e.g., `AudioSystem.play('whoosh-1')`) must match manifest keys exactly.
+
+### Step 4: R2 Serving (Production)
+
+The Cloudflare Worker serves audio from R2 via two route handlers:
+
+**Serving routes** (`src/worker/routes/audio.ts`):
+- `GET /audio/sfx/:filename` serves from R2 key `audio/sfx/<filename>`
+- `GET /audio/music/:filename` serves from R2 key `audio/music/<filename>`
+
+Both support HTTP Range requests for streaming (required by `<audio>` elements and mobile Safari). Responses include `Cache-Control: public, max-age=31536000, immutable` since assets are versioned through the manifest, not by URL.
+
+**CORS** (`src/worker/index.ts`): The `/audio/*` path has CORS configured to allow `Range` in request headers and expose `Content-Range`, `Accept-Ranges`, and `Content-Length` in response headers. This is required for cross-origin `<audio crossOrigin="anonymous">` streaming.
+
+**Listing route** (`src/worker/routes/audio-upload.ts`):
+- `GET /api/audio/list?prefix=audio/sfx` returns R2 object metadata (key, size, upload date, etag)
+
+### Step 5: In-Game Playback
+
+The `AudioSystem` singleton (`public/js/audio-system.js`) handles all in-game audio through two playback paths:
+
+**SFX (buffer-based):** Short sound effects are fetched, decoded via `decodeAudioData()`, cached in an in-memory buffer map, and played through `BufferSourceNode` → `_sfxGain` → `_masterGain` → destination. This approach gives low-latency playback for short clips. A per-name 80ms cooldown rate-limiter prevents spam from runaway callers.
+
+**Music (streaming):** Music tracks are played through a reusable `<audio>` element routed via `MediaElementAudioSourceNode` → `_musicGain` → `_masterGain` → destination. This streams on demand without downloading the entire file into memory, which is critical for large music files (3-5 min tracks).
+
+Both buses feed into a shared `_masterGain` node. The Audio Controls widget in the debrief feed provides per-bus volume sliders and a master mute toggle.
+
+**AudioContext autoplay policy:** The `AudioContext` starts in `suspended` state. `play()` returns early (no-op) while suspended. `playMusic()` defers and replays automatically once the context resumes after the first user gesture.
+
+### Step 6: Deployment
+
+Deploy changes to production via Cloudflare Workers:
+
+```bash
+# Deploy the worker (serves both the app and R2 audio routes)
+npx wrangler deploy
+
+# Upload a single new audio file to R2 directly
+npx wrangler r2 object put eyesonly-assets/audio/sfx/my-sound.webm \
+  --file=public/audio/sfx/my-sound.webm \
+  --content-type=audio/webm
+```
+
+For bulk uploads after transcoding, use `scripts/upload-audio-to-r2.sh` which iterates over all files in `public/audio/` and uploads them with correct content types.
+
+The manifest file (`public/audio/audio-manifest.json`) is served as a static asset by the worker and is deployed alongside the rest of the public directory.
+
+### Pipeline Summary
+
+```
+Musician/Designer                Sound Designer Portal
+      |                                |
+  WAV masters                    Browse / Preview / Upload
+      |                                |
+  transcode-audio.sh             POST /api/audio/upload
+      |                                |
+  WebM (Opus) + MP3              R2: eyesonly-assets/audio/{sfx,music}/
+      |                                |
+  upload-audio-to-r2.sh          audio-manifest.json (register ID)
+      |                                |
+      +----------+---------------------+
+                 |
+          npx wrangler deploy
+                 |
+    +------------+-------------+
+    |                          |
+  SFX path                 Music path
+  fetch → decode →         <audio> element →
+  BufferSourceNode →       MediaElementSource →
+  _sfxGain →               _musicGain →
+  _masterGain →            _masterGain →
+  destination              destination
+```
+

@@ -241,6 +241,9 @@ var SoundDesigner = (function () {
     // Stall / waiting — browser ran out of buffered data
     _previewAudio.addEventListener('waiting', function () {
       console.log('[SoundDesigner] audio waiting — buffering…');
+      // Pause waveform loop while buffering to avoid showing frozen flat line
+      _stopWaveformLoop();
+      _drawBufferingIndicator();
     });
 
     _previewAudio.addEventListener('error', function () {
@@ -370,6 +373,21 @@ var SoundDesigner = (function () {
       cancelAnimationFrame(_rafId);
       _rafId = null;
     }
+  }
+
+  /** Draw a pulsing "Buffering…" overlay on the waveform canvas. */
+  function _drawBufferingIndicator() {
+    var canvas = document.getElementById('waveform-canvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var w = canvas.width;
+    var h = canvas.height;
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#33ff33';
+    ctx.font = '12px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('Buffering…', w / 2, h / 2 + 4);
   }
 
   // ---- Play / Stop / Toggle ----

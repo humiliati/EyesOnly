@@ -90,7 +90,10 @@ function buildHeaders(filename: string, obj: R2Object): Headers {
   h.set('Accept-Ranges', 'bytes');
   // Long cache — assets are effectively immutable (versioned via manifest)
   h.set('Cache-Control', 'public, max-age=31536000, immutable');
-  h.set('Access-Control-Allow-Origin', '*');
+  // NOTE: CORS headers (Access-Control-*) are handled by the Hono CORS
+  // middleware in index.ts.  Do NOT set them here — duplicate
+  // Access-Control-Allow-Origin headers cause browsers to reject the
+  // CORS check, which silences MediaElementAudioSourceNode output.
   // ETag from R2
   if (obj.etag) h.set('ETag', obj.etag);
   return h;
