@@ -74,6 +74,7 @@
       if (typeof CardDragController !== 'undefined' && typeof CardDragController.setContext === 'function') {
         CardDragController.setContext('combat');
       }
+      _duelEndedThisSession = false;  // reset so endCombat fires once when combat ends
       _showCombatWindow(combatState);
       _showHandFan(combatState);
       _showBackupActions(combatState);
@@ -638,6 +639,8 @@
     }
   }
 
+  var _duelEndedThisSession = false;   // guard: only call endCombat once per combat session
+
   function _hideBackupActions() {
     if (typeof BackupActionContainer !== 'undefined') {
       BackupActionContainer.hide();
@@ -645,9 +648,10 @@
     if (typeof EnemyHandDisplay !== 'undefined') {
       EnemyHandDisplay.hide();
     }
-    // Phase 5: End duel engine on combat end
-    if (typeof InformationDuelEngine !== 'undefined' && InformationDuelEngine.endCombat) {
+    // Phase 5: End duel engine on combat end (once per session, not every 100ms poll)
+    if (!_duelEndedThisSession && typeof InformationDuelEngine !== 'undefined' && InformationDuelEngine.endCombat) {
       InformationDuelEngine.endCombat();
+      _duelEndedThisSession = true;
     }
   }
 

@@ -203,6 +203,13 @@ const AudioSystem = (function () {
   function play(name, opts) {
     if (!_ctx) _ensureCtx();
     if (!_ctx) return;
+    // Don't attempt playback while context is suspended (pre-gesture).
+    // The buffer load + decode would succeed but source.start() would
+    // generate "AudioContext was not allowed to start" warnings.
+    if (_ctx.state === 'suspended') {
+      _resume();          // queue a resume for next gesture
+      return;             // silently skip this play request
+    }
     _resume();
 
     opts = opts || {};
@@ -234,6 +241,15 @@ const AudioSystem = (function () {
   function playMusic(name) {
     if (!_ctx) _ensureCtx();
     if (!_ctx) return;
+    // If context is still suspended (no user gesture yet), defer the
+    // playMusic call until the context resumes.
+    if (_ctx.state === 'suspended') {
+      var _pendingName = name;
+      _ctx.resume().then(function () {
+        playMusic(_pendingName);
+      }).catch(function () {});
+      return;
+    }
     _resume();
 
     // Stop current if any

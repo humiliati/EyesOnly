@@ -336,3 +336,62 @@ Sounds referenced by the explosion system that don't have exact manifest entries
 | `public/portal/sound-designer.html` | Designer portal — 167 static sound entries, preview, assign, upload |
 | `public/portal/js/sound-designer.js` | Portal logic — streaming preview, static library, file:// support |
 | `public/portal/css/sound-designer.css` | Portal styling |
+
+
+
+
+
+notes:
+[GoneRogueMobile] Canvas renderer initialized
+83The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. <URL>
+information-duel-engine.js:724 [InformationDuelEngine] Combat ended
+loot-table-manager.js:28 [LootTableManager] Loot tables loaded successfully (v1.0.0)
+gone-rogue-data-registry.js:183 [Registry] Merged 3 boss biomes: BOSS_TRAIN_DEPOT, BOSS_LONG_BRIDGE, BOSS_SKI_MOUNTAIN
+gone-rogue-data-registry.js:191 [Registry] Loaded 12 interior biomes
+gone-rogue-data-registry.js:91 [Registry] validate items.json
+gone-rogue-data-registry.js:91 [Registry] validate cards.json
+gone-rogue-data-registry.js:91 [Registry] validate statuses.json
+gone-rogue-data-registry.js:91 [Registry] validate ground_effects.json
+gone-rogue-data-registry.js:91 [Registry] validate synergies.json
+gone-rogue-data-registry.js:91 [Registry] validate buildings.json
+gone-rogue-data-registry.js:91 [Registry] validate enemy-cards.json
+information-duel-engine.js:724 [InformationDuelEngine] Combat ended
+audio-system.js:131  GET https://flapsandseals.com/audio/sfx/whoosh-2.webm 404 (Not Found)
+_loadBuffer @ audio-system.js:131
+play @ audio-system.js:211
+hide @ hand-fan-component.js?v=20260307m:223
+_hideHandFan @ str-combat-integration.js?v=20260307m:597
+_updateCombatUI @ str-combat-integration.js?v=20260307m:86
+(anonymous) @ str-combat-integration.js?v=20260307m:59
+setInterval
+_hookCombatSystem @ str-combat-integration.js?v=20260307m:58
+initIntegration @ str-combat-integration.js?v=20260307m:28
+audio-system.js:145 [AudioSystem] Failed to load /audio/sfx/whoosh-2.webm Error: HTTP 404 for /audio/sfx/whoosh-2.webm
+    at audio-system.js:133:29
+(anonymous) @ audio-system.js:145
+Promise.catch
+_loadBuffer @ audio-system.js:144
+play @ audio-system.js:211
+hide @ hand-fan-component.js?v=20260307m:223
+_hideHandFan @ str-combat-integration.js?v=20260307m:597
+_updateCombatUI @ str-combat-integration.js?v=20260307m:86
+(anonymous) @ str-combat-integration.js?v=20260307m:59
+setInterval
+_hookCombatSystem @ str-combat-integration.js?v=20260307m:58
+initIntegration @ str-combat-integration.js?v=20260307m:28
+42information-duel-engine.js:724 [InformationDuelEngine] Combat ended
+favicon.ico:1  GET https://flapsandseals.com/favicon.ico 404 (Not Found)
+43information-duel-engine.js:724 [InformationDuelEngine] Combat ended
+inventory-ui.js:128 Error: API Client not available
+    at fetchInventory (inventory-ui.js:28:29)
+    at inventory-ui.js:107:14
+(anonymous) @ inventory-ui.js:128
+Promise.catch
+renderGallery @ inventory-ui.js:127
+(anonymous) @ inventory-ui.js:192
+(anonymous) @ inventory-ui.js:187
+attributes
+toggleInventory @ ui-controls.js?v=20260304i:644
+handleButtonClick @ ui-controls.js?v=20260304i:556
+(anonymous) @ ui-controls.js?v=20260304i:50
+487information-duel-engine.js:724 [InformationDuelEngine] Combat ended
