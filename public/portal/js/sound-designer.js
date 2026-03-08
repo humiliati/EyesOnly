@@ -24,8 +24,10 @@ var SoundDesigner = (function () {
   var _activeCtx = 'asset';
 
   // ---- Constants ----
-  var MANIFEST_URL = '/audio/audio-manifest.json';
-  var UPLOAD_API   = '/api/audio/upload';
+  var IS_LOCAL     = location.protocol === 'file:';
+  var ORIGIN       = IS_LOCAL ? 'https://flapsandseals.com' : '';
+  var MANIFEST_URL = ORIGIN + '/audio/audio-manifest.json';
+  var UPLOAD_API   = ORIGIN + '/api/audio/upload';
   var STORAGE_KEY  = 'sound-designer-assignments';
   var MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
   var ALLOWED_EXTS = ['.wav', '.mp3', '.ogg', '.webm', '.m4a', '.mp4', '.opus'];
@@ -199,7 +201,10 @@ var SoundDesigner = (function () {
     if (!src) return;
     _ensureAudioCtx();
 
-    fetch(src)
+    // Rebase relative paths through worker when opened locally
+    var url = (src.indexOf('://') === -1) ? ORIGIN + src : src;
+
+    fetch(url)
       .then(function (r) { return r.arrayBuffer(); })
       .then(function (buf) { return _audioCtx.decodeAudioData(buf); })
       .then(function (decoded) {

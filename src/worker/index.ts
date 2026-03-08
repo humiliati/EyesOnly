@@ -52,6 +52,10 @@ app.use('/api/*', cors({
   allowHeaders: ['Content-Type', 'Authorization', 'X-Session-Token'],
 }));
 
+// CORS for audio paths (R2 routes already set it, but static-asset
+// fallback e.g. audio-manifest.json needs it for file:// origins)
+app.use('/audio/*', cors({ origin: '*' }));
+
 // --- Route Groups ---
 
 app.route('/api', publicRoutes);
