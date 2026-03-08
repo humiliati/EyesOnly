@@ -53,6 +53,14 @@ const AudioSystem = (function () {
   // This can later be loaded from a JSON file.
   var _manifest = null;
 
+  // ── SFX rate-limiter + debug trace ───────────────────────
+  // Prevents any single SFX from firing more than once per cooldown window.
+  // Also logs spam detection to help diagnose runaway callers.
+  var _sfxLastPlayed = {};          // name → timestamp (ms)
+  var _SFX_COOLDOWN_MS = 80;       // min ms between plays of the same clip
+  var _sfxSpamCount = {};           // name → count of suppressed plays
+  var _sfxSpamLogTimer = null;      // debounced spam summary logger
+
   // ── Helpers ────────────────────────────────────────────────
 
   function _notify() {
@@ -204,13 +212,31 @@ const AudioSystem = (function () {
     if (!_ctx) _ensureCtx();
     if (!_ctx) return;
     // Don't attempt playback while context is suspended (pre-gesture).
-    // The buffer load + decode would succeed but source.start() would
-    // generate "AudioContext was not allowed to start" warnings.
     if (_ctx.state === 'suspended') {
-      _resume();          // queue a resume for next gesture
-      return;             // silently skip this play request
+      _resume();
+      return;
     }
     _resume();
+
+    // ── Rate-limiter: suppress duplicate SFX within cooldown window ──
+    var now = performance.now();
+    if (_sfxLastPlayed[name] && (now - _sfxLastPlayed[name]) < _SFX_COOLDOWN_MS) {
+      // Track suppressed plays for debug logging
+      _sfxSpamCount[name] = (_sfxSpamCount[name] || 0) + 1;
+      if (!_sfxSpamLogTimer) {
+        _sfxSpamLogTimer = setTimeout(function () {
+          var keys = Object.keys(_sfxSpamCount);
+          for (var i = 0; i < keys.length; i++) {
+            console.warn('[AudioSystem] SFX spam suppressed: "' + keys[i] +
+              '" × ' + _sfxSpamCount[keys[i]] + ' (cooldown ' + _SFX_COOLDOWN_MS + 'ms)');
+          }
+          _sfxSpamCount = {};
+          _sfxSpamLogTimer = null;
+        }, 1000);
+      }
+      return;
+    }
+    _sfxLastPlayed[name] = now;
 
     opts = opts || {};
     var url = _resolveURL(name);

@@ -61,8 +61,16 @@
   }
 
   /**
-   * Update combat UI based on current state
+   * Update combat UI based on current state.
+   *
+   * IMPORTANT: The hide path must only run on the active→inactive *edge*,
+   * not on every 100ms tick.  Previously the else-branch fired every poll,
+   * which caused HandFanComponent.hide() (whoosh-2 SFX) and
+   * InformationDuelEngine.endCombat() to spam 10×/sec for the entire
+   * session whenever combat was not active.
    */
+  var _wasActive = false;   // edge-detect: only run hide path once
+
   function _updateCombatUI() {
     if (typeof GoneRogue === 'undefined') return;
 
@@ -70,6 +78,7 @@
     var combatState = GoneRogue.getStrCombatState && GoneRogue.getStrCombatState();
 
     if (isActive && combatState && combatState.active) {
+      _wasActive = true;
       // Ensure CardDragController knows we're in combat for STR collapse + auto-select
       if (typeof CardDragController !== 'undefined' && typeof CardDragController.setContext === 'function') {
         CardDragController.setContext('combat');
@@ -78,7 +87,9 @@
       _showCombatWindow(combatState);
       _showHandFan(combatState);
       _showBackupActions(combatState);
-    } else {
+    } else if (_wasActive) {
+      // Edge: combat just ended — run cleanup once
+      _wasActive = false;
       // Return CDC to exploration context
       if (typeof CardDragController !== 'undefined' && typeof CardDragController.setContext === 'function') {
         CardDragController.setContext('exploration');
@@ -87,6 +98,7 @@
       _hideHandFan();
       _hideBackupActions();
     }
+    // else: combat was never active this session — do nothing
   }
 
   /**
