@@ -260,53 +260,103 @@ const AudioSystem = (function () {
     });
   }
 
+  // ── Streaming music via <audio> element ───────────────────
+  // Large music files must NOT be decoded into a single AudioBuffer
+  // (memory-heavy, slow to load, decodeAudioData can fail silently).
+  // Instead we use an HTMLAudioElement that streams via Range requests,
+  // routed through a MediaElementAudioSourceNode into the music gain bus.
+  var _musicAudio = null;           // HTMLAudioElement (reused)
+  var _musicMediaSource = null;     // MediaElementAudioSourceNode (created once)
+  var _pendingMusicName = null;     // deferred name while context is suspended
+
+  function _ensureMusicAudio() {
+    if (_musicAudio) return _musicAudio;
+    _ensureCtx();
+    if (!_ctx) return null;
+
+    _musicAudio = new Audio();
+    _musicAudio.crossOrigin = 'anonymous';
+    _musicAudio.preload = 'auto';
+
+    // Route through Web Audio graph → _musicGain → _masterGain → dest
+    _musicMediaSource = _ctx.createMediaElementSource(_musicAudio);
+    _musicMediaSource.connect(_musicGain);
+
+    // When track ends naturally
+    _musicAudio.addEventListener('ended', function () {
+      // If looping, the <audio>.loop attribute handles it natively
+      if (!_musicAudio.loop) {
+        _currentMusic = null;
+        _notify();
+      }
+    });
+
+    _musicAudio.addEventListener('error', function () {
+      var err = _musicAudio.error;
+      console.warn('[AudioSystem] Music streaming error:', err ? err.message : 'unknown');
+    });
+
+    return _musicAudio;
+  }
+
   /**
-   * Start music track (crossfade from current)
-   * @param {string} name - logical music name
+   * Start music track (streaming — no full-file download).
+   * @param {string} name - logical music name (e.g. 'music-clubbed-to-death')
    */
   function playMusic(name) {
     if (!_ctx) _ensureCtx();
     if (!_ctx) return;
-    // If context is still suspended (no user gesture yet), defer the
-    // playMusic call until the context resumes.
+
+    // If context is still suspended (no user gesture yet), stash the
+    // request and replay it once the context resumes.
     if (_ctx.state === 'suspended') {
-      var _pendingName = name;
+      _pendingMusicName = name;
       _ctx.resume().then(function () {
-        playMusic(_pendingName);
+        if (_pendingMusicName) {
+          var n = _pendingMusicName;
+          _pendingMusicName = null;
+          playMusic(n);
+        }
       }).catch(function () {});
       return;
     }
     _resume();
+    _pendingMusicName = null;
 
-    // Stop current if any
-    if (_currentMusic && _currentMusic.source) {
-      try { _currentMusic.source.stop(); } catch (e) {}
-    }
+    var audio = _ensureMusicAudio();
+    if (!audio) return;
 
     var entry = (_manifest && _manifest[name]) || {};
     var url = entry.src || ('/audio/music/' + name + '.webm');
 
-    _loadBuffer(url).then(function (buf) {
-      if (!buf) return;
-      var source = _ctx.createBufferSource();
-      source.buffer = buf;
-      source.loop = !!(entry.loop);
-      source.connect(_musicGain);
-      source.start(0);
+    // Stop previous playback
+    audio.pause();
 
-      _currentMusic = {
-        source: source,
-        name: name,
-        title: entry.title || name,
-        artist: entry.artist || ''
-      };
-      _notify();
+    audio.loop = !!(entry.loop);
+    audio.src = url;
+    audio.load();
+
+    audio.play().then(function () {
+      console.log('[AudioSystem] Music streaming: ' + name);
+    }).catch(function (err) {
+      console.warn('[AudioSystem] Music play() rejected:', err);
     });
+
+    // Set metadata immediately so debrief widget shows the title
+    _currentMusic = {
+      source: audio,            // HTMLAudioElement instead of BufferSource
+      name: name,
+      title: entry.title || name,
+      artist: entry.artist || ''
+    };
+    _notify();
   }
 
   function stopMusic() {
-    if (_currentMusic && _currentMusic.source) {
-      try { _currentMusic.source.stop(); } catch (e) {}
+    if (_musicAudio) {
+      _musicAudio.pause();
+      _musicAudio.removeAttribute('src');
+      _musicAudio.load();           // reset internal state
     }
     _currentMusic = null;
     _notify();
