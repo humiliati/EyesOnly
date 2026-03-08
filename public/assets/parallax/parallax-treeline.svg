@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="100" viewBox="0 0 800 100">
+  <!-- Mid parallax: tree line / structure silhouette. Tile-able (left/right edges match).
+       Dark monochrome on transparent — biome tinting applied at runtime.
+       Mixes conifer shapes, deciduous canopies, and occasional structure rooftops. -->
+  <defs>
+    <style>
+      .tree { fill: #0d0d14; }
+      .trunk { fill: #08080c; }
+    </style>
+  </defs>
+
+  <!-- Ground fill -->
+  <rect class="trunk" x="0" y="82" width="800" height="18"/>
+
+  <!-- Tree cluster 1: Dense conifers (left) -->
+  <polygon class="tree" points="20,82 28,38 36,82"/>
+  <polygon class="tree" points="30,82 40,28 50,82"/>
+  <polygon class="tree" points="44,82 52,42 60,82"/>
+  <polygon class="tree" points="55,82 62,32 69,82"/>
+
+  <!-- Deciduous canopy 1 -->
+  <ellipse class="tree" cx="90" cy="48" rx="18" ry="16"/>
+  <rect class="trunk" x="87" y="58" width="6" height="24"/>
+  <ellipse class="tree" cx="110" cy="44" rx="14" ry="14"/>
+  <rect class="trunk" x="108" y="54" width="5" height="28"/>
+
+  <!-- Structure silhouette 1: small pitched roof -->
+  <polygon class="tree" points="135,82 135,56 150,42 165,56 165,82"/>
+
+  <!-- Tree cluster 2: Mixed -->
+  <polygon class="tree" points="178,82 186,34 194,82"/>
+  <ellipse class="tree" cx="210" cy="46" rx="16" ry="15"/>
+  <rect class="trunk" x="207" y="56" width="6" height="26"/>
+  <polygon class="tree" points="230,82 238,24 246,82"/>
+  <polygon class="tree" points="242,82 250,36 258,82"/>
+
+  <!-- Deciduous canopy 2 -->
+  <ellipse class="tree" cx="278" cy="42" rx="20" ry="18"/>
+  <rect class="trunk" x="275" y="54" width="6" height="28"/>
+
+  <!-- Tree cluster 3: Tall conifers -->
+  <polygon class="tree" points="305,82 314,20 323,82"/>
+  <polygon class="tree" points="318,82 326,30 334,82"/>
+  <polygon class="tree" points="336,82 344,26 352,82"/>
+
+  <!-- Structure silhouette 2: steeple / tower -->
+  <polygon class="tree" points="370,82 370,50 378,34 386,50 386,82"/>
+  <rect class="tree" x="375" y="24" width="6" height="14"/>
+
+  <!-- Deciduous canopy 3 -->
+  <ellipse class="tree" cx="410" cy="46" rx="18" ry="16"/>
+  <rect class="trunk" x="407" y="56" width="6" height="26"/>
+  <ellipse class="tree" cx="435" cy="50" rx="14" ry="12"/>
+  <rect class="trunk" x="432" y="58" width="6" height="24"/>
+
+  <!-- Tree cluster 4: Dense -->
+  <polygon class="tree" points="458,82 466,28 474,82"/>
+  <polygon class="tree" points="470,82 478,36 486,82"/>
+  <polygon class="tree" points="488,82 496,22 504,82"/>
+
+  <!-- Deciduous canopy 4 -->
+  <ellipse class="tree" cx="525" cy="44" rx="16" ry="15"/>
+  <rect class="trunk" x="522" y="54" width="6" height="28"/>
+
+  <!-- Structure silhouette 3: barn / wide building -->
+  <polygon class="tree" points="548,82 548,54 560,44 572,54 572,82"/>
+
+  <!-- Tree cluster 5 -->
+  <polygon class="tree" points="590,82 598,32 606,82"/>
+  <ellipse class="tree" cx="625" cy="48" rx="18" ry="16"/>
+  <rect class="trunk" x="622" y="58" width="6" height="24"/>
+  <polygon class="tree" points="648,82 656,26 664,82"/>
+  <polygon class="tree" points="660,82 668,38 676,82"/>
+
+  <!-- Deciduous canopy 5 -->
+  <ellipse class="tree" cx="700" cy="46" rx="16" ry="14"/>
+  <rect class="trunk" x="697" y="56" width="6" height="26"/>
+
+  <!-- Tree cluster 6: Matches left edge for seamless tiling -->
+  <polygon class="tree" points="722,82 730,34 738,82"/>
+  <polygon class="tree" points="738,82 746,42 754,82"/>
+  <ellipse class="tree" cx="775" cy="48" rx="14" ry="14"/>
+  <rect class="trunk" x="772" y="58" width="6" height="24"/>
+  <polygon class="tree" points="792,82 800,38 800,82"/>
+  <polygon class="tree" points="0,82 0,42 8,82"/>
+</svg>

@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="60" viewBox="0 0 800 60">
+  <!-- Near parallax (foreground): branches, foliage wisps, railing fragments.
+       Dark monochrome on transparent — biome tinting applied at runtime.
+       Intentionally sparse — creates "looking through" framing effect.
+       Rendered with slight blur at runtime for depth-of-field illusion. -->
+  <defs>
+    <style>
+      .branch { fill: #141420; }
+      .leaf { fill: #0f0f18; opacity: 0.7; }
+      .fog { fill: #0a0a12; opacity: 0.25; }
+    </style>
+  </defs>
+
+  <!-- Left branch cluster hanging from top -->
+  <path class="branch" d="M0,0 L0,18 Q8,22 14,16 Q18,12 22,18 Q26,24 32,20 Q36,14 40,8 L40,0 Z"/>
+  <ellipse class="leaf" cx="10" cy="20" rx="8" ry="5"/>
+  <ellipse class="leaf" cx="28" cy="22" rx="6" ry="4"/>
+  <ellipse class="leaf" cx="38" cy="12" rx="5" ry="3"/>
+
+  <!-- Sparse hanging vines / foliage wisps -->
+  <path class="branch" d="M95,0 Q92,8 96,14 Q100,20 98,28" stroke="#141420" stroke-width="2" fill="none"/>
+  <ellipse class="leaf" cx="98" cy="28" rx="5" ry="3"/>
+
+  <!-- Fog / atmospheric haze strip (bottom) -->
+  <rect class="fog" x="0" y="48" width="800" height="12" rx="6"/>
+
+  <!-- Mid-left branch -->
+  <path class="branch" d="M180,0 L180,12 Q186,18 192,14 Q198,10 204,16 L204,0 Z"/>
+  <ellipse class="leaf" cx="190" cy="16" rx="7" ry="4"/>
+
+  <!-- Railing fragment (industrial / dock feel) -->
+  <rect class="branch" x="280" y="50" width="3" height="10"/>
+  <rect class="branch" x="296" y="50" width="3" height="10"/>
+  <rect class="branch" x="312" y="50" width="3" height="10"/>
+  <rect class="branch" x="280" y="50" width="35" height="2"/>
+
+  <!-- Central hanging branch cluster -->
+  <path class="branch" d="M380,0 Q376,10 382,18 Q388,26 384,34 Q380,38 386,42" stroke="#141420" stroke-width="2.5" fill="none"/>
+  <ellipse class="leaf" cx="386" cy="42" rx="6" ry="4"/>
+  <path class="branch" d="M395,0 Q398,6 394,12" stroke="#141420" stroke-width="1.5" fill="none"/>
+  <ellipse class="leaf" cx="394" cy="14" rx="4" ry="3"/>
+
+  <!-- Foliage wisps (right half) -->
+  <path class="branch" d="M500,0 L500,8 Q504,14 510,10 L510,0 Z"/>
+  <ellipse class="leaf" cx="506" cy="12" rx="5" ry="3"/>
+
+  <!-- Right branch cluster (mirror-ish of left) -->
+  <path class="branch" d="M620,0 Q616,12 622,20 Q628,28 624,36" stroke="#141420" stroke-width="2" fill="none"/>
+  <ellipse class="leaf" cx="624" cy="36" rx="6" ry="4"/>
+
+  <!-- Far-right foliage overhang — seamless with left edge -->
+  <path class="branch" d="M740,0 L740,14 Q748,20 756,16 Q764,12 770,18 Q778,24 786,18 Q794,12 800,16 L800,0 Z"/>
+  <ellipse class="leaf" cx="755" cy="18" rx="7" ry="4"/>
+  <ellipse class="leaf" cx="780" cy="20" rx="6" ry="4"/>
+</svg>

@@ -36,6 +36,7 @@ Pink Panther Pawprint Tutorial — a 10-phase scripted walkthrough on Floor 0 th
   - Position it at player's grid position (pixel coords from grid container)
   - Add CSS class `onboarding-cursor-hijack` with intermittent inverted-color flicker animation
   - Set `pointer-events: none` so it doesn't block real touches
+  - **Mobile/Touch:** On touch devices, skip cursor hijack entirely — show a finger tap icon instead at player position
 - **File:** `onboarding-tutorial.js` → `_phase3()`, CSS injected via `<style>` tag
 
 ### Phase 4: Cursor Glides to Exit Door (t=1.5s → ~3s)
@@ -45,8 +46,14 @@ Pink Panther Pawprint Tutorial — a 10-phase scripted walkthrough on Floor 0 th
 - **Implementation:**
   - Use `GoneRogueMovement.findPath(player.x, player.y, exit.x, exit.y, collisionCheck)` to get A* path
   - Animate cursor `<div>` along path waypoints using `requestAnimationFrame` + lerp
+  - **Smooth Curve Enhancement (Option A):** Apply CSS transition for easing between waypoints:
+    ```javascript
+    // Apply smooth easing via CSS transition
+    _cursorEl.style.transition = 'left 50ms ease-out, top 50ms ease-out';
+    ```
   - Speed: ~2 tiles/sec (slower than player for readability)
-  - Cursor leaves faint trail (small cyan dots at visited waypoints, CSS opacity fade)
+  - **No Trail Dots:** Smooth curve animation preferred over trail dots — the continuous motion creates a cleaner visual without discrete dots
+  - **Mobile/Touch:** Skip on mobile — use static finger icon instead of animated cursor glide
 - **File:** `onboarding-tutorial.js` → `_phase4()`
 
 ### Phase 5: Cursor Demonstrates Tap + Fishing Line (arrival at exit)
@@ -107,6 +114,48 @@ Pink Panther Pawprint Tutorial — a 10-phase scripted walkthrough on Floor 0 th
 - **Implementation:**
   - `OverheadAnimator.showGenericExpression(player.x, player.y, '!', 1200, '#ff4444')` synced to each tooltip
 - **File:** `onboarding-tutorial.js` → part of `_phase9()`
+
+---
+
+## Mobile & Touch Considerations
+
+### Desktop vs Mobile Behavior
+
+| Feature | Desktop | Mobile/Touch |
+|---------|---------|--------------|
+| Cursor hijack | ✅ Custom cursor.cur animation | ❌ Skip - use finger icon |
+| Cursor glide animation | ✅ Smooth curve with CSS easing | ❌ Skip - use static icon |
+| Trail dots | ❌ Removed - smooth curve preferred | N/A |
+| Input detection | Mouse move/click | Touch tap/drag |
+
+### Implementation Notes
+
+1. **Detect device type:**
+   ```javascript
+   var _isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+   ```
+
+2. **Mobile fallback:** Instead of cursor animation, show a static finger tap icon (👆) at player position that pulses once
+
+3. **Touch input priority:** On touch devices, the "player took control" detection should fire on first touch, immediately aborting any tutorial animations
+
+### Smooth Curve Enhancement (Option A)
+
+Instead of discrete trail dots, apply CSS transition smoothing between waypoint positions:
+
+```javascript
+// In _phase4() - smooth cursor movement
+function _positionCursor(x, y) {
+  if (!_cursorEl) return;
+  
+  // Apply easing transition for smooth curve
+  _cursorEl.style.transition = 'left 50ms ease-out, top 50ms ease-out';
+  _cursorEl.style.left = (x * cellSize) + 'px';
+  _cursorEl.style.top = (y * cellSize) + 'px';
+}
+```
+
+This creates the curved movement effect similar to the `hijackmacro.mmmacro` recording without requiring pre-computed curve data.
 
 ---
 

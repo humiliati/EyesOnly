@@ -14,6 +14,31 @@ var OnboardingTutorial = (function() {
   // ── Base64-encoded cursor.cur for the hijack overlay ──────────────
   var CURSOR_BASE64 = 'data:image/x-icon;base64,AAACAAEAICAAAAAAAACoEAAAFgAAACgAAAAgAAAAQAAAAAEAIAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQH/AQEB/wEBAf8BAQH/AQEB/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEB/////f////3////9/////f8BAQH/AQEB/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYEAv8DAgH/BgEE/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAP8GAxL/o0mg//z9///6/v7/uVLe/wACBP8BAAT/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHACf/BgAY/wIALf8CBAL/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgUD/wIGEv+jSaD//P3///79/v+5Ut7/AgEG/wIBAP8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAf8AAwD/uVLe/8+R5v8DAAT/CAMD/wAAAAAAAAAAAAAAAAEDBP8AAwL/uVLe//39///9+///eDt2/wYBCv8AAwX/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEB/3pCeP/WttW1z5Hm/zguAP8xNwD/AAAAAAAAAAACAh7/BwYB/6NJoP/8/vr//v///7lS3v8kIgD/BAEF/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAgL/ekJ4/9a21bXPkeb/uVLe/7lS3v8BAwn/SkZD/wEBGv8NBQD/o0mg//3//P/9//3/uVLe/ykrAP8GAgb/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAICAv96Qnj/1rbVtf/+////////uVLe/7lS3v+5Ut7/BwMW/7lS3v/19/////7///br//8AADX/Jysg/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEB/3pCeP/WttXe//7///7///+5Ut6wuVLesLlS3v94O3b/uVLesP3+//+5Ut6wuVLe/2YoZP8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/ekJ4/9a21d7///////////////+5Ut6wuVLe/7lS3rD+/v7/////////8f+5Ut7/AAQA/wACA/8AAQb/AQMB/wABAP8AAAL/AAAC/wAAAv8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAICAv96Qnj/1rbV3v/+//////////////3////9/v/////////////////////x/7lS3v89DU//VyZp/1cmaf9XJmn/VyZp/1cmaf9XJmn/AAIB/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgIC/3pCeP/WttXv///9//////////////////////////////////////////j/uVLe/7lS3v+5Ut7/uVLe/7lS3v+5Ut7/uVLe/7lS3v8DAQH/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQH/ekJ4/9a21e////3///////////////////////////////////////////////////////////////////////z/+/9mKGT/KR8c/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBAf96Qnj/1rbV9v///f/////////////////////////////////////////////////////////////////+/P//uVLe/2YoZP8NExX/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEB/3pCeP/WttX2///////////////////////////////////////////////////////////////////9///+/f/9//r//////6Wc9v8AAwr/AAIB/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQH/ekJ4/9a21fb///3//////////////////////////////////////////////////////9a21bW5Ut7/BAkB/wsBCf+jSaD/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAICAv96Qnj/1rbV9v7//P////////////////////////////////////////////n//P////T/eDt2hQMADv8DAwT/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgIB/3pCeP/WttX2///9////////////////////////////////////////////7/r8/wAAM/8BAQH/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADx8fP/NjEz/wAAAP8AABX/ekJ4/9a21f/////////////////////////////////////////7/7lS3m+5Ut7/AAQb/2Vicf8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEB/wEBAf/WttX/1rbV//7//P/5/vz/+fr8//////////////7/////////////////////+//6/f//o0mg/wQFAP8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/3pCeP/WttX2///////+///////////////////9//7/7fL//7lS3v8KEwL/BQcD/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/ekJ4/9a21f////3//////////f////3///79/7lS3m94O3b/AwQL/0tJTf8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP96Qnj/ekJ4/////////////v/8//79///38v//CggU/7lS3v+5Ut5vAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/3pCeP/WttX////9///////9//z/uVLeb7lS3v94O3aF1rbVtQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/ekJ4/9a21f////3////+///7//+jSaD/AAcA/9a21bUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP96Qnj/ekJ4///////0/f//uVLe/wAGEP8AAwH/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/3pCeP/WttX/z5Hm/3g7dv8BAAX/cHZz/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/ekJ4/9a21f89DU//AgQD/9a21bUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP8AAQD/AgQL/wEEAP+5Ut5vAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA///B////gP/+PwD//D8A//wOAf/8DAP//AAD//wAB//8AA///AAAH/wAAB/8AAAf/AAAP/wAAD/8AAAP/AAAf/wAAf/8AAf/4ABH/8AAH//8AB///AI///wA///8CP///AH///wD///8B////A////w///////////////////8=';
 
+  // ── Normalized swipe curve from hijackmacro.mmmacro recording ─────
+  // Pixel coords (1178,623)→(1229,680) normalized to 0→1.
+  // x > 1.0 in middle = organic overshoot arc before settling at destination.
+  var SWIPE_CURVE = [
+    {t:0.00, x:0.00, y:0.00},
+    {t:0.02, x:0.06, y:0.02},
+    {t:0.06, x:0.14, y:0.04},
+    {t:0.09, x:0.25, y:0.07},
+    {t:0.13, x:0.35, y:0.11},
+    {t:0.16, x:0.41, y:0.14},
+    {t:0.18, x:0.80, y:0.33},
+    {t:0.22, x:0.90, y:0.47},
+    {t:0.25, x:1.07, y:0.60},
+    {t:0.33, x:1.24, y:0.70},
+    {t:0.40, x:1.20, y:0.81},
+    {t:0.53, x:1.16, y:0.86},
+    {t:0.59, x:1.14, y:0.89},
+    {t:0.62, x:1.14, y:0.89},
+    {t:0.76, x:1.04, y:0.96},
+    {t:0.80, x:1.04, y:0.98},
+    {t:0.96, x:1.00, y:1.00},
+    {t:1.00, x:1.00, y:1.00}
+  ];
+  var SWIPE_DURATION = 1200; // ms — total duration of swipe animation
+
   // ── State ──────────────────────────────────────────────────────────
   var _active = false;
   var _phase = 0;
@@ -148,6 +173,53 @@ var OnboardingTutorial = (function() {
     };
   }
 
+  /**
+   * Clamp viewport pixel coords to stay within the grid container bounds.
+   * Prevents cursor/tap-ring from escaping onto the HUD frame on desktop.
+   */
+  function _clampToGrid(px, py) {
+    var container = _getGridContainer();
+    if (!container) return { px: px, py: py };
+    var rect = container.getBoundingClientRect();
+    return {
+      px: Math.max(rect.left + 4, Math.min(rect.right - 36, px)),
+      py: Math.max(rect.top + 4, Math.min(rect.bottom - 36, py))
+    };
+  }
+
+  /**
+   * Position cursor using raw viewport pixel coords (for swipe animation).
+   * Applies grid clamping to keep cursor within visible game area.
+   */
+  function _positionCursorPx(px, py) {
+    if (!_cursorEl) return;
+    var clamped = _clampToGrid(px, py);
+    _cursorEl.style.left = clamped.px + 'px';
+    _cursorEl.style.top = clamped.py + 'px';
+  }
+
+  /**
+   * Interpolate through SWIPE_CURVE at normalized time t (0→1).
+   * Returns { x, y } in normalized 0→~1 space (may exceed 1.0 during overshoot).
+   */
+  function _sampleSwipeCurve(t) {
+    if (t <= 0) return { x: SWIPE_CURVE[0].x, y: SWIPE_CURVE[0].y };
+    if (t >= 1) return { x: SWIPE_CURVE[SWIPE_CURVE.length - 1].x, y: SWIPE_CURVE[SWIPE_CURVE.length - 1].y };
+    // Find bracketing samples
+    for (var i = 0; i < SWIPE_CURVE.length - 1; i++) {
+      var s0 = SWIPE_CURVE[i];
+      var s1 = SWIPE_CURVE[i + 1];
+      if (t >= s0.t && t <= s1.t) {
+        var frac = (s1.t > s0.t) ? (t - s0.t) / (s1.t - s0.t) : 0;
+        return {
+          x: s0.x + (s1.x - s0.x) * frac,
+          y: s0.y + (s1.y - s0.y) * frac
+        };
+      }
+    }
+    return { x: 1, y: 1 };
+  }
+
   // ── Cursor overlay management ─────────────────────────────────────
   // FIX 1: Cursor now appended to document.body (escapes grid stacking context)
   function _createCursor() {
@@ -161,8 +233,9 @@ var OnboardingTutorial = (function() {
   function _positionCursor(tileX, tileY) {
     if (!_cursorEl) return;
     var pos = _gridToViewport(tileX, tileY);
-    _cursorEl.style.left = pos.px + 'px';
-    _cursorEl.style.top = pos.py + 'px';
+    var clamped = _clampToGrid(pos.px, pos.py);
+    _cursorEl.style.left = clamped.px + 'px';
+    _cursorEl.style.top = clamped.py + 'px';
   }
 
   function _removeCursor() {
@@ -190,10 +263,11 @@ var OnboardingTutorial = (function() {
   function _showTapRing(tileX, tileY) {
     var pos = _gridToViewport(tileX, tileY);
     var cellSize = _getCellSize();
+    var clamped = _clampToGrid(pos.px + cellSize / 2, pos.py + cellSize / 2);
     var ring = document.createElement('div');
     ring.className = 'onboarding-tap-ring';
-    ring.style.left = (pos.px + cellSize / 2) + 'px';
-    ring.style.top = (pos.py + cellSize / 2) + 'px';
+    ring.style.left = clamped.px + 'px';
+    ring.style.top = clamped.py + 'px';
     document.body.appendChild(ring);
     setTimeout(function() {
       if (ring.parentNode) ring.parentNode.removeChild(ring);
@@ -290,58 +364,60 @@ var OnboardingTutorial = (function() {
     _delay(_phase4, 150);   // was 250 → 40% faster
   }
 
-  /** Phase 4: Cursor glides along A* path to exit door */
+  /** Phase 4: Cursor glides along smooth swipe curve to exit door.
+   *  Uses normalized SWIPE_CURVE from recorded macro for organic arc motion
+   *  instead of tile-by-tile A* waypoint interpolation. */
   function _phase4() {
     if (_playerTookControl) return;
     _phase = 4;
-    console.log('[Onboarding] Phase 4: cursor glides to exit');
+    console.log('[Onboarding] Phase 4: smooth swipe cursor glide to exit');
 
-    if (!_path || _path.length === 0) {
-      console.warn('[Onboarding] No path to exit, skipping glide');
-      _phase5();
-      return;
+    // Compute start/end positions in viewport pixel space
+    var startPos = _gridToViewport(_ctx.player.x, _ctx.player.y);
+    var startClamped = _clampToGrid(startPos.px, startPos.py);
+    var endPos = _gridToViewport(_exitX, _exitY);
+    var endClamped = _clampToGrid(endPos.px, endPos.py);
+
+    var startPx = startClamped.px;
+    var startPy = startClamped.py;
+    var endPx = endClamped.px;
+    var endPy = endClamped.py;
+
+    // Enable CSS micro-smoothing between rAF ticks
+    if (_cursorEl) {
+      _cursorEl.style.transition = 'left 25ms ease-out, top 25ms ease-out';
     }
 
-    _cursorPathIndex = 0;
-    var glideSpeed = 3.0;   // was 2.0 — ~33% faster cursor glide
-    var lastTime = Date.now();
+    var swipeStart = Date.now();
 
-    function animateGlide() {
+    function animateSwipe() {
       if (_playerTookControl || !_active) return;
 
-      var now = Date.now();
-      var dt = (now - lastTime) / 1000;
-      lastTime = now;
+      var elapsed = Date.now() - swipeStart;
+      var t = Math.min(elapsed / SWIPE_DURATION, 1.0);
 
-      _cursorPathIndex += dt * glideSpeed;
+      // Sample the normalized swipe curve at current time fraction
+      var sample = _sampleSwipeCurve(t);
 
-      var idx = Math.floor(_cursorPathIndex);
-      if (idx >= _path.length - 1) {
-        var lastWp = _path[_path.length - 1];
-        _positionCursor(lastWp.x, lastWp.y);
-        _dropTrailDot(lastWp.x, lastWp.y);
+      // Map normalized curve coords to viewport pixel positions
+      var px = startPx + sample.x * (endPx - startPx);
+      var py = startPy + sample.y * (endPy - startPy);
+
+      _positionCursorPx(px, py);
+
+      if (t >= 1.0) {
+        // Swipe complete — disable transition before Phase 5 snap positioning
+        if (_cursorEl) {
+          _cursorEl.style.transition = '';
+        }
         _delay(_phase5, 300);
         return;
       }
 
-      var frac = _cursorPathIndex - idx;
-      var wp0 = _path[idx];
-      var wp1 = _path[idx + 1];
-      var interpX = wp0.x + (wp1.x - wp0.x) * frac;
-      var interpY = wp0.y + (wp1.y - wp0.y) * frac;
-
-      _positionCursor(interpX, interpY);
-
-      if (idx > 0 && idx !== _lastTrailIdx) {
-        _dropTrailDot(wp0.x, wp0.y);
-        _lastTrailIdx = idx;
-      }
-
-      _cursorAnimFrame = requestAnimationFrame(animateGlide);
+      _cursorAnimFrame = requestAnimationFrame(animateSwipe);
     }
 
-    var _lastTrailIdx = -1;
-    _cursorAnimFrame = requestAnimationFrame(animateGlide);
+    _cursorAnimFrame = requestAnimationFrame(animateSwipe);
   }
 
   /** Phase 5: Cursor demonstrates tap at exit + shows fishing line */

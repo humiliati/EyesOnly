@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="80" viewBox="0 0 800 80">
+  <!-- Far parallax: mountain ridge silhouette. Tile-able (left/right edges match).
+       Dark monochrome on transparent — biome tinting applied at runtime. -->
+  <defs>
+    <style>
+      .ridge { fill: #111118; }
+    </style>
+  </defs>
+  <!-- Main mountain ridge — continuous polygon, left edge matches right edge for seamless tiling -->
+  <polygon class="ridge" points="
+    0,80
+    0,52
+    18,48
+    35,36
+    52,40
+    68,28
+    82,32
+    95,20
+    110,24
+    125,30
+    138,18
+    155,22
+    170,14
+    185,20
+    198,26
+    215,16
+    230,22
+    248,12
+    265,18
+    280,24
+    295,10
+    312,16
+    328,22
+    345,8
+    360,14
+    378,20
+    392,12
+    408,18
+    425,6
+    440,14
+    458,22
+    472,16
+    488,10
+    505,18
+    520,24
+    535,14
+    552,20
+    568,8
+    585,16
+    600,22
+    618,12
+    632,18
+    648,26
+    665,16
+    680,22
+    695,14
+    712,20
+    728,28
+    742,18
+    758,24
+    772,32
+    788,26
+    800,52
+    800,80
+  "/>
+  <!-- Secondary lower ridge for depth layering -->
+  <polygon style="fill: #0a0a10; opacity: 0.6;" points="
+    0,80
+    0,62
+    25,58
+    50,50
+    75,54
+    100,46
+    130,50
+    160,42
+    190,48
+    220,44
+    250,38
+    280,44
+    310,40
+    340,36
+    370,42
+    400,38
+    430,44
+    460,36
+    490,42
+    520,46
+    550,40
+    580,44
+    610,38
+    640,44
+    670,48
+    700,42
+    730,48
+    760,54
+    800,62
+    800,80
+  "/>
+</svg>

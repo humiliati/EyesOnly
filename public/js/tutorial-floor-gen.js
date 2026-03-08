@@ -494,12 +494,13 @@ var TutorialFloorGen = (function() {
       var pseudoRooms = [{ x: 1, y: 1, width: ctx.GRID_WIDTH - 2, height: ctx.GRID_HEIGHT - 2 }];
       LightingSystem.generateBiomeLights(ctx.GRID_WIDTH, ctx.GRID_HEIGHT, pseudoRooms, walls);
 
-      // Guarantee light sources near player spawn and exit for visibility.
-      // Place the exit light ADJACENT to the door (not on it) so it doesn't cover the door emoji.
-      LightingSystem.addLightSource(ctx.player.x, ctx.player.y, 'CAMPFIRE');
+      // UTILITY LIGHTS: invisible, non-interactive — purely for illumination near key landmarks.
+      // Player spawn light: ensures player isn't in total darkness.
+      LightingSystem.addLightSource(ctx.player.x, ctx.player.y, 'CAMPFIRE', null, false, false, 'utility');
+      // Exit door light: placed ADJACENT to the door so it doesn't cover the door emoji.
       var exitLightX = (exitX + 1 < ctx.GRID_WIDTH - 1) ? exitX + 1 : exitX - 1;
       var exitLightY = exitY;
-      LightingSystem.addLightSource(exitLightX, exitLightY, 'LIGHT_BULB');
+      LightingSystem.addLightSource(exitLightX, exitLightY, 'LIGHT_BULB', null, false, false, 'utility');
 
       // Always include player/enemy lights
       ctx.updatePlayerLight();

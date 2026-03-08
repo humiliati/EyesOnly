@@ -507,18 +507,30 @@ const LightingSystem = (function() {
   }
 
   /**
-   * Add a light source to the world
+   * Add a light source to the world.
+   *
+   * LIGHTING CONTRACT (2026-03-07):
+   *   purpose: 'ambient'  — randomly placed for atmosphere. Emoji VISIBLE, INTERACTIVE (breakable if hp > 0).
+   *   purpose: 'utility'  — engine-placed near doors, exits, gates, spawn points. Emoji HIDDEN, NON-INTERACTIVE.
+   *
+   * Legacy callers that omit purpose/visible/interactive default to the old probabilistic behaviour
+   * so nothing breaks during transition.
+   *
    * @param {number} x - X position
    * @param {number} y - Y position
    * @param {string} type - Light source type from LIGHT_SOURCES
    * @param {string} direction - Optional direction for directional lights (north, south, east, west)
    * @param {boolean} visible - Optional flag for whether emoji should be rendered
    * @param {boolean} interactive - Optional flag for whether light is breakable/interactive
+   * @param {string} purpose - 'ambient' | 'utility' (default: inferred from visible/interactive for legacy compat)
    */
-  function addLightSource(x, y, type, direction, visible, interactive) {
+  function addLightSource(x, y, type, direction, visible, interactive, purpose) {
     if (!LIGHT_SOURCES[type]) {
       return;
     }
+
+    // Infer purpose from explicit flag or fall back to legacy defaults
+    var resolvedPurpose = purpose || ((visible === false && interactive === false) ? 'utility' : null);
 
     _lightSources.push({
       x: x,
@@ -527,7 +539,8 @@ const LightingSystem = (function() {
       direction: direction || null,
       flickerPhase: Math.random() * Math.PI * 2, // Random starting phase
       visible: visible !== false, // Default true if not specified
-      interactive: interactive || false
+      interactive: interactive || false,
+      purpose: resolvedPurpose || 'legacy' // Track origin for debugging
     });
   }
 
@@ -901,12 +914,16 @@ const LightingSystem = (function() {
       availableRooms.splice(idx, 1);
     }
 
-    // Get configuration values
-    var visibleChance = _getVisibleChance();
-    var interactiveShare = 0.25; // Default
-    if (_config && _config.progression && _config.progression.enabled && _config.progression.interactiveShareByFloor) {
-      interactiveShare = _calculateProgression(_config.progression.interactiveShareByFloor, _currentFloor);
-    }
+    // ── LIGHTING CONTRACT (2026-03-07) ──
+    // All ambient lights spawned by generateBiomeLights are:
+    //   visible: true   — their emoji renders on the map
+    //   interactive: true — they are breakable/smotherable (if their type has hp > 0)
+    //   purpose: 'ambient'
+    //
+    // Lights that should be invisible engine utilities (doors, exits, spawn highlights)
+    // are added separately by their respective systems with purpose='utility'.
+    //
+    // The old probabilistic visibility/interactivity system is replaced by this contract.
 
     // Place lights in selected rooms
     roomsToLight.forEach(function(room) {
@@ -918,7 +935,7 @@ const LightingSystem = (function() {
         // Pick random light source type from biome's available types
         var lightType = lightSourceTypes[Math.floor(Math.random() * lightSourceTypes.length)];
 
-        // Find valid position in room (not on wall)
+        // Find valid position in room (not on wall, not on occupied tile)
         var attempts = 0;
         var validPos = false;
         var lx, ly;
@@ -929,32 +946,21 @@ const LightingSystem = (function() {
 
           // Check if position is not a wall
           var isWall = walls.some(function(w) { return w.x === lx && w.y === ly; });
-          if (!isWall) {
-            validPos = true;
+          if (isWall) { attempts++; continue; }
+
+          // Skip tiles occupied by doors, exits, NPCs, enemies, etc.
+          if (grid && _shouldHideEmojiForOccupancy(lx, ly, grid)) {
+            attempts++;
+            continue;
           }
+
+          validPos = true;
           attempts++;
         }
 
         if (validPos) {
-          // Determine if this light is interactive/breakable
-          var isInteractive = Math.random() < interactiveShare;
-
-          // Determine if emoji should be visible
-          var shouldBeVisible = Math.random() < visibleChance;
-
-          // Apply interactive multiplier to visible chance
-          if (isInteractive && _config && _config.interactiveLights && _config.interactiveLights.visibleChanceMultiplier) {
-            shouldBeVisible = Math.random() < (visibleChance * _config.interactiveLights.visibleChanceMultiplier);
-          }
-
-          // Check for occupancy-based hiding (requires grid data)
-          if (shouldBeVisible && grid) {
-            if (_shouldHideEmojiForOccupancy(lx, ly, grid)) {
-              shouldBeVisible = false;
-            }
-          }
-
-          addLightSource(lx, ly, lightType, null, shouldBeVisible, isInteractive);
+          // AMBIENT CONTRACT: all biome-generated lights are visible + interactive
+          addLightSource(lx, ly, lightType, null, true, true, 'ambient');
         }
       }
     });
@@ -1010,7 +1016,12 @@ const LightingSystem = (function() {
         var layer = isBulb ? bulbLayer : defaultLayer;
         var visible = source.visible;
 
-        // Runtime occupancy check if grid provided
+        // LIGHTING CONTRACT: utility lights are always invisible (belt-and-suspenders)
+        if (source.purpose === 'utility') {
+          visible = false;
+        }
+
+        // Runtime occupancy check if grid provided (ambient lights near doors, etc.)
         if (visible && grid && bulbHideIfOccupied && isBulb) {
           if (_shouldHideEmojiForOccupancy(source.x, source.y, grid)) {
             visible = false;
@@ -1027,6 +1038,7 @@ const LightingSystem = (function() {
           flickerPhase: source.flickerPhase,
           visible: visible,
           interactive: source.interactive,
+          purpose: source.purpose || 'legacy',
           isBulb: isBulb,
           layer: layer,
           opacity: defaultOpacity

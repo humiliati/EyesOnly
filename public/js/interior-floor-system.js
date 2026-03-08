@@ -303,7 +303,8 @@ var InteriorFloorSystem = (function() {
         ctx.rebuildWallCache();
         var pseudoRooms = [{ x: 1, y: 1, width: ctx.GRID_WIDTH - 2, height: ctx.GRID_HEIGHT - 2 }];
         LightingSystem.generateBiomeLights(ctx.GRID_WIDTH, ctx.GRID_HEIGHT, pseudoRooms, ctx.getWallCache());
-        LightingSystem.addLightSource(ctx.player.x, ctx.player.y, 'CAMPFIRE');
+        // UTILITY LIGHT: invisible, non-interactive — ensures player spawn is illuminated.
+        LightingSystem.addLightSource(ctx.player.x, ctx.player.y, 'CAMPFIRE', null, false, false, 'utility');
         ctx.updatePlayerLight();
         LightingSystem.updateLightMap(ctx.GRID_WIDTH, ctx.GRID_HEIGHT, ctx.getAllLightBlockers(ctx.getWallCache()));
       }

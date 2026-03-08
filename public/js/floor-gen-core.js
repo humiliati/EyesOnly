@@ -306,12 +306,17 @@ var FloorGenCore = (function() {
       LightingSystem.generateBiomeLights(ctx.GRID_WIDTH, ctx.GRID_HEIGHT, rooms, walls, ctx.grid);
       ctx.updatePlayerLight();
 
-      // Register interactive/breakable light sources as breakables
+      // ── LIGHTING CONTRACT (2026-03-07) ──
+      // Register ambient light sources as breakables.
+      // Only purpose='ambient' lights become breakable (these have visible emoji + interactive=true).
+      // Utility lights (doors, exits, spawn highlights) are invisible and never breakable.
       var lightingConfig = LightingSystem.getConfig();
       if (lightingConfig && lightingConfig.interactiveLights && lightingConfig.interactiveLights.enabled) {
         var lightSources = LightingSystem.getLightSources();
         for (var i = 0; i < lightSources.length; i++) {
           var lightSource = lightSources[i];
+          // Only ambient lights are interactive — utility lights are invisible engine helpers
+          if (lightSource.purpose === 'utility') continue;
           if (lightSource.interactive) {
             var breakableProps = LightingSystem.getBreakableProps(lightSource.type);
             if (breakableProps && breakableProps.hp > 0) {
@@ -337,7 +342,7 @@ var FloorGenCore = (function() {
             }
           }
         }
-        console.log('[Lighting] Registered', ctx.breakables.filter(function(b) { return b.isLightSource; }).length, 'interactive light sources as breakables');
+        console.log('[Lighting] Registered', ctx.breakables.filter(function(b) { return b.isLightSource; }).length, 'ambient breakable light sources (utility lights excluded)');
       }
 
       // Update enemy lights

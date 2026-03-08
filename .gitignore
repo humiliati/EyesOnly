@@ -8,6 +8,7 @@ desktop.ini
 *.swo
 *~
 .vscode/
+.vs/
 .idea/
 
 # Claude Code

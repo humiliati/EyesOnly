@@ -43,6 +43,7 @@ This is a short, living TODO list tracking bugs, blockers, and next actions.
 - [x] ~~**Phase C loot-spill-system.js**~~ — Player death scatter implemented in `death-exit-system.js _scatterPlayerInventory()`: drops equipped hand, backup deck, ammo, battery, and 50% currency via LootSpillSystem. Remaining: `_deathDrop` visual rendering (broken card art), food emoji tracking/drops, death animation cascade.
 - [x] ~~**Food consumption history + ground-effect interactions**~~ — Implemented: GAMESTATE ring buffer (`recentFood[]`, max 5, 20-step duration) tracks inert food consumption. New `food-ground-interaction.js` module checks food×ground-effect matrix when player steps on tiles. One-shot: food consumed from buffer on first matching interaction. 5 inert foods with interactions: Water→FIRE/OIL_IGNITED (fire immunity 2 steps), Honey→OIL (oil spread), Juice→CONDUCTIVE (shock immunity 3 steps), Candy→SODA_SPILL (soda spread), Dango→ICE (melt to water). Fire/shock immunity guards in both `ground-effects-system.js` and `game-tick-system.js` DOT sections. Tooltip-only feedback, no HUD elements.
 - [ ] **Shop system manual testing** — Testing checklist in `SHOP_SYSTEM_COMPLETE.md` has unchecked items.
+- [x] ~~**Lighting contract: utility vs ambient lights**~~ — Fixed: Implemented `purpose` field on all light sources (`'ambient'` | `'utility'` | `'legacy'`). Ambient lights (biome-generated) are always visible + interactive/breakable (if hp > 0). Utility lights (doors, exits, gates, spawn highlights) are invisible + non-interactive — purely for illumination. Replaced old probabilistic visibility system (20-45% visible, 25-70% interactive) with deterministic contract. Updated: `lighting-system.js` (addLightSource 7-param, generateBiomeLights, getLightSourcePositions), `floor-gen-core.js` (breakable registration), `tutorial-floor-gen.js`, `biome-gate-system.js`, `interior-floor-system.js` (all utility callers).
 
 ---
 
@@ -71,3 +72,13 @@ The following are tracked in the unified roadmap ([WORLD_BUILDING_ENGINE_ROADMAP
 | NPC-E | Vulnerability systems | Tier 4 |
 
 See roadmap for full dependency graph and execution order.
+
+Paper Terraria visual/rendering work tracked in [PAPER_TERRARIA_ALIGNED_ROADMAP.md](./PAPER_TERRARIA_ALIGNED_ROADMAP.md):
+
+| Sprint | Focus | Status |
+|--------|-------|--------|
+| 1 | Shadow polygon casting (Phase 1.3) | ⬜ |
+| 2 | Paper Mario perspective + parallax (Phase 2.3) | ⬜ Assets generated |
+| 3 | Light orbs + twinkle polish (Phases 3.1-3.2) | ⬜ |
+| 4 | Lighting cache + adaptive FPS (Phase 5) | ⬜ |
+| 5 | Test pages + validation | ⬜ |

@@ -199,8 +199,9 @@ var BiomeGateSystem = (function () {
 
     EnvironmentalSynergy.registerGate({ x: gateX, y: gateY, type: gateType });
 
+    // UTILITY LIGHT: invisible, non-interactive — highlights the gate location without covering the gate emoji.
     if (gateDef.glowColor && typeof LightingSystem !== 'undefined') {
-      LightingSystem.addLightSource(gateX, gateY, 'TERMINAL');
+      LightingSystem.addLightSource(gateX, gateY, 'TERMINAL', null, false, false, 'utility');
     }
 
     ctx.runState.floorsSinceGate = 0;
