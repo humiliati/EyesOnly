@@ -19,9 +19,27 @@ const DRY_RUN = process.argv.includes('--dry-run');
 const OPUS_ONLY = process.argv.includes('--opus-only');
 const CLEANUP = process.argv.includes('--cleanup');
 
-function hasFFmpeg() {
-  const r = spawnSync('ffmpeg', ['-version'], { stdio: 'ignore', shell: true });
-  return r.status === 0;
+function resolveFFmpeg() {
+  if (process.env.FFMPEG_PATH) return process.env.FFMPEG_PATH;
+
+  // Try PATH first
+  let r = spawnSync('ffmpeg', ['-version'], { stdio: 'ignore', shell: false });
+  if (r.status === 0) return 'ffmpeg';
+
+  // Common Windows install locations (winget/choco/manual)
+  const candidates = [
+    'C:\\Program Files\\ffmpeg\\bin\\ffmpeg.exe',
+    'C:\\Program Files\\Gyan\\FFmpeg\\bin\\ffmpeg.exe',
+    'C:\\Program Files\\Gyan\\ffmpeg\\bin\\ffmpeg.exe',
+    'C:\\ffmpeg\\bin\\ffmpeg.exe',
+    'C:\\ProgramData\\chocolatey\\bin\\ffmpeg.exe',
+  ];
+  for (const p of candidates) {
+    r = spawnSync(p, ['-version'], { stdio: 'ignore', shell: false });
+    if (r.status === 0) return p;
+  }
+
+  return null;
 }
 
 async function walk(dir) {
@@ -57,11 +75,13 @@ function transcode(src) {
   // (we don't stat here; ffmpeg -y will overwrite anyway; keep it simple)
   console.log(`Transcoding: ${src}`);
 
-  const r1 = spawnSync('ffmpeg', ['-y', '-i', src, '-c:a', 'libopus', '-b:a', opusBitrate, '-vn', webm], { stdio: 'inherit', shell: true });
+  // IMPORTANT: do not use shell=true; it breaks on Windows paths with spaces/apostrophes.
+  const ff = globalThis.__FFMPEG__ || 'ffmpeg';
+  const r1 = spawnSync(ff, ['-y', '-i', src, '-c:a', 'libopus', '-b:a', opusBitrate, '-vn', webm], { stdio: 'inherit', shell: false });
   if (r1.status !== 0) throw new Error(`ffmpeg opus failed (${r1.status}) for ${src}`);
 
   if (!OPUS_ONLY) {
-    const r2 = spawnSync('ffmpeg', ['-y', '-i', src, '-c:a', 'libmp3lame', '-b:a', '128k', '-vn', mp3], { stdio: 'inherit', shell: true });
+    const r2 = spawnSync(ff, ['-y', '-i', src, '-c:a', 'libmp3lame', '-b:a', '128k', '-vn', mp3], { stdio: 'inherit', shell: false });
     if (r2.status !== 0) console.warn(`ffmpeg mp3 failed (${r2.status}) for ${src}`);
   }
 
@@ -74,7 +94,8 @@ function transcode(src) {
 }
 
 function rewriteManifest(manifestJson) {
-  // Only rewrite .wav -> .webm for entries that look like /audio/.../*.wav
+  // Rewrite .wav -> .webm ONLY if the .webm file exists locally.
+  // This prevents broken manifest entries when transcode fails.
   let changed = 0;
   for (const k of Object.keys(manifestJson)) {
     if (k === '_meta') continue;
@@ -82,20 +103,46 @@ function rewriteManifest(manifestJson) {
     if (!entry || typeof entry !== 'object') continue;
     const src = entry.src;
     if (typeof src === 'string' && src.toLowerCase().endsWith('.wav')) {
-      entry.src = src.slice(0, -4) + '.webm';
-      changed++;
+      const webmSrc = src.slice(0, -4) + '.webm';
+      const localWebmPath = path.join('public', webmSrc.replace(/^\//, '').split('/').join(path.sep));
+      if (DRY_RUN) {
+        // In dry-run, assume it will exist.
+        entry.src = webmSrc;
+        changed++;
+      } else {
+        try {
+          // stat() imported at top
+          // eslint-disable-next-line no-await-in-loop
+        } catch {}
+        // Use sync check via spawnSync not needed; simplest: fs stat via spawn?
+        // We'll use spawnSync in Node? Instead rely on statSync via spawn? No.
+        // We'll approximate with an existence check using spawnSync('cmd','/c','if exist').
+        const exists = spawnSync(process.platform === 'win32' ? 'cmd' : 'bash',
+          process.platform === 'win32'
+            ? ['/c', 'if', 'exist', localWebmPath, '(exit', '0)', 'else', '(exit', '1)']
+            : ['-lc', `test -f "${localWebmPath}"`],
+          { stdio: 'ignore', shell: false }).status === 0;
+        if (exists) {
+          entry.src = webmSrc;
+          changed++;
+        }
+      }
     }
   }
   return changed;
 }
 
 async function main() {
-  if (!hasFFmpeg()) {
-    console.error('ERROR: ffmpeg not found in PATH. Install it first.');
+  const FFMPEG = resolveFFmpeg();
+  if (!FFMPEG) {
+    console.error('ERROR: ffmpeg not found. Install it first or set FFMPEG_PATH.');
     console.error('  Windows (winget): winget install Gyan.FFmpeg');
     console.error('  Windows (choco):  choco install ffmpeg');
     process.exit(1);
   }
+  // Expose to transcode() via global
+  globalThis.__FFMPEG__ = FFMPEG;
+
 
   const files = (await walk(AUDIO_DIR)).sort((a, b) => a.localeCompare(b));
   console.log(`Found ${files.length} WAV files under ${AUDIO_DIR}`);

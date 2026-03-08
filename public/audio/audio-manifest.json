@@ -3,182 +3,731 @@
     "version": 1,
     "description": "Audio manifest for EYES ONLY / Gone Rogue. Maps logical sound names to WAV paths.",
     "format": "16-bit WAV (source). Future: transcode to .webm (Opus) for production.",
-    "categories": ["ui", "movement", "combat", "magic", "environment", "collectible", "creature", "music"]
+    "categories": [
+      "ui",
+      "movement",
+      "combat",
+      "magic",
+      "environment",
+      "collectible",
+      "creature",
+      "music"
+    ]
   },
-
-  "explosion_large":      { "src": "/audio/sfx/enemy_die_02.wav",       "category": "combat" },
-
-  "ui-01":                { "src": "/audio/sfx/ui_01.wav",              "category": "ui" },
-  "ui-02":                { "src": "/audio/sfx/ui_02.wav",              "category": "ui" },
-  "ui-03":                { "src": "/audio/sfx/ui_03.wav",              "category": "ui" },
-  "ui-04":                { "src": "/audio/sfx/ui_04.wav",              "category": "ui" },
-  "ui-05":                { "src": "/audio/sfx/ui_05.wav",              "category": "ui" },
-  "ui-06":                { "src": "/audio/sfx/ui_06.wav",              "category": "ui" },
-  "ui-07":                { "src": "/audio/sfx/ui_07.wav",              "category": "ui" },
-  "clock":                { "src": "/audio/sfx/clock.wav",              "category": "ui" },
-  "phone-ring":           { "src": "/audio/sfx/Phone Ring.wav",        "category": "ui" },
-
-  "ascend-1":             { "src": "/audio/sfx/Ascend 1.wav",          "category": "movement" },
-  "ascend-2":             { "src": "/audio/sfx/Ascend 2.wav",          "category": "movement" },
-  "ascend-3":             { "src": "/audio/sfx/Ascend 3.wav",          "category": "movement" },
-  "descend-1":            { "src": "/audio/sfx/Descend 1.wav",         "category": "movement" },
-  "descend-2":            { "src": "/audio/sfx/Descend 2.wav",         "category": "movement" },
-  "descend-3":            { "src": "/audio/sfx/Descend 3.wav",         "category": "movement" },
-  "jump-1":               { "src": "/audio/sfx/Jump 1.wav",            "category": "movement" },
-  "jump-2":               { "src": "/audio/sfx/Jump 2.wav",            "category": "movement" },
-  "jump-3":               { "src": "/audio/sfx/Jump 3.wav",            "category": "movement" },
-  "jump-4":               { "src": "/audio/sfx/Jump 4.wav",            "category": "movement" },
-  "jump-5":               { "src": "/audio/sfx/Jump 5.wav",            "category": "movement" },
-  "jump-6":               { "src": "/audio/sfx/Jump 6.wav",            "category": "movement" },
-  "jump-7":               { "src": "/audio/sfx/Jump 7.wav",            "category": "movement" },
-  "footsteps-1":          { "src": "/audio/sfx/footsteps_01.wav",      "category": "movement" },
-  "footsteps-2":          { "src": "/audio/sfx/footsteps_02.wav",      "category": "movement" },
-  "footsteps-3":          { "src": "/audio/sfx/footsteps_03.wav",      "category": "movement" },
-  "footsteps-4":          { "src": "/audio/sfx/footsteps_04.wav",      "category": "movement" },
-  "cant-go-past-1":       { "src": "/audio/sfx/Can't Go Past 1.wav",   "category": "movement" },
-  "cant-go-past-2":       { "src": "/audio/sfx/Can't Go Past 2.wav",   "category": "movement" },
-  "escape":               { "src": "/audio/sfx/escape.wav",            "category": "movement" },
-
-  "hit-1":                { "src": "/audio/sfx/Hit 1.wav",             "category": "combat" },
-  "hit-2":                { "src": "/audio/sfx/Hit 2.wav",             "category": "combat" },
-  "hit-3":                { "src": "/audio/sfx/Hit 3.wav",             "category": "combat" },
-  "hit-4":                { "src": "/audio/sfx/Hit 4.wav",             "category": "combat" },
-  "attack-1":             { "src": "/audio/sfx/attack_01.wav",         "category": "combat" },
-  "attack-2":             { "src": "/audio/sfx/attack_02.wav",         "category": "combat" },
-  "attack-3":             { "src": "/audio/sfx/attack_03.wav",         "category": "combat" },
-  "attack-4":             { "src": "/audio/sfx/attack_04.wav",         "category": "combat" },
-  "attack-5":             { "src": "/audio/sfx/attack_05.wav",         "category": "combat" },
-  "attack-miss":          { "src": "/audio/sfx/attack miss.wav",       "category": "combat" },
-  "low-attack-1":         { "src": "/audio/sfx/low_attack.wav",        "category": "combat" },
-  "low-attack-2":         { "src": "/audio/sfx/low_attack_02.wav",     "category": "combat" },
-  "low-attack-3":         { "src": "/audio/sfx/low_attack_03.wav",     "category": "combat" },
-  "impact-1":             { "src": "/audio/sfx/impact_01.wav",         "category": "combat" },
-  "impact-2":             { "src": "/audio/sfx/impact_02.wav",         "category": "combat" },
-  "impact-3":             { "src": "/audio/sfx/impact_03.wav",         "category": "combat" },
-  "impact-4":             { "src": "/audio/sfx/impact_04.wav",         "category": "combat" },
-  "weapon-1":             { "src": "/audio/sfx/Weapon 1.wav",          "category": "combat" },
-  "weapon-2":             { "src": "/audio/sfx/Weapon 2.wav",          "category": "combat" },
-  "weapon-3":             { "src": "/audio/sfx/Weapon 3.wav",          "category": "combat" },
-  "weapon-4":             { "src": "/audio/sfx/Weapon 4.wav",          "category": "combat" },
-  "weapon-5":             { "src": "/audio/sfx/Weapon 5.wav",          "category": "combat" },
-  "spear-attack-1":       { "src": "/audio/sfx/spear_attack_01.wav",   "category": "combat" },
-  "spear-attack-2":       { "src": "/audio/sfx/spear_attack_02.wav",   "category": "combat" },
-  "spear-attack-3":       { "src": "/audio/sfx/spear_attack_03.wav",   "category": "combat" },
-  "spear-attack-4":       { "src": "/audio/sfx/spear_attack_04.wav",   "category": "combat" },
-  "spear-attack-5":       { "src": "/audio/sfx/spear_attack_05.wav",   "category": "combat" },
-  "sword-magic-1":        { "src": "/audio/sfx/sword_magic_01.wav",    "category": "combat" },
-  "sword-magic-2":        { "src": "/audio/sfx/sword_magic_02.wav",    "category": "combat" },
-  "sword-magic-3":        { "src": "/audio/sfx/sword_magic_03.wav",    "category": "combat" },
-  "sword-magic-4":        { "src": "/audio/sfx/sword_magic_04.wav",    "category": "combat" },
-  "sword-magic-5":        { "src": "/audio/sfx/sword_magic_05.wav",    "category": "combat" },
-  "sword-magic-6":        { "src": "/audio/sfx/sword_magic_06.wav",    "category": "combat" },
-  "enemy-1":              { "src": "/audio/sfx/Enemy 1.wav",           "category": "combat" },
-  "enemy-2":              { "src": "/audio/sfx/Enemy 2.wav",           "category": "combat" },
-  "enemy-3":              { "src": "/audio/sfx/Enemy 3.wav",           "category": "combat" },
-  "enemy-4":              { "src": "/audio/sfx/Enemy 4.wav",           "category": "combat" },
-  "enemy-5":              { "src": "/audio/sfx/Enemy 5.wav",           "category": "combat" },
-  "enemy-defeated":       { "src": "/audio/sfx/enemy defeated.wav",    "category": "combat" },
-  "enemy-die-1":          { "src": "/audio/sfx/enemy_die.wav",         "category": "combat" },
-  "enemy-die-2":          { "src": "/audio/sfx/enemy_die_02.wav",      "category": "combat" },
-
-  "magic-1":              { "src": "/audio/sfx/magic_01.wav",          "category": "magic" },
-  "magic-2":              { "src": "/audio/sfx/magic_02.wav",          "category": "magic" },
-  "magic-3":              { "src": "/audio/sfx/magic_03.wav",          "category": "magic" },
-  "magic-4":              { "src": "/audio/sfx/magic_04.wav",          "category": "magic" },
-  "magic-impact-1":       { "src": "/audio/sfx/magic_impact_01.wav",   "category": "magic" },
-  "magic-impact-2":       { "src": "/audio/sfx/magic_impact_02.wav",   "category": "magic" },
-  "magic-impact-3":       { "src": "/audio/sfx/magic_impact_03.wav",   "category": "magic" },
-  "magic-impact-4":       { "src": "/audio/sfx/magic_impact_04.wav",   "category": "magic" },
-  "dark-magic-1":         { "src": "/audio/sfx/dark_magic.wav",        "category": "magic" },
-  "dark-magic-2":         { "src": "/audio/sfx/dark_magic_02.wav",     "category": "magic" },
-  "dark-magic-3":         { "src": "/audio/sfx/dark_magic_03.wav",     "category": "magic" },
-  "earth-magic":          { "src": "/audio/sfx/earth_magic.wav",       "category": "magic" },
-  "ice-crash":            { "src": "/audio/sfx/ice crash.wav",         "category": "magic" },
-  "ice-1":                { "src": "/audio/sfx/ice_01.wav",            "category": "magic" },
-  "lightning-charge":     { "src": "/audio/sfx/lightning charge.wav",   "category": "magic" },
-  "lightning-strike":     { "src": "/audio/sfx/lightning strike.wav",   "category": "magic" },
-  "spell-charge":         { "src": "/audio/sfx/spell charge.wav",      "category": "magic" },
-  "arp-1":                { "src": "/audio/sfx/arp_01.wav",            "category": "magic" },
-  "arp-2":                { "src": "/audio/sfx/arp_02.wav",            "category": "magic" },
-  "arp-3":                { "src": "/audio/sfx/arp_03.wav",            "category": "magic" },
-  "arp-magic-1":          { "src": "/audio/sfx/arp_magic_01.wav",      "category": "magic" },
-  "particles-dark":       { "src": "/audio/sfx/particles_dark.wav",    "category": "magic" },
-
-  "water-1":              { "src": "/audio/sfx/water_01.wav",          "category": "environment" },
-  "water-2":              { "src": "/audio/sfx/water_02.wav",          "category": "environment" },
-  "water-3":              { "src": "/audio/sfx/water_03.wav",          "category": "environment" },
-  "metal-drop":           { "src": "/audio/sfx/metal_drop.wav",        "category": "environment" },
-  "metal-hit-1":          { "src": "/audio/sfx/metal_hit_01.wav",      "category": "environment" },
-  "metal-hit-2":          { "src": "/audio/sfx/metal_hit_02.wav",      "category": "environment" },
-  "metal-swing":          { "src": "/audio/sfx/metal_swing.wav",       "category": "environment" },
-  "wood":                 { "src": "/audio/sfx/wood.wav",              "category": "environment" },
-  "wood-creak":           { "src": "/audio/sfx/wood_creak.wav",        "category": "environment" },
-  "whoosh-1":             { "src": "/audio/sfx/whoosh.wav",            "category": "environment" },
-  "whoosh-2":             { "src": "/audio/sfx/whoosh_02.wav",         "category": "environment" },
-  "tornado":              { "src": "/audio/sfx/tornado.wav",           "category": "environment" },
-  "rumble-1":             { "src": "/audio/sfx/rumble_01.wav",         "category": "environment" },
-  "rustle":               { "src": "/audio/sfx/rustle.wav",            "category": "environment" },
-  "cord":                 { "src": "/audio/sfx/cord.wav",              "category": "environment" },
-  "tense-cord":           { "src": "/audio/sfx/tense_cord.wav",       "category": "environment" },
-  "crunchy":              { "src": "/audio/sfx/crunchy.wav",           "category": "environment" },
-  "drop-1":               { "src": "/audio/sfx/drop_01.wav",           "category": "environment" },
-  "down-1":               { "src": "/audio/sfx/down.wav",              "category": "environment" },
-  "down-2":               { "src": "/audio/sfx/down_02.wav",           "category": "environment" },
-  "downdown":             { "src": "/audio/sfx/downdown.wav",          "category": "environment" },
-  "scifi-1":              { "src": "/audio/sfx/scifi.wav",             "category": "environment" },
-  "scifi-2":              { "src": "/audio/sfx/scifi_02.wav",          "category": "environment" },
-  "wobble-1":             { "src": "/audio/sfx/wobble_01.wav",         "category": "environment" },
-  "weird":                { "src": "/audio/sfx/weird.wav",             "category": "environment" },
-  "red-rose":             { "src": "/audio/sfx/red rose.wav",          "category": "environment" },
-  "random":               { "src": "/audio/sfx/random.wav",            "category": "environment" },
-  "woopoo":               { "src": "/audio/sfx/woopoo.wav",            "category": "environment" },
-  "confuse":              { "src": "/audio/sfx/confuse.wav",           "category": "environment" },
-
-  "coin-1":               { "src": "/audio/sfx/Coin 1.wav",            "category": "collectible" },
-  "coin-2":               { "src": "/audio/sfx/Coin 2.wav",            "category": "collectible" },
-  "grab-item-1":          { "src": "/audio/sfx/grab_item_01.wav",      "category": "collectible" },
-  "grab-item-2":          { "src": "/audio/sfx/grab_item_02.wav",      "category": "collectible" },
-  "power-up-1":           { "src": "/audio/sfx/Power Up 1.wav",        "category": "collectible" },
-  "power-up-2":           { "src": "/audio/sfx/Power Up 2.wav",        "category": "collectible" },
-  "power-up-3":           { "src": "/audio/sfx/Power Up 3.wav",        "category": "collectible" },
-  "potion-1":             { "src": "/audio/sfx/potion_01.wav",         "category": "collectible" },
-  "success-1":            { "src": "/audio/sfx/Success 1.wav",         "category": "collectible" },
-  "success-2":            { "src": "/audio/sfx/Success 2.wav",         "category": "collectible" },
-  "success-3":            { "src": "/audio/sfx/Success 3.wav",         "category": "collectible" },
-  "success-4":            { "src": "/audio/sfx/Success 4.wav",         "category": "collectible" },
-  "success-4.5":          { "src": "/audio/sfx/Success 4.5.wav",       "category": "collectible" },
-  "misc-1":               { "src": "/audio/sfx/Misc 1.wav",            "category": "collectible" },
-  "misc-2":               { "src": "/audio/sfx/Misc 2.wav",            "category": "collectible" },
-  "misc-3":               { "src": "/audio/sfx/Misc 3.wav",            "category": "collectible" },
-  "misc-4":               { "src": "/audio/sfx/Misc 4.wav",            "category": "collectible" },
-  "misc-5":               { "src": "/audio/sfx/Misc 5.wav",            "category": "collectible" },
-  "misc-6":               { "src": "/audio/sfx/Misc 6.wav",            "category": "collectible" },
-  "misc-7":               { "src": "/audio/sfx/Misc 7.wav",            "category": "collectible" },
-  "misc-8":               { "src": "/audio/sfx/Misc 8.wav",            "category": "collectible" },
-  "lullaby":              { "src": "/audio/sfx/lullaby.wav",           "category": "collectible" },
-  "game-over-1":          { "src": "/audio/sfx/Game Over 1.wav",       "category": "collectible" },
-  "game-over-2":          { "src": "/audio/sfx/Game Over 2.wav",       "category": "collectible" },
-
-  "kitty-1":              { "src": "/audio/sfx/kitty_01.wav",          "category": "creature" },
-  "kitty-2":              { "src": "/audio/sfx/kitty_02.wav",          "category": "creature" },
-  "kitty-3":              { "src": "/audio/sfx/kitty_03.wav",          "category": "creature" },
-  "toad":                 { "src": "/audio/sfx/toad.wav",              "category": "creature" },
-  "voice":                { "src": "/audio/sfx/voice.wav",             "category": "creature" },
-
-  "music-82nd-all-the-way":   { "src": "/audio/music/82ND_ALL_THE_WAY.wav",          "category": "music", "loop": true, "title": "82nd All the Way",      "artist": "Sabaton" },
-  "music-cave":                { "src": "/audio/music/CAVE_MUSIC.wav",                "category": "music", "loop": true, "title": "Cave",                  "artist": "" },
-  "music-church-catacombs":    { "src": "/audio/music/CHURCH_CATACOMBS_MUSIC.wav",    "category": "music", "loop": true, "title": "Church Catacombs",       "artist": "" },
-  "music-clubbed-to-death":    { "src": "/audio/music/CLUBBED_TO_DEATH.wav",          "category": "music", "loop": true, "title": "Clubbed to Death",       "artist": "Rob Dougan" },
-  "music-death-exit":          { "src": "/audio/music/DEATH_MUSIC_EXIT.wav",          "category": "music", "loop": false, "title": "Death Exit",            "artist": "" },
-  "music-default-interior":    { "src": "/audio/music/DEFAULT_INTERIOR_MUSIC.wav",    "category": "music", "loop": true, "title": "Interior",               "artist": "" },
-  "music-exterior":            { "src": "/audio/music/EXTERIOR_MUSIC.wav",            "category": "music", "loop": true, "title": "Exterior",               "artist": "" },
-  "music-exterior-night":      { "src": "/audio/music/EXTERIOR_MUSIC_NIGHT.wav",      "category": "music", "loop": true, "title": "Exterior (Night)",       "artist": "" },
-  "music-forest":              { "src": "/audio/music/FOREST_MUSIC.wav",              "category": "music", "loop": true, "title": "Forest",                 "artist": "" },
-  "music-industrial":          { "src": "/audio/music/INDUSTRIAL_MUSIC.wav",          "category": "music", "loop": true, "title": "Industrial",             "artist": "" },
-  "music-junkyard":            { "src": "/audio/music/JUNKYARD_MUSIC.wav",            "category": "music", "loop": true, "title": "Junkyard",               "artist": "" },
-  "music-mall":                { "src": "/audio/music/MALL_MUSIC.wav",                "category": "music", "loop": true, "title": "Mall",                   "artist": "" },
-  "music-office":              { "src": "/audio/music/OFFICE_MUSIC.wav",              "category": "music", "loop": true, "title": "Office",                 "artist": "" },
-  "music-paranoid-android":    { "src": "/audio/music/PARANOID_ANDROID.wav",          "category": "music", "loop": true, "title": "Paranoid Android",       "artist": "Radiohead" },
-  "music-pink-panther":        { "src": "/audio/music/PINK_PANTHER.wav",              "category": "music", "loop": true, "title": "The Pink Panther Theme", "artist": "Henry Mancini" },
-  "music-shop":                { "src": "/audio/music/SHOP_MUSIC.wav",                "category": "music", "loop": true, "title": "Shop",                   "artist": "" }
+  "explosion_large": {
+    "src": "/audio/sfx/enemy_die_02.webm",
+    "category": "combat"
+  },
+  "ui-01": {
+    "src": "/audio/sfx/ui_01.webm",
+    "category": "ui"
+  },
+  "ui-02": {
+    "src": "/audio/sfx/ui_02.webm",
+    "category": "ui"
+  },
+  "ui-03": {
+    "src": "/audio/sfx/ui_03.webm",
+    "category": "ui"
+  },
+  "ui-04": {
+    "src": "/audio/sfx/ui_04.webm",
+    "category": "ui"
+  },
+  "ui-05": {
+    "src": "/audio/sfx/ui_05.webm",
+    "category": "ui"
+  },
+  "ui-06": {
+    "src": "/audio/sfx/ui_06.webm",
+    "category": "ui"
+  },
+  "ui-07": {
+    "src": "/audio/sfx/ui_07.webm",
+    "category": "ui"
+  },
+  "clock": {
+    "src": "/audio/sfx/clock.webm",
+    "category": "ui"
+  },
+  "phone-ring": {
+    "src": "/audio/sfx/Phone Ring.webm",
+    "category": "ui"
+  },
+  "ascend-1": {
+    "src": "/audio/sfx/Ascend 1.webm",
+    "category": "movement"
+  },
+  "ascend-2": {
+    "src": "/audio/sfx/Ascend 2.webm",
+    "category": "movement"
+  },
+  "ascend-3": {
+    "src": "/audio/sfx/Ascend 3.webm",
+    "category": "movement"
+  },
+  "descend-1": {
+    "src": "/audio/sfx/Descend 1.webm",
+    "category": "movement"
+  },
+  "descend-2": {
+    "src": "/audio/sfx/Descend 2.webm",
+    "category": "movement"
+  },
+  "descend-3": {
+    "src": "/audio/sfx/Descend 3.webm",
+    "category": "movement"
+  },
+  "jump-1": {
+    "src": "/audio/sfx/Jump 1.webm",
+    "category": "movement"
+  },
+  "jump-2": {
+    "src": "/audio/sfx/Jump 2.webm",
+    "category": "movement"
+  },
+  "jump-3": {
+    "src": "/audio/sfx/Jump 3.webm",
+    "category": "movement"
+  },
+  "jump-4": {
+    "src": "/audio/sfx/Jump 4.webm",
+    "category": "movement"
+  },
+  "jump-5": {
+    "src": "/audio/sfx/Jump 5.webm",
+    "category": "movement"
+  },
+  "jump-6": {
+    "src": "/audio/sfx/Jump 6.webm",
+    "category": "movement"
+  },
+  "jump-7": {
+    "src": "/audio/sfx/Jump 7.webm",
+    "category": "movement"
+  },
+  "footsteps-1": {
+    "src": "/audio/sfx/footsteps_01.webm",
+    "category": "movement"
+  },
+  "footsteps-2": {
+    "src": "/audio/sfx/footsteps_02.webm",
+    "category": "movement"
+  },
+  "footsteps-3": {
+    "src": "/audio/sfx/footsteps_03.webm",
+    "category": "movement"
+  },
+  "footsteps-4": {
+    "src": "/audio/sfx/footsteps_04.webm",
+    "category": "movement"
+  },
+  "cant-go-past-1": {
+    "src": "/audio/sfx/Can't Go Past 1.webm",
+    "category": "movement"
+  },
+  "cant-go-past-2": {
+    "src": "/audio/sfx/Can't Go Past 2.webm",
+    "category": "movement"
+  },
+  "escape": {
+    "src": "/audio/sfx/escape.webm",
+    "category": "movement"
+  },
+  "hit-1": {
+    "src": "/audio/sfx/Hit 1.webm",
+    "category": "combat"
+  },
+  "hit-2": {
+    "src": "/audio/sfx/Hit 2.webm",
+    "category": "combat"
+  },
+  "hit-3": {
+    "src": "/audio/sfx/Hit 3.webm",
+    "category": "combat"
+  },
+  "hit-4": {
+    "src": "/audio/sfx/Hit 4.webm",
+    "category": "combat"
+  },
+  "attack-1": {
+    "src": "/audio/sfx/attack_01.webm",
+    "category": "combat"
+  },
+  "attack-2": {
+    "src": "/audio/sfx/attack_02.webm",
+    "category": "combat"
+  },
+  "attack-3": {
+    "src": "/audio/sfx/attack_03.webm",
+    "category": "combat"
+  },
+  "attack-4": {
+    "src": "/audio/sfx/attack_04.webm",
+    "category": "combat"
+  },
+  "attack-5": {
+    "src": "/audio/sfx/attack_05.webm",
+    "category": "combat"
+  },
+  "attack-miss": {
+    "src": "/audio/sfx/attack miss.webm",
+    "category": "combat"
+  },
+  "low-attack-1": {
+    "src": "/audio/sfx/low_attack.webm",
+    "category": "combat"
+  },
+  "low-attack-2": {
+    "src": "/audio/sfx/low_attack_02.webm",
+    "category": "combat"
+  },
+  "low-attack-3": {
+    "src": "/audio/sfx/low_attack_03.webm",
+    "category": "combat"
+  },
+  "impact-1": {
+    "src": "/audio/sfx/impact_01.webm",
+    "category": "combat"
+  },
+  "impact-2": {
+    "src": "/audio/sfx/impact_02.webm",
+    "category": "combat"
+  },
+  "impact-3": {
+    "src": "/audio/sfx/impact_03.webm",
+    "category": "combat"
+  },
+  "impact-4": {
+    "src": "/audio/sfx/impact_04.webm",
+    "category": "combat"
+  },
+  "weapon-1": {
+    "src": "/audio/sfx/Weapon 1.webm",
+    "category": "combat"
+  },
+  "weapon-2": {
+    "src": "/audio/sfx/Weapon 2.webm",
+    "category": "combat"
+  },
+  "weapon-3": {
+    "src": "/audio/sfx/Weapon 3.webm",
+    "category": "combat"
+  },
+  "weapon-4": {
+    "src": "/audio/sfx/Weapon 4.webm",
+    "category": "combat"
+  },
+  "weapon-5": {
+    "src": "/audio/sfx/Weapon 5.webm",
+    "category": "combat"
+  },
+  "spear-attack-1": {
+    "src": "/audio/sfx/spear_attack_01.webm",
+    "category": "combat"
+  },
+  "spear-attack-2": {
+    "src": "/audio/sfx/spear_attack_02.webm",
+    "category": "combat"
+  },
+  "spear-attack-3": {
+    "src": "/audio/sfx/spear_attack_03.webm",
+    "category": "combat"
+  },
+  "spear-attack-4": {
+    "src": "/audio/sfx/spear_attack_04.webm",
+    "category": "combat"
+  },
+  "spear-attack-5": {
+    "src": "/audio/sfx/spear_attack_05.webm",
+    "category": "combat"
+  },
+  "sword-magic-1": {
+    "src": "/audio/sfx/sword_magic_01.webm",
+    "category": "combat"
+  },
+  "sword-magic-2": {
+    "src": "/audio/sfx/sword_magic_02.webm",
+    "category": "combat"
+  },
+  "sword-magic-3": {
+    "src": "/audio/sfx/sword_magic_03.webm",
+    "category": "combat"
+  },
+  "sword-magic-4": {
+    "src": "/audio/sfx/sword_magic_04.webm",
+    "category": "combat"
+  },
+  "sword-magic-5": {
+    "src": "/audio/sfx/sword_magic_05.webm",
+    "category": "combat"
+  },
+  "sword-magic-6": {
+    "src": "/audio/sfx/sword_magic_06.webm",
+    "category": "combat"
+  },
+  "enemy-1": {
+    "src": "/audio/sfx/Enemy 1.webm",
+    "category": "combat"
+  },
+  "enemy-2": {
+    "src": "/audio/sfx/Enemy 2.webm",
+    "category": "combat"
+  },
+  "enemy-3": {
+    "src": "/audio/sfx/Enemy 3.webm",
+    "category": "combat"
+  },
+  "enemy-4": {
+    "src": "/audio/sfx/Enemy 4.webm",
+    "category": "combat"
+  },
+  "enemy-5": {
+    "src": "/audio/sfx/Enemy 5.webm",
+    "category": "combat"
+  },
+  "enemy-defeated": {
+    "src": "/audio/sfx/enemy defeated.webm",
+    "category": "combat"
+  },
+  "enemy-die-1": {
+    "src": "/audio/sfx/enemy_die.webm",
+    "category": "combat"
+  },
+  "enemy-die-2": {
+    "src": "/audio/sfx/enemy_die_02.webm",
+    "category": "combat"
+  },
+  "magic-1": {
+    "src": "/audio/sfx/magic_01.webm",
+    "category": "magic"
+  },
+  "magic-2": {
+    "src": "/audio/sfx/magic_02.webm",
+    "category": "magic"
+  },
+  "magic-3": {
+    "src": "/audio/sfx/magic_03.webm",
+    "category": "magic"
+  },
+  "magic-4": {
+    "src": "/audio/sfx/magic_04.webm",
+    "category": "magic"
+  },
+  "magic-impact-1": {
+    "src": "/audio/sfx/magic_impact_01.webm",
+    "category": "magic"
+  },
+  "magic-impact-2": {
+    "src": "/audio/sfx/magic_impact_02.webm",
+    "category": "magic"
+  },
+  "magic-impact-3": {
+    "src": "/audio/sfx/magic_impact_03.webm",
+    "category": "magic"
+  },
+  "magic-impact-4": {
+    "src": "/audio/sfx/magic_impact_04.webm",
+    "category": "magic"
+  },
+  "dark-magic-1": {
+    "src": "/audio/sfx/dark_magic.webm",
+    "category": "magic"
+  },
+  "dark-magic-2": {
+    "src": "/audio/sfx/dark_magic_02.webm",
+    "category": "magic"
+  },
+  "dark-magic-3": {
+    "src": "/audio/sfx/dark_magic_03.webm",
+    "category": "magic"
+  },
+  "earth-magic": {
+    "src": "/audio/sfx/earth_magic.webm",
+    "category": "magic"
+  },
+  "ice-crash": {
+    "src": "/audio/sfx/ice crash.webm",
+    "category": "magic"
+  },
+  "ice-1": {
+    "src": "/audio/sfx/ice_01.webm",
+    "category": "magic"
+  },
+  "lightning-charge": {
+    "src": "/audio/sfx/lightning charge.webm",
+    "category": "magic"
+  },
+  "lightning-strike": {
+    "src": "/audio/sfx/lightning strike.webm",
+    "category": "magic"
+  },
+  "spell-charge": {
+    "src": "/audio/sfx/spell charge.webm",
+    "category": "magic"
+  },
+  "arp-1": {
+    "src": "/audio/sfx/arp_01.webm",
+    "category": "magic"
+  },
+  "arp-2": {
+    "src": "/audio/sfx/arp_02.webm",
+    "category": "magic"
+  },
+  "arp-3": {
+    "src": "/audio/sfx/arp_03.webm",
+    "category": "magic"
+  },
+  "arp-magic-1": {
+    "src": "/audio/sfx/arp_magic_01.webm",
+    "category": "magic"
+  },
+  "particles-dark": {
+    "src": "/audio/sfx/particles_dark.webm",
+    "category": "magic"
+  },
+  "water-1": {
+    "src": "/audio/sfx/water_01.webm",
+    "category": "environment"
+  },
+  "water-2": {
+    "src": "/audio/sfx/water_02.webm",
+    "category": "environment"
+  },
+  "water-3": {
+    "src": "/audio/sfx/water_03.webm",
+    "category": "environment"
+  },
+  "metal-drop": {
+    "src": "/audio/sfx/metal_drop.webm",
+    "category": "environment"
+  },
+  "metal-hit-1": {
+    "src": "/audio/sfx/metal_hit_01.webm",
+    "category": "environment"
+  },
+  "metal-hit-2": {
+    "src": "/audio/sfx/metal_hit_02.webm",
+    "category": "environment"
+  },
+  "metal-swing": {
+    "src": "/audio/sfx/metal_swing.webm",
+    "category": "environment"
+  },
+  "wood": {
+    "src": "/audio/sfx/wood.webm",
+    "category": "environment"
+  },
+  "wood-creak": {
+    "src": "/audio/sfx/wood_creak.webm",
+    "category": "environment"
+  },
+  "whoosh-1": {
+    "src": "/audio/sfx/whoosh.webm",
+    "category": "environment"
+  },
+  "whoosh-2": {
+    "src": "/audio/sfx/whoosh_02.webm",
+    "category": "environment"
+  },
+  "tornado": {
+    "src": "/audio/sfx/tornado.webm",
+    "category": "environment"
+  },
+  "rumble-1": {
+    "src": "/audio/sfx/rumble_01.webm",
+    "category": "environment"
+  },
+  "rustle": {
+    "src": "/audio/sfx/rustle.webm",
+    "category": "environment"
+  },
+  "cord": {
+    "src": "/audio/sfx/cord.webm",
+    "category": "environment"
+  },
+  "tense-cord": {
+    "src": "/audio/sfx/tense_cord.webm",
+    "category": "environment"
+  },
+  "crunchy": {
+    "src": "/audio/sfx/crunchy.webm",
+    "category": "environment"
+  },
+  "drop-1": {
+    "src": "/audio/sfx/drop_01.webm",
+    "category": "environment"
+  },
+  "down-1": {
+    "src": "/audio/sfx/down.webm",
+    "category": "environment"
+  },
+  "down-2": {
+    "src": "/audio/sfx/down_02.webm",
+    "category": "environment"
+  },
+  "downdown": {
+    "src": "/audio/sfx/downdown.webm",
+    "category": "environment"
+  },
+  "scifi-1": {
+    "src": "/audio/sfx/scifi.webm",
+    "category": "environment"
+  },
+  "scifi-2": {
+    "src": "/audio/sfx/scifi_02.webm",
+    "category": "environment"
+  },
+  "wobble-1": {
+    "src": "/audio/sfx/wobble_01.webm",
+    "category": "environment"
+  },
+  "weird": {
+    "src": "/audio/sfx/weird.webm",
+    "category": "environment"
+  },
+  "red-rose": {
+    "src": "/audio/sfx/red rose.webm",
+    "category": "environment"
+  },
+  "random": {
+    "src": "/audio/sfx/random.webm",
+    "category": "environment"
+  },
+  "woopoo": {
+    "src": "/audio/sfx/woopoo.webm",
+    "category": "environment"
+  },
+  "confuse": {
+    "src": "/audio/sfx/confuse.webm",
+    "category": "environment"
+  },
+  "coin-1": {
+    "src": "/audio/sfx/Coin 1.webm",
+    "category": "collectible"
+  },
+  "coin-2": {
+    "src": "/audio/sfx/Coin 2.webm",
+    "category": "collectible"
+  },
+  "grab-item-1": {
+    "src": "/audio/sfx/grab_item_01.webm",
+    "category": "collectible"
+  },
+  "grab-item-2": {
+    "src": "/audio/sfx/grab_item_02.webm",
+    "category": "collectible"
+  },
+  "power-up-1": {
+    "src": "/audio/sfx/Power Up 1.webm",
+    "category": "collectible"
+  },
+  "power-up-2": {
+    "src": "/audio/sfx/Power Up 2.webm",
+    "category": "collectible"
+  },
+  "power-up-3": {
+    "src": "/audio/sfx/Power Up 3.webm",
+    "category": "collectible"
+  },
+  "potion-1": {
+    "src": "/audio/sfx/potion_01.webm",
+    "category": "collectible"
+  },
+  "success-1": {
+    "src": "/audio/sfx/Success 1.webm",
+    "category": "collectible"
+  },
+  "success-2": {
+    "src": "/audio/sfx/Success 2.webm",
+    "category": "collectible"
+  },
+  "success-3": {
+    "src": "/audio/sfx/Success 3.webm",
+    "category": "collectible"
+  },
+  "success-4": {
+    "src": "/audio/sfx/Success 4.webm",
+    "category": "collectible"
+  },
+  "success-4.5": {
+    "src": "/audio/sfx/Success 4.5.webm",
+    "category": "collectible"
+  },
+  "misc-1": {
+    "src": "/audio/sfx/Misc 1.webm",
+    "category": "collectible"
+  },
+  "misc-2": {
+    "src": "/audio/sfx/Misc 2.webm",
+    "category": "collectible"
+  },
+  "misc-3": {
+    "src": "/audio/sfx/Misc 3.webm",
+    "category": "collectible"
+  },
+  "misc-4": {
+    "src": "/audio/sfx/Misc 4.webm",
+    "category": "collectible"
+  },
+  "misc-5": {
+    "src": "/audio/sfx/Misc 5.webm",
+    "category": "collectible"
+  },
+  "misc-6": {
+    "src": "/audio/sfx/Misc 6.webm",
+    "category": "collectible"
+  },
+  "misc-7": {
+    "src": "/audio/sfx/Misc 7.webm",
+    "category": "collectible"
+  },
+  "misc-8": {
+    "src": "/audio/sfx/Misc 8.webm",
+    "category": "collectible"
+  },
+  "lullaby": {
+    "src": "/audio/sfx/lullaby.webm",
+    "category": "collectible"
+  },
+  "game-over-1": {
+    "src": "/audio/sfx/Game Over 1.webm",
+    "category": "collectible"
+  },
+  "game-over-2": {
+    "src": "/audio/sfx/Game Over 2.webm",
+    "category": "collectible"
+  },
+  "kitty-1": {
+    "src": "/audio/sfx/kitty_01.webm",
+    "category": "creature"
+  },
+  "kitty-2": {
+    "src": "/audio/sfx/kitty_02.webm",
+    "category": "creature"
+  },
+  "kitty-3": {
+    "src": "/audio/sfx/kitty_03.webm",
+    "category": "creature"
+  },
+  "toad": {
+    "src": "/audio/sfx/toad.webm",
+    "category": "creature"
+  },
+  "voice": {
+    "src": "/audio/sfx/voice.webm",
+    "category": "creature"
+  },
+  "music-82nd-all-the-way": {
+    "src": "/audio/music/82ND_ALL_THE_WAY.webm",
+    "category": "music",
+    "loop": true,
+    "title": "82nd All the Way",
+    "artist": "Sabaton"
+  },
+  "music-cave": {
+    "src": "/audio/music/CAVE_MUSIC.webm",
+    "category": "music",
+    "loop": true,
+    "title": "Cave",
+    "artist": ""
+  },
+  "music-church-catacombs": {
+    "src": "/audio/music/CHURCH_CATACOMBS_MUSIC.webm",
+    "category": "music",
+    "loop": true,
+    "title": "Church Catacombs",
+    "artist": ""
+  },
+  "music-clubbed-to-death": {
+    "src": "/audio/music/CLUBBED_TO_DEATH.webm",
+    "category": "music",
+    "loop": true,
+    "title": "Clubbed to Death",
+    "artist": "Rob Dougan"
+  },
+  "music-death-exit": {
+    "src": "/audio/music/DEATH_MUSIC_EXIT.webm",
+    "category": "music",
+    "loop": false,
+    "title": "Death Exit",
+    "artist": ""
+  },
+  "music-default-interior": {
+    "src": "/audio/music/DEFAULT_INTERIOR_MUSIC.webm",
+    "category": "music",
+    "loop": true,
+    "title": "Interior",
+    "artist": ""
+  },
+  "music-exterior": {
+    "src": "/audio/music/EXTERIOR_MUSIC.webm",
+    "category": "music",
+    "loop": true,
+    "title": "Exterior",
+    "artist": ""
+  },
+  "music-exterior-night": {
+    "src": "/audio/music/EXTERIOR_MUSIC_NIGHT.webm",
+    "category": "music",
+    "loop": true,
+    "title": "Exterior (Night)",
+    "artist": ""
+  },
+  "music-forest": {
+    "src": "/audio/music/FOREST_MUSIC.webm",
+    "category": "music",
+    "loop": true,
+    "title": "Forest",
+    "artist": ""
+  },
+  "music-industrial": {
+    "src": "/audio/music/INDUSTRIAL_MUSIC.webm",
+    "category": "music",
+    "loop": true,
+    "title": "Industrial",
+    "artist": ""
+  },
+  "music-junkyard": {
+    "src": "/audio/music/JUNKYARD_MUSIC.webm",
+    "category": "music",
+    "loop": true,
+    "title": "Junkyard",
+    "artist": ""
+  },
+  "music-mall": {
+    "src": "/audio/music/MALL_MUSIC.webm",
+    "category": "music",
+    "loop": true,
+    "title": "Mall",
+    "artist": ""
+  },
+  "music-office": {
+    "src": "/audio/music/OFFICE_MUSIC.webm",
+    "category": "music",
+    "loop": true,
+    "title": "Office",
+    "artist": ""
+  },
+  "music-paranoid-android": {
+    "src": "/audio/music/PARANOID_ANDROID.webm",
+    "category": "music",
+    "loop": true,
+    "title": "Paranoid Android",
+    "artist": "Radiohead"
+  },
+  "music-pink-panther": {
+    "src": "/audio/music/PINK_PANTHER.webm",
+    "category": "music",
+    "loop": true,
+    "title": "The Pink Panther Theme",
+    "artist": "Henry Mancini"
+  },
+  "music-shop": {
+    "src": "/audio/music/SHOP_MUSIC.webm",
+    "category": "music",
+    "loop": true,
+    "title": "Shop",
+    "artist": ""
+  }
 }
