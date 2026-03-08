@@ -1194,7 +1194,7 @@ function renderLoop(currentTime) {
 - [ ] Phase 1.3: Shadow casting
 - [ ] Phase 2.1: Isometric perspective (optional)
 - [ ] Phase 2.2: Depth sorting
-- [ ] Phase 2.3: Paper Mario Perspective Scaling
+- [ ] Phase 2.3: Paper Mario Perspective Scaling — [Artistic Decisions](#artistic-decisions-background--horizon)
 
 ---
 
@@ -1397,6 +1397,113 @@ function renderEntityFast(entity) {
 | 2.3.7 | Add row precomputation | `gone-rogue-canvas.js` | [ ] |
 
 **Estimated:** 4-6 hours
+
+---
+
+## Artistic Decisions: Background & Horizon
+
+### 1. Horizon Behavior
+
+**Decision: Fixed horizon at top of screen**
+
+```
+top of screen  = horizon (far)
+bottom         = camera foreground (near)
+```
+
+**Why this is best:**
+
+- Enables row precomputation (scale table calculated once at init)
+- Zero math per frame
+- No perspective drift
+- Simpler collision projection
+- Consistent visual language
+
+If the horizon moved dynamically, you would need to recompute scale, row offsets, projected tile heights, and sort order every frame.
+
+### 2. Background Choice
+
+**Decision: Hybrid approach — Sky gradient + 2 parallax layers**
+
+Recommended layer stack:
+
+```
+sky gradient        (static, never moves)
+mountains          (parallax 0.2 speed)
+tree line          (parallax 0.5 speed)
+map tiles          (perspective scaling, 1.0)
+foreground props   (parallax 1.2 speed)
+```
+
+**Why this works:**
+
+- Gradient: free, biome-configurable colors
+- Parallax layers: extremely cheap (just translateX)
+- DOM transform: `layer.style.transform = translateX(cameraX * depth)`
+- No scaling, no redraw, no shaders
+
+**Avoid per-biome full art backgrounds** — those require memory, asset loading, and map transitions, which is heavier than your procedural style.
+
+### 3. Interior Contrast
+
+**Decision: Remove horizon entirely when indoors**
+
+| State | Horizon | Scale Range |
+|-------|---------|-------------|
+| Exterior (world) | Visible | 0.7 → 1.4 |
+| Interior (building) | Hidden | 0.9 → 1.1 |
+
+**Why this works:**
+
+- Player immediately understands they are indoors
+- Interiors feel cozy and contained
+- Rendering becomes cheaper (less perspective distortion)
+- Flatter scale range = easier layout for designers
+
+This is how Stardew Valley and Zelda: ALttP handle interiors.
+
+### 4. Parallax Layers (Strongly Recommended)
+
+**Decision: Add 2 parallax layers — strongly recommended**
+
+| Layer | Speed | Content |
+|-------|-------|---------|
+| Far background | 0.25 | Mountains, clouds |
+| Midground | 0.6 | Tree line, buildings |
+| Foreground | 1.2 | Branches, fog, railings |
+
+**Cost comparison:**
+
+| Approach | CPU Cost | Depth Feel |
+|----------|----------|------------|
+| Y scaling only | Very low | Medium |
+| +2 parallax layers | Extremely low | High |
+
+The brain detects relative motion as depth. Even small parallax (mountains 0.25, trees 0.6) dramatically improves the scene.
+
+**One extra trick (almost free):**
+
+Add one blurred foreground layer (branches, fog, railing) that moves slightly faster than the camera. This makes the camera feel inside the world.
+
+### Final Recommendations Summary
+
+| Element | Decision |
+|---------|----------|
+| Horizon | Fixed at top of screen |
+| Background | Gradient + 2 parallax layers |
+| Interior style | Remove horizon |
+| Parallax | Strongly recommended (2+ layers) |
+
+### Implementation Tasks
+
+| Task | Description |
+|------|-------------|
+| 2.3.8 | Add sky gradient layer (static) |
+| 2.3.9 | Add far parallax layer (mountains, 0.25 speed) |
+| 2.3.10 | Add mid parallax layer (trees, 0.6 speed) |
+| 2.3.11 | Add foreground parallax layer (1.2 speed) |
+| 2.3.12 | Remove horizon when entering interior (floor N.N) |
+| 2.3.13 | Flatten scale range indoors (0.9 → 1.1) |
 
 ---
 

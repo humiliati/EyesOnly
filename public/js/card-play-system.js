@@ -16,13 +16,44 @@ var CardPlaySystem = (function() {
     if (!ctx.active || !ctx.strCombatActive) {
       return { success: false, reason: 'not_in_combat' };
     }
-    if (!cardId || typeof GoneRogueDataRegistry === 'undefined' || !GoneRogueDataRegistry.getCard) {
-      return { success: false, reason: 'missing_registry' };
+    if (!cardId) {
+      return { success: false, reason: 'missing_card_id' };
     }
 
-    var card = GoneRogueDataRegistry.getCard(cardId);
-    if (!card || card._missing) {
+    // ── Card resolution: CI-* instances → CardStateAuthority, ACT-* → Registry ──
+    var card = null;
+    // 1. Try CardStateAuthority.hydrateCard (resolves CI-* via GAMESTATE, ACT-* via Registry)
+    if (typeof CardStateAuthority !== 'undefined' && typeof CardStateAuthority.hydrateCard === 'function') {
+      card = CardStateAuthority.hydrateCard(cardId);
+    }
+    // 2. Fallback to direct registry lookup (ACT-*, EATK-*)
+    if (!card && typeof GoneRogueDataRegistry !== 'undefined' && typeof GoneRogueDataRegistry.getCard === 'function') {
+      var regCard = GoneRogueDataRegistry.getCard(cardId);
+      if (regCard && !regCard._missing) card = regCard;
+    }
+    if (!card) {
       return { success: false, reason: 'missing_card' };
+    }
+
+    // ── Synthesize effects from stats for CI-* rolled cards ──
+    // CI-* instances use stats: { damage: N, ... } instead of effects: [{ type: 'damage', value: N }]
+    if ((!card.effects || !card.effects.length) && card.stats && typeof card.stats === 'object') {
+      var synthEffects = [];
+      if (card.stats.damage && Number(card.stats.damage) > 0) {
+        synthEffects.push({ type: 'damage', value: Number(card.stats.damage) });
+      }
+      if (card.stats.fatigue && Number(card.stats.fatigue) > 0) {
+        synthEffects.push({ type: 'fatigue', value: Number(card.stats.fatigue) });
+      }
+      if (card.stats.noise && Number(card.stats.noise) > 0) {
+        synthEffects.push({ type: 'noise', value: Number(card.stats.noise) });
+      }
+      if (card.stats.evasion && Number(card.stats.evasion) > 0) {
+        synthEffects.push({ type: 'evasion', value: Number(card.stats.evasion) });
+      }
+      if (synthEffects.length > 0) {
+        card = Object.assign({}, card, { effects: synthEffects });
+      }
     }
 
     var costs = Array.isArray(card.costs) ? card.costs : null;
