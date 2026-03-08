@@ -6,6 +6,8 @@
     "categories": ["ui", "movement", "combat", "magic", "environment", "collectible", "creature", "music"]
   },
 
+  "explosion_large":      { "src": "/audio/sfx/enemy_die_02.wav",       "category": "combat" },
+
   "ui-01":                { "src": "/audio/sfx/ui_01.wav",              "category": "ui" },
   "ui-02":                { "src": "/audio/sfx/ui_02.wav",              "category": "ui" },
   "ui-03":                { "src": "/audio/sfx/ui_03.wav",              "category": "ui" },

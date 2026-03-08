@@ -21,6 +21,15 @@ var PickupSystem = (function() {
       };
     }
 
+    // ── Audio: pickup sound by type ──
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+      if (item.type === 'ammo')     AudioSystem.play('grab-item-1', { volume: 0.5 });
+      else if (item.type === 'gem') AudioSystem.playRandom('power-up', 3, { volume: 0.5 });
+      else if (item.type === 'key') AudioSystem.play('success-1', { volume: 0.6 });
+      else if (item.type === 'card') AudioSystem.playRandom('coin', 2, { volume: 0.4 });
+      else AudioSystem.play('grab-item-2', { volume: 0.5 });
+    }
+
     // Handle ammo pickup (auto-collect)
     if (item.type === 'ammo') {
       return _pickupAmmo(item, ctx);

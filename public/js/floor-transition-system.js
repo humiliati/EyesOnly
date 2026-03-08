@@ -18,12 +18,20 @@ var FloorTransitionSystem = (function () {
     if (!ctx.useInteractiveGrid) return;
     var el = document.getElementById('rogue-grid-mobile');
     if (el) { el.style.opacity = '0'; el.style.transition = 'opacity 0.25s ease-out'; }
+    // Audio: floor exit whoosh
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+      AudioSystem.playRandom('descend', 3, { volume: 0.4 });
+    }
   }
 
   function _fadeIn(ctx) {
     if (!ctx.useInteractiveGrid) return;
     var el = document.getElementById('rogue-grid-mobile');
     if (el) { el.style.opacity = '1'; el.style.transition = 'opacity 0.25s ease-in'; }
+    // Audio: floor enter chime
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+      AudioSystem.playRandom('ascend', 3, { volume: 0.4 });
+    }
   }
 
   // ------------------------------------------------------------------

@@ -41,10 +41,11 @@ var SoundDesigner = (function () {
     _bindInspector();
     _bindHeaderActions();
     _bindAssignButtons();
-    _loadManifest();
+    _bindStaticLibrary();
+    _loadManifest();        // optional enrichment — library works without it
   }
 
-  // ---- Manifest Loading ----
+  // ---- Manifest Loading (optional enrichment) ----
 
   function _loadManifest() {
     fetch(MANIFEST_URL)
@@ -54,71 +55,70 @@ var SoundDesigner = (function () {
       })
       .then(function (data) {
         _manifest = data;
-        _renderLibrary();
         _toast('Manifest loaded — ' + Object.keys(data).filter(function (k) { return k !== '_meta'; }).length + ' sounds');
       })
       .catch(function (err) {
-        console.error('[SoundDesigner] manifest load error:', err);
-        _toast('Failed to load manifest', true);
+        console.warn('[SoundDesigner] manifest fetch skipped (static library still works):', err);
       });
   }
 
-  // ---- Library Rendering ----
+  // ---- Static Library Binding ----
+  // All 167 sounds are baked as static <button class="sound-item"> elements.
+  // We bind click handlers, category collapse, and count badges on init.
 
-  function _renderLibrary(filter) {
+  function _bindStaticLibrary() {
     var container = document.getElementById('library-categories');
-    if (!container || !_manifest) return;
-    container.innerHTML = '';
+    if (!container) return;
 
-    var categories = (_manifest._meta && _manifest._meta.categories) || [];
-    var grouped = {};
-    categories.forEach(function (cat) { grouped[cat] = []; });
-
-    Object.keys(_manifest).forEach(function (key) {
-      if (key === '_meta') return;
-      var entry = _manifest[key];
-      var cat = entry.category || 'other';
-      if (!grouped[cat]) grouped[cat] = [];
-      if (filter) {
-        var q = filter.toLowerCase();
-        if (key.indexOf(q) === -1 && (entry.title || '').toLowerCase().indexOf(q) === -1) return;
-      }
-      grouped[cat].push({ id: key, entry: entry });
+    // Bind click on every static sound button
+    container.querySelectorAll('.sound-item[data-sound-id]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        _selectSound(btn.dataset.soundId);
+      });
     });
 
-    categories.forEach(function (cat) {
-      var items = grouped[cat];
-      if (!items || items.length === 0) return;
-
-      var section = document.createElement('div');
-      section.className = 'category-section';
-
-      var header = document.createElement('div');
-      header.className = 'category-header';
-      header.innerHTML = '<span>' + _catEmoji(cat) + ' ' + cat.toUpperCase() + '</span>' +
-                         '<span class="count">' + items.length + '</span>' +
-                         '<span class="chevron">▾</span>';
-
-      var list = document.createElement('div');
-      list.className = 'category-items';
-
-      items.forEach(function (item) {
-        var btn = document.createElement('button');
-        btn.className = 'sound-item' + (item.id === _selectedSoundId ? ' selected' : '');
-        btn.dataset.soundId = item.id;
-        btn.innerHTML = '<span class="mini-play">♪</span> ' + _displayName(item.id, item.entry);
-        btn.addEventListener('click', function () { _selectSound(item.id); });
-        list.appendChild(btn);
-      });
-
+    // Bind collapse/expand on category headers
+    container.querySelectorAll('.category-header').forEach(function (header) {
+      var items = header.nextElementSibling; // .category-items
       header.addEventListener('click', function () {
         header.classList.toggle('collapsed');
-        list.classList.toggle('collapsed');
+        if (items) items.classList.toggle('collapsed');
+      });
+    });
+  }
+
+  /**
+   * Filter the static library by search query (show/hide).
+   * Empty filter shows everything.
+   */
+  function _filterLibrary(filter) {
+    var container = document.getElementById('library-categories');
+    if (!container) return;
+    var q = (filter || '').toLowerCase().trim();
+
+    container.querySelectorAll('.category-section').forEach(function (section) {
+      var items = section.querySelector('.category-items');
+      var header = section.querySelector('.category-header');
+      if (!items) return;
+
+      var visibleCount = 0;
+      items.querySelectorAll('.sound-item[data-sound-id]').forEach(function (btn) {
+        var id = btn.dataset.soundId || '';
+        var label = btn.textContent || '';
+        var title = btn.dataset.title || '';
+        var match = !q || id.toLowerCase().indexOf(q) !== -1 ||
+                    label.toLowerCase().indexOf(q) !== -1 ||
+                    title.toLowerCase().indexOf(q) !== -1;
+        btn.style.display = match ? '' : 'none';
+        if (match) visibleCount++;
       });
 
-      section.appendChild(header);
-      section.appendChild(list);
-      container.appendChild(section);
+      // Hide entire category section if nothing matches
+      section.style.display = visibleCount > 0 ? '' : 'none';
+
+      // Update count badge
+      var countEl = header ? header.querySelector('.count') : null;
+      if (countEl) countEl.textContent = visibleCount;
     });
   }
 
@@ -137,6 +137,27 @@ var SoundDesigner = (function () {
 
   // ---- Sound Selection ----
 
+  /**
+   * Build an entry object from data-* attributes on the static button,
+   * enriched by manifest data if available.
+   */
+  function _entryFromDOM(id) {
+    var btn = document.querySelector('.sound-item[data-sound-id="' + id + '"]');
+    if (!btn) return null;
+
+    // Start from manifest if available
+    var base = (_manifest && _manifest[id]) ? Object.assign({}, _manifest[id]) : {};
+
+    // Overlay / fill from DOM data attributes
+    base.src      = base.src      || btn.dataset.src      || '';
+    base.category = base.category || btn.dataset.category  || 'other';
+    base.loop     = (base.loop != null) ? base.loop : (btn.dataset.loop === 'true');
+    base.title    = base.title    || btn.dataset.title     || '';
+    base.artist   = base.artist   || btn.dataset.artist    || '';
+
+    return base;
+  }
+
   function _selectSound(id) {
     _selectedSoundId = id;
 
@@ -145,7 +166,7 @@ var SoundDesigner = (function () {
       el.classList.toggle('selected', el.dataset.soundId === id);
     });
 
-    var entry = _manifest[id];
+    var entry = _entryFromDOM(id);
     if (!entry) return;
 
     // Update preview panel
@@ -579,7 +600,7 @@ var SoundDesigner = (function () {
     input.addEventListener('input', function () {
       clearTimeout(timer);
       timer = setTimeout(function () {
-        _renderLibrary(input.value.trim());
+        _filterLibrary(input.value.trim());
       }, 200);
     });
   }
@@ -637,7 +658,10 @@ var SoundDesigner = (function () {
     var saveBtn = document.getElementById('save-assignments-btn');
     var exportBtn = document.getElementById('export-sound-map-btn');
 
-    if (refreshBtn) refreshBtn.addEventListener('click', _loadManifest);
+    if (refreshBtn) refreshBtn.addEventListener('click', function () {
+      _loadManifest();
+      _toast('Manifest refreshed');
+    });
 
     if (saveBtn) {
       saveBtn.addEventListener('click', function () {

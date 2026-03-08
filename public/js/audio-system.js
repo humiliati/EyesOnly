@@ -148,7 +148,7 @@ const AudioSystem = (function () {
     if (_manifest && _manifest[name]) {
       return _manifest[name].src || _manifest[name].file;
     }
-    // Fallback: try /audio/sfx/{name}.webm → .mp3
+    // Fallback: try /audio/sfx/{name}.webm → .wav
     return '/audio/sfx/' + name + '.webm';
   }
 
@@ -171,6 +171,9 @@ const AudioSystem = (function () {
     document.addEventListener('click', handler, true);
     document.addEventListener('touchstart', handler, true);
     document.addEventListener('keydown', handler, true);
+
+    // Bind data-sound delegate for UI buttons (UI-CANON §17)
+    _bindDataSoundDelegate();
 
     _notify();
   }
@@ -305,11 +308,36 @@ const AudioSystem = (function () {
     };
   }
 
+  // ── Global data-sound delegate (UI-CANON §17) ─────────────
+  // Any element with data-sound="<name>" auto-plays on pointerdown.
+  // Attached once by init() via event delegation on document.body.
+  function _bindDataSoundDelegate() {
+    document.body.addEventListener('pointerdown', function (e) {
+      var el = e.target.closest('[data-sound]');
+      if (!el) return;
+      var name = el.getAttribute('data-sound');
+      if (name) play(name, { volume: 0.6 });
+    }, true);
+  }
+
+  /**
+   * Play a random variant from a base name pattern.
+   * e.g. playRandom('hit', 4) picks one of hit-1 … hit-4
+   * @param {string} base  - base name prefix
+   * @param {number} count - number of variants (1-indexed)
+   * @param {Object} [opts] - same as play()
+   */
+  function playRandom(base, count, opts) {
+    var n = Math.floor(Math.random() * count) + 1;
+    play(base + '-' + n, opts);
+  }
+
   // ── Return public interface ────────────────────────────────
   return {
     init: init,
     loadManifest: loadManifest,
     play: play,
+    playRandom: playRandom,
     playMusic: playMusic,
     stopMusic: stopMusic,
     setMasterMute: setMasterMute,

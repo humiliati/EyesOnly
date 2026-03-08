@@ -26,6 +26,17 @@ var BreakableSystem = (function() {
     breakable.hitTime = Date.now();
     breakable.blinkCount = 0;
 
+    // ── Audio: breakable hit / destroy ──
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+      if (breakable.hp <= 0) {
+        // Destruction sound — wood/environment for most breakables
+        AudioSystem.playRandom('impact', 4, { volume: 0.7 });
+      } else {
+        // Hit sound
+        AudioSystem.playRandom('hit', 4, { volume: 0.5 });
+      }
+    }
+
     if (breakable.hp === 0) {
       // Mark for destruction but delay it for animation
       breakable.destroying = true;
@@ -744,7 +755,10 @@ var BreakableSystem = (function() {
     console.log('[Kick] Kicking ' + (breakable.name || '?') + ' at ' + breakable.x + ',' + breakable.y +
       ' dir=' + dx + ',' + dy + ' HP=' + breakable.hp + '/' + breakable.maxHp);
 
-    // 1. Deal kick damage
+    // 1. Deal kick damage (+ kick SFX)
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+      AudioSystem.playRandom('low-attack', 3, { volume: 0.5 });
+    }
     damageBreakable(breakable, kickDamage, ctx);
     console.log('[Kick] After damage: HP=' + breakable.hp + ' destroying=' + breakable.destroying);
     if (breakable.hp <= 0) {
