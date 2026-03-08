@@ -36,6 +36,13 @@ const AudioSystem = (function () {
   var _currentMusic = null;   // { source, name, title, artist }
   var _listeners = [];
 
+  // ── Onboarding music guard ──
+  // When true, floor-transition music logic should not interrupt the
+  // current track (CLUBBED_TO_DEATH spans launch → char creation →
+  // floor 0 → tavern).  Cleared automatically when biome music takes
+  // over on floor ≥ 1.
+  var _onboardingMusic = false;
+
   // ── Persistence keys ──
   var KEY_MUTE = 'EYESONLY_AUDIO_MUTE';
   var KEY_MUSIC = 'EYESONLY_AUDIO_MUSIC_VOL';
@@ -292,6 +299,10 @@ const AudioSystem = (function () {
   function getMusicVolume() { return _musicVol; }
   function getSFXVolume()   { return _sfxVol; }
 
+  // ── Onboarding music guard API ──
+  function setOnboardingMusic(v) { _onboardingMusic = !!v; }
+  function isOnboardingMusic()   { return _onboardingMusic; }
+
   function getNowPlaying() {
     if (!_currentMusic) return null;
     return {
@@ -348,6 +359,8 @@ const AudioSystem = (function () {
     getMusicVolume: getMusicVolume,
     getSFXVolume: getSFXVolume,
     getNowPlaying: getNowPlaying,
-    onStateChange: onStateChange
+    onStateChange: onStateChange,
+    setOnboardingMusic: setOnboardingMusic,
+    isOnboardingMusic: isOnboardingMusic
   };
 })();

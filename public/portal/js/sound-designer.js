@@ -231,6 +231,26 @@ var SoundDesigner = (function () {
       document.getElementById('preview-play-btn').textContent = '▶';
     });
 
+    // Resume waveform when data resumes after a stall
+    _previewAudio.addEventListener('playing', function () {
+      if (_isPlaying && !_rafId) {
+        _drawLiveWaveform();
+      }
+    });
+
+    // Stall / waiting — browser ran out of buffered data
+    _previewAudio.addEventListener('waiting', function () {
+      console.log('[SoundDesigner] audio waiting — buffering…');
+    });
+
+    _previewAudio.addEventListener('error', function () {
+      var err = _previewAudio.error;
+      console.warn('[SoundDesigner] audio error:', err ? err.message : 'unknown');
+      _isPlaying = false;
+      _stopWaveformLoop();
+      document.getElementById('preview-play-btn').textContent = '▶';
+    });
+
     // Draw waveform once metadata / enough data is buffered
     _previewAudio.addEventListener('canplay', function () {
       _drawStaticWaveformFromAnalyser();

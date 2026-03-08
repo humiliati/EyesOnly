@@ -111,48 +111,50 @@ The global delegate is live — `data-sound="<name>"` on any HTML element auto-p
 
 ---
 
-## Phase 3 — Environment & Ambience (Priority: MEDIUM)
+## Phase 3 — Environment & Ambience (Priority: MEDIUM) ✅ COMPLETE
 
-### 3.1 Biome Music — `floor-gen-core.js` / `floor-generator.js`
+### 3.1 Biome Music — `floor-transition-system.js` ✅
 
-Start biome-appropriate music when a new floor loads. The manifest has 16 music tracks mapped to biomes:
+Biome-appropriate music starts on every floor transition via `_playBiomeMusic(ctx)` helper in `floor-transition-system.js`. `AudioSystem.stopMusic()` fires during `_fadeOut()`, then `_playBiomeMusic()` fires after `generateFloor()` completes in all three transition paths (advance, retreat, interior exit).
 
-| Biome / Context | Music Key |
-|---|---|
-| Exterior (day) | `music-exterior` |
-| Exterior (night) | `music-exterior-night` |
-| Interior (default) | `music-default-interior` |
-| Cave | `music-cave` |
-| Church / Catacombs | `music-church-catacombs` |
-| Military zone | `music-82nd-all-the-way` |
-| Neon / Club | `music-clubbed-to-death` |
-| Tavern / Pub | `music-pub` or `music-tavern` |
-| Death / Game Over | `music-death-exit` |
-| Safe room | `music-safe-room` |
-| Stealth | `music-stealth` |
-| Shop / Vendor | `music-shop` |
+| Biome / Context | Music Key | Status |
+|---|---|---|
+| FOREST (day) | `music-forest` | ✅ |
+| FOREST (night) / SKI_MOUNTAIN | `music-exterior-night` | ✅ |
+| GREY_CAVE | `music-cave` | ✅ |
+| MALL | `music-mall` | ✅ |
+| INDUSTRIAL | `music-industrial` | ✅ |
+| OFFICE | `music-office` | ✅ |
+| AEROSPACE | `music-82nd-all-the-way` | ✅ |
+| LAKE (day) | `music-exterior` | ✅ |
+| LAKE (night) | `music-exterior-night` | ✅ |
+| Interior (default) | `music-default-interior` | ✅ |
+| Fallback (day) | `music-exterior` | ✅ |
+| Fallback (night) | `music-exterior-night` | ✅ |
 
-Wire in `AudioSystem.playMusic(key)` at floor generation complete, and `AudioSystem.stopMusic()` on transitions.
+Day/night alternation: even floors = night.
 
-### 3.2 Ground Effects — `ground-effects-system.js`
+### 3.2 Ground Effects — `ground-effects-system.js` ✅
 
-| Effect | Suggested Sound |
-|---|---|
-| Fire tile step | `fire-sfx` |
-| Water tile step | `water-{1..3}` random |
-| Ice slide | `ice-{1..2}` |
+| Effect | Sound | Where | Status |
+|---|---|---|---|
+| Fire/hazard tile step | `impact-{1..4}` random vol 0.4 | `applyTileEffects()` hazard branch | ✅ |
+| Water tile step | `water-{1..3}` random vol 0.3 | `applyTileEffects()` water branch | ✅ |
+| Ice combat modifier | `ice-1` vol 0.3 | `applyPlayerGroundModifier()` ICE branch | ✅ |
 
-### 3.3 Light Source Destruction — `breakable-system.js` `_handleLightSourceDestruction`
+**Note:** `fire-sfx` and `ice-{1..2}` keys don't exist in manifest. Used `impact-{1..4}` for fire hazard (searing hit) and `ice-1` for ice slide.
 
-| Source Type | Suggested Sound |
-|---|---|
-| Campfire | `fire-sfx` at low volume |
-| Torch | `whoosh-1` quiet |
-| Lamp post | `metal-hit-{1..2}` |
-| Electronic | `electric-{1..2}` |
-| Light bulb | `impact-1` |
+### 3.3 Light Source Destruction — `breakable-system.js` ✅
 
-**Estimated effort:** ~50 lines across 3-4 files.
+| Source Type | Sound | Where | Status |
+|---|---|---|---|
+| Campfire | `impact-{1..4}` random vol 0.35 | `_destroyCampfire()` | ✅ |
+| Torch | `whoosh-1` vol 0.25 | `_destroyTorch()` | ✅ |
+| Lamp post | `metal-hit-{1..2}` random vol 0.5 | `_destroyLampPost()` | ✅ |
+| Electronic (Monitor/Terminal) | `impact-{1..4}` random vol 0.45 | `_destroyElectronic()` | ✅ |
+| Light bulb | `impact-1` vol 0.4 | `_destroyLightBulb()` | ✅ |
+
+**Note:** `electric-{1..2}` keys don't exist in manifest. Used `impact-{1..4}` as stand-in for electronic sparks. When dedicated fire/electric SFX are added to the manifest, update the calls here.
 
 ---
 

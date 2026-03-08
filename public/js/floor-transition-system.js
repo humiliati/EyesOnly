@@ -18,9 +18,14 @@ var FloorTransitionSystem = (function () {
     if (!ctx.useInteractiveGrid) return;
     var el = document.getElementById('rogue-grid-mobile');
     if (el) { el.style.opacity = '0'; el.style.transition = 'opacity 0.25s ease-out'; }
-    // Audio: floor exit whoosh
+    // Audio: floor exit whoosh + stop current music
+    // Skip stopMusic when onboarding music is playing (CLUBBED_TO_DEATH
+    // spans launch → char creation → floor 0 → tavern → floor 1 entry).
     if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
       AudioSystem.playRandom('descend', 3, { volume: 0.4 });
+      if (AudioSystem.stopMusic && !AudioSystem.isOnboardingMusic()) {
+        AudioSystem.stopMusic();
+      }
     }
   }
 
@@ -32,6 +37,78 @@ var FloorTransitionSystem = (function () {
     if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
       AudioSystem.playRandom('ascend', 3, { volume: 0.4 });
     }
+  }
+
+  // ------------------------------------------------------------------
+  // Biome → Music mapping
+  // ------------------------------------------------------------------
+  var _BIOME_MUSIC = {
+    FOREST:     'music-forest',
+    GREY_CAVE:  'music-cave',
+    MALL:       'music-mall',
+    INDUSTRIAL: 'music-industrial',
+    OFFICE:     'music-office',
+    AEROSPACE:  'music-82nd-all-the-way',
+    LAKE:       'music-exterior',
+    SKI_MOUNTAIN: 'music-exterior-night'
+  };
+
+  /**
+   * Pick and play the right music track for the current biome + floor.
+   * Day/night alternation: even floors are night.
+   */
+  function _playBiomeMusic(ctx) {
+    if (typeof AudioSystem === 'undefined' || !AudioSystem.playMusic) return;
+
+    var floor = ctx.getFloor();
+
+    // ── Onboarding music guard ──────────────────────────────────
+    // CLUBBED_TO_DEATH spans launch → floor 0 → tavern 0.1.0.
+    // On floor 0 and its interiors, let the onboarding track keep
+    // playing.  On floor ≥ 1 the guard drops and biome music takes
+    // over naturally — no jarring cut, just a clean handoff.
+    if (AudioSystem.isOnboardingMusic && AudioSystem.isOnboardingMusic()) {
+      if (floor < 1 || ctx.currentInteriorFloorId) {
+        // Still in onboarding territory — skip biome override
+        return;
+      }
+      // Floor ≥ 1 on a main floor — clear the guard, fall through
+      // to normal biome music (AudioSystem.playMusic will stop the
+      // onboarding track internally before starting the new one).
+      AudioSystem.setOnboardingMusic(false);
+    }
+
+    var biome = null;
+    try { biome = ctx.getBiome(floor); } catch (e) {}
+
+    // Interior floors get interior music
+    if (ctx.currentInteriorFloorId) {
+      AudioSystem.playMusic('music-default-interior');
+      return;
+    }
+
+    // Try to match biome key from the BIOMES constant on ctx
+    var biomeKey = null;
+    if (biome && typeof ctx.BIOMES === 'object') {
+      var keys = Object.keys(ctx.BIOMES);
+      for (var i = 0; i < keys.length; i++) {
+        if (ctx.BIOMES[keys[i]] === biome) { biomeKey = keys[i]; break; }
+      }
+    }
+
+    var track = biomeKey ? _BIOME_MUSIC[biomeKey] : null;
+
+    // Day/night override for forest/lake/exterior biomes
+    if (!track || track === 'music-forest' || track === 'music-exterior') {
+      var isNight = (floor % 2 === 0);
+      if (biomeKey === 'FOREST' || biomeKey === 'LAKE') {
+        track = isNight ? 'music-exterior-night' : 'music-forest';
+      } else if (!track) {
+        track = isNight ? 'music-exterior-night' : 'music-exterior';
+      }
+    }
+
+    AudioSystem.playMusic(track);
   }
 
   // ------------------------------------------------------------------
@@ -142,6 +219,9 @@ var FloorTransitionSystem = (function () {
         }
 
         ctx.startGameLoop();
+
+        // ── Audio: resume biome music for parent floor ──
+        _playBiomeMusic(ctx);
       }
       _fadeIn(ctx);
     }, 260);
@@ -175,6 +255,10 @@ var FloorTransitionSystem = (function () {
       ctx.generateFloor();
       ctx.startGameLoop();
       ctx.saveState();
+
+      // ── Audio: start biome-appropriate music ──
+      _playBiomeMusic(ctx);
+
       _fadeIn(ctx);
     }, 260);
   }
@@ -246,6 +330,9 @@ var FloorTransitionSystem = (function () {
       }
       ctx.startGameLoop();
       ctx.saveState();
+
+      // ── Audio: start biome-appropriate music ──
+      _playBiomeMusic(ctx);
 
       // Notify onboarding tutorial of floor transition (Phase 9 tooltips on Floor 1)
       if (typeof OnboardingTutorial !== 'undefined' && OnboardingTutorial.onFloorTransition) {

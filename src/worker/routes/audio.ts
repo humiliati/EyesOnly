@@ -44,19 +44,29 @@ async function serveAudio(
 
   // Support Range requests (seek in <audio> element / mobile Safari)
   if (rangeHeader) {
-    const obj = await r2.get(key, {
-      range: parseRange(rangeHeader),
-    });
+    const parsed = parseRange(rangeHeader);
+    const obj = await r2.get(key, { range: parsed });
 
     if (!obj) {
       return new Response('Not Found', { status: 404 });
     }
 
+    const body = obj as R2ObjectBody;
     const headers = buildHeaders(filename, obj);
-    headers.set('Content-Range',
-      `bytes ${(obj as R2ObjectBody).range ? formatRange((obj as R2ObjectBody).range!, obj.size) : `0-${obj.size - 1}/${obj.size}`}`);
 
-    return new Response((obj as R2ObjectBody).body, {
+    // Content-Length must be the CHUNK size, not the total file size.
+    // R2 range: { offset, length? } — when length is omitted, all
+    // bytes from offset to end are returned.
+    const offset = (parsed as { offset: number }).offset ?? 0;
+    const chunkLen = 'length' in parsed && (parsed as { length?: number }).length
+      ? (parsed as { length: number }).length
+      : obj.size - offset;
+    headers.set('Content-Length', String(chunkLen));
+
+    const rangeEnd = offset + chunkLen - 1;
+    headers.set('Content-Range', `bytes ${offset}-${rangeEnd}/${obj.size}`);
+
+    return new Response(body.body, {
       status: 206,
       headers,
     });

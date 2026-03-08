@@ -25,6 +25,10 @@ var GroundEffectsSystem = (function () {
       if (groundEffect && groundEffect.movePenalty) {
         if (groundEffect.type === 'WATER' || groundEffect.char === '~') {
           applyWaterSlowdownEffect();
+          // ── Audio: water splash step ──
+          if (typeof AudioSystem !== 'undefined' && AudioSystem.playRandom) {
+            AudioSystem.playRandom('water', 3, { volume: 0.3 });
+          }
         }
       }
     }
@@ -45,6 +49,11 @@ var GroundEffectsSystem = (function () {
         var damage = metadata ? metadata.damage : 1;
         ctx.player.hp -= damage;
         message = '🟥 HAZARD! -' + damage + ' HP';
+
+        // ── Audio: fire/hazard sizzle ──
+        if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+          AudioSystem.playRandom('impact', 4, { volume: 0.4 });
+        }
 
         if (ctx.player.hp <= 0) {
           return ctx.handlePlayerDeath('environmental_hazard', {
@@ -188,6 +197,10 @@ var GroundEffectsSystem = (function () {
       ctx.player.tempEvasion = (ctx.player.tempEvasion || 0) - evPen;
       log.push('🧊 ICE: speed up, but slip risk');
       log.push('└─ Accuracy -' + accPen + '%, Evasion -' + evPen);
+      // ── Audio: ice slide ──
+      if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+        AudioSystem.play('ice-1', { volume: 0.3 });
+      }
     }
 
     return log;

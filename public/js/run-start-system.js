@@ -28,6 +28,15 @@ var RunStartSystem = (function() {
 
     if (!context.resume && typeof OnboardingSplash !== 'undefined' && OnboardingSplash.show) {
       var beginGameplay = ctx.beginGameplay;
+
+      // ── Onboarding music: start CLUBBED_TO_DEATH on launch ──
+      // Spans splash → character creation → floor 0 → tavern 0.1.0.
+      // Cleared automatically when biome music takes over on floor ≥ 1.
+      if (typeof AudioSystem !== 'undefined' && AudioSystem.playMusic) {
+        AudioSystem.playMusic('music-clubbed-to-death');
+        if (AudioSystem.setOnboardingMusic) AudioSystem.setOnboardingMusic(true);
+      }
+
       OnboardingSplash.show(function onSplashDone() {
         if (_needsCharCreation) {
           var tier = 0;

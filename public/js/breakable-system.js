@@ -238,6 +238,11 @@ var BreakableSystem = (function() {
       }
     }
 
+    // ── Audio: campfire extinguish (fire hiss) ──
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.playRandom) {
+      AudioSystem.playRandom('impact', 4, { volume: 0.35 });
+    }
+
     console.log('[Lighting] Campfire extinguished at ' + x + ',' + y + ' — scorched + smoke clouds');
   }
 
@@ -265,6 +270,11 @@ var BreakableSystem = (function() {
       }
     }
 
+    // ── Audio: torch snuff (quiet whoosh) ──
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+      AudioSystem.play('whoosh-1', { volume: 0.25 });
+    }
+
     console.log('[Lighting] Torch smothered silently at ' + x + ',' + y);
   }
 
@@ -290,6 +300,11 @@ var BreakableSystem = (function() {
       }
     }
 
+    // ── Audio: lamp post topple (metal clang) ──
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.playRandom) {
+      AudioSystem.playRandom('metal-hit', 2, { volume: 0.5 });
+    }
+
     console.log('[Lighting] Lamp post toppled at ' + x + ',' + y);
   }
 
@@ -311,6 +326,11 @@ var BreakableSystem = (function() {
       }
     }, 300);
 
+    // ── Audio: electronic spark (zap + crackle) ──
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.playRandom) {
+      AudioSystem.playRandom('impact', 4, { volume: 0.45 });
+    }
+
     console.log('[Lighting] ' + lightType + ' destroyed (spark shower) at ' + x + ',' + y);
   }
 
@@ -322,6 +342,11 @@ var BreakableSystem = (function() {
 
     if (typeof GroundEffects !== 'undefined' && GroundEffects.setGroundEffect) {
       GroundEffects.setGroundEffect(x, y, 'GLASS');
+    }
+
+    // ── Audio: light bulb shatter (glass pop) ──
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+      AudioSystem.play('impact-1', { volume: 0.4 });
     }
 
     console.log('[Lighting] Light bulb shattered at ' + x + ',' + y);
