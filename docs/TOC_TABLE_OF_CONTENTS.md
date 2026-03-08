@@ -129,7 +129,7 @@ These 8 documents form the interconnected canonical reference for world generati
 | [LIGHTING_BREAKABLES.md](./LIGHTING_BREAKABLES.md) | Lighting + breakable interaction |
 | [OVERHEAD-ANIMATION-UNIFIED-ROADMAP.md](./OVERHEAD-ANIMATION-UNIFIED-ROADMAP.md) | Overhead animation unification |
 | [UNIFIED_MOVEMENT_LIGHTING_VISION.md](./UNIFIED_MOVEMENT_LIGHTING_VISION.md) | Movement, lighting, vision unification |
-| [TERRARIA_LIGHTING_TODO.md](./TERRARIA_LIGHTING_TODO.md) | Terraria-style lighting TODOs |
+| [PAPER_TERRARIA_TODO.md](./PAPER_TERRARIA_TODO.md) | Terraria-style Paper-Mario perspective lighting TODOs |
 | [PET_FOLLOWER_INTEGRATION.md](./PET_FOLLOWER_INTEGRATION.md) | Pet/follower system |
 | [PLAYER_ONBOARDING_TODO.md](./PLAYER_ONBOARDING_TODO.md) | Player onboarding TODOs |
 

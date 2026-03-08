@@ -29,17 +29,29 @@ var GroundEffectsSystem = (function () {
       }
     }
 
-    // Hazard damage
-    if (tile === ctx.TILES.HAZARD || (metadata && metadata.type === 'hazard')) {
-      var damage = metadata ? metadata.damage : 1;
-      ctx.player.hp -= damage;
-      message = '🟥 HAZARD! -' + damage + ' HP';
+    // Food × ground-effect interaction check (inert food history)
+    if (typeof FoodGroundInteraction !== 'undefined') {
+      var foodMsg = FoodGroundInteraction.checkAndApply(x, y, ctx);
+      if (foodMsg) message = foodMsg;
+    }
 
-      if (ctx.player.hp <= 0) {
-        return ctx.handlePlayerDeath('environmental_hazard', {
-          damage: damage,
-          location: { x: ctx.player.x, y: ctx.player.y }
-        });
+    // Hazard damage (check food buff immunity first)
+    if (tile === ctx.TILES.HAZARD || (metadata && metadata.type === 'hazard')) {
+      var hasFoodFireImmunity = (typeof GAMESTATE !== 'undefined' && GAMESTATE.hasFoodBuff
+        && GAMESTATE.hasFoodBuff('fireImmunity', ctx.turn || 0));
+      if (hasFoodFireImmunity) {
+        message = '💧 Fire immunity active!';
+      } else {
+        var damage = metadata ? metadata.damage : 1;
+        ctx.player.hp -= damage;
+        message = '🟥 HAZARD! -' + damage + ' HP';
+
+        if (ctx.player.hp <= 0) {
+          return ctx.handlePlayerDeath('environmental_hazard', {
+            damage: damage,
+            location: { x: ctx.player.x, y: ctx.player.y }
+          });
+        }
       }
     }
 

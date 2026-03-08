@@ -98,6 +98,12 @@ var MovePlayerSystem = (function() {
     player.y = newY;
     ctx.incrementTurn();
 
+    // ── Tick food consumption history & buff expiry (step-based) ──
+    if (typeof GAMESTATE !== 'undefined') {
+      if (GAMESTATE.tickRecentFood) GAMESTATE.tickRecentFood(ctx.turn);
+      if (GAMESTATE.clearExpiredFoodBuffs) GAMESTATE.clearExpiredFoodBuffs(ctx.turn);
+    }
+
     // ── Interrupt active dialogue if player walked away from NPC ──
     if (typeof DialogueSystem !== 'undefined' && DialogueSystem.isActive()) {
       var talkNpc = DialogueSystem.getActiveNpc();
@@ -235,7 +241,14 @@ var MovePlayerSystem = (function() {
             // PancakeStack activates only when multiple animations need simultaneous display.
 
             InteractiveItems.removeItem(foodItem.id);
-            console.log('[GoneRogue] Food consumed:', foodResult.foodName);
+
+            // Record inert food to consumption history for ground-effect interactions
+            if (foodResult.resourceType === 'Inert' && typeof GAMESTATE !== 'undefined' && GAMESTATE.recordFood) {
+              var foodDef = FoodDatabase.getFoodItem(foodItem.customData.foodId);
+              if (foodDef && foodDef.interactions) {
+                GAMESTATE.recordFood(foodItem.customData.foodId, foodResult.emoji, foodDef.groundEffect, 20);
+              }
+            }
           }
         }
       }

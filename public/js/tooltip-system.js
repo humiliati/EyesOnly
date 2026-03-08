@@ -400,8 +400,8 @@ const TooltipSystem = (function() {
         message = '📦 PICKED UP ' + itemName;
         break;
       case 'key-ammo-pickup':
-        var keyAmmoName = (data && data.name) || 'KEY';
-        message = '🔑 KEY AMMO: ' + keyAmmoName;
+        var keyAmmoName = (data && data.name) || 'Key';
+        message = '\uD83D\uDDDD ' + keyAmmoName + ' +1';
         break;
       case 'key-item-pickup':
         var keyItemName = (data && data.name) || 'KEY';

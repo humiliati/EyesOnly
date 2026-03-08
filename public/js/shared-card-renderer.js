@@ -133,9 +133,11 @@ var SharedCardRenderer = (function() {
     cardEl.className = 'hand-card';
 
     // BLVCK identity class — universal "nothing" card gets unique styling
+    // BLVCK is never playable/draggable — always marked unaffordable
     var isBlvck = card.id === 'ACT-000' || card.name === 'BLVCK';
     if (isBlvck) {
       cardEl.classList.add('hand-card-blvck');
+      cardEl.dataset.unaffordable = 'true';
     }
 
     // Unaffordable cards get BLVCK-frame treatment (keep emoji/title, copy frame styling)

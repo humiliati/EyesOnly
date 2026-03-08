@@ -1194,6 +1194,211 @@ function renderLoop(currentTime) {
 - [ ] Phase 1.3: Shadow casting
 - [ ] Phase 2.1: Isometric perspective (optional)
 - [ ] Phase 2.2: Depth sorting
+- [ ] Phase 2.3: Paper Mario Perspective Scaling
+
+---
+
+## Phase 2.3: Paper Mario Perspective Scaling
+
+> **Purpose:** Implement fake perspective scaling where objects scale based on Y position (top=far, bottom=near), creating depth in a 2.5D DOM/canvas emoji renderer.
+> **Reference:** For building interiors and structure grammar, see [INTERIOR_SYSTEM_IDEAS.md](./INTERIOR_SYSTEM_IDEAS.md)
+
+### 2.3.1 Two Coordinate Systems
+
+Separate simulation space from render space. The ASCII grid remains the source of truth for physics, collisions, and pathing. Rendering transforms each object through a projection function.
+
+```javascript
+// In gone-rogue-canvas.js
+
+// Simulation space (unchanged)
+var SIM_WIDTH = 40;
+var SIM_HEIGHT = 25;
+
+// Render space config
+var PERSPECTIVE_STRENGTH = 0.35;  // How aggressive the scaling is
+var MIN_SCALE = 0.6;
+var MAX_SCALE = 1.4;
+
+/**
+ * Project simulation coordinates to render space with perspective scaling
+ * @param {number} x - Tile X position
+ * @param {number} y - Tile Y position  
+ * @returns {Object} { screenX, screenY, scale }
+ */
+function projectToRender(x, y) {
+  var depth = y / SIM_HEIGHT;  // 0.0 (top) to 1.0 (bottom)
+  
+  // Scale increases from top to bottom (far to near)
+  var scale = MIN_SCALE + (MAX_SCALE - MIN_SCALE) * depth;
+  
+  // Apply scale to create the perspective effect
+  var screenX = x * scale;
+  var screenY = y * scale;
+  
+  return { x: screenX, y: screenY, scale: scale };
+}
+```
+
+### 2.3.2 Y-Based Scaling Implementation
+
+Objects at the top of the map appear small (far), objects at the bottom appear large (near).
+
+```javascript
+// In render loop - apply to each entity
+function renderEntity(entity) {
+  var p = projectToRender(entity.x, entity.y);
+  
+  // For emoji sprites, scale transforms the visual
+  canvasContext.save();
+  canvasContext.translate(p.x * TILE_SIZE, p.y * TILE_SIZE);
+  canvasContext.scale(p.scale, p.scale);
+  drawEmoji(entity.emoji, 0, 0);  // Draw at scaled origin
+  canvasContext.restore();
+}
+```
+
+### 2.3.3 Wall Collision (Footpoint-Based)
+
+Walls render with perspective but collisions use the bottom-center "footpoint" only. This keeps the ASCII grid as the collision truth while allowing visual perspective.
+
+```javascript
+// Collision uses simulation coordinates (unchanged)
+function isWallAt(x, y) {
+  return map[y] && map[y][x] === '#';  // ASCII grid unchanged
+}
+
+// But walls render with perspective
+function renderWall(tileX, tileY) {
+  var p = projectToRender(tileX, tileY);
+  var height = 1 + (tileY / SIM_HEIGHT) * 0.5;  // Walls grow toward bottom
+  
+  canvasContext.save();
+  canvasContext.translate(p.x * TILE_SIZE, p.y * TILE_SIZE);
+  canvasContext.scale(p.scale, p.scale * height);  // Stretch vertically
+  drawWallSprite(0, 0);
+  canvasContext.restore();
+}
+```
+
+### 2.3.4 Depth Sorting
+
+Render order must follow Y position. Objects lower on screen (higher Y) render in front of objects higher on screen.
+
+```javascript
+// Sort all renderable objects by Y before drawing
+function renderFrame() {
+  var renderList = [];
+  
+  // Collect all entities
+  for (var i = 0; i < entities.length; i++) {
+    renderList.push({ type: 'entity', y: entities[i].y, obj: entities[i] });
+  }
+  for (var i = 0; i < walls.length; i++) {
+    renderList.push({ type: 'wall', y: walls[i].y, obj: walls[i] });
+  }
+  for (var i = 0; i < items.length; i++) {
+    renderList.push({ type: 'item', y: items[i].y, obj: items[i] });
+  }
+  
+  // Sort by Y position (lowest Y draws first = farthest back)
+  renderList.sort(function(a, b) { return a.y - b.y; });
+  
+  // Render in sorted order
+  for (var i = 0; i < renderList.length; i++) {
+    renderObject(renderList[i].obj, renderList[i].type);
+  }
+}
+```
+
+### 2.3.5 Layered Parallax (Optional Enhancement)
+
+Multiple depth planes move at different speeds during camera pan, creating additional depth illusion.
+
+```javascript
+// Parallax layer speeds
+var LAYER_SPEEDS = {
+  farBackground: 0.2,
+  midground: 0.6,
+  playfield: 1.0,
+  foreground: 1.3
+};
+
+function renderParallaxLayer(layerName, cameraX, cameraY) {
+  var speed = LAYER_SPEEDS[layerName] || 1.0;
+  var offsetX = -cameraX * speed;
+  var offsetY = -cameraY * speed;
+  
+  canvasContext.save();
+  canvasContext.translate(offsetX, offsetY);
+  // Render layer sprites
+  canvasContext.restore();
+}
+```
+
+### 2.3.6 Building Interiors with Perspective
+
+Buildings use anchors on the ASCII grid but generate interior volumes that render with perspective. See [INTERIOR_SYSTEM_IDEAS.md](./INTERIOR_SYSTEM_IDEAS.md) for the full structure grammar system.
+
+```javascript
+// Building anchor on world map
+var buildingAnchors = {
+  'BLD_CHURCH': { x: 10, y: 5, structure: 'church', width: 8, depth: 6 },
+  'BLD_TAVERN': { x: 25, y: 8, structure: 'tavern', width: 10, depth: 8 }
+};
+
+// When player enters, load interior with same perspective
+function enterBuilding(anchor) {
+  loadInterior(anchor.structure, anchor.x, anchor.y);
+  // Interior uses same projectToRender() for consistent perspective
+}
+```
+
+### 2.3.7 Mobile Optimization: Row Precomputation
+
+Precompute scale values per row to avoid per-object math on mobile devices.
+
+```javascript
+// Precomputed row scales (calculated once at init)
+var rowScales = [];
+var rowOffsets = [];
+
+function initPerspective() {
+  for (var y = 0; y < SIM_HEIGHT; y++) {
+    var depth = y / SIM_HEIGHT;
+    rowScales[y] = MIN_SCALE + (MAX_SCALE - MIN_SCALE) * depth;
+    rowOffsets[y] = y * rowScales[y];  // Pre-calculated Y position
+  }
+}
+
+// Fast render lookup
+function renderEntityFast(entity) {
+  var scale = rowScales[entity.y];
+  var screenY = rowOffsets[entity.y];
+  var screenX = entity.x * scale;
+  
+  canvasContext.save();
+  canvasContext.translate(screenX * TILE_SIZE, screenY * TILE_SIZE);
+  canvasContext.scale(scale, scale);
+  drawEmoji(entity.emoji, 0, 0);
+  canvasContext.restore();
+}
+```
+
+### Sprint 2.3: Paper Mario Perspective Implementation
+
+| Phase | Task | File | Status |
+|-------|------|------|--------|
+| 2.3.1 | Add `projectToRender()` function | `gone-rogue-canvas.js` | [ ] |
+| 2.3.2 | Apply scale to entity rendering | `gone-rogue-canvas.js` | [ ] |
+| 2.3.3 | Update wall render with height stretch | `gone-rogue-canvas.js` | [ ] |
+| 2.3.4 | Implement depth sorting | `gone-rogue-canvas.js` | [ ] |
+| 2.3.5 | Add parallax layers (optional) | `gone-rogue-canvas.js` | [ ] |
+| 2.3.6 | Integrate building interior anchors | `gone-rogue.js` | [ ] |
+| 2.3.7 | Add row precomputation | `gone-rogue-canvas.js` | [ ] |
+
+**Estimated:** 4-6 hours
+
+---
 
 ### Sprint 3 (Week 3): Visual Polish
 - [x] Universal drop-shadow system (ellipse under all entities) (**done 2026-02-27**)

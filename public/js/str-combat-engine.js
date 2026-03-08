@@ -1284,59 +1284,22 @@ var StrCombatEngine = (function () {
           ctx.items.push = function(item) { _lootPending.push(item); };
         }
 
-        // Spawn standard loot
+        // ── Populate victory context from deathResult ──
+        // (Loot already spawned by death-exit-system.handleEnemyDeath —
+        //  DO NOT re-spawn currency/cards/charms here or player gets 2x drops)
         if (deathResult && deathResult.loot) {
-          if (deathResult.loot.currency > 0) {
-            _victoryCtx.lootCurrency += deathResult.loot.currency;
-            ctx.spawnCurrency(_enemy.x, _enemy.y, deathResult.loot.currency);
+          _victoryCtx.lootCurrency += deathResult.loot.currency || 0;
+          // Card info resolved by death-exit-system
+          if (deathResult._resolvedCards) {
+            for (var rc = 0; rc < deathResult._resolvedCards.length; rc++) {
+              _victoryCtx.lootCards.push(deathResult._resolvedCards[rc]);
+            }
           }
-
-          // Phase 5: Enemy card drops → direct to hand via acquireNewCardDuringCombat (CHH pipeline)
-          if (deathResult.loot.cards && deathResult.loot.cards.length > 0) {
-            deathResult.loot.cards.forEach(function(cardDrop) {
-              if (cardDrop.shouldDrop && typeof CardSystem !== 'undefined') {
-                var baseType = CardSystem.getRandomBaseCard();
-                var cardRef = CardSystem.rollCard(baseType, { source: 'enemy_drop', floor: ctx.floor || 0, enemyType: _enemy.name || 'unknown' });
-                if (cardRef && cardRef.id) {
-                  // CHH: Use canonical acquisition pipeline (refs → hand → backup cascade)
-                  var cardInsert = (typeof GAMESTATE !== 'undefined' && GAMESTATE.acquireNewCardDuringCombat)
-                    ? GAMESTATE.acquireNewCardDuringCombat(cardRef.id, 1) : null;
-                  // Hydrate for display info
-                  var cardDef = (typeof CardStateAuthority !== 'undefined' && CardStateAuthority.hydrateCard)
-                    ? CardStateAuthority.hydrateCard(cardRef) : cardRef;
-                  if (cardInsert && cardInsert.success) {
-                    try {
-                      if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
-                        DebriefFeedController.reportResourceChange('Cards', 0, 1, '\uD83C\uDCA0 ' + ((cardDef && cardDef.name) || 'Card'));
-                      }
-                    } catch (eDF) {}
-                    try {
-                      if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
-                        OverheadAnimator.showGenericExpression(ctx.player.x, ctx.player.y, '\uD83C\uDCA0', 800, '#800080');
-                      }
-                    } catch (eOH) {}
-                  } else {
-                    // Hand full — drop on ground as fallback (embed meta for pickup hydration)
-                    var strCardDrop = { x: _enemy.x, y: _enemy.y, type: 'card', card: cardRef, spawnTime: Date.now(), decayTime: 30000 };
-                    if (typeof WorldItems !== 'undefined') { WorldItems.addItem(strCardDrop); } else { ctx.items.push(strCardDrop); }
-                  }
-                  _victoryCtx.lootCards.push({ emoji: (cardDef && cardDef.emoji) || '🎴', name: (cardDef && cardDef.name) || 'Card', quality: (cardDef && cardDef.quality) || '' });
-                }
-              }
-            });
-          }
-
-          if (deathResult.loot.charms && deathResult.loot.charms.length > 0) {
-            deathResult.loot.charms.forEach(function(charmDrop) {
-              if (charmDrop.shouldDrop && typeof CardSystem !== 'undefined') {
-                var charm = CardSystem.rollCommonCharm();
-                if (charm) {
-                  var strCharmDrop = { x: _enemy.x, y: _enemy.y, type: 'charm', card: charm, spawnTime: Date.now(), decayTime: 30000 };
-                  if (typeof WorldItems !== 'undefined') { WorldItems.addItem(strCharmDrop); } else { ctx.items.push(strCharmDrop); }
-                  _victoryCtx.lootCharms.push({ emoji: charm.emoji || '💎', name: charm.name || 'Charm' });
-                }
-              }
-            });
+          // Charm info resolved by death-exit-system
+          if (deathResult._resolvedCharms) {
+            for (var rch = 0; rch < deathResult._resolvedCharms.length; rch++) {
+              _victoryCtx.lootCharms.push(deathResult._resolvedCharms[rch]);
+            }
           }
         }
 
@@ -1473,14 +1436,10 @@ var StrCombatEngine = (function () {
         }
       }
 
-      // ── Canonical resource drops (COLLECTIBLES_CANON) ──
-      if (deathResult && deathResult.loot && deathResult.loot.resourceDrops) {
-        for (var rd = 0; rd < deathResult.loot.resourceDrops.length; rd++) {
-          _lootPending.push(deathResult.loot.resourceDrops[rd]);
-        }
-      }
+      // NOTE: Canonical resource drops (COLLECTIBLES_CANON) already handled
+      // by death-exit-system.handleEnemyDeath — not duplicated here.
 
-      // ── LootSpillSystem: restore interceptors and scatter collected ground drops ──
+      // ── LootSpillSystem: restore interceptors and scatter boss-only ground drops ──
       if (_origAddItem) { WorldItems.addItem = _origAddItem; }
       ctx.items.push = _origItemsPush;
       if (_lootPending.length > 0 && typeof LootSpillSystem !== 'undefined') {

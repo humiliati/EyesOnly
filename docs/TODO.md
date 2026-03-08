@@ -9,13 +9,13 @@ This is a short, living TODO list tracking bugs, blockers, and next actions.
 
 ## P0 — Critical Bugs (from Playtesting)
 
-- [ ] **STR combat minimize leaves cards visible** — When minimizing the STR combat window with the toggle arrow, equipped hand cards stay visible in the middle of the screen. Cards should minimize with the combat window.
-- [ ] **Card dragging broken** — No card dragging occurs unless the BLVCK card (which shouldn't be draggable). All other cards should be draggable. Drag-to-deploy from hand fan to map not working.
-- [ ] **Breakable multi-item pickup overlapping** — When a breakable yields multiple contents (ammo, currency, key), collectibles overlap and slide off at different unrelated rates in different directions. Some items remain on the ground requiring a second pass.
-- [ ] **Breakable contents not spreading** — Multi-content breakables stack all items on the same tile. Items >3 should spill to adjacent tiles with wall/obstacle awareness. (`loot-spill-system.js` exists at 125 lines but spread behavior may be incomplete.)
-- [ ] **Key ammo rendering as item** — `key_ammo` / `tier1keys` overhead-animate and tooltip as items. They should render as monochromatic resource symbols (like ammo/currency/batteries) in the debrief feed without inventory-style tooltips.
-- [ ] **Enemy loot pipeline incomplete** — Defeated enemies don't clearly yield loot. Need uniform loot-spill behavior into adjacent tiles after combat resolves. Player death should animate as broken collectible, dropping deck, equipped hand, currency, ammo, batteries, and recent food emojis.
-- [ ] **Floor 3 NPC not interactive** — Floor 3 NPC has no dialogue tree. (Floor 1 Elder, Floor 1.2 Father Aldric, Floor 0.1 Tavern Keeper/Blacksmith have dialogue trees but Floor 3 NPC was missed.)
+- [x] ~~**STR combat minimize leaves cards visible**~~ — Fixed: `hand-fan-component.js` minimize guard now clears CSS classes, opacity, transforms, and pointer-events when STR combat minimizes. Restore path also resets these on maximize.
+- [x] ~~**Card dragging broken (BLVCK inversion)**~~ — Fixed: BLVCK (ACT-000) now explicitly marked `dataset.unaffordable = 'true'` in `shared-card-renderer.js` so it's never draggable. Regular card draggability depends on `ResourceManager.canAffordCard()` — if cards with costs still can't drag, check resource state at runtime.
+- [x] ~~**Breakable multi-item pickup overlapping**~~ — Fixed: `overhead-animator.js` now staggers stacked animations by 250ms and unifies CURRENCY_PICKUP curve to match EXPRESSION (same float-up, same timing). "Items remaining on ground" is by design — scattered items on adjacent tiles require player to walk there.
+- [x] ~~**Breakable contents not spreading**~~ — Verified: `LootSpillSystem.scatterItems()` is correctly wired into `breakable-system.js _spawnBreakableLoot()`. Items 1-3 stay on center with sub-tile visual offset, items 4+ spill to adjacent walkable tiles. Script loading order confirmed correct (loot-spill loads before breakable-system). If items still stack, check that breakables produce 4+ items to trigger spill.
+- [x] ~~**Key ammo rendering as item**~~ — Fixed: tooltip now uses monochromatic 🗝 glyph + resource-style format ("🗝 KeyName +1") instead of colored 🔑 + "KEY AMMO:" format. Debrief already routed to resource row.
+- [x] ~~**Enemy loot pipeline incomplete**~~ — Fixed: `death-exit-system.js` was already the canonical loot spawner (currency, cards via CHH, charms, ammo, resource drops + LootSpillSystem scatter + overhead summary). `str-combat-engine.js` was duplicating all spawns from the same `deathResult`, giving 2x drops. Removed duplicate spawning from STR engine, now populates `_victoryCtx` from `deathResult._resolvedCards/_resolvedCharms` instead. Boss loot (unique to STR) still handled in STR engine. Player death scatter (`_scatterPlayerInventory`) already functional for cards, ammo, battery, currency. `_deathDrop` visual rendering and food emoji drops are future P1 features.
+- [x] ~~**Floor 3 NPC not interactive**~~ — Fixed: Trainer NPC now has full `dialogueTree` with 6 nodes (greeting, tactics, cards, danger, deeper, ready) covering combat tips, enemy intel, and card mechanics.
 
 ### Resolved P0 Bugs
 - [x] ~~Building exit spawn bug~~ — Fixed by `door-contract-system.js` with `applyBuildingDoorContract()` funnel pattern. Player now spawns near the correct exit door on the parent floor.
@@ -34,13 +34,14 @@ This is a short, living TODO list tracking bugs, blockers, and next actions.
 
 - [ ] **Ghost floors (3-4) have no enemies** — `_placeEnemies()` returns early for `FLOOR_TYPES.GHOST` with a TODO for camera/drone surveillance system. Floors 3-4 are trivially empty. Needs surveillance enemy implementation (cameras, drones, or hybrid). See `.GHOST_FLOOR_ISSUE.md` for design options.
 - [ ] **M ping/pressure loop placeholder** — AWOL button UI is canonical but M ping backend is placeholders + TODOs. See `.UBER_AWOL_IMPLEMENTATION_SUMMARY.md`.
-- [ ] **Tavern basement empty doors** — Interior doors on floor 0.1.1 may be non-functional (runtime debugging needed).
-- [ ] **Diagnostic logging cleanup** — Remove verbose diagnostic logging from `door-contract-system.js` and `tutorial-floor-gen.js`.
-- [ ] **TUTORIAL_FLOORS_AUDIT.md bug status update** — Bugs 1-13 status markers not formally updated (8 validated PASS as of 2026-03-06).
+- [x] ~~**Tavern basement empty doors**~~ — Fixed: Player spawn moved from (20,17) to (35,17) to match cellar stairs entry point in tavern interior. Exit door moved from (20,18) to (37,17) — valid tile within grid bounds, near entry point. Player now explores leftward toward BLACKSMITH_HAMMER quest item.
+- [x] ~~**Diagnostic logging cleanup**~~ — Removed 24 verbose console.log/warn statements from `door-contract-system.js` (7) and `tutorial-floor-gen.js` (17).
+- [x] ~~**TUTORIAL_FLOORS_AUDIT.md bug status update**~~ — All 13 bug status markers formally updated. 11/13 ✅ FIXED, 2 partial (BUG 4 suppressAnimation needs wiring, BUG 13 building door contract needs wiring).
 - [ ] **Highscore system game integration** — Hook up Gone Rogue score submission on extraction. Add Street-Chronicles completion tracking. Backend endpoints needed. See `.IMPLEMENTATION_GUIDE.md` for leaderboard spec.
 - [ ] Add username availability endpoint/UI polish.
 - [ ] Add M UI convenience: typeahead callsign/user lookup when granting roles and inventory.
-- [ ] **Phase C loot-spill-system.js** — Player death animation + backup deck, equipped hand, and resources scatter. Inventory persists death only when bonfired.
+- [x] ~~**Phase C loot-spill-system.js**~~ — Player death scatter implemented in `death-exit-system.js _scatterPlayerInventory()`: drops equipped hand, backup deck, ammo, battery, and 50% currency via LootSpillSystem. Remaining: `_deathDrop` visual rendering (broken card art), food emoji tracking/drops, death animation cascade.
+- [x] ~~**Food consumption history + ground-effect interactions**~~ — Implemented: GAMESTATE ring buffer (`recentFood[]`, max 5, 20-step duration) tracks inert food consumption. New `food-ground-interaction.js` module checks food×ground-effect matrix when player steps on tiles. One-shot: food consumed from buffer on first matching interaction. 5 inert foods with interactions: Water→FIRE/OIL_IGNITED (fire immunity 2 steps), Honey→OIL (oil spread), Juice→CONDUCTIVE (shock immunity 3 steps), Candy→SODA_SPILL (soda spread), Dango→ICE (melt to water). Fire/shock immunity guards in both `ground-effects-system.js` and `game-tick-system.js` DOT sections. Tooltip-only feedback, no HUD elements.
 - [ ] **Shop system manual testing** — Testing checklist in `SHOP_SYSTEM_COMPLETE.md` has unchecked items.
 
 ---

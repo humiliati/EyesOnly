@@ -74,7 +74,16 @@ const GAMESTATE = (function () {
       ammo:  {},   // Tier 1: { KEY_002: n, KEY_004: n, ... }
       gate:  {},   // Tier 2: { KEYCARD: n, MALL_KEY: n, ... }
       quest: {}    // Tier 3: { BLACKSMITH_HAMMER: n, RUNE_FRAGMENT: n, ... }
-    }
+    },
+
+    // Food consumption history — ring buffer for inert food × ground-effect interactions
+    // Only inert foods (water, honey, juice, candy, dango) get recorded here.
+    // One-shot: consumed from buffer when interaction triggers.
+    recentFood: [],         // [{ foodId, emoji, groundEffect, turnConsumed, durationTicks }]
+
+    // Active food buffs — temporary player buffs granted by food×ground interactions
+    // { fireImmunity: { untilTurn: N }, shockImmunity: { untilTurn: N } }
+    activeFoodBuffs: {}
   };
 
   function init() {
@@ -2641,6 +2650,90 @@ const GAMESTATE = (function () {
     return _state.keys;
   }
 
+  // ------------------------------------------------------------------
+  // Food Consumption History — ring buffer for inert food × ground interactions
+  // ------------------------------------------------------------------
+  var MAX_RECENT_FOOD = 5;
+  var DEFAULT_FOOD_DURATION = 20; // steps (turns)
+
+  /**
+   * Record an inert food consumption to the history buffer.
+   * One-shot: entry consumed from buffer when a matching ground interaction fires.
+   */
+  function recordFood(foodId, emoji, groundEffect, duration) {
+    if (!_state.recentFood) _state.recentFood = [];
+    if (_state.recentFood.length >= MAX_RECENT_FOOD) {
+      _state.recentFood.shift(); // FIFO eviction
+    }
+    var currentTurn = 0;
+    try { currentTurn = (typeof GoneRogue !== 'undefined' && GoneRogue.getCurrentTurn) ? GoneRogue.getCurrentTurn() : 0; } catch (e) {}
+    _state.recentFood.push({
+      foodId: foodId,
+      emoji: emoji || '',
+      groundEffect: groundEffect || null,
+      turnConsumed: currentTurn,
+      durationTicks: duration || DEFAULT_FOOD_DURATION
+    });
+  }
+
+  /** Return shallow copy of active food history entries. */
+  function getRecentFood() {
+    return (_state.recentFood || []).slice();
+  }
+
+  /** Remove first matching food entry (one-shot consumption on interaction). */
+  function consumeRecentFood(foodId) {
+    if (!_state.recentFood) return;
+    for (var i = 0; i < _state.recentFood.length; i++) {
+      if (_state.recentFood[i].foodId === foodId) {
+        _state.recentFood.splice(i, 1);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Prune expired food entries based on turn counter. */
+  function tickRecentFood(currentTurn) {
+    if (!_state.recentFood || _state.recentFood.length === 0) return;
+    _state.recentFood = _state.recentFood.filter(function(entry) {
+      return (currentTurn - entry.turnConsumed) <= entry.durationTicks;
+    });
+  }
+
+  /** Wipe food history (called on death/exit). */
+  function clearRecentFood() {
+    _state.recentFood = [];
+    _state.activeFoodBuffs = {};
+  }
+
+  // ------------------------------------------------------------------
+  // Active Food Buffs — temporary player buffs from food × ground interactions
+  // ------------------------------------------------------------------
+
+  /** Grant a temporary food buff (e.g. fireImmunity for N turns). */
+  function addFoodBuff(buffName, durationTicks, currentTurn) {
+    if (!_state.activeFoodBuffs) _state.activeFoodBuffs = {};
+    _state.activeFoodBuffs[buffName] = { untilTurn: currentTurn + durationTicks };
+  }
+
+  /** Check if a food buff is active at the current turn. */
+  function hasFoodBuff(buffName, currentTurn) {
+    if (!_state.activeFoodBuffs || !_state.activeFoodBuffs[buffName]) return false;
+    return currentTurn <= _state.activeFoodBuffs[buffName].untilTurn;
+  }
+
+  /** Remove expired food buffs. */
+  function clearExpiredFoodBuffs(currentTurn) {
+    if (!_state.activeFoodBuffs) return;
+    var keys = Object.keys(_state.activeFoodBuffs);
+    for (var i = 0; i < keys.length; i++) {
+      if (currentTurn > _state.activeFoodBuffs[keys[i]].untilTurn) {
+        delete _state.activeFoodBuffs[keys[i]];
+      }
+    }
+  }
+
   function getMaxBackupSlots() {
     return _state.maxBackupSlots || 25;
   }
@@ -2886,6 +2979,16 @@ const GAMESTATE = (function () {
     getKeyCounts: getKeyCounts,
     getKeyCount: getKeyCount,
     getTotalKeyAmmo: getTotalKeyAmmo,
-    rebuildKeyCounts: rebuildKeyCounts
+    rebuildKeyCounts: rebuildKeyCounts,
+    // Food consumption history (inert food × ground-effect interactions)
+    recordFood: recordFood,
+    getRecentFood: getRecentFood,
+    consumeRecentFood: consumeRecentFood,
+    tickRecentFood: tickRecentFood,
+    clearRecentFood: clearRecentFood,
+    // Active food buffs (temporary player buffs from food×ground interactions)
+    addFoodBuff: addFoodBuff,
+    hasFoodBuff: hasFoodBuff,
+    clearExpiredFoodBuffs: clearExpiredFoodBuffs
   };
 })();

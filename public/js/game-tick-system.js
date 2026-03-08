@@ -278,6 +278,20 @@ var GameTickSystem = (function() {
       var playerGroundEffect = GroundEffects.getGroundEffect(player.x, player.y);
       var playerGroundDamage = playerGroundEffect ? (playerGroundEffect.damage || 0) : 0;
       if (playerGroundDamage > 0) {
+        // Check food buff immunity (fire/shock) before applying DOT
+        var _dotType = playerGroundEffect.type ? playerGroundEffect.type.toUpperCase() : '';
+        var _hasFoodImmunity = false;
+        if (typeof GAMESTATE !== 'undefined' && GAMESTATE.hasFoodBuff) {
+          var _dotTurn = (ctx && typeof ctx.turn === 'number') ? ctx.turn : 0;
+          if ((_dotType === 'FIRE' || _dotType === 'OIL_IGNITED') && GAMESTATE.hasFoodBuff('fireImmunity', _dotTurn)) {
+            _hasFoodImmunity = true;
+          }
+          if (_dotType === 'CONDUCTIVE' && GAMESTATE.hasFoodBuff('shockImmunity', _dotTurn)) {
+            _hasFoodImmunity = true;
+          }
+        }
+        if (_hasFoodImmunity) { playerGroundDamage = 0; }
+
         // Rate-limit damage (damageCooldownMs) to prevent per-tick instakill
         var cooldownMs = playerGroundEffect.damageCooldownMs || 0;
         var _now = Date.now();

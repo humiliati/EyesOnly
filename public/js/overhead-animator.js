@@ -195,13 +195,18 @@ const OverheadAnimator = (function() {
     var key = x + ',' + y;
     var existing = _activeAnimations[key];
 
-    // Stack concurrent animations instead of overwriting.
+    // Stack concurrent animations with staggered timing.
     // Single pickup = single animation; rapid sequential pickups or
     // multi-source animations (speech + currency + rope) stack into an array.
+    // Each subsequent animation is delayed by STAGGER_MS so they cascade
+    // instead of overlapping visually.
+    var STAGGER_MS = 250;
     if (existing) {
       if (Array.isArray(existing)) {
-        animation.data.stackIndex = existing.length;
-        animation.data.stackCount = existing.length + 1;
+        var idx = existing.length;
+        animation.data.stackIndex = idx;
+        animation.data.stackCount = idx + 1;
+        animation.startTime += idx * STAGGER_MS;
         existing.push(animation);
       } else {
         // Promote single → array, preserve existing as index 0
@@ -210,6 +215,7 @@ const OverheadAnimator = (function() {
         existing.data.stackCount = 2;
         animation.data.stackIndex = 1;
         animation.data.stackCount = 2;
+        animation.startTime += STAGGER_MS;
         _activeAnimations[key] = [existing, animation];
       }
     } else {
@@ -404,12 +410,12 @@ const OverheadAnimator = (function() {
 
     switch (animation.type) {
       case 'CURRENCY_PICKUP':
-        // Bounce up and fade out - starts tight above player head
-        var bounceHeight = 20; // pixels
-        var bounceProgress = Math.sin(progress * Math.PI); // 0 -> 1 -> 0
-        transform.y = -20 - (bounceHeight * bounceProgress); // Start at -20px, bounce to -40px
-        transform.opacity = 1.0 - progress; // Fade out as it rises
-        transform.scale = 1.0 + (0.2 * bounceProgress); // Slight scale
+        // Uniform float up and fade — matches EXPRESSION for visual consistency
+        // across multi-item pickups (ammo, currency, keys, gems all float the same way)
+        var currFloatHeight = 30;
+        transform.y = -20 - (currFloatHeight * progress);
+        transform.opacity = 1.0 - (progress * 0.7);
+        transform.scale = 1.0 + (0.15 * Math.sin(progress * Math.PI)); // Subtle pulse
         break;
 
       case 'EXPRESSION':

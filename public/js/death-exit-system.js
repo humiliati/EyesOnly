@@ -102,6 +102,11 @@ var DeathExitSystem = (function () {
       BackupActionContainer.hide();
     }
 
+    // Clear food consumption history + active food buffs on death
+    if (typeof GAMESTATE !== 'undefined' && GAMESTATE.clearRecentFood) {
+      GAMESTATE.clearRecentFood();
+    }
+
     // Show death screen overlay
     if (typeof STRCombatWindow !== 'undefined' && typeof STRCombatWindow.showDeathScreen === 'function') {
       STRCombatWindow.showDeathScreen({
@@ -154,7 +159,6 @@ var DeathExitSystem = (function () {
 
       if (!ctx.runState.firstCombatVictory) {
         ctx.runState.firstCombatVictory = true;
-        console.log('[DeathExitSystem] First combat victory achieved - gates now eligible');
       }
     }
 
@@ -184,6 +188,9 @@ var DeathExitSystem = (function () {
       }
 
       // Spawn cards — CHH Step 3: canonical acquireNewCardDuringCombat pipeline
+      // Track resolved card/charm info for callers (STR victory context)
+      deathResult._resolvedCards = [];
+      deathResult._resolvedCharms = [];
       var _dropCountCards = 0;
       if (deathResult.loot.cards && deathResult.loot.cards.length > 0 && typeof CardSystem !== 'undefined') {
         for (var i = 0; i < deathResult.loot.cards.length; i++) {
@@ -215,6 +222,12 @@ var DeathExitSystem = (function () {
                 var deathCard = { x: enemy.x, y: enemy.y, type: 'card', card: card, spawnTime: Date.now(), decayTime: 45000 };
                 if (typeof WorldItems !== 'undefined') { WorldItems.addItem(deathCard); } else { ctx.items.push(deathCard); }
               }
+              // Track resolved card info for callers
+              deathResult._resolvedCards.push({
+                emoji: (cardDef && cardDef.emoji) || '🎴',
+                name: (cardDef && cardDef.name) || 'Card',
+                quality: (cardDef && cardDef.quality) || ''
+              });
             }
           }
         }
@@ -230,6 +243,7 @@ var DeathExitSystem = (function () {
               _dropCountItems++;
               var deathCharm = { x: enemy.x, y: enemy.y, type: 'charm', card: charm, spawnTime: Date.now(), decayTime: 45000 };
               if (typeof WorldItems !== 'undefined') { WorldItems.addItem(deathCharm); } else { ctx.items.push(deathCharm); }
+              deathResult._resolvedCharms.push({ emoji: charm.emoji || '💎', name: charm.name || 'Charm' });
             }
           }
         }
@@ -421,8 +435,6 @@ var DeathExitSystem = (function () {
 
     if (pendingDrops.length === 0) return;
 
-    console.log('[DeathExit] Scattering ' + pendingDrops.length + ' player death drops at (' + px + ',' + py + ')');
-
     // ── Scatter via LootSpillSystem ──
     LootSpillSystem.scatterItems(px, py, pendingDrops, ctx);
 
@@ -458,6 +470,11 @@ var DeathExitSystem = (function () {
       if (typeof HandFanComponent !== 'undefined' && HandFanComponent.hide) HandFanComponent.hide();
       if (typeof BackupActionContainer !== 'undefined' && BackupActionContainer.hide) BackupActionContainer.hide();
     } catch (e0) {}
+
+    // Clear food consumption history + active food buffs on exit
+    if (typeof GAMESTATE !== 'undefined' && GAMESTATE.clearRecentFood) {
+      GAMESTATE.clearRecentFood();
+    }
 
     // Re-enable scanlines
     document.body.classList.remove('gone-rogue-active');

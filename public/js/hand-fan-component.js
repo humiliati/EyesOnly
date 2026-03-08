@@ -136,10 +136,20 @@ const HandFanComponent = (function () {
 
     // ── During STR combat minimize, the CH capsule handles display ──
     // Don't show the fan at contextual/bottom position; hide it instead.
+    // Must also clear residual CSS classes + transforms so cards don't linger.
     if (mode === 'contextual' && _isStrCombatActive()) {
       _mode = mode;
       _position = position;
-      if (_fanContainer) _fanContainer.style.display = 'none';
+      if (_fanContainer) {
+        _fanContainer.style.display = 'none';
+        _fanContainer.style.pointerEvents = 'none';
+        _fanContainer.style.opacity = '0';
+        _fanContainer.style.transform = '';
+        _fanContainer.classList.remove('hand-fan-combat', 'hand-fan-combat-peripheral',
+          'hand-fan-contextual', 'hand-fan-appear', 'hand-fan-disappear',
+          'hand-fan-shuffle', 'hand-fan-collapsing');
+        _fanContainer.classList.add('hand-fan-minimized');
+      }
       return;
     }
 
@@ -156,6 +166,9 @@ const HandFanComponent = (function () {
     if (_mode === 'combat' && _fanContainer && _fanContainer.style.display === 'none') {
       _fanContainer.style.display = 'flex';
       _fanContainer.style.pointerEvents = '';
+      _fanContainer.style.opacity = '';
+      _fanContainer.style.transform = '';
+      _fanContainer.classList.remove('hand-fan-minimized');
     }
 
     _updateFanPosition();

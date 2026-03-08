@@ -446,6 +446,52 @@ var TutorialFloors = (function() {
           '🧑‍🏫 Not so fast. Past this point, creatures will fight back.',
           '🧑‍🏫 Prove you can handle yourself.'
         ],
+        dialogueTree: {
+          root: 'greeting',
+          nodes: {
+            greeting: {
+              text: '\uD83E\uDDD1\u200D\uD83C\uDFEB Hold it. Past this point, creatures fight back. You ready for that?',
+              choices: [
+                { label: 'Any tips?', next: 'tactics' },
+                { label: 'What\'s out there?', next: 'danger' },
+                { label: 'I\'m ready', next: 'ready' },
+                { label: 'Farewell', next: null }
+              ]
+            },
+            tactics: {
+              text: '\uD83E\uDDD1\u200D\uD83C\uDFEB Use cover. Watch their patterns. Strike when they\'re distracted. And keep moving \u2014 standing still gets you killed.',
+              choices: [
+                { label: 'What about cards?', next: 'cards' },
+                { label: 'Back', next: 'greeting' }
+              ]
+            },
+            cards: {
+              text: '\uD83E\uDDD1\u200D\uD83C\uDFEB Every enemy carries a hand of cards. Beat them in STR combat and you claim one. Build your deck as you go \u2014 stronger cards mean stronger fights.',
+              choices: [
+                { label: 'Got it', next: 'greeting' }
+              ]
+            },
+            danger: {
+              text: '\uD83E\uDDD1\u200D\uD83C\uDFEB Snails, caterpillars, bees. Weak on their own, but territorial. They\'ll chase you if you get too close. The real danger is further in.',
+              choices: [
+                { label: 'What\'s further in?', next: 'deeper' },
+                { label: 'Back', next: 'greeting' }
+              ]
+            },
+            deeper: {
+              text: '\uD83E\uDDD1\u200D\uD83C\uDFEB Things that don\'t just chase. Things that plan. But that\'s not your problem yet. Survive this floor first.',
+              choices: [
+                { label: 'Continue', next: 'greeting' }
+              ]
+            },
+            ready: {
+              text: '\uD83E\uDDD1\u200D\uD83C\uDFEB Good. Prove you can handle yourself and I\'ll let you through. Come at me.',
+              choices: [
+                { label: 'Let\'s go', next: null }
+              ]
+            }
+          }
+        },
         reward: { currency: 15 }
       }
     ],
@@ -1164,8 +1210,10 @@ var TutorialFloors = (function() {
       '#......................................#',
       '########################################'
     ],
-    player: { x: 20, y: 17 },
-    exit: { x: 20, y: 18 },
+    // Player enters from cellar stairs (right side, matching tavern interior door at (35,17))
+    // Exit door is near entry point — player explores left toward the quest item
+    player: { x: 35, y: 17 },
+    exit: { x: 37, y: 17 },
 
     // No nested doors — this is the deepest level
     buildingDoors: [],

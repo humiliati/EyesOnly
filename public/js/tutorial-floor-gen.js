@@ -2,18 +2,10 @@ var TutorialFloorGen = (function() {
   'use strict';
 
   function generateContrivedTutorialFloor(ctx) {
-    if (typeof TutorialFloors === 'undefined') {
-      console.warn('[TutorialFloors] Module not loaded, falling back to procedural generation');
-      return;
-    }
+    if (typeof TutorialFloors === 'undefined') return;
 
     var layout = TutorialFloors.getFloorLayout(ctx.getFloor());
-    if (!layout) {
-      console.warn('[TutorialFloors] No layout found for floor ' + ctx.getFloor());
-      return;
-    }
-
-    console.log('[TutorialFloors] Generating contrived floor ' + ctx.getFloor() + ': ' + layout.name);
+    if (!layout) return;
 
     // Generate floor data from authored layout (do not shift full-grid templates).
     // Continuity is handled by spawning near the correct door.
@@ -131,12 +123,6 @@ var TutorialFloorGen = (function() {
     if (typeof DoorContractSystem !== 'undefined') {
       var backDoorPos = (!floorData.suppressBackDoor) ? { x: backX, y: backY } : null;
       var forwardDoorPos = { x: exitX, y: exitY };
-      var preContractX = ctx.player.x, preContractY = ctx.player.y;
-      var mode = DoorContractSystem.getSpawnFromLastExitPos();
-      console.log('[TutorialFloorGen] PRE-CONTRACT: mode=' + mode +
-        ', player=(' + preContractX + ',' + preContractY + ')' +
-        ', backDoor=' + (backDoorPos ? '(' + backDoorPos.x + ',' + backDoorPos.y + ')' : 'null') +
-        ', fwdDoor=(' + forwardDoorPos.x + ',' + forwardDoorPos.y + ')');
       var applied = DoorContractSystem.applyDoorContract({
         grid: ctx.grid,
         TILES: ctx.TILES,
@@ -146,9 +132,6 @@ var TutorialFloorGen = (function() {
         backDoorPos: backDoorPos,
         forwardDoorPos: forwardDoorPos
       });
-      console.log('[TutorialFloorGen] POST-CONTRACT: applied=' + applied +
-        ', player=(' + ctx.player.x + ',' + ctx.player.y + ')' +
-        ' (moved ' + (ctx.player.x !== preContractX || ctx.player.y !== preContractY ? 'YES' : 'NO') + ')');
     }
 
     // Place buildings (visual overlay)
@@ -523,17 +506,11 @@ var TutorialFloorGen = (function() {
       LightingSystem.updateEnemyLights(ctx.enemies);
       LightingSystem.updateLightMap(ctx.GRID_WIDTH, ctx.GRID_HEIGHT, ctx.getAllLightBlockers(walls));
 
-      var playerLight = LightingSystem.getLightAt(ctx.player.x, ctx.player.y);
-      console.log('[Lighting] Tutorial floor ' + ctx.getFloor() + ': biome=' + biomeName +
-        ', playerIntensity=' + playerLight.intensity.toFixed(2) +
-        ', sources=' + (playerLight.sources ? playerLight.sources.join(',') : 'none'));
     }
 
     // Place NPCs (floor 2)
     // TODO: Implement NPC system
-    if (floorData.npcs && floorData.npcs.length > 0) {
-      console.log('[TutorialFloors] NPCs defined but NPC system not yet implemented');
-    }
+    // NPCs placed below after entity placement
 
     // Place building doors (tavern, church, etc.) — special door tiles leading to interior floors
     if (floorData.buildingDoors && floorData.buildingDoors.length > 0) {
@@ -552,7 +529,6 @@ var TutorialFloorGen = (function() {
           name: (bd.buildingId || 'Building') + ' Entrance'
         };
 
-        console.log('[TutorialFloors] Placed building door at (' + bd.x + ',' + bd.y + ') → ' + (bd.targetFloorId || 'unknown'));
       });
     }
 
@@ -569,7 +545,6 @@ var TutorialFloorGen = (function() {
           InteractiveItems.addItem(item);
         }
       });
-      console.log('[TutorialFloors] Placed ' + floorData.interactiveItems.length + ' interactive items');
     }
 
     // Place water tiles
@@ -579,7 +554,6 @@ var TutorialFloorGen = (function() {
           ctx.grid[w.y][w.x] = '~';
         }
       });
-      console.log('[TutorialFloors] Placed ' + floorData.waterTiles.length + ' water tiles');
     }
 
     // Place breadcrumb pickups (small currency rewards along exploration paths)
@@ -592,7 +566,6 @@ var TutorialFloorGen = (function() {
           collected: false
         });
       });
-      console.log('[TutorialFloors] Placed ' + floorData.breadcrumbPickups.length + ' breadcrumb pickups');
     }
 
     // Final tutorial door guarantee: after ALL placements (breakables/items/currency/water/etc),
@@ -678,11 +651,7 @@ var TutorialFloorGen = (function() {
             npc.x = nx;
             npc.y = ny;
             relocated = true;
-            console.log('[TutorialFloors] Relocated NPC ' + npc.name + ' from (' + oldX + ',' + oldY + ') to (' + nx + ',' + ny + ') to avoid door collision');
             break;
-          }
-          if (!relocated) {
-            console.warn('[TutorialFloors] Could not relocate NPC ' + npc.name + ' off door at (' + oldX + ',' + oldY + ')');
           }
         });
       }
@@ -696,14 +665,6 @@ var TutorialFloorGen = (function() {
         ctx.tileMetadata[backX + ',' + backY] = { type: 'door', doorKind: 'back' };
       }
 
-      // Debug: count door tiles in grid
-      var doorCount = 0;
-      for (var yy = 0; yy < ctx.GRID_HEIGHT; yy++) {
-        for (var xx = 0; xx < ctx.GRID_WIDTH; xx++) {
-          if (ctx.grid[yy] && (ctx.grid[yy][xx] === ctx.TILES.EXIT || ctx.grid[yy][xx] === ctx.TILES.DOOR)) doorCount++;
-        }
-      }
-      console.log('[TutorialFloors] Doors stamped: back=(' + backX + ',' + backY + ') forward=(' + exitX + ',' + exitY + ') count=' + doorCount);
     } catch (eDoor) {}
 
     // Build biome visual grid for forest biome
@@ -726,11 +687,6 @@ var TutorialFloorGen = (function() {
     }
     ctx.setCachedWalls(cachedWalls);
 
-    console.log('[TutorialFloors] Floor generated successfully');
-    console.log('[TutorialFloors] Buildings: ' + ctx.forestBuildings.length + ', Breakables: ' + ctx.breakables.length + ', Enemies: ' + ctx.enemies.length);
-    if (ctx.enemies.length > 0 && ctx.getFloor() < 3 && !floorData.allowEnemies) {
-      console.warn('[TutorialFloors] BUG: ' + ctx.enemies.length + ' enemies on floor ' + ctx.getFloor() + ' (should be 0 for floors < 3 unless allowEnemies is set)');
-    }
   }
 
   return {

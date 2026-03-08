@@ -559,7 +559,10 @@ const FoodDatabase = (function() {
       spawnWeight: 30,
       biomes: ['mall', 'all'],
       autoPickup: true,
-      groundEffect: null
+      groundEffect: null,
+      interactions: {
+        SODA_SPILL: { effect: 'groundSpread', spreadType: 'SODA_SPILL', radius: 1, msg: '🍬 Sticky mess spreading!' }
+      }
     },
     'FOOD_WATER': {
       id: 'FOOD_WATER',
@@ -574,7 +577,11 @@ const FoodDatabase = (function() {
       spawnWeight: 35,
       biomes: ['all'],
       autoPickup: true,
-      groundEffect: 'water'
+      groundEffect: 'water',
+      interactions: {
+        FIRE:        { effect: 'playerBuff', buff: 'fireImmunity', ticks: 2, msg: '💧 Water shield — fire immunity (2 steps)' },
+        OIL_IGNITED: { effect: 'extinguish', buff: 'fireImmunity', ticks: 2, msg: '💧 Flames doused!' }
+      }
     },
     'FOOD_JUICE': {
       id: 'FOOD_JUICE',
@@ -589,7 +596,10 @@ const FoodDatabase = (function() {
       spawnWeight: 25,
       biomes: ['mall', 'office'],
       autoPickup: true,
-      groundEffect: null
+      groundEffect: null,
+      interactions: {
+        CONDUCTIVE: { effect: 'playerBuff', buff: 'shockImmunity', ticks: 3, msg: '🧃 Juice insulation — shock immunity (3 steps)' }
+      }
     },
     'FOOD_LOLLIPOP': {
       id: 'FOOD_LOLLIPOP',
@@ -604,7 +614,8 @@ const FoodDatabase = (function() {
       spawnWeight: 28,
       biomes: ['mall', 'all'],
       autoPickup: true,
-      groundEffect: null
+      groundEffect: null,
+      interactions: null
     },
     'FOOD_DANGO': {
       id: 'FOOD_DANGO',
@@ -619,7 +630,10 @@ const FoodDatabase = (function() {
       spawnWeight: 20,
       biomes: ['museum', 'mall'],
       autoPickup: true,
-      groundEffect: null
+      groundEffect: null,
+      interactions: {
+        ICE: { effect: 'groundChange', newType: 'WATER', msg: '🍡 Ice melting into water...' }
+      }
     },
     'FOOD_HONEY': {
       id: 'FOOD_HONEY',
@@ -634,7 +648,10 @@ const FoodDatabase = (function() {
       spawnWeight: 14,
       biomes: ['forest', 'mall'],
       autoPickup: true,
-      groundEffect: 'sticky'
+      groundEffect: 'sticky',
+      interactions: {
+        OIL: { effect: 'groundSpread', spreadType: 'OIL', radius: 1, msg: '🍯 Oil amplified — slick spreading!' }
+      }
     }
   };
 
@@ -676,6 +693,18 @@ const FoodDatabase = (function() {
    */
   function getFoodItem(id) {
     return FOOD_ITEMS[id] || null;
+  }
+
+  /**
+   * Get the food × ground-effect interaction config, if any.
+   * @param {string} foodId - Food item ID (e.g. 'FOOD_WATER')
+   * @param {string} groundType - Ground effect type (e.g. 'FIRE', 'OIL')
+   * @returns {Object|null} Interaction config { effect, buff, ticks, msg, ... } or null
+   */
+  function getFoodInteraction(foodId, groundType) {
+    var food = FOOD_ITEMS[foodId];
+    if (!food || !food.interactions) return null;
+    return food.interactions[groundType] || null;
   }
 
   /**
@@ -876,6 +905,7 @@ const FoodDatabase = (function() {
   return {
     init: init,
     getFoodItem: getFoodItem,
+    getFoodInteraction: getFoodInteraction,
     getFoodResourceColor: getFoodResourceColor,
     getFoodResourceType: getFoodResourceType,
     getFoodPrimaryEffect: getFoodPrimaryEffect,

@@ -13,7 +13,7 @@ Thirteen bugs/misalignments found across the tutorial floor system, procedural g
 ## BUG 1 — Floor 0 has a return/back door (should not)
 
 **Severity:** High
-**Status:** Broken
+**Status:** ✅ FIXED (2026-03-06) — `suppressBackDoor` check wired into back-door stamping
 **File:** `tutorial-floor-gen.js` lines 118–170
 
 ### What's happening
@@ -52,7 +52,7 @@ Additionally, in `floor-transition-system.js` line 66, the retreat guard `if (ct
 ## BUG 2 — Systemic door contract violation: player spawns near advance door instead of retreat door
 
 **Severity:** Critical
-**Status:** Broken (both contrived AND procedural floors)
+**Status:** ✅ FIXED (2026-03-06) — `DoorContractSystem.applyDoorContract()` wired into both contrived + procedural paths
 **Files:** `tutorial-floor-gen.js` lines 36–206, `floor-generator.js` lines 439–477, `floor-gen-core.js` lines 141–146
 
 > **Note:** The original BUG 2 analysis (pre-revision) described this as a "Floor 2 retreat-case" issue and proposed a narrow fix. That framing was incorrect and led to a contractor patch that addressed a symptom without fixing the systemic problem. This revision replaces the original analysis entirely.
@@ -212,7 +212,7 @@ if (dsp && dsp.suppressAnimation && dsp.stepsRemaining > 0) {
 ## BUG 3 — Door spawn protection is position-only (no step-count buffer)
 
 **Severity:** Medium
-**Status:** Design gap
+**Status:** ✅ FIXED (2026-03-06) — `DoorContractSystem.tickDoorSpawnProtect()` with 5-step guardrail + `suppressAnimation`
 **Files:** `player-interaction-system.js` lines 80–85, `gone-rogue.js` line 131
 
 ### What's happening
@@ -255,7 +255,7 @@ if (dsp && dsp.x === x && dsp.y === y && dsp.stepsRemaining > 0) {
 ## BUG 4 — Building doors vs floor doors use identical animation/rendering
 
 **Severity:** Medium
-**Status:** Missing feature
+**Status:** ⚠ PARTIAL — `suppressAnimation` field ready in `_doorSpawnProtect`; overhead animator needs to read it
 **Files:** `tutorial-floor-gen.js` line 588, `interior-floor-system.js` line 128, `player-interaction-system.js` lines 88–98
 
 ### What's happening
@@ -292,7 +292,7 @@ if (md.type === 'building_door') {
 ## BUG 5 — Floor 0 enemy not visible (filtered out by tutorial-floor-gen.js)
 
 **Severity:** High
-**Status:** Broken
+**Status:** ✅ FIXED (2026-03-06) — one-line fix, STR-combat testing restored
 **File:** `tutorial-floor-gen.js` lines 505–506
 
 ### What's happening
@@ -380,7 +380,7 @@ WorldItems.initForInterior(); // New method that scopes to interior only
 ## BUG 7 — Contractor refactor: WBE compatibility assessment
 
 **Severity:** Low-Medium (tech debt)
-**Status:** Partially compatible
+**Status:** ✅ FIXED (2026-03-06) — `FloorMetadataRegistry` provides unified metadata with WBE Step Node shape
 
 ### What the contractor did right
 - Separated floor generation into `tutorial-floor-gen.js` (consumer) and `tutorial-floors.js` (data)
@@ -774,7 +774,7 @@ This table shows which interior types can appear inside which overworld biomes. 
 ## BUG 10 — WBE and docs don't cross-reference biome/interior/enemy systems
 
 **Severity:** Medium (documentation/architecture debt)
-**Status:** Missing
+**Status:** ✅ FIXED (2026-03-07) — cross-references added to WBE, BIOME_SYSTEMS, BUILDING_INTERIOR_SYSTEM
 **Files:** `WORLD_BUILDING_ENGINE.md`, `BIOME_SYSTEMS.md`, `BUILDING_INTERIOR_SYSTEM.md`, `biomes.json`, `buildings.json`
 
 ### What's happening
@@ -842,11 +842,11 @@ Instead of just stronger enemies on deeper floors, pattern parameters tighten: s
 
 | # | Bug | Severity | File(s) | Status |
 |---|-----|----------|---------|--------|
-| 1 | Floor 0 has back door | High | tutorial-floor-gen.js | `suppressBackDoor` set but never read |
-| 2 | **Systemic door contract violation** | **Critical** | tutorial-floor-gen.js, floor-generator.js, floor-gen-core.js | Player can spawn near advance door; procedural floors have no retreat door at all |
-| 3 | Door protection too weak | Medium | player-interaction-system.js | Position-only, needs step count |
-| 4 | No door type animation distinction | Medium | rendering layer | Building vs floor doors look identical |
-| 5 | Floor 0 enemy filtered out | High | tutorial-floor-gen.js:506 | `floor < 3` guard too aggressive |
+| 1 | Floor 0 has back door | High | tutorial-floor-gen.js | ✅ FIXED — `suppressBackDoor` check wired into back-door stamping |
+| 2 | **Systemic door contract violation** | **Critical** | tutorial-floor-gen.js, floor-generator.js, floor-gen-core.js | ✅ FIXED — `DoorContractSystem.applyDoorContract()` wired into both paths |
+| 3 | Door protection too weak | Medium | player-interaction-system.js | ✅ FIXED — `DoorContractSystem.tickDoorSpawnProtect()` with 5-step guardrail |
+| 4 | No door type animation distinction | Medium | rendering layer | ⚠ PARTIAL — `suppressAnimation` field ready, overhead animator needs to read it |
+| 5 | Floor 0 enemy filtered out | High | tutorial-floor-gen.js:506 | ✅ FIXED — one-line fix |
 | 6 | Tavern interior wipes collectibles | Medium-High | interior-floor-system.js | ✅ FIXED — collectible spam scrubbed, proc gen wired for tutorial floors, WorldItems.init() resolved |
 | 7 | WBE compatibility gaps | Low-Medium | tutorial-floors.js | ✅ FIXED — FloorMetadataRegistry provides WBE Step Node shape |
 | 8 | Interior walls default to parent biome | High | interior-floor-system.js | ✅ FIXED — _resolveInteriorBiome() + visual cache rebuild + per-biome lighting |
@@ -1040,7 +1040,7 @@ A full narrative alignment document maps real Sandpoint geography to the existin
 ## BUG 13 — Building interior doors use wrong door contract (need distinct rules)
 
 **Severity:** High (design gap, blocks building funnel pattern)
-**Status:** Not implemented
+**Status:** ⚠ API READY — `applyBuildingDoorContract()` implemented in DoorContractSystem, needs wiring into interior-floor-system.js
 **Files:** `interior-floor-system.js`, `player-interaction-system.js`, `tutorial-floor-gen.js`
 
 ### Building doors are NOT floor doors
@@ -1188,11 +1188,11 @@ function exitInteriorFloor() {
 
 | # | Bug | Severity | File(s) | Status |
 |---|-----|----------|---------|--------|
-| 1 | Floor 0 has back door | High | tutorial-floor-gen.js | `suppressBackDoor` set but never read |
-| 2 | **Systemic door contract violation** | **Critical** | tutorial-floor-gen.js, floor-generator.js, floor-gen-core.js | Player can spawn near advance door; procedural floors have no retreat door |
-| 3 | Door protection too weak | Medium | player-interaction-system.js | Position-only, needs step count |
-| 4 | No door type animation distinction | Medium | rendering layer | Building vs floor doors look identical |
-| 5 | Floor 0 enemy filtered out | High | tutorial-floor-gen.js:506 | `floor < 3` guard too aggressive |
+| 1 | Floor 0 has back door | High | tutorial-floor-gen.js | ✅ FIXED — `suppressBackDoor` check wired into back-door stamping |
+| 2 | **Systemic door contract violation** | **Critical** | tutorial-floor-gen.js, floor-generator.js, floor-gen-core.js | ✅ FIXED — `DoorContractSystem.applyDoorContract()` wired into both contrived + procedural paths |
+| 3 | Door protection too weak | Medium | player-interaction-system.js | ✅ FIXED — `DoorContractSystem.tickDoorSpawnProtect()` with 5-step guardrail + `suppressAnimation` |
+| 4 | No door type animation distinction | Medium | rendering layer | ⚠ PARTIAL — `suppressAnimation` field ready in `_doorSpawnProtect`; overhead animator needs to read it |
+| 5 | Floor 0 enemy filtered out | High | tutorial-floor-gen.js:506 | ✅ FIXED — one-line fix, STR-combat testing restored |
 | 6 | Tavern interior wipes collectibles | Medium-High | interior-floor-system.js | ✅ FIXED — collectible spam scrubbed, proc gen wired for tutorial floors, WorldItems.init() resolved |
 | 7 | WBE compatibility gaps | Low-Medium | tutorial-floors.js | ✅ FIXED — FloorMetadataRegistry provides WBE Step Node shape |
 | 8 | Interior walls default to parent biome | High | interior-floor-system.js | ✅ FIXED — _resolveInteriorBiome() + visual cache rebuild + per-biome lighting |
@@ -1200,7 +1200,7 @@ function exitInteriorFloor() {
 | 10 | WBE/docs don't cross-reference systems | Medium | multiple docs | ✅ FIXED — cross-references added to WBE, BIOME_SYSTEMS, BUILDING_INTERIOR_SYSTEM |
 | 11 | No boss floor biome definitions | High | boss-biomes.json (created) | ✅ FIXED — 3 boss arena biomes created, wired into registry |
 | 12 | Narrative setting not in biome progression | Medium | biomes.json (rethemed) | ✅ FIXED — all biomes rethemed to Sandpoint geography + 2 new biomes |
-| 13 | **Building interior door contract missing** | **High** | interior-floor-system.js, player-interaction-system.js | API ready (`applyBuildingDoorContract()`), needs wiring |
+| 13 | **Building interior door contract missing** | **High** | interior-floor-system.js, player-interaction-system.js | ⚠ API READY — `applyBuildingDoorContract()` implemented, needs wiring into interior-floor-system.js |
 
 ---
 
