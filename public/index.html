@@ -139,12 +139,12 @@
         <div id="monitor-body">
           <aside id="control-rail">
             <div class="control-buttons">
-              <button type="button" data-action="back">back</button>
-              <button type="button" data-action="inventory">inventory</button>
-              <button type="button" data-action="login">login</button>
-              <button type="button" data-action="kernel" class="kernel-btn" disabled>kernel</button>
-              <button type="button" data-action="help">help</button>
-              <button type="button" data-action="score">score</button>
+              <button type="button" data-action="back" data-sound="ui-01">back</button>
+              <button type="button" data-action="inventory" data-sound="ui-02">inventory</button>
+              <button type="button" data-action="login" data-sound="ui-03">login</button>
+              <button type="button" data-action="kernel" class="kernel-btn" data-sound="ui-03" disabled>kernel</button>
+              <button type="button" data-action="help" data-sound="ui-04">help</button>
+              <button type="button" data-action="score" data-sound="ui-04">score</button>
             </div>
             <div class="debrief-window" id="debrief-window" aria-label="Command and Conquer style debrief feed">
               <div class="debrief-label" id="debrief-label">
@@ -320,6 +320,7 @@
                 <button class="header-chip hand-fan-toggle"
                         id="hand-fan-toggle-btn"
                         type="button"
+                        data-sound="ui-05"
                         title="Toggle hand fan - Select cards for close-range status effects">
                   <span class="hand-fan-icon">🃏</span>
                   <span class="hand-fan-label">CARDS</span>

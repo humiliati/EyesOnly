@@ -201,6 +201,11 @@ const HandFanComponent = (function () {
     _fanContainer.style.display = 'flex';
     _fanContainer.classList.add('hand-fan-appear');
 
+    // ── Audio: fan expand ──
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+      AudioSystem.play('whoosh-1', { volume: 0.4 });
+    }
+
     setTimeout(function() {
       _fanContainer.classList.remove('hand-fan-appear');
     }, 300);
@@ -212,6 +217,11 @@ const HandFanComponent = (function () {
   function hide() {
     _hideCardTooltip(); // Kill any lingering tooltip on combat cleanup
     _fanContainer.classList.add('hand-fan-disappear');
+
+    // ── Audio: fan collapse ──
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+      AudioSystem.play('whoosh-2', { volume: 0.4 });
+    }
 
     setTimeout(function() {
       _fanContainer.style.display = 'none';
@@ -879,6 +889,11 @@ const HandFanComponent = (function () {
       // Skip on touch devices (coarse pointer)
       if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return;
 
+      // ── Audio: card hover ──
+      if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+        AudioSystem.play('ui-06', { volume: 0.3 });
+      }
+
       _tooltipDwellStart(card, cardEl, e.clientX, e.clientY);
     });
 
@@ -915,6 +930,12 @@ const HandFanComponent = (function () {
       // Select (max 5 cards)
       if (_selectedCards.length < 5) {
         _selectedCards.push(index);
+
+        // ── Audio: card select ──
+        if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+          AudioSystem.play('ui-01', { volume: 0.5 });
+        }
+
         // Check for instant-resolution passive items (e.g. Redneck Obliterator)
         if (_checkInstantResolveHook()) return;
       }

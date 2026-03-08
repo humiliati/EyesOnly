@@ -14,11 +14,14 @@ var SoundDesigner = (function () {
   var _uploadQueue = [];         // [{ file, status, progress }]
   var _uploadHistory = [];
 
-  // Audio preview
+  // Audio preview — streaming via <audio> element
   var _audioCtx = null;
-  var _previewSource = null;
-  var _previewBuffer = null;
+  var _previewAudio = null;     // HTMLAudioElement (reused)
+  var _previewGain = null;      // GainNode for volume
+  var _analyser = null;         // AnalyserNode for waveform
+  var _mediaSource = null;      // MediaElementAudioSourceNode (created once)
   var _isPlaying = false;
+  var _rafId = null;            // requestAnimationFrame handle
 
   // Active context tab inside Assign panel
   var _activeCtx = 'asset';
@@ -44,6 +47,7 @@ var SoundDesigner = (function () {
     _bindHeaderActions();
     _bindAssignButtons();
     _bindStaticLibrary();
+    _bindKeyboard();
     _loadManifest();        // optional enrichment — library works without it
   }
 
@@ -181,14 +185,14 @@ var SoundDesigner = (function () {
     // Update inspector
     _updateInspector(id, entry);
 
-    // Load audio buffer for preview
-    _loadPreviewBuffer(entry.src);
+    // Set streaming preview source (no full download)
+    _setPreviewSrc(entry.src);
 
     // Update assignment grid values
     _refreshAssignmentSlots();
   }
 
-  // ---- Audio Preview ----
+  // ---- Audio Preview (streaming via <audio> element) ----
 
   function _ensureAudioCtx() {
     if (!_audioCtx) {
@@ -197,27 +201,88 @@ var SoundDesigner = (function () {
     if (_audioCtx.state === 'suspended') _audioCtx.resume();
   }
 
-  function _loadPreviewBuffer(src) {
-    if (!src) return;
+  /**
+   * Create (once) or return the hidden <audio> element and its
+   * Web Audio graph: audio → MediaElementSource → Gain → Analyser → destination
+   */
+  function _ensurePreviewAudio() {
+    if (_previewAudio) return _previewAudio;
+
     _ensureAudioCtx();
 
-    // Rebase relative paths through worker when opened locally
-    var url = (src.indexOf('://') === -1) ? ORIGIN + src : src;
+    _previewAudio = new Audio();
+    _previewAudio.crossOrigin = 'anonymous';   // required for CORS + Web Audio
+    _previewAudio.preload = 'auto';
 
-    fetch(url)
-      .then(function (r) { return r.arrayBuffer(); })
-      .then(function (buf) { return _audioCtx.decodeAudioData(buf); })
-      .then(function (decoded) {
-        _previewBuffer = decoded;
-        _drawWaveform(decoded);
-      })
-      .catch(function (err) {
-        console.warn('[SoundDesigner] buffer load fail:', err);
-        _previewBuffer = null;
-      });
+    // Build the Web Audio graph once
+    _mediaSource = _audioCtx.createMediaElementSource(_previewAudio);
+    _previewGain = _audioCtx.createGain();
+    _analyser    = _audioCtx.createAnalyser();
+    _analyser.fftSize = 2048;
+
+    _mediaSource.connect(_previewGain);
+    _previewGain.connect(_analyser);
+    _analyser.connect(_audioCtx.destination);
+
+    // Sync UI when track ends naturally
+    _previewAudio.addEventListener('ended', function () {
+      _isPlaying = false;
+      _stopWaveformLoop();
+      document.getElementById('preview-play-btn').textContent = '▶';
+    });
+
+    // Draw waveform once metadata / enough data is buffered
+    _previewAudio.addEventListener('canplay', function () {
+      _drawStaticWaveformFromAnalyser();
+    });
+
+    return _previewAudio;
   }
 
-  function _drawWaveform(buffer) {
+  /**
+   * Point the preview at a new src (streams on demand — no full download).
+   */
+  function _setPreviewSrc(src) {
+    if (!src) return;
+    _stopPreview();
+
+    var url = (src.indexOf('://') === -1) ? ORIGIN + src : src;
+    var audio = _ensurePreviewAudio();
+    audio.src = url;
+    audio.load();
+
+    // Reset waveform canvas to blank
+    _clearWaveformCanvas();
+  }
+
+  // ---- Waveform Drawing ----
+
+  function _clearWaveformCanvas() {
+    var canvas = document.getElementById('waveform-canvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var w = canvas.parentElement.clientWidth;
+    var h = canvas.parentElement.clientHeight;
+    canvas.width = w;
+    canvas.height = h;
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, w, h);
+    // Draw flat centre line
+    ctx.strokeStyle = '#1a3a1a';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, h / 2);
+    ctx.lineTo(w, h / 2);
+    ctx.stroke();
+  }
+
+  /**
+   * One-shot static-looking waveform grabbed from the AnalyserNode
+   * time-domain data the moment `canplay` fires.
+   * This gives a quick visual even before the user hits play.
+   */
+  function _drawStaticWaveformFromAnalyser() {
+    if (!_analyser) return;
     var canvas = document.getElementById('waveform-canvas');
     if (!canvas) return;
     var ctx = canvas.getContext('2d');
@@ -226,32 +291,68 @@ var SoundDesigner = (function () {
     canvas.width = w;
     canvas.height = h;
 
-    var data = buffer.getChannelData(0);
-    var step = Math.ceil(data.length / w);
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, w, h);
 
-    ctx.clearRect(0, 0, w, h);
+    // Use frequency data for a more visually interesting static display
+    var bufLen = _analyser.frequencyBinCount;
+    var data = new Uint8Array(bufLen);
+    _analyser.getByteTimeDomainData(data);
+
+    ctx.strokeStyle = '#33ff33';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    var sliceW = w / bufLen;
+    for (var i = 0; i < bufLen; i++) {
+      var v = data[i] / 128.0;
+      var y = (v * h) / 2;
+      if (i === 0) ctx.moveTo(0, y);
+      else ctx.lineTo(i * sliceW, y);
+    }
+    ctx.stroke();
+  }
+
+  /**
+   * Live waveform loop — runs while playing.
+   */
+  function _drawLiveWaveform() {
+    if (!_analyser) return;
+    var canvas = document.getElementById('waveform-canvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var w = canvas.width;
+    var h = canvas.height;
+
+    var bufLen = _analyser.frequencyBinCount;
+    var data = new Uint8Array(bufLen);
+    _analyser.getByteTimeDomainData(data);
+
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, w, h);
     ctx.strokeStyle = '#33ff33';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(0, h / 2);
 
-    for (var i = 0; i < w; i++) {
-      var idx = i * step;
-      var min = 1, max = -1;
-      for (var j = 0; j < step && idx + j < data.length; j++) {
-        var v = data[idx + j];
-        if (v < min) min = v;
-        if (v > max) max = v;
-      }
-      var yMin = ((1 + min) / 2) * h;
-      var yMax = ((1 + max) / 2) * h;
-      ctx.moveTo(i, yMin);
-      ctx.lineTo(i, yMax);
+    var sliceW = w / bufLen;
+    for (var i = 0; i < bufLen; i++) {
+      var v = data[i] / 128.0;
+      var y = (v * h) / 2;
+      if (i === 0) ctx.moveTo(0, y);
+      else ctx.lineTo(i * sliceW, y);
     }
     ctx.stroke();
+
+    _rafId = requestAnimationFrame(_drawLiveWaveform);
   }
+
+  function _stopWaveformLoop() {
+    if (_rafId) {
+      cancelAnimationFrame(_rafId);
+      _rafId = null;
+    }
+  }
+
+  // ---- Play / Stop / Toggle ----
 
   function _togglePreview() {
     if (_isPlaying) {
@@ -262,32 +363,30 @@ var SoundDesigner = (function () {
   }
 
   function _playPreview() {
-    if (!_previewBuffer || !_audioCtx) return;
-    _stopPreview();
+    if (!_previewAudio || !_previewAudio.src) return;
+    _ensureAudioCtx();
 
     var vol = parseInt(document.getElementById('preview-volume').value, 10) / 100;
-    var gain = _audioCtx.createGain();
-    gain.gain.value = vol;
-    gain.connect(_audioCtx.destination);
+    if (_previewGain) _previewGain.gain.value = vol;
 
-    _previewSource = _audioCtx.createBufferSource();
-    _previewSource.buffer = _previewBuffer;
-    _previewSource.connect(gain);
-    _previewSource.onended = function () {
-      _isPlaying = false;
-      document.getElementById('preview-play-btn').textContent = '▶';
-    };
-    _previewSource.start(0);
-    _isPlaying = true;
-    document.getElementById('preview-play-btn').textContent = '⏸';
+    _previewAudio.play().then(function () {
+      _isPlaying = true;
+      document.getElementById('preview-play-btn').textContent = '⏸';
+      // Start live waveform
+      _stopWaveformLoop();
+      _drawLiveWaveform();
+    }).catch(function (err) {
+      console.warn('[SoundDesigner] playback error:', err);
+    });
   }
 
   function _stopPreview() {
-    if (_previewSource) {
-      try { _previewSource.stop(); } catch (e) {}
-      _previewSource = null;
+    if (_previewAudio) {
+      _previewAudio.pause();
+      _previewAudio.currentTime = 0;
     }
     _isPlaying = false;
+    _stopWaveformLoop();
     document.getElementById('preview-play-btn').textContent = '▶';
   }
 
@@ -648,6 +747,16 @@ var SoundDesigner = (function () {
     var playBtn = document.getElementById('preview-play-btn');
     if (playBtn) playBtn.addEventListener('click', _togglePreview);
 
+    // Volume slider — live update during playback
+    var volSlider = document.getElementById('preview-volume');
+    if (volSlider) {
+      volSlider.addEventListener('input', function () {
+        if (_previewGain) {
+          _previewGain.gain.value = parseInt(volSlider.value, 10) / 100;
+        }
+      });
+    }
+
     // Target context → populate entities
     var ctxSelect = document.getElementById('target-context-select');
     var entitySelect = document.getElementById('target-entity-select');
@@ -699,6 +808,22 @@ var SoundDesigner = (function () {
         var ctx = panel ? panel.id.replace('ctx-', '') : _activeCtx;
         _removeAssignment(ctx, event);
       });
+    });
+  }
+
+  function _bindKeyboard() {
+    document.addEventListener('keydown', function (e) {
+      // Don't intercept when typing in an input/select/textarea
+      var tag = (e.target.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        _togglePreview();
+      } else if (e.code === 'Escape') {
+        e.preventDefault();
+        _stopPreview();
+      }
     });
   }
 

@@ -1,26 +1,17 @@
 # Audio Wiring Roadmap
 
-> **Date:** 2026-03-08
-> **Status:** Phase 0 complete (infrastructure + first wiring pass)
+> **Date:** 2026-03-08 (last updated)
+> **Status:** Phase 0 + Phase 2 complete, Phase 1 deferred (pending card hand harmonization), transcoding shipped, Sound Designer portal live
 
 ---
 
-## Runtime Weight: Transcode Before Production
+## Runtime Weight: ✅ Transcoded & Deployed
 
-The commissioned assets are 16-bit / 24-bit WAV, totaling ~46 MB across 166 files. WAV is lossless but massively oversized for web delivery (a 1.7 MB WAV becomes ~60 KB Opus/WebM).
+All 167 assets have been transcoded from WAV to Opus/WebM (+ MP3 fallback) and uploaded to the `eyesonly-assets` R2 bucket. Both original WAV and transcoded WebM/MP3 formats are live on R2.
 
-**Action required — run before any real user traffic:**
+**Manifest note:** `audio-manifest.json` `src` fields still reference `.wav` paths. The R2 bucket serves both formats. When ready to cut WAV delivery entirely, update manifest paths from `.wav` → `.webm` and optionally purge WAV files from R2.
 
-```bash
-./scripts/transcode-audio.sh          # preview first with --dry-run
-./scripts/upload-audio-to-r2.sh       # push transcoded files to R2
-```
-
-Then update `audio-manifest.json` paths from `.wav` → `.webm`. The manifest is the single source of truth — `AudioSystem._resolveURL()` reads it directly.
-
-**Expected savings:** ~46 MB WAV → ~2–3 MB Opus/WebM (≈95% reduction). Music tracks compress even better.
-
-**Safari note:** Safari 15.4+ supports Opus. For older Safari, the transcode script also generates MP3 fallbacks. A future `AudioSystem` enhancement could try `.webm` first then fall back to `.mp3` for full coverage.
+**Safari note:** Safari 15.4+ supports Opus natively. The MP3 fallbacks on R2 cover older Safari. A future `AudioSystem` enhancement could try `.webm` first then fall back to `.mp3`.
 
 ---
 
@@ -44,7 +35,9 @@ Then update `audio-manifest.json` paths from `.wav` → `.webm`. The manifest is
 
 ---
 
-## Phase 1 — Combat & Cards (Priority: HIGH)
+## Phase 1 — Combat & Cards (Priority: HIGH) ⏸ DEFERRED
+
+> Deferred until `CARD_HAND_HARMONIZATION_ROADMAP.md` is further along. Combat card play hooks depend on the harmonized card system API.
 
 These directly affect game feel during the core loop.
 
@@ -82,41 +75,39 @@ These directly affect game feel during the core loop.
 
 ---
 
-## Phase 2 — UI Feedback (Priority: HIGH)
+## Phase 2 — UI Feedback (Priority: HIGH) ✅ COMPLETE
 
 ### 2.1 `data-sound` Attribute Rollout
 
-The global delegate is live — just add `data-sound="<name>"` to any HTML element. Priority targets in `index.html`:
+The global delegate is live — `data-sound="<name>"` on any HTML element auto-plays on pointerdown.
 
-| Button | Suggested `data-sound` |
-|---|---|
-| Back button | `ui-01` |
-| Inventory | `ui-02` |
-| Kernel / Login | `ui-03` |
-| Score / Help | `ui-04` |
-| Card draw button | `ui-05` |
-| Shop purchase | `coin-1` |
-| Shop deny (can't afford) | `cant-go-past-2` |
+| Button | `data-sound` | Status |
+|---|---|---|
+| Back button | `ui-01` | ✅ |
+| Inventory | `ui-02` | ✅ |
+| Login / Kernel | `ui-03` | ✅ |
+| Score / Help | `ui-04` | ✅ |
+| Cards toggle (hand fan) | `ui-05` | ✅ |
 
 ### 2.2 Hand Fan & Card Selection — `hand-fan-component.js`
 
-| Event | Suggested Sound |
-|---|---|
-| Fan expand | `whoosh-1` |
-| Fan collapse | `whoosh-2` |
-| Card hover/focus | `ui-06` at volume 0.3 |
-| Card select | `ui-01` |
+| Event | Sound | Status |
+|---|---|---|
+| Fan expand (`show()`) | `whoosh-1` vol 0.4 | ✅ |
+| Fan collapse (`hide()`) | `whoosh-2` vol 0.4 | ✅ |
+| Card hover/focus (mouseenter) | `ui-06` vol 0.3 | ✅ |
+| Card select (`_toggleCardSelection()`) | `ui-01` vol 0.5 | ✅ |
 
 ### 2.3 Shop System — `shop-system.js`
 
-| Event | Suggested Sound |
-|---|---|
-| Shop open | `ui-07` |
-| Shop close | `ui-04` |
-| Purchase success | `coin-{1..2}` + `success-1` |
-| Purchase fail | `cant-go-past-1` |
-
-**Estimated effort:** ~20 lines of JS + data-sound attributes in HTML.
+| Event | Sound | Status |
+|---|---|---|
+| Shop open (`openShop()`) | `ui-07` vol 0.5 | ✅ |
+| Shop close (`closeShop()`) | `ui-04` vol 0.4 | ✅ |
+| Purchase success (`_executePurchase()`) | `coin-{1..2}` + `success-1` | ✅ |
+| Purchase fail (can't afford) | `cant-go-past-1` vol 0.5 | ✅ |
+| Gamble win (`_executeGamble()`) | `power-up-{1..3}` vol 0.6 | ✅ |
+| Gamble loss | `cant-go-past-2` vol 0.5 | ✅ |
 
 ---
 
@@ -245,6 +236,78 @@ When magnet activates and pulls multiple coins, play `coin-1`/`coin-2` in rapid 
 
 ---
 
+## Phase 7 — Music Slicer Tool (Priority: MEDIUM)
+
+> **Status:** Roadmap spec — not yet implemented
+
+### Overview
+
+In-browser tool within the Sound Designer portal that lets designers slice segments from full-length music tracks and export them as new SFX entries. This eliminates the need for external audio editors when creating stingers, loops, transitions, and ambient snippets from the 16 music tracks.
+
+### 7.1 UI — Waveform Region Selection
+
+Add a dedicated "Slicer" tab to the Sound Designer center panel (alongside Preview, Assign, Upload):
+
+- **Waveform display**: full-track waveform rendered from `AnalyserNode` or decoded buffer (music tracks are already streamable via `<audio>` element)
+- **Selection handles**: draggable start/end markers on the waveform canvas. Click-and-drag to define a region. Handles show timecodes (MM:SS.ms).
+- **Zoom controls**: horizontal zoom in/out for precision selection on long tracks
+- **Playhead**: thin vertical line showing current playback position, auto-scrolls during play
+
+### 7.2 Preview & Refinement
+
+- **Play selection**: plays only the selected region (set `audio.currentTime` to start, pause at end)
+- **Play full**: plays the entire track with the selection region highlighted
+- **Loop toggle**: loops the selection for previewing loop points
+- **Fade in/out**: optional fade envelope applied to the snippet (linear or exponential, 0–500ms configurable)
+- **Trim silence**: auto-detect and trim leading/trailing silence from selection (threshold-based)
+
+### 7.3 Export Pipeline
+
+When the designer clicks "Export Snippet":
+
+1. **Client-side extraction**: use `OfflineAudioContext` to render the selected region to a new `AudioBuffer`
+2. **Encode**: use `MediaRecorder` with `audio/webm;codecs=opus` to encode the snippet (or fall back to WAV if MediaRecorder doesn't support Opus)
+3. **Metadata form**: prompt for:
+   - Sound ID (auto-suggested from parent track + timecode, e.g., `music-clubbed-to-death--0m32s-0m38s`)
+   - Display name
+   - Category (default: same as parent, but switchable — e.g., `combat` for a battle stinger)
+   - Loop flag
+   - Tags
+4. **Upload to R2**: POST to `/api/audio/upload` with destination `sfx/` (snippets become SFX, not music)
+5. **Register in manifest**: auto-append to `audio-manifest.json` (or queue for manual manifest update)
+6. **Update static library**: inject a new `<button>` into the sidebar under the target category
+
+### 7.4 Batch Slicing
+
+For efficiency when creating multiple snippets from one track:
+
+- **Marker list**: add multiple named markers/regions before exporting
+- **Batch export**: export all marked regions in one pass
+- **Preview queue**: cycle through marked regions with next/prev buttons
+
+### 7.5 Technical Considerations
+
+- **`OfflineAudioContext`**: required for rendering a sub-range to a new buffer. Create with `sampleRate` and `length` matching the selected duration. Feed the decoded source buffer through a `BufferSourceNode` with offset/duration params.
+- **`MediaRecorder` codec support**: Chromium supports `audio/webm;codecs=opus`. Safari may need WAV export with server-side transcode. Feature-detect and show format badge.
+- **Large file handling**: music tracks are 3–5 minutes. Decoded PCM for a 5-min stereo 44.1kHz track ≈ 50MB. Use `decodeAudioData` only when the slicer tab is active, and release the buffer when switching away.
+- **Waveform rendering for long tracks**: render overview waveform at low resolution (1 sample per pixel), then re-render at higher resolution when zoomed. Use `getChannelData()` from the decoded buffer.
+
+### 7.6 Dependencies
+
+- No external libraries required — all Web Audio API + Canvas 2D
+- R2 upload route already exists (`/api/audio/upload`)
+- Static library injection can reuse `_filterLibrary()` and existing button HTML pattern
+
+### 7.7 Estimated Effort
+
+- UI (waveform canvas, handles, controls): ~300 lines
+- Audio processing (OfflineAudioContext, MediaRecorder): ~150 lines
+- Export/upload integration: ~100 lines
+- Batch slicing: ~100 lines
+- **Total: ~650 lines**, self-contained in a new `slicer-panel.js` module
+
+---
+
 ## Manifest Gaps
 
 Sounds referenced by the explosion system that don't have exact manifest entries yet:
@@ -262,9 +325,12 @@ Sounds referenced by the explosion system that don't have exact manifest entries
 | `public/js/audio-system.js` | Core singleton — play, playMusic, playRandom, data-sound delegate |
 | `public/js/audio-controls-widget.js` | Debrief feed UI widget |
 | `public/css/audio-controls.css` | Widget styling |
-| `public/audio/audio-manifest.json` | 166-entry sound registry (source of truth) |
-| `src/worker/routes/audio.ts` | R2 serving route (GET /audio/sfx/*, /audio/music/*) |
+| `public/audio/audio-manifest.json` | 167-entry sound registry (source of truth) |
+| `src/worker/routes/audio.ts` | R2 serving route with CORS (GET /audio/sfx/*, /audio/music/*) |
 | `src/worker/routes/audio-upload.ts` | Upload route (POST /api/audio/upload) |
+| `src/worker/index.ts` | CORS middleware on /audio/* for static asset fallback |
 | `scripts/transcode-audio.sh` | WAV → Opus/WebM + MP3 converter |
 | `scripts/upload-audio-to-r2.sh` | Batch R2 uploader |
-| `public/portal/sound-designer.html` | Designer portal for assignment + upload |
+| `public/portal/sound-designer.html` | Designer portal — 167 static sound entries, preview, assign, upload |
+| `public/portal/js/sound-designer.js` | Portal logic — streaming preview, static library, file:// support |
+| `public/portal/css/sound-designer.css` | Portal styling |

@@ -228,6 +228,11 @@ const ShopSystem = (function () {
     _dimOverlay.style.display = 'block';
     _shopContainer.style.display = 'block';
 
+    // ── Audio: shop open ──
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+      AudioSystem.play('ui-07', { volume: 0.5 });
+    }
+
     // Trigger MOK interjection
     if (typeof MokUX !== 'undefined') {
       var shopName = shopType === SHOP_TYPES.BLACK_MARKET ? 'Black Market' : 'Merchant';
@@ -260,6 +265,11 @@ const ShopSystem = (function () {
     _dimOverlay.style.display = 'none';
     _shopContainer.style.display = 'none';
     _shopContainer.innerHTML = '';
+
+    // ── Audio: shop close ──
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+      AudioSystem.play('ui-04', { volume: 0.4 });
+    }
 
     // Clear tooltip
     if (typeof TooltipSystem !== 'undefined') {
@@ -861,6 +871,10 @@ const ShopSystem = (function () {
     // Check if player can afford
     var playerState = GAMESTATE.getState();
     if (playerState.cryptos < price) {
+      // ── Audio: can't afford ──
+      if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+        AudioSystem.play('cant-go-past-1', { volume: 0.5 });
+      }
       if (typeof MokUX !== 'undefined') {
         MokUX.speak("Not enough cryptos!", 'NEGATIVE');
       }
@@ -914,6 +928,12 @@ const ShopSystem = (function () {
     var index = _currentShop.inventory.indexOf(item);
     if (index > -1) {
       _currentShop.inventory.splice(index, 1);
+    }
+
+    // ── Audio: purchase success ──
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+      AudioSystem.playRandom('coin', 2, { volume: 0.5 });
+      AudioSystem.play('success-1', { volume: 0.4 });
     }
 
     // MOK interjection
@@ -979,6 +999,15 @@ const ShopSystem = (function () {
       var playerInventory = GAMESTATE.getLooseInventory();
       var playerActionBar = GAMESTATE.getState().actionButtonCards;
       _renderShop(_currentShop, playerCurrency, playerHand, playerInventory, playerActionBar);
+
+      // ── Audio: gamble result ──
+      if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+        if (roll.result) {
+          AudioSystem.playRandom('power-up', 3, { volume: 0.6 });
+        } else {
+          AudioSystem.play('cant-go-past-2', { volume: 0.5 });
+        }
+      }
 
       // MOK interjection
       if (typeof MokUX !== 'undefined' && roll.result) {

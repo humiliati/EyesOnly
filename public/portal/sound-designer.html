@@ -273,6 +273,7 @@
           <button class="center-tab active" data-tab="preview">Preview</button>
           <button class="center-tab" data-tab="assign">Assign</button>
           <button class="center-tab" data-tab="upload">Upload</button>
+          <button class="center-tab" data-tab="help">Help</button>
         </div>
 
         <!-- ---- Preview Tab ---- -->
@@ -482,6 +483,61 @@
                 <span class="empty-text">No uploads yet this session</span>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- ---- Help Tab ---- -->
+        <div class="tab-panel" id="tab-help">
+          <div class="help-content" style="padding:16px; color:#ccc; font-size:13px; line-height:1.6; overflow-y:auto; max-height:calc(100vh - 140px);">
+            <h3 style="color:#33ff33; margin-top:0;">Sound Designer Portal — Quick Reference</h3>
+
+            <h4 style="color:#33ff33;">Sound Library (Left Sidebar)</h4>
+            <p>167 sounds organized into 8 categories: UI, Movement, Combat, Magic, Environment, Collectible, Creature, Music. Click any entry to select it. Use the search bar to filter by name, ID, or title. Category headers collapse/expand on click.</p>
+            <p>The library is baked as static HTML — it works offline without fetching the manifest. When the manifest loads, it enriches metadata (tags, volume overrides, etc.).</p>
+
+            <h4 style="color:#33ff33;">Preview (This Panel)</h4>
+            <p>Select a sound, then hit <strong>Play</strong> to stream it. The waveform visualizer shows live audio data via AnalyserNode. Volume slider adjusts in real-time during playback. Works for both short SFX and full-length music tracks (streaming, no full download).</p>
+
+            <h4 style="color:#33ff33;">Assignment</h4>
+            <p>Wire sounds to game entities. Select a sound in the library, switch to the <strong>Assign</strong> tab, pick a context (Asset, Map, Interior), choose an entity, then click the assign button on any event slot. Assignments persist in localStorage and can be exported as JSON.</p>
+
+            <h4 style="color:#33ff33;">Upload</h4>
+            <p>Drag audio/video files into the dropzone (max 50MB each). Choose a destination folder (sfx, music, video) and click <strong>Upload All</strong>. Files go to the <code>eyesonly-assets</code> R2 bucket. Supported formats: .wav .mp3 .ogg .webm .m4a .mp4 .opus</p>
+
+            <h4 style="color:#33ff33;">Inspector (Right Panel)</h4>
+            <p>Shows metadata for the selected sound: key, source path, category, loop flag, display name, tags. Edit fields to override properties. The "Assignments" section shows everywhere this sound is currently wired.</p>
+
+            <h4 style="color:#33ff33;">Header Actions</h4>
+            <p><strong>Refresh</strong> — re-fetches the manifest from the worker for metadata enrichment.<br>
+            <strong>Save Assignments</strong> — persists current assignments to localStorage.<br>
+            <strong>Export JSON</strong> — downloads <code>sound-assignments.json</code> mapping file.</p>
+
+            <h4 style="color:#33ff33;">Keyboard Shortcuts</h4>
+            <p>
+              <code>Space</code> — Play/Pause preview<br>
+              <code>Escape</code> — Stop preview
+            </p>
+
+            <h4 style="color:#33ff33;">Using from File System</h4>
+            <p>The portal works when opened directly from disk (<code>file://</code>). All audio fetches are automatically rebased to <code>https://flapsandseals.com</code>. The manifest fetch is optional — the static library functions without it.</p>
+
+            <h4 style="color:#33ff33;">Audio Pipeline</h4>
+            <p>Assets on R2 are available in both WAV (original) and WebM/Opus (transcoded) formats. The manifest <code>src</code> fields reference WAV paths; both formats resolve from R2. MP3 fallbacks also exist for Safari &lt; 15.4.</p>
+
+            <h4 style="color:#33ff33;">Categories (167 sounds)</h4>
+            <table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:8px;">
+              <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🖥 UI</td><td style="text-align:right;">9</td></tr>
+              <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🏃 Movement</td><td style="text-align:right;">20</td></tr>
+              <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">⚔️ Combat</td><td style="text-align:right;">42</td></tr>
+              <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">✨ Magic</td><td style="text-align:right;">22</td></tr>
+              <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🌿 Environment</td><td style="text-align:right;">29</td></tr>
+              <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">💎 Collectible</td><td style="text-align:right;">24</td></tr>
+              <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🐾 Creature</td><td style="text-align:right;">5</td></tr>
+              <tr><td style="padding:4px;">🎵 Music</td><td style="text-align:right;">16</td></tr>
+            </table>
+
+            <h4 style="color:#33ff33; margin-top:16px;">Roadmap: Music Slicer</h4>
+            <p>A future <strong>Slicer</strong> tab will allow cutting segments from full-length music tracks to create SFX snippets directly in the portal. Waveform region selection, preview, fade in/out, batch export to R2. See <code>docs/AUDIO_WIRING_ROADMAP.md</code> Phase 7 for the full spec.</p>
           </div>
         </div>
       </section>
