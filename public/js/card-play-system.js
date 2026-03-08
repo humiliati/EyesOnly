@@ -28,6 +28,33 @@ var CardPlaySystem = (function() {
     var costs = Array.isArray(card.costs) ? card.costs : null;
     var affordability = ctx.canAffordCosts(costs);
     if (!affordability.canAfford) {
+      // ── UI feedback: show what's missing ──
+      var missingLines = [];
+      var missingNames = [];
+      for (var m = 0; m < affordability.missing.length; m++) {
+        var mi = affordability.missing[m];
+        var kindEmoji = mi.kind === 'ammo' ? '🔫' : mi.kind === 'battery' ? '🔋' : mi.kind === 'energy' ? '⚡' : '🔹';
+        missingLines.push(kindEmoji + ' Need ' + mi.amount + ' ' + mi.kind + ' (have ' + (mi.have || 0) + ')');
+        missingNames.push(mi.kind);
+      }
+      // Append to combat log so player sees the failure reason
+      if (typeof ctx.appendStrCombatLog === 'function') {
+        ctx.appendStrCombatLog([
+          '🚫 ' + (card.emoji || '🃏') + ' ' + (card.name || cardId) + ' — insufficient resources'
+        ].concat(missingLines));
+      }
+      // Overhead expression for visual feedback
+      try {
+        if (typeof OverheadAnimator !== 'undefined' && typeof OverheadAnimator.showGenericExpression === 'function' && ctx.player) {
+          OverheadAnimator.showGenericExpression(ctx.player.x, ctx.player.y, '⚠️ No ' + missingNames.join('/'), 1200);
+        }
+      } catch (eOh) {}
+      // Dispatch event so other UI systems (hand fan, capsule) can react
+      try {
+        window.dispatchEvent(new CustomEvent('rogue-card-unaffordable', {
+          detail: { cardId: cardId, card: card, missing: affordability.missing }
+        }));
+      } catch (eEv) {}
       return { success: false, reason: 'insufficient_resources', missing: affordability.missing, costs: costs };
     }
 
@@ -36,6 +63,12 @@ var CardPlaySystem = (function() {
       if (!spent.success) {
         return { success: false, reason: 'cost_spend_failed', costs: costs };
       }
+      // Re-evaluate BLVCK state — spending resources may strand the player
+      try {
+        if (typeof CardStateAuthority !== 'undefined' && typeof CardStateAuthority.checkBlvckState === 'function') {
+          CardStateAuthority.checkBlvckState();
+        }
+      } catch (eBlvck) {}
     }
 
     // 3D printer (🕋) hook: if active, and this card spent ammo/battery, print extra cards then consume the printer.
@@ -212,6 +245,29 @@ var CardPlaySystem = (function() {
             sourceCard: card
           });
           lines.push('\u23F3 C4 ARMED — detonates in ' + delayTurns + ' turn' + (delayTurns > 1 ? 's' : '') + '!');
+        }
+      } else if (eff.type === 'resource_restore') {
+        // Restore a player resource (focus, battery, ammo, energy)
+        var restoreKind = eff.kind || '';
+        var restoreVal = Number(eff.value || 0);
+        if (restoreKind && isFinite(restoreVal) && restoreVal > 0 && typeof GAMESTATE !== 'undefined') {
+          var kindEmoji = restoreKind === 'focus' ? '◎' : restoreKind === 'battery' ? '◈' : restoreKind === 'ammo' ? '⁍' : restoreKind === 'energy' ? '△' : '🔹';
+          if (restoreKind === 'focus' && typeof GAMESTATE.addFocus === 'function') {
+            GAMESTATE.addFocus(restoreVal);
+          } else if (restoreKind === 'battery' && typeof GAMESTATE.rechargeBattery === 'function') {
+            GAMESTATE.rechargeBattery(restoreVal);
+          } else if (restoreKind === 'ammo' && typeof GAMESTATE.addAmmo === 'function') {
+            GAMESTATE.addAmmo(restoreVal);
+          } else if (restoreKind === 'energy' && typeof GAMESTATE.addEnergy === 'function') {
+            GAMESTATE.addEnergy(restoreVal);
+          }
+          lines.push(kindEmoji + ' +' + restoreVal + ' ' + restoreKind);
+          // Trigger BLVCK re-eval — restored resource may make other cards playable
+          try {
+            if (typeof CardStateAuthority !== 'undefined' && typeof CardStateAuthority.checkBlvckState === 'function') {
+              CardStateAuthority.checkBlvckState();
+            }
+          } catch (eBlvck) {}
         }
       } else if (eff.type === 'flee') {
         // Guaranteed escape — flag for post-effect processing

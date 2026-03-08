@@ -133,8 +133,24 @@ var SharedCardRenderer = (function() {
     cardEl.className = 'hand-card';
 
     // BLVCK identity class — universal "nothing" card gets unique styling
-    if (card.id === 'ACT-000' || card.name === 'BLVCK') {
+    var isBlvck = card.id === 'ACT-000' || card.name === 'BLVCK';
+    if (isBlvck) {
       cardEl.classList.add('hand-card-blvck');
+    }
+
+    // Unaffordable cards get BLVCK-frame treatment (keep emoji/title, copy frame styling)
+    // Only applies during STR combat to non-BLVCK cards the player can't afford
+    if (!isBlvck && card.costs && Array.isArray(card.costs) && card.costs.length > 0) {
+      var _canAfford = true;
+      if (typeof CardStateAuthority !== 'undefined' && typeof CardStateAuthority.canAffordCard === 'function') {
+        _canAfford = CardStateAuthority.canAffordCard(card);
+      } else if (typeof CostPrinterSystem !== 'undefined' && typeof CostPrinterSystem.canAffordCosts === 'function') {
+        var _aff = CostPrinterSystem.canAffordCosts(card.costs);
+        _canAfford = _aff.canAfford;
+      }
+      if (!_canAfford) {
+        cardEl.classList.add('hand-card-unaffordable');
+      }
     }
 
     // Lifecycle transparency

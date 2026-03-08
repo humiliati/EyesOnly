@@ -915,8 +915,9 @@ var CardDragController = (function() {
 
         var card = dragState.card;
         if (card && card.id && typeof GoneRogue !== 'undefined' && typeof GoneRogue.playCardFromHand === 'function') {
-          GoneRogue.playCardFromHand(card.id);
-          return true; // card consumed
+          var result = GoneRogue.playCardFromHand(card.id);
+          // Only consume card if play succeeded — insufficient resources should return card to hand
+          return result && result.success !== false;
         }
         return false;
       }

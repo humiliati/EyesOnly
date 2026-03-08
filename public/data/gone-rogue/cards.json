@@ -8,10 +8,15 @@
     "costs": null,
     "rarity": "common",
     "effects": [
-      { "type": "damage", "value": 1 }
+      {
+        "type": "damage",
+        "value": 1
+      }
     ],
     "preCombat": false,
-    "synergyTags": ["fallback"]
+    "synergyTags": [
+      "fallback"
+    ]
   },
   {
     "id": "ACT-001",
@@ -22,10 +27,20 @@
     "costs": null,
     "rarity": "common",
     "effects": [
-      { "type": "hp", "value": 3 }
+      {
+        "type": "hp",
+        "value": 3
+      },
+      {
+        "type": "resource_restore",
+        "kind": "focus",
+        "value": 1
+      }
     ],
     "preCombat": true,
-    "synergyTags": ["medical"]
+    "synergyTags": [
+      "medical"
+    ]
   },
   {
     "id": "ACT-002",
@@ -34,14 +49,22 @@
     "targetType": "enemy",
     "cost": 0,
     "costs": [
-      { "kind": "ammo", "amount": 1 }
+      {
+        "kind": "ammo",
+        "amount": 1
+      }
     ],
     "rarity": "common",
     "effects": [
-      { "type": "damage", "value": 2 }
+      {
+        "type": "damage",
+        "value": 2
+      }
     ],
     "preCombat": true,
-    "synergyTags": ["attack"]
+    "synergyTags": [
+      "attack"
+    ]
   },
   {
     "id": "ACT-999",
@@ -52,12 +75,25 @@
     "costs": null,
     "rarity": "rare",
     "effects": [
-      { "type": "stealth_entry", "bonus": 0.20 },
-      { "type": "enemy_confuse", "duration": 2 },
-      { "type": "evasion", "value": 0.10 }
+      {
+        "type": "stealth_entry",
+        "bonus": 0.2
+      },
+      {
+        "type": "enemy_confuse",
+        "duration": 2
+      },
+      {
+        "type": "evasion",
+        "value": 0.1
+      }
     ],
     "preCombat": true,
-    "synergyTags": ["stealth", "box", "ambush"]
+    "synergyTags": [
+      "stealth",
+      "box",
+      "ambush"
+    ]
   },
   {
     "id": "ACT-010",
@@ -69,11 +105,21 @@
     "consumesOnPlay": true,
     "rarity": "common",
     "effects": [
-      { "type": "flee", "guaranteed": true },
-      { "type": "fatigue", "value": 3 }
+      {
+        "type": "flee",
+        "guaranteed": true
+      },
+      {
+        "type": "fatigue",
+        "value": 3
+      }
     ],
     "preCombat": false,
-    "synergyTags": ["escape", "disposable", "starter"],
+    "synergyTags": [
+      "escape",
+      "disposable",
+      "starter"
+    ],
     "_designNote": "One-time-use starter flight card. Guaranteed escape from combat. Costs 3 fatigue as the adrenaline tax. Can be saved by Cargo Webbing passive."
   },
   {
@@ -83,16 +129,30 @@
     "targetType": "self",
     "cost": 0,
     "costs": [
-      { "kind": "ammo", "amount": 1 }
+      {
+        "kind": "ammo",
+        "amount": 1
+      }
     ],
     "consumesOnPlay": true,
     "rarity": "common",
     "effects": [
-      { "type": "flee", "guaranteed": true },
-      { "type": "noise", "value": 4 }
+      {
+        "type": "flee",
+        "guaranteed": true
+      },
+      {
+        "type": "noise",
+        "value": 4
+      }
     ],
     "preCombat": false,
-    "synergyTags": ["escape", "disposable", "starter", "loud"],
+    "synergyTags": [
+      "escape",
+      "disposable",
+      "starter",
+      "loud"
+    ],
     "_designNote": "One-time-use starter flight card. Burns 1 ammo and raises alert +4 noise. Louder escape option than Smoke Bomb. Can be saved by Cargo Webbing passive."
   },
   {
@@ -105,11 +165,22 @@
     "consumesOnPlay": false,
     "rarity": "uncommon",
     "effects": [
-      { "type": "flee", "guaranteed": true },
-      { "type": "self_damage", "value": 13 }
+      {
+        "type": "flee",
+        "guaranteed": true
+      },
+      {
+        "type": "self_damage",
+        "value": 13
+      }
     ],
     "preCombat": false,
-    "synergyTags": ["escape", "reusable", "desperate", "medical"],
+    "synergyTags": [
+      "escape",
+      "reusable",
+      "desperate",
+      "medical"
+    ],
     "_designNote": "Reusable flee card. Bites a cyanide capsule tooth — costs 13 HP (brutal) but always gets you out. Not consumed, so it stays in your hand. High risk, high reliability. The self_damage can kill you if HP is too low."
   },
   {
@@ -122,10 +193,17 @@
     "consumesOnPlay": true,
     "rarity": "common",
     "effects": [
-      { "type": "noise", "value": 2 }
+      {
+        "type": "noise",
+        "value": 2
+      }
     ],
     "preCombat": true,
-    "synergyTags": ["disposable", "covert", "pickpocket"],
+    "synergyTags": [
+      "disposable",
+      "covert",
+      "pickpocket"
+    ],
     "_designNote": "Consolation card for failed pickpocket attempts. Adds a little noise — theft has risk."
   },
   {
@@ -138,10 +216,19 @@
     "consumesOnPlay": true,
     "rarity": "uncommon",
     "effects": [
-      { "type": "damage", "value": 3 }
+      {
+        "type": "damage",
+        "value": 3
+      }
     ],
     "preCombat": true,
-    "synergyTags": ["disposable", "covert", "pickpocket", "sleight", "combo_finisher"],
+    "synergyTags": [
+      "disposable",
+      "covert",
+      "pickpocket",
+      "sleight",
+      "combo_finisher"
+    ],
     "_designNote": "Generic permanent-steal reward card. Represents lifted enemy technique without requiring full EATK->ACT mapping yet."
   },
   {
@@ -151,18 +238,40 @@
     "targetType": "area",
     "cost": 0,
     "costs": [
-      { "kind": "battery", "amount": 2 }
+      {
+        "kind": "battery",
+        "amount": 2
+      }
     ],
     "rarity": "rare",
     "groundEffectId": "EFF-006",
     "effects": [
-      { "type": "shatter_lights", "value": 99 },
-      { "type": "battery_burn_per_light", "value": 1 },
-      { "type": "status", "status": "ringing", "duration": 2, "target": "all" },
-      { "type": "remove_stealth", "target": "enemy" }
+      {
+        "type": "shatter_lights",
+        "value": 99
+      },
+      {
+        "type": "battery_burn_per_light",
+        "value": 1
+      },
+      {
+        "type": "status",
+        "status": "ringing",
+        "duration": 2,
+        "target": "all"
+      },
+      {
+        "type": "remove_stealth",
+        "target": "enemy"
+      }
     ],
     "preCombat": true,
-    "synergyTags": ["sonic", "tech", "light_manipulation", "aoe"],
+    "synergyTags": [
+      "sonic",
+      "tech",
+      "light_manipulation",
+      "aoe"
+    ],
     "_designNote": "Core card of Ultrasonic Feedback Chain. Burns battery per light source, shatters all bulbs, creates Sonic Ground Effect. Synergizes with Feedback Microphone for free cast."
   },
   {
@@ -172,16 +281,32 @@
     "targetType": "self",
     "cost": 0,
     "costs": [
-      { "kind": "battery", "amount": 1 }
+      {
+        "kind": "battery",
+        "amount": 1
+      }
     ],
     "rarity": "uncommon",
     "groundEffectId": "EFF-007",
     "effects": [
-      { "type": "cost_reduction_next", "tag": "sonic", "amount": 99 },
-      { "type": "light_interaction_boost", "multiplier": 2.0, "duration": 1 }
+      {
+        "type": "cost_reduction_next",
+        "tag": "sonic",
+        "amount": 99
+      },
+      {
+        "type": "light_interaction_boost",
+        "multiplier": 2,
+        "duration": 1
+      }
     ],
     "preCombat": true,
-    "synergyTags": ["sonic", "tech", "combo_starter", "resonance"],
+    "synergyTags": [
+      "sonic",
+      "tech",
+      "combo_starter",
+      "resonance"
+    ],
     "_designNote": "Enabler card. Creates Resonance ground effect. Next Sonic card costs 0 battery. Doubles light-based interactions this round."
   },
   {
@@ -190,15 +315,31 @@
     "emoji": "🔋",
     "targetType": "ground",
     "cost": 1,
-    "costs": null,
+    "costs": [
+      {
+        "kind": "battery",
+        "amount": 1
+      }
+    ],
     "rarity": "common",
     "groundEffectId": "EFF-003",
     "effects": [
-      { "type": "light_instability", "value": true },
-      { "type": "electrical_vulnerability", "multiplier": 1.5 }
+      {
+        "type": "light_instability",
+        "value": true
+      },
+      {
+        "type": "electrical_vulnerability",
+        "multiplier": 1.5
+      }
     ],
     "preCombat": true,
-    "synergyTags": ["electrical", "tech", "combo_starter", "hazard"],
+    "synergyTags": [
+      "electrical",
+      "tech",
+      "combo_starter",
+      "hazard"
+    ],
     "_designNote": "Creates Conductive Field. All light sources become unstable. Sets up Overload Grid combo."
   },
   {
@@ -207,16 +348,41 @@
     "emoji": "⚡",
     "targetType": "area",
     "cost": 3,
-    "costs": null,
+    "costs": [
+      {
+        "kind": "battery",
+        "amount": 2
+      }
+    ],
     "rarity": "rare",
     "effects": [
-      { "type": "chain_lightning_per_light", "damage": 2 },
-      { "type": "status", "status": "shock", "duration": 1, "target": "enemy" },
-      { "type": "consume_lights", "value": 99 },
-      { "type": "blinding_flash_threshold", "lightCount": 4, "accuracyPenalty": -50 }
+      {
+        "type": "chain_lightning_per_light",
+        "damage": 2
+      },
+      {
+        "type": "status",
+        "status": "shock",
+        "duration": 1,
+        "target": "enemy"
+      },
+      {
+        "type": "consume_lights",
+        "value": 99
+      },
+      {
+        "type": "blinding_flash_threshold",
+        "lightCount": 4,
+        "accuracyPenalty": -50
+      }
     ],
     "preCombat": false,
-    "synergyTags": ["electrical", "tech", "combo_finisher", "aoe"],
+    "synergyTags": [
+      "electrical",
+      "tech",
+      "combo_finisher",
+      "aoe"
+    ],
     "_designNote": "Payoff card. For each active light source: chain lightning arcs across Conductive Ground. If 4+ lights: creates Blinding Flash (enemy accuracy -50%)."
   },
   {
@@ -225,15 +391,35 @@
     "emoji": "🔆",
     "targetType": "ground",
     "cost": 2,
-    "costs": null,
+    "costs": [
+      {
+        "kind": "battery",
+        "amount": 1
+      }
+    ],
     "rarity": "uncommon",
     "effects": [
-      { "type": "plant_prism_node", "value": 1 },
-      { "type": "convert_lights_to_lumens", "ratio": 1 },
-      { "type": "fractured_refraction", "groundType": "darkened", "bonus": 1 }
+      {
+        "type": "plant_prism_node",
+        "value": 1
+      },
+      {
+        "type": "convert_lights_to_lumens",
+        "ratio": 1
+      },
+      {
+        "type": "fractured_refraction",
+        "groundType": "darkened",
+        "bonus": 1
+      }
     ],
     "preCombat": true,
-    "synergyTags": ["light_manipulation", "setup", "solar", "tech"],
+    "synergyTags": [
+      "light_manipulation",
+      "setup",
+      "solar",
+      "tech"
+    ],
     "_designNote": "Plants reflective nodes on floor. Converts light sources into Stored Lumens (stacking resource). Broken bulbs on Darkened Ground count as +1 Lumen."
   },
   {
@@ -246,11 +432,22 @@
     "rarity": "uncommon",
     "groundEffectId": "EFF-004",
     "effects": [
-      { "type": "consume_lumens", "value": 99 },
-      { "type": "damage_per_lumen", "value": 2, "target": "shadow_enemies" }
+      {
+        "type": "consume_lumens",
+        "value": 99
+      },
+      {
+        "type": "damage_per_lumen",
+        "value": 2,
+        "target": "shadow_enemies"
+      }
     ],
     "preCombat": false,
-    "synergyTags": ["solar", "light_manipulation", "combo_finisher"],
+    "synergyTags": [
+      "solar",
+      "light_manipulation",
+      "combo_finisher"
+    ],
     "_designNote": "Consumes all Stored Lumens. Creates Radiant Ground. Damages shadow-aligned enemies based on Lumens consumed."
   },
   {
@@ -263,11 +460,23 @@
     "rarity": "common",
     "groundEffectId": "EFF-005",
     "effects": [
-      { "type": "accuracy", "value": -15, "target": "all" },
-      { "type": "stealth_bonus", "value": 0.15 }
+      {
+        "type": "accuracy",
+        "value": -15,
+        "target": "all"
+      },
+      {
+        "type": "stealth_bonus",
+        "value": 0.15
+      }
     ],
     "preCombat": true,
-    "synergyTags": ["smoke", "stealth", "combo_starter", "covert"],
+    "synergyTags": [
+      "smoke",
+      "stealth",
+      "combo_starter",
+      "covert"
+    ],
     "_designNote": "Creates Obscured Ground. Heavy accuracy penalty for all units. Sets up Tactical Spotlight combo for positional light control."
   },
   {
@@ -276,16 +485,37 @@
     "emoji": "🔦",
     "targetType": "ground",
     "cost": 2,
-    "costs": null,
+    "costs": [
+      {
+        "kind": "battery",
+        "amount": 1
+      }
+    ],
     "rarity": "uncommon",
     "effects": [
-      { "type": "redirect_light", "targetTile": 1 },
-      { "type": "concentrate_brightness", "multiplier": 3.0 },
-      { "type": "shadow_non_spotlight", "value": true },
-      { "type": "overexpose_spotlight", "critBonus": 1.5 }
+      {
+        "type": "redirect_light",
+        "targetTile": 1
+      },
+      {
+        "type": "concentrate_brightness",
+        "multiplier": 3
+      },
+      {
+        "type": "shadow_non_spotlight",
+        "value": true
+      },
+      {
+        "type": "overexpose_spotlight",
+        "critBonus": 1.5
+      }
     ],
     "preCombat": true,
-    "synergyTags": ["light_manipulation", "tactical", "combo_finisher"],
+    "synergyTags": [
+      "light_manipulation",
+      "tactical",
+      "combo_finisher"
+    ],
     "_designNote": "Redirects all light to 1 tile. Creates Overexposed spotlight tile (enemies take +crit damage) and Shadowed non-spotlight tiles (enemies have miss chance)."
   },
   {
@@ -294,33 +524,67 @@
     "emoji": "📼",
     "targetType": "self",
     "cost": 1,
-    "costs": null,
+    "costs": [
+      {
+        "kind": "battery",
+        "amount": 1
+      }
+    ],
     "rarity": "rare",
     "effects": [
-      { "type": "store_last_tag", "value": true },
-      { "type": "echo_tag", "duration": 2 },
-      { "type": "free_play_on_repeat", "tag": "sonic" }
+      {
+        "type": "store_last_tag",
+        "value": true
+      },
+      {
+        "type": "echo_tag",
+        "duration": 2
+      },
+      {
+        "type": "free_play_on_repeat",
+        "tag": "sonic"
+      }
     ],
     "preCombat": false,
-    "synergyTags": ["sonic", "tech", "combo_starter", "chain"],
+    "synergyTags": [
+      "sonic",
+      "tech",
+      "combo_starter",
+      "chain"
+    ],
     "_designNote": "Stores last played tag. If Sonic tag played twice in sequence (or Loop Recorder echoes Sonic), next Sonic card is free and applies Overdrive (Sonic Ground duration +1)."
   },
-
   {
     "id": "ACT-030",
     "name": "Sabotage",
     "emoji": "💣",
     "targetType": "enemy_card",
     "cost": 0,
-    "costs": [{ "kind": "battery", "amount": 1 }],
+    "costs": [
+      {
+        "kind": "battery",
+        "amount": 1
+      }
+    ],
     "consumesOnPlay": true,
     "rarity": "uncommon",
     "effects": [
-      { "type": "destroy_enemy_card", "count": 1, "prefer": "highest_damage" }
+      {
+        "type": "destroy_enemy_card",
+        "count": 1,
+        "prefer": "highest_damage"
+      }
     ],
     "preCombat": false,
-    "tags": ["covert"],
-    "synergyTags": ["sabotage", "tech", "disposable", "covert"],
+    "tags": [
+      "covert"
+    ],
+    "synergyTags": [
+      "sabotage",
+      "tech",
+      "disposable",
+      "covert"
+    ],
     "_designNote": "Phase 3 destroy card. Burns 1 battery, destroys the highest-damage enemy card. Consumed after use. Triggers card_killed combat event → enemy goes >:( enraged. The 'sabotage' synergyTag also enables destroy-interactability on all enemy cards for the rest of the turn via EnemyCardInteractability."
   },
   {
@@ -329,14 +593,27 @@
     "emoji": "📡",
     "targetType": "self",
     "cost": 0,
-    "costs": [{ "kind": "battery", "amount": 1 }],
+    "costs": [
+      {
+        "kind": "battery",
+        "amount": 1
+      }
+    ],
     "consumesOnPlay": true,
     "rarity": "uncommon",
     "effects": [
-      { "type": "reveal_all_enemy_cards", "duration": 1 }
+      {
+        "type": "reveal_all_enemy_cards",
+        "duration": 1
+      }
     ],
     "preCombat": false,
-    "synergyTags": ["intel", "tech", "disposable", "scout"],
+    "synergyTags": [
+      "intel",
+      "tech",
+      "disposable",
+      "scout"
+    ],
     "_designNote": "Phase 3 reveal card. Burns 1 battery, flips ALL enemy cards face-up for the current round. Full intel burst. Consumed after use. Pairs with Scout Scope (item reveals specific cards passively, this card reveals all at once)."
   },
   {
@@ -345,15 +622,35 @@
     "emoji": "🌑",
     "targetType": "ground",
     "cost": 1,
-    "costs": null,
+    "costs": [
+      {
+        "kind": "focus",
+        "amount": 1
+      }
+    ],
     "rarity": "uncommon",
     "effects": [
-      { "type": "ambient_reduction", "value": 0.5, "duration": 3 },
-      { "type": "stealth_bonus", "value": 0.20 },
-      { "type": "enemy_accuracy_penalty", "value": -20 }
+      {
+        "type": "ambient_reduction",
+        "value": 0.5,
+        "duration": 3
+      },
+      {
+        "type": "stealth_bonus",
+        "value": 0.2
+      },
+      {
+        "type": "enemy_accuracy_penalty",
+        "value": -20
+      }
     ],
     "preCombat": true,
-    "synergyTags": ["darkness", "stealth", "combo_starter", "covert"],
+    "synergyTags": [
+      "darkness",
+      "stealth",
+      "combo_starter",
+      "covert"
+    ],
     "_designNote": "Lighting system interaction card. Halves ambient light (darknessMultiplier *= 0.5) for 3 rounds. Massive stealth bonus + enemy accuracy penalty. Pairs with Thermal Goggles: player gets full reveal + accuracy/stealth bonuses in darkness while enemy is blind. Opposite of Flashbang."
   },
   {
@@ -362,35 +659,76 @@
     "emoji": "💥",
     "targetType": "area",
     "cost": 0,
-    "costs": [{ "kind": "ammo", "amount": 1 }],
+    "costs": [
+      {
+        "kind": "ammo",
+        "amount": 1
+      }
+    ],
     "consumesOnPlay": true,
     "rarity": "common",
     "effects": [
-      { "type": "reveal_all_enemy_cards", "duration": 1 },
-      { "type": "enemy_skip_turn", "chance": 0.5 },
-      { "type": "ambient_boost", "value": 1.0, "duration": 1 }
+      {
+        "type": "reveal_all_enemy_cards",
+        "duration": 1
+      },
+      {
+        "type": "enemy_skip_turn",
+        "chance": 0.5
+      },
+      {
+        "type": "ambient_boost",
+        "value": 1,
+        "duration": 1
+      }
     ],
     "preCombat": false,
-    "tags": ["ballistic"],
-    "synergyTags": ["loud", "light_manipulation", "disposable", "attack", "ballistic"],
+    "tags": [
+      "ballistic"
+    ],
+    "synergyTags": [
+      "loud",
+      "light_manipulation",
+      "disposable",
+      "attack",
+      "ballistic"
+    ],
     "_designNote": "Opposite of Dark Veil. Burns 1 ammo, maxes ambient light for 1 round (blinding flash), reveals all enemy cards, 50% chance enemy loses their turn. Loud — generates noise. Consumed after use. Synergizes with Overload Grid (more active lights = more chain lightning)."
   },
-
   {
     "id": "ACT-040",
     "name": "Fireball",
     "emoji": "🔥",
     "targetType": "enemy",
     "cost": 1,
-    "costs": null,
+    "costs": [
+      {
+        "kind": "ammo",
+        "amount": 1
+      }
+    ],
     "rarity": "common",
     "effects": [
-      { "type": "damage", "value": 8 },
-      { "type": "status", "status": "burn", "duration": 2, "tickDamage": 2 }
+      {
+        "type": "damage",
+        "value": 8
+      },
+      {
+        "type": "status",
+        "status": "burn",
+        "duration": 2,
+        "tickDamage": 2
+      }
     ],
     "preCombat": false,
-    "tags": ["ballistic"],
-    "synergyTags": ["ballistic", "fire", "aoe"],
+    "tags": [
+      "ballistic"
+    ],
+    "synergyTags": [
+      "ballistic",
+      "fire",
+      "aoe"
+    ],
     "_designNote": "Soft intro tier. Looks simple: deal 8, apply Burn. Hidden: 🟥+🟥→Overkill, 🟦+🟥→Steam Burst (explosion), Poison+Fire→Impact+Knockback. Player learns fire tag naturally."
   },
   {
@@ -402,12 +740,25 @@
     "costs": null,
     "rarity": "common",
     "effects": [
-      { "type": "damage", "value": 5 },
-      { "type": "status", "status": "wet", "duration": 2 }
+      {
+        "type": "damage",
+        "value": 5
+      },
+      {
+        "type": "status",
+        "status": "wet",
+        "duration": 2
+      }
     ],
     "preCombat": false,
-    "tags": ["wet"],
-    "synergyTags": ["wet", "control", "conductive"],
+    "tags": [
+      "wet"
+    ],
+    "synergyTags": [
+      "wet",
+      "control",
+      "conductive"
+    ],
     "_designNote": "Soft intro tier. Deal 5, apply Wet. Hidden: 🟦+🟨→Electrical Surge (chain lightning), 🟦+🟥→Steam Burst. Makes enemies conductive — next electrical card gets bonus. First encounter teaches Wet+Static naturally."
   },
   {
@@ -416,15 +767,34 @@
     "emoji": "⚡",
     "targetType": "enemy",
     "cost": 1,
-    "costs": null,
+    "costs": [
+      {
+        "kind": "battery",
+        "amount": 1
+      }
+    ],
     "rarity": "common",
     "effects": [
-      { "type": "damage", "value": 6 },
-      { "type": "status", "status": "stun", "chance": 0.20, "duration": 1 }
+      {
+        "type": "damage",
+        "value": 6
+      },
+      {
+        "type": "status",
+        "status": "stun",
+        "chance": 0.2,
+        "duration": 1
+      }
     ],
     "preCombat": false,
-    "tags": ["electrical"],
-    "synergyTags": ["electrical", "tech", "chain"],
+    "tags": [
+      "electrical"
+    ],
+    "synergyTags": [
+      "electrical",
+      "tech",
+      "chain"
+    ],
     "_designNote": "Soft intro tier. Deal 6, 20% stun. Hidden: 🟨+🟦→Chain Lightning (arcs to adjacent), 🟨 on Conductive Ground→AoE stun. Natural discovery: hit a Wet enemy with this and watch lightning chain."
   },
   {
@@ -436,11 +806,20 @@
     "costs": null,
     "rarity": "common",
     "effects": [
-      { "type": "damage", "value": 7 }
+      {
+        "type": "damage",
+        "value": 7
+      }
     ],
     "preCombat": false,
-    "tags": ["ballistic"],
-    "synergyTags": ["ballistic", "melee", "fast"],
+    "tags": [
+      "ballistic"
+    ],
+    "synergyTags": [
+      "ballistic",
+      "melee",
+      "fast"
+    ],
     "_designNote": "Soft intro tier. Pure 7 damage, no frills. Hidden: 🟥x2 same turn→Overkill (ignores 30% damage reduction), 🟪+🟥→Backstab (double damage from stealth). The 'honest' attack — teaches double-ballistic Overkill naturally."
   },
   {
@@ -449,17 +828,32 @@
     "emoji": "🟣",
     "targetType": "enemy",
     "cost": 1,
-    "costs": null,
+    "costs": [
+      {
+        "kind": "ammo",
+        "amount": 1
+      }
+    ],
     "rarity": "common",
     "effects": [
-      { "type": "status", "status": "poison", "duration": 3, "tickDamage": 2 }
+      {
+        "type": "status",
+        "status": "poison",
+        "duration": 3,
+        "tickDamage": 2
+      }
     ],
     "preCombat": false,
-    "tags": ["covert"],
-    "synergyTags": ["covert", "poison", "stealth"],
+    "tags": [
+      "covert"
+    ],
+    "synergyTags": [
+      "covert",
+      "poison",
+      "stealth"
+    ],
     "_designNote": "Soft intro tier. Apply Poison 3 turns. Hidden: Poison+Fire→Explosion (removes poison, deals AoE burst), 🟩+🟪→Stealth Cascade (next attack gains Backstab). Teaches DOT patience + combo ignition."
   },
-
   {
     "id": "ACT-045",
     "name": "Molotov",
@@ -469,12 +863,30 @@
     "costs": null,
     "rarity": "uncommon",
     "effects": [
-      { "type": "status", "status": "burn", "duration": 3, "tickDamage": 2 },
-      { "type": "ground_effect", "effectType": "FIRE", "radius": 1 }
+      {
+        "type": "status",
+        "status": "burn",
+        "duration": 3,
+        "tickDamage": 2
+      },
+      {
+        "type": "ground_effect",
+        "effectType": "FIRE",
+        "radius": 1
+      }
     ],
     "preCombat": false,
-    "tags": ["improvised", "ballistic"],
-    "synergyTags": ["improvised", "ballistic", "fire", "aoe", "hazard"],
+    "tags": [
+      "improvised",
+      "ballistic"
+    ],
+    "synergyTags": [
+      "improvised",
+      "ballistic",
+      "fire",
+      "aoe",
+      "hazard"
+    ],
     "_designNote": "Intermediate tier. First DUAL-TAG card player sees. 🟩+🟥. Creates fire ground + 3-turn burn. Now player sees two tags on one card and starts noticing the pattern. 🟩+🟪→Stealth Cascade, 🟥+🟥→Overkill, 🟩+🟨→Short Circuit."
   },
   {
@@ -483,15 +895,37 @@
     "emoji": "🔌",
     "targetType": "enemy",
     "cost": 1,
-    "costs": null,
+    "costs": [
+      {
+        "kind": "battery",
+        "amount": 1
+      }
+    ],
     "rarity": "uncommon",
     "effects": [
-      { "type": "damage", "value": 5 },
-      { "type": "status", "status": "stun", "chance": 0.40, "duration": 1 }
+      {
+        "type": "damage",
+        "value": 5
+      },
+      {
+        "type": "status",
+        "status": "stun",
+        "chance": 0.4,
+        "duration": 1
+      }
     ],
     "preCombat": false,
-    "tags": ["ballistic", "electrical"],
-    "synergyTags": ["ballistic", "electrical", "melee", "tech", "control"],
+    "tags": [
+      "ballistic",
+      "electrical"
+    ],
+    "synergyTags": [
+      "ballistic",
+      "electrical",
+      "melee",
+      "tech",
+      "control"
+    ],
     "_designNote": "Intermediate tier. 🟥+🟨 dual-tag. Player experiments: Taser after Water Splash = surprise stun spike (Wet+Electrical triggers Arc Surge). Reveals that tag combos cross card boundaries. 40% stun base, but guaranteed stun on Wet targets."
   },
   {
@@ -503,12 +937,29 @@
     "costs": null,
     "rarity": "uncommon",
     "effects": [
-      { "type": "damage", "value": 4 },
-      { "type": "status", "status": "poison", "duration": 2, "tickDamage": 2 }
+      {
+        "type": "damage",
+        "value": 4
+      },
+      {
+        "type": "status",
+        "status": "poison",
+        "duration": 2,
+        "tickDamage": 2
+      }
     ],
     "preCombat": false,
-    "tags": ["covert", "ballistic"],
-    "synergyTags": ["covert", "ballistic", "poison", "melee", "stealth"],
+    "tags": [
+      "covert",
+      "ballistic"
+    ],
+    "synergyTags": [
+      "covert",
+      "ballistic",
+      "poison",
+      "melee",
+      "stealth"
+    ],
     "_designNote": "Intermediate tier. 🟪+🟥 dual-tag. Backstab potential (🟪+🟥→Backstab from stealth). Poison+Fire→Explosion cross-card combo. Teaches that Covert cards have offensive AND synergy value."
   },
   {
@@ -517,15 +968,38 @@
     "emoji": "💦",
     "targetType": "ground",
     "cost": 1,
-    "costs": null,
+    "costs": [
+      {
+        "kind": "battery",
+        "amount": 1
+      }
+    ],
     "rarity": "uncommon",
     "effects": [
-      { "type": "ground_effect", "effectType": "CONDUCTIVE", "radius": 1 },
-      { "type": "status", "status": "wet", "duration": 1, "target": "enemies_in_area" }
+      {
+        "type": "ground_effect",
+        "effectType": "CONDUCTIVE",
+        "radius": 1
+      },
+      {
+        "type": "status",
+        "status": "wet",
+        "duration": 1,
+        "target": "enemies_in_area"
+      }
     ],
     "preCombat": true,
-    "tags": ["wet", "electrical"],
-    "synergyTags": ["wet", "electrical", "conductive", "hazard", "setup"],
+    "tags": [
+      "wet",
+      "electrical"
+    ],
+    "synergyTags": [
+      "wet",
+      "electrical",
+      "conductive",
+      "hazard",
+      "setup"
+    ],
     "_designNote": "Intermediate tier. 🟦+🟨 dual-tag. Creates conductive puddle ground. Enemies stepping in get Wet. Follow up with any electrical card for guaranteed Chain Lightning. The combo enabler — teaches ground-based setups."
   },
   {
@@ -534,18 +1008,36 @@
     "emoji": "🎭",
     "targetType": "self",
     "cost": 1,
-    "costs": null,
+    "costs": [
+      {
+        "kind": "focus",
+        "amount": 1
+      }
+    ],
     "rarity": "uncommon",
     "effects": [
-      { "type": "stealth_bonus", "value": 0.30 },
-      { "type": "next_attack_backstab", "value": true }
+      {
+        "type": "stealth_bonus",
+        "value": 0.3
+      },
+      {
+        "type": "next_attack_backstab",
+        "value": true
+      }
     ],
     "preCombat": true,
-    "tags": ["covert", "improvised"],
-    "synergyTags": ["covert", "improvised", "stealth", "setup"],
+    "tags": [
+      "covert",
+      "improvised"
+    ],
+    "synergyTags": [
+      "covert",
+      "improvised",
+      "stealth",
+      "setup"
+    ],
     "_designNote": "Intermediate tier. 🟪+🟩 dual-tag. Grants stealth + Backstab on next attack. If followed by any Improvised card: Stealth Cascade triggers (chain stealth bonuses). Teaches Covert+Improvised synergy."
   },
-
   {
     "id": "ACT-050",
     "name": "Smoke Screen Waltz",
@@ -555,13 +1047,40 @@
     "costs": null,
     "rarity": "common",
     "effects": [
-      { "type": "evasion", "charges": 2 },
-      { "type": "ground_effect", "effectType": "OBSCURED", "radius": 1, "duration": 1 },
-      { "type": "conditional_bonus", "condition": "in_darkness", "effect": { "type": "evasion", "charges": 1 } }
+      {
+        "type": "evasion",
+        "charges": 2
+      },
+      {
+        "type": "ground_effect",
+        "effectType": "OBSCURED",
+        "radius": 1,
+        "duration": 1
+      },
+      {
+        "type": "conditional_bonus",
+        "condition": "in_darkness",
+        "effect": {
+          "type": "evasion",
+          "charges": 1
+        }
+      },
+      {
+        "type": "resource_restore",
+        "kind": "focus",
+        "value": 1
+      }
     ],
     "preCombat": false,
-    "tags": ["covert"],
-    "synergyTags": ["covert", "stealth", "smoke", "defensive"],
+    "tags": [
+      "covert"
+    ],
+    "synergyTags": [
+      "covert",
+      "stealth",
+      "smoke",
+      "defensive"
+    ],
     "_designNote": "Defensive status intro. Gain 2 Evasion charges (next 2 attacks miss) + Obscured Ground. In Darkness: bonus +1 Evasion. 🟪+🟩→Stealth Cascade, 🟪+🟥→Backstab bonus. Soft intro to stealth layering — player learns evasion stacking."
   },
   {
@@ -573,12 +1092,35 @@
     "costs": null,
     "rarity": "uncommon",
     "effects": [
-      { "type": "negate_attack", "maxDamage": 10, "charges": 1 },
-      { "type": "on_negate", "effect": { "type": "generate_card", "cardTag": "improvised", "count": 1 } }
+      {
+        "type": "negate_attack",
+        "maxDamage": 10,
+        "charges": 1
+      },
+      {
+        "type": "on_negate",
+        "effect": {
+          "type": "generate_card",
+          "cardTag": "improvised",
+          "count": 1
+        }
+      },
+      {
+        "type": "resource_restore",
+        "kind": "focus",
+        "value": 1
+      }
     ],
     "preCombat": false,
-    "tags": ["improvised"],
-    "synergyTags": ["improvised", "defensive", "counter", "sleight"],
+    "tags": [
+      "improvised"
+    ],
+    "synergyTags": [
+      "improvised",
+      "defensive",
+      "counter",
+      "sleight"
+    ],
     "_designNote": "Defensive engine card. Negate next attack under 10 damage. If negated: gain 1 random Improvised card. Feels classy, fuels engine. 🟩+🟪→Stealth Cascade, 🟩+🟥→Ricochet counter. Teaches reactive play — take hit, generate value."
   },
   {
@@ -587,18 +1129,42 @@
     "emoji": "🪞",
     "targetType": "self",
     "cost": 2,
-    "costs": null,
+    "costs": [
+      {
+        "kind": "battery",
+        "amount": 1
+      }
+    ],
     "rarity": "rare",
     "effects": [
-      { "type": "reflect_attack", "reflectTypes": ["ballistic", "electrical"], "charges": 1 },
-      { "type": "on_reflect", "effect": { "type": "inherit_tags", "fromReflected": true } }
+      {
+        "type": "reflect_attack",
+        "reflectTypes": [
+          "ballistic",
+          "electrical"
+        ],
+        "charges": 1
+      },
+      {
+        "type": "on_reflect",
+        "effect": {
+          "type": "inherit_tags",
+          "fromReflected": true
+        }
+      }
     ],
     "preCombat": false,
-    "tags": ["covert"],
-    "synergyTags": ["covert", "defensive", "counter", "gadget"],
+    "tags": [
+      "covert"
+    ],
+    "synergyTags": [
+      "covert",
+      "defensive",
+      "counter",
+      "gadget"
+    ],
     "_designNote": "007 gadget energy. Reflect next Ballistic or Electrical attack back at enemy. Reflected 🟨 on 🟦 target → chain lightning. Reflected 🟥 counts toward Overkill. The reflected attack inherits its tags for combo purposes — reflected electricity on a Wet enemy chains."
   },
-
   {
     "id": "ACT-053",
     "name": "Dry Martini",
@@ -608,13 +1174,40 @@
     "costs": null,
     "rarity": "uncommon",
     "effects": [
-      { "type": "hp", "value": 6 },
-      { "type": "remove_status", "statuses": ["fear", "panic"] },
-      { "type": "conditional_bonus", "condition": "after_kill", "effect": { "type": "hp", "value": 2 } }
+      {
+        "type": "hp",
+        "value": 6
+      },
+      {
+        "type": "remove_status",
+        "statuses": [
+          "fear",
+          "panic"
+        ]
+      },
+      {
+        "type": "conditional_bonus",
+        "condition": "after_kill",
+        "effect": {
+          "type": "hp",
+          "value": 2
+        }
+      },
+      {
+        "type": "resource_restore",
+        "kind": "focus",
+        "value": 2
+      }
     ],
     "preCombat": false,
-    "tags": ["black_market"],
-    "synergyTags": ["black_market", "medical", "luxury"],
+    "tags": [
+      "black_market"
+    ],
+    "synergyTags": [
+      "black_market",
+      "medical",
+      "luxury"
+    ],
     "_designNote": "Heal 6 + remove Fear/Panic. After a kill: +2 bonus heal (shaken, not stirred). ⬛+🟪→Silent Recovery (heal without breaking stealth). Spy fantasy: composed agent sips a drink after the job."
   },
   {
@@ -626,30 +1219,66 @@
     "costs": null,
     "rarity": "common",
     "effects": [
-      { "type": "hp", "value": 4 },
-      { "type": "remove_status", "statuses": ["bleed"] }
+      {
+        "type": "hp",
+        "value": 4
+      },
+      {
+        "type": "remove_status",
+        "statuses": [
+          "bleed"
+        ]
+      },
+      {
+        "type": "resource_restore",
+        "kind": "focus",
+        "value": 1
+      }
     ],
     "preCombat": false,
-    "tags": ["improvised"],
-    "synergyTags": ["improvised", "medical"],
+    "tags": [
+      "improvised"
+    ],
+    "synergyTags": [
+      "improvised",
+      "medical"
+    ],
     "_designNote": "Basic reliable heal. Heal 4 + remove Bleed. 🟩+🟨→Adrenal Surge (+1 action next turn). Genre-familiar: every spy movie has the patching-up-in-the-safehouse moment."
   },
-
   {
     "id": "ACT-055",
     "name": "Laser Pen",
     "emoji": "🎯",
     "targetType": "enemy",
     "cost": 1,
-    "costs": null,
+    "costs": [
+      {
+        "kind": "battery",
+        "amount": 1
+      }
+    ],
     "rarity": "common",
     "effects": [
-      { "type": "status", "status": "marked", "duration": 1 },
-      { "type": "marked_bonus", "damageMultiplier": 1.5 }
+      {
+        "type": "status",
+        "status": "marked",
+        "duration": 1
+      },
+      {
+        "type": "marked_bonus",
+        "damageMultiplier": 1.5
+      }
     ],
     "preCombat": true,
-    "tags": ["ballistic"],
-    "synergyTags": ["ballistic", "precision", "setup", "gadget"],
+    "tags": [
+      "ballistic"
+    ],
+    "synergyTags": [
+      "ballistic",
+      "precision",
+      "setup",
+      "gadget"
+    ],
     "_designNote": "Apply Marked: next attack deals +50% damage. Clean iconic gadget. 🟥x2→Overkill. 🟨+🟥→Ignition Mark (marked + electrical = guaranteed crit). Teaches the setup→payoff rhythm with a single-tag card."
   },
   {
@@ -661,12 +1290,31 @@
     "costs": null,
     "rarity": "uncommon",
     "effects": [
-      { "type": "status", "status": "poison", "duration": 4, "tickDamage": 2 },
-      { "type": "conditional_bonus", "condition": "target_wet", "effect": { "type": "extend_status", "status": "poison", "bonus_duration": 4 } }
+      {
+        "type": "status",
+        "status": "poison",
+        "duration": 4,
+        "tickDamage": 2
+      },
+      {
+        "type": "conditional_bonus",
+        "condition": "target_wet",
+        "effect": {
+          "type": "extend_status",
+          "status": "poison",
+          "bonus_duration": 4
+        }
+      }
     ],
     "preCombat": false,
-    "tags": ["covert"],
-    "synergyTags": ["covert", "poison", "assassination"],
+    "tags": [
+      "covert"
+    ],
+    "synergyTags": [
+      "covert",
+      "poison",
+      "assassination"
+    ],
     "_designNote": "Elegant assassination. Poison 4 turns. If target already Wet → double poison duration (8 turns). Poison+Fire→Explosion. 🟪+🟩→Stealth Cascade. The classic poison ring handshake — patient assassin's tool."
   },
   {
@@ -675,19 +1323,52 @@
     "emoji": "🧲",
     "targetType": "enemy",
     "cost": 2,
-    "costs": null,
+    "costs": [
+      {
+        "kind": "battery",
+        "amount": 1
+      }
+    ],
     "rarity": "uncommon",
     "effects": [
-      { "type": "status", "status": "accuracy_down", "value": -25, "duration": 2 },
-      { "type": "conditional_bonus", "condition": "target_has_tag_surveillance", "effect": { "type": "status", "status": "disabled", "duration": 1 } },
-      { "type": "conditional_bonus", "condition": "on_conductive_ground", "effect": { "type": "aoe_status", "status": "accuracy_down", "value": -15, "radius": 1 } }
+      {
+        "type": "status",
+        "status": "accuracy_down",
+        "value": -25,
+        "duration": 2
+      },
+      {
+        "type": "conditional_bonus",
+        "condition": "target_has_tag_surveillance",
+        "effect": {
+          "type": "status",
+          "status": "disabled",
+          "duration": 1
+        }
+      },
+      {
+        "type": "conditional_bonus",
+        "condition": "on_conductive_ground",
+        "effect": {
+          "type": "aoe_status",
+          "status": "accuracy_down",
+          "value": -15,
+          "radius": 1
+        }
+      }
     ],
     "preCombat": false,
-    "tags": ["electrical"],
-    "synergyTags": ["electrical", "tech", "control", "gadget"],
+    "tags": [
+      "electrical"
+    ],
+    "synergyTags": [
+      "electrical",
+      "tech",
+      "control",
+      "gadget"
+    ],
     "_designNote": "Reduce enemy accuracy for 2 turns. Surveillance enemies get disabled for 1 turn. On Conductive Ground: AoE accuracy debuff spreads. 🟨+🟦→Arc Spread. Anti-tech gadget — counters Spotter Drones and Datacenter Security."
   },
-
   {
     "id": "ACT-058",
     "name": "Exploding Cufflink",
@@ -698,12 +1379,26 @@
     "consumesOnPlay": true,
     "rarity": "rare",
     "effects": [
-      { "type": "damage", "value": 12 },
-      { "type": "remove_from_deck", "permanent": true }
+      {
+        "type": "damage",
+        "value": 12
+      },
+      {
+        "type": "remove_from_deck",
+        "permanent": true
+      }
     ],
     "preCombat": false,
-    "tags": ["ballistic", "black_market"],
-    "synergyTags": ["ballistic", "black_market", "disposable", "explosive"],
+    "tags": [
+      "ballistic",
+      "black_market"
+    ],
+    "synergyTags": [
+      "ballistic",
+      "black_market",
+      "disposable",
+      "explosive"
+    ],
     "_designNote": "Premium disposable. Deal 12 damage, permanently remove self from deck. 🟥x2→Overkill. ⬛+🟪→Silent Detonation (no alert if played from stealth). Feels premium: you save it for the perfect moment. The gadget Q would disapprove of."
   },
   {
@@ -716,12 +1411,30 @@
     "consumesOnPlay": true,
     "rarity": "rare",
     "effects": [
-      { "type": "execute", "hpThreshold": 0.15 },
-      { "type": "on_fail", "effect": { "type": "status", "status": "bleed", "duration": 3, "tickDamage": 2 } }
+      {
+        "type": "execute",
+        "hpThreshold": 0.15
+      },
+      {
+        "type": "on_fail",
+        "effect": {
+          "type": "status",
+          "status": "bleed",
+          "duration": 3,
+          "tickDamage": 2
+        }
+      }
     ],
     "preCombat": false,
-    "tags": ["covert"],
-    "synergyTags": ["covert", "assassination", "melee", "disposable"],
+    "tags": [
+      "covert"
+    ],
+    "synergyTags": [
+      "covert",
+      "assassination",
+      "melee",
+      "disposable"
+    ],
     "_designNote": "Instant execute if target below 15% HP. If fails: apply Bleed 3. Pink Panther assassination energy. Best paired with Poison Dart → whittle → execute. The wire garrote is the spy's signature finisher. Consumed on use."
   },
   {
@@ -730,54 +1443,129 @@
     "emoji": "🎥",
     "targetType": "enemy",
     "cost": 1,
-    "costs": null,
+    "costs": [
+      {
+        "kind": "battery",
+        "amount": 1
+      }
+    ],
     "consumesOnPlay": true,
     "rarity": "uncommon",
     "effects": [
-      { "type": "status", "status": "blind", "duration": 1 },
-      { "type": "conditional_bonus", "condition": "on_darkened_ground", "effect": { "type": "status", "status": "panic", "duration": 1 } },
-      { "type": "conditional_bonus", "condition": "during_stealth_cascade", "effect": { "type": "next_attack_backstab_multiplier", "value": 2.0 } }
+      {
+        "type": "status",
+        "status": "blind",
+        "duration": 1
+      },
+      {
+        "type": "conditional_bonus",
+        "condition": "on_darkened_ground",
+        "effect": {
+          "type": "status",
+          "status": "panic",
+          "duration": 1
+        }
+      },
+      {
+        "type": "conditional_bonus",
+        "condition": "during_stealth_cascade",
+        "effect": {
+          "type": "next_attack_backstab_multiplier",
+          "value": 2
+        }
+      }
     ],
     "preCombat": false,
-    "tags": ["electrical"],
-    "synergyTags": ["electrical", "light_manipulation", "disposable", "gadget"],
+    "tags": [
+      "electrical"
+    ],
+    "synergyTags": [
+      "electrical",
+      "light_manipulation",
+      "disposable",
+      "gadget"
+    ],
     "_designNote": "Apply Blind 1 turn. In Darkened Ground: also apply Panic (flash in total darkness is terrifying). During Stealth Cascade: double Backstab multiplier. 🟨+🟦→Stunning Arc. The tourist's weapon — nobody suspects the camera."
   },
-
   {
     "id": "ACT-061",
     "name": "Panther's Exit",
     "emoji": "🐆",
     "targetType": "self",
     "cost": 2,
-    "costs": null,
+    "costs": [
+      {
+        "kind": "focus",
+        "amount": 2
+      }
+    ],
     "rarity": "rare",
     "effects": [
-      { "type": "remove_all_debuffs" },
-      { "type": "status", "status": "untargetable", "duration": 1 },
-      { "type": "conditional_bonus", "condition": "after_kill", "effect": { "type": "generate_card", "cardTag": "improvised", "count": 1 } }
+      {
+        "type": "remove_all_debuffs"
+      },
+      {
+        "type": "status",
+        "status": "untargetable",
+        "duration": 1
+      },
+      {
+        "type": "conditional_bonus",
+        "condition": "after_kill",
+        "effect": {
+          "type": "generate_card",
+          "cardTag": "improvised",
+          "count": 1
+        }
+      }
     ],
     "preCombat": false,
-    "tags": ["covert"],
-    "synergyTags": ["covert", "defensive", "escape", "luxury"],
+    "tags": [
+      "covert"
+    ],
+    "synergyTags": [
+      "covert",
+      "defensive",
+      "escape",
+      "luxury"
+    ],
     "_designNote": "Smooth escape energy. Remove all debuffs + become Untargetable for 1 turn. After a kill: gain an Improvised card. The cinematic 'walk away from the explosion without looking back' card. High cost (2) but total reset + invulnerability."
   },
-
   {
     "id": "ACT-070",
     "name": "Tag Jammer",
     "emoji": "📵",
     "targetType": "enemy",
     "cost": 0,
-    "costs": [{ "kind": "battery", "amount": 1 }],
+    "costs": [
+      {
+        "kind": "battery",
+        "amount": 1
+      }
+    ],
     "rarity": "uncommon",
     "effects": [
-      { "type": "suppress_tag", "count": 1, "duration": 1 },
-      { "type": "bonus_damage", "value": 2, "condition": "suppressed_tag_was_active" }
+      {
+        "type": "suppress_tag",
+        "count": 1,
+        "duration": 1
+      },
+      {
+        "type": "bonus_damage",
+        "value": 2,
+        "condition": "suppressed_tag_was_active"
+      }
     ],
     "preCombat": false,
-    "tags": ["electrical"],
-    "synergyTags": ["electrical", "tech", "control", "counter"],
+    "tags": [
+      "electrical"
+    ],
+    "synergyTags": [
+      "electrical",
+      "tech",
+      "control",
+      "counter"
+    ],
     "_designNote": "Universal counterspell. Costs 1 battery to disable ONE tag on the target for this turn. If that tag was about to participate in a combo, bonus 2 damage (disruption reward). Against enemy cards: suppresses their strongest synergy tag. In auto-resolve: engine skips combos involving the suppressed tag. The 'Negate' card — you spend battery to break their chain."
   },
   {
@@ -789,13 +1577,39 @@
     "costs": null,
     "rarity": "uncommon",
     "effects": [
-      { "type": "suppress_all_tag", "tag": "electrical", "duration": 1 },
-      { "type": "remove_status", "statuses": ["wet"] },
-      { "type": "ground_effect", "effectType": "GROUNDED", "radius": 1, "duration": 2 }
+      {
+        "type": "suppress_all_tag",
+        "tag": "electrical",
+        "duration": 1
+      },
+      {
+        "type": "remove_status",
+        "statuses": [
+          "wet"
+        ]
+      },
+      {
+        "type": "ground_effect",
+        "effectType": "GROUNDED",
+        "radius": 1,
+        "duration": 2
+      },
+      {
+        "type": "resource_restore",
+        "kind": "battery",
+        "value": 1
+      }
     ],
     "preCombat": true,
-    "tags": ["wet"],
-    "synergyTags": ["wet", "defensive", "counter", "tech"],
+    "tags": [
+      "wet"
+    ],
+    "synergyTags": [
+      "wet",
+      "defensive",
+      "counter",
+      "tech"
+    ],
     "_designNote": "Soft tech against electrical chains. Removes all Wet statuses (kills Arc Surge setup) + suppresses electrical tag bonuses this turn + creates Grounded Ground (electrical damage halved in area for 2 turns). Costs focus to use strategically. Doesn't HARD counter — just softens. Wet tag means it still feeds combos if you sequence it right."
   },
   {
@@ -804,16 +1618,39 @@
     "emoji": "🔍",
     "targetType": "self",
     "cost": 0,
-    "costs": [{ "kind": "ammo", "amount": 1 }],
+    "costs": [
+      {
+        "kind": "ammo",
+        "amount": 1
+      }
+    ],
     "rarity": "uncommon",
     "effects": [
-      { "type": "reveal_all_covert", "duration": 1 },
-      { "type": "suppress_tag", "tag": "covert", "scope": "enemy", "duration": 1 },
-      { "type": "bonus_damage_to_revealed", "value": 3 }
+      {
+        "type": "reveal_all_covert",
+        "duration": 1
+      },
+      {
+        "type": "suppress_tag",
+        "tag": "covert",
+        "scope": "enemy",
+        "duration": 1
+      },
+      {
+        "type": "bonus_damage_to_revealed",
+        "value": 3
+      }
     ],
     "preCombat": false,
-    "tags": ["ballistic"],
-    "synergyTags": ["ballistic", "intel", "counter", "precision"],
+    "tags": [
+      "ballistic"
+    ],
+    "synergyTags": [
+      "ballistic",
+      "intel",
+      "counter",
+      "precision"
+    ],
     "_designNote": "Anti-stealth sweeper. Burns 1 ammo to reveal ALL covert-tagged enemy cards before auto-resolve. Suppresses covert tag on enemy side (no Stealth Cascade, no Backstab). +3 damage to anything revealed this way. Ballistic tag means it feeds Overkill if paired. The loud, aggressive counter to stealth builds."
   },
   {
@@ -822,18 +1659,37 @@
     "emoji": "🛡",
     "targetType": "self",
     "cost": 1,
-    "costs": null,
+    "costs": [
+      {
+        "kind": "focus",
+        "amount": 1
+      }
+    ],
     "rarity": "rare",
     "effects": [
-      { "type": "negate_tag_risk", "scope": "self", "duration": 1 },
-      { "type": "redirect_instability", "target": "enemy", "chance": 0.40 }
+      {
+        "type": "negate_tag_risk",
+        "scope": "self",
+        "duration": 1
+      },
+      {
+        "type": "redirect_instability",
+        "target": "enemy",
+        "chance": 0.4
+      }
     ],
     "preCombat": true,
-    "tags": ["improvised"],
-    "synergyTags": ["improvised", "defensive", "counter", "control"],
+    "tags": [
+      "improvised"
+    ],
+    "synergyTags": [
+      "improvised",
+      "defensive",
+      "counter",
+      "control"
+    ],
     "_designNote": "The skill-based risk management card. Cancels YOUR tag risk penalties this turn (no Overexertion, no Feedback Burn, no Exposure Risk, no Instability, no Heat Score). 40% chance to redirect Instability rolls to the enemy instead. Improvised tag means it feeds Stealth Cascade and Jury Rig. The card that lets you go all-in on a tag without paying the overcommit price — but only for one turn."
   },
-
   {
     "id": "ACT-062",
     "name": "Jab",
@@ -843,14 +1699,23 @@
     "costs": null,
     "rarity": "common",
     "effects": [
-      { "type": "damage", "value": 5 }
+      {
+        "type": "damage",
+        "value": 5
+      }
     ],
     "preCombat": false,
-    "tags": ["ballistic", "melee"],
-    "synergyTags": ["melee", "ballistic", "fast"],
+    "tags": [
+      "ballistic",
+      "melee"
+    ],
+    "synergyTags": [
+      "melee",
+      "ballistic",
+      "fast"
+    ],
     "_designNote": "Intro melee card. Free punch — 0 cost entry. melee+melee→Combo Strike (chain two Jabs or Jab→Haymaker for free finishing blow + stagger). ballistic+ballistic→Overkill. Most natural discovery for new players: punch twice, get rewarded. Equivalent to Basic Shot but for hand-to-hand — the fallback melee option."
   },
-
   {
     "id": "ACT-063",
     "name": "Haymaker",
@@ -860,66 +1725,137 @@
     "costs": null,
     "rarity": "common",
     "effects": [
-      { "type": "damage", "value": 9 }
+      {
+        "type": "damage",
+        "value": 9
+      }
     ],
     "preCombat": false,
-    "tags": ["ballistic", "melee"],
-    "synergyTags": ["melee", "ballistic", "control"],
+    "tags": [
+      "ballistic",
+      "melee"
+    ],
+    "synergyTags": [
+      "melee",
+      "ballistic",
+      "control"
+    ],
     "_designNote": "Heavy melee punch. Jab→Haymaker fires melee+melee→Combo Strike (free 5 dmg stagger). ballistic+ballistic→Overkill for armor pierce. melee+covert→CQC Takedown if paired with a covert card before this lands. The classic one-two punch — intuitive to any player who has ever played a fighting game. Teaches: same tag twice = escalation, the core combo grammar."
   },
-
   {
     "id": "ACT-064",
     "name": "Sleeper Hold",
     "emoji": "😴",
     "targetType": "enemy",
     "cost": 1,
-    "costs": null,
+    "costs": [
+      {
+        "kind": "focus",
+        "amount": 1
+      }
+    ],
     "rarity": "uncommon",
     "effects": [
-      { "type": "damage", "value": 4 },
-      { "type": "status", "status": "stun", "duration": 2, "chance": 0.75 }
+      {
+        "type": "damage",
+        "value": 4
+      },
+      {
+        "type": "status",
+        "status": "stun",
+        "duration": 2,
+        "chance": 0.75
+      }
     ],
     "preCombat": false,
-    "tags": ["covert", "melee"],
-    "synergyTags": ["melee", "covert", "stealth", "control"],
+    "tags": [
+      "covert",
+      "melee"
+    ],
+    "synergyTags": [
+      "melee",
+      "covert",
+      "stealth",
+      "control"
+    ],
     "_designNote": "Silent takedown — grab from behind and squeeze. melee+covert→CQC Takedown (execute threshold +10%, bleed 2, noise -2). melee+melee→Combo Strike (with Jab or Haymaker). covert+ballistic→Backstab from stealth. The stealth-action genre's signature move: silent choke-out. Dual-tag (melee+covert) means it self-combos for CQC Takedown and chains into every melee sequence."
   },
-
   {
     "id": "ACT-065",
     "name": "Incendiary Round",
     "emoji": "🔥",
     "targetType": "enemy",
     "cost": 1,
-    "costs": null,
+    "costs": [
+      {
+        "kind": "ammo",
+        "amount": 1
+      }
+    ],
     "rarity": "uncommon",
     "effects": [
-      { "type": "damage", "value": 6 },
-      { "type": "status", "status": "burn", "duration": 2, "tickDamage": 2 }
+      {
+        "type": "damage",
+        "value": 6
+      },
+      {
+        "type": "status",
+        "status": "burn",
+        "duration": 2,
+        "tickDamage": 2
+      }
     ],
     "preCombat": false,
-    "tags": ["ballistic", "fire"],
-    "synergyTags": ["fire", "ballistic"],
+    "tags": [
+      "ballistic",
+      "fire"
+    ],
+    "synergyTags": [
+      "fire",
+      "ballistic"
+    ],
     "_designNote": "Fire bullet. fire+fire→Inferno (with Fireball or Molotov → spreads burn AoE to all nearby enemies + bonus damage). fire+improvised→Controlled Burn (with Molotov or Field Stitch Kit). ballistic+ballistic→Overkill. Teaching: gun+fire = fire gun. The obvious military-action-movie weapon that makes the fire ecosystem more accessible to new players. A third fire card ensures Inferno is reliably reachable in any deck with fire ambitions."
   },
-
   {
     "id": "ACT-066",
     "name": "Frag Grenade",
     "emoji": "💣",
     "targetType": "enemy",
     "cost": 3,
-    "costs": null,
+    "costs": [
+      {
+        "kind": "ammo",
+        "amount": 2
+      }
+    ],
     "rarity": "uncommon",
     "effects": [
-      { "type": "damage", "value": 12 },
-      { "type": "aoe", "radius": 2 },
-      { "type": "knockback", "tiles": 1 },
-      { "type": "ground_effect", "effect": "FIRE", "chance": 0.30 }
+      {
+        "type": "damage",
+        "value": 12
+      },
+      {
+        "type": "aoe",
+        "radius": 2
+      },
+      {
+        "type": "knockback",
+        "tiles": 1
+      },
+      {
+        "type": "ground_effect",
+        "effect": "FIRE",
+        "chance": 0.3
+      }
     ],
     "preCombat": false,
-    "synergyTags": ["explosive", "aoe", "burst", "fire", "combo_finisher"],
+    "synergyTags": [
+      "explosive",
+      "aoe",
+      "burst",
+      "fire",
+      "combo_finisher"
+    ],
     "plantable": true,
     "triggerable": true,
     "_designNote": "Standard fragmentation grenade. explosive+aoe combo for area denial. Can be planted on enemies and manually detonated. fire+explosive = bigger boom. Planted cards: triggerable=true allows manual detonation in STR combat."
@@ -933,13 +1869,31 @@
     "costs": null,
     "rarity": "common",
     "effects": [
-      { "type": "damage", "value": 8 },
-      { "type": "aoe", "radius": 1 },
-      { "type": "status", "status": "stun", "duration": 1 },
-      { "type": "noise", "value": 6 }
+      {
+        "type": "damage",
+        "value": 8
+      },
+      {
+        "type": "aoe",
+        "radius": 1
+      },
+      {
+        "type": "status",
+        "status": "stun",
+        "duration": 1
+      },
+      {
+        "type": "noise",
+        "value": 6
+      }
     ],
     "preCombat": false,
-    "synergyTags": ["explosive", "aoe", "control", "improvised"],
+    "synergyTags": [
+      "explosive",
+      "aoe",
+      "control",
+      "improvised"
+    ],
     "plantable": true,
     "triggerable": true,
     "_designNote": "Improvised pipe bomb. Stuns enemy for 1 turn. Louder than frag grenade (noise 6). Improvised tag enables combo with other improvised cards. Can be planted and manually triggered."
@@ -950,15 +1904,35 @@
     "emoji": "🧱",
     "targetType": "enemy",
     "cost": 4,
-    "costs": null,
+    "costs": [
+      {
+        "kind": "ammo",
+        "amount": 1
+      }
+    ],
     "rarity": "rare",
     "effects": [
-      { "type": "damage", "value": 20 },
-      { "type": "aoe", "radius": 3 },
-      { "type": "delayed", "turns": 1 }
+      {
+        "type": "damage",
+        "value": 20
+      },
+      {
+        "type": "aoe",
+        "radius": 3
+      },
+      {
+        "type": "delayed",
+        "turns": 1
+      }
     ],
     "preCombat": false,
-    "synergyTags": ["explosive", "aoe", "burst", "industrial", "combo_finisher"],
+    "synergyTags": [
+      "explosive",
+      "aoe",
+      "burst",
+      "industrial",
+      "combo_finisher"
+    ],
     "plantable": true,
     "triggerable": true,
     "_designNote": "Military-grade explosive. Massive AoE (3 tile radius), delayed 1 turn trigger. Can be planted pre-combat and detonates automatically next turn, or manually triggered. industrial tag enables factory/weapon combo. Highest damage in game but slow."

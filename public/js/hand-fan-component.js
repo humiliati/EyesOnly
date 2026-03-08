@@ -118,11 +118,16 @@ const HandFanComponent = (function () {
     // ── Block mode change when CardDragController owns positioning ──
     // When CDC minimizes STR during a pointer-drag, it sets this flag to
     // prevent the resulting setMode('contextual','bottom') from destroying
-    // the fan layout.  The fan stays in combat position with the placeholder
-    // visible; CDC will release the lock on drag finalization.
+    // the fan layout.  Update internal state but skip re-render/reposition.
+    // HOWEVER: if we're going to contextual (STR just minimized), we must
+    // also hide the fan container so it doesn't block the map view.
     if (HandFanComponent._dragControllerOwnsMode) {
       _mode = mode;
       _position = position;
+      // Fan must actually hide when STR minimizes during drag
+      if (mode === 'contextual' && _fanContainer) {
+        _fanContainer.style.display = 'none';
+      }
       return;
     }
 

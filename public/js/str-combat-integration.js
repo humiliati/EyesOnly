@@ -421,11 +421,22 @@
       return; // Hand fan appears once countdown completes (phase → 'selecting')
     }
 
-    // While the resolution animation sequence is running, skip normal
-    // minimize/restore logic — the animation owns the hand fan.
+    // While the resolution animation sequence is running, skip ALL
+    // hand fan visibility/mode logic — the animation owns the hand fan.
+    // Only update card data so the fan has fresh cards when it returns,
+    // and keep the combat capsule updated for the resolving state display.
     if (_resolutionAnimRunning) {
       _lastResolvingTurn = !!isResolvingTurn;
-      // Still allow card signature updates below so the fan has fresh cards when it returns.
+      // Update card data only (no show/restore/setMode calls)
+      if (typeof HandFanComponent !== 'undefined' && typeof HandFanComponent.updateCards === 'function' && _lastHandSig !== handSig) {
+        HandFanComponent.updateCards(cards);
+        _lastHandSig = handSig;
+      }
+      // Update combat capsule (so CH overlay shows resolving state)
+      if (typeof NonCombatHUD !== 'undefined' && typeof NonCombatHUD.showCombatCapsule === 'function') {
+        NonCombatHUD.showCombatCapsule(cards, { selectedIds: [], timerPercent: null, resolving: true });
+      }
+      return; // Skip fan show/restore/setMode — animation owns it
     } else if (isResolvingTurn) {
       // ── RESOLUTION EDGE: selecting → resolving ──
       // Fire the full animation sequence exactly once per resolution.

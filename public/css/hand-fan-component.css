@@ -259,6 +259,50 @@
 }
 
 /* ============================================================
+   Unaffordable Cards — BLVCK-frame treatment
+   Cards with costs the player can't afford get the BLVCK void frame
+   while preserving their own emoji and name. Visual signal: "you
+   can see this card but you can't play it right now."
+   ============================================================ */
+
+.hand-card.hand-card-unaffordable {
+  background: linear-gradient(
+    135deg,
+    rgba(5, 5, 5, 0.78) 0%,
+    rgba(20, 20, 20, 0.68) 50%,
+    rgba(5, 5, 5, 0.82) 100%
+  );
+  border: 1px solid rgba(80, 80, 80, 0.30);
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.6), 0 0 6px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(3px);
+  pointer-events: auto;
+}
+
+.hand-card.hand-card-unaffordable .hand-card-emoji {
+  opacity: 0.40;
+  filter: grayscale(0.8) brightness(0.65);
+}
+
+.hand-card.hand-card-unaffordable .hand-card-name {
+  opacity: 0.50;
+  color: rgba(140, 140, 140, 0.7);
+}
+
+.hand-card.hand-card-unaffordable .hand-card-cost {
+  opacity: 0.60;
+  color: #DA70D6; /* ammo magenta — resource cost glow to hint WHY it's locked */
+}
+
+.hand-card.hand-card-unaffordable .hand-card-effects {
+  opacity: 0.30;
+}
+
+/* Unaffordable cards suppress purple underglow */
+.hand-card.hand-card-unaffordable {
+  --card-glow: rgba(0, 0, 0, 0.3);
+}
+
+/* ============================================================
    Purple Underglow System
    Default: 2px purple glow on all cards
    Selected: 4px intensified
