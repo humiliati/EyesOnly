@@ -202,18 +202,23 @@ The WBE validation layer (section 9️⃣) must include door contract checks:
 
 ## System Cross-References
 
-| System | File | WBE Integration |
-|--------|------|----------------|
+| System | Document / File | WBE Integration |
+|--------|----------------|----------------|
 | Door Contract | This document §6 | Spawn rules for all floor transitions |
-| Biome Catalog | BIOME_SYSTEMS.md | Step Node biome assignment |
-| Biome Runtime | biomes.json | Visual theming per node |
-| Interior Biomes | interior-biomes.json (12 biomes, implemented) | Building interior visual identity — resolved by `InteriorFloorSystem._resolveInteriorBiome()` |
-| Building Registry | buildings.json | Building door placement, funnel pattern |
-| Enemy Catalog | enemy-catalog.json | Biome-filtered enemy spawns |
-| Card Drops | BIOME_SYSTEMS.md §6 | Loot table per biome per step |
-| Lighting | lighting-system.js | Per-biome/interior lighting profile |
-| Proc Gen Patterns | PROCEDURAL_GENERATION_DESIGN_IDEAS.md | Pattern type per biome |
-| Tutorial Floors Audit | TUTORIAL_FLOORS_AUDIT.md | BUGs 1-13 affecting WBE integration |
+| Biome Catalog | [BIOME_SYSTEMS.md](./BIOME_SYSTEMS.md) | Step Node biome assignment, card drops, vents |
+| Biome Runtime | `biomes.json` | Visual theming per node |
+| Interior Biomes | `interior-biomes.json` (12 biomes) | Building interior visual identity — resolved by `InteriorFloorSystem._resolveInteriorBiome()` |
+| Building Interiors | [BUILDING_INTERIOR_SYSTEM.md](./BUILDING_INTERIOR_SYSTEM.md) | Floor hierarchy, biome resolution pipeline, InteriorFloors API |
+| Interior Generation | [INTERIOR_SYSTEM_IDEAS.md](./INTERIOR_SYSTEM_IDEAS.md) | Structure grammar, visual compression, 12 procedural rules |
+| NPC System | [NPC_CANON.md](./NPC_CANON.md) | NPC invariants, pathing, archetypes, proc gen stamping pipeline |
+| Pattern Engine | [PROCEDURAL_GENERATION_DESIGN_IDEAS.md](./PROCEDURAL_GENERATION_DESIGN_IDEAS.md) | Scalar field patterns per biome (reaction-diffusion, voronoi, radial) |
+| Building Registry | `buildings.json` | Building door placement, funnel pattern |
+| Enemy Catalog | `enemy-catalog.json` | Biome-filtered enemy spawns |
+| Card Drops | [BIOME_SYSTEMS.md](./BIOME_SYSTEMS.md) §6 | Loot table per biome per step |
+| Lighting | `lighting-system.js` | Per-biome/interior lighting profile |
+| Dialogue System | [TOOLTIP_SPACE_CANON.md](./TOOLTIP_SPACE_CANON.md) | NPC dialogue rendering in tooltip space |
+| Tutorial Floors Audit | [TUTORIAL_FLOORS_AUDIT.md](./TUTORIAL_FLOORS_AUDIT.md) | BUGs 1-13 affecting WBE integration |
+| Implementation Roadmap | [WORLD_BUILDING_ENGINE_ROADMAP.md](./WORLD_BUILDING_ENGINE_ROADMAP.md) | Unified cross-roadmap for all systems |
 
 
 🏗 WORLD BUILDING ENGINE (WBE)

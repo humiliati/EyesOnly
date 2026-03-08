@@ -1,5 +1,13 @@
 # Gone Rogue: Biome Systems - Complete Guide
 
+> **Cross-References:**
+> - [WORLD_BUILDING_ENGINE.md](./WORLD_BUILDING_ENGINE.md) — SFC designer, door contracts, step node biome assignment
+> - [BUILDING_INTERIOR_SYSTEM.md](./BUILDING_INTERIOR_SYSTEM.md) — Interior biome resolution pipeline
+> - [INTERIOR_SYSTEM_IDEAS.md](./INTERIOR_SYSTEM_IDEAS.md) — Visual compression, structure grammar (uses interior biomes)
+> - [NPC_CANON.md](./NPC_CANON.md) — NPC archetypes spawn per building/biome type
+> - [PROCEDURAL_GENERATION_DESIGN_IDEAS.md](./PROCEDURAL_GENERATION_DESIGN_IDEAS.md) — Biome-to-pattern mapping for scalar fields
+> - [WORLD_BUILDING_ENGINE_ROADMAP.md](./WORLD_BUILDING_ENGINE_ROADMAP.md) — Unified execution roadmap
+
 ## Table of Contents
 1. [Overview](#overview)
 2. [Quick Start](#quick-start)
@@ -1033,6 +1041,6 @@ Added as part of the Environment Synergy / BIOME_SYSTEMS integration work (Phase
 
 ---
 
-**Document Version**: 1.3
+**Document Version**: 1.4
 **Last Updated**: 2026-03-07
-**Status**: Complete consolidated guide
+**Status**: Complete consolidated guide — cross-referenced with canonical docs

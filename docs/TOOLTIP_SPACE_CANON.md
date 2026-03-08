@@ -3,6 +3,7 @@
 > **Purpose:** Document the tooltip/history panel dimensions on desktop vs mobile and the Morrowind-style NPC dialogue system implementation.
 > **Status:** Implemented — 2026-03-07
 > **Previous:** Draft — 2026-03-03
+> **Cross-References:** [NPC_CANON.md](./NPC_CANON.md) (dialogue system = Phase A of NPC roadmap), [BUILDING_INTERIOR_SYSTEM.md](./BUILDING_INTERIOR_SYSTEM.md)
 
 ---
 

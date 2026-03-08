@@ -2,6 +2,9 @@
 
 > For the broader world-building pipeline, see [WORLD_BUILDING_ENGINE.md](./WORLD_BUILDING_ENGINE.md).
 > For biome data (world, boss, interior), see [BIOME_SYSTEMS.md](./BIOME_SYSTEMS.md).
+> For interior generation roadmap (structure grammar, visual compression), see [INTERIOR_SYSTEM_IDEAS.md](./INTERIOR_SYSTEM_IDEAS.md).
+> For NPC spawning in interiors, see [NPC_CANON.md](./NPC_CANON.md).
+> For unified execution roadmap, see [WORLD_BUILDING_ENGINE_ROADMAP.md](./WORLD_BUILDING_ENGINE_ROADMAP.md).
 
 ## Overview
 

@@ -1,8 +1,11 @@
 # Procedural Generation Roadmap — Actionable Implementation Plan
 
-> **Status:** Roadmap Draft  
-> **Last Updated:** 2026-03-02  
+> **Status:** Roadmap Draft
+> **Last Updated:** 2026-03-07
 > **Purpose:** Transform biome topology patterns into implementable phases
+> **Cross-References:** [INTERIOR_SYSTEM_IDEAS.md](./INTERIOR_SYSTEM_IDEAS.md), [BIOME_SYSTEMS.md](./BIOME_SYSTEMS.md), [NPC_CANON.md](./NPC_CANON.md), [WORLD_BUILDING_ENGINE.md](./WORLD_BUILDING_ENGINE.md)
+>
+> **Note:** Interior generation rules (structure grammars, 12 procedural rules, NPC furniture-node spawning) live in [INTERIOR_SYSTEM_IDEAS.md](./INTERIOR_SYSTEM_IDEAS.md) and [NPC_CANON.md](./NPC_CANON.md). This document covers the scalar field pattern engine for world-floor topology.
 
 ---
 

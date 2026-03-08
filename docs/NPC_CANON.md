@@ -1,1004 +1,266 @@
-we have a world building engine that needs to stamp out proc gen npcs that have dynamic properties and speech dialogue trees.
-we want to make a unified canon of rules regarding npcs that's something like the following.
-No npc has no dialogue
-no npc has only dialogue that isn't inside of an interior space
-no npc is rendered solely by a face.emoji or tool.emoji , all humanoid npcs (enemies exceptional) must render with a full body or bust emoji and for variation we will adapt the scene portal for emoji stacking to stack specific emoji faces and tools onto an emoji bust so that it is descriptive and distinguished enough
-some friendly npcs should be vulnerable to theft, plant, card mechanics
-even more friendly npcs should be capable of str-combat if provoked
+# NPC Canon — Actionable Rules & Implementation Steps
 
-the world building engine needs to describe npc pathing, npc destructability, npc avatar emoji stack composure, npc dialogue or minigame or shop or str engagement, npc behavior archetypes (granny npcs move between stove and bed within an interior)
+> **Status:** Implementation Roadmap
+> **Last Updated:** 2026-03-07
+> **Cross-References:** [BUILDING_INTERIOR_SYSTEM.md](./BUILDING_INTERIOR_SYSTEM.md), [TOOLTIP_SPACE_CANON.md](./TOOLTIP_SPACE_CANON.md), [INTERIOR_SYSTEM_IDEAS.md](./INTERIOR_SYSTEM_IDEAS.md)
+> **Template NPC:** Blacksmith (NPC-BLACKSMITH) in tavern interior (floor 0.1)
 
-we have one functional npc that's the blacksmith who takes the blacksmith hammer quest it's to be the template for all interactions
+---
 
-You’re basically defining an NPC Ontology for your engine — a canon of rules so the world generator can stamp out believable actors without producing dead objects or immersion breaks.
+## Part 1: Hard Invariants (Must Be True For Every NPC)
 
-What you want is a small set of mandatory invariants + modular capability blocks that every NPC instance must assemble from. That way proc-gen can’t accidentally create invalid NPCs.
+These are validation rules. The proc gen engine MUST NOT produce an NPC that violates any of these.
 
-Below is a unified canonical rule set + structural template that fits your world builder, nested interiors (floorsN.N), emoji stacking avatars, and interaction systems.
+### Rule 1: No NPC Is Silent
 
-Unified NPC Canon (World Engine Rules)
-1. Existential Rules (Hard Invariants)
+Every NPC must have a `dialogueTree` with at minimum a `greeting` node (text + choices) and a `farewell` choice (next: null).
 
-These rules must always be true for any generated NPC.
+**Validation:** `if (!npc.dialogueTree || !npc.dialogueTree.nodes || !npc.dialogueTree.root) REJECT`
 
-No NPC is silent
+**Implementation:** `DialogueSystem._resolveTree(npc)` already auto-wraps flat `dialogues[]` into a linear tree, but proc gen should always produce a proper tree.
 
-Every NPC must have at least:
+### Rule 2: Dialogue Belongs To A Place
 
-greeting dialogue
+NPC dialogue is only valid inside an interior floor (FloorN.N or deeper). World floors (FloorN) have gate NPCs and shopkeepers only — these use the existing gate/shop systems, not dialogue trees.
 
-contextual response
+**Validation:** `if (npc.dialogueTree && !InteriorFloors.isInteriorFloor(floorId)) REJECT_DIALOGUE_TREE`
 
-idle speech
+**Exception:** Gate NPCs on world floors use `npc-gate-system.js` combat trigger, not DialogueSystem.
 
-Dialogue must belong to a place
+### Rule 3: Every NPC Has A Body
 
-Dialogue is only valid if the NPC is inside an interior or defined node
+NPCs cannot render as a face-only emoji. Allowed avatar forms:
 
-NPC speech must reference:
+| Form | Example | When |
+|------|---------|------|
+| Bust emoji | 🧑, 👩, 👨‍🌾 | Default for all humanoids |
+| Full body emoji | 🧙, 👷, 👮 | Profession-specific |
+| Emoji stack | 🧑 + 😠 + 🔨 | Rich NPCs with face + tool layers |
 
-location
+**Avatar Stack Composition (3 layers):**
 
-role
+| Layer | Purpose | Examples |
+|-------|---------|---------|
+| Base Body | Humanoid archetype | 🧑 👩 👨‍🌾 🧙 👩‍🍳 👷 👮 |
+| Face | Emotion / personality | 🙂 😠 😴 😰 🤨 😐 |
+| Tool/Trait | Role identifier | 🔨 📚 🧺 🗝 🧹 🍳 ⚒️ |
 
-state
+**Implementation:** Extend `rendering-ui.js` NPC rendering to support `npc.avatarStack: { body, face, tool }`. The scene portal emoji stacker is the reference for multi-layer rendering.
 
-Every NPC has an avatar body
+**Validation:** `if (!npc.emoji && !npc.avatarStack) REJECT`
 
-NPCs cannot render as a face-only emoji
+### Rule 4: Every NPC Is Interactive
 
-Allowed forms:
+Every NPC must provide at least ONE of:
 
-bust emoji
+| Interaction | System | Status |
+|-------------|--------|--------|
+| Dialogue tree | `dialogue-system.js` | ✅ Implemented |
+| Shop | `shop-system.js` | ✅ Implemented |
+| Quest | `npc.questItem` + `npc.npcTarget` | ✅ Blacksmith template |
+| STR encounter | `npc-gate-system.js` | ✅ Gate NPCs |
+| Minigame | Future | ⬜ Not yet |
+| Rumor | DialogueSystem node | ✅ Via dialogue tree |
 
-full body emoji
+**Validation:** `if (!npc.dialogueTree && !npc.shopkeeper && !npc.gate && !npc.questItem) REJECT`
 
-Faces/tools are attached via emoji stacking
+### Rule 5: Every NPC Exists In Time
 
-Example stack:
+NPCs must have a `schedule` defining what they do (even if `{ type: 'static' }`) and a `pathing` archetype (even if `{ type: 'static', nodes: [] }`).
 
-👩‍🌾 + 🙂 + 🧺
+### Rule 6: No NPC Is Filler
 
-or
+Every NPC must contribute at least one of: information, mechanic, risk, reward, atmosphere. Proc gen verifies each NPC has at least one `contributionTag` from `['info', 'mechanic', 'risk', 'reward', 'atmosphere']`.
 
-🧑 + 😠 + 🔨
+---
 
-NPCs are interactive
-Every NPC must provide at least one of:
+## Part 2: NPC Structural Schema
 
-dialogue tree
+Every NPC object conforms to this schema:
 
-minigame
-
-shop
-
-quest
-
-stat encounter
-
-rumor
-
-NPCs exist in time
-NPCs must have:
-
-schedule
-
-idle animation
-
-movement logic
-
-2. NPC Structural Schema
-
-Every NPC object should generate using something like:
-
-NPC
+```javascript
 {
-  identity
-  avatar
-  location
-  schedule
-  interaction
-  behavior
-  stats
-  vulnerability
-  destructability
-  pathing
+  // ── Identity ──
+  id: 'NPC-BLACKSMITH',
+  name: 'Blacksmith',
+  emoji: '⚒️',                    // Primary render emoji (legacy compat)
+  avatarStack: {                  // Rich avatar (optional, overrides emoji)
+    body: '👨‍🏭', face: '😐', tool: '🔨'
+  },
+
+  // ── Location ──
+  x: 24, y: 5,
+  direction: 'south',
+
+  // ── Dialogue ──
+  dialogues: ['line1', 'line2'], // Legacy flat array (auto-wrapped)
+  dialogueTree: {                // Morrowind-style branching (preferred)
+    root: 'greeting',
+    nodes: { /* ... */ }
+  },
+
+  // ── Interaction ──
+  shopkeeper: false,
+  gate: null,
+  questItem: 'BLACKSMITH_HAMMER',
+  npcTarget: 'BLACKSMITH',
+
+  // ── Behavior ──
+  schedule: {
+    type: 'interior_loop',       // static | interior_loop | patrol | wander | node_travel
+    nodes: ['forge', 'anvil'],
+    timing: { moveEvery: 8 }
+  },
+  pathing: {
+    type: 'interior_loop',
+    waypoints: [{ x: 24, y: 5 }, { x: 26, y: 5 }]
+  },
+
+  // ── Vulnerability ──
+  vulnerability: {
+    theft: false, plant: false, card: false, gossip: true
+  },
+
+  // ── Destructibility ──
+  destructibility: 'provokable', // friendly | provokable | enemy | destructible
+  stats: { hp: 18, str: 8, dex: 4 },
+
+  // ── Proc Gen Metadata ──
+  archetype: 'smith',
+  contributionTags: ['mechanic', 'reward'],
+  reward: { type: 'card_upgrade' }
 }
-3. Avatar Stack System (Emoji Composition)
-
-NPCs are composed of 3 layers
-
-Base Body
-
-Represents humanoid archetype.
-
-Examples:
-
-🧑
-👩
-👨‍🌾
-🧙
-👩‍🍳
-👷
-👮
-Face Layer
-
-Emotion / personality.
-
-🙂 friendly
-😠 hostile
-😴 tired
-😰 nervous
-🤨 suspicious
-Tool / Trait Layer
-
-Represents role.
-
-🔨 blacksmith
-📚 scholar
-🧺 gatherer
-🗝 keeper
-🧹 servant
-
-Example NPC render:
-
-👩‍🍳 + 🙂 + 🍳
-
-Stacked into one sprite.
-
-4. NPC Pathing System
-
-NPCs must have one pathing archetype.
-
-Static
-
-Never moves.
-
-Example:
-
-shopkeepers
-desk clerks
-bartenders
-Interior Loop
-
-Moves between 2–3 nodes.
-
-Example:
-
-bed <-> stove
-table <-> cupboard
-desk <-> bookshelf
-
-Used for:
-
-granny NPCs
-cooks
-scribes
-Patrol
-
-Moves around a small loop.
-
-Example:
-
-door → street → alley → door
-
-Used for:
-
-guards
-thieves
-police
-Wander
-
-Moves randomly within building.
-
-Used for:
-
-drunks
-guests
-kids
-Node Travel
-
-NPC moves between floors:
-
-floor1 → floor2 → courtyard
-
-Used for:
-
-messengers
-servants
-errand runners
-5. NPC Destructibility
-
-Every NPC must define a damage model.
-
-Friendly NPC
-damage = disabled
-
-Player attacking them triggers:
-
-reputation drop
-
-guards
-
-quest failure
-
-Provokable NPC
-
-NPC fights back if attacked.
-
-Example:
-
-guards
-hunters
-mercenaries
-Enemy NPC
-
-Combat enabled always.
-
-Destructible NPC
-
-Some NPCs can be killed.
-
-Used rarely for:
-
-bandits
-outlaws
-assassination targets
-6. NPC Vulnerability Systems
-
-Some NPCs support secondary mechanics.
-
-Theft Target
-
-Can be pickpocketed.
-
-Example:
-
-merchant
-traveler
-drunk
-Plant Target
-
-Player can plant items.
-
-Used for:
-
-spy gameplay
-false evidence
-Card Target
-
-NPC participates in card mechanic.
-
-Example:
-
-gamblers
-guards
-clerks
-Gossip Node
-
-NPC shares rumors.
-
-Used to spread procedural lore.
-
-7. NPC Interaction Types
-
-Each NPC must have one primary interaction.
-
-Dialogue NPC
-
-Simple dialogue tree.
-
-greet
-topic
-rumor
-farewell
-Quest NPC
-
-Provides quest or step.
-
-Example:
-
-blacksmith hammer quest
-Shop NPC
-
-Inventory interaction.
-
-Example:
-
-buy
-sell
-repair
-Minigame NPC
-
-Triggers game.
-
-Examples:
-
-cards
-lockpick
-dice
-Stat Encounter
-
-Player rolls STR/DEX/INT.
-
-Example:
-
-intimidate
-persuade
-wrestle
-8. NPC Behavior Archetypes
-
-These give life to interiors.
-
-Granny
-path:
-bed ↔ stove
-
-dialogue:
-complaints
-food offers
-rumors
-
-vulnerable:
-theft
-Smith
-path:
-forge ↔ anvil
-
-interaction:
-quest + shop
-
-tool:
-🔨
-Guard
-path:
-patrol
-
-interaction:
-str encounter
-bribe
-Drunk
-path:
-wander
-
-interaction:
-gossip
-cards
-Clerk
-path:
-desk ↔ shelf
-
-interaction:
-quest
-documents
-9. Dialogue Tree Minimum Structure
-
-Every NPC dialogue must contain:
-
-greet
-role_line
-world_line
-interaction_prompt
-exit
-
-Example:
-
-BLACKSMITH:
-
-"Greeting"
-Ah. Another traveler.
-
-"Role"
-If you have iron, I have fire.
-
-"World"
-Bandits been breaking tools again.
-
-"Prompt"
-Need something forged?
-
-"Exit"
-Come back if the hammer finds you.
-10. Blacksmith Template (Your Existing NPC)
-
-This becomes your base interaction archetype.
-
-NPC_BLACKSMITH
-{
-  avatar:
-    👨‍🏭 + 😐 + 🔨
-
-  location:
-    smithy interior
-
-  path:
-    forge ↔ anvil
-
-  interaction:
-    quest + shop
-
-  dialogue:
-    hammer quest tree
-
-  vulnerability:
-    theft:false
-    plant:false
-
-  destructability:
-    provokable
-
-  stats:
-    STR: high
-}
-11. Generation Rules (Proc Engine)
-
-When the engine spawns NPCs:
-
-Step 1
-
-Select building type
-
-house
-shop
-tavern
-office
-forge
-church
-Step 2
-
-Spawn archetype pool.
-
-Example house:
-
-granny
-child
-worker
-guest
-Step 3
-
-Assign interaction.
-
-Ensure at least one NPC per building has:
-
-quest
-shop
-rumor
-Step 4
-
-Build emoji stack.
-
-body
-face
-tool
-Step 5
-
-Generate schedule + path.
-
-Step 6
-
-Attach dialogue template.
-
-12. Density Rule (Very Important)
-
-Interiors should follow density rules:
-
-small room: 1 npc
-house: 1–2 npc
-shop: 1–3 npc
-tavern: 3–6 npc
-office: 2–5 npc
-
-This prevents empty interiors.
-
-13. Immersion Rule
-
-No NPC should exist only to fill space.
-
-Every NPC must contribute at least one:
-
-information
-mechanic
-risk
-reward
-atmosphere
-
-✅ If you want, I can also design the 12 procedural rules that generate infinite interiors (like Dwarf Fortress) so that NPC placement, furniture nodes, and dialogue hooks all emerge from the same system.
-
-That would make your world builder + NPC engine + quest system all derive from the same grammar, which is how the best proc-gen games avoid chaos.
-
-what are 12 procedural rules that generate infinite interiors so that npc placement all emerge from the same system
-
-The trick used by games like Dwarf Fortress, RimWorld, and Project Zomboid is not that they generate “infinite layouts” directly.
-They generate relationships between spaces.
-
-Once you define rules about rooms, nodes, and flows, interiors scale infinitely because the engine keeps recombining the rules.
-
-For your engine (with floorsN, floorsN.N, and nested procedural interiors), the best structure is 12 canonical spatial rules.
-
-These rules will simultaneously determine:
-
-room layouts
-
-furniture nodes
-
-NPC spawn nodes
-
-dialogue context
-
-pathing loops
-
-Everything derives from the same grammar.
-
-The 12 Procedural Rules for Infinite Interiors
-1. The Anchor Rule
-
-Every interior must contain one anchor node.
-
-This node defines the purpose of the building.
-
-Examples:
-
-forge
-stove
-bar counter
-desk
-altar
-bed
-
-NPCs whose job relates to the anchor must spawn near it.
-
-Example:
-
-forge → blacksmith npc
-stove → granny npc
-bar → bartender npc
-2. The Door Gravity Rule
-
-All interiors begin with a door node.
-
-The door determines movement gravity.
-
-NPC pathing radiates from the door.
-
-Example layout logic:
-
-door
- ├ main room
- ├ anchor room
- └ private room
-
-NPCs often path toward doors periodically.
-
-This prevents interiors feeling static.
-
-3. The Flow Rule
-
-Every room must have two ways to move.
-
-enter
-exit
-
-If a room has only one connection, it becomes:
-
-storage
-closet
-dead end
-
-These rooms spawn loot instead of NPCs.
-
-4. The Triangle Rule
-
-Most interiors resolve into three functional zones.
-
-public zone
-work zone
-private zone
-
-Example house:
-
-public: entry table
-work: stove
-private: bed
-
-NPCs spawn based on zone type.
-
-5. The Anchor Orbit Rule
-
-Functional furniture forms orbits around the anchor.
-
-Example forge:
-
-forge (anchor)
-  ├ anvil
-  ├ tool rack
-  └ coal pile
-
-NPC pathing loops between these nodes.
-
-This creates natural idle movement.
-
-6. The Service Corridor Rule
-
-When rooms exceed 3 nodes, generate a service path.
-
-Example:
-
-door
-  ↓
-hallway
-  ├ kitchen
-  ├ bedroom
-  └ storage
-
-Hallways become NPC crossing points.
-
-Good locations for:
-
-guards
-messengers
-servants
-7. The Occupancy Rule
-
-Each room has NPC capacity.
-
-Example:
-
-tiny room: 0–1 npc
-small room: 1 npc
-medium room: 1–2 npc
-large room: 3–5 npc
-
-NPC density emerges from room size alone.
-
-8. The Furniture Node Rule
-
-Furniture nodes define possible NPC interactions.
-
-Examples:
-
-stove → cooking dialogue
-desk → documents
-bed → sleeping
-bar → gambling
-forge → crafting
-
-NPCs spawn only if a compatible furniture node exists.
-
-Example:
-
-no stove → no cook
-no desk → no clerk
-9. The Path Loop Rule
-
-Every NPC must have a minimum 2-node loop.
-
-Examples:
-
-Granny:
-
-stove ↔ bed
-
-Smith:
-
-forge ↔ anvil
-
-Guard:
-
-door → hall → door
-
-This makes interiors feel alive.
-
-10. The Social Gravity Rule
-
-NPCs cluster where interactions happen.
-
-Nodes that attract NPCs:
-
-tables
-bars
-fires
-benches
-markets
-
-These nodes allow multi-NPC gatherings.
-
-Example tavern:
-
-bar
-tables
-fireplace
-
-NPCs naturally accumulate.
-
-11. The Privacy Gradient Rule
-
-Interiors should transition from:
-
-public → semi-private → private
-
-Example house:
-
-door → living room → bedroom
-
-NPC types spawn according to privacy.
-
-public: strangers
-semi: residents
-private: owner
-12. The Narrative Node Rule
-
-Every interior must contain one narrative node.
-
-This node supports:
-
-quest
-shop
-minigame
-rumor
-stat encounter
-
-This guarantees every building is meaningful.
-
-Example:
-
-forge → hammer quest
-tavern → rumor network
-office → documents
-Example Generated House
-
-Rules applied automatically.
-
-door
- ↓
-living room
-  ├ stove (anchor)
-  ├ table
-  └ hallway
-       ├ bedroom
-       └ storage
-
-NPCs generated:
-
-👵 granny
-path: stove ↔ bed
-
-👦 child
-path: table ↔ door
-
-Interactions:
-
-granny dialogue
-table gossip node
-storage loot
-Example Generated Forge
-door
- ↓
-forge room
-  ├ forge (anchor)
-  ├ anvil
-  └ tool rack
-
-NPC:
-
-👨‍🏭 blacksmith
-path: forge ↔ anvil
-
-Interaction:
-
-shop
-hammer quest
-Why This Works
-
-These rules generate structure first, then everything else.
-
-From the same rules you automatically get:
-
-room layout
-
-furniture placement
-
-NPC spawn
-
-pathing loops
-
-dialogue context
-
-quest hooks
-
-So the generator doesn't need to invent things randomly.
-
-Instead it says:
-
-room has stove
-→ spawn cook
-→ cook walks stove↔table
-→ cook dialogue references cooking
-
-Everything stays coherent.
-
-
-The 5 Meta-Rules Roguelikes Secretly Use
-1. The 80% Familiar Rule
-
-Players must recognize most things immediately.
-
-Proc-gen systems typically generate:
-
-80% familiar
-20% surprise
-
-If too much changes, the player feels lost.
-
-Example interior generation:
-
-door
-table
-bed
-stove
-
-These repeat across buildings.
-
-The variation happens in the details:
-
-npc personalities
-loot
-dialogue
-events
-
-This keeps the world readable.
-
-2. The Story Generator Rule
-
-Good roguelikes don't generate rooms.
-
-They generate situations.
-
-Example difference:
-
-Bad proc-gen:
-
-room with table
-npc
-loot
-
-Good proc-gen:
-
-hungry granny
-burnt stove
-missing bread
-
-Now a micro story exists.
-
-Your engine should generate relationships like:
-
-npc wants item
-npc lost item
-npc guarding item
-npc hiding item
-
-This creates narrative hooks automatically.
-
-3. The Constraint Rule
-
-Procedural systems feel handcrafted when constraints are strong.
-
-Games secretly limit the generator heavily.
-
-Example tavern rule:
-
-must contain:
-bar
-tables
-fireplace
-bartender npc
-
-Even though layout changes, the identity remains stable.
-
-Strong constraints create:
-
-coherent buildings
-believable NPC behavior
-consistent dialogue
-
-Randomness happens inside constraints, not instead of them.
-
-4. The Interaction Density Rule
-
-Every area must offer multiple possible interactions.
-
-Good roguelikes ensure a room has at least:
-
-1 conversation
-1 object interaction
-1 risk or mechanic
-
-Example tavern:
-
-talk to bartender
-play cards
-pickpocket drunk
-hear rumor
-
-This prevents rooms from feeling empty.
-
-The player always has choices.
-
-5. The Breadcrumb Rule
-
-Players must constantly discover small leads.
-
-Roguelikes rarely drop big goals directly.
-
-Instead they create chains:
-
-rumor
-→ location
-→ npc
-→ item
-→ quest
-
-Example:
-
-drunk says blacksmith lost hammer
-→ blacksmith dialogue
-→ hammer hidden in mine
-
-This makes exploration feel purposeful.
-
-Why These Rules Work Together
-
-When combined:
-
-80% familiar spaces
-+
-situations instead of rooms
-+
-strong constraints
-+
-high interaction density
-+
-breadcrumb discovery
-
-You get worlds that feel authored even though they're generated.
-
-This is why players often believe:
-
-“That event must have been scripted.”
-
-Even though it wasn’t.
-
-How This Fits Your Engine
-
-Your system already has the right building blocks:
-
-interior generator
-npc archetypes
-emoji avatars
-dialogue trees
-quest mechanics
-
-If the generator focuses on situations instead of rooms, NPC placement becomes automatic.
-
-Example generated scenario:
-
-forge interior
-anchor: forge
-npc: blacksmith
-
-state:
-hammer missing
-
-rumor npc:
-drunk in tavern
-
-item:
-hammer in mine
-
-That single rule chain produces:
-
-npc dialogue
-quest
-exploration
-loot
-
-All from one seed.
+```
+
+---
+
+## Part 3: Pathing Archetypes
+
+| Archetype | Movement Pattern | Used For |
+|-----------|-----------------|----------|
+| `static` | Never moves | Shopkeepers, desk clerks, bartenders |
+| `interior_loop` | Cycles between 2-3 furniture nodes | Granny (stove↔bed), smith (forge↔anvil) |
+| `patrol` | Loops a small circuit | Guards, thieves, police |
+| `wander` | Random walk within building bounds | Drunks, guests, kids |
+| `node_travel` | Moves between floors | Messengers, servants (future) |
+
+**Implementation file:** `public/js/npc-pathing-system.js` (NEW). Tick-based: call `NpcPathingSystem.tick(npc, ctx)` from the main game loop's turn increment.
+
+---
+
+## Part 4: Behavior Archetypes (Proc Gen Templates)
+
+| Archetype | Path | Interaction | Vulnerability | Dialogue Style |
+|-----------|------|-------------|---------------|----------------|
+| `granny` | stove ↔ bed | dialogue + rumor | theft | Complaints, food offers, gossip |
+| `smith` | forge ↔ anvil | quest + shop | none | Tools, repair, trade |
+| `guard` | patrol loop | STR encounter + bribe | none | Warnings, threats, patrol talk |
+| `drunk` | wander | gossip + card game | theft | Slurred rumors, gambling |
+| `clerk` | desk ↔ shelf | quest + documents | plant | Formal, papers, requests |
+| `bartender` | static (bar) | shop + rumor | none | Greetings, drinks, local news |
+| `priest` | static (altar) | dialogue + blessing | none | Spiritual, lore, healing |
+| `merchant` | static (counter) | shop | theft | Prices, wares, bargaining |
+| `child` | wander | atmosphere + rumor | none | Playful, curious, hints |
+
+---
+
+## Part 5: Dialogue Tree Minimum Structure
+
+Every auto-generated dialogue tree MUST contain these node types:
+
+```
+greet → [ROLE TOPIC] → role_line → back to greet
+      → [WORLD TOPIC] → world_line → back to greet
+      → [INTERACTION] → interaction_prompt → effect or back
+      → Farewell → end
+```
+
+The greeting must reference the NPC's role. The world line must reference location or lore. The interaction prompt must lead to a mechanic (quest, shop, minigame, stat check).
+
+---
+
+## Part 6: Proc Gen Pipeline (NPC Stamping)
+
+**Step 1:** Select building type (from `buildings.json` or grammar)
+**Step 2:** Spawn archetype pool based on building + furniture nodes:
+
+| Building | Required | Optional |
+|----------|----------|----------|
+| house | granny OR resident | child, guest |
+| shop | merchant | clerk |
+| tavern | bartender | drunk, guard, merchant |
+| office | clerk | guard |
+| forge | smith | — |
+| church | priest | — |
+
+**Step 3:** Ensure ≥1 NPC per building provides: quest OR shop OR rumor
+**Step 4:** Build avatar stack (body → face → tool) with seeded randomness
+**Step 5:** Generate schedule + path from furniture node positions
+**Step 6:** Generate dialogue tree from archetype template + building context + world state
+**Step 7:** Validate all 6 hard invariants. Reject and regenerate any invalid NPC.
+
+---
+
+## Part 7: Density Rules
+
+| Building Size | NPC Count |
+|--------------|-----------|
+| Small room (< 6x6) | 1 |
+| House (6x6 - 10x10) | 1-2 |
+| Shop (8x8 - 12x12) | 1-3 |
+| Tavern (12x12+) | 3-6 |
+| Office (10x10+) | 2-5 |
+
+---
+
+## Part 8: Implementation Steps (Ordered)
+
+### Phase A: NPC Dialogue System ✅ COMPLETE
+- [x] `dialogue-system.js` — Morrowind-style dialogue with clickable choices
+- [x] `tooltip-system.js` — Priority system preventing tooltip overwrite during dialogue
+- [x] `tutorial-floors.js` — dialogueTree on Elder, Father Aldric, Tavern Keeper, Blacksmith
+- [x] `tap-move-system.js` — Tap adjacent NPC to start conversation
+- [x] `move-player-system.js` — Walk-away interrupts dialogue
+
+### Phase B: NPC Pathing System
+- [ ] Create `npc-pathing-system.js` — Tick-based movement between waypoints
+- [ ] Add `schedule` and `pathing` fields to NPC schema
+- [ ] Wire `NpcPathingSystem.tick()` into game loop
+- [ ] Implement `interior_loop`, `patrol`, `wander`
+- [ ] Define furniture node positions in authored layouts
+
+### Phase C: Avatar Stack Rendering
+- [ ] Extend `rendering-ui.js` with `npc.avatarStack` support
+- [ ] Port scene portal emoji stacker for multi-layer NPC rendering
+- [ ] Update `gone-rogue-canvas.js` NPC draw to use stack when available
+
+### Phase D: Proc Gen NPC Stamping
+- [ ] Create `npc-generator.js` — Archetype selection, dialogue gen, validation
+- [ ] Wire into `interior-grammar.js` structure generation
+- [ ] Add archetype templates with seeded variation
+- [ ] Implement 6-invariant validation pass
+
+### Phase E: Vulnerability Systems
+- [ ] Theft mechanic (pickpocket adjacent NPC)
+- [ ] Plant mechanic (plant item on NPC)
+- [ ] Card game mechanic (NPC card duel)
+- [ ] Gossip/rumor network (proc gen breadcrumb chains)
+
+---
+
+## Part 9: Files Reference
+
+| File | Status | Purpose |
+|------|--------|---------|
+| `dialogue-system.js` | ✅ | Morrowind dialogue engine |
+| `tooltip-system.js` | ✅ | Priority system + showDialogue() |
+| `npc-gate-system.js` | ✅ | Gate combat NPCs |
+| `npc-pathing-system.js` | ⬜ NEW | NPC movement between furniture nodes |
+| `npc-generator.js` | ⬜ NEW | Proc gen NPC stamping |
+| `tutorial-floors.js` | ✅ | 4 NPCs with dialogueTree |
+| `rendering-ui.js` | ⬜ MODIFY | Avatar stack rendering |
+
+---
+
+**Document Version:** 1.0
+**Status:** Actionable roadmap — Phase A complete, Phase B next
