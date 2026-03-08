@@ -11,7 +11,7 @@
 |----------|---------|
 | [TODO.md](./TODO.md) | Living bug/TODO tracker (P0-P2) |
 | [CRITICAL_TODOS_AND_BLOCKERS.md](./CRITICAL_TODOS_AND_BLOCKERS.md) | Production rollout blockers analysis |
-| [CROSS_ROADMAP_EXECUTION_ORDER.md](./CROSS_ROADMAP_EXECUTION_ORDER.md) | Cross-system execution priority |
+| [CROSS_ROADMAP_EXECUTION_ORDER.md](./CROSS_ROADMAP_EXECUTION_ORDER.md) | **Unified master cross-roadmap** — all 12 roadmaps, 4 tiers, dependency graph |
 | [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) | Deployment procedures |
 | [ASSET_PORTAL_README.md](./ASSET_PORTAL_README.md) | Designer portal documentation |
 | [UNIFIED_DESIGNER_GUIDE.md](./UNIFIED_DESIGNER_GUIDE.md) | Designer hub guide + runtime pipeline |
