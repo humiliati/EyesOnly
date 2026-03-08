@@ -256,29 +256,28 @@ var OnboardingTutorial = (function() {
     _phase = 1;
     _startTime = Date.now();
     console.log('[Onboarding] Phase 1: player has input, timer started');
-    _delay(_phase2, 500);
+    _delay(_phase2, 350);   // was 500 → 30% faster
   }
 
-  /** Phase 2: Tooltip + overhead hint (t=0.5s) */
+  /** Phase 2: Tooltip + overhead hint */
   function _phase2() {
     if (_playerTookControl) return;
     _phase = 2;
     console.log('[Onboarding] Phase 2: tooltip + overhead hint');
 
     if (typeof TooltipSystem !== 'undefined') {
-      TooltipSystem.show('\uD83D\uDC46 Tap + Drag to move', 3000);
+      TooltipSystem.show('\uD83D\uDC46 Tap + Drag to move', 2000);  // was 3000
     }
-    // FIX 5: Use showGenericExpression per overhead-animation-unified-roadmap doctrine
     if (typeof OverheadAnimator !== 'undefined' && _ctx) {
       OverheadAnimator.showGenericExpression(
         _ctx.player.x, _ctx.player.y,
-        '\uD83D\uDC46', 3000, '#ffff00'
+        '\uD83D\uDC46', 2000, '#ffff00'    // was 3000
       );
     }
-    _delay(_phase3, 750);
+    _delay(_phase3, 500);   // was 750 → 30% faster
   }
 
-  /** Phase 3: Cursor hijack (t=1.25s) */
+  /** Phase 3: Cursor hijack */
   function _phase3() {
     if (_playerTookControl) return;
     _phase = 3;
@@ -288,7 +287,7 @@ var OnboardingTutorial = (function() {
     _createCursor();
     _positionCursor(_ctx.player.x, _ctx.player.y);
     _computePath();
-    _delay(_phase4, 250);
+    _delay(_phase4, 150);   // was 250 → 40% faster
   }
 
   /** Phase 4: Cursor glides along A* path to exit door */
@@ -304,7 +303,7 @@ var OnboardingTutorial = (function() {
     }
 
     _cursorPathIndex = 0;
-    var glideSpeed = 2.0;
+    var glideSpeed = 3.0;   // was 2.0 — ~33% faster cursor glide
     var lastTime = Date.now();
 
     function animateGlide() {
@@ -358,7 +357,7 @@ var OnboardingTutorial = (function() {
     _showTapRing(_exitX, _exitY);
 
     if (typeof TooltipSystem !== 'undefined') {
-      TooltipSystem.show('\uD83C\uDFA3 Drag to draw a path', 2500);
+      TooltipSystem.show('\uD83C\uDFA3 Drag to draw a path', 1800);  // was 2500
     }
 
     // After tap animation, show fishing line then schedule auto-walk
@@ -373,11 +372,13 @@ var OnboardingTutorial = (function() {
       }
 
       // Schedule Phase 6 — auto-walk
-      _delay(_phase6, 1200);
-    }, 600);
+      _delay(_phase6, 800);  // was 1200 → 33% faster
+    }, 400);  // was 600 → 33% faster
   }
 
-  /** Phase 6: Avatar auto-walks the fishing line to exit */
+  /** Phase 6: Avatar auto-walks the fishing line to exit.
+   *  Sequence: walk starts → short delay → "SURVIVE" + "!" → sprint kicks in → floor transition
+   */
   function _phase6() {
     if (_playerTookControl) return;
     _phase = 6;
@@ -386,29 +387,47 @@ var OnboardingTutorial = (function() {
     _removeCursor();
     _clearTrail();
 
-    // FIX 3: Hide the fishing line BEFORE auto-walk starts.
-    // The static SVG overlay doesn't track camera scrolling, so it would
-    // drift as the camera follows the walking player. Remove it now —
-    // the player already saw the fishing line demo.
+    // Hide the fishing line BEFORE auto-walk starts (doesn't track camera scroll)
     if (typeof GoneRogueMobile !== 'undefined' && GoneRogueMobile.hideFishingPath) {
       GoneRogueMobile.hideFishingPath();
     }
 
-    if (typeof TooltipSystem !== 'undefined') {
-      TooltipSystem.show('\u27A1\uFE0F Walking...', 2000);
+    // Start the walk (not sprint yet)
+    var collisionCheck = function(x, y) {
+      if (typeof GoneRogue !== 'undefined' && GoneRogue.isWalkable) {
+        return !GoneRogue.isWalkable(x, y);
+      }
+      return false;
+    };
+
+    if (typeof GoneRogueMovement !== 'undefined' && _ctx) {
+      GoneRogueMovement.setTarget(_exitX, _exitY, collisionCheck, false);
     }
 
-    // Trigger movement to exit
-    if (typeof GoneRogueMovement !== 'undefined' && _ctx) {
-      var collisionCheck = function(x, y) {
-        if (typeof GoneRogue !== 'undefined' && GoneRogue.isWalkable) {
-          return !GoneRogue.isWalkable(x, y);
+    // After a brief walk, fire "SURVIVE" tooltip + "!" overhead, then trigger sprint
+    _delay(function() {
+      if (_playerTookControl) return;
+
+      // Fire "SURVIVE" on floor 0 during the walk
+      if (!_surviveFired) {
+        _surviveFired = true;
+        if (typeof TooltipSystem !== 'undefined') {
+          TooltipSystem.show('SURVIVE.', 1200);
         }
-        return false;
-      };
-      GoneRogueMovement.setTarget(_exitX, _exitY, collisionCheck, false);
-      _monitorProgress();
-    }
+        if (typeof OverheadAnimator !== 'undefined' && _ctx) {
+          OverheadAnimator.showGenericExpression(
+            _ctx.player.x, _ctx.player.y,
+            '\u2757', 1000, '#ff4444'
+          );
+        }
+      }
+
+      // After SURVIVE registers, kick into sprint
+      _delay(function() {
+        if (_playerTookControl) return;
+        _phase8();
+      }, 900);
+    }, 700);  // 700ms of walk before SURVIVE fires
   }
 
   /** Phase 7 / abort: Player took control — clean up overlays */
@@ -434,26 +453,14 @@ var OnboardingTutorial = (function() {
     _phase = 7;
   }
 
-  /** Phase 8: Sprint demonstration (~1/3 of the way during auto-walk) */
+  /** Phase 8: Sprint — called from Phase 6 after SURVIVE fires.
+   *  Shows double-tap cursor demo, switches movement to sprint,
+   *  then player runs through to the exit door / floor transition.
+   */
   function _phase8() {
     if (_playerTookControl) return;
     _phase = 8;
     console.log('[Onboarding] Phase 8: sprint demo');
-
-    // FIX 4: Fire "Survive." tooltip on floor 0 when sprint begins
-    if (!_surviveFired) {
-      _surviveFired = true;
-      if (typeof TooltipSystem !== 'undefined') {
-        TooltipSystem.show('Survive.', 1500);
-      }
-      // FIX 5: Fire overhead "!" per unified roadmap doctrine
-      if (typeof OverheadAnimator !== 'undefined' && _ctx) {
-        OverheadAnimator.showGenericExpression(
-          _ctx.player.x, _ctx.player.y,
-          '\u2757', 1200, '#ff4444'
-        );
-      }
-    }
 
     // Show cursor at exit, double-tap animation
     _injectStyles();
@@ -485,57 +492,22 @@ var OnboardingTutorial = (function() {
       }
 
       if (typeof TooltipSystem !== 'undefined') {
-        TooltipSystem.show('\u26A1 Double-tap to sprint!', 2000);
+        TooltipSystem.show('\u26A1 Double-tap to sprint!', 1400);  // was 2000
       }
 
       _delay(function() {
         _removeCursor();
-      }, 800);
-    }, 350);
-  }
-
-  /** Monitor auto-walk progress for sprint trigger */
-  function _monitorProgress() {
-    if (!_path || _path.length < 4) return;
-    var sprintTriggered = false;
-
-    function check() {
-      if (_playerTookControl || !_active || sprintTriggered) return;
-      if (typeof GoneRogueMovement === 'undefined') return;
-
-      var pos = GoneRogueMovement.getLogicalPosition();
-      if (!pos) { _delay(check, 300); return; }
-
-      var dx = pos.x - _ctx.player.x;
-      var dy = pos.y - _ctx.player.y;
-      var dist = Math.sqrt(dx * dx + dy * dy);
-      var pathLen = _path.length;
-      var progress = dist / pathLen;
-
-      if (progress > 0.3 && !sprintTriggered) {
-        sprintTriggered = true;
-        _phase8();
-        return;
-      }
-
-      if (Math.abs(pos.x - _exitX) <= 1 && Math.abs(pos.y - _exitY) <= 1) {
-        _cleanup();
-        return;
-      }
-
-      _delay(check, 300);
-    }
-
-    _delay(check, 500);
+      }, 500);  // was 800
+    }, 250);  // was 350
   }
 
   // ── Phase 9 & 10: Floor 1 transition tooltips ─────────────────────
 
   /**
    * Called externally when a floor transition happens.
-   * FIX 4: "Survive." now fires on floor 0 during sprint (Phase 8).
-   *         Floor 1 gets only "Evade.", "Resist.", "Extract." — delayed
-   *         enough that the scene transition completes first.
+   * "SURVIVE" already fired on Floor 0 during the fishing walk.
+   * Floor 1 gets: "ESCAPE.", "EVADE.", "RESIST.", "EXTRACT."
+   * Uses TooltipSystem.showSequence so there's no "standing by" reset between words.
    */
   function onFloorTransition(newFloor, ctx) {
     if (newFloor !== 1) return;
@@ -544,29 +516,31 @@ var OnboardingTutorial = (function() {
 
     console.log('[Onboarding] Phase 9: Floor 1 transition tooltips');
 
-    // FIX 4: Only 3 remaining words on Floor 1 (Survive already shown on Floor 0)
-    var words = ['Evade.', 'Resist.', 'Extract.'];
-    var wordDelay = 1500;
-    var gapDelay = 300;
+    var words = ['ESCAPE.', 'EVADE.', 'RESIST.', 'EXTRACT.'];
+    var wordDuration = 1200;   // was 1500 — 20% faster per word
+    var gapBetween = 200;      // was 300 — tighter gaps
 
-    // FIX 4: Delay the first tooltip by 1.5s so the floor transition
-    // animation (fade-out 0.3s + setTimeout 0.3s + fade-in) completes first
-    var transitionBuffer = 1500;
-
-    words.forEach(function(word, i) {
-      setTimeout(function() {
-        if (typeof TooltipSystem !== 'undefined') {
-          TooltipSystem.show(word, wordDelay);
-        }
-        // FIX 5: Fire overhead "!" per unified roadmap — OverheadAnimator.showGenericExpression
-        if (typeof OverheadAnimator !== 'undefined' && ctx) {
-          OverheadAnimator.showGenericExpression(
-            ctx.player.x, ctx.player.y,
-            '\u2757', 1200, '#ff4444'
-          );
-        }
-      }, transitionBuffer + i * (wordDelay + gapDelay));
-    });
+    // Delay start by 1s so the floor transition animation completes first
+    setTimeout(function() {
+      if (typeof TooltipSystem !== 'undefined' && TooltipSystem.showSequence) {
+        TooltipSystem.showSequence(words, wordDuration, gapBetween, function(word, i) {
+          // Fire overhead "!" with each word
+          if (typeof OverheadAnimator !== 'undefined' && ctx) {
+            OverheadAnimator.showGenericExpression(
+              ctx.player.x, ctx.player.y,
+              '\u2757', 1000, '#ff4444'
+            );
+          }
+        });
+      } else if (typeof TooltipSystem !== 'undefined') {
+        // Fallback if showSequence not available
+        words.forEach(function(word, i) {
+          setTimeout(function() {
+            TooltipSystem.show(word, wordDuration);
+          }, i * (wordDuration + gapBetween));
+        });
+      }
+    }, 1000);  // was 1500
   }
 
   // ── Path computation ──────────────────────────────────────────────
@@ -636,7 +610,7 @@ var OnboardingTutorial = (function() {
     _delay(function() {
       _bindInputListener();
       _phase1();
-    }, 100);
+    }, 50);  // was 100
   }
 
   function isActive() {

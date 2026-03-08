@@ -280,6 +280,113 @@
 }
 
 /* ============================================================
+   NPC Dialogue — In-field clickable conversation UI
+   Renders inside #mok-interject-body using innerHTML
+   ============================================================ */
+
+/* Speaker name/emoji tag */
+.dialogue-speaker {
+  color: #ffcc00;
+  font-weight: bold;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: inherit;
+  white-space: nowrap;
+}
+
+/* NPC speech text */
+.dialogue-text {
+  color: #e0e0e0;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: inherit;
+}
+
+/* Choice container */
+.dialogue-choices {
+  display: inline;
+  margin-left: 4px;
+}
+
+/* Individual clickable choice */
+.dialogue-choice {
+  color: #1cff9b;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0 3px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: inherit;
+  transition: color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+
+.dialogue-choice:hover {
+  color: #66ff66;
+  background: rgba(28, 255, 155, 0.15);
+  border-radius: 2px;
+}
+
+.dialogue-choice:active {
+  color: #ffffff;
+  background: rgba(28, 255, 155, 0.3);
+}
+
+/* Already-visited topic — dimmer color */
+.dialogue-choice-visited {
+  color: #0d9960;
+  text-decoration: underline dotted;
+}
+
+.dialogue-choice-visited:hover {
+  color: #1cff9b;
+}
+
+/* ── Dialogue in History Panel ── */
+.mok-history-entry .dialogue-speaker {
+  color: #ffcc00;
+}
+
+.mok-history-entry .dialogue-choice {
+  color: #1cff9b;
+  cursor: default;        /* not clickable in history */
+  text-decoration: none;
+  pointer-events: none;
+}
+
+/* ── Mobile: larger tap targets for dialogue choices ── */
+@media (max-width: 600px) and (orientation: portrait) {
+  .dialogue-choice {
+    display: inline-block;
+    padding: 3px 6px;
+    margin: 1px 2px;
+    min-height: 24px;    /* touch-friendly tap target */
+    line-height: 24px;
+    font-size: 10px;
+  }
+
+  .dialogue-choices {
+    display: block;
+    margin-left: 0;
+    margin-top: 2px;
+  }
+
+  .dialogue-speaker {
+    font-size: 9px;
+  }
+
+  .dialogue-text {
+    font-size: 9px;
+  }
+}
+
+/* Tablet: slightly larger choices */
+@media (min-width: 601px) and (max-width: 768px) {
+  .dialogue-choice {
+    padding: 1px 4px;
+    min-height: 20px;
+    line-height: 20px;
+  }
+}
+
+/* ============================================================
    Tooltip Thumb System - Frameless Emoji Popups
    ============================================================ */
 

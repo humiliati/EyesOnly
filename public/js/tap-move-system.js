@@ -165,6 +165,52 @@ var TapMoveSystem = (function() {
       }
     }
 
+    // ── NPC Dialogue: tap adjacent NPC to talk ──
+    // If player taps a tile occupied by an NPC that isn't a gate/shopkeeper,
+    // and the NPC is adjacent, start a dialogue conversation.
+    if (ctx.npcs && ctx.npcs.length > 0 && typeof DialogueSystem !== 'undefined') {
+      for (var ni = 0; ni < ctx.npcs.length; ni++) {
+        var tappedNpc = ctx.npcs[ni];
+        if (tappedNpc.x === targetX && tappedNpc.y === targetY) {
+          var npcDx = Math.abs(targetX - ctx.player.x);
+          var npcDy = Math.abs(targetY - ctx.player.y);
+          // Adjacent check (including diagonal)
+          if (npcDx <= 1 && npcDy <= 1 && (npcDx !== 0 || npcDy !== 0)) {
+            // Skip gate NPCs (handled by gate system) and shopkeepers (handled by shop system)
+            if (!tappedNpc.gate && !tappedNpc.shopkeeper) {
+              // Has dialogue data?
+              if (tappedNpc.dialogueTree || (tappedNpc.dialogues && tappedNpc.dialogues.length > 0)) {
+                // Build ctx for DialogueSystem effects
+                var dialogueCtx = {
+                  player: ctx.player,
+                  getFloor: ctx.getFloor || function() { return 0; },
+                  addCurrency: ctx.addCurrency || function() {}
+                };
+                DialogueSystem.startConversation(tappedNpc, dialogueCtx);
+
+                // Snap weapon arrow toward NPC
+                if (typeof PlayerWeaponArrow !== 'undefined') {
+                  var iDx = targetX - ctx.player.x;
+                  var iDy = targetY - ctx.player.y;
+                  PlayerWeaponArrow.setInteractDirection(
+                    iDx === 0 ? 0 : (iDx > 0 ? 1 : -1),
+                    iDy === 0 ? 0 : (iDy > 0 ? 1 : -1)
+                  );
+                }
+
+                return {
+                  lines: ['💬 Talking to ' + (tappedNpc.emoji || '') + ' ' + (tappedNpc.name || 'NPC'), ''].concat(ctx.renderGrid()),
+                  prompt: ctx.getPrompt(),
+                  stayActive: true
+                };
+              }
+            }
+          }
+          break; // Found the NPC at this tile, no need to keep searching
+        }
+      }
+    }
+
     // Asteroids boss locks player movement — tap only activates cards
     if (ctx.playerMoveLocked) {
       return {

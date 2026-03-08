@@ -1,7 +1,8 @@
-# Tooltip Space — Canonical Dimensions & Future NPC Dialogue
+# Tooltip Space — Canonical Dimensions & NPC Dialogue System
 
-> **Purpose:** Document the tooltip/history panel dimensions on desktop vs mobile to enable future NPC dialogue system with in-field hyperlinks.
-> **Status:** Draft — 2026-03-03
+> **Purpose:** Document the tooltip/history panel dimensions on desktop vs mobile and the Morrowind-style NPC dialogue system implementation.
+> **Status:** Implemented — 2026-03-07
+> **Previous:** Draft — 2026-03-03
 
 ---
 
@@ -54,9 +55,6 @@
    └─70px─┘    └──────────────~500px+─────────────────────────┘
 ```
 
-- Timestamp: ~70px with brackets + spacing
-- Message: ~500px+ available
-
 ### Mobile Portrait (Narrow)
 
 ```
@@ -68,85 +66,144 @@
  └32px┘ └──~200px───────────┘
 ```
 
-- Timestamp: ~32px max (fixed width)
-- Message: ~200px available
+---
+
+## Tooltip Priority System
+
+Messages have priority levels. Higher priority content blocks lower priority from overwriting it.
+
+| Priority | Level | Source | Behavior |
+|----------|-------|--------|----------|
+| NORMAL | 1 | `show()`, `showAction()`, `showSequence()` | Auto-resets to default after timeout |
+| PERSISTENT | 2 | `showPersistent()` | Stays until replaced by same or higher priority |
+| DIALOGUE | 3 | `showDialogue()` | Blocks ALL lower-priority writes; requires explicit `clearDialogue()` |
+
+When dialogue is active (priority 3), game tooltips (combat, pickup, movement) are still logged to history but do NOT overwrite the dialogue rendering. This solves the original problem of tooltips "defaulting away from relevant information."
+
+The `DEFAULT_MESSAGE` ("Standing by for advisories.") reset is gated at all five code sites by priority checks.
 
 ---
 
-## Future: NPC Dialogue System
+## NPC Dialogue System — Morrowind Style
 
-### Goal
-Use the tooltip/history panel for extended NPC conversations with:
-- Hyperlinks in-field to progress dialogue
-- Branching conversation trees
-- Character portrait/emoji integration
-
-### Space Requirements
-
-| Feature | Desktop Space | Mobile Space | Notes |
-|---------|---------------|--------------|-------|
-| Speaker name | ~80px | ~40px | NPC name or emoji |
-| Dialogue text | ~400px | ~160px | Main content |
-| Choice links | ~80px/line | ~40px/line | `[Continue]`, `[Ask about X]` |
-
-### Proposed Hyperlink Format
+### Architecture
 
 ```
-[Barkeep] > Hey stranger! What can I get you?
-           > [Buy Drink -5¢]  [Ask about rumor]  [Leave]
-
-┌────────────────────────────────────────────────────────────┐
-│14:32 [Barkeep] > Hey stranger! What can I get you?       │
-│      > [Buy Drink -5¢] [Ask about rumor] [Leave]         │
-└────────────────────────────────────────────────────────────┘
+DialogueSystem (dialogue-system.js)
+    │
+    ├── Manages dialogue trees, active conversation state
+    ├── Resolves dialogueTree or flat dialogues[] into normalized tree
+    ├── Handles choice selection → node navigation → effects
+    │
+    └── Renders via TooltipSystem.showDialogue()
+            │
+            ├── Builds innerHTML with speaker, text, clickable choices
+            ├── Attaches click delegation for .dialogue-choice spans
+            └── Locks tooltip to PRIORITY_DIALOGUE
 ```
 
-### CSS Requirements for Hyperlinks
+### Interaction Flow
 
-```css
-/* In-field dialogue choices */
-.mok-history-message a,
-.mok-history-message .dialogue-choice {
-  color: #1cff9b;
-  text-decoration: underline;
-  cursor: pointer;
-  padding: 0 2px;
-}
+1. Player walks adjacent to NPC (1 tile, including diagonal)
+2. Player taps the NPC's tile
+3. `TapMoveSystem.handleTapMove()` detects NPC at target, checks adjacency
+4. Skips gate NPCs and shopkeepers (handled by existing systems)
+5. Calls `DialogueSystem.startConversation(npc, ctx)`
+6. DialogueSystem resolves the NPC's dialogue tree, navigates to root node
+7. `TooltipSystem.showDialogue()` renders speaker + text + clickable `[choices]`
+8. Player clicks a choice → `DialogueSystem.selectChoice(idx)` → next node or end
+9. Walking away (Manhattan distance > 2) → `DialogueSystem.interrupt()`
+10. Combat start → `DialogueSystem.interrupt()`
 
-.mok-history-message a:hover,
-.mok-history-message .dialogue-choice:hover {
-  color: #66ff66;
-  background: rgba(28, 255, 155, 0.15);
-}
+### Dialogue Tree Data Format
 
-/* Mobile: larger tap targets despite narrow space */
-@media (max-width: 600px) and (orientation: portrait) {
-  .mok-history-message a,
-  .mok-history-message .dialogue-choice {
-    display: inline-block;
-    padding: 2px 4px;
-    margin: 1px 0;
-    min-height: 20px; /* touch target */
+```javascript
+{
+  root: 'greeting',
+  nodes: {
+    greeting: {
+      text: 'Hey stranger! What can I get you?',
+      choices: [
+        { label: 'Buy Drink -5¢', next: 'buy_drink', effect: { currency: -5 } },
+        { label: 'Ask about rumor', next: 'rumor' },
+        { label: 'Leave', next: null }  // null = end conversation
+      ]
+    },
+    rumor: {
+      text: 'Strange sounds from below...',
+      choices: [
+        { label: 'Tell me more', next: 'rumor_detail' },
+        { label: 'Back', next: 'greeting' }
+      ]
+    }
   }
 }
 ```
 
+### Backward Compatibility
+
+NPCs with only flat `dialogues: ['line1', 'line2']` arrays are auto-wrapped into a linear Continue→Continue→Farewell tree. No existing NPC data needs to change.
+
+### Choice Effects
+
+| Effect Key | Type | Description |
+|-----------|------|-------------|
+| `currency` | number | Add/subtract crypto (negative = cost) |
+| `setFlag` | string | Set `player.flags[key] = true` |
+| `openShop` | boolean | Opens ShopSystem |
+| `giveItem` | object | Adds item to player inventory |
+| `heal` | number | Restore HP (capped at maxHp) |
+| `callback` | function | Custom `fn(ctx, npc)` callback |
+
+### Visited Node Tracking
+
+Previously explored dialogue branches render with dimmer styling (`.dialogue-choice-visited` — dotted underline, muted green). This gives the player Morrowind-style visual feedback about which topics they've already explored.
+
 ---
 
-## Mobile Constraints Summary
+## Dialogue Rendering in MOK Interjection Field
 
-### The Challenge
-- **Desktop**: 500px+ for dialogue, can show 2-3 choice links per line
-- **Mobile Portrait**: ~200px for dialogue, max 1 choice link per line, very tight
+### Desktop Layout
 
-### Current Timestamp Width
-- Desktop: ~70px (includes `[` + `]` + time + margins)
-- Mobile: ~32px fixed (time only, no brackets)
+```
+┌──────────────────────────────────────────────────────────────┐
+│ 👵 Elder Careful ahead, child. [The catacombs] [Sounds] [Bye]│
+└──────────────────────────────────────────────────────────────┘
+  └speaker┘ └───dialogue text──┘ └──clickable choices──────────┘
+```
 
-### Recommendation for NPC Dialogue
-1. **Desktop-first**: Design dialogue for desktop, then adapt
-2. **Mobile**: Single-choice-per-line format, or collapse to menu overlay
-3. **Hybrid**: On mobile, show "Tap to continue" → opens full dialogue overlay
+### Mobile Portrait Layout
+
+Choices break to a separate line with larger tap targets (min-height: 24px):
+
+```
+┌────────────────────────────┐
+│👵 Elder Careful ahead...  │
+│[Catacombs] [Sounds] [Bye] │
+└────────────────────────────┘
+```
+
+### CSS Classes
+
+| Class | Purpose |
+|-------|---------|
+| `.dialogue-speaker` | Yellow bold NPC name/emoji |
+| `.dialogue-text` | Light grey speech text |
+| `.dialogue-choices` | Container for choice spans |
+| `.dialogue-choice` | Green underlined clickable choice `[text]` |
+| `.dialogue-choice-visited` | Dimmer green dotted underline for explored topics |
+| `.dialogue-choice:hover` | Brighter green with subtle background |
+
+---
+
+## Tutorial NPCs with Dialogue Trees
+
+| NPC | Floor | Topics |
+|-----|-------|--------|
+| Elder (👵) | Floor 1 | How to pass barricade, what's beyond |
+| Father Aldric (👴) | Church Interior (1.2) | Catacombs, strange sounds, blessing (heals 2 HP) |
+| Tavern Keeper (🧔) | Tavern Interior (0.1) | Cellar warnings, village news |
+| Blacksmith (⚒️) | Tavern Interior (0.1) | Lost hammer quest, reward description, cellar danger |
 
 ---
 
@@ -154,15 +211,28 @@ Use the tooltip/history panel for extended NPC conversations with:
 
 | File | Purpose |
 |------|---------|
-| `public/js/tooltip-system.js` | Timestamp format, history rendering |
-| `public/css/tooltip-system.css` | All dimension, media queries |
+| `public/js/dialogue-system.js` | **NEW** — DialogueSystem IIFE: tree resolution, conversation state, choice handling, effects |
+| `public/js/tooltip-system.js` | Extended: `showDialogue()`, `clearDialogue()`, `setPriority()`, priority gating on all methods |
+| `public/css/tooltip-system.css` | Extended: dialogue speaker/text/choice styling, mobile tap targets, visited state |
+| `public/js/tap-move-system.js` | Extended: NPC adjacency tap → `DialogueSystem.startConversation()` |
+| `public/js/move-player-system.js` | Extended: dialogue interrupt on walk-away (distance > 2) |
+| `public/js/tutorial-floors.js` | Extended: dialogueTree data on Elder, Father Aldric, Tavern Keeper, Blacksmith |
+| `public/index.html` | Added `<script>` for dialogue-system.js |
 | `docs/UI-CANON.md` | Related: §15 Font Canon, §16 Color Canon |
 
 ---
 
-## Open Questions
+## Open Questions (Resolved)
 
-1. **Mobile dialogue format**: Should NPC dialogue use the compact history panel, or a dedicated overlay?
-2. **Speaker identification**: Should we add an emoji/avatar column (like `[Barkeep]`) in front of messages?
-3. **Choice links**: Should choices be inline `[text]` or separate clickable rows?
-4. **Touch targets**: Mobile portrait is very constrained — minimum 20px height per choice?
+1. **Mobile dialogue format** → Inline in footer with larger tap targets (24px min-height), choices break to separate line. No overlay needed at this scale.
+2. **Speaker identification** → Emoji + name rendered as `.dialogue-speaker` in yellow bold, inline before dialogue text.
+3. **Choice links** → Inline `[text]` spans with click handlers. Desktop: all on one line. Mobile: wrapped to separate line.
+4. **Touch targets** → 24px min-height on mobile portrait, 6px horizontal padding.
+
+## Future Work
+
+1. **Quest-aware dialogue branches** — DialogueSystem checks `player.flags` to show/hide choices based on quest state (e.g. show "Return hammer" choice only if player has BLACKSMITH_HAMMER)
+2. **Shopkeeper dialogue integration** — Replace simple "Welcome to my shop!" tooltip with a dialogue tree that includes [Browse Wares] choice
+3. **Proc gen NPC dialogue** — Generate contextual dialogue trees for non-tutorial NPCs based on floor biome, nearby items, player stats
+4. **Dialogue history in panel** — Render full conversation transcript in the history panel (not just plain text summaries)
+5. **Portrait/avatar column** — Add small emoji avatar in history entries for NPC speech (distinct from game action tooltips)

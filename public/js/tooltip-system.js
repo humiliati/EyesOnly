@@ -14,6 +14,16 @@ const TooltipSystem = (function() {
   var MAX_HISTORY_LINES = 256;
   var DEFAULT_MESSAGE = 'Standing by for advisories.';
 
+  // ── Priority system ────────────────────────────────────────
+  // Higher priority messages block lower ones.
+  // Dialogue (3) > persistent (2) > timed (1)
+  var PRIORITY_NORMAL = 1;
+  var PRIORITY_PERSISTENT = 2;
+  var PRIORITY_DIALOGUE = 3;
+  var _currentPriority = PRIORITY_NORMAL;
+  var _dialogueActive = false;       // True while showDialogue is rendering
+  var _dialogueClickHandler = null;  // Bound click handler for dialogue choices
+
   /**
    * Initialize tooltip system
    */
@@ -101,6 +111,12 @@ const TooltipSystem = (function() {
       if (!_mokInterjectionElement) return;
     }
 
+    // Don't overwrite higher-priority content (e.g. active dialogue)
+    if (_currentPriority > PRIORITY_NORMAL) {
+      _addToHistory(message); // still log it
+      return;
+    }
+
     if (_currentTimer) {
       clearTimeout(_currentTimer);
       _currentTimer = null;
@@ -111,7 +127,9 @@ const TooltipSystem = (function() {
 
     var duration = durationMs || 2500;
     _currentTimer = setTimeout(function() {
-      _mokInterjectionElement.textContent = DEFAULT_MESSAGE;
+      if (_currentPriority <= PRIORITY_NORMAL) {
+        _mokInterjectionElement.textContent = DEFAULT_MESSAGE;
+      }
       _currentTimer = null;
     }, duration);
   }
@@ -261,12 +279,70 @@ const TooltipSystem = (function() {
   }
 
   /**
+   * Show a sequence of tooltip messages without resetting to default between them.
+   * Each message displays for `durationMs`, with `gapMs` pause (holding previous text)
+   * before the next message.  Resets to default only after the last message expires.
+   *
+   * @param {Array<string>} messages  - Ordered tooltip strings
+   * @param {number} durationMs       - Display time per message (default 1500)
+   * @param {number} gapMs            - Pause between messages (default 200)
+   * @param {Function} [onEach]       - Optional callback(message, index) fired with each message
+   */
+  function showSequence(messages, durationMs, gapMs, onEach) {
+    if (!messages || messages.length === 0) return;
+    if (!_mokInterjectionElement) {
+      init();
+      if (!_mokInterjectionElement) return;
+    }
+
+    // Don't overwrite active dialogue with a sequence
+    if (_currentPriority >= PRIORITY_DIALOGUE) {
+      messages.forEach(function(msg) { _addToHistory(msg); });
+      return;
+    }
+
+    var dur = durationMs || 1500;
+    var gap = gapMs || 200;
+    var step = dur + gap;
+
+    // Cancel any existing timer so we own the tooltip for the whole sequence
+    if (_currentTimer) {
+      clearTimeout(_currentTimer);
+      _currentTimer = null;
+    }
+
+    messages.forEach(function(msg, i) {
+      var showAt = i * step;
+      setTimeout(function() {
+        _mokInterjectionElement.textContent = msg;
+        _addToHistory(msg);
+        if (typeof onEach === 'function') onEach(msg, i);
+      }, showAt);
+    });
+
+    // Reset to default after the last message's full duration
+    var totalDuration = messages.length * step - gap + dur;
+    _currentTimer = setTimeout(function() {
+      if (_currentPriority <= PRIORITY_NORMAL) {
+        _mokInterjectionElement.textContent = DEFAULT_MESSAGE;
+      }
+      _currentTimer = null;
+    }, totalDuration);
+  }
+
+  /**
    * Show a persistent tooltip message (stays until replaced)
    */
   function showPersistent(message) {
     if (!_mokInterjectionElement) {
       init();
       if (!_mokInterjectionElement) return;
+    }
+
+    // Don't overwrite dialogue with persistent messages
+    if (_currentPriority > PRIORITY_PERSISTENT) {
+      _addToHistory(message);
+      return;
     }
 
     if (_currentTimer) {
@@ -284,11 +360,17 @@ const TooltipSystem = (function() {
   function clear() {
     if (!_mokInterjectionElement) return;
 
+    // Don't clear dialogue via normal clear()
+    if (_dialogueActive) return;
+
     if (_currentTimer) {
       clearTimeout(_currentTimer);
       _currentTimer = null;
     }
 
+    _currentPriority = PRIORITY_NORMAL;
+    _detachDialogueClickHandlers();
+    _mokInterjectionElement.innerHTML = '';
     _mokInterjectionElement.textContent = DEFAULT_MESSAGE;
   }
 
@@ -365,6 +447,152 @@ const TooltipSystem = (function() {
     show(message);
   }
 
+  // ── Dialogue Rendering ──────────────────────────────────────
+
+  /**
+   * Render NPC dialogue with clickable choice links in the MOK interjection field.
+   * Uses innerHTML for rich content. Active dialogue blocks all lower-priority messages.
+   *
+   * @param {string} speaker     - e.g. "🍺 Barkeep"
+   * @param {string} text        - NPC's speech text
+   * @param {Array}  choices     - [{ label, next, ... }] — clickable options
+   * @param {Object} visitedNodes - Set of visited node IDs for "already read" styling
+   */
+  function showDialogue(speaker, text, choices, visitedNodes) {
+    if (!_mokInterjectionElement) {
+      init();
+      if (!_mokInterjectionElement) return;
+    }
+
+    // Cancel any timed tooltip
+    if (_currentTimer) {
+      clearTimeout(_currentTimer);
+      _currentTimer = null;
+    }
+
+    _dialogueActive = true;
+    _currentPriority = PRIORITY_DIALOGUE;
+
+    // Build HTML for the interjection field
+    var html = '';
+    html += '<span class="dialogue-speaker">' + _escapeHtml(speaker) + '</span> ';
+    html += '<span class="dialogue-text">' + _escapeHtml(text) + '</span>';
+
+    if (choices && choices.length > 0) {
+      html += ' <span class="dialogue-choices">';
+      for (var i = 0; i < choices.length; i++) {
+        var choice = choices[i];
+        var visitedClass = '';
+        if (choice.next && visitedNodes && visitedNodes[choice.next]) {
+          visitedClass = ' dialogue-choice-visited';
+        }
+        html += '<span class="dialogue-choice' + visitedClass + '" data-choice-idx="' + i + '">';
+        html += '[' + _escapeHtml(choice.label) + ']';
+        html += '</span>';
+        if (i < choices.length - 1) html += ' ';
+      }
+      html += '</span>';
+    }
+
+    // Render with innerHTML (not textContent) for clickable elements
+    _mokInterjectionElement.innerHTML = html;
+
+    // Log the NPC speech to history (plain text version)
+    _addToHistory(speaker + ': ' + text);
+
+    // Attach click handlers for dialogue choices
+    _attachDialogueClickHandlers();
+  }
+
+  /**
+   * Attach click event delegation for dialogue choice spans.
+   */
+  function _attachDialogueClickHandlers() {
+    // Remove old handler if any
+    _detachDialogueClickHandlers();
+
+    _dialogueClickHandler = function(e) {
+      var target = e.target;
+      // Walk up to find .dialogue-choice
+      while (target && target !== _mokInterjectionElement) {
+        if (target.classList && target.classList.contains('dialogue-choice')) {
+          var idx = parseInt(target.getAttribute('data-choice-idx'), 10);
+          if (!isNaN(idx) && typeof DialogueSystem !== 'undefined') {
+            DialogueSystem.selectChoice(idx);
+          }
+          e.stopPropagation();
+          return;
+        }
+        target = target.parentElement;
+      }
+    };
+
+    _mokInterjectionElement.addEventListener('click', _dialogueClickHandler);
+  }
+
+  /**
+   * Remove dialogue click handlers.
+   */
+  function _detachDialogueClickHandlers() {
+    if (_dialogueClickHandler && _mokInterjectionElement) {
+      _mokInterjectionElement.removeEventListener('click', _dialogueClickHandler);
+      _dialogueClickHandler = null;
+    }
+  }
+
+  /**
+   * End dialogue mode — called by DialogueSystem.endConversation().
+   * Restores normal tooltip behavior.
+   */
+  function clearDialogue() {
+    _dialogueActive = false;
+    _currentPriority = PRIORITY_NORMAL;
+    _detachDialogueClickHandlers();
+
+    if (_mokInterjectionElement) {
+      _mokInterjectionElement.innerHTML = '';
+      _mokInterjectionElement.textContent = DEFAULT_MESSAGE;
+    }
+  }
+
+  /**
+   * Set tooltip priority level.
+   * Used by DialogueSystem to lock/unlock the tooltip.
+   */
+  function setPriority(level) {
+    _currentPriority = level || PRIORITY_NORMAL;
+    if (_currentPriority <= PRIORITY_NORMAL) {
+      _dialogueActive = false;
+      _detachDialogueClickHandlers();
+    }
+  }
+
+  /**
+   * Get current priority level.
+   */
+  function getPriority() {
+    return _currentPriority;
+  }
+
+  /**
+   * Alias: show with generic prefix. Used by shopkeeper adjacency etc.
+   */
+  function showGeneric(message, durationMs) {
+    show(message, durationMs);
+  }
+
+  /**
+   * Escape HTML special characters for safe innerHTML insertion.
+   */
+  function _escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
   // Initialize on load
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
@@ -375,11 +603,22 @@ const TooltipSystem = (function() {
   // Public API
   return {
     show: show,
+    showGeneric: showGeneric,
+    showSequence: showSequence,
     showPersistent: showPersistent,
+    showDialogue: showDialogue,
+    clearDialogue: clearDialogue,
     showAction: showAction,
     clear: clear,
+    setPriority: setPriority,
+    getPriority: getPriority,
     init: init,
     toggleHistory: toggleHistory,
-    collapseHistory: collapseHistory
+    collapseHistory: collapseHistory,
+    PRIORITY: {
+      NORMAL: PRIORITY_NORMAL,
+      PERSISTENT: PRIORITY_PERSISTENT,
+      DIALOGUE: PRIORITY_DIALOGUE
+    }
   };
 })();

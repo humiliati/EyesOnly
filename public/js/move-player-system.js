@@ -98,6 +98,17 @@ var MovePlayerSystem = (function() {
     player.y = newY;
     ctx.incrementTurn();
 
+    // ── Interrupt active dialogue if player walked away from NPC ──
+    if (typeof DialogueSystem !== 'undefined' && DialogueSystem.isActive()) {
+      var talkNpc = DialogueSystem.getActiveNpc();
+      if (talkNpc) {
+        var talkDist = Math.abs(newX - talkNpc.x) + Math.abs(newY - talkNpc.y);
+        if (talkDist > 2) {
+          DialogueSystem.interrupt();
+        }
+      }
+    }
+
     // Update position history for pet following
     ctx.updatePositionHistory();
 

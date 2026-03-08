@@ -290,6 +290,31 @@ var TutorialFloors = (function() {
           'You can break it with normal attacks or projectiles.',
           'Smash a few crates if you want supplies first.'
         ],
+        dialogueTree: {
+          root: 'greeting',
+          nodes: {
+            greeting: {
+              text: 'Careful ahead, child. That pinch is blocked by a barricade.',
+              choices: [
+                { label: 'How do I get past?', next: 'how' },
+                { label: 'What\'s beyond?', next: 'beyond' },
+                { label: 'Thanks', next: null }
+              ]
+            },
+            how: {
+              text: 'Break it with normal attacks or projectiles. Smash a few crates first if you want supplies.',
+              choices: [
+                { label: 'Continue', next: 'greeting' }
+              ]
+            },
+            beyond: {
+              text: 'The village. A chapel, a tavern... and the road onward. But the road grows darker the further you go.',
+              choices: [
+                { label: 'Continue', next: 'greeting' }
+              ]
+            }
+          }
+        },
         pointsAt: { x: 20, y: 8 }
       }
     ],
@@ -572,6 +597,60 @@ var TutorialFloors = (function() {
         'They say the old catacombs hold treasures from a forgotten age.',
         'Be careful if you venture below. The dead do not rest easy here.'
       ],
+      dialogueTree: {
+        root: 'greeting',
+        nodes: {
+          greeting: {
+            text: 'Welcome, traveler. This chapel has stood for centuries. What brings you here?',
+            choices: [
+              { label: 'The catacombs', next: 'catacombs' },
+              { label: 'Strange sounds', next: 'sounds' },
+              { label: 'Blessing', next: 'blessing' },
+              { label: 'Farewell', next: null }
+            ]
+          },
+          catacombs: {
+            text: 'The old catacombs lie beneath the eastern wing. Treasures from a forgotten age rest there... along with things best left undisturbed.',
+            choices: [
+              { label: 'What things?', next: 'catacombs_danger' },
+              { label: 'How do I get in?', next: 'catacombs_entry' },
+              { label: 'Back', next: 'greeting' }
+            ]
+          },
+          catacombs_danger: {
+            text: 'The dead do not rest easy. Miners broke through a sealed chamber decades ago. None returned. We sealed it again, but the sounds persist.',
+            choices: [
+              { label: 'Continue', next: 'greeting' }
+            ]
+          },
+          catacombs_entry: {
+            text: 'There is a passage through the eastern wall. Look for loose stones near the altar. But I warn you \u2014 go prepared.',
+            choices: [
+              { label: 'Continue', next: 'greeting' }
+            ]
+          },
+          sounds: {
+            text: 'Strange sounds echo from behind the eastern wall at night. Scraping. Sometimes... whispering. The congregation pretends not to hear.',
+            choices: [
+              { label: 'What do they say?', next: 'whispers' },
+              { label: 'Back', next: 'greeting' }
+            ]
+          },
+          whispers: {
+            text: 'I cannot make out words. Only rhythm. Like a chant in a tongue older than this chapel. Older than the village, perhaps.',
+            choices: [
+              { label: 'Continue', next: 'greeting' }
+            ]
+          },
+          blessing: {
+            text: 'May the light guide your path through darkness. Be steadfast, traveler.',
+            choices: [
+              { label: 'Thank you', next: null, effect: { heal: 2 } },
+              { label: 'Back', next: 'greeting' }
+            ]
+          }
+        }
+      },
       gate: null, reward: null
     }],
     decorations: [
@@ -926,9 +1005,48 @@ var TutorialFloors = (function() {
         dialogues: [
           'Welcome to The Rusty Mug, stranger.',
           'The front door leads out to the village.',
-          'The cellar stairs are in the back — careful down there.',
+          'The cellar stairs are in the back \u2014 careful down there.',
           'They say the previous owner left something valuable in the basement.'
         ],
+        dialogueTree: {
+          root: 'greeting',
+          nodes: {
+            greeting: {
+              text: 'Welcome to The Rusty Mug, stranger. What\'ll it be?',
+              choices: [
+                { label: 'The cellar', next: 'cellar' },
+                { label: 'Village news', next: 'news' },
+                { label: 'Just passing through', next: null }
+              ]
+            },
+            cellar: {
+              text: 'The cellar stairs are in the back. Careful down there \u2014 the previous owner left something valuable, but also something... unwelcome.',
+              choices: [
+                { label: 'Unwelcome?', next: 'cellar_detail' },
+                { label: 'Back', next: 'greeting' }
+              ]
+            },
+            cellar_detail: {
+              text: 'Vermin. Maybe worse. The blacksmith went down once and came back white as a sheet. Wouldn\'t say what he saw.',
+              choices: [
+                { label: 'Continue', next: 'greeting' }
+              ]
+            },
+            news: {
+              text: 'Strange times. Travelers report the roads beyond the village are getting more dangerous. Some don\'t come back at all.',
+              choices: [
+                { label: 'What happened?', next: 'news_detail' },
+                { label: 'Back', next: 'greeting' }
+              ]
+            },
+            news_detail: {
+              text: 'Creatures from the deeper floors are pushing up. Something stirred them. The elder says it\'s just the season, but I\'m not so sure.',
+              choices: [
+                { label: 'Continue', next: 'greeting' }
+              ]
+            }
+          }
+        },
         gate: null, reward: null
       },
       {
@@ -943,6 +1061,39 @@ var TutorialFloors = (function() {
           'I think I left it somewhere in the cellar...',
           'I\'ll forge you something special in return.'
         ],
+        dialogueTree: {
+          root: 'greeting',
+          nodes: {
+            greeting: {
+              text: 'I\'ve been searching for my hammer everywhere! Can\'t forge a thing without it.',
+              choices: [
+                { label: 'Where did you lose it?', next: 'lost' },
+                { label: 'What will you give me?', next: 'reward' },
+                { label: 'I\'ll look around', next: null }
+              ]
+            },
+            lost: {
+              text: 'I think I left it somewhere in the cellar below. I went down there to fix a broken barrel hoop and... well, it got dark. I ran.',
+              choices: [
+                { label: 'What\'s down there?', next: 'cellar_danger' },
+                { label: 'Back', next: 'greeting' }
+              ]
+            },
+            cellar_danger: {
+              text: 'Rats. Big ones. And something else I couldn\'t quite see. The tavern keeper won\'t talk about it.',
+              choices: [
+                { label: 'Continue', next: 'greeting' }
+              ]
+            },
+            reward: {
+              text: 'Bring me the hammer and I\'ll forge you something special. A card upgrade \u2014 make one of your abilities hit harder.',
+              choices: [
+                { label: 'Deal', next: null },
+                { label: 'Back', next: 'greeting' }
+              ]
+            }
+          }
+        },
         gate: null,
         reward: { type: 'card_upgrade' },
         questItem: 'BLACKSMITH_HAMMER',
