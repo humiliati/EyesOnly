@@ -1,16 +1,16 @@
 # Audio Wiring Roadmap
 
 > **Date:** 2026-03-09 (last updated)
-> **Status:** Phase 0 + Phase 2 + Phase 3 + Phase 4.1 complete, Phase 3.4 rewritten (time-based cadence engine with stereo panning, floor-depth volume, injury limp, humanization), Phase 1 deferred (pending card hand harmonization), transcoding shipped, Sound Designer portal live with 314 sound entries + 103 card sounds
-> **Manifest entries:** 314 (167 original SFX + 8 footsteps + 103 card sounds + 20 Songs + 18 Cyberleaf + 14 Aila Scott — some with `_status: "staged"`)
+> **Status:** Phase 0 + Phase 2 + Phase 3 + Phase 4.1 complete, Phase 3.4 rewritten (time-based cadence engine with stereo panning, floor-depth volume, injury limp, humanization), Phase 1 deferred (pending card hand harmonization), transcoding shipped, Sound Designer portal live with CRUD (rename, delete, sort, gap check, manifest diff export) + 524 entries across 30 categories
+> **Manifest entries:** 519 (167 original SFX + 8 footsteps + 103 card sounds + 204 new SFX batch + 20 Songs + 18 Cyberleaf + 14 Aila Scott — some with `_status: "staged"`)
 
 ---
 
 ## Runtime Weight: ✅ Transcoded & Deployed
 
-All 314 assets have been transcoded from WAV to Opus/WebM (+ MP3 fallback) and uploaded to the `eyesonly-assets` R2 bucket. Source WAVs have been removed from `public/audio/` to stay within Cloudflare's 25 MiB static asset limit. Audio is served exclusively via R2 routes.
+All 519 assets have been transcoded from WAV to Opus/WebM (+ MP3 fallback) and uploaded to the `eyesonly-assets` R2 bucket. Source WAVs have been removed from `public/audio/` to stay within Cloudflare's 25 MiB static asset limit. Audio is served exclusively via R2 routes.
 
-**Manifest note:** `audio-manifest.json` `src` fields now reference `.webm` paths for new assets (footsteps, card sounds, Cyberleaf, Aila Scott). Original 167 SFX entries still reference `.wav` paths which resolve from R2. The R2 bucket serves both formats.
+**Manifest note:** All `audio-manifest.json` `src` fields now reference `.webm` paths. The Sound Designer portal library `data-src` attributes have been aligned to match. The R2 bucket serves both `.webm` and `.mp3` formats.
 
 **Safari note:** Safari 15.4+ supports Opus natively. The MP3 fallbacks on R2 cover older Safari. `AudioSystem` tries `.webm` first, falling back to `.mp3`.
 
@@ -197,7 +197,7 @@ Time-based cadence engine with stereo panning, floor-depth volume, injury limp, 
 | Feature | Status |
 |---|---|
 | `AudioSystem.tickFootsteps(moving, sprinting, biomeName, interiorDepth, healthPct)` | ✅ |
-| Time-based cadence timer (walk=420ms, run=270ms) | ✅ |
+| Time-based cadence timer (walk=357ms, run=270ms) | ✅ |
 | Strict L-R-L-R foot alternation | ✅ |
 | Stereo panning (L=-0.35, R=+0.35) via StereoPannerNode | ✅ |
 | Floor-depth volume table (exterior/shallow/deep) | ✅ |
@@ -407,6 +407,48 @@ Persistent visual footprints on the ground layer, feeding enemy AI suspicion.
 
 ---
 
+## Phase 9 — Sound Designer Portal CRUD & Integrity ✅ COMPLETE
+
+### 9.1 Sort
+
+Library sidebar sort dropdown with 4 modes: Default, Name (A-Z), Category, Date (Newest). Persists to localStorage. Date mode fetches R2 upload timestamps via `/api/audio/list`.
+
+### 9.2 Rename
+
+Two levels: local display name override (localStorage) and full manifest ID + R2 key rename. R2 rename uses copy-then-delete (`POST /api/audio/rename`). All renames recorded in a manifest diff for export.
+
+### 9.3 Delete
+
+Mark/unmark toggle in inspector with visual strikethrough. "Sync N Deletes" header button pushes marked sounds to R2 via `POST /api/audio/delete-batch` behind a confirmation modal. All deletes recorded in manifest diff.
+
+### 9.4 Gap Check & Missing-Asset Flags
+
+"Verify Assets" button posts the current manifest to `POST /api/audio/check-gaps` which compares manifest src/fallback paths against actual R2 keys (paginated listing). Results displayed in modal with broken refs (red) and orphans (yellow). Missing sounds get red border + warning badge in the library. Exportable JSON report.
+
+### 9.5 Manifest Diff Export
+
+"Export Manifest Diff" button downloads a JSON file containing renames, deletes, aliases (old→new ID mapping for one-release-cycle transition), and broken refs. This diff is merged into the repo, validated, then deployed. R2 remains dumb storage.
+
+### 9.6 CI Gap-Check Scripts
+
+Two scripts for pre-deploy validation:
+
+- `scripts/manifest-gap-check.sh` — API-based (fast, uses `/api/audio/check-gaps`), exits non-zero on missing assets
+- `scripts/r2-gap-check.sh` — curl-per-file (slow but works without running worker), exits non-zero on missing assets
+
+### 9.7 Backend Endpoints (in `audio-upload.ts`)
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/audio/upload` | POST | Upload file to R2 (existing) |
+| `/api/audio/list` | GET | List R2 objects by prefix (existing) |
+| `/api/audio/delete` | DELETE | Delete single R2 object |
+| `/api/audio/delete-batch` | POST | Bulk delete (up to 500 keys) |
+| `/api/audio/rename` | POST | Copy+delete rename preserving metadata |
+| `/api/audio/check-gaps` | POST | Manifest→R2 integrity comparison |
+
+---
+
 ## Manifest Gaps
 
 | Referenced Key | Closest Manifest Match | Action |
@@ -430,14 +472,16 @@ Persistent visual footprints on the ground layer, feeding enemy AI suspicion.
 | `public/js/stealth-system.js` | Stealth bonus → future footprint decay modulation |
 | `public/js/audio-controls-widget.js` | Debrief feed UI widget |
 | `public/css/audio-controls.css` | Widget styling |
-| `public/audio/audio-manifest.json` | 314-entry sound registry (source of truth) |
+| `public/audio/audio-manifest.json` | 519-entry sound registry (source of truth) |
 | `src/worker/routes/audio.ts` | R2 serving route with CORS + Range requests |
-| `src/worker/routes/audio-upload.ts` | Upload route (POST /api/audio/upload) |
+| `src/worker/routes/audio-upload.ts` | Upload, delete, delete-batch, rename, check-gaps routes |
 | `src/worker/index.ts` | CORS middleware on /audio/* |
 | `scripts/r2-audio-sync.sh` | Batch R2 uploader (encoded_for_r2/ → R2) |
-| `public/portal/sound-designer.html` | Designer portal — 314 static sound entries |
-| `public/portal/js/sound-designer.js` | Portal logic — streaming preview, static library |
-| `public/portal/css/sound-designer.css` | Portal styling |
+| `scripts/r2-gap-check.sh` | Curl-per-file manifest→live gap check (CI-ready, exits non-zero) |
+| `scripts/manifest-gap-check.sh` | API-based manifest→R2 gap check (CI-ready, exits non-zero) |
+| `public/portal/sound-designer.html` | Designer portal — 524 static entries, 30 categories |
+| `public/portal/js/sound-designer.js` | Portal logic — preview, sort, rename, delete, gap check, manifest diff |
+| `public/portal/css/sound-designer.css` | Portal styling — modal, delete marking, missing-asset flags |
 | `docs/FOOTSTEP_AUDIO_SYSTEM.md` | Footstep engine spec (player, pet, enemy, footprint ground effects) |
 
 ---
@@ -447,15 +491,19 @@ Persistent visual footprints on the ground layer, feeding enemy AI suspicion.
 ```
 Musician/Designer                Sound Designer Portal
       |                                |
-  WAV masters                    Browse / Preview / Upload
+  WAV masters                    Browse / Preview / Upload / Sort / Rename / Delete
       |                                |
-  encode → encoded_for_r2/      POST /api/audio/upload
-      |                                |
+  encode → encoded_for_r2/      POST /api/audio/upload   POST /rename  POST /delete-batch
+      |                                |                      |              |
   WebM (Opus) + MP3              R2: eyesonly-assets/audio/{sfx,music}/
       |                                |
   r2-audio-sync.sh              audio-manifest.json (register ID)
       |                                |
+      |                          📤 Export Manifest Diff (renames/deletes/aliases)
+      |                                |
       +----------+---------------------+
+                 |
+          manifest-gap-check.sh (CI: fail if manifest → R2 mismatch)
                  |
           npx wrangler deploy
                  |
