@@ -57,8 +57,33 @@ var GameTickSystem = (function() {
         var prevX = preFrameX;
         var prevY = preFrameY;
 
+        // ── Footstep SFX for smooth movement ──
+        // Fire once per tile traversed. Resolve biome for terrain-matched sound.
+        var _footBiomeName = null;
+        var _footIsInterior = !!ctx.currentInteriorFloorId;
+        var _footRunning = GoneRogueMovement.isSprinting();
+        try {
+          if (ctx.getBiome) {
+            var _footBiome = ctx.getBiome(ctx.getFloor());
+            if (ctx.BIOMES) {
+              var _footBiomeKeys = Object.keys(ctx.BIOMES);
+              for (var _fbi = 0; _fbi < _footBiomeKeys.length; _fbi++) {
+                if (ctx.BIOMES[_footBiomeKeys[_fbi]] === _footBiome) {
+                  _footBiomeName = _footBiomeKeys[_fbi];
+                  break;
+                }
+              }
+            }
+          }
+        } catch (e) { /* ignore */ }
+
         for (var ti = 0; ti < tilesThisFrame.length; ti++) {
           var tile = tilesThisFrame[ti];
+
+          // Play footstep for this tile (rate-limiter in AudioSystem prevents spam)
+          if (typeof AudioSystem !== 'undefined' && AudioSystem.playFootstep) {
+            AudioSystem.playFootstep(_footBiomeName, _footIsInterior, _footRunning);
+          }
 
           // Set player position to this tile so checkPlayerInteractions
           // reads the correct coordinates for pickups, combat, etc.
@@ -118,6 +143,22 @@ var GameTickSystem = (function() {
 
         if (typeof PlayerWeaponArrow !== 'undefined') {
           PlayerWeaponArrow.setMovementDirection(ctx.player.lastMoveDirection);
+        }
+
+        // Footstep for sub-waypoint tile crossing
+        if (typeof AudioSystem !== 'undefined' && AudioSystem.playFootstep) {
+          var _sfBiome = null;
+          var _sfInterior = !!ctx.currentInteriorFloorId;
+          try {
+            if (ctx.getBiome && ctx.BIOMES) {
+              var _sfb = ctx.getBiome(ctx.getFloor());
+              var _sfKeys = Object.keys(ctx.BIOMES);
+              for (var _sfi = 0; _sfi < _sfKeys.length; _sfi++) {
+                if (ctx.BIOMES[_sfKeys[_sfi]] === _sfb) { _sfBiome = _sfKeys[_sfi]; break; }
+              }
+            }
+          } catch (e) { /* ignore */ }
+          AudioSystem.playFootstep(_sfBiome, _sfInterior, GoneRogueMovement.isSprinting());
         }
 
         ctx.checkPlayerInteractions();

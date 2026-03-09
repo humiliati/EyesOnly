@@ -7,7 +7,7 @@ const GoneRogueMovement = (function () {
   'use strict';
 
   // Configuration
-  var MOVEMENT_SPEED = 3.2; // tiles per second (base speed) — tuned down ~60% (was 8.0) per speed audit 2026-03-04
+  var MOVEMENT_SPEED = 2.5; // tiles per second (base speed) — ~20% slower (was 3.2) per UX feedback 2026-03-09
   var SPRINT_MULTIPLIER = 1.5; // speed multiplier when sprinting
   var LERP_SMOOTHING = 0.2; // smoothing factor for interpolation
   var MIN_PATH_DISTANCE = 0.1; // minimum distance to consider "arrived"

@@ -132,22 +132,38 @@ const AudioSystem = (function () {
 
   // ── Buffer loading ─────────────────────────────────────────
 
-  function _loadBuffer(url) {
+  function _loadBuffer(url, fallbackUrl) {
     if (_bufferCache[url]) return Promise.resolve(_bufferCache[url]);
     if (_loadingPromises[url]) return _loadingPromises[url];
 
-    _loadingPromises[url] = fetch(url)
-      .then(function (resp) {
-        if (!resp.ok) throw new Error('HTTP ' + resp.status + ' for ' + url);
-        return resp.arrayBuffer();
-      })
-      .then(function (ab) {
-        return _ctx.decodeAudioData(ab);
-      })
+    function _fetchAndDecode(targetUrl) {
+      return fetch(targetUrl)
+        .then(function (resp) {
+          if (!resp.ok) throw new Error('HTTP ' + resp.status + ' for ' + targetUrl);
+          return resp.arrayBuffer();
+        })
+        .then(function (ab) {
+          return _ctx.decodeAudioData(ab);
+        });
+    }
+
+    _loadingPromises[url] = _fetchAndDecode(url)
       .then(function (buf) {
         _bufferCache[url] = buf;
         delete _loadingPromises[url];
         return buf;
+      })
+      .catch(function (err) {
+        // WebM decode failed (iOS Safari) — try MP3 fallback
+        if (fallbackUrl && fallbackUrl !== url) {
+          console.warn('[AudioSystem] Primary decode failed for', url, '— trying fallback', fallbackUrl);
+          return _fetchAndDecode(fallbackUrl).then(function (buf) {
+            _bufferCache[url] = buf;   // cache under primary key
+            delete _loadingPromises[url];
+            return buf;
+          });
+        }
+        throw err;
       })
       .catch(function (err) {
         console.warn('[AudioSystem] Failed to load', url, err);
@@ -161,10 +177,18 @@ const AudioSystem = (function () {
   function _resolveURL(name) {
     // If manifest loaded, use it; otherwise guess a path
     if (_manifest && _manifest[name]) {
-      return _manifest[name].src || _manifest[name].file;
+      var entry = _manifest[name];
+      var src = entry.src || entry.file;
+      // Explicit fallback or auto-generate .mp3 from .webm
+      var fb = entry.fallback || null;
+      if (!fb && src && src.endsWith('.webm')) {
+        fb = src.replace(/\.webm$/, '.mp3');
+      }
+      return { src: src, fallback: fb };
     }
-    // Fallback: try /audio/sfx/{name}.webm → .wav
-    return '/audio/sfx/' + name + '.webm';
+    // Fallback: try /audio/sfx/{name}.webm → .mp3
+    var defaultSrc = '/audio/sfx/' + name + '.webm';
+    return { src: defaultSrc, fallback: defaultSrc.replace('.webm', '.mp3') };
   }
 
   // ── Public API ─────────────────────────────────────────────
@@ -176,9 +200,17 @@ const AudioSystem = (function () {
     // Auto-load manifest from canonical location
     loadManifest('/audio/audio-manifest.json');
 
-    // Resume on first user gesture (click/touch anywhere)
+    // Resume on first user gesture (click/touch anywhere).
+    // IMPORTANT: replay pending music INSIDE the gesture context so that
+    // HTMLAudioElement.play() is not blocked by Chrome's autoplay policy.
     var handler = function () {
       _resume();
+      // Replay deferred music within the user gesture call stack
+      if (_pendingMusicName) {
+        var n = _pendingMusicName;
+        _pendingMusicName = null;
+        playMusic(n);
+      }
       document.removeEventListener('click', handler, true);
       document.removeEventListener('touchstart', handler, true);
       document.removeEventListener('keydown', handler, true);
@@ -242,12 +274,17 @@ const AudioSystem = (function () {
     _sfxLastPlayed[name] = now;
 
     opts = opts || {};
-    var url = _resolveURL(name);
+    var resolved = _resolveURL(name);
 
-    _loadBuffer(url).then(function (buf) {
+    _loadBuffer(resolved.src, resolved.fallback).then(function (buf) {
       if (!buf) return;
       var source = _ctx.createBufferSource();
       source.buffer = buf;
+
+      // Optional playback rate (pitch/speed modulation)
+      if (typeof opts.playbackRate === 'number' && opts.playbackRate !== 1) {
+        source.playbackRate.value = opts.playbackRate;
+      }
 
       // Optional per-clip volume
       if (typeof opts.volume === 'number' && opts.volume !== 1) {
@@ -331,18 +368,39 @@ const AudioSystem = (function () {
 
     var entry = (_manifest && _manifest[name]) || {};
     var url = entry.src || ('/audio/music/' + name + '.webm');
+    var fallbackUrl = entry.fallback || null;
+    // Auto-generate MP3 fallback if none specified
+    if (!fallbackUrl && url && url.endsWith('.webm')) {
+      fallbackUrl = url.replace(/\.webm$/, '.mp3');
+    }
 
     // Stop previous playback
     audio.pause();
 
     audio.loop = !!(entry.loop);
+
+    // If browser can't play WebM, try MP3 fallback (iOS Safari <17)
+    if (fallbackUrl && audio.canPlayType && !audio.canPlayType('audio/webm; codecs=opus')) {
+      url = fallbackUrl;
+    }
+
     audio.src = url;
     audio.load();
 
     audio.play().then(function () {
       console.log('[AudioSystem] Music streaming: ' + name);
     }).catch(function (err) {
-      console.warn('[AudioSystem] Music play() rejected:', err);
+      // If WebM failed, try fallback
+      if (fallbackUrl && url !== fallbackUrl) {
+        console.warn('[AudioSystem] Music play() failed for', url, '— trying fallback');
+        audio.src = fallbackUrl;
+        audio.load();
+        audio.play().catch(function (err2) {
+          console.warn('[AudioSystem] Music fallback also rejected:', err2);
+        });
+      } else {
+        console.warn('[AudioSystem] Music play() rejected:', err);
+      }
     });
 
     // Set metadata immediately so debrief widget shows the title
