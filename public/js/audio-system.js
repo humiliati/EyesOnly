@@ -438,12 +438,58 @@ const AudioSystem = (function () {
     play(base + '-' + n, opts);
   }
 
+  // ── Footstep system ───────────────────────────────────────
+  // Alternates left/right, picks terrain from biome.
+  // Biome → terrain mapping:
+  //   grass: FOREST, LAKE
+  //   stone: GREY_CAVE, OFFICE, MALL, INDUSTRIAL, AEROSPACE, interiors
+  //   sand:  SKI_MOUNTAIN (snow ≈ sand crunch)
+  //   dirt:  fallback / JUNKYARD
+  var _footLeft = true;
+  var _BIOME_TERRAIN = {
+    FOREST:       'grass',
+    LAKE:         'grass',
+    GREY_CAVE:    'stone',
+    OFFICE:       'stone',
+    MALL:         'stone',
+    INDUSTRIAL:   'stone',
+    AEROSPACE:    'stone',
+    SKI_MOUNTAIN: 'sand',
+    JUNKYARD:     'dirt'
+  };
+  // Interior biomes default to stone (hard floors)
+  var _INTERIOR_TERRAIN_DEFAULT = 'stone';
+
+  /**
+   * Play a footstep sound based on current biome.
+   * Call this once per successful player move.
+   * @param {string} [biomeName] - e.g. 'FOREST', 'GREY_CAVE'. Omit = dirt fallback.
+   * @param {boolean} [isInterior] - true if inside a building
+   * @param {boolean} [running] - true for faster steps (higher pitch)
+   */
+  function playFootstep(biomeName, isInterior, running) {
+    var terrain;
+    if (isInterior) {
+      terrain = _INTERIOR_TERRAIN_DEFAULT;
+    } else {
+      terrain = (biomeName && _BIOME_TERRAIN[biomeName]) || 'dirt';
+    }
+    var side = _footLeft ? 'left' : 'right';
+    _footLeft = !_footLeft;
+
+    var name = 'footstep-' + side + '-' + terrain;
+    var vol = running ? 0.35 : 0.25;
+    var pitch = running ? 1.15 : 1.0;
+    play(name, { volume: vol, playbackRate: pitch });
+  }
+
   // ── Return public interface ────────────────────────────────
   return {
     init: init,
     loadManifest: loadManifest,
     play: play,
     playRandom: playRandom,
+    playFootstep: playFootstep,
     playMusic: playMusic,
     stopMusic: stopMusic,
     setMasterMute: setMasterMute,

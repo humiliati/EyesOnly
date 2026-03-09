@@ -98,6 +98,29 @@ var MovePlayerSystem = (function() {
     player.y = newY;
     ctx.incrementTurn();
 
+    // ── Footstep SFX ──
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.playFootstep) {
+      var biomeName = null;
+      var isInterior = !!ctx.currentInteriorFloorId;
+      try {
+        if (ctx.getBiome) {
+          var biome = ctx.getBiome(ctx.getFloor());
+          // getBiome returns the biome object; we need the key name
+          // Look it up from BIOMES map
+          if (ctx.BIOMES) {
+            var biomeKeys = Object.keys(ctx.BIOMES);
+            for (var bi = 0; bi < biomeKeys.length; bi++) {
+              if (ctx.BIOMES[biomeKeys[bi]] === biome) {
+                biomeName = biomeKeys[bi];
+                break;
+              }
+            }
+          }
+        }
+      } catch (e) { /* ignore */ }
+      AudioSystem.playFootstep(biomeName, isInterior, !!runMode);
+    }
+
     // ── Tick food consumption history & buff expiry (step-based) ──
     if (typeof GAMESTATE !== 'undefined') {
       if (GAMESTATE.tickRecentFood) GAMESTATE.tickRecentFood(ctx.turn);

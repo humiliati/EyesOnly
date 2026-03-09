@@ -42,29 +42,32 @@ var FloorTransitionSystem = (function () {
   // ------------------------------------------------------------------
   // Biome → Music mapping
   // ------------------------------------------------------------------
+  // ── Biome → Music mapping ──────────────────────────────────
+  // Defaults to Cyberleaf looping tracks (all loop-safe by design).
+  // MUSIC_SONGS originals remain in the manifest as alternatives.
   var _BIOME_MUSIC = {
-    FOREST:     'music-forest',
-    GREY_CAVE:  'music-cave',
-    MALL:       'music-mall',
-    INDUSTRIAL: 'music-industrial',
-    OFFICE:     'music-office',
-    AEROSPACE:  'music-82nd-all-the-way',
-    LAKE:       'music-exterior',
-    SKI_MOUNTAIN: 'music-exterior-night'
+    FOREST:       'music-cl-far-away',           // pastoral, adventurous
+    GREY_CAVE:    'music-cl-deep-caves',          // dark, underground
+    MALL:         'music-cl-arcade-jam',           // upbeat, commercial
+    INDUSTRIAL:   'music-cl-waking-demons',        // heavy, mechanical
+    OFFICE:       'music-cl-radio-kid',            // chill, modern
+    AEROSPACE:    'music-cl-space-full-stars',      // cosmic, expansive
+    LAKE:         'music-cl-yet-another-journey',  // calm, watery
+    SKI_MOUNTAIN: 'music-cl-dont-fall-clouds'      // elevated, airy
   };
 
   // Interior biome key → music track.  Nested interiors (floor N.N.N)
   // with their own biome get specific BGM; everything else falls back
-  // to music-default-interior.
+  // to the Cyberleaf default interior track.
   var _INTERIOR_MUSIC = {
-    INTERIOR_TAVERN:           'music-shop',
-    INTERIOR_TAVERN_BASEMENT:  'music-cave',
-    INTERIOR_CHURCH:           'music-church-catacombs',
-    INTERIOR_STRIP_MALL:       'music-mall',
-    INTERIOR_FACTORY:          'music-industrial',
-    INTERIOR_JUNKYARD:         'music-junkyard',
-    INTERIOR_SILO:             'music-industrial',
-    INTERIOR_SAWMILL:          'music-industrial'
+    INTERIOR_TAVERN:           'music-cl-capt-chip-pants',    // lively pub vibe
+    INTERIOR_TAVERN_BASEMENT:  'music-cl-deep-caves',         // dark basement
+    INTERIOR_CHURCH:           'music-cl-gods-philosophers',  // sacred, thoughtful
+    INTERIOR_STRIP_MALL:       'music-cl-arcade-jam',         // commercial bustle
+    INTERIOR_FACTORY:          'music-cl-trial-of-spikes',    // dangerous machinery
+    INTERIOR_JUNKYARD:         'music-cl-8bit-ninjas',        // scrappy, retro
+    INTERIOR_SILO:             'music-cl-going-up',           // vertical, tense
+    INTERIOR_SAWMILL:          'music-cl-fight-for-lives'     // danger, blades
   };
 
   /**
@@ -97,7 +100,7 @@ var FloorTransitionSystem = (function () {
 
     // Interior floors — resolve biome-specific BGM or fall back to default
     if (ctx.currentInteriorFloorId) {
-      var interiorTrack = 'music-default-interior';
+      var interiorTrack = 'music-cl-source-of-mana';  // Cyberleaf default interior (mystical, explorative)
       // Try to resolve interior biome from the authored layout
       if (typeof InteriorFloors !== 'undefined' && InteriorFloors.getAuthoredLayout) {
         var layout = InteriorFloors.getAuthoredLayout(ctx.currentInteriorFloorId);

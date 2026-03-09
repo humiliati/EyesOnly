@@ -2,7 +2,7 @@
   "_meta": {
     "version": 1,
     "description": "Audio manifest for EYES ONLY / Gone Rogue. Maps logical sound names to WAV paths.",
-    "format": "16-bit WAV (source). Future: transcode to .webm (Opus) for production.",
+    "format": "WebM/Opus (primary) + MP3 (fallback). Served from R2 via /audio/ route.",
     "categories": [
       "ui",
       "movement",
@@ -11,7 +11,8 @@
       "environment",
       "collectible",
       "creature",
-      "music"
+      "music",
+      "card"
     ]
   },
   "explosion_large": {
@@ -620,6 +621,7 @@
   },
   "music-82nd-all-the-way": {
     "src": "/audio/music/82ND_ALL_THE_WAY.webm",
+    "fallback": "/audio/music/82ND_ALL_THE_WAY.mp3",
     "category": "music",
     "loop": true,
     "title": "82nd All the Way",
@@ -627,6 +629,7 @@
   },
   "music-cave": {
     "src": "/audio/music/CAVE_MUSIC.webm",
+    "fallback": "/audio/music/CAVE_MUSIC.mp3",
     "category": "music",
     "loop": true,
     "title": "Cave",
@@ -634,6 +637,7 @@
   },
   "music-church-catacombs": {
     "src": "/audio/music/CHURCH_CATACOMBS_MUSIC.webm",
+    "fallback": "/audio/music/CHURCH_CATACOMBS_MUSIC.mp3",
     "category": "music",
     "loop": true,
     "title": "Church Catacombs",
@@ -641,27 +645,39 @@
   },
   "music-clubbed-to-death": {
     "src": "/audio/music/CLUBBED_TO_DEATH.webm",
+    "fallback": "/audio/music/CLUBBED_TO_DEATH.mp3",
     "category": "music",
     "loop": true,
     "title": "Clubbed to Death",
     "artist": "Rob Dougan"
   },
-  "music-death-exit": {
-    "src": "/audio/music/DEATH_MUSIC_EXIT.webm",
-    "category": "music",
-    "loop": false,
-    "title": "Death Exit",
-    "artist": ""
-  },
-  "music-default-interior": {
-    "src": "/audio/music/DEFAULT_INTERIOR_MUSIC.webm",
+  "music-darude-sandstorm": {
+    "src": "/audio/music/DARUDE_SANDSTORM.webm",
+    "fallback": "/audio/music/DARUDE_SANDSTORM.mp3",
     "category": "music",
     "loop": true,
-    "title": "Interior",
+    "title": "Sandstorm",
+    "artist": "Darude"
+  },
+  "music-death": {
+    "src": "/audio/music/DEATH_MUSIC.webm",
+    "fallback": "/audio/music/DEATH_MUSIC.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Death",
+    "artist": ""
+  },
+  "music-dungeon": {
+    "src": "/audio/music/DUNGEON_MUSIC.webm",
+    "fallback": "/audio/music/DUNGEON_MUSIC.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Dungeon",
     "artist": ""
   },
   "music-exterior": {
     "src": "/audio/music/EXTERIOR_MUSIC.webm",
+    "fallback": "/audio/music/EXTERIOR_MUSIC.mp3",
     "category": "music",
     "loop": true,
     "title": "Exterior",
@@ -669,20 +685,23 @@
   },
   "music-exterior-night": {
     "src": "/audio/music/EXTERIOR_MUSIC_NIGHT.webm",
+    "fallback": "/audio/music/EXTERIOR_MUSIC_NIGHT.mp3",
     "category": "music",
     "loop": true,
     "title": "Exterior (Night)",
     "artist": ""
   },
-  "music-forest": {
-    "src": "/audio/music/FOREST_MUSIC.webm",
+  "music-forward": {
+    "src": "/audio/music/FORWARD_TYLER_CREATOR.webm",
+    "fallback": "/audio/music/FORWARD_TYLER_CREATOR.mp3",
     "category": "music",
     "loop": true,
-    "title": "Forest",
-    "artist": ""
+    "title": "Forward",
+    "artist": "Tyler the Creator"
   },
   "music-industrial": {
     "src": "/audio/music/INDUSTRIAL_MUSIC.webm",
+    "fallback": "/audio/music/INDUSTRIAL_MUSIC.mp3",
     "category": "music",
     "loop": true,
     "title": "Industrial",
@@ -690,13 +709,23 @@
   },
   "music-junkyard": {
     "src": "/audio/music/JUNKYARD_MUSIC.webm",
+    "fallback": "/audio/music/JUNKYARD_MUSIC.mp3",
     "category": "music",
     "loop": true,
     "title": "Junkyard",
     "artist": ""
   },
+  "music-lake": {
+    "src": "/audio/music/LAKE_MUSIC.webm",
+    "fallback": "/audio/music/LAKE_MUSIC.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Lake",
+    "artist": ""
+  },
   "music-mall": {
     "src": "/audio/music/MALL_MUSIC.webm",
+    "fallback": "/audio/music/MALL_MUSIC.mp3",
     "category": "music",
     "loop": true,
     "title": "Mall",
@@ -704,30 +733,978 @@
   },
   "music-office": {
     "src": "/audio/music/OFFICE_MUSIC.webm",
+    "fallback": "/audio/music/OFFICE_MUSIC.mp3",
     "category": "music",
     "loop": true,
     "title": "Office",
     "artist": ""
   },
-  "music-paranoid-android": {
-    "src": "/audio/music/PARANOID_ANDROID.webm",
-    "category": "music",
-    "loop": true,
-    "title": "Paranoid Android",
-    "artist": "Radiohead"
-  },
   "music-pink-panther": {
     "src": "/audio/music/PINK_PANTHER.webm",
+    "fallback": "/audio/music/PINK_PANTHER.mp3",
     "category": "music",
     "loop": true,
     "title": "The Pink Panther Theme",
     "artist": "Henry Mancini"
   },
+  "music-radiohead-lucky": {
+    "src": "/audio/music/RADIOHEAD_LUCKY.webm",
+    "fallback": "/audio/music/RADIOHEAD_LUCKY.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Lucky",
+    "artist": "Radiohead"
+  },
+  "music-reckoner": {
+    "src": "/audio/music/RECKONER_POST_CLIMAX.webm",
+    "fallback": "/audio/music/RECKONER_POST_CLIMAX.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Reckoner (Post-Climax)",
+    "artist": "Radiohead"
+  },
   "music-shop": {
     "src": "/audio/music/SHOP_MUSIC.webm",
+    "fallback": "/audio/music/SHOP_MUSIC.mp3",
     "category": "music",
     "loop": true,
     "title": "Shop",
     "artist": ""
+  },
+  "music-ski": {
+    "src": "/audio/music/SKI_MUSIC.webm",
+    "fallback": "/audio/music/SKI_MUSIC.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Ski Mountain",
+    "artist": ""
+  },
+  "music-cl-8bit-ninjas": {
+    "src": "/audio/music/8BitNinjas.webm",
+    "fallback": "/audio/music/8BitNinjas.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "8-Bit Ninjas",
+    "artist": "Cyberleaf"
+  },
+  "music-cl-arcade-jam": {
+    "src": "/audio/music/ArcadeJam.webm",
+    "fallback": "/audio/music/ArcadeJam.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Arcade Jam",
+    "artist": "Cyberleaf"
+  },
+  "music-cl-capt-chip-pants": {
+    "src": "/audio/music/CaptChipPants.webm",
+    "fallback": "/audio/music/CaptChipPants.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Capt Chip Pants",
+    "artist": "Cyberleaf"
+  },
+  "music-cl-deep-caves": {
+    "src": "/audio/music/DeepInTheCavesBelow.webm",
+    "fallback": "/audio/music/DeepInTheCavesBelow.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Deep In The Caves Below",
+    "artist": "Cyberleaf"
+  },
+  "music-cl-dont-fall-clouds": {
+    "src": "/audio/music/Don'tFallOffTheClouds.webm",
+    "fallback": "/audio/music/Don'tFallOffTheClouds.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Don't Fall Off The Clouds",
+    "artist": "Cyberleaf"
+  },
+  "music-cl-fight-for-lives": {
+    "src": "/audio/music/FightForYourLives.webm",
+    "fallback": "/audio/music/FightForYourLives.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Fight For Your Lives",
+    "artist": "Cyberleaf"
+  },
+  "music-cl-going-up": {
+    "src": "/audio/music/GoingUp.webm",
+    "fallback": "/audio/music/GoingUp.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Going Up",
+    "artist": "Cyberleaf"
+  },
+  "music-cl-far-away": {
+    "src": "/audio/music/InALandFarFarAway.webm",
+    "fallback": "/audio/music/InALandFarFarAway.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "In A Land Far Far Away",
+    "artist": "Cyberleaf"
+  },
+  "music-cl-haunted-mansion": {
+    "src": "/audio/music/LittleHauntedMansion.webm",
+    "fallback": "/audio/music/LittleHauntedMansion.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Little Haunted Mansion",
+    "artist": "Cyberleaf"
+  },
+  "music-cl-gods-philosophers": {
+    "src": "/audio/music/OfGodsAndPhilosophers.webm",
+    "fallback": "/audio/music/OfGodsAndPhilosophers.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Of Gods And Philosophers",
+    "artist": "Cyberleaf"
+  },
+  "music-cl-pyramids": {
+    "src": "/audio/music/PyramidsPyramids.webm",
+    "fallback": "/audio/music/PyramidsPyramids.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Pyramids Pyramids",
+    "artist": "Cyberleaf"
+  },
+  "music-cl-radio-kid": {
+    "src": "/audio/music/RadioKid.webm",
+    "fallback": "/audio/music/RadioKid.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Radio Kid",
+    "artist": "Cyberleaf"
+  },
+  "music-cl-source-of-mana": {
+    "src": "/audio/music/TheSourceOfMana.webm",
+    "fallback": "/audio/music/TheSourceOfMana.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "The Source Of Mana",
+    "artist": "Cyberleaf"
+  },
+  "music-cl-space-full-stars": {
+    "src": "/audio/music/TheSpaceIsFullOf$tars.webm",
+    "fallback": "/audio/music/TheSpaceIsFullOf$tars.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "The Space Is Full Of Stars",
+    "artist": "Cyberleaf"
+  },
+  "music-cl-trial-of-spikes": {
+    "src": "/audio/music/TrialOfSpikes.webm",
+    "fallback": "/audio/music/TrialOfSpikes.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Trial Of Spikes",
+    "artist": "Cyberleaf"
+  },
+  "music-cl-victory": {
+    "src": "/audio/music/VictoryAtLast.webm",
+    "fallback": "/audio/music/VictoryAtLast.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Victory At Last",
+    "artist": "Cyberleaf"
+  },
+  "music-cl-waking-demons": {
+    "src": "/audio/music/WakingTheDemons.webm",
+    "fallback": "/audio/music/WakingTheDemons.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Waking The Demons",
+    "artist": "Cyberleaf"
+  },
+  "music-cl-yet-another-journey": {
+    "src": "/audio/music/YetAnotherJourney.webm",
+    "fallback": "/audio/music/YetAnotherJourney.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Yet Another Journey",
+    "artist": "Cyberleaf"
+  },
+  "music-as-hamster-haven": {
+    "src": "/audio/music/Hamster_Haven.webm",
+    "fallback": "/audio/music/Hamster_Haven.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Hamster Haven",
+    "artist": "Aila Scott",
+    "_status": "staged"
+  },
+  "music-as-its-a-fight": {
+    "src": "/audio/music/Its_a_Fight.webm",
+    "fallback": "/audio/music/Its_a_Fight.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "It's a Fight",
+    "artist": "Aila Scott",
+    "_status": "staged"
+  },
+  "music-as-fightwave": {
+    "src": "/audio/music/Fightwave.webm",
+    "fallback": "/audio/music/Fightwave.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Fightwave",
+    "artist": "Aila Scott",
+    "_status": "staged"
+  },
+  "music-as-restless-lullaby": {
+    "src": "/audio/music/Restless_Lullaby.webm",
+    "fallback": "/audio/music/Restless_Lullaby.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Restless Lullaby",
+    "artist": "Aila Scott",
+    "_status": "staged"
+  },
+  "music-as-make-it-work": {
+    "src": "/audio/music/Make_it_Work.webm",
+    "fallback": "/audio/music/Make_it_Work.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Make it Work!",
+    "artist": "Aila Scott",
+    "_status": "staged"
+  },
+  "music-as-sin-sensitivity": {
+    "src": "/audio/music/Sin__Sensitivity.webm",
+    "fallback": "/audio/music/Sin__Sensitivity.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Sin & Sensitivity",
+    "artist": "Aila Scott",
+    "_status": "staged"
+  },
+  "music-as-eepy": {
+    "src": "/audio/music/eepy.webm",
+    "fallback": "/audio/music/eepy.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "eepy",
+    "artist": "Aila Scott",
+    "_status": "staged"
+  },
+  "music-as-village-theme": {
+    "src": "/audio/music/Bittersweet_Village_Theme.webm",
+    "fallback": "/audio/music/Bittersweet_Village_Theme.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Bittersweet Village Theme",
+    "artist": "Aila Scott",
+    "_status": "staged"
+  },
+  "music-as-horrid-discovery": {
+    "src": "/audio/music/A_Horrid_Discovery.webm",
+    "fallback": "/audio/music/A_Horrid_Discovery.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "A Horrid Discovery",
+    "artist": "Aila Scott",
+    "_status": "staged"
+  },
+  "music-as-time-vortex": {
+    "src": "/audio/music/Sear_The_Time_Vortex.webm",
+    "fallback": "/audio/music/Sear_The_Time_Vortex.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Sear The Time Vortex",
+    "artist": "Aila Scott",
+    "_status": "staged"
+  },
+  "music-as-afterworld": {
+    "src": "/audio/music/Dash_Thru_The_Afterworld.webm",
+    "fallback": "/audio/music/Dash_Thru_The_Afterworld.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Dash Thru The Afterworld",
+    "artist": "Aila Scott",
+    "_status": "staged"
+  },
+  "music-as-silent-ambush": {
+    "src": "/audio/music/Silent_Ambush.webm",
+    "fallback": "/audio/music/Silent_Ambush.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Silent Ambush",
+    "artist": "Aila Scott",
+    "_status": "staged"
+  },
+  "music-as-solar-winds": {
+    "src": "/audio/music/Solar_Winds_Horror_Atmosphere.webm",
+    "fallback": "/audio/music/Solar_Winds_Horror_Atmosphere.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Solar Winds Horror Atmosphere",
+    "artist": "Aila Scott",
+    "_status": "staged"
+  },
+  "music-as-club-corny": {
+    "src": "/audio/music/Club_Corny.webm",
+    "fallback": "/audio/music/Club_Corny.mp3",
+    "category": "music",
+    "loop": true,
+    "title": "Club Corny",
+    "artist": "Aila Scott",
+    "_status": "staged"
+  },
+  "footstep-left-dirt": {
+    "src": "/audio/sfx/footstep_left_dirt.webm",
+    "fallback": "/audio/sfx/footstep_left_dirt.mp3",
+    "category": "movement"
+  },
+  "footstep-right-dirt": {
+    "src": "/audio/sfx/footstep_right_dirt.webm",
+    "fallback": "/audio/sfx/footstep_right_dirt.mp3",
+    "category": "movement"
+  },
+  "footstep-left-grass": {
+    "src": "/audio/sfx/footstep_left_grass.webm",
+    "fallback": "/audio/sfx/footstep_left_grass.mp3",
+    "category": "movement"
+  },
+  "footstep-right-grass": {
+    "src": "/audio/sfx/footstep_right_grass.webm",
+    "fallback": "/audio/sfx/footstep_right_grass.mp3",
+    "category": "movement"
+  },
+  "footstep-left-sand": {
+    "src": "/audio/sfx/footstep_left_sand.webm",
+    "fallback": "/audio/sfx/footstep_left_sand.mp3",
+    "category": "movement"
+  },
+  "footstep-right-sand": {
+    "src": "/audio/sfx/footstep_right_sand.webm",
+    "fallback": "/audio/sfx/footstep_right_sand.mp3",
+    "category": "movement"
+  },
+  "footstep-left-stone": {
+    "src": "/audio/sfx/footstep_left_stone.webm",
+    "fallback": "/audio/sfx/footstep_left_stone.mp3",
+    "category": "movement"
+  },
+  "footstep-right-stone": {
+    "src": "/audio/sfx/footstep_right_stone.webm",
+    "fallback": "/audio/sfx/footstep_right_stone.mp3",
+    "category": "movement"
+  },
+  "card-deal_card_1": {
+    "src": "/audio/sfx/deal_card_1.webm",
+    "fallback": "/audio/sfx/deal_card_1.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-deal_card_10": {
+    "src": "/audio/sfx/deal_card_10.webm",
+    "fallback": "/audio/sfx/deal_card_10.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-deal_card_11": {
+    "src": "/audio/sfx/deal_card_11.webm",
+    "fallback": "/audio/sfx/deal_card_11.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-deal_card_12": {
+    "src": "/audio/sfx/deal_card_12.webm",
+    "fallback": "/audio/sfx/deal_card_12.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-deal_card_13": {
+    "src": "/audio/sfx/deal_card_13.webm",
+    "fallback": "/audio/sfx/deal_card_13.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-deal_card_14": {
+    "src": "/audio/sfx/deal_card_14.webm",
+    "fallback": "/audio/sfx/deal_card_14.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-deal_card_15": {
+    "src": "/audio/sfx/deal_card_15.webm",
+    "fallback": "/audio/sfx/deal_card_15.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-deal_card_16": {
+    "src": "/audio/sfx/deal_card_16.webm",
+    "fallback": "/audio/sfx/deal_card_16.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-deal_card_17": {
+    "src": "/audio/sfx/deal_card_17.webm",
+    "fallback": "/audio/sfx/deal_card_17.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-deal_card_2": {
+    "src": "/audio/sfx/deal_card_2.webm",
+    "fallback": "/audio/sfx/deal_card_2.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-deal_card_3": {
+    "src": "/audio/sfx/deal_card_3.webm",
+    "fallback": "/audio/sfx/deal_card_3.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-deal_card_4": {
+    "src": "/audio/sfx/deal_card_4.webm",
+    "fallback": "/audio/sfx/deal_card_4.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-deal_card_5": {
+    "src": "/audio/sfx/deal_card_5.webm",
+    "fallback": "/audio/sfx/deal_card_5.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-deal_card_6": {
+    "src": "/audio/sfx/deal_card_6.webm",
+    "fallback": "/audio/sfx/deal_card_6.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-deal_card_7": {
+    "src": "/audio/sfx/deal_card_7.webm",
+    "fallback": "/audio/sfx/deal_card_7.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-deal_card_8": {
+    "src": "/audio/sfx/deal_card_8.webm",
+    "fallback": "/audio/sfx/deal_card_8.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-deal_card_9": {
+    "src": "/audio/sfx/deal_card_9.webm",
+    "fallback": "/audio/sfx/deal_card_9.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-deal_card_loop_1": {
+    "src": "/audio/sfx/deal_card_loop_1.webm",
+    "fallback": "/audio/sfx/deal_card_loop_1.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-deal_card_loop_2": {
+    "src": "/audio/sfx/deal_card_loop_2.webm",
+    "fallback": "/audio/sfx/deal_card_loop_2.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-deal_card_loop_3": {
+    "src": "/audio/sfx/deal_card_loop_3.webm",
+    "fallback": "/audio/sfx/deal_card_loop_3.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-deal_card_loop_4": {
+    "src": "/audio/sfx/deal_card_loop_4.webm",
+    "fallback": "/audio/sfx/deal_card_loop_4.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-deal_card_loop_5": {
+    "src": "/audio/sfx/deal_card_loop_5.webm",
+    "fallback": "/audio/sfx/deal_card_loop_5.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-deal_card_loop_6": {
+    "src": "/audio/sfx/deal_card_loop_6.webm",
+    "fallback": "/audio/sfx/deal_card_loop_6.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-flip_card_1": {
+    "src": "/audio/sfx/flip_card_1.webm",
+    "fallback": "/audio/sfx/flip_card_1.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-flip_card_10": {
+    "src": "/audio/sfx/flip_card_10.webm",
+    "fallback": "/audio/sfx/flip_card_10.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-flip_card_11": {
+    "src": "/audio/sfx/flip_card_11.webm",
+    "fallback": "/audio/sfx/flip_card_11.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-flip_card_12": {
+    "src": "/audio/sfx/flip_card_12.webm",
+    "fallback": "/audio/sfx/flip_card_12.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-flip_card_13": {
+    "src": "/audio/sfx/flip_card_13.webm",
+    "fallback": "/audio/sfx/flip_card_13.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-flip_card_14": {
+    "src": "/audio/sfx/flip_card_14.webm",
+    "fallback": "/audio/sfx/flip_card_14.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-flip_card_15": {
+    "src": "/audio/sfx/flip_card_15.webm",
+    "fallback": "/audio/sfx/flip_card_15.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-flip_card_16": {
+    "src": "/audio/sfx/flip_card_16.webm",
+    "fallback": "/audio/sfx/flip_card_16.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-flip_card_2": {
+    "src": "/audio/sfx/flip_card_2.webm",
+    "fallback": "/audio/sfx/flip_card_2.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-flip_card_3": {
+    "src": "/audio/sfx/flip_card_3.webm",
+    "fallback": "/audio/sfx/flip_card_3.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-flip_card_4": {
+    "src": "/audio/sfx/flip_card_4.webm",
+    "fallback": "/audio/sfx/flip_card_4.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-flip_card_5": {
+    "src": "/audio/sfx/flip_card_5.webm",
+    "fallback": "/audio/sfx/flip_card_5.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-flip_card_6": {
+    "src": "/audio/sfx/flip_card_6.webm",
+    "fallback": "/audio/sfx/flip_card_6.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-flip_card_7": {
+    "src": "/audio/sfx/flip_card_7.webm",
+    "fallback": "/audio/sfx/flip_card_7.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-flip_card_8": {
+    "src": "/audio/sfx/flip_card_8.webm",
+    "fallback": "/audio/sfx/flip_card_8.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-flip_card_9": {
+    "src": "/audio/sfx/flip_card_9.webm",
+    "fallback": "/audio/sfx/flip_card_9.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-fold_hand_1": {
+    "src": "/audio/sfx/fold_hand_1.webm",
+    "fallback": "/audio/sfx/fold_hand_1.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-fold_hand_10": {
+    "src": "/audio/sfx/fold_hand_10.webm",
+    "fallback": "/audio/sfx/fold_hand_10.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-fold_hand_11": {
+    "src": "/audio/sfx/fold_hand_11.webm",
+    "fallback": "/audio/sfx/fold_hand_11.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-fold_hand_12": {
+    "src": "/audio/sfx/fold_hand_12.webm",
+    "fallback": "/audio/sfx/fold_hand_12.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-fold_hand_13": {
+    "src": "/audio/sfx/fold_hand_13.webm",
+    "fallback": "/audio/sfx/fold_hand_13.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-fold_hand_14": {
+    "src": "/audio/sfx/fold_hand_14.webm",
+    "fallback": "/audio/sfx/fold_hand_14.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-fold_hand_15": {
+    "src": "/audio/sfx/fold_hand_15.webm",
+    "fallback": "/audio/sfx/fold_hand_15.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-fold_hand_2": {
+    "src": "/audio/sfx/fold_hand_2.webm",
+    "fallback": "/audio/sfx/fold_hand_2.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-fold_hand_3": {
+    "src": "/audio/sfx/fold_hand_3.webm",
+    "fallback": "/audio/sfx/fold_hand_3.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-fold_hand_4": {
+    "src": "/audio/sfx/fold_hand_4.webm",
+    "fallback": "/audio/sfx/fold_hand_4.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-fold_hand_5": {
+    "src": "/audio/sfx/fold_hand_5.webm",
+    "fallback": "/audio/sfx/fold_hand_5.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-fold_hand_6": {
+    "src": "/audio/sfx/fold_hand_6.webm",
+    "fallback": "/audio/sfx/fold_hand_6.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-fold_hand_7": {
+    "src": "/audio/sfx/fold_hand_7.webm",
+    "fallback": "/audio/sfx/fold_hand_7.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-fold_hand_8": {
+    "src": "/audio/sfx/fold_hand_8.webm",
+    "fallback": "/audio/sfx/fold_hand_8.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-fold_hand_9": {
+    "src": "/audio/sfx/fold_hand_9.webm",
+    "fallback": "/audio/sfx/fold_hand_9.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-hand_shuffle_1": {
+    "src": "/audio/sfx/hand_shuffle_1.webm",
+    "fallback": "/audio/sfx/hand_shuffle_1.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-hand_shuffle_2": {
+    "src": "/audio/sfx/hand_shuffle_2.webm",
+    "fallback": "/audio/sfx/hand_shuffle_2.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-hand_shuffle_3": {
+    "src": "/audio/sfx/hand_shuffle_3.webm",
+    "fallback": "/audio/sfx/hand_shuffle_3.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-hand_shuffle_4": {
+    "src": "/audio/sfx/hand_shuffle_4.webm",
+    "fallback": "/audio/sfx/hand_shuffle_4.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-hand_shuffle_5": {
+    "src": "/audio/sfx/hand_shuffle_5.webm",
+    "fallback": "/audio/sfx/hand_shuffle_5.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-hand_shuffle_6": {
+    "src": "/audio/sfx/hand_shuffle_6.webm",
+    "fallback": "/audio/sfx/hand_shuffle_6.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-hand_shuffle_7": {
+    "src": "/audio/sfx/hand_shuffle_7.webm",
+    "fallback": "/audio/sfx/hand_shuffle_7.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-hand_shuffle_8": {
+    "src": "/audio/sfx/hand_shuffle_8.webm",
+    "fallback": "/audio/sfx/hand_shuffle_8.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-pick_up_card_1": {
+    "src": "/audio/sfx/pick_up_card_1.webm",
+    "fallback": "/audio/sfx/pick_up_card_1.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-pick_up_card_10": {
+    "src": "/audio/sfx/pick_up_card_10.webm",
+    "fallback": "/audio/sfx/pick_up_card_10.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-pick_up_card_11": {
+    "src": "/audio/sfx/pick_up_card_11.webm",
+    "fallback": "/audio/sfx/pick_up_card_11.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-pick_up_card_12": {
+    "src": "/audio/sfx/pick_up_card_12.webm",
+    "fallback": "/audio/sfx/pick_up_card_12.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-pick_up_card_2": {
+    "src": "/audio/sfx/pick_up_card_2.webm",
+    "fallback": "/audio/sfx/pick_up_card_2.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-pick_up_card_3": {
+    "src": "/audio/sfx/pick_up_card_3.webm",
+    "fallback": "/audio/sfx/pick_up_card_3.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-pick_up_card_4": {
+    "src": "/audio/sfx/pick_up_card_4.webm",
+    "fallback": "/audio/sfx/pick_up_card_4.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-pick_up_card_5": {
+    "src": "/audio/sfx/pick_up_card_5.webm",
+    "fallback": "/audio/sfx/pick_up_card_5.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-pick_up_card_6": {
+    "src": "/audio/sfx/pick_up_card_6.webm",
+    "fallback": "/audio/sfx/pick_up_card_6.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-pick_up_card_7": {
+    "src": "/audio/sfx/pick_up_card_7.webm",
+    "fallback": "/audio/sfx/pick_up_card_7.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-pick_up_card_8": {
+    "src": "/audio/sfx/pick_up_card_8.webm",
+    "fallback": "/audio/sfx/pick_up_card_8.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-pick_up_card_9": {
+    "src": "/audio/sfx/pick_up_card_9.webm",
+    "fallback": "/audio/sfx/pick_up_card_9.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-place_card_1": {
+    "src": "/audio/sfx/place_card_1.webm",
+    "fallback": "/audio/sfx/place_card_1.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-place_card_10": {
+    "src": "/audio/sfx/place_card_10.webm",
+    "fallback": "/audio/sfx/place_card_10.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-place_card_11": {
+    "src": "/audio/sfx/place_card_11.webm",
+    "fallback": "/audio/sfx/place_card_11.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-place_card_2": {
+    "src": "/audio/sfx/place_card_2.webm",
+    "fallback": "/audio/sfx/place_card_2.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-place_card_3": {
+    "src": "/audio/sfx/place_card_3.webm",
+    "fallback": "/audio/sfx/place_card_3.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-place_card_4": {
+    "src": "/audio/sfx/place_card_4.webm",
+    "fallback": "/audio/sfx/place_card_4.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-place_card_5": {
+    "src": "/audio/sfx/place_card_5.webm",
+    "fallback": "/audio/sfx/place_card_5.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-place_card_6": {
+    "src": "/audio/sfx/place_card_6.webm",
+    "fallback": "/audio/sfx/place_card_6.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-place_card_7": {
+    "src": "/audio/sfx/place_card_7.webm",
+    "fallback": "/audio/sfx/place_card_7.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-place_card_8": {
+    "src": "/audio/sfx/place_card_8.webm",
+    "fallback": "/audio/sfx/place_card_8.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-place_card_9": {
+    "src": "/audio/sfx/place_card_9.webm",
+    "fallback": "/audio/sfx/place_card_9.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-shuffle_1": {
+    "src": "/audio/sfx/shuffle_1.webm",
+    "fallback": "/audio/sfx/shuffle_1.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-shuffle_2": {
+    "src": "/audio/sfx/shuffle_2.webm",
+    "fallback": "/audio/sfx/shuffle_2.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-shuffle_3": {
+    "src": "/audio/sfx/shuffle_3.webm",
+    "fallback": "/audio/sfx/shuffle_3.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-shuffle_4": {
+    "src": "/audio/sfx/shuffle_4.webm",
+    "fallback": "/audio/sfx/shuffle_4.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-shuffle_5": {
+    "src": "/audio/sfx/shuffle_5.webm",
+    "fallback": "/audio/sfx/shuffle_5.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-shuffle_6": {
+    "src": "/audio/sfx/shuffle_6.webm",
+    "fallback": "/audio/sfx/shuffle_6.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-shuffle_7": {
+    "src": "/audio/sfx/shuffle_7.webm",
+    "fallback": "/audio/sfx/shuffle_7.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-shuffle_8": {
+    "src": "/audio/sfx/shuffle_8.webm",
+    "fallback": "/audio/sfx/shuffle_8.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-slide_card_1": {
+    "src": "/audio/sfx/slide_card_1.webm",
+    "fallback": "/audio/sfx/slide_card_1.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-slide_card_10": {
+    "src": "/audio/sfx/slide_card_10.webm",
+    "fallback": "/audio/sfx/slide_card_10.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-slide_card_2": {
+    "src": "/audio/sfx/slide_card_2.webm",
+    "fallback": "/audio/sfx/slide_card_2.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-slide_card_3": {
+    "src": "/audio/sfx/slide_card_3.webm",
+    "fallback": "/audio/sfx/slide_card_3.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-slide_card_4": {
+    "src": "/audio/sfx/slide_card_4.webm",
+    "fallback": "/audio/sfx/slide_card_4.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-slide_card_5": {
+    "src": "/audio/sfx/slide_card_5.webm",
+    "fallback": "/audio/sfx/slide_card_5.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-slide_card_6": {
+    "src": "/audio/sfx/slide_card_6.webm",
+    "fallback": "/audio/sfx/slide_card_6.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-slide_card_7": {
+    "src": "/audio/sfx/slide_card_7.webm",
+    "fallback": "/audio/sfx/slide_card_7.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-slide_card_8": {
+    "src": "/audio/sfx/slide_card_8.webm",
+    "fallback": "/audio/sfx/slide_card_8.mp3",
+    "category": "card",
+    "_status": "staged"
+  },
+  "card-slide_card_9": {
+    "src": "/audio/sfx/slide_card_9.webm",
+    "fallback": "/audio/sfx/slide_card_9.mp3",
+    "category": "card",
+    "_status": "staged"
   }
 }
