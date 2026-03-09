@@ -196,12 +196,15 @@ Time-based cadence engine with stereo panning, floor-depth volume, injury limp, 
 
 | Feature | Status |
 |---|---|
-| `AudioSystem.tickFootsteps(moving, sprinting, biomeName, interiorDepth, healthPct)` | ✅ |
-| Time-based cadence timer (walk=286ms, run=216ms) | ✅ |
+| `AudioSystem.tickFootsteps(moving, sprinting, biomeName, interiorDepth, healthPct, opts)` | ✅ |
+| Time-based cadence timer (walk=229ms, sprint=115-229ms fatigue-scaled) | ✅ |
+| Fatigue-based sprint deceleration (0→115ms, 100→229ms walk speed) | ✅ |
+| Player footstep volume reduced 60% (_PLAYER_FOOTSTEP_VOL=0.40) | ✅ |
 | Strict L-R-L-R foot alternation | ✅ |
-| Stereo panning (L=-0.28, R=+0.28) via StereoPannerNode | ✅ |
+| Stereo panning (L=-0.22, R=+0.22) via StereoPannerNode | ✅ |
 | Floor-depth volume table (exterior/shallow/deep) | ✅ |
 | Injury limp mode (HP <30%): asymmetric cadence + pitch drop | ✅ |
+| opts.isPlayer / opts.volumeScale for NPC/enemy/pet footsteps | ✅ |
 | Humanization (±5% vol, ±2% pitch jitter per step) | ✅ |
 | Equipment modifiers (footstep_volume_multiplier) | ✅ |
 | Biome→terrain mapping (Forest→grass, Cave→stone, etc.) | ✅ |

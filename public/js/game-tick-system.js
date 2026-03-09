@@ -37,6 +37,7 @@ var GameTickSystem = (function() {
       var _ftBiomeName = null;
       var _ftDepth = ctx.interiorFloorStack ? ctx.interiorFloorStack.length : 0;
       var _ftHealth = (ctx.player.hp && ctx.player.maxHp) ? (ctx.player.hp / ctx.player.maxHp) : 1.0;
+      var _ftFatigue = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getFatigue) ? GAMESTATE.getFatigue() : 0;
       try {
         if (ctx.getBiome && ctx.BIOMES) {
           var _ftBiomeObj = ctx.getBiome(ctx.getFloor());
@@ -46,7 +47,10 @@ var GameTickSystem = (function() {
           }
         }
       } catch (e) { /* ignore */ }
-      AudioSystem.tickFootsteps(_ftMoving, _ftSprinting, _ftBiomeName, _ftDepth, _ftHealth);
+      AudioSystem.tickFootsteps(_ftMoving, _ftSprinting, _ftBiomeName, _ftDepth, _ftHealth, {
+        fatigue: _ftFatigue,
+        isPlayer: true
+      });
     }
 
     // Update smooth movement system

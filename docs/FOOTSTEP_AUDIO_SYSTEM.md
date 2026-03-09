@@ -30,7 +30,7 @@ The footstep system provides time-based, cadence-driven L/R alternating footstep
         ├── Terrain:     biome → terrain mapping (or 'stone' if interior)
         ├── Volume:      floor-depth table × equipment modifier × jitter
         ├── Pitch:       base (1.0 walk / 1.15 run) × jitter × limp modifier
-        └── Pan:         StereoPannerNode (L=-0.28, R=+0.28)
+        └── Pan:         StereoPannerNode (L=-0.22, R=+0.22)
               │
               ▼
   AudioSystem.play(name, { volume, playbackRate, pan })
@@ -108,10 +108,15 @@ Wider spread than the original (exterior quieter, interior louder) to create a m
 
 | State | Cadence (ms) | Notes |
 |-------|-------------|-------|
-| Walking | 286 | Snappy stride (~32% faster than original 420ms) |
-| Running | 216 | Urgent sprint |
-| Limp (L step) | 286 | Quick weight-bearing step |
+| Walking | 229 | Brisk stride (~45% faster than original 420ms) |
+| Sprint (fresh, fatigue=0) | 115 | ~2× walk cadence, maximum urgency |
+| Sprint (exhausted, fatigue=100) | 229 | Decelerates to walking cadence |
+| Limp (L step) | 229 | Quick weight-bearing step |
 | Limp (R step) | 650 | Dragging injured leg |
+
+**Fatigue-based sprint deceleration:** Sprint cadence linearly interpolates between 115ms (fresh) and 229ms (exhausted) based on `GAMESTATE.getFatigue()` (0–100). When fatigue reaches 100, sprinting sounds identical to walking. This prepares for future fatigue spending during sprint movement.
+
+**Player volume reduction:** Player footstep volume is reduced by 60% (`_PLAYER_FOOTSTEP_VOL = 0.40`) to prevent footstep dominance. Enemy/NPC/pet footsteps use `opts.volumeScale` for per-entity volume control.
 
 Limp mode activates when `healthPct < 0.30` (30% HP). The asymmetric L/R cadence produces a distinct hobbled gait.
 
@@ -137,8 +142,8 @@ Each foot is panned to its respective speaker via `StereoPannerNode`:
 
 | Foot | Pan Value | Effect |
 |------|-----------|--------|
-| Left | -0.28 | Shifts toward left speaker |
-| Right | +0.28 | Shifts toward right speaker |
+| Left | -0.22 | Shifts toward left speaker |
+| Right | +0.22 | Shifts toward right speaker |
 
 Values are subtle enough for headphones without disorientation on speakers.
 

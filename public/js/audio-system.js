@@ -595,15 +595,25 @@ const AudioSystem = (function () {
   };
 
   // Cadence timing (ms)
-  var _WALK_CADENCE  = 286;   // 20% faster than 357ms — snappier walk feel
-  var _RUN_CADENCE   = 216;   // 20% faster than 270ms — urgent sprint
-  var _LIMP_SHORT    = 286;   // injured: L step (quick) — matches walk cadence
+  var _WALK_CADENCE  = 229;   // brisk walk (~45% faster than original 420ms)
+  var _SPRINT_FULL   = 115;   // full-fatigue sprint ≈ 2× walk cadence
+  var _LIMP_SHORT    = 229;   // injured: L step (quick) — matches walk cadence
   var _LIMP_LONG     = 650;   // injured: R step (drag)
   var _HEALTH_LIMP   = 0.30;  // limp when HP < 30%
 
+  // Fatigue-based sprint deceleration
+  // At fatigue 0   → sprint cadence = _SPRINT_FULL  (115ms, ~2× walk speed)
+  // At fatigue 100 → sprint cadence = _WALK_CADENCE (229ms, exhausted = walking)
+  // Linear interpolation between the two.
+  // Future: wire sprint movement into fatigue spending so exhausted players
+  //         can't maintain sprint speed.  The audio cadence already reflects this.
+
   // Stereo pan values (subtle, headphone-safe)
-  var _PAN_LEFT  = -0.28;
-  var _PAN_RIGHT =  0.28;
+  var _PAN_LEFT  = -0.22;
+  var _PAN_RIGHT =  0.22;
+
+  // Player footstep volume multiplier (60% reduction = 0.40 of original)
+  var _PLAYER_FOOTSTEP_VOL = 0.40;
 
   // Step clock state
   var _stepFoot = 0;            // 0 = left, 1 = right
@@ -620,10 +630,19 @@ const AudioSystem = (function () {
    * @param {string}  [biomeName]   - e.g. 'FOREST'. null = dirt fallback
    * @param {number}  interiorDepth - 0 = exterior, 1 = n.n, 2+ = n.n.n
    * @param {number}  healthPct     - 0-1 (player HP / maxHP)
+   * @param {Object}  [opts]        - { fatigue: 0-100, isPlayer: true }
    */
-  function tickFootsteps(moving, sprinting, biomeName, interiorDepth, healthPct) {
+  function tickFootsteps(moving, sprinting, biomeName, interiorDepth, healthPct, opts) {
     if (!_ctx || _ctx.state !== 'running') return;
     var now = performance.now();
+    opts = opts || {};
+
+    // Default to player footsteps (isPlayer true unless explicitly false)
+    var isPlayer = (opts.isPlayer !== false);
+
+    // Fatigue: 0 = fresh, 100 = exhausted (from GAMESTATE.getFatigue)
+    var fatigue = (typeof opts.fatigue === 'number') ? Math.max(0, Math.min(100, opts.fatigue)) : 0;
+    var fatiguePct = fatigue / 100;   // 0.0 (fresh) → 1.0 (exhausted)
 
     // Reset timer on movement start
     if (moving && !_stepWasMoving) {
@@ -642,8 +661,12 @@ const AudioSystem = (function () {
     if (isLimp) {
       // Injured: L=quick step, R=drag (asymmetric cadence)
       cadence = (_stepFoot === 0) ? _LIMP_SHORT : _LIMP_LONG;
+    } else if (sprinting) {
+      // Sprint cadence: lerp between _SPRINT_FULL and _WALK_CADENCE
+      // based on fatigue.  Fresh (0) → fastest.  Exhausted (100) → walk speed.
+      cadence = _SPRINT_FULL + (_WALK_CADENCE - _SPRINT_FULL) * fatiguePct;
     } else {
-      cadence = sprinting ? _RUN_CADENCE : _WALK_CADENCE;
+      cadence = _WALK_CADENCE;
     }
     _stepNextTime = now + cadence;
 
@@ -662,8 +685,18 @@ const AudioSystem = (function () {
     var depthVols = _DEPTH_VOL[depth] || _DEPTH_VOL[0];
     var vol = sprinting ? depthVols[1] : depthVols[0];
 
+    // Player footstep volume reduction (60% quieter than base)
+    if (isPlayer) {
+      vol *= _PLAYER_FOOTSTEP_VOL;
+    }
+
+    // NPC/enemy/pet volume: use opts.volumeScale if provided (0-1)
+    if (!isPlayer && typeof opts.volumeScale === 'number') {
+      vol *= opts.volumeScale;
+    }
+
     // Equipment modifiers (e.g. Stiletto Slippers quieter, Heavy Boots louder)
-    if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.getEquippedItems) {
+    if (isPlayer && typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.getEquippedItems) {
       var equipped = PassiveItemsSystem.getEquippedItems();
       for (var i = 0; i < equipped.length; i++) {
         if (typeof equipped[i].footstep_volume_multiplier === 'number') {
@@ -695,7 +728,7 @@ const AudioSystem = (function () {
   // Legacy API — delegates to tickFootsteps for backward compatibility
   function playFootstep(biomeName, isInterior, running) {
     var depth = isInterior ? 1 : 0;
-    tickFootsteps(true, running, biomeName, depth, 1.0);
+    tickFootsteps(true, running, biomeName, depth, 1.0, { isPlayer: true });
   }
 
   // ── Return public interface ────────────────────────────────
