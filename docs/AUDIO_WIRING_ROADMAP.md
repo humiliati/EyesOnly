@@ -197,9 +197,9 @@ Time-based cadence engine with stereo panning, floor-depth volume, injury limp, 
 | Feature | Status |
 |---|---|
 | `AudioSystem.tickFootsteps(moving, sprinting, biomeName, interiorDepth, healthPct)` | ✅ |
-| Time-based cadence timer (walk=357ms, run=270ms) | ✅ |
+| Time-based cadence timer (walk=286ms, run=216ms) | ✅ |
 | Strict L-R-L-R foot alternation | ✅ |
-| Stereo panning (L=-0.35, R=+0.35) via StereoPannerNode | ✅ |
+| Stereo panning (L=-0.28, R=+0.28) via StereoPannerNode | ✅ |
 | Floor-depth volume table (exterior/shallow/deep) | ✅ |
 | Injury limp mode (HP <30%): asymmetric cadence + pitch drop | ✅ |
 | Humanization (±5% vol, ±2% pitch jitter per step) | ✅ |

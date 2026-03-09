@@ -595,15 +595,15 @@ const AudioSystem = (function () {
   };
 
   // Cadence timing (ms)
-  var _WALK_CADENCE  = 357;   // ~15% faster than old 420ms (walking = urgency)
-  var _RUN_CADENCE   = 270;   // sprint unchanged (emergency)
-  var _LIMP_SHORT    = 357;   // injured: L step (quick) — matches walk cadence
+  var _WALK_CADENCE  = 286;   // 20% faster than 357ms — snappier walk feel
+  var _RUN_CADENCE   = 216;   // 20% faster than 270ms — urgent sprint
+  var _LIMP_SHORT    = 286;   // injured: L step (quick) — matches walk cadence
   var _LIMP_LONG     = 650;   // injured: R step (drag)
   var _HEALTH_LIMP   = 0.30;  // limp when HP < 30%
 
   // Stereo pan values (subtle, headphone-safe)
-  var _PAN_LEFT  = -0.35;
-  var _PAN_RIGHT =  0.35;
+  var _PAN_LEFT  = -0.28;
+  var _PAN_RIGHT =  0.28;
 
   // Step clock state
   var _stepFoot = 0;            // 0 = left, 1 = right

@@ -30,7 +30,7 @@ The footstep system provides time-based, cadence-driven L/R alternating footstep
         ├── Terrain:     biome → terrain mapping (or 'stone' if interior)
         ├── Volume:      floor-depth table × equipment modifier × jitter
         ├── Pitch:       base (1.0 walk / 1.15 run) × jitter × limp modifier
-        └── Pan:         StereoPannerNode (L=-0.35, R=+0.35)
+        └── Pan:         StereoPannerNode (L=-0.28, R=+0.28)
               │
               ▼
   AudioSystem.play(name, { volume, playbackRate, pan })
@@ -108,9 +108,9 @@ Wider spread than the original (exterior quieter, interior louder) to create a m
 
 | State | Cadence (ms) | Notes |
 |-------|-------------|-------|
-| Walking | 357 | Urgent stride (~15% faster than original 420ms) |
-| Running | 270 | Emergency sprint |
-| Limp (L step) | 357 | Quick weight-bearing step |
+| Walking | 286 | Snappy stride (~32% faster than original 420ms) |
+| Running | 216 | Urgent sprint |
+| Limp (L step) | 286 | Quick weight-bearing step |
 | Limp (R step) | 650 | Dragging injured leg |
 
 Limp mode activates when `healthPct < 0.30` (30% HP). The asymmetric L/R cadence produces a distinct hobbled gait.
@@ -137,8 +137,8 @@ Each foot is panned to its respective speaker via `StereoPannerNode`:
 
 | Foot | Pan Value | Effect |
 |------|-----------|--------|
-| Left | -0.35 | Shifts toward left speaker |
-| Right | +0.35 | Shifts toward right speaker |
+| Left | -0.28 | Shifts toward left speaker |
+| Right | +0.28 | Shifts toward right speaker |
 
 Values are subtle enough for headphones without disorientation on speakers.
 
