@@ -27,8 +27,8 @@ const AudioSystem = (function () {
   var _sfxGain = null;        // GainNode → masterGain (sfx bus)
 
   var _muted = false;
-  var _musicVol = 70;         // 0-100
-  var _sfxVol = 85;           // 0-100
+  var _musicVol = 25;         // 0-100 — default 25% BGM
+  var _sfxVol = 85;           // 0-100 — default 85% SFX
 
   var _bufferCache = {};      // name → AudioBuffer
   var _loadingPromises = {};  // name → Promise<AudioBuffer>
@@ -36,12 +36,10 @@ const AudioSystem = (function () {
   var _currentMusic = null;   // { source, name, title, artist }
   var _listeners = [];
 
-  // ── Interior audio multipliers ──
-  // These are system-controlled overlays on top of the user's volume settings.
-  // Music dim: 1.0 = full user volume, 0.4 = 60% quieter (for interior n.n)
-  // Footstep boost: 1.0 = default, 1.2 = 20% louder (for interiors)
+  // ── Interior music dim multiplier ──
+  // System-controlled overlay on top of the user's music volume.
+  // 1.0 = full user volume, 0.25 = 75% quieter (for shallow interiors)
   var _musicDimMultiplier = 1.0;
-  var _footstepBoostMultiplier = 1.0;
 
   // ── Gesture-active flag ──
   // Set true while the first-gesture handler is synchronously calling
@@ -288,14 +286,10 @@ const AudioSystem = (function () {
   function play(name, opts) {
     if (!_ctx) _ensureCtx();
     if (!_ctx) return;
-    // If context is suspended (pre-gesture), try to resume and replay
-    // the sound once active — don't just drop it.
-    if (_ctx.state === 'suspended') {
-      _ctx.resume().then(function () {
-        play(name, opts);  // retry after resume
-      }).catch(function () {});
-      return;
-    }
+    // If context is suspended (no user gesture yet), silently drop.
+    // The persistent gesture handler will unlock the context on first
+    // interaction, and SFX will work from that point on.
+    if (_ctx.state === 'suspended') return;
     _resume();
 
     // ── Rate-limiter: suppress duplicate SFX within cooldown window ──
@@ -331,16 +325,26 @@ const AudioSystem = (function () {
         source.playbackRate.value = opts.playbackRate;
       }
 
-      // Optional per-clip volume
+      // Build audio graph chain: source → [gain] → [panner] → sfxGain
+      var lastNode = source;
+
+      // Per-clip volume
       if (typeof opts.volume === 'number' && opts.volume !== 1) {
         var g = _ctx.createGain();
         g.gain.value = opts.volume;
-        source.connect(g);
-        g.connect(_sfxGain);
-      } else {
-        source.connect(_sfxGain);
+        lastNode.connect(g);
+        lastNode = g;
       }
 
+      // Stereo panning (e.g. -0.35 left foot, +0.35 right foot)
+      if (typeof opts.pan === 'number' && opts.pan !== 0 && typeof _ctx.createStereoPanner === 'function') {
+        var panner = _ctx.createStereoPanner();
+        panner.pan.value = opts.pan;
+        lastNode.connect(panner);
+        lastNode = panner;
+      }
+
+      lastNode.connect(_sfxGain);
       source.start(0);
     });
   }
@@ -508,11 +512,9 @@ const AudioSystem = (function () {
     _musicDimMultiplier = Math.max(0, Math.min(1, Number(v) || 1));
     _applyGains();
   }
-  // setFootstepBoost(1.2) = boost footsteps 20% inside buildings
-  // setFootstepBoost(1.0) = restore to default
-  function setFootstepBoost(v) {
-    _footstepBoostMultiplier = Math.max(0.1, Math.min(3, Number(v) || 1));
-  }
+  // setFootstepBoost — DEPRECATED: footstep volume is now controlled by
+  // floor-depth table in tickFootsteps().  Kept as no-op for compat.
+  function setFootstepBoost(v) { /* no-op — depth table handles this */ }
 
   // Return the logical name of the currently playing music track (or null)
   function getNowPlayingName() {
@@ -559,53 +561,98 @@ const AudioSystem = (function () {
     play(base + '-' + n, opts);
   }
 
-  // ── Footstep system ───────────────────────────────────────
-  // Alternates left/right, picks terrain from biome.
-  // Biome → terrain mapping:
-  //   grass: FOREST, LAKE
-  //   stone: GREY_CAVE, OFFICE, MALL, INDUSTRIAL, AEROSPACE, interiors
-  //   sand:  SKI_MOUNTAIN (snow ≈ sand crunch)
-  //   dirt:  fallback / JUNKYARD
-  var _footLeft = true;
+  // ── Footstep engine ──────────────────────────────────────
+  // Time-based step clock with stereo panning, floor-depth volume,
+  // injury limp cadence, and humanization.  Called every frame from
+  // game-tick-system via tickFootsteps().
+  //
+  // Architecture:
+  //   movement state → step timer → foot toggle → buffer playback
+  //   → stereo pan → floor-depth multiplier → random variation
+
+  // Biome → terrain mapping
   var _BIOME_TERRAIN = {
-    FOREST:       'grass',
-    LAKE:         'grass',
-    GREY_CAVE:    'stone',
-    OFFICE:       'stone',
-    MALL:         'stone',
-    INDUSTRIAL:   'stone',
-    AEROSPACE:    'stone',
+    FOREST: 'grass', LAKE: 'grass',
+    GREY_CAVE: 'stone', OFFICE: 'stone', MALL: 'stone',
+    INDUSTRIAL: 'stone', AEROSPACE: 'stone',
     SKI_MOUNTAIN: 'sand',
-    JUNKYARD:     'dirt'
+    JUNKYARD: 'dirt'
   };
-  // Interior biomes default to stone (hard floors)
-  var _INTERIOR_TERRAIN_DEFAULT = 'stone';
+
+  // Floor-depth volume table: [walkVol, runVol]
+  var _DEPTH_VOL = {
+    0: [0.75, 0.85],   // exterior
+    1: [1.00, 1.15],   // shallow interior (floor n.n)
+    2: [1.15, 1.25]    // deep interior (floor n.n.n)
+  };
+
+  // Cadence timing (ms)
+  var _WALK_CADENCE  = 420;
+  var _RUN_CADENCE   = 270;
+  var _LIMP_SHORT    = 420;   // injured: L step (quick)
+  var _LIMP_LONG     = 650;   // injured: R step (drag)
+  var _HEALTH_LIMP   = 0.30;  // limp when HP < 30%
+
+  // Stereo pan values (subtle, headphone-safe)
+  var _PAN_LEFT  = -0.35;
+  var _PAN_RIGHT =  0.35;
+
+  // Step clock state
+  var _stepFoot = 0;            // 0 = left, 1 = right
+  var _stepNextTime = 0;        // performance.now() target for next step
+  var _stepWasMoving = false;   // track movement start/stop
 
   /**
-   * Play a footstep sound based on current biome.
-   * Uses terrain-specific left/right alternating clips from R2:
-   *   footstep-left-grass, footstep-right-stone, etc.
-   * @param {string} [biomeName] - e.g. 'FOREST', 'GREY_CAVE'. Omit = dirt fallback.
-   * @param {boolean} [isInterior] - true if inside a building
-   * @param {boolean} [running] - true for faster steps (higher pitch)
+   * Tick the footstep engine.  Call once per game-tick frame.
+   * The engine manages its own cadence timer internally — callers
+   * just provide current movement state each frame.
+   *
+   * @param {boolean} moving        - is the player moving?
+   * @param {boolean} sprinting     - is the player sprinting?
+   * @param {string}  [biomeName]   - e.g. 'FOREST'. null = dirt fallback
+   * @param {number}  interiorDepth - 0 = exterior, 1 = n.n, 2+ = n.n.n
+   * @param {number}  healthPct     - 0-1 (player HP / maxHP)
    */
-  function playFootstep(biomeName, isInterior, running) {
-    var terrain;
-    if (isInterior) {
-      terrain = _INTERIOR_TERRAIN_DEFAULT;
-    } else {
-      terrain = (biomeName && _BIOME_TERRAIN[biomeName]) || 'dirt';
+  function tickFootsteps(moving, sprinting, biomeName, interiorDepth, healthPct) {
+    if (!_ctx || _ctx.state !== 'running') return;
+    var now = performance.now();
+
+    // Reset timer on movement start
+    if (moving && !_stepWasMoving) {
+      _stepNextTime = now;    // fire immediately on first step
+      _stepFoot = 0;          // always start with left
     }
-    var side = _footLeft ? 'left' : 'right';
-    _footLeft = !_footLeft;
+    _stepWasMoving = moving;
+    if (!moving) return;
 
-    var name = 'footstep-' + side + '-' + terrain;
-    // Audible base volume — leaves headroom for boost/equipment multipliers
-    var vol = running ? 0.7 : 0.5;
-    var pitch = running ? 1.15 : 1.0;
+    // Not time yet?
+    if (now < _stepNextTime) return;
 
-    // Apply interior boost multiplier (e.g. 1.2 inside buildings)
-    vol *= _footstepBoostMultiplier;
+    // ── Cadence ────────────────────────────────────────
+    var isLimp = (typeof healthPct === 'number') && healthPct < _HEALTH_LIMP;
+    var cadence;
+    if (isLimp) {
+      // Injured: L=quick step, R=drag (asymmetric cadence)
+      cadence = (_stepFoot === 0) ? _LIMP_SHORT : _LIMP_LONG;
+    } else {
+      cadence = sprinting ? _RUN_CADENCE : _WALK_CADENCE;
+    }
+    _stepNextTime = now + cadence;
+
+    // ── Terrain from biome ─────────────────────────────
+    var depth = Math.min(interiorDepth || 0, 2);
+    var isInterior = depth > 0;
+    var terrain = isInterior ? 'stone'
+      : ((biomeName && _BIOME_TERRAIN[biomeName]) || 'dirt');
+
+    // ── Foot toggle + side name ────────────────────────
+    var side = (_stepFoot === 0) ? 'left' : 'right';
+    var pan  = (_stepFoot === 0) ? _PAN_LEFT : _PAN_RIGHT;
+    _stepFoot = 1 - _stepFoot;       // strict alternation
+
+    // ── Volume from floor-depth table ──────────────────
+    var depthVols = _DEPTH_VOL[depth] || _DEPTH_VOL[0];
+    var vol = sprinting ? depthVols[1] : depthVols[0];
 
     // Equipment modifiers (e.g. Stiletto Slippers quieter, Heavy Boots louder)
     if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.getEquippedItems) {
@@ -617,7 +664,29 @@ const AudioSystem = (function () {
       }
     }
 
-    play(name, { volume: vol, playbackRate: pitch });
+    // ── Humanization: ±5% volume, ±2% pitch ───────────
+    var volJitter   = 0.95 + Math.random() * 0.10;   // 0.95–1.05
+    var pitchJitter = 0.98 + Math.random() * 0.04;   // 0.98–1.02
+    vol *= volJitter;
+
+    var pitch = sprinting ? 1.15 : 1.0;
+    pitch *= pitchJitter;
+
+    // Limp pitch: injured drag step is lower
+    if (isLimp && side === 'right') {
+      pitch *= 0.85;   // drag foot sounds heavier / slower
+      vol *= 1.15;     // louder thud on drag
+    }
+
+    // ── Fire the sound ─────────────────────────────────
+    var name = 'footstep-' + side + '-' + terrain;
+    play(name, { volume: vol, playbackRate: pitch, pan: pan });
+  }
+
+  // Legacy API — delegates to tickFootsteps for backward compatibility
+  function playFootstep(biomeName, isInterior, running) {
+    var depth = isInterior ? 1 : 0;
+    tickFootsteps(true, running, biomeName, depth, 1.0);
   }
 
   // ── Return public interface ────────────────────────────────
@@ -627,6 +696,7 @@ const AudioSystem = (function () {
     play: play,
     playRandom: playRandom,
     playFootstep: playFootstep,
+    tickFootsteps: tickFootsteps,
     playMusic: playMusic,
     stopMusic: stopMusic,
     setMasterMute: setMasterMute,

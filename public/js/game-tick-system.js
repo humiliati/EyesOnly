@@ -28,6 +28,27 @@ var GameTickSystem = (function() {
       PlayerWeaponArrow.update(deltaMs / 1000);
     }
 
+    // ── Footstep engine tick ─────────────────────────────────
+    // Called every frame regardless of tile crossings — the engine
+    // manages its own cadence timer internally.
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.tickFootsteps) {
+      var _ftMoving = typeof GoneRogueMovement !== 'undefined' && GoneRogueMovement.isMoving();
+      var _ftSprinting = _ftMoving && GoneRogueMovement.isSprinting();
+      var _ftBiomeName = null;
+      var _ftDepth = ctx.interiorFloorStack ? ctx.interiorFloorStack.length : 0;
+      var _ftHealth = (ctx.player.hp && ctx.player.maxHp) ? (ctx.player.hp / ctx.player.maxHp) : 1.0;
+      try {
+        if (ctx.getBiome && ctx.BIOMES) {
+          var _ftBiomeObj = ctx.getBiome(ctx.getFloor());
+          var _ftKeys = Object.keys(ctx.BIOMES);
+          for (var _fti = 0; _fti < _ftKeys.length; _fti++) {
+            if (ctx.BIOMES[_ftKeys[_fti]] === _ftBiomeObj) { _ftBiomeName = _ftKeys[_fti]; break; }
+          }
+        }
+      } catch (e) { /* ignore */ }
+      AudioSystem.tickFootsteps(_ftMoving, _ftSprinting, _ftBiomeName, _ftDepth, _ftHealth);
+    }
+
     // Update smooth movement system
     if (typeof GoneRogueMovement !== 'undefined' && GoneRogueMovement.isMoving()) {
       var collisionCheck = function(x, y) {
@@ -41,15 +62,10 @@ var GameTickSystem = (function() {
       var visual = GoneRogueMovement.getVisualPosition();
 
       // ── Iterate ALL tiles traversed this frame for interactions ──
-      // The movement system can cross multiple waypoints per frame (carry-forward
-      // budget). We must trigger pickups/interactions at EVERY intermediate tile,
-      // not just the final position. This fixes collectibles being skipped when
-      // the player fishes/paths over them at speed.
       var tilesThisFrame = GoneRogueMovement.getTilesTraversedThisFrame
         ? GoneRogueMovement.getTilesTraversedThisFrame()
         : [];
 
-      // Remember where the player was before this frame for direction tracking
       var preFrameX = ctx.player.x;
       var preFrameY = ctx.player.y;
 
@@ -57,36 +73,9 @@ var GameTickSystem = (function() {
         var prevX = preFrameX;
         var prevY = preFrameY;
 
-        // ── Footstep SFX for smooth movement ──
-        // Fire once per tile traversed. Resolve biome for terrain-matched sound.
-        var _footBiomeName = null;
-        var _footIsInterior = !!ctx.currentInteriorFloorId;
-        var _footRunning = GoneRogueMovement.isSprinting();
-        try {
-          if (ctx.getBiome) {
-            var _footBiome = ctx.getBiome(ctx.getFloor());
-            if (ctx.BIOMES) {
-              var _footBiomeKeys = Object.keys(ctx.BIOMES);
-              for (var _fbi = 0; _fbi < _footBiomeKeys.length; _fbi++) {
-                if (ctx.BIOMES[_footBiomeKeys[_fbi]] === _footBiome) {
-                  _footBiomeName = _footBiomeKeys[_fbi];
-                  break;
-                }
-              }
-            }
-          }
-        } catch (e) { /* ignore */ }
-
         for (var ti = 0; ti < tilesThisFrame.length; ti++) {
           var tile = tilesThisFrame[ti];
 
-          // Play footstep for this tile (rate-limiter in AudioSystem prevents spam)
-          if (typeof AudioSystem !== 'undefined' && AudioSystem.playFootstep) {
-            AudioSystem.playFootstep(_footBiomeName, _footIsInterior, _footRunning);
-          }
-
-          // Set player position to this tile so checkPlayerInteractions
-          // reads the correct coordinates for pickups, combat, etc.
           ctx.player.x = tile.x;
           ctx.player.y = tile.y;
 
@@ -100,22 +89,17 @@ var GameTickSystem = (function() {
           prevY = tile.y;
 
           // ── Lantern drag: check if player entered a draggable breakable tile ──
-          // Passive waft: player walks through lantern, it drifts along briefly
           if (typeof LanternDragSystem !== 'undefined' && !LanternDragSystem.isDragging()) {
             var _dragBreakable = ctx.getBreakableAt ? ctx.getBreakableAt(tile.x, tile.y) : null;
             if (_dragBreakable && LanternDragSystem.isDraggable(_dragBreakable)) {
-              LanternDragSystem.tryAttach(_dragBreakable, ctx, true); // passive=true
+              LanternDragSystem.tryAttach(_dragBreakable, ctx, true);
             }
           }
 
-          // Trigger all tile-arrival interactions (pickups, currency, food, combat, doors)
           ctx.checkPlayerInteractions();
 
-          // If combat was triggered at an intermediate tile, stop processing
-          // further tiles — player is now locked in combat
           if (ctx.strCombatActive) {
             GoneRogueMovement.stop();
-            // Drop lantern on combat
             if (typeof LanternDragSystem !== 'undefined' && LanternDragSystem.isDragging()) {
               LanternDragSystem.drop(ctx);
             }
@@ -123,19 +107,15 @@ var GameTickSystem = (function() {
           }
         }
 
-        // Update weapon arrow to final facing direction
         if (typeof PlayerWeaponArrow !== 'undefined') {
           PlayerWeaponArrow.setMovementDirection(ctx.player.lastMoveDirection);
         }
       } else if (ctx.player.x !== logical.x || ctx.player.y !== logical.y) {
-        // Fallback: sub-waypoint movement that crossed a tile boundary
-        // (partial movement landed on new integer tile without reaching a waypoint)
         var oldPX = ctx.player.x;
         var oldPY = ctx.player.y;
         ctx.player.x = logical.x;
         ctx.player.y = logical.y;
 
-        // Update last move direction for flanking + weapon arrow
         if (logical.x > oldPX) ctx.player.lastMoveDirection = 'east';
         else if (logical.x < oldPX) ctx.player.lastMoveDirection = 'west';
         else if (logical.y > oldPY) ctx.player.lastMoveDirection = 'south';
@@ -143,22 +123,6 @@ var GameTickSystem = (function() {
 
         if (typeof PlayerWeaponArrow !== 'undefined') {
           PlayerWeaponArrow.setMovementDirection(ctx.player.lastMoveDirection);
-        }
-
-        // Footstep for sub-waypoint tile crossing
-        if (typeof AudioSystem !== 'undefined' && AudioSystem.playFootstep) {
-          var _sfBiome = null;
-          var _sfInterior = !!ctx.currentInteriorFloorId;
-          try {
-            if (ctx.getBiome && ctx.BIOMES) {
-              var _sfb = ctx.getBiome(ctx.getFloor());
-              var _sfKeys = Object.keys(ctx.BIOMES);
-              for (var _sfi = 0; _sfi < _sfKeys.length; _sfi++) {
-                if (ctx.BIOMES[_sfKeys[_sfi]] === _sfb) { _sfBiome = _sfKeys[_sfi]; break; }
-              }
-            }
-          } catch (e) { /* ignore */ }
-          AudioSystem.playFootstep(_sfBiome, _sfInterior, GoneRogueMovement.isSprinting());
         }
 
         ctx.checkPlayerInteractions();

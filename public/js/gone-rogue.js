@@ -2277,6 +2277,12 @@ var GoneRogue = (function () {
       projectiles: _projectiles,
       GRID_WIDTH: GRID_WIDTH,
       GRID_HEIGHT: GRID_HEIGHT,
+      // Footstep engine needs floor/biome/interior state
+      interiorFloorStack: _interiorFloorStack,
+      get currentInteriorFloorId() { return _currentInteriorFloorId; },
+      getFloor: function() { return _floor; },
+      getBiome: _getBiome,
+      BIOMES: BIOMES,
       get useInteractiveGrid() { return _useInteractiveGrid; },
       get strCombatActive() { return _strCombatActive; },
       get bossFloorActive() { return _bossFloorActive; },
