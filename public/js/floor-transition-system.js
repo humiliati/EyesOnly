@@ -20,7 +20,7 @@ var FloorTransitionSystem = (function () {
     if (el) { el.style.opacity = '0'; el.style.transition = 'opacity 0.25s ease-out'; }
     // Audio: floor exit whoosh + stop current music
     // Skip stopMusic when onboarding music is playing (CLUBBED_TO_DEATH
-    // spans launch → char creation → floor 0 → tavern → floor 1 entry).
+    // spans launch → char creation → floor 0 → tavern → floor 1).
     if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
       AudioSystem.playRandom('descend', 3, { volume: 0.4 });
       if (AudioSystem.stopMusic && !AudioSystem.isOnboardingMusic()) {
@@ -73,44 +73,71 @@ var FloorTransitionSystem = (function () {
   /**
    * Pick and play the right music track for the current biome + floor.
    * Day/night alternation: even floors are night.
+   *
+   * Interior audio rules (n = main floor, n.n = shallow interior, n.n.n = deep):
+   *   n     → biome music at full volume, normal footsteps
+   *   n.n   → KEEP biome music but dim 60%, boost footsteps 20%
+   *   n.n.n → SWITCH to interior-specific track, restore music volume, boost footsteps 20%
    */
   function _playBiomeMusic(ctx) {
     if (typeof AudioSystem === 'undefined' || !AudioSystem.playMusic) return;
 
     var floor = ctx.getFloor();
+    var isInterior = !!ctx.currentInteriorFloorId;
+    // Stack depth: 0 = main floor, 1 = shallow interior (n.n), 2+ = deep interior (n.n.n)
+    var interiorDepth = ctx.interiorFloorStack ? ctx.interiorFloorStack.length : 0;
 
     // ── Onboarding music guard ──────────────────────────────────
-    // CLUBBED_TO_DEATH spans launch → floor 0 → tavern 0.1.0.
-    // On floor 0 and its interiors, let the onboarding track keep
-    // playing.  On floor ≥ 1 the guard drops and biome music takes
-    // over naturally — no jarring cut, just a clean handoff.
+    // CLUBBED_TO_DEATH spans launch → floor 0 → tavern → floor 1.
+    // On floors 0-1 and their shallow interiors, keep the onboarding
+    // track playing.  On floor ≥ 2 the guard drops and biome music
+    // takes over — no jarring cut, just a clean handoff.
     if (AudioSystem.isOnboardingMusic && AudioSystem.isOnboardingMusic()) {
-      if (floor < 1 || ctx.currentInteriorFloorId) {
-        // Still in onboarding territory — skip biome override
+      if (floor < 2 && interiorDepth <= 1) {
+        // Still in onboarding territory — keep CLUBBED_TO_DEATH
+        // But still apply interior audio layering if in a building
+        if (isInterior && interiorDepth === 1) {
+          AudioSystem.setMusicDim(0.4);
+          AudioSystem.setFootstepBoost(1.2);
+        } else {
+          AudioSystem.setMusicDim(1.0);
+          AudioSystem.setFootstepBoost(1.0);
+        }
         return;
       }
-      // Floor ≥ 1 on a main floor — clear the guard, fall through
-      // to normal biome music (AudioSystem.playMusic will stop the
-      // onboarding track internally before starting the new one).
+      // Past onboarding territory — clear the guard, fall through
       AudioSystem.setOnboardingMusic(false);
     }
 
     var biome = null;
     try { biome = ctx.getBiome(floor); } catch (e) {}
 
-    // Interior floors — resolve biome-specific BGM or fall back to default
-    if (ctx.currentInteriorFloorId) {
-      var interiorTrack = 'music-cl-source-of-mana';  // Cyberleaf default interior (mystical, explorative)
-      // Try to resolve interior biome from the authored layout
-      if (typeof InteriorFloors !== 'undefined' && InteriorFloors.getAuthoredLayout) {
-        var layout = InteriorFloors.getAuthoredLayout(ctx.currentInteriorFloorId);
-        if (layout && layout.interiorBiome && _INTERIOR_MUSIC[layout.interiorBiome]) {
-          interiorTrack = _INTERIOR_MUSIC[layout.interiorBiome];
+    // ── Interior floors ─────────────────────────────────────────
+    if (isInterior) {
+      if (interiorDepth >= 2) {
+        // Deep interior (n.n.n) — switch to interior-specific music
+        var deepTrack = 'music-cl-source-of-mana';  // default interior BGM
+        if (typeof InteriorFloors !== 'undefined' && InteriorFloors.getAuthoredLayout) {
+          var deepLayout = InteriorFloors.getAuthoredLayout(ctx.currentInteriorFloorId);
+          if (deepLayout && deepLayout.interiorBiome && _INTERIOR_MUSIC[deepLayout.interiorBiome]) {
+            deepTrack = _INTERIOR_MUSIC[deepLayout.interiorBiome];
+          }
         }
+        AudioSystem.setMusicDim(1.0);       // full volume for dedicated track
+        AudioSystem.setFootstepBoost(1.2);   // louder footsteps indoors
+        AudioSystem.playMusic(deepTrack);
+      } else {
+        // Shallow interior (n.n) — keep current biome music, just dim it
+        AudioSystem.setMusicDim(0.4);        // 60% quieter
+        AudioSystem.setFootstepBoost(1.2);   // louder footsteps indoors
+        // Don't call playMusic — keep whatever's already playing
       }
-      AudioSystem.playMusic(interiorTrack);
       return;
     }
+
+    // ── Main floor — restore full music volume + normal footsteps ──
+    AudioSystem.setMusicDim(1.0);
+    AudioSystem.setFootstepBoost(1.0);
 
     // Try to match biome key from the BIOMES constant on ctx
     var biomeKey = null;
@@ -133,6 +160,7 @@ var FloorTransitionSystem = (function () {
       }
     }
 
+    // playMusic auto-skips if same track is already playing (same-biome floor change)
     AudioSystem.playMusic(track);
   }
 

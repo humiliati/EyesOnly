@@ -36,6 +36,13 @@ const AudioSystem = (function () {
   var _currentMusic = null;   // { source, name, title, artist }
   var _listeners = [];
 
+  // ── Interior audio multipliers ──
+  // These are system-controlled overlays on top of the user's volume settings.
+  // Music dim: 1.0 = full user volume, 0.4 = 60% quieter (for interior n.n)
+  // Footstep boost: 1.0 = default, 1.2 = 20% louder (for interiors)
+  var _musicDimMultiplier = 1.0;
+  var _footstepBoostMultiplier = 1.0;
+
   // ── Onboarding music guard ──
   // When true, floor-transition music logic should not interrupt the
   // current track (CLUBBED_TO_DEATH spans launch → char creation →
@@ -73,7 +80,7 @@ const AudioSystem = (function () {
     if (!_masterGain) return;
     // Master: 0 when muted, 1 otherwise
     _masterGain.gain.value = _muted ? 0 : 1;
-    if (_musicGain) _musicGain.gain.value = _musicVol / 100;
+    if (_musicGain) _musicGain.gain.value = (_musicVol / 100) * _musicDimMultiplier;
     if (_sfxGain)   _sfxGain.gain.value   = _sfxVol / 100;
   }
 
@@ -204,16 +211,29 @@ const AudioSystem = (function () {
     // IMPORTANT: replay pending music INSIDE the gesture context so that
     // HTMLAudioElement.play() is not blocked by Chrome's autoplay policy.
     var handler = function () {
-      _resume();
-      // Replay deferred music within the user gesture call stack
-      if (_pendingMusicName) {
-        var n = _pendingMusicName;
-        _pendingMusicName = null;
-        playMusic(n);
-      }
       document.removeEventListener('click', handler, true);
       document.removeEventListener('touchstart', handler, true);
       document.removeEventListener('keydown', handler, true);
+
+      if (_ctx && _ctx.state === 'suspended') {
+        // Resume and replay pending music in the promise callback.
+        // Chrome resolves the resume promise as a microtask while still
+        // within the user gesture task, so audio.play() is allowed.
+        _ctx.resume().then(function () {
+          if (_pendingMusicName) {
+            var n = _pendingMusicName;
+            _pendingMusicName = null;
+            playMusic(n);
+          }
+        }).catch(function () {});
+      } else {
+        // Context already running — replay immediately
+        if (_pendingMusicName) {
+          var n = _pendingMusicName;
+          _pendingMusicName = null;
+          playMusic(n);
+        }
+      }
     };
     document.addEventListener('click', handler, true);
     document.addEventListener('touchstart', handler, true);
@@ -363,6 +383,11 @@ const AudioSystem = (function () {
     _resume();
     _pendingMusicName = null;
 
+    // Skip if the same track is already playing (prevents restart on same-biome floor change)
+    if (_currentMusic && _currentMusic.name === name && _musicAudio && !_musicAudio.paused) {
+      return;
+    }
+
     var audio = _ensureMusicAudio();
     if (!audio) return;
 
@@ -456,6 +481,24 @@ const AudioSystem = (function () {
   function setOnboardingMusic(v) { _onboardingMusic = !!v; }
   function isOnboardingMusic()   { return _onboardingMusic; }
 
+  // ── Interior audio multiplier API ──
+  // setMusicDim(0.4) = reduce music to 40% for shallow interiors
+  // setMusicDim(1.0) = restore to user's normal volume
+  function setMusicDim(v) {
+    _musicDimMultiplier = Math.max(0, Math.min(1, Number(v) || 1));
+    _applyGains();
+  }
+  // setFootstepBoost(1.2) = boost footsteps 20% inside buildings
+  // setFootstepBoost(1.0) = restore to default
+  function setFootstepBoost(v) {
+    _footstepBoostMultiplier = Math.max(0.1, Math.min(3, Number(v) || 1));
+  }
+
+  // Return the logical name of the currently playing music track (or null)
+  function getNowPlayingName() {
+    return _currentMusic ? _currentMusic.name : null;
+  }
+
   function getNowPlaying() {
     if (!_currentMusic) return null;
     return {
@@ -536,8 +579,23 @@ const AudioSystem = (function () {
     _footLeft = !_footLeft;
 
     var name = 'footstep-' + side + '-' + terrain;
-    var vol = running ? 0.35 : 0.25;
+    // Base volume 50% quieter than original (was 0.25/0.35)
+    var vol = running ? 0.175 : 0.125;
     var pitch = running ? 1.15 : 1.0;
+
+    // Apply interior boost multiplier (e.g. 1.2 inside buildings)
+    vol *= _footstepBoostMultiplier;
+
+    // Equipment modifiers (e.g. Stiletto Slippers quieter, Heavy Boots louder)
+    if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.getEquippedItems) {
+      var equipped = PassiveItemsSystem.getEquippedItems();
+      for (var i = 0; i < equipped.length; i++) {
+        if (typeof equipped[i].footstep_volume_multiplier === 'number') {
+          vol *= equipped[i].footstep_volume_multiplier;
+        }
+      }
+    }
+
     play(name, { volume: vol, playbackRate: pitch });
   }
 
@@ -558,8 +616,11 @@ const AudioSystem = (function () {
     getMusicVolume: getMusicVolume,
     getSFXVolume: getSFXVolume,
     getNowPlaying: getNowPlaying,
+    getNowPlayingName: getNowPlayingName,
     onStateChange: onStateChange,
     setOnboardingMusic: setOnboardingMusic,
-    isOnboardingMusic: isOnboardingMusic
+    isOnboardingMusic: isOnboardingMusic,
+    setMusicDim: setMusicDim,
+    setFootstepBoost: setFootstepBoost
   };
 })();
