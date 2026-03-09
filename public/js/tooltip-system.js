@@ -13,6 +13,7 @@ const TooltipSystem = (function() {
   var _messageHistory = [];
   var MAX_HISTORY_LINES = 256;
   var DEFAULT_MESSAGE = 'Standing by for advisories.';
+  var _lastMessage = DEFAULT_MESSAGE;  // remembers the most recent tooltip
 
   // ── Priority system ────────────────────────────────────────
   // Higher priority messages block lower ones.
@@ -62,6 +63,7 @@ const TooltipSystem = (function() {
     toggleBtn.id = 'mok-history-toggle';
     toggleBtn.className = 'mok-history-toggle';
     toggleBtn.textContent = '▼ History';
+    toggleBtn.setAttribute('data-sound', 'ui-04');
     toggleBtn.addEventListener('click', toggleHistory);
 
     // Insert button right after the interjection body (floats right in footer)
@@ -123,12 +125,14 @@ const TooltipSystem = (function() {
     }
 
     _mokInterjectionElement.textContent = message;
+    _lastMessage = message;
     _addToHistory(message);
 
     var duration = durationMs || 2500;
     _currentTimer = setTimeout(function() {
       if (_currentPriority <= PRIORITY_NORMAL) {
-        _mokInterjectionElement.textContent = DEFAULT_MESSAGE;
+        // Keep showing the last message instead of reverting to default
+        _mokInterjectionElement.textContent = _lastMessage;
       }
       _currentTimer = null;
     }, duration);
@@ -315,16 +319,17 @@ const TooltipSystem = (function() {
       var showAt = i * step;
       setTimeout(function() {
         _mokInterjectionElement.textContent = msg;
+        _lastMessage = msg;   // each message becomes the remembered tooltip
         _addToHistory(msg);
         if (typeof onEach === 'function') onEach(msg, i);
       }, showAt);
     });
 
-    // Reset to default after the last message's full duration
+    // After the last message's full duration, revert to last message (not default)
     var totalDuration = messages.length * step - gap + dur;
     _currentTimer = setTimeout(function() {
       if (_currentPriority <= PRIORITY_NORMAL) {
-        _mokInterjectionElement.textContent = DEFAULT_MESSAGE;
+        _mokInterjectionElement.textContent = _lastMessage;
       }
       _currentTimer = null;
     }, totalDuration);
@@ -351,6 +356,7 @@ const TooltipSystem = (function() {
     }
 
     _mokInterjectionElement.textContent = message;
+    _lastMessage = message;
     _addToHistory(message);
   }
 
@@ -371,7 +377,8 @@ const TooltipSystem = (function() {
     _currentPriority = PRIORITY_NORMAL;
     _detachDialogueClickHandlers();
     _mokInterjectionElement.innerHTML = '';
-    _mokInterjectionElement.textContent = DEFAULT_MESSAGE;
+    // Restore last remembered tooltip instead of bland default
+    _mokInterjectionElement.textContent = _lastMessage || DEFAULT_MESSAGE;
   }
 
   /**
@@ -498,7 +505,9 @@ const TooltipSystem = (function() {
     _mokInterjectionElement.innerHTML = html;
 
     // Log the NPC speech to history (plain text version)
-    _addToHistory(speaker + ': ' + text);
+    // Remember plain-text version so it persists after dialogue ends
+    _lastMessage = speaker + ': ' + text;
+    _addToHistory(_lastMessage);
 
     // Attach click handlers for dialogue choices
     _attachDialogueClickHandlers();
@@ -551,7 +560,8 @@ const TooltipSystem = (function() {
 
     if (_mokInterjectionElement) {
       _mokInterjectionElement.innerHTML = '';
-      _mokInterjectionElement.textContent = DEFAULT_MESSAGE;
+      // Restore last remembered tooltip instead of bland default
+      _mokInterjectionElement.textContent = _lastMessage || DEFAULT_MESSAGE;
     }
   }
 

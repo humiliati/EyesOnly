@@ -654,7 +654,10 @@
       }
       terminal.style.display = 'flex';
       inventoryGrid.style.display = 'none';
-      updateMokInterjection('Standing by for advisories.');
+      // Restore last remembered tooltip (not hardcoded default)
+      if (typeof TooltipSystem !== 'undefined' && TooltipSystem.clear) {
+        TooltipSystem.clear();
+      }
       selectedItemIndex = -1;
     }
   }
@@ -1707,6 +1710,14 @@
     animateTicker();
   }
 
+  /**
+   * Force-close the login overlay (used by AWOL launch to override).
+   */
+  function hideLoginOverlay() {
+    if (!loginOverlayVisible) return;
+    toggleLoginOverlay(); // toggles closed, restores terminal, clears forms
+  }
+
   // Expose API for other modules
   window.UIControls = {
     showInventory: function() {
@@ -1715,6 +1726,7 @@
       }
     },
     showLoginOverlay: showLoginOverlay,
+    hideLoginOverlay: hideLoginOverlay,
     updateCurrency: updateCurrencyDisplay,
     updateMokInterjection: updateMokInterjection,
     enableKernelButton: enableKernelButton,

@@ -86,7 +86,7 @@
           </div>
         </div>
         <div class="mok-header-right">
-          <button class="header-chip accountability-indicator" id="awol-button" type="button" title="AWOL — Launch Gone Rogue">
+          <button class="header-chip accountability-indicator" id="awol-button" type="button" data-sound="ui-04" title="AWOL — Launch Gone Rogue">
             <span class="awol-pause-icon" id="awol-pause-icon" style="display:none;">⏸</span>
             <span class="accountability-label">AWOL</span>
             <span class="accountability-icon" id="accountability-icon">●</span>
@@ -129,7 +129,7 @@
                        placeholder="adjective-noun-number" autocomplete="off" spellcheck="false">
                 <button class="awol-seed-randomize" id="awol-seed-randomize" type="button" title="Randomize seed">⟳</button>
               </div>
-              <button class="awol-launch-btn" id="awol-launch-btn" type="button">▶ LAUNCH</button>
+              <button class="awol-launch-btn" id="awol-launch-btn" type="button" data-sound="ui-04">▶ PLAY Rogue</button>
             </div>
           </div>
         </div>
@@ -139,19 +139,20 @@
         <div id="monitor-body">
           <aside id="control-rail">
             <div class="control-buttons">
-              <button type="button" data-action="back" data-sound="ui-01">back</button>
-              <button type="button" data-action="inventory" data-sound="ui-02">inventory</button>
-              <button type="button" data-action="login" data-sound="ui-03">login</button>
-              <button type="button" data-action="kernel" class="kernel-btn" data-sound="ui-03" disabled>kernel</button>
+              <button type="button" data-action="back" data-sound="ui-04">back</button>
+              <button type="button" data-action="inventory" data-sound="ui-04">inventory</button>
+              <button type="button" data-action="login" data-sound="ui-04">login</button>
+              <button type="button" data-action="kernel" class="kernel-btn" data-sound="ui-04" disabled>kernel</button>
               <button type="button" data-action="help" data-sound="ui-04">help</button>
               <button type="button" data-action="score" data-sound="ui-04">score</button>
             </div>
             <div class="debrief-window" id="debrief-window" aria-label="Command and Conquer style debrief feed">
-              <div class="debrief-label" id="debrief-label">
+              <div class="debrief-label" id="debrief-label" data-sound="ui-04">
                 <span class="debrief-label-text">debrief feed</span>
                 <div class="audio-controls-inline" id="audio-controls-inline">
                   <!-- Speaker icon: click = mute, long-press = open dropdown -->
                   <button class="audio-btn" id="audio-speaker-btn" type="button"
+                          data-sound="ui-04"
                           aria-label="Toggle mute (click) or expand audio panel (long press)"
                           title="Click: mute · Long press: expand">
                     <svg id="audio-icon-on" viewBox="0 0 24 24">
@@ -167,6 +168,7 @@
                   </button>
                   <span class="audio-sep"></span>
                   <button class="audio-btn" id="audio-chevron-btn" type="button"
+                          data-sound="ui-04"
                           aria-label="Expand audio settings">
                     <span class="audio-chevron" id="audio-chevron">▾</span>
                   </button>

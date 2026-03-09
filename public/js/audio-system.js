@@ -211,9 +211,12 @@ const AudioSystem = (function () {
   function play(name, opts) {
     if (!_ctx) _ensureCtx();
     if (!_ctx) return;
-    // Don't attempt playback while context is suspended (pre-gesture).
+    // If context is suspended (pre-gesture), try to resume and replay
+    // the sound once active — don't just drop it.
     if (_ctx.state === 'suspended') {
-      _resume();
+      _ctx.resume().then(function () {
+        play(name, opts);  // retry after resume
+      }).catch(function () {});
       return;
     }
     _resume();

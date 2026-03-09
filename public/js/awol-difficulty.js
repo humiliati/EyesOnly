@@ -411,6 +411,11 @@ const AWOLDifficulty = (function () {
     _isPaused = false;
     _setButtonState('running');
 
+    // Dismiss login overlay if it's open — game launch takes priority
+    if (typeof UIControls !== 'undefined' && UIControls.hideLoginOverlay) {
+      UIControls.hideLoginOverlay();
+    }
+
     // Start the game — same code path as terminal `rogue` command
     if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.start === 'function') {
       console.log('[AWOL] Launching Gone Rogue — Tier: ' + _currentTier +
