@@ -43,6 +43,12 @@ const AudioSystem = (function () {
   var _musicDimMultiplier = 1.0;
   var _footstepBoostMultiplier = 1.0;
 
+  // ── Gesture-active flag ──
+  // Set true while the first-gesture handler is synchronously calling
+  // playMusic(), so playMusic can proceed even if AudioContext still
+  // reports 'suspended' (it transitions momentarily).
+  var _gestureActive = false;
+
   // ── Onboarding music guard ──
   // When true, floor-transition music logic should not interrupt the
   // current track (CLUBBED_TO_DEATH spans launch → char creation →
@@ -207,37 +213,56 @@ const AudioSystem = (function () {
     // Auto-load manifest from canonical location
     loadManifest('/audio/audio-manifest.json');
 
-    // Resume on first user gesture (click/touch anywhere).
-    // IMPORTANT: replay pending music INSIDE the gesture context so that
-    // HTMLAudioElement.play() is not blocked by Chrome's autoplay policy.
+    // ── Persistent gesture handler ─────────────────────────────
+    // Browsers (Chrome, Brave, Safari) require a real user gesture to
+    // unlock AudioContext and HTMLAudioElement.play().  Different browsers
+    // have different thresholds — some need the VERY FIRST click, others
+    // accept any click.  Instead of removing the listener after one try,
+    // we keep it alive until the context is confirmed 'running' AND any
+    // pending music has been started.  This survives Brave's aggressive
+    // autoplay blocking and Chrome's strict activation window.
+    var _gestureHandlerDone = false;
     var handler = function () {
-      document.removeEventListener('click', handler, true);
-      document.removeEventListener('touchstart', handler, true);
-      document.removeEventListener('keydown', handler, true);
+      if (_gestureHandlerDone) return;
 
+      // Always try to resume if suspended
       if (_ctx && _ctx.state === 'suspended') {
-        // Resume and replay pending music in the promise callback.
-        // Chrome resolves the resume promise as a microtask while still
-        // within the user gesture task, so audio.play() is allowed.
-        _ctx.resume().then(function () {
-          if (_pendingMusicName) {
-            var n = _pendingMusicName;
-            _pendingMusicName = null;
-            playMusic(n);
-          }
-        }).catch(function () {});
-      } else {
-        // Context already running — replay immediately
-        if (_pendingMusicName) {
-          var n = _pendingMusicName;
-          _pendingMusicName = null;
-          playMusic(n);
-        }
+        _ctx.resume().catch(function () {});
+      }
+
+      // Replay pending music SYNCHRONOUSLY in the gesture call-stack.
+      if (_pendingMusicName) {
+        var n = _pendingMusicName;
+        _pendingMusicName = null;
+        _gestureActive = true;
+        playMusic(n);
+        _gestureActive = false;
+      }
+
+      // Only remove listeners once context is running and no music is pending
+      if (_ctx && _ctx.state === 'running' && !_pendingMusicName) {
+        _gestureHandlerDone = true;
+        document.removeEventListener('click', handler, true);
+        document.removeEventListener('touchstart', handler, true);
+        document.removeEventListener('keydown', handler, true);
       }
     };
     document.addEventListener('click', handler, true);
     document.addEventListener('touchstart', handler, true);
     document.addEventListener('keydown', handler, true);
+
+    // Also listen for context state change — some browsers resume the
+    // context asynchronously AFTER the gesture handler returns.  When
+    // that happens, replay any pending music immediately.
+    if (_ctx) {
+      _ctx.addEventListener('statechange', function () {
+        if (_ctx.state === 'running' && _pendingMusicName) {
+          var n = _pendingMusicName;
+          _pendingMusicName = null;
+          playMusic(n);
+        }
+      });
+    }
 
     // Bind data-sound delegate for UI buttons (UI-CANON §17)
     _bindDataSoundDelegate();
@@ -368,16 +393,11 @@ const AudioSystem = (function () {
     if (!_ctx) return;
 
     // If context is still suspended (no user gesture yet), stash the
-    // request and replay it once the context resumes.
-    if (_ctx.state === 'suspended') {
+    // request and replay it once a gesture fires.  The gesture handler
+    // sets _gestureActive = true and calls playMusic synchronously, so
+    // we must NOT defer in that case (audio.play needs the activation).
+    if (_ctx.state === 'suspended' && !_gestureActive) {
       _pendingMusicName = name;
-      _ctx.resume().then(function () {
-        if (_pendingMusicName) {
-          var n = _pendingMusicName;
-          _pendingMusicName = null;
-          playMusic(n);
-        }
-      }).catch(function () {});
       return;
     }
     _resume();
@@ -482,7 +502,7 @@ const AudioSystem = (function () {
   function isOnboardingMusic()   { return _onboardingMusic; }
 
   // ── Interior audio multiplier API ──
-  // setMusicDim(0.4) = reduce music to 40% for shallow interiors
+  // setMusicDim(0.25) = reduce music to 25% for shallow interiors
   // setMusicDim(1.0) = restore to user's normal volume
   function setMusicDim(v) {
     _musicDimMultiplier = Math.max(0, Math.min(1, Number(v) || 1));
@@ -563,7 +583,8 @@ const AudioSystem = (function () {
 
   /**
    * Play a footstep sound based on current biome.
-   * Call this once per successful player move.
+   * Uses terrain-specific left/right alternating clips from R2:
+   *   footstep-left-grass, footstep-right-stone, etc.
    * @param {string} [biomeName] - e.g. 'FOREST', 'GREY_CAVE'. Omit = dirt fallback.
    * @param {boolean} [isInterior] - true if inside a building
    * @param {boolean} [running] - true for faster steps (higher pitch)
@@ -579,8 +600,8 @@ const AudioSystem = (function () {
     _footLeft = !_footLeft;
 
     var name = 'footstep-' + side + '-' + terrain;
-    // Base volume 50% quieter than original (was 0.25/0.35)
-    var vol = running ? 0.175 : 0.125;
+    // Audible base volume — leaves headroom for boost/equipment multipliers
+    var vol = running ? 0.7 : 0.5;
     var pitch = running ? 1.15 : 1.0;
 
     // Apply interior boost multiplier (e.g. 1.2 inside buildings)

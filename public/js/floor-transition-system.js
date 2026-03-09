@@ -97,7 +97,7 @@ var FloorTransitionSystem = (function () {
         // Still in onboarding territory — keep CLUBBED_TO_DEATH
         // But still apply interior audio layering if in a building
         if (isInterior && interiorDepth === 1) {
-          AudioSystem.setMusicDim(0.4);
+          AudioSystem.setMusicDim(0.25);
           AudioSystem.setFootstepBoost(1.2);
         } else {
           AudioSystem.setMusicDim(1.0);
@@ -128,7 +128,7 @@ var FloorTransitionSystem = (function () {
         AudioSystem.playMusic(deepTrack);
       } else {
         // Shallow interior (n.n) — keep current biome music, just dim it
-        AudioSystem.setMusicDim(0.4);        // 60% quieter
+        AudioSystem.setMusicDim(0.25);       // 75% quieter
         AudioSystem.setFootstepBoost(1.2);   // louder footsteps indoors
         // Don't call playMusic — keep whatever's already playing
       }
