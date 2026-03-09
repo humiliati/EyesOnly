@@ -580,16 +580,24 @@ const AudioSystem = (function () {
   };
 
   // Floor-depth volume table: [walkVol, runVol]
+  // Wider spread so exterior→interior feels more distinct
   var _DEPTH_VOL = {
-    0: [0.75, 0.85],   // exterior
-    1: [1.00, 1.15],   // shallow interior (floor n.n)
-    2: [1.15, 1.25]    // deep interior (floor n.n.n)
+    0: [0.70, 0.80],   // exterior (slightly quieter open air)
+    1: [1.05, 1.20],   // shallow interior (floor n.n — enclosed reverb)
+    2: [1.20, 1.35]    // deep interior (floor n.n.n — tight space)
+  };
+
+  // Floor-depth pitch modifier (subtle — softens exterior→stone sample transition)
+  var _DEPTH_PITCH = {
+    0: 1.0,    // exterior — natural pitch
+    1: 0.97,   // shallow interior — slightly warmer / less bright
+    2: 0.95    // deep interior — even warmer stone resonance
   };
 
   // Cadence timing (ms)
-  var _WALK_CADENCE  = 420;
-  var _RUN_CADENCE   = 270;
-  var _LIMP_SHORT    = 420;   // injured: L step (quick)
+  var _WALK_CADENCE  = 357;   // ~15% faster than old 420ms (walking = urgency)
+  var _RUN_CADENCE   = 270;   // sprint unchanged (emergency)
+  var _LIMP_SHORT    = 357;   // injured: L step (quick) — matches walk cadence
   var _LIMP_LONG     = 650;   // injured: R step (drag)
   var _HEALTH_LIMP   = 0.30;  // limp when HP < 30%
 
@@ -669,7 +677,8 @@ const AudioSystem = (function () {
     var pitchJitter = 0.98 + Math.random() * 0.04;   // 0.98–1.02
     vol *= volJitter;
 
-    var pitch = sprinting ? 1.15 : 1.0;
+    var pitch = sprinting ? 1.08 : 1.0;              // sprint pitch reduced (was 1.15)
+    pitch *= (_DEPTH_PITCH[depth] || 1.0);            // soften interior timbre
     pitch *= pitchJitter;
 
     // Limp pitch: injured drag step is lower

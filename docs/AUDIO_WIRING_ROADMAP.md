@@ -1,7 +1,7 @@
 # Audio Wiring Roadmap
 
 > **Date:** 2026-03-09 (last updated)
-> **Status:** Phase 0 + Phase 2 + Phase 3 + Phase 4.1 complete, Phase 1 deferred (pending card hand harmonization), transcoding shipped, Sound Designer portal live with 314 sound entries + 103 card sounds
+> **Status:** Phase 0 + Phase 2 + Phase 3 + Phase 4.1 complete, Phase 3.4 rewritten (time-based cadence engine with stereo panning, floor-depth volume, injury limp, humanization), Phase 1 deferred (pending card hand harmonization), transcoding shipped, Sound Designer portal live with 314 sound entries + 103 card sounds
 > **Manifest entries:** 314 (167 original SFX + 8 footsteps + 103 card sounds + 20 Songs + 18 Cyberleaf + 14 Aila Scott — some with `_status: "staged"`)
 
 ---
@@ -190,18 +190,25 @@ Day/night alternation: even floors = night.
 | Electronic (Monitor/Terminal) | `particles-dark` vol 0.45 | `_destroyElectronic()` | ✅ |
 | Light bulb | `impact-1` vol 0.4 | `_destroyLightBulb()` | ✅ |
 
-### 3.4 Footstep System — `audio-system.js` + `move-player-system.js` ✅
+### 3.4 Footstep Engine — `audio-system.js` + `game-tick-system.js` ✅ REWRITTEN
 
-8 stereo footstep samples (L/R × 4 terrains) with biome→terrain auto-mapping. See `docs/FOOTSTEP_AUDIO_SYSTEM.md` for full spec.
+Time-based cadence engine with stereo panning, floor-depth volume, injury limp, and humanization. 8 stereo footstep samples (L/R × 4 terrains) with biome→terrain auto-mapping. Full spec: `docs/FOOTSTEP_AUDIO_SYSTEM.md`.
 
 | Feature | Status |
 |---|---|
-| `AudioSystem.playFootstep(biome, isInterior, running)` | ✅ |
+| `AudioSystem.tickFootsteps(moving, sprinting, biomeName, interiorDepth, healthPct)` | ✅ |
+| Time-based cadence timer (walk=420ms, run=270ms) | ✅ |
+| Strict L-R-L-R foot alternation | ✅ |
+| Stereo panning (L=-0.35, R=+0.35) via StereoPannerNode | ✅ |
+| Floor-depth volume table (exterior/shallow/deep) | ✅ |
+| Injury limp mode (HP <30%): asymmetric cadence + pitch drop | ✅ |
+| Humanization (±5% vol, ±2% pitch jitter per step) | ✅ |
+| Equipment modifiers (footstep_volume_multiplier) | ✅ |
 | Biome→terrain mapping (Forest→grass, Cave→stone, etc.) | ✅ |
 | Interior default to stone | ✅ |
-| Running mode (higher volume + pitch) | ✅ |
-| L/R alternation | ✅ |
 | Designer portal terrain override (Map + Interior) | ✅ |
+| Legacy `playFootstep()` wrapper (backward compat) | ✅ |
+| Per-frame call from game-tick-system.js (not per-tile) | ✅ |
 
 ---
 
@@ -215,7 +222,25 @@ Day/night alternation: even floors = night.
 | Enemy becomes suspicious (SUSPICIOUS threshold) | — | `OverheadAnimator.showExpression('QUESTION')` — yellow "?" | ✅ |
 | Tooltip flash on alert | — | `TooltipSystem.show('! Enemy alerted!')` 1.5s | ✅ |
 
-### 4.2 Enemy Death — Various combat files
+### 4.2 Enemy Footsteps — `enemy-ai-system.js` + `audio-system.js` 🔲 PLANNED
+
+Pathing enemies produce audible footstep sounds with distance-based attenuation. Three weight classes determine cadence, volume, and sound selection.
+
+| Weight Class | Base Cadence | Base Volume | Audible Range | Examples |
+|---|---|---|---|---|
+| Light | 350ms | 0.4 | 8 tiles | Scout, rat |
+| Medium | 500ms | 0.6 | 10 tiles | Guard, soldier |
+| Heavy | 700ms | 0.8 | 14 tiles | Brute, mech |
+
+**Integration point:** `_moveEnemyToPoint()` in `enemy-ai-system.js` calls `AudioSystem.tickEnemyFootstep(enemy, ctx)` after position update.
+
+**Proximal attenuation:** `volume = baseVol × (1 - distance / maxRange)` with stereo pan from player-relative direction.
+
+**Assets needed:** 24 files (`enemy-footstep-{light,medium,heavy}-{left,right}-{dirt,grass,sand,stone}`) — can reuse player footsteps with pitch/vol transforms until dedicated assets are created.
+
+**Portal category:** 👹 ENEMY SOUNDS (footstep subsection)
+
+### 4.3 Enemy Death — Various combat files
 
 | Event | Suggested Sound |
 |---|---|
@@ -224,13 +249,14 @@ Day/night alternation: even floors = night.
 | Enemy defeated jingle | `enemy-defeated` |
 | Boss encounter start | Boss music track (Aila Scott) |
 
-### 4.3 Stealth System — `stealth-system.js`
+### 4.4 Stealth System — `stealth-system.js`
 
 | Event | Suggested Sound |
 |---|---|
 | Enter stealth | `whoosh-1` quiet |
 | Stealth break (detected) | `enemy-1` or `phone-ring` |
 | Sprint footsteps | Footstep system handles via `running` flag |
+| Footprint visibility | Stealth bonus modulates footprint decay rate (see Phase 8) |
 
 ---
 
@@ -331,6 +357,56 @@ Multiple named markers/regions, batch export, preview queue.
 
 ---
 
+## Phase 8 — Pet Footsteps & Footprint Ground Effects (Priority: MEDIUM) 🔲 PLANNED
+
+> Full spec: `docs/FOOTSTEP_AUDIO_SYSTEM.md` — see "Expansion" sections.
+
+### 8.1 Pet Footsteps — `audio-system.js` + `pet-follower.js`
+
+Each pet tier gets distinct movement audio with varying humanization levels.
+
+| Pet Tier | Sound | Humanization | Behavior |
+|---|---|---|---|
+| RUMBA | `pet-lullaby-hum` | None (mechanical) | Single one-shot on movement start — not per step |
+| HUMANOID | `pet-footstep-humanoid-{L,R}` | High (±8% vol, ±4% pitch) | L/R cadence: walk 400ms, run 260ms |
+| MEGA | `pet-footstep-mega-{L,R}` | Low (±2% vol, ±1% pitch) | L/R cadence: walk 550ms, run 380ms, wider pan |
+
+**New API:** `AudioSystem.tickPetFootsteps(pets, biomeName, interiorDepth)`
+
+**Seam:** `PetFollower` needs `getActivePets()` public getter. Each pet provides `.x`, `.y`, `.type`.
+
+**Assets needed:** 5 new sounds (see FOOTSTEP_AUDIO_SYSTEM.md for full list).
+
+**Portal update:** New 🐾 PET SOUNDS category in Sound Designer.
+
+### 8.2 Footprint Ground Effects — `ground-effects-system.js` + `enemy-ai-system.js` + `stealth-system.js`
+
+Persistent visual footprints on the ground layer, feeding enemy AI suspicion.
+
+**Flow:**
+1. Every step event (player, pet, enemy) → `GroundEffectsSystem.addFootprint(x, y, entityType, facing, timestamp)`
+2. Footprints render as semi-transparent decals, fading over ~15 seconds
+3. Stealth bonus modulates decay rate (high stealth = faster fade or no prints)
+4. Enemy AI queries `getFootprintsNear(x, y, radius)` each patrol tick
+5. Freshness × density → suspicion accumulation → SUSPICIOUS / ALERTED thresholds
+
+**New APIs on GroundEffectsSystem:**
+
+| Method | Purpose |
+|---|---|
+| `addFootprint(x, y, entityType, facing, timestamp)` | Place footprint decal |
+| `getFootprintsNear(x, y, radius)` | Query for AI |
+| `tickFootprintDecay(deltaMs)` | Fade/remove old prints |
+| `getFootprintSuspicion(x, y, radius)` | Pre-computed suspicion score |
+
+**Visual spec:** max 200 prints in memory, oldest culled first. Initial opacity: player=0.6, pet=0.4, enemy=0.3.
+
+**Seams:** Reads `StealthSystem.getPlayerStealthBonus()` for decay modulation. Feeds `enemy.suspicion` in `enemy-ai-system.js` alongside existing LOS/noise detection.
+
+**Estimated effort:** ~300 lines across `ground-effects-system.js` (footprint subsystem) + ~50 lines in `enemy-ai-system.js` (suspicion query) + ~20 lines in `audio-system.js` (emit footprint on step).
+
+---
+
 ## Manifest Gaps
 
 | Referenced Key | Closest Manifest Match | Action |
@@ -343,18 +419,26 @@ Multiple named markers/regions, batch export, preview queue.
 
 | File | Role |
 |---|---|
-| `public/js/audio-system.js` | Core singleton — play, playMusic, playRandom, playFootstep, data-sound delegate |
+| `public/js/audio-system.js` | Core singleton — play, playMusic, playRandom, tickFootsteps, stereo pan, data-sound delegate |
+| `public/js/game-tick-system.js` | Per-frame footstep caller, movement/biome/health resolution |
+| `public/js/gone-rogue.js` | Context provider (floor stack, biome lookup, player HP) |
+| `public/js/gone-rogue-movement.js` | Movement state (isMoving, isSprinting) for footstep engine |
+| `public/js/floor-transition-system.js` | Interior music dim (0.25 multiplier on building entry) |
+| `public/js/pet-follower.js` | Pet positions/types — future `tickPetFootsteps()` source |
+| `public/js/enemy-ai-system.js` | Enemy patrol movement — future `tickEnemyFootstep()` source |
+| `public/js/ground-effects-system.js` | Tile effects + future footprint decal system |
+| `public/js/stealth-system.js` | Stealth bonus → future footprint decay modulation |
 | `public/js/audio-controls-widget.js` | Debrief feed UI widget |
 | `public/css/audio-controls.css` | Widget styling |
 | `public/audio/audio-manifest.json` | 314-entry sound registry (source of truth) |
-| `src/worker/routes/audio.ts` | R2 serving route with CORS |
+| `src/worker/routes/audio.ts` | R2 serving route with CORS + Range requests |
 | `src/worker/routes/audio-upload.ts` | Upload route (POST /api/audio/upload) |
 | `src/worker/index.ts` | CORS middleware on /audio/* |
 | `scripts/r2-audio-sync.sh` | Batch R2 uploader (encoded_for_r2/ → R2) |
 | `public/portal/sound-designer.html` | Designer portal — 314 static sound entries |
 | `public/portal/js/sound-designer.js` | Portal logic — streaming preview, static library |
 | `public/portal/css/sound-designer.css` | Portal styling |
-| `docs/FOOTSTEP_AUDIO_SYSTEM.md` | Footstep system documentation |
+| `docs/FOOTSTEP_AUDIO_SYSTEM.md` | Footstep engine spec (player, pet, enemy, footprint ground effects) |
 
 ---
 
@@ -377,10 +461,13 @@ Musician/Designer                Sound Designer Portal
                  |
     +------------+-------------+----------+
     |                          |          |
-  SFX path                 Music path  Footstep path
-  fetch → decode →         <audio> →   biome → terrain →
-  BufferSourceNode →       MediaSrc →  L/R alternate →
-  _sfxGain →               _musicGain → _sfxGain →
-  _masterGain →            _masterGain → _masterGain →
-  destination              destination  destination
+  SFX path                 Music path  Footstep path (player/pet/enemy)
+  fetch → decode →         <audio> →   movement state → cadence timer →
+  BufferSourceNode →       MediaSrc →  foot toggle → terrain select →
+  _sfxGain →               _musicGain → depth vol × equip × jitter →
+  _masterGain →            _masterGain → StereoPan → _sfxGain →
+  destination              destination  _masterGain → destination
+                                        │
+                                        └→ GroundEffects.addFootprint()
+                                           → enemy AI suspicion query
 ```

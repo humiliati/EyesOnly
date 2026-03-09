@@ -82,7 +82,9 @@ if fail > 0:
         print(m)
     print("")
     print("Fix: Run 'bash scripts/r2-audio-sync.sh' then 'npx wrangler deploy'")
+    sys.exit(1)
 else:
     print("")
     print("  ✓ All manifest entries are accessible!")
+    sys.exit(0)
 PYEOF

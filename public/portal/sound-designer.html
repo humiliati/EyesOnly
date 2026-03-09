@@ -14,6 +14,9 @@
         <button id="refresh-manifest-btn" class="btn-secondary">🔄 Refresh</button>
         <button id="save-assignments-btn" class="btn-primary">💾 Save Assignments</button>
         <button id="export-sound-map-btn" class="btn-secondary">📤 Export JSON</button>
+        <button id="verify-assets-btn" class="btn-secondary">🔍 Verify Assets</button>
+        <button id="sync-deletes-btn" class="btn-danger btn-small" disabled>🗑️ Sync 0 Deletes</button>
+        <button id="export-diff-btn" class="btn-secondary" disabled>📤 Export Manifest Diff</button>
       </div>
     </header>
 
@@ -21,6 +24,14 @@
       <!-- ============ LEFT: Sound Library ============ -->
       <aside class="sound-library">
         <h2>Sound Library</h2>
+        <div class="library-sort">
+          <select id="library-sort" aria-label="Sort order">
+            <option value="default">Sort: Default</option>
+            <option value="name">Sort: Name (A–Z)</option>
+            <option value="category">Sort: Category</option>
+            <option value="date">Sort: Date (Newest)</option>
+          </select>
+        </div>
         <div class="library-search">
           <input type="text" id="library-search" placeholder="Search sounds…" aria-label="Search sounds">
         </div>
@@ -256,6 +267,36 @@
             <button class="sound-item" data-sound-id="footstep-right-sand" data-src="/audio/sfx/footstep-right-sand.webm" data-category="footstep" data-loop="false" data-title="Footstep Right — Sand"><span class="mini-play">♪</span> Right Sand</button>
             <button class="sound-item" data-sound-id="footstep-left-stone" data-src="/audio/sfx/footstep-left-stone.webm" data-category="footstep" data-loop="false" data-title="Footstep Left — Stone"><span class="mini-play">♪</span> Left Stone</button>
             <button class="sound-item" data-sound-id="footstep-right-stone" data-src="/audio/sfx/footstep-right-stone.webm" data-category="footstep" data-loop="false" data-title="Footstep Right — Stone"><span class="mini-play">♪</span> Right Stone</button>
+          </div>
+        </div>
+        <!-- ---- PET SOUNDS (planned — assets needed) ---- -->
+        <div class="category-section">
+          <div class="category-header">
+            <span>🐾 PET SOUNDS</span>
+            <span class="count">0 / 5</span>
+            <span class="chevron">▾</span>
+          </div>
+          <div class="category-items">
+            <button class="sound-item" data-sound-id="pet-lullaby-hum" data-src="" data-category="pet" data-loop="false" data-title="Roomba Lullaby Hum (initial step only)" disabled style="opacity:0.5"><span class="mini-play">♪</span> Lullaby Hum <span style="color:#ff6600;font-size:10px;">[NEEDS ASSET]</span></button>
+            <button class="sound-item" data-sound-id="pet-footstep-humanoid-left" data-src="" data-category="pet" data-loop="false" data-title="Humanoid Pet Left Step" disabled style="opacity:0.5"><span class="mini-play">♪</span> Humanoid L <span style="color:#ff6600;font-size:10px;">[NEEDS ASSET]</span></button>
+            <button class="sound-item" data-sound-id="pet-footstep-humanoid-right" data-src="" data-category="pet" data-loop="false" data-title="Humanoid Pet Right Step" disabled style="opacity:0.5"><span class="mini-play">♪</span> Humanoid R <span style="color:#ff6600;font-size:10px;">[NEEDS ASSET]</span></button>
+            <button class="sound-item" data-sound-id="pet-footstep-mega-left" data-src="" data-category="pet" data-loop="false" data-title="Mega Pet Left Step (heavy)" disabled style="opacity:0.5"><span class="mini-play">♪</span> Mega L <span style="color:#ff6600;font-size:10px;">[NEEDS ASSET]</span></button>
+            <button class="sound-item" data-sound-id="pet-footstep-mega-right" data-src="" data-category="pet" data-loop="false" data-title="Mega Pet Right Step (heavy)" disabled style="opacity:0.5"><span class="mini-play">♪</span> Mega R <span style="color:#ff6600;font-size:10px;">[NEEDS ASSET]</span></button>
+          </div>
+        </div>
+        <!-- ---- ENEMY FOOTSTEPS (planned — assets needed) ---- -->
+        <div class="category-section">
+          <div class="category-header">
+            <span>👹 ENEMY FOOTSTEPS</span>
+            <span class="count">0 / 24</span>
+            <span class="chevron">▾</span>
+          </div>
+          <div class="category-items">
+            <p style="color:#888; font-size:11px; padding:8px; margin:0;">
+              24 enemy footstep assets needed: <code>enemy-footstep-{light,medium,heavy}-{left,right}-{dirt,grass,sand,stone}</code><br>
+              <span style="color:#ff6600;">3 weight classes &times; 2 sides &times; 4 terrains = 24 files</span><br>
+              Until dedicated assets are created, player footsteps will be reused with pitch/volume transforms per weight class.
+            </p>
           </div>
         </div>
         <!-- ---- CARD SOUNDS (103 entries, WebM from R2) ---- -->
@@ -739,6 +780,8 @@
               <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">💎 Collectible</td><td style="text-align:right;">24</td></tr>
               <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🐾 Creature</td><td style="text-align:right;">5</td></tr>
               <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">👣 Footsteps</td><td style="text-align:right;">8</td></tr>
+              <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🐾 Pet Sounds</td><td style="text-align:right;color:#ff6600;">0 / 5</td></tr>
+              <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">👹 Enemy Footsteps</td><td style="text-align:right;color:#ff6600;">0 / 24</td></tr>
               <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🃏 Card Sounds</td><td style="text-align:right;">103</td></tr>
               <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🎵 Music — Songs</td><td style="text-align:right;">20</td></tr>
               <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🎮 Music — Cyberleaf</td><td style="text-align:right;">18</td></tr>
@@ -759,8 +802,8 @@
               <tr><td style="padding:3px; color:#888;">slide_card</td><td style="padding:3px;">10</td><td style="padding:3px;">Card slide / discard</td></tr>
             </table>
 
-            <h4 style="color:#33ff33; margin-top:16px;">Footstep System</h4>
-            <p>8 stereo footstep samples (L/R × 4 terrains: dirt, grass, sand, stone) are served from R2. The runtime <code>AudioSystem.playFootstep(biome, isInterior, running)</code> automatically selects terrain based on biome and alternates left/right. Interior floors default to stone. Running mode increases volume and pitch.</p>
+            <h4 style="color:#33ff33; margin-top:16px;">Footstep Engine (v2 — Time-Based Cadence)</h4>
+            <p>8 stereo footstep samples (L/R &times; 4 terrains) served from R2. The runtime <code>AudioSystem.tickFootsteps()</code> runs every frame with time-based cadence (walk=420ms, run=270ms), strict L-R alternation, stereo panning (L=-0.35, R=+0.35), floor-depth volume scaling, injury limp mode (HP &lt;30%), and &plusmn;5% vol / &plusmn;2% pitch humanization. See <code>docs/FOOTSTEP_AUDIO_SYSTEM.md</code> for full spec.</p>
             <table style="width:100%; border-collapse:collapse; font-size:11px; margin-top:6px;">
               <tr style="border-bottom:1px solid #333;"><td style="padding:3px; color:#888;">Biome</td><td style="padding:3px;">Terrain</td></tr>
               <tr style="border-bottom:1px solid #222;"><td style="padding:3px; color:#888;">Forest, Lake</td><td style="padding:3px;">grass</td></tr>
@@ -769,6 +812,21 @@
               <tr style="border-bottom:1px solid #222;"><td style="padding:3px; color:#888;">Junkyard (fallback)</td><td style="padding:3px;">dirt</td></tr>
               <tr><td style="padding:3px; color:#888;">All interiors</td><td style="padding:3px;">stone</td></tr>
             </table>
+            <table style="width:100%; border-collapse:collapse; font-size:11px; margin-top:8px;">
+              <tr style="border-bottom:1px solid #333;"><td style="padding:3px; color:#888;">Depth</td><td style="padding:3px;">Walk Vol</td><td style="padding:3px;">Run Vol</td></tr>
+              <tr style="border-bottom:1px solid #222;"><td style="padding:3px; color:#888;">Exterior</td><td style="padding:3px;">0.75</td><td style="padding:3px;">0.85</td></tr>
+              <tr style="border-bottom:1px solid #222;"><td style="padding:3px; color:#888;">Shallow interior (N.N)</td><td style="padding:3px;">1.00</td><td style="padding:3px;">1.15</td></tr>
+              <tr><td style="padding:3px; color:#888;">Deep interior (N.N.N)</td><td style="padding:3px;">1.15</td><td style="padding:3px;">1.25</td></tr>
+            </table>
+
+            <h4 style="color:#ff6600; margin-top:16px;">Planned: Pet Footsteps</h4>
+            <p>Per-pet-type movement sounds: <strong>RUMBA</strong> gets a one-shot lullaby hum on initial movement only. <strong>HUMANOID</strong> gets high-humanization L/R steps. <strong>MEGA</strong> gets low-humanization heavy thuds with wider pan. 5 assets needed.</p>
+
+            <h4 style="color:#ff6600; margin-top:16px;">Planned: Enemy Footsteps</h4>
+            <p>Pathing enemies produce distance-attenuated footstep sounds. 3 weight classes (light/medium/heavy) &times; 2 sides &times; 4 terrains = 24 assets. Until created, player footsteps reused with pitch/vol transforms. See <code>docs/AUDIO_WIRING_ROADMAP.md</code> Phase 4.2 + Phase 8.</p>
+
+            <h4 style="color:#ff6600; margin-top:16px;">Planned: Footprint Ground Effects</h4>
+            <p>Persistent visual footprints that decay over time. Enemy AI queries footprints near patrol path to accumulate suspicion. Stealth bonus modulates decay rate. See Phase 8.2 in roadmap.</p>
 
             <h4 style="color:#33ff33; margin-top:16px;">Roadmap: Music Slicer</h4>
             <p>A future <strong>Slicer</strong> tab will allow cutting segments from full-length music tracks to create SFX snippets directly in the portal. Waveform region selection, preview, fade in/out, batch export to R2. See <code>docs/AUDIO_WIRING_ROADMAP.md</code> Phase 7 for the full spec.</p>
@@ -806,6 +864,8 @@
               <option value="collectible">Collectible</option>
               <option value="creature">Creature</option>
               <option value="footstep">Footstep</option>
+              <option value="pet">Pet Sound</option>
+              <option value="enemy-footstep">Enemy Footstep</option>
               <option value="card">Card</option>
               <option value="music">Music</option>
             </select>
@@ -828,6 +888,17 @@
         </div>
 
         <div class="inspector-section">
+          <h4>Actions</h4>
+          <div class="inspector-actions">
+            <button id="insp-rename-btn" class="btn-secondary btn-small" disabled>♻️ Rename ID</button>
+            <button id="insp-delete-btn" class="btn-danger btn-small" disabled>🗑️ Mark Delete</button>
+          </div>
+          <div id="insp-missing-warning" class="missing-warning" style="display:none">
+            ⚠️ This sound's R2 asset is missing. It will fail at runtime.
+          </div>
+        </div>
+
+        <div class="inspector-section">
           <h4>Current Assignments</h4>
           <div class="assignment-list" id="inspector-assignments">
             <div class="empty-state">
@@ -836,6 +907,18 @@
           </div>
         </div>
       </aside>
+    </div>
+  </div>
+
+  <!-- ============ Modal Overlay ============ -->
+  <div id="modal-overlay" class="modal-overlay" style="display:none">
+    <div class="modal-content">
+      <h3 id="modal-title"></h3>
+      <div id="modal-body"></div>
+      <div class="modal-actions">
+        <button id="modal-cancel" class="btn-secondary">Cancel</button>
+        <button id="modal-confirm" class="btn-primary">Confirm</button>
+      </div>
     </div>
   </div>
 
