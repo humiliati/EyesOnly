@@ -75,7 +75,7 @@
         <div class="category-section">
           <div class="category-header">
             <span>⚔️ COMBAT</span>
-            <span class="count">42</span>
+            <span class="count">43</span>
             <span class="chevron">▾</span>
           </div>
           <div class="category-items">
@@ -93,6 +93,7 @@
             <button class="sound-item" data-sound-id="enemy-defeated" data-src="/audio/sfx/enemy defeated.wav" data-category="combat" data-loop="false"><span class="mini-play">♪</span> Enemy Defeated</button>
             <button class="sound-item" data-sound-id="enemy-die-1" data-src="/audio/sfx/enemy_die.wav" data-category="combat" data-loop="false"><span class="mini-play">♪</span> Enemy Die 1</button>
             <button class="sound-item" data-sound-id="enemy-die-2" data-src="/audio/sfx/enemy_die_02.wav" data-category="combat" data-loop="false"><span class="mini-play">♪</span> Enemy Die 2</button>
+            <button class="sound-item" data-sound-id="enemy-alert" data-src="/audio/sfx/ENEMY_ALERT.webm" data-category="combat" data-loop="false" data-title="Enemy Alert"><span class="mini-play">♪</span> Enemy Alert</button>
             <button class="sound-item" data-sound-id="explosion_large" data-src="/audio/sfx/enemy_die_02.wav" data-category="combat" data-loop="false"><span class="mini-play">♪</span> Explosion Large</button>
             <button class="sound-item" data-sound-id="hit-1" data-src="/audio/sfx/Hit 1.wav" data-category="combat" data-loop="false"><span class="mini-play">♪</span> Hit 1</button>
             <button class="sound-item" data-sound-id="hit-2" data-src="/audio/sfx/Hit 2.wav" data-category="combat" data-loop="false"><span class="mini-play">♪</span> Hit 2</button>
@@ -239,29 +240,217 @@
             <button class="sound-item" data-sound-id="voice" data-src="/audio/sfx/voice.wav" data-category="creature" data-loop="false"><span class="mini-play">♪</span> Voice</button>
           </div>
         </div>
+        <!-- ---- FOOTSTEPS (biome-based, served from R2) ---- -->
         <div class="category-section">
           <div class="category-header">
-            <span>🎵 MUSIC</span>
-            <span class="count">16</span>
+            <span>👣 FOOTSTEPS</span>
+            <span class="count">8</span>
             <span class="chevron">▾</span>
           </div>
           <div class="category-items">
-            <button class="sound-item" data-sound-id="music-82nd-all-the-way" data-src="/audio/music/82ND_ALL_THE_WAY.wav" data-category="music" data-loop="true" data-title="82nd All the Way" data-artist="Sabaton"><span class="mini-play">♪</span> 82nd All the Way</button>
-            <button class="sound-item" data-sound-id="music-cave" data-src="/audio/music/CAVE_MUSIC.wav" data-category="music" data-loop="true" data-title="Cave"><span class="mini-play">♪</span> Cave</button>
-            <button class="sound-item" data-sound-id="music-church-catacombs" data-src="/audio/music/CHURCH_CATACOMBS_MUSIC.wav" data-category="music" data-loop="true" data-title="Church Catacombs"><span class="mini-play">♪</span> Church Catacombs</button>
-            <button class="sound-item" data-sound-id="music-clubbed-to-death" data-src="/audio/music/CLUBBED_TO_DEATH.wav" data-category="music" data-loop="true" data-title="Clubbed to Death" data-artist="Rob Dougan"><span class="mini-play">♪</span> Clubbed to Death</button>
-            <button class="sound-item" data-sound-id="music-death-exit" data-src="/audio/music/DEATH_MUSIC_EXIT.wav" data-category="music" data-loop="false" data-title="Death Exit"><span class="mini-play">♪</span> Death Exit</button>
-            <button class="sound-item" data-sound-id="music-default-interior" data-src="/audio/music/DEFAULT_INTERIOR_MUSIC.wav" data-category="music" data-loop="true" data-title="Interior"><span class="mini-play">♪</span> Interior</button>
-            <button class="sound-item" data-sound-id="music-exterior" data-src="/audio/music/EXTERIOR_MUSIC.wav" data-category="music" data-loop="true" data-title="Exterior"><span class="mini-play">♪</span> Exterior</button>
-            <button class="sound-item" data-sound-id="music-exterior-night" data-src="/audio/music/EXTERIOR_MUSIC_NIGHT.wav" data-category="music" data-loop="true" data-title="Exterior (Night)"><span class="mini-play">♪</span> Exterior (Night)</button>
-            <button class="sound-item" data-sound-id="music-forest" data-src="/audio/music/FOREST_MUSIC.wav" data-category="music" data-loop="true" data-title="Forest"><span class="mini-play">♪</span> Forest</button>
-            <button class="sound-item" data-sound-id="music-industrial" data-src="/audio/music/INDUSTRIAL_MUSIC.wav" data-category="music" data-loop="true" data-title="Industrial"><span class="mini-play">♪</span> Industrial</button>
-            <button class="sound-item" data-sound-id="music-junkyard" data-src="/audio/music/JUNKYARD_MUSIC.wav" data-category="music" data-loop="true" data-title="Junkyard"><span class="mini-play">♪</span> Junkyard</button>
-            <button class="sound-item" data-sound-id="music-mall" data-src="/audio/music/MALL_MUSIC.wav" data-category="music" data-loop="true" data-title="Mall"><span class="mini-play">♪</span> Mall</button>
-            <button class="sound-item" data-sound-id="music-office" data-src="/audio/music/OFFICE_MUSIC.wav" data-category="music" data-loop="true" data-title="Office"><span class="mini-play">♪</span> Office</button>
-            <button class="sound-item" data-sound-id="music-paranoid-android" data-src="/audio/music/PARANOID_ANDROID.wav" data-category="music" data-loop="true" data-title="Paranoid Android" data-artist="Radiohead"><span class="mini-play">♪</span> Paranoid Android</button>
-            <button class="sound-item" data-sound-id="music-pink-panther" data-src="/audio/music/PINK_PANTHER.wav" data-category="music" data-loop="true" data-title="The Pink Panther Theme" data-artist="Henry Mancini"><span class="mini-play">♪</span> The Pink Panther Theme</button>
-            <button class="sound-item" data-sound-id="music-shop" data-src="/audio/music/SHOP_MUSIC.wav" data-category="music" data-loop="true" data-title="Shop"><span class="mini-play">♪</span> Shop</button>
+            <button class="sound-item" data-sound-id="footstep-left-dirt" data-src="/audio/sfx/footstep-left-dirt.webm" data-category="footstep" data-loop="false" data-title="Footstep Left — Dirt"><span class="mini-play">♪</span> Left Dirt</button>
+            <button class="sound-item" data-sound-id="footstep-right-dirt" data-src="/audio/sfx/footstep-right-dirt.webm" data-category="footstep" data-loop="false" data-title="Footstep Right — Dirt"><span class="mini-play">♪</span> Right Dirt</button>
+            <button class="sound-item" data-sound-id="footstep-left-grass" data-src="/audio/sfx/footstep-left-grass.webm" data-category="footstep" data-loop="false" data-title="Footstep Left — Grass"><span class="mini-play">♪</span> Left Grass</button>
+            <button class="sound-item" data-sound-id="footstep-right-grass" data-src="/audio/sfx/footstep-right-grass.webm" data-category="footstep" data-loop="false" data-title="Footstep Right — Grass"><span class="mini-play">♪</span> Right Grass</button>
+            <button class="sound-item" data-sound-id="footstep-left-sand" data-src="/audio/sfx/footstep-left-sand.webm" data-category="footstep" data-loop="false" data-title="Footstep Left — Sand"><span class="mini-play">♪</span> Left Sand</button>
+            <button class="sound-item" data-sound-id="footstep-right-sand" data-src="/audio/sfx/footstep-right-sand.webm" data-category="footstep" data-loop="false" data-title="Footstep Right — Sand"><span class="mini-play">♪</span> Right Sand</button>
+            <button class="sound-item" data-sound-id="footstep-left-stone" data-src="/audio/sfx/footstep-left-stone.webm" data-category="footstep" data-loop="false" data-title="Footstep Left — Stone"><span class="mini-play">♪</span> Left Stone</button>
+            <button class="sound-item" data-sound-id="footstep-right-stone" data-src="/audio/sfx/footstep-right-stone.webm" data-category="footstep" data-loop="false" data-title="Footstep Right — Stone"><span class="mini-play">♪</span> Right Stone</button>
+          </div>
+        </div>
+        <!-- ---- CARD SOUNDS (103 entries, WebM from R2) ---- -->
+        <div class="category-section">
+          <div class="category-header">
+            <span>🃏 CARD SOUNDS</span>
+            <span class="count">103</span>
+            <span class="chevron">▾</span>
+          </div>
+          <div class="category-items">
+            <button class="sound-item" data-sound-id="card-deal_card_1" data-src="/audio/sfx/deal_card_1.webm" data-category="card" data-loop="false" data-title="Deal Card 1"><span class="mini-play">♪</span> Deal Card 1</button>
+            <button class="sound-item" data-sound-id="card-deal_card_2" data-src="/audio/sfx/deal_card_2.webm" data-category="card" data-loop="false" data-title="Deal Card 2"><span class="mini-play">♪</span> Deal Card 2</button>
+            <button class="sound-item" data-sound-id="card-deal_card_3" data-src="/audio/sfx/deal_card_3.webm" data-category="card" data-loop="false" data-title="Deal Card 3"><span class="mini-play">♪</span> Deal Card 3</button>
+            <button class="sound-item" data-sound-id="card-deal_card_4" data-src="/audio/sfx/deal_card_4.webm" data-category="card" data-loop="false" data-title="Deal Card 4"><span class="mini-play">♪</span> Deal Card 4</button>
+            <button class="sound-item" data-sound-id="card-deal_card_5" data-src="/audio/sfx/deal_card_5.webm" data-category="card" data-loop="false" data-title="Deal Card 5"><span class="mini-play">♪</span> Deal Card 5</button>
+            <button class="sound-item" data-sound-id="card-deal_card_6" data-src="/audio/sfx/deal_card_6.webm" data-category="card" data-loop="false" data-title="Deal Card 6"><span class="mini-play">♪</span> Deal Card 6</button>
+            <button class="sound-item" data-sound-id="card-deal_card_7" data-src="/audio/sfx/deal_card_7.webm" data-category="card" data-loop="false" data-title="Deal Card 7"><span class="mini-play">♪</span> Deal Card 7</button>
+            <button class="sound-item" data-sound-id="card-deal_card_8" data-src="/audio/sfx/deal_card_8.webm" data-category="card" data-loop="false" data-title="Deal Card 8"><span class="mini-play">♪</span> Deal Card 8</button>
+            <button class="sound-item" data-sound-id="card-deal_card_9" data-src="/audio/sfx/deal_card_9.webm" data-category="card" data-loop="false" data-title="Deal Card 9"><span class="mini-play">♪</span> Deal Card 9</button>
+            <button class="sound-item" data-sound-id="card-deal_card_10" data-src="/audio/sfx/deal_card_10.webm" data-category="card" data-loop="false" data-title="Deal Card 10"><span class="mini-play">♪</span> Deal Card 10</button>
+            <button class="sound-item" data-sound-id="card-deal_card_11" data-src="/audio/sfx/deal_card_11.webm" data-category="card" data-loop="false" data-title="Deal Card 11"><span class="mini-play">♪</span> Deal Card 11</button>
+            <button class="sound-item" data-sound-id="card-deal_card_12" data-src="/audio/sfx/deal_card_12.webm" data-category="card" data-loop="false" data-title="Deal Card 12"><span class="mini-play">♪</span> Deal Card 12</button>
+            <button class="sound-item" data-sound-id="card-deal_card_13" data-src="/audio/sfx/deal_card_13.webm" data-category="card" data-loop="false" data-title="Deal Card 13"><span class="mini-play">♪</span> Deal Card 13</button>
+            <button class="sound-item" data-sound-id="card-deal_card_14" data-src="/audio/sfx/deal_card_14.webm" data-category="card" data-loop="false" data-title="Deal Card 14"><span class="mini-play">♪</span> Deal Card 14</button>
+            <button class="sound-item" data-sound-id="card-deal_card_15" data-src="/audio/sfx/deal_card_15.webm" data-category="card" data-loop="false" data-title="Deal Card 15"><span class="mini-play">♪</span> Deal Card 15</button>
+            <button class="sound-item" data-sound-id="card-deal_card_16" data-src="/audio/sfx/deal_card_16.webm" data-category="card" data-loop="false" data-title="Deal Card 16"><span class="mini-play">♪</span> Deal Card 16</button>
+            <button class="sound-item" data-sound-id="card-deal_card_17" data-src="/audio/sfx/deal_card_17.webm" data-category="card" data-loop="false" data-title="Deal Card 17"><span class="mini-play">♪</span> Deal Card 17</button>
+            <button class="sound-item" data-sound-id="card-deal_card_loop_1" data-src="/audio/sfx/deal_card_loop_1.webm" data-category="card" data-loop="false" data-title="Deal Card Loop 1"><span class="mini-play">♪</span> Deal Card Loop 1</button>
+            <button class="sound-item" data-sound-id="card-deal_card_loop_2" data-src="/audio/sfx/deal_card_loop_2.webm" data-category="card" data-loop="false" data-title="Deal Card Loop 2"><span class="mini-play">♪</span> Deal Card Loop 2</button>
+            <button class="sound-item" data-sound-id="card-deal_card_loop_3" data-src="/audio/sfx/deal_card_loop_3.webm" data-category="card" data-loop="false" data-title="Deal Card Loop 3"><span class="mini-play">♪</span> Deal Card Loop 3</button>
+            <button class="sound-item" data-sound-id="card-deal_card_loop_4" data-src="/audio/sfx/deal_card_loop_4.webm" data-category="card" data-loop="false" data-title="Deal Card Loop 4"><span class="mini-play">♪</span> Deal Card Loop 4</button>
+            <button class="sound-item" data-sound-id="card-deal_card_loop_5" data-src="/audio/sfx/deal_card_loop_5.webm" data-category="card" data-loop="false" data-title="Deal Card Loop 5"><span class="mini-play">♪</span> Deal Card Loop 5</button>
+            <button class="sound-item" data-sound-id="card-deal_card_loop_6" data-src="/audio/sfx/deal_card_loop_6.webm" data-category="card" data-loop="false" data-title="Deal Card Loop 6"><span class="mini-play">♪</span> Deal Card Loop 6</button>
+            <button class="sound-item" data-sound-id="card-flip_card_1" data-src="/audio/sfx/flip_card_1.webm" data-category="card" data-loop="false" data-title="Flip Card 1"><span class="mini-play">♪</span> Flip Card 1</button>
+            <button class="sound-item" data-sound-id="card-flip_card_2" data-src="/audio/sfx/flip_card_2.webm" data-category="card" data-loop="false" data-title="Flip Card 2"><span class="mini-play">♪</span> Flip Card 2</button>
+            <button class="sound-item" data-sound-id="card-flip_card_3" data-src="/audio/sfx/flip_card_3.webm" data-category="card" data-loop="false" data-title="Flip Card 3"><span class="mini-play">♪</span> Flip Card 3</button>
+            <button class="sound-item" data-sound-id="card-flip_card_4" data-src="/audio/sfx/flip_card_4.webm" data-category="card" data-loop="false" data-title="Flip Card 4"><span class="mini-play">♪</span> Flip Card 4</button>
+            <button class="sound-item" data-sound-id="card-flip_card_5" data-src="/audio/sfx/flip_card_5.webm" data-category="card" data-loop="false" data-title="Flip Card 5"><span class="mini-play">♪</span> Flip Card 5</button>
+            <button class="sound-item" data-sound-id="card-flip_card_6" data-src="/audio/sfx/flip_card_6.webm" data-category="card" data-loop="false" data-title="Flip Card 6"><span class="mini-play">♪</span> Flip Card 6</button>
+            <button class="sound-item" data-sound-id="card-flip_card_7" data-src="/audio/sfx/flip_card_7.webm" data-category="card" data-loop="false" data-title="Flip Card 7"><span class="mini-play">♪</span> Flip Card 7</button>
+            <button class="sound-item" data-sound-id="card-flip_card_8" data-src="/audio/sfx/flip_card_8.webm" data-category="card" data-loop="false" data-title="Flip Card 8"><span class="mini-play">♪</span> Flip Card 8</button>
+            <button class="sound-item" data-sound-id="card-flip_card_9" data-src="/audio/sfx/flip_card_9.webm" data-category="card" data-loop="false" data-title="Flip Card 9"><span class="mini-play">♪</span> Flip Card 9</button>
+            <button class="sound-item" data-sound-id="card-flip_card_10" data-src="/audio/sfx/flip_card_10.webm" data-category="card" data-loop="false" data-title="Flip Card 10"><span class="mini-play">♪</span> Flip Card 10</button>
+            <button class="sound-item" data-sound-id="card-flip_card_11" data-src="/audio/sfx/flip_card_11.webm" data-category="card" data-loop="false" data-title="Flip Card 11"><span class="mini-play">♪</span> Flip Card 11</button>
+            <button class="sound-item" data-sound-id="card-flip_card_12" data-src="/audio/sfx/flip_card_12.webm" data-category="card" data-loop="false" data-title="Flip Card 12"><span class="mini-play">♪</span> Flip Card 12</button>
+            <button class="sound-item" data-sound-id="card-flip_card_13" data-src="/audio/sfx/flip_card_13.webm" data-category="card" data-loop="false" data-title="Flip Card 13"><span class="mini-play">♪</span> Flip Card 13</button>
+            <button class="sound-item" data-sound-id="card-flip_card_14" data-src="/audio/sfx/flip_card_14.webm" data-category="card" data-loop="false" data-title="Flip Card 14"><span class="mini-play">♪</span> Flip Card 14</button>
+            <button class="sound-item" data-sound-id="card-flip_card_15" data-src="/audio/sfx/flip_card_15.webm" data-category="card" data-loop="false" data-title="Flip Card 15"><span class="mini-play">♪</span> Flip Card 15</button>
+            <button class="sound-item" data-sound-id="card-flip_card_16" data-src="/audio/sfx/flip_card_16.webm" data-category="card" data-loop="false" data-title="Flip Card 16"><span class="mini-play">♪</span> Flip Card 16</button>
+            <button class="sound-item" data-sound-id="card-fold_hand_1" data-src="/audio/sfx/fold_hand_1.webm" data-category="card" data-loop="false" data-title="Fold Hand 1"><span class="mini-play">♪</span> Fold Hand 1</button>
+            <button class="sound-item" data-sound-id="card-fold_hand_2" data-src="/audio/sfx/fold_hand_2.webm" data-category="card" data-loop="false" data-title="Fold Hand 2"><span class="mini-play">♪</span> Fold Hand 2</button>
+            <button class="sound-item" data-sound-id="card-fold_hand_3" data-src="/audio/sfx/fold_hand_3.webm" data-category="card" data-loop="false" data-title="Fold Hand 3"><span class="mini-play">♪</span> Fold Hand 3</button>
+            <button class="sound-item" data-sound-id="card-fold_hand_4" data-src="/audio/sfx/fold_hand_4.webm" data-category="card" data-loop="false" data-title="Fold Hand 4"><span class="mini-play">♪</span> Fold Hand 4</button>
+            <button class="sound-item" data-sound-id="card-fold_hand_5" data-src="/audio/sfx/fold_hand_5.webm" data-category="card" data-loop="false" data-title="Fold Hand 5"><span class="mini-play">♪</span> Fold Hand 5</button>
+            <button class="sound-item" data-sound-id="card-fold_hand_6" data-src="/audio/sfx/fold_hand_6.webm" data-category="card" data-loop="false" data-title="Fold Hand 6"><span class="mini-play">♪</span> Fold Hand 6</button>
+            <button class="sound-item" data-sound-id="card-fold_hand_7" data-src="/audio/sfx/fold_hand_7.webm" data-category="card" data-loop="false" data-title="Fold Hand 7"><span class="mini-play">♪</span> Fold Hand 7</button>
+            <button class="sound-item" data-sound-id="card-fold_hand_8" data-src="/audio/sfx/fold_hand_8.webm" data-category="card" data-loop="false" data-title="Fold Hand 8"><span class="mini-play">♪</span> Fold Hand 8</button>
+            <button class="sound-item" data-sound-id="card-fold_hand_9" data-src="/audio/sfx/fold_hand_9.webm" data-category="card" data-loop="false" data-title="Fold Hand 9"><span class="mini-play">♪</span> Fold Hand 9</button>
+            <button class="sound-item" data-sound-id="card-fold_hand_10" data-src="/audio/sfx/fold_hand_10.webm" data-category="card" data-loop="false" data-title="Fold Hand 10"><span class="mini-play">♪</span> Fold Hand 10</button>
+            <button class="sound-item" data-sound-id="card-fold_hand_11" data-src="/audio/sfx/fold_hand_11.webm" data-category="card" data-loop="false" data-title="Fold Hand 11"><span class="mini-play">♪</span> Fold Hand 11</button>
+            <button class="sound-item" data-sound-id="card-fold_hand_12" data-src="/audio/sfx/fold_hand_12.webm" data-category="card" data-loop="false" data-title="Fold Hand 12"><span class="mini-play">♪</span> Fold Hand 12</button>
+            <button class="sound-item" data-sound-id="card-fold_hand_13" data-src="/audio/sfx/fold_hand_13.webm" data-category="card" data-loop="false" data-title="Fold Hand 13"><span class="mini-play">♪</span> Fold Hand 13</button>
+            <button class="sound-item" data-sound-id="card-fold_hand_14" data-src="/audio/sfx/fold_hand_14.webm" data-category="card" data-loop="false" data-title="Fold Hand 14"><span class="mini-play">♪</span> Fold Hand 14</button>
+            <button class="sound-item" data-sound-id="card-fold_hand_15" data-src="/audio/sfx/fold_hand_15.webm" data-category="card" data-loop="false" data-title="Fold Hand 15"><span class="mini-play">♪</span> Fold Hand 15</button>
+            <button class="sound-item" data-sound-id="card-hand_shuffle_1" data-src="/audio/sfx/hand_shuffle_1.webm" data-category="card" data-loop="false" data-title="Hand Shuffle 1"><span class="mini-play">♪</span> Hand Shuffle 1</button>
+            <button class="sound-item" data-sound-id="card-hand_shuffle_2" data-src="/audio/sfx/hand_shuffle_2.webm" data-category="card" data-loop="false" data-title="Hand Shuffle 2"><span class="mini-play">♪</span> Hand Shuffle 2</button>
+            <button class="sound-item" data-sound-id="card-hand_shuffle_3" data-src="/audio/sfx/hand_shuffle_3.webm" data-category="card" data-loop="false" data-title="Hand Shuffle 3"><span class="mini-play">♪</span> Hand Shuffle 3</button>
+            <button class="sound-item" data-sound-id="card-hand_shuffle_4" data-src="/audio/sfx/hand_shuffle_4.webm" data-category="card" data-loop="false" data-title="Hand Shuffle 4"><span class="mini-play">♪</span> Hand Shuffle 4</button>
+            <button class="sound-item" data-sound-id="card-hand_shuffle_5" data-src="/audio/sfx/hand_shuffle_5.webm" data-category="card" data-loop="false" data-title="Hand Shuffle 5"><span class="mini-play">♪</span> Hand Shuffle 5</button>
+            <button class="sound-item" data-sound-id="card-hand_shuffle_6" data-src="/audio/sfx/hand_shuffle_6.webm" data-category="card" data-loop="false" data-title="Hand Shuffle 6"><span class="mini-play">♪</span> Hand Shuffle 6</button>
+            <button class="sound-item" data-sound-id="card-hand_shuffle_7" data-src="/audio/sfx/hand_shuffle_7.webm" data-category="card" data-loop="false" data-title="Hand Shuffle 7"><span class="mini-play">♪</span> Hand Shuffle 7</button>
+            <button class="sound-item" data-sound-id="card-hand_shuffle_8" data-src="/audio/sfx/hand_shuffle_8.webm" data-category="card" data-loop="false" data-title="Hand Shuffle 8"><span class="mini-play">♪</span> Hand Shuffle 8</button>
+            <button class="sound-item" data-sound-id="card-pick_up_card_1" data-src="/audio/sfx/pick_up_card_1.webm" data-category="card" data-loop="false" data-title="Pick Up Card 1"><span class="mini-play">♪</span> Pick Up Card 1</button>
+            <button class="sound-item" data-sound-id="card-pick_up_card_2" data-src="/audio/sfx/pick_up_card_2.webm" data-category="card" data-loop="false" data-title="Pick Up Card 2"><span class="mini-play">♪</span> Pick Up Card 2</button>
+            <button class="sound-item" data-sound-id="card-pick_up_card_3" data-src="/audio/sfx/pick_up_card_3.webm" data-category="card" data-loop="false" data-title="Pick Up Card 3"><span class="mini-play">♪</span> Pick Up Card 3</button>
+            <button class="sound-item" data-sound-id="card-pick_up_card_4" data-src="/audio/sfx/pick_up_card_4.webm" data-category="card" data-loop="false" data-title="Pick Up Card 4"><span class="mini-play">♪</span> Pick Up Card 4</button>
+            <button class="sound-item" data-sound-id="card-pick_up_card_5" data-src="/audio/sfx/pick_up_card_5.webm" data-category="card" data-loop="false" data-title="Pick Up Card 5"><span class="mini-play">♪</span> Pick Up Card 5</button>
+            <button class="sound-item" data-sound-id="card-pick_up_card_6" data-src="/audio/sfx/pick_up_card_6.webm" data-category="card" data-loop="false" data-title="Pick Up Card 6"><span class="mini-play">♪</span> Pick Up Card 6</button>
+            <button class="sound-item" data-sound-id="card-pick_up_card_7" data-src="/audio/sfx/pick_up_card_7.webm" data-category="card" data-loop="false" data-title="Pick Up Card 7"><span class="mini-play">♪</span> Pick Up Card 7</button>
+            <button class="sound-item" data-sound-id="card-pick_up_card_8" data-src="/audio/sfx/pick_up_card_8.webm" data-category="card" data-loop="false" data-title="Pick Up Card 8"><span class="mini-play">♪</span> Pick Up Card 8</button>
+            <button class="sound-item" data-sound-id="card-pick_up_card_9" data-src="/audio/sfx/pick_up_card_9.webm" data-category="card" data-loop="false" data-title="Pick Up Card 9"><span class="mini-play">♪</span> Pick Up Card 9</button>
+            <button class="sound-item" data-sound-id="card-pick_up_card_10" data-src="/audio/sfx/pick_up_card_10.webm" data-category="card" data-loop="false" data-title="Pick Up Card 10"><span class="mini-play">♪</span> Pick Up Card 10</button>
+            <button class="sound-item" data-sound-id="card-pick_up_card_11" data-src="/audio/sfx/pick_up_card_11.webm" data-category="card" data-loop="false" data-title="Pick Up Card 11"><span class="mini-play">♪</span> Pick Up Card 11</button>
+            <button class="sound-item" data-sound-id="card-pick_up_card_12" data-src="/audio/sfx/pick_up_card_12.webm" data-category="card" data-loop="false" data-title="Pick Up Card 12"><span class="mini-play">♪</span> Pick Up Card 12</button>
+            <button class="sound-item" data-sound-id="card-place_card_1" data-src="/audio/sfx/place_card_1.webm" data-category="card" data-loop="false" data-title="Place Card 1"><span class="mini-play">♪</span> Place Card 1</button>
+            <button class="sound-item" data-sound-id="card-place_card_2" data-src="/audio/sfx/place_card_2.webm" data-category="card" data-loop="false" data-title="Place Card 2"><span class="mini-play">♪</span> Place Card 2</button>
+            <button class="sound-item" data-sound-id="card-place_card_3" data-src="/audio/sfx/place_card_3.webm" data-category="card" data-loop="false" data-title="Place Card 3"><span class="mini-play">♪</span> Place Card 3</button>
+            <button class="sound-item" data-sound-id="card-place_card_4" data-src="/audio/sfx/place_card_4.webm" data-category="card" data-loop="false" data-title="Place Card 4"><span class="mini-play">♪</span> Place Card 4</button>
+            <button class="sound-item" data-sound-id="card-place_card_5" data-src="/audio/sfx/place_card_5.webm" data-category="card" data-loop="false" data-title="Place Card 5"><span class="mini-play">♪</span> Place Card 5</button>
+            <button class="sound-item" data-sound-id="card-place_card_6" data-src="/audio/sfx/place_card_6.webm" data-category="card" data-loop="false" data-title="Place Card 6"><span class="mini-play">♪</span> Place Card 6</button>
+            <button class="sound-item" data-sound-id="card-place_card_7" data-src="/audio/sfx/place_card_7.webm" data-category="card" data-loop="false" data-title="Place Card 7"><span class="mini-play">♪</span> Place Card 7</button>
+            <button class="sound-item" data-sound-id="card-place_card_8" data-src="/audio/sfx/place_card_8.webm" data-category="card" data-loop="false" data-title="Place Card 8"><span class="mini-play">♪</span> Place Card 8</button>
+            <button class="sound-item" data-sound-id="card-place_card_9" data-src="/audio/sfx/place_card_9.webm" data-category="card" data-loop="false" data-title="Place Card 9"><span class="mini-play">♪</span> Place Card 9</button>
+            <button class="sound-item" data-sound-id="card-place_card_10" data-src="/audio/sfx/place_card_10.webm" data-category="card" data-loop="false" data-title="Place Card 10"><span class="mini-play">♪</span> Place Card 10</button>
+            <button class="sound-item" data-sound-id="card-place_card_11" data-src="/audio/sfx/place_card_11.webm" data-category="card" data-loop="false" data-title="Place Card 11"><span class="mini-play">♪</span> Place Card 11</button>
+            <button class="sound-item" data-sound-id="card-shuffle_1" data-src="/audio/sfx/shuffle_1.webm" data-category="card" data-loop="false" data-title="Shuffle 1"><span class="mini-play">♪</span> Shuffle 1</button>
+            <button class="sound-item" data-sound-id="card-shuffle_2" data-src="/audio/sfx/shuffle_2.webm" data-category="card" data-loop="false" data-title="Shuffle 2"><span class="mini-play">♪</span> Shuffle 2</button>
+            <button class="sound-item" data-sound-id="card-shuffle_3" data-src="/audio/sfx/shuffle_3.webm" data-category="card" data-loop="false" data-title="Shuffle 3"><span class="mini-play">♪</span> Shuffle 3</button>
+            <button class="sound-item" data-sound-id="card-shuffle_4" data-src="/audio/sfx/shuffle_4.webm" data-category="card" data-loop="false" data-title="Shuffle 4"><span class="mini-play">♪</span> Shuffle 4</button>
+            <button class="sound-item" data-sound-id="card-shuffle_5" data-src="/audio/sfx/shuffle_5.webm" data-category="card" data-loop="false" data-title="Shuffle 5"><span class="mini-play">♪</span> Shuffle 5</button>
+            <button class="sound-item" data-sound-id="card-shuffle_6" data-src="/audio/sfx/shuffle_6.webm" data-category="card" data-loop="false" data-title="Shuffle 6"><span class="mini-play">♪</span> Shuffle 6</button>
+            <button class="sound-item" data-sound-id="card-shuffle_7" data-src="/audio/sfx/shuffle_7.webm" data-category="card" data-loop="false" data-title="Shuffle 7"><span class="mini-play">♪</span> Shuffle 7</button>
+            <button class="sound-item" data-sound-id="card-shuffle_8" data-src="/audio/sfx/shuffle_8.webm" data-category="card" data-loop="false" data-title="Shuffle 8"><span class="mini-play">♪</span> Shuffle 8</button>
+            <button class="sound-item" data-sound-id="card-slide_card_1" data-src="/audio/sfx/slide_card_1.webm" data-category="card" data-loop="false" data-title="Slide Card 1"><span class="mini-play">♪</span> Slide Card 1</button>
+            <button class="sound-item" data-sound-id="card-slide_card_2" data-src="/audio/sfx/slide_card_2.webm" data-category="card" data-loop="false" data-title="Slide Card 2"><span class="mini-play">♪</span> Slide Card 2</button>
+            <button class="sound-item" data-sound-id="card-slide_card_3" data-src="/audio/sfx/slide_card_3.webm" data-category="card" data-loop="false" data-title="Slide Card 3"><span class="mini-play">♪</span> Slide Card 3</button>
+            <button class="sound-item" data-sound-id="card-slide_card_4" data-src="/audio/sfx/slide_card_4.webm" data-category="card" data-loop="false" data-title="Slide Card 4"><span class="mini-play">♪</span> Slide Card 4</button>
+            <button class="sound-item" data-sound-id="card-slide_card_5" data-src="/audio/sfx/slide_card_5.webm" data-category="card" data-loop="false" data-title="Slide Card 5"><span class="mini-play">♪</span> Slide Card 5</button>
+            <button class="sound-item" data-sound-id="card-slide_card_6" data-src="/audio/sfx/slide_card_6.webm" data-category="card" data-loop="false" data-title="Slide Card 6"><span class="mini-play">♪</span> Slide Card 6</button>
+            <button class="sound-item" data-sound-id="card-slide_card_7" data-src="/audio/sfx/slide_card_7.webm" data-category="card" data-loop="false" data-title="Slide Card 7"><span class="mini-play">♪</span> Slide Card 7</button>
+            <button class="sound-item" data-sound-id="card-slide_card_8" data-src="/audio/sfx/slide_card_8.webm" data-category="card" data-loop="false" data-title="Slide Card 8"><span class="mini-play">♪</span> Slide Card 8</button>
+            <button class="sound-item" data-sound-id="card-slide_card_9" data-src="/audio/sfx/slide_card_9.webm" data-category="card" data-loop="false" data-title="Slide Card 9"><span class="mini-play">♪</span> Slide Card 9</button>
+            <button class="sound-item" data-sound-id="card-slide_card_10" data-src="/audio/sfx/slide_card_10.webm" data-category="card" data-loop="false" data-title="Slide Card 10"><span class="mini-play">♪</span> Slide Card 10</button>
+          </div>
+        </div>
+        <!-- ---- MUSIC — Songs (20 tracks, R2) ---- -->
+        <div class="category-section">
+          <div class="category-header">
+            <span>🎵 MUSIC — Songs</span>
+            <span class="count">20</span>
+            <span class="chevron">▾</span>
+          </div>
+          <div class="category-items">
+            <button class="sound-item" data-sound-id="music-82nd-all-the-way" data-src="/audio/music/82ND_ALL_THE_WAY.webm" data-category="music" data-loop="true" data-title="82nd All the Way" data-artist="Sabaton"><span class="mini-play">♪</span> 82nd All the Way</button>
+            <button class="sound-item" data-sound-id="music-cave" data-src="/audio/music/CAVE_MUSIC.webm" data-category="music" data-loop="true" data-title="Cave"><span class="mini-play">♪</span> Cave</button>
+            <button class="sound-item" data-sound-id="music-church-catacombs" data-src="/audio/music/CHURCH_CATACOMBS_MUSIC.webm" data-category="music" data-loop="true" data-title="Church Catacombs"><span class="mini-play">♪</span> Church Catacombs</button>
+            <button class="sound-item" data-sound-id="music-clubbed-to-death" data-src="/audio/music/CLUBBED_TO_DEATH.webm" data-category="music" data-loop="true" data-title="Clubbed to Death" data-artist="Rob Dougan"><span class="mini-play">♪</span> Clubbed to Death</button>
+            <button class="sound-item" data-sound-id="music-darude-sandstorm" data-src="/audio/music/DARUDE_SANDSTORM.webm" data-category="music" data-loop="true" data-title="Sandstorm" data-artist="Darude"><span class="mini-play">♪</span> Sandstorm</button>
+            <button class="sound-item" data-sound-id="music-death" data-src="/audio/music/DEATH_MUSIC.webm" data-category="music" data-loop="false" data-title="Death"><span class="mini-play">♪</span> Death</button>
+            <button class="sound-item" data-sound-id="music-dungeon" data-src="/audio/music/DUNGEON_MUSIC.webm" data-category="music" data-loop="true" data-title="Dungeon"><span class="mini-play">♪</span> Dungeon</button>
+            <button class="sound-item" data-sound-id="music-exterior" data-src="/audio/music/EXTERIOR_MUSIC.webm" data-category="music" data-loop="true" data-title="Exterior"><span class="mini-play">♪</span> Exterior</button>
+            <button class="sound-item" data-sound-id="music-exterior-night" data-src="/audio/music/EXTERIOR_MUSIC_NIGHT.webm" data-category="music" data-loop="true" data-title="Exterior (Night)"><span class="mini-play">♪</span> Exterior (Night)</button>
+            <button class="sound-item" data-sound-id="music-forward" data-src="/audio/music/FORWARD.webm" data-category="music" data-loop="true" data-title="Forward" data-artist="Tyler the Creator"><span class="mini-play">♪</span> Forward</button>
+            <button class="sound-item" data-sound-id="music-industrial" data-src="/audio/music/INDUSTRIAL_MUSIC.webm" data-category="music" data-loop="true" data-title="Industrial"><span class="mini-play">♪</span> Industrial</button>
+            <button class="sound-item" data-sound-id="music-junkyard" data-src="/audio/music/JUNKYARD_MUSIC.webm" data-category="music" data-loop="true" data-title="Junkyard"><span class="mini-play">♪</span> Junkyard</button>
+            <button class="sound-item" data-sound-id="music-lake" data-src="/audio/music/LAKE_MUSIC.webm" data-category="music" data-loop="true" data-title="Lake"><span class="mini-play">♪</span> Lake</button>
+            <button class="sound-item" data-sound-id="music-mall" data-src="/audio/music/MALL_MUSIC.webm" data-category="music" data-loop="true" data-title="Mall"><span class="mini-play">♪</span> Mall</button>
+            <button class="sound-item" data-sound-id="music-office" data-src="/audio/music/OFFICE_MUSIC.webm" data-category="music" data-loop="true" data-title="Office"><span class="mini-play">♪</span> Office</button>
+            <button class="sound-item" data-sound-id="music-pink-panther" data-src="/audio/music/PINK_PANTHER.webm" data-category="music" data-loop="true" data-title="The Pink Panther Theme" data-artist="Henry Mancini"><span class="mini-play">♪</span> The Pink Panther Theme</button>
+            <button class="sound-item" data-sound-id="music-radiohead-lucky" data-src="/audio/music/RADIOHEAD_LUCKY.webm" data-category="music" data-loop="true" data-title="Lucky" data-artist="Radiohead"><span class="mini-play">♪</span> Lucky</button>
+            <button class="sound-item" data-sound-id="music-reckoner" data-src="/audio/music/RECKONER_POST_CLIMAX.webm" data-category="music" data-loop="true" data-title="Reckoner (Post-Climax)" data-artist="Radiohead"><span class="mini-play">♪</span> Reckoner (Post-Climax)</button>
+            <button class="sound-item" data-sound-id="music-shop" data-src="/audio/music/SHOP_MUSIC.webm" data-category="music" data-loop="true" data-title="Shop"><span class="mini-play">♪</span> Shop</button>
+            <button class="sound-item" data-sound-id="music-ski" data-src="/audio/music/SKI_MOUNTAIN_MUSIC.webm" data-category="music" data-loop="true" data-title="Ski Mountain"><span class="mini-play">♪</span> Ski Mountain</button>
+          </div>
+        </div>
+        <!-- ---- MUSIC — Cyberleaf (18 looping tracks, R2) ---- -->
+        <div class="category-section">
+          <div class="category-header">
+            <span>🎮 MUSIC — Cyberleaf</span>
+            <span class="count">18</span>
+            <span class="chevron">▾</span>
+          </div>
+          <div class="category-items">
+            <button class="sound-item" data-sound-id="music-cl-8bit-ninjas" data-src="/audio/music/8BitNinjas.webm" data-category="music" data-loop="true" data-title="8-Bit Ninjas" data-artist="Cyberleaf"><span class="mini-play">♪</span> 8-Bit Ninjas</button>
+            <button class="sound-item" data-sound-id="music-cl-arcade-jam" data-src="/audio/music/ArcadeJam.webm" data-category="music" data-loop="true" data-title="Arcade Jam" data-artist="Cyberleaf"><span class="mini-play">♪</span> Arcade Jam</button>
+            <button class="sound-item" data-sound-id="music-cl-capt-chip-pants" data-src="/audio/music/CaptChipPants.webm" data-category="music" data-loop="true" data-title="Capt Chip Pants" data-artist="Cyberleaf"><span class="mini-play">♪</span> Capt Chip Pants</button>
+            <button class="sound-item" data-sound-id="music-cl-deep-caves" data-src="/audio/music/DeepInTheCavesBelow.webm" data-category="music" data-loop="true" data-title="Deep In The Caves Below" data-artist="Cyberleaf"><span class="mini-play">♪</span> Deep In The Caves Below</button>
+            <button class="sound-item" data-sound-id="music-cl-dont-fall-clouds" data-src="/audio/music/DontFallOffTheClouds.webm" data-category="music" data-loop="true" data-title="Don't Fall Off The Clouds" data-artist="Cyberleaf"><span class="mini-play">♪</span> Don't Fall Off The Clouds</button>
+            <button class="sound-item" data-sound-id="music-cl-far-away" data-src="/audio/music/InALandFarFarAway.webm" data-category="music" data-loop="true" data-title="In A Land Far Far Away" data-artist="Cyberleaf"><span class="mini-play">♪</span> In A Land Far Far Away</button>
+            <button class="sound-item" data-sound-id="music-cl-fight-for-lives" data-src="/audio/music/FightForYourLives.webm" data-category="music" data-loop="true" data-title="Fight For Your Lives" data-artist="Cyberleaf"><span class="mini-play">♪</span> Fight For Your Lives</button>
+            <button class="sound-item" data-sound-id="music-cl-gods-philosophers" data-src="/audio/music/OfGodsAndPhilosophers.webm" data-category="music" data-loop="true" data-title="Of Gods And Philosophers" data-artist="Cyberleaf"><span class="mini-play">♪</span> Of Gods And Philosophers</button>
+            <button class="sound-item" data-sound-id="music-cl-going-up" data-src="/audio/music/GoingUp.webm" data-category="music" data-loop="true" data-title="Going Up" data-artist="Cyberleaf"><span class="mini-play">♪</span> Going Up</button>
+            <button class="sound-item" data-sound-id="music-cl-haunted-mansion" data-src="/audio/music/LittleHauntedMansion.webm" data-category="music" data-loop="true" data-title="Little Haunted Mansion" data-artist="Cyberleaf"><span class="mini-play">♪</span> Little Haunted Mansion</button>
+            <button class="sound-item" data-sound-id="music-cl-pyramids" data-src="/audio/music/PyramidsPyramids.webm" data-category="music" data-loop="true" data-title="Pyramids Pyramids" data-artist="Cyberleaf"><span class="mini-play">♪</span> Pyramids Pyramids</button>
+            <button class="sound-item" data-sound-id="music-cl-radio-kid" data-src="/audio/music/RadioKid.webm" data-category="music" data-loop="true" data-title="Radio Kid" data-artist="Cyberleaf"><span class="mini-play">♪</span> Radio Kid</button>
+            <button class="sound-item" data-sound-id="music-cl-source-of-mana" data-src="/audio/music/TheSourceOfMana.webm" data-category="music" data-loop="true" data-title="The Source Of Mana" data-artist="Cyberleaf"><span class="mini-play">♪</span> The Source Of Mana</button>
+            <button class="sound-item" data-sound-id="music-cl-space-full-stars" data-src="/audio/music/TheSpaceIsFullOfStars.webm" data-category="music" data-loop="true" data-title="The Space Is Full Of Stars" data-artist="Cyberleaf"><span class="mini-play">♪</span> The Space Is Full Of Stars</button>
+            <button class="sound-item" data-sound-id="music-cl-trial-of-spikes" data-src="/audio/music/TrialOfSpikes.webm" data-category="music" data-loop="true" data-title="Trial Of Spikes" data-artist="Cyberleaf"><span class="mini-play">♪</span> Trial Of Spikes</button>
+            <button class="sound-item" data-sound-id="music-cl-victory" data-src="/audio/music/VictoryAtLast.webm" data-category="music" data-loop="true" data-title="Victory At Last" data-artist="Cyberleaf"><span class="mini-play">♪</span> Victory At Last</button>
+            <button class="sound-item" data-sound-id="music-cl-waking-demons" data-src="/audio/music/WakingTheDemons.webm" data-category="music" data-loop="true" data-title="Waking The Demons" data-artist="Cyberleaf"><span class="mini-play">♪</span> Waking The Demons</button>
+            <button class="sound-item" data-sound-id="music-cl-yet-another-journey" data-src="/audio/music/YetAnotherJourney.webm" data-category="music" data-loop="true" data-title="Yet Another Journey" data-artist="Cyberleaf"><span class="mini-play">♪</span> Yet Another Journey</button>
+          </div>
+        </div>
+        <!-- ---- MUSIC — Aila Scott (14 tracks, staged for later use) ---- -->
+        <div class="category-section">
+          <div class="category-header">
+            <span>🎹 MUSIC — Aila Scott</span>
+            <span class="count">14</span>
+            <span class="chevron">▾</span>
+          </div>
+          <div class="category-items">
+            <button class="sound-item" data-sound-id="music-as-afterworld" data-src="/audio/music/DashThruTheAfterworld.webm" data-category="music" data-loop="true" data-title="Dash Thru The Afterworld" data-artist="Aila Scott"><span class="mini-play">♪</span> Dash Thru The Afterworld</button>
+            <button class="sound-item" data-sound-id="music-as-club-corny" data-src="/audio/music/ClubCorny.webm" data-category="music" data-loop="true" data-title="Club Corny" data-artist="Aila Scott"><span class="mini-play">♪</span> Club Corny</button>
+            <button class="sound-item" data-sound-id="music-as-eepy" data-src="/audio/music/eepy.webm" data-category="music" data-loop="true" data-title="eepy" data-artist="Aila Scott"><span class="mini-play">♪</span> eepy</button>
+            <button class="sound-item" data-sound-id="music-as-fightwave" data-src="/audio/music/Fightwave.webm" data-category="music" data-loop="true" data-title="Fightwave" data-artist="Aila Scott"><span class="mini-play">♪</span> Fightwave</button>
+            <button class="sound-item" data-sound-id="music-as-hamster-haven" data-src="/audio/music/HamsterHaven.webm" data-category="music" data-loop="true" data-title="Hamster Haven" data-artist="Aila Scott"><span class="mini-play">♪</span> Hamster Haven</button>
+            <button class="sound-item" data-sound-id="music-as-horrid-discovery" data-src="/audio/music/AHorridDiscovery.webm" data-category="music" data-loop="true" data-title="A Horrid Discovery" data-artist="Aila Scott"><span class="mini-play">♪</span> A Horrid Discovery</button>
+            <button class="sound-item" data-sound-id="music-as-its-a-fight" data-src="/audio/music/ItsAFight.webm" data-category="music" data-loop="true" data-title="It's a Fight" data-artist="Aila Scott"><span class="mini-play">♪</span> It's a Fight</button>
+            <button class="sound-item" data-sound-id="music-as-make-it-work" data-src="/audio/music/MakeItWork.webm" data-category="music" data-loop="true" data-title="Make it Work!" data-artist="Aila Scott"><span class="mini-play">♪</span> Make it Work!</button>
+            <button class="sound-item" data-sound-id="music-as-restless-lullaby" data-src="/audio/music/RestlessLullaby.webm" data-category="music" data-loop="true" data-title="Restless Lullaby" data-artist="Aila Scott"><span class="mini-play">♪</span> Restless Lullaby</button>
+            <button class="sound-item" data-sound-id="music-as-silent-ambush" data-src="/audio/music/SilentAmbush.webm" data-category="music" data-loop="true" data-title="Silent Ambush" data-artist="Aila Scott"><span class="mini-play">♪</span> Silent Ambush</button>
+            <button class="sound-item" data-sound-id="music-as-sin-sensitivity" data-src="/audio/music/SinAndSensitivity.webm" data-category="music" data-loop="true" data-title="Sin & Sensitivity" data-artist="Aila Scott"><span class="mini-play">♪</span> Sin & Sensitivity</button>
+            <button class="sound-item" data-sound-id="music-as-solar-winds" data-src="/audio/music/SolarWindsHorrorAtmosphere.webm" data-category="music" data-loop="true" data-title="Solar Winds Horror Atmosphere" data-artist="Aila Scott"><span class="mini-play">♪</span> Solar Winds Horror Atmosphere</button>
+            <button class="sound-item" data-sound-id="music-as-time-vortex" data-src="/audio/music/SearTheTimeVortex.webm" data-category="music" data-loop="true" data-title="Sear The Time Vortex" data-artist="Aila Scott"><span class="mini-play">♪</span> Sear The Time Vortex</button>
+            <button class="sound-item" data-sound-id="music-as-village-theme" data-src="/audio/music/BittersweetVillageTheme.webm" data-category="music" data-loop="true" data-title="Bittersweet Village Theme" data-artist="Aila Scott"><span class="mini-play">♪</span> Bittersweet Village Theme</button>
           </div>
         </div>
         </div>
@@ -391,6 +580,14 @@
                     <button class="slot-btn remove" data-event="on-exit" style="display:none">✕</button>
                   </div>
                 </div>
+                <div class="assign-slot" data-event="footstep-terrain">
+                  <span class="slot-label">Footstep Terrain Override</span>
+                  <span class="slot-empty" id="map-footstep-terrain-val">drag sound here</span>
+                  <div class="slot-actions">
+                    <button class="slot-btn assign-btn" data-event="footstep-terrain">Assign Selected</button>
+                    <button class="slot-btn remove" data-event="footstep-terrain" style="display:none">✕</button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -427,6 +624,14 @@
                   <div class="slot-actions">
                     <button class="slot-btn assign-btn" data-event="floor-creak">Assign Selected</button>
                     <button class="slot-btn remove" data-event="floor-creak" style="display:none">✕</button>
+                  </div>
+                </div>
+                <div class="assign-slot" data-event="footstep-terrain">
+                  <span class="slot-label">Footstep Terrain Override</span>
+                  <span class="slot-empty" id="interior-footstep-terrain-val">drag sound here</span>
+                  <div class="slot-actions">
+                    <button class="slot-btn assign-btn" data-event="footstep-terrain">Assign Selected</button>
+                    <button class="slot-btn remove" data-event="footstep-terrain" style="display:none">✕</button>
                   </div>
                 </div>
               </div>
@@ -492,7 +697,7 @@
             <h3 style="color:#33ff33; margin-top:0;">Sound Designer Portal — Quick Reference</h3>
 
             <h4 style="color:#33ff33;">Sound Library (Left Sidebar)</h4>
-            <p>167 sounds organized into 8 categories: UI, Movement, Combat, Magic, Environment, Collectible, Creature, Music. Click any entry to select it. Use the search bar to filter by name, ID, or title. Category headers collapse/expand on click.</p>
+            <p>315 sounds organized into 12 categories: UI, Movement, Combat, Magic, Environment, Collectible, Creature, Footsteps, Card Sounds, Music — Songs, Music — Cyberleaf, Music — Aila Scott. Click any entry to select it. Use the search bar to filter by name, ID, or title. Category headers collapse/expand on click.</p>
             <p>The library is baked as static HTML — it works offline without fetching the manifest. When the manifest loads, it enriches metadata (tags, volume overrides, etc.).</p>
 
             <h4 style="color:#33ff33;">Preview (This Panel)</h4>
@@ -524,16 +729,45 @@
             <h4 style="color:#33ff33;">Audio Pipeline</h4>
             <p>Assets on R2 are available in both WAV (original) and WebM/Opus (transcoded) formats. The manifest <code>src</code> fields reference WAV paths; both formats resolve from R2. MP3 fallbacks also exist for Safari &lt; 15.4.</p>
 
-            <h4 style="color:#33ff33;">Categories (167 sounds)</h4>
+            <h4 style="color:#33ff33;">Categories (315 sounds)</h4>
             <table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:8px;">
               <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🖥 UI</td><td style="text-align:right;">9</td></tr>
               <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🏃 Movement</td><td style="text-align:right;">20</td></tr>
-              <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">⚔️ Combat</td><td style="text-align:right;">42</td></tr>
+              <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">⚔️ Combat</td><td style="text-align:right;">43</td></tr>
               <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">✨ Magic</td><td style="text-align:right;">22</td></tr>
               <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🌿 Environment</td><td style="text-align:right;">29</td></tr>
               <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">💎 Collectible</td><td style="text-align:right;">24</td></tr>
               <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🐾 Creature</td><td style="text-align:right;">5</td></tr>
-              <tr><td style="padding:4px;">🎵 Music</td><td style="text-align:right;">16</td></tr>
+              <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">👣 Footsteps</td><td style="text-align:right;">8</td></tr>
+              <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🃏 Card Sounds</td><td style="text-align:right;">103</td></tr>
+              <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🎵 Music — Songs</td><td style="text-align:right;">20</td></tr>
+              <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🎮 Music — Cyberleaf</td><td style="text-align:right;">18</td></tr>
+              <tr><td style="padding:4px;">🎹 Music — Aila Scott</td><td style="text-align:right;">14</td></tr>
+            </table>
+
+            <h4 style="color:#33ff33; margin-top:16px;">Card Sound Families (103 SFX)</h4>
+            <table style="width:100%; border-collapse:collapse; font-size:11px; margin-top:6px;">
+              <tr style="border-bottom:1px solid #333;"><td style="padding:3px; color:#888;">Family</td><td style="padding:3px;">Count</td><td style="padding:3px;">Usage</td></tr>
+              <tr style="border-bottom:1px solid #222;"><td style="padding:3px; color:#888;">deal_card</td><td style="padding:3px;">17</td><td style="padding:3px;">Card dealt from deck</td></tr>
+              <tr style="border-bottom:1px solid #222;"><td style="padding:3px; color:#888;">deal_card_loop</td><td style="padding:3px;">6</td><td style="padding:3px;">Rapid deal sequence</td></tr>
+              <tr style="border-bottom:1px solid #222;"><td style="padding:3px; color:#888;">flip_card</td><td style="padding:3px;">16</td><td style="padding:3px;">Card reveal / flip over</td></tr>
+              <tr style="border-bottom:1px solid #222;"><td style="padding:3px; color:#888;">fold_hand</td><td style="padding:3px;">15</td><td style="padding:3px;">Hand fan collapse</td></tr>
+              <tr style="border-bottom:1px solid #222;"><td style="padding:3px; color:#888;">hand_shuffle</td><td style="padding:3px;">8</td><td style="padding:3px;">In-hand shuffle</td></tr>
+              <tr style="border-bottom:1px solid #222;"><td style="padding:3px; color:#888;">pick_up_card</td><td style="padding:3px;">12</td><td style="padding:3px;">Card pickup / draw</td></tr>
+              <tr style="border-bottom:1px solid #222;"><td style="padding:3px; color:#888;">place_card</td><td style="padding:3px;">11</td><td style="padding:3px;">Card deploy / play</td></tr>
+              <tr style="border-bottom:1px solid #222;"><td style="padding:3px; color:#888;">shuffle</td><td style="padding:3px;">8</td><td style="padding:3px;">Full deck shuffle</td></tr>
+              <tr><td style="padding:3px; color:#888;">slide_card</td><td style="padding:3px;">10</td><td style="padding:3px;">Card slide / discard</td></tr>
+            </table>
+
+            <h4 style="color:#33ff33; margin-top:16px;">Footstep System</h4>
+            <p>8 stereo footstep samples (L/R × 4 terrains: dirt, grass, sand, stone) are served from R2. The runtime <code>AudioSystem.playFootstep(biome, isInterior, running)</code> automatically selects terrain based on biome and alternates left/right. Interior floors default to stone. Running mode increases volume and pitch.</p>
+            <table style="width:100%; border-collapse:collapse; font-size:11px; margin-top:6px;">
+              <tr style="border-bottom:1px solid #333;"><td style="padding:3px; color:#888;">Biome</td><td style="padding:3px;">Terrain</td></tr>
+              <tr style="border-bottom:1px solid #222;"><td style="padding:3px; color:#888;">Forest, Lake</td><td style="padding:3px;">grass</td></tr>
+              <tr style="border-bottom:1px solid #222;"><td style="padding:3px; color:#888;">Cave, Office, Mall, Industrial, Aerospace</td><td style="padding:3px;">stone</td></tr>
+              <tr style="border-bottom:1px solid #222;"><td style="padding:3px; color:#888;">Ski Mountain</td><td style="padding:3px;">sand</td></tr>
+              <tr style="border-bottom:1px solid #222;"><td style="padding:3px; color:#888;">Junkyard (fallback)</td><td style="padding:3px;">dirt</td></tr>
+              <tr><td style="padding:3px; color:#888;">All interiors</td><td style="padding:3px;">stone</td></tr>
             </table>
 
             <h4 style="color:#33ff33; margin-top:16px;">Roadmap: Music Slicer</h4>
@@ -571,6 +805,8 @@
               <option value="environment">Environment</option>
               <option value="collectible">Collectible</option>
               <option value="creature">Creature</option>
+              <option value="footstep">Footstep</option>
+              <option value="card">Card</option>
               <option value="music">Music</option>
             </select>
           </div>

@@ -96,6 +96,25 @@
             </div>
 
             <div class="palette-section">
+                <h3>Audio</h3>
+                <div class="floor-info">
+                    <div class="info-row">
+                        <label>Footstep Terrain:</label>
+                        <select id="footstep-terrain-select" style="background:#111;color:#1cff9b;border:1px solid #1cff9b33;font-family:'Courier New',monospace;font-size:11px;padding:2px 4px;">
+                            <option value="auto">Auto (from biome)</option>
+                            <option value="dirt">Dirt</option>
+                            <option value="grass">Grass</option>
+                            <option value="sand">Sand</option>
+                            <option value="stone">Stone</option>
+                        </select>
+                    </div>
+                    <div style="font-size:9px;color:#666;margin-top:4px;line-height:1.4;">
+                        Override the biome-based footstep terrain for this floor. "Auto" uses the default mapping (Forest→grass, Cave→stone, etc).
+                    </div>
+                </div>
+            </div>
+
+            <div class="palette-section">
                 <h3>Floor Info</h3>
                 <div class="floor-info">
                     <div class="info-row">

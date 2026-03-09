@@ -28,7 +28,7 @@ upload_dir() {
     local base
     base=$(basename "$f")
     echo "  ↑ ${r2_prefix}/${base}"
-    npx wrangler r2 object put "${BUCKET}/${r2_prefix}/${base}" --file "$f" || true
+    npx wrangler r2 object put "${BUCKET}/${r2_prefix}/${base}" --remote --file "$f" || true
     count=$((count + 1))
   done
   echo "  Uploaded $count files from $src_dir"
@@ -43,18 +43,10 @@ echo ""
 echo "Step 1: Deleting old music files from R2..."
 
 # Get list of existing music keys
-OLD_MUSIC=$(npx wrangler r2 object list "$BUCKET" --prefix "audio/music/" 2>&1 | grep -o '"key":"[^"]*"' | sed 's/"key":"//;s/"//' || true)
-
-if [ -n "$OLD_MUSIC" ]; then
-  echo "$OLD_MUSIC" | while IFS= read -r key; do
-    [ -z "$key" ] && continue
-    echo "  x Deleting: $key"
-    npx wrangler r2 object delete "${BUCKET}/${key}" || true
-  done
-  echo "  Old music files deleted."
-else
-  echo "  No old music files found (or listing failed -- proceeding anyway)."
-fi
+# NOTE: wrangler v4 no longer supports `r2 object list`.
+# We can't enumerate keys to delete from the CLI, so we skip the blanket delete.
+# Uploads will overwrite existing keys by name.
+echo "  (Skipping delete: wrangler has no r2 object list; uploads will overwrite existing keys.)"
 
 # ── Step 2: Upload MUSIC_SONGS (replacement + new tracks) ────
 echo ""
@@ -80,6 +72,11 @@ upload_dir "encoded_for_r2/footsteps" "audio/sfx"
 echo ""
 echo "Step 6: Uploading card sounds (WebM + MP3)..."
 upload_dir "encoded_for_r2/card_sounds" "audio/sfx"
+
+# ── Step 7: Upload ENEMY_ALERT SFX ─────────────────────────
+echo ""
+echo "Step 7: Uploading ENEMY_ALERT SFX (WebM + MP3)..."
+upload_dir "encoded_for_r2/enemy_alert" "audio/sfx"
 
 echo ""
 echo "═══════════════════════════════════════════════════════"

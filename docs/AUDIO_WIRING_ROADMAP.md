@@ -1,17 +1,18 @@
 # Audio Wiring Roadmap
 
-> **Date:** 2026-03-08 (last updated)
-> **Status:** Phase 0 + Phase 2 complete, Phase 1 deferred (pending card hand harmonization), transcoding shipped, Sound Designer portal live
+> **Date:** 2026-03-09 (last updated)
+> **Status:** Phase 0 + Phase 2 + Phase 3 + Phase 4.1 complete, Phase 1 deferred (pending card hand harmonization), transcoding shipped, Sound Designer portal live with 314 sound entries + 103 card sounds
+> **Manifest entries:** 314 (167 original SFX + 8 footsteps + 103 card sounds + 20 Songs + 18 Cyberleaf + 14 Aila Scott — some with `_status: "staged"`)
 
 ---
 
 ## Runtime Weight: ✅ Transcoded & Deployed
 
-All 167 assets have been transcoded from WAV to Opus/WebM (+ MP3 fallback) and uploaded to the `eyesonly-assets` R2 bucket. Both original WAV and transcoded WebM/MP3 formats are live on R2.
+All 314 assets have been transcoded from WAV to Opus/WebM (+ MP3 fallback) and uploaded to the `eyesonly-assets` R2 bucket. Source WAVs have been removed from `public/audio/` to stay within Cloudflare's 25 MiB static asset limit. Audio is served exclusively via R2 routes.
 
-**Manifest note:** `audio-manifest.json` `src` fields still reference `.wav` paths. The R2 bucket serves both formats. When ready to cut WAV delivery entirely, update manifest paths from `.wav` → `.webm` and optionally purge WAV files from R2.
+**Manifest note:** `audio-manifest.json` `src` fields now reference `.webm` paths for new assets (footsteps, card sounds, Cyberleaf, Aila Scott). Original 167 SFX entries still reference `.wav` paths which resolve from R2. The R2 bucket serves both formats.
 
-**Safari note:** Safari 15.4+ supports Opus natively. The MP3 fallbacks on R2 cover older Safari. A future `AudioSystem` enhancement could try `.webm` first then fall back to `.mp3`.
+**Safari note:** Safari 15.4+ supports Opus natively. The MP3 fallbacks on R2 cover older Safari. `AudioSystem` tries `.webm` first, falling back to `.mp3`.
 
 ---
 
@@ -32,6 +33,7 @@ All 167 assets have been transcoded from WAV to Opus/WebM (+ MP3 fallback) and u
 | Floor transition in | floor-transition-system.js:29 | `ascend-{1..3}` random | ✅ New |
 | `data-sound` buttons | audio-system.js (delegate) | Any — reads attribute | ✅ New |
 | `playRandom()` helper | audio-system.js | Variant picker utility | ✅ New |
+| Footstep system | audio-system.js / move-player-system.js | `footstep-{left,right}-{dirt,grass,sand,stone}` | ✅ New |
 
 ---
 
@@ -49,17 +51,23 @@ These directly affect game feel during the core loop.
 | Miss / dodge | `calculateHit()` fail path | `attack-miss` |
 | Critical hit | Crit detection | `impact-{1..4}` at volume 1.0 |
 | Player takes damage | `onDamageDealt` callback | `hit-{1..4}` at lower volume |
-| Enemy killed | `onEnemyKilled` callback | `enemy-die` or `enemy-die-2` |
+| Enemy killed | `onEnemyKilled` callback | `enemy-die-1` or `enemy-die-2` |
 
-### 1.2 Card Play — `card-play-system.js`
+### 1.2 Card Play — `card-play-system.js` (103 dedicated card sounds available)
 
 | Event | Where | Suggested Sound |
 |---|---|---|
-| Card played (attack) | `resolveAction()` type='attack' | `attack-{1..5}` |
-| Card played (magic) | `resolveAction()` type='magic' | `magic-{1..4}` |
-| Card played (support) | `resolveAction()` type='support' | `ui-03` |
+| Card played (attack) | `resolveAction()` type='attack' | `card-place_card-{1..11}` random |
+| Card played (magic) | `resolveAction()` type='magic' | `card-flip_card-{1..16}` random |
+| Card played (support) | `resolveAction()` type='support' | `card-slide_card-{1..10}` random |
+| Card drawn | Draw from deck | `card-pick_up_card-{1..12}` random |
+| Card dealt | Deal animation | `card-deal_card-{1..17}` random |
+| Rapid deal sequence | Multi-deal | `card-deal_card_loop-{1..6}` random |
+| Hand fan expand | `show()` | `card-fold_hand-{1..15}` random (or keep `whoosh-1`) |
+| Hand fan collapse | `hide()` | `card-fold_hand-{1..15}` random (or keep `whoosh-2`) |
+| Deck shuffle | Shuffle animation | `card-shuffle-{1..8}` or `card-hand_shuffle-{1..8}` random |
+| Card discard | Discard action | `card-slide_card-{1..10}` random |
 | Insufficient resources | Cost check fail | `cant-go-past-1` |
-| Card discard | `card-drag-controller.js` discard | `misc-{1..7}` |
 
 ### 1.3 Information Duel — `information-duel-engine.js`
 
@@ -72,6 +80,30 @@ These directly affect game feel during the core loop.
 | Duel lost | `enemy-4` |
 
 **Estimated effort:** ~40 lines across 3 files.
+
+---
+
+## Phase 1.5 — Card Sound Families (103 assets, NEW)
+
+> **Status:** Assets encoded + on R2 + in portal. Game wiring pending Phase 1 card system hooks.
+
+103 dedicated card SFX in 9 families, all WebM/Opus from R2:
+
+| Family | Manifest Keys | Count | Suggested Use |
+|---|---|---|---|
+| Deal Card | `card-deal_card_{1..17}` | 17 | Card dealt from deck to hand |
+| Deal Card Loop | `card-deal_card_loop_{1..6}` | 6 | Rapid multi-deal sequence |
+| Flip Card | `card-flip_card_{1..16}` | 16 | Card reveal, flip over, inspect |
+| Fold Hand | `card-fold_hand_{1..15}` | 15 | Hand fan collapse, fold action |
+| Hand Shuffle | `card-hand_shuffle_{1..8}` | 8 | In-hand card reordering |
+| Pick Up Card | `card-pick_up_card_{1..12}` | 12 | Draw from deck, card pickup |
+| Place Card | `card-place_card_{1..11}` | 11 | Deploy card to battlefield |
+| Shuffle | `card-shuffle_{1..8}` | 8 | Full deck shuffle |
+| Slide Card | `card-slide_card_{1..10}` | 10 | Slide/discard from hand |
+
+**Integration approach:** Use `AudioSystem.playRandom('card-deal_card', 17)` pattern for natural variation. Each family has enough variants to avoid repetition in rapid sequences.
+
+**Portal status:** All 103 entries are visible in the Sound Designer Portal under 🃏 CARD SOUNDS category. WebM paths point to R2.
 
 ---
 
@@ -115,24 +147,30 @@ The global delegate is live — `data-sound="<name>"` on any HTML element auto-p
 
 ### 3.1 Biome Music — `floor-transition-system.js` ✅
 
-Biome-appropriate music starts on every floor transition via `_playBiomeMusic(ctx)` helper in `floor-transition-system.js`. `AudioSystem.stopMusic()` fires during `_fadeOut()`, then `_playBiomeMusic()` fires after `generateFloor()` completes in all three transition paths (advance, retreat, interior exit).
+Biome-appropriate music starts on every floor transition via `_playBiomeMusic(ctx)` helper. `AudioSystem.stopMusic()` fires during `_fadeOut()`, then `_playBiomeMusic()` fires after `generateFloor()` completes.
 
-| Biome / Context | Music Key | Status |
-|---|---|---|
-| FOREST (day) | `music-forest` | ✅ |
-| FOREST (night) / SKI_MOUNTAIN | `music-exterior-night` | ✅ |
-| GREY_CAVE | `music-cave` | ✅ |
-| MALL | `music-mall` | ✅ |
-| INDUSTRIAL | `music-industrial` | ✅ |
-| OFFICE | `music-office` | ✅ |
-| AEROSPACE | `music-82nd-all-the-way` | ✅ |
-| LAKE (day) | `music-exterior` | ✅ |
-| LAKE (night) | `music-exterior-night` | ✅ |
-| Interior (default) | `music-default-interior` | ✅ |
-| Fallback (day) | `music-exterior` | ✅ |
-| Fallback (night) | `music-exterior-night` | ✅ |
+**Cyberleaf tracks** (18 looping chiptune tracks) now provide the biome music layer:
+
+| Biome / Context | Music Key | Artist | Status |
+|---|---|---|---|
+| FOREST (day) | `music-cl-far-away` | Cyberleaf | ✅ |
+| FOREST (night) | `music-cl-haunted-mansion` | Cyberleaf | ✅ |
+| GREY_CAVE | `music-cl-deep-caves` | Cyberleaf | ✅ |
+| MALL | `music-cl-arcade-jam` | Cyberleaf | ✅ |
+| INDUSTRIAL | `music-cl-fight-for-lives` | Cyberleaf | ✅ |
+| OFFICE | `music-cl-going-up` | Cyberleaf | ✅ |
+| AEROSPACE | `music-82nd-all-the-way` | Sabaton | ✅ |
+| LAKE (day) | `music-cl-yet-another-journey` | Cyberleaf | ✅ |
+| LAKE (night) | `music-cl-space-full-stars` | Cyberleaf | ✅ |
+| SKI_MOUNTAIN | `music-cl-dont-fall-clouds` | Cyberleaf | ✅ |
+| JUNKYARD | `music-cl-radio-kid` | Cyberleaf | ✅ |
+| Interior (default) | `music-cl-gods-philosophers` | Cyberleaf | ✅ |
+| Fallback (day) | `music-exterior` | — | ✅ |
+| Fallback (night) | `music-exterior-night` | — | ✅ |
 
 Day/night alternation: even floors = night.
+
+**Aila Scott tracks** (14 tracks, staged for future use — boss battles, special areas, etc.)
 
 ### 3.2 Ground Effects — `ground-effects-system.js` ✅
 
@@ -141,8 +179,6 @@ Day/night alternation: even floors = night.
 | Fire/hazard tile step | `rumble-1` vol 0.4 | `applyTileEffects()` hazard branch | ✅ |
 | Water tile step | `water-{1..3}` random vol 0.3 | `applyTileEffects()` water branch | ✅ |
 | Ice combat modifier | `ice-1` vol 0.3 | `applyPlayerGroundModifier()` ICE branch | ✅ |
-
-**Note:** Dedicated fire SFX replaced with `rumble-1` (low rumble conveys heat damage). `ice-1` used for ice slide.
 
 ### 3.3 Light Source Destruction — `breakable-system.js` ✅
 
@@ -154,36 +190,47 @@ Day/night alternation: even floors = night.
 | Electronic (Monitor/Terminal) | `particles-dark` vol 0.45 | `_destroyElectronic()` | ✅ |
 | Light bulb | `impact-1` vol 0.4 | `_destroyLightBulb()` | ✅ |
 
-**Note:** Campfire destruction uses `rumble-1` (low rumble for fire extinguish). Electronic destruction uses `particles-dark` (digital glitch/spark sound).
+### 3.4 Footstep System — `audio-system.js` + `move-player-system.js` ✅
+
+8 stereo footstep samples (L/R × 4 terrains) with biome→terrain auto-mapping. See `docs/FOOTSTEP_AUDIO_SYSTEM.md` for full spec.
+
+| Feature | Status |
+|---|---|
+| `AudioSystem.playFootstep(biome, isInterior, running)` | ✅ |
+| Biome→terrain mapping (Forest→grass, Cave→stone, etc.) | ✅ |
+| Interior default to stone | ✅ |
+| Running mode (higher volume + pitch) | ✅ |
+| L/R alternation | ✅ |
+| Designer portal terrain override (Map + Interior) | ✅ |
 
 ---
 
-## Phase 4 — Enemy & Stealth (Priority: MEDIUM)
+## Phase 4 — Enemy & Stealth (Priority: MEDIUM) 🔶 PARTIAL
 
-### 4.1 Enemy AI — `enemy-ai-system.js`
+### 4.1 Enemy AI — `enemy-ai-system.js` ✅ COMPLETE
 
-| Event | Suggested Sound |
-|---|---|
-| Enemy enters alert | `ui-07` at increasing volume |
-| Enemy detects player | `phone-ring` or alarm SFX |
-| Enemy loses player | `descend-1` quiet |
-| Enemy patrol step | (footstep at low volume, only if close to player) |
+| Event | Sound | Animation | Status |
+|---|---|---|---|
+| Enemy enters alert (ALERTED threshold) | `enemy-1` vol 0.6 | `OverheadAnimator.showExpression('ALERT')` — red "!" | ✅ |
+| Enemy becomes suspicious (SUSPICIOUS threshold) | — | `OverheadAnimator.showExpression('QUESTION')` — yellow "?" | ✅ |
+| Tooltip flash on alert | — | `TooltipSystem.show('! Enemy alerted!')` 1.5s | ✅ |
 
 ### 4.2 Enemy Death — Various combat files
 
 | Event | Suggested Sound |
 |---|---|
-| Regular enemy kill | `enemy-die` |
+| Regular enemy kill | `enemy-die-1` |
 | Elite enemy kill | `enemy-die-2` |
-| Boss encounter start | Boss music track |
+| Enemy defeated jingle | `enemy-defeated` |
+| Boss encounter start | Boss music track (Aila Scott) |
 
 ### 4.3 Stealth System — `stealth-system.js`
 
 | Event | Suggested Sound |
 |---|---|
 | Enter stealth | `whoosh-1` quiet |
-| Stealth break (detected) | `alert-1` or `phone-ring` |
-| Sprint footsteps | `footsteps-{1..4}` rapid |
+| Stealth break (detected) | `enemy-1` or `phone-ring` |
+| Sprint footsteps | Footstep system handles via `running` flag |
 
 ---
 
@@ -194,7 +241,7 @@ Day/night alternation: even floors = night.
 | Event | Suggested Sound |
 |---|---|
 | Player death | `enemy-4` or death jingle |
-| Death music | `music-death-exit` via `playMusic()` |
+| Death music | `music-death` via `playMusic()` |
 | Game over screen | fade to silence |
 
 ### 5.2 Victory / Run Complete — `str-victory-sequence.js`
@@ -202,14 +249,14 @@ Day/night alternation: even floors = night.
 | Event | Suggested Sound |
 |---|---|
 | Combat victory | `success-{1..3}` |
-| Floor cleared | `victory-1` |
+| Floor cleared | `music-cl-victory` (Cyberleaf — Victory At Last) |
 | Run complete | Victory music track |
 
 ### 5.3 Run Start — `run-start-system.js`
 
 | Event | Suggested Sound |
 |---|---|
-| New run begins | `ui-07` + exterior music |
+| New run begins | `ui-07` + biome music via floor transition |
 | Tutorial start | `phone-ring` |
 
 ---
@@ -220,9 +267,11 @@ Day/night alternation: even floors = night.
 
 `AudioSystem.play()` already accepts `{ x, y }` options (currently unused). Future: attenuate SFX volume by distance from player using `(1 - dist/maxDist)` factor.
 
-### 6.2 Footstep Surface Variants
+### 6.2 Footstep Surface Variants ✅ SUPERSEDED
 
-Use biome tile data to select footstep sound: metal grates → `metal-hit-1`, grass → `footsteps-1`, stone → `footsteps-3`, wood → `wood`.
+Implemented via the biome-based footstep system (Phase 3.4). Biome determines terrain (grass/stone/sand/dirt), interiors default to stone. Per-floor override available in both Map Designer and Interior Designer portals.
+
+**Future extension:** Per-tile terrain overrides (water tiles → splash, metal grates → metal-hit).
 
 ### 6.3 Combat Narration Voice Lines
 
@@ -244,79 +293,49 @@ When magnet activates and pulls multiple coins, play `coin-1`/`coin-2` in rapid 
 
 ### Overview
 
-In-browser tool within the Sound Designer portal that lets designers slice segments from full-length music tracks and export them as new SFX entries. This eliminates the need for external audio editors when creating stingers, loops, transitions, and ambient snippets from the 16 music tracks.
+In-browser tool within the Sound Designer portal that lets designers slice segments from full-length music tracks and export them as new SFX entries. This eliminates the need for external audio editors when creating stingers, loops, transitions, and ambient snippets from the 52 music tracks (20 Songs + 18 Cyberleaf + 14 Aila Scott).
 
 ### 7.1 UI — Waveform Region Selection
 
 Add a dedicated "Slicer" tab to the Sound Designer center panel (alongside Preview, Assign, Upload):
 
-- **Waveform display**: full-track waveform rendered from `AnalyserNode` or decoded buffer (music tracks are already streamable via `<audio>` element)
-- **Selection handles**: draggable start/end markers on the waveform canvas. Click-and-drag to define a region. Handles show timecodes (MM:SS.ms).
+- **Waveform display**: full-track waveform rendered from `AnalyserNode` or decoded buffer
+- **Selection handles**: draggable start/end markers on the waveform canvas
 - **Zoom controls**: horizontal zoom in/out for precision selection on long tracks
-- **Playhead**: thin vertical line showing current playback position, auto-scrolls during play
+- **Playhead**: thin vertical line showing current playback position
 
 ### 7.2 Preview & Refinement
 
-- **Play selection**: plays only the selected region (set `audio.currentTime` to start, pause at end)
+- **Play selection**: plays only the selected region
 - **Play full**: plays the entire track with the selection region highlighted
 - **Loop toggle**: loops the selection for previewing loop points
-- **Fade in/out**: optional fade envelope applied to the snippet (linear or exponential, 0–500ms configurable)
-- **Trim silence**: auto-detect and trim leading/trailing silence from selection (threshold-based)
+- **Fade in/out**: optional fade envelope (linear or exponential, 0–500ms)
+- **Trim silence**: auto-detect and trim leading/trailing silence
 
 ### 7.3 Export Pipeline
 
-When the designer clicks "Export Snippet":
-
-1. **Client-side extraction**: use `OfflineAudioContext` to render the selected region to a new `AudioBuffer`
-2. **Encode**: use `MediaRecorder` with `audio/webm;codecs=opus` to encode the snippet (or fall back to WAV if MediaRecorder doesn't support Opus)
-3. **Metadata form**: prompt for:
-   - Sound ID (auto-suggested from parent track + timecode, e.g., `music-clubbed-to-death--0m32s-0m38s`)
-   - Display name
-   - Category (default: same as parent, but switchable — e.g., `combat` for a battle stinger)
-   - Loop flag
-   - Tags
-4. **Upload to R2**: POST to `/api/audio/upload` with destination `sfx/` (snippets become SFX, not music)
-5. **Register in manifest**: auto-append to `audio-manifest.json` (or queue for manual manifest update)
-6. **Update static library**: inject a new `<button>` into the sidebar under the target category
+1. Client-side extraction via `OfflineAudioContext`
+2. Encode with `MediaRecorder` (`audio/webm;codecs=opus`)
+3. Metadata form (Sound ID, display name, category, loop, tags)
+4. Upload to R2 via `POST /api/audio/upload`
+5. Register in manifest
+6. Update static library
 
 ### 7.4 Batch Slicing
 
-For efficiency when creating multiple snippets from one track:
+Multiple named markers/regions, batch export, preview queue.
 
-- **Marker list**: add multiple named markers/regions before exporting
-- **Batch export**: export all marked regions in one pass
-- **Preview queue**: cycle through marked regions with next/prev buttons
+### 7.5 Estimated Effort
 
-### 7.5 Technical Considerations
-
-- **`OfflineAudioContext`**: required for rendering a sub-range to a new buffer. Create with `sampleRate` and `length` matching the selected duration. Feed the decoded source buffer through a `BufferSourceNode` with offset/duration params.
-- **`MediaRecorder` codec support**: Chromium supports `audio/webm;codecs=opus`. Safari may need WAV export with server-side transcode. Feature-detect and show format badge.
-- **Large file handling**: music tracks are 3–5 minutes. Decoded PCM for a 5-min stereo 44.1kHz track ≈ 50MB. Use `decodeAudioData` only when the slicer tab is active, and release the buffer when switching away.
-- **Waveform rendering for long tracks**: render overview waveform at low resolution (1 sample per pixel), then re-render at higher resolution when zoomed. Use `getChannelData()` from the decoded buffer.
-
-### 7.6 Dependencies
-
-- No external libraries required — all Web Audio API + Canvas 2D
-- R2 upload route already exists (`/api/audio/upload`)
-- Static library injection can reuse `_filterLibrary()` and existing button HTML pattern
-
-### 7.7 Estimated Effort
-
-- UI (waveform canvas, handles, controls): ~300 lines
-- Audio processing (OfflineAudioContext, MediaRecorder): ~150 lines
-- Export/upload integration: ~100 lines
-- Batch slicing: ~100 lines
-- **Total: ~650 lines**, self-contained in a new `slicer-panel.js` module
+~650 lines in a new `slicer-panel.js` module.
 
 ---
 
 ## Manifest Gaps
 
-Sounds referenced by the explosion system that don't have exact manifest entries yet:
-
 | Referenced Key | Closest Manifest Match | Action |
 |---|---|---|
-| `explosion_large` | No exact match | Add alias in manifest: `"explosion_large": { "src": "/audio/sfx/enemy_die_02.wav", "category": "combat" }` or commission dedicated explosion SFX |
+| `explosion_large` | No exact match | Add alias or commission dedicated explosion SFX |
 
 ---
 
@@ -324,151 +343,44 @@ Sounds referenced by the explosion system that don't have exact manifest entries
 
 | File | Role |
 |---|---|
-| `public/js/audio-system.js` | Core singleton — play, playMusic, playRandom, data-sound delegate |
+| `public/js/audio-system.js` | Core singleton — play, playMusic, playRandom, playFootstep, data-sound delegate |
 | `public/js/audio-controls-widget.js` | Debrief feed UI widget |
 | `public/css/audio-controls.css` | Widget styling |
-| `public/audio/audio-manifest.json` | 167-entry sound registry (source of truth) |
-| `src/worker/routes/audio.ts` | R2 serving route with CORS (GET /audio/sfx/*, /audio/music/*) |
+| `public/audio/audio-manifest.json` | 314-entry sound registry (source of truth) |
+| `src/worker/routes/audio.ts` | R2 serving route with CORS |
 | `src/worker/routes/audio-upload.ts` | Upload route (POST /api/audio/upload) |
-| `src/worker/index.ts` | CORS middleware on /audio/* for static asset fallback |
-| `scripts/transcode-audio.sh` | WAV → Opus/WebM + MP3 converter |
-| `scripts/upload-audio-to-r2.sh` | Batch R2 uploader |
-| `public/portal/sound-designer.html` | Designer portal — 167 static sound entries, preview, assign, upload |
-| `public/portal/js/sound-designer.js` | Portal logic — streaming preview, static library, file:// support |
+| `src/worker/index.ts` | CORS middleware on /audio/* |
+| `scripts/r2-audio-sync.sh` | Batch R2 uploader (encoded_for_r2/ → R2) |
+| `public/portal/sound-designer.html` | Designer portal — 314 static sound entries |
+| `public/portal/js/sound-designer.js` | Portal logic — streaming preview, static library |
 | `public/portal/css/sound-designer.css` | Portal styling |
+| `docs/FOOTSTEP_AUDIO_SYSTEM.md` | Footstep system documentation |
 
 ---
 
 ## Portal-to-Deployment Pipeline
-
-This section describes the full lifecycle of an audio asset from upload in the Sound Designer portal to playback in the live game.
-
-### Step 1: Upload via Sound Designer Portal
-
-The Sound Designer portal (`public/portal/sound-designer.html`) provides a browser-based interface for browsing, previewing, and uploading audio assets. The portal works both locally (`file://`) and on the production domain (`flapsandseals.com/portal/sound-designer.html`).
-
-To upload a new asset, use the Upload panel in the portal or POST directly to the API:
-
-```
-POST /api/audio/upload
-Content-Type: multipart/form-data
-
-Fields:
-  file:         binary audio data (max 50 MB)
-  destination:  "sfx" | "music" | "video"
-  filename:     original filename (used as R2 key suffix)
-```
-
-The upload handler (`src/worker/routes/audio-upload.ts`) sanitizes the filename, resolves the R2 key prefix (`audio/sfx/`, `audio/music/`, or `video/`), and stores the file in the `eyesonly-assets` R2 bucket with correct `Content-Type` metadata.
-
-Response: `{ ok: true, key: "audio/sfx/my-sound.webm", size: 14832, contentType: "audio/webm" }`
-
-### Step 2: Bulk Transcoding (for raw WAV sources)
-
-When starting from WAV masters (e.g., from a commissioned musician), use the transcoding scripts before upload:
-
-```bash
-# Transcode WAV to Opus/WebM (primary) + MP3 (fallback)
-./scripts/transcode-audio.sh
-
-# Batch upload transcoded files to R2
-./scripts/upload-audio-to-r2.sh
-```
-
-The transcode script converts each WAV to Opus/WebM at 96kbps (music) or 48kbps (SFX), plus an MP3 fallback for older Safari. Output files land in `public/audio/sfx/` or `public/audio/music/` locally.
-
-### Step 3: Register in Manifest
-
-Every sound the game can reference must have an entry in `public/audio/audio-manifest.json` (167 entries as of this writing). Each entry maps a sound ID to its source path, category, and metadata:
-
-```json
-{
-  "whoosh-1": {
-    "src": "/audio/sfx/whoosh_01.webm",
-    "category": "ui",
-    "title": "Whoosh 1"
-  },
-  "music-forest": {
-    "src": "/audio/music/forest_theme.webm",
-    "category": "music",
-    "title": "Forest Theme",
-    "artist": "EyesOnly Audio",
-    "loop": true
-  }
-}
-```
-
-The manifest is loaded by `AudioSystem.init()` on page load. Sound IDs used in code (e.g., `AudioSystem.play('whoosh-1')`) must match manifest keys exactly.
-
-### Step 4: R2 Serving (Production)
-
-The Cloudflare Worker serves audio from R2 via two route handlers:
-
-**Serving routes** (`src/worker/routes/audio.ts`):
-- `GET /audio/sfx/:filename` serves from R2 key `audio/sfx/<filename>`
-- `GET /audio/music/:filename` serves from R2 key `audio/music/<filename>`
-
-Both support HTTP Range requests for streaming (required by `<audio>` elements and mobile Safari). Responses include `Cache-Control: public, max-age=31536000, immutable` since assets are versioned through the manifest, not by URL.
-
-**CORS** (`src/worker/index.ts`): The `/audio/*` path has CORS configured to allow `Range` in request headers and expose `Content-Range`, `Accept-Ranges`, and `Content-Length` in response headers. This is required for cross-origin `<audio crossOrigin="anonymous">` streaming.
-
-**Listing route** (`src/worker/routes/audio-upload.ts`):
-- `GET /api/audio/list?prefix=audio/sfx` returns R2 object metadata (key, size, upload date, etag)
-
-### Step 5: In-Game Playback
-
-The `AudioSystem` singleton (`public/js/audio-system.js`) handles all in-game audio through two playback paths:
-
-**SFX (buffer-based):** Short sound effects are fetched, decoded via `decodeAudioData()`, cached in an in-memory buffer map, and played through `BufferSourceNode` → `_sfxGain` → `_masterGain` → destination. This approach gives low-latency playback for short clips. A per-name 80ms cooldown rate-limiter prevents spam from runaway callers.
-
-**Music (streaming):** Music tracks are played through a reusable `<audio>` element routed via `MediaElementAudioSourceNode` → `_musicGain` → `_masterGain` → destination. This streams on demand without downloading the entire file into memory, which is critical for large music files (3-5 min tracks).
-
-Both buses feed into a shared `_masterGain` node. The Audio Controls widget in the debrief feed provides per-bus volume sliders and a master mute toggle.
-
-**AudioContext autoplay policy:** The `AudioContext` starts in `suspended` state. `play()` returns early (no-op) while suspended. `playMusic()` defers and replays automatically once the context resumes after the first user gesture.
-
-### Step 6: Deployment
-
-Deploy changes to production via Cloudflare Workers:
-
-```bash
-# Deploy the worker (serves both the app and R2 audio routes)
-npx wrangler deploy
-
-# Upload a single new audio file to R2 directly
-npx wrangler r2 object put eyesonly-assets/audio/sfx/my-sound.webm \
-  --file=public/audio/sfx/my-sound.webm \
-  --content-type=audio/webm
-```
-
-For bulk uploads after transcoding, use `scripts/upload-audio-to-r2.sh` which iterates over all files in `public/audio/` and uploads them with correct content types.
-
-The manifest file (`public/audio/audio-manifest.json`) is served as a static asset by the worker and is deployed alongside the rest of the public directory.
-
-### Pipeline Summary
 
 ```
 Musician/Designer                Sound Designer Portal
       |                                |
   WAV masters                    Browse / Preview / Upload
       |                                |
-  transcode-audio.sh             POST /api/audio/upload
+  encode → encoded_for_r2/      POST /api/audio/upload
       |                                |
   WebM (Opus) + MP3              R2: eyesonly-assets/audio/{sfx,music}/
       |                                |
-  upload-audio-to-r2.sh          audio-manifest.json (register ID)
+  r2-audio-sync.sh              audio-manifest.json (register ID)
       |                                |
       +----------+---------------------+
                  |
           npx wrangler deploy
                  |
-    +------------+-------------+
-    |                          |
-  SFX path                 Music path
-  fetch → decode →         <audio> element →
-  BufferSourceNode →       MediaElementSource →
-  _sfxGain →               _musicGain →
-  _masterGain →            _masterGain →
-  destination              destination
+    +------------+-------------+----------+
+    |                          |          |
+  SFX path                 Music path  Footstep path
+  fetch → decode →         <audio> →   biome → terrain →
+  BufferSourceNode →       MediaSrc →  L/R alternate →
+  _sfxGain →               _musicGain → _sfxGain →
+  _masterGain →            _masterGain → _masterGain →
+  destination              destination  destination
 ```
-

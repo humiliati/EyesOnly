@@ -131,7 +131,8 @@ var SoundDesigner = (function () {
   function _catEmoji(cat) {
     var map = {
       ui: '🖥', movement: '🏃', combat: '⚔️', magic: '✨',
-      environment: '🌿', collectible: '💎', creature: '🐾', music: '🎵'
+      environment: '🌿', collectible: '💎', creature: '🐾',
+      footstep: '👣', card: '🃏', music: '🎵'
     };
     return map[cat] || '📁';
   }

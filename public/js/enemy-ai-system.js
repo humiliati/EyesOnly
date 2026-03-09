@@ -137,8 +137,22 @@ var EnemyAISystem = (function () {
     enemy.awareness = Math.min(150, previousAwareness + amount);
 
     if (previousAwareness < ctx.AWARENESS_STATES.ALERTED.min && enemy.awareness >= ctx.AWARENESS_STATES.ALERTED.min) {
+      // MGS-style "!" alert — overhead animation + sound
       if (typeof OverheadAnimator !== 'undefined') {
         OverheadAnimator.showExpression(enemy.x, enemy.y, 'ALERT', 1000);
+      }
+      if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+        AudioSystem.play('enemy-alert', { volume: 0.6 });
+      }
+      if (typeof TooltipSystem !== 'undefined' && TooltipSystem.show) {
+        TooltipSystem.show('! Enemy alerted!', 1500);
+      }
+    }
+
+    // Suspicious threshold — "?" expression
+    if (previousAwareness < ctx.AWARENESS_STATES.SUSPICIOUS.min && enemy.awareness >= ctx.AWARENESS_STATES.SUSPICIOUS.min) {
+      if (typeof OverheadAnimator !== 'undefined') {
+        OverheadAnimator.showExpression(enemy.x, enemy.y, 'QUESTION', 800);
       }
     }
   }

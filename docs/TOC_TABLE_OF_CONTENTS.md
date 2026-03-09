@@ -1,7 +1,7 @@
 # EyesOnly Documentation — Table of Contents
 
 > **Last Updated:** 2026-03-07
-> **Active Docs:** 89 (.md/.txt) + 2 .docx | **Archived (dot-prefixed):** 24
+> **Active Docs:** 90 (.md/.txt) + 2 .docx | **Archived (dot-prefixed):** 24
 
 ---
 
@@ -132,6 +132,7 @@ These 8 documents form the interconnected canonical reference for world generati
 | [PAPER_TERRARIA_TODO.md](./PAPER_TERRARIA_TODO.md) | Terraria-style Paper-Mario perspective lighting TODOs |
 | [PET_FOLLOWER_INTEGRATION.md](./PET_FOLLOWER_INTEGRATION.md) | Pet/follower system |
 | [PLAYER_ONBOARDING_TODO.md](./PLAYER_ONBOARDING_TODO.md) | Player onboarding TODOs |
+| [FOOTSTEP_AUDIO_SYSTEM.md](./FOOTSTEP_AUDIO_SYSTEM.md) | Biome-based footstep audio system (L/R × 4 terrains) |
 
 ---
 

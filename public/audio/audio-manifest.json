@@ -1706,5 +1706,11 @@
     "fallback": "/audio/sfx/slide_card_9.mp3",
     "category": "card",
     "_status": "staged"
+  },
+  "enemy-alert": {
+    "src": "/audio/sfx/ENEMY_ALERT.webm",
+    "category": "combat",
+    "title": "Enemy Alert",
+    "_status": "active"
   }
 }
