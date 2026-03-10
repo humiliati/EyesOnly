@@ -981,20 +981,41 @@ const GoneRogueMobile = (function () {
       });
     }
 
-    // Add projectiles
+    // Add projectiles — lerp-interpolated positions + sprite metadata
     if (projectiles) {
       projectiles.forEach(function(projectile) {
-        var pX = projectile.fx !== undefined ? projectile.fx : projectile.x;
-        var pY = projectile.fy !== undefined ? projectile.fy : projectile.y;
+        // Lerp between prevFx/prevFy → fx/fy using lerpT (0→1 between ticks)
+        var t = (projectile.lerpT !== undefined) ? projectile.lerpT : 1;
+        var prevX = (projectile.prevFx !== undefined) ? projectile.prevFx : (projectile.fx !== undefined ? projectile.fx : projectile.x);
+        var prevY = (projectile.prevFy !== undefined) ? projectile.prevFy : (projectile.fy !== undefined ? projectile.fy : projectile.y);
+        var curX = (projectile.fx !== undefined) ? projectile.fx : projectile.x;
+        var curY = (projectile.fy !== undefined) ? projectile.fy : projectile.y;
+        var pX = prevX + (curX - prevX) * t;
+        var pY = prevY + (curY - prevY) * t;
+
         var vx = _toViewX(pX);
         var vy = _toViewY(pY);
         // Round for culling check only
         if (!_inView(Math.round(vx), Math.round(vy))) return;
+
+        // Get sprite frame from ProjectileSystem
+        var spriteData = null;
+        if (typeof ProjectileSystem !== 'undefined' && ProjectileSystem.getSpriteFrame) {
+          spriteData = ProjectileSystem.getSpriteFrame(projectile);
+        }
+
         entities.push({
           x: vx,
           y: vy,
           char: projectile.emoji || projectile.glyph || '💥',
-          color: '#FF00FF'
+          color: '#FF00FF',
+          // Sprite rendering metadata
+          isProjectile: true,
+          spriteImg: (spriteData && spriteData.img) ? spriteData.img : null,
+          projectileState: projectile.state || 'flying',
+          shrinkScale: projectile.shrinkScale || 1.0,
+          // Rotation from velocity for sprite orientation
+          rotation: Math.atan2(projectile.vy || 0, projectile.vx || 0)
         });
       });
     }

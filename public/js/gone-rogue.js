@@ -65,7 +65,7 @@ var GoneRogue = (function () {
   var _tickInterval = 100; // ms between ticks (10 ticks per second)
   var _animationFrameId = null;
   var _projectileTickAccum = 0; // Accumulator for projectile speed throttle (ms)
-  var _projectileAdvanceInterval = 150; // Advance projectiles every 150ms for visible animation
+  var _projectileAdvanceInterval = 50; // Advance projectiles every 50ms (was 150ms — faster = smoother flight)
   var _enemyColorCycleTime = 0;
 
   // STR Combat state (Simultaneous Turn Resolution)

@@ -269,7 +269,7 @@ var GameTickSystem = (function() {
       EYESONLY_PERF.mark('rogue.enemyPathMs', performance.now() - _ep0);
     }
 
-    // Throttle projectile advancement
+    // Throttle projectile advancement + lerp update for smooth rendering
     ctx.addProjectileTickAccum(deltaMs);
     var projectiles = ctx.projectiles;
     if (projectiles.length > 0 && ctx.getProjectileTickAccum() >= ctx.projectileAdvanceInterval) {
@@ -277,6 +277,10 @@ var GameTickSystem = (function() {
       ctx.updateProjectiles(deltaMs);
     } else if (projectiles.length === 0) {
       ctx.resetProjectileTickAccum();
+    }
+    // Update lerp progress every frame for smooth inter-tick interpolation
+    if (projectiles.length > 0 && typeof ProjectileSystem !== 'undefined' && ProjectileSystem.updateLerp) {
+      ProjectileSystem.updateLerp(ctx.getProjectileTickAccum(), ctx.projectileAdvanceInterval);
     }
 
     // Let the active boss inject real-time hazard projectiles

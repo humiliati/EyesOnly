@@ -341,6 +341,148 @@ This lets you tune lighting in perspective incrementally rather than debugging e
 
 ---
 
+## 7. Perspective-Aware Movement & Depth Shading
+
+### The Problem
+
+Entities (player, enemies, projectiles) currently move across a flat plane. With perspective, movement toward the far rows (north, away from camera) should feel like moving *into* the screen, and movement toward the near rows (south) should feel like approaching.
+
+### What Needs to Happen
+
+**Size interpolation during movement:** An entity walking from row 15 to row 5 should shrink smoothly frame-by-frame as it transitions through each row's scale factor. The existing `player.visualX` / `player.visualY` tween system handles sub-tile interpolation — the projection function already returns per-row scale, so mid-movement the entity should use a lerped scale between the departure and arrival row scales.
+
+**Depth shading (blvck.joker.emoji overlay):** Entities moving *away* from the camera (increasing distance / decreasing row index) should receive a darkening overlay — a semi-transparent tint that increases with distance. This sells the depth:
+
+```
+Near rows (19):  no overlay, full brightness
+Mid rows (10):   ~15% dark tint
+Far rows (0):    ~40% dark tint
+Moving away:     tint ramps UP during movement (gradual darken)
+Moving toward:   tint ramps DOWN during movement (gradual brighten)
+```
+
+Implementation approach: apply the shading as a `globalCompositeOperation: 'source-atop'` pass after drawing the entity sprite, using the blvck.joker.emoji shading palette. This keeps the shading tied to the entity silhouette rather than a rectangular overlay.
+
+**Size pulse on depth transitions:** A subtle scale transform (shrink ~5-8% over the movement duration) when an entity moves away from camera, and a corresponding grow when approaching. This is additive to the row-scale — it emphasizes the *motion* through depth, not just the static position.
+
+### Projectiles
+
+Projectiles moving along the 8-axis floor plane use the same system. A thrown knife heading north shrinks and darkens. A bullet heading south grows and brightens. Projectiles should also get a slight motion blur stretch along their travel vector, scaled by the perspective — far projectiles blur less (they're "slower" visually), near ones blur more.
+
+---
+
+## 8. Accessibility: Single-Tap Input & Perspective Tile Selection
+
+### The Problem
+
+The game supports single-tap / quadstick accessibility controllers. With perspective, the far rows (top of screen) compress tiles to ~60% of their normal size. A 20px tile at row 0 becomes ~12px — below the 44px minimum tap target. Players physically cannot select individual tiles at the far end of the grid.
+
+### Tap-to-Move Enhancement
+
+**Selected tile highlight:** When a floor tile is tapped/clicked, it should visually highlight with a glowing border before the move executes. This gives:
+
+- Confirmation feedback ("I'm about to move HERE")
+- Error recovery (tap again to cancel, tap elsewhere to redirect)
+- Accessibility signal (the glow is visible even on tiny far tiles)
+
+```
+Selected tile:
+  border: 2px solid rgba(28, 255, 155, 0.8)
+  box-shadow: 0 0 8px rgba(28, 255, 155, 0.4), inset 0 0 4px rgba(28, 255, 155, 0.2)
+  background: rgba(28, 255, 155, 0.06)
+  transition: all 0.15s ease
+```
+
+**Dead space cursor feedback:** Tapping in dead space (outside the playable grid, or on impassable tiles) should show a brief "invalid target" ripple — a fading ring at the tap point. This confirms the input was received even though no action was taken.
+
+**Perspective-aware hit areas:** The tap-to-move hit detection must use *projected* coordinates, not flat grid coordinates. A tap at screen position (x, y) needs to be un-projected through `projectToRender` in reverse to find the actual grid tile. Far tiles have larger hit areas than their visual size — the hit box should use at minimum 20px per tile (the unscaled size) even when the tile renders at 12px. This means adjacent far tiles may overlap in hit space; resolve by picking the tile whose *center* is closest to the tap point.
+
+**Tap+drag fishing system:** The existing fishing mechanic uses tap+drag. With perspective, the drag vector needs to be un-projected too. A drag that appears vertical on screen maps to a longer grid distance at far rows than near rows. The haptic feedback (vibration patterns, visual tension line) should scale with the *grid distance*, not the screen distance, so the interaction feels consistent regardless of where on the grid the player is fishing.
+
+### Minimum Interactive Tile Size
+
+Even with enhanced hit detection, there should be a minimum *visual* tile size floor. If perspective would compress a tile below 10px on screen, the camera should auto-zoom to keep the player's local area above this threshold. The `coverZ` auto-zoom system could factor in the player's current row scale:
+
+```javascript
+var playerRowScale = _rowScales[Math.floor(player.y)] || 1.0;
+var effectiveCellSize = cellSize * playerRowScale * z;
+if (effectiveCellSize < 14) {
+  z = 14 / (cellSize * playerRowScale);
+}
+```
+
+---
+
+## 9. Ceiling Grid: Vertical Stealth Mechanics
+
+### The Problem
+
+This is a stealth action game. Players need to shoot *upward* at ceiling-mounted targets — light bulbs, security cameras, ventilation grates — not just across the floor plane. The current 2D grid has no concept of a vertical axis. With perspective rendering, a ceiling layer needs to exist, be rendered, and be interactable.
+
+### Design Constraints
+
+- Ceiling targets must be selectable via the same single-tap input system
+- The ceiling grid shares the same X/Z coordinates as the floor (it's directly above)
+- Ceiling perspective skew is the *inverse* of floor skew: the ceiling appears to recede toward the *bottom* of the screen (vanishing point convergence), while the floor recedes toward the top
+- Projectiles traveling floor→ceiling need a brief vertical animation (a "shooting up" arc or straight-line trajectory)
+- Ceiling objects cast shadows and light downward onto the floor grid (already handled by the lighting system, but the *source positions* need to be marked as ceiling-mounted)
+
+### Proposed Architecture
+
+**Separate canvas or DOM layer** above the floor canvas, with mirrored perspective:
+
+```
+┌─────────────────────────────────────────┐
+│  CEILING LAYER (canvas or DOM)          │  ← inverse perspective
+│  - Light fixtures (shootable)           │     far rows LARGE at top
+│  - Security cameras (shootable)         │     near rows SMALL at bottom
+│  - Vents (interactable)                 │
+│  - Ceiling texture/tiles                │
+├─────────────────────────────────────────┤
+│  ← vanishing horizon line →            │  ← where floor and ceiling meet
+├─────────────────────────────────────────┤
+│  FLOOR LAYER (existing canvas)          │  ← normal perspective
+│  - Player, enemies, items              │     far rows SMALL at top
+│  - Floor tiles, walls                  │     near rows LARGE at bottom
+└─────────────────────────────────────────┘
+```
+
+The ceiling layer uses the same `projectToRender()` function but with inverted row scales:
+
+```javascript
+// Floor:   row 0 = 0.7x (far/small),  row 19 = 1.3x (near/large)
+// Ceiling: row 0 = 1.3x (near/large), row 19 = 0.7x (far/small)
+var ceilingScale = maxScale + minScale - floorScale;
+```
+
+### Interaction Model
+
+**Look-up toggle:** A button or gesture switches the camera "focus" between floor and ceiling. When ceiling-focused:
+
+- Floor layer dims (30-40% darkened overlay)
+- Ceiling layer becomes fully interactive (tap-to-target)
+- A crosshair or targeting reticle appears
+- Projectile trajectory is shown as a preview line before firing
+
+**Contextual aim:** Alternatively, tapping above the horizon line auto-targets the ceiling, tapping below targets the floor. This avoids a mode toggle and feels more natural with single-tap input. The hit detection checks both layers and picks the one matching the tap's vertical zone.
+
+### Rendering Considerations
+
+- Ceiling tiles should be partially transparent (you're looking up through the floor plane conceptually) or rendered as a separate overlay with opacity
+- Only ceiling objects near the player's X/Z position should be rendered to avoid visual clutter
+- Destroyed ceiling objects (shot light bulbs, broken cameras) affect the lighting system — the light source is removed, darkness spreads
+- Ceiling vents could be entry/exit points for a vertical traversal mechanic
+
+### Open Questions
+
+- Should the ceiling grid be the same dimensions as the floor (40×20 / 60×30)?
+- How much of the ceiling is visible at once? (Probably a smaller viewport than the floor)
+- Do ceiling objects have health/durability, or are they one-shot destroyable?
+- Should the ceiling be visible at all times (split screen effect) or only when aiming up?
+- How does this interact with rooms that have different ceiling heights (open areas vs corridors)?
+
+---
+
 ## Quick Reference: Files to Modify
 
 | File | What to Change | Priority |
@@ -351,16 +493,27 @@ This lets you tune lighting in perspective incrementally rather than debugging e
 | `gone-rogue-canvas.js:_renderDarknessMask` | Flat rects → perspective-projected rects | P1 |
 | `gone-rogue-canvas.js:_renderSourceGlows` | Circular gradients → elliptical projected gradients | P2 |
 | `gone-rogue-canvas.js:_drawDropShadow` | Flat ellipses → row-scaled ellipses | P2 |
-| `gone-rogue-mobile.css:12-33` | `.rogue-grid-mobile max-width` → remove 600px cap on desktop | P1 |
-| `crt.css:216-222` | `#monitor-body` columns → more space for game on desktop | P1 |
-| `crt.css:2809-2881` | Desktop canvas containment → fill container | P1 |
+| `gone-rogue-mobile.css:12-33` | `.rogue-grid-mobile max-width` → remove 600px cap on desktop | ~~P1~~ DONE |
+| `crt.css:216-222` | `#monitor-body` columns → more space for game on desktop | ~~P1~~ DONE |
+| `crt.css:2809-2881` | Desktop canvas containment → fill container | ~~P1~~ DONE |
 | `gone-rogue-mobile.js:1159-1217` | Camera follow → perspective-aware pan clamping | P2 |
-| `gone-rogue-mobile.js:1163` | Desktop zoom `z=1.2` → dynamic based on container | P2 |
+| `gone-rogue-mobile.js:1163` | Desktop zoom `z=1.2` → `z=2.0`, mobile portrait stays 1.5 | ~~P2~~ DONE |
 | `floor-generator.js` | Room bounds → use new grid dimensions | P1 |
 | `floor-gen-core.js` | Tutorial floors → parameterize for new grid size | P2 |
 | `lighting-system.js` | No changes to calculation — projection is render-side | — |
 
 ---
 
-**Document Version:** 1.0
-**Status:** Analysis Complete — Ready for Discussion
+| `gone-rogue-canvas.js` | Depth shading overlay on entities (blvck.joker.emoji palette) | P2 |
+| `gone-rogue-canvas.js` | Size interpolation during depth movement (lerped row scale) | P2 |
+| `gone-rogue-mobile.js` | Reverse-project tap coordinates through perspective | P1 |
+| `gone-rogue-mobile.js` | Selected tile highlight + dead space cursor feedback | P1 |
+| `gone-rogue-mobile.js` | Minimum interactive tile size auto-zoom | P2 |
+| `gone-rogue-canvas.js` | Ceiling grid layer (inverse perspective, separate canvas) | P3 |
+| `gone-rogue.js` | Ceiling object data model (lights, cameras, vents) | P3 |
+| `lighting-system.js` | Ceiling-mounted light sources → downward shadow casting | P3 |
+
+---
+
+**Document Version:** 1.1
+**Status:** Analysis + Accessibility/Depth/Ceiling Concerns — Ready for Implementation Planning

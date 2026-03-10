@@ -594,6 +594,42 @@ const CanvasRenderer = (function() {
         needFontReset = false;
       }
 
+      // ── Projectile sprite rendering ──
+      if (entity.isProjectile && entity.spriteImg && entity.spriteImg.complete) {
+        // Sprite renders at 7-9% of 320px source = ~22-29px, scaled to cell
+        var spriteScale = (entity.shrinkScale || 1.0);
+        var spriteSize = this.cellSize * 0.85 * spriteScale; // ~85% of cell
+        if (spriteSize < 2) continue; // too small to see
+
+        this.ctx.save();
+        this.ctx.translate(centerX, centerY);
+
+        // Rotate sprite to face velocity direction
+        if (entity.rotation !== undefined) {
+          this.ctx.rotate(entity.rotation);
+        }
+
+        // Glow effect for projectiles
+        this.ctx.shadowColor = '#FF6600';
+        this.ctx.shadowBlur = spriteSize * 0.4;
+
+        // Shrinking: reduce opacity too
+        if (entity.projectileState === 'shrinking') {
+          this.ctx.globalAlpha = Math.max(0.1, spriteScale);
+        }
+
+        this.ctx.drawImage(
+          entity.spriteImg,
+          -spriteSize / 2, -spriteSize / 2,
+          spriteSize, spriteSize
+        );
+
+        this.ctx.restore();
+        this.ctx.shadowBlur = 0;
+        this.ctx.globalAlpha = 1;
+        continue; // skip fillText path
+      }
+
       // Render entity character/emoji
       this.ctx.fillStyle = entity.color || '#FF0000';
 
