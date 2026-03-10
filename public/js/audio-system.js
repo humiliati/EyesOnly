@@ -628,10 +628,10 @@ const AudioSystem = (function () {
   };
 
   // Cadence timing (ms)
-  var _WALK_CADENCE  = 229;   // brisk walk (~45% faster than original 420ms)
-  var _SPRINT_FULL   = 104;   // +10% faster (was 115ms), sprint ≈ 2.2× walk cadence
-  var _LIMP_SHORT    = 229;   // injured: L step (quick) — matches walk cadence
-  var _LIMP_LONG     = 650;   // injured: R step (drag)
+  var _WALK_CADENCE  = 150;   // brisk walk (~45% faster than original 420ms)
+  var _SPRINT_FULL   = 80;   // +10% faster (was 115ms), sprint ≈ 2.2× walk cadence
+  var _LIMP_SHORT    = 150;   // injured: L step (quick) — matches walk cadence
+  var _LIMP_LONG     = 300;   // injured: R step (drag)
   var _HEALTH_LIMP   = 0.30;  // limp when HP < 30%
 
   // Fatigue-based sprint deceleration
