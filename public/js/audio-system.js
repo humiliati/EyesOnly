@@ -375,8 +375,16 @@ const AudioSystem = (function () {
     _musicAudio.addEventListener('ended', function () {
       // If looping, the <audio>.loop attribute handles it natively
       if (!_musicAudio.loop) {
+        var wasOnboarding = _onboardingMusic;
         _currentMusic = null;
         _notify();
+        // Onboarding track finished — clear guard so biome music can take over
+        if (wasOnboarding) {
+          _onboardingMusic = false;
+          console.log('[AudioSystem] Onboarding music ended — transitioning to biome music');
+          // Dispatch event for monolith to trigger biome music (needs ctx)
+          try { document.dispatchEvent(new CustomEvent('onboarding-music-ended')); } catch (e) {}
+        }
       }
     });
 

@@ -635,24 +635,24 @@ const CanvasRenderer = (function() {
       var t = trails[i];
       var age = now - t.spawnTime;
       if (age >= t.lifespan) continue;
-      var opacity = Math.max(0, 1 - (age / t.lifespan));
+      var opacity = Math.max(0, 0.35 * (1 - (age / t.lifespan))); // cap at 35% — subtle
 
       // Convert world → view-local → pixel
       var px = (t.x - oxW + 0.5) * cs;
       var py = (t.y - oyW + 0.5) * cs;
 
-      // Build trail text: "(" repeated by layer count
+      // Build trail text: "," repeated by layer count (fatigue trail)
       var text = '';
-      for (var j = 0; j < t.layer; j++) text += ')';
+      for (var j = 0; j < t.layer; j++) text += ',';
 
       this.ctx.save();
       this.ctx.globalAlpha = opacity;
-      this.ctx.fillStyle = t.color || '#1cff9b';
+      this.ctx.fillStyle = t.color || '#A0522D';
       this.ctx.font = 'bold ' + (12 + (t.layer * 2)) + 'px monospace';
       this.ctx.textAlign = 'center';
       this.ctx.textBaseline = 'middle';
-      this.ctx.shadowColor = t.color || '#1cff9b';
-      this.ctx.shadowBlur = 4;
+      this.ctx.shadowColor = t.color || '#A0522D';
+      this.ctx.shadowBlur = 3;
       this.ctx.fillText(text, px, py);
       this.ctx.restore();
     }

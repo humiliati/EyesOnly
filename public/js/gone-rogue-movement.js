@@ -407,7 +407,14 @@ const GoneRogueMovement = (function () {
 
     // Drain sprint fatigue
     if (_isSprinting && typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.drainSprintFatigue === 'function') {
-      GAMESTATE.drainSprintFatigue(deltaTime);
+      var _sprintRolled = GAMESTATE.drainSprintFatigue(deltaTime);
+      // Pulse debrief frame on every fatigue integer rollover (always, not just onboarding)
+      if (_sprintRolled) {
+        if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
+          var _sprintFat = GAMESTATE.getFatigue();
+          DebriefFeedController.reportResourceChange('Fatigue', _sprintFat - 1, _sprintFat, 'Sprint');
+        }
+      }
     }
 
     // Sprint trail VFX

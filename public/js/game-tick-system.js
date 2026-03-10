@@ -51,6 +51,22 @@ var GameTickSystem = (function() {
         fatigue: _ftFatigue,
         isPlayer: true
       });
+
+      // ── Passive fatigue recovery (HOT) ──────────────────────────
+      // Only ticks when player is NOT sprinting. Uses same decimal
+      // accumulator as drainSprintFatigue but in reverse.
+      // Idle: ~30s full recovery. Walking: ~60s full recovery.
+      if (!_ftSprinting && typeof GAMESTATE !== 'undefined' && GAMESTATE.tickFatigueRecovery) {
+        var _ftIsWalking = _ftMoving && !_ftSprinting;
+        var _ftRecovery = GAMESTATE.tickFatigueRecovery(deltaMs / 1000, _ftIsWalking);
+        if (_ftRecovery === 'topped_off') {
+          // Player fully recovered from exhaustion — pulse debrief
+          if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
+            DebriefFeedController.reportResourceChange('Fatigue', 1, 0, 'Recovered');
+          }
+        }
+        // 'tick' results update the bar silently via idle render (no pulse)
+      }
     }
 
     // Update smooth movement system

@@ -660,6 +660,12 @@ const DebriefFeedController = (function() {
         battery: { glyph: '◈', idle: ['◈','◈','◇','◈'], up: ['◇','◈'], down: ['◈','◇'] }
       };
 
+      // Per-resource row colors (from RESOURCE_COLOR_SYSTEM.md)
+      var ROW_COLORS = {
+        hp: '#FF6B9D', energy: '#00D4FF', focus: '#FFF9B0',
+        fatigue: '#A0522D', ammo: '#DA70D6', battery: '#00FFA6'
+      };
+
       // Resource-change animation tracking (set by reportResourceChange)
       if (!DebriefFeedController._animStates) DebriefFeedController._animStates = {};
       var _animStates = DebriefFeedController._animStates;
@@ -729,6 +735,14 @@ const DebriefFeedController = (function() {
           }
         } catch (eS1) {}
 
+        // Fatigue: read from GAMESTATE directly (playerFatigue → fatigue alias)
+        try {
+          if (typeof GAMESTATE !== 'undefined') {
+            if (GAMESTATE.getFatigue) st.fatigue = GAMESTATE.getFatigue();
+            if (GAMESTATE.getMaxFatigue) st.maxFatigue = GAMESTATE.getMaxFatigue();
+          }
+        } catch (eF0) {}
+
         // Hard defaults
         if (typeof st.hp !== 'number') st.hp = 0;
         if (typeof st.maxHp !== 'number') st.maxHp = Math.max(1, st.hp);
@@ -736,6 +750,8 @@ const DebriefFeedController = (function() {
         if (typeof st.maxEnergy !== 'number') st.maxEnergy = Math.max(1, st.energy);
         if (typeof st.focus !== 'number') st.focus = 0;
         if (typeof st.maxFocus !== 'number') st.maxFocus = Math.max(1, st.focus);
+        if (typeof st.fatigue !== 'number') st.fatigue = 0;
+        if (typeof st.maxFatigue !== 'number') st.maxFatigue = 100;
 
         return st;
       }
@@ -767,8 +783,10 @@ const DebriefFeedController = (function() {
           if (rP && _rowExpanded.resources) {
             var enLines = rP.querySelectorAll('.debrief-line.energy');
             var fcLines = rP.querySelectorAll('.debrief-line.focus');
+            var ftLines = rP.querySelectorAll('.debrief-line.fatigue');
             if (enLines.length) enLines[0].textContent = _renderBarLine('energy', st2.energy, st2.maxEnergy, 10);
             if (fcLines.length) fcLines[0].textContent = _renderBarLine('focus', st2.focus, st2.maxFocus, 10);
+            if (ftLines.length) ftLines[0].textContent = _renderBarLine('fatigue', st2.fatigue, st2.maxFatigue, 10);
           }
         } catch (eIdle) {}
       };
@@ -777,19 +795,24 @@ const DebriefFeedController = (function() {
       try {
         var st = _getState();
 
-        // Resources macro summary: show HP bar (critical, no name)
+        // Resources macro summary: show HP bar (critical, no name) — colored
         var rSum = document.getElementById('debrief-summary-resources');
-        if (rSum) rSum.textContent = _renderBarLine('hp', st.hp, st.maxHp, 10);
+        if (rSum) {
+          rSum.textContent = _renderBarLine('hp', st.hp, st.maxHp, 10);
+          rSum.style.color = ROW_COLORS.hp || '';
+        }
 
-        // Resources panel: Energy + Focus lines (HP already shown in macro summary)
+        // Resources panel: Energy + Focus + Fatigue lines (HP already shown in macro summary)
         var rPanel = document.getElementById('debrief-panel-resources');
         if (rPanel && _rowExpanded.resources) {
           var enLine = _renderBarLine('energy', st.energy, st.maxEnergy, 10);
           var fcLine = _renderBarLine('focus', st.focus, st.maxFocus, 10);
+          var ftLine = _renderBarLine('fatigue', st.fatigue, st.maxFatigue, 10);
 
           rPanel.innerHTML =
-            '<div class="debrief-line energy resource-row" data-resource="Energy">' + enLine + '</div>' +
-            '<div class="debrief-line focus resource-row" data-resource="Focus">' + fcLine + '</div>';
+            '<div class="debrief-line energy resource-row" data-resource="Energy" style="color:' + (ROW_COLORS.energy || '') + '">' + enLine + '</div>' +
+            '<div class="debrief-line focus resource-row" data-resource="Focus" style="color:' + (ROW_COLORS.focus || '') + '">' + fcLine + '</div>' +
+            '<div class="debrief-line fatigue resource-row" data-resource="Fatigue" style="color:' + (ROW_COLORS.fatigue || '') + '">' + ftLine + '</div>';
         } else if (rPanel) {
           rPanel.textContent = '';
         }
@@ -812,6 +835,7 @@ const DebriefFeedController = (function() {
             if (keyTotal > 0) ammoText += ' 🝯' + keyTotal;
           } catch (eKM) {}
           amEl.textContent = ammoText;
+          amEl.style.color = ROW_COLORS.ammo || '';
         }
 
         // Ammo panel: key_ammo/key_items (ammo bar already in macro summary)
@@ -1607,6 +1631,21 @@ const DebriefFeedController = (function() {
     }
   }
 
+  /**
+   * Programmatically expand a row (e.g. 'resources') and re-render.
+   * Used by begin-gameplay-system to auto-expand resources on new game.
+   * @param {string} rowId - Row identifier (e.g. 'resources', 'ammo')
+   */
+  function expandRow(rowId) {
+    if (typeof _rowExpanded === 'undefined') return;
+    _rowExpanded[rowId] = true;
+    if (typeof _renderResources === 'function') {
+      _renderResources();
+    } else {
+      refresh();
+    }
+  }
+
   // Public API
   return {
     init: init,
@@ -1621,6 +1660,7 @@ const DebriefFeedController = (function() {
     getMOKGlowColors: getMOKGlowColors,
     reportResourceChange: reportResourceChange,
     reportCardPlayed: reportCardPlayed,
+    expandRow: expandRow,
 
     // Visual feedback hooks
     showSynergyOverlay: showSynergyOverlay,

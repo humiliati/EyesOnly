@@ -64,6 +64,10 @@ var BeginGameplaySystem = (function() {
       // Switch debrief feed to resource display for Gone Rogue
       if (typeof DebriefFeedController !== 'undefined') {
         DebriefFeedController.setMode('goneRogue');
+        // Auto-expand resources row for new players (shows fatigue + energy)
+        if (DebriefFeedController.expandRow) {
+          DebriefFeedController.expandRow('resources');
+        }
       }
 
       // Start onboarding tutorial on Floor 0 (Pink Panther Pawprint)
@@ -81,6 +85,10 @@ var BeginGameplaySystem = (function() {
     // Switch debrief feed to resource display for Gone Rogue
     if (typeof DebriefFeedController !== 'undefined') {
       DebriefFeedController.setMode('goneRogue');
+      // Auto-expand resources row (shows fatigue + energy)
+      if (DebriefFeedController.expandRow) {
+        DebriefFeedController.expandRow('resources');
+      }
     }
 
     return {

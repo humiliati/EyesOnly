@@ -98,8 +98,8 @@ const SprintTrailSystem = (function() {
       }
     }
 
-    // Default sprint trail color (cyan/green)
-    return '#1cff9b';
+    // Default sprint trail color — fatigue resource color (earthy brown)
+    return '#A0522D';
   }
 
   /**
@@ -111,7 +111,7 @@ const SprintTrailSystem = (function() {
   function _getTrailText(layer) {
     var text = '';
     for (var i = 0; i < layer; i++) {
-        text += '.';
+        text += ',';
     }
     return text;
   }
@@ -137,7 +137,7 @@ const SprintTrailSystem = (function() {
     for (var j = 0; j < _trails.length; j++) {
       var trail = _trails[j];
       var age = now - trail.spawnTime;
-      var opacity = Math.max(0, 1 - (age / trail.lifespan));
+      var opacity = Math.max(0, 0.35 * (1 - (age / trail.lifespan))); // cap at 35% — subtle
 
       var trailDiv = document.createElement('div');
       trailDiv.className = 'sprint-trail';
@@ -151,7 +151,7 @@ const SprintTrailSystem = (function() {
       trailDiv.style.fontSize = (12 + (trail.layer * 2)) + 'px';
       trailDiv.style.fontWeight = 'bold';
       trailDiv.style.pointerEvents = 'none';
-      trailDiv.style.textShadow = '0 0 4px ' + trail.color;
+      trailDiv.style.textShadow = '0 0 3px ' + trail.color;
       trailDiv.style.transition = 'opacity 0.1s ease-out';
 
       container.appendChild(trailDiv);
@@ -172,7 +172,7 @@ const SprintTrailSystem = (function() {
     for (var i = 0; i < _trails.length; i++) {
       var trail = _trails[i];
       var age = now - trail.spawnTime;
-      var opacity = Math.max(0, 1 - (age / trail.lifespan));
+      var opacity = Math.max(0, 0.35 * (1 - (age / trail.lifespan))); // cap at 35% — subtle
 
       var x = trail.x * cellWidth + cellWidth * 0.5;
       var y = trail.y * cellHeight + cellHeight * 0.5;
@@ -184,7 +184,7 @@ const SprintTrailSystem = (function() {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.shadowColor = trail.color;
-      ctx.shadowBlur = 4;
+      ctx.shadowBlur = 3;
       ctx.fillText(_getTrailText(trail.layer), x, y);
       ctx.restore();
     }

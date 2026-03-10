@@ -386,6 +386,15 @@ var GoneRogue = (function () {
       });
     }
 
+    // Listen for onboarding music end → transition to biome music
+    try {
+      document.addEventListener('onboarding-music-ended', function () {
+        if (_active && typeof FloorTransitionSystem !== 'undefined' && FloorTransitionSystem.playBiomeMusic) {
+          FloorTransitionSystem.playBiomeMusic(_floorTransitionCtx());
+        }
+      });
+    } catch (e) {}
+
     return Promise.resolve();
   }
 

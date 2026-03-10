@@ -647,7 +647,7 @@
     "src": "/audio/music/CLUBBED_TO_DEATH.webm",
     "fallback": "/audio/music/CLUBBED_TO_DEATH.mp3",
     "category": "music",
-    "loop": true,
+    "loop": false,
     "title": "Clubbed to Death",
     "artist": "Rob Dougan"
   },

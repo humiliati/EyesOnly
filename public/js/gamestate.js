@@ -33,7 +33,7 @@ const GAMESTATE = (function () {
     activeItemSlot: null,          // Active item slot (for lighting items, etc.)
 
     // Resource tracking (for STR combat and card system)
-    playerFatigue: 0,              // 0-100 scale (0 = no fatigue, 100 = exhausted)
+    playerFatigue: 0,              // 0-100 scale (0 = fresh, 100 = exhausted) — new players start fresh
     maxFatigue: 100,
     fatigueRecovery: 5,            // Per turn baseline recovery
     fatigueThreshold: 70,          // Above this, cards cost more/become less effective
@@ -2085,6 +2085,56 @@ const GAMESTATE = (function () {
     return _state.playerFatigue || 0;
   }
 
+  function getMaxFatigue() {
+    return _state.maxFatigue || 100;
+  }
+
+  /**
+   * Tick passive fatigue recovery (HOT-style).
+   * Called every frame from game-tick-system when player is NOT sprinting.
+   * Uses the same _playerFatigueDecimal accumulator as drainSprintFatigue
+   * but in the opposite direction (subtracting).
+   *   Idle:    3.33/sec → ~30 seconds full recovery
+   *   Walking: 1.67/sec → ~60 seconds full recovery
+   * @param {number} deltaTime - Seconds since last frame
+   * @param {boolean} [isWalking=false] - True if player is walking (slower recovery)
+   * @returns {string|null} 'tick' if integer decreased, 'topped_off' if reached 0, null otherwise
+   */
+  function tickFatigueRecovery(deltaTime, isWalking) {
+    if (_state.playerFatigue <= 0) return null; // already fresh
+
+    // Recovery rates:
+    //   Idle:    3.33 fatigue/sec → 100→0 in ~30 seconds
+    //   Walking: 1.67 fatigue/sec → 100→0 in ~60 seconds
+    var IDLE_RECOVERY_RATE = 3.33;
+    var WALK_RECOVERY_RATE = 1.67;
+    var rate = isWalking ? WALK_RECOVERY_RATE : IDLE_RECOVERY_RATE;
+
+    // Apply modifiers from equipment (future: passive items can speed/slow recovery)
+    if (typeof PassiveItemsSystem !== 'undefined') {
+      var equipped = (PassiveItemsSystem.getEquippedItems ? PassiveItemsSystem.getEquippedItems() : []);
+      for (var i = 0; i < equipped.length; i++) {
+        if (equipped[i].fatigueRecoveryModifier) {
+          rate *= equipped[i].fatigueRecoveryModifier;
+        }
+      }
+    }
+
+    _state._playerFatigueDecimal -= rate * deltaTime;
+
+    if (_state._playerFatigueDecimal <= -1.0) {
+      var drop = Math.floor(Math.abs(_state._playerFatigueDecimal));
+      var prev = _state.playerFatigue;
+      _state.playerFatigue = Math.max(0, _state.playerFatigue - drop);
+      _state._playerFatigueDecimal += drop;
+      _saveState();
+
+      if (_state.playerFatigue <= 0 && prev > 0) return 'topped_off';
+      return 'tick';
+    }
+    return null;
+  }
+
   /**
    * Add fatigue (from actions like combat, movement)
    * @param {number} amount - Amount of fatigue to add
@@ -2121,11 +2171,12 @@ const GAMESTATE = (function () {
    * @returns {boolean} True if fatigue increased (rolled over to next integer)
    */
   function drainSprintFatigue(deltaTime) {
-    // Sprint fatigue drain rate: ~70% of a 50-tile map before 1 full fatigue point
-    // Assuming 50 tiles traversed in ~6.25 seconds at sprint speed (8 * 1.5 = 12 tiles/sec)
-    // We want to drain 1.0 fatigue over 6.25 * 0.7 = ~4.4 seconds
-    // Rate = 1.0 / 4.4 = ~0.227 fatigue per second
-    var SPRINT_FATIGUE_RATE = 0.227;
+    // Sprint fatigue drain rate: corner-to-corner (40×20 map, ~54 manhattan tiles)
+    // at 3.75 tiles/sec sprint speed ≈ 14.4 seconds for full diagonal.
+    // Target: full diagonal costs 150% of bar (150 fatigue on 100-scale),
+    // so player exhausts at ~67% of the way across.
+    // Rate = 150 / 14.4 ≈ 10.4 fatigue/sec → exhaustion in ~9.6 sec from fresh.
+    var SPRINT_FATIGUE_RATE = 10.4;
 
     // Apply modifiers from equipment (Moon Boots, etc.)
     var fatigueModifier = 1.0;
@@ -2933,10 +2984,12 @@ const GAMESTATE = (function () {
     requestRogue: requestRogue,
     // Fatigue management
     getFatigue: getFatigue,
+    getMaxFatigue: getMaxFatigue,
     addFatigue: addFatigue,
     reduceFatigue: reduceFatigue,
     resetFatigue: resetFatigue,
     drainSprintFatigue: drainSprintFatigue,
+    tickFatigueRecovery: tickFatigueRecovery,
     blockSprintTemporarily: blockSprintTemporarily,
     canSprint: canSprint,
     // Ammo management
