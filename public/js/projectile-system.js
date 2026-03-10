@@ -37,7 +37,8 @@ var ProjectileSystem = (function() {
 
   // ── Constants ──
   var _MAX_ACTIVE_PROJECTILES = 8;  // Jezzball feel: cap simultaneous live projectiles
-  var _MAX_RICOCHETS_BEFORE_DECAY = 5; // After this many total ricochets, shrink-to-zero
+  var _RICOCHET_DECAY_START = 3;      // Mild shrink begins at this ricochet count
+  var _RICOCHET_DECAY_FULL = 5;       // Exponential shrink-to-zero by this count
   var _MAX_RANGE_AFTER_RICOCHET = 30; // Total distance before forced cleanup
 
   // ── Fire-rate throttle ──
@@ -207,7 +208,7 @@ var ProjectileSystem = (function() {
       var len = Math.sqrt(projectile.dx * projectile.dx + projectile.dy * projectile.dy) || 1;
       projectile.vx = projectile.dx / len;
       projectile.vy = projectile.dy / len;
-      projectile.speed = 2.5;  // was 1.0 — much faster than player sprint
+      projectile.speed = 1.6;  // balanced: faster than player but trackable
       projectile.bounces = projectile.bounces || 0;
     }
 
@@ -226,7 +227,7 @@ var ProjectileSystem = (function() {
       projectile.shrinkScale = 1.0;
     }
 
-    var spd = projectile.speed || 2.5;
+    var spd = projectile.speed || 1.6;
     var nextFx = projectile.fx + projectile.vx * spd;
     var nextFy = projectile.fy + projectile.vy * spd;
     var nextX = Math.round(nextFx);
@@ -268,9 +269,17 @@ var ProjectileSystem = (function() {
         projectile.ricochetTime = Date.now();
         _addImpactEffect(nextX, nextY, 'wall', ctx);
 
-        // Check jezzball cleanup: too many ricochets or too far traveled
-        if (projectile.totalRicochets >= _MAX_RICOCHETS_BEFORE_DECAY) {
-          projectile.state = 'shrinking';
+        // Graduated decay: mild shrink at 3 ricochets, exponential by 5
+        if (projectile.totalRicochets >= _RICOCHET_DECAY_START) {
+          // How far past the decay start (0 at start, 2 at full)
+          var decayProgress = (projectile.totalRicochets - _RICOCHET_DECAY_START) /
+                              Math.max(1, _RICOCHET_DECAY_FULL - _RICOCHET_DECAY_START);
+          // Exponential curve: 0.85 at ricochet 3, ~0.55 at 4, ~0.15 at 5
+          var decayFactor = Math.pow(0.15, decayProgress); // 1.0 → 0.15 exponentially
+          projectile.shrinkScale = Math.max(0.05, (projectile.shrinkScale || 1.0) * decayFactor);
+          if (projectile.shrinkScale < 0.05 || projectile.totalRicochets >= _RICOCHET_DECAY_FULL) {
+            projectile.state = 'shrinking';
+          }
         }
         return { alive: true };
       } else {
@@ -409,7 +418,7 @@ var ProjectileSystem = (function() {
       fx: origin.x, fy: origin.y,
       prevFx: origin.x, prevFy: origin.y, lerpT: 1,
       dx: dir.dx, dy: dir.dy, vx: vx, vy: vy,
-      speed: 2.5, bounces: 3,
+      speed: 1.6, bounces: 3,
       glyph: _getProjectileGlyph(dir.direction),
       emoji: '\uD83D\uDCA5', range: 15, power: 3, basePower: 3, owner: 'player',
       // Animation state
@@ -467,7 +476,7 @@ var ProjectileSystem = (function() {
       fx: origin.x, fy: origin.y,
       prevFx: origin.x, prevFy: origin.y, lerpT: 1,
       dx: dx, dy: dy, vx: vx, vy: vy,
-      speed: 2.5, bounces: 3,
+      speed: 1.6, bounces: 3,
       glyph: _getProjectileGlyph(dirName),
       emoji: '\uD83D\uDCA5', range: 15, power: 3, basePower: 3, owner: 'player',
       // Animation state
