@@ -709,6 +709,20 @@ const DebriefFeedController = (function() {
         return sym + ' ' + numStr + bar;
       }
 
+      /**
+       * Render battery diamond bar: (((◈◈◈◇◇)))
+       * @param {number} cur - current battery (0-100)
+       * @param {number} max - max battery (100)
+       * @returns {string} formatted diamond display
+       */
+      function _renderBatteryDiamonds(cur, max) {
+        max = max || 100;
+        cur = Math.max(0, Math.min(max, cur || 0));
+        var diamonds = 5;
+        var filled = Math.round((cur / max) * diamonds);
+        return '◈'.repeat(filled) + '◇'.repeat(diamonds - filled);
+      }
+
       function _getRoguePlayer() {
         try {
           if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.getPlayer === 'function') return GoneRogue.getPlayer();
@@ -743,6 +757,14 @@ const DebriefFeedController = (function() {
           }
         } catch (eF0) {}
 
+        // Battery: read from GAMESTATE directly
+        try {
+          if (typeof GAMESTATE !== 'undefined') {
+            if (GAMESTATE.getBattery) st.battery = GAMESTATE.getBattery();
+            if (GAMESTATE.getMaxBattery) st.maxBattery = GAMESTATE.getMaxBattery();
+          }
+        } catch (eB0) {}
+
         // Hard defaults
         if (typeof st.hp !== 'number') st.hp = 0;
         if (typeof st.maxHp !== 'number') st.maxHp = Math.max(1, st.hp);
@@ -752,6 +774,8 @@ const DebriefFeedController = (function() {
         if (typeof st.maxFocus !== 'number') st.maxFocus = Math.max(1, st.focus);
         if (typeof st.fatigue !== 'number') st.fatigue = 0;
         if (typeof st.maxFatigue !== 'number') st.maxFatigue = 100;
+        if (typeof st.battery !== 'number') st.battery = 60;
+        if (typeof st.maxBattery !== 'number') st.maxBattery = 100;
 
         return st;
       }
@@ -784,9 +808,34 @@ const DebriefFeedController = (function() {
             var enLines = rP.querySelectorAll('.debrief-line.energy');
             var fcLines = rP.querySelectorAll('.debrief-line.focus');
             var ftLines = rP.querySelectorAll('.debrief-line.fatigue');
+            var btLines = rP.querySelectorAll('.debrief-line.battery');
             if (enLines.length) enLines[0].textContent = _renderBarLine('energy', st2.energy, st2.maxEnergy, 10);
             if (fcLines.length) fcLines[0].textContent = _renderBarLine('focus', st2.focus, st2.maxFocus, 10);
             if (ftLines.length) ftLines[0].textContent = _renderBarLine('fatigue', st2.fatigue, st2.maxFatigue, 10);
+            if (btLines.length) {
+              var _btD = _renderBatteryDiamonds(st2.battery, st2.maxBattery);
+              var _btDead = (st2.battery <= 0);
+              var _btClr = _btDead ? '#666' : (ROW_COLORS.battery || '#00FFA6');
+              btLines[0].style.color = _btClr;
+              // Update diamond spans if they exist, else update textContent
+              var _dSpan = btLines[0].querySelector('.battery-diamonds');
+              if (_dSpan) {
+                _dSpan.textContent = _btD;
+                // Update signal bracket classes
+                var _sSpans = btLines[0].querySelectorAll('.battery-signal');
+                for (var _si = 0; _si < _sSpans.length; _si++) {
+                  if (_btDead) {
+                    _sSpans[_si].classList.add('battery-signal-dead');
+                    _sSpans[_si].classList.remove('battery-signal-live');
+                  } else {
+                    _sSpans[_si].classList.remove('battery-signal-dead');
+                    _sSpans[_si].classList.add('battery-signal-live');
+                  }
+                }
+              } else {
+                btLines[0].textContent = '(((' + _btD + ')))';
+              }
+            }
           }
         } catch (eIdle) {}
       };
@@ -809,10 +858,20 @@ const DebriefFeedController = (function() {
           var fcLine = _renderBarLine('focus', st.focus, st.maxFocus, 10);
           var ftLine = _renderBarLine('fatigue', st.fatigue, st.maxFatigue, 10);
 
+          // Battery diamond row: (((◈◈◈◇◇)))
+          var btDiamonds = _renderBatteryDiamonds(st.battery, st.maxBattery);
+          var btDepleted = (st.battery <= 0);
+          var btColor = btDepleted ? '#666' : (ROW_COLORS.battery || '#00FFA6');
+          var btSignalClass = btDepleted ? 'battery-signal battery-signal-dead' : 'battery-signal battery-signal-live';
+          var btLine = '<span class="' + btSignalClass + '">(((</span>' +
+                       '<span class="battery-diamonds">' + btDiamonds + '</span>' +
+                       '<span class="' + btSignalClass + '">)))</span>';
+
           rPanel.innerHTML =
             '<div class="debrief-line energy resource-row" data-resource="Energy" style="color:' + (ROW_COLORS.energy || '') + '">' + enLine + '</div>' +
             '<div class="debrief-line focus resource-row" data-resource="Focus" style="color:' + (ROW_COLORS.focus || '') + '">' + fcLine + '</div>' +
-            '<div class="debrief-line fatigue resource-row" data-resource="Fatigue" style="color:' + (ROW_COLORS.fatigue || '') + '">' + ftLine + '</div>';
+            '<div class="debrief-line fatigue resource-row" data-resource="Fatigue" style="color:' + (ROW_COLORS.fatigue || '') + '">' + ftLine + '</div>' +
+            '<div class="debrief-line battery resource-row" data-resource="Battery" style="color:' + btColor + '">' + btLine + '</div>';
         } else if (rPanel) {
           rPanel.textContent = '';
         }
@@ -1004,20 +1063,21 @@ const DebriefFeedController = (function() {
               }
             } catch (eBatt) {}
 
-            // ── Diamond battery bar ──
+            // ── Diamond battery bar (5 diamonds from 0-100 scale) ──
             function _batteryDiamonds(batt, maxB) {
-              maxB = maxB || 5;
+              maxB = maxB || 100;
               batt = Math.max(0, Math.min(maxB, batt || 0));
-              var filled = Math.round(batt);
-              return '[' + '◈'.repeat(filled) + '◇'.repeat(maxB - filled) + ']';
+              var diamonds = 5;
+              var filled = Math.round((batt / maxB) * diamonds);
+              return '◈'.repeat(filled) + '◇'.repeat(diamonds - filled);
             }
 
-            // ── In-game battery (resource) ──
+            // ── In-game battery (resource, 0-100) ──
             function _getBatt() {
               var st = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getState) ? GAMESTATE.getState() : {};
               var batt = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getBattery) ? GAMESTATE.getBattery() : (st.battery || 0);
-              var maxB = st.maxBattery || 5;
-              return { batt: batt || 0, maxB: maxB || 5 };
+              var maxB = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getMaxBattery) ? GAMESTATE.getMaxBattery() : (st.maxBattery || 100);
+              return { batt: batt || 0, maxB: maxB || 100 };
             }
 
             function _tierFromPct(pct) {

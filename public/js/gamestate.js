@@ -48,8 +48,9 @@ const GAMESTATE = (function () {
     maxEnergy: 5,
     playerFocus: 10,               // 0-10 scale (improves accuracy)
     maxFocus: 10,
-    playerBattery: 5,              // 0-5 scale (powers equipment)
-    maxBattery: 5,
+    playerBattery: 60,             // 0-100 scale (3/5 diamonds filled at start)
+    maxBattery: 100,
+    _playerBatteryDecimal: 0,      // fractional accumulator for sub-integer drain
     playerStability: 10,           // 0-10 scale (prevents panic)
     maxStability: 10,
 
@@ -1952,8 +1953,9 @@ const GAMESTATE = (function () {
       maxEnergy: 5,
       playerFocus: 10,
       maxFocus: 10,
-      playerBattery: 5,
-      maxBattery: 5,
+      playerBattery: 60,
+      maxBattery: 100,
+      _playerBatteryDecimal: 0,
       playerStability: 10,
       maxStability: 10,
       consumables: [],
@@ -2439,16 +2441,36 @@ const GAMESTATE = (function () {
   }
 
   // ========== BATTERY MANAGEMENT ==========
+  // Battery is 0-100 scale. Display maps to 5 diamond symbols:
+  //   each diamond = 20 battery points (0-20 = 1st, 20-40 = 2nd, etc.)
+  // New players start at 60/100 (3/5 filled).
+  // Flashlight drains 0.27/sec → 5 diamonds (~100) lasts ~370 sec.
 
   /**
-   * Get current battery level
+   * Get current battery level (0-100)
    */
   function getBattery() {
     return _state.playerBattery !== undefined ? _state.playerBattery : _state.maxBattery;
   }
 
   /**
-   * Use battery (for equipment)
+   * Get max battery (100)
+   */
+  function getMaxBattery() {
+    return _state.maxBattery || 100;
+  }
+
+  /**
+   * Get filled diamond count (0-5) for display
+   */
+  function getBatteryDiamonds() {
+    var cur = getBattery();
+    var max = getMaxBattery();
+    return Math.round((cur / max) * 5);
+  }
+
+  /**
+   * Use battery (for equipment) — integer amount
    * @param {number} amount - Amount of battery to use
    */
   function useBattery(amount) {
@@ -2459,12 +2481,37 @@ const GAMESTATE = (function () {
         message: 'Insufficient battery (Have: ' + current + ', Need: ' + amount + ')'
       };
     }
-    _state.playerBattery = current - amount;
+    _state.playerBattery = Math.max(0, current - amount);
     _saveState();
     return {
       success: true,
       remaining: _state.playerBattery
     };
+  }
+
+  /**
+   * Tick-based battery drain for equipped items (called every frame).
+   * Uses decimal accumulator for sub-integer precision.
+   * @param {number} deltaTime - seconds since last tick
+   * @param {number} drainRate - battery units per second (e.g. 0.27 for flashlight)
+   * @returns {string|null} 'tick' on integer rollover, 'depleted' when battery hits 0, null otherwise
+   */
+  function tickBatteryDrain(deltaTime, drainRate) {
+    if (_state.playerBattery <= 0) return null;
+
+    if (!_state._playerBatteryDecimal) _state._playerBatteryDecimal = 0;
+    _state._playerBatteryDecimal += drainRate * deltaTime;
+
+    if (_state._playerBatteryDecimal >= 1.0) {
+      var drop = Math.floor(_state._playerBatteryDecimal);
+      var prev = _state.playerBattery;
+      _state.playerBattery = Math.max(0, _state.playerBattery - drop);
+      _state._playerBatteryDecimal -= drop;
+      _saveState();
+      if (_state.playerBattery <= 0 && prev > 0) return 'depleted';
+      return 'tick';
+    }
+    return null;
   }
 
   /**
@@ -2474,6 +2521,7 @@ const GAMESTATE = (function () {
   function rechargeBattery(amount) {
     var current = getBattery();
     _state.playerBattery = Math.min(_state.maxBattery, current + amount);
+    _state._playerBatteryDecimal = 0; // reset fractional accumulator on recharge
     _saveState();
     return _state.playerBattery;
   }
@@ -3013,7 +3061,10 @@ const GAMESTATE = (function () {
     addFocus: addFocus,
     // Battery management
     getBattery: getBattery,
+    getMaxBattery: getMaxBattery,
+    getBatteryDiamonds: getBatteryDiamonds,
     useBattery: useBattery,
+    tickBatteryDrain: tickBatteryDrain,
     rechargeBattery: rechargeBattery,
     // Stability management
     getStability: getStability,

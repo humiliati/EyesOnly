@@ -67,6 +67,33 @@ var GameTickSystem = (function() {
         }
         // 'tick' results update the bar silently via idle render (no pulse)
       }
+
+      // ── Battery drain for equipped items ──────────────────────────
+      // Flashlight: 0.27 battery/sec → 5 diamonds (~100 pts) lasts ~370 sec
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.tickBatteryDrain && GAMESTATE.getActiveItem) {
+        var _btActiveItem = GAMESTATE.getActiveItem();
+        var _btDrainRate = 0;
+        if (_btActiveItem) {
+          var _btName = (_btActiveItem.name || '').toLowerCase();
+          if (_btName.indexOf('flashlight') !== -1) {
+            _btDrainRate = _btActiveItem.batteryDrainRate || 0.27;
+          } else if (_btName.indexOf('night vision') !== -1) {
+            _btDrainRate = _btActiveItem.batteryDrainRate || 0.45;
+          } else if (_btName.indexOf('lighter') !== -1) {
+            _btDrainRate = 0; // lighters don't use battery
+          }
+        }
+        if (_btDrainRate > 0) {
+          var _btResult = GAMESTATE.tickBatteryDrain(deltaMs / 1000, _btDrainRate);
+          if (_btResult === 'depleted') {
+            // Battery ran out — flash debrief and report
+            if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
+              DebriefFeedController.reportResourceChange('Battery', 1, 0, 'Depleted');
+            }
+          }
+          // 'tick' updates display via idle render silently
+        }
+      }
     }
 
     // Update smooth movement system

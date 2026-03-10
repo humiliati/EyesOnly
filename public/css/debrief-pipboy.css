@@ -139,6 +139,28 @@ body.gone-rogue-active .debrief-feed-content .resource-value { opacity: 0.75; }
   pointer-events: none;
 }
 
+/* ── Battery signal brackets ((( ))) pulse in resource row ── */
+@keyframes batterySignalPulse {
+  0%   { color: #00FFA6; opacity: 0.6; }
+  33%  { color: #00D4FF; opacity: 0.9; }
+  66%  { color: #00FFD0; opacity: 0.75; }
+  100% { color: #00FFA6; opacity: 0.6; }
+}
+.battery-signal-live {
+  animation: batterySignalPulse 2.4s ease-in-out infinite;
+}
+.battery-signal-dead {
+  color: #666 !important;
+  opacity: 0.5;
+  animation: none !important;
+}
+/* Battery row depleted: entire row goes grey and non-interactive */
+.debrief-line.battery.resource-row[data-resource="Battery"].depleted {
+  color: #666 !important;
+  filter: grayscale(1);
+  pointer-events: none;
+}
+
 /* ── Monochrome symbol idle animation (gentle pulse) ── */
 @keyframes symbolIdlePulse {
   0%, 100% { opacity: 0.85; filter: brightness(1); }

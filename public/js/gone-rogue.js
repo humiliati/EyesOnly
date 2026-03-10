@@ -1666,6 +1666,12 @@ var GoneRogue = (function () {
         } else if (itemName.indexOf('lighter') !== -1) {
           lightItem = 'LIGHTER';
         }
+
+        // Battery-powered items go dark when battery depleted
+        if (lightItem && lightItem !== 'LIGHTER') {
+          var _btLvl = GAMESTATE.getBattery ? GAMESTATE.getBattery() : 1;
+          if (_btLvl <= 0) lightItem = null;
+        }
       }
     }
 
