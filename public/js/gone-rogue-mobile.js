@@ -2307,8 +2307,9 @@ const GoneRogueMobile = (function () {
     _desktopPointerDown = true;
     _desktopFishingActive = false;
     _desktopPointerStart = { x: e.clientX, y: e.clientY };
-    _fishingStart = { x: e.clientX, y: e.clientY };
+    _fishingStart = { x: e.clientX, y: e.clientY, time: Date.now() };
     _fishingPath = [];
+    _runMode = false;
 
     try {
       if (_gridContainer && _gridContainer.setPointerCapture) {
@@ -2330,6 +2331,20 @@ const GoneRogueMobile = (function () {
 
     if (!_desktopFishingActive && distance > FISHING_THRESHOLD) {
       _desktopFishingActive = true;
+
+      // Sprint via rapid fishing drag — fast initial drag activates sprint
+      if (_fishingStart.time) {
+        var elapsed = Date.now() - _fishingStart.time;
+        if (elapsed > 0) {
+          var dragSpeed = distance / elapsed; // pixels per millisecond
+          var canSprintDrag = typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.canSprint === 'function'
+            ? GAMESTATE.canSprint()
+            : true;
+          if (dragSpeed >= FISHING_SPRINT_DRAG_SPEED && canSprintDrag) {
+            _runMode = true;
+          }
+        }
+      }
     }
 
     if (_desktopFishingActive) {

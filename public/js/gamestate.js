@@ -2104,10 +2104,10 @@ const GAMESTATE = (function () {
     if (_state.playerFatigue <= 0) return null; // already fresh
 
     // Recovery rates:
-    //   Idle:    3.33 fatigue/sec → 100→0 in ~30 seconds
-    //   Walking: 1.67 fatigue/sec → 100→0 in ~60 seconds
-    var IDLE_RECOVERY_RATE = 3.33;
-    var WALK_RECOVERY_RATE = 1.67;
+    //   Idle:    1.0 fatigue/sec → 100→0 in ~100 seconds
+    //   Walking: 0.5 fatigue/sec → 100→0 in ~200 seconds
+    var IDLE_RECOVERY_RATE = 1.0;
+    var WALK_RECOVERY_RATE = 0.5;
     var rate = isWalking ? WALK_RECOVERY_RATE : IDLE_RECOVERY_RATE;
 
     // Apply modifiers from equipment (future: passive items can speed/slow recovery)

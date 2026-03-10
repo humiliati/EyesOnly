@@ -1357,9 +1357,18 @@ const DebriefFeedController = (function() {
       'Currency': '#FFFF00', 'key_ammo': '#FF8A3D', 'Cards': '#800080'
     };
 
+    // Frame flash cooldown: prevent spam during rapid fatigue drain / pickups
+    // Symbol animation + row highlight still fire, only the big frame glow is throttled.
+    if (!DebriefFeedController._flashCooldowns) DebriefFeedController._flashCooldowns = {};
+    var _flashNow = Date.now();
+    var _flashCooldownMs = 800; // minimum ms between frame flashes per resource
+    var _lastFlash = DebriefFeedController._flashCooldowns[resourceType] || 0;
+    var _allowFrameFlash = (_flashNow - _lastFlash) >= _flashCooldownMs;
+    if (_allowFrameFlash) DebriefFeedController._flashCooldowns[resourceType] = _flashNow;
+
     // Pulse the debrief frame with RESOURCE_COLOR-specific glow
     try {
-      if (_debriefScreen) {
+      if (_debriefScreen && _allowFrameFlash) {
         var flashColor = RESOURCE_COLORS[resourceType] || (change >= 0 ? '#1cff9b' : '#ff4444');
         // Remove old pulse classes
         _debriefScreen.classList.remove('debrief-pulse-pos');

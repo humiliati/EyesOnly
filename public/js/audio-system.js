@@ -604,13 +604,13 @@ const AudioSystem = (function () {
 
   // Cadence timing (ms)
   var _WALK_CADENCE  = 229;   // brisk walk (~45% faster than original 420ms)
-  var _SPRINT_FULL   = 115;   // full-fatigue sprint ≈ 2× walk cadence
+  var _SPRINT_FULL   = 104;   // +10% faster (was 115ms), sprint ≈ 2.2× walk cadence
   var _LIMP_SHORT    = 229;   // injured: L step (quick) — matches walk cadence
   var _LIMP_LONG     = 650;   // injured: R step (drag)
   var _HEALTH_LIMP   = 0.30;  // limp when HP < 30%
 
   // Fatigue-based sprint deceleration
-  // At fatigue 0   → sprint cadence = _SPRINT_FULL  (115ms, ~2× walk speed)
+  // At fatigue 0   → sprint cadence = _SPRINT_FULL  (104ms, ~2.2× walk speed)
   // At fatigue 100 → sprint cadence = _WALK_CADENCE (229ms, exhausted = walking)
   // Linear interpolation between the two.
   // Future: wire sprint movement into fatigue spending so exhausted players
@@ -621,7 +621,7 @@ const AudioSystem = (function () {
   var _PAN_RIGHT =  0.22;
 
   // Player footstep volume multiplier (60% reduction = 0.40 of original)
-  var _PLAYER_FOOTSTEP_VOL = 0.40;
+  var _PLAYER_FOOTSTEP_VOL = 0.32;  // -20% from 0.40
 
   // Step clock state
   var _stepFoot = 0;            // 0 = left, 1 = right
