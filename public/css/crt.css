@@ -1825,10 +1825,15 @@ body.amber-mode #scanlines::after {
   body.mode-gone-rogue,
   body.in-gone-rogue,
   body.gone-rogue-active {
-    --rogue-emoji-scale: 0.5; /* shrink emoji render size up to 50% when needed */
-    --header-chip-scale: 0.5; /* shrink header action chip (AWOL) */
-    --header-center-scale: 0.6; /* shrink active item + currency frames */
-    --hud-emoji-scale: 0.3; /* shrink HUD emoji list (items/resources) */
+    /* ── HUD scale: driven by vertical drag on debrief header ──
+       Range: 0.65 (compact) → 1.0 (full). JS sets this on body.style.
+       Everything in the header + torso band cascades from this single value. */
+    --hud-scale: 1;
+    --rogue-emoji-scale: calc(0.5 * var(--hud-scale, 1));
+    --header-chip-scale: calc(0.5 * var(--hud-scale, 1));
+    --header-center-scale: calc(0.6 * var(--hud-scale, 1));
+    /* Emoji scale floors at 0.22 even at min --hud-scale (0.65 × 0.35 ≈ 0.23) */
+    --hud-emoji-scale: calc(0.35 * var(--hud-scale, 1));
   }
 
   /* Hide MOK swapper header in portrait rogue; resources should be first and uninterrupted */
@@ -1851,23 +1856,23 @@ body.amber-mode #scanlines::after {
   body.in-gone-rogue #mok-header .header-chip,
   body.gone-rogue-active #mok-header .header-chip {
     transform: none !important;
-    padding: 2px 6px !important;
-    min-height: 18px !important;
-    font-size: 10px !important;
+    padding: calc(2px * var(--hud-scale, 1)) calc(6px * var(--hud-scale, 1)) !important;
+    min-height: calc(18px * var(--hud-scale, 1)) !important;
+    font-size: calc(10px * var(--hud-scale, 1)) !important;
     display: inline-flex !important; /* ensure AWOL stays visible */
   }
 
   body.mode-gone-rogue #mok-header .header-chip .accountability-icon,
   body.in-gone-rogue #mok-header .header-chip .accountability-icon,
   body.gone-rogue-active #mok-header .header-chip .accountability-icon {
-    font-size: 10px !important;
+    font-size: calc(10px * var(--hud-scale, 1)) !important;
   }
   body.mode-gone-rogue #mok-header.monitor-header,
   body.in-gone-rogue #mok-header.monitor-header,
   body.gone-rogue-active #mok-header.monitor-header {
-    min-height: 16px;
-    padding: 1px 4px;
-    gap: 6px;
+    min-height: calc(16px * var(--hud-scale, 1));
+    padding: calc(1px * var(--hud-scale, 1)) calc(4px * var(--hud-scale, 1));
+    gap: calc(6px * var(--hud-scale, 1));
   }
 
   body.mode-gone-rogue #mok-header .mok-header-left,
@@ -1886,8 +1891,8 @@ body.amber-mode #scanlines::after {
   body.mode-gone-rogue #awol-button,
   body.in-gone-rogue #awol-button,
   body.gone-rogue-active #awol-button {
-    padding: 2px 6px;
-    min-height: 18px;
+    padding: calc(2px * var(--hud-scale, 1)) calc(6px * var(--hud-scale, 1));
+    min-height: calc(18px * var(--hud-scale, 1));
   }
 
   /* Hide verbose header copy; keep only tiny icons */
@@ -1913,7 +1918,7 @@ body.amber-mode #scanlines::after {
   body.in-gone-rogue .mok-header-sub,
   body.gone-rogue-active .mok-header-sub {
     font-family: 'Consolas', 'Lucida Console', 'Courier New', monospace;
-    font-size: 10px;
+    font-size: calc(10px * var(--hud-scale, 1));
     line-height: 1;
     color: rgba(191, 255, 227, 0.9);
     letter-spacing: 0.08em;
@@ -1969,7 +1974,10 @@ body.amber-mode #scanlines::after {
     /* Header is hidden. The first row was previously "auto" but nothing was
        assigned to it, so it became a phantom empty band. Keep it at 0.
        Torso holds controls+debrief; legs holds the game surface. */
-    grid-template-rows: 0px clamp(96px, 14vh, 170px) 1fr;
+    /* Torso height scales with --hud-scale (drag-driven).
+       At --hud-scale: 1 → full 14vh. At 0.65 → ~9.1vh.
+       Header stays at 0px (hidden in gone-rogue). Legs (1fr) absorb freed space. */
+    grid-template-rows: 0px calc(clamp(96px, 14vh, 170px) * var(--hud-scale, 1)) 1fr;
     gap: 6px;
   }
 
@@ -1992,8 +2000,8 @@ body.amber-mode #scanlines::after {
     backdrop-filter: none;
     border-radius: 0;
     overflow: hidden;
-    /* Match the torso band allocation above */
-    height: clamp(96px, 14vh, 170px);
+    /* Match the torso band allocation above — scales with --hud-scale */
+    height: calc(clamp(96px, 14vh, 170px) * var(--hud-scale, 1));
     min-height: 0;
     /* Ensure no gaps between children */
     gap: 2px;
@@ -2002,7 +2010,7 @@ body.amber-mode #scanlines::after {
   body.mode-gone-rogue .control-buttons,
   body.in-gone-rogue .control-buttons,
   body.gone-rogue-active .control-buttons {
-    width: calc(100% - var(--rogue-debrief-pct, 28%) - 2px);
+    width: calc(100% - var(--rogue-debrief-pct, 40%) - 2px);
     max-width: 100%;
     box-sizing: border-box;
     overflow: hidden;
@@ -2024,9 +2032,9 @@ body.amber-mode #scanlines::after {
   body.mode-gone-rogue .control-buttons button,
   body.in-gone-rogue .control-buttons button,
   body.gone-rogue-active .control-buttons button {
-    min-height: 26px;
-    padding: 2px 4px;
-    font-size: 0.80em;
+    min-height: calc(26px * var(--hud-scale, 1));
+    padding: calc(2px * var(--hud-scale, 1)) calc(4px * var(--hud-scale, 1));
+    font-size: calc(0.80em * var(--hud-scale, 1));
   }
 
   /* Shrink HUD emojis (inventory/resource lists) */
@@ -2053,7 +2061,7 @@ body.amber-mode #scanlines::after {
     position: relative;
     right: auto;
     top: auto;
-    width: var(--rogue-debrief-pct, 28%);
+    width: var(--rogue-debrief-pct, 40%);
     max-height: 100%;
     height: 100%;
     z-index: 15; /* Below control buttons but above normal content */
@@ -2076,28 +2084,38 @@ body.amber-mode #scanlines::after {
     -webkit-tap-highlight-color: rgba(28, 255, 155, 0.15);
   }
 
-  /* Debrief minimized: collapse to label-only bar */
+  /* Debrief minimized: compact but still visible & tappable.
+     Keep the 4:3 screen rendered at reduced width so the feed
+     remains readable. Label stays tappable to restore. */
   .debrief-window.debrief-minimized {
-    max-height: 22px !important;
+    width: 25% !important;
     overflow: hidden !important;
-    flex: 0 0 22px !important;
   }
-  .debrief-window.debrief-minimized .debrief-screen {
-    display: none;
-  }
+  /* Buttons reclaim the extra space via the CSS variable (JS sets --rogue-debrief-pct: 25%) */
 
-  /* Debrief maximized: overlay buttons without pushing them */
+  /* Debrief maximized: full overlay that covers the entire torso.
+     z-index 25 puts it ABOVE buttons (21) so it truly overlaps everything.
+     Header tap or video push triggers this state. */
   .debrief-window.debrief-maximized {
     position: absolute !important;
+    left: 0;
     right: 0;
     top: 0;
+    bottom: 0;
     width: 100% !important;
+    height: 100% !important;
     max-height: 100% !important;
-    z-index: 15 !important; /* Below control buttons (z-index 21) but above normal content */
+    z-index: 25 !important; /* Above control buttons (z-index 21) — true overlay */
     overflow-y: auto !important;
-    background: rgba(6, 14, 9, 0.95) !important;
-    /* Ensure pointer events don't block buttons */
+    background: rgba(6, 14, 9, 0.96) !important;
+    border-radius: 10px;
     pointer-events: auto;
+  }
+  /* In maximized state, remove the 4:3 constraint so content fills the overlay */
+  .debrief-window.debrief-maximized .debrief-screen {
+    aspect-ratio: auto;
+    max-width: 100%;
+    height: 100%;
   }
 
   body.mode-gone-rogue .debrief-window .debrief-label,
@@ -2108,12 +2126,51 @@ body.amber-mode #scanlines::after {
     line-height: 1.1;
   }
 
-  /* Encourage status-strip feel */
+  /* Drag affordance: vertical resize cursor + grip handle */
   body.mode-gone-rogue .debrief-window .debrief-label,
   body.in-gone-rogue .debrief-window .debrief-label,
   body.gone-rogue-active .debrief-window .debrief-label {
-    cursor: ew-resize;
+    cursor: ns-resize;
     user-select: none;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* Grip handle: three horizontal bars (⋮⋮ rotated) */
+  body.mode-gone-rogue .debrief-window .debrief-label::before,
+  body.in-gone-rogue .debrief-window .debrief-label::before,
+  body.gone-rogue-active .debrief-window .debrief-label::before {
+    content: '';
+    display: inline-block;
+    width: 18px;
+    height: 8px;
+    flex-shrink: 0;
+    /* Three horizontal grip lines via gradient */
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(28, 255, 155, 0.35) 0px,
+      rgba(28, 255, 155, 0.35) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    border-radius: 2px;
+    opacity: 0.7;
+    transition: opacity 0.15s ease;
+  }
+
+  body.mode-gone-rogue .debrief-window .debrief-label:active::before,
+  body.in-gone-rogue .debrief-window .debrief-label:active::before,
+  body.gone-rogue-active .debrief-window .debrief-label:active::before {
+    opacity: 1;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(28, 255, 155, 0.6) 0px,
+      rgba(28, 255, 155, 0.6) 1px,
+      transparent 1px,
+      transparent 3px
+    );
   }
 
   body.mode-gone-rogue .debrief-window .debrief-screen,
@@ -2807,25 +2864,30 @@ body.in-gone-rogue #log-column {
    This avoids the heavy-handed desktop patch that broke layout.
 */
 @media (min-width: 768px) {
-  /* Desktop containment strategy:
-     - Let the *frame* (#rogue-grid-mobile) hug the canvas' real drawing size
-       (so we don't create deadspace inside the neon border)
-     - Center that frame inside the terminal surface.
+  /* ── Desktop: canvas fills the log-frame like a fullscreen CRT monitor ──
+     The .log-frame border-radius creates the rounded CRT clip.
+     #terminal and #rogue-grid-mobile both stretch to fill.
+     JS coverZ auto-zoom ensures the 800×400 canvas scales up to cover. */
 
-     This avoids fighting the game's JS camera math (it sets an inline
-     transform on the canvas: scale(...) translate(...)).
-  */
+  body.gone-rogue-active .log-frame {
+    overflow: hidden;         /* border-radius: 10px clips to CRT interior */
+    padding: 0;              /* canvas goes edge-to-edge inside the frame */
+    position: relative;
+  }
+
   body.gone-rogue-active #terminal {
-    overflow: hidden;         /* clip any transformed children */
-    isolation: isolate;       /* new stacking context for sane z-index */
-
-    /* Ensure prior terminal output doesn't push the game frame down */
+    overflow: hidden;
+    isolation: isolate;
     position: relative;
 
-    /* Center the game surface inside the terminal */
+    /* Fill the log-frame completely */
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 0;
+    flex: 1;
+    min-height: 0;
   }
 
   /* When rogue starts after some commands, those .line nodes remain in DOM
@@ -2837,18 +2899,19 @@ body.in-gone-rogue #log-column {
   body.gone-rogue-active #rogue-grid-mobile {
     position: relative;
     z-index: 0;
-    overflow: hidden;         /* primary clip */
-    margin-top: 0 !important; /* don't inherit spacing from earlier terminal flow */
+    overflow: hidden;         /* primary clip — CRT interior mask */
+    margin-top: 0 !important;
 
-    /* Hug content (canvas) so border doesn't span empty space */
-    width: fit-content;
+    /* FILL the terminal frame — canvas scales via JS camera zoom to cover */
+    width: 100%;
+    height: 100%;
     max-width: 100%;
     min-width: 0;
     box-sizing: border-box;
+    flex: 1 1 auto;          /* grow to fill flex parent */
 
-    /* Ensure canvas sits at top-left within the frame */
-    display: grid;
-    place-items: start;
+    /* Canvas sits at origin; JS transform handles pan/zoom */
+    display: block;
     line-height: 0;
   }
 

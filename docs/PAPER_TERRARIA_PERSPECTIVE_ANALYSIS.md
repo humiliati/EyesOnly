@@ -169,7 +169,7 @@ On desktop, the game viewport is constrained by multiple CSS rules that were des
 
 4. **`#terminal` overflow** — Currently `overflow: hidden` on desktop when gone-rogue is active. This clips the scaled canvas. With a properly-sized canvas, this is fine, but verify it doesn't clip parallax layers that extend beyond the game grid.
 
-5. **Left sidebar** — Consider hiding it or making it collapsible when perspective mode is active, to give the game viewport more room. `18vw` at 1920px = 346px of sidebar.
+// NO! 5. **Left sidebar** — Consider hiding it or making it collapsible when perspective mode is active, to give the game viewport more room. `18vw` at 1920px = 346px of sidebar.
 
 ### Proposed Responsive Strategy
 

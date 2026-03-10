@@ -8,12 +8,12 @@
   --str-overlay-min-width: 300px;
 }
 
-/* Grid Container */
+/* Grid Container — mobile-first (portrait cap at 100vw) */
 .rogue-grid-mobile {
   display: none;
   width: 100%;
   position: relative;
-  max-width: min(600px, 100vw);
+  max-width: min(600px, 100vw); /* mobile cap — desktop override below */
   margin: 0 auto;
   gap: 1px;
   background: #0a0a0a;
@@ -24,12 +24,25 @@
   touch-action: pan-y pan-x;
   user-select: none;
   transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-  overflow: visible; /* Allow grid to be fully visible */
+  overflow: visible;
   box-sizing: border-box;
-  position: relative; /* Ensure proper positioning context */
-  z-index: 10; /* Prioritize grid over other terminal content */
-  /* Ensure grid can be scrolled to on mobile */
+  z-index: 10;
   min-height: min-content;
+}
+
+/* ── Desktop: remove 600px cap, fill the log-frame ── */
+@media (min-width: 768px) {
+  body.gone-rogue-active .rogue-grid-mobile {
+    max-width: 100%;        /* uncap — fill available space */
+    width: 100%;            /* stretch to container */
+    height: 100%;           /* fill vertical space too */
+    margin: 0;              /* no centering margin — we want edge-to-edge */
+    padding: 0;             /* no inner padding — canvas fills the frame */
+    border: none;           /* border comes from the log-frame/terminal instead */
+    box-shadow: none;       /* CRT glow handled by parent frame */
+    border-radius: 0;       /* inherits clip from parent overflow */
+    overflow: hidden;       /* clip canvas to this container */
+  }
 }
 
 /* Combat Zoom Effect - Desktop & Mobile */

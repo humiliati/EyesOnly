@@ -1159,8 +1159,10 @@ const GoneRogueMobile = (function () {
   function _applyMobileCanvasFollow(player, viewW, viewH, cellSize) {
     if (!_canvasRenderer || !player) return;
 
-    // Base zoom: lower on desktop, higher on mobile portrait
-    var z = 1.2;
+    // Base zoom: desktop uses higher base since canvas must cover the full
+    // log-frame. coverZ auto-fill (below) raises further when container is large.
+    // Mobile portrait keeps 1.5 — its container is already tight.
+    var z = 1.8;
     try {
       if (window.matchMedia && window.matchMedia('(max-width: 700px) and (orientation: portrait)').matches) {
         z = 1.5;
