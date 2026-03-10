@@ -54,6 +54,45 @@ var ProjectileSystem = (function() {
   }
 
   /**
+   * Check ammo, spend 1, flash debrief. Returns true if ammo was available.
+   * If no ammo, plays empty clip sound and flashes debrief negative.
+   */
+  function _trySpendAmmo() {
+    if (typeof GAMESTATE === 'undefined') return true; // no gamestate = free fire
+
+    var ammo = GAMESTATE.getAmmo ? GAMESTATE.getAmmo() : 1;
+    if (ammo <= 0) {
+      // Empty clip — play clang8 and flash debrief
+      _lastFireTime = Date.now(); // still apply cooldown to prevent spam clicks
+      try {
+        if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+          AudioSystem.play('clang8', { volume: 0.5 });
+        }
+      } catch (e) {}
+      try {
+        if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
+          DebriefFeedController.reportResourceChange('Ammo', 0, 0, 'Empty');
+        }
+      } catch (e2) {}
+      return false;
+    }
+
+    // Spend 1 ammo
+    var ammoBefore = ammo;
+    if (GAMESTATE.useAmmo) GAMESTATE.useAmmo(1);
+    var ammoAfter = GAMESTATE.getAmmo ? GAMESTATE.getAmmo() : (ammoBefore - 1);
+
+    // Flash debrief feed for ammo spend
+    try {
+      if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
+        DebriefFeedController.reportResourceChange('Ammo', ammoBefore, ammoAfter, 'Fire');
+      }
+    } catch (e3) {}
+
+    return true;
+  }
+
+  /**
    * Play attack sound and mark fire timestamp
    */
   function _onFire() {
@@ -223,6 +262,9 @@ var ProjectileSystem = (function() {
     // Fire-rate throttle
     if (!_canFire(ctx)) return null;
 
+    // Ammo check — spend 1 or play empty clip
+    if (!_trySpendAmmo()) return null;
+
     var origin = _getFiringOrigin(ctx);
     var dir = ctx.parseDirection(cmd);
     var len = Math.sqrt(dir.dx * dir.dx + dir.dy * dir.dy) || 1;
@@ -260,6 +302,9 @@ var ProjectileSystem = (function() {
 
     // Fire-rate throttle
     if (!_canFire(ctx)) return null;
+
+    // Ammo check — spend 1 or play empty clip
+    if (!_trySpendAmmo()) return null;
 
     var origin = _getFiringOrigin(ctx);
     var dx = targetX - origin.x;

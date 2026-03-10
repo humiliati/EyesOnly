@@ -167,12 +167,13 @@ body {
 }
 
 .category-items {
-  max-height: 600px;
-  overflow: hidden;
-  transition: max-height 0.2s ease;
+  max-height: 5000px;  /* large enough for 103+ items; overflow scrolls if needed */
+  overflow-y: auto;
+  transition: max-height 0.3s ease;
 }
 .category-items.collapsed {
   max-height: 0;
+  overflow: hidden;
 }
 
 .sound-item {

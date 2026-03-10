@@ -522,3 +522,11 @@ Musician/Designer                Sound Designer Portal
                                         └→ GroundEffects.addFootprint()
                                            → enemy AI suspicion query
 ```
+
+
+priorities:
+we now need to wire the player's ammo resource to weapon firing projectiles. the spending and recovery of ammo should flash the debrief feed frame animation. 
+
+
+
+when player has no ammunition but the projectile would otherwise fire at a target then we need to play an empty clip sound  sfx | Key: clang8 | /audio/sfx/clang8.webm until the player recovers ammunition
