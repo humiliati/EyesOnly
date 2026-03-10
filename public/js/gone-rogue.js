@@ -2359,7 +2359,7 @@ var GoneRogue = (function () {
       player: _player,
       grid: _grid,
       enemies: _enemies,
-      items: _items,
+      get items() { return _items; },
       currencies: _currencies,
       shops: _shops,
       npcs: _npcs,

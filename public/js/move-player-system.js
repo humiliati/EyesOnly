@@ -193,6 +193,13 @@ var MovePlayerSystem = (function() {
       player.collectingCurrency = true;
       player.currencyCollectTime = Date.now();
 
+      // ── Audio: currency pickup → coin-2 ──
+      try {
+        if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+          AudioSystem.play('coin-2', { volume: 0.5 });
+        }
+      } catch (eCurrSnd) {}
+
       if (typeof OverheadAnimator !== 'undefined') {
         OverheadAnimator.showCurrencyPickup(player.x, player.y, cryptoPickup.amount);
       }
@@ -205,9 +212,11 @@ var MovePlayerSystem = (function() {
 
     // Auto-pickup ALL floor items at new position (handles multi-content breakables).
     // while-loop collects every item in one pass; pickupItem() removes one per call.
-    var items = ctx.items;
-    while (items.find(function(it) { return it.x === newX && it.y === newY; })) {
+    // NOTE: Use ctx.items (getter) each iteration — filterItems replaces the array reference.
+    var _pickupSafety = 0;
+    while (_pickupSafety < 20 && ctx.items.find(function(it) { return it.x === newX && it.y === newY; })) {
       ctx.pickupItem();
+      _pickupSafety++;
     }
 
     // Check for food item pickup (auto-pickup from interactive items)
