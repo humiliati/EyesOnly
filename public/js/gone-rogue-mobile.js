@@ -1162,7 +1162,7 @@ const GoneRogueMobile = (function () {
     // Base zoom: desktop uses higher base since canvas must cover the full
     // log-frame. coverZ auto-fill (below) raises further when container is large.
     // Mobile portrait keeps 1.5 — its container is already tight.
-    var z = 1.8;
+    var z = 2.0;
     try {
       if (window.matchMedia && window.matchMedia('(max-width: 700px) and (orientation: portrait)').matches) {
         z = 1.5;
