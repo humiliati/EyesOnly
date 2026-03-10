@@ -569,6 +569,31 @@ const AudioSystem = (function () {
     play(base + '-' + n, opts);
   }
 
+  /**
+   * Play an ordered sequence of sounds with per-item delays.
+   * Used by the door contract audio system for transition sequences
+   * like DoorOpen → Ascend → DoorClose.
+   *
+   * @param {Array<{key:string, delay:number, volume?:number, playbackRate?:number}>} sounds
+   * @param {number} [baseOffset=0] - Additional ms offset added to all delays
+   */
+  function playSequence(sounds, baseOffset) {
+    if (!sounds || !sounds.length) return;
+    baseOffset = baseOffset || 0;
+    for (var i = 0; i < sounds.length; i++) {
+      (function (snd) {
+        var totalDelay = (snd.delay || 0) + baseOffset;
+        var opts = { volume: snd.volume || 0.5 };
+        if (snd.playbackRate) opts.playbackRate = snd.playbackRate;
+        if (totalDelay <= 0) {
+          play(snd.key, opts);
+        } else {
+          setTimeout(function () { play(snd.key, opts); }, totalDelay);
+        }
+      })(sounds[i]);
+    }
+  }
+
   // ── Footstep engine ──────────────────────────────────────
   // Time-based step clock with stereo panning, floor-depth volume,
   // injury limp cadence, and humanization.  Called every frame from
@@ -745,6 +770,7 @@ const AudioSystem = (function () {
     loadManifest: loadManifest,
     play: play,
     playRandom: playRandom,
+    playSequence: playSequence,
     playFootstep: playFootstep,
     tickFootsteps: tickFootsteps,
     playMusic: playMusic,

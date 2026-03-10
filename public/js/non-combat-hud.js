@@ -1995,6 +1995,18 @@ var NonCombatHUD = (function() {
   function _showIncinerationEffect(detail) {
     if (!detail || !detail.card) return;
 
+    // ── Incinerator sound: standardized rumble-1 at faster pitch, lower volume ──
+    // Skip sound for backup_overflow — pickup-system.js plays it with 400ms delay
+    // as part of the pick_up → place → rumble 3-phase card sequence.
+    var _incSource = (detail && detail.source) ? detail.source : '';
+    if (_incSource !== 'backup_overflow') {
+      try {
+        if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+          AudioSystem.play('rumble-1', { volume: 0.3, playbackRate: 1.25 });
+        }
+      } catch (eIncSnd) {}
+    }
+
     var cardId = detail.card.id || '?';
     var cardDef = _getCardDef(cardId);
     var emoji = (cardDef && cardDef.emoji) ? cardDef.emoji : '🃏';

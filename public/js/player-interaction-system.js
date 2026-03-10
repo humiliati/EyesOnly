@@ -183,6 +183,23 @@ var PlayerInteractionSystem = (function() {
     var result = FoodDatabase.applyFoodEffects(foodItem.customData.foodId, ctx.player);
     if (!result.success) return;
 
+    // ── Food pickup sound by resourceType ──
+    try {
+      if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+        var _foodResType = (result.resourceType || '').toLowerCase();
+        if (_foodResType === 'hp') {
+          AudioSystem.play('sq-sq-pickup-success2', { volume: 0.5 });
+        } else if (_foodResType === 'focus') {
+          AudioSystem.play('sq-sq-pickup-success1', { volume: 0.5 });
+        } else if (_foodResType === 'energy') {
+          AudioSystem.play('sq-sq-pickup', { volume: 0.5 });
+        } else {
+          // Fatigue, Inert, or unknown → quick pickup
+          AudioSystem.play('sq-sq-pickup-quick', { volume: 0.5 });
+        }
+      }
+    } catch (eFoodSnd) {}
+
     // Overhead animation color from canonical resourceColor on food item
     var primaryColor = result.resourceColor || '#FF6B9D';
 

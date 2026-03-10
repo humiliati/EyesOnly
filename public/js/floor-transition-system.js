@@ -14,29 +14,79 @@ var FloorTransitionSystem = (function () {
   // ------------------------------------------------------------------
   // Shared fade helpers
   // ------------------------------------------------------------------
+
+  /**
+   * Visual fade-out only (no audio — door contract handles sounds).
+   */
   function _fadeOut(ctx) {
     if (!ctx.useInteractiveGrid) return;
     var el = document.getElementById('rogue-grid-mobile');
     if (el) { el.style.opacity = '0'; el.style.transition = 'opacity 0.25s ease-out'; }
-    // Audio: floor exit whoosh + stop current music
-    // Skip stopMusic when onboarding music is playing (CLUBBED_TO_DEATH
-    // spans launch → char creation → floor 0 → tavern → floor 1).
-    if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
-      AudioSystem.playRandom('descend', 3, { volume: 0.4 });
-      if (AudioSystem.stopMusic && !AudioSystem.isOnboardingMusic()) {
-        AudioSystem.stopMusic();
-      }
+    // Stop current music (skip during onboarding)
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.stopMusic && !AudioSystem.isOnboardingMusic()) {
+      AudioSystem.stopMusic();
     }
   }
 
+  /**
+   * Visual fade-in only (no audio — door contract handles sounds).
+   */
   function _fadeIn(ctx) {
     if (!ctx.useInteractiveGrid) return;
     var el = document.getElementById('rogue-grid-mobile');
     if (el) { el.style.opacity = '1'; el.style.transition = 'opacity 0.25s ease-in'; }
-    // Audio: floor enter chime
-    if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
-      AudioSystem.playRandom('ascend', 3, { volume: 0.4 });
+  }
+
+  // ------------------------------------------------------------------
+  // Door contract audio integration
+  //
+  // Timing: DoorOpen plays immediately → scene waits ~350ms (pre-fade
+  // delay) so player hears creak → Ascend/Descend starts at 250ms
+  // (overlaps DoorOpen by ~30%) during the visual fade → DoorClose
+  // plays after fade-in at 600ms.
+  //
+  // For transitions without doors (world elevation), no pre-fade
+  // delay — the ascend/descend plays immediately with the fade.
+  // ------------------------------------------------------------------
+
+  /**
+   * Resolve the door contract sound sequence for a transition.
+   * Falls back to generic ascend/descend-2 if DoorContractAudio
+   * is not loaded.
+   *
+   * @param {string|null} sourceFloorId
+   * @param {string|null} targetFloorId
+   * @param {Object}      [opts] - { direction: 'up'|'down' }
+   * @returns {{ sounds: Array, preFadeDelay: number }}
+   */
+  function _resolveDoorSounds(sourceFloorId, targetFloorId, opts) {
+    if (typeof DoorContractAudio !== 'undefined' && DoorContractAudio.getTransitionSounds) {
+      var sounds = DoorContractAudio.getTransitionSounds(sourceFloorId, targetFloorId, opts);
+      var preFadeDelay = DoorContractAudio.getPreFadeDelay(sounds);
+      return { sounds: sounds, preFadeDelay: preFadeDelay };
     }
+    // Fallback: generic transition sounds (legacy behavior)
+    var fallbackDir = (opts && opts.direction === 'up') ? 'ascend' : 'descend';
+    return {
+      sounds: [{ key: fallbackDir + '-2', delay: 0, volume: 0.4 }],
+      preFadeDelay: 0
+    };
+  }
+
+  /**
+   * Play the full door contract sequence via AudioSystem.playSequence.
+   * Split into pre-fade sounds (delay < 350) and post-fade sounds (delay >= 600).
+   * Pre-fade sounds play immediately; post-fade sounds are scheduled
+   * relative to the fade-in moment.
+   *
+   * @param {Array}  sounds       - from _resolveDoorSounds().sounds
+   * @param {number} fadeStartMs  - when the fade-out starts (relative to now)
+   * @param {number} fadeDuration - total fade-out + work + fade-in time (ms)
+   */
+  function _playDoorSequence(sounds) {
+    if (!sounds || !sounds.length) return;
+    if (typeof AudioSystem === 'undefined' || !AudioSystem.playSequence) return;
+    AudioSystem.playSequence(sounds);
   }
 
   // ------------------------------------------------------------------
@@ -204,7 +254,20 @@ var FloorTransitionSystem = (function () {
       (prev.floorId || 'main floor ' + prev.mainFloor) +
       ' (entered via: ' + exitingFromFloorId + ')');
 
-    _fadeOut(ctx);
+    // ── Door contract audio: resolve sounds for this exit ──
+    // Source = current interior floorId we're leaving
+    // Target = where we're going (parent interior or main floor)
+    var _exitSourceId = exitingFromFloorId || ctx.currentInteriorFloorId || null;
+    var _exitTargetId = prev.floorId || String(prev.mainFloor || '0');
+    var _exitDoor = _resolveDoorSounds(_exitSourceId, _exitTargetId, { direction: 'up' });
+    _playDoorSequence(_exitDoor.sounds);
+
+    // Pre-fade delay: let door open sound play before screen goes dark
+    var _exitPreDelay = _exitDoor.preFadeDelay;
+
+    setTimeout(function () {
+      _fadeOut(ctx);
+    }, _exitPreDelay);
 
     setTimeout(function () {
       if (prev.floorId) {
@@ -277,7 +340,7 @@ var FloorTransitionSystem = (function () {
         _playBiomeMusic(ctx);
       }
       _fadeIn(ctx);
-    }, 260);
+    }, 260 + _exitPreDelay);
   }
 
   // ------------------------------------------------------------------
@@ -294,7 +357,14 @@ var FloorTransitionSystem = (function () {
     try { ctx.setLastExitPos({ x: ctx.player.x, y: ctx.player.y }); } catch (e0) {}
     ctx.setSpawnFromLastExitPos('retreat');
 
-    _fadeOut(ctx);
+    // ── Door contract audio: world retreat = ascending (going back up) ──
+    var _retSrc = String(ctx.getFloor());
+    var _retTgt = String(Math.max(0, ctx.getFloor() - 1));
+    var _retDoor = _resolveDoorSounds(_retSrc, _retTgt, { direction: 'up' });
+    _playDoorSequence(_retDoor.sounds);
+    var _retPreDelay = _retDoor.preFadeDelay;
+
+    setTimeout(function () { _fadeOut(ctx); }, _retPreDelay);
 
     setTimeout(function () {
       ctx.setFloor(Math.max(0, ctx.getFloor() - 1));
@@ -313,7 +383,7 @@ var FloorTransitionSystem = (function () {
       _playBiomeMusic(ctx);
 
       _fadeIn(ctx);
-    }, 260);
+    }, 260 + _retPreDelay);
   }
 
   // ------------------------------------------------------------------
@@ -339,14 +409,28 @@ var FloorTransitionSystem = (function () {
       }
     }
 
-    // Fade-out
-    if (ctx.useInteractiveGrid) {
-      var gridContainer = document.getElementById('rogue-grid-mobile');
-      if (gridContainer) { gridContainer.style.opacity = '0'; gridContainer.style.transition = 'opacity 0.3s ease-out'; }
-    }
-
     try { ctx.setLastExitPos({ x: ctx.player.x, y: ctx.player.y }); } catch (e0) {}
     ctx.setSpawnFromLastExitPos('advance');
+
+    // ── Door contract audio: world advance = descending (going deeper) ──
+    var _advSrc = String(ctx.getFloor());
+    var _advTgt = String(ctx.getFloor() + 1);
+    var _advDoor = _resolveDoorSounds(_advSrc, _advTgt, { direction: 'down' });
+    _playDoorSequence(_advDoor.sounds);
+    var _advPreDelay = _advDoor.preFadeDelay;
+
+    // Stop current music (skip during onboarding)
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.stopMusic && !AudioSystem.isOnboardingMusic()) {
+      AudioSystem.stopMusic();
+    }
+
+    // Fade-out (delayed by pre-fade so player hears door open)
+    setTimeout(function () {
+      if (ctx.useInteractiveGrid) {
+        var gridContainer = document.getElementById('rogue-grid-mobile');
+        if (gridContainer) { gridContainer.style.opacity = '0'; gridContainer.style.transition = 'opacity 0.3s ease-out'; }
+      }
+    }, _advPreDelay);
 
     setTimeout(function () {
       var isSecretFloor = !!secretFloorData;
@@ -443,7 +527,7 @@ var FloorTransitionSystem = (function () {
           stayActive: true
         };
       }
-    }, 300);
+    }, 300 + _advPreDelay);
 
     return { lines: ['EXTRACTING...'], prompt: ctx.getPrompt(), stayActive: true };
   }

@@ -1,7 +1,7 @@
 # Audio Wiring Roadmap
 
 > **Date:** 2026-03-09 (last updated)
-> **Status:** Phase 0 + Phase 2 + Phase 3 + Phase 4.1 complete, Phase 3.4 rewritten (time-based cadence engine with stereo panning, floor-depth volume, injury limp, humanization), Phase 1 deferred (pending card hand harmonization), transcoding shipped, Sound Designer portal live with CRUD (rename, delete, sort, gap check, manifest diff export) + 524 entries across 30 categories
+> **Status:** Phase 0 + Phase 2 + Phase 3 + Phase 4.1 complete, Phase 3.4 rewritten (time-based cadence engine with stereo panning, floor-depth volume, injury limp, humanization), Phase 1 deferred (pending card hand harmonization), transcoding shipped, Sound Designer portal live with CRUD (rename, delete, sort, gap check, manifest diff export) + 524 entries across 30 categories. Phase 4.5 collectible sounds canon complete. Phase 10 door contract audio grammar spec'd.
 > **Manifest entries:** 519 (167 original SFX + 8 footsteps + 103 card sounds + 204 new SFX batch + 20 Songs + 18 Cyberleaf + 14 Aila Scott — some with `_status: "staged"`)
 
 ---
@@ -29,8 +29,8 @@ All 519 assets have been transcoded from WAV to Opus/WebM (+ MP3 fallback) and u
 | Item pickup (key) | pickup-system.js:26 | `success-1` | ✅ New |
 | Item pickup (card) | pickup-system.js:27 | `coin-{1..2}` random | ✅ New |
 | Item pickup (other) | pickup-system.js:28 | `grab-item-2` | ✅ New |
-| Floor transition out | floor-transition-system.js:22 | `descend-{1..3}` random | ✅ New |
-| Floor transition in | floor-transition-system.js:29 | `ascend-{1..3}` random | ✅ New |
+| Floor transition out | floor-transition-system.js:22 | `descend-{1..3}` random | ✅ New (see Phase 10 for door contract grammar) |
+| Floor transition in | floor-transition-system.js:29 | `ascend-{1..3}` random | ✅ New (see Phase 10 for door contract grammar) |
 | `data-sound` buttons | audio-system.js (delegate) | Any — reads attribute | ✅ New |
 | `playRandom()` helper | audio-system.js | Variant picker utility | ✅ New |
 | Footstep system | audio-system.js / move-player-system.js | `footstep-{left,right}-{dirt,grass,sand,stone}` | ✅ New |
@@ -263,6 +263,44 @@ Pathing enemies produce audible footstep sounds with distance-based attenuation.
 
 ---
 
+## Phase 4.5 — Collectible Sounds Canon (Priority: HIGH) ✅ COMPLETE
+
+Comprehensive sound mapping for all collectible types, replacing the original generic pickup sounds.
+
+### 4.5.1 Pickup Sounds by Type — `pickup-system.js`
+
+| Collectible Type | Sound | Notes |
+|---|---|---|
+| Ammo | `coin-1` vol 0.5 | Light metallic clink |
+| Gem / Battery | `coin-1` vol 0.5 | Same weight class as ammo |
+| Currency / Low-tier Key (tier ≤ 1) | `coin-2` vol 0.5 | Slightly heavier clink |
+| Quest Key / High-tier Key (tier ≥ 3) | `grab-item-2` vol 0.55 | Significant pickup feel |
+| Item / Equipment / Consumable | `grab-item-1` vol 0.5 | General item weight |
+| Fallback (unknown type) | `grab-item-1` vol 0.5 | Safe default |
+
+### 4.5.2 Card Pickup 3-Phase Sequence — `pickup-system.js`
+
+| Phase | Timing | Sound | Condition |
+|---|---|---|---|
+| 1. Pick up | Immediate | `card-pick_up_card_{1..12}` random vol 0.5 | Always |
+| 2. Place | +180ms | `card-place_card_{1..11}` random vol 0.45 | `result.toHand > 0` |
+| 3. Incinerator | +400ms | `rumble-1` vol 0.3, playbackRate 1.25 | `result.discarded > 0` (backup overflow) |
+
+### 4.5.3 Food Pickup by ResourceType — `player-interaction-system.js` + `move-player-system.js`
+
+| Food ResourceType | Sound | Rationale |
+|---|---|---|
+| HP | `sq-sq-pickup-success2` vol 0.5 | Healing = most rewarding |
+| Focus | `sq-sq-pickup-success1` vol 0.5 | Mental resource = bright tone |
+| Energy | `sq-sq-pickup` vol 0.5 | Standard nourishment |
+| Fatigue / Inert / unknown | `sq-sq-pickup-quick` vol 0.5 | Quick, understated |
+
+### 4.5.4 Incinerator Sound Standardization — `non-combat-hud.js`
+
+All `rogue-card-incinerated` events (debrief disposal, invalid map drop) trigger `rumble-1` at `{ volume: 0.3, playbackRate: 1.25 }` via `_showIncinerationEffect()`. Events with source `backup_overflow` skip this sound (pickup-system.js handles it at 400ms delay for the 3-phase card sequence). Environmental rumble-1 usages (breakable-system.js, ground-effects-system.js) remain at their original settings.
+
+---
+
 ## Phase 5 — Death, Victory, Run Events (Priority: LOW)
 
 ### 5.1 Death Sequence — `death-exit-system.js`
@@ -452,6 +490,158 @@ Two scripts for pre-deploy validation:
 
 ---
 
+## Phase 10 — Door Contract Audio System (Priority: HIGH) 🔲 PLANNED
+
+> **Cross-references:**
+> - [BUILDING_INTERIOR_SYSTEM.md § Door Contract Audio Grammar](./BUILDING_INTERIOR_SYSTEM.md) — Transition table summary
+> - [BIOME_SYSTEMS.md § Integration Points](./BIOME_SYSTEMS.md) — Integration point #7
+> - Sound Designer portal: 🚪 DOORS category (18 entries) + 🪜 TRANSITIONS category (6 entries)
+
+### 10.0 Design Principle
+
+Floor transitions produce a **sound sequence** derived from the layer distance between source and target floors. The system treats every transition as a combination of three token types — `DoorOpen`, `Ascend`/`Descend`, and `DoorClose` — forming a sonic navigation language that players learn subconsciously.
+
+The number suffix on Ascend/Descend encodes magnitude: 2 = one structural layer, 3 = two layers or world-scale elevation. Door sound variants are chosen per transition type to give each passage a distinct acoustic identity.
+
+### 10.1 Structural Layers
+
+```
+N            world / overworld
+N.N          building interior
+N.N.N        nested interior / quest / basement
+N.N.N±       deeper(+) or shallower(-) nested interior
+N±           world elevation change (stairs, ladders, overworld terrain)
+```
+
+### 10.2 Manifest Key Mapping
+
+The raw manifest keys use the full `doorset-ogg-qubodup-` prefix. The contract uses short aliases for readability.
+
+| Short Alias | Manifest Key | Asset |
+|---|---|---|
+| DoorOpen01 | `doorset-ogg-qubodup-dooropen01` | Light creak (tavern, passage) |
+| DoorOpen02 | `doorset-ogg-qubodup-dooropen02` | Medium swing (cellar, hatch) |
+| DoorOpen03 | `doorset-ogg-qubodup-dooropen03` | Heavy pull (vault, escape) |
+| DoorOpen04 | `doorset-ogg-qubodup-dooropen04` | Deep descent entry |
+| DoorOpen05 | `doorset-ogg-qubodup-dooropen05` | Metal hatch (nested depth) |
+| DoorOpen06 | `doorset-ogg-qubodup-dooropen06` | Exit push (building → world) |
+| DoorOpen07 | `doorset-ogg-qubodup-dooropen07` | Reserved |
+| DoorOpen08 | `doorset-ogg-qubodup-dooropen08` | Reserved |
+| DoorClose03 | `doorset-ogg-qubodup-doorclose03` | Light close (building entry) |
+| DoorClose05 | `doorset-ogg-qubodup-doorclose05` | Cellar seal (basement transitions) |
+| DoorClose06 | `doorset-ogg-qubodup-doorclose06` | Exit close (building → world) |
+| DoorClose09 | `doorset-ogg-qubodup-doorclose09` | Heavy metal seal (deep nested) |
+| Ascend2 | `ascend-2` | One-layer vertical rise |
+| Ascend3 | `ascend-3` | Two-layer or world-scale rise |
+| Descend2 | `descend-2` | One-layer vertical drop |
+| Descend3 | `descend-3` | Two-layer or world-scale drop |
+
+**Unused door sounds** (DoorClose01, 02, 04, 07, 08, 10, DoorOpen07, 08, Ascend1, Descend1) remain in the manifest for future assignment — boss doors, secret passages, trap doors, etc.
+
+### 10.3 Complete Transition Table
+
+#### World ↔ Building (N ↔ N.N) — Horizontal Structure
+
+| From | To | Sound Sequence | Timing |
+|---|---|---|---|
+| N | N.N | DoorOpen01 → DoorClose03 | Open immediate, Close at +300ms |
+| N.N | N | DoorOpen06 → DoorClose06 | Open immediate, Close at +300ms |
+
+#### Building ↔ Basement (N.N ↔ N.N.N) — Mixed (Door + Vertical)
+
+| From | To | Sound Sequence | Timing |
+|---|---|---|---|
+| N.N | N.N.N | DoorOpen02 → Descend2 → DoorClose05 | Open immediate, Descend at +200ms, Close at +600ms |
+| N.N.N | N.N | DoorOpen01 → Ascend2 → DoorClose05 | Open immediate, Ascend at +200ms, Close at +600ms |
+
+#### Basement ↔ World (N.N.N ↔ N) — Mixed (Door + Long Vertical)
+
+| From | To | Sound Sequence | Timing |
+|---|---|---|---|
+| N.N.N | N | DoorOpen03 → Ascend3 | Open immediate, Ascend at +200ms |
+| N | N.N.N | DoorOpen04 → Descend3 | Open immediate, Descend at +200ms |
+
+No DoorClose — these are escape hatches / emergency exits, acoustically open-ended.
+
+#### Nested ↔ Deeper Nested (N.N.N ↔ N.N.N+) — Mixed (Heavy Door + Vertical)
+
+| From | To | Sound Sequence | Timing |
+|---|---|---|---|
+| N.N.N | N.N.N+ | DoorOpen05 → Descend2 → DoorClose09 | Open immediate, Descend at +200ms, Close at +600ms |
+| N.N.N+ | N.N.N | DoorOpen05 → Ascend2 → DoorClose09 | Open immediate, Ascend at +200ms, Close at +600ms |
+
+#### Nested ↔ Shallower Nested (N.N.N ↔ N.N.N-) — Open Passage + Vertical
+
+| From | To | Sound Sequence | Timing |
+|---|---|---|---|
+| N.N.N | N.N.N- | DoorOpen01 → Ascend2 | Open immediate, Ascend at +200ms |
+| N.N.N- | N.N.N | DoorOpen01 → Descend2 | Open immediate, Descend at +200ms |
+
+No DoorClose — open stairwell / ladder feel.
+
+#### World Elevation (N ↔ N±) — Pure Vertical
+
+| From | To | Sound Sequence | Timing |
+|---|---|---|---|
+| N | N+ | Ascend3 | Immediate |
+| N | N- | Descend3 | Immediate |
+
+No door sounds — open-air stairs, ladders, overworld elevation changes.
+
+### 10.4 Derivation Algorithm
+
+```javascript
+function getTransitionSounds(sourceFloorId, targetFloorId) {
+    var srcDepth = sourceFloorId.split('.').length;   // 1=world, 2=building, 3+=nested
+    var tgtDepth = targetFloorId.split('.').length;
+    var layerDelta = tgtDepth - srcDepth;             // positive=deeper, negative=shallower
+    var isVertical = layerDelta !== 0;
+    var isDoor = _hasDoorBoundary(sourceFloorId, targetFloorId);
+
+    // World elevation (same depth, different N)
+    if (!isDoor && srcDepth === 1 && tgtDepth === 1) {
+        var elevDir = _getElevationDirection(sourceFloorId, targetFloorId);
+        return elevDir > 0
+            ? [{ key: 'ascend-3', delay: 0 }]
+            : [{ key: 'descend-3', delay: 0 }];
+    }
+
+    // Lookup from transition table keyed by (srcDepth, tgtDepth, doorType)
+    return TRANSITION_TABLE[srcDepth + ':' + tgtDepth] || [];
+}
+```
+
+The full lookup table is a flat map keyed by `"srcDepth:tgtDepth"` with each entry containing an ordered array of `{ key, delay }` sound instructions. This keeps the runtime code simple and the mapping auditable from the designer portal.
+
+### 10.5 Implementation Plan
+
+| Step | File(s) | Work |
+|---|---|---|
+| 1 | `floor-transition-system.js` | Replace generic `ascend/descend` random with `getTransitionSounds()` sequence player |
+| 2 | `interior-floor-system.js` | Call `getTransitionSounds()` on `enterInteriorFloor()` and `exitInteriorFloor()` |
+| 3 | `gone-rogue.js` | Pass source/target floorId to transition system on nav stack push/pop |
+| 4 | `audio-system.js` | Add `playSequence(sounds)` helper: plays ordered `[{key, delay}]` array via `setTimeout` chain |
+| 5 | Sound Designer portal | Add 🚪🪜 DOOR TRANSITIONS preview panel: select source→target layer, hear the full sequence |
+| 6 | `door-contract-audio.js` (new) | Pure data module exporting `TRANSITION_TABLE` and `getTransitionSounds()` |
+
+### 10.6 Designer Portal Integration (Future)
+
+The Sound Designer portal will get a "Door Contract" panel allowing designers to:
+
+1. Select source layer (N / N.N / N.N.N / N.N.N±) and target layer
+2. See the derived sound sequence with timing visualization
+3. Preview the full sequence as the player would hear it
+4. Override individual sounds per transition (stored in manifest metadata)
+5. A/B test alternative door sounds against the canonical assignment
+
+This panel reads from the same `TRANSITION_TABLE` data module, ensuring portal and game stay in sync.
+
+### 10.7 Estimated Effort
+
+~200 lines across 4 files (door-contract-audio.js, floor-transition-system.js, interior-floor-system.js, audio-system.js) + ~150 lines for portal panel.
+
+---
+
 ## Manifest Gaps
 
 | Referenced Key | Closest Manifest Match | Action |
@@ -464,13 +654,19 @@ Two scripts for pre-deploy validation:
 
 | File | Role |
 |---|---|
-| `public/js/audio-system.js` | Core singleton — play, playMusic, playRandom, tickFootsteps, stereo pan, data-sound delegate |
+| `public/js/audio-system.js` | Core singleton — play, playMusic, playRandom, playSequence (planned), tickFootsteps, stereo pan, data-sound delegate |
 | `public/js/game-tick-system.js` | Per-frame footstep caller, movement/biome/health resolution |
 | `public/js/gone-rogue.js` | Context provider (floor stack, biome lookup, player HP) |
 | `public/js/gone-rogue-movement.js` | Movement state (isMoving, isSprinting) for footstep engine |
-| `public/js/floor-transition-system.js` | Interior music dim (0.25 multiplier on building entry) |
+| `public/js/floor-transition-system.js` | Interior music dim (0.25 multiplier on building entry) + door contract sequence (Phase 10) |
+| `public/js/door-contract-audio.js` | **PLANNED** — Pure data module: TRANSITION_TABLE + getTransitionSounds() |
 | `public/js/pet-follower.js` | Pet positions/types — future `tickPetFootsteps()` source |
 | `public/js/enemy-ai-system.js` | Enemy patrol movement — future `tickEnemyFootstep()` source |
+| `public/js/pickup-system.js` | Collectible pickup sounds by type + card 3-phase sequence (Phase 4.5) |
+| `public/js/player-interaction-system.js` | Food pickup sounds by resourceType (Phase 4.5) |
+| `public/js/move-player-system.js` | Food pickup sounds by resourceType — parallel path (Phase 4.5) |
+| `public/js/non-combat-hud.js` | Incinerator sound on rogue-card-incinerated events (Phase 4.5) |
+| `public/js/projectile-system.js` | Fire-rate throttled attack-1 SFX + ammo spend + empty clip clang8 |
 | `public/js/ground-effects-system.js` | Tile effects + future footprint decal system |
 | `public/js/stealth-system.js` | Stealth bonus → future footprint decay modulation |
 | `public/js/audio-controls-widget.js` | Debrief feed UI widget |
@@ -524,9 +720,3 @@ Musician/Designer                Sound Designer Portal
 ```
 
 
-priorities:
-we now need to wire the player's ammo resource to weapon firing projectiles. the spending and recovery of ammo should flash the debrief feed frame animation. 
-
-
-
-when player has no ammunition but the projectile would otherwise fire at a target then we need to play an empty clip sound  sfx | Key: clang8 | /audio/sfx/clang8.webm until the player recovers ammunition

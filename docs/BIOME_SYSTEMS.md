@@ -2,11 +2,12 @@
 
 > **Cross-References:**
 > - [WORLD_BUILDING_ENGINE.md](./WORLD_BUILDING_ENGINE.md) — SFC designer, door contracts, step node biome assignment
-> - [BUILDING_INTERIOR_SYSTEM.md](./BUILDING_INTERIOR_SYSTEM.md) — Interior biome resolution pipeline
+> - [BUILDING_INTERIOR_SYSTEM.md](./BUILDING_INTERIOR_SYSTEM.md) — Interior biome resolution pipeline + door contract audio grammar
 > - [INTERIOR_SYSTEM_IDEAS.md](./INTERIOR_SYSTEM_IDEAS.md) — Visual compression, structure grammar (uses interior biomes)
 > - [NPC_CANON.md](./NPC_CANON.md) — NPC archetypes spawn per building/biome type
 > - [PROCEDURAL_GENERATION_DESIGN_IDEAS.md](./PROCEDURAL_GENERATION_DESIGN_IDEAS.md) — Biome-to-pattern mapping for scalar fields
 > - [WORLD_BUILDING_ENGINE_ROADMAP.md](./WORLD_BUILDING_ENGINE_ROADMAP.md) — Unified execution roadmap
+> - [AUDIO_WIRING_ROADMAP.md §10](./AUDIO_WIRING_ROADMAP.md) — Door contract audio system (transition sounds derived from layer distance)
 
 ## Table of Contents
 1. [Overview](#overview)
@@ -558,6 +559,7 @@ _visitedBiomes = [];      // All visited biomes
 4. **Card Drops**: Called during item placement, uses biome + floor context
 5. **Enemy Creation**: Checks penalty floor status, applies stat multiplier
 6. **Interaction Handler**: Checks for vent tile, routes to vent logic
+7. **Door Contract Audio**: Floor transitions produce sound sequences (DoorOpen → Ascend/Descend → DoorClose) derived from layer distance between source and target. See [BUILDING_INTERIOR_SYSTEM.md § Door Contract Audio Grammar](./BUILDING_INTERIOR_SYSTEM.md) for the transition table and [AUDIO_WIRING_ROADMAP.md §10](./AUDIO_WIRING_ROADMAP.md) for manifest keys and implementation spec.
 
 ### Performance Considerations
 - Biome selection: O(1) with weighted random

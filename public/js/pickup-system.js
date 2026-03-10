@@ -21,13 +21,37 @@ var PickupSystem = (function() {
       };
     }
 
-    // ── Audio: pickup sound by type ──
-    if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
-      if (item.type === 'ammo')     AudioSystem.play('grab-item-1', { volume: 0.5 });
-      else if (item.type === 'gem') AudioSystem.playRandom('power-up', 3, { volume: 0.5 });
-      else if (item.type === 'key') AudioSystem.play('success-1', { volume: 0.6 });
-      else if (item.type === 'card') AudioSystem.playRandom('coin', 2, { volume: 0.4 });
-      else AudioSystem.play('grab-item-2', { volume: 0.5 });
+    // ── Audio: pickup sound by collectible type (canon v2) ──
+    // Sounds deferred for cards (sequenced after inventory result)
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.play && item.type !== 'card') {
+      if (item.type === 'ammo') {
+        // Ammo pickup → coin-1
+        AudioSystem.play('coin-1', { volume: 0.5 });
+      } else if (item.type === 'gem') {
+        // Battery/gem pickup → coin-1
+        AudioSystem.play('coin-1', { volume: 0.5 });
+      } else if (item.type === 'key') {
+        var _keyTierSnd = (item.tier || 1);
+        if (_keyTierSnd <= 1) {
+          // Ammo keys (t1) → coin-2
+          AudioSystem.play('coin-2', { volume: 0.5 });
+        } else if (item.subtype === 'quest' || _keyTierSnd >= 3) {
+          // Quest keys → grab-item-2
+          AudioSystem.play('grab-item-2', { volume: 0.55 });
+        } else {
+          // Other key items → coin-2
+          AudioSystem.play('coin-2', { volume: 0.5 });
+        }
+      } else if (item.type === 'currency') {
+        // Currency → coin-2
+        AudioSystem.play('coin-2', { volume: 0.5 });
+      } else if (item.type === 'item' || item.type === 'equipment' || item.type === 'consumable') {
+        // Items and key items → grab-item-1
+        AudioSystem.play('grab-item-1', { volume: 0.5 });
+      } else {
+        // Fallback → grab-item-1
+        AudioSystem.play('grab-item-1', { volume: 0.5 });
+      }
     }
 
     // Handle ammo pickup (auto-collect)
@@ -324,6 +348,50 @@ var PickupSystem = (function() {
           DebriefFeedController.reportResourceChange('Cards', 0, 1, '\uD83C\uDCA0 ' + cardName);
         }
       } catch (eCardDebrief) {}
+
+      // ── Card pickup sound sequence ──
+      // Phase 1: pick_up_card_N (random 1-12)
+      // Phase 2: place_card_N (random 1-11) after ~180ms
+      // Phase 3: rumble-1 (incinerator, faster pitch) if backup overflowed
+      try {
+        if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+          var _pickN = Math.floor(Math.random() * 12) + 1;
+          AudioSystem.play('card-pick_up_card_' + _pickN, { volume: 0.5 });
+
+          // Phase 2: card goes to hand/backup → place sound
+          if (result && result.toHand > 0) {
+            setTimeout(function() {
+              try {
+                var _placeN = Math.floor(Math.random() * 11) + 1;
+                AudioSystem.play('card-place_card_' + _placeN, { volume: 0.45 });
+              } catch (e) {}
+            }, 180);
+          } else if (result && result.toBackup > 0) {
+            setTimeout(function() {
+              try {
+                var _placeN2 = Math.floor(Math.random() * 11) + 1;
+                AudioSystem.play('card-place_card_' + _placeN2, { volume: 0.4 });
+              } catch (e) {}
+            }, 180);
+          }
+
+          // Phase 3: incinerator rumble if cards were discarded (backup overflow)
+          // Delayed to slot after pick_up → place sequence.
+          // The rogue-card-incinerated event also fires from gamestate, but
+          // _showIncinerationEffect skips sound for 'backup_overflow' source
+          // to avoid double-play (this setTimeout is the canonical sound).
+          if (result && result.discarded > 0) {
+            setTimeout(function() {
+              try {
+                AudioSystem.play('rumble-1', { volume: 0.3, playbackRate: 1.25 });
+                if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.flashIncinerator) {
+                  DebriefFeedController.flashIncinerator();
+                }
+              } catch (e) {}
+            }, 400);
+          }
+        }
+      } catch (eCardSnd) {}
     } else if (item.type === 'key' && keyTier >= 2) {
       if (GAMESTATE.addToPersistent) {
         result = GAMESTATE.addToPersistent(nonCardPayload);

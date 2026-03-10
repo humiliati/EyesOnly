@@ -222,6 +222,23 @@ var MovePlayerSystem = (function() {
 
           var foodResult = FoodDatabase.applyFoodEffects(foodItem.customData.foodId, player);
           if (foodResult.success) {
+            // ── Food pickup sound by resourceType ──
+            try {
+              if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+                var _foodResTypeMv = (foodResult.resourceType || '').toLowerCase();
+                if (_foodResTypeMv === 'hp') {
+                  AudioSystem.play('sq-sq-pickup-success2', { volume: 0.5 });
+                } else if (_foodResTypeMv === 'focus') {
+                  AudioSystem.play('sq-sq-pickup-success1', { volume: 0.5 });
+                } else if (_foodResTypeMv === 'energy') {
+                  AudioSystem.play('sq-sq-pickup', { volume: 0.5 });
+                } else {
+                  // Fatigue, Inert, or unknown → quick pickup
+                  AudioSystem.play('sq-sq-pickup-quick', { volume: 0.5 });
+                }
+              }
+            } catch (eFoodSndMv) {}
+
             // Overhead animation color from canonical resourceColor on food item
             var primaryColorMv = foodResult.resourceColor || '#FF6B9D';
 

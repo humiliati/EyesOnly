@@ -5,6 +5,7 @@
 > For interior generation roadmap (structure grammar, visual compression), see [INTERIOR_SYSTEM_IDEAS.md](./INTERIOR_SYSTEM_IDEAS.md).
 > For NPC spawning in interiors, see [NPC_CANON.md](./NPC_CANON.md).
 > For unified execution roadmap, see [WORLD_BUILDING_ENGINE_ROADMAP.md](./WORLD_BUILDING_ENGINE_ROADMAP.md).
+> For door/floor transition audio contract, see [AUDIO_WIRING_ROADMAP.md §10](./AUDIO_WIRING_ROADMAP.md).
 
 ## Overview
 
@@ -46,6 +47,61 @@ _tileMetadata[key] = { type: 'door', doorKind: 'building', buildingId: 'BLD-002'
 ```
 
 Building details resolved at runtime from `GoneRogueDataRegistry.getBuilding(buildingId)`.
+
+## Door Contract Audio Grammar
+
+> Full spec with manifest keys and implementation details: [AUDIO_WIRING_ROADMAP.md §10](./AUDIO_WIRING_ROADMAP.md)
+
+Floor transitions produce a sound sequence derived from the **layer distance** between source and target floors. The grammar treats every transition as a combination of three token types: `DoorOpen`, `Ascend`/`Descend`, and `DoorClose`. The number suffix encodes the magnitude of the layer change.
+
+### Structural Layers
+
+```
+N            world / overworld
+N.N          building interior
+N.N.N        nested interior / quest / basement
+N.N.N±       deeper/shallower nested interior
+```
+
+### Sound Sequence Rules
+
+| Transition | Direction | Sound Sequence |
+|---|---|---|
+| N → N.N | Enter building | DoorOpen01 + DoorClose03 |
+| N.N → N | Exit building | DoorOpen06 + DoorClose06 |
+| N.N → N.N.N | Enter basement | DoorOpen02 + Descend2 + DoorClose05 |
+| N.N.N → N.N | Exit basement | DoorOpen01 + Ascend2 + DoorClose05 |
+| N.N.N → N | Skip to world | DoorOpen03 + Ascend3 |
+| N → N.N.N | Skip to basement | DoorOpen04 + Descend3 |
+| N → N+ | World elevation up | Ascend3 |
+| N → N- | World elevation down | Descend3 |
+| N.N.N → N.N.N+ | Deeper nested | DoorOpen05 + Descend2 + DoorClose09 |
+| N.N.N+ → N.N.N | Return from deeper | DoorOpen05 + Ascend2 + DoorClose09 |
+| N.N.N → N.N.N- | Shallower nested | DoorOpen01 + Ascend2 |
+| N.N.N- → N.N.N | Return from shallower | DoorOpen01 + Descend2 |
+
+### Derivation Logic
+
+```
+layerDelta = targetDepth - sourceDepth
+
+if horizontalTransition (enter/exit structure, no elevation change)
+    play DoorOpen → DoorClose
+
+if verticalTransition (elevation only, no structure boundary)
+    play Ascend/Descend
+
+if mixedTransition (structure + elevation)
+    DoorOpen → Ascend/Descend → DoorClose
+```
+
+The Ascend/Descend suffix (2 or 3) corresponds to the number of layer boundaries crossed: 2 = one layer, 3 = two layers or world-scale elevation. Door sounds are chosen per transition type to give each passage a distinct acoustic identity (creaky tavern door vs. heavy vault door vs. metal hatch).
+
+### Design Intent
+
+Players subconsciously learn the sonic language: open + close = horizontal entry, open + descend + close = going deeper, ascend-only = open-air elevation. This creates spatial awareness without UI indicators.
+
+---
 
 ## Interior Floor Loading Order
 
@@ -179,6 +235,6 @@ Each entry in `interior-biomes.json` has:
 
 ---
 
-**Document Version**: 2.0
-**Last Updated**: 2026-03-07
-**Status**: Updated with interior biome resolution pipeline
+**Document Version**: 2.1
+**Last Updated**: 2026-03-09
+**Status**: Added door contract audio grammar (§ Door Contract Audio Grammar)

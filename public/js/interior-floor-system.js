@@ -63,16 +63,34 @@ var InteriorFloorSystem = (function() {
       playerY: ctx.player.y,
       enteredViaFloorId: targetFloorId
     });
-    ctx.currentInteriorFloorId = targetFloorId;
 
-    // Fade-out effect
-    if (ctx.useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
-      var gridContainer = document.getElementById('rogue-grid-mobile');
-      if (gridContainer) {
-        gridContainer.style.opacity = '0';
-        gridContainer.style.transition = 'opacity 0.25s ease-out';
-      }
+    // ── Door contract audio: resolve sounds for building entry ──
+    // Source = current floor (main or parent interior)
+    // Target = targetFloorId (the interior we're entering)
+    var _enterSourceId = ctx.currentInteriorFloorId || String(ctx.floor || '0');
+    var _enterDoor = { sounds: [], preFadeDelay: 0 };
+    if (typeof DoorContractAudio !== 'undefined' && DoorContractAudio.getTransitionSounds) {
+      _enterDoor.sounds = DoorContractAudio.getTransitionSounds(_enterSourceId, targetFloorId, { direction: 'down' });
+      _enterDoor.preFadeDelay = DoorContractAudio.getPreFadeDelay(_enterDoor.sounds);
     }
+    // Play door sequence immediately (DoorOpen at t=0, Descend at t=250, DoorClose at t=600)
+    if (_enterDoor.sounds.length > 0 && typeof AudioSystem !== 'undefined' && AudioSystem.playSequence) {
+      AudioSystem.playSequence(_enterDoor.sounds);
+    }
+
+    ctx.currentInteriorFloorId = targetFloorId;
+    var _enterPreDelay = _enterDoor.preFadeDelay;
+
+    // Fade-out effect (delayed by pre-fade so player hears door open)
+    setTimeout(function () {
+      if (ctx.useInteractiveGrid && typeof GoneRogueMobile !== 'undefined') {
+        var gridContainer = document.getElementById('rogue-grid-mobile');
+        if (gridContainer) {
+          gridContainer.style.opacity = '0';
+          gridContainer.style.transition = 'opacity 0.25s ease-out';
+        }
+      }
+    }, _enterPreDelay);
 
     setTimeout(function() {
       // Generate the interior floor using the authored layout
@@ -336,7 +354,7 @@ var InteriorFloorSystem = (function() {
       }
 
       console.log('[GoneRogue] Interior floor loaded: ' + targetFloorId);
-    }, 260);
+    }, 260 + _enterPreDelay);
   }
 
   return {
