@@ -11,6 +11,60 @@ var ProjectileSystem = (function() {
   var _projectiles = [];
   var _muzzleFlash = null;
 
+  // ── Fire-rate throttle ──
+  // Base cooldown: attack-1 sound plays at ~half the fire rate.
+  // attack-1 is ~200-300ms; fire cooldown = 2× that ≈ 500ms base.
+  // Items can increase (faster weapons) or decrease (slower weapons) this.
+  var _BASE_FIRE_COOLDOWN_MS = 500;
+  var _lastFireTime = 0;
+
+  /**
+   * Check if player can fire (cooldown elapsed).
+   * @param {Object} [ctx] - context for item modifier lookup
+   * @returns {boolean}
+   */
+  function _canFire(ctx) {
+    var now = Date.now();
+    var cooldown = _BASE_FIRE_COOLDOWN_MS;
+
+    // Item modifier: active item can adjust fire rate
+    // fireRateModifier < 1 = faster, > 1 = slower
+    try {
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) {
+        var item = GAMESTATE.getActiveItem();
+        if (item && item.fireRateModifier) {
+          cooldown *= item.fireRateModifier;
+        }
+      }
+    } catch (e) {}
+
+    // Passive item modifiers
+    try {
+      if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.getEquippedItems) {
+        var passives = PassiveItemsSystem.getEquippedItems() || [];
+        for (var i = 0; i < passives.length; i++) {
+          if (passives[i] && passives[i].fireRateModifier) {
+            cooldown *= passives[i].fireRateModifier;
+          }
+        }
+      }
+    } catch (e2) {}
+
+    return (now - _lastFireTime) >= cooldown;
+  }
+
+  /**
+   * Play attack sound and mark fire timestamp
+   */
+  function _onFire() {
+    _lastFireTime = Date.now();
+    try {
+      if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+        AudioSystem.play('attack-1', { volume: 0.6 });
+      }
+    } catch (e) {}
+  }
+
   // ── Helpers ──
 
   /**
@@ -166,6 +220,9 @@ var ProjectileSystem = (function() {
    * Returns { glyph, direction } — caller handles renderGrid/getPrompt.
    */
   function fireProjectile(cmd, ctx) {
+    // Fire-rate throttle
+    if (!_canFire(ctx)) return null;
+
     var origin = _getFiringOrigin(ctx);
     var dir = ctx.parseDirection(cmd);
     var len = Math.sqrt(dir.dx * dir.dx + dir.dy * dir.dy) || 1;
@@ -190,6 +247,7 @@ var ProjectileSystem = (function() {
     }
 
     _projectiles.push(projectile);
+    _onFire(); // play attack-1 SFX + mark cooldown
     return { glyph: projectile.glyph, direction: dir.direction };
   }
 
@@ -199,6 +257,9 @@ var ProjectileSystem = (function() {
    */
   function fireProjectileAtTarget(targetX, targetY, ctx) {
     if (!ctx.active || !ctx.player) return null;
+
+    // Fire-rate throttle
+    if (!_canFire(ctx)) return null;
 
     var origin = _getFiringOrigin(ctx);
     var dx = targetX - origin.x;
@@ -234,6 +295,7 @@ var ProjectileSystem = (function() {
     }
 
     _projectiles.push(projectile);
+    _onFire(); // play attack-1 SFX + mark cooldown
     return { glyph: projectile.glyph, direction: dirName };
   }
 
@@ -275,6 +337,8 @@ var ProjectileSystem = (function() {
     getMuzzleFlash: function() { return _muzzleFlash; },
     setProjectiles: function(arr) { _projectiles = arr || []; },
     addProjectile: function(p) { _projectiles.push(p); },
-    reset: function() { _projectiles = []; _muzzleFlash = null; }
+    reset: function() { _projectiles = []; _muzzleFlash = null; _lastFireTime = 0; },
+    canFire: function() { return _canFire(); },
+    getFireCooldownMs: function() { return _BASE_FIRE_COOLDOWN_MS; }
   };
 })();

@@ -808,34 +808,9 @@ const DebriefFeedController = (function() {
             var enLines = rP.querySelectorAll('.debrief-line.energy');
             var fcLines = rP.querySelectorAll('.debrief-line.focus');
             var ftLines = rP.querySelectorAll('.debrief-line.fatigue');
-            var btLines = rP.querySelectorAll('.debrief-line.battery');
             if (enLines.length) enLines[0].textContent = _renderBarLine('energy', st2.energy, st2.maxEnergy, 10);
             if (fcLines.length) fcLines[0].textContent = _renderBarLine('focus', st2.focus, st2.maxFocus, 10);
             if (ftLines.length) ftLines[0].textContent = _renderBarLine('fatigue', st2.fatigue, st2.maxFatigue, 10);
-            if (btLines.length) {
-              var _btD = _renderBatteryDiamonds(st2.battery, st2.maxBattery);
-              var _btDead = (st2.battery <= 0);
-              var _btClr = _btDead ? '#666' : (ROW_COLORS.battery || '#00FFA6');
-              btLines[0].style.color = _btClr;
-              // Update diamond spans if they exist, else update textContent
-              var _dSpan = btLines[0].querySelector('.battery-diamonds');
-              if (_dSpan) {
-                _dSpan.textContent = _btD;
-                // Update signal bracket classes
-                var _sSpans = btLines[0].querySelectorAll('.battery-signal');
-                for (var _si = 0; _si < _sSpans.length; _si++) {
-                  if (_btDead) {
-                    _sSpans[_si].classList.add('battery-signal-dead');
-                    _sSpans[_si].classList.remove('battery-signal-live');
-                  } else {
-                    _sSpans[_si].classList.remove('battery-signal-dead');
-                    _sSpans[_si].classList.add('battery-signal-live');
-                  }
-                }
-              } else {
-                btLines[0].textContent = '(((' + _btD + ')))';
-              }
-            }
           }
         } catch (eIdle) {}
       };
@@ -858,20 +833,10 @@ const DebriefFeedController = (function() {
           var fcLine = _renderBarLine('focus', st.focus, st.maxFocus, 10);
           var ftLine = _renderBarLine('fatigue', st.fatigue, st.maxFatigue, 10);
 
-          // Battery diamond row: (((◈◈◈◇◇)))
-          var btDiamonds = _renderBatteryDiamonds(st.battery, st.maxBattery);
-          var btDepleted = (st.battery <= 0);
-          var btColor = btDepleted ? '#666' : (ROW_COLORS.battery || '#00FFA6');
-          var btSignalClass = btDepleted ? 'battery-signal battery-signal-dead' : 'battery-signal battery-signal-live';
-          var btLine = '<span class="' + btSignalClass + '">(((</span>' +
-                       '<span class="battery-diamonds">' + btDiamonds + '</span>' +
-                       '<span class="' + btSignalClass + '">)))</span>';
-
           rPanel.innerHTML =
             '<div class="debrief-line energy resource-row" data-resource="Energy" style="color:' + (ROW_COLORS.energy || '') + '">' + enLine + '</div>' +
             '<div class="debrief-line focus resource-row" data-resource="Focus" style="color:' + (ROW_COLORS.focus || '') + '">' + fcLine + '</div>' +
-            '<div class="debrief-line fatigue resource-row" data-resource="Fatigue" style="color:' + (ROW_COLORS.fatigue || '') + '">' + ftLine + '</div>' +
-            '<div class="debrief-line battery resource-row" data-resource="Battery" style="color:' + btColor + '">' + btLine + '</div>';
+            '<div class="debrief-line fatigue resource-row" data-resource="Fatigue" style="color:' + (ROW_COLORS.fatigue || '') + '">' + ftLine + '</div>';
         } else if (rPanel) {
           rPanel.textContent = '';
         }
@@ -1166,6 +1131,62 @@ const DebriefFeedController = (function() {
           })();
         }
       } catch (eS1) {}
+
+      // Signal panel: battery modifiers from equipped/passive items
+      // Only populates if there are battery-relevant items — if empty, row won't expand
+      try {
+        var sigPanel = document.getElementById('debrief-panel-signal');
+        if (sigPanel) {
+          var _btModLines = [];
+
+          // Gather battery drain modifiers from active item
+          try {
+            if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) {
+              var _btActive = GAMESTATE.getActiveItem();
+              if (_btActive) {
+                var _btAName = (_btActive.name || '').toLowerCase();
+                var _btDrain = 0;
+                if (_btAName.indexOf('flashlight') !== -1) _btDrain = _btActive.batteryDrainRate || 0.27;
+                else if (_btAName.indexOf('night vision') !== -1) _btDrain = _btActive.batteryDrainRate || 0.45;
+                if (_btDrain > 0) {
+                  _btModLines.push('<div class="debrief-line battery-mod resource-row" data-resource="Battery" style="color:' +
+                    (ROW_COLORS.battery || '#00FFA6') + '">◈ ' + (_btActive.name || 'Item') +
+                    ' <span style="opacity:0.6">-' + _btDrain.toFixed(2) + '/s</span></div>');
+                }
+              }
+            }
+          } catch (eBtA) {}
+
+          // Gather battery modifiers from passive items
+          try {
+            if (typeof PassiveItemsSystem !== 'undefined' && PassiveItemsSystem.getEquippedItems) {
+              var _btPassives = PassiveItemsSystem.getEquippedItems() || [];
+              for (var _bpi = 0; _bpi < _btPassives.length; _bpi++) {
+                var _bpItem = _btPassives[_bpi];
+                if (_bpItem && (_bpItem.batteryDrainRate || _bpItem.batteryRechargeRate || _bpItem.batteryModifier)) {
+                  var _bpDesc = '';
+                  if (_bpItem.batteryDrainRate) _bpDesc = '-' + _bpItem.batteryDrainRate.toFixed(2) + '/s';
+                  else if (_bpItem.batteryRechargeRate) _bpDesc = '+' + _bpItem.batteryRechargeRate.toFixed(2) + '/s';
+                  else if (_bpItem.batteryModifier) _bpDesc = 'x' + _bpItem.batteryModifier.toFixed(1);
+                  _btModLines.push('<div class="debrief-line battery-mod resource-row" data-resource="Battery" style="color:' +
+                    (ROW_COLORS.battery || '#00FFA6') + '">◇ ' + (_bpItem.name || 'Passive') +
+                    ' <span style="opacity:0.6">' + _bpDesc + '</span></div>');
+                }
+              }
+            }
+          } catch (eBtP) {}
+
+          if (_btModLines.length > 0 && _rowExpanded.signal) {
+            sigPanel.innerHTML = _btModLines.join('');
+          } else {
+            sigPanel.innerHTML = '';
+            // If no modifiers, prevent expand (keep collapsed)
+            if (_btModLines.length === 0) {
+              _rowExpanded.signal = false;
+            }
+          }
+        }
+      } catch (eSigP) {}
 
       // Panels visibility
       try {

@@ -620,8 +620,8 @@ const AudioSystem = (function () {
   var _PAN_LEFT  = -0.22;
   var _PAN_RIGHT =  0.22;
 
-  // Player footstep volume multiplier (60% reduction = 0.40 of original)
-  var _PLAYER_FOOTSTEP_VOL = 0.32;  // -20% from 0.40
+  // Player footstep volume multiplier (total ~78% reduction from original)
+  var _PLAYER_FOOTSTEP_VOL = 0.224;  // -30% from 0.32
 
   // Step clock state
   var _stepFoot = 0;            // 0 = left, 1 = right
