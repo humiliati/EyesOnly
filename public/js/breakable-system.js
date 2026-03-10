@@ -70,6 +70,13 @@ var BreakableSystem = (function() {
           ctx.grid[breakable.y][breakable.x] = breakable.destroyedGlyph || ctx.TILES.DEBRIS;
           breakable.destroying = false;
 
+          // FX001 removal smoke at destroyed position
+          try {
+            if (typeof SpriteFxSystem !== 'undefined' && SpriteFxSystem.spawnRemoval) {
+              SpriteFxSystem.spawnRemoval(breakable.x, breakable.y);
+            }
+          } catch (e) {}
+
           // Handle light source destruction
           _handleLightSourceDestruction(breakable, ctx);
 
@@ -780,10 +787,31 @@ var BreakableSystem = (function() {
     console.log('[Kick] Kicking ' + (breakable.name || '?') + ' at ' + breakable.x + ',' + breakable.y +
       ' dir=' + dx + ',' + dy + ' HP=' + breakable.hp + '/' + breakable.maxHp);
 
-    // 1. Deal kick damage (+ kick SFX)
+    // 1. Deal kick damage (+ kick SFX + kick sprite FX003 + energy cost)
     if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
       AudioSystem.playRandom('low-attack', 3, { volume: 0.5 });
     }
+    // Spawn kick flash between player and target
+    try {
+      if (typeof SpriteFxSystem !== 'undefined' && SpriteFxSystem.spawnKick && ctx.player) {
+        SpriteFxSystem.spawnKick(ctx.player.x, ctx.player.y, dx, dy);
+      }
+    } catch (e) {}
+    // Spend 0.01 energy (clamped at 0 — kick is never blocked by low energy)
+    try {
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getEnergy && GAMESTATE.useEnergy) {
+        var energyBefore = GAMESTATE.getEnergy();
+        if (energyBefore > 0) {
+          GAMESTATE.useEnergy(0.01);
+        }
+        var energyAfter = GAMESTATE.getEnergy ? GAMESTATE.getEnergy() : Math.max(0, energyBefore - 0.01);
+        // Flash debrief with Energy resource color (display whole numbers)
+        if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
+          DebriefFeedController.reportResourceChange('Energy',
+            Math.floor(energyBefore), Math.floor(energyAfter), 'Kick');
+        }
+      }
+    } catch (e2) {}
     damageBreakable(breakable, kickDamage, ctx);
     console.log('[Kick] After damage: HP=' + breakable.hp + ' destroying=' + breakable.destroying);
     if (breakable.hp <= 0) {

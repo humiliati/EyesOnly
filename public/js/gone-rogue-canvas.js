@@ -813,6 +813,43 @@ const CanvasRenderer = (function() {
       var centerX = (effect.x + 0.5) * this.cellSize;
       var centerY = (effect.y + 0.5) * this.cellSize;
 
+      // ── Sprite-based FX rendering (kick/removal/knockback) ──
+      if (effect.isSpriteFx && effect.spriteImg && effect.spriteImg.complete) {
+        var fxScale = effect.spriteScale || 1.0;
+        // Sprite renders at roughly cell size, scaled by effect
+        var fxSize = this.cellSize * 1.2 * fxScale;
+        if (fxSize < 1) continue;
+
+        this.ctx.save();
+        this.ctx.globalAlpha = effect.alpha !== undefined ? effect.alpha : 1.0;
+        this.ctx.translate(centerX, centerY);
+
+        // Rotate to match direction (kick/knockback face the action)
+        if (effect.spriteRotation) {
+          this.ctx.rotate(effect.spriteRotation);
+        }
+
+        // Additive-style glow: subtle for smoke, brighter for kick
+        if (effect.spriteFxType === 'kick') {
+          this.ctx.shadowColor = '#00FFFF';
+          this.ctx.shadowBlur = fxSize * 0.5;
+        } else if (effect.spriteFxType === 'knockback') {
+          this.ctx.shadowColor = '#FFAA00';
+          this.ctx.shadowBlur = fxSize * 0.3;
+        }
+
+        this.ctx.drawImage(
+          effect.spriteImg,
+          -fxSize / 2, -fxSize / 2,
+          fxSize, fxSize
+        );
+
+        this.ctx.restore();
+        this.ctx.shadowBlur = 0;
+        this.ctx.globalAlpha = 1;
+        continue; // skip text path
+      }
+
       // Save current alpha
       var oldAlpha = this.ctx.globalAlpha;
 
@@ -821,7 +858,7 @@ const CanvasRenderer = (function() {
         this.ctx.globalAlpha = effect.alpha;
       }
 
-      // Render effect
+      // Render effect character/emoji
       this.ctx.fillStyle = effect.color || '#FFFFFF';
 
       if (effect.glow) {
@@ -829,7 +866,9 @@ const CanvasRenderer = (function() {
         this.ctx.shadowBlur = 10;
       }
 
-      this.ctx.fillText(effect.char || '*', centerX, centerY);
+      if (effect.char) {
+        this.ctx.fillText(effect.char, centerX, centerY);
+      }
 
       // Reset
       this.ctx.shadowBlur = 0;

@@ -1,7 +1,7 @@
 # Audio Wiring Roadmap
 
 > **Date:** 2026-03-09 (last updated)
-> **Status:** Phase 0 + Phase 2 + Phase 3 + Phase 4.1 complete, Phase 3.4 rewritten (time-based cadence engine with stereo panning, floor-depth volume, injury limp, humanization), Phase 1 deferred (pending card hand harmonization), transcoding shipped, Sound Designer portal live with CRUD (rename, delete, sort, gap check, manifest diff export) + 524 entries across 30 categories. Phase 4.5 collectible sounds canon complete. Phase 10 door contract audio grammar spec'd.
+> **Status:** Phase 0 + Phase 2 + Phase 3 + Phase 4.1 complete, Phase 3.4 rewritten (time-based cadence engine with stereo panning, floor-depth volume, injury limp, humanization), Phase 1 deferred (pending card hand harmonization), transcoding shipped, Sound Designer portal live with CRUD (rename, delete, sort, gap check, manifest diff export) + 524 entries across 30 categories. Phase 4.5 collectible sounds canon complete. Phase 10 door contract audio grammar spec'd + wired. Phase 11 breakable durability & progressive audio spec'd.
 > **Manifest entries:** 519 (167 original SFX + 8 footsteps + 103 card sounds + 204 new SFX batch + 20 Songs + 18 Cyberleaf + 14 Aila Scott — some with `_status: "staged"`)
 
 ---
@@ -21,9 +21,9 @@ All 519 assets have been transcoded from WAV to Opus/WebM (+ MP3 fallback) and u
 | System | File | Sound | Status |
 |---|---|---|---|
 | Explosion | explosion-system.js:195 | `explosion_large` → (needs manifest alias) | ✅ Existing |
-| Breakable hit | breakable-system.js:31 | `hit-{1..4}` random | ✅ New |
-| Breakable destroy | breakable-system.js:33 | `impact-{1..4}` random | ✅ New |
-| Kick breakable | breakable-system.js:751 | `low-attack-{1..3}` random | ✅ New |
+| Breakable hit | breakable-system.js:31 | `hit-{1..4}` random | ✅ New — see Phase 11 for progressive staging |
+| Breakable destroy | breakable-system.js:33 | `impact-{1..4}` random | ✅ New — see Phase 11 for break event layering |
+| Kick breakable | breakable-system.js:751 | `low-attack-{1..3}` random | ✅ New — see Phase 11 for `attack-{3,4,5}` staging |
 | Item pickup (ammo) | pickup-system.js:24 | `grab-item-1` | ✅ New |
 | Item pickup (gem) | pickup-system.js:25 | `power-up-{1..3}` random | ✅ New |
 | Item pickup (key) | pickup-system.js:26 | `success-1` | ✅ New |
@@ -642,6 +642,80 @@ This panel reads from the same `TRANSITION_TABLE` data module, ensuring portal a
 
 ---
 
+## Phase 11 — Breakable Durability & Progressive Audio (Priority: HIGH) 🔲 PLANNED
+
+> **Full spec:** [BREAKABLE_AUDIO_SYSTEM.md](./BREAKABLE_AUDIO_SYSTEM.md) — Durability economy, progressive kick audio, break event layering, debris echo, material system
+
+### 11.0 Overview
+
+Rebalances breakable HP to a 3.0–5.5 band with kick damage 1.1, replacing the current 0.2 kick / 1–3 HP regime. Introduces progressive damage audio staging (`attack-5` → `attack-4` → `attack-3`) that escalates as the object weakens, culminating in a layered break event with material-specific sounds and debris echo.
+
+### 11.1 Durability Tiers
+
+| Tier | HP | Kicks | Projectile Shots |
+|------|-----|-------|------------------|
+| Light | 3.0 | 3 | 1 |
+| Medium | 4.2 | 4 | 2 |
+| Sturdy | 5.5 | 5 | 2 |
+
+### 11.2 Progressive Kick Audio Staging
+
+| Damage Ratio | Sound | Pitch |
+|---|---|---|
+| 0.80–1.00 | `attack-5` | random(0.94, 1.06) |
+| 0.55–0.80 | `attack-4` | random(0.94, 1.06) |
+| 0.00–0.55 | `attack-3` | random(0.94, 1.06) |
+
+Replaces current `low-attack-{1..3}` random selection.
+
+### 11.3 Break Event Layering
+
+```
+0ms    attack-3          (final impact)
++20ms  material_break    (structural failure)
++40ms  whoosh-2          (air displacement)
+```
+
+Replaces current `impact-{1..4}` random.
+
+### 11.4 Debris Echo (2–4 sounds, 80–180ms after break)
+
+```
++80ms   debris_{material}_1   vol 0.3–0.5, pitch random(0.92, 1.08)
++120ms  debris_{material}_2   vol 0.3–0.5, pitch random(0.92, 1.08)
++160ms  debris_{material}_1   vol 0.3–0.5, pitch random(0.92, 1.08)
+```
+
+### 11.5 Material Sound Map
+
+| Material | Break Sound | Debris Pool | Default For |
+|---|---|---|---|
+| `wood` | `wood-crack` | `debris-wood-{1,2}` | Crate, barrel, log |
+| `glass` | `glass-shatter` | `debris-glass-{1,2}` | Window, display case |
+| `metal` | `metal-snap` | `debris-metal-{1,2}` | Vending machine, locker |
+| `organic` | `leaf-rustle` | `debris-organic-{1,2}` | Bush, tree, flower |
+| `plastic` | `plastic-crack` | `debris-plastic-{1,2}` | Container, modern furniture |
+
+### 11.6 New Assets Required
+
+15–16 sounds: 5 material break + 10 debris (2 per material) + 1 optional dust puff.
+
+### 11.7 Implementation Files
+
+| File | Change |
+|---|---|
+| `breakable-system.js` | Kick damage 0.2→1.1, progressive staging, break event layering, debris echo (~80 lines) |
+| `breakable-spawner.js` | Fallback HP 2→4.2, material field on prop templates |
+| `tutorial-floors.js` | Update hardcoded breakable HP to tier values |
+| `audio-manifest.json` | Register 15–16 new sound entries |
+| Sound Designer portal | 💥 BREAKABLE SOUNDS category |
+
+### 11.8 Estimated Effort
+
+~80 lines in breakable-system.js + HP rebalance across spawner/tutorial + 15–16 new audio assets.
+
+---
+
 ## Manifest Gaps
 
 | Referenced Key | Closest Manifest Match | Action |
@@ -682,6 +756,7 @@ This panel reads from the same `TRANSITION_TABLE` data module, ensuring portal a
 | `public/portal/js/sound-designer.js` | Portal logic — preview, sort, rename, delete, gap check, manifest diff |
 | `public/portal/css/sound-designer.css` | Portal styling — modal, delete marking, missing-asset flags |
 | `docs/FOOTSTEP_AUDIO_SYSTEM.md` | Footstep engine spec (player, pet, enemy, footprint ground effects) |
+| `docs/BREAKABLE_AUDIO_SYSTEM.md` | Breakable durability economy + progressive damage audio + debris echo spec |
 
 ---
 

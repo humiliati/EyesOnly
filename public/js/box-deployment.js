@@ -60,17 +60,27 @@ var BoxDeployment = (function() {
 
   function destroyBox(box, ctx) {
     _placedBoxes = _placedBoxes.filter(function(b) { return b.id !== box.id; });
-    // Visual feedback
+    // Visual feedback — prefer FX001 sprite over emoji poof
+    var usedSprite = false;
     try {
-      if (ctx && ctx.impactEffects) {
-        var effect = { x: box.x, y: box.y, type: 'poof', time: Date.now(), char: '\uD83D\uDCA8' };
-        ctx.impactEffects.push(effect);
-        setTimeout(function() {
-          var index = ctx.impactEffects.indexOf(effect);
-          if (index > -1) ctx.impactEffects.splice(index, 1);
-        }, 320);
+      if (typeof SpriteFxSystem !== 'undefined' && SpriteFxSystem.spawnRemoval) {
+        SpriteFxSystem.spawnRemoval(box.x, box.y);
+        usedSprite = true;
       }
     } catch (e0) {}
+    // Emoji fallback if sprite system unavailable
+    if (!usedSprite) {
+      try {
+        if (ctx && ctx.impactEffects) {
+          var effect = { x: box.x, y: box.y, type: 'poof', time: Date.now(), char: '\uD83D\uDCA8' };
+          ctx.impactEffects.push(effect);
+          setTimeout(function() {
+            var index = ctx.impactEffects.indexOf(effect);
+            if (index > -1) ctx.impactEffects.splice(index, 1);
+          }, 320);
+        }
+      } catch (e1) {}
+    }
     if (typeof OverheadAnimator !== 'undefined') {
       OverheadAnimator.showExpression(box.x, box.y, 'SURPRISED', 800, '\uD83D\uDCE6\uD83D\uDCA5');
     }

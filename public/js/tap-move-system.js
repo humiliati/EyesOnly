@@ -136,7 +136,24 @@ var TapMoveSystem = (function() {
         if (typeof BreakableSystem !== 'undefined' && BreakableSystem.kickBreakable) {
           kickResult = BreakableSystem.kickBreakable(breakableAtTarget, ndx, ndy, ctx);
         } else {
-          // Fallback: just damage
+          // Fallback: just damage + kick FX + energy cost
+          try {
+            if (typeof SpriteFxSystem !== 'undefined' && SpriteFxSystem.spawnKick && ctx.player) {
+              SpriteFxSystem.spawnKick(ctx.player.x, ctx.player.y, ndx, ndy);
+            }
+          } catch (e) {}
+          // Spend 0.01 energy (clamped at 0 — never blocks kick)
+          try {
+            if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getEnergy && GAMESTATE.useEnergy) {
+              var _ekBefore = GAMESTATE.getEnergy();
+              if (_ekBefore > 0) GAMESTATE.useEnergy(0.01);
+              var _ekAfter = GAMESTATE.getEnergy ? GAMESTATE.getEnergy() : Math.max(0, _ekBefore - 0.01);
+              if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.reportResourceChange) {
+                DebriefFeedController.reportResourceChange('Energy',
+                  Math.floor(_ekBefore), Math.floor(_ekAfter), 'Kick');
+              }
+            }
+          } catch (e2) {}
           ctx.damageBreakable(breakableAtTarget, 0.2);
           kickResult = { damage: 0.2, pushed: false, pushDist: 0, destroyed: breakableAtTarget.hp <= 0 };
         }

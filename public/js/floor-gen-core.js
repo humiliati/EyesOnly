@@ -8,6 +8,14 @@ var FloorGenCore = (function() {
       WorldItems.init();
     }
     ctx.setProjectiles([]);
+    // Reset ProjectileSystem's internal state (prevents bullets leaking across floors)
+    if (typeof ProjectileSystem !== 'undefined' && ProjectileSystem.reset) {
+      ProjectileSystem.reset();
+    }
+    // Reset sprite FX effects (kick/knockback/removal animations)
+    if (typeof SpriteFxSystem !== 'undefined' && SpriteFxSystem.reset) {
+      SpriteFxSystem.reset();
+    }
     ctx.setBreakables([]);
     ctx.syncItems();
     ctx.syncCurrencies();

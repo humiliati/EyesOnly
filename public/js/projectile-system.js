@@ -175,6 +175,16 @@ var ProjectileSystem = (function() {
     else if (type === 'miss') impactChar = '\uD83D\uDCA8';
     else if (type === 'poof') impactChar = '\uD83D\uDCA8';
 
+    // Use FX001 sprite for poof/removal instead of emoji
+    if (type === 'poof') {
+      try {
+        if (typeof SpriteFxSystem !== 'undefined' && SpriteFxSystem.spawnRemoval) {
+          SpriteFxSystem.spawnRemoval(x, y);
+          return; // sprite handles it, skip emoji fallback
+        }
+      } catch (e) {}
+    }
+
     var effect = { x: x, y: y, type: type, char: impactChar, time: Date.now() };
     ctx.impactEffects.push(effect);
 

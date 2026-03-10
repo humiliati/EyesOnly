@@ -460,9 +460,19 @@ var ExplosionSystem = (function() {
         entity.visualY = finalY;
       }
 
-      // Overhead indicator
-      if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
-        OverheadAnimator.showGenericExpression(finalX, finalY, '💨', 400, '#ffaa00');
+      // Knockback FX002 sprite between source and entity (with southward z-shift)
+      var usedKbSprite = false;
+      try {
+        if (typeof SpriteFxSystem !== 'undefined' && SpriteFxSystem.spawnKnockback) {
+          SpriteFxSystem.spawnKnockback(startX, startY, epicenterX, epicenterY, ndx, ndy);
+          usedKbSprite = true;
+        }
+      } catch (e) {}
+      // Fallback to emoji overhead if sprite unavailable
+      if (!usedKbSprite) {
+        if (typeof OverheadAnimator !== 'undefined' && OverheadAnimator.showGenericExpression) {
+          OverheadAnimator.showGenericExpression(finalX, finalY, '💨', 400, '#ffaa00');
+        }
       }
     }
 

@@ -1113,6 +1113,34 @@ const GoneRogueMobile = (function () {
       });
     }
 
+    // Add sprite-based FX effects (kick, removal, knockback)
+    if (typeof SpriteFxSystem !== 'undefined' && SpriteFxSystem.getActiveEffects) {
+      try {
+        var spriteFxList = SpriteFxSystem.getActiveEffects();
+        for (var sfi = 0; sfi < spriteFxList.length; sfi++) {
+          var sfx = spriteFxList[sfi];
+          var sfvx = _toViewX(sfx.x);
+          var sfvy = _toViewY(sfx.y);
+          if (!_inView(Math.round(sfvx), Math.round(sfvy))) continue;
+          effects.push({
+            x: sfvx,
+            y: sfvy,
+            char: null, // no text fallback
+            color: '#FFFFFF',
+            glow: false,
+            alpha: sfx.alpha || 1.0,
+            // Sprite metadata for canvas renderer
+            isSpriteFx: true,
+            spriteImg: sfx.img,
+            spriteRotation: sfx.rotation || 0,
+            spriteScale: sfx.scale || 1.0,
+            spriteZBoost: sfx.zBoost || 0,
+            spriteFxType: sfx.type
+          });
+        }
+      } catch (e) {}
+    }
+
     // Smooth visual player position (tile->float) for nicer feel.
     // IMPORTANT: do this BEFORE rendering so the player glyph itself glides.
     // Phase 1: when GoneRogueMovement is active, player.visualX/Y are already
