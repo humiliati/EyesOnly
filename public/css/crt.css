@@ -2061,7 +2061,7 @@ body.amber-mode #scanlines::after {
     position: relative;
     right: auto;
     top: auto;
-    width: var(--rogue-debrief-pct, 40%);
+    width: var(--rogue-debrief-pct, 35%);
     max-height: 100%;
     height: 100%;
     z-index: 15; /* Below control buttons but above normal content */
@@ -2171,6 +2171,36 @@ body.amber-mode #scanlines::after {
       transparent 1px,
       transparent 3px
     );
+  }
+
+  /* State indicator arrow: ▸ normal, ▾ maximized, ▴ minimized */
+  body.mode-gone-rogue .debrief-window .debrief-label::after,
+  body.in-gone-rogue .debrief-window .debrief-label::after,
+  body.gone-rogue-active .debrief-window .debrief-label::after {
+    content: '▸';
+    display: inline-block;
+    margin-left: auto;
+    font-size: 0.7em;
+    opacity: 0.5;
+    color: rgba(28, 255, 155, 0.7);
+    transition: transform 0.2s ease, opacity 0.15s ease;
+  }
+  body.mode-gone-rogue .debrief-window.debrief-maximized .debrief-label::after,
+  body.in-gone-rogue .debrief-window.debrief-maximized .debrief-label::after,
+  body.gone-rogue-active .debrief-window.debrief-maximized .debrief-label::after {
+    content: '▾';
+    opacity: 0.7;
+  }
+  body.mode-gone-rogue .debrief-window.debrief-minimized .debrief-label::after,
+  body.in-gone-rogue .debrief-window.debrief-minimized .debrief-label::after,
+  body.gone-rogue-active .debrief-window.debrief-minimized .debrief-label::after {
+    content: '▴';
+    opacity: 0.7;
+  }
+  body.mode-gone-rogue .debrief-window .debrief-label:hover::after,
+  body.in-gone-rogue .debrief-window .debrief-label:hover::after,
+  body.gone-rogue-active .debrief-window .debrief-label:hover::after {
+    opacity: 1;
   }
 
   body.mode-gone-rogue .debrief-window .debrief-screen,

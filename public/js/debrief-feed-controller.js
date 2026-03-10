@@ -348,34 +348,25 @@ const DebriefFeedController = (function() {
       return body.classList.contains('mode-gone-rogue') || body.classList.contains('in-gone-rogue') || body.classList.contains('gone-rogue-active');
     }
 
+    // ── Debrief width (portrait torso split) ──
+    var DEFAULT_PCT = 35; // Default: 65:35 buttons-to-debrief split (was 40, too large for newcomers)
+
     function _applyPct(pct) {
-      pct = Math.max(25, Math.min(55, Number(pct || 40)));
+      pct = Math.max(25, Math.min(55, Number(pct || DEFAULT_PCT)));
       try {
         body.style.setProperty('--rogue-debrief-pct', pct + '%');
         localStorage.setItem(PREF_KEY, String(pct));
       } catch (e) {}
     }
 
-    // Load saved width (default 40% = 60:40 buttons:debrief split)
+    // Load saved width (or use sensible default)
     try {
       var saved = Number(localStorage.getItem(PREF_KEY));
       if (isFinite(saved) && saved >= 25) _applyPct(saved);
-      else _applyPct(40);
-    } catch (e) { _applyPct(40); }
+      else _applyPct(DEFAULT_PCT);
+    } catch (e) { _applyPct(DEFAULT_PCT); }
 
-    // Tap toggles expanded (default smaller on mobile)
-    win.addEventListener('click', function(e) {
-      if (!_isRogue() || !_isPortrait()) return;
-      if (e && e.target && e.target.closest && e.target.closest('button, a, input, textarea, select')) return;
-
-      var expanded = body.classList.toggle('rogue-debrief-expanded');
-      if (expanded) _applyPct(50);  // 50:50 split
-      else _applyPct(40);           // 60:40 default
-    });
-
-    // ── Drag on label to scale entire HUD (header + torso + debrief) ──
-    // Vertical drag: UP = shrink (expose game), DOWN = expand (show more HUD).
-    // Drives --hud-scale (0.65–1.0) on body, which cascades to everything.
+    // ── HUD scale (vertical drag drives header + torso + debrief scale) ──
     var label = win.querySelector('.debrief-label');
     if (!label) return;
 
@@ -399,54 +390,80 @@ const DebriefFeedController = (function() {
       if (isFinite(savedScale)) _applyHudScale(savedScale);
     } catch (e) {}
 
-    var dragging = false;
+    // ── Three-state cycle: normal → maximized → minimized → normal ──
+    // 'normal'    = default % (35), regular z-index
+    // 'maximized' = full overlay, z-index 25, position absolute
+    // 'minimized' = compact 25%, stays in flow
+    var _debriefState = 'normal'; // 'normal', 'maximized', 'minimized'
+
+    // If the window starts with the maximized class (e.g. from video push), detect it
+    if (win.classList.contains('debrief-maximized')) _debriefState = 'maximized';
+    else if (win.classList.contains('debrief-minimized')) _debriefState = 'minimized';
+
+    function _setDebriefState(state) {
+      _debriefState = state;
+      win.classList.remove('debrief-minimized', 'debrief-maximized');
+      body.classList.remove('rogue-debrief-minimized');
+
+      if (state === 'maximized') {
+        win.classList.add('debrief-maximized');
+        try { window.dispatchEvent(new CustomEvent('debrief:maximized')); } catch (e) {}
+      } else if (state === 'minimized') {
+        win.classList.add('debrief-minimized');
+        body.classList.add('rogue-debrief-minimized');
+        _applyPct(25);
+        try { window.dispatchEvent(new CustomEvent('debrief:minimized')); } catch (e) {}
+      } else {
+        // normal
+        _applyPct(DEFAULT_PCT);
+        try { window.dispatchEvent(new CustomEvent('debrief:restored')); } catch (e) {}
+      }
+    }
+
+    // Expose state setter for video system and external callers
+    DebriefFeedController._setDebriefState = _setDebriefState;
+    DebriefFeedController._getDebriefState = function() { return _debriefState; };
+
+    // ── Drag on label: vertical drag resizes HUD scale ──
+    // Works on BOTH desktop and mobile (removed portrait-only gate).
+    var _dragging = false;
     var _dragStartY = 0;
     var _dragStartScale = HUD_MAX;
+    var _dragMoved = false;
+    var _tapStartX = 0;
+    var _tapStartY = 0;
 
     function onMove(ev) {
-      if (!dragging) return;
+      if (!_dragging) return;
       var dy = ev.clientY - _dragStartY;
       var h = window.innerHeight || 1;
-      // Map vertical drag to scale: 30% of screen height = full range (0.35)
-      // Drag DOWN (+dy) = expand (+scale), drag UP (-dy) = shrink (-scale)
+      // Map vertical drag to scale: 30% of screen height = full range
       var delta = (dy / (h * 0.30)) * (HUD_MAX - HUD_MIN);
       _applyHudScale(_dragStartScale + delta);
       ev.preventDefault();
     }
 
     function onUp() {
-      dragging = false;
+      _dragging = false;
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
       document.removeEventListener('pointercancel', onUp);
     }
 
     label.addEventListener('pointerdown', function(ev) {
-      if (!_isRogue() || !_isPortrait()) return;
-      dragging = true;
+      // Drag works on desktop AND mobile, only requires rogue mode
+      if (!_isRogue()) return;
+      _dragging = true;
       _dragStartY = ev.clientY;
       _dragStartScale = _hudScale;
+      _dragMoved = false;
+      _tapStartX = ev.clientX || 0;
+      _tapStartY = ev.clientY || 0;
       try { label.setPointerCapture(ev.pointerId); } catch (e) {}
       document.addEventListener('pointermove', onMove, { passive: false });
       document.addEventListener('pointerup', onUp);
       document.addEventListener('pointercancel', onUp);
       ev.preventDefault();
-    });
-
-    // ── Tap-to-toggle: minimized ↔ maximized (mobile portrait) ──
-    // Works in both rogue and non-rogue modes on mobile portrait.
-    // Minimized = compact 25% width, 4:3 screen still visible.
-    // Maximized = full overlay (z-index 25), covers entire torso.
-    // Double-tap = restore to normal 40% default.
-    var _debriefMinimized = false;
-    var _dragMoved = false;
-    var _tapStartX = 0;
-    var _tapStartY = 0;
-
-    label.addEventListener('pointerdown', function(ev) {
-      _dragMoved = false;
-      _tapStartX = ev.clientX || 0;
-      _tapStartY = ev.clientY || 0;
     });
 
     label.addEventListener('pointermove', function(ev) {
@@ -455,45 +472,25 @@ const DebriefFeedController = (function() {
       if (dx > 6 || dy > 6) _dragMoved = true;
     });
 
+    // ── Tap-to-cycle: normal → maximized → minimized → normal ──
+    // Works on BOTH desktop and mobile (removed portrait-only gate).
     label.addEventListener('click', function(ev) {
-      if (!_isPortrait()) return;
       // Don't toggle if user was dragging to resize
       if (_dragMoved) return;
 
-      _debriefMinimized = !_debriefMinimized;
-
-      if (_debriefMinimized) {
-        win.classList.add('debrief-minimized');
-        win.classList.remove('debrief-maximized');
-        try {
-          document.body && document.body.classList.add('rogue-debrief-minimized');
-          // Compact but still visible — 25% keeps the 4:3 screen readable.
-          _applyPct(25);
-        } catch (e0) {}
-        try { window.dispatchEvent(new CustomEvent('debrief:minimized')); } catch (e) {}
+      // Cycle: normal → maximized → minimized → normal
+      if (_debriefState === 'normal') {
+        _setDebriefState('maximized');
+      } else if (_debriefState === 'maximized') {
+        _setDebriefState('minimized');
       } else {
-        win.classList.remove('debrief-minimized');
-        win.classList.add('debrief-maximized');
-        try {
-          document.body && document.body.classList.remove('rogue-debrief-minimized');
-          // Full overlay — CSS handles z-index 25 to overlap buttons.
-          // Width stays at current % since overlay is position:absolute 100%.
-        } catch (e1) {}
-        try { window.dispatchEvent(new CustomEvent('debrief:maximized')); } catch (e) {}
+        _setDebriefState('normal');
       }
     });
 
-    // Double-tap restores to normal (neither min nor max)
+    // Double-tap always restores to normal (escape hatch from any state)
     label.addEventListener('dblclick', function(ev) {
-      if (!_isPortrait()) return;
-      _debriefMinimized = false;
-      win.classList.remove('debrief-minimized');
-      win.classList.remove('debrief-maximized');
-      try {
-        document.body && document.body.classList.remove('rogue-debrief-minimized');
-        _applyPct(40); // Restore to default 60:40 split
-      } catch (e0) {}
-      try { window.dispatchEvent(new CustomEvent('debrief:restored')); } catch (e) {}
+      _setDebriefState('normal');
     });
   }
 
@@ -1344,24 +1341,32 @@ const DebriefFeedController = (function() {
    * Set video playing state
    * @param {boolean} playing
    */
+  var _videoMaxTimer = null;
+
   function setVideoPlaying(playing) {
     _videoPlaying = playing;
-    // Auto-maximize debrief when video is pushed in portrait mode
+    // Auto-maximize debrief when video is pushed (any orientation)
     try {
-      var isPortrait = window.matchMedia && window.matchMedia('(orientation: portrait)').matches;
-      if (isPortrait) {
-        var win = document.getElementById('debrief-window');
-        if (win) {
-          if (playing) {
-            win.classList.remove('debrief-minimized');
-            win.classList.add('debrief-maximized');
-            document.body && document.body.classList.remove('rogue-debrief-minimized');
-            window.dispatchEvent(new CustomEvent('debrief:maximized'));
-          } else {
-            // Video ended — restore to normal state
-            win.classList.remove('debrief-maximized');
-            window.dispatchEvent(new CustomEvent('debrief:restored'));
+      if (playing) {
+        if (DebriefFeedController._setDebriefState) {
+          DebriefFeedController._setDebriefState('maximized');
+        }
+        // Safety timeout: auto-restore after 60s in case video end signal is lost
+        if (_videoMaxTimer) clearTimeout(_videoMaxTimer);
+        _videoMaxTimer = setTimeout(function() {
+          if (_videoPlaying && DebriefFeedController._getDebriefState &&
+              DebriefFeedController._getDebriefState() === 'maximized') {
+            _videoPlaying = false;
+            if (DebriefFeedController._setDebriefState) {
+              DebriefFeedController._setDebriefState('normal');
+            }
           }
+        }, 60000);
+      } else {
+        // Video ended — restore to normal
+        if (_videoMaxTimer) { clearTimeout(_videoMaxTimer); _videoMaxTimer = null; }
+        if (DebriefFeedController._setDebriefState) {
+          DebriefFeedController._setDebriefState('normal');
         }
       }
     } catch (e) {}
