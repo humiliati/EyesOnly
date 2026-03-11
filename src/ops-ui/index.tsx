@@ -381,6 +381,95 @@ function showOpsBroadcast(message: string) {
   });
 }
 
+// --- Video Push Overlay ---
+function showVideoPush(videoUrl: string, title: string) {
+  // Remove any existing overlay
+  document.getElementById('ops-video-overlay')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'ops-video-overlay';
+  overlay.className = 'ops-video-overlay';
+  overlay.innerHTML = `
+    <div class="vp-chrome">
+      <div class="vp-title-bar">
+        <span class="vp-signal">&#9656; INCOMING INTEL</span>
+        <span class="vp-title">${title}</span>
+        <button class="vp-close" id="ops-video-close">&times;</button>
+      </div>
+      <div class="vp-container">
+        <video id="ops-video-el" autoplay playsinline src="${videoUrl}"></video>
+      </div>
+    </div>
+  `;
+
+  // Inject styles if not already present
+  if (!document.getElementById('ops-video-styles')) {
+    const style = document.createElement('style');
+    style.id = 'ops-video-styles';
+    style.textContent = `
+      .ops-video-overlay {
+        position: fixed; inset: 0; z-index: 9999;
+        background: rgba(0,0,0,0.95);
+        display: flex; align-items: center; justify-content: center;
+        animation: vp-fadein 0.3s ease;
+      }
+      @keyframes vp-fadein { from { opacity: 0; } to { opacity: 1; } }
+      .vp-chrome {
+        width: 100%; max-width: 720px; max-height: 90vh;
+        display: flex; flex-direction: column;
+        border: 1px solid var(--panel-border, #1a3a1a);
+        border-radius: 4px; overflow: hidden;
+        background: #000;
+      }
+      .vp-title-bar {
+        display: flex; align-items: center; gap: 8px;
+        padding: 8px 12px;
+        background: rgba(8,24,12,0.95);
+        border-bottom: 1px solid var(--panel-border, #1a3a1a);
+        font-family: 'Courier New', monospace; font-size: 11px;
+        color: var(--phosphor, #33ff33); letter-spacing: 2px;
+      }
+      .vp-signal { color: var(--red, #ff3333); animation: vp-blink 1s infinite; }
+      @keyframes vp-blink { 50% { opacity: 0.3; } }
+      .vp-title { flex: 1; text-transform: uppercase; }
+      .vp-close {
+        background: none; border: 1px solid var(--panel-border, #1a3a1a);
+        color: var(--phosphor, #33ff33); font-size: 18px; cursor: pointer;
+        padding: 0 6px; border-radius: 2px;
+      }
+      .vp-close:hover { background: rgba(51,255,51,0.1); }
+      .vp-container { position: relative; width: 100%; background: #000; }
+      .vp-container video {
+        width: 100%; max-height: 70vh; display: block;
+        object-fit: contain;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  document.body.appendChild(overlay);
+
+  // Close button
+  document.getElementById('ops-video-close')!.addEventListener('click', () => {
+    const vid = document.getElementById('ops-video-el') as HTMLVideoElement | null;
+    if (vid) { vid.pause(); vid.src = ''; }
+    overlay.remove();
+  });
+
+  // Auto-close when video ends
+  const vid = document.getElementById('ops-video-el') as HTMLVideoElement | null;
+  if (vid) {
+    vid.addEventListener('ended', () => {
+      setTimeout(() => overlay.remove(), 2000); // brief pause then dismiss
+    });
+    vid.addEventListener('error', () => {
+      const container = overlay.querySelector('.vp-container');
+      if (container) container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--red,#ff3333);font-family:monospace;">VIDEO FEED LOST</div>';
+      setTimeout(() => overlay.remove(), 4000);
+    });
+  }
+}
+
 // --- Frozen overlay for ops ---
 function showOpsFrozen(frozen: boolean) {
   const existing = document.getElementById('ops-frozen-overlay');
@@ -436,6 +525,14 @@ function connectOpsWS(session: OpsSession, container: HTMLElement) {
 
           loadOpsEvents(session);
           loadOpsStatus(session);
+        } else if (data.type === 'video_push') {
+          // M pushed a video — fullscreen takeover
+          const videoUrl = data.data?.video_url;
+          const title = data.data?.title || 'INTEL';
+          if (videoUrl) {
+            showVideoPush(videoUrl, title);
+          }
+          loadOpsEvents(session);
         } else if (data.type === 'escalation') {
           loadOpsEvents(session);
           loadOpsStatus(session);

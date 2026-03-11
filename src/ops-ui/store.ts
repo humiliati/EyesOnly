@@ -336,6 +336,9 @@ function connectWS(): void {
         const msg = JSON.parse(ev.data);
         if (msg.type === 'event') {
           setState({ events: [...state.events, msg.data as OpsEvent].slice(-100) });
+        } else if (msg.type === 'video_push') {
+          // Dispatch custom event for any UI layer (Preact or DOM) to handle
+          window.dispatchEvent(new CustomEvent('ops:video_push', { detail: msg.data }));
         } else if (msg.type === 'escalation') {
           // Re-fetch full scenario on escalation
           fetchScenario();

@@ -25,9 +25,9 @@ export class ScenarioRoom implements DurableObject {
 
     // Restore WebSocket connections after hibernation
     this.state.getWebSockets().forEach((ws) => {
-      const meta = ws.deserializeAttachment() as ConnectedClient | null;
+      const meta = ws.deserializeAttachment() as Omit<ConnectedClient, 'ws'> | null;
       if (meta) {
-        this.clients.set(ws, meta);
+        this.clients.set(ws, { ...meta, ws });
       }
     });
   }
@@ -84,7 +84,8 @@ export class ScenarioRoom implements DurableObject {
 
     // Accept with hibernation API
     this.state.acceptWebSocket(server);
-    server.serializeAttachment(clientMeta);
+    // Only serialize plain data — WebSocket objects are not serializable
+    server.serializeAttachment({ actorId, callsign, role, connectedAt: clientMeta.connectedAt });
     this.clients.set(server, clientMeta);
 
     // Send initial welcome message
