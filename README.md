@@ -1,5 +1,14 @@
 # EyesOnly (flapsandseals.com)
 
+> **Elevator pitch:** EyesOnly is a live spy-game platform that fuses a real-time
+> director console, field-operative coordination tools, and an embedded tactical
+> ASCII roguelike — all grounded in real Sandpoint, Idaho geography. Directors
+> orchestrate 90–240 minute urban Capture-the-Flag exercises with dead drops,
+> lane networks, and actor scripts while players train in a 162-module stealth
+> roguelike with card-based combat, procedural dungeons, and Diablo-style loot.
+> Built on Cloudflare Workers — it's immersive theater meets military training
+> sim meets browser roguelike.
+
 **EyesOnly** is the deployed Live ARG / Joint Tactical Training Exercise platform behind **flapsandseals.com**.
 It includes:
 
