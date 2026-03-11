@@ -391,9 +391,63 @@
       text-align: center; padding: 4px 8px;
       border-bottom: 1px solid var(--border); flex-shrink: 0;
     }
+
+    /* ====== VIDEO PUSH TAKEOVER ====== */
+    .video-takeover {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #000;
+      overflow: hidden;
+    }
+    .video-takeover.active { display: block; }
+    .video-takeover video {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      min-width: 100%;
+      min-height: 100%;
+      width: auto;
+      height: auto;
+      /* zoom+crop: fills viewport, clips overflow — no letterbox */
+      object-fit: cover;
+    }
+    .video-takeover .vt-title {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      padding: 8px 12px;
+      background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, transparent 100%);
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: rgba(51,255,51,0.8);
+      z-index: 2;
+      pointer-events: none;
+    }
+    .video-takeover .vt-signal {
+      position: absolute;
+      top: 8px; right: 12px;
+      font-size: 8px;
+      color: var(--red);
+      letter-spacing: 1px;
+      z-index: 2;
+      animation: vt-blink 1s steps(2,start) infinite;
+    }
+    @keyframes vt-blink {
+      0% { opacity: 1; }
+      50% { opacity: 0; }
+    }
   </style>
 </head>
 <body>
+
+<!-- ====== VIDEO PUSH TAKEOVER (covers everything when active) ====== -->
+<div class="video-takeover" id="video-takeover">
+  <div class="vt-title" id="vt-title"></div>
+  <div class="vt-signal">● LIVE</div>
+  <video id="vt-video" playsinline></video>
+</div>
 
 <!-- ====== LOGIN SCREEN ====== -->
 <div id="screen-login" class="screen active">
@@ -849,6 +903,53 @@ function handleWSMessage(msg) {
   if (msg.type === 'state' && msg.data && msg.data.frozen !== undefined) {
     setFrozen(msg.data.frozen);
   }
+
+  // Video push — M director pushes video to takeover screen
+  if (msg.type === 'video_push' && msg.data) {
+    showVideoTakeover(msg.data.video_url, msg.data.title);
+  }
+}
+
+// ===== VIDEO TAKEOVER =====
+var _vtTimer = null;
+
+function showVideoTakeover(url, title) {
+  var overlay = document.getElementById('video-takeover');
+  var vid = document.getElementById('vt-video');
+  var titleEl = document.getElementById('vt-title');
+  if (!overlay || !vid) return;
+
+  // Set source and title
+  vid.src = url;
+  if (titleEl) titleEl.textContent = title ? '\u25B6 ' + title : '';
+
+  // Activate overlay — covers everything
+  overlay.classList.add('active');
+
+  // Vibrate to alert the operator
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+
+  // Play (autoplay may be blocked, catch silently)
+  vid.play().catch(function() {});
+
+  // Wire up end handler
+  vid.onended = function() { dismissVideoTakeover(); };
+  vid.onerror = function() {
+    // Brief error display then dismiss
+    setTimeout(dismissVideoTakeover, 3000);
+  };
+
+  // Safety timeout: auto-dismiss after 120s in case end event is lost
+  if (_vtTimer) clearTimeout(_vtTimer);
+  _vtTimer = setTimeout(dismissVideoTakeover, 120000);
+}
+
+function dismissVideoTakeover() {
+  var overlay = document.getElementById('video-takeover');
+  var vid = document.getElementById('vt-video');
+  if (_vtTimer) { clearTimeout(_vtTimer); _vtTimer = null; }
+  if (vid) { vid.pause(); vid.removeAttribute('src'); vid.load(); }
+  if (overlay) overlay.classList.remove('active');
 }
 
 // We don't store actor_id locally — use a placeholder approach

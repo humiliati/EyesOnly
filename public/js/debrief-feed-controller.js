@@ -19,6 +19,8 @@ const DebriefFeedController = (function() {
   var _debriefScreen = null;
   var _mokInitialized = false;
   var _videoPlaying = false;
+  var _videoUrl = null;     // URL of video being pushed
+  var _videoTitle = null;   // Display title for video overlay
 
   // Terminal-row interaction state (sticky highlight + sticky expand)
   var _rowExpanded = {}; // { rowId: boolean }
@@ -1255,18 +1257,48 @@ const DebriefFeedController = (function() {
   }
 
   /**
-   * Render video display
+   * Render video display — real <video> element with zoom+crop.
+   * The CSS class .video-player-container uses object-fit:cover so
+   * non-4:3 content fills the viewport with overflow cropped (no letterbox).
    */
   function _renderVideo() {
-    // Video takes full priority
-    // Placeholder implementation
+    if (!_videoUrl) {
+      // No URL yet — shouldn't happen, but degrade gracefully
+      _debriefScreen.innerHTML = '<div class="debrief-video-display">' +
+        '<div class="video-player-container" style="display:flex;align-items:center;justify-content:center;color:rgba(51,255,51,0.5);font-size:12px;">STANDBY — INCOMING INTEL</div></div>';
+      return;
+    }
+
+    var titleBar = _videoTitle
+      ? '<div class="vp-title-bar">\u25B6 ' + _videoTitle + '</div>'
+      : '';
+
     var html = '<div class="debrief-video-display">';
     html += '<div class="video-player-container">';
-    html += '<p>Video player would display here</p>';
+    html += titleBar;
+    html += '<video id="debrief-video-el" autoplay playsinline';
+    html += ' src="' + _videoUrl + '"';
+    html += '></video>';
     html += '</div>';
     html += '</div>';
 
     _debriefScreen.innerHTML = html;
+
+    // Wire up end / error handlers
+    var vid = document.getElementById('debrief-video-el');
+    if (vid) {
+      vid.addEventListener('ended', function() {
+        setVideoPlaying(false);
+      });
+      vid.addEventListener('error', function() {
+        // On error, show message briefly then restore
+        var container = vid.parentElement;
+        if (container) {
+          container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:rgba(255,51,51,0.7);font-size:11px;font-family:monospace;">SIGNAL LOST</div>';
+        }
+        setTimeout(function() { setVideoPlaying(false); }, 3000);
+      });
+    }
   }
 
   /**
@@ -1340,11 +1372,21 @@ const DebriefFeedController = (function() {
   /**
    * Set video playing state
    * @param {boolean} playing
+   * @param {string} [url]   - video URL (required when playing=true)
+   * @param {string} [title] - display title overlay
    */
   var _videoMaxTimer = null;
 
-  function setVideoPlaying(playing) {
+  function setVideoPlaying(playing, url, title) {
     _videoPlaying = playing;
+    if (playing && url) {
+      _videoUrl = url;
+      _videoTitle = title || null;
+    }
+    if (!playing) {
+      _videoUrl = null;
+      _videoTitle = null;
+    }
     // Auto-maximize debrief when video is pushed (any orientation)
     try {
       if (playing) {

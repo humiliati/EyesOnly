@@ -4362,15 +4362,38 @@ body.cascade-active {
   box-shadow: 0 0 28px rgba(0, 212, 255, 0.25), inset 0 0 18px rgba(0, 212, 255, 0.18);
 }
 
-/* Video Player Container */
+/* Video Player Container — zoom+crop for non-4:3 content */
 .video-player-container {
+  position: relative;
   width: 100%;
   height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.8);
-  color: var(--phosphor);
+  overflow: hidden;
+  background: #000;
+}
+.video-player-container video {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 100%;
+  min-height: 100%;
+  width: auto;
+  height: auto;
+  /* object-fit:cover ensures non-4:3 content fills the viewport
+     with overflow cropped rather than letterboxed */
+  object-fit: cover;
+}
+.video-player-container .vp-title-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  padding: 6px 10px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, transparent 100%);
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: rgba(51,255,51,0.8);
+  z-index: 2;
+  pointer-events: none;
 }
 
 /* Mobile Responsive */
