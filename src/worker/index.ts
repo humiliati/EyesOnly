@@ -14,6 +14,7 @@ import { userAuthRoutes } from './routes/user-auth';
 import { kernelRoutes } from './routes/kernel';
 import { audioRoutes } from './routes/audio';
 import { audioUploadRoutes } from './routes/audio-upload';
+import { videoRoutes } from './routes/video';
 import {
   listActiveScenarios,
   findStaleActors,
@@ -63,6 +64,15 @@ app.use('/audio/*', cors({
   exposeHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length'],
 }));
 
+// CORS for video paths — same treatment as audio.
+// <video> elements need Range for seeking and Content-Range exposed.
+app.use('/video/*', cors({
+  origin: '*',
+  allowMethods: ['GET', 'HEAD', 'OPTIONS'],
+  allowHeaders: ['Range', 'Content-Type'],
+  exposeHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length'],
+}));
+
 // --- Route Groups ---
 
 app.route('/api', publicRoutes);
@@ -73,6 +83,9 @@ app.route('/api/kernel', kernelRoutes);
 
 // --- Audio: served from R2 (not static assets) ---
 app.route('/audio', audioRoutes);
+
+// --- Video: served from R2 (not static assets) ---
+app.route('/video', videoRoutes);
 
 // --- Audio Upload API (Sound Designer portal) ---
 app.route('/api/audio', audioUploadRoutes);
