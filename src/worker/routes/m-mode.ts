@@ -1375,3 +1375,107 @@ mModeRoutes.post('/decoy-ping', async (c) => {
 
   return c.json({ ok: true, decoy: true, ping_command: body.command.toUpperCase() });
 });
+
+// ─── VIDEO INTEL PUSH ────────────────────────────────────────────
+
+/**
+ * POST /api/m/video-push
+ * Director pushes a video to connected ops/player clients.
+ * Broadcasts via WebSocket (live takeover) + Web Push (offline nudge).
+ *
+ * Body: { video_key: string, title?: string, actor_id?: number, audience?: string }
+ *   - video_key: R2 object key under video/ prefix (e.g. "MERCEDES.webm")
+ *   - title:     optional display title (defaults to filename)
+ *   - actor_id:  optional target — omit to broadcast to all
+ *   - audience:  optional broadcast filter — 'all' | 'actors' | 'directors' | 'target'
+ */
+mModeRoutes.post('/video-push', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{
+    video_key: string;
+    title?: string;
+    actor_id?: number;
+    audience?: 'all' | 'actors' | 'directors' | 'target';
+  }>();
+
+  if (!body.video_key) {
+    return c.json({ error: 'BAD_REQUEST', message: 'video_key is required' }, 400);
+  }
+
+  // Normalise: strip leading "video/" if caller included it
+  const rawKey = body.video_key.replace(/^video\//, '');
+  const r2Key = `video/${rawKey}`;
+
+  // Validate that the object actually exists in R2
+  const head = await c.env.R2.head(r2Key);
+  if (!head) {
+    return c.json({ error: 'NOT_FOUND', message: `Video not found in R2: ${r2Key}` }, 404);
+  }
+
+  const videoUrl = `/video/${rawKey}`;
+  const title = body.title || rawKey;
+
+  // 1. Audit event
+  const event = await insertEvent(c.env.DB, auth.scenario_id, auth.actor_id, 'video_push', {
+    video_key: r2Key,
+    video_url: videoUrl,
+    title,
+    target_actor_id: body.actor_id || null,
+    size: head.size,
+    content_type: head.httpMetadata?.contentType || 'video/mp4',
+    sent_by: auth.callsign,
+  });
+
+  // 2. WebSocket broadcast — clients will auto-play & takeover screen
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+  const room = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'video_push',
+      data: {
+        event_id: event.id,
+        video_url: videoUrl,
+        title,
+        content_type: head.httpMetadata?.contentType || 'video/mp4',
+      },
+      timestamp: Date.now(),
+      // Audience routing: specific actor > explicit audience > all
+      ...(body.actor_id
+        ? { audience: 'target' as const, target_actor_id: body.actor_id }
+        : body.audience
+          ? { audience: body.audience }
+          : {}),
+    }),
+  }));
+
+  // 3. Web Push for offline / backgrounded devices
+  const subs = await getPushSubscriptionsByScenario(c.env.DB, auth.scenario_id, body.actor_id);
+  let pushSent = 0;
+  if (subs.length) {
+    await sendWebPushToAll(
+      c.env,
+      subs,
+      {
+        title: `📡 INCOMING INTEL`,
+        body: title,
+        tag: 'video-push',
+        data: { event_id: event.id, video_url: videoUrl },
+        vibrate: [200, 100, 200],
+      },
+      async (expired) => {
+        const { deletePushSubscription: delSub } = await import('../db/queries');
+        await delSub(c.env.DB, expired.actor_id, expired.endpoint);
+      },
+    );
+    pushSent = subs.length;
+  }
+
+  return c.json({
+    ok: true,
+    event_id: event.id,
+    video_url: videoUrl,
+    ws_broadcast: true,
+    push_sent: pushSent,
+  });
+});
