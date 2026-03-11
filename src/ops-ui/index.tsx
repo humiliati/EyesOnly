@@ -110,29 +110,78 @@ function renderOpsWithDOM(container: HTMLElement) {
   }
 }
 
+const USER_SESSION_KEY_DOM = 'eyesonly_user_session';
+
+function getDomUserSession(): { token: string; user: any } | null {
+  try {
+    const raw = localStorage.getItem(USER_SESSION_KEY_DOM);
+    if (raw) { const d = JSON.parse(raw); if (d?.token) return d; }
+  } catch {}
+  return null;
+}
+
 function renderOpsJoin(container: HTMLElement) {
+  const existingUser = getDomUserSession();
   const screen = document.createElement('div');
   screen.className = 'join-screen';
   screen.innerHTML = `
     <div class="logo">EYES ONLY</div>
     <div class="subtitle">FIELD OPERATIVE CHECK-IN</div>
+    ${existingUser
+      ? `<div class="field" style="text-align:center;"><label style="color:#33ff33;letter-spacing:2px;">LOGGED IN AS</label><div style="font-size:16px;color:#33ff33;letter-spacing:2px;padding:8px 0;">${existingUser.user?.callsign || existingUser.user?.username || 'OPERATIVE'}</div></div>`
+      : `<div class="field"><label>USERNAME</label><input type="text" id="ops-username" placeholder="Enter username or register new" autocomplete="username" /></div>`
+    }
     <div class="field"><label>JOIN CODE</label><input type="text" id="ops-code" placeholder="Enter join code" autocomplete="off" /></div>
-    <div class="field"><label>CALLSIGN</label><input type="text" id="ops-callsign" placeholder="Your callsign" autocomplete="off" /></div>
     <div id="ops-error" class="error-msg" style="display:none"></div>
     <button id="ops-btn" class="btn">JOIN OPERATION</button>
   `;
   screen.querySelector('#ops-btn')!.addEventListener('click', async () => {
     const code = (document.getElementById('ops-code') as HTMLInputElement).value;
-    const callsign = (document.getElementById('ops-callsign') as HTMLInputElement).value;
+    const usernameEl = document.getElementById('ops-username') as HTMLInputElement | null;
+    const username = usernameEl ? usernameEl.value.trim().toLowerCase() : '';
     const errEl = document.getElementById('ops-error')!;
     const btn = document.getElementById('ops-btn') as HTMLButtonElement;
-    if (!code || !callsign) { errEl.textContent = 'Enter code and callsign'; errEl.style.display = ''; return; }
+
+    if (!code) { errEl.textContent = 'Enter a join code'; errEl.style.display = ''; return; }
+    if (!existingUser && !username) { errEl.textContent = 'Enter your username'; errEl.style.display = ''; return; }
+
     btn.textContent = 'JOINING...'; btn.disabled = true; errEl.style.display = 'none';
     try {
+      // Get or create user session token
+      let userToken = existingUser?.token || null;
+      if (!userToken && username) {
+        // Try login, then register if not found
+        let loginRes = await fetch('/api/user/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username }),
+        });
+        if (!loginRes.ok) {
+          const loginErr = await loginRes.json().catch(() => ({} as any));
+          if (loginErr.error === 'AUTH_FAILED') {
+            loginRes = await fetch('/api/user/register', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username }),
+            });
+          }
+        }
+        if (!loginRes.ok) {
+          const d = await loginRes.json().catch(() => ({} as any));
+          throw new Error(d.message || 'Login failed');
+        }
+        const loginData = await loginRes.json() as any;
+        userToken = loginData.session_token;
+        try { localStorage.setItem(USER_SESSION_KEY_DOM, JSON.stringify({ token: userToken, user: loginData.user })); } catch {}
+      }
+
+      if (!userToken) throw new Error('Account login required');
+
+      // Join with user session token
       const res = await fetch('/api/join', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, callsign }),
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userToken}` },
+        body: JSON.stringify({ code }),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})) as any; throw new Error(d.message || 'Join failed'); }
       const data = await res.json() as any;

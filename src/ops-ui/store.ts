@@ -103,15 +103,103 @@ function saveSession(): void {
   } catch { /* ignore */ }
 }
 
+// --- User Account Session ---
+// The main site stores user sessions under this key after /api/user/login or /api/user/register.
+const USER_SESSION_KEY = 'eyesonly_user_session';
+
+/** Read the user session token from localStorage (shared with main site on same origin). */
+export function getUserSessionToken(): string | null {
+  try {
+    const raw = localStorage.getItem(USER_SESSION_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return parsed?.token || null;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+/** Get cached user info (callsign, username) from the user session. */
+export function getUserInfo(): { username: string; callsign: string } | null {
+  try {
+    const raw = localStorage.getItem(USER_SESSION_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return parsed?.user || null;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+/** Save a user session (after login/register from the ops portal). */
+function saveUserSession(token: string, user: Record<string, unknown>): void {
+  try {
+    localStorage.setItem(USER_SESSION_KEY, JSON.stringify({ token, user }));
+  } catch { /* ignore */ }
+}
+
+/**
+ * Login with an existing username, or auto-register if the account doesn't exist.
+ * Returns user session token on success.
+ */
+export async function userLogin(username: string): Promise<string | null> {
+  setState({ loading: true, error: null });
+  try {
+    // Try login first
+    let res = await fetch(`${API_BASE}/user/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username }),
+    });
+
+    // If user not found, auto-register
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({} as any));
+      if (err.error === 'AUTH_FAILED') {
+        res = await fetch(`${API_BASE}/user/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username }),
+        });
+      }
+    }
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Login failed' }));
+      setState({ loading: false, error: (err as { message?: string }).message || 'Login failed' });
+      return null;
+    }
+
+    const data = await res.json() as { session_token: string; user: Record<string, unknown> };
+    saveUserSession(data.session_token, data.user);
+    setState({ loading: false });
+    return data.session_token;
+  } catch {
+    setState({ loading: false, error: 'Network error during login' });
+    return null;
+  }
+}
+
 // --- Auth ---
 
-export async function join(code: string, callsign: string): Promise<boolean> {
+export async function join(code: string, userSessionToken?: string): Promise<boolean> {
   setState({ loading: true, error: null });
+
+  // Account-linked join requires a user session token
+  const ust = userSessionToken || getUserSessionToken();
+  if (!ust) {
+    setState({ loading: false, error: 'Account login required. Enter your username first.' });
+    return false;
+  }
+
   try {
     const res = await fetch(`${API_BASE}/join`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, callsign }),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${ust}`,
+      },
+      body: JSON.stringify({ code }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ message: 'Join failed' }));
