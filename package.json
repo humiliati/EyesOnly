@@ -2,7 +2,7 @@
   "name": "eyesonly",
   "version": "2.0.0",
   "private": true,
-  "description": "EYES ONLY — Spec-Ops CTF Engine for Sandpoint, Idaho",
+  "description": "Live spy-game platform: real-time director console, field-ops coordination, and an embedded ASCII stealth roguelike — all mapped to real Sandpoint, Idaho geography. Cloudflare Workers powered.",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
