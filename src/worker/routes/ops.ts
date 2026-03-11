@@ -640,6 +640,70 @@ opsRoutes.post('/panic', async (c) => {
   return c.json({ ok: true, event_id: event.id });
 });
 
+/**
+ * POST /api/ops/alarm
+ * Ops raises an alarm for M — increments alarm count on the scenario.
+ * If count reaches 3+, auto-freezes the game.
+ * Broadcasts ops_alarm to all clients (M sees badge, may auto-freeze).
+ */
+opsRoutes.post('/alarm', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{ message?: string }>().catch(() => ({}));
+
+  // Read current alarm count from scenario config
+  const scenario = await getScenario(c.env.DB, auth.scenario_id);
+  if (!scenario) return c.json({ error: 'NOT_FOUND', message: 'Scenario not found' }, 404);
+
+  const config = JSON.parse(scenario.config);
+  const prevCount = config.ops_alarm_count || 0;
+  config.ops_alarm_count = prevCount + 1;
+
+  // Auto-freeze at 3+ alarms
+  let autoFrozen = false;
+  if (config.ops_alarm_count >= 3 && !config.frozen) {
+    config.frozen = true;
+    autoFrozen = true;
+  }
+
+  await updateScenarioConfig(c.env.DB, scenario.id, config);
+
+  // Log event
+  await insertEvent(c.env.DB, auth.scenario_id, auth.actor_id, 'ops_alarm', {
+    callsign: auth.callsign,
+    message: (body as any).message || 'ALARM RAISED',
+    alarm_count: config.ops_alarm_count,
+    auto_frozen: autoFrozen,
+    ts: Date.now(),
+  });
+
+  // Broadcast alarm to all (M + Ops)
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+  const room = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'ops_alarm',
+      data: {
+        callsign: auth.callsign,
+        message: (body as any).message || 'ALARM RAISED',
+        alarm_count: config.ops_alarm_count,
+        auto_frozen: autoFrozen,
+      },
+      timestamp: Date.now(),
+    }),
+  }));
+
+  // If auto-frozen, also broadcast freeze state
+  if (autoFrozen) {
+    await room.fetch(new Request('http://internal/broadcast', {
+      method: 'POST',
+      body: JSON.stringify({ type: 'state', data: { frozen: true }, timestamp: Date.now() }),
+    }));
+  }
+
+  return c.json({ ok: true, alarm_count: config.ops_alarm_count, auto_frozen: autoFrozen });
+});
+
 // ===== Haversine distance helper (meters) =====
 function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R  = 6371000; // Earth radius in metres
@@ -732,14 +796,16 @@ opsRoutes.get('/map', async (c) => {
   const scenario = await getScenario(c.env.DB, auth.scenario_id);
   if (!scenario) return c.json({ error: 'NOT_FOUND', message: 'Scenario not found' }, 404);
 
-  const config = typeof scenario.config === 'string'
-    ? JSON.parse(scenario.config || '{}')
-    : (scenario.config || {});
+  // Ops reads from published_config when available, falls back to working config
+  const rawConfig = scenario.published_config || scenario.config;
+  const config = typeof rawConfig === 'string'
+    ? JSON.parse(rawConfig || '{}')
+    : (rawConfig || {});
 
-  // Grid cells
+  // Grid cells (live from DB — always current)
   const cells = await getGridCells(c.env.DB, auth.scenario_id);
 
-  // Scenario nodes (read-only view)
+  // Scenario nodes (from published snapshot)
   const nodes = config.nodes || [];
   const connections = config.connections || [];
 
@@ -754,6 +820,7 @@ opsRoutes.get('/map', async (c) => {
   return c.json({
     map_url: mapUrl,
     grid: config.grid || null,
+    published_at: scenario.published_at || null,
     cells: cells.map((cell) => ({
       cell_id: cell.cell_id,
       col: cell.col,

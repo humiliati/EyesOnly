@@ -200,9 +200,22 @@ mapUploadRoutes.get('/scenario/nodes/:scenarioId', async (c) => {
     ? JSON.parse(scenario.config || '{}')
     : (scenario.config || {});
 
+  // Also return published nodes for ghost marker divergence display
+  let publishedNodes: any[] = [];
+  if (scenario.published_config) {
+    try {
+      const pub = typeof scenario.published_config === 'string'
+        ? JSON.parse(scenario.published_config)
+        : scenario.published_config;
+      publishedNodes = pub.nodes || [];
+    } catch {}
+  }
+
   return c.json({
     nodes: config.nodes || [],
     connections: config.connections || [],
+    published_nodes: publishedNodes,
+    published_at: scenario.published_at || null,
   });
 });
 
@@ -218,6 +231,7 @@ mapUploadRoutes.patch('/scenario/node', async (c) => {
     status?: string;
     config?: Record<string, unknown>;
     label?: string;
+    cell_id?: string;
   }>();
 
   if (!body.scenario_id || !body.node_id) {
@@ -235,11 +249,40 @@ mapUploadRoutes.patch('/scenario/node', async (c) => {
   const node = nodes.find((n: any) => n.id === body.node_id);
   if (!node) return c.json({ error: 'NOT_FOUND', message: `Node ${body.node_id} not found` }, 404);
 
+  const previousCellId = node.cell_id;
   if (body.status !== undefined) node.status = body.status;
   if (body.config !== undefined) node.config = { ...node.config, ...body.config };
   if (body.label !== undefined) node.label = body.label;
+  if (body.cell_id !== undefined) node.cell_id = body.cell_id;
 
   await updateScenarioConfig(c.env.DB, body.scenario_id, config);
+
+  // Broadcast node move via WebSocket if cell changed
+  if (body.cell_id !== undefined && body.cell_id !== previousCellId) {
+    try {
+      const auth = c.get('auth');
+      const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${body.scenario_id}`);
+      const room = c.env.SCENARIO_ROOM.get(roomId);
+      await room.fetch(new Request('http://internal/broadcast', {
+        method: 'POST',
+        body: JSON.stringify({
+          type: 'event',
+          data: {
+            event_type: 'node_moved',
+            payload: {
+              node_id: body.node_id,
+              node_type: node.type,
+              label: node.label,
+              from_cell: previousCellId,
+              to_cell: body.cell_id,
+              moved_by: auth?.callsign || 'M',
+            },
+          },
+          timestamp: Date.now(),
+        }),
+      }));
+    } catch {}
+  }
 
   return c.json({ ok: true, node });
 });

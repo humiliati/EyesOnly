@@ -29,6 +29,7 @@ After joining, the Ops screen shows:
 
 ### Header
 - **EYES ONLY // OPS** title
+- **ALARM AD[M]IN** button -- raises alarm to M Director (see section 20)
 - **Callsign [TEAM]** badge with connection border (green=connected, red=offline)
 
 ### Context Bar
@@ -47,10 +48,11 @@ A **tension bar** fills beneath the context fields to show tension visually. Bel
 ### Cards (top to bottom)
 | Card | Content |
 |------|---------|
-| **STATUS / TEAM** | Current status (ACTIVE) and team assignment |
+| **INTEL FEED** | Video intel from M -- front and center. Shows last received video with replay/fullscreen buttons. Red border pulses on new intel. |
 | **M DIRECTIVES** | Pending and acknowledged pings from M (last 10) |
-| **RECENT EVENTS** | Last 20 scenario events |
+| **STATUS / TEAM** | Current status (ACTIVE) and team assignment |
 | **CHECK-IN** | Lane ID + message fields for check-in |
+| **RECENT EVENTS** | Last 20 scenario events |
 | **TACTICAL MAP** | Read-only UGRS grid with scenario nodes |
 | **DISCONNECT** | Leave the operation |
 
@@ -132,15 +134,18 @@ The dashboard includes a **TACTICAL MAP** card showing the UGRS grid in read-onl
 ### What You See
 - Grid cells with column labels (A, B, C...) and row labels (1, 2, 3...)
 - **Cell status colors** -- green (working), amber (degraded), red (compromised), grey (offline), dark (unknown)
-- **Scenario node markers** placed by M:
+- **Scenario node markers** from M's **published** map snapshot (not M's live working draft):
   - ★ Waypoint, ⚑ Objective, ⚡ Trigger, ● Spawn, ⚠ Hazard, ♦ Intel Drop
   - Color indicates status: grey=pending, green=active, blue=completed, red=failed
 - **Tension bars** at bottom of cells
-- **Map image** background (if M uploaded one) at 20% opacity
+- **Map image** background (from published config) at 20% opacity
 - Cells with scenario nodes have **dashed borders**
 
+### Published Map
+Ops always sees the last map M explicitly published -- never M's in-progress edits. When M publishes a new version, your tactical map updates on the next 15-second refresh cycle.
+
 ### Auto-Refresh
-The map refreshes every 15 seconds to reflect M's changes to the grid, cell statuses, and scenario node activations.
+The map refreshes every 15 seconds to reflect the latest published grid, cell statuses, and scenario node activations.
 
 ### Purpose
 Use the tactical map to orient yourself within the UGRS grid. When M sends you a `MOVE -> C4` directive, you can see where C4 is on the grid and what nodes or status it carries.
@@ -149,7 +154,7 @@ Use the tactical map to orient yourself within the UGRS grid. When M sends you a
 
 ## 7. VIDEO PUSH (INTEL FEED)
 
-M can push video intel to your device at any time.
+M can push video intel to your device at any time. The INTEL FEED card is the first thing you see on your dashboard.
 
 ### What Happens
 1. A fullscreen overlay appears with a blinking red signal indicator: **▶ INCOMING INTEL**
@@ -157,10 +162,19 @@ M can push video intel to your device at any time.
 3. Video autoplays in the center of the screen
 4. Standard playback controls are available
 
-### Dismissing
+### INTEL FEED Card (Persistent)
+After the fullscreen overlay, the video stays in your **INTEL FEED** card at the top of the dashboard:
+- Shows the video title and a thumbnail with play overlay
+- **REPLAY INTEL** button -- plays the video inline in the card
+- **FULLSCREEN** button -- re-launches the fullscreen overlay
+- Red border glow when new intel arrives, fades after 5 seconds
+- Status shows "RECEIVED" with timestamp
+
+### Dismissing Fullscreen
 - Video auto-closes 2 seconds after it finishes playing
 - Press the **X** button to close manually at any time
 - If the video fails to load, a "VIDEO FEED LOST" message appears
+- The inline card player stays available even after dismissing fullscreen
 
 ---
 
@@ -192,18 +206,24 @@ The portal uses exponential backoff: 2s → 4s → 8s → 16s → 32s, up to 5 r
 - **Broadcasts** -- banner notification
 - **Scenario events** -- event feed updates
 - **Escalation events** -- scenario state refresh
+- **ops_alarm** -- alarm raised by any Ops actor (broadcast notification)
+- **ops_alarm_ack** -- M acknowledged and cleared alarms
+- **map_published** -- M published a new map snapshot
+- **scenario_dispatched** -- M dispatched the scenario for live play
 
 ---
 
 ## 10. FREEZE COMMAND
 
-When M freezes the game:
+When M freezes the game (or when 3+ Ops alarms trigger an auto-freeze):
 - A full-screen overlay appears: **GAME FROZEN -- STAND BY FOR COMMAND**
 - All interactions are blocked
 - You must immediately disengage and become a normal pedestrian
 - Wait for M to unfreeze the game
 
 When unfrozen, the overlay dismisses and you resume operations.
+
+**Auto-freeze**: If 3 or more Ops actors raise alarms without M acknowledging, the game freezes automatically as a safety mechanism. See section 20 for the ALARM AD[M]IN system.
 
 ---
 
@@ -296,7 +316,34 @@ Press the red **DISCONNECT** button at the bottom of the dashboard. This clears 
 
 ---
 
-## 19. EXTRACTION SCENARIO FIELD NOTES -- DOWNED PILOT (1.2026)
+## 20. ALARM AD[M]IN -- ESCALATING TO M
+
+When you need M's immediate attention from the field, use the **ALARM AD[M]IN** button in the header.
+
+### How to Raise an Alarm
+1. Press the **ALARM AD[M]IN** button (red border, header right side)
+2. Button shows "SENDING..." briefly, then "ALARM SENT" with a count badge
+3. A 10-second cooldown prevents spam -- wait before sending another
+
+### What Happens
+- M's **FREEZE GAME** button gains a red badge with the total alarm count
+- MOK logs a critical alert on M's console for each alarm
+- All connected Ops actors see a broadcast notification of the alarm
+- **Auto-freeze at 3+ alarms**: If 3 or more alarms accumulate without M acknowledging them, the game automatically freezes for all participants
+
+### When M Acknowledges
+- M clicks their freeze button to acknowledge and clear all alarms
+- Your alarm button resets to "ALARM AD[M]IN"
+- A broadcast confirms "M has acknowledged alarms -- cleared"
+
+### When to Use
+- Safety concern requiring immediate game halt
+- Critical operational issue M needs to address
+- Multiple actors simultaneously alarming triggers the auto-freeze safety net
+
+---
+
+## 21. EXTRACTION SCENARIO FIELD NOTES -- DOWNED PILOT (1.2026)
 
 This section covers actor-specific field guidance for the **Downed Pilot extraction** scenario type. It is the template for all EyesOnly extraction operations.
 

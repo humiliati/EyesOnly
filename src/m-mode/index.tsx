@@ -131,17 +131,22 @@ const NODE_COLORS: Record<string, string> = {
 };
 
 // --- Panel State Machine ---
-type PanelMode = 'overview' | 'cell' | 'actor' | 'assign_lane' | 'move_actor' | 'scenario';
+type PanelMode = 'overview' | 'cell' | 'actor' | 'assign_lane' | 'move_actor' | 'move_node' | 'scenario';
 let panelMode: PanelMode = 'overview';
 let selectedCellId: string | null = null;
 let selectedActorId: number | null = null;
 let selectedLaneId: string | null = null;
 let moveActorId: number | null = null;
+let moveNodeId: string | null = null;
+let moveNodeFromCell: string | null = null;
 let cachedGridData: GridData | null = null;
 let cachedSession: Session | null = null;
 let cachedScenarioNodes: ScenarioNode[] = [];
 let cachedScenarioConnections: ScenarioConnection[] = [];
+let cachedPublishedNodes: ScenarioNode[] = [];  // last published snapshot for ghost markers
+let lastPublishedAt: number | null = null;
 let isFrozen = false;
+let opsAlarmCount = 0;
 
 // --- Map overlay toggle states ---
 let overlayTelemetry = false;
@@ -265,6 +270,21 @@ function updateOpBar() {
   }
 }
 
+// --- Freeze Button Alarm Badge ---
+function updateFreezeButtonBadge() {
+  const btn = document.getElementById('m-freeze-btn');
+  if (!btn) return;
+  if (opsAlarmCount > 0) {
+    btn.classList.add('has-alarms');
+    // Preserve base text and append badge
+    const baseText = isFrozen ? 'UNFREEZE' : 'FREEZE GAME';
+    btn.innerHTML = `${baseText} <span class="alarm-badge">${opsAlarmCount}</span>`;
+  } else {
+    btn.classList.remove('has-alarms');
+    btn.textContent = isFrozen ? 'UNFREEZE' : 'FREEZE GAME';
+  }
+}
+
 // Expose MOK globally for dev/testing and future AI integration
 (window as any)._MOK = {
   send: mokSend,
@@ -377,38 +397,34 @@ function renderConsole(container: HTMLElement, session: Session) {
       <div style="display:flex;align-items:center;gap:8px;">
         <h1>M MODE</h1>
         <div id="mok-hud" class="mok-hud-mini idle" role="img" aria-label="MOK Director indicator. State: idle">
-          <svg viewBox="0 0 220 48" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" class="mok-svg">
+          <svg viewBox="0 0 110 24" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" class="mok-svg">
             <defs>
-              <pattern id="mok-grid" width="10" height="10" patternUnits="userSpaceOnUse">
-                <path d="M10 0H0V10" fill="none" stroke="#05260a" stroke-width="0.5"/>
+              <pattern id="mok-grid" width="6" height="6" patternUnits="userSpaceOnUse">
+                <path d="M6 0H0V6" fill="none" stroke="#05260a" stroke-width="0.4"/>
               </pattern>
               <linearGradient id="mok-glow" x1="0" x2="1">
                 <stop offset="0" stop-color="#16ff8f" stop-opacity="0.95"/>
                 <stop offset="1" stop-color="#004e2a" stop-opacity="0.6"/>
               </linearGradient>
-              <filter id="mok-blur" x="-40%" y="-40%" width="180%" height="180%">
-                <feGaussianBlur stdDeviation="1.6" result="b"/>
+              <filter id="mok-blur" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="0.8" result="b"/>
                 <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
               </filter>
             </defs>
-            <rect x="1" y="1" rx="6" ry="6" width="218" height="46" fill="rgba(0,0,0,0.5)" stroke="#083212" stroke-width="1.5"/>
-            <rect x="6" y="6" width="208" height="36" fill="url(#mok-grid)" opacity="0.86"/>
-            <rect x="-80" y="0" width="120" height="48" fill="url(#mok-glow)" opacity="0.06" class="mok-glow-band"/>
-            <g transform="translate(110,24)" class="mok-glyph" aria-hidden="true">
-              <path d="M-42 -2 L-22 -20 L22 -20 L42 -2 L-42 -2 Z" fill="url(#mok-glow)" opacity="0.8" filter="url(#mok-blur)"/>
-              <path class="mok-triangle-core" d="M0 -16 L-10 6 L10 6 Z" fill="#00ff88" opacity="0.98"/>
-              <path d="M-12 8 L12 8 L6 14 L-6 14 Z" fill="#00b36a" opacity="0.95"/>
+            <rect x="0.5" y="0.5" rx="3" ry="3" width="109" height="23" fill="rgba(0,0,0,0.5)" stroke="#083212" stroke-width="1"/>
+            <rect x="3" y="3" width="104" height="18" fill="url(#mok-grid)" opacity="0.7"/>
+            <rect x="-40" y="0" width="60" height="24" fill="url(#mok-glow)" opacity="0.06" class="mok-glow-band"/>
+            <g transform="translate(55,12)" class="mok-glyph" aria-hidden="true">
+              <path d="M-20 0 L-10 -9 L10 -9 L20 0 Z" fill="url(#mok-glow)" opacity="0.6" filter="url(#mok-blur)"/>
+              <path class="mok-triangle-core" d="M0 -7 L-5 3 L5 3 Z" fill="#00ff88" opacity="0.98"/>
+              <path d="M-6 4 L6 4 L3 7 L-3 7 Z" fill="#00b36a" opacity="0.9"/>
             </g>
-            <rect x="4" y="4" rx="5" ry="5" width="212" height="40" fill="none" stroke="rgba(0,255,160,0.06)" stroke-width="1"/>
-            <g opacity="0.06">
-              <rect x="6" y="6" width="208" height="1" fill="#000"/>
-              <rect x="6" y="10" width="208" height="1" fill="#000"/>
-              <rect x="6" y="14" width="208" height="1" fill="#000"/>
-              <rect x="6" y="18" width="208" height="1" fill="#000"/>
-              <rect x="6" y="22" width="208" height="1" fill="#000"/>
-              <rect x="6" y="26" width="208" height="1" fill="#000"/>
-              <rect x="6" y="30" width="208" height="1" fill="#000"/>
-              <rect x="6" y="34" width="208" height="1" fill="#000"/>
+            <rect x="2" y="2" rx="2.5" ry="2.5" width="106" height="20" fill="none" stroke="rgba(0,255,160,0.05)" stroke-width="0.5"/>
+            <g opacity="0.05">
+              <rect x="3" y="6" width="104" height="0.5" fill="#000"/>
+              <rect x="3" y="10" width="104" height="0.5" fill="#000"/>
+              <rect x="3" y="14" width="104" height="0.5" fill="#000"/>
+              <rect x="3" y="18" width="104" height="0.5" fill="#000"/>
             </g>
           </svg>
         </div>
@@ -462,7 +478,21 @@ function renderConsole(container: HTMLElement, session: Session) {
     renderLogin(container);
   });
 
-  document.getElementById('m-freeze-btn')!.addEventListener('click', () => toggleFreeze(session));
+  document.getElementById('m-freeze-btn')!.addEventListener('click', async () => {
+    // If there are alarms, clear them when M interacts with freeze button
+    if (opsAlarmCount > 0) {
+      try {
+        await mFetch('/m/scenario/alarm-ack', session, {
+          method: 'POST',
+          body: JSON.stringify({ scenario_id: session.scenarioId }),
+        });
+      } catch {}
+      opsAlarmCount = 0;
+      updateFreezeButtonBadge();
+      mokSend('advisory', 'Ops alarms acknowledged and cleared.');
+    }
+    toggleFreeze(session);
+  });
 
   // Squelch buttons
   document.querySelectorAll('.mok-squelch button').forEach((btn) => {
@@ -482,7 +512,8 @@ function renderConsole(container: HTMLElement, session: Session) {
   // ESC key: go back in panel
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      if (panelMode === 'move_actor') { panelMode = 'actor'; renderRightPanel(session); }
+      if (panelMode === 'move_actor') { panelMode = 'actor'; moveActorId = null; renderRightPanel(session); }
+      else if (panelMode === 'move_node') { panelMode = 'cell'; moveNodeId = null; moveNodeFromCell = null; renderRightPanel(session); }
       else if (panelMode === 'actor') { panelMode = 'cell'; renderRightPanel(session); }
       else if (panelMode === 'cell' || panelMode === 'assign_lane') { panelMode = 'overview'; selectedCellId = null; renderRightPanel(session); refreshGridSelection(); }
     }
@@ -497,6 +528,44 @@ function renderConsole(container: HTMLElement, session: Session) {
   setInterval(() => loadActorPositions(session), 15000);
 }
 
+// --- Pan/Zoom State ---
+let mapZoom = 1;
+let mapPanX = 0;
+let mapPanY = 0;
+const MAP_ZOOM_MIN = 0.5;
+const MAP_ZOOM_MAX = 6;
+const MAP_ZOOM_STEP = 0.15;
+
+function applyMapTransform() {
+  const layer = document.getElementById('m-zoom-layer');
+  if (layer) {
+    layer.style.transform = `translate(${mapPanX}px, ${mapPanY}px) scale(${mapZoom})`;
+  }
+  // Update zoom HUD
+  const pctEl = document.getElementById('zoom-pct');
+  if (pctEl) pctEl.textContent = `${Math.round(mapZoom * 100)}%`;
+  // Update detail level class on grid
+  updateZoomDetailLevel();
+}
+
+function updateZoomDetailLevel() {
+  const gridEl = document.getElementById('m-ugrs-grid');
+  if (!gridEl) return;
+  gridEl.classList.remove('zoom-detail-1', 'zoom-detail-2');
+  if (mapZoom >= 2.5) {
+    gridEl.classList.add('zoom-detail-2');
+  } else if (mapZoom >= 1.6) {
+    gridEl.classList.add('zoom-detail-1');
+  }
+}
+
+function resetMapView() {
+  mapZoom = 1;
+  mapPanX = 0;
+  mapPanY = 0;
+  applyMapTransform();
+}
+
 // --- Map Grid with image overlay ---
 function initMapGrid(session: Session) {
   const gridBody = document.getElementById('m-grid-body')!;
@@ -504,10 +573,167 @@ function initMapGrid(session: Session) {
 
   gridBody.innerHTML = `
     <div class="map-container" id="m-map-container">
-      ${savedMap ? '<img class="map-image" id="m-map-img" src="' + savedMap + '" />' : ''}
-      <div id="m-ugrs-grid" class="ugrs-grid"></div>
+      <div class="map-zoom-layer" id="m-zoom-layer">
+        ${savedMap ? '<img class="map-image" id="m-map-img" src="' + savedMap + '" />' : ''}
+        <div id="m-ugrs-grid" class="ugrs-grid"></div>
+      </div>
+      <div class="zoom-hud">
+        <button id="zoom-out" title="Zoom out">−</button>
+        <span class="zoom-pct" id="zoom-pct">100%</span>
+        <button id="zoom-in" title="Zoom in">+</button>
+        <button id="zoom-reset" title="Reset view" style="font-size:8px;">⌂</button>
+      </div>
     </div>
   `;
+
+  // --- Zoom: mouse wheel ---
+  const container = document.getElementById('m-map-container')!;
+
+  container.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const rect = container.getBoundingClientRect();
+    // Mouse position relative to container
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    // Point in content space before zoom
+    const cx = (mx - mapPanX) / mapZoom;
+    const cy = (my - mapPanY) / mapZoom;
+
+    const delta = e.deltaY < 0 ? MAP_ZOOM_STEP : -MAP_ZOOM_STEP;
+    const newZoom = Math.max(MAP_ZOOM_MIN, Math.min(MAP_ZOOM_MAX, mapZoom + delta * mapZoom));
+
+    // Adjust pan so the point under cursor stays fixed
+    mapPanX = mx - cx * newZoom;
+    mapPanY = my - cy * newZoom;
+    mapZoom = newZoom;
+    applyMapTransform();
+  }, { passive: false });
+
+  // --- Pan: mouse drag (with threshold to avoid stealing cell clicks) ---
+  let isPanning = false;
+  let panActive = false;  // true once drag exceeds threshold
+  let panStartX = 0;
+  let panStartY = 0;
+  let panOriginX = 0;
+  let panOriginY = 0;
+  const PAN_THRESHOLD = 5; // px of movement before pan engages
+
+  container.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    isPanning = true;
+    panActive = false;
+    panStartX = e.clientX - mapPanX;
+    panStartY = e.clientY - mapPanY;
+    panOriginX = e.clientX;
+    panOriginY = e.clientY;
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isPanning) return;
+    // Check if movement exceeds threshold before activating pan
+    if (!panActive) {
+      const dx = e.clientX - panOriginX;
+      const dy = e.clientY - panOriginY;
+      if (Math.abs(dx) < PAN_THRESHOLD && Math.abs(dy) < PAN_THRESHOLD) return;
+      panActive = true;
+      container.classList.add('panning');
+    }
+    mapPanX = e.clientX - panStartX;
+    mapPanY = e.clientY - panStartY;
+    applyMapTransform();
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isPanning) {
+      isPanning = false;
+      panActive = false;
+      container.classList.remove('panning');
+    }
+  });
+
+  // --- Touch: pinch zoom + pan ---
+  let lastTouchDist = 0;
+  let lastTouchX = 0;
+  let lastTouchY = 0;
+
+  container.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      lastTouchDist = Math.hypot(dx, dy);
+      lastTouchX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      lastTouchY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    } else if (e.touches.length === 1) {
+      isPanning = true;
+      panStartX = e.touches[0].clientX - mapPanX;
+      panStartY = e.touches[0].clientY - mapPanY;
+    }
+  }, { passive: true });
+
+  container.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.hypot(dx, dy);
+      const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const rect = container.getBoundingClientRect();
+
+      if (lastTouchDist > 0) {
+        const scale = dist / lastTouchDist;
+        const cx = (midX - rect.left - mapPanX) / mapZoom;
+        const cy = (midY - rect.top - mapPanY) / mapZoom;
+        const newZoom = Math.max(MAP_ZOOM_MIN, Math.min(MAP_ZOOM_MAX, mapZoom * scale));
+        mapPanX = midX - rect.left - cx * newZoom;
+        mapPanY = midY - rect.top - cy * newZoom;
+        mapZoom = newZoom;
+      }
+
+      // Pan with two-finger drag
+      mapPanX += midX - lastTouchX;
+      mapPanY += midY - lastTouchY;
+      lastTouchDist = dist;
+      lastTouchX = midX;
+      lastTouchY = midY;
+      applyMapTransform();
+    } else if (e.touches.length === 1 && isPanning) {
+      mapPanX = e.touches[0].clientX - panStartX;
+      mapPanY = e.touches[0].clientY - panStartY;
+      applyMapTransform();
+    }
+  }, { passive: false });
+
+  container.addEventListener('touchend', () => {
+    isPanning = false;
+    lastTouchDist = 0;
+  });
+
+  // --- Zoom HUD buttons ---
+  document.getElementById('zoom-in')!.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const rect = container.getBoundingClientRect();
+    const cx = (rect.width / 2 - mapPanX) / mapZoom;
+    const cy = (rect.height / 2 - mapPanY) / mapZoom;
+    mapZoom = Math.min(MAP_ZOOM_MAX, mapZoom * 1.3);
+    mapPanX = rect.width / 2 - cx * mapZoom;
+    mapPanY = rect.height / 2 - cy * mapZoom;
+    applyMapTransform();
+  });
+  document.getElementById('zoom-out')!.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const rect = container.getBoundingClientRect();
+    const cx = (rect.width / 2 - mapPanX) / mapZoom;
+    const cy = (rect.height / 2 - mapPanY) / mapZoom;
+    mapZoom = Math.max(MAP_ZOOM_MIN, mapZoom / 1.3);
+    mapPanX = rect.width / 2 - cx * mapZoom;
+    mapPanY = rect.height / 2 - cy * mapZoom;
+    applyMapTransform();
+  });
+  document.getElementById('zoom-reset')!.addEventListener('click', (e) => {
+    e.stopPropagation();
+    resetMapView();
+  });
 
   // Try to load map from R2 (overrides localStorage if available), then default
   loadMapFromR2(session).finally(() => loadDefaultMapIfNeeded(session));
@@ -579,8 +805,8 @@ function setMapImage(dataUrl: string) {
     img = document.createElement('img');
     img.className = 'map-image';
     img.id = 'm-map-img';
-    const mc = document.getElementById('m-map-container');
-    if (mc) mc.insertBefore(img, mc.firstChild);
+    const zl = document.getElementById('m-zoom-layer');
+    if (zl) zl.insertBefore(img, zl.firstChild);
   }
   img.src = dataUrl;
 }
@@ -766,7 +992,7 @@ function renderUGRSGrid(data: GridData) {
         dropsHtml = cell.dead_drops.map((d: any) => `<span class="drop-marker" title="${d.label}">&#9670;</span>`).join('');
       }
 
-      // Scenario node markers
+      // Scenario node markers (working draft — solid)
       const cellNodes = cachedScenarioNodes.filter((n) => n.cell_id === cellId);
       let nodesHtml = '';
       if (overlayNodes && cellNodes.length) {
@@ -776,6 +1002,21 @@ function renderUGRSGrid(data: GridData) {
           return `<span class="scenario-node-marker" data-node-id="${n.id}" title="${n.type}: ${n.label} [${n.status || 'pending'}]" style="display:inline-block;font-size:10px;color:${color};margin:1px;cursor:pointer;">${icon}</span>`;
         }).join('');
         classes += ' has-nodes';
+      }
+
+      // Ghost node markers (published position where node has since moved/removed — dotted, faded)
+      const ghostsHere = overlayNodes ? getGhostNodes().filter((g) => g.ghostCellId === cellId) : [];
+      let ghostsHtml = '';
+      if (ghostsHere.length) {
+        ghostsHtml = ghostsHere.map((g) => {
+          const icon = NODE_ICONS[g.node.type] || '&#9679;';
+          const isRemoved = !cachedScenarioNodes.some((n) => n.id === g.node.id);
+          const tip = isRemoved
+            ? `GHOST (removed): ${g.node.type} "${g.node.label}"`
+            : `GHOST (moved): ${g.node.type} "${g.node.label}" — was here at last publish`;
+          return `<span class="ghost-node-marker" title="${tip}">${icon}</span>`;
+        }).join('');
+        classes += ' has-ghosts';
       }
 
       // Tension bar
@@ -788,10 +1029,47 @@ function renderUGRSGrid(data: GridData) {
       // Lane tag
       const laneTag = cell.lane_id ? `<span class="lane-tag">${cell.lane_id}</span>` : '';
 
+      // Detail section (visible at zoom >= 1.6)
+      let detailHtml = '<div class="cell-detail">';
+      // Scenario nodes detail rows
+      if (cellNodes.length) {
+        cellNodes.forEach((n) => {
+          const statusCol = NODE_COLORS[n.status || 'pending'];
+          detailHtml += `<div class="detail-row"><span class="detail-label">${NODE_ICONS[n.type] || '●'} ${n.type.toUpperCase()}</span><span class="detail-value" style="color:${statusCol}">${n.label}</span></div>`;
+        });
+      }
+      // Actor detail rows
+      if (cell.actors && cell.actors.length) {
+        cell.actors.forEach((a: any) => {
+          detailHtml += `<div class="detail-row"><span class="detail-label" style="color:var(--blue);">${a.callsign}</span><span class="detail-value">${(a.status || 'standby').toUpperCase()}</span></div>`;
+        });
+      }
+      // Dead drops detail
+      if (cell.dead_drops && cell.dead_drops.length) {
+        cell.dead_drops.forEach((d: any) => {
+          detailHtml += `<div class="detail-row"><span class="detail-label" style="color:var(--amber);">◆ DROP</span><span class="detail-value">${d.label || 'UNMARKED'}</span></div>`;
+        });
+      }
+      // Ghost node detail rows (visible at zoom >= 1.6)
+      if (ghostsHere.length) {
+        ghostsHere.forEach((g) => {
+          const isRemoved = !cachedScenarioNodes.some((n) => n.id === g.node.id);
+          const tag = isRemoved ? 'REMOVED' : 'MOVED';
+          detailHtml += `<div class="detail-row ghost-detail"><span class="detail-label">${NODE_ICONS[g.node.type] || '●'} ${tag}</span><span class="detail-value">${g.node.label}</span></div>`;
+        });
+      }
+      // Stats row
+      if (cell.tension > 0 || cell.lane_id) {
+        detailHtml += `<div class="detail-row"><span class="detail-label">TENSION</span><span class="detail-value">${cell.tension}%</span></div>`;
+        if (cell.lane_id) detailHtml += `<div class="detail-row"><span class="detail-label">LANE</span><span class="detail-value">${cell.lane_id}</span></div>`;
+      }
+      detailHtml += '</div>';
+
       html += `<div class="${classes}" data-cell="${cell.cell_id}">
         <span class="ugrs-label">${cell.cell_id}</span>
         ${laneTag}
-        <div class="ugrs-cell-content">${actorsHtml}${dropsHtml}${nodesHtml}</div>
+        <div class="ugrs-cell-content">${actorsHtml}${dropsHtml}${nodesHtml}${ghostsHtml}</div>
+        ${detailHtml}
         ${tensionHtml}
       </div>`;
     }
@@ -799,6 +1077,18 @@ function renderUGRSGrid(data: GridData) {
 
   gridEl.innerHTML = html;
   document.getElementById('m-cell-count')!.textContent = `${data.cells.length} CELLS`;
+
+  // Apply move-node mode visuals
+  if (panelMode === 'move_node' && moveNodeFromCell) {
+    gridEl.classList.add('node-move-mode');
+    const srcCell = gridEl.querySelector(`.ugrs-cell[data-cell="${moveNodeFromCell}"]`);
+    if (srcCell) srcCell.classList.add('move-source');
+  } else {
+    gridEl.classList.remove('node-move-mode');
+  }
+
+  // Restore zoom detail level class after re-render
+  updateZoomDetailLevel();
 
   // Frozen overlay
   if (data.frozen) {
@@ -832,6 +1122,12 @@ function renderUGRSGrid(data: GridData) {
       // Move actor mode: clicking a cell dispatches the actor there
       if (panelMode === 'move_actor' && moveActorId && cachedSession) {
         doMoveActor(moveActorId, cellId, cachedSession);
+        return;
+      }
+
+      // Move node mode: clicking a cell moves the node there
+      if (panelMode === 'move_node' && moveNodeId && cachedSession) {
+        doMoveNode(moveNodeId, cellId, cachedSession);
         return;
       }
 
@@ -881,13 +1177,76 @@ function refreshGridSelection() {
 async function loadScenarioNodes(session: Session) {
   try {
     const res = await mFetch(`/m/map/scenario/nodes/${session.scenarioId}`, session);
-    if (!res.ok) { cachedScenarioNodes = []; cachedScenarioConnections = []; return; }
-    const data = await res.json() as { nodes: ScenarioNode[]; connections: ScenarioConnection[] };
+    if (!res.ok) { cachedScenarioNodes = []; cachedScenarioConnections = []; cachedPublishedNodes = []; return; }
+    const data = await res.json() as { nodes: ScenarioNode[]; connections: ScenarioConnection[]; published_nodes?: ScenarioNode[]; published_at?: number | null };
     cachedScenarioNodes = data.nodes || [];
     cachedScenarioConnections = data.connections || [];
+    cachedPublishedNodes = data.published_nodes || [];
+    if (data.published_at) lastPublishedAt = data.published_at;
+    // Update divergence badge on PUBLISH button
+    updateDivergenceBadge();
   } catch {
     cachedScenarioNodes = [];
     cachedScenarioConnections = [];
+    cachedPublishedNodes = [];
+  }
+}
+
+/**
+ * Compare working nodes vs published nodes to find divergence.
+ * Returns ghost markers: published node positions that differ from working state.
+ */
+function getGhostNodes(): { node: ScenarioNode; ghostCellId: string }[] {
+  if (!cachedPublishedNodes.length) return [];
+  const ghosts: { node: ScenarioNode; ghostCellId: string }[] = [];
+
+  for (const pubNode of cachedPublishedNodes) {
+    const workingNode = cachedScenarioNodes.find((n) => n.id === pubNode.id);
+    if (!workingNode) {
+      // Node was removed in working draft — show ghost at published position
+      ghosts.push({ node: pubNode, ghostCellId: pubNode.cell_id });
+    } else if (workingNode.cell_id !== pubNode.cell_id) {
+      // Node was moved — show ghost at old (published) position
+      ghosts.push({ node: pubNode, ghostCellId: pubNode.cell_id });
+    }
+    // If same position, no ghost needed
+  }
+  return ghosts;
+}
+
+/**
+ * Compute divergence summary and update the PUBLISH button badge.
+ */
+function updateDivergenceBadge() {
+  const btn = document.getElementById('ctrl-publish-map');
+  const diffEl = document.getElementById('publish-diff');
+  if (!btn || !diffEl) return;
+
+  const diffs: string[] = [];
+  const ghosts = getGhostNodes();
+  const movedCount = ghosts.filter((g) => cachedScenarioNodes.some((n) => n.id === g.node.id)).length;
+  const removedCount = ghosts.filter((g) => !cachedScenarioNodes.some((n) => n.id === g.node.id)).length;
+  const addedCount = cachedScenarioNodes.filter((n) => !cachedPublishedNodes.some((p) => p.id === n.id)).length;
+
+  if (movedCount) diffs.push(`${movedCount} moved`);
+  if (addedCount) diffs.push(`${addedCount} added`);
+  if (removedCount) diffs.push(`${removedCount} removed`);
+
+  if (diffs.length) {
+    diffEl.style.color = 'var(--amber)';
+    diffEl.textContent = `⚠ ${diffs.join(', ')} since last publish`;
+    btn.style.borderColor = 'var(--amber)';
+    btn.style.boxShadow = '0 0 6px rgba(255,170,51,0.3)';
+  } else if (cachedPublishedNodes.length) {
+    diffEl.style.color = 'var(--text-dim)';
+    diffEl.textContent = 'Working state matches published.';
+    btn.style.borderColor = '';
+    btn.style.boxShadow = '';
+  } else {
+    diffEl.style.color = 'var(--amber)';
+    diffEl.textContent = 'Not yet published.';
+    btn.style.borderColor = 'var(--amber)';
+    btn.style.boxShadow = '';
   }
 }
 
@@ -911,6 +1270,26 @@ async function loadGridCells(session: Session) {
     if (scenarioRes.ok) {
       const scenarioData = await scenarioRes.json() as any;
       document.getElementById('m-scenario-name')!.textContent = scenarioData.scenario?.name || 'UNKNOWN';
+
+      // Update publish status indicator
+      const pubAt = scenarioData.scenario?.published_at;
+      const pubStatus = document.getElementById('publish-status');
+      if (pubStatus) {
+        if (pubAt) {
+          pubStatus.style.color = 'var(--text-dim)';
+          pubStatus.textContent = `Last published: ${new Date(pubAt).toLocaleString()}`;
+        } else {
+          pubStatus.style.color = 'var(--amber)';
+          pubStatus.textContent = 'Not yet published — Ops has no map data.';
+        }
+      }
+
+      // Load alarm count from scenario config
+      const scenConfig = scenarioData.scenario?.config;
+      if (scenConfig && typeof scenConfig === 'object') {
+        opsAlarmCount = scenConfig.ops_alarm_count || 0;
+        updateFreezeButtonBadge();
+      }
     }
 
     if (!data.config || !data.cells.length) {
@@ -1074,6 +1453,94 @@ async function loadActorPositions(session: Session) {
     }).join('');
   } catch {
     if (listEl) listEl.innerHTML = '<div style="font-size:9px;color:var(--red);">TELEMETRY ERROR</div>';
+  }
+}
+
+// ===== PUBLISH HISTORY =====
+
+async function loadPublishHistory(session: Session) {
+  const listEl = document.getElementById('publish-history-list');
+  if (!listEl) return;
+  listEl.textContent = 'Loading...';
+  try {
+    const res = await mFetch(`/m/scenario/${session.scenarioId}/publish-history`, session);
+    const data = await res.json() as any;
+    if (!data.ok || !data.snapshots?.length) {
+      listEl.innerHTML = '<div style="color:var(--text-dim);">No publish history yet.</div>';
+      return;
+    }
+    listEl.innerHTML = '';
+    for (const snap of data.snapshots) {
+      const row = document.createElement('div');
+      row.style.cssText = 'padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:4px;';
+      const ts = new Date(snap.published_at);
+      const timeStr = ts.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + ts.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+      const sizeKb = (snap.size / 1024).toFixed(1);
+
+      row.innerHTML = `
+        <span style="flex:1;">
+          <span style="color:var(--amber);">${timeStr}</span>
+          <span style="color:var(--text-dim);margin-left:4px;">${snap.published_by}</span>
+          <br><span style="color:#555;font-size:7px;">${snap.diff_summary || 'no details'} · ${sizeKb}kb</span>
+        </span>
+        <button class="ctrl-btn" style="font-size:7px;padding:2px 5px;" data-rollback-ts="${snap.published_at}" title="Restore this published snapshot to Ops">ROLLBACK</button>
+        <button class="ctrl-btn" style="font-size:7px;padding:2px 5px;" data-restore-ts="${snap.published_at}" title="Restore to BOTH Ops and working draft">RESTORE</button>
+      `;
+      listEl.appendChild(row);
+    }
+
+    // Wire rollback/restore buttons
+    listEl.querySelectorAll('[data-rollback-ts]').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        const ts = Number((e.currentTarget as HTMLElement).getAttribute('data-rollback-ts'));
+        if (!confirm(`Roll back Ops published map to snapshot from ${new Date(ts).toLocaleString()}?\nM's working draft will NOT change.`)) return;
+        await executePublishRollback(session, ts, false);
+      });
+    });
+    listEl.querySelectorAll('[data-restore-ts]').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        const ts = Number((e.currentTarget as HTMLElement).getAttribute('data-restore-ts'));
+        if (!confirm(`Restore BOTH Ops published map AND your working draft to snapshot from ${new Date(ts).toLocaleString()}?\nThis will overwrite your current working draft.`)) return;
+        await executePublishRollback(session, ts, true);
+      });
+    });
+  } catch {
+    listEl.innerHTML = '<div style="color:var(--red);">Failed to load history</div>';
+  }
+}
+
+async function executePublishRollback(session: Session, publishedAt: number, restoreWorking: boolean) {
+  const statusEl = document.getElementById('publish-status')!;
+  statusEl.style.color = 'var(--text-dim)';
+  statusEl.textContent = 'Rolling back...';
+  try {
+    const res = await mFetch('/m/scenario/publish-rollback', session, {
+      method: 'POST',
+      body: JSON.stringify({
+        scenario_id: session.scenarioId,
+        published_at: publishedAt,
+        restore_working: restoreWorking,
+      }),
+    });
+    const data = await res.json() as any;
+    if (data.ok) {
+      statusEl.style.color = 'var(--accent)';
+      statusEl.textContent = `Rolled back to ${new Date(publishedAt).toLocaleTimeString()}${restoreWorking ? ' (working draft restored)' : ''}`;
+      mokSend('advisory', `Map rolled back to snapshot from ${new Date(publishedAt).toLocaleString()}.`);
+      // Refresh nodes + grid if working draft was also restored
+      if (restoreWorking) {
+        await loadScenarioNodes(session);
+        if (cachedGridData) renderUGRSGrid(cachedGridData);
+      }
+      // Refresh publish history
+      await loadPublishHistory(session);
+    } else {
+      statusEl.style.color = 'var(--red)';
+      statusEl.textContent = data.message || 'Rollback failed';
+    }
+  } catch {
+    statusEl.style.color = 'var(--red)';
+    statusEl.textContent = 'Network error during rollback';
   }
 }
 
@@ -1337,6 +1804,7 @@ function renderRightPanel(session: Session) {
     case 'actor': renderActorPanel(ctrl, session, titleEl); break;
     case 'assign_lane': renderAssignLanePanel(ctrl, session, titleEl); break;
     case 'move_actor': renderMoveActorPanel(ctrl, session, titleEl); break;
+    case 'move_node': renderMoveNodePanel(ctrl, session, titleEl); break;
   }
 }
 
@@ -1462,8 +1930,8 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
               <button class="ctrl-btn" id="ctrl-save-nodes" style="margin-top:4px;">SAVE SCENARIO GRAPH</button>
             </div>
           </div>
-          <div class="ctrl-section">
-            <h3>LIVE TELEMETRY</h3>
+          <div class="ctrl-section" style="border-left:2px solid var(--accent);padding-left:8px;">
+            <h3 style="color:var(--accent);">LIVE TELEMETRY</h3>
             <div id="actor-telemetry-list" style="max-height:150px;overflow-y:auto;padding:2px 0;">
               <div style="font-size:9px;color:var(--text-dim);padding:4px 0;">Loading positions…</div>
             </div>
@@ -1475,8 +1943,26 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
             <div style="display:flex;gap:4px;flex-wrap:wrap;">
               <button class="ctrl-btn" id="ctrl-overlay-telemetry" style="font-size:8px;" title="Show actor GPS positions on grid">TELEMETRY ●</button>
               <button class="ctrl-btn" id="ctrl-overlay-zones" style="font-size:8px;" title="Show geofence zone markers on grid">ZONES ⬤</button>
-              <button class="ctrl-btn" id="ctrl-overlay-nodes" style="font-size:8px;" title="Show/hide scenario node markers">NODES ★</button>
+              <button class="ctrl-btn" id="ctrl-overlay-nodes" style="font-size:8px;border-color:var(--accent);background:rgba(51,255,51,0.1);" title="Show/hide scenario node markers">NODES ★</button>
               <button class="ctrl-btn" id="ctrl-overlay-fog" style="font-size:8px;" title="Show fog-of-war shading on grid">FOG ◐</button>
+            </div>
+          </div>
+          <div class="ctrl-section ctrl-box" id="ctrl-publish-section">
+            <h3>PUBLISH MAP</h3>
+            <div style="font-size:8px;color:var(--text-dim);margin-bottom:6px;">
+              Canonize the current working map, grid, and nodes for Ops.<br>
+              Ops will not see your changes until you publish.
+            </div>
+            <div id="publish-diff" style="font-size:8px;color:#555;margin-bottom:6px;min-height:12px;"></div>
+            <button class="ctrl-btn amber" id="ctrl-publish-map" style="font-size:10px;padding:6px 8px;">
+              &#9654; PUBLISH TO OPS
+            </button>
+            <div id="publish-status" style="font-size:8px;color:var(--text-dim);margin-top:4px;min-height:12px;"></div>
+            <button class="ctrl-btn" id="ctrl-publish-history-toggle" style="font-size:8px;padding:3px 6px;margin-top:6px;opacity:0.7;">
+              PUBLISH HISTORY &#9660;
+            </button>
+            <div id="publish-history-panel" style="display:none;margin-top:6px;max-height:180px;overflow-y:auto;">
+              <div id="publish-history-list" style="font-size:8px;color:var(--text-dim);">Loading...</div>
             </div>
           </div>
           <div class="ctrl-section">
@@ -1615,6 +2101,56 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
           <span class="cat-chevron">&#9660;</span>
         </div>
         <div class="ctrl-category-body">
+          <div class="ctrl-section ctrl-box" id="ctrl-readiness-section">
+            <h3>READINESS &amp; DISPATCH</h3>
+            <div id="readiness-checks" style="min-height:20px;">
+              <div style="font-size:8px;color:var(--text-dim);">Checking readiness...</div>
+            </div>
+            <div id="readiness-summary" style="font-size:9px;margin-top:6px;min-height:14px;"></div>
+            <div style="display:flex;gap:4px;margin-top:6px;">
+              <button class="ctrl-btn" id="ctrl-check-readiness" style="font-size:8px;flex:1;">RECHECK</button>
+            </div>
+            <div style="display:flex;gap:4px;margin-top:4px;">
+              <button class="ctrl-btn amber" id="ctrl-dispatch" style="font-size:10px;padding:6px 8px;flex:1;" disabled>
+                DISPATCH SCENARIO
+              </button>
+            </div>
+            <div id="dispatch-status" style="font-size:8px;color:var(--text-dim);margin-top:4px;min-height:12px;"></div>
+            <button class="ctrl-btn" id="ctrl-audit-trail-toggle" style="font-size:8px;padding:3px 6px;margin-top:6px;opacity:0.7;">
+              AUDIT TRAIL &#9660;
+            </button>
+            <div id="audit-trail-panel" style="display:none;margin-top:6px;">
+              <div style="display:flex;gap:3px;margin-bottom:4px;">
+                <select id="audit-action-filter" style="font-size:7px;background:var(--bg);color:var(--text-dim);border:1px solid var(--border);border-radius:2px;padding:1px 3px;">
+                  <option value="">ALL ACTIONS</option>
+                  <option value="dispatch">dispatch</option>
+                  <option value="dispatch_override">dispatch_override</option>
+                  <option value="requirement_updated">requirement_updated</option>
+                  <option value="publish">publish</option>
+                  <option value="status_change">status_change</option>
+                  <option value="freeze">freeze</option>
+                  <option value="unfreeze">unfreeze</option>
+                  <option value="node_moved">node_moved</option>
+                </select>
+                <button class="ctrl-btn" id="ctrl-audit-refresh" style="font-size:7px;padding:2px 5px;">REFRESH</button>
+              </div>
+              <div id="audit-trail-list" style="max-height:220px;overflow-y:auto;font-size:8px;color:var(--text-dim);scrollbar-width:thin;scrollbar-color:var(--border) transparent;">
+                Loading...
+              </div>
+              <div id="audit-trail-count" style="font-size:7px;color:#555;margin-top:3px;"></div>
+            </div>
+          </div>
+          <div class="ctrl-section ctrl-box">
+            <h3>REQUIREMENTS</h3>
+            <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Minimum staffing for this scenario.</div>
+            <div class="ctrl-row">
+              <div class="ctrl-field" style="flex:1;"><label>MIN RED</label><input type="number" id="ctrl-req-red" value="1" min="0" max="50" /></div>
+              <div class="ctrl-field" style="flex:1;"><label>MIN BLUE</label><input type="number" id="ctrl-req-blue" value="0" min="0" max="50" /></div>
+              <div class="ctrl-field" style="flex:1;"><label>MIN STAFF</label><input type="number" id="ctrl-req-staff" value="0" min="0" max="20" /></div>
+            </div>
+            <button class="ctrl-btn" id="ctrl-save-requirements" style="margin-top:4px;font-size:8px;">SAVE REQUIREMENTS</button>
+            <div id="req-save-status" style="font-size:8px;color:var(--text-dim);margin-top:3px;"></div>
+          </div>
           <div class="ctrl-section">
             <h3>ADD ACTOR</h3>
             <div class="ctrl-field"><label>CALLSIGN</label><input type="text" id="ctrl-actor-callsign" /></div>
@@ -1822,6 +2358,71 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
     btn.style.borderColor = overlayFog ? 'var(--blue)' : '';
     btn.style.background = overlayFog ? 'rgba(51,153,255,0.1)' : '';
     if (cachedGridData) renderUGRSGrid(cachedGridData);
+  });
+
+  // --- PUBLISH MAP button ---
+  document.getElementById('ctrl-publish-map')?.addEventListener('click', async () => {
+    const btn = document.getElementById('ctrl-publish-map') as HTMLButtonElement;
+    const statusEl = document.getElementById('publish-status')!;
+
+    // Confirmation dialog
+    if (!confirm('Publish current map, grid, and nodes to Ops?\nOps players will see this snapshot immediately.')) return;
+
+    btn.disabled = true;
+    btn.textContent = 'PUBLISHING...';
+    statusEl.textContent = '';
+    statusEl.style.color = 'var(--text-dim)';
+
+    try {
+      const res = await mFetch(`/m/scenario/publish`, session, {
+        method: 'POST',
+        body: JSON.stringify({ scenario_id: session.scenarioId }),
+      });
+      const data = await res.json() as any;
+
+      if (data.ok) {
+        statusEl.style.color = 'var(--accent)';
+        const ts = new Date(data.published_at).toLocaleTimeString();
+        statusEl.textContent = `Published ${ts} — ${(data.diff_summary || []).join(', ')}`;
+        btn.textContent = '✓ PUBLISHED';
+        btn.style.borderColor = 'var(--accent)';
+        btn.style.color = 'var(--accent)';
+        btn.style.boxShadow = '';
+        // Re-fetch nodes to clear ghost markers (published now matches working)
+        await loadScenarioNodes(session);
+        if (cachedGridData) renderUGRSGrid(cachedGridData);
+        // Reset button state after 3s
+        setTimeout(() => {
+          btn.textContent = '▶ PUBLISH TO OPS';
+          btn.style.borderColor = '';
+          btn.style.color = '';
+          btn.disabled = false;
+        }, 3000);
+      } else {
+        statusEl.style.color = 'var(--red)';
+        statusEl.textContent = data.message || 'Publish failed';
+        btn.textContent = '▶ PUBLISH TO OPS';
+        btn.disabled = false;
+      }
+    } catch (err) {
+      statusEl.style.color = 'var(--red)';
+      statusEl.textContent = 'Network error — try again';
+      btn.textContent = '▶ PUBLISH TO OPS';
+      btn.disabled = false;
+    }
+  });
+
+  // --- PUBLISH HISTORY toggle + loader ---
+  let publishHistoryOpen = false;
+  document.getElementById('ctrl-publish-history-toggle')?.addEventListener('click', async () => {
+    publishHistoryOpen = !publishHistoryOpen;
+    const panel = document.getElementById('publish-history-panel')!;
+    const toggleBtn = document.getElementById('ctrl-publish-history-toggle')!;
+    panel.style.display = publishHistoryOpen ? 'block' : 'none';
+    toggleBtn.innerHTML = publishHistoryOpen ? 'PUBLISH HISTORY &#9650;' : 'PUBLISH HISTORY &#9660;';
+    if (publishHistoryOpen) {
+      await loadPublishHistory(session);
+    }
   });
 
   // Geofence list + add
@@ -2034,6 +2635,214 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
     loadGridCells(session);
   });
 
+  // --- READINESS & DISPATCH ---
+  async function loadReadiness() {
+    const checksEl = document.getElementById('readiness-checks')!;
+    const summaryEl = document.getElementById('readiness-summary')!;
+    const dispatchBtn = document.getElementById('ctrl-dispatch') as HTMLButtonElement;
+    try {
+      const res = await mFetch(`/m/scenario/${session.scenarioId}/readiness`, session);
+      if (!res.ok) { checksEl.textContent = 'Error loading readiness.'; return; }
+      const data = await res.json() as any;
+
+      checksEl.innerHTML = data.checks.map((c: any) => {
+        const cls = c.pass ? 'pass' : 'fail';
+        const icon = c.pass ? '✓' : '✗';
+        const detail = c.detail ? ` <span class="r-detail">(${c.detail})</span>` : '';
+        const valStr = typeof c.required === 'number' ? `${c.actual}/${c.required}` : (c.actual ? 'yes' : 'no');
+        return `<div class="readiness-row ${cls}"><span class="r-icon">${icon}</span><span class="r-label">${c.label}</span><span class="r-value">${valStr}</span>${detail}</div>`;
+      }).join('');
+
+      if (data.ready) {
+        summaryEl.style.color = 'var(--accent)';
+        summaryEl.textContent = '✓ ALL CHECKS PASS — ready to dispatch';
+        dispatchBtn.disabled = false;
+        dispatchBtn.style.borderColor = 'var(--accent)';
+        dispatchBtn.style.color = 'var(--accent)';
+        dispatchBtn.textContent = 'DISPATCH SCENARIO';
+      } else {
+        const failCount = data.checks.filter((c: any) => !c.pass).length;
+        summaryEl.style.color = 'var(--amber)';
+        summaryEl.textContent = `⚠ ${failCount} issue(s) — resolve or force deploy`;
+        dispatchBtn.disabled = false;
+        dispatchBtn.style.borderColor = 'var(--amber)';
+        dispatchBtn.style.color = 'var(--amber)';
+        dispatchBtn.textContent = `FORCE DISPATCH (${failCount} issues)`;
+      }
+
+      // Populate requirements fields from config
+      const configRes = await mFetch(`/m/grid/${session.scenarioId}`, session);
+      if (configRes.ok) {
+        const configData = await configRes.json() as any;
+        const reqs = configData.scenario?.config?.requirements || {};
+        (document.getElementById('ctrl-req-red') as HTMLInputElement).value = String(reqs.min_red ?? 1);
+        (document.getElementById('ctrl-req-blue') as HTMLInputElement).value = String(reqs.min_blue ?? 0);
+        (document.getElementById('ctrl-req-staff') as HTMLInputElement).value = String(reqs.min_staff ?? 0);
+      }
+    } catch {
+      checksEl.textContent = 'Error loading readiness.';
+    }
+  }
+
+  // Load readiness on panel render
+  loadReadiness();
+
+  document.getElementById('ctrl-check-readiness')!.addEventListener('click', () => loadReadiness());
+
+  document.getElementById('ctrl-dispatch')!.addEventListener('click', async () => {
+    const btn = document.getElementById('ctrl-dispatch') as HTMLButtonElement;
+    const statusEl = document.getElementById('dispatch-status')!;
+    const isForce = btn.textContent?.includes('FORCE');
+
+    const msg = isForce
+      ? 'Deploy scenario with unresolved issues?\nOps players will be able to join immediately.'
+      : 'Deploy scenario?\nOps players will be able to join and see the published map.';
+    if (!confirm(msg)) return;
+
+    btn.disabled = true;
+    btn.textContent = 'DISPATCHING...';
+    statusEl.textContent = '';
+
+    try {
+      const res = await mFetch('/m/scenario/dispatch', session, {
+        method: 'POST',
+        body: JSON.stringify({ scenario_id: session.scenarioId, force: isForce }),
+      });
+      const data = await res.json() as any;
+
+      if (data.ok) {
+        statusEl.style.color = 'var(--accent)';
+        statusEl.textContent = `Dispatched ${new Date(data.timestamp).toLocaleTimeString()}${data.forced ? ' (forced)' : ''}`;
+        btn.textContent = '✓ DISPATCHED';
+        btn.style.borderColor = 'var(--accent)';
+        btn.style.color = 'var(--accent)';
+        setTimeout(() => { btn.textContent = 'DISPATCH SCENARIO'; btn.disabled = false; }, 3000);
+      } else {
+        statusEl.style.color = 'var(--red)';
+        statusEl.textContent = data.message || 'Dispatch failed';
+        btn.textContent = isForce ? 'FORCE DISPATCH' : 'DISPATCH SCENARIO';
+        btn.disabled = false;
+      }
+    } catch {
+      statusEl.style.color = 'var(--red)';
+      statusEl.textContent = 'Network error — try again';
+      btn.textContent = isForce ? 'FORCE DISPATCH' : 'DISPATCH SCENARIO';
+      btn.disabled = false;
+    }
+  });
+
+  // Save requirements
+  document.getElementById('ctrl-save-requirements')!.addEventListener('click', async () => {
+    const minRed = parseInt((document.getElementById('ctrl-req-red') as HTMLInputElement).value) || 0;
+    const minBlue = parseInt((document.getElementById('ctrl-req-blue') as HTMLInputElement).value) || 0;
+    const minStaff = parseInt((document.getElementById('ctrl-req-staff') as HTMLInputElement).value) || 0;
+    const statusEl = document.getElementById('req-save-status')!;
+
+    try {
+      const res = await mFetch('/m/scenario/requirements', session, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          scenario_id: session.scenarioId,
+          requirements: { min_red: minRed, min_blue: minBlue, min_staff: minStaff },
+        }),
+      });
+      const data = await res.json() as any;
+      if (data.ok) {
+        statusEl.style.color = 'var(--accent)';
+        statusEl.textContent = '✓ Saved';
+        loadReadiness(); // refresh checks
+        setTimeout(() => { statusEl.textContent = ''; }, 2000);
+      } else {
+        statusEl.style.color = 'var(--red)';
+        statusEl.textContent = data.message || 'Save failed';
+      }
+    } catch {
+      statusEl.style.color = 'var(--red)';
+      statusEl.textContent = 'Network error';
+    }
+  });
+
+  // --- AUDIT TRAIL viewer ---
+  let auditTrailOpen = false;
+
+  async function loadAuditTrail() {
+    const listEl = document.getElementById('audit-trail-list')!;
+    const countEl = document.getElementById('audit-trail-count')!;
+    const filterEl = document.getElementById('audit-action-filter') as HTMLSelectElement;
+    listEl.textContent = 'Loading...';
+    countEl.textContent = '';
+    try {
+      const actionFilter = filterEl.value;
+      let url = `/m/scenario/${session.scenarioId}/audit-trail?limit=100`;
+      if (actionFilter) url += `&action=${encodeURIComponent(actionFilter)}`;
+      const res = await mFetch(url, session);
+      const data = await res.json() as any;
+      if (!data.ok || !data.entries?.length) {
+        listEl.innerHTML = '<div style="color:var(--text-dim);">No audit entries yet.</div>';
+        return;
+      }
+      listEl.innerHTML = '';
+      for (const entry of data.entries) {
+        const row = document.createElement('div');
+        row.className = 'audit-row';
+
+        const ts = new Date(entry.created_at);
+        const timeStr = ts.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + ts.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const actionClass = entry.action.includes('override') || entry.action === 'dispatch_override' ? 'audit-action-warn' :
+                            entry.action === 'dispatch' ? 'audit-action-ok' : '';
+
+        // Build detail summary
+        let detailStr = '';
+        const d = entry.detail;
+        if (typeof d === 'object' && d) {
+          if (d.dispatched_by) detailStr += `by ${d.dispatched_by}`;
+          if (d.forced) detailStr += ' (FORCED)';
+          if (d.updated_by) detailStr += `by ${d.updated_by}`;
+          if (d.cleared_by) detailStr += `by ${d.cleared_by}`;
+          if (d.requirements) {
+            const r = d.requirements;
+            detailStr += ` red:${r.min_red||0} blue:${r.min_blue||0} staff:${r.min_staff||0}`;
+          }
+          if (d.checks) {
+            const pass = d.checks.filter((ch: any) => ch.pass).length;
+            const total = d.checks.length;
+            detailStr += ` checks:${pass}/${total}`;
+          }
+          if (d.shortages) {
+            const s = d.shortages;
+            const items = Object.entries(s).map(([k, v]) => `${k}:${v}`).join(' ');
+            if (items) detailStr += ` [${items}]`;
+          }
+        }
+
+        row.innerHTML = `
+          <span class="audit-time">${timeStr}</span>
+          <span class="audit-action ${actionClass}">${entry.action}</span>
+          <span class="audit-actor">${entry.actor_callsign || '—'}</span>
+          ${detailStr ? `<div class="audit-detail">${detailStr}</div>` : ''}
+        `;
+        listEl.appendChild(row);
+      }
+      countEl.textContent = `${data.count} entries`;
+    } catch {
+      listEl.innerHTML = '<div style="color:var(--red);">Failed to load audit trail</div>';
+    }
+  }
+
+  document.getElementById('ctrl-audit-trail-toggle')!.addEventListener('click', async () => {
+    auditTrailOpen = !auditTrailOpen;
+    const panel = document.getElementById('audit-trail-panel')!;
+    const toggleBtn = document.getElementById('ctrl-audit-trail-toggle')!;
+    panel.style.display = auditTrailOpen ? 'block' : 'none';
+    toggleBtn.innerHTML = auditTrailOpen ? 'AUDIT TRAIL &#9650;' : 'AUDIT TRAIL &#9660;';
+    if (auditTrailOpen) await loadAuditTrail();
+  });
+
+  document.getElementById('ctrl-audit-refresh')!.addEventListener('click', () => loadAuditTrail());
+  document.getElementById('audit-action-filter')!.addEventListener('change', () => {
+    if (auditTrailOpen) loadAuditTrail();
+  });
+
   // Add actor
   document.getElementById('ctrl-add-actor')!.addEventListener('click', async () => {
     const cs = (document.getElementById('ctrl-actor-callsign') as HTMLInputElement).value;
@@ -2160,7 +2969,7 @@ function renderCellPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLEleme
         <div class="ctx-back" id="ctx-back">&#9664; BACK</div>
       </div>
       <div class="ctrl-section">
-        <div class="ctx-header">${cell.cell_id}</div>
+        <div class="ctx-header">CELL ${cell.cell_id}</div>
         <div class="ctx-stat"><span>STATUS</span><span class="status-badge st-${st}">${st.toUpperCase()}</span></div>
         <div class="ctx-stat"><span>LANE</span><span class="value">${cell.lane_id || '—'}</span></div>
         <div class="ctx-stat"><span>TENSION</span><span class="value" style="color:${tensionColor}">${tensionPct}%</span></div>
@@ -2192,14 +3001,15 @@ function renderCellPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLEleme
             ${cellNodes.map((n) => {
               const icon = NODE_ICONS[n.type] || '●';
               const color = NODE_COLORS[n.status || 'pending'];
-              return `<div style="font-size:9px;padding:2px 0;display:flex;justify-content:space-between;align-items:center;" data-node-panel-id="${n.id}">
-                <span style="color:${color}">${icon} ${n.label} <span style="font-size:7px;opacity:0.6;">[${n.type}]</span></span>
+              return `<div style="font-size:9px;padding:3px 0;border-bottom:1px solid rgba(40,40,40,0.3);display:flex;justify-content:space-between;align-items:center;gap:4px;" data-node-panel-id="${n.id}">
+                <span style="color:${color};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${icon} ${n.label} <span style="font-size:7px;opacity:0.6;">[${n.type}]</span></span>
                 <select class="node-status-select" data-node-id="${n.id}" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:8px;padding:1px 3px;border-radius:2px;">
                   <option value="pending" ${n.status === 'pending' ? 'selected' : ''}>PENDING</option>
                   <option value="active" ${n.status === 'active' ? 'selected' : ''}>ACTIVE</option>
                   <option value="completed" ${n.status === 'completed' ? 'selected' : ''}>COMPLETED</option>
                   <option value="failed" ${n.status === 'failed' ? 'selected' : ''}>FAILED</option>
                 </select>
+                <button class="ctrl-btn node-move-btn" data-move-node-id="${n.id}" style="width:auto;padding:1px 6px;font-size:7px;letter-spacing:0.5px;">MOVE</button>
               </div>`;
             }).join('')}
           </div>
@@ -2248,6 +3058,17 @@ function renderCellPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLEleme
       } catch {}
       // Re-render grid to update node colors
       if (cachedGridData) renderUGRSGrid(cachedGridData);
+    });
+  });
+
+  // Node MOVE buttons
+  ctrl.querySelectorAll('.node-move-btn[data-move-node-id]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      moveNodeId = (btn as HTMLElement).dataset.moveNodeId!;
+      moveNodeFromCell = selectedCellId;
+      panelMode = 'move_node';
+      renderRightPanel(session);
     });
   });
 
@@ -2369,10 +3190,9 @@ function renderActorPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLElem
         <div class="ctx-back" id="ctx-back">&#9664; BACK TO CELL</div>
       </div>
       <div class="ctrl-section">
-        <div class="ctx-header">${actor.callsign}</div>
-        <div class="ctx-stat"><span>TEAM</span><span class="actor-badge team-${actor.team}">${actor.team.toUpperCase()}</span></div>
-        <div class="ctx-stat"><span>STATUS</span><span class="value">${actor.status || 'standby'}</span></div>
-        <div class="ctx-stat"><span>CELL</span><span class="value">${actor.cell_id || '—'}</span></div>
+        <div class="ctx-header">${actor.callsign} <span style="font-size:8px;color:var(--text-dim);letter-spacing:1px;">${actor.team.toUpperCase()}</span></div>
+        <div class="ctx-stat"><span>STATUS</span><span class="value">${(actor.status || 'standby').toUpperCase()}</span></div>
+        <div class="ctx-stat"><span>CELL</span><span class="value">${actor.cell_id || 'UNASSIGNED'}</span></div>
       </div>
       <div class="ctrl-section">
         <div class="ctx-subtitle">M PINGS</div>
@@ -2509,6 +3329,72 @@ async function doMoveActor(actorId: number, cellId: string, session: Session) {
   renderRightPanel(session);
 }
 
+// --- Move Node Panel ---
+function renderMoveNodePanel(ctrl: HTMLElement, session: Session, titleEl: HTMLElement | null) {
+  const node = cachedScenarioNodes.find((n) => n.id === moveNodeId);
+  const nodeLabel = node ? `${NODE_ICONS[node.type] || '●'} ${node.label}` : moveNodeId;
+  if (titleEl) titleEl.textContent = 'MOVE NODE';
+  ctrl.innerHTML = `
+    <div class="ctrl-stack">
+      <div style="padding:4px 8px;">
+        <div class="ctx-back" id="ctx-back">&#9664; CANCEL</div>
+      </div>
+      <div class="ctrl-section">
+        <div class="move-mode-banner" style="border-color:var(--amber);color:var(--amber);">
+          CLICK A CELL TO MOVE NODE
+        </div>
+        <div style="font-size:9px;color:var(--text-dim);padding:6px 0;text-align:center;">
+          ${nodeLabel}<br>
+          <span style="font-size:8px;color:#555;">from ${moveNodeFromCell || '?'}</span>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('ctx-back')!.addEventListener('click', () => {
+    panelMode = 'cell'; moveNodeId = null; moveNodeFromCell = null;
+    renderRightPanel(session);
+  });
+}
+
+async function doMoveNode(nodeId: string, targetCellId: string, session: Session) {
+  const node = cachedScenarioNodes.find((n) => n.id === nodeId);
+  if (!node) { panelMode = 'cell'; moveNodeId = null; return; }
+
+  // Don't move to same cell
+  if (node.cell_id === targetCellId) {
+    panelMode = 'cell'; moveNodeId = null; moveNodeFromCell = null;
+    renderRightPanel(session);
+    return;
+  }
+
+  const fromCell = node.cell_id;
+
+  // Optimistic: update local cache immediately
+  node.cell_id = targetCellId;
+
+  // Persist via PATCH
+  try {
+    await mFetch('/m/map/scenario/node', session, {
+      method: 'PATCH',
+      body: JSON.stringify({ scenario_id: session.scenarioId, node_id: nodeId, cell_id: targetCellId }),
+    });
+  } catch {
+    // Revert on failure
+    node.cell_id = fromCell;
+  }
+
+  // Switch to target cell view
+  moveNodeId = null;
+  moveNodeFromCell = null;
+  selectedCellId = targetCellId;
+  panelMode = 'cell';
+
+  // Re-fetch nodes (updates published_nodes for ghost comparison) and re-render
+  await loadScenarioNodes(session);
+  if (cachedGridData) renderUGRSGrid(cachedGridData);
+  renderRightPanel(session);
+}
+
 // --- Assign Lane Panel ---
 function renderAssignLanePanel(ctrl: HTMLElement, session: Session, titleEl: HTMLElement | null) {
   if (titleEl) titleEl.textContent = `ASSIGN: ${selectedLaneId}`;
@@ -2626,6 +3512,38 @@ function connectWS(session: Session) {
           // Phase 3: fog zone toggled
           const fd = data.data as any;
           mokSend('advisory', `🌫 Fog ${fd?.lit ? 'LIFTED' : 'DARKENED'}: zone "${fd?.zone_label}"`);
+        } else if (data.type === 'map_published') {
+          const pd = data.data as any;
+          mokSend('advisory', `MAP PUBLISHED by ${pd?.published_by || 'M'}.`);
+          const pubStatus = document.getElementById('publish-status');
+          if (pubStatus && pd?.published_at) {
+            pubStatus.style.color = 'var(--accent)';
+            pubStatus.textContent = `Last published: ${new Date(pd.published_at).toLocaleString()}`;
+          }
+        } else if (data.type === 'scenario_dispatched') {
+          const dd = data.data as any;
+          mokSend('directive', `SCENARIO DISPATCHED by ${dd?.dispatched_by || 'M'}${dd?.forced ? ' (FORCED)' : ''}.`);
+          // Refresh readiness panel
+          const checksEl = document.getElementById('readiness-checks');
+          if (checksEl) {
+            const dispStatus = document.getElementById('dispatch-status');
+            if (dispStatus) {
+              dispStatus.style.color = 'var(--accent)';
+              dispStatus.textContent = 'Scenario is LIVE.';
+            }
+          }
+        } else if (data.type === 'ops_alarm') {
+          const ad = data.data as any;
+          opsAlarmCount = ad?.alarm_count || (opsAlarmCount + 1);
+          mokSend('critical', `⚠ OPS ALARM #${opsAlarmCount} from ${ad?.callsign || 'OPS'}: ${ad?.message || 'ALARM'}`);
+          updateFreezeButtonBadge();
+          if (ad?.auto_frozen) {
+            mokSend('critical', '⚠ AUTO-FREEZE TRIGGERED — 3+ ops alarms.');
+          }
+        } else if (data.type === 'ops_alarm_ack') {
+          opsAlarmCount = 0;
+          updateFreezeButtonBadge();
+          mokSend('advisory', 'Ops alarms cleared.');
         }
       } catch {}
     };

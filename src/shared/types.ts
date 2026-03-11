@@ -35,7 +35,9 @@ export interface ScenarioRow {
   id: number;
   name: string;
   status: 'draft' | 'active' | 'paused' | 'archived';
-  config: string; // JSON blob
+  config: string; // JSON blob — M's working draft
+  published_config: string | null; // JSON blob — frozen snapshot for Ops
+  published_at: number | null; // timestamp of last publish
   created_at: number;
   updated_at: number;
 }
@@ -203,9 +205,28 @@ export interface GridConfig {
   row_labels: string[];
 }
 
+export interface ScenarioRequirements {
+  min_red?: number;
+  min_blue?: number;
+  min_staff?: number;
+  drops_must_have_items?: boolean;
+  require_published?: boolean;
+  custom_checks?: Array<{ label: string; key: string; met?: boolean }>;
+}
+
+export interface ReadinessCheck {
+  key: string;
+  label: string;
+  required: number | boolean;
+  actual: number | boolean;
+  pass: boolean;
+  detail?: string;
+}
+
 export interface ScenarioConfig {
   grid?: GridConfig;
   frozen?: boolean;
+  requirements?: ScenarioRequirements;
   [key: string]: unknown;
 }
 
@@ -364,6 +385,10 @@ export type WSMessageType =
   | 'player_location'  // Phase 3: player GPS update (M-only)
   | 'fog_update'       // Phase 3: fog of war zone toggled
   | 'decoy_ping'       // Phase 3: false ping — actors only, NOT in event log
+  | 'map_published'    // M canonized map — Ops should refresh
+  | 'scenario_dispatched' // M deployed scenario — Ops can join
+  | 'ops_alarm'          // Ops raised alarm — M sees badge, auto-freeze at 3+
+  | 'ops_alarm_ack'      // M acknowledged/cleared alarms
   | 'ping'
   | 'pong';
 

@@ -154,14 +154,14 @@ function renderOpsJoin(container: HTMLElement, statusMsg?: string) {
   screen.innerHTML = `
     <div class="logo">EYES ONLY</div>
     <div class="subtitle">FIELD OPERATIVE CHECK-IN</div>
-    ${statusMsg ? `<div style="color:#ff3333;font-size:10px;letter-spacing:1px;margin-bottom:8px;">${statusMsg}</div>` : ''}
+    ${statusMsg ? `<div style="color:#ff3333;font-size:11px;letter-spacing:1px;margin-bottom:8px;">${statusMsg}</div>` : ''}
     ${existingUser
       ? `<div class="field" style="text-align:center;"><label style="color:#33ff33;letter-spacing:2px;">LOGGED IN AS</label><div style="font-size:16px;color:#33ff33;letter-spacing:2px;padding:8px 0;">${existingUser.user?.callsign || existingUser.user?.username || 'OPERATIVE'}</div></div>`
-      : `<div class="field"><label>USERNAME</label><input type="text" id="ops-username" placeholder="Enter username or register new" autocomplete="username" /></div>`
+      : `<div class="field"><label>USERNAME</label><input type="text" id="ops-username" placeholder="Enter username" autocomplete="username" inputmode="text" /></div>`
     }
-    <div class="field"><label>JOIN CODE</label><input type="text" id="ops-code" placeholder="Enter join code" autocomplete="off" /></div>
+    <div class="field"><label>JOIN CODE</label><input type="text" id="ops-code" placeholder="Enter join code" autocomplete="off" inputmode="text" style="text-transform:uppercase;" /></div>
     <div id="ops-error" class="error-msg" style="display:none"></div>
-    <button id="ops-btn" class="btn">JOIN OPERATION</button>
+    <button id="ops-btn" class="btn" style="min-height:48px;">JOIN OPERATION</button>
   `;
   screen.querySelector('#ops-btn')!.addEventListener('click', async () => {
     const code = (document.getElementById('ops-code') as HTMLInputElement).value;
@@ -231,7 +231,10 @@ function renderOpsDashboard(container: HTMLElement, session: OpsSession) {
   container.innerHTML = `
     <header class="header">
       <h1>EYES ONLY // OPS</h1>
-      <span class="status" id="ops-status-badge">${session.actor.callsign} [${session.actor.team.toUpperCase()}]</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="alarm-btn" id="ops-alarm-btn" title="Raise alarm to M Director">ALARM AD[M]IN</button>
+        <span class="status" id="ops-status-badge">${session.actor.callsign} [${session.actor.team.toUpperCase()}]</span>
+      </div>
     </header>
     <div class="screen" id="ops-screen">
       <div class="ops-context-bar" id="ops-context-bar">
@@ -248,28 +251,52 @@ function renderOpsDashboard(container: HTMLElement, session: OpsSession) {
         <div class="ctx-tension-bar" id="ops-ctx-tension-bar"><div class="ctx-tension-fill" id="ops-ctx-tension-fill"></div></div>
         <div id="ops-ctx-last-ping" class="ctx-last-ping" style="display:none;"></div>
       </div>
-      <div class="stat-row">
-        <div class="card"><h2>STATUS</h2><div class="value" style="color:var(--accent);" id="ops-actor-status">ACTIVE</div></div>
-        <div class="card"><h2>TEAM</h2><div class="value">${session.actor.team.toUpperCase()}</div></div>
+
+      <!-- INTEL FEED — front and center, receives video push from M -->
+      <div class="card" id="ops-intel-feed" style="border-color:var(--red);border-width:1px;position:relative;overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <h2 style="color:var(--red);margin:0;">INTEL FEED</h2>
+          <span id="intel-feed-status" style="font-size:9px;letter-spacing:1px;color:#555;">AWAITING INTEL</span>
+        </div>
+        <div id="intel-feed-content" style="margin-top:8px;min-height:40px;">
+          <div style="font-size:11px;color:var(--text-dim);text-align:center;padding:12px 0;">
+            <span style="color:var(--red);font-size:10px;letter-spacing:2px;">&#9656;</span>
+            Video intel from M will appear here
+          </div>
+        </div>
       </div>
+
+      <!-- M DIRECTIVES — second priority -->
       <div class="card" id="ops-pings-card">
         <h2>M DIRECTIVES</h2>
         <div id="ops-pings" style="max-height:200px;overflow-y:auto;"><div style="color:var(--text-dim);font-size:12px;">No directives.</div></div>
       </div>
-      <div class="card"><h2>RECENT EVENTS</h2><div id="ops-events" style="max-height:200px;overflow-y:auto;">Loading...</div></div>
+
+      <!-- STATUS + TEAM row -->
+      <div class="stat-row">
+        <div class="card"><h2>STATUS</h2><div class="value" style="color:var(--accent);" id="ops-actor-status">ACTIVE</div></div>
+        <div class="card"><h2>TEAM</h2><div class="value">${session.actor.team.toUpperCase()}</div></div>
+      </div>
+
+      <!-- CHECK-IN -->
       <div class="card">
         <h2>CHECK-IN</h2>
-        <div class="field"><label>LANE</label><input type="text" id="ops-checkin-lane" placeholder="Lane ID" /></div>
-        <div class="field"><label>MESSAGE</label><input type="text" id="ops-checkin-msg" placeholder="Status update" /></div>
-        <button class="btn" id="ops-checkin-btn" style="margin-top:8px;">CHECK IN</button>
+        <div class="field"><label>LANE</label><input type="text" id="ops-checkin-lane" placeholder="Lane ID" inputmode="text" style="text-transform:uppercase;" /></div>
+        <div class="field"><label>MESSAGE</label><input type="text" id="ops-checkin-msg" placeholder="Status update" inputmode="text" /></div>
+        <button class="btn" id="ops-checkin-btn" style="margin-top:8px;min-height:44px;">CHECK IN</button>
       </div>
+
+      <!-- RECENT EVENTS -->
+      <div class="card"><h2>RECENT EVENTS</h2><div id="ops-events" style="max-height:200px;overflow-y:auto;">Loading...</div></div>
+
+      <!-- TACTICAL MAP -->
       <div class="card">
         <h2>TACTICAL MAP</h2>
         <div id="ops-map-grid" style="min-height:200px;overflow:auto;position:relative;">
           <div style="color:var(--text-dim);font-size:12px;">Loading map...</div>
         </div>
       </div>
-      <button class="btn danger" id="ops-disconnect" style="margin-top:auto;">DISCONNECT</button>
+      <button class="btn danger" id="ops-disconnect" style="margin-top:auto;min-height:44px;">DISCONNECT</button>
     </div>
   `;
 
@@ -296,6 +323,45 @@ function renderOpsDashboard(container: HTMLElement, session: OpsSession) {
     localStorage.removeItem(OPS_STORAGE_KEY);
     container.innerHTML = '';
     renderOpsJoin(container);
+  });
+
+  // --- ALARM AD[M]IN button ---
+  let opsAlarmCooldown = false;
+  document.getElementById('ops-alarm-btn')!.addEventListener('click', async () => {
+    const btn = document.getElementById('ops-alarm-btn') as HTMLButtonElement;
+    if (opsAlarmCooldown) return;
+    opsAlarmCooldown = true;
+    btn.textContent = 'SENDING...';
+    btn.disabled = true;
+    try {
+      const res = await opsFetch('/ops/alarm', session, {
+        method: 'POST',
+        body: JSON.stringify({ message: `Alarm raised by ${session.actor.callsign}` }),
+      });
+      const data = await res.json() as any;
+      if (data.ok) {
+        btn.classList.add('sent');
+        btn.innerHTML = `ALARM SENT <span class="alarm-count">${data.alarm_count}</span>`;
+        if (data.auto_frozen) {
+          showOpsBroadcast('AUTO-FREEZE: 3+ alarms raised — game frozen');
+        }
+        // Re-enable after 10s cooldown
+        setTimeout(() => {
+          opsAlarmCooldown = false;
+          btn.disabled = false;
+          btn.classList.remove('sent');
+          btn.textContent = 'ALARM AD[M]IN';
+        }, 10000);
+      } else {
+        btn.textContent = 'ALARM AD[M]IN';
+        btn.disabled = false;
+        opsAlarmCooldown = false;
+      }
+    } catch {
+      btn.textContent = 'ALARM AD[M]IN';
+      btn.disabled = false;
+      opsAlarmCooldown = false;
+    }
   });
 
   // Load tactical map
@@ -419,8 +485,76 @@ function showOpsBroadcast(message: string) {
   });
 }
 
+// --- Intel Feed Card (persistent, in-dashboard) ---
+let lastIntelUrl = '';
+let lastIntelTitle = '';
+
+function updateIntelFeedCard(videoUrl: string, title: string) {
+  lastIntelUrl = videoUrl;
+  lastIntelTitle = title;
+  const statusEl = document.getElementById('intel-feed-status');
+  const contentEl = document.getElementById('intel-feed-content');
+  const cardEl = document.getElementById('ops-intel-feed');
+  if (!contentEl || !statusEl) return;
+
+  const ts = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  statusEl.innerHTML = `<span style="color:var(--red);">&#9679;</span> RECEIVED ${ts}`;
+  statusEl.style.color = 'var(--red)';
+  if (cardEl) {
+    cardEl.style.borderColor = 'var(--red)';
+    cardEl.style.boxShadow = '0 0 12px rgba(255,51,51,0.15)';
+    // Fade glow after 5s
+    setTimeout(() => { if (cardEl) cardEl.style.boxShadow = ''; }, 5000);
+  }
+
+  contentEl.innerHTML = `
+    <div style="font-size:12px;color:var(--accent);letter-spacing:1px;margin-bottom:6px;text-transform:uppercase;">${title}</div>
+    <div style="position:relative;background:#000;border-radius:4px;overflow:hidden;">
+      <video id="intel-feed-video" playsinline preload="metadata" src="${videoUrl}" style="width:100%;max-height:180px;display:block;object-fit:contain;"></video>
+      <div id="intel-feed-play-overlay" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);cursor:pointer;">
+        <span style="font-size:32px;color:var(--red);text-shadow:0 0 10px rgba(255,51,51,0.5);">&#9654;</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:6px;">
+      <button class="btn" id="intel-feed-replay" style="flex:1;padding:8px;font-size:10px;min-height:36px;">&#9654; REPLAY INTEL</button>
+      <button class="btn" id="intel-feed-fullscreen" style="flex:1;padding:8px;font-size:10px;min-height:36px;border-color:var(--red);color:var(--red);">FULLSCREEN</button>
+    </div>
+  `;
+
+  // Wire play overlay
+  document.getElementById('intel-feed-play-overlay')?.addEventListener('click', () => {
+    const vid = document.getElementById('intel-feed-video') as HTMLVideoElement;
+    const overlay = document.getElementById('intel-feed-play-overlay');
+    if (vid) { vid.play(); if (overlay) overlay.style.display = 'none'; }
+  });
+
+  // Wire replay button
+  document.getElementById('intel-feed-replay')?.addEventListener('click', () => {
+    const vid = document.getElementById('intel-feed-video') as HTMLVideoElement;
+    const overlay = document.getElementById('intel-feed-play-overlay');
+    if (vid) { vid.currentTime = 0; vid.play(); if (overlay) overlay.style.display = 'none'; }
+  });
+
+  // Wire fullscreen button — launches the full overlay
+  document.getElementById('intel-feed-fullscreen')?.addEventListener('click', () => {
+    showVideoPush(videoUrl, title);
+  });
+
+  // Show play overlay again when video ends
+  const vid = document.getElementById('intel-feed-video') as HTMLVideoElement;
+  if (vid) {
+    vid.addEventListener('ended', () => {
+      const overlay = document.getElementById('intel-feed-play-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  }
+}
+
 // --- Video Push Overlay ---
 function showVideoPush(videoUrl: string, title: string) {
+  // Update the persistent intel feed card
+  updateIntelFeedCard(videoUrl, title);
+
   // Remove any existing overlay
   document.getElementById('ops-video-overlay')?.remove();
 
@@ -571,6 +705,30 @@ function connectOpsWS(session: OpsSession, container: HTMLElement) {
             showVideoPush(videoUrl, title);
           }
           loadOpsEvents(session);
+        } else if (data.type === 'map_published') {
+          // M published new map snapshot — refresh immediately
+          showOpsBroadcast('MAP UPDATED — reloading...');
+          loadOpsMap(session);
+          loadOpsEvents(session);
+        } else if (data.type === 'scenario_dispatched') {
+          showOpsBroadcast('SCENARIO DISPATCHED — mission is LIVE');
+          loadOpsMap(session);
+          loadOpsEvents(session);
+          loadOpsStatus(session);
+        } else if (data.type === 'ops_alarm') {
+          const ad = data.data as any;
+          showOpsBroadcast(`ALARM #${ad?.alarm_count || '?'} raised by ${ad?.callsign || 'OPS'}`);
+          if (ad?.auto_frozen) {
+            showOpsFrozen(true);
+          }
+        } else if (data.type === 'ops_alarm_ack') {
+          showOpsBroadcast('M has acknowledged alarms — cleared');
+          // Reset alarm button state
+          const alarmBtn = document.getElementById('ops-alarm-btn');
+          if (alarmBtn) {
+            alarmBtn.classList.remove('sent');
+            alarmBtn.textContent = 'ALARM AD[M]IN';
+          }
         } else if (data.type === 'escalation') {
           loadOpsEvents(session);
           loadOpsStatus(session);

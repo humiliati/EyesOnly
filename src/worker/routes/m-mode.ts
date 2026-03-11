@@ -58,7 +58,11 @@ import {
   getMicrochatMessages,
   grantScenarioUserRole,
   revokeScenarioUserRole,
+  publishScenarioConfig,
+  insertDispatchAudit,
+  getDispatchAudit,
 } from '../db/queries';
+import type { ReadinessCheck, ScenarioRequirements } from '../../shared/types';
 import { sendWebPushToAll } from '../utils/web-push';
 
 type HonoEnv = { Bindings: Env; Variables: { auth: AuthContext } };
@@ -140,6 +144,7 @@ mModeRoutes.get('/grid/:scenarioId', async (c) => {
       name: scenario.name,
       status: scenario.status,
       config: JSON.parse(scenario.config),
+      published_at: scenario.published_at || null,
     },
     lanes: lanes.map((l) => ({
       ...l,
@@ -897,6 +902,545 @@ mModeRoutes.post('/scenario/freeze', async (c) => {
   }));
 
   return c.json({ ok: true, frozen: config.frozen });
+});
+
+/**
+ * POST /api/m/scenario/alarm-ack
+ * M acknowledges/clears ops alarms. Resets alarm count to 0.
+ * Broadcasts ops_alarm_ack so Ops sees the cleared state.
+ */
+mModeRoutes.post('/scenario/alarm-ack', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{ scenario_id: number }>();
+
+  if (!body.scenario_id) {
+    return c.json({ error: 'BAD_REQUEST', message: 'scenario_id required' }, 400);
+  }
+
+  const scenario = await getScenario(c.env.DB, body.scenario_id);
+  if (!scenario) return c.json({ error: 'NOT_FOUND', message: 'Scenario not found' }, 404);
+
+  const config = JSON.parse(scenario.config);
+  const prevCount = config.ops_alarm_count || 0;
+  config.ops_alarm_count = 0;
+  await updateScenarioConfig(c.env.DB, body.scenario_id, config);
+
+  // Log event
+  await insertEvent(c.env.DB, body.scenario_id, auth.actor_id, 'ops_alarm_ack', {
+    cleared_by: auth.callsign,
+    prev_count: prevCount,
+    ts: Date.now(),
+  });
+
+  // Broadcast cleared state
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${body.scenario_id}`);
+  const room = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'ops_alarm_ack',
+      data: { cleared_by: auth.callsign, prev_count: prevCount },
+      timestamp: Date.now(),
+    }),
+  }));
+
+  return c.json({ ok: true, cleared: prevCount });
+});
+
+/**
+ * POST /api/m/scenario/publish
+ * Canonize the current working config → published_config.
+ * Ops will now see this snapshot. Broadcasts map_published to all clients.
+ */
+mModeRoutes.post('/scenario/publish', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{ scenario_id: number }>();
+
+  if (!body.scenario_id) {
+    return c.json({ error: 'BAD_REQUEST', message: 'scenario_id required' }, 400);
+  }
+
+  const scenario = await getScenario(c.env.DB, body.scenario_id);
+  if (!scenario) return c.json({ error: 'NOT_FOUND', message: 'Scenario not found' }, 404);
+
+  // Parse configs for diff summary
+  const working = JSON.parse(scenario.config || '{}');
+  const published = scenario.published_config ? JSON.parse(scenario.published_config) : null;
+
+  // Build a simple diff summary
+  const diffSummary: string[] = [];
+  const workingNodes = working.nodes || [];
+  const pubNodes = published?.nodes || [];
+  const addedNodes = workingNodes.length - pubNodes.length;
+  if (addedNodes > 0) diffSummary.push(`${addedNodes} node(s) added`);
+  if (addedNodes < 0) diffSummary.push(`${Math.abs(addedNodes)} node(s) removed`);
+  // Check for moved nodes (same id, different cell_id)
+  let movedCount = 0;
+  for (const wn of workingNodes) {
+    const pn = pubNodes.find((p: any) => p.id === wn.id);
+    if (pn && pn.cell_id !== wn.cell_id) movedCount++;
+  }
+  if (movedCount > 0) diffSummary.push(`${movedCount} node(s) moved`);
+  // Grid changes
+  const wGrid = JSON.stringify(working.grid || {});
+  const pGrid = JSON.stringify(published?.grid || {});
+  if (wGrid !== pGrid) diffSummary.push('grid config changed');
+  // Map key changes
+  if (working.map_key !== published?.map_key) diffSummary.push('map image changed');
+
+  if (!diffSummary.length) diffSummary.push('no changes');
+
+  // Snapshot config → published_config
+  const publishedAt = await publishScenarioConfig(c.env.DB, body.scenario_id);
+
+  // Store versioned snapshot in R2 for publish history / rollback
+  const snapshotKey = `scenarios/${body.scenario_id}/published/${publishedAt}.json`;
+  const snapshot = JSON.stringify({
+    config: working,
+    published_at: publishedAt,
+    published_by: auth.callsign,
+    diff_summary: diffSummary,
+  });
+  await c.env.R2.put(snapshotKey, snapshot, {
+    httpMetadata: { contentType: 'application/json' },
+    customMetadata: {
+      publishedBy: auth.callsign,
+      publishedAt: String(publishedAt),
+      diffSummary: diffSummary.join('; '),
+    },
+  });
+
+  // Log event
+  await insertEvent(c.env.DB, body.scenario_id, auth.actor_id, 'map_published' as any, {
+    published_by: auth.callsign,
+    diff_summary: diffSummary,
+    published_at: publishedAt,
+    r2_key: snapshotKey,
+  });
+
+  // Broadcast to all connected clients
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${body.scenario_id}`);
+  const room = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'map_published',
+      data: {
+        published_by: auth.callsign,
+        published_at: publishedAt,
+        diff_summary: diffSummary,
+      },
+      timestamp: Date.now(),
+    }),
+  }));
+
+  return c.json({ ok: true, published_at: publishedAt, diff_summary: diffSummary });
+});
+
+/**
+ * GET /api/m/scenario/:id/publish-history
+ * List all versioned publish snapshots from R2, newest first.
+ * Returns metadata only (not full config payloads).
+ */
+mModeRoutes.get('/scenario/:id/publish-history', async (c) => {
+  const scenarioId = Number(c.req.param('id'));
+  if (!scenarioId) return c.json({ error: 'BAD_REQUEST', message: 'Invalid scenario id' }, 400);
+
+  const prefix = `scenarios/${scenarioId}/published/`;
+  const entries: Array<{ key: string; published_at: number; published_by: string; diff_summary: string; size: number }> = [];
+  let cursor: string | undefined;
+
+  do {
+    const listed = await c.env.R2.list({ prefix, limit: 100, cursor });
+    for (const obj of listed.objects) {
+      // Derive timestamp from key: scenarios/{id}/published/{timestamp}.json
+      const tsStr = obj.key.replace(prefix, '').replace('.json', '');
+      entries.push({
+        key: obj.key,
+        published_at: Number(tsStr) || 0,
+        published_by: obj.customMetadata?.publishedBy || 'unknown',
+        diff_summary: obj.customMetadata?.diffSummary || '',
+        size: obj.size,
+      });
+    }
+    cursor = listed.truncated ? listed.cursor : undefined;
+  } while (cursor);
+
+  // Sort newest first
+  entries.sort((a, b) => b.published_at - a.published_at);
+
+  return c.json({ ok: true, scenario_id: scenarioId, snapshots: entries });
+});
+
+/**
+ * POST /api/m/scenario/publish-rollback
+ * Restore a previous publish snapshot from R2 back to published_config (and optionally working config).
+ */
+mModeRoutes.post('/scenario/publish-rollback', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{ scenario_id: number; published_at: number; restore_working?: boolean }>();
+
+  if (!body.scenario_id || !body.published_at) {
+    return c.json({ error: 'BAD_REQUEST', message: 'scenario_id and published_at required' }, 400);
+  }
+
+  const scenario = await getScenario(c.env.DB, body.scenario_id);
+  if (!scenario) return c.json({ error: 'NOT_FOUND', message: 'Scenario not found' }, 404);
+
+  // Fetch snapshot from R2
+  const snapshotKey = `scenarios/${body.scenario_id}/published/${body.published_at}.json`;
+  const obj = await c.env.R2.get(snapshotKey);
+  if (!obj) return c.json({ error: 'NOT_FOUND', message: 'Publish snapshot not found in R2' }, 404);
+
+  const snapshotData = await obj.json<{ config: any; published_at: number; published_by: string; diff_summary: string[] }>();
+
+  // Restore published_config from the snapshot
+  const restoredConfig = JSON.stringify(snapshotData.config);
+  const now = Date.now();
+
+  if (body.restore_working) {
+    // Restore both working config AND published config
+    await c.env.DB
+      .prepare('UPDATE scenarios SET config = ?, published_config = ?, published_at = ?, updated_at = ? WHERE id = ?')
+      .bind(restoredConfig, restoredConfig, now, now, body.scenario_id)
+      .run();
+  } else {
+    // Restore published config only — M's working draft stays as-is
+    await c.env.DB
+      .prepare('UPDATE scenarios SET published_config = ?, published_at = ?, updated_at = ? WHERE id = ?')
+      .bind(restoredConfig, now, now, body.scenario_id)
+      .run();
+  }
+
+  // Log event
+  await insertEvent(c.env.DB, body.scenario_id, auth.actor_id, 'map_published' as any, {
+    published_by: auth.callsign,
+    rollback_from: body.published_at,
+    restore_working: !!body.restore_working,
+    published_at: now,
+  });
+
+  // Broadcast
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${body.scenario_id}`);
+  const room = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'map_published',
+      data: {
+        published_by: auth.callsign,
+        published_at: now,
+        diff_summary: [`rollback to snapshot from ${new Date(body.published_at).toISOString()}`],
+        rollback: true,
+      },
+      timestamp: Date.now(),
+    }),
+  }));
+
+  return c.json({ ok: true, restored_from: body.published_at, published_at: now, restore_working: !!body.restore_working });
+});
+
+// --- Readiness & Dispatch ---
+
+/**
+ * Shared readiness computation — used by both GET /readiness and POST /dispatch.
+ */
+async function computeReadiness(db: D1Database, scenarioId: number): Promise<{
+  ready: boolean;
+  checks: ReadinessCheck[];
+  shortages: Record<string, any>;
+}> {
+  const scenario = await getScenario(db, scenarioId);
+  if (!scenario) throw new Error('Scenario not found');
+
+  const config = JSON.parse(scenario.config || '{}');
+  const reqs: ScenarioRequirements = config.requirements || {};
+  const checks: ReadinessCheck[] = [];
+  const shortages: Record<string, any> = {};
+
+  // Defaults
+  const minRed = reqs.min_red ?? 1;
+  const minBlue = reqs.min_blue ?? 0;
+  const minStaff = reqs.min_staff ?? 0;
+  const dropsNeedItems = reqs.drops_must_have_items !== false; // default true
+  const needPublished = reqs.require_published !== false; // default true
+
+  // --- Actor counts by team & kind ---
+  const actors = await listActors(db, scenarioId);
+  const redActors = actors.filter((a) => a.team === 'red');
+  const blueActors = actors.filter((a) => a.team === 'blue');
+  const staffActors = actors.filter((a) => (a as any).actor_kind === 'staff');
+
+  checks.push({
+    key: 'red_actors', label: 'Red team actors',
+    required: minRed, actual: redActors.length,
+    pass: redActors.length >= minRed,
+  });
+  if (redActors.length < minRed) shortages.red_actors = minRed - redActors.length;
+
+  checks.push({
+    key: 'blue_actors', label: 'Blue team actors',
+    required: minBlue, actual: blueActors.length,
+    pass: blueActors.length >= minBlue,
+  });
+  if (blueActors.length < minBlue) shortages.blue_actors = minBlue - blueActors.length;
+
+  if (minStaff > 0) {
+    checks.push({
+      key: 'staff_actors', label: 'Staff actors',
+      required: minStaff, actual: staffActors.length,
+      pass: staffActors.length >= minStaff,
+    });
+    if (staffActors.length < minStaff) shortages.staff_actors = minStaff - staffActors.length;
+  }
+
+  // --- Join codes ---
+  const joinCodes = await db
+    .prepare('SELECT team, used_count, max_uses FROM join_codes WHERE scenario_id = ? AND used_count < max_uses')
+    .bind(scenarioId).all();
+  const hasRedCode = joinCodes.results.some((j: any) => j.team === 'red');
+  const hasBlueCode = joinCodes.results.some((j: any) => j.team === 'blue');
+  const needBlueCode = minBlue > 0;
+
+  checks.push({
+    key: 'join_code_red', label: 'Red join code available',
+    required: true, actual: hasRedCode, pass: hasRedCode,
+  });
+  if (!hasRedCode) shortages.join_code_red = true;
+
+  if (needBlueCode) {
+    checks.push({
+      key: 'join_code_blue', label: 'Blue join code available',
+      required: true, actual: hasBlueCode, pass: hasBlueCode,
+    });
+    if (!hasBlueCode) shortages.join_code_blue = true;
+  }
+
+  // --- Grid calibrated ---
+  const hasGrid = !!config.grid && config.grid.cols > 0;
+  checks.push({
+    key: 'grid_calibrated', label: 'Grid calibrated',
+    required: true, actual: hasGrid, pass: hasGrid,
+  });
+
+  // --- Map published ---
+  if (needPublished) {
+    const isPublished = !!scenario.published_at;
+    checks.push({
+      key: 'map_published', label: 'Map published to Ops',
+      required: true, actual: isPublished, pass: isPublished,
+    });
+    if (!isPublished) shortages.map_published = true;
+  }
+
+  // --- Dead drops loaded with items ---
+  if (dropsNeedItems) {
+    const drops = await listDeadDrops(db, scenarioId);
+    const emptyDrops = drops.filter((d) => {
+      try {
+        const items = JSON.parse(d.items_json || '[]');
+        return !items.length;
+      } catch { return true; }
+    });
+    const totalDrops = drops.length;
+    const loadedDrops = totalDrops - emptyDrops.length;
+
+    if (totalDrops > 0) {
+      checks.push({
+        key: 'drops_loaded', label: 'Dead drops loaded with items',
+        required: totalDrops, actual: loadedDrops,
+        pass: emptyDrops.length === 0,
+        detail: emptyDrops.length > 0
+          ? `Empty: ${emptyDrops.map((d) => d.label || d.id).join(', ')}`
+          : undefined,
+      });
+      if (emptyDrops.length) shortages.drops_empty = emptyDrops.map((d) => d.label || String(d.id));
+    }
+  }
+
+  // --- Scenario nodes exist ---
+  const nodes = config.nodes || [];
+  checks.push({
+    key: 'nodes_placed', label: 'Scenario nodes placed',
+    required: 1, actual: nodes.length,
+    pass: nodes.length > 0,
+  });
+
+  // --- Custom checks (M-defined) ---
+  if (reqs.custom_checks?.length) {
+    for (const cc of reqs.custom_checks) {
+      checks.push({
+        key: cc.key, label: cc.label,
+        required: true, actual: !!cc.met, pass: !!cc.met,
+      });
+      if (!cc.met) shortages[cc.key] = true;
+    }
+  }
+
+  const ready = checks.every((c) => c.pass);
+  return { ready, checks, shortages };
+}
+
+/**
+ * GET /api/m/scenario/:id/readiness
+ * Compute and return readiness status for a scenario.
+ */
+mModeRoutes.get('/scenario/:id/readiness', async (c) => {
+  const scenarioId = parseInt(c.req.param('id'), 10);
+  if (!scenarioId) return c.json({ error: 'BAD_REQUEST', message: 'id required' }, 400);
+
+  try {
+    const result = await computeReadiness(c.env.DB, scenarioId);
+    return c.json(result);
+  } catch (err: any) {
+    return c.json({ error: 'NOT_FOUND', message: err.message }, 404);
+  }
+});
+
+/**
+ * POST /api/m/scenario/dispatch
+ * Deploy a scenario after readiness pre-flight.
+ * Body: { scenario_id, force?: boolean }
+ */
+mModeRoutes.post('/scenario/dispatch', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{ scenario_id: number; force?: boolean }>();
+
+  if (!body.scenario_id) {
+    return c.json({ error: 'BAD_REQUEST', message: 'scenario_id required' }, 400);
+  }
+
+  const scenario = await getScenario(c.env.DB, body.scenario_id);
+  if (!scenario) return c.json({ error: 'NOT_FOUND', message: 'Scenario not found' }, 404);
+
+  // Run readiness checks
+  const readiness = await computeReadiness(c.env.DB, body.scenario_id);
+
+  if (!readiness.ready && !body.force) {
+    return c.json({
+      ok: false,
+      message: 'Scenario not ready — resolve issues or dispatch with force:true',
+      checks: readiness.checks,
+      shortages: readiness.shortages,
+    });
+  }
+
+  // Auto-publish if not already published
+  if (!scenario.published_at) {
+    await publishScenarioConfig(c.env.DB, body.scenario_id);
+  }
+
+  // Update scenario status to deployed
+  await updateScenarioStatus(c.env.DB, body.scenario_id, 'active');
+
+  // Log to dispatch audit
+  const auditAction = readiness.ready ? 'dispatch' : 'dispatch_override';
+  await insertDispatchAudit(c.env.DB, body.scenario_id, auditAction, auth.actor_id, {
+    dispatched_by: auth.callsign,
+    forced: !readiness.ready,
+    checks: readiness.checks,
+    shortages: readiness.shortages,
+  });
+
+  // Broadcast to all connected clients
+  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${body.scenario_id}`);
+  const room = c.env.SCENARIO_ROOM.get(roomId);
+  await room.fetch(new Request('http://internal/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'scenario_dispatched',
+      data: {
+        dispatched_by: auth.callsign,
+        forced: !readiness.ready,
+        shortages: readiness.shortages,
+      },
+      timestamp: Date.now(),
+    }),
+  }));
+
+  // Log event
+  await insertEvent(c.env.DB, body.scenario_id, auth.actor_id, 'scenario_dispatched' as any, {
+    dispatched_by: auth.callsign,
+    forced: !readiness.ready,
+  });
+
+  return c.json({
+    ok: true,
+    forced: !readiness.ready,
+    checks: readiness.checks,
+    timestamp: Date.now(),
+  });
+});
+
+/**
+ * PATCH /api/m/scenario/requirements
+ * Update scenario requirements config.
+ * Body: { scenario_id, requirements: ScenarioRequirements }
+ */
+mModeRoutes.patch('/scenario/requirements', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json<{ scenario_id: number; requirements: any }>();
+
+  if (!body.scenario_id) return c.json({ error: 'BAD_REQUEST', message: 'scenario_id required' }, 400);
+
+  const scenario = await getScenario(c.env.DB, body.scenario_id);
+  if (!scenario) return c.json({ error: 'NOT_FOUND', message: 'Scenario not found' }, 404);
+
+  const config = JSON.parse(scenario.config || '{}');
+  config.requirements = { ...(config.requirements || {}), ...body.requirements };
+  await updateScenarioConfig(c.env.DB, body.scenario_id, config);
+
+  await insertDispatchAudit(c.env.DB, body.scenario_id, 'requirement_updated', auth.actor_id, {
+    updated_by: auth.callsign,
+    requirements: config.requirements,
+  });
+
+  return c.json({ ok: true, requirements: config.requirements });
+});
+
+/**
+ * GET /api/m/scenario/:id/audit-trail
+ * Return dispatch audit log for a scenario, newest first.
+ * Joins with actors table for callsign resolution.
+ * Optional ?limit=N (default 100), ?action=X filter.
+ */
+mModeRoutes.get('/scenario/:id/audit-trail', async (c) => {
+  const scenarioId = Number(c.req.param('id'));
+  if (!scenarioId) return c.json({ error: 'BAD_REQUEST', message: 'Invalid scenario id' }, 400);
+
+  const limit = Math.min(Number(c.req.query('limit') || 100), 500);
+  const actionFilter = c.req.query('action') || null;
+
+  let query = `
+    SELECT da.id, da.scenario_id, da.action, da.actor_id, da.detail, da.created_at,
+           a.callsign AS actor_callsign, a.team AS actor_team
+    FROM dispatch_audit da
+    LEFT JOIN actors a ON da.actor_id = a.id
+    WHERE da.scenario_id = ?`;
+  const binds: any[] = [scenarioId];
+
+  if (actionFilter) {
+    query += ' AND da.action = ?';
+    binds.push(actionFilter);
+  }
+
+  query += ' ORDER BY da.created_at DESC LIMIT ?';
+  binds.push(limit);
+
+  const result = await c.env.DB.prepare(query).bind(...binds).all();
+
+  // Parse detail JSON for each row
+  const entries = result.results.map((row: any) => ({
+    id: row.id,
+    action: row.action,
+    actor_id: row.actor_id,
+    actor_callsign: row.actor_callsign || null,
+    actor_team: row.actor_team || null,
+    detail: (() => { try { return JSON.parse(row.detail); } catch { return row.detail; } })(),
+    created_at: row.created_at,
+  }));
+
+  return c.json({ ok: true, scenario_id: scenarioId, entries, count: entries.length });
 });
 
 // --- M Pings ---

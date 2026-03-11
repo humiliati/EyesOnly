@@ -74,10 +74,18 @@
     }
     .panel-body { flex: 1; overflow-y: auto; }
 
-    /* --- Lane Grid / Map --- */
+    /* --- Lane Grid / Map with Pan+Zoom --- */
     .map-container {
       position: relative; width: 100%; height: 100%;
       overflow: hidden;
+      cursor: grab;
+    }
+    .map-container.panning { cursor: grabbing; }
+    .map-zoom-layer {
+      position: absolute;
+      inset: 0;
+      transform-origin: 0 0;
+      will-change: transform;
     }
     .map-image {
       position: absolute; inset: 0;
@@ -85,6 +93,25 @@
       object-fit: contain;
       opacity: 0.35;
       pointer-events: none;
+    }
+    /* Zoom level indicator */
+    .zoom-hud {
+      position: absolute; bottom: 6px; right: 6px; z-index: 10;
+      display: flex; gap: 3px; align-items: center;
+      pointer-events: auto;
+    }
+    .zoom-hud button {
+      background: rgba(10,10,10,0.8); border: 1px solid var(--border);
+      color: var(--text-dim); font-family: var(--font); font-size: 11px;
+      width: 22px; height: 22px; cursor: pointer; border-radius: 3px;
+      display: flex; align-items: center; justify-content: center;
+      line-height: 1;
+    }
+    .zoom-hud button:hover { border-color: var(--accent); color: var(--accent); }
+    .zoom-hud .zoom-pct {
+      font-size: 8px; color: var(--text-dim); letter-spacing: 1px;
+      min-width: 32px; text-align: center;
+      background: rgba(10,10,10,0.8); padding: 2px 4px; border-radius: 2px;
     }
     .lane-grid-overlay {
       position: relative;
@@ -194,6 +221,57 @@
     .ctrl-btn.danger { border-color: var(--red); color: var(--red); }
     .ctrl-btn.danger:hover { background: rgba(255,51,51,0.1); }
     .ctrl-btn.amber { border-color: var(--amber); color: var(--amber); }
+    .ctrl-btn.amber:hover { background: rgba(255,170,51,0.1); }
+    .ctrl-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* --- Boxed control sections (Publish, Readiness, Requirements) --- */
+    .ctrl-box {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px;
+      margin: 4px 0;
+    }
+    .ctrl-box h3 { color: var(--amber); margin-bottom: 6px; }
+    .ctrl-box.active { border-color: var(--accent); }
+
+    /* Publish history panel */
+    #publish-history-panel { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+
+    /* Readiness check rows */
+    .readiness-row {
+      padding: 2px 0;
+      font-size: 8px;
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .readiness-row .r-icon { width: 12px; flex-shrink: 0; }
+    .readiness-row .r-label { flex: 1; color: var(--text-dim); }
+    .readiness-row .r-value { color: var(--text-dim); }
+    .readiness-row.fail .r-value { color: var(--amber); }
+    .readiness-row.pass .r-icon { color: var(--accent); }
+    .readiness-row.fail .r-icon { color: var(--red); }
+    .readiness-row .r-detail { color: #444; font-size: 7px; }
+
+    /* Audit trail rows */
+    .audit-row {
+      padding: 3px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      line-height: 1.4;
+    }
+    .audit-time { color: #555; margin-right: 4px; }
+    .audit-action {
+      color: var(--text-dim);
+      background: rgba(255,255,255,0.03);
+      padding: 0 3px;
+      border-radius: 2px;
+      font-family: monospace;
+      font-size: 7px;
+    }
+    .audit-action-ok { color: var(--accent); border: 1px solid rgba(0,255,136,0.15); }
+    .audit-action-warn { color: var(--amber); border: 1px solid rgba(255,170,0,0.15); }
+    .audit-actor { color: var(--blue); margin-left: 4px; }
+    .audit-detail { color: #555; font-size: 7px; margin-top: 1px; padding-left: 2px; }
 
     /* --- Login overlay --- */
     .login-overlay {
@@ -307,6 +385,38 @@
     .scenario-node-marker { transition: transform 0.15s; }
     .scenario-node-marker:hover { transform: scale(1.4); }
 
+    /* Ghost node markers — published position where node has since moved/removed */
+    .ghost-node-marker {
+      display: inline-block;
+      font-size: 10px;
+      margin: 1px;
+      opacity: 0.35;
+      color: #666;
+      filter: saturate(0);
+      border: 1px dotted rgba(100,100,100,0.5);
+      border-radius: 2px;
+      padding: 0 2px;
+      pointer-events: auto;
+      cursor: help;
+    }
+    .ugrs-cell.has-ghosts {
+      background-image: repeating-linear-gradient(
+        45deg, transparent, transparent 4px,
+        rgba(100,100,100,0.04) 4px, rgba(100,100,100,0.04) 8px
+      );
+    }
+    /* Ghost detail rows in zoomed view */
+    .detail-row.ghost-detail {
+      opacity: 0.45;
+      border-bottom-style: dotted;
+    }
+    .detail-row.ghost-detail .detail-label { color: #555; font-style: italic; }
+    .detail-row.ghost-detail .detail-value { color: #666; text-decoration: line-through; }
+
+    /* Zoom detail: ghost markers scale with zoom */
+    .ugrs-grid.zoom-detail-1 .ghost-node-marker { font-size: 11px; }
+    .ugrs-grid.zoom-detail-2 .ghost-node-marker { font-size: 13px; padding: 1px 3px; }
+
     /* Cell lane indicator */
     .ugrs-cell .lane-tag {
       position: absolute;
@@ -354,6 +464,44 @@
       50% { opacity: 0.7; }
     }
     .ugrs-cell.pulse { animation: cell-pulse 2s ease-in-out infinite; }
+
+    /* ========== ZOOM DETAIL ESCALATION ========== */
+    /* Detail content hidden by default, shown at high zoom */
+    .ugrs-cell .cell-detail {
+      display: none;
+      font-size: 7px;
+      color: var(--text-dim);
+      margin-top: 2px;
+      line-height: 1.3;
+      overflow: hidden;
+    }
+    .ugrs-cell .cell-detail .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 1px 0;
+      border-bottom: 1px solid rgba(40,40,40,0.3);
+    }
+    .ugrs-cell .cell-detail .detail-row:last-child { border-bottom: none; }
+    .ugrs-cell .cell-detail .detail-label { color: #444; }
+    .ugrs-cell .cell-detail .detail-value { color: var(--text); }
+
+    /* zoom-level classes applied to the grid container */
+    /* Level 0: default (compact) — just label + icons */
+    /* Level 1: zoom >= 1.6 — show node/actor names */
+    .ugrs-grid.zoom-detail-1 .ugrs-cell .cell-detail { display: block; }
+    .ugrs-grid.zoom-detail-1 .ugrs-cell { min-height: 60px; }
+    .ugrs-grid.zoom-detail-1 .scenario-node-marker { font-size: 12px; }
+    .ugrs-grid.zoom-detail-1 .actor-badge { font-size: 9px; padding: 1px 4px; }
+
+    /* Level 2: zoom >= 2.5 — full spreadsheet view */
+    .ugrs-grid.zoom-detail-2 .ugrs-cell .cell-detail { display: block; }
+    .ugrs-grid.zoom-detail-2 .ugrs-cell { min-height: 80px; padding: 4px 6px; }
+    .ugrs-grid.zoom-detail-2 .ugrs-label { font-size: 9px; }
+    .ugrs-grid.zoom-detail-2 .scenario-node-marker { font-size: 14px; margin: 2px; }
+    .ugrs-grid.zoom-detail-2 .actor-badge { font-size: 10px; padding: 2px 5px; }
+    .ugrs-grid.zoom-detail-2 .cell-detail { font-size: 8px; }
+    .ugrs-grid.zoom-detail-2 .lane-tag { font-size: 8px; }
+    .ugrs-grid.zoom-detail-2 .drop-marker { font-size: 10px; }
 
     /* ========== CALIBRATION UI ========== */
     .calibration-overlay {
@@ -416,14 +564,45 @@
       border-color: var(--red);
       text-shadow: 0 0 6px rgba(255,51,51,0.5);
     }
+    .freeze-btn .alarm-badge {
+      display: inline-block;
+      background: var(--red);
+      color: var(--bg);
+      font-size: 8px;
+      min-width: 14px;
+      height: 14px;
+      line-height: 14px;
+      text-align: center;
+      border-radius: 7px;
+      margin-left: 4px;
+      font-weight: bold;
+      vertical-align: middle;
+      animation: alarm-badge-pulse 0.8s ease-in-out 3;
+    }
+    .freeze-btn.has-alarms {
+      border-color: var(--red);
+      box-shadow: 0 0 8px rgba(255,51,51,0.3);
+      animation: alarm-btn-glow 1.5s ease-in-out infinite;
+    }
+    @keyframes alarm-badge-pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); }
+      100% { transform: scale(1); }
+    }
+    @keyframes alarm-btn-glow {
+      0% { box-shadow: 0 0 4px rgba(255,51,51,0.2); }
+      50% { box-shadow: 0 0 12px rgba(255,51,51,0.5); }
+      100% { box-shadow: 0 0 4px rgba(255,51,51,0.2); }
+    }
 
     /* ========== CONTEXT-SENSITIVE RIGHT PANEL ========== */
     .ctx-header {
-      font-size: 14px;
+      font-size: 11px;
       letter-spacing: 2px;
-      padding: 8px;
+      padding: 6px 8px;
       border-bottom: 1px solid var(--border);
       color: var(--accent);
+      font-weight: normal;
     }
     .ctx-back {
       font-size: 8px;
@@ -520,6 +699,22 @@
       border-width: 2px;
     }
 
+    /* Node move mode — all cells glow amber on hover as drop targets */
+    .ugrs-grid.node-move-mode .ugrs-cell {
+      cursor: crosshair;
+    }
+    .ugrs-grid.node-move-mode .ugrs-cell:hover {
+      border-color: var(--amber) !important;
+      box-shadow: inset 0 0 12px rgba(255,170,51,0.15), 0 0 6px rgba(255,170,51,0.2);
+    }
+    /* Source cell highlight during move */
+    .ugrs-cell.move-source {
+      border-color: var(--amber) !important;
+      border-width: 2px;
+      border-style: dashed !important;
+      background: rgba(255,170,51,0.06);
+    }
+
     /* ========== MOK HUD MINI ========== */
     .mok-hud-mini {
       display: inline-block;
@@ -528,10 +723,11 @@
       image-rendering: optimizeQuality;
       -webkit-font-smoothing: antialiased;
       transition: opacity 220ms ease;
-      width: 80px; height: 32px;
+      width: 110px; height: 24px;
       vertical-align: middle;
+      overflow: hidden;
     }
-    .mok-svg { width: 100%; height: 100%; display: block; }
+    .mok-svg { width: 100%; height: 100%; display: block; overflow: visible; }
 
     /* Glyph animations by state */
     .mok-glyph { transform-origin: center; will-change: transform, opacity; }
@@ -578,9 +774,9 @@
       100% { opacity: 1; }
     }
     @keyframes mok-slide {
-      0% { transform: translateX(-80px); opacity: 0.06; }
-      50% { transform: translateX(40px); opacity: 0.10; }
-      100% { transform: translateX(220px); opacity: 0.06; }
+      0% { transform: translateX(-40px); opacity: 0.06; }
+      50% { transform: translateX(30px); opacity: 0.12; }
+      100% { transform: translateX(110px); opacity: 0.06; }
     }
     @media (prefers-reduced-motion: reduce) {
       .mok-glow-band, .mok-glyph, .mok-triangle-core { animation: none !important; }

@@ -507,6 +507,42 @@ export async function updateScenarioConfig(db: D1Database, scenarioId: number, c
     .run();
 }
 
+/**
+ * Publish scenario: deep-copy current `config` into `published_config`.
+ * Returns the published_at timestamp.
+ */
+export async function publishScenarioConfig(db: D1Database, scenarioId: number): Promise<number> {
+  const now = Date.now();
+  await db
+    .prepare('UPDATE scenarios SET published_config = config, published_at = ?, updated_at = ? WHERE id = ?')
+    .bind(now, now, scenarioId)
+    .run();
+  return now;
+}
+
+// --- Dispatch Audit ---
+
+export async function insertDispatchAudit(
+  db: D1Database,
+  scenarioId: number,
+  action: string,
+  actorId: number | null,
+  detail: object = {},
+): Promise<void> {
+  await db
+    .prepare('INSERT INTO dispatch_audit (scenario_id, action, actor_id, detail, created_at) VALUES (?, ?, ?, ?, ?)')
+    .bind(scenarioId, action, actorId, JSON.stringify(detail), Date.now())
+    .run();
+}
+
+export async function getDispatchAudit(db: D1Database, scenarioId: number, limit = 50): Promise<any[]> {
+  const result = await db
+    .prepare('SELECT * FROM dispatch_audit WHERE scenario_id = ? ORDER BY created_at DESC LIMIT ?')
+    .bind(scenarioId, limit)
+    .all();
+  return result.results;
+}
+
 // --- Geofence Zones (Phase 2) ---
 
 import type { GeofenceZoneRow, ActorGeofenceStateRow, PushSubscriptionRow } from '../../shared/types';

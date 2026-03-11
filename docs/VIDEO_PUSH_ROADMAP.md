@@ -6,51 +6,28 @@
 
 ---
 
-## Phase 0: Demo-Ready Minimum (Today)
+## Phase 0: Demo-Ready Minimum ✅ COMPLETE
 
-**Goal**: M can push a video that plays on a connected web client. Enough to demo the concept tomorrow with one device on the table.
+**Goal**: M can push a video that plays on a connected web client.
 
-**Time budget**: 4-5 hours
+### 0.1 — Video Serving Route ✅
+`GET /video/:filename` serves from R2 with video MIME map. Mounted in `index.ts`.
 
-### 0.1 — Video Serving Route
-**~30 min** · No dependencies
+### 0.2 — M Push Endpoint ✅
+`POST /api/m/scenario/video-push` validates R2 key, broadcasts `video_push` via ScenarioRoom WS, fires Web Push, inserts audit event.
 
-Add `GET /video/:filename` to serve from R2. Clone the pattern from `audio.ts` with a video MIME map (`video/mp4`, `video/webm`, `video/quicktime`). Mount at `/video` in `index.ts` with the same CORS treatment as `/audio`.
+### 0.3 — Debrief Video Player ✅
+Full `<video>` player with WS listener for `video_push`. Fullscreen overlay with title bar, auto-close on ended, error fallback. **Now also populates persistent INTEL FEED card in Ops dashboard** with inline player and replay/fullscreen buttons.
 
-Files: `src/worker/routes/video.ts` (new), `src/worker/index.ts`
-
-### 0.2 — M Push Endpoint
-**~1 hr** · Depends on 0.1
-
-`POST /api/m/scenario/video-push` behind `requireDirector`:
-- Body: `{ video_key: string, title?: string }`
-- Validates the key exists in R2 (`HEAD` check)
-- Broadcasts via ScenarioRoom: `{ type: 'video_push', data: { url: '/video/<key>', title } }`
-- Fires Web Push to all scenario push subscriptions
-- Inserts scenario event `type: 'video_push'` for audit trail
-
-Files: `src/worker/routes/m-mode.ts`
-
-### 0.3 — Debrief Video Player (Replace Stub)
-**~2 hr** · Depends on 0.1
-
-Replace `_renderVideo()` placeholder with a real `<video>` element. Wire a WebSocket listener for `type: 'video_push'` that calls `setVideoPlaying(true)` and injects the URL. On `ended` / `error` events, call `setVideoPlaying(false)`. The existing auto-maximize and 60s safety timeout do the rest.
-
-Files: `public/js/debrief-feed-controller.js`, WebSocket handler (wherever the client WS `onmessage` lives)
-
-### 0.4 — M Console Quick-Push Button
-**~1 hr** · Depends on 0.2
-
-Minimal UI in M console: a collapsible "Video Intel" section with a text input for the video filename (or a dropdown populated from `GET /api/audio/list?prefix=video/`) and a "PUSH TO OPS" button. No drag-and-drop upload needed — use the Sound Designer portal to pre-upload before the demo.
-
-Files: `public/m/index.html` or `public/m/app.js`
+### 0.4 — M Console Quick-Push Button ✅
+Video Intel section in M console with filename input (or dropdown from `GET /api/audio/list?prefix=video/`) and PUSH TO OPS button.
 
 ### Demo Prep Checklist
-- [ ] Pre-upload a short demo video via Sound Designer portal
-- [ ] Create a test scenario with at least one ops actor
-- [ ] Login as M on one device, ops on another
-- [ ] Trigger video push, confirm playback + auto-maximize
-- [ ] Verify telemetry still flows during/after video playback
+- [x] Pre-upload a short demo video via Sound Designer portal
+- [x] Create a test scenario with at least one ops actor
+- [x] Login as M on one device, ops on another
+- [x] Trigger video push, confirm playback + auto-maximize
+- [x] Verify telemetry still flows during/after video playback
 
 ---
 

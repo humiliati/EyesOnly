@@ -25,10 +25,10 @@ After login, the screen is divided into:
 
 ### Header Row
 - **M MODE** title (left)
-- **MOK HUD** -- the green triangle SVG indicator. States: idle (dim), monitoring (gentle pulse), advisory (flash), urgent (rapid flash), engaged (solid glow)
+- **MOK HUD** -- the green triangle SVG indicator (110×24px inline SVG). States: idle (dim), monitoring (gentle pulse), advisory (flash), urgent (rapid flash), engaged (solid glow). Includes animated glow band sweep and scanlines.
 - **Squelch Controls** (F/Q/T/S buttons): Full, Quiet (critical only), Tactical (actionable only), Silent (triangle flashes, no text)
 - **Scenario name**, your callsign, WebSocket status dot (green=live, red=offline)
-- **FREEZE GAME** button (red border)
+- **FREEZE GAME** button (red border) -- gains a red alarm badge when Ops raises alarms (see section 26: ALARM AD[M]IN System)
 - **SCENARIO DESIGNER** link (opens `/m/scenario-designer.html`)
 - **LOGOUT** button
 
@@ -414,11 +414,15 @@ View GPS locations from players (red team) who consented to location sharing:
 7. **Assign cells to lanes** (select lane, click START ASSIGNING, click cells)
 8. **Add actors** (callsign, team, password)
 9. **Generate join codes** for actor teams
-10. **Set up geofence zones** if using GPS triggers
-11. **Add scenario beats** if using proximity-unlocked story
-12. **Deploy actors** to cells
-13. **Inject events** to start the scenario
-14. **Monitor and direct** using pings, tension, escalation, and MOK
+10. **Set requirements** (min_red, min_blue in REQUIREMENTS section)
+11. **Publish map** (PUBLISH TO OPS -- creates frozen Ops snapshot)
+12. **Run readiness check** (RECHECK in READINESS & DISPATCH section)
+13. **Dispatch** (DISPATCH button -- gates on readiness, or FORCE DISPATCH)
+14. **Set up geofence zones** if using GPS triggers
+15. **Add scenario beats** if using proximity-unlocked story
+16. **Deploy actors** to cells
+17. **Inject events** to start the scenario
+18. **Monitor and direct** using pings, tension, escalation, and MOK
 
 ---
 
@@ -448,7 +452,115 @@ The green dot in the header confirms live WebSocket connection. Reconnects autom
 
 ---
 
-## 25. SCENARIO DESIGNER
+## 25. PUBLISH MAP (Draft vs. Live Pipeline)
+
+M assembles and iterates on the scenario map freely. Ops only sees the last "published" snapshot -- never M's in-progress edits.
+
+### How It Works
+- `config` = M's live working draft (what M edits in the console)
+- `published_config` = frozen snapshot that Ops reads from
+- `published_at` = timestamp of last publish
+
+### PUBLISH MAP Section
+In the Controls panel, the **PUBLISH MAP** section (styled as a `ctrl-box` bordered panel):
+1. Click **PUBLISH TO OPS** to snapshot the current working draft
+2. Server deep-copies `config` → `published_config`, sets timestamp
+3. Broadcasts `map_published` event to all connected clients via WebSocket
+4. Ops tactical map refreshes to show the new published state
+
+### Ghost Markers (Divergence Display)
+When M moves a node after publishing, the grid shows both positions:
+- **Solid icon** = current working draft position
+- **Dotted outline at 40% opacity** = last published position (the "ghost")
+
+Ghosts appear only when working state diverges from published state. After publishing, all ghosts clear because working = published.
+
+### Publish History & Rollback
+Click **PUBLISH HISTORY** below the publish button to expand a versioned snapshot list:
+- Each snapshot shows date, author, diff summary, and size
+- **ROLLBACK** — restores that snapshot as the Ops published map only (M's working draft stays unchanged)
+- **RESTORE** — restores that snapshot to BOTH Ops published map AND M's working draft (overwrites current work)
+- Snapshots are stored in R2 cloud storage and persist indefinitely
+
+---
+
+## 26. DRAG-MOVE NODES
+
+M can relocate scenario nodes across cells mid-game:
+
+1. Click a **node marker** on the UGRS grid
+2. The cursor changes to indicate "move mode"
+3. Click the **destination cell**
+4. The node relocates in the working draft immediately
+5. Server call `PATCH /api/m/map/scenario/node` persists the change
+6. A ghost marker remains at the published position until next publish
+
+---
+
+## 27. READINESS & DISPATCH
+
+Before deploying a scenario to Ops, M runs a pre-flight readiness check.
+
+### Requirements Section
+In the Controls panel, the **REQUIREMENTS** section lets M set minimum staffing:
+- **min_red** -- minimum red team actors needed
+- **min_blue** -- minimum blue team actors needed
+- Save button persists to `config.requirements`
+
+### Readiness Checks
+The **READINESS & DISPATCH** section shows a vertical checklist:
+- Each check shows ✓ (green, pass) or ✗ (red, fail) with detail text
+- Checks include: red actors, blue actors, staff actors, join codes, grid calibrated, map published, dead drops loaded
+- **RECHECK** button fetches latest readiness from `GET /api/m/scenario/:id/readiness`
+
+### Dispatch
+- **DISPATCH** button runs readiness checks server-side, then deploys
+- If checks fail: returns shortages; M can **FORCE DISPATCH** to override
+- On dispatch: scenario status → 'deployed', auto-publishes if needed, broadcasts `scenario_dispatched`
+- Creates an audit record in `dispatch_audit` table for post-game review
+
+### Dispatch Lifecycle
+```
+draft → staged → deployed → active → paused → completed → archived
+```
+
+### Audit Trail Viewer
+Click **AUDIT TRAIL** below the dispatch button to expand the audit log:
+- Shows all dispatch lifecycle events in reverse chronological order
+- Filter by action type (dispatch, dispatch_override, requirement_updated, freeze, etc.)
+- Each entry shows timestamp, action type (color-coded), actor callsign, and detail summary
+- **REFRESH** button reloads the log
+- Actions logged: dispatch, dispatch_override, requirement_updated, publish, status_change, freeze/unfreeze, node_moved
+- Used for post-game debrief and analysis
+
+---
+
+## 28. ALARM AD[M]IN SYSTEM (Ops → M Escalation)
+
+Ops field actors can raise alarms to M. This creates an escalation path from the field to the director.
+
+### How It Works
+1. An Ops actor presses **ALARM AD[M]IN** on their portal header
+2. Server increments `config.ops_alarm_count` and broadcasts `ops_alarm` via WebSocket
+3. M's **FREEZE GAME** button gains a red badge showing the alarm count
+4. MOK logs a critical alert for each alarm received
+5. **Auto-freeze at 3+ alarms**: If 3 or more alarms accumulate without M interaction, the game automatically freezes
+
+### M's Response
+- When M clicks the **FREEZE GAME** button while alarms are active:
+  1. Alarms are acknowledged and cleared (calls `POST /api/m/scenario/alarm-ack`)
+  2. Badge disappears, button glow stops
+  3. Freeze state toggles as normal
+- Alarm count persists in `config.ops_alarm_count` so it survives reconnects
+
+### Visual Indicators
+- Red badge with count on the freeze button
+- Red border glow animation (`alarm-btn-glow`) when alarms are active
+- Badge pulse animation on new alarm arrival
+
+---
+
+## 29. SCENARIO DESIGNER
 
 The Scenario Designer is an in-workspace authoring tool for building operations from narrative text.
 

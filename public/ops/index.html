@@ -101,6 +101,51 @@
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .btn.danger { border-color: var(--red); color: var(--red); }
     .btn.danger:active { background: var(--red); color: var(--bg); }
+    /* Touch-friendly minimums */
+    @media (pointer: coarse) {
+      .btn { min-height: 48px; }
+      .field input { min-height: 44px; font-size: 16px; }
+    }
+
+    /* --- Alarm Button --- */
+    .alarm-btn {
+      background: none;
+      border: 1px solid var(--red);
+      color: var(--red);
+      font-family: var(--font);
+      font-size: 9px;
+      padding: 3px 10px;
+      cursor: pointer;
+      border-radius: 3px;
+      letter-spacing: 1.5px;
+      position: relative;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .alarm-btn:hover { background: rgba(255,51,51,0.1); }
+    .alarm-btn:active { background: var(--red); color: var(--bg); }
+    .alarm-btn.sent {
+      border-color: var(--amber);
+      color: var(--amber);
+      animation: alarm-pulse 1.2s ease-in-out 2;
+    }
+    .alarm-btn .alarm-count {
+      display: inline-block;
+      background: var(--red);
+      color: var(--bg);
+      font-size: 8px;
+      min-width: 14px;
+      height: 14px;
+      line-height: 14px;
+      text-align: center;
+      border-radius: 7px;
+      margin-left: 4px;
+      font-weight: bold;
+    }
+    @keyframes alarm-pulse {
+      0% { box-shadow: 0 0 0 0 rgba(255,51,51,0.5); }
+      50% { box-shadow: 0 0 10px 3px rgba(255,51,51,0.3); }
+      100% { box-shadow: 0 0 0 0 rgba(255,51,51,0); }
+    }
 
     /* --- Dashboard --- */
     .card {
@@ -156,6 +201,13 @@
     .loading { text-align: center; padding: 40px; color: var(--text-dim); }
     .blink { animation: blink 1s step-end infinite; }
     @keyframes blink { 50% { opacity: 0; } }
+
+    /* ========== INTEL FEED ========== */
+    #ops-intel-feed {
+      transition: box-shadow 0.5s ease, border-color 0.3s;
+    }
+    #ops-intel-feed h2 { margin: 0; }
+    #intel-feed-content video { border-radius: 4px; }
 
     /* ========== M PING DIRECTIVES ========== */
     .ping-flash {
