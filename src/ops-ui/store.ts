@@ -64,6 +64,9 @@ let state: AppState = {
 };
 
 let ws: WebSocket | null = null;
+let wsRetryCount = 0;
+const WS_MAX_RETRIES = 5;
+const WS_BASE_DELAY = 2000; // 2s, then 4s, 8s, 16s, 32s
 
 // --- Store API ---
 
@@ -318,13 +321,13 @@ export async function reportDeadDrop(laneId: string, action: 'place' | 'retrieve
 function connectWS(): void {
   if (!state.token || ws) return;
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const url = `${proto}//${location.host}/api/ops/ws`;
+  const url = `${proto}//${location.host}/api/ops/ws?token=${encodeURIComponent(state.token)}`;
 
   try {
     ws = new WebSocket(url);
 
     ws.onopen = () => {
-      // Auth is handled by the Worker via query params routed from the DO
+      wsRetryCount = 0; // reset on successful connection
       setState({ wsConnected: true });
     };
 
@@ -344,8 +347,15 @@ function connectWS(): void {
     ws.onclose = () => {
       setState({ wsConnected: false });
       ws = null;
-      // Reconnect after 3s
-      setTimeout(() => { if (state.token) connectWS(); }, 3000);
+      if (state.token && wsRetryCount < WS_MAX_RETRIES) {
+        const delay = WS_BASE_DELAY * Math.pow(2, wsRetryCount);
+        wsRetryCount++;
+        console.log(`[OPS WS] Reconnecting in ${delay}ms (attempt ${wsRetryCount}/${WS_MAX_RETRIES})`);
+        setTimeout(() => connectWS(), delay);
+      } else if (wsRetryCount >= WS_MAX_RETRIES) {
+        console.warn('[OPS WS] Max retries reached. Use dashboard to reconnect.');
+        setState({ error: 'WebSocket disconnected. Refresh to reconnect.' });
+      }
     };
 
     ws.onerror = () => { ws?.close(); };

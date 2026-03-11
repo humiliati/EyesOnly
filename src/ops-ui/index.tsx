@@ -396,11 +396,16 @@ function showOpsFrozen(frozen: boolean) {
 }
 
 // --- Ops WebSocket ---
+let opsWsRetryCount = 0;
+const OPS_WS_MAX_RETRIES = 5;
+const OPS_WS_BASE_DELAY = 2000;
+
 function connectOpsWS(session: OpsSession, container: HTMLElement) {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   try {
-    const ws = new WebSocket(`${proto}//${location.host}/api/ops/ws?token=${session.token}`);
+    const ws = new WebSocket(`${proto}//${location.host}/api/ops/ws?token=${encodeURIComponent(session.token)}`);
     ws.onopen = () => {
+      opsWsRetryCount = 0; // reset on successful connection
       const badge = document.getElementById('ops-status-badge');
       if (badge) badge.style.borderColor = 'var(--accent)';
     };
@@ -440,7 +445,14 @@ function connectOpsWS(session: OpsSession, container: HTMLElement) {
     ws.onclose = () => {
       const badge = document.getElementById('ops-status-badge');
       if (badge) badge.style.borderColor = 'var(--red)';
-      setTimeout(() => connectOpsWS(session, container), 3000);
+      if (opsWsRetryCount < OPS_WS_MAX_RETRIES) {
+        const delay = OPS_WS_BASE_DELAY * Math.pow(2, opsWsRetryCount);
+        opsWsRetryCount++;
+        console.log(`[OPS WS] Reconnecting in ${delay}ms (attempt ${opsWsRetryCount}/${OPS_WS_MAX_RETRIES})`);
+        setTimeout(() => connectOpsWS(session, container), delay);
+      } else {
+        console.warn('[OPS WS] Max retries reached. Refresh to reconnect.');
+      }
     };
     ws.onerror = () => ws.close();
   } catch {}
