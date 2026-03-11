@@ -85,7 +85,7 @@
   document.addEventListener('keydown', function (e) {
     var line = document.getElementById('input-line');
     if (!line || line.style.display === 'none') return;
-    if (e.key.length === 1 || e.key === 'Backspace') {
+    if (e.key && (e.key.length === 1 || e.key === 'Backspace')) {
       markTyping();
     }
   });

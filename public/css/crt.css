@@ -3183,7 +3183,9 @@ body.in-gone-rogue #log-column {
   color: var(--phosphor-dim);
 }
 
-.form-field input {
+.form-field input,
+.form-field select,
+.auth-select {
   background: rgba(8, 24, 12, 0.85);
   border: 1px solid var(--panel-border);
   border-radius: 4px;
@@ -3192,9 +3194,30 @@ body.in-gone-rogue #log-column {
   font-family: 'Courier New', monospace;
   font-size: 1em;
   transition: all 150ms ease;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
-.form-field input:focus {
+/* Dropdown arrow for selects */
+.form-field select,
+.auth-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2333ff33'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+  cursor: pointer;
+}
+
+.form-field select option,
+.auth-select option {
+  background: #0a180e;
+  color: var(--phosphor);
+  font-family: 'Courier New', monospace;
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.auth-select:focus {
   outline: none;
   border-color: var(--phosphor);
   box-shadow: 0 0 8px rgba(51, 255, 51, 0.3);
