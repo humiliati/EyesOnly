@@ -120,15 +120,13 @@ app.all('*', async (c) => {
   }
 });
 
-export default app;
-
 // ============================================================
 // SCHEDULED HANDLER — Deadman Check (runs every 5 minutes)
 // Fires an 'actor_deadman' event for every active actor that
 // has not sent telemetry in the last 5 minutes.
 // ============================================================
 
-export async function scheduled(
+async function scheduledHandler(
   _event: ScheduledEvent,
   env: Env,
   _ctx: ExecutionContext,
@@ -191,3 +189,8 @@ export async function scheduled(
     console.error('[deadman] scheduled handler error:', err);
   }
 }
+
+export default {
+  fetch: app.fetch,
+  scheduled: scheduledHandler,
+};

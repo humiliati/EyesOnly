@@ -726,20 +726,31 @@ opsRoutes.get('/nfc-drop', async (c) => {
  * Upgrade to WebSocket via ScenarioRoom Durable Object.
  */
 opsRoutes.get('/ws', async (c) => {
-  const auth = c.get('auth');
-  const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
-  const room = c.env.SCENARIO_ROOM.get(roomId);
+  try {
+    console.log('[OPS WS] Upgrade request received');
+    const auth = c.get('auth');
+    console.log('[OPS WS] Auth:', JSON.stringify({ actor_id: auth.actor_id, callsign: auth.callsign, role: auth.role, scenario_id: auth.scenario_id }));
 
-  // Forward the WebSocket upgrade request to the Durable Object
-  const url = new URL(c.req.url);
-  url.pathname = '/ws';
-  url.searchParams.set('actor_id', String(auth.actor_id));
-  url.searchParams.set('callsign', auth.callsign);
-  url.searchParams.set('role', auth.role);
+    const roomId = c.env.SCENARIO_ROOM.idFromName(`scenario-${auth.scenario_id}`);
+    const room = c.env.SCENARIO_ROOM.get(roomId);
 
-  return room.fetch(new Request(url.toString(), {
-    headers: c.req.raw.headers,
-  }));
+    // Forward the WebSocket upgrade request to the Durable Object
+    const url = new URL(c.req.url);
+    url.pathname = '/ws';
+    url.searchParams.set('actor_id', String(auth.actor_id));
+    url.searchParams.set('callsign', auth.callsign);
+    url.searchParams.set('role', auth.role);
+
+    console.log('[OPS WS] Forwarding to DO:', url.pathname);
+    const resp = await room.fetch(new Request(url.toString(), {
+      headers: c.req.raw.headers,
+    }));
+    console.log('[OPS WS] DO response status:', resp.status);
+    return resp;
+  } catch (err) {
+    console.error('[OPS WS] Error:', err);
+    return c.json({ error: 'WS_UPGRADE_FAILED', message: String(err) }, 500);
+  }
 });
 
 // ── Phase 3: Microchat ────────────────────────────────────────────
