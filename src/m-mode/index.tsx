@@ -54,9 +54,9 @@ function LoginScreen() {
       <form class="login-box" onSubmit={handleLogin}>
         <h1>M MODE</h1>
         <div class="sub">DIRECTOR CONSOLE — CLASSIFIED ACCESS</div>
-        <input type="text" value={callsign} onInput={(e) => setCallsign((e.target as HTMLInputElement).value)} placeholder="CALLSIGN" />
-        <input type="password" value={password} onInput={(e) => setPassword((e.target as HTMLInputElement).value)} placeholder="PASSWORD" />
-        <input type="text" value={scenarioId} onInput={(e) => setScenarioId((e.target as HTMLInputElement).value)} placeholder="SCENARIO ID" />
+        <input type="text" value={callsign} onInput={(e) => setCallsign((e.target as HTMLInputElement).value)} placeholder="CALLSIGN" inputMode="text" autoComplete="username" autoCorrect="off" autoCapitalize="characters" spellCheck={false} />
+        <input type="password" value={password} onInput={(e) => setPassword((e.target as HTMLInputElement).value)} placeholder="PASSWORD" autoComplete="current-password" />
+        <input type="text" value={scenarioId} onInput={(e) => setScenarioId((e.target as HTMLInputElement).value)} placeholder="SCENARIO ID" inputMode="numeric" pattern="[0-9]*" autoComplete="off" />
         {s.error && <div class="error">{s.error}</div>}
         <button type="submit" class="ctrl-btn" style={{ width: '240px', padding: '8px' }} disabled={s.loading}>{s.loading ? 'AUTHENTICATING...' : 'AUTHENTICATE'}</button>
       </form>

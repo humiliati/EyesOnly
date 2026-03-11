@@ -859,6 +859,50 @@ body.in-gone-rogue .debrief-window.expanded {
   border-color: rgba(51, 255, 51, 0.5);
 }
 
+/* ── Portal Rows (ACTORS / ADMIN) ─────────────────────────── */
+.awol-portal-divider {
+  height: 1px;
+  background: rgba(51, 255, 51, 0.15);
+  margin: 2px 0;
+}
+
+.awol-portal-row {
+  cursor: pointer;
+  min-height: 44px;
+  gap: 10px;
+}
+
+.awol-portal-row:hover {
+  background: rgba(51, 255, 51, 0.08);
+}
+
+.awol-portal-row:active {
+  background: rgba(51, 255, 51, 0.15);
+}
+
+.awol-portal-icon {
+  width: 20px;
+  text-align: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.awol-portal-label {
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--phosphor);
+}
+
+.awol-portal-desc {
+  margin-left: auto;
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
 /* ── Tier Rows ─────────────────────────────────────────────── */
 .awol-tier-row {
   cursor: pointer;

@@ -291,9 +291,15 @@
       color: var(--text); font-family: var(--font); font-size: 14px;
       padding: 8px 12px; border-radius: var(--radius); outline: none;
       width: 240px; text-align: center;
+      min-height: 44px;
     }
     .login-box input:focus { border-color: var(--accent); }
     .login-box .error { color: var(--red); font-size: 11px; }
+    /* Touch-friendly login on mobile */
+    @media (pointer: coarse) {
+      .login-box input { min-height: 48px; font-size: 16px; width: 280px; }
+      .login-box button[type="submit"] { min-height: 48px; }
+    }
 
     /* --- Scrollbar --- */
     ::-webkit-scrollbar { width: 4px; }
