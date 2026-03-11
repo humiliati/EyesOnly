@@ -103,8 +103,35 @@ interface Session { token: string; callsign: string; scenarioId: number; }
 interface GridCell { cell_id: string; col: number; row: number; lane_id: string | null; status: string; tension: number; notes: string; actors: any[]; dead_drops: any[]; }
 interface GridData { config: any; cells: GridCell[]; frozen: boolean; unassigned_actors: any[]; }
 
+// --- Scenario Node Types ---
+interface ScenarioNode {
+  id: string;
+  type: 'waypoint' | 'objective' | 'trigger' | 'spawn' | 'hazard' | 'intel-drop';
+  cell_id: string;
+  label: string;
+  config?: Record<string, unknown>;
+  status?: 'pending' | 'active' | 'completed' | 'failed';
+}
+interface ScenarioConnection {
+  from: string;
+  to: string;
+  type?: 'sequential' | 'conditional';
+}
+
+const NODE_ICONS: Record<string, string> = {
+  waypoint: '&#9733;',    // ★
+  objective: '&#9873;',   // ⚑
+  trigger: '&#9889;',     // ⚡
+  spawn: '&#9679;',       // ●
+  hazard: '&#9888;',      // ⚠
+  'intel-drop': '&#9830;' // ♦
+};
+const NODE_COLORS: Record<string, string> = {
+  pending: '#555', active: '#33ff33', completed: '#3399ff', failed: '#ff3333'
+};
+
 // --- Panel State Machine ---
-type PanelMode = 'overview' | 'cell' | 'actor' | 'assign_lane' | 'move_actor';
+type PanelMode = 'overview' | 'cell' | 'actor' | 'assign_lane' | 'move_actor' | 'scenario';
 let panelMode: PanelMode = 'overview';
 let selectedCellId: string | null = null;
 let selectedActorId: number | null = null;
@@ -112,6 +139,8 @@ let selectedLaneId: string | null = null;
 let moveActorId: number | null = null;
 let cachedGridData: GridData | null = null;
 let cachedSession: Session | null = null;
+let cachedScenarioNodes: ScenarioNode[] = [];
+let cachedScenarioConnections: ScenarioConnection[] = [];
 let isFrozen = false;
 
 // --- MOK Visual State ---
@@ -442,7 +471,10 @@ function initMapGrid(session: Session) {
     </div>
   `;
 
-  // Drop zone for map images
+  // Try to load map from R2 (overrides localStorage if available)
+  loadMapFromR2(session);
+
+  // Drop zone for map images — upload to R2
   gridBody.addEventListener('dragover', (e) => { e.preventDefault(); gridBody.classList.add('dragover'); });
   gridBody.addEventListener('dragleave', () => gridBody.classList.remove('dragover'));
   gridBody.addEventListener('drop', (e) => {
@@ -450,15 +482,57 @@ function initMapGrid(session: Session) {
     gridBody.classList.remove('dragover');
     const file = e.dataTransfer?.files?.[0];
     if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result as string;
-        localStorage.setItem(MAP_KEY, dataUrl);
-        setMapImage(dataUrl);
-      };
-      reader.readAsDataURL(file);
+      uploadMapToR2(file, session);
     }
   });
+}
+
+/** Upload a map image to R2 via the map-upload API, then display it. */
+async function uploadMapToR2(file: File, session: Session) {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/m/map/upload', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${session.token}` },
+      body: formData,
+    });
+    if (!res.ok) {
+      console.error('[MMODE] Map upload failed:', await res.text());
+      // Fallback: store in localStorage
+      const reader = new FileReader();
+      reader.onload = () => { const url = reader.result as string; localStorage.setItem(MAP_KEY, url); setMapImage(url); };
+      reader.readAsDataURL(file);
+      return;
+    }
+    const data = await res.json() as { ok: boolean; url: string; map_key: string };
+    console.log('[MMODE] Map uploaded to R2:', data.url);
+    // Cache the R2 URL locally for quick re-renders
+    localStorage.setItem(MAP_KEY, data.url);
+    setMapImage(data.url);
+  } catch (err) {
+    console.error('[MMODE] Map upload error:', err);
+    // Fallback: store in localStorage as data URL
+    const reader = new FileReader();
+    reader.onload = () => { const url = reader.result as string; localStorage.setItem(MAP_KEY, url); setMapImage(url); };
+    reader.readAsDataURL(file);
+  }
+}
+
+/** Load map URL from R2 via GET /api/m/map/:scenarioId */
+async function loadMapFromR2(session: Session) {
+  try {
+    const res = await mFetch(`/m/map/${session.scenarioId}`, session);
+    if (!res.ok) return;
+    const data = await res.json() as { map_url: string | null; grid?: any; nodes?: any };
+    if (data.map_url) {
+      console.log('[MMODE] Map loaded from R2:', data.map_url);
+      localStorage.setItem(MAP_KEY, data.map_url);
+      setMapImage(data.map_url);
+    }
+  } catch (err) {
+    console.log('[MMODE] Could not load map from R2, using localStorage fallback');
+  }
 }
 
 function setMapImage(dataUrl: string) {
@@ -543,6 +617,18 @@ function renderUGRSGrid(data: GridData) {
         dropsHtml = cell.dead_drops.map((d: any) => `<span class="drop-marker" title="${d.label}">&#9670;</span>`).join('');
       }
 
+      // Scenario node markers
+      const cellNodes = cachedScenarioNodes.filter((n) => n.cell_id === cellId);
+      let nodesHtml = '';
+      if (cellNodes.length) {
+        nodesHtml = cellNodes.map((n) => {
+          const icon = NODE_ICONS[n.type] || '&#9679;';
+          const color = NODE_COLORS[n.status || 'pending'];
+          return `<span class="scenario-node-marker" data-node-id="${n.id}" title="${n.type}: ${n.label} [${n.status || 'pending'}]" style="display:inline-block;font-size:10px;color:${color};margin:1px;cursor:pointer;">${icon}</span>`;
+        }).join('');
+        classes += ' has-nodes';
+      }
+
       // Tension bar
       let tensionHtml = '';
       if (cell.tension > 0) {
@@ -556,7 +642,7 @@ function renderUGRSGrid(data: GridData) {
       html += `<div class="${classes}" data-cell="${cell.cell_id}">
         <span class="ugrs-label">${cell.cell_id}</span>
         ${laneTag}
-        <div class="ugrs-cell-content">${actorsHtml}${dropsHtml}</div>
+        <div class="ugrs-cell-content">${actorsHtml}${dropsHtml}${nodesHtml}</div>
         ${tensionHtml}
       </div>`;
     }
@@ -616,6 +702,9 @@ function renderUGRSGrid(data: GridData) {
       panelMode = 'cell';
       refreshGridSelection();
       renderRightPanel(cachedSession!);
+      // Pre-fill node placement cell field
+      const nodeCellInput = document.getElementById('ctrl-node-cell') as HTMLInputElement | null;
+      if (nodeCellInput) nodeCellInput.value = cellId;
     });
 
     // Actor badge click within cell
@@ -639,10 +728,28 @@ function refreshGridSelection() {
   }
 }
 
+// --- Load Scenario Nodes from API ---
+async function loadScenarioNodes(session: Session) {
+  try {
+    const res = await mFetch(`/m/map/scenario/nodes/${session.scenarioId}`, session);
+    if (!res.ok) { cachedScenarioNodes = []; cachedScenarioConnections = []; return; }
+    const data = await res.json() as { nodes: ScenarioNode[]; connections: ScenarioConnection[] };
+    cachedScenarioNodes = data.nodes || [];
+    cachedScenarioConnections = data.connections || [];
+  } catch {
+    cachedScenarioNodes = [];
+    cachedScenarioConnections = [];
+  }
+}
+
 // --- Load Grid Cells from API ---
 async function loadGridCells(session: Session) {
   try {
-    const res = await mFetch(`/m/grid/${session.scenarioId}/cells`, session);
+    // Load grid cells and scenario nodes in parallel
+    const [res] = await Promise.all([
+      mFetch(`/m/grid/${session.scenarioId}/cells`, session),
+      loadScenarioNodes(session),
+    ]);
     if (!res.ok) {
       // Fallback: try old endpoint if UGRS grid not yet calibrated
       await loadLegacyGrid(session);
@@ -1249,6 +1356,29 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
         <button class="ctrl-btn" id="ctrl-map-upload">UPLOAD MAP IMAGE</button>
       </div>
       <div class="ctrl-section">
+        <h3>SCENARIO NODES</h3>
+        <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Place tactical nodes on UGRS cells.</div>
+        <div class="ctrl-field"><label>CELL</label><input type="text" id="ctrl-node-cell" placeholder="C4" style="text-transform:uppercase;" /></div>
+        <div class="ctrl-field"><label>TYPE</label>
+          <select id="ctrl-node-type">
+            <option value="waypoint">★ WAYPOINT</option>
+            <option value="objective">⚑ OBJECTIVE</option>
+            <option value="trigger">⚡ TRIGGER</option>
+            <option value="spawn">● SPAWN</option>
+            <option value="hazard">⚠ HAZARD</option>
+            <option value="intel-drop">♦ INTEL DROP</option>
+          </select>
+        </div>
+        <div class="ctrl-field"><label>LABEL</label><input type="text" id="ctrl-node-label" placeholder="Rally Point Alpha" /></div>
+        <button class="ctrl-btn amber" id="ctrl-add-node">PLACE NODE</button>
+        <div id="ctrl-node-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
+        <div style="margin-top:4px;">
+          <span style="font-size:8px;color:var(--text-dim);letter-spacing:1px;">PLACED: </span>
+          <span id="ctrl-node-count" style="font-size:9px;">0</span>
+          <button class="ctrl-btn" id="ctrl-save-nodes" style="margin-top:4px;">SAVE SCENARIO GRAPH</button>
+        </div>
+      </div>
+      <div class="ctrl-section">
         <h3>CALIBRATE GRID</h3>
         <div class="ctrl-row">
           <div class="ctrl-field"><label>COLS</label><input type="number" id="ctrl-cal-cols" value="6" min="1" max="26" /></div>
@@ -1431,16 +1561,64 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
   // Phase 3: Decoy ping
   document.getElementById('ctrl-send-decoy')?.addEventListener('click', () => sendDecoyPing(session));
 
-  // Map upload
+  // Map upload — to R2
   document.getElementById('ctrl-map-upload')!.addEventListener('click', () => document.getElementById('ctrl-map-file')!.click());
   document.getElementById('ctrl-map-file')!.addEventListener('change', (e) => {
     const file = (e.target as HTMLInputElement).files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = () => { const url = reader.result as string; localStorage.setItem(MAP_KEY, url); setMapImage(url); };
-      reader.readAsDataURL(file);
+      uploadMapToR2(file, session);
     }
   });
+
+  // Scenario node: place node
+  document.getElementById('ctrl-add-node')?.addEventListener('click', () => {
+    const cellId = (document.getElementById('ctrl-node-cell') as HTMLInputElement).value.toUpperCase().trim();
+    const nodeType = (document.getElementById('ctrl-node-type') as HTMLSelectElement).value;
+    const label = (document.getElementById('ctrl-node-label') as HTMLInputElement).value.trim();
+    const resultEl = document.getElementById('ctrl-node-result')!;
+    if (!cellId || !label) { resultEl.textContent = 'Cell and label required'; return; }
+
+    const nodeId = `node-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    cachedScenarioNodes.push({ id: nodeId, type: nodeType as ScenarioNode['type'], cell_id: cellId, label, status: 'pending' });
+    resultEl.style.color = 'var(--accent)';
+    resultEl.textContent = `Placed ${nodeType} at ${cellId}`;
+    document.getElementById('ctrl-node-count')!.textContent = String(cachedScenarioNodes.length);
+    (document.getElementById('ctrl-node-cell') as HTMLInputElement).value = '';
+    (document.getElementById('ctrl-node-label') as HTMLInputElement).value = '';
+
+    // Re-render grid to show new node
+    if (cachedGridData) renderUGRSGrid(cachedGridData);
+  });
+
+  // Scenario node: save graph to API
+  document.getElementById('ctrl-save-nodes')?.addEventListener('click', async () => {
+    const btn = document.getElementById('ctrl-save-nodes') as HTMLButtonElement;
+    btn.textContent = 'SAVING...'; btn.disabled = true;
+    try {
+      const res = await mFetch('/m/map/scenario/nodes', session, {
+        method: 'POST',
+        body: JSON.stringify({
+          scenario_id: session.scenarioId,
+          nodes: cachedScenarioNodes,
+          connections: cachedScenarioConnections,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json() as any;
+        const resultEl = document.getElementById('ctrl-node-result')!;
+        resultEl.style.color = 'var(--accent)';
+        resultEl.textContent = `Saved ${data.node_count} nodes, ${data.connection_count} connections`;
+      }
+    } catch (err) {
+      const resultEl = document.getElementById('ctrl-node-result')!;
+      resultEl.style.color = 'var(--red)';
+      resultEl.textContent = 'Save failed';
+    }
+    btn.textContent = 'SAVE SCENARIO GRAPH'; btn.disabled = false;
+  });
+
+  // Update node count on initial load
+  document.getElementById('ctrl-node-count')!.textContent = String(cachedScenarioNodes.length);
 
   // Calibrate
   document.getElementById('ctrl-calibrate')!.addEventListener('click', async () => {
@@ -1631,6 +1809,28 @@ function renderCellPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLEleme
           ${cell.dead_drops.map((d: any) => `<div style="font-size:9px;"><span class="drop-marker">&#9670;</span> ${d.label} (${d.status})</div>`).join('')}
         </div>
       </div>` : ''}
+      ${(() => {
+        const cellNodes = cachedScenarioNodes.filter((n) => n.cell_id === selectedCellId);
+        if (!cellNodes.length) return '';
+        return `<div class="ctrl-section">
+          <div class="ctx-subtitle">SCENARIO NODES</div>
+          <div style="padding:2px 8px;">
+            ${cellNodes.map((n) => {
+              const icon = NODE_ICONS[n.type] || '●';
+              const color = NODE_COLORS[n.status || 'pending'];
+              return `<div style="font-size:9px;padding:2px 0;display:flex;justify-content:space-between;align-items:center;" data-node-panel-id="${n.id}">
+                <span style="color:${color}">${icon} ${n.label} <span style="font-size:7px;opacity:0.6;">[${n.type}]</span></span>
+                <select class="node-status-select" data-node-id="${n.id}" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:8px;padding:1px 3px;border-radius:2px;">
+                  <option value="pending" ${n.status === 'pending' ? 'selected' : ''}>PENDING</option>
+                  <option value="active" ${n.status === 'active' ? 'selected' : ''}>ACTIVE</option>
+                  <option value="completed" ${n.status === 'completed' ? 'selected' : ''}>COMPLETED</option>
+                  <option value="failed" ${n.status === 'failed' ? 'selected' : ''}>FAILED</option>
+                </select>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+      })()}
       <div class="ctrl-section">
         <div class="ctx-subtitle">NOTES</div>
         <div style="padding:2px 8px;">
@@ -1655,6 +1855,26 @@ function renderCellPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLEleme
   document.getElementById('ctx-back')!.addEventListener('click', () => {
     panelMode = 'overview'; selectedCellId = null;
     refreshGridSelection(); renderRightPanel(session);
+  });
+
+  // Node status changes
+  ctrl.querySelectorAll('.node-status-select[data-node-id]').forEach((sel) => {
+    sel.addEventListener('change', async () => {
+      const nodeId = (sel as HTMLSelectElement).dataset.nodeId!;
+      const newStatus = (sel as HTMLSelectElement).value;
+      // Update local cache
+      const node = cachedScenarioNodes.find((n) => n.id === nodeId);
+      if (node) node.status = newStatus as ScenarioNode['status'];
+      // Persist via PATCH
+      try {
+        await mFetch('/m/map/scenario/node', session, {
+          method: 'PATCH',
+          body: JSON.stringify({ scenario_id: session.scenarioId, node_id: nodeId, status: newStatus }),
+        });
+      } catch {}
+      // Re-render grid to update node colors
+      if (cachedGridData) renderUGRSGrid(cachedGridData);
+    });
   });
 
   // Actor clicks

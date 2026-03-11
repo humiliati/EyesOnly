@@ -235,6 +235,12 @@ function renderOpsDashboard(container: HTMLElement, session: OpsSession) {
         <div class="field"><label>MESSAGE</label><input type="text" id="ops-checkin-msg" placeholder="Status update" /></div>
         <button class="btn" id="ops-checkin-btn" style="margin-top:8px;">CHECK IN</button>
       </div>
+      <div class="card">
+        <h2>TACTICAL MAP</h2>
+        <div id="ops-map-grid" style="min-height:200px;overflow:auto;position:relative;">
+          <div style="color:var(--text-dim);font-size:12px;">Loading map...</div>
+        </div>
+      </div>
       <button class="btn danger" id="ops-disconnect" style="margin-top:auto;">DISCONNECT</button>
     </div>
   `;
@@ -263,6 +269,10 @@ function renderOpsDashboard(container: HTMLElement, session: OpsSession) {
     container.innerHTML = '';
     renderOpsJoin(container);
   });
+
+  // Load tactical map
+  loadOpsMap(session);
+  setInterval(() => loadOpsMap(session), 15000);
 
   // Connect WebSocket for real-time pings
   connectOpsWS(session, container);
@@ -636,4 +646,107 @@ async function loadOpsEvents(session: OpsSession) {
       return `<div style="padding:3px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="color:var(--text-dim);font-size:10px;">${ts}</span> <strong>${ev.event_type}</strong></div>`;
     }).join('');
   } catch {}
+}
+
+const MAP_NODE_ICONS: Record<string, string> = {
+  waypoint: '&#9733;', objective: '&#9873;', trigger: '&#9889;',
+  spawn: '&#9679;', hazard: '&#9888;', 'intel-drop': '&#9830;'
+};
+const MAP_NODE_COLORS: Record<string, string> = {
+  pending: '#555', active: '#33ff33', completed: '#3399ff', failed: '#ff3333'
+};
+const MAP_STATUS_BG: Record<string, string> = {
+  working: 'rgba(51,255,51,0.06)', degraded: 'rgba(255,170,51,0.10)',
+  compromised: 'rgba(255,51,51,0.10)', offline: 'rgba(100,100,100,0.08)',
+  unknown: 'rgba(0,0,0,0.2)',
+};
+const MAP_STATUS_BORDER: Record<string, string> = {
+  working: 'rgba(51,255,51,0.25)', degraded: 'rgba(255,170,51,0.35)',
+  compromised: 'rgba(255,51,51,0.35)', offline: 'rgba(100,100,100,0.3)',
+  unknown: 'rgba(40,40,40,0.5)',
+};
+
+async function loadOpsMap(session: OpsSession) {
+  try {
+    const res = await opsFetch('/ops/map', session);
+    if (!res.ok) {
+      const el = document.getElementById('ops-map-grid');
+      if (el) el.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">Map unavailable.</div>';
+      return;
+    }
+    const data = await res.json() as any;
+    const el = document.getElementById('ops-map-grid');
+    if (!el) return;
+
+    const grid = data.grid;
+    if (!grid || !data.cells?.length) {
+      el.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">No grid configured — awaiting M.</div>';
+      return;
+    }
+
+    const cols = grid.cols;
+    const rows = grid.rows;
+    const colLabels = grid.col_labels || [];
+    const rowLabels = grid.row_labels || [];
+    const cells = data.cells || [];
+    const nodes = data.nodes || [];
+
+    let html = '';
+
+    // Map image background
+    if (data.map_url) {
+      html += `<img src="${data.map_url}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0.2;pointer-events:none;" />`;
+    }
+
+    html += `<div style="display:grid;grid-template-columns:20px repeat(${cols},1fr);grid-template-rows:16px repeat(${rows},1fr);gap:1px;padding:2px;position:relative;z-index:1;min-height:250px;">`;
+
+    // Corner
+    html += '<div></div>';
+
+    // Col headers
+    for (let c = 0; c < cols; c++) {
+      html += `<div style="font-size:7px;color:#555;text-align:center;">${colLabels[c] || String.fromCharCode(65 + c)}</div>`;
+    }
+
+    // Rows
+    for (let r = 0; r < rows; r++) {
+      const rl = rowLabels[r] || String(r + 1);
+      html += `<div style="font-size:7px;color:#555;display:flex;align-items:center;justify-content:center;">${rl}</div>`;
+      for (let c = 0; c < cols; c++) {
+        const cl = colLabels[c] || String.fromCharCode(65 + c);
+        const cellId = `${cl}${rl}`;
+        const cell = cells.find((x: any) => x.cell_id === cellId);
+        const st = cell?.status || 'unknown';
+        const cellNodes = nodes.filter((n: any) => n.cell_id === cellId);
+        const tension = cell?.tension || 0;
+
+        const bg = MAP_STATUS_BG[st] || MAP_STATUS_BG.unknown;
+        const border = MAP_STATUS_BORDER[st] || MAP_STATUS_BORDER.unknown;
+        const borderStyle = cellNodes.length ? 'dashed' : 'solid';
+
+        let nodesHtml = cellNodes.map((n: any) => {
+          const icon = MAP_NODE_ICONS[n.type] || '&#9679;';
+          const color = MAP_NODE_COLORS[n.status] || '#555';
+          return `<span title="${n.type}: ${n.label} [${n.status}]" style="font-size:9px;color:${color};margin:1px;">${icon}</span>`;
+        }).join('');
+
+        let tensionBar = '';
+        if (tension > 0) {
+          const tCol = tension < 40 ? '#33ff33' : tension < 70 ? '#ffaa33' : '#ff3333';
+          tensionBar = `<div style="position:absolute;bottom:0;left:0;height:2px;width:${tension}%;background:${tCol};"></div>`;
+        }
+
+        html += `<div style="position:relative;border:1px ${borderStyle} ${border};background:${bg};padding:2px;min-height:30px;overflow:hidden;">
+          <span style="font-size:6px;color:#444;position:absolute;top:0;left:2px;">${cellId}</span>
+          <div style="margin-top:8px;">${nodesHtml}</div>
+          ${tensionBar}
+        </div>`;
+      }
+    }
+
+    html += '</div>';
+    el.innerHTML = html;
+  } catch (err) {
+    console.error('[OPS] Map load error:', err);
+  }
 }

@@ -25,6 +25,7 @@ import {
   listDeadDrops,
   getActor,
   getGridCell,
+  getGridCells,
   listActiveGeofenceZones,
   getActorGeofenceState,
   upsertActorGeofenceState,
@@ -718,6 +719,57 @@ opsRoutes.get('/nfc-drop', async (c) => {
     lat:         match.lat,
     lng:         match.lng,
     message:     `Dead drop "${match.label}" found. Tap RETRIEVE to confirm.`,
+  });
+});
+
+/**
+ * GET /api/ops/map
+ * Shared tactical map for ops: grid config, cell states, scenario nodes (read-only).
+ * Visibility: ops (blue) sees all cell states + nodes. Red team positions filtered.
+ */
+opsRoutes.get('/map', async (c) => {
+  const auth = c.get('auth');
+  const scenario = await getScenario(c.env.DB, auth.scenario_id);
+  if (!scenario) return c.json({ error: 'NOT_FOUND', message: 'Scenario not found' }, 404);
+
+  const config = typeof scenario.config === 'string'
+    ? JSON.parse(scenario.config || '{}')
+    : (scenario.config || {});
+
+  // Grid cells
+  const cells = await getGridCells(c.env.DB, auth.scenario_id);
+
+  // Scenario nodes (read-only view)
+  const nodes = config.nodes || [];
+  const connections = config.connections || [];
+
+  // Map URL from R2
+  const mapKey = config.map_key;
+  let mapUrl: string | null = null;
+  if (mapKey) {
+    const head = await c.env.R2.head(mapKey);
+    if (head) mapUrl = `/${mapKey}`;
+  }
+
+  return c.json({
+    map_url: mapUrl,
+    grid: config.grid || null,
+    cells: cells.map((cell) => ({
+      cell_id: cell.cell_id,
+      col: cell.col,
+      row: cell.row,
+      lane_id: cell.lane_id,
+      status: cell.status,
+      tension: cell.tension,
+    })),
+    nodes: nodes.map((n: any) => ({
+      id: n.id,
+      type: n.type,
+      cell_id: n.cell_id,
+      label: n.label,
+      status: n.status || 'pending',
+    })),
+    connections,
   });
 });
 

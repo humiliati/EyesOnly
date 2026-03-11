@@ -29,13 +29,14 @@ After login, the screen is divided into:
 - **Squelch Controls** (F/Q/T/S buttons): Full, Quiet (critical only), Tactical (actionable only), Silent (triangle flashes, no text)
 - **Scenario name**, your callsign, WebSocket status dot (green=live, red=offline)
 - **FREEZE GAME** button (red border)
+- **SCENARIO DESIGNER** link (opens `/m/scenario-designer.html`)
 - **LOGOUT** button
 
 ### Operation Bar
-Persistent metrics below the header:
+Persistent metrics below the header, updated every second:
 - **ELAPSED** -- HH:MM:SS timer since console load
 - **THREAT** -- LOW (green) / OPTIMAL (amber) / HIGH (red) / CRITICAL (red glow) -- derived from average grid cell tension
-- **ACTORS** -- online/total count
+- **ACTORS** -- deployed/total count
 - **TENSION** -- average tension percentage across all cells
 - **CELLS** -- total grid cells
 
@@ -64,18 +65,81 @@ The map is divided into a coordinate grid (e.g. 6 columns A-F, 4 rows 1-4 = 24 c
 ### Cell Contents
 - **Actor badges** (colored by team: blue, red, director)
 - **Dead drop markers** (amber diamonds)
+- **Scenario node markers** (★ waypoint, ⚑ objective, ⚡ trigger, ● spawn, ⚠ hazard, ♦ intel-drop) -- color-coded by status: grey=pending, green=active, blue=completed, red=failed
 - **Tension bar** at bottom of cell (green < 40%, amber < 70%, red >= 70%)
 - **Lane tag** (top-right, e.g. "ALPHA")
+- Cells with scenario nodes have **dashed borders**
 
 ### Grid Calibration
 In the Controls panel (overview mode):
 1. Set **COLS** and **ROWS**
 2. Click **CALIBRATE** -- this creates all grid cells with UGRS coordinates
-3. Drag-drop a map image onto the map area for overlay
+3. Upload a map image (drag-drop or button) -- images are stored in R2 cloud storage
 
 ---
 
-## 4. MOK -- YOUR AI DIRECTOR ASSISTANT
+## 4. MAP UPLOAD & R2 STORAGE
+
+Map images are now uploaded to Cloudflare R2 for persistent cloud storage.
+
+### Upload Methods
+- **Drag-drop** a map image directly onto the command map area
+- **UPLOAD MAP IMAGE** button in Controls → opens file picker
+
+### How It Works
+1. Image uploads to `POST /api/m/map/upload` (multipart, authenticated)
+2. Stored in R2 bucket at `maps/{scenario_id}/{filename}`
+3. URL cached in localStorage for quick re-renders
+4. On console load, `GET /api/m/map/{scenarioId}` fetches the map URL from R2
+5. If R2 is unavailable, localStorage fallback is used
+
+### Supported Formats
+jpg, jpeg, png, webp, svg -- max 10MB
+
+---
+
+## 5. SCENARIO NODES
+
+Scenario nodes are tactical waypoints placed on UGRS cells. They represent the operational graph of a scenario -- objectives, triggers, spawn points, hazards, and intel drops.
+
+### Node Types
+| Icon | Type | Purpose |
+|------|------|---------|
+| ★ | Waypoint | Movement target or reference point |
+| ⚑ | Objective | Primary mission objective |
+| ⚡ | Trigger | Event trigger point |
+| ● | Spawn | Actor/element spawn location |
+| ⚠ | Hazard | Danger zone or obstacle |
+| ♦ | Intel Drop | Intelligence material location |
+
+### Node Status
+| Status | Color | Meaning |
+|--------|-------|---------|
+| pending | Grey | Not yet activated |
+| active | Green | Currently in play |
+| completed | Blue | Successfully resolved |
+| failed | Red | Failed or compromised |
+
+### Placing Nodes
+1. In Controls → **SCENARIO NODES** section
+2. Enter **CELL** (e.g. `C4`) -- clicking a cell on the grid auto-fills this field
+3. Select **TYPE** from dropdown
+4. Enter **LABEL** (e.g. "Rally Point Alpha")
+5. Click **PLACE NODE**
+6. Click **SAVE SCENARIO GRAPH** to persist to server
+
+### Changing Node Status
+1. Click a cell on the grid to open the Cell Panel
+2. In the **SCENARIO NODES** section, use the status dropdown next to each node
+3. Changes persist immediately via `PATCH /api/m/map/scenario/node`
+4. Grid re-renders with updated node colors
+
+### Shared with Ops
+Scenario nodes are visible to ops in their read-only tactical map via `GET /api/ops/map`. Ops sees node icons and statuses but cannot modify them.
+
+---
+
+## 6. MOK -- YOUR AI DIRECTOR ASSISTANT
 
 MOK is visible in the header as a green triangular SVG glyph. It functions as M's second brain.
 
@@ -94,6 +158,19 @@ Below the event feed, the **MOK FEED** panel shows private messages from MOK:
 - **Warning** (amber tag): Potential issues
 - **Directive** (bright green tag): Actionable suggestions
 - **Critical** (red tag, red background): Immediate attention required
+
+### MOK Auto-Triggers
+MOK reacts to incoming WebSocket events automatically:
+- **Escalation events** → warning message
+- **Dead drop compromised** → critical message
+- **Actor check-in** → advisory message
+- **Actor panic** → critical message + urgent state
+- **Player pingback** → advisory message
+- **Deadman alert** (heartbeat timeout) → critical message
+- **Geofence trigger** → warning with zone details
+- **Ping acknowledgment** → advisory message
+- **Beat unlock** → warning with beat title
+- **Fog update** → advisory with zone state
 
 ### MOK Squelch Modes
 | Button | Mode | What prints |
@@ -115,7 +192,7 @@ window._MOK.setSquelch('tactical')
 
 ---
 
-## 5. ACTOR NETWORK
+## 7. ACTOR NETWORK
 
 ### Overview Panel
 The **ACTOR NETWORK** section in the Controls panel shows all actors:
@@ -145,7 +222,7 @@ When an actor is selected, the right panel shows:
 Each ping is sent as a structured event via WebSocket. The actor's Ops device receives a full-screen flash notification with a 30-second ACK countdown.
 
 ### Ping History
-Below the ping buttons, **PING HISTORY** shows recent pings to this actor with ACK status:
+Below the ping buttons, **PING HISTORY** shows up to 8 recent pings to this actor with ACK status:
 - `HOLD  10:42:15 AM  ACK 8s` -- acknowledged in 8 seconds
 - `ENGAGE 10:44:02 AM  PENDING` -- not yet acknowledged
 
@@ -155,14 +232,15 @@ Below the ping buttons, **PING HISTORY** shows recent pings to this actor with A
 
 ---
 
-## 6. CELL ACTIONS
+## 8. CELL ACTIONS
 
 Click any cell on the UGRS grid to open the Cell Panel:
 
 - **Status badge** and **lane assignment**
-- **Tension meter** with percentage
+- **Tension meter** with percentage and visual fill bar
 - **Actors in cell** (click to drill into actor panel)
-- **Dead drops** in cell
+- **Dead drops** in cell (label and status)
+- **Scenario nodes** in cell (icon, type, label, status dropdown)
 - **Notes** -- freeform operational notes (saved to server)
 
 ### Cell Action Buttons
@@ -176,7 +254,7 @@ Click any cell on the UGRS grid to open the Cell Panel:
 
 ---
 
-## 7. FREEZE GAME
+## 9. FREEZE GAME
 
 The **FREEZE GAME** button in the header:
 1. Toggles scenario frozen state
@@ -187,7 +265,7 @@ The **FREEZE GAME** button in the header:
 
 ---
 
-## 8. EVENT FEED
+## 10. EVENT FEED
 
 The center column shows a chronological event feed. Events include:
 - `checkin` -- Actor check-ins (green border)
@@ -196,45 +274,181 @@ The center column shows a chronological event feed. Events include:
 - `actor_move`, `actor_command`, `cell_update`
 - `mping`, `mping_ack`
 - `intel_drop`, `game_freeze`, `game_unfreeze`
+- `mok_broadcast`, `surveillance_sweep`, `contact_injection`
 
 ---
 
-## 9. SCENARIO SETUP WORKFLOW
+## 11. LIVE TELEMETRY & GPS MAP
+
+### Actor Telemetry
+The **LIVE TELEMETRY** section shows real-time GPS positions from actor watch apps:
+- Callsign, latitude/longitude, motion state, last seen time
+- **REFRESH POSITIONS** button
+
+### Live Map (Leaflet.js)
+Toggle open with **OPEN MAP ▼** button in the overview panel:
+- OpenStreetMap base tiles
+- **ACTORS ●** button -- toggle colored actor GPS dots (blue=#3399ff, red=#ff3333, director=#33ff33)
+- **ZONES ⬤** button -- toggle geofence zone overlays
+- Markers show popups with callsign, team, motion state, LIVE/STALE
+- Stale markers (>2 min since last update) turn grey
+- Auto-zooms to fit all actor positions
+
+---
+
+## 12. GEOFENCE ZONES
+
+Create invisible geographic triggers:
+- **Zone fields**: Name, Lat, Lng, Radius (meters), Trigger type (ENTER/EXIT/BOTH), Event type
+- **ADD ZONE** creates the zone
+- Active zones appear on the live map as overlays
+- When an actor crosses a zone boundary, MOK receives a warning with callsign, transition, zone name, and distance
+
+---
+
+## 13. SCENARIO BEATS (Story Nodes)
+
+Story-driven beats that unlock based on GPS proximity:
+- Each beat has: Title, Lat/Lng, Radius, Sequence number, Event type
+- Beats display locked/unlocked icon and coordinate data
+- **UNLOCK** button manually triggers a locked beat
+- **DELETE** removes a beat
+- **ADD BEAT** creates new beats
+- When a beat unlocks (via proximity or manual trigger), MOK receives a warning with beat title and sequence
+
+---
+
+## 14. FOG OF WAR
+
+Control visibility zones for the operational area:
+- Zone list with visibility state (☀ = LIT, 🌑 = DARK)
+- Toggle buttons per zone to switch between lit and dark
+- Input for zone label with LIT/DARK buttons
+- When toggled, MOK receives advisory with zone label and new state
+
+---
+
+## 15. MODERATOR CONTROL (OPS ROLES)
+
+Manage who has ops-level access within a scenario:
+- List of current ops-tagged moderators
+- **Callsign** input and **Role** selector (ops)
+- **GRANT** assigns ops role to an actor
+- **REVOKE** removes ops role
+- **REFRESH ROLES** reloads the current moderator list
+
+---
+
+## 16. MICROCHAT (Actor Watch App)
+
+Encrypted one-to-one messaging channel with actor watch apps:
+- Enter **Actor ID** and click **LOAD THREAD** to view conversation
+- Scrollable chat thread display
+- **Message** input (max 280 characters)
+- **SEND** dispatches encrypted message
+- AES-256-GCM encryption with scenario-based key derivation
+- Delivery confirmations appear in MOK feed
+
+---
+
+## 17. DECOY PING
+
+Inject false commands that are NOT recorded in the event log:
+- Enter **Actor ID**
+- Select **Command** (SHADOW, HOLD, ENGAGE, MOVE, DROP, EXTRACT)
+- Optional message
+- **INJECT DECOY** button (danger-styled)
+- The actor receives this as a real ping but M's event log stays clean
+
+---
+
+## 18. VIDEO PUSH
+
+Push video intel to ops devices:
+- Video push widget in the controls panel
+- Select a video from the R2 bucket
+- Push triggers a WebSocket message to all connected ops
+- Ops devices display a fullscreen video overlay with title, autoplay, and close controls
+
+---
+
+## 19. ESCALATION PRESETS
+
+Quick-action buttons for common scenario-wide actions:
+| Preset | Effect |
+|--------|--------|
+| **SURVEILLANCE SWEEP** | Inject surveillance sweep event into all active lanes |
+| **INJECT CONTACT** | Signal approaching contact to all actors |
+| **ESCALATE ZONE** | Raise tension +25 on all non-offline cells |
+| **STAND DOWN** | Reset all cells to working, tension to 0 |
+
+---
+
+## 20. BROADCAST
+
+Send a message to all connected ops devices:
+- Enter **MESSAGE**
+- Click **BROADCAST TO OPS**
+- All ops devices show a banner notification with the broadcast text
+- Auto-dismisses after 8 seconds
+
+---
+
+## 21. PLAYER POSITIONS
+
+View GPS locations from players (red team) who consented to location sharing:
+- Callsign, lat/lng, motion state
+- **REFRESH** button
+- Auto-refreshes on interval
+
+---
+
+## 22. SCENARIO SETUP WORKFLOW
 
 1. **Login** as M
-2. **Upload map image** (drag-drop or button)
+2. **Upload map image** (drag-drop or button -- uploads to R2)
 3. **Calibrate grid** (set cols/rows, click CALIBRATE)
-4. **Create lanes** (e.g. ALPHA, BRAVO, CHARLIE)
-5. **Assign cells to lanes** (select lane, click START ASSIGNING, click cells)
-6. **Add actors** (callsign, team, password)
-7. **Generate join codes** for actor teams
-8. **Deploy actors** to cells
-9. **Inject events** to start the scenario
-10. **Monitor and direct** using pings, tension, escalation
+4. **Place scenario nodes** (waypoints, objectives, triggers on cells)
+5. **Save scenario graph** to persist node layout
+6. **Create lanes** (e.g. ALPHA, BRAVO, CHARLIE)
+7. **Assign cells to lanes** (select lane, click START ASSIGNING, click cells)
+8. **Add actors** (callsign, team, password)
+9. **Generate join codes** for actor teams
+10. **Set up geofence zones** if using GPS triggers
+11. **Add scenario beats** if using proximity-unlocked story
+12. **Deploy actors** to cells
+13. **Inject events** to start the scenario
+14. **Monitor and direct** using pings, tension, escalation, and MOK
 
 ---
 
-## 10. KEYBOARD SHORTCUTS
+## 23. KEYBOARD SHORTCUTS
 
 | Key | Action |
 |-----|--------|
-| ESC | Navigate back in panel (actor -> cell -> overview) |
+| ESC | Navigate back in panel (actor → cell → overview) |
 
 ---
 
-## 11. WEBSOCKET REAL-TIME
+## 24. WEBSOCKET REAL-TIME
 
 All state changes broadcast via Durable Object WebSocket:
 - Grid updates, actor movements, event injections
 - Ping delivery and ACK responses
 - Freeze/unfreeze state
+- Actor telemetry (GPS positions)
+- Geofence triggers
+- Beat unlocks
+- Fog of war updates
+- Microchat delivery confirmations
+- Player location updates
 - MOK reacts to incoming events automatically
 
-The green dot in the header confirms live WebSocket connection.
+The green dot in the header confirms live WebSocket connection. Reconnects automatically with 3-second delay on disconnect.
 
 ---
 
-## 12. SCENARIO DESIGNER
+## 25. SCENARIO DESIGNER
 
 The Scenario Designer is an in-workspace authoring tool for building operations from narrative text.
 
@@ -246,7 +460,7 @@ Takes freeform scenario narrative (the kind you'd write in a design document or 
 ### Getting Started
 
 1. Navigate to **SCENARIO DESIGNER** from the M Mode header, or go directly to `/m/scenario-designer.html`.
-2. You do **not** need to be logged in to use the designer — it runs entirely in the browser.
+2. You do **not** need to be logged in to use the designer -- it runs entirely in the browser.
 3. Either:
    - Click **↓ LOAD DOWNED PILOT SAMPLE** to see the Extraction template pre-loaded, or
    - Paste your own narrative text and click **⚡ PARSE NARRATIVE → BEATS**
@@ -264,41 +478,41 @@ Takes freeform scenario narrative (the kind you'd write in a design document or 
 
 | Icon | Code | Meaning |
 |------|------|---------|
-| 🤝 | PM | Personal Meet — direct actor/client interaction |
-| 📦 | DD | Dead Drop — physical item retrieval |
-| 🎯 | RV | Rendezvous — link-up, handoff |
-| 🚁 | EXFIL | Extraction — final or convergence event |
-| ⚡ | EVT | Generic event — surveillance, pressure, environmental |
+| 🤝 | PM | Personal Meet -- direct actor/client interaction |
+| 📦 | DD | Dead Drop -- physical item retrieval |
+| 🎯 | RV | Rendezvous -- link-up, handoff |
+| 🚁 | EXFIL | Extraction -- final or convergence event |
+| ⚡ | EVT | Generic event -- surveillance, pressure, environmental |
 
 ### Parsing Rules
 
 The parser detects:
-- **Numbered events** — `Event 1`, `Event #2`, `Event #3 –` etc.
-- **Locations** — `Location: …` lines
-- **Beat type** — keyword scan: "dead drop", "canister", "rendezvous", "EXFIL", "extraction", "personal meet", etc.
-- **Bonafides** — quoted challenge/response pairs near "Ex." or "To whit, the IC replies"
-- **Actor roles** — IC, spy, hostess, downed pilot, foreign agent, contact
-- **Success chain** — beats are auto-wired sequentially; adjust in Properties panel
+- **Numbered events** -- `Event 1`, `Event #2`, `Event #3 –` etc.
+- **Locations** -- `Location: …` lines
+- **Beat type** -- keyword scan: "dead drop", "canister", "rendezvous", "EXFIL", "extraction", "personal meet", etc.
+- **Bonafides** -- quoted challenge/response pairs near "Ex." or "To whit, the IC replies"
+- **Actor roles** -- IC, spy, hostess, downed pilot, foreign agent, contact
+- **Success chain** -- beats are auto-wired sequentially; adjust in Properties panel
 
 ### Templates
 
 Use the **TEMPLATE** dropdown to load pre-built beat boards for common scenario types:
-- `EXTRACTION` — Downed Pilot (3 beats: PM → DD → EXFIL)
-- `COURIER RUN` — 3-beat transport chain
-- `COUNTERINTELLIGENCE` — 4-beat identify/observe/retrieve/extract
-- `ASSET RECOVERY` — 5-beat full-length operation
+- `EXTRACTION` -- Downed Pilot (3 beats: PM → DD → EXFIL)
+- `COURIER RUN` -- 3-beat transport chain
+- `COUNTERINTELLIGENCE` -- 4-beat identify/observe/retrieve/extract
+- `ASSET RECOVERY` -- 5-beat full-length operation
 
 ### Editing Beats
 
 Click any beat card to open its properties:
-- **Title, type, lane** — core identity
-- **Location, grid cell** — physical placement (use UGRS cell IDs like `A1`, `B3`)
-- **Actor role + engagement level** — who is at this beat and how active (0–3)
-- **Bonafides** — challenge / response pair for client-IC confirmation
-- **Detail** — IC instructions / narrative notes
-- **Success / fail path** — wire to next beat
-- **Tension delta** — how much tension this beat adds to its lane cells
-- **Escalation phase** — which phase of the emotional curve this beat occupies
+- **Title, type, lane** -- core identity
+- **Location, grid cell** -- physical placement (use UGRS cell IDs like `A1`, `B3`)
+- **Actor role + engagement level** -- who is at this beat and how active (0-3)
+- **Bonafides** -- challenge / response pair for client-IC confirmation
+- **Detail** -- IC instructions / narrative notes
+- **Success / fail path** -- wire to next beat
+- **Tension delta** -- how much tension this beat adds to its lane cells
+- **Escalation phase** -- which phase of the emotional curve this beat occupies
 
 ### Adding Beats Manually
 
@@ -309,8 +523,8 @@ Click **+ ADD BEAT** in the subbar. A blank beat is added to the first lane. Ass
 Click **↗ EXPORT JSON / SEL** in the subbar to open the export modal.
 
 The export contains two formats:
-1. **JSON** — `scenario`, `lanes`, and `beats` arrays suitable for API creation
-2. **SEL** (Scenario Engine Language) — human-readable declarative format for version control
+1. **JSON** -- `scenario`, `lanes`, and `beats` arrays suitable for API creation
+2. **SEL** (Scenario Engine Language) -- human-readable declarative format for version control
 
 Copy the JSON and use it to create a scenario via `POST /api/m/scenario` (future endpoint) or reference the SEL file in `docs/scenarios/`.
 
@@ -320,7 +534,7 @@ The sample scenario is at `docs/scenarios/downed-pilot.sel.txt`.
 
 | Mode | Description |
 |------|-------------|
-| **SWIMLANE** (default) | Beats grouped by lane in horizontal rows — see lane assignments |
-| **CHAIN** | Linear beat sequence — see the narrative flow |
+| **SWIMLANE** (default) | Beats grouped by lane in horizontal rows -- see lane assignments |
+| **CHAIN** | Linear beat sequence -- see the narrative flow |
 
 ---

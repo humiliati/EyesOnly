@@ -365,10 +365,34 @@ function connectWS(): void {
   } catch { /* WebSocket unavailable */ }
 }
 
+// --- Map Data ---
+
+export interface MapData {
+  map_url: string | null;
+  grid: { cols: number; rows: number; col_labels: string[]; row_labels: string[] } | null;
+  cells: Array<{ cell_id: string; col: number; row: number; lane_id: string | null; status: string; tension: number }>;
+  nodes: Array<{ id: string; type: string; cell_id: string; label: string; status: string }>;
+  connections: Array<{ from: string; to: string; type?: string }>;
+}
+
+let cachedMapData: MapData | null = null;
+
+export function getMapData(): MapData | null { return cachedMapData; }
+
+export async function fetchMapData(): Promise<void> {
+  try {
+    const res = await authFetch('/ops/map');
+    if (!res.ok) return;
+    cachedMapData = await res.json() as MapData;
+    setState({}); // trigger re-render
+  } catch { /* offline */ }
+}
+
 // --- Navigation ---
 
 export function navigate(screen: AppState['screen']): void {
   setState({ screen, error: null });
   if (screen === 'events') fetchEvents();
   if (screen === 'dashboard') fetchScenario();
+  if (screen === 'map') fetchMapData();
 }

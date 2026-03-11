@@ -15,6 +15,7 @@ import { kernelRoutes } from './routes/kernel';
 import { audioRoutes } from './routes/audio';
 import { audioUploadRoutes } from './routes/audio-upload';
 import { videoRoutes } from './routes/video';
+import { mapUploadRoutes } from './routes/map-upload';
 import {
   listActiveScenarios,
   findStaleActors,
@@ -89,6 +90,32 @@ app.route('/video', videoRoutes);
 
 // --- Audio Upload API (Sound Designer portal) ---
 app.route('/api/audio', audioUploadRoutes);
+
+// --- Map Upload + Scenario Node API (Director only — auth enforced in m-mode mount) ---
+app.route('/api/m/map', mapUploadRoutes);
+
+// --- Map images: served from R2 (same pattern as audio/video) ---
+app.use('/maps/*', cors({
+  origin: '*',
+  allowMethods: ['GET', 'HEAD', 'OPTIONS'],
+  allowHeaders: ['Range', 'Content-Type'],
+  exposeHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length'],
+}));
+app.get('/maps/:scenarioId/:filename', async (c) => {
+  const scenarioId = c.req.param('scenarioId');
+  const filename = c.req.param('filename');
+  const key = `maps/${scenarioId}/${filename}`;
+  const obj = await c.env.R2.get(key);
+  if (!obj) return c.text('Not Found', 404);
+  return new Response(obj.body, {
+    status: 200,
+    headers: {
+      'Content-Type': obj.httpMetadata?.contentType || 'image/jpeg',
+      'Content-Length': String(obj.size),
+      'Cache-Control': 'public, max-age=3600',
+    },
+  });
+});
 
 // --- Health Check ---
 
