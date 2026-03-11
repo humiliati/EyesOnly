@@ -143,6 +143,12 @@ let cachedScenarioNodes: ScenarioNode[] = [];
 let cachedScenarioConnections: ScenarioConnection[] = [];
 let isFrozen = false;
 
+// --- Map overlay toggle states ---
+let overlayTelemetry = false;
+let overlayZones = false;
+let overlayNodes = true;   // Nodes visible by default
+let overlayFog = false;
+
 // --- MOK Visual State ---
 function setMokState(state: MOKVisualState) {
   mokVisualState = state;
@@ -272,19 +278,50 @@ function getSession(): Session | null {
 }
 
 async function mFetch(path: string, session: Session, opts: RequestInit = {}): Promise<Response> {
-  return fetch(`/api${path}`, {
+  const res = await fetch(`/api${path}`, {
     ...opts,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}`, ...(opts.headers || {}) },
   });
+  // If token expired mid-session, kick back to login
+  if (res.status === 401) {
+    console.warn('[MMODE] Token rejected (401) — returning to login');
+    localStorage.removeItem(STORAGE_KEY);
+    const app = document.getElementById('app');
+    if (app) {
+      app.innerHTML = '';
+      renderLogin(app, 'Session expired — please log in again');
+    }
+  }
+  return res;
 }
 
-function renderWithDOM(container: HTMLElement) {
+async function renderWithDOM(container: HTMLElement) {
   const session = getSession();
-  if (session) { renderConsole(container, session); } else { renderLogin(container); }
+  if (session) {
+    // Validate token is still alive before rendering full console
+    try {
+      const res = await fetch('/api/auth/check', {
+        headers: { Authorization: `Bearer ${session.token}` },
+      });
+      if (res.ok) {
+        renderConsole(container, session);
+        return;
+      }
+      // Token expired or invalid — clear and show login
+      console.warn('[MMODE] Session expired, clearing token');
+      localStorage.removeItem(STORAGE_KEY);
+      renderLogin(container, 'Session expired — please log in again');
+    } catch {
+      // Network error — render console anyway (offline-tolerant)
+      renderConsole(container, session);
+    }
+  } else {
+    renderLogin(container);
+  }
 }
 
 // --- Login Screen ---
-function renderLogin(container: HTMLElement) {
+function renderLogin(container: HTMLElement, statusMsg?: string) {
   const overlay = document.createElement('div');
   overlay.className = 'login-overlay';
   const box = document.createElement('form');
@@ -292,6 +329,7 @@ function renderLogin(container: HTMLElement) {
   box.innerHTML = `
     <h1>M MODE</h1>
     <div class="sub">DIRECTOR CONSOLE — CLASSIFIED ACCESS</div>
+    ${statusMsg ? `<div class="error" style="display:block;margin-bottom:4px;">${statusMsg}</div>` : ''}
     <input type="text" id="m-callsign" placeholder="CALLSIGN" autocomplete="off" />
     <input type="password" id="m-password" placeholder="PASSWORD" autocomplete="off" />
     <input type="text" id="m-scenario" placeholder="SCENARIO ID" value="1" />
@@ -398,6 +436,10 @@ function renderConsole(container: HTMLElement, session: Session) {
       <div class="op-metric"><span class="op-label">CELLS</span><span class="op-value" id="op-cells">0</span></div>
     </div>
     <div class="panels">
+      <div class="panel">
+        <div class="panel-header"><span id="m-ctrl-title">CONTROLS</span></div>
+        <div class="panel-body" id="m-ctrl-body" style="padding:0;"></div>
+      </div>
       <div class="panel" style="position:relative;">
         <div class="panel-header"><span>COMMAND MAP</span><span id="m-cell-count">0 CELLS</span></div>
         <div class="panel-body" id="m-grid-body" style="position:relative;"></div>
@@ -409,10 +451,6 @@ function renderConsole(container: HTMLElement, session: Session) {
           <div class="mok-feed-header"><span>MOK FEED</span><span id="mok-feed-count">0</span></div>
           <div class="mok-feed-body" id="mok-feed-body"></div>
         </div>
-      </div>
-      <div class="panel">
-        <div class="panel-header"><span id="m-ctrl-title">CONTROLS</span></div>
-        <div class="panel-body" id="m-ctrl-body" style="padding:0;"></div>
       </div>
     </div>
   `;
@@ -620,7 +658,7 @@ function renderUGRSGrid(data: GridData) {
       // Scenario node markers
       const cellNodes = cachedScenarioNodes.filter((n) => n.cell_id === cellId);
       let nodesHtml = '';
-      if (cellNodes.length) {
+      if (overlayNodes && cellNodes.length) {
         nodesHtml = cellNodes.map((n) => {
           const icon = NODE_ICONS[n.type] || '&#9679;';
           const color = NODE_COLORS[n.status || 'pending'];
@@ -1218,6 +1256,7 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
 
   ctrl.innerHTML = `
     <div class="ctrl-stack">
+      <!-- ===== SCENARIO OVERVIEW (always visible) ===== -->
       <div class="ctrl-section">
         <h3>SCENARIO</h3>
         <div class="ctx-stat"><span>CELLS</span><span class="value">${cellCount}</span></div>
@@ -1228,219 +1267,284 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
         <h3>ACTOR NETWORK</h3>
         <div id="actor-roster" style="max-height:140px;overflow-y:auto;padding:2px 0;">${actorRows}</div>
       </div>
-      <div class="ctrl-section">
-        <h3>MODERATOR CONTROL</h3>
-        <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Assign scenario-scoped roles to accounts (Ops = moderator tag).</div>
-        <div id="m-role-ops-list" style="max-height:90px;overflow-y:auto;font-size:9px;color:var(--text-dim);padding:2px 0;">
-          <div style="font-size:9px;color:var(--text-dim);padding:4px 0;">Loading ops roles…</div>
+
+      <!-- ===== CATEGORY 1: MAP & GRID ===== -->
+      <div class="ctrl-category" id="cat-map" data-cat="map">
+        <div class="ctrl-category-header" data-toggle-cat="map">
+          <span class="cat-title">MAP &amp; GRID</span>
+          <span class="cat-chevron">&#9660;</span>
         </div>
-        <button class="ctrl-btn" id="m-role-refresh" style="margin-top:4px;font-size:8px;">REFRESH ROLES</button>
-        <div style="margin-top:6px;">
-          <div class="ctrl-row">
-            <div class="ctrl-field" style="flex:1;"><label>CALLSIGN</label><input type="text" id="m-role-callsign" placeholder="ECHO" /></div>
-            <div class="ctrl-field" style="width:120px;"><label>ROLE</label>
-              <select id="m-role-name"><option value="ops">ops</option></select>
+        <div class="ctrl-category-body">
+          <div class="ctrl-section">
+            <h3>MAP</h3>
+            <input type="file" id="ctrl-map-file" accept="image/*" style="display:none" />
+            <button class="ctrl-btn" id="ctrl-map-upload">UPLOAD MAP IMAGE</button>
+          </div>
+          <div class="ctrl-section">
+            <h3>CALIBRATE GRID</h3>
+            <div class="ctrl-row">
+              <div class="ctrl-field"><label>COLS</label><input type="number" id="ctrl-cal-cols" value="6" min="1" max="26" /></div>
+              <div class="ctrl-field"><label>ROWS</label><input type="number" id="ctrl-cal-rows" value="4" min="1" max="20" /></div>
+            </div>
+            <button class="ctrl-btn amber" id="ctrl-calibrate" style="margin-top:4px;">CALIBRATE</button>
+          </div>
+          <div class="ctrl-section">
+            <h3>SCENARIO NODES</h3>
+            <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Place tactical nodes on UGRS cells.</div>
+            <div class="ctrl-field"><label>CELL</label><input type="text" id="ctrl-node-cell" placeholder="C4" style="text-transform:uppercase;" /></div>
+            <div class="ctrl-field"><label>TYPE</label>
+              <select id="ctrl-node-type">
+                <option value="waypoint">★ WAYPOINT</option>
+                <option value="objective">⚑ OBJECTIVE</option>
+                <option value="trigger">⚡ TRIGGER</option>
+                <option value="spawn">● SPAWN</option>
+                <option value="hazard">⚠ HAZARD</option>
+                <option value="intel-drop">♦ INTEL DROP</option>
+              </select>
+            </div>
+            <div class="ctrl-field"><label>LABEL</label><input type="text" id="ctrl-node-label" placeholder="Rally Point Alpha" /></div>
+            <button class="ctrl-btn amber" id="ctrl-add-node">PLACE NODE</button>
+            <div id="ctrl-node-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
+            <div style="margin-top:4px;">
+              <span style="font-size:8px;color:var(--text-dim);letter-spacing:1px;">PLACED: </span>
+              <span id="ctrl-node-count" style="font-size:9px;">0</span>
+              <button class="ctrl-btn" id="ctrl-save-nodes" style="margin-top:4px;">SAVE SCENARIO GRAPH</button>
             </div>
           </div>
-          <div class="ctrl-row" style="gap:4px;">
-            <button class="ctrl-btn" id="m-role-grant" style="font-size:8px;">GRANT</button>
-            <button class="ctrl-btn amber" id="m-role-revoke" style="font-size:8px;">REVOKE</button>
+          <div class="ctrl-section">
+            <h3>LIVE TELEMETRY</h3>
+            <div id="actor-telemetry-list" style="max-height:150px;overflow-y:auto;padding:2px 0;">
+              <div style="font-size:9px;color:var(--text-dim);padding:4px 0;">Loading positions…</div>
+            </div>
+            <button class="ctrl-btn" id="ctrl-refresh-telemetry" style="margin-top:4px;font-size:8px;">REFRESH POSITIONS</button>
           </div>
-          <div id="m-role-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
+          <div class="ctrl-section">
+            <h3>MAP OVERLAYS</h3>
+            <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Toggle layers on the command map.</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;">
+              <button class="ctrl-btn" id="ctrl-overlay-telemetry" style="font-size:8px;" title="Show actor GPS positions on grid">TELEMETRY ●</button>
+              <button class="ctrl-btn" id="ctrl-overlay-zones" style="font-size:8px;" title="Show geofence zone markers on grid">ZONES ⬤</button>
+              <button class="ctrl-btn" id="ctrl-overlay-nodes" style="font-size:8px;" title="Show/hide scenario node markers">NODES ★</button>
+              <button class="ctrl-btn" id="ctrl-overlay-fog" style="font-size:8px;" title="Show fog-of-war shading on grid">FOG ◐</button>
+            </div>
+          </div>
+          <div class="ctrl-section">
+            <h3>GEOFENCE ZONES</h3>
+            <div id="geofence-list" style="max-height:100px;overflow-y:auto;font-size:9px;color:var(--text-dim);padding:2px 0;">Loading…</div>
+            <div style="margin-top:6px;">
+              <div class="ctrl-field"><label>NAME</label><input type="text" id="ctrl-gf-name" placeholder="Dock Zone" /></div>
+              <div class="ctrl-row">
+                <div class="ctrl-field"><label>LAT</label><input type="number" id="ctrl-gf-lat" step="0.0001" placeholder="47.678" /></div>
+                <div class="ctrl-field"><label>LNG</label><input type="number" id="ctrl-gf-lng" step="0.0001" placeholder="-116.799" /></div>
+              </div>
+              <div class="ctrl-row">
+                <div class="ctrl-field"><label>RADIUS (m)</label><input type="number" id="ctrl-gf-radius" value="100" min="10" max="5000" /></div>
+                <div class="ctrl-field"><label>TRIGGER</label>
+                  <select id="ctrl-gf-trigger"><option value="enter">ENTER</option><option value="exit">EXIT</option><option value="both">BOTH</option></select>
+                </div>
+              </div>
+              <div class="ctrl-field"><label>EVENT TYPE</label><input type="text" id="ctrl-gf-event" placeholder="geofence_enter" /></div>
+              <button class="ctrl-btn" id="ctrl-add-geofence">ADD ZONE</button>
+              <div id="ctrl-gf-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
+            </div>
+          </div>
+          <div class="ctrl-section">
+            <h3>SCENARIO BEATS</h3>
+            <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Geo-locked story beats — unlock when actor/player reaches radius.</div>
+            <div id="beats-list" style="max-height:120px;overflow-y:auto;font-size:9px;color:var(--text-dim);padding:2px 0;">Loading…</div>
+            <div style="margin-top:6px;">
+              <div class="ctrl-field"><label>TITLE</label><input type="text" id="ctrl-beat-title" placeholder="PM1 — Initial contact" /></div>
+              <div class="ctrl-row">
+                <div class="ctrl-field"><label>LAT</label><input type="number" id="ctrl-beat-lat" step="0.0001" placeholder="47.678" /></div>
+                <div class="ctrl-field"><label>LNG</label><input type="number" id="ctrl-beat-lng" step="0.0001" placeholder="-116.799" /></div>
+              </div>
+              <div class="ctrl-row">
+                <div class="ctrl-field"><label>RADIUS (m)</label><input type="number" id="ctrl-beat-radius" value="100" min="10" /></div>
+                <div class="ctrl-field"><label>SEQ</label><input type="number" id="ctrl-beat-seq" value="0" min="0" /></div>
+              </div>
+              <div class="ctrl-field"><label>EVENT TYPE</label><input type="text" id="ctrl-beat-event" placeholder="beat_unlock" /></div>
+              <button class="ctrl-btn" id="ctrl-add-beat">ADD BEAT</button>
+              <div id="ctrl-beat-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
+            </div>
+          </div>
+          <div class="ctrl-section">
+            <h3>FOG OF WAR</h3>
+            <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Toggle visibility of zones for player map.</div>
+            <div id="fog-list" style="max-height:100px;overflow-y:auto;font-size:9px;color:var(--text-dim);padding:2px 0;">Loading…</div>
+            <div style="margin-top:6px;display:flex;gap:4px;">
+              <input type="text" id="ctrl-fog-label" placeholder="zone_label or cell_id" style="flex:1;font-size:9px;" />
+              <button class="ctrl-btn" id="ctrl-fog-lit" style="font-size:8px;">LIT</button>
+              <button class="ctrl-btn amber" id="ctrl-fog-dark" style="font-size:8px;">DARK</button>
+            </div>
+            <div id="ctrl-fog-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
+          </div>
+          <div class="ctrl-section">
+            <h3>PLAYER POSITIONS</h3>
+            <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Players who consented to GPS sharing.</div>
+            <div id="player-positions-list" style="max-height:100px;overflow-y:auto;font-size:9px;color:var(--text-dim);padding:2px 0;">Loading…</div>
+            <button class="ctrl-btn" id="ctrl-refresh-players" style="margin-top:4px;font-size:8px;">REFRESH</button>
+          </div>
+          <div class="ctrl-section">
+            <h3>ADD LANE</h3>
+            <div class="ctrl-field"><label>ID</label><input type="text" id="ctrl-lane-id" placeholder="ALPHA" /></div>
+            <div class="ctrl-field"><label>LABEL</label><input type="text" id="ctrl-lane-label" placeholder="Alpha Lane" /></div>
+            <button class="ctrl-btn" id="ctrl-add-lane">ADD LANE</button>
+          </div>
+          <div class="ctrl-section">
+            <h3>ASSIGN CELLS TO LANE</h3>
+            <div class="ctrl-field"><label>LANE</label>
+              <select id="ctrl-assign-lane-select"><option value="">— select lane —</option></select>
+            </div>
+            <button class="ctrl-btn amber" id="ctrl-start-assign">START ASSIGNING</button>
+          </div>
         </div>
       </div>
 
-      <div class="ctrl-section">
-        <h3>LIVE TELEMETRY</h3>
-        <div id="actor-telemetry-list" style="max-height:150px;overflow-y:auto;padding:2px 0;">
-          <div style="font-size:9px;color:var(--text-dim);padding:4px 0;">Loading positions…</div>
+      <!-- ===== CATEGORY 2: EVENTS & COMMS ===== -->
+      <div class="ctrl-category" id="cat-events" data-cat="events">
+        <div class="ctrl-category-header" data-toggle-cat="events">
+          <span class="cat-title">EVENTS &amp; COMMS</span>
+          <span class="cat-chevron">&#9660;</span>
         </div>
-        <button class="ctrl-btn" id="ctrl-refresh-telemetry" style="margin-top:4px;font-size:8px;">REFRESH POSITIONS</button>
-      </div>
-      <div class="ctrl-section">
-        <h3>LIVE MAP</h3>
-        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px;">
-          <button class="ctrl-btn" id="ctrl-toggle-map" style="font-size:8px;">OPEN MAP ▼</button>
-          <button class="ctrl-btn amber" id="ctrl-map-actors-toggle" style="font-size:8px;display:none;" title="Toggle actor GPS dots">ACTORS ●</button>
-          <button class="ctrl-btn amber" id="ctrl-map-zones-toggle" style="font-size:8px;display:none;" title="Toggle geofence zone overlays">ZONES ⬤</button>
-        </div>
-        <div id="m-live-map-container" style="display:none;height:320px;border:1px solid var(--border);border-radius:3px;overflow:hidden;position:relative;">
-          <div id="m-live-map" style="width:100%;height:100%;"></div>
-        </div>
-      </div>
-      <div class="ctrl-section">
-        <h3>GEOFENCE ZONES</h3>
-        <div id="geofence-list" style="max-height:100px;overflow-y:auto;font-size:9px;color:var(--text-dim);padding:2px 0;">Loading…</div>
-        <div style="margin-top:6px;">
-          <div class="ctrl-field"><label>NAME</label><input type="text" id="ctrl-gf-name" placeholder="Dock Zone" /></div>
-          <div class="ctrl-row">
-            <div class="ctrl-field"><label>LAT</label><input type="number" id="ctrl-gf-lat" step="0.0001" placeholder="47.678" /></div>
-            <div class="ctrl-field"><label>LNG</label><input type="number" id="ctrl-gf-lng" step="0.0001" placeholder="-116.799" /></div>
+        <div class="ctrl-category-body">
+          <div class="ctrl-section">
+            <h3>INJECT EVENT</h3>
+            <div class="ctrl-field"><label>TYPE</label><input type="text" id="ctrl-event-type" placeholder="intel" /></div>
+            <div class="ctrl-field"><label>MSG</label><input type="text" id="ctrl-event-msg" placeholder="payload" /></div>
+            <button class="ctrl-btn amber" id="ctrl-inject">INJECT</button>
           </div>
-          <div class="ctrl-row">
-            <div class="ctrl-field"><label>RADIUS (m)</label><input type="number" id="ctrl-gf-radius" value="100" min="10" max="5000" /></div>
-            <div class="ctrl-field"><label>TRIGGER</label>
-              <select id="ctrl-gf-trigger"><option value="enter">ENTER</option><option value="exit">EXIT</option><option value="both">BOTH</option></select>
+          <div class="ctrl-section">
+            <h3>ESCALATION PRESETS</h3>
+            <div class="escalation-presets">
+              <button class="ctrl-btn amber" data-esc-preset="surveillance_sweep" title="Inject surveillance sweep event into active lanes">SURVEILLANCE SWEEP</button>
+              <button class="ctrl-btn amber" data-esc-preset="inject_contact" title="Signal approaching contact to all actors">INJECT CONTACT</button>
+              <button class="ctrl-btn danger" data-esc-preset="escalate_zone" title="Raise tension +25 on all non-offline cells">ESCALATE ZONE</button>
+              <button class="ctrl-btn" data-esc-preset="stand_down" title="Reset all cells to working, tension to 0">STAND DOWN</button>
+            </div>
+            <div id="esc-preset-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
+          </div>
+          <div class="ctrl-section">
+            <h3>BROADCAST</h3>
+            <div class="ctrl-field"><label>MESSAGE</label><input type="text" id="ctrl-broadcast-msg" placeholder="Broadcast to all Ops..." /></div>
+            <button class="ctrl-btn amber" id="ctrl-broadcast-send">BROADCAST TO OPS</button>
+          </div>
+          <div class="ctrl-section">
+            <h3>MICROCHAT</h3>
+            <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Encrypted one-to-one channel with actor watch app.</div>
+            <div class="ctrl-field"><label>ACTOR ID</label><input type="number" id="ctrl-chat-actor-id" placeholder="actor id" /></div>
+            <div id="ctrl-chat-thread" style="max-height:100px;overflow-y:auto;font-size:9px;background:#060e06;border:1px solid var(--border);padding:4px;margin-bottom:4px;"></div>
+            <div class="ctrl-field"><label>MESSAGE</label><input type="text" id="ctrl-chat-msg" placeholder="Encrypted message…" maxlength="280" /></div>
+            <div style="display:flex;gap:4px;">
+              <button class="ctrl-btn" id="ctrl-chat-load" style="font-size:8px;">LOAD THREAD</button>
+              <button class="ctrl-btn amber" id="ctrl-chat-send" style="font-size:8px;">SEND</button>
+            </div>
+            <div id="ctrl-chat-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
+          </div>
+          <div class="ctrl-section">
+            <h3>DECOY PING</h3>
+            <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">False ping — actors only, NOT in event log.</div>
+            <div class="ctrl-field"><label>ACTOR ID</label><input type="number" id="ctrl-decoy-actor-id" placeholder="actor id" /></div>
+            <div class="ctrl-field"><label>COMMAND</label>
+              <select id="ctrl-decoy-cmd">
+                <option>SHADOW</option><option>HOLD</option><option>ENGAGE</option>
+                <option>MOVE</option><option>DROP</option><option>EXTRACT</option>
+              </select>
+            </div>
+            <div class="ctrl-field"><label>MSG (optional)</label><input type="text" id="ctrl-decoy-msg" placeholder="Decoy detail…" /></div>
+            <button class="ctrl-btn danger" id="ctrl-send-decoy">INJECT DECOY</button>
+            <div id="ctrl-decoy-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== CATEGORY 3: ROSTER & ACCESS ===== -->
+      <div class="ctrl-category" id="cat-roster" data-cat="roster">
+        <div class="ctrl-category-header" data-toggle-cat="roster">
+          <span class="cat-title">ROSTER &amp; ACCESS</span>
+          <span class="cat-chevron">&#9660;</span>
+        </div>
+        <div class="ctrl-category-body">
+          <div class="ctrl-section">
+            <h3>ADD ACTOR</h3>
+            <div class="ctrl-field"><label>CALLSIGN</label><input type="text" id="ctrl-actor-callsign" /></div>
+            <div class="ctrl-row">
+              <div class="ctrl-field"><label>TEAM</label>
+                <select id="ctrl-actor-team"><option value="red">RED</option><option value="blue">BLUE</option><option value="director">DIR</option></select>
+              </div>
+            </div>
+            <div class="ctrl-field"><label>PASSWORD</label><input type="text" id="ctrl-actor-pw" /></div>
+            <button class="ctrl-btn" id="ctrl-add-actor">ADD ACTOR</button>
+          </div>
+          <div class="ctrl-section">
+            <h3>MODERATOR CONTROL</h3>
+            <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Assign scenario-scoped roles to accounts (Ops = moderator tag).</div>
+            <div id="m-role-ops-list" style="max-height:90px;overflow-y:auto;font-size:9px;color:var(--text-dim);padding:2px 0;">
+              <div style="font-size:9px;color:var(--text-dim);padding:4px 0;">Loading ops roles…</div>
+            </div>
+            <button class="ctrl-btn" id="m-role-refresh" style="margin-top:4px;font-size:8px;">REFRESH ROLES</button>
+            <div style="margin-top:6px;">
+              <div class="ctrl-row">
+                <div class="ctrl-field" style="flex:1;"><label>CALLSIGN</label><input type="text" id="m-role-callsign" placeholder="ECHO" /></div>
+                <div class="ctrl-field" style="width:120px;"><label>ROLE</label>
+                  <select id="m-role-name"><option value="ops">ops</option></select>
+                </div>
+              </div>
+              <div class="ctrl-row" style="gap:4px;">
+                <button class="ctrl-btn" id="m-role-grant" style="font-size:8px;">GRANT</button>
+                <button class="ctrl-btn amber" id="m-role-revoke" style="font-size:8px;">REVOKE</button>
+              </div>
+              <div id="m-role-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
             </div>
           </div>
-          <div class="ctrl-field"><label>EVENT TYPE</label><input type="text" id="ctrl-gf-event" placeholder="geofence_enter" /></div>
-          <button class="ctrl-btn" id="ctrl-add-geofence">ADD ZONE</button>
-          <div id="ctrl-gf-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
-        </div>
-      </div>
-      <div class="ctrl-section">
-        <h3>SCENARIO BEATS</h3>
-        <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Geo-locked story beats — unlock when actor/player reaches radius.</div>
-        <div id="beats-list" style="max-height:120px;overflow-y:auto;font-size:9px;color:var(--text-dim);padding:2px 0;">Loading…</div>
-        <div style="margin-top:6px;">
-          <div class="ctrl-field"><label>TITLE</label><input type="text" id="ctrl-beat-title" placeholder="PM1 — Initial contact" /></div>
-          <div class="ctrl-row">
-            <div class="ctrl-field"><label>LAT</label><input type="number" id="ctrl-beat-lat" step="0.0001" placeholder="47.678" /></div>
-            <div class="ctrl-field"><label>LNG</label><input type="number" id="ctrl-beat-lng" step="0.0001" placeholder="-116.799" /></div>
-          </div>
-          <div class="ctrl-row">
-            <div class="ctrl-field"><label>RADIUS (m)</label><input type="number" id="ctrl-beat-radius" value="100" min="10" /></div>
-            <div class="ctrl-field"><label>SEQ</label><input type="number" id="ctrl-beat-seq" value="0" min="0" /></div>
-          </div>
-          <div class="ctrl-field"><label>EVENT TYPE</label><input type="text" id="ctrl-beat-event" placeholder="beat_unlock" /></div>
-          <button class="ctrl-btn" id="ctrl-add-beat">ADD BEAT</button>
-          <div id="ctrl-beat-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
-        </div>
-      </div>
-      <div class="ctrl-section">
-        <h3>FOG OF WAR</h3>
-        <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Toggle visibility of zones for player map.</div>
-        <div id="fog-list" style="max-height:100px;overflow-y:auto;font-size:9px;color:var(--text-dim);padding:2px 0;">Loading…</div>
-        <div style="margin-top:6px;display:flex;gap:4px;">
-          <input type="text" id="ctrl-fog-label" placeholder="zone_label or cell_id" style="flex:1;font-size:9px;" />
-          <button class="ctrl-btn" id="ctrl-fog-lit" style="font-size:8px;">LIT</button>
-          <button class="ctrl-btn amber" id="ctrl-fog-dark" style="font-size:8px;">DARK</button>
-        </div>
-        <div id="ctrl-fog-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
-      </div>
-      <div class="ctrl-section">
-        <h3>PLAYER POSITIONS</h3>
-        <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Players who consented to GPS sharing.</div>
-        <div id="player-positions-list" style="max-height:100px;overflow-y:auto;font-size:9px;color:var(--text-dim);padding:2px 0;">Loading…</div>
-        <button class="ctrl-btn" id="ctrl-refresh-players" style="margin-top:4px;font-size:8px;">REFRESH</button>
-      </div>
-      <div class="ctrl-section">
-        <h3>MICROCHAT</h3>
-        <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Encrypted one-to-one channel with actor watch app.</div>
-        <div class="ctrl-field"><label>ACTOR ID</label><input type="number" id="ctrl-chat-actor-id" placeholder="actor id" /></div>
-        <div id="ctrl-chat-thread" style="max-height:100px;overflow-y:auto;font-size:9px;background:#060e06;border:1px solid var(--border);padding:4px;margin-bottom:4px;"></div>
-        <div class="ctrl-field"><label>MESSAGE</label><input type="text" id="ctrl-chat-msg" placeholder="Encrypted message…" maxlength="280" /></div>
-        <div style="display:flex;gap:4px;">
-          <button class="ctrl-btn" id="ctrl-chat-load" style="font-size:8px;">LOAD THREAD</button>
-          <button class="ctrl-btn amber" id="ctrl-chat-send" style="font-size:8px;">SEND</button>
-        </div>
-        <div id="ctrl-chat-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
-      </div>
-      <div class="ctrl-section">
-        <h3>DECOY PING</h3>
-        <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">False ping — actors only, NOT in event log.</div>
-        <div class="ctrl-field"><label>ACTOR ID</label><input type="number" id="ctrl-decoy-actor-id" placeholder="actor id" /></div>
-        <div class="ctrl-field"><label>COMMAND</label>
-          <select id="ctrl-decoy-cmd">
-            <option>SHADOW</option><option>HOLD</option><option>ENGAGE</option>
-            <option>MOVE</option><option>DROP</option><option>EXTRACT</option>
-          </select>
-        </div>
-        <div class="ctrl-field"><label>MSG (optional)</label><input type="text" id="ctrl-decoy-msg" placeholder="Decoy detail…" /></div>
-        <button class="ctrl-btn danger" id="ctrl-send-decoy">INJECT DECOY</button>
-        <div id="ctrl-decoy-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
-      </div>
-      <div class="ctrl-section">
-        <h3>MAP</h3>
-        <input type="file" id="ctrl-map-file" accept="image/*" style="display:none" />
-        <button class="ctrl-btn" id="ctrl-map-upload">UPLOAD MAP IMAGE</button>
-      </div>
-      <div class="ctrl-section">
-        <h3>SCENARIO NODES</h3>
-        <div style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">Place tactical nodes on UGRS cells.</div>
-        <div class="ctrl-field"><label>CELL</label><input type="text" id="ctrl-node-cell" placeholder="C4" style="text-transform:uppercase;" /></div>
-        <div class="ctrl-field"><label>TYPE</label>
-          <select id="ctrl-node-type">
-            <option value="waypoint">★ WAYPOINT</option>
-            <option value="objective">⚑ OBJECTIVE</option>
-            <option value="trigger">⚡ TRIGGER</option>
-            <option value="spawn">● SPAWN</option>
-            <option value="hazard">⚠ HAZARD</option>
-            <option value="intel-drop">♦ INTEL DROP</option>
-          </select>
-        </div>
-        <div class="ctrl-field"><label>LABEL</label><input type="text" id="ctrl-node-label" placeholder="Rally Point Alpha" /></div>
-        <button class="ctrl-btn amber" id="ctrl-add-node">PLACE NODE</button>
-        <div id="ctrl-node-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
-        <div style="margin-top:4px;">
-          <span style="font-size:8px;color:var(--text-dim);letter-spacing:1px;">PLACED: </span>
-          <span id="ctrl-node-count" style="font-size:9px;">0</span>
-          <button class="ctrl-btn" id="ctrl-save-nodes" style="margin-top:4px;">SAVE SCENARIO GRAPH</button>
-        </div>
-      </div>
-      <div class="ctrl-section">
-        <h3>CALIBRATE GRID</h3>
-        <div class="ctrl-row">
-          <div class="ctrl-field"><label>COLS</label><input type="number" id="ctrl-cal-cols" value="6" min="1" max="26" /></div>
-          <div class="ctrl-field"><label>ROWS</label><input type="number" id="ctrl-cal-rows" value="4" min="1" max="20" /></div>
-        </div>
-        <button class="ctrl-btn amber" id="ctrl-calibrate" style="margin-top:4px;">CALIBRATE</button>
-      </div>
-      <div class="ctrl-section">
-        <h3>ADD LANE</h3>
-        <div class="ctrl-field"><label>ID</label><input type="text" id="ctrl-lane-id" placeholder="ALPHA" /></div>
-        <div class="ctrl-field"><label>LABEL</label><input type="text" id="ctrl-lane-label" placeholder="Alpha Lane" /></div>
-        <button class="ctrl-btn" id="ctrl-add-lane">ADD LANE</button>
-      </div>
-      <div class="ctrl-section">
-        <h3>ASSIGN CELLS TO LANE</h3>
-        <div class="ctrl-field"><label>LANE</label>
-          <select id="ctrl-assign-lane-select"><option value="">— select lane —</option></select>
-        </div>
-        <button class="ctrl-btn amber" id="ctrl-start-assign">START ASSIGNING</button>
-      </div>
-      <div class="ctrl-section">
-        <h3>ADD ACTOR</h3>
-        <div class="ctrl-field"><label>CALLSIGN</label><input type="text" id="ctrl-actor-callsign" /></div>
-        <div class="ctrl-row">
-          <div class="ctrl-field"><label>TEAM</label>
-            <select id="ctrl-actor-team"><option value="red">RED</option><option value="blue">BLUE</option><option value="director">DIR</option></select>
+          <div class="ctrl-section">
+            <h3>JOIN CODES</h3>
+            <div class="ctrl-field"><label>TEAM</label>
+              <select id="ctrl-jc-team"><option value="red">RED</option><option value="blue">BLUE</option></select>
+            </div>
+            <button class="ctrl-btn" id="ctrl-gen-code">GENERATE</button>
+            <div id="ctrl-jc-result" style="margin-top:4px;font-size:11px;color:var(--accent);word-break:break-all;"></div>
           </div>
         </div>
-        <div class="ctrl-field"><label>PASSWORD</label><input type="text" id="ctrl-actor-pw" /></div>
-        <button class="ctrl-btn" id="ctrl-add-actor">ADD ACTOR</button>
-      </div>
-      <div class="ctrl-section">
-        <h3>INJECT EVENT</h3>
-        <div class="ctrl-field"><label>TYPE</label><input type="text" id="ctrl-event-type" placeholder="intel" /></div>
-        <div class="ctrl-field"><label>MSG</label><input type="text" id="ctrl-event-msg" placeholder="payload" /></div>
-        <button class="ctrl-btn amber" id="ctrl-inject">INJECT</button>
-      </div>
-      <div class="ctrl-section">
-        <h3>JOIN CODES</h3>
-        <div class="ctrl-field"><label>TEAM</label>
-          <select id="ctrl-jc-team"><option value="red">RED</option><option value="blue">BLUE</option></select>
-        </div>
-        <button class="ctrl-btn" id="ctrl-gen-code">GENERATE</button>
-        <div id="ctrl-jc-result" style="margin-top:4px;font-size:11px;color:var(--accent);word-break:break-all;"></div>
-      </div>
-      <div class="ctrl-section">
-        <h3>ESCALATION PRESETS</h3>
-        <div class="escalation-presets">
-          <button class="ctrl-btn amber" data-esc-preset="surveillance_sweep" title="Inject surveillance sweep event into active lanes">SURVEILLANCE SWEEP</button>
-          <button class="ctrl-btn amber" data-esc-preset="inject_contact" title="Signal approaching contact to all actors">INJECT CONTACT</button>
-          <button class="ctrl-btn danger" data-esc-preset="escalate_zone" title="Raise tension +25 on all non-offline cells">ESCALATE ZONE</button>
-          <button class="ctrl-btn" data-esc-preset="stand_down" title="Reset all cells to working, tension to 0">STAND DOWN</button>
-        </div>
-        <div id="esc-preset-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
-      </div>
-      <div class="ctrl-section">
-        <h3>BROADCAST</h3>
-        <div class="ctrl-field"><label>MESSAGE</label><input type="text" id="ctrl-broadcast-msg" placeholder="Broadcast to all Ops..." /></div>
-        <button class="ctrl-btn amber" id="ctrl-broadcast-send">BROADCAST TO OPS</button>
       </div>
     </div>
   `;
+
+  // --- Collapsible category toggle ---
+  ctrl.querySelectorAll('[data-toggle-cat]').forEach((header) => {
+    header.addEventListener('click', (e) => {
+      // Only toggle if the click target is the header itself or its direct children (title/chevron)
+      const target = e.target as HTMLElement;
+      if (target.closest('.ctrl-category-body')) return; // Ignore clicks bubbling from body content
+      const catName = (header as HTMLElement).dataset.toggleCat!;
+      const catEl = document.getElementById(`cat-${catName}`);
+      if (catEl) {
+        catEl.classList.toggle('collapsed');
+        // Persist collapsed state
+        try {
+          const key = `m-cat-${catName}`;
+          if (catEl.classList.contains('collapsed')) {
+            localStorage.setItem(key, '1');
+          } else {
+            localStorage.removeItem(key);
+          }
+        } catch {}
+      }
+    });
+  });
+
+  // Stop clicks inside category bodies from bubbling up to the header
+  ctrl.querySelectorAll('.ctrl-category-body').forEach((body) => {
+    body.addEventListener('click', (e) => e.stopPropagation());
+  });
+
+  // Restore collapsed states from localStorage
+  ['map', 'events', 'roster'].forEach((catName) => {
+    try {
+      if (localStorage.getItem(`m-cat-${catName}`) === '1') {
+        document.getElementById(`cat-${catName}`)?.classList.add('collapsed');
+      }
+    } catch {}
+  });
 
   // Actor roster click → actor panel
   ctrl.querySelectorAll('.ctx-actor-roster-row[data-actor-id]').forEach((row) => {
@@ -1534,8 +1638,40 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
   loadActorPositions(session);
   document.getElementById('ctrl-refresh-telemetry')?.addEventListener('click', () => loadActorPositions(session));
 
-  // Live map toggle
-  document.getElementById('ctrl-toggle-map')?.addEventListener('click', () => toggleLiveMap(session));
+  // Map overlay toggles
+  document.getElementById('ctrl-overlay-telemetry')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    overlayTelemetry = !overlayTelemetry;
+    const btn = e.currentTarget as HTMLButtonElement;
+    btn.style.borderColor = overlayTelemetry ? 'var(--accent)' : '';
+    btn.style.background = overlayTelemetry ? 'rgba(51,255,51,0.1)' : '';
+    if (overlayTelemetry) loadActorPositions(session);
+    if (cachedGridData) renderUGRSGrid(cachedGridData);
+  });
+  document.getElementById('ctrl-overlay-zones')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    overlayZones = !overlayZones;
+    const btn = e.currentTarget as HTMLButtonElement;
+    btn.style.borderColor = overlayZones ? 'var(--amber)' : '';
+    btn.style.background = overlayZones ? 'rgba(255,170,51,0.1)' : '';
+    if (cachedGridData) renderUGRSGrid(cachedGridData);
+  });
+  document.getElementById('ctrl-overlay-nodes')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    overlayNodes = !overlayNodes;
+    const btn = e.currentTarget as HTMLButtonElement;
+    btn.style.borderColor = overlayNodes ? 'var(--accent)' : '';
+    btn.style.background = overlayNodes ? 'rgba(51,255,51,0.1)' : '';
+    if (cachedGridData) renderUGRSGrid(cachedGridData);
+  });
+  document.getElementById('ctrl-overlay-fog')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    overlayFog = !overlayFog;
+    const btn = e.currentTarget as HTMLButtonElement;
+    btn.style.borderColor = overlayFog ? 'var(--blue)' : '';
+    btn.style.background = overlayFog ? 'rgba(51,153,255,0.1)' : '';
+    if (cachedGridData) renderUGRSGrid(cachedGridData);
+  });
 
   // Geofence list + add
   loadGeofences(session);

@@ -9,9 +9,11 @@ import {
   getJoinCode,
   incrementJoinCodeUsage,
   createActor,
+  getActor,
   getActorByCallsign,
   getActorByScenarioUser,
   createAuthToken,
+  validateToken,
   hashPassword,
 } from '../db/queries';
 import { getUserSession, getUserById } from '../db/user-queries';
@@ -152,6 +154,36 @@ publicRoutes.post('/auth/login', async (c) => {
       callsign: actor.callsign,
       team: actor.team,
       scenario_id,
+    },
+  });
+});
+
+/**
+ * GET /api/auth/check
+ * Validate an existing Bearer token and return actor context.
+ * Used by M / Ops consoles on page refresh to avoid re-login.
+ */
+publicRoutes.get('/auth/check', async (c) => {
+  const header = c.req.header('Authorization');
+  if (!header || !header.startsWith('Bearer ')) {
+    return c.json({ valid: false, reason: 'no_token' }, 401);
+  }
+  const token = header.slice(7);
+  const tokenRow = await validateToken(c.env.DB, token);
+  if (!tokenRow) {
+    return c.json({ valid: false, reason: 'expired' }, 401);
+  }
+  const actor = await getActor(c.env.DB, tokenRow.actor_id);
+  if (!actor) {
+    return c.json({ valid: false, reason: 'actor_missing' }, 401);
+  }
+  return c.json({
+    valid: true,
+    actor: {
+      id: actor.id,
+      callsign: actor.callsign,
+      team: actor.team,
+      scenario_id: tokenRow.scenario_id,
     },
   });
 });

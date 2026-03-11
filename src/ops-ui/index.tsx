@@ -95,16 +95,43 @@ function getOpsSession(): OpsSession | null {
 }
 
 async function opsFetch(path: string, session: OpsSession, opts: RequestInit = {}): Promise<Response> {
-  return fetch(`/api${path}`, {
+  const res = await fetch(`/api${path}`, {
     ...opts,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}`, ...(opts.headers || {}) },
   });
+  // If token expired mid-session, kick back to join screen
+  if (res.status === 401) {
+    console.warn('[OPS] Token rejected (401) — returning to join screen');
+    localStorage.removeItem(OPS_STORAGE_KEY);
+    const app = document.getElementById('app');
+    if (app) {
+      app.innerHTML = '';
+      renderOpsJoin(app, 'Session expired — please rejoin');
+    }
+  }
+  return res;
 }
 
-function renderOpsWithDOM(container: HTMLElement) {
+async function renderOpsWithDOM(container: HTMLElement) {
   const session = getOpsSession();
   if (session) {
-    renderOpsDashboard(container, session);
+    // Validate token is still alive before rendering dashboard
+    try {
+      const res = await fetch('/api/auth/check', {
+        headers: { Authorization: `Bearer ${session.token}` },
+      });
+      if (res.ok) {
+        renderOpsDashboard(container, session);
+        return;
+      }
+      // Token expired — clear and show join screen
+      console.warn('[OPS] Session expired, clearing token');
+      localStorage.removeItem(OPS_STORAGE_KEY);
+      renderOpsJoin(container, 'Session expired — please rejoin');
+    } catch {
+      // Network error — render dashboard anyway (offline-tolerant)
+      renderOpsDashboard(container, session);
+    }
   } else {
     renderOpsJoin(container);
   }
@@ -120,13 +147,14 @@ function getDomUserSession(): { token: string; user: any } | null {
   return null;
 }
 
-function renderOpsJoin(container: HTMLElement) {
+function renderOpsJoin(container: HTMLElement, statusMsg?: string) {
   const existingUser = getDomUserSession();
   const screen = document.createElement('div');
   screen.className = 'join-screen';
   screen.innerHTML = `
     <div class="logo">EYES ONLY</div>
     <div class="subtitle">FIELD OPERATIVE CHECK-IN</div>
+    ${statusMsg ? `<div style="color:#ff3333;font-size:10px;letter-spacing:1px;margin-bottom:8px;">${statusMsg}</div>` : ''}
     ${existingUser
       ? `<div class="field" style="text-align:center;"><label style="color:#33ff33;letter-spacing:2px;">LOGGED IN AS</label><div style="font-size:16px;color:#33ff33;letter-spacing:2px;padding:8px 0;">${existingUser.user?.callsign || existingUser.user?.username || 'OPERATIVE'}</div></div>`
       : `<div class="field"><label>USERNAME</label><input type="text" id="ops-username" placeholder="Enter username or register new" autocomplete="username" /></div>`

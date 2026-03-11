@@ -1,0 +1,20 @@
+python tools/stitch-map.py \
+  --lat 48.27422 --lng -116.54770 \
+  --zoom 17 --cols 7 --rows 3 \
+  --style darklbl --webp \
+  --out my-map.webp
+
+
+
+set STADIA_API_KEY=960dc82c-1195-461c-a1ce-cb26425064a8
+python stitch-map.py --lat 48.2742 --lng -116.5477 --zoom 17 --cols 7 --rows 3 --style toner
+
+48.277331
+-116.556122
+-116.539278
+48.271119
+
+set STADIA_API_KEY=sk-abc123 && python stitch-map.py --lat 48.2742 --lng -116.5477 --zoom 17 --cols 7 --rows
+
+ STADIA_API_KEY=sk-abc123
+python stitch-map.py --lat 48.2742 --lng -116.5477 --zoom 17 --cols 7 --rows

@@ -49,10 +49,10 @@
     }
     .m-header .ws-dot.on { background: var(--accent); }
 
-    /* --- 3-column layout: Feed | Grid | Controls --- */
+    /* --- 3-column layout: Controls | Grid | Feed --- */
     .panels {
       flex: 1; display: grid;
-      grid-template-columns: 280px 1fr 240px;
+      grid-template-columns: 260px 1fr 280px;
       gap: 1px;
       background: var(--border);
       overflow: hidden;
@@ -134,8 +134,8 @@
     .feed-item.dead_drop_placed, .feed-item.dead_drop_retrieved { border-left-color: var(--amber); }
     .feed-item.escalation { border-left-color: var(--red); }
 
-    /* --- Right column: stacked controls --- */
-    .ctrl-stack { display: flex; flex-direction: column; gap: 1px; height: 100%; }
+    /* --- Left column: stacked controls with collapsible categories --- */
+    .ctrl-stack { display: flex; flex-direction: column; gap: 0; height: 100%; }
     .ctrl-section {
       background: var(--bg);
       padding: 6px 8px;
@@ -144,6 +144,36 @@
     .ctrl-section h3 {
       font-size: 9px; letter-spacing: 2px; color: var(--text-dim);
       margin-bottom: 4px;
+    }
+
+    /* Collapsible category groups */
+    .ctrl-category {
+      border-bottom: 1px solid var(--border);
+    }
+    .ctrl-category-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 8px;
+      background: var(--surface);
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    .ctrl-category-header:hover { background: var(--surface2); }
+    .ctrl-category-header .cat-title {
+      font-size: 9px; letter-spacing: 2px; color: var(--accent);
+      font-weight: normal;
+    }
+    .ctrl-category-header .cat-chevron {
+      font-size: 8px; color: var(--text-dim);
+      transition: transform 0.2s;
+    }
+    .ctrl-category.collapsed .cat-chevron { transform: rotate(-90deg); }
+    .ctrl-category-body {
+      display: block;
+      overflow: hidden;
+    }
+    .ctrl-category.collapsed .ctrl-category-body {
+      display: none;
     }
     .ctrl-field { display: flex; flex-direction: column; gap: 1px; margin-bottom: 4px; }
     .ctrl-field label { font-size: 8px; color: #555; letter-spacing: 1px; }
