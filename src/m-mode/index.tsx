@@ -509,8 +509,8 @@ function initMapGrid(session: Session) {
     </div>
   `;
 
-  // Try to load map from R2 (overrides localStorage if available)
-  loadMapFromR2(session);
+  // Try to load map from R2 (overrides localStorage if available), then default
+  loadMapFromR2(session).finally(() => loadDefaultMapIfNeeded(session));
 
   // Drop zone for map images — upload to R2
   gridBody.addEventListener('dragover', (e) => { e.preventDefault(); gridBody.classList.add('dragover'); });
@@ -585,6 +585,117 @@ function setMapImage(dataUrl: string) {
   img.src = dataUrl;
 }
 
+// --- Default map: load bundled Sandpoint if no R2 map ---
+function loadDefaultMapIfNeeded(session: Session) {
+  // Only load default if no map is already displayed
+  const existing = document.getElementById('m-map-img') as HTMLImageElement | null;
+  if (existing && existing.src && !existing.src.includes('data:,')) return;
+  const saved = localStorage.getItem(MAP_KEY);
+  if (saved) return; // Already have a cached map
+  // Load the bundled default
+  setMapImage('/m/default-map.png');
+  console.log('[MMODE] Loaded default Sandpoint map');
+}
+
+// --- Client-side tile stitcher (Canvas API) ---
+const STITCH_PROVIDERS: Record<string, string> = {
+  dark:      'https://basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}@2x.png',
+  darklbl:   'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+  toner:     'https://tiles.stadiamaps.com/tiles/stamen_toner/{z}/{x}/{y}@2x.png',
+  tonerlite: 'https://tiles.stadiamaps.com/tiles/stamen_toner_lite/{z}/{x}/{y}@2x.png',
+  voyager:   'https://basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}@2x.png',
+};
+const STITCH_TILE_SZ = 512; // @2x tiles
+
+function latLngToTile(lat: number, lng: number, zoom: number): [number, number] {
+  const n = Math.pow(2, zoom);
+  const x = Math.floor((lng + 180.0) / 360.0 * n);
+  const latRad = lat * Math.PI / 180;
+  const y = Math.floor((1.0 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2.0 * n);
+  return [x, y];
+}
+
+function loadTileImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`Failed: ${url}`));
+    img.src = url;
+  });
+}
+
+interface StitchOpts {
+  north: number; south: number; east: number; west: number;
+  zoom: number; style: string; apiKey?: string;
+  onProgress?: (pct: number, msg: string) => void;
+}
+
+async function stitchMapClient(opts: StitchOpts): Promise<Blob> {
+  const { north, south, east, west, zoom, style, apiKey, onProgress } = opts;
+  let urlTemplate = STITCH_PROVIDERS[style] || STITCH_PROVIDERS['darklbl'];
+  if (apiKey && urlTemplate.includes('stadiamaps.com')) {
+    urlTemplate += `?api_key=${apiKey}`;
+  }
+
+  // Calculate tile range from bounding box
+  const [xMin, yMin] = latLngToTile(north, west, zoom);   // NW corner
+  const [xMax, yMax] = latLngToTile(south, east, zoom);    // SE corner
+  const cols = xMax - xMin + 1;
+  const rows = yMax - yMin + 1;
+  const total = cols * rows;
+
+  if (total > 100) throw new Error(`Too many tiles (${total}). Narrow your bounds or lower zoom.`);
+  if (total < 1) throw new Error('Invalid bounds — check coordinates.');
+
+  onProgress?.(0, `Stitching ${cols}x${rows} = ${total} tiles at zoom ${zoom}...`);
+
+  // Create canvas
+  const canvas = document.createElement('canvas');
+  canvas.width = cols * STITCH_TILE_SZ;
+  canvas.height = rows * STITCH_TILE_SZ;
+  const ctx = canvas.getContext('2d')!;
+
+  // Fill with dark background
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  let fetched = 0;
+  let failed = 0;
+
+  // Fetch and draw tiles
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const tileX = xMin + col;
+      const tileY = yMin + row;
+      const url = urlTemplate
+        .replace('{z}', String(zoom))
+        .replace('{x}', String(tileX))
+        .replace('{y}', String(tileY));
+
+      try {
+        const img = await loadTileImage(url);
+        ctx.drawImage(img, col * STITCH_TILE_SZ, row * STITCH_TILE_SZ, STITCH_TILE_SZ, STITCH_TILE_SZ);
+        fetched++;
+      } catch {
+        failed++;
+      }
+      const pct = Math.round(((row * cols + col + 1) / total) * 100);
+      onProgress?.(pct, `${fetched}/${total} tiles (${failed} failed)`);
+    }
+  }
+
+  onProgress?.(100, `Done: ${fetched}/${total} tiles. Converting...`);
+
+  // Convert canvas to blob
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error('Canvas export failed'));
+    }, 'image/png');
+  });
+}
+
 // --- UGRS Grid Rendering ---
 function renderUGRSGrid(data: GridData) {
   const gridEl = document.getElementById('m-ugrs-grid');
@@ -593,8 +704,8 @@ function renderUGRSGrid(data: GridData) {
   const config = data.config;
   if (!config || !data.cells.length) {
     gridEl.innerHTML = `<div style="color:var(--text-dim);text-align:center;padding:40px;grid-column:1/-1;">
-      No grid calibrated.<br><br><span style="font-size:9px;">Use CALIBRATE GRID in Controls to set up the UGRS grid.</span>
-      <br><span style="font-size:9px;">Drag &amp; drop a map image here first.</span>
+      No grid calibrated.<br><br><span style="font-size:9px;">Use <span style="color:var(--amber);">CALIBRATE GRID</span> in the left panel to overlay the UGRS grid.</span>
+      <br><span style="font-size:9px;">Stitch a map or drag &amp; drop an image here.</span>
     </div>`;
     return;
   }
@@ -1276,11 +1387,51 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
         </div>
         <div class="ctrl-category-body">
           <div class="ctrl-section">
-            <h3>MAP</h3>
-            <input type="file" id="ctrl-map-file" accept="image/*" style="display:none" />
-            <button class="ctrl-btn" id="ctrl-map-upload">UPLOAD MAP IMAGE</button>
+            <h3>COMMAND MAP</h3>
+            <div id="stitch-map-status" style="font-size:8px;color:var(--text-dim);margin-bottom:4px;">
+              ${cachedGridData?.config?.map_key ? 'Map loaded from scenario.' : 'Default: Sandpoint, ID — stitch a new map below.'}
+            </div>
+            <div style="border:1px solid var(--border);border-radius:3px;padding:6px;margin-bottom:6px;">
+              <div style="font-size:8px;letter-spacing:1px;color:var(--accent);margin-bottom:4px;">STITCH NEW MAP</div>
+              <div class="ctrl-row">
+                <div class="ctrl-field"><label>N LAT</label><input type="number" id="ctrl-stitch-n" step="0.0001" value="48.2790" placeholder="48.2790" /></div>
+                <div class="ctrl-field"><label>S LAT</label><input type="number" id="ctrl-stitch-s" step="0.0001" value="48.2700" placeholder="48.2700" /></div>
+              </div>
+              <div class="ctrl-row">
+                <div class="ctrl-field"><label>W LNG</label><input type="number" id="ctrl-stitch-w" step="0.0001" value="-116.5560" placeholder="-116.5560" /></div>
+                <div class="ctrl-field"><label>E LNG</label><input type="number" id="ctrl-stitch-e" step="0.0001" value="-116.5380" placeholder="-116.5380" /></div>
+              </div>
+              <div class="ctrl-row">
+                <div class="ctrl-field" style="width:80px;"><label>ZOOM</label>
+                  <select id="ctrl-stitch-zoom">
+                    <option value="15">15 — wide</option>
+                    <option value="16">16 — area</option>
+                    <option value="17" selected>17 — blocks</option>
+                    <option value="18">18 — close</option>
+                  </select>
+                </div>
+                <div class="ctrl-field" style="flex:1;"><label>STYLE</label>
+                  <select id="ctrl-stitch-style">
+                    <option value="darklbl" selected>DARK + LABELS</option>
+                    <option value="dark">DARK (no labels)</option>
+                    <option value="voyager">VOYAGER (light)</option>
+                    <option value="toner">TONER B&amp;W *</option>
+                    <option value="tonerlite">TONER LITE *</option>
+                  </select>
+                </div>
+              </div>
+              <div id="stitch-api-warning" style="display:none;font-size:8px;color:var(--amber);padding:4px 0;">
+                * Stadia tiles require an API key and are metered.
+              </div>
+              <button class="ctrl-btn amber" id="ctrl-stitch-go" style="margin-top:4px;">STITCH MAP</button>
+              <div id="stitch-progress" style="margin-top:4px;font-size:8px;color:var(--text-dim);"></div>
+            </div>
+            <div style="display:flex;gap:4px;align-items:center;">
+              <input type="file" id="ctrl-map-file" accept="image/*" style="display:none" />
+              <button class="ctrl-btn" id="ctrl-map-upload" style="font-size:7px;opacity:0.6;flex:1;">UPLOAD LOCAL FILE</button>
+            </div>
           </div>
-          <div class="ctrl-section">
+          <div class="ctrl-section" id="ctrl-calibrate-section">
             <h3>CALIBRATE GRID</h3>
             <div class="ctrl-row">
               <div class="ctrl-field"><label>COLS</label><input type="number" id="ctrl-cal-cols" value="6" min="1" max="26" /></div>
@@ -1704,6 +1855,93 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
     if (file) {
       uploadMapToR2(file, session);
     }
+  });
+
+  // --- Stitch style selector: show API key warning for Stadia tiles ---
+  document.getElementById('ctrl-stitch-style')?.addEventListener('change', (e) => {
+    const style = (e.target as HTMLSelectElement).value;
+    const warn = document.getElementById('stitch-api-warning');
+    if (warn) warn.style.display = (style === 'toner' || style === 'tonerlite') ? '' : 'none';
+  });
+
+  // --- STITCH MAP button ---
+  document.getElementById('ctrl-stitch-go')?.addEventListener('click', async () => {
+    const north = parseFloat((document.getElementById('ctrl-stitch-n') as HTMLInputElement).value);
+    const south = parseFloat((document.getElementById('ctrl-stitch-s') as HTMLInputElement).value);
+    const west  = parseFloat((document.getElementById('ctrl-stitch-w') as HTMLInputElement).value);
+    const east  = parseFloat((document.getElementById('ctrl-stitch-e') as HTMLInputElement).value);
+    const zoom  = parseInt((document.getElementById('ctrl-stitch-zoom') as HTMLSelectElement).value, 10);
+    const style = (document.getElementById('ctrl-stitch-style') as HTMLSelectElement).value;
+    const progressEl = document.getElementById('stitch-progress')!;
+    const btn = document.getElementById('ctrl-stitch-go') as HTMLButtonElement;
+
+    if (isNaN(north) || isNaN(south) || isNaN(west) || isNaN(east)) {
+      progressEl.style.color = 'var(--red)';
+      progressEl.textContent = 'Enter all four coordinates.';
+      return;
+    }
+    if (north <= south) {
+      progressEl.style.color = 'var(--red)';
+      progressEl.textContent = 'N lat must be greater than S lat.';
+      return;
+    }
+    if (east <= west) {
+      progressEl.style.color = 'var(--red)';
+      progressEl.textContent = 'E lng must be greater than W lng.';
+      return;
+    }
+
+    // Stadia cost warning
+    if (style === 'toner' || style === 'tonerlite') {
+      const [xMin] = latLngToTile(north, west, zoom);
+      const [xMax, yMax] = latLngToTile(south, east, zoom);
+      const [, yMin] = latLngToTile(north, west, zoom);
+      const tiles = (xMax - xMin + 1) * (yMax - yMin + 1);
+      if (!confirm(`This will fetch ${tiles} Stadia tiles. Stadia APIs are metered — confirm to proceed.`)) return;
+    }
+
+    btn.textContent = 'STITCHING...'; btn.disabled = true;
+    progressEl.style.color = 'var(--accent)';
+    progressEl.textContent = 'Starting...';
+
+    try {
+      const blob = await stitchMapClient({
+        north, south, east, west, zoom, style,
+        onProgress: (pct, msg) => {
+          progressEl.textContent = `[${pct}%] ${msg}`;
+        },
+      });
+
+      progressEl.textContent = 'Uploading to scenario...';
+
+      // Upload stitched map to R2
+      const file = new File([blob], `map-${style}-z${zoom}.png`, { type: 'image/png' });
+      await uploadMapToR2(file, session);
+
+      progressEl.style.color = 'var(--accent)';
+      progressEl.textContent = `Map stitched (${(blob.size / 1024).toFixed(0)} KB). Calibrate grid next.`;
+
+      // Highlight calibrate section to guide workflow
+      const calSection = document.getElementById('ctrl-calibrate-section');
+      if (calSection) {
+        calSection.style.border = '1px solid var(--amber)';
+        calSection.style.background = 'rgba(255,170,51,0.06)';
+        calSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        setTimeout(() => {
+          calSection.style.border = '';
+          calSection.style.background = '';
+        }, 6000);
+      }
+
+      // Update status text
+      const statusEl = document.getElementById('stitch-map-status');
+      if (statusEl) statusEl.textContent = `Stitched: ${style} z${zoom} — ${north.toFixed(4)}N to ${south.toFixed(4)}S`;
+
+    } catch (err: any) {
+      progressEl.style.color = 'var(--red)';
+      progressEl.textContent = err?.message || 'Stitch failed.';
+    }
+    btn.textContent = 'STITCH MAP'; btn.disabled = false;
   });
 
   // Scenario node: place node

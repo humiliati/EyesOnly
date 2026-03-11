@@ -36,7 +36,7 @@ const app = new Hono<HonoEnv>();
 // blocks our bundled Preact JS. This middleware overrides it.
 
 // Shared CSP applied to all HTML responses
-const APP_CSP = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; connect-src 'self' blob: wss: ws: https://*.cloudflareinsights.com; media-src 'self' blob:; img-src 'self' data: blob:;";
+const APP_CSP = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; connect-src 'self' blob: wss: ws: https://*.cloudflareinsights.com; media-src 'self' blob:; img-src 'self' data: blob: https:;";
 
 app.use('*', async (c, next) => {
   await next();
