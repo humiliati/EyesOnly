@@ -4,7 +4,7 @@
    Phase 2: handles Web Push notifications for M directives.
 */
 
-const CACHE_NAME = 'eyesonly-watch-v2';
+const CACHE_NAME = 'eyesonly-watch-v3';
 const SHELL_URLS = [
   '/ops/watch/',
   '/ops/watch/index.html',
@@ -70,6 +70,19 @@ self.addEventListener('push', (event) => {
   const vibrate = payload.vibrate || [100, 50, 100, 50, 200];
   const data    = payload.data   || {};
 
+  // Determine notification actions based on tag
+  let actions = [];
+  if (tag === 'mping') {
+    actions = [
+      { action: 'ack', title: 'ACK' },
+      { action: 'open', title: 'OPEN' },
+    ];
+  } else if (tag === 'video_push') {
+    actions = [
+      { action: 'open_video', title: '▶ VIEW' },
+    ];
+  }
+
   event.waitUntil(
     self.registration.showNotification(title, {
       body,
@@ -78,13 +91,10 @@ self.addEventListener('push', (event) => {
       data,
       icon:  '/ops/watch/icon-192.png',
       badge: '/ops/watch/icon-192.png',
-      // requireInteraction: true forces the notification to stay until dismissed
-      requireInteraction: tag === 'mping' || tag === 'deadman',
+      // requireInteraction: keep notification visible for important events
+      requireInteraction: tag === 'mping' || tag === 'deadman' || tag === 'video_push',
       silent: payload.silent === true,
-      actions: tag === 'mping' ? [
-        { action: 'ack', title: 'ACK' },
-        { action: 'open', title: 'OPEN' },
-      ] : [],
+      actions,
     })
   );
 });
@@ -107,6 +117,25 @@ self.addEventListener('notificationclick', (event) => {
           existing.postMessage({ type: 'auto_ack', event_id: data.event_id });
         } else {
           self.clients.openWindow(ackUrl);
+        }
+      })
+    );
+  } else if ((action === 'open_video' || event.notification.tag === 'video_push') && data.video_url) {
+    // Video push notification — open watch app and trigger video takeover
+    event.waitUntil(
+      self.clients.matchAll({ type: 'window' }).then((clients) => {
+        const existing = clients.find((c) => c.url.includes('/ops/watch/'));
+        if (existing) {
+          existing.focus();
+          existing.postMessage({
+            type: 'video_push',
+            video_url: data.video_url,
+            title: data.title || 'INTEL',
+          });
+        } else {
+          // Open watch app with video params — app will auto-play on load
+          const videoUrl = `/ops/watch/?video_push=${encodeURIComponent(data.video_url)}&title=${encodeURIComponent(data.title || 'INTEL')}`;
+          self.clients.openWindow(videoUrl);
         }
       })
     );

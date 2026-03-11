@@ -162,6 +162,39 @@ function renderOpsJoin(container: HTMLElement, statusMsg?: string) {
     <div class="field"><label>JOIN CODE</label><input type="text" id="ops-code" placeholder="Enter join code" autocomplete="off" inputmode="text" style="text-transform:uppercase;" /></div>
     <div id="ops-error" class="error-msg" style="display:none"></div>
     <button id="ops-btn" class="btn" style="min-height:48px;">JOIN OPERATION</button>
+    <div class="device-mode">
+      <div class="device-mode-toggle" id="device-mode-toggle">DEVICE MODE ▾</div>
+      <div class="device-mode-panel" id="device-mode-panel">
+        <a href="/ops/watch/" class="device-mode-link">
+          <span class="device-mode-icon">⌚</span>
+          <span>
+            <strong>WATCH APP</strong>
+            <span class="device-mode-desc">Minimal UI for smartwatch or small screen. Add to home screen for standalone app.</span>
+          </span>
+        </a>
+        <a href="/ops/watch/" class="device-mode-link" id="install-pwa-link" style="display:none;">
+          <span class="device-mode-icon">📲</span>
+          <span>
+            <strong>INSTALL TO DEVICE</strong>
+            <span class="device-mode-desc">Add OPS WATCH to your home screen as a standalone app.</span>
+          </span>
+        </a>
+        <div class="device-mode-link device-mode-help" id="ops-help-toggle">
+          <span class="device-mode-icon">?</span>
+          <span>
+            <strong>QUICK HELP</strong>
+            <span class="device-mode-desc">How to join, receive directives, and check in.</span>
+          </span>
+        </div>
+        <div class="device-mode-helptext" id="ops-helptext">
+          <p><strong>1.</strong> Get a <em>join code</em> from your M director.</p>
+          <p><strong>2.</strong> Enter your username and the join code above, then tap JOIN.</p>
+          <p><strong>3.</strong> Once joined, you'll see the OPS dashboard with M directives, intel feed, check-in, and tactical map.</p>
+          <p><strong>4.</strong> On a smartwatch or small phone, use <strong>WATCH APP</strong> instead for a minimal ping-and-ack interface.</p>
+          <p><strong>5.</strong> To install as a standalone app, open <strong>WATCH APP</strong> in your browser, then use your browser menu → "Add to Home Screen".</p>
+        </div>
+      </div>
+    </div>
   `;
   screen.querySelector('#ops-btn')!.addEventListener('click', async () => {
     const code = (document.getElementById('ops-code') as HTMLInputElement).value;
@@ -222,6 +255,34 @@ function renderOpsJoin(container: HTMLElement, statusMsg?: string) {
       btn.textContent = 'JOIN OPERATION'; btn.disabled = false;
     }
   });
+
+  // Wire up DEVICE MODE toggle
+  const dmToggle = screen.querySelector('#device-mode-toggle');
+  const dmPanel = screen.querySelector('#device-mode-panel') as HTMLElement | null;
+  if (dmToggle && dmPanel) {
+    dmToggle.addEventListener('click', () => {
+      const open = dmPanel.style.display !== 'flex';
+      dmPanel.style.display = open ? 'flex' : 'none';
+      dmToggle.textContent = open ? 'DEVICE MODE ▴' : 'DEVICE MODE ▾';
+    });
+  }
+
+  // Wire up QUICK HELP toggle
+  const helpToggle = screen.querySelector('#ops-help-toggle');
+  const helpText = screen.querySelector('#ops-helptext') as HTMLElement | null;
+  if (helpToggle && helpText) {
+    helpToggle.addEventListener('click', () => {
+      const open = helpText.style.display !== 'block';
+      helpText.style.display = open ? 'block' : 'none';
+    });
+  }
+
+  // Detect if running in browser (not standalone) — show install hint
+  if (window.matchMedia && !window.matchMedia('(display-mode: standalone)').matches) {
+    const installLink = screen.querySelector('#install-pwa-link') as HTMLElement | null;
+    if (installLink) installLink.style.display = '';
+  }
+
   container.appendChild(screen);
 }
 

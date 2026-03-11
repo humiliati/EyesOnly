@@ -107,6 +107,52 @@
       .field input { min-height: 44px; font-size: 16px; }
     }
 
+    /* --- Device Mode --- */
+    .device-mode {
+      width: 100%; max-width: 320px; margin-top: 8px;
+    }
+    .device-mode-toggle {
+      font-size: 9px; letter-spacing: 2px; color: var(--text-dim);
+      text-align: center; cursor: pointer; padding: 6px 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .device-mode-toggle:active { color: var(--accent); }
+    .device-mode-panel {
+      display: none; flex-direction: column; gap: 1px;
+      background: var(--border); border-radius: 4px; overflow: hidden;
+      margin-top: 6px;
+    }
+    .device-mode-link {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: var(--surface); padding: 12px;
+      color: var(--accent); text-decoration: none;
+      font-size: 11px; letter-spacing: 1px;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+    .device-mode-link:active { background: rgba(51,255,51,0.04); }
+    .device-mode-icon {
+      font-size: 18px; flex-shrink: 0; width: 24px; text-align: center;
+    }
+    .device-mode-link strong {
+      display: block; font-size: 10px; letter-spacing: 2px; margin-bottom: 2px;
+    }
+    .device-mode-desc {
+      display: block; font-size: 9px; color: var(--text-dim); letter-spacing: 0.5px;
+      line-height: 1.4;
+    }
+    .device-mode-help {
+      color: var(--text-dim); border-left: none;
+    }
+    .device-mode-help .device-mode-icon { color: var(--amber); }
+    .device-mode-helptext {
+      display: none; background: var(--surface); padding: 12px 14px;
+      font-size: 10px; color: var(--text-dim); line-height: 1.8;
+      letter-spacing: 0.5px;
+    }
+    .device-mode-helptext p { margin-bottom: 4px; }
+    .device-mode-helptext strong { color: var(--accent); }
+    .device-mode-helptext em { color: var(--amber); font-style: normal; }
+
     /* --- Alarm Button --- */
     .alarm-btn {
       background: none;

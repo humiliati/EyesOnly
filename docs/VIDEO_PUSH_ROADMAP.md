@@ -80,18 +80,33 @@ Show a log of sent video pushes in M console with timestamps, target, and delive
 
 Client sends `{ type: 'video_ack', video_event_id, status: 'playing'|'completed'|'dismissed' }` back through the WebSocket. M console shows real-time delivery receipts. Feeds into the push history panel from 1.4.
 
-### 2.3 — OPS Watch Video Handling
-**~3 hr**
+### 2.3 — OPS Watch Video Handling ✅
+**~3 hr** — IMPLEMENTED 2026-03-11
 
-- WS handler for `type: 'video_push'` — show a fullscreen banner: **⚠ INCOMING INTEL** with a pulsing "TAP TO VIEW" button
-- Tap opens the video URL in the device's default browser (watch screen is too small for inline playback)
-- Vibration pattern on receive (if Vibration API available)
-- Web Push payload includes video URL so backgrounded watches get a tappable notification
+Full video push support in the OPS Watch app:
+- WS handler for `type: 'video_push'` → fullscreen video takeover overlay
+- **"⚠ INCOMING INTEL"** pre-play banner with pulsing TAP TO PLAY button (autoplay fallback)
+- Inline `<video>` element fills viewport with `object-fit: cover`
+- Vibration pattern on receive (`[200, 100, 200, 100, 400]`)
+- **DISMISS** button always visible during playback
+- **Post-video replay bar**: "INTEL COMPLETE" with REPLAY and DISMISS buttons (auto-dismiss 15s)
+- 120-second safety timeout for lost end events
+- Service worker handles `video_push` tag with "▶ VIEW" notification action
+- SW postMessage bridges notification tap → `showVideoTakeover()` in running app
+- URL parameter `?video_push=` handles notification tap → fresh app open
+- CSP updated: `media-src 'self' https:` for cross-origin video support
+- Cache version bumped to v3
 
-### 2.4 — Autoplay Policy Handling
-**~2 hr**
+### 2.4 — Autoplay Policy Handling ✅ (partial — Watch app)
 
-Browsers require a user gesture before unmuted autoplay. Strategy:
+Watch app implementation:
+- First attempt: autoplay with audio (succeeds if user has interacted with page)
+- If autoplay blocked: show "⚠ INCOMING INTEL" overlay with pulsing play button and "TAP TO PLAY" label
+- Tap triggers `vid.play()` with user gesture (satisfies browser policy)
+- Replay also handles autoplay failure gracefully
+- Ops Portal already handles this via fullscreen overlay click-to-dismiss
+
+Remaining for full 2.4:
 - First attempt: autoplay muted, show "TAP FOR AUDIO" overlay
 - If user has previously interacted with the page (which they will have — they're playing a game), autoplay with audio should work
 - Fallback: show play button overlay styled as an intel briefing prompt

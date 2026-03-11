@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' wss: ws: https:; img-src 'self' data:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' wss: ws: https:; img-src 'self' data:; media-src 'self' https:;">
   <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -401,7 +401,7 @@
       background: #000;
       overflow: hidden;
     }
-    .video-takeover.active { display: block; }
+    .video-takeover.active { display: flex; flex-direction: column; align-items: center; justify-content: center; }
     .video-takeover video {
       position: absolute;
       top: 50%;
@@ -411,29 +411,112 @@
       min-height: 100%;
       width: auto;
       height: auto;
-      /* zoom+crop: fills viewport, clips overflow — no letterbox */
       object-fit: cover;
     }
-    .video-takeover .vt-title {
+    .video-takeover .vt-header {
       position: absolute;
       top: 0; left: 0; right: 0;
       padding: 8px 12px;
-      background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, transparent 100%);
+      background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+      z-index: 3;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .video-takeover .vt-title {
       font-size: 10px;
       letter-spacing: 2px;
       color: rgba(51,255,51,0.8);
-      z-index: 2;
-      pointer-events: none;
     }
     .video-takeover .vt-signal {
-      position: absolute;
-      top: 8px; right: 12px;
       font-size: 8px;
       color: var(--red);
       letter-spacing: 1px;
-      z-index: 2;
       animation: vt-blink 1s steps(2,start) infinite;
     }
+    .video-takeover .vt-dismiss {
+      position: absolute;
+      bottom: 16px; right: 16px;
+      z-index: 4;
+      background: rgba(0,0,0,0.6);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 4px;
+      color: var(--text-dim);
+      font-family: var(--font);
+      font-size: 9px;
+      letter-spacing: 2px;
+      padding: 10px 16px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .vt-dismiss:active { background: rgba(255,51,51,0.15); border-color: var(--red); color: var(--red); }
+
+    /* ---- "TAP TO PLAY" overlay when autoplay blocked ---- */
+    .vt-tap-overlay {
+      position: absolute; inset: 0;
+      z-index: 5;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.85);
+    }
+    .vt-tap-overlay.hidden { display: none; }
+    .vt-tap-label {
+      font-size: 9px; letter-spacing: 3px;
+      color: var(--red); margin-bottom: 12px;
+      animation: vt-blink 1s steps(2,start) infinite;
+    }
+    .vt-tap-btn {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      border: 2px solid var(--text);
+      background: rgba(51,255,51,0.08);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      animation: vt-pulse 2s ease-in-out infinite;
+    }
+    .vt-tap-btn::after {
+      content: '';
+      display: block;
+      width: 0; height: 0;
+      margin-left: 6px;
+      border-left: 22px solid var(--text);
+      border-top: 14px solid transparent;
+      border-bottom: 14px solid transparent;
+    }
+    @keyframes vt-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(51,255,51,0.4); }
+      50% { box-shadow: 0 0 0 16px rgba(51,255,51,0); }
+    }
+
+    /* ---- post-video replay bar ---- */
+    .vt-replay-bar {
+      position: absolute; inset: 0;
+      z-index: 5;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 16px;
+      background: rgba(0,0,0,0.85);
+    }
+    .vt-replay-bar.hidden { display: none; }
+    .vt-replay-label {
+      font-size: 9px; letter-spacing: 3px; color: var(--text-dim);
+    }
+    .vt-replay-btn, .vt-close-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 11px;
+      letter-spacing: 2px;
+      padding: 14px 28px;
+      min-height: 48px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .vt-replay-btn:active { background: rgba(51,255,51,0.08); }
+    .vt-close-btn { color: var(--text-dim); border-color: rgba(255,255,255,0.08); }
+    .vt-close-btn:active { background: rgba(255,51,51,0.08); color: var(--red); }
+
     @keyframes vt-blink {
       0% { opacity: 1; }
       50% { opacity: 0; }
@@ -444,9 +527,24 @@
 
 <!-- ====== VIDEO PUSH TAKEOVER (covers everything when active) ====== -->
 <div class="video-takeover" id="video-takeover">
-  <div class="vt-title" id="vt-title"></div>
-  <div class="vt-signal">● LIVE</div>
+  <div class="vt-header">
+    <div class="vt-title" id="vt-title"></div>
+    <div class="vt-signal">● LIVE</div>
+  </div>
   <video id="vt-video" playsinline></video>
+  <!-- TAP TO PLAY fallback when autoplay is blocked -->
+  <div class="vt-tap-overlay hidden" id="vt-tap-overlay">
+    <div class="vt-tap-label">⚠ INCOMING INTEL</div>
+    <div class="vt-tap-btn" id="vt-tap-btn"></div>
+    <div style="margin-top:12px;font-size:8px;letter-spacing:2px;color:var(--text-dim);">TAP TO PLAY</div>
+  </div>
+  <!-- Post-video replay bar -->
+  <div class="vt-replay-bar hidden" id="vt-replay-bar">
+    <div class="vt-replay-label">INTEL COMPLETE</div>
+    <button class="vt-replay-btn" id="vt-replay-btn">▶ REPLAY</button>
+    <button class="vt-close-btn" id="vt-close-btn">DISMISS</button>
+  </div>
+  <button class="vt-dismiss" id="vt-dismiss-btn">✕ DISMISS</button>
 </div>
 
 <!-- ====== LOGIN SCREEN ====== -->
@@ -674,6 +772,10 @@ var MOTION_LABELS = {
           doAck();
         }
       }
+      // Video push from SW notification tap
+      if (e.data && e.data.type === 'video_push' && e.data.video_url) {
+        showVideoTakeover(e.data.video_url, e.data.title || 'INTEL');
+      }
     });
   }
 
@@ -683,6 +785,20 @@ var MOTION_LABELS = {
   if (autoAckId) {
     // Will be handled after startWatch() sets up the pending ping
     window._pendingAutoAck = parseInt(autoAckId, 10);
+  }
+
+  // Check for video_push URL param (notification tap → opened app fresh)
+  var videoPushUrl = params.get('video_push');
+  if (videoPushUrl) {
+    var videoTitle = params.get('title') || 'INTEL';
+    // Slight delay to let the app render first
+    setTimeout(function() {
+      showVideoTakeover(decodeURIComponent(videoPushUrl), decodeURIComponent(videoTitle));
+    }, 500);
+    // Clean URL so refresh doesn't re-trigger
+    if (history.replaceState) {
+      history.replaceState(null, '', location.pathname);
+    }
   }
 
   // Restore session
@@ -910,32 +1026,55 @@ function handleWSMessage(msg) {
   }
 }
 
-// ===== VIDEO TAKEOVER =====
+// ===== VIDEO TAKEOVER (Phase 2) =====
 var _vtTimer = null;
+var _vtCurrentUrl = '';
+var _vtCurrentTitle = '';
 
 function showVideoTakeover(url, title) {
   var overlay = document.getElementById('video-takeover');
   var vid = document.getElementById('vt-video');
   var titleEl = document.getElementById('vt-title');
+  var tapOverlay = document.getElementById('vt-tap-overlay');
+  var replayBar = document.getElementById('vt-replay-bar');
   if (!overlay || !vid) return;
+
+  _vtCurrentUrl = url;
+  _vtCurrentTitle = title || 'INTEL';
+
+  // Reset sub-overlays
+  if (tapOverlay) tapOverlay.classList.add('hidden');
+  if (replayBar) replayBar.classList.add('hidden');
 
   // Set source and title
   vid.src = url;
-  if (titleEl) titleEl.textContent = title ? '\u25B6 ' + title : '';
+  if (titleEl) titleEl.textContent = title ? '\u25B6 ' + title : '\u25B6 INCOMING INTEL';
 
   // Activate overlay — covers everything
   overlay.classList.add('active');
 
-  // Vibrate to alert the operator
-  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+  // Vibrate to alert the operator (long pattern for urgency)
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
 
-  // Play (autoplay may be blocked, catch silently)
-  vid.play().catch(function() {});
+  // Attempt autoplay — if blocked, show TAP TO PLAY overlay
+  vid.play().then(function() {
+    // Autoplay succeeded — hide tap overlay if shown
+    if (tapOverlay) tapOverlay.classList.add('hidden');
+  }).catch(function() {
+    // Autoplay blocked — show TAP TO PLAY
+    if (tapOverlay) tapOverlay.classList.remove('hidden');
+  });
 
-  // Wire up end handler
-  vid.onended = function() { dismissVideoTakeover(); };
+  // Wire up end handler → show replay bar instead of auto-dismiss
+  vid.onended = function() {
+    if (replayBar) replayBar.classList.remove('hidden');
+    // Auto-dismiss after 15s on the replay screen
+    if (_vtTimer) clearTimeout(_vtTimer);
+    _vtTimer = setTimeout(dismissVideoTakeover, 15000);
+  };
   vid.onerror = function() {
-    // Brief error display then dismiss
+    // Show error state briefly then dismiss
+    if (titleEl) titleEl.textContent = '\u26A0 VIDEO ERROR — CANNOT LOAD';
     setTimeout(dismissVideoTakeover, 3000);
   };
 
@@ -944,13 +1083,59 @@ function showVideoTakeover(url, title) {
   _vtTimer = setTimeout(dismissVideoTakeover, 120000);
 }
 
+function replayVideo() {
+  var vid = document.getElementById('vt-video');
+  var replayBar = document.getElementById('vt-replay-bar');
+  var tapOverlay = document.getElementById('vt-tap-overlay');
+  if (replayBar) replayBar.classList.add('hidden');
+  if (tapOverlay) tapOverlay.classList.add('hidden');
+  if (vid) {
+    vid.currentTime = 0;
+    vid.play().then(function() {}).catch(function() {
+      // If replay also blocked, show tap overlay again
+      if (tapOverlay) tapOverlay.classList.remove('hidden');
+    });
+  }
+  // Reset safety timeout
+  if (_vtTimer) clearTimeout(_vtTimer);
+  _vtTimer = setTimeout(dismissVideoTakeover, 120000);
+}
+
 function dismissVideoTakeover() {
   var overlay = document.getElementById('video-takeover');
   var vid = document.getElementById('vt-video');
+  var tapOverlay = document.getElementById('vt-tap-overlay');
+  var replayBar = document.getElementById('vt-replay-bar');
   if (_vtTimer) { clearTimeout(_vtTimer); _vtTimer = null; }
   if (vid) { vid.pause(); vid.removeAttribute('src'); vid.load(); }
+  if (tapOverlay) tapOverlay.classList.add('hidden');
+  if (replayBar) replayBar.classList.add('hidden');
   if (overlay) overlay.classList.remove('active');
 }
+
+// Wire up video takeover buttons (run once after DOM ready)
+(function() {
+  // TAP TO PLAY button
+  var tapBtn = document.getElementById('vt-tap-btn');
+  if (tapBtn) tapBtn.addEventListener('click', function() {
+    var vid = document.getElementById('vt-video');
+    var tapOverlay = document.getElementById('vt-tap-overlay');
+    if (tapOverlay) tapOverlay.classList.add('hidden');
+    if (vid) vid.play().catch(function() {});
+  });
+
+  // REPLAY button
+  var replayBtn = document.getElementById('vt-replay-btn');
+  if (replayBtn) replayBtn.addEventListener('click', function() { replayVideo(); });
+
+  // CLOSE button (on replay bar)
+  var closeBtn = document.getElementById('vt-close-btn');
+  if (closeBtn) closeBtn.addEventListener('click', function() { dismissVideoTakeover(); });
+
+  // DISMISS button (always visible during playback)
+  var dismissBtn = document.getElementById('vt-dismiss-btn');
+  if (dismissBtn) dismissBtn.addEventListener('click', function() { dismissVideoTakeover(); });
+})();
 
 // We don't store actor_id locally — use a placeholder approach
 // (The server validates via token, so we don't strictly need it client-side,

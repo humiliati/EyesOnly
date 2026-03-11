@@ -97,11 +97,13 @@ M pushes a button → "Send video to ops"
 
 | Need | Status | Notes |
 |------|--------|-------|
-| OPS Watch receives video push WS message | ❌ MISSING | Watch app WS handler doesn't know about video messages |
-| Video takes over watch screen | ❌ MISSING | Watch app has no video player element or fullscreen video mode |
-| Small screen: maybe just show notification + link? | ✅ POSSIBLE | Web Push notification could include a link to open video in browser |
+| OPS Watch receives video push WS message | ✅ WORKS | WS handler for `video_push` → fullscreen video takeover |
+| Video takes over watch screen | ✅ WORKS | Inline `<video>` fills viewport, TAP TO PLAY fallback if autoplay blocked |
+| Dismiss button during playback | ✅ WORKS | ✕ DISMISS button always visible, replay bar after video ends |
+| Vibration alert on receive | ✅ WORKS | `[200, 100, 200, 100, 400]` pattern via Vibration API |
+| Web Push notification with video link | ✅ WORKS | SW `video_push` tag with ▶ VIEW action, opens app and triggers takeover |
 
-**Gap remains.** The watch app is a telemetry/ping tool. For the watch form factor, a push notification linking to a browser-based video player is the planned approach (Phase 2).
+**No gaps.** Watch video takeover is fully operational with autoplay fallback, replay, and push notification support.
 
 ---
 
@@ -150,7 +152,7 @@ M pushes a button → "Send video to ops"
   M pushes "send to ops" button ──────────────── ✅ Works
   ──── WebSocket sends video URL ─────────────── ✅ Works
   ──── Ops receives, plays fullscreen ───────── ✅ Works (+ persistent INTEL FEED card)
-  ──── Watch receives, shows notification ────── ❌ No video WS handling (Phase 2)
+  ──── Watch receives, plays fullscreen ──────── ✅ Works (+ TAP TO PLAY + replay)
   ──── Web Push sent to offline devices ──────── ✅ Works
   Ops telemetry flows back to M ─────────────── ✅ Works
   Scenario management (publish/dispatch) ────── ✅ Works
@@ -158,21 +160,13 @@ M pushes a button → "Send video to ops"
   Alarm + freeze safety system ──────────────── ✅ Works
 ```
 
-**1 gap remaining (Watch video handling), 11 things working.**
+**0 gaps remaining. All 12 features operational.**
 
 ---
 
 ## What Still Needs to Be Built
 
-### Remaining Gap: OPS Watch Video Handling (Phase 2)
-**Effort**: 3 hours
-**Files**: `public/ops/watch/index.html`
-
-In the WS message handler, add a case for `type: 'video_push'`:
-- Show a fullscreen banner with "INCOMING INTEL — TAP TO VIEW"
-- Tap opens the video URL in the device's default browser
-- Vibration pattern on receive (if Vibration API available)
-- Web Push payload already includes video URL for backgrounded devices
+All vertical slice gaps are closed. Remaining work is enhancement:
 
 ### Phase 1: Full M Console Video Integration (Planned)
 See VIDEO_PUSH_ROADMAP.md for full details:
