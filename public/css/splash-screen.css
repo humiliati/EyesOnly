@@ -1,0 +1,648 @@
+/* ============================================================
+   Splash Screen — Mission Select Landing Page
+   Three mission dossier cards over drone footage backgrounds
+   with spy noir silhouette transitions
+   ============================================================ */
+
+/* ---- Full-screen overlay ---- */
+#splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: default;
+}
+
+#splash-screen.splash-hidden {
+  display: none;
+}
+
+/* ---- Background video layer ---- */
+.splash-video-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.splash-video-layer video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+
+.splash-video-layer video.splash-video-active {
+  opacity: 1;
+}
+
+/* Dark overlay on video for readability */
+.splash-video-layer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0.35) 40%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* ---- Atmospheric particles (subtle) ---- */
+.splash-particles {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.splash-particle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  animation: splash-float linear infinite;
+}
+
+@keyframes splash-float {
+  0% {
+    transform: translateY(100vh) translateX(0);
+    opacity: 0;
+  }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% {
+    transform: translateY(-10vh) translateX(30px);
+    opacity: 0;
+  }
+}
+
+/* ---- Close button (red terminal icon) ---- */
+.splash-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 500;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  border: 2px solid rgba(220, 40, 40, 0.6);
+  background: rgba(180, 30, 30, 0.85);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  box-shadow: 0 2px 12px rgba(180, 30, 30, 0.4), 0 0 6px rgba(220, 40, 40, 0.2);
+  backdrop-filter: blur(4px);
+}
+
+.splash-close-btn:hover {
+  background: rgba(200, 35, 35, 0.95);
+  border-color: rgba(255, 60, 60, 0.8);
+  transform: scale(1.06);
+  box-shadow: 0 2px 18px rgba(220, 40, 40, 0.5), 0 0 10px rgba(255, 60, 60, 0.3);
+}
+
+.splash-close-btn:active,
+.splash-close-btn.splash-close-pressed {
+  background: rgba(100, 15, 15, 0.95);
+  border-color: rgba(140, 20, 20, 0.8);
+  transform: scale(0.95);
+  box-shadow: 0 1px 6px rgba(100, 15, 15, 0.4);
+}
+
+.splash-close-icon {
+  font-size: 22px;
+  line-height: 1;
+  filter: drop-shadow(0 0 3px rgba(255, 200, 200, 0.4));
+}
+
+/* ---- Title header ---- */
+.splash-header {
+  position: absolute;
+  top: 6vh;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  text-align: center;
+  opacity: 0;
+  animation: splash-header-in 1s ease-out 0.3s forwards;
+}
+
+@keyframes splash-header-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.splash-title {
+  font-family: 'Courier New', monospace;
+  font-size: clamp(18px, 3.5vw, 36px);
+  font-weight: bold;
+  color: #1cff9b;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  text-shadow:
+    0 0 10px rgba(28, 255, 155, 0.5),
+    0 0 30px rgba(28, 255, 155, 0.2);
+  margin-bottom: 8px;
+}
+
+.splash-subtitle {
+  font-family: 'Courier New', monospace;
+  font-size: clamp(11px, 1.8vw, 16px);
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+/* ---- Card fan container (DESKTOP: horizontal overlap) ---- */
+.splash-card-fan {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0;
+  perspective: 1200px;
+  margin-top: 4vh;
+  opacity: 0;
+  animation: splash-fan-in 0.8s ease-out 0.8s forwards;
+}
+
+@keyframes splash-fan-in {
+  from {
+    opacity: 0;
+    transform: translateY(80px) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ---- Individual dossier card ---- */
+.splash-dossier {
+  position: relative;
+  width: clamp(200px, 22vw, 280px);
+  height: clamp(300px, 34vw, 420px);
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.4s ease,
+              filter 0.3s ease;
+  transform-style: preserve-3d;
+  will-change: transform;
+  border: 2px solid rgba(28, 255, 155, 0.25);
+  box-shadow:
+    0 4px 30px rgba(0, 0, 0, 0.6),
+    0 0 8px rgba(28, 255, 155, 0.1);
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(4px);
+}
+
+/* Desktop fan angles — horizontal overlap like playing cards */
+.splash-dossier:nth-child(1) {
+  transform: rotate(-12deg) translateY(15px);
+  z-index: 1;
+}
+.splash-dossier:nth-child(2) {
+  transform: rotate(0deg) translateY(-10px);
+  z-index: 3;
+  margin: 0 -30px;
+}
+.splash-dossier:nth-child(3) {
+  transform: rotate(12deg) translateY(15px);
+  z-index: 1;
+}
+
+/* Hover states (desktop) */
+.splash-dossier:hover {
+  transform: rotate(0deg) translateY(-30px) scale(1.08) !important;
+  z-index: 10 !important;
+  border-color: rgba(28, 255, 155, 0.7);
+  box-shadow:
+    0 10px 50px rgba(0, 0, 0, 0.8),
+    0 0 25px rgba(28, 255, 155, 0.3),
+    0 0 60px rgba(28, 255, 155, 0.1);
+  filter: brightness(1.1);
+}
+
+/* Card inner structure */
+.splash-dossier-inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Classified stamp top bar */
+.splash-dossier-header {
+  padding: 12px 14px 8px;
+  border-bottom: 1px solid rgba(28, 255, 155, 0.15);
+  position: relative;
+}
+
+.splash-dossier-classified {
+  font-family: 'Courier New', monospace;
+  font-size: 9px;
+  color: rgba(255, 70, 70, 0.7);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.splash-dossier-mission-label {
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  color: rgba(28, 255, 155, 0.5);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Card artwork / icon area */
+.splash-dossier-artwork {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Crosshair / tactical icon */
+.splash-dossier-icon {
+  font-size: clamp(48px, 6vw, 72px);
+  opacity: 0.85;
+  filter: drop-shadow(0 0 12px rgba(28, 255, 155, 0.3));
+  transition: transform 0.3s ease;
+  z-index: 2;
+}
+
+.splash-dossier:hover .splash-dossier-icon {
+  transform: scale(1.1);
+}
+
+/* Faint grid overlay on artwork */
+.splash-dossier-artwork::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(28, 255, 155, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(28, 255, 155, 0.04) 1px, transparent 1px);
+  background-size: 20px 20px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Pulsing scan line on artwork */
+.splash-dossier-artwork::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(28, 255, 155, 0.2), transparent);
+  animation: splash-card-scan 4s linear infinite;
+  z-index: 3;
+  pointer-events: none;
+}
+
+@keyframes splash-card-scan {
+  0% { top: 10%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 90%; opacity: 0; }
+}
+
+/* Card info footer */
+.splash-dossier-info {
+  padding: 10px 14px 14px;
+  border-top: 1px solid rgba(28, 255, 155, 0.15);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.splash-dossier-title {
+  font-family: 'Courier New', monospace;
+  font-size: clamp(13px, 1.5vw, 17px);
+  font-weight: bold;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+
+.splash-dossier-desc {
+  font-family: 'Courier New', monospace;
+  font-size: clamp(10px, 1.1vw, 13px);
+  color: rgba(28, 255, 155, 0.7);
+  margin-bottom: 8px;
+}
+
+.splash-dossier-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.splash-dossier-tag {
+  font-family: 'Courier New', monospace;
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
+/* ---- Bottom prompt ---- */
+.splash-prompt {
+  position: absolute;
+  bottom: 5vh;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  text-align: center;
+  opacity: 0;
+  animation: splash-prompt-in 0.6s ease-out 1.4s forwards;
+}
+
+@keyframes splash-prompt-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.splash-prompt-text {
+  font-family: 'Courier New', monospace;
+  font-size: clamp(11px, 1.4vw, 14px);
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  animation: splash-prompt-blink 2.5s ease-in-out infinite;
+}
+
+@keyframes splash-prompt-blink {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.7; }
+}
+
+/* ---- Spy noir silhouettes (image-based) ---- */
+.splash-silhouettes {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.splash-silhouettes.splash-sil-active {
+  opacity: 1;
+}
+
+.splash-sil {
+  position: absolute;
+}
+
+.splash-sil-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom;
+}
+
+/* Female classic: slides from right to left across the full viewport */
+.splash-sil-right-slide {
+  right: -50%;
+  bottom: 0;
+  width: 40vw;
+  height: 85vh;
+  transition: right 1s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 102;
+}
+
+.splash-silhouettes.splash-sil-active .splash-sil-right-slide {
+  right: 55%;
+}
+
+/* Bottom silhouettes: slide up from below and zoom in */
+.splash-sil-bottom {
+  bottom: -80%;
+  width: 30vw;
+  height: 70vh;
+  transition: bottom 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.15s,
+              transform 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.3s;
+  z-index: 101;
+  transform: scale(1);
+}
+
+.splash-sil-bottom-a {
+  left: 15%;
+}
+
+.splash-sil-bottom-b {
+  right: 15%;
+}
+
+.splash-silhouettes.splash-sil-active .splash-sil-bottom {
+  bottom: 0;
+  transform: scale(1.6);
+}
+
+/* Fade-to-black overlay */
+.splash-fade-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.8s ease 0.6s;
+}
+
+.splash-fade-overlay.splash-fade-active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* ---- Selected card glow pulse ---- */
+.splash-dossier.splash-selected {
+  border-color: #1cff9b !important;
+  box-shadow:
+    0 0 30px rgba(28, 255, 155, 0.5),
+    0 0 60px rgba(28, 255, 155, 0.2),
+    inset 0 0 30px rgba(28, 255, 155, 0.1) !important;
+  animation: splash-selected-pulse 0.6s ease-in-out;
+}
+
+@keyframes splash-selected-pulse {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.06); }
+  100% { transform: scale(1.02); }
+}
+
+/* ---- Scanline overlay on whole splash ---- */
+.splash-scanlines {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.06) 2px,
+    rgba(0, 0, 0, 0.06) 4px
+  );
+}
+
+/* ==============================================================
+   MOBILE PORTRAIT — Stacked overlap cards (like reference image)
+   Cards stack vertically with perspective tilt and overlap,
+   resembling stacked dossier folders.
+   ============================================================== */
+@media (max-width: 768px) {
+  .splash-card-fan {
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    perspective: 800px;
+  }
+
+  .splash-dossier {
+    width: clamp(280px, 85vw, 380px);
+    height: clamp(130px, 18vh, 170px);
+  }
+
+  /* Stacked overlap: each card overlaps the one above,
+     with slight 3D tilt like stacked folders on a desk */
+  .splash-dossier:nth-child(1) {
+    transform: perspective(800px) rotateX(8deg) translateY(0);
+    z-index: 3;
+    margin: 0;
+  }
+  .splash-dossier:nth-child(2) {
+    transform: perspective(800px) rotateX(5deg) translateY(-20px);
+    z-index: 2;
+    margin: 0;
+  }
+  .splash-dossier:nth-child(3) {
+    transform: perspective(800px) rotateX(3deg) translateY(-40px);
+    z-index: 1;
+    margin: 0;
+  }
+
+  .splash-dossier:hover {
+    transform: perspective(800px) rotateX(0deg) translateY(-10px) scale(1.03) !important;
+    z-index: 10 !important;
+  }
+
+  .splash-dossier-inner {
+    flex-direction: row;
+  }
+
+  .splash-dossier-artwork {
+    width: 90px;
+    min-width: 90px;
+  }
+
+  .splash-dossier-header {
+    display: none;
+  }
+
+  .splash-dossier-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-top: none;
+    border-left: 1px solid rgba(28, 255, 155, 0.15);
+  }
+
+  /* Silhouettes: right-slide still works, bottom hidden on small screens */
+  .splash-sil-right-slide {
+    width: 55vw;
+    height: 70vh;
+  }
+
+  .splash-sil-bottom {
+    display: none;
+  }
+
+  /* Close button adjustments */
+  .splash-close-btn {
+    top: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+  }
+
+  .splash-close-icon {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .splash-dossier {
+    width: 92vw;
+    height: 120px;
+  }
+
+  .splash-dossier:nth-child(1) {
+    transform: perspective(600px) rotateX(7deg) translateY(0);
+  }
+  .splash-dossier:nth-child(2) {
+    transform: perspective(600px) rotateX(4deg) translateY(-16px);
+  }
+  .splash-dossier:nth-child(3) {
+    transform: perspective(600px) rotateX(2deg) translateY(-32px);
+  }
+
+  .splash-title {
+    letter-spacing: 0.15em;
+  }
+}
+
+/* ---- Reduced motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  .splash-dossier,
+  .splash-sil,
+  .splash-sil-right-slide,
+  .splash-sil-bottom,
+  .splash-fade-overlay,
+  .splash-video-layer video {
+    transition-duration: 0.01s !important;
+    animation-duration: 0.01s !important;
+  }
+
+  .splash-particle {
+    display: none;
+  }
+}

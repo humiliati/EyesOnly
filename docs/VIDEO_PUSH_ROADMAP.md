@@ -23,7 +23,7 @@ Full `<video>` player with WS listener for `video_push`. Fullscreen overlay with
 Video Intel section in M console with filename input (or dropdown from `GET /api/audio/list?prefix=video/`) and PUSH TO OPS button.
 
 ### Demo Prep Checklist
-- [x] Pre-upload a short demo video via Sound Designer portal
+- [x] Pre-upload a short demo video via Media Designer portal
 - [x] Create a test scenario with at least one ops actor
 - [x] Login as M on one device, ops on another
 - [x] Trigger video push, confirm playback + auto-maximize
@@ -45,7 +45,7 @@ Full panel in M console showing all uploaded videos with thumbnails (or filename
 ### 1.2 — M Console Inline Video Upload
 **~3 hr**
 
-Port the Sound Designer portal's upload dropzone into the M console video panel. Direct-to-R2 upload with progress bar, 50MB limit, filename sanitization. On success, video appears in the library immediately.
+Port the Media Designer portal's upload dropzone into the M console video panel. Direct-to-R2 upload with progress bar, 50MB limit, filename sanitization. On success, video appears in the library immediately.
 
 ### 1.3 — Targeted Push (Actor Selection)
 **~2 hr**
@@ -232,7 +232,7 @@ Phases 1 and 2 can overlap if two people are working (one on M console, one on c
 
 ## Appendix A: Contractor Brief — Task 1.2 (M Console Inline Video Upload)
 
-**Task**: Port the Sound Designer portal's upload widget into the M Console so directors can upload video directly from their command interface.
+**Task**: Port the Media Designer portal's upload widget into the M Console so directors can upload video directly from their command interface.
 
 **No-dependency**: This task can be started immediately. It does not depend on the video serving route, push endpoint, or video player.
 
@@ -240,7 +240,7 @@ Phases 1 and 2 can overlap if two people are working (one on M console, one on c
 
 ### What exists today
 
-The Sound Designer portal (`public/portal/sound-designer.html` + `public/portal/js/sound-designer.js`) has a fully working upload widget:
+The Media Designer portal (`public/portal/sound-designer.html` + `public/portal/js/sound-designer.js`) has a fully working upload widget:
 
 - Drag-and-drop dropzone + click-to-browse file picker
 - Client-side validation: 50MB max, allowed extensions `.wav .mp3 .ogg .webm .m4a .mp4 .opus`
@@ -310,7 +310,7 @@ Response 413: { ok: false, error: "File too large (55.2 MB > 50 MB limit)" }
 - Modify the server upload endpoint
 - Add authentication to the upload endpoint
 - Add a destination selector (hardcode `"video"`)
-- Touch the Sound Designer portal (it stays as-is)
+- Touch the Media Designer portal (it stays as-is)
 - Implement video preview or playback (that's a different task)
 - Implement the "push to ops" button (that's task 0.4)
 

@@ -348,7 +348,7 @@ The existing `hit-{1..4}` / `impact-{1..4}` sounds remain for projectile hits. P
 | File | Change |
 |------|--------|
 | `audio-manifest.json` | Add entries for material break + debris sounds once assets are recorded |
-| Sound Designer portal | Add 💥 BREAKABLE SOUNDS category with all break + debris entries |
+| Media Designer portal | Add 💥 BREAKABLE SOUNDS category with all break + debris entries |
 
 ### Step 6: Verify & Tune
 
@@ -362,7 +362,7 @@ Play-test all three durability tiers across multiple biomes. Verify kick count f
 
 ## 11. Designer Portal Integration (Future)
 
-The Sound Designer portal will gain a "Breakable Preview" panel:
+The Media Designer portal will gain a "Breakable Preview" panel:
 
 1. Select durability tier (light / medium / sturdy)
 2. Select material (wood / glass / metal / organic / plastic)

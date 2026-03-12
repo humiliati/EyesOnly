@@ -12,7 +12,7 @@ The `unified-designer.html` file is the central hub for all design activities. I
 *   **World Designer:** For creating a flowchart-like graph of the game world.
 *   **Item Designer:** For creating and configuring game items (equipment, consumables, keys).
 *   **Loot Designer:** For building loot tables assigned to breakables and enemies.
-*   **Sound Designer:** For previewing, assigning, and uploading audio/video assets.
+*   **Media Designer:** For previewing, assigning, and uploading audio/video assets (formerly Sound Designer).
 
 ## 2. The Asset Pipeline
 
@@ -53,29 +53,29 @@ The Unified Designer implements a clear pipeline for creating and using assets:
 4.  This dropdown will be populated with the floors you saved in the Map Designer.
 5.  Select the desired map from the dropdown to assign it to the "Step" node.
 
-### 2.6. Assign Sounds in the Sound Designer
+### 2.6. Preview & Assign Media in the Media Designer
 
-1.  Switch to the "Sound Designer" tab.
-2.  The left panel shows the **Sound Library** — all sounds from `audio-manifest.json`, grouped by category (UI, Movement, Combat, Magic, Environment, Collectible, Creature, Music).
-3.  Click any sound to select it. The center **Preview** tab shows a waveform visualization and lets you play the sound.
+1.  Switch to the "Media Designer" tab (formerly Sound Designer).
+2.  The left panel shows the **Media Library**. The first category is **Uploaded Videos** — video files fetched dynamically from R2. Below that are all audio assets from `audio-manifest.json`, grouped by category (UI, Movement, Combat, Magic, Environment, Collectible, Creature, Music, and more).
+3.  Click any asset (audio or video) to select it. The portal **automatically switches to the Preview tab and begins playback**. Audio shows a waveform visualization; videos show an inline `<video>` player.
 4.  Switch to the **Assign** tab to link sounds to designer contexts:
     *   **Asset Designer context:** Assign sounds to asset events (On Break, On Interact, On Spawn, Ambient Loop).
     *   **Map Designer context:** Assign background music, ambient SFX, floor enter/exit sounds.
     *   **Interior Designer context:** Assign room ambient, door open/close, floor creak sounds.
 5.  Use the **Target Selection** section to pick a specific asset, floor, or interior from the registries.
-6.  The right **Inspector** panel shows the selected sound's properties and all its current assignments.
+6.  The right **Inspector** panel shows the selected asset's properties and all its current assignments.
 7.  Click "Save Assignments" to persist to localStorage. Click "Export JSON" to download a `sound-assignments.json` file for use by the game engine.
 
 ### 2.7. Upload Audio/Video Files
 
-1.  In the Sound Designer, switch to the **Upload** tab.
+1.  In the Media Designer, switch to the **Upload** tab.
 2.  Drag and drop audio or video files onto the dropzone (or click to browse). Supported formats: `.wav`, `.mp3`, `.ogg`, `.webm`, `.m4a`, `.mp4`, `.opus`. Max 50 MB per file.
 3.  Select the destination folder from the dropdown: **SFX** (`audio/sfx/`), **Music** (`audio/music/`), or **Video** (`video/`).
 4.  Click "Upload All" to push files to the R2 bucket (`eyesonly-assets`).
 5.  Uploaded files are served at `/audio/sfx/<filename>`, `/audio/music/<filename>`, or `/video/<filename>` via the Cloudflare Worker.
-6.  After uploading new sounds, click "Refresh" to reload the manifest and see them in the library.
+6.  After uploading new sounds, click "Refresh" to reload the manifest and see them in the library. Uploaded videos appear automatically in the **Uploaded Videos** category at the top of the library.
 
-> **Note:** Audio assets are stored in Cloudflare R2 (not git) to avoid repository bloat. The `audio-manifest.json` file in `public/audio/` is the committed source of truth for sound names and paths. The batch upload script `scripts/upload-audio-to-r2.sh` can also be used from the command line.
+> **Note:** Audio and video assets are stored in Cloudflare R2 (not git) to avoid repository bloat. The `audio-manifest.json` file in `public/audio/` is the committed source of truth for sound names and paths. Video files are discovered dynamically from R2. The batch upload script `scripts/upload-audio-to-r2.sh` can also be used from the command line.
 
 ## 3. Exporting for Deployment
 

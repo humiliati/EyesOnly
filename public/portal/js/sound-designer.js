@@ -1,7 +1,9 @@
 /* ============================================================
-   Sound Designer — Portal Logic
+   Media Designer — Portal Logic (formerly Sound Designer)
    Loads audio-manifest.json, provides preview playback,
-   per-designer sound assignment, and R2 upload for audio/video.
+   per-designer sound/video assignment, and R2 upload.
+   Uploaded videos appear first in the library; selecting any
+   asset auto-switches to Preview tab and begins playback.
    ============================================================ */
 
 var SoundDesigner = (function () {
@@ -66,6 +68,7 @@ var SoundDesigner = (function () {
     _bindModal();
     _loadManifest();        // optional enrichment — library works without it
     _applyPersistedFlags(); // apply delete marks + missing flags to DOM
+    _loadVideoLibrary();    // fetch uploaded videos from R2
   }
 
   // ---- Manifest Loading (optional enrichment) ----
@@ -186,13 +189,27 @@ var SoundDesigner = (function () {
   function _selectSound(id) {
     _selectedSoundId = id;
 
-    // Update library highlights
-    document.querySelectorAll('.sound-item').forEach(function (el) {
-      el.classList.toggle('selected', el.dataset.soundId === id);
+    // Update library highlights (both audio and video items)
+    document.querySelectorAll('.sound-item, .video-item').forEach(function (el) {
+      var elId = el.dataset.soundId || el.dataset.videoId;
+      el.classList.toggle('selected', elId === id);
     });
+
+    // Check if this is a video selection
+    var videoBtn = document.querySelector('.video-item[data-video-id="' + id + '"]');
+    if (videoBtn) {
+      _selectVideo(videoBtn);
+      return;
+    }
 
     var entry = _entryFromDOM(id);
     if (!entry) return;
+
+    // Hide video preview, show audio preview
+    var videoCard = document.getElementById('video-preview-card');
+    var audioCard = document.getElementById('audio-preview-card');
+    if (videoCard) videoCard.style.display = 'none';
+    if (audioCard) audioCard.style.display = '';
 
     // Update preview panel
     document.getElementById('preview-name').textContent = _displayName(id, entry);
@@ -206,6 +223,12 @@ var SoundDesigner = (function () {
 
     // Set streaming preview source (no full download)
     _setPreviewSrc(entry.src);
+
+    // Auto-switch to Preview tab
+    _switchToPreviewTab();
+
+    // Auto-play the selected sound
+    setTimeout(function () { _playPreview(); }, 100);
 
     // Update assignment grid values
     _refreshAssignmentSlots();
@@ -1522,7 +1545,7 @@ var SoundDesigner = (function () {
       _meta: {
         exported: new Date().toISOString(),
         version: 1,
-        description: 'Sound assignments from Sound Designer Portal'
+        description: 'Media assignments from Media Designer Portal'
       },
       assignments: {}
     };
@@ -1567,6 +1590,126 @@ var SoundDesigner = (function () {
     el._timer = setTimeout(function () {
       el.className = 'toast';
     }, 3000);
+  }
+
+  // ---- Auto-switch to Preview tab ----
+
+  function _switchToPreviewTab() {
+    var previewTab = document.querySelector('.center-tab[data-tab="preview"]');
+    if (previewTab && !previewTab.classList.contains('active')) {
+      document.querySelectorAll('.center-tab').forEach(function (t) { t.classList.remove('active'); });
+      document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+      previewTab.classList.add('active');
+      var panel = document.getElementById('tab-preview');
+      if (panel) panel.classList.add('active');
+    }
+  }
+
+  // ---- Video Library (fetched from R2 via /video/ listing or known uploads) ----
+
+  function _loadVideoLibrary() {
+    var container = document.getElementById('video-library-items');
+    var countEl = document.getElementById('video-count');
+    if (!container) return;
+
+    // Fetch all videos from R2 via the /api/audio/list endpoint with prefix=video/
+    fetch(ORIGIN + '/api/audio/list?prefix=video/&limit=500')
+      .then(function (res) {
+        if (!res.ok) throw new Error('R2 video list unavailable: ' + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        if (!data.ok || !data.files) throw new Error('Bad response');
+        var videos = data.files.map(function (obj) {
+          var name = obj.key.replace('video/', '');
+          return { key: obj.key, name: name, size: obj.size, uploaded: obj.uploaded };
+        });
+        _renderVideoLibrary(container, countEl, videos);
+        _toast('Video library loaded — ' + videos.length + ' video' + (videos.length !== 1 ? 's' : ''));
+      })
+      .catch(function (err) {
+        console.warn('[MediaDesigner] video library fetch failed:', err);
+        container.innerHTML = '<p style="color:#ff6600; font-size:11px; padding:8px; margin:0;">Could not load videos from R2. Use the Upload tab to add videos, or check your connection.</p>';
+        if (countEl) countEl.textContent = '0';
+      });
+  }
+
+  function _renderVideoLibrary(container, countEl, videos) {
+    container.innerHTML = '';
+    if (!videos || videos.length === 0) {
+      container.innerHTML = '<p style="color:#888; font-size:11px; padding:8px; margin:0;">No videos uploaded yet. Use the Upload tab to add videos.</p>';
+      if (countEl) countEl.textContent = '0';
+      return;
+    }
+
+    if (countEl) countEl.textContent = String(videos.length);
+
+    videos.forEach(function (video) {
+      var btn = document.createElement('button');
+      btn.className = 'sound-item video-item';
+      btn.dataset.videoId = 'video-' + video.name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+      btn.dataset.src = '/video/' + encodeURIComponent(video.name);
+      btn.dataset.category = 'video';
+      btn.dataset.title = video.name;
+      var displayName = video.name.replace(/\.[^.]+$/, ''); // strip extension
+      btn.innerHTML = '<span class="mini-play" style="color:#e91e63;">▶</span> ' + displayName;
+
+      btn.addEventListener('click', function () {
+        // Deselect all
+        document.querySelectorAll('.sound-item, .video-item').forEach(function (el) {
+          el.classList.remove('selected');
+        });
+        btn.classList.add('selected');
+        _selectedSoundId = btn.dataset.videoId;
+        _selectVideo(btn);
+      });
+
+      container.appendChild(btn);
+    });
+  }
+
+  function _selectVideo(btn) {
+    var src = btn.dataset.src;
+    var title = btn.dataset.title || 'Video';
+
+    // Switch to Preview tab
+    _switchToPreviewTab();
+
+    // Stop any audio preview
+    _stopPreview();
+
+    // Show video preview, hide audio preview
+    var videoCard = document.getElementById('video-preview-card');
+    var audioCard = document.getElementById('audio-preview-card');
+    if (videoCard) videoCard.style.display = '';
+    if (audioCard) audioCard.style.display = 'none';
+
+    // Load and play the video
+    var player = document.getElementById('video-preview-player');
+    if (player) {
+      player.src = ORIGIN + src;
+      player.load();
+      player.play().catch(function (err) {
+        console.log('[MediaDesigner] video autoplay blocked:', err);
+      });
+    }
+
+    // Update video preview info
+    var nameEl = document.getElementById('video-preview-name');
+    var metaEl = document.getElementById('video-preview-meta');
+    if (nameEl) nameEl.textContent = title.replace(/\.[^.]+$/, '');
+    if (metaEl) metaEl.textContent = 'Source: ' + src;
+
+    // Update inspector for video
+    var inspSelected = document.getElementById('inspector-selected');
+    if (inspSelected) {
+      inspSelected.innerHTML =
+        '<div style="padding:8px;">' +
+        '<div style="color:#e91e63; font-size:11px; letter-spacing:0.1em; text-transform:uppercase;">Video Asset</div>' +
+        '<div style="color:#fff; font-size:14px; margin-top:4px;">' + title.replace(/\.[^.]+$/, '') + '</div>' +
+        '<div style="color:#888; font-size:11px; margin-top:2px;">' + src + '</div>' +
+        '</div>';
+    }
   }
 
   // ---- Public API ----

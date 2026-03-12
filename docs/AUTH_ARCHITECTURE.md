@@ -173,7 +173,7 @@ Directors and Blue Team members can also log in via `POST /api/auth/login` with 
 /api/m        → mModeRoutes     (director console — requires actor token + director role)
 /api/kernel   → kernelRoutes    (external agent/Decision API integration)
 /audio        → audioRoutes     (R2-served audio assets)
-/api/audio    → audioUploadRoutes (sound designer portal)
+/api/audio    → audioUploadRoutes (media designer portal)
 ```
 
 CORS on `/api/*` allows both `Authorization` and `X-Session-Token` headers.

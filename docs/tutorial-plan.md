@@ -37,7 +37,7 @@
 **Features exercised**: Video push endpoint, WebSocket broadcast, fullscreen overlay, INTEL FEED card
 
 ### M Director steps:
-1. Pre-upload a short demo video via Sound Designer portal (`/portal/sound-designer.html`) with destination set to "video"
+1. Pre-upload a short demo video via Media Designer portal (`/portal/sound-designer.html`) with destination set to "video"
 2. In M console, find the **VIDEO INTEL** section
 3. Type the video filename (e.g. `demo-briefing.mp4`)
 4. Click **PUSH TO OPS**

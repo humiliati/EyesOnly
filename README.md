@@ -75,7 +75,7 @@ npm run build:ui       # builds /ops + /m bundles
 - **`AudioSystem`** (`public/js/audio-system.js`): singleton — `play(key)`, `playMusic(key)`, `playRandom(base, count)`, global `data-sound` attribute delegate
 - **Audio manifest** (`public/audio/audio-manifest.json`): 167-entry registry across 8 categories (ui, movement, combat, magic, environment, collectible, creature, music)
 - **R2 serving** (`src/worker/routes/audio.ts`): `GET /audio/sfx/*`, `GET /audio/music/*` with Range support, CORS, immutable caching
-- **Upload API** (`src/worker/routes/audio-upload.ts`): `POST /api/audio/upload` for Sound Designer portal
+- **Upload API** (`src/worker/routes/audio-upload.ts`): `POST /api/audio/upload` for Media Designer portal
 - **Audio controls widget** (`public/js/audio-controls-widget.js`): debrief feed header UI for master/music/SFX volume
 - **Transcode** (`scripts/transcode-audio.sh`): WAV → Opus/WebM (96k SFX, 128k music) + MP3 fallback via ffmpeg
 - **Upload** (`scripts/upload-audio-to-r2.sh`): batch R2 uploader
@@ -86,15 +86,15 @@ See `docs/AUDIO_WIRING_ROADMAP.md` for the full wiring plan.
 
 The designer portals live in `public/portal/` and are accessible via the unified designer (`/portal/unified-designer.html`).
 
-### Sound Designer (`/portal/sound-designer.html`)
+### Media Designer (`/portal/sound-designer.html`)
 
-Full-featured audio workstation portal for wiring sounds to game events:
+Full-featured media workstation portal for managing audio and video assets (formerly Sound Designer):
 
-- **Sound Library** — 167 sounds baked as static HTML, organized by 8 categories, with search filtering. Works offline (no manifest fetch required).
-- **Preview** — Streaming playback via `<audio>` element with live waveform visualization (AnalyserNode). Handles both short SFX and full-length music tracks.
+- **Media Library** — Uploaded Videos appear first (fetched dynamically from R2), followed by 524+ sounds baked as static HTML across 30 categories, with search filtering. Works offline (no manifest fetch required).
+- **Preview** — Selecting any asset auto-switches to the Preview tab and begins playback. Audio uses streaming `<audio>` with live waveform visualization (AnalyserNode). Videos use an inline `<video>` player.
 - **Assignment** — Drag/assign sounds to game entities (assets, maps, interiors) with per-context event grids.
-- **Inspector** — Metadata editor for display name, category, volume, loop, tags. Shows all current assignments for the selected sound.
-- **Upload** — Drag-and-drop upload to R2 with queue management, progress tracking, and destination routing (sfx/music).
+- **Inspector** — Metadata editor for display name, category, volume, loop, tags. Shows all current assignments for the selected asset.
+- **Upload** — Drag-and-drop upload to R2 with queue management, progress tracking, and destination routing (sfx/music/video).
 - **Export** — Export `sound-assignments.json` mapping file for integration with game systems.
 
 The portal works both when served by the worker (`https://flapsandseals.com/portal/sound-designer.html`) and when opened directly from disk (`file://`). When opened locally, all fetch URLs are rebased to `https://flapsandseals.com` automatically.

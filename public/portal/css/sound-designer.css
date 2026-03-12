@@ -1,5 +1,5 @@
 /* ============================================================
-   Sound Designer Portal — Styles
+   Media Designer Portal — Styles (formerly Sound Designer)
    Matches portal dark theme: #0a0a0a bg, #33ff33 phosphor accent,
    #ff9933 orange accent for interactive elements.
    ============================================================ */
@@ -791,6 +791,21 @@ body {
   display: flex;
   gap: 10px;
   justify-content: flex-end;
+}
+
+/* ---- Video library items ---- */
+.video-item {
+  border-left: 3px solid #e91e63 !important;
+}
+.video-item.selected {
+  background: rgba(233, 30, 99, 0.2) !important;
+  border-color: #e91e63 !important;
+}
+.video-item:hover {
+  background: rgba(233, 30, 99, 0.15) !important;
+}
+#video-library-section .category-header span:first-child {
+  color: #e91e63;
 }
 
 /* ---- Scrollbar ---- */

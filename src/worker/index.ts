@@ -88,7 +88,7 @@ app.route('/audio', audioRoutes);
 // --- Video: served from R2 (not static assets) ---
 app.route('/video', videoRoutes);
 
-// --- Audio Upload API (Sound Designer portal) ---
+// --- Audio/Video Upload API (Media Designer portal) ---
 app.route('/api/audio', audioUploadRoutes);
 
 // --- Map Upload + Scenario Node API (Director only — auth enforced in m-mode mount) ---

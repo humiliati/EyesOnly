@@ -1,6 +1,6 @@
 /* ============================================================
    EYES ONLY — Audio/Video Upload & Management Routes
-   Accepts multipart file uploads from the Sound Designer portal
+   Accepts multipart file uploads from the Media Designer portal
    and stores them in the eyesonly-assets R2 bucket.
 
    POST /api/audio/upload          — upload a file to R2

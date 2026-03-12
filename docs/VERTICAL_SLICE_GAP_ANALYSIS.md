@@ -45,11 +45,11 @@ M pushes a button → "Send video to ops"
 | Need | Status | Notes |
 |------|--------|-------|
 | Upload .mp4 to storage | ✅ WORKS | `POST /api/audio/upload` with `destination=video` → R2 key `video/<filename>` |
-| Upload UI with drag-and-drop | ✅ WORKS | Sound Designer portal at `/portal/sound-designer.html` |
+| Upload UI with drag-and-drop | ✅ WORKS | Media Designer portal at `/portal/sound-designer.html` |
 | Max 50MB per file | ✅ WORKS | Server and client enforce limit |
 | List uploaded videos | ✅ WORKS | `GET /api/audio/list?prefix=video/` |
 
-**Gap partially closed.** Upload still lives in Sound Designer portal, but M console now has a filename input for quick push. Phase 1 (M Console Video Library + Inline Upload) will fully close this gap.
+**Gap partially closed.** Upload still lives in Media Designer portal, but M console now has a filename input for quick push. Phase 1 (M Console Video Library + Inline Upload) will fully close this gap.
 
 ---
 
@@ -147,7 +147,7 @@ M pushes a button → "Send video to ops"
                     DEMO FLOW                    STATUS
                     ─────────                    ──────
   M logs in ─────────────────────────────────── ✅ Works
-  M uploads video ───────────────────────────── ✅ Works (Sound Designer portal)
+  M uploads video ───────────────────────────── ✅ Works (Media Designer portal)
   M selects video from uploaded list ─────────── ✅ Works (filename input, full browser Phase 1)
   M pushes "send to ops" button ──────────────── ✅ Works
   ──── WebSocket sends video URL ─────────────── ✅ Works

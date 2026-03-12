@@ -1,7 +1,7 @@
 # Audio Wiring Roadmap
 
 > **Date:** 2026-03-09 (last updated)
-> **Status:** Phase 0 + Phase 2 + Phase 3 + Phase 4.1 complete, Phase 3.4 rewritten (time-based cadence engine with stereo panning, floor-depth volume, injury limp, humanization), Phase 1 deferred (pending card hand harmonization), transcoding shipped, Sound Designer portal live with CRUD (rename, delete, sort, gap check, manifest diff export) + 524 entries across 30 categories. Phase 4.5 collectible sounds canon complete. Phase 10 door contract audio grammar spec'd + wired. Phase 11 breakable durability & progressive audio spec'd.
+> **Status:** Phase 0 + Phase 2 + Phase 3 + Phase 4.1 complete, Phase 3.4 rewritten (time-based cadence engine with stereo panning, floor-depth volume, injury limp, humanization), Phase 1 deferred (pending card hand harmonization), transcoding shipped, Media Designer portal live with CRUD (rename, delete, sort, gap check, manifest diff export) + 524 entries across 30 categories. Phase 4.5 collectible sounds canon complete. Phase 10 door contract audio grammar spec'd + wired. Phase 11 breakable durability & progressive audio spec'd.
 > **Manifest entries:** 519 (167 original SFX + 8 footsteps + 103 card sounds + 204 new SFX batch + 20 Songs + 18 Cyberleaf + 14 Aila Scott — some with `_status: "staged"`)
 
 ---
@@ -10,7 +10,7 @@
 
 All 519 assets have been transcoded from WAV to Opus/WebM (+ MP3 fallback) and uploaded to the `eyesonly-assets` R2 bucket. Source WAVs have been removed from `public/audio/` to stay within Cloudflare's 25 MiB static asset limit. Audio is served exclusively via R2 routes.
 
-**Manifest note:** All `audio-manifest.json` `src` fields now reference `.webm` paths. The Sound Designer portal library `data-src` attributes have been aligned to match. The R2 bucket serves both `.webm` and `.mp3` formats.
+**Manifest note:** All `audio-manifest.json` `src` fields now reference `.webm` paths. The Media Designer portal library `data-src` attributes have been aligned to match. The R2 bucket serves both `.webm` and `.mp3` formats.
 
 **Safari note:** Safari 15.4+ supports Opus natively. The MP3 fallbacks on R2 cover older Safari. `AudioSystem` tries `.webm` first, falling back to `.mp3`.
 
@@ -103,7 +103,7 @@ These directly affect game feel during the core loop.
 
 **Integration approach:** Use `AudioSystem.playRandom('card-deal_card', 17)` pattern for natural variation. Each family has enough variants to avoid repetition in rapid sequences.
 
-**Portal status:** All 103 entries are visible in the Sound Designer Portal under 🃏 CARD SOUNDS category. WebM paths point to R2.
+**Portal status:** All 103 entries are visible in the Media Designer Portal under 🃏 CARD SOUNDS category. WebM paths point to R2.
 
 ---
 
@@ -360,11 +360,11 @@ When magnet activates and pulls multiple coins, play `coin-1`/`coin-2` in rapid 
 
 ### Overview
 
-In-browser tool within the Sound Designer portal that lets designers slice segments from full-length music tracks and export them as new SFX entries. This eliminates the need for external audio editors when creating stingers, loops, transitions, and ambient snippets from the 52 music tracks (20 Songs + 18 Cyberleaf + 14 Aila Scott).
+In-browser tool within the Media Designer portal that lets designers slice segments from full-length music tracks and export them as new SFX entries. This eliminates the need for external audio editors when creating stingers, loops, transitions, and ambient snippets from the 52 music tracks (20 Songs + 18 Cyberleaf + 14 Aila Scott).
 
 ### 7.1 UI — Waveform Region Selection
 
-Add a dedicated "Slicer" tab to the Sound Designer center panel (alongside Preview, Assign, Upload):
+Add a dedicated "Slicer" tab to the Media Designer center panel (alongside Preview, Assign, Upload):
 
 - **Waveform display**: full-track waveform rendered from `AnalyserNode` or decoded buffer
 - **Selection handles**: draggable start/end markers on the waveform canvas
@@ -418,7 +418,7 @@ Each pet tier gets distinct movement audio with varying humanization levels.
 
 **Assets needed:** 5 new sounds (see FOOTSTEP_AUDIO_SYSTEM.md for full list).
 
-**Portal update:** New 🐾 PET SOUNDS category in Sound Designer.
+**Portal update:** New 🐾 PET SOUNDS category in Media Designer.
 
 ### 8.2 Footprint Ground Effects — `ground-effects-system.js` + `enemy-ai-system.js` + `stealth-system.js`
 
@@ -448,7 +448,7 @@ Persistent visual footprints on the ground layer, feeding enemy AI suspicion.
 
 ---
 
-## Phase 9 — Sound Designer Portal CRUD & Integrity ✅ COMPLETE
+## Phase 9 — Media Designer Portal CRUD & Integrity ✅ COMPLETE
 
 ### 9.1 Sort
 
@@ -495,7 +495,7 @@ Two scripts for pre-deploy validation:
 > **Cross-references:**
 > - [BUILDING_INTERIOR_SYSTEM.md § Door Contract Audio Grammar](./BUILDING_INTERIOR_SYSTEM.md) — Transition table summary
 > - [BIOME_SYSTEMS.md § Integration Points](./BIOME_SYSTEMS.md) — Integration point #7
-> - Sound Designer portal: 🚪 DOORS category (18 entries) + 🪜 TRANSITIONS category (6 entries)
+> - Media Designer portal: 🚪 DOORS category (18 entries) + 🪜 TRANSITIONS category (6 entries)
 
 ### 10.0 Design Principle
 
@@ -621,12 +621,12 @@ The full lookup table is a flat map keyed by `"srcDepth:tgtDepth"` with each ent
 | 2 | `interior-floor-system.js` | Call `getTransitionSounds()` on `enterInteriorFloor()` and `exitInteriorFloor()` |
 | 3 | `gone-rogue.js` | Pass source/target floorId to transition system on nav stack push/pop |
 | 4 | `audio-system.js` | Add `playSequence(sounds)` helper: plays ordered `[{key, delay}]` array via `setTimeout` chain |
-| 5 | Sound Designer portal | Add 🚪🪜 DOOR TRANSITIONS preview panel: select source→target layer, hear the full sequence |
+| 5 | Media Designer portal | Add 🚪🪜 DOOR TRANSITIONS preview panel: select source→target layer, hear the full sequence |
 | 6 | `door-contract-audio.js` (new) | Pure data module exporting `TRANSITION_TABLE` and `getTransitionSounds()` |
 
 ### 10.6 Designer Portal Integration (Future)
 
-The Sound Designer portal will get a "Door Contract" panel allowing designers to:
+The Media Designer portal will get a "Door Contract" panel allowing designers to:
 
 1. Select source layer (N / N.N / N.N.N / N.N.N±) and target layer
 2. See the derived sound sequence with timing visualization
@@ -708,7 +708,7 @@ Replaces current `impact-{1..4}` random.
 | `breakable-spawner.js` | Fallback HP 2→4.2, material field on prop templates |
 | `tutorial-floors.js` | Update hardcoded breakable HP to tier values |
 | `audio-manifest.json` | Register 15–16 new sound entries |
-| Sound Designer portal | 💥 BREAKABLE SOUNDS category |
+| Media Designer portal | 💥 BREAKABLE SOUNDS category |
 
 ### 11.8 Estimated Effort
 
@@ -763,7 +763,7 @@ Replaces current `impact-{1..4}` random.
 ## Portal-to-Deployment Pipeline
 
 ```
-Musician/Designer                Sound Designer Portal
+Musician/Designer                Media Designer Portal
       |                                |
   WAV masters                    Browse / Preview / Upload / Sort / Rename / Delete
       |                                |

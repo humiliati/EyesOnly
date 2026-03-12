@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sound Designer Portal</title>
+  <title>Media Designer Portal</title>
   <link rel="stylesheet" href="css/sound-designer.css">
 </head>
 <body>
   <div class="portal-container">
     <header class="portal-header">
-      <h1>🔊 SOUND DESIGNER PORTAL</h1>
+      <h1>🎬 MEDIA DESIGNER PORTAL</h1>
       <div class="header-actions">
         <button id="refresh-manifest-btn" class="btn-secondary">🔄 Refresh</button>
         <button id="save-assignments-btn" class="btn-primary">💾 Save Assignments</button>
@@ -21,9 +21,9 @@
     </header>
 
     <div class="portal-main">
-      <!-- ============ LEFT: Sound Library ============ -->
+      <!-- ============ LEFT: Media Library ============ -->
       <aside class="sound-library">
-        <h2>Sound Library</h2>
+        <h2>Media Library</h2>
         <div class="library-sort">
           <select id="library-sort" aria-label="Sort order">
             <option value="default">Sort: Default</option>
@@ -33,9 +33,20 @@
           </select>
         </div>
         <div class="library-search">
-          <input type="text" id="library-search" placeholder="Search sounds…" aria-label="Search sounds">
+          <input type="text" id="library-search" placeholder="Search media…" aria-label="Search media">
         </div>
         <div id="library-categories">
+        <!-- ---- UPLOADED VIDEOS (fetched dynamically from R2 /video/) ---- -->
+        <div class="category-section" id="video-library-section">
+          <div class="category-header">
+            <span>🎬 UPLOADED VIDEOS</span>
+            <span class="count" id="video-count">0</span>
+            <span class="chevron">▾</span>
+          </div>
+          <div class="category-items" id="video-library-items">
+            <p class="video-loading-msg" style="color:#888; font-size:11px; padding:8px; margin:0;">Loading videos from R2…</p>
+          </div>
+        </div>
         <div class="category-section">
           <div class="category-header">
             <span>🖥 UI</span>
@@ -871,7 +882,7 @@
         </div>
       </aside>
 
-      <!-- ============ CENTER: Preview / Assign / Upload ============ -->
+      <!-- ============ CENTER: Preview / Assign / Upload / Help ============ -->
       <section class="center-panel">
         <div class="center-tabs">
           <button class="center-tab active" data-tab="preview">Preview</button>
@@ -882,11 +893,24 @@
 
         <!-- ---- Preview Tab ---- -->
         <div class="tab-panel active" id="tab-preview">
-          <div class="preview-card">
+          <!-- Video preview (hidden by default, shown when a video is selected) -->
+          <div class="preview-card" id="video-preview-card" style="display:none">
+            <h3>Video Preview</h3>
+            <div class="video-preview-area" style="position:relative; background:#000; border-radius:6px; overflow:hidden; aspect-ratio:16/9; max-height:360px;">
+              <video id="video-preview-player" controls style="width:100%; height:100%; object-fit:contain;"></video>
+            </div>
+            <div class="preview-controls" style="margin-top:8px;">
+              <div class="preview-info">
+                <div class="name" id="video-preview-name">—</div>
+                <div class="meta" id="video-preview-meta">—</div>
+              </div>
+            </div>
+          </div>
+          <div class="preview-card" id="audio-preview-card">
             <h3>Audio Preview</h3>
             <div class="waveform-area">
               <canvas id="waveform-canvas"></canvas>
-              <span class="waveform-placeholder" id="waveform-placeholder">Select a sound to preview</span>
+              <span class="waveform-placeholder" id="waveform-placeholder">Select a sound or video to preview</span>
             </div>
             <div class="preview-controls">
               <button class="preview-play-btn" id="preview-play-btn" disabled>▶</button>
@@ -1109,10 +1133,10 @@
         <!-- ---- Help Tab ---- -->
         <div class="tab-panel" id="tab-help">
           <div class="help-content" style="padding:16px; color:#ccc; font-size:13px; line-height:1.6; overflow-y:auto; max-height:calc(100vh - 140px);">
-            <h3 style="color:#33ff33; margin-top:0;">Sound Designer Portal — Quick Reference</h3>
+            <h3 style="color:#33ff33; margin-top:0;">Media Designer Portal — Quick Reference</h3>
 
-            <h4 style="color:#33ff33;">Sound Library (Left Sidebar)</h4>
-            <p>524 sounds organized into 30 categories: UI, Movement (incl. 8 stereo footsteps), Combat, Magic, Environment, Collectible, Creature, 20 SFX sub-categories (alarms, animal, atmosphere, brass, chiptune, clang, clicks, crunches, death, dialog, doors, electronic, explosions, misc, ocean, parry, scratches, steam, success, text scroll), Card Sounds, Music — Songs, Music — Cyberleaf, Music — Aila Scott, plus Pet/Enemy placeholder stubs.</p>
+            <h4 style="color:#33ff33;">Media Library (Left Sidebar)</h4>
+            <p>Uploaded Videos (fetched from R2) appear first, followed by 524 sounds organized into 30 categories: UI, Movement (incl. 8 stereo footsteps), Combat, Magic, Environment, Collectible, Creature, 20 SFX sub-categories (alarms, animal, atmosphere, brass, chiptune, clang, clicks, crunches, death, dialog, doors, electronic, explosions, misc, ocean, parry, scratches, steam, success, text scroll), Card Sounds, Music — Songs, Music — Cyberleaf, Music — Aila Scott, plus Pet/Enemy placeholder stubs.</p>
             <p>The library is baked as static HTML — it works offline without fetching the manifest. When the manifest loads, it enriches metadata. Use the <strong>sort dropdown</strong> above the search bar to reorder (Default, Name A-Z, Category, Date Newest). Category headers collapse/expand on click.</p>
 
             <h4 style="color:#33ff33;">Preview (This Panel)</h4>

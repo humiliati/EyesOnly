@@ -229,7 +229,7 @@ Context fields provided by `_gameTickCtx()` in `gone-rogue.js`:
 
 ## Designer Portal Integration
 
-**Sound Designer Portal** (`portal/sound-designer.html`):
+**Media Designer Portal** (`portal/sound-designer.html`):
 - Footsteps category in the Sound Library sidebar (👣 FOOTSTEPS, 8 entries)
 - "Footstep Terrain Override" assignment slot in both Map and Interior contexts
 
@@ -288,7 +288,7 @@ Currently `_activePets` is internal. Needs a public getter: `PetFollower.getActi
 
 ### Portal Update
 
-Sound Designer Portal needs a new category: **🐾 PET SOUNDS** containing:
+Media Designer Portal needs a new category: **🐾 PET SOUNDS** containing:
 
 | Key | Description | Status |
 |-----|-------------|--------|
@@ -349,7 +349,7 @@ Enemy objects need a `weightClass` property (default: `'medium'`) for sound sele
 
 ### Portal Update: Enemy Footstep Assets
 
-Sound Designer Portal needs a new category: **👹 ENEMY SOUNDS** expanding the existing entries with footsteps:
+Media Designer Portal needs a new category: **👹 ENEMY SOUNDS** expanding the existing entries with footsteps:
 
 | Key Pattern | Variants | Status |
 |-------------|----------|--------|
@@ -364,7 +364,7 @@ Until dedicated enemy footstep assets are created, the player footstep files can
 Enemy footstep assets will eventually be generated via the portal → proc gen pipeline:
 
 ```
-Sound Designer Portal → "Generate Enemy Footsteps" button
+Media Designer Portal → "Generate Enemy Footsteps" button
         │
         ├── Select base footstep sample
         ├── Apply weight-class transforms (pitch, EQ, layering)
@@ -465,7 +465,7 @@ This table maps every system that touches the footstep engine, what it provides,
 | **Stealth** | `stealth-system.js` | `getPlayerStealthBonus()` → modulates footprint lifetime | **TODO:** Footstep volume feeds enemy detection |
 | **Passive Items** | `passive-items-system.js` | `getEquippedItems()` → `footstep_volume_multiplier` | — |
 | **Audio Core** | `audio-system.js` | `play()` with stereo pan support | Owns `tickFootsteps()`, future `tickPetFootsteps()`, `tickEnemyFootstep()` |
-| **Sound Designer** | `portal/sound-designer.html` | Sound library, terrain overrides | **TODO:** Pet + enemy footstep categories |
+| **Media Designer** | `portal/sound-designer.html` | Sound library, terrain overrides | **TODO:** Pet + enemy footstep categories |
 | **Audio Manifest** | `audio-manifest.json` | File paths, metadata, fallbacks | **TODO:** Pet + enemy footstep entries |
 
 ---
