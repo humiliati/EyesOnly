@@ -53,14 +53,14 @@ const SplashScreen = (() => {
     '/video/Sandpoint%20_%20Lake%20Pend%20Oreille.mp4',
   ];
 
-  // Silhouette image assets
-  const SIL_IMAGES = {
-    female_classic: '/assets/Images/Splash/spy_female_classic_splash.png',
-    classic:        '/assets/Images/Splash/spy_classic_splash.png',
-    female:         '/assets/Images/Splash/spy_female_splash.png',
-    male2:          '/assets/Images/Splash/spy_male2_splash.png',
-    male:           '/assets/Images/Splash/spy_male_splash.png',
-  };
+  // Silhouette image assets — all slide up from bottom
+  const SIL_POOL = [
+    '/assets/Images/Splash/spy_classic_splash.png',
+    '/assets/Images/Splash/spy_female_splash.png',
+    '/assets/Images/Splash/spy_female_classic_splash.png',
+    '/assets/Images/Splash/spy_male2_splash.png',
+    '/assets/Images/Splash/spy_male_splash.png',
+  ];
 
   // Sound keys mapped to each card index
   const HOVER_SOUNDS  = ['card-slide_card_1', 'card-slide_card_2', 'card-slide_card_3'];
@@ -128,18 +128,15 @@ const SplashScreen = (() => {
         <div class="splash-prompt-text">Choose a dossier to begin</div>
       </div>
 
-      <!-- Silhouettes layer (images) -->
+      <!-- Silhouettes layer — all slide up from bottom -->
       <div class="splash-silhouettes" id="splash-silhouettes">
-        <!-- Female classic: always slides right-to-left -->
-        <div class="splash-sil splash-sil-right-slide" id="sil-female-classic">
-          <img src="${SIL_IMAGES.female_classic}" alt="" class="splash-sil-img" />
-        </div>
-
-        <!-- Bottom silhouettes: 1-2 randomly picked from the other 4 -->
-        <div class="splash-sil splash-sil-bottom splash-sil-bottom-a" id="sil-bottom-a" style="display:none">
+        <div class="splash-sil splash-sil-bottom splash-sil-slot-a" id="sil-slot-a" style="display:none">
           <img src="" alt="" class="splash-sil-img" />
         </div>
-        <div class="splash-sil splash-sil-bottom splash-sil-bottom-b" id="sil-bottom-b" style="display:none">
+        <div class="splash-sil splash-sil-bottom splash-sil-slot-b" id="sil-slot-b" style="display:none">
+          <img src="" alt="" class="splash-sil-img" />
+        </div>
+        <div class="splash-sil splash-sil-bottom splash-sil-slot-c" id="sil-slot-c" style="display:none">
           <img src="" alt="" class="splash-sil-img" />
         </div>
       </div>
@@ -242,28 +239,17 @@ const SplashScreen = (() => {
   /* ---- Silhouette randomization ---- */
 
   function prepareBottomSilhouettes() {
-    // Pool of 4 images (excluding female_classic which is the right-to-left slider)
-    const pool = [
-      SIL_IMAGES.classic,
-      SIL_IMAGES.female,
-      SIL_IMAGES.male2,
-      SIL_IMAGES.male,
-    ];
+    // Shuffle the full pool, pick 2 or 3
+    const shuffled = SIL_POOL.slice().sort(() => Math.random() - 0.5);
+    const count = Math.random() < 0.5 ? 2 : 3;
+    const slots = ['sil-slot-a', 'sil-slot-b', 'sil-slot-c'];
 
-    // Shuffle and pick 1 or 2
-    const shuffled = pool.sort(() => Math.random() - 0.5);
-    const count = Math.random() < 0.5 ? 1 : 2;
-
-    const slotA = document.getElementById('sil-bottom-a');
-    const slotB = document.getElementById('sil-bottom-b');
-
-    if (count >= 1 && slotA) {
-      slotA.querySelector('img').src = shuffled[0];
-      slotA.style.display = '';
-    }
-    if (count >= 2 && slotB) {
-      slotB.querySelector('img').src = shuffled[1];
-      slotB.style.display = '';
+    for (let i = 0; i < count; i++) {
+      const slot = document.getElementById(slots[i]);
+      if (slot && shuffled[i]) {
+        slot.querySelector('img').src = shuffled[i];
+        slot.style.display = '';
+      }
     }
   }
 
@@ -333,19 +319,31 @@ const SplashScreen = (() => {
     // Visual feedback: selected glow
     cardEl.classList.add('splash-selected');
 
-    // Step 1: Silhouettes slide in (after 200ms)
+    // Step 0: Fade out the card fan immediately (100ms)
+    setTimeout(() => {
+      const fan = document.getElementById('splash-card-fan');
+      if (fan) fan.classList.add('splash-fan-exit');
+      // Also fade the header & prompt
+      var hdr = splashEl.querySelector('.splash-header');
+      var prm = splashEl.querySelector('.splash-prompt');
+      if (hdr) hdr.classList.add('splash-fan-exit');
+      if (prm) prm.classList.add('splash-fan-exit');
+    }, 100);
+
+    // Step 1: Silhouettes slide up from bottom (after 200ms)
     setTimeout(() => {
       const silLayer = document.getElementById('splash-silhouettes');
       silLayer.classList.add('splash-sil-active');
     }, 200);
 
-    // Step 2: Fade to black (after 800ms)
+    // Step 2: Fade to black — delayed +350ms to give silhouettes time
+    // to reach near-top before black takes over (1150ms)
     setTimeout(() => {
       const fadeOverlay = document.getElementById('splash-fade-overlay');
       fadeOverlay.classList.add('splash-fade-active');
-    }, 800);
+    }, 1150);
 
-    // Step 3: Remove splash and show terminal (after 2000ms)
+    // Step 3: Remove splash — extra 650ms total breathing room (2650ms)
     setTimeout(() => {
       removeSplash();
 
@@ -354,7 +352,7 @@ const SplashScreen = (() => {
         window.location.href = mission.route;
       }
       // Otherwise: terminal is already visible beneath
-    }, 2000);
+    }, 2650);
   }
 
   /* ---- Lifecycle ---- */

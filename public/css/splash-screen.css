@@ -140,6 +140,14 @@
   text-align: center;
   opacity: 0;
   animation: splash-header-in 1s ease-out 0.3s forwards;
+  transition: opacity 0.35s ease;
+}
+
+/* Exit state for header / prompt / fan when card selected */
+.splash-header.splash-fan-exit,
+.splash-prompt.splash-fan-exit {
+  opacity: 0 !important;
+  pointer-events: none;
 }
 
 @keyframes splash-header-in {
@@ -186,6 +194,14 @@
   margin-top: 4vh;
   opacity: 0;
   animation: splash-fan-in 0.8s ease-out 0.8s forwards;
+  transition: opacity 0.35s ease, transform 0.5s ease;
+}
+
+/* Fan exit — fade & shrink on card selection */
+.splash-card-fan.splash-fan-exit {
+  opacity: 0 !important;
+  transform: scale(0.9) translateY(30px);
+  pointer-events: none;
 }
 
 @keyframes splash-fan-in {
@@ -387,6 +403,7 @@
   text-align: center;
   opacity: 0;
   animation: splash-prompt-in 0.6s ease-out 1.4s forwards;
+  transition: opacity 0.35s ease;
 }
 
 @keyframes splash-prompt-in {
@@ -414,7 +431,11 @@
   50% { opacity: 0.7; }
 }
 
-/* ---- Spy noir silhouettes (image-based) ---- */
+/* ==============================================================
+   Spy noir silhouettes — ALL slide up from bottom
+   They rise almost to their waistline (screen takeover)
+   then zoom in before fade-to-black completes.
+   ============================================================== */
 .splash-silhouettes {
   position: fixed;
   inset: 0;
@@ -435,48 +456,51 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  object-position: bottom;
+  object-position: bottom center;
 }
 
-/* Female classic: slides from right to left across the full viewport */
-.splash-sil-right-slide {
-  right: -50%;
-  bottom: 0;
-  width: 40vw;
-  height: 85vh;
-  transition: right 1s cubic-bezier(0.22, 1, 0.36, 1);
-  z-index: 102;
-}
-
-.splash-silhouettes.splash-sil-active .splash-sil-right-slide {
-  right: 55%;
-}
-
-/* Bottom silhouettes: slide up from below and zoom in */
+/* Bottom silhouettes: slide up high, then zoom in for screen takeover.
+   Start off-screen below. Slide up so only ~15% of bottom is below
+   the viewport fold (waistline visible). Then scale up dramatically. */
 .splash-sil-bottom {
-  bottom: -80%;
-  width: 30vw;
-  height: 70vh;
-  transition: bottom 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.15s,
-              transform 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.3s;
-  z-index: 101;
+  bottom: -110%;
+  width: 35vw;
+  height: 90vh;
   transform: scale(1);
+  z-index: 101;
+  transition: bottom 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 1.0s cubic-bezier(0.22, 1, 0.36, 1) 0.4s;
 }
 
-.splash-sil-bottom-a {
-  left: 15%;
+/* 3 slots spread across the viewport */
+.splash-sil-slot-a {
+  left: 5%;
+  transition-delay: 0s, 0.35s;
 }
 
-.splash-sil-bottom-b {
-  right: 15%;
+.splash-sil-slot-b {
+  left: 50%;
+  transform: translateX(-50%) scale(1);
+  transition-delay: 0.08s, 0.4s;
 }
 
+.splash-sil-slot-c {
+  right: 5%;
+  transition-delay: 0.15s, 0.45s;
+}
+
+/* Active state: silhouettes rise high and zoom */
 .splash-silhouettes.splash-sil-active .splash-sil-bottom {
-  bottom: 0;
-  transform: scale(1.6);
+  bottom: -10%;
+  transform: scale(2.2);
 }
 
-/* Fade-to-black overlay */
+.splash-silhouettes.splash-sil-active .splash-sil-slot-b {
+  bottom: -10%;
+  transform: translateX(-50%) scale(2.2);
+}
+
+/* Fade-to-black overlay — slightly longer transition for silhouette impact */
 .splash-fade-overlay {
   position: fixed;
   inset: 0;
@@ -484,7 +508,7 @@
   background: #000;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.8s ease 0.6s;
+  transition: opacity 1.0s ease 0.4s;
 }
 
 .splash-fade-overlay.splash-fade-active {
@@ -524,43 +548,51 @@
 }
 
 /* ==============================================================
-   MOBILE PORTRAIT — Stacked overlap cards (like reference image)
-   Cards stack vertically with perspective tilt and overlap,
-   resembling stacked dossier folders.
+   MOBILE PORTRAIT — Fanned deck with Y-axis rotation
+   Cards fan like a deck being spread: card 1 on top (flat),
+   cards 2 and 3 rotated -12deg on Y axis so their content
+   peeks out from behind. Touch/tap lifts a card to reveal.
    ============================================================== */
 @media (max-width: 768px) {
   .splash-card-fan {
     flex-direction: column;
     align-items: center;
     gap: 0;
-    perspective: 800px;
+    perspective: 900px;
+    transform-style: preserve-3d;
   }
 
   .splash-dossier {
     width: clamp(280px, 85vw, 380px);
-    height: clamp(130px, 18vh, 170px);
+    height: clamp(120px, 16vh, 155px);
   }
 
-  /* Stacked overlap: each card overlaps the one above,
-     with slight 3D tilt like stacked folders on a desk */
+  /* Card 1: top of the deck — flat, fully visible */
   .splash-dossier:nth-child(1) {
-    transform: perspective(800px) rotateX(8deg) translateY(0);
+    transform: rotateY(0deg) rotateX(2deg) translateZ(0px);
     z-index: 3;
     margin: 0;
   }
+
+  /* Card 2: peeking from below card 1,
+     rotated -12deg on Y axis to reveal its right edge */
   .splash-dossier:nth-child(2) {
-    transform: perspective(800px) rotateX(5deg) translateY(-20px);
+    transform: rotateY(-12deg) rotateX(2deg) translateY(-14px) translateX(10px);
     z-index: 2;
     margin: 0;
   }
+
+  /* Card 3: peeking from below card 2,
+     rotated -12deg on Y axis, offset further */
   .splash-dossier:nth-child(3) {
-    transform: perspective(800px) rotateX(3deg) translateY(-40px);
+    transform: rotateY(-12deg) rotateX(2deg) translateY(-28px) translateX(20px);
     z-index: 1;
     margin: 0;
   }
 
+  /* Hover/tap: card lifts up and flattens to full view */
   .splash-dossier:hover {
-    transform: perspective(800px) rotateX(0deg) translateY(-10px) scale(1.03) !important;
+    transform: rotateY(0deg) rotateX(0deg) translateY(-20px) translateX(0px) scale(1.03) !important;
     z-index: 10 !important;
   }
 
@@ -569,8 +601,12 @@
   }
 
   .splash-dossier-artwork {
-    width: 90px;
-    min-width: 90px;
+    width: 80px;
+    min-width: 80px;
+  }
+
+  .splash-dossier-icon {
+    font-size: 36px;
   }
 
   .splash-dossier-header {
@@ -584,16 +620,23 @@
     justify-content: center;
     border-top: none;
     border-left: 1px solid rgba(28, 255, 155, 0.15);
+    padding: 8px 10px;
   }
 
-  /* Silhouettes: right-slide still works, bottom hidden on small screens */
-  .splash-sil-right-slide {
-    width: 55vw;
-    height: 70vh;
-  }
-
+  /* Silhouettes: scale down for mobile but still slide up */
   .splash-sil-bottom {
-    display: none;
+    width: 50vw;
+    height: 75vh;
+  }
+
+  .splash-sil-slot-a {
+    left: 0;
+  }
+  .splash-sil-slot-b {
+    left: 50%;
+  }
+  .splash-sil-slot-c {
+    right: 0;
   }
 
   /* Close button adjustments */
@@ -612,17 +655,26 @@
 @media (max-width: 480px) {
   .splash-dossier {
     width: 92vw;
-    height: 120px;
+    height: 110px;
   }
 
   .splash-dossier:nth-child(1) {
-    transform: perspective(600px) rotateX(7deg) translateY(0);
+    transform: rotateY(0deg) rotateX(2deg) translateZ(0px);
   }
   .splash-dossier:nth-child(2) {
-    transform: perspective(600px) rotateX(4deg) translateY(-16px);
+    transform: rotateY(-12deg) rotateX(2deg) translateY(-12px) translateX(8px);
   }
   .splash-dossier:nth-child(3) {
-    transform: perspective(600px) rotateX(2deg) translateY(-32px);
+    transform: rotateY(-12deg) rotateX(2deg) translateY(-24px) translateX(16px);
+  }
+
+  .splash-dossier-artwork {
+    width: 65px;
+    min-width: 65px;
+  }
+
+  .splash-dossier-icon {
+    font-size: 30px;
   }
 
   .splash-title {
@@ -634,10 +686,10 @@
 @media (prefers-reduced-motion: reduce) {
   .splash-dossier,
   .splash-sil,
-  .splash-sil-right-slide,
   .splash-sil-bottom,
   .splash-fade-overlay,
-  .splash-video-layer video {
+  .splash-video-layer video,
+  .splash-card-fan {
     transition-duration: 0.01s !important;
     animation-duration: 0.01s !important;
   }
