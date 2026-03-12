@@ -20,7 +20,7 @@ const SplashScreen = (() => {
       classified: 'EYES ONLY',
       label: 'MISSION DOSSIER',
       videoIndex: 0,          // ski mountain footage
-      route: null,             // stays on index, enters terminal
+      route: '/booking.html#scenario-1',
     },
     {
       id: 'scenario-2',
@@ -31,7 +31,7 @@ const SplashScreen = (() => {
       classified: 'TOP SECRET',
       label: 'MISSION DOSSIER',
       videoIndex: 1,          // lakeside / submarine base
-      route: null,             // stays on index, enters terminal
+      route: '/booking.html#scenario-2',
     },
     {
       id: 'partner',
@@ -42,14 +42,14 @@ const SplashScreen = (() => {
       classified: 'UNCLASSIFIED',
       label: 'RECRUITMENT',
       videoIndex: 2,          // downtown scene
-      route: null,             // stays on index, enters terminal
+      route: '/partners.html',
     },
   ];
 
   // Background drone footage — served from R2 via /video/ route
   const VIDEO_SOURCES = [
-    '/video/Sandpoint%20_%20Lake%20Pend%20Oreille.mp4',
-    '/video/Sandpoint%20_%20Lake%20Pend%20Oreille.mp4',
+    '/video/Sandpoint2_%20Lake%20Pend%20Oreille.mp4',
+    '/video/Sandpoint3_%20Lake%20Pend%20Oreille.mp4',
     '/video/Sandpoint%20_%20Lake%20Pend%20Oreille.mp4',
   ];
 

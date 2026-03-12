@@ -1,0 +1,491 @@
+/* ============================================================
+   EYES ONLY — Booking Page
+   CRT-themed dark layout for mission scenario booking.
+   ============================================================ */
+
+/* ---- Reset & base ---- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Courier New', monospace;
+  background: #0a0a0f;
+  color: #d0d0d0;
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: #1cff9b; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ---- Nav bar (shared) ---- */
+.eo-nav {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: rgba(10, 10, 15, 0.95);
+  border-bottom: 1px solid rgba(28, 255, 155, 0.15);
+  backdrop-filter: blur(8px);
+}
+
+.eo-nav-brand {
+  font-size: 16px;
+  font-weight: bold;
+  color: #1cff9b;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  text-shadow: 0 0 8px rgba(28, 255, 155, 0.3);
+}
+
+.eo-nav-links { display: flex; gap: 20px; }
+
+.eo-nav-link {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: color 0.2s;
+}
+.eo-nav-link:hover { color: #1cff9b; text-decoration: none; }
+.eo-nav-link.eo-nav-active { color: #1cff9b; }
+
+/* ---- Hero ---- */
+.booking-hero {
+  position: relative;
+  padding: 80px 24px 60px;
+  text-align: center;
+  background: linear-gradient(180deg, #0a0a0f 0%, #0d1117 100%);
+  border-bottom: 1px solid rgba(28, 255, 155, 0.1);
+  overflow: hidden;
+}
+
+.booking-hero-inner { position: relative; z-index: 2; }
+
+.booking-hero-label {
+  font-size: 11px;
+  color: rgba(255, 70, 70, 0.6);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.booking-hero-title {
+  font-size: clamp(28px, 5vw, 48px);
+  color: #fff;
+  font-weight: bold;
+  letter-spacing: 0.06em;
+  margin-bottom: 12px;
+  text-shadow: 0 0 20px rgba(28, 255, 155, 0.15);
+}
+
+.booking-hero-sub {
+  font-size: clamp(13px, 2vw, 16px);
+  color: rgba(255, 255, 255, 0.45);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.booking-hero-scanline {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.04) 2px, rgba(0, 0, 0, 0.04) 4px);
+}
+
+/* ---- Scenario sections ---- */
+.scenario-section {
+  padding: 60px 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.scenario-section-alt {
+  background: rgba(28, 255, 155, 0.02);
+}
+
+.scenario-badge {
+  font-size: 10px;
+  color: rgba(28, 255, 155, 0.5);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(28, 255, 155, 0.1);
+  display: inline-block;
+}
+
+.scenario-badge-alt {
+  color: rgba(201, 168, 76, 0.6);
+  border-color: rgba(201, 168, 76, 0.15);
+}
+
+.scenario-grid {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 40px;
+  align-items: start;
+}
+
+.scenario-classified {
+  font-size: 10px;
+  color: rgba(255, 70, 70, 0.6);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.scenario-classified-alt {
+  color: rgba(201, 168, 76, 0.7);
+}
+
+.scenario-title {
+  font-size: clamp(24px, 3.5vw, 36px);
+  color: #fff;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.scenario-subtitle {
+  font-size: 15px;
+  color: #1cff9b;
+  margin-bottom: 16px;
+}
+
+.scenario-desc {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.7;
+  margin-bottom: 24px;
+}
+
+/* Spec grid */
+.scenario-specs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.scenario-spec {
+  padding: 12px 14px;
+  border: 1px solid rgba(28, 255, 155, 0.12);
+  border-radius: 6px;
+  background: rgba(28, 255, 155, 0.03);
+}
+
+.spec-label {
+  display: block;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.spec-value {
+  font-size: 16px;
+  color: #fff;
+  font-weight: bold;
+}
+
+.spec-note {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  font-weight: normal;
+}
+
+/* Includes */
+.includes-heading {
+  font-size: 12px;
+  color: rgba(28, 255, 155, 0.5);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.includes-list {
+  list-style: none;
+  margin-bottom: 28px;
+}
+
+.includes-list li {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.55);
+  padding: 5px 0 5px 20px;
+  position: relative;
+}
+
+.includes-list li::before {
+  content: '\25B8';
+  position: absolute;
+  left: 0;
+  color: #1cff9b;
+}
+
+/* Book button */
+.scenario-book-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 28px;
+  border: 2px solid #1cff9b;
+  border-radius: 6px;
+  background: rgba(28, 255, 155, 0.08);
+  color: #1cff9b;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.scenario-book-btn:hover {
+  background: rgba(28, 255, 155, 0.18);
+  box-shadow: 0 0 20px rgba(28, 255, 155, 0.2), 0 0 40px rgba(28, 255, 155, 0.1);
+  transform: translateY(-2px);
+}
+
+.scenario-book-btn:active {
+  transform: translateY(0);
+}
+
+.scenario-book-btn-alt {
+  border-color: #c9a84c;
+  color: #c9a84c;
+  background: rgba(201, 168, 76, 0.08);
+}
+
+.scenario-book-btn-alt:hover {
+  background: rgba(201, 168, 76, 0.18);
+  box-shadow: 0 0 20px rgba(201, 168, 76, 0.2), 0 0 40px rgba(201, 168, 76, 0.1);
+}
+
+.book-btn-icon { font-size: 18px; }
+.book-btn-price {
+  padding: 3px 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+/* Visual / icon column */
+.scenario-visual {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding-top: 20px;
+}
+
+.scenario-icon-wrap {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scenario-icon-bg {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(28, 255, 155, 0.15);
+  background: radial-gradient(circle, rgba(28, 255, 155, 0.05) 0%, transparent 70%);
+  animation: icon-pulse 4s ease-in-out infinite;
+}
+
+.scenario-icon-bg-alt {
+  border-color: rgba(201, 168, 76, 0.15);
+  background: radial-gradient(circle, rgba(201, 168, 76, 0.05) 0%, transparent 70%);
+}
+
+@keyframes icon-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+.scenario-icon-main {
+  font-size: 72px;
+  z-index: 2;
+}
+
+.scenario-visual-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.visual-tag {
+  font-size: 10px;
+  color: rgba(28, 255, 155, 0.6);
+  letter-spacing: 0.1em;
+  padding: 4px 10px;
+  border: 1px solid rgba(28, 255, 155, 0.15);
+  border-radius: 3px;
+}
+
+.visual-tag-alt {
+  color: rgba(201, 168, 76, 0.6);
+  border-color: rgba(201, 168, 76, 0.15);
+}
+
+/* ---- Divider ---- */
+.scenario-divider {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.divider-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.divider-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.2);
+  letter-spacing: 0.2em;
+}
+
+/* ---- Booking form placeholder ---- */
+.booking-form-section {
+  padding: 60px 24px;
+  max-width: 700px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.booking-form-title {
+  font-size: 24px;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.booking-form-sub {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 30px;
+}
+
+.booking-form-placeholder {
+  padding: 40px 30px;
+  border: 1px dashed rgba(28, 255, 155, 0.2);
+  border-radius: 8px;
+  background: rgba(28, 255, 155, 0.02);
+}
+
+.placeholder-icon {
+  font-size: 36px;
+  margin-bottom: 16px;
+}
+
+.placeholder-text {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.7;
+}
+
+.placeholder-link {
+  color: #1cff9b;
+  text-decoration: underline;
+}
+
+/* ---- Footer (shared) ---- */
+.eo-footer {
+  margin-top: 60px;
+  padding: 30px 24px;
+  border-top: 1px solid rgba(28, 255, 155, 0.1);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.eo-footer-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.eo-footer-brand {
+  font-size: 14px;
+  color: #1cff9b;
+  letter-spacing: 0.15em;
+  font-weight: bold;
+}
+
+.eo-footer-links { display: flex; gap: 16px; }
+.eo-footer-links a {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.eo-footer-links a:hover { color: #1cff9b; }
+
+.eo-footer-copy {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.25);
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+  .scenario-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .scenario-visual {
+    order: -1;
+    padding-top: 0;
+    padding-bottom: 10px;
+  }
+
+  .scenario-icon-wrap {
+    width: 120px;
+    height: 120px;
+  }
+
+  .scenario-icon-main { font-size: 48px; }
+
+  .scenario-specs {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .scenario-book-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .eo-footer-inner {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .scenario-specs {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-hero {
+    padding: 50px 16px 40px;
+  }
+
+  .scenario-section {
+    padding: 40px 16px;
+  }
+}
