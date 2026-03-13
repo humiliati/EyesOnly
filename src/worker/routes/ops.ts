@@ -38,6 +38,7 @@ import {
   insertMicrochatMessage,
   getMicrochatMessages,
   markMicrochatDelivered,
+  updateScenarioConfig,
 } from '../db/queries';
 import { sendWebPushToAll } from '../utils/web-push';
 

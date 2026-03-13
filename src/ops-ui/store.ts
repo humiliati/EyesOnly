@@ -157,7 +157,7 @@ export async function userLogin(username: string): Promise<string | null> {
 
     // If user not found, auto-register
     if (!res.ok) {
-      const err = await res.json().catch(() => ({} as any));
+      const err: any = await res.json().catch(() => ({} as any));
       if (err.error === 'AUTH_FAILED') {
         res = await fetch(`${API_BASE}/user/register`, {
           method: 'POST',

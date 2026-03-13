@@ -218,7 +218,7 @@ function renderOpsJoin(container: HTMLElement, statusMsg?: string) {
           body: JSON.stringify({ username }),
         });
         if (!loginRes.ok) {
-          const loginErr = await loginRes.json().catch(() => ({} as any));
+          const loginErr: any = await loginRes.json().catch(() => ({} as any));
           if (loginErr.error === 'AUTH_FAILED') {
             loginRes = await fetch('/api/user/register', {
               method: 'POST',
@@ -228,7 +228,7 @@ function renderOpsJoin(container: HTMLElement, statusMsg?: string) {
           }
         }
         if (!loginRes.ok) {
-          const d = await loginRes.json().catch(() => ({} as any));
+          const d: any = await loginRes.json().catch(() => ({} as any));
           throw new Error(d.message || 'Login failed');
         }
         const loginData = await loginRes.json() as any;

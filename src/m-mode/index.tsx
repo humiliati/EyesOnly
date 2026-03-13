@@ -2060,6 +2060,17 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
             </div>
             <div id="esc-preset-result" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
           </div>
+          <div class="ctrl-section video-push-widget">
+            <h3>VIDEO INTEL</h3>
+            <select id="ctrl-video-push-select" class="video-push-select">
+              <option value="">Loading videos...</option>
+            </select>
+            <div class="video-push-btns">
+              <button class="ctrl-btn danger" id="ctrl-video-push-btn" disabled>PUSH TO OPS</button>
+              <button class="ctrl-btn" id="ctrl-video-push-refresh" title="Refresh video list">REFRESH LIST</button>
+            </div>
+            <div id="ctrl-video-push-status" class="video-push-status"></div>
+          </div>
           <div class="ctrl-section">
             <h3>BROADCAST</h3>
             <div class="ctrl-field"><label>MESSAGE</label><input type="text" id="ctrl-broadcast-msg" placeholder="Broadcast to all Ops..." /></div>
@@ -2471,8 +2482,8 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
     const south = parseFloat((document.getElementById('ctrl-stitch-s') as HTMLInputElement).value);
     const west  = parseFloat((document.getElementById('ctrl-stitch-w') as HTMLInputElement).value);
     const east  = parseFloat((document.getElementById('ctrl-stitch-e') as HTMLInputElement).value);
-    const zoom  = parseInt((document.getElementById('ctrl-stitch-zoom') as HTMLSelectElement).value, 10);
-    const style = (document.getElementById('ctrl-stitch-style') as HTMLSelectElement).value;
+    const zoom  = parseInt((document.getElementById('ctrl-stitch-zoom') as unknown as HTMLSelectElement).value, 10);
+    const style = (document.getElementById('ctrl-stitch-style') as unknown as HTMLSelectElement).value;
     const progressEl = document.getElementById('stitch-progress')!;
     const btn = document.getElementById('ctrl-stitch-go') as HTMLButtonElement;
 
@@ -2548,7 +2559,7 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
   // Scenario node: place node
   document.getElementById('ctrl-add-node')?.addEventListener('click', () => {
     const cellId = (document.getElementById('ctrl-node-cell') as HTMLInputElement).value.toUpperCase().trim();
-    const nodeType = (document.getElementById('ctrl-node-type') as HTMLSelectElement).value;
+    const nodeType = (document.getElementById('ctrl-node-type') as unknown as HTMLSelectElement).value;
     const label = (document.getElementById('ctrl-node-label') as HTMLInputElement).value.trim();
     const resultEl = document.getElementById('ctrl-node-result')!;
     if (!cellId || !label) { resultEl.textContent = 'Cell and label required'; return; }
@@ -2768,7 +2779,7 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
   async function loadAuditTrail() {
     const listEl = document.getElementById('audit-trail-list')!;
     const countEl = document.getElementById('audit-trail-count')!;
-    const filterEl = document.getElementById('audit-action-filter') as HTMLSelectElement;
+    const filterEl = document.getElementById('audit-action-filter') as unknown as HTMLSelectElement;
     listEl.textContent = 'Loading...';
     countEl.textContent = '';
     try {
@@ -2939,6 +2950,81 @@ function renderOverviewPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLE
     });
   });
 
+  // --- Video Push Widget ---
+  const vpSelect = document.getElementById('ctrl-video-push-select') as unknown as HTMLSelectElement;
+  const vpBtn = document.getElementById('ctrl-video-push-btn') as HTMLButtonElement;
+  const vpRefresh = document.getElementById('ctrl-video-push-refresh') as HTMLButtonElement;
+  const vpStatus = document.getElementById('ctrl-video-push-status');
+
+  async function loadVideoList() {
+    if (!vpSelect) return;
+    vpSelect.innerHTML = '<option value="">Loading...</option>';
+    if (vpBtn) vpBtn.disabled = true;
+    try {
+      const res = await mFetch('/audio/list?prefix=video/&limit=100', session);
+      const data = await res.json() as any;
+      const files = (data.files || []).filter((f: any) => /\.(mp4|webm|mov|mkv)$/i.test(f.key));
+      if (files.length === 0) {
+        vpSelect.innerHTML = '<option value="">No videos in R2</option>';
+        return;
+      }
+      vpSelect.innerHTML = '<option value="">— select video —</option>';
+      for (const f of files) {
+        const name = f.key.replace(/^video\//, '');
+        const size = f.size ? ` (${(f.size / 1024 / 1024).toFixed(1)}MB)` : '';
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name + size;
+        vpSelect.appendChild(opt);
+      }
+    } catch {
+      vpSelect.innerHTML = '<option value="">Error loading list</option>';
+    }
+  }
+
+  vpSelect?.addEventListener('change', () => {
+    if (vpBtn) vpBtn.disabled = !vpSelect.value;
+  });
+
+  vpRefresh?.addEventListener('click', () => loadVideoList());
+
+  vpBtn?.addEventListener('click', async () => {
+    const videoKey = vpSelect?.value;
+    if (!videoKey) return;
+    vpBtn.disabled = true;
+    vpBtn.textContent = 'PUSHING...';
+    if (vpStatus) { vpStatus.textContent = ''; vpStatus.className = 'video-push-status'; }
+    try {
+      const res = await mFetch('/m/video-push', session, {
+        method: 'POST',
+        body: JSON.stringify({ video_key: videoKey, title: videoKey }),
+      });
+      const data = await res.json() as any;
+      if (data.ok) {
+        if (vpStatus) {
+          vpStatus.textContent = `Pushed "${videoKey}" — ${data.ws_broadcast ? 'WS+' : ''}${data.push_sent || 0} push`;
+          vpStatus.className = 'video-push-status ok';
+        }
+        mokSend('advisory', `Video intel pushed: ${videoKey}`);
+      } else {
+        if (vpStatus) {
+          vpStatus.textContent = data.message || 'Push failed';
+          vpStatus.className = 'video-push-status err';
+        }
+      }
+    } catch (err) {
+      if (vpStatus) {
+        vpStatus.textContent = 'Network error';
+        vpStatus.className = 'video-push-status err';
+      }
+    }
+    vpBtn.textContent = 'PUSH TO OPS';
+    vpBtn.disabled = false;
+  });
+
+  // Auto-load video list on dashboard render
+  loadVideoList();
+
   // --- Broadcast to Ops ---
   document.getElementById('ctrl-broadcast-send')?.addEventListener('click', async () => {
     const msg = (document.getElementById('ctrl-broadcast-msg') as HTMLInputElement).value;
@@ -3044,8 +3130,8 @@ function renderCellPanel(ctrl: HTMLElement, session: Session, titleEl: HTMLEleme
   // Node status changes
   ctrl.querySelectorAll('.node-status-select[data-node-id]').forEach((sel) => {
     sel.addEventListener('change', async () => {
-      const nodeId = (sel as HTMLSelectElement).dataset.nodeId!;
-      const newStatus = (sel as HTMLSelectElement).value;
+      const nodeId = (sel as unknown as HTMLSelectElement).dataset.nodeId!;
+      const newStatus = (sel as unknown as HTMLSelectElement).value;
       // Update local cache
       const node = cachedScenarioNodes.find((n) => n.id === nodeId);
       if (node) node.status = newStatus as ScenarioNode['status'];

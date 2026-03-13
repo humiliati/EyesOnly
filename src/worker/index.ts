@@ -16,6 +16,8 @@ import { audioRoutes } from './routes/audio';
 import { audioUploadRoutes } from './routes/audio-upload';
 import { videoRoutes } from './routes/video';
 import { mapUploadRoutes } from './routes/map-upload';
+import { bookingRoutes } from './routes/booking';
+import { partnersRoutes } from './routes/partners';
 import {
   listActiveScenarios,
   findStaleActors,
@@ -81,6 +83,10 @@ app.route('/api/ops', opsRoutes);
 app.route('/api/m', mModeRoutes);
 app.route('/api/user', userAuthRoutes);
 app.route('/api/kernel', kernelRoutes);
+
+// --- Booking & Partners ---
+app.route('/api/booking', bookingRoutes);
+app.route('/api/partners', partnersRoutes);
 
 // --- Audio: served from R2 (not static assets) ---
 app.route('/audio', audioRoutes);

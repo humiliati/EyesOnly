@@ -1,7 +1,7 @@
 /* ============================================================
    EYES ONLY — Partners Page Script
-   Handles FAQ accordions, form toggling, and basic validation.
-   Phase 3 will wire forms to POST /api/partners/apply.
+   Phase 3: FAQ accordions, form toggling, client validation,
+   and API calls to POST /api/partners/apply.
    ============================================================ */
 
 (function () {
@@ -44,6 +44,12 @@
 
     // Hide all forms
     allForms.forEach(function (f) { f.style.display = 'none'; });
+
+    // Reset any previous success states
+    var successEls = document.querySelectorAll('.form-success');
+    successEls.forEach(function (s) { s.style.display = 'none'; });
+    var formEls = document.querySelectorAll('#business-form, #legal-form, #contact-form');
+    formEls.forEach(function (f) { f.style.display = 'block'; });
 
     // Show the target form
     var target = document.getElementById('form-' + formType);
@@ -93,7 +99,6 @@
   }
 
   function showFieldError(input, message) {
-    // Remove existing error
     var existing = input.parentElement.querySelector('.field-error');
     if (existing) existing.remove();
 
@@ -144,13 +149,82 @@
     return valid;
   }
 
-  /* ---- Form submission (Phase 3 placeholder) ---- */
+  /* ---- API helpers ---- */
+
+  function showApiError(form, msg) {
+    var el = form.querySelector('.form-api-error') || createApiErrorEl(form);
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function hideApiError(form) {
+    var el = form.querySelector('.form-api-error');
+    if (el) {
+      el.style.display = 'none';
+      el.textContent = '';
+    }
+  }
+
+  function createApiErrorEl(form) {
+    var el = document.createElement('div');
+    el.className = 'form-api-error';
+    el.style.cssText = 'margin-top: 12px; padding: 12px 16px; border: 1px solid rgba(255,70,70,0.3); border-radius: 4px; background: rgba(255,70,70,0.06); color: #ff4646; font-size: 13px; text-align: center; display: none;';
+    form.appendChild(el);
+    return el;
+  }
+
+  function setButtonLoading(btn, loading, originalText) {
+    if (loading) {
+      btn.disabled = true;
+      btn.dataset.origText = btn.textContent;
+      btn.textContent = 'Submitting\u2026';
+      btn.style.opacity = '0.6';
+      btn.style.pointerEvents = 'none';
+    } else {
+      btn.disabled = false;
+      btn.textContent = originalText || btn.dataset.origText || 'Submit';
+      btn.style.opacity = '';
+      btn.style.pointerEvents = '';
+    }
+  }
+
+  /* ---- Build request body based on form type ---- */
+
+  function buildRequestBody(form, formType) {
+    var body = { form_type: formType };
+
+    if (formType === 'business_signon') {
+      body.business_name  = (form.querySelector('[name="business_name"]')  || {}).value || '';
+      body.business_type  = (form.querySelector('[name="business_type"]')  || {}).value || '';
+      body.contact_name   = (form.querySelector('[name="contact_name"]')   || {}).value || '';
+      body.contact_email  = (form.querySelector('[name="contact_email"]')  || {}).value || '';
+      body.contact_phone  = (form.querySelector('[name="contact_phone"]')  || {}).value || undefined;
+      body.message        = (form.querySelector('[name="message"]')        || {}).value || undefined;
+    }
+
+    if (formType === 'legal_disclaimer') {
+      body.contact_name   = (form.querySelector('[name="contact_name"]')   || {}).value || '';
+      body.contact_email  = (form.querySelector('[name="contact_email"]')  || {}).value || '';
+      body.legal_agreed   = !!((form.querySelector('[name="legal_agreed"]') || {}).checked);
+    }
+
+    if (formType === 'contact') {
+      body.contact_name   = (form.querySelector('[name="contact_name"]')   || {}).value || '';
+      body.contact_email  = (form.querySelector('[name="contact_email"]')  || {}).value || '';
+      body.subject        = (form.querySelector('[name="subject"]')        || {}).value || undefined;
+      body.message        = (form.querySelector('[name="message"]')        || {}).value || '';
+    }
+
+    return body;
+  }
+
+  /* ---- Form submission with API call ---- */
 
   function bindFormSubmissions() {
     var forms = [
-      { id: 'business-form', successId: 'biz-success', type: 'business_signon' },
-      { id: 'legal-form', successId: 'legal-success', type: 'legal_disclaimer' },
-      { id: 'contact-form', successId: 'contact-success', type: 'contact' },
+      { id: 'business-form', successId: 'biz-success', type: 'business_signon', btnText: 'Submit Application' },
+      { id: 'legal-form', successId: 'legal-success', type: 'legal_disclaimer', btnText: 'Sign Agreement' },
+      { id: 'contact-form', successId: 'contact-success', type: 'contact', btnText: 'Send Message' },
     ];
 
     forms.forEach(function (cfg) {
@@ -159,16 +233,49 @@
 
       form.addEventListener('submit', function (e) {
         e.preventDefault();
-
         if (!validateForm(form)) return;
 
-        // Phase 3: POST to /api/partners/apply
-        // For now, show success state
-        var successEl = document.getElementById(cfg.successId);
-        if (successEl) {
-          form.style.display = 'none';
-          successEl.style.display = 'block';
-        }
+        var btn = form.querySelector('[type="submit"]');
+        hideApiError(form);
+        setButtonLoading(btn, true, cfg.btnText);
+
+        var body = buildRequestBody(form, cfg.type);
+
+        fetch('/api/partners/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            setButtonLoading(btn, false, cfg.btnText);
+
+            if (!data.ok) {
+              showApiError(form, data.error || 'Something went wrong. Please try again.');
+              return;
+            }
+
+            // Show success state
+            var successEl = document.getElementById(cfg.successId);
+            if (successEl) {
+              form.style.display = 'none';
+              successEl.style.display = 'block';
+
+              // Append reference ID
+              var refSpan = successEl.querySelector('.success-ref');
+              if (!refSpan) {
+                refSpan = document.createElement('div');
+                refSpan.className = 'success-ref';
+                refSpan.style.cssText = 'font-size: 11px; color: rgba(255,255,255,0.3); margin-top: 10px;';
+                successEl.appendChild(refSpan);
+              }
+              refSpan.textContent = 'Reference ID: #' + data.application.id;
+            }
+          })
+          .catch(function (err) {
+            setButtonLoading(btn, false, cfg.btnText);
+            showApiError(form, 'Network error. Please check your connection and try again.');
+          });
       });
     });
   }

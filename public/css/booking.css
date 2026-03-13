@@ -360,47 +360,274 @@ a:hover { text-decoration: underline; }
   letter-spacing: 0.2em;
 }
 
-/* ---- Booking form placeholder ---- */
+/* ---- Booking form section ---- */
 .booking-form-section {
   padding: 60px 24px;
-  max-width: 700px;
+  max-width: 750px;
   margin: 0 auto;
-  text-align: center;
 }
 
 .booking-form-title {
   font-size: 24px;
   color: #fff;
   margin-bottom: 8px;
+  text-align: center;
 }
 
 .booking-form-sub {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.4);
   margin-bottom: 30px;
+  text-align: center;
 }
 
-.booking-form-placeholder {
-  padding: 40px 30px;
-  border: 1px dashed rgba(28, 255, 155, 0.2);
+/* Shared form structure (matches partners.css patterns) */
+.booking-form {
+  border: 1px solid rgba(28, 255, 155, 0.15);
   border-radius: 8px;
-  background: rgba(28, 255, 155, 0.02);
+  background: rgba(10, 10, 15, 0.95);
+  padding: 30px;
+  animation: bf-slide-in 0.3s ease-out;
 }
 
-.placeholder-icon {
-  font-size: 36px;
-  margin-bottom: 16px;
+@keyframes bf-slide-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.placeholder-text {
+.booking-step-label {
+  font-size: 11px;
+  color: rgba(28, 255, 155, 0.5);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(28, 255, 155, 0.1);
+}
+
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 11px;
+  color: rgba(28, 255, 155, 0.5);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.field-optional {
+  color: rgba(255, 255, 255, 0.25);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 10px;
+}
+
+.field-hint {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.25);
+  margin-top: 4px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid rgba(28, 255, 155, 0.15);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  font-family: 'Courier New', monospace;
   font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: rgba(28, 255, 155, 0.5);
+  box-shadow: 0 0 8px rgba(28, 255, 155, 0.1);
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.form-group select option {
+  background: #0a0a0f;
+  color: #fff;
+}
+
+.form-group input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.form-divider {
+  height: 1px;
+  background: rgba(28, 255, 155, 0.08);
+  margin: 24px 0;
+}
+
+.form-checkbox-group label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.form-checkbox-group input[type="checkbox"] {
+  width: auto;
+  margin-top: 3px;
+  accent-color: #1cff9b;
+}
+
+.form-submit {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  border: 2px solid #1cff9b;
+  border-radius: 6px;
+  background: rgba(28, 255, 155, 0.08);
+  color: #1cff9b;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 8px;
+}
+
+.form-submit:hover {
+  background: rgba(28, 255, 155, 0.18);
+  box-shadow: 0 0 16px rgba(28, 255, 155, 0.2);
+}
+
+.form-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.form-submit.is-loading {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* Field errors */
+.field-error {
+  color: #ff4646;
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+/* API error banner */
+.form-api-error {
+  margin-top: 12px;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 70, 70, 0.3);
+  border-radius: 4px;
+  background: rgba(255, 70, 70, 0.06);
+  color: #ff4646;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Confirmation banner (between steps) */
+.booking-confirm-banner {
+  padding: 14px 18px;
+  border: 1px solid rgba(28, 255, 155, 0.2);
+  border-radius: 6px;
+  background: rgba(28, 255, 155, 0.04);
+  color: rgba(28, 255, 155, 0.7);
+  font-size: 13px;
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+/* Waiver text block */
+.waiver-text {
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  margin-bottom: 20px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.5);
   line-height: 1.7;
 }
 
-.placeholder-link {
+.waiver-text h4 {
+  font-size: 14px;
+  color: #fff;
+  margin-bottom: 10px;
+}
+
+.waiver-text p { margin-bottom: 10px; }
+
+.waiver-version-note {
+  color: rgba(201, 168, 76, 0.6);
+}
+
+/* Success state */
+.form-success {
+  text-align: center;
+  padding: 30px;
+}
+
+.success-icon { font-size: 48px; margin-bottom: 16px; }
+
+.success-title {
+  font-size: 20px;
+  color: #fff;
+  margin-bottom: 10px;
+}
+
+.form-success p {
+  font-size: 14px;
+  color: rgba(28, 255, 155, 0.7);
+  margin-bottom: 16px;
+}
+
+.booking-ref {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-bottom: 20px;
+}
+
+.success-back-link {
+  display: inline-block;
+  padding: 10px 24px;
+  border: 1px solid rgba(28, 255, 155, 0.3);
+  border-radius: 4px;
   color: #1cff9b;
-  text-decoration: underline;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  transition: all 0.2s;
+}
+
+.success-back-link:hover {
+  background: rgba(28, 255, 155, 0.08);
+  text-decoration: none;
 }
 
 /* ---- Footer (shared) ---- */
@@ -468,6 +695,14 @@ a:hover { text-decoration: underline; }
   .scenario-book-btn {
     width: 100%;
     justify-content: center;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-form {
+    padding: 20px 16px;
   }
 
   .eo-footer-inner {

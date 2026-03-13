@@ -1,7 +1,7 @@
 /* ============================================================
    Splash Screen — Mission Select Landing Page
-   Three mission dossier cards over drone footage backgrounds
-   with spy noir silhouette transitions
+   Phase 5: Metallic coin-card dossiers with decoder-ring wheels,
+   card-suit branding, brass/gold aesthetic.
    ============================================================ */
 
 /* ---- Full-screen overlay ---- */
@@ -143,7 +143,6 @@
   transition: opacity 0.35s ease;
 }
 
-/* Exit state for header / prompt / fan when card selected */
 .splash-header.splash-fan-exit,
 .splash-prompt.splash-fan-exit {
   opacity: 0 !important;
@@ -165,19 +164,20 @@
   font-family: 'Courier New', monospace;
   font-size: clamp(18px, 3.5vw, 36px);
   font-weight: bold;
-  color: #1cff9b;
+  color: #d4a843;
   text-transform: uppercase;
   letter-spacing: 0.3em;
   text-shadow:
-    0 0 10px rgba(28, 255, 155, 0.5),
-    0 0 30px rgba(28, 255, 155, 0.2);
+    0 1px 0 #b8922e,
+    0 2px 4px rgba(0, 0, 0, 0.6),
+    0 0 12px rgba(212, 168, 67, 0.3);
   margin-bottom: 8px;
 }
 
 .splash-subtitle {
   font-family: 'Courier New', monospace;
   font-size: clamp(11px, 1.8vw, 16px);
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(212, 168, 67, 0.5);
   letter-spacing: 0.15em;
   text-transform: uppercase;
 }
@@ -197,7 +197,6 @@
   transition: opacity 0.35s ease, transform 0.5s ease;
 }
 
-/* Fan exit — fade & shrink on card selection */
 .splash-card-fan.splash-fan-exit {
   opacity: 0 !important;
   transform: scale(0.9) translateY(30px);
@@ -215,182 +214,639 @@
   }
 }
 
-/* ---- Individual dossier card ---- */
-.splash-dossier {
+
+/* ==============================================================
+   COIN-CARD — Metallic Commemorative Coin Aesthetic
+   Brass borders, embossed text, gold gradients, metallic sheen
+   ============================================================== */
+
+.splash-dossier.coin-card {
   position: relative;
-  width: clamp(200px, 22vw, 280px);
-  height: clamp(300px, 34vw, 420px);
-  border-radius: 10px;
+  width: clamp(210px, 22vw, 290px);
+  height: clamp(340px, 38vw, 480px);
+  border-radius: 16px;
   overflow: hidden;
-  cursor: pointer;
+  cursor: default;
   transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
               box-shadow 0.4s ease,
               filter 0.3s ease;
   transform-style: preserve-3d;
   will-change: transform;
-  border: 2px solid rgba(28, 255, 155, 0.25);
+  border: none;
   box-shadow:
-    0 4px 30px rgba(0, 0, 0, 0.6),
-    0 0 8px rgba(28, 255, 155, 0.1);
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(4px);
+    0 4px 30px rgba(0, 0, 0, 0.7),
+    0 0 12px rgba(180, 140, 40, 0.15);
+  background: transparent;
+  backdrop-filter: none;
 }
 
-/* Desktop fan angles — horizontal overlap like playing cards */
-.splash-dossier:nth-child(1) {
+/* Desktop fan angles */
+.splash-dossier.coin-card:nth-child(1) {
   transform: rotate(-12deg) translateY(15px);
   z-index: 1;
 }
-.splash-dossier:nth-child(2) {
+.splash-dossier.coin-card:nth-child(2) {
   transform: rotate(0deg) translateY(-10px);
   z-index: 3;
   margin: 0 -30px;
 }
-.splash-dossier:nth-child(3) {
+.splash-dossier.coin-card:nth-child(3) {
   transform: rotate(12deg) translateY(15px);
   z-index: 1;
 }
 
-/* Hover states (desktop) */
-.splash-dossier:hover {
+/* Hover (desktop mouse) */
+.splash-dossier.coin-card:hover {
   transform: rotate(0deg) translateY(-30px) scale(1.08) !important;
   z-index: 10 !important;
-  border-color: rgba(28, 255, 155, 0.7);
+  filter: brightness(1.08);
   box-shadow:
-    0 10px 50px rgba(0, 0, 0, 0.8),
-    0 0 25px rgba(28, 255, 155, 0.3),
-    0 0 60px rgba(28, 255, 155, 0.1);
-  filter: brightness(1.1);
+    0 12px 50px rgba(0, 0, 0, 0.8),
+    0 0 30px rgba(212, 168, 67, 0.25),
+    0 0 60px rgba(180, 140, 40, 0.1);
 }
 
-/* Card inner structure */
-.splash-dossier-inner {
+/* Mobile tap-hover (JS-toggled persistent hover state) */
+.splash-dossier.coin-card.coin-card-hovered {
+  transform: rotate(0deg) translateY(-30px) scale(1.08) !important;
+  z-index: 10 !important;
+  filter: brightness(1.08);
+  box-shadow:
+    0 12px 50px rgba(0, 0, 0, 0.8),
+    0 0 30px rgba(212, 168, 67, 0.25),
+    0 0 60px rgba(180, 140, 40, 0.1);
+}
+
+
+/* ---- Outer border ring — thick brass rim ---- */
+.coin-border-outer {
   width: 100%;
   height: 100%;
+  border-radius: 16px;
+  padding: 4px;
+  background: linear-gradient(
+    160deg,
+    #c9a84c 0%,
+    #f5e6a3 20%,
+    #b8922e 40%,
+    #d4a843 60%,
+    #f5e6a3 80%,
+    #a07a22 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* ---- Inner border ring — darker recessed edge ---- */
+.coin-border-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  background: linear-gradient(
+    175deg,
+    #1a1a18 0%,
+    #242420 30%,
+    #1c1c18 60%,
+    #151512 100%
+  );
+  position: relative;
   display: flex;
   flex-direction: column;
-  position: relative;
+  overflow: hidden;
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.7),
+    inset 0 -1px 3px rgba(212, 168, 67, 0.1);
 }
 
-/* Classified stamp top bar */
-.splash-dossier-header {
-  padding: 12px 14px 8px;
-  border-bottom: 1px solid rgba(28, 255, 155, 0.15);
-  position: relative;
+/* Metallic sheen sweep animation on the inner card */
+.coin-border-inner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    transparent 40%,
+    rgba(245, 230, 163, 0.06) 45%,
+    rgba(245, 230, 163, 0.12) 50%,
+    rgba(245, 230, 163, 0.06) 55%,
+    transparent 60%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: coin-sheen 6s ease-in-out infinite;
+  z-index: 50;
+  pointer-events: none;
 }
 
-.splash-dossier-classified {
+@keyframes coin-sheen {
+  0%, 100% { background-position: 200% 0; }
+  50% { background-position: -200% 0; }
+}
+
+
+/* ---- Corner suit symbols (playing card style) ---- */
+.coin-corner {
+  position: absolute;
+  z-index: 10;
+  line-height: 1;
+}
+
+.coin-corner-tl {
+  top: 8px;
+  left: 10px;
+}
+
+.coin-corner-br {
+  bottom: 8px;
+  right: 10px;
+  transform: rotate(180deg);
+}
+
+.coin-corner-suit {
+  font-size: clamp(14px, 1.6vw, 20px);
+  display: block;
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.5),
+    0 0 6px rgba(212, 168, 67, 0.3);
+}
+
+/* Suit colors */
+.suit-spade .coin-corner-suit,
+.suit-spade.coin-corner-suit,
+.suit-spade.coin-suit-large {
+  color: #d4a843;
+}
+
+.suit-club .coin-corner-suit,
+.suit-club.coin-corner-suit,
+.suit-club.coin-suit-large {
+  color: #c0c0c0;
+}
+
+.suit-heart .coin-corner-suit,
+.suit-heart.coin-corner-suit,
+.suit-heart.coin-suit-large {
+  color: #c44040;
+}
+
+/* Suit color classes for corner children */
+.coin-corner .suit-spade {
+  color: #d4a843;
+}
+.coin-corner .suit-club {
+  color: #c0c0c0;
+}
+.coin-corner .suit-heart {
+  color: #c44040;
+}
+
+
+/* ---- Coin header — classified stamp + mission label ---- */
+.coin-header {
+  padding: 10px 14px 6px;
+  text-align: center;
+  position: relative;
+  z-index: 5;
+  border-bottom: 1px solid rgba(180, 140, 40, 0.15);
+}
+
+.coin-classified {
+  font-family: 'Courier New', monospace;
+  font-size: 8px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(220, 60, 60, 0.65);
+  text-shadow:
+    0 0 4px rgba(220, 60, 60, 0.3);
+  margin-bottom: 1px;
+}
+
+.coin-label {
   font-family: 'Courier New', monospace;
   font-size: 9px;
-  color: rgba(255, 70, 70, 0.7);
-  letter-spacing: 0.25em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  margin-bottom: 2px;
+  color: rgba(212, 168, 67, 0.45);
 }
 
-.splash-dossier-mission-label {
-  font-family: 'Courier New', monospace;
-  font-size: 10px;
-  color: rgba(28, 255, 155, 0.5);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
 
-/* Card artwork / icon area */
-.splash-dossier-artwork {
+/* ---- Coin artwork — large centered suit symbol ---- */
+.coin-artwork {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   overflow: hidden;
+  min-height: 0;
 }
 
-/* Crosshair / tactical icon */
-.splash-dossier-icon {
-  font-size: clamp(48px, 6vw, 72px);
-  opacity: 0.85;
-  filter: drop-shadow(0 0 12px rgba(28, 255, 155, 0.3));
-  transition: transform 0.3s ease;
-  z-index: 2;
+/* Engraved concentric ring effect behind the suit */
+.coin-artwork::before {
+  content: '';
+  position: absolute;
+  width: 75%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow:
+    0 0 0 1px rgba(180, 140, 40, 0.08),
+    0 0 0 8px rgba(180, 140, 40, 0.04),
+    0 0 0 16px rgba(180, 140, 40, 0.03),
+    0 0 0 24px rgba(180, 140, 40, 0.02);
+  pointer-events: none;
+  z-index: 1;
 }
 
-.splash-dossier:hover .splash-dossier-icon {
-  transform: scale(1.1);
-}
-
-/* Faint grid overlay on artwork */
-.splash-dossier-artwork::before {
+/* Faint radial hatch pattern */
+.coin-artwork::after {
   content: '';
   position: absolute;
   inset: 0;
-  background-image:
-    linear-gradient(rgba(28, 255, 155, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(28, 255, 155, 0.04) 1px, transparent 1px);
-  background-size: 20px 20px;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(180, 140, 40, 0.02) 0deg,
+    transparent 2deg,
+    transparent 10deg
+  );
+  pointer-events: none;
   z-index: 1;
-  pointer-events: none;
 }
 
-/* Pulsing scan line on artwork */
-.splash-dossier-artwork::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(28, 255, 155, 0.2), transparent);
-  animation: splash-card-scan 4s linear infinite;
-  z-index: 3;
-  pointer-events: none;
+.coin-suit-large {
+  font-size: clamp(52px, 7vw, 90px);
+  z-index: 2;
+  line-height: 1;
+  text-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.6),
+    0 -1px 0 rgba(255, 255, 255, 0.12),
+    0 0 20px rgba(212, 168, 67, 0.15);
+  transition: transform 0.3s ease;
 }
 
-@keyframes splash-card-scan {
-  0% { top: 10%; opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { top: 90%; opacity: 0; }
+.splash-dossier.coin-card:hover .coin-suit-large,
+.splash-dossier.coin-card.coin-card-hovered .coin-suit-large {
+  transform: scale(1.08);
 }
 
-/* Card info footer */
-.splash-dossier-info {
-  padding: 10px 14px 14px;
-  border-top: 1px solid rgba(28, 255, 155, 0.15);
-  background: rgba(0, 0, 0, 0.4);
+
+/* ---- Coin info — title + description ---- */
+.coin-info {
+  padding: 6px 14px 4px;
+  text-align: center;
+  position: relative;
+  z-index: 5;
+  border-top: 1px solid rgba(180, 140, 40, 0.12);
 }
 
-.splash-dossier-title {
+.coin-title {
   font-family: 'Courier New', monospace;
   font-size: clamp(13px, 1.5vw, 17px);
   font-weight: bold;
-  color: #fff;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 4px;
+  letter-spacing: 0.1em;
+  color: #e8d5a0;
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.7),
+    0 -1px 0 rgba(255, 255, 255, 0.08);
+  margin-bottom: 2px;
 }
 
-.splash-dossier-desc {
+.coin-desc {
   font-family: 'Courier New', monospace;
-  font-size: clamp(10px, 1.1vw, 13px);
-  color: rgba(28, 255, 155, 0.7);
-  margin-bottom: 8px;
+  font-size: clamp(9px, 1vw, 12px);
+  color: rgba(212, 168, 67, 0.5);
+  letter-spacing: 0.06em;
 }
 
-.splash-dossier-meta {
+
+/* ---- Mid-row — BOOK.duration / JOIN.NOW button ---- */
+.coin-mid-row {
+  padding: 6px 16px;
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  justify-content: center;
+  position: relative;
+  z-index: 10;
 }
 
-.splash-dossier-tag {
+.coin-book-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  padding: 7px 22px;
+  border: 2px solid;
+  border-image: linear-gradient(
+    160deg,
+    #c9a84c,
+    #f5e6a3,
+    #b8922e,
+    #d4a843
+  ) 1;
+  background: linear-gradient(
+    175deg,
+    rgba(60, 50, 20, 0.9) 0%,
+    rgba(40, 35, 15, 0.95) 50%,
+    rgba(55, 45, 18, 0.9) 100%
+  );
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Sheen on the button */
+.coin-book-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    rgba(245, 230, 163, 0.08) 48%,
+    rgba(245, 230, 163, 0.14) 50%,
+    rgba(245, 230, 163, 0.08) 52%,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.coin-book-btn:hover::before {
+  opacity: 1;
+}
+
+.coin-book-btn:hover {
+  background: linear-gradient(
+    175deg,
+    rgba(80, 65, 25, 0.95) 0%,
+    rgba(55, 45, 18, 1) 50%,
+    rgba(70, 58, 22, 0.95) 100%
+  );
+  box-shadow:
+    0 0 16px rgba(212, 168, 67, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.coin-book-btn:active {
+  transform: scale(0.97);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.coin-book-label {
   font-family: 'Courier New', monospace;
+  font-size: clamp(13px, 1.4vw, 16px);
+  font-weight: bold;
+  letter-spacing: 0.15em;
+  color: #d4a843;
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.6),
+    0 0 8px rgba(212, 168, 67, 0.2);
+}
+
+.coin-book-dot {
+  font-family: 'Courier New', monospace;
+  font-size: clamp(13px, 1.4vw, 16px);
+  font-weight: bold;
+  color: rgba(212, 168, 67, 0.4);
+  margin: 0 1px;
+}
+
+.coin-book-duration {
+  font-family: 'Courier New', monospace;
+  font-size: clamp(12px, 1.3vw, 15px);
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  color: #e8d5a0;
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+/* Partner variant */
+.coin-book-btn.coin-book-partner {
+  border-image: linear-gradient(
+    160deg,
+    #8b3030,
+    #d05050,
+    #8b3030,
+    #c04040
+  ) 1;
+}
+
+.coin-book-partner .coin-book-label {
+  color: #d05050;
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.6),
+    0 0 8px rgba(200, 60, 60, 0.2);
+}
+
+.coin-book-partner .coin-book-dot {
+  color: rgba(200, 60, 60, 0.4);
+}
+
+.coin-book-partner .coin-book-duration {
+  color: #e0a0a0;
+}
+
+
+/* ==============================================================
+   DECODER-RING WHEELS — Brass viewport with scrolling values
+   ============================================================== */
+
+.coin-wheel-strip {
+  display: flex;
+  gap: 6px;
+  padding: 6px 12px 10px;
+  justify-content: center;
+  position: relative;
+  z-index: 10;
+}
+
+.coin-wheel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: ns-resize;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* The viewport frame — small brass window */
+.coin-wheel-frame {
+  width: clamp(72px, 8vw, 100px);
+  height: 42px;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    #1a1710 0%,
+    #0f0e0a 50%,
+    #1a1710 100%
+  );
+  border: 2px solid;
+  border-color: #8b7530 #6b5a20 #5a4c1a #8b7530;
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.7),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.4),
+    0 1px 0 rgba(212, 168, 67, 0.15);
+}
+
+/* Top/bottom fade masks on the wheel frame */
+.coin-wheel-frame::before,
+.coin-wheel-frame::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 12px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.coin-wheel-frame::before {
+  top: 0;
+  background: linear-gradient(180deg, #1a1710 0%, transparent 100%);
+}
+
+.coin-wheel-frame::after {
+  bottom: 0;
+  background: linear-gradient(0deg, #1a1710 0%, transparent 100%);
+}
+
+/* The wheel track — three values stacked vertically */
+.coin-wheel-track {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  transition: transform 0.12s ease-out;
+}
+
+.coin-wheel-val {
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  text-align: center;
+  white-space: nowrap;
+  height: 14px;
+  line-height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.coin-wheel-prev,
+.coin-wheel-next {
   font-size: 9px;
-  color: rgba(255, 255, 255, 0.45);
-  letter-spacing: 0.05em;
-  padding: 2px 6px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 3px;
+  color: rgba(180, 140, 40, 0.2);
+}
+
+.coin-wheel-current {
+  font-size: clamp(13px, 1.4vw, 16px);
+  color: #d4a843;
+  text-shadow:
+    0 0 6px rgba(212, 168, 67, 0.3),
+    0 1px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* Context label below the wheel */
+.coin-wheel-ctx {
+  font-family: 'Courier New', monospace;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  color: rgba(212, 168, 67, 0.35);
   text-transform: uppercase;
+  text-align: center;
+}
+
+/* Hover feedback on the wheel */
+.coin-wheel:hover .coin-wheel-frame {
+  border-color: #a08a38 #8b7530 #7a6828 #a08a38;
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.7),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.4),
+    0 0 8px rgba(212, 168, 67, 0.15),
+    0 1px 0 rgba(212, 168, 67, 0.2);
+}
+
+.coin-wheel:hover .coin-wheel-current {
+  color: #ecd060;
+  text-shadow:
+    0 0 10px rgba(236, 208, 96, 0.4),
+    0 1px 0 rgba(0, 0, 0, 0.5);
+}
+
+
+/* ---- Partner card tag strip (replaces wheels) ---- */
+.coin-tag-strip {
+  display: flex;
+  gap: 6px;
+  padding: 6px 12px 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 5;
+}
+
+.coin-tag {
+  font-family: 'Courier New', monospace;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(200, 80, 80, 0.55);
+  padding: 3px 8px;
+  border: 1px solid rgba(200, 80, 80, 0.2);
+  border-radius: 3px;
+  background: rgba(200, 80, 80, 0.04);
+}
+
+
+/* ---- Selected card glow pulse ---- */
+.splash-dossier.coin-card.splash-selected {
+  box-shadow:
+    0 0 30px rgba(212, 168, 67, 0.5),
+    0 0 60px rgba(180, 140, 40, 0.2),
+    inset 0 0 30px rgba(212, 168, 67, 0.1) !important;
+  animation: splash-selected-pulse 0.6s ease-in-out;
+}
+
+.splash-dossier.coin-card.splash-selected .coin-border-outer {
+  background: linear-gradient(
+    160deg,
+    #e0c050 0%,
+    #fff5cc 25%,
+    #d4a843 50%,
+    #fff5cc 75%,
+    #c9a84c 100%
+  );
+}
+
+@keyframes splash-selected-pulse {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.06); }
+  100% { transform: scale(1.02); }
+}
+
+
+/* ---- Scanline overlay on whole splash ---- */
+.splash-scanlines {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.06) 2px,
+    rgba(0, 0, 0, 0.06) 4px
+  );
 }
 
 /* ---- Bottom prompt ---- */
@@ -420,7 +876,7 @@
 .splash-prompt-text {
   font-family: 'Courier New', monospace;
   font-size: clamp(11px, 1.4vw, 14px);
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(212, 168, 67, 0.35);
   letter-spacing: 0.15em;
   text-transform: uppercase;
   animation: splash-prompt-blink 2.5s ease-in-out infinite;
@@ -431,10 +887,9 @@
   50% { opacity: 0.7; }
 }
 
+
 /* ==============================================================
    Spy noir silhouettes — ALL slide up from bottom
-   They rise almost to their waistline (screen takeover)
-   then zoom in before fade-to-black completes.
    ============================================================== */
 .splash-silhouettes {
   position: fixed;
@@ -459,9 +914,6 @@
   object-position: bottom center;
 }
 
-/* Bottom silhouettes: slide up high, then zoom in for screen takeover.
-   Start off-screen below. Slide up so only ~15% of bottom is below
-   the viewport fold (waistline visible). Then scale up dramatically. */
 .splash-sil-bottom {
   bottom: -110%;
   width: 35vw;
@@ -472,7 +924,6 @@
               transform 1.0s cubic-bezier(0.22, 1, 0.36, 1) 0.4s;
 }
 
-/* 3 slots spread across the viewport */
 .splash-sil-slot-a {
   left: 5%;
   transition-delay: 0s, 0.35s;
@@ -489,7 +940,6 @@
   transition-delay: 0.15s, 0.45s;
 }
 
-/* Active state: silhouettes rise high and zoom */
 .splash-silhouettes.splash-sil-active .splash-sil-bottom {
   bottom: -10%;
   transform: scale(2.2);
@@ -500,7 +950,7 @@
   transform: translateX(-50%) scale(2.2);
 }
 
-/* Fade-to-black overlay — slightly longer transition for silhouette impact */
+/* Fade-to-black overlay */
 .splash-fade-overlay {
   position: fixed;
   inset: 0;
@@ -516,42 +966,9 @@
   pointer-events: all;
 }
 
-/* ---- Selected card glow pulse ---- */
-.splash-dossier.splash-selected {
-  border-color: #1cff9b !important;
-  box-shadow:
-    0 0 30px rgba(28, 255, 155, 0.5),
-    0 0 60px rgba(28, 255, 155, 0.2),
-    inset 0 0 30px rgba(28, 255, 155, 0.1) !important;
-  animation: splash-selected-pulse 0.6s ease-in-out;
-}
-
-@keyframes splash-selected-pulse {
-  0% { transform: scale(1); }
-  30% { transform: scale(1.06); }
-  100% { transform: scale(1.02); }
-}
-
-/* ---- Scanline overlay on whole splash ---- */
-.splash-scanlines {
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.06) 2px,
-    rgba(0, 0, 0, 0.06) 4px
-  );
-}
 
 /* ==============================================================
-   MOBILE PORTRAIT — Fanned deck with Y-axis rotation
-   Cards fan like a deck being spread: card 1 on top (flat),
-   cards 2 and 3 rotated -12deg on Y axis so their content
-   peeks out from behind. Touch/tap lifts a card to reveal.
+   MOBILE PORTRAIT — Stacked coin cards
    ============================================================== */
 @media (max-width: 768px) {
   .splash-card-fan {
@@ -562,84 +979,126 @@
     transform-style: preserve-3d;
   }
 
-  .splash-dossier {
+  .splash-dossier.coin-card {
     width: clamp(280px, 85vw, 380px);
-    height: clamp(120px, 16vh, 155px);
+    height: clamp(160px, 22vh, 210px);
   }
 
-  /* Card 1: top of the deck — flat, fully visible */
-  .splash-dossier:nth-child(1) {
+  .splash-dossier.coin-card:nth-child(1) {
     transform: rotateY(0deg) rotateX(2deg) translateZ(0px);
     z-index: 3;
     margin: 0;
   }
 
-  /* Card 2: peeking from below card 1,
-     rotated -12deg on Y axis to reveal its right edge */
-  .splash-dossier:nth-child(2) {
+  .splash-dossier.coin-card:nth-child(2) {
     transform: rotateY(-12deg) rotateX(2deg) translateY(-14px) translateX(10px);
     z-index: 2;
     margin: 0;
   }
 
-  /* Card 3: peeking from below card 2,
-     rotated -12deg on Y axis, offset further */
-  .splash-dossier:nth-child(3) {
+  .splash-dossier.coin-card:nth-child(3) {
     transform: rotateY(-12deg) rotateX(2deg) translateY(-28px) translateX(20px);
     z-index: 1;
     margin: 0;
   }
 
-  /* Hover/tap: card lifts up and flattens to full view */
-  .splash-dossier:hover {
+  .splash-dossier.coin-card:hover,
+  .splash-dossier.coin-card.coin-card-hovered {
     transform: rotateY(0deg) rotateX(0deg) translateY(-20px) translateX(0px) scale(1.03) !important;
     z-index: 10 !important;
   }
 
-  .splash-dossier-inner {
+  /* Disable CSS :hover on touch — only JS .coin-card-hovered controls it */
+  @media (hover: none) {
+    .splash-dossier.coin-card:hover:not(.coin-card-hovered) {
+      transform: unset;
+      z-index: unset;
+      filter: unset;
+      box-shadow:
+        0 4px 30px rgba(0, 0, 0, 0.7),
+        0 0 12px rgba(180, 140, 40, 0.15);
+    }
+  }
+
+  /* Horizontal layout for mobile cards */
+  .coin-border-inner {
     flex-direction: row;
+    flex-wrap: wrap;
   }
 
-  .splash-dossier-artwork {
-    width: 80px;
-    min-width: 80px;
-  }
-
-  .splash-dossier-icon {
-    font-size: 36px;
-  }
-
-  .splash-dossier-header {
+  .coin-header {
     display: none;
   }
 
-  .splash-dossier-info {
+  .coin-corner-tl {
+    top: 4px;
+    left: 6px;
+  }
+
+  .coin-corner-br {
+    bottom: 4px;
+    right: 6px;
+  }
+
+  .coin-artwork {
+    width: 80px;
+    min-width: 80px;
+    flex: none;
+  }
+
+  .coin-suit-large {
+    font-size: 36px;
+  }
+
+  .coin-artwork::before {
+    width: 55px;
+  }
+
+  .coin-info {
     flex: 1;
     display: flex;
     flex-direction: column;
     justify-content: center;
     border-top: none;
-    border-left: 1px solid rgba(28, 255, 155, 0.15);
-    padding: 8px 10px;
+    border-left: 1px solid rgba(180, 140, 40, 0.12);
+    padding: 6px 10px;
+    text-align: left;
   }
 
-  /* Silhouettes: scale down for mobile but still slide up */
+  .coin-mid-row {
+    padding: 4px 8px;
+  }
+
+  .coin-book-btn {
+    padding: 5px 14px;
+  }
+
+  .coin-wheel-strip {
+    width: 100%;
+    padding: 4px 8px 6px;
+    gap: 4px;
+  }
+
+  .coin-wheel-frame {
+    width: 64px;
+    height: 36px;
+  }
+
+  .coin-tag-strip {
+    width: 100%;
+    padding: 4px 8px 6px;
+  }
+
+  /* Silhouettes */
   .splash-sil-bottom {
     width: 50vw;
     height: 75vh;
   }
 
-  .splash-sil-slot-a {
-    left: 0;
-  }
-  .splash-sil-slot-b {
-    left: 50%;
-  }
-  .splash-sil-slot-c {
-    right: 0;
-  }
+  .splash-sil-slot-a { left: 0; }
+  .splash-sil-slot-b { left: 50%; }
+  .splash-sil-slot-c { right: 0; }
 
-  /* Close button adjustments */
   .splash-close-btn {
     top: 10px;
     right: 10px;
@@ -653,34 +1112,48 @@
 }
 
 @media (max-width: 480px) {
-  .splash-dossier {
+  .splash-dossier.coin-card {
     width: 92vw;
-    height: 110px;
+    height: 145px;
   }
 
-  .splash-dossier:nth-child(1) {
+  .splash-dossier.coin-card:nth-child(1) {
     transform: rotateY(0deg) rotateX(2deg) translateZ(0px);
   }
-  .splash-dossier:nth-child(2) {
+  .splash-dossier.coin-card:nth-child(2) {
     transform: rotateY(-12deg) rotateX(2deg) translateY(-12px) translateX(8px);
   }
-  .splash-dossier:nth-child(3) {
+  .splash-dossier.coin-card:nth-child(3) {
     transform: rotateY(-12deg) rotateX(2deg) translateY(-24px) translateX(16px);
   }
 
-  .splash-dossier-artwork {
+  .coin-artwork {
     width: 65px;
     min-width: 65px;
   }
 
-  .splash-dossier-icon {
-    font-size: 30px;
+  .coin-suit-large {
+    font-size: 28px;
   }
 
   .splash-title {
     letter-spacing: 0.15em;
   }
+
+  .coin-wheel-frame {
+    width: 56px;
+    height: 32px;
+  }
+
+  .coin-wheel-current {
+    font-size: 12px;
+  }
+
+  .coin-wheel-ctx {
+    font-size: 7px;
+  }
 }
+
 
 /* ---- Reduced motion ---- */
 @media (prefers-reduced-motion: reduce) {
@@ -692,6 +1165,10 @@
   .splash-card-fan {
     transition-duration: 0.01s !important;
     animation-duration: 0.01s !important;
+  }
+
+  .coin-border-inner::before {
+    animation: none;
   }
 
   .splash-particle {

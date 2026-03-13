@@ -27,6 +27,21 @@ export interface Env {
    * Set in wrangler.jsonc vars.
    */
   VAPID_SUBJECT?: string;
+  /**
+   * Stripe secret key (sk_test_... or sk_live_...).
+   * Set via `wrangler secret put STRIPE_SECRET_KEY`
+   */
+  STRIPE_SECRET_KEY: string;
+  /**
+   * Stripe publishable key (pk_test_... or pk_live_...).
+   * Safe to expose to frontend — set in wrangler.jsonc vars.
+   */
+  STRIPE_PUBLISHABLE_KEY: string;
+  /**
+   * Stripe webhook signing secret (whsec_...).
+   * Set via `wrangler secret put STRIPE_WEBHOOK_SECRET`
+   */
+  STRIPE_WEBHOOK_SECRET?: string;
 }
 
 // --- Database Row Types ---
@@ -546,4 +561,103 @@ export interface WebAuthnChallenge {
   challenge: string;
   user_id: number;
   expires_at: number;
+}
+
+// --- Booking & Partners Types ---
+
+export interface BookingRow {
+  id: number;
+  scenario_type: 'scenario-1' | 'scenario-2';
+  group_name: string | null;
+  lead_name: string;
+  lead_email: string;
+  lead_phone: string | null;
+  player_count: number;
+  preferred_date: string | null;
+  preferred_time: string | null;
+  waiver_accepted: number;
+  waiver_version: string | null;
+  waiver_signed_at: number | null;
+  waiver_ip: string | null;
+  waiver_user_agent: string | null;
+  emergency_name: string | null;
+  emergency_phone: string | null;
+  emergency_relation: string | null;
+  stripe_payment_intent_id: string | null;
+  stripe_session_id: string | null;
+  amount_cents: number | null;
+  currency: string;
+  payment_status: 'pending' | 'paid' | 'expired' | 'refunded' | 'failed';
+  notes: string | null;
+  status: 'draft' | 'submitted' | 'confirmed' | 'canceled';
+  created_at: number;
+  updated_at: number;
+}
+
+export interface PartnerApplicationRow {
+  id: number;
+  form_type: 'business_signon' | 'legal_disclaimer' | 'contact';
+  business_name: string | null;
+  business_type: string | null;
+  contact_name: string;
+  contact_email: string;
+  contact_phone: string | null;
+  subject: string | null;
+  message: string | null;
+  legal_agreed: number;
+  legal_version: string | null;
+  legal_signed_at: number | null;
+  legal_ip: string | null;
+  legal_user_agent: string | null;
+  metadata: string;
+  status: 'new' | 'reviewed' | 'approved' | 'rejected';
+  created_at: number;
+}
+
+export interface EmailOutboxRow {
+  id: number;
+  to_address: string;
+  subject: string;
+  body_html: string;
+  status: 'queued' | 'sent' | 'failed';
+  attempts: number;
+  last_attempt_at: number | null;
+  error_message: string | null;
+  ref_type: string | null;
+  ref_id: number | null;
+  created_at: number;
+}
+
+// --- Booking API Types ---
+
+export interface BookingCreateRequest {
+  scenario_type: 'scenario-1' | 'scenario-2';
+  group_name?: string;
+  lead_name: string;
+  lead_email: string;
+  lead_phone?: string;
+  player_count: number;
+  preferred_date?: string;
+  preferred_time?: string;
+  emergency_name?: string;
+  emergency_phone?: string;
+  emergency_relation?: string;
+  notes?: string;
+}
+
+export interface BookingWaiverRequest {
+  waiver_version: string;
+  signature_name: string;  // typed signature
+}
+
+export interface PartnerApplyRequest {
+  form_type: 'business_signon' | 'legal_disclaimer' | 'contact';
+  business_name?: string;
+  business_type?: string;
+  contact_name: string;
+  contact_email: string;
+  contact_phone?: string;
+  subject?: string;
+  message?: string;
+  legal_agreed?: boolean;
 }

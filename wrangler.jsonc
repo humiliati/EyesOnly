@@ -57,7 +57,11 @@
   // VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY are SECRETS — set with:
   //   wrangler secret put VAPID_PUBLIC_KEY
   //   wrangler secret put VAPID_PRIVATE_KEY
+  // Stripe keys:
+  //   STRIPE_SECRET_KEY       — set via: wrangler secret put STRIPE_SECRET_KEY
+  //   STRIPE_WEBHOOK_SECRET   — set via: wrangler secret put STRIPE_WEBHOOK_SECRET
   "vars": {
-    "VAPID_SUBJECT": "mailto:ops@flapsandseals.com"
+    "VAPID_SUBJECT": "mailto:ops@flapsandseals.com",
+    "STRIPE_PUBLISHABLE_KEY": "pk_test_51TAJXwB2UlfTzQPnId8eerT8loi9ATGhUvzrMIGHk48ZUgaQXUvkRvZfG1BfKsfyJYeC6ydwBmG3BBcriB7xzXD100NpsWEWWt"
   }
 }
