@@ -443,14 +443,7 @@
   position: absolute;
   inset: 0;
   border-radius: 16px;
-  background: linear-gradient(
-    180deg,
-    #4a4538 0%,
-    #2c2820 30%,
-    #3a3428 50%,
-    #282218 70%,
-    #1e1a10 100%
-  );
+  background: var(--theme-face-gradient);
   transform: translateZ(-8px);
   box-shadow:
     0 8px 30px rgba(0, 0, 0, 0.7),
@@ -466,17 +459,11 @@
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   transform: rotateY(180deg);
-  background: linear-gradient(
-    160deg,
-    #1e1a10 0%,
-    #2a2418 30%,
-    #1a1608 60%,
-    #12100a 100%
-  );
+  background: var(--theme-face-back);
   background-image:
-    radial-gradient(circle at 50% 50%, rgba(180, 150, 60, 0.06) 0%, transparent 60%),
-    repeating-conic-gradient(from 0deg, rgba(180, 150, 60, 0.02) 0deg, transparent 3deg, transparent 12deg);
-  border: 3px solid rgba(120, 100, 50, 0.35);
+    radial-gradient(circle at 50% 50%, var(--theme-primary-glow) 0%, transparent 60%),
+    repeating-conic-gradient(from 0deg, var(--theme-ring-tint) 0deg, transparent 3deg, transparent 12deg);
+  border: 3px solid var(--theme-btn-border);
   overflow: hidden;
 }
 
@@ -515,22 +502,14 @@
 
 /* Outer rim gains directional lighting — bright top-left highlight, deeper bottom-right shadow */
 .splash-dossier.coin-card.coin-card-hovered .coin-border-outer {
-  background: linear-gradient(
-    140deg,
-    #8a7c58 0%,
-    #7a6c48 12%,
-    #5a5038 35%,
-    #6a5c3c 55%,
-    #4a4028 80%,
-    #3a3220 100%
-  );
+  background: var(--theme-border-outer-hover);
   box-shadow:
-    inset 0 2px 0 rgba(240, 220, 160, 0.35),
+    inset 0 2px 0 var(--theme-hover-highlight),
     inset 0 -2px 0 rgba(0, 0, 0, 0.6),
-    inset 2px 0 0 rgba(220, 200, 140, 0.15),
+    inset 2px 0 0 var(--theme-hover-accent),
     inset -2px 0 0 rgba(0, 0, 0, 0.4),
     0 8px 30px rgba(0, 0, 0, 0.5),
-    0 2px 8px rgba(180, 160, 80, 0.06);
+    0 2px 8px var(--theme-hover-glow);
 }
 
 /* Inner face: shifted sheen angle + deeper recess on one side for holographic tilt */
@@ -540,7 +519,7 @@
     inset 0 -1px 2px rgba(220, 200, 140, 0.06),
     inset 3px 0 4px rgba(0, 0, 0, 0.6),
     inset -1px 0 2px rgba(220, 200, 140, 0.04),
-    inset 0 0 0 1px rgba(140, 120, 60, 0.18);
+    inset 0 0 0 1px var(--theme-hover-ring);
 }
 
 
@@ -552,20 +531,11 @@
   padding: 5px;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  background: linear-gradient(
-    160deg,
-    #5a5038 0%,
-    #7a6c48 15%,
-    #4a4028 30%,
-    #6a5c3c 50%,
-    #7a6c48 70%,
-    #4a4028 85%,
-    #3a3220 100%
-  );
+  background: var(--theme-border-outer);
   box-shadow:
-    inset 0 1px 0 rgba(220, 200, 140, 0.25),
+    inset 0 1px 0 var(--theme-hover-highlight),
     inset 0 -1px 0 rgba(0, 0, 0, 0.5),
-    inset 1px 0 0 rgba(220, 200, 140, 0.1),
+    inset 1px 0 0 var(--theme-hover-accent),
     inset -1px 0 0 rgba(0, 0, 0, 0.3),
     0 4px 20px rgba(0, 0, 0, 0.6),
     0 1px 4px rgba(0, 0, 0, 0.4);
@@ -577,14 +547,7 @@
   width: 100%;
   height: 100%;
   border-radius: 12px;
-  background: linear-gradient(
-    175deg,
-    #1a1810 0%,
-    #221e14 25%,
-    #1e1a10 50%,
-    #1a1608 75%,
-    #14120a 100%
-  );
+  background: var(--theme-border-inner);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -595,7 +558,7 @@
     inset 0 -1px 3px rgba(0, 0, 0, 0.7),
     inset 2px 0 3px rgba(0, 0, 0, 0.5),
     inset -2px 0 3px rgba(0, 0, 0, 0.5),
-    inset 0 0 0 1px rgba(120, 100, 50, 0.15);
+    inset 0 0 0 1px var(--theme-hover-ring);
   transition: box-shadow 0.4s ease;
 }
 
@@ -657,60 +620,60 @@
 .suit-spade .coin-corner-suit,
 .suit-spade.coin-corner-suit,
 .suit-spade.coin-suit-large {
-  color: rgba(180, 165, 120, 0.7);
+  color: var(--theme-suit-color);
 }
 
 .suit-club .coin-corner-suit,
 .suit-club.coin-corner-suit,
 .suit-club.coin-suit-large {
-  color: rgba(170, 145, 100, 0.7);
+  color: var(--theme-suit-color);
 }
 
 .suit-heart .coin-corner-suit,
 .suit-heart.coin-corner-suit,
 .suit-heart.coin-suit-large {
-  color: rgba(180, 155, 110, 0.7);
+  color: var(--theme-suit-color);
 }
 
 /* Suit color classes for corner children */
 .coin-corner .suit-spade {
-  color: rgba(180, 165, 120, 0.7);
+  color: var(--theme-suit-color);
 }
 .coin-corner .suit-club {
-  color: rgba(170, 145, 100, 0.7);
+  color: var(--theme-suit-color);
 }
 .coin-corner .suit-heart {
-  color: rgba(180, 155, 110, 0.7);
+  color: var(--theme-suit-color);
 }
 .coin-corner .suit-diamond {
-  color: rgba(190, 170, 100, 0.7);
+  color: var(--theme-suit-color);
 }
 
 /* Diamond suit */
 .suit-diamond .coin-corner-suit,
 .suit-diamond.coin-corner-suit,
 .suit-diamond.coin-suit-large {
-  color: rgba(190, 170, 100, 0.7);
+  color: var(--theme-suit-color);
 }
 
 /* Diamond card PLAY button variant — brass */
 .coin-book-btn.coin-book-diamond {
-  border-color: rgba(160, 140, 70, 0.25);
+  border-color: var(--theme-btn-border);
 }
 
 .coin-book-diamond .coin-book-label {
-  color: rgba(220, 200, 140, 0.85);
+  color: var(--theme-text-book-label);
   text-shadow:
     0 1px 0 rgba(0, 0, 0, 0.8),
-    0 0 6px rgba(180, 160, 80, 0.12);
+    0 0 6px var(--theme-hover-glow);
 }
 
 .coin-book-diamond .coin-book-dot {
-  color: rgba(160, 140, 80, 0.4);
+  color: var(--theme-text-book-dot);
 }
 
 .coin-book-diamond .coin-book-duration {
-  color: rgba(200, 180, 120, 0.7);
+  color: var(--theme-text-book-dur);
 }
 
 
@@ -720,15 +683,15 @@
   text-align: center;
   position: relative;
   z-index: 5;
-  border-bottom: 1px solid rgba(120, 100, 50, 0.12);
+  border-bottom: 1px solid var(--theme-btn-border);
 }
 
 .coin-classified {
-  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  font-family: var(--theme-font-display);
   font-size: 8px;
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: rgba(200, 170, 90, 0.5);
+  color: var(--theme-text-classified);
   text-shadow:
     0 1px 0 rgba(0, 0, 0, 0.8),
     0 0 3px rgba(180, 150, 60, 0.15);
@@ -736,11 +699,11 @@
 }
 
 .coin-label {
-  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  font-family: var(--theme-font-display);
   font-size: 9px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: rgba(160, 140, 90, 0.4);
+  color: var(--theme-text-label);
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
 }
 
@@ -789,7 +752,7 @@
     radial-gradient(circle at center,
       transparent 0%,
       transparent 78%,
-      rgba(120, 100, 50, 0.06) 79%,
+      var(--theme-primary-glow) 79%,
       rgba(80, 65, 30, 0.04) 80%,
       transparent 81%
     ),
@@ -797,9 +760,9 @@
     radial-gradient(circle at center,
       transparent 0%,
       transparent 68%,
-      rgba(140, 120, 60, 0.08) 69%,
+      var(--theme-primary-glow) 69%,
       rgba(60, 50, 25, 0.12) 70%,
-      rgba(100, 85, 40, 0.06) 71%,
+      var(--theme-primary-glow) 71%,
       transparent 72%
     ),
     /* Ring 5 — mid-outer groove */
@@ -807,7 +770,7 @@
       transparent 0%,
       transparent 59%,
       rgba(30, 25, 12, 0.15) 60%,
-      rgba(120, 100, 50, 0.1) 61%,
+      var(--theme-primary-glow) 61%,
       rgba(40, 32, 16, 0.12) 62%,
       transparent 63%
     ),
@@ -825,7 +788,7 @@
       transparent 0%,
       transparent 42%,
       rgba(10, 8, 4, 0.25) 43%,
-      rgba(80, 65, 30, 0.06) 44%,
+      var(--theme-primary-glow) 44%,
       rgba(15, 12, 6, 0.22) 45%,
       transparent 46%
     ),
@@ -864,7 +827,7 @@
   inset: 0;
   background: repeating-conic-gradient(
     from 0deg,
-    rgba(180, 160, 80, 0.015) 0deg,
+    var(--theme-ring-tint) 0deg,
     transparent 1deg,
     transparent 4deg
   );
@@ -895,13 +858,13 @@
   text-shadow:
     0 4px 8px rgba(0, 0, 0, 0.7),
     0 8px 16px rgba(0, 0, 0, 0.35),
-    0 -1px 0 rgba(220, 200, 140, 0.12),
+    0 -1px 0 var(--theme-hover-accent),
     0 0 20px rgba(80, 60, 30, 0.15);
   /* Bob animation — gentle float above the portal */
   animation: suit-bob 4s ease-in-out infinite;
   transition: filter 0.3s ease;
   /* Subtle highlight rim on top edge */
-  filter: drop-shadow(0 -2px 1px rgba(220, 200, 140, 0.1));
+  filter: drop-shadow(0 -2px 1px var(--theme-hover-accent));
 }
 
 @keyframes suit-bob {
@@ -912,7 +875,7 @@
 /* On hover: icon lifts higher and brightens slightly */
 .splash-dossier.coin-card.coin-card-hovered .coin-suit-large {
   animation: suit-bob-hover 3s ease-in-out infinite;
-  filter: drop-shadow(0 -2px 2px rgba(220, 200, 140, 0.18))
+  filter: drop-shadow(0 -2px 2px var(--theme-hover-highlight))
           brightness(1.08);
 }
 
@@ -929,27 +892,27 @@
   text-align: center;
   position: relative;
   z-index: 5;
-  border-top: 1px solid rgba(120, 100, 50, 0.1);
+  border-top: 1px solid var(--theme-primary-glow);
   flex: 0 0 auto;
 }
 
 .coin-title {
-  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  font-family: var(--theme-font-display);
   font-size: clamp(13px, 1.5vw, 17px);
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: rgba(220, 200, 140, 0.85);
+  color: var(--theme-text-title);
   text-shadow:
     0 1px 0 rgba(0, 0, 0, 0.9),
-    0 -1px 0 rgba(220, 200, 140, 0.06);
+    0 -1px 0 var(--theme-hover-glow);
   margin-bottom: 2px;
 }
 
 .coin-desc {
-  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  font-family: var(--theme-font-display);
   font-size: clamp(9px, 1vw, 12px);
-  color: rgba(180, 160, 100, 0.45);
+  color: var(--theme-text-desc);
   letter-spacing: 0.06em;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
 }
@@ -972,20 +935,15 @@
   align-items: center;
   gap: 0;
   padding: 8px 24px;
-  border: 1px solid rgba(120, 100, 50, 0.3);
+  border: 1px solid var(--theme-btn-border);
   border-radius: 6px;
-  background: linear-gradient(
-    175deg,
-    rgba(30, 26, 16, 0.95) 0%,
-    rgba(22, 20, 12, 0.98) 50%,
-    rgba(28, 24, 14, 0.95) 100%
-  );
+  background: var(--theme-btn-bg);
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
   box-shadow:
-    inset 0 1px 0 rgba(220, 200, 140, 0.08),
+    inset 0 1px 0 var(--theme-hover-accent),
     inset 0 -1px 0 rgba(0, 0, 0, 0.4),
     0 2px 8px rgba(0, 0, 0, 0.4);
 }
@@ -1014,16 +972,11 @@
 }
 
 .coin-book-btn:hover {
-  background: linear-gradient(
-    175deg,
-    rgba(40, 34, 18, 0.98) 0%,
-    rgba(30, 26, 14, 1) 50%,
-    rgba(36, 30, 16, 0.98) 100%
-  );
-  border-color: rgba(180, 160, 80, 0.35);
+  background: var(--theme-btn-bg-hover);
+  border-color: var(--theme-btn-border);
   box-shadow:
-    0 0 12px rgba(180, 160, 80, 0.08),
-    inset 0 1px 0 rgba(220, 200, 140, 0.1);
+    0 0 12px var(--theme-hover-glow),
+    inset 0 1px 0 var(--theme-hover-accent);
 }
 
 .coin-book-btn:active {
@@ -1032,53 +985,53 @@
 }
 
 .coin-book-label {
-  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  font-family: var(--theme-font-display);
   font-size: clamp(13px, 1.4vw, 16px);
   font-weight: bold;
   letter-spacing: 0.15em;
-  color: rgba(220, 200, 140, 0.85);
+  color: var(--theme-text-book-label);
   text-shadow:
     0 1px 0 rgba(0, 0, 0, 0.8),
-    0 0 6px rgba(180, 160, 80, 0.12);
+    0 0 6px var(--theme-hover-glow);
 }
 
 .coin-book-dot {
-  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  font-family: var(--theme-font-display);
   font-size: clamp(13px, 1.4vw, 16px);
   font-weight: bold;
-  color: rgba(160, 140, 80, 0.4);
+  color: var(--theme-text-book-dot);
   margin: 0 1px;
 }
 
 /* Duration: classic console font for variable numbers */
 .coin-book-duration {
-  font-family: 'Consolas', 'Monaco', 'Lucida Console', 'Courier New', monospace;
+  font-family: var(--theme-font-data);
   font-size: clamp(12px, 1.3vw, 15px);
   font-weight: bold;
   letter-spacing: 0.1em;
-  color: rgba(200, 180, 120, 0.7);
+  color: var(--theme-text-book-dur);
   text-shadow:
     0 1px 0 rgba(0, 0, 0, 0.7);
 }
 
 /* Partner variant — warm brass accent */
 .coin-book-btn.coin-book-partner {
-  border-color: rgba(160, 120, 60, 0.25);
+  border-color: var(--theme-btn-border);
 }
 
 .coin-book-partner .coin-book-label {
-  color: rgba(220, 200, 140, 0.85);
+  color: var(--theme-text-book-label);
   text-shadow:
     0 1px 0 rgba(0, 0, 0, 0.8),
-    0 0 6px rgba(180, 160, 80, 0.12);
+    0 0 6px var(--theme-hover-glow);
 }
 
 .coin-book-partner .coin-book-dot {
-  color: rgba(160, 140, 80, 0.4);
+  color: var(--theme-text-book-dot);
 }
 
 .coin-book-partner .coin-book-duration {
-  color: rgba(200, 180, 120, 0.7);
+  color: var(--theme-text-book-dur);
 }
 
 
@@ -1114,17 +1067,12 @@
   border-radius: 6px;
   overflow: hidden;
   position: relative;
-  background: linear-gradient(
-    180deg,
-    #181408 0%,
-    #0e0c06 50%,
-    #181408 100%
-  );
-  border: 1px solid rgba(120, 100, 50, 0.25);
+  background: var(--theme-border-inner);
+  border: 1px solid var(--theme-btn-border);
   box-shadow:
     inset 0 2px 6px rgba(0, 0, 0, 0.8),
     inset 0 -1px 3px rgba(0, 0, 0, 0.5),
-    0 1px 0 rgba(180, 160, 80, 0.06);
+    0 1px 0 var(--theme-hover-glow);
 }
 
 /* Top/bottom fade masks on the wheel frame */
@@ -1141,12 +1089,12 @@
 
 .coin-wheel-frame::before {
   top: 0;
-  background: linear-gradient(180deg, #181408 0%, transparent 100%);
+  background: linear-gradient(180deg, var(--theme-bg, #181408) 0%, transparent 100%);
 }
 
 .coin-wheel-frame::after {
   bottom: 0;
-  background: linear-gradient(0deg, #181408 0%, transparent 100%);
+  background: linear-gradient(0deg, var(--theme-bg, #181408) 0%, transparent 100%);
 }
 
 /* The wheel track — three values stacked vertically */
@@ -1161,7 +1109,7 @@
 
 /* Decoder ring values: classic console font for variable numbers */
 .coin-wheel-val {
-  font-family: 'Consolas', 'Monaco', 'Lucida Console', 'Courier New', monospace;
+  font-family: var(--theme-font-data);
   font-weight: bold;
   text-align: center;
   white-space: nowrap;
@@ -1176,42 +1124,42 @@
 .coin-wheel-prev,
 .coin-wheel-next {
   font-size: 9px;
-  color: rgba(160, 140, 80, 0.2);
+  color: var(--theme-text-wheel-ctx);
 }
 
 .coin-wheel-current {
   font-size: clamp(13px, 1.4vw, 16px);
-  color: rgba(220, 200, 140, 0.85);
+  color: var(--theme-text-wheel-val);
   text-shadow:
-    0 0 6px rgba(180, 160, 80, 0.15),
+    0 0 6px var(--theme-hover-glow),
     0 1px 0 rgba(0, 0, 0, 0.7);
 }
 
 /* Context label below the wheel */
 /* Wheel context labels: Palatino (it's a label, not a number) */
 .coin-wheel-ctx {
-  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  font-family: var(--theme-font-display);
   font-size: 8px;
   letter-spacing: 0.1em;
-  color: rgba(160, 140, 80, 0.35);
+  color: var(--theme-text-wheel-ctx);
   text-transform: uppercase;
   text-align: center;
 }
 
 /* Hover feedback on the wheel */
 .coin-wheel:hover .coin-wheel-frame {
-  border-color: rgba(180, 160, 80, 0.3);
+  border-color: var(--theme-btn-border);
   box-shadow:
     inset 0 2px 6px rgba(0, 0, 0, 0.8),
     inset 0 -1px 3px rgba(0, 0, 0, 0.5),
-    0 0 8px rgba(180, 160, 80, 0.08),
-    0 1px 0 rgba(180, 160, 80, 0.08);
+    0 0 8px var(--theme-hover-glow),
+    0 1px 0 var(--theme-hover-glow);
 }
 
 .coin-wheel:hover .coin-wheel-current {
-  color: rgba(240, 220, 150, 0.95);
+  color: var(--theme-text-title);
   text-shadow:
-    0 0 10px rgba(200, 180, 100, 0.25),
+    0 0 10px var(--theme-hover-highlight),
     0 1px 0 rgba(0, 0, 0, 0.7);
 }
 
@@ -1231,15 +1179,15 @@
 }
 
 .coin-tag {
-  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  font-family: var(--theme-font-display);
   font-size: 8px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(180, 160, 100, 0.5);
+  color: var(--theme-text-tag);
   padding: 3px 8px;
-  border: 1px solid rgba(120, 100, 50, 0.15);
+  border: 1px solid var(--theme-btn-border);
   border-radius: 3px;
-  background: rgba(120, 100, 50, 0.04);
+  background: var(--theme-primary-glow);
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
 }
 
@@ -1247,20 +1195,13 @@
 /* ---- Selected card glow pulse ---- */
 .splash-dossier.coin-card.splash-selected {
   box-shadow:
-    0 0 30px rgba(200, 180, 100, 0.25),
-    0 0 60px rgba(180, 160, 80, 0.1) !important;
+    0 0 30px var(--theme-hover-highlight),
+    0 0 60px var(--theme-hover-glow) !important;
   animation: splash-selected-pulse 0.6s ease-in-out;
 }
 
 .splash-dossier.coin-card.splash-selected .coin-border-outer {
-  background: linear-gradient(
-    160deg,
-    #6a5c3c 0%,
-    #8a7c58 25%,
-    #5a4c30 50%,
-    #8a7c58 75%,
-    #6a5c3c 100%
-  );
+  background: var(--theme-border-outer);
 }
 
 @keyframes splash-selected-pulse {
@@ -1272,9 +1213,9 @@
 
 /* ---- Card drag placeholder (dotted outline in fan slot) ---- */
 .splash-card-placeholder {
-  border: 2px dashed rgba(180, 160, 80, 0.25);
+  border: 2px dashed var(--theme-btn-border);
   border-radius: 16px;
-  background: rgba(120, 100, 50, 0.04);
+  background: var(--theme-primary-glow);
   box-sizing: border-box;
   pointer-events: none;
   transition: opacity 0.2s ease;
@@ -1351,7 +1292,7 @@
 .splash-prompt-text {
   font-family: 'Courier New', monospace;
   font-size: clamp(11px, 1.4vw, 14px);
-  color: rgba(180, 160, 100, 0.35);
+  color: var(--theme-text-wheel-ctx);
   letter-spacing: 0.15em;
   text-transform: uppercase;
   animation: splash-prompt-blink 2.5s ease-in-out infinite;
@@ -1535,7 +1476,7 @@
     flex-direction: column;
     justify-content: center;
     border-top: none;
-    border-left: 1px solid rgba(120, 100, 50, 0.1);
+    border-left: 1px solid var(--theme-primary-glow);
     padding: 6px 10px;
     text-align: left;
   }

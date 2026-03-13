@@ -1,5 +1,6 @@
 /* Legibility-first font stack.
-   If Classic Console Neue is not present/loaded, falls back gracefully. */
+   ui-monospace resolves to platform-native: SF Mono (macOS/iOS),
+   Cascadia Mono (Win 11), Roboto Mono (Android). */
 :root {
-  --font-legible: 'Classic Console Neue', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --font-legible: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 }

@@ -114,6 +114,14 @@ const SplashScreen = (() => {
     '/assets/Images/Splash/spy_male_splash.png',
   ];
 
+  // Theme map — mission id → CSS data-card-theme value
+  const THEME_MAP = {
+    'scenario-1': 'silver',
+    'scenario-2': 'amber',
+    'partner':    'phosphor',
+    'minigames':  'panther',
+  };
+
   const HOVER_SOUNDS  = ['card-slide_card_1', 'card-slide_card_2', 'card-slide_card_3'];
   const SELECT_SOUNDS = ['card-fold_hand_1', 'card-fold_hand_2', 'card-fold_hand_3'];
   const WHEEL_SOUND   = 'clickandrelease-1';
@@ -264,7 +272,7 @@ const SplashScreen = (() => {
     }
 
     return `
-      <div class="splash-dossier coin-card" data-mission="${mission.id}" data-index="${index}">
+      <div class="splash-dossier coin-card" data-mission="${mission.id}" data-index="${index}" data-card-theme="${THEME_MAP[mission.id] || 'phosphor'}">
         <div class="coin-border-outer">
           <div class="coin-border-inner">
             ${cornerTL}
@@ -1237,6 +1245,11 @@ const SplashScreen = (() => {
     playSelectSound(cardIndex);
     cardEl.classList.add('splash-selected');
 
+    // Propagate theme to body for terminal/HUD downstream
+    const selectedTheme = THEME_MAP[missionId] || 'phosphor';
+    document.body.setAttribute('data-theme', selectedTheme);
+    try { localStorage.setItem('eyesonly_theme', selectedTheme); } catch (_) {}
+
     // Store wheel state for pre-fill on booking page
     if (cardState[missionId]) {
       try {
@@ -1348,6 +1361,12 @@ const SplashScreen = (() => {
   /* ---- Init ---- */
 
   function init() {
+    // Restore persisted theme (applies to terminal even if splash is skipped)
+    try {
+      const saved = localStorage.getItem('eyesonly_theme');
+      if (saved) document.body.setAttribute('data-theme', saved);
+    } catch (_) {}
+
     try {
       if (sessionStorage.getItem('splash_seen') === '1') return;
     } catch (_) {}

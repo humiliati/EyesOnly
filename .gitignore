@@ -44,3 +44,6 @@ __pycache__/
 *.pyo
 *.egg-info/
 build/
+/AUDIO_ASSETS
+/MEDIA_ASSETS
+AUDIO_ASSETS/SFX/RAW AUDIO FILES GO HERE.txt

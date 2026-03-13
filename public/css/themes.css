@@ -1,0 +1,305 @@
+/* ============================================================
+   Theme System — 4 visual themes for splash cards & terminal
+   Each theme defines CSS custom properties that cascade to all
+   downstream components. Splash cards scope via data-card-theme;
+   terminal/HUD scope via body[data-theme].
+   ============================================================ */
+
+/* ---- Default / Unset: inherit Phosphor ---- */
+:root {
+  /* ---- Color ---- */
+  --theme-primary:          #33ff33;
+  --theme-primary-dim:      #1a9c1a;
+  --theme-primary-bright:   #66ff66;
+  --theme-primary-glow:     rgba(51, 255, 51, 0.15);
+  --theme-secondary:        #1a9c1a;
+  --theme-secondary-dim:    #126e12;
+  --theme-bg:               #0a0a0a;
+  --theme-bg-screen:        #050805;
+  --theme-panel-bg:         #061208;
+  --theme-panel-border:     rgba(51, 255, 51, 0.25);
+  --theme-suit-color:       rgba(51, 255, 51, 0.65);
+
+  /* Coin rims */
+  --theme-border-outer:     linear-gradient(160deg, #5a5038 0%, #7a6c48 15%, #4a4028 30%, #6a5c3c 50%, #7a6c48 70%, #4a4028 85%, #3a3220 100%);
+  --theme-border-outer-hover: linear-gradient(140deg, #2a3a28 0%, #1e3020 12%, #142818 35%, #1a2c1a 55%, #0e1a0c 80%, #0a140a 100%);
+  --theme-border-inner:     linear-gradient(175deg, #1a1810 0%, #221e14 25%, #1e1a10 50%, #1a1608 75%, #14120a 100%);
+  --theme-border-inner-hover: linear-gradient(175deg, #0a1a08 0%, #0e1e0c 25%, #0a1608 50%, #081408 75%, #061208 100%);
+
+  /* Card face */
+  --theme-face-gradient:    linear-gradient(175deg, #4a4538 0%, #2c2820 20%, #3a3428 40%, #282218 70%, #1e1a10 100%);
+  --theme-face-back:        linear-gradient(175deg, #1e1a10 0%, #2a2418 35%, #1a1608 65%, #12100a 100%);
+
+  /* Text hierarchy (brass tones) */
+  --theme-text-classified:  rgba(200, 170, 90, 0.5);
+  --theme-text-label:       rgba(160, 140, 90, 0.4);
+  --theme-text-title:       rgba(220, 200, 140, 0.85);
+  --theme-text-desc:        rgba(180, 160, 100, 0.45);
+  --theme-text-book-label:  rgba(220, 200, 140, 0.85);
+  --theme-text-book-dot:    rgba(160, 140, 80, 0.4);
+  --theme-text-book-dur:    rgba(200, 180, 120, 0.7);
+  --theme-text-wheel-val:   rgba(220, 200, 140, 0.85);
+  --theme-text-wheel-ctx:   rgba(160, 140, 80, 0.35);
+  --theme-text-tag:         rgba(180, 160, 100, 0.5);
+
+  /* Button */
+  --theme-btn-border:       rgba(120, 100, 50, 0.3);
+  --theme-btn-bg:           linear-gradient(175deg, rgba(30, 26, 16, 0.95) 0%, rgba(22, 20, 12, 0.98) 50%, rgba(28, 24, 14, 0.95) 100%);
+  --theme-btn-bg-hover:     linear-gradient(175deg, rgba(40, 34, 18, 0.98) 0%, rgba(30, 26, 14, 1) 50%, rgba(36, 30, 16, 0.98) 100%);
+
+  /* Hover inset highlights (warm brass) */
+  --theme-hover-highlight:  rgba(240, 220, 160, 0.35);
+  --theme-hover-accent:     rgba(220, 200, 140, 0.15);
+  --theme-hover-glow:       rgba(180, 160, 80, 0.06);
+  --theme-hover-ring:       rgba(140, 120, 60, 0.18);
+
+  /* Rings (brass-tinted) */
+  --theme-ring-tint:        rgba(180, 160, 80, 0.015);
+
+  /* ---- Typography ---- */
+  --theme-font-display:     'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  --theme-font-body:        'Courier New', 'Lucida Console', Consolas, monospace;
+  --theme-font-data:        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+
+  /* ---- Atmosphere ---- */
+  --theme-scanline-opacity: 0.06;
+  --theme-glow-spread:      4px;
+  --theme-vignette-color:   rgba(10, 40, 10, 0.3);
+}
+
+
+/* ============================================================
+   THEME 0 — PHOSPHOR (default)
+   Card: Partners (Heart)
+   Green CRT terminal — cold-war intelligence briefing screen.
+   ============================================================ */
+body[data-theme="phosphor"],
+.splash-dossier[data-card-theme="phosphor"] {
+  --theme-primary:          #33ff33;
+  --theme-primary-dim:      #1a9c1a;
+  --theme-primary-bright:   #66ff66;
+  --theme-primary-glow:     rgba(51, 255, 51, 0.15);
+  --theme-secondary:        #1a9c1a;
+  --theme-secondary-dim:    #126e12;
+  --theme-bg:               #0a0a0a;
+  --theme-bg-screen:        #050805;
+  --theme-panel-bg:         #061208;
+  --theme-panel-border:     rgba(51, 255, 51, 0.25);
+  --theme-suit-color:       rgba(51, 255, 51, 0.65);
+
+  --theme-border-outer:     linear-gradient(160deg, #5a5038 0%, #7a6c48 15%, #4a4028 30%, #6a5c3c 50%, #7a6c48 70%, #4a4028 85%, #3a3220 100%);
+  --theme-border-outer-hover: linear-gradient(140deg, #2a3a28 0%, #1e3020 12%, #142818 35%, #1a2c1a 55%, #0e1a0c 80%, #0a140a 100%);
+  --theme-border-inner:     linear-gradient(175deg, #1a1810 0%, #221e14 25%, #1e1a10 50%, #1a1608 75%, #14120a 100%);
+  --theme-border-inner-hover: linear-gradient(175deg, #0a1a08 0%, #0e1e0c 25%, #0a1608 50%, #081408 75%, #061208 100%);
+
+  --theme-face-gradient:    linear-gradient(175deg, #4a4538 0%, #2c2820 20%, #3a3428 40%, #282218 70%, #1e1a10 100%);
+  --theme-face-back:        linear-gradient(175deg, #1e1a10 0%, #2a2418 35%, #1a1608 65%, #12100a 100%);
+
+  --theme-text-classified:  rgba(51, 255, 51, 0.40);
+  --theme-text-label:       rgba(51, 200, 51, 0.35);
+  --theme-text-title:       rgba(120, 255, 120, 0.85);
+  --theme-text-desc:        rgba(51, 200, 51, 0.40);
+  --theme-text-book-label:  rgba(120, 255, 120, 0.85);
+  --theme-text-book-dot:    rgba(51, 180, 51, 0.35);
+  --theme-text-book-dur:    rgba(100, 240, 100, 0.7);
+  --theme-text-wheel-val:   rgba(120, 255, 120, 0.85);
+  --theme-text-wheel-ctx:   rgba(51, 180, 51, 0.30);
+  --theme-text-tag:         rgba(51, 200, 51, 0.45);
+
+  --theme-btn-border:       rgba(51, 200, 51, 0.25);
+  --theme-btn-bg:           linear-gradient(175deg, rgba(6, 18, 8, 0.95) 0%, rgba(4, 14, 6, 0.98) 50%, rgba(6, 16, 8, 0.95) 100%);
+  --theme-btn-bg-hover:     linear-gradient(175deg, rgba(10, 28, 12, 0.98) 0%, rgba(8, 22, 10, 1) 50%, rgba(10, 26, 12, 0.98) 100%);
+
+  --theme-hover-highlight:  rgba(120, 255, 120, 0.20);
+  --theme-hover-accent:     rgba(80, 220, 80, 0.10);
+  --theme-hover-glow:       rgba(51, 255, 51, 0.06);
+  --theme-hover-ring:       rgba(51, 200, 51, 0.15);
+
+  --theme-ring-tint:        rgba(51, 255, 51, 0.012);
+
+  --theme-font-display:     'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  --theme-font-body:        'Courier New', 'Lucida Console', Consolas, monospace;
+  --theme-font-data:        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+
+  --theme-scanline-opacity: 0.06;
+  --theme-glow-spread:      4px;
+  --theme-vignette-color:   rgba(10, 40, 10, 0.3);
+}
+
+
+/* ============================================================
+   THEME 1 — SILVER
+   Card: Scenario 1 (Spade)
+   Brushed steel, slate blue — NATO briefing room at 0300.
+   ============================================================ */
+body[data-theme="silver"],
+.splash-dossier[data-card-theme="silver"] {
+  --theme-primary:          #b0c4de;
+  --theme-primary-dim:      #6a8099;
+  --theme-primary-bright:   #d4e4f7;
+  --theme-primary-glow:     rgba(176, 196, 222, 0.12);
+  --theme-secondary:        #4a6a8a;
+  --theme-secondary-dim:    #3a5070;
+  --theme-bg:               #08090c;
+  --theme-bg-screen:        #060810;
+  --theme-panel-bg:         #0a0e16;
+  --theme-panel-border:     rgba(176, 196, 222, 0.20);
+  --theme-suit-color:       rgba(176, 196, 222, 0.70);
+
+  --theme-border-outer:     linear-gradient(160deg, #5a6878 0%, #6a7888 15%, #3a4858 30%, #5a6878 50%, #6a7888 70%, #3a4858 85%, #2a3848 100%);
+  --theme-border-outer-hover: linear-gradient(140deg, #6a7a90 0%, #5a6a80 12%, #3a4a60 35%, #4a5a70 55%, #2a3a50 80%, #1e2a3e 100%);
+  --theme-border-inner:     linear-gradient(175deg, #1a2030 0%, #202838 25%, #1a2030 50%, #161e28 75%, #121a22 100%);
+  --theme-border-inner-hover: linear-gradient(175deg, #1e2838 0%, #222c3c 25%, #1a2432 50%, #162028 75%, #0e1520 100%);
+
+  --theme-face-gradient:    linear-gradient(175deg, #2a3040 0%, #1e2430 20%, #242a38 40%, #1a2028 70%, #141820 100%);
+  --theme-face-back:        linear-gradient(175deg, #141820 0%, #1a2028 35%, #121820 65%, #0e1218 100%);
+
+  --theme-text-classified:  rgba(176, 196, 222, 0.45);
+  --theme-text-label:       rgba(140, 160, 190, 0.35);
+  --theme-text-title:       rgba(200, 216, 240, 0.85);
+  --theme-text-desc:        rgba(140, 160, 190, 0.40);
+  --theme-text-book-label:  rgba(200, 216, 240, 0.85);
+  --theme-text-book-dot:    rgba(120, 140, 170, 0.35);
+  --theme-text-book-dur:    rgba(176, 196, 222, 0.7);
+  --theme-text-wheel-val:   rgba(212, 228, 247, 0.85);
+  --theme-text-wheel-ctx:   rgba(120, 140, 170, 0.30);
+  --theme-text-tag:         rgba(140, 160, 190, 0.45);
+
+  --theme-btn-border:       rgba(120, 140, 180, 0.25);
+  --theme-btn-bg:           linear-gradient(175deg, rgba(14, 18, 28, 0.95) 0%, rgba(10, 14, 22, 0.98) 50%, rgba(12, 16, 26, 0.95) 100%);
+  --theme-btn-bg-hover:     linear-gradient(175deg, rgba(20, 28, 40, 0.98) 0%, rgba(16, 22, 34, 1) 50%, rgba(18, 26, 38, 0.98) 100%);
+
+  --theme-hover-highlight:  rgba(200, 216, 240, 0.25);
+  --theme-hover-accent:     rgba(176, 196, 222, 0.12);
+  --theme-hover-glow:       rgba(176, 196, 222, 0.06);
+  --theme-hover-ring:       rgba(140, 160, 200, 0.15);
+
+  --theme-ring-tint:        rgba(176, 196, 222, 0.012);
+
+  --theme-font-display:     'Times New Roman', 'Palatino Linotype', Palatino, Georgia, serif;
+  --theme-font-body:        'Courier New', 'Lucida Console', Consolas, monospace;
+  --theme-font-data:        ui-monospace, Consolas, SFMono-Regular, Menlo, 'Liberation Mono', 'Courier New', monospace;
+
+  --theme-scanline-opacity: 0.03;
+  --theme-glow-spread:      2px;
+  --theme-vignette-color:   rgba(8, 12, 24, 0.35);
+}
+
+
+/* ============================================================
+   THEME 2 — AMBER
+   Card: Scenario 2 (Club)
+   Warm amber on black — Soviet intercept station, vacuum tubes.
+   ============================================================ */
+body[data-theme="amber"],
+.splash-dossier[data-card-theme="amber"] {
+  --theme-primary:          #ffb000;
+  --theme-primary-dim:      #996a00;
+  --theme-primary-bright:   #ffc640;
+  --theme-primary-glow:     rgba(255, 176, 0, 0.15);
+  --theme-secondary:        #cc6600;
+  --theme-secondary-dim:    #994c00;
+  --theme-bg:               #0a0800;
+  --theme-bg-screen:        #080600;
+  --theme-panel-bg:         #100c04;
+  --theme-panel-border:     rgba(255, 176, 0, 0.20);
+  --theme-suit-color:       rgba(255, 190, 60, 0.70);
+
+  --theme-border-outer:     linear-gradient(160deg, #6a5a30 0%, #8a7a48 15%, #5a4a28 30%, #7a6a3c 50%, #8a7a48 70%, #5a4a28 85%, #4a3a18 100%);
+  --theme-border-outer-hover: linear-gradient(140deg, #8a7640 0%, #7a6a38 12%, #5a4a28 35%, #6a5c30 55%, #4a3c20 80%, #3a2e14 100%);
+  --theme-border-inner:     linear-gradient(175deg, #1a1408 0%, #221c0e 25%, #1e180a 50%, #1a1408 75%, #140e04 100%);
+  --theme-border-inner-hover: linear-gradient(175deg, #1e1a0c 0%, #262010 25%, #1e1a0c 50%, #1a1608 75%, #100c04 100%);
+
+  --theme-face-gradient:    linear-gradient(175deg, #4a4020 0%, #342c14 20%, #3e3620 40%, #2c2410 70%, #221c08 100%);
+  --theme-face-back:        linear-gradient(175deg, #221c08 0%, #2e2610 35%, #1e1808 65%, #161204 100%);
+
+  --theme-text-classified:  rgba(255, 176, 0, 0.45);
+  --theme-text-label:       rgba(200, 140, 0, 0.35);
+  --theme-text-title:       rgba(255, 198, 64, 0.85);
+  --theme-text-desc:        rgba(200, 140, 0, 0.40);
+  --theme-text-book-label:  rgba(255, 198, 64, 0.85);
+  --theme-text-book-dot:    rgba(180, 120, 0, 0.35);
+  --theme-text-book-dur:    rgba(240, 180, 60, 0.7);
+  --theme-text-wheel-val:   rgba(255, 198, 64, 0.85);
+  --theme-text-wheel-ctx:   rgba(180, 120, 0, 0.30);
+  --theme-text-tag:         rgba(200, 140, 0, 0.45);
+
+  --theme-btn-border:       rgba(200, 140, 0, 0.25);
+  --theme-btn-bg:           linear-gradient(175deg, rgba(16, 12, 4, 0.95) 0%, rgba(12, 10, 2, 0.98) 50%, rgba(14, 12, 4, 0.95) 100%);
+  --theme-btn-bg-hover:     linear-gradient(175deg, rgba(24, 18, 6, 0.98) 0%, rgba(18, 14, 4, 1) 50%, rgba(22, 16, 6, 0.98) 100%);
+
+  --theme-hover-highlight:  rgba(255, 198, 64, 0.25);
+  --theme-hover-accent:     rgba(255, 176, 0, 0.12);
+  --theme-hover-glow:       rgba(255, 176, 0, 0.06);
+  --theme-hover-ring:       rgba(200, 160, 40, 0.15);
+
+  --theme-ring-tint:        rgba(255, 176, 0, 0.012);
+
+  --theme-font-display:     Georgia, 'Palatino Linotype', Palatino, 'Book Antiqua', 'Times New Roman', serif;
+  --theme-font-body:        Georgia, 'Palatino Linotype', Palatino, 'Book Antiqua', serif;
+  --theme-font-data:        ui-monospace, Consolas, Menlo, 'Courier New', monospace;
+
+  --theme-scanline-opacity: 0.06;
+  --theme-glow-spread:      6px;
+  --theme-vignette-color:   rgba(20, 12, 0, 0.40);
+}
+
+
+/* ============================================================
+   THEME 3 — PANTHER
+   Card: Mini Games (Diamond)
+   Magenta neon + dark forest green + cyan accents + phosphor
+   green data fields. Split personality: spy glam over hacker guts.
+   ============================================================ */
+body[data-theme="panther"],
+.splash-dossier[data-card-theme="panther"] {
+  --theme-primary:          #ff3090;
+  --theme-primary-dim:      #a01858;
+  --theme-primary-bright:   #ff60b0;
+  --theme-primary-glow:     rgba(255, 48, 144, 0.15);
+  --theme-secondary:        #00e5cc;
+  --theme-secondary-dim:    #008a7a;
+  --theme-bg:               #060a06;
+  --theme-bg-screen:        #040804;
+  --theme-panel-bg:         #0a120a;
+  --theme-panel-border:     rgba(255, 48, 144, 0.22);
+  --theme-suit-color:       rgba(255, 48, 144, 0.70);
+
+  --theme-border-outer:     linear-gradient(160deg, #4a2040 0%, #5a2850 15%, #2a1828 30%, #4a2040 50%, #5a2850 70%, #2a1828 85%, #1e1420 100%);
+  --theme-border-outer-hover: linear-gradient(140deg, #5a2850 0%, #4a2040 12%, #2a1828 35%, #3a1e34 55%, #1a1020 80%, #120a16 100%);
+  --theme-border-inner:     linear-gradient(175deg, #0e180e 0%, #121e12 25%, #0e180e 50%, #0a140a 75%, #081008 100%);
+  --theme-border-inner-hover: linear-gradient(175deg, #0a1a0a 0%, #0e200e 25%, #0a1a0a 50%, #081608 75%, #061208 100%);
+
+  --theme-face-gradient:    linear-gradient(175deg, #1e1228 0%, #141020 20%, #1a1224 40%, #100c1a 70%, #0a0812 100%);
+  --theme-face-back:        linear-gradient(175deg, #0a0812 0%, #120e1a 35%, #0a0812 65%, #08060e 100%);
+
+  --theme-text-classified:  rgba(255, 48, 144, 0.40);
+  --theme-text-label:       rgba(200, 40, 120, 0.30);
+  --theme-text-title:       rgba(255, 96, 176, 0.85);
+  --theme-text-desc:        rgba(0, 229, 204, 0.40);
+  --theme-text-book-label:  rgba(255, 96, 176, 0.85);
+  --theme-text-book-dot:    rgba(200, 40, 120, 0.30);
+  --theme-text-book-dur:    rgba(0, 229, 204, 0.7);
+  --theme-text-wheel-val:   rgba(51, 255, 51, 0.85);
+  --theme-text-wheel-ctx:   rgba(0, 180, 160, 0.30);
+  --theme-text-tag:         rgba(0, 229, 204, 0.45);
+
+  --theme-btn-border:       rgba(255, 48, 144, 0.22);
+  --theme-btn-bg:           linear-gradient(175deg, rgba(10, 18, 10, 0.95) 0%, rgba(8, 14, 8, 0.98) 50%, rgba(10, 16, 10, 0.95) 100%);
+  --theme-btn-bg-hover:     linear-gradient(175deg, rgba(16, 8, 20, 0.98) 0%, rgba(12, 6, 16, 1) 50%, rgba(14, 8, 18, 0.98) 100%);
+
+  --theme-hover-highlight:  rgba(255, 96, 176, 0.20);
+  --theme-hover-accent:     rgba(255, 48, 144, 0.10);
+  --theme-hover-glow:       rgba(255, 48, 144, 0.06);
+  --theme-hover-ring:       rgba(255, 48, 144, 0.15);
+
+  --theme-ring-tint:        rgba(255, 48, 144, 0.012);
+
+  --theme-font-display:     'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  --theme-font-body:        Georgia, 'Palatino Linotype', 'Book Antiqua', serif;
+  --theme-font-data:        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+
+  --theme-scanline-opacity: 0.06;
+  --theme-glow-spread:      5px;
+  --theme-vignette-color:   rgba(10, 6, 10, 0.45);
+}
