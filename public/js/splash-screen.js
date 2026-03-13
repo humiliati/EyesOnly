@@ -175,7 +175,7 @@ const SplashScreen = (() => {
       <div class="splash-video-layer" id="splash-video-layer">
         ${VIDEO_SOURCES.map((v, i) =>
           `<video id="splash-vid-${i}" muted loop playsinline preload="auto"
-                  ${i === 0 ? 'class="splash-video-active"' : ''}>
+                  ${i === 0 ? 'autoplay class="splash-video-active"' : ''}>
             <source src="${v.webm}" type="video/webm">
             <source src="${v.mp4}" type="video/mp4">
           </video>`
@@ -703,7 +703,15 @@ const SplashScreen = (() => {
 
   function startVideos() {
     const videos = splashEl.querySelectorAll('.splash-video-layer video');
-    videos.forEach(v => { v.play().catch(() => {}); });
+    videos.forEach((v, i) => {
+      v.play().catch(err => {
+        console.warn('[Splash] video[' + i + '] play failed:', err.message);
+      });
+      // Surface source load failures to console for debugging
+      v.addEventListener('error', function () {
+        console.warn('[Splash] video[' + i + '] load error — check R2 filenames');
+      });
+    });
   }
 
   /* ---- Sound effects ---- */
