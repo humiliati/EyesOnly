@@ -173,8 +173,15 @@
   height: 80vh;
   z-index: 100;
   pointer-events: none;
+  opacity: 0;            /* start invisible — revealed only if PNGs fail */
   transition: bottom 0.8s cubic-bezier(0.22, 1, 0.36, 1),
-              transform 1.0s cubic-bezier(0.22, 1, 0.36, 1) 0.4s;
+              transform 1.0s cubic-bezier(0.22, 1, 0.36, 1) 0.4s,
+              opacity 0.3s ease;
+}
+
+/* CSS fallbacks activated (PNGs didn't load in time) */
+.splash-sil-css.splash-sil-css-needed {
+  opacity: 1;
 }
 
 /* Spy silhouette shape 1 — standing with hat brim */

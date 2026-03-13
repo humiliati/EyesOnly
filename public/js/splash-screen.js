@@ -496,24 +496,44 @@ const SplashScreen = (() => {
     const count = Math.random() < 0.5 ? 2 : 3;
     const slots = ['sil-slot-a', 'sil-slot-b', 'sil-slot-c'];
     const cssSlots = ['splash-sil-css-a', 'splash-sil-css-b', 'splash-sil-css-c'];
+    var imgLoaded = [false, false, false]; // track which PNGs resolved
 
     for (let i = 0; i < count; i++) {
       const slot = document.getElementById(slots[i]);
       if (slot && shuffled[i]) {
         const img = slot.querySelector('img');
+
+        // Capture index for closure
+        (function (idx) {
+          // When real PNG loads, mark it and ensure CSS shape stays hidden
+          img.addEventListener('load', function () {
+            imgLoaded[idx] = true;
+            var cssShape = splashEl.querySelector('.' + cssSlots[idx]);
+            if (cssShape) {
+              cssShape.classList.remove('splash-sil-css-needed');
+              cssShape.classList.add('splash-sil-img-loaded');
+            }
+          });
+
+          // If PNG fails (offline/slow), activate CSS shape as fallback
+          img.addEventListener('error', function () {
+            console.log('[Splash] Silhouette image failed — CSS fallback for slot ' + idx);
+            var cssShape = splashEl.querySelector('.' + cssSlots[idx]);
+            if (cssShape) cssShape.classList.add('splash-sil-css-needed');
+          });
+
+          // Grace period: wait 200ms — if PNG hasn't loaded, reveal CSS shape
+          setTimeout(function () {
+            if (!imgLoaded[idx]) {
+              var cssShape = splashEl.querySelector('.' + cssSlots[idx]);
+              if (cssShape && !cssShape.classList.contains('splash-sil-img-loaded')) {
+                cssShape.classList.add('splash-sil-css-needed');
+              }
+            }
+          }, 200);
+        })(i);
+
         img.src = shuffled[i];
-
-        // When real PNG loads, hide the CSS fallback shape
-        img.addEventListener('load', function () {
-          var cssShape = splashEl.querySelector('.' + cssSlots[i]);
-          if (cssShape) cssShape.classList.add('splash-sil-img-loaded');
-        });
-
-        // If PNG fails (offline), CSS shape remains visible
-        img.addEventListener('error', function () {
-          console.log('[Splash] Silhouette image failed to load — using CSS fallback');
-        });
-
         slot.style.display = '';
       }
     }

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="FIELD KIT — Puzzles, decryption keys, and reconnaissance toys.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#000000">
+  <title>EYES ONLY // FIELD KIT</title>
+
+  <link rel="stylesheet" href="css/crt.css?v=20260307m">
+  <link rel="stylesheet" href="css/games.css?v=20260312a">
+
+  <style>
+    * {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- CRT Screen Container -->
+  <div id="crt-screen">
+
+    <!-- CRT Effect Layers -->
+    <div id="phosphor-glow"></div>
+    <div id="scanlines"></div>
+    <div id="vignette"></div>
+
+    <div id="crt-frame">
+      <header id="mok-header" class="monitor-header">
+        <div class="mok-header-copy">
+          <div class="mok-header-title">FIELD KIT</div>
+          <div class="mok-header-sub"><span class="mok-header-sub-prefix">&#9830; Recreation &amp; Countermeasures</span></div>
+        </div>
+        <nav class="mok-header-nav" aria-label="Quick links">
+          <a href="/booking.html" class="header-chip header-nav-btn" data-sound="ui-01" title="Book a Mission">
+            <span class="header-nav-icon">&#9824;</span><span class="header-nav-label">BOOKING</span>
+          </a>
+          <a href="/partners.html" class="header-chip header-nav-btn" data-sound="ui-01" title="Partner Sign-Up">
+            <span class="header-nav-icon header-nav-icon-heart">&#9829;</span><span class="header-nav-label">PARTNERS</span>
+          </a>
+        </nav>
+        <div class="mok-header-right">
+          <a href="/" class="header-chip header-nav-btn" data-sound="ui-04" title="Return to Terminal">
+            <span class="header-nav-icon">&#9664;</span><span class="header-nav-label">TERMINAL</span>
+          </a>
+        </div>
+      </header>
+
+      <div id="monitor-shell">
+        <div class="log-frame games-log-frame" id="games-log-frame">
+
+          <!-- Scanline overlay for inner screen feel -->
+          <div class="games-scanlines"></div>
+
+          <!-- Header strip inside the log frame -->
+          <div class="games-header-strip">
+            <span class="games-header-icon">&#9830;</span>
+            <span class="games-header-title">FIELD KIT // RECREATION INVENTORY</span>
+            <span class="games-header-status" id="games-status">ONLINE</span>
+          </div>
+
+          <!-- Scrollable content area -->
+          <div class="games-content" id="games-content">
+
+            <!-- ═══════════════ PUZZLES ═══════════════ -->
+            <div class="games-row" id="row-puzzles">
+              <button class="games-row-header" data-target="puzzles-body" aria-expanded="false">
+                <span class="games-row-chevron">&#9656;</span>
+                <span class="games-row-label">PUZZLES</span>
+                <span class="games-row-count">4 ITEMS</span>
+                <span class="games-row-status">AVAILABLE</span>
+              </button>
+              <div class="games-row-body" id="puzzles-body">
+                <div class="games-item">
+                  <span class="games-item-icon">&#9641;</span>
+                  <div class="games-item-info">
+                    <div class="games-item-name">Dead Drop Cipher</div>
+                    <div class="games-item-desc">Decode the intercepted message using the field manual key table. QR-activated at Sandpoint waypoints.</div>
+                  </div>
+                  <span class="games-item-tag games-tag-narrative">NARRATIVE</span>
+                </div>
+                <div class="games-item">
+                  <span class="games-item-icon">&#9641;</span>
+                  <div class="games-item-info">
+                    <div class="games-item-name">Surveillance Grid</div>
+                    <div class="games-item-desc">Pattern-matching recon puzzle. Identify the anomaly in the surveillance feed before time runs out.</div>
+                  </div>
+                  <span class="games-item-tag games-tag-timed">TIMED</span>
+                </div>
+                <div class="games-item">
+                  <span class="games-item-icon">&#9641;</span>
+                  <div class="games-item-info">
+                    <div class="games-item-name">Asset Extraction Map</div>
+                    <div class="games-item-desc">Navigate the extraction route using only compass bearings and landmark descriptions. Field-deployable.</div>
+                  </div>
+                  <span class="games-item-tag games-tag-narrative">FIELD</span>
+                </div>
+                <div class="games-item games-item-locked">
+                  <span class="games-item-icon">&#9632;</span>
+                  <div class="games-item-info">
+                    <div class="games-item-name">[REDACTED]</div>
+                    <div class="games-item-desc">Requires CLEARANCE LEVEL 2. Complete a live scenario to unlock.</div>
+                  </div>
+                  <span class="games-item-tag games-tag-locked">LOCKED</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ═══════════════ DECRYPTION ITEMS ═══════════════ -->
+            <div class="games-row" id="row-decryption">
+              <button class="games-row-header" data-target="decryption-body" aria-expanded="false">
+                <span class="games-row-chevron">&#9656;</span>
+                <span class="games-row-label">DECRYPTION ITEMS</span>
+                <span class="games-row-count">INVENTORY</span>
+                <span class="games-row-status">PERSISTENT</span>
+              </button>
+              <div class="games-row-body" id="decryption-body">
+                <div class="games-inventory-grid" id="decryption-inventory">
+                  <div class="games-inv-slot" data-slot="0">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">01</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="1">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">02</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="2">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">03</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="3">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">04</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="4">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">05</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="5">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">06</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="games-decoder-stub" id="decoder-ring-stub">
+                  <div class="games-decoder-label">SELECT A DECRYPTION ITEM TO ACTIVATE DECODER RING</div>
+                  <div class="games-decoder-wheels">
+                    <div class="games-decoder-wheel games-decoder-wheel-outer">
+                      <span>A B C D E F G</span>
+                    </div>
+                    <div class="games-decoder-wheel games-decoder-wheel-inner">
+                      <span>N O P Q R S T</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ═══════════════ STREET-CHRONICLES ═══════════════ -->
+            <div class="games-row" id="row-street-chronicles">
+              <button class="games-row-header" data-target="street-chronicles-body" aria-expanded="false">
+                <span class="games-row-chevron">&#9656;</span>
+                <span class="games-row-label">STREET-CHRONICLES</span>
+                <span class="games-row-count">CAMPAIGN</span>
+                <span class="games-row-status">READY</span>
+              </button>
+              <div class="games-row-body" id="street-chronicles-body">
+                <div class="games-launcher">
+                  <div class="games-launcher-banner">
+                    <div class="games-launcher-title">Street-Chronicles</div>
+                    <div class="games-launcher-sub">Turn-based tactical card combat on the streets of Sandpoint.</div>
+                  </div>
+                  <div class="games-launcher-details">
+                    <div class="games-launcher-detail"><span class="games-detail-key">MODE</span><span class="games-detail-val">Campaign / Encounters</span></div>
+                    <div class="games-launcher-detail"><span class="games-detail-key">STATUS</span><span class="games-detail-val" id="str-status">No active run</span></div>
+                  </div>
+                  <button class="games-launch-btn" id="launch-street-chronicles" data-sound="ui-04">
+                    <span class="games-launch-icon">&#9654;</span>
+                    <span class="games-launch-text">LAUNCH STREET-CHRONICLES</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ═══════════════ GONE-ROGUE ═══════════════ -->
+            <div class="games-row" id="row-gone-rogue">
+              <button class="games-row-header" data-target="gone-rogue-body" aria-expanded="false">
+                <span class="games-row-chevron">&#9656;</span>
+                <span class="games-row-label">GONE-ROGUE</span>
+                <span class="games-row-count">ROGUELIKE</span>
+                <span class="games-row-status">READY</span>
+              </button>
+              <div class="games-row-body" id="gone-rogue-body">
+                <div class="games-launcher">
+                  <div class="games-launcher-banner">
+                    <div class="games-launcher-title">Gone Rogue</div>
+                    <div class="games-launcher-sub">Procedural stealth roguelike. Seeded runs, tiered difficulty, persistent unlocks.</div>
+                  </div>
+                  <div class="games-launcher-details">
+                    <div class="games-launcher-detail"><span class="games-detail-key">TIERS</span><span class="games-detail-val">Trailhead &middot; Black Ops &middot; Burn Notice</span></div>
+                    <div class="games-launcher-detail"><span class="games-detail-key">SEED</span><span class="games-detail-val games-seed-display" id="rogue-seed">RANDOM</span></div>
+                  </div>
+                  <div class="games-seed-row">
+                    <label class="games-seed-label" for="rogue-seed-input">SEED:</label>
+                    <input type="text" class="games-seed-input" id="rogue-seed-input"
+                           placeholder="adjective-noun-number" autocomplete="off" spellcheck="false">
+                    <button class="games-seed-randomize" id="rogue-seed-randomize" type="button" title="Randomize seed">&#10227;</button>
+                  </div>
+                  <button class="games-launch-btn games-launch-rogue" id="launch-gone-rogue" data-sound="ui-04">
+                    <span class="games-launch-icon">&#9654;</span>
+                    <span class="games-launch-text">LAUNCH GONE-ROGUE</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /games-content -->
+
+          <!-- Bottom status bar -->
+          <div class="games-footer-strip">
+            <span class="games-footer-sig">EYES ONLY // FIELD KIT v1.0</span>
+            <span class="games-footer-time" id="games-clock">00:00:00</span>
+          </div>
+
+        </div><!-- /games-log-frame -->
+      </div><!-- /monitor-shell -->
+    </div><!-- /crt-frame -->
+  </div><!-- /crt-screen -->
+
+  <!-- Audio system for SFX -->
+  <script src="js/audio-system.js?v=20260309d"></script>
+
+  <script>
+  (function () {
+    'use strict';
+
+    /* ---- Clock ---- */
+    function tickClock() {
+      var el = document.getElementById('games-clock');
+      if (!el) return;
+      var d = new Date();
+      el.textContent =
+        String(d.getHours()).padStart(2, '0') + ':' +
+        String(d.getMinutes()).padStart(2, '0') + ':' +
+        String(d.getSeconds()).padStart(2, '0');
+    }
+    setInterval(tickClock, 1000);
+    tickClock();
+
+    /* ---- Expandable rows ---- */
+    var headers = document.querySelectorAll('.games-row-header');
+    headers.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var targetId = btn.getAttribute('data-target');
+        var body = document.getElementById(targetId);
+        if (!body) return;
+
+        var expanded = btn.getAttribute('aria-expanded') === 'true';
+        if (expanded) {
+          btn.setAttribute('aria-expanded', 'false');
+          body.classList.remove('games-row-body-open');
+          btn.querySelector('.games-row-chevron').innerHTML = '&#9656;';
+        } else {
+          btn.setAttribute('aria-expanded', 'true');
+          body.classList.add('games-row-body-open');
+          btn.querySelector('.games-row-chevron').innerHTML = '&#9662;';
+        }
+
+        // SFX
+        if (window.AudioSystem && AudioSystem.playSFX) {
+          AudioSystem.playSFX('ui-04');
+        }
+      });
+    });
+
+    /* ---- Launchers ---- */
+    var launchStr = document.getElementById('launch-street-chronicles');
+    if (launchStr) {
+      launchStr.addEventListener('click', function () {
+        window.location.href = '/#street-chronicles';
+      });
+    }
+
+    var launchRogue = document.getElementById('launch-gone-rogue');
+    if (launchRogue) {
+      launchRogue.addEventListener('click', function () {
+        var seedInput = document.getElementById('rogue-seed-input');
+        var seed = seedInput ? seedInput.value.trim() : '';
+        var url = seed ? '/?rogue=1&seed=' + encodeURIComponent(seed) : '/?rogue=1';
+        window.location.href = url;
+      });
+    }
+
+    /* ---- Seed randomize ---- */
+    var adjectives = ['silent', 'crimson', 'frozen', 'phantom', 'hollow', 'steel', 'velvet', 'shadow', 'iron', 'cobalt'];
+    var nouns = ['falcon', 'viper', 'ghost', 'raven', 'sphinx', 'dagger', 'cipher', 'storm', 'wolf', 'ember'];
+    var randomizeBtn = document.getElementById('rogue-seed-randomize');
+    if (randomizeBtn) {
+      randomizeBtn.addEventListener('click', function () {
+        var adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+        var noun = nouns[Math.floor(Math.random() * nouns.length)];
+        var num = Math.floor(Math.random() * 999) + 1;
+        var seedInput = document.getElementById('rogue-seed-input');
+        if (seedInput) seedInput.value = adj + '-' + noun + '-' + num;
+        var display = document.getElementById('rogue-seed');
+        if (display) display.textContent = seedInput.value;
+        if (window.AudioSystem && AudioSystem.playSFX) AudioSystem.playSFX('ui-01');
+      });
+    }
+
+    /* ---- Data-sound delegate ---- */
+    document.addEventListener('click', function (e) {
+      var target = e.target.closest('[data-sound]');
+      if (target && window.AudioSystem && AudioSystem.playSFX) {
+        AudioSystem.playSFX(target.getAttribute('data-sound'));
+      }
+    });
+
+  })();
+  </script>
+
+</body>
+</html>
