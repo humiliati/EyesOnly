@@ -506,10 +506,41 @@
    CSS :hover is disabled to prevent flicker when transform moves card
    out from under the cursor. JS adds .coin-card-hovered on mouseenter
    with debounced mouseleave to keep the hit area stable. */
+/* Hover: card rises + holographic tilt — shadows shift to imply light angle change,
+   border keeps definition instead of flattening from brightness filter */
 .splash-dossier.coin-card.coin-card-hovered {
   transform: perspective(800px) rotate(0deg) rotateX(4deg) rotateY(0deg) translateY(-30px) scale(1.08) !important;
   z-index: 10 !important;
-  filter: brightness(1.1);
+}
+
+/* Outer rim gains directional lighting — bright top-left highlight, deeper bottom-right shadow */
+.splash-dossier.coin-card.coin-card-hovered .coin-border-outer {
+  background: linear-gradient(
+    140deg,
+    #8a7c58 0%,
+    #7a6c48 12%,
+    #5a5038 35%,
+    #6a5c3c 55%,
+    #4a4028 80%,
+    #3a3220 100%
+  );
+  box-shadow:
+    inset 0 2px 0 rgba(240, 220, 160, 0.35),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.6),
+    inset 2px 0 0 rgba(220, 200, 140, 0.15),
+    inset -2px 0 0 rgba(0, 0, 0, 0.4),
+    0 8px 30px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(180, 160, 80, 0.06);
+}
+
+/* Inner face: shifted sheen angle + deeper recess on one side for holographic tilt */
+.splash-dossier.coin-card.coin-card-hovered .coin-border-inner {
+  box-shadow:
+    inset 0 3px 6px rgba(0, 0, 0, 0.95),
+    inset 0 -1px 2px rgba(220, 200, 140, 0.06),
+    inset 3px 0 4px rgba(0, 0, 0, 0.6),
+    inset -1px 0 2px rgba(220, 200, 140, 0.04),
+    inset 0 0 0 1px rgba(140, 120, 60, 0.18);
 }
 
 
@@ -538,6 +569,7 @@
     inset -1px 0 0 rgba(0, 0, 0, 0.3),
     0 4px 20px rgba(0, 0, 0, 0.6),
     0 1px 4px rgba(0, 0, 0, 0.4);
+  transition: background 0.4s ease, box-shadow 0.4s ease;
 }
 
 /* ---- Inner face — recessed coin surface with grooved inset channel ---- */
@@ -564,6 +596,7 @@
     inset 2px 0 3px rgba(0, 0, 0, 0.5),
     inset -2px 0 3px rgba(0, 0, 0, 0.5),
     inset 0 0 0 1px rgba(120, 100, 50, 0.15);
+  transition: box-shadow 0.4s ease;
 }
 
 /* Subtle metallic sheen sweep — polished coin surface */
@@ -691,7 +724,7 @@
 }
 
 .coin-classified {
-  font-family: 'Courier New', monospace;
+  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
   font-size: 8px;
   letter-spacing: 0.3em;
   text-transform: uppercase;
@@ -703,7 +736,7 @@
 }
 
 .coin-label {
-  font-family: 'Courier New', monospace;
+  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
   font-size: 9px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -713,8 +746,9 @@
 
 
 /* ---- Coin artwork — large centered suit symbol with knurled dead-space ---- */
+/* Artwork area: ~35% of card height (down from ~50%), symbol stays same size */
 .coin-artwork {
-  flex: 1;
+  flex: 0 1 35%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -780,16 +814,18 @@
 
 
 /* ---- Coin info — title + description (stamped brass) ---- */
+/* Info area grows to fill ~50% together with mid-row and wheel strip */
 .coin-info {
   padding: 6px 14px 4px;
   text-align: center;
   position: relative;
   z-index: 5;
   border-top: 1px solid rgba(120, 100, 50, 0.1);
+  flex: 0 0 auto;
 }
 
 .coin-title {
-  font-family: 'Courier New', monospace;
+  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
   font-size: clamp(13px, 1.5vw, 17px);
   font-weight: bold;
   text-transform: uppercase;
@@ -802,7 +838,7 @@
 }
 
 .coin-desc {
-  font-family: 'Courier New', monospace;
+  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
   font-size: clamp(9px, 1vw, 12px);
   color: rgba(180, 160, 100, 0.45);
   letter-spacing: 0.06em;
@@ -811,13 +847,15 @@
 
 
 /* ---- Mid-row — BOOK.duration / JOIN.NOW button ---- */
+/* Buttons shifted away from card bottom toward center */
 .coin-mid-row {
-  padding: 4px 14px;
+  padding: 6px 14px 2px;
   display: flex;
   justify-content: center;
   flex-shrink: 0;
   position: relative;
   z-index: 10;
+  margin-top: auto;
 }
 
 .coin-book-btn {
@@ -885,7 +923,7 @@
 }
 
 .coin-book-label {
-  font-family: 'Courier New', monospace;
+  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
   font-size: clamp(13px, 1.4vw, 16px);
   font-weight: bold;
   letter-spacing: 0.15em;
@@ -896,15 +934,16 @@
 }
 
 .coin-book-dot {
-  font-family: 'Courier New', monospace;
+  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
   font-size: clamp(13px, 1.4vw, 16px);
   font-weight: bold;
   color: rgba(160, 140, 80, 0.4);
   margin: 0 1px;
 }
 
+/* Duration: classic console font for variable numbers */
 .coin-book-duration {
-  font-family: 'Courier New', monospace;
+  font-family: 'Consolas', 'Monaco', 'Lucida Console', 'Courier New', monospace;
   font-size: clamp(12px, 1.3vw, 15px);
   font-weight: bold;
   letter-spacing: 0.1em;
@@ -938,13 +977,15 @@
    DECODER-RING WHEELS — Brass viewport with scrolling values
    ============================================================== */
 
+/* Wheel strip: shifted up from bottom edge */
 .coin-wheel-strip {
   display: flex;
   gap: 6px;
-  padding: 6px 12px 10px;
+  padding: 6px 12px 4px;
   justify-content: center;
   position: relative;
   z-index: 10;
+  margin-bottom: 8px;
 }
 
 .coin-wheel {
@@ -1009,8 +1050,9 @@
   transition: transform 0.12s ease-out;
 }
 
+/* Decoder ring values: classic console font for variable numbers */
 .coin-wheel-val {
-  font-family: 'Courier New', monospace;
+  font-family: 'Consolas', 'Monaco', 'Lucida Console', 'Courier New', monospace;
   font-weight: bold;
   text-align: center;
   white-space: nowrap;
@@ -1037,8 +1079,9 @@
 }
 
 /* Context label below the wheel */
+/* Wheel context labels: Palatino (it's a label, not a number) */
 .coin-wheel-ctx {
-  font-family: 'Courier New', monospace;
+  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
   font-size: 8px;
   letter-spacing: 0.1em;
   color: rgba(160, 140, 80, 0.35);
@@ -1079,7 +1122,7 @@
 }
 
 .coin-tag {
-  font-family: 'Courier New', monospace;
+  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
   font-size: 8px;
   letter-spacing: 0.12em;
   text-transform: uppercase;

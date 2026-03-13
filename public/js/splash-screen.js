@@ -471,7 +471,11 @@ const SplashScreen = (() => {
   /* ---- Sound effects ---- */
 
   function playPopupSounds() {
-    _playAudio('music-as-solar-winds', { volume: 0.3 });
+    // BGM uses streaming playMusic path (not SFX decodeAudioData path)
+    // to avoid EncodingError on missing/large music files
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.playMusic) {
+      try { AudioSystem.playMusic('music-as-solar-winds'); } catch (_) {}
+    }
     setTimeout(() => { _playAudio('card-shuffle_4', { volume: 0.5 }); }, 200);
   }
 
