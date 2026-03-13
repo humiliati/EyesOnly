@@ -124,6 +124,19 @@
   opacity: 0.85;
 }
 
+/* ---- Shared starfield master canvas (off-screen render target) ----
+   Full-screen but hidden — each card's .starfield-window blits its
+   screen-space region from this canvas every frame. */
+.starfield-master {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;  /* invisible — only rendered through card portholes */
+}
+
 /* ---- Background video layer (composites OVER atmosphere) ---- */
 .splash-video-layer {
   position: absolute;
@@ -429,7 +442,7 @@
   transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
               box-shadow 0.4s ease,
               filter 0.3s ease;
-  transform-style: preserve-3d;
+  transform-style: flat;
   will-change: transform;
   border: none;
   box-shadow: none;
@@ -811,13 +824,14 @@
       rgba(4, 3, 2, 0.4) 32%,
       transparent 33%
     ),
-    /* Depth fill: progressive darkening toward center */
+    /* Depth fill: clear center viewport, darkens outward to frame the starfield */
     radial-gradient(circle at center,
-      rgba(0, 0, 0, 0.6) 0%,
-      rgba(0, 0, 0, 0.5) 20%,
-      rgba(0, 0, 0, 0.25) 40%,
-      rgba(0, 0, 0, 0.08) 60%,
-      transparent 75%
+      transparent 0%,
+      transparent 25%,
+      rgba(0, 0, 0, 0.08) 35%,
+      rgba(0, 0, 0, 0.25) 50%,
+      rgba(0, 0, 0, 0.5) 65%,
+      rgba(0, 0, 0, 0.7) 80%
     );
 }
 

@@ -98,12 +98,12 @@ const SplashScreen = (() => {
   ];
 
   // Background drone footage (optimized 480p, no audio)
-  // Each entry has webm (VP9, smaller) with mp4 (H.264) fallback
+  // webm: clean names for future VP9 uploads; mp4: original R2 names (URL-encoded spaces)
   const VIDEO_SOURCES = [
-    { webm: '/video/Sandpoint2_LakePendOreille.webm', mp4: '/video/Sandpoint2_LakePendOreille.mp4' },
-    { webm: '/video/Sandpoint3_LakePendOreille.webm', mp4: '/video/Sandpoint3_LakePendOreille.mp4' },
-    { webm: '/video/Sandpoint_LakePendOreille.webm',  mp4: '/video/Sandpoint_LakePendOreille.mp4' },
-    { webm: '/video/Sandpoint1_SchweitzerMountain.webm', mp4: '/video/Sandpoint1_SchweitzerMountain.mp4' },
+    { webm: '/video/Sandpoint2_LakePendOreille.webm', mp4: '/video/Sandpoint2_%20Lake%20Pend%20Oreille.mp4' },
+    { webm: '/video/Sandpoint3_LakePendOreille.webm', mp4: '/video/Sandpoint3_%20Lake%20Pend%20Oreille.mp4' },
+    { webm: '/video/Sandpoint_LakePendOreille.webm',  mp4: '/video/Sandpoint%20_%20Lake%20Pend%20Oreille.mp4' },
+    { webm: '/video/Sandpoint1_SchweitzerMountain.webm', mp4: '/video/Sandpoint1_%20Schweitzer%20Mountain%20Resort.mp4' },
   ];
 
   // Silhouette image assets
@@ -165,6 +165,7 @@ const SplashScreen = (() => {
     el.id = 'splash-screen';
 
     el.innerHTML = `
+      <canvas id="starfield-master" class="starfield-master"></canvas>
       <div class="splash-atmosphere">
         <div class="splash-atmo-base"></div>
         <div class="splash-atmo-fog"></div>
@@ -526,53 +527,53 @@ const SplashScreen = (() => {
      offset so the parallax differs per porthole.
      ============================================================ */
 
+  /* ============================================================
+     Shared Starfield — One master canvas fills the entire splash
+     screen.  Each card's .starfield-window copies the screen-space
+     region it occupies from the master, so all portholes look into
+     the same continuous star volume.  Dragging a ghost card moves
+     the porthole window across the starfield in real-time because
+     getBoundingClientRect() tracks the ghost's live position.
+     ============================================================ */
+
   var _starfield = {
-    layers: [],       // [{stars: [{x,y,r,brightness}], speed, scale, opacity}]
-    canvases: [],     // [{canvas, ctx, cardIndex, offsetX, offsetY}]
-    time: 0,
-    rafId: null,
-    running: false
+    layers:  [],     // shared star data [{stars, speed, scale, opacity}]
+    master:  null,   // { canvas, ctx }
+    time:    0,
+    rafId:   null,
+    running: false,
   };
 
   function _initStarfield() {
-    // Seed shared star data — same stars for all cards
-    var layerDefs = [
-      { count: 80,  rMin: 0.3, rMax: 0.8, speed: 0.0004, scale: 0.35, opacity: 0.35 },  // far — tiny, dim, very slow
-      { count: 50,  rMin: 0.5, rMax: 1.0, speed: 0.001,  scale: 0.55, opacity: 0.5  },  // mid-far
-      { count: 35,  rMin: 0.7, rMax: 1.4, speed: 0.0025, scale: 0.8,  opacity: 0.7  },  // mid
-      { count: 18,  rMin: 1.0, rMax: 2.0, speed: 0.006,  scale: 1.2,  opacity: 0.9  },  // near — large, bright, fast
-    ];
+    var masterCanvas = document.getElementById('starfield-master');
+    if (!masterCanvas) return;
 
+    var masterCtx = masterCanvas.getContext('2d');
+    _starfield.master = { canvas: masterCanvas, ctx: masterCtx };
+
+    // Seed shared star layers
+    var layerDefs = [
+      { count: 80,  rMin: 0.3, rMax: 0.8, speed: 0.0004, scale: 0.35, opacity: 0.35 },
+      { count: 50,  rMin: 0.5, rMax: 1.0, speed: 0.001,  scale: 0.55, opacity: 0.5  },
+      { count: 35,  rMin: 0.7, rMax: 1.4, speed: 0.0025, scale: 0.8,  opacity: 0.7  },
+      { count: 18,  rMin: 1.0, rMax: 2.0, speed: 0.006,  scale: 1.2,  opacity: 0.9  },
+    ];
     _starfield.layers = layerDefs.map(function (def) {
       var stars = [];
       for (var i = 0; i < def.count; i++) {
         stars.push({
-          x: Math.random(),
-          y: Math.random(),
-          r: def.rMin + Math.random() * (def.rMax - def.rMin),
-          brightness: 0.5 + Math.random() * 0.5
+          x:          Math.random(),
+          y:          Math.random(),
+          r:          def.rMin + Math.random() * (def.rMax - def.rMin),
+          brightness: 0.5 + Math.random() * 0.5,
         });
       }
       return { stars: stars, speed: def.speed, scale: def.scale, opacity: def.opacity };
     });
 
-    // Collect all starfield canvases
-    var artworks = splashEl.querySelectorAll('.coin-artwork');
-    artworks.forEach(function (aw) {
-      var canvas = aw.querySelector('.starfield-window');
-      if (!canvas) return;
-      var ctx = canvas.getContext('2d');
-      var idx = parseInt(aw.dataset.cardIndex, 10) || 0;
-      // Per-card offset: each card looks at a different part of the starfield
-      // Cards spread across ~0.3 units of the star space
-      var offsetX = (idx - 1.5) * 0.08;
-      var offsetY = (idx % 2 === 0 ? 0.03 : -0.03);
-      _starfield.canvases.push({ canvas: canvas, ctx: ctx, cardIndex: idx, offsetX: offsetX, offsetY: offsetY });
-    });
-
-    if (_starfield.canvases.length > 0 && !_starfield.running) {
+    if (!_starfield.running) {
       _starfield.running = true;
-      _starfield.time = 0;
+      _starfield.time    = 0;
       _starfieldTick();
     }
   }
@@ -580,106 +581,129 @@ const SplashScreen = (() => {
   function _starfieldTick() {
     if (!_starfield.running) return;
     _starfield.rafId = requestAnimationFrame(_starfieldTick);
+    _starfield.time++;
 
-    _starfield.time += 1;
-    var t = _starfield.time;
+    var m = _starfield.master;
+    if (!m) return;
 
-    // Very slow cosmic rotation for the far layer (radians)
+    var mc  = m.canvas;
+    var ctx = m.ctx;
+    var t   = _starfield.time;
+
+    // Keep pixel dimensions in sync with CSS layout (handles resize)
+    var dw = mc.offsetWidth  || window.innerWidth;
+    var dh = mc.offsetHeight || window.innerHeight;
+    if (mc.width !== dw || mc.height !== dh) {
+      mc.width  = dw;
+      mc.height = dh;
+    }
+    var W = mc.width;
+    var H = mc.height;
+
+    // --- Paint master starfield across entire screen ---
+    ctx.fillStyle = '#030208';
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtle nebula glow
+    var grd = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.45);
+    grd.addColorStop(0,   'rgba(40, 20, 60, 0.15)');
+    grd.addColorStop(0.3, 'rgba(20, 10, 40, 0.08)');
+    grd.addColorStop(1,   'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, W, H);
+
     var cosmicAngle = t * 0.00005;
 
-    _starfield.canvases.forEach(function (entry) {
-      var canvas = entry.canvas;
-      var ctx = entry.ctx;
-      var w = canvas.width;
-      var h = canvas.height;
+    _starfield.layers.forEach(function (layer, li) {
+      layer.stars.forEach(function (star) {
+        var sx = star.x + t * layer.speed;
+        var sy = star.y + t * layer.speed * 0.6;
 
-      // Clear to deep space black
-      ctx.fillStyle = '#030208';
-      ctx.fillRect(0, 0, w, h);
+        if (li === 0) {
+          var cx = sx - 0.5, cy = sy - 0.5;
+          var cos = Math.cos(cosmicAngle), sin = Math.sin(cosmicAngle);
+          sx = cx * cos - cy * sin + 0.5;
+          sy = cx * sin + cy * cos + 0.5;
+        }
 
-      // Subtle nebula glow at center (gravitational well)
-      var grd = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.45);
-      grd.addColorStop(0, 'rgba(40, 20, 60, 0.15)');
-      grd.addColorStop(0.3, 'rgba(20, 10, 40, 0.08)');
-      grd.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = grd;
-      ctx.fillRect(0, 0, w, h);
+        sx = sx % 1; if (sx < 0) sx += 1;
+        sy = sy % 1; if (sy < 0) sy += 1;
 
-      // Draw each star layer
-      _starfield.layers.forEach(function (layer, li) {
-        var speed = layer.speed;
-        var scale = layer.scale;
-        var opacity = layer.opacity;
+        var ux = sx - 0.5, uy = sy - 0.5;
+        var dist = Math.sqrt(ux * ux + uy * uy);
+        var warp = dist * 0.3 * layer.scale;
+        var px = (sx + ux * warp) * W;
+        var py = (sy + uy * warp) * H;
 
-        layer.stars.forEach(function (star) {
-          // Apply time-based drift + per-card offset
-          var sx = star.x + t * speed + entry.offsetX;
-          var sy = star.y + t * speed * 0.6 + entry.offsetY;
+        var fogFade = 1.0 - Math.max(0, Math.min(1, (0.35 - dist) / 0.35)) * 0.4;
+        var r     = star.r * layer.scale;
+        var alpha = layer.opacity * star.brightness * fogFade;
 
-          // Far layer gets slow rotation
-          if (li === 0) {
-            var cx = sx - 0.5;
-            var cy = sy - 0.5;
-            var cos = Math.cos(cosmicAngle);
-            var sin = Math.sin(cosmicAngle);
-            sx = cx * cos - cy * sin + 0.5;
-            sy = cx * sin + cy * cos + 0.5;
-          }
-
-          // Wrap to [0, 1]
-          sx = sx % 1; if (sx < 0) sx += 1;
-          sy = sy % 1; if (sy < 0) sy += 1;
-
-          // UV warp toward center for "gravitational well" depth illusion
-          var ux = sx - 0.5;
-          var uy = sy - 0.5;
-          var dist = Math.sqrt(ux * ux + uy * uy);
-          var warpFactor = dist * 0.3 * scale;
-          var px = (sx + ux * warpFactor) * w;
-          var py = (sy + uy * warpFactor) * h;
-
-          // Depth fog: stars near center of viewport fade
-          var fogFade = 1.0 - Math.max(0, Math.min(1, (0.35 - dist) / 0.35)) * 0.4;
-
-          var r = star.r * scale;
-          var alpha = opacity * star.brightness * fogFade;
-
-          // Star glow
-          if (r > 0.8) {
-            ctx.beginPath();
-            ctx.arc(px, py, r * 2.5, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(180, 170, 220, ' + (alpha * 0.12) + ')';
-            ctx.fill();
-          }
-
-          // Star core
+        if (r > 0.8) {
           ctx.beginPath();
-          ctx.arc(px, py, r, 0, Math.PI * 2);
-          // Color: warm white for near stars, cool blue-white for far
-          var warmth = li / 3; // 0 = far (cool), 1 = near (warm)
-          var cr = Math.round(180 + warmth * 40);
-          var cg = Math.round(180 + warmth * 20);
-          var cb = Math.round(220 - warmth * 20);
-          ctx.fillStyle = 'rgba(' + cr + ',' + cg + ',' + cb + ',' + alpha + ')';
+          ctx.arc(px, py, r * 2.5, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(180, 170, 220, ' + (alpha * 0.12) + ')';
           ctx.fill();
-        });
+        }
+        ctx.beginPath();
+        ctx.arc(px, py, r, 0, Math.PI * 2);
+        var warmth = li / 3;
+        ctx.fillStyle = 'rgba(' +
+          Math.round(180 + warmth * 40) + ',' +
+          Math.round(180 + warmth * 20) + ',' +
+          Math.round(220 - warmth * 20) + ',' + alpha + ')';
+        ctx.fill();
       });
+    });
 
-      // Vignette around the circular aperture edge — fade to card background
-      var vig = ctx.createRadialGradient(w / 2, h / 2, w * 0.28, w / 2, h / 2, w * 0.5);
-      vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    // --- Blit from master into each card's porthole canvas ---
+    // Includes both in-fan cards AND the drag ghost (which also has a .starfield-window)
+    var portholes = document.querySelectorAll('.starfield-window');
+    portholes.forEach(function (canvas) {
+      var cw = canvas.width;
+      var ch = canvas.height;
+      if (cw === 0 || ch === 0) return;
+
+      var pctx = canvas.getContext('2d');
+
+      // Where is this porthole on screen?  getBoundingClientRect works for
+      // both in-flow cards and position:fixed ghost cards.
+      var rect = canvas.getBoundingClientRect();
+      var sx = Math.round(rect.left);
+      var sy = Math.round(rect.top);
+      var sw = Math.round(rect.width);
+      var sh = Math.round(rect.height);
+
+      // Clamp source rect to master bounds
+      var srcX = Math.max(0, Math.min(sx, W - 1));
+      var srcY = Math.max(0, Math.min(sy, H - 1));
+      var srcW = Math.min(sw, W - srcX);
+      var srcH = Math.min(sh, H - srcY);
+
+      if (srcW <= 0 || srcH <= 0) {
+        pctx.fillStyle = '#030208';
+        pctx.fillRect(0, 0, cw, ch);
+        return;
+      }
+
+      // Copy the matching screen region from master → porthole
+      pctx.drawImage(mc, srcX, srcY, srcW, srcH, 0, 0, cw, ch);
+
+      // Vignette: fade edges to card background for seamless ring blend
+      var vig = pctx.createRadialGradient(cw / 2, ch / 2, cw * 0.28, cw / 2, ch / 2, cw * 0.5);
+      vig.addColorStop(0,   'rgba(0, 0, 0, 0)');
       vig.addColorStop(0.7, 'rgba(6, 5, 3, 0.5)');
-      vig.addColorStop(1, 'rgba(14, 12, 6, 1)');
-      ctx.fillStyle = vig;
-      ctx.fillRect(0, 0, w, h);
+      vig.addColorStop(1,   'rgba(14, 12, 6, 1)');
+      pctx.fillStyle = vig;
+      pctx.fillRect(0, 0, cw, ch);
     });
   }
 
   function _disposeStarfield() {
     _starfield.running = false;
     if (_starfield.rafId) cancelAnimationFrame(_starfield.rafId);
-    _starfield.canvases = [];
     _starfield.layers = [];
+    _starfield.master = null;
   }
 
 

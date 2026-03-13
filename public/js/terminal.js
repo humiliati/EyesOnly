@@ -128,14 +128,15 @@ const Terminal = (function () {
   function _isEventInRogueUI(e) {
     var target = e.target;
     if (!target) return false;
-    
-    // Check if target or any parent is the rogue grid or cards container
+
+    // Check if target or any parent is the rogue grid, cards, or splash screen
     while (target) {
-      if (target.id === 'rogue-grid-mobile' || 
-          target.id === 'rogue-cards-mobile') {
+      if (target.id === 'rogue-grid-mobile' ||
+          target.id === 'rogue-cards-mobile' ||
+          target.id === 'splash-screen') {
         return true;
       }
-      if (target.classList && (target.classList.contains('rogue-grid-mobile') || 
+      if (target.classList && (target.classList.contains('rogue-grid-mobile') ||
                                target.classList.contains('rogue-cards-mobile'))) {
         return true;
       }
