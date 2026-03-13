@@ -108,6 +108,36 @@
     var c = new T.Vector3();
     geo.boundingBox.getCenter(c);
     geo.translate(-c.x, -c.y, -c.z);
+
+    // Fix UVs — ExtrudeGeometry maps cap faces using raw shape coords (±1.05, ±1.7).
+    // We remap them to 0…1 so CanvasTextures display correctly.
+    var uvAttr = geo.attributes.uv;
+    var norms  = geo.attributes.normal;
+
+    // Pass 1: measure actual UV range on cap faces (normal Z > 0.5)
+    var uMin = Infinity, uMax = -Infinity;
+    var vMin = Infinity, vMax = -Infinity;
+    for (var vi = 0; vi < uvAttr.count; vi++) {
+      if (Math.abs(norms.getZ(vi)) > 0.5) {
+        var u = uvAttr.getX(vi), v = uvAttr.getY(vi);
+        if (u < uMin) uMin = u; if (u > uMax) uMax = u;
+        if (v < vMin) vMin = v; if (v > vMax) vMax = v;
+      }
+    }
+
+    // Pass 2: remap to 0…1
+    var uR = (uMax - uMin) || 1;
+    var vR = (vMax - vMin) || 1;
+    for (var vi2 = 0; vi2 < uvAttr.count; vi2++) {
+      if (Math.abs(norms.getZ(vi2)) > 0.5) {
+        uvAttr.setXY(vi2,
+          (uvAttr.getX(vi2) - uMin) / uR,
+          (uvAttr.getY(vi2) - vMin) / vR
+        );
+      }
+    }
+    uvAttr.needsUpdate = true;
+
     return geo;
   }
 
@@ -366,19 +396,28 @@
     pmrem.compileCubemapShader();
 
     var es = new T.Scene();
-    es.background = new T.Color(0x0a1410);
+    // Slightly brighter base so metallic surfaces pick up some reflection
+    es.background = new T.Color(0x1a2820);
 
-    var l1 = new T.PointLight(0xd4c8a0, 0.4, 12);
-    l1.position.set(0, 4, 2);
+    // Warm overhead (like fluorescent tubes in a SCIF)
+    var l1 = new T.PointLight(0xe0d0a0, 0.8, 15);
+    l1.position.set(0, 5, 3);
     es.add(l1);
 
-    var l2 = new T.PointLight(0x1a3a2a, 0.3, 8);
-    l2.position.set(0, -3, 3);
+    // Cool terminal glow from below
+    var l2 = new T.PointLight(0x2a5a3a, 0.5, 10);
+    l2.position.set(0, -3, 4);
     es.add(l2);
 
-    var l3 = new T.PointLight(0x8b7530, 0.2, 10);
-    l3.position.set(-4, 2, 1);
+    // Warm brass accent from side
+    var l3 = new T.PointLight(0xc9a84c, 0.4, 12);
+    l3.position.set(-5, 2, 2);
     es.add(l3);
+
+    // Secondary fill from right
+    var l4 = new T.PointLight(0x8a9a8a, 0.3, 10);
+    l4.position.set(4, 1, 3);
+    es.add(l4);
 
     var rt = pmrem.fromScene(es, 0);
     pmrem.dispose();
@@ -396,15 +435,17 @@
     var bumpC = genBumpTex(mission);
     var bumpT = new T.CanvasTexture(bumpC);
 
+    // Face material — white color base so map texture shows true colors
+    // (color multiplies with map; non-white tints darken the texture)
     var face = new T.MeshStandardMaterial({
       map:             faceT,
       bumpMap:         bumpT,
       bumpScale:       CFG.bumpScale,
-      metalness:       CFG.metalness,
+      metalness:       0.75,
       roughness:       CFG.roughness,
       envMap:          _envMap,
       envMapIntensity: CFG.envIntensity,
-      color:           new T.Color(CFG.baseBrass),
+      color:           0xffffff,
     });
 
     var backC = genBackTex(mission);
@@ -413,11 +454,11 @@
 
     var back = new T.MeshStandardMaterial({
       map:             backT,
-      metalness:       0.82,
+      metalness:       0.70,
       roughness:       0.50,
       envMap:          _envMap,
       envMapIntensity: 0.5,
-      color:           new T.Color(CFG.backBronze),
+      color:           0xffffff,
     });
 
     // ExtrudeGeometry groups: index 0 = front cap + side walls, index 1 = back cap
@@ -430,21 +471,26 @@
   function setupScene() {
     _scene = new T.Scene();
 
-    // Warm directional key (desk lamp from upper-left)
-    var key = new T.DirectionalLight(0xd4c8a0, 0.7);
-    key.position.set(-2, 3, 4);
+    // Warm directional key (desk lamp from upper-left) — primary illumination
+    var key = new T.DirectionalLight(0xe8dcc0, 1.2);
+    key.position.set(-2, 3, 5);
     _scene.add(key);
 
-    // Cool ambient fill (fluorescent spill)
-    _scene.add(new T.AmbientLight(0x2a3a30, 0.4));
+    // Secondary directional from right (softer fill)
+    var fill = new T.DirectionalLight(0xc0c8c0, 0.5);
+    fill.position.set(3, 1, 4);
+    _scene.add(fill);
 
-    // Subtle warm rim from below-right
-    var rim = new T.PointLight(0x8b7530, 0.3, 10);
-    rim.position.set(2, -2, 3);
+    // Ambient fill — bright enough to see dark recesses
+    _scene.add(new T.AmbientLight(0x4a5a50, 0.6));
+
+    // Warm rim from below-right (brass edge catch)
+    var rim = new T.PointLight(0xc9a84c, 0.5, 12);
+    rim.position.set(2, -2, 4);
     _scene.add(rim);
 
-    // Hemisphere: dark green sky / dark ground
-    _scene.add(new T.HemisphereLight(0x1a2a1a, 0x0a0a08, 0.3));
+    // Hemisphere: surveillance green sky / neutral ground
+    _scene.add(new T.HemisphereLight(0x3a5a3a, 0x1a1a18, 0.4));
   }
 
   function setupCamera() {
@@ -486,7 +532,7 @@
         _renderer.setPixelRatio(1);
         if (T.sRGBEncoding) _renderer.outputEncoding = T.sRGBEncoding;
         _renderer.toneMapping = T.ACESFilmicToneMapping;
-        _renderer.toneMappingExposure = 0.9;
+        _renderer.toneMappingExposure = 1.4;
 
         _envMap = createEnvMap();
         setupScene();

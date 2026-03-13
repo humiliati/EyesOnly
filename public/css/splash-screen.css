@@ -481,8 +481,9 @@
 }
 
 /* ---- 3D Mode — CSS→WebGL visual handoff ----
-   When Three.js coins are active, hide decorative CSS elements.
-   Interactive HTML (buttons, wheels, tags) stays above the canvas. */
+   When Three.js coins are active, hide decorative CSS VISUALS
+   but keep layout flow intact so buttons/wheels stay positioned.
+   Interactive HTML stays above the canvas via z-index. */
 .coin-3d-mode .coin-border-outer {
   position: relative;
   z-index: 10;
@@ -499,20 +500,21 @@
   display: none; /* disable CSS sheen sweep — 3D handles specular */
 }
 
+/* visibility:hidden keeps layout space so buttons don't collapse upward */
 .coin-3d-mode .coin-artwork {
-  display: none; /* suit symbol + concentric rings — baked into 3D texture */
+  visibility: hidden;
 }
 
 .coin-3d-mode .coin-header {
-  display: none; /* classified + label — baked into 3D texture */
+  visibility: hidden;
 }
 
 .coin-3d-mode .coin-info {
-  display: none; /* title + desc — baked into 3D texture */
+  visibility: hidden;
 }
 
 .coin-3d-mode .coin-corner {
-  display: none; /* corner suit marks — baked into 3D texture */
+  visibility: hidden;
 }
 
 /* Interactive elements stay visible above the 3D canvas */
