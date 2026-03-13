@@ -21,7 +21,110 @@
   display: none;
 }
 
-/* ---- Background video layer ---- */
+/* ==============================================================
+   ATMOSPHERIC BACKGROUND — Zero-network CSS fallback
+   Renders instantly when video is unavailable or loading.
+   Video layer composites on top when it arrives.
+   ============================================================== */
+.splash-atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* Base: dark teal-to-black gradient (Lake Pend Oreille palette) */
+.splash-atmo-base {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 120% 100% at 50% 40%,
+    #0a1f1a 0%,
+    #060e09 35%,
+    #020504 70%,
+    #000 100%
+  );
+}
+
+/* Slow-moving fog banks (two offset layers) */
+.splash-atmo-fog {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 50%, rgba(28, 60, 50, 0.15), transparent 70%),
+    radial-gradient(ellipse 50% 35% at 75% 55%, rgba(20, 50, 45, 0.12), transparent 65%);
+  animation: atmo-fog-drift 30s ease-in-out infinite alternate;
+}
+
+@keyframes atmo-fog-drift {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(5%, -3%) scale(1.05); }
+}
+
+/* Subtle noise texture (CSS-generated static grain) */
+.splash-atmo-noise {
+  position: absolute;
+  inset: 0;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+/* Faint moonlight/spotlight cone from upper right */
+.splash-atmo-light {
+  position: absolute;
+  top: -20%;
+  right: -10%;
+  width: 70%;
+  height: 80%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(200, 210, 220, 0.04) 0%,
+    transparent 60%
+  );
+  animation: atmo-light-pulse 8s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes atmo-light-pulse {
+  0%   { opacity: 0.6; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1.08); }
+}
+
+/* Slow horizontal treeline/mountain silhouette at bottom */
+.splash-atmo-horizon {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 25%;
+  background: linear-gradient(0deg, #000 0%, #000 30%, transparent 100%);
+  pointer-events: none;
+}
+
+/* Treeline polygon — dark jagged horizon */
+.splash-atmo-horizon::before {
+  content: '';
+  position: absolute;
+  bottom: 20%;
+  left: 0;
+  right: 0;
+  height: 60%;
+  background: #000;
+  clip-path: polygon(
+    0% 100%, 0% 65%, 3% 58%, 6% 62%, 9% 50%, 12% 55%,
+    16% 42%, 19% 48%, 22% 38%, 26% 44%, 29% 35%, 33% 40%,
+    36% 30%, 40% 38%, 44% 28%, 47% 35%, 50% 25%, 53% 32%,
+    56% 22%, 60% 30%, 63% 20%, 67% 28%, 70% 18%, 73% 25%,
+    77% 32%, 80% 22%, 83% 30%, 86% 20%, 89% 28%, 92% 35%,
+    95% 25%, 98% 38%, 100% 30%, 100% 100%
+  );
+  opacity: 0.85;
+}
+
+/* ---- Background video layer (composites OVER atmosphere) ---- */
 .splash-video-layer {
   position: absolute;
   inset: 0;
@@ -55,6 +158,88 @@
   );
   z-index: 2;
   pointer-events: none;
+}
+
+
+/* ==============================================================
+   CSS-ONLY SPY SILHOUETTES — Fallback when PNG images unavailable
+   clip-path silhouette shapes animate from bottom on card-select.
+   The real PNG images composite over these when loaded.
+   ============================================================== */
+.splash-sil-css {
+  position: absolute;
+  bottom: -110%;
+  width: 30vw;
+  height: 80vh;
+  z-index: 100;
+  pointer-events: none;
+  transition: bottom 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 1.0s cubic-bezier(0.22, 1, 0.36, 1) 0.4s;
+}
+
+/* Spy silhouette shape 1 — standing with hat brim */
+.splash-sil-css-a {
+  left: 8%;
+  background: #000;
+  clip-path: polygon(
+    42% 0%, 58% 0%, 60% 2%, 62% 2%, 64% 4%, 64% 6%,
+    62% 8%, 60% 8%, 58% 10%, 58% 12%, 56% 15%, 56% 20%,
+    60% 22%, 62% 25%, 64% 30%, 65% 35%, 66% 50%,
+    68% 55%, 70% 65%, 72% 80%, 70% 85%, 68% 100%,
+    32% 100%, 30% 85%, 28% 80%, 30% 65%, 32% 55%,
+    34% 50%, 35% 35%, 36% 30%, 38% 25%, 40% 22%,
+    44% 20%, 44% 15%, 42% 12%, 42% 10%, 40% 8%,
+    38% 8%, 36% 6%, 36% 4%, 38% 2%, 40% 2%
+  );
+  transition-delay: 0s, 0.35s;
+}
+
+/* Spy silhouette shape 2 — trench coat profile */
+.splash-sil-css-b {
+  left: 50%;
+  transform: translateX(-50%);
+  background: #000;
+  clip-path: polygon(
+    45% 0%, 55% 0%, 57% 3%, 58% 8%, 57% 12%,
+    56% 15%, 55% 18%, 58% 20%, 62% 24%, 64% 30%,
+    65% 40%, 66% 50%, 74% 65%, 76% 80%, 74% 100%,
+    26% 100%, 24% 80%, 26% 65%, 34% 50%, 35% 40%,
+    36% 30%, 38% 24%, 42% 20%, 45% 18%, 44% 15%,
+    43% 12%, 42% 8%, 43% 3%
+  );
+  transition-delay: 0.08s, 0.4s;
+}
+
+/* Spy silhouette shape 3 — gun drawn pose */
+.splash-sil-css-c {
+  right: 8%;
+  background: #000;
+  clip-path: polygon(
+    44% 0%, 56% 0%, 58% 4%, 58% 10%, 56% 14%,
+    55% 18%, 58% 20%, 60% 22%, 72% 28%, 78% 30%,
+    80% 32%, 78% 34%, 68% 34%, 62% 32%, 60% 35%,
+    62% 45%, 64% 55%, 66% 70%, 68% 85%, 66% 100%,
+    34% 100%, 32% 85%, 34% 70%, 36% 55%, 38% 45%,
+    40% 35%, 38% 28%, 42% 22%, 45% 20%, 44% 18%,
+    42% 14%, 42% 10%, 42% 4%
+  );
+  transition-delay: 0.15s, 0.45s;
+}
+
+/* Active: CSS silhouettes rise + zoom (mirrors PNG animation) */
+.splash-silhouettes.splash-sil-active .splash-sil-css {
+  bottom: -10%;
+  transform: scale(2.2);
+}
+
+.splash-silhouettes.splash-sil-active .splash-sil-css-b {
+  bottom: -10%;
+  transform: translateX(-50%) scale(2.2);
+}
+
+/* Hide CSS shapes once real PNG images have loaded */
+.splash-sil-css.splash-sil-img-loaded {
+  display: none;
 }
 
 /* ---- Atmospheric particles (subtle) ---- */
@@ -220,12 +405,18 @@
    Brass borders, embossed text, gold gradients, metallic sheen
    ============================================================== */
 
+/* ---- 3D Card Foundation ----
+   preserve-3d enables future Three.js canvas overlay
+   and immediate CSS tilt/flip/parallax effects.
+   The coin-border-outer is the "front face";
+   .coin-card-back is the backface (added by JS when needed).
+   ---------------------------------------------------------- */
 .splash-dossier.coin-card {
   position: relative;
   width: clamp(210px, 22vw, 290px);
   height: clamp(340px, 38vw, 480px);
   border-radius: 16px;
-  overflow: hidden;
+  overflow: visible;
   cursor: default;
   transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
               box-shadow 0.4s ease,
@@ -238,20 +429,67 @@
     0 0 12px rgba(180, 140, 40, 0.15);
   background: transparent;
   backdrop-filter: none;
+  /* 3D depth for edge parallax on hover */
+  perspective: 800px;
 }
 
-/* Desktop fan angles */
+/* Backface — hidden by default, can be revealed by rotateY(180deg) */
+.coin-card-back {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: rotateY(180deg);
+  background: linear-gradient(
+    160deg,
+    #1a1714 0%,
+    #2a2520 30%,
+    #1a1714 60%,
+    #0f0e0a 100%
+  );
+  /* Engraved pattern on back */
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(180, 140, 40, 0.06) 0%, transparent 60%),
+    repeating-conic-gradient(from 0deg, rgba(180, 140, 40, 0.02) 0deg, transparent 3deg, transparent 12deg);
+  border: 4px solid;
+  border-image: linear-gradient(160deg, #8b7530, #c9a84c, #8b7530, #a08a38) 1;
+  overflow: hidden;
+}
+
+/* Three.js canvas mount point — overlays the CSS card when WebGL active */
+.coin-card-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  border-radius: 16px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.coin-card-canvas.coin-3d-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Desktop fan angles — 4-card spread */
 .splash-dossier.coin-card:nth-child(1) {
-  transform: rotate(-12deg) translateY(15px);
+  transform: rotate(-16deg) translateY(25px);
   z-index: 1;
 }
 .splash-dossier.coin-card:nth-child(2) {
-  transform: rotate(0deg) translateY(-10px);
-  z-index: 3;
-  margin: 0 -30px;
+  transform: rotate(-5deg) translateY(-5px);
+  z-index: 2;
+  margin: 0 -25px;
 }
 .splash-dossier.coin-card:nth-child(3) {
-  transform: rotate(12deg) translateY(15px);
+  transform: rotate(5deg) translateY(-5px);
+  z-index: 2;
+  margin: 0 -25px;
+}
+.splash-dossier.coin-card:nth-child(4) {
+  transform: rotate(16deg) translateY(25px);
   z-index: 1;
 }
 
@@ -278,12 +516,14 @@
 }
 
 
-/* ---- Outer border ring — thick brass rim ---- */
+/* ---- Outer border ring — thick brass rim (3D front face) ---- */
 .coin-border-outer {
   width: 100%;
   height: 100%;
   border-radius: 16px;
   padding: 4px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   background: linear-gradient(
     160deg,
     #c9a84c 0%,
@@ -401,6 +641,42 @@
 }
 .coin-corner .suit-heart {
   color: #c44040;
+}
+.coin-corner .suit-diamond {
+  color: #4a90d9;
+}
+
+/* Diamond suit — cool sapphire blue */
+.suit-diamond .coin-corner-suit,
+.suit-diamond.coin-corner-suit,
+.suit-diamond.coin-suit-large {
+  color: #4a90d9;
+}
+
+/* Diamond card PLAY button variant */
+.coin-book-btn.coin-book-diamond {
+  border-image: linear-gradient(
+    160deg,
+    #2a5a9a,
+    #6aacef,
+    #2a5a9a,
+    #4a90d9
+  ) 1;
+}
+
+.coin-book-diamond .coin-book-label {
+  color: #4a90d9;
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.6),
+    0 0 8px rgba(74, 144, 217, 0.2);
+}
+
+.coin-book-diamond .coin-book-dot {
+  color: rgba(74, 144, 217, 0.4);
+}
+
+.coin-book-diamond .coin-book-duration {
+  color: #a0c8ef;
 }
 
 
@@ -986,18 +1262,24 @@
 
   .splash-dossier.coin-card:nth-child(1) {
     transform: rotateY(0deg) rotateX(2deg) translateZ(0px);
-    z-index: 3;
+    z-index: 4;
     margin: 0;
   }
 
   .splash-dossier.coin-card:nth-child(2) {
-    transform: rotateY(-12deg) rotateX(2deg) translateY(-14px) translateX(10px);
-    z-index: 2;
+    transform: rotateY(-10deg) rotateX(2deg) translateY(-10px) translateX(8px);
+    z-index: 3;
     margin: 0;
   }
 
   .splash-dossier.coin-card:nth-child(3) {
-    transform: rotateY(-12deg) rotateX(2deg) translateY(-28px) translateX(20px);
+    transform: rotateY(-10deg) rotateX(2deg) translateY(-20px) translateX(14px);
+    z-index: 2;
+    margin: 0;
+  }
+
+  .splash-dossier.coin-card:nth-child(4) {
+    transform: rotateY(-10deg) rotateX(2deg) translateY(-30px) translateX(20px);
     z-index: 1;
     margin: 0;
   }
@@ -1121,10 +1403,13 @@
     transform: rotateY(0deg) rotateX(2deg) translateZ(0px);
   }
   .splash-dossier.coin-card:nth-child(2) {
-    transform: rotateY(-12deg) rotateX(2deg) translateY(-12px) translateX(8px);
+    transform: rotateY(-10deg) rotateX(2deg) translateY(-10px) translateX(6px);
   }
   .splash-dossier.coin-card:nth-child(3) {
-    transform: rotateY(-12deg) rotateX(2deg) translateY(-24px) translateX(16px);
+    transform: rotateY(-10deg) rotateX(2deg) translateY(-20px) translateX(12px);
+  }
+  .splash-dossier.coin-card:nth-child(4) {
+    transform: rotateY(-10deg) rotateX(2deg) translateY(-30px) translateX(18px);
   }
 
   .coin-artwork {

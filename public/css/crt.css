@@ -721,6 +721,73 @@ body.in-gone-rogue .debrief-window.expanded {
   border-color: var(--panel-border-soft);
 }
 
+/* ── Header nav buttons (Booking / Partners) ── */
+.mok-header-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.header-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+
+.header-nav-btn:hover {
+  background: rgba(51, 255, 51, 0.1);
+  border-color: var(--phosphor);
+  color: #fff;
+}
+
+.header-nav-btn:active {
+  background: rgba(51, 255, 51, 0.2);
+  transform: scale(0.96);
+}
+
+.header-nav-icon {
+  font-size: 1em;
+  line-height: 1;
+  color: var(--phosphor);
+}
+
+.header-nav-icon-heart {
+  color: #c44040;
+}
+
+.header-nav-label {
+  font-size: 0.82em;
+  letter-spacing: 0.1em;
+}
+
+/* Hide nav labels on smaller screens, keep icons */
+@media (max-width: 900px) {
+  .header-nav-label {
+    display: none;
+  }
+  .mok-header-nav {
+    gap: 4px;
+  }
+  .header-nav-btn {
+    padding: 4px 6px;
+  }
+  .header-nav-icon {
+    font-size: 1.1em;
+  }
+}
+
+/* Hide entire nav strip when Gone Rogue mode is active */
+body.mode-gone-rogue .mok-header-nav,
+body.in-gone-rogue .mok-header-nav,
+body.gone-rogue-active .mok-header-nav {
+  display: none;
+}
+
 /* Accountability indicator with animated icon */
 .accountability-indicator {
   display: flex;

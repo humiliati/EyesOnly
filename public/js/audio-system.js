@@ -32,6 +32,7 @@ const AudioSystem = (function () {
 
   var _bufferCache = {};      // name → AudioBuffer
   var _loadingPromises = {};  // name → Promise<AudioBuffer>
+  var _webmSupported = null;  // null=untested, true/false after probe
 
   var _currentMusic = null;   // { source, name, title, artist }
   var _listeners = [];
@@ -110,6 +111,40 @@ const AudioSystem = (function () {
     } catch (e) {}
   }
 
+  // ── WebM decode probe ──────────────────────────────────────
+  // One-time test: decode a tiny valid WebM/Opus frame.  If it fails
+  // (Safari <17, some iOS WebViews) we route ALL SFX resolves to the
+  // MP3 fallback immediately — no per-clip decode-fail-then-retry lag.
+  //
+  // The probe buffer is a 48kHz mono Opus frame inside a minimal WebM
+  // container (just the EBML header + a single SimpleBlock).
+  var _WEBM_PROBE_B64 =
+    'GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOA' +
+    'ZwEAAAAAAAITEE2bZBMAAAAAAAAAAAAAfQEAAAAAAAAWV64BAUWj' +
+    'h88BAgAAAAAAABhTYW5lCEWjiIQAYAAAAAAASJqBAQA=';
+
+  function _probeWebM() {
+    if (_webmSupported !== null) return;   // already tested
+    if (!_ctx) return;
+    try {
+      var raw = atob(_WEBM_PROBE_B64);
+      var buf = new ArrayBuffer(raw.length);
+      var view = new Uint8Array(buf);
+      for (var i = 0; i < raw.length; i++) view[i] = raw.charCodeAt(i);
+
+      _ctx.decodeAudioData(buf.slice(0), function () {
+        _webmSupported = true;
+        console.log('[AudioSystem] WebM/Opus decode: supported');
+      }, function () {
+        _webmSupported = false;
+        console.warn('[AudioSystem] WebM/Opus decode: NOT supported — using MP3 fallbacks');
+      });
+    } catch (e) {
+      _webmSupported = false;
+      console.warn('[AudioSystem] WebM probe error — assuming no support:', e);
+    }
+  }
+
   // ── Audio context bootstrap ────────────────────────────────
 
   function _ensureCtx() {
@@ -128,6 +163,7 @@ const AudioSystem = (function () {
       _sfxGain.connect(_masterGain);
 
       _applyGains();
+      _probeWebM();
     } catch (e) {
       console.warn('[AudioSystem] Web Audio API not available:', e);
     }
@@ -195,11 +231,20 @@ const AudioSystem = (function () {
       if (!fb && src && src.endsWith('.webm')) {
         fb = src.replace(/\.webm$/, '.mp3');
       }
+      // If WebM probe failed, swap primary to MP3 immediately
+      // (avoids per-clip decode-fail-then-retry delay on Safari)
+      if (_webmSupported === false && fb && src && src.endsWith('.webm')) {
+        return { src: fb, fallback: null };
+      }
       return { src: src, fallback: fb };
     }
     // Fallback: try /audio/sfx/{name}.webm → .mp3
     var defaultSrc = '/audio/sfx/' + name + '.webm';
-    return { src: defaultSrc, fallback: defaultSrc.replace('.webm', '.mp3') };
+    var defaultFb  = defaultSrc.replace('.webm', '.mp3');
+    if (_webmSupported === false) {
+      return { src: defaultFb, fallback: null };
+    }
+    return { src: defaultSrc, fallback: defaultFb };
   }
 
   // ── Public API ─────────────────────────────────────────────
@@ -242,11 +287,13 @@ const AudioSystem = (function () {
         _gestureHandlerDone = true;
         document.removeEventListener('click', handler, true);
         document.removeEventListener('touchstart', handler, true);
+        document.removeEventListener('touchend', handler, true);
         document.removeEventListener('keydown', handler, true);
       }
     };
     document.addEventListener('click', handler, true);
     document.addEventListener('touchstart', handler, true);
+    document.addEventListener('touchend', handler, true);    // iOS Safari activation
     document.addEventListener('keydown', handler, true);
 
     // Also listen for context state change — some browsers resume the
@@ -390,7 +437,19 @@ const AudioSystem = (function () {
 
     _musicAudio.addEventListener('error', function () {
       var err = _musicAudio.error;
-      console.warn('[AudioSystem] Music streaming error:', err ? err.message : 'unknown');
+      console.warn('[AudioSystem] Music streaming error:', err ? err.message : 'unknown',
+        err ? '(code ' + err.code + ')' : '');
+    });
+
+    // Stalled: network fetch hung — try resuming
+    _musicAudio.addEventListener('stalled', function () {
+      console.warn('[AudioSystem] Music stalled — attempting recovery');
+      if (_musicAudio.networkState === 2) {  // NETWORK_LOADING
+        var ct = _musicAudio.currentTime;
+        _musicAudio.load();
+        _musicAudio.currentTime = ct;
+        _musicAudio.play().catch(function () {});
+      }
     });
 
     return _musicAudio;
@@ -450,11 +509,25 @@ const AudioSystem = (function () {
       // If WebM failed, try fallback
       if (fallbackUrl && url !== fallbackUrl) {
         console.warn('[AudioSystem] Music play() failed for', url, '— trying fallback');
+        // Abort previous load before switching source
+        audio.pause();
         audio.src = fallbackUrl;
         audio.load();
-        audio.play().catch(function (err2) {
-          console.warn('[AudioSystem] Music fallback also rejected:', err2);
-        });
+        // Wait for enough data before playing to avoid race
+        var canPlayHandler = function () {
+          audio.removeEventListener('canplaythrough', canPlayHandler);
+          audio.play().catch(function (err2) {
+            console.warn('[AudioSystem] Music fallback also rejected:', err2);
+          });
+        };
+        audio.addEventListener('canplaythrough', canPlayHandler);
+        // Safety timeout in case canplaythrough never fires
+        setTimeout(function () {
+          audio.removeEventListener('canplaythrough', canPlayHandler);
+          if (audio.paused && audio.src) {
+            audio.play().catch(function () {});
+          }
+        }, 3000);
       } else {
         console.warn('[AudioSystem] Music play() rejected:', err);
       }

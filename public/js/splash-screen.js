@@ -76,6 +76,25 @@ const SplashScreen = (() => {
       videoIndex: 2,
       route: '/partners.html',
     },
+    {
+      id: 'minigames',
+      title: 'Mini Games',
+      desc: 'Puzzles, decryption keys & toys',
+      suit: '\u2666',        // ♦
+      suitClass: 'suit-diamond',
+      duration: null,         // no booking wheel
+      defaultGroup: null,
+      minGroup: null,
+      maxGroup: null,
+      classified: 'FIELD KIT',
+      label: 'RECREATION',
+      videoIndex: 0,          // reuse first video
+      route: '/games.html',
+      btnLabel: 'PLAY',
+      btnDuration: 'NOW',
+      btnClass: 'coin-book-diamond',
+      tags: ['PUZZLES', 'DECRYPTION', 'TOYS'],
+    },
   ];
 
   // Background drone footage
@@ -134,6 +153,13 @@ const SplashScreen = (() => {
     el.id = 'splash-screen';
 
     el.innerHTML = `
+      <div class="splash-atmosphere">
+        <div class="splash-atmo-base"></div>
+        <div class="splash-atmo-fog"></div>
+        <div class="splash-atmo-noise"></div>
+        <div class="splash-atmo-light"></div>
+        <div class="splash-atmo-horizon"></div>
+      </div>
       <div class="splash-video-layer" id="splash-video-layer">
         ${VIDEO_SOURCES.map((src, i) =>
           `<video id="splash-vid-${i}" src="${src}" muted loop playsinline preload="auto"
@@ -156,6 +182,9 @@ const SplashScreen = (() => {
         <div class="splash-prompt-text">Choose a dossier to begin</div>
       </div>
       <div class="splash-silhouettes" id="splash-silhouettes">
+        <div class="splash-sil-css splash-sil-css-a"></div>
+        <div class="splash-sil-css splash-sil-css-b"></div>
+        <div class="splash-sil-css splash-sil-css-c"></div>
         <div class="splash-sil splash-sil-bottom splash-sil-slot-a" id="sil-slot-a" style="display:none">
           <img src="" alt="" class="splash-sil-img" />
         </div>
@@ -186,25 +215,18 @@ const SplashScreen = (() => {
     const cornerTL = `<div class="coin-corner coin-corner-tl"><span class="coin-corner-suit ${mission.suitClass}">${mission.suit}</span></div>`;
     const cornerBR = `<div class="coin-corner coin-corner-br"><span class="coin-corner-suit ${mission.suitClass}">${mission.suit}</span></div>`;
 
-    // Mid-row: BOOK.duration button (bookable) or action label (partner)
-    let midRow = '';
-    if (isBookable) {
-      midRow = `
+    // Mid-row: BOOK.duration button (bookable) or custom action button
+    var btnLabel = mission.btnLabel || (isBookable ? 'BOOK' : 'JOIN');
+    var btnDuration = mission.btnDuration || (isBookable ? mission.duration : 'NOW');
+    var btnExtraClass = mission.btnClass || (isBookable ? '' : 'coin-book-partner');
+    let midRow = `
         <div class="coin-mid-row">
-          <button class="coin-book-btn" data-mission="${mission.id}" data-index="${index}">
-            <span class="coin-book-label">BOOK</span><span class="coin-book-dot">.</span><span class="coin-book-duration">${mission.duration}</span>
+          <button class="coin-book-btn ${btnExtraClass}" data-mission="${mission.id}" data-index="${index}">
+            <span class="coin-book-label">${btnLabel}</span><span class="coin-book-dot">.</span><span class="coin-book-duration">${btnDuration}</span>
           </button>
         </div>`;
-    } else {
-      midRow = `
-        <div class="coin-mid-row">
-          <button class="coin-book-btn coin-book-partner" data-mission="${mission.id}" data-index="${index}">
-            <span class="coin-book-label">JOIN</span><span class="coin-book-dot">.</span><span class="coin-book-duration">NOW</span>
-          </button>
-        </div>`;
-    }
 
-    // Bottom strip: decoder wheels (bookable) or tags (partner)
+    // Bottom strip: decoder wheels (bookable) or tags
     let bottomStrip = '';
     if (isBookable) {
       bottomStrip = `
@@ -231,11 +253,10 @@ const SplashScreen = (() => {
           </div>
         </div>`;
     } else {
+      var tags = mission.tags || ['BUSINESSES', 'ACTORS', 'VOLUNTEERS'];
       bottomStrip = `
         <div class="coin-tag-strip">
-          <span class="coin-tag">BUSINESSES</span>
-          <span class="coin-tag">ACTORS</span>
-          <span class="coin-tag">VOLUNTEERS</span>
+          ${tags.map(function (t) { return '<span class="coin-tag">' + t + '</span>'; }).join('')}
         </div>`;
     }
 
@@ -474,10 +495,25 @@ const SplashScreen = (() => {
     const shuffled = SIL_POOL.slice().sort(() => Math.random() - 0.5);
     const count = Math.random() < 0.5 ? 2 : 3;
     const slots = ['sil-slot-a', 'sil-slot-b', 'sil-slot-c'];
+    const cssSlots = ['splash-sil-css-a', 'splash-sil-css-b', 'splash-sil-css-c'];
+
     for (let i = 0; i < count; i++) {
       const slot = document.getElementById(slots[i]);
       if (slot && shuffled[i]) {
-        slot.querySelector('img').src = shuffled[i];
+        const img = slot.querySelector('img');
+        img.src = shuffled[i];
+
+        // When real PNG loads, hide the CSS fallback shape
+        img.addEventListener('load', function () {
+          var cssShape = splashEl.querySelector('.' + cssSlots[i]);
+          if (cssShape) cssShape.classList.add('splash-sil-img-loaded');
+        });
+
+        // If PNG fails (offline), CSS shape remains visible
+        img.addEventListener('error', function () {
+          console.log('[Splash] Silhouette image failed to load — using CSS fallback');
+        });
+
         slot.style.display = '';
       }
     }
@@ -683,6 +719,7 @@ const SplashScreen = (() => {
 
   function removeSplash() {
     if (!splashEl) return;
+    Card3D.dispose();
     splashEl.querySelectorAll('video').forEach(v => {
       v.pause();
       v.removeAttribute('src');
@@ -694,6 +731,65 @@ const SplashScreen = (() => {
     }, 500);
     try { sessionStorage.setItem('splash_seen', '1'); } catch (_) {}
   }
+
+  /* ============================================================
+     Three.js 3D Card Integration — STUB
+     Future phase: replace CSS coin-cards with WebGL-rendered
+     metallic coin meshes.  The hooks below are called by init()
+     and removeSplash() so the 3D layer can mount/unmount cleanly.
+     ============================================================ */
+  const Card3D = {
+    /** True once Three.js is loaded and card meshes are ready */
+    ready: false,
+
+    /**
+     * Mount a <canvas> inside each .coin-card, create Scene + meshes.
+     * Called once after buildSplash() and DOM insertion.
+     * @param {HTMLElement} fanEl — the .splash-card-fan container
+     * @param {Array} missions  — MISSIONS config array
+     */
+    mount: function (/* fanEl, missions */) {
+      // TODO: import Three.js, create renderer per card,
+      //       build CoinGeometry (cylinder + edge bevel + face textures),
+      //       attach to .coin-card-canvas divs, set Card3D.ready = true.
+    },
+
+    /**
+     * Per-frame render tick (requestAnimationFrame loop).
+     * Handles idle wobble, hover tilt, drag spin.
+     */
+    tick: function () {
+      // TODO: update uniforms, animate idle rotation, render
+    },
+
+    /**
+     * Set hover state on a specific card mesh.
+     * @param {number} index — card index
+     * @param {boolean} hovered
+     */
+    setHover: function (/* index, hovered */) {
+      // TODO: tilt mesh toward camera, brighten specular
+    },
+
+    /**
+     * Play select animation (flip + zoom) on a card mesh.
+     * @param {number} index — card index
+     * @returns {Promise} resolves when animation completes
+     */
+    selectCard: function (/* index */) {
+      return Promise.resolve();
+      // TODO: animate coin flip, camera zoom, resolve after ~800ms
+    },
+
+    /**
+     * Dispose all Three.js resources (renderers, textures, geometries).
+     * Called by removeSplash().
+     */
+    dispose: function () {
+      // TODO: renderer.dispose(), geometry.dispose(), etc.
+      Card3D.ready = false;
+    }
+  };
 
   /* ---- Init ---- */
 
@@ -714,6 +810,10 @@ const SplashScreen = (() => {
     bindWheels();
     bindCloseButton();
 
+    // Mount Three.js 3D card layer (no-op until implemented)
+    var fanEl = document.getElementById('splash-card-fan');
+    if (fanEl) Card3D.mount(fanEl, MISSIONS);
+
     // Initialize wheel displays with prev/next values
     MISSIONS.forEach(function (m) {
       if (cardState[m.id]) updateWheelDisplay(m.id);
@@ -731,5 +831,5 @@ const SplashScreen = (() => {
     init();
   }
 
-  return { init, removeSplash };
+  return { init, removeSplash, Card3D };
 })();
