@@ -88,7 +88,7 @@ const SplashScreen = (() => {
       maxGroup: null,
       classified: 'FIELD KIT',
       label: 'RECREATION',
-      videoIndex: 0,          // reuse first video
+      videoIndex: 3,
       route: '/games.html',
       btnLabel: 'PLAY',
       btnDuration: 'NOW',
@@ -102,6 +102,7 @@ const SplashScreen = (() => {
     '/video/Sandpoint2_%20Lake%20Pend%20Oreille.mp4',
     '/video/Sandpoint3_%20Lake%20Pend%20Oreille.mp4',
     '/video/Sandpoint%20_%20Lake%20Pend%20Oreille.mp4',
+    '/video/Sandpoint1_%20Schweitzer%20Mountain%20Resort.mp4',
   ];
 
   // Silhouette image assets
@@ -116,6 +117,8 @@ const SplashScreen = (() => {
   const HOVER_SOUNDS  = ['card-slide_card_1', 'card-slide_card_2', 'card-slide_card_3'];
   const SELECT_SOUNDS = ['card-fold_hand_1', 'card-fold_hand_2', 'card-fold_hand_3'];
   const WHEEL_SOUND   = 'clickandrelease-1';
+  const PICKUP_SOUNDS = ['card-pick_up_card_1', 'card-pick_up_card_2', 'card-pick_up_card_3'];
+  const PUTDOWN_SOUNDS = ['card-place_card_1', 'card-place_card_2', 'card-place_card_3'];
 
   let splashEl = null;
   let dismissed = false;
@@ -344,22 +347,66 @@ const SplashScreen = (() => {
   }
 
   /* ---- Decoder Ring Wheel Binding ----
-     Supports:
-     - Click/right-click to cycle
-     - Vertical drag to scrub values (20px = 1 tick)
-     - Edge-exit acceleration: when drag leaves card bounds, value auto-advances
-       in the last direction at accelerating speed; card stays hovered until release
-     - Mouse scroll on wheel element
+     Uses pointer events with setPointerCapture for guaranteed event delivery.
+     Supports: click, right-click, vertical drag (20px/tick), edge-exit
+     acceleration, scroll wheel, card stays hovered during interaction.
   */
+  var _activeWheelPointerId = -1; // global: only one wheel drag at a time
+
   function bindWheels() {
     var wheels = splashEl.querySelectorAll('.coin-wheel');
     wheels.forEach(function (wheel) {
       var missionId = wheel.dataset.mission;
+      var ownerCard = null;
+      var dragStartY = null;
+      var dragAccum = 0;
+      var lastDragDir = 0;
+      var edgeAccelTimer = null;
+      var edgeAccelDelay = 200;
+      var dragMoved = false;
 
-      // Click cycles up
+      function getOwnerCard() {
+        if (!ownerCard) ownerCard = wheel.closest('.coin-card');
+        return ownerCard;
+      }
+
+      function isInsideCard(x, y) {
+        var card = getOwnerCard();
+        if (!card) return true;
+        var r = card.getBoundingClientRect();
+        return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+      }
+
+      function startEdgeAccel(dir) {
+        if (edgeAccelTimer) return;
+        edgeAccelDelay = 200;
+        function tick() { _ensureAudioInit(); adjustGroup(missionId, dir); }
+        tick();
+        edgeAccelTimer = setInterval(function () {
+          tick();
+          if (edgeAccelDelay > 50) {
+            edgeAccelDelay = Math.max(50, edgeAccelDelay - 30);
+            clearInterval(edgeAccelTimer);
+            edgeAccelTimer = setInterval(tick, edgeAccelDelay);
+          }
+        }, edgeAccelDelay);
+      }
+
+      function stopEdgeAccel() {
+        if (edgeAccelTimer) { clearInterval(edgeAccelTimer); edgeAccelTimer = null; }
+      }
+
+      function endWheelDrag() {
+        dragStartY = null;
+        isDraggingWheel = false;
+        _activeWheelPointerId = -1;
+        stopEdgeAccel();
+      }
+
+      // Click cycles up (only if pointer didn't drag)
       wheel.addEventListener('click', function (e) {
         e.stopPropagation();
-        if (dismissed) return;
+        if (dismissed || dragMoved) return;
         _ensureAudioInit();
         adjustGroup(missionId, 1);
       });
@@ -373,133 +420,66 @@ const SplashScreen = (() => {
         adjustGroup(missionId, -1);
       });
 
-      // Drag support: track Y delta + edge-exit acceleration
-      var dragStartY = null;
-      var dragAccum = 0;
-      var lastDragDir = 0;          // +1 or -1: last drag direction
-      var edgeAccelTimer = null;    // setInterval for auto-advance outside card
-      var edgeAccelDelay = 200;     // starting ms between ticks (gets faster)
-      var ownerCard = null;         // the .coin-card ancestor
-
-      function getOwnerCard() {
-        if (!ownerCard) ownerCard = wheel.closest('.coin-card');
-        return ownerCard;
-      }
-
-      function isPointerInsideCard(clientX, clientY) {
-        var card = getOwnerCard();
-        if (!card) return true;
-        var r = card.getBoundingClientRect();
-        return clientX >= r.left && clientX <= r.right &&
-               clientY >= r.top  && clientY <= r.bottom;
-      }
-
-      function startEdgeAccel(dir) {
-        if (edgeAccelTimer) return; // already running
-        edgeAccelDelay = 200;
-        edgeAccelTimer = setInterval(function () {
-          _ensureAudioInit();
-          adjustGroup(missionId, dir);
-          // Accelerate: reduce interval down to 50ms floor
-          if (edgeAccelDelay > 50) {
-            edgeAccelDelay = Math.max(50, edgeAccelDelay - 30);
-            clearInterval(edgeAccelTimer);
-            edgeAccelTimer = setInterval(function () {
-              _ensureAudioInit();
-              adjustGroup(missionId, dir);
-            }, edgeAccelDelay);
-          }
-        }, edgeAccelDelay);
-      }
-
-      function stopEdgeAccel() {
-        if (edgeAccelTimer) {
-          clearInterval(edgeAccelTimer);
-          edgeAccelTimer = null;
-        }
-      }
-
-      wheel.addEventListener('mousedown', function (e) {
-        if (dismissed) return;
+      // Unified pointer down (mouse + touch + pen)
+      wheel.addEventListener('pointerdown', function (e) {
+        if (dismissed || _activeWheelPointerId >= 0) return;
+        e.preventDefault();
         e.stopPropagation();
+
         dragStartY = e.clientY;
         dragAccum = 0;
         lastDragDir = 0;
+        dragMoved = false;
         isDraggingWheel = true;
-        // Keep card visually hovered for entire drag
+        _activeWheelPointerId = e.pointerId;
+
+        try { wheel.setPointerCapture(e.pointerId); } catch (_) {}
+
         var card = getOwnerCard();
         if (card && hoveredCardEl !== card) hoverCard(card);
       });
 
-      wheel.addEventListener('touchstart', function (e) {
-        if (dismissed) return;
-        e.stopPropagation();
-        e.preventDefault();
-        dragStartY = e.touches[0].clientY;
-        dragAccum = 0;
-        lastDragDir = 0;
-        isDraggingWheel = true;
-        var card = getOwnerCard();
-        if (card && hoveredCardEl !== card) hoverCard(card);
-      }, { passive: false });
+      wheel.addEventListener('pointermove', function (e) {
+        if (_activeWheelPointerId !== e.pointerId || dragStartY === null) return;
 
-      function onDragMove(clientX, clientY) {
-        if (dragStartY === null) return;
+        var x = e.clientX, y = e.clientY;
+        if (Math.abs(y - dragStartY) > 3) dragMoved = true;
 
-        // Check if pointer left the card
-        if (!isPointerInsideCard(clientX, clientY)) {
-          // Outside card: start auto-accelerating in last direction
-          if (lastDragDir !== 0 && !edgeAccelTimer) {
-            startEdgeAccel(lastDragDir);
-          }
-          dragStartY = clientY; // keep tracking so re-entry resumes smoothly
+        if (!isInsideCard(x, y)) {
+          if (lastDragDir !== 0 && !edgeAccelTimer) startEdgeAccel(lastDragDir);
+          dragStartY = y;
           return;
         }
 
-        // Back inside card: stop any edge acceleration
         stopEdgeAccel();
-
-        var dy = dragStartY - clientY;
+        var dy = dragStartY - y;
         dragAccum += dy;
-        dragStartY = clientY;
+        dragStartY = y;
 
-        // Every 20px of drag = one tick
         while (dragAccum > 20) {
-          _ensureAudioInit();
-          adjustGroup(missionId, 1);
-          lastDragDir = 1;
-          dragAccum -= 20;
+          _ensureAudioInit(); adjustGroup(missionId, 1);
+          lastDragDir = 1; dragAccum -= 20;
         }
         while (dragAccum < -20) {
-          _ensureAudioInit();
-          adjustGroup(missionId, -1);
-          lastDragDir = -1;
-          dragAccum += 20;
-        }
-      }
-
-      function onDragEnd() {
-        dragStartY = null;
-        isDraggingWheel = false;
-        stopEdgeAccel();
-        // Don't unhover here — let normal mouseleave handle it
-      }
-
-      document.addEventListener('mousemove', function (e) {
-        if (dragStartY !== null && wheel.dataset.mission === missionId) {
-          onDragMove(e.clientX, e.clientY);
+          _ensureAudioInit(); adjustGroup(missionId, -1);
+          lastDragDir = -1; dragAccum += 20;
         }
       });
 
-      document.addEventListener('touchmove', function (e) {
-        if (dragStartY !== null && e.touches[0]) {
-          e.preventDefault();
-          onDragMove(e.touches[0].clientX, e.touches[0].clientY);
-        }
-      }, { passive: false });
+      wheel.addEventListener('pointerup', function (e) {
+        if (_activeWheelPointerId !== e.pointerId) return;
+        try { wheel.releasePointerCapture(e.pointerId); } catch (_) {}
+        endWheelDrag();
+      });
 
-      document.addEventListener('mouseup', onDragEnd);
-      document.addEventListener('touchend', onDragEnd);
+      wheel.addEventListener('pointercancel', function (e) {
+        if (_activeWheelPointerId !== e.pointerId) return;
+        endWheelDrag();
+      });
+
+      wheel.addEventListener('lostpointercapture', function () {
+        if (_activeWheelPointerId >= 0) endWheelDrag();
+      });
 
       // Scroll wheel on the element
       wheel.addEventListener('wheel', function (e) {
@@ -993,7 +973,7 @@ const SplashScreen = (() => {
       'transform: scale(0.92) rotate(0deg)',
       'opacity: 0.94',
       'pointer-events: none',
-      'z-index: 10000',
+      'z-index: 99998',
       'transition: transform 0.12s ease-out, opacity 0.12s ease-out, box-shadow 0.12s ease-out',
       'box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(180,160,80,0.12)',
       'border-radius: 16px',
@@ -1043,6 +1023,9 @@ const SplashScreen = (() => {
     ghost.style.top = phRect.top + 'px';
     ghost.style.opacity = '0.6';
     ghost.style.transform = 'scale(1) rotate(0deg)';
+
+    // Return-to-slot sound
+    _playAudio(PUTDOWN_SOUNDS[_dragState.index % PUTDOWN_SOUNDS.length], { volume: 0.3 });
 
     setTimeout(function () {
       _cleanupDrag();
@@ -1096,7 +1079,7 @@ const SplashScreen = (() => {
 
     // Sound
     _ensureAudioInit();
-    _playAudio('card-slide_card_1', { volume: 0.3 });
+    _playAudio(PICKUP_SOUNDS[index % PICKUP_SOUNDS.length], { volume: 0.4 });
   }
 
   function _updateCardDrag(ev) {
@@ -1141,7 +1124,7 @@ const SplashScreen = (() => {
       _dragState.ghostEl.style.transform = 'scale(1.05)';
     }
 
-    _playAudio('card-fold_hand_1', { volume: 0.5 });
+    _playAudio(PUTDOWN_SOUNDS[_dragState.index % PUTDOWN_SOUNDS.length], { volume: 0.5 });
 
     setTimeout(function () {
       _cleanupDrag();
@@ -1165,39 +1148,49 @@ const SplashScreen = (() => {
       if (!artwork) return;
 
       var dragStarted = false;
+      var dragPointerId = -1;
       var startX = 0, startY = 0;
 
       artwork.addEventListener('pointerdown', function (e) {
-        if (dismissed || _dragState) return;
+        if (dismissed || _dragState || isDraggingWheel || _activeWheelPointerId >= 0) return;
         // Don't capture if it's on a button or wheel
         if (e.target.closest('.coin-wheel') || e.target.closest('.coin-book-btn')) return;
+        // Don't capture if it's on the wheel strip or mid-row controls
+        if (e.target.closest('.coin-wheel-strip') || e.target.closest('.coin-wheel-frame')) return;
 
-        e.preventDefault();
         e.stopPropagation();
         dragStarted = false;
+        dragPointerId = e.pointerId;
         startX = e.clientX;
         startY = e.clientY;
 
         function onMove(ev) {
+          if (ev.pointerId !== dragPointerId) return;
+          if (isDraggingWheel || _activeWheelPointerId >= 0) return;
+
           var dx = ev.clientX - startX;
           var dy = ev.clientY - startY;
           var dist = Math.sqrt(dx * dx + dy * dy);
 
           if (!dragStarted && dist > 10) {
             dragStarted = true;
+            ev.preventDefault();
             var idx = parseInt(card.dataset.index, 10);
             _beginCardDrag(card, idx, e);
           }
 
           if (dragStarted) {
+            ev.preventDefault();
             _updateCardDrag(ev);
           }
         }
 
         function onUp(ev) {
+          if (ev.pointerId !== dragPointerId) return;
           window.removeEventListener('pointermove', onMove, true);
           window.removeEventListener('pointerup', onUp, true);
           window.removeEventListener('pointercancel', onCancel, true);
+          dragPointerId = -1;
 
           if (dragStarted) {
             _endCardDrag(ev);
@@ -1205,10 +1198,12 @@ const SplashScreen = (() => {
           dragStarted = false;
         }
 
-        function onCancel() {
+        function onCancel(ev) {
+          if (ev.pointerId !== dragPointerId) return;
           window.removeEventListener('pointermove', onMove, true);
           window.removeEventListener('pointerup', onUp, true);
           window.removeEventListener('pointercancel', onCancel, true);
+          dragPointerId = -1;
 
           if (dragStarted) {
             _cancelCardDrag();
