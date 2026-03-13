@@ -50,12 +50,12 @@
      CONFIGURATION (adapted per device tier)
      ============================================================ */
   var CFG = {
-    // Coin body (world units) — thick like 1/3 of a card deck
+    // Coin body (world units) — chunky metal slab
     width:  2.1,
     height: 3.4,
-    depth:  0.50,
+    depth:  0.58,        // thicker — edge must be clearly visible when tilted
     radius: 0.22,       // rounded corner radius (world units)
-    bevel:  0.12,
+    bevel:  0.14,
     bevelSegs: 5,
     curveSegs: 12,
 
@@ -67,7 +67,7 @@
     metalness: 0.92,
     roughness: 0.15,
     bumpScale: 0.045,
-    envIntensity: 1.0,
+    envIntensity: 1.3,
 
     // Animation
     idleSpeed: 0.35,
@@ -75,9 +75,9 @@
     hoverTilt: 0.12,
     flipMs:    800,
 
-    // Camera
-    camDist: 8.0,
-    camFov:  28,
+    // Camera — tight framing so coin fills the card container
+    camDist: 5.8,
+    camFov:  38,
 
     // Render throttle (ms between frames, 0 = every rAF)
     frameInterval: 0,
@@ -756,27 +756,32 @@
     pmrem.compileCubemapShader();
 
     var es = new T.Scene();
-    es.background = new T.Color(0x181820);
+    es.background = new T.Color(0x101018);
 
-    // Cool overhead light (sleek studio lighting)
-    var l1 = new T.PointLight(0xd0d8e0, 1.4, 20);
+    // Strong overhead — bright catchlight on bevel/edges
+    var l1 = new T.PointLight(0xe0e8f0, 2.0, 25);
     l1.position.set(0, 6, 4);
     es.add(l1);
 
-    // Cool accent from left
-    var l2 = new T.PointLight(0x8890a0, 0.8, 15);
-    l2.position.set(-4, 3, 3);
+    // Cool accent from left — catches left edge
+    var l2 = new T.PointLight(0x9098b0, 1.2, 18);
+    l2.position.set(-5, 2, 2);
     es.add(l2);
 
-    // Subtle warm fill from right (for metal warmth)
-    var l3 = new T.PointLight(0xa09880, 0.4, 12);
-    l3.position.set(4, -2, 5);
+    // Subtle warm fill from right
+    var l3 = new T.PointLight(0xa09880, 0.5, 14);
+    l3.position.set(5, -1, 4);
     es.add(l3);
 
-    // Rim light from below for edge catch
-    var l4 = new T.PointLight(0x909098, 0.6, 10);
-    l4.position.set(0, -4, 2);
+    // Strong rim from below — bright edge reflection on bottom face
+    var l4 = new T.PointLight(0xb0b0c0, 1.5, 14);
+    l4.position.set(0, -5, 1);
     es.add(l4);
+
+    // Back-light from above — grazes top edge when tilted
+    var l5 = new T.PointLight(0x8088a0, 0.8, 12);
+    l5.position.set(0, 5, -2);
+    es.add(l5);
 
     var rt = pmrem.fromScene(es, 0);
     pmrem.dispose();
@@ -889,15 +894,20 @@
     // Ambient — cool neutral
     _scene.add(new T.AmbientLight(0x505560, 0.4));
 
-    // Rim light from below (catches bottom edge to show thickness)
-    var rim = new T.PointLight(0x9098a0, 1.0, 14);
-    rim.position.set(1, -3, 3);
+    // Strong rim from below — catches the bottom edge to show thickness
+    var rim = new T.PointLight(0xb0b8c0, 1.8, 16);
+    rim.position.set(0.5, -4, 1.5);
     _scene.add(rim);
 
-    // Secondary rim from top-left (catches left edge for depth)
-    var rim2 = new T.PointLight(0x808898, 0.6, 10);
-    rim2.position.set(-3, 2, 2);
+    // Secondary rim from left — catches the left edge for depth
+    var rim2 = new T.PointLight(0xa0a8b8, 1.2, 12);
+    rim2.position.set(-4, 0, 1);
     _scene.add(rim2);
+
+    // Subtle top back-light (grazing angle catches the top edge when tilted away)
+    var rimTop = new T.PointLight(0x8890a0, 0.9, 14);
+    rimTop.position.set(0, 4, -1);
+    _scene.add(rimTop);
 
     // Hemisphere: dark cool sky / dark ground
     _scene.add(new T.HemisphereLight(0x404858, 0x181820, 0.3));
@@ -957,7 +967,7 @@
         _renderer.setPixelRatio(1);
         if (T.sRGBEncoding) _renderer.outputEncoding = T.sRGBEncoding;
         _renderer.toneMapping = T.ACESFilmicToneMapping;
-        _renderer.toneMappingExposure = 1.6;
+        _renderer.toneMappingExposure = 1.8;
 
         _envMap = createEnvMap();
         setupScene();
@@ -1067,8 +1077,8 @@
 
       // ── Idle wobble + base tilt to show thickness ──
       var p  = t * CFG.idleSpeed + cn.phase;
-      var ix = Math.sin(p * 1.1) * CFG.idleAmp + 0.16;   // base X tilt — top tilted faintly away
-      var iy = Math.cos(p * 0.7) * CFG.idleAmp * 0.6 - 0.08; // base Y tilt — left side very slightly away
+      var ix = Math.sin(p * 1.1) * CFG.idleAmp + 0.18;   // base X tilt — top tilted away, ~10° shows bottom edge
+      var iy = Math.cos(p * 0.7) * CFG.idleAmp * 0.6 - 0.09; // base Y tilt — left side away, ~5° shows left edge
 
       // ── Target tilt ──
       var tx = ix + (cn.hovered ? CFG.hoverTilt * 0.3 : 0);

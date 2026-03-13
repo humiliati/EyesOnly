@@ -475,7 +475,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(6, 6, 10, 0.95);
+  background: transparent;
 }
 
 .coin-card-canvas canvas {
@@ -1479,10 +1479,9 @@
     z-index: 15;
   }
 
-  /* On mobile, the canvas fills the card but the coin is portrait ratio.
-     Use a dark transparent background to blend letterbox bands. */
+  /* On mobile, transparent canvas — coin fills frame via tight camera framing */
   .coin-card-canvas {
-    background: rgba(8, 8, 12, 0.85);
+    background: transparent;
     border-radius: 16px;
   }
 }
