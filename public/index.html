@@ -363,196 +363,38 @@
   <!-- designation obsolete but still required -->
 
   <!--
-    Script load order matches langterm pattern:
-    Data/utility modules first, then orchestrator last.
+    Script load order: Critical-path first, game modules lazy.
+
+    Phase 1 (sync): Splash screen, terminal, and core infrastructure.
+    These ~10 scripts parse immediately so the page renders fast.
+
+    Phase 2 (background): ~130 game modules loaded by gone-rogue-loader.js
+    after the first paint. The user sees the splash screen instantly.
+    Game systems initialize silently in the background. If the user
+    types "rogue" before loading finishes, a brief loading message appears.
+
     No build step. No bundler. No framework.
   -->
+
+  <!-- Phase 1: Splash screen critical path (sync, blocks render) -->
   <script src="js/splash-screen.js"></script>
   <script src="js/card-coin-3d.js"></script>
   <script src="js/terminal.js"></script>
   <script src="js/parser.js"></script>
   <script src="js/missions.js"></script>
-  <script src="js/highscore-state.js"></script>
-  <script src="js/gamestate.js?v=20260306f"></script>
-  <script src="js/card-system.js"></script>
-  <script src="js/loot-table-manager.js"></script>
-  <script src="js/synergy-engine.js"></script>
-  <script src="js/enemy-steal-system.js?v=20260305k"></script>
-  <script src="js/enemy-deck-hydrator.js"></script>
-  <script src="js/synergy-integration.js"></script>
-  <script src="js/cascade-resolver.js"></script>
-  <script src="js/synergy-ui.js"></script>
-  <script src="js/ropeManager.js?v=20260305k"></script>
-  <script src="js/lever.js"></script>
-  <script src="js/button.js"></script>
-  <script src="js/resource-manager.js"></script>
-  <script src="js/card-disposal-system.js?v=20260307h"></script>
-  <script src="js/drop-zone-detector.js"></script>
-  <script src="js/commerce-drag-drop-system.js"></script>
-  <script src="js/passive-items-system.js"></script>
-  <script src="js/passive-items-ui.js"></script>
-  <script src="js/mok-animation-cycles.js"></script>
-  <script src="js/mok-visual-engine.js"></script>
-  <script src="js/mok-state-machine.js"></script>
   <script src="js/audio-system.js?v=20260309d"></script>
-  <script src="js/debrief-feed-controller.js?v=20260305i"></script>
   <script src="js/audio-controls-widget.js"></script>
-
-  <script src="js/seeded-rng.js"></script>
-  <script src="js/pet-follower.js"></script>
-  <script src="js/gone-rogue-canvas.js?v=20260305d"></script>
-  <script src="js/lighting-system.js?v=20260305k"></script>
-  <script src="js/tooltip-system.js"></script>
-  <script src="js/dialogue-system.js"></script>
-  <script src="js/drift-vector-system.js?v=20260305f"></script>
-  <script src="js/ground-effects.js?v=20260305f"></script>
-  <script src="js/secret-floors.js"></script>
-  <script src="js/boss-encounters.js"></script>
-  <script src="js/elite-enemies.js"></script>
-  <script src="js/overhead-animator.js"></script>
-  <script src="js/player-stack-manager.js"></script>
-  <script src="js/pancake-stack.js"></script>
-  <script src="js/interactive-items.js"></script>
-  <script src="js/food-database.js"></script>
-  <script src="js/food-ground-interaction.js"></script>
-  <script src="js/item-spawner.js"></script>
-  <script src="js/world-items.js?v=20260301"></script>
-  <script src="js/environmental-synergy.js"></script>
-  <script src="js/utils/name-utils.js"></script>
-  <script src="js/environmental-drag-drop.js"></script>
-  <script src="js/shop-system.js"></script>
-
-  <!-- Agent Testing Integration -->
-  <script src="tests/agent-headless-adapter.js"></script>
-  <script src="js/agent-integration.js"></script>
-
-  <!-- Kernel (external agent decision API) -->
-  <script src="js/kernel-manager.js"></script>
-
-  <!-- User Account System -->
-  <script src="js/user-account.js"></script>
-  <script src="js/login-ui.js"></script>
-  <script src="js/awol-difficulty.js?v=20260307m"></script>
-
-  <script src="js/street-chronicles.js"></script>
-  <script src="js/enemy-intent-system.js?v=20260305m"></script>
-  <script src="js/tile-animation-system.js?v=20260305k"></script>
-  <script src="js/gone-rogue-movement.js?v=20260309c"></script>
-  <script src="js/sprint-trail-system.js?v=20260305b"></script>
-  <script src="js/player-weapon-arrow.js?v=20260305b"></script>
-  <script src="js/expression-database.js"></script>
-  <script src="js/tooltip-thumb.js"></script>
-  <script src="js/seeded-random.js"></script>
-  <script src="js/interior-floors.js"></script>
-  <script src="js/catacombs-generator.js"></script>
-  <script src="js/tutorial-floors.js?v=20260306b"></script>
-  <script src="js/floor-metadata-registry.js"></script>
-  <script src="js/ui/onboarding-splash.js"></script>
-  <script src="js/ui/character-creation.js"></script>
-  <script src="js/ui/welcome-back.js"></script>
-  <script src="js/ui/tier-up-announcement.js"></script>
-  <script src="js/ui/run-summary.js"></script>
-  <script src="js/discovery-system.js"></script>
-  <script src="js/enemy-ai-system.js"></script>
-  <script src="js/loot-spill-system.js?v=20260307k"></script>
-  <script src="js/str-combat-engine.js?v=20260307k"></script>
-  <script src="js/floor-generator.js?v=20260302a"></script>
-  <script src="js/pity-system.js"></script>
-  <script src="js/box-deployment.js"></script>
-  <script src="js/save-load.js"></script>
-  <script src="js/sprite-fx-system.js?v=20260310a"></script>
-  <script src="js/projectile-system.js?v=20260305b"></script>
-  <script src="js/key-loot-gen.js"></script>
-  <script src="js/currency-spawning.js?v=20260307k"></script>
-  <script src="js/rendering-ui.js"></script>
-  <script src="js/vendor-system.js"></script>
-  <script src="js/inventory-management.js?v=20260305g"></script>
-  <script src="js/ground-effects-system.js"></script>
-  <script src="js/card-action-system.js"></script>
-  <script src="js/locked-gate-system.js?v=20260304b"></script>
-  <script src="js/active-item-system.js"></script>
-  <script src="js/vent-system.js"></script>
-  <script src="js/npc-gate-system.js"></script>
-  <script src="js/death-exit-system.js?v=20260307m"></script>
-  <script src="js/cost-printer-system.js"></script>
-  <script src="js/door-contract-system.js"></script>
-  <script src="js/floor-state-tracker.js"></script>
-  <script src="js/door-contract-audio.js?v=20260309a"></script>
-  <script src="js/floor-transition-system.js?v=20260309d"></script>
-  <script src="js/biome-gate-system.js"></script>
-  <script src="js/explosion-system.js?v=20260305j"></script>
-  <script src="js/breakable-system.js?v=20260307k"></script>
-  <script src="js/lantern-drag-system.js?v=20260306a"></script>
-  <script src="js/combat-narration-system.js"></script>
-  <script src="js/pickup-system.js?v=20260307j"></script>
-  <script src="js/agent-command-system.js"></script>
-  <script src="js/interior-floor-system.js?v=20260309a"></script>
-  <script src="js/highscore-system.js"></script>
-  <script src="js/player-interaction-system.js?v=20260307j"></script>
-  <script src="js/stealth-system.js"></script>
-  <script src="js/card-play-system.js?v=20260307p"></script>
-  <script src="js/tap-move-system.js?v=20260305j"></script>
-  <script src="js/onboarding-tutorial.js?v=20260307a"></script>
-  <script src="js/begin-gameplay-system.js?v=20260307a"></script>
-  <script src="js/command-process-system.js"></script>
-  <script src="js/game-tick-system.js?v=20260309c"></script>
-  <script src="js/player-action-system.js"></script>
-  <script src="js/move-player-system.js?v=20260310a"></script>
-  <script src="js/agent-api-system.js"></script>
-  <script src="js/run-start-system.js?v=20260305k"></script>
-  <script src="js/game-state-api.js"></script>
-  <script src="js/tutorial-floor-gen.js?v=20260306b"></script>
-  <script src="js/floor-gen-core.js?v=20260305k"></script>
-  <script src="js/run-progression-state.js"></script>
-  <script src="js/floor-path-enums.js"></script>
-  <script src="js/awareness-config.js"></script>
-  <script src="js/vendor-config.js"></script>
-  <script src="js/boss-floor-registry.js"></script>
-  <script src="js/bonfire-floor-registry.js"></script>
-  <script src="js/box-deploy-config.js"></script>
-  <script src="js/direction-parser.js"></script>
-  <script src="js/biome-data-provider.js"></script>
-  <script src="js/biome-config.js"></script>
-  <script src="js/breakable-spawner.js?v=20260304b"></script>
-  <script src="js/biome-visuals.js"></script>
-  <script src="js/biome-visual-facade.js"></script>
-  <script src="js/game-loop.js"></script>
-  <script src="js/gone-rogue.js?v=20260310a"></script>
-  <script src="js/gone-rogue-mobile.js?v=20260307k"></script>
-  <script src="js/str-combat-window.js?v=20260305n"></script>
-  <script src="js/backup-action-container.js"></script>
-  <script src="js/ground-effect-card-mappings.js"></script>
-  <script src="js/non-combat-event-bus.js"></script>
-  <script src="js/shared-card-renderer.js?v=20260307n"></script>
-  <script src="js/non-combat-state-store.js"></script>
-  <script src="js/gone-rogue-data-registry.js"></script>
-  <script src="js/shared-item-renderer.js"></script>
-  <script src="js/portal-bridge.js"></script>
-  <script src="js/gone-rogue-effect-interpreter.js?v=20260304b"></script>
-  <script src="js/card-state-authority.js?v=20260307h"></script>
-  <script src="js/card-transfer-manager.js?v=20260307f"></script>
-  <script src="js/tag-synergy-engine.js"></script>
-  <script src="js/enemy-card-interactability.js"></script>
-  <script src="js/enemy-hand-display.js"></script>
-  <script src="js/information-duel-engine.js"></script>
-  <script src="js/enemy-card-interaction-handler.js"></script>
-  <script src="js/information-duel-hud.js"></script>
-  <script src="js/rogue-sidebar.js?v=20260304i"></script>
-  <script src="js/non-combat-hud.js?v=20260307h"></script>
-  <script src="js/card-drag-controller.js?v=20260307n"></script>
-  <script src="js/hand-fan-component.js?v=20260307m"></script>
-  <script src="js/str-victory-sequence.js?v=20260307h"></script>
-  <script src="js/str-exit-sequence.js"></script>
-  <script src="js/str-combat-integration.js?v=20260307m"></script>
-  <script src="js/reserve-slots.js"></script>
   <script src="js/login-shell.js"></script>
   <script src="js/api-client.js"></script>
   <script src="js/state-machine.js"></script>
-  <script src="js/terminal/command-router.js"></script>
+
+  <!-- Phase 2: Lazy game module loader (starts background fetch after first paint) -->
+  <script src="js/gone-rogue-loader.js"></script>
+
+  <!-- Phase 3: Main orchestrator + UI chrome (sync, needs Phase 1) -->
   <script src="js/main.js"></script>
   <script src="js/mok-ux.js"></script>
   <script src="js/ui-controls.js?v=20260304i"></script>
-  <script src="js/inventory-ui.js"></script>
   <!-- Dev-only perf HUD (enable with ?perf=1 or localStorage.EYESONLY_PERF=1) -->
   <script src="js/perf-hook.js"></script>
   <!-- Dev-only playtest agent (enable with ?playtest=1, human-UI-bound edge case hunter) -->

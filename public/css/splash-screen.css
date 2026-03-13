@@ -422,7 +422,14 @@
   position: relative;
   width: clamp(210px, 22vw, 290px);
   height: clamp(340px, 38vw, 480px);
-  border-radius: 16px;
+  border-radius: 4px;
+  /* Chamfered clip — matches 3D geometry corners (15% chamfer) */
+  clip-path: polygon(
+    15% 0%, 85% 0%,     /* top edge */
+    100% 10%, 100% 90%, /* right edge */
+    85% 100%, 15% 100%,  /* bottom edge */
+    0% 90%, 0% 10%       /* left edge */
+  );
   overflow: visible;
   cursor: default;
   transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
@@ -444,7 +451,7 @@
 .coin-card-back {
   position: absolute;
   inset: 0;
-  border-radius: 16px;
+  border-radius: 4px;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   transform: rotateY(180deg);
@@ -469,7 +476,7 @@
   position: absolute;
   inset: 0;
   z-index: 5;
-  border-radius: 16px;
+  border-radius: 4px;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.5s ease;
@@ -1481,7 +1488,7 @@
      Use a dark transparent background to blend letterbox bands. */
   .coin-card-canvas {
     background: rgba(8, 6, 4, 0.85);
-    border-radius: 12px;
+    border-radius: 4px;
   }
 }
 

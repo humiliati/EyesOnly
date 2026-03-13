@@ -54,7 +54,8 @@
     width:  2.1,
     height: 3.4,
     depth:  0.50,
-    radius: 0.14,
+    radius: 0.14,       // legacy — not used for chamfered shape
+    chamfer: 0.32,      // chamfer cut size at each corner (world units)
     bevel:  0.12,
     bevelSegs: 5,
     curveSegs: 12,
@@ -137,25 +138,27 @@
   };
 
   /* ============================================================
-     GEOMETRY — Rounded-rect extrusion with bevel
+     GEOMETRY — Chamfered-corner extrusion with bevel
+     Octagonal shape: 45° corner cuts like the reference dossier cards
      ============================================================ */
-  function rrShape(w, h, r) {
+  function chamfShape(w, h, c) {
     var s = new T.Shape();
     var hw = w / 2, hh = h / 2;
-    s.moveTo(-hw + r, -hh);
-    s.lineTo( hw - r, -hh);
-    s.quadraticCurveTo( hw, -hh, hw, -hh + r);
-    s.lineTo( hw,  hh - r);
-    s.quadraticCurveTo( hw,  hh, hw - r,  hh);
-    s.lineTo(-hw + r,  hh);
-    s.quadraticCurveTo(-hw,  hh, -hw,  hh - r);
-    s.lineTo(-hw, -hh + r);
-    s.quadraticCurveTo(-hw, -hh, -hw + r, -hh);
+    // clockwise from top-left chamfer
+    s.moveTo(-hw + c, -hh);      // top edge start
+    s.lineTo( hw - c, -hh);      // top edge end
+    s.lineTo( hw, -hh + c);      // top-right chamfer
+    s.lineTo( hw,  hh - c);      // right edge
+    s.lineTo( hw - c,  hh);      // bottom-right chamfer
+    s.lineTo(-hw + c,  hh);      // bottom edge
+    s.lineTo(-hw,  hh - c);      // bottom-left chamfer
+    s.lineTo(-hw, -hh + c);      // left edge
+    s.closePath();
     return s;
   }
 
   function buildGeo() {
-    var geo = new T.ExtrudeGeometry(rrShape(CFG.width, CFG.height, CFG.radius), {
+    var geo = new T.ExtrudeGeometry(chamfShape(CFG.width, CFG.height, CFG.chamfer), {
       depth:          CFG.depth,
       bevelEnabled:   true,
       bevelThickness: CFG.bevel,
@@ -203,6 +206,21 @@
   /* ============================================================
      CANVAS HELPERS
      ============================================================ */
+  // Chamfered rectangle path (octagonal)
+  function chamfPath(ctx, x, y, w, h, c) {
+    ctx.beginPath();
+    ctx.moveTo(x + c, y);
+    ctx.lineTo(x + w - c, y);
+    ctx.lineTo(x + w, y + c);
+    ctx.lineTo(x + w, y + h - c);
+    ctx.lineTo(x + w - c, y + h);
+    ctx.lineTo(x + c, y + h);
+    ctx.lineTo(x, y + h - c);
+    ctx.lineTo(x, y + c);
+    ctx.closePath();
+  }
+
+  // Legacy rounded-rect path (still used for inner panel)
   function rrPath(ctx, x, y, w, h, r) {
     ctx.beginPath();
     ctx.moveTo(x + r, y);
@@ -217,9 +235,58 @@
     ctx.closePath();
   }
 
+  // Per-mission color palette — matches reference dossier tints
+  function _cardPalette(m) {
+    var palettes = {
+      '\u2660': { bg: '#0c0818', mid: '#2a1858', hi: '#5038a0', glow: '#8060d0', name: 'indigo' },
+      '\u2663': { bg: '#200c08', mid: '#6a1810', hi: '#c03020', glow: '#e05838', name: 'crimson' },
+      '\u2665': { bg: '#041808', mid: '#0c3818', hi: '#1a6830', glow: '#30a050', name: 'emerald' },
+      '\u2666': { bg: '#1a1208', mid: '#5a3a10', hi: '#a07020', glow: '#d0a040', name: 'amber' },
+    };
+    return palettes[m.suit] || palettes['\u2660'];
+  }
+
+  // Draw triangular brass corner accent at a chamfered corner
+  function _drawCornerAccent(g, cx, cy, size, angle) {
+    g.save();
+    g.translate(cx, cy);
+    g.rotate(angle);
+    g.beginPath();
+    g.moveTo(0, 0);
+    g.lineTo(size, 0);
+    g.lineTo(0, size);
+    g.closePath();
+    g.fill();
+    // Highlight edge
+    g.strokeStyle = 'rgba(255,240,180,0.4)';
+    g.lineWidth = 1.5;
+    g.beginPath();
+    g.moveTo(size * 0.15, size * 0.15);
+    g.lineTo(size * 0.8, size * 0.15);
+    g.moveTo(size * 0.15, size * 0.15);
+    g.lineTo(size * 0.15, size * 0.8);
+    g.stroke();
+    g.restore();
+  }
+
+  // Draw all 4 corner accents for a chamfered frame
+  function _drawAllCornerAccents(g, w, h, accentSize) {
+    var margin = Math.round(w * 0.02);
+    var cf = Math.round(w * 0.15); // canvas chamfer offset
+    // Top-left
+    _drawCornerAccent(g, margin + 2, margin + 2, accentSize, 0);
+    // Top-right
+    _drawCornerAccent(g, w - margin - 2, margin + 2, accentSize, Math.PI / 2);
+    // Bottom-right
+    _drawCornerAccent(g, w - margin - 2, h - margin - 2, accentSize, Math.PI);
+    // Bottom-left
+    _drawCornerAccent(g, margin + 2, h - margin - 2, accentSize, -Math.PI / 2);
+  }
+
   // Emoji font stack — render suit symbols at max quality
   var EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",serif';
   var MONO_FONT  = '"Courier New",monospace';
+  var TITLE_FONT = '"Impact","Arial Black","Helvetica Neue",sans-serif';
 
   /* ============================================================
      SHARED STARFIELD TEXTURE — one static field, all cards share it
@@ -362,250 +429,231 @@
   }
 
   /* ============================================================
-     DEEP GROOVE MASK — defines dead-space areas where starfield shows.
-     Only fills WIDE gaps between content blocks and the frame.
-     Starfield never touches raised information surfaces.
-
-     Card content layout (vertical %, approx):
-       0.00–0.04  outer rim
-       0.04–0.065 ── GROOVE: perimeter band top
-       0.065–0.12 classified stamp + label zone
-       0.12–0.14  ── thin brass separator
-       0.14–0.28  ── GROOVE: dead space between header & central icon
-       0.28–0.60  central suit icon + concentric rings zone
-       0.60–0.65  ── GROOVE: dead space between icon & title
-       0.65–0.82  title + description zone
-       0.82–0.86  ── thin brass separator
-       0.86–0.94  ── GROOVE: dead space below info
-       0.94–0.96  ── GROOVE: perimeter band bottom
-       0.96–1.00  outer rim
+     GROOVE CHANNEL — narrow recessed ring between frame and inner panel
+     Starfield peeks through this gap. Much simpler than the old
+     multi-zone approach — just one continuous groove ring.
      ============================================================ */
-  function _drawGrooveChannels(g, w, h) {
-    var inL = Math.round(w * 0.06);   // left inset (inside inner border)
-    var inR = w - inL;                 // right inset
-    var gw  = inR - inL;              // groove width
+  function _drawGrooveRing(g, w, h) {
+    // Groove sits between outer frame and inner content panel
+    var frameW = Math.round(w * 0.08);   // frame thickness
+    var grooveW = Math.round(w * 0.025); // groove width
+    var cf = Math.round(w * 0.15);       // chamfer offset in canvas coords
 
-    // ── Perimeter band: between outer rim and inner border ──
-    // Top perimeter strip
-    g.fillRect(inL, Math.round(h * 0.04), gw, Math.round(h * 0.025));
-    // Bottom perimeter strip
-    g.fillRect(inL, Math.round(h * 0.94), gw, Math.round(h * 0.025));
-    // Left perimeter strip (full height between top and bottom bands)
-    g.fillRect(Math.round(w * 0.03), Math.round(h * 0.04), Math.round(w * 0.03), Math.round(h * 0.925));
-    // Right perimeter strip
-    g.fillRect(Math.round(w * 0.94), Math.round(h * 0.04), Math.round(w * 0.03), Math.round(h * 0.925));
+    // Outer edge of groove (inside frame)
+    var ox = frameW, oy = frameW;
+    var ow = w - frameW * 2, oh = h - frameW * 2;
+    var oc = cf - frameW + grooveW;
 
-    // ── Dead zone 1: between header (classified/label) and central icon ──
-    // This is the widest open area — spans ~14% of height
-    var dz1_t = Math.round(h * 0.155);
-    var dz1_b = Math.round(h * 0.275);
-    g.fillRect(inL, dz1_t, gw, dz1_b - dz1_t);
-
-    // ── Dead zone 2: between central icon/rings and title block ──
-    var dz2_t = Math.round(h * 0.60);
-    var dz2_b = Math.round(h * 0.655);
-    g.fillRect(inL, dz2_t, gw, dz2_b - dz2_t);
-
-    // ── Dead zone 3: below description, above bottom perimeter ──
-    var dz3_t = Math.round(h * 0.835);
-    var dz3_b = Math.round(h * 0.935);
-    g.fillRect(inL, dz3_t, gw, dz3_b - dz3_t);
-
-    // ── Corner notch grooves (triangular recesses at each corner) ──
-    var cn = Math.round(w * 0.07);
-    // Top-left
-    g.beginPath();
-    g.moveTo(inL, Math.round(h * 0.065));
-    g.lineTo(inL + cn, Math.round(h * 0.065));
-    g.lineTo(inL, Math.round(h * 0.065) + cn);
-    g.closePath();
+    // Draw groove as a filled chamfered ring
+    // Outer boundary
+    chamfPath(g, ox, oy, ow, oh, Math.max(4, oc));
     g.fill();
-    // Top-right
-    g.beginPath();
-    g.moveTo(inR, Math.round(h * 0.065));
-    g.lineTo(inR - cn, Math.round(h * 0.065));
-    g.lineTo(inR, Math.round(h * 0.065) + cn);
-    g.closePath();
+
+    // Punch out inner boundary (groove width inward)
+    g.save();
+    g.globalCompositeOperation = 'destination-out';
+    var ix = ox + grooveW, iy = oy + grooveW;
+    var iw = ow - grooveW * 2, ih = oh - grooveW * 2;
+    var ic = Math.max(4, oc - grooveW);
+    chamfPath(g, ix, iy, iw, ih, ic);
     g.fill();
-    // Bottom-left
-    g.beginPath();
-    g.moveTo(inL, Math.round(h * 0.935));
-    g.lineTo(inL + cn, Math.round(h * 0.935));
-    g.lineTo(inL, Math.round(h * 0.935) - cn);
-    g.closePath();
-    g.fill();
-    // Bottom-right
-    g.beginPath();
-    g.moveTo(inR, Math.round(h * 0.935));
-    g.lineTo(inR - cn, Math.round(h * 0.935));
-    g.lineTo(inR, Math.round(h * 0.935) - cn);
-    g.closePath();
-    g.fill();
+    g.restore();
   }
 
   /* ============================================================
      FACE DIFFUSE TEXTURE
-     Primarily polished brass coin surface.
-     Deep grooves are dark (shader puts starfield there).
+     Dossier-style: brass frame + colored inner panel + silhouette art.
+     Matches "Top Secret Travel" reference aesthetic.
      ============================================================ */
   function genFaceTex(m) {
     var w = CFG.texW, h = CFG.texH;
     var c = document.createElement('canvas');
     c.width = w; c.height = h;
     var g = c.getContext('2d');
+    var pal = _cardPalette(m);
 
-    // ── Base: polished brass surface across entire coin ──
+    var frameW = Math.round(w * 0.08);
+    var cf     = Math.round(w * 0.15);  // chamfer in canvas px
+    var cx     = w / 2;
+    var cy     = h * 0.55; // center of art area (slightly below middle)
+
+    // ── 1. Fill entire face with brass frame color ──
     var brassBg = g.createLinearGradient(0, 0, w, h);
-    brassBg.addColorStop(0,   '#c09838');
-    brassBg.addColorStop(0.3, '#d4a843');
-    brassBg.addColorStop(0.5, '#dab550');
-    brassBg.addColorStop(0.7, '#c89e3a');
-    brassBg.addColorStop(1,   '#b08828');
+    brassBg.addColorStop(0,   '#8a7028');
+    brassBg.addColorStop(0.25,'#c09838');
+    brassBg.addColorStop(0.5, '#d4a843');
+    brassBg.addColorStop(0.75,'#c09838');
+    brassBg.addColorStop(1,   '#8a7028');
     g.fillStyle = brassBg;
     g.fillRect(0, 0, w, h);
 
-    // Subtle radial polish highlight
-    var polish = g.createRadialGradient(w * 0.4, h * 0.35, 0, w * 0.4, h * 0.35, w * 0.5);
-    polish.addColorStop(0, 'rgba(255,240,200,0.12)');
-    polish.addColorStop(1, 'rgba(0,0,0,0.05)');
-    g.fillStyle = polish;
-    g.fillRect(0, 0, w, h);
-
-    var cx = w / 2, cy = h * 0.44;
-    var brass      = '#d4a843';
-    var brassLight = '#f0d060';
-    var brassDark  = '#8a6820';
-
-    // ── Deep groove channels (dark recesses where starfield shows) ──
+    // Subtle metallic grain on frame
     g.save();
-    g.fillStyle = '#0a0808';
-    _drawGrooveChannels(g, w, h);
-    g.restore();
-
-    // ── Shallow decorative engraving (rifle-style scrollwork) ──
-    // These are etched INTO the brass but remain metallic (not deep/dark)
-    g.save();
-    g.strokeStyle = 'rgba(100,75,20,0.5)';
-    g.fillStyle = 'rgba(100,75,20,0.3)';
-    _drawEngraving(g, w, h);
-    g.restore();
-
-    // ── Outer rim border (highest polish, continuous raised edge) ──
-    g.save();
-    g.strokeStyle = brassLight;
-    g.lineWidth = 12;
-    g.shadowColor = 'rgba(255,220,120,0.25)';
-    g.shadowBlur = 6;
-    rrPath(g, 10, 10, w - 20, h - 20, 16);
-    g.stroke();
-    // Inner frame border (same height as rim, creates continuous frame)
-    g.shadowBlur = 3;
-    g.strokeStyle = brass;
-    g.lineWidth = 5;
-    var inX = Math.round(w * 0.06);
-    var inY = Math.round(h * 0.04);
-    rrPath(g, inX, inY, w - inX * 2, h - inY * 2, 8);
-    g.stroke();
-    g.restore();
-
-    // ── Concentric engraved rings (shallow etch, still metallic) ──
-    for (var ring = 1; ring <= 8; ring++) {
-      var rr = ring * w * 0.042;
-      g.strokeStyle = 'rgba(140,105,30,' + Math.max(0.10, 0.30 - ring * 0.025) + ')';
-      g.lineWidth = ring % 3 === 0 ? 1.5 : 0.8;
-      g.beginPath();
-      g.arc(cx, cy, rr, 0, Math.PI * 2);
-      g.stroke();
+    g.globalAlpha = 0.06;
+    for (var gy = 0; gy < h; gy += 2) {
+      var gr = 180 + Math.round(Math.sin(gy * 0.3) * 30);
+      g.fillStyle = 'rgb(' + gr + ',' + Math.round(gr * 0.85) + ',' + Math.round(gr * 0.5) + ')';
+      g.fillRect(0, gy, w, 1);
     }
+    g.restore();
 
-    // ── Suit insignia (highest elevation, bright polished emblem) ──
+    // ── 2. Groove ring (dark recess between frame and inner panel) ──
     g.save();
-    var suitSize = Math.round(w * 0.26);
+    g.fillStyle = '#060408';
+    _drawGrooveRing(g, w, h);
+    g.restore();
+
+    // ── 3. Inner content panel: colored gradient ──
+    var panelX = frameW + Math.round(w * 0.025);
+    var panelY = frameW + Math.round(h * 0.02);
+    var panelW = w - panelX * 2;
+    var panelH = h - panelY * 2;
+    var panelCf = Math.max(4, cf - frameW - Math.round(w * 0.025));
+
+    g.save();
+    chamfPath(g, panelX, panelY, panelW, panelH, panelCf);
+    g.clip();
+
+    // Dark base
+    g.fillStyle = pal.bg;
+    g.fillRect(panelX, panelY, panelW, panelH);
+
+    // Radial color glow — centered in content area
+    var glowR = Math.max(panelW, panelH) * 0.55;
+    var glow = g.createRadialGradient(cx, cy, 0, cx, cy, glowR);
+    glow.addColorStop(0,   pal.hi);
+    glow.addColorStop(0.5, pal.mid);
+    glow.addColorStop(1,   pal.bg);
+    g.fillStyle = glow;
+    g.fillRect(panelX, panelY, panelW, panelH);
+
+    // Edge vignette
+    var vig = g.createRadialGradient(cx, h * 0.5, glowR * 0.3, cx, h * 0.5, glowR * 1.1);
+    vig.addColorStop(0, 'transparent');
+    vig.addColorStop(1, 'rgba(0,0,0,0.5)');
+    g.fillStyle = vig;
+    g.fillRect(panelX, panelY, panelW, panelH);
+
+    // ── 4. Suit symbol as large dark silhouette ──
+    g.save();
+    var suitSize = Math.round(w * 0.42);
     g.font = suitSize + 'px ' + EMOJI_FONT;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    // Dark undercut
-    g.fillStyle = 'rgba(80,60,15,0.7)';
-    g.fillText(m.suit, cx + 1, cy + 2);
-    // Main bright brass
-    g.fillStyle = brassLight;
-    g.shadowColor = 'rgba(255,220,100,0.3)';
-    g.shadowBlur = 10;
+    g.fillStyle = 'rgba(0,0,0,0.65)';
     g.fillText(m.suit, cx, cy);
-    // Specular highlight
-    g.shadowColor = 'transparent';
-    g.shadowBlur = 0;
-    g.globalAlpha = 0.25;
-    g.fillStyle = '#ffffff';
+    // Subtle colored rim on the silhouette
+    g.globalAlpha = 0.15;
+    g.fillStyle = pal.glow;
     g.fillText(m.suit, cx - 1, cy - 1);
     g.restore();
 
-    // ── Classified stamp ──
+    // ── 5. Decorative stamp elements (passport-style) ──
     g.save();
-    g.font = 'bold ' + Math.round(w * 0.032) + 'px ' + MONO_FONT;
-    g.textAlign = 'center';
-    g.fillStyle = 'rgba(180,60,60,0.65)';
-    g.fillText(m.classified || 'EYES ONLY', cx, h * 0.10);
+    g.globalAlpha = 0.12;
+    g.strokeStyle = pal.glow;
+    g.lineWidth = 1.5;
+    // Circular stamp top-right area
+    g.beginPath();
+    g.arc(cx + panelW * 0.28, panelY + panelH * 0.18, w * 0.06, 0, Math.PI * 2);
+    g.stroke();
+    g.beginPath();
+    g.arc(cx + panelW * 0.28, panelY + panelH * 0.18, w * 0.045, 0, Math.PI * 2);
+    g.stroke();
+    // Rectangular stamp bottom-left
+    g.strokeRect(panelX + panelW * 0.08, panelY + panelH * 0.75, w * 0.12, w * 0.06);
+    // Diagonal stamp text
+    g.translate(panelX + panelW * 0.15, panelY + panelH * 0.82);
+    g.rotate(-0.15);
+    g.font = Math.round(w * 0.018) + 'px ' + MONO_FONT;
+    g.fillStyle = pal.glow;
+    g.globalAlpha = 0.10;
+    g.fillText('APPROVED', 0, 0);
     g.restore();
 
-    // ── Label ──
+    // ── 6. Title text — crystal clear white ──
     g.save();
-    g.font = Math.round(w * 0.024) + 'px ' + MONO_FONT;
+    var titleSize = Math.round(w * 0.07);
+    g.font = 'bold ' + titleSize + 'px ' + TITLE_FONT;
     g.textAlign = 'center';
-    g.fillStyle = brassDark;
-    g.fillText(m.label || 'MISSION DOSSIER', cx, h * 0.135);
+    g.fillStyle = '#ffffff';
+    g.shadowColor = 'rgba(0,0,0,0.6)';
+    g.shadowBlur = 6;
+    g.shadowOffsetY = 2;
+
+    // Multi-line title support — split into words, 2 lines
+    var words = (m.classified || 'TOP SECRET').toUpperCase().split(' ');
+    var line1 = words.slice(0, Math.ceil(words.length / 2)).join(' ');
+    var line2 = words.slice(Math.ceil(words.length / 2)).join(' ');
+    var titleY = panelY + panelH * 0.22;
+    g.fillText(line1, cx, titleY);
+    if (line2) g.fillText(line2, cx, titleY + titleSize * 1.1);
     g.restore();
 
-    // ── Title (raised brass lettering) ──
+    // ── 7. Subtitle / mission label ──
     g.save();
-    g.font = 'bold ' + Math.round(w * 0.046) + 'px ' + MONO_FONT;
+    g.font = Math.round(w * 0.028) + 'px ' + MONO_FONT;
     g.textAlign = 'center';
-    g.fillStyle = brassLight;
-    g.shadowColor = 'rgba(60,45,10,0.8)';
+    g.fillStyle = 'rgba(255,255,255,0.5)';
+    g.shadowColor = 'rgba(0,0,0,0.4)';
+    g.shadowBlur = 3;
+    g.fillText((m.label || 'MISSION DOSSIER').toUpperCase(), cx, panelY + panelH * 0.88);
+    g.restore();
+
+    // ── 8. Mission title at bottom ──
+    g.save();
+    g.font = 'bold ' + Math.round(w * 0.036) + 'px ' + MONO_FONT;
+    g.textAlign = 'center';
+    g.fillStyle = 'rgba(255,255,255,0.75)';
+    g.shadowColor = 'rgba(0,0,0,0.5)';
+    g.shadowBlur = 4;
+    g.fillText(m.title.toUpperCase(), cx, panelY + panelH * 0.94);
+    g.restore();
+
+    g.restore(); // end panel clip
+
+    // ── 9. Brass frame highlight edges ──
+    g.save();
+    g.strokeStyle = '#f0d060';
+    g.lineWidth = 3;
+    g.shadowColor = 'rgba(255,220,120,0.3)';
+    g.shadowBlur = 4;
+    chamfPath(g, 4, 4, w - 8, h - 8, cf);
+    g.stroke();
+    // Inner frame line
+    g.strokeStyle = '#d4a843';
+    g.lineWidth = 2;
     g.shadowBlur = 2;
-    g.shadowOffsetY = 1;
-    g.fillText(m.title.toUpperCase(), cx, h * 0.72);
+    var ifx = frameW - 2, ify = frameW - 2;
+    chamfPath(g, ifx, ify, w - ifx * 2, h - ify * 2, Math.max(4, cf - frameW + 4));
+    g.stroke();
     g.restore();
 
-    // ── Description ──
+    // ── 10. Corner accents (triangular brass pieces at chamfers) ──
     g.save();
-    g.font = Math.round(w * 0.026) + 'px ' + MONO_FONT;
-    g.textAlign = 'center';
-    g.fillStyle = brassDark;
-    g.fillText(m.desc || '', cx, h * 0.78);
-    g.restore();
-
-    // ── Corner suit marks ──
-    g.save();
-    g.font = Math.round(w * 0.05) + 'px ' + EMOJI_FONT;
-    g.fillStyle = brass;
-    g.globalAlpha = 0.6;
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText(m.suit, w * 0.12, h * 0.075);
-    g.save();
-    g.translate(w * 0.88, h * 0.925);
-    g.rotate(Math.PI);
-    g.fillText(m.suit, 0, 0);
-    g.restore();
+    var accentGrad = g.createLinearGradient(0, 0, w, h);
+    accentGrad.addColorStop(0, '#d4a843');
+    accentGrad.addColorStop(0.5, '#f0d060');
+    accentGrad.addColorStop(1, '#c09030');
+    g.fillStyle = accentGrad;
+    var accentSz = Math.round(cf * 0.6);
+    _drawAllCornerAccents(g, w, h, accentSz);
     g.restore();
 
     return c;
   }
 
   /* ============================================================
-     HEIGHT MAP — Controls where starfield appears.
+     HEIGHT MAP — Controls starfield visibility + physical relief.
+     New layout: raised brass frame + corner accents, recessed inner panel,
+     groove ring between frame and panel.
 
-     Height levels (vertex hierarchy):
-       1.0 (white)  = outer rim, inner border, text, icons, info
-                      (highest relief — continuous raised edge)
-       0.85         = polished brass surface between features
-       0.60         = shallow decorative etching (scrollwork)
-       0.30         = groove edge transition ramp
-       0.0  (black) = deep dead-space grooves (starfield windows)
-
-     The rim + all information sits at maximum height.
-     Only wide dead-space gaps between content blocks drop to black.
+     Height tiers:
+       1.0 (white) = frame, corner accents, frame edges
+       0.70        = inner content panel surface
+       0.50        = text areas (slightly raised above panel)
+       0.30        = groove edge ramp
+       0.0 (black) = groove ring (starfield window)
      ============================================================ */
   function genHeightMap(m) {
     var w = CFG.texW, h = CFG.texH;
@@ -613,140 +661,67 @@
     c.width = w; c.height = h;
     var g = c.getContext('2d');
 
-    var cx = w / 2, cy = h * 0.44;
+    var frameW = Math.round(w * 0.08);
+    var cf     = Math.round(w * 0.15);
+    var cx     = w / 2;
+    var cy     = h * 0.55;
 
-    // ── Start at raised brass surface (~0.85) across entire face ──
-    g.fillStyle = '#d9d9d9'; // ~85% gray = brass plateau
+    // ── Frame area: maximum height (white) ──
+    g.fillStyle = '#ffffff';
     g.fillRect(0, 0, w, h);
 
-    // ── Paint deep groove channels BLACK (0.0 = starfield windows) ──
+    // ── Groove ring: deep black (starfield) ──
     g.save();
     g.fillStyle = '#000000';
-    _drawGrooveChannels(g, w, h);
+    _drawGrooveRing(g, w, h);
     g.restore();
 
-    // ── Groove edge transition ramps (~0.30 gray border around grooves) ──
-    // Paint a slightly wider version of the grooves in dark gray BEHIND them
-    // to create a smooth height transition at groove edges
+    // ── Groove edge ramp (soft transition) ──
     g.save();
     g.shadowColor = '#404040';
-    g.shadowBlur = 8;
-    g.fillStyle = 'rgba(0,0,0,0)'; // invisible fill, but shadow paints the ramp
-    _drawGrooveChannels(g, w, h);
+    g.shadowBlur = 6;
+    g.fillStyle = 'rgba(0,0,0,0)';
+    _drawGrooveRing(g, w, h);
     g.restore();
 
-    // ── Shallow engraving scratches (~0.60 = etched but still metal) ──
+    // ── Inner content panel: mid-height gray ──
+    var panelX = frameW + Math.round(w * 0.025);
+    var panelY = frameW + Math.round(h * 0.02);
+    var panelW = w - panelX * 2;
+    var panelH = h - panelY * 2;
+    var panelCf = Math.max(4, cf - frameW - Math.round(w * 0.025));
+
     g.save();
-    g.strokeStyle = '#999999';
-    g.fillStyle = '#999999';
-    _drawEngraving(g, w, h);
+    g.fillStyle = '#b3b3b3'; // ~0.70 height
+    chamfPath(g, panelX, panelY, panelW, panelH, panelCf);
+    g.fill();
     g.restore();
 
-    // ── RAISED FEATURES: All at maximum white (1.0) ──
-    // These define the coin's highest vertices — continuous raised edge
+    // ── Corner accents: maximum height (same as frame) ──
+    g.save();
+    g.fillStyle = '#ffffff';
+    var accentSz = Math.round(cf * 0.6);
+    _drawAllCornerAccents(g, w, h, accentSz);
+    g.restore();
 
-    // Outer rim border (widest stroke — defines the coin edge)
+    // ── Frame edge highlights ──
     g.save();
     g.strokeStyle = '#ffffff';
     g.shadowColor = '#ffffff';
-    g.shadowBlur = 8;
-    g.lineWidth = 14;
-    rrPath(g, 12, 12, w - 24, h - 24, 16);
-    g.stroke();
-    // Inner frame border
-    g.shadowBlur = 5;
-    g.lineWidth = 6;
-    rrPath(g, Math.round(w * 0.06), Math.round(h * 0.04),
-           w - Math.round(w * 0.12), h - Math.round(h * 0.08), 8);
-    g.stroke();
-    g.restore();
-
-    // Concentric rings (raised, same max height as rim)
-    g.save();
-    g.strokeStyle = '#f0f0f0';
-    g.shadowColor = '#f0f0f0';
-    g.shadowBlur = 3;
-    for (var ring = 1; ring <= 8; ring++) {
-      var rr = ring * w * 0.042;
-      g.lineWidth = ring % 3 === 0 ? 3.0 : 1.5;
-      g.beginPath();
-      g.arc(cx, cy, rr, 0, Math.PI * 2);
-      g.stroke();
-    }
-    g.restore();
-
-    // Suit symbol (max raised)
-    g.save();
-    g.font = Math.round(w * 0.26) + 'px ' + EMOJI_FONT;
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillStyle = '#ffffff';
-    g.shadowColor = '#ffffff';
-    g.shadowBlur = 10;
-    g.fillText(m.suit, cx, cy);
-    g.restore();
-
-    // Title (max raised — legibility is critical)
-    g.save();
-    g.font = 'bold ' + Math.round(w * 0.046) + 'px ' + MONO_FONT;
-    g.textAlign = 'center';
-    g.fillStyle = '#ffffff';
-    g.shadowColor = '#ffffff';
     g.shadowBlur = 6;
-    g.fillText(m.title.toUpperCase(), cx, h * 0.72);
-    g.restore();
-
-    // Classified stamp (max raised)
-    g.save();
-    g.font = 'bold ' + Math.round(w * 0.032) + 'px ' + MONO_FONT;
-    g.textAlign = 'center';
-    g.fillStyle = '#ffffff';
-    g.shadowColor = '#ffffff';
-    g.shadowBlur = 4;
-    g.fillText(m.classified || 'EYES ONLY', cx, h * 0.10);
-    g.restore();
-
-    // Label (raised)
-    g.save();
-    g.font = Math.round(w * 0.024) + 'px ' + MONO_FONT;
-    g.textAlign = 'center';
-    g.fillStyle = '#f0f0f0';
-    g.shadowColor = '#f0f0f0';
-    g.shadowBlur = 3;
-    g.fillText(m.label || 'MISSION DOSSIER', cx, h * 0.135);
-    g.restore();
-
-    // Description (raised)
-    g.save();
-    g.font = Math.round(w * 0.026) + 'px ' + MONO_FONT;
-    g.textAlign = 'center';
-    g.fillStyle = '#f0f0f0';
-    g.shadowColor = '#f0f0f0';
-    g.shadowBlur = 3;
-    g.fillText(m.desc || '', cx, h * 0.78);
-    g.restore();
-
-    // Corner suit marks (raised)
-    g.save();
-    g.font = Math.round(w * 0.05) + 'px ' + EMOJI_FONT;
-    g.fillStyle = '#ffffff';
-    g.shadowColor = '#ffffff';
-    g.shadowBlur = 4;
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText(m.suit, w * 0.12, h * 0.075);
-    g.save();
-    g.translate(w * 0.88, h * 0.925);
-    g.rotate(Math.PI);
-    g.fillText(m.suit, 0, 0);
-    g.restore();
+    g.lineWidth = 8;
+    chamfPath(g, 4, 4, w - 8, h - 8, cf);
+    g.stroke();
+    g.lineWidth = 4;
+    chamfPath(g, frameW - 2, frameW - 2, w - (frameW - 2) * 2, h - (frameW - 2) * 2, Math.max(4, cf - frameW + 4));
+    g.stroke();
     g.restore();
 
     return c;
   }
 
   /* ============================================================
-     BUMP MAP — Relief detail (same layout, grayscale height info)
+     BUMP MAP — Relief detail for chamfered dossier card
      ============================================================ */
   function genBumpTex(m) {
     var w = CFG.texW, h = CFG.texH;
@@ -754,71 +729,43 @@
     c.width = w; c.height = h;
     var g = c.getContext('2d');
 
-    // Start at brass surface level
-    g.fillStyle = '#b8b8b8';
+    var frameW = Math.round(w * 0.08);
+    var cf     = Math.round(w * 0.15);
+
+    // ── Frame area: raised ──
+    g.fillStyle = '#e0e0e0';
     g.fillRect(0, 0, w, h);
 
-    var cx = w / 2, cy = h * 0.44;
-
-    // ── Deep groove channels (strongly depressed) ──
+    // ── Groove ring: depressed ──
     g.save();
     g.fillStyle = '#303030';
-    _drawGrooveChannels(g, w, h);
+    _drawGrooveRing(g, w, h);
     g.restore();
 
-    // ── Shallow engraving (slightly depressed) ──
-    g.save();
-    g.strokeStyle = '#909090';
-    g.fillStyle = '#909090';
-    _drawEngraving(g, w, h);
-    g.restore();
+    // ── Inner panel: mid-level ──
+    var panelX = frameW + Math.round(w * 0.025);
+    var panelY = frameW + Math.round(h * 0.02);
+    var panelW = w - panelX * 2;
+    var panelH = h - panelY * 2;
+    var panelCf = Math.max(4, cf - frameW - Math.round(w * 0.025));
 
-    // ── Raised concentric rings ──
-    for (var ring = 1; ring <= 10; ring++) {
-      var rr = ring * w * 0.040;
-      g.strokeStyle = ring % 3 === 0 ? '#d8d8d8' : '#c8c8c8';
-      g.lineWidth   = ring % 3 === 0 ? 3.0 : 1.5;
-      g.beginPath();
-      g.arc(cx, cy, rr, 0, Math.PI * 2);
-      g.stroke();
-    }
+    g.fillStyle = '#a0a0a0';
+    chamfPath(g, panelX, panelY, panelW, panelH, panelCf);
+    g.fill();
 
-    // ── Raised outer rim (highest bump, matching height map) ──
-    g.strokeStyle = '#e8e8e8';
-    g.lineWidth = 10;
-    rrPath(g, 10, 10, w - 20, h - 20, 16);
+    // ── Frame edges: max height ──
+    g.strokeStyle = '#f0f0f0';
+    g.lineWidth = 8;
+    chamfPath(g, 4, 4, w - 8, h - 8, cf);
     g.stroke();
-    // Inner frame border
-    g.lineWidth = 5;
-    var inX = Math.round(w * 0.06);
-    var inY = Math.round(h * 0.04);
-    rrPath(g, inX, inY, w - inX * 2, h - inY * 2, 8);
+    g.lineWidth = 4;
+    chamfPath(g, frameW - 2, frameW - 2, w - (frameW - 2) * 2, h - (frameW - 2) * 2, Math.max(4, cf - frameW + 4));
     g.stroke();
 
-    // ── Raised suit symbol ──
-    g.font = Math.round(w * 0.28) + 'px ' + EMOJI_FONT;
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillStyle = '#e0e0e0';
-    g.fillText(m.suit, cx, cy);
-
-    // ── Raised title ──
-    g.font = 'bold ' + Math.round(w * 0.048) + 'px ' + MONO_FONT;
-    g.fillStyle = '#d8d8d8';
-    g.textAlign = 'center';
-    g.fillText(m.title.toUpperCase(), cx, h * 0.73);
-
-    // ── Corner marks ──
-    g.font = Math.round(w * 0.055) + 'px ' + EMOJI_FONT;
-    g.fillStyle = '#c8c8c8';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText(m.suit, w * 0.12, h * 0.075);
-    g.save();
-    g.translate(w * 0.88, h * 0.925);
-    g.rotate(Math.PI);
-    g.fillText(m.suit, 0, 0);
-    g.restore();
+    // ── Corner accents: raised ──
+    g.fillStyle = '#e8e8e8';
+    var accentSz = Math.round(cf * 0.6);
+    _drawAllCornerAccents(g, w, h, accentSz);
 
     return c;
   }
@@ -860,10 +807,11 @@
     g.fillText('ONLY', cx, cy + h * 0.05);
     g.restore();
 
-    // Border
+    // Border — chamfered
+    var cf = Math.round(w * 0.15);
     g.strokeStyle = 'rgba(180,150,60,0.12)';
     g.lineWidth = 3;
-    rrPath(g, 20, 20, w - 40, h - 40, 12);
+    chamfPath(g, 20, 20, w - 40, h - 40, cf - 10);
     g.stroke();
 
     return c;

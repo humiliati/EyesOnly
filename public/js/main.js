@@ -20,37 +20,15 @@
    */
   function start() {
     Terminal.init();
-    LoginShell.init();
-    StreetChronicles.init();
+    if (typeof LoginShell !== 'undefined') LoginShell.init();
 
-    // Initialize user account system
-    if (typeof UserAccount !== 'undefined') {
-      UserAccount.init();
-    }
-    if (typeof LoginUI !== 'undefined') {
-      LoginUI.init();
-    }
+    // StreetChronicles may be in the lazy bundle now — guard it
+    if (typeof StreetChronicles !== 'undefined') StreetChronicles.init();
 
-    // Initialize Terminal Command Router (stats, inventory, dev mode)
-    if (typeof TerminalCommandRouter !== 'undefined') {
-      TerminalCommandRouter.init();
-    }
-
-    // Initialize GAMESTATE and subsystems
-    if (typeof GAMESTATE !== 'undefined') {
-      GAMESTATE.init();
-    }
-    if (typeof GoneRogue !== 'undefined') {
-      GoneRogue.init();
-    }
-    if (typeof ShopSystem !== 'undefined') {
-      ShopSystem.init();
-    }
-
-    // Initialize API client (graceful — does nothing if backend unavailable)
-    if (typeof ApiClient !== 'undefined') {
-      ApiClient.init();
-    }
+    // Game subsystems (GAMESTATE, GoneRogue, ShopSystem, etc.) are loaded
+    // by gone-rogue-loader.js in the background after the splash screen
+    // renders. RogueLoader._initGameSystems() handles their .init() calls
+    // once all scripts are ready. We do NOT block the splash on them.
 
     // Initialize missions (async, loads JSON)
     Missions.init().then(function () {
@@ -220,7 +198,7 @@
     }
 
     // Priority 2: Check if Street Chronicles is active
-    if (StreetChronicles.isActive()) {
+    if (typeof StreetChronicles !== 'undefined' && StreetChronicles.isActive()) {
       _executeStreetAction(StreetChronicles.process(rawInput || ''));
       return;
     }
@@ -425,10 +403,30 @@
         break;
 
       case 'street':
-        _executeStreetAction(StreetChronicles.start());
+        if (typeof RogueLoader !== 'undefined' && !RogueLoader.isLoaded()) {
+          Terminal.writeLine('INITIALIZING FIELD SYSTEMS...', 'system-msg');
+          RogueLoader.ensureLoaded(function () {
+            _executeStreetAction(StreetChronicles.start());
+          });
+        } else {
+          _executeStreetAction(StreetChronicles.start());
+        }
         break;
 
       case 'rogue':
+        // ── Gate: ensure game modules are loaded before entering rogue ──
+        if (typeof RogueLoader !== 'undefined' && !RogueLoader.isLoaded()) {
+          Terminal.writeLine('', 'system-msg');
+          Terminal.writeLine('INITIALIZING FIELD SYSTEMS...', 'system-msg');
+          var _rogueAction = action;
+          RogueLoader.ensureLoaded(function () {
+            Terminal.writeLine('SYSTEMS ONLINE', 'system-msg');
+            Terminal.writeLine('', 'system-msg');
+            // Re-dispatch now that all game modules are ready
+            _executeAction(_rogueAction);
+          });
+          break;
+        }
         console.debug('[main.js] Handling rogue action via GAMESTATE.requestRogue');
         if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.requestRogue === 'function') {
           Terminal.flicker();
