@@ -270,7 +270,9 @@ const SplashScreen = (() => {
               <div class="coin-classified">${mission.classified}</div>
               <div class="coin-label">${mission.label}</div>
             </div>
-            <div class="coin-artwork">
+            <div class="coin-artwork" data-card-index="${index}">
+              <canvas class="starfield-window" width="200" height="200"></canvas>
+              <div class="coin-rings"></div>
               <div class="coin-suit-large ${mission.suitClass}">${mission.suit}</div>
             </div>
             <div class="coin-info">
@@ -341,6 +343,14 @@ const SplashScreen = (() => {
     updateWheelDisplay(missionId);
   }
 
+  /* ---- Decoder Ring Wheel Binding ----
+     Supports:
+     - Click/right-click to cycle
+     - Vertical drag to scrub values (20px = 1 tick)
+     - Edge-exit acceleration: when drag leaves card bounds, value auto-advances
+       in the last direction at accelerating speed; card stays hovered until release
+     - Mouse scroll on wheel element
+  */
   function bindWheels() {
     var wheels = splashEl.querySelectorAll('.coin-wheel');
     wheels.forEach(function (wheel) {
@@ -363,30 +373,92 @@ const SplashScreen = (() => {
         adjustGroup(missionId, -1);
       });
 
-      // Drag support: track Y delta
+      // Drag support: track Y delta + edge-exit acceleration
       var dragStartY = null;
       var dragAccum = 0;
+      var lastDragDir = 0;          // +1 or -1: last drag direction
+      var edgeAccelTimer = null;    // setInterval for auto-advance outside card
+      var edgeAccelDelay = 200;     // starting ms between ticks (gets faster)
+      var ownerCard = null;         // the .coin-card ancestor
+
+      function getOwnerCard() {
+        if (!ownerCard) ownerCard = wheel.closest('.coin-card');
+        return ownerCard;
+      }
+
+      function isPointerInsideCard(clientX, clientY) {
+        var card = getOwnerCard();
+        if (!card) return true;
+        var r = card.getBoundingClientRect();
+        return clientX >= r.left && clientX <= r.right &&
+               clientY >= r.top  && clientY <= r.bottom;
+      }
+
+      function startEdgeAccel(dir) {
+        if (edgeAccelTimer) return; // already running
+        edgeAccelDelay = 200;
+        edgeAccelTimer = setInterval(function () {
+          _ensureAudioInit();
+          adjustGroup(missionId, dir);
+          // Accelerate: reduce interval down to 50ms floor
+          if (edgeAccelDelay > 50) {
+            edgeAccelDelay = Math.max(50, edgeAccelDelay - 30);
+            clearInterval(edgeAccelTimer);
+            edgeAccelTimer = setInterval(function () {
+              _ensureAudioInit();
+              adjustGroup(missionId, dir);
+            }, edgeAccelDelay);
+          }
+        }, edgeAccelDelay);
+      }
+
+      function stopEdgeAccel() {
+        if (edgeAccelTimer) {
+          clearInterval(edgeAccelTimer);
+          edgeAccelTimer = null;
+        }
+      }
 
       wheel.addEventListener('mousedown', function (e) {
         if (dismissed) return;
         e.stopPropagation();
         dragStartY = e.clientY;
         dragAccum = 0;
+        lastDragDir = 0;
+        isDraggingWheel = true;
+        // Keep card visually hovered for entire drag
+        var card = getOwnerCard();
+        if (card && hoveredCardEl !== card) hoverCard(card);
       });
 
       wheel.addEventListener('touchstart', function (e) {
         if (dismissed) return;
         e.stopPropagation();
-        // preventDefault stops the card from seeing this touch
-        // and prevents page scroll while dragging the wheel
         e.preventDefault();
         dragStartY = e.touches[0].clientY;
         dragAccum = 0;
+        lastDragDir = 0;
         isDraggingWheel = true;
+        var card = getOwnerCard();
+        if (card && hoveredCardEl !== card) hoverCard(card);
       }, { passive: false });
 
-      function onDragMove(clientY) {
+      function onDragMove(clientX, clientY) {
         if (dragStartY === null) return;
+
+        // Check if pointer left the card
+        if (!isPointerInsideCard(clientX, clientY)) {
+          // Outside card: start auto-accelerating in last direction
+          if (lastDragDir !== 0 && !edgeAccelTimer) {
+            startEdgeAccel(lastDragDir);
+          }
+          dragStartY = clientY; // keep tracking so re-entry resumes smoothly
+          return;
+        }
+
+        // Back inside card: stop any edge acceleration
+        stopEdgeAccel();
+
         var dy = dragStartY - clientY;
         dragAccum += dy;
         dragStartY = clientY;
@@ -395,29 +467,39 @@ const SplashScreen = (() => {
         while (dragAccum > 20) {
           _ensureAudioInit();
           adjustGroup(missionId, 1);
+          lastDragDir = 1;
           dragAccum -= 20;
         }
         while (dragAccum < -20) {
           _ensureAudioInit();
           adjustGroup(missionId, -1);
+          lastDragDir = -1;
           dragAccum += 20;
         }
       }
 
+      function onDragEnd() {
+        dragStartY = null;
+        isDraggingWheel = false;
+        stopEdgeAccel();
+        // Don't unhover here — let normal mouseleave handle it
+      }
+
       document.addEventListener('mousemove', function (e) {
-        if (dragStartY !== null) onDragMove(e.clientY);
+        if (dragStartY !== null && wheel.dataset.mission === missionId) {
+          onDragMove(e.clientX, e.clientY);
+        }
       });
 
       document.addEventListener('touchmove', function (e) {
         if (dragStartY !== null && e.touches[0]) {
-          // Prevent page scroll while dragging wheel
           e.preventDefault();
-          onDragMove(e.touches[0].clientY);
+          onDragMove(e.touches[0].clientX, e.touches[0].clientY);
         }
       }, { passive: false });
 
-      document.addEventListener('mouseup', function () { dragStartY = null; isDraggingWheel = false; });
-      document.addEventListener('touchend', function () { dragStartY = null; isDraggingWheel = false; });
+      document.addEventListener('mouseup', onDragEnd);
+      document.addEventListener('touchend', onDragEnd);
 
       // Scroll wheel on the element
       wheel.addEventListener('wheel', function (e) {
@@ -444,6 +526,170 @@ const SplashScreen = (() => {
       container.appendChild(p);
     }
   }
+
+  /* ============================================================
+     Shared Parallax Starfield — All cards are portholes into the
+     same star volume.  4 layers at different speeds/scales create
+     perceived depth.  Each card's canvas gets a slight positional
+     offset so the parallax differs per porthole.
+     ============================================================ */
+
+  var _starfield = {
+    layers: [],       // [{stars: [{x,y,r,brightness}], speed, scale, opacity}]
+    canvases: [],     // [{canvas, ctx, cardIndex, offsetX, offsetY}]
+    time: 0,
+    rafId: null,
+    running: false
+  };
+
+  function _initStarfield() {
+    // Seed shared star data — same stars for all cards
+    var layerDefs = [
+      { count: 80,  rMin: 0.3, rMax: 0.8, speed: 0.0004, scale: 0.35, opacity: 0.35 },  // far — tiny, dim, very slow
+      { count: 50,  rMin: 0.5, rMax: 1.0, speed: 0.001,  scale: 0.55, opacity: 0.5  },  // mid-far
+      { count: 35,  rMin: 0.7, rMax: 1.4, speed: 0.0025, scale: 0.8,  opacity: 0.7  },  // mid
+      { count: 18,  rMin: 1.0, rMax: 2.0, speed: 0.006,  scale: 1.2,  opacity: 0.9  },  // near — large, bright, fast
+    ];
+
+    _starfield.layers = layerDefs.map(function (def) {
+      var stars = [];
+      for (var i = 0; i < def.count; i++) {
+        stars.push({
+          x: Math.random(),
+          y: Math.random(),
+          r: def.rMin + Math.random() * (def.rMax - def.rMin),
+          brightness: 0.5 + Math.random() * 0.5
+        });
+      }
+      return { stars: stars, speed: def.speed, scale: def.scale, opacity: def.opacity };
+    });
+
+    // Collect all starfield canvases
+    var artworks = splashEl.querySelectorAll('.coin-artwork');
+    artworks.forEach(function (aw) {
+      var canvas = aw.querySelector('.starfield-window');
+      if (!canvas) return;
+      var ctx = canvas.getContext('2d');
+      var idx = parseInt(aw.dataset.cardIndex, 10) || 0;
+      // Per-card offset: each card looks at a different part of the starfield
+      // Cards spread across ~0.3 units of the star space
+      var offsetX = (idx - 1.5) * 0.08;
+      var offsetY = (idx % 2 === 0 ? 0.03 : -0.03);
+      _starfield.canvases.push({ canvas: canvas, ctx: ctx, cardIndex: idx, offsetX: offsetX, offsetY: offsetY });
+    });
+
+    if (_starfield.canvases.length > 0 && !_starfield.running) {
+      _starfield.running = true;
+      _starfield.time = 0;
+      _starfieldTick();
+    }
+  }
+
+  function _starfieldTick() {
+    if (!_starfield.running) return;
+    _starfield.rafId = requestAnimationFrame(_starfieldTick);
+
+    _starfield.time += 1;
+    var t = _starfield.time;
+
+    // Very slow cosmic rotation for the far layer (radians)
+    var cosmicAngle = t * 0.00005;
+
+    _starfield.canvases.forEach(function (entry) {
+      var canvas = entry.canvas;
+      var ctx = entry.ctx;
+      var w = canvas.width;
+      var h = canvas.height;
+
+      // Clear to deep space black
+      ctx.fillStyle = '#030208';
+      ctx.fillRect(0, 0, w, h);
+
+      // Subtle nebula glow at center (gravitational well)
+      var grd = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.45);
+      grd.addColorStop(0, 'rgba(40, 20, 60, 0.15)');
+      grd.addColorStop(0.3, 'rgba(20, 10, 40, 0.08)');
+      grd.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = grd;
+      ctx.fillRect(0, 0, w, h);
+
+      // Draw each star layer
+      _starfield.layers.forEach(function (layer, li) {
+        var speed = layer.speed;
+        var scale = layer.scale;
+        var opacity = layer.opacity;
+
+        layer.stars.forEach(function (star) {
+          // Apply time-based drift + per-card offset
+          var sx = star.x + t * speed + entry.offsetX;
+          var sy = star.y + t * speed * 0.6 + entry.offsetY;
+
+          // Far layer gets slow rotation
+          if (li === 0) {
+            var cx = sx - 0.5;
+            var cy = sy - 0.5;
+            var cos = Math.cos(cosmicAngle);
+            var sin = Math.sin(cosmicAngle);
+            sx = cx * cos - cy * sin + 0.5;
+            sy = cx * sin + cy * cos + 0.5;
+          }
+
+          // Wrap to [0, 1]
+          sx = sx % 1; if (sx < 0) sx += 1;
+          sy = sy % 1; if (sy < 0) sy += 1;
+
+          // UV warp toward center for "gravitational well" depth illusion
+          var ux = sx - 0.5;
+          var uy = sy - 0.5;
+          var dist = Math.sqrt(ux * ux + uy * uy);
+          var warpFactor = dist * 0.3 * scale;
+          var px = (sx + ux * warpFactor) * w;
+          var py = (sy + uy * warpFactor) * h;
+
+          // Depth fog: stars near center of viewport fade
+          var fogFade = 1.0 - Math.max(0, Math.min(1, (0.35 - dist) / 0.35)) * 0.4;
+
+          var r = star.r * scale;
+          var alpha = opacity * star.brightness * fogFade;
+
+          // Star glow
+          if (r > 0.8) {
+            ctx.beginPath();
+            ctx.arc(px, py, r * 2.5, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(180, 170, 220, ' + (alpha * 0.12) + ')';
+            ctx.fill();
+          }
+
+          // Star core
+          ctx.beginPath();
+          ctx.arc(px, py, r, 0, Math.PI * 2);
+          // Color: warm white for near stars, cool blue-white for far
+          var warmth = li / 3; // 0 = far (cool), 1 = near (warm)
+          var cr = Math.round(180 + warmth * 40);
+          var cg = Math.round(180 + warmth * 20);
+          var cb = Math.round(220 - warmth * 20);
+          ctx.fillStyle = 'rgba(' + cr + ',' + cg + ',' + cb + ',' + alpha + ')';
+          ctx.fill();
+        });
+      });
+
+      // Vignette around the circular aperture edge — fade to card background
+      var vig = ctx.createRadialGradient(w / 2, h / 2, w * 0.28, w / 2, h / 2, w * 0.5);
+      vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      vig.addColorStop(0.7, 'rgba(6, 5, 3, 0.5)');
+      vig.addColorStop(1, 'rgba(14, 12, 6, 1)');
+      ctx.fillStyle = vig;
+      ctx.fillRect(0, 0, w, h);
+    });
+  }
+
+  function _disposeStarfield() {
+    _starfield.running = false;
+    if (_starfield.rafId) cancelAnimationFrame(_starfield.rafId);
+    _starfield.canvases = [];
+    _starfield.layers = [];
+  }
+
 
   /* ---- Video management ---- */
 
@@ -596,11 +842,13 @@ const SplashScreen = (() => {
 
       card.addEventListener('mouseleave', () => {
         if (dismissed) return;
+        // Suppress un-hover while dragging a wheel or card — card should stay raised
+        if (isDraggingWheel || _dragState) return;
         // Debounce un-hover — if mouse re-enters within 120ms the card stays hovered.
         // This prevents the flicker loop when transform shifts the card boundary.
         _hoverLeaveTimer = setTimeout(() => {
           _hoverLeaveTimer = null;
-          if (hoveredCardEl === card) {
+          if (hoveredCardEl === card && !isDraggingWheel && !_dragState) {
             unhoverAll();
           }
         }, 120);
@@ -717,6 +965,272 @@ const SplashScreen = (() => {
     });
   }
 
+
+  /* ============================================================
+     Card Drag System — Pluck card from fan, drop to select
+     Modeled after CardDragController from hand-fan-component.
+     Drag zones: .coin-artwork dead space (not wheels/buttons).
+     Drop anywhere outside the placeholder = select that card.
+     Drop back on placeholder = return card to fan.
+     ============================================================ */
+
+  var _dragState = null;  // { cardEl, index, ghostEl, placeholderEl, startX, startY, grabOffsetX, grabOffsetY, phase }
+
+  function _createDragGhost(cardEl, grabX, grabY) {
+    var rect = cardEl.getBoundingClientRect();
+    var ghost = cardEl.cloneNode(true);
+
+    // Strip interaction classes
+    ghost.classList.remove('coin-card-hovered', 'splash-selected', 'coin-card-dragging');
+    ghost.classList.add('coin-card-hovered'); // keep it looking raised
+
+    ghost.style.cssText = [
+      'position: fixed',
+      'top: ' + rect.top + 'px',
+      'left: ' + rect.left + 'px',
+      'width: ' + rect.width + 'px',
+      'height: ' + rect.height + 'px',
+      'transform: scale(0.92) rotate(0deg)',
+      'opacity: 0.94',
+      'pointer-events: none',
+      'z-index: 10000',
+      'transition: transform 0.12s ease-out, opacity 0.12s ease-out, box-shadow 0.12s ease-out',
+      'box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(180,160,80,0.12)',
+      'border-radius: 16px',
+      'will-change: transform, left, top'
+    ].join('; ');
+
+    document.body.appendChild(ghost);
+
+    return ghost;
+  }
+
+  function _createDragPlaceholder(cardEl) {
+    var rect = cardEl.getBoundingClientRect();
+    var cs = window.getComputedStyle(cardEl);
+    var ph = document.createElement('div');
+    ph.className = 'splash-card-placeholder';
+    ph.style.width = rect.width + 'px';
+    ph.style.height = rect.height + 'px';
+    ph.style.margin = cs.margin;
+    ph.style.flexShrink = '0';
+
+    // Insert placeholder before the card
+    cardEl.parentNode.insertBefore(ph, cardEl);
+    return ph;
+  }
+
+  function _moveGhost(x, y) {
+    if (!_dragState || !_dragState.ghostEl) return;
+    _dragState.ghostEl.style.left = (x - _dragState.grabOffsetX) + 'px';
+    _dragState.ghostEl.style.top = (y - _dragState.grabOffsetY) + 'px';
+  }
+
+  function _isOverPlaceholder(x, y) {
+    if (!_dragState || !_dragState.placeholderEl) return false;
+    var r = _dragState.placeholderEl.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  }
+
+  function _returnGhostToSlot(done) {
+    var ghost = _dragState.ghostEl;
+    var ph = _dragState.placeholderEl;
+    if (!ghost || !ph) { if (done) done(); return; }
+
+    var phRect = ph.getBoundingClientRect();
+    ghost.style.transition = 'left 0.22s ease-out, top 0.22s ease-out, opacity 0.22s ease-out, transform 0.22s ease-out';
+    ghost.style.left = phRect.left + 'px';
+    ghost.style.top = phRect.top + 'px';
+    ghost.style.opacity = '0.6';
+    ghost.style.transform = 'scale(1) rotate(0deg)';
+
+    setTimeout(function () {
+      _cleanupDrag();
+      if (done) done();
+    }, 240);
+  }
+
+  function _cleanupDrag() {
+    if (!_dragState) return;
+    var cardEl = _dragState.cardEl;
+    var ghost = _dragState.ghostEl;
+    var ph = _dragState.placeholderEl;
+
+    // Remove ghost
+    if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
+    // Remove placeholder
+    if (ph && ph.parentNode) ph.parentNode.removeChild(ph);
+    // Restore card visibility
+    if (cardEl) cardEl.classList.remove('coin-card-dragging');
+
+    _dragState = null;
+  }
+
+  function _beginCardDrag(cardEl, index, ev) {
+    if (_dragState || dismissed) return;
+
+    var rect = cardEl.getBoundingClientRect();
+    _dragState = {
+      cardEl: cardEl,
+      index: index,
+      ghostEl: null,
+      placeholderEl: null,
+      startX: ev.clientX,
+      startY: ev.clientY,
+      grabOffsetX: ev.clientX - rect.left,
+      grabOffsetY: ev.clientY - rect.top,
+      phase: 'dragging'
+    };
+
+    // Ensure card is hovered (raised) during drag
+    if (hoveredCardEl !== cardEl) hoverCard(cardEl);
+
+    // Create placeholder in fan slot
+    _dragState.placeholderEl = _createDragPlaceholder(cardEl);
+
+    // Create ghost
+    _dragState.ghostEl = _createDragGhost(cardEl, ev.clientX, ev.clientY);
+
+    // Hide original card
+    cardEl.classList.add('coin-card-dragging');
+
+    // Sound
+    _ensureAudioInit();
+    _playAudio('card-slide_card_1', { volume: 0.3 });
+  }
+
+  function _updateCardDrag(ev) {
+    if (!_dragState || _dragState.phase !== 'dragging') return;
+    _moveGhost(ev.clientX, ev.clientY);
+
+    // Subtle tilt based on drag velocity
+    var dx = ev.clientX - _dragState.startX;
+    var tilt = Math.max(-8, Math.min(8, dx * 0.04));
+    _dragState.ghostEl.style.transform = 'scale(0.92) rotate(' + tilt + 'deg)';
+  }
+
+  function _endCardDrag(ev) {
+    if (!_dragState || _dragState.phase !== 'dragging') return;
+    _dragState.phase = 'ending';
+
+    var x = ev.clientX;
+    var y = ev.clientY;
+
+    // If dropped back on placeholder → return to fan
+    if (_isOverPlaceholder(x, y)) {
+      _dragState.phase = 'returning';
+      _returnGhostToSlot(function () {
+        // Card returns to its fan position
+      });
+      return;
+    }
+
+    // Dropped outside placeholder → select this mission
+    _dragState.phase = 'deploying';
+    var cardEl = _dragState.cardEl;
+
+    // Quick collapse animation on placeholder
+    if (_dragState.placeholderEl) {
+      _dragState.placeholderEl.classList.add('placeholder-collapsing');
+    }
+
+    // Ghost fades out with a slight scale-up
+    if (_dragState.ghostEl) {
+      _dragState.ghostEl.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+      _dragState.ghostEl.style.opacity = '0';
+      _dragState.ghostEl.style.transform = 'scale(1.05)';
+    }
+
+    _playAudio('card-fold_hand_1', { volume: 0.5 });
+
+    setTimeout(function () {
+      _cleanupDrag();
+      if (cardEl && !dismissed) selectMission(cardEl);
+    }, 250);
+  }
+
+  function _cancelCardDrag() {
+    if (!_dragState) return;
+    _dragState.phase = 'returning';
+    _returnGhostToSlot(function () {});
+  }
+
+  function bindCardDrag() {
+    // Only bind on desktop (pointer events). Mobile uses tap/long-press.
+    if ('ontouchstart' in window && window.innerWidth < 769) return;
+
+    var cards = splashEl.querySelectorAll('.splash-dossier');
+    cards.forEach(function (card) {
+      var artwork = card.querySelector('.coin-artwork');
+      if (!artwork) return;
+
+      var dragStarted = false;
+      var startX = 0, startY = 0;
+
+      artwork.addEventListener('pointerdown', function (e) {
+        if (dismissed || _dragState) return;
+        // Don't capture if it's on a button or wheel
+        if (e.target.closest('.coin-wheel') || e.target.closest('.coin-book-btn')) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+        dragStarted = false;
+        startX = e.clientX;
+        startY = e.clientY;
+
+        function onMove(ev) {
+          var dx = ev.clientX - startX;
+          var dy = ev.clientY - startY;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (!dragStarted && dist > 10) {
+            dragStarted = true;
+            var idx = parseInt(card.dataset.index, 10);
+            _beginCardDrag(card, idx, e);
+          }
+
+          if (dragStarted) {
+            _updateCardDrag(ev);
+          }
+        }
+
+        function onUp(ev) {
+          window.removeEventListener('pointermove', onMove, true);
+          window.removeEventListener('pointerup', onUp, true);
+          window.removeEventListener('pointercancel', onCancel, true);
+
+          if (dragStarted) {
+            _endCardDrag(ev);
+          }
+          dragStarted = false;
+        }
+
+        function onCancel() {
+          window.removeEventListener('pointermove', onMove, true);
+          window.removeEventListener('pointerup', onUp, true);
+          window.removeEventListener('pointercancel', onCancel, true);
+
+          if (dragStarted) {
+            _cancelCardDrag();
+          }
+          dragStarted = false;
+        }
+
+        window.addEventListener('pointermove', onMove, true);
+        window.addEventListener('pointerup', onUp, true);
+        window.addEventListener('pointercancel', onCancel, true);
+      });
+    });
+
+    // Escape key cancels drag
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && _dragState) {
+        _cancelCardDrag();
+      }
+    });
+  }
+
+
   /* ---- Selection & transition ---- */
 
   function selectMission(cardEl) {
@@ -771,6 +1285,7 @@ const SplashScreen = (() => {
 
   function removeSplash() {
     if (!splashEl) return;
+    _disposeStarfield();
     Card3D.dispose();
     splashEl.querySelectorAll('video').forEach(v => {
       v.pause();
@@ -852,11 +1367,15 @@ const SplashScreen = (() => {
     startVideos();
     bindCards();
     bindWheels();
+    bindCardDrag();
     bindCloseButton();
 
-    // Mount Three.js 3D card layer (no-op until implemented)
+    // Mount Three.js 3D card layer (no-op — WebGL disabled)
     var fanEl = document.getElementById('splash-card-fan');
     if (fanEl) Card3D.mount(fanEl, MISSIONS);
+
+    // Start shared parallax starfield (porthole windows in all cards)
+    _initStarfield();
 
     // Initialize wheel displays with prev/next values
     MISSIONS.forEach(function (m) {

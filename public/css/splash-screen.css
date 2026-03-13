@@ -746,7 +746,7 @@
 
 
 /* ---- Coin artwork — large centered suit symbol with knurled dead-space ---- */
-/* Artwork area: ~35% of card height (down from ~50%), symbol stays same size */
+/* Artwork area: ~35% of card height — contains starfield portal + rings + suit icon */
 .coin-artwork {
   flex: 0 1 35%;
   display: flex;
@@ -757,59 +757,168 @@
   min-height: 0;
 }
 
-/* Coin knurling / fine grooves — fills the dead space around the suit.
-   Concentric rings radiate from center like a real commemorative coin. */
-.coin-artwork::before {
-  content: '';
+
+/* ---- Starfield window — circular canvas aperture into shared star volume ---- */
+.starfield-window {
   position: absolute;
-  width: 85%;
+  /* Size: circular, centered, ~65% of artwork width */
+  width: 70%;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: transparent;
-  box-shadow:
-    0 0 0 1px rgba(160, 140, 70, 0.08),
-    0 0 0 4px rgba(120, 100, 50, 0.04),
-    0 0 0 8px rgba(160, 140, 70, 0.06),
-    0 0 0 12px rgba(120, 100, 50, 0.03),
-    0 0 0 16px rgba(160, 140, 70, 0.05),
-    0 0 0 20px rgba(120, 100, 50, 0.03),
-    0 0 0 24px rgba(160, 140, 70, 0.04),
-    0 0 0 28px rgba(120, 100, 50, 0.02),
-    0 0 0 32px rgba(160, 140, 70, 0.03),
-    0 0 0 36px rgba(120, 100, 50, 0.02);
+  z-index: 0;
   pointer-events: none;
-  z-index: 1;
+  /* Soft glow around the aperture edge */
+  box-shadow:
+    inset 0 0 12px rgba(0, 0, 0, 0.8),
+    0 0 8px rgba(20, 10, 40, 0.3);
 }
 
-/* Fine radial hatching — like machined metal lines radiating from center */
-.coin-artwork::after {
+
+/* ---- Concentric coin rings — "That's All Folks" portal descent ----
+   Rings darken and recess progressively toward center, creating the
+   illusion of depth descending into the starfield aperture.
+   Uses radial-gradient layers on a dedicated .coin-rings element. */
+.coin-rings {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  /* The rings: concentric bands that get darker toward center */
+  background:
+    /* Outermost: subtle brass groove at edge of artwork */
+    radial-gradient(circle at center,
+      transparent 0%,
+      transparent 78%,
+      rgba(120, 100, 50, 0.06) 79%,
+      rgba(80, 65, 30, 0.04) 80%,
+      transparent 81%
+    ),
+    /* Ring 6 — outer brass highlight */
+    radial-gradient(circle at center,
+      transparent 0%,
+      transparent 68%,
+      rgba(140, 120, 60, 0.08) 69%,
+      rgba(60, 50, 25, 0.12) 70%,
+      rgba(100, 85, 40, 0.06) 71%,
+      transparent 72%
+    ),
+    /* Ring 5 — mid-outer groove */
+    radial-gradient(circle at center,
+      transparent 0%,
+      transparent 59%,
+      rgba(30, 25, 12, 0.15) 60%,
+      rgba(120, 100, 50, 0.1) 61%,
+      rgba(40, 32, 16, 0.12) 62%,
+      transparent 63%
+    ),
+    /* Ring 4 — deepening */
+    radial-gradient(circle at center,
+      transparent 0%,
+      transparent 50%,
+      rgba(20, 16, 8, 0.2) 51%,
+      rgba(100, 85, 40, 0.08) 52%,
+      rgba(30, 24, 10, 0.18) 53%,
+      transparent 54%
+    ),
+    /* Ring 3 — inner transition */
+    radial-gradient(circle at center,
+      transparent 0%,
+      transparent 42%,
+      rgba(10, 8, 4, 0.25) 43%,
+      rgba(80, 65, 30, 0.06) 44%,
+      rgba(15, 12, 6, 0.22) 45%,
+      transparent 46%
+    ),
+    /* Ring 2 — near the aperture edge */
+    radial-gradient(circle at center,
+      transparent 0%,
+      transparent 35%,
+      rgba(6, 4, 2, 0.35) 36%,
+      rgba(60, 50, 25, 0.05) 37%,
+      rgba(8, 6, 3, 0.3) 38%,
+      transparent 39%
+    ),
+    /* Ring 1 — innermost ring, deepest recess */
+    radial-gradient(circle at center,
+      transparent 0%,
+      transparent 29%,
+      rgba(3, 2, 1, 0.45) 30%,
+      rgba(40, 30, 15, 0.04) 31%,
+      rgba(4, 3, 2, 0.4) 32%,
+      transparent 33%
+    ),
+    /* Depth fill: progressive darkening toward center */
+    radial-gradient(circle at center,
+      rgba(0, 0, 0, 0.6) 0%,
+      rgba(0, 0, 0, 0.5) 20%,
+      rgba(0, 0, 0, 0.25) 40%,
+      rgba(0, 0, 0, 0.08) 60%,
+      transparent 75%
+    );
+}
+
+/* Fine radial hatching between the rings — machined metal lines */
+.coin-rings::after {
   content: '';
   position: absolute;
   inset: 0;
   background: repeating-conic-gradient(
     from 0deg,
-    rgba(180, 160, 80, 0.02) 0deg,
-    transparent 1.5deg,
-    transparent 5deg
+    rgba(180, 160, 80, 0.015) 0deg,
+    transparent 1deg,
+    transparent 4deg
   );
   pointer-events: none;
-  z-index: 1;
+  /* Only show hatching in the ring zone, not over the starfield */
+  mask-image: radial-gradient(circle at center,
+    transparent 0%,
+    transparent 30%,
+    black 35%,
+    black 100%
+  );
+  -webkit-mask-image: radial-gradient(circle at center,
+    transparent 0%,
+    transparent 30%,
+    black 35%,
+    black 100%
+  );
 }
 
+
+/* ---- Suit icon — floats above the portal with bob animation ---- */
 .coin-suit-large {
   font-size: clamp(52px, 7vw, 90px);
-  z-index: 2;
+  z-index: 5;
   line-height: 1;
-  /* Engraved look: dark inset shadow + slight metallic highlight */
+  position: relative;
+  /* Floating shadow: projects onto the card face / ring surface below */
   text-shadow:
-    0 2px 0 rgba(0, 0, 0, 0.8),
-    0 -1px 0 rgba(220, 200, 140, 0.08),
-    0 0 10px rgba(120, 100, 50, 0.08);
-  transition: transform 0.3s ease;
+    0 4px 8px rgba(0, 0, 0, 0.7),
+    0 8px 16px rgba(0, 0, 0, 0.35),
+    0 -1px 0 rgba(220, 200, 140, 0.12),
+    0 0 20px rgba(80, 60, 30, 0.15);
+  /* Bob animation — gentle float above the portal */
+  animation: suit-bob 4s ease-in-out infinite;
+  transition: filter 0.3s ease;
+  /* Subtle highlight rim on top edge */
+  filter: drop-shadow(0 -2px 1px rgba(220, 200, 140, 0.1));
 }
 
+@keyframes suit-bob {
+  0%, 100% { transform: translateY(0px); }
+  50%      { transform: translateY(-5px); }
+}
+
+/* On hover: icon lifts higher and brightens slightly */
 .splash-dossier.coin-card.coin-card-hovered .coin-suit-large {
-  transform: scale(1.05);
+  animation: suit-bob-hover 3s ease-in-out infinite;
+  filter: drop-shadow(0 -2px 2px rgba(220, 200, 140, 0.18))
+          brightness(1.08);
+}
+
+@keyframes suit-bob-hover {
+  0%, 100% { transform: translateY(0px) scale(1.04); }
+  50%      { transform: translateY(-8px) scale(1.06); }
 }
 
 
@@ -985,7 +1094,7 @@
   justify-content: center;
   position: relative;
   z-index: 10;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .coin-wheel {
@@ -1158,6 +1267,45 @@
   0% { transform: scale(1); }
   30% { transform: scale(1.06); }
   100% { transform: scale(1.02); }
+}
+
+
+/* ---- Card drag placeholder (dotted outline in fan slot) ---- */
+.splash-card-placeholder {
+  border: 2px dashed rgba(180, 160, 80, 0.25);
+  border-radius: 16px;
+  background: rgba(120, 100, 50, 0.04);
+  box-sizing: border-box;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.splash-card-placeholder.placeholder-collapsing {
+  animation: splash-placeholder-collapse 0.25s ease-in forwards;
+}
+
+@keyframes splash-placeholder-collapse {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.9); }
+}
+
+/* Card being dragged: hidden in fan, ghost follows pointer */
+.splash-dossier.coin-card.coin-card-dragging {
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* Coin artwork drag cursor — grab dead space around suit */
+.coin-artwork {
+  cursor: grab;
+}
+.coin-artwork:active {
+  cursor: grabbing;
+}
+
+/* Wheels keep ns-resize cursor to indicate vertical drag */
+.coin-wheel {
+  cursor: ns-resize;
 }
 
 
@@ -1368,10 +1516,17 @@
 
   .coin-suit-large {
     font-size: 36px;
+    /* Reduce bob on mobile for compactness */
+    animation: suit-bob 5s ease-in-out infinite;
   }
 
-  .coin-artwork::before {
+  .starfield-window {
     width: 55px;
+  }
+
+  .coin-rings {
+    /* Simplify rings on mobile — fewer visible in small space */
+    opacity: 0.7;
   }
 
   .coin-info {
@@ -1387,6 +1542,7 @@
 
   .coin-mid-row {
     padding: 4px 8px;
+    margin-top: 4px;
   }
 
   .coin-book-btn {
@@ -1498,6 +1654,10 @@
 
   .coin-border-inner::before {
     animation: none;
+  }
+
+  .coin-suit-large {
+    animation: none !important;
   }
 
   .splash-particle {
