@@ -796,9 +796,8 @@ const SplashScreen = (() => {
      * starts render loop. CSS cards stay interactive underneath.
      */
     mount: function (fanEl, missions) {
-      if (window.CardCoin3D) {
-        CardCoin3D.mount(fanEl, missions);
-      }
+      // WebGL 3D renderer disabled — card depth now achieved via CSS preserve-3d.
+      // CardCoin3D.mount() is no longer called.
     },
 
     /** Per-frame render — handled internally by CardCoin3D loop */

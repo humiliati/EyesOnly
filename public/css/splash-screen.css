@@ -145,16 +145,15 @@
   opacity: 1;
 }
 
-/* Dark overlay on video for readability */
+/* Subtle vignette on video — keeps depth without darkening the footage */
 .splash-video-layer::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0.55) 0%,
-    rgba(0, 0, 0, 0.35) 40%,
-    rgba(0, 0, 0, 0.55) 100%
+  background: radial-gradient(
+    ellipse 100% 100% at 50% 50%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.25) 100%
   );
   z-index: 2;
   pointer-events: none;
@@ -356,13 +355,13 @@
   font-family: 'Courier New', monospace;
   font-size: clamp(18px, 3.5vw, 36px);
   font-weight: bold;
-  color: rgba(200, 200, 210, 0.9);
+  color: rgba(220, 200, 140, 0.9);
   text-transform: uppercase;
   letter-spacing: 0.3em;
   text-shadow:
-    0 1px 0 rgba(80, 80, 90, 0.8),
+    0 1px 0 rgba(60, 50, 25, 0.8),
     0 2px 4px rgba(0, 0, 0, 0.7),
-    0 0 12px rgba(140, 140, 160, 0.2);
+    0 0 12px rgba(180, 160, 80, 0.15);
   margin-bottom: 8px;
 }
 
@@ -382,7 +381,8 @@
   align-items: flex-end;
   justify-content: center;
   gap: 0;
-  perspective: 1200px;
+  /* No parent perspective — each card uses perspective() in its own transform
+     so cards have independent vanishing points for the fan spread */
   margin-top: 4vh;
   opacity: 0;
   animation: splash-fan-in 0.8s ease-out 0.8s forwards;
@@ -431,15 +431,34 @@
   transform-style: preserve-3d;
   will-change: transform;
   border: none;
-  box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.6),
-    0 0 4px rgba(0, 0, 0, 0.4);
+  box-shadow: none;
   background: transparent;
   backdrop-filter: none;
-  perspective: 800px;
 }
 
-/* Backface — hidden by default, can be revealed by rotateY(180deg) */
+/* Visible card edge — creates the 3D thickness when tilted.
+   translateZ pushes it behind the front face by the "thickness" amount. */
+.splash-dossier.coin-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: linear-gradient(
+    180deg,
+    #4a4538 0%,
+    #2c2820 30%,
+    #3a3428 50%,
+    #282218 70%,
+    #1e1a10 100%
+  );
+  transform: translateZ(-8px);
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.7),
+    0 2px 8px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+/* Backface — hidden by default, revealed by rotateY(180deg) on select */
 .coin-card-back {
   position: absolute;
   inset: 0;
@@ -449,128 +468,37 @@
   transform: rotateY(180deg);
   background: linear-gradient(
     160deg,
-    #141418 0%,
-    #1e1e24 30%,
-    #141418 60%,
-    #0e0e12 100%
+    #1e1a10 0%,
+    #2a2418 30%,
+    #1a1608 60%,
+    #12100a 100%
   );
-  /* Engraved pattern on back */
   background-image:
-    radial-gradient(circle at 50% 50%, rgba(140, 140, 160, 0.04) 0%, transparent 60%),
-    repeating-conic-gradient(from 0deg, rgba(140, 140, 160, 0.015) 0deg, transparent 3deg, transparent 12deg);
-  border: 3px solid rgba(80, 80, 90, 0.4);
+    radial-gradient(circle at 50% 50%, rgba(180, 150, 60, 0.06) 0%, transparent 60%),
+    repeating-conic-gradient(from 0deg, rgba(180, 150, 60, 0.02) 0deg, transparent 3deg, transparent 12deg);
+  border: 3px solid rgba(120, 100, 50, 0.35);
   overflow: hidden;
 }
 
-/* Three.js canvas mount point — overlays the CSS card when WebGL active */
-.coin-card-canvas {
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  border-radius: 16px;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.5s ease;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-}
+/* (WebGL 3D mode removed — coin depth now achieved via CSS transform-style: preserve-3d) */
 
-.coin-card-canvas canvas {
-  /* Preserve coin aspect ratio inside any container shape */
-  object-fit: contain;
-}
-
-.coin-card-canvas.coin-3d-active {
-  opacity: 1;
-}
-
-/* ---- 3D Mode — CSS→WebGL visual handoff ----
-   When Three.js coins are active, hide decorative CSS VISUALS
-   but keep layout flow intact so buttons/wheels stay positioned.
-   Interactive HTML stays above the canvas via z-index. */
-.coin-3d-mode .coin-border-outer {
-  position: relative;
-  z-index: 10;
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-.coin-3d-mode .coin-border-inner {
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-.coin-3d-mode .coin-border-inner::before {
-  display: none; /* disable CSS sheen sweep — 3D handles specular */
-}
-
-/* visibility:hidden keeps layout space so buttons don't collapse upward */
-.coin-3d-mode .coin-artwork {
-  visibility: hidden;
-}
-
-.coin-3d-mode .coin-header {
-  visibility: hidden;
-}
-
-.coin-3d-mode .coin-info {
-  visibility: hidden;
-}
-
-.coin-3d-mode .coin-corner {
-  visibility: hidden;
-}
-
-/* Interactive elements stay visible above the 3D canvas with solid backgrounds */
-.coin-3d-mode .coin-mid-row {
-  position: relative;
-  z-index: 15;
-}
-
-.coin-3d-mode .coin-wheel-strip,
-.coin-3d-mode .coin-tag-strip {
-  position: relative;
-  z-index: 15;
-}
-
-/* In 3D mode, give tags and buttons opaque dark backgrounds so they're legible
-   over the transparent 3D canvas. Without this, they appear ghostly/faint. */
-.coin-3d-mode .coin-tag {
-  background: rgba(14, 14, 20, 0.92);
-  border-color: rgba(140, 140, 160, 0.25);
-  color: rgba(180, 180, 190, 0.75);
-}
-
-.coin-3d-mode .coin-book-btn {
-  background: rgba(18, 18, 26, 0.95);
-  border-color: rgba(140, 140, 160, 0.3);
-}
-
-/* Ensure the coin-border-inner clips all content within the card frame in 3D mode */
-.coin-3d-mode .coin-border-inner {
-  overflow: hidden;
-}
-
-/* Desktop fan angles — 4-card spread */
+/* Desktop fan angles — 4-card spread with 3D tilt to show thickness */
 .splash-dossier.coin-card:nth-child(1) {
-  transform: rotate(-16deg) translateY(25px);
+  transform: perspective(800px) rotate(-16deg) rotateX(6deg) rotateY(8deg) translateY(25px);
   z-index: 1;
 }
 .splash-dossier.coin-card:nth-child(2) {
-  transform: rotate(-5deg) translateY(-5px);
+  transform: perspective(800px) rotate(-5deg) rotateX(5deg) rotateY(3deg) translateY(-5px);
   z-index: 2;
   margin: 0 -25px;
 }
 .splash-dossier.coin-card:nth-child(3) {
-  transform: rotate(5deg) translateY(-5px);
+  transform: perspective(800px) rotate(5deg) rotateX(5deg) rotateY(-3deg) translateY(-5px);
   z-index: 2;
   margin: 0 -25px;
 }
 .splash-dossier.coin-card:nth-child(4) {
-  transform: rotate(16deg) translateY(25px);
+  transform: perspective(800px) rotate(16deg) rotateX(6deg) rotateY(-8deg) translateY(25px);
   z-index: 1;
 }
 
@@ -579,72 +507,79 @@
    out from under the cursor. JS adds .coin-card-hovered on mouseenter
    with debounced mouseleave to keep the hit area stable. */
 .splash-dossier.coin-card.coin-card-hovered {
-  transform: rotate(0deg) translateY(-30px) scale(1.08) !important;
+  transform: perspective(800px) rotate(0deg) rotateX(4deg) rotateY(0deg) translateY(-30px) scale(1.08) !important;
   z-index: 10 !important;
-  filter: brightness(1.12);
-  box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.7),
-    0 0 12px rgba(100, 100, 120, 0.1);
+  filter: brightness(1.1);
 }
 
 
-/* ---- Outer border ring — thick brass rim (3D front face) ---- */
+/* ---- Outer border ring — brass coin rim with knurled edge feel ---- */
 .coin-border-outer {
   width: 100%;
   height: 100%;
   border-radius: 16px;
-  padding: 3px;
+  padding: 5px;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   background: linear-gradient(
     160deg,
-    #3a3a42 0%,
-    #58585e 20%,
-    #2e2e34 40%,
-    #48484e 60%,
-    #58585e 80%,
-    #2a2a30 100%
+    #5a5038 0%,
+    #7a6c48 15%,
+    #4a4028 30%,
+    #6a5c3c 50%,
+    #7a6c48 70%,
+    #4a4028 85%,
+    #3a3220 100%
   );
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+    inset 0 1px 0 rgba(220, 200, 140, 0.25),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    inset 1px 0 0 rgba(220, 200, 140, 0.1),
+    inset -1px 0 0 rgba(0, 0, 0, 0.3),
+    0 4px 20px rgba(0, 0, 0, 0.6),
+    0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
-/* ---- Inner border ring — darker recessed edge ---- */
+/* ---- Inner face — recessed coin surface with grooved inset channel ---- */
 .coin-border-inner {
   width: 100%;
   height: 100%;
-  border-radius: 13px;
+  border-radius: 12px;
   background: linear-gradient(
     175deg,
-    #16161a 0%,
-    #1e1e24 30%,
-    #18181e 60%,
-    #121216 100%
+    #1a1810 0%,
+    #221e14 25%,
+    #1e1a10 50%,
+    #1a1608 75%,
+    #14120a 100%
   );
   position: relative;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* Recessed groove between rim and face — the defining coin characteristic */
   box-shadow:
-    inset 0 2px 6px rgba(0, 0, 0, 0.8),
-    inset 0 -1px 3px rgba(140, 140, 160, 0.06);
+    inset 0 2px 4px rgba(0, 0, 0, 0.9),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.7),
+    inset 2px 0 3px rgba(0, 0, 0, 0.5),
+    inset -2px 0 3px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px rgba(120, 100, 50, 0.15);
 }
 
-/* Metallic sheen sweep animation on the inner card */
+/* Subtle metallic sheen sweep — polished coin surface */
 .coin-border-inner::before {
   content: '';
   position: absolute;
   inset: 0;
-  border-radius: 13px;
+  border-radius: 12px;
   background: linear-gradient(
     115deg,
     transparent 0%,
-    transparent 40%,
-    rgba(200, 200, 220, 0.04) 45%,
-    rgba(200, 200, 220, 0.08) 50%,
-    rgba(200, 200, 220, 0.04) 55%,
-    transparent 60%,
+    transparent 38%,
+    rgba(220, 200, 140, 0.03) 44%,
+    rgba(220, 200, 140, 0.06) 50%,
+    rgba(220, 200, 140, 0.03) 56%,
+    transparent 62%,
     transparent 100%
   );
   background-size: 200% 100%;
@@ -685,74 +620,74 @@
     0 0 4px rgba(140, 140, 160, 0.15);
 }
 
-/* Suit colors — muted monochrome metal tones */
+/* Suit colors — warm brass/gold engraved tones (commemorative coin palette) */
 .suit-spade .coin-corner-suit,
 .suit-spade.coin-corner-suit,
 .suit-spade.coin-suit-large {
-  color: #8888aa;
+  color: rgba(180, 165, 120, 0.7);
 }
 
 .suit-club .coin-corner-suit,
 .suit-club.coin-corner-suit,
 .suit-club.coin-suit-large {
-  color: #aa8888;
+  color: rgba(170, 145, 100, 0.7);
 }
 
 .suit-heart .coin-corner-suit,
 .suit-heart.coin-corner-suit,
 .suit-heart.coin-suit-large {
-  color: #88aa88;
+  color: rgba(180, 155, 110, 0.7);
 }
 
 /* Suit color classes for corner children */
 .coin-corner .suit-spade {
-  color: #8888aa;
+  color: rgba(180, 165, 120, 0.7);
 }
 .coin-corner .suit-club {
-  color: #aa8888;
+  color: rgba(170, 145, 100, 0.7);
 }
 .coin-corner .suit-heart {
-  color: #88aa88;
+  color: rgba(180, 155, 110, 0.7);
 }
 .coin-corner .suit-diamond {
-  color: #aaaa88;
+  color: rgba(190, 170, 100, 0.7);
 }
 
-/* Diamond suit — muted brass */
+/* Diamond suit */
 .suit-diamond .coin-corner-suit,
 .suit-diamond.coin-corner-suit,
 .suit-diamond.coin-suit-large {
-  color: #aaaa88;
+  color: rgba(190, 170, 100, 0.7);
 }
 
-/* Diamond card PLAY button variant — muted brass */
+/* Diamond card PLAY button variant — brass */
 .coin-book-btn.coin-book-diamond {
-  border-color: rgba(170, 170, 136, 0.25);
+  border-color: rgba(160, 140, 70, 0.25);
 }
 
 .coin-book-diamond .coin-book-label {
-  color: rgba(190, 190, 160, 0.85);
+  color: rgba(220, 200, 140, 0.85);
   text-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.7),
-    0 0 6px rgba(170, 170, 136, 0.15);
+    0 1px 0 rgba(0, 0, 0, 0.8),
+    0 0 6px rgba(180, 160, 80, 0.12);
 }
 
 .coin-book-diamond .coin-book-dot {
-  color: rgba(170, 170, 136, 0.4);
+  color: rgba(160, 140, 80, 0.4);
 }
 
 .coin-book-diamond .coin-book-duration {
-  color: rgba(200, 200, 170, 0.7);
+  color: rgba(200, 180, 120, 0.7);
 }
 
 
-/* ---- Coin header — classified stamp + mission label ---- */
+/* ---- Coin header — classified stamp + mission label (engraved brass) ---- */
 .coin-header {
   padding: 10px 14px 6px;
   text-align: center;
   position: relative;
   z-index: 5;
-  border-bottom: 1px solid rgba(140, 140, 160, 0.1);
+  border-bottom: 1px solid rgba(120, 100, 50, 0.12);
 }
 
 .coin-classified {
@@ -760,9 +695,10 @@
   font-size: 8px;
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: rgba(180, 100, 100, 0.55);
+  color: rgba(200, 170, 90, 0.5);
   text-shadow:
-    0 0 4px rgba(180, 100, 100, 0.2);
+    0 1px 0 rgba(0, 0, 0, 0.8),
+    0 0 3px rgba(180, 150, 60, 0.15);
   margin-bottom: 1px;
 }
 
@@ -771,11 +707,12 @@
   font-size: 9px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: rgba(160, 160, 170, 0.4);
+  color: rgba(160, 140, 90, 0.4);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
 }
 
 
-/* ---- Coin artwork — large centered suit symbol ---- */
+/* ---- Coin artwork — large centered suit symbol with knurled dead-space ---- */
 .coin-artwork {
   flex: 1;
   display: flex;
@@ -786,33 +723,40 @@
   min-height: 0;
 }
 
-/* Engraved concentric ring effect behind the suit */
+/* Coin knurling / fine grooves — fills the dead space around the suit.
+   Concentric rings radiate from center like a real commemorative coin. */
 .coin-artwork::before {
   content: '';
   position: absolute;
-  width: 75%;
+  width: 85%;
   aspect-ratio: 1;
   border-radius: 50%;
   background: transparent;
   box-shadow:
-    0 0 0 1px rgba(140, 140, 160, 0.06),
-    0 0 0 8px rgba(140, 140, 160, 0.03),
-    0 0 0 16px rgba(140, 140, 160, 0.02),
-    0 0 0 24px rgba(140, 140, 160, 0.01);
+    0 0 0 1px rgba(160, 140, 70, 0.08),
+    0 0 0 4px rgba(120, 100, 50, 0.04),
+    0 0 0 8px rgba(160, 140, 70, 0.06),
+    0 0 0 12px rgba(120, 100, 50, 0.03),
+    0 0 0 16px rgba(160, 140, 70, 0.05),
+    0 0 0 20px rgba(120, 100, 50, 0.03),
+    0 0 0 24px rgba(160, 140, 70, 0.04),
+    0 0 0 28px rgba(120, 100, 50, 0.02),
+    0 0 0 32px rgba(160, 140, 70, 0.03),
+    0 0 0 36px rgba(120, 100, 50, 0.02);
   pointer-events: none;
   z-index: 1;
 }
 
-/* Faint radial hatch pattern */
+/* Fine radial hatching — like machined metal lines radiating from center */
 .coin-artwork::after {
   content: '';
   position: absolute;
   inset: 0;
   background: repeating-conic-gradient(
     from 0deg,
-    rgba(140, 140, 160, 0.015) 0deg,
-    transparent 2deg,
-    transparent 10deg
+    rgba(180, 160, 80, 0.02) 0deg,
+    transparent 1.5deg,
+    transparent 5deg
   );
   pointer-events: none;
   z-index: 1;
@@ -822,25 +766,26 @@
   font-size: clamp(52px, 7vw, 90px);
   z-index: 2;
   line-height: 1;
+  /* Engraved look: dark inset shadow + slight metallic highlight */
   text-shadow:
-    0 2px 0 rgba(0, 0, 0, 0.7),
-    0 -1px 0 rgba(255, 255, 255, 0.06),
-    0 0 15px rgba(140, 140, 160, 0.1);
+    0 2px 0 rgba(0, 0, 0, 0.8),
+    0 -1px 0 rgba(220, 200, 140, 0.08),
+    0 0 10px rgba(120, 100, 50, 0.08);
   transition: transform 0.3s ease;
 }
 
 .splash-dossier.coin-card.coin-card-hovered .coin-suit-large {
-  transform: scale(1.08);
+  transform: scale(1.05);
 }
 
 
-/* ---- Coin info — title + description ---- */
+/* ---- Coin info — title + description (stamped brass) ---- */
 .coin-info {
   padding: 6px 14px 4px;
   text-align: center;
   position: relative;
   z-index: 5;
-  border-top: 1px solid rgba(140, 140, 160, 0.08);
+  border-top: 1px solid rgba(120, 100, 50, 0.1);
 }
 
 .coin-title {
@@ -849,18 +794,19 @@
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: rgba(200, 200, 210, 0.85);
+  color: rgba(220, 200, 140, 0.85);
   text-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.8),
-    0 -1px 0 rgba(255, 255, 255, 0.04);
+    0 1px 0 rgba(0, 0, 0, 0.9),
+    0 -1px 0 rgba(220, 200, 140, 0.06);
   margin-bottom: 2px;
 }
 
 .coin-desc {
   font-family: 'Courier New', monospace;
   font-size: clamp(9px, 1vw, 12px);
-  color: rgba(160, 160, 170, 0.5);
+  color: rgba(180, 160, 100, 0.45);
   letter-spacing: 0.06em;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
 }
 
 
@@ -879,21 +825,21 @@
   align-items: center;
   gap: 0;
   padding: 8px 24px;
-  border: 1px solid rgba(140, 140, 160, 0.25);
+  border: 1px solid rgba(120, 100, 50, 0.3);
   border-radius: 6px;
   background: linear-gradient(
     175deg,
-    rgba(30, 30, 38, 0.95) 0%,
-    rgba(22, 22, 28, 0.98) 50%,
-    rgba(28, 28, 36, 0.95) 100%
+    rgba(30, 26, 16, 0.95) 0%,
+    rgba(22, 20, 12, 0.98) 50%,
+    rgba(28, 24, 14, 0.95) 100%
   );
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(220, 200, 140, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
     0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
@@ -906,9 +852,9 @@
   background: linear-gradient(
     110deg,
     transparent 30%,
-    rgba(200, 200, 220, 0.06) 48%,
-    rgba(200, 200, 220, 0.10) 50%,
-    rgba(200, 200, 220, 0.06) 52%,
+    rgba(220, 200, 140, 0.04) 48%,
+    rgba(220, 200, 140, 0.08) 50%,
+    rgba(220, 200, 140, 0.04) 52%,
     transparent 70%
   );
   opacity: 0;
@@ -923,14 +869,14 @@
 .coin-book-btn:hover {
   background: linear-gradient(
     175deg,
-    rgba(38, 38, 48, 0.98) 0%,
-    rgba(28, 28, 36, 1) 50%,
-    rgba(35, 35, 44, 0.98) 100%
+    rgba(40, 34, 18, 0.98) 0%,
+    rgba(30, 26, 14, 1) 50%,
+    rgba(36, 30, 16, 0.98) 100%
   );
-  border-color: rgba(160, 160, 180, 0.35);
+  border-color: rgba(180, 160, 80, 0.35);
   box-shadow:
-    0 0 12px rgba(140, 140, 160, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    0 0 12px rgba(180, 160, 80, 0.08),
+    inset 0 1px 0 rgba(220, 200, 140, 0.1);
 }
 
 .coin-book-btn:active {
@@ -943,17 +889,17 @@
   font-size: clamp(13px, 1.4vw, 16px);
   font-weight: bold;
   letter-spacing: 0.15em;
-  color: rgba(200, 200, 210, 0.85);
+  color: rgba(220, 200, 140, 0.85);
   text-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.7),
-    0 0 6px rgba(140, 140, 160, 0.15);
+    0 1px 0 rgba(0, 0, 0, 0.8),
+    0 0 6px rgba(180, 160, 80, 0.12);
 }
 
 .coin-book-dot {
   font-family: 'Courier New', monospace;
   font-size: clamp(13px, 1.4vw, 16px);
   font-weight: bold;
-  color: rgba(160, 160, 170, 0.4);
+  color: rgba(160, 140, 80, 0.4);
   margin: 0 1px;
 }
 
@@ -962,29 +908,29 @@
   font-size: clamp(12px, 1.3vw, 15px);
   font-weight: bold;
   letter-spacing: 0.1em;
-  color: rgba(180, 180, 190, 0.7);
+  color: rgba(200, 180, 120, 0.7);
   text-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.6);
+    0 1px 0 rgba(0, 0, 0, 0.7);
 }
 
-/* Partner variant — slightly warmer accent */
+/* Partner variant — warm brass accent */
 .coin-book-btn.coin-book-partner {
-  border-color: rgba(170, 100, 100, 0.25);
+  border-color: rgba(160, 120, 60, 0.25);
 }
 
 .coin-book-partner .coin-book-label {
-  color: rgba(200, 140, 140, 0.85);
+  color: rgba(220, 200, 140, 0.85);
   text-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.7),
-    0 0 6px rgba(170, 100, 100, 0.15);
+    0 1px 0 rgba(0, 0, 0, 0.8),
+    0 0 6px rgba(180, 160, 80, 0.12);
 }
 
 .coin-book-partner .coin-book-dot {
-  color: rgba(170, 100, 100, 0.4);
+  color: rgba(160, 140, 80, 0.4);
 }
 
 .coin-book-partner .coin-book-duration {
-  color: rgba(200, 160, 160, 0.7);
+  color: rgba(200, 180, 120, 0.7);
 }
 
 
@@ -1011,7 +957,7 @@
   -webkit-user-select: none;
 }
 
-/* The viewport frame — small dark metal window */
+/* The viewport frame — small dark brass window */
 .coin-wheel-frame {
   width: clamp(72px, 8vw, 100px);
   height: 42px;
@@ -1020,15 +966,15 @@
   position: relative;
   background: linear-gradient(
     180deg,
-    #141418 0%,
-    #0c0c10 50%,
-    #141418 100%
+    #181408 0%,
+    #0e0c06 50%,
+    #181408 100%
   );
-  border: 1px solid rgba(140, 140, 160, 0.2);
+  border: 1px solid rgba(120, 100, 50, 0.25);
   box-shadow:
     inset 0 2px 6px rgba(0, 0, 0, 0.8),
     inset 0 -1px 3px rgba(0, 0, 0, 0.5),
-    0 1px 0 rgba(140, 140, 160, 0.08);
+    0 1px 0 rgba(180, 160, 80, 0.06);
 }
 
 /* Top/bottom fade masks on the wheel frame */
@@ -1045,12 +991,12 @@
 
 .coin-wheel-frame::before {
   top: 0;
-  background: linear-gradient(180deg, #141418 0%, transparent 100%);
+  background: linear-gradient(180deg, #181408 0%, transparent 100%);
 }
 
 .coin-wheel-frame::after {
   bottom: 0;
-  background: linear-gradient(0deg, #141418 0%, transparent 100%);
+  background: linear-gradient(0deg, #181408 0%, transparent 100%);
 }
 
 /* The wheel track — three values stacked vertically */
@@ -1079,15 +1025,15 @@
 .coin-wheel-prev,
 .coin-wheel-next {
   font-size: 9px;
-  color: rgba(140, 140, 160, 0.2);
+  color: rgba(160, 140, 80, 0.2);
 }
 
 .coin-wheel-current {
   font-size: clamp(13px, 1.4vw, 16px);
-  color: rgba(200, 200, 210, 0.85);
+  color: rgba(220, 200, 140, 0.85);
   text-shadow:
-    0 0 6px rgba(140, 140, 160, 0.2),
-    0 1px 0 rgba(0, 0, 0, 0.6);
+    0 0 6px rgba(180, 160, 80, 0.15),
+    0 1px 0 rgba(0, 0, 0, 0.7);
 }
 
 /* Context label below the wheel */
@@ -1095,26 +1041,26 @@
   font-family: 'Courier New', monospace;
   font-size: 8px;
   letter-spacing: 0.1em;
-  color: rgba(160, 160, 170, 0.35);
+  color: rgba(160, 140, 80, 0.35);
   text-transform: uppercase;
   text-align: center;
 }
 
 /* Hover feedback on the wheel */
 .coin-wheel:hover .coin-wheel-frame {
-  border-color: rgba(170, 170, 190, 0.3);
+  border-color: rgba(180, 160, 80, 0.3);
   box-shadow:
     inset 0 2px 6px rgba(0, 0, 0, 0.8),
     inset 0 -1px 3px rgba(0, 0, 0, 0.5),
-    0 0 8px rgba(140, 140, 160, 0.1),
-    0 1px 0 rgba(140, 140, 160, 0.1);
+    0 0 8px rgba(180, 160, 80, 0.08),
+    0 1px 0 rgba(180, 160, 80, 0.08);
 }
 
 .coin-wheel:hover .coin-wheel-current {
-  color: rgba(220, 220, 230, 0.95);
+  color: rgba(240, 220, 150, 0.95);
   text-shadow:
-    0 0 10px rgba(180, 180, 200, 0.3),
-    0 1px 0 rgba(0, 0, 0, 0.6);
+    0 0 10px rgba(200, 180, 100, 0.25),
+    0 1px 0 rgba(0, 0, 0, 0.7);
 }
 
 
@@ -1137,31 +1083,31 @@
   font-size: 8px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(160, 160, 170, 0.55);
+  color: rgba(180, 160, 100, 0.5);
   padding: 3px 8px;
-  border: 1px solid rgba(140, 140, 160, 0.15);
+  border: 1px solid rgba(120, 100, 50, 0.15);
   border-radius: 3px;
-  background: rgba(140, 140, 160, 0.04);
+  background: rgba(120, 100, 50, 0.04);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
 }
 
 
 /* ---- Selected card glow pulse ---- */
 .splash-dossier.coin-card.splash-selected {
   box-shadow:
-    0 0 30px rgba(140, 140, 180, 0.3),
-    0 0 60px rgba(120, 120, 160, 0.15),
-    inset 0 0 30px rgba(140, 140, 180, 0.06) !important;
+    0 0 30px rgba(200, 180, 100, 0.25),
+    0 0 60px rgba(180, 160, 80, 0.1) !important;
   animation: splash-selected-pulse 0.6s ease-in-out;
 }
 
 .splash-dossier.coin-card.splash-selected .coin-border-outer {
   background: linear-gradient(
     160deg,
-    #505060 0%,
-    #707080 25%,
-    #48484e 50%,
-    #707080 75%,
-    #505060 100%
+    #6a5c3c 0%,
+    #8a7c58 25%,
+    #5a4c30 50%,
+    #8a7c58 75%,
+    #6a5c3c 100%
   );
 }
 
@@ -1214,7 +1160,7 @@
 .splash-prompt-text {
   font-family: 'Courier New', monospace;
   font-size: clamp(11px, 1.4vw, 14px);
-  color: rgba(160, 160, 170, 0.35);
+  color: rgba(180, 160, 100, 0.35);
   letter-spacing: 0.15em;
   text-transform: uppercase;
   animation: splash-prompt-blink 2.5s ease-in-out infinite;
@@ -1323,31 +1269,31 @@
   }
 
   .splash-dossier.coin-card:nth-child(1) {
-    transform: rotateY(0deg) rotateX(2deg) translateZ(0px);
+    transform: perspective(800px) rotateY(0deg) rotateX(3deg) translateZ(0px);
     z-index: 4;
     margin: 0;
   }
 
   .splash-dossier.coin-card:nth-child(2) {
-    transform: rotateY(-10deg) rotateX(2deg) translateY(-10px) translateX(8px);
+    transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-10px) translateX(8px);
     z-index: 3;
     margin: 0;
   }
 
   .splash-dossier.coin-card:nth-child(3) {
-    transform: rotateY(-10deg) rotateX(2deg) translateY(-20px) translateX(14px);
+    transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-20px) translateX(14px);
     z-index: 2;
     margin: 0;
   }
 
   .splash-dossier.coin-card:nth-child(4) {
-    transform: rotateY(-10deg) rotateX(2deg) translateY(-30px) translateX(20px);
+    transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-30px) translateX(20px);
     z-index: 1;
     margin: 0;
   }
 
   .splash-dossier.coin-card.coin-card-hovered {
-    transform: rotateY(0deg) rotateX(0deg) translateY(-20px) translateX(0px) scale(1.03) !important;
+    transform: perspective(800px) rotateY(0deg) rotateX(2deg) translateY(-20px) translateX(0px) scale(1.03) !important;
     z-index: 10 !important;
   }
 
@@ -1391,7 +1337,7 @@
     flex-direction: column;
     justify-content: center;
     border-top: none;
-    border-left: 1px solid rgba(140, 140, 160, 0.1);
+    border-left: 1px solid rgba(120, 100, 50, 0.1);
     padding: 6px 10px;
     text-align: left;
   }
@@ -1442,31 +1388,9 @@
     font-size: 20px;
   }
 
-  /* ---- Mobile 3D mode ----
-     On mobile, the card layout is horizontal (suit left, info right).
-     The 3D canvas covers the full card but uses object-fit: contain
-     to keep the portrait coin proportioned. The coin will naturally
-     center with letterbox bands on the sides.
-     Info text stays visible via z-index even with 3D active. */
-  .coin-3d-mode .coin-info {
-    visibility: visible;
-    position: relative;
-    z-index: 15;
-  }
-
-  .coin-3d-mode .coin-mid-row {
-    z-index: 15;
-  }
-
-  .coin-3d-mode .coin-wheel-strip,
-  .coin-3d-mode .coin-tag-strip {
-    z-index: 15;
-  }
-
-  /* On mobile, transparent canvas — coin fills frame via tight camera framing */
-  .coin-card-canvas {
-    background: transparent;
-    border-radius: 16px;
+  /* Card edge pseudo-element — thinner on mobile */
+  .splash-dossier.coin-card::after {
+    transform: translateZ(-5px);
   }
 }
 
@@ -1477,16 +1401,16 @@
   }
 
   .splash-dossier.coin-card:nth-child(1) {
-    transform: rotateY(0deg) rotateX(2deg) translateZ(0px);
+    transform: perspective(800px) rotateY(0deg) rotateX(3deg) translateZ(0px);
   }
   .splash-dossier.coin-card:nth-child(2) {
-    transform: rotateY(-10deg) rotateX(2deg) translateY(-10px) translateX(6px);
+    transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-10px) translateX(6px);
   }
   .splash-dossier.coin-card:nth-child(3) {
-    transform: rotateY(-10deg) rotateX(2deg) translateY(-20px) translateX(12px);
+    transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-20px) translateX(12px);
   }
   .splash-dossier.coin-card:nth-child(4) {
-    transform: rotateY(-10deg) rotateX(2deg) translateY(-30px) translateX(18px);
+    transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-30px) translateX(18px);
   }
 
   .coin-artwork {
