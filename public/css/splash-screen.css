@@ -474,6 +474,14 @@
   opacity: 0;
   transition: opacity 0.5s ease;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.coin-card-canvas canvas {
+  /* Preserve coin aspect ratio inside any container shape */
+  object-fit: contain;
 }
 
 .coin-card-canvas.coin-3d-active {
@@ -1446,6 +1454,34 @@
 
   .splash-close-icon {
     font-size: 20px;
+  }
+
+  /* ---- Mobile 3D mode ----
+     On mobile, the card layout is horizontal (suit left, info right).
+     The 3D canvas covers the full card but uses object-fit: contain
+     to keep the portrait coin proportioned. The coin will naturally
+     center with letterbox bands on the sides.
+     Info text stays visible via z-index even with 3D active. */
+  .coin-3d-mode .coin-info {
+    visibility: visible;
+    position: relative;
+    z-index: 15;
+  }
+
+  .coin-3d-mode .coin-mid-row {
+    z-index: 15;
+  }
+
+  .coin-3d-mode .coin-wheel-strip,
+  .coin-3d-mode .coin-tag-strip {
+    z-index: 15;
+  }
+
+  /* On mobile, the canvas fills the card but the coin is portrait ratio.
+     Use a dark transparent background to blend letterbox bands. */
+  .coin-card-canvas {
+    background: rgba(8, 6, 4, 0.85);
+    border-radius: 12px;
   }
 }
 

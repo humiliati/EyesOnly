@@ -6,7 +6,7 @@
  * Procedural parallax starfield in GLSL — deep areas look like infinite space.
  *
  * One offscreen WebGL context, per-card 2D display canvases.
- * Desktop only (hover:hover media query).
+ * Renders on both desktop and mobile with adaptive quality.
  *
  * NOT casino/poker — military honor coins on a surveillance desk.
  */
@@ -14,25 +14,58 @@
   'use strict';
 
   /* ============================================================
-     CONFIGURATION
+     DEVICE CAPABILITY DETECTION
+     ============================================================ */
+  var _isMobile  = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  var _isTouch   = !window.matchMedia('(hover: hover)').matches;
+  var _lowMemory = navigator.deviceMemory ? navigator.deviceMemory < 4 : _isMobile;
+  var _tier      = 'high'; // 'high' | 'mid' | 'low' | 'none'
+
+  // Probe WebGL support and GPU capability before committing resources
+  function _probeWebGL() {
+    try {
+      var tc = document.createElement('canvas');
+      var gl = tc.getContext('webgl') || tc.getContext('experimental-webgl');
+      if (!gl) return 'none';
+
+      var dbg = gl.getExtension('WEBGL_debug_renderer_info');
+      var gpuStr = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : '';
+      var maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+
+      // Detect very weak GPUs (SwiftShader = software renderer, Mali-4xx = very old)
+      if (/SwiftShader|llvmpipe/i.test(gpuStr)) return 'none';
+      if (/Mali-4|Mali-T6|Adreno.*(2|30[0-5])|PowerVR.*(SGX|G6[01])/i.test(gpuStr)) return 'low';
+      if (maxTex < 4096) return 'low';
+
+      // Mobile GPUs that are capable but should use mid tier
+      if (_isMobile || _lowMemory) return 'mid';
+
+      return 'high';
+    } catch (e) {
+      return 'none';
+    }
+  }
+
+  /* ============================================================
+     CONFIGURATION (adapted per device tier)
      ============================================================ */
   var CFG = {
     // Coin body (world units)
     width:  2.1,
     height: 3.4,
-    depth:  0.30,        // thicker for visible brass edge
+    depth:  0.30,
     radius: 0.14,
-    bevel:  0.07,        // pronounced bevel catches light on brass
+    bevel:  0.07,
     bevelSegs: 4,
     curveSegs: 12,
 
-    // Texture resolution — 2× for crisp text & emoji
+    // Texture resolution — set by _applyTier()
     texW: 1024,
     get texH() { return Math.round(this.texW * this.height / this.width); },
 
-    // Material (raised brass zones)
+    // Material
     metalness: 0.92,
-    roughness: 0.15,     // highly polished
+    roughness: 0.15,
     bumpScale: 0.030,
     envIntensity: 1.0,
 
@@ -44,7 +77,35 @@
 
     // Camera
     camDist: 6.0,
+
+    // Render throttle (ms between frames, 0 = every rAF)
+    frameInterval: 0,
+
+    // Starfield complexity (star layers in shader)
+    starLayers: 4,
   };
+
+  // Apply device tier adjustments
+  function _applyTier(tier) {
+    _tier = tier;
+    if (tier === 'mid') {
+      CFG.texW       = 512;         // half resolution — still crisp on phone screens
+      CFG.bevelSegs  = 3;
+      CFG.curveSegs  = 8;
+      CFG.bumpScale  = 0.020;
+      CFG.frameInterval = 33;       // ~30 fps cap (saves battery)
+      CFG.starLayers = 3;
+    } else if (tier === 'low') {
+      CFG.texW       = 384;
+      CFG.bevelSegs  = 2;
+      CFG.curveSegs  = 6;
+      CFG.bumpScale  = 0.015;
+      CFG.frameInterval = 50;       // ~20 fps cap
+      CFG.starLayers = 2;
+      CFG.depth      = 0.24;
+      CFG.bevel      = 0.05;
+    }
+  }
 
   /* ============================================================
      STATE
@@ -61,6 +122,8 @@
   var _ready  = false;
   var _t0     = 0;
   var _disposed = false;
+  var _lastFrame = 0;    // for frame throttling
+  var _mountTimeout = null;
 
   /* ============================================================
      PUBLIC API
@@ -159,7 +222,208 @@
   var MONO_FONT  = '"Courier New",monospace';
 
   /* ============================================================
-     FACE DIFFUSE TEXTURE — Polished brass raised on dark deep
+     SHARED STARFIELD TEXTURE — one static field, all cards share it
+     Sparse small stars (1–3px) on deep black.
+     ============================================================ */
+  var _sharedStarfieldCanvas = null;
+
+  function _getStarfield() {
+    if (_sharedStarfieldCanvas) return _sharedStarfieldCanvas;
+    var w = CFG.texW, h = CFG.texH;
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    var g = c.getContext('2d');
+
+    // Deep black
+    g.fillStyle = '#020104';
+    g.fillRect(0, 0, w, h);
+
+    // Sparse stars — deterministic seed via simple hash
+    var starCount = Math.round(w * h * 0.0008); // ~0.08% pixel coverage
+    for (var i = 0; i < starCount; i++) {
+      // Pseudo-random from index
+      var px = ((i * 7919 + 104729) % w);
+      var py = ((i * 6271 + 73757) % h);
+      var brightness = ((i * 3571 + 21377) % 255) / 255;
+      var size = (brightness > 0.85) ? 2 : 1;
+      if (brightness > 0.97) size = 3;
+
+      // Color: mostly cool white, some warm, rare blue
+      var r = 180 + Math.round(brightness * 75);
+      var gb = 180 + Math.round(brightness * 70);
+      var blue = Math.min(255, gb + ((i % 7 === 0) ? 30 : 0));
+      var alpha = 0.3 + brightness * 0.7;
+
+      g.fillStyle = 'rgba(' + r + ',' + gb + ',' + blue + ',' + alpha + ')';
+      g.fillRect(px, py, size, size);
+    }
+
+    // Very faint nebula wisps (barely visible)
+    g.save();
+    g.globalAlpha = 0.04;
+    var nb = g.createRadialGradient(w * 0.3, h * 0.6, 0, w * 0.3, h * 0.6, w * 0.25);
+    nb.addColorStop(0, '#2a1840');
+    nb.addColorStop(1, 'transparent');
+    g.fillStyle = nb;
+    g.fillRect(0, 0, w, h);
+    var nb2 = g.createRadialGradient(w * 0.7, h * 0.3, 0, w * 0.7, h * 0.3, w * 0.2);
+    nb2.addColorStop(0, '#0a2040');
+    nb2.addColorStop(1, 'transparent');
+    g.fillStyle = nb2;
+    g.fillRect(0, 0, w, h);
+    g.restore();
+
+    _sharedStarfieldCanvas = c;
+    return c;
+  }
+
+  /* ============================================================
+     RIFLE-STYLE ORNAMENTAL ENGRAVING HELPERS
+     Western / commemorative coin scroll-work drawn into canvas.
+     ============================================================ */
+  function _drawScrollCorner(g, x, y, size, flip) {
+    g.save();
+    g.translate(x, y);
+    if (flip) g.scale(-1, 1);
+    g.beginPath();
+    // Curling vine scroll
+    g.moveTo(0, 0);
+    g.bezierCurveTo(size * 0.3, -size * 0.1, size * 0.5, -size * 0.3, size * 0.4, -size * 0.5);
+    g.bezierCurveTo(size * 0.3, -size * 0.35, size * 0.15, -size * 0.15, size * 0.1, -size * 0.05);
+    g.moveTo(0, 0);
+    g.bezierCurveTo(size * 0.15, -size * 0.25, size * 0.35, -size * 0.45, size * 0.6, -size * 0.35);
+    // Leaf flourish
+    g.moveTo(size * 0.2, -size * 0.1);
+    g.bezierCurveTo(size * 0.35, -size * 0.05, size * 0.45, -size * 0.15, size * 0.3, -size * 0.25);
+    g.stroke();
+    g.restore();
+  }
+
+  function _drawEngraving(g, w, h) {
+    // Rifle-stock style ornamental scrollwork around the card
+    g.save();
+    g.lineWidth = 1.2;
+
+    var inset = 55;
+    var scrollSz = w * 0.12;
+
+    // Four corner scrolls
+    _drawScrollCorner(g, inset, inset, scrollSz, false);
+    _drawScrollCorner(g, w - inset, inset, scrollSz, true);
+    g.save();
+    g.translate(0, h);
+    g.scale(1, -1);
+    _drawScrollCorner(g, inset, inset, scrollSz, false);
+    _drawScrollCorner(g, w - inset, inset, scrollSz, true);
+    g.restore();
+
+    // Horizontal scroll bars (top and bottom)
+    var barY1 = inset + 5;
+    var barY2 = h - inset - 5;
+    var barL = inset + scrollSz * 0.5;
+    var barR = w - inset - scrollSz * 0.5;
+    g.beginPath();
+    g.moveTo(barL, barY1);
+    g.bezierCurveTo(w * 0.35, barY1 - 4, w * 0.65, barY1 - 4, barR, barY1);
+    g.moveTo(barL, barY2);
+    g.bezierCurveTo(w * 0.35, barY2 + 4, w * 0.65, barY2 + 4, barR, barY2);
+    g.stroke();
+
+    // Vertical vine lines (left and right edges)
+    var vineX1 = inset + 3;
+    var vineX2 = w - inset - 3;
+    var vineT = inset + scrollSz * 0.4;
+    var vineB = h - inset - scrollSz * 0.4;
+    g.beginPath();
+    g.moveTo(vineX1, vineT);
+    g.bezierCurveTo(vineX1 - 3, h * 0.4, vineX1 + 3, h * 0.6, vineX1, vineB);
+    g.moveTo(vineX2, vineT);
+    g.bezierCurveTo(vineX2 + 3, h * 0.4, vineX2 - 3, h * 0.6, vineX2, vineB);
+    g.stroke();
+
+    // Small diamond accents along the horizontal bars
+    for (var d = 0; d < 5; d++) {
+      var dx = barL + (barR - barL) * (d + 0.5) / 5;
+      _drawDiamond(g, dx, barY1, 3);
+      _drawDiamond(g, dx, barY2, 3);
+    }
+
+    g.restore();
+  }
+
+  function _drawDiamond(g, x, y, r) {
+    g.beginPath();
+    g.moveTo(x, y - r);
+    g.lineTo(x + r, y);
+    g.lineTo(x, y + r);
+    g.lineTo(x - r, y);
+    g.closePath();
+    g.fill();
+  }
+
+  /* ============================================================
+     DEEP GROOVE MASK — defines the ~25% areas where starfield shows
+     These are the wide decorative channels / dead space.
+     ============================================================ */
+  function _drawGrooveChannels(g, w, h) {
+    // The grooves are wide bands that form the decorative framing.
+    // They sit BETWEEN the outer border and the inner content area,
+    // and between the inner border and the text zones.
+
+    var cx = w / 2;
+
+    // ── Band 1: between outer rim and inner border ──
+    // This is a wide channel around the full perimeter
+    g.save();
+    // Outer clip: inside the outer border
+    rrPath(g, 24, 24, w - 48, h - 48, 12);
+    g.clip();
+    g.fillRect(0, 0, w, h);
+    // Cut out: the inner border region (everything inside stays brass)
+    g.globalCompositeOperation = 'destination-out';
+    rrPath(g, 48, 48, w - 96, h - 96, 8);
+    g.fill();
+    g.restore();
+
+    // ── Band 2: horizontal channel above the title ──
+    g.fillRect(60, Math.round(h * 0.64), w - 120, Math.round(h * 0.04));
+
+    // ── Band 3: horizontal channel below classified stamp ──
+    g.fillRect(60, Math.round(h * 0.15), w - 120, Math.round(h * 0.03));
+
+    // ── Band 4: decorative notches in corner areas ──
+    // Top-left and top-right triangular grooves
+    g.beginPath();
+    g.moveTo(55, 55);
+    g.lineTo(55 + w * 0.08, 55);
+    g.lineTo(55, 55 + h * 0.05);
+    g.closePath();
+    g.fill();
+    g.beginPath();
+    g.moveTo(w - 55, 55);
+    g.lineTo(w - 55 - w * 0.08, 55);
+    g.lineTo(w - 55, 55 + h * 0.05);
+    g.closePath();
+    g.fill();
+    // Bottom-left and bottom-right
+    g.beginPath();
+    g.moveTo(55, h - 55);
+    g.lineTo(55 + w * 0.08, h - 55);
+    g.lineTo(55, h - 55 - h * 0.05);
+    g.closePath();
+    g.fill();
+    g.beginPath();
+    g.moveTo(w - 55, h - 55);
+    g.lineTo(w - 55 - w * 0.08, h - 55);
+    g.lineTo(w - 55, h - 55 - h * 0.05);
+    g.closePath();
+    g.fill();
+  }
+
+  /* ============================================================
+     FACE DIFFUSE TEXTURE
+     Primarily polished brass coin surface.
+     Deep grooves are dark (shader puts starfield there).
      ============================================================ */
   function genFaceTex(m) {
     var w = CFG.texW, h = CFG.texH;
@@ -167,134 +431,129 @@
     c.width = w; c.height = h;
     var g = c.getContext('2d');
 
-    // Deep background (near black — shader replaces with starfield)
-    g.fillStyle = '#080604';
+    // ── Base: polished brass surface across entire coin ──
+    var brassBg = g.createLinearGradient(0, 0, w, h);
+    brassBg.addColorStop(0,   '#c09838');
+    brassBg.addColorStop(0.3, '#d4a843');
+    brassBg.addColorStop(0.5, '#dab550');
+    brassBg.addColorStop(0.7, '#c89e3a');
+    brassBg.addColorStop(1,   '#b08828');
+    g.fillStyle = brassBg;
     g.fillRect(0, 0, w, h);
 
-    // Subtle radial depth gradient
-    var bg = g.createRadialGradient(w / 2, h * 0.44, 0, w / 2, h * 0.44, w * 0.55);
-    bg.addColorStop(0, 'rgba(18,14,8,0.5)');
-    bg.addColorStop(1, 'rgba(4,3,2,0.3)');
-    g.fillStyle = bg;
+    // Subtle radial polish highlight
+    var polish = g.createRadialGradient(w * 0.4, h * 0.35, 0, w * 0.4, h * 0.35, w * 0.5);
+    polish.addColorStop(0, 'rgba(255,240,200,0.12)');
+    polish.addColorStop(1, 'rgba(0,0,0,0.05)');
+    g.fillStyle = polish;
     g.fillRect(0, 0, w, h);
 
     var cx = w / 2, cy = h * 0.44;
     var brass      = '#d4a843';
-    var brassLight = '#e8c060';
-    var brassDark  = '#a08030';
+    var brassLight = '#f0d060';
+    var brassDark  = '#8a6820';
 
-    // ── Outer border rim ──
+    // ── Deep groove channels (dark recesses where starfield shows) ──
     g.save();
-    g.strokeStyle = brass;
+    g.fillStyle = '#0a0808';
+    _drawGrooveChannels(g, w, h);
+    g.restore();
+
+    // ── Shallow decorative engraving (rifle-style scrollwork) ──
+    // These are etched INTO the brass but remain metallic (not deep/dark)
+    g.save();
+    g.strokeStyle = 'rgba(100,75,20,0.5)';
+    g.fillStyle = 'rgba(100,75,20,0.3)';
+    _drawEngraving(g, w, h);
+    g.restore();
+
+    // ── Outer border rim (highest polish) ──
+    g.save();
+    g.strokeStyle = brassLight;
     g.lineWidth = 8;
-    g.shadowColor = 'rgba(212,168,67,0.3)';
-    g.shadowBlur = 6;
-    rrPath(g, 18, 18, w - 36, h - 36, 14);
+    g.shadowColor = 'rgba(255,220,120,0.2)';
+    g.shadowBlur = 4;
+    rrPath(g, 16, 16, w - 32, h - 32, 14);
     g.stroke();
     g.shadowBlur = 0;
-    g.strokeStyle = brassDark;
+    g.strokeStyle = brass;
     g.lineWidth = 3;
-    rrPath(g, 32, 32, w - 64, h - 64, 10);
+    rrPath(g, 48, 48, w - 96, h - 96, 8);
     g.stroke();
     g.restore();
 
-    // ── Decorative border chain (tiny dashes) ──
-    g.save();
-    g.strokeStyle = 'rgba(180,150,60,0.25)';
-    g.lineWidth = 1.5;
-    g.setLineDash([4, 4]);
-    rrPath(g, 42, 42, w - 84, h - 84, 8);
-    g.stroke();
-    g.setLineDash([]);
-    g.restore();
-
-    // ── Concentric engraved rings ──
-    for (var ring = 1; ring <= 10; ring++) {
-      var rr = ring * w * 0.040;
-      var alpha = Math.max(0.08, 0.28 - ring * 0.018);
-      g.strokeStyle = 'rgba(180,150,60,' + alpha + ')';
-      g.lineWidth = ring % 3 === 0 ? 2.0 : 1.0;
+    // ── Concentric engraved rings (shallow etch, still metallic) ──
+    for (var ring = 1; ring <= 8; ring++) {
+      var rr = ring * w * 0.042;
+      g.strokeStyle = 'rgba(140,105,30,' + Math.max(0.10, 0.30 - ring * 0.025) + ')';
+      g.lineWidth = ring % 3 === 0 ? 1.5 : 0.8;
       g.beginPath();
       g.arc(cx, cy, rr, 0, Math.PI * 2);
       g.stroke();
     }
 
-    // ── Radial hatching ──
+    // ── Suit insignia (highest elevation, bright polished emblem) ──
     g.save();
-    g.globalAlpha = 0.05;
-    g.strokeStyle = brass;
-    g.lineWidth = 0.6;
-    for (var a = 0; a < 360; a += 8) {
-      var rad = a * Math.PI / 180;
-      g.beginPath();
-      g.moveTo(cx, cy);
-      g.lineTo(cx + Math.cos(rad) * w * 0.38, cy + Math.sin(rad) * h * 0.32);
-      g.stroke();
-    }
-    g.restore();
-
-    // ── Suit insignia (large embossed emblem) ──
-    g.save();
-    var suitSize = Math.round(w * 0.28);
+    var suitSize = Math.round(w * 0.26);
     g.font = suitSize + 'px ' + EMOJI_FONT;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    // Dark undercut shadow
-    g.fillStyle = 'rgba(0,0,0,0.65)';
-    g.fillText(m.suit, cx + 2, cy + 3);
-    // Main brass body
+    // Dark undercut
+    g.fillStyle = 'rgba(80,60,15,0.7)';
+    g.fillText(m.suit, cx + 1, cy + 2);
+    // Main bright brass
     g.fillStyle = brassLight;
-    g.shadowColor = 'rgba(212,168,67,0.45)';
-    g.shadowBlur = 18;
+    g.shadowColor = 'rgba(255,220,100,0.3)';
+    g.shadowBlur = 10;
     g.fillText(m.suit, cx, cy);
-    // Specular highlight pass
+    // Specular highlight
     g.shadowColor = 'transparent';
     g.shadowBlur = 0;
-    g.globalAlpha = 0.30;
+    g.globalAlpha = 0.25;
     g.fillStyle = '#ffffff';
-    g.fillText(m.suit, cx - 1, cy - 2);
+    g.fillText(m.suit, cx - 1, cy - 1);
     g.restore();
 
     // ── Classified stamp ──
     g.save();
-    g.font = Math.round(w * 0.034) + 'px ' + MONO_FONT;
+    g.font = 'bold ' + Math.round(w * 0.032) + 'px ' + MONO_FONT;
     g.textAlign = 'center';
-    g.fillStyle = 'rgba(220,80,80,0.55)';
+    g.fillStyle = 'rgba(180,60,60,0.65)';
     g.fillText(m.classified || 'EYES ONLY', cx, h * 0.10);
     g.restore();
 
     // ── Label ──
     g.save();
-    g.font = Math.round(w * 0.026) + 'px ' + MONO_FONT;
+    g.font = Math.round(w * 0.024) + 'px ' + MONO_FONT;
     g.textAlign = 'center';
-    g.fillStyle = 'rgba(180,150,60,0.40)';
-    g.fillText(m.label || 'MISSION DOSSIER', cx, h * 0.14);
+    g.fillStyle = brassDark;
+    g.fillText(m.label || 'MISSION DOSSIER', cx, h * 0.135);
     g.restore();
 
-    // ── Title (raised brass) ──
+    // ── Title (raised brass lettering) ──
     g.save();
-    g.font = 'bold ' + Math.round(w * 0.048) + 'px ' + MONO_FONT;
+    g.font = 'bold ' + Math.round(w * 0.046) + 'px ' + MONO_FONT;
     g.textAlign = 'center';
-    g.fillStyle = brass;
-    g.shadowColor = 'rgba(0,0,0,0.7)';
-    g.shadowBlur = 4;
-    g.shadowOffsetY = 2;
-    g.fillText(m.title.toUpperCase(), cx, h * 0.73);
+    g.fillStyle = brassLight;
+    g.shadowColor = 'rgba(60,45,10,0.8)';
+    g.shadowBlur = 2;
+    g.shadowOffsetY = 1;
+    g.fillText(m.title.toUpperCase(), cx, h * 0.72);
     g.restore();
 
     // ── Description ──
     g.save();
-    g.font = Math.round(w * 0.028) + 'px ' + MONO_FONT;
+    g.font = Math.round(w * 0.026) + 'px ' + MONO_FONT;
     g.textAlign = 'center';
-    g.fillStyle = 'rgba(180,150,60,0.50)';
-    g.fillText(m.desc || '', cx, h * 0.79);
+    g.fillStyle = brassDark;
+    g.fillText(m.desc || '', cx, h * 0.78);
     g.restore();
 
     // ── Corner suit marks ──
     g.save();
-    g.font = Math.round(w * 0.055) + 'px ' + EMOJI_FONT;
-    g.fillStyle = brassDark;
-    g.globalAlpha = 0.55;
+    g.font = Math.round(w * 0.05) + 'px ' + EMOJI_FONT;
+    g.fillStyle = brass;
+    g.globalAlpha = 0.6;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.fillText(m.suit, w * 0.12, h * 0.075);
@@ -309,8 +568,17 @@
   }
 
   /* ============================================================
-     HEIGHT MAP — White=raised brass, Black=deep starfield
-     Shadow blur creates smooth transition zones (satin metal)
+     HEIGHT MAP — Controls where starfield appears.
+
+     Height levels:
+       1.0 (white)  = text, icons, outer rim  (highest)
+       0.75         = polished brass frame surface
+       0.50         = shallow decorative etching
+       0.25         = deep groove edges (transition)
+       0.0  (black) = deepest grooves (starfield windows)
+
+     Only the black ~25% areas get starfield. Everything else
+     reads as solid reflective metal.
      ============================================================ */
   function genHeightMap(m) {
     var w = CFG.texW, h = CFG.texH;
@@ -318,108 +586,102 @@
     c.width = w; c.height = h;
     var g = c.getContext('2d');
 
-    // Deep base (black = starfield zone)
-    g.fillStyle = '#000000';
+    // ── Start at polished brass level (~0.75) across entire surface ──
+    g.fillStyle = '#c0c0c0'; // 75% gray = brass surface
     g.fillRect(0, 0, w, h);
 
     var cx = w / 2, cy = h * 0.44;
 
-    // ── Outer border rim (fully raised) ──
+    // ── Paint deep groove channels BLACK (0.0 = starfield windows) ──
+    g.save();
+    g.fillStyle = '#000000';
+    _drawGrooveChannels(g, w, h);
+    g.restore();
+
+    // ── Shallow engraving scratches (mid-gray, ~0.50 = still metal) ──
+    g.save();
+    g.strokeStyle = '#808080';
+    g.fillStyle = '#808080';
+    _drawEngraving(g, w, h);
+    g.restore();
+
+    // ── Outer border rim (fully raised, white = 1.0) ──
     g.save();
     g.strokeStyle = '#ffffff';
     g.shadowColor = '#ffffff';
-    g.shadowBlur = 12;
+    g.shadowBlur = 6;
     g.lineWidth = 10;
-    rrPath(g, 18, 18, w - 36, h - 36, 14);
+    rrPath(g, 16, 16, w - 32, h - 32, 14);
     g.stroke();
+    g.shadowBlur = 3;
     g.lineWidth = 4;
-    rrPath(g, 32, 32, w - 64, h - 64, 10);
+    rrPath(g, 48, 48, w - 96, h - 96, 8);
     g.stroke();
     g.restore();
 
-    // ── Decorative chain border ──
+    // ── Concentric rings (slightly raised, ~0.80) ──
     g.save();
-    g.strokeStyle = '#606060';
-    g.lineWidth = 2;
-    g.setLineDash([4, 4]);
-    rrPath(g, 42, 42, w - 84, h - 84, 8);
-    g.stroke();
-    g.setLineDash([]);
-    g.restore();
-
-    // ── Concentric rings (partially raised) ──
-    g.save();
-    for (var ring = 1; ring <= 10; ring++) {
-      var rr = ring * w * 0.040;
-      var bright = ring % 3 === 0 ? '#707070' : '#404040';
-      g.strokeStyle = bright;
-      g.shadowColor = bright;
-      g.shadowBlur = 3;
-      g.lineWidth = ring % 3 === 0 ? 2.5 : 1.2;
+    g.strokeStyle = '#d0d0d0';
+    g.shadowColor = '#d0d0d0';
+    g.shadowBlur = 2;
+    for (var ring = 1; ring <= 8; ring++) {
+      var rr = ring * w * 0.042;
+      g.lineWidth = ring % 3 === 0 ? 2.0 : 1.0;
       g.beginPath();
       g.arc(cx, cy, rr, 0, Math.PI * 2);
       g.stroke();
     }
     g.restore();
 
-    // ── Suit symbol (highest point — full white + large glow) ──
+    // ── Suit symbol (highest point, full white 1.0) ──
     g.save();
-    g.font = Math.round(w * 0.28) + 'px ' + EMOJI_FONT;
+    g.font = Math.round(w * 0.26) + 'px ' + EMOJI_FONT;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.fillStyle = '#ffffff';
     g.shadowColor = '#ffffff';
-    g.shadowBlur = 20;
+    g.shadowBlur = 8;
     g.fillText(m.suit, cx, cy);
-    g.fillText(m.suit, cx, cy); // double pass for stronger glow
     g.restore();
 
-    // ── Title (raised) ──
+    // ── Title (raised, white) ──
     g.save();
-    g.font = 'bold ' + Math.round(w * 0.048) + 'px ' + MONO_FONT;
+    g.font = 'bold ' + Math.round(w * 0.046) + 'px ' + MONO_FONT;
     g.textAlign = 'center';
     g.fillStyle = '#ffffff';
     g.shadowColor = '#ffffff';
-    g.shadowBlur = 10;
-    g.fillText(m.title.toUpperCase(), cx, h * 0.73);
+    g.shadowBlur = 4;
+    g.fillText(m.title.toUpperCase(), cx, h * 0.72);
     g.restore();
 
-    // ── Classified stamp (mid-raised) ──
+    // ── Classified stamp (raised) ──
     g.save();
-    g.font = Math.round(w * 0.034) + 'px ' + MONO_FONT;
+    g.font = 'bold ' + Math.round(w * 0.032) + 'px ' + MONO_FONT;
     g.textAlign = 'center';
-    g.fillStyle = '#a0a0a0';
-    g.shadowColor = '#a0a0a0';
-    g.shadowBlur = 6;
+    g.fillStyle = '#e0e0e0';
     g.fillText(m.classified || 'EYES ONLY', cx, h * 0.10);
     g.restore();
 
     // ── Label ──
     g.save();
+    g.font = Math.round(w * 0.024) + 'px ' + MONO_FONT;
+    g.textAlign = 'center';
+    g.fillStyle = '#d0d0d0';
+    g.fillText(m.label || 'MISSION DOSSIER', cx, h * 0.135);
+    g.restore();
+
+    // ── Description ──
+    g.save();
     g.font = Math.round(w * 0.026) + 'px ' + MONO_FONT;
     g.textAlign = 'center';
-    g.fillStyle = '#808080';
-    g.shadowColor = '#808080';
-    g.shadowBlur = 4;
-    g.fillText(m.label || 'MISSION DOSSIER', cx, h * 0.14);
+    g.fillStyle = '#c8c8c8';
+    g.fillText(m.desc || '', cx, h * 0.78);
     g.restore();
 
-    // ── Description (slightly raised) ──
+    // ── Corner marks ──
     g.save();
-    g.font = Math.round(w * 0.028) + 'px ' + MONO_FONT;
-    g.textAlign = 'center';
-    g.fillStyle = '#707070';
-    g.shadowColor = '#707070';
-    g.shadowBlur = 4;
-    g.fillText(m.desc || '', cx, h * 0.79);
-    g.restore();
-
-    // ── Corner marks (raised) ──
-    g.save();
-    g.font = Math.round(w * 0.055) + 'px ' + EMOJI_FONT;
-    g.fillStyle = '#c0c0c0';
-    g.shadowColor = '#c0c0c0';
-    g.shadowBlur = 8;
+    g.font = Math.round(w * 0.05) + 'px ' + EMOJI_FONT;
+    g.fillStyle = '#e0e0e0';
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.fillText(m.suit, w * 0.12, h * 0.075);
@@ -442,46 +704,60 @@
     c.width = w; c.height = h;
     var g = c.getContext('2d');
 
-    g.fillStyle = '#808080';
+    // Start at brass surface level (mid-gray)
+    g.fillStyle = '#b0b0b0';
     g.fillRect(0, 0, w, h);
 
     var cx = w / 2, cy = h * 0.44;
 
-    // Raised concentric rings
+    // ── Deep groove channels (depressed — darker gray) ──
+    g.save();
+    g.fillStyle = '#404040';
+    _drawGrooveChannels(g, w, h);
+    g.restore();
+
+    // ── Shallow engraving (slightly depressed) ──
+    g.save();
+    g.strokeStyle = '#808080';
+    g.fillStyle = '#808080';
+    _drawEngraving(g, w, h);
+    g.restore();
+
+    // ── Raised concentric rings ──
     for (var ring = 1; ring <= 10; ring++) {
       var rr = ring * w * 0.040;
-      g.strokeStyle = ring % 3 === 0 ? '#a0a0a0' : '#909090';
+      g.strokeStyle = ring % 3 === 0 ? '#c8c8c8' : '#b8b8b8';
       g.lineWidth   = ring % 3 === 0 ? 2.5 : 1.5;
       g.beginPath();
       g.arc(cx, cy, rr, 0, Math.PI * 2);
       g.stroke();
     }
 
-    // Raised suit symbol
+    // ── Raised borders (highest bump) ──
+    g.strokeStyle = '#d8d8d8';
+    g.lineWidth = 5;
+    rrPath(g, 16, 16, w - 32, h - 32, 14);
+    g.stroke();
+    g.lineWidth = 3;
+    rrPath(g, 48, 48, w - 96, h - 96, 8);
+    g.stroke();
+
+    // ── Raised suit symbol ──
     g.font = Math.round(w * 0.28) + 'px ' + EMOJI_FONT;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.fillStyle = '#c8c8c8';
+    g.fillStyle = '#d8d8d8';
     g.fillText(m.suit, cx, cy);
 
-    // Raised borders
-    g.strokeStyle = '#a8a8a8';
-    g.lineWidth = 3;
-    rrPath(g, 18, 18, w - 36, h - 36, 14);
-    g.stroke();
-    g.lineWidth = 2;
-    rrPath(g, 32, 32, w - 64, h - 64, 10);
-    g.stroke();
-
-    // Raised title
+    // ── Raised title ──
     g.font = 'bold ' + Math.round(w * 0.048) + 'px ' + MONO_FONT;
-    g.fillStyle = '#a8a8a8';
+    g.fillStyle = '#c8c8c8';
     g.textAlign = 'center';
     g.fillText(m.title.toUpperCase(), cx, h * 0.73);
 
-    // Corner marks
+    // ── Corner marks ──
     g.font = Math.round(w * 0.055) + 'px ' + EMOJI_FONT;
-    g.fillStyle = '#999999';
+    g.fillStyle = '#b8b8b8';
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.fillText(m.suit, w * 0.12, h * 0.075);
@@ -542,76 +818,41 @@
 
   /* ============================================================
      GLSL SHADER INJECTION — Starfield in deep relief areas
+     Built lazily so CFG.starLayers reflects device tier.
      ============================================================ */
 
   // Fragment shader: uniform & function declarations
-  var SHADER_PARS = [
-    'uniform sampler2D heightMap;',
-    'uniform float uTime;',
-    'uniform float coinRotX;',
-    'uniform float coinRotY;',
-    'float _deepMask = 0.0;',
-    '',
-    '// Procedural parallax starfield with nebula',
-    'vec3 _cosmicField(vec2 uv) {',
-    '  vec3 col = vec3(0.005, 0.003, 0.018);',  // deep space base
-    '',
-    '  // Nebula clouds (slow drift)',
-    '  float n1 = sin(uv.x * 5.0 + uTime * 0.04) * cos(uv.y * 6.0 - uTime * 0.03);',
-    '  float n2 = cos(uv.x * 8.0 - uTime * 0.02) * sin(uv.y * 4.0 + uTime * 0.035);',
-    '  float n3 = sin(uv.x * 3.0 + uv.y * 5.0 + uTime * 0.025);',
-    '  col += vec3(0.10, 0.02, 0.16) * (n1 * 0.5 + 0.5) * 0.32;',   // purple
-    '  col += vec3(0.02, 0.06, 0.18) * (n2 * 0.5 + 0.5) * 0.25;',   // blue
-    '  col += vec3(0.12, 0.04, 0.02) * (n3 * 0.5 + 0.5) * 0.15;',   // warm accent
-    '',
-    '  // Star layers with parallax depth',
-    '  for (int layer = 0; layer < 4; layer++) {',
-    '    float lf = float(layer);',
-    '    float sc = 32.0 + lf * 24.0;',
-    '    float px = 0.018 + lf * 0.014;',
-    '    vec2 off = vec2(coinRotY, -coinRotX) * px;',
-    '    vec2 st = (uv + off) * sc;',
-    '    vec2 gc = floor(st);',
-    '',
-    '    // Star presence (hash)',
-    '    float h1 = fract(sin(dot(gc, vec2(127.1, 311.7))) * 43758.5453);',
-    '    float isStar = step(0.962 - lf * 0.005, h1);',
-    '',
-    '    // Star properties',
-    '    float h2 = fract(sin(dot(gc, vec2(269.5, 183.3))) * 43758.5453);',
-    '    float twinkle = 0.55 + 0.45 * sin(uTime * (0.6 + h2 * 3.0) + h2 * 6.283);',
-    '',
-    '    // Slight color variation (cool blue ↔ warm white)',
-    '    vec3 tint = mix(vec3(0.65, 0.75, 1.0), vec3(1.0, 0.93, 0.78), h2);',
-    '',
-    '    // Brighter in deeper layers, faded in near layers (depth illusion)',
-    '    float bright = isStar * h2 * twinkle * (0.22 + lf * 0.20);',
-    '    col += tint * bright;',
-    '  }',
-    '',
-    '  // Subtle dust lane (dark streak)',
-    '  float dust = smoothstep(0.48, 0.52, sin(uv.x * 2.5 + uv.y * 1.8 + 0.5));',
-    '  col *= mix(0.7, 1.0, dust);',
-    '',
-    '  return col;',
-    '}',
-  ].join('\n');
+  // Uses shared static starfield texture instead of procedural GLSL
+  function _shaderPars() {
+    return [
+      'uniform sampler2D heightMap;',
+      'uniform sampler2D starfieldTex;',
+      'uniform float uTime;',
+      'uniform float coinRotX;',
+      'uniform float coinRotY;',
+      'float _deepMask = 0.0;',
+    ].join('\n');
+  }
 
   // Inject after diffuse map sampling: compute height mask, darken deep areas
+  // Tightened threshold: only height values near 0 (deep groove channels) get starfield
   var SHADER_HEIGHT = [
     '{',
     '  float _coinH = texture2D(heightMap, vUv).r;',
     '  float _capF = step(0.3, abs(vNormal.z));',
-    '  _deepMask = smoothstep(0.40, 0.06, _coinH) * _capF;',
+    '  _deepMask = smoothstep(0.15, 0.02, _coinH) * _capF;',
     '  diffuseColor.rgb *= (1.0 - _deepMask * 0.96);',
     '}',
   ].join('\n');
 
-  // Inject after emissivemap_fragment: add starfield as emission (goes through tone mapping)
+  // Inject after emissivemap_fragment: sample shared starfield texture as emission
   var SHADER_EMIT = [
     '{',
-    '  vec3 _stars = _cosmicField(vUv);',
-    '  totalEmissiveRadiance += _stars * _deepMask * 1.4;',
+    '  vec2 _starUV = vUv + vec2(coinRotY, -coinRotX) * 0.015;',
+    '  vec3 _stars = texture2D(starfieldTex, _starUV).rgb;',
+    '  // Gentle twinkle on star brightness',
+    '  _stars *= 0.85 + 0.15 * sin(uTime * 1.2 + vUv.x * 20.0 + vUv.y * 15.0);',
+    '  totalEmissiveRadiance += _stars * _deepMask * 1.6;',
     '}',
   ].join('\n');
 
@@ -675,18 +916,24 @@
       color:           0xffffff,
     });
 
-    // ── Shader injection: procedural starfield in deep relief areas ──
+    // ── Shader injection: shared static starfield in deep relief areas ──
+    var starfieldC = _getStarfield();
+    var starfieldT = new T.CanvasTexture(starfieldC);
+    starfieldT.wrapS = T.RepeatWrapping;
+    starfieldT.wrapT = T.RepeatWrapping;
+
     face.onBeforeCompile = function (shader) {
       // Add custom uniforms
-      shader.uniforms.heightMap = { value: heightT };
-      shader.uniforms.uTime    = { value: 0.0 };
-      shader.uniforms.coinRotX = { value: 0.0 };
-      shader.uniforms.coinRotY = { value: 0.0 };
+      shader.uniforms.heightMap    = { value: heightT };
+      shader.uniforms.starfieldTex = { value: starfieldT };
+      shader.uniforms.uTime        = { value: 0.0 };
+      shader.uniforms.coinRotX     = { value: 0.0 };
+      shader.uniforms.coinRotY     = { value: 0.0 };
 
       // 1. Inject declarations + starfield function (before map_pars)
       shader.fragmentShader = shader.fragmentShader.replace(
         '#include <map_pars_fragment>',
-        SHADER_PARS + '\n#include <map_pars_fragment>'
+        _shaderPars() + '\n#include <map_pars_fragment>'
       );
 
       // 2. After diffuse map sampling: compute height mask, darken deep
@@ -769,18 +1016,35 @@
   }
 
   /* ============================================================
-     MOUNT
+     MOUNT — Probes device, loads Three.js, builds scene
+     Falls back to CSS cards if WebGL unavailable or too slow.
      ============================================================ */
   function mount(fanEl, missions) {
     if (_ready || _disposed) return;
 
-    // Desktop only
-    if (!window.matchMedia('(hover: hover)').matches) {
-      console.log('[Card3D] Touch-only device — using CSS cards');
+    // ── Device capability probe ──
+    var tier = _probeWebGL();
+    if (tier === 'none') {
+      console.log('[Card3D] No WebGL / very weak GPU — CSS fallback');
       return;
     }
+    _applyTier(tier);
+    console.log('[Card3D] Device tier: ' + tier +
+      ' | tex: ' + CFG.texW + '×' + CFG.texH +
+      ' | mobile: ' + _isMobile + ' | touch: ' + _isTouch);
+
+    // ── Safety timeout — if Three.js hasn't loaded in 8s, abort ──
+    _mountTimeout = setTimeout(function () {
+      if (!_ready && !_disposed) {
+        console.warn('[Card3D] Mount timeout — CSS fallback');
+        _disposed = true; // prevent late init
+      }
+    }, 8000);
 
     _loadThree(function () {
+      if (_disposed) return; // timed out
+      clearTimeout(_mountTimeout);
+
       try {
         _offCanvas = document.createElement('canvas');
         _offCanvas.width  = CFG.texW;
@@ -789,8 +1053,8 @@
         _renderer = new T.WebGLRenderer({
           canvas:          _offCanvas,
           alpha:           true,
-          antialias:       true,
-          powerPreference: 'low-power',
+          antialias:       tier === 'high',   // skip AA on lower tiers
+          powerPreference: tier === 'high' ? 'high-performance' : 'low-power',
         });
         _renderer.setSize(CFG.texW, CFG.texH);
         _renderer.setPixelRatio(1);
@@ -814,7 +1078,7 @@
           var dc = document.createElement('canvas');
           dc.width  = CFG.texW;
           dc.height = CFG.texH;
-          dc.style.cssText = 'width:100%;height:100%;display:block;';
+          dc.style.cssText = 'width:100%;height:100%;display:block;object-fit:contain;';
           wrapper.appendChild(dc);
           card.appendChild(wrapper);
 
@@ -837,6 +1101,24 @@
           });
         });
 
+        // ── Validation render — confirm WebGL actually produces pixels ──
+        if (_coins.length > 0) {
+          _coins[0].mesh.visible = true;
+          _renderer.render(_scene, _camera);
+          _coins[0].mesh.visible = false;
+          var px = new Uint8Array(4);
+          var gl = _renderer.getContext();
+          gl.readPixels(
+            Math.floor(CFG.texW / 2), Math.floor(CFG.texH / 2),
+            1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px
+          );
+          if (px[0] === 0 && px[1] === 0 && px[2] === 0 && px[3] === 0) {
+            console.warn('[Card3D] Validation render produced black — CSS fallback');
+            _cleanupPartialMount();
+            return;
+          }
+        }
+
         _t0 = performance.now();
         _ready = true;
 
@@ -846,22 +1128,42 @@
         }, 100);
 
         _animId = requestAnimationFrame(_loop);
-        console.log('[Card3D] Mounted — ' + _coins.length + ' coins (v2: starfield shader)');
+        console.log('[Card3D] Mounted — ' + _coins.length + ' coins | tier: ' + tier);
       } catch (err) {
         console.warn('[Card3D] Mount failed:', err);
-        _ready = false;
+        _cleanupPartialMount();
       }
     });
   }
 
+  // Clean up partial WebGL resources if mount fails after partial init
+  function _cleanupPartialMount() {
+    _ready = false;
+    _coins.forEach(function (cn) {
+      if (cn.wrapper && cn.wrapper.parentNode) {
+        cn.wrapper.parentNode.removeChild(cn.wrapper);
+      }
+    });
+    _coins = [];
+    if (_sharedGeo) { _sharedGeo.dispose(); _sharedGeo = null; }
+    if (_envMap)    { _envMap.dispose(); _envMap = null; }
+    if (_renderer)  { _renderer.dispose(); _renderer = null; }
+  }
+
   /* ============================================================
-     RENDER LOOP
+     RENDER LOOP — frame-throttled on mobile for battery
      ============================================================ */
   function _loop() {
     if (_disposed) return;
+    _animId = requestAnimationFrame(_loop);
 
     var now = performance.now();
-    var t   = (now - _t0) / 1000;
+
+    // ── Frame throttle (mobile: 30fps cap, low: 20fps cap) ──
+    if (CFG.frameInterval > 0 && (now - _lastFrame) < CFG.frameInterval) return;
+    _lastFrame = now;
+
+    var t = (now - _t0) / 1000;
 
     for (var i = 0; i < _coins.length; i++) {
       var cn = _coins[i];
@@ -910,8 +1212,6 @@
       cn.dCtx.clearRect(0, 0, cn.dCanvas.width, cn.dCanvas.height);
       cn.dCtx.drawImage(_offCanvas, 0, 0);
     }
-
-    _animId = requestAnimationFrame(_loop);
   }
 
   /* ============================================================
@@ -968,16 +1268,37 @@
   }
 
   /* ============================================================
-     THREE.JS LAZY LOADER
+     THREE.JS LAZY LOADER — with network timeout
      ============================================================ */
   function _loadThree(cb) {
     if (window.THREE) { T = window.THREE; cb(); return; }
+
+    var done = false;
     var s = document.createElement('script');
     s.src = 'js/vendor/three.min.js';
-    s.onload  = function () { T = window.THREE; cb(); };
+
+    s.onload = function () {
+      if (done) return;
+      done = true;
+      T = window.THREE;
+      cb();
+    };
+
     s.onerror = function () {
+      if (done) return;
+      done = true;
       console.warn('[Card3D] Three.js load failed — CSS cards remain');
     };
+
+    // Network timeout — if script hasn't loaded in 6s (slow 3G), give up
+    setTimeout(function () {
+      if (!done) {
+        done = true;
+        s.onload = s.onerror = null;
+        console.warn('[Card3D] Three.js load timeout — CSS cards remain');
+      }
+    }, 6000);
+
     document.head.appendChild(s);
   }
 
