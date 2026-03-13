@@ -21,16 +21,16 @@ const OUTPUT_DIR = 'encoded_for_r2/video';
 const DRY_RUN = process.argv.includes('--dry');
 
 const VIDEOS = [
-  { src: 'Sandpoint1_ Schweitzer Mountain Resort.mp4', name: 'Sandpoint1_SchweitzerMountain.webm' },
-  { src: 'Sandpoint2_ Lake Pend Oreille.mp4', name: 'Sandpoint2_LakePendOreille.webm' },
-  { src: 'Sandpoint3_ Lake Pend Oreille.mp4', name: 'Sandpoint3_LakePendOreille.webm' },
-  { src: 'Sandpoint _ Lake Pend Oreille.mp4', name: 'Sandpoint_LakePendOreille.webm' },
+  { src: 'Sandpoint1_ Schweitzer Mountain Resort.mp4', name: 'Sandpoint1_SchweitzerMountain.mp4' },
+  { src: 'Sandpoint2_ Lake Pend Oreille.mp4', name: 'Sandpoint2_LakePendOreille.mp4' },
+  { src: 'Sandpoint3_ Lake Pend Oreille.mp4', name: 'Sandpoint3_LakePendOreille.mp4' },
+  { src: 'Sandpoint _ Lake Pend Oreille.mp4', name: 'Sandpoint_LakePendOreille.mp4' },
 ];
 
-const FFMPEG_CRF = 28;           // Quality: lower = better, 28 is good compromise
-const FFMPEG_PRESET = 'medium'; // Speed/quality tradeoff
-const TARGET_WIDTH = 1280;      // 720p-ish (maintains aspect ratio)
-const TARGET_BITRATE = '1.5M';  // Target max bitrate
+const FFMPEG_CRF = 32;           // Quality: higher = more compression
+const FFMPEG_PRESET = 'fast';   // Faster encoding, slightly less quality
+const TARGET_WIDTH = 854;       // 480p - good for background video, keeps file small
+const TARGET_BITRATE = '800k';   // Lower bitrate for smaller files
 
 async function fileExists(p) {
   try {

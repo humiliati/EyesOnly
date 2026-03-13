@@ -34,6 +34,8 @@ const AUDIO_DIR_MAP = {
   new_sfx: 'sfx',
   // tolerate accidental folder name
   'new_sfx??': 'sfx',
+  // video
+  video: 'video',
 };
 
 function ctFor(file) {
@@ -83,7 +85,7 @@ async function listFiles(dir) {
       out.push(...await listFiles(p));
     } else {
       const ext = path.extname(ent.name).toLowerCase();
-      if (ext === '.webm' || ext === '.mp3') out.push(p);
+      if (ext === '.webm' || ext === '.mp3' || ext === '.mp4') out.push(p);
     }
   }
   return out;
@@ -111,7 +113,9 @@ function r2KeyFor(localPath) {
   const kind = inferKindFromTop(top);
   if (!kind) return null;
   const filename = path.basename(localPath);
-  return `audio/${kind}/${filename}`;
+  // Video files go to 'video/' prefix, audio files go to 'audio/' prefix
+  const prefix = kind === 'video' ? 'video' : 'audio';
+  return `${prefix}/${kind}/${filename}`;
 }
 
 async function main() {

@@ -97,12 +97,12 @@ const SplashScreen = (() => {
     },
   ];
 
-  // Background drone footage
+  // Background drone footage (optimized H.264, 480p, no audio)
   const VIDEO_SOURCES = [
-    '/video/Sandpoint2_%20Lake%20Pend%20Oreille.mp4',
-    '/video/Sandpoint3_%20Lake%20Pend%20Oreille.mp4',
-    '/video/Sandpoint%20_%20Lake%20Pend%20Oreille.mp4',
-    '/video/Sandpoint1_%20Schweitzer%20Mountain%20Resort.mp4',
+    '/video/Sandpoint2_LakePendOreille.mp4',
+    '/video/Sandpoint3_LakePendOreille.mp4',
+    '/video/Sandpoint_LakePendOreille.mp4',
+    '/video/Sandpoint1_SchweitzerMountain.mp4',
   ];
 
   // Silhouette image assets
