@@ -889,11 +889,11 @@ const SplashScreen = (() => {
 
       pctx.drawImage(mc, srcX, srcY, srcW, srcH, 0, 0, cw, ch);
 
-      // Vignette: fade edges to card background
-      var vig = pctx.createRadialGradient(cw / 2, ch / 2, cw * 0.28, cw / 2, ch / 2, cw * 0.5);
+      // Vignette: gentle fade at edges, keep center clear for star visibility
+      var vig = pctx.createRadialGradient(cw / 2, ch / 2, cw * 0.35, cw / 2, ch / 2, cw * 0.5);
       vig.addColorStop(0,   'rgba(0, 0, 0, 0)');
-      vig.addColorStop(0.7, 'rgba(4, 3, 8, 0.5)');
-      vig.addColorStop(1,   'rgba(10, 8, 16, 1)');
+      vig.addColorStop(0.6, 'rgba(4, 3, 8, 0.3)');
+      vig.addColorStop(1,   'rgba(10, 8, 16, 0.85)');
       pctx.fillStyle = vig;
       pctx.fillRect(0, 0, cw, ch);
     });
