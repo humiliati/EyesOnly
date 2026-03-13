@@ -97,12 +97,13 @@ const SplashScreen = (() => {
     },
   ];
 
-  // Background drone footage (optimized H.264, 480p, no audio)
+  // Background drone footage (optimized 480p, no audio)
+  // Each entry has webm (VP9, smaller) with mp4 (H.264) fallback
   const VIDEO_SOURCES = [
-    '/video/Sandpoint2_LakePendOreille.mp4',
-    '/video/Sandpoint3_LakePendOreille.mp4',
-    '/video/Sandpoint_LakePendOreille.mp4',
-    '/video/Sandpoint1_SchweitzerMountain.mp4',
+    { webm: '/video/Sandpoint2_LakePendOreille.webm', mp4: '/video/Sandpoint2_LakePendOreille.mp4' },
+    { webm: '/video/Sandpoint3_LakePendOreille.webm', mp4: '/video/Sandpoint3_LakePendOreille.mp4' },
+    { webm: '/video/Sandpoint_LakePendOreille.webm',  mp4: '/video/Sandpoint_LakePendOreille.mp4' },
+    { webm: '/video/Sandpoint1_SchweitzerMountain.webm', mp4: '/video/Sandpoint1_SchweitzerMountain.mp4' },
   ];
 
   // Silhouette image assets
@@ -172,9 +173,12 @@ const SplashScreen = (() => {
         <div class="splash-atmo-horizon"></div>
       </div>
       <div class="splash-video-layer" id="splash-video-layer">
-        ${VIDEO_SOURCES.map((src, i) =>
-          `<video id="splash-vid-${i}" src="${src}" muted loop playsinline preload="auto"
-                  ${i === 0 ? 'class="splash-video-active"' : ''}></video>`
+        ${VIDEO_SOURCES.map((v, i) =>
+          `<video id="splash-vid-${i}" muted loop playsinline preload="auto"
+                  ${i === 0 ? 'class="splash-video-active"' : ''}>
+            <source src="${v.webm}" type="video/webm">
+            <source src="${v.mp4}" type="video/mp4">
+          </video>`
         ).join('')}
       </div>
       <div class="splash-scanlines"></div>
@@ -981,7 +985,7 @@ const SplashScreen = (() => {
       'transform: scale(0.92) rotate(0deg)',
       'opacity: 0.94',
       'pointer-events: none',
-      'z-index: 99998',
+      'z-index: 100000',
       'transition: transform 0.12s ease-out, opacity 0.12s ease-out, box-shadow 0.12s ease-out',
       'box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(180,160,80,0.12)',
       'border-radius: 16px',
@@ -1017,7 +1021,9 @@ const SplashScreen = (() => {
   function _isOverPlaceholder(x, y) {
     if (!_dragState || !_dragState.placeholderEl) return false;
     var r = _dragState.placeholderEl.getBoundingClientRect();
-    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+    // Generous 30px margin around placeholder for forgiving drop-back
+    var pad = 30;
+    return x >= r.left - pad && x <= r.right + pad && y >= r.top - pad && y <= r.bottom + pad;
   }
 
   function _returnGhostToSlot(done) {
@@ -1051,8 +1057,10 @@ const SplashScreen = (() => {
     if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
     // Remove placeholder
     if (ph && ph.parentNode) ph.parentNode.removeChild(ph);
-    // Restore card visibility
+    // Restore card in flow (removes display:none)
     if (cardEl) cardEl.classList.remove('coin-card-dragging');
+    // Restore body cursor
+    document.body.style.cursor = '';
 
     _dragState = null;
   }
@@ -1082,8 +1090,11 @@ const SplashScreen = (() => {
     // Create ghost
     _dragState.ghostEl = _createDragGhost(cardEl, ev.clientX, ev.clientY);
 
-    // Hide original card
+    // Hide original card (display:none exits flex flow; placeholder holds slot)
     cardEl.classList.add('coin-card-dragging');
+
+    // Body cursor during drag
+    document.body.style.cursor = 'grabbing';
 
     // Sound
     _ensureAudioInit();

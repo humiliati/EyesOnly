@@ -129,6 +129,7 @@
   position: absolute;
   inset: 0;
   z-index: 1;
+  pointer-events: none;
 }
 
 .splash-video-layer video {
@@ -1230,10 +1231,9 @@
   100% { opacity: 0; transform: scale(0.9); }
 }
 
-/* Card being dragged: hidden in fan, ghost follows pointer */
+/* Card being dragged: removed from flow so placeholder alone holds the slot */
 .splash-dossier.coin-card.coin-card-dragging {
-  visibility: hidden !important;
-  opacity: 0 !important;
+  display: none !important;
 }
 
 /* Coin artwork drag cursor — grab dead space around suit */
