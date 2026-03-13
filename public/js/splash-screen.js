@@ -902,6 +902,8 @@ const SplashScreen = (() => {
   function _disposeStarfield() {
     _starfield.running = false;
     if (_starfield.rafId) cancelAnimationFrame(_starfield.rafId);
+    _starfield.rafId = null;
+    _starfield.time = 0;
     _starfield.layers = [];
     _starfield.milkyWay = [];
     _starfield.turingClusters = [];
