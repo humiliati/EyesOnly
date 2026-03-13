@@ -76,7 +76,8 @@
     flipMs:    800,
 
     // Camera
-    camDist: 6.0,
+    camDist: 8.0,
+    camFov:  28,
 
     // Render throttle (ms between frames, 0 = every rAF)
     frameInterval: 0,
@@ -381,10 +382,10 @@
     }
     g.restore();
 
-    // ── 2. Subtle edge bevel highlight (frame) ──
+    // ── 2. Very subtle frame edge bevel ──
     g.save();
-    g.strokeStyle = 'rgba(180,180,190,0.15)';
-    g.lineWidth = frameW;
+    g.strokeStyle = 'rgba(160,160,170,0.04)';
+    g.lineWidth = 3;
     rrPath(g, frameW / 2, frameW / 2, w - frameW, h - frameW, cr);
     g.stroke();
     g.restore();
@@ -512,14 +513,14 @@
 
     g.restore(); // end panel clip
 
-    // ── 12. Frame edge highlights (subtle metallic) ──
+    // ── 12. Frame edge highlights (very subtle metallic) ──
     g.save();
-    g.strokeStyle = 'rgba(180,180,190,0.2)';
-    g.lineWidth = 2;
+    g.strokeStyle = 'rgba(160,160,170,0.08)';
+    g.lineWidth = 1.5;
     rrPath(g, 3, 3, w - 6, h - 6, cr);
     g.stroke();
-    g.strokeStyle = 'rgba(120,120,130,0.15)';
-    g.lineWidth = 1.5;
+    g.strokeStyle = 'rgba(120,120,130,0.06)';
+    g.lineWidth = 1;
     var ifx = frameW - 1;
     rrPath(g, ifx, ifx, w - ifx * 2, h - ifx * 2, Math.max(4, cr - frameW + 3));
     g.stroke();
@@ -589,15 +590,14 @@
     _drawDecoderRing(g, cx, cy, ringR * 0.65, ringR * 0.50, 24);
     g.restore();
 
-    // ── Frame edge highlights: max height ──
+    // ── Frame edge highlights: slightly raised ──
     g.save();
-    g.strokeStyle = '#ffffff';
-    g.shadowColor = '#ffffff';
-    g.shadowBlur = 4;
-    g.lineWidth = 6;
+    g.strokeStyle = '#dddddd'; // 0.87 — subtle edge, not max white
+    g.lineWidth = 3;
     rrPath(g, 3, 3, w - 6, h - 6, cr);
     g.stroke();
-    g.lineWidth = 3;
+    g.strokeStyle = '#d0d0d0'; // 0.82
+    g.lineWidth = 2;
     rrPath(g, frameW - 1, frameW - 1, w - (frameW - 1) * 2, h - (frameW - 1) * 2, Math.max(4, cr - frameW + 3));
     g.stroke();
     g.restore();
@@ -889,22 +889,26 @@
     // Ambient — cool neutral
     _scene.add(new T.AmbientLight(0x505560, 0.4));
 
-    // Rim light from below-right (catches edges to show thickness)
-    var rim = new T.PointLight(0x9098a0, 0.8, 12);
-    rim.position.set(2, -2, 4);
+    // Rim light from below (catches bottom edge to show thickness)
+    var rim = new T.PointLight(0x9098a0, 1.0, 14);
+    rim.position.set(1, -3, 3);
     _scene.add(rim);
+
+    // Secondary rim from top-left (catches left edge for depth)
+    var rim2 = new T.PointLight(0x808898, 0.6, 10);
+    rim2.position.set(-3, 2, 2);
+    _scene.add(rim2);
 
     // Hemisphere: dark cool sky / dark ground
     _scene.add(new T.HemisphereLight(0x404858, 0x181820, 0.3));
   }
 
   function setupCamera() {
-    // Orthographic camera sized to coin + bevel, with slight tilt to show thickness
-    var hw = (CFG.width  + CFG.bevel * 2) / 2 * 1.05; // 5% extra margin for tilt
-    var hh = (CFG.height + CFG.bevel * 2) / 2 * 1.05;
-    _camera = new T.OrthographicCamera(-hw, hw, hh, -hh, 0.1, 20);
-    // Slight offset to reveal edge thickness (tilted away from camera)
-    _camera.position.set(0.15, -0.25, CFG.camDist);
+    // Perspective camera — essential for showing the coin's 3D thickness.
+    // Narrow FOV keeps distortion minimal while letting depth be visible.
+    var aspect = CFG.texW / CFG.texH;
+    _camera = new T.PerspectiveCamera(CFG.camFov, aspect, 0.1, 50);
+    _camera.position.set(0, 0, CFG.camDist);
     _camera.lookAt(0, 0, 0);
   }
 
@@ -1063,8 +1067,8 @@
 
       // ── Idle wobble + base tilt to show thickness ──
       var p  = t * CFG.idleSpeed + cn.phase;
-      var ix = Math.sin(p * 1.1) * CFG.idleAmp + 0.06;   // base X tilt (show top edge)
-      var iy = Math.cos(p * 0.7) * CFG.idleAmp * 0.6 - 0.04; // base Y tilt (show right edge)
+      var ix = Math.sin(p * 1.1) * CFG.idleAmp + 0.16;   // base X tilt — top tilted faintly away
+      var iy = Math.cos(p * 0.7) * CFG.idleAmp * 0.6 - 0.08; // base Y tilt — left side very slightly away
 
       // ── Target tilt ──
       var tx = ix + (cn.hovered ? CFG.hoverTilt * 0.3 : 0);

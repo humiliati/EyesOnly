@@ -432,8 +432,8 @@
   will-change: transform;
   border: none;
   box-shadow:
-    0 4px 30px rgba(0, 0, 0, 0.8),
-    0 0 8px rgba(120, 120, 140, 0.1);
+    0 8px 24px rgba(0, 0, 0, 0.6),
+    0 0 4px rgba(0, 0, 0, 0.4);
   background: transparent;
   backdrop-filter: none;
   perspective: 800px;
@@ -475,6 +475,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(6, 6, 10, 0.95);
 }
 
 .coin-card-canvas canvas {
@@ -523,7 +524,7 @@
   visibility: hidden;
 }
 
-/* Interactive elements stay visible above the 3D canvas */
+/* Interactive elements stay visible above the 3D canvas with solid backgrounds */
 .coin-3d-mode .coin-mid-row {
   position: relative;
   z-index: 15;
@@ -533,6 +534,24 @@
 .coin-3d-mode .coin-tag-strip {
   position: relative;
   z-index: 15;
+}
+
+/* In 3D mode, give tags and buttons opaque dark backgrounds so they're legible
+   over the transparent 3D canvas. Without this, they appear ghostly/faint. */
+.coin-3d-mode .coin-tag {
+  background: rgba(14, 14, 20, 0.92);
+  border-color: rgba(140, 140, 160, 0.25);
+  color: rgba(180, 180, 190, 0.75);
+}
+
+.coin-3d-mode .coin-book-btn {
+  background: rgba(18, 18, 26, 0.95);
+  border-color: rgba(140, 140, 160, 0.3);
+}
+
+/* Ensure the coin-border-inner clips all content within the card frame in 3D mode */
+.coin-3d-mode .coin-border-inner {
+  overflow: hidden;
 }
 
 /* Desktop fan angles — 4-card spread */
@@ -561,9 +580,8 @@
   z-index: 10 !important;
   filter: brightness(1.12);
   box-shadow:
-    0 12px 50px rgba(0, 0, 0, 0.9),
-    0 0 25px rgba(140, 140, 160, 0.15),
-    0 0 50px rgba(100, 100, 120, 0.08);
+    0 12px 40px rgba(0, 0, 0, 0.7),
+    0 0 12px rgba(100, 100, 120, 0.1);
 }
 
 /* Mobile tap-hover (JS-toggled persistent hover state) */
@@ -572,9 +590,8 @@
   z-index: 10 !important;
   filter: brightness(1.12);
   box-shadow:
-    0 12px 50px rgba(0, 0, 0, 0.9),
-    0 0 25px rgba(140, 140, 160, 0.15),
-    0 0 50px rgba(100, 100, 120, 0.08);
+    0 12px 40px rgba(0, 0, 0, 0.7),
+    0 0 12px rgba(100, 100, 120, 0.1);
 }
 
 
