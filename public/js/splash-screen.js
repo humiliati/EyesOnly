@@ -544,10 +544,15 @@ const SplashScreen = (() => {
   function hoverCard(cardEl) {
     if (hoveredCardEl === cardEl) return;
     // Un-hover previous
-    if (hoveredCardEl) hoveredCardEl.classList.remove('coin-card-hovered');
+    if (hoveredCardEl) {
+      var prevIdx = parseInt(hoveredCardEl.dataset.index, 10);
+      hoveredCardEl.classList.remove('coin-card-hovered');
+      Card3D.setHover(prevIdx, false);
+    }
     hoveredCardEl = cardEl;
     cardEl.classList.add('coin-card-hovered');
     var idx = parseInt(cardEl.dataset.index, 10);
+    Card3D.setHover(idx, true);
     var m = MISSIONS[idx];
     if (m && m.videoIndex !== undefined) switchVideo(m.videoIndex);
     playHoverSound(idx);
@@ -555,7 +560,9 @@ const SplashScreen = (() => {
 
   function unhoverAll() {
     if (hoveredCardEl) {
+      var prevIdx = parseInt(hoveredCardEl.dataset.index, 10);
       hoveredCardEl.classList.remove('coin-card-hovered');
+      Card3D.setHover(prevIdx, false);
       hoveredCardEl = null;
     }
   }
@@ -753,61 +760,54 @@ const SplashScreen = (() => {
   }
 
   /* ============================================================
-     Three.js 3D Card Integration — STUB
-     Future phase: replace CSS coin-cards with WebGL-rendered
-     metallic coin meshes.  The hooks below are called by init()
-     and removeSplash() so the 3D layer can mount/unmount cleanly.
+     Three.js 3D Card Integration
+     Delegates to CardCoin3D (card-coin-3d.js) which lazy-loads
+     Three.js and renders military challenge-coin meshes.
+     CSS cards remain interactive underneath; 3D is visual only.
      ============================================================ */
   const Card3D = {
-    /** True once Three.js is loaded and card meshes are ready */
-    ready: false,
-
-    /**
-     * Mount a <canvas> inside each .coin-card, create Scene + meshes.
-     * Called once after buildSplash() and DOM insertion.
-     * @param {HTMLElement} fanEl — the .splash-card-fan container
-     * @param {Array} missions  — MISSIONS config array
-     */
-    mount: function (/* fanEl, missions */) {
-      // TODO: import Three.js, create renderer per card,
-      //       build CoinGeometry (cylinder + edge bevel + face textures),
-      //       attach to .coin-card-canvas divs, set Card3D.ready = true.
+    get ready() {
+      return window.CardCoin3D ? CardCoin3D.ready : false;
     },
 
     /**
-     * Per-frame render tick (requestAnimationFrame loop).
-     * Handles idle wobble, hover tilt, drag spin.
+     * Mount 3D coin layer. Loads Three.js lazily, builds meshes,
+     * starts render loop. CSS cards stay interactive underneath.
      */
-    tick: function () {
-      // TODO: update uniforms, animate idle rotation, render
+    mount: function (fanEl, missions) {
+      if (window.CardCoin3D) {
+        CardCoin3D.mount(fanEl, missions);
+      }
+    },
+
+    /** Per-frame render — handled internally by CardCoin3D loop */
+    tick: function () { /* CardCoin3D owns its own rAF loop */ },
+
+    /**
+     * Relay hover state to 3D mesh (tilt + specular brighten).
+     */
+    setHover: function (index, hovered) {
+      if (window.CardCoin3D && CardCoin3D.ready) {
+        CardCoin3D.setHover(index, hovered);
+      }
     },
 
     /**
-     * Set hover state on a specific card mesh.
-     * @param {number} index — card index
-     * @param {boolean} hovered
-     */
-    setHover: function (/* index, hovered */) {
-      // TODO: tilt mesh toward camera, brighten specular
-    },
-
-    /**
-     * Play select animation (flip + zoom) on a card mesh.
-     * @param {number} index — card index
+     * Play coin-flip select animation.
      * @returns {Promise} resolves when animation completes
      */
-    selectCard: function (/* index */) {
+    selectCard: function (index) {
+      if (window.CardCoin3D && CardCoin3D.ready) {
+        return CardCoin3D.selectCard(index);
+      }
       return Promise.resolve();
-      // TODO: animate coin flip, camera zoom, resolve after ~800ms
     },
 
-    /**
-     * Dispose all Three.js resources (renderers, textures, geometries).
-     * Called by removeSplash().
-     */
+    /** Dispose all Three.js resources. Called by removeSplash(). */
     dispose: function () {
-      // TODO: renderer.dispose(), geometry.dispose(), etc.
-      Card3D.ready = false;
+      if (window.CardCoin3D) {
+        CardCoin3D.dispose();
+      }
     }
   };
 

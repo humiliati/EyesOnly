@@ -468,16 +468,63 @@
 .coin-card-canvas {
   position: absolute;
   inset: 0;
-  z-index: 60;
+  z-index: 5;
   border-radius: 16px;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.5s ease;
+  overflow: hidden;
 }
 
 .coin-card-canvas.coin-3d-active {
   opacity: 1;
-  pointer-events: auto;
+}
+
+/* ---- 3D Mode — CSS→WebGL visual handoff ----
+   When Three.js coins are active, hide decorative CSS elements.
+   Interactive HTML (buttons, wheels, tags) stays above the canvas. */
+.coin-3d-mode .coin-border-outer {
+  position: relative;
+  z-index: 10;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.coin-3d-mode .coin-border-inner {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.coin-3d-mode .coin-border-inner::before {
+  display: none; /* disable CSS sheen sweep — 3D handles specular */
+}
+
+.coin-3d-mode .coin-artwork {
+  display: none; /* suit symbol + concentric rings — baked into 3D texture */
+}
+
+.coin-3d-mode .coin-header {
+  display: none; /* classified + label — baked into 3D texture */
+}
+
+.coin-3d-mode .coin-info {
+  display: none; /* title + desc — baked into 3D texture */
+}
+
+.coin-3d-mode .coin-corner {
+  display: none; /* corner suit marks — baked into 3D texture */
+}
+
+/* Interactive elements stay visible above the 3D canvas */
+.coin-3d-mode .coin-mid-row {
+  position: relative;
+  z-index: 15;
+}
+
+.coin-3d-mode .coin-wheel-strip,
+.coin-3d-mode .coin-tag-strip {
+  position: relative;
+  z-index: 15;
 }
 
 /* Desktop fan angles — 4-card spread */
