@@ -193,7 +193,7 @@
       g.stroke();
     }
 
-    // Radial hatching
+    // Radial hatching — clipped to stay within coin boundary
     g.save();
     g.globalAlpha = 0.04;
     g.strokeStyle = '#b4a040';
@@ -202,19 +202,19 @@
       var rad = a * Math.PI / 180;
       g.beginPath();
       g.moveTo(cx, cy);
-      g.lineTo(cx + Math.cos(rad) * w * 0.44, cy + Math.sin(rad) * h * 0.38);
+      g.lineTo(cx + Math.cos(rad) * w * 0.40, cy + Math.sin(rad) * h * 0.34);
       g.stroke();
     }
     g.restore();
 
-    // Inner border engravings (double line)
+    // Inner border engravings (double line) — inset for mesh safety
     g.save();
     g.strokeStyle = 'rgba(160,130,40,0.10)';
     g.lineWidth = 1.5;
-    rrPath(g, 18, 18, w - 36, h - 36, 8);
+    rrPath(g, 24, 24, w - 48, h - 48, 8);
     g.stroke();
     g.strokeStyle = 'rgba(160,130,40,0.06)';
-    rrPath(g, 24, 24, w - 48, h - 48, 6);
+    rrPath(g, 30, 30, w - 60, h - 60, 6);
     g.stroke();
     g.restore();
 
@@ -274,16 +274,16 @@
     g.fillText(m.desc || '', cx, h * 0.80);
     g.restore();
 
-    // Corner suit marks (smaller, muted)
+    // Corner suit marks (smaller, muted) — inset from edge to stay within mesh
     g.save();
     g.font = Math.round(w * 0.06) + 'px serif';
     g.fillStyle = sc.fill;
     g.globalAlpha = 0.45;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.fillText(m.suit, w * 0.09, h * 0.055);
+    g.fillText(m.suit, w * 0.11, h * 0.07);
     g.save();
-    g.translate(w * 0.91, h * 0.945);
+    g.translate(w * 0.89, h * 0.93);
     g.rotate(Math.PI);
     g.fillText(m.suit, 0, 0);
     g.restore();
@@ -321,13 +321,13 @@
     g.fillStyle = '#c0c0c0';
     g.fillText(m.suit, cx, cy);
 
-    // Raised border
+    // Raised border — inset to match face texture
     g.strokeStyle = '#a0a0a0';
     g.lineWidth = 2.5;
-    rrPath(g, 18, 18, w - 36, h - 36, 8);
+    rrPath(g, 24, 24, w - 48, h - 48, 8);
     g.stroke();
     g.lineWidth = 1.5;
-    rrPath(g, 24, 24, w - 48, h - 48, 6);
+    rrPath(g, 30, 30, w - 60, h - 60, 6);
     g.stroke();
 
     // Raised title
@@ -336,12 +336,12 @@
     g.textAlign = 'center';
     g.fillText(m.title.toUpperCase(), cx, h * 0.74);
 
-    // Corner marks
+    // Corner marks — inset to match face texture
     g.font = Math.round(w * 0.06) + 'px serif';
     g.fillStyle = '#959595';
-    g.fillText(m.suit, w * 0.09, h * 0.055);
+    g.fillText(m.suit, w * 0.11, h * 0.07);
     g.save();
-    g.translate(w * 0.91, h * 0.945);
+    g.translate(w * 0.89, h * 0.93);
     g.rotate(Math.PI);
     g.fillText(m.suit, 0, 0);
     g.restore();
@@ -382,7 +382,7 @@
 
     g.strokeStyle = 'rgba(140,110,30,0.08)';
     g.lineWidth = 2;
-    rrPath(g, 20, 20, w - 40, h - 40, 8);
+    rrPath(g, 26, 26, w - 52, h - 52, 8);
     g.stroke();
 
     return c;
@@ -494,12 +494,11 @@
   }
 
   function setupCamera() {
-    _camera = new T.PerspectiveCamera(
-      CFG.camFov,
-      CFG.width / CFG.height,
-      0.1,
-      20
-    );
+    // Orthographic camera sized exactly to coin + bevel so mesh fills frame perfectly.
+    // This eliminates the ~10% framing gap that PerspectiveCamera caused.
+    var hw = (CFG.width  + CFG.bevel * 2) / 2;
+    var hh = (CFG.height + CFG.bevel * 2) / 2;
+    _camera = new T.OrthographicCamera(-hw, hw, hh, -hh, 0.1, 20);
     _camera.position.set(0, 0, CFG.camDist);
     _camera.lookAt(0, 0, 0);
   }
