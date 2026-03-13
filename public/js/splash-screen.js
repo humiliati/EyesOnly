@@ -571,14 +571,35 @@ const SplashScreen = (() => {
     const cards = splashEl.querySelectorAll('.splash-dossier');
 
     cards.forEach((card) => {
-      /* --- Desktop: mouseenter = hover as before --- */
+      /* --- Desktop: mouseenter/mouseleave manages .coin-card-hovered class
+             with debounced leave to prevent flicker when transform moves card --- */
+      var _hoverLeaveTimer = null;
+
       card.addEventListener('mouseenter', () => {
         if (dismissed) return;
+        // Cancel any pending un-hover
+        if (_hoverLeaveTimer) { clearTimeout(_hoverLeaveTimer); _hoverLeaveTimer = null; }
         _ensureAudioInit();
+        // Apply hover via the same class mobile uses
+        if (hoveredCardEl !== card) {
+          hoverCard(card);
+        }
         const idx = parseInt(card.dataset.index, 10);
         var m = MISSIONS[idx];
         if (m && m.videoIndex !== undefined) switchVideo(m.videoIndex);
         playHoverSound(idx);
+      });
+
+      card.addEventListener('mouseleave', () => {
+        if (dismissed) return;
+        // Debounce un-hover — if mouse re-enters within 120ms the card stays hovered.
+        // This prevents the flicker loop when transform shifts the card boundary.
+        _hoverLeaveTimer = setTimeout(() => {
+          _hoverLeaveTimer = null;
+          if (hoveredCardEl === card) {
+            unhoverAll();
+          }
+        }, 120);
       });
 
       /* --- Mobile touch: tap = hover, long-press = select --- */

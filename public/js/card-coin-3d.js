@@ -55,8 +55,8 @@
     height: 3.4,
     depth:  0.58,        // thicker — edge must be clearly visible when tilted
     radius: 0.22,       // rounded corner radius (world units)
-    bevel:  0.14,
-    bevelSegs: 5,
+    bevel:  0.06,        // small bevel — just enough to soften edge, not create ghost outline
+    bevelSegs: 3,
     curveSegs: 12,
 
     // Texture resolution — set by _applyTier()
@@ -64,10 +64,10 @@
     get texH() { return Math.round(this.texW * this.height / this.width); },
 
     // Material
-    metalness: 0.92,
-    roughness: 0.15,
-    bumpScale: 0.045,
-    envIntensity: 1.3,
+    metalness: 0.88,
+    roughness: 0.28,     // higher roughness → softer reflections, no bright bevel ring
+    bumpScale: 0.035,
+    envIntensity: 0.8,   // tamed env reflections — kills the capsule glow
 
     // Animation
     idleSpeed: 0.35,
@@ -232,10 +232,71 @@
     return palettes[m.suit] || palettes['\u2660'];
   }
 
-  // Emoji font stack — render suit symbols at max quality
-  var EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",serif';
+  // Font stacks — NO emoji fonts (they render colored glyphs that ignore fillStyle)
   var MONO_FONT  = '"Courier New",monospace';
   var TITLE_FONT = '"Impact","Arial Black","Helvetica Neue",sans-serif';
+
+  // Monochrome suit shapes drawn as canvas paths — full control over color/style
+  function _drawSuitShape(g, suit, cx, cy, size) {
+    g.save();
+    var s = size * 0.5;
+
+    if (suit === '\u2660') { // ♠ Spade
+      g.beginPath();
+      g.moveTo(cx, cy - s);
+      g.bezierCurveTo(cx - s * 0.15, cy - s * 0.75, cx - s * 0.95, cy - s * 0.15, cx - s * 0.65, cy + s * 0.25);
+      g.bezierCurveTo(cx - s * 0.4, cy + s * 0.55, cx - s * 0.12, cy + s * 0.4, cx, cy + s * 0.55);
+      g.bezierCurveTo(cx + s * 0.12, cy + s * 0.4, cx + s * 0.4, cy + s * 0.55, cx + s * 0.65, cy + s * 0.25);
+      g.bezierCurveTo(cx + s * 0.95, cy - s * 0.15, cx + s * 0.15, cy - s * 0.75, cx, cy - s);
+      g.closePath();
+      g.fill();
+      // Stem
+      g.fillRect(cx - s * 0.07, cy + s * 0.35, s * 0.14, s * 0.45);
+      g.beginPath();
+      g.moveTo(cx - s * 0.22, cy + s * 0.8);
+      g.quadraticCurveTo(cx, cy + s * 0.6, cx + s * 0.22, cy + s * 0.8);
+      g.lineTo(cx + s * 0.22, cy + s * 0.85);
+      g.lineTo(cx - s * 0.22, cy + s * 0.85);
+      g.closePath();
+      g.fill();
+
+    } else if (suit === '\u2663') { // ♣ Club
+      var r = s * 0.28;
+      g.beginPath(); g.arc(cx, cy - s * 0.28, r, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.arc(cx - s * 0.32, cy + s * 0.1, r, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.arc(cx + s * 0.32, cy + s * 0.1, r, 0, Math.PI * 2); g.fill();
+      // Stem
+      g.fillRect(cx - s * 0.07, cy + s * 0.15, s * 0.14, s * 0.55);
+      g.beginPath();
+      g.moveTo(cx - s * 0.22, cy + s * 0.7);
+      g.quadraticCurveTo(cx, cy + s * 0.5, cx + s * 0.22, cy + s * 0.7);
+      g.lineTo(cx + s * 0.22, cy + s * 0.75);
+      g.lineTo(cx - s * 0.22, cy + s * 0.75);
+      g.closePath();
+      g.fill();
+
+    } else if (suit === '\u2665') { // ♥ Heart
+      g.beginPath();
+      g.moveTo(cx, cy + s * 0.75);
+      g.bezierCurveTo(cx - s * 0.15, cy + s * 0.5, cx - s, cy + s * 0.05, cx - s * 0.5, cy - s * 0.35);
+      g.bezierCurveTo(cx - s * 0.15, cy - s * 0.75, cx, cy - s * 0.55, cx, cy - s * 0.2);
+      g.bezierCurveTo(cx, cy - s * 0.55, cx + s * 0.15, cy - s * 0.75, cx + s * 0.5, cy - s * 0.35);
+      g.bezierCurveTo(cx + s, cy + s * 0.05, cx + s * 0.15, cy + s * 0.5, cx, cy + s * 0.75);
+      g.closePath();
+      g.fill();
+
+    } else if (suit === '\u2666') { // ♦ Diamond
+      g.beginPath();
+      g.moveTo(cx, cy - s * 0.85);
+      g.lineTo(cx + s * 0.55, cy);
+      g.lineTo(cx, cy + s * 0.85);
+      g.lineTo(cx - s * 0.55, cy);
+      g.closePath();
+      g.fill();
+    }
+
+    g.restore();
+  }
 
   // Draw concentric decoder-ring circles (inlaid ring feature)
   function _drawDecoderRing(g, cx, cy, outerR, innerR, ticks) {
@@ -429,31 +490,35 @@
     g.fillStyle = vig;
     g.fillRect(panelX, panelY, panelW, panelH);
 
-    // ── 5. Inlaid decoder ring (concentric circles behind text) ──
+    // ── 5. Decoder rings in dead-space zones (above and below suit area) ──
     g.save();
-    g.globalAlpha = 0.12;
     g.fillStyle = pal.accent;
     g.strokeStyle = pal.accent;
-    var ringR = w * 0.18;
-    _drawDecoderRing(g, cx, cy, ringR, ringR * 0.75, 36);
-    // Second smaller ring
-    g.globalAlpha = 0.08;
-    _drawDecoderRing(g, cx, cy, ringR * 0.65, ringR * 0.50, 24);
+    var ringR1 = w * 0.22; // larger ring in upper dead zone
+    var ringR2 = w * 0.18; // smaller ring in lower dead zone
+    var ringY1 = panelY + panelH * 0.34; // between description and suit
+    var ringY2 = panelY + panelH * 0.72; // between suit and duration
+    // Upper ring — more visible
+    g.globalAlpha = 0.22;
+    _drawDecoderRing(g, cx, ringY1, ringR1, ringR1 * 0.78, 48);
+    // Lower ring
+    g.globalAlpha = 0.16;
+    _drawDecoderRing(g, cx, ringY2, ringR2, ringR2 * 0.75, 36);
+    // Tiny accent ring at card center (behind suit)
+    g.globalAlpha = 0.06;
+    _drawDecoderRing(g, cx, cy, w * 0.12, w * 0.09, 20);
     g.restore();
 
-    // ── 6. Suit symbol as large dark silhouette ──
+    // ── 6. Suit symbol as monochrome canvas-path silhouette ──
     g.save();
-    var suitSize = Math.round(w * 0.35);
-    g.font = suitSize + 'px ' + EMOJI_FONT;
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    // Dark shadow silhouette
+    var suitSize = Math.round(w * 0.32);
+    // Dark shadow silhouette — drawn as vector paths, not emoji
     g.fillStyle = 'rgba(0,0,0,0.55)';
-    g.fillText(m.suit, cx, cy);
-    // Very subtle metallic edge
-    g.globalAlpha = 0.08;
+    _drawSuitShape(g, m.suit, cx, cy, suitSize);
+    // Very subtle metallic accent edge (offset)
+    g.globalAlpha = 0.10;
     g.fillStyle = pal.accent;
-    g.fillText(m.suit, cx - 1, cy - 1);
+    _drawSuitShape(g, m.suit, cx - 1, cy - 1, suitSize);
     g.restore();
 
     // ── 7. Engraved monochrome title — centered ──
@@ -581,24 +646,22 @@
     rrPath(g, panelX, panelY, panelW, panelH, panelCr);
     g.fill();
 
-    // ── Decoder ring inlay: recessed ──
+    // ── Decoder ring inlay: recessed (matches dead-space positioning) ──
     g.save();
     g.fillStyle = '#333333'; // 0.20
     g.strokeStyle = '#333333';
-    var ringR = w * 0.18;
-    _drawDecoderRing(g, cx, cy, ringR, ringR * 0.75, 36);
-    _drawDecoderRing(g, cx, cy, ringR * 0.65, ringR * 0.50, 24);
+    var ringY1 = panelY + panelH * 0.34;
+    var ringY2 = panelY + panelH * 0.72;
+    _drawDecoderRing(g, cx, ringY1, w * 0.22, w * 0.22 * 0.78, 48);
+    _drawDecoderRing(g, cx, ringY2, w * 0.18, w * 0.18 * 0.75, 36);
+    _drawDecoderRing(g, cx, cy, w * 0.12, w * 0.09, 20);
     g.restore();
 
-    // ── Frame edge highlights: slightly raised ──
+    // ── Frame edge: just barely raised (NOT bright — avoids ghost outline) ──
     g.save();
-    g.strokeStyle = '#dddddd'; // 0.87 — subtle edge, not max white
-    g.lineWidth = 3;
-    rrPath(g, 3, 3, w - 6, h - 6, cr);
-    g.stroke();
-    g.strokeStyle = '#d0d0d0'; // 0.82
+    g.strokeStyle = '#aaaaaa'; // 0.67 — subtle, not glowing
     g.lineWidth = 2;
-    rrPath(g, frameW - 1, frameW - 1, w - (frameW - 1) * 2, h - (frameW - 1) * 2, Math.max(4, cr - frameW + 3));
+    rrPath(g, 3, 3, w - 6, h - 6, cr);
     g.stroke();
     g.restore();
 
@@ -640,22 +703,21 @@
     rrPath(g, panelX, panelY, panelW, panelH, panelCr);
     g.fill();
 
-    // ── Decoder ring inlay: depressed ──
+    // ── Decoder ring inlay: depressed (matches dead-space positioning) ──
     g.save();
     g.fillStyle = '#505050';
     g.strokeStyle = '#505050';
-    var ringR = w * 0.18;
-    _drawDecoderRing(g, cx, cy, ringR, ringR * 0.75, 36);
-    _drawDecoderRing(g, cx, cy, ringR * 0.65, ringR * 0.50, 24);
+    var ringY1 = panelY + panelH * 0.34;
+    var ringY2 = panelY + panelH * 0.72;
+    _drawDecoderRing(g, cx, ringY1, w * 0.22, w * 0.22 * 0.78, 48);
+    _drawDecoderRing(g, cx, ringY2, w * 0.18, w * 0.18 * 0.75, 36);
+    _drawDecoderRing(g, cx, cy, w * 0.12, w * 0.09, 20);
     g.restore();
 
-    // ── Frame edges: max height ──
-    g.strokeStyle = '#eeeeee';
-    g.lineWidth = 5;
+    // ── Frame edges: subtle raise (NOT bright — avoids ghost outline) ──
+    g.strokeStyle = '#b8b8b8'; // 0.72 — low contrast
+    g.lineWidth = 2;
     rrPath(g, 3, 3, w - 6, h - 6, cr);
-    g.stroke();
-    g.lineWidth = 3;
-    rrPath(g, frameW - 1, frameW - 1, w - (frameW - 1) * 2, h - (frameW - 1) * 2, Math.max(4, cr - frameW + 3));
     g.stroke();
 
     return c;
@@ -758,30 +820,25 @@
     var es = new T.Scene();
     es.background = new T.Color(0x101018);
 
-    // Strong overhead — bright catchlight on bevel/edges
-    var l1 = new T.PointLight(0xe0e8f0, 2.0, 25);
-    l1.position.set(0, 6, 4);
+    // Soft overhead — diffused, not a sharp catchlight
+    var l1 = new T.PointLight(0xd0d8e0, 1.0, 20);
+    l1.position.set(0, 6, 5);
     es.add(l1);
 
-    // Cool accent from left — catches left edge
-    var l2 = new T.PointLight(0x9098b0, 1.2, 18);
-    l2.position.set(-5, 2, 2);
+    // Cool fill from left — catches left edge gently
+    var l2 = new T.PointLight(0x8090a0, 0.6, 16);
+    l2.position.set(-5, 1, 3);
     es.add(l2);
 
-    // Subtle warm fill from right
-    var l3 = new T.PointLight(0xa09880, 0.5, 14);
+    // Warm fill from right
+    var l3 = new T.PointLight(0xa09880, 0.4, 14);
     l3.position.set(5, -1, 4);
     es.add(l3);
 
-    // Strong rim from below — bright edge reflection on bottom face
-    var l4 = new T.PointLight(0xb0b0c0, 1.5, 14);
+    // Rim from below — catches bottom edge for thickness read
+    var l4 = new T.PointLight(0x9098a8, 0.8, 12);
     l4.position.set(0, -5, 1);
     es.add(l4);
-
-    // Back-light from above — grazes top edge when tilted
-    var l5 = new T.PointLight(0x8088a0, 0.8, 12);
-    l5.position.set(0, 5, -2);
-    es.add(l5);
 
     var rt = pmrem.fromScene(es, 0);
     pmrem.dispose();
@@ -792,15 +849,23 @@
      MATERIALS — Per-card face (with shader injection), back
      ============================================================ */
   function buildMats(mission) {
+    // Max anisotropic filtering — keeps text sharp when viewed at perspective angles
+    var maxAniso = _renderer.capabilities.getMaxAnisotropy
+      ? _renderer.capabilities.getMaxAnisotropy() : 1;
+
     var faceC = genFaceTex(mission);
     var faceT = new T.CanvasTexture(faceC);
     if (T.sRGBEncoding) faceT.encoding = T.sRGBEncoding;
+    faceT.anisotropy = maxAniso;
+    faceT.minFilter = T.LinearMipmapLinearFilter;
+    faceT.generateMipmaps = true;
 
     var heightC = genHeightMap(mission);
     var heightT = new T.CanvasTexture(heightC);
 
     var bumpC = genBumpTex(mission);
     var bumpT = new T.CanvasTexture(bumpC);
+    bumpT.anisotropy = maxAniso;
 
     var face = new T.MeshStandardMaterial({
       map:             faceT,
@@ -894,20 +959,15 @@
     // Ambient — cool neutral
     _scene.add(new T.AmbientLight(0x505560, 0.4));
 
-    // Strong rim from below — catches the bottom edge to show thickness
-    var rim = new T.PointLight(0xb0b8c0, 1.8, 16);
-    rim.position.set(0.5, -4, 1.5);
+    // Rim from below — catches the bottom edge to show thickness
+    var rim = new T.PointLight(0x9098a8, 1.0, 14);
+    rim.position.set(0.5, -3.5, 2);
     _scene.add(rim);
 
-    // Secondary rim from left — catches the left edge for depth
-    var rim2 = new T.PointLight(0xa0a8b8, 1.2, 12);
-    rim2.position.set(-4, 0, 1);
+    // Secondary rim from left — catches the left edge
+    var rim2 = new T.PointLight(0x808898, 0.7, 10);
+    rim2.position.set(-3, 0.5, 1.5);
     _scene.add(rim2);
-
-    // Subtle top back-light (grazing angle catches the top edge when tilted away)
-    var rimTop = new T.PointLight(0x8890a0, 0.9, 14);
-    rimTop.position.set(0, 4, -1);
-    _scene.add(rimTop);
 
     // Hemisphere: dark cool sky / dark ground
     _scene.add(new T.HemisphereLight(0x404858, 0x181820, 0.3));
@@ -967,7 +1027,7 @@
         _renderer.setPixelRatio(1);
         if (T.sRGBEncoding) _renderer.outputEncoding = T.sRGBEncoding;
         _renderer.toneMapping = T.ACESFilmicToneMapping;
-        _renderer.toneMappingExposure = 1.8;
+        _renderer.toneMappingExposure = 1.5;
 
         _envMap = createEnvMap();
         setupScene();

@@ -574,17 +574,10 @@
   z-index: 1;
 }
 
-/* Hover (desktop mouse) */
-.splash-dossier.coin-card:hover {
-  transform: rotate(0deg) translateY(-30px) scale(1.08) !important;
-  z-index: 10 !important;
-  filter: brightness(1.12);
-  box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.7),
-    0 0 12px rgba(100, 100, 120, 0.1);
-}
-
-/* Mobile tap-hover (JS-toggled persistent hover state) */
+/* Hover — unified JS-managed class for both desktop and mobile.
+   CSS :hover is disabled to prevent flicker when transform moves card
+   out from under the cursor. JS adds .coin-card-hovered on mouseenter
+   with debounced mouseleave to keep the hit area stable. */
 .splash-dossier.coin-card.coin-card-hovered {
   transform: rotate(0deg) translateY(-30px) scale(1.08) !important;
   z-index: 10 !important;
@@ -836,7 +829,6 @@
   transition: transform 0.3s ease;
 }
 
-.splash-dossier.coin-card:hover .coin-suit-large,
 .splash-dossier.coin-card.coin-card-hovered .coin-suit-large {
   transform: scale(1.08);
 }
@@ -874,9 +866,10 @@
 
 /* ---- Mid-row — BOOK.duration / JOIN.NOW button ---- */
 .coin-mid-row {
-  padding: 6px 16px;
+  padding: 4px 14px;
   display: flex;
   justify-content: center;
+  flex-shrink: 0;
   position: relative;
   z-index: 10;
 }
@@ -1128,12 +1121,15 @@
 /* ---- Partner card tag strip (replaces wheels) ---- */
 .coin-tag-strip {
   display: flex;
-  gap: 6px;
-  padding: 6px 12px 10px;
+  gap: 4px;
+  padding: 4px 10px 6px;
   justify-content: center;
   flex-wrap: wrap;
   position: relative;
   z-index: 5;
+  flex-shrink: 0;
+  max-height: 50px;
+  overflow: hidden;
 }
 
 .coin-tag {
@@ -1350,22 +1346,9 @@
     margin: 0;
   }
 
-  .splash-dossier.coin-card:hover,
   .splash-dossier.coin-card.coin-card-hovered {
     transform: rotateY(0deg) rotateX(0deg) translateY(-20px) translateX(0px) scale(1.03) !important;
     z-index: 10 !important;
-  }
-
-  /* Disable CSS :hover on touch — only JS .coin-card-hovered controls it */
-  @media (hover: none) {
-    .splash-dossier.coin-card:hover:not(.coin-card-hovered) {
-      transform: unset;
-      z-index: unset;
-      filter: unset;
-      box-shadow:
-        0 4px 30px rgba(0, 0, 0, 0.8),
-        0 0 8px rgba(120, 120, 140, 0.1);
-    }
   }
 
   /* Horizontal layout for mobile cards */
@@ -1419,6 +1402,7 @@
 
   .coin-book-btn {
     padding: 5px 14px;
+    min-height: 44px;  /* iOS-recommended touch target */
   }
 
   .coin-wheel-strip {
