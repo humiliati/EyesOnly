@@ -657,7 +657,8 @@
   function _loadThree(cb) {
     if (window.THREE) { T = window.THREE; cb(); return; }
     var s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+    // Hosted locally to comply with CSP (no external CDN scripts allowed)
+    s.src = 'js/vendor/three.min.js';
     s.onload  = function () { T = window.THREE; cb(); };
     s.onerror = function () {
       console.warn('[Card3D] Three.js load failed — CSS cards remain');
