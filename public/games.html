@@ -63,6 +63,18 @@
             <span class="header-nav-icon header-nav-icon-heart">&#9829;</span><span class="header-nav-label">PARTNERS</span>
           </a>
         </nav>
+        <div class="mok-header-center">
+          <div id="active-item-slot" class="active-item-slot" title="Active Item — Click to unequip">
+            <span class="active-item-label">ACTIVE ITEM</span>
+            <div id="active-item-display" class="active-item-display">
+              <span class="empty-slot-indicator">&middot;</span>
+            </div>
+          </div>
+          <div id="currency-display" class="currency-display" title="Cryptos">
+            <span class="currency-symbol">&cent;</span>
+            <span id="currency-value" class="currency-value">00000000</span>
+          </div>
+        </div>
         <div class="mok-header-right">
           <a href="/" class="header-chip header-nav-btn" data-sound="ui-04" title="Return to Terminal">
             <span class="header-nav-icon">&#9664;</span><span class="header-nav-label">TERMINAL</span>
@@ -128,17 +140,6 @@
                   </div>
                 </div>
                 </div><!-- /games-inventory-scroll -->
-                <div class="games-decoder-stub" id="decoder-ring-stub">
-                  <div class="games-decoder-label">SELECT A DECRYPTION ITEM TO ACTIVATE DECODER RING</div>
-                  <div class="games-decoder-wheels">
-                    <div class="games-decoder-wheel games-decoder-wheel-outer">
-                      <span>A B C D E F G</span>
-                    </div>
-                    <div class="games-decoder-wheel games-decoder-wheel-inner">
-                      <span>N O P Q R S T</span>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -151,7 +152,23 @@
                 <span class="games-row-status">AVAILABLE</span>
               </button>
               <div class="games-row-body" id="puzzles-body">
-                <div class="games-item">
+                <!-- Decoder Ring — interactive pigpen cipher wheel -->
+                <div class="games-decoder-ring-wrap" id="decoder-ring-wrap">
+                  <div class="games-decoder-header">
+                    <span class="games-decoder-header-label">DECODER RING</span>
+                    <span class="games-decoder-header-status" id="decoder-ring-status">STANDBY</span>
+                  </div>
+                  <div class="games-decoder-ring" id="decoder-ring">
+                    <canvas id="decoder-ring-canvas" width="240" height="240"></canvas>
+                  </div>
+                  <div class="games-decoder-output">
+                    <span class="games-decoder-output-label">DECODE:</span>
+                    <span class="games-decoder-output-pair" id="decoder-output-pair">— &rarr; —</span>
+                  </div>
+                  <div class="games-decoder-hint" id="decoder-ring-hint">Equip a decryption item to activate</div>
+                </div>
+
+                <div class="games-item games-item-playable" data-puzzle="dead-drop-cipher" data-sound="ui-01">
                   <span class="games-item-icon">&#9641;</span>
                   <div class="games-item-info">
                     <div class="games-item-name">Dead Drop Cipher</div>
@@ -182,6 +199,50 @@
                     <div class="games-item-desc">Requires CLEARANCE LEVEL 2. Complete a live scenario to unlock.</div>
                   </div>
                   <span class="games-item-tag games-tag-locked">LOCKED</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ═══════════════ ARCADE ═══════════════ -->
+            <div class="games-row" id="row-arcade">
+              <button class="games-row-header" data-target="arcade-body" aria-expanded="false">
+                <span class="games-row-chevron">&#9656;</span>
+                <span class="games-row-label">ARCADE</span>
+                <span class="games-row-count">6 GAMES</span>
+                <span class="games-row-status">AVAILABLE</span>
+              </button>
+              <div class="games-row-body" id="arcade-body">
+                <div class="games-arcade-grid">
+                  <button class="games-arcade-tile" data-minigame="ski-free" data-sound="ui-01">
+                    <span class="games-arcade-icon">&#9975;</span>
+                    <span class="games-arcade-title">SKI FREE</span>
+                    <span class="games-arcade-desc">Downhill dodge</span>
+                  </button>
+                  <button class="games-arcade-tile" data-minigame="jezzball" data-sound="ui-01">
+                    <span class="games-arcade-icon">&#9673;</span>
+                    <span class="games-arcade-title">JEZZBALL</span>
+                    <span class="games-arcade-desc">Trap the balls</span>
+                  </button>
+                  <button class="games-arcade-tile" data-minigame="frogger" data-sound="ui-01">
+                    <span class="games-arcade-icon">&#9752;</span>
+                    <span class="games-arcade-title">FROGGER</span>
+                    <span class="games-arcade-desc">Cross the road</span>
+                  </button>
+                  <button class="games-arcade-tile" data-minigame="snake" data-sound="ui-01">
+                    <span class="games-arcade-icon">&#9783;</span>
+                    <span class="games-arcade-title">SNAKE</span>
+                    <span class="games-arcade-desc">Eat &amp; grow</span>
+                  </button>
+                  <button class="games-arcade-tile" data-minigame="minesweeper" data-sound="ui-01">
+                    <span class="games-arcade-icon">&#9881;</span>
+                    <span class="games-arcade-title">MINESWEEPER</span>
+                    <span class="games-arcade-desc">Clear the grid</span>
+                  </button>
+                  <button class="games-arcade-tile" data-minigame="breakout" data-sound="ui-01">
+                    <span class="games-arcade-icon">&#9654;</span>
+                    <span class="games-arcade-title">BREAKOUT</span>
+                    <span class="games-arcade-desc">Smash bricks</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -260,6 +321,9 @@
   <script src="js/theme-widget.js"></script>
   <script>if (typeof ThemeWidget !== 'undefined') ThemeWidget.initEarly();</script>
 
+  <!-- Shared item renderer (abbreviateName, resolve, etc.) -->
+  <script src="js/shared-item-renderer.js"></script>
+
   <!-- Account inventory (seeds default items on first visit) -->
   <script src="js/account-inventory.js"></script>
 
@@ -274,6 +338,19 @@
 
   <!-- Audio system for SFX -->
   <script src="js/audio-system.js?v=20260309d"></script>
+
+  <!-- Arcade minigames -->
+  <script src="js/minigames/ski-free.js"></script>
+  <script src="js/minigames/jezzball.js"></script>
+  <script src="js/minigames/frogger.js"></script>
+  <script src="js/minigames/snake.js"></script>
+  <script src="js/minigames/minesweeper.js"></script>
+  <script src="js/minigames/breakout.js"></script>
+  <script src="js/minigame-modal.js"></script>
+
+  <!-- Puzzle popup system + puzzles -->
+  <script src="js/puzzle-popup.js"></script>
+  <script src="js/puzzles/dead-drop-cipher.js"></script>
 
   <script>
   (function () {
@@ -416,6 +493,23 @@
       }
     });
 
+    /* ---- Arcade tile launchers ---- */
+    document.querySelectorAll('.games-arcade-tile[data-minigame]').forEach(function (tile) {
+      tile.addEventListener('click', function () {
+        var key = tile.getAttribute('data-minigame');
+        if (window.MinigameModal) MinigameModal.open(key);
+      });
+    });
+
+    /* ---- Puzzle popup binding ---- */
+    (function initPuzzles() {
+      if (typeof PuzzlePopup === 'undefined') return;
+      var content = document.getElementById('games-content');
+      if (content) {
+        PuzzlePopup.bind(content);
+      }
+    })();
+
     /* ---- Populate decryption inventory from AccountInventory ---- */
     (function populateInventory() {
       if (typeof AccountInventory === 'undefined') return;
@@ -426,6 +520,11 @@
 
       var SLOT_COUNT = 6;
       var slots = grid.querySelectorAll('.games-inv-slot');
+
+      // Abbreviator helper — uses SharedItemRenderer if available, else truncate
+      var abbrev = (typeof SharedItemRenderer !== 'undefined' && SharedItemRenderer.abbreviateName)
+        ? function (n) { return SharedItemRenderer.abbreviateName(n, 10).toUpperCase(); }
+        : function (n) { return (n || '').substring(0, 10).toUpperCase(); };
 
       // Map account items to slots
       items.forEach(function (item, idx) {
@@ -443,7 +542,7 @@
           inner.className = 'games-inv-slot-inner games-inv-occupied';
           inner.innerHTML =
             '<span class="games-inv-item-icon">' + emoji + '</span>' +
-            '<span class="games-inv-slot-label">' + label.substring(0, 10).toUpperCase() + '</span>';
+            '<span class="games-inv-slot-label">' + abbrev(label) + '</span>';
         }
       });
     })();
@@ -530,9 +629,12 @@
         var inner = slot.querySelector('.games-inv-slot-inner');
         if (inner) {
           inner.className = 'games-inv-slot-inner games-inv-occupied';
+          var abbrLabel = (typeof SharedItemRenderer !== 'undefined' && SharedItemRenderer.abbreviateName)
+            ? SharedItemRenderer.abbreviateName(config.label, 10).toUpperCase()
+            : config.label.substring(0, 10).toUpperCase();
           inner.innerHTML =
             '<span class="games-inv-item-icon">' + config.emoji + '</span>' +
-            '<span class="games-inv-slot-label">' + config.label + '</span>';
+            '<span class="games-inv-slot-label">' + abbrLabel + '</span>';
         }
 
         // Persist
@@ -615,16 +717,22 @@
           );
 
           if (inBounds) {
-            // Show glow
+            // Show glow and emoji preview inside porthole
             if (activeGlow !== slot) {
               if (activeGlow) activeGlow.classList.remove('mag-reveal-active');
               slot.classList.add('mag-reveal-active');
               activeGlow = slot;
+              if (MagnifyingGlassDrag.setRevealPreview) {
+                MagnifyingGlassDrag.setRevealPreview(config.emoji);
+              }
             }
           } else {
             if (activeGlow === slot) {
               slot.classList.remove('mag-reveal-active');
               activeGlow = null;
+              if (MagnifyingGlassDrag.clearRevealPreview) {
+                MagnifyingGlassDrag.clearRevealPreview();
+              }
             }
           }
         });
@@ -662,6 +770,358 @@
         }
       });
 
+    })();
+
+    /* ---- Equip toggle: click inventory items to equip/unequip ---- */
+    (function initEquipToggle() {
+      var EQUIP_KEY = 'eyesonly_equipped_item';
+      var activeDisplay = document.getElementById('active-item-display');
+      var activeSlot = document.getElementById('active-item-slot');
+      var decoderStatus = document.getElementById('decoder-ring-status');
+      var decoderHint = document.getElementById('decoder-ring-hint');
+      var decoderCanvas = document.getElementById('decoder-ring-canvas');
+
+      function getEquipped() {
+        try { return JSON.parse(localStorage.getItem(EQUIP_KEY)); } catch (_) { return null; }
+      }
+
+      function saveEquipped(data) {
+        try {
+          if (data) localStorage.setItem(EQUIP_KEY, JSON.stringify(data));
+          else localStorage.removeItem(EQUIP_KEY);
+        } catch (_) {}
+      }
+
+      function updateDisplay(data) {
+        if (!activeDisplay) return;
+        if (data) {
+          activeDisplay.innerHTML = '<span class="active-item-emoji">' + (data.emoji || '📦') + '</span>';
+          activeDisplay.classList.add('has-item');
+          activeDisplay.classList.add('equip-flash');
+          setTimeout(function () { activeDisplay.classList.remove('equip-flash'); }, 450);
+        } else {
+          activeDisplay.innerHTML = '<span class="empty-slot-indicator">&middot;</span>';
+          activeDisplay.classList.remove('has-item');
+        }
+        // Update decoder ring state
+        updateDecoderState(data);
+      }
+
+      function updateDecoderState(equipped) {
+        var isDecryption = equipped && equipped.subtype === 'investigation';
+        if (decoderStatus) {
+          decoderStatus.textContent = isDecryption ? 'ACTIVE' : 'STANDBY';
+          decoderStatus.className = 'games-decoder-header-status' + (isDecryption ? ' decoder-active' : '');
+        }
+        if (decoderHint) {
+          decoderHint.style.display = isDecryption ? 'none' : '';
+        }
+        if (decoderCanvas) {
+          decoderCanvas.style.opacity = isDecryption ? '1' : '0.25';
+          decoderCanvas.style.pointerEvents = isDecryption ? 'auto' : 'none';
+        }
+        // Dispatch event so decoder ring module can react
+        try {
+          document.dispatchEvent(new CustomEvent('decoder-ring-state', {
+            detail: { active: isDecryption, equipped: equipped }
+          }));
+        } catch (_) {}
+      }
+
+      // Highlight currently equipped slot
+      function highlightEquipped(itemId) {
+        var grid = document.getElementById('decryption-inventory');
+        if (!grid) return;
+        grid.querySelectorAll('.games-inv-slot').forEach(function (s) {
+          s.classList.remove('games-inv-equipped');
+        });
+        if (itemId) {
+          var match = grid.querySelector('.games-inv-slot[data-item-id="' + itemId + '"]');
+          if (match) match.classList.add('games-inv-equipped');
+        }
+      }
+
+      // Restore equipped state on load
+      var current = getEquipped();
+      if (current) {
+        // Verify item still exists
+        if (typeof AccountInventory !== 'undefined' && AccountInventory.hasItem(current.id)) {
+          updateDisplay(current);
+          highlightEquipped(current.id);
+        } else {
+          saveEquipped(null);
+        }
+      }
+
+      // Click inventory slot → equip/unequip toggle
+      var content = document.getElementById('games-content');
+      if (content) {
+        content.addEventListener('click', function (e) {
+          // Skip if drag is active
+          if (window.MagnifyingGlassDrag && MagnifyingGlassDrag.isDragging()) return;
+          // Skip if an item popup is open
+          if (window.ItemPopup && ItemPopup.isOpen()) return;
+
+          var slot = e.target.closest('.games-inv-slot[data-item-id]');
+          if (!slot) return;
+
+          var itemId = slot.getAttribute('data-item-id');
+          var itemKey = slot.getAttribute('data-item');
+
+          // Magnifying glass has its own drag behavior; don't equip on click
+          if (itemKey === 'magnifying-glass') return;
+
+          // If popup is registered for this item, let item-popup handle it
+          if (window.ItemPopup && ItemPopup.isRegistered(itemKey)) return;
+
+          // Toggle equip
+          var equipped = getEquipped();
+          if (equipped && equipped.id === itemId) {
+            // Unequip
+            saveEquipped(null);
+            updateDisplay(null);
+            highlightEquipped(null);
+            if (window.AudioSystem && AudioSystem.playSFX) AudioSystem.playSFX('ui-01');
+          } else {
+            // Equip: fetch item from AccountInventory
+            var item = (typeof AccountInventory !== 'undefined') ? AccountInventory.getItem(itemId) : null;
+            if (!item) return;
+            var data = {
+              id: item.id,
+              emoji: (item.meta && item.meta.emoji) || '📦',
+              name: (item.meta && item.meta.name) || item.id,
+              subtype: (item.meta && item.meta.subtype) || '',
+              type: (item.meta && item.meta.type) || ''
+            };
+            saveEquipped(data);
+            updateDisplay(data);
+            highlightEquipped(itemId);
+            if (window.AudioSystem && AudioSystem.playSFX) AudioSystem.playSFX('ui-04');
+          }
+        });
+      }
+
+      // Click active item slot → unequip
+      if (activeSlot) {
+        activeSlot.addEventListener('click', function () {
+          var equipped = getEquipped();
+          if (equipped) {
+            saveEquipped(null);
+            updateDisplay(null);
+            highlightEquipped(null);
+            if (window.AudioSystem && AudioSystem.playSFX) AudioSystem.playSFX('ui-01');
+          }
+        });
+      }
+
+      // Expose for decoder ring module
+      window.GamesEquip = {
+        getEquipped: getEquipped,
+        updateDecoderState: updateDecoderState
+      };
+    })();
+
+    /* ---- Interactive Decoder Ring (pigpen cipher wheel) ---- */
+    (function initDecoderRing() {
+      var canvas = document.getElementById('decoder-ring-canvas');
+      if (!canvas) return;
+      var ctx = canvas.getContext('2d');
+      var outputPair = document.getElementById('decoder-output-pair');
+
+      var W = canvas.width;
+      var H = canvas.height;
+      var CX = W / 2;
+      var CY = H / 2;
+
+      // Two concentric alphabet rings
+      var OUTER_R = 105;
+      var INNER_R = 70;
+      var OUTER_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+      var INNER_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+      var outerRotation = 0;            // radians — outer ring offset
+      var innerRotation = Math.PI / 26; // radians — inner ring offset (default shifted by half-letter)
+
+      var dragging = null; // 'outer' | 'inner' | null
+      var dragStartAngle = 0;
+      var dragStartRotation = 0;
+
+      // Default: Caesar-13 (ROT13) offset
+      innerRotation = (13 / 26) * Math.PI * 2;
+
+      function getAngle(x, y) {
+        return Math.atan2(y - CY, x - CX);
+      }
+
+      function getDist(x, y) {
+        return Math.sqrt((x - CX) * (x - CX) + (y - CY) * (y - CY));
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+
+        // Get theme color
+        var style = getComputedStyle(document.body);
+        var phosphor = style.getPropertyValue('--phosphor').trim() || '#1cff9b';
+        var phosphorDim = style.getPropertyValue('--phosphor-dim').trim() || '#1a6b4a';
+
+        // Outer ring background
+        ctx.beginPath();
+        ctx.arc(CX, CY, OUTER_R, 0, Math.PI * 2);
+        ctx.arc(CX, CY, INNER_R + 12, 0, Math.PI * 2, true);
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fill();
+
+        // Inner ring background
+        ctx.beginPath();
+        ctx.arc(CX, CY, INNER_R + 10, 0, Math.PI * 2);
+        ctx.arc(CX, CY, 25, 0, Math.PI * 2, true);
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fill();
+
+        // Outer ring border
+        ctx.beginPath();
+        ctx.arc(CX, CY, OUTER_R, 0, Math.PI * 2);
+        ctx.strokeStyle = phosphorDim;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Inner ring border
+        ctx.beginPath();
+        ctx.arc(CX, CY, INNER_R + 12, 0, Math.PI * 2);
+        ctx.strokeStyle = phosphorDim;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(CX, CY, INNER_R + 10, 0, Math.PI * 2);
+        ctx.strokeStyle = phosphorDim;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Center hub
+        ctx.beginPath();
+        ctx.arc(CX, CY, 25, 0, Math.PI * 2);
+        ctx.strokeStyle = phosphorDim;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Draw outer letters
+        var step = (Math.PI * 2) / 26;
+        ctx.font = 'bold 12px "Courier New", monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        for (var i = 0; i < 26; i++) {
+          var angle = outerRotation + i * step - Math.PI / 2;
+          var lx = CX + Math.cos(angle) * (OUTER_R - 14);
+          var ly = CY + Math.sin(angle) * (OUTER_R - 14);
+
+          // Highlight top letter
+          var topIdx = Math.round((-outerRotation / step + 26) % 26) % 26;
+          ctx.fillStyle = (i === topIdx) ? phosphor : phosphorDim;
+          ctx.fillText(OUTER_LETTERS[i], lx, ly);
+
+          // Tick marks
+          var tx1 = CX + Math.cos(angle) * OUTER_R;
+          var ty1 = CY + Math.sin(angle) * OUTER_R;
+          var tx2 = CX + Math.cos(angle) * (OUTER_R - 4);
+          var ty2 = CY + Math.sin(angle) * (OUTER_R - 4);
+          ctx.beginPath();
+          ctx.moveTo(tx1, ty1);
+          ctx.lineTo(tx2, ty2);
+          ctx.strokeStyle = phosphorDim;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+
+        // Draw inner letters
+        ctx.font = 'bold 10px "Courier New", monospace';
+        for (var j = 0; j < 26; j++) {
+          var angle2 = innerRotation + j * step - Math.PI / 2;
+          var lx2 = CX + Math.cos(angle2) * (INNER_R - 4);
+          var ly2 = CY + Math.sin(angle2) * (INNER_R - 4);
+
+          var topIdx2 = Math.round((-innerRotation / step + 26) % 26) % 26;
+          ctx.fillStyle = (j === topIdx2) ? phosphor : phosphorDim;
+          ctx.fillText(INNER_LETTERS[j], lx2, ly2);
+        }
+
+        // Top indicator arrow
+        ctx.beginPath();
+        ctx.moveTo(CX, CY - OUTER_R - 6);
+        ctx.lineTo(CX - 5, CY - OUTER_R - 12);
+        ctx.lineTo(CX + 5, CY - OUTER_R - 12);
+        ctx.closePath();
+        ctx.fillStyle = phosphor;
+        ctx.fill();
+
+        // Update decode output
+        updateOutput();
+      }
+
+      function updateOutput() {
+        if (!outputPair) return;
+        var step = (Math.PI * 2) / 26;
+        var outerIdx = Math.round((-outerRotation / step + 26) % 26) % 26;
+        var innerIdx = Math.round((-innerRotation / step + 26) % 26) % 26;
+        outputPair.textContent = OUTER_LETTERS[outerIdx] + ' \u2192 ' + INNER_LETTERS[innerIdx];
+      }
+
+      // Pointer events
+      function getPointerPos(e) {
+        var rect = canvas.getBoundingClientRect();
+        var scaleX = W / rect.width;
+        var scaleY = H / rect.height;
+        return {
+          x: (e.clientX - rect.left) * scaleX,
+          y: (e.clientY - rect.top) * scaleY
+        };
+      }
+
+      canvas.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        var p = getPointerPos(e);
+        var dist = getDist(p.x, p.y);
+        if (dist > INNER_R + 11 && dist <= OUTER_R + 5) {
+          dragging = 'outer';
+          dragStartAngle = getAngle(p.x, p.y);
+          dragStartRotation = outerRotation;
+          canvas.setPointerCapture(e.pointerId);
+        } else if (dist > 25 && dist <= INNER_R + 11) {
+          dragging = 'inner';
+          dragStartAngle = getAngle(p.x, p.y);
+          dragStartRotation = innerRotation;
+          canvas.setPointerCapture(e.pointerId);
+        }
+      });
+
+      canvas.addEventListener('pointermove', function (e) {
+        if (!dragging) return;
+        e.preventDefault();
+        var p = getPointerPos(e);
+        var currentAngle = getAngle(p.x, p.y);
+        var delta = currentAngle - dragStartAngle;
+
+        if (dragging === 'outer') {
+          outerRotation = dragStartRotation + delta;
+        } else {
+          innerRotation = dragStartRotation + delta;
+        }
+        draw();
+      });
+
+      canvas.addEventListener('pointerup', function () { dragging = null; });
+      canvas.addEventListener('pointercancel', function () { dragging = null; });
+
+      // Listen for theme changes to redraw
+      document.addEventListener('themeChanged', function () { draw(); });
+
+      // Initial draw
+      draw();
+
+      // Listen for decoder activation state
+      document.addEventListener('decoder-ring-state', function () { draw(); });
     })();
 
   })();

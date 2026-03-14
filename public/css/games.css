@@ -184,7 +184,7 @@ html, body {
 }
 
 .games-row-body.games-row-body-open {
-  max-height: 600px;
+  max-height: 1200px;
   padding: 8px 12px 12px;
   border-top: 1px solid var(--panel-border-soft);
 }
@@ -350,52 +350,115 @@ html, body {
   opacity: 0.3;
 }
 
-/* ---- Decoder ring stub ---- */
-.games-decoder-stub {
+/* ---- Equipped slot highlight on inventory ---- */
+.games-inv-slot.games-inv-equipped .games-inv-slot-inner {
+  border-color: var(--phosphor, #1cff9b);
+  box-shadow: 0 0 10px var(--phosphor-glow, rgba(28,255,155,0.25)),
+              inset 0 0 6px var(--phosphor-glow, rgba(28,255,155,0.1));
+}
+.games-inv-slot.games-inv-equipped::after {
+  content: 'EQ';
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 0.45em;
+  letter-spacing: 0.1em;
+  color: var(--phosphor, #1cff9b);
+  opacity: 0.7;
+}
+.games-inv-slot {
+  position: relative;
+}
+
+/* ---- Interactive Decoder Ring (in puzzles category) ---- */
+.games-decoder-ring-wrap {
   border: 1px solid var(--panel-border-soft);
   border-radius: 6px;
   padding: 12px;
   background: rgba(0, 0, 0, 0.25);
   text-align: center;
-}
-
-.games-decoder-label {
-  font-size: 0.65em;
-  letter-spacing: 0.12em;
-  color: #555;
-  text-transform: uppercase;
   margin-bottom: 10px;
 }
 
-.games-decoder-wheels {
+.games-decoder-header {
   display: flex;
-  justify-content: center;
-  gap: 12px;
-  opacity: 0.25;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
 }
 
-.games-decoder-wheel {
+.games-decoder-header-label {
+  font-size: 0.7em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--phosphor-dim, #1a6b4a);
+}
+
+.games-decoder-header-status {
+  font-size: 0.6em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #555;
+  padding: 2px 6px;
   border: 1px solid #333;
-  border-radius: 50%;
-  width: 80px;
-  height: 80px;
+  border-radius: 3px;
+}
+
+.games-decoder-header-status.decoder-active {
+  color: var(--phosphor, #1cff9b);
+  border-color: var(--phosphor-dim, #1a6b4a);
+  text-shadow: 0 0 6px var(--phosphor-glow, rgba(28,255,155,0.3));
+}
+
+.games-decoder-ring {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.games-decoder-ring canvas {
+  max-width: 100%;
+  height: auto;
+  opacity: 0.25;
+  transition: opacity 0.3s ease;
+  touch-action: none;
+  cursor: grab;
+  pointer-events: none;
+}
+
+.games-decoder-ring canvas:active {
+  cursor: grabbing;
+}
+
+.games-decoder-output {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.55em;
+  gap: 8px;
+  font-family: var(--theme-font-data, 'Courier New', monospace);
+}
+
+.games-decoder-output-label {
+  font-size: 0.6em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--phosphor-dim, #1a6b4a);
+}
+
+.games-decoder-output-pair {
+  font-size: 0.85em;
+  font-weight: bold;
   letter-spacing: 0.15em;
-  color: #444;
+  color: var(--phosphor, #1cff9b);
+  text-shadow: 0 0 6px var(--phosphor-glow, rgba(28,255,155,0.2));
 }
 
-.games-decoder-wheel-outer {
-  border-color: #3a3a3a;
-}
-
-.games-decoder-wheel-inner {
-  border-color: #2a2a2a;
-  width: 60px;
-  height: 60px;
-  font-size: 0.48em;
+.games-decoder-hint {
+  font-size: 0.58em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #555;
+  margin-top: 6px;
 }
 
 /* ---- Launcher panels (Street-Chronicles, Gone-Rogue) ---- */
@@ -586,9 +649,13 @@ html, body {
 }
 
 .games-inv-item-icon {
-  font-size: 1.6em;
+  font-size: clamp(1.6em, 5vw, 2.8em);
   line-height: 1;
   filter: grayscale(0.3);
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Scale item emoji to fill its container (desktop ~8x) */
@@ -630,6 +697,17 @@ html, body {
   color: var(--phosphor-dim);
   font-size: 0.52em;
   letter-spacing: 0.12em;
+  text-align: center;
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* All occupied slots: inner layout is flex column with emoji centered, label at bottom */
+.games-inv-occupied {
+  position: relative;
+  overflow: hidden;
 }
 
 /* ---- Responsive ---- */
@@ -640,18 +718,9 @@ html, body {
     grid-template-columns: repeat(3, 1fr);
   }
 
-  .games-decoder-wheels {
-    gap: 8px;
-  }
-
-  .games-decoder-wheel {
-    width: 60px;
-    height: 60px;
-  }
-
-  .games-decoder-wheel-inner {
-    width: 45px;
-    height: 45px;
+  .games-decoder-ring canvas {
+    width: 200px;
+    height: 200px;
   }
 }
 
@@ -860,4 +929,438 @@ html, body {
 @keyframes mag-reveal-flash {
   0%   { box-shadow: 0 0 30px var(--phosphor, #1cff9b), inset 0 0 20px var(--phosphor-glow, rgba(28,255,155,0.4)); }
   100% { box-shadow: none; }
+}
+
+/* ============================================================
+   ARCADE — Tile grid for simple minigames
+   ============================================================ */
+
+.games-arcade-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 6px;
+}
+
+.games-arcade-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 4px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--phosphor-dim, #1a6b4a);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  font-family: var(--theme-font-data, 'Courier New', monospace);
+  color: var(--phosphor, #1cff9b);
+}
+
+.games-arcade-tile:hover,
+.games-arcade-tile:focus-visible {
+  border-color: var(--phosphor, #1cff9b);
+  background: rgba(28, 255, 155, 0.06);
+  box-shadow: 0 0 10px var(--phosphor-glow, rgba(28, 255, 155, 0.15));
+  outline: none;
+}
+
+.games-arcade-tile:active {
+  transform: scale(0.97);
+}
+
+.games-arcade-icon {
+  font-size: 1.6em;
+  line-height: 1;
+}
+
+.games-arcade-title {
+  font-size: 0.7em;
+  font-weight: bold;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.games-arcade-desc {
+  font-size: 0.55em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--phosphor-dim, #1a6b4a);
+}
+
+@media (max-width: 480px) {
+  .games-arcade-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ============================================================
+   MINIGAME MODAL — Fullscreen overlay for arcade games
+   ============================================================ */
+
+.minigame-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.minigame-overlay-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.minigame-modal {
+  display: flex;
+  flex-direction: column;
+  background: #0a0a0a;
+  border: 1px solid var(--phosphor-dim, #1a6b4a);
+  border-radius: 6px;
+  box-shadow:
+    0 0 30px rgba(0, 0, 0, 0.6),
+    0 0 8px var(--phosphor-glow, rgba(28, 255, 155, 0.1));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 40px);
+  overflow: hidden;
+}
+
+.minigame-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--phosphor-dim, #1a6b4a);
+  flex-shrink: 0;
+}
+
+.minigame-modal-title {
+  font-family: var(--theme-font-data, 'Courier New', monospace);
+  font-size: 0.75em;
+  font-weight: bold;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--phosphor, #1cff9b);
+  text-shadow: 0 0 6px var(--phosphor-glow, rgba(28, 255, 155, 0.3));
+}
+
+.minigame-modal-close {
+  background: none;
+  border: 1px solid var(--phosphor-dim, #1a6b4a);
+  color: var(--phosphor, #1cff9b);
+  font-size: 1.1em;
+  line-height: 1;
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.minigame-modal-close:hover {
+  border-color: var(--phosphor, #1cff9b);
+  background: rgba(28, 255, 155, 0.1);
+}
+
+.minigame-canvas {
+  display: block;
+  background: #0a0a0a;
+  image-rendering: pixelated;
+}
+
+.minigame-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-top: 1px solid var(--phosphor-dim, #1a6b4a);
+  flex-shrink: 0;
+}
+
+.minigame-controls-hint {
+  font-family: var(--theme-font-data, 'Courier New', monospace);
+  font-size: 0.58em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--phosphor-dim, #1a6b4a);
+}
+
+/* ============================================================
+   CLICKABLE PUZZLE ITEMS
+   ============================================================ */
+
+.games-item-playable {
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.games-item-playable:hover {
+  background: rgba(28, 255, 155, 0.04);
+}
+
+.games-item-playable:active {
+  background: rgba(28, 255, 155, 0.08);
+}
+
+/* ============================================================
+   PUZZLE POPUP — Fullscreen overlay for interactive puzzles
+   ============================================================ */
+
+.puzzle-popup-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99998;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.puzzle-popup-visible {
+  opacity: 1;
+}
+
+.puzzle-popup-closing {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.puzzle-popup-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.puzzle-popup-container {
+  position: relative;
+  z-index: 1;
+  max-width: 420px;
+  width: 92vw;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--bg, #0a0a0a);
+  border: 1px solid var(--phosphor-dim, #1a6b4a);
+  border-radius: 8px;
+  box-shadow:
+    0 0 40px rgba(0, 0, 0, 0.6),
+    0 0 12px var(--phosphor-glow, rgba(28, 255, 155, 0.1));
+  scrollbar-width: thin;
+  scrollbar-color: var(--phosphor-dim, #1a6b4a) transparent;
+}
+
+.puzzle-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--phosphor-dim, #1a6b4a);
+}
+
+.puzzle-popup-title {
+  font-family: var(--theme-font-data, 'Courier New', monospace);
+  font-size: 0.8em;
+  font-weight: bold;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--phosphor, #1cff9b);
+  text-shadow: 0 0 6px var(--phosphor-glow, rgba(28, 255, 155, 0.3));
+}
+
+.puzzle-popup-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 2px solid rgba(220, 40, 40, 0.6);
+  background: rgba(180, 30, 30, 0.85);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1em;
+  line-height: 1;
+  transition: background 0.15s, border-color 0.15s;
+  box-shadow: 0 2px 8px rgba(180, 30, 30, 0.3);
+  flex-shrink: 0;
+}
+
+.puzzle-popup-close:hover {
+  background: rgba(220, 40, 40, 0.95);
+  border-color: rgba(255, 60, 60, 0.8);
+}
+
+.puzzle-popup-body {
+  padding: 14px;
+}
+
+/* ---- Dead Drop Cipher puzzle styles ---- */
+
+.puzzle-ddc {
+  font-family: var(--theme-font-data, 'Courier New', monospace);
+  color: var(--phosphor, #1cff9b);
+}
+
+.puzzle-ddc-briefing {
+  margin-bottom: 12px;
+}
+
+.puzzle-ddc-label {
+  display: block;
+  font-size: 0.65em;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--phosphor-dim, #1a6b4a);
+  margin-bottom: 4px;
+}
+
+.puzzle-ddc-flavor {
+  font-size: 0.72em;
+  line-height: 1.5;
+  color: var(--phosphor-dim, #1a6b4a);
+  margin: 0;
+}
+
+.puzzle-ddc-cipher {
+  background: rgba(28, 255, 155, 0.04);
+  border: 1px solid var(--phosphor-dim, #1a6b4a);
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.puzzle-ddc-cipher-label {
+  display: block;
+  font-size: 0.6em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--phosphor-dim, #1a6b4a);
+  margin-bottom: 6px;
+}
+
+.puzzle-ddc-cipher-text {
+  font-size: 1em;
+  letter-spacing: 0.2em;
+  font-weight: bold;
+  word-break: break-all;
+  text-shadow: 0 0 8px var(--phosphor-glow, rgba(28, 255, 155, 0.3));
+}
+
+/* Key table */
+.puzzle-keytable {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--phosphor-dim, #1a6b4a);
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin-bottom: 14px;
+  overflow-x: auto;
+}
+
+.puzzle-keytable-label {
+  font-size: 0.58em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--phosphor-dim, #1a6b4a);
+  margin-bottom: 2px;
+}
+
+.puzzle-keytable-row {
+  font-size: 0.72em;
+  letter-spacing: 0.18em;
+  white-space: nowrap;
+  margin-bottom: 6px;
+}
+
+/* Answer input */
+.puzzle-ddc-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.puzzle-ddc-answer-label {
+  font-size: 0.62em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--phosphor-dim, #1a6b4a);
+}
+
+.puzzle-ddc-input {
+  font-family: var(--theme-font-data, 'Courier New', monospace);
+  font-size: 0.85em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--phosphor-dim, #1a6b4a);
+  border-radius: 4px;
+  color: var(--phosphor, #1cff9b);
+  outline: none;
+  transition: border-color 0.15s;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  user-select: text;
+}
+
+.puzzle-ddc-input:focus {
+  border-color: var(--phosphor, #1cff9b);
+  box-shadow: 0 0 8px var(--phosphor-glow, rgba(28, 255, 155, 0.2));
+}
+
+.puzzle-ddc-input:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.puzzle-ddc-submit {
+  font-family: var(--theme-font-data, 'Courier New', monospace);
+  font-size: 0.75em;
+  font-weight: bold;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 8px 16px;
+  background: rgba(28, 255, 155, 0.08);
+  border: 1px solid var(--phosphor-dim, #1a6b4a);
+  border-radius: 4px;
+  color: var(--phosphor, #1cff9b);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.puzzle-ddc-submit:hover:not(:disabled) {
+  background: rgba(28, 255, 155, 0.15);
+  border-color: var(--phosphor, #1cff9b);
+}
+
+.puzzle-ddc-submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Feedback messages */
+.puzzle-ddc-feedback {
+  min-height: 1.5em;
+  font-size: 0.72em;
+  letter-spacing: 0.06em;
+}
+
+.puzzle-ddc-success {
+  color: var(--phosphor, #1cff9b);
+  text-shadow: 0 0 6px var(--phosphor-glow, rgba(28, 255, 155, 0.3));
+}
+
+.puzzle-ddc-error {
+  color: #ff6b6b;
 }
