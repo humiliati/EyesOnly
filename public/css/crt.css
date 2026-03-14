@@ -38,6 +38,23 @@
   --panel-border-soft: rgba(51, 255, 51, 0.12);
 }
 
+/* --- Theme Bridge ---
+   When a theme is active on <body>, re-map the legacy CRT variables
+   to the theme layer so all downstream var(--phosphor) etc. cascade. */
+body[data-theme] {
+  --phosphor:          var(--theme-primary);
+  --phosphor-dim:      var(--theme-primary-dim);
+  --phosphor-bright:   var(--theme-primary-bright);
+  --phosphor-glow:     var(--theme-primary-glow);
+  --bg:                var(--theme-bg);
+  --bg-screen:         var(--theme-bg-screen);
+  --panel-bg:          var(--theme-panel-bg);
+  --panel-border:      var(--theme-panel-border);
+  --panel-border-soft: var(--theme-panel-border);
+  --scanline-opacity:  var(--theme-scanline-opacity);
+  --glow-spread:       var(--theme-glow-spread);
+}
+
 /* --- Reset --- */
 *, *::before, *::after {
   margin: 0;

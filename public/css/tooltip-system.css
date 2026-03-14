@@ -6,10 +6,10 @@
 .mok-history-toggle {
   display: inline-block;
   float: right;
-  background: rgba(28, 255, 155, 0.1);
-  border: 1px solid rgba(28, 255, 155, 0.3);
-  color: #1cff9b;
-  font-family: 'Consolas', 'Courier New', monospace;
+  background: var(--theme-primary-glow);
+  border: 1px solid var(--theme-panel-border);
+  color: var(--theme-primary);
+  font-family: var(--theme-font-data, 'Consolas', 'Courier New', monospace);
   font-size: 10px;
   padding: 2px 8px;
   margin: 0;
@@ -23,13 +23,13 @@
 }
 
 .mok-history-toggle:hover {
-  background: rgba(28, 255, 155, 0.2);
-  border-color: #1cff9b;
-  box-shadow: 0 0 8px rgba(28, 255, 155, 0.3);
+  background: var(--theme-primary-glow);
+  border-color: var(--theme-primary);
+  box-shadow: 0 0 8px var(--theme-panel-border);
 }
 
 .mok-history-toggle:active {
-  background: rgba(28, 255, 155, 0.3);
+  background: var(--theme-panel-border);
   transform: scale(0.98);
 }
 
@@ -49,7 +49,7 @@
     rgba(6, 10, 8, 0.92) 40%,
     rgba(6, 10, 8, 0.80) 100%
   );
-  border: 1px solid rgba(28, 255, 155, 0.25);
+  border: 1px solid var(--theme-panel-border);
   border-bottom: none;       /* seamless with footer */
   border-radius: 4px 4px 0 0;
   max-height: 0;
@@ -82,7 +82,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   padding: 2px 4px;
-  font-family: 'Consolas', 'Courier New', monospace;
+  font-family: var(--theme-font-data, 'Consolas', 'Courier New', monospace);
   font-size: 11px;
   line-height: 1.2;
 }
@@ -98,18 +98,18 @@
 }
 
 .mok-history-content::-webkit-scrollbar-thumb {
-  background: rgba(28, 255, 155, 0.25);
+  background: var(--theme-panel-border);
   border-radius: 3px;
 }
 
 .mok-history-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(28, 255, 155, 0.45);
+  background: var(--theme-panel-border);
 }
 
 /* Firefox scrollbar */
 .mok-history-content {
   scrollbar-width: thin;
-  scrollbar-color: rgba(28, 255, 155, 0.25) rgba(0, 0, 0, 0.2);
+  scrollbar-color: var(--theme-panel-border) rgba(0, 0, 0, 0.2);
 }
 
 /* ============================================================
@@ -118,10 +118,10 @@
    ============================================================ */
 .mok-history-entry {
   padding: 1px 0;
-  border-bottom: 1px solid rgba(28, 255, 155, 0.06);
+  border-bottom: 1px solid var(--theme-primary-glow);
   color: #ccc;
   word-wrap: break-word;
-  font-family: 'Consolas', 'Courier New', monospace;
+  font-family: var(--theme-font-data, 'Consolas', 'Courier New', monospace);
   font-size: 11px;
   line-height: 1.25;
 }
@@ -131,7 +131,7 @@
 }
 
 .mok-history-entry:hover {
-  background: rgba(28, 255, 155, 0.05);
+  background: var(--theme-primary-glow);
 }
 
 /* History Timestamp */
@@ -139,7 +139,7 @@
   color: #555;
   font-size: 10px;
   margin-right: 4px;
-  font-family: 'Consolas', 'Courier New', monospace;
+  font-family: var(--theme-font-data, 'Consolas', 'Courier New', monospace);
   display: inline-block;
   min-width: 0;
 }
@@ -155,8 +155,8 @@
 
 /* History Message */
 .mok-history-message {
-  color: #1cff9b;
-  font-family: 'Consolas', 'Courier New', monospace;
+  color: var(--theme-primary);
+  font-family: var(--theme-font-data, 'Consolas', 'Courier New', monospace);
 }
 
 /* Empty History State */
@@ -165,7 +165,7 @@
   text-align: center;
   padding: 10px;
   font-style: italic;
-  font-family: 'Consolas', 'Courier New', monospace;
+  font-family: var(--theme-font-data, 'Consolas', 'Courier New', monospace);
 }
 
 /* ============================================================
@@ -173,7 +173,7 @@
    EXCEPT the "MOK INTERJECTION" label which keeps its style
    ============================================================ */
 #mok-interjections .interject-body {
-  font-family: 'Consolas', 'Courier New', monospace;
+  font-family: var(--theme-font-data, 'Consolas', 'Courier New', monospace);
   font-size: 0.85em;
 }
 
@@ -288,7 +288,7 @@
 .dialogue-speaker {
   color: #ffcc00;
   font-weight: bold;
-  font-family: 'Consolas', 'Courier New', monospace;
+  font-family: var(--theme-font-data, 'Consolas', 'Courier New', monospace);
   font-size: inherit;
   white-space: nowrap;
 }
@@ -296,7 +296,7 @@
 /* NPC speech text */
 .dialogue-text {
   color: #e0e0e0;
-  font-family: 'Consolas', 'Courier New', monospace;
+  font-family: var(--theme-font-data, 'Consolas', 'Courier New', monospace);
   font-size: inherit;
 }
 
@@ -308,35 +308,35 @@
 
 /* Individual clickable choice */
 .dialogue-choice {
-  color: #1cff9b;
+  color: var(--theme-primary);
   text-decoration: underline;
   cursor: pointer;
   padding: 0 3px;
-  font-family: 'Consolas', 'Courier New', monospace;
+  font-family: var(--theme-font-data, 'Consolas', 'Courier New', monospace);
   font-size: inherit;
   transition: color 0.15s, background 0.15s;
   white-space: nowrap;
 }
 
 .dialogue-choice:hover {
-  color: #66ff66;
-  background: rgba(28, 255, 155, 0.15);
+  color: var(--theme-primary-bright);
+  background: var(--theme-primary-glow);
   border-radius: 2px;
 }
 
 .dialogue-choice:active {
   color: #ffffff;
-  background: rgba(28, 255, 155, 0.3);
+  background: var(--theme-panel-border);
 }
 
 /* Already-visited topic — dimmer color */
 .dialogue-choice-visited {
-  color: #0d9960;
+  color: var(--theme-primary-dim);
   text-decoration: underline dotted;
 }
 
 .dialogue-choice-visited:hover {
-  color: #1cff9b;
+  color: var(--theme-primary);
 }
 
 /* ── Dialogue in History Panel ── */
@@ -345,7 +345,7 @@
 }
 
 .mok-history-entry .dialogue-choice {
-  color: #1cff9b;
+  color: var(--theme-primary);
   cursor: default;        /* not clickable in history */
   text-decoration: none;
   pointer-events: none;
@@ -394,7 +394,7 @@
   position: absolute;
   pointer-events: none;
   z-index: 1000;
-  font-family: 'Courier New', monospace;
+  font-family: var(--theme-font-data, 'Courier New', monospace);
   text-align: center;
   white-space: nowrap;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
@@ -423,7 +423,7 @@
   font-weight: bold;
   line-height: 1;
   display: inline-block;
-  font-family: 'Courier New', monospace;
+  font-family: var(--theme-font-data, 'Courier New', monospace);
 }
 
 .tooltip-text {

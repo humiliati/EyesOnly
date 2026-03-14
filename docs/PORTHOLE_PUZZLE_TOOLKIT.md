@@ -1,7 +1,7 @@
 # Porthole & Puzzle Toolkit — Technical Reference
 
 > **Status**: Canonical
-> **Effective**: 2026-03-13
+> **Effective**: 2026-03-13 (rev 2)
 > **Audience**: Developers, contractors, AI agents
 > **Cost of ignoring this doc**: ~$1,000 (measured)
 
@@ -46,7 +46,7 @@ One line. The `::after` now renders behind all card content, the starfield canva
 const canvas = document.querySelector('.starfield-window');
 const px = canvas.getContext('2d').getImageData(100, 100, 1, 1).data;
 console.log('Porthole center RGBA:', px);
-// Expected: cool blue-black [2, 1, 18, 255]
+// Expected: near-black [0, 0, 0, 255] or faint star [240+, 240+, 245+, α]
 // Bug: warm olive [26, 24, 16, 255] ← card background bleeding through
 ```
 
@@ -75,43 +75,63 @@ Z-INDEX   ELEMENT                          ROLE
 
 ### Render Pipeline
 
+Rendering is handled by the **shared starfield module** (`/js/starfield.js`, see Section 2a). The module owns a hidden master canvas and blits into every `.starfield-window` canvas each frame.
+
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Master Canvas (#starfield-master)                       │
-│  Full viewport, opacity: 0, painted every RAF tick       │
-│                                                          │
-│  Layers:                                                 │
-│    1. Deep space fill (#020112)                          │
-│    2. Nebula gradients (blue-violet, warm offset)        │
-│    3. Star layers ×4 (dust → foreground, varied drift)   │
-│    4. Milky Way band (350 stars, diagonal)                │
-│    5. Turing clusters (reaction-diffusion groupings)     │
-└──────────────┬──────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│  Master Canvas (position: fixed, opacity: 0)               │
+│  Full viewport, repainted every RAF tick by starfield.js   │
+│                                                            │
+│  Render order:                                             │
+│    1. Pure black fill (#000000)                            │
+│    2. Star layers ×4 (dust → foreground, varied drift)     │
+│    3. Milky Way blue glow (faint diagonal band)            │
+│    4. Milky Way dense stars (350 white pixel points)       │
+│    5. Turing clusters (blue nebular glow + white stars)    │
+└──────────────┬─────────────────────────────────────────────┘
                │
-     getBoundingClientRect() per card
+     getBoundingClientRect() per porthole
                │
                ▼
 ┌──────────────────────────────┐
-│  Per-Card .starfield-window  │
-│  200×200 buffer              │
+│  Per-Porthole .starfield-    │
+│  window canvas (200×200)     │
 │  drawImage(master, sx,sy,    │
 │            sw,sh, 0,0,cw,ch) │
 │  + radial vignette overlay   │
 └──────────────────────────────┘
 ```
 
-Each card's porthole canvas reads its screen-space coordinates via `getBoundingClientRect()`, then blits the corresponding region from the master. This means all portholes look into the **same** star volume — parallax is automatic as cards tilt and shift.
+Every `.starfield-window` canvas in the document — on any page — is automatically picked up by `document.querySelectorAll()` each frame. This means:
+
+- All portholes on a page look into the **same** star volume
+- Scrolling moves portholes through a static starfield (magnifying glass behavior)
+- Drag-ghost portholes get free parallax via their changing `getBoundingClientRect()`
+- Adding a new porthole anywhere in the DOM is instant — no registration needed
 
 ### Star Layer Definitions
 
 | Layer | Count | Radius | Speed | Opacity | Drift Angle | Twinkle |
 |-------|-------|--------|-------|---------|-------------|---------|
-| Deep dust | 600 | 0.3–0.5 | 0.00003 | 0.25 | 0.2 rad | yes |
-| Mid-field | 120 | 0.4–0.7 | 0.00012 | 0.45 | 1.1 rad | yes |
-| Bright | 45 | 0.6–1.2 | 0.00025 | 0.70 | 2.5 rad | yes |
-| Foreground | 15 | 1.0–1.8 | 0.0005 | 0.85 | 3.8 rad | no |
+| Deep dust | 600 | 0.2–0.4 | 0.00003 | 0.35 | 0.2 rad | yes |
+| Mid-field | 140 | 0.3–0.5 | 0.00012 | 0.65 | 1.1 rad | yes |
+| Bright | 50 | 0.4–0.8 | 0.00025 | 0.85 | 2.5 rad | yes |
+| Foreground | 18 | 0.5–1.0 | 0.0005 | 0.95 | 3.8 rad | no |
 
-Varied drift angles per layer prevent the "diagonal snow" effect where all stars move in unison.
+**Design intent**: Stars are crisp white pixel points on a pure black void. Radii are deliberately small so most stars render as single-pixel `fillRect` calls (threshold `r < 0.6`). Only the brightest foreground stars get a tight glow halo (2× radius, 3% alpha). Varied drift angles per layer prevent the "diagonal snow" effect.
+
+### Star Color Distribution
+
+- **85%** clean white (R: 240–255, G: 240–255, B: 245–255)
+- **9%** cool blue-white (R: 220–240, G: 225–245, B: 255)
+- **6%** rare warm pale (R: 255, G: 240–255, B: 220–240)
+
+### Blue Cluster Glow
+
+Dense star clusters (Turing pattern groupings and the Milky Way band) emit a subtle blue nebular glow, as if the concentration of stars is illuminating nearby gas. This is the **only color** in an otherwise black-and-white starfield.
+
+- **Turing clusters**: radial gradient per cluster, `rgba(40, 80, 200, 0.12)` center fading to transparent, with a slow pulse animation
+- **Milky Way band**: faint linear gradient along the diagonal, `rgba(35, 70, 200, 0.05)` peak
 
 ### Ring Frame Gradient
 
@@ -136,6 +156,79 @@ This softens the edge where the canvas meets the ring frame's dark innermost ban
 
 ---
 
+## 2a. Shared Starfield Module (`/js/starfield.js`)
+
+The starfield is now a standalone, reusable module. Any page can include it to get a full-viewport starfield with automatic porthole blitting.
+
+### Quick Start
+
+```html
+<!-- Add to any page that needs porthole windows -->
+<script src="/js/starfield.js"></script>
+<script>
+  EyesOnlyStarfield.init();
+  // That's it. Drop <canvas class="starfield-window"> anywhere in the DOM.
+</script>
+```
+
+### How It Works
+
+1. `init()` creates a hidden `position: fixed` master canvas covering the viewport (or reuses an existing canvas via `masterEl`)
+2. Every RAF tick, the module renders the starfield into the master canvas
+3. Every RAF tick, the module queries `document.querySelectorAll('.starfield-window')` and blits each canvas's screen-space region from the master
+4. Because the master is fixed and the porthole positions come from `getBoundingClientRect()`, scrolling the page moves portholes through the static starfield — the magnifying glass contract
+
+### API
+
+```js
+EyesOnlyStarfield.init({
+  selector:    '.starfield-window',  // CSS selector for porthole canvases
+  seed:        42,                    // RNG seed (reproducible star placement)
+  masterEl:    canvas,                // reuse existing canvas (splash screen)
+  parentEl:    document.body,         // where to append auto-created master
+  masterClass: 'starfield-master',   // CSS class for auto-created master
+});
+
+EyesOnlyStarfield.destroy();          // stop rendering, clean up
+EyesOnlyStarfield.getMasterCanvas();   // access the master canvas element
+EyesOnlyStarfield.isRunning();         // check if actively rendering
+```
+
+### Page Integration Patterns
+
+**Splash screen** (`index.html`): The splash screen has its own `#starfield-master` canvas in the DOM template. It passes this as `masterEl` so the module reuses it instead of creating a new one:
+
+```js
+EyesOnlyStarfield.init({
+  masterEl: document.getElementById('starfield-master'),
+  selector: '.starfield-window',
+  seed: 42,
+});
+```
+
+**Booking page** (`booking.html`): No pre-existing master canvas. The module auto-creates a `position: fixed` canvas on `document.body`. The two scenario portholes are regular `.starfield-window` canvases that scroll with the page:
+
+```js
+EyesOnlyStarfield.init();  // auto-creates master, finds porthole canvases
+```
+
+**Any future page**: Include the script, call `init()`, add `<canvas class="starfield-window" width="200" height="200">` wherever you need a porthole. No registration, no configuration — just DOM presence.
+
+### Adding a Porthole to Any Page
+
+```html
+<div style="position: relative; width: 200px; height: 200px; border-radius: 50%; overflow: hidden;">
+  <canvas class="starfield-window" width="200" height="200"
+          style="position: absolute; width: 100%; height: 100%; border-radius: 50%;"></canvas>
+  <!-- Optional: add .coin-rings or .scenario-rings overlay for the frame -->
+  <!-- Optional: add suit symbol or other content on top -->
+</div>
+```
+
+The porthole will immediately start showing the starfield region at its screen position. Scroll, drag, or animate the container and the starfield updates automatically.
+
+---
+
 ## 3. CSS Stacking Context — Rules for Contributors
 
 ### Properties That Create Stacking Contexts
@@ -155,12 +248,14 @@ If you add ANY of these to an element that overlaps a porthole, you MUST verify 
 
 ### Verification Checklist
 
-Before merging any CSS change that touches card elements:
+Before merging any CSS change that touches card or porthole elements:
 
-1. Open the splash screen
-2. Confirm portholes show cool blue-black space (not warm olive card body)
+1. Open the splash screen — confirm portholes show sharp white stars on pure black (not warm olive card body)
+2. Open the booking page — confirm both scenario portholes show starfield and scroll independently of it
 3. Run the debug pixel sample (Section 1) on at least one card
 4. Check all 4 card themes: silver, amber, phosphor, panther
+5. Drag a card — confirm the ghost porthole shows the starfield updating as it moves
+6. On mobile viewport — confirm the circular ghost porthole works
 
 ### Theme Variables That Affect the Porthole
 
@@ -171,6 +266,71 @@ Before merging any CSS change that touches card elements:
 --theme-ring-tint         /* Radial hatching color */
 --theme-hover-ring        /* Inner border glow on hover */
 ```
+
+---
+
+## 3a. Drag Ghost as Magnifying Glass
+
+When a player drags a card on the splash screen, the card becomes a floating porthole that reveals the starfield underneath as it moves. This is the magnifying glass effect in action.
+
+### How It Works (Zero Extra Code)
+
+1. `_createDragGhost()` calls `cardEl.cloneNode(true)` — the clone includes a `.starfield-window` canvas
+2. The ghost is appended to `document.body`
+3. The starfield module's blit loop queries `document.querySelectorAll('.starfield-window')` every frame
+4. The ghost's cloned canvas is found by that query
+5. `getBoundingClientRect()` reads the ghost's current screen position
+6. The corresponding starfield region is blitted into the ghost's canvas
+7. As the user drags, the position changes, the blit region changes, and the starfield scrolls through the porthole
+
+No event wiring, no registration, no special case. The magnifying glass effect is a natural consequence of the architecture.
+
+### Ghost CSS Class
+
+The ghost uses `.coin-card-ghost` (not `.coin-card-hovered`) to avoid `!important` conflicts:
+
+- All `transform` and `z-index` set via `style.setProperty('...', '...', 'important')` in JS
+- Mobile (`< 769px`): circular porthole ghost, non-porthole content hidden via `display: none !important`
+- Desktop: full card ghost with working porthole
+- `touch-action: none` on `.coin-artwork` prevents browser scroll during drag
+
+### The `!important` Lesson
+
+`.coin-card-hovered` uses `!important` on `transform` and `z-index` for hover lift. If the drag ghost kept that class, inline drag positioning would be overridden. The fix was a dedicated `.coin-card-ghost` class with no `!important` declarations, letting JS `setProperty('...', '...', 'important')` win.
+
+**Rule**: Never add `!important` to `transform` or `z-index` on an element that might be dragged. Use a separate class for drag ghosts.
+
+---
+
+## 3b. Booking Page Portholes
+
+The booking page (`/booking.html`) uses the same porthole system as the splash screen, replacing emoji placeholders (🎯 and 🗺) with live starfield windows.
+
+### Structure
+
+```html
+<div class="scenario-icon-wrap">
+  <canvas class="starfield-window" width="200" height="200"></canvas>
+  <div class="scenario-rings"></div>          <!-- or scenario-rings-alt -->
+  <div class="scenario-suit suit-spade">♠</div>  <!-- or suit-club ♣ -->
+</div>
+```
+
+### Ring Variants
+
+- **Scenario 1**: `.scenario-rings` — green accent lines (`rgba(28, 255, 155)`)
+- **Scenario 2**: `.scenario-rings-alt` — amber/gold accent lines (`rgba(201, 168, 76)`)
+
+### Scroll Behavior
+
+Because the starfield module uses a `position: fixed` master canvas and the porthole canvases scroll with the page, scrolling moves the portholes through the static starfield. Each porthole shows a different region of the starfield depending on its vertical position on the page.
+
+### Suit Mapping
+
+| Scenario | Suit | Class | Accent Color |
+|----------|------|-------|-------------|
+| Scenario 1 | ♠ spade | `suit-spade` | Green `#1cff9b` |
+| Scenario 2 | ♣ club | `suit-club` | Amber `#c9a84c` |
 
 ---
 
@@ -325,7 +485,7 @@ Trigger:    Specific star patterns, constellations, or Turing clusters
 Data:       arg_synergies.json (item combos that unlock star patterns)
 ```
 
-**Extension point**: The starfield `_starfieldTick()` function can be extended to render puzzle elements (constellation lines, hidden symbols) that are only visible through specific card portholes based on their screen position.
+**Extension point**: The shared starfield module's master canvas can be extended to render puzzle elements (constellation lines, hidden symbols, the 25%-off checkout code) that are only visible through porthole canvases based on their screen position. Since `starfield.js` is a single global module, puzzle overlays can be rendered onto `EyesOnlyStarfield.getMasterCanvas()` in a post-render hook, and they'll automatically appear in any porthole that happens to cover that region — including a dragged ghost card.
 
 ### Pattern D: UV / Blacklight Lens
 
@@ -504,13 +664,25 @@ arg_synergies.json → Combo triggers (pairs of items unlock beats)
 
 ## 8. Files Reference
 
-### Core Porthole System
+### Shared Starfield Module
 | File | Role |
 |------|------|
-| `public/js/splash-screen.js` | Starfield render, per-card blit, card interactions |
-| `public/css/splash-screen.css` | Card layout, ring gradients, z-index stack |
-| `public/js/card-coin-3d.js` | Three.js coin with starfield texture injection |
+| `public/js/starfield.js` | **Shared starfield module** — master canvas, star generation, porthole blit pipeline. Include on any page that needs porthole windows. |
+
+### Splash Screen
+| File | Role |
+|------|------|
+| `public/js/splash-screen.js` | Card interactions, drag-ghost system. Delegates starfield to `starfield.js` via `EyesOnlyStarfield.init({ masterEl })` |
+| `public/css/splash-screen.css` | Card layout, ring gradients, z-index stack, ghost class, drag styles |
+| `public/js/card-coin-3d.js` | Three.js coin with starfield texture injection (currently disabled) |
 | `public/css/themes.css` | Theme variables (4 themes × ~50 vars each) |
+
+### Booking Page
+| File | Role |
+|------|------|
+| `public/booking.html` | Scenario detail pages with porthole + suit symbol replacing emoji placeholders |
+| `public/js/booking.js` | Booking form logic. Calls `EyesOnlyStarfield.init()` (auto-creates master) |
+| `public/css/booking.css` | Porthole rings, suit symbols, scenario-specific ring accents (green / amber) |
 
 ### Puzzle / ARG Data
 | File | Role |
@@ -554,8 +726,8 @@ If a porthole stops working after a CSS change, run this in the console:
   // 2. Check canvas pixel
   const ctx = canvas.getContext('2d');
   const px = ctx.getImageData(100, 100, 1, 1).data;
-  const isBlue = px[2] > px[0] && px[2] > px[1];
-  console.log('Canvas center:', px, isBlue ? '✓ (blue)' : '✗ (not blue — covered?)');
+  const isBlack = px[0] < 30 && px[1] < 30 && px[2] < 30;
+  console.log('Canvas center:', px, isBlack ? '✓ (dark/star)' : '✗ (bright — covered?)');
 
   // 3. Check stacking contexts between canvas and viewer
   let el = canvas.parentElement;

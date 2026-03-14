@@ -3,7 +3,7 @@
   flex: 0 0 auto;
   opacity: 0.75;
   color: currentColor;
-  font-family: var(--font-legible, 'Classic Console Neue', 'Courier New', monospace);
+  font-family: var(--theme-font-data, var(--font-legible, 'Courier New', monospace));
   font-weight: 750;
   min-width: 1.2em;
   text-align: center;
@@ -19,7 +19,7 @@
 
 .debrief-row-panel {
   /* Aesthetic mono for panels, but keep it thicker if Classic Console Neue is available */
-  font-family: var(--font-legible, 'Classic Console Neue', 'Courier New', monospace);
+  font-family: var(--theme-font-data, var(--font-legible, 'Courier New', monospace));
   white-space: pre;
   padding: 1px 2px;
   margin: 0;
@@ -88,7 +88,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: var(--font-legible, 'Classic Console Neue', 'Courier New', monospace);
+  font-family: var(--theme-font-data, var(--font-legible, 'Courier New', monospace));
   font-weight: 750;
 }
 

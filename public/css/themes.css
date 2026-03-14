@@ -32,15 +32,15 @@
 
   /* Text hierarchy (brass tones) */
   --theme-text-classified:  rgba(200, 170, 90, 0.5);
-  --theme-text-label:       rgba(160, 140, 90, 0.4);
+  --theme-text-label:       rgba(160, 140, 90, 0.65);
   --theme-text-title:       rgba(220, 200, 140, 0.85);
-  --theme-text-desc:        rgba(180, 160, 100, 0.45);
+  --theme-text-desc:        rgba(180, 160, 100, 0.65);
   --theme-text-book-label:  rgba(220, 200, 140, 0.85);
   --theme-text-book-dot:    rgba(160, 140, 80, 0.4);
   --theme-text-book-dur:    rgba(200, 180, 120, 0.7);
   --theme-text-wheel-val:   rgba(220, 200, 140, 0.85);
-  --theme-text-wheel-ctx:   rgba(160, 140, 80, 0.35);
-  --theme-text-tag:         rgba(180, 160, 100, 0.5);
+  --theme-text-wheel-ctx:   rgba(160, 140, 80, 0.65);
+  --theme-text-tag:         rgba(180, 160, 100, 0.65);
 
   /* Button */
   --theme-btn-border:       rgba(120, 100, 50, 0.3);
@@ -96,15 +96,15 @@ body[data-theme="phosphor"],
   --theme-face-back:        linear-gradient(175deg, #1e1a10 0%, #2a2418 35%, #1a1608 65%, #12100a 100%);
 
   --theme-text-classified:  rgba(51, 255, 51, 0.40);
-  --theme-text-label:       rgba(51, 200, 51, 0.35);
+  --theme-text-label:       rgba(51, 200, 51, 0.68);
   --theme-text-title:       rgba(120, 255, 120, 0.85);
-  --theme-text-desc:        rgba(51, 200, 51, 0.40);
+  --theme-text-desc:        rgba(51, 200, 51, 0.68);
   --theme-text-book-label:  rgba(120, 255, 120, 0.85);
   --theme-text-book-dot:    rgba(51, 180, 51, 0.35);
   --theme-text-book-dur:    rgba(100, 240, 100, 0.7);
   --theme-text-wheel-val:   rgba(120, 255, 120, 0.85);
-  --theme-text-wheel-ctx:   rgba(51, 180, 51, 0.30);
-  --theme-text-tag:         rgba(51, 200, 51, 0.45);
+  --theme-text-wheel-ctx:   rgba(51, 180, 51, 0.76);
+  --theme-text-tag:         rgba(51, 200, 51, 0.68);
 
   --theme-btn-border:       rgba(51, 200, 51, 0.25);
   --theme-btn-bg:           linear-gradient(175deg, rgba(6, 18, 8, 0.95) 0%, rgba(4, 14, 6, 0.98) 50%, rgba(6, 16, 8, 0.95) 100%);
@@ -154,16 +154,16 @@ body[data-theme="silver"],
   --theme-face-gradient:    linear-gradient(175deg, #2a3040 0%, #1e2430 20%, #242a38 40%, #1a2028 70%, #141820 100%);
   --theme-face-back:        linear-gradient(175deg, #141820 0%, #1a2028 35%, #121820 65%, #0e1218 100%);
 
-  --theme-text-classified:  rgba(176, 196, 222, 0.45);
-  --theme-text-label:       rgba(140, 160, 190, 0.35);
+  --theme-text-classified:  rgba(176, 196, 222, 0.46);
+  --theme-text-label:       rgba(140, 160, 190, 0.75);
   --theme-text-title:       rgba(200, 216, 240, 0.85);
-  --theme-text-desc:        rgba(140, 160, 190, 0.40);
+  --theme-text-desc:        rgba(140, 160, 190, 0.75);
   --theme-text-book-label:  rgba(200, 216, 240, 0.85);
   --theme-text-book-dot:    rgba(120, 140, 170, 0.35);
   --theme-text-book-dur:    rgba(176, 196, 222, 0.7);
   --theme-text-wheel-val:   rgba(212, 228, 247, 0.85);
-  --theme-text-wheel-ctx:   rgba(120, 140, 170, 0.30);
-  --theme-text-tag:         rgba(140, 160, 190, 0.45);
+  --theme-text-wheel-ctx:   rgba(120, 140, 170, 0.87);
+  --theme-text-tag:         rgba(140, 160, 190, 0.75);
 
   --theme-btn-border:       rgba(120, 140, 180, 0.25);
   --theme-btn-bg:           linear-gradient(175deg, rgba(14, 18, 28, 0.95) 0%, rgba(10, 14, 22, 0.98) 50%, rgba(12, 16, 26, 0.95) 100%);
@@ -194,7 +194,7 @@ body[data-theme="silver"],
 body[data-theme="amber"],
 .splash-dossier[data-card-theme="amber"] {
   --theme-primary:          #ffb000;
-  --theme-primary-dim:      #996a00;
+  --theme-primary-dim:      #b37d00;
   --theme-primary-bright:   #ffc640;
   --theme-primary-glow:     rgba(255, 176, 0, 0.15);
   --theme-secondary:        #cc6600;
@@ -213,16 +213,16 @@ body[data-theme="amber"],
   --theme-face-gradient:    linear-gradient(175deg, #4a4020 0%, #342c14 20%, #3e3620 40%, #2c2410 70%, #221c08 100%);
   --theme-face-back:        linear-gradient(175deg, #221c08 0%, #2e2610 35%, #1e1808 65%, #161204 100%);
 
-  --theme-text-classified:  rgba(255, 176, 0, 0.45);
-  --theme-text-label:       rgba(200, 140, 0, 0.35);
+  --theme-text-classified:  rgba(255, 176, 0, 0.47);
+  --theme-text-label:       rgba(200, 140, 0, 0.79);
   --theme-text-title:       rgba(255, 198, 64, 0.85);
-  --theme-text-desc:        rgba(200, 140, 0, 0.40);
+  --theme-text-desc:        rgba(200, 140, 0, 0.79);
   --theme-text-book-label:  rgba(255, 198, 64, 0.85);
   --theme-text-book-dot:    rgba(180, 120, 0, 0.35);
   --theme-text-book-dur:    rgba(240, 180, 60, 0.7);
   --theme-text-wheel-val:   rgba(255, 198, 64, 0.85);
-  --theme-text-wheel-ctx:   rgba(180, 120, 0, 0.30);
-  --theme-text-tag:         rgba(200, 140, 0, 0.45);
+  --theme-text-wheel-ctx:   rgba(180, 120, 0, 0.91);
+  --theme-text-tag:         rgba(200, 140, 0, 0.79);
 
   --theme-btn-border:       rgba(200, 140, 0, 0.25);
   --theme-btn-bg:           linear-gradient(175deg, rgba(16, 12, 4, 0.95) 0%, rgba(12, 10, 2, 0.98) 50%, rgba(14, 12, 4, 0.95) 100%);
@@ -254,7 +254,7 @@ body[data-theme="amber"],
 body[data-theme="panther"],
 .splash-dossier[data-card-theme="panther"] {
   --theme-primary:          #ff3090;
-  --theme-primary-dim:      #a01858;
+  --theme-primary-dim:      #e03090;
   --theme-primary-bright:   #ff60b0;
   --theme-primary-glow:     rgba(255, 48, 144, 0.15);
   --theme-secondary:        #00e5cc;
@@ -273,16 +273,16 @@ body[data-theme="panther"],
   --theme-face-gradient:    linear-gradient(175deg, #1e1228 0%, #141020 20%, #1a1224 40%, #100c1a 70%, #0a0812 100%);
   --theme-face-back:        linear-gradient(175deg, #0a0812 0%, #120e1a 35%, #0a0812 65%, #08060e 100%);
 
-  --theme-text-classified:  rgba(255, 48, 144, 0.40);
-  --theme-text-label:       rgba(200, 40, 120, 0.30);
+  --theme-text-classified:  rgba(255, 48, 144, 0.67);
+  --theme-text-label:       rgba(255, 96, 176, 0.82);
   --theme-text-title:       rgba(255, 96, 176, 0.85);
-  --theme-text-desc:        rgba(0, 229, 204, 0.40);
+  --theme-text-desc:        rgba(0, 229, 204, 0.58);
   --theme-text-book-label:  rgba(255, 96, 176, 0.85);
-  --theme-text-book-dot:    rgba(200, 40, 120, 0.30);
+  --theme-text-book-dot:    rgba(255, 96, 176, 0.82);
   --theme-text-book-dur:    rgba(0, 229, 204, 0.7);
   --theme-text-wheel-val:   rgba(51, 255, 51, 0.85);
-  --theme-text-wheel-ctx:   rgba(0, 180, 160, 0.30);
-  --theme-text-tag:         rgba(0, 229, 204, 0.45);
+  --theme-text-wheel-ctx:   rgba(0, 180, 160, 0.75);
+  --theme-text-tag:         rgba(0, 229, 204, 0.58);
 
   --theme-btn-border:       rgba(255, 48, 144, 0.22);
   --theme-btn-bg:           linear-gradient(175deg, rgba(10, 18, 10, 0.95) 0%, rgba(8, 14, 8, 0.98) 50%, rgba(10, 16, 10, 0.95) 100%);

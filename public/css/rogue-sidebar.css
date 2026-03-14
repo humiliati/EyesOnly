@@ -12,11 +12,11 @@
   width: 100%;
   min-height: 56px;
   border-radius: 14px;
-  border: 1px solid rgba(28, 255, 155, 0.30);
+  border: 1px solid var(--theme-panel-border);
   background: rgba(0,0,0,0.28);
-  color: rgba(191, 255, 227, 0.95);
+  color: var(--theme-primary-bright);
   cursor: pointer;
-  font-family: 'Courier New', monospace;
+  font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 12px;
   display: flex;
   align-items: center;
@@ -27,8 +27,8 @@
 }
 
 .rogue-sidebar-btn:hover {
-  border-color: rgba(28, 255, 155, 0.55);
-  background: rgba(28, 255, 155, 0.05);
+  border-color: var(--theme-primary-bright);
+  background: var(--theme-primary-glow);
 }
 
 .rogue-sidebar-btn.disabled {
@@ -43,13 +43,13 @@
 /* Empty-slot framing (prime for discovery) */
 .rogue-sidebar-btn.empty {
   border-style: dashed;
-  border-color: rgba(191, 255, 227, 0.22);
+  border-color: var(--theme-panel-border);
   background: rgba(0, 0, 0, 0.18);
 }
 
 @keyframes rsFlash {
   0% { box-shadow: 0 0 0 rgba(0,0,0,0); background: rgba(0,0,0,0.18); }
-  45% { box-shadow: 0 0 16px rgba(0, 255, 166, 0.22); background: rgba(0, 255, 166, 0.06); }
+  45% { box-shadow: 0 0 16px var(--theme-primary-glow); background: var(--theme-primary-glow); }
   100% { box-shadow: 0 0 0 rgba(0,0,0,0); background: rgba(0,0,0,0.18); }
 }
 
@@ -140,7 +140,7 @@
   transform: translateY(-50%);
   font-size: 0.7em;
   font-weight: bold;
-  color: rgba(28, 255, 155, 0.85);
+  color: var(--theme-primary);
   background: rgba(0, 0, 0, 0.7);
   padding: 0 3px;
   border-radius: 3px;

@@ -182,6 +182,14 @@
       return;
     }
 
+    // Priority 0.4: Theme command (available everywhere)
+    if (typeof ThemeWidget !== 'undefined' &&
+        ThemeWidget.isThemeCommand &&
+        ThemeWidget.isThemeCommand(rawInput || '')) {
+      _executeRouterAction(ThemeWidget.process(rawInput || ''));
+      return;
+    }
+
     // Priority 0.5: Terminal Command Router (stats, inventory, etc.)
     // Only active when NOT inside rogue or street gameplay
     if (typeof TerminalCommandRouter !== 'undefined' &&
