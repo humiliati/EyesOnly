@@ -149,7 +149,7 @@
                 <span class="games-row-status">AVAILABLE</span>
               </button>
               <div class="games-row-body" id="puzzles-body">
-                <div class="games-item">
+                <div class="games-item games-item-playable" data-puzzle="dead-drop-cipher" data-sound="ui-01">
                   <span class="games-item-icon">&#9641;</span>
                   <div class="games-item-info">
                     <div class="games-item-name">Dead Drop Cipher</div>
@@ -180,6 +180,50 @@
                     <div class="games-item-desc">Requires CLEARANCE LEVEL 2. Complete a live scenario to unlock.</div>
                   </div>
                   <span class="games-item-tag games-tag-locked">LOCKED</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ═══════════════ ARCADE ═══════════════ -->
+            <div class="games-row" id="row-arcade">
+              <button class="games-row-header" data-target="arcade-body" aria-expanded="false">
+                <span class="games-row-chevron">&#9656;</span>
+                <span class="games-row-label">ARCADE</span>
+                <span class="games-row-count">6 GAMES</span>
+                <span class="games-row-status">AVAILABLE</span>
+              </button>
+              <div class="games-row-body" id="arcade-body">
+                <div class="games-arcade-grid">
+                  <button class="games-arcade-tile" data-minigame="ski-free" data-sound="ui-01">
+                    <span class="games-arcade-icon">&#9975;</span>
+                    <span class="games-arcade-title">SKI FREE</span>
+                    <span class="games-arcade-desc">Downhill dodge</span>
+                  </button>
+                  <button class="games-arcade-tile" data-minigame="jezzball" data-sound="ui-01">
+                    <span class="games-arcade-icon">&#9673;</span>
+                    <span class="games-arcade-title">JEZZBALL</span>
+                    <span class="games-arcade-desc">Trap the balls</span>
+                  </button>
+                  <button class="games-arcade-tile" data-minigame="frogger" data-sound="ui-01">
+                    <span class="games-arcade-icon">&#9752;</span>
+                    <span class="games-arcade-title">FROGGER</span>
+                    <span class="games-arcade-desc">Cross the road</span>
+                  </button>
+                  <button class="games-arcade-tile" data-minigame="snake" data-sound="ui-01">
+                    <span class="games-arcade-icon">&#9783;</span>
+                    <span class="games-arcade-title">SNAKE</span>
+                    <span class="games-arcade-desc">Eat &amp; grow</span>
+                  </button>
+                  <button class="games-arcade-tile" data-minigame="minesweeper" data-sound="ui-01">
+                    <span class="games-arcade-icon">&#9881;</span>
+                    <span class="games-arcade-title">MINESWEEPER</span>
+                    <span class="games-arcade-desc">Clear the grid</span>
+                  </button>
+                  <button class="games-arcade-tile" data-minigame="breakout" data-sound="ui-01">
+                    <span class="games-arcade-icon">&#9654;</span>
+                    <span class="games-arcade-title">BREAKOUT</span>
+                    <span class="games-arcade-desc">Smash bricks</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -272,6 +316,19 @@
 
   <!-- Audio system for SFX -->
   <script src="js/audio-system.js?v=20260309d"></script>
+
+  <!-- Arcade minigames -->
+  <script src="js/minigames/ski-free.js"></script>
+  <script src="js/minigames/jezzball.js"></script>
+  <script src="js/minigames/frogger.js"></script>
+  <script src="js/minigames/snake.js"></script>
+  <script src="js/minigames/minesweeper.js"></script>
+  <script src="js/minigames/breakout.js"></script>
+  <script src="js/minigame-modal.js"></script>
+
+  <!-- Puzzle popup system + puzzles -->
+  <script src="js/puzzle-popup.js"></script>
+  <script src="js/puzzles/dead-drop-cipher.js"></script>
 
   <script>
   (function () {
@@ -401,6 +458,23 @@
         AudioSystem.playSFX(target.getAttribute('data-sound'));
       }
     });
+
+    /* ---- Arcade tile launchers ---- */
+    document.querySelectorAll('.games-arcade-tile[data-minigame]').forEach(function (tile) {
+      tile.addEventListener('click', function () {
+        var key = tile.getAttribute('data-minigame');
+        if (window.MinigameModal) MinigameModal.open(key);
+      });
+    });
+
+    /* ---- Puzzle popup binding ---- */
+    (function initPuzzles() {
+      if (typeof PuzzlePopup === 'undefined') return;
+      var content = document.getElementById('games-content');
+      if (content) {
+        PuzzlePopup.bind(content);
+      }
+    })();
 
     /* ---- Populate decryption inventory from AccountInventory ---- */
     (function populateInventory() {
