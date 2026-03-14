@@ -9,7 +9,26 @@
   <title>EYES ONLY // FIELD KIT</title>
 
   <link rel="stylesheet" href="css/crt.css?v=20260307m">
-  <link rel="stylesheet" href="css/games.css?v=20260312a">
+  <link rel="stylesheet" href="css/themes.css">
+  <link rel="stylesheet" href="css/games.css?v=20260313a">
+
+  <script>
+    (function() {
+      try {
+        var t = localStorage.getItem('eyesonly_theme');
+        if (t) {
+          document.documentElement.setAttribute('data-theme', t);
+          if (document.body) {
+            document.body.setAttribute('data-theme', t);
+          } else {
+            document.addEventListener('DOMContentLoaded', function() {
+              document.body.setAttribute('data-theme', t);
+            });
+          }
+        }
+      } catch (_) {}
+    })();
+  </script>
 
   <style>
     * {
@@ -57,74 +76,23 @@
           <!-- Scanline overlay for inner screen feel -->
           <div class="games-scanlines"></div>
 
-          <!-- Header strip inside the log frame -->
-          <div class="games-header-strip">
-            <span class="games-header-icon">&#9830;</span>
-            <span class="games-header-title">FIELD KIT // RECREATION INVENTORY</span>
-            <span class="games-header-status" id="games-status">ONLINE</span>
-          </div>
-
           <!-- Scrollable content area -->
           <div class="games-content" id="games-content">
 
-            <!-- ═══════════════ PUZZLES ═══════════════ -->
-            <div class="games-row" id="row-puzzles">
-              <button class="games-row-header" data-target="puzzles-body" aria-expanded="false">
-                <span class="games-row-chevron">&#9656;</span>
-                <span class="games-row-label">PUZZLES</span>
-                <span class="games-row-count">4 ITEMS</span>
-                <span class="games-row-status">AVAILABLE</span>
-              </button>
-              <div class="games-row-body" id="puzzles-body">
-                <div class="games-item">
-                  <span class="games-item-icon">&#9641;</span>
-                  <div class="games-item-info">
-                    <div class="games-item-name">Dead Drop Cipher</div>
-                    <div class="games-item-desc">Decode the intercepted message using the field manual key table. QR-activated at Sandpoint waypoints.</div>
-                  </div>
-                  <span class="games-item-tag games-tag-narrative">NARRATIVE</span>
-                </div>
-                <div class="games-item">
-                  <span class="games-item-icon">&#9641;</span>
-                  <div class="games-item-info">
-                    <div class="games-item-name">Surveillance Grid</div>
-                    <div class="games-item-desc">Pattern-matching recon puzzle. Identify the anomaly in the surveillance feed before time runs out.</div>
-                  </div>
-                  <span class="games-item-tag games-tag-timed">TIMED</span>
-                </div>
-                <div class="games-item">
-                  <span class="games-item-icon">&#9641;</span>
-                  <div class="games-item-info">
-                    <div class="games-item-name">Asset Extraction Map</div>
-                    <div class="games-item-desc">Navigate the extraction route using only compass bearings and landmark descriptions. Field-deployable.</div>
-                  </div>
-                  <span class="games-item-tag games-tag-narrative">FIELD</span>
-                </div>
-                <div class="games-item games-item-locked">
-                  <span class="games-item-icon">&#9632;</span>
-                  <div class="games-item-info">
-                    <div class="games-item-name">[REDACTED]</div>
-                    <div class="games-item-desc">Requires CLEARANCE LEVEL 2. Complete a live scenario to unlock.</div>
-                  </div>
-                  <span class="games-item-tag games-tag-locked">LOCKED</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- ═══════════════ DECRYPTION ITEMS ═══════════════ -->
+            <!-- ═══════════════ DECRYPTION ITEMS (default expanded) ═══════════════ -->
             <div class="games-row" id="row-decryption">
-              <button class="games-row-header" data-target="decryption-body" aria-expanded="false">
-                <span class="games-row-chevron">&#9656;</span>
+              <button class="games-row-header" data-target="decryption-body" aria-expanded="true">
+                <span class="games-row-chevron">&#9662;</span>
                 <span class="games-row-label">DECRYPTION ITEMS</span>
                 <span class="games-row-count">INVENTORY</span>
                 <span class="games-row-status">PERSISTENT</span>
               </button>
-              <div class="games-row-body" id="decryption-body">
+              <div class="games-row-body games-row-body-open" id="decryption-body">
                 <div class="games-inventory-grid" id="decryption-inventory">
-                  <div class="games-inv-slot" data-slot="0">
-                    <div class="games-inv-slot-inner games-inv-empty">
-                      <span class="games-inv-slot-num">01</span>
-                      <span class="games-inv-slot-label">EMPTY</span>
+                  <div class="games-inv-slot" data-slot="0" data-item="magnifying-glass">
+                    <div class="games-inv-slot-inner games-inv-occupied">
+                      <span class="games-inv-item-icon">&#128270;</span>
+                      <span class="games-inv-slot-label">MAGNIFIER</span>
                     </div>
                   </div>
                   <div class="games-inv-slot" data-slot="1">
@@ -168,6 +136,50 @@
                       <span>N O P Q R S T</span>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ═══════════════ PUZZLES ═══════════════ -->
+            <div class="games-row" id="row-puzzles">
+              <button class="games-row-header" data-target="puzzles-body" aria-expanded="false">
+                <span class="games-row-chevron">&#9656;</span>
+                <span class="games-row-label">PUZZLES</span>
+                <span class="games-row-count">4 ITEMS</span>
+                <span class="games-row-status">AVAILABLE</span>
+              </button>
+              <div class="games-row-body" id="puzzles-body">
+                <div class="games-item">
+                  <span class="games-item-icon">&#9641;</span>
+                  <div class="games-item-info">
+                    <div class="games-item-name">Dead Drop Cipher</div>
+                    <div class="games-item-desc">Decode the intercepted message using the field manual key table. QR-activated at Sandpoint waypoints.</div>
+                  </div>
+                  <span class="games-item-tag games-tag-narrative">NARRATIVE</span>
+                </div>
+                <div class="games-item">
+                  <span class="games-item-icon">&#9641;</span>
+                  <div class="games-item-info">
+                    <div class="games-item-name">Surveillance Grid</div>
+                    <div class="games-item-desc">Pattern-matching recon puzzle. Identify the anomaly in the surveillance feed before time runs out.</div>
+                  </div>
+                  <span class="games-item-tag games-tag-timed">TIMED</span>
+                </div>
+                <div class="games-item">
+                  <span class="games-item-icon">&#9641;</span>
+                  <div class="games-item-info">
+                    <div class="games-item-name">Asset Extraction Map</div>
+                    <div class="games-item-desc">Navigate the extraction route using only compass bearings and landmark descriptions. Field-deployable.</div>
+                  </div>
+                  <span class="games-item-tag games-tag-narrative">FIELD</span>
+                </div>
+                <div class="games-item games-item-locked">
+                  <span class="games-item-icon">&#9632;</span>
+                  <div class="games-item-info">
+                    <div class="games-item-name">[REDACTED]</div>
+                    <div class="games-item-desc">Requires CLEARANCE LEVEL 2. Complete a live scenario to unlock.</div>
+                  </div>
+                  <span class="games-item-tag games-tag-locked">LOCKED</span>
                 </div>
               </div>
             </div>
@@ -243,6 +255,9 @@
     </div><!-- /crt-frame -->
   </div><!-- /crt-screen -->
 
+  <script src="js/theme-widget.js"></script>
+  <script>if (typeof ThemeWidget !== 'undefined') ThemeWidget.initEarly();</script>
+
   <!-- Audio system for SFX -->
   <script src="js/audio-system.js?v=20260309d"></script>
 
@@ -263,7 +278,48 @@
     setInterval(tickClock, 1000);
     tickClock();
 
-    /* ---- Expandable rows ---- */
+    /* ---- Expandable rows with localStorage persistence ---- */
+    var EXPAND_KEY = 'eyesonly_games_expanded';
+
+    function getSavedExpanded() {
+      try {
+        var raw = localStorage.getItem(EXPAND_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (_) { return null; }
+    }
+
+    function saveExpanded() {
+      try {
+        var state = {};
+        document.querySelectorAll('.games-row-header').forEach(function (btn) {
+          var id = btn.getAttribute('data-target');
+          state[id] = btn.getAttribute('aria-expanded') === 'true';
+        });
+        localStorage.setItem(EXPAND_KEY, JSON.stringify(state));
+      } catch (_) {}
+    }
+
+    /* Restore saved expand state (decryption defaults to open) */
+    var saved = getSavedExpanded();
+    if (saved) {
+      document.querySelectorAll('.games-row-header').forEach(function (btn) {
+        var targetId = btn.getAttribute('data-target');
+        var body = document.getElementById(targetId);
+        if (!body) return;
+        var shouldOpen = saved[targetId];
+        if (shouldOpen === undefined && targetId === 'decryption-body') shouldOpen = true;
+        if (shouldOpen) {
+          btn.setAttribute('aria-expanded', 'true');
+          body.classList.add('games-row-body-open');
+          btn.querySelector('.games-row-chevron').innerHTML = '&#9662;';
+        } else {
+          btn.setAttribute('aria-expanded', 'false');
+          body.classList.remove('games-row-body-open');
+          btn.querySelector('.games-row-chevron').innerHTML = '&#9656;';
+        }
+      });
+    }
+
     var headers = document.querySelectorAll('.games-row-header');
     headers.forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -281,6 +337,8 @@
           body.classList.add('games-row-body-open');
           btn.querySelector('.games-row-chevron').innerHTML = '&#9662;';
         }
+
+        saveExpanded();
 
         // SFX
         if (window.AudioSystem && AudioSystem.playSFX) {

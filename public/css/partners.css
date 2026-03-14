@@ -7,15 +7,15 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: 'Courier New', monospace;
-  background: #0a0a0f;
+  font-family: var(--theme-font-data, 'Courier New', monospace);
+  background: var(--bg, #0a0a0f);
   color: #d0d0d0;
   line-height: 1.6;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
 
-a { color: #1cff9b; text-decoration: none; }
+a { color: var(--phosphor); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 /* ---- Nav bar (shared — same as booking) ---- */
@@ -28,17 +28,17 @@ a:hover { text-decoration: underline; }
   justify-content: space-between;
   padding: 12px 24px;
   background: rgba(10, 10, 15, 0.95);
-  border-bottom: 1px solid rgba(28, 255, 155, 0.15);
+  border-bottom: 1px solid var(--panel-border);
   backdrop-filter: blur(8px);
 }
 
 .eo-nav-brand {
   font-size: 16px;
   font-weight: bold;
-  color: #1cff9b;
+  color: var(--phosphor);
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  text-shadow: 0 0 8px rgba(28, 255, 155, 0.3);
+  text-shadow: 0 0 8px var(--phosphor-glow);
 }
 
 .eo-nav-links { display: flex; gap: 20px; }
@@ -50,16 +50,16 @@ a:hover { text-decoration: underline; }
   text-transform: uppercase;
   transition: color 0.2s;
 }
-.eo-nav-link:hover { color: #1cff9b; text-decoration: none; }
-.eo-nav-link.eo-nav-active { color: #1cff9b; }
+.eo-nav-link:hover { color: var(--phosphor); text-decoration: none; }
+.eo-nav-link.eo-nav-active { color: var(--phosphor); }
 
 /* ---- Hero ---- */
 .partners-hero {
   position: relative;
   padding: 80px 24px 60px;
   text-align: center;
-  background: linear-gradient(180deg, #0a0a0f 0%, #0d1117 100%);
-  border-bottom: 1px solid rgba(28, 255, 155, 0.1);
+  background: linear-gradient(180deg, var(--bg, #0a0a0f) 0%, var(--bg-screen, #0d1117) 100%);
+  border-bottom: 1px solid var(--panel-border);
   overflow: hidden;
 }
 
@@ -112,7 +112,7 @@ a:hover { text-decoration: underline; }
 }
 
 .faq-item {
-  border: 1px solid rgba(28, 255, 155, 0.1);
+  border: 1px solid var(--panel-border);
   border-radius: 6px;
   margin-bottom: 10px;
   overflow: hidden;
@@ -120,7 +120,7 @@ a:hover { text-decoration: underline; }
 }
 
 .faq-item:hover {
-  border-color: rgba(28, 255, 155, 0.25);
+  border-color: var(--phosphor-dim);
 }
 
 .faq-question {
@@ -130,9 +130,9 @@ a:hover { text-decoration: underline; }
   justify-content: space-between;
   padding: 16px 20px;
   border: none;
-  background: rgba(28, 255, 155, 0.03);
+  background: var(--phosphor-glow);
   color: #fff;
-  font-family: 'Courier New', monospace;
+  font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 14px;
   cursor: pointer;
   text-align: left;
@@ -140,13 +140,13 @@ a:hover { text-decoration: underline; }
 }
 
 .faq-question:hover {
-  background: rgba(28, 255, 155, 0.06);
+  background: var(--phosphor-glow);
 }
 
 .faq-q-text { flex: 1; }
 
 .faq-chevron {
-  color: #1cff9b;
+  color: var(--phosphor);
   font-size: 16px;
   transition: transform 0.25s ease;
 }
@@ -202,16 +202,16 @@ a:hover { text-decoration: underline; }
 
 .action-card {
   padding: 30px 24px;
-  border: 1px solid rgba(28, 255, 155, 0.12);
+  border: 1px solid var(--panel-border);
   border-radius: 8px;
-  background: rgba(28, 255, 155, 0.02);
+  background: var(--phosphor-glow);
   text-align: center;
   transition: border-color 0.25s, background 0.25s, transform 0.25s;
 }
 
 .action-card:hover {
-  border-color: rgba(28, 255, 155, 0.3);
-  background: rgba(28, 255, 155, 0.05);
+  border-color: var(--phosphor-dim);
+  background: var(--phosphor-glow);
   transform: translateY(-4px);
 }
 
@@ -237,11 +237,11 @@ a:hover { text-decoration: underline; }
 .action-card-btn {
   display: inline-block;
   padding: 10px 24px;
-  border: 1px solid #1cff9b;
+  border: 1px solid var(--phosphor);
   border-radius: 4px;
   background: transparent;
-  color: #1cff9b;
-  font-family: 'Courier New', monospace;
+  color: var(--phosphor);
+  font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 12px;
   font-weight: bold;
   letter-spacing: 0.1em;
@@ -251,8 +251,8 @@ a:hover { text-decoration: underline; }
 }
 
 .action-card-btn:hover {
-  background: rgba(28, 255, 155, 0.12);
-  box-shadow: 0 0 12px rgba(28, 255, 155, 0.15);
+  background: var(--phosphor-glow);
+  box-shadow: 0 0 12px var(--phosphor-glow);
 }
 
 .action-card-btn-legal {
@@ -281,7 +281,7 @@ a:hover { text-decoration: underline; }
 }
 
 .partner-form {
-  border: 1px solid rgba(28, 255, 155, 0.15);
+  border: 1px solid var(--panel-border);
   border-radius: 8px;
   background: rgba(10, 10, 15, 0.95);
   padding: 30px;
@@ -299,7 +299,7 @@ a:hover { text-decoration: underline; }
   justify-content: space-between;
   margin-bottom: 24px;
   padding-bottom: 12px;
-  border-bottom: 1px solid rgba(28, 255, 155, 0.1);
+  border-bottom: 1px solid var(--panel-border);
 }
 
 .form-title {
@@ -340,7 +340,7 @@ a:hover { text-decoration: underline; }
 .form-group label {
   display: block;
   font-size: 11px;
-  color: rgba(28, 255, 155, 0.5);
+  color: var(--phosphor-dim);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   margin-bottom: 6px;
@@ -351,11 +351,11 @@ a:hover { text-decoration: underline; }
 .form-group textarea {
   width: 100%;
   padding: 10px 14px;
-  border: 1px solid rgba(28, 255, 155, 0.15);
+  border: 1px solid var(--panel-border);
   border-radius: 4px;
   background: rgba(0, 0, 0, 0.4);
   color: #fff;
-  font-family: 'Courier New', monospace;
+  font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 14px;
   transition: border-color 0.2s;
 }
@@ -364,8 +364,8 @@ a:hover { text-decoration: underline; }
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: rgba(28, 255, 155, 0.5);
-  box-shadow: 0 0 8px rgba(28, 255, 155, 0.1);
+  border-color: var(--phosphor);
+  box-shadow: 0 0 8px var(--phosphor-glow);
 }
 
 .form-group input::placeholder,
@@ -374,7 +374,7 @@ a:hover { text-decoration: underline; }
 }
 
 .form-group select option {
-  background: #0a0a0f;
+  background: var(--bg, #0a0a0f);
   color: #fff;
 }
 
@@ -392,18 +392,18 @@ a:hover { text-decoration: underline; }
 .form-checkbox-group input[type="checkbox"] {
   width: auto;
   margin-top: 3px;
-  accent-color: #1cff9b;
+  accent-color: var(--phosphor);
 }
 
 .form-submit {
   display: block;
   width: 100%;
   padding: 14px;
-  border: 2px solid #1cff9b;
+  border: 2px solid var(--phosphor);
   border-radius: 6px;
-  background: rgba(28, 255, 155, 0.08);
-  color: #1cff9b;
-  font-family: 'Courier New', monospace;
+  background: var(--phosphor-glow);
+  color: var(--phosphor);
+  font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 14px;
   font-weight: bold;
   letter-spacing: 0.1em;
@@ -414,8 +414,8 @@ a:hover { text-decoration: underline; }
 }
 
 .form-submit:hover {
-  background: rgba(28, 255, 155, 0.18);
-  box-shadow: 0 0 16px rgba(28, 255, 155, 0.2);
+  background: var(--phosphor-glow);
+  box-shadow: 0 0 16px var(--phosphor-glow);
 }
 
 /* Legal text block */
@@ -454,14 +454,14 @@ a:hover { text-decoration: underline; }
 
 .form-success p {
   font-size: 14px;
-  color: rgba(28, 255, 155, 0.7);
+  color: var(--phosphor);
 }
 
 /* ---- Footer (shared) ---- */
 .eo-footer {
   margin-top: 60px;
   padding: 30px 24px;
-  border-top: 1px solid rgba(28, 255, 155, 0.1);
+  border-top: 1px solid var(--panel-border);
   background: rgba(0, 0, 0, 0.4);
 }
 
@@ -477,7 +477,7 @@ a:hover { text-decoration: underline; }
 
 .eo-footer-brand {
   font-size: 14px;
-  color: #1cff9b;
+  color: var(--phosphor);
   letter-spacing: 0.15em;
   font-weight: bold;
 }
@@ -489,7 +489,7 @@ a:hover { text-decoration: underline; }
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
-.eo-footer-links a:hover { color: #1cff9b; }
+.eo-footer-links a:hover { color: var(--phosphor); }
 
 .eo-footer-copy {
   font-size: 11px;

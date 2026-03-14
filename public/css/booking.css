@@ -7,15 +7,15 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: 'Courier New', monospace;
-  background: #0a0a0f;
+  font-family: var(--theme-font-data, 'Courier New', monospace);
+  background: var(--bg, #0a0a0f);
   color: #d0d0d0;
   line-height: 1.6;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
 
-a { color: #1cff9b; text-decoration: none; }
+a { color: var(--phosphor); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 /* ---- Nav bar (shared) ---- */
@@ -28,17 +28,17 @@ a:hover { text-decoration: underline; }
   justify-content: space-between;
   padding: 12px 24px;
   background: rgba(10, 10, 15, 0.95);
-  border-bottom: 1px solid rgba(28, 255, 155, 0.15);
+  border-bottom: 1px solid var(--panel-border);
   backdrop-filter: blur(8px);
 }
 
 .eo-nav-brand {
   font-size: 16px;
   font-weight: bold;
-  color: #1cff9b;
+  color: var(--phosphor);
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  text-shadow: 0 0 8px rgba(28, 255, 155, 0.3);
+  text-shadow: 0 0 8px var(--phosphor-glow);
 }
 
 .eo-nav-links { display: flex; gap: 20px; }
@@ -50,16 +50,16 @@ a:hover { text-decoration: underline; }
   text-transform: uppercase;
   transition: color 0.2s;
 }
-.eo-nav-link:hover { color: #1cff9b; text-decoration: none; }
-.eo-nav-link.eo-nav-active { color: #1cff9b; }
+.eo-nav-link:hover { color: var(--phosphor); text-decoration: none; }
+.eo-nav-link.eo-nav-active { color: var(--phosphor); }
 
 /* ---- Hero ---- */
 .booking-hero {
   position: relative;
   padding: 80px 24px 60px;
   text-align: center;
-  background: linear-gradient(180deg, #0a0a0f 0%, #0d1117 100%);
-  border-bottom: 1px solid rgba(28, 255, 155, 0.1);
+  background: linear-gradient(180deg, var(--bg, #0a0a0f) 0%, var(--bg-screen, #0d1117) 100%);
+  border-bottom: 1px solid var(--panel-border);
   overflow: hidden;
 }
 
@@ -79,7 +79,7 @@ a:hover { text-decoration: underline; }
   font-weight: bold;
   letter-spacing: 0.06em;
   margin-bottom: 12px;
-  text-shadow: 0 0 20px rgba(28, 255, 155, 0.15);
+  text-shadow: 0 0 20px var(--phosphor-glow);
 }
 
 .booking-hero-sub {
@@ -105,17 +105,17 @@ a:hover { text-decoration: underline; }
 }
 
 .scenario-section-alt {
-  background: rgba(28, 255, 155, 0.02);
+  background: var(--phosphor-glow);
 }
 
 .scenario-badge {
   font-size: 10px;
-  color: rgba(28, 255, 155, 0.5);
+  color: var(--phosphor-dim);
   letter-spacing: 0.25em;
   text-transform: uppercase;
   margin-bottom: 20px;
   padding-bottom: 8px;
-  border-bottom: 1px solid rgba(28, 255, 155, 0.1);
+  border-bottom: 1px solid var(--panel-border);
   display: inline-block;
 }
 
@@ -152,7 +152,7 @@ a:hover { text-decoration: underline; }
 
 .scenario-subtitle {
   font-size: 15px;
-  color: #1cff9b;
+  color: var(--phosphor);
   margin-bottom: 16px;
 }
 
@@ -173,9 +173,9 @@ a:hover { text-decoration: underline; }
 
 .scenario-spec {
   padding: 12px 14px;
-  border: 1px solid rgba(28, 255, 155, 0.12);
+  border: 1px solid var(--panel-border);
   border-radius: 6px;
-  background: rgba(28, 255, 155, 0.03);
+  background: var(--phosphor-glow);
 }
 
 .spec-label {
@@ -202,7 +202,7 @@ a:hover { text-decoration: underline; }
 /* Includes */
 .includes-heading {
   font-size: 12px;
-  color: rgba(28, 255, 155, 0.5);
+  color: var(--phosphor-dim);
   letter-spacing: 0.15em;
   text-transform: uppercase;
   margin-bottom: 10px;
@@ -224,7 +224,7 @@ a:hover { text-decoration: underline; }
   content: '\25B8';
   position: absolute;
   left: 0;
-  color: #1cff9b;
+  color: var(--phosphor);
 }
 
 /* Book button */
@@ -233,11 +233,11 @@ a:hover { text-decoration: underline; }
   align-items: center;
   gap: 12px;
   padding: 14px 28px;
-  border: 2px solid #1cff9b;
+  border: 2px solid var(--phosphor);
   border-radius: 6px;
-  background: rgba(28, 255, 155, 0.08);
-  color: #1cff9b;
-  font-family: 'Courier New', monospace;
+  background: var(--phosphor-glow);
+  color: var(--phosphor);
+  font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 14px;
   font-weight: bold;
   letter-spacing: 0.1em;
@@ -247,8 +247,8 @@ a:hover { text-decoration: underline; }
 }
 
 .scenario-book-btn:hover {
-  background: rgba(28, 255, 155, 0.18);
-  box-shadow: 0 0 20px rgba(28, 255, 155, 0.2), 0 0 40px rgba(28, 255, 155, 0.1);
+  background: var(--phosphor-glow);
+  box-shadow: 0 0 20px var(--phosphor-glow), 0 0 40px var(--phosphor-glow);
   transform: translateY(-2px);
 }
 
@@ -340,16 +340,16 @@ a:hover { text-decoration: underline; }
     /* Theme glow accent lines — green for scenario 1 */
     radial-gradient(circle at center,
       transparent 0%, transparent 43%,
-      rgba(28, 255, 155, 0.12) 44%, transparent 45%,
+      var(--phosphor-glow) 44%, transparent 45%,
       transparent 49%,
-      rgba(28, 255, 155, 0.08) 50%, transparent 51%,
+      var(--phosphor-glow) 50%, transparent 51%,
       transparent 57%,
-      rgba(28, 255, 155, 0.05) 58%, transparent 59%,
+      var(--phosphor-glow) 58%, transparent 59%,
       transparent 100%
     );
   box-shadow:
     inset 0 0 15px rgba(0, 0, 0, 0.9),
-    0 0 20px rgba(28, 255, 155, 0.06);
+    0 0 20px var(--phosphor-glow);
 }
 
 /* Scenario 2 alt rings — amber/gold accent lines */
@@ -398,12 +398,12 @@ a:hover { text-decoration: underline; }
     0 8px 16px rgba(0, 0, 0, 0.4),
     0 0 20px rgba(80, 60, 30, 0.15);
   animation: suit-bob 4s ease-in-out infinite;
-  filter: drop-shadow(0 -2px 1px rgba(28, 255, 155, 0.2));
+  filter: drop-shadow(0 -2px 1px var(--phosphor-glow));
 }
 
 .scenario-suit.suit-spade {
-  color: rgba(28, 255, 155, 0.9);
-  filter: drop-shadow(0 -2px 1px rgba(28, 255, 155, 0.3));
+  color: var(--phosphor);
+  filter: drop-shadow(0 -2px 1px var(--phosphor-glow));
 }
 
 .scenario-suit.suit-club {
@@ -425,10 +425,10 @@ a:hover { text-decoration: underline; }
 
 .visual-tag {
   font-size: 10px;
-  color: rgba(28, 255, 155, 0.6);
+  color: var(--phosphor-dim);
   letter-spacing: 0.1em;
   padding: 4px 10px;
-  border: 1px solid rgba(28, 255, 155, 0.15);
+  border: 1px solid var(--panel-border);
   border-radius: 3px;
 }
 
@@ -482,7 +482,7 @@ a:hover { text-decoration: underline; }
 
 /* Shared form structure (matches partners.css patterns) */
 .booking-form {
-  border: 1px solid rgba(28, 255, 155, 0.15);
+  border: 1px solid var(--panel-border);
   border-radius: 8px;
   background: rgba(10, 10, 15, 0.95);
   padding: 30px;
@@ -496,12 +496,12 @@ a:hover { text-decoration: underline; }
 
 .booking-step-label {
   font-size: 11px;
-  color: rgba(28, 255, 155, 0.5);
+  color: var(--phosphor-dim);
   letter-spacing: 0.25em;
   text-transform: uppercase;
   margin-bottom: 20px;
   padding-bottom: 8px;
-  border-bottom: 1px solid rgba(28, 255, 155, 0.1);
+  border-bottom: 1px solid var(--panel-border);
 }
 
 .form-group {
@@ -517,7 +517,7 @@ a:hover { text-decoration: underline; }
 .form-group label {
   display: block;
   font-size: 11px;
-  color: rgba(28, 255, 155, 0.5);
+  color: var(--phosphor-dim);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   margin-bottom: 6px;
@@ -541,11 +541,11 @@ a:hover { text-decoration: underline; }
 .form-group textarea {
   width: 100%;
   padding: 10px 14px;
-  border: 1px solid rgba(28, 255, 155, 0.15);
+  border: 1px solid var(--panel-border);
   border-radius: 4px;
   background: rgba(0, 0, 0, 0.4);
   color: #fff;
-  font-family: 'Courier New', monospace;
+  font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 14px;
   transition: border-color 0.2s;
 }
@@ -554,8 +554,8 @@ a:hover { text-decoration: underline; }
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: rgba(28, 255, 155, 0.5);
-  box-shadow: 0 0 8px rgba(28, 255, 155, 0.1);
+  border-color: var(--phosphor);
+  box-shadow: 0 0 8px var(--phosphor-glow);
 }
 
 .form-group input::placeholder,
@@ -564,7 +564,7 @@ a:hover { text-decoration: underline; }
 }
 
 .form-group select option {
-  background: #0a0a0f;
+  background: var(--bg, #0a0a0f);
   color: #fff;
 }
 
@@ -575,7 +575,7 @@ a:hover { text-decoration: underline; }
 
 .form-divider {
   height: 1px;
-  background: rgba(28, 255, 155, 0.08);
+  background: var(--panel-border);
   margin: 24px 0;
 }
 
@@ -593,18 +593,18 @@ a:hover { text-decoration: underline; }
 .form-checkbox-group input[type="checkbox"] {
   width: auto;
   margin-top: 3px;
-  accent-color: #1cff9b;
+  accent-color: var(--phosphor);
 }
 
 .form-submit {
   display: block;
   width: 100%;
   padding: 14px;
-  border: 2px solid #1cff9b;
+  border: 2px solid var(--phosphor);
   border-radius: 6px;
-  background: rgba(28, 255, 155, 0.08);
-  color: #1cff9b;
-  font-family: 'Courier New', monospace;
+  background: var(--phosphor-glow);
+  color: var(--phosphor);
+  font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 14px;
   font-weight: bold;
   letter-spacing: 0.1em;
@@ -615,8 +615,8 @@ a:hover { text-decoration: underline; }
 }
 
 .form-submit:hover {
-  background: rgba(28, 255, 155, 0.18);
-  box-shadow: 0 0 16px rgba(28, 255, 155, 0.2);
+  background: var(--phosphor-glow);
+  box-shadow: 0 0 16px var(--phosphor-glow);
 }
 
 .form-submit:disabled {
@@ -652,10 +652,10 @@ a:hover { text-decoration: underline; }
 /* Confirmation banner (between steps) */
 .booking-confirm-banner {
   padding: 14px 18px;
-  border: 1px solid rgba(28, 255, 155, 0.2);
+  border: 1px solid var(--panel-border);
   border-radius: 6px;
-  background: rgba(28, 255, 155, 0.04);
-  color: rgba(28, 255, 155, 0.7);
+  background: var(--phosphor-glow);
+  color: var(--phosphor);
   font-size: 13px;
   margin-bottom: 24px;
   line-height: 1.6;
@@ -703,7 +703,7 @@ a:hover { text-decoration: underline; }
 
 .form-success p {
   font-size: 14px;
-  color: rgba(28, 255, 155, 0.7);
+  color: var(--phosphor);
   margin-bottom: 16px;
 }
 
@@ -716,16 +716,16 @@ a:hover { text-decoration: underline; }
 .success-back-link {
   display: inline-block;
   padding: 10px 24px;
-  border: 1px solid rgba(28, 255, 155, 0.3);
+  border: 1px solid var(--panel-border);
   border-radius: 4px;
-  color: #1cff9b;
+  color: var(--phosphor);
   font-size: 13px;
   letter-spacing: 0.05em;
   transition: all 0.2s;
 }
 
 .success-back-link:hover {
-  background: rgba(28, 255, 155, 0.08);
+  background: var(--phosphor-glow);
   text-decoration: none;
 }
 
@@ -733,7 +733,7 @@ a:hover { text-decoration: underline; }
 .eo-footer {
   margin-top: 60px;
   padding: 30px 24px;
-  border-top: 1px solid rgba(28, 255, 155, 0.1);
+  border-top: 1px solid var(--panel-border);
   background: rgba(0, 0, 0, 0.4);
 }
 
@@ -749,7 +749,7 @@ a:hover { text-decoration: underline; }
 
 .eo-footer-brand {
   font-size: 14px;
-  color: #1cff9b;
+  color: var(--phosphor);
   letter-spacing: 0.15em;
   font-weight: bold;
 }
@@ -761,7 +761,7 @@ a:hover { text-decoration: underline; }
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
-.eo-footer-links a:hover { color: #1cff9b; }
+.eo-footer-links a:hover { color: var(--phosphor); }
 
 .eo-footer-copy {
   font-size: 11px;

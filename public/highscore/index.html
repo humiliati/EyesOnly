@@ -9,7 +9,26 @@
   <title>EYES ONLY // HIGHSCORES</title>
 
   <link rel="stylesheet" href="../css/crt.css">
+  <link rel="stylesheet" href="../css/themes.css">
   <link rel="stylesheet" href="../css/highscore.css">
+
+  <script>
+    (function() {
+      try {
+        var t = localStorage.getItem('eyesonly_theme');
+        if (t) {
+          document.documentElement.setAttribute('data-theme', t);
+          if (document.body) {
+            document.body.setAttribute('data-theme', t);
+          } else {
+            document.addEventListener('DOMContentLoaded', function() {
+              document.body.setAttribute('data-theme', t);
+            });
+          }
+        }
+      } catch (_) {}
+    })();
+  </script>
 </head>
 <body>
   <!-- CRT Screen Container -->
@@ -142,6 +161,8 @@
   </div>
 
   <!-- Scripts -->
+  <script src="../js/theme-widget.js"></script>
+  <script>if (typeof ThemeWidget !== 'undefined') ThemeWidget.initEarly();</script>
   <script src="../js/highscore-state.js"></script>
   <script src="../js/highscore-ui.js"></script>
 </body>

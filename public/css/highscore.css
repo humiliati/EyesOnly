@@ -7,9 +7,9 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: 'Courier New', monospace;
-  background: #000;
-  color: #1cff9b;
+  font-family: var(--theme-font-data, 'Courier New', monospace);
+  background: var(--bg, #000);
+  color: var(--phosphor);
   overflow: hidden;
 }
 
@@ -28,7 +28,7 @@ body {
 
   /* scrollbar styling to match the UI */
   scrollbar-width: thin;
-  scrollbar-color: rgba(28, 255, 155, 0.45) rgba(0, 0, 0, 0.35);
+  scrollbar-color: var(--phosphor) rgba(0, 0, 0, 0.35);
 }
 
 .highscore-container::-webkit-scrollbar {
@@ -37,19 +37,19 @@ body {
 
 .highscore-container::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.35);
-  border-left: 1px solid rgba(28, 255, 155, 0.15);
+  border-left: 1px solid var(--panel-border);
 }
 
 .highscore-container::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(28, 255, 155, 0.15), rgba(28, 255, 155, 0.45));
-  border: 1px solid rgba(28, 255, 155, 0.35);
+  background: linear-gradient(180deg, var(--phosphor-glow), var(--phosphor-dim));
+  border: 1px solid var(--panel-border);
   border-radius: 10px;
-  box-shadow: 0 0 10px rgba(28, 255, 155, 0.15);
+  box-shadow: 0 0 10px var(--phosphor-glow);
 }
 
 .highscore-container::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(28, 255, 155, 0.25), rgba(28, 255, 155, 0.65));
-  border-color: rgba(28, 255, 155, 0.6);
+  background: linear-gradient(180deg, var(--phosphor-dim), var(--phosphor));
+  border-color: var(--phosphor);
 }
 
 
@@ -59,9 +59,9 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 1rem 2rem;
-  background: linear-gradient(180deg, #0a2a1f 0%, #000 100%);
-  border-bottom: 2px solid #1cff9b;
-  box-shadow: 0 0 20px rgba(28, 255, 155, 0.3);
+  background: linear-gradient(180deg, var(--panel-bg, #0a2a1f) 0%, var(--bg, #000) 100%);
+  border-bottom: 2px solid var(--phosphor);
+  box-shadow: 0 0 20px var(--phosphor-glow);
 }
 
 .header-title {
@@ -73,7 +73,7 @@ body {
   font-size: 1.5rem;
   font-weight: bold;
   letter-spacing: 0.1em;
-  text-shadow: 0 0 10px #1cff9b, 0 0 20px #1cff9b;
+  text-shadow: 0 0 10px var(--phosphor), 0 0 20px var(--phosphor);
 }
 
 .title-sub {
@@ -84,19 +84,19 @@ body {
 
 .back-btn {
   background: transparent;
-  border: 2px solid #1cff9b;
-  color: #1cff9b;
+  border: 2px solid var(--phosphor);
+  color: var(--phosphor);
   padding: 0.5rem 1.5rem;
-  font-family: 'Courier New', monospace;
+  font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .back-btn:hover {
-  background: #1cff9b;
-  color: #000;
-  box-shadow: 0 0 10px #1cff9b;
+  background: var(--phosphor);
+  color: var(--bg, #000);
+  box-shadow: 0 0 10px var(--phosphor);
 }
 
 /* Container */
@@ -111,17 +111,17 @@ body {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
-  border-bottom: 2px solid #333;
+  border-bottom: 2px solid var(--panel-border);
 }
 
 .tab-btn {
   flex: 1;
-  background: #0a0a0a;
-  border: 2px solid #333;
+  background: var(--bg, #0a0a0a);
+  border: 2px solid var(--panel-border);
   border-bottom: none;
   color: #666;
   padding: 1rem;
-  font-family: 'Courier New', monospace;
+  font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -144,19 +144,19 @@ body {
 }
 
 .tab-btn:hover {
-  color: #1cff9b;
-  border-color: #1cff9b;
+  color: var(--phosphor);
+  border-color: var(--phosphor);
 }
 
 .tab-btn.active {
-  background: #0d2a1f;
-  border-color: #1cff9b;
-  color: #1cff9b;
-  box-shadow: inset 0 0 10px rgba(28, 255, 155, 0.2);
+  background: var(--panel-bg, #0d2a1f);
+  border-color: var(--phosphor);
+  color: var(--phosphor);
+  box-shadow: inset 0 0 10px var(--phosphor-glow);
 }
 
 .tab-btn.active::before {
-  background: linear-gradient(90deg, transparent, #1cff9b, transparent);
+  background: linear-gradient(90deg, transparent, var(--phosphor), transparent);
 }
 
 .tab-icon {
@@ -178,32 +178,32 @@ body {
 .filter-group {
   display: flex;
   gap: 0.5rem;
-  background: #0a0a0a;
+  background: var(--bg, #0a0a0a);
   padding: 0.5rem;
-  border: 1px solid #333;
+  border: 1px solid var(--panel-border);
   border-radius: 4px;
 }
 
 .filter-btn {
   background: transparent;
-  border: 1px solid #333;
+  border: 1px solid var(--panel-border);
   color: #666;
   padding: 0.5rem 1rem;
-  font-family: 'Courier New', monospace;
+  font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .filter-btn:hover {
-  color: #1cff9b;
-  border-color: #1cff9b;
+  color: var(--phosphor);
+  border-color: var(--phosphor);
 }
 
 .filter-btn.active {
-  background: #1cff9b;
-  border-color: #1cff9b;
-  color: #000;
+  background: var(--phosphor);
+  border-color: var(--phosphor);
+  color: var(--bg, #000);
   font-weight: bold;
 }
 
@@ -234,11 +234,11 @@ body {
 
 /* Leaderboard Table */
 .leaderboard-table-container {
-  background: #0a0a0a;
-  border: 2px solid #1cff9b;
+  background: var(--bg, #0a0a0a);
+  border: 2px solid var(--phosphor);
   border-radius: 8px;
   padding: 1rem;
-  box-shadow: 0 0 20px rgba(28, 255, 155, 0.2);
+  box-shadow: 0 0 20px var(--phosphor-glow);
   overflow-x: auto;
 }
 
@@ -249,18 +249,18 @@ body {
 }
 
 .leaderboard-table thead {
-  background: #0d2a1f;
-  border-bottom: 2px solid #1cff9b;
+  background: var(--panel-bg, #0d2a1f);
+  border-bottom: 2px solid var(--phosphor);
 }
 
 .leaderboard-table th {
   padding: 0.75rem;
   text-align: left;
   font-weight: bold;
-  color: #1cff9b;
+  color: var(--phosphor);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  border-right: 1px solid #333;
+  border-right: 1px solid var(--panel-border);
 }
 
 .leaderboard-table th:last-child {
@@ -273,11 +273,11 @@ body {
 }
 
 .leaderboard-table tbody tr:hover {
-  background: #0d2a1f;
+  background: var(--panel-bg, #0d2a1f);
 }
 
 .leaderboard-table tbody tr.top-3 {
-  background: linear-gradient(90deg, #0d2a1f 0%, #0a0a0a 100%);
+  background: linear-gradient(90deg, var(--panel-bg, #0d2a1f) 0%, var(--bg, #0a0a0a) 100%);
 }
 
 .leaderboard-table tbody tr.rank-1 {
@@ -361,9 +361,9 @@ body {
 }
 
 .mode-badge.human {
-  background: #1a4d3f;
-  color: #1cff9b;
-  border: 1px solid #1cff9b;
+  background: var(--panel-bg, #1a4d3f);
+  color: var(--phosphor);
+  border: 1px solid var(--phosphor);
 }
 
 .mode-badge.agent {
@@ -387,7 +387,7 @@ body {
   text-align: center;
   color: #666;
   font-size: 0.85rem;
-  border-top: 1px solid #333;
+  border-top: 1px solid var(--panel-border);
 }
 
 .highscore-footer p {
@@ -395,7 +395,7 @@ body {
 }
 
 .footer-icon {
-  color: #1cff9b;
+  color: var(--phosphor);
   font-weight: bold;
 }
 

@@ -10,7 +10,27 @@
   <meta property="og:type" content="website">
   <title>EYES ONLY // Book a Mission</title>
 
+  <link rel="stylesheet" href="css/crt.css">
+  <link rel="stylesheet" href="css/themes.css">
   <link rel="stylesheet" href="css/booking.css">
+
+  <script>
+    (function() {
+      try {
+        var t = localStorage.getItem('eyesonly_theme');
+        if (t) {
+          document.documentElement.setAttribute('data-theme', t);
+          if (document.body) {
+            document.body.setAttribute('data-theme', t);
+          } else {
+            document.addEventListener('DOMContentLoaded', function() {
+              document.body.setAttribute('data-theme', t);
+            });
+          }
+        }
+      } catch (_) {}
+    })();
+  </script>
 </head>
 <body>
 
@@ -359,6 +379,8 @@
     </div>
   </footer>
 
+  <script src="js/theme-widget.js"></script>
+  <script>if (typeof ThemeWidget !== 'undefined') ThemeWidget.initEarly();</script>
   <script src="js/starfield.js"></script>
   <script src="js/booking.js"></script>
 </body>
