@@ -716,7 +716,7 @@ const SplashScreen = (() => {
         }, 120);
       });
 
-      /* --- Mobile touch: tap = hover, long-press = select --- */
+      /* --- Mobile touch: tap = hover, long-press = drag / select --- */
       var touchTimer = null;
       var touchStartX = 0;
       var touchStartY = 0;
@@ -734,13 +734,24 @@ const SplashScreen = (() => {
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
 
-        // Start long-press timer → select
+        // Check if touch is on drag-eligible artwork area
+        var isOnDragArea = e.target.closest('.coin-artwork')
+          && !e.target.closest('.coin-wheel-strip')
+          && !e.target.closest('.coin-wheel-frame');
+
+        // Start long-press timer → drag (artwork) or select (elsewhere)
         touchTimer = setTimeout(function () {
           if (!touchMoved && !dismissed) {
             longPressFired = true;
             // Haptic feedback if available
             if (navigator.vibrate) try { navigator.vibrate(30); } catch (_) {}
-            selectMission(card);
+            if (isOnDragArea && !_dragState) {
+              // Long-press on artwork → begin card drag
+              var idx = parseInt(card.dataset.index, 10);
+              _beginCardDrag(card, idx, { clientX: touchStartX, clientY: touchStartY });
+            } else {
+              selectMission(card);
+            }
           }
         }, LONG_PRESS_MS);
       }, { passive: true });
@@ -760,6 +771,8 @@ const SplashScreen = (() => {
         clearTimeout(touchTimer);
         touchTimer = null;
         if (dismissed || longPressFired || touchMoved) return;
+        // If a drag is active, don't toggle hover
+        if (_dragState) return;
         // If touch target was inside a wheel or button, skip hover toggle
         if (e.target.closest('.coin-wheel') || e.target.closest('.coin-book-btn')) return;
 
@@ -1077,6 +1090,11 @@ const SplashScreen = (() => {
           if (ev.pointerId !== dragPointerId) return;
           if (isDraggingWheel || _activeWheelPointerId >= 0) return;
 
+          // Sync: if long-press touch timer already started drag, catch up
+          if (!dragStarted && _dragState && _dragState.cardEl === card) {
+            dragStarted = true;
+          }
+
           var dx = ev.clientX - startX;
           var dy = ev.clientY - startY;
           var dist = Math.sqrt(dx * dx + dy * dy);
@@ -1101,6 +1119,11 @@ const SplashScreen = (() => {
           window.removeEventListener('pointercancel', onCancel, true);
           dragPointerId = -1;
 
+          // Sync: if long-press touch timer already started drag, catch up
+          if (!dragStarted && _dragState && _dragState.cardEl === card) {
+            dragStarted = true;
+          }
+
           if (dragStarted) {
             _endCardDrag(ev);
           }
@@ -1113,6 +1136,11 @@ const SplashScreen = (() => {
           window.removeEventListener('pointerup', onUp, true);
           window.removeEventListener('pointercancel', onCancel, true);
           dragPointerId = -1;
+
+          // Sync: if long-press touch timer already started drag, catch up
+          if (!dragStarted && _dragState && _dragState.cardEl === card) {
+            dragStarted = true;
+          }
 
           if (dragStarted) {
             _cancelCardDrag();
