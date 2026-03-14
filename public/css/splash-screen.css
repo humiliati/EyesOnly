@@ -1067,6 +1067,7 @@
   cursor: ns-resize;
   user-select: none;
   -webkit-user-select: none;
+  touch-action: none;
 }
 
 /* The viewport frame — small dark brass window */
@@ -1562,11 +1563,17 @@
     width: 100%;
     padding: 4px 8px 6px;
     gap: 4px;
+    overflow: visible;
   }
 
   .coin-wheel-frame {
     width: 64px;
-    height: 36px;
+    height: 42px;
+    touch-action: none;
+  }
+
+  .coin-wheel-track {
+    touch-action: none;
   }
 
   .coin-tag-strip {
@@ -1635,7 +1642,8 @@
 
   .coin-wheel-frame {
     width: 56px;
-    height: 32px;
+    height: 38px;
+    touch-action: none;
   }
 
   .coin-wheel-current {
