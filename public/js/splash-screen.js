@@ -745,7 +745,7 @@ const SplashScreen = (() => {
             longPressFired = true;
             // Haptic feedback if available
             if (navigator.vibrate) try { navigator.vibrate(30); } catch (_) {}
-            if (isOnDragArea && !_dragState) {
+            if (isOnDragArea && !_dragState) { // guard: skip if another drag is already active
               // Long-press on artwork → begin card drag
               var idx = parseInt(card.dataset.index, 10);
               _beginCardDrag(card, idx, { clientX: touchStartX, clientY: touchStartY });
