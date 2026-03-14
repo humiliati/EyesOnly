@@ -3,6 +3,22 @@
    Arcade-style embellishments with CRT aesthetic
    ============================================================ */
 
+/* ---- SCROLL FIX: Override crt.css lockdown for standalone pages ---- */
+html, body {
+  overflow: auto !important;
+  overflow-x: hidden !important;
+  height: auto !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+}
+#crt-screen {
+  position: relative !important;
+  height: auto !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+  overflow: visible !important;
+}
+
 /* Base styles */
 body {
   margin: 0;
@@ -10,7 +26,6 @@ body {
   font-family: var(--theme-font-data, 'Courier New', monospace);
   background: var(--bg, #000);
   color: var(--phosphor);
-  overflow: hidden;
 }
 
 /* Let the page scroll INSIDE the CRT frame instead of spilling off-screen */

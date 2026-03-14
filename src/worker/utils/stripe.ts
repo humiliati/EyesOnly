@@ -57,13 +57,37 @@ async function stripeRequest<T = unknown>(
     body: body ? formEncodeDeep(body) : undefined,
   });
 
-  const data = await response.json() as any;
-
-  if (!response.ok) {
-    throw new Error(data?.error?.message || `Stripe API error: ${response.status}`);
+  // Stripe normally returns JSON, but in edge/network failures you may get
+  // an empty body or non-JSON HTML. Avoid throwing "Unexpected end of JSON".
+  const raw = await response.text();
+  let data: any = null;
+  if (raw) {
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      data = { _nonJson: true, _raw: raw.slice(0, 500) };
+    }
   }
 
-  return data as T;
+  if (!response.ok) {
+    // Log enough to debug without leaking secret keys (we never log Authorization).
+    const preview = raw ? raw.slice(0, 500) : '';
+    console.error('[stripe] request failed', {
+      method,
+      path,
+      status: response.status,
+      nonJson: !!data?._nonJson,
+      bodyPreview: preview,
+    });
+
+    const msg = data?.error?.message
+      || (preview ? `Stripe API error: ${response.status} — ${preview}` : null)
+      || (data?._nonJson ? `Stripe API error: ${response.status} (non-JSON body)` : null)
+      || `Stripe API error: ${response.status}`;
+    throw new Error(msg);
+  }
+
+  return (data as T);
 }
 
 /* ---- Checkout Session Types ---- */

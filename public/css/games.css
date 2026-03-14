@@ -4,6 +4,25 @@
    Classic console font, expandable rows, inventory grid.
    ============================================================ */
 
+/* ---- SCROLL FIX: Override crt.css lockdown for standalone pages ----
+   crt.css sets html,body { overflow:hidden } and #crt-screen { position:fixed }
+   which is correct for the terminal SPA but kills scroll on sub-pages.
+   These overrides restore natural page scroll while preserving the CRT frame. */
+html, body {
+  overflow: auto !important;
+  overflow-x: hidden !important;
+  height: auto !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+}
+#crt-screen {
+  position: relative !important;
+  height: auto !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+  overflow: visible !important;
+}
+
 /* ---- Games log frame fills the full monitor shell ---- */
 .games-log-frame {
   position: relative;
@@ -248,12 +267,45 @@
   color: #555;
 }
 
+/* ---- Decryption inventory scrollable wrapper ---- */
+/* Shows ~0.9 rows by default so the page doesn't look empty.
+   The grid is 3 columns; each slot is square (aspect-ratio:1).
+   One row ≈ 33vw on mobile, capped at ~120px on desktop.
+   0.9 rows ≈ max-height of one row minus a 10% peek of the next. */
+.games-inventory-scroll {
+  max-height: calc((min(33vw, 120px) + 6px) * 1 - 6px); /* ~0.9 rows visible */
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--phosphor-dim, #1a6b4a) transparent;
+  margin-bottom: 10px;
+  /* Subtle fade-out at bottom to hint at scrollable content */
+  mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+}
+
+.games-inventory-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.games-inventory-scroll::-webkit-scrollbar-thumb {
+  background: var(--phosphor-dim);
+  border-radius: 2px;
+}
+.games-inventory-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Remove fade mask once user scrolls (JS toggles this class) */
+.games-inventory-scroll.scroll-active {
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+
 /* ---- Decryption inventory grid ---- */
 .games-inventory-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
-  margin-bottom: 10px;
 }
 
 .games-inv-slot {

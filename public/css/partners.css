@@ -6,6 +6,22 @@
 /* ---- Reset & base ---- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ---- SCROLL FIX: Override crt.css lockdown for standalone pages ---- */
+html, body {
+  overflow: auto !important;
+  overflow-x: hidden !important;
+  height: auto !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+}
+#crt-screen {
+  position: relative !important;
+  height: auto !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+  overflow: visible !important;
+}
+
 body {
   font-family: var(--theme-font-data, 'Courier New', monospace);
   background: var(--bg, #0a0a0f);

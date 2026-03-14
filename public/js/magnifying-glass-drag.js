@@ -179,10 +179,20 @@ var MagnifyingGlassDrag = (function () {
   }
 
   /**
-   * End the drag interaction
+   * End the drag interaction.
+   * Dispatches 'mag-drag-drop' CustomEvent BEFORE clearing state,
+   * so listeners can read isDragging() and the drop coordinates.
    */
-  function _endDrag() {
+  function _endDrag(clientX, clientY) {
     if (!_isDragging) return;
+
+    // Dispatch drop event BEFORE clearing state — listeners can check isDragging()
+    try {
+      document.dispatchEvent(new CustomEvent('mag-drag-drop', {
+        detail: { clientX: clientX || 0, clientY: clientY || 0 }
+      }));
+    } catch (_) {}
+
     _isDragging = false;
 
     if (_ghost) {
@@ -230,13 +240,13 @@ var MagnifyingGlassDrag = (function () {
   function _onPointerUp(e) {
     _pendingDrag = null;
     if (_isDragging) {
-      _endDrag();
+      _endDrag(e.clientX, e.clientY);
     }
   }
 
   function _onPointerCancel() {
     _pendingDrag = null;
-    _endDrag();
+    _endDrag(0, 0);
   }
 
   // ---- Touch support ----
@@ -270,9 +280,22 @@ var MagnifyingGlassDrag = (function () {
     }
   }
 
+  var _lastTouchX = 0;
+  var _lastTouchY = 0;
+
+  // Track last touch position for drop coordinates
+  var _origTouchMove = _onTouchMove;
+  _onTouchMove = function (e) {
+    if (e.touches && e.touches[0]) {
+      _lastTouchX = e.touches[0].clientX;
+      _lastTouchY = e.touches[0].clientY;
+    }
+    _origTouchMove(e);
+  };
+
   function _onTouchEnd() {
     _pendingDrag = null;
-    _endDrag();
+    _endDrag(_lastTouchX, _lastTouchY);
   }
 
   // ---- Public API ----

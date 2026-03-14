@@ -88,6 +88,7 @@
                 <span class="games-row-status">PERSISTENT</span>
               </button>
               <div class="games-row-body games-row-body-open" id="decryption-body">
+                <div class="games-inventory-scroll" id="decryption-scroll">
                 <div class="games-inventory-grid" id="decryption-inventory">
                   <div class="games-inv-slot" data-slot="0" data-item="magnifying-glass">
                     <div class="games-inv-slot-inner games-inv-occupied">
@@ -126,6 +127,7 @@
                     </div>
                   </div>
                 </div>
+                </div><!-- /games-inventory-scroll -->
                 <div class="games-decoder-stub" id="decoder-ring-stub">
                   <div class="games-decoder-label">SELECT A DECRYPTION ITEM TO ACTIVATE DECODER RING</div>
                   <div class="games-decoder-wheels">
@@ -276,6 +278,18 @@
   <script>
   (function () {
     'use strict';
+
+    /* ---- Inventory scroll: remove fade mask once user scrolls ---- */
+    var invScroll = document.getElementById('decryption-scroll');
+    if (invScroll) {
+      invScroll.addEventListener('scroll', function () {
+        if (invScroll.scrollTop > 4) {
+          invScroll.classList.add('scroll-active');
+        } else {
+          invScroll.classList.remove('scroll-active');
+        }
+      }, { passive: true });
+    }
 
     /* ---- Clock ---- */
     function tickClock() {
@@ -616,9 +630,11 @@
         });
       });
 
-      // On drag end (pointerup), if we're over a revealable slot, reveal it
-      document.addEventListener('pointerup', function (e) {
-        if (!activeGlow) return;
+      // On drag drop (mag-drag-drop event), if we're over a revealable slot, reveal it
+      // This event fires BEFORE isDragging() is cleared, fixing the desktop timing bug
+      document.addEventListener('mag-drag-drop', function (e) {
+        var dropX = e.detail ? e.detail.clientX : 0;
+        var dropY = e.detail ? e.detail.clientY : 0;
 
         HIDDEN_ITEMS.forEach(function (config) {
           if (getRevealed()[config.itemKey]) return;
@@ -627,12 +643,12 @@
           if (!grid) return;
           var slots = grid.querySelectorAll('.games-inv-slot');
           var slot = slots[config.slotIndex];
-          if (!slot || slot !== activeGlow) return;
+          if (!slot) return;
 
           var rect = slot.getBoundingClientRect();
           var inBounds = (
-            e.clientX >= rect.left && e.clientX <= rect.right &&
-            e.clientY >= rect.top && e.clientY <= rect.bottom
+            dropX >= rect.left && dropX <= rect.right &&
+            dropY >= rect.top && dropY <= rect.bottom
           );
 
           if (inBounds) {
