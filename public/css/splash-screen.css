@@ -459,6 +459,11 @@
   border-radius: 16px;
   background: var(--theme-face-gradient);
   transform: translateZ(-8px);
+  /* z-index: -1 paints this BEHIND the card content.
+     Without it, transform creates a stacking context at effective z-index 0
+     which — being later in DOM order than the starfield canvas (also z-index 0) —
+     covers the porthole with the opaque theme gradient. */
+  z-index: -1;
   box-shadow:
     0 8px 30px rgba(0, 0, 0, 0.7),
     0 2px 8px rgba(0, 0, 0, 0.5);
