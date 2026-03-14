@@ -120,7 +120,8 @@
         return;
       }
       if (answer === CLEARTEXT) {
-        // Correct!
+        // Correct! — grant reward first, then mark solved
+        PuzzlePopup.solved();
         markSolved();
         feedback.innerHTML = '<span class="puzzle-ddc-success">&#10003; DECODED — Cypher Note #1 acquired!</span>';
         input.disabled = true;
@@ -130,9 +131,6 @@
         if (window.AudioSystem && AudioSystem.playSFX) {
           AudioSystem.playSFX('ui-04');
         }
-
-        // Grant the reward
-        PuzzlePopup.solved();
       } else {
         feedback.innerHTML = '<span class="puzzle-ddc-error">INCORRECT — Decryption failed. Try again.</span>';
         if (window.AudioSystem && AudioSystem.playSFX) {
