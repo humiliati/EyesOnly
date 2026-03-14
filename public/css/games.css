@@ -809,3 +809,166 @@
   0%   { box-shadow: 0 0 30px var(--phosphor, #1cff9b), inset 0 0 20px var(--phosphor-glow, rgba(28,255,155,0.4)); }
   100% { box-shadow: none; }
 }
+
+/* ============================================================
+   ARCADE — Tile grid for simple minigames
+   ============================================================ */
+
+.games-arcade-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 6px;
+}
+
+.games-arcade-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 4px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--phosphor-dim, #1a6b4a);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  font-family: var(--theme-font-data, 'Courier New', monospace);
+  color: var(--phosphor, #1cff9b);
+}
+
+.games-arcade-tile:hover,
+.games-arcade-tile:focus-visible {
+  border-color: var(--phosphor, #1cff9b);
+  background: rgba(28, 255, 155, 0.06);
+  box-shadow: 0 0 10px var(--phosphor-glow, rgba(28, 255, 155, 0.15));
+  outline: none;
+}
+
+.games-arcade-tile:active {
+  transform: scale(0.97);
+}
+
+.games-arcade-icon {
+  font-size: 1.6em;
+  line-height: 1;
+}
+
+.games-arcade-title {
+  font-size: 0.7em;
+  font-weight: bold;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.games-arcade-desc {
+  font-size: 0.55em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--phosphor-dim, #1a6b4a);
+}
+
+@media (max-width: 480px) {
+  .games-arcade-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ============================================================
+   MINIGAME MODAL — Fullscreen overlay for arcade games
+   ============================================================ */
+
+.minigame-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.minigame-overlay-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.minigame-modal {
+  display: flex;
+  flex-direction: column;
+  background: #0a0a0a;
+  border: 1px solid var(--phosphor-dim, #1a6b4a);
+  border-radius: 6px;
+  box-shadow:
+    0 0 30px rgba(0, 0, 0, 0.6),
+    0 0 8px var(--phosphor-glow, rgba(28, 255, 155, 0.1));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 40px);
+  overflow: hidden;
+}
+
+.minigame-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--phosphor-dim, #1a6b4a);
+  flex-shrink: 0;
+}
+
+.minigame-modal-title {
+  font-family: var(--theme-font-data, 'Courier New', monospace);
+  font-size: 0.75em;
+  font-weight: bold;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--phosphor, #1cff9b);
+  text-shadow: 0 0 6px var(--phosphor-glow, rgba(28, 255, 155, 0.3));
+}
+
+.minigame-modal-close {
+  background: none;
+  border: 1px solid var(--phosphor-dim, #1a6b4a);
+  color: var(--phosphor, #1cff9b);
+  font-size: 1.1em;
+  line-height: 1;
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.minigame-modal-close:hover {
+  border-color: var(--phosphor, #1cff9b);
+  background: rgba(28, 255, 155, 0.1);
+}
+
+.minigame-canvas {
+  display: block;
+  background: #0a0a0a;
+  image-rendering: pixelated;
+}
+
+.minigame-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-top: 1px solid var(--phosphor-dim, #1a6b4a);
+  flex-shrink: 0;
+}
+
+.minigame-controls-hint {
+  font-family: var(--theme-font-data, 'Courier New', monospace);
+  font-size: 0.58em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--phosphor-dim, #1a6b4a);
+}
