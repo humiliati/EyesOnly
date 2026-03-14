@@ -271,8 +271,19 @@ bookingRoutes.post('/:id/checkout', async (c) => {
   const origin = `${url.protocol}//${url.host}`;
 
   try {
+    const secretKeyRaw = (c.env.STRIPE_SECRET_KEY || '');
+    const secretKey = secretKeyRaw.trim();
+    if (!secretKey) {
+      console.error('[checkout] STRIPE_SECRET_KEY missing/blank', { len: secretKeyRaw.length });
+      return c.json({ error: 'Stripe is not configured (missing STRIPE_SECRET_KEY).' }, 500);
+    }
+    if (!secretKey.startsWith('sk_')) {
+      console.error('[checkout] STRIPE_SECRET_KEY has unexpected prefix', { prefix: secretKey.slice(0, 3), len: secretKey.length });
+      return c.json({ error: 'Stripe is misconfigured (STRIPE_SECRET_KEY must be an sk_ secret key).' }, 500);
+    }
+
     const session = await createCheckoutSession({
-      secretKey: c.env.STRIPE_SECRET_KEY,
+      secretKey,
       bookingId: booking.id,
       scenarioType: booking.scenario_type,
       customerEmail: booking.lead_email,
@@ -312,7 +323,10 @@ bookingRoutes.get('/verify-payment', async (c) => {
   if (!sessionId) return c.json({ error: 'session_id query parameter is required.' }, 400);
 
   try {
-    const session = await retrieveCheckoutSession(c.env.STRIPE_SECRET_KEY, sessionId);
+    const secretKey = (c.env.STRIPE_SECRET_KEY || '').trim();
+    if (!secretKey) return c.json({ error: 'Stripe is not configured (missing STRIPE_SECRET_KEY).' }, 500);
+
+    const session = await retrieveCheckoutSession(secretKey, sessionId);
     const bookingId = session.metadata?.booking_id;
 
     if (!bookingId) {

@@ -273,7 +273,7 @@ html, body {
    One row ≈ 33vw on mobile, capped at ~120px on desktop.
    0.9 rows ≈ max-height of one row minus a 10% peek of the next. */
 .games-inventory-scroll {
-  max-height: calc((min(33vw, 120px) + 6px) * 1 - 6px); /* ~0.9 rows visible */
+  max-height: calc((min(33vw, 120px) + 6px) * 1.2); /* ~1.1 rows visible */
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
@@ -459,6 +459,19 @@ html, body {
   text-transform: uppercase;
   color: #555;
   margin-top: 6px;
+}
+
+/* ---- Puzzles row highlight when decoder ring is equipped ---- */
+.games-row.games-row-decoder-active {
+  border-color: var(--phosphor-dim, #1a6b4a);
+  box-shadow: 0 0 12px var(--phosphor-glow, rgba(28,255,155,0.1));
+}
+.games-row.games-row-decoder-active .games-row-header {
+  color: var(--phosphor, #1cff9b);
+}
+.games-row.games-row-decoder-active .games-row-status {
+  color: var(--phosphor, #1cff9b);
+  border-color: var(--phosphor-dim, #1a6b4a);
 }
 
 /* ---- Launcher panels (Street-Chronicles, Gone-Rogue) ---- */

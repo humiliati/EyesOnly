@@ -1601,6 +1601,36 @@
     }
   },
   {
+    "id": "ITM-202",
+    "name": "Decoder Ring",
+    "emoji": "💍",
+    "type": "equipment",
+    "subtype": "decryption",
+    "rarity": "common",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "active",
+    "effects": [
+      {
+        "type": "activate",
+        "mode": "decoder-ring"
+      }
+    ],
+    "synergyTags": [
+      "decryption",
+      "cipher",
+      "investigation",
+      "platform"
+    ],
+    "description": "Field-issue cipher decoder ring. Equip to activate the decoder wheels in the Puzzles section. Rotate the concentric alphabet rings to decode intercepted messages.",
+    "consumeOnUse": false,
+    "tier": null,
+    "_designNote": "Platform item (ITM-202). Seeded by default. When equipped, activates the interactive decoder ring canvas in the Puzzles category and auto-expands that section.",
+    "_portalCategory": "platform",
+    "_platformItem": true,
+    "_defaultAccountItem": true
+  },
+  {
     "id": "ITM-998",
     "name": "Amazon Box",
     "emoji": "📦",

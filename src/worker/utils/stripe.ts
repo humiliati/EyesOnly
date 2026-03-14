@@ -31,7 +31,10 @@ function formEncodeDeep(params: Record<string, unknown>, prefix = ''): string {
     if (typeof value === 'object' && !Array.isArray(value)) {
       parts.push(formEncodeDeep(value as Record<string, unknown>, fullKey));
     } else {
-      parts.push(`${encodeURIComponent(fullKey)}=${encodeURIComponent(String(value))}`);
+      // Stripe expects bracket-notation keys like line_items[0][price_data][currency].
+      // Keep [ and ] unescaped in parameter names.
+      const encKey = encodeURIComponent(fullKey).replace(/%5B/g, '[').replace(/%5D/g, ']');
+      parts.push(`${encKey}=${encodeURIComponent(String(value))}`);
     }
   }
 
@@ -45,16 +48,22 @@ async function stripeRequest<T = unknown>(
   path: string,
   body?: Record<string, unknown>,
 ): Promise<T> {
+  // Secrets sometimes get pasted with trailing newlines/spaces.
+  // That can corrupt the Authorization header and yield opaque 400s.
+  secretKey = (secretKey || '').trim();
   const url = `${STRIPE_API}${path}`;
   const headers: Record<string, string> = {
     Authorization: `Bearer ${secretKey}`,
     'Content-Type': 'application/x-www-form-urlencoded',
+    Accept: 'application/json',
   };
+
+  const payload = body ? formEncodeDeep(body) : undefined;
 
   const response = await fetch(url, {
     method,
     headers,
-    body: body ? formEncodeDeep(body) : undefined,
+    body: payload,
   });
 
   // Stripe normally returns JSON, but in edge/network failures you may get
@@ -76,6 +85,11 @@ async function stripeRequest<T = unknown>(
       method,
       path,
       status: response.status,
+      statusText: response.statusText,
+      bodyLen: raw ? raw.length : 0,
+      requestId: response.headers.get('request-id') || response.headers.get('stripe-request-id') || null,
+      payloadLen: payload ? payload.length : 0,
+      payloadPreview: payload ? payload.slice(0, 500) : '',
       nonJson: !!data?._nonJson,
       bodyPreview: preview,
     });

@@ -39,6 +39,22 @@ var AccountInventory = (function () {
         effects: [{ type: 'reveal', mode: 'lens' }],
         synergyTags: ['investigation', 'decryption', 'recon', 'platform']
       }
+    },
+    {
+      id: 'ITM-202',
+      qty: 1,
+      meta: {
+        name: 'Decoder Ring',
+        emoji: '💍',
+        type: 'equipment',
+        subtype: 'decryption',
+        rarity: 'common',
+        equipSlot: 'active',
+        platformItem: true,
+        description: 'Field-issue cipher decoder ring. Equip to activate the decoder wheels in Puzzles.',
+        effects: [{ type: 'activate', mode: 'decoder-ring' }],
+        synergyTags: ['decryption', 'cipher', 'investigation', 'platform']
+      }
     }
   ];
 
@@ -100,6 +116,20 @@ var AccountInventory = (function () {
       _save(data);
       _emit('seeded', { items: data.items });
     }
+    // Migrate: ensure all DEFAULT_ITEMS exist (handles new items added after initial seed)
+    var changed = false;
+    DEFAULT_ITEMS.forEach(function (defItem) {
+      var found = false;
+      for (var j = 0; j < data.items.length; j++) {
+        if (data.items[j].id === defItem.id) { found = true; break; }
+      }
+      if (!found) {
+        data.items.push(JSON.parse(JSON.stringify(defItem)));
+        changed = true;
+      }
+    });
+    if (changed) _save(data);
+
     _inventory = data;
     _emit('loaded', { items: data.items });
     return data.items;

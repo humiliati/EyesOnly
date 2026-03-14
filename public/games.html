@@ -532,7 +532,13 @@
         var slot = slots[idx];
         var emoji = (item.meta && item.meta.emoji) || '📦';
         var label = (item.meta && item.meta.name) || item.id;
-        var itemKey = item.id === 'ITM-200' ? 'magnifying-glass' : item.id.toLowerCase();
+        // Canonical item-key mapping: ITM IDs → data-item keys used by popup/drag systems
+        var ITEM_KEY_MAP = {
+          'ITM-200': 'magnifying-glass',
+          'ITM-201': 'cypher-note-2',
+          'ITM-202': 'decoder-ring'
+        };
+        var itemKey = ITEM_KEY_MAP[item.id] || item.id.toLowerCase();
 
         slot.setAttribute('data-item', itemKey);
         slot.setAttribute('data-item-id', item.id);
@@ -808,24 +814,48 @@
       }
 
       function updateDecoderState(equipped) {
-        var isDecryption = equipped && equipped.subtype === 'investigation';
+        var isDecoder = equipped && equipped.subtype === 'decryption';
         if (decoderStatus) {
-          decoderStatus.textContent = isDecryption ? 'ACTIVE' : 'STANDBY';
-          decoderStatus.className = 'games-decoder-header-status' + (isDecryption ? ' decoder-active' : '');
+          decoderStatus.textContent = isDecoder ? 'ACTIVE' : 'STANDBY';
+          decoderStatus.className = 'games-decoder-header-status' + (isDecoder ? ' decoder-active' : '');
         }
         if (decoderHint) {
-          decoderHint.style.display = isDecryption ? 'none' : '';
+          decoderHint.style.display = isDecoder ? 'none' : '';
         }
         if (decoderCanvas) {
-          decoderCanvas.style.opacity = isDecryption ? '1' : '0.25';
-          decoderCanvas.style.pointerEvents = isDecryption ? 'auto' : 'none';
+          decoderCanvas.style.opacity = isDecoder ? '1' : '0.25';
+          decoderCanvas.style.pointerEvents = isDecoder ? 'auto' : 'none';
         }
+        // Auto-expand/highlight puzzles category when decoder ring equipped
+        togglePuzzlesExpand(isDecoder);
         // Dispatch event so decoder ring module can react
         try {
           document.dispatchEvent(new CustomEvent('decoder-ring-state', {
-            detail: { active: isDecryption, equipped: equipped }
+            detail: { active: isDecoder, equipped: equipped }
           }));
         } catch (_) {}
+      }
+
+      // Auto-expand puzzles row when decoder ring is active
+      function togglePuzzlesExpand(shouldExpand) {
+        var puzzleBtn = document.querySelector('.games-row-header[data-target="puzzles-body"]');
+        var puzzleBody = document.getElementById('puzzles-body');
+        var puzzleRow = document.getElementById('row-puzzles');
+        if (!puzzleBtn || !puzzleBody) return;
+
+        if (shouldExpand) {
+          // Expand if not already open
+          if (puzzleBtn.getAttribute('aria-expanded') !== 'true') {
+            puzzleBtn.setAttribute('aria-expanded', 'true');
+            puzzleBody.classList.add('games-row-body-open');
+            puzzleBtn.querySelector('.games-row-chevron').innerHTML = '&#9662;';
+          }
+          // Highlight
+          if (puzzleRow) puzzleRow.classList.add('games-row-decoder-active');
+        } else {
+          if (puzzleRow) puzzleRow.classList.remove('games-row-decoder-active');
+          // Don't auto-collapse — let user keep it open if they want
+        }
       }
 
       // Highlight currently equipped slot
