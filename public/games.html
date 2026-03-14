@@ -545,11 +545,18 @@
         slot.setAttribute('data-item', itemKey);
         slot.setAttribute('data-item-id', item.id);
 
+        // Magnifying glass: prevent browser native drag (HTML attribute + CSS together)
+        if (itemKey === 'magnifying-glass') {
+          slot.setAttribute('draggable', 'false');
+        }
+
         var inner = slot.querySelector('.games-inv-slot-inner');
         if (inner) {
           inner.className = 'games-inv-slot-inner games-inv-occupied';
           inner.innerHTML =
-            '<span class="games-inv-item-icon">' + emoji + '</span>' +
+            '<span class="games-inv-item-icon"' +
+            (itemKey === 'magnifying-glass' ? ' draggable="false"' : '') +
+            '>' + emoji + '</span>' +
             '<span class="games-inv-slot-label">' + abbrev(label) + '</span>';
         }
       });

@@ -684,6 +684,19 @@ html, body {
   transition: transform 0.2s ease, filter 0.2s ease;
   user-select: none;
   -webkit-user-select: none;
+  /* Prevent browser native drag on the emoji — without this,
+     pointercancel fires BEFORE our dragstart listener can
+     preventDefault(), killing the custom drag ghost.
+     See PORTHOLE_PUZZLE_TOOLKIT.md §3a */
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
+/* Per toolkit §3a: touch-action: none on drag source prevents browser
+   scroll/pan from stealing the pointer during drag gestures.
+   Scoped to this slot only — rest of the grid scrolls normally. */
+.games-inv-slot[data-item="magnifying-glass"] {
+  touch-action: none;
 }
 
 .games-inv-slot[data-item="magnifying-glass"]:hover .games-inv-item-icon {
