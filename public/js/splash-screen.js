@@ -1207,26 +1207,47 @@ const SplashScreen = (() => {
   function _createDragGhost(cardEl, grabX, grabY) {
     var rect = cardEl.getBoundingClientRect();
     var ghost = cardEl.cloneNode(true);
+    var isMobile = window.innerWidth < 769;
 
-    // Strip interaction classes
+    // Strip interaction classes, add ghost class
+    // CRITICAL: coin-card-hovered has !important on transform + z-index
+    // which overrides inline drag positioning.  coin-card-ghost provides
+    // hover visuals while letting inline transform/z-index work.
     ghost.classList.remove('coin-card-hovered', 'splash-selected', 'coin-card-dragging');
-    ghost.classList.add('coin-card-hovered'); // keep it looking raised
+    ghost.classList.add('coin-card-ghost');
+
+    // Mobile: circular porthole ghost centered on grab point
+    var ghostW, ghostH, ghostRadius;
+    if (isMobile) {
+      ghostW = ghostH = Math.min(160, Math.round(rect.width * 0.55));
+      ghostRadius = '50%';
+    } else {
+      ghostW = Math.round(rect.width);
+      ghostH = Math.round(rect.height);
+      ghostRadius = '16px';
+    }
 
     ghost.style.cssText = [
       'position: fixed',
-      'top: ' + rect.top + 'px',
-      'left: ' + rect.left + 'px',
-      'width: ' + rect.width + 'px',
-      'height: ' + rect.height + 'px',
-      'transform: scale(0.92) rotate(0deg)',
+      'top: ' + (grabY - ghostH / 2) + 'px',
+      'left: ' + (grabX - ghostW / 2) + 'px',
+      'width: ' + ghostW + 'px',
+      'height: ' + ghostH + 'px',
       'opacity: 0.94',
       'pointer-events: none',
-      'z-index: 100000',
       'transition: transform 0.12s ease-out, opacity 0.12s ease-out, box-shadow 0.12s ease-out',
       'box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(180,160,80,0.12)',
-      'border-radius: 16px',
-      'will-change: transform, left, top'
+      'border-radius: ' + ghostRadius,
+      'will-change: transform, left, top',
+      'overflow: hidden'
     ].join('; ');
+    // Use setProperty with 'important' to override coin-card-hovered's !important
+    ghost.style.setProperty('transform', 'scale(0.92) rotate(0deg)', 'important');
+    ghost.style.setProperty('z-index', '100000', 'important');
+
+    // Center grab offset on the ghost
+    _dragState.grabOffsetX = ghostW / 2;
+    _dragState.grabOffsetY = ghostH / 2;
 
     document.body.appendChild(ghost);
 
@@ -1272,7 +1293,7 @@ const SplashScreen = (() => {
     ghost.style.left = phRect.left + 'px';
     ghost.style.top = phRect.top + 'px';
     ghost.style.opacity = '0.6';
-    ghost.style.transform = 'scale(1) rotate(0deg)';
+    ghost.style.setProperty('transform', 'scale(1) rotate(0deg)', 'important');
 
     // Return-to-slot sound
     _playAudio(PUTDOWN_SOUNDS[_dragState.index % PUTDOWN_SOUNDS.length], { volume: 0.3 });
@@ -1344,7 +1365,7 @@ const SplashScreen = (() => {
     // Subtle tilt based on drag velocity
     var dx = ev.clientX - _dragState.startX;
     var tilt = Math.max(-8, Math.min(8, dx * 0.04));
-    _dragState.ghostEl.style.transform = 'scale(0.92) rotate(' + tilt + 'deg)';
+    _dragState.ghostEl.style.setProperty('transform', 'scale(0.92) rotate(' + tilt + 'deg)', 'important');
   }
 
   function _endCardDrag(ev) {
@@ -1376,7 +1397,7 @@ const SplashScreen = (() => {
     if (_dragState.ghostEl) {
       _dragState.ghostEl.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
       _dragState.ghostEl.style.opacity = '0';
-      _dragState.ghostEl.style.transform = 'scale(1.05)';
+      _dragState.ghostEl.style.setProperty('transform', 'scale(1.05)', 'important');
     }
 
     _playAudio(PUTDOWN_SOUNDS[_dragState.index % PUTDOWN_SOUNDS.length], { volume: 0.5 });
@@ -1394,9 +1415,8 @@ const SplashScreen = (() => {
   }
 
   function bindCardDrag() {
-    // Only bind on desktop (pointer events). Mobile uses tap/long-press.
-    if ('ontouchstart' in window && window.innerWidth < 769) return;
-
+    // Pointer events work on both desktop and mobile (touch → pointer).
+    // Mobile gets a circular porthole ghost; desktop gets the full card.
     var cards = splashEl.querySelectorAll('.splash-dossier');
     cards.forEach(function (card) {
       var artwork = card.querySelector('.coin-artwork');
