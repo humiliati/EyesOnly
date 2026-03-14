@@ -149,7 +149,7 @@
                 <span class="games-row-status">AVAILABLE</span>
               </button>
               <div class="games-row-body" id="puzzles-body">
-                <div class="games-item">
+                <div class="games-item games-item-playable" data-puzzle="dead-drop-cipher" data-sound="ui-01">
                   <span class="games-item-icon">&#9641;</span>
                   <div class="games-item-info">
                     <div class="games-item-name">Dead Drop Cipher</div>
@@ -326,6 +326,10 @@
   <script src="js/minigames/breakout.js"></script>
   <script src="js/minigame-modal.js"></script>
 
+  <!-- Puzzle popup system + puzzles -->
+  <script src="js/puzzle-popup.js"></script>
+  <script src="js/puzzles/dead-drop-cipher.js"></script>
+
   <script>
   (function () {
     'use strict';
@@ -462,6 +466,15 @@
         if (window.MinigameModal) MinigameModal.open(key);
       });
     });
+
+    /* ---- Puzzle popup binding ---- */
+    (function initPuzzles() {
+      if (typeof PuzzlePopup === 'undefined') return;
+      var content = document.getElementById('games-content');
+      if (content) {
+        PuzzlePopup.bind(content);
+      }
+    })();
 
     /* ---- Populate decryption inventory from AccountInventory ---- */
     (function populateInventory() {
