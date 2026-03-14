@@ -10,7 +10,7 @@
 
   <link rel="stylesheet" href="css/crt.css?v=20260307m">
   <link rel="stylesheet" href="css/themes.css">
-  <link rel="stylesheet" href="css/games.css?v=20260313a">
+  <link rel="stylesheet" href="css/games.css?v=20260314a">
 
   <script>
     (function() {
@@ -139,6 +139,8 @@
                     </div>
                   </div>
                 </div>
+                <!-- Hidden item detection zone: magnifying glass porthole reveals cypher note here -->
+                <div class="mag-reveal-zone" data-mag-reveal="cypher-note-2" aria-hidden="true"></div>
                 </div><!-- /games-inventory-scroll -->
               </div>
             </div>
@@ -557,15 +559,19 @@
     (function initMagDrag() {
       if (typeof MagnifyingGlassDrag === 'undefined') return;
 
-      // Init starfield for porthole rendering
-      if (typeof EyesOnlyStarfield !== 'undefined' && !EyesOnlyStarfield.isRunning()) {
-        EyesOnlyStarfield.init();
-      }
-
-      // Init drag on the games content area
+      // Init drag FIRST — must always succeed, starfield is optional eye-candy
       var content = document.getElementById('games-content');
       if (content) {
         MagnifyingGlassDrag.init(content);
+      }
+
+      // Init starfield for porthole rendering (non-fatal if it fails)
+      try {
+        if (typeof EyesOnlyStarfield !== 'undefined' && !EyesOnlyStarfield.isRunning()) {
+          EyesOnlyStarfield.init();
+        }
+      } catch (err) {
+        console.warn('[FIELD KIT] Starfield init failed (porthole will render without stars):', err);
       }
     })();
 
@@ -590,23 +596,43 @@
       }
     })();
 
-    /* ---- Magnifying glass drag-to-reveal: hidden items in empty slots ---- */
+    /* ---- Magnifying glass drag-to-reveal: hidden items beneath the page ---- */
+    /* ARCHITECTURE:
+     * - Any element with data-mag-reveal="itemKey" is a detection zone.
+     *   The porthole hovering over that element triggers the reveal.
+     * - The reveal is coordinate-based (getBoundingClientRect), not slot-index-based.
+     * - HIDDEN_ITEMS defines what gets revealed and how to add it to inventory.
+     * - Revealed items populate the next empty inventory slot (no hardcoded position).
+     * - This pattern works on any page — inventory grids, map regions, etc.
+     */
     (function initDragReveal() {
       if (typeof MagnifyingGlassDrag === 'undefined') return;
 
       var REVEAL_KEY = 'eyesonly_revealed_items';
-      var REVEAL_SLOT_INDEX = 1; // slot #2 (0-indexed)
 
-      // Hidden item config for slot #2
-      var HIDDEN_ITEMS = [
-        {
-          slotIndex: REVEAL_SLOT_INDEX,
+      // Registry of hidden items. Each entry describes:
+      //   itemKey  — matches data-mag-reveal="..." on the detection zone element
+      //   itemId   — ITM-XXX for AccountInventory
+      //   emoji    — what shows in the porthole preview and inventory slot
+      //   label    — display name for the inventory slot
+      //   meta     — full item metadata for AccountInventory.addItem()
+      var HIDDEN_ITEMS = {
+        'cypher-note-2': {
           itemKey: 'cypher-note-2',
           itemId: 'ITM-201',
           emoji: '\uD83D\uDCDC',
-          label: 'CYPHER NOTE'
+          label: 'CYPHER NOTE',
+          meta: {
+            name: 'Cypher Note',
+            emoji: '\uD83D\uDCDC',
+            type: 'equipment',
+            subtype: 'investigation',
+            rarity: 'uncommon',
+            platformItem: true,
+            noteIndex: 2
+          }
         }
-      ];
+      };
 
       function getRevealed() {
         try {
@@ -620,14 +646,22 @@
         catch (_) {}
       }
 
-      function revealItem(config) {
+      // Find the first empty inventory slot in any grid on the page
+      function findNextEmptySlot() {
         var grid = document.getElementById('decryption-inventory');
-        if (!grid) return;
+        if (!grid) return null;
         var slots = grid.querySelectorAll('.games-inv-slot');
-        var slot = slots[config.slotIndex];
-        if (!slot || slot.getAttribute('data-item')) return; // already occupied
+        for (var i = 0; i < slots.length; i++) {
+          if (!slots[i].getAttribute('data-item')) return slots[i];
+        }
+        return null;
+      }
 
-        // Mark as revealed
+      function revealItem(config) {
+        var slot = findNextEmptySlot();
+        if (!slot) return; // inventory full
+
+        // Populate the slot
         slot.setAttribute('data-item', config.itemKey);
         slot.setAttribute('data-item-id', config.itemId);
         slot.classList.add('mag-revealed');
@@ -643,7 +677,7 @@
             '<span class="games-inv-slot-label">' + abbrLabel + '</span>';
         }
 
-        // Persist
+        // Persist reveal state
         var revealed = getRevealed();
         revealed[config.itemKey] = true;
         saveRevealed(revealed);
@@ -653,15 +687,7 @@
           AccountInventory.addItem({
             id: config.itemId,
             qty: 1,
-            meta: {
-              name: 'Cypher Note',
-              emoji: config.emoji,
-              type: 'equipment',
-              subtype: 'investigation',
-              rarity: 'uncommon',
-              platformItem: true,
-              noteIndex: 2
-            }
+            meta: config.meta
           });
         }
 
@@ -672,27 +698,23 @@
       }
 
       // Restore previously revealed items on page load
-      // Only restore if the item still exists in AccountInventory
-      // (if user incinerated it at the terminal, it's gone permanently)
       var revealed = getRevealed();
-      HIDDEN_ITEMS.forEach(function (config) {
-        if (revealed[config.itemKey]) {
-          var stillExists = typeof AccountInventory !== 'undefined' && AccountInventory.hasItem(config.itemId);
-          if (stillExists) {
-            revealItem(config);
-          }
-          // If destroyed, leave the slot empty — no respawn
+      Object.keys(HIDDEN_ITEMS).forEach(function (key) {
+        if (!revealed[key]) return;
+        var config = HIDDEN_ITEMS[key];
+        // Only restore if the item still exists in AccountInventory
+        var stillExists = typeof AccountInventory !== 'undefined' && AccountInventory.hasItem(config.itemId);
+        if (stillExists) {
+          revealItem(config);
         }
       });
 
-      // Listen for magnifying glass drag-over on empty slots
-      // We check overlap every pointermove while dragging
+      // Drag-over detection: check all [data-mag-reveal] elements on the page
       var lastRevealCheck = 0;
       var activeGlow = null;
 
       document.addEventListener('pointermove', function (e) {
         if (!window.MagnifyingGlassDrag || !MagnifyingGlassDrag.isDragging()) {
-          // Clear glow if not dragging
           if (activeGlow) {
             activeGlow.classList.remove('mag-reveal-active');
             activeGlow = null;
@@ -700,75 +722,69 @@
           return;
         }
 
-        // Throttle to ~30fps
         var now = Date.now();
         if (now - lastRevealCheck < 33) return;
         lastRevealCheck = now;
 
-        var grid = document.getElementById('decryption-inventory');
-        if (!grid) return;
+        // Check all reveal zones on the page (not just inventory slots)
+        var zones = document.querySelectorAll('[data-mag-reveal]');
+        var hitZone = null;
+        var hitConfig = null;
 
-        // Check each hidden item's target slot for overlap with pointer
-        HIDDEN_ITEMS.forEach(function (config) {
-          if (getRevealed()[config.itemKey]) return; // already revealed
+        for (var i = 0; i < zones.length; i++) {
+          var zone = zones[i];
+          var key = zone.getAttribute('data-mag-reveal');
+          var config = HIDDEN_ITEMS[key];
+          if (!config || getRevealed()[key]) continue;
 
-          var slots = grid.querySelectorAll('.games-inv-slot');
-          var slot = slots[config.slotIndex];
-          if (!slot || slot.getAttribute('data-item')) return;
+          var rect = zone.getBoundingClientRect();
+          if (e.clientX >= rect.left && e.clientX <= rect.right &&
+              e.clientY >= rect.top && e.clientY <= rect.bottom) {
+            hitZone = zone;
+            hitConfig = config;
+            break;
+          }
+        }
 
-          var rect = slot.getBoundingClientRect();
-          var inBounds = (
-            e.clientX >= rect.left && e.clientX <= rect.right &&
-            e.clientY >= rect.top && e.clientY <= rect.bottom
-          );
-
-          if (inBounds) {
-            // Show glow and emoji preview inside porthole
-            if (activeGlow !== slot) {
-              if (activeGlow) activeGlow.classList.remove('mag-reveal-active');
-              slot.classList.add('mag-reveal-active');
-              activeGlow = slot;
-              if (MagnifyingGlassDrag.setRevealPreview) {
-                MagnifyingGlassDrag.setRevealPreview(config.emoji);
-              }
-            }
-          } else {
-            if (activeGlow === slot) {
-              slot.classList.remove('mag-reveal-active');
-              activeGlow = null;
-              if (MagnifyingGlassDrag.clearRevealPreview) {
-                MagnifyingGlassDrag.clearRevealPreview();
-              }
+        if (hitZone) {
+          if (activeGlow !== hitZone) {
+            if (activeGlow) activeGlow.classList.remove('mag-reveal-active');
+            hitZone.classList.add('mag-reveal-active');
+            activeGlow = hitZone;
+            if (MagnifyingGlassDrag.setRevealPreview) {
+              MagnifyingGlassDrag.setRevealPreview(hitConfig.emoji);
             }
           }
-        });
+        } else {
+          if (activeGlow) {
+            activeGlow.classList.remove('mag-reveal-active');
+            activeGlow = null;
+            if (MagnifyingGlassDrag.clearRevealPreview) {
+              MagnifyingGlassDrag.clearRevealPreview();
+            }
+          }
+        }
       });
 
-      // On drag drop (mag-drag-drop event), if we're over a revealable slot, reveal it
-      // This event fires BEFORE isDragging() is cleared, fixing the desktop timing bug
+      // On drop, reveal if over a detection zone
       document.addEventListener('mag-drag-drop', function (e) {
         var dropX = e.detail ? e.detail.clientX : 0;
         var dropY = e.detail ? e.detail.clientY : 0;
 
-        HIDDEN_ITEMS.forEach(function (config) {
-          if (getRevealed()[config.itemKey]) return;
+        var zones = document.querySelectorAll('[data-mag-reveal]');
+        for (var i = 0; i < zones.length; i++) {
+          var zone = zones[i];
+          var key = zone.getAttribute('data-mag-reveal');
+          var config = HIDDEN_ITEMS[key];
+          if (!config || getRevealed()[key]) continue;
 
-          var grid = document.getElementById('decryption-inventory');
-          if (!grid) return;
-          var slots = grid.querySelectorAll('.games-inv-slot');
-          var slot = slots[config.slotIndex];
-          if (!slot) return;
-
-          var rect = slot.getBoundingClientRect();
-          var inBounds = (
-            dropX >= rect.left && dropX <= rect.right &&
-            dropY >= rect.top && dropY <= rect.bottom
-          );
-
-          if (inBounds) {
+          var rect = zone.getBoundingClientRect();
+          if (dropX >= rect.left && dropX <= rect.right &&
+              dropY >= rect.top && dropY <= rect.bottom) {
             revealItem(config);
+            break;
           }
-        });
+        }
 
         if (activeGlow) {
           activeGlow.classList.remove('mag-reveal-active');

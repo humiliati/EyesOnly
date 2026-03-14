@@ -264,6 +264,10 @@ var MagnifyingGlassDrag = (function () {
   }
 
   // ---- Event handlers ----
+  // Keep pointer handlers simple — mirrors the touch handlers that already work on mobile.
+  // The only desktop-specific fix is the dragstart listener in init() which prevents
+  // the browser from starting a native text drag on the emoji (the real cause of
+  // pointercancel on desktop).
   var _pendingDrag = null;
 
   function _onPointerDown(e) {
@@ -374,14 +378,25 @@ var MagnifyingGlassDrag = (function () {
     document.addEventListener('pointerup', _onPointerUp);
     document.addEventListener('pointercancel', _onPointerCancel);
 
+    // Prevent native HTML5 drag on magnifying glass emoji (would fire pointercancel)
+    container.addEventListener('dragstart', function (e) {
+      if (e.target.closest && e.target.closest('[data-item="magnifying-glass"]')) {
+        e.preventDefault();
+      }
+    });
+
     // Touch fallback (for browsers with incomplete pointer event support)
     container.addEventListener('touchstart', _onTouchStart, { passive: true });
     document.addEventListener('touchmove', _onTouchMove, { passive: false });
     document.addEventListener('touchend', _onTouchEnd);
 
-    // Initialize starfield if available and not yet running
-    if (window.EyesOnlyStarfield && !EyesOnlyStarfield.isRunning()) {
-      EyesOnlyStarfield.init();
+    // Initialize starfield if available and not yet running (non-fatal)
+    try {
+      if (window.EyesOnlyStarfield && !EyesOnlyStarfield.isRunning()) {
+        EyesOnlyStarfield.init();
+      }
+    } catch (err) {
+      console.warn('[MagnifyingGlassDrag] Starfield init failed:', err);
     }
   }
 

@@ -133,6 +133,20 @@ app.get('/api/health', (c) => {
   });
 });
 
+// --- Debug: Stripe env visibility (safe: no secrets returned) ---
+// Helps diagnose mis-seeded STRIPE_SECRET_KEY without exposing it.
+app.get('/api/debug/stripe', (c) => {
+  const raw = (c.env.STRIPE_SECRET_KEY || '');
+  const v = raw.trim();
+  return c.json({
+    hasSecret: !!v,
+    len: v.length,
+    prefix: v.slice(0, 3),
+    startsWithSk: v.startsWith('sk_'),
+    publishablePrefix: (c.env.STRIPE_PUBLISHABLE_KEY || '').slice(0, 3),
+  });
+});
+
 // --- Fallback: serve static assets via the ASSETS binding ---
 // With run_worker_first:true, all requests hit the Worker first.
 // Non-API paths are forwarded to Cloudflare's static asset serving.
