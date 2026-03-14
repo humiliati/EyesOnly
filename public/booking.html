@@ -89,11 +89,12 @@
           </button>
         </div>
 
-        <!-- Right: visual / icon area -->
+        <!-- Right: porthole with starfield + suit symbol -->
         <div class="scenario-visual">
-          <div class="scenario-icon-wrap">
-            <div class="scenario-icon-bg"></div>
-            <div class="scenario-icon-main">&#x1F3AF;</div>
+          <div class="scenario-icon-wrap" data-suit="&#x2660;" data-suit-class="suit-spade">
+            <canvas class="starfield-window" width="200" height="200"></canvas>
+            <div class="scenario-rings"></div>
+            <div class="scenario-suit suit-spade">&#x2660;</div>
           </div>
           <div class="scenario-visual-tags">
             <span class="visual-tag">24 HR</span>
@@ -169,9 +170,10 @@
         </div>
 
         <div class="scenario-visual">
-          <div class="scenario-icon-wrap">
-            <div class="scenario-icon-bg scenario-icon-bg-alt"></div>
-            <div class="scenario-icon-main">&#x1F5FA;&#xFE0F;</div>
+          <div class="scenario-icon-wrap" data-suit="&#x2663;" data-suit-class="suit-club">
+            <canvas class="starfield-window" width="200" height="200"></canvas>
+            <div class="scenario-rings scenario-rings-alt"></div>
+            <div class="scenario-suit suit-club">&#x2663;</div>
           </div>
           <div class="scenario-visual-tags">
             <span class="visual-tag visual-tag-alt">72 HR</span>
@@ -357,6 +359,7 @@
     </div>
   </footer>
 
+  <script src="js/starfield.js"></script>
   <script src="js/booking.js"></script>
 </body>
 </html>

@@ -284,37 +284,136 @@ a:hover { text-decoration: underline; }
   padding-top: 20px;
 }
 
+/* ---- Porthole: starfield canvas + concentric rings + suit symbol ---- */
 .scenario-icon-wrap {
   position: relative;
-  width: 180px;
-  height: 180px;
+  width: 200px;
+  height: 200px;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 50%;
+  overflow: hidden;
 }
 
-.scenario-icon-bg {
+/* Starfield canvas — fills the circular porthole */
+.scenario-icon-wrap .starfield-window {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Concentric ring overlay — porthole frame with dark bands */
+.scenario-rings {
   position: absolute;
   inset: 0;
+  z-index: 1;
+  pointer-events: none;
   border-radius: 50%;
-  border: 2px solid rgba(28, 255, 155, 0.15);
-  background: radial-gradient(circle, rgba(28, 255, 155, 0.05) 0%, transparent 70%);
-  animation: icon-pulse 4s ease-in-out infinite;
+  background:
+    radial-gradient(circle at center,
+      /* Clear center — starfield visible */
+      transparent 0%,
+      transparent 42%,
+      /* Band 1 */
+      rgba(0,0,0,0.75) 42%,
+      rgba(0,0,0,0.6) 46%,
+      rgba(0,0,0,0.5) 46%,
+      rgba(0,0,0,0.4) 50%,
+      /* Band 2 */
+      rgba(0,0,0,0.35) 50%,
+      rgba(0,0,0,0.25) 54%,
+      rgba(0,0,0,0.18) 54%,
+      rgba(0,0,0,0.12) 58%,
+      /* Band 3 */
+      rgba(0,0,0,0.10) 58%,
+      rgba(0,0,0,0.06) 62%,
+      rgba(0,0,0,0.03) 62%,
+      rgba(0,0,0,0.01) 66%,
+      /* Fade to page */
+      transparent 66%,
+      transparent 100%
+    ),
+    /* Theme glow accent lines — green for scenario 1 */
+    radial-gradient(circle at center,
+      transparent 0%, transparent 43%,
+      rgba(28, 255, 155, 0.12) 44%, transparent 45%,
+      transparent 49%,
+      rgba(28, 255, 155, 0.08) 50%, transparent 51%,
+      transparent 57%,
+      rgba(28, 255, 155, 0.05) 58%, transparent 59%,
+      transparent 100%
+    );
+  box-shadow:
+    inset 0 0 15px rgba(0, 0, 0, 0.9),
+    0 0 20px rgba(28, 255, 155, 0.06);
 }
 
-.scenario-icon-bg-alt {
-  border-color: rgba(201, 168, 76, 0.15);
-  background: radial-gradient(circle, rgba(201, 168, 76, 0.05) 0%, transparent 70%);
+/* Scenario 2 alt rings — amber/gold accent lines */
+.scenario-rings-alt {
+  background:
+    radial-gradient(circle at center,
+      transparent 0%,
+      transparent 42%,
+      rgba(0,0,0,0.75) 42%,
+      rgba(0,0,0,0.6) 46%,
+      rgba(0,0,0,0.5) 46%,
+      rgba(0,0,0,0.4) 50%,
+      rgba(0,0,0,0.35) 50%,
+      rgba(0,0,0,0.25) 54%,
+      rgba(0,0,0,0.18) 54%,
+      rgba(0,0,0,0.12) 58%,
+      rgba(0,0,0,0.10) 58%,
+      rgba(0,0,0,0.06) 62%,
+      rgba(0,0,0,0.03) 62%,
+      rgba(0,0,0,0.01) 66%,
+      transparent 66%,
+      transparent 100%
+    ),
+    radial-gradient(circle at center,
+      transparent 0%, transparent 43%,
+      rgba(201, 168, 76, 0.15) 44%, transparent 45%,
+      transparent 49%,
+      rgba(201, 168, 76, 0.10) 50%, transparent 51%,
+      transparent 57%,
+      rgba(201, 168, 76, 0.06) 58%, transparent 59%,
+      transparent 100%
+    );
+  box-shadow:
+    inset 0 0 15px rgba(0, 0, 0, 0.9),
+    0 0 20px rgba(201, 168, 76, 0.06);
 }
 
-@keyframes icon-pulse {
-  0%, 100% { transform: scale(1); opacity: 0.6; }
-  50% { transform: scale(1.08); opacity: 1; }
+/* Suit symbol — floats above the starfield portal */
+.scenario-suit {
+  z-index: 5;
+  font-size: 56px;
+  line-height: 1;
+  position: relative;
+  text-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.8),
+    0 8px 16px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(80, 60, 30, 0.15);
+  animation: suit-bob 4s ease-in-out infinite;
+  filter: drop-shadow(0 -2px 1px rgba(28, 255, 155, 0.2));
 }
 
-.scenario-icon-main {
-  font-size: 72px;
-  z-index: 2;
+.scenario-suit.suit-spade {
+  color: rgba(28, 255, 155, 0.9);
+  filter: drop-shadow(0 -2px 1px rgba(28, 255, 155, 0.3));
+}
+
+.scenario-suit.suit-club {
+  color: rgba(201, 168, 76, 0.9);
+  filter: drop-shadow(0 -2px 1px rgba(201, 168, 76, 0.3));
+}
+
+@keyframes suit-bob {
+  0%, 100% { transform: translateY(0px); }
+  50%      { transform: translateY(-5px); }
 }
 
 .scenario-visual-tags {

@@ -465,6 +465,10 @@
     bindBookButtons();
     bindScenarioSelect();
     bindNavScroll();
+    // Shared starfield module — master canvas blit pipeline
+    if (window.EyesOnlyStarfield && !window.EyesOnlyStarfield.isRunning()) {
+      window.EyesOnlyStarfield.init();
+    }
 
     if (detailsForm) detailsForm.addEventListener('submit', handleBookingSubmit);
     if (waiverForm)  waiverForm.addEventListener('submit', handleWaiverSubmit);
