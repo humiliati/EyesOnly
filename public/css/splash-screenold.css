@@ -751,83 +751,87 @@
 }
 
 
-/* ---- Porthole viewport rings — concentric dark bands with theme glow accents ----
-   Transparent center reveals the starfield canvas; dark bands frame the porthole;
-   theme-colored glow lines accent between bands. */
+/* ---- Concentric coin rings — "That's All Folks" portal descent ----
+   Rings darken and recess progressively toward center, creating the
+   illusion of depth descending into the starfield aperture.
+   Uses radial-gradient layers on a dedicated .coin-rings element. */
 .coin-rings {
   position: absolute;
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  /* Porthole viewport: transparent center, concentric dark bands, theme glow accents */
+  /* The rings: concentric bands that get darker toward center */
   background:
+    /* Outermost: subtle brass groove at edge of artwork */
     radial-gradient(circle at center,
-      /* Porthole */
       transparent 0%,
-      transparent 46%,
-
-      /* Band 1 innermost — darkest */
-      rgba(0,0,0,0.82) 46%,
-      rgba(0,0,0,0.72) 48%,
-      rgba(0,0,0,0.62) 48%,
-      rgba(0,0,0,0.58) 50.5%,
-
-      /* Band 2 */
-      rgba(0,0,0,0.56) 50.5%,
-      rgba(0,0,0,0.48) 52.5%,
-      rgba(0,0,0,0.40) 52.5%,
-      rgba(0,0,0,0.36) 55%,
-
-      /* Band 3 */
-      rgba(0,0,0,0.35) 55%,
-      rgba(0,0,0,0.28) 57%,
-      rgba(0,0,0,0.22) 57%,
-      rgba(0,0,0,0.19) 59.5%,
-
-      /* Band 4 */
-      rgba(0,0,0,0.18) 59.5%,
-      rgba(0,0,0,0.14) 61.5%,
-      rgba(0,0,0,0.09) 61.5%,
-      rgba(0,0,0,0.07) 64%,
-
-      /* Band 5 */
-      rgba(0,0,0,0.07) 64%,
-      rgba(0,0,0,0.04) 66.5%,
-      rgba(0,0,0,0.03) 66.5%,
-      rgba(0,0,0,0.02) 68.5%,
-
-      /* Band 6 */
-      rgba(0,0,0,0.02) 68.5%,
-      rgba(0,0,0,0.01) 70.5%,
-      rgba(0,0,0,0.004) 70.5%,
-      rgba(0,0,0,0.002) 73%,
-
-      /* Band 7 */
-      rgba(0,0,0,0.002) 73%,
-      rgba(0,0,0,0.001) 75%,
-      transparent 75%,
-      transparent 77.5%,
-
-      /* Band 8 outermost — barely visible, card body */
-      transparent 77.5%,
-      transparent 100%
+      transparent 78%,
+      var(--theme-primary-glow) 79%,
+      rgba(80, 65, 30, 0.04) 80%,
+      transparent 81%
     ),
-    /* Theme glow accent lines between bands */
+    /* Ring 6 — outer brass highlight */
     radial-gradient(circle at center,
-      transparent 0%, transparent 47.5%,
-      var(--theme-primary-glow) 48%, transparent 49%,
-      transparent 52%,
-      var(--theme-primary-glow) 52.5%, transparent 53.5%,
-      transparent 56.5%,
-      var(--theme-primary-glow) 57%, transparent 58%,
-      transparent 61%,
-      var(--theme-primary-glow) 61.5%, transparent 62.5%,
-      transparent 65.5%,
-      var(--theme-primary-glow) 66%, transparent 67%,
-      transparent 70%,
-      var(--theme-primary-glow) 70.5%, transparent 71.5%,
-      transparent 74.5%,
-      var(--theme-primary-glow) 75%, transparent 76%
+      transparent 0%,
+      transparent 68%,
+      var(--theme-primary-glow) 69%,
+      rgba(60, 50, 25, 0.12) 70%,
+      var(--theme-primary-glow) 71%,
+      transparent 72%
+    ),
+    /* Ring 5 — mid-outer groove */
+    radial-gradient(circle at center,
+      transparent 0%,
+      transparent 59%,
+      rgba(30, 25, 12, 0.15) 60%,
+      var(--theme-primary-glow) 61%,
+      rgba(40, 32, 16, 0.12) 62%,
+      transparent 63%
+    ),
+    /* Ring 4 — deepening */
+    radial-gradient(circle at center,
+      transparent 0%,
+      transparent 50%,
+      rgba(20, 16, 8, 0.2) 51%,
+      rgba(100, 85, 40, 0.08) 52%,
+      rgba(30, 24, 10, 0.18) 53%,
+      transparent 54%
+    ),
+    /* Ring 3 — inner transition */
+    radial-gradient(circle at center,
+      transparent 0%,
+      transparent 42%,
+      rgba(10, 8, 4, 0.25) 43%,
+      var(--theme-primary-glow) 44%,
+      rgba(15, 12, 6, 0.22) 45%,
+      transparent 46%
+    ),
+    /* Ring 2 — near the aperture edge */
+    radial-gradient(circle at center,
+      transparent 0%,
+      transparent 35%,
+      rgba(6, 4, 2, 0.35) 36%,
+      rgba(60, 50, 25, 0.05) 37%,
+      rgba(8, 6, 3, 0.3) 38%,
+      transparent 39%
+    ),
+    /* Ring 1 — innermost ring, deepest recess */
+    radial-gradient(circle at center,
+      transparent 0%,
+      transparent 29%,
+      rgba(3, 2, 1, 0.45) 30%,
+      rgba(40, 30, 15, 0.04) 31%,
+      rgba(4, 3, 2, 0.4) 32%,
+      transparent 33%
+    ),
+    /* Depth fill: clear center viewport, darkens outward to frame the starfield */
+    radial-gradient(circle at center,
+      transparent 0%,
+      transparent 25%,
+      rgba(0, 0, 0, 0.08) 35%,
+      rgba(0, 0, 0, 0.25) 50%,
+      rgba(0, 0, 0, 0.5) 65%,
+      rgba(0, 0, 0, 0.7) 80%
     );
 }
 
@@ -844,10 +848,19 @@
   );
   pointer-events: none;
   /* Only show hatching in the ring zone, not over the starfield */
-  mask-image: radial-gradient(circle, transparent 0%, transparent 30%, black 40%, black 100%);
-  -webkit-mask-image: radial-gradient(circle, transparent 0%, transparent 30%, black 40%, black 100%);
+  mask-image: radial-gradient(circle at center,
+    transparent 0%,
+    transparent 30%,
+    black 35%,
+    black 100%
+  );
+  -webkit-mask-image: radial-gradient(circle at center,
+    transparent 0%,
+    transparent 30%,
+    black 35%,
+    black 100%
+  );
 }
-
 
 
 /* ---- Suit icon — floats above the portal with bob animation ---- */
