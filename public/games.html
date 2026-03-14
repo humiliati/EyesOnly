@@ -258,6 +258,15 @@
   <script src="js/theme-widget.js"></script>
   <script>if (typeof ThemeWidget !== 'undefined') ThemeWidget.initEarly();</script>
 
+  <!-- Account inventory (seeds default items on first visit) -->
+  <script src="js/account-inventory.js"></script>
+
+  <!-- Starfield for porthole magnifying glass drag -->
+  <script src="js/starfield.js"></script>
+
+  <!-- Magnifying glass drag interaction -->
+  <script src="js/magnifying-glass-drag.js"></script>
+
   <!-- Audio system for SFX -->
   <script src="js/audio-system.js?v=20260309d"></script>
 
@@ -389,6 +398,54 @@
         AudioSystem.playSFX(target.getAttribute('data-sound'));
       }
     });
+
+    /* ---- Populate decryption inventory from AccountInventory ---- */
+    (function populateInventory() {
+      if (typeof AccountInventory === 'undefined') return;
+
+      var items = AccountInventory.init();
+      var grid = document.getElementById('decryption-inventory');
+      if (!grid) return;
+
+      var SLOT_COUNT = 6;
+      var slots = grid.querySelectorAll('.games-inv-slot');
+
+      // Map account items to slots
+      items.forEach(function (item, idx) {
+        if (idx >= SLOT_COUNT || idx >= slots.length) return;
+        var slot = slots[idx];
+        var emoji = (item.meta && item.meta.emoji) || '📦';
+        var label = (item.meta && item.meta.name) || item.id;
+        var itemKey = item.id === 'ITM-200' ? 'magnifying-glass' : item.id.toLowerCase();
+
+        slot.setAttribute('data-item', itemKey);
+        slot.setAttribute('data-item-id', item.id);
+
+        var inner = slot.querySelector('.games-inv-slot-inner');
+        if (inner) {
+          inner.className = 'games-inv-slot-inner games-inv-occupied';
+          inner.innerHTML =
+            '<span class="games-inv-item-icon">' + emoji + '</span>' +
+            '<span class="games-inv-slot-label">' + label.substring(0, 10).toUpperCase() + '</span>';
+        }
+      });
+    })();
+
+    /* ---- Initialize magnifying glass drag + starfield ---- */
+    (function initMagDrag() {
+      if (typeof MagnifyingGlassDrag === 'undefined') return;
+
+      // Init starfield for porthole rendering
+      if (typeof EyesOnlyStarfield !== 'undefined' && !EyesOnlyStarfield.isRunning()) {
+        EyesOnlyStarfield.init();
+      }
+
+      // Init drag on the games content area
+      var content = document.getElementById('games-content');
+      if (content) {
+        MagnifyingGlassDrag.init(content);
+      }
+    })();
 
   })();
   </script>

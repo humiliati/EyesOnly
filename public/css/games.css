@@ -539,6 +539,41 @@
   filter: grayscale(0.3);
 }
 
+/* Scale item emoji to fill its container (desktop ~8x) */
+.games-inv-slot[data-item="magnifying-glass"] .games-inv-slot-inner {
+  position: relative;
+  overflow: hidden;
+}
+
+.games-inv-slot[data-item="magnifying-glass"] .games-inv-item-icon {
+  font-size: clamp(3em, 8vw, 5.5em);
+  filter: grayscale(0.15) drop-shadow(0 0 8px var(--phosphor-glow, rgba(28,255,155,0.2)));
+  cursor: grab;
+  transition: transform 0.2s ease, filter 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.games-inv-slot[data-item="magnifying-glass"]:hover .games-inv-item-icon {
+  transform: scale(1.08);
+  filter: grayscale(0) drop-shadow(0 0 14px var(--phosphor-glow, rgba(28,255,155,0.35)));
+}
+
+.games-inv-slot[data-item="magnifying-glass"]:active .games-inv-item-icon {
+  cursor: grabbing;
+  transform: scale(0.95);
+}
+
+.games-inv-slot[data-item="magnifying-glass"] .games-inv-slot-label {
+  position: absolute;
+  bottom: 4px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  z-index: 1;
+}
+
 .games-inv-occupied .games-inv-slot-label {
   color: var(--phosphor-dim);
   font-size: 0.52em;

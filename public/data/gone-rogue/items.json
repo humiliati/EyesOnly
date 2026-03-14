@@ -1538,6 +1538,36 @@
     "_designNote": "ENI Phase 0 primary key_ammo mitigation. Guaranteed drop from tutorial floor 0 Supply Crate near ancient snail. The 1-5 range uses seedrandom(floorSeed + 'flipper') so the grant is deterministic per floor but varies run-to-run. Average 3/floor over 5 floors. Competes with combat passives for passive slot. BLOCKED by ITEM_DROP_PIPELINE_ROADMAP.md Phases 1-3 (breakable→pickup pipeline not yet built)."
   },
   {
+    "id": "ITM-200",
+    "name": "Magnifying Glass",
+    "emoji": "🔍",
+    "type": "equipment",
+    "subtype": "investigation",
+    "rarity": "common",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "active",
+    "effects": [
+      {
+        "type": "reveal",
+        "mode": "lens"
+      }
+    ],
+    "synergyTags": [
+      "investigation",
+      "decryption",
+      "recon",
+      "platform"
+    ],
+    "description": "Standard-issue field lens. Reveals hidden details when dragged across surfaces. Persistent across all platforms.",
+    "consumeOnUse": false,
+    "tier": null,
+    "_designNote": "Platform proof-of-concept item (ITM-200 range = cross-platform persistent). Seeded in every new account localStorage, rolls into authenticated inventory on login. Bridges ARG live missions → item designer portal → shared persistent inventory → Gone Rogue deployment. In /games and terminal inventory: click+drag activates porthole lens overlay (PORTHOLE_PUZZLE_TOOLKIT.md §4). In Gone Rogue: acts as draw modifier (magnifying-glass mode via card-state-authority.js detection).",
+    "_portalCategory": "platform",
+    "_platformItem": true,
+    "_defaultAccountItem": true
+  },
+  {
     "id": "ITM-998",
     "name": "Amazon Box",
     "emoji": "📦",
