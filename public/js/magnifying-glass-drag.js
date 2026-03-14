@@ -31,6 +31,7 @@ var MagnifyingGlassDrag = (function () {
   var _startX = 0;
   var _startY = 0;
   var _dragThreshold = 6; // px before drag activates
+  var _previewEl = null;  // emoji preview element inside porthole
 
   // Porthole dimensions
   var PORTHOLE_SIZE = 160;     // px — diameter of the porthole lens
@@ -179,11 +180,67 @@ var MagnifyingGlassDrag = (function () {
   }
 
   /**
+   * Show an emoji preview inside the porthole lens.
+   * The preview appears above the starfield layer but below the vignette,
+   * so it looks like the item is visible through the porthole glass.
+   *
+   * @param {string} emoji - The emoji character(s) to display
+   */
+  function setRevealPreview(emoji) {
+    clearRevealPreview();
+    if (!_ghost) return;
+    var porthole = _ghost.querySelector('.mag-drag-porthole');
+    if (!porthole) return;
+
+    var preview = document.createElement('div');
+    preview.className = 'mag-drag-preview';
+    preview.style.cssText = [
+      'position: absolute',
+      'inset: 0',
+      'display: flex',
+      'align-items: center',
+      'justify-content: center',
+      'font-size: ' + Math.round(PORTHOLE_SIZE * 0.42) + 'px',
+      'line-height: 1',
+      'pointer-events: none',
+      'opacity: 0',
+      'transition: opacity 0.25s ease'
+    ].join(';');
+    preview.textContent = emoji;
+
+    // Insert after the starfield canvas so it sits above the starfield
+    // but below the vignette and ring overlays (DOM order = paint order).
+    // insertBefore(node, null) is equivalent to appendChild.
+    var canvas = porthole.querySelector('.starfield-window');
+    porthole.insertBefore(preview, canvas ? canvas.nextSibling : null);
+
+    _previewEl = preview;
+
+    // Trigger fade-in on next frame
+    requestAnimationFrame(function () {
+      if (_previewEl) _previewEl.style.opacity = '1';
+    });
+  }
+
+  /**
+   * Remove the emoji preview from the porthole lens.
+   */
+  function clearRevealPreview() {
+    if (_previewEl && _previewEl.parentNode) {
+      _previewEl.parentNode.removeChild(_previewEl);
+    }
+    _previewEl = null;
+  }
+
+  /**
    * End the drag interaction
    */
   function _endDrag() {
     if (!_isDragging) return;
     _isDragging = false;
+
+    // Preview element is a child of ghost and will be removed with it
+    _previewEl = null;
 
     if (_ghost) {
       _ghost.style.opacity = '0';
@@ -326,7 +383,9 @@ var MagnifyingGlassDrag = (function () {
   return {
     init: init,
     dispose: dispose,
-    isDragging: function () { return _isDragging; }
+    isDragging: function () { return _isDragging; },
+    setRevealPreview: setRevealPreview,
+    clearRevealPreview: clearRevealPreview
   };
 
 })();

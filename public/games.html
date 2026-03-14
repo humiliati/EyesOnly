@@ -601,16 +601,22 @@
           );
 
           if (inBounds) {
-            // Show glow
+            // Show glow and emoji preview inside porthole
             if (activeGlow !== slot) {
               if (activeGlow) activeGlow.classList.remove('mag-reveal-active');
               slot.classList.add('mag-reveal-active');
               activeGlow = slot;
+              if (MagnifyingGlassDrag.setRevealPreview) {
+                MagnifyingGlassDrag.setRevealPreview(config.emoji);
+              }
             }
           } else {
             if (activeGlow === slot) {
               slot.classList.remove('mag-reveal-active');
               activeGlow = null;
+              if (MagnifyingGlassDrag.clearRevealPreview) {
+                MagnifyingGlassDrag.clearRevealPreview();
+              }
             }
           }
         });
