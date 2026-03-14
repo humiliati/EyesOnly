@@ -267,6 +267,9 @@
   <!-- Magnifying glass drag interaction -->
   <script src="js/magnifying-glass-drag.js"></script>
 
+  <!-- Item popup module (reusable zoom-to-detail for inventory items) -->
+  <script src="js/item-popup.js"></script>
+
   <!-- Audio system for SFX -->
   <script src="js/audio-system.js?v=20260309d"></script>
 
@@ -445,6 +448,204 @@
       if (content) {
         MagnifyingGlassDrag.init(content);
       }
+    })();
+
+    /* ---- Register item popups ---- */
+    (function initItemPopups() {
+      if (typeof ItemPopup === 'undefined') return;
+
+      // Cypher Note #2 (pigpen cipher key — grid N-V)
+      ItemPopup.register('cypher-note-2', {
+        emoji: '\uD83D\uDCDC',
+        title: 'CYPHER NOTE #2',
+        imageSrc: '/assets/Images/Items/Cypher_Notes0-3/Cypher_Note_2.png',
+        imageAlt: 'Pigpen cipher key — grid N through V',
+        description: 'A torn page from the field manual. The pigpen cipher grid for letters N through V. Find the remaining 3 pages to complete the key.',
+        itemId: 'ITM-201'
+      });
+
+      // Bind popup clicks to the games content area
+      var content = document.getElementById('games-content');
+      if (content) {
+        ItemPopup.bind(content);
+      }
+    })();
+
+    /* ---- Magnifying glass drag-to-reveal: hidden items in empty slots ---- */
+    (function initDragReveal() {
+      if (typeof MagnifyingGlassDrag === 'undefined') return;
+
+      var REVEAL_KEY = 'eyesonly_revealed_items';
+      var REVEAL_SLOT_INDEX = 1; // slot #2 (0-indexed)
+
+      // Hidden item config for slot #2
+      var HIDDEN_ITEMS = [
+        {
+          slotIndex: REVEAL_SLOT_INDEX,
+          itemKey: 'cypher-note-2',
+          itemId: 'ITM-201',
+          emoji: '\uD83D\uDCDC',
+          label: 'CYPHER NOTE'
+        }
+      ];
+
+      function getRevealed() {
+        try {
+          var raw = localStorage.getItem(REVEAL_KEY);
+          return raw ? JSON.parse(raw) : {};
+        } catch (_) { return {}; }
+      }
+
+      function saveRevealed(revealed) {
+        try { localStorage.setItem(REVEAL_KEY, JSON.stringify(revealed)); }
+        catch (_) {}
+      }
+
+      function revealItem(config) {
+        var grid = document.getElementById('decryption-inventory');
+        if (!grid) return;
+        var slots = grid.querySelectorAll('.games-inv-slot');
+        var slot = slots[config.slotIndex];
+        if (!slot || slot.getAttribute('data-item')) return; // already occupied
+
+        // Mark as revealed
+        slot.setAttribute('data-item', config.itemKey);
+        slot.setAttribute('data-item-id', config.itemId);
+        slot.classList.add('mag-revealed');
+
+        var inner = slot.querySelector('.games-inv-slot-inner');
+        if (inner) {
+          inner.className = 'games-inv-slot-inner games-inv-occupied';
+          inner.innerHTML =
+            '<span class="games-inv-item-icon">' + config.emoji + '</span>' +
+            '<span class="games-inv-slot-label">' + config.label + '</span>';
+        }
+
+        // Persist
+        var revealed = getRevealed();
+        revealed[config.itemKey] = true;
+        saveRevealed(revealed);
+
+        // Add to account inventory
+        if (typeof AccountInventory !== 'undefined') {
+          AccountInventory.addItem({
+            id: config.itemId,
+            qty: 1,
+            meta: {
+              name: 'Cypher Note',
+              emoji: config.emoji,
+              type: 'equipment',
+              subtype: 'investigation',
+              rarity: 'uncommon',
+              platformItem: true,
+              noteIndex: 2
+            }
+          });
+        }
+
+        // SFX
+        if (window.AudioSystem && AudioSystem.playSFX) {
+          AudioSystem.playSFX('ui-04');
+        }
+      }
+
+      // Restore previously revealed items on page load
+      // Only restore if the item still exists in AccountInventory
+      // (if user incinerated it at the terminal, it's gone permanently)
+      var revealed = getRevealed();
+      HIDDEN_ITEMS.forEach(function (config) {
+        if (revealed[config.itemKey]) {
+          var stillExists = typeof AccountInventory !== 'undefined' && AccountInventory.hasItem(config.itemId);
+          if (stillExists) {
+            revealItem(config);
+          }
+          // If destroyed, leave the slot empty — no respawn
+        }
+      });
+
+      // Listen for magnifying glass drag-over on empty slots
+      // We check overlap every pointermove while dragging
+      var lastRevealCheck = 0;
+      var activeGlow = null;
+
+      document.addEventListener('pointermove', function (e) {
+        if (!window.MagnifyingGlassDrag || !MagnifyingGlassDrag.isDragging()) {
+          // Clear glow if not dragging
+          if (activeGlow) {
+            activeGlow.classList.remove('mag-reveal-active');
+            activeGlow = null;
+          }
+          return;
+        }
+
+        // Throttle to ~30fps
+        var now = Date.now();
+        if (now - lastRevealCheck < 33) return;
+        lastRevealCheck = now;
+
+        var grid = document.getElementById('decryption-inventory');
+        if (!grid) return;
+
+        // Check each hidden item's target slot for overlap with pointer
+        HIDDEN_ITEMS.forEach(function (config) {
+          if (getRevealed()[config.itemKey]) return; // already revealed
+
+          var slots = grid.querySelectorAll('.games-inv-slot');
+          var slot = slots[config.slotIndex];
+          if (!slot || slot.getAttribute('data-item')) return;
+
+          var rect = slot.getBoundingClientRect();
+          var inBounds = (
+            e.clientX >= rect.left && e.clientX <= rect.right &&
+            e.clientY >= rect.top && e.clientY <= rect.bottom
+          );
+
+          if (inBounds) {
+            // Show glow
+            if (activeGlow !== slot) {
+              if (activeGlow) activeGlow.classList.remove('mag-reveal-active');
+              slot.classList.add('mag-reveal-active');
+              activeGlow = slot;
+            }
+          } else {
+            if (activeGlow === slot) {
+              slot.classList.remove('mag-reveal-active');
+              activeGlow = null;
+            }
+          }
+        });
+      });
+
+      // On drag end (pointerup), if we're over a revealable slot, reveal it
+      document.addEventListener('pointerup', function (e) {
+        if (!activeGlow) return;
+
+        HIDDEN_ITEMS.forEach(function (config) {
+          if (getRevealed()[config.itemKey]) return;
+
+          var grid = document.getElementById('decryption-inventory');
+          if (!grid) return;
+          var slots = grid.querySelectorAll('.games-inv-slot');
+          var slot = slots[config.slotIndex];
+          if (!slot || slot !== activeGlow) return;
+
+          var rect = slot.getBoundingClientRect();
+          var inBounds = (
+            e.clientX >= rect.left && e.clientX <= rect.right &&
+            e.clientY >= rect.top && e.clientY <= rect.bottom
+          );
+
+          if (inBounds) {
+            revealItem(config);
+          }
+        });
+
+        if (activeGlow) {
+          activeGlow.classList.remove('mag-reveal-active');
+          activeGlow = null;
+        }
+      });
+
     })();
 
   })();

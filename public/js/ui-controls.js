@@ -715,8 +715,38 @@
       };
     });
 
-    // Merge inventories: persistent items first, then street items
-    var allItems = persistentInventoryItems.concat(streetInventoryItems);
+    // Get account-level persistent items (platform items: magnifying glass, cipher notes, etc.)
+    var accountInventoryItems = [];
+    if (typeof AccountInventory !== 'undefined') {
+      var accountItems = AccountInventory.getItems();
+      accountInventoryItems = accountItems.map(function(ref) {
+        var emoji = (ref.meta && ref.meta.emoji) ? ref.meta.emoji : '📦';
+        var name = (ref.meta && ref.meta.name) ? ref.meta.name : ref.id;
+        var description = (ref.meta && ref.meta.description) ? ref.meta.description : 'Platform item';
+        return {
+          id: ref.id,
+          itemId: ref.id,
+          qty: ref.qty || 1,
+          emoji: emoji,
+          name: name,
+          description: description,
+          context: 'both',
+          type: (ref.meta && ref.meta.type) ? ref.meta.type : 'equipment',
+          lifecycle: 'disposable',
+          _accountItem: true  // Flag for disposal routing
+        };
+      });
+    }
+
+    // Merge inventories: account items first, then persistent game items, then street items
+    // Deduplicate: if an account item ID already exists in persistent, skip the account copy
+    var persistentIds = {};
+    persistentInventoryItems.forEach(function(item) { if (item.id) persistentIds[item.id] = true; });
+    var dedupedAccountItems = accountInventoryItems.filter(function(item) {
+      return !persistentIds[item.id];
+    });
+
+    var allItems = dedupedAccountItems.concat(persistentInventoryItems).concat(streetInventoryItems);
 
     // Add inventory items
     allItems.forEach(function (item, index) {
@@ -1730,6 +1760,7 @@
     updateCurrency: updateCurrencyDisplay,
     updateMokInterjection: updateMokInterjection,
     enableKernelButton: enableKernelButton,
-    disableKernelButton: disableKernelButton
+    disableKernelButton: disableKernelButton,
+    populateInventory: populateInventory
   };
 })();

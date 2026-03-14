@@ -1568,6 +1568,39 @@
     "_defaultAccountItem": true
   },
   {
+    "id": "ITM-201",
+    "name": "Cypher Note",
+    "emoji": "📜",
+    "type": "equipment",
+    "subtype": "investigation",
+    "rarity": "uncommon",
+    "stackable": true,
+    "maxStack": 4,
+    "equipSlot": "active",
+    "effects": [
+      {
+        "type": "reveal",
+        "mode": "decoder"
+      }
+    ],
+    "synergyTags": [
+      "investigation",
+      "decryption",
+      "cipher",
+      "platform"
+    ],
+    "description": "Torn page from the field manual. Contains a section of the pigpen cipher key. Collect all 4 to decode intercepted messages.",
+    "consumeOnUse": false,
+    "tier": null,
+    "_designNote": "Platform item (ITM-201). Cypher Note series — 4 collectible pages forming a complete pigpen cipher key (Notes 0-3: grid A-I, X J-M, grid N-V, X W-Z). Hidden in /games inventory; revealed by magnifying glass drag-over. Popup shows the cipher image at native ~200px size. Each note maps to /assets/Images/Items/Cypher_Notes0-3/Cypher_Note_{index}.png.",
+    "_portalCategory": "platform",
+    "_platformItem": true,
+    "_popupConfig": {
+      "imagePath": "/assets/Images/Items/Cypher_Notes0-3/Cypher_Note_{index}.png",
+      "imageCount": 4
+    }
+  },
+  {
     "id": "ITM-998",
     "name": "Amazon Box",
     "emoji": "📦",

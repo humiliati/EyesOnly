@@ -430,11 +430,18 @@ const CardDisposalSystem = (function() {
         }
       }
     } else if (source === 'inventory') {
-      // Remove from GAMESTATE persistent inventory
-      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.removePersistentInventoryItem === 'function') {
-        GAMESTATE.removePersistentInventoryItem(index);
+      // Check if this is an AccountInventory platform item
+      if (data._accountItem && data.id && typeof AccountInventory !== 'undefined') {
+        // Remove from AccountInventory (permanently destroys — no respawn)
+        AccountInventory.removeItem(data.id);
+        console.log('[CardDisposalSystem] Destroyed account item:', data.id, data.name);
       } else {
-        console.error('[CardDisposalSystem] GAMESTATE.removePersistentInventoryItem not available');
+        // Remove from GAMESTATE persistent inventory
+        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.removePersistentInventoryItem === 'function') {
+          GAMESTATE.removePersistentInventoryItem(index);
+        } else {
+          console.error('[CardDisposalSystem] GAMESTATE.removePersistentInventoryItem not available');
+        }
       }
 
       // Repopulate inventory to refresh display

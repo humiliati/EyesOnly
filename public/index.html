@@ -421,6 +421,11 @@
   <!-- Theme engine: must load before main.js which routes /theme command -->
   <script src="js/theme-widget.js"></script>
 
+  <!-- Account inventory: shared persistent items across pages (loads before UI) -->
+  <script src="js/account-inventory.js"></script>
+  <!-- Item popup module (reusable zoom-to-detail for inventory items) -->
+  <script src="js/item-popup.js"></script>
+
   <!-- Phase 3: Main orchestrator + UI chrome (sync, needs Phase 1) -->
   <script src="js/main.js"></script>
   <script src="js/mok-ux.js"></script>
