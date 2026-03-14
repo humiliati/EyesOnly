@@ -568,13 +568,13 @@ const SplashScreen = (() => {
     // --- Main star layers (varied drift directions fix the "diagonal snow" look) ---
     var layerDefs = [
       // Deep dust: many faint single-pixel twinklers — very slow, nearly stationary
-      { count: 600, rMin: 0.3, rMax: 0.5, speed: 0.00003, driftAngle: 0.2,  scale: 0.3, opacity: 0.25, twinkle: true  },
+      { count: 900, rMin: 0.3, rMax: 0.6, speed: 0.00003, driftAngle: 0.2,  scale: 0.4, opacity: 0.45, twinkle: true  },
       // Mid-field: small stars with gentle varied drift
-      { count: 120, rMin: 0.4, rMax: 0.7, speed: 0.00012, driftAngle: 1.1,  scale: 0.5, opacity: 0.45, twinkle: true  },
+      { count: 200, rMin: 0.5, rMax: 0.9, speed: 0.00012, driftAngle: 1.1,  scale: 0.6, opacity: 0.65, twinkle: true  },
       // Bright stars: visible with soft glow halos
-      { count: 45,  rMin: 0.6, rMax: 1.2, speed: 0.00025, driftAngle: 2.5,  scale: 0.8, opacity: 0.7,  twinkle: true  },
+      { count: 70,  rMin: 0.7, rMax: 1.4, speed: 0.00025, driftAngle: 2.5,  scale: 0.9, opacity: 0.85, twinkle: true  },
       // Foreground: few prominent bright stars
-      { count: 15,  rMin: 1.0, rMax: 1.8, speed: 0.0005,  driftAngle: 3.8,  scale: 1.1, opacity: 0.85, twinkle: false },
+      { count: 25,  rMin: 1.2, rMax: 2.0, speed: 0.0005,  driftAngle: 3.8,  scale: 1.2, opacity: 0.95, twinkle: false },
     ];
 
     _starfield.layers = layerDefs.map(function (def) {
@@ -712,13 +712,13 @@ const SplashScreen = (() => {
     var H = mc.height;
 
     // --- Paint master starfield across entire screen ---
-    ctx.fillStyle = '#020112';
+    ctx.fillStyle = '#04031a';
     ctx.fillRect(0, 0, W, H);
 
-    // Deep space ambient: subtle blue-violet gradient
+    // Deep space ambient: subtle blue-violet gradient (visible nebula glow)
     var grd = ctx.createRadialGradient(W * 0.35, H * 0.4, 0, W * 0.35, H * 0.4, Math.max(W, H) * 0.6);
-    grd.addColorStop(0,   'rgba(15, 8, 35, 0.2)');
-    grd.addColorStop(0.4, 'rgba(8, 4, 20, 0.1)');
+    grd.addColorStop(0,   'rgba(20, 12, 50, 0.3)');
+    grd.addColorStop(0.4, 'rgba(12, 6, 30, 0.18)');
     grd.addColorStop(1,   'rgba(0, 0, 0, 0)');
     ctx.fillStyle = grd;
     ctx.fillRect(0, 0, W, H);
@@ -889,11 +889,11 @@ const SplashScreen = (() => {
 
       pctx.drawImage(mc, srcX, srcY, srcW, srcH, 0, 0, cw, ch);
 
-      // Vignette: gentle fade at edges, keep center clear for star visibility
-      var vig = pctx.createRadialGradient(cw / 2, ch / 2, cw * 0.35, cw / 2, ch / 2, cw * 0.5);
+      // Vignette: soft fade only at extreme edges — keep stars visible across porthole
+      var vig = pctx.createRadialGradient(cw / 2, ch / 2, cw * 0.38, cw / 2, ch / 2, cw * 0.5);
       vig.addColorStop(0,   'rgba(0, 0, 0, 0)');
-      vig.addColorStop(0.6, 'rgba(4, 3, 8, 0.3)');
-      vig.addColorStop(1,   'rgba(10, 8, 16, 0.85)');
+      vig.addColorStop(0.7, 'rgba(4, 3, 8, 0.12)');
+      vig.addColorStop(1,   'rgba(10, 8, 16, 0.45)');
       pctx.fillStyle = vig;
       pctx.fillRect(0, 0, cw, ch);
     });

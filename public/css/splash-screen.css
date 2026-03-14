@@ -723,9 +723,11 @@
 
 
 /* ---- Coin artwork — large centered suit symbol with knurled dead-space ---- */
-/* Artwork area: ~35% of card height — contains starfield portal + rings + suit icon */
+/* Artwork area: ~48% of card height — contains starfield portal + rings + suit icon
+   Closer to 1:1 ratio (card-width : artwork-height) to eliminate dead space
+   between porthole frame and action buttons below. */
 .coin-artwork {
-  flex: 0 1 35%;
+  flex: 0 1 48%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -738,8 +740,8 @@
 /* ---- Starfield window — circular canvas aperture into shared star volume ---- */
 .starfield-window {
   position: absolute;
-  /* Size: circular, centered, ~65% of artwork width */
-  width: 70%;
+  /* Size: circular, centered, ~80% of artwork width for fuller porthole */
+  width: 82%;
   aspect-ratio: 1;
   border-radius: 50%;
   z-index: 0;
