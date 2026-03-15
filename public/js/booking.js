@@ -53,6 +53,21 @@
         }
       }
     }
+
+    // Pre-fill group size from splash screen decoder wheel
+    try {
+      var prefillGroup = sessionStorage.getItem('eo_group_size');
+      if (prefillGroup) {
+        var playersInput = document.getElementById('bf-players');
+        if (playersInput) {
+          playersInput.value = prefillGroup;
+        }
+        sessionStorage.removeItem('eo_group_size');
+      }
+    } catch (_) {}
+
+    // Clean up price storage (used by splash screen, not needed here)
+    try { sessionStorage.removeItem('eo_price'); } catch (_) {}
   }
 
   /* ---- Update player count hint based on scenario ---- */

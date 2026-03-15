@@ -247,9 +247,9 @@ const SplashScreen = (() => {
     if (isBookable) {
       bottomStrip = `
         <div class="coin-wheel-strip">
-          <div class="coin-wheel" data-wheel="price" data-mission="${mission.id}">
+          <div class="coin-wheel" data-wheel="price" data-mission="${mission.id}" tabindex="-1" inputmode="none">
             <div class="coin-wheel-frame">
-              <div class="coin-wheel-track" id="wheel-price-${mission.id}">
+              <div class="coin-wheel-track" id="wheel-price-${mission.id}" tabindex="-1" inputmode="none">
                 <div class="coin-wheel-val coin-wheel-prev"></div>
                 <div class="coin-wheel-val coin-wheel-current">$${price}</div>
                 <div class="coin-wheel-val coin-wheel-next"></div>
@@ -257,9 +257,9 @@ const SplashScreen = (() => {
             </div>
             <div class="coin-wheel-ctx">${groupSize} players</div>
           </div>
-          <div class="coin-wheel" data-wheel="group" data-mission="${mission.id}">
+          <div class="coin-wheel" data-wheel="group" data-mission="${mission.id}" tabindex="-1" inputmode="none">
             <div class="coin-wheel-frame">
-              <div class="coin-wheel-track" id="wheel-group-${mission.id}">
+              <div class="coin-wheel-track" id="wheel-group-${mission.id}" tabindex="-1" inputmode="none">
                 <div class="coin-wheel-val coin-wheel-prev"></div>
                 <div class="coin-wheel-val coin-wheel-current">${groupSize}</div>
                 <div class="coin-wheel-val coin-wheel-next"></div>
@@ -438,6 +438,11 @@ const SplashScreen = (() => {
         if (dismissed || _activeWheelPointerId >= 0) return;
         e.preventDefault();
         e.stopPropagation();
+
+        // Dismiss virtual keyboard on mobile by blurring any focused element
+        if (document.activeElement && document.activeElement !== document.body) {
+          try { document.activeElement.blur(); } catch (_) {}
+        }
 
         dragStartY = e.clientY;
         dragAccum = 0;

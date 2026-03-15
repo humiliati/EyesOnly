@@ -1449,11 +1449,11 @@
   .splash-dossier.coin-card:nth-child(4) { transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-30px) translateX(20px); z-index: 1; margin: 0; }
   .splash-dossier.coin-card.coin-card-hovered { transform: perspective(800px) rotateY(0deg) rotateX(2deg) translateY(-20px) translateX(0px) scale(1.03) !important; z-index: 10 !important; }
 
-  /* ----- 3-COLUMN GRID LAYOUT ----- */
-  /* Col 1 (72px): artwork porthole  |  Col 2 (1fr): title+desc  |  Col 3 (70px): btn+wheels/tags */
+  /* ----- 3-COLUMN GRID LAYOUT — balanced thirds ----- */
+  /* Col 1: artwork porthole  |  Col 2: title+desc  |  Col 3: btn+wheels/tags */
   .coin-border-inner {
     display: grid !important;
-    grid-template-columns: 72px 1fr 70px;
+    grid-template-columns: 30% 1fr 28%;
     grid-template-rows: auto 1fr;
     align-items: stretch;
     flex-direction: unset !important;
@@ -1517,16 +1517,16 @@
     overflow: hidden;
   }
   .coin-book-btn {
-    padding: 3px 4px;
-    min-height: 28px;
+    padding: 5px 6px;
+    min-height: 36px;
     width: 100%;
     justify-content: center;
     box-sizing: border-box;
-    gap: 1px;
+    gap: 2px;
   }
-  .coin-book-label    { font-size: 9px; letter-spacing: 0.05em; }
-  .coin-book-dot      { font-size: 9px; margin: 0; }
-  .coin-book-duration { font-size: 8px; letter-spacing: 0.03em; }
+  .coin-book-label    { font-size: 10px; letter-spacing: 0.05em; }
+  .coin-book-dot      { font-size: 10px; margin: 0; }
+  .coin-book-duration { font-size: 9px; letter-spacing: 0.03em; }
 
   /* Col 3 row 2: Decoder wheels — stacked vertically */
   .coin-wheel-strip {
@@ -1556,17 +1556,23 @@
   }
   .coin-wheel-frame {
     width: 100%;
-    height: 21px;
+    height: 24px;
     touch-action: none;
     flex-shrink: 0;
     box-sizing: border-box;
   }
-  .coin-wheel-track   { touch-action: none; }
-  .coin-wheel-val     { height: 8px; line-height: 8px; }
-  .coin-wheel-current { font-size: 9px; }
-  .coin-wheel-prev, .coin-wheel-next { font-size: 6px; }
+  .coin-wheel-track {
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .coin-wheel-track:focus { outline: none; }
+  .coin-wheel-val     { height: 10px; line-height: 10px; }
+  .coin-wheel-current { font-size: 11px; }
+  .coin-wheel-prev, .coin-wheel-next { font-size: 7px; }
   .coin-wheel-ctx {
-    font-size: 5.5px;
+    font-size: 6.5px;
     text-align: center;
     text-transform: uppercase;
     letter-spacing: 0.03em;
@@ -1600,9 +1606,9 @@
     letter-spacing: 0.05em;
   }
 
-  /* Porthole: bigger suit icon to fill the 72px column */
-  .coin-suit-large  { font-size: 40px; animation: suit-bob 5s ease-in-out infinite; }
-  .starfield-window { width: 84%; }
+  /* Porthole: suit icon scaled for ~30% column */
+  .coin-suit-large  { font-size: clamp(44px, 12vw, 56px); animation: suit-bob 5s ease-in-out infinite; }
+  .starfield-window { width: 90%; }
 
   /* Silhouettes */
   .splash-sil-bottom { width: 50vw; height: 75vh; }
@@ -1624,13 +1630,13 @@
   .splash-dossier.coin-card:nth-child(2) { transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-10px) translateX(6px); }
   .splash-dossier.coin-card:nth-child(3) { transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-20px) translateX(12px); }
   .splash-dossier.coin-card:nth-child(4) { transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-30px) translateX(18px); }
-  .coin-border-inner { grid-template-columns: 64px 1fr 64px; }
-  .coin-artwork { min-width: 64px; }
-  .coin-suit-large  { font-size: 32px; }
-  .starfield-window { width: 78%; }
-  .coin-wheel-frame { height: 20px; }
-  .coin-wheel-current { font-size: 9px; }
-  .coin-book-btn { min-height: 25px; }
+  .coin-border-inner { grid-template-columns: 28% 1fr 26%; }
+  .coin-artwork { min-width: unset; }
+  .coin-suit-large  { font-size: clamp(36px, 10vw, 46px); }
+  .starfield-window { width: 86%; }
+  .coin-wheel-frame { height: 22px; }
+  .coin-wheel-current { font-size: 10px; }
+  .coin-book-btn { min-height: 32px; }
   .coin-book-label { font-size: 9px; }
   .coin-book-duration { font-size: 8px; }
   .splash-title { letter-spacing: 0.15em; }
