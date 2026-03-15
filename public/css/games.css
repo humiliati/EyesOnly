@@ -184,7 +184,7 @@ html, body {
 }
 
 .games-row-body.games-row-body-open {
-  max-height: 1200px;
+  max-height: 660px;
   padding: 8px 12px 12px;
   border-top: 1px solid var(--panel-border-soft);
 }
@@ -308,12 +308,13 @@ html, body {
 .games-inventory-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  gap: 5px;
 }
 
 .games-inv-slot {
   aspect-ratio: 5 / 4;      /* landscape — reduces vertical dead-space */
   cursor: pointer;
+  max-width: 120px;          /* ~20% shrink cap on desktop */
 }
 
 .games-inv-slot-inner {
@@ -323,8 +324,8 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  padding: 6px 4px 4px;
+  gap: 1px;
+  padding: 4px 3px 3px;
   border: 1px solid var(--panel-border-soft);
   border-radius: 4px;
   background: rgba(0, 0, 0, 0.35);
@@ -338,7 +339,7 @@ html, body {
 }
 
 .games-inv-slot-num {
-  font-size: 0.7em;
+  font-size: 0.6em;
   color: var(--phosphor-dim);
   opacity: 0.5;
   letter-spacing: 0.1em;
@@ -349,7 +350,7 @@ html, body {
 }
 
 .games-inv-slot-label {
-  font-size: 0.55em;
+  font-size: 0.45em;
   color: #444;
   letter-spacing: 0.15em;
   text-transform: uppercase;
@@ -673,7 +674,7 @@ html, body {
 }
 
 .games-inv-item-icon {
-  font-size: clamp(2em, 6vw, 3.2em);
+  font-size: clamp(1.6em, 4.8vw, 2.5em);
   line-height: 1;
   filter: grayscale(0.3);
   flex: 1;
@@ -690,7 +691,7 @@ html, body {
 }
 
 .games-inv-slot[data-item="magnifying-glass"] .games-inv-item-icon {
-  font-size: clamp(3em, 8vw, 5.5em);
+  font-size: clamp(2.4em, 6.4vw, 4.4em);
   filter: grayscale(0.15) drop-shadow(0 0 8px var(--phosphor-glow, rgba(28,255,155,0.2)));
   cursor: grab;
   transition: transform 0.2s ease, filter 0.2s ease;
