@@ -26,6 +26,7 @@ body {
   font-family: var(--theme-font-data, 'Courier New', monospace);
   background: var(--bg, #000);
   color: var(--phosphor);
+  background: #0c0e0c;
 }
 
 /* Let the page scroll INSIDE the CRT frame instead of spilling off-screen */
@@ -52,31 +53,36 @@ body {
 
 .highscore-container::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.35);
-  border-left: 1px solid var(--panel-border);
+  border-left: 1px solid rgba(100, 88, 50, 0.12);
 }
 
 .highscore-container::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, var(--phosphor-glow), var(--phosphor-dim));
-  border: 1px solid var(--panel-border);
+  background: linear-gradient(180deg, rgba(120, 100, 50, 0.4), rgba(80, 68, 30, 0.3));
+  border: 1px solid rgba(100, 88, 50, 0.2);
   border-radius: 10px;
-  box-shadow: 0 0 10px var(--phosphor-glow);
 }
 
 .highscore-container::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, var(--phosphor-dim), var(--phosphor));
-  border-color: var(--phosphor);
+  background: linear-gradient(180deg, rgba(160, 140, 70, 0.5), rgba(100, 88, 50, 0.4));
+  border-color: rgba(140, 120, 60, 0.4);
 }
 
 
-/* Header */
+/* Header — metal-framed bezel */
 .highscore-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 1rem 2rem;
-  background: linear-gradient(180deg, var(--panel-bg, #0a2a1f) 0%, var(--bg, #000) 100%);
-  border-bottom: 2px solid var(--phosphor);
-  box-shadow: 0 0 20px var(--phosphor-glow);
+  background:
+    linear-gradient(90deg, rgba(30, 26, 16, 0.2), rgba(20, 18, 10, 0.1) 50%, rgba(30, 26, 16, 0.2)),
+    linear-gradient(180deg, var(--panel-bg, #0a2a1f) 0%, var(--bg, #000) 100%);
+  border-bottom: 2px solid;
+  border-image: linear-gradient(90deg, #3a3220, #7a6c48 30%, #5a5038 50%, #7a6c48 70%, #3a3220) 1;
+  box-shadow:
+    inset 0 1px 0 rgba(180, 160, 100, 0.06),
+    0 2px 12px rgba(0, 0, 0, 0.4),
+    0 0 20px var(--phosphor-glow);
 }
 
 .header-title {
@@ -93,25 +99,27 @@ body {
 
 .title-sub {
   font-size: 0.9rem;
-  color: #888;
+  color: rgba(160, 140, 90, 0.5);
   letter-spacing: 0.05em;
 }
 
 .back-btn {
-  background: transparent;
-  border: 2px solid var(--phosphor);
-  color: var(--phosphor);
+  background: linear-gradient(175deg, rgba(30, 26, 16, 0.5), rgba(20, 18, 10, 0.3));
+  border: 1px solid rgba(100, 88, 50, 0.3);
+  color: rgba(200, 180, 120, 0.7);
   padding: 0.5rem 1.5rem;
   font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: inset 0 1px 0 rgba(180, 160, 100, 0.06);
 }
 
 .back-btn:hover {
-  background: var(--phosphor);
-  color: var(--bg, #000);
-  box-shadow: 0 0 10px var(--phosphor);
+  background: linear-gradient(175deg, rgba(50, 44, 26, 0.6), rgba(30, 26, 16, 0.4));
+  border-color: rgba(140, 120, 60, 0.5);
+  color: rgba(220, 200, 140, 0.9);
+  box-shadow: 0 0 12px rgba(180, 160, 80, 0.15), inset 0 1px 0 rgba(180, 160, 100, 0.1);
 }
 
 /* Container */
@@ -121,20 +129,20 @@ body {
   padding: 0 2rem;
 }
 
-/* Tab Navigation */
+/* Tab Navigation — brass-accented */
 .tab-navigation {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
-  border-bottom: 2px solid var(--panel-border);
+  border-bottom: 2px solid rgba(100, 88, 50, 0.25);
 }
 
 .tab-btn {
   flex: 1;
-  background: var(--bg, #0a0a0a);
-  border: 2px solid var(--panel-border);
+  background: linear-gradient(180deg, rgba(20, 18, 10, 0.4), rgba(12, 14, 12, 0.9));
+  border: 1px solid rgba(100, 88, 50, 0.2);
   border-bottom: none;
-  color: #666;
+  color: rgba(160, 140, 90, 0.5);
   padding: 1rem;
   font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 1rem;
@@ -159,19 +167,20 @@ body {
 }
 
 .tab-btn:hover {
-  color: var(--phosphor);
-  border-color: var(--phosphor);
+  color: rgba(200, 180, 120, 0.8);
+  border-color: rgba(140, 120, 60, 0.4);
+  background: linear-gradient(180deg, rgba(30, 26, 16, 0.5), rgba(16, 18, 14, 0.9));
 }
 
 .tab-btn.active {
-  background: var(--panel-bg, #0d2a1f);
-  border-color: var(--phosphor);
+  background: linear-gradient(180deg, rgba(30, 26, 16, 0.5), var(--panel-bg, #0d2a1f));
+  border-color: rgba(140, 120, 60, 0.4);
   color: var(--phosphor);
-  box-shadow: inset 0 0 10px var(--phosphor-glow);
+  box-shadow: inset 0 0 10px var(--phosphor-glow), inset 0 1px 0 rgba(180, 160, 100, 0.08);
 }
 
 .tab-btn.active::before {
-  background: linear-gradient(90deg, transparent, var(--phosphor), transparent);
+  background: linear-gradient(90deg, transparent, rgba(180, 160, 100, 0.4), var(--phosphor), rgba(180, 160, 100, 0.4), transparent);
 }
 
 .tab-icon {
@@ -183,7 +192,7 @@ body {
   letter-spacing: 0.05em;
 }
 
-/* Filters */
+/* Filters — brass-accented */
 .filters {
   margin-bottom: 1.5rem;
   display: flex;
@@ -193,16 +202,17 @@ body {
 .filter-group {
   display: flex;
   gap: 0.5rem;
-  background: var(--bg, #0a0a0a);
+  background: rgba(12, 14, 12, 0.8);
   padding: 0.5rem;
-  border: 1px solid var(--panel-border);
+  border: 1px solid rgba(100, 88, 50, 0.2);
   border-radius: 4px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .filter-btn {
   background: transparent;
-  border: 1px solid var(--panel-border);
-  color: #666;
+  border: 1px solid rgba(100, 88, 50, 0.15);
+  color: rgba(160, 140, 90, 0.5);
   padding: 0.5rem 1rem;
   font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 0.9rem;
@@ -211,15 +221,16 @@ body {
 }
 
 .filter-btn:hover {
-  color: var(--phosphor);
-  border-color: var(--phosphor);
+  color: rgba(200, 180, 120, 0.8);
+  border-color: rgba(140, 120, 60, 0.4);
 }
 
 .filter-btn.active {
-  background: var(--phosphor);
-  border-color: var(--phosphor);
-  color: var(--bg, #000);
+  background: linear-gradient(175deg, rgba(40, 34, 18, 0.7), rgba(24, 20, 10, 0.5));
+  border-color: rgba(140, 120, 60, 0.5);
+  color: var(--phosphor);
   font-weight: bold;
+  box-shadow: inset 0 1px 0 rgba(180, 160, 100, 0.08);
 }
 
 /* Tab Content */
@@ -247,13 +258,16 @@ body {
   }
 }
 
-/* Leaderboard Table */
+/* Leaderboard Table — CRT content area with brass border */
 .leaderboard-table-container {
-  background: var(--bg, #0a0a0a);
-  border: 2px solid var(--phosphor);
-  border-radius: 8px;
+  background: rgba(8, 12, 8, 0.9);
+  border: 1px solid rgba(100, 88, 50, 0.25);
+  border-radius: 6px;
   padding: 1rem;
-  box-shadow: 0 0 20px var(--phosphor-glow);
+  box-shadow:
+    0 0 15px var(--phosphor-glow),
+    inset 0 1px 0 rgba(180, 160, 100, 0.04),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.3);
   overflow-x: auto;
 }
 
@@ -264,18 +278,20 @@ body {
 }
 
 .leaderboard-table thead {
-  background: var(--panel-bg, #0d2a1f);
-  border-bottom: 2px solid var(--phosphor);
+  background:
+    linear-gradient(90deg, rgba(30, 26, 16, 0.15), rgba(20, 18, 10, 0.08) 50%, rgba(30, 26, 16, 0.15)),
+    var(--panel-bg, #0d2a1f);
+  border-bottom: 2px solid rgba(100, 88, 50, 0.3);
 }
 
 .leaderboard-table th {
   padding: 0.75rem;
   text-align: left;
   font-weight: bold;
-  color: var(--phosphor);
+  color: rgba(200, 180, 120, 0.7);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  border-right: 1px solid var(--panel-border);
+  border-right: 1px solid rgba(100, 88, 50, 0.12);
 }
 
 .leaderboard-table th:last-child {
@@ -283,16 +299,16 @@ body {
 }
 
 .leaderboard-table tbody tr {
-  border-bottom: 1px solid #1a1a1a;
+  border-bottom: 1px solid rgba(100, 88, 50, 0.08);
   transition: background 0.2s ease;
 }
 
 .leaderboard-table tbody tr:hover {
-  background: var(--panel-bg, #0d2a1f);
+  background: rgba(20, 18, 10, 0.3);
 }
 
 .leaderboard-table tbody tr.top-3 {
-  background: linear-gradient(90deg, var(--panel-bg, #0d2a1f) 0%, var(--bg, #0a0a0a) 100%);
+  background: linear-gradient(90deg, rgba(30, 26, 16, 0.2) 0%, transparent 100%);
 }
 
 .leaderboard-table tbody tr.rank-1 {
@@ -309,7 +325,8 @@ body {
 
 .leaderboard-table td {
   padding: 0.75rem;
-  border-right: 1px solid #1a1a1a;
+  border-right: 1px solid rgba(100, 88, 50, 0.06);
+  color: rgba(220, 210, 180, 0.85);
 }
 
 .leaderboard-table td:last-child {
@@ -341,7 +358,7 @@ body {
 .stats-col {
   width: 120px;
   text-align: center;
-  color: #888;
+  color: rgba(160, 140, 90, 0.45);
 }
 
 /* Score flip animation */
@@ -364,7 +381,7 @@ body {
   }
 }
 
-/* Mode badges */
+/* Mode badges — subtle brass-bordered */
 .mode-badge {
   display: inline-block;
   padding: 0.25rem 0.75rem;
@@ -376,33 +393,40 @@ body {
 }
 
 .mode-badge.human {
-  background: var(--panel-bg, #1a4d3f);
+  background: rgba(10, 22, 16, 0.8);
   color: var(--phosphor);
-  border: 1px solid var(--phosphor);
+  border: 1px solid rgba(100, 88, 50, 0.3);
+  box-shadow: inset 0 1px 0 rgba(180, 160, 100, 0.04);
 }
 
 .mode-badge.agent {
-  background: #4d1a3f;
+  background: rgba(40, 12, 30, 0.8);
   color: #ff1c9b;
-  border: 1px solid #ff1c9b;
+  border: 1px solid rgba(100, 88, 50, 0.3);
+  box-shadow: inset 0 1px 0 rgba(180, 160, 100, 0.04);
 }
 
 /* Empty state */
 .empty-row td {
   text-align: center;
-  color: #666;
+  color: rgba(140, 120, 70, 0.35);
   padding: 2rem;
   font-style: italic;
 }
 
-/* Footer */
+/* Footer — metal-framed */
 .highscore-footer {
   margin-top: 2rem;
-  padding: 1rem;
+  padding: 1rem 2rem;
   text-align: center;
-  color: #666;
   font-size: 0.85rem;
-  border-top: 1px solid var(--panel-border);
+  background:
+    linear-gradient(90deg, rgba(30, 26, 16, 0.15), rgba(20, 18, 10, 0.08) 50%, rgba(30, 26, 16, 0.15)),
+    linear-gradient(0deg, #1a160e 0%, #221e16 60%, #2e2820 100%);
+  border-top: 2px solid;
+  border-image: linear-gradient(90deg, #3a3220, #7a6c48 30%, #5a5038 50%, #7a6c48 70%, #3a3220) 1;
+  box-shadow: inset 0 1px 0 rgba(180, 160, 100, 0.06);
+  color: rgba(160, 140, 90, 0.5);
 }
 
 .highscore-footer p {
@@ -410,12 +434,12 @@ body {
 }
 
 .footer-icon {
-  color: var(--phosphor);
+  color: rgba(200, 180, 120, 0.7);
   font-weight: bold;
 }
 
 .footer-copyright {
-  color: #444;
+  color: rgba(120, 100, 60, 0.4);
 }
 
 /* Scanlines effect (subtle) */

@@ -1,6 +1,7 @@
 /* ============================================================
    EYES ONLY — Booking Page
-   CRT-themed dark layout for mission scenario booking.
+   Metal-frame bezel + CRT content aesthetic.
+   Nav/footer = brass monitor bezel. Content = CRT phosphor screen.
    ============================================================ */
 
 /* ---- Reset & base ---- */
@@ -24,8 +25,8 @@ html, body {
 
 body {
   font-family: var(--theme-font-data, 'Courier New', monospace);
-  background: var(--bg, #0a0a0f);
-  color: #d0d0d0;
+  background: #0c0e0c;
+  color: #c8d0c8;
   line-height: 1.6;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -34,7 +35,10 @@ body {
 a { color: var(--phosphor); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-/* ---- Nav bar (shared) ---- */
+
+/* ============================================================
+   METAL FRAME — Nav bar (brass monitor bezel)
+   ============================================================ */
 .eo-nav {
   position: sticky;
   top: 0;
@@ -42,40 +46,53 @@ a:hover { text-decoration: underline; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 24px;
-  background: rgba(10, 10, 15, 0.95);
-  border-bottom: 1px solid var(--panel-border);
+  padding: 10px 24px;
+  background: linear-gradient(180deg, #2e2820 0%, #221e16 50%, #1a160e 100%);
+  border-bottom: 2px solid;
+  border-image: linear-gradient(90deg, #3a3220, #7a6c48 30%, #5a5038 50%, #7a6c48 70%, #3a3220) 1;
   backdrop-filter: blur(8px);
+  box-shadow:
+    inset 0 1px 0 rgba(180, 160, 100, 0.1),
+    0 2px 8px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(0, 0, 0, 0.3);
 }
 
 .eo-nav-brand {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: bold;
-  color: var(--phosphor);
-  letter-spacing: 0.2em;
+  color: rgba(220, 200, 140, 0.9);
+  letter-spacing: 0.25em;
   text-transform: uppercase;
-  text-shadow: 0 0 8px var(--phosphor-glow);
+  text-shadow:
+    0 1px 0 rgba(60, 50, 25, 0.8),
+    0 0 10px rgba(180, 160, 80, 0.15);
+  font-family: var(--theme-font-display, Georgia, serif);
 }
 
 .eo-nav-links { display: flex; gap: 20px; }
 
 .eo-nav-link {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
-  letter-spacing: 0.1em;
+  font-size: 11px;
+  color: rgba(180, 160, 100, 0.55);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   transition: color 0.2s;
 }
-.eo-nav-link:hover { color: var(--phosphor); text-decoration: none; }
-.eo-nav-link.eo-nav-active { color: var(--phosphor); }
+.eo-nav-link:hover { color: rgba(220, 200, 140, 0.9); text-decoration: none; }
+.eo-nav-link.eo-nav-active { color: var(--phosphor); text-shadow: 0 0 6px var(--phosphor-glow); }
 
-/* ---- Hero ---- */
+
+/* ============================================================
+   HERO — CRT screen header
+   ============================================================ */
 .booking-hero {
   position: relative;
-  padding: 80px 24px 60px;
+  padding: 70px 24px 50px;
   text-align: center;
-  background: linear-gradient(180deg, var(--bg, #0a0a0f) 0%, var(--bg-screen, #0d1117) 100%);
-  border-bottom: 1px solid var(--panel-border);
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 30%, rgba(20, 40, 20, 0.15), transparent 70%),
+    linear-gradient(180deg, #0a0e0a 0%, #080c08 100%);
+  border-bottom: 1px solid rgba(100, 88, 50, 0.2);
   overflow: hidden;
 }
 
@@ -91,16 +108,16 @@ a:hover { text-decoration: underline; }
 
 .booking-hero-title {
   font-size: clamp(28px, 5vw, 48px);
-  color: #fff;
+  color: rgba(220, 240, 220, 0.95);
   font-weight: bold;
   letter-spacing: 0.06em;
   margin-bottom: 12px;
-  text-shadow: 0 0 20px var(--phosphor-glow);
+  text-shadow: 0 0 20px var(--phosphor-glow), 0 0 40px rgba(51, 255, 51, 0.05);
 }
 
 .booking-hero-sub {
   font-size: clamp(13px, 2vw, 16px);
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(200, 210, 200, 0.5);
   max-width: 600px;
   margin: 0 auto;
 }
@@ -110,18 +127,21 @@ a:hover { text-decoration: underline; }
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.04) 2px, rgba(0, 0, 0, 0.04) 4px);
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.03) 2px, rgba(0, 0, 0, 0.03) 4px);
 }
 
-/* ---- Scenario sections ---- */
+
+/* ============================================================
+   SCENARIO SECTIONS — CRT content panels
+   ============================================================ */
 .scenario-section {
-  padding: 60px 24px;
+  padding: 50px 24px;
   max-width: 1100px;
   margin: 0 auto;
 }
 
 .scenario-section-alt {
-  background: var(--phosphor-glow);
+  background: rgba(20, 18, 10, 0.3);
 }
 
 .scenario-badge {
@@ -131,13 +151,13 @@ a:hover { text-decoration: underline; }
   text-transform: uppercase;
   margin-bottom: 20px;
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--panel-border);
+  border-bottom: 1px solid rgba(100, 88, 50, 0.25);
   display: inline-block;
 }
 
 .scenario-badge-alt {
   color: rgba(201, 168, 76, 0.6);
-  border-color: rgba(201, 168, 76, 0.15);
+  border-color: rgba(201, 168, 76, 0.2);
 }
 
 .scenario-grid {
@@ -161,7 +181,7 @@ a:hover { text-decoration: underline; }
 
 .scenario-title {
   font-size: clamp(24px, 3.5vw, 36px);
-  color: #fff;
+  color: rgba(230, 240, 230, 0.95);
   font-weight: bold;
   margin-bottom: 4px;
 }
@@ -170,16 +190,17 @@ a:hover { text-decoration: underline; }
   font-size: 15px;
   color: var(--phosphor);
   margin-bottom: 16px;
+  text-shadow: 0 0 8px var(--phosphor-glow);
 }
 
 .scenario-desc {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(200, 210, 200, 0.65);
   line-height: 1.7;
   margin-bottom: 24px;
 }
 
-/* Spec grid */
+/* Spec grid — CRT data readout panels */
 .scenario-specs {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -189,15 +210,16 @@ a:hover { text-decoration: underline; }
 
 .scenario-spec {
   padding: 12px 14px;
-  border: 1px solid var(--panel-border);
+  border: 1px solid rgba(100, 88, 50, 0.2);
   border-radius: 6px;
-  background: var(--phosphor-glow);
+  background: rgba(8, 12, 8, 0.6);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .spec-label {
   display: block;
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(180, 160, 100, 0.5);
   letter-spacing: 0.15em;
   text-transform: uppercase;
   margin-bottom: 4px;
@@ -205,20 +227,20 @@ a:hover { text-decoration: underline; }
 
 .spec-value {
   font-size: 16px;
-  color: #fff;
+  color: rgba(220, 240, 220, 0.95);
   font-weight: bold;
 }
 
 .spec-note {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(180, 180, 180, 0.4);
   font-weight: normal;
 }
 
 /* Includes */
 .includes-heading {
   font-size: 12px;
-  color: var(--phosphor-dim);
+  color: rgba(180, 160, 100, 0.6);
   letter-spacing: 0.15em;
   text-transform: uppercase;
   margin-bottom: 10px;
@@ -231,7 +253,7 @@ a:hover { text-decoration: underline; }
 
 .includes-list li {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(200, 210, 200, 0.6);
   padding: 5px 0 5px 20px;
   position: relative;
 }
@@ -243,16 +265,16 @@ a:hover { text-decoration: underline; }
   color: var(--phosphor);
 }
 
-/* Book button */
+/* Book button — brass-bordered CTA */
 .scenario-book-btn {
   display: inline-flex;
   align-items: center;
   gap: 12px;
   padding: 14px 28px;
-  border: 2px solid var(--phosphor);
+  border: 2px solid rgba(140, 120, 60, 0.5);
   border-radius: 6px;
-  background: var(--phosphor-glow);
-  color: var(--phosphor);
+  background: linear-gradient(175deg, rgba(30, 26, 16, 0.6) 0%, rgba(20, 18, 10, 0.8) 100%);
+  color: rgba(220, 200, 140, 0.9);
   font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 14px;
   font-weight: bold;
@@ -260,11 +282,13 @@ a:hover { text-decoration: underline; }
   text-transform: uppercase;
   cursor: pointer;
   transition: all 0.25s ease;
+  box-shadow: inset 0 1px 0 rgba(180, 160, 100, 0.08), 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .scenario-book-btn:hover {
-  background: var(--phosphor-glow);
-  box-shadow: 0 0 20px var(--phosphor-glow), 0 0 40px var(--phosphor-glow);
+  border-color: rgba(180, 160, 80, 0.7);
+  background: linear-gradient(175deg, rgba(40, 34, 18, 0.8) 0%, rgba(28, 24, 14, 0.9) 100%);
+  box-shadow: 0 0 16px rgba(180, 160, 80, 0.12), 0 2px 12px rgba(0, 0, 0, 0.4);
   transform: translateY(-2px);
 }
 
@@ -273,22 +297,24 @@ a:hover { text-decoration: underline; }
 }
 
 .scenario-book-btn-alt {
-  border-color: #c9a84c;
-  color: #c9a84c;
-  background: rgba(201, 168, 76, 0.08);
+  border-color: rgba(201, 168, 76, 0.4);
+  color: rgba(220, 190, 100, 0.9);
+  background: linear-gradient(175deg, rgba(36, 28, 12, 0.6) 0%, rgba(24, 20, 8, 0.8) 100%);
 }
 
 .scenario-book-btn-alt:hover {
-  background: rgba(201, 168, 76, 0.18);
-  box-shadow: 0 0 20px rgba(201, 168, 76, 0.2), 0 0 40px rgba(201, 168, 76, 0.1);
+  border-color: rgba(220, 190, 90, 0.6);
+  background: linear-gradient(175deg, rgba(48, 38, 16, 0.8) 0%, rgba(32, 26, 10, 0.9) 100%);
+  box-shadow: 0 0 16px rgba(201, 168, 76, 0.12), 0 2px 12px rgba(0, 0, 0, 0.4);
 }
 
 .book-btn-icon { font-size: 18px; }
 .book-btn-price {
   padding: 3px 10px;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.4);
   border-radius: 4px;
   font-size: 13px;
+  border: 1px solid rgba(100, 88, 50, 0.15);
 }
 
 /* Visual / icon column */
@@ -312,7 +338,6 @@ a:hover { text-decoration: underline; }
   overflow: hidden;
 }
 
-/* Starfield canvas — fills the circular porthole */
 .scenario-icon-wrap .starfield-window {
   position: absolute;
   width: 100%;
@@ -322,7 +347,7 @@ a:hover { text-decoration: underline; }
   pointer-events: none;
 }
 
-/* Concentric ring overlay — porthole frame with dark bands */
+/* Concentric ring overlay */
 .scenario-rings {
   position: absolute;
   inset: 0;
@@ -331,29 +356,15 @@ a:hover { text-decoration: underline; }
   border-radius: 50%;
   background:
     radial-gradient(circle at center,
-      /* Clear center — starfield visible */
-      transparent 0%,
-      transparent 42%,
-      /* Band 1 */
-      rgba(0,0,0,0.75) 42%,
-      rgba(0,0,0,0.6) 46%,
-      rgba(0,0,0,0.5) 46%,
-      rgba(0,0,0,0.4) 50%,
-      /* Band 2 */
-      rgba(0,0,0,0.35) 50%,
-      rgba(0,0,0,0.25) 54%,
-      rgba(0,0,0,0.18) 54%,
-      rgba(0,0,0,0.12) 58%,
-      /* Band 3 */
-      rgba(0,0,0,0.10) 58%,
-      rgba(0,0,0,0.06) 62%,
-      rgba(0,0,0,0.03) 62%,
-      rgba(0,0,0,0.01) 66%,
-      /* Fade to page */
-      transparent 66%,
-      transparent 100%
+      transparent 0%, transparent 42%,
+      rgba(0,0,0,0.75) 42%, rgba(0,0,0,0.6) 46%,
+      rgba(0,0,0,0.5) 46%, rgba(0,0,0,0.4) 50%,
+      rgba(0,0,0,0.35) 50%, rgba(0,0,0,0.25) 54%,
+      rgba(0,0,0,0.18) 54%, rgba(0,0,0,0.12) 58%,
+      rgba(0,0,0,0.10) 58%, rgba(0,0,0,0.06) 62%,
+      rgba(0,0,0,0.03) 62%, rgba(0,0,0,0.01) 66%,
+      transparent 66%, transparent 100%
     ),
-    /* Theme glow accent lines — green for scenario 1 */
     radial-gradient(circle at center,
       transparent 0%, transparent 43%,
       var(--phosphor-glow) 44%, transparent 45%,
@@ -368,26 +379,17 @@ a:hover { text-decoration: underline; }
     0 0 20px var(--phosphor-glow);
 }
 
-/* Scenario 2 alt rings — amber/gold accent lines */
 .scenario-rings-alt {
   background:
     radial-gradient(circle at center,
-      transparent 0%,
-      transparent 42%,
-      rgba(0,0,0,0.75) 42%,
-      rgba(0,0,0,0.6) 46%,
-      rgba(0,0,0,0.5) 46%,
-      rgba(0,0,0,0.4) 50%,
-      rgba(0,0,0,0.35) 50%,
-      rgba(0,0,0,0.25) 54%,
-      rgba(0,0,0,0.18) 54%,
-      rgba(0,0,0,0.12) 58%,
-      rgba(0,0,0,0.10) 58%,
-      rgba(0,0,0,0.06) 62%,
-      rgba(0,0,0,0.03) 62%,
-      rgba(0,0,0,0.01) 66%,
-      transparent 66%,
-      transparent 100%
+      transparent 0%, transparent 42%,
+      rgba(0,0,0,0.75) 42%, rgba(0,0,0,0.6) 46%,
+      rgba(0,0,0,0.5) 46%, rgba(0,0,0,0.4) 50%,
+      rgba(0,0,0,0.35) 50%, rgba(0,0,0,0.25) 54%,
+      rgba(0,0,0,0.18) 54%, rgba(0,0,0,0.12) 58%,
+      rgba(0,0,0,0.10) 58%, rgba(0,0,0,0.06) 62%,
+      rgba(0,0,0,0.03) 62%, rgba(0,0,0,0.01) 66%,
+      transparent 66%, transparent 100%
     ),
     radial-gradient(circle at center,
       transparent 0%, transparent 43%,
@@ -403,7 +405,7 @@ a:hover { text-decoration: underline; }
     0 0 20px rgba(201, 168, 76, 0.06);
 }
 
-/* Suit symbol — floats above the starfield portal */
+/* Suit symbol */
 .scenario-suit {
   z-index: 5;
   font-size: 56px;
@@ -441,16 +443,17 @@ a:hover { text-decoration: underline; }
 
 .visual-tag {
   font-size: 10px;
-  color: var(--phosphor-dim);
+  color: rgba(180, 160, 100, 0.55);
   letter-spacing: 0.1em;
   padding: 4px 10px;
-  border: 1px solid var(--panel-border);
+  border: 1px solid rgba(100, 88, 50, 0.2);
   border-radius: 3px;
+  background: rgba(20, 18, 10, 0.3);
 }
 
 .visual-tag-alt {
-  color: rgba(201, 168, 76, 0.6);
-  border-color: rgba(201, 168, 76, 0.15);
+  color: rgba(201, 168, 76, 0.55);
+  border-color: rgba(201, 168, 76, 0.2);
 }
 
 /* ---- Divider ---- */
@@ -466,43 +469,46 @@ a:hover { text-decoration: underline; }
 .divider-line {
   flex: 1;
   height: 1px;
-  background: rgba(255, 255, 255, 0.08);
+  background: linear-gradient(90deg, transparent, rgba(140, 120, 60, 0.2), transparent);
 }
 
 .divider-label {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.2);
+  color: rgba(180, 160, 100, 0.35);
   letter-spacing: 0.2em;
 }
 
-/* ---- Booking form section ---- */
+
+/* ============================================================
+   BOOKING FORM — Themed form fields with metal accents
+   ============================================================ */
 .booking-form-section {
-  padding: 60px 24px;
+  padding: 50px 24px;
   max-width: 750px;
   margin: 0 auto;
 }
 
 .booking-form-title {
   font-size: 24px;
-  color: #fff;
+  color: rgba(220, 240, 220, 0.95);
   margin-bottom: 8px;
   text-align: center;
 }
 
 .booking-form-sub {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(180, 180, 180, 0.45);
   margin-bottom: 30px;
   text-align: center;
 }
 
-/* Shared form structure (matches partners.css patterns) */
 .booking-form {
-  border: 1px solid var(--panel-border);
+  border: 1px solid rgba(100, 88, 50, 0.25);
   border-radius: 8px;
-  background: rgba(10, 10, 15, 0.95);
+  background: rgba(10, 12, 10, 0.95);
   padding: 30px;
   animation: bf-slide-in 0.3s ease-out;
+  box-shadow: inset 0 1px 0 rgba(180, 160, 100, 0.04), 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 @keyframes bf-slide-in {
@@ -512,12 +518,12 @@ a:hover { text-decoration: underline; }
 
 .booking-step-label {
   font-size: 11px;
-  color: var(--phosphor-dim);
+  color: rgba(180, 160, 100, 0.6);
   letter-spacing: 0.25em;
   text-transform: uppercase;
   margin-bottom: 20px;
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--panel-border);
+  border-bottom: 1px solid rgba(100, 88, 50, 0.2);
 }
 
 .form-group {
@@ -530,17 +536,18 @@ a:hover { text-decoration: underline; }
   gap: 16px;
 }
 
+/* ---- THEMED FORM LABELS ---- */
 .form-group label {
   display: block;
   font-size: 11px;
-  color: var(--phosphor-dim);
+  color: var(--field-label, rgba(180, 160, 100, 0.7));
   letter-spacing: 0.1em;
   text-transform: uppercase;
   margin-bottom: 6px;
 }
 
 .field-optional {
-  color: rgba(255, 255, 255, 0.25);
+  color: rgba(160, 150, 120, 0.35);
   text-transform: none;
   letter-spacing: 0;
   font-size: 10px;
@@ -548,59 +555,74 @@ a:hover { text-decoration: underline; }
 
 .field-hint {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.25);
+  color: rgba(160, 150, 120, 0.3);
   margin-top: 4px;
 }
 
+/* ---- THEMED FORM INPUTS — metal-inset fields ---- */
 .form-group input,
 .form-group select,
 .form-group textarea {
   width: 100%;
-  padding: 10px 14px;
-  border: 1px solid var(--panel-border);
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.4);
-  color: #fff;
+  padding: 11px 14px;
+  border: 1px solid var(--field-border, rgba(100, 88, 50, 0.3));
+  border-radius: 5px;
+  background: var(--field-bg, rgba(4, 6, 4, 0.8));
+  color: var(--field-text, rgba(220, 210, 180, 0.9));
   font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 14px;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: var(--field-inset, inset 0 2px 4px rgba(0, 0, 0, 0.4));
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: var(--phosphor);
-  box-shadow: 0 0 8px var(--phosphor-glow);
+  border-color: var(--field-border-focus, rgba(140, 120, 60, 0.6));
+  box-shadow:
+    var(--field-inset, inset 0 2px 4px rgba(0, 0, 0, 0.4)),
+    0 0 8px var(--field-glow-focus, rgba(180, 160, 80, 0.12)),
+    0 0 0 1px var(--field-border-focus, rgba(140, 120, 60, 0.3));
 }
 
 .form-group input::placeholder,
 .form-group textarea::placeholder {
-  color: rgba(255, 255, 255, 0.2);
+  color: var(--field-placeholder, rgba(140, 130, 100, 0.3));
+}
+
+.form-group select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23998860' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
 }
 
 .form-group select option {
-  background: var(--bg, #0a0a0f);
-  color: #fff;
+  background: #0c0e0c;
+  color: rgba(220, 210, 180, 0.9);
 }
 
 .form-group input:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 .form-divider {
   height: 1px;
-  background: var(--panel-border);
+  background: linear-gradient(90deg, transparent, rgba(100, 88, 50, 0.2), transparent);
   margin: 24px 0;
 }
 
+/* ---- Checkboxes ---- */
 .form-checkbox-group label {
   display: flex;
   align-items: flex-start;
   gap: 10px;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(200, 200, 190, 0.6);
   text-transform: none;
   letter-spacing: 0;
   cursor: pointer;
@@ -610,16 +632,18 @@ a:hover { text-decoration: underline; }
   width: auto;
   margin-top: 3px;
   accent-color: var(--phosphor);
+  box-shadow: none;
 }
 
+/* ---- Submit button — brass accent ---- */
 .form-submit {
   display: block;
   width: 100%;
   padding: 14px;
-  border: 2px solid var(--phosphor);
+  border: 2px solid rgba(140, 120, 60, 0.5);
   border-radius: 6px;
-  background: var(--phosphor-glow);
-  color: var(--phosphor);
+  background: linear-gradient(175deg, rgba(30, 26, 16, 0.7) 0%, rgba(20, 18, 10, 0.9) 100%);
+  color: rgba(220, 200, 140, 0.9);
   font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 14px;
   font-weight: bold;
@@ -628,27 +652,29 @@ a:hover { text-decoration: underline; }
   cursor: pointer;
   transition: all 0.2s;
   margin-top: 8px;
+  box-shadow: inset 0 1px 0 rgba(180, 160, 100, 0.08);
 }
 
 .form-submit:hover {
-  background: var(--phosphor-glow);
-  box-shadow: 0 0 16px var(--phosphor-glow);
+  border-color: rgba(180, 160, 80, 0.7);
+  background: linear-gradient(175deg, rgba(40, 34, 18, 0.85) 0%, rgba(28, 24, 14, 0.95) 100%);
+  box-shadow: 0 0 12px rgba(180, 160, 80, 0.1);
 }
 
 .form-submit:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
   box-shadow: none;
 }
 
 .form-submit.is-loading {
   pointer-events: none;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 /* Field errors */
 .field-error {
-  color: #ff4646;
+  color: #ff5050;
   font-size: 11px;
   margin-top: 4px;
 }
@@ -660,17 +686,17 @@ a:hover { text-decoration: underline; }
   border: 1px solid rgba(255, 70, 70, 0.3);
   border-radius: 4px;
   background: rgba(255, 70, 70, 0.06);
-  color: #ff4646;
+  color: #ff5050;
   font-size: 13px;
   text-align: center;
 }
 
-/* Confirmation banner (between steps) */
+/* Confirmation banner */
 .booking-confirm-banner {
   padding: 14px 18px;
-  border: 1px solid var(--panel-border);
+  border: 1px solid rgba(100, 88, 50, 0.25);
   border-radius: 6px;
-  background: var(--phosphor-glow);
+  background: rgba(20, 18, 10, 0.4);
   color: var(--phosphor);
   font-size: 13px;
   margin-bottom: 24px;
@@ -682,18 +708,19 @@ a:hover { text-decoration: underline; }
   max-height: 280px;
   overflow-y: auto;
   padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(100, 88, 50, 0.15);
   border-radius: 4px;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(4, 6, 4, 0.6);
   margin-bottom: 20px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(200, 200, 190, 0.5);
   line-height: 1.7;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .waiver-text h4 {
   font-size: 14px;
-  color: #fff;
+  color: rgba(220, 220, 210, 0.85);
   margin-bottom: 10px;
 }
 
@@ -713,7 +740,7 @@ a:hover { text-decoration: underline; }
 
 .success-title {
   font-size: 20px;
-  color: #fff;
+  color: rgba(220, 240, 220, 0.95);
   margin-bottom: 10px;
 }
 
@@ -725,32 +752,40 @@ a:hover { text-decoration: underline; }
 
 .booking-ref {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(180, 180, 170, 0.4);
   margin-bottom: 20px;
 }
 
 .success-back-link {
   display: inline-block;
   padding: 10px 24px;
-  border: 1px solid var(--panel-border);
+  border: 1px solid rgba(100, 88, 50, 0.3);
   border-radius: 4px;
-  color: var(--phosphor);
+  color: rgba(220, 200, 140, 0.8);
   font-size: 13px;
   letter-spacing: 0.05em;
   transition: all 0.2s;
 }
 
 .success-back-link:hover {
-  background: var(--phosphor-glow);
+  background: rgba(30, 26, 16, 0.4);
+  border-color: rgba(140, 120, 60, 0.4);
   text-decoration: none;
 }
 
-/* ---- Footer (shared) ---- */
+
+/* ============================================================
+   METAL FRAME — Footer (brass monitor bezel)
+   ============================================================ */
 .eo-footer {
-  margin-top: 60px;
-  padding: 30px 24px;
-  border-top: 1px solid var(--panel-border);
-  background: rgba(0, 0, 0, 0.4);
+  margin-top: 50px;
+  padding: 24px 24px;
+  border-top: 2px solid;
+  border-image: linear-gradient(90deg, #3a3220, #7a6c48 30%, #5a5038 50%, #7a6c48 70%, #3a3220) 1;
+  background: linear-gradient(0deg, #1a160e 0%, #221e16 50%, #2a2418 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(180, 160, 100, 0.08),
+    0 -2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .eo-footer-inner {
@@ -764,28 +799,55 @@ a:hover { text-decoration: underline; }
 }
 
 .eo-footer-brand {
-  font-size: 14px;
-  color: var(--phosphor);
+  font-size: 13px;
+  color: rgba(220, 200, 140, 0.7);
   letter-spacing: 0.15em;
   font-weight: bold;
+  font-family: var(--theme-font-display, Georgia, serif);
 }
 
 .eo-footer-links { display: flex; gap: 16px; }
 .eo-footer-links a {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  color: rgba(180, 160, 100, 0.45);
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
-.eo-footer-links a:hover { color: var(--phosphor); }
+.eo-footer-links a:hover { color: rgba(220, 200, 140, 0.85); text-decoration: none; }
 
 .eo-footer-copy {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.25);
+  color: rgba(160, 140, 90, 0.35);
+}
+
+
+/* ============================================================
+   iOS MOBILE FIXES
+   ============================================================ */
+
+/* Prevent iOS zoom on input focus */
+@supports (-webkit-touch-callout: none) {
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    font-size: 16px; /* prevents iOS auto-zoom on focus */
+  }
 }
 
 /* ---- Responsive ---- */
 @media (max-width: 768px) {
+  .eo-nav {
+    padding: 10px 16px;
+  }
+
+  .eo-nav-brand {
+    font-size: 13px;
+    letter-spacing: 0.15em;
+  }
+
+  .eo-nav-links { gap: 14px; }
+  .eo-nav-link { font-size: 10px; }
+
   .scenario-grid {
     grid-template-columns: 1fr;
   }
@@ -837,5 +899,9 @@ a:hover { text-decoration: underline; }
 
   .scenario-section {
     padding: 40px 16px;
+  }
+
+  .booking-form-section {
+    padding: 40px 12px;
   }
 }

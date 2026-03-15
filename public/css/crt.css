@@ -18,9 +18,9 @@
   --amber-bright:    #ffc640;
   --amber-glow:      rgba(255, 176, 0, 0.15);
 
-  /* Background - deep CRT black with slight warmth */
-  --bg:              #0a0a0a;
-  --bg-screen:       #050805;
+  /* Background — slightly brighter for CRT readability */
+  --bg:              #0c0e0c;
+  --bg-screen:       #080c08;
 
   /* Timing */
   --cursor-blink:    1s;
@@ -33,9 +33,9 @@
 
   /* Monitor framing */
   --frame-padding: clamp(10px, 2vw, 18px);
-  --panel-bg: #061208;
-  --panel-border: rgba(51, 255, 51, 0.25);
-  --panel-border-soft: rgba(51, 255, 51, 0.12);
+  --panel-bg: #0a1610;
+  --panel-border: rgba(51, 255, 51, 0.28);
+  --panel-border-soft: rgba(51, 255, 51, 0.15);
 }
 
 /* --- Theme Bridge ---
@@ -206,17 +206,18 @@ body.gone-rogue-active #scanlines::after {
   flex-direction: column;
   gap: 12px;
   width: 100%;
-  /* Match dynamic viewport height to avoid mobile bottom cutoff */
   height: 100dvh;
   min-height: 100svh;
   padding: clamp(8px, 1.5vw, 16px);
-  background: radial-gradient(circle at 30% 20%, rgba(51, 255, 51, 0.02), transparent 28%),
-              linear-gradient(135deg, rgba(10, 20, 12, 0.9), rgba(4, 10, 6, 0.94));
-  border: 1px solid var(--panel-border);
+  background: radial-gradient(circle at 30% 20%, rgba(51, 255, 51, 0.025), transparent 28%),
+              linear-gradient(135deg, rgba(12, 22, 14, 0.92), rgba(6, 14, 8, 0.96));
+  /* Metal bezel outer edge */
+  border: 1px solid rgba(100, 88, 50, 0.18);
   border-radius: 12px;
   box-shadow:
-    inset 0 0 18px rgba(0, 0, 0, 0.55),
-    0 0 0 2px rgba(0, 0, 0, 0.35),
+    inset 0 0 18px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(180, 160, 100, 0.04),
+    0 0 0 2px rgba(30, 26, 16, 0.6),
     0 0 32px rgba(0, 255, 120, 0.05);
   overflow: visible;
 }
@@ -242,14 +243,20 @@ body.gone-rogue-active #scanlines::after {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: var(--panel-bg);
-  border: 1px solid var(--panel-border-soft);
+  /* Metal-framed sidebar: brass bezel panel */
+  background:
+    linear-gradient(180deg, rgba(30, 26, 16, 0.12), rgba(20, 18, 10, 0.08) 50%, rgba(30, 26, 16, 0.12)),
+    var(--panel-bg);
+  border: 1px solid rgba(100, 88, 50, 0.18);
   border-radius: 10px;
   padding: 10px;
-  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.55), 0 0 14px rgba(0, 255, 90, 0.05);
+  box-shadow:
+    inset 0 0 12px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(180, 160, 100, 0.04),
+    0 0 14px rgba(0, 255, 90, 0.04);
   min-height: 0;
   position: relative;
-  z-index: 20; /* Ensure control rail stays above overlays */
+  z-index: 20;
 }
 
 .control-buttons {
@@ -262,7 +269,7 @@ body.gone-rogue-active #scanlines::after {
 
 .control-buttons button {
   width: 100%;
-  background: rgba(8, 24, 12, 0.85);
+  background: rgba(10, 28, 14, 0.85);
   color: var(--phosphor);
   border: 1px solid var(--panel-border);
   border-radius: 6px;
@@ -273,7 +280,7 @@ body.gone-rogue-active #scanlines::after {
   text-transform: uppercase;
   cursor: pointer;
   transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
-  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5), 0 0 10px rgba(0, 255, 90, 0.08);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.4), 0 0 10px rgba(0, 255, 90, 0.06);
 }
 
 .control-buttons button:hover,
@@ -539,11 +546,12 @@ body.in-gone-rogue .debrief-window.expanded {
 .log-frame {
   flex: 1;
   min-height: 0;
+  /* CRT screen area — stays dark like a phosphor screen */
   background: var(--panel-bg);
   border: 1px solid var(--panel-border-soft);
   border-radius: 10px;
   padding: 10px;
-  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.6);
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.5), inset 0 0 40px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
 }
@@ -553,11 +561,17 @@ body.in-gone-rogue .debrief-window.expanded {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  background: linear-gradient(90deg, rgba(8, 16, 10, 0.94), rgba(6, 14, 9, 0.9));
-  border: 1px solid var(--panel-border);
+  /* Metal-framed header: brass bezel atop CRT screen */
+  background:
+    linear-gradient(90deg, rgba(30, 26, 16, 0.25), rgba(20, 18, 10, 0.15) 50%, rgba(30, 26, 16, 0.25)),
+    linear-gradient(90deg, rgba(10, 18, 12, 0.94), rgba(8, 16, 10, 0.92));
+  border: 1px solid rgba(100, 88, 50, 0.22);
   border-radius: 10px;
   padding: 8px 12px;
-  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.55), 0 0 16px rgba(0, 255, 90, 0.08);
+  box-shadow:
+    inset 0 0 12px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(180, 160, 100, 0.06),
+    0 0 16px rgba(0, 255, 90, 0.06);
 }
 
 .mok-header-copy {

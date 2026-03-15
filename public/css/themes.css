@@ -14,10 +14,10 @@
   --theme-primary-glow:     rgba(51, 255, 51, 0.15);
   --theme-secondary:        #1a9c1a;
   --theme-secondary-dim:    #126e12;
-  --theme-bg:               #0a0a0a;
-  --theme-bg-screen:        #050805;
-  --theme-panel-bg:         #061208;
-  --theme-panel-border:     rgba(51, 255, 51, 0.25);
+  --theme-bg:               #0c0e0c;
+  --theme-bg-screen:        #080c08;
+  --theme-panel-bg:         #0a1610;
+  --theme-panel-border:     rgba(51, 255, 51, 0.28);
   --theme-suit-color:       rgba(51, 255, 51, 0.65);
 
   /* Coin rims */
@@ -61,6 +61,25 @@
   --theme-font-body:        'Courier New', 'Lucida Console', Consolas, monospace;
   --theme-font-data:        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 
+  /* ---- Metal frame (brass monitor bezel) ---- */
+  --metal-frame-bg:         linear-gradient(180deg, #2a2418 0%, #1e1a10 40%, #16130c 100%);
+  --metal-frame-border:     linear-gradient(160deg, #5a5038, #7a6c48 30%, #4a4028 60%, #6a5c3c);
+  --metal-frame-border-b:   #4a4028;
+  --metal-frame-highlight:  rgba(180, 160, 100, 0.08);
+  --metal-frame-text:       rgba(200, 180, 120, 0.7);
+  --metal-frame-text-dim:   rgba(160, 140, 90, 0.5);
+  --metal-frame-inset:      inset 0 1px 0 rgba(180, 160, 100, 0.06), inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+
+  /* ---- Form fields (themed inputs) ---- */
+  --field-bg:               rgba(4, 6, 4, 0.8);
+  --field-border:           rgba(100, 88, 50, 0.3);
+  --field-border-focus:     rgba(140, 120, 60, 0.6);
+  --field-glow-focus:       rgba(180, 160, 80, 0.12);
+  --field-text:             rgba(220, 210, 180, 0.9);
+  --field-placeholder:      rgba(140, 130, 100, 0.3);
+  --field-label:            rgba(180, 160, 100, 0.7);
+  --field-inset:            inset 0 2px 4px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+
   /* ---- Atmosphere ---- */
   --theme-scanline-opacity: 0.06;
   --theme-glow-spread:      4px;
@@ -81,10 +100,10 @@ body[data-theme="phosphor"],
   --theme-primary-glow:     rgba(51, 255, 51, 0.15);
   --theme-secondary:        #1a9c1a;
   --theme-secondary-dim:    #126e12;
-  --theme-bg:               #0a0a0a;
-  --theme-bg-screen:        #050805;
-  --theme-panel-bg:         #061208;
-  --theme-panel-border:     rgba(51, 255, 51, 0.25);
+  --theme-bg:               #0c0e0c;
+  --theme-bg-screen:        #080c08;
+  --theme-panel-bg:         #0a1610;
+  --theme-panel-border:     rgba(51, 255, 51, 0.28);
   --theme-suit-color:       rgba(51, 255, 51, 0.65);
 
   --theme-border-outer:     linear-gradient(160deg, #5a5038 0%, #7a6c48 15%, #4a4028 30%, #6a5c3c 50%, #7a6c48 70%, #4a4028 85%, #3a3220 100%);
@@ -140,10 +159,10 @@ body[data-theme="silver"],
   --theme-primary-glow:     rgba(176, 196, 222, 0.12);
   --theme-secondary:        #4a6a8a;
   --theme-secondary-dim:    #3a5070;
-  --theme-bg:               #08090c;
-  --theme-bg-screen:        #060810;
-  --theme-panel-bg:         #0a0e16;
-  --theme-panel-border:     rgba(176, 196, 222, 0.20);
+  --theme-bg:               #0a0c10;
+  --theme-bg-screen:        #080a12;
+  --theme-panel-bg:         #0c1018;
+  --theme-panel-border:     rgba(176, 196, 222, 0.24);
   --theme-suit-color:       rgba(176, 196, 222, 0.70);
 
   --theme-border-outer:     linear-gradient(160deg, #5a6878 0%, #6a7888 15%, #3a4858 30%, #5a6878 50%, #6a7888 70%, #3a4858 85%, #2a3848 100%);
@@ -199,10 +218,10 @@ body[data-theme="amber"],
   --theme-primary-glow:     rgba(255, 176, 0, 0.15);
   --theme-secondary:        #cc6600;
   --theme-secondary-dim:    #994c00;
-  --theme-bg:               #0a0800;
-  --theme-bg-screen:        #080600;
-  --theme-panel-bg:         #100c04;
-  --theme-panel-border:     rgba(255, 176, 0, 0.20);
+  --theme-bg:               #0c0a02;
+  --theme-bg-screen:        #0a0802;
+  --theme-panel-bg:         #120e06;
+  --theme-panel-border:     rgba(255, 176, 0, 0.24);
   --theme-suit-color:       rgba(255, 190, 60, 0.70);
 
   --theme-border-outer:     linear-gradient(160deg, #6a5a30 0%, #8a7a48 15%, #5a4a28 30%, #7a6a3c 50%, #8a7a48 70%, #5a4a28 85%, #4a3a18 100%);
@@ -259,10 +278,10 @@ body[data-theme="panther"],
   --theme-primary-glow:     rgba(255, 48, 144, 0.15);
   --theme-secondary:        #00e5cc;
   --theme-secondary-dim:    #008a7a;
-  --theme-bg:               #060a06;
-  --theme-bg-screen:        #040804;
-  --theme-panel-bg:         #0a120a;
-  --theme-panel-border:     rgba(255, 48, 144, 0.22);
+  --theme-bg:               #080c08;
+  --theme-bg-screen:        #060a06;
+  --theme-panel-bg:         #0c140c;
+  --theme-panel-border:     rgba(255, 48, 144, 0.25);
   --theme-suit-color:       rgba(255, 48, 144, 0.70);
 
   --theme-border-outer:     linear-gradient(160deg, #4a2040 0%, #5a2850 15%, #2a1828 30%, #4a2040 50%, #5a2850 70%, #2a1828 85%, #1e1420 100%);

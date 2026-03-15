@@ -1,12 +1,12 @@
 /* ============================================================
    EYES ONLY — Partners Page
-   CRT-themed dark layout for local partner recruitment.
+   Metal-frame bezel + CRT content aesthetic.
    ============================================================ */
 
 /* ---- Reset & base ---- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ---- SCROLL FIX: Override crt.css lockdown for standalone pages ---- */
+/* ---- SCROLL FIX ---- */
 html, body {
   overflow: auto !important;
   overflow-x: hidden !important;
@@ -24,8 +24,8 @@ html, body {
 
 body {
   font-family: var(--theme-font-data, 'Courier New', monospace);
-  background: var(--bg, #0a0a0f);
-  color: #d0d0d0;
+  background: #0c0e0c;
+  color: #c8d0c8;
   line-height: 1.6;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -34,7 +34,10 @@ body {
 a { color: var(--phosphor); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-/* ---- Nav bar (shared — same as booking) ---- */
+
+/* ============================================================
+   METAL FRAME — Nav bar (brass monitor bezel)
+   ============================================================ */
 .eo-nav {
   position: sticky;
   top: 0;
@@ -42,40 +45,53 @@ a:hover { text-decoration: underline; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 24px;
-  background: rgba(10, 10, 15, 0.95);
-  border-bottom: 1px solid var(--panel-border);
+  padding: 10px 24px;
+  background: linear-gradient(180deg, #2e2820 0%, #221e16 50%, #1a160e 100%);
+  border-bottom: 2px solid;
+  border-image: linear-gradient(90deg, #3a3220, #7a6c48 30%, #5a5038 50%, #7a6c48 70%, #3a3220) 1;
   backdrop-filter: blur(8px);
+  box-shadow:
+    inset 0 1px 0 rgba(180, 160, 100, 0.1),
+    0 2px 8px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(0, 0, 0, 0.3);
 }
 
 .eo-nav-brand {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: bold;
-  color: var(--phosphor);
-  letter-spacing: 0.2em;
+  color: rgba(220, 200, 140, 0.9);
+  letter-spacing: 0.25em;
   text-transform: uppercase;
-  text-shadow: 0 0 8px var(--phosphor-glow);
+  text-shadow:
+    0 1px 0 rgba(60, 50, 25, 0.8),
+    0 0 10px rgba(180, 160, 80, 0.15);
+  font-family: var(--theme-font-display, Georgia, serif);
 }
 
 .eo-nav-links { display: flex; gap: 20px; }
 
 .eo-nav-link {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
-  letter-spacing: 0.1em;
+  font-size: 11px;
+  color: rgba(180, 160, 100, 0.55);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   transition: color 0.2s;
 }
-.eo-nav-link:hover { color: var(--phosphor); text-decoration: none; }
-.eo-nav-link.eo-nav-active { color: var(--phosphor); }
+.eo-nav-link:hover { color: rgba(220, 200, 140, 0.9); text-decoration: none; }
+.eo-nav-link.eo-nav-active { color: var(--phosphor); text-shadow: 0 0 6px var(--phosphor-glow); }
 
-/* ---- Hero ---- */
+
+/* ============================================================
+   HERO
+   ============================================================ */
 .partners-hero {
   position: relative;
-  padding: 80px 24px 60px;
+  padding: 70px 24px 50px;
   text-align: center;
-  background: linear-gradient(180deg, var(--bg, #0a0a0f) 0%, var(--bg-screen, #0d1117) 100%);
-  border-bottom: 1px solid var(--panel-border);
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 30%, rgba(20, 40, 20, 0.15), transparent 70%),
+    linear-gradient(180deg, #0a0e0a 0%, #080c08 100%);
+  border-bottom: 1px solid rgba(100, 88, 50, 0.2);
   overflow: hidden;
 }
 
@@ -91,15 +107,16 @@ a:hover { text-decoration: underline; }
 
 .partners-hero-title {
   font-size: clamp(28px, 5vw, 48px);
-  color: #fff;
+  color: rgba(220, 240, 220, 0.95);
   font-weight: bold;
   letter-spacing: 0.06em;
   margin-bottom: 12px;
+  text-shadow: 0 0 20px var(--phosphor-glow);
 }
 
 .partners-hero-sub {
   font-size: clamp(13px, 2vw, 16px);
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(200, 210, 200, 0.5);
   max-width: 500px;
   margin: 0 auto;
 }
@@ -109,10 +126,13 @@ a:hover { text-decoration: underline; }
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.04) 2px, rgba(0, 0, 0, 0.04) 4px);
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.03) 2px, rgba(0, 0, 0, 0.03) 4px);
 }
 
-/* ---- FAQ section ---- */
+
+/* ============================================================
+   FAQ SECTION
+   ============================================================ */
 .faq-section {
   padding: 50px 24px;
   max-width: 800px;
@@ -121,22 +141,23 @@ a:hover { text-decoration: underline; }
 
 .faq-title {
   font-size: 22px;
-  color: #fff;
+  color: rgba(220, 240, 220, 0.9);
   text-align: center;
   margin-bottom: 30px;
   letter-spacing: 0.05em;
 }
 
 .faq-item {
-  border: 1px solid var(--panel-border);
+  border: 1px solid rgba(100, 88, 50, 0.2);
   border-radius: 6px;
   margin-bottom: 10px;
   overflow: hidden;
   transition: border-color 0.2s;
+  background: rgba(10, 12, 10, 0.5);
 }
 
 .faq-item:hover {
-  border-color: var(--phosphor-dim);
+  border-color: rgba(140, 120, 60, 0.35);
 }
 
 .faq-question {
@@ -146,8 +167,8 @@ a:hover { text-decoration: underline; }
   justify-content: space-between;
   padding: 16px 20px;
   border: none;
-  background: var(--phosphor-glow);
-  color: #fff;
+  background: rgba(20, 18, 10, 0.3);
+  color: rgba(220, 220, 210, 0.9);
   font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 14px;
   cursor: pointer;
@@ -156,13 +177,13 @@ a:hover { text-decoration: underline; }
 }
 
 .faq-question:hover {
-  background: var(--phosphor-glow);
+  background: rgba(30, 26, 16, 0.35);
 }
 
 .faq-q-text { flex: 1; }
 
 .faq-chevron {
-  color: var(--phosphor);
+  color: rgba(180, 160, 100, 0.6);
   font-size: 16px;
   transition: transform 0.25s ease;
 }
@@ -185,11 +206,14 @@ a:hover { text-decoration: underline; }
 
 .faq-answer p {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(200, 210, 200, 0.6);
   line-height: 1.7;
 }
 
-/* ---- Action cards ---- */
+
+/* ============================================================
+   ACTION CARDS — brass-bordered call-to-action panels
+   ============================================================ */
 .action-section {
   padding: 50px 24px;
   max-width: 1000px;
@@ -198,14 +222,14 @@ a:hover { text-decoration: underline; }
 
 .action-title {
   font-size: 22px;
-  color: #fff;
+  color: rgba(220, 240, 220, 0.9);
   text-align: center;
   margin-bottom: 8px;
 }
 
 .action-sub {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(180, 180, 170, 0.45);
   text-align: center;
   margin-bottom: 30px;
 }
@@ -218,16 +242,17 @@ a:hover { text-decoration: underline; }
 
 .action-card {
   padding: 30px 24px;
-  border: 1px solid var(--panel-border);
+  border: 1px solid rgba(100, 88, 50, 0.2);
   border-radius: 8px;
-  background: var(--phosphor-glow);
+  background: rgba(14, 16, 14, 0.6);
   text-align: center;
   transition: border-color 0.25s, background 0.25s, transform 0.25s;
+  box-shadow: inset 0 1px 0 rgba(180, 160, 100, 0.03);
 }
 
 .action-card:hover {
-  border-color: var(--phosphor-dim);
-  background: var(--phosphor-glow);
+  border-color: rgba(140, 120, 60, 0.35);
+  background: rgba(20, 18, 12, 0.6);
   transform: translateY(-4px);
 }
 
@@ -238,14 +263,14 @@ a:hover { text-decoration: underline; }
 
 .action-card-title {
   font-size: 16px;
-  color: #fff;
+  color: rgba(220, 220, 210, 0.9);
   margin-bottom: 10px;
   letter-spacing: 0.05em;
 }
 
 .action-card-desc {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(200, 200, 190, 0.5);
   line-height: 1.6;
   margin-bottom: 20px;
 }
@@ -253,10 +278,10 @@ a:hover { text-decoration: underline; }
 .action-card-btn {
   display: inline-block;
   padding: 10px 24px;
-  border: 1px solid var(--phosphor);
+  border: 1px solid rgba(140, 120, 60, 0.4);
   border-radius: 4px;
-  background: transparent;
-  color: var(--phosphor);
+  background: linear-gradient(175deg, rgba(30, 26, 16, 0.5), rgba(20, 18, 10, 0.7));
+  color: rgba(220, 200, 140, 0.85);
   font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 12px;
   font-weight: bold;
@@ -267,29 +292,33 @@ a:hover { text-decoration: underline; }
 }
 
 .action-card-btn:hover {
-  background: var(--phosphor-glow);
-  box-shadow: 0 0 12px var(--phosphor-glow);
+  border-color: rgba(180, 160, 80, 0.6);
+  background: linear-gradient(175deg, rgba(40, 34, 18, 0.7), rgba(28, 24, 14, 0.85));
+  box-shadow: 0 0 10px rgba(180, 160, 80, 0.08);
 }
 
 .action-card-btn-legal {
-  border-color: #c9a84c;
-  color: #c9a84c;
+  border-color: rgba(201, 168, 76, 0.35);
+  color: rgba(220, 190, 100, 0.85);
 }
 .action-card-btn-legal:hover {
-  background: rgba(201, 168, 76, 0.12);
-  box-shadow: 0 0 12px rgba(201, 168, 76, 0.15);
+  border-color: rgba(220, 190, 90, 0.5);
+  box-shadow: 0 0 10px rgba(201, 168, 76, 0.1);
 }
 
 .action-card-btn-contact {
-  border-color: rgba(255, 255, 255, 0.4);
-  color: rgba(255, 255, 255, 0.7);
+  border-color: rgba(180, 180, 170, 0.25);
+  color: rgba(200, 200, 190, 0.7);
 }
 .action-card-btn-contact:hover {
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 0 12px rgba(255, 255, 255, 0.08);
+  border-color: rgba(200, 200, 190, 0.4);
+  box-shadow: 0 0 10px rgba(200, 200, 190, 0.06);
 }
 
-/* ---- Forms section ---- */
+
+/* ============================================================
+   FORMS — themed metal-inset fields
+   ============================================================ */
 .forms-section {
   padding: 20px 24px 60px;
   max-width: 700px;
@@ -297,11 +326,12 @@ a:hover { text-decoration: underline; }
 }
 
 .partner-form {
-  border: 1px solid var(--panel-border);
+  border: 1px solid rgba(100, 88, 50, 0.25);
   border-radius: 8px;
-  background: rgba(10, 10, 15, 0.95);
+  background: rgba(10, 12, 10, 0.95);
   padding: 30px;
   animation: form-slide-in 0.3s ease-out;
+  box-shadow: inset 0 1px 0 rgba(180, 160, 100, 0.04), 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 @keyframes form-slide-in {
@@ -315,21 +345,21 @@ a:hover { text-decoration: underline; }
   justify-content: space-between;
   margin-bottom: 24px;
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--panel-border);
+  border-bottom: 1px solid rgba(100, 88, 50, 0.2);
 }
 
 .form-title {
   font-size: 18px;
-  color: #fff;
+  color: rgba(220, 220, 210, 0.9);
 }
 
 .form-close {
   width: 32px;
   height: 32px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(180, 160, 100, 0.2);
   border-radius: 4px;
   background: transparent;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(180, 160, 100, 0.5);
   font-size: 20px;
   cursor: pointer;
   display: flex;
@@ -339,8 +369,8 @@ a:hover { text-decoration: underline; }
 }
 .form-close:hover {
   border-color: rgba(255, 70, 70, 0.5);
-  color: #ff4646;
-  background: rgba(255, 70, 70, 0.08);
+  color: #ff5050;
+  background: rgba(255, 70, 70, 0.06);
 }
 
 .form-group {
@@ -356,50 +386,65 @@ a:hover { text-decoration: underline; }
 .form-group label {
   display: block;
   font-size: 11px;
-  color: var(--phosphor-dim);
+  color: var(--field-label, rgba(180, 160, 100, 0.7));
   letter-spacing: 0.1em;
   text-transform: uppercase;
   margin-bottom: 6px;
 }
 
+/* ---- THEMED FORM INPUTS — metal-inset fields ---- */
 .form-group input,
 .form-group select,
 .form-group textarea {
   width: 100%;
-  padding: 10px 14px;
-  border: 1px solid var(--panel-border);
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.4);
-  color: #fff;
+  padding: 11px 14px;
+  border: 1px solid var(--field-border, rgba(100, 88, 50, 0.3));
+  border-radius: 5px;
+  background: var(--field-bg, rgba(4, 6, 4, 0.8));
+  color: var(--field-text, rgba(220, 210, 180, 0.9));
   font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 14px;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: var(--field-inset, inset 0 2px 4px rgba(0, 0, 0, 0.4));
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: var(--phosphor);
-  box-shadow: 0 0 8px var(--phosphor-glow);
+  border-color: var(--field-border-focus, rgba(140, 120, 60, 0.6));
+  box-shadow:
+    var(--field-inset, inset 0 2px 4px rgba(0, 0, 0, 0.4)),
+    0 0 8px var(--field-glow-focus, rgba(180, 160, 80, 0.12)),
+    0 0 0 1px var(--field-border-focus, rgba(140, 120, 60, 0.3));
 }
 
 .form-group input::placeholder,
 .form-group textarea::placeholder {
-  color: rgba(255, 255, 255, 0.2);
+  color: var(--field-placeholder, rgba(140, 130, 100, 0.3));
+}
+
+.form-group select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23998860' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
 }
 
 .form-group select option {
-  background: var(--bg, #0a0a0f);
-  color: #fff;
+  background: #0c0e0c;
+  color: rgba(220, 210, 180, 0.9);
 }
 
+/* Checkboxes */
 .form-checkbox-group label {
   display: flex;
   align-items: flex-start;
   gap: 10px;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(200, 200, 190, 0.6);
   text-transform: none;
   letter-spacing: 0;
   cursor: pointer;
@@ -409,16 +454,18 @@ a:hover { text-decoration: underline; }
   width: auto;
   margin-top: 3px;
   accent-color: var(--phosphor);
+  box-shadow: none;
 }
 
+/* Submit — brass accent */
 .form-submit {
   display: block;
   width: 100%;
   padding: 14px;
-  border: 2px solid var(--phosphor);
+  border: 2px solid rgba(140, 120, 60, 0.5);
   border-radius: 6px;
-  background: var(--phosphor-glow);
-  color: var(--phosphor);
+  background: linear-gradient(175deg, rgba(30, 26, 16, 0.7) 0%, rgba(20, 18, 10, 0.9) 100%);
+  color: rgba(220, 200, 140, 0.9);
   font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 14px;
   font-weight: bold;
@@ -427,30 +474,33 @@ a:hover { text-decoration: underline; }
   cursor: pointer;
   transition: all 0.2s;
   margin-top: 8px;
+  box-shadow: inset 0 1px 0 rgba(180, 160, 100, 0.08);
 }
 
 .form-submit:hover {
-  background: var(--phosphor-glow);
-  box-shadow: 0 0 16px var(--phosphor-glow);
+  border-color: rgba(180, 160, 80, 0.7);
+  background: linear-gradient(175deg, rgba(40, 34, 18, 0.85) 0%, rgba(28, 24, 14, 0.95) 100%);
+  box-shadow: 0 0 12px rgba(180, 160, 80, 0.1);
 }
 
-/* Legal text block */
+/* Legal text */
 .legal-text {
   max-height: 250px;
   overflow-y: auto;
   padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(100, 88, 50, 0.15);
   border-radius: 4px;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(4, 6, 4, 0.6);
   margin-bottom: 20px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(200, 200, 190, 0.5);
   line-height: 1.7;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .legal-text h4 {
   font-size: 14px;
-  color: #fff;
+  color: rgba(220, 220, 210, 0.85);
   margin-bottom: 10px;
 }
 
@@ -473,12 +523,19 @@ a:hover { text-decoration: underline; }
   color: var(--phosphor);
 }
 
-/* ---- Footer (shared) ---- */
+
+/* ============================================================
+   METAL FRAME — Footer
+   ============================================================ */
 .eo-footer {
-  margin-top: 60px;
-  padding: 30px 24px;
-  border-top: 1px solid var(--panel-border);
-  background: rgba(0, 0, 0, 0.4);
+  margin-top: 50px;
+  padding: 24px 24px;
+  border-top: 2px solid;
+  border-image: linear-gradient(90deg, #3a3220, #7a6c48 30%, #5a5038 50%, #7a6c48 70%, #3a3220) 1;
+  background: linear-gradient(0deg, #1a160e 0%, #221e16 50%, #2a2418 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(180, 160, 100, 0.08),
+    0 -2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .eo-footer-inner {
@@ -492,28 +549,46 @@ a:hover { text-decoration: underline; }
 }
 
 .eo-footer-brand {
-  font-size: 14px;
-  color: var(--phosphor);
+  font-size: 13px;
+  color: rgba(220, 200, 140, 0.7);
   letter-spacing: 0.15em;
   font-weight: bold;
+  font-family: var(--theme-font-display, Georgia, serif);
 }
 
 .eo-footer-links { display: flex; gap: 16px; }
 .eo-footer-links a {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  color: rgba(180, 160, 100, 0.45);
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
-.eo-footer-links a:hover { color: var(--phosphor); }
+.eo-footer-links a:hover { color: rgba(220, 200, 140, 0.85); text-decoration: none; }
 
 .eo-footer-copy {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.25);
+  color: rgba(160, 140, 90, 0.35);
+}
+
+
+/* ============================================================
+   iOS MOBILE FIXES
+   ============================================================ */
+@supports (-webkit-touch-callout: none) {
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    font-size: 16px;
+  }
 }
 
 /* ---- Responsive ---- */
 @media (max-width: 768px) {
+  .eo-nav { padding: 10px 16px; }
+  .eo-nav-brand { font-size: 13px; letter-spacing: 0.15em; }
+  .eo-nav-links { gap: 14px; }
+  .eo-nav-link { font-size: 10px; }
+
   .action-cards {
     grid-template-columns: 1fr;
   }
