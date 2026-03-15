@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#000000">
   <title>EYES ONLY // FIELD KIT</title>
 
-  <link rel="stylesheet" href="css/crt.css?v=20260314a">
+  <link rel="stylesheet" href="css/crt.css?v=20260314d">
   <link rel="stylesheet" href="css/themes.css?v=20260314a">
   <link rel="stylesheet" href="css/games.css?v=20260314c">
 
@@ -52,35 +52,64 @@
     <div id="crt-frame">
       <header id="mok-header" class="monitor-header">
         <div class="mok-header-copy">
-          <div class="mok-header-title">FIELD KIT</div>
-          <div class="mok-header-sub"><span class="mok-header-sub-prefix">&#9830; Recreation &amp; Countermeasures</span></div>
+          <div class="mok-header-title">EyesOnly Spy Games:</div>
+          <div class="mok-header-sub"><span id="actor-name-display">Field Kit</span></div>
         </div>
         <nav class="mok-header-nav" aria-label="Quick links">
           <a href="/booking.html" class="header-chip header-nav-btn" data-sound="ui-01" title="Book a Mission">
-            <span class="header-nav-icon">&#9824;</span><span class="header-nav-label">BOOKING</span>
+            <span class="header-nav-icon">&#9824;</span><span class="header-nav-label" data-abbr="BKNG">BOOKING</span>
           </a>
           <a href="/partners.html" class="header-chip header-nav-btn" data-sound="ui-01" title="Partner Sign-Up">
-            <span class="header-nav-icon header-nav-icon-heart">&#9829;</span><span class="header-nav-label">PARTNERS</span>
+            <span class="header-nav-icon header-nav-icon-heart">&#9829;</span><span class="header-nav-label" data-abbr="PRTNRS">PARTNERS</span>
+          </a>
+          <a href="/contact.html" class="header-chip header-nav-btn" data-sound="ui-01" title="Contact">
+            <span class="header-nav-icon">&#9827;</span><span class="header-nav-label" data-abbr="CNTCT">CONTACT</span>
+          </a>
+          <a href="/games.html" class="header-chip header-nav-btn" data-sound="ui-01" title="Arcade &amp; Field Kit">
+            <span class="header-nav-icon">&#9830;</span><span class="header-nav-label" data-abbr="ARCD">ARCADE</span>
           </a>
         </nav>
-        <div class="mok-header-center">
-          <div id="active-item-slot" class="active-item-slot" title="Active Item — Click to unequip">
-            <span class="active-item-label">ACTIVE ITEM</span>
+        <div class="mok-header-right">
+          <div class="mok-header-item-stack" id="active-item-slot" title="Active Item &mdash; Click to unequip">
             <div id="active-item-display" class="active-item-display">
               <span class="empty-slot-indicator">&middot;</span>
             </div>
+            <div id="currency-display" class="currency-display" title="Cryptos">
+              <span class="currency-symbol">&cent;</span>
+              <span id="currency-value" class="currency-value">00000000</span>
+            </div>
           </div>
-          <div id="currency-display" class="currency-display" title="Cryptos">
-            <span class="currency-symbol">&cent;</span>
-            <span id="currency-value" class="currency-value">00000000</span>
-          </div>
-        </div>
-        <div class="mok-header-right">
-          <a href="/" class="header-chip header-nav-btn" data-sound="ui-04" title="Return to Terminal">
-            <span class="header-nav-icon">&#9664;</span><span class="header-nav-label">TERMINAL</span>
+          <a href="/" class="header-chip header-nav-btn" id="awol-button" data-sound="ui-04" title="AWOL &mdash; Return to Terminal">
+            <span class="accountability-label">AWOL</span>
           </a>
         </div>
       </header>
+      <script>
+        /* Vowel-drop abbreviator for nav labels (matches SharedItemRenderer.abbreviateName convention):
+           Keep first char of each word (even if vowel), drop remaining vowels. */
+        (function () {
+          var labels = document.querySelectorAll('.header-nav-label');
+          for (var i = 0; i < labels.length; i++) {
+            var text = labels[i].textContent.trim();
+            if (!text || text.length <= 2) continue;
+            var words = text.split(/\s+/);
+            var abbr = [];
+            for (var w = 0; w < words.length; w++) {
+              var word = words[w];
+              if (word.length <= 2) { abbr.push(word); continue; }
+              var out = word.charAt(0);
+              for (var c = 1; c < word.length; c++) {
+                var ch = word.charAt(c).toLowerCase();
+                if (ch !== 'a' && ch !== 'e' && ch !== 'i' && ch !== 'o' && ch !== 'u') {
+                  out += word.charAt(c);
+                }
+              }
+              abbr.push(out);
+            }
+            labels[i].setAttribute('data-abbr', abbr.join(' ').toUpperCase());
+          }
+        })();
+      </script>
 
       <div id="monitor-shell">
         <div class="log-frame games-log-frame" id="games-log-frame">

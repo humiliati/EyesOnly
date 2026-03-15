@@ -578,28 +578,49 @@ body.in-gone-rogue .debrief-window.expanded {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex-shrink: 0;
+  min-width: 0;
 }
 
 .mok-header-title {
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-size: 0.95em;
+  white-space: nowrap;
 }
 
 .mok-header-sub {
   color: var(--phosphor-dim);
   font-size: 0.82em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mok-header-right {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
+  align-items: center;
+  flex-shrink: 0;
   position: relative; /* Anchor for AWOL dropdown */
   justify-content: flex-end;
 }
 
-/* Active item slot in header */
+/* Item slot + currency stacked vertically in header-right */
+.mok-header-item-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  cursor: pointer;
+  position: relative;
+}
+
+.mok-header-item-stack:hover .active-item-display {
+  transform: translateY(-1px);
+}
+
+/* Legacy: keep .mok-header-center for backward compat */
 .mok-header-center {
   display: flex;
   align-items: center;
@@ -611,7 +632,7 @@ body.in-gone-rogue .debrief-window.expanded {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 0;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -687,14 +708,14 @@ body.in-gone-rogue .debrief-window.expanded {
 .currency-display {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.7em;
+  gap: 2px;
+  font-size: 0.6em;
   color: var(--phosphor-dim);
-  margin-top: 4px;
-  padding: 2px 6px;
-  background: rgba(8, 24, 12, 0.5);
+  margin-top: -2px;
+  padding: 1px 4px;
+  background: rgba(8, 24, 12, 0.7);
   border: 1px solid var(--panel-border-soft);
-  border-radius: 4px;
+  border-radius: 0 0 4px 4px;
   letter-spacing: 0.05em;
 }
 
@@ -752,12 +773,15 @@ body.in-gone-rogue .debrief-window.expanded {
   border-color: var(--panel-border-soft);
 }
 
-/* ── Header nav buttons (Booking / Partners) ── */
+/* ── Header nav buttons — centered, fills middle column ── */
 .mok-header-nav {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  margin-left: 8px;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .header-nav-btn {
@@ -796,10 +820,19 @@ body.in-gone-rogue .debrief-window.expanded {
   letter-spacing: 0.1em;
 }
 
-/* Hide nav labels on smaller screens, keep icons */
+/* Compact nav on smaller screens: abbreviate labels, keep visible */
 @media (max-width: 900px) {
-  .header-nav-label {
-    display: none;
+  /* Abbreviate: hide full label text, show data-abbr via ::after */
+  .header-nav-label[data-abbr] {
+    font-size: 0;
+    line-height: 0;
+    letter-spacing: 0;
+    overflow: hidden;
+  }
+  .header-nav-label[data-abbr]::after {
+    content: attr(data-abbr);
+    font-size: 9px;
+    letter-spacing: 0.06em;
   }
   .mok-header-nav {
     gap: 4px;
@@ -2618,29 +2651,43 @@ body.amber-mode #scanlines::after {
 @media (max-width: 767px) {
   /* Header padding reduction */
   #mok-header.monitor-header {
-    padding: 6px 10px;
-    gap: 8px;
+    padding: 4px 8px;
+    gap: 4px;
   }
-  
+
+  /* Mobile: drop "EyesOnly Spy Games:" — just show account name */
   .mok-header-title {
-    font-size: 0.85em;
+    display: none;
   }
-  
   .mok-header-sub {
+    font-size: 0.78em;
+  }
+
+  /* Nav buttons: same height as item slot, tight spacing */
+  .mok-header-nav {
+    gap: 3px;
+    flex: 1;
+  }
+  .header-nav-btn {
+    padding: 3px 4px;
+    min-height: 34px;
+    align-items: center;
     font-size: 0.72em;
   }
-  
-  /* Currency display size reduction */
-  .currency-display {
-    font-size: 0.6em;
-    padding: 2px 4px;
+  .header-nav-icon {
+    font-size: 1em;
   }
-  
+
+  /* Currency display: compact, stacks below item slot */
+  .currency-display {
+    font-size: 0.5em;
+    padding: 1px 3px;
+  }
   .currency-symbol {
     font-size: 1em;
   }
-  
-  /* Accountability ticker becomes nested indicator */
+
+  /* Accountability ticker becomes nested dot indicator */
   .accountability-indicator {
     position: absolute;
     right: -4px;
@@ -2655,19 +2702,19 @@ body.amber-mode #scanlines::after {
     align-items: center;
     justify-content: center;
   }
-  
   .mok-header-right {
     position: relative;
   }
-  
   .accountability-label {
     display: none;
   }
-  
   .accountability-icon {
     font-size: 0.9em;
   }
-  
+  .awol-chevron {
+    display: none;
+  }
+
   /* AWOL dropdown adjustments for mobile */
   .awol-dropdown {
     position: fixed;
@@ -2677,16 +2724,15 @@ body.amber-mode #scanlines::after {
     min-width: auto;
     max-width: calc(100vw - 20px);
   }
-  
-  /* Active item slot reduction */
+
+  /* Active item slot: compact */
   .active-item-display {
     width: 34px;
     height: 34px;
     font-size: 1.2em;
   }
-  
   .active-item-label {
-    font-size: 0.6em;
+    display: none;
   }
 }
 
