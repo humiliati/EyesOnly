@@ -1625,20 +1625,34 @@
 }
 
 @media (max-width: 480px) {
-  .splash-dossier.coin-card { width: 92vw; height: 126px; }
+  /* ~15% taller coin cards (126px → 145px) */
+  .splash-dossier.coin-card { width: 92vw; height: 145px !important; }
   .splash-dossier.coin-card:nth-child(1) { transform: perspective(800px) rotateY(0deg) rotateX(3deg) translateZ(0px); }
   .splash-dossier.coin-card:nth-child(2) { transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-10px) translateX(6px); }
   .splash-dossier.coin-card:nth-child(3) { transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-20px) translateX(12px); }
   .splash-dossier.coin-card:nth-child(4) { transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-30px) translateX(18px); }
-  .coin-border-inner { grid-template-columns: 28% 1fr 26%; }
+
+  /* Left col slightly wider; right col significantly wider */
+  .coin-border-inner { grid-template-columns: 31% 1fr 30% !important; }
   .coin-artwork { min-width: unset; }
   .coin-suit-large  { font-size: clamp(36px, 10vw, 46px); }
-  .starfield-window { width: 86%; }
-  .coin-wheel-frame { height: 22px; }
+
+  /* Larger porthole */
+  .starfield-window { width: 92% !important; }
+
+  /* BOOK.NOW / JOIN.NOW — larger font (~+15%), tighter padding */
+  .coin-book-btn { padding: 3px 5px !important; min-height: 34px !important; }
+  .coin-book-label { font-size: 11px !important; letter-spacing: 0.06em !important; }
+  .coin-book-dot { font-size: 11px !important; }
+  .coin-book-duration { font-size: 10px !important; }
+
+  /* Wheels narrower than BOOK.NOW button (~82% of right col) */
+  .coin-wheel-frame { width: 82% !important; height: 24px !important; }
   .coin-wheel-current { font-size: 10px; }
-  .coin-book-btn { min-height: 32px; }
-  .coin-book-label { font-size: 9px; }
-  .coin-book-duration { font-size: 8px; }
+
+  /* Tags narrower than BOOK.NOW button (~82% of right col) */
+  .coin-tag { width: 82% !important; }
+
   .splash-title { letter-spacing: 0.15em; }
 }
 
