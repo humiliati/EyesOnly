@@ -33,8 +33,8 @@ const SplashScreen = (() => {
   const MISSIONS = [
     {
       id: 'scenario-1',
-      title: 'Scenario 1',
-      desc: 'Live field exercise',
+      title: '1 Day Scenario',
+      desc: 'Live field exercise across Sandpoint, Idaho learn spycraft & treasure hunt to discover new secrets of our local history',
       suit: '\u2660',        // ♠
       suitClass: 'suit-spade',
       duration: '24 HR',
@@ -48,8 +48,8 @@ const SplashScreen = (() => {
     },
     {
       id: 'scenario-2',
-      title: 'Scenario 2',
-      desc: 'Extended operation',
+      title: '3 Day Scenario',
+      desc: 'Seasonal operation across North Idaho's destinations. Experience the mystery of the Kaniksu forest.',
       suit: '\u2663',        // ♣
       suitClass: 'suit-club',
       duration: '72 HR',
