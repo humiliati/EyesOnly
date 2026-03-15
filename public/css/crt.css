@@ -614,6 +614,7 @@ body.in-gone-rogue .debrief-window.expanded {
   gap: 0;
   cursor: pointer;
   position: relative;
+  /* Height driven by .active-item-display; currency overlaps bottom half */
 }
 
 .mok-header-item-stack:hover .active-item-display {
@@ -668,6 +669,8 @@ body.in-gone-rogue .debrief-window.expanded {
   font-size: 1.8em;
   transition: all 0.2s ease;
   box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.6);
+  position: relative;
+  z-index: 0; /* z0: frame */
 }
 
 .active-item-display.has-item {
@@ -711,12 +714,18 @@ body.in-gone-rogue .debrief-window.expanded {
   gap: 2px;
   font-size: 0.6em;
   color: var(--phosphor-dim);
-  margin-top: -2px;
   padding: 1px 4px;
-  background: rgba(8, 24, 12, 0.7);
+  background: rgba(8, 24, 12, 0.85);
   border: 1px solid var(--panel-border-soft);
   border-radius: 0 0 4px 4px;
   letter-spacing: 0.05em;
+  /* z2: currency overlaps bottom half of item slot */
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  white-space: nowrap;
 }
 
 .currency-symbol {
@@ -2678,10 +2687,10 @@ body.amber-mode #scanlines::after {
     font-size: 1em;
   }
 
-  /* Currency display: compact, stacks below item slot */
+  /* Currency display: compact, overlaps bottom of item slot */
   .currency-display {
     font-size: 0.5em;
-    padding: 1px 3px;
+    padding: 0px 3px;
   }
   .currency-symbol {
     font-size: 1em;
@@ -2756,7 +2765,8 @@ body.amber-mode #scanlines::after {
   
   body.mode-gone-rogue .currency-display,
   body.in-gone-rogue .currency-display {
-    font-size: 0.55em;
+    font-size: 0.5em;
+    padding: 0px 2px;
   }
   
   body.mode-gone-rogue .active-item-display,
@@ -2814,9 +2824,10 @@ body.amber-mode #scanlines::after {
   }
   
   .currency-display {
-    font-size: 0.5em;
+    font-size: 0.45em;
+    padding: 0px 2px;
   }
-  
+
   /* Ensure game screen is scrollable */
   #log-column {
     overflow-y: auto;
