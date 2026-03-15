@@ -114,7 +114,7 @@
                       <span class="games-inv-slot-label">EMPTY</span>
                     </div>
                   </div>
-                  <div class="games-inv-slot" data-slot="2">
+                  <div class="games-inv-slot" data-slot="2" data-mag-reveal="cypher-note-2">
                     <div class="games-inv-slot-inner games-inv-empty">
                       <span class="games-inv-slot-num">03</span>
                       <span class="games-inv-slot-label">EMPTY</span>
@@ -139,8 +139,6 @@
                     </div>
                   </div>
                 </div>
-                <!-- Hidden item detection zone: magnifying glass porthole reveals cypher note here -->
-                <div class="mag-reveal-zone" data-mag-reveal="cypher-note-2" aria-hidden="true"></div>
                 </div><!-- /games-inventory-scroll -->
               </div>
             </div>
@@ -684,6 +682,14 @@
             '<span class="games-inv-slot-label">' + abbrLabel + '</span>';
         }
 
+        // Clean up: remove data-mag-reveal from the detection zone so it
+        // no longer glows or triggers on future drags
+        var zone = document.querySelector('[data-mag-reveal="' + config.itemKey + '"]');
+        if (zone) {
+          zone.removeAttribute('data-mag-reveal');
+          zone.classList.remove('mag-reveal-active');
+        }
+
         // Persist reveal state
         var revealed = getRevealed();
         revealed[config.itemKey] = true;
@@ -712,7 +718,20 @@
         // Only restore if the item still exists in AccountInventory
         var stillExists = typeof AccountInventory !== 'undefined' && AccountInventory.hasItem(config.itemId);
         if (stillExists) {
-          revealItem(config);
+          // If populateInventory() already placed this item in a slot,
+          // just clean up the detection zone — don't double-populate
+          var alreadyInGrid = document.querySelector(
+            '.games-inv-slot[data-item="' + config.itemKey + '"]'
+          );
+          if (alreadyInGrid) {
+            var zone = document.querySelector('[data-mag-reveal="' + config.itemKey + '"]');
+            if (zone) {
+              zone.removeAttribute('data-mag-reveal');
+              zone.classList.remove('mag-reveal-active');
+            }
+          } else {
+            revealItem(config);
+          }
         }
       });
 
