@@ -46,6 +46,8 @@ var MagnifyingGlassDrag = (function () {
     ghost.className = 'mag-drag-ghost';
     ghost.style.cssText = [
       'position: fixed',
+      'top: 0',
+      'left: 0',
       'z-index: 100000',
       'pointer-events: none',
       'width: ' + (PORTHOLE_SIZE + HANDLE_OFFSET * 2) + 'px',

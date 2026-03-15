@@ -268,20 +268,14 @@ html, body {
 }
 
 /* ---- Decryption inventory scrollable wrapper ---- */
-/* Shows ~0.9 rows by default so the page doesn't look empty.
-   The grid is 3 columns; each slot is square (aspect-ratio:1).
-   One row ≈ 33vw on mobile, capped at ~120px on desktop.
-   0.9 rows ≈ max-height of one row minus a 10% peek of the next. */
+/* Desktop: show all slots (2 rows of 3) without scroll/mask.
+   Mobile: cap height and add fade hint for scrollable content. */
 .games-inventory-scroll {
-  max-height: calc((min(33vw, 120px) + 6px) * 1.2); /* ~1.1 rows visible */
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: var(--phosphor-dim, #1a6b4a) transparent;
   margin-bottom: 10px;
-  /* Subtle fade-out at bottom to hint at scrollable content */
-  mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
 }
 
 .games-inventory-scroll::-webkit-scrollbar {
@@ -301,6 +295,15 @@ html, body {
   -webkit-mask-image: none;
 }
 
+/* Mobile: cap inventory height and add scroll fade hint */
+@media (max-width: 768px) {
+  .games-inventory-scroll {
+    max-height: calc((min(45vw, 140px) + 6px) * 1.6);
+    mask-image: linear-gradient(to bottom, black 75%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 75%, transparent 100%);
+  }
+}
+
 /* ---- Decryption inventory grid ---- */
 .games-inventory-grid {
   display: grid;
@@ -309,7 +312,7 @@ html, body {
 }
 
 .games-inv-slot {
-  aspect-ratio: 1;
+  aspect-ratio: 5 / 4;      /* landscape — reduces vertical dead-space */
   cursor: pointer;
 }
 
@@ -320,11 +323,13 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 2px;
+  padding: 6px 4px 4px;
   border: 1px solid var(--panel-border-soft);
   border-radius: 4px;
   background: rgba(0, 0, 0, 0.35);
   transition: border-color 0.2s, background 0.2s;
+  overflow: hidden;
 }
 
 .games-inv-slot:hover .games-inv-slot-inner {
@@ -333,10 +338,14 @@ html, body {
 }
 
 .games-inv-slot-num {
-  font-size: 0.65em;
+  font-size: 0.7em;
   color: var(--phosphor-dim);
   opacity: 0.5;
   letter-spacing: 0.1em;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .games-inv-slot-label {
@@ -344,6 +353,8 @@ html, body {
   color: #444;
   letter-spacing: 0.15em;
   text-transform: uppercase;
+  line-height: 1.2;
+  flex-shrink: 0;
 }
 
 .games-inv-empty .games-inv-slot-num {
@@ -662,13 +673,14 @@ html, body {
 }
 
 .games-inv-item-icon {
-  font-size: clamp(1.6em, 5vw, 2.8em);
+  font-size: clamp(2em, 6vw, 3.2em);
   line-height: 1;
   filter: grayscale(0.3);
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 0;           /* prevent flex overflow */
 }
 
 /* Scale item emoji to fill its container (desktop ~8x) */
@@ -728,6 +740,8 @@ html, body {
   overflow: hidden;
   white-space: nowrap;
   flex-shrink: 0;
+  line-height: 1.2;
+  padding-bottom: 2px;
 }
 
 /* All occupied slots: inner layout is flex column with emoji centered, label at bottom */
@@ -764,6 +778,10 @@ html, body {
 
   .games-inventory-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .games-inv-slot {
+    aspect-ratio: 1;   /* square on phone where columns are wider */
   }
 
   .games-launcher-details {
