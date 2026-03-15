@@ -436,7 +436,32 @@ A web UI that lets designers:
 
 ---
 
-## 6. File Index
+## 6. Inventory Module Architecture
+
+The codebase uses **three distinct inventory systems** at different layers:
+
+### 6A. Platform Layer — `account-inventory.js`
+- **Purpose**: Cross-game persistent inventory (ARG → games bridge)
+- **Storage**: localStorage (`eyesonly_account_inventory`)
+- **Items**: Platform items (ITM-200 Magnifying Glass, ITM-202 Decoder Ring)
+- **Used by**: games.html, puzzles, ui-controls
+
+### 6B. Game Layer — `inventory-management.js`  
+- **Purpose**: Gone Rogue run-level inventory (stash/retrieve, equip/unequip)
+- **Storage**: GAMESTATE in-memory (`inventoryPersistent`, `inventoryLoose`)
+- **Operations**: STASH, RETRIEVE, EQUIP, UNEQUIP, key consumption
+- **Used by**: gone-rogue.js, locked-gate-system
+
+### 6C. UI Layer — `inventory-ui.js`
+- **Purpose**: Collectible gallery presentation
+- **Storage**: Server API (`/api/user/inventory`)
+- **Used by**: Loaded via gone-rogue-loader.js for gallery rendering
+
+> **Note**: These are intentionally separate modules. Do NOT consolidate — they handle different storage backends and lifecycle stages.
+
+---
+
+## 7. File Index
 
 | File | Role | Designer-Relevant |
 |------|------|------------------|
@@ -448,6 +473,8 @@ A web UI that lets designers:
 | `js/item-spawner.js` | World object spawning (NOT inventory items) | Separate schema |
 | `js/loot-table-manager.js` | Enemy/breakable loot generation | References items by tier |
 | `js/inventory-management.js` | Stash/retrieve/consume/quest-turn-in | All removal paths |
+| `js/account-inventory.js` | Platform inventory (Magnifying Glass, Decoder Ring) | localStorage, bridges ARG → games |
+| `js/inventory-ui.js` | Collectible gallery UI (fetches from API) | Renders card grid |
 | `js/active-item-system.js` | Equipped item use (ground effects, unlock) | Triggers consumption |
 | `js/locked-gate-system.js` | Gate unlock → key consumption dispatch | Routes to consume funcs |
 | `js/box-deployment.js` | Deployable box placement/destruction | Consumes ITM-020–023 |

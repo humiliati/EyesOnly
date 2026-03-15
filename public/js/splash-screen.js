@@ -63,8 +63,8 @@ const SplashScreen = (() => {
     },
     {
       id: 'partner',
-      title: 'Local Partner',
-      desc: 'For businesses, actors & volunteers',
+      title: 'Partners',
+      desc: 'For Businesses, Actors, & Hosts',
       suit: '\u2665',        // ♥
       suitClass: 'suit-heart',
       duration: null,         // no booking wheel
@@ -78,8 +78,8 @@ const SplashScreen = (() => {
     },
     {
       id: 'minigames',
-      title: 'Mini Games',
-      desc: 'Puzzles, decryption keys & toys',
+      title: 'Arcade',
+      desc: 'Decryption keys, Puzzles & Toys',
       suit: '\u2666',        // ♦
       suitClass: 'suit-diamond',
       duration: null,         // no booking wheel
@@ -93,7 +93,7 @@ const SplashScreen = (() => {
       btnLabel: 'PLAY',
       btnDuration: 'NOW',
       btnClass: 'coin-book-diamond',
-      tags: ['PUZZLES', 'DECRYPTION', 'TOYS'],
+      tags: ['PUZZLES', 'DECRYPTION'],
     },
   ];
 
@@ -269,7 +269,7 @@ const SplashScreen = (() => {
           </div>
         </div>`;
     } else {
-      var tags = mission.tags || ['BUSINESSES', 'ACTORS', 'VOLUNTEERS'];
+      var tags = mission.tags || ['BUSINESSES', 'ACTORS'];
       bottomStrip = `
         <div class="coin-tag-strip">
           ${tags.map(function (t) { return '<span class="coin-tag">' + t + '</span>'; }).join('')}
@@ -863,16 +863,10 @@ const SplashScreen = (() => {
     ghost.classList.remove('coin-card-hovered', 'splash-selected', 'coin-card-dragging');
     ghost.classList.add('coin-card-ghost');
 
-    // Mobile: circular porthole ghost centered on grab point
-    var ghostW, ghostH, ghostRadius;
-    if (isMobile) {
-      ghostW = ghostH = Math.min(160, Math.round(rect.width * 0.55));
-      ghostRadius = '50%';
-    } else {
-      ghostW = Math.round(rect.width);
-      ghostH = Math.round(rect.height);
-      ghostRadius = '16px';
-    }
+    // Full card ghost on both desktop and mobile
+    var ghostW = Math.round(rect.width);
+    var ghostH = Math.round(rect.height);
+    var ghostRadius = isMobile ? '8px' : '16px';
 
     ghost.style.cssText = [
       'position: fixed',
@@ -1066,14 +1060,16 @@ const SplashScreen = (() => {
     // Mobile gets a circular porthole ghost; desktop gets the full card.
     var cards = splashEl.querySelectorAll('.splash-dossier');
     cards.forEach(function (card) {
-      var artwork = card.querySelector('.coin-artwork');
-      if (!artwork) return;
-
       var dragStarted = false;
       var dragPointerId = -1;
       var startX = 0, startY = 0;
 
-      artwork.addEventListener('pointerdown', function (e) {
+      // Drag pickup zone: artwork (porthole) AND info (title/desc) columns
+      var dragZones = card.querySelectorAll('.coin-artwork, .coin-info');
+      if (!dragZones.length) return;
+
+      dragZones.forEach(function (zone) {
+      zone.addEventListener('pointerdown', function (e) {
         if (dismissed || _dragState || isDraggingWheel || _activeWheelPointerId >= 0) return;
         // Don't capture if it's on a button or wheel
         if (e.target.closest('.coin-wheel') || e.target.closest('.coin-book-btn')) return;
@@ -1152,6 +1148,7 @@ const SplashScreen = (() => {
         window.addEventListener('pointerup', onUp, true);
         window.addEventListener('pointercancel', onCancel, true);
       });
+      }); // end dragZones.forEach
     });
 
     // Escape key cancels drag

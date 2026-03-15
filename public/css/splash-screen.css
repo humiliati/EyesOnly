@@ -1268,47 +1268,18 @@
     0 4px 12px var(--theme-hover-glow);
 }
 
-/* Mobile: circular porthole ghost (compact for small screens) */
-@media (max-width: 768px) {
-  .splash-dossier.coin-card.coin-card-ghost {
-    border-radius: 50%;
-    overflow: hidden;
-  }
+/* Mobile ghost: full card (matches desktop) — the 3-column grid ghost
+   already inherits all card styling, no special circular clipping needed. */
 
-  .splash-dossier.coin-card.coin-card-ghost .coin-border-outer {
-    border-radius: 50%;
-    padding: 3px;
-  }
-
-  .splash-dossier.coin-card.coin-card-ghost .coin-border-inner {
-    border-radius: 50%;
-  }
-
-  /* Hide non-porthole content in mobile ghost */
-  .splash-dossier.coin-card.coin-card-ghost .coin-header,
-  .splash-dossier.coin-card.coin-card-ghost .coin-info,
-  .splash-dossier.coin-card.coin-card-ghost .coin-mid-row,
-  .splash-dossier.coin-card.coin-card-ghost .coin-wheel-strip,
-  .splash-dossier.coin-card.coin-card-ghost .coin-tag-strip,
-  .splash-dossier.coin-card.coin-card-ghost .coin-corner {
-    display: none !important;
-  }
-
-  /* Artwork fills the circular ghost */
-  .splash-dossier.coin-card.coin-card-ghost .coin-artwork {
-    flex: 1 1 100%;
-    width: 100%;
-    min-height: 100%;
-  }
-}
-
-/* Coin artwork drag cursor — grab dead space around suit */
-.coin-artwork {
+/* Drag pickup zones — artwork (porthole) and info (title/desc) columns */
+.coin-artwork,
+.coin-info {
   cursor: grab;
   /* Prevent browser scroll/zoom during card drag on touch devices */
   touch-action: none;
 }
-.coin-artwork:active {
+.coin-artwork:active,
+.coin-info:active {
   cursor: grabbing;
 }
 
@@ -1455,204 +1426,214 @@
    MOBILE PORTRAIT — Stacked coin cards
    ============================================================== */
 @media (max-width: 768px) {
+  /* ----- Fan: push down so card-1 clears the fixed close button ----- */
   .splash-card-fan {
     flex-direction: column;
     align-items: center;
     gap: 0;
     perspective: 900px;
     transform-style: preserve-3d;
+    padding-top: 38px;
   }
 
+  /* Card: height tuned so all 4 fit in viewport */
   .splash-dossier.coin-card {
     width: clamp(280px, 85vw, 380px);
-    height: clamp(160px, 22vh, 210px);
+    height: clamp(128px, 20vh, 172px);
   }
 
-  .splash-dossier.coin-card:nth-child(1) {
-    transform: perspective(800px) rotateY(0deg) rotateX(3deg) translateZ(0px);
-    z-index: 4;
-    margin: 0;
-  }
+  /* Fan stacking transforms (unchanged) */
+  .splash-dossier.coin-card:nth-child(1) { transform: perspective(800px) rotateY(0deg) rotateX(3deg) translateZ(0px); z-index: 4; margin: 0; }
+  .splash-dossier.coin-card:nth-child(2) { transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-10px) translateX(8px); z-index: 3; margin: 0; }
+  .splash-dossier.coin-card:nth-child(3) { transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-20px) translateX(14px); z-index: 2; margin: 0; }
+  .splash-dossier.coin-card:nth-child(4) { transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-30px) translateX(20px); z-index: 1; margin: 0; }
+  .splash-dossier.coin-card.coin-card-hovered { transform: perspective(800px) rotateY(0deg) rotateX(2deg) translateY(-20px) translateX(0px) scale(1.03) !important; z-index: 10 !important; }
 
-  .splash-dossier.coin-card:nth-child(2) {
-    transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-10px) translateX(8px);
-    z-index: 3;
-    margin: 0;
-  }
-
-  .splash-dossier.coin-card:nth-child(3) {
-    transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-20px) translateX(14px);
-    z-index: 2;
-    margin: 0;
-  }
-
-  .splash-dossier.coin-card:nth-child(4) {
-    transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-30px) translateX(20px);
-    z-index: 1;
-    margin: 0;
-  }
-
-  .splash-dossier.coin-card.coin-card-hovered {
-    transform: perspective(800px) rotateY(0deg) rotateX(2deg) translateY(-20px) translateX(0px) scale(1.03) !important;
-    z-index: 10 !important;
-  }
-
-  /* Horizontal layout for mobile cards */
+  /* ----- 3-COLUMN GRID LAYOUT ----- */
+  /* Col 1 (72px): artwork porthole  |  Col 2 (1fr): title+desc  |  Col 3 (70px): btn+wheels/tags */
   .coin-border-inner {
-    flex-direction: row;
-    flex-wrap: wrap;
+    display: grid !important;
+    grid-template-columns: 72px 1fr 70px;
+    grid-template-rows: auto 1fr;
+    align-items: stretch;
+    flex-direction: unset !important;
+    flex-wrap: unset !important;
+    overflow: hidden;
   }
 
-  .coin-header {
-    display: none;
-  }
+  .coin-corner-tl { grid-column: 1; grid-row: 1; z-index: 10; }
+  .coin-corner-br { grid-column: 3; grid-row: 2; z-index: 10; }
+  .coin-header    { display: none !important; }
 
-  .coin-corner-tl {
-    top: 4px;
-    left: 6px;
-  }
-
-  .coin-corner-br {
-    bottom: 4px;
-    right: 6px;
-  }
-
+  /* Col 1: porthole — full card height */
   .coin-artwork {
-    width: 80px;
-    min-width: 80px;
-    flex: none;
+    grid-column: 1 !important;
+    grid-row: 1 / 3 !important;
+    width: 100% !important;
+    min-width: unset !important;
+    flex: unset !important;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    touch-action: none;
   }
 
-  .coin-suit-large {
-    font-size: 36px;
-    /* Reduce bob on mobile for compactness */
-    animation: suit-bob 5s ease-in-out infinite;
-  }
-
-  .starfield-window {
-    width: 55px;
-  }
-
-  .coin-rings {
-    /* Simplify rings on mobile — fewer visible in small space */
-    opacity: 0.7;
-  }
-
+  /* Col 2: title + description */
   .coin-info {
-    flex: 1;
+    grid-column: 2 !important;
+    grid-row: 1 / 3 !important;
+    width: auto !important;
+    min-width: 0;
+    flex: unset !important;
     display: flex;
     flex-direction: column;
     justify-content: center;
     border-top: none;
     border-left: 1px solid var(--theme-primary-glow);
-    padding: 6px 10px;
+    padding: 5px 7px;
     text-align: left;
+    overflow: hidden;
+    box-sizing: border-box;
   }
+  .coin-title { font-size: clamp(11px, 4vw, 14px); letter-spacing: 0.05em; margin-bottom: 2px; }
+  .coin-desc  { font-size: clamp(8px, 2.6vw, 10px); letter-spacing: 0.02em; }
 
+  /* Col 3 row 1: Book/Join/Play button */
   .coin-mid-row {
-    padding: 4px 8px;
-    margin-top: 4px;
+    grid-column: 3 !important;
+    grid-row: 1 !important;
+    width: 100% !important;
+    flex: unset !important;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    padding: 5px 4px 3px;
+    margin-top: 0;
+    border-left: 1px solid var(--theme-primary-glow);
+    box-sizing: border-box;
+    overflow: hidden;
   }
-
   .coin-book-btn {
-    padding: 5px 14px;
-    min-height: 44px;  /* iOS-recommended touch target */
+    padding: 3px 4px;
+    min-height: 28px;
+    width: 100%;
+    justify-content: center;
+    box-sizing: border-box;
+    gap: 1px;
   }
+  .coin-book-label    { font-size: 9px; letter-spacing: 0.05em; }
+  .coin-book-dot      { font-size: 9px; margin: 0; }
+  .coin-book-duration { font-size: 8px; letter-spacing: 0.03em; }
 
+  /* Col 3 row 2: Decoder wheels — stacked vertically */
   .coin-wheel-strip {
-    width: 100%;
-    padding: 4px 8px 6px;
-    gap: 4px;
-    overflow: visible;
+    grid-column: 3 !important;
+    grid-row: 2 !important;
+    width: 100% !important;
+    flex: unset !important;
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 2px 4px 3px;
+    margin-bottom: 0;
+    overflow: hidden;
+    border-left: 1px solid var(--theme-primary-glow);
+    box-sizing: border-box;
   }
-
+  .coin-wheel {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    touch-action: none;
+    cursor: ns-resize;
+    width: 100%;
+  }
   .coin-wheel-frame {
-    width: 64px;
-    height: 42px;
-    touch-action: none;
-  }
-
-  .coin-wheel-track {
-    touch-action: none;
-  }
-
-  .coin-tag-strip {
     width: 100%;
-    padding: 4px 8px 6px;
+    height: 21px;
+    touch-action: none;
+    flex-shrink: 0;
+    box-sizing: border-box;
   }
+  .coin-wheel-track   { touch-action: none; }
+  .coin-wheel-val     { height: 8px; line-height: 8px; }
+  .coin-wheel-current { font-size: 9px; }
+  .coin-wheel-prev, .coin-wheel-next { font-size: 6px; }
+  .coin-wheel-ctx {
+    font-size: 5.5px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    line-height: 1.2;
+  }
+
+  /* Col 3 row 2: Tag strip (partner/arcade) — mirrors wheel strip style */
+  .coin-tag-strip {
+    grid-column: 3 !important;
+    grid-row: 2 !important;
+    width: 100% !important;
+    flex: unset !important;
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 3px 4px;
+    max-height: none;
+    overflow: hidden;
+    border-left: 1px solid var(--theme-primary-glow);
+    box-sizing: border-box;
+  }
+  .coin-tag {
+    font-size: 6.5px;
+    padding: 3px 2px;
+    width: 100%;
+    text-align: center;
+    box-sizing: border-box;
+    letter-spacing: 0.05em;
+  }
+
+  /* Porthole: bigger suit icon to fill the 72px column */
+  .coin-suit-large  { font-size: 40px; animation: suit-bob 5s ease-in-out infinite; }
+  .starfield-window { width: 84%; }
 
   /* Silhouettes */
-  .splash-sil-bottom {
-    width: 50vw;
-    height: 75vh;
-  }
-
+  .splash-sil-bottom { width: 50vw; height: 75vh; }
   .splash-sil-slot-a { left: 0; }
   .splash-sil-slot-b { left: 50%; }
   .splash-sil-slot-c { right: 0; }
 
-  .splash-close-btn {
-    top: 10px;
-    right: 10px;
-    width: 40px;
-    height: 40px;
-  }
+  /* Close button */
+  .splash-close-btn  { top: 10px; right: 10px; width: 40px; height: 40px; }
+  .splash-close-icon { font-size: 20px; }
 
-  .splash-close-icon {
-    font-size: 20px;
-  }
-
-  /* Card edge pseudo-element — thinner on mobile */
-  .splash-dossier.coin-card::after {
-    transform: translateZ(-5px);
-  }
+  /* Card edge — thinner on mobile */
+  .splash-dossier.coin-card::after { transform: translateZ(-5px); }
 }
 
 @media (max-width: 480px) {
-  .splash-dossier.coin-card {
-    width: 92vw;
-    height: 145px;
-  }
-
-  .splash-dossier.coin-card:nth-child(1) {
-    transform: perspective(800px) rotateY(0deg) rotateX(3deg) translateZ(0px);
-  }
-  .splash-dossier.coin-card:nth-child(2) {
-    transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-10px) translateX(6px);
-  }
-  .splash-dossier.coin-card:nth-child(3) {
-    transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-20px) translateX(12px);
-  }
-  .splash-dossier.coin-card:nth-child(4) {
-    transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-30px) translateX(18px);
-  }
-
-  .coin-artwork {
-    width: 65px;
-    min-width: 65px;
-  }
-
-  .coin-suit-large {
-    font-size: 28px;
-  }
-
-  .splash-title {
-    letter-spacing: 0.15em;
-  }
-
-  .coin-wheel-frame {
-    width: 56px;
-    height: 38px;
-    touch-action: none;
-  }
-
-  .coin-wheel-current {
-    font-size: 12px;
-  }
-
-  .coin-wheel-ctx {
-    font-size: 7px;
-  }
+  .splash-dossier.coin-card { width: 92vw; height: 126px; }
+  .splash-dossier.coin-card:nth-child(1) { transform: perspective(800px) rotateY(0deg) rotateX(3deg) translateZ(0px); }
+  .splash-dossier.coin-card:nth-child(2) { transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-10px) translateX(6px); }
+  .splash-dossier.coin-card:nth-child(3) { transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-20px) translateX(12px); }
+  .splash-dossier.coin-card:nth-child(4) { transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-30px) translateX(18px); }
+  .coin-border-inner { grid-template-columns: 64px 1fr 64px; }
+  .coin-artwork { min-width: 64px; }
+  .coin-suit-large  { font-size: 32px; }
+  .starfield-window { width: 78%; }
+  .coin-wheel-frame { height: 20px; }
+  .coin-wheel-current { font-size: 9px; }
+  .coin-book-btn { min-height: 25px; }
+  .coin-book-label { font-size: 9px; }
+  .coin-book-duration { font-size: 8px; }
+  .splash-title { letter-spacing: 0.15em; }
 }
 
 
