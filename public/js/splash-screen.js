@@ -49,7 +49,7 @@ const SplashScreen = (() => {
     {
       id: 'scenario-2',
       title: '3 Day Scenario',
-      desc: 'Seasonal operation across North Idaho's destinations. Experience the mystery of the Kaniksu forest.',
+      desc: 'Seasonal operation across North Idaho\u2019s destinations. Experience the mystery of the Kaniksu forest.',
       suit: '\u2663',        // ♣
       suitClass: 'suit-club',
       duration: '72 HR',
