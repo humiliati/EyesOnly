@@ -1,0 +1,122 @@
+[
+  {
+    "id": "DOC-001",
+    "name": "Gone Rogue Tutorial",
+    "emoji": "🗡️",
+    "type": "tutorial",
+    "category": "gameplay",
+    "description": "How to survive your first run in Gone Rogue — seeded roguelike mechanics, tier progression, and persistent unlocks.",
+    "href": "/docs/gone-rogue-tutorial.md",
+    "public": true
+  },
+  {
+    "id": "DOC-002",
+    "name": "Operative Tutorial",
+    "emoji": "🕵️",
+    "type": "tutorial",
+    "category": "gameplay",
+    "description": "Agent onboarding manual. Covers movement, inventory, comms, and field protocol for live operations.",
+    "href": "/docs/ops-tutorial-alpha.md",
+    "public": true
+  },
+  {
+    "id": "DOC-003",
+    "name": "Mission Controller Tutorial",
+    "emoji": "📡",
+    "type": "tutorial",
+    "category": "gameplay",
+    "description": "How to run ops from the Mission Controller seat — dispatch, intel feeds, and team coordination.",
+    "href": "/docs/m-tutorial-alpha.md",
+    "public": true
+  },
+  {
+    "id": "DOC-004",
+    "name": "Business Participation Form",
+    "emoji": "🤝",
+    "type": "form",
+    "category": "partners",
+    "description": "Venue and business partner sign-up form for hosting live spy-game scenarios.",
+    "href": "/docs/business-participation-form.md",
+    "public": true
+  },
+  {
+    "id": "DOC-005",
+    "name": "Street Block Designer Kit",
+    "emoji": "🗺️",
+    "type": "guide",
+    "category": "content",
+    "description": "No-code content kit for building Street Chronicles blocks — templates, checklists, and submission workflow.",
+    "href": "/docs/README.md",
+    "public": true
+  },
+  {
+    "id": "DOC-006",
+    "name": "Deployment Guide",
+    "emoji": "🚀",
+    "type": "reference",
+    "category": "ops",
+    "description": "Cloudflare Worker deployment procedures, environment config, and rollback protocol.",
+    "href": null,
+    "public": false
+  },
+  {
+    "id": "DOC-007",
+    "name": "CSS Theme Customization",
+    "emoji": "🎨",
+    "type": "reference",
+    "category": "design",
+    "description": "Four-theme CRT terminal system — Phosphor, Silver, Amber, Panther. Customization variables and extension guide.",
+    "href": null,
+    "public": false
+  },
+  {
+    "id": "DOC-008",
+    "name": "Item Pipeline Roadmap",
+    "emoji": "📦",
+    "type": "roadmap",
+    "category": "gameplay",
+    "description": "End-to-end item system — drop tables, crafting, equipment slots, and gone-rogue integration.",
+    "href": null,
+    "public": false
+  },
+  {
+    "id": "DOC-009",
+    "name": "Audio Wiring Roadmap",
+    "emoji": "🔊",
+    "type": "roadmap",
+    "category": "design",
+    "description": "SFX, ambient loops, spatial audio, and breakable audio system architecture.",
+    "href": null,
+    "public": false
+  },
+  {
+    "id": "DOC-010",
+    "name": "Porthole Puzzle Toolkit",
+    "emoji": "🔍",
+    "type": "reference",
+    "category": "gameplay",
+    "description": "Magnifying glass interaction, z-index stacking, porthole rendering, and drag-to-reveal pattern.",
+    "href": null,
+    "public": false
+  },
+  {
+    "id": "DOC-011",
+    "name": "AWOL Launch System",
+    "emoji": "🚨",
+    "type": "roadmap",
+    "category": "gameplay",
+    "description": "Seed generation, minigame launcher, and the AWOL dynamic menu system.",
+    "href": null,
+    "public": false
+  },
+  {
+    "id": "DOC-012",
+    "name": "Booking & Partners Roadmap",
+    "emoji": "📋",
+    "type": "roadmap",
+    "category": "partners",
+    "description": "Mission booking flow, partner integration, calendar systems, and payment pipeline.",
+    "href": null,
+    "public": false
+  }
+]

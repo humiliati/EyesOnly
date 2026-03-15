@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="CONTACT — EyesOnly Spy Games help library, contact form, and ops channel.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#000000">
+  <title>EYES ONLY // CONTACT</title>
+
+  <link rel="stylesheet" href="css/crt.css?v=20260314e">
+  <link rel="stylesheet" href="css/themes.css?v=20260314a">
+  <link rel="stylesheet" href="css/games.css?v=20260314c">
+  <link rel="stylesheet" href="css/contact.css?v=20260314a">
+
+  <script>
+    (function() {
+      try {
+        var t = localStorage.getItem('eyesonly_theme');
+        if (t) {
+          document.documentElement.setAttribute('data-theme', t);
+          if (document.body) {
+            document.body.setAttribute('data-theme', t);
+          } else {
+            document.addEventListener('DOMContentLoaded', function() {
+              document.body.setAttribute('data-theme', t);
+            });
+          }
+        }
+      } catch (_) {}
+    })();
+  </script>
+
+  <style>
+    * {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    /* Allow text selection inside form fields */
+    input, textarea {
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- CRT Screen Container -->
+  <div id="crt-screen">
+
+    <!-- CRT Effect Layers -->
+    <div id="phosphor-glow"></div>
+    <div id="scanlines"></div>
+    <div id="vignette"></div>
+
+    <div id="crt-frame">
+      <header id="mok-header" class="monitor-header">
+        <div class="mok-header-copy">
+          <div class="mok-header-title">EyesOnly Spy Games:</div>
+          <div class="mok-header-sub"><span id="actor-name-display">Contact</span></div>
+        </div>
+        <nav class="mok-header-nav" aria-label="Quick links">
+          <a href="/booking.html" class="header-chip header-nav-btn" data-sound="ui-01" title="Book a Mission">
+            <span class="header-nav-icon">&#9824;</span><span class="header-nav-label" data-abbr="BKNG">BOOKING</span>
+          </a>
+          <a href="/partners.html" class="header-chip header-nav-btn" data-sound="ui-01" title="Partner Sign-Up">
+            <span class="header-nav-icon header-nav-icon-heart">&#9829;</span><span class="header-nav-label" data-abbr="PRTNRS">PARTNERS</span>
+          </a>
+          <a href="/contact.html" class="header-chip header-nav-btn" data-sound="ui-01" title="Contact" aria-current="page">
+            <span class="header-nav-icon">&#9827;</span><span class="header-nav-label" data-abbr="CNTCT">CONTACT</span>
+          </a>
+          <a href="/games.html" class="header-chip header-nav-btn" data-sound="ui-01" title="Arcade &amp; Field Kit">
+            <span class="header-nav-icon">&#9830;</span><span class="header-nav-label" data-abbr="ARCD">ARCADE</span>
+          </a>
+        </nav>
+        <div class="mok-header-right">
+          <div class="mok-header-item-stack" id="active-item-slot" title="Active Item &mdash; Click to unequip">
+            <div id="active-item-display" class="active-item-display">
+              <span class="empty-slot-indicator">&middot;</span>
+            </div>
+            <div id="currency-display" class="currency-display" title="Cryptos">
+              <span class="currency-symbol">&cent;</span>
+              <span id="currency-value" class="currency-value">00000000</span>
+            </div>
+          </div>
+          <a href="/" class="header-chip header-nav-btn" id="awol-button" data-sound="ui-04" title="AWOL &mdash; Return to Terminal">
+            <span class="accountability-label">AWOL</span>
+          </a>
+        </div>
+      </header>
+      <script>
+        /* Vowel-drop abbreviator for nav labels (matches SharedItemRenderer.abbreviateName convention):
+           Keep first char of each word (even if vowel), drop remaining vowels. */
+        (function () {
+          var labels = document.querySelectorAll('.header-nav-label');
+          for (var i = 0; i < labels.length; i++) {
+            var text = labels[i].textContent.trim();
+            if (!text || text.length <= 2) continue;
+            var words = text.split(/\s+/);
+            var abbr = [];
+            for (var w = 0; w < words.length; w++) {
+              var word = words[w];
+              if (word.length <= 2) { abbr.push(word); continue; }
+              var out = word.charAt(0);
+              for (var c = 1; c < word.length; c++) {
+                var ch = word.charAt(c).toLowerCase();
+                if (ch !== 'a' && ch !== 'e' && ch !== 'i' && ch !== 'o' && ch !== 'u') {
+                  out += word.charAt(c);
+                }
+              }
+              abbr.push(out);
+            }
+            labels[i].setAttribute('data-abbr', abbr.join(' ').toUpperCase());
+          }
+        })();
+      </script>
+
+      <div id="monitor-shell">
+        <div class="log-frame games-log-frame" id="contact-log-frame">
+
+          <!-- Scanline overlay for inner screen feel -->
+          <div class="games-scanlines"></div>
+
+          <!-- Scrollable content area -->
+          <div class="games-content" id="contact-content">
+
+            <!-- ═══════════════ DOCUMENT LIBRARY (default expanded) ═══════════════ -->
+            <div class="games-row" id="row-documents">
+              <button class="games-row-header" data-target="documents-body" aria-expanded="true">
+                <span class="games-row-chevron">&#9662;</span>
+                <span class="games-row-label">DOCUMENT LIBRARY</span>
+                <span class="games-row-count" id="doc-count">LOADING</span>
+                <span class="games-row-status">REFERENCE</span>
+              </button>
+              <div class="games-row-body games-row-body-open" id="documents-body">
+                <div class="doc-library-grid" id="doc-library-grid">
+                  <!-- Populated from documents.json -->
+                </div>
+              </div>
+            </div>
+
+            <!-- ═══════════════ CONTACT FORM (default expanded) ═══════════════ -->
+            <div class="games-row" id="row-contact-form">
+              <button class="games-row-header" data-target="contact-form-body" aria-expanded="true">
+                <span class="games-row-chevron">&#9662;</span>
+                <span class="games-row-label">SUBMIT A MESSAGE</span>
+                <span class="games-row-count">SECURE</span>
+                <span class="games-row-status">OPEN</span>
+              </button>
+              <div class="games-row-body games-row-body-open" id="contact-form-body">
+                <form class="contact-form" id="contact-form" autocomplete="off">
+                  <div class="contact-field">
+                    <label class="contact-field-label" for="contact-name">Callsign / Name</label>
+                    <input type="text" class="contact-field-input" id="contact-name" name="name"
+                           placeholder="Agent designation or real name" required>
+                  </div>
+                  <div class="contact-field">
+                    <label class="contact-field-label" for="contact-email">Email</label>
+                    <input type="email" class="contact-field-input" id="contact-email" name="email"
+                           placeholder="your@email.com" required>
+                  </div>
+                  <div class="contact-field">
+                    <label class="contact-field-label" for="contact-subject">Subject</label>
+                    <input type="text" class="contact-field-input" id="contact-subject" name="subject"
+                           placeholder="Mission inquiry, bug report, partnership...">
+                  </div>
+                  <div class="contact-field">
+                    <label class="contact-field-label" for="contact-message">Message</label>
+                    <textarea class="contact-field-textarea" id="contact-message" name="message"
+                              placeholder="Transmit your message..." rows="5" required></textarea>
+                  </div>
+                  <div class="contact-status" id="contact-status"></div>
+                  <button type="submit" class="contact-submit-btn" data-sound="ui-04">
+                    <span class="contact-submit-icon">&#9654;</span>
+                    <span>TRANSMIT</span>
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <!-- ═══════════════ RAW CONTACT INFO (collapsed by default) ═══════════════ -->
+            <div class="games-row" id="row-raw-contact">
+              <button class="games-row-header" data-target="raw-contact-body" aria-expanded="false">
+                <span class="games-row-chevron">&#9656;</span>
+                <span class="games-row-label">OPS CHANNEL</span>
+                <span class="games-row-count">DIRECT</span>
+                <span class="games-row-status">STANDBY</span>
+              </button>
+              <div class="games-row-body" id="raw-contact-body">
+                <div class="contact-raw-info">
+                  <div class="contact-raw-row">
+                    <span class="contact-raw-icon">&#9993;</span>
+                    <div class="contact-raw-detail">
+                      <div class="contact-raw-label">Email</div>
+                      <div class="contact-raw-value">
+                        <a href="mailto:Ops@flapsandseals.com">Ops@flapsandseals.com</a>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="contact-raw-row">
+                    <span class="contact-raw-icon">&#127968;</span>
+                    <div class="contact-raw-detail">
+                      <div class="contact-raw-label">Address</div>
+                      <div class="contact-raw-value">
+                        123 Sandpoint Way NE<br>
+                        Sandpoint, ID 83864
+                      </div>
+                    </div>
+                  </div>
+                  <div class="contact-raw-row">
+                    <span class="contact-raw-icon">&#128222;</span>
+                    <div class="contact-raw-detail">
+                      <div class="contact-raw-label">Phone</div>
+                      <div class="contact-raw-value">
+                        <a href="tel:+12085551234">(208) 555-1234</a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /contact-content -->
+
+          <!-- Bottom status bar -->
+          <div class="games-footer-strip">
+            <span class="games-footer-sig">EYES ONLY // CONTACT v1.0</span>
+            <span class="games-footer-time" id="contact-clock">00:00:00</span>
+          </div>
+
+        </div><!-- /contact-log-frame -->
+      </div><!-- /monitor-shell -->
+    </div><!-- /crt-frame -->
+  </div><!-- /crt-screen -->
+
+  <script src="js/theme-widget.js"></script>
+  <script>if (typeof ThemeWidget !== 'undefined') ThemeWidget.initEarly();</script>
+
+  <!-- Shared item renderer (abbreviateName, resolve, etc.) -->
+  <script src="js/shared-item-renderer.js"></script>
+
+  <!-- Audio system for SFX -->
+  <script src="js/audio-system.js?v=20260309d"></script>
+
+  <script>
+  (function () {
+    'use strict';
+
+    /* ---- Clock ---- */
+    function tickClock() {
+      var el = document.getElementById('contact-clock');
+      if (!el) return;
+      var d = new Date();
+      el.textContent =
+        String(d.getHours()).padStart(2, '0') + ':' +
+        String(d.getMinutes()).padStart(2, '0') + ':' +
+        String(d.getSeconds()).padStart(2, '0');
+    }
+    setInterval(tickClock, 1000);
+    tickClock();
+
+    /* ---- Expandable rows with localStorage persistence ---- */
+    var EXPAND_KEY = 'eyesonly_contact_expanded';
+
+    function getSavedExpanded() {
+      try {
+        var raw = localStorage.getItem(EXPAND_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (_) { return null; }
+    }
+
+    function saveExpanded() {
+      try {
+        var state = {};
+        document.querySelectorAll('.games-row-header').forEach(function (btn) {
+          var id = btn.getAttribute('data-target');
+          state[id] = btn.getAttribute('aria-expanded') === 'true';
+        });
+        localStorage.setItem(EXPAND_KEY, JSON.stringify(state));
+      } catch (_) {}
+    }
+
+    /* Restore saved expand state (documents + form default open, raw-contact closed) */
+    var saved = getSavedExpanded();
+    if (saved) {
+      document.querySelectorAll('.games-row-header').forEach(function (btn) {
+        var targetId = btn.getAttribute('data-target');
+        var body = document.getElementById(targetId);
+        if (!body) return;
+        var shouldOpen = saved[targetId];
+        if (shouldOpen === undefined) {
+          shouldOpen = (targetId === 'documents-body' || targetId === 'contact-form-body');
+        }
+        if (shouldOpen) {
+          btn.setAttribute('aria-expanded', 'true');
+          body.classList.add('games-row-body-open');
+          btn.querySelector('.games-row-chevron').innerHTML = '&#9662;';
+        } else {
+          btn.setAttribute('aria-expanded', 'false');
+          body.classList.remove('games-row-body-open');
+          btn.querySelector('.games-row-chevron').innerHTML = '&#9656;';
+        }
+      });
+    }
+
+    var headers = document.querySelectorAll('.games-row-header');
+    headers.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var targetId = btn.getAttribute('data-target');
+        var body = document.getElementById(targetId);
+        if (!body) return;
+
+        var expanded = btn.getAttribute('aria-expanded') === 'true';
+        if (expanded) {
+          btn.setAttribute('aria-expanded', 'false');
+          body.classList.remove('games-row-body-open');
+          btn.querySelector('.games-row-chevron').innerHTML = '&#9656;';
+        } else {
+          btn.setAttribute('aria-expanded', 'true');
+          body.classList.add('games-row-body-open');
+          btn.querySelector('.games-row-chevron').innerHTML = '&#9662;';
+        }
+
+        saveExpanded();
+
+        if (window.AudioSystem && AudioSystem.playSFX) {
+          AudioSystem.playSFX('ui-04');
+        }
+      });
+    });
+
+    /* ---- Data-sound delegate ---- */
+    document.addEventListener('click', function (e) {
+      var target = e.target.closest('[data-sound]');
+      if (target && window.AudioSystem && AudioSystem.playSFX) {
+        AudioSystem.playSFX(target.getAttribute('data-sound'));
+      }
+    });
+
+    /* ---- Vowel-drop abbreviator (matches SharedItemRenderer.abbreviateName) ---- */
+    function abbreviateName(name) {
+      if (!name || name.length <= 2) return name;
+      if (typeof SharedItemRenderer !== 'undefined' && SharedItemRenderer.abbreviateName) {
+        return SharedItemRenderer.abbreviateName(name, 14).toUpperCase();
+      }
+      var words = name.split(/\s+/);
+      var result = [];
+      for (var w = 0; w < words.length; w++) {
+        var word = words[w];
+        if (word.length <= 2) { result.push(word); continue; }
+        var out = word.charAt(0);
+        for (var c = 1; c < word.length; c++) {
+          var ch = word.charAt(c).toLowerCase();
+          if (ch !== 'a' && ch !== 'e' && ch !== 'i' && ch !== 'o' && ch !== 'u') {
+            out += word.charAt(c);
+          }
+        }
+        result.push(out);
+      }
+      return result.join(' ').toUpperCase();
+    }
+
+    /* ---- Load document library from documents.json ---- */
+    (function loadDocLibrary() {
+      var grid = document.getElementById('doc-library-grid');
+      var countEl = document.getElementById('doc-count');
+      if (!grid) return;
+
+      fetch('/data/documents.json?v=20260314a')
+        .then(function (r) { return r.json(); })
+        .then(function (docs) {
+          // Filter to public documents only
+          var publicDocs = docs.filter(function (d) { return d.public && d.href; });
+          if (countEl) countEl.textContent = publicDocs.length + ' DOCS';
+
+          publicDocs.forEach(function (doc) {
+            var card = document.createElement('a');
+            card.className = 'doc-card';
+            card.href = doc.href;
+            card.target = '_blank';
+            card.rel = 'noopener';
+            card.setAttribute('data-doc-id', doc.id);
+            card.setAttribute('data-sound', 'ui-01');
+
+            var abbrName = abbreviateName(doc.name);
+
+            card.innerHTML =
+              '<span class="doc-card-emoji">' + doc.emoji + '</span>' +
+              '<span class="doc-card-id">' + doc.id + '</span>' +
+              '<span class="doc-card-name" data-abbr="' + abbrName + '">' +
+                doc.name.toUpperCase() +
+              '</span>';
+
+            grid.appendChild(card);
+          });
+        })
+        .catch(function (err) {
+          console.warn('[CONTACT] Failed to load documents.json:', err);
+          if (countEl) countEl.textContent = 'ERROR';
+          grid.innerHTML = '<div style="color:var(--phosphor-dim);font-size:0.75em;padding:8px;">Failed to load document library.</div>';
+        });
+    })();
+
+    /* ---- Contact form submission ---- */
+    (function initContactForm() {
+      var form = document.getElementById('contact-form');
+      var status = document.getElementById('contact-status');
+      if (!form) return;
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        var data = {
+          name: form.elements.name.value.trim(),
+          email: form.elements.email.value.trim(),
+          subject: form.elements.subject.value.trim(),
+          message: form.elements.message.value.trim()
+        };
+
+        if (!data.name || !data.email || !data.message) {
+          status.className = 'contact-status contact-status-err';
+          status.textContent = 'REQUIRED FIELDS MISSING — name, email, and message are mandatory.';
+          return;
+        }
+
+        // POST to existing /api/partners/apply with form_type: 'contact'
+        var submitBtn = form.querySelector('.contact-submit-btn');
+        if (submitBtn) submitBtn.disabled = true;
+
+        status.className = 'contact-status contact-status-ok';
+        status.textContent = 'TRANSMITTING...';
+
+        fetch('/api/partners/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            form_type: 'contact',
+            contact_name: data.name,
+            contact_email: data.email,
+            subject: data.subject,
+            message: data.message
+          })
+        })
+        .then(function (r) {
+          if (!r.ok) throw new Error('Server returned ' + r.status);
+          return r.json();
+        })
+        .then(function () {
+          status.className = 'contact-status contact-status-ok';
+          status.textContent = 'MESSAGE TRANSMITTED — Ops will respond within 24 hours.';
+          form.reset();
+          if (window.AudioSystem && AudioSystem.playSFX) AudioSystem.playSFX('ui-04');
+        })
+        .catch(function (err) {
+          console.warn('[CONTACT] Submit failed:', err);
+          status.className = 'contact-status contact-status-err';
+          status.textContent = 'TRANSMISSION FAILED — Try the direct email below or retry later.';
+        })
+        .finally(function () {
+          if (submitBtn) submitBtn.disabled = false;
+        });
+      });
+    })();
+
+  })();
+  </script>
+
+</body>
+</html>

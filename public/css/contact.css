@@ -1,0 +1,262 @@
+/* ============================================================
+   CONTACT — CRT Terminal Sub-Page
+   Document library, contact form, and raw contact info.
+   Shares games.css row/expand patterns.
+   ============================================================ */
+
+/* ---- Document library grid ---- */
+.doc-library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.doc-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px 8px;
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 6px;
+  background: rgba(8, 24, 12, 0.5);
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--phosphor);
+  transition: border-color 0.2s, background 0.2s, transform 0.15s;
+  text-align: center;
+  min-height: 90px;
+}
+
+.doc-card:hover {
+  border-color: var(--phosphor-bright, var(--phosphor));
+  background: var(--phosphor-glow);
+  transform: translateY(-1px);
+}
+
+.doc-card:active {
+  transform: translateY(0);
+}
+
+.doc-card-emoji {
+  font-size: 2em;
+  line-height: 1;
+}
+
+.doc-card-id {
+  font-size: 0.6em;
+  letter-spacing: 0.12em;
+  color: var(--phosphor-dim);
+  opacity: 0.6;
+}
+
+.doc-card-name {
+  font-size: 0.7em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--phosphor);
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Abbreviator: mobile shows abbreviated name */
+@media (max-width: 900px) {
+  .doc-card-name[data-abbr] {
+    font-size: 0;
+    line-height: 0;
+    letter-spacing: 0;
+    overflow: hidden;
+  }
+  .doc-card-name[data-abbr]::after {
+    content: attr(data-abbr);
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+}
+
+/* ---- Contact form ---- */
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.contact-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.contact-field-label {
+  font-size: 0.7em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--phosphor-dim);
+}
+
+.contact-field-input,
+.contact-field-textarea {
+  background: rgba(8, 24, 12, 0.7);
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 4px;
+  padding: 8px 10px;
+  color: var(--phosphor);
+  font-family: var(--theme-font-data, 'Courier New', 'Lucida Console', 'Consolas', monospace);
+  font-size: 0.82em;
+  letter-spacing: 0.04em;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  user-select: text;
+}
+
+.contact-field-input:focus,
+.contact-field-textarea:focus {
+  border-color: var(--phosphor);
+  box-shadow: 0 0 6px rgba(0, 255, 90, 0.15);
+}
+
+.contact-field-textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.contact-field-input::placeholder,
+.contact-field-textarea::placeholder {
+  color: var(--phosphor-dim);
+  opacity: 0.5;
+}
+
+.contact-submit-btn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  background: rgba(8, 24, 12, 0.6);
+  color: var(--phosphor);
+  font-family: var(--theme-font-data, 'Courier New', 'Lucida Console', 'Consolas', monospace);
+  font-size: 0.8em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.15s;
+}
+
+.contact-submit-btn:hover {
+  border-color: var(--phosphor-bright, var(--phosphor));
+  background: var(--phosphor-glow);
+  transform: translateY(-1px);
+}
+
+.contact-submit-btn:active {
+  transform: translateY(0);
+}
+
+.contact-submit-icon {
+  font-size: 1.1em;
+}
+
+/* ---- Raw contact info ---- */
+.contact-raw-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.contact-raw-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--panel-border-soft);
+}
+
+.contact-raw-row:last-child {
+  border-bottom: none;
+}
+
+.contact-raw-icon {
+  font-size: 1.2em;
+  flex-shrink: 0;
+  width: 1.6em;
+  text-align: center;
+}
+
+.contact-raw-detail {
+  flex: 1;
+  min-width: 0;
+}
+
+.contact-raw-label {
+  font-size: 0.65em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--phosphor-dim);
+  margin-bottom: 2px;
+}
+
+.contact-raw-value {
+  font-size: 0.82em;
+  color: var(--phosphor);
+  word-break: break-all;
+}
+
+.contact-raw-value a {
+  color: var(--phosphor);
+  text-decoration: underline;
+  text-decoration-color: var(--panel-border-soft);
+  text-underline-offset: 2px;
+  transition: text-decoration-color 0.2s;
+}
+
+.contact-raw-value a:hover {
+  text-decoration-color: var(--phosphor);
+}
+
+/* ---- Status message for form ---- */
+.contact-status {
+  font-size: 0.75em;
+  letter-spacing: 0.08em;
+  padding: 6px 10px;
+  border-radius: 4px;
+  display: none;
+}
+
+.contact-status.contact-status-ok {
+  display: block;
+  background: rgba(0, 255, 90, 0.08);
+  border: 1px solid rgba(0, 255, 90, 0.2);
+  color: var(--phosphor);
+}
+
+.contact-status.contact-status-err {
+  display: block;
+  background: rgba(255, 60, 60, 0.08);
+  border: 1px solid rgba(255, 60, 60, 0.2);
+  color: #ff6b6b;
+}
+
+/* ---- Mobile ---- */
+@media (max-width: 480px) {
+  .doc-library-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 6px;
+  }
+  .doc-card {
+    padding: 8px 4px 6px;
+    min-height: 74px;
+  }
+  .doc-card-emoji {
+    font-size: 1.6em;
+  }
+  .doc-card-name {
+    font-size: 0.6em;
+  }
+}
