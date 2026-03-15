@@ -10,7 +10,7 @@
 
   <link rel="stylesheet" href="css/crt.css?v=20260314e">
   <link rel="stylesheet" href="css/themes.css?v=20260314a">
-  <link rel="stylesheet" href="css/games.css?v=20260314d">
+  <link rel="stylesheet" href="css/games.css?v=20260314e">
 
   <script>
     (function() {
@@ -164,6 +164,54 @@
                   <div class="games-inv-slot" data-slot="5">
                     <div class="games-inv-slot-inner games-inv-empty">
                       <span class="games-inv-slot-num">06</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="6">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">07</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="7">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">08</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="8">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">09</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="9">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">10</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="10">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">11</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="11">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">12</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="12">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">13</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="13">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">14</span>
                       <span class="games-inv-slot-label">EMPTY</span>
                     </div>
                   </div>
@@ -389,7 +437,7 @@
     var invScroll = document.getElementById('decryption-scroll');
     if (invScroll) {
       invScroll.addEventListener('scroll', function () {
-        if (invScroll.scrollTop > 4) {
+        if (invScroll.scrollLeft > 4) {
           invScroll.classList.add('scroll-active');
         } else {
           invScroll.classList.remove('scroll-active');
@@ -547,7 +595,7 @@
       var grid = document.getElementById('decryption-inventory');
       if (!grid) return;
 
-      var SLOT_COUNT = 6;
+      var SLOT_COUNT = 14;
       var slots = grid.querySelectorAll('.games-inv-slot');
 
       // Abbreviator helper — uses SharedItemRenderer if available, else truncate

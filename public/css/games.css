@@ -268,26 +268,18 @@ html, body {
 }
 
 /* ---- Decryption inventory scrollable wrapper ---- */
-/* Desktop: show all slots (2 rows of 3) without scroll/mask.
-   Mobile: cap height and add fade hint for scrollable content. */
+/* Horizontal scroll strip: ~5 slots visible, right-edge fade hints at more. */
 .games-inventory-scroll {
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: var(--phosphor-dim, #1a6b4a) transparent;
+  overflow-x: auto;
+  overflow-y: hidden;
   margin-bottom: 10px;
+  max-width: 535px; /* ~5 slots: 3 items + 2 empty placeholders */
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, black 80%, transparent 100%);
+  mask-image: linear-gradient(to right, black 80%, transparent 100%);
+  position: relative;
 }
-
-.games-inventory-scroll::-webkit-scrollbar {
-  width: 4px;
-}
-.games-inventory-scroll::-webkit-scrollbar-thumb {
-  background: var(--phosphor-dim);
-  border-radius: 2px;
-}
-.games-inventory-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
+.games-inventory-scroll::-webkit-scrollbar { display: none; }
 
 /* Remove fade mask once user scrolls (JS toggles this class) */
 .games-inventory-scroll.scroll-active {
@@ -295,26 +287,30 @@ html, body {
   -webkit-mask-image: none;
 }
 
-/* Mobile: cap inventory height and add scroll fade hint */
+/* Mobile: narrower strip + smaller slots */
 @media (max-width: 768px) {
   .games-inventory-scroll {
-    max-height: calc((min(45vw, 140px) + 6px) * 1.6);
-    mask-image: linear-gradient(to bottom, black 75%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to bottom, black 75%, transparent 100%);
+    max-width: 85vw;
+  }
+  .games-inv-slot {
+    width: min(80px, 22vw);
+    height: min(80px, 22vw);
   }
 }
 
-/* ---- Decryption inventory grid ---- */
+/* ---- Decryption inventory grid (horizontal strip) ---- */
 .games-inventory-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-wrap: nowrap;
   gap: 5px;
+  width: max-content;
 }
 
 .games-inv-slot {
-  aspect-ratio: 5 / 4;      /* landscape — reduces vertical dead-space */
+  flex-shrink: 0;
+  width: 100px;
+  height: 100px;
   cursor: pointer;
-  max-width: 120px;          /* ~20% shrink cap on desktop */
 }
 
 .games-inv-slot-inner {
@@ -777,12 +773,9 @@ html, body {
     display: none;
   }
 
-  .games-inventory-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
   .games-inv-slot {
-    aspect-ratio: 1;   /* square on phone where columns are wider */
+    width: min(68px, 20vw);
+    height: min(68px, 20vw);
   }
 
   .games-launcher-details {
