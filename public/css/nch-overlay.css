@@ -116,11 +116,15 @@
 /* ---- Layer 2: Dark tint overlay (on top of emoji) ---- */
 .nch-joker-tint {
   position: absolute;
-  inset: 0;
+  /* ~10% narrower, ~9% taller (+3px higher on Y) */
+  top: -3px;
+  bottom: 0;
+  left: 5%;
+  right: 5%;
   border-radius: 3px;
   pointer-events: none;
   z-index: 2;
-  opacity: 0.25;
+  opacity: 0.20;
   transition: opacity 0.3s ease;
 }
 
@@ -142,7 +146,7 @@
     transparent 100%
   );
   background-size: 250% 100%;
-  animation: nch-joker-sheen 5s ease-in-out infinite;
+  animation: nch-joker-sheen 8s ease-in-out infinite;
 }
 
 @keyframes nch-joker-sheen {
@@ -236,7 +240,7 @@
 
 /* Hover boost — tint darkens slightly more when fan expands */
 .nch-overlay-wrapper:hover .nch-joker-tint {
-  opacity: 0.35;
+  opacity: 0.30;
 }
 
 /* Greyed joker (reusable — matches NCH BLVCK treatment) */
