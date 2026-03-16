@@ -313,7 +313,7 @@ var NchOverlay = (function () {
 
     var btnClass = mission.btnClass || '';
     var midRow = '<div class="coin-mid-row">' +
-      '<button class="coin-book-btn ' + btnClass + '" data-mission="' + mission.id + '" data-index="' + index + '">' +
+      '<button class="coin-book-btn ' + btnClass + '" data-mission="' + mission.id + '" data-index="' + index + '" tabindex="-1" inputmode="none">' +
         '<span class="coin-book-label">' + mission.btnLabel + '</span>' +
         '<span class="coin-book-dot">.</span>' +
         '<span class="coin-book-duration">' + mission.btnDuration + '</span>' +
@@ -369,6 +369,20 @@ var NchOverlay = (function () {
       '</div>';
 
     document.body.appendChild(_fanPanel);
+
+    // Prevent ANY element in the fan from gaining focus (keyboard prevention)
+    _fanPanel.addEventListener('focusin', function (e) {
+      if (e.target && e.target !== document.body) {
+        try { e.target.blur(); } catch (_) {}
+      }
+    });
+
+    // Make all interactive elements inside the fan non-focusable
+    var allFocusable = _fanPanel.querySelectorAll('button, a, input, select, textarea, [tabindex]');
+    allFocusable.forEach(function (el) {
+      el.setAttribute('tabindex', '-1');
+      el.setAttribute('inputmode', 'none');
+    });
 
     // Close button
     var closeBtn = _fanPanel.querySelector('#nch-fan-close-btn');
@@ -754,6 +768,16 @@ var NchOverlay = (function () {
     }
   }
 
+  // ── Edge-of-screen detection for drag-to-select ─────────
+  var EDGE_MARGIN = 60; // px from any viewport edge triggers selection
+
+  function _isNearScreenEdge(x, y) {
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    return (x < EDGE_MARGIN || x > vw - EDGE_MARGIN ||
+            y < EDGE_MARGIN || y > vh - EDGE_MARGIN);
+  }
+
   function _endCardDrag(cancelled) {
     if (!_cardDrag) return;
     var drag = _cardDrag;
@@ -770,11 +794,27 @@ var NchOverlay = (function () {
     var placeholder = drag.placeholderEl;
     var fanEl = _fanPanel ? _fanPanel.querySelector('#nch-card-fan') : null;
 
+    // Detect drag-to-edge → select/navigate instead of reorder
+    var lastX = ghost ? parseFloat(ghost.style.left) + drag.grabOffsetX : 0;
+    var lastY = ghost ? parseFloat(ghost.style.top) + drag.grabOffsetY : 0;
+    var droppedOnEdge = !cancelled && drag.moved && _isNearScreenEdge(lastX, lastY);
+
     // Remove ghost
     if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
 
     // Restore card visibility
     cardEl.classList.remove('nch-fan-card-dragging');
+
+    if (droppedOnEdge) {
+      // Drag-to-edge: select this mission (navigate to its page)
+      // Remove placeholder first
+      if (placeholder && placeholder.parentNode) {
+        placeholder.parentNode.removeChild(placeholder);
+      }
+      _playAudio(PUTDOWN_SOUNDS[(drag.index || 0) % PUTDOWN_SOUNDS.length], { volume: 0.5 });
+      _selectMission(cardEl);
+      return;
+    }
 
     if (!cancelled && placeholder && fanEl) {
       // Insert card at placeholder position (this is the reorder)
@@ -955,6 +995,21 @@ var NchOverlay = (function () {
       }
     }, 400);
 
+    // If the virtual keyboard STILL opens somehow, counteract it by
+    // re-blurring whenever the visual viewport shrinks (keyboard appearing).
+    if (window.visualViewport) {
+      _fanViewportHandler = function () {
+        // If viewport height is significantly smaller than window height,
+        // the keyboard is likely open — force blur to dismiss it
+        if (window.visualViewport.height < window.innerHeight * 0.85) {
+          if (document.activeElement && document.activeElement !== document.body) {
+            try { document.activeElement.blur(); } catch (_) {}
+          }
+        }
+      };
+      window.visualViewport.addEventListener('resize', _fanViewportHandler);
+    }
+
     // Escape key closes
     _fanEscHandler = function (e) {
       if (e.key === 'Escape') _closeFan();
@@ -963,6 +1018,7 @@ var NchOverlay = (function () {
   }
 
   var _fanEscHandler = null;
+  var _fanViewportHandler = null;
 
   function _closeFan() {
     if (!_fanOpen) return;
@@ -977,6 +1033,10 @@ var NchOverlay = (function () {
     if (_fanEscHandler) {
       document.removeEventListener('keydown', _fanEscHandler);
       _fanEscHandler = null;
+    }
+    if (_fanViewportHandler && window.visualViewport) {
+      window.visualViewport.removeEventListener('resize', _fanViewportHandler);
+      _fanViewportHandler = null;
     }
 
     // ── Phase A: Fan zooms out + fades ────────────────────

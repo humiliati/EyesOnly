@@ -752,7 +752,8 @@ const SplashScreen = (() => {
           && !e.target.closest('.coin-wheel-strip')
           && !e.target.closest('.coin-wheel-frame');
 
-        // Start long-press timer → drag (artwork) or select (elsewhere)
+        // Start long-press timer → drag (artwork) or hover (elsewhere)
+        // Selection only happens via BOOK/PLAY buttons or drag-and-drop.
         touchTimer = setTimeout(function () {
           if (!touchMoved && !dismissed) {
             longPressFired = true;
@@ -763,7 +764,10 @@ const SplashScreen = (() => {
               var idx = parseInt(card.dataset.index, 10);
               _beginCardDrag(card, idx, { clientX: touchStartX, clientY: touchStartY });
             } else {
-              selectMission(card);
+              // Long-press elsewhere → hover the card (expand to show details)
+              if (hoveredCardEl !== card) {
+                hoverCard(card);
+              }
             }
           }
         }, LONG_PRESS_MS);
@@ -1162,6 +1166,16 @@ const SplashScreen = (() => {
     }
   }
 
+  // ── Edge-of-screen detection for drag-to-select ─────────
+  var EDGE_MARGIN = 60; // px from any viewport edge triggers selection
+
+  function _isNearScreenEdge(x, y) {
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    return (x < EDGE_MARGIN || x > vw - EDGE_MARGIN ||
+            y < EDGE_MARGIN || y > vh - EDGE_MARGIN);
+  }
+
   function _endCardDrag(ev) {
     if (!_dragState || _dragState.phase !== 'dragging') return;
     _dragState.phase = 'ending';
@@ -1169,37 +1183,37 @@ const SplashScreen = (() => {
     var x = ev.clientX;
     var y = ev.clientY;
 
-    // If dropped back on placeholder → return to fan
-    if (_isOverPlaceholder(x, y)) {
-      _dragState.phase = 'returning';
-      _returnGhostToSlot(function () {
-        // Card returns to its fan position
-      });
+    // Drag-to-edge: drop near any screen edge → select mission (navigate)
+    if (_isNearScreenEdge(x, y)) {
+      _dragState.phase = 'deploying';
+      var cardEl = _dragState.cardEl;
+
+      // Quick collapse animation on placeholder
+      if (_dragState.placeholderEl) {
+        _dragState.placeholderEl.classList.add('placeholder-collapsing');
+      }
+
+      // Ghost fades out with a slight scale-up
+      if (_dragState.ghostEl) {
+        _dragState.ghostEl.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+        _dragState.ghostEl.style.opacity = '0';
+        _dragState.ghostEl.style.setProperty('transform', 'scale(1.05)', 'important');
+      }
+
+      _playAudio(PUTDOWN_SOUNDS[_dragState.index % PUTDOWN_SOUNDS.length], { volume: 0.5 });
+
+      setTimeout(function () {
+        _cleanupDrag();
+        if (cardEl && !dismissed) selectMission(cardEl);
+      }, 250);
       return;
     }
 
-    // Dropped outside placeholder → select this mission
-    _dragState.phase = 'deploying';
-    var cardEl = _dragState.cardEl;
-
-    // Quick collapse animation on placeholder
-    if (_dragState.placeholderEl) {
-      _dragState.placeholderEl.classList.add('placeholder-collapsing');
-    }
-
-    // Ghost fades out with a slight scale-up
-    if (_dragState.ghostEl) {
-      _dragState.ghostEl.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
-      _dragState.ghostEl.style.opacity = '0';
-      _dragState.ghostEl.style.setProperty('transform', 'scale(1.05)', 'important');
-    }
-
-    _playAudio(PUTDOWN_SOUNDS[_dragState.index % PUTDOWN_SOUNDS.length], { volume: 0.5 });
-
-    setTimeout(function () {
-      _cleanupDrag();
-      if (cardEl && !dismissed) selectMission(cardEl);
-    }, 250);
+    // Dropped within the fan area (not near edge) → return card to slot
+    _dragState.phase = 'returning';
+    _returnGhostToSlot(function () {
+      // Card returns to its fan position — no navigation
+    });
   }
 
   function _cancelCardDrag() {

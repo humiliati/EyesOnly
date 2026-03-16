@@ -405,7 +405,13 @@
   }
 
   .nch-porthole-fan {
-    bottom: calc(70px + env(safe-area-inset-bottom));
+    bottom: calc(60px + env(safe-area-inset-bottom));
+  }
+
+  /* Zoom out ~3% on the entire card fan to reduce overlap clipping */
+  .nch-porthole-fan .splash-card-fan {
+    transform: scale(0.97);
+    transform-origin: bottom center;
   }
 
   .nch-fan-close-btn {
@@ -413,16 +419,36 @@
     right: -4px;
   }
 
-  /* Mobile: 20% zoom on hovered/picked-up card */
+  /* Increase vertical gaps between stacked cards in the NCH fan
+     so borders don't clip/overlap at the intersection points */
+  .nch-porthole-fan .splash-dossier.coin-card:nth-child(1) {
+    transform: perspective(800px) rotateY(0deg) rotateX(3deg) translateZ(0px) !important;
+    z-index: 4 !important;
+  }
+  .nch-porthole-fan .splash-dossier.coin-card:nth-child(2) {
+    transform: perspective(800px) rotateY(-6deg) rotateX(3deg) translateY(-14px) translateX(6px) !important;
+    z-index: 3 !important;
+  }
+  .nch-porthole-fan .splash-dossier.coin-card:nth-child(3) {
+    transform: perspective(800px) rotateY(-6deg) rotateX(3deg) translateY(-28px) translateX(10px) !important;
+    z-index: 2 !important;
+  }
+  .nch-porthole-fan .splash-dossier.coin-card:nth-child(4) {
+    transform: perspective(800px) rotateY(-6deg) rotateX(3deg) translateY(-42px) translateX(14px) !important;
+    z-index: 1 !important;
+  }
+
+  /* Mobile: 17% zoom on hovered/picked-up card (reduced from 20%
+     to prevent top-card clipping and border overlap issues) */
   .nch-porthole-fan .splash-dossier.coin-card.coin-card-hovered {
     transform: perspective(800px) rotateX(2deg) rotateY(0deg)
-               translateY(-20px) translateX(0px) scale(1.20) !important;
+               translateY(-16px) translateX(0px) scale(1.17) !important;
     z-index: 10 !important;
   }
 
   .nch-porthole-fan .splash-dossier.coin-card.splash-selected {
     transform: perspective(800px) rotateX(1deg)
-               translateY(-15px) scale(1.20) !important;
+               translateY(-12px) scale(1.17) !important;
     z-index: 10 !important;
   }
 }
