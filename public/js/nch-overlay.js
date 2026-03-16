@@ -30,11 +30,15 @@ var NchOverlay = (function () {
   var _initialized = false;
   var _visible = true;
 
-  // Drag
+  // Capsule drag
   var _capsuleDrag = null;     // { startX, startY, origLeft, origTop, moved }
+
+  // Card drag-to-reorder (Phase 4)
+  var _cardDrag = null;        // { cardEl, ghostEl, placeholderEl, index, startX, startY, grabOffsetX, grabOffsetY, moved }
 
   // Position persistence
   var POS_KEY = 'EYESONLY_NCH_OVERLAY_POS_V1';
+  var ORDER_KEY = 'EYESONLY_NCH_CARD_ORDER_V1';
 
   // ── Mission / Card Data ──────────────────────────────────
   // Same MISSIONS structure as splash-screen.js so the coin-cards
@@ -119,6 +123,36 @@ var NchOverlay = (function () {
 
   function _clearPos() {
     try { localStorage.removeItem(POS_KEY); } catch (e) {}
+  }
+
+  // ── Card Order Persistence ──────────────────────────────
+
+  function _saveCardOrder() {
+    try {
+      var ids = MISSIONS.map(function (m) { return m.id; });
+      localStorage.setItem(ORDER_KEY, JSON.stringify(ids));
+    } catch (e) {}
+  }
+
+  function _restoreCardOrder() {
+    try {
+      var raw = localStorage.getItem(ORDER_KEY);
+      if (!raw) return;
+      var ids = JSON.parse(raw);
+      if (!Array.isArray(ids) || ids.length !== MISSIONS.length) return;
+      // Build lookup by id
+      var byId = {};
+      MISSIONS.forEach(function (m) { byId[m.id] = m; });
+      var reordered = [];
+      for (var i = 0; i < ids.length; i++) {
+        if (!byId[ids[i]]) return; // corrupt — abort
+        reordered.push(byId[ids[i]]);
+      }
+      // Replace MISSIONS contents in place
+      for (var j = 0; j < reordered.length; j++) {
+        MISSIONS[j] = reordered[j];
+      }
+    } catch (e) {}
   }
 
   function _applyPos() {
@@ -335,8 +369,9 @@ var NchOverlay = (function () {
     var cards = _fanPanel.querySelectorAll('.splash-dossier');
 
     cards.forEach(function (cardEl) {
-      // Desktop hover
+      // Desktop hover (suppress during drag)
       cardEl.addEventListener('mouseenter', function () {
+        if (_cardDrag) return;
         if (_hoveredCard && _hoveredCard !== cardEl) {
           _hoveredCard.classList.remove('coin-card-hovered');
         }
@@ -344,15 +379,63 @@ var NchOverlay = (function () {
         _hoveredCard = cardEl;
       });
       cardEl.addEventListener('mouseleave', function () {
+        if (_cardDrag) return;
         cardEl.classList.remove('coin-card-hovered');
         if (_hoveredCard === cardEl) _hoveredCard = null;
       });
 
-      // Card body click → select mission
-      cardEl.addEventListener('click', function (e) {
-        // Don't double-fire if the button was clicked
+      // ── Pointer events for drag-to-reorder ──────────────
+      cardEl.addEventListener('pointerdown', function (e) {
+        if (e.button && e.button !== 0) return;
+        // Don't drag from the action button
         if (e.target.closest('.coin-book-btn')) return;
-        _selectMission(cardEl);
+        e.preventDefault();
+
+        var rect = cardEl.getBoundingClientRect();
+        _cardDrag = {
+          cardEl:       cardEl,
+          ghostEl:      null,
+          placeholderEl: null,
+          index:        parseInt(cardEl.dataset.index, 10),
+          startX:       e.clientX,
+          startY:       e.clientY,
+          grabOffsetX:  e.clientX - rect.left,
+          grabOffsetY:  e.clientY - rect.top,
+          moved:        false,
+        };
+        cardEl.setPointerCapture(e.pointerId);
+      });
+
+      cardEl.addEventListener('pointermove', function (e) {
+        if (!_cardDrag || _cardDrag.cardEl !== cardEl) return;
+        var dx = e.clientX - _cardDrag.startX;
+        var dy = e.clientY - _cardDrag.startY;
+        if (!_cardDrag.moved && Math.sqrt(dx * dx + dy * dy) < 10) return;
+
+        // First move past threshold — begin drag
+        if (!_cardDrag.moved) {
+          _cardDrag.moved = true;
+          _beginCardDrag(_cardDrag);
+        }
+        _moveCardGhost(e.clientX, e.clientY);
+        _updateDropGap(e.clientX);
+      });
+
+      cardEl.addEventListener('pointerup', function (e) {
+        if (!_cardDrag || _cardDrag.cardEl !== cardEl) return;
+        if (_cardDrag.moved) {
+          _endCardDrag(false);
+        } else {
+          // Tap — treat as click → select mission
+          _cardDrag = null;
+          _selectMission(cardEl);
+        }
+      });
+
+      cardEl.addEventListener('pointercancel', function () {
+        if (_cardDrag && _cardDrag.cardEl === cardEl) {
+          _endCardDrag(true);
+        }
       });
 
       // BOOK/PLAY button click → select mission
@@ -364,6 +447,190 @@ var NchOverlay = (function () {
         });
       }
     });
+  }
+
+  // ── Card Drag-to-Reorder Internals ───────────────────────
+
+  function _beginCardDrag(drag) {
+    var cardEl = drag.cardEl;
+    var isMobile = window.innerWidth < 769;
+
+    // Remove hover from all cards
+    if (_hoveredCard) {
+      _hoveredCard.classList.remove('coin-card-hovered');
+      _hoveredCard = null;
+    }
+
+    // ── Ghost (mirrors splash-screen's _createDragGhost exactly) ──
+    var rect = cardEl.getBoundingClientRect();
+    var ghost = cardEl.cloneNode(true);
+    var ghostW = Math.round(rect.width);
+    var ghostH = Math.round(rect.height);
+    var ghostRadius = isMobile ? '8px' : '16px';
+
+    // CRITICAL: coin-card-hovered has !important on transform + z-index
+    // which overrides inline drag positioning. coin-card-ghost provides
+    // hover visuals while letting inline transform/z-index work.
+    ghost.classList.remove('coin-card-hovered', 'splash-selected', 'nch-fan-card-dragging');
+    ghost.classList.add('coin-card-ghost');
+
+    ghost.style.cssText = [
+      'position: fixed',
+      'top: ' + (drag.startY - ghostH / 2) + 'px',
+      'left: ' + (drag.startX - ghostW / 2) + 'px',
+      'width: ' + ghostW + 'px',
+      'height: ' + ghostH + 'px',
+      'opacity: 0.94',
+      'pointer-events: none',
+      'transition: transform 0.12s ease-out, opacity 0.12s ease-out, box-shadow 0.12s ease-out',
+      'box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(180,160,80,0.12)',
+      'border-radius: ' + ghostRadius,
+      'will-change: transform, left, top',
+      'overflow: hidden',
+    ].join('; ');
+    ghost.style.setProperty('transform', 'scale(0.92) rotate(0deg)', 'important');
+    ghost.style.setProperty('z-index', '100000', 'important');
+
+    // Center grab offset on the ghost (same as splash-screen)
+    drag.grabOffsetX = ghostW / 2;
+    drag.grabOffsetY = ghostH / 2;
+
+    document.body.appendChild(ghost);
+    drag.ghostEl = ghost;
+
+    // ── Placeholder (mirrors splash-screen's _createDragPlaceholder) ──
+    var cs = window.getComputedStyle(cardEl);
+    var placeholder = document.createElement('div');
+    placeholder.className = 'splash-card-placeholder';
+    placeholder.style.width = rect.width + 'px';
+    placeholder.style.height = rect.height + 'px';
+    placeholder.style.margin = cs.margin;
+    placeholder.style.flexShrink = '0';
+    cardEl.parentNode.insertBefore(placeholder, cardEl);
+    drag.placeholderEl = placeholder;
+
+    // Hide original card
+    cardEl.classList.add('nch-fan-card-dragging');
+
+    // Sound feedback
+    try {
+      if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+        AudioSystem.play('card-fold_hand_1', { volume: 0.25 });
+      }
+    } catch (e) {}
+  }
+
+  function _moveCardGhost(clientX, clientY) {
+    if (!_cardDrag || !_cardDrag.ghostEl) return;
+    var ghost = _cardDrag.ghostEl;
+    ghost.style.left = (clientX - _cardDrag.grabOffsetX) + 'px';
+    ghost.style.top  = (clientY - _cardDrag.grabOffsetY) + 'px';
+
+    // Subtle tilt based on horizontal drag delta (same as splash-screen)
+    var dx = clientX - _cardDrag.startX;
+    var tilt = Math.max(-8, Math.min(8, dx * 0.04));
+    ghost.style.setProperty('transform', 'scale(0.92) rotate(' + tilt + 'deg)', 'important');
+  }
+
+  function _updateDropGap(clientX) {
+    // Find which gap the cursor is closest to and move the placeholder there
+    if (!_cardDrag || !_cardDrag.placeholderEl) return;
+    var fanEl = _fanPanel.querySelector('#nch-card-fan');
+    if (!fanEl) return;
+
+    var cards = fanEl.querySelectorAll('.splash-dossier:not(.nch-fan-card-dragging)');
+    var placeholder = _cardDrag.placeholderEl;
+
+    // Find insert position: before which visible card?
+    var insertBefore = null;
+    for (var i = 0; i < cards.length; i++) {
+      var rect = cards[i].getBoundingClientRect();
+      var midX = rect.left + rect.width / 2;
+      if (clientX < midX) {
+        insertBefore = cards[i];
+        break;
+      }
+    }
+
+    // Move placeholder to the right gap (only if it actually changes position)
+    if (insertBefore) {
+      if (placeholder.nextElementSibling !== insertBefore) {
+        fanEl.insertBefore(placeholder, insertBefore);
+      }
+    } else {
+      // After all cards — append (but before the dragging card if it's last)
+      var dragging = fanEl.querySelector('.nch-fan-card-dragging');
+      if (dragging) {
+        fanEl.insertBefore(placeholder, dragging);
+      } else if (placeholder !== fanEl.lastElementChild) {
+        fanEl.appendChild(placeholder);
+      }
+    }
+  }
+
+  function _endCardDrag(cancelled) {
+    if (!_cardDrag) return;
+    var drag = _cardDrag;
+    _cardDrag = null;
+
+    var cardEl = drag.cardEl;
+    var ghost = drag.ghostEl;
+    var placeholder = drag.placeholderEl;
+    var fanEl = _fanPanel ? _fanPanel.querySelector('#nch-card-fan') : null;
+
+    // Remove ghost
+    if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
+
+    // Restore card visibility
+    cardEl.classList.remove('nch-fan-card-dragging');
+
+    if (!cancelled && placeholder && fanEl) {
+      // Insert card at placeholder position (this is the reorder)
+      fanEl.insertBefore(cardEl, placeholder);
+
+      // Read new order from DOM
+      var newOrder = [];
+      var domCards = fanEl.querySelectorAll('.splash-dossier');
+      domCards.forEach(function (c) { newOrder.push(c.dataset.mission); });
+
+      // Update MISSIONS array to match
+      _reorderMissions(newOrder);
+    }
+
+    // Remove placeholder
+    if (placeholder && placeholder.parentNode) {
+      placeholder.parentNode.removeChild(placeholder);
+    }
+
+    // Update data-index attributes to reflect new order
+    if (fanEl) {
+      var allCards = fanEl.querySelectorAll('.splash-dossier');
+      allCards.forEach(function (c, i) {
+        c.dataset.index = i;
+        var btn = c.querySelector('.coin-book-btn');
+        if (btn) btn.dataset.index = i;
+      });
+    }
+
+    // Refresh joker stack to reflect new card order
+    if (_stackEl) _stackEl.dataset.sig = '';
+    _renderPortholeStack();
+
+    // Sound feedback
+    try {
+      if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+        AudioSystem.play('card-fold_hand_1', { volume: 0.2 });
+      }
+    } catch (e) {}
+  }
+
+  function _reorderMissions(idOrder) {
+    var byId = {};
+    MISSIONS.forEach(function (m) { byId[m.id] = m; });
+    for (var i = 0; i < idOrder.length; i++) {
+      if (byId[idOrder[i]]) MISSIONS[i] = byId[idOrder[i]];
+    }
+    _saveCardOrder();
   }
 
   function _selectMission(cardEl) {
@@ -413,12 +680,45 @@ var NchOverlay = (function () {
 
   // ── Fan Open / Close ─────────────────────────────────────
 
+  // ── Fan Open / Close (Morph Transitions) ────────────────
+  //
+  // Open:  capsule zooms toward screen center via JS-computed
+  //        translate, crossfading into the card fan.
+  // Close: fan zooms out, capsule materializes at center and
+  //        curves back to its parked position.
+
+  function _getCapsuleCenter() {
+    if (!_capsule) return { x: window.innerWidth / 2, y: window.innerHeight - 80 };
+    var r = _capsule.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+
+  function _getFanCenter() {
+    // Fan is centered horizontally, bottom: 80px
+    return { x: window.innerWidth / 2, y: window.innerHeight - 80 };
+  }
+
   function _openFan() {
     if (_fanOpen) return;
     _fanOpen = true;
 
     // Build panel if first time
     _buildFanPanel();
+
+    // ── Phase A: Capsule zooms toward fan center ──────────
+    var capPos = _getCapsuleCenter();
+    var fanPos = _getFanCenter();
+    var dx = fanPos.x - capPos.x;
+    var dy = fanPos.y - capPos.y;
+
+    if (_capsule) {
+      // Enable transition, then set target transform
+      _capsule.classList.add('nch-capsule-morphing');
+      // Force from current position (no transform yet)
+      void _capsule.offsetWidth;
+      _capsule.style.transform = 'translate(' + dx + 'px, ' + dy + 'px) scale(1.2)';
+      _capsule.style.opacity = '0';
+    }
 
     // Ensure starfield is running for porthole canvases
     if (typeof EyesOnlyStarfield !== 'undefined') {
@@ -427,12 +727,7 @@ var NchOverlay = (function () {
       }
     }
 
-    // Show with entrance animation
-    _fanPanel.style.display = '';
-    // Force reflow then add active class for CSS transition
-    void _fanPanel.offsetWidth;
-    _fanPanel.classList.add('nch-fan-active');
-
+    // ── Phase B: Crossfade — fan appears as capsule fades ─
     // Remove previous exit class if re-opening
     var fanEl = _fanPanel.querySelector('#nch-card-fan');
     if (fanEl) fanEl.classList.remove('splash-fan-exit');
@@ -440,9 +735,31 @@ var NchOverlay = (function () {
     // Reset card states
     var cards = _fanPanel.querySelectorAll('.splash-dossier');
     cards.forEach(function (c) {
-      c.classList.remove('splash-selected', 'coin-card-hovered');
+      c.classList.remove('splash-selected', 'coin-card-hovered', 'nch-fan-card-dragging');
     });
     _hoveredCard = null;
+
+    // Set up fan for morph-in: start scaled down + hidden
+    _fanPanel.style.display = '';
+    _fanPanel.classList.remove('nch-fan-active', 'nch-fan-morph-exit');
+    _fanPanel.classList.add('nch-fan-morphing', 'nch-fan-morph-enter');
+    void _fanPanel.offsetWidth; // force reflow
+
+    // Trigger the transition to active state
+    _fanPanel.classList.add('nch-fan-active');
+
+    // ── Phase C: Cleanup after transitions complete ────────
+    setTimeout(function () {
+      if (_capsule) {
+        _capsule.style.display = 'none';
+        _capsule.classList.remove('nch-capsule-morphing');
+        _capsule.style.transform = '';
+        _capsule.style.opacity = '';
+      }
+      if (_fanPanel) {
+        _fanPanel.classList.remove('nch-fan-morphing', 'nch-fan-morph-enter');
+      }
+    }, 400);
 
     // Escape key closes
     _fanEscHandler = function (e) {
@@ -457,18 +774,75 @@ var NchOverlay = (function () {
     if (!_fanOpen) return;
     _fanOpen = false;
 
-    if (_fanPanel) {
-      _fanPanel.classList.remove('nch-fan-active');
-      // Wait for CSS transition out, then hide
-      setTimeout(function () {
-        if (_fanPanel) _fanPanel.style.display = 'none';
-      }, 350);
-    }
+    // Cancel any active card drag
+    if (_cardDrag) _endCardDrag(true);
 
     if (_fanEscHandler) {
       document.removeEventListener('keydown', _fanEscHandler);
       _fanEscHandler = null;
     }
+
+    // ── Phase A: Fan zooms out + fades ────────────────────
+    if (_fanPanel) {
+      _fanPanel.classList.add('nch-fan-morphing');
+      void _fanPanel.offsetWidth;
+      _fanPanel.classList.remove('nch-fan-active');
+      _fanPanel.classList.add('nch-fan-morph-exit');
+    }
+
+    // ── Phase B: Capsule materializes at fan center, curves home ─
+    if (_capsule && _visible) {
+      // Bounds check — clamp saved position to current viewport
+      var pos = _loadPos();
+      var homeLeft, homeTop;
+      if (pos && typeof pos.left === 'number') {
+        var vw = window.innerWidth;
+        var vh = window.innerHeight;
+        homeLeft = Math.max(0, Math.min(pos.left, vw - 40));
+        homeTop  = Math.max(0, Math.min(pos.top,  vh - 40));
+        if (homeLeft !== pos.left || homeTop !== pos.top) {
+          _savePos(homeLeft, homeTop);
+        }
+      } else {
+        // No saved pos — use CSS default (bottom-right)
+        homeLeft = window.innerWidth - 60;
+        homeTop  = window.innerHeight - 80;
+      }
+
+      // Start capsule at fan center position with offset
+      var fanPos = _getFanCenter();
+      var startDx = fanPos.x - homeLeft - 25; // ~center of capsule width
+      var startDy = fanPos.y - homeTop - 14;  // ~center of capsule height
+
+      _capsule.style.bottom = 'auto';
+      _capsule.style.right  = 'auto';
+      _capsule.style.left   = homeLeft + 'px';
+      _capsule.style.top    = homeTop + 'px';
+      // Start at fan center via translate offset, scaled up
+      _capsule.style.transform = 'translate(' + startDx + 'px, ' + startDy + 'px) scale(1.2)';
+      _capsule.style.opacity = '0';
+      _capsule.style.display = 'flex';
+
+      // Enable morph transition, then animate to home (transform: none)
+      void _capsule.offsetWidth; // force reflow
+      _capsule.classList.add('nch-capsule-morphing');
+      void _capsule.offsetWidth;
+      _capsule.style.transform = 'translate(0, 0) scale(1)';
+      _capsule.style.opacity = '1';
+    }
+
+    // ── Phase C: Cleanup after transitions complete ────────
+    setTimeout(function () {
+      if (_fanPanel) {
+        _fanPanel.style.display = 'none';
+        _fanPanel.classList.remove('nch-fan-morphing', 'nch-fan-morph-exit', 'nch-fan-morph-enter');
+      }
+      if (_capsule) {
+        _capsule.classList.remove('nch-capsule-morphing');
+        _capsule.style.transform = '';
+        _capsule.style.opacity = '';
+      }
+    }, 400);
   }
 
   // ── Game Mode Bridge ─────────────────────────────────────
@@ -551,6 +925,7 @@ var NchOverlay = (function () {
 
     if (opts.visible === false) _visible = false;
 
+    _restoreCardOrder();
     _createCapsule();
     _renderPortholeStack();
 

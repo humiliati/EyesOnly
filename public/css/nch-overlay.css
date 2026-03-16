@@ -253,6 +253,63 @@
   opacity: 0 !important;
 }
 
+/* ── 3b. CAPSULE ↔ FAN MORPH TRANSITION ───────────────────
+   Fan opens:  capsule zooms toward screen center along a
+               bezier, crossfading into the card fan.
+   Fan closes: cards zoom out, crossfade back to capsule
+               which curves home to its last-known position.
+   Positions are dynamic (capsule is draggable) so the actual
+   translate values are set via JS inline style — CSS only
+   provides the transition timing + easing.                   */
+
+/* Transition-ready state: JS sets transform + opacity inline,
+   this class enables the smooth interpolation between them.  */
+.nch-overlay-wrapper.nch-capsule-morphing {
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity  0.25s ease;
+  pointer-events: none;
+}
+
+/* Fan panel also gets a morph-aware transition for crossfade */
+.nch-porthole-fan.nch-fan-morphing {
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Entry state: fan starts scaled down + transparent for the zoom-in */
+.nch-porthole-fan.nch-fan-morph-enter {
+  opacity: 0;
+  transform: translateX(-50%) scale(0.7);
+}
+
+/* Active state: fan fully visible at normal scale */
+.nch-porthole-fan.nch-fan-morph-enter.nch-fan-active {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+/* Exit state: fan zooms out + fades */
+.nch-porthole-fan.nch-fan-morph-exit {
+  opacity: 0;
+  transform: translateX(-50%) scale(0.7);
+}
+
+/* ── 3c. CARD DRAG-TO-REORDER (Phase 4) ───────────────────
+   Ghost floats above everything with live porthole.
+   Placeholder holds the insertion gap with a dashed border.
+   Dragging card is hidden in-flow while ghost tracks pointer.  */
+
+/* Ghost uses .coin-card-ghost from splash-screen.css (same class,
+   same visual treatment, same live-porthole starfield blit).
+   Placeholder uses .splash-card-placeholder from splash-screen.css
+   (dashed border, theme-colored fill, smooth collapse animation). */
+
+/* Original card hidden while being dragged */
+.nch-fan-card-dragging {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 /* ════════════════════════════════════════════════════════════
    4. PORTHOLE FAN PANEL
    Floating coin-card fan — NO backdrop, NO overlay.
