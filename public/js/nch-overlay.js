@@ -509,13 +509,15 @@ var NchOverlay = (function () {
     document.body.appendChild(ghost);
     drag.ghostEl = ghost;
 
-    // Begin RevealGrid lens session (card porthole acts as a lens)
+    // Begin RevealGrid lens session (card's porthole aperture is the lens)
     if (window.RevealGrid) {
-      var ghostRect = ghost.getBoundingClientRect();
+      var portholeCanvas = ghost.querySelector('.starfield-window');
+      var lensEl = portholeCanvas || ghost;
+      var lr = lensEl.getBoundingClientRect();
       RevealGrid.beginLensSession({
-        left: ghostRect.left, top: ghostRect.top,
-        right: ghostRect.right, bottom: ghostRect.bottom,
-        width: ghostRect.width, height: ghostRect.height,
+        left: lr.left, top: lr.top,
+        right: lr.right, bottom: lr.bottom,
+        width: lr.width, height: lr.height,
       });
     }
 
@@ -571,13 +573,15 @@ var NchOverlay = (function () {
     var tilt = Math.max(-8, Math.min(8, dx * 0.04));
     ghost.style.setProperty('transform', 'scale(0.92) rotate(' + tilt + 'deg)', 'important');
 
-    // Update RevealGrid lens position
+    // Update RevealGrid lens position (porthole aperture, not full card)
     if (window.RevealGrid) {
-      var ghostRect = ghost.getBoundingClientRect();
+      var portholeCanvas = ghost.querySelector('.starfield-window');
+      var lensEl = portholeCanvas || ghost;
+      var lr = lensEl.getBoundingClientRect();
       RevealGrid.updateLens({
-        left: ghostRect.left, top: ghostRect.top,
-        right: ghostRect.right, bottom: ghostRect.bottom,
-        width: ghostRect.width, height: ghostRect.height,
+        left: lr.left, top: lr.top,
+        right: lr.right, bottom: lr.bottom,
+        width: lr.width, height: lr.height,
       });
     }
   }

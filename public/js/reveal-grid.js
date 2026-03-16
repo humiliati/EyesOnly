@@ -66,16 +66,111 @@ var RevealGrid = (function () {
     if (_gridLayer) return;
     _gridLayer = document.createElement('div');
     _gridLayer.className = 'reveal-grid-layer';
-    // Sits between starfield (z:-1/opacity:0) and page content
-    // Fixed full-viewport, pointer-events: none (lens handles interaction)
+    // Above page content (z:15), below CRT overlays (z:80+).
+    // Clipped via SVG clipPath so zones only show THROUGH the porthole
+    // aperture — matching the toolkit §4 mask-based reveal architecture.
     _gridLayer.style.cssText = [
       'position: fixed',
       'inset: 0',
-      'z-index: 50',         // above #crt-frame (z:15), below CRT overlays (z:80+)
+      'z-index: 50',
       'pointer-events: none',
       'overflow: hidden',
     ].join('; ');
     document.body.appendChild(_gridLayer);
+  }
+
+  // ── SVG Clip Mask ──────────────────────────────────────
+  // The grid layer is clipped so zones are ONLY visible through
+  // porthole apertures. Uses an inline SVG <clipPath> containing:
+  //   - A <circle> for the active lens position (updated per-frame)
+  //   - <rect> elements for each locked zone (scroll-away persistence)
+  // Without this mask, zones would float above the page — the toolkit
+  // §4 architecture requires content to be revealed through the lens.
+
+  var _clipSvg = null;
+  var _clipPathEl = null;
+  var _clipCircle = null;      // SVG circle for active lens
+  var _clipRects = {};          // zone ID → SVG rect for locked zones
+  var CLIP_ID = 'reveal-grid-clip';
+
+  function _ensureClipMask() {
+    if (_clipSvg) return;
+
+    // Create a zero-size SVG that lives in the DOM for the <clipPath> def
+    _clipSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    _clipSvg.setAttribute('width', '0');
+    _clipSvg.setAttribute('height', '0');
+    _clipSvg.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;';
+
+    var defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    _clipPathEl = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+    _clipPathEl.setAttribute('id', CLIP_ID);
+    _clipPathEl.setAttribute('clipPathUnits', 'userSpaceOnUse');
+
+    // Lens circle — starts at r=0 (invisible)
+    _clipCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    _clipCircle.setAttribute('cx', '0');
+    _clipCircle.setAttribute('cy', '0');
+    _clipCircle.setAttribute('r', '0');
+    _clipPathEl.appendChild(_clipCircle);
+
+    defs.appendChild(_clipPathEl);
+    _clipSvg.appendChild(defs);
+    document.body.appendChild(_clipSvg);
+
+    // Apply the clip to the grid layer
+    if (_gridLayer) {
+      _gridLayer.style.clipPath = 'url(#' + CLIP_ID + ')';
+      _gridLayer.style.webkitClipPath = 'url(#' + CLIP_ID + ')';
+    }
+  }
+
+  function _updateClipLens(lensRect) {
+    if (!_clipCircle || !lensRect) return;
+    var cx = (lensRect.left + lensRect.right) / 2;
+    var cy = (lensRect.top + lensRect.bottom) / 2;
+    // Use the smaller dimension as radius for a circular aperture
+    var r = Math.min(lensRect.width, lensRect.height) / 2;
+    _clipCircle.setAttribute('cx', cx);
+    _clipCircle.setAttribute('cy', cy);
+    _clipCircle.setAttribute('r', r);
+  }
+
+  function _addLockedClipRect(zoneId, zoneRect) {
+    if (!_clipPathEl || _clipRects[zoneId]) return;
+    var svgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    // Slightly pad the rect so lock animation glow isn't clipped
+    var pad = 12;
+    svgRect.setAttribute('x', zoneRect.left - pad);
+    svgRect.setAttribute('y', zoneRect.top - pad);
+    svgRect.setAttribute('width', zoneRect.width + pad * 2);
+    svgRect.setAttribute('height', zoneRect.height + pad * 2);
+    _clipPathEl.appendChild(svgRect);
+    _clipRects[zoneId] = svgRect;
+  }
+
+  function _removeLockedClipRect(zoneId) {
+    var svgRect = _clipRects[zoneId];
+    if (svgRect && svgRect.parentNode) {
+      svgRect.parentNode.removeChild(svgRect);
+    }
+    delete _clipRects[zoneId];
+  }
+
+  function _clearClipLens() {
+    if (_clipCircle) {
+      _clipCircle.setAttribute('r', '0');
+    }
+  }
+
+  function _removeClipMask() {
+    // Remove clip when no lens session and no locked zones
+    if (Object.keys(_clipRects).length === 0) {
+      if (_gridLayer) {
+        _gridLayer.style.clipPath = '';
+        _gridLayer.style.webkitClipPath = '';
+      }
+    }
   }
 
   // ── QR Canvas Renderer ──────────────────────────────────
@@ -314,11 +409,18 @@ var RevealGrid = (function () {
   function beginLensSession(lensRect) {
     _lensActive = true;
     _lastLensRect = lensRect || null;
+
+    // Create clip mask if first session, then apply lens circle
+    _ensureClipMask();
+    if (lensRect) _updateClipLens(lensRect);
   }
 
   function updateLens(lensRect) {
     if (!_lensActive || !_gridLayer) return;
     _lastLensRect = lensRect;
+
+    // Update clip mask to follow the porthole aperture
+    _updateClipLens(lensRect);
 
     _zones.forEach(function (zone) {
       var el = _zoneEls[zone.id];
@@ -398,6 +500,10 @@ var RevealGrid = (function () {
           state.locked = true;
           el.classList.add('reveal-zone-locked');
 
+          // Add a clip rect for this zone so it stays visible
+          // even when the lens moves away (scroll-away persistence)
+          _addLockedClipRect(zone.id, zoneRect);
+
           // Play lock animation
           var lockAnim = reveal.lockAnimation || 'pulse-glow';
           el.classList.add('reveal-lock-' + lockAnim);
@@ -439,6 +545,9 @@ var RevealGrid = (function () {
     if (!_lensActive) return;
     _lensActive = false;
 
+    // Clear the lens circle from clip mask
+    _clearClipLens();
+
     _zones.forEach(function (zone) {
       var el = _zoneEls[zone.id];
       if (!el) return;
@@ -456,6 +565,9 @@ var RevealGrid = (function () {
         _animateOut(zone, el, state);
       }
     });
+
+    // If no locked zones remain, remove clip mask entirely
+    _removeClipMask();
   }
 
   // ── Release Actions ──────────────────────────────────────
@@ -503,6 +615,9 @@ var RevealGrid = (function () {
       if (el.parentNode) el.parentNode.removeChild(el);
       delete _zoneEls[zone.id];
       delete _active[zone.id];
+      // Clean up clip rect for this zone
+      _removeLockedClipRect(zone.id);
+      _removeClipMask();
     }, 600);
   }
 
@@ -590,7 +705,14 @@ var RevealGrid = (function () {
     if (_gridLayer && _gridLayer.parentNode) {
       _gridLayer.parentNode.removeChild(_gridLayer);
     }
+    if (_clipSvg && _clipSvg.parentNode) {
+      _clipSvg.parentNode.removeChild(_clipSvg);
+    }
     _gridLayer = null;
+    _clipSvg = null;
+    _clipPathEl = null;
+    _clipCircle = null;
+    _clipRects = {};
     _zones = [];
     _zoneEls = {};
     _active = {};
