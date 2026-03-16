@@ -375,13 +375,19 @@ const KernelManager = (function () {
     _syncButton();
   }
 
+  /** Set both textContent and data-text for CSS ::after rendering (FIG 3) */
+  function _setBtnLabel(btn, label) {
+    btn.textContent = label;
+    btn.setAttribute('data-text', label.toUpperCase());
+  }
+
   function _syncButton() {
     const btn = document.querySelector('button[data-action="kernel"]');
     if (!btn) return;
 
     if (!isAuthenticated()) {
       btn.disabled = true;
-      btn.textContent = 'kernel';
+      _setBtnLabel(btn, 'kernel');
       btn.classList.remove('enabled');
       btn.classList.remove('connected');
       btn.classList.remove('active-run');
@@ -393,7 +399,7 @@ const KernelManager = (function () {
     btn.classList.add('enabled');
 
     if (_state === STATES.CONNECTING) {
-      btn.textContent = 'connecting...';
+      _setBtnLabel(btn, 'connecting...');
       btn.classList.remove('connected');
       btn.classList.remove('active-run');
       _syncMOKToKernelButton();
@@ -402,7 +408,7 @@ const KernelManager = (function () {
 
     if (_state === STATES.CONNECTED) {
       const name = (_agentName || 'agent').slice(0, 12);
-      btn.textContent = 'connected: ' + name;
+      _setBtnLabel(btn, 'connected: ' + name);
       btn.classList.add('connected');
       btn.classList.remove('active-run');
       _syncMOKToKernelButton();
@@ -411,7 +417,7 @@ const KernelManager = (function () {
 
     if (_state === STATES.ACTIVE_RUN) {
       const name = (_agentName || 'agent').slice(0, 12);
-      btn.textContent = name + ' ';
+      _setBtnLabel(btn, name);
       btn.classList.add('connected');
       btn.classList.add('active-run');
       _syncMOKToKernelButton();
@@ -419,7 +425,7 @@ const KernelManager = (function () {
     }
 
     if (_state === STATES.DISMISSING) {
-      btn.textContent = 'dismissing...';
+      _setBtnLabel(btn, 'dismissing...');
       _syncMOKToKernelButton();
       btn.classList.remove('active-run');
       return;
@@ -427,7 +433,7 @@ const KernelManager = (function () {
 
     // DISCONNECTED / ERROR
     _syncMOKToKernelButton();
-    btn.textContent = 'kernel';
+    _setBtnLabel(btn, 'kernel');
     btn.classList.remove('connected');
     btn.classList.remove('active-run');
   }

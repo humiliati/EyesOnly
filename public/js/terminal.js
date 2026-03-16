@@ -123,17 +123,36 @@ const Terminal = (function () {
   }
 
   /**
-   * Check if event target is within Gone Rogue UI
+   * Check if the event target is interactive UI that should NOT trigger
+   * the hidden mobile-input focus (and therefore the on-screen keyboard).
+   *
+   * Rule: only focus the terminal keyboard when the tap lands on inert
+   * page surface (terminal output, background, etc.).  Any tap on a
+   * button, link, input, select, or known game-UI container is excluded.
    */
   function _isEventInRogueUI(e) {
     var target = e.target;
     if (!target) return false;
 
-    // Check if target or any parent is the rogue grid, cards, or splash screen
+    // 1. Any native interactive element — never hijack focus from these
+    var tag = (target.tagName || '').toUpperCase();
+    if (tag === 'BUTTON' || tag === 'A' || tag === 'INPUT' ||
+        tag === 'SELECT' || tag === 'TEXTAREA' || tag === 'LABEL') {
+      return true;
+    }
+    // Also catch taps on children of interactive elements (e.g. <span> inside <button>)
+    if (target.closest && target.closest('button, a, input, select, textarea, label')) {
+      return true;
+    }
+
+    // 2. Known game-UI containers
     while (target) {
       if (target.id === 'rogue-grid-mobile' ||
           target.id === 'rogue-cards-mobile' ||
-          target.id === 'splash-screen') {
+          target.id === 'splash-screen' ||
+          target.id === 'mok-interjections' ||
+          target.id === 'control-rail' ||
+          target.id === 'mok-header') {
         return true;
       }
       if (target.classList && (target.classList.contains('rogue-grid-mobile') ||

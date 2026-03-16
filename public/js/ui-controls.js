@@ -23,19 +23,22 @@
     var loginBtn = document.querySelector('button[data-action="login"]');
     if (!loginBtn) return;
 
+    var label;
     if (typeof UserAccount !== 'undefined' && UserAccount.isLoggedIn()) {
-      loginBtn.textContent = 'logout';
+      label = 'logout';
       loginBtn.classList.add('auth-logged-in');
       loginBtn.setAttribute('aria-label', 'Log out of current session');
     } else if (loginOverlayVisible && loginOverlayMode === 'login') {
-      loginBtn.textContent = 'register';
+      label = 'register';
       loginBtn.classList.remove('auth-logged-in');
       loginBtn.setAttribute('aria-label', 'Switch to registration form');
     } else {
-      loginBtn.textContent = 'login';
+      label = 'login';
       loginBtn.classList.remove('auth-logged-in');
       loginBtn.setAttribute('aria-label', 'Log in to account');
     }
+    loginBtn.textContent = label;
+    loginBtn.setAttribute('data-text', label.toUpperCase());
   }
 
   function init() {
